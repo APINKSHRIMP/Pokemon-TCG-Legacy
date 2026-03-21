@@ -1,0 +1,87 @@
+[gd_scene load_steps=6 format=3 uid="uid://bq1stytrtp7ka"]
+
+[ext_resource type="Script" uid="uid://5a2e2mnmbimo" path="res://Scripts/Main_Match_Gameplay_Scripts/Match_End_Outro_Script.gd" id="1_77suw"]
+[ext_resource type="Texture2D" uid="uid://ptklm68n8cm5" path="res://Image_Assets/Backgrounds_And_Borders/Backgrounds/battle_win_screen.png" id="2_77suw"]
+[ext_resource type="Texture2D" uid="uid://bsp4tmf0hr5w8" path="res://Image_Assets/Character_Sprites/In_Battle_Sprites/1lucasplatinum.png" id="3_l4x0a"]
+[ext_resource type="Theme" uid="uid://6shp5ck1tnja" path="res://UI_Themes/kenneyUI.tres" id="4_djk4x"]
+[ext_resource type="Texture2D" uid="uid://4ky851fyq64f" path="res://Image_Assets/Character_Sprites/In_Battle_Sprites/fisherman.png" id="5_2d22p"]
+
+[node name="MatchOutro" type="Control"]
+layout_mode = 3
+anchors_preset = 0
+offset_right = 40.0
+offset_bottom = 40.0
+script = ExtResource("1_77suw")
+
+[node name="match_outro_background" type="TextureRect" parent="."]
+layout_mode = 0
+offset_right = 1920.0
+offset_bottom = 1080.0
+pivot_offset = Vector2(960, 540)
+texture = ExtResource("2_77suw")
+expand_mode = 1
+
+[node name="PLAYER" type="Control" parent="."]
+anchors_preset = 0
+offset_right = 40.0
+offset_bottom = 40.0
+
+[node name="player_sprite" type="Sprite2D" parent="PLAYER"]
+position = Vector2(524, 532)
+scale = Vector2(1.1, 1.1)
+texture = ExtResource("3_l4x0a")
+
+[node name="OPPONENT" type="Control" parent="."]
+anchors_preset = 0
+offset_right = 40.0
+offset_bottom = 40.0
+
+[node name="opponent_sprite" type="Sprite2D" parent="OPPONENT"]
+position = Vector2(1457, 504)
+texture = ExtResource("5_2d22p")
+
+[node name="WIN LABELS" type="Control" parent="."]
+anchors_preset = 0
+offset_left = 762.0
+offset_top = 684.0
+offset_right = 1149.0
+offset_bottom = 858.0
+
+[node name="cash_placeholder_label" type="Label" parent="WIN LABELS"]
+visible = false
+layout_mode = 0
+offset_left = 103.0
+offset_top = 39.0
+offset_right = 307.0
+offset_bottom = 105.0
+theme = ExtResource("4_djk4x")
+theme_override_colors/font_color = Color(0, 0, 0, 1)
+theme_override_font_sizes/font_size = 58
+text = "¥ 100 "
+horizontal_alignment = 1
+
+[node name="coin_placeholder_label" type="Label" parent="WIN LABELS"]
+visible = false
+layout_mode = 0
+offset_left = -135.0
+offset_top = 120.0
+offset_right = 600.0
+offset_bottom = 178.0
+theme = ExtResource("4_djk4x")
+theme_override_colors/font_color = Color(0, 0, 0, 1)
+theme_override_font_sizes/font_size = 40
+text = "Silver FERALIGATR COIN"
+horizontal_alignment = 1
+
+[node name="character_reward_label" type="Label" parent="WIN LABELS"]
+visible = false
+layout_mode = 0
+offset_left = -53.0
+offset_top = 177.0
+offset_right = 494.0
+offset_bottom = 235.0
+theme = ExtResource("4_djk4x")
+theme_override_colors/font_color = Color(0, 0, 0, 1)
+theme_override_font_sizes/font_size = 40
+text = "Fisherman"
+horizontal_alignment = 1

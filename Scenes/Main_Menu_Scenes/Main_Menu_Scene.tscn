@@ -1,0 +1,166 @@
+[gd_scene load_steps=12 format=3 uid="uid://sd3crp0k4w67"]
+
+[ext_resource type="Script" uid="uid://d31lopv6mm8la" path="res://Scripts/Menu_Scripts/Main_Menu_Script.gd" id="1_mfee1"]
+[ext_resource type="Texture2D" uid="uid://degk17sx8q4mr" path="res://Image_Assets/Main_Menu_Images/deck_mode.png" id="1_pirq4"]
+[ext_resource type="Texture2D" uid="uid://dha51fw450he" path="res://Image_Assets/Main_Menu_Images/map_mode.png" id="2_mfee1"]
+[ext_resource type="Texture2D" uid="uid://bwoe2jmpei611" path="res://Image_Assets/Main_Menu_Images/player_mode.png" id="3_xhmi8"]
+[ext_resource type="Texture2D" uid="uid://c68w15ma8ytwb" path="res://Image_Assets/Main_Menu_Images/options_mode.png" id="4_lj1sn"]
+[ext_resource type="Texture2D" uid="uid://bb66wdtlkuwnm" path="res://Image_Assets/Main_Menu_Images/coin_case_mode.png" id="5_yxv5o"]
+[ext_resource type="Shader" uid="uid://ccm481fk14lc8" path="res://Scripts/Shaders/Background_Scroll_Right_Top_Border.gdshader" id="6_8uls3"]
+[ext_resource type="Texture2D" uid="uid://dieqv60p12hlk" path="res://Image_Assets/Backgrounds_And_Borders/Borders/horizontal_border.png" id="7_hd3b5"]
+[ext_resource type="Theme" uid="uid://6shp5ck1tnja" path="res://UI_Themes/kenneyUI.tres" id="8_vkwfo"]
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_v2sbh"]
+shader = ExtResource("6_8uls3")
+shader_parameter/scroll_speed = -0.009
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_fyaru"]
+
+[node name="MAIN MENU" type="Control"]
+layout_mode = 3
+anchors_preset = 0
+offset_right = 40.0
+offset_bottom = 40.0
+script = ExtResource("1_mfee1")
+
+[node name="BACKGROUND" type="Control" parent="."]
+anchors_preset = 0
+offset_top = 59.0
+offset_right = 40.0
+offset_bottom = 99.0
+
+[node name="white_background" type="ColorRect" parent="BACKGROUND"]
+layout_mode = 0
+offset_right = 1921.0
+offset_bottom = 969.0
+
+[node name="top_border" type="TextureRect" parent="BACKGROUND"]
+material = SubResource("ShaderMaterial_v2sbh")
+layout_mode = 0
+offset_left = 2.0
+offset_top = -55.0
+offset_right = 1922.0
+offset_bottom = 48.0
+texture = ExtResource("7_hd3b5")
+stretch_mode = 1
+
+[node name="bottom_border" type="TextureRect" parent="BACKGROUND"]
+material = SubResource("ShaderMaterial_v2sbh")
+layout_mode = 0
+offset_top = 915.0
+offset_right = 1920.0
+offset_bottom = 1018.0
+texture = ExtResource("7_hd3b5")
+stretch_mode = 1
+
+[node name="deck_mode_background" type="TextureRect" parent="."]
+material = SubResource("ShaderMaterial_fyaru")
+layout_mode = 0
+offset_left = 13.0
+offset_top = 116.0
+offset_right = 750.0
+offset_bottom = 644.0
+texture = ExtResource("1_pirq4")
+
+[node name="map_mode_background" type="TextureRect" parent="."]
+layout_mode = 0
+offset_left = 765.0
+offset_top = 116.0
+offset_right = 1552.0
+offset_bottom = 644.0
+texture = ExtResource("2_mfee1")
+
+[node name="player_mode_background" type="TextureRect" parent="."]
+layout_mode = 0
+offset_left = 13.0
+offset_top = 658.0
+offset_right = 972.2375
+offset_bottom = 965.0
+texture = ExtResource("3_xhmi8")
+expand_mode = 1
+
+[node name="options_mode_background" type="TextureRect" parent="."]
+layout_mode = 0
+offset_left = 1572.0
+offset_top = 116.0
+offset_right = 1908.0
+offset_bottom = 644.0
+texture = ExtResource("4_lj1sn")
+expand_mode = 1
+
+[node name="coin_case_mode_background" type="TextureRect" parent="."]
+layout_mode = 0
+offset_left = 985.0
+offset_top = 658.0
+offset_right = 1907.3839
+offset_bottom = 965.0
+texture = ExtResource("5_yxv5o")
+expand_mode = 1
+
+[node name="deck_mode_label" type="Label" parent="."]
+layout_mode = 0
+offset_left = 115.0
+offset_top = 271.0
+offset_right = 671.0
+offset_bottom = 514.0
+theme = ExtResource("8_vkwfo")
+theme_override_colors/font_outline_color = Color(0, 0, 0, 1)
+theme_override_constants/outline_size = 20
+theme_override_font_sizes/font_size = 106
+text = "CARDS &
+DECK"
+horizontal_alignment = 1
+
+[node name="map_mode_label" type="Label" parent="."]
+layout_mode = 0
+offset_left = 909.0
+offset_top = 287.0
+offset_right = 1465.0
+offset_bottom = 530.0
+theme = ExtResource("8_vkwfo")
+theme_override_colors/font_outline_color = Color(0, 0, 0, 1)
+theme_override_constants/outline_size = 20
+theme_override_font_sizes/font_size = 106
+text = "WORLD
+MAP"
+horizontal_alignment = 1
+
+[node name="options_mode_label" type="Label" parent="."]
+layout_mode = 0
+offset_left = 1555.0001
+offset_top = 580.00006
+offset_right = 2119.0
+offset_bottom = 703.00006
+rotation = -0.945367
+theme = ExtResource("8_vkwfo")
+theme_override_colors/font_outline_color = Color(0, 0, 0, 1)
+theme_override_constants/outline_size = 20
+theme_override_font_sizes/font_size = 76
+text = "OPTIONS"
+horizontal_alignment = 1
+
+[node name="player_mode_label" type="Label" parent="."]
+layout_mode = 0
+offset_left = 17.0
+offset_top = 791.0
+offset_right = 960.0
+offset_bottom = 911.0
+theme = ExtResource("8_vkwfo")
+theme_override_colors/font_outline_color = Color(0, 0, 0, 1)
+theme_override_constants/outline_size = 20
+theme_override_font_sizes/font_size = 86
+text = "TRAINER CARD"
+horizontal_alignment = 1
+
+[node name="coin_case_label" type="Label" parent="."]
+layout_mode = 0
+offset_left = 1155.0
+offset_top = 784.0
+offset_right = 1763.0
+offset_bottom = 891.0
+theme = ExtResource("8_vkwfo")
+theme_override_colors/font_outline_color = Color(0, 0, 0, 1)
+theme_override_constants/outline_size = 20
+theme_override_font_sizes/font_size = 86
+text = "COIN CASE"
+horizontal_alignment = 1

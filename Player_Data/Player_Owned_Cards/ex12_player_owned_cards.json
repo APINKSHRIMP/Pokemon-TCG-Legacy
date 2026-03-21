@@ -1,0 +1,377 @@
+{
+	"set_unlocked": true,
+	"owned_cards": [
+		{
+			"card_id": "ex12-1",
+			"owned": 4
+		},
+		{
+			"card_id": "ex12-2",
+			"owned": 4
+		},
+		{
+			"card_id": "ex12-3",
+			"owned": 4
+		},
+		{
+			"card_id": "ex12-4",
+			"owned": 4
+		},
+		{
+			"card_id": "ex12-5",
+			"owned": 4
+		},
+		{
+			"card_id": "ex12-6",
+			"owned": 3
+		},
+		{
+			"card_id": "ex12-7",
+			"owned": 4
+		},
+		{
+			"card_id": "ex12-8",
+			"owned": 2
+		},
+		{
+			"card_id": "ex12-9",
+			"owned": 4
+		},
+		{
+			"card_id": "ex12-10",
+			"owned": 1
+		},
+		{
+			"card_id": "ex12-11",
+			"owned": 2
+		},
+		{
+			"card_id": "ex12-12",
+			"owned": 4
+		},
+		{
+			"card_id": "ex12-13",
+			"owned": 2
+		},
+		{
+			"card_id": "ex12-14",
+			"owned": 4
+		},
+		{
+			"card_id": "ex12-15",
+			"owned": 4
+		},
+		{
+			"card_id": "ex12-16",
+			"owned": 4
+		},
+		{
+			"card_id": "ex12-17",
+			"owned": 2
+		},
+		{
+			"card_id": "ex12-18",
+			"owned": 1
+		},
+		{
+			"card_id": "ex12-19",
+			"owned": 4
+		},
+		{
+			"card_id": "ex12-20",
+			"owned": 1
+		},
+		{
+			"card_id": "ex12-21",
+			"owned": 4
+		},
+		{
+			"card_id": "ex12-22",
+			"owned": 3
+		},
+		{
+			"card_id": "ex12-23",
+			"owned": 1
+		},
+		{
+			"card_id": "ex12-24",
+			"owned": 2
+		},
+		{
+			"card_id": "ex12-25",
+			"owned": 4
+		},
+		{
+			"card_id": "ex12-26",
+			"owned": 4
+		},
+		{
+			"card_id": "ex12-27",
+			"owned": 4
+		},
+		{
+			"card_id": "ex12-28",
+			"owned": 4
+		},
+		{
+			"card_id": "ex12-29",
+			"owned": 3
+		},
+		{
+			"card_id": "ex12-30",
+			"owned": 4
+		},
+		{
+			"card_id": "ex12-31",
+			"owned": 4
+		},
+		{
+			"card_id": "ex12-32",
+			"owned": 1
+		},
+		{
+			"card_id": "ex12-33",
+			"owned": 1
+		},
+		{
+			"card_id": "ex12-34",
+			"owned": 4
+		},
+		{
+			"card_id": "ex12-35",
+			"owned": 4
+		},
+		{
+			"card_id": "ex12-36",
+			"owned": 3
+		},
+		{
+			"card_id": "ex12-37",
+			"owned": 1
+		},
+		{
+			"card_id": "ex12-38",
+			"owned": 4
+		},
+		{
+			"card_id": "ex12-39",
+			"owned": 4
+		},
+		{
+			"card_id": "ex12-40",
+			"owned": 3
+		},
+		{
+			"card_id": "ex12-41",
+			"owned": 4
+		},
+		{
+			"card_id": "ex12-42",
+			"owned": 1
+		},
+		{
+			"card_id": "ex12-43",
+			"owned": 4
+		},
+		{
+			"card_id": "ex12-44",
+			"owned": 4
+		},
+		{
+			"card_id": "ex12-45",
+			"owned": 1
+		},
+		{
+			"card_id": "ex12-46",
+			"owned": 3
+		},
+		{
+			"card_id": "ex12-47",
+			"owned": 4
+		},
+		{
+			"card_id": "ex12-48",
+			"owned": 1
+		},
+		{
+			"card_id": "ex12-49",
+			"owned": 4
+		},
+		{
+			"card_id": "ex12-50",
+			"owned": 1
+		},
+		{
+			"card_id": "ex12-51",
+			"owned": 3
+		},
+		{
+			"card_id": "ex12-52",
+			"owned": 4
+		},
+		{
+			"card_id": "ex12-53",
+			"owned": 3
+		},
+		{
+			"card_id": "ex12-54",
+			"owned": 1
+		},
+		{
+			"card_id": "ex12-55",
+			"owned": 4
+		},
+		{
+			"card_id": "ex12-56",
+			"owned": 4
+		},
+		{
+			"card_id": "ex12-57",
+			"owned": 4
+		},
+		{
+			"card_id": "ex12-58",
+			"owned": 4
+		},
+		{
+			"card_id": "ex12-59",
+			"owned": 4
+		},
+		{
+			"card_id": "ex12-60",
+			"owned": 3
+		},
+		{
+			"card_id": "ex12-61",
+			"owned": 4
+		},
+		{
+			"card_id": "ex12-62",
+			"owned": 4
+		},
+		{
+			"card_id": "ex12-63",
+			"owned": 1
+		},
+		{
+			"card_id": "ex12-64",
+			"owned": 1
+		},
+		{
+			"card_id": "ex12-65",
+			"owned": 4
+		},
+		{
+			"card_id": "ex12-66",
+			"owned": 4
+		},
+		{
+			"card_id": "ex12-67",
+			"owned": 4
+		},
+		{
+			"card_id": "ex12-68",
+			"owned": 4
+		},
+		{
+			"card_id": "ex12-69",
+			"owned": 4
+		},
+		{
+			"card_id": "ex12-70",
+			"owned": 1
+		},
+		{
+			"card_id": "ex12-71",
+			"owned": 4
+		},
+		{
+			"card_id": "ex12-72",
+			"owned": 1
+		},
+		{
+			"card_id": "ex12-73",
+			"owned": 4
+		},
+		{
+			"card_id": "ex12-74",
+			"owned": 4
+		},
+		{
+			"card_id": "ex12-75",
+			"owned": 4
+		},
+		{
+			"card_id": "ex12-76",
+			"owned": 4
+		},
+		{
+			"card_id": "ex12-77",
+			"owned": 4
+		},
+		{
+			"card_id": "ex12-78",
+			"owned": 2
+		},
+		{
+			"card_id": "ex12-79",
+			"owned": 4
+		},
+		{
+			"card_id": "ex12-80",
+			"owned": 1
+		},
+		{
+			"card_id": "ex12-81",
+			"owned": 2
+		},
+		{
+			"card_id": "ex12-82",
+			"owned": 4
+		},
+		{
+			"card_id": "ex12-83",
+			"owned": 1
+		},
+		{
+			"card_id": "ex12-84",
+			"owned": 1
+		},
+		{
+			"card_id": "ex12-85",
+			"owned": 4
+		},
+		{
+			"card_id": "ex12-86",
+			"owned": 2
+		},
+		{
+			"card_id": "ex12-87",
+			"owned": 2
+		},
+		{
+			"card_id": "ex12-88",
+			"owned": 3
+		},
+		{
+			"card_id": "ex12-89",
+			"owned": 3
+		},
+		{
+			"card_id": "ex12-90",
+			"owned": 2
+		},
+		{
+			"card_id": "ex12-91",
+			"owned": 4
+		},
+		{
+			"card_id": "ex12-92",
+			"owned": 2
+		},
+		{
+			"card_id": "ex12-93",
+			"owned": 2
+		}
+	]
+}

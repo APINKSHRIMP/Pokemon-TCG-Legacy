@@ -1,0 +1,84 @@
+[gd_scene load_steps=8 format=3 uid="uid://kkeca0ghlekk"]
+
+[ext_resource type="Script" uid="uid://663wesm8innb" path="res://Scripts/Map_Scripts/Map_Areas/Shallow_Beach_Script.gd" id="1_ng4qn"]
+[ext_resource type="Texture2D" uid="uid://dfvaw65wnkawx" path="res://Image_Assets/Map_Backgrounds/Shallow_Beach.png" id="2_lnhv8"]
+[ext_resource type="PackedScene" uid="uid://bprufyh8mxqom" path="res://Scenes/Objects/Player_Object_Scene.tscn" id="3_q78ux"]
+
+[sub_resource type="CircleShape2D" id="CircleShape2D_2p66v"]
+radius = 50.0
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_64wxh"]
+size = Vector2(130, 40)
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_yb177"]
+size = Vector2(1920, 200)
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_ytr86"]
+size = Vector2(300, 1000)
+
+[node name="SHALLOW BEACH" type="Node2D"]
+script = ExtResource("1_ng4qn")
+
+[node name="shallow_beach_background" type="Sprite2D" parent="."]
+position = Vector2(969, 536)
+scale = Vector2(3.815, 3.815)
+texture = ExtResource("2_lnhv8")
+
+[node name="OPPONENTS" type="Node2D" parent="."]
+
+[node name="OBSTACLES" type="Node2D" parent="."]
+
+[node name="mini_bush1" type="StaticBody2D" parent="OBSTACLES"]
+position = Vector2(687, 565)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="OBSTACLES/mini_bush1"]
+position = Vector2(25, -7)
+shape = SubResource("CircleShape2D_2p66v")
+
+[node name="mini_bush2" type="StaticBody2D" parent="OBSTACLES"]
+position = Vector2(299, 648)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="OBSTACLES/mini_bush2"]
+position = Vector2(25, -7)
+shape = SubResource("CircleShape2D_2p66v")
+
+[node name="rock1" type="StaticBody2D" parent="OBSTACLES"]
+position = Vector2(1089, 276)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="OBSTACLES/rock1"]
+shape = SubResource("RectangleShape2D_64wxh")
+
+[node name="rock2" type="StaticBody2D" parent="OBSTACLES"]
+position = Vector2(422, 373)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="OBSTACLES/rock2"]
+shape = SubResource("RectangleShape2D_64wxh")
+
+[node name="edge_of_map_horizontal" type="StaticBody2D" parent="OBSTACLES"]
+position = Vector2(956, 131)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="OBSTACLES/edge_of_map_horizontal"]
+shape = SubResource("RectangleShape2D_yb177")
+
+[node name="edge_of_map_horizontal2" type="StaticBody2D" parent="OBSTACLES"]
+position = Vector2(960, 974)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="OBSTACLES/edge_of_map_horizontal2"]
+shape = SubResource("RectangleShape2D_yb177")
+
+[node name="edge_of_map_vertical" type="StaticBody2D" parent="OBSTACLES"]
+position = Vector2(135, 416)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="OBSTACLES/edge_of_map_vertical"]
+shape = SubResource("RectangleShape2D_ytr86")
+
+[node name="edge_of_map_vertical2" type="StaticBody2D" parent="OBSTACLES"]
+position = Vector2(1767, 459)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="OBSTACLES/edge_of_map_vertical2"]
+shape = SubResource("RectangleShape2D_ytr86")
+
+[node name="UILAYER" type="CanvasLayer" parent="."]
+
+[node name="Player" parent="." instance=ExtResource("3_q78ux")]
+position = Vector2(878, 622)

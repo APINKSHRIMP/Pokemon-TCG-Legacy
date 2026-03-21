@@ -1,0 +1,425 @@
+{
+	"set_unlocked": true,
+	"owned_cards": [
+		{
+			"card_id": "neo1-1",
+			"owned": 4
+		},
+		{
+			"card_id": "neo1-2",
+			"owned": 1
+		},
+		{
+			"card_id": "neo1-3",
+			"owned": 4
+		},
+		{
+			"card_id": "neo1-4",
+			"owned": 4
+		},
+		{
+			"card_id": "neo1-5",
+			"owned": 4
+		},
+		{
+			"card_id": "neo1-6",
+			"owned": 4
+		},
+		{
+			"card_id": "neo1-7",
+			"owned": 2
+		},
+		{
+			"card_id": "neo1-8",
+			"owned": 1
+		},
+		{
+			"card_id": "neo1-9",
+			"owned": 4
+		},
+		{
+			"card_id": "neo1-10",
+			"owned": 1
+		},
+		{
+			"card_id": "neo1-11",
+			"owned": 4
+		},
+		{
+			"card_id": "neo1-12",
+			"owned": 2
+		},
+		{
+			"card_id": "neo1-13",
+			"owned": 1
+		},
+		{
+			"card_id": "neo1-14",
+			"owned": 2
+		},
+		{
+			"card_id": "neo1-15",
+			"owned": 4
+		},
+		{
+			"card_id": "neo1-16",
+			"owned": 2
+		},
+		{
+			"card_id": "neo1-17",
+			"owned": 4
+		},
+		{
+			"card_id": "neo1-18",
+			"owned": 4
+		},
+		{
+			"card_id": "neo1-19",
+			"owned": 1
+		},
+		{
+			"card_id": "neo1-20",
+			"owned": 4
+		},
+		{
+			"card_id": "neo1-21",
+			"owned": 2
+		},
+		{
+			"card_id": "neo1-22",
+			"owned": 3
+		},
+		{
+			"card_id": "neo1-23",
+			"owned": 1
+		},
+		{
+			"card_id": "neo1-24",
+			"owned": 4
+		},
+		{
+			"card_id": "neo1-25",
+			"owned": 4
+		},
+		{
+			"card_id": "neo1-26",
+			"owned": 4
+		},
+		{
+			"card_id": "neo1-27",
+			"owned": 3
+		},
+		{
+			"card_id": "neo1-28",
+			"owned": 3
+		},
+		{
+			"card_id": "neo1-29",
+			"owned": 2
+		},
+		{
+			"card_id": "neo1-30",
+			"owned": 2
+		},
+		{
+			"card_id": "neo1-31",
+			"owned": 4
+		},
+		{
+			"card_id": "neo1-32",
+			"owned": 3
+		},
+		{
+			"card_id": "neo1-33",
+			"owned": 4
+		},
+		{
+			"card_id": "neo1-34",
+			"owned": 4
+		},
+		{
+			"card_id": "neo1-35",
+			"owned": 1
+		},
+		{
+			"card_id": "neo1-36",
+			"owned": 3
+		},
+		{
+			"card_id": "neo1-37",
+			"owned": 3
+		},
+		{
+			"card_id": "neo1-38",
+			"owned": 2
+		},
+		{
+			"card_id": "neo1-39",
+			"owned": 4
+		},
+		{
+			"card_id": "neo1-40",
+			"owned": 4
+		},
+		{
+			"card_id": "neo1-41",
+			"owned": 3
+		},
+		{
+			"card_id": "neo1-42",
+			"owned": 4
+		},
+		{
+			"card_id": "neo1-43",
+			"owned": 2
+		},
+		{
+			"card_id": "neo1-44",
+			"owned": 4
+		},
+		{
+			"card_id": "neo1-45",
+			"owned": 3
+		},
+		{
+			"card_id": "neo1-46",
+			"owned": 2
+		},
+		{
+			"card_id": "neo1-47",
+			"owned": 4
+		},
+		{
+			"card_id": "neo1-48",
+			"owned": 1
+		},
+		{
+			"card_id": "neo1-49",
+			"owned": 1
+		},
+		{
+			"card_id": "neo1-50",
+			"owned": 4
+		},
+		{
+			"card_id": "neo1-51",
+			"owned": 2
+		},
+		{
+			"card_id": "neo1-52",
+			"owned": 2
+		},
+		{
+			"card_id": "neo1-53",
+			"owned": 4
+		},
+		{
+			"card_id": "neo1-54",
+			"owned": 4
+		},
+		{
+			"card_id": "neo1-55",
+			"owned": 1
+		},
+		{
+			"card_id": "neo1-56",
+			"owned": 4
+		},
+		{
+			"card_id": "neo1-57",
+			"owned": 1
+		},
+		{
+			"card_id": "neo1-58",
+			"owned": 1
+		},
+		{
+			"card_id": "neo1-59",
+			"owned": 3
+		},
+		{
+			"card_id": "neo1-60",
+			"owned": 4
+		},
+		{
+			"card_id": "neo1-61",
+			"owned": 4
+		},
+		{
+			"card_id": "neo1-62",
+			"owned": 1
+		},
+		{
+			"card_id": "neo1-63",
+			"owned": 4
+		},
+		{
+			"card_id": "neo1-64",
+			"owned": 4
+		},
+		{
+			"card_id": "neo1-65",
+			"owned": 4
+		},
+		{
+			"card_id": "neo1-66",
+			"owned": 2
+		},
+		{
+			"card_id": "neo1-67",
+			"owned": 4
+		},
+		{
+			"card_id": "neo1-68",
+			"owned": 4
+		},
+		{
+			"card_id": "neo1-69",
+			"owned": 4
+		},
+		{
+			"card_id": "neo1-70",
+			"owned": 4
+		},
+		{
+			"card_id": "neo1-71",
+			"owned": 4
+		},
+		{
+			"card_id": "neo1-72",
+			"owned": 4
+		},
+		{
+			"card_id": "neo1-73",
+			"owned": 4
+		},
+		{
+			"card_id": "neo1-74",
+			"owned": 4
+		},
+		{
+			"card_id": "neo1-75",
+			"owned": 4
+		},
+		{
+			"card_id": "neo1-76",
+			"owned": 4
+		},
+		{
+			"card_id": "neo1-77",
+			"owned": 3
+		},
+		{
+			"card_id": "neo1-78",
+			"owned": 3
+		},
+		{
+			"card_id": "neo1-79",
+			"owned": 4
+		},
+		{
+			"card_id": "neo1-80",
+			"owned": 4
+		},
+		{
+			"card_id": "neo1-81",
+			"owned": 4
+		},
+		{
+			"card_id": "neo1-82",
+			"owned": 4
+		},
+		{
+			"card_id": "neo1-83",
+			"owned": 4
+		},
+		{
+			"card_id": "neo1-84",
+			"owned": 3
+		},
+		{
+			"card_id": "neo1-85",
+			"owned": 4
+		},
+		{
+			"card_id": "neo1-86",
+			"owned": 3
+		},
+		{
+			"card_id": "neo1-87",
+			"owned": 4
+		},
+		{
+			"card_id": "neo1-88",
+			"owned": 2
+		},
+		{
+			"card_id": "neo1-89",
+			"owned": 2
+		},
+		{
+			"card_id": "neo1-90",
+			"owned": 4
+		},
+		{
+			"card_id": "neo1-91",
+			"owned": 3
+		},
+		{
+			"card_id": "neo1-92",
+			"owned": 4
+		},
+		{
+			"card_id": "neo1-93",
+			"owned": 1
+		},
+		{
+			"card_id": "neo1-94",
+			"owned": 4
+		},
+		{
+			"card_id": "neo1-95",
+			"owned": 3
+		},
+		{
+			"card_id": "neo1-96",
+			"owned": 4
+		},
+		{
+			"card_id": "neo1-97",
+			"owned": 4
+		},
+		{
+			"card_id": "neo1-98",
+			"owned": 2
+		},
+		{
+			"card_id": "neo1-99",
+			"owned": 4
+		},
+		{
+			"card_id": "neo1-100",
+			"owned": 2
+		},
+		{
+			"card_id": "neo1-101",
+			"owned": 4
+		},
+		{
+			"card_id": "neo1-102",
+			"owned": 4
+		},
+		{
+			"card_id": "neo1-103",
+			"owned": 4
+		},
+		{
+			"card_id": "neo1-104",
+			"owned": 4
+		},
+		{
+			"card_id": "neo1-105",
+			"owned": 4
+		}
+	]
+}

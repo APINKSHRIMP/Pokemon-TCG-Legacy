@@ -1,0 +1,52 @@
+{
+  "opponents": [
+	{
+	  "name": "Fisherman_John",
+	  "overworld_sprite": "Fisherman",
+	  "battle_sprite": "Fisherman",
+	  "music": "normal_battle",
+	  "deck": "Squirty_Karps",
+
+	  "meet_text": "Hey there, I'm trying to catch the biggest fish in these waters but nothing seems to be biting. Want to help me check my bait with a battle?",
+	  "rematch_text": "Oh hey again, I don't mind another battle",
+	  "first_win_text": "I should have been paying more attention to my fishing...",
+	  "rematch_win_text": "Always happy to put my fishing aside for another one!",
+	  "loss_text": "I'm not just the best round here at fishing!",
+
+	  "coin_reward": "coin_gyarados_blue",
+	  "cash_reward": "100"
+	},
+	{
+	  "name": "Bug_Catcher_Alex",
+	  "overworld_sprite": "bugcatcher",
+	  "battle_sprite": "bugcatcher",
+	  "music": "chilled_battle",
+	  "deck": "I_love_bugs!",
+
+	  "meet_text": "Some people hate bugs but I love them! Want me to show you what I've caught?",
+	  "rematch_text": "You just love bugs as much as I do then?",
+	  "first_win_text": "Maybe bugs aren't as good as I thought...",
+	  "rematch_win_text": "Me and my bugs will win one of these days!",
+	  "loss_text": "I knew bugs were the best!!",
+	  
+	  "coin_reward": "coin_energy_green",
+	  "cash_reward": "100"
+	},
+	{
+	  "name": "Swimmer_Jordan",
+	  "overworld_sprite": "swimmerfemale",
+	  "battle_sprite": "swimmerfemale",
+	  "music": "surrounded_sea",
+	  "deck": "poli'swrath_and_gong",
+
+	  "meet_text": "I love the water, it's so calm and warm but my cards always get wet! Help me dry them off?",
+	  "rematch_text": "I can always take a break for another match",
+	  "first_win_text": "I'll stick with my swimming...",
+	  "rematch_win_text": "Nothing like a good match and a long swim",
+	  "loss_text": "Maybe you should work on your swimming...",
+	  
+	  "coin_reward": "coin_energy_blue",
+	  "cash_reward": "100"
+	}
+  ]
+}

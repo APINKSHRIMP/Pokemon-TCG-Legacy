@@ -1,0 +1,109 @@
+[gd_scene load_steps=8 format=3 uid="uid://d0bvtkrvu07k3"]
+
+[ext_resource type="Texture2D" uid="uid://b0v8vgujq8hfb" path="res://Image_Assets/Backgrounds_And_Borders/Backgrounds/battle_start_screen.png" id="1_6x0iv"]
+[ext_resource type="Script" uid="uid://b7siqta1nvfmb" path="res://Scripts/Main_Match_Gameplay_Scripts/Match_Start_Intro_Script.gd" id="1_xrwa4"]
+[ext_resource type="Texture2D" uid="uid://4ky851fyq64f" path="res://Image_Assets/Character_Sprites/In_Battle_Sprites/fisherman.png" id="2_f8er1"]
+[ext_resource type="Texture2D" uid="uid://bsp4tmf0hr5w8" path="res://Image_Assets/Character_Sprites/In_Battle_Sprites/1lucasplatinum.png" id="3_wfiko"]
+[ext_resource type="Theme" uid="uid://6shp5ck1tnja" path="res://UI_Themes/kenneyUI.tres" id="3_xrwa4"]
+
+[sub_resource type="StyleBoxLine" id="StyleBoxLine_wfiko"]
+
+[sub_resource type="StyleBoxEmpty" id="StyleBoxEmpty_kjmdn"]
+
+[node name="MatchIntro" type="Control"]
+layout_mode = 3
+anchors_preset = 0
+offset_right = 40.0
+offset_bottom = 40.0
+script = ExtResource("1_xrwa4")
+
+[node name="match_intro_background" type="TextureRect" parent="."]
+layout_mode = 0
+offset_right = 1920.0
+offset_bottom = 1080.0
+pivot_offset = Vector2(960, 540)
+texture = ExtResource("1_6x0iv")
+expand_mode = 1
+
+[node name="PLAYER" type="Control" parent="."]
+anchors_preset = 0
+offset_right = 40.0
+offset_bottom = 40.0
+
+[node name="player_sprite" type="Sprite2D" parent="PLAYER"]
+position = Vector2(497, 684)
+scale = Vector2(1.1, 1.1)
+texture = ExtResource("3_wfiko")
+
+[node name="player_deck_name" type="Label" parent="PLAYER"]
+layout_mode = 0
+offset_left = 69.0
+offset_top = 312.0
+offset_right = 830.0
+offset_bottom = 382.0
+theme = ExtResource("3_xrwa4")
+theme_override_colors/font_color = Color(0, 0, 0, 1)
+theme_override_colors/font_outline_color = Color(0.14999998, 0.39083332, 1, 0.65882355)
+theme_override_constants/outline_size = 3
+theme_override_font_sizes/font_size = 40
+theme_override_styles/normal = SubResource("StyleBoxLine_wfiko")
+text = "HAVING A GOOD TIME"
+horizontal_alignment = 1
+
+[node name="player_name" type="Label" parent="PLAYER"]
+layout_mode = 0
+offset_left = 38.0
+offset_top = 208.0
+offset_right = 887.0
+offset_bottom = 323.0
+theme = ExtResource("3_xrwa4")
+theme_override_colors/font_color = Color(0, 0, 0, 1)
+theme_override_colors/font_shadow_color = Color(0, 0.6726453, 2.1074393, 0.54901963)
+theme_override_colors/font_outline_color = Color(0, 0.72787535, 1.7602391, 1)
+theme_override_constants/shadow_offset_x = 10
+theme_override_constants/shadow_offset_y = 7
+theme_override_font_sizes/font_size = 72
+theme_override_styles/normal = SubResource("StyleBoxEmpty_kjmdn")
+text = "APINKSHRIMP"
+horizontal_alignment = 1
+
+[node name="OPPONENT" type="Control" parent="."]
+anchors_preset = 0
+offset_right = 40.0
+offset_bottom = 40.0
+
+[node name="opponent_sprite" type="Sprite2D" parent="OPPONENT"]
+position = Vector2(1452.9999, 379)
+texture = ExtResource("2_f8er1")
+
+[node name="opponent_name" type="Label" parent="OPPONENT"]
+layout_mode = 0
+offset_left = 905.0
+offset_top = 686.0
+offset_right = 1985.0
+offset_bottom = 801.0
+theme = ExtResource("3_xrwa4")
+theme_override_colors/font_color = Color(0, 0, 0, 1)
+theme_override_colors/font_shadow_color = Color(0, 0.6726453, 2.1074393, 0.54901963)
+theme_override_colors/font_outline_color = Color(0, 0.72787535, 1.7602391, 1)
+theme_override_constants/shadow_offset_x = 10
+theme_override_constants/shadow_offset_y = 7
+theme_override_font_sizes/font_size = 72
+theme_override_styles/normal = SubResource("StyleBoxEmpty_kjmdn")
+text = "FISHERMAN JOHN"
+horizontal_alignment = 1
+
+[node name="opponent_deck_name" type="Label" parent="OPPONENT"]
+layout_mode = 0
+offset_left = 994.0
+offset_top = 783.0
+offset_right = 1903.0
+offset_bottom = 854.0
+theme = ExtResource("3_xrwa4")
+theme_override_colors/font_color = Color(0, 0, 0, 1)
+theme_override_colors/font_outline_color = Color(0.14999998, 0.39083332, 1, 0.65882355)
+theme_override_constants/outline_size = 3
+theme_override_font_sizes/font_size = 40
+theme_override_styles/normal = SubResource("StyleBoxLine_wfiko")
+text = "DESTROYER OF WORLDS"
+horizontal_alignment = 1

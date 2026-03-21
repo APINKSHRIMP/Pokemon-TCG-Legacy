@@ -1,0 +1,299 @@
+[gd_scene load_steps=12 format=3 uid="uid://bea4luwsg1cgb"]
+
+[ext_resource type="Script" uid="uid://vym8nlexdqto" path="res://Scripts/Menu_Scripts/Options_Script.gd" id="1_i7mvm"]
+[ext_resource type="Shader" uid="uid://ccm481fk14lc8" path="res://Scripts/Shaders/Background_Scroll_Right_Top_Border.gdshader" id="2_1e4m1"]
+[ext_resource type="Texture2D" uid="uid://dieqv60p12hlk" path="res://Image_Assets/Backgrounds_And_Borders/Borders/horizontal_border.png" id="3_i7mvm"]
+[ext_resource type="Shader" uid="uid://d3gofmygrsrkm" path="res://Scripts/Shaders/Background_Scroll_Left.gdshader" id="4_1uh3w"]
+[ext_resource type="Texture2D" uid="uid://he803mdt247f" path="res://Image_Assets/Backgrounds_And_Borders/Backgrounds/background5.png" id="5_if2wb"]
+[ext_resource type="Theme" uid="uid://6shp5ck1tnja" path="res://UI_Themes/kenneyUI.tres" id="6_5samb"]
+[ext_resource type="Theme" uid="uid://mbsg4xqnedxi" path="res://UI_Themes/kenneyUI-red.tres" id="7_yfc7x"]
+[ext_resource type="Theme" uid="uid://bb6vwl0h1flws" path="res://UI_Themes/kenneyUI-blue.tres" id="8_1e4m1"]
+[ext_resource type="Texture2D" uid="uid://c5cap0mto25ue" path="res://Image_Assets/Messageboxes/example.png" id="9_i7mvm"]
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_ui6o0"]
+shader = ExtResource("2_1e4m1")
+shader_parameter/scroll_speed = -0.009
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_joqtv"]
+shader = ExtResource("4_1uh3w")
+shader_parameter/scroll_speed = 0.002
+shader_parameter/tint = Vector4(1, 1, 1, 1)
+
+[node name="OPTIONS" type="Control"]
+layout_mode = 3
+anchors_preset = 0
+offset_right = 40.0
+offset_bottom = 40.0
+script = ExtResource("1_i7mvm")
+
+[node name="BACKGROUND" type="Control" parent="."]
+anchors_preset = 0
+offset_top = 59.0
+offset_right = 40.0
+offset_bottom = 99.0
+
+[node name="top_border" type="TextureRect" parent="BACKGROUND"]
+z_index = 200
+material = SubResource("ShaderMaterial_ui6o0")
+layout_mode = 0
+offset_top = -59.0
+offset_right = 1921.0
+offset_bottom = 48.0
+texture = ExtResource("3_i7mvm")
+stretch_mode = 1
+
+[node name="bottom_border" type="TextureRect" parent="BACKGROUND"]
+z_index = 200
+material = SubResource("ShaderMaterial_ui6o0")
+layout_mode = 0
+offset_top = 918.0
+offset_right = 1921.0
+offset_bottom = 1021.0
+texture = ExtResource("3_i7mvm")
+stretch_mode = 1
+
+[node name="background_scroller" type="TextureRect" parent="BACKGROUND"]
+material = SubResource("ShaderMaterial_joqtv")
+layout_mode = 0
+offset_left = -2.0000002
+offset_top = 45.000004
+offset_right = 6622.0
+offset_bottom = 4462.0
+scale = Vector2(0.29, 0.29)
+texture = ExtResource("5_if2wb")
+stretch_mode = 1
+
+[node name="CONFUSION" type="Control" parent="."]
+anchors_preset = 0
+offset_left = 55.0
+offset_top = 6.0
+offset_right = 95.0
+offset_bottom = 46.0
+
+[node name="confusion_rule_label" type="Label" parent="CONFUSION"]
+z_index = 999
+layout_mode = 0
+offset_left = -1.0
+offset_top = 112.0
+offset_right = 522.0
+offset_bottom = 184.0
+theme = ExtResource("8_1e4m1")
+theme_override_colors/font_color = Color(0, 0, 0, 1)
+theme_override_colors/font_shadow_color = Color(1.0187511, 1.0187511, 1.0187511, 1)
+theme_override_constants/line_spacing = 3
+theme_override_constants/shadow_offset_x = 0
+theme_override_constants/shadow_offset_y = 0
+theme_override_constants/shadow_outline_size = 20
+theme_override_font_sizes/font_size = 35
+text = "Confusion Rules"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="confusion_base_button" type="Button" parent="CONFUSION"]
+z_index = 300
+layout_mode = 0
+offset_left = 91.0
+offset_top = 201.0
+offset_right = 421.0
+offset_bottom = 264.0
+theme = ExtResource("6_5samb")
+text = "base set rules"
+
+[node name="confusion_allowretreat_button" type="Button" parent="CONFUSION"]
+z_index = 300
+layout_mode = 0
+offset_left = 92.0
+offset_top = 290.0
+offset_right = 422.0
+offset_bottom = 353.0
+theme = ExtResource("8_1e4m1")
+text = "fairer retreat rules"
+
+[node name="confusion_ex_button" type="Button" parent="CONFUSION"]
+z_index = 300
+layout_mode = 0
+offset_left = 94.0
+offset_top = 384.0
+offset_right = 424.0
+offset_bottom = 447.0
+theme = ExtResource("8_1e4m1")
+text = "ex era rules"
+
+[node name="BURN" type="Control" parent="."]
+anchors_preset = 0
+offset_left = 213.0
+offset_top = 8.0
+offset_right = 253.0
+offset_bottom = 48.0
+
+[node name="burn_rule_label" type="Label" parent="BURN"]
+z_index = 999
+layout_mode = 0
+offset_left = 467.0
+offset_top = 111.0
+offset_right = 1015.0
+offset_bottom = 183.0
+theme = ExtResource("8_1e4m1")
+theme_override_colors/font_color = Color(0, 0, 0, 1)
+theme_override_colors/font_shadow_color = Color(1.0187511, 1.0187511, 1.0187511, 1)
+theme_override_constants/line_spacing = 3
+theme_override_constants/shadow_offset_x = 0
+theme_override_constants/shadow_offset_y = 0
+theme_override_constants/shadow_outline_size = 20
+theme_override_font_sizes/font_size = 35
+text = "Burn Rules"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="burn_base_button" type="Button" parent="BURN"]
+z_index = 300
+layout_mode = 0
+offset_left = 576.0
+offset_top = 199.0
+offset_right = 906.0
+offset_bottom = 262.0
+theme = ExtResource("6_5samb")
+text = "base set rules"
+
+[node name="burn_ex_button" type="Button" parent="BURN"]
+z_index = 300
+layout_mode = 0
+offset_left = 578.0
+offset_top = 292.0
+offset_right = 908.0
+offset_bottom = 355.0
+theme = ExtResource("8_1e4m1")
+text = "ex era rules"
+
+[node name="SPEED" type="Control" parent="."]
+anchors_preset = 0
+offset_left = 1560.0
+offset_top = 145.0
+offset_right = 1600.0
+offset_bottom = 185.0
+
+[node name="animation_speed_label" type="Label" parent="SPEED"]
+z_index = 999
+layout_mode = 0
+offset_left = -225.0
+offset_top = -30.0
+offset_right = 323.0
+offset_bottom = 42.0
+theme = ExtResource("8_1e4m1")
+theme_override_colors/font_color = Color(0, 0, 0, 1)
+theme_override_colors/font_shadow_color = Color(1.0187511, 1.0187511, 1.0187511, 1)
+theme_override_constants/line_spacing = 3
+theme_override_constants/shadow_offset_x = 0
+theme_override_constants/shadow_offset_y = 0
+theme_override_constants/shadow_outline_size = 20
+theme_override_font_sizes/font_size = 35
+text = "Animation speed"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="slow_button" type="Button" parent="SPEED"]
+z_index = 300
+layout_mode = 0
+offset_left = -127.0
+offset_top = 60.0
+offset_right = 203.0
+offset_bottom = 123.0
+theme = ExtResource("6_5samb")
+text = "SLOW"
+
+[node name="fast_button" type="Button" parent="SPEED"]
+z_index = 300
+layout_mode = 0
+offset_left = -125.0
+offset_top = 255.0
+offset_right = 205.0
+offset_bottom = 318.0
+theme = ExtResource("8_1e4m1")
+text = "skip animations"
+
+[node name="skip_button" type="Button" parent="SPEED"]
+z_index = 300
+layout_mode = 0
+offset_left = -126.0
+offset_top = 160.0
+offset_right = 204.0
+offset_bottom = 223.0
+theme = ExtResource("8_1e4m1")
+text = "fast"
+
+[node name="MAIN" type="Control" parent="."]
+anchors_preset = 0
+offset_right = 40.0
+offset_bottom = 40.0
+
+[node name="options_save_button" type="Button" parent="MAIN"]
+z_index = 300
+layout_mode = 0
+offset_left = 568.0
+offset_top = 998.0
+offset_right = 912.0
+offset_bottom = 1061.0
+theme = ExtResource("6_5samb")
+text = "save"
+
+[node name="options_cancel_button" type="Button" parent="MAIN"]
+z_index = 300
+layout_mode = 0
+offset_left = 935.0
+offset_top = 998.0
+offset_right = 1279.0
+offset_bottom = 1061.0
+theme = ExtResource("7_yfc7x")
+text = "cancel"
+
+[node name="large_header_text_label" type="Label" parent="MAIN"]
+z_index = 999
+layout_mode = 0
+offset_left = 1.0
+offset_top = 17.0
+offset_right = 1917.0
+offset_bottom = 89.0
+theme = ExtResource("8_1e4m1")
+theme_override_colors/font_color = Color(0, 0, 0, 1)
+theme_override_colors/font_shadow_color = Color(1.0187511, 1.0187511, 1.0187511, 1)
+theme_override_constants/line_spacing = 3
+theme_override_constants/shadow_offset_x = 0
+theme_override_constants/shadow_offset_y = 0
+theme_override_constants/shadow_outline_size = 20
+theme_override_font_sizes/font_size = 61
+text = "OPTIONS	"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="MESSAGEBOX" type="Control" parent="."]
+anchors_preset = 0
+offset_right = 40.0
+offset_bottom = 40.0
+
+[node name="messagebox_label" type="Label" parent="MESSAGEBOX"]
+z_index = 999
+layout_mode = 0
+offset_left = 678.0
+offset_top = 543.0
+offset_right = 1226.0
+offset_bottom = 615.0
+theme = ExtResource("8_1e4m1")
+theme_override_colors/font_color = Color(0, 0, 0, 1)
+theme_override_colors/font_shadow_color = Color(1.0187511, 1.0187511, 1.0187511, 1)
+theme_override_constants/line_spacing = 3
+theme_override_constants/shadow_offset_x = 0
+theme_override_constants/shadow_offset_y = 0
+theme_override_constants/shadow_outline_size = 20
+theme_override_font_sizes/font_size = 35
+text = "Message box style"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="messagebox_example" type="TextureRect" parent="MESSAGEBOX"]
+layout_mode = 0
+offset_left = 24.0
+offset_top = 634.0
+offset_right = 1893.0
+offset_bottom = 979.0
+texture = ExtResource("9_i7mvm")
+stretch_mode = 4

@@ -1,0 +1,509 @@
+{
+	"set_unlocked": true,
+	"owned_cards": [
+		{
+			"card_id": "gym1-1",
+			"owned": 4
+		},
+		{
+			"card_id": "gym1-2",
+			"owned": 4
+		},
+		{
+			"card_id": "gym1-3",
+			"owned": 4
+		},
+		{
+			"card_id": "gym1-4",
+			"owned": 4
+		},
+		{
+			"card_id": "gym1-5",
+			"owned": 1
+		},
+		{
+			"card_id": "gym1-6",
+			"owned": 4
+		},
+		{
+			"card_id": "gym1-7",
+			"owned": 3
+		},
+		{
+			"card_id": "gym1-8",
+			"owned": 3
+		},
+		{
+			"card_id": "gym1-9",
+			"owned": 2
+		},
+		{
+			"card_id": "gym1-10",
+			"owned": 4
+		},
+		{
+			"card_id": "gym1-11",
+			"owned": 1
+		},
+		{
+			"card_id": "gym1-12",
+			"owned": 1
+		},
+		{
+			"card_id": "gym1-13",
+			"owned": 4
+		},
+		{
+			"card_id": "gym1-14",
+			"owned": 1
+		},
+		{
+			"card_id": "gym1-15",
+			"owned": 4
+		},
+		{
+			"card_id": "gym1-16",
+			"owned": 4
+		},
+		{
+			"card_id": "gym1-17",
+			"owned": 4
+		},
+		{
+			"card_id": "gym1-18",
+			"owned": 4
+		},
+		{
+			"card_id": "gym1-19",
+			"owned": 4
+		},
+		{
+			"card_id": "gym1-20",
+			"owned": 2
+		},
+		{
+			"card_id": "gym1-21",
+			"owned": 4
+		},
+		{
+			"card_id": "gym1-22",
+			"owned": 2
+		},
+		{
+			"card_id": "gym1-23",
+			"owned": 2
+		},
+		{
+			"card_id": "gym1-24",
+			"owned": 1
+		},
+		{
+			"card_id": "gym1-25",
+			"owned": 4
+		},
+		{
+			"card_id": "gym1-26",
+			"owned": 4
+		},
+		{
+			"card_id": "gym1-27",
+			"owned": 4
+		},
+		{
+			"card_id": "gym1-28",
+			"owned": 4
+		},
+		{
+			"card_id": "gym1-29",
+			"owned": 4
+		},
+		{
+			"card_id": "gym1-30",
+			"owned": 4
+		},
+		{
+			"card_id": "gym1-31",
+			"owned": 4
+		},
+		{
+			"card_id": "gym1-32",
+			"owned": 4
+		},
+		{
+			"card_id": "gym1-33",
+			"owned": 4
+		},
+		{
+			"card_id": "gym1-34",
+			"owned": 2
+		},
+		{
+			"card_id": "gym1-35",
+			"owned": 4
+		},
+		{
+			"card_id": "gym1-36",
+			"owned": 4
+		},
+		{
+			"card_id": "gym1-37",
+			"owned": 4
+		},
+		{
+			"card_id": "gym1-38",
+			"owned": 4
+		},
+		{
+			"card_id": "gym1-39",
+			"owned": 1
+		},
+		{
+			"card_id": "gym1-40",
+			"owned": 3
+		},
+		{
+			"card_id": "gym1-41",
+			"owned": 4
+		},
+		{
+			"card_id": "gym1-42",
+			"owned": 4
+		},
+		{
+			"card_id": "gym1-43",
+			"owned": 4
+		},
+		{
+			"card_id": "gym1-44",
+			"owned": 3
+		},
+		{
+			"card_id": "gym1-45",
+			"owned": 4
+		},
+		{
+			"card_id": "gym1-46",
+			"owned": 1
+		},
+		{
+			"card_id": "gym1-47",
+			"owned": 4
+		},
+		{
+			"card_id": "gym1-48",
+			"owned": 4
+		},
+		{
+			"card_id": "gym1-49",
+			"owned": 4
+		},
+		{
+			"card_id": "gym1-50",
+			"owned": 3
+		},
+		{
+			"card_id": "gym1-51",
+			"owned": 4
+		},
+		{
+			"card_id": "gym1-52",
+			"owned": 4
+		},
+		{
+			"card_id": "gym1-53",
+			"owned": 3
+		},
+		{
+			"card_id": "gym1-54",
+			"owned": 3
+		},
+		{
+			"card_id": "gym1-55",
+			"owned": 4
+		},
+		{
+			"card_id": "gym1-56",
+			"owned": 4
+		},
+		{
+			"card_id": "gym1-57",
+			"owned": 4
+		},
+		{
+			"card_id": "gym1-58",
+			"owned": 4
+		},
+		{
+			"card_id": "gym1-59",
+			"owned": 4
+		},
+		{
+			"card_id": "gym1-60",
+			"owned": 4
+		},
+		{
+			"card_id": "gym1-61",
+			"owned": 4
+		},
+		{
+			"card_id": "gym1-62",
+			"owned": 3
+		},
+		{
+			"card_id": "gym1-63",
+			"owned": 1
+		},
+		{
+			"card_id": "gym1-64",
+			"owned": 2
+		},
+		{
+			"card_id": "gym1-65",
+			"owned": 4
+		},
+		{
+			"card_id": "gym1-66",
+			"owned": 4
+		},
+		{
+			"card_id": "gym1-67",
+			"owned": 4
+		},
+		{
+			"card_id": "gym1-68",
+			"owned": 2
+		},
+		{
+			"card_id": "gym1-69",
+			"owned": 2
+		},
+		{
+			"card_id": "gym1-70",
+			"owned": 4
+		},
+		{
+			"card_id": "gym1-71",
+			"owned": 4
+		},
+		{
+			"card_id": "gym1-72",
+			"owned": 4
+		},
+		{
+			"card_id": "gym1-73",
+			"owned": 4
+		},
+		{
+			"card_id": "gym1-74",
+			"owned": 1
+		},
+		{
+			"card_id": "gym1-75",
+			"owned": 3
+		},
+		{
+			"card_id": "gym1-76",
+			"owned": 4
+		},
+		{
+			"card_id": "gym1-77",
+			"owned": 4
+		},
+		{
+			"card_id": "gym1-78",
+			"owned": 1
+		},
+		{
+			"card_id": "gym1-79",
+			"owned": 4
+		},
+		{
+			"card_id": "gym1-80",
+			"owned": 4
+		},
+		{
+			"card_id": "gym1-81",
+			"owned": 2
+		},
+		{
+			"card_id": "gym1-82",
+			"owned": 2
+		},
+		{
+			"card_id": "gym1-83",
+			"owned": 4
+		},
+		{
+			"card_id": "gym1-84",
+			"owned": 3
+		},
+		{
+			"card_id": "gym1-85",
+			"owned": 1
+		},
+		{
+			"card_id": "gym1-86",
+			"owned": 4
+		},
+		{
+			"card_id": "gym1-87",
+			"owned": 4
+		},
+		{
+			"card_id": "gym1-88",
+			"owned": 4
+		},
+		{
+			"card_id": "gym1-89",
+			"owned": 4
+		},
+		{
+			"card_id": "gym1-90",
+			"owned": 1
+		},
+		{
+			"card_id": "gym1-91",
+			"owned": 4
+		},
+		{
+			"card_id": "gym1-92",
+			"owned": 3
+		},
+		{
+			"card_id": "gym1-93",
+			"owned": 4
+		},
+		{
+			"card_id": "gym1-94",
+			"owned": 4
+		},
+		{
+			"card_id": "gym1-95",
+			"owned": 1
+		},
+		{
+			"card_id": "gym1-96",
+			"owned": 4
+		},
+		{
+			"card_id": "gym1-97",
+			"owned": 2
+		},
+		{
+			"card_id": "gym1-98",
+			"owned": 4
+		},
+		{
+			"card_id": "gym1-99",
+			"owned": 4
+		},
+		{
+			"card_id": "gym1-100",
+			"owned": 4
+		},
+		{
+			"card_id": "gym1-101",
+			"owned": 3
+		},
+		{
+			"card_id": "gym1-102",
+			"owned": 1
+		},
+		{
+			"card_id": "gym1-103",
+			"owned": 3
+		},
+		{
+			"card_id": "gym1-104",
+			"owned": 4
+		},
+		{
+			"card_id": "gym1-105",
+			"owned": 4
+		},
+		{
+			"card_id": "gym1-106",
+			"owned": 4
+		},
+		{
+			"card_id": "gym1-107",
+			"owned": 4
+		},
+		{
+			"card_id": "gym1-108",
+			"owned": 4
+		},
+		{
+			"card_id": "gym1-109",
+			"owned": 4
+		},
+		{
+			"card_id": "gym1-110",
+			"owned": 4
+		},
+		{
+			"card_id": "gym1-111",
+			"owned": 2
+		},
+		{
+			"card_id": "gym1-112",
+			"owned": 2
+		},
+		{
+			"card_id": "gym1-113",
+			"owned": 4
+		},
+		{
+			"card_id": "gym1-114",
+			"owned": 4
+		},
+		{
+			"card_id": "gym1-115",
+			"owned": 3
+		},
+		{
+			"card_id": "gym1-116",
+			"owned": 4
+		},
+		{
+			"card_id": "gym1-117",
+			"owned": 1
+		},
+		{
+			"card_id": "gym1-118",
+			"owned": 1
+		},
+		{
+			"card_id": "gym1-119",
+			"owned": 4
+		},
+		{
+			"card_id": "gym1-120",
+			"owned": 4
+		},
+		{
+			"card_id": "gym1-121",
+			"owned": 4
+		},
+		{
+			"card_id": "gym1-122",
+			"owned": 4
+		},
+		{
+			"card_id": "gym1-123",
+			"owned": 4
+		},
+		{
+			"card_id": "gym1-124",
+			"owned": 2
+		},
+		{
+			"card_id": "gym1-125",
+			"owned": 2
+		},
+		{
+			"card_id": "gym1-126",
+			"owned": 4
+		}
+	]
+}

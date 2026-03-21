@@ -1,0 +1,662 @@
+[gd_scene load_steps=12 format=3 uid="uid://dqwekyllekveg"]
+
+[ext_resource type="Script" uid="uid://bu715ca3pbw60" path="res://Scripts/Main_Match_Gameplay_Scripts/Main_Match_Core_Gameplay_Script.gd" id="1_ugrqn"]
+[ext_resource type="Shader" uid="uid://ccm481fk14lc8" path="res://Scripts/Shaders/Background_Scroll_Right_Top_Border.gdshader" id="2_28abk"]
+[ext_resource type="Texture2D" uid="uid://cpbbo8tyee1n4" path="res://Image_Assets/Backgrounds_And_Borders/Backgrounds/background2.png" id="3_17ma7"]
+[ext_resource type="Theme" uid="uid://mbsg4xqnedxi" path="res://UI_Themes/kenneyUI-red.tres" id="4_oru8a"]
+[ext_resource type="Theme" uid="uid://bb6vwl0h1flws" path="res://UI_Themes/kenneyUI-blue.tres" id="5_4djes"]
+[ext_resource type="Theme" uid="uid://bnhngmri4tfgr" path="res://UI_Themes/kenneyUI-green.tres" id="6_qlbwx"]
+[ext_resource type="Texture2D" uid="uid://dmay144mc3hmo" path="res://Image_Assets/Card_Backs_And_Decks/1deckfulltrans_clean.png" id="7_ac61d"]
+[ext_resource type="Theme" uid="uid://6shp5ck1tnja" path="res://UI_Themes/kenneyUI.tres" id="8_bo6tk"]
+[ext_resource type="Texture2D" uid="uid://41l5prxtsvdk" path="res://Image_Assets/Messageboxes/bluesquaremessagebox.png" id="9_amelh"]
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_bxqcy"]
+shader = ExtResource("2_28abk")
+shader_parameter/scroll_speed = -0.009
+
+[sub_resource type="StyleBoxLine" id="StyleBoxLine_1cpm0"]
+
+[node name="MAIN GAME CONTROL NODE" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_ugrqn")
+
+[node name="match_background" type="TextureRect" parent="."]
+material = SubResource("ShaderMaterial_bxqcy")
+layout_mode = 0
+offset_left = 1.0
+offset_top = 2.0
+offset_right = 1921.0
+offset_bottom = 1082.0
+texture = ExtResource("3_17ma7")
+stretch_mode = 1
+
+[node name="cancel_selection_mode_view_button" type="Button" parent="."]
+layout_mode = 1
+anchors_preset = 7
+anchor_left = 0.5
+anchor_top = 1.0
+anchor_right = 0.5
+anchor_bottom = 1.0
+offset_left = 35.0
+offset_top = -97.0
+offset_right = 473.0
+offset_bottom = -17.0
+grow_horizontal = 2
+grow_vertical = 0
+size_flags_vertical = 8
+theme = ExtResource("4_oru8a")
+text = "CANCEL"
+
+[node name="BUTTONS" type="Control" parent="."]
+anchors_preset = 0
+offset_left = 1907.0
+offset_top = 961.0
+offset_right = 1907.0
+offset_bottom = 1033.0
+
+[node name="main_screen_buttons_container" type="HBoxContainer" parent="BUTTONS"]
+custom_minimum_size = Vector2(280, 0)
+layout_mode = 0
+offset_left = -1843.0
+offset_top = 25.0
+offset_right = 57.0
+offset_bottom = 97.0
+theme_override_constants/separation = 131
+
+[node name="button_main_attack" type="Button" parent="BUTTONS/main_screen_buttons_container"]
+custom_minimum_size = Vector2(350, 50)
+layout_mode = 2
+size_flags_horizontal = 0
+theme = ExtResource("5_4djes")
+text = "ATTACK"
+
+[node name="button_main_power" type="Button" parent="BUTTONS/main_screen_buttons_container"]
+custom_minimum_size = Vector2(350, 50)
+layout_mode = 2
+size_flags_horizontal = 0
+theme = ExtResource("5_4djes")
+text = "POWER"
+
+[node name="button_main_retreat" type="Button" parent="BUTTONS/main_screen_buttons_container"]
+custom_minimum_size = Vector2(350, 50)
+layout_mode = 2
+size_flags_horizontal = 0
+theme = ExtResource("5_4djes")
+text = "RETREAT"
+
+[node name="button_main_endturn" type="Button" parent="BUTTONS/main_screen_buttons_container"]
+custom_minimum_size = Vector2(350, 50)
+layout_mode = 2
+size_flags_horizontal = 0
+theme = ExtResource("5_4djes")
+text = "END TURN"
+
+[node name="main_screen_attack_buttons_container" type="HBoxContainer" parent="BUTTONS"]
+custom_minimum_size = Vector2(280, 0)
+layout_mode = 0
+offset_left = -1843.0
+offset_top = 25.0
+offset_right = 57.0
+offset_bottom = 97.0
+theme_override_constants/separation = 100
+
+[node name="cancel_attack_mode_button" type="Button" parent="BUTTONS/main_screen_attack_buttons_container"]
+custom_minimum_size = Vector2(350, 72)
+layout_mode = 2
+size_flags_vertical = 8
+theme = ExtResource("4_oru8a")
+text = "CANCEL"
+
+[node name="SELECTION_BUTTONS" type="Control" parent="BUTTONS"]
+anchors_preset = 0
+offset_top = 26.0
+offset_right = 40.0
+offset_bottom = 66.0
+
+[node name="card_action_button" type="Button" parent="BUTTONS/SELECTION_BUTTONS"]
+layout_mode = 1
+anchors_preset = 7
+anchor_left = 0.5
+anchor_top = 1.0
+anchor_right = 0.5
+anchor_bottom = 1.0
+offset_left = -1186.0
+offset_top = -45.0
+offset_right = -748.0
+offset_bottom = 35.0
+grow_horizontal = 2
+grow_vertical = 0
+theme = ExtResource("6_qlbwx")
+text = "SET"
+
+[node name="CARD_COLLECTIONS" type="Control" parent="."]
+anchors_preset = 0
+offset_right = 40.0
+offset_bottom = 40.0
+
+[node name="PLAYER" type="Control" parent="CARD_COLLECTIONS"]
+anchors_preset = 0
+offset_right = 40.0
+offset_bottom = 40.0
+
+[node name="player_hand_hbox_container" type="HBoxContainer" parent="CARD_COLLECTIONS/PLAYER"]
+layout_mode = 1
+anchors_preset = 5
+anchor_left = 0.5
+anchor_right = 0.5
+offset_left = 929.0
+offset_top = 16.0
+offset_right = 948.0
+offset_bottom = 36.0
+grow_horizontal = 2
+theme_override_constants/separation = 3
+alignment = 1
+
+[node name="player_bench_container" type="HBoxContainer" parent="CARD_COLLECTIONS/PLAYER"]
+layout_mode = 0
+offset_left = 9.0
+offset_top = 640.0
+offset_right = 49.0
+offset_bottom = 778.0
+theme_override_constants/separation = 2
+
+[node name="player_prize_cards_container" type="HBoxContainer" parent="CARD_COLLECTIONS/PLAYER"]
+layout_mode = 0
+offset_left = 89.0
+offset_top = 852.0
+offset_right = 584.0
+offset_bottom = 962.0
+theme_override_constants/separation = 2
+
+[node name="player_deck_icon" type="TextureRect" parent="CARD_COLLECTIONS/PLAYER"]
+layout_mode = 0
+offset_left = 24.0
+offset_top = 14.0
+offset_right = 134.0
+offset_bottom = 155.0
+texture = ExtResource("7_ac61d")
+stretch_mode = 2
+
+[node name="player_deck_count_label" type="Label" parent="CARD_COLLECTIONS/PLAYER/player_deck_icon"]
+layout_mode = 1
+anchors_preset = 3
+anchor_left = 1.0
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = -40.0
+offset_top = -23.0
+grow_horizontal = 0
+grow_vertical = 0
+theme = ExtResource("8_bo6tk")
+theme_override_colors/font_outline_color = Color(0, 0, 0, 1)
+theme_override_constants/outline_size = 6
+theme_override_font_sizes/font_size = 27
+text = "60"
+
+[node name="player_discard_pile_icon" type="TextureRect" parent="CARD_COLLECTIONS/PLAYER"]
+layout_mode = 0
+offset_left = 143.0
+offset_top = 14.0
+offset_right = 253.0
+offset_bottom = 155.0
+stretch_mode = 2
+
+[node name="player_discard_pile_label" type="Label" parent="CARD_COLLECTIONS/PLAYER/player_discard_pile_icon"]
+layout_mode = 1
+anchors_preset = 3
+anchor_left = 1.0
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = -40.0
+offset_top = -23.0
+grow_horizontal = 0
+grow_vertical = 0
+theme = ExtResource("8_bo6tk")
+theme_override_colors/font_outline_color = Color(0, 0, 0, 1)
+theme_override_constants/outline_size = 6
+theme_override_font_sizes/font_size = 27
+text = "0"
+
+[node name="OPPONENT" type="Control" parent="CARD_COLLECTIONS"]
+anchors_preset = 0
+offset_right = 40.0
+offset_bottom = 40.0
+
+[node name="opponent_hand_hbox_container" type="HBoxContainer" parent="CARD_COLLECTIONS/OPPONENT"]
+layout_mode = 1
+anchors_preset = 1
+anchor_left = 1.0
+anchor_right = 1.0
+offset_left = 1475.0
+offset_top = 174.0
+offset_right = 1888.0
+offset_bottom = 275.0
+grow_horizontal = 0
+theme_override_constants/separation = 50
+
+[node name="opponent_bench_container" type="HBoxContainer" parent="CARD_COLLECTIONS/OPPONENT"]
+layout_mode = 0
+offset_left = 1397.0
+offset_top = 639.0
+offset_right = 1887.0
+offset_bottom = 780.0
+theme_override_constants/separation = 4
+
+[node name="opponent_prize_cards_container" type="HBoxContainer" parent="CARD_COLLECTIONS/OPPONENT"]
+layout_mode = 0
+offset_left = 1342.0
+offset_top = 852.0
+offset_right = 1832.0
+offset_bottom = 961.0
+theme_override_constants/separation = 2
+alignment = 2
+
+[node name="opponent_deck_icon" type="TextureRect" parent="CARD_COLLECTIONS/OPPONENT"]
+layout_mode = 0
+offset_left = 1684.0
+offset_top = 16.0
+offset_right = 1794.0
+offset_bottom = 157.0
+texture = ExtResource("7_ac61d")
+stretch_mode = 2
+
+[node name="opponent_deck_count_label" type="Label" parent="CARD_COLLECTIONS/OPPONENT/opponent_deck_icon"]
+layout_mode = 1
+anchors_preset = 3
+anchor_left = 1.0
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = -40.0
+offset_top = -23.0
+grow_horizontal = 0
+grow_vertical = 0
+theme = ExtResource("8_bo6tk")
+theme_override_constants/outline_size = 6
+theme_override_font_sizes/font_size = 27
+text = "60"
+
+[node name="opponent_discard_pile_icon" type="TextureRect" parent="CARD_COLLECTIONS/OPPONENT"]
+layout_mode = 0
+offset_left = 1801.0
+offset_top = 17.0
+offset_right = 1911.0
+offset_bottom = 158.0
+stretch_mode = 2
+
+[node name="opponent_discard_pile_label" type="Label" parent="CARD_COLLECTIONS/OPPONENT/opponent_discard_pile_icon"]
+layout_mode = 1
+anchors_preset = 3
+anchor_left = 1.0
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = -40.0
+offset_top = -23.0
+grow_horizontal = 0
+grow_vertical = 0
+theme = ExtResource("8_bo6tk")
+theme_override_constants/outline_size = 6
+theme_override_font_sizes/font_size = 27
+text = "0"
+
+[node name="SCREEN_LABELS" type="Control" parent="."]
+anchors_preset = 0
+offset_right = 40.0
+offset_bottom = 40.0
+
+[node name="MAIN_LABELS" type="Control" parent="SCREEN_LABELS"]
+anchors_preset = 0
+offset_right = 40.0
+offset_bottom = 40.0
+
+[node name="large_header_text_label" type="Label" parent="SCREEN_LABELS/MAIN_LABELS"]
+layout_mode = 0
+offset_left = -40.0
+offset_top = 17.0
+offset_right = 1960.0
+offset_bottom = 89.0
+theme = ExtResource("5_4djes")
+theme_override_colors/font_color = Color(0, 0, 0, 1)
+theme_override_colors/font_shadow_color = Color(1.0187511, 1.0187511, 1.0187511, 1)
+theme_override_constants/line_spacing = 3
+theme_override_constants/shadow_offset_x = 0
+theme_override_constants/shadow_offset_y = 0
+theme_override_constants/shadow_outline_size = 20
+theme_override_font_sizes/font_size = 61
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="small_hint_info_text_label" type="Label" parent="SCREEN_LABELS/MAIN_LABELS"]
+layout_mode = 0
+offset_left = -40.0
+offset_top = 94.0
+offset_right = 1960.0
+offset_bottom = 165.0
+theme = ExtResource("5_4djes")
+theme_override_colors/font_color = Color(0, 0, 0, 1)
+theme_override_colors/font_shadow_color = Color(1, 1, 1, 1)
+theme_override_constants/shadow_offset_x = 0
+theme_override_constants/shadow_offset_y = 0
+theme_override_constants/shadow_outline_size = 12
+theme_override_font_sizes/font_size = 41
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="PLAYER" type="Control" parent="SCREEN_LABELS"]
+anchors_preset = 0
+offset_right = 40.0
+offset_bottom = 40.0
+
+[node name="player_bench_cards_label" type="Label" parent="SCREEN_LABELS/PLAYER"]
+layout_mode = 0
+offset_left = 135.0
+offset_top = 817.0
+offset_right = 356.0
+offset_bottom = 850.0
+theme = ExtResource("5_4djes")
+theme_override_colors/font_color = Color(0, 0, 0, 1)
+theme_override_colors/font_shadow_color = Color(0.434353, 0.7908705, 1.523, 1)
+theme_override_constants/shadow_offset_x = 2
+theme_override_constants/shadow_offset_y = 1
+theme_override_constants/shadow_outline_size = 3
+theme_override_font_sizes/font_size = 23
+theme_override_styles/normal = SubResource("StyleBoxLine_1cpm0")
+text = "BENCH"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="player_prize_cards_label" type="Label" parent="SCREEN_LABELS/PLAYER"]
+layout_mode = 0
+offset_left = 135.0
+offset_top = 929.0
+offset_right = 356.0
+offset_bottom = 962.0
+theme = ExtResource("5_4djes")
+theme_override_colors/font_color = Color(0, 0, 0, 1)
+theme_override_colors/font_shadow_color = Color(0.434353, 0.7908705, 1.523, 1)
+theme_override_constants/shadow_offset_x = 2
+theme_override_constants/shadow_offset_y = 1
+theme_override_constants/shadow_outline_size = 3
+theme_override_font_sizes/font_size = 23
+theme_override_styles/normal = SubResource("StyleBoxLine_1cpm0")
+text = "PRIZE CARDS"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="OPPONENT" type="Control" parent="SCREEN_LABELS"]
+anchors_preset = 0
+offset_right = 40.0
+offset_bottom = 40.0
+
+[node name="opponent_bench_cards_label" type="Label" parent="SCREEN_LABELS/OPPONENT"]
+layout_mode = 0
+offset_left = 1573.0
+offset_top = 814.0
+offset_right = 1794.0
+offset_bottom = 847.0
+theme = ExtResource("5_4djes")
+theme_override_colors/font_color = Color(0, 0, 0, 1)
+theme_override_colors/font_shadow_color = Color(0.434353, 0.7908705, 1.523, 1)
+theme_override_constants/shadow_offset_x = 2
+theme_override_constants/shadow_offset_y = 1
+theme_override_constants/shadow_outline_size = 3
+theme_override_font_sizes/font_size = 23
+theme_override_styles/normal = SubResource("StyleBoxLine_1cpm0")
+text = "BENCH"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="opponent_prize_cards_label" type="Label" parent="SCREEN_LABELS/OPPONENT"]
+layout_mode = 0
+offset_left = 1571.0
+offset_top = 929.0
+offset_right = 1792.0
+offset_bottom = 962.0
+theme = ExtResource("5_4djes")
+theme_override_colors/font_color = Color(0, 0, 0, 1)
+theme_override_colors/font_shadow_color = Color(0.434353, 0.7908705, 1.523, 1)
+theme_override_constants/shadow_offset_x = 2
+theme_override_constants/shadow_offset_y = 1
+theme_override_constants/shadow_outline_size = 3
+theme_override_font_sizes/font_size = 23
+theme_override_styles/normal = SubResource("StyleBoxLine_1cpm0")
+text = "PRIZE CARDS"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="ACTIVE_POKEMON" type="Control" parent="."]
+anchors_preset = 0
+offset_right = 40.0
+offset_bottom = 40.0
+
+[node name="PLAYER" type="Control" parent="ACTIVE_POKEMON"]
+anchors_preset = 0
+offset_right = 40.0
+offset_bottom = 40.0
+
+[node name="player_active_pokemon_container" type="Control" parent="ACTIVE_POKEMON/PLAYER"]
+anchors_preset = 0
+offset_left = 525.0
+offset_top = 260.0
+offset_right = 715.0
+offset_bottom = 780.0
+
+[node name="player_active_pokemon_energies" type="Control" parent="ACTIVE_POKEMON/PLAYER"]
+anchors_preset = 0
+offset_left = 408.0
+offset_top = 261.0
+offset_right = 451.0
+offset_bottom = 289.0
+
+[node name="player_active_pokemon_attached_cards" type="Control" parent="ACTIVE_POKEMON/PLAYER"]
+anchors_preset = 0
+offset_left = 407.0
+offset_top = 413.0
+offset_right = 450.0
+offset_bottom = 441.0
+
+[node name="player_active_pokemon_hp_container" type="GridContainer" parent="ACTIVE_POKEMON/PLAYER"]
+layout_mode = 0
+offset_left = 525.0
+offset_top = 183.0
+offset_right = 971.0
+offset_bottom = 369.0
+columns = 12
+
+[node name="player_active_pokemon_status_container" type="VBoxContainer" parent="ACTIVE_POKEMON/PLAYER"]
+layout_mode = 0
+offset_left = 525.0
+offset_top = 823.0
+offset_right = 565.0
+offset_bottom = 863.0
+
+[node name="OPPONENT" type="Control" parent="ACTIVE_POKEMON"]
+anchors_preset = 0
+offset_right = 40.0
+offset_bottom = 40.0
+
+[node name="opponent_active_pokemon_container" type="Control" parent="ACTIVE_POKEMON/OPPONENT"]
+anchors_preset = 0
+offset_left = 986.0
+offset_top = 260.0
+offset_right = 1412.0
+offset_bottom = 837.0
+
+[node name="opponent_active_pokemon_energies" type="Control" parent="ACTIVE_POKEMON/OPPONENT"]
+anchors_preset = 0
+offset_left = 1398.0
+offset_top = 261.0
+offset_right = 1932.0
+offset_bottom = 432.0
+
+[node name="opponent_active_pokemon_attached_cards" type="Control" parent="ACTIVE_POKEMON/OPPONENT"]
+anchors_preset = 0
+offset_left = 1400.0
+offset_top = 366.0
+offset_right = 1934.0
+offset_bottom = 537.0
+
+[node name="opponent_active_pokemon_hp_container" type="GridContainer" parent="ACTIVE_POKEMON/OPPONENT"]
+layout_mode = 0
+offset_left = 987.0
+offset_top = 183.0
+offset_right = 1433.0
+offset_bottom = 369.0
+columns = 12
+
+[node name="opponent_active_pokemon_status_container" type="VBoxContainer" parent="ACTIVE_POKEMON/OPPONENT"]
+layout_mode = 0
+offset_left = 986.0
+offset_top = 820.0
+offset_right = 1026.0
+offset_bottom = 860.0
+
+[node name="SELECTION_MODE" type="Control" parent="."]
+anchors_preset = 0
+offset_right = 40.0
+offset_bottom = 40.0
+
+[node name="selection_mode_scroller" type="ScrollContainer" parent="SELECTION_MODE"]
+clip_contents = false
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -20.0
+offset_top = 297.0
+offset_right = 1900.0
+offset_bottom = 821.0
+grow_horizontal = 2
+grow_vertical = 2
+theme = ExtResource("5_4djes")
+vertical_scroll_mode = 0
+
+[node name="large_selection_mode_container" type="HBoxContainer" parent="SELECTION_MODE/selection_mode_scroller"]
+layout_mode = 2
+alignment = 1
+
+[node name="small_selection_mode_container" type="HBoxContainer" parent="SELECTION_MODE"]
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = 920.0
+offset_top = 576.0
+offset_right = 960.0
+offset_bottom = 616.0
+grow_horizontal = 2
+grow_vertical = 2
+alignment = 2
+
+[node name="opponent_turn_input_blocker" type="ColorRect" parent="."]
+visible = false
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(1, 1, 1, 0)
+
+[node name="animation_input_blocker" type="ColorRect" parent="."]
+visible = false
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(1, 1, 1, 0)
+
+[node name="allow_buttons_only_blocker" type="ColorRect" parent="."]
+visible = false
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_bottom = -168.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(1, 1, 1, 0)
+
+[node name="trainer_block_screen_container" type="ColorRect" parent="."]
+visible = false
+layout_mode = 0
+offset_top = 166.0
+offset_right = 1920.0
+offset_bottom = 922.0
+
+[node name="played_trainer_card_container" type="Control" parent="trainer_block_screen_container"]
+anchors_preset = 0
+offset_left = 760.0
+offset_top = 69.0
+offset_right = 800.0
+offset_bottom = 109.0
+
+[node name="messagebox_container" type="ColorRect" parent="."]
+visible = false
+layout_mode = 0
+offset_right = 1918.0
+offset_bottom = 1075.0
+color = Color(0.79, 0, 0.4213333, 0)
+
+[node name="messagebox_texture" type="TextureRect" parent="messagebox_container"]
+layout_mode = 1
+anchors_preset = 7
+anchor_left = 0.5
+anchor_top = 1.0
+anchor_right = 0.5
+anchor_bottom = 1.0
+offset_left = -955.0
+offset_top = -156.0
+offset_right = 955.0
+grow_horizontal = 2
+grow_vertical = 0
+texture = ExtResource("9_amelh")
+
+[node name="messagebox_text_label" type="Label" parent="messagebox_container"]
+layout_mode = 1
+anchors_preset = 7
+anchor_left = 0.5
+anchor_top = 1.0
+anchor_right = 0.5
+anchor_bottom = 1.0
+offset_left = -817.5
+offset_top = -101.0
+offset_right = 817.5
+offset_bottom = -49.0
+grow_horizontal = 2
+grow_vertical = 0
+theme = ExtResource("5_4djes")
+theme_override_colors/font_color = Color(0, 0, 0, 1)
+theme_override_font_sizes/font_size = 45
+text = "YOUR OPPONENT'S FERALIGATR USED SUPER MEGA RIPTIDE"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="coin_flip_container" type="ColorRect" parent="."]
+visible = false
+layout_mode = 0
+offset_right = 1922.0
+offset_bottom = 1082.0
+color = Color(1, 1, 1, 0)
+
+[node name="coin_flip_texture" type="TextureRect" parent="coin_flip_container"]
+visible = false
+layout_mode = 0
+offset_left = 891.0
+offset_top = 785.0
+offset_right = 931.0
+offset_bottom = 825.0

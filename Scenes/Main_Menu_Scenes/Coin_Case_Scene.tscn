@@ -1,0 +1,109 @@
+[gd_scene load_steps=11 format=3 uid="uid://b7wloi1e7ici0"]
+
+[ext_resource type="Script" uid="uid://qneea1dv6lmq" path="res://Scripts/Menu_Scripts/Coin_Case_Script.gd" id="1_shnqs"]
+[ext_resource type="Shader" uid="uid://ccm481fk14lc8" path="res://Scripts/Shaders/Background_Scroll_Right_Top_Border.gdshader" id="2_dp4bi"]
+[ext_resource type="Texture2D" uid="uid://dieqv60p12hlk" path="res://Image_Assets/Backgrounds_And_Borders/Borders/horizontal_border.png" id="3_4sdkt"]
+[ext_resource type="Shader" uid="uid://d3gofmygrsrkm" path="res://Scripts/Shaders/Background_Scroll_Left.gdshader" id="4_p7p1x"]
+[ext_resource type="Theme" uid="uid://6shp5ck1tnja" path="res://UI_Themes/kenneyUI.tres" id="4_ui6o0"]
+[ext_resource type="Texture2D" uid="uid://he803mdt247f" path="res://Image_Assets/Backgrounds_And_Borders/Backgrounds/background5.png" id="5_4246g"]
+[ext_resource type="Theme" uid="uid://mbsg4xqnedxi" path="res://UI_Themes/kenneyUI-red.tres" id="5_krh4r"]
+[ext_resource type="Theme" uid="uid://bb6vwl0h1flws" path="res://UI_Themes/kenneyUI-blue.tres" id="8_4246g"]
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_ui6o0"]
+shader = ExtResource("2_dp4bi")
+shader_parameter/scroll_speed = -0.009
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_joqtv"]
+shader = ExtResource("4_p7p1x")
+shader_parameter/scroll_speed = 0.002
+shader_parameter/tint = Vector4(1, 1, 1, 1)
+
+[node name="COIN CASE" type="Control"]
+layout_mode = 3
+anchors_preset = 0
+offset_right = 40.0
+offset_bottom = 40.0
+script = ExtResource("1_shnqs")
+
+[node name="BACKGROUND" type="Control" parent="."]
+anchors_preset = 0
+offset_top = 59.0
+offset_right = 40.0
+offset_bottom = 99.0
+
+[node name="top_border" type="TextureRect" parent="BACKGROUND"]
+z_index = 200
+material = SubResource("ShaderMaterial_ui6o0")
+layout_mode = 0
+offset_top = -59.0
+offset_right = 1921.0
+offset_bottom = 48.0
+texture = ExtResource("3_4sdkt")
+stretch_mode = 1
+
+[node name="bottom_border" type="TextureRect" parent="BACKGROUND"]
+z_index = 200
+material = SubResource("ShaderMaterial_ui6o0")
+layout_mode = 0
+offset_top = 918.0
+offset_right = 1921.0
+offset_bottom = 1021.0
+texture = ExtResource("3_4sdkt")
+stretch_mode = 1
+
+[node name="background_scroller" type="TextureRect" parent="BACKGROUND"]
+material = SubResource("ShaderMaterial_joqtv")
+layout_mode = 0
+offset_left = -2.0000002
+offset_top = 45.000004
+offset_right = 6622.0
+offset_bottom = 4462.0
+scale = Vector2(0.29, 0.29)
+texture = ExtResource("5_4246g")
+stretch_mode = 1
+
+[node name="coin_grid_container" type="GridContainer" parent="."]
+layout_mode = 0
+offset_left = 26.0
+offset_top = 111.0
+offset_right = 1919.0
+offset_bottom = 977.0
+
+[node name="coin_save_button" type="Button" parent="."]
+z_index = 300
+layout_mode = 0
+offset_left = 568.0
+offset_top = 998.0
+offset_right = 912.0
+offset_bottom = 1061.0
+theme = ExtResource("4_ui6o0")
+text = "save"
+
+[node name="coin_cancel_button" type="Button" parent="."]
+z_index = 300
+layout_mode = 0
+offset_left = 935.0
+offset_top = 998.0
+offset_right = 1279.0
+offset_bottom = 1061.0
+theme = ExtResource("5_krh4r")
+text = "cancel"
+
+[node name="large_header_text_label" type="Label" parent="."]
+z_index = 999
+layout_mode = 0
+offset_left = -40.0
+offset_top = 17.0
+offset_right = 1960.0
+offset_bottom = 89.0
+theme = ExtResource("8_4246g")
+theme_override_colors/font_color = Color(0, 0, 0, 1)
+theme_override_colors/font_shadow_color = Color(1.0187511, 1.0187511, 1.0187511, 1)
+theme_override_constants/line_spacing = 3
+theme_override_constants/shadow_offset_x = 0
+theme_override_constants/shadow_offset_y = 0
+theme_override_constants/shadow_outline_size = 20
+theme_override_font_sizes/font_size = 61
+text = "Coin case"
+horizontal_alignment = 1
+vertical_alignment = 1

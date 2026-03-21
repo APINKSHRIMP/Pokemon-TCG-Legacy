@@ -1,0 +1,253 @@
+{
+	"set_unlocked": true,
+	"owned_cards": [
+		{
+			"card_id": "base3-1",
+			"owned": 3
+		},
+		{
+			"card_id": "base3-2",
+			"owned": 2
+		},
+		{
+			"card_id": "base3-3",
+			"owned": 1
+		},
+		{
+			"card_id": "base3-4",
+			"owned": 2
+		},
+		{
+			"card_id": "base3-5",
+			"owned": 1
+		},
+		{
+			"card_id": "base3-6",
+			"owned": 3
+		},
+		{
+			"card_id": "base3-7",
+			"owned": 3
+		},
+		{
+			"card_id": "base3-8",
+			"owned": 2
+		},
+		{
+			"card_id": "base3-9",
+			"owned": 4
+		},
+		{
+			"card_id": "base3-10",
+			"owned": 4
+		},
+		{
+			"card_id": "base3-11",
+			"owned": 1
+		},
+		{
+			"card_id": "base3-12",
+			"owned": 4
+		},
+		{
+			"card_id": "base3-13",
+			"owned": 4
+		},
+		{
+			"card_id": "base3-14",
+			"owned": 4
+		},
+		{
+			"card_id": "base3-15",
+			"owned": 4
+		},
+		{
+			"card_id": "base3-16",
+			"owned": 4
+		},
+		{
+			"card_id": "base3-17",
+			"owned": 4
+		},
+		{
+			"card_id": "base3-18",
+			"owned": 4
+		},
+		{
+			"card_id": "base3-19",
+			"owned": 4
+		},
+		{
+			"card_id": "base3-20",
+			"owned": 4
+		},
+		{
+			"card_id": "base3-21",
+			"owned": 4
+		},
+		{
+			"card_id": "base3-22",
+			"owned": 3
+		},
+		{
+			"card_id": "base3-23",
+			"owned": 4
+		},
+		{
+			"card_id": "base3-24",
+			"owned": 2
+		},
+		{
+			"card_id": "base3-25",
+			"owned": 4
+		},
+		{
+			"card_id": "base3-26",
+			"owned": 4
+		},
+		{
+			"card_id": "base3-27",
+			"owned": 4
+		},
+		{
+			"card_id": "base3-28",
+			"owned": 4
+		},
+		{
+			"card_id": "base3-29",
+			"owned": 4
+		},
+		{
+			"card_id": "base3-30",
+			"owned": 4
+		},
+		{
+			"card_id": "base3-31",
+			"owned": 4
+		},
+		{
+			"card_id": "base3-32",
+			"owned": 4
+		},
+		{
+			"card_id": "base3-33",
+			"owned": 4
+		},
+		{
+			"card_id": "base3-34",
+			"owned": 2
+		},
+		{
+			"card_id": "base3-35",
+			"owned": 4
+		},
+		{
+			"card_id": "base3-36",
+			"owned": 4
+		},
+		{
+			"card_id": "base3-37",
+			"owned": 1
+		},
+		{
+			"card_id": "base3-38",
+			"owned": 3
+		},
+		{
+			"card_id": "base3-39",
+			"owned": 4
+		},
+		{
+			"card_id": "base3-40",
+			"owned": 4
+		},
+		{
+			"card_id": "base3-41",
+			"owned": 3
+		},
+		{
+			"card_id": "base3-42",
+			"owned": 4
+		},
+		{
+			"card_id": "base3-43",
+			"owned": 4
+		},
+		{
+			"card_id": "base3-44",
+			"owned": 4
+		},
+		{
+			"card_id": "base3-45",
+			"owned": 4
+		},
+		{
+			"card_id": "base3-46",
+			"owned": 4
+		},
+		{
+			"card_id": "base3-47",
+			"owned": 1
+		},
+		{
+			"card_id": "base3-48",
+			"owned": 2
+		},
+		{
+			"card_id": "base3-49",
+			"owned": 4
+		},
+		{
+			"card_id": "base3-50",
+			"owned": 4
+		},
+		{
+			"card_id": "base3-51",
+			"owned": 4
+		},
+		{
+			"card_id": "base3-52",
+			"owned": 4
+		},
+		{
+			"card_id": "base3-53",
+			"owned": 2
+		},
+		{
+			"card_id": "base3-54",
+			"owned": 4
+		},
+		{
+			"card_id": "base3-55",
+			"owned": 3
+		},
+		{
+			"card_id": "base3-56",
+			"owned": 4
+		},
+		{
+			"card_id": "base3-57",
+			"owned": 4
+		},
+		{
+			"card_id": "base3-58",
+			"owned": 4
+		},
+		{
+			"card_id": "base3-59",
+			"owned": 1
+		},
+		{
+			"card_id": "base3-60",
+			"owned": 4
+		},
+		{
+			"card_id": "base3-61",
+			"owned": 4
+		},
+		{
+			"card_id": "base3-62",
+			"owned": 2
+		}
+	]
+}

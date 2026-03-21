@@ -1,0 +1,156 @@
+{
+	"set_list": [
+		{
+			"set_id": "base1",
+			"set_name": "Base"
+		},
+		{
+			"set_id": "base2",
+			"set_name": "Jungle"
+		},
+		{
+			"set_id": "base3",
+			"set_name": "Fossil"
+		},
+		{
+			"set_id": "base5",
+			"set_name": "Rocket"
+		},
+		{
+			"set_id": "basep",
+			"set_name": "Wizard Promos"
+		},
+		{
+			"set_id": "gym1",
+			"set_name": "Gym Heroes"
+		},
+		{
+			"set_id": "gym2",
+			"set_name": "Gym Challenge"
+		},
+		{
+			"set_id": "neo1",
+			"set_name": "Neo Genesis"
+		},
+		{
+			"set_id": "neo2",
+			"set_name": "Neo Discovery"
+		},
+		{
+			"set_id": "neo3",
+			"set_name": "Neo Revelation"
+		},
+		{
+			"set_id": "neo4",
+			"set_name": "Neo Destiny"
+		},
+		{
+			"set_id": "si1",
+			"set_name": "Southern Islands"
+		},
+		{
+			"set_id": "ecard1",
+			"set_name": "Expedition"
+		},
+		{
+			"set_id": "ecard2",
+			"set_name": "Aquapolis"
+		},
+		{
+			"set_id": "ecard3",
+			"set_name": "Skyridge"
+		},
+		{
+			"set_id": "ex1",
+			"set_name": "EX Ruby & Sapphire"
+		},
+		{
+			"set_id": "ex2",
+			"set_name": "EX Sandstorm"
+		},
+		{
+			"set_id": "ex3",
+			"set_name": "EX Dragon"
+		},
+		{
+			"set_id": "ex4",
+			"set_name": "EX Team Magma vs Team Aqua"
+		},
+		{
+			"set_id": "ex5",
+			"set_name": "EX Hidden Legends"
+		},
+		{
+			"set_id": "ex6",
+			"set_name": "EX Firered & Leafgreen"
+		},
+		{
+			"set_id": "ex7",
+			"set_name": "EX Team Rocket Returns"
+		},
+		{
+			"set_id": "ex8",
+			"set_name": "EX Deoxys"
+		},
+		{
+			"set_id": "ex9",
+			"set_name": "EX Emerald"
+		},
+		{
+			"set_id": "ex10",
+			"set_name": "EX Unseen Forces"
+		},
+		{
+			"set_id": "ex11",
+			"set_name": "EX Delta Species"
+		},
+		{
+			"set_id": "ex12",
+			"set_name": "EX Legend Maker"
+		},
+		{
+			"set_id": "ex13",
+			"set_name": "EX Holon Phantoms"
+		},
+		{
+			"set_id": "ex14",
+			"set_name": "EX Crystal Guardians"
+		},
+		{
+			"set_id": "ex15",
+			"set_name": "EX Dragon Frontiers"
+		},
+		{
+			"set_id": "ex16",
+			"set_name": "EX Power Keepers"
+		},
+		{
+			"set_id": "np",
+			"set_name": "EX Promos"
+		},
+		{
+			"set_id": "pop1",
+			"set_name": "Pop Series 1"
+		},
+		{
+			"set_id": "pop2",
+			"set_name": "Pop Series 2"
+		},
+		{
+			"set_id": "pop3",
+			"set_name": "Pop Series 3"
+		},
+		{
+			"set_id": "pop4",
+			"set_name": "Pop Series 4"
+		},
+		{
+			"set_id": "pop5",
+			"set_name": "Pop Series 5"
+		},
+		{
+			"set_id": "pop6",
+			"set_name": "Pop Series 6"
+		}
+	]
+}

@@ -1,0 +1,73 @@
+{
+	"set_unlocked": true,
+	"owned_cards": [
+		{
+			"card_id": "pop3-1",
+			"owned": 1
+		},
+		{
+			"card_id": "pop3-2",
+			"owned": 3
+		},
+		{
+			"card_id": "pop3-3",
+			"owned": 4
+		},
+		{
+			"card_id": "pop3-4",
+			"owned": 4
+		},
+		{
+			"card_id": "pop3-5",
+			"owned": 1
+		},
+		{
+			"card_id": "pop3-6",
+			"owned": 1
+		},
+		{
+			"card_id": "pop3-7",
+			"owned": 4
+		},
+		{
+			"card_id": "pop3-8",
+			"owned": 1
+		},
+		{
+			"card_id": "pop3-9",
+			"owned": 1
+		},
+		{
+			"card_id": "pop3-10",
+			"owned": 4
+		},
+		{
+			"card_id": "pop3-11",
+			"owned": 4
+		},
+		{
+			"card_id": "pop3-12",
+			"owned": 4
+		},
+		{
+			"card_id": "pop3-13",
+			"owned": 2
+		},
+		{
+			"card_id": "pop3-14",
+			"owned": 3
+		},
+		{
+			"card_id": "pop3-15",
+			"owned": 1
+		},
+		{
+			"card_id": "pop3-16",
+			"owned": 1
+		},
+		{
+			"card_id": "pop3-17",
+			"owned": 4
+		}
+	]
+}

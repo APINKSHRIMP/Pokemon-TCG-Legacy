@@ -1,0 +1,353 @@
+[gd_scene load_steps=17 format=3 uid="uid://bwq17qlbumpnu"]
+
+[ext_resource type="Script" uid="uid://ctjdfhmpwnrs3" path="res://Scripts/Menu_Scripts/Deck_Build_And_Card_View_Script.gd" id="1_koxh3"]
+[ext_resource type="Shader" uid="uid://wbryi6fdcofj" path="res://Scripts/Shaders/Background_Scroll_Right_Side_Border.gdshader" id="2_c438k"]
+[ext_resource type="Texture2D" uid="uid://gcwevp2g0xyv" path="res://Image_Assets/Backgrounds_And_Borders/Borders/full_screen_border.png" id="3_w5stl"]
+[ext_resource type="Shader" uid="uid://d3gofmygrsrkm" path="res://Scripts/Shaders/Background_Scroll_Left.gdshader" id="4_1jy02"]
+[ext_resource type="Texture2D" uid="uid://he803mdt247f" path="res://Image_Assets/Backgrounds_And_Borders/Backgrounds/background5.png" id="5_t8qen"]
+[ext_resource type="Theme" uid="uid://6shp5ck1tnja" path="res://UI_Themes/kenneyUI.tres" id="6_3fpct"]
+[ext_resource type="Theme" uid="uid://mbsg4xqnedxi" path="res://UI_Themes/kenneyUI-red.tres" id="7_r4yq8"]
+[ext_resource type="Theme" uid="uid://bb6vwl0h1flws" path="res://UI_Themes/kenneyUI-blue.tres" id="8_wo1ju"]
+[ext_resource type="Texture2D" uid="uid://iysbowkj1prm" path="res://Image_Assets/Card_Image_Library/base1/Small/base1-97.png" id="9_rqox2"]
+[ext_resource type="Texture2D" uid="uid://b7vg0qsb6ujfx" path="res://Image_Assets/Card_Image_Library/base1/Small/base1-98.png" id="10_jtl0e"]
+[ext_resource type="Texture2D" uid="uid://5bbo7dgoecv4" path="res://Image_Assets/Card_Image_Library/base1/Small/base1-99.png" id="11_knbg0"]
+[ext_resource type="Texture2D" uid="uid://c0ajtwvguppu" path="res://Image_Assets/Card_Image_Library/base1/Small/base1-100.png" id="12_stlcy"]
+[ext_resource type="Texture2D" uid="uid://bxde4dsu018d7" path="res://Image_Assets/Card_Image_Library/base1/Small/base1-101.png" id="13_u6eey"]
+[ext_resource type="Texture2D" uid="uid://4jq4itcs7pxr" path="res://Image_Assets/Card_Image_Library/base1/Small/base1-102.png" id="14_ongeh"]
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_tpt08"]
+shader = ExtResource("2_c438k")
+shader_parameter/scroll_speed = -0.01
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_2qd32"]
+shader = ExtResource("4_1jy02")
+shader_parameter/scroll_speed = 0.002
+shader_parameter/tint = Vector4(1, 1, 1, 1)
+
+[node name="DECK MODE" type="Control"]
+layout_mode = 3
+anchors_preset = 0
+offset_right = 40.0
+offset_bottom = 40.0
+script = ExtResource("1_koxh3")
+
+[node name="BACKGROUND" type="Control" parent="."]
+anchors_preset = 0
+offset_top = 59.0
+offset_right = 40.0
+offset_bottom = 99.0
+
+[node name="top_and_right_border" type="TextureRect" parent="BACKGROUND"]
+z_index = -10
+material = SubResource("ShaderMaterial_tpt08")
+layout_mode = 0
+offset_top = -59.0
+offset_right = 1919.0
+offset_bottom = 1260.0
+texture = ExtResource("3_w5stl")
+stretch_mode = 1
+
+[node name="background_scroller" type="TextureRect" parent="BACKGROUND"]
+z_index = -10
+material = SubResource("ShaderMaterial_2qd32")
+layout_mode = 0
+offset_left = -238.00002
+offset_top = 48.000004
+offset_right = 6386.0
+offset_bottom = 4465.0
+scale = Vector2(0.29, 0.29)
+texture = ExtResource("5_t8qen")
+stretch_mode = 1
+
+[node name="deck_grid_container" type="GridContainer" parent="."]
+layout_mode = 0
+offset_left = 3.0
+offset_top = 108.0
+offset_right = 1681.0
+offset_bottom = 1077.0
+
+[node name="deck_save_button" type="Button" parent="."]
+z_index = 300
+layout_mode = 0
+offset_left = 1689.0
+offset_top = 902.0
+offset_right = 1915.0
+offset_bottom = 965.0
+theme = ExtResource("6_3fpct")
+theme_override_font_sizes/font_size = 23
+text = "save deck"
+
+[node name="deck_cancel_button" type="Button" parent="."]
+z_index = 300
+layout_mode = 0
+offset_left = 1690.0
+offset_top = 986.0
+offset_right = 1914.0
+offset_bottom = 1049.0
+theme = ExtResource("7_r4yq8")
+theme_override_font_sizes/font_size = 23
+text = "cancel"
+
+[node name="deck_name" type="LineEdit" parent="."]
+z_index = 300
+layout_mode = 0
+offset_left = 32.0
+offset_top = 19.0
+offset_right = 908.0
+offset_bottom = 87.434326
+theme = ExtResource("6_3fpct")
+theme_override_colors/font_color = Color(0, 0, 0, 1)
+theme_override_colors/font_placeholder_color = Color(0.25565845, 0.25565895, 0.25565854, 0.6)
+theme_override_font_sizes/font_size = 32
+placeholder_text = "Enter deck name....."
+alignment = 1
+
+[node name="empty_deck_button" type="Button" parent="."]
+z_index = 300
+layout_mode = 0
+offset_left = 1690.0
+offset_top = 112.0
+offset_right = 1913.0
+offset_bottom = 199.0
+theme = ExtResource("7_r4yq8")
+theme_override_font_sizes/font_size = 23
+text = "EMPTY DECK"
+
+[node name="load_deck_button" type="Button" parent="."]
+z_index = 300
+layout_mode = 0
+offset_left = 1690.0
+offset_top = 223.0
+offset_right = 1912.0
+offset_bottom = 310.0
+theme = ExtResource("8_wo1ju")
+theme_override_font_sizes/font_size = 23
+text = "Load deck"
+
+[node name="next_set" type="Button" parent="."]
+z_index = 300
+layout_mode = 0
+offset_left = 1621.0
+offset_top = 8.0
+offset_right = 1682.0
+offset_bottom = 98.251
+theme = ExtResource("8_wo1ju")
+theme_override_font_sizes/font_size = 58
+text = ">"
+
+[node name="previous_set" type="Button" parent="."]
+z_index = 300
+layout_mode = 0
+offset_left = 977.0
+offset_top = 8.0
+offset_right = 1037.0
+offset_bottom = 98.251
+theme = ExtResource("8_wo1ju")
+theme_override_font_sizes/font_size = 58
+text = "<"
+
+[node name="set_name_label" type="Label" parent="."]
+z_index = 999
+layout_mode = 0
+offset_left = 1041.0
+offset_top = 35.0
+offset_right = 1621.0
+offset_bottom = 74.0
+theme = ExtResource("6_3fpct")
+theme_override_colors/font_color = Color(1, 1, 1, 1)
+theme_override_font_sizes/font_size = 29
+text = "EX TEAM MAGMA VS TEAM AQUA"
+horizontal_alignment = 1
+
+[node name="deck_count_label" type="Label" parent="."]
+z_index = 999
+layout_mode = 0
+offset_left = 1741.0
+offset_top = 43.0
+offset_right = 1870.0
+offset_bottom = 82.0
+theme = ExtResource("6_3fpct")
+theme_override_colors/font_color = Color(1, 1, 1, 1)
+theme_override_font_sizes/font_size = 34
+text = "57/60"
+horizontal_alignment = 1
+
+[node name="ENERGY SECTION" type="Control" parent="."]
+anchors_preset = 0
+offset_left = -2.0
+offset_top = -146.0
+offset_right = 38.0
+offset_bottom = -106.0
+
+[node name="change_energy_style_button" type="Button" parent="ENERGY SECTION"]
+z_index = 100
+layout_mode = 0
+offset_left = 1692.0
+offset_top = 479.749
+offset_right = 1912.0
+offset_bottom = 558.0
+theme = ExtResource("8_wo1ju")
+theme_override_constants/line_spacing = 4
+theme_override_font_sizes/font_size = 21
+text = "change
+energy style"
+
+[node name="ENERGY ICONS" type="Control" parent="ENERGY SECTION"]
+anchors_preset = 0
+offset_right = 40.0
+offset_bottom = 40.0
+
+[node name="fighting_energy_icon" type="TextureRect" parent="ENERGY SECTION/ENERGY ICONS"]
+z_index = 200
+layout_mode = 0
+offset_left = 1693.0
+offset_top = 567.251
+offset_right = 1763.0
+offset_bottom = 662.251
+texture = ExtResource("9_rqox2")
+expand_mode = 1
+stretch_mode = 4
+
+[node name="fire_energy_icon" type="TextureRect" parent="ENERGY SECTION/ENERGY ICONS"]
+z_index = 200
+layout_mode = 0
+offset_left = 1768.0
+offset_top = 567.251
+offset_right = 1838.0
+offset_bottom = 662.251
+texture = ExtResource("10_jtl0e")
+expand_mode = 1
+stretch_mode = 4
+
+[node name="grass_energy_icon" type="TextureRect" parent="ENERGY SECTION/ENERGY ICONS"]
+z_index = 200
+layout_mode = 0
+offset_left = 1843.0
+offset_top = 567.251
+offset_right = 1913.0
+offset_bottom = 662.251
+texture = ExtResource("11_knbg0")
+expand_mode = 1
+stretch_mode = 4
+
+[node name="lightning_energy_icon" type="TextureRect" parent="ENERGY SECTION/ENERGY ICONS"]
+z_index = 200
+layout_mode = 0
+offset_left = 1693.0
+offset_top = 668.0
+offset_right = 1763.0
+offset_bottom = 763.0
+texture = ExtResource("12_stlcy")
+expand_mode = 1
+stretch_mode = 4
+
+[node name="psychic_energy_icon" type="TextureRect" parent="ENERGY SECTION/ENERGY ICONS"]
+z_index = 200
+layout_mode = 0
+offset_left = 1768.0
+offset_top = 668.0
+offset_right = 1838.0
+offset_bottom = 763.0
+texture = ExtResource("13_u6eey")
+expand_mode = 1
+stretch_mode = 4
+
+[node name="water_energy_icon" type="TextureRect" parent="ENERGY SECTION/ENERGY ICONS"]
+z_index = 200
+layout_mode = 0
+offset_left = 1843.0
+offset_top = 667.0
+offset_right = 1913.0
+offset_bottom = 762.0
+texture = ExtResource("14_ongeh")
+expand_mode = 1
+stretch_mode = 4
+
+[node name="ENERGY LABELS" type="Control" parent="ENERGY SECTION"]
+anchors_preset = 0
+offset_right = 40.0
+offset_bottom = 40.0
+
+[node name="fighting_energy_count_label" type="Label" parent="ENERGY SECTION/ENERGY LABELS"]
+z_index = 210
+layout_mode = 0
+offset_left = 1704.0
+offset_top = 580.0
+offset_right = 1762.0
+offset_bottom = 632.0
+theme = ExtResource("6_3fpct")
+theme_override_colors/font_outline_color = Color(0, 0, 0, 1)
+theme_override_constants/outline_size = 10
+theme_override_font_sizes/font_size = 33
+text = "0"
+horizontal_alignment = 1
+
+[node name="fire_energy_count_label" type="Label" parent="ENERGY SECTION/ENERGY LABELS"]
+z_index = 210
+layout_mode = 0
+offset_left = 1776.0
+offset_top = 580.0
+offset_right = 1834.0
+offset_bottom = 632.0
+theme = ExtResource("6_3fpct")
+theme_override_colors/font_outline_color = Color(0, 0, 0, 1)
+theme_override_constants/outline_size = 10
+theme_override_font_sizes/font_size = 33
+text = "0"
+horizontal_alignment = 1
+
+[node name="grass_energy_count_label" type="Label" parent="ENERGY SECTION/ENERGY LABELS"]
+z_index = 210
+layout_mode = 0
+offset_left = 1848.0
+offset_top = 580.0
+offset_right = 1906.0
+offset_bottom = 632.0
+theme = ExtResource("6_3fpct")
+theme_override_colors/font_outline_color = Color(0, 0, 0, 1)
+theme_override_constants/outline_size = 10
+theme_override_font_sizes/font_size = 33
+text = "15"
+horizontal_alignment = 1
+
+[node name="lightning_energy_count_label" type="Label" parent="ENERGY SECTION/ENERGY LABELS"]
+z_index = 210
+layout_mode = 0
+offset_left = 1703.0
+offset_top = 680.0
+offset_right = 1761.0
+offset_bottom = 732.0
+theme = ExtResource("6_3fpct")
+theme_override_colors/font_outline_color = Color(0, 0, 0, 1)
+theme_override_constants/outline_size = 10
+theme_override_font_sizes/font_size = 33
+text = "0"
+horizontal_alignment = 1
+
+[node name="psychic_energy_count_label" type="Label" parent="ENERGY SECTION/ENERGY LABELS"]
+z_index = 210
+layout_mode = 0
+offset_left = 1779.0
+offset_top = 680.0
+offset_right = 1837.0
+offset_bottom = 732.0
+theme = ExtResource("6_3fpct")
+theme_override_colors/font_outline_color = Color(0, 0, 0, 1)
+theme_override_constants/outline_size = 10
+theme_override_font_sizes/font_size = 33
+text = "12"
+horizontal_alignment = 1
+
+[node name="water_energy_count_label" type="Label" parent="ENERGY SECTION/ENERGY LABELS"]
+z_index = 210
+layout_mode = 0
+offset_left = 1851.0
+offset_top = 680.0
+offset_right = 1909.0
+offset_bottom = 732.0
+theme = ExtResource("6_3fpct")
+theme_override_colors/font_outline_color = Color(0, 0, 0, 1)
+theme_override_constants/outline_size = 10
+theme_override_font_sizes/font_size = 33
+text = "0"
+horizontal_alignment = 1
