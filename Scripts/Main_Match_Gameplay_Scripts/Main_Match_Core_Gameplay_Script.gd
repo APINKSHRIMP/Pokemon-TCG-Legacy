@@ -8,7 +8,7 @@ extends Control
 
 # TESTING VARIABLES
 var amount_of_cards_to_draw = 7	# CAN CHANGE THE AMOUNT OF INITIAL HAND CARDS TO CHECK ARRAYS AND CARD FUNCTIONS
-var hide_hidden_cards = false      	# TO SHOW PRIZE CARDS AND OPPONENTS HAND SET TO TRUE. FOR REAL GAME SET TO FALSE
+var hide_hidden_cards = true      	# TO SHOW PRIZE CARDS AND OPPONENTS HAND SET TO TRUE. FOR REAL GAME SET TO FALSE
 var opponent_deck_name = "null"
 var player_deck_name = "null"
 var amount_of_prize_cards = 6

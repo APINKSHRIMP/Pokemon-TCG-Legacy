@@ -1,9 +1,9 @@
 {
 	"battle_sprite": "1dawnplatinum",
 	"coin": "coin_gyarados_blue",
-	"deck": "bulbasaur_friends",
-	"energy_style": "ex16",
-	"last_set_loaded": "base3",
+	"deck": "Solar_power",
+	"energy_style": "Base1",
+	"last_set_loaded": "base1",
 	"name": "APINKSHRIMP",
 	"overworld_sprite": "1dawnplatinum",
 	"sprite": "1dawnplatinum"
