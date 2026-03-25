@@ -3,35 +3,35 @@
 	"owned_cards": [
 		{
 			"card_id": "base3-1",
-			"owned": 3
+			"owned": 4
 		},
 		{
 			"card_id": "base3-2",
-			"owned": 2
+			"owned": 4
 		},
 		{
 			"card_id": "base3-3",
-			"owned": 1
+			"owned": 4
 		},
 		{
 			"card_id": "base3-4",
-			"owned": 2
+			"owned": 4
 		},
 		{
 			"card_id": "base3-5",
-			"owned": 1
+			"owned": 4
 		},
 		{
 			"card_id": "base3-6",
-			"owned": 3
+			"owned": 4
 		},
 		{
 			"card_id": "base3-7",
-			"owned": 3
+			"owned": 4
 		},
 		{
 			"card_id": "base3-8",
-			"owned": 2
+			"owned": 4
 		},
 		{
 			"card_id": "base3-9",
@@ -43,7 +43,7 @@
 		},
 		{
 			"card_id": "base3-11",
-			"owned": 1
+			"owned": 4
 		},
 		{
 			"card_id": "base3-12",
@@ -87,7 +87,7 @@
 		},
 		{
 			"card_id": "base3-22",
-			"owned": 3
+			"owned": 4
 		},
 		{
 			"card_id": "base3-23",
@@ -95,7 +95,7 @@
 		},
 		{
 			"card_id": "base3-24",
-			"owned": 2
+			"owned": 4
 		},
 		{
 			"card_id": "base3-25",
@@ -135,7 +135,7 @@
 		},
 		{
 			"card_id": "base3-34",
-			"owned": 2
+			"owned": 4
 		},
 		{
 			"card_id": "base3-35",
@@ -147,11 +147,11 @@
 		},
 		{
 			"card_id": "base3-37",
-			"owned": 1
+			"owned": 4
 		},
 		{
 			"card_id": "base3-38",
-			"owned": 3
+			"owned": 4
 		},
 		{
 			"card_id": "base3-39",
@@ -163,7 +163,7 @@
 		},
 		{
 			"card_id": "base3-41",
-			"owned": 3
+			"owned": 4
 		},
 		{
 			"card_id": "base3-42",
@@ -187,11 +187,11 @@
 		},
 		{
 			"card_id": "base3-47",
-			"owned": 1
+			"owned": 4
 		},
 		{
 			"card_id": "base3-48",
-			"owned": 2
+			"owned": 4
 		},
 		{
 			"card_id": "base3-49",
@@ -211,7 +211,7 @@
 		},
 		{
 			"card_id": "base3-53",
-			"owned": 2
+			"owned": 4
 		},
 		{
 			"card_id": "base3-54",
@@ -219,7 +219,7 @@
 		},
 		{
 			"card_id": "base3-55",
-			"owned": 3
+			"owned": 4
 		},
 		{
 			"card_id": "base3-56",
@@ -235,7 +235,7 @@
 		},
 		{
 			"card_id": "base3-59",
-			"owned": 1
+			"owned": 4
 		},
 		{
 			"card_id": "base3-60",
@@ -247,7 +247,7 @@
 		},
 		{
 			"card_id": "base3-62",
-			"owned": 2
+			"owned": 4
 		}
 	]
 }
