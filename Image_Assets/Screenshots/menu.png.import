@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://bv58ccv06ero0"
-path="res://.godot/imported/gentle waterfall A v02.png-65dbc44f6e5e04ae9e1fe97505c02d17.ctex"
+uid="uid://lee8ooh4oy7b"
+path="res://.godot/imported/menu.png-d2b6c7c0779ec8af23e96cd70b03e53f.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://Image_Assets/Map_Sheets/Images/Gentle_Forest/gentle animations/gentle waterfall A v02.png"
-dest_files=["res://.godot/imported/gentle waterfall A v02.png-65dbc44f6e5e04ae9e1fe97505c02d17.ctex"]
+source_file="res://Image_Assets/Screenshots/menu.png"
+dest_files=["res://.godot/imported/menu.png-d2b6c7c0779ec8af23e96cd70b03e53f.ctex"]
 
 [params]
 

@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://qfxv1qvtgtr"
-path="res://.godot/imported/gentle trees 80x96 v02.png-faddf4c3072651f527d4d4108123d8e7.ctex"
+uid="uid://d2h0aikhj5288"
+path="res://.godot/imported/GEN5_Style_Basics.png-ebe48914e42fb7799dab569ab0fc58f5.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://Image_Assets/Map_Sheets/Images/Gentle_Forest/gentle sheets/gentle trees 80x96 v02.png"
-dest_files=["res://.godot/imported/gentle trees 80x96 v02.png-faddf4c3072651f527d4d4108123d8e7.ctex"]
+source_file="res://Image_Assets/Map_Sheets/Image_Sheets/GEN5_Style_Basics.png"
+dest_files=["res://.godot/imported/GEN5_Style_Basics.png-ebe48914e42fb7799dab569ab0fc58f5.ctex"]
 
 [params]
 

@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://c7jf8jt07h55i"
-path="res://.godot/imported/gentle tree wall.png-6dc5ae7a9709d7ac854312e290caf7f4.ctex"
+uid="uid://dlvded8xtnonh"
+path="res://.godot/imported/gbcards.png-6ef60d7e82262e0583cfe2579551bc89.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://Image_Assets/Map_Sheets/Images/Gentle_Forest/tree wall/gentle tree wall.png"
-dest_files=["res://.godot/imported/gentle tree wall.png-6dc5ae7a9709d7ac854312e290caf7f4.ctex"]
+source_file="res://Image_Assets/Screenshots/gbcards.png"
+dest_files=["res://.godot/imported/gbcards.png-6ef60d7e82262e0583cfe2579551bc89.ctex"]
 
 [params]
 
