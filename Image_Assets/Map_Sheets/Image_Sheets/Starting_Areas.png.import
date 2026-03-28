@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://y44hseib32b0"
-path="res://.godot/imported/GEN5_Style_Extra.png-f7eb4da0409599a0b998617a7c38ea00.ctex"
+uid="uid://ddknhypv7nfp6"
+path="res://.godot/imported/Starting_Areas.png-201343bcf5a0509a012de649dfdb5329.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://Image_Assets/Map_Sheets/Image_Sheets/GEN5_Style_Extra.png"
-dest_files=["res://.godot/imported/GEN5_Style_Extra.png-f7eb4da0409599a0b998617a7c38ea00.ctex"]
+source_file="res://Image_Assets/Map_Sheets/Image_Sheets/Starting_Areas.png"
+dest_files=["res://.godot/imported/Starting_Areas.png-201343bcf5a0509a012de649dfdb5329.ctex"]
 
 [params]
 
