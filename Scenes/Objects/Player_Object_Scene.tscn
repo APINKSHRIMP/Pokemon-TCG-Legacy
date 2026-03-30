@@ -23,11 +23,12 @@ shape = SubResource("RectangleShape2D_xe548")
 shape = SubResource("RectangleShape2D_50vay")
 
 [node name="Camera2D" type="Camera2D" parent="."]
+physics_interpolation_mode = 1
+zoom = Vector2(2.5, 2.5)
 limit_left = -900
 limit_top = -1000
 limit_right = 6500
 limit_bottom = 3240
-position_smoothing_enabled = true
 drag_horizontal_enabled = true
 drag_vertical_enabled = true
 drag_left_margin = 0.05

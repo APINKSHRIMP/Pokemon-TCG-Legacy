@@ -18,6 +18,7 @@ var can_move: bool = true
 
 @onready var animated_sprite: AnimatedSprite2D = $AnimatedSprite2D
 @onready var interaction_area: Area2D = $InteractionArea
+@onready var camera: Camera2D = $Camera2D
 
 func _ready():
 	add_to_group("player")
@@ -31,7 +32,7 @@ func _ready():
 	var sprite_name = player_data["overworld_sprite"]
 	animated_sprite.sprite_frames = SpriteSheetLoader.load_sprite_frames(sprite_name)
 	animated_sprite.play("idle_down")
-	animated_sprite.scale = Vector2(2.5, 2.5)
+	animated_sprite.scale = Vector2(1, 1)
 	
 	interaction_area.body_entered.connect(_on_interaction_area_body_entered)
 	interaction_area.body_exited.connect(_on_interaction_area_body_exited)
@@ -91,6 +92,13 @@ func _update_direction(direction: Vector2):
 func _unhandled_input(event):
 	if nearby_opponent and event.is_action_pressed("ui_accept"):
 		interact_pressed.emit(nearby_opponent)
+	
+	if event is InputEventMouseButton:
+		if event.pressed:
+			if event.button_index == MOUSE_BUTTON_WHEEL_UP:
+				camera.zoom = (camera.zoom + Vector2(0.2, 0.2)).clamp(Vector2(1, 1), Vector2(4, 4))
+			elif event.button_index == MOUSE_BUTTON_WHEEL_DOWN:
+				camera.zoom = (camera.zoom - Vector2(0.2, 0.2)).clamp(Vector2(1, 1), Vector2(4, 4))
 
 func _on_interaction_area_body_entered(body: Node2D):
 	if body.is_in_group("opponents"):

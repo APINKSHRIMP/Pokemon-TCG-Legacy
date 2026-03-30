@@ -3,15 +3,15 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://38sevv223yr7"
-path="res://.godot/imported/Starting_Areas2.png-5590d6e5e7f262d8b890d12f6fb7c3fc.ctex"
+path="res://.godot/imported/Starting_Areas_Sheet.png-478248fc99ceb0b8c70f470fc092e88f.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://Image_Assets/Map_Sheets/Image_Sheets/Starting_Areas2.png"
-dest_files=["res://.godot/imported/Starting_Areas2.png-5590d6e5e7f262d8b890d12f6fb7c3fc.ctex"]
+source_file="res://Image_Assets/Map_Sheets/Image_Sheets/Starting_Areas_Sheet.png"
+dest_files=["res://.godot/imported/Starting_Areas_Sheet.png-478248fc99ceb0b8c70f470fc092e88f.ctex"]
 
 [params]
 
