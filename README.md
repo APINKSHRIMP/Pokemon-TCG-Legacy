@@ -20,7 +20,7 @@ Collect every card from **Base Set** all the way through to **EX Power Keepers**
 ### Trainer Customization
 Unlock **100+ unique trainer sprites** as you progress through the game. Choose your favorite trainer class sprite for both overworld and in battle and battle every opponent to unlock them all.
 
-![Trainer icons](Image_Assets/screenshots/trainers.gif)
+![Trainer icons](Image_Assets/Screenshots/trainers.gif)
 
 ### 100+ Collectable Coins
 Win coins as rewards by battling opponents and use them in your matches. Earn your favorites and add flair to your matches.
