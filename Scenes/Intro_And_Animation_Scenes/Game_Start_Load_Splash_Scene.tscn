@@ -1,4 +1,4 @@
-[gd_scene load_steps=6 format=3 uid="uid://dy73eing56d31"]
+[gd_scene format=3 uid="uid://dy73eing56d31"]
 
 [ext_resource type="Script" uid="uid://illukoiykc5j" path="res://Scripts/Intro_And_Animation/Game_Start_Load_Splash_Script.gd" id="1_bhgcj"]
 [ext_resource type="Texture2D" uid="uid://o37onxt324b3" path="res://Image_Assets/Intro_And_Splash_Screen/white_logo_only.png" id="2_s4xgb"]
@@ -6,22 +6,22 @@
 [ext_resource type="Texture2D" uid="uid://0nj7v2y3y8v8" path="res://Image_Assets/Intro_And_Splash_Screen/white_text_only.png" id="4_gpmnh"]
 [ext_resource type="Texture2D" uid="uid://cvg0psv46e5s5" path="res://Image_Assets/Intro_And_Splash_Screen/black_text_only.png" id="5_5r22p"]
 
-[node name="GAME START SPLASH" type="Node2D"]
+[node name="GAME START SPLASH" type="Node2D" unique_id=2036221350]
 script = ExtResource("1_bhgcj")
 
-[node name="white_splash" type="TextureRect" parent="."]
+[node name="white_splash" type="TextureRect" parent="." unique_id=262912824]
 offset_right = 1920.0
 offset_bottom = 1080.0
 texture = ExtResource("2_s4xgb")
 expand_mode = 2
 
-[node name="black_splash" type="TextureRect" parent="."]
+[node name="black_splash" type="TextureRect" parent="." unique_id=624385206]
 offset_right = 1919.0
 offset_bottom = 1079.0
 texture = ExtResource("3_37k6f")
 expand_mode = 3
 
-[node name="black_text" type="TextureRect" parent="."]
+[node name="black_text" type="TextureRect" parent="." unique_id=954090880]
 offset_left = 367.0
 offset_top = 320.0
 offset_right = 1552.0758
@@ -29,7 +29,7 @@ offset_bottom = 873.0
 texture = ExtResource("5_5r22p")
 expand_mode = 1
 
-[node name="white_text" type="TextureRect" parent="."]
+[node name="white_text" type="TextureRect" parent="." unique_id=1149577744]
 offset_left = 367.0
 offset_top = 320.0
 offset_right = 1552.0758

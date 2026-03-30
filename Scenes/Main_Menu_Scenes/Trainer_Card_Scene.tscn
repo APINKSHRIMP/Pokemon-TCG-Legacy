@@ -1,4 +1,4 @@
-[gd_scene load_steps=10 format=3 uid="uid://d05074vitqyoh"]
+[gd_scene format=3 uid="uid://d05074vitqyoh"]
 
 [ext_resource type="Script" uid="uid://c1yumpfxp1ebh" path="res://Scripts/Menu_Scripts/Trainer_Card_Script.gd" id="1_0828g"]
 [ext_resource type="Shader" uid="uid://ccm481fk14lc8" path="res://Scripts/Shaders/Background_Scroll_Right_Top_Border.gdshader" id="2_kftsc"]
@@ -17,20 +17,20 @@ shader = ExtResource("4_2qd32")
 shader_parameter/scroll_speed = 0.002
 shader_parameter/tint = Vector4(1, 1, 1, 1)
 
-[node name="TRAINER CARD" type="Control"]
+[node name="TRAINER CARD" type="Control" unique_id=1422498273]
 layout_mode = 3
 anchors_preset = 0
 offset_right = 40.0
 offset_bottom = 40.0
 script = ExtResource("1_0828g")
 
-[node name="BACKGROUND" type="Control" parent="."]
+[node name="BACKGROUND" type="Control" parent="." unique_id=1910160496]
 anchors_preset = 0
 offset_top = 59.0
 offset_right = 40.0
 offset_bottom = 99.0
 
-[node name="top_border" type="TextureRect" parent="BACKGROUND"]
+[node name="top_border" type="TextureRect" parent="BACKGROUND" unique_id=1975445398]
 z_index = 200
 material = SubResource("ShaderMaterial_ui6o0")
 layout_mode = 0
@@ -40,7 +40,7 @@ offset_bottom = 48.0
 texture = ExtResource("3_2qd32")
 stretch_mode = 1
 
-[node name="bottom_border" type="TextureRect" parent="BACKGROUND"]
+[node name="bottom_border" type="TextureRect" parent="BACKGROUND" unique_id=554163774]
 z_index = 200
 material = SubResource("ShaderMaterial_ui6o0")
 layout_mode = 0
@@ -50,7 +50,7 @@ offset_bottom = 1021.0
 texture = ExtResource("3_2qd32")
 stretch_mode = 1
 
-[node name="background_scroller" type="TextureRect" parent="BACKGROUND"]
+[node name="background_scroller" type="TextureRect" parent="BACKGROUND" unique_id=688350770]
 material = SubResource("ShaderMaterial_2qd32")
 layout_mode = 0
 offset_left = -2.0000002
@@ -61,14 +61,14 @@ scale = Vector2(0.29, 0.29)
 texture = ExtResource("5_2qd32")
 stretch_mode = 1
 
-[node name="trainer_grid_container" type="GridContainer" parent="."]
+[node name="trainer_grid_container" type="GridContainer" parent="." unique_id=1201472389]
 layout_mode = 0
 offset_left = -11.0
 offset_top = 108.0
 offset_right = 1893.0
 offset_bottom = 977.0
 
-[node name="trainer_save_button" type="Button" parent="."]
+[node name="trainer_save_button" type="Button" parent="." unique_id=1626410143]
 z_index = 300
 layout_mode = 0
 offset_left = 568.0
@@ -78,7 +78,7 @@ offset_bottom = 1061.0
 theme = ExtResource("4_t1d7u")
 text = "save"
 
-[node name="trainer_cancel_button" type="Button" parent="."]
+[node name="trainer_cancel_button" type="Button" parent="." unique_id=2119908794]
 z_index = 300
 layout_mode = 0
 offset_left = 935.0
@@ -88,7 +88,7 @@ offset_bottom = 1061.0
 theme = ExtResource("5_bgxs0")
 text = "cancel"
 
-[node name="player_name" type="LineEdit" parent="."]
+[node name="player_name" type="LineEdit" parent="." unique_id=622026657]
 z_index = 300
 layout_mode = 0
 offset_left = 653.0

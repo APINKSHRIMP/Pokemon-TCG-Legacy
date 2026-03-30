@@ -1,4 +1,4 @@
-[gd_scene load_steps=12 format=3 uid="uid://dqwekyllekveg"]
+[gd_scene format=3 uid="uid://dqwekyllekveg"]
 
 [ext_resource type="Script" uid="uid://bu715ca3pbw60" path="res://Scripts/Main_Match_Gameplay_Scripts/Main_Match_Core_Gameplay_Script.gd" id="1_ugrqn"]
 [ext_resource type="Shader" uid="uid://ccm481fk14lc8" path="res://Scripts/Shaders/Background_Scroll_Right_Top_Border.gdshader" id="2_28abk"]
@@ -16,7 +16,7 @@ shader_parameter/scroll_speed = -0.009
 
 [sub_resource type="StyleBoxLine" id="StyleBoxLine_1cpm0"]
 
-[node name="MAIN GAME CONTROL NODE" type="Control"]
+[node name="MAIN GAME CONTROL NODE" type="Control" unique_id=1860578186]
 layout_mode = 3
 anchors_preset = 15
 anchor_right = 1.0
@@ -25,7 +25,7 @@ grow_horizontal = 2
 grow_vertical = 2
 script = ExtResource("1_ugrqn")
 
-[node name="match_background" type="TextureRect" parent="."]
+[node name="match_background" type="TextureRect" parent="." unique_id=2044199228]
 material = SubResource("ShaderMaterial_bxqcy")
 layout_mode = 0
 offset_left = 1.0
@@ -35,7 +35,7 @@ offset_bottom = 1082.0
 texture = ExtResource("3_17ma7")
 stretch_mode = 1
 
-[node name="cancel_selection_mode_view_button" type="Button" parent="."]
+[node name="cancel_selection_mode_view_button" type="Button" parent="." unique_id=548740182]
 layout_mode = 1
 anchors_preset = 7
 anchor_left = 0.5
@@ -52,14 +52,14 @@ size_flags_vertical = 8
 theme = ExtResource("4_oru8a")
 text = "CANCEL"
 
-[node name="BUTTONS" type="Control" parent="."]
+[node name="BUTTONS" type="Control" parent="." unique_id=1976155471]
 anchors_preset = 0
 offset_left = 1907.0
 offset_top = 961.0
 offset_right = 1907.0
 offset_bottom = 1033.0
 
-[node name="main_screen_buttons_container" type="HBoxContainer" parent="BUTTONS"]
+[node name="main_screen_buttons_container" type="HBoxContainer" parent="BUTTONS" unique_id=1389611363]
 custom_minimum_size = Vector2(280, 0)
 layout_mode = 0
 offset_left = -1843.0
@@ -68,35 +68,35 @@ offset_right = 57.0
 offset_bottom = 97.0
 theme_override_constants/separation = 131
 
-[node name="button_main_attack" type="Button" parent="BUTTONS/main_screen_buttons_container"]
+[node name="button_main_attack" type="Button" parent="BUTTONS/main_screen_buttons_container" unique_id=1030619770]
 custom_minimum_size = Vector2(350, 50)
 layout_mode = 2
 size_flags_horizontal = 0
 theme = ExtResource("5_4djes")
 text = "ATTACK"
 
-[node name="button_main_power" type="Button" parent="BUTTONS/main_screen_buttons_container"]
+[node name="button_main_power" type="Button" parent="BUTTONS/main_screen_buttons_container" unique_id=1708163814]
 custom_minimum_size = Vector2(350, 50)
 layout_mode = 2
 size_flags_horizontal = 0
 theme = ExtResource("5_4djes")
 text = "POWER"
 
-[node name="button_main_retreat" type="Button" parent="BUTTONS/main_screen_buttons_container"]
+[node name="button_main_retreat" type="Button" parent="BUTTONS/main_screen_buttons_container" unique_id=1372514433]
 custom_minimum_size = Vector2(350, 50)
 layout_mode = 2
 size_flags_horizontal = 0
 theme = ExtResource("5_4djes")
 text = "RETREAT"
 
-[node name="button_main_endturn" type="Button" parent="BUTTONS/main_screen_buttons_container"]
+[node name="button_main_endturn" type="Button" parent="BUTTONS/main_screen_buttons_container" unique_id=1088940764]
 custom_minimum_size = Vector2(350, 50)
 layout_mode = 2
 size_flags_horizontal = 0
 theme = ExtResource("5_4djes")
 text = "END TURN"
 
-[node name="main_screen_attack_buttons_container" type="HBoxContainer" parent="BUTTONS"]
+[node name="main_screen_attack_buttons_container" type="HBoxContainer" parent="BUTTONS" unique_id=755028055]
 custom_minimum_size = Vector2(280, 0)
 layout_mode = 0
 offset_left = -1843.0
@@ -105,20 +105,20 @@ offset_right = 57.0
 offset_bottom = 97.0
 theme_override_constants/separation = 100
 
-[node name="cancel_attack_mode_button" type="Button" parent="BUTTONS/main_screen_attack_buttons_container"]
+[node name="cancel_attack_mode_button" type="Button" parent="BUTTONS/main_screen_attack_buttons_container" unique_id=1838251771]
 custom_minimum_size = Vector2(350, 72)
 layout_mode = 2
 size_flags_vertical = 8
 theme = ExtResource("4_oru8a")
 text = "CANCEL"
 
-[node name="SELECTION_BUTTONS" type="Control" parent="BUTTONS"]
+[node name="SELECTION_BUTTONS" type="Control" parent="BUTTONS" unique_id=81093730]
 anchors_preset = 0
 offset_top = 26.0
 offset_right = 40.0
 offset_bottom = 66.0
 
-[node name="card_action_button" type="Button" parent="BUTTONS/SELECTION_BUTTONS"]
+[node name="card_action_button" type="Button" parent="BUTTONS/SELECTION_BUTTONS" unique_id=1959993652]
 layout_mode = 1
 anchors_preset = 7
 anchor_left = 0.5
@@ -134,17 +134,17 @@ grow_vertical = 0
 theme = ExtResource("6_qlbwx")
 text = "SET"
 
-[node name="CARD_COLLECTIONS" type="Control" parent="."]
+[node name="CARD_COLLECTIONS" type="Control" parent="." unique_id=354240131]
 anchors_preset = 0
 offset_right = 40.0
 offset_bottom = 40.0
 
-[node name="PLAYER" type="Control" parent="CARD_COLLECTIONS"]
+[node name="PLAYER" type="Control" parent="CARD_COLLECTIONS" unique_id=265540095]
 anchors_preset = 0
 offset_right = 40.0
 offset_bottom = 40.0
 
-[node name="player_hand_hbox_container" type="HBoxContainer" parent="CARD_COLLECTIONS/PLAYER"]
+[node name="player_hand_hbox_container" type="HBoxContainer" parent="CARD_COLLECTIONS/PLAYER" unique_id=831038942]
 layout_mode = 1
 anchors_preset = 5
 anchor_left = 0.5
@@ -157,7 +157,7 @@ grow_horizontal = 2
 theme_override_constants/separation = 3
 alignment = 1
 
-[node name="player_bench_container" type="HBoxContainer" parent="CARD_COLLECTIONS/PLAYER"]
+[node name="player_bench_container" type="HBoxContainer" parent="CARD_COLLECTIONS/PLAYER" unique_id=582464853]
 layout_mode = 0
 offset_left = 9.0
 offset_top = 640.0
@@ -165,7 +165,7 @@ offset_right = 49.0
 offset_bottom = 778.0
 theme_override_constants/separation = 2
 
-[node name="player_prize_cards_container" type="HBoxContainer" parent="CARD_COLLECTIONS/PLAYER"]
+[node name="player_prize_cards_container" type="HBoxContainer" parent="CARD_COLLECTIONS/PLAYER" unique_id=263764666]
 layout_mode = 0
 offset_left = 89.0
 offset_top = 852.0
@@ -173,7 +173,7 @@ offset_right = 584.0
 offset_bottom = 962.0
 theme_override_constants/separation = 2
 
-[node name="player_deck_icon" type="TextureRect" parent="CARD_COLLECTIONS/PLAYER"]
+[node name="player_deck_icon" type="TextureRect" parent="CARD_COLLECTIONS/PLAYER" unique_id=1125755240]
 layout_mode = 0
 offset_left = 24.0
 offset_top = 14.0
@@ -182,7 +182,7 @@ offset_bottom = 155.0
 texture = ExtResource("7_ac61d")
 stretch_mode = 2
 
-[node name="player_deck_count_label" type="Label" parent="CARD_COLLECTIONS/PLAYER/player_deck_icon"]
+[node name="player_deck_count_label" type="Label" parent="CARD_COLLECTIONS/PLAYER/player_deck_icon" unique_id=1021694161]
 layout_mode = 1
 anchors_preset = 3
 anchor_left = 1.0
@@ -199,7 +199,7 @@ theme_override_constants/outline_size = 6
 theme_override_font_sizes/font_size = 27
 text = "60"
 
-[node name="player_discard_pile_icon" type="TextureRect" parent="CARD_COLLECTIONS/PLAYER"]
+[node name="player_discard_pile_icon" type="TextureRect" parent="CARD_COLLECTIONS/PLAYER" unique_id=233715986]
 layout_mode = 0
 offset_left = 143.0
 offset_top = 14.0
@@ -207,7 +207,7 @@ offset_right = 253.0
 offset_bottom = 155.0
 stretch_mode = 2
 
-[node name="player_discard_pile_label" type="Label" parent="CARD_COLLECTIONS/PLAYER/player_discard_pile_icon"]
+[node name="player_discard_pile_label" type="Label" parent="CARD_COLLECTIONS/PLAYER/player_discard_pile_icon" unique_id=1949349884]
 layout_mode = 1
 anchors_preset = 3
 anchor_left = 1.0
@@ -224,12 +224,12 @@ theme_override_constants/outline_size = 6
 theme_override_font_sizes/font_size = 27
 text = "0"
 
-[node name="OPPONENT" type="Control" parent="CARD_COLLECTIONS"]
+[node name="OPPONENT" type="Control" parent="CARD_COLLECTIONS" unique_id=77683408]
 anchors_preset = 0
 offset_right = 40.0
 offset_bottom = 40.0
 
-[node name="opponent_hand_hbox_container" type="HBoxContainer" parent="CARD_COLLECTIONS/OPPONENT"]
+[node name="opponent_hand_hbox_container" type="HBoxContainer" parent="CARD_COLLECTIONS/OPPONENT" unique_id=1116235691]
 layout_mode = 1
 anchors_preset = 1
 anchor_left = 1.0
@@ -241,7 +241,7 @@ offset_bottom = 275.0
 grow_horizontal = 0
 theme_override_constants/separation = 50
 
-[node name="opponent_bench_container" type="HBoxContainer" parent="CARD_COLLECTIONS/OPPONENT"]
+[node name="opponent_bench_container" type="HBoxContainer" parent="CARD_COLLECTIONS/OPPONENT" unique_id=1469352686]
 layout_mode = 0
 offset_left = 1397.0
 offset_top = 639.0
@@ -249,7 +249,7 @@ offset_right = 1887.0
 offset_bottom = 780.0
 theme_override_constants/separation = 4
 
-[node name="opponent_prize_cards_container" type="HBoxContainer" parent="CARD_COLLECTIONS/OPPONENT"]
+[node name="opponent_prize_cards_container" type="HBoxContainer" parent="CARD_COLLECTIONS/OPPONENT" unique_id=1140781379]
 layout_mode = 0
 offset_left = 1342.0
 offset_top = 852.0
@@ -258,7 +258,7 @@ offset_bottom = 961.0
 theme_override_constants/separation = 2
 alignment = 2
 
-[node name="opponent_deck_icon" type="TextureRect" parent="CARD_COLLECTIONS/OPPONENT"]
+[node name="opponent_deck_icon" type="TextureRect" parent="CARD_COLLECTIONS/OPPONENT" unique_id=770211138]
 layout_mode = 0
 offset_left = 1684.0
 offset_top = 16.0
@@ -267,7 +267,7 @@ offset_bottom = 157.0
 texture = ExtResource("7_ac61d")
 stretch_mode = 2
 
-[node name="opponent_deck_count_label" type="Label" parent="CARD_COLLECTIONS/OPPONENT/opponent_deck_icon"]
+[node name="opponent_deck_count_label" type="Label" parent="CARD_COLLECTIONS/OPPONENT/opponent_deck_icon" unique_id=664937024]
 layout_mode = 1
 anchors_preset = 3
 anchor_left = 1.0
@@ -283,7 +283,7 @@ theme_override_constants/outline_size = 6
 theme_override_font_sizes/font_size = 27
 text = "60"
 
-[node name="opponent_discard_pile_icon" type="TextureRect" parent="CARD_COLLECTIONS/OPPONENT"]
+[node name="opponent_discard_pile_icon" type="TextureRect" parent="CARD_COLLECTIONS/OPPONENT" unique_id=1838082490]
 layout_mode = 0
 offset_left = 1801.0
 offset_top = 17.0
@@ -291,7 +291,7 @@ offset_right = 1911.0
 offset_bottom = 158.0
 stretch_mode = 2
 
-[node name="opponent_discard_pile_label" type="Label" parent="CARD_COLLECTIONS/OPPONENT/opponent_discard_pile_icon"]
+[node name="opponent_discard_pile_label" type="Label" parent="CARD_COLLECTIONS/OPPONENT/opponent_discard_pile_icon" unique_id=1338055683]
 layout_mode = 1
 anchors_preset = 3
 anchor_left = 1.0
@@ -307,17 +307,17 @@ theme_override_constants/outline_size = 6
 theme_override_font_sizes/font_size = 27
 text = "0"
 
-[node name="SCREEN_LABELS" type="Control" parent="."]
+[node name="SCREEN_LABELS" type="Control" parent="." unique_id=364794813]
 anchors_preset = 0
 offset_right = 40.0
 offset_bottom = 40.0
 
-[node name="MAIN_LABELS" type="Control" parent="SCREEN_LABELS"]
+[node name="MAIN_LABELS" type="Control" parent="SCREEN_LABELS" unique_id=2014093473]
 anchors_preset = 0
 offset_right = 40.0
 offset_bottom = 40.0
 
-[node name="large_header_text_label" type="Label" parent="SCREEN_LABELS/MAIN_LABELS"]
+[node name="large_header_text_label" type="Label" parent="SCREEN_LABELS/MAIN_LABELS" unique_id=1187678653]
 layout_mode = 0
 offset_left = -40.0
 offset_top = 17.0
@@ -334,7 +334,7 @@ theme_override_font_sizes/font_size = 61
 horizontal_alignment = 1
 vertical_alignment = 1
 
-[node name="small_hint_info_text_label" type="Label" parent="SCREEN_LABELS/MAIN_LABELS"]
+[node name="small_hint_info_text_label" type="Label" parent="SCREEN_LABELS/MAIN_LABELS" unique_id=1297059239]
 layout_mode = 0
 offset_left = -40.0
 offset_top = 94.0
@@ -350,12 +350,12 @@ theme_override_font_sizes/font_size = 41
 horizontal_alignment = 1
 vertical_alignment = 1
 
-[node name="PLAYER" type="Control" parent="SCREEN_LABELS"]
+[node name="PLAYER" type="Control" parent="SCREEN_LABELS" unique_id=1997932307]
 anchors_preset = 0
 offset_right = 40.0
 offset_bottom = 40.0
 
-[node name="player_bench_cards_label" type="Label" parent="SCREEN_LABELS/PLAYER"]
+[node name="player_bench_cards_label" type="Label" parent="SCREEN_LABELS/PLAYER" unique_id=2104447270]
 layout_mode = 0
 offset_left = 135.0
 offset_top = 817.0
@@ -373,7 +373,7 @@ text = "BENCH"
 horizontal_alignment = 1
 vertical_alignment = 1
 
-[node name="player_prize_cards_label" type="Label" parent="SCREEN_LABELS/PLAYER"]
+[node name="player_prize_cards_label" type="Label" parent="SCREEN_LABELS/PLAYER" unique_id=129057073]
 layout_mode = 0
 offset_left = 135.0
 offset_top = 929.0
@@ -391,12 +391,12 @@ text = "PRIZE CARDS"
 horizontal_alignment = 1
 vertical_alignment = 1
 
-[node name="OPPONENT" type="Control" parent="SCREEN_LABELS"]
+[node name="OPPONENT" type="Control" parent="SCREEN_LABELS" unique_id=1895632594]
 anchors_preset = 0
 offset_right = 40.0
 offset_bottom = 40.0
 
-[node name="opponent_bench_cards_label" type="Label" parent="SCREEN_LABELS/OPPONENT"]
+[node name="opponent_bench_cards_label" type="Label" parent="SCREEN_LABELS/OPPONENT" unique_id=122297851]
 layout_mode = 0
 offset_left = 1573.0
 offset_top = 814.0
@@ -414,7 +414,7 @@ text = "BENCH"
 horizontal_alignment = 1
 vertical_alignment = 1
 
-[node name="opponent_prize_cards_label" type="Label" parent="SCREEN_LABELS/OPPONENT"]
+[node name="opponent_prize_cards_label" type="Label" parent="SCREEN_LABELS/OPPONENT" unique_id=2115540947]
 layout_mode = 0
 offset_left = 1571.0
 offset_top = 929.0
@@ -432,38 +432,38 @@ text = "PRIZE CARDS"
 horizontal_alignment = 1
 vertical_alignment = 1
 
-[node name="ACTIVE_POKEMON" type="Control" parent="."]
+[node name="ACTIVE_POKEMON" type="Control" parent="." unique_id=1043762228]
 anchors_preset = 0
 offset_right = 40.0
 offset_bottom = 40.0
 
-[node name="PLAYER" type="Control" parent="ACTIVE_POKEMON"]
+[node name="PLAYER" type="Control" parent="ACTIVE_POKEMON" unique_id=1587640944]
 anchors_preset = 0
 offset_right = 40.0
 offset_bottom = 40.0
 
-[node name="player_active_pokemon_container" type="Control" parent="ACTIVE_POKEMON/PLAYER"]
+[node name="player_active_pokemon_container" type="Control" parent="ACTIVE_POKEMON/PLAYER" unique_id=983242942]
 anchors_preset = 0
 offset_left = 525.0
 offset_top = 260.0
 offset_right = 715.0
 offset_bottom = 780.0
 
-[node name="player_active_pokemon_energies" type="Control" parent="ACTIVE_POKEMON/PLAYER"]
+[node name="player_active_pokemon_energies" type="Control" parent="ACTIVE_POKEMON/PLAYER" unique_id=582491070]
 anchors_preset = 0
 offset_left = 408.0
 offset_top = 261.0
 offset_right = 451.0
 offset_bottom = 289.0
 
-[node name="player_active_pokemon_attached_cards" type="Control" parent="ACTIVE_POKEMON/PLAYER"]
+[node name="player_active_pokemon_attached_cards" type="Control" parent="ACTIVE_POKEMON/PLAYER" unique_id=1530753657]
 anchors_preset = 0
 offset_left = 407.0
 offset_top = 413.0
 offset_right = 450.0
 offset_bottom = 441.0
 
-[node name="player_active_pokemon_hp_container" type="GridContainer" parent="ACTIVE_POKEMON/PLAYER"]
+[node name="player_active_pokemon_hp_container" type="GridContainer" parent="ACTIVE_POKEMON/PLAYER" unique_id=1296570423]
 layout_mode = 0
 offset_left = 525.0
 offset_top = 183.0
@@ -471,40 +471,40 @@ offset_right = 971.0
 offset_bottom = 369.0
 columns = 12
 
-[node name="player_active_pokemon_status_container" type="VBoxContainer" parent="ACTIVE_POKEMON/PLAYER"]
+[node name="player_active_pokemon_status_container" type="VBoxContainer" parent="ACTIVE_POKEMON/PLAYER" unique_id=1194598290]
 layout_mode = 0
 offset_left = 525.0
 offset_top = 823.0
 offset_right = 565.0
 offset_bottom = 863.0
 
-[node name="OPPONENT" type="Control" parent="ACTIVE_POKEMON"]
+[node name="OPPONENT" type="Control" parent="ACTIVE_POKEMON" unique_id=97350020]
 anchors_preset = 0
 offset_right = 40.0
 offset_bottom = 40.0
 
-[node name="opponent_active_pokemon_container" type="Control" parent="ACTIVE_POKEMON/OPPONENT"]
+[node name="opponent_active_pokemon_container" type="Control" parent="ACTIVE_POKEMON/OPPONENT" unique_id=346251617]
 anchors_preset = 0
 offset_left = 986.0
 offset_top = 260.0
 offset_right = 1412.0
 offset_bottom = 837.0
 
-[node name="opponent_active_pokemon_energies" type="Control" parent="ACTIVE_POKEMON/OPPONENT"]
+[node name="opponent_active_pokemon_energies" type="Control" parent="ACTIVE_POKEMON/OPPONENT" unique_id=1743811097]
 anchors_preset = 0
 offset_left = 1398.0
 offset_top = 261.0
 offset_right = 1932.0
 offset_bottom = 432.0
 
-[node name="opponent_active_pokemon_attached_cards" type="Control" parent="ACTIVE_POKEMON/OPPONENT"]
+[node name="opponent_active_pokemon_attached_cards" type="Control" parent="ACTIVE_POKEMON/OPPONENT" unique_id=205417861]
 anchors_preset = 0
 offset_left = 1400.0
 offset_top = 366.0
 offset_right = 1934.0
 offset_bottom = 537.0
 
-[node name="opponent_active_pokemon_hp_container" type="GridContainer" parent="ACTIVE_POKEMON/OPPONENT"]
+[node name="opponent_active_pokemon_hp_container" type="GridContainer" parent="ACTIVE_POKEMON/OPPONENT" unique_id=1337633305]
 layout_mode = 0
 offset_left = 987.0
 offset_top = 183.0
@@ -512,19 +512,19 @@ offset_right = 1433.0
 offset_bottom = 369.0
 columns = 12
 
-[node name="opponent_active_pokemon_status_container" type="VBoxContainer" parent="ACTIVE_POKEMON/OPPONENT"]
+[node name="opponent_active_pokemon_status_container" type="VBoxContainer" parent="ACTIVE_POKEMON/OPPONENT" unique_id=363755570]
 layout_mode = 0
 offset_left = 986.0
 offset_top = 820.0
 offset_right = 1026.0
 offset_bottom = 860.0
 
-[node name="SELECTION_MODE" type="Control" parent="."]
+[node name="SELECTION_MODE" type="Control" parent="." unique_id=805118675]
 anchors_preset = 0
 offset_right = 40.0
 offset_bottom = 40.0
 
-[node name="selection_mode_scroller" type="ScrollContainer" parent="SELECTION_MODE"]
+[node name="selection_mode_scroller" type="ScrollContainer" parent="SELECTION_MODE" unique_id=791890071]
 clip_contents = false
 layout_mode = 1
 anchors_preset = 8
@@ -541,11 +541,11 @@ grow_vertical = 2
 theme = ExtResource("5_4djes")
 vertical_scroll_mode = 0
 
-[node name="large_selection_mode_container" type="HBoxContainer" parent="SELECTION_MODE/selection_mode_scroller"]
+[node name="large_selection_mode_container" type="HBoxContainer" parent="SELECTION_MODE/selection_mode_scroller" unique_id=1292632923]
 layout_mode = 2
 alignment = 1
 
-[node name="small_selection_mode_container" type="HBoxContainer" parent="SELECTION_MODE"]
+[node name="small_selection_mode_container" type="HBoxContainer" parent="SELECTION_MODE" unique_id=1411783975]
 layout_mode = 1
 anchors_preset = 8
 anchor_left = 0.5
@@ -560,7 +560,7 @@ grow_horizontal = 2
 grow_vertical = 2
 alignment = 2
 
-[node name="opponent_turn_input_blocker" type="ColorRect" parent="."]
+[node name="opponent_turn_input_blocker" type="ColorRect" parent="." unique_id=1367805161]
 visible = false
 layout_mode = 1
 anchors_preset = 15
@@ -570,7 +570,7 @@ grow_horizontal = 2
 grow_vertical = 2
 color = Color(1, 1, 1, 0)
 
-[node name="animation_input_blocker" type="ColorRect" parent="."]
+[node name="animation_input_blocker" type="ColorRect" parent="." unique_id=508300448]
 visible = false
 layout_mode = 1
 anchors_preset = 15
@@ -580,7 +580,7 @@ grow_horizontal = 2
 grow_vertical = 2
 color = Color(1, 1, 1, 0)
 
-[node name="allow_buttons_only_blocker" type="ColorRect" parent="."]
+[node name="allow_buttons_only_blocker" type="ColorRect" parent="." unique_id=1096586706]
 visible = false
 layout_mode = 1
 anchors_preset = 15
@@ -591,28 +591,28 @@ grow_horizontal = 2
 grow_vertical = 2
 color = Color(1, 1, 1, 0)
 
-[node name="trainer_block_screen_container" type="ColorRect" parent="."]
+[node name="trainer_block_screen_container" type="ColorRect" parent="." unique_id=1508301252]
 visible = false
 layout_mode = 0
 offset_top = 166.0
 offset_right = 1920.0
 offset_bottom = 922.0
 
-[node name="played_trainer_card_container" type="Control" parent="trainer_block_screen_container"]
+[node name="played_trainer_card_container" type="Control" parent="trainer_block_screen_container" unique_id=1627146875]
 anchors_preset = 0
 offset_left = 760.0
 offset_top = 69.0
 offset_right = 800.0
 offset_bottom = 109.0
 
-[node name="messagebox_container" type="ColorRect" parent="."]
+[node name="messagebox_container" type="ColorRect" parent="." unique_id=975630026]
 visible = false
 layout_mode = 0
 offset_right = 1918.0
 offset_bottom = 1075.0
 color = Color(0.79, 0, 0.4213333, 0)
 
-[node name="messagebox_texture" type="TextureRect" parent="messagebox_container"]
+[node name="messagebox_texture" type="TextureRect" parent="messagebox_container" unique_id=1802949222]
 layout_mode = 1
 anchors_preset = 7
 anchor_left = 0.5
@@ -626,7 +626,7 @@ grow_horizontal = 2
 grow_vertical = 0
 texture = ExtResource("9_amelh")
 
-[node name="messagebox_text_label" type="Label" parent="messagebox_container"]
+[node name="messagebox_text_label" type="Label" parent="messagebox_container" unique_id=1515621512]
 layout_mode = 1
 anchors_preset = 7
 anchor_left = 0.5
@@ -646,14 +646,14 @@ text = "YOUR OPPONENT'S FERALIGATR USED SUPER MEGA RIPTIDE"
 horizontal_alignment = 1
 vertical_alignment = 1
 
-[node name="coin_flip_container" type="ColorRect" parent="."]
+[node name="coin_flip_container" type="ColorRect" parent="." unique_id=752338353]
 visible = false
 layout_mode = 0
 offset_right = 1922.0
 offset_bottom = 1082.0
 color = Color(1, 1, 1, 0)
 
-[node name="coin_flip_texture" type="TextureRect" parent="coin_flip_container"]
+[node name="coin_flip_texture" type="TextureRect" parent="coin_flip_container" unique_id=1456880654]
 visible = false
 layout_mode = 0
 offset_left = 891.0

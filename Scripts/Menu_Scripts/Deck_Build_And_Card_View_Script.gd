@@ -1054,8 +1054,10 @@ func _display_current_set() -> void:
 			return
 
 		_add_card_to_grid(card_data)
+		
+		##### ERROR: TO FIX, WHEN YOU PRESS ESCAPE TO QUICK AS THE CARDS ARE LOADING THE GAME WILL ERROR ON THE BELOW ACTION 
 		await get_tree().process_frame
-
+	
 
 ## Removes all card entries from the grid, killing tweens to avoid
 ## errors from animating freed nodes.
@@ -1066,10 +1068,11 @@ func _clear_grid() -> void:
 		if tw:
 			tw.kill()
 		child.queue_free()
+
 	# queue_free is deferred, so wait a frame before adding new children
+	##### ERROR: TO FIX, WHEN YOU PRESS ESCAPE TO QUICK AS THE CARDS ARE LOADING THE GAME WILL ERROR ON THE BELOW ACTION 
 	await get_tree().process_frame
-
-
+	
 ## Creates a single card entry in the grid.
 ## card_data is a dictionary: {card_id, owned}
 func _add_card_to_grid(card_data: Dictionary) -> void:

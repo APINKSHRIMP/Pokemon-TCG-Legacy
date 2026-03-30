@@ -1,4 +1,4 @@
-[gd_scene load_steps=12 format=3 uid="uid://bea4luwsg1cgb"]
+[gd_scene format=3 uid="uid://bea4luwsg1cgb"]
 
 [ext_resource type="Script" uid="uid://vym8nlexdqto" path="res://Scripts/Menu_Scripts/Options_Script.gd" id="1_i7mvm"]
 [ext_resource type="Shader" uid="uid://ccm481fk14lc8" path="res://Scripts/Shaders/Background_Scroll_Right_Top_Border.gdshader" id="2_1e4m1"]
@@ -19,20 +19,20 @@ shader = ExtResource("4_1uh3w")
 shader_parameter/scroll_speed = 0.002
 shader_parameter/tint = Vector4(1, 1, 1, 1)
 
-[node name="OPTIONS" type="Control"]
+[node name="OPTIONS" type="Control" unique_id=2095559163]
 layout_mode = 3
 anchors_preset = 0
 offset_right = 40.0
 offset_bottom = 40.0
 script = ExtResource("1_i7mvm")
 
-[node name="BACKGROUND" type="Control" parent="."]
+[node name="BACKGROUND" type="Control" parent="." unique_id=1906592509]
 anchors_preset = 0
 offset_top = 59.0
 offset_right = 40.0
 offset_bottom = 99.0
 
-[node name="top_border" type="TextureRect" parent="BACKGROUND"]
+[node name="top_border" type="TextureRect" parent="BACKGROUND" unique_id=228846970]
 z_index = 200
 material = SubResource("ShaderMaterial_ui6o0")
 layout_mode = 0
@@ -42,7 +42,7 @@ offset_bottom = 48.0
 texture = ExtResource("3_i7mvm")
 stretch_mode = 1
 
-[node name="bottom_border" type="TextureRect" parent="BACKGROUND"]
+[node name="bottom_border" type="TextureRect" parent="BACKGROUND" unique_id=1991823351]
 z_index = 200
 material = SubResource("ShaderMaterial_ui6o0")
 layout_mode = 0
@@ -52,7 +52,7 @@ offset_bottom = 1021.0
 texture = ExtResource("3_i7mvm")
 stretch_mode = 1
 
-[node name="background_scroller" type="TextureRect" parent="BACKGROUND"]
+[node name="background_scroller" type="TextureRect" parent="BACKGROUND" unique_id=1473134741]
 material = SubResource("ShaderMaterial_joqtv")
 layout_mode = 0
 offset_left = -2.0000002
@@ -63,14 +63,14 @@ scale = Vector2(0.29, 0.29)
 texture = ExtResource("5_if2wb")
 stretch_mode = 1
 
-[node name="CONFUSION" type="Control" parent="."]
+[node name="CONFUSION" type="Control" parent="." unique_id=1903279321]
 anchors_preset = 0
 offset_left = 55.0
 offset_top = 6.0
 offset_right = 95.0
 offset_bottom = 46.0
 
-[node name="confusion_rule_label" type="Label" parent="CONFUSION"]
+[node name="confusion_rule_label" type="Label" parent="CONFUSION" unique_id=900271729]
 z_index = 999
 layout_mode = 0
 offset_left = -1.0
@@ -89,7 +89,7 @@ text = "Confusion Rules"
 horizontal_alignment = 1
 vertical_alignment = 1
 
-[node name="confusion_base_button" type="Button" parent="CONFUSION"]
+[node name="confusion_base_button" type="Button" parent="CONFUSION" unique_id=1744390882]
 z_index = 300
 layout_mode = 0
 offset_left = 91.0
@@ -99,7 +99,7 @@ offset_bottom = 264.0
 theme = ExtResource("6_5samb")
 text = "base set rules"
 
-[node name="confusion_allowretreat_button" type="Button" parent="CONFUSION"]
+[node name="confusion_allowretreat_button" type="Button" parent="CONFUSION" unique_id=986998442]
 z_index = 300
 layout_mode = 0
 offset_left = 92.0
@@ -109,7 +109,7 @@ offset_bottom = 353.0
 theme = ExtResource("8_1e4m1")
 text = "fairer retreat rules"
 
-[node name="confusion_ex_button" type="Button" parent="CONFUSION"]
+[node name="confusion_ex_button" type="Button" parent="CONFUSION" unique_id=2129538420]
 z_index = 300
 layout_mode = 0
 offset_left = 94.0
@@ -119,14 +119,14 @@ offset_bottom = 447.0
 theme = ExtResource("8_1e4m1")
 text = "ex era rules"
 
-[node name="BURN" type="Control" parent="."]
+[node name="BURN" type="Control" parent="." unique_id=102905619]
 anchors_preset = 0
 offset_left = 213.0
 offset_top = 8.0
 offset_right = 253.0
 offset_bottom = 48.0
 
-[node name="burn_rule_label" type="Label" parent="BURN"]
+[node name="burn_rule_label" type="Label" parent="BURN" unique_id=1843037262]
 z_index = 999
 layout_mode = 0
 offset_left = 467.0
@@ -145,7 +145,7 @@ text = "Burn Rules"
 horizontal_alignment = 1
 vertical_alignment = 1
 
-[node name="burn_base_button" type="Button" parent="BURN"]
+[node name="burn_base_button" type="Button" parent="BURN" unique_id=951717342]
 z_index = 300
 layout_mode = 0
 offset_left = 576.0
@@ -155,7 +155,7 @@ offset_bottom = 262.0
 theme = ExtResource("6_5samb")
 text = "base set rules"
 
-[node name="burn_ex_button" type="Button" parent="BURN"]
+[node name="burn_ex_button" type="Button" parent="BURN" unique_id=998275954]
 z_index = 300
 layout_mode = 0
 offset_left = 578.0
@@ -165,14 +165,14 @@ offset_bottom = 355.0
 theme = ExtResource("8_1e4m1")
 text = "ex era rules"
 
-[node name="SPEED" type="Control" parent="."]
+[node name="SPEED" type="Control" parent="." unique_id=1334539566]
 anchors_preset = 0
 offset_left = 1560.0
 offset_top = 145.0
 offset_right = 1600.0
 offset_bottom = 185.0
 
-[node name="animation_speed_label" type="Label" parent="SPEED"]
+[node name="animation_speed_label" type="Label" parent="SPEED" unique_id=1725187665]
 z_index = 999
 layout_mode = 0
 offset_left = -225.0
@@ -191,7 +191,7 @@ text = "Animation speed"
 horizontal_alignment = 1
 vertical_alignment = 1
 
-[node name="slow_button" type="Button" parent="SPEED"]
+[node name="slow_button" type="Button" parent="SPEED" unique_id=1427068666]
 z_index = 300
 layout_mode = 0
 offset_left = -127.0
@@ -201,7 +201,7 @@ offset_bottom = 123.0
 theme = ExtResource("6_5samb")
 text = "SLOW"
 
-[node name="fast_button" type="Button" parent="SPEED"]
+[node name="fast_button" type="Button" parent="SPEED" unique_id=1926891035]
 z_index = 300
 layout_mode = 0
 offset_left = -125.0
@@ -211,7 +211,7 @@ offset_bottom = 318.0
 theme = ExtResource("8_1e4m1")
 text = "skip animations"
 
-[node name="skip_button" type="Button" parent="SPEED"]
+[node name="skip_button" type="Button" parent="SPEED" unique_id=1543562065]
 z_index = 300
 layout_mode = 0
 offset_left = -126.0
@@ -221,12 +221,12 @@ offset_bottom = 223.0
 theme = ExtResource("8_1e4m1")
 text = "fast"
 
-[node name="MAIN" type="Control" parent="."]
+[node name="MAIN" type="Control" parent="." unique_id=630256141]
 anchors_preset = 0
 offset_right = 40.0
 offset_bottom = 40.0
 
-[node name="options_save_button" type="Button" parent="MAIN"]
+[node name="options_save_button" type="Button" parent="MAIN" unique_id=730482444]
 z_index = 300
 layout_mode = 0
 offset_left = 568.0
@@ -236,7 +236,7 @@ offset_bottom = 1061.0
 theme = ExtResource("6_5samb")
 text = "save"
 
-[node name="options_cancel_button" type="Button" parent="MAIN"]
+[node name="options_cancel_button" type="Button" parent="MAIN" unique_id=1442229882]
 z_index = 300
 layout_mode = 0
 offset_left = 935.0
@@ -246,7 +246,7 @@ offset_bottom = 1061.0
 theme = ExtResource("7_yfc7x")
 text = "cancel"
 
-[node name="large_header_text_label" type="Label" parent="MAIN"]
+[node name="large_header_text_label" type="Label" parent="MAIN" unique_id=1111759345]
 z_index = 999
 layout_mode = 0
 offset_left = 1.0
@@ -265,12 +265,12 @@ text = "OPTIONS	"
 horizontal_alignment = 1
 vertical_alignment = 1
 
-[node name="MESSAGEBOX" type="Control" parent="."]
+[node name="MESSAGEBOX" type="Control" parent="." unique_id=1960958239]
 anchors_preset = 0
 offset_right = 40.0
 offset_bottom = 40.0
 
-[node name="messagebox_label" type="Label" parent="MESSAGEBOX"]
+[node name="messagebox_label" type="Label" parent="MESSAGEBOX" unique_id=2133064889]
 z_index = 999
 layout_mode = 0
 offset_left = 678.0
@@ -289,7 +289,7 @@ text = "Message box style"
 horizontal_alignment = 1
 vertical_alignment = 1
 
-[node name="messagebox_example" type="TextureRect" parent="MESSAGEBOX"]
+[node name="messagebox_example" type="TextureRect" parent="MESSAGEBOX" unique_id=1287061654]
 layout_mode = 0
 offset_left = 24.0
 offset_top = 634.0

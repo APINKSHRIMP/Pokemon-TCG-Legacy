@@ -11,8 +11,8 @@ config_version=5
 [application]
 
 config/name="Pokemon_TCG_Legacy"
-run/main_scene="uid://b1ieah68g6f44"
-config/features=PackedStringArray("4.5", "Forward Plus")
+run/main_scene="uid://dy73eing56d31"
+config/features=PackedStringArray("4.6", "Forward Plus")
 boot_splash/bg_color=Color(0, 0, 0, 1)
 boot_splash/image="uid://cagy8rhu6sscj"
 config/icon="uid://c2ccn1nk4eauh"
@@ -32,6 +32,7 @@ window/stretch/mode="canvas_items"
 
 [rendering]
 
+textures/canvas_textures/default_texture_filter=0
 environment/defaults/default_clear_color=Color(0, 0, 0, 1)
 2d/snap/snap_2d_transforms_to_pixel=true
 2d/snap/snap_2d_vertices_to_pixel=true

@@ -1,4 +1,4 @@
-[gd_scene load_steps=6 format=3 uid="uid://bq1stytrtp7ka"]
+[gd_scene format=3 uid="uid://bq1stytrtp7ka"]
 
 [ext_resource type="Script" uid="uid://5a2e2mnmbimo" path="res://Scripts/Main_Match_Gameplay_Scripts/Match_End_Outro_Script.gd" id="1_77suw"]
 [ext_resource type="Texture2D" uid="uid://ptklm68n8cm5" path="res://Image_Assets/Backgrounds_And_Borders/Backgrounds/battle_win_screen.png" id="2_77suw"]
@@ -6,14 +6,14 @@
 [ext_resource type="Theme" uid="uid://6shp5ck1tnja" path="res://UI_Themes/kenneyUI.tres" id="4_djk4x"]
 [ext_resource type="Texture2D" uid="uid://4ky851fyq64f" path="res://Image_Assets/Character_Sprites/In_Battle_Sprites/fisherman.png" id="5_2d22p"]
 
-[node name="MatchOutro" type="Control"]
+[node name="MatchOutro" type="Control" unique_id=1733053257]
 layout_mode = 3
 anchors_preset = 0
 offset_right = 40.0
 offset_bottom = 40.0
 script = ExtResource("1_77suw")
 
-[node name="match_outro_background" type="TextureRect" parent="."]
+[node name="match_outro_background" type="TextureRect" parent="." unique_id=767324208]
 layout_mode = 0
 offset_right = 1920.0
 offset_bottom = 1080.0
@@ -21,33 +21,33 @@ pivot_offset = Vector2(960, 540)
 texture = ExtResource("2_77suw")
 expand_mode = 1
 
-[node name="PLAYER" type="Control" parent="."]
+[node name="PLAYER" type="Control" parent="." unique_id=1104552899]
 anchors_preset = 0
 offset_right = 40.0
 offset_bottom = 40.0
 
-[node name="player_sprite" type="Sprite2D" parent="PLAYER"]
+[node name="player_sprite" type="Sprite2D" parent="PLAYER" unique_id=1689390984]
 position = Vector2(524, 532)
 scale = Vector2(1.1, 1.1)
 texture = ExtResource("3_l4x0a")
 
-[node name="OPPONENT" type="Control" parent="."]
+[node name="OPPONENT" type="Control" parent="." unique_id=267946829]
 anchors_preset = 0
 offset_right = 40.0
 offset_bottom = 40.0
 
-[node name="opponent_sprite" type="Sprite2D" parent="OPPONENT"]
+[node name="opponent_sprite" type="Sprite2D" parent="OPPONENT" unique_id=45801470]
 position = Vector2(1457, 504)
 texture = ExtResource("5_2d22p")
 
-[node name="WIN LABELS" type="Control" parent="."]
+[node name="WIN LABELS" type="Control" parent="." unique_id=1707489407]
 anchors_preset = 0
 offset_left = 762.0
 offset_top = 684.0
 offset_right = 1149.0
 offset_bottom = 858.0
 
-[node name="cash_placeholder_label" type="Label" parent="WIN LABELS"]
+[node name="cash_placeholder_label" type="Label" parent="WIN LABELS" unique_id=834013740]
 visible = false
 layout_mode = 0
 offset_left = 103.0
@@ -60,7 +60,7 @@ theme_override_font_sizes/font_size = 58
 text = "¥ 100 "
 horizontal_alignment = 1
 
-[node name="coin_placeholder_label" type="Label" parent="WIN LABELS"]
+[node name="coin_placeholder_label" type="Label" parent="WIN LABELS" unique_id=2050886002]
 visible = false
 layout_mode = 0
 offset_left = -135.0
@@ -73,7 +73,7 @@ theme_override_font_sizes/font_size = 40
 text = "Silver FERALIGATR COIN"
 horizontal_alignment = 1
 
-[node name="character_reward_label" type="Label" parent="WIN LABELS"]
+[node name="character_reward_label" type="Label" parent="WIN LABELS" unique_id=1808348610]
 visible = false
 layout_mode = 0
 offset_left = -53.0

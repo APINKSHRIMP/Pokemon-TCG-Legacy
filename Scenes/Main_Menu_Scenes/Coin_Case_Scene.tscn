@@ -1,4 +1,4 @@
-[gd_scene load_steps=11 format=3 uid="uid://b7wloi1e7ici0"]
+[gd_scene format=3 uid="uid://b7wloi1e7ici0"]
 
 [ext_resource type="Script" uid="uid://qneea1dv6lmq" path="res://Scripts/Menu_Scripts/Coin_Case_Script.gd" id="1_shnqs"]
 [ext_resource type="Shader" uid="uid://ccm481fk14lc8" path="res://Scripts/Shaders/Background_Scroll_Right_Top_Border.gdshader" id="2_dp4bi"]
@@ -18,20 +18,20 @@ shader = ExtResource("4_p7p1x")
 shader_parameter/scroll_speed = 0.002
 shader_parameter/tint = Vector4(1, 1, 1, 1)
 
-[node name="COIN CASE" type="Control"]
+[node name="COIN CASE" type="Control" unique_id=1135142225]
 layout_mode = 3
 anchors_preset = 0
 offset_right = 40.0
 offset_bottom = 40.0
 script = ExtResource("1_shnqs")
 
-[node name="BACKGROUND" type="Control" parent="."]
+[node name="BACKGROUND" type="Control" parent="." unique_id=1194530090]
 anchors_preset = 0
 offset_top = 59.0
 offset_right = 40.0
 offset_bottom = 99.0
 
-[node name="top_border" type="TextureRect" parent="BACKGROUND"]
+[node name="top_border" type="TextureRect" parent="BACKGROUND" unique_id=1290623622]
 z_index = 200
 material = SubResource("ShaderMaterial_ui6o0")
 layout_mode = 0
@@ -41,7 +41,7 @@ offset_bottom = 48.0
 texture = ExtResource("3_4sdkt")
 stretch_mode = 1
 
-[node name="bottom_border" type="TextureRect" parent="BACKGROUND"]
+[node name="bottom_border" type="TextureRect" parent="BACKGROUND" unique_id=1945451914]
 z_index = 200
 material = SubResource("ShaderMaterial_ui6o0")
 layout_mode = 0
@@ -51,7 +51,7 @@ offset_bottom = 1021.0
 texture = ExtResource("3_4sdkt")
 stretch_mode = 1
 
-[node name="background_scroller" type="TextureRect" parent="BACKGROUND"]
+[node name="background_scroller" type="TextureRect" parent="BACKGROUND" unique_id=643590526]
 material = SubResource("ShaderMaterial_joqtv")
 layout_mode = 0
 offset_left = -2.0000002
@@ -62,14 +62,14 @@ scale = Vector2(0.29, 0.29)
 texture = ExtResource("5_4246g")
 stretch_mode = 1
 
-[node name="coin_grid_container" type="GridContainer" parent="."]
+[node name="coin_grid_container" type="GridContainer" parent="." unique_id=730960467]
 layout_mode = 0
 offset_left = 26.0
 offset_top = 111.0
 offset_right = 1919.0
 offset_bottom = 977.0
 
-[node name="coin_save_button" type="Button" parent="."]
+[node name="coin_save_button" type="Button" parent="." unique_id=2078421001]
 z_index = 300
 layout_mode = 0
 offset_left = 568.0
@@ -79,7 +79,7 @@ offset_bottom = 1061.0
 theme = ExtResource("4_ui6o0")
 text = "save"
 
-[node name="coin_cancel_button" type="Button" parent="."]
+[node name="coin_cancel_button" type="Button" parent="." unique_id=118328617]
 z_index = 300
 layout_mode = 0
 offset_left = 935.0
@@ -89,7 +89,7 @@ offset_bottom = 1061.0
 theme = ExtResource("5_krh4r")
 text = "cancel"
 
-[node name="large_header_text_label" type="Label" parent="."]
+[node name="large_header_text_label" type="Label" parent="." unique_id=689700749]
 z_index = 999
 layout_mode = 0
 offset_left = -40.0

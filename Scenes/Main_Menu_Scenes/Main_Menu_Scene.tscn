@@ -1,4 +1,4 @@
-[gd_scene load_steps=12 format=3 uid="uid://sd3crp0k4w67"]
+[gd_scene format=3 uid="uid://sd3crp0k4w67"]
 
 [ext_resource type="Script" uid="uid://d31lopv6mm8la" path="res://Scripts/Menu_Scripts/Main_Menu_Script.gd" id="1_mfee1"]
 [ext_resource type="Texture2D" uid="uid://degk17sx8q4mr" path="res://Image_Assets/Main_Menu_Images/deck_mode.png" id="1_pirq4"]
@@ -16,25 +16,25 @@ shader_parameter/scroll_speed = -0.009
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_fyaru"]
 
-[node name="MAIN MENU" type="Control"]
+[node name="MAIN MENU" type="Control" unique_id=585199395]
 layout_mode = 3
 anchors_preset = 0
 offset_right = 40.0
 offset_bottom = 40.0
 script = ExtResource("1_mfee1")
 
-[node name="BACKGROUND" type="Control" parent="."]
+[node name="BACKGROUND" type="Control" parent="." unique_id=33343848]
 anchors_preset = 0
 offset_top = 59.0
 offset_right = 40.0
 offset_bottom = 99.0
 
-[node name="white_background" type="ColorRect" parent="BACKGROUND"]
+[node name="white_background" type="ColorRect" parent="BACKGROUND" unique_id=1276736523]
 layout_mode = 0
 offset_right = 1921.0
 offset_bottom = 969.0
 
-[node name="top_border" type="TextureRect" parent="BACKGROUND"]
+[node name="top_border" type="TextureRect" parent="BACKGROUND" unique_id=1192851701]
 material = SubResource("ShaderMaterial_v2sbh")
 layout_mode = 0
 offset_top = -55.0
@@ -43,7 +43,7 @@ offset_bottom = 48.0
 texture = ExtResource("7_hd3b5")
 stretch_mode = 1
 
-[node name="bottom_border" type="TextureRect" parent="BACKGROUND"]
+[node name="bottom_border" type="TextureRect" parent="BACKGROUND" unique_id=1660859995]
 material = SubResource("ShaderMaterial_v2sbh")
 layout_mode = 0
 offset_top = 915.0
@@ -52,7 +52,7 @@ offset_bottom = 1018.0
 texture = ExtResource("7_hd3b5")
 stretch_mode = 1
 
-[node name="deck_mode_background" type="TextureRect" parent="."]
+[node name="deck_mode_background" type="TextureRect" parent="." unique_id=1976214605]
 material = SubResource("ShaderMaterial_fyaru")
 layout_mode = 0
 offset_left = 13.0
@@ -61,7 +61,7 @@ offset_right = 750.0
 offset_bottom = 644.0
 texture = ExtResource("1_pirq4")
 
-[node name="map_mode_background" type="TextureRect" parent="."]
+[node name="map_mode_background" type="TextureRect" parent="." unique_id=601312769]
 layout_mode = 0
 offset_left = 765.0
 offset_top = 116.0
@@ -69,7 +69,7 @@ offset_right = 1552.0
 offset_bottom = 644.0
 texture = ExtResource("2_mfee1")
 
-[node name="player_mode_background" type="TextureRect" parent="."]
+[node name="player_mode_background" type="TextureRect" parent="." unique_id=289710629]
 layout_mode = 0
 offset_left = 13.0
 offset_top = 658.0
@@ -78,7 +78,7 @@ offset_bottom = 965.0
 texture = ExtResource("3_xhmi8")
 expand_mode = 1
 
-[node name="options_mode_background" type="TextureRect" parent="."]
+[node name="options_mode_background" type="TextureRect" parent="." unique_id=1693785905]
 layout_mode = 0
 offset_left = 1572.0
 offset_top = 116.0
@@ -87,7 +87,7 @@ offset_bottom = 644.0
 texture = ExtResource("4_lj1sn")
 expand_mode = 1
 
-[node name="coin_case_mode_background" type="TextureRect" parent="."]
+[node name="coin_case_mode_background" type="TextureRect" parent="." unique_id=1001564756]
 layout_mode = 0
 offset_left = 985.0
 offset_top = 658.0
@@ -96,7 +96,7 @@ offset_bottom = 965.0
 texture = ExtResource("5_yxv5o")
 expand_mode = 1
 
-[node name="deck_mode_label" type="Label" parent="."]
+[node name="deck_mode_label" type="Label" parent="." unique_id=1713870272]
 layout_mode = 0
 offset_left = 115.0
 offset_top = 271.0
@@ -110,7 +110,7 @@ text = "CARDS &
 DECK"
 horizontal_alignment = 1
 
-[node name="map_mode_label" type="Label" parent="."]
+[node name="map_mode_label" type="Label" parent="." unique_id=102588052]
 layout_mode = 0
 offset_left = 909.0
 offset_top = 287.0
@@ -124,7 +124,7 @@ text = "WORLD
 MAP"
 horizontal_alignment = 1
 
-[node name="options_mode_label" type="Label" parent="."]
+[node name="options_mode_label" type="Label" parent="." unique_id=212949974]
 layout_mode = 0
 offset_left = 1555.0001
 offset_top = 580.00006
@@ -138,7 +138,7 @@ theme_override_font_sizes/font_size = 76
 text = "OPTIONS"
 horizontal_alignment = 1
 
-[node name="player_mode_label" type="Label" parent="."]
+[node name="player_mode_label" type="Label" parent="." unique_id=2105330849]
 layout_mode = 0
 offset_left = 17.0
 offset_top = 791.0
@@ -151,7 +151,7 @@ theme_override_font_sizes/font_size = 86
 text = "TRAINER CARD"
 horizontal_alignment = 1
 
-[node name="coin_case_label" type="Label" parent="."]
+[node name="coin_case_label" type="Label" parent="." unique_id=1528376637]
 layout_mode = 0
 offset_left = 1155.0
 offset_top = 784.0

@@ -1,20 +1,20 @@
-[gd_scene load_steps=3 format=3 uid="uid://b1ieah68g6f44"]
+[gd_scene format=3 uid="uid://b1ieah68g6f44"]
 
 [ext_resource type="TileSet" uid="uid://dqknfbtehgo6c" path="res://Image_Assets/Map_Sheets/Tile_Sets/Starting_Areas.tres" id="1_8r6y2"]
 [ext_resource type="PackedScene" uid="uid://bprufyh8mxqom" path="res://Scenes/Objects/Player_Object_Scene.tscn" id="2_qxdxg"]
 
-[node name="SLEEPY_VILLAGE" type="Node2D"]
+[node name="SLEEPY_VILLAGE" type="Node2D" unique_id=1897890112]
 
-[node name="TILE_MAPS" type="TileMap" parent="."]
+[node name="TILE_MAPS" type="TileMap" parent="." unique_id=1897854693]
 format = 2
 
-[node name="EMPTY" type="TileMapLayer" parent="TILE_MAPS"]
+[node name="EMPTY" type="TileMapLayer" parent="TILE_MAPS" unique_id=121472252]
 position = Vector2(-1, 0)
 tile_set = ExtResource("1_8r6y2")
 
-[node name="EMPTY2" type="TileMapLayer" parent="TILE_MAPS"]
+[node name="EMPTY2" type="TileMapLayer" parent="TILE_MAPS" unique_id=907435598]
 position = Vector2(-1, 0)
 tile_set = ExtResource("1_8r6y2")
 
-[node name="Player" parent="." instance=ExtResource("2_qxdxg")]
+[node name="Player" parent="." unique_id=283744047 instance=ExtResource("2_qxdxg")]
 position = Vector2(958, 541)

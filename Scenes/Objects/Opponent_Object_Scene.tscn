@@ -1,17 +1,17 @@
-[gd_scene load_steps=3 format=3 uid="uid://ch6fjec74jdav"]
+[gd_scene format=3 uid="uid://ch6fjec74jdav"]
 
 [ext_resource type="Script" uid="uid://65icfpeaid30" path="res://Scripts/Objects_And_Classes/Opponent_Object_Script.gd" id="1_fldhn"]
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_tal5p"]
 size = Vector2(50, 65)
 
-[node name="Opponent" type="CharacterBody2D"]
+[node name="Opponent" type="CharacterBody2D" unique_id=586636241]
 script = ExtResource("1_fldhn")
 
-[node name="AnimatedSprite2D" type="AnimatedSprite2D" parent="."]
+[node name="AnimatedSprite2D" type="AnimatedSprite2D" parent="." unique_id=1030604160]
 
-[node name="CollisionShape2D" type="CollisionShape2D" parent="."]
+[node name="CollisionShape2D" type="CollisionShape2D" parent="." unique_id=446318610]
 shape = SubResource("RectangleShape2D_tal5p")
 
-[node name="DirectionTimer" type="Timer" parent="."]
+[node name="DirectionTimer" type="Timer" parent="." unique_id=721323780]
 one_shot = true

@@ -1,4 +1,4 @@
-[gd_scene load_steps=17 format=3 uid="uid://bwq17qlbumpnu"]
+[gd_scene format=3 uid="uid://bwq17qlbumpnu"]
 
 [ext_resource type="Script" uid="uid://ctjdfhmpwnrs3" path="res://Scripts/Menu_Scripts/Deck_Build_And_Card_View_Script.gd" id="1_koxh3"]
 [ext_resource type="Shader" uid="uid://wbryi6fdcofj" path="res://Scripts/Shaders/Background_Scroll_Right_Side_Border.gdshader" id="2_c438k"]
@@ -24,20 +24,20 @@ shader = ExtResource("4_1jy02")
 shader_parameter/scroll_speed = 0.002
 shader_parameter/tint = Vector4(1, 1, 1, 1)
 
-[node name="DECK MODE" type="Control"]
+[node name="DECK MODE" type="Control" unique_id=2098914800]
 layout_mode = 3
 anchors_preset = 0
 offset_right = 40.0
 offset_bottom = 40.0
 script = ExtResource("1_koxh3")
 
-[node name="BACKGROUND" type="Control" parent="."]
+[node name="BACKGROUND" type="Control" parent="." unique_id=558445029]
 anchors_preset = 0
 offset_top = 59.0
 offset_right = 40.0
 offset_bottom = 99.0
 
-[node name="top_and_right_border" type="TextureRect" parent="BACKGROUND"]
+[node name="top_and_right_border" type="TextureRect" parent="BACKGROUND" unique_id=800970225]
 z_index = -10
 material = SubResource("ShaderMaterial_tpt08")
 layout_mode = 0
@@ -47,7 +47,7 @@ offset_bottom = 1260.0
 texture = ExtResource("3_w5stl")
 stretch_mode = 1
 
-[node name="background_scroller" type="TextureRect" parent="BACKGROUND"]
+[node name="background_scroller" type="TextureRect" parent="BACKGROUND" unique_id=1217624994]
 z_index = -10
 material = SubResource("ShaderMaterial_2qd32")
 layout_mode = 0
@@ -59,14 +59,14 @@ scale = Vector2(0.29, 0.29)
 texture = ExtResource("5_t8qen")
 stretch_mode = 1
 
-[node name="deck_grid_container" type="GridContainer" parent="."]
+[node name="deck_grid_container" type="GridContainer" parent="." unique_id=310183921]
 layout_mode = 0
 offset_left = 3.0
 offset_top = 108.0
 offset_right = 1681.0
 offset_bottom = 1077.0
 
-[node name="deck_save_button" type="Button" parent="."]
+[node name="deck_save_button" type="Button" parent="." unique_id=1237607874]
 z_index = 300
 layout_mode = 0
 offset_left = 1689.0
@@ -77,7 +77,7 @@ theme = ExtResource("6_3fpct")
 theme_override_font_sizes/font_size = 23
 text = "save deck"
 
-[node name="deck_cancel_button" type="Button" parent="."]
+[node name="deck_cancel_button" type="Button" parent="." unique_id=532248086]
 z_index = 300
 layout_mode = 0
 offset_left = 1690.0
@@ -88,7 +88,7 @@ theme = ExtResource("7_r4yq8")
 theme_override_font_sizes/font_size = 23
 text = "cancel"
 
-[node name="deck_name" type="LineEdit" parent="."]
+[node name="deck_name" type="LineEdit" parent="." unique_id=809839952]
 z_index = 300
 layout_mode = 0
 offset_left = 32.0
@@ -102,7 +102,7 @@ theme_override_font_sizes/font_size = 32
 placeholder_text = "Enter deck name....."
 alignment = 1
 
-[node name="empty_deck_button" type="Button" parent="."]
+[node name="empty_deck_button" type="Button" parent="." unique_id=1459830072]
 z_index = 300
 layout_mode = 0
 offset_left = 1690.0
@@ -113,7 +113,7 @@ theme = ExtResource("7_r4yq8")
 theme_override_font_sizes/font_size = 23
 text = "EMPTY DECK"
 
-[node name="load_deck_button" type="Button" parent="."]
+[node name="load_deck_button" type="Button" parent="." unique_id=68475397]
 z_index = 300
 layout_mode = 0
 offset_left = 1690.0
@@ -124,7 +124,7 @@ theme = ExtResource("8_wo1ju")
 theme_override_font_sizes/font_size = 23
 text = "Load deck"
 
-[node name="next_set" type="Button" parent="."]
+[node name="next_set" type="Button" parent="." unique_id=1677040637]
 z_index = 300
 layout_mode = 0
 offset_left = 1621.0
@@ -135,7 +135,7 @@ theme = ExtResource("8_wo1ju")
 theme_override_font_sizes/font_size = 58
 text = ">"
 
-[node name="previous_set" type="Button" parent="."]
+[node name="previous_set" type="Button" parent="." unique_id=416375248]
 z_index = 300
 layout_mode = 0
 offset_left = 977.0
@@ -146,7 +146,7 @@ theme = ExtResource("8_wo1ju")
 theme_override_font_sizes/font_size = 58
 text = "<"
 
-[node name="set_name_label" type="Label" parent="."]
+[node name="set_name_label" type="Label" parent="." unique_id=1084726881]
 z_index = 999
 layout_mode = 0
 offset_left = 1041.0
@@ -159,7 +159,7 @@ theme_override_font_sizes/font_size = 29
 text = "EX TEAM MAGMA VS TEAM AQUA"
 horizontal_alignment = 1
 
-[node name="deck_count_label" type="Label" parent="."]
+[node name="deck_count_label" type="Label" parent="." unique_id=912934320]
 z_index = 999
 layout_mode = 0
 offset_left = 1741.0
@@ -172,14 +172,14 @@ theme_override_font_sizes/font_size = 34
 text = "57/60"
 horizontal_alignment = 1
 
-[node name="ENERGY SECTION" type="Control" parent="."]
+[node name="ENERGY SECTION" type="Control" parent="." unique_id=1168499461]
 anchors_preset = 0
 offset_left = -2.0
 offset_top = -146.0
 offset_right = 38.0
 offset_bottom = -106.0
 
-[node name="change_energy_style_button" type="Button" parent="ENERGY SECTION"]
+[node name="change_energy_style_button" type="Button" parent="ENERGY SECTION" unique_id=500606927]
 z_index = 100
 layout_mode = 0
 offset_left = 1692.0
@@ -192,12 +192,12 @@ theme_override_font_sizes/font_size = 21
 text = "change
 energy style"
 
-[node name="ENERGY ICONS" type="Control" parent="ENERGY SECTION"]
+[node name="ENERGY ICONS" type="Control" parent="ENERGY SECTION" unique_id=247980399]
 anchors_preset = 0
 offset_right = 40.0
 offset_bottom = 40.0
 
-[node name="fighting_energy_icon" type="TextureRect" parent="ENERGY SECTION/ENERGY ICONS"]
+[node name="fighting_energy_icon" type="TextureRect" parent="ENERGY SECTION/ENERGY ICONS" unique_id=1189267188]
 z_index = 200
 layout_mode = 0
 offset_left = 1693.0
@@ -208,7 +208,7 @@ texture = ExtResource("9_rqox2")
 expand_mode = 1
 stretch_mode = 4
 
-[node name="fire_energy_icon" type="TextureRect" parent="ENERGY SECTION/ENERGY ICONS"]
+[node name="fire_energy_icon" type="TextureRect" parent="ENERGY SECTION/ENERGY ICONS" unique_id=158153853]
 z_index = 200
 layout_mode = 0
 offset_left = 1768.0
@@ -219,7 +219,7 @@ texture = ExtResource("10_jtl0e")
 expand_mode = 1
 stretch_mode = 4
 
-[node name="grass_energy_icon" type="TextureRect" parent="ENERGY SECTION/ENERGY ICONS"]
+[node name="grass_energy_icon" type="TextureRect" parent="ENERGY SECTION/ENERGY ICONS" unique_id=1951752346]
 z_index = 200
 layout_mode = 0
 offset_left = 1843.0
@@ -230,7 +230,7 @@ texture = ExtResource("11_knbg0")
 expand_mode = 1
 stretch_mode = 4
 
-[node name="lightning_energy_icon" type="TextureRect" parent="ENERGY SECTION/ENERGY ICONS"]
+[node name="lightning_energy_icon" type="TextureRect" parent="ENERGY SECTION/ENERGY ICONS" unique_id=977540369]
 z_index = 200
 layout_mode = 0
 offset_left = 1693.0
@@ -241,7 +241,7 @@ texture = ExtResource("12_stlcy")
 expand_mode = 1
 stretch_mode = 4
 
-[node name="psychic_energy_icon" type="TextureRect" parent="ENERGY SECTION/ENERGY ICONS"]
+[node name="psychic_energy_icon" type="TextureRect" parent="ENERGY SECTION/ENERGY ICONS" unique_id=358517053]
 z_index = 200
 layout_mode = 0
 offset_left = 1768.0
@@ -252,7 +252,7 @@ texture = ExtResource("13_u6eey")
 expand_mode = 1
 stretch_mode = 4
 
-[node name="water_energy_icon" type="TextureRect" parent="ENERGY SECTION/ENERGY ICONS"]
+[node name="water_energy_icon" type="TextureRect" parent="ENERGY SECTION/ENERGY ICONS" unique_id=2130065599]
 z_index = 200
 layout_mode = 0
 offset_left = 1843.0
@@ -263,12 +263,12 @@ texture = ExtResource("14_ongeh")
 expand_mode = 1
 stretch_mode = 4
 
-[node name="ENERGY LABELS" type="Control" parent="ENERGY SECTION"]
+[node name="ENERGY LABELS" type="Control" parent="ENERGY SECTION" unique_id=523221842]
 anchors_preset = 0
 offset_right = 40.0
 offset_bottom = 40.0
 
-[node name="fighting_energy_count_label" type="Label" parent="ENERGY SECTION/ENERGY LABELS"]
+[node name="fighting_energy_count_label" type="Label" parent="ENERGY SECTION/ENERGY LABELS" unique_id=246950334]
 z_index = 210
 layout_mode = 0
 offset_left = 1704.0
@@ -282,7 +282,7 @@ theme_override_font_sizes/font_size = 33
 text = "0"
 horizontal_alignment = 1
 
-[node name="fire_energy_count_label" type="Label" parent="ENERGY SECTION/ENERGY LABELS"]
+[node name="fire_energy_count_label" type="Label" parent="ENERGY SECTION/ENERGY LABELS" unique_id=582950044]
 z_index = 210
 layout_mode = 0
 offset_left = 1776.0
@@ -296,7 +296,7 @@ theme_override_font_sizes/font_size = 33
 text = "0"
 horizontal_alignment = 1
 
-[node name="grass_energy_count_label" type="Label" parent="ENERGY SECTION/ENERGY LABELS"]
+[node name="grass_energy_count_label" type="Label" parent="ENERGY SECTION/ENERGY LABELS" unique_id=563003976]
 z_index = 210
 layout_mode = 0
 offset_left = 1848.0
@@ -310,7 +310,7 @@ theme_override_font_sizes/font_size = 33
 text = "15"
 horizontal_alignment = 1
 
-[node name="lightning_energy_count_label" type="Label" parent="ENERGY SECTION/ENERGY LABELS"]
+[node name="lightning_energy_count_label" type="Label" parent="ENERGY SECTION/ENERGY LABELS" unique_id=1470680539]
 z_index = 210
 layout_mode = 0
 offset_left = 1703.0
@@ -324,7 +324,7 @@ theme_override_font_sizes/font_size = 33
 text = "0"
 horizontal_alignment = 1
 
-[node name="psychic_energy_count_label" type="Label" parent="ENERGY SECTION/ENERGY LABELS"]
+[node name="psychic_energy_count_label" type="Label" parent="ENERGY SECTION/ENERGY LABELS" unique_id=1154121028]
 z_index = 210
 layout_mode = 0
 offset_left = 1779.0
@@ -338,7 +338,7 @@ theme_override_font_sizes/font_size = 33
 text = "12"
 horizontal_alignment = 1
 
-[node name="water_energy_count_label" type="Label" parent="ENERGY SECTION/ENERGY LABELS"]
+[node name="water_energy_count_label" type="Label" parent="ENERGY SECTION/ENERGY LABELS" unique_id=1627993579]
 z_index = 210
 layout_mode = 0
 offset_left = 1851.0
