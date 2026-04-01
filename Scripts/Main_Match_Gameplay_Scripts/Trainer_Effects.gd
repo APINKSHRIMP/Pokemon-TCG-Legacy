@@ -645,6 +645,8 @@ func resolve_standard_trainer(card: card_object, is_opponent: bool) -> void:
 		"base1-93": await effect_gust_of_wind(is_opponent)
 		"base1-94": await effect_potion(is_opponent)
 		"base1-95": await effect_switch(is_opponent)
+		"base2-64": await effect_poke_ball(is_opponent)
+		"base2-64": await effect_poke_ball(is_opponent)
 		_:
 			print("Unknown trainer card: ", card_id, " (", card_name, ")")
 
@@ -761,9 +763,6 @@ func player_select_cards_to_discard(hand: Array, count: int, title: String, hint
 	await main.trainer_discard_selection_done
 	main.trainer_discard_selection_active = false
 	main.hide_selection_mode_display_main()
-
-############################################### Section F: CPU TRAINER SCORING & PLAY PHASES ########################################################
-
 # Master scoring function: returns the CPU priority score for a trainer card
 func effect_bill(is_opponent: bool) -> void:
 	for i in range(2):
@@ -2331,3 +2330,98 @@ func effect_switch(is_opponent: bool) -> void:
 ############################################### Section E: PLAYER TRAINER UI HELPERS ################################################################
 
 # Shows hand cards for player to select N cards to discard
+
+
+
+# base2-64 — Poké Ball: Flip coin, heads = search deck for any Basic or Evolution
+func effect_poke_ball(is_opponent: bool) -> void:
+	var deck = main.opponent_deck if is_opponent else main.player_deck
+	
+	await main.show_message("POKE BALL: FLIPPING COIN...")
+	if main._should_bail(): return
+	var coin = await main.flip_coin()
+	
+	if not coin:
+		await main.show_message("TAILS! POKE BALL FAILED!")
+		if main._should_bail(): return
+		return
+	
+	await main.show_message("HEADS! SEARCH YOUR DECK!")
+	if main._should_bail(): return
+	
+	# Find all Basic and Evolution pokemon in deck
+	var matching = []
+	for card in deck:
+		var supertype = card.metadata.get("supertype", "")
+		var subtypes = card.metadata.get("subtypes", [])
+		if supertype == "Pokémon":
+			if "Basic" in subtypes or "Stage 1" in subtypes or "Stage 2" in subtypes:
+				matching.append(card)
+	
+	if matching.size() == 0:
+		await main.show_message("NO POKEMON FOUND IN DECK!")
+		if main._should_bail(): return
+		deck.shuffle()
+		return
+	
+	var chosen: card_object = null
+	
+	if is_opponent:
+		# CPU picks the best pokemon
+		# Prefer evolutions that match bench/active, then basics
+		var best: card_object = null
+		var best_score = -1
+		for card in matching:
+			var score = 0
+			var subtypes = card.metadata.get("subtypes", [])
+			var evolves_from = card.metadata.get("evolvesFrom", "")
+			
+			# Check if this evolution matches something on field
+			if "Stage 1" in subtypes or "Stage 2" in subtypes:
+				var all_cpu = main.cpu_ai.get_all_cpu_field_pokemon()
+				for p in all_cpu:
+					if p.metadata.get("name", "") == evolves_from:
+						score += 50
+						break
+			
+			# Basics score lower
+			if "Basic" in subtypes:
+				score += 10
+			
+			var hp = int(card.metadata.get("hp", "0"))
+			score += hp / 10
+			
+			if score > best_score:
+				best_score = score
+				best = card
+		
+		chosen = best
+	else:
+		# Player selects from matching cards
+		main.trainer_deck_search_active = true
+		main.show_enlarged_array_selection_mode(matching)
+		main.cancel_button.visible = true
+		main.header_label.text = "POKE BALL: CHOOSE A POKEMON"
+		main.hint_label.text = "Select a Basic or Evolution Pokemon"
+		main.action_button.text = "TAKE"
+		main.action_button.disabled = true
+		main.action_button.theme = main.theme_disabled
+		await main.trainer_target_selected
+		if main._should_bail(): return
+		chosen = main.selected_card_for_action
+		main.trainer_deck_search_active = false
+		main.hide_selection_mode_display_main()
+	
+	if chosen != null:
+		var hand = main.opponent_hand if is_opponent else main.player_hand
+		deck.erase(chosen)
+		chosen.current_location = "hand"
+		hand.append(chosen)
+		main.refresh_hand_display(is_opponent)
+		await main.show_message(chosen.metadata.get("name", "").to_upper() + " ADDED TO HAND!")
+		if main._should_bail(): return
+	
+	deck.shuffle()
+	main.update_deck_icon(is_opponent)
+	print("TRAINER APPLIED: Poke Ball complete")
+

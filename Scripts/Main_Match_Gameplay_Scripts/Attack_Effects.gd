@@ -956,6 +956,45 @@ func parse_card_text_effects(attack_text: String, attacker_name: String) -> Arra
 			effects.append({"type": "force_switch", "target": "defender", "chooser": chooser, "flip": flip})
 			print("EFFECT PARSED: Force Switch -> Defender | Chooser: ", chooser, " | Flip: ", flip)
 
+
+	# --- DAMAGE REDUCTION NEXT TURN (Minimize, Pounce, Snivel) ---
+	if ("damage done" in text or "damage done by" in text) and "reduced by" in text and ("next turn" in text or "opponent's next turn" in text):
+		var reduction = extract_number_before(text, "after applying")
+		if reduction <= 0:
+			reduction = 20
+		effects.append({"type": "damage_reduction", "target": "self", "amount": reduction, "flip": "none"})
+		print("EFFECT PARSED: Damage Reduction -> Self ", reduction)
+
+	# --- ATTACK BLOCK NEXT TURN (Tail Wag, Leer) ---
+	if "can't attack" in text and lower_name in text and "next turn" in text:
+		var flip = get_flip_context(text, text.find("can't attack"))
+		effects.append({"type": "attack_block", "target": "defender", "flip": flip})
+		print("EFFECT PARSED: Attack Block -> Defender | Flip: ", flip)
+
+	# --- SELF SWITCH (Exeggutor Teleport) ---
+	if "switch " + lower_name + " with" in text and "benched" in text:
+		effects.append({"type": "self_switch", "target": "self", "flip": "none"})
+		print("EFFECT PARSED: Self Switch -> Self")
+
+	# --- BENCH DAMAGE SINGLE (Pikachu Spark) ---
+	if "choose 1 of them" in text and "damage to it" in text and "bench" in text and "damage to each" not in text:
+		var damage = extract_number_before(text, "damage to it")
+		if damage <= 0:
+			damage = 10
+		effects.append({"type": "bench_damage_single", "target": "opponent_bench", "damage": damage, "flip": "none"})
+		print("EFFECT PARSED: Bench Damage Single -> ", damage)
+
+	# --- LEECH SEED (Exeggcute) ---
+	if "unless all damage" in text and "is prevented" in text and "remove 1 damage counter" in text:
+		effects.append({"type": "leech_seed", "target": "self", "flip": "none"})
+		print("EFFECT PARSED: Leech Seed heal")
+
+	# --- FOUL ODOR: Both pokemon confused ---
+	if "both" in text and "defending" in text and lower_name in text and "confused" in text:
+		effects.append({"type": "status", "target": "defender", "status": "Confused", "flip": "none"})
+		effects.append({"type": "status", "target": "self", "status": "Confused", "flip": "none"})
+		print("EFFECT PARSED: Foul Odor -> Both Confused")
+
 	if effects.size() == 0:
 		print("EFFECT PARSED: No recognised effects in: ", text.left(80))
 
@@ -1031,6 +1070,21 @@ func apply_card_text_effects(effects: Array, attacker: card_object, defender: ca
 			await apply_force_switch(effect, is_opponent_attacking)
 			if main._should_bail(): return
 			
+		if effect["type"] == "damage_reduction":
+			await apply_damage_reduction(effect, attacker, is_opponent_attacking)
+			if main._should_bail(): return
+		if effect["type"] == "attack_block":
+			await apply_attack_block(effect, attacker, defender, is_opponent_attacking)
+			if main._should_bail(): return
+		if effect["type"] == "self_switch":
+			await apply_self_switch(attacker, is_opponent_attacking)
+			if main._should_bail(): return
+		if effect["type"] == "bench_damage_single":
+			await apply_bench_damage_single(effect, is_opponent_attacking)
+			if main._should_bail(): return
+		if effect["type"] == "leech_seed":
+			await apply_leech_seed(attacker, defender, is_opponent_attacking)
+			if main._should_bail(): return
 ########################################################### END EFFECT PARSING FUNCTIONS #############################################################
 ######################################################################################################################################################
 
@@ -1121,6 +1175,7 @@ func apply_energy_discard_defender(effect: Dictionary, defender: card_object, is
 	
 	if is_defender_opponent:
 		# Player is attacking — player chooses which of opponent's energies to discard
+		main.opponent_blocker.visible = false
 		main.defender_energy_discard_active = true
 		main.show_enlarged_array_selection_mode(defender.attached_energies)
 		main.cancel_button.visible = false
@@ -1134,8 +1189,10 @@ func apply_energy_discard_defender(effect: Dictionary, defender: card_object, is
 		energy_to_discard = main.selected_card_for_action
 		main.defender_energy_discard_active = false
 		main.hide_selection_mode_display_main()
+		main.opponent_blocker.visible = true
 	elif is_defender_player:
 		# Opponent is attacking — player chooses which of their own energies to discard
+		main.opponent_blocker.visible = false
 		main.defender_energy_discard_active = true
 		main.show_enlarged_array_selection_mode(defender.attached_energies)
 		main.cancel_button.visible = false
@@ -1149,6 +1206,7 @@ func apply_energy_discard_defender(effect: Dictionary, defender: card_object, is
 		energy_to_discard = main.selected_card_for_action
 		main.defender_energy_discard_active = false
 		main.hide_selection_mode_display_main()
+		main.opponent_blocker.visible = true
 	
 	if energy_to_discard != null:
 		var energy_texture = main.get_card_texture(energy_to_discard)
@@ -1323,6 +1381,7 @@ func apply_force_switch(effect: Dictionary, is_opponent_attacking: bool) -> void
 		# Target is the opponent (CPU)
 		if chooser == "attacker":
 			# Lure: PLAYER picks from opponent's bench
+			main.opponent_blocker.visible = false
 			main.forced_switch_selection_active = true
 			main.show_enlarged_array_selection_mode(main.opponent_bench)
 			main.cancel_button.visible = false
@@ -1336,6 +1395,7 @@ func apply_force_switch(effect: Dictionary, is_opponent_attacking: bool) -> void
 			new_active = main.selected_card_for_action
 			main.forced_switch_selection_active = false
 			main.hide_selection_mode_display_main()
+			main.opponent_blocker.visible = true
 		else:
 			# Whirlwind: CPU picks its own bench replacement
 			var cpu_eval = main.cpu_ai.build_cpu_evaluation()
@@ -1375,6 +1435,7 @@ func apply_force_switch(effect: Dictionary, is_opponent_attacking: bool) -> void
 			new_active = worst_pokemon if worst_pokemon else main.player_bench[0]
 		else:
 			# Whirlwind: Player picks their own bench replacement
+			main.opponent_blocker.visible = false
 			main.forced_switch_selection_active = true
 			main.show_enlarged_array_selection_mode(main.player_bench)
 			main.cancel_button.visible = false
@@ -1388,6 +1449,7 @@ func apply_force_switch(effect: Dictionary, is_opponent_attacking: bool) -> void
 			new_active = main.selected_card_for_action
 			main.forced_switch_selection_active = false
 			main.hide_selection_mode_display_main()
+			main.opponent_blocker.visible = true
 		
 		if new_active != null:
 			var old_active = main.player_active_pokemon
@@ -1407,6 +1469,465 @@ func apply_force_switch(effect: Dictionary, is_opponent_attacking: bool) -> void
 			main.display_pokemon(false)
 			main.display_active_pokemon_energies(false)
 
+
+
+# Applies damage reduction for next turn (Minimize/Pounce/Snivel)
+func apply_damage_reduction(effect: Dictionary, attacker: card_object, is_opponent_attacking: bool) -> void:
+	var amount = effect.get("amount", 20)
+	attacker.damage_reduction_next_turn = amount
+	main.update_status_icons(attacker, is_opponent_attacking)
+	await main.show_message(attacker.metadata.get("name", "").to_upper() + " REDUCES DAMAGE BY " + str(amount) + " NEXT TURN!")
+	if main._should_bail(): return
+	print("EFFECT APPLIED: ", attacker.metadata.get("name", ""), " damage reduction = ", amount)
+
+# Applies attack block for next turn (Tail Wag/Leer)
+func apply_attack_block(effect: Dictionary, attacker: card_object, defender: card_object, is_opponent_attacking: bool) -> void:
+	defender.attack_blocked_next_turn = true
+	defender.attack_blocked_by_id = attacker.get_instance_id()
+	await main.show_message(defender.metadata.get("name", "").to_upper() + " CAN'T ATTACK " + attacker.metadata.get("name", "").to_upper() + " NEXT TURN!")
+	if main._should_bail(): return
+	print("EFFECT APPLIED: ", defender.metadata.get("name", ""), " can't attack ", attacker.metadata.get("name", ""))
+
+# Self switch with bench (Exeggutor Teleport)
+func apply_self_switch(attacker: card_object, is_opponent_attacking: bool) -> void:
+	var bench = main.opponent_bench if is_opponent_attacking else main.player_bench
+	if bench.size() == 0:
+		await main.show_message("NO BENCH POKEMON TO SWITCH WITH!")
+		if main._should_bail(): return
+		return
+	
+	var new_active: card_object = null
+	if is_opponent_attacking:
+		# CPU picks best replacement
+		var cpu_eval = main.cpu_ai.build_cpu_evaluation()
+		new_active = main.cpu_ai.pick_best_bench_replacement(bench, main.player_active_pokemon, cpu_eval)
+		if new_active == null:
+			new_active = bench[0]
+	else:
+		# Player picks
+		main.opponent_blocker.visible = false
+		main.forced_switch_selection_active = true
+		main.show_enlarged_array_selection_mode(bench)
+		main.cancel_button.visible = true
+		main.header_label.text = "TELEPORT: CHOOSE REPLACEMENT"
+		main.hint_label.text = "Select a bench Pokemon to switch in"
+		main.action_button.text = "SWITCH"
+		main.action_button.disabled = true
+		main.action_button.theme = main.theme_disabled
+		await main.forced_switch_chosen
+		if main._should_bail(): return
+		new_active = main.selected_card_for_action
+		main.forced_switch_selection_active = false
+		main.hide_selection_mode_display_main()
+		main.opponent_blocker.visible = true
+	
+	if new_active == null:
+		return
+	
+	var old_active = attacker
+	await main.show_message(old_active.metadata["name"].to_upper() + " SWITCHED WITH " + new_active.metadata["name"].to_upper() + "!")
+	if main._should_bail(): return
+	await main.animate_retreat(old_active, new_active, [], is_opponent_attacking)
+	if main._should_bail(): return
+	
+	bench.erase(new_active)
+	bench.append(old_active)
+	old_active.current_location = "bench"
+	new_active.current_location = "active"
+	if is_opponent_attacking:
+		main.opponent_active_pokemon = new_active
+	else:
+		main.player_active_pokemon = new_active
+	main.clear_all_statuses(old_active, is_opponent_attacking)
+	main.display_pokemon(is_opponent_attacking)
+	main.display_active_pokemon_energies(is_opponent_attacking)
+
+# Bench damage to a single chosen target (Pikachu Spark)
+func apply_bench_damage_single(effect: Dictionary, is_opponent_attacking: bool) -> void:
+	var damage = effect.get("damage", 10)
+	var target_bench = main.player_bench if is_opponent_attacking else main.opponent_bench
+	var is_target_opponent = !is_opponent_attacking
+	
+	if target_bench.size() == 0:
+		print("BENCH DAMAGE SINGLE: No bench targets")
+		return
+	
+	var target: card_object = null
+	
+	if is_target_opponent:
+		# CPU is the target side — CPU picks which bench pokemon takes damage
+		# For player attacking: player picks opponent's bench target
+		main.opponent_blocker.visible = false
+		main.trainer_pokemon_selection_active = true
+		main.show_enlarged_array_selection_mode(target_bench)
+		main.cancel_button.visible = false
+		main.header_label.text = "CHOOSE A BENCHED POKEMON"
+		main.hint_label.text = "This attack does " + str(damage) + " damage to 1 benched Pokemon"
+		main.action_button.text = "DEAL DAMAGE"
+		main.action_button.disabled = true
+		main.action_button.theme = main.theme_disabled
+		await main.trainer_target_selected
+		if main._should_bail(): return
+		target = main.selected_card_for_action
+		main.trainer_pokemon_selection_active = false
+		main.hide_selection_mode_display_main()
+		main.opponent_blocker.visible = true
+	else:
+		# Player is the target side — CPU chooses which player bench to damage
+		var weakest_hp = 9999
+		for bp in target_bench:
+			if bp.current_hp < weakest_hp:
+				weakest_hp = bp.current_hp
+				target = bp
+		if target == null and target_bench.size() > 0:
+			target = target_bench[0]
+	
+	if target != null:
+		target.current_hp = max(0, target.current_hp - damage)
+		await main.show_message(target.metadata.get("name", "").to_upper() + " TOOK " + str(damage) + " BENCH DAMAGE!")
+		if main._should_bail(): return
+		print("BENCH DAMAGE SINGLE: ", target.metadata.get("name", ""), " took ", damage)
+
+# Leech Seed: heal 1 damage counter from attacker if damage was dealt
+func apply_leech_seed(attacker: card_object, defender: card_object, is_opponent_attacking: bool) -> void:
+	var max_hp = int(attacker.metadata.get("hp", "0"))
+	if attacker.current_hp < max_hp and defender.current_hp > 0:
+		attacker.current_hp = min(max_hp, attacker.current_hp + 10)
+		main.display_hp_circles_above_align(attacker, is_opponent_attacking)
+		SoundManagerScript.play_sfx(SoundManagerScript.SFX_heal_sound)
+		await main.show_message(attacker.metadata.get("name", "").to_upper() + " HEALED 10 HP!")
+		if main._should_bail(): return
+		print("LEECH SEED: ", attacker.metadata.get("name", ""), " healed 10 HP")
+
+# SWORDS DANCE: Set flag to boost Slash next turn
+func execute_swords_dance(attacker: card_object, is_opponent: bool) -> void:
+	attacker.swords_dance_active = true
+	await main.show_message(attacker.metadata.get("name", "").to_upper() + " USED SWORDS DANCE! SLASH POWERED UP!")
+	if main._should_bail(): return
+	print("SWORDS DANCE: ", attacker.metadata.get("name", ""), " Slash buffed for next turn")
+
+# HURRICANE: Deal 30 damage, return defender to hand unless KO'd
+func execute_hurricane(attacker: card_object, defender: card_object, is_opponent: bool) -> void:
+	if attacker == null or defender == null:
+		return
+	
+	if await handle_attack_confusion(attacker, is_opponent):
+		return
+	if await handle_attack_blind(attacker, is_opponent):
+		return
+	
+	var attacking_types = attacker.metadata.get("types", ["Colorless"])
+	var result = main.calculate_final_damage(30, attacking_types, defender, attacker)
+	var final_damage = result["damage"]
+	
+	if main.check_defender_invincible(defender, !is_opponent):
+		return
+	final_damage = main.apply_defender_no_damage_shield(defender, final_damage, !is_opponent)
+	await main.display_and_apply_attack_damage(attacker, defender, final_damage, result["modifiers"], is_opponent, 30)
+	if main._should_bail(): return
+	
+	# If defender is NOT KO'd, return it and all attached cards to hand
+	if defender.current_hp > 0:
+		# Defender's hand is on the opposite side of the attacker
+		var target_hand = main.player_hand if is_opponent else main.opponent_hand
+		var target_bench = main.player_bench if is_opponent else main.opponent_bench
+		
+		# Move all attached energies to hand
+		for energy in defender.attached_energies:
+			target_hand.append(energy)
+		defender.attached_energies.clear()
+		
+		# Move all pre-evolutions to hand
+		for pre_evo in defender.attached_pre_evolutions:
+			target_hand.append(pre_evo)
+		defender.attached_pre_evolutions.clear()
+		
+		# Move defender itself to hand
+		target_hand.append(defender)
+		defender.current_location = "hand"
+		
+		# Remove from active slot on defender's side
+		if is_opponent:
+			# CPU attacked, defender is player's active
+			if defender == main.player_active_pokemon:
+				main.player_active_pokemon = null
+			else:
+				target_bench.erase(defender)
+		else:
+			# Player attacked, defender is opponent's active
+			if defender == main.opponent_active_pokemon:
+				main.opponent_active_pokemon = null
+			else:
+				target_bench.erase(defender)
+		
+		main.clear_all_statuses(defender, !is_opponent)
+		await main.show_message(defender.metadata.get("name", "").to_upper() + " WAS RETURNED TO HAND!")
+		if main._should_bail(): return
+		main.display_pokemon(!is_opponent)
+		main.refresh_hand_display(!is_opponent)
+		main.display_active_pokemon_energies(!is_opponent)
+		
+		# Handle post-knockout replacement for the returned pokemon's side
+		await main.handle_post_knockout(!is_opponent)
+		if main._should_bail(): return
+
+# CHAIN LIGHTNING: 20 to defender, 10 to each same-type bench (both sides)
+func execute_chain_lightning(attacker: card_object, defender: card_object, is_opponent: bool) -> void:
+	if attacker == null or defender == null:
+		return
+	
+	if await handle_attack_confusion(attacker, is_opponent):
+		return
+	if await handle_attack_blind(attacker, is_opponent):
+		return
+	
+	var attacking_types = attacker.metadata.get("types", ["Colorless"])
+	var result = main.calculate_final_damage(20, attacking_types, defender, attacker)
+	var final_damage = result["damage"]
+	
+	if main.check_defender_invincible(defender, !is_opponent):
+		return
+	final_damage = main.apply_defender_no_damage_shield(defender, final_damage, !is_opponent)
+	await main.display_and_apply_attack_damage(attacker, defender, final_damage, result["modifiers"], is_opponent, 20)
+	if main._should_bail(): return
+	
+	# If defender is Colorless, no chain lightning
+	var defender_types = defender.metadata.get("types", ["Colorless"])
+	if "Colorless" in defender_types:
+		await main.show_message("NO CHAIN LIGHTNING - COLORLESS TARGET!")
+		if main._should_bail(): return
+		return
+	
+	# Damage all benched pokemon of the same type (BOTH sides)
+	var target_type = defender_types[0]
+	var all_benches = [
+		{"bench": main.player_bench, "is_opponent": false},
+		{"bench": main.opponent_bench, "is_opponent": true}
+	]
+	for bench_info in all_benches:
+		for pokemon in bench_info["bench"]:
+			var pokemon_types = pokemon.metadata.get("types", [])
+			if target_type in pokemon_types:
+				pokemon.current_hp = max(0, pokemon.current_hp - 10)
+				print("CHAIN LIGHTNING: ", pokemon.metadata.get("name", ""), " took 10 damage")
+	await main.show_message("CHAIN LIGHTNING HIT ALL " + target_type.to_upper() + " BENCHED POKEMON!")
+	if main._should_bail(): return
+
+# BIG EGGSPLOSION: Flip coins = attached energy, 20 per heads
+func execute_big_eggsplosion(attacker: card_object, defender: card_object, is_opponent: bool) -> void:
+	if attacker == null or defender == null:
+		return
+	
+	if await handle_attack_confusion(attacker, is_opponent):
+		return
+	if await handle_attack_blind(attacker, is_opponent):
+		return
+	
+	var energy_count = attacker.attached_energies.size()
+	if energy_count == 0:
+		await main.show_message("NO ENERGY ATTACHED - 0 DAMAGE!")
+		if main._should_bail(): return
+		return
+	
+	await main.show_message("FLIPPING " + str(energy_count) + " COINS!")
+	if main._should_bail(): return
+	
+	var heads = 0
+	var use_silent = energy_count > 1
+	for i in range(energy_count):
+		var coin = await main.flip_coin(use_silent)
+		if coin:
+			heads += 1
+	
+	var base_damage = 20 * heads
+	await main.show_message("GOT " + str(heads) + " HEADS! " + str(base_damage) + " DAMAGE!")
+	if main._should_bail(): return
+	
+	var attacking_types = attacker.metadata.get("types", ["Colorless"])
+	var result = main.calculate_final_damage(base_damage, attacking_types, defender, attacker)
+	var final_damage = result["damage"]
+	
+	if main.check_defender_invincible(defender, !is_opponent):
+		return
+	final_damage = main.apply_defender_no_damage_shield(defender, final_damage, !is_opponent)
+	await main.display_and_apply_attack_damage(attacker, defender, final_damage, result["modifiers"], is_opponent, base_damage)
+	if main._should_bail(): return
+
+# BOYFRIENDS (Nidoqueen): 20 + 20 per Nidoking in play
+func execute_boyfriends(attacker: card_object, defender: card_object, is_opponent: bool) -> void:
+	if attacker == null or defender == null:
+		return
+	
+	if await handle_attack_confusion(attacker, is_opponent):
+		return
+	if await handle_attack_blind(attacker, is_opponent):
+		return
+	
+	var nidoking_count = 0
+	var all_pokemon = []
+	var active = main.opponent_active_pokemon if is_opponent else main.player_active_pokemon
+	var bench = main.opponent_bench if is_opponent else main.player_bench
+	if active != null:
+		all_pokemon.append(active)
+	all_pokemon.append_array(bench)
+	for p in all_pokemon:
+		if p.metadata.get("name", "") == "Nidoking":
+			nidoking_count += 1
+	
+	var base_damage = 20 + (20 * nidoking_count)
+	await main.show_message("BOYFRIENDS: " + str(nidoking_count) + " NIDOKING IN PLAY! " + str(base_damage) + " DAMAGE!")
+	if main._should_bail(): return
+	
+	var attacking_types = attacker.metadata.get("types", ["Colorless"])
+	var result = main.calculate_final_damage(base_damage, attacking_types, defender, attacker)
+	var final_damage = result["damage"]
+	
+	if main.check_defender_invincible(defender, !is_opponent):
+		return
+	final_damage = main.apply_defender_no_damage_shield(defender, final_damage, !is_opponent)
+	await main.display_and_apply_attack_damage(attacker, defender, final_damage, result["modifiers"], is_opponent, base_damage)
+	if main._should_bail(): return
+
+# MEGA DRAIN: Deal 40 damage, heal half (rounded up to nearest 10)
+func execute_mega_drain(attacker: card_object, defender: card_object, is_opponent: bool) -> void:
+	if attacker == null or defender == null:
+		return
+	
+	if await handle_attack_confusion(attacker, is_opponent):
+		return
+	if await handle_attack_blind(attacker, is_opponent):
+		return
+	
+	var attacking_types = attacker.metadata.get("types", ["Colorless"])
+	var result = main.calculate_final_damage(40, attacking_types, defender, attacker)
+	var final_damage = result["damage"]
+	
+	if main.check_defender_invincible(defender, !is_opponent):
+		return
+	final_damage = main.apply_defender_no_damage_shield(defender, final_damage, !is_opponent)
+	await main.display_and_apply_attack_damage(attacker, defender, final_damage, result["modifiers"], is_opponent, 40)
+	if main._should_bail(): return
+	
+	# Heal attacker for half of actual damage dealt (rounded up to nearest 10)
+	var actual_damage = min(final_damage, defender.current_hp + final_damage)  # damage before KO check
+	var heal_amount = int(ceil(actual_damage / 2.0 / 10.0)) * 10
+	var max_hp = int(attacker.metadata.get("hp", "0"))
+	var healed = min(heal_amount, max_hp - attacker.current_hp)
+	if healed > 0:
+		attacker.current_hp = min(max_hp, attacker.current_hp + healed)
+		SoundManagerScript.play_sfx(SoundManagerScript.SFX_heal_sound)
+		main.display_hp_circles_above_align(attacker, is_opponent)
+		await main.show_message(attacker.metadata.get("name", "").to_upper() + " HEALED " + str(healed) + " HP!")
+		if main._should_bail(): return
+
+# LEECH LIFE: Deal damage, heal equal to damage dealt after W/R
+func execute_leech_life(attacker: card_object, defender: card_object, is_opponent: bool, base_damage: int) -> void:
+	if attacker == null or defender == null:
+		return
+	
+	if await handle_attack_confusion(attacker, is_opponent):
+		return
+	if await handle_attack_blind(attacker, is_opponent):
+		return
+	
+	var attacking_types = attacker.metadata.get("types", ["Colorless"])
+	var result = main.calculate_final_damage(base_damage, attacking_types, defender, attacker)
+	var final_damage = result["damage"]
+	
+	if main.check_defender_invincible(defender, !is_opponent):
+		return
+	final_damage = main.apply_defender_no_damage_shield(defender, final_damage, !is_opponent)
+	await main.display_and_apply_attack_damage(attacker, defender, final_damage, result["modifiers"], is_opponent, base_damage)
+	if main._should_bail(): return
+	
+	# Heal attacker equal to final damage dealt
+	var max_hp = int(attacker.metadata.get("hp", "0"))
+	var healed = min(final_damage, max_hp - attacker.current_hp)
+	if healed > 0:
+		attacker.current_hp = min(max_hp, attacker.current_hp + healed)
+		SoundManagerScript.play_sfx(SoundManagerScript.SFX_heal_sound)
+		main.display_hp_circles_above_align(attacker, is_opponent)
+		await main.show_message(attacker.metadata.get("name", "").to_upper() + " DRAINED " + str(healed) + " HP!")
+		if main._should_bail(): return
+
+# CALL FOR FAMILY/FRIEND: Search deck for specific basic pokemon
+func execute_call_for_pokemon(attacker: card_object, is_opponent: bool, search_names: Array, search_type: String) -> void:
+	var bench = main.opponent_bench if is_opponent else main.player_bench
+	var deck = main.opponent_deck if is_opponent else main.player_deck
+	
+	if bench.size() >= 5:
+		await main.show_message("BENCH IS FULL!")
+		if main._should_bail(): return
+		return
+	
+	if deck.size() == 0:
+		await main.show_message("DECK IS EMPTY!")
+		if main._should_bail(): return
+		return
+	
+	# Find matching basic pokemon in deck
+	var valid_cards: Array = []
+	for card in deck:
+		var subtypes = card.metadata.get("subtypes", [])
+		if "Basic" not in subtypes:
+			continue
+		var card_name = card.metadata.get("name", "")
+		if search_names.size() > 0:
+			if card_name in search_names:
+				valid_cards.append(card)
+		elif search_type != "":
+			var card_types = card.metadata.get("types", [])
+			if search_type in card_types:
+				valid_cards.append(card)
+		else:
+			valid_cards.append(card)
+	
+	if valid_cards.size() == 0:
+		await main.show_message("NO MATCHING POKEMON FOUND IN DECK!")
+		if main._should_bail(): return
+		# Shuffle deck anyway
+		deck.shuffle()
+		return
+	
+	var chosen: card_object = null
+	if is_opponent:
+		# CPU picks the card with the highest HP (best bench addition)
+		var best_hp = -1
+		for card in valid_cards:
+			var hp = int(card.metadata.get("hp", "0"))
+			if hp > best_hp:
+				best_hp = hp
+				chosen = card
+	else:
+		# Player picks from valid cards
+		main.opponent_blocker.visible = false
+		main.trainer_deck_search_active = true
+		main.show_enlarged_array_selection_mode(valid_cards)
+		main.cancel_button.visible = true
+		main.header_label.text = "CHOOSE A POKEMON FROM YOUR DECK"
+		main.hint_label.text = "Select a Basic Pokemon to put on your bench"
+		main.action_button.text = "SELECT"
+		main.action_button.disabled = true
+		main.action_button.theme = main.theme_disabled
+		await main.trainer_target_selected
+		if main._should_bail(): return
+		chosen = main.selected_card_for_action
+		main.trainer_deck_search_active = false
+		main.hide_selection_mode_display_main()
+		main.opponent_blocker.visible = true
+	
+	if chosen != null and bench.size() < 5:
+		deck.erase(chosen)
+		chosen.current_location = "bench"
+		chosen.current_hp = int(chosen.metadata.get("hp", "0"))
+		chosen.placed_on_field_this_turn = true
+		bench.append(chosen)
+		await main.show_message(chosen.metadata.get("name", "").to_upper() + " WAS PLACED ON THE BENCH!")
+		if main._should_bail(): return
+		main.display_pokemon(is_opponent)
+	
+	# Shuffle deck after search
+	deck.shuffle()
 ######################################################### SPECIAL ATTACK FUNCTIONS ############################################################
 
 # METRONOME (Clefairy): Copy one of the opponent's attacks and execute it

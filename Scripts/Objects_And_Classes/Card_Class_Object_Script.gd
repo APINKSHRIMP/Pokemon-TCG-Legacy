@@ -56,6 +56,35 @@ var pluspower_count: int = 0           # Number of PlusPower cards attached (sta
 var is_electrode_energy: bool = false
 var electrode_energy_type: String = "" # The chosen energy type for Buzzap
 
+# Scyther Swords Dance: if true, Slash does 60 instead of 30 next turn
+var swords_dance_active: bool = false
+
+# Minimize / Pounce / Snivel: reduce incoming damage by this amount next turn
+var damage_reduction_next_turn: int = 0
+
+# Tail Wag / Leer: if true, the defending pokemon can't attack this pokemon next turn
+# Benching either pokemon ends the effect
+var attack_blocked_next_turn: bool = false
+var attack_blocked_by_id: int = -1  # instance_id of the pokemon that set the block
+
+# Venomoth Shift: temporary type override (persists until changed or leaves play)
+var temporary_type: String = ""
+
+
+# Scyther Swords Dance: if true, Slash does 60 instead of 30 this turn
+var swords_dance_active: bool = false
+
+# Minimize / Pounce / Snivel: reduce incoming damage by this amount next turn
+var damage_reduction_next_turn: int = 0
+
+# Tail Wag / Leer: if true, the defending pokemon can't attack this pokemon next turn
+# Benching either pokemon ends the effect
+var attack_blocked_next_turn: bool = false
+var attack_blocked_by_id: int = -1  # instance_id of the pokemon that set the block
+
+# Venomoth Shift: temporary type override (persists until changed or leaves play)
+var temporary_type: String = ""
+
 # Utility: get damage counters (each counter = 10 damage)
 func get_damage_counters() -> int:
 	var max_hp = int(metadata.get("hp", "0"))

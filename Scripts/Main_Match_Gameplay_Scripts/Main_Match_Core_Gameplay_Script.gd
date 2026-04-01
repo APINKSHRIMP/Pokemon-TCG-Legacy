@@ -2363,6 +2363,7 @@ func inbetween_turn_checks(player_turn_just_ended: bool = true) -> void:
 	if player_turn_just_ended:
 		clear_end_of_turn_statuses(player_active_pokemon, false)
 		clear_defensive_statuses(opponent_active_pokemon, true)
+		clear_jungle_defensive_statuses(opponent_active_pokemon, true)
 		player_retreat_disabled = false
 		# Discard PlusPower from player's active at end of player's turn
 		if player_active_pokemon != null:
@@ -2372,6 +2373,7 @@ func inbetween_turn_checks(player_turn_just_ended: bool = true) -> void:
 	else:
 		clear_end_of_turn_statuses(opponent_active_pokemon, true)
 		clear_defensive_statuses(player_active_pokemon, false)
+		clear_jungle_defensive_statuses(player_active_pokemon, false)
 		opponent_retreat_disabled = false
 		# Discard PlusPower from opponent's active at end of opponent's turn
 		if opponent_active_pokemon != null:
@@ -2469,6 +2471,18 @@ func clear_defensive_statuses(pokemon: card_object, is_opponent: bool) -> void:
 
 	if changed:
 		update_status_icons(pokemon, is_opponent)
+
+# Also clear Jungle-set defensive properties (called from same timing)
+func clear_jungle_defensive_statuses(pokemon: card_object, is_opponent: bool) -> void:
+	if pokemon == null:
+		return
+	if pokemon.damage_reduction_next_turn > 0:
+		pokemon.damage_reduction_next_turn = 0
+		print("EXPIRED: ", pokemon.metadata.get("name", ""), " damage reduction wore off")
+	if pokemon.attack_blocked_next_turn:
+		pokemon.attack_blocked_next_turn = false
+		pokemon.attack_blocked_by_id = -1
+		print("EXPIRED: ", pokemon.metadata.get("name", ""), " attack block wore off")
 
 ########################################################### Evolution functions ##############################################################
 
@@ -2765,6 +2779,9 @@ func perform_attack(attack_index: int) -> void:
 		print("Error: No opponent active pokemon to attack")
 		return
 	
+	# Block player input immediately once attack is selected to prevent stray clicks
+	opponent_blocker.visible = true
+	
 	var attacks = get_attacks_for_card(player_active_pokemon)
 	var attack = attacks[attack_index]
 	var attack_name = attack.get("name", "")
@@ -2780,6 +2797,97 @@ func perform_attack(attack_index: int) -> void:
 	
 	# Handle special attacks that have completely unique flows
 	var text_lower = attack.get("text", "").to_lower()
+	
+
+	# SWORDS DANCE: Buff Slash damage next turn (no damage attack)
+	if "swords dance" in attack_name.to_lower() or ("during your next turn" in text_lower and "slash" in text_lower and "instead of" in text_lower):
+		hide_attack_buttons()
+		await attack_effects.execute_swords_dance(player_active_pokemon, false)
+		await get_tree().create_timer(0.5).timeout
+		player_end_turn_checks()
+		return
+	
+	# HURRICANE: Return defender to hand unless KO
+	if "return the defending" in text_lower and "to your opponent" in text_lower and "hand" in text_lower:
+		hide_attack_buttons()
+		await attack_effects.execute_hurricane(player_active_pokemon, opponent_active_pokemon, false)
+		await check_all_knockouts()
+		await get_tree().create_timer(0.5).timeout
+		player_end_turn_checks()
+		return
+	
+	# CHAIN LIGHTNING: Damage same-type benched pokemon on both sides
+	if "chain lightning" in attack_name.to_lower() or ("same type as the defending" in text_lower and "damage to each benched" in text_lower):
+		hide_attack_buttons()
+		await attack_effects.execute_chain_lightning(player_active_pokemon, opponent_active_pokemon, false)
+		await check_all_knockouts()
+		await get_tree().create_timer(0.5).timeout
+		player_end_turn_checks()
+		return
+	
+	# BIG EGGSPLOSION: Flip coins equal to attached energy count
+	if "number of energy attached" in text_lower and "times the number of heads" in text_lower:
+		hide_attack_buttons()
+		await attack_effects.execute_big_eggsplosion(player_active_pokemon, opponent_active_pokemon, false)
+		await check_all_knockouts()
+		await get_tree().create_timer(0.5).timeout
+		player_end_turn_checks()
+		return
+	
+	# BOYFRIENDS (Nidoqueen): +20 per Nidoking in play
+	if "boyfriends" in attack_name.to_lower() or "for each nidoking" in text_lower:
+		hide_attack_buttons()
+		await attack_effects.execute_boyfriends(player_active_pokemon, opponent_active_pokemon, false)
+		await check_all_knockouts()
+		await get_tree().create_timer(0.5).timeout
+		player_end_turn_checks()
+		return
+	
+	# MEGA DRAIN: Deal damage, heal half
+	if "mega drain" in attack_name.to_lower() or ("remove" in text_lower and "equal to half the damage" in text_lower):
+		hide_attack_buttons()
+		await attack_effects.execute_mega_drain(player_active_pokemon, opponent_active_pokemon, false)
+		last_attack_on_opponent = {"damage": 40, "attack": attack, "attacker_types": player_active_pokemon.metadata.get("types", ["Colorless"])}
+		player_attacked_this_turn = true
+		await check_all_knockouts()
+		await get_tree().create_timer(0.5).timeout
+		player_end_turn_checks()
+		return
+	
+	# LEECH LIFE (Venonat): Deal damage, heal equal to damage dealt
+	if "leech life" in attack_name.to_lower() or ("remove" in text_lower and "equal to the damage done" in text_lower and "half" not in text_lower and "unless" not in text_lower):
+		hide_attack_buttons()
+		var base_dmg = attack_effects.parse_attack_base_damage(attack)
+		await attack_effects.execute_leech_life(player_active_pokemon, opponent_active_pokemon, false, base_dmg)
+		last_attack_on_opponent = {"damage": base_dmg, "attack": attack, "attacker_types": player_active_pokemon.metadata.get("types", ["Colorless"])}
+		player_attacked_this_turn = true
+		await check_all_knockouts()
+		await get_tree().create_timer(0.5).timeout
+		player_end_turn_checks()
+		return
+	
+	# CALL FOR FAMILY/FRIEND/SPROUT: Search deck for specific Basic Pokemon
+	if "search your deck for" in text_lower and ("put it onto your bench" in text_lower or "put it on your bench" in text_lower):
+		hide_attack_buttons()
+		var search_names: Array = []
+		var search_type: String = ""
+		var search_text = attack.get("text", "")
+		if "named Bellsprout" in search_text:
+			search_names = ["Bellsprout"]
+		elif "named Oddish" in search_text:
+			search_names = ["Oddish"]
+		elif "Nidoran" in search_text:
+			search_names = ["Nidoran \u2640", "Nidoran \u2642"]
+		elif "Fighting Basic" in search_text:
+			search_type = "Fighting"
+		else:
+			var atk_types = player_active_pokemon.metadata.get("types", [])
+			if atk_types.size() > 0:
+				search_type = atk_types[0]
+		await attack_effects.execute_call_for_pokemon(player_active_pokemon, false, search_names, search_type)
+		await get_tree().create_timer(0.5).timeout
+		player_end_turn_checks()
+		return
 	
 	# METRONOME: Copy one of the opponent's attacks
 	if "choose 1 of the defending" in text_lower and "copies that attack" in text_lower:
@@ -2822,6 +2930,28 @@ func perform_attack(attack_index: int) -> void:
 		await get_tree().create_timer(0.5).timeout
 		player_end_turn_checks()
 		return
+	
+	# Check attack_blocked flag (Tail Wag / Leer) - benching either pokemon ends this
+	if player_active_pokemon.attack_blocked_next_turn:
+		if opponent_active_pokemon.get_instance_id() == player_active_pokemon.attack_blocked_by_id:
+			await show_message(player_active_pokemon.metadata["name"].to_upper() + " CAN'T ATTACK!")
+			hide_attack_buttons()
+			player_active_pokemon.attack_blocked_next_turn = false
+			player_active_pokemon.attack_blocked_by_id = -1
+			await get_tree().create_timer(0.5).timeout
+			player_end_turn_checks()
+			return
+		else:
+			# Benching broke the effect
+			player_active_pokemon.attack_blocked_next_turn = false
+			player_active_pokemon.attack_blocked_by_id = -1
+	
+	# Swords Dance: If active, boost Slash base damage
+	if player_active_pokemon.swords_dance_active and attack_name.to_lower() == "slash":
+		attack = attack.duplicate()
+		attack["damage"] = "60"
+		player_active_pokemon.swords_dance_active = false
+		await show_message("SWORDS DANCE BOOST! SLASH DOES 60 DAMAGE!")
 	
 	if await attack_effects.handle_attack_confusion(player_active_pokemon, false):
 		hide_attack_buttons()
@@ -2876,6 +3006,9 @@ func perform_attack(attack_index: int) -> void:
 	player_attacked_this_turn = true
 	
 	var _pae_effects = attack_effects.parse_card_text_effects(attack.get("text", ""), player_active_pokemon.metadata.get("name", ""))
+	
+	# Clear swords dance after any attack
+	player_active_pokemon.swords_dance_active = false
 	if _pae_effects.size() > 0:
 		await attack_effects.apply_card_text_effects(_pae_effects, player_active_pokemon, opponent_active_pokemon, false, flip_result)
 	
@@ -2920,12 +3053,29 @@ func calculate_final_damage(base_damage: int, attacking_types: Array, defending_
 			damage = max(0, damage + value)
 			modifiers_applied.append("RESISTANCE " + resistance["value"])
 	
-	# Apply shielded damage threshold (Onix Harden / Mr. Mime Invisible Wall)
+	# Apply shielded damage threshold (Onix Harden)
 	# If the damage after weakness/resistance is AT OR BELOW the threshold, prevent it entirely
 	if defending_pokemon.shielded_damage_threshold > 0 and damage > 0:
 		if damage <= defending_pokemon.shielded_damage_threshold:
 			modifiers_applied.append("NO DAMAGE")
 			damage = 0
+	
+	# Mr. Mime Invisible Wall: if damage >= 30 after W/R, prevent it entirely
+	# This is a passive Pokemon Power check (not a stored property)
+	if damage >= 30:
+		var defender_abilities = defending_pokemon.metadata.get("abilities", [])
+		for ability in defender_abilities:
+			if ability.get("name", "") == "Invisible Wall":
+				if defending_pokemon.special_condition not in ["Paralyzed", "Asleep", "Confused"] and not defending_pokemon.is_poisoned:
+					modifiers_applied.append("INVISIBLE WALL")
+					damage = 0
+					break
+	
+	# Apply damage reduction from Minimize / Pounce / Snivel
+	if damage > 0 and defending_pokemon.damage_reduction_next_turn > 0:
+		var reduction = min(damage, defending_pokemon.damage_reduction_next_turn)
+		damage -= reduction
+		modifiers_applied.append("REDUCED -" + str(reduction))
 	
 	# Apply PlusPower bonus (+10 per PlusPower attached to the attacker)
 	# PlusPower is applied AFTER weakness/resistance per original TCG rules
@@ -3156,6 +3306,15 @@ func apply_status_effect(effect: Dictionary, attacker: card_object, defender: ca
 		print("STATUS BLOCKED: ", target_pokemon.metadata.get("name", ""), " is a bench token - immune to status")
 		return
 
+	# Snorlax Thick Skinned: can't become Asleep, Confused, Paralyzed, or Poisoned
+	var target_abilities = target_pokemon.metadata.get("abilities", [])
+	for _ab in target_abilities:
+		if _ab.get("name", "") == "Thick Skinned":
+			if target_pokemon.special_condition not in ["Asleep", "Confused", "Paralyzed"]:
+				await show_message(target_pokemon.metadata.get("name", "").to_upper() + "'S THICK SKINNED PREVENTS STATUS!")
+				print("STATUS BLOCKED: Thick Skinned prevents status on ", target_pokemon.metadata.get("name", ""))
+				return
+
 	var status = effect["status"]
 	var mutually_exclusive = ["Paralyzed", "Asleep", "Confused"]
 
@@ -3364,7 +3523,22 @@ func has_evolution(base_pokemon: card_object, card_array: Array, stage_type: Str
 func get_retreat_cost(pokemon: card_object) -> int:
 	if pokemon == null:
 		return 0
-	return pokemon.metadata.get("retreatCost", []).size()
+	var cost = pokemon.metadata.get("retreatCost", []).size()
+	
+	# Dodrio Retreat Aid: reduce retreat cost by 1 while Dodrio is on the bench
+	var bench = []
+	if pokemon == player_active_pokemon or pokemon in player_bench:
+		bench = player_bench
+	elif pokemon == opponent_active_pokemon or pokemon in opponent_bench:
+		bench = opponent_bench
+	for bp in bench:
+		var bp_abilities = bp.metadata.get("abilities", [])
+		for _ability in bp_abilities:
+			if _ability.get("name", "") == "Retreat Aid":
+				if bp.special_condition not in ["Paralyzed", "Asleep", "Confused"] and not bp.is_poisoned:
+					cost = max(0, cost - 1)
+					break
+	return cost
 
 # Loads the small card image texture for any card object by its UID
 func get_card_texture(card: card_object) -> Texture2D:

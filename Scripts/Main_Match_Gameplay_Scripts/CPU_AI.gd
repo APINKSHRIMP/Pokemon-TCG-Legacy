@@ -1856,6 +1856,59 @@ func score_parsed_effects(effects: Array, defender: card_object) -> float:
 			else:
 				score += 10.0 * flip_mult
 
+
+		if effect["type"] == "damage_reduction_self":
+			score += 15.0 * flip_mult
+
+		if effect["type"] == "prevent_attack":
+			score += 50.0 * flip_mult
+
+		if effect["type"] == "self_switch":
+			# Value depends on board state
+			if main.opponent_active_pokemon != null:
+				var active_hp_pct = float(main.opponent_active_pokemon.current_hp) / max(int(main.opponent_active_pokemon.metadata.get("hp", "1")), 1)
+				if active_hp_pct < 0.3:
+					score += 40.0  # Retreat to safety
+				else:
+					score -= 20.0  # Probably don't want to switch
+		
+		if effect["type"] == "bench_damage_single":
+			if main.player_bench.size() > 0:
+				score += effect.get("damage", 0) * 0.5
+
+		if effect["type"] == "leech_seed_heal":
+			var damage_on_attacker = 0
+			if main.opponent_active_pokemon != null:
+				var max_hp_r = int(main.opponent_active_pokemon.metadata.get("hp", "0"))
+				damage_on_attacker = max_hp_r - main.opponent_active_pokemon.current_hp
+			if damage_on_attacker > 0:
+				score += 10.0
+
+		if effect["type"] == "damage_reduction":
+			score += 15.0
+
+		if effect["type"] == "attack_block":
+			score += 20.0 * flip_mult
+
+		if effect["type"] == "self_switch":
+			# Teleport is useful if we're low HP or have a better attacker
+			if main.opponent_active_pokemon != null:
+				var hp_pct = float(main.opponent_active_pokemon.current_hp) / max(int(main.opponent_active_pokemon.metadata.get("hp", "1")), 1)
+				if hp_pct < 0.3:
+					score += 30.0
+				else:
+					score -= 20.0  # Don't switch if healthy
+
+		if effect["type"] == "bench_damage_single":
+			if main.player_bench.size() > 0:
+				score += effect.get("damage", 10) * 0.5
+
+		if effect["type"] == "leech_seed":
+			if main.opponent_active_pokemon != null:
+				var dmg = int(main.opponent_active_pokemon.metadata.get("hp", "0")) - main.opponent_active_pokemon.current_hp
+				if dmg > 0:
+					score += 5.0
+
 	if defender.is_invincible:
 		var defender_bonus = 0.0
 		for effect in effects:
@@ -2096,6 +2149,87 @@ func cpu_phase_attack(cpu_eval: Dictionary) -> void:
 		main.display_active_pokemon_energies(true)
 		return
 	
+
+	# SWORDS DANCE
+	if "swords dance" in chosen_text or ("during your next turn" in chosen_text and "slash" in chosen_text and "instead of" in chosen_text):
+		await main.attack_effects.execute_swords_dance(main.opponent_active_pokemon, true)
+		if main._should_bail(): return
+		main.display_active_pokemon_energies(true)
+		return
+	
+	# HURRICANE
+	if "return the defending" in chosen_text and "hand" in chosen_text:
+		await main.attack_effects.execute_hurricane(main.opponent_active_pokemon, main.player_active_pokemon, true)
+		if main._should_bail(): return
+		await main.check_all_knockouts()
+		if main._should_bail(): return
+		main.display_active_pokemon_energies(true)
+		return
+	
+	# CHAIN LIGHTNING
+	if "chain lightning" in chosen_name.to_lower() or ("same type as the defending" in chosen_text and "damage to each benched" in chosen_text):
+		await main.attack_effects.execute_chain_lightning(main.opponent_active_pokemon, main.player_active_pokemon, true)
+		if main._should_bail(): return
+		await main.check_all_knockouts()
+		if main._should_bail(): return
+		main.display_active_pokemon_energies(true)
+		return
+	
+	# BIG EGGSPLOSION
+	if "number of energy attached" in chosen_text and "times the number of heads" in chosen_text:
+		await main.attack_effects.execute_big_eggsplosion(main.opponent_active_pokemon, main.player_active_pokemon, true)
+		if main._should_bail(): return
+		await main.check_all_knockouts()
+		if main._should_bail(): return
+		main.display_active_pokemon_energies(true)
+		return
+	
+	# BOYFRIENDS
+	if "boyfriends" in chosen_name.to_lower() or "for each nidoking" in chosen_text:
+		await main.attack_effects.execute_boyfriends(main.opponent_active_pokemon, main.player_active_pokemon, true)
+		if main._should_bail(): return
+		await main.check_all_knockouts()
+		if main._should_bail(): return
+		main.display_active_pokemon_energies(true)
+		return
+	
+	# MEGA DRAIN
+	if "mega drain" in chosen_name.to_lower() or ("remove" in chosen_text and "equal to half the damage" in chosen_text):
+		await main.attack_effects.execute_mega_drain(main.opponent_active_pokemon, main.player_active_pokemon, true)
+		if main._should_bail(): return
+		main.last_attack_on_player = {"damage": 40, "attack": chosen_attack, "attacker_types": cpu_types}
+		main.opponent_attacked_this_turn = true
+		await main.check_all_knockouts()
+		if main._should_bail(): return
+		main.display_active_pokemon_energies(true)
+		return
+	
+	# LEECH LIFE
+	if "leech life" in chosen_name.to_lower() or ("remove" in chosen_text and "equal to the damage done" in chosen_text and "half" not in chosen_text and "unless" not in chosen_text):
+		var base_dmg = main.attack_effects.parse_attack_base_damage(chosen_attack)
+		await main.attack_effects.execute_leech_life(main.opponent_active_pokemon, main.player_active_pokemon, true, base_dmg)
+		if main._should_bail(): return
+		main.last_attack_on_player = {"damage": base_dmg, "attack": chosen_attack, "attacker_types": cpu_types}
+		main.opponent_attacked_this_turn = true
+		await main.check_all_knockouts()
+		if main._should_bail(): return
+		main.display_active_pokemon_energies(true)
+		return
+	
+	# CALL FOR FAMILY/FRIEND
+	if "search your deck for" in chosen_text and ("put it onto your bench" in chosen_text or "put it on your bench" in chosen_text):
+		var search_names: Array = []
+		var search_type: String = ""
+		var raw_text = chosen_attack.get("text", "")
+		if "named Bellsprout" in raw_text: search_names = ["Bellsprout"]
+		elif "named Oddish" in raw_text: search_names = ["Oddish"]
+		elif "Nidoran" in raw_text: search_names = ["Nidoran \u2640", "Nidoran \u2642"]
+		elif "Fighting Basic" in raw_text: search_type = "Fighting"
+		await main.attack_effects.execute_call_for_pokemon(main.opponent_active_pokemon, true, search_names, search_type)
+		if main._should_bail(): return
+		main.display_active_pokemon_energies(true)
+		return
+	
 	if "conversion 1" in chosen_name.to_lower():
 		await main.attack_effects.execute_conversion(main.opponent_active_pokemon, main.player_active_pokemon, true, true)
 		if main._should_bail(): return
@@ -2106,6 +2240,29 @@ func cpu_phase_attack(cpu_eval: Dictionary) -> void:
 		if main._should_bail(): return
 		main.display_active_pokemon_energies(true)
 		return
+	
+	
+	# Check attack_blocked flag (Tail Wag / Leer) - benching either pokemon ends this
+	if main.opponent_active_pokemon.attack_blocked_next_turn:
+		if main.player_active_pokemon != null and main.player_active_pokemon.get_instance_id() == main.opponent_active_pokemon.attack_blocked_by_id:
+			await main.show_message(main.opponent_active_pokemon.metadata["name"].to_upper() + " CAN'T ATTACK!")
+			if main._should_bail(): return
+			main.opponent_active_pokemon.attack_blocked_next_turn = false
+			main.opponent_active_pokemon.attack_blocked_by_id = -1
+			main.display_active_pokemon_energies(true)
+			return
+		else:
+			# Benching broke the effect
+			main.opponent_active_pokemon.attack_blocked_next_turn = false
+			main.opponent_active_pokemon.attack_blocked_by_id = -1
+	
+	# Swords Dance: boost Slash damage
+	if main.opponent_active_pokemon.swords_dance_active and chosen_name.to_lower() == "slash":
+		chosen_attack = chosen_attack.duplicate()
+		chosen_attack["damage"] = "60"
+		main.opponent_active_pokemon.swords_dance_active = false
+		await main.show_message("SWORDS DANCE BOOST! SLASH DOES 60 DAMAGE!")
+		if main._should_bail(): return
 	
 	if await main.attack_effects.handle_attack_confusion(main.opponent_active_pokemon, true):
 		main.display_active_pokemon_energies(true)
@@ -2152,6 +2309,9 @@ func cpu_phase_attack(cpu_eval: Dictionary) -> void:
 	main.opponent_attacked_this_turn = true
 	
 	var _cpu_pae2 = main.attack_effects.parse_card_text_effects(chosen_attack.get("text", ""), main.opponent_active_pokemon.metadata.get("name", ""))
+	
+	# Clear swords dance after any attack
+	main.opponent_active_pokemon.swords_dance_active = false
 	if _cpu_pae2.size() > 0:
 		await main.attack_effects.apply_card_text_effects(_cpu_pae2, main.opponent_active_pokemon, main.player_active_pokemon, true, flip_result)
 	if main._should_bail(): return
@@ -2686,3 +2846,52 @@ func opponent_take_prize_card() -> void:
 ############################################### Section A: HELPER FUNCTIONS #########################################################################
 
 # Returns true if the Pokemon has any status condition that blocks Pokemon Powers
+
+
+
+# Returns priority score for discarding a card (lower = discard first)
+func evaluate_hand_card_priority(card: card_object, hand: Array) -> int:
+	if hand.size() <= 2:
+		return 99
+	
+	var supertype = card.metadata.get("supertype", "")
+	
+	if supertype == "Energy":
+		var energy_count = 0
+		for c in hand:
+			if c.metadata.get("supertype") == "Energy":
+				energy_count += 1
+		if energy_count >= 3:
+			return 1
+		else:
+			return 99
+	
+	var subtypes = card.metadata.get("subtypes", [])
+	if "Stage 1" in subtypes or "Stage 2" in subtypes:
+		return 4
+	
+	if supertype == "Pokémon":
+		if "Basic" in subtypes:
+			if main.opponent_bench.size() >= 2:
+				return 2
+			else:
+				return 4
+	
+	if supertype == "Trainer":
+		var subtype = subtypes[0] if subtypes.size() > 0 else ""
+		if subtype == "Supporter":
+			return 4
+		else:
+			return 3
+	
+	return 3
+
+# Chooses bench damage targets sorted by lowest HP first (maximize KOs)
+func cpu_choose_bench_damage_targets(count: int, damage_per: int) -> Array:
+	var bench = main.player_bench
+	if bench.size() == 0:
+		return []
+	var targets = bench.duplicate()
+	targets.sort_custom(func(a, b): return a.current_hp < b.current_hp)
+	return targets.slice(0, min(count, targets.size()))
+

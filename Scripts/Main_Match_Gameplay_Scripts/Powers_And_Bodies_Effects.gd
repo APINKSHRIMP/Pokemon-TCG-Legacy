@@ -70,7 +70,7 @@ func open_power_menu() -> void:
 				continue
 			var ability_name = ability.get("name", "")
 			# Skip passive powers (they don't go in menu)
-			if ability_name in ["Strikes Back", "Energy Burn"]:
+			if ability_name in ["Strikes Back", "Energy Burn", "Invisible Wall", "Thick Skinned", "Retreat Aid"]:
 				continue
 			# Check if usable
 			if ability_name != "Buzzap" and is_power_blocked_by_status(pokemon):
@@ -136,6 +136,9 @@ func activate_power(pokemon: card_object, ability: Dictionary) -> void:
 		"Energy Trans": await power_energy_trans(pokemon)
 		"Buzzap": await power_buzzap(pokemon)
 		"Discard": await power_bench_token_discard(pokemon)
+		"Shift": await power_shift(pokemon)
+		"Heal": await power_heal_vileplume(pokemon)
+		"Peek": await power_peek(pokemon)
 		_: await main.show_message("Power not implemented: " + ability_name)
 
 # Damage Swap (Alakazam): Move 1 damage counter between your pokemon
@@ -477,6 +480,232 @@ func power_bench_token_discard(token: card_object) -> void:
 		if main._should_bail(): return
 		main.display_active_pokemon_energies(false)
 
+
+
+############################################### Section K: JUNGLE SET POWERS ###############################################################
+
+# Get retreat cost reduction from Dodrio Retreat Aid
+func get_retreat_cost_reduction(is_opponent: bool) -> int:
+	var bench = main.opponent_bench if is_opponent else main.player_bench
+	var reduction = 0
+	for bp in bench:
+		var abilities = bp.metadata.get("abilities", [])
+		for ab in abilities:
+			if ab.get("name", "") == "Retreat Aid":
+				if not is_power_blocked_by_status(bp):
+					reduction += 1
+					print("RETREAT AID: Dodrio reduces retreat cost by 1")
+	return reduction
+
+# Shift (Venomoth): Change Venomoth's type to match another Pokemon in play
+func power_shift(venomoth: card_object) -> void:
+	if is_power_blocked_by_status(venomoth):
+		await main.show_message("SHIFT IS BLOCKED BY STATUS!")
+		if main._should_bail(): return
+		return
+	
+	if venomoth.power_used_this_turn:
+		await main.show_message("SHIFT ALREADY USED THIS TURN!")
+		if main._should_bail(): return
+		return
+	
+	# Find all unique types from pokemon in play (excluding Colorless)
+	var all_pokemon = []
+	if main.player_active_pokemon != null:
+		all_pokemon.append(main.player_active_pokemon)
+	all_pokemon.append_array(main.player_bench)
+	if main.opponent_active_pokemon != null:
+		all_pokemon.append(main.opponent_active_pokemon)
+	all_pokemon.append_array(main.opponent_bench)
+	
+	var available_types: Array = []
+	for p in all_pokemon:
+		for ptype in p.metadata.get("types", []):
+			if ptype != "Colorless" and ptype not in available_types:
+				available_types.append(ptype)
+	
+	if available_types.size() == 0:
+		await main.show_message("NO TYPES AVAILABLE TO SHIFT TO!")
+		if main._should_bail(): return
+		return
+	
+	# Create type selection using energy card representations
+	var type_options = []
+	for etype in available_types:
+		var temp = card_object.new("base1-96", {"name": etype + " Energy", "supertype": "Energy"})
+		type_options.append(temp)
+	
+	main.energy_type_selection_active = true
+	main.show_enlarged_array_selection_mode(type_options)
+	main.cancel_button.visible = true
+	main.header_label.text = "SHIFT: CHOOSE NEW TYPE"
+	main.hint_label.text = "Select the type Venomoth will become"
+	main.action_button.text = "SHIFT"
+	main.action_button.disabled = true
+	main.action_button.theme = main.theme_disabled
+	await main.energy_type_selected
+	if main._should_bail(): return
+	var chosen_type = ""
+	if main.selected_card_for_action != null:
+		chosen_type = main.selected_card_for_action.metadata.get("name", "").replace(" Energy", "")
+	main.energy_type_selection_active = false
+	main.hide_selection_mode_display_main()
+	
+	if chosen_type == "":
+		return
+	
+	venomoth.temporary_type = chosen_type
+	venomoth.power_used_this_turn = true
+	await main.show_message("VENOMOTH SHIFTED TO " + chosen_type.to_upper() + " TYPE!")
+	if main._should_bail(): return
+	print("POWER USED: Shift -> ", chosen_type)
+
+# Heal (Vileplume): Flip coin, heads = remove 1 damage counter from 1 of your Pokemon
+func power_heal_vileplume(vileplume: card_object) -> void:
+	if is_power_blocked_by_status(vileplume):
+		await main.show_message("HEAL IS BLOCKED BY STATUS!")
+		if main._should_bail(): return
+		return
+	
+	if vileplume.power_used_this_turn:
+		await main.show_message("HEAL ALREADY USED THIS TURN!")
+		if main._should_bail(): return
+		return
+	
+	vileplume.power_used_this_turn = true
+	
+	await main.show_message("HEAL: FLIPPING COIN...")
+	if main._should_bail(): return
+	var coin = await main.flip_coin()
+	
+	if not coin:
+		await main.show_message("TAILS! HEAL FAILED!")
+		if main._should_bail(): return
+		return
+	
+	# Find pokemon with damage
+	var damaged = []
+	if main.player_active_pokemon != null and main.player_active_pokemon.current_hp < int(main.player_active_pokemon.metadata.get("hp", "0")):
+		damaged.append(main.player_active_pokemon)
+	for bp in main.player_bench:
+		if bp.current_hp < int(bp.metadata.get("hp", "0")):
+			damaged.append(bp)
+	
+	if damaged.size() == 0:
+		await main.show_message("NO POKEMON WITH DAMAGE!")
+		if main._should_bail(): return
+		return
+	
+	main.trainer_pokemon_selection_active = true
+	main.show_enlarged_array_selection_mode(damaged)
+	main.header_label.text = "HEAL: CHOOSE POKEMON"
+	main.hint_label.text = "Select a Pokemon to remove 1 damage counter from"
+	main.action_button.text = "HEAL"
+	main.action_button.disabled = true
+	main.action_button.theme = main.theme_disabled
+	main.cancel_button.visible = false
+	await main.trainer_target_selected
+	if main._should_bail(): return
+	var target = main.selected_card_for_action
+	main.trainer_pokemon_selection_active = false
+	main.hide_selection_mode_display_main()
+	
+	if target != null:
+		target.current_hp = min(int(target.metadata.get("hp", "0")), target.current_hp + 10)
+		SoundManagerScript.play_sfx(SoundManagerScript.SFX_heal_sound)
+		main.display_hp_circles_above_align(target, false)
+		await main.show_message("HEALED 10 HP FROM " + target.metadata.get("name", "").to_upper() + "!")
+		if main._should_bail(): return
+		print("POWER USED: Vileplume Heal on ", target.metadata.get("name", ""))
+
+# Peek (Mankey): Look at top card of either deck, random card from opponent hand, or a prize card
+func power_peek(mankey: card_object) -> void:
+	if is_power_blocked_by_status(mankey):
+		await main.show_message("PEEK IS BLOCKED BY STATUS!")
+		if main._should_bail(): return
+		return
+	
+	if mankey.power_used_this_turn:
+		await main.show_message("PEEK ALREADY USED THIS TURN!")
+		if main._should_bail(): return
+		return
+	
+	mankey.power_used_this_turn = true
+	
+	# Create selection options
+	main.special_attack_selection_active = true
+	main.buttons_only_blocker.visible = true
+	main.attack_buttons_container.visible = true
+	main.main_buttons_container.visible = false
+	for child in main.attack_buttons_container.get_children():
+		if child.name == "cancel_attack_mode_button":
+			child.visible = false
+			continue
+		child.queue_free()
+	
+	var options = ["Top of Your Deck", "Top of Opponent\'s Deck", "Random from Opponent\'s Hand", "One of Your Prizes", "One of Opponent\'s Prizes"]
+	for i in range(options.size()):
+		var btn = Button.new()
+		btn.text = options[i]
+		btn.custom_minimum_size = Vector2(400, 45)
+		btn.theme = main.theme_blue
+		main.attack_buttons_container.add_child(btn)
+		btn.pressed.connect(func(): main.special_attack_selected.emit(i))
+	
+	var selected = await main.special_attack_selected
+	
+	for child in main.attack_buttons_container.get_children():
+		if child.name == "cancel_attack_mode_button":
+			child.visible = true
+			continue
+		child.queue_free()
+	main.attack_buttons_container.visible = false
+	main.main_buttons_container.visible = true
+	main.special_attack_selection_active = false
+	main.buttons_only_blocker.visible = false
+	
+	var peeked_card: card_object = null
+	var peek_source = ""
+	
+	match selected:
+		0: # Top of your deck
+			if main.player_deck.size() > 0:
+				peeked_card = main.player_deck[0]
+				peek_source = "TOP OF YOUR DECK"
+		1: # Top of opponent's deck
+			if main.opponent_deck.size() > 0:
+				peeked_card = main.opponent_deck[0]
+				peek_source = "TOP OF OPPONENT\'S DECK"
+		2: # Random from opponent's hand
+			if main.opponent_hand.size() > 0:
+				var rand_idx = randi() % main.opponent_hand.size()
+				peeked_card = main.opponent_hand[rand_idx]
+				peek_source = "OPPONENT\'S HAND"
+		3: # One of your prizes
+			if main.player_prize_cards.size() > 0:
+				peeked_card = main.player_prize_cards[0]
+				peek_source = "YOUR PRIZES"
+		4: # One of opponent's prizes
+			if main.opponent_prize_cards.size() > 0:
+				peeked_card = main.opponent_prize_cards[0]
+				peek_source = "OPPONENT\'S PRIZES"
+	
+	if peeked_card != null:
+		# Show the card briefly
+		main.show_enlarged_array_selection_mode([peeked_card])
+		main.header_label.text = "PEEK: " + peek_source
+		main.hint_label.text = peeked_card.metadata.get("name", "Unknown")
+		main.action_button.text = "OK"
+		main.action_button.disabled = false
+		main.cancel_button.visible = false
+		await main.trainer_target_selected
+		if main._should_bail(): return
+		main.hide_selection_mode_display_main()
+		print("POWER USED: Peek at ", peek_source, " -> ", peeked_card.metadata.get("name", ""))
+	else:
+		await main.show_message("NOTHING TO PEEK AT!")
+		if main._should_bail(): return
+
 ############################################### Section H: CPU POWER ACTIVATION ######################################################################
 
 # CPU activates beneficial powers at start of turn
@@ -547,6 +776,45 @@ func cpu_phase_activate_powers() -> void:
 						main.display_active_pokemon_energies(true)
 						break
 	
+	# Vileplume Heal: CPU tries to heal damaged pokemon
+	var vileplume = _find_cpu_pokemon_with_power("Heal")
+	if vileplume != null and not is_power_blocked_by_status(vileplume) and not vileplume.power_used_this_turn:
+		vileplume.power_used_this_turn = true
+		# Only use if there's damage to heal
+		var all_cpu = main.cpu_ai.get_all_cpu_field_pokemon()
+		var most_damaged: card_object = null
+		var most_damage = 0
+		for p in all_cpu:
+			var dmg = int(p.metadata.get("hp", "0")) - p.current_hp
+			if dmg > most_damage:
+				most_damage = dmg
+				most_damaged = p
+		if most_damaged != null and most_damage > 0:
+			# Flip coin
+			var coin = await main.flip_coin()
+			if coin:
+				most_damaged.current_hp = min(int(most_damaged.metadata.get("hp", "0")), most_damaged.current_hp + 10)
+				main.display_hp_circles_above_align(most_damaged, true)
+				await main.show_message("Vileplume Heal: Healed 10 HP from " + most_damaged.metadata.get("name", "") + "!")
+				if main._should_bail(): return
+			else:
+				await main.show_message("Vileplume Heal: Tails! Failed!")
+				if main._should_bail(): return
+	
+	# Venomoth Shift: CPU shifts to the type that gives best coverage
+	var venomoth = _find_cpu_pokemon_with_power("Shift")
+	if venomoth != null and not is_power_blocked_by_status(venomoth) and not venomoth.power_used_this_turn:
+		# Shift to the type that the player's active is weak to
+		var player_weaknesses = main.player_active_pokemon.metadata.get("weaknesses", []) if main.player_active_pokemon != null else []
+		if player_weaknesses.size() > 0:
+			var weak_type = player_weaknesses[0].get("type", "")
+			if weak_type != "" and weak_type != "Colorless":
+				venomoth.temporary_type = weak_type
+				venomoth.power_used_this_turn = true
+				await main.show_message("Venomoth Shift: Changed to " + weak_type + " type!")
+				if main._should_bail(): return
+	
+	
 	# Damage Swap: move damage off active to bench with most buffer
 	var alakazam = _find_cpu_pokemon_with_power("Damage Swap")
 	if alakazam != null and not is_power_blocked_by_status(alakazam):
@@ -568,6 +836,7 @@ func cpu_phase_activate_powers() -> void:
 				best_buffer.current_hp -= 10
 				active_damage -= 10
 			main.display_hp_circles_above_align(main.opponent_active_pokemon, true)
+
 
 # Helper to find a CPU pokemon with a specific power name
 
