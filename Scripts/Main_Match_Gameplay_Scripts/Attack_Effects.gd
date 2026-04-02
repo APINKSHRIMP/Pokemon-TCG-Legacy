@@ -71,6 +71,12 @@ func estimate_attack_damage_range(attack: Dictionary, attacker: card_object = nu
 	
 	# --- COIN FLIP MULTIPLICATIVE (×) ---
 	if "×" in damage_str or "x" in damage_str:
+		if "times the number of damage counters" in text:
+			# Flail-type: damage × self damage counters
+			if attacker:
+				var counters = attacker.get_damage_counters()
+				return {"min": base_damage * counters, "max": base_damage * counters}
+			return {"min": 0, "max": base_damage * 10}
 		if "flip a coin until" in text:
 			return {"min": 0, "max": base_damage * 5}
 		elif "flip 3 coins" in text:
@@ -291,6 +297,13 @@ func resolve_attack_variable_damage(attack: Dictionary, attacker: card_object, d
 			messages.append("ATTACK FAILED! TARGET NOT CONFUSED!")
 			return {"damage": resolved_damage, "messages": messages, "flip_result": flip_result, "attack_failed": attack_failed}
 	
+	# ---- DAMAGE COUNTER MULTIPLICATIVE (Kingler Flail) ----
+	if ("×" in damage_str or "x" in damage_str or "X" in damage_str) and "times the number of damage counters on" in text:
+		var counters = attacker.get_damage_counters()
+		resolved_damage = base_damage * counters
+		messages.append(str(counters) + " DAMAGE COUNTERS! " + str(resolved_damage) + " DAMAGE!")
+		return {"damage": resolved_damage, "messages": messages, "flip_result": flip_result, "attack_failed": attack_failed}
+
 	# ---- COIN FLIP MULTIPLICATIVE DAMAGE (×) ----
 	if ("×" in damage_str or "x" in damage_str or "X" in damage_str) and "times the number of heads" in text:
 		var flip_count = 0
@@ -984,6 +997,11 @@ func parse_card_text_effects(attack_text: String, attacker_name: String) -> Arra
 		effects.append({"type": "bench_damage_single", "target": "opponent_bench", "damage": damage, "flip": "none"})
 		print("EFFECT PARSED: Bench Damage Single -> ", damage)
 
+	# --- TRAINER LOCK (Psyduck Headache) ---
+	if "can't play trainer" in text and "next turn" in text:
+		effects.append({"type": "trainer_lock", "target": "opponent", "flip": "none"})
+		print("EFFECT PARSED: Trainer Lock -> Opponent")
+
 	# --- LEECH SEED (Exeggcute) ---
 	if "unless all damage" in text and "is prevented" in text and "remove 1 damage counter" in text:
 		effects.append({"type": "leech_seed", "target": "self", "flip": "none"})
@@ -1084,6 +1102,9 @@ func apply_card_text_effects(effects: Array, attacker: card_object, defender: ca
 			if main._should_bail(): return
 		if effect["type"] == "leech_seed":
 			await apply_leech_seed(attacker, defender, is_opponent_attacking)
+			if main._should_bail(): return
+		if effect["type"] == "trainer_lock":
+			await apply_trainer_lock(is_opponent_attacking)
 			if main._should_bail(): return
 ########################################################### END EFFECT PARSING FUNCTIONS #############################################################
 ######################################################################################################################################################
@@ -1931,3 +1952,551 @@ func execute_call_for_pokemon(attacker: card_object, is_opponent: bool, search_n
 ######################################################### SPECIAL ATTACK FUNCTIONS ############################################################
 
 # METRONOME (Clefairy): Copy one of the opponent's attacks and execute it
+
+######################################################################################################################################################
+############################################## BASE3 (FOSSIL) ATTACK EFFECTS #########################################################################
+######################################################################################################################################################
+
+# TRAINER LOCK (Psyduck Headache): Block opponent trainer play next turn
+func apply_trainer_lock(is_opponent_attacking: bool) -> void:
+	if is_opponent_attacking:
+		main.trainer_effects.player_trainer_locked = true
+	else:
+		main.trainer_effects.opponent_trainer_locked = true
+	await main.show_message("OPPONENT CAN'T PLAY TRAINER CARDS NEXT TURN!")
+	if main._should_bail(): return
+	print("EFFECT APPLIED: Trainer lock for next turn")
+
+# SONICBOOM (Magneton): Fixed damage ignoring Weakness and Resistance
+func execute_sonicboom(attacker: card_object, defender: card_object, is_opponent: bool, base_damage: int) -> void:
+	if attacker == null or defender == null:
+		return
+	if await handle_attack_confusion(attacker, is_opponent):
+		return
+	if await handle_attack_blind(attacker, is_opponent):
+		return
+	
+	var final_damage = base_damage
+	if main.check_defender_invincible(defender, !is_opponent):
+		return
+	final_damage = main.apply_defender_no_damage_shield(defender, final_damage, !is_opponent)
+	
+	# Display WITHOUT W/R modifiers — pass empty modifiers and use base_damage directly
+	var defender_label_pos = Vector2(530, 300) if is_opponent else Vector2(1030, 300)
+	main.show_floating_label("-" + str(final_damage) + "HP", defender_label_pos, true)
+	defender.current_hp = max(0, defender.current_hp - final_damage)
+	main.display_hp_circles_above_align(defender, !is_opponent)
+	await main.show_message("SONICBOOM: " + str(final_damage) + " DAMAGE! (IGNORES W/R)")
+	if main._should_bail(): return
+	print("SONICBOOM: ", final_damage, " damage (no W/R)")
+
+# WILDFIRE (Moltres): Discard any number of Fire Energy, mill that many from opponent deck
+func execute_wildfire(attacker: card_object, is_opponent: bool) -> void:
+	if attacker == null:
+		return
+	
+	# Count Fire Energy attached
+	var fire_energies: Array = []
+	for e in attacker.attached_energies:
+		var provided = main.get_energy_provided_by_card(e)
+		if "Fire" in provided:
+			fire_energies.append(e)
+	
+	if fire_energies.size() == 0:
+		await main.show_message("NO FIRE ENERGY TO DISCARD!")
+		if main._should_bail(): return
+		return
+	
+	var discard_count = 0
+	var discard_pile = main.opponent_discard_pile if is_opponent else main.player_discard_pile
+	
+	if is_opponent:
+		# CPU strategy: discard all fire energy for maximum mill damage
+		# unless it would cripple attack readiness
+		var target_deck = main.player_deck
+		discard_count = min(fire_energies.size(), target_deck.size())
+		if discard_count == 0:
+			await main.show_message("OPPONENT'S DECK IS EMPTY!")
+			if main._should_bail(): return
+			return
+		for i in range(discard_count):
+			var e = fire_energies[i]
+			attacker.attached_energies.erase(e)
+			e.current_location = "discard"
+			discard_pile.append(e)
+		main.display_active_pokemon_energies(true)
+	else:
+		# Player selects fire energies one at a time, cancel to stop
+		await main.show_message("WILDFIRE: SELECT FIRE ENERGY TO DISCARD (CANCEL TO STOP)")
+		if main._should_bail(): return
+		
+		var keep_discarding = true
+		while keep_discarding and fire_energies.size() > 0:
+			main.trainer_energy_selection_active = true
+			main.show_enlarged_array_selection_mode(fire_energies)
+			main.header_label.text = "WILDFIRE: SELECT FIRE ENERGY"
+			main.hint_label.text = "Each energy discarded mills 1 card from opponent's deck"
+			main.action_button.text = "DISCARD"
+			main.action_button.disabled = true
+			main.action_button.theme = main.theme_disabled
+			main.cancel_button.visible = true
+			await main.trainer_target_selected
+			if main._should_bail(): return
+			var selected = main.selected_card_for_action
+			main.trainer_energy_selection_active = false
+			main.hide_selection_mode_display_main()
+			
+			if selected == null:
+				keep_discarding = false
+			else:
+				attacker.attached_energies.erase(selected)
+				selected.current_location = "discard"
+				discard_pile.append(selected)
+				fire_energies.erase(selected)
+				discard_count += 1
+				main.display_active_pokemon_energies(false)
+	
+	if discard_count == 0:
+		return
+	
+	# Mill cards from opponent's deck
+	var target_deck = main.player_deck if is_opponent else main.opponent_deck
+	var target_discard = main.player_discard_pile if is_opponent else main.opponent_discard_pile
+	var milled = min(discard_count, target_deck.size())
+	for i in range(milled):
+		var card = target_deck.pop_front()
+		card.current_location = "discard"
+		target_discard.append(card)
+	
+	main.update_discard_pile_display(!is_opponent)
+	main.update_discard_pile_display(is_opponent)
+	await main.show_message("WILDFIRE: DISCARDED " + str(milled) + " CARDS FROM OPPONENT'S DECK!")
+	if main._should_bail(): return
+	print("WILDFIRE: Milled ", milled, " cards from opponent deck")
+
+# GIGASHOCK (Raichu): 30 damage + 10 to up to 3 opponent bench Pokemon
+func execute_gigashock(attacker: card_object, defender: card_object, is_opponent: bool) -> void:
+	if attacker == null or defender == null:
+		return
+	if await handle_attack_confusion(attacker, is_opponent):
+		return
+	if await handle_attack_blind(attacker, is_opponent):
+		return
+	
+	# Deal 30 to active
+	var attacking_types = attacker.metadata.get("types", ["Colorless"])
+	var result = main.calculate_final_damage(30, attacking_types, defender, attacker)
+	var final_damage = result["damage"]
+	
+	if main.check_defender_invincible(defender, !is_opponent):
+		return
+	final_damage = main.apply_defender_no_damage_shield(defender, final_damage, !is_opponent)
+	await main.display_and_apply_attack_damage(attacker, defender, final_damage, result["modifiers"], is_opponent, 30)
+	if main._should_bail(): return
+	
+	# Deal 10 to up to 3 opponent bench pokemon
+	var target_bench = main.player_bench if is_opponent else main.opponent_bench
+	var is_target_opponent = !is_opponent
+	
+	if target_bench.size() == 0:
+		print("GIGASHOCK: No bench targets")
+		return
+	
+	if target_bench.size() <= 3:
+		# Hit all bench pokemon
+		for bp in target_bench:
+			bp.current_hp = max(0, bp.current_hp - 10)
+			print("GIGASHOCK: ", bp.metadata.get("name", ""), " took 10 bench damage")
+		await main.show_message("GIGASHOCK HIT ALL BENCHED POKEMON FOR 10 DAMAGE!")
+		if main._should_bail(): return
+	else:
+		# Need to choose 3 targets
+		if is_target_opponent:
+			# Player picks 3 from opponent bench
+			var targets_chosen: Array = []
+			for pick in range(3):
+				var remaining: Array = []
+				for bp in target_bench:
+					if bp not in targets_chosen:
+						remaining.append(bp)
+				if remaining.size() == 0:
+					break
+				main.opponent_blocker.visible = false
+				main.trainer_pokemon_selection_active = true
+				main.show_enlarged_array_selection_mode(remaining)
+				main.cancel_button.visible = false
+				main.header_label.text = "GIGASHOCK: CHOOSE TARGET " + str(pick + 1) + " OF 3"
+				main.hint_label.text = "Select a benched Pokemon to deal 10 damage"
+				main.action_button.text = "SHOCK"
+				main.action_button.disabled = true
+				main.action_button.theme = main.theme_disabled
+				await main.trainer_target_selected
+				if main._should_bail(): return
+				var chosen = main.selected_card_for_action
+				main.trainer_pokemon_selection_active = false
+				main.hide_selection_mode_display_main()
+				main.opponent_blocker.visible = true
+				if chosen != null:
+					targets_chosen.append(chosen)
+			for bp in targets_chosen:
+				bp.current_hp = max(0, bp.current_hp - 10)
+				print("GIGASHOCK: ", bp.metadata.get("name", ""), " took 10 bench damage")
+			await main.show_message("GIGASHOCK HIT " + str(targets_chosen.size()) + " BENCHED POKEMON!")
+			if main._should_bail(): return
+		else:
+			# CPU picks 3 weakest from player bench
+			var targets = main.cpu_ai.cpu_choose_bench_damage_targets(3, 10)
+			for bp in targets:
+				bp.current_hp = max(0, bp.current_hp - 10)
+				print("GIGASHOCK: ", bp.metadata.get("name", ""), " took 10 bench damage")
+			await main.show_message("GIGASHOCK HIT " + str(targets.size()) + " BENCHED POKEMON!")
+			if main._should_bail(): return
+
+# THUNDERSTORM (Zapdos): 40 damage + flip per bench, heads=20 damage, tails count = self damage
+func execute_thunderstorm(attacker: card_object, defender: card_object, is_opponent: bool) -> void:
+	if attacker == null or defender == null:
+		return
+	if await handle_attack_confusion(attacker, is_opponent):
+		return
+	if await handle_attack_blind(attacker, is_opponent):
+		return
+	
+	# Deal 40 to active
+	var attacking_types = attacker.metadata.get("types", ["Colorless"])
+	var result = main.calculate_final_damage(40, attacking_types, defender, attacker)
+	var final_damage = result["damage"]
+	
+	if main.check_defender_invincible(defender, !is_opponent):
+		return
+	final_damage = main.apply_defender_no_damage_shield(defender, final_damage, !is_opponent)
+	await main.display_and_apply_attack_damage(attacker, defender, final_damage, result["modifiers"], is_opponent, 40)
+	if main._should_bail(): return
+	
+	# Flip for each opponent bench pokemon
+	var target_bench = main.player_bench if is_opponent else main.opponent_bench
+	var tails_count = 0
+	
+	if target_bench.size() > 0:
+		var use_silent = target_bench.size() > 1
+		for bp in target_bench:
+			var coin = await main.flip_coin(use_silent)
+			if coin:
+				bp.current_hp = max(0, bp.current_hp - 20)
+				print("THUNDERSTORM: ", bp.metadata.get("name", ""), " took 20 bench damage (heads)")
+			else:
+				tails_count += 1
+				print("THUNDERSTORM: Tails for ", bp.metadata.get("name", ""))
+		await main.show_message("THUNDERSTORM: " + str(target_bench.size() - tails_count) + " HEADS, " + str(tails_count) + " TAILS!")
+		if main._should_bail(): return
+	
+	# Self-damage: 10 × number of tails
+	if tails_count > 0:
+		var self_damage = tails_count * 10
+		attacker.current_hp = max(0, attacker.current_hp - self_damage)
+		var label_x = 1030 if is_opponent else 530
+		main.show_floating_label("-" + str(self_damage) + "HP", Vector2(label_x, 300), true)
+		main.display_hp_circles_above_align(attacker, is_opponent)
+		await main.show_message(attacker.metadata.get("name", "").to_upper() + " TOOK " + str(self_damage) + " RECOIL DAMAGE!")
+		if main._should_bail(): return
+
+# PROPHECY (Hypno): Look at top 3 cards of either deck and rearrange
+func execute_prophecy(attacker: card_object, is_opponent: bool) -> void:
+	if attacker == null:
+		return
+	
+	if is_opponent:
+		# CPU strategy: look at own deck top 3 and rearrange for best draws
+		# Simple: sort by priority (energy first if needed, then pokemon, then trainers)
+		var deck = main.opponent_deck
+		if deck.size() < 2:
+			return
+		var count = min(3, deck.size())
+		# CPU just peeks but doesn't meaningfully rearrange (too complex for AI)
+		await main.show_message("OPPONENT USED PROPHECY TO REARRANGE DECK!")
+		if main._should_bail(): return
+		# Simple heuristic: put energy cards on top if CPU needs energy
+		var top_cards = []
+		for i in range(count):
+			top_cards.append(deck[i])
+		# Sort: energy needed? put energy first
+		var active = main.opponent_active_pokemon
+		var needs_energy = false
+		if active != null:
+			for attack in active.metadata.get("attacks", []):
+				if main.cpu_ai.get_unmet_energy_count(attack, active) > 0:
+					needs_energy = true
+					break
+		if needs_energy:
+			top_cards.sort_custom(func(a, b):
+				var a_is_energy = a.metadata.get("supertype", "") == "Energy"
+				var b_is_energy = b.metadata.get("supertype", "") == "Energy"
+				if a_is_energy and not b_is_energy: return true
+				if b_is_energy and not a_is_energy: return false
+				return false
+			)
+			for i in range(count):
+				deck[i] = top_cards[i]
+		print("PROPHECY: CPU rearranged top ", count, " cards")
+	else:
+		# Player chooses which deck to look at, then rearranges
+		# Step 1: Choose deck
+		await main.show_message("PROPHECY: CHOOSE A DECK TO LOOK AT")
+		if main._should_bail(): return
+		
+		main.special_attack_selection_active = true
+		main.buttons_only_blocker.visible = true
+		main.attack_buttons_container.visible = true
+		main.main_buttons_container.visible = false
+		for child in main.attack_buttons_container.get_children():
+			if child.name == "cancel_attack_mode_button":
+				child.visible = false
+				continue
+			child.queue_free()
+		
+		var btn_own = Button.new()
+		btn_own.text = "YOUR DECK"
+		btn_own.custom_minimum_size = Vector2(350, 50)
+		btn_own.theme = main.theme_green
+		main.attack_buttons_container.add_child(btn_own)
+		btn_own.pressed.connect(func(): main.special_attack_selected.emit(0))
+		
+		var btn_opp = Button.new()
+		btn_opp.text = "OPPONENT'S DECK"
+		btn_opp.custom_minimum_size = Vector2(350, 50)
+		btn_opp.theme = main.theme_green
+		main.attack_buttons_container.add_child(btn_opp)
+		btn_opp.pressed.connect(func(): main.special_attack_selected.emit(1))
+		
+		var deck_choice = await main.special_attack_selected
+		
+		for child in main.attack_buttons_container.get_children():
+			if child.name == "cancel_attack_mode_button":
+				child.visible = true
+				continue
+			child.queue_free()
+		main.attack_buttons_container.visible = false
+		main.main_buttons_container.visible = true
+		main.special_attack_selection_active = false
+		main.buttons_only_blocker.visible = false
+		
+		var deck = main.player_deck if deck_choice == 0 else main.opponent_deck
+		var deck_name = "YOUR" if deck_choice == 0 else "OPPONENT'S"
+		
+		if deck.size() == 0:
+			await main.show_message(deck_name + " DECK IS EMPTY!")
+			if main._should_bail(): return
+			return
+		
+		var count = min(3, deck.size())
+		var top_cards: Array = []
+		for i in range(count):
+			top_cards.append(deck[i])
+		
+		# Show cards and let player reorder using selection mode
+		# Player picks cards in the order they want them (first pick = top of deck)
+		var reordered: Array = []
+		var remaining = top_cards.duplicate()
+		
+		for pick in range(count):
+			if remaining.size() == 1:
+				reordered.append(remaining[0])
+				break
+			main.trainer_pokemon_selection_active = true
+			main.show_enlarged_array_selection_mode(remaining)
+			main.cancel_button.visible = false
+			main.header_label.text = "PROPHECY: PICK CARD FOR POSITION " + str(pick + 1)
+			main.hint_label.text = "This card will be " + (["1st (TOP)", "2nd", "3rd"])[pick] + " from top"
+			main.action_button.text = "PLACE"
+			main.action_button.disabled = true
+			main.action_button.theme = main.theme_disabled
+			await main.trainer_target_selected
+			if main._should_bail(): return
+			var chosen = main.selected_card_for_action
+			main.trainer_pokemon_selection_active = false
+			main.hide_selection_mode_display_main()
+			if chosen != null:
+				reordered.append(chosen)
+				remaining.erase(chosen)
+		
+		# Apply reorder to deck
+		for i in range(reordered.size()):
+			deck[i] = reordered[i]
+		
+		await main.show_message("PROPHECY: REARRANGED TOP " + str(count) + " CARDS OF " + deck_name + " DECK!")
+		if main._should_bail(): return
+		print("PROPHECY: Player rearranged top ", count, " cards of ", deck_name, " deck")
+
+# ENERGY CONVERSION (Gastly): Retrieve up to 2 Energy cards from discard, 10 self damage
+func execute_energy_conversion(attacker: card_object, is_opponent: bool) -> void:
+	if attacker == null:
+		return
+	
+	var discard = main.opponent_discard_pile if is_opponent else main.player_discard_pile
+	var hand = main.opponent_hand if is_opponent else main.player_hand
+	
+	# Find energy cards in discard
+	var energy_in_discard: Array = []
+	for card in discard:
+		if card.metadata.get("supertype", "") == "Energy":
+			energy_in_discard.append(card)
+	
+	if energy_in_discard.size() == 0:
+		await main.show_message("NO ENERGY IN DISCARD PILE!")
+		if main._should_bail(): return
+	else:
+		var retrieve_count = min(2, energy_in_discard.size())
+		
+		if is_opponent:
+			# CPU picks best energy cards
+			for i in range(retrieve_count):
+				if energy_in_discard.size() == 0:
+					break
+				var chosen = energy_in_discard[0]
+				discard.erase(chosen)
+				chosen.current_location = "hand"
+				hand.append(chosen)
+				energy_in_discard.erase(chosen)
+			main.refresh_hand_display(true)
+			main.update_discard_pile_display(true)
+			await main.show_message("ENERGY CONVERSION: RETRIEVED " + str(retrieve_count) + " ENERGY!")
+			if main._should_bail(): return
+		else:
+			# Player selects up to 2 energy cards from discard
+			var retrieved = 0
+			for pick in range(retrieve_count):
+				if energy_in_discard.size() == 0:
+					break
+				main.trainer_pokemon_selection_active = true
+				main.show_enlarged_array_selection_mode(energy_in_discard)
+				main.cancel_button.visible = (pick > 0)  # Can cancel after first pick
+				main.header_label.text = "ENERGY CONVERSION: PICK ENERGY " + str(pick + 1)
+				main.hint_label.text = "Select an Energy card to add to your hand"
+				main.action_button.text = "RETRIEVE"
+				main.action_button.disabled = true
+				main.action_button.theme = main.theme_disabled
+				await main.trainer_target_selected
+				if main._should_bail(): return
+				var chosen = main.selected_card_for_action
+				main.trainer_pokemon_selection_active = false
+				main.hide_selection_mode_display_main()
+				if chosen == null:
+					break
+				discard.erase(chosen)
+				chosen.current_location = "hand"
+				hand.append(chosen)
+				energy_in_discard.erase(chosen)
+				retrieved += 1
+			main.refresh_hand_display(false)
+			main.update_discard_pile_display(false)
+			if retrieved > 0:
+				await main.show_message("ENERGY CONVERSION: RETRIEVED " + str(retrieved) + " ENERGY!")
+				if main._should_bail(): return
+	
+	# Self damage: 10 to Gastly
+	attacker.current_hp = max(0, attacker.current_hp - 10)
+	var label_x = 1030 if is_opponent else 530
+	main.show_floating_label("-10HP", Vector2(label_x, 300), true)
+	main.display_hp_circles_above_align(attacker, is_opponent)
+	await main.show_message(attacker.metadata.get("name", "").to_upper() + " TOOK 10 RECOIL DAMAGE!")
+	if main._should_bail(): return
+	print("ENERGY CONVERSION: Retrieved energy, 10 self damage")
+
+# SPACING OUT (Slowpoke): Flip, heads = remove 1 damage counter. Can't use if no damage.
+func execute_spacing_out(attacker: card_object, is_opponent: bool) -> void:
+	if attacker == null:
+		return
+	
+	var max_hp = int(attacker.metadata.get("hp", "0"))
+	if attacker.current_hp >= max_hp:
+		await main.show_message("SPACING OUT FAILED! NO DAMAGE TO HEAL!")
+		if main._should_bail(): return
+		return
+	
+	var coin = await main.flip_coin()
+	if coin:
+		attacker.current_hp = min(max_hp, attacker.current_hp + 10)
+		SoundManagerScript.play_sfx(SoundManagerScript.SFX_heal_sound)
+		main.display_hp_circles_above_align(attacker, is_opponent)
+		await main.show_message("SPACING OUT: HEALED 10 HP!")
+		if main._should_bail(): return
+	else:
+		await main.show_message("SPACING OUT: TAILS! NOTHING HAPPENED!")
+		if main._should_bail(): return
+	print("SPACING OUT: coin=", "heads" if coin else "tails")
+
+# SCAVENGE (Slowpoke): Discard 1 Psychic Energy, retrieve a Trainer from discard
+func execute_scavenge(attacker: card_object, is_opponent: bool) -> void:
+	if attacker == null:
+		return
+	
+	# Check for Psychic Energy attached
+	var psychic_energy: card_object = null
+	for e in attacker.attached_energies:
+		var provided = main.get_energy_provided_by_card(e)
+		if "Psychic" in provided:
+			psychic_energy = e
+			break
+	
+	if psychic_energy == null:
+		await main.show_message("NO PSYCHIC ENERGY TO DISCARD!")
+		if main._should_bail(): return
+		return
+	
+	var discard = main.opponent_discard_pile if is_opponent else main.player_discard_pile
+	var hand = main.opponent_hand if is_opponent else main.player_hand
+	
+	# Find trainer cards in discard
+	var trainers_in_discard: Array = []
+	for card in discard:
+		if card.metadata.get("supertype", "") == "Trainer":
+			trainers_in_discard.append(card)
+	
+	if trainers_in_discard.size() == 0:
+		await main.show_message("NO TRAINER CARDS IN DISCARD PILE!")
+		if main._should_bail(): return
+		return
+	
+	# Discard the Psychic Energy
+	attacker.attached_energies.erase(psychic_energy)
+	psychic_energy.current_location = "discard"
+	discard.append(psychic_energy)
+	main.display_active_pokemon_energies(is_opponent)
+	main.update_discard_pile_display(is_opponent)
+	
+	var chosen: card_object = null
+	if is_opponent:
+		# CPU picks the highest scored trainer
+		var best_score = -999.0
+		for card in trainers_in_discard:
+			var score = main.cpu_ai.cpu_score_trainer_card(card)
+			if score > best_score:
+				best_score = score
+				chosen = card
+	else:
+		# Player selects
+		main.trainer_pokemon_selection_active = true
+		main.show_enlarged_array_selection_mode(trainers_in_discard)
+		main.cancel_button.visible = false
+		main.header_label.text = "SCAVENGE: CHOOSE A TRAINER CARD"
+		main.hint_label.text = "Select a Trainer to retrieve from discard"
+		main.action_button.text = "RETRIEVE"
+		main.action_button.disabled = true
+		main.action_button.theme = main.theme_disabled
+		await main.trainer_target_selected
+		if main._should_bail(): return
+		chosen = main.selected_card_for_action
+		main.trainer_pokemon_selection_active = false
+		main.hide_selection_mode_display_main()
+	
+	if chosen != null:
+		discard.erase(chosen)
+		chosen.current_location = "hand"
+		hand.append(chosen)
+		main.refresh_hand_display(is_opponent)
+		main.update_discard_pile_display(is_opponent)
+		await main.show_message("SCAVENGE: RETRIEVED " + chosen.metadata.get("name", "").to_upper() + "!")
+		if main._should_bail(): return
+		print("SCAVENGE: Retrieved ", chosen.metadata.get("name", ""))
+
+# ABSORB (Kabutops): 40 damage, heal half of damage dealt (rounded up to nearest 10)
+# This is identical to execute_mega_drain — reuse it directly via routing

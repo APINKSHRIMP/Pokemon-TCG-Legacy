@@ -70,7 +70,7 @@ func open_power_menu() -> void:
 				continue
 			var ability_name = ability.get("name", "")
 			# Skip passive powers (they don't go in menu)
-			if ability_name in ["Strikes Back", "Energy Burn", "Invisible Wall", "Thick Skinned", "Retreat Aid"]:
+			if ability_name in ["Strikes Back", "Energy Burn", "Invisible Wall", "Thick Skinned", "Retreat Aid", "Prehistoric Power", "Toxic Gas", "Transparency", "Kabuto Armor", "Clairvoyance", "Transform"]:
 				continue
 			# Check if usable
 			if ability_name != "Buzzap" and is_power_blocked_by_status(pokemon):
@@ -139,6 +139,10 @@ func activate_power(pokemon: card_object, ability: Dictionary) -> void:
 		"Shift": await power_shift(pokemon)
 		"Heal": await power_heal_vileplume(pokemon)
 		"Peek": await power_peek(pokemon)
+		"Step In": await power_step_in(pokemon)
+		"Curse": await power_curse(pokemon)
+		"Strange Behavior": await power_strange_behavior(pokemon)
+		"Cowardice": await power_cowardice(pokemon)
 		_: await main.show_message("Power not implemented: " + ability_name)
 
 # Damage Swap (Alakazam): Move 1 damage counter between your pokemon
@@ -706,6 +710,385 @@ func power_peek(mankey: card_object) -> void:
 		await main.show_message("NOTHING TO PEEK AT!")
 		if main._should_bail(): return
 
+######################################################################################################################################################
+############################################## BASE3 (FOSSIL) POWERS AND BODIES ######################################################################
+######################################################################################################################################################
+
+# STEP IN (Dragonite): Switch from bench to active. Once per turn. Must be on bench.
+func power_step_in(dragonite: card_object) -> void:
+	if dragonite.power_used_this_turn:
+		await main.show_message("STEP IN ALREADY USED THIS TURN!")
+		if main._should_bail(): return
+		return
+	
+	if dragonite.current_location != "bench":
+		await main.show_message("DRAGONITE MUST BE ON THE BENCH!")
+		if main._should_bail(): return
+		return
+	
+	if dragonite not in main.player_bench:
+		await main.show_message("DRAGONITE MUST BE ON YOUR BENCH!")
+		if main._should_bail(): return
+		return
+	
+	dragonite.power_used_this_turn = true
+	
+	var old_active = main.player_active_pokemon
+	
+	await main.show_message("STEP IN: DRAGONITE SWITCHES IN!")
+	if main._should_bail(): return
+	
+	await main.animate_retreat(old_active, dragonite, [], false)
+	if main._should_bail(): return
+	
+	main.player_bench.erase(dragonite)
+	main.player_bench.append(old_active)
+	old_active.current_location = "bench"
+	dragonite.current_location = "active"
+	main.player_active_pokemon = dragonite
+	main.clear_all_statuses(old_active, false)
+	
+	main.display_pokemon(false)
+	main.display_active_pokemon_energies(false)
+	print("STEP IN: Dragonite switched in, ", old_active.metadata.get("name", ""), " moved to bench")
+
+# CURSE (Gengar): Move 1 damage counter from one opponent pokemon to another. Once per turn.
+func power_curse(gengar: card_object) -> void:
+	if gengar.power_used_this_turn:
+		await main.show_message("CURSE ALREADY USED THIS TURN!")
+		if main._should_bail(): return
+		return
+	
+	# Get all opponent's pokemon with damage
+	var opponent_pokemon: Array = []
+	if main.opponent_active_pokemon != null:
+		opponent_pokemon.append(main.opponent_active_pokemon)
+	opponent_pokemon.append_array(main.opponent_bench)
+	
+	var sources: Array = []
+	for p in opponent_pokemon:
+		if p.current_hp < int(p.metadata.get("hp", "0")):
+			sources.append(p)
+	
+	if sources.size() == 0:
+		await main.show_message("NO OPPONENT POKEMON HAVE DAMAGE!")
+		if main._should_bail(): return
+		return
+	
+	if opponent_pokemon.size() < 2:
+		await main.show_message("OPPONENT NEEDS 2+ POKEMON FOR CURSE!")
+		if main._should_bail(): return
+		return
+	
+	# Select source (take damage FROM)
+	main.opponent_blocker.visible = false
+	main.trainer_pokemon_selection_active = true
+	main.show_enlarged_array_selection_mode(sources)
+	main.cancel_button.visible = true
+	main.header_label.text = "CURSE: SELECT SOURCE"
+	main.hint_label.text = "Remove 1 damage counter from this Pokemon"
+	main.action_button.text = "SELECT"
+	main.action_button.disabled = true
+	main.action_button.theme = main.theme_disabled
+	await main.trainer_target_selected
+	if main._should_bail(): return
+	var source = main.selected_card_for_action
+	main.trainer_pokemon_selection_active = false
+	main.hide_selection_mode_display_main()
+	main.opponent_blocker.visible = true
+	
+	if source == null:
+		return
+	
+	# Select destination (move damage TO) — can KO
+	var destinations: Array = []
+	for p in opponent_pokemon:
+		if p != source:
+			destinations.append(p)
+	
+	if destinations.size() == 0:
+		return
+	
+	main.opponent_blocker.visible = false
+	main.trainer_pokemon_selection_active = true
+	main.show_enlarged_array_selection_mode(destinations)
+	main.cancel_button.visible = true
+	main.header_label.text = "CURSE: SELECT TARGET"
+	main.hint_label.text = "Move the damage counter TO this Pokemon (can KO)"
+	main.action_button.text = "CURSE"
+	main.action_button.disabled = true
+	main.action_button.theme = main.theme_disabled
+	await main.trainer_target_selected
+	if main._should_bail(): return
+	var dest = main.selected_card_for_action
+	main.trainer_pokemon_selection_active = false
+	main.hide_selection_mode_display_main()
+	main.opponent_blocker.visible = true
+	
+	if dest == null:
+		return
+	
+	gengar.power_used_this_turn = true
+	source.current_hp = min(int(source.metadata.get("hp", "0")), source.current_hp + 10)
+	dest.current_hp = max(0, dest.current_hp - 10)
+	
+	# Determine is_opponent for each pokemon for display
+	var source_is_opp = (source == main.opponent_active_pokemon or source in main.opponent_bench)
+	var dest_is_opp = (dest == main.opponent_active_pokemon or dest in main.opponent_bench)
+	main.display_hp_circles_above_align(source, source_is_opp)
+	main.display_hp_circles_above_align(dest, dest_is_opp)
+	
+	await main.show_message("CURSE: MOVED DAMAGE FROM " + source.metadata.get("name", "").to_upper() + " TO " + dest.metadata.get("name", "").to_upper() + "!")
+	if main._should_bail(): return
+	print("CURSE: Moved 1 damage counter from ", source.metadata.get("name", ""), " to ", dest.metadata.get("name", ""))
+	
+	# Check if the curse KO'd the target
+	if dest.current_hp <= 0:
+		await main.check_all_knockouts()
+		if main._should_bail(): return
+
+# STRANGE BEHAVIOR (Slowbro): Move damage TO Slowbro from your other pokemon, as often as you like
+func power_strange_behavior(slowbro: card_object) -> void:
+	if is_power_blocked_by_status(slowbro):
+		await main.show_message("STRANGE BEHAVIOR BLOCKED BY STATUS!")
+		if main._should_bail(): return
+		return
+	
+	await main.show_message("STRANGE BEHAVIOR: MOVE DAMAGE TO SLOWBRO")
+	if main._should_bail(): return
+	
+	var keep_moving = true
+	while keep_moving:
+		# Find player pokemon with damage (excluding Slowbro)
+		var all_pokemon: Array = []
+		if main.player_active_pokemon != null:
+			all_pokemon.append(main.player_active_pokemon)
+		all_pokemon.append_array(main.player_bench)
+		
+		var sources: Array = []
+		for p in all_pokemon:
+			if p == slowbro:
+				continue
+			if p.current_hp < int(p.metadata.get("hp", "0")):
+				sources.append(p)
+		
+		if sources.size() == 0:
+			await main.show_message("NO OTHER POKEMON HAVE DAMAGE!")
+			if main._should_bail(): return
+			break
+		
+		# Check if Slowbro would be KO'd
+		if slowbro.current_hp <= 10:
+			await main.show_message("SLOWBRO CAN'T TAKE MORE DAMAGE WITHOUT BEING KO'D!")
+			if main._should_bail(): return
+			break
+		
+		main.trainer_pokemon_selection_active = true
+		main.show_enlarged_array_selection_mode(sources)
+		main.cancel_button.visible = true
+		main.header_label.text = "STRANGE BEHAVIOR"
+		main.hint_label.text = "Move 1 damage counter TO Slowbro from this Pokemon (cancel to stop)"
+		main.action_button.text = "MOVE DAMAGE"
+		main.action_button.disabled = true
+		main.action_button.theme = main.theme_disabled
+		await main.trainer_target_selected
+		if main._should_bail(): return
+		var source = main.selected_card_for_action
+		main.trainer_pokemon_selection_active = false
+		main.hide_selection_mode_display_main()
+		
+		if source == null:
+			break
+		
+		source.current_hp = min(int(source.metadata.get("hp", "0")), source.current_hp + 10)
+		slowbro.current_hp = max(0, slowbro.current_hp - 10)
+		
+		var source_is_opp = (source == main.opponent_active_pokemon or source in main.opponent_bench)
+		main.display_hp_circles_above_align(source, source_is_opp)
+		var slowbro_is_opp = (slowbro == main.opponent_active_pokemon or slowbro in main.opponent_bench)
+		main.display_hp_circles_above_align(slowbro, slowbro_is_opp)
+		
+		print("STRANGE BEHAVIOR: Moved damage from ", source.metadata.get("name", ""), " to Slowbro")
+
+# COWARDICE (Tentacool): Return Tentacool to hand. Can't use on placement turn or with status.
+func power_cowardice(tentacool: card_object) -> void:
+	if is_power_blocked_by_status(tentacool):
+		await main.show_message("COWARDICE BLOCKED BY STATUS!")
+		if main._should_bail(): return
+		return
+	
+	if tentacool.placed_on_field_this_turn:
+		await main.show_message("CAN'T USE COWARDICE ON THE TURN TENTACOOL WAS PLAYED!")
+		if main._should_bail(): return
+		return
+	
+	# Tentacool must be on bench or active
+	var is_active = (tentacool == main.player_active_pokemon)
+	
+	if is_active and main.player_bench.size() == 0:
+		await main.show_message("CAN'T RETURN ACTIVE WITH EMPTY BENCH!")
+		if main._should_bail(): return
+		return
+	
+	# Discard all attached cards
+	var discard = main.player_discard_pile
+	for e in tentacool.attached_energies:
+		e.current_location = "discard"
+		discard.append(e)
+	tentacool.attached_energies.clear()
+	for pre in tentacool.attached_pre_evolutions:
+		pre.current_location = "discard"
+		discard.append(pre)
+	tentacool.attached_pre_evolutions.clear()
+	for ac in tentacool.attached_cards:
+		ac.current_location = "discard"
+		discard.append(ac)
+	tentacool.attached_cards.clear()
+	
+	# Return to hand
+	if is_active:
+		main.player_active_pokemon = null
+		# Need to promote a bench pokemon
+		tentacool.current_location = "hand"
+		main.player_hand.append(tentacool)
+		main.clear_all_statuses(tentacool, false)
+		await main.show_message("COWARDICE: TENTACOOL RETURNED TO HAND!")
+		if main._should_bail(): return
+		# Handle post-knockout style replacement
+		await main.handle_post_knockout(false)
+		if main._should_bail(): return
+	else:
+		main.player_bench.erase(tentacool)
+		tentacool.current_location = "hand"
+		main.player_hand.append(tentacool)
+		main.clear_all_statuses(tentacool, false)
+		await main.show_message("COWARDICE: TENTACOOL RETURNED TO HAND!")
+		if main._should_bail(): return
+	
+	main.display_pokemon(false)
+	main.refresh_hand_display(false)
+	main.display_active_pokemon_energies(false)
+	main.update_discard_pile_display(false)
+	print("COWARDICE: Tentacool returned to hand")
+
+############################################### PASSIVE POWER/BODY HOOKS (called from main) #########################################################
+
+# TRANSPARENCY (Haunter): When Haunter is attacked, flip coin. Heads = prevent all effects.
+# Called BEFORE damage is applied. Returns true if attack is blocked.
+func check_transparency(defender: card_object) -> bool:
+	if defender == null:
+		return false
+	var abilities = defender.metadata.get("abilities", [])
+	for ability in abilities:
+		if ability.get("name", "") != "Transparency":
+			continue
+		if is_power_blocked_by_status(defender):
+			print("TRANSPARENCY: Blocked by status on ", defender.metadata.get("name", ""))
+			return false
+		# Check if Muk's Toxic Gas is active
+		if is_toxic_gas_active():
+			print("TRANSPARENCY: Blocked by Toxic Gas")
+			return false
+		var coin = await main.flip_coin()
+		if coin:
+			await main.show_message("TRANSPARENCY: ATTACK BLOCKED!")
+			if main._should_bail(): return true
+			print("TRANSPARENCY: Blocked attack on Haunter (heads)")
+			return true
+		else:
+			await main.show_message("TRANSPARENCY: TAILS! ATTACK HITS!")
+			if main._should_bail(): return false
+			print("TRANSPARENCY: Attack hits Haunter (tails)")
+			return false
+	return false
+
+# KABUTO ARMOR (Kabuto): Halve incoming damage (rounded down to nearest 10)
+# Called during damage calculation. Returns modified damage.
+func apply_kabuto_armor(defender: card_object, damage: int) -> int:
+	if defender == null:
+		return damage
+	var abilities = defender.metadata.get("abilities", [])
+	for ability in abilities:
+		if ability.get("name", "") != "Kabuto Armor":
+			continue
+		if is_power_blocked_by_status(defender):
+			print("KABUTO ARMOR: Blocked by status")
+			return damage
+		if is_toxic_gas_active():
+			print("KABUTO ARMOR: Blocked by Toxic Gas")
+			return damage
+		var halved = int(floor(damage / 2.0 / 10.0)) * 10
+		print("KABUTO ARMOR: Reduced ", damage, " -> ", halved)
+		return halved
+	return damage
+
+# PREHISTORIC POWER (Aerodactyl): Block all evolution card plays
+# Returns true if evolution should be blocked
+func is_prehistoric_power_active() -> bool:
+	# Check both sides for Aerodactyl with Prehistoric Power
+	var all_pokemon: Array = []
+	if main.player_active_pokemon != null:
+		all_pokemon.append(main.player_active_pokemon)
+	all_pokemon.append_array(main.player_bench)
+	if main.opponent_active_pokemon != null:
+		all_pokemon.append(main.opponent_active_pokemon)
+	all_pokemon.append_array(main.opponent_bench)
+	
+	for p in all_pokemon:
+		var abilities = p.metadata.get("abilities", [])
+		for ability in abilities:
+			if ability.get("name", "") != "Prehistoric Power":
+				continue
+			if is_power_blocked_by_status(p):
+				continue
+			if is_toxic_gas_active():
+				continue
+			return true
+	return false
+
+# TOXIC GAS (Muk): Ignore all other Pokemon Powers
+# Returns true if Toxic Gas is currently active
+func is_toxic_gas_active() -> bool:
+	var all_pokemon: Array = []
+	if main.player_active_pokemon != null:
+		all_pokemon.append(main.player_active_pokemon)
+	all_pokemon.append_array(main.player_bench)
+	if main.opponent_active_pokemon != null:
+		all_pokemon.append(main.opponent_active_pokemon)
+	all_pokemon.append_array(main.opponent_bench)
+	
+	for p in all_pokemon:
+		var abilities = p.metadata.get("abilities", [])
+		for ability in abilities:
+			if ability.get("name", "") != "Toxic Gas":
+				continue
+			# Toxic Gas is blocked by its own status conditions
+			if p.special_condition in ["Paralyzed", "Asleep", "Confused"]:
+				continue
+			return true
+	return false
+
+# CLAIRVOYANCE (Omanyte): Opponent plays with hand face up
+# Returns true if Clairvoyance is active (used for UI display)
+func is_clairvoyance_active() -> bool:
+	# Check player's side for Omanyte with Clairvoyance
+	var all_pokemon: Array = []
+	if main.player_active_pokemon != null:
+		all_pokemon.append(main.player_active_pokemon)
+	all_pokemon.append_array(main.player_bench)
+	
+	for p in all_pokemon:
+		var abilities = p.metadata.get("abilities", [])
+		for ability in abilities:
+			if ability.get("name", "") != "Clairvoyance":
+				continue
+			if is_power_blocked_by_status(p):
+				continue
+			if is_toxic_gas_active():
+				continue
+			return true
+	return false
+
 ############################################### Section H: CPU POWER ACTIVATION ######################################################################
 
 # CPU activates beneficial powers at start of turn
@@ -836,6 +1219,120 @@ func cpu_phase_activate_powers() -> void:
 				best_buffer.current_hp -= 10
 				active_damage -= 10
 			main.display_hp_circles_above_align(main.opponent_active_pokemon, true)
+	
+	# --- BASE3 POWERS ---
+	
+	# Step In (Dragonite): Switch to active if better than current active
+	var dragonite = _find_cpu_bench_pokemon_with_power("Step In")
+	if dragonite != null and not dragonite.power_used_this_turn:
+		if not is_power_blocked_by_status(dragonite) and not is_toxic_gas_active():
+			var active = main.opponent_active_pokemon
+			if active != null:
+				# Switch in if Dragonite has better attack readiness
+				var dragonite_ready = false
+				for attack in dragonite.metadata.get("attacks", []):
+					if main.cpu_ai.get_unmet_energy_count(attack, dragonite) == 0:
+						dragonite_ready = true
+						break
+				var active_hp_pct = float(active.current_hp) / float(int(active.metadata.get("hp", "1")))
+				if dragonite_ready and active_hp_pct < 0.4:
+					# Active is low, Dragonite is ready — switch
+					dragonite.power_used_this_turn = true
+					var old_active = main.opponent_active_pokemon
+					main.opponent_bench.erase(dragonite)
+					main.opponent_bench.append(old_active)
+					old_active.current_location = "bench"
+					dragonite.current_location = "active"
+					main.opponent_active_pokemon = dragonite
+					main.clear_all_statuses(old_active, true)
+					main.display_pokemon(true)
+					main.display_active_pokemon_energies(true)
+					await main.show_message("Step In: Dragonite switches in!")
+					if main._should_bail(): return
+	
+	# Curse (Gengar): Move damage to opponent's active for KO potential
+	var gengar = _find_cpu_pokemon_with_power("Curse")
+	if gengar != null and not gengar.power_used_this_turn:
+		if not is_power_blocked_by_status(gengar) and not is_toxic_gas_active():
+			var player_pokemon: Array = []
+			if main.player_active_pokemon != null:
+				player_pokemon.append(main.player_active_pokemon)
+			player_pokemon.append_array(main.player_bench)
+			
+			# Find a source with damage that isn't the active
+			var best_source: card_object = null
+			var best_dest: card_object = null
+			
+			# Strategy: move damage TO the player's active if it helps KO
+			if main.player_active_pokemon != null and main.player_active_pokemon.current_hp <= 10:
+				# Active already almost dead, skip
+				pass
+			elif main.player_active_pokemon != null:
+				# Find source with damage on bench
+				for bp in main.player_bench:
+					if bp.current_hp < int(bp.metadata.get("hp", "0")):
+						best_source = bp
+						best_dest = main.player_active_pokemon
+						break
+			
+			if best_source != null and best_dest != null:
+				gengar.power_used_this_turn = true
+				best_source.current_hp = min(int(best_source.metadata.get("hp", "0")), best_source.current_hp + 10)
+				best_dest.current_hp = max(0, best_dest.current_hp - 10)
+				main.display_hp_circles_above_align(best_source, false)
+				main.display_hp_circles_above_align(best_dest, false)
+				await main.show_message("Curse: Moved damage to " + best_dest.metadata.get("name", "") + "!")
+				if main._should_bail(): return
+				if best_dest.current_hp <= 0:
+					await main.check_all_knockouts()
+					if main._should_bail(): return
+	
+	# Strange Behavior (Slowbro): Move damage off CPU active to Slowbro
+	var slowbro = _find_cpu_pokemon_with_power("Strange Behavior")
+	if slowbro != null and not is_power_blocked_by_status(slowbro) and not is_toxic_gas_active():
+		var active = main.opponent_active_pokemon
+		if active != null and active != slowbro:
+			var active_damage = int(active.metadata.get("hp", "0")) - active.current_hp
+			while active_damage >= 10 and slowbro.current_hp > 10:
+				active.current_hp += 10
+				slowbro.current_hp -= 10
+				active_damage -= 10
+			main.display_hp_circles_above_align(active, true)
+			var slowbro_is_active = (slowbro == main.opponent_active_pokemon)
+			main.display_hp_circles_above_align(slowbro, true)
+	
+	# Cowardice (Tentacool): CPU returns Tentacool if badly damaged
+	var tentacool = _find_cpu_pokemon_with_power("Cowardice")
+	if tentacool != null and not is_power_blocked_by_status(tentacool) and not is_toxic_gas_active():
+		if not tentacool.placed_on_field_this_turn:
+			var max_hp = int(tentacool.metadata.get("hp", "0"))
+			if tentacool.current_hp <= max_hp / 2:
+				# Return to hand
+				var discard = main.opponent_discard_pile
+				for e in tentacool.attached_energies:
+					e.current_location = "discard"
+					discard.append(e)
+				tentacool.attached_energies.clear()
+				for pre in tentacool.attached_pre_evolutions:
+					pre.current_location = "discard"
+					discard.append(pre)
+				tentacool.attached_pre_evolutions.clear()
+				
+				var is_active = (tentacool == main.opponent_active_pokemon)
+				if is_active:
+					main.opponent_active_pokemon = null
+				else:
+					main.opponent_bench.erase(tentacool)
+				tentacool.current_location = "hand"
+				main.opponent_hand.append(tentacool)
+				main.clear_all_statuses(tentacool, true)
+				main.display_pokemon(true)
+				main.refresh_hand_display(true)
+				await main.show_message("Cowardice: Tentacool returned to hand!")
+				if main._should_bail(): return
+				if is_active:
+					await main.handle_post_knockout(true)
+					if main._should_bail(): return
 
 
 # Helper to find a CPU pokemon with a specific power name
@@ -843,6 +1340,14 @@ func cpu_phase_activate_powers() -> void:
 func _find_cpu_pokemon_with_power(power_name: String) -> card_object:
 	var all_pokemon = main.cpu_ai.get_all_cpu_field_pokemon()
 	for p in all_pokemon:
+		for ability in p.metadata.get("abilities", []):
+			if ability.get("name", "") == power_name:
+				return p
+	return null
+
+# Helper to find a CPU bench pokemon with a specific power name
+func _find_cpu_bench_pokemon_with_power(power_name: String) -> card_object:
+	for p in main.opponent_bench:
 		for ability in p.metadata.get("abilities", []):
 			if ability.get("name", "") == power_name:
 				return p

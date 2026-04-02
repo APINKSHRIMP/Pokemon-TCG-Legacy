@@ -2149,6 +2149,90 @@ func cpu_phase_attack(cpu_eval: Dictionary) -> void:
 		main.display_active_pokemon_energies(true)
 		return
 	
+	# --- BASE3 SPECIAL ATTACKS ---
+	
+	# SONICBOOM: Fixed damage, no W/R
+	if "don't apply weakness and resistance for this attack" in chosen_text:
+		var base_dmg = main.attack_effects.parse_attack_base_damage(chosen_attack)
+		await main.attack_effects.execute_sonicboom(main.opponent_active_pokemon, main.player_active_pokemon, true, base_dmg)
+		if main._should_bail(): return
+		main.last_attack_on_player = {"damage": base_dmg, "attack": chosen_attack, "attacker_types": cpu_types}
+		main.opponent_attacked_this_turn = true
+		await main.check_all_knockouts()
+		if main._should_bail(): return
+		main.display_active_pokemon_energies(true)
+		return
+	
+	# WILDFIRE: Discard Fire Energy to mill opponent deck
+	if "discard any number of fire energy" in chosen_text and "discard that many cards" in chosen_text:
+		await main.attack_effects.execute_wildfire(main.opponent_active_pokemon, true)
+		if main._should_bail(): return
+		main.display_active_pokemon_energies(true)
+		return
+	
+	# GIGASHOCK: 30 + 10 to 3 bench
+	if "choose 3 of your opponent's benched" in chosen_text and "10 damage to each of them" in chosen_text:
+		await main.attack_effects.execute_gigashock(main.opponent_active_pokemon, main.player_active_pokemon, true)
+		if main._should_bail(): return
+		await main.check_all_knockouts()
+		if main._should_bail(): return
+		main.last_attack_on_player = {"damage": 30, "attack": chosen_attack, "attacker_types": cpu_types}
+		main.opponent_attacked_this_turn = true
+		main.display_active_pokemon_energies(true)
+		return
+	
+	# THUNDERSTORM: 40 + per-bench flip damage + self recoil
+	if "for each of your opponent's benched" in chosen_text and "flip a coin" in chosen_text and "damage times the number of tails" in chosen_text:
+		await main.attack_effects.execute_thunderstorm(main.opponent_active_pokemon, main.player_active_pokemon, true)
+		if main._should_bail(): return
+		main.last_attack_on_player = {"damage": 40, "attack": chosen_attack, "attacker_types": cpu_types}
+		main.opponent_attacked_this_turn = true
+		await main.check_all_knockouts()
+		if main._should_bail(): return
+		main.display_active_pokemon_energies(true)
+		return
+	
+	# PROPHECY: Look at top 3, rearrange
+	if "look at up to 3 cards" in chosen_text and "rearrange" in chosen_text:
+		await main.attack_effects.execute_prophecy(main.opponent_active_pokemon, true)
+		if main._should_bail(): return
+		main.display_active_pokemon_energies(true)
+		return
+	
+	# ENERGY CONVERSION: Get energy from discard + self damage
+	if "energy cards from your discard pile into your hand" in chosen_text and "damage to itself" in chosen_text:
+		await main.attack_effects.execute_energy_conversion(main.opponent_active_pokemon, true)
+		if main._should_bail(): return
+		await main.check_all_knockouts()
+		if main._should_bail(): return
+		main.display_active_pokemon_energies(true)
+		return
+	
+	# SPACING OUT: Flip to heal self
+	if "remove a damage counter from" in chosen_text and "can't be used if" in chosen_text and "no damage counters" in chosen_text:
+		await main.attack_effects.execute_spacing_out(main.opponent_active_pokemon, true)
+		if main._should_bail(): return
+		main.display_active_pokemon_energies(true)
+		return
+	
+	# SCAVENGE: Discard Psychic Energy, get Trainer from discard
+	if "discard 1 psychic energy" in chosen_text and "trainer card from your discard pile" in chosen_text:
+		await main.attack_effects.execute_scavenge(main.opponent_active_pokemon, true)
+		if main._should_bail(): return
+		main.display_active_pokemon_energies(true)
+		return
+	
+	# ABSORB (Kabutops): Same as Mega Drain
+	if "equal to half the damage done" in chosen_text and "remove" in chosen_text:
+		await main.attack_effects.execute_mega_drain(main.opponent_active_pokemon, main.player_active_pokemon, true)
+		if main._should_bail(): return
+		main.last_attack_on_player = {"damage": 40, "attack": chosen_attack, "attacker_types": cpu_types}
+		main.opponent_attacked_this_turn = true
+		await main.check_all_knockouts()
+		if main._should_bail(): return
+		main.display_active_pokemon_energies(true)
+		return
+	
 
 	# SWORDS DANCE
 	if "swords dance" in chosen_text or ("during your next turn" in chosen_text and "slash" in chosen_text and "instead of" in chosen_text):
@@ -2496,6 +2580,11 @@ func cpu_score_trainer_card(card: card_object) -> float:
 		"base1-94": return _cpu_score_potion()
 		"base1-95": return _cpu_score_switch()
 		"base1-70": return _cpu_score_clefairy_doll()
+		"base3-58": return _cpu_score_mr_fuji()
+		"base3-59": return 70.0  # Energy Search: almost always useful
+		"base3-60": return _cpu_score_gambler()
+		"base3-61": return 30.0  # Recycle: low priority, coin flip dependent
+		"base3-62": return _cpu_score_clefairy_doll()  # Mysterious Fossil: same as bench tokens
 	return 0.0
 
 func _cpu_score_professor_oak(card: card_object) -> float:
@@ -2729,6 +2818,10 @@ func _cpu_score_clefairy_doll() -> float:
 
 # CPU plays highest-priority trainer cards (Bill first)
 func cpu_phase_play_trainer_cards_priority() -> void:
+	# Check trainer lock (Psyduck Headache)
+	if main.trainer_effects.opponent_trainer_locked:
+		print("CPU: Trainer cards locked this turn (Headache)")
+		return
 	var played = true
 	while played:
 		played = false
@@ -2757,6 +2850,9 @@ func cpu_phase_play_trainer_cards_priority() -> void:
 
 # CPU re-evaluates and plays remaining trainer cards
 func cpu_phase_play_trainer_cards_remaining() -> void:
+	# Check trainer lock (Psyduck Headache)
+	if main.trainer_effects.opponent_trainer_locked:
+		return
 	var played = true
 	while played:
 		played = false
@@ -2895,3 +2991,30 @@ func cpu_choose_bench_damage_targets(count: int, damage_per: int) -> Array:
 	targets.sort_custom(func(a, b): return a.current_hp < b.current_hp)
 	return targets.slice(0, min(count, targets.size()))
 
+
+######################################################################################################################################################
+############################################## BASE3 (FOSSIL) CPU SCORING ############################################################################
+######################################################################################################################################################
+
+func _cpu_score_mr_fuji() -> float:
+	# Good if a bench pokemon is heavily damaged
+	var best_damage = 0
+	for bp in main.opponent_bench:
+		var dmg = int(bp.metadata.get("hp", "0")) - bp.current_hp
+		if dmg > best_damage:
+			best_damage = dmg
+	if best_damage >= 40:
+		return 50.0 + best_damage
+	if best_damage >= 20:
+		return 20.0
+	return -50.0  # No damaged bench pokemon, not useful
+
+func _cpu_score_gambler() -> float:
+	var hand = main.opponent_hand
+	# Only gamble if hand is very small (desperate for cards)
+	if hand.size() <= 2:
+		return 60.0
+	if hand.size() <= 3:
+		return 30.0
+	# With bigger hands, risk of losing good cards is too high
+	return -50.0

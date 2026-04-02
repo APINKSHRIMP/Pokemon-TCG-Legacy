@@ -10,6 +10,10 @@ extends Node
 
 var main: Node
 
+# Trainer lock flags (Psyduck Headache)
+var player_trainer_locked: bool = false
+var opponent_trainer_locked: bool = false
+
 func is_trainer_card(card: card_object) -> bool:
 	return card.metadata.get("supertype", "").to_lower() == "trainer"
 
@@ -324,6 +328,12 @@ func _cpu_pokedex_priority(card: card_object) -> float:
 
 # base1-89 — Revive: Put Basic from discard to bench at half HP
 func validate_trainer_can_be_played(card: card_object, is_opponent: bool) -> String:
+	# Check trainer lock (Psyduck Headache)
+	if is_opponent and opponent_trainer_locked:
+		return "Trainer cards are locked this turn!"
+	if not is_opponent and player_trainer_locked:
+		return "Trainer cards are locked this turn!"
+	
 	var card_id = card.uid.to_lower()
 	var active = main.opponent_active_pokemon if is_opponent else main.player_active_pokemon
 	var bench = main.opponent_bench if is_opponent else main.player_bench
@@ -526,6 +536,16 @@ func validate_trainer_can_be_played(card: card_object, is_opponent: bool) -> Str
 
 # Main entry point for playing a trainer card (handles animation, routing, and discard)
 func play_trainer_card(card: card_object, is_opponent: bool) -> void:
+	# Check trainer lock (Psyduck Headache)
+	if is_opponent and opponent_trainer_locked:
+		await main.show_message("TRAINER CARDS ARE LOCKED THIS TURN!")
+		if main._should_bail(): return
+		return
+	if not is_opponent and player_trainer_locked:
+		await main.show_message("TRAINER CARDS ARE LOCKED THIS TURN!")
+		if main._should_bail(): return
+		return
+	
 	var hand = main.opponent_hand if is_opponent else main.player_hand
 	var discard = main.opponent_discard_pile if is_opponent else main.player_discard_pile
 	var who = "Opponent" if is_opponent else "You"
@@ -647,6 +667,10 @@ func resolve_standard_trainer(card: card_object, is_opponent: bool) -> void:
 		"base1-95": await effect_switch(is_opponent)
 		"base2-64": await effect_poke_ball(is_opponent)
 		"base2-64": await effect_poke_ball(is_opponent)
+		"base3-58": await effect_mr_fuji(is_opponent)
+		"base3-59": await effect_energy_search(is_opponent)
+		"base3-60": await effect_gambler(is_opponent)
+		"base3-61": await effect_recycle(is_opponent)
 		_:
 			print("Unknown trainer card: ", card_id, " (", card_name, ")")
 
@@ -2425,3 +2449,286 @@ func effect_poke_ball(is_opponent: bool) -> void:
 	main.update_deck_icon(is_opponent)
 	print("TRAINER APPLIED: Poke Ball complete")
 
+
+######################################################################################################################################################
+############################################## BASE3 (FOSSIL) TRAINER EFFECTS ########################################################################
+######################################################################################################################################################
+
+# base3-58 — Mr. Fuji: Choose a bench Pokemon, shuffle it and all attached cards into deck
+func effect_mr_fuji(is_opponent: bool) -> void:
+	var bench = main.opponent_bench if is_opponent else main.player_bench
+	var deck = main.opponent_deck if is_opponent else main.player_deck
+	
+	if bench.size() == 0:
+		await main.show_message("NO BENCHED POKEMON!")
+		if main._should_bail(): return
+		return
+	
+	var chosen: card_object = null
+	
+	if is_opponent:
+		# CPU picks the most damaged pokemon (save it by shuffling back)
+		var most_damaged: card_object = null
+		var most_damage = 0
+		for bp in bench:
+			var dmg = int(bp.metadata.get("hp", "0")) - bp.current_hp
+			if dmg > most_damage:
+				most_damage = dmg
+				most_damaged = bp
+		# Only use if there's a significantly damaged pokemon
+		if most_damaged != null and most_damage >= 30:
+			chosen = most_damaged
+		elif bench.size() > 0:
+			# Pick worst pokemon on bench
+			var worst_hp = 9999
+			for bp in bench:
+				var hp = int(bp.metadata.get("hp", "0"))
+				if hp < worst_hp:
+					worst_hp = hp
+					chosen = bp
+	else:
+		# Player selects
+		main.trainer_pokemon_selection_active = true
+		main.show_enlarged_array_selection_mode(bench)
+		main.cancel_button.visible = false
+		main.header_label.text = "MR. FUJI: CHOOSE A BENCHED POKEMON"
+		main.hint_label.text = "This Pokemon and all attached cards will be shuffled into your deck"
+		main.action_button.text = "SHUFFLE BACK"
+		main.action_button.disabled = true
+		main.action_button.theme = main.theme_disabled
+		await main.trainer_target_selected
+		if main._should_bail(): return
+		chosen = main.selected_card_for_action
+		main.trainer_pokemon_selection_active = false
+		main.hide_selection_mode_display_main()
+	
+	if chosen == null:
+		return
+	
+	var pokemon_name = chosen.metadata.get("name", "").to_upper()
+	
+	# Shuffle all attached energies into deck
+	for e in chosen.attached_energies:
+		e.current_location = "deck"
+		deck.append(e)
+	chosen.attached_energies.clear()
+	
+	# Shuffle all pre-evolutions into deck
+	for pre in chosen.attached_pre_evolutions:
+		pre.current_location = "deck"
+		deck.append(pre)
+	chosen.attached_pre_evolutions.clear()
+	
+	# Shuffle all attached cards into deck
+	for ac in chosen.attached_cards:
+		ac.current_location = "deck"
+		deck.append(ac)
+	chosen.attached_cards.clear()
+	
+	# Shuffle the pokemon itself into deck
+	bench.erase(chosen)
+	chosen.current_location = "deck"
+	main.clear_all_statuses(chosen, is_opponent)
+	deck.append(chosen)
+	
+	# Shuffle the deck
+	deck.shuffle()
+	
+	main.display_pokemon(is_opponent)
+	main.display_active_pokemon_energies(is_opponent)
+	await main.show_message("MR. FUJI: " + pokemon_name + " SHUFFLED BACK INTO DECK!")
+	if main._should_bail(): return
+	print("MR. FUJI: Shuffled ", pokemon_name, " and attached cards into deck")
+
+# base3-59 — Energy Search: Search deck for a basic Energy card, add to hand
+func effect_energy_search(is_opponent: bool) -> void:
+	var deck = main.opponent_deck if is_opponent else main.player_deck
+	var hand = main.opponent_hand if is_opponent else main.player_hand
+	
+	if deck.size() == 0:
+		await main.show_message("DECK IS EMPTY!")
+		if main._should_bail(): return
+		return
+	
+	# Find basic energy cards in deck
+	var basic_energies: Array = []
+	for card in deck:
+		if card.metadata.get("supertype", "") == "Energy":
+			var subtypes = card.metadata.get("subtypes", [])
+			# Basic energies don't have "Special" subtype
+			if "Special" not in subtypes:
+				basic_energies.append(card)
+	
+	if basic_energies.size() == 0:
+		await main.show_message("NO BASIC ENERGY IN DECK!")
+		if main._should_bail(): return
+		deck.shuffle()
+		return
+	
+	var chosen: card_object = null
+	
+	if is_opponent:
+		# CPU picks the energy type it needs most
+		var active = main.opponent_active_pokemon
+		if active != null:
+			var needed_types: Array = []
+			for attack in active.metadata.get("attacks", []):
+				for cost in attack.get("cost", []):
+					if cost != "Colorless" and cost not in needed_types:
+						needed_types.append(cost)
+			# Pick matching energy
+			for e in basic_energies:
+				var e_name = e.metadata.get("name", "")
+				for nt in needed_types:
+					if nt in e_name:
+						chosen = e
+						break
+				if chosen != null:
+					break
+		if chosen == null:
+			chosen = basic_energies[0]
+	else:
+		# Player selects
+		main.opponent_blocker.visible = false
+		main.trainer_deck_search_active = true
+		main.show_enlarged_array_selection_mode(basic_energies)
+		main.cancel_button.visible = false
+		main.header_label.text = "ENERGY SEARCH: CHOOSE A BASIC ENERGY"
+		main.hint_label.text = "Select a basic Energy card to add to your hand"
+		main.action_button.text = "SELECT"
+		main.action_button.disabled = true
+		main.action_button.theme = main.theme_disabled
+		await main.trainer_target_selected
+		if main._should_bail(): return
+		chosen = main.selected_card_for_action
+		main.trainer_deck_search_active = false
+		main.hide_selection_mode_display_main()
+		main.opponent_blocker.visible = true
+	
+	if chosen != null:
+		deck.erase(chosen)
+		chosen.current_location = "hand"
+		hand.append(chosen)
+		main.refresh_hand_display(is_opponent)
+		await main.show_message("ENERGY SEARCH: ADDED " + chosen.metadata.get("name", "").to_upper() + " TO HAND!")
+		if main._should_bail(): return
+		print("ENERGY SEARCH: Retrieved ", chosen.metadata.get("name", ""))
+	
+	deck.shuffle()
+
+# base3-60 — Gambler: Shuffle hand into deck, flip coin, heads=draw 8, tails=draw 1
+func effect_gambler(is_opponent: bool) -> void:
+	var hand = main.opponent_hand if is_opponent else main.player_hand
+	var deck = main.opponent_deck if is_opponent else main.player_deck
+	
+	# Shuffle entire hand into deck (Gambler itself is already in discard)
+	var hand_copy = hand.duplicate()
+	for card in hand_copy:
+		card.current_location = "deck"
+		deck.append(card)
+	hand.clear()
+	main.refresh_hand_display(is_opponent)
+	
+	deck.shuffle()
+	
+	await main.show_message("GAMBLER: HAND SHUFFLED INTO DECK! FLIPPING COIN...")
+	if main._should_bail(): return
+	
+	var coin = await main.flip_coin()
+	var draw_count = 8 if coin else 1
+	
+	if coin:
+		await main.show_message("HEADS! DRAWING 8 CARDS!")
+	else:
+		await main.show_message("TAILS! DRAWING 1 CARD!")
+	if main._should_bail(): return
+	
+	for i in range(draw_count):
+		await main.draw_card_from_deck(is_opponent)
+		if main._should_bail(): return
+	
+	main.refresh_hand_display(is_opponent)
+	print("GAMBLER: ", "Heads" if coin else "Tails", " -> Drew ", draw_count, " cards")
+
+# base3-61 — Recycle: Flip coin, if heads put a card from discard on top of deck
+func effect_recycle(is_opponent: bool) -> void:
+	var discard = main.opponent_discard_pile if is_opponent else main.player_discard_pile
+	var deck = main.opponent_deck if is_opponent else main.player_deck
+	
+	if discard.size() == 0:
+		await main.show_message("DISCARD PILE IS EMPTY!")
+		if main._should_bail(): return
+		return
+	
+	await main.show_message("RECYCLE: FLIPPING COIN...")
+	if main._should_bail(): return
+	
+	var coin = await main.flip_coin()
+	if not coin:
+		await main.show_message("TAILS! RECYCLE FAILED!")
+		if main._should_bail(): return
+		return
+	
+	await main.show_message("HEADS! CHOOSE A CARD FROM DISCARD!")
+	if main._should_bail(): return
+	
+	var chosen: card_object = null
+	
+	if is_opponent:
+		# CPU picks the most useful card
+		# Priority: evolution needed > energy needed > trainer > other
+		var best_card: card_object = null
+		var best_score = -999.0
+		for card in discard:
+			var score = 0.0
+			var st = card.metadata.get("supertype", "")
+			if st == "Pokémon":
+				var subtypes = card.metadata.get("subtypes", [])
+				if "Stage 1" in subtypes or "Stage 2" in subtypes:
+					# Check if evolution target exists on field
+					var targets = main.get_valid_evolution_targets(card, true)
+					if targets.size() > 0:
+						score = 80.0
+					else:
+						score = 20.0
+				else:
+					score = 15.0
+			elif st == "Energy":
+				score = 30.0
+			elif st == "Trainer":
+				score = main.cpu_ai.cpu_score_trainer_card(card)
+			if score > best_score:
+				best_score = score
+				best_card = card
+		chosen = best_card
+	else:
+		# Player selects
+		main.trainer_pokemon_selection_active = true
+		main.show_enlarged_array_selection_mode(discard)
+		main.cancel_button.visible = false
+		main.header_label.text = "RECYCLE: CHOOSE A CARD"
+		main.hint_label.text = "This card will be placed on top of your deck"
+		main.action_button.text = "RECYCLE"
+		main.action_button.disabled = true
+		main.action_button.theme = main.theme_disabled
+		await main.trainer_target_selected
+		if main._should_bail(): return
+		chosen = main.selected_card_for_action
+		main.trainer_pokemon_selection_active = false
+		main.hide_selection_mode_display_main()
+	
+	if chosen != null:
+		discard.erase(chosen)
+		chosen.current_location = "deck"
+		deck.insert(0, chosen)  # Put on TOP of deck
+		main.update_discard_pile_display(is_opponent)
+		await main.show_message("RECYCLE: " + chosen.metadata.get("name", "").to_upper() + " PUT ON TOP OF DECK!")
+		if main._should_bail(): return
+		print("RECYCLE: ", chosen.metadata.get("name", ""), " placed on top of deck")
+
+# Helper: Reset trainer lock at start of turn
+func reset_trainer_lock(is_opponent: bool) -> void:
+	if is_opponent:
+		opponent_trainer_locked = false
+	else:
+		player_trainer_locked = false
