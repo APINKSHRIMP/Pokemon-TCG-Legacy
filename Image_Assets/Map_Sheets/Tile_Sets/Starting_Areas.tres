@@ -5415,6 +5415,9 @@ texture = ExtResource("1_qpr2f")
 51:97/0 = 0
 52:97/0 = 0
 53:97/0 = 0
+56:95/0 = 0
+56:96/0 = 0
+56:97/0 = 0
 
 [resource]
 sources/0 = SubResource("TileSetAtlasSource_362tc")
