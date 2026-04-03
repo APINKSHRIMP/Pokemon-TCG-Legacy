@@ -62,6 +62,9 @@ func open_power_menu() -> void:
 		all_pokemon.append(main.player_active_pokemon)
 	all_pokemon.append_array(main.player_bench)
 	
+	# Check if Toxic Gas is active (blocks all non-Toxic-Gas powers)
+	var toxic_gas_active = is_toxic_gas_active()
+	
 	for pokemon in all_pokemon:
 		var abilities = pokemon.metadata.get("abilities", [])
 		for ability in abilities:
@@ -71,6 +74,9 @@ func open_power_menu() -> void:
 			var ability_name = ability.get("name", "")
 			# Skip passive powers (they don't go in menu)
 			if ability_name in ["Strikes Back", "Energy Burn", "Invisible Wall", "Thick Skinned", "Retreat Aid", "Prehistoric Power", "Toxic Gas", "Transparency", "Kabuto Armor", "Clairvoyance", "Transform"]:
+				continue
+			# Toxic Gas blocks all other powers
+			if toxic_gas_active:
 				continue
 			# Check if usable
 			if ability_name != "Buzzap" and is_power_blocked_by_status(pokemon):
@@ -973,6 +979,80 @@ func power_cowardice(tentacool: card_object) -> void:
 
 ############################################### PASSIVE POWER/BODY HOOKS (called from main) #########################################################
 
+# DITTO TRANSFORM: Apply/revert Transform based on active status
+# Called after any switch, KO, or start of turn to keep Transform in sync
+func update_ditto_transform(is_opponent: bool) -> void:
+	var active = main.opponent_active_pokemon if is_opponent else main.player_active_pokemon
+	var bench = main.opponent_bench if is_opponent else main.player_bench
+	var opposing_active = main.player_active_pokemon if is_opponent else main.opponent_active_pokemon
+	
+	# Check if Toxic Gas shuts it down
+	var toxic_gas = is_toxic_gas_active()
+	
+	# First: revert any benched Dittos that are still transformed
+	for bp in bench:
+		if bp != null and bp.is_ditto_transformed:
+			bp.revert_ditto_transform()
+			print("TRANSFORM: Reverted benched Ditto")
+	
+	# Second: handle active
+	if active == null or opposing_active == null:
+		return
+	
+	# Check if active is a Ditto with Transform
+	var is_ditto = false
+	var real_name = active.ditto_original_metadata.get("name", "") if active.is_ditto_transformed else active.metadata.get("name", "")
+	if real_name == "Ditto":
+		is_ditto = true
+	if not active.is_ditto_transformed:
+		# Check abilities on the current (untransformed) card
+		for ability in active.metadata.get("abilities", []):
+			if ability.get("name", "") == "Transform":
+				is_ditto = true
+				break
+	
+	if not is_ditto:
+		return
+	
+	# Ditto is blocked by status (Asleep, Confused, Paralyzed)
+	if active.special_condition in ["Asleep", "Confused", "Paralyzed"]:
+		if active.is_ditto_transformed:
+			active.revert_ditto_transform()
+			main.display_pokemon(is_opponent)
+			main.display_active_pokemon_energies(is_opponent)
+			print("TRANSFORM: Reverted — Ditto has status condition")
+		return
+	
+	# Toxic Gas blocks Transform
+	if toxic_gas:
+		if active.is_ditto_transformed:
+			active.revert_ditto_transform()
+			main.display_pokemon(is_opponent)
+			main.display_active_pokemon_energies(is_opponent)
+			print("TRANSFORM: Reverted — Toxic Gas active")
+		return
+	
+	# Check if already transformed into the current opposing active
+	if active.is_ditto_transformed:
+		if active.ditto_transform_uid == opposing_active.uid:
+			# Already transformed into this exact card — no change needed
+			return
+		else:
+			# Opposing active changed — revert and re-transform
+			active.revert_ditto_transform()
+	
+	# Apply Transform: copy the opposing active's metadata
+	active.apply_ditto_transform(opposing_active.metadata, opposing_active.uid)
+	main.display_pokemon(is_opponent)
+	main.display_active_pokemon_energies(is_opponent)
+	print("TRANSFORM: Ditto copied ", opposing_active.metadata.get("name", ""))
+
+# Called when Ditto leaves play (KO, Scoop Up, Mr. Fuji, etc.) to ensure clean revert
+func revert_ditto_if_needed(pokemon: card_object) -> void:
+	if pokemon != null and pokemon.is_ditto_transformed:
+		pokemon.revert_ditto_transform()
+		print("TRANSFORM: Reverted Ditto leaving play")
+
 # TRANSPARENCY (Haunter): When Haunter is attacked, flip coin. Heads = prevent all effects.
 # Called BEFORE damage is applied. Returns true if attack is blocked.
 func check_transparency(defender: card_object) -> bool:
@@ -1094,9 +1174,14 @@ func is_clairvoyance_active() -> bool:
 # CPU activates beneficial powers at start of turn
 
 func cpu_phase_activate_powers() -> void:
+	# Note: Toxic Gas blocks individual powers. Each power section checks is_toxic_gas_active()
+	# or is_power_blocked_by_status() as appropriate. Rain Dance/Energy Trans/etc. are also
+	# blocked by Toxic Gas since they are Pokemon Powers.
+	var toxic_gas = is_toxic_gas_active()
+	
 	# Rain Dance: attach all Water Energy to Water Pokemon
 	var blastoise = _find_cpu_pokemon_with_power("Rain Dance")
-	if blastoise != null and not is_power_blocked_by_status(blastoise):
+	if blastoise != null and not is_power_blocked_by_status(blastoise) and not toxic_gas:
 		var keep_going = true
 		while keep_going:
 			keep_going = false
@@ -1131,7 +1216,7 @@ func cpu_phase_activate_powers() -> void:
 	
 	# Energy Trans: consolidate Grass Energy to the pokemon that needs it most
 	var venusaur = _find_cpu_pokemon_with_power("Energy Trans")
-	if venusaur != null and not is_power_blocked_by_status(venusaur):
+	if venusaur != null and not is_power_blocked_by_status(venusaur) and not toxic_gas:
 		# Find pokemon that needs Grass Energy most
 		var all_pokemon = main.cpu_ai.get_all_cpu_field_pokemon()
 		var best_target: card_object = null
@@ -1161,7 +1246,7 @@ func cpu_phase_activate_powers() -> void:
 	
 	# Vileplume Heal: CPU tries to heal damaged pokemon
 	var vileplume = _find_cpu_pokemon_with_power("Heal")
-	if vileplume != null and not is_power_blocked_by_status(vileplume) and not vileplume.power_used_this_turn:
+	if vileplume != null and not is_power_blocked_by_status(vileplume) and not toxic_gas and not vileplume.power_used_this_turn:
 		vileplume.power_used_this_turn = true
 		# Only use if there's damage to heal
 		var all_cpu = main.cpu_ai.get_all_cpu_field_pokemon()
@@ -1186,7 +1271,7 @@ func cpu_phase_activate_powers() -> void:
 	
 	# Venomoth Shift: CPU shifts to the type that gives best coverage
 	var venomoth = _find_cpu_pokemon_with_power("Shift")
-	if venomoth != null and not is_power_blocked_by_status(venomoth) and not venomoth.power_used_this_turn:
+	if venomoth != null and not is_power_blocked_by_status(venomoth) and not toxic_gas and not venomoth.power_used_this_turn:
 		# Shift to the type that the player's active is weak to
 		var player_weaknesses = main.player_active_pokemon.metadata.get("weaknesses", []) if main.player_active_pokemon != null else []
 		if player_weaknesses.size() > 0:
@@ -1200,7 +1285,7 @@ func cpu_phase_activate_powers() -> void:
 	
 	# Damage Swap: move damage off active to bench with most buffer
 	var alakazam = _find_cpu_pokemon_with_power("Damage Swap")
-	if alakazam != null and not is_power_blocked_by_status(alakazam):
+	if alakazam != null and not is_power_blocked_by_status(alakazam) and not toxic_gas:
 		var active = main.opponent_active_pokemon
 		if active != null:
 			var active_damage = int(active.metadata.get("hp", "0")) - active.current_hp

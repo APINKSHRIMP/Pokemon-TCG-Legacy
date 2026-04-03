@@ -70,6 +70,12 @@ var attack_blocked_by_id: int = -1  # instance_id of the pokemon that set the bl
 # Venomoth Shift: temporary type override (persists until changed or leaves play)
 var temporary_type: String = ""
 
+# Ditto Transform: stores original data so Transform can be reverted cleanly
+var is_ditto_transformed: bool = false
+var ditto_original_uid: String = ""          # Ditto's real UID (for image restore)
+var ditto_original_metadata: Dictionary = {} # Ditto's real metadata (full backup)
+var ditto_transform_uid: String = ""         # UID of the copied card (for image display)
+
 # Trainer lock tracking (Psyduck Headache) — NOT per-pokemon, tracked on Trainer_Effects.gd
 
 # Utility: get damage counters (each counter = 10 damage)
@@ -93,3 +99,60 @@ func _init(card_uid: String, card_metadata: Dictionary) -> void:
 		current_hp = int(metadata["hp"])
 	else:
 		current_hp = 0
+
+# Ditto Transform: copy another card's metadata while preserving Ditto's identity
+func apply_ditto_transform(target_metadata: Dictionary, target_uid: String) -> void:
+	if is_ditto_transformed:
+		revert_ditto_transform()
+	
+	# Back up originals
+	ditto_original_uid = uid
+	ditto_original_metadata = metadata.duplicate(true)
+	is_ditto_transformed = true
+	ditto_transform_uid = target_uid
+	
+	# Build the cloned metadata: copy everything from target BUT keep Ditto's abilities
+	var cloned = target_metadata.duplicate(true)
+	
+	# Preserve Ditto's Transform ability so it always shows in the power list
+	var ditto_abilities = ditto_original_metadata.get("abilities", [])
+	cloned["abilities"] = ditto_abilities
+	
+	# Ditto can't evolve — strip evolution fields
+	cloned.erase("evolvesFrom")
+	cloned.erase("evolvesTo")
+	
+	# Overwrite metadata with the clone
+	metadata = cloned
+	
+	# Override the display UID so textures load the copied card's image
+	uid = target_uid
+	
+	# Adjust HP: Ditto takes on the target's max HP but carries over damage
+	var old_max = int(ditto_original_metadata.get("hp", "0"))
+	var damage_taken = old_max - current_hp
+	var new_max = int(cloned.get("hp", "0"))
+	current_hp = max(1, new_max - damage_taken)
+
+# Ditto Transform: revert to original Ditto card data
+func revert_ditto_transform() -> void:
+	if not is_ditto_transformed:
+		return
+	
+	# Calculate damage to carry back
+	var clone_max = int(metadata.get("hp", "0"))
+	var damage_taken = clone_max - current_hp
+	
+	# Restore originals
+	uid = ditto_original_uid
+	metadata = ditto_original_metadata.duplicate(true)
+	is_ditto_transformed = false
+	ditto_transform_uid = ""
+	
+	# Carry damage back to Ditto's original HP pool
+	var ditto_max = int(metadata.get("hp", "0"))
+	current_hp = max(0, ditto_max - damage_taken)
+	
+	# Clear the backups
+	ditto_original_uid = ""
+	ditto_original_metadata = {}

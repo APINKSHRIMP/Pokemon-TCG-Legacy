@@ -2213,6 +2213,9 @@ func flip_coin(silent: bool = false) -> bool:
 func send_card_to_discard(card: card_object, is_opponent: bool) -> void:
 	var discard = opponent_discard_pile if is_opponent else player_discard_pile
 	
+	# Revert Ditto Transform before discarding so original card data is preserved
+	powers_and_bodies.revert_ditto_if_needed(card)
+	
 	for energy in card.attached_energies:
 		energy.current_location = "discard"
 		discard.append(energy)
@@ -2308,6 +2311,8 @@ func reset_field_pokemon_turn_flags(is_opponent: bool) -> void:
 func player_start_turn_checks() -> void:
 	if _should_bail():
 		return
+	# Reset trainer lock from Headache
+	trainer_effects.reset_trainer_lock(false)
 	opponent_blocker.visible = false
 	show_floating_label("Start turn", Vector2(50, 180), false)
 	turn_number += 1
@@ -2322,6 +2327,10 @@ func player_start_turn_checks() -> void:
 
 	refresh_hand_display(false)
 	update_deck_icon(false)
+	
+	# Update Ditto Transform state (may need to re-transform after opponent turn changes)
+	powers_and_bodies.update_ditto_transform(false)
+	powers_and_bodies.update_ditto_transform(true)
 	
 # Called when the player presses the end turn button to reset per-turn variables and begin next turn
 func player_end_turn_checks() -> void:
@@ -2389,6 +2398,10 @@ func inbetween_turn_checks(player_turn_just_ended: bool = true) -> void:
 		powers_and_bodies.reset_power_used_flags(false)
 	else:
 		powers_and_bodies.reset_power_used_flags(true)
+	
+	# Update Ditto Transform after any switches/KOs that may have happened
+	powers_and_bodies.update_ditto_transform(false)
+	powers_and_bodies.update_ditto_transform(true)
 
 	# Process between-turn effects (poison, burn, sleep) for both active pokemon
 	if player_active_pokemon != null:
@@ -2510,6 +2523,12 @@ func get_valid_evolution_targets(evolution_card: card_object, is_opponent: bool)
 func start_evolution() -> void:
 	if selected_card_for_action == null:
 		print("Error: No evolution card selected")
+		return
+	
+	# Check Aerodactyl's Prehistoric Power
+	if powers_and_bodies.is_prehistoric_power_active():
+		await show_message("PREHISTORIC POWER: EVOLUTION IS BLOCKED!")
+		if _should_bail(): return
 		return
 	
 	evolution_card_awaiting_target = selected_card_for_action
@@ -2751,6 +2770,11 @@ func is_attack_disabled(pokemon: card_object, attack_name: String) -> bool:
 # half-HP damage, extra-energy-beyond-cost bonus, and condition-gated attacks.
 # Returns: {"damage": int, "messages": Array, "flip_result": String, "attack_failed": bool}
 func display_and_apply_attack_damage(attacker: card_object, defender: card_object, final_damage: int, modifiers: Array, is_opponent: bool, base_damage: int = -1) -> void:
+	# Check Haunter's Transparency power before applying damage
+	var transparency_blocked = await powers_and_bodies.check_transparency(defender)
+	if transparency_blocked:
+		return
+	
 	var defender_label_pos = Vector2(530, 300) if is_opponent else Vector2(1030, 300)
 	for modifier in modifiers:
 		show_floating_label(modifier, defender_label_pos, true)
@@ -2866,6 +2890,92 @@ func perform_attack(attack_index: int) -> void:
 		player_end_turn_checks()
 		return
 	
+	# ABSORB (Kabutops): Same as Mega Drain
+	if "equal to half the damage done" in text_lower and "remove" in text_lower and "mega drain" not in attack_name.to_lower():
+		hide_attack_buttons()
+		await attack_effects.execute_mega_drain(player_active_pokemon, opponent_active_pokemon, false)
+		last_attack_on_opponent = {"damage": 40, "attack": attack, "attacker_types": player_active_pokemon.metadata.get("types", ["Colorless"])}
+		player_attacked_this_turn = true
+		await check_all_knockouts()
+		await get_tree().create_timer(0.5).timeout
+		player_end_turn_checks()
+		return
+	
+	# SONICBOOM: Fixed damage ignoring W/R
+	if "don't apply weakness and resistance for this attack" in text_lower:
+		hide_attack_buttons()
+		var base_dmg = attack_effects.parse_attack_base_damage(attack)
+		await attack_effects.execute_sonicboom(player_active_pokemon, opponent_active_pokemon, false, base_dmg)
+		last_attack_on_opponent = {"damage": base_dmg, "attack": attack, "attacker_types": player_active_pokemon.metadata.get("types", ["Colorless"])}
+		player_attacked_this_turn = true
+		await check_all_knockouts()
+		await get_tree().create_timer(0.5).timeout
+		player_end_turn_checks()
+		return
+	
+	# WILDFIRE: Discard Fire Energy to mill opponent deck
+	if "discard any number of fire energy" in text_lower and "discard that many cards" in text_lower:
+		hide_attack_buttons()
+		await attack_effects.execute_wildfire(player_active_pokemon, false)
+		await get_tree().create_timer(0.5).timeout
+		player_end_turn_checks()
+		return
+	
+	# GIGASHOCK: 30 damage + 10 to up to 3 bench
+	if "choose 3 of your opponent's benched" in text_lower and "10 damage to each of them" in text_lower:
+		hide_attack_buttons()
+		await attack_effects.execute_gigashock(player_active_pokemon, opponent_active_pokemon, false)
+		last_attack_on_opponent = {"damage": 30, "attack": attack, "attacker_types": player_active_pokemon.metadata.get("types", ["Colorless"])}
+		player_attacked_this_turn = true
+		await check_all_knockouts()
+		await get_tree().create_timer(0.5).timeout
+		player_end_turn_checks()
+		return
+	
+	# THUNDERSTORM: 40 + per-bench flip + self recoil
+	if "for each of your opponent's benched" in text_lower and "flip a coin" in text_lower and "damage times the number of tails" in text_lower:
+		hide_attack_buttons()
+		await attack_effects.execute_thunderstorm(player_active_pokemon, opponent_active_pokemon, false)
+		last_attack_on_opponent = {"damage": 40, "attack": attack, "attacker_types": player_active_pokemon.metadata.get("types", ["Colorless"])}
+		player_attacked_this_turn = true
+		await check_all_knockouts()
+		await get_tree().create_timer(0.5).timeout
+		player_end_turn_checks()
+		return
+	
+	# PROPHECY: Look at top 3, rearrange
+	if "look at up to 3 cards" in text_lower and "rearrange" in text_lower:
+		hide_attack_buttons()
+		await attack_effects.execute_prophecy(player_active_pokemon, false)
+		await get_tree().create_timer(0.5).timeout
+		player_end_turn_checks()
+		return
+	
+	# ENERGY CONVERSION: Get energy from discard + self damage
+	if "energy cards from your discard pile into your hand" in text_lower and "damage to itself" in text_lower:
+		hide_attack_buttons()
+		await attack_effects.execute_energy_conversion(player_active_pokemon, false)
+		await check_all_knockouts()
+		await get_tree().create_timer(0.5).timeout
+		player_end_turn_checks()
+		return
+	
+	# SPACING OUT: Flip to heal self, can't use if no damage
+	if "remove a damage counter from" in text_lower and "can't be used if" in text_lower and "no damage counters" in text_lower:
+		hide_attack_buttons()
+		await attack_effects.execute_spacing_out(player_active_pokemon, false)
+		await get_tree().create_timer(0.5).timeout
+		player_end_turn_checks()
+		return
+	
+	# SCAVENGE: Discard Psychic Energy, get Trainer from discard
+	if "discard 1 psychic energy" in text_lower and "trainer card from your discard pile" in text_lower:
+		hide_attack_buttons()
+		await attack_effects.execute_scavenge(player_active_pokemon, false)
+		await get_tree().create_timer(0.5).timeout
+		player_end_turn_checks()
+		return
+	
 	# CALL FOR FAMILY/FRIEND/SPROUT: Search deck for specific Basic Pokemon
 	if "search your deck for" in text_lower and ("put it onto your bench" in text_lower or "put it on your bench" in text_lower):
 		hide_attack_buttons()
@@ -2876,6 +2986,8 @@ func perform_attack(attack_index: int) -> void:
 			search_names = ["Bellsprout"]
 		elif "named Oddish" in search_text:
 			search_names = ["Oddish"]
+		elif "named Krabby" in search_text:
+			search_names = ["Krabby"]
 		elif "Nidoran" in search_text:
 			search_names = ["Nidoran \u2640", "Nidoran \u2642"]
 		elif "Fighting Basic" in search_text:
@@ -3090,6 +3202,10 @@ func calculate_final_damage(base_damage: int, attacking_types: Array, defending_
 		damage -= reduction
 		modifiers_applied.append("DEFENDER -" + str(reduction))
 	
+	# Apply Kabuto Armor (halve damage, rounded down to nearest 10)
+	if damage > 0:
+		damage = powers_and_bodies.apply_kabuto_armor(defending_pokemon, damage)
+	
 	return {"damage": damage, "modifiers": modifiers_applied}
 
 ############################################################# Knockout functions ##################################################################
@@ -3274,6 +3390,10 @@ func handle_post_knockout(is_opponent: bool) -> void:
 		display_active_pokemon_energies(false)
 		display_active_pokemon_energies(true)
 		opponent_blocker.visible = true
+	
+	# Update Ditto Transform after new active is set
+	powers_and_bodies.update_ditto_transform(is_opponent)
+	powers_and_bodies.update_ditto_transform(not is_opponent)
 	
 ########################################################## END ATTACK AND DAMAGE FUNCTIONS ###########################################################
 ######################################################################################################################################################
@@ -3542,6 +3662,35 @@ func get_retreat_cost(pokemon: card_object) -> int:
 
 # Loads the small card image texture for any card object by its UID
 func get_card_texture(card: card_object) -> Texture2D:
+	# Ditto Transform: if this card is a transformed Ditto, return a whitened version
+	if card.is_ditto_transformed and card.ditto_transform_uid != "":
+		var ditto_cache_key = "ditto_" + card.ditto_transform_uid
+		if ditto_cache_key in _texture_cache:
+			return _texture_cache[ditto_cache_key]
+		# Load the target card's texture and apply a 20% white overlay
+		var target_uid = card.ditto_transform_uid
+		var target_set = target_uid.split("-")[0]
+		var base_tex = load("res://Image_Assets/Card_Image_Library/" + target_set + "/Small/" + target_uid + ".png")
+		if base_tex != null:
+			var img = base_tex.get_image()
+			if img != null:
+				img = img.duplicate()
+				var white_blend = 0.20
+				for y in range(img.get_height()):
+					for x in range(img.get_width()):
+						var c = img.get_pixel(x, y)
+						c.r = lerp(c.r, 1.0, white_blend)
+						c.g = lerp(c.g, 1.0, white_blend)
+						c.b = lerp(c.b, 1.0, white_blend)
+						img.set_pixel(x, y, c)
+				var whitened = ImageTexture.create_from_image(img)
+				_texture_cache[ditto_cache_key] = whitened
+				return whitened
+		# Fallback if texture load fails
+		if base_tex != null:
+			_texture_cache[ditto_cache_key] = base_tex
+			return base_tex
+	
 	# Fix 8: Cache textures by UID to avoid redundant load() calls
 	if card.uid in _texture_cache:
 		return _texture_cache[card.uid]
@@ -3723,6 +3872,10 @@ func handle_action_retreat_bench() -> void:
 
 	display_pokemon(false)
 	display_active_pokemon_energies(false)
+	
+	# Update Ditto Transform after active switch
+	powers_and_bodies.update_ditto_transform(false)
+	powers_and_bodies.update_ditto_transform(true)
 
 # Moves a bench pokemon to the active slot after a knockout and triggers post-knockout signals
 func handle_action_knockout_bench() -> void:

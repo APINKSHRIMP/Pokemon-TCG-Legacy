@@ -26,6 +26,8 @@ func invalidate_cpu_evaluation() -> void:
 func opponent_start_turn_checks() -> void:
 	if main._should_bail():
 		return
+	# Reset trainer lock from Headache
+	main.trainer_effects.reset_trainer_lock(true)
 	main.turn_number += 1
 	print("OPPONENT'S TURN START. TURN NUMBER IS ", main.turn_number)
 	await get_tree().create_timer(0.5).timeout
@@ -42,6 +44,10 @@ func opponent_start_turn_checks() -> void:
 
 	main.refresh_hand_display(true)
 	main.update_deck_icon(true)
+
+	# Update Ditto Transform state
+	main.powers_and_bodies.update_ditto_transform(true)
+	main.powers_and_bodies.update_ditto_transform(false)
 
 	# Future: resolve any start-of-turn triggered effects here
 
@@ -311,6 +317,11 @@ func get_unmet_energy_count(attack: Dictionary, pokemon: card_object) -> int:
 			if provided.size() > 1:
 				for _i in range(provided.size() - 1):
 					pool.append("Fire")
+		# Ditto Transform: all energy counts as any type
+		elif pokemon.is_ditto_transformed:
+			var provided = main.get_energy_provided_by_card(attached)
+			for _i in range(provided.size()):
+				pool.append("Any")
 		else:
 			pool.append_array(main.get_energy_provided_by_card(attached))
 
@@ -1075,6 +1086,10 @@ func execute_cpu_retreat(cpu_eval: Dictionary) -> void:
 	main.clear_all_statuses(old_active, true)
 	main.display_pokemon(true)
 	main.display_active_pokemon_energies(true)
+	
+	# Update Ditto Transform after active switch
+	main.powers_and_bodies.update_ditto_transform(true)
+	main.powers_and_bodies.update_ditto_transform(false)
 	
 	# Fix 2: Invalidate CPU evaluation cache after retreat changes board
 	invalidate_cpu_evaluation()
@@ -2307,6 +2322,7 @@ func cpu_phase_attack(cpu_eval: Dictionary) -> void:
 		var raw_text = chosen_attack.get("text", "")
 		if "named Bellsprout" in raw_text: search_names = ["Bellsprout"]
 		elif "named Oddish" in raw_text: search_names = ["Oddish"]
+		elif "named Krabby" in raw_text: search_names = ["Krabby"]
 		elif "Nidoran" in raw_text: search_names = ["Nidoran \u2640", "Nidoran \u2642"]
 		elif "Fighting Basic" in raw_text: search_type = "Fighting"
 		await main.attack_effects.execute_call_for_pokemon(main.opponent_active_pokemon, true, search_names, search_type)
@@ -2495,6 +2511,11 @@ func cpu_phase_bench_play() -> void:
 # R.5: Selects the best bench replacement and performs the retreat
 func cpu_phase_evolution() -> void:
 	if main.turn_number <= 2:
+		return
+	
+	# Check Aerodactyl's Prehistoric Power
+	if main.powers_and_bodies.is_prehistoric_power_active():
+		print("CPU: Evolution blocked by Prehistoric Power")
 		return
 
 	while true:
