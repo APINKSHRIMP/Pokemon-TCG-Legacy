@@ -1305,6 +1305,60 @@ func cpu_phase_activate_powers() -> void:
 				active_damage -= 10
 			main.display_hp_circles_above_align(main.opponent_active_pokemon, true)
 	
+	# Buzzap (Electrode): KO Electrode to become 2 energy of chosen type on another pokemon
+	# CPU uses Buzzap when: another pokemon is 2+ energy short of attacking, Electrode is on bench,
+	# and there are enough total pokemon to survive the prize loss
+	var electrode_buzzap = _find_cpu_pokemon_with_power("Buzzap")
+	if electrode_buzzap != null and not toxic_gas:
+		if not is_power_blocked_by_status(electrode_buzzap):
+			var total_pokemon = (1 if main.opponent_active_pokemon != null else 0) + main.opponent_bench.size()
+			if total_pokemon > 1 and electrode_buzzap != main.opponent_active_pokemon:
+				# Find a pokemon that needs 2+ energy to attack
+				var best_target: card_object = null
+				var best_type: String = ""
+				var best_unmet = 0
+				var all_cpu = main.cpu_ai.get_all_cpu_field_pokemon()
+				for p in all_cpu:
+					if p == electrode_buzzap:
+						continue
+					for attack in p.metadata.get("attacks", []):
+						var unmet = main.cpu_ai.get_unmet_energy_count(attack, p)
+						if unmet >= 2 and unmet > best_unmet:
+							# Find what type is needed most
+							var cost = attack.get("cost", [])
+							var type_counts = {}
+							for c in cost:
+								if c != "Colorless":
+									type_counts[c] = type_counts.get(c, 0) + 1
+							if type_counts.size() > 0:
+								var needed_type = ""
+								var needed_count = 0
+								for t in type_counts:
+									if type_counts[t] > needed_count:
+										needed_count = type_counts[t]
+										needed_type = t
+								best_target = p
+								best_type = needed_type
+								best_unmet = unmet
+							else:
+								# All colorless cost — provide Lightning (Electrode's type)
+								best_target = p
+								best_type = "Lightning"
+								best_unmet = unmet
+				
+				if best_target != null and best_type != "":
+					# Execute Buzzap
+					electrode_buzzap.current_hp = 0
+					var electrode_energy = card_object.new(electrode_buzzap.uid, electrode_buzzap.metadata)
+					electrode_energy.is_electrode_energy = true
+					electrode_energy.electrode_energy_type = best_type
+					best_target.attached_energies.append(electrode_energy)
+					main.display_active_pokemon_energies(true)
+					await main.show_message("Buzzap: Electrode became " + best_type + " Energy for " + best_target.metadata.get("name", "") + "!")
+					if main._should_bail(): return
+					await main.check_all_knockouts()
+					if main._should_bail(): return
+	
 	# --- BASE3 POWERS ---
 	
 	# Step In (Dragonite): Switch to active if better than current active

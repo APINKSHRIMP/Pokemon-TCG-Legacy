@@ -164,6 +164,10 @@ func estimate_attack_damage_range(attack: Dictionary, attacker: card_object = nu
 							break
 					if cap_num != "":
 						cap = max(0, int(cap_num) - cost_count)
+				elif "can't add more than" in text and "damage in this way" in text:
+					var cap_dmg = extract_number_before(text, "damage in this way")
+					if cap_dmg > 0:
+						cap = cap_dmg / per
 				extra = min(extra, cap)
 				min_dmg += per * extra
 				max_dmg += per * extra
@@ -433,6 +437,7 @@ func resolve_attack_variable_damage(attack: Dictionary, attacker: card_object, d
 			var extra_count = max(0, total_of_type - used_for_cost)
 			
 			# Parse the cap: "Extra Water Energy after the 2nd don't count"
+			# OR: "You can't add more than 20 damage in this way" (Lapras, Omanyte, Seadra, Omastar)
 			var cap = 99
 			if "after the" in text and "don't count" in text:
 				var after_pos = text.find("after the")
@@ -446,6 +451,14 @@ func resolve_attack_variable_damage(attack: Dictionary, attacker: card_object, d
 				if cap_num != "":
 					# Cap is the max total bonus-type that count, minus those used for cost
 					cap = max(0, int(cap_num) - used_for_cost)
+			elif "can't add more than" in text and "damage in this way" in text:
+				var cap_dmg = extract_number_before(text, "damage in this way")
+				if cap_dmg > 0:
+					var per_e = 10
+					var ext = extract_number_before(text, "more damage for each")
+					if ext > 0:
+						per_e = ext
+					cap = cap_dmg / per_e
 			
 			extra_count = min(extra_count, cap)
 			
@@ -1733,6 +1746,8 @@ func execute_chain_lightning(attacker: card_object, defender: card_object, is_op
 				print("CHAIN LIGHTNING: ", pokemon.metadata.get("name", ""), " took 10 damage")
 	await main.show_message("CHAIN LIGHTNING HIT ALL " + target_type.to_upper() + " BENCHED POKEMON!")
 	if main._should_bail(): return
+	await main.check_all_knockouts()
+	if main._should_bail(): return
 
 # BIG EGGSPLOSION: Flip coins = attached energy, 20 per heads
 func execute_big_eggsplosion(attacker: card_object, defender: card_object, is_opponent: bool) -> void:
@@ -2151,6 +2166,10 @@ func execute_gigashock(attacker: card_object, defender: card_object, is_opponent
 				print("GIGASHOCK: ", bp.metadata.get("name", ""), " took 10 bench damage")
 			await main.show_message("GIGASHOCK HIT " + str(targets.size()) + " BENCHED POKEMON!")
 			if main._should_bail(): return
+	
+	# Check for bench KOs from Gigashock damage
+	await main.check_all_knockouts()
+	if main._should_bail(): return
 
 # THUNDERSTORM (Zapdos): 40 damage + flip per bench, heads=20 damage, tails count = self damage
 func execute_thunderstorm(attacker: card_object, defender: card_object, is_opponent: bool) -> void:
@@ -2198,6 +2217,10 @@ func execute_thunderstorm(attacker: card_object, defender: card_object, is_oppon
 		main.display_hp_circles_above_align(attacker, is_opponent)
 		await main.show_message(attacker.metadata.get("name", "").to_upper() + " TOOK " + str(self_damage) + " RECOIL DAMAGE!")
 		if main._should_bail(): return
+	
+	# Check for bench and self KOs from Thunderstorm damage
+	await main.check_all_knockouts()
+	if main._should_bail(): return
 
 # PROPHECY (Hypno): Look at top 3 cards of either deck and rearrange
 func execute_prophecy(attacker: card_object, is_opponent: bool) -> void:

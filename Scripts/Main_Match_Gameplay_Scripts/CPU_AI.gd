@@ -2606,6 +2606,7 @@ func cpu_score_trainer_card(card: card_object) -> float:
 		"base3-60": return _cpu_score_gambler()
 		"base3-61": return 30.0  # Recycle: low priority, coin flip dependent
 		"base3-62": return _cpu_score_clefairy_doll()  # Mysterious Fossil: same as bench tokens
+		"base2-64": return _cpu_score_poke_ball()  # Poké Ball
 	return 0.0
 
 func _cpu_score_professor_oak(card: card_object) -> float:
@@ -3039,3 +3040,22 @@ func _cpu_score_gambler() -> float:
 		return 30.0
 	# With bigger hands, risk of losing good cards is too high
 	return -50.0
+
+func _cpu_score_poke_ball() -> float:
+	# Poké Ball: coin flip search for any Basic or Evolution card
+	# Good when CPU needs evolutions or bench setup, but coin-flip dependent (50% fail)
+	var bench = main.opponent_bench
+	var hand = main.opponent_hand
+	# Higher priority if bench is empty or CPU has evolutions to find
+	var has_evolvable = false
+	var all_pokemon = get_all_cpu_field_pokemon()
+	for p in all_pokemon:
+		var evolves_to = p.metadata.get("evolvesTo", [])
+		if evolves_to.size() > 0:
+			has_evolvable = true
+			break
+	if bench.size() < 2:
+		return 55.0  # Need bench presence
+	if has_evolvable:
+		return 45.0  # Might find evolution
+	return 25.0  # Low priority filler

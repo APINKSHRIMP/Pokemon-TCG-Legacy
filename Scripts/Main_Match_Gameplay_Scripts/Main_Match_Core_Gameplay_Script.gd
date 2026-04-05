@@ -3178,7 +3178,7 @@ func calculate_final_damage(base_damage: int, attacking_types: Array, defending_
 		var defender_abilities = defending_pokemon.metadata.get("abilities", [])
 		for ability in defender_abilities:
 			if ability.get("name", "") == "Invisible Wall":
-				if defending_pokemon.special_condition not in ["Paralyzed", "Asleep", "Confused"] and not defending_pokemon.is_poisoned:
+				if defending_pokemon.special_condition not in ["Paralyzed", "Asleep", "Confused"] and not defending_pokemon.is_poisoned and not powers_and_bodies.is_toxic_gas_active():
 					modifiers_applied.append("INVISIBLE WALL")
 					damage = 0
 					break
@@ -3427,10 +3427,11 @@ func apply_status_effect(effect: Dictionary, attacker: card_object, defender: ca
 		return
 
 	# Snorlax Thick Skinned: can't become Asleep, Confused, Paralyzed, or Poisoned
+	# Blocked by Muk's Toxic Gas (it's a Pokemon Power)
 	var target_abilities = target_pokemon.metadata.get("abilities", [])
 	for _ab in target_abilities:
 		if _ab.get("name", "") == "Thick Skinned":
-			if target_pokemon.special_condition not in ["Asleep", "Confused", "Paralyzed"]:
+			if target_pokemon.special_condition not in ["Asleep", "Confused", "Paralyzed"] and not powers_and_bodies.is_toxic_gas_active():
 				await show_message(target_pokemon.metadata.get("name", "").to_upper() + "'S THICK SKINNED PREVENTS STATUS!")
 				print("STATUS BLOCKED: Thick Skinned prevents status on ", target_pokemon.metadata.get("name", ""))
 				return

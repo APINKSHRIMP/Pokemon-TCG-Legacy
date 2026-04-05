@@ -414,7 +414,7 @@
           "Fighting"
         ],
         "convertedEnergyCost": 1,
-        "damage": "120",
+        "damage": "20",
         "text": ""
       },
       {
@@ -4207,43 +4207,6 @@
       "small": "https://images.pokemontcg.io/base1/70.png",
       "large": "https://images.pokemontcg.io/base1/70_hires.png"
     }
-  }, 
-  {
-    "id": "base1-70b",
-    "name": "Clefairy Doll",
-    "supertype": "Pokémon",
-    "subtypes": [
-      "Basic"
-    ],
-    "level": "1",
-    "hp": "10",
-    "types": [
-      "Null"
-    ],
-    "abilities": [
-      {
-        "name": "Discard",
-        "text": "At any time during your turn before your attack, you may discard Clefairy Doll.",
-        "type": "Pokémon Power"
-      }
-    ],
-    "rules": [
-      "Clefairy Doll can't retreat, and can't be Asleep, Confused, Paralyzed, or Poisoned. If Clefairy Doll is Knocked Out, it doesn't count as a Knocked Out Pokémon"
-    ],
-    "retreatCost": [
-      "Unable to retreat"
-    ],
-    "convertedRetreatCost": 999,
-    "number": "70",
-    "artist": "Keiji Kinebuchi",
-    "rarity": "Rare",
-    "legalities": {
-      "unlimited": "Legal"
-    },
-    "images": {
-      "small": "https://images.pokemontcg.io/base1/70.png",
-      "large": "https://images.pokemontcg.io/base1/70_hires.png"
-    }
   },
   {
     "id": "base1-71",
@@ -4744,7 +4707,7 @@
       "small": "https://images.pokemontcg.io/base1/97.png",
       "large": "https://images.pokemontcg.io/base1/97_hires.png"
     }
-  },   
+  },
   {
     "id": "base1-98",
     "name": "Fire Energy",

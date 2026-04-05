@@ -666,7 +666,6 @@ func resolve_standard_trainer(card: card_object, is_opponent: bool) -> void:
 		"base1-94": await effect_potion(is_opponent)
 		"base1-95": await effect_switch(is_opponent)
 		"base2-64": await effect_poke_ball(is_opponent)
-		"base2-64": await effect_poke_ball(is_opponent)
 		"base3-58": await effect_mr_fuji(is_opponent)
 		"base3-59": await effect_energy_search(is_opponent)
 		"base3-60": await effect_gambler(is_opponent)
