@@ -20,10 +20,22 @@ var can_move: bool = true
 @onready var interaction_area: Area2D = $InteractionArea
 @onready var camera: Camera2D = $Camera2D
 
+func lock_movement():
+	can_move = false
+	velocity = Vector2.ZERO
+	
+	
+func get_current_direction() -> String:
+	return current_direction
+
+func set_direction(direction: String):
+	current_direction = direction
+	animated_sprite.play("idle_" + current_direction)
+	
 func _ready():
 	add_to_group("player")
 	collision_layer = 2
-	collision_mask = 1     # Walls only - no longer physically collides with opponents
+	collision_mask = 5     # Walls only - no longer physically collides with opponents
 	
 	var file = FileAccess.open("res://Player_Data/Player_Current_Data.json", FileAccess.READ)
 	var player_data = JSON.parse_string(file.get_as_text())
@@ -107,3 +119,5 @@ func _on_interaction_area_body_entered(body: Node2D):
 func _on_interaction_area_body_exited(body: Node2D):
 	if body == nearby_opponent:
 		nearby_opponent = null
+		
+		

@@ -19,10 +19,38 @@ var current_opponent_deck: String = ""
 # After the match outro finishes we transition back to this scene.
 var return_map_scene_path: String = ""
 
+var last_interior_scene: String = ""
+
 # Progress tracking
 var progress: Dictionary = {}
 
 const PROGRESS_PATH = "res://Player_Data/Player_Game_Progress.json"
+
+# ============================================================
+# INTERIOR SCENE TRANSITIONS
+# ============================================================
+
+var last_player_direction: String = "down"
+
+func save_player_direction(direction: String):
+	last_player_direction = direction
+
+func get_player_direction() -> String:
+	return last_player_direction
+
+func save_interior_player_position(pos: Vector2):
+	player_position = pos
+	print("Saved interior position: ", pos)
+
+func get_interior_player_position() -> Vector2:
+	return player_position
+
+func set_last_interior_scene(scene_name: String):
+	last_interior_scene = scene_name
+	print("Set last interior scene: ", scene_name)
+
+func get_last_interior_scene() -> String:
+	return last_interior_scene
 
 func _ready():
 	load_progress()
