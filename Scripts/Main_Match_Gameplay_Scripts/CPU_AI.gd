@@ -1091,6 +1091,12 @@ func execute_cpu_retreat(cpu_eval: Dictionary) -> void:
 	main.powers_and_bodies.update_ditto_transform(true)
 	main.powers_and_bodies.update_ditto_transform(false)
 	
+	# Sinkhole (Dark Dugtrio): damage to retreating Pokemon
+	await main.powers_and_bodies.check_sinkhole(old_active, true)
+	if main._should_bail(): return
+	await main.check_all_knockouts()
+	if main._should_bail(): return
+	
 	# Fix 2: Invalidate CPU evaluation cache after retreat changes board
 	invalidate_cpu_evaluation()
 
@@ -2164,6 +2170,194 @@ func cpu_phase_attack(cpu_eval: Dictionary) -> void:
 		main.display_active_pokemon_energies(true)
 		return
 	
+	# --- BASE5 SPECIAL ATTACKS (must come before Sonicboom handler) ---
+	
+	# TARGET ANY POKEMON: Stare, Flitter, Dig Under, Coin Hurl (choose opponent Pokemon, damage no W/R)
+	if "choose 1 of your opponent's pokémon" in chosen_text and "damage to that pokémon" in chosen_text:
+		var disable_power = "power stops working" in chosen_text
+		if disable_power:
+			# Dark Arbok Stare: 10 damage + disable power
+			await main.attack_effects.execute_stare(main.opponent_active_pokemon, main.player_active_pokemon, true)
+		else:
+			# Flitter/Dig Under/Coin Hurl: X damage no W/R
+			var base_dmg = main.attack_effects.parse_attack_base_damage(chosen_attack)
+			if base_dmg <= 0:
+				base_dmg = main.attack_effects.extract_number_before(chosen_text, "damage to that")
+			var flip_req = "flip a coin" in chosen_text and "if heads" in chosen_text
+			await main.attack_effects.execute_snipe_no_wr(main.opponent_active_pokemon, main.player_active_pokemon, true, base_dmg, flip_req)
+		if main._should_bail(): return
+		# Poison Vapor has bench damage + status - apply those after target damage
+		var pae_target = main.attack_effects.parse_card_text_effects(chosen_attack.get("text", ""), main.opponent_active_pokemon.metadata.get("name", ""))
+		if pae_target.size() > 0:
+			await main.attack_effects.apply_card_text_effects(pae_target, main.opponent_active_pokemon, main.player_active_pokemon, true, "")
+			if main._should_bail(): return
+		await main.check_all_knockouts()
+		if main._should_bail(): return
+		main.display_active_pokemon_energies(true)
+		return
+	
+	# BENCH MANIPULATION (Dark Hypno): Opponent flip coins = bench, 20×tails, no W/R
+	if "number of coins equal to the number of pokémon on" in chosen_text and "tails" in chosen_text:
+		await main.attack_effects.execute_bench_manipulation(main.opponent_active_pokemon, main.player_active_pokemon, true)
+		if main._should_bail(): return
+		main.last_attack_on_player = {"damage": 0, "attack": chosen_attack, "attacker_types": cpu_types}
+		main.opponent_attacked_this_turn = true
+		await main.check_all_knockouts()
+		if main._should_bail(): return
+		main.display_active_pokemon_energies(true)
+		return
+	
+	# CONTINUOUS FIREBALL (Dark Charizard): Flip coins = Fire Energy, 50×heads
+	if "flip a number of coins equal to the number of fire energy" in chosen_text:
+		await main.attack_effects.execute_continuous_fireball(main.opponent_active_pokemon, main.player_active_pokemon, true)
+		if main._should_bail(): return
+		main.opponent_attacked_this_turn = true
+		await main.check_all_knockouts()
+		if main._should_bail(): return
+		main.display_active_pokemon_energies(true)
+		return
+	
+	# FLING (Dark Machamp): Shuffle opponent active into deck
+	if "shuffles his or her active pokémon" in chosen_text and "into his or her deck" in chosen_text:
+		await main.attack_effects.execute_fling(main.opponent_active_pokemon, main.player_active_pokemon, true)
+		if main._should_bail(): return
+		main.display_active_pokemon_energies(true)
+		return
+	
+	# MAGNETIC LINES (Dark Magneton): 30 + move energy to bench
+	if "choose 1 of them and attach that energy card to it" in chosen_text:
+		await main.attack_effects.execute_magnetic_lines(main.opponent_active_pokemon, main.player_active_pokemon, true)
+		if main._should_bail(): return
+		main.last_attack_on_player = {"damage": 30, "attack": chosen_attack, "attacker_types": cpu_types}
+		main.opponent_attacked_this_turn = true
+		await main.check_all_knockouts()
+		if main._should_bail(): return
+		main.display_active_pokemon_energies(true)
+		return
+	
+	# PETAL WHIRLWIND (Dark Vileplume): 3 coin flips, 30×heads, 2+ = confused
+	if "30 damage times the number of heads" in chosen_text and "2 or more heads" in chosen_text:
+		await main.attack_effects.execute_petal_whirlwind(main.opponent_active_pokemon, main.player_active_pokemon, true)
+		if main._should_bail(): return
+		main.opponent_attacked_this_turn = true
+		await main.check_all_knockouts()
+		if main._should_bail(): return
+		main.display_active_pokemon_energies(true)
+		return
+	
+	# MASS EXPLOSION (Dark Weezing)
+	if "total number of koffing" in chosen_text:
+		await main.attack_effects.execute_mass_explosion(main.opponent_active_pokemon, main.player_active_pokemon, true)
+		if main._should_bail(): return
+		main.opponent_attacked_this_turn = true
+		await main.check_all_knockouts()
+		if main._should_bail(): return
+		main.display_active_pokemon_energies(true)
+		return
+	
+	# ENERGY BOMB (Dark Electrode): 30 + move energy to bench
+	if "take all energy cards attached" in chosen_text and "benched pokémon" in chosen_text and "any way you choose" in chosen_text:
+		await main.attack_effects.execute_energy_bomb(main.opponent_active_pokemon, main.player_active_pokemon, true)
+		if main._should_bail(): return
+		main.last_attack_on_player = {"damage": 30, "attack": chosen_attack, "attacker_types": cpu_types}
+		main.opponent_attacked_this_turn = true
+		await main.check_all_knockouts()
+		if main._should_bail(): return
+		main.display_active_pokemon_energies(true)
+		return
+	
+	# THIRD EYE (Dark Golduck): Discard energy, draw cards
+	if "discard 1 energy card attached" in chosen_text and "draw up to" in chosen_text:
+		await main.attack_effects.execute_third_eye(main.opponent_active_pokemon, true)
+		if main._should_bail(): return
+		main.display_active_pokemon_energies(true)
+		return
+	
+	# DRAG OFF (Dark Machoke): Switch bench to active, then damage
+	if "before doing damage, choose 1 of your opponent" in chosen_text and "switch it with the defending" in chosen_text:
+		await main.attack_effects.execute_drag_off(main.opponent_active_pokemon, main.player_active_pokemon, true)
+		if main._should_bail(): return
+		main.opponent_attacked_this_turn = true
+		await main.check_all_knockouts()
+		if main._should_bail(): return
+		main.display_active_pokemon_energies(true)
+		return
+	
+	# FLAME PILLAR (Dark Rapidash): 30 + optional fire discard for 10 bench
+	if "you may discard 1 fire energy" in chosen_text and "10 damage to it" in chosen_text:
+		await main.attack_effects.execute_flame_pillar(main.opponent_active_pokemon, main.player_active_pokemon, true)
+		if main._should_bail(): return
+		main.last_attack_on_player = {"damage": 30, "attack": chosen_attack, "attacker_types": cpu_types}
+		main.opponent_attacked_this_turn = true
+		await main.check_all_knockouts()
+		if main._should_bail(): return
+		main.display_active_pokemon_energies(true)
+		return
+	
+	# MIRROR SHELL (Dark Wartortle): Counter damage next turn
+	if "attacks the defending pokémon for an equal amount of damage" in chosen_text:
+		await main.attack_effects.execute_mirror_shell(main.opponent_active_pokemon, true)
+		if main._should_bail(): return
+		main.display_active_pokemon_energies(true)
+		return
+	
+	# RAPID EVOLUTION (Magikarp): Search deck for Gyarados/Dark Gyarados
+	if "evolution card named gyarados or dark gyarados" in chosen_text:
+		await main.attack_effects.execute_rapid_evolution(main.opponent_active_pokemon, true)
+		if main._should_bail(): return
+		main.display_active_pokemon_energies(true)
+		return
+	
+	# VANISH (Abra): Shuffle self into deck
+	if "shuffle" in chosen_text and "into your deck" in chosen_text and "discard all cards attached" in chosen_text:
+		await main.attack_effects.execute_vanish(main.opponent_active_pokemon, true)
+		if main._should_bail(): return
+		main.display_active_pokemon_energies(true)
+		return
+	
+	# MAGNETISM (Magnemite): 10+ per bench Magnemite/Magneton
+	if "magnemite" in chosen_text and "magneton" in chosen_text and "on your bench" in chosen_text:
+		await main.attack_effects.execute_magnetism(main.opponent_active_pokemon, main.player_active_pokemon, true)
+		if main._should_bail(): return
+		main.last_attack_on_player = {"damage": 10, "attack": chosen_attack, "attacker_types": cpu_types}
+		main.opponent_attacked_this_turn = true
+		await main.check_all_knockouts()
+		if main._should_bail(): return
+		main.display_active_pokemon_energies(true)
+		return
+	
+	# MISCHIEF (Mankey): Shuffle opponent deck (no damage)
+	if "shuffle your opponent" in chosen_text and "deck" in chosen_text:
+		await main.attack_effects.execute_mischief(main.opponent_active_pokemon, true)
+		if main._should_bail(): return
+		main.display_active_pokemon_energies(true)
+		return
+	
+	# SURPRISE THUNDER (Dark Raichu): 30 + double flip bench damage
+	if "second coin" in chosen_text and "benched pokémon" in chosen_text:
+		await main.attack_effects.execute_surprise_thunder(main.opponent_active_pokemon, main.player_active_pokemon, true)
+		if main._should_bail(): return
+		main.last_attack_on_player = {"damage": 30, "attack": chosen_attack, "attacker_types": cpu_types}
+		main.opponent_attacked_this_turn = true
+		await main.check_all_knockouts()
+		if main._should_bail(): return
+		main.display_active_pokemon_energies(true)
+		return
+	
+	# AFTERNOON NAP (Slowpoke): Search deck for Psychic Energy
+	if "search your deck for a psychic energy" in chosen_text and "attach it" in chosen_text:
+		await main.attack_effects.execute_afternoon_nap(main.opponent_active_pokemon, true)
+		if main._should_bail(): return
+		main.display_active_pokemon_energies(true)
+		return
+	
+	# FASCINATE (Dark Persian): Flip to force switch
+	if "fascinate" in chosen_name.to_lower() or ("choose 1 of your opponent's benched" in chosen_text and "switch it with the defending" in chosen_text and "this attack does" not in chosen_text):
+		await main.attack_effects.execute_fascinate(main.opponent_active_pokemon, main.player_active_pokemon, true)
+		if main._should_bail(): return
+		main.display_active_pokemon_energies(true)
+		return
+	
 	# --- BASE3 SPECIAL ATTACKS ---
 	
 	# SONICBOOM: Fixed damage, no W/R
@@ -2607,6 +2801,15 @@ func cpu_score_trainer_card(card: card_object) -> float:
 		"base3-61": return 30.0  # Recycle: low priority, coin flip dependent
 		"base3-62": return _cpu_score_clefairy_doll()  # Mysterious Fossil: same as bench tokens
 		"base2-64": return _cpu_score_poke_ball()  # Poké Ball
+		"base5-15", "base5-71": return 80.0  # Here Comes Team Rocket: always decent (info advantage)
+		"base5-16", "base5-72": return _cpu_score_rockets_sneak_attack()
+		"base5-73": return _cpu_score_the_bosss_way()
+		"base5-74": return _cpu_score_challenge()
+		"base5-75": return 20.0  # Digger: coin-flip dependent, low value
+		"base5-76": return _cpu_score_imposter_oaks_revenge()
+		"base5-77": return _cpu_score_nightly_garbage_run()
+		"base5-78": return _cpu_score_goop_gas_attack()
+		"base5-79": return _cpu_score_sleep_trainer()
 	return 0.0
 
 func _cpu_score_professor_oak(card: card_object) -> float:
@@ -3059,3 +3262,90 @@ func _cpu_score_poke_ball() -> float:
 	if has_evolvable:
 		return 45.0  # Might find evolution
 	return 25.0  # Low priority filler
+
+######################################################################################################################################################
+############################################ BASE5 (TEAM ROCKET) CPU TRAINER SCORING #################################################################
+######################################################################################################################################################
+
+func _cpu_score_rockets_sneak_attack() -> float:
+	var player_hand = main.player_hand
+	var has_trainer = false
+	for c in player_hand:
+		if c.metadata.get("supertype", "") == "Trainer":
+			has_trainer = true
+			break
+	if not has_trainer:
+		return -100.0  # Can't play
+	return 70.0  # Removing a trainer is strong disruption
+
+func _cpu_score_the_bosss_way() -> float:
+	var deck = main.opponent_deck
+	for card in deck:
+		var name = card.metadata.get("name", "")
+		var subtypes = card.metadata.get("subtypes", [])
+		if name.begins_with("Dark ") and card.metadata.get("supertype", "") == "Pokémon":
+			if "Stage 1" in subtypes or "Stage 2" in subtypes:
+				# Check if we have matching basic on field
+				var all_cpu = get_all_cpu_field_pokemon()
+				for p in all_cpu:
+					if card.metadata.get("evolvesFrom", "") == p.metadata.get("name", ""):
+						return 85.0  # Can evolve immediately next turn
+				return 60.0  # Good to have in hand
+	return -100.0  # No Dark evolutions in deck
+
+func _cpu_score_challenge() -> float:
+	var cpu_bench = main.opponent_bench
+	var cpu_deck = main.opponent_deck
+	if cpu_bench.size() >= 5:
+		return 50.0  # Bench full, we'll draw 2 if declined
+	# Check if CPU has basics in deck
+	var has_basics = false
+	for card in cpu_deck:
+		if main.is_basic_pokemon(card):
+			has_basics = true
+			break
+	if has_basics and cpu_bench.size() < 3:
+		return 40.0  # Might benefit if accepted
+	return 50.0  # Draw 2 if declined is decent
+
+func _cpu_score_imposter_oaks_revenge() -> float:
+	if main.opponent_hand.size() < 2:
+		return -100.0  # Need at least 1 to discard
+	if main.player_hand.size() >= 6:
+		return 75.0  # Big disruption
+	if main.player_hand.size() >= 4:
+		return 50.0
+	return 10.0  # Not worth it if player has few cards
+
+func _cpu_score_nightly_garbage_run() -> float:
+	var discard = main.opponent_discard_pile
+	var valid_count = 0
+	for card in discard:
+		if card.metadata.get("supertype", "") == "Pokémon" or main.is_basic_energy_card(card):
+			valid_count += 1
+	if valid_count == 0:
+		return -100.0
+	if valid_count >= 3:
+		return 65.0
+	return 40.0
+
+func _cpu_score_goop_gas_attack() -> float:
+	# Good if opponent has active powers (check player's field)
+	var player_pokemon: Array = []
+	if main.player_active_pokemon != null:
+		player_pokemon.append(main.player_active_pokemon)
+	player_pokemon.append_array(main.player_bench)
+	
+	for p in player_pokemon:
+		var abilities = p.metadata.get("abilities", [])
+		if abilities.size() > 0:
+			return 70.0  # Opponent has powers, worth shutting down
+	return -10.0  # No powers to block
+
+func _cpu_score_sleep_trainer() -> float:
+	var defender = main.player_active_pokemon
+	if defender == null:
+		return -100.0
+	if defender.special_condition != "":
+		return -20.0  # Already has a condition
+	return 30.0  # 50% chance of sleep, moderate value

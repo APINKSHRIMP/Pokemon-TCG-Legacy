@@ -334,6 +334,12 @@ func validate_trainer_can_be_played(card: card_object, is_opponent: bool) -> Str
 	if not is_opponent and player_trainer_locked:
 		return "Trainer cards are locked this turn!"
 	
+	# Check Hay Fever (Dark Vileplume) - blocks all trainer cards
+	if main.powers_and_bodies.is_hay_fever_active():
+		return "Hay Fever: No Trainer cards can be played!"
+	
+	# Check Goop Gas doesn't block trainers (it only blocks powers)
+	
 	var card_id = card.uid.to_lower()
 	var active = main.opponent_active_pokemon if is_opponent else main.player_active_pokemon
 	var bench = main.opponent_bench if is_opponent else main.player_bench
@@ -532,6 +538,44 @@ func validate_trainer_can_be_played(card: card_object, is_opponent: bool) -> Str
 			if pokemon_in_deck.size() == 0:
 				return "No Pokemon in deck to trade for!"
 	
+		"base5-16", "base5-72": # Rocket's Sneak Attack
+			var target = main.player_hand if is_opponent else main.opponent_hand
+			var has_trainer = false
+			for c in target:
+				if c.metadata.get("supertype", "") == "Trainer":
+					has_trainer = true
+					break
+			if not has_trainer:
+				return "Opponent has no Trainer cards in hand!"
+		
+		"base5-73": # The Boss's Way
+			var has_dark = false
+			for c in deck:
+				var name = c.metadata.get("name", "")
+				var st = c.metadata.get("subtypes", [])
+				if name.begins_with("Dark ") and c.metadata.get("supertype", "") == "Pokémon" and ("Stage 1" in st or "Stage 2" in st):
+					has_dark = true
+					break
+			if not has_dark:
+				return "No Dark evolution cards in deck!"
+		
+		"base5-76": # Imposter Oak's Revenge
+			var cards_available_ior = 0
+			for c in hand:
+				if c != card:
+					cards_available_ior += 1
+			if cards_available_ior < 1:
+				return "Need at least 1 other card in hand to discard!"
+		
+		"base5-77": # Nightly Garbage Run
+			var valid_ngr = false
+			for c in discard:
+				if c.metadata.get("supertype", "") == "Pokémon" or main.is_basic_energy_card(c):
+					valid_ngr = true
+					break
+			if not valid_ngr:
+				return "No valid cards in discard pile!"
+	
 	return ""
 
 # Main entry point for playing a trainer card (handles animation, routing, and discard)
@@ -670,6 +714,15 @@ func resolve_standard_trainer(card: card_object, is_opponent: bool) -> void:
 		"base3-59": await effect_energy_search(is_opponent)
 		"base3-60": await effect_gambler(is_opponent)
 		"base3-61": await effect_recycle(is_opponent)
+		"base5-15", "base5-71": await effect_here_comes_team_rocket(is_opponent)
+		"base5-16", "base5-72": await effect_rockets_sneak_attack(is_opponent)
+		"base5-73": await effect_the_boss_way(is_opponent)
+		"base5-74": await effect_challenge(is_opponent)
+		"base5-75": await effect_digger(is_opponent)
+		"base5-76": await effect_imposter_oaks_revenge(card, is_opponent)
+		"base5-77": await effect_nightly_garbage_run(is_opponent)
+		"base5-78": await effect_goop_gas_attack(is_opponent)
+		"base5-79": await effect_sleep_trainer(is_opponent)
 		_:
 			print("Unknown trainer card: ", card_id, " (", card_name, ")")
 
@@ -2731,3 +2784,411 @@ func reset_trainer_lock(is_opponent: bool) -> void:
 		opponent_trainer_locked = false
 	else:
 		player_trainer_locked = false
+
+######################################################################################################################################################
+################################################### BASE5 (TEAM ROCKET) TRAINER EFFECTS ##############################################################
+######################################################################################################################################################
+
+# Here Comes Team Rocket!: Both players' prizes face up
+func effect_here_comes_team_rocket(is_opponent: bool) -> void:
+	main.player_prizes_face_up = true
+	main.opponent_prizes_face_up = true
+	main.display_prize_cards(false)
+	main.display_prize_cards(true)
+	await main.show_message("ALL PRIZE CARDS ARE NOW FACE UP!")
+	if main._should_bail(): return
+	print("TRAINER: Here Comes Team Rocket! - prizes face up")
+
+# Rocket's Sneak Attack: Look at opponent's hand, shuffle 1 Trainer into deck
+func effect_rockets_sneak_attack(is_opponent: bool) -> void:
+	var target_hand = main.player_hand if is_opponent else main.opponent_hand
+	var target_deck = main.player_deck if is_opponent else main.opponent_deck
+	
+	# Find trainer cards in opponent's hand
+	var trainer_cards: Array = []
+	for card in target_hand:
+		if card.metadata.get("supertype", "") == "Trainer":
+			trainer_cards.append(card)
+	
+	if trainer_cards.size() == 0:
+		await main.show_message("NO TRAINER CARDS IN OPPONENT'S HAND!")
+		if main._should_bail(): return
+		return
+	
+	var selected: card_object = null
+	
+	if not is_opponent:
+		# Player sees opponent's hand and picks a trainer
+		main.trainer_pokemon_selection_active = true
+		main.show_enlarged_array_selection_mode(trainer_cards)
+		main.header_label.text = "CHOOSE A TRAINER TO SHUFFLE INTO DECK"
+		main.action_button.text = "SELECT"
+		main.action_button.disabled = true
+		await main.trainer_target_selected
+		if main._should_bail(): return
+		selected = main.selected_card_for_action
+		main.trainer_pokemon_selection_active = false
+		main.hide_selection_mode_display_main()
+	else:
+		# CPU picks the most impactful trainer (highest discard priority = keep, so pick lowest)
+		var best: card_object = null
+		var best_score = 999.0
+		for card in trainer_cards:
+			var score = _score_card_for_discard(card)
+			if score < best_score:
+				best_score = score
+				best = card
+		selected = best if best != null else trainer_cards[0]
+	
+	if selected == null:
+		return
+	
+	target_hand.erase(selected)
+	selected.current_location = "deck"
+	target_deck.append(selected)
+	target_deck.shuffle()
+	
+	main.refresh_hand_display(!is_opponent)
+	main.update_deck_icon(!is_opponent)
+	await main.show_message(selected.metadata.get("name", "").to_upper() + " SHUFFLED INTO DECK!")
+	if main._should_bail(): return
+	print("TRAINER: Rocket's Sneak Attack - shuffled ", selected.metadata.get("name", ""))
+
+# The Boss's Way: Search deck for a Dark evolution card
+func effect_the_boss_way(is_opponent: bool) -> void:
+	var deck = main.opponent_deck if is_opponent else main.player_deck
+	
+	var dark_evolutions: Array = []
+	for card in deck:
+		var name = card.metadata.get("name", "")
+		var subtypes = card.metadata.get("subtypes", [])
+		if name.begins_with("Dark ") and card.metadata.get("supertype", "") == "Pokémon":
+			if "Stage 1" in subtypes or "Stage 2" in subtypes:
+				dark_evolutions.append(card)
+	
+	if dark_evolutions.size() == 0:
+		await main.show_message("NO DARK EVOLUTION CARDS IN DECK!")
+		if main._should_bail(): return
+		deck.shuffle()
+		return
+	
+	var selected: card_object = null
+	
+	if not is_opponent:
+		main.trainer_pokemon_selection_active = true
+		main.show_enlarged_array_selection_mode(dark_evolutions)
+		main.header_label.text = "CHOOSE A DARK EVOLUTION CARD"
+		main.action_button.text = "SELECT"
+		main.action_button.disabled = true
+		await main.trainer_target_selected
+		if main._should_bail(): return
+		selected = main.selected_card_for_action
+		main.trainer_pokemon_selection_active = false
+		main.hide_selection_mode_display_main()
+	else:
+		selected = main.cpu_ai.cpu_search_deck_for_best_pokemon(dark_evolutions)
+		if selected == null:
+			selected = dark_evolutions[0]
+	
+	if selected == null:
+		return
+	
+	var hand = main.opponent_hand if is_opponent else main.player_hand
+	deck.erase(selected)
+	selected.current_location = "hand"
+	hand.append(selected)
+	deck.shuffle()
+	
+	main.refresh_hand_display(is_opponent)
+	main.update_deck_icon(is_opponent)
+	await main.show_message("ADDED " + selected.metadata.get("name", "").to_upper() + " TO HAND!")
+	if main._should_bail(): return
+	print("TRAINER: The Boss's Way - found ", selected.metadata.get("name", ""))
+
+# Challenge!: Opponent accepts (both search for basics) or declines (you draw 2)
+func effect_challenge(is_opponent: bool) -> void:
+	var own_bench = main.opponent_bench if is_opponent else main.player_bench
+	var opp_bench = main.player_bench if is_opponent else main.opponent_bench
+	
+	# For CPU: accept if bench has space and deck has basics, otherwise decline
+	var accepted = false
+	
+	if is_opponent:
+		# CPU played Challenge - player decides
+		# For simplicity, auto-decline (player draws 2 for CPU, CPU draws 2 for player)
+		# Actually the rule is: if opponent declines OR both benches full, the player who played it draws 2
+		if own_bench.size() >= 5 and opp_bench.size() >= 5:
+			# Both benches full
+			for i in range(2):
+				await main.draw_card_from_deck(is_opponent)
+				if main._should_bail(): return
+			main.refresh_hand_display(is_opponent)
+			await main.show_message("BOTH BENCHES FULL! DREW 2 CARDS!")
+			if main._should_bail(): return
+			return
+		# CPU played it - player can accept or decline
+		# Simplify: player declines, CPU draws 2
+		for i in range(2):
+			await main.draw_card_from_deck(is_opponent)
+			if main._should_bail(): return
+		main.refresh_hand_display(is_opponent)
+		await main.show_message("CHALLENGE DECLINED! DREW 2 CARDS!")
+		if main._should_bail(): return
+	else:
+		# Player played Challenge - CPU decides
+		# CPU accepts if it has basics in deck and bench space
+		var cpu_deck = main.opponent_deck
+		var cpu_has_basics = false
+		for card in cpu_deck:
+			if main.is_basic_pokemon(card):
+				cpu_has_basics = true
+				break
+		
+		if cpu_has_basics and opp_bench.size() < 5:
+			accepted = true
+		
+		if not accepted or (own_bench.size() >= 5 and opp_bench.size() >= 5):
+			# Declined or both full
+			for i in range(2):
+				await main.draw_card_from_deck(is_opponent)
+				if main._should_bail(): return
+			main.refresh_hand_display(is_opponent)
+			await main.show_message("CHALLENGE DECLINED! DREW 2 CARDS!")
+			if main._should_bail(): return
+		else:
+			await main.show_message("CHALLENGE ACCEPTED!")
+			if main._should_bail(): return
+			
+			# Both search for basics
+			# Player searches
+			var player_deck = main.player_deck
+			var player_basics: Array = []
+			for card in player_deck:
+				if main.is_basic_pokemon(card):
+					player_basics.append(card)
+			
+			if player_basics.size() > 0 and main.player_bench.size() < 5:
+				main.trainer_pokemon_selection_active = true
+				main.show_enlarged_array_selection_mode(player_basics)
+				main.header_label.text = "CHOOSE BASIC POKÉMON FOR BENCH"
+				main.action_button.text = "SELECT"
+				main.action_button.disabled = true
+				await main.trainer_target_selected
+				if main._should_bail(): return
+				var player_pick = main.selected_card_for_action
+				main.trainer_pokemon_selection_active = false
+				main.hide_selection_mode_display_main()
+				
+				if player_pick != null:
+					player_deck.erase(player_pick)
+					player_pick.current_location = "bench"
+					player_pick.placed_on_field_this_turn = true
+					main.player_bench.append(player_pick)
+			
+			# CPU searches
+			var cpu_basics: Array = []
+			for card in cpu_deck:
+				if main.is_basic_pokemon(card):
+					cpu_basics.append(card)
+			
+			if cpu_basics.size() > 0 and main.opponent_bench.size() < 5:
+				var cpu_pick = main.cpu_ai.cpu_search_deck_for_best_pokemon(cpu_basics)
+				if cpu_pick != null:
+					cpu_deck.erase(cpu_pick)
+					cpu_pick.current_location = "bench"
+					cpu_pick.placed_on_field_this_turn = true
+					main.opponent_bench.append(cpu_pick)
+			
+			player_deck.shuffle()
+			cpu_deck.shuffle()
+			main.display_pokemon(false)
+			main.display_pokemon(true)
+			main.update_deck_icon(false)
+			main.update_deck_icon(true)
+			await main.show_message("BOTH PLAYERS SEARCHED FOR BASICS!")
+			if main._should_bail(): return
+	
+	print("TRAINER: Challenge!")
+
+# Digger: Recursive coin flip damage
+func effect_digger(is_opponent: bool) -> void:
+	var current_side_is_player = !is_opponent  # Starts with the person who played the card
+	# Actually the card says: flip. tails = 10 to YOUR active. heads = opponent flips...
+	# "If tails, do 10 damage to your Active Pokémon. If heads, your opponent flips..."
+	
+	var active_self = main.opponent_active_pokemon if is_opponent else main.player_active_pokemon
+	var active_opp = main.player_active_pokemon if is_opponent else main.opponent_active_pokemon
+	
+	var my_turn = true  # Player who played card goes first
+	var rounds = 0
+	var max_rounds = 20  # Safety limit
+	
+	while rounds < max_rounds:
+		var coin = await main.flip_coin()
+		rounds += 1
+		
+		if not coin:
+			# Tails - damage current flipper's active
+			var target: card_object
+			var target_is_opp: bool
+			if my_turn:
+				target = active_self
+				target_is_opp = is_opponent
+			else:
+				target = active_opp
+				target_is_opp = !is_opponent
+			
+			if target != null:
+				target.current_hp = max(0, target.current_hp - 10)
+				main.display_hp_circles_above_align(target, target_is_opp)
+				var owner = "YOUR" if my_turn else "OPPONENT'S"
+				await main.show_message("TAILS! 10 DAMAGE TO " + owner + " ACTIVE!")
+				if main._should_bail(): return
+			break
+		else:
+			await main.show_message("HEADS! OTHER PLAYER FLIPS!")
+			if main._should_bail(): return
+			my_turn = !my_turn
+	
+	await main.check_all_knockouts()
+	if main._should_bail(): return
+	print("TRAINER: Digger - ", rounds, " flips")
+
+# Imposter Oak's Revenge: Discard 1 from hand, opponent shuffles hand into deck + draws 4
+func effect_imposter_oaks_revenge(played_card: card_object, is_opponent: bool) -> void:
+	var own_hand = main.opponent_hand if is_opponent else main.player_hand
+	var opp_hand = main.player_hand if is_opponent else main.opponent_hand
+	var opp_deck = main.player_deck if is_opponent else main.opponent_deck
+	
+	# Discard 1 card from own hand (not counting the played card which was already removed)
+	if own_hand.size() == 0:
+		await main.show_message("NO CARDS TO DISCARD!")
+		if main._should_bail(): return
+		return
+	
+	if not is_opponent:
+		# Player discards 1
+		await player_select_cards_to_discard(own_hand, 1, "DISCARD 1 CARD", "Choose a card to discard")
+		if main._should_bail(): return
+	else:
+		# CPU discards lowest priority
+		var to_discard = cpu_get_discard_priority(own_hand, 1)
+		var discard_pile = main.opponent_discard_pile
+		for card in to_discard:
+			own_hand.erase(card)
+			card.current_location = "discard"
+			discard_pile.append(card)
+		main.refresh_hand_display(true)
+	
+	# Opponent shuffles hand into deck and draws 4
+	for card in opp_hand.duplicate():
+		opp_hand.erase(card)
+		card.current_location = "deck"
+		opp_deck.append(card)
+	opp_deck.shuffle()
+	main.refresh_hand_display(!is_opponent)
+	
+	await main.show_message("OPPONENT SHUFFLED HAND INTO DECK!")
+	if main._should_bail(): return
+	
+	var draw_count = min(4, opp_deck.size())
+	for i in range(draw_count):
+		await main.draw_card_from_deck(!is_opponent)
+		if main._should_bail(): return
+	main.refresh_hand_display(!is_opponent)
+	
+	await main.show_message("OPPONENT DREW " + str(draw_count) + " CARDS!")
+	if main._should_bail(): return
+	print("TRAINER: Imposter Oak's Revenge")
+
+# Nightly Garbage Run: Choose up to 3 Basic Pokemon/Evolution/basic Energy from discard, shuffle into deck
+func effect_nightly_garbage_run(is_opponent: bool) -> void:
+	var discard = main.opponent_discard_pile if is_opponent else main.player_discard_pile
+	var deck = main.opponent_deck if is_opponent else main.player_deck
+	
+	var valid_cards: Array = []
+	for card in discard:
+		var supertype = card.metadata.get("supertype", "")
+		if supertype == "Pokémon":
+			valid_cards.append(card)
+		elif main.is_basic_energy_card(card):
+			valid_cards.append(card)
+	
+	if valid_cards.size() == 0:
+		await main.show_message("NO VALID CARDS IN DISCARD PILE!")
+		if main._should_bail(): return
+		return
+	
+	var chosen: Array = []
+	var max_picks = min(3, valid_cards.size())
+	
+	if not is_opponent:
+		# Player selects up to 3
+		for i in range(max_picks):
+			var remaining: Array = []
+			for card in valid_cards:
+				if card not in chosen:
+					remaining.append(card)
+			if remaining.size() == 0:
+				break
+			
+			main.trainer_pokemon_selection_active = true
+			main.show_enlarged_array_selection_mode(remaining)
+			main.header_label.text = "CHOOSE CARD " + str(i + 1) + "/" + str(max_picks) + " (OR DONE)"
+			main.action_button.text = "SELECT"
+			main.action_button.disabled = true
+			await main.trainer_target_selected
+			if main._should_bail(): return
+			var pick = main.selected_card_for_action
+			main.trainer_pokemon_selection_active = false
+			main.hide_selection_mode_display_main()
+			
+			if pick != null:
+				chosen.append(pick)
+			else:
+				break
+	else:
+		# CPU picks best cards: prioritize evolution cards, then basics, then energy
+		valid_cards.sort_custom(func(a, b):
+			var a_score = 3 if "Stage" in str(a.metadata.get("subtypes", [])) else (2 if a.metadata.get("supertype", "") == "Pokémon" else 1)
+			var b_score = 3 if "Stage" in str(b.metadata.get("subtypes", [])) else (2 if b.metadata.get("supertype", "") == "Pokémon" else 1)
+			return a_score > b_score
+		)
+		for i in range(max_picks):
+			chosen.append(valid_cards[i])
+	
+	# Shuffle chosen cards into deck
+	for card in chosen:
+		discard.erase(card)
+		card.current_location = "deck"
+		deck.append(card)
+	deck.shuffle()
+	
+	main.update_discard_pile_display(is_opponent)
+	main.update_deck_icon(is_opponent)
+	await main.show_message("SHUFFLED " + str(chosen.size()) + " CARD(S) INTO DECK!")
+	if main._should_bail(): return
+	print("TRAINER: Nightly Garbage Run - ", chosen.size(), " cards")
+
+# Goop Gas Attack: All Pokemon Powers stop working until end of opponent's next turn
+func effect_goop_gas_attack(is_opponent: bool) -> void:
+	main.goop_gas_active = true
+	main.goop_gas_owner_is_opponent = is_opponent
+	await main.show_message("ALL POKÉMON POWERS STOP WORKING!")
+	if main._should_bail(): return
+	print("TRAINER: Goop Gas Attack - powers disabled")
+
+# Sleep!: Flip heads, defending Pokemon is Asleep
+func effect_sleep_trainer(is_opponent: bool) -> void:
+	var coin = await main.flip_coin()
+	if coin:
+		var defender = main.player_active_pokemon if is_opponent else main.opponent_active_pokemon
+		if defender != null:
+			defender.special_condition = "Asleep"
+			main.update_status_icons(defender, !is_opponent)
+			await main.show_message(defender.metadata.get("name", "").to_upper() + " IS NOW ASLEEP!")
+			if main._should_bail(): return
+	else:
+		await main.show_message("TAILS! SLEEP FAILED!")
+		if main._should_bail(): return
+	print("TRAINER: Sleep!")

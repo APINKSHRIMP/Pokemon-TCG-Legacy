@@ -78,6 +78,10 @@ var ditto_transform_uid: String = ""         # UID of the copied card (for image
 
 # Trainer lock tracking (Psyduck Headache) — NOT per-pokemon, tracked on Trainer_Effects.gd
 
+# BASE5 (Team Rocket) properties
+var mirror_shell_active: bool = false                    # Dark Wartortle Mirror Shell counter-attack
+var power_disabled_until_end_of_next_turn: bool = false  # Dark Arbok Stare power disable
+
 # Utility: get damage counters (each counter = 10 damage)
 func get_damage_counters() -> int:
 	var max_hp = int(metadata.get("hp", "0"))

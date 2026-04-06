@@ -73,10 +73,13 @@ func open_power_menu() -> void:
 				continue
 			var ability_name = ability.get("name", "")
 			# Skip passive powers (they don't go in menu)
-			if ability_name in ["Strikes Back", "Energy Burn", "Invisible Wall", "Thick Skinned", "Retreat Aid", "Prehistoric Power", "Toxic Gas", "Transparency", "Kabuto Armor", "Clairvoyance", "Transform"]:
+			if ability_name in ["Strikes Back", "Energy Burn", "Invisible Wall", "Thick Skinned", "Retreat Aid", "Prehistoric Power", "Toxic Gas", "Transparency", "Kabuto Armor", "Clairvoyance", "Transform", "Sinkhole", "Hay Fever", "Sticky Goo", "Frenzy", "Final Beam", "Sneak Attack", "Summon Minions", "Reel In"]:
 				continue
 			# Toxic Gas blocks all other powers
 			if toxic_gas_active:
+				continue
+			# Dark Arbok Stare: power disabled temporarily
+			if pokemon.power_disabled_until_end_of_next_turn:
 				continue
 			# Check if usable
 			if ability_name != "Buzzap" and is_power_blocked_by_status(pokemon):
@@ -149,6 +152,12 @@ func activate_power(pokemon: card_object, ability: Dictionary) -> void:
 		"Curse": await power_curse(pokemon)
 		"Strange Behavior": await power_strange_behavior(pokemon)
 		"Cowardice": await power_cowardice(pokemon)
+		"Evolutionary Light": await power_evolutionary_light(pokemon)
+		"Pollen Stench": await power_pollen_stench(pokemon)
+		"Matter Exchange": await power_matter_exchange(pokemon)
+		"Gather Fire": await power_gather_fire(pokemon)
+		"Long-Distance Hypnosis": await power_long_distance_hypnosis(pokemon)
+		"Trickery": await power_trickery(pokemon)
 		_: await main.show_message("Power not implemented: " + ability_name)
 
 # Damage Swap (Alakazam): Move 1 damage counter between your pokemon
@@ -1129,6 +1138,9 @@ func is_prehistoric_power_active() -> bool:
 # TOXIC GAS (Muk): Ignore all other Pokemon Powers
 # Returns true if Toxic Gas is currently active
 func is_toxic_gas_active() -> bool:
+	# Goop Gas Attack trainer also disables all powers
+	if main.goop_gas_active:
+		return true
 	var all_pokemon: Array = []
 	if main.player_active_pokemon != null:
 		all_pokemon.append(main.player_active_pokemon)
@@ -1472,6 +1484,146 @@ func cpu_phase_activate_powers() -> void:
 				if is_active:
 					await main.handle_post_knockout(true)
 					if main._should_bail(): return
+	
+	# --- BASE5 CPU POWER ACTIVATIONS ---
+	
+	# Evolutionary Light (Dark Dragonair): Search deck for Evolution card
+	var dragonair = _find_cpu_pokemon_with_power("Evolutionary Light")
+	if dragonair != null and not dragonair.power_used_this_turn and not dragonair.power_disabled_until_end_of_next_turn:
+		if not is_power_blocked_by_status(dragonair) and not toxic_gas:
+			var cpu_deck = main.opponent_deck
+			var evolutions: Array = []
+			for card in cpu_deck:
+				var subtypes = card.metadata.get("subtypes", [])
+				if "Stage 1" in subtypes or "Stage 2" in subtypes:
+					evolutions.append(card)
+			if evolutions.size() > 0:
+				# Pick evolution that matches something on field
+				var best: card_object = null
+				var all_cpu = main.cpu_ai.get_all_cpu_field_pokemon()
+				for evo in evolutions:
+					var evolves_from = evo.metadata.get("evolvesFrom", "")
+					for p in all_cpu:
+						if p.metadata.get("name", "") == evolves_from:
+							best = evo
+							break
+					if best != null:
+						break
+				if best == null:
+					best = evolutions[0]
+				cpu_deck.erase(best)
+				best.current_location = "hand"
+				main.opponent_hand.append(best)
+				cpu_deck.shuffle()
+				dragonair.power_used_this_turn = true
+				main.refresh_hand_display(true)
+				await main.show_message("Evolutionary Light: Found " + best.metadata.get("name", "") + "!")
+				if main._should_bail(): return
+	
+	# Matter Exchange (Dark Kadabra): Discard 1, draw 1
+	var kadabra = _find_cpu_pokemon_with_power("Matter Exchange")
+	if kadabra != null and not kadabra.power_used_this_turn and not kadabra.power_disabled_until_end_of_next_turn:
+		if not is_power_blocked_by_status(kadabra) and not toxic_gas:
+			if main.opponent_hand.size() >= 2 and main.opponent_deck.size() > 0:
+				var to_discard = main.trainer_effects.cpu_get_discard_priority(main.opponent_hand, 1)
+				if to_discard.size() > 0:
+					var card = to_discard[0]
+					main.opponent_hand.erase(card)
+					card.current_location = "discard"
+					main.opponent_discard_pile.append(card)
+					await main.draw_card_from_deck(true)
+					if main._should_bail(): return
+					kadabra.power_used_this_turn = true
+					main.refresh_hand_display(true)
+					await main.show_message("Matter Exchange: Swapped a card!")
+					if main._should_bail(): return
+	
+	# Pollen Stench (Dark Gloom): Flip for confusion
+	var gloom = _find_cpu_pokemon_with_power("Pollen Stench")
+	if gloom != null and not gloom.power_used_this_turn and not gloom.power_disabled_until_end_of_next_turn:
+		if not is_power_blocked_by_status(gloom) and not toxic_gas:
+			# Only use if player active isn't already confused
+			if main.player_active_pokemon != null and main.player_active_pokemon.special_condition != "Confused":
+				var coin = await main.flip_coin()
+				gloom.power_used_this_turn = true
+				if coin:
+					main.player_active_pokemon.special_condition = "Confused"
+					main.update_status_icons(main.player_active_pokemon, false)
+					await main.show_message("Pollen Stench: Defending Pokemon is Confused!")
+					if main._should_bail(): return
+				else:
+					# Tails: own active confused
+					var cpu_active = main.opponent_active_pokemon
+					if cpu_active != null:
+						cpu_active.special_condition = "Confused"
+						main.update_status_icons(cpu_active, true)
+						await main.show_message("Pollen Stench: Tails! Own active is Confused!")
+						if main._should_bail(): return
+	
+	# Gather Fire (Charmander): Move Fire Energy from another Pokemon
+	var charmander = _find_cpu_pokemon_with_power("Gather Fire")
+	if charmander != null and not charmander.power_used_this_turn and not charmander.power_disabled_until_end_of_next_turn:
+		if not is_power_blocked_by_status(charmander) and not toxic_gas:
+			var all_cpu = main.cpu_ai.get_all_cpu_field_pokemon()
+			var best_source: card_object = null
+			var best_energy: card_object = null
+			for p in all_cpu:
+				if p == charmander:
+					continue
+				for e in p.attached_energies:
+					var provided = main.get_energy_provided_by_card(e)
+					if "Fire" in provided:
+						# Only take if source has spare energy
+						if p.attached_energies.size() > 1:
+							best_source = p
+							best_energy = e
+							break
+				if best_energy != null:
+					break
+			if best_source != null and best_energy != null:
+				best_source.attached_energies.erase(best_energy)
+				charmander.attached_energies.append(best_energy)
+				charmander.power_used_this_turn = true
+				main.display_active_pokemon_energies(true)
+				await main.show_message("Gather Fire: Moved Fire Energy to Charmander!")
+				if main._should_bail(): return
+	
+	# Long-Distance Hypnosis (Drowzee): Flip for sleep
+	var drowzee = _find_cpu_pokemon_with_power("Long-Distance Hypnosis")
+	if drowzee != null and not drowzee.power_used_this_turn and not drowzee.power_disabled_until_end_of_next_turn:
+		if not is_power_blocked_by_status(drowzee) and not toxic_gas:
+			if main.player_active_pokemon != null and main.player_active_pokemon.special_condition == "":
+				var coin = await main.flip_coin()
+				drowzee.power_used_this_turn = true
+				if coin:
+					main.player_active_pokemon.special_condition = "Asleep"
+					main.update_status_icons(main.player_active_pokemon, false)
+					await main.show_message("Long-Distance Hypnosis: Defending Pokemon is Asleep!")
+					if main._should_bail(): return
+				else:
+					var cpu_active = main.opponent_active_pokemon
+					if cpu_active != null:
+						cpu_active.special_condition = "Asleep"
+						main.update_status_icons(cpu_active, true)
+						await main.show_message("Long-Distance Hypnosis: Tails! Own active is Asleep!")
+						if main._should_bail(): return
+	
+	# Trickery (Rattata): Switch prize with top of deck — CPU uses if deck top might be better
+	var rattata = _find_cpu_pokemon_with_power("Trickery")
+	if rattata != null and not rattata.power_used_this_turn and not rattata.power_disabled_until_end_of_next_turn:
+		if not is_power_blocked_by_status(rattata) and not toxic_gas:
+			if main.opponent_prize_cards.size() > 0 and main.opponent_deck.size() > 0:
+				# Simple heuristic: use if prizes > 3 remaining (more chances to improve)
+				if main.opponent_prize_cards.size() >= 3:
+					var top_card = main.opponent_deck[0]
+					var prize_idx = 0
+					main.opponent_deck.erase(top_card)
+					var prize_card = main.opponent_prize_cards[prize_idx]
+					main.opponent_prize_cards[prize_idx] = top_card
+					main.opponent_deck.insert(0, prize_card)
+					rattata.power_used_this_turn = true
+					await main.show_message("Trickery: Swapped a prize with top of deck!")
+					if main._should_bail(): return
 
 
 # Helper to find a CPU pokemon with a specific power name
@@ -1519,3 +1671,624 @@ func check_strikes_back(damaged_pokemon: card_object, attacker: card_object, is_
 ############################################### Section J: DOUBLE COLORLESS ENERGY HANDLING ##########################################################
 
 # Check if a card is Double Colorless Energy (Special Energy)
+
+######################################################################################################################################################
+################################################### BASE5 (TEAM ROCKET) POWERS AND BODIES ############################################################
+######################################################################################################################################################
+
+# --- HAY FEVER CHECK ---
+func is_hay_fever_active() -> bool:
+	# Check if any Dark Vileplume in play has Hay Fever active
+	# Goop Gas also disables this
+	if main.goop_gas_active:
+		return false
+	var all_pokemon: Array = []
+	if main.player_active_pokemon != null:
+		all_pokemon.append(main.player_active_pokemon)
+	all_pokemon.append_array(main.player_bench)
+	if main.opponent_active_pokemon != null:
+		all_pokemon.append(main.opponent_active_pokemon)
+	all_pokemon.append_array(main.opponent_bench)
+	for p in all_pokemon:
+		for ability in p.metadata.get("abilities", []):
+			if ability.get("name", "") == "Hay Fever":
+				if not is_power_blocked_by_status(p):
+					return true
+	return false
+
+# --- SINKHOLE: Called when opponent's active retreats ---
+func check_sinkhole(retreating_pokemon: card_object, is_retreating_opponent: bool) -> void:
+	# Sinkhole triggers on the OPPOSING side's retreat
+	# Find Dark Dugtrio on the side that is NOT retreating
+	var dugtrio: card_object = null
+	if is_retreating_opponent:
+		# Opponent is retreating, check player's side for Dugtrio
+		var player_all: Array = []
+		if main.player_active_pokemon != null:
+			player_all.append(main.player_active_pokemon)
+		player_all.append_array(main.player_bench)
+		for p in player_all:
+			for ability in p.metadata.get("abilities", []):
+				if ability.get("name", "") == "Sinkhole":
+					dugtrio = p
+					break
+			if dugtrio != null:
+				break
+	else:
+		# Player is retreating, check opponent's side for Dugtrio
+		var opp_all: Array = []
+		if main.opponent_active_pokemon != null:
+			opp_all.append(main.opponent_active_pokemon)
+		opp_all.append_array(main.opponent_bench)
+		for p in opp_all:
+			for ability in p.metadata.get("abilities", []):
+				if ability.get("name", "") == "Sinkhole":
+					dugtrio = p
+					break
+			if dugtrio != null:
+				break
+	
+	if dugtrio == null:
+		return
+	if is_power_blocked_by_status(dugtrio):
+		return
+	if is_toxic_gas_active() or main.goop_gas_active:
+		return
+	
+	var coin = await main.flip_coin()
+	if not coin:
+		# Tails: 20 damage to retreating pokemon (no W/R)
+		retreating_pokemon.current_hp = max(0, retreating_pokemon.current_hp - 20)
+		main.display_hp_circles_above_align(retreating_pokemon, is_retreating_opponent)
+		await main.show_message("SINKHOLE! 20 DAMAGE TO " + retreating_pokemon.metadata.get("name", "").to_upper() + "!")
+		if main._should_bail(): return
+		await main.check_all_knockouts()
+		if main._should_bail(): return
+	else:
+		await main.show_message("SINKHOLE: HEADS! NO DAMAGE!")
+		if main._should_bail(): return
+	print("POWER CHECK: Sinkhole - coin was ", "tails" if not coin else "heads")
+
+# --- SNEAK ATTACK: When Dark Golbat played from hand, 10 damage to chosen opponent Pokemon ---
+func trigger_sneak_attack(golbat: card_object, is_opponent: bool) -> void:
+	if is_toxic_gas_active() or main.goop_gas_active:
+		return
+	
+	var all_targets: Array = []
+	if is_opponent:
+		if main.player_active_pokemon != null:
+			all_targets.append(main.player_active_pokemon)
+		all_targets.append_array(main.player_bench)
+	else:
+		if main.opponent_active_pokemon != null:
+			all_targets.append(main.opponent_active_pokemon)
+		all_targets.append_array(main.opponent_bench)
+	
+	if all_targets.size() == 0:
+		return
+	
+	await main.show_message("SNEAK ATTACK!")
+	if main._should_bail(): return
+	
+	var selected: card_object = null
+	
+	if not is_opponent:
+		# Player chooses target
+		main.trainer_pokemon_selection_active = true
+		main.show_enlarged_array_selection_mode(all_targets)
+		main.header_label.text = "CHOOSE POKÉMON FOR SNEAK ATTACK"
+		main.action_button.text = "SELECT"
+		main.action_button.disabled = true
+		await main.trainer_target_selected
+		if main._should_bail(): return
+		selected = main.selected_card_for_action
+		main.trainer_pokemon_selection_active = false
+		main.hide_selection_mode_display_main()
+	else:
+		# CPU picks lowest HP target
+		all_targets.sort_custom(func(a, b): return a.current_hp < b.current_hp)
+		selected = all_targets[0]
+	
+	if selected == null:
+		return
+	
+	# 10 damage WITH Weakness and Resistance
+	var golbat_types = golbat.metadata.get("types", ["Colorless"])
+	var result = main.calculate_final_damage(10, golbat_types, selected)
+	selected.current_hp = max(0, selected.current_hp - result["damage"])
+	
+	var is_target_opp = !is_opponent
+	main.display_hp_circles_above_align(selected, is_target_opp)
+	await main.show_message("SNEAK ATTACK: " + str(result["damage"]) + " DAMAGE TO " + selected.metadata.get("name", "").to_upper() + "!")
+	if main._should_bail(): return
+	
+	await main.check_all_knockouts()
+	if main._should_bail(): return
+	print("POWER: Sneak Attack dealt ", result["damage"], " to ", selected.metadata.get("name", ""))
+
+# --- FINAL BEAM: When Dark Gyarados is KO'd, flip heads = 20×Water Energy damage to attacker ---
+func check_final_beam(gyarados: card_object, attacker: card_object, is_gyarados_opponent: bool) -> void:
+	if gyarados == null or attacker == null:
+		return
+	
+	var has_final_beam = false
+	for ability in gyarados.metadata.get("abilities", []):
+		if ability.get("name", "") == "Final Beam":
+			has_final_beam = true
+			break
+	
+	if not has_final_beam:
+		return
+	if is_power_blocked_by_status(gyarados):
+		return
+	if is_toxic_gas_active() or main.goop_gas_active:
+		return
+	
+	# Count Water Energy
+	var water_count = 0
+	for e in gyarados.attached_energies:
+		var provided = main.get_energy_provided_by_card(e)
+		if "Water" in provided:
+			water_count += 1
+	
+	if water_count == 0:
+		return
+	
+	var coin = await main.flip_coin()
+	if coin:
+		var damage = 20 * water_count
+		# Apply with W/R
+		var gyarados_types = gyarados.metadata.get("types", ["Colorless"])
+		var result = main.calculate_final_damage(damage, gyarados_types, attacker)
+		attacker.current_hp = max(0, attacker.current_hp - result["damage"])
+		main.display_hp_circles_above_align(attacker, !is_gyarados_opponent)
+		await main.show_message("FINAL BEAM! " + str(result["damage"]) + " DAMAGE TO " + attacker.metadata.get("name", "").to_upper() + "!")
+		if main._should_bail(): return
+		print("POWER: Final Beam dealt ", result["damage"])
+	else:
+		await main.show_message("FINAL BEAM: TAILS! NO EFFECT!")
+		if main._should_bail(): return
+
+# --- SUMMON MINIONS: When Dark Dragonite played from hand, search deck for up to 2 basics ---
+func trigger_summon_minions(dragonite: card_object, is_opponent: bool) -> void:
+	if is_toxic_gas_active() or main.goop_gas_active:
+		return
+	
+	var deck = main.opponent_deck if is_opponent else main.player_deck
+	var bench = main.opponent_bench if is_opponent else main.player_bench
+	
+	if bench.size() >= 5:
+		await main.show_message("BENCH IS FULL! CAN'T SUMMON MINIONS!")
+		if main._should_bail(): return
+		return
+	
+	var basics: Array = []
+	for card in deck:
+		if main.is_basic_pokemon(card):
+			basics.append(card)
+	
+	if basics.size() == 0:
+		await main.show_message("NO BASIC POKÉMON IN DECK!")
+		if main._should_bail(): return
+		return
+	
+	await main.show_message("SUMMON MINIONS!")
+	if main._should_bail(): return
+	
+	var picks_remaining = min(2, 5 - bench.size())
+	
+	for i in range(picks_remaining):
+		var remaining_basics: Array = []
+		for card in deck:
+			if main.is_basic_pokemon(card):
+				remaining_basics.append(card)
+		if remaining_basics.size() == 0:
+			break
+		
+		var pick: card_object = null
+		
+		if not is_opponent:
+			main.trainer_pokemon_selection_active = true
+			main.show_enlarged_array_selection_mode(remaining_basics)
+			main.header_label.text = "CHOOSE BASIC " + str(i + 1) + "/" + str(picks_remaining)
+			main.action_button.text = "SELECT"
+			main.action_button.disabled = true
+			await main.trainer_target_selected
+			if main._should_bail(): return
+			pick = main.selected_card_for_action
+			main.trainer_pokemon_selection_active = false
+			main.hide_selection_mode_display_main()
+		else:
+			pick = main.cpu_ai.cpu_search_deck_for_best_pokemon(remaining_basics)
+			if pick == null:
+				pick = remaining_basics[0]
+		
+		if pick != null:
+			deck.erase(pick)
+			pick.current_location = "bench"
+			pick.placed_on_field_this_turn = true
+			bench.append(pick)
+		
+		if bench.size() >= 5:
+			break
+	
+	deck.shuffle()
+	main.display_pokemon(is_opponent)
+	main.update_deck_icon(is_opponent)
+	await main.show_message("SUMMONED POKÉMON TO BENCH!")
+	if main._should_bail(): return
+	print("POWER: Summon Minions")
+
+# --- REEL IN: When Dark Slowbro played from hand, retrieve up to 3 Pokemon/Evolution from discard ---
+func trigger_reel_in(slowbro: card_object, is_opponent: bool) -> void:
+	if is_toxic_gas_active() or main.goop_gas_active:
+		return
+	
+	var discard = main.opponent_discard_pile if is_opponent else main.player_discard_pile
+	var hand = main.opponent_hand if is_opponent else main.player_hand
+	
+	var valid: Array = []
+	for card in discard:
+		var supertype = card.metadata.get("supertype", "")
+		var subtypes = card.metadata.get("subtypes", [])
+		if supertype == "Pokémon":
+			valid.append(card)
+	
+	if valid.size() == 0:
+		await main.show_message("NO POKÉMON IN DISCARD!")
+		if main._should_bail(): return
+		return
+	
+	await main.show_message("REEL IN!")
+	if main._should_bail(): return
+	
+	var max_picks = min(3, valid.size())
+	var chosen: Array = []
+	
+	if not is_opponent:
+		for i in range(max_picks):
+			var remaining: Array = []
+			for c in valid:
+				if c not in chosen:
+					remaining.append(c)
+			if remaining.size() == 0:
+				break
+			
+			main.trainer_pokemon_selection_active = true
+			main.show_enlarged_array_selection_mode(remaining)
+			main.header_label.text = "CHOOSE CARD " + str(i + 1) + "/" + str(max_picks)
+			main.action_button.text = "SELECT"
+			main.action_button.disabled = true
+			await main.trainer_target_selected
+			if main._should_bail(): return
+			var pick = main.selected_card_for_action
+			main.trainer_pokemon_selection_active = false
+			main.hide_selection_mode_display_main()
+			
+			if pick != null:
+				chosen.append(pick)
+			else:
+				break
+	else:
+		# CPU picks evolution cards first
+		valid.sort_custom(func(a, b):
+			var a_is_evo = "Stage" in str(a.metadata.get("subtypes", []))
+			var b_is_evo = "Stage" in str(b.metadata.get("subtypes", []))
+			return a_is_evo and not b_is_evo
+		)
+		for i in range(max_picks):
+			chosen.append(valid[i])
+	
+	for card in chosen:
+		discard.erase(card)
+		card.current_location = "hand"
+		hand.append(card)
+	
+	main.refresh_hand_display(is_opponent)
+	main.update_discard_pile_display(is_opponent)
+	await main.show_message("RETRIEVED " + str(chosen.size()) + " CARD(S) FROM DISCARD!")
+	if main._should_bail(): return
+	print("POWER: Reel In - retrieved ", chosen.size(), " cards")
+
+# --- EVOLUTIONARY LIGHT (Dark Dragonair): Search deck for Evolution, put in hand ---
+func power_evolutionary_light(pokemon: card_object) -> void:
+	if is_power_blocked_by_status(pokemon):
+		await main.show_message("POWER BLOCKED BY STATUS!")
+		if main._should_bail(): return
+		return
+	if pokemon.power_used_this_turn:
+		await main.show_message("POWER ALREADY USED THIS TURN!")
+		if main._should_bail(): return
+		return
+	
+	var deck = main.player_deck
+	var evolutions: Array = []
+	for card in deck:
+		var subtypes = card.metadata.get("subtypes", [])
+		if card.metadata.get("supertype", "") == "Pokémon" and ("Stage 1" in subtypes or "Stage 2" in subtypes):
+			evolutions.append(card)
+	
+	if evolutions.size() == 0:
+		await main.show_message("NO EVOLUTION CARDS IN DECK!")
+		if main._should_bail(): return
+		return
+	
+	pokemon.power_used_this_turn = true
+	
+	main.trainer_pokemon_selection_active = true
+	main.show_enlarged_array_selection_mode(evolutions)
+	main.header_label.text = "CHOOSE AN EVOLUTION CARD"
+	main.action_button.text = "SELECT"
+	main.action_button.disabled = true
+	await main.trainer_target_selected
+	if main._should_bail(): return
+	var selected = main.selected_card_for_action
+	main.trainer_pokemon_selection_active = false
+	main.hide_selection_mode_display_main()
+	
+	if selected == null:
+		pokemon.power_used_this_turn = false
+		return
+	
+	deck.erase(selected)
+	selected.current_location = "hand"
+	main.player_hand.append(selected)
+	deck.shuffle()
+	
+	main.refresh_hand_display(false)
+	main.update_deck_icon(false)
+	await main.show_message("ADDED " + selected.metadata.get("name", "").to_upper() + " TO HAND!")
+	if main._should_bail(): return
+	print("POWER: Evolutionary Light - found ", selected.metadata.get("name", ""))
+
+# --- POLLEN STENCH (Dark Gloom): Flip, heads=defender confused, tails=self confused ---
+func power_pollen_stench(pokemon: card_object) -> void:
+	if is_power_blocked_by_status(pokemon):
+		await main.show_message("POWER BLOCKED BY STATUS!")
+		if main._should_bail(): return
+		return
+	if pokemon.power_used_this_turn:
+		await main.show_message("POWER ALREADY USED THIS TURN!")
+		if main._should_bail(): return
+		return
+	
+	pokemon.power_used_this_turn = true
+	var coin = await main.flip_coin()
+	
+	if coin:
+		var defender = main.opponent_active_pokemon
+		if defender != null:
+			defender.special_condition = "Confused"
+			main.update_status_icons(defender, true)
+			await main.show_message("HEADS! " + defender.metadata.get("name", "").to_upper() + " IS NOW CONFUSED!")
+			if main._should_bail(): return
+	else:
+		var active = main.player_active_pokemon
+		if active != null:
+			active.special_condition = "Confused"
+			main.update_status_icons(active, false)
+			await main.show_message("TAILS! " + active.metadata.get("name", "").to_upper() + " IS NOW CONFUSED!")
+			if main._should_bail(): return
+	print("POWER: Pollen Stench")
+
+# --- MATTER EXCHANGE (Dark Kadabra): Discard 1 from hand, draw 1 ---
+func power_matter_exchange(pokemon: card_object) -> void:
+	if is_power_blocked_by_status(pokemon):
+		await main.show_message("POWER BLOCKED BY STATUS!")
+		if main._should_bail(): return
+		return
+	if pokemon.power_used_this_turn:
+		await main.show_message("POWER ALREADY USED THIS TURN!")
+		if main._should_bail(): return
+		return
+	
+	if main.player_hand.size() == 0:
+		await main.show_message("NO CARDS IN HAND TO DISCARD!")
+		if main._should_bail(): return
+		return
+	
+	if main.player_deck.size() == 0:
+		await main.show_message("NO CARDS IN DECK TO DRAW!")
+		if main._should_bail(): return
+		return
+	
+	pokemon.power_used_this_turn = true
+	
+	# Player selects card to discard
+	main.trainer_pokemon_selection_active = true
+	main.show_enlarged_array_selection_mode(main.player_hand)
+	main.header_label.text = "CHOOSE A CARD TO DISCARD"
+	main.action_button.text = "DISCARD"
+	main.action_button.disabled = true
+	await main.trainer_target_selected
+	if main._should_bail(): return
+	var selected = main.selected_card_for_action
+	main.trainer_pokemon_selection_active = false
+	main.hide_selection_mode_display_main()
+	
+	if selected == null:
+		pokemon.power_used_this_turn = false
+		return
+	
+	main.player_hand.erase(selected)
+	selected.current_location = "discard"
+	main.player_discard_pile.append(selected)
+	main.update_discard_pile_display(false)
+	
+	await main.draw_card_from_deck(false)
+	if main._should_bail(): return
+	main.refresh_hand_display(false)
+	
+	await main.show_message("MATTER EXCHANGE: DISCARDED 1, DREW 1!")
+	if main._should_bail(): return
+	print("POWER: Matter Exchange")
+
+# --- GATHER FIRE (Charmander): Move 1 Fire Energy from another Pokemon to self ---
+func power_gather_fire(pokemon: card_object) -> void:
+	if is_power_blocked_by_status(pokemon):
+		await main.show_message("POWER BLOCKED BY STATUS!")
+		if main._should_bail(): return
+		return
+	if pokemon.power_used_this_turn:
+		await main.show_message("POWER ALREADY USED THIS TURN!")
+		if main._should_bail(): return
+		return
+	
+	# Find other pokemon with Fire Energy
+	var sources: Array = []
+	var all_pokemon: Array = []
+	if main.player_active_pokemon != null:
+		all_pokemon.append(main.player_active_pokemon)
+	all_pokemon.append_array(main.player_bench)
+	
+	for p in all_pokemon:
+		if p == pokemon:
+			continue
+		for e in p.attached_energies:
+			var provided = main.get_energy_provided_by_card(e)
+			if "Fire" in provided:
+				sources.append(p)
+				break
+	
+	if sources.size() == 0:
+		await main.show_message("NO OTHER POKÉMON WITH FIRE ENERGY!")
+		if main._should_bail(): return
+		return
+	
+	pokemon.power_used_this_turn = true
+	
+	# Player chooses source
+	main.trainer_pokemon_selection_active = true
+	main.show_enlarged_array_selection_mode(sources)
+	main.header_label.text = "CHOOSE POKÉMON TO TAKE FIRE ENERGY FROM"
+	main.action_button.text = "SELECT"
+	main.action_button.disabled = true
+	await main.trainer_target_selected
+	if main._should_bail(): return
+	var source = main.selected_card_for_action
+	main.trainer_pokemon_selection_active = false
+	main.hide_selection_mode_display_main()
+	
+	if source == null:
+		pokemon.power_used_this_turn = false
+		return
+	
+	# Move 1 Fire Energy
+	for e in source.attached_energies:
+		var provided = main.get_energy_provided_by_card(e)
+		if "Fire" in provided:
+			source.attached_energies.erase(e)
+			pokemon.attached_energies.append(e)
+			break
+	
+	main.display_active_pokemon_energies(false)
+	await main.show_message("GATHERED FIRE ENERGY FROM " + source.metadata.get("name", "").to_upper() + "!")
+	if main._should_bail(): return
+	print("POWER: Gather Fire")
+
+# --- LONG-DISTANCE HYPNOSIS (Drowzee): Flip, heads=defender asleep, tails=self asleep ---
+func power_long_distance_hypnosis(pokemon: card_object) -> void:
+	if is_power_blocked_by_status(pokemon):
+		await main.show_message("POWER BLOCKED BY STATUS!")
+		if main._should_bail(): return
+		return
+	if pokemon.power_used_this_turn:
+		await main.show_message("POWER ALREADY USED THIS TURN!")
+		if main._should_bail(): return
+		return
+	
+	pokemon.power_used_this_turn = true
+	var coin = await main.flip_coin()
+	
+	if coin:
+		var defender = main.opponent_active_pokemon
+		if defender != null:
+			defender.special_condition = "Asleep"
+			main.update_status_icons(defender, true)
+			await main.show_message("HEADS! " + defender.metadata.get("name", "").to_upper() + " IS NOW ASLEEP!")
+			if main._should_bail(): return
+	else:
+		var active = main.player_active_pokemon
+		if active != null:
+			active.special_condition = "Asleep"
+			main.update_status_icons(active, false)
+			await main.show_message("TAILS! " + active.metadata.get("name", "").to_upper() + " IS NOW ASLEEP!")
+			if main._should_bail(): return
+	print("POWER: Long-Distance Hypnosis")
+
+# --- TRICKERY (Rattata): Switch 1 prize with top of deck ---
+func power_trickery(pokemon: card_object) -> void:
+	if is_power_blocked_by_status(pokemon):
+		await main.show_message("POWER BLOCKED BY STATUS!")
+		if main._should_bail(): return
+		return
+	if pokemon.power_used_this_turn:
+		await main.show_message("POWER ALREADY USED THIS TURN!")
+		if main._should_bail(): return
+		return
+	
+	if main.player_deck.size() == 0:
+		await main.show_message("NO CARDS IN DECK!")
+		if main._should_bail(): return
+		return
+	
+	if main.player_prize_cards.size() == 0:
+		await main.show_message("NO PRIZE CARDS!")
+		if main._should_bail(): return
+		return
+	
+	pokemon.power_used_this_turn = true
+	
+	# Player chooses prize card
+	main.trainer_pokemon_selection_active = true
+	main.show_enlarged_array_selection_mode(main.player_prize_cards)
+	main.header_label.text = "CHOOSE A PRIZE CARD TO SWAP"
+	main.action_button.text = "SWAP"
+	main.action_button.disabled = true
+	await main.trainer_target_selected
+	if main._should_bail(): return
+	var selected_prize = main.selected_card_for_action
+	main.trainer_pokemon_selection_active = false
+	main.hide_selection_mode_display_main()
+	
+	if selected_prize == null:
+		pokemon.power_used_this_turn = false
+		return
+	
+	# Swap with top of deck
+	var top_deck = main.player_deck[0]
+	var prize_idx = main.player_prize_cards.find(selected_prize)
+	
+	main.player_prize_cards[prize_idx] = top_deck
+	main.player_deck[0] = selected_prize
+	
+	main.display_prize_cards(false)
+	main.update_deck_icon(false)
+	await main.show_message("TRICKERY: SWAPPED PRIZE WITH TOP OF DECK!")
+	if main._should_bail(): return
+	print("POWER: Trickery")
+
+# --- STICKY GOO (Dark Muk): Check for +2 retreat cost ---
+func get_sticky_goo_cost(is_opponent: bool) -> int:
+	# Sticky Goo: opponent pays 2 more to retreat if Dark Muk is their opponent's active
+	# "As long as Dark Muk is your Active Pokémon"
+	var opp_active = main.player_active_pokemon if is_opponent else main.opponent_active_pokemon
+	if opp_active == null:
+		return 0
+	for ability in opp_active.metadata.get("abilities", []):
+		if ability.get("name", "") == "Sticky Goo":
+			if not is_power_blocked_by_status(opp_active) and not is_toxic_gas_active() and not main.goop_gas_active:
+				return 2
+	return 0
+
+# --- FRENZY (Dark Primeape): +30 damage when confused ---
+func check_frenzy_bonus(attacker: card_object) -> int:
+	if attacker == null:
+		return 0
+	if attacker.special_condition != "Confused":
+		return 0
+	for ability in attacker.metadata.get("abilities", []):
+		if ability.get("name", "") == "Frenzy":
+			if not is_toxic_gas_active() and not main.goop_gas_active:
+				return 30
+	return 0

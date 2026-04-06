@@ -143,6 +143,12 @@ var energy_trans_mode_active: bool = false
 var energy_trans_source: card_object = null
 var buzzap_mode_active: bool = false
 
+# BASE5 (TEAM ROCKET) VARIABLES
+var goop_gas_active: bool = false
+var goop_gas_owner_is_opponent: bool = false
+var player_prizes_face_up: bool = false
+var opponent_prizes_face_up: bool = false
+
 # PRELOADED RESOURCES
 var theme_disabled = preload("res://UI_Themes/kenneyUI.tres")
 var theme_green = preload("res://UI_Themes/kenneyUI-green.tres")
@@ -2399,6 +2405,27 @@ func inbetween_turn_checks(player_turn_just_ended: bool = true) -> void:
 	else:
 		powers_and_bodies.reset_power_used_flags(true)
 	
+	# Goop Gas Attack: expires at end of opponent's next turn
+	# Player played it (owner=false): expires when opponent's turn ends (player_turn_just_ended=false)
+	# CPU played it (owner=true): expires when player's turn ends (player_turn_just_ended=true)
+	if goop_gas_active:
+		if (goop_gas_owner_is_opponent and player_turn_just_ended) or (not goop_gas_owner_is_opponent and not player_turn_just_ended):
+			goop_gas_active = false
+			print("GOOP GAS: Effect expired")
+	
+	# Clear power_disabled_until_end_of_next_turn (Dark Arbok Stare)
+	if player_turn_just_ended:
+		# Clear on opponent's pokemon at end of player's turn
+		for bp in opponent_bench:
+			bp.power_disabled_until_end_of_next_turn = false
+		if opponent_active_pokemon != null:
+			opponent_active_pokemon.power_disabled_until_end_of_next_turn = false
+	else:
+		for bp in player_bench:
+			bp.power_disabled_until_end_of_next_turn = false
+		if player_active_pokemon != null:
+			player_active_pokemon.power_disabled_until_end_of_next_turn = false
+	
 	# Update Ditto Transform after any switches/KOs that may have happened
 	powers_and_bodies.update_ditto_transform(false)
 	powers_and_bodies.update_ditto_transform(true)
@@ -2601,6 +2628,15 @@ func perform_evolution(is_opponent: bool) -> void:
 	
 	print(target_card.metadata["name"], " evolved into ", evo_card.metadata["name"], "! (Damage carried: ", damage_taken, ")")
 	clear_all_statuses(target_card, is_opponent)
+	
+	# BASE5: When-played powers trigger when evolved from hand
+	var evo_name = evo_card.metadata.get("name", "")
+	if evo_name == "Dark Dragonite":
+		await powers_and_bodies.trigger_summon_minions(evo_card, is_opponent)
+	elif evo_name == "Dark Golbat":
+		await powers_and_bodies.trigger_sneak_attack(evo_card, is_opponent)
+	elif evo_name == "Dark Slowbro":
+		await powers_and_bodies.trigger_reel_in(evo_card, is_opponent)
 	 
 ########################################################### Retreat functions ##############################################################
 
@@ -2793,6 +2829,8 @@ func display_and_apply_attack_damage(attacker: card_object, defender: card_objec
 	if final_damage > 0:
 		SoundManagerScript.play_sfx(SoundManagerScript.SFX_damage_sound)
 		await powers_and_bodies.check_strikes_back(defender, attacker, !is_opponent)
+		# Check for Dark Wartortle's Mirror Shell (counter equal damage)
+		await attack_effects.check_mirror_shell(defender, attacker, final_damage, !is_opponent)
 
 # Parses the attack text for card effects and applies them
 # pre_flip_result: if a coin was already flipped during damage resolution, pass "heads" or "tails" to skip re-flipping
@@ -2897,6 +2935,198 @@ func perform_attack(attack_index: int) -> void:
 		last_attack_on_opponent = {"damage": 40, "attack": attack, "attacker_types": player_active_pokemon.metadata.get("types", ["Colorless"])}
 		player_attacked_this_turn = true
 		await check_all_knockouts()
+		await get_tree().create_timer(0.5).timeout
+		player_end_turn_checks()
+		return
+	
+	# --- BASE5 SPECIAL ATTACKS (must come before Sonicboom handler) ---
+	
+	# TARGET ANY POKEMON: Stare, Flitter, Dig Under, Coin Hurl (choose opponent Pokemon, damage no W/R)
+	if "choose 1 of your opponent's pokémon" in text_lower and "damage to that pokémon" in text_lower:
+		hide_attack_buttons()
+		var disable_power = "power stops working" in text_lower
+		if disable_power:
+			await attack_effects.execute_stare(player_active_pokemon, opponent_active_pokemon, false)
+		else:
+			var base_dmg = attack_effects.parse_attack_base_damage(attack)
+			if base_dmg <= 0:
+				base_dmg = attack_effects.extract_number_before(text_lower, "damage to that")
+			var flip_req = "flip a coin" in text_lower and "if heads" in text_lower
+			await attack_effects.execute_snipe_no_wr(player_active_pokemon, opponent_active_pokemon, false, base_dmg, flip_req)
+		# Apply remaining effects (Poison Vapor bench damage + poison)
+		var pae_target = attack_effects.parse_card_text_effects(attack.get("text", ""), player_active_pokemon.metadata.get("name", ""))
+		if pae_target.size() > 0:
+			await attack_effects.apply_card_text_effects(pae_target, player_active_pokemon, opponent_active_pokemon, false, "")
+		await check_all_knockouts()
+		await get_tree().create_timer(0.5).timeout
+		player_end_turn_checks()
+		return
+	
+	# BENCH MANIPULATION (Dark Hypno): Opponent flip coins = bench, 20×tails, no W/R
+	if "number of coins equal to the number of pokémon on" in text_lower and "tails" in text_lower:
+		hide_attack_buttons()
+		await attack_effects.execute_bench_manipulation(player_active_pokemon, opponent_active_pokemon, false)
+		player_attacked_this_turn = true
+		await check_all_knockouts()
+		await get_tree().create_timer(0.5).timeout
+		player_end_turn_checks()
+		return
+	
+	# CONTINUOUS FIREBALL (Dark Charizard): Flip coins = Fire Energy, 50×heads
+	if "flip a number of coins equal to the number of fire energy" in text_lower:
+		hide_attack_buttons()
+		await attack_effects.execute_continuous_fireball(player_active_pokemon, opponent_active_pokemon, false)
+		player_attacked_this_turn = true
+		await check_all_knockouts()
+		await get_tree().create_timer(0.5).timeout
+		player_end_turn_checks()
+		return
+	
+	# FLING (Dark Machamp): Shuffle opponent active into deck
+	if "shuffles his or her active pokémon" in text_lower and "into his or her deck" in text_lower:
+		hide_attack_buttons()
+		await attack_effects.execute_fling(player_active_pokemon, opponent_active_pokemon, false)
+		await get_tree().create_timer(0.5).timeout
+		player_end_turn_checks()
+		return
+	
+	# MAGNETIC LINES (Dark Magneton): 30 + move energy to bench
+	if "choose 1 of them and attach that energy card to it" in text_lower:
+		hide_attack_buttons()
+		await attack_effects.execute_magnetic_lines(player_active_pokemon, opponent_active_pokemon, false)
+		last_attack_on_opponent = {"damage": 30, "attack": attack, "attacker_types": player_active_pokemon.metadata.get("types", ["Colorless"])}
+		player_attacked_this_turn = true
+		await check_all_knockouts()
+		await get_tree().create_timer(0.5).timeout
+		player_end_turn_checks()
+		return
+	
+	# PETAL WHIRLWIND (Dark Vileplume): 3 coin flips, 30×heads, 2+ = confused
+	if "30 damage times the number of heads" in text_lower and "2 or more heads" in text_lower:
+		hide_attack_buttons()
+		await attack_effects.execute_petal_whirlwind(player_active_pokemon, opponent_active_pokemon, false)
+		player_attacked_this_turn = true
+		await check_all_knockouts()
+		await get_tree().create_timer(0.5).timeout
+		player_end_turn_checks()
+		return
+	
+	# MASS EXPLOSION (Dark Weezing)
+	if "total number of koffing" in text_lower:
+		hide_attack_buttons()
+		await attack_effects.execute_mass_explosion(player_active_pokemon, opponent_active_pokemon, false)
+		player_attacked_this_turn = true
+		await check_all_knockouts()
+		await get_tree().create_timer(0.5).timeout
+		player_end_turn_checks()
+		return
+	
+	# ENERGY BOMB (Dark Electrode): 30 + move energy to bench
+	if "take all energy cards attached" in text_lower and "benched pokémon" in text_lower and "any way you choose" in text_lower:
+		hide_attack_buttons()
+		await attack_effects.execute_energy_bomb(player_active_pokemon, opponent_active_pokemon, false)
+		last_attack_on_opponent = {"damage": 30, "attack": attack, "attacker_types": player_active_pokemon.metadata.get("types", ["Colorless"])}
+		player_attacked_this_turn = true
+		await check_all_knockouts()
+		await get_tree().create_timer(0.5).timeout
+		player_end_turn_checks()
+		return
+	
+	# THIRD EYE (Dark Golduck): Discard energy, draw cards
+	if "discard 1 energy card attached" in text_lower and "draw up to" in text_lower:
+		hide_attack_buttons()
+		await attack_effects.execute_third_eye(player_active_pokemon, false)
+		await get_tree().create_timer(0.5).timeout
+		player_end_turn_checks()
+		return
+	
+	# DRAG OFF (Dark Machoke): Switch bench to active, then damage
+	if "before doing damage, choose 1 of your opponent" in text_lower and "switch it with the defending" in text_lower:
+		hide_attack_buttons()
+		await attack_effects.execute_drag_off(player_active_pokemon, opponent_active_pokemon, false)
+		player_attacked_this_turn = true
+		await check_all_knockouts()
+		await get_tree().create_timer(0.5).timeout
+		player_end_turn_checks()
+		return
+	
+	# FLAME PILLAR (Dark Rapidash): 30 + optional fire discard for 10 bench damage
+	if "you may discard 1 fire energy" in text_lower and "10 damage to it" in text_lower:
+		hide_attack_buttons()
+		await attack_effects.execute_flame_pillar(player_active_pokemon, opponent_active_pokemon, false)
+		last_attack_on_opponent = {"damage": 30, "attack": attack, "attacker_types": player_active_pokemon.metadata.get("types", ["Colorless"])}
+		player_attacked_this_turn = true
+		await check_all_knockouts()
+		await get_tree().create_timer(0.5).timeout
+		player_end_turn_checks()
+		return
+	
+	# MIRROR SHELL (Dark Wartortle): Counter damage next turn
+	if "attacks the defending pokémon for an equal amount of damage" in text_lower:
+		hide_attack_buttons()
+		await attack_effects.execute_mirror_shell(player_active_pokemon, false)
+		await get_tree().create_timer(0.5).timeout
+		player_end_turn_checks()
+		return
+	
+	# RAPID EVOLUTION (Magikarp): Search deck for Gyarados/Dark Gyarados
+	if "evolution card named gyarados or dark gyarados" in text_lower:
+		hide_attack_buttons()
+		await attack_effects.execute_rapid_evolution(player_active_pokemon, false)
+		await get_tree().create_timer(0.5).timeout
+		player_end_turn_checks()
+		return
+	
+	# VANISH (Abra): Shuffle self into deck
+	if "shuffle" in text_lower and "into your deck" in text_lower and "discard all cards attached" in text_lower:
+		hide_attack_buttons()
+		await attack_effects.execute_vanish(player_active_pokemon, false)
+		await get_tree().create_timer(0.5).timeout
+		player_end_turn_checks()
+		return
+	
+	# MAGNETISM (Magnemite): 10+ per bench Magnemite/Magneton
+	if "magnemite" in text_lower and "magneton" in text_lower and "on your bench" in text_lower:
+		hide_attack_buttons()
+		await attack_effects.execute_magnetism(player_active_pokemon, opponent_active_pokemon, false)
+		last_attack_on_opponent = {"damage": 10, "attack": attack, "attacker_types": player_active_pokemon.metadata.get("types", ["Colorless"])}
+		player_attacked_this_turn = true
+		await check_all_knockouts()
+		await get_tree().create_timer(0.5).timeout
+		player_end_turn_checks()
+		return
+	
+	# MISCHIEF (Mankey): Shuffle opponent deck (no damage)
+	if "shuffle your opponent" in text_lower and "deck" in text_lower:
+		hide_attack_buttons()
+		await attack_effects.execute_mischief(player_active_pokemon, false)
+		await get_tree().create_timer(0.5).timeout
+		player_end_turn_checks()
+		return
+	
+	# SURPRISE THUNDER (Dark Raichu): 30 + double flip bench damage
+	if "second coin" in text_lower and "benched pokémon" in text_lower:
+		hide_attack_buttons()
+		await attack_effects.execute_surprise_thunder(player_active_pokemon, opponent_active_pokemon, false)
+		last_attack_on_opponent = {"damage": 30, "attack": attack, "attacker_types": player_active_pokemon.metadata.get("types", ["Colorless"])}
+		player_attacked_this_turn = true
+		await check_all_knockouts()
+		await get_tree().create_timer(0.5).timeout
+		player_end_turn_checks()
+		return
+	
+	# AFTERNOON NAP (Slowpoke): Search deck for Psychic Energy
+	if "search your deck for a psychic energy" in text_lower and "attach it" in text_lower:
+		hide_attack_buttons()
+		await attack_effects.execute_afternoon_nap(player_active_pokemon, false)
+		await get_tree().create_timer(0.5).timeout
+		player_end_turn_checks()
+		return
+	
+	# FASCINATE (Dark Persian): Flip to force switch
+	if "fascinate" in attack_name.to_lower() or ("choose 1 of your opponent's benched" in text_lower and "switch it with the defending" in text_lower and "this attack does" not in text_lower):
+		hide_attack_buttons()
+		await attack_effects.execute_fascinate(player_active_pokemon, opponent_active_pokemon, false)
 		await get_tree().create_timer(0.5).timeout
 		player_end_turn_checks()
 		return
@@ -3189,6 +3419,13 @@ func calculate_final_damage(base_damage: int, attacking_types: Array, defending_
 		damage -= reduction
 		modifiers_applied.append("REDUCED -" + str(reduction))
 	
+	# Dark Primeape Frenzy: +30 damage when confused
+	if attacker_pokemon != null:
+		var frenzy_bonus = powers_and_bodies.check_frenzy_bonus(attacker_pokemon)
+		if frenzy_bonus > 0:
+			damage += frenzy_bonus
+			modifiers_applied.append("FRENZY +" + str(frenzy_bonus))
+	
 	# Apply PlusPower bonus (+10 per PlusPower attached to the attacker)
 	# PlusPower is applied AFTER weakness/resistance per original TCG rules
 	if damage > 0 and attacker_pokemon != null and attacker_pokemon.pluspower_count > 0:
@@ -3226,6 +3463,15 @@ func check_and_handle_knockout(pokemon: card_object, is_opponent: bool) -> bool:
 	
 	SoundManagerScript.play_sfx(SoundManagerScript.SFX_knockout_sound)
 	await show_message(ko_name.to_upper() + " WAS KNOCKED OUT!")
+	
+	# BASE5: Dark Gyarados Final Beam - triggers when KO'd by attack
+	var ko_abilities = pokemon.metadata.get("abilities", [])
+	for ab in ko_abilities:
+		if ab.get("name", "") == "Final Beam":
+			# Find the attacker (the other side's active)
+			var attacker = player_active_pokemon if is_opponent else opponent_active_pokemon
+			await powers_and_bodies.check_final_beam(pokemon, attacker, is_opponent)
+			break
 	
 	# Grab UI references before any animations that might free nodes
 	var pokemon_ui = find_card_ui_for_object(pokemon)
@@ -3659,6 +3905,11 @@ func get_retreat_cost(pokemon: card_object) -> int:
 				if bp.special_condition not in ["Paralyzed", "Asleep", "Confused"] and not bp.is_poisoned:
 					cost = max(0, cost - 1)
 					break
+	
+	# Dark Muk Sticky Goo: opponent pays 2 more to retreat
+	var is_player_pokemon = (pokemon == player_active_pokemon or pokemon in player_bench)
+	cost += powers_and_bodies.get_sticky_goo_cost(is_player_pokemon)
+	
 	return cost
 
 # Loads the small card image texture for any card object by its UID
@@ -3863,6 +4114,8 @@ func handle_action_retreat_bench() -> void:
 	player_retreated_this_turn = true
 	retreat_bench_selection_active = false
 	selected_card_for_action = null
+	
+	var retreating_pokemon = player_active_pokemon  # Save ref before reassignment
 
 	hide_selection_mode_display_main()
 	await animate_retreat(player_active_pokemon, new_active, retreat_energies_selected, false)
@@ -3877,6 +4130,10 @@ func handle_action_retreat_bench() -> void:
 	# Update Ditto Transform after active switch
 	powers_and_bodies.update_ditto_transform(false)
 	powers_and_bodies.update_ditto_transform(true)
+	
+	# Sinkhole (Dark Dugtrio): damage to retreating Pokemon
+	await powers_and_bodies.check_sinkhole(retreating_pokemon, false)
+	await check_all_knockouts()
 
 # Moves a bench pokemon to the active slot after a knockout and triggers post-knockout signals
 func handle_action_knockout_bench() -> void:
