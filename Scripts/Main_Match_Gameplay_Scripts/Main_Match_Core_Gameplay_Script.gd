@@ -143,6 +143,9 @@ var energy_trans_mode_active: bool = false
 var energy_trans_source: card_object = null
 var buzzap_mode_active: bool = false
 
+# Special Energy Effects handler
+var special_energy_effects: Node
+
 # BASE5 (TEAM ROCKET) VARIABLES
 var goop_gas_active: bool = false
 var goop_gas_owner_is_opponent: bool = false
@@ -2071,6 +2074,18 @@ func perform_energy_attachment() -> void:
 	var energy_card = energy_card_awaiting_target
 	var target_pokemon = selected_card_for_action
 	
+	# Check special energy attachment restrictions
+	var subtypes = energy_card.metadata.get("subtypes", [])
+	if "Special" in subtypes:
+		var attach_check = special_energy_effects.can_attach_to(energy_card, target_pokemon)
+		if not attach_check["allowed"]:
+			await show_message(attach_check["reason"])
+			energy_card_awaiting_target = null
+			selected_card_for_action = null
+			card_attach_mode_active = false
+			hide_selection_mode_display_main()
+			return
+	
 	target_pokemon.attached_energies.append(energy_card)
 	print("Attached ", energy_card.metadata.get("name", "Unknown Energy"), " to ", target_pokemon.metadata.get("name", "Unknown Pokemon"))
 	player_hand.erase(energy_card)
@@ -2094,6 +2109,10 @@ func perform_energy_attachment() -> void:
 
 	await get_tree().process_frame
 	await play_energy_attached_effect(target_pokemon, energy_card)
+	
+	# Apply special energy on-attach effects (Rainbow self-damage, Full Heal cure, Potion heal, etc.)
+	if "Special" in subtypes:
+		await special_energy_effects.apply_on_attach_effects(energy_card, target_pokemon, false)
 
 # Called when any win/loss condition is met to end the match
 func game_end_logic(loser_is_player: bool) -> void:
@@ -2756,16 +2775,14 @@ func get_energy_provided_by_card(energy_card: card_object) -> Array:
 		var energy_type = card_name.replace(" Energy", "").strip_edges()
 		return [energy_type]
 	
-	# Special energy: explicit name-based lookup since JSON has no structured provision data
+	# Special energy: route through Special_Energy_Effects system
 	if "Special" in subtypes:
-		match card_name:
-			"Double Colorless Energy":
-				return ["Colorless", "Colorless"]
-			"Double Rainbow Energy":
-				return ["Any", "Any"]
-			_:
-				print("Warning: Unknown special energy card: ", card_name)
-				return []
+		var provided = special_energy_effects.get_energy_types_provided(card_name)
+		if provided.size() > 0:
+			return provided
+		# Fallback for truly unknown specials
+		print("Warning: Unknown special energy card: ", card_name)
+		return []
 	
 	return []
 
@@ -4679,6 +4696,11 @@ func _ready() -> void:
 	powers_and_bodies.set_script(preload("res://Scripts/Main_Match_Gameplay_Scripts/Powers_And_Bodies_Effects.gd"))
 	add_child(powers_and_bodies)
 	powers_and_bodies.main = self
+	
+	special_energy_effects = Node.new()
+	special_energy_effects.set_script(preload("res://Scripts/Main_Match_Gameplay_Scripts/Special_Energy_Effects.gd"))
+	add_child(special_energy_effects)
+	special_energy_effects.main = self
 	
 	var opponent_name = GameState.current_opponent_name
 	

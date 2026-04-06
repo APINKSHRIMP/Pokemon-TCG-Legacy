@@ -1230,6 +1230,14 @@ func cpu_phase_energy_attachment(cpu_eval: Dictionary) -> void:
 
 	print("CPU attaching " + energy.metadata["name"] + " to " + target.metadata["name"] + " (Score: " + str(int(best["score"])) + ")")
 
+	# Check special energy attachment restrictions
+	var subtypes = energy.metadata.get("subtypes", [])
+	if "Special" in subtypes:
+		var attach_check = main.special_energy_effects.can_attach_to(energy, target)
+		if not attach_check["allowed"]:
+			print("CPU energy attachment blocked: ", attach_check["reason"])
+			return
+
 	# Perform the attachment
 	main.opponent_hand.erase(energy)
 	target.attached_energies.append(energy)
@@ -1250,6 +1258,11 @@ func cpu_phase_energy_attachment(cpu_eval: Dictionary) -> void:
 	if main._should_bail(): return
 	await main.play_energy_attached_effect(target, energy)
 	if main._should_bail(): return
+	
+	# Apply special energy on-attach effects (Rainbow self-damage, Full Heal cure, Potion heal, etc.)
+	if "Special" in subtypes:
+		await main.special_energy_effects.apply_on_attach_effects(energy, target, true)
+		if main._should_bail(): return
 	
 	# Fix 2: Invalidate CPU evaluation cache after energy attachment
 	invalidate_cpu_evaluation()
@@ -1304,6 +1317,11 @@ func score_energy_pair(pokemon: card_object, energy_card: card_object, cpu_eval:
 
 	# 2.15: Attack self-discard consideration
 	score += score_self_discard_penalty(pokemon)
+
+	# Special energy scoring (Rainbow self-damage, Full Heal cure, etc.)
+	var subtypes = energy_card.metadata.get("subtypes", [])
+	if "Special" in subtypes:
+		score += main.special_energy_effects.score_special_energy_attachment(energy_card, pokemon, is_active)
 
 	# EXTRA ENERGY BEYOND COST: Score bonus for attacks like Poliwag/Blastoise that do more damage with extra energy
 	if is_active:
@@ -1885,7 +1903,7 @@ func score_parsed_effects(effects: Array, defender: card_object) -> float:
 			score += 50.0 * flip_mult
 
 		if effect["type"] == "self_switch":
-			# Value depends on board state
+			# Value depends on board state — retreat to safety if low HP
 			if main.opponent_active_pokemon != null:
 				var active_hp_pct = float(main.opponent_active_pokemon.current_hp) / max(int(main.opponent_active_pokemon.metadata.get("hp", "1")), 1)
 				if active_hp_pct < 0.3:
@@ -1895,7 +1913,7 @@ func score_parsed_effects(effects: Array, defender: card_object) -> float:
 		
 		if effect["type"] == "bench_damage_single":
 			if main.player_bench.size() > 0:
-				score += effect.get("damage", 0) * 0.5
+				score += effect.get("damage", 10) * 0.5
 
 		if effect["type"] == "leech_seed_heal":
 			var damage_on_attacker = 0
@@ -1910,19 +1928,6 @@ func score_parsed_effects(effects: Array, defender: card_object) -> float:
 
 		if effect["type"] == "attack_block":
 			score += 20.0 * flip_mult
-
-		if effect["type"] == "self_switch":
-			# Teleport is useful if we're low HP or have a better attacker
-			if main.opponent_active_pokemon != null:
-				var hp_pct = float(main.opponent_active_pokemon.current_hp) / max(int(main.opponent_active_pokemon.metadata.get("hp", "1")), 1)
-				if hp_pct < 0.3:
-					score += 30.0
-				else:
-					score -= 20.0  # Don't switch if healthy
-
-		if effect["type"] == "bench_damage_single":
-			if main.player_bench.size() > 0:
-				score += effect.get("damage", 10) * 0.5
 
 		if effect["type"] == "leech_seed":
 			if main.opponent_active_pokemon != null:

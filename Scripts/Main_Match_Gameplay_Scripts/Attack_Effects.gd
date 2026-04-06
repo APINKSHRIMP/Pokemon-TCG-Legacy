@@ -242,6 +242,8 @@ func handle_attack_confusion(attacker: card_object, is_opponent: bool) -> bool:
 		var self_types = attacker.metadata.get("types", ["Colorless"])
 		var result = main.calculate_final_damage(self_damage, self_types, attacker)
 		self_damage = result["damage"]
+	# Dark Primeape Frenzy: +30 damage when confused (even to self)
+	self_damage += main.powers_and_bodies.check_frenzy_bonus(attacker)
 	attacker.current_hp = max(0, attacker.current_hp - self_damage)
 	await main.show_message("THE ATTACK FAILED! " + attacker.metadata["name"].to_upper() + " HURT ITSELF FOR " + str(self_damage) + " DAMAGE!")
 	if main._should_bail(): return false
@@ -3304,13 +3306,51 @@ func execute_flame_pillar(attacker: card_object, defender: card_object, is_oppon
 	if fire_energies.size() > 0 and target_bench.size() > 0:
 		var do_discard = false
 		if is_opponent:
-			# CPU always discards if it can snipe a low-HP bench pokemon
-			do_discard = true
+			# CPU only discards extra fire energy if guaranteed to be KO'd next turn
+			# (wasting energy when you'll survive is bad value)
+			var ko_threats = main.cpu_ai.evaluate_ko_threats()
+			do_discard = ko_threats.get("cpu_active_guaranteed_ko", false)
 		else:
-			# For player, always offer the option (auto-yes for simplicity, or use message)
+			# Player chooses: show yes/no via attack selection buttons
+			main.special_attack_selection_active = true
+			main.buttons_only_blocker.visible = true
+			main.attack_buttons_container.visible = true
+			main.main_buttons_container.visible = false
+			for child in main.attack_buttons_container.get_children():
+				if child.name == "cancel_attack_mode_button":
+					child.visible = false
+					continue
+				child.queue_free()
+			
+			var btn_yes = Button.new()
+			btn_yes.text = "YES - DISCARD FIRE ENERGY"
+			btn_yes.custom_minimum_size = Vector2(350, 50)
+			btn_yes.theme = main.theme_green
+			main.attack_buttons_container.add_child(btn_yes)
+			btn_yes.pressed.connect(func(): main.special_attack_selected.emit(0))
+			
+			var btn_no = Button.new()
+			btn_no.text = "NO - SKIP"
+			btn_no.custom_minimum_size = Vector2(350, 50)
+			btn_no.theme = main.theme_green
+			main.attack_buttons_container.add_child(btn_no)
+			btn_no.pressed.connect(func(): main.special_attack_selected.emit(1))
+			
 			await main.show_message("DISCARD FIRE ENERGY FOR 10 BENCH DAMAGE?")
 			if main._should_bail(): return
-			do_discard = true  # Player chose to use this attack, so yes
+			
+			var selected_index = await main.special_attack_selected
+			do_discard = (selected_index == 0)
+			
+			for child in main.attack_buttons_container.get_children():
+				if child.name == "cancel_attack_mode_button":
+					child.visible = true
+					continue
+				child.queue_free()
+			main.attack_buttons_container.visible = false
+			main.main_buttons_container.visible = true
+			main.special_attack_selection_active = false
+			main.buttons_only_blocker.visible = false
 		
 		if do_discard:
 			# Discard 1 fire energy
@@ -3605,6 +3645,18 @@ func check_mirror_shell(damaged_pokemon: card_object, attacker: card_object, dam
 		return
 	
 	damaged_pokemon.mirror_shell_active = false
+	
+	# Counter damage is blocked by attacker's shields
+	if attacker.is_invincible:
+		await main.show_message("MIRROR SHELL BLOCKED! TARGET IS INVINCIBLE!")
+		if main._should_bail(): return
+		print("EFFECT: Mirror Shell blocked by invincibility")
+		return
+	if attacker.has_no_damage:
+		await main.show_message("MIRROR SHELL BLOCKED! NO DAMAGE SHIELD!")
+		if main._should_bail(): return
+		print("EFFECT: Mirror Shell blocked by no-damage shield")
+		return
 	
 	# Counter equal damage to attacker (no W/R, just raw)
 	attacker.current_hp = max(0, attacker.current_hp - damage_dealt)
