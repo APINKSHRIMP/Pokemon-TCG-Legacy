@@ -10,17 +10,21 @@ func _ready():
 	$Player.set_direction(GameState.get_player_direction())
 	$"Door Areas".body_entered.connect(_on_door_entered)
 
-	if GameState.return_to_scene == "Celeste Harbour":
-		$Player.position = GameState.interior_entry_position
-		GameState.return_to_scene = ""
+	if GameState.use_spawn_position:
+		$Player.position = GameState.spawn_position
+		GameState.use_spawn_position = false
+	else:
+		$Player.position = Vector2(200, 200)
 
 	await get_tree().process_frame
+
 	tween.tween_property(get_tree().root, "modulate", Color.WHITE, 1.0)
 
 func _on_door_entered(body: Node2D):
 	if not body.is_in_group("player"):
 		return
 
+	# Find the nearest CollisionShape2D child to the player
 	var door_area = $"Door Areas"
 	var nearest_shape = null
 	var nearest_dist = INF
@@ -39,11 +43,11 @@ func _on_door_entered(body: Node2D):
 	GameState.save_player_direction(body.get_current_direction())
 	body.lock_movement()
 
-	var save_pos = body.position
-	save_pos.y += 5
-	GameState.interior_entry_position = save_pos
-	GameState.return_to_scene = "Celeste Harbour"
-	GameState.use_spawn_position = false
+	if target.contains("Upstairs"):
+		GameState.spawn_position = Vector2(55, 25)
+		GameState.use_spawn_position = true
+	else:
+		GameState.use_spawn_position = false
 
 	var tween = create_tween()
 	tween.tween_property(get_tree().current_scene, "modulate", Color.BLACK, 0.5)

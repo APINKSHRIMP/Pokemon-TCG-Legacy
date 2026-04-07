@@ -14,6 +14,10 @@ var returning_from_battle: bool = false
 var battle_result: String = ""  # "win" or "loss"
 var player_position: Vector2 = Vector2.ZERO
 var current_opponent_deck: String = ""
+var return_to_scene: String = ""
+var interior_entry_position: Vector2 = Vector2.ZERO
+var spawn_position: Vector2 = Vector2.ZERO
+var use_spawn_position: bool = false
 
 # The res:// path of the map level the player was on when they entered a battle.
 # After the match outro finishes we transition back to this scene.
