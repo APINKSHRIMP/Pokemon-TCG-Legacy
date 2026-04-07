@@ -248,7 +248,7 @@ func handle_attack_confusion(attacker: card_object, is_opponent: bool) -> bool:
 	await main.show_message("THE ATTACK FAILED! " + attacker.metadata["name"].to_upper() + " HURT ITSELF FOR " + str(self_damage) + " DAMAGE!")
 	if main._should_bail(): return false
 	var attacker_label_pos = Vector2(1030, 300) if is_opponent else Vector2(530, 300)
-	main.show_floating_label("-" + str(self_damage) + "HP", attacker_label_pos, true)
+	main.show_floating_label("-" + str(self_damage) + "HP", attacker_label_pos, Color.YELLOW, true)
 	main.display_hp_circles_above_align(attacker, is_opponent)
 	print("CONFUSED: ", attacker.metadata["name"], " hurt itself for ", self_damage)
 	await main.check_all_knockouts()

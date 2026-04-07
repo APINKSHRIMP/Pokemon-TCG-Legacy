@@ -1253,7 +1253,7 @@ func update_status_icons(pokemon: card_object, is_opponent: bool) -> void:
 ################################################################ ANIMATION FUNCTIONS #################################################################
 
 # Creates a floating label at a given position that drifts upward and fades out over 2 seconds
-func show_floating_label(message: String, spawn_position: Vector2, upwards: bool = true) -> void:
+func show_floating_label(message: String, spawn_position: Vector2, label_color: Color = Color.WHITE, upwards: bool = true,) -> void:
 	var label = Label.new()
 	label.text = message
 	
@@ -1266,7 +1266,7 @@ func show_floating_label(message: String, spawn_position: Vector2, upwards: bool
 	
 	# Apply kenney theme for the pixel font, then override colour and size
 	label.theme = theme_disabled
-	label.add_theme_color_override("font_color", Color.WHITE)
+	label.add_theme_color_override("font_color", label_color)
 	label.add_theme_color_override("font_outline_color", Color.BLACK)
 	label.add_theme_constant_override("outline_size", 10)
 	label.add_theme_font_size_override("font_size", 36)
@@ -1276,10 +1276,10 @@ func show_floating_label(message: String, spawn_position: Vector2, upwards: bool
 	var tween = create_tween()
 	tween.set_parallel(true)
 	if upwards:
-		tween.tween_property(label, "position:y", spawn_position.y - 250, 1.5)
+		tween.tween_property(label, "position:y", spawn_position.y - 250, 2.5)
 	else:
-		tween.tween_property(label, "position:y", spawn_position.y + 250, 1.5)		
-	tween.tween_property(label, "modulate:a", 0.0, 1.0)
+		tween.tween_property(label, "position:y", spawn_position.y + 250, 2.5)		
+	tween.tween_property(label, "modulate:a", 0.0, 1.5)
 	
 	await tween.finished
 	label.queue_free()
@@ -2339,7 +2339,7 @@ func player_start_turn_checks() -> void:
 	# Reset trainer lock from Headache
 	trainer_effects.reset_trainer_lock(false)
 	opponent_blocker.visible = false
-	show_floating_label("Start turn", Vector2(50, 180), false)
+	show_floating_label("Start turn", Vector2(50, 180), Color.WHITE, false)
 	turn_number += 1
 	print("PLAYER'S TURN START. TURN NUMBER IS ", turn_number)
 	var drawn_card = await draw_card_from_deck(false)
@@ -2362,7 +2362,7 @@ func player_end_turn_checks() -> void:
 	opponent_blocker.visible = true
 	opponents_turn_active = true
 	update_main_screen_buttons()
-	show_floating_label("End turn", Vector2(1500, 880))
+	show_floating_label("End turn", Vector2(1500, 880),Color.WHITE)
 	
 	await check_all_knockouts()
 	
@@ -2799,7 +2799,7 @@ func check_defender_invincible(defender: card_object, is_opponent: bool = false)
 	if not defender.is_invincible:
 		return false
 	var label_pos = Vector2(530, 300) if !is_opponent else Vector2(1030, 300)
-	show_floating_label("NO EFFECT", label_pos, true)
+	show_floating_label("NO EFFECT", label_pos, Color.RED, true)
 	print("INVINCIBLE: Attack fully blocked on ", defender.metadata["name"])
 	return true
 
@@ -2809,7 +2809,7 @@ func apply_defender_no_damage_shield(defender: card_object, damage: int, is_oppo
 	if not defender.has_no_damage:
 		return damage
 	var label_pos = Vector2(530, 300) if !is_opponent else Vector2(1030, 300)
-	show_floating_label("NO DAMAGE", label_pos, true)
+	show_floating_label("NO DAMAGE", label_pos, Color.BLUE, true)
 	print("NO DAMAGE: Defender shield active, damage set to 0")
 	return 0
 
@@ -2830,14 +2830,22 @@ func display_and_apply_attack_damage(attacker: card_object, defender: card_objec
 	
 	var defender_label_pos = Vector2(530, 300) if is_opponent else Vector2(1030, 300)
 	for modifier in modifiers:
-		show_floating_label(modifier, defender_label_pos, true)
+		var color_to_pass = Color.WHITE
+		if modifier == "WEAKNESS x2":
+			color_to_pass = Color.GREEN
+		elif modifier == "RESISTANCE -30":
+			color_to_pass = Color.RED
+		else:
+			color_to_pass = Color.WHITE
+			
+		show_floating_label(modifier, defender_label_pos, color_to_pass, true)
 		await get_tree().create_timer(0.5).timeout
 	# Only show damage label if there is actual damage, or if the attack originally had damage
 	# but it was reduced to 0 by resistance/other modifiers (not shields)
 	var has_shield_modifier = "NO DAMAGE" in modifiers
 	var show_damage_label = final_damage > 0 or (base_damage > 0 and modifiers.size() > 0 and not has_shield_modifier)
 	if show_damage_label:
-		show_floating_label("-" + str(final_damage) + "HP", defender_label_pos, true)
+		show_floating_label("-" + str(final_damage) + "HP", defender_label_pos, Color.WHITE, true)
 	defender.current_hp = max(0, defender.current_hp - final_damage)
 	print(attacker.metadata["name"] + " dealt " + str(final_damage) + " damage to " + defender.metadata["name"] + "! HP remaining: " + str(defender.current_hp))
 	display_hp_circles_above_align(defender, !is_opponent)
@@ -3726,7 +3734,7 @@ func process_status_between_turns(pokemon: card_object, is_opponent: bool) -> vo
 		pokemon.current_hp = max(0, pokemon.current_hp - pokemon.poison_damage)
 		var label = "TOXIC" if pokemon.poison_damage == 20 else "POISON"
 		SoundManagerScript.play_sfx(SoundManagerScript.SFX_poison_sound)
-		show_floating_label("-" + str(pokemon.poison_damage) + "HP", Vector2(530 if !is_opponent else 1030, 300), true)
+		show_floating_label("-" + str(pokemon.poison_damage) + "HP", Vector2(530 if !is_opponent else 1030, 300), Color.PURPLE, true)
 		display_hp_circles_above_align(pokemon, is_opponent)
 		await show_message(pokemon_name.to_upper() + " TAKES " + str(pokemon.poison_damage) + " " + label + " DAMAGE!")
 		print("BETWEEN TURNS: ", pokemon_name, " took ", pokemon.poison_damage, " poison damage. HP: ", pokemon.current_hp)
@@ -3738,7 +3746,7 @@ func process_status_between_turns(pokemon: card_object, is_opponent: bool) -> vo
 			if not coin:
 				pokemon.current_hp = max(0, pokemon.current_hp - 20)
 				await show_message(pokemon_name.to_upper() + " TAKES 20 BURN DAMAGE!")
-				show_floating_label("-20HP", Vector2(530 if !is_opponent else 1030, 300), is_opponent)
+				show_floating_label("-20HP", Vector2(530 if !is_opponent else 1030, 300), Color.RED, is_opponent)
 				display_hp_circles_above_align(pokemon, is_opponent)
 				print("BETWEEN TURNS: ", pokemon_name, " took 20 burn damage. HP: ", pokemon.current_hp)
 			else:
@@ -3747,7 +3755,7 @@ func process_status_between_turns(pokemon: card_object, is_opponent: bool) -> vo
 		elif burn_rules == "modern_era_burn_rules":
 			pokemon.current_hp = max(0, pokemon.current_hp - 20)
 			await show_message(pokemon_name.to_upper() + " TAKES 20 BURN DAMAGE!")
-			show_floating_label("-20HP", Vector2(530 if !is_opponent else 1030, 300), is_opponent)
+			show_floating_label("-20HP", Vector2(530 if !is_opponent else 1030, 300), Color.RED, is_opponent)
 			display_hp_circles_above_align(pokemon, is_opponent)
 			print("BETWEEN TURNS: ", pokemon_name, " took 20 burn damage. HP: ", pokemon.current_hp)
 			await show_message("FLIPPING COIN TO CURE BURN...")
@@ -3786,7 +3794,7 @@ func check_confused_retreat(pokemon: card_object, is_opponent: bool, phase: Stri
 			pokemon.current_hp = max(0, pokemon.current_hp - 20)
 			await show_message("RETREAT FAILED! " + pokemon_name.to_upper() + " HURT ITSELF FOR 20 DAMAGE!")
 			var label_x = 1030 if is_opponent else 530
-			show_floating_label("-20HP", Vector2(label_x, 300), is_opponent)
+			show_floating_label("-20HP", Vector2(label_x, 300), Color.YELLOW, is_opponent)
 			display_hp_circles_above_align(pokemon, is_opponent)
 			if is_opponent:
 				opponent_retreated_this_turn = true
@@ -3987,7 +3995,7 @@ func get_pokemon_type_colour(pokemon: card_object) -> Color:
 
 # Function to get lowest cost attack for a pokemon by looping through all attacks. Returns a dictionary with "cost" (convertedEnergyCost), "damage" (as int), and "attack_name"
 func load_opponent_data_by_name(opp_name: String):
-	var file = FileAccess.open("res://Opponent_Data/Area_Opponents/Shallow_Beach_Opponents.json", FileAccess.READ)
+	var file = FileAccess.open(GameState.current_opponent_json_path, FileAccess.READ)
 	if file == null:
 		print("Error loading file")
 		return

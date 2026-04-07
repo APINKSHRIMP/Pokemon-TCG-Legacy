@@ -1,6 +1,38 @@
 {
   "opponents": [
 	{
+	  "name": "Lass_Jennifer",
+	  "overworld_sprite": "Lass",
+	  "battle_sprite": "Lass",
+	  "music": "chilled_battle",
+	  "deck": "Basic_Pokemon_Barrage",
+
+	  "meet_text": "I just got given some cards off my grandma, I'm not really good at battling but it's fun!",
+	  "rematch_text": "I could definitely use some more practice",
+	  "first_win_text": "I'll get better at this one day",
+	  "rematch_win_text": "I might never be great but at least I'm having a good time",
+	  "loss_text": "I didn't expect to win at all!",
+
+	  "coin_reward": "coin_energy_silver_2",
+	  "cash_reward": "100"
+	},
+	{
+	  "name": "Schoolboy_Adam",
+	  "overworld_sprite": "schoolboy",
+	  "battle_sprite": "schoolboy",
+	  "music": "chilled_battle",
+	  "deck": "Status_Infliction",
+
+	  "meet_text": "I'm trying out some new techniques using statuses. If we battle I'll show you how good they are",
+	  "rematch_text": "I'll definitely win this time round",
+	  "first_win_text": "Oh man I really thought my statuses were going to cause you some trouble",
+	  "rematch_win_text": "Maybe I need a better tactic...",
+	  "loss_text": "I knew my status infliction technique would work!",
+
+	  "coin_reward": "coin_chansey_silver",
+	  "cash_reward": "100"
+	},
+	{
 	  "name": "Fisherman_John",
 	  "overworld_sprite": "Fisherman",
 	  "battle_sprite": "Fisherman",

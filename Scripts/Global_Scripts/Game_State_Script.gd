@@ -10,6 +10,7 @@ extends Node
 
 # Data passed between scenes during a match
 var current_opponent_name: String = ""
+var current_opponent_json_path: String = ""
 var returning_from_battle: bool = false
 var battle_result: String = ""  # "win" or "loss"
 var player_position: Vector2 = Vector2.ZERO

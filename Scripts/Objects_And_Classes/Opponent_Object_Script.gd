@@ -58,7 +58,7 @@ func _ready():
 	add_to_group("opponents")
 	
 	animated_sprite.sprite_frames = SpriteSheetLoader.load_sprite_frames(overworld_sprite)
-	animated_sprite.scale = Vector2(2.5, 2.5)
+	animated_sprite.scale = Vector2(1, 1)
 	animated_sprite.play("idle_down")
 	
 	match movement_pattern:
@@ -68,6 +68,14 @@ func _ready():
 			direction_timer.start()
 		"idle_cycle":
 			animated_sprite.play("walk_down")
+		"idle_left":
+			animated_sprite.play("idle_left")
+		"idle_right":
+			animated_sprite.play("idle_right")
+		"idle_up":
+			animated_sprite.play("idle_up")
+		"idle_down":
+			animated_sprite.play("idle_down")
 		"patrol_line":
 			distance_walked = 0.0
 			if patrol_axis == "horizontal":

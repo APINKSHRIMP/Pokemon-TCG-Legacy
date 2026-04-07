@@ -1,12 +1,53 @@
 extends Node2D
 
+const JSON_PATH = "res://Opponent_Data/Area_Opponents/Celeste_Harbour_Opponents.json"
+const SCENE_PATH = "res://Scenes/Map_Scenes/Map_Areas/Celeste_Harbour.tscn"
+const BGM_PATH = "res://Audio/BGM/beach_bgm.ogg"
+
+var opponent_placements = [
+	{
+		"name": "Fisherman_John",
+		"position": Vector2(330, 2500),
+		"pattern": "idle_down",
+	},
+	{
+		"name": "Schoolboy_Adam",
+		"position": Vector2(-770, 2600),
+		"pattern": "idle_down",
+	},
+	{
+		"name": "Lass_Jennifer",
+		"position": Vector2(-700, 2200),
+		"pattern": "idle_random",
+	},
+	{
+		"name": "Bug_Catcher_Alex",
+		"position": Vector2(600, 2500),
+		"pattern": "patrol_line",
+		"patrol_distance": 100,
+		"patrol_axis": "horizontal",
+	},
+	{
+		"name": "Swimmer_Jordan",
+		"position": Vector2(500, 2700),
+		"pattern": "idle_cycle",
+		"patrol_distance": 100,
+		"patrol_axis": "horizontal",
+	}
+]
+
 func _ready():
+	SoundManagerScript.play_bgm(BGM_PATH, true)
+
+	# Fade in
 	var tween = create_tween()
 	tween.tween_property(get_tree().root, "modulate", Color(1, 1, 1, 0), 0.0)
+
+	# Door setup (your existing code)
 	$"Door Areas".collision_layer = 3
-	$"Door Areas".collision_mask = 2
-	$"Door Areas".monitoring = true
-	$"Door Areas".monitorable = true
+	$"Door Areas".collision_mask  = 2
+	$"Door Areas".monitoring      = true
+	$"Door Areas".monitorable     = true
 	$Player.set_direction(GameState.get_player_direction())
 	$"Door Areas".body_entered.connect(_on_door_entered)
 
@@ -14,8 +55,23 @@ func _ready():
 		$Player.position = GameState.interior_entry_position
 		GameState.return_to_scene = ""
 
+	# Hand off all opponent/interaction logic to MapManager
+	MapManager.initialise(
+		$Player,
+		$OPPONENTS,
+		$UILAYER,
+		JSON_PATH,
+		opponent_placements,
+		SCENE_PATH
+	)
+
 	await get_tree().process_frame
 	tween.tween_property(get_tree().root, "modulate", Color.WHITE, 1.0)
+
+func _input(event: InputEvent) -> void:
+	if event is InputEventKey and event.pressed and event.keycode == KEY_ESCAPE:
+		SoundManagerScript.stop_bgm()
+		get_tree().change_scene_to_file("res://Scenes/Map_Scenes/World_Maps/World_Map_Base_Scene.tscn")
 
 func _on_door_entered(body: Node2D):
 	if not body.is_in_group("player"):

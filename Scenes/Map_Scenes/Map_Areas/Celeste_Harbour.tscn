@@ -964,7 +964,7 @@ position = Vector2(-1, 0)
 tile_set = ExtResource("1_njjmc")
 
 [node name="Player" parent="." unique_id=510514557 instance=ExtResource("2_0h2af")]
-position = Vector2(-35, 1498)
+position = Vector2(-694, 2093)
 
 [node name="NIGHT TIME FILTER" type="ColorRect" parent="." unique_id=1324935939]
 visible = false
@@ -982,3 +982,7 @@ position = Vector2(-37, 1468)
 position = Vector2(1, 1)
 shape = SubResource("RectangleShape2D_njjmc")
 metadata/target_scene = "res://Scenes/Map_Scenes/Map_Areas/Player_House_Downstairs.tscn"
+
+[node name="UILAYER" type="CanvasLayer" parent="." unique_id=1479968642]
+
+[node name="OPPONENTS" type="Node2D" parent="." unique_id=1444714661]

@@ -126,7 +126,7 @@ func _input(event: InputEvent) -> void:
 # ============================================================
 
 func load_opponent_data(trainer_name: String) -> void:
-	var file = FileAccess.open("res://Opponent_Data/Area_Opponents/Shallow_Beach_Opponents.json", FileAccess.READ)
+	var file = FileAccess.open(GameState.current_opponent_json_path, FileAccess.READ)
 	if file == null:
 		print("Error loading opponent file")
 		return
@@ -371,6 +371,7 @@ func capitalise_words(text: String) -> String:
 # ============================================================
 
 func transition_back_to_map() -> void:
+	print("DEBUG return path: ", GameState.return_map_scene_path)
 	# Prevent multiple triggers
 	transitioning = true
 	click_enabled = false

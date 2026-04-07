@@ -1,5 +1,5 @@
 {
-	"cash": 2500,
+	"cash": 2600,
 	"coins": [
 		"coin_pikachu_gold_1.png",
 		"coin_celebi_green.png",
@@ -8,14 +8,16 @@
 		"coin_espeon_purple.png",
 		"coin_energy_blue.png",
 		"coin_energy_green.png",
-		"coin_gyarados_blue.png"
+		"coin_gyarados_blue.png",
+		"coin_chansey_silver.png"
 	],
 	"costumes": [
 		"1dawnplatinum.png",
 		"1lucasplatinum.png",
 		"swimmerfemale.png",
 		"bugcatcher.png",
-		"fisherman.png"
+		"fisherman.png",
+		"schoolboy.png"
 	],
 	"energy_styles": [
 		"Base1",
@@ -28,6 +30,7 @@
 	"opponents_beaten": [
 		"Swimmer_Jordan",
 		"Bug_Catcher_Alex",
-		"Fisherman_John"
+		"Fisherman_John",
+		"Schoolboy_Adam"
 	]
 }

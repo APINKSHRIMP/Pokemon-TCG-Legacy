@@ -32,6 +32,8 @@ var transitioning: bool = false
 
 # Called when the scene enters the scene tree
 func _ready() -> void:
+	print("DEBUG INTRO opponent name from GameState: ", GameState.current_opponent_name)
+	print("DEBUG INTRO json path from GameState: ", GameState.current_opponent_json_path)
 	# Start fully black so we can fade in
 	modulate.a = 0.0
 	
@@ -78,7 +80,7 @@ func _input(event: InputEvent) -> void:
 # ============================================================
 
 func load_opponent_data(trainer_name: String) -> void:
-	var file = FileAccess.open("res://Opponent_Data/Area_Opponents/Shallow_Beach_Opponents.json", FileAccess.READ)
+	var file = FileAccess.open(GameState.current_opponent_json_path, FileAccess.READ)
 	if file == null:
 		print("Error loading opponent file")
 		return

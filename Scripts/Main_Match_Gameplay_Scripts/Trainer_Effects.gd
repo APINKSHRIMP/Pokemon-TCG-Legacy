@@ -161,7 +161,7 @@ func play_heal_animation(pokemon: card_object, heal_amount: int, is_opponent: bo
 		return
 	var loc = main.get_pokemon_screen_location(pokemon)
 	if not loc.is_empty():
-		main.show_floating_label("+" + str(heal_amount) + " HP", loc["position"] + Vector2(0, -20), true)
+		main.show_floating_label("+" + str(heal_amount) + " HP", loc["position"] + Vector2(0, -20), Color.GREEN, true)
 	
 	# Animate HP circles restoring one by one with delay
 	var circles_to_restore = heal_amount / 10
@@ -1903,7 +1903,7 @@ func effect_pokemon_center(is_opponent: bool) -> void:
 		var loc = main.get_pokemon_screen_location(pokemon)
 		if not loc.is_empty():
 			SoundManagerScript.play_sfx(SoundManagerScript.SFX_heal_sound)
-			main.show_floating_label("+" + str(damage) + " HP", loc["position"] + Vector2(0, -20), true)
+			main.show_floating_label("+" + str(damage) + " HP", loc["position"] + Vector2(0, -20), Color.GREEN, true)
 		
 		# Animate energy cards going to discard
 		for energy in pokemon.attached_energies:
