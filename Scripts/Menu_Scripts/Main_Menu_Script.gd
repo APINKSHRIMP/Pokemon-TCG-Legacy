@@ -5,7 +5,7 @@ extends Node
 # Map each TextureRect node name to its scene file path
 const SCENE_MAP = {
 	"deck_mode_background": "res://Scenes/Main_Menu_Scenes/Deck_Build_And_Card_View_Scene.tscn",
-	"map_mode_background": "res://Scenes/Map_Scenes/World_Maps/World_Map_Base_Scene.tscn",
+	"map_mode_background": "res://Scenes/Map_Scenes/Map_Areas/Celeste_Harbour.tscn",
 	"player_mode_background": "res://Scenes/Main_Menu_Scenes/Trainer_Card_Scene.tscn",
 	"options_mode_background": "res://Scenes/Main_Menu_Scenes/Options_Scene.tscn",
 	"coin_case_mode_background": "res://Scenes/Main_Menu_Scenes/Coin_Case_Scene.tscn",

@@ -63,7 +63,7 @@ func _ready():
 	
 	match movement_pattern:
 		"idle_random":
-			direction_timer.wait_time = randf_range(2.0, 5.0)
+			direction_timer.wait_time = randf_range(1.0, 4.0)
 			direction_timer.timeout.connect(_on_direction_timer_timeout)
 			direction_timer.start()
 		"idle_cycle":

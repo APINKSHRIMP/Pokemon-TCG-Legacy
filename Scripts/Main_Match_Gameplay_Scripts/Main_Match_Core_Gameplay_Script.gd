@@ -2831,9 +2831,9 @@ func display_and_apply_attack_damage(attacker: card_object, defender: card_objec
 	var defender_label_pos = Vector2(530, 300) if is_opponent else Vector2(1030, 300)
 	for modifier in modifiers:
 		var color_to_pass = Color.WHITE
-		if modifier == "WEAKNESS x2":
+		if "WEAKNESS" in modifier:
 			color_to_pass = Color.GREEN
-		elif modifier == "RESISTANCE -30":
+		elif "RESISTANCE" in modifier:
 			color_to_pass = Color.RED
 		else:
 			color_to_pass = Color.WHITE

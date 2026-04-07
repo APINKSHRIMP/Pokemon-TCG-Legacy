@@ -3,6 +3,7 @@
 [ext_resource type="Script" uid="uid://d0234pw2a24oo" path="res://Scripts/Map_Scripts/Map_Areas/Player_House_Upstairs.gd" id="1_80ic3"]
 [ext_resource type="TileSet" uid="uid://yus3igcnpw1m" path="res://Image_Assets/Map_Sheets/Tile_Sets/Player_Home_Tileset.tres" id="2_bocca"]
 [ext_resource type="PackedScene" uid="uid://bprufyh8mxqom" path="res://Scenes/Objects/Player_Object_Scene.tscn" id="3_r85am"]
+[ext_resource type="Texture2D" uid="uid://bx3bwk33dets8" path="res://Image_Assets/Misc/starter_box.png" id="4_bocca"]
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_377ug"]
 size = Vector2(23, 17)
@@ -48,11 +49,9 @@ tile_map_data = PackedByteArray("AAAVAP//AQAxAAUAAAAVAAAAAQAxAAYAAAAWAP//AQAyAAU
 tile_set = ExtResource("2_bocca")
 
 [node name="Furniture" type="TileMapLayer" parent="UPSTAIRS" unique_id=1376821499]
+visible = false
 position = Vector2(11, 1)
 tile_map_data = PackedByteArray("AAAOAAAAAQAuABEAAAAOAAEAAQAuABIAAAAPAAAAAQAvABEAAAAPAAEAAQAvABIAAAAJAP//AQAkAAkAAAAJAAAAAQAkAAoAAAAJAAEAAQAkAAsAAAAKAP//AQAlAAkAAAAKAAAAAQAlAAoAAAAKAAEAAQAlAAsAAAAAAAkAAQA5AAIAAAAAAAoAAQA5AAMAAAAAAAQAAQA5AAIAAAAAAAUAAQA5AAMAAAAAAAYAAQAtAAsAAAAAAAcAAQAtAAwAAAAAAAgAAQAtAA0AAAABAAYAAQAuAAsAAAABAAcAAQAuAAwAAAABAAgAAQAuAA0AAAAVAAQAAQAqAA0AAAATAAQAAQAqAAwAAAA=")
-tile_set = ExtResource("2_bocca")
-
-[node name="Furniture Top" type="TileMapLayer" parent="UPSTAIRS" unique_id=1961142987]
 tile_set = ExtResource("2_bocca")
 
 [node name="Furniture 2" type="TileMapLayer" parent="UPSTAIRS" unique_id=1877657136]
@@ -61,26 +60,35 @@ tile_map_data = PackedByteArray("AAAYAAsAAQA1ABMAAAAYAAwAAQA1ABQAAAA=")
 tile_set = ExtResource("2_bocca")
 
 [node name="TV" type="TileMapLayer" parent="UPSTAIRS" unique_id=1555225686]
+visible = false
 z_index = 10
 position = Vector2(3, 0)
 tile_map_data = PackedByteArray("AAAWAAIAAQA4AAoAAAAUAAEAAQAzAAkAAAAUAAIAAQAzAAoAAAAVAAEAAQA0AAkAAAAVAAIAAQA0AAoAAAA=")
 tile_set = ExtResource("2_bocca")
 
 [node name="Flowers" type="TileMapLayer" parent="UPSTAIRS" unique_id=682781235]
+visible = false
 position = Vector2(2, -5)
+tile_map_data = PackedByteArray("AAAYAAEAAQA1ABAAAAARAAEAAQA1ABAAAAA=")
 tile_set = ExtResource("2_bocca")
 
 [node name="Chair" type="TileMapLayer" parent="UPSTAIRS" unique_id=12486184]
+visible = false
 position = Vector2(-5, -14)
 tile_map_data = PackedByteArray("AAAPAAIAAQAuAAQAAAAPAAMAAQAuAAUAAAA=")
 tile_set = ExtResource("2_bocca")
 
-[node name="Bed" type="TileMapLayer" parent="." unique_id=1440724849]
+[node name="Bed" type="TileMapLayer" parent="UPSTAIRS" unique_id=1440724849]
+visible = false
 position = Vector2(1, -5)
 tile_map_data = PackedByteArray("AAAUAAgAAQArAAsAAAAUAAkAAQArAAwAAAAUAAoAAQArAA0AAAAUAAsAAQArAA4AAAAVAAgAAQAsAAsAAAAVAAkAAQAsAAwAAAAVAAoAAQAsAA0AAAAVAAsAAQAsAA4AAAA=")
 tile_set = ExtResource("2_bocca")
 
-[node name="EMPTY LAYER9" type="TileMapLayer" parent="." unique_id=1934996203]
+[node name="Moving In" type="TileMapLayer" parent="UPSTAIRS" unique_id=1934996203]
+tile_map_data = PackedByteArray("AAAGAAsAAQAAAA4AAAAHAA0AAQAAAA4AAAAPAAgAAQAAAA4AAAAIAAsAAQABAA4AAAAIAAwAAQABAA8AAAAJAAsAAQACAA4AAAAJAAwAAQACAA8AAAAPAAkAAQABAA4AAAAPAAoAAQABAA8AAAAQAAkAAQACAA4AAAAQAAoAAQACAA8AAAAJAA0AAQA5ABwAAAAKAAwAAQA5ABwAAAAFAAYAAQA5ABwAAAAEAAwAAQAxABcAAAAFAA0AAQAxABcAAAAOAAsAAQAxABcAAAAQAAsAAQA4AAUAAAAQAAwAAQA4AAYAAAARAAMAAQA0AAQAAAACAAwAAQA0AAQAAAAQAAMAAQA4AAUAAAAQAAQAAQA4AAYAAAASAAIAAQAAAA4AAAATAAIAAQABAA4AAAATAAMAAQABAA8AAAAUAAIAAQACAA4AAAAUAAMAAQACAA8AAAAUAAgAAQADABEAAAAUAAkAAQADABIAAAAVAAgAAQAEABEAAAAVAAkAAQAEABIAAAALAAwAAQADABEAAAALAA0AAQADABIAAAAMAAwAAQAEABEAAAAMAA0AAQAEABIAAAAVAAMAAQADABEAAAAVAAQAAQADABIAAAAWAAMAAQAEABEAAAAWAAQAAQAEABIAAAACAAgAAQADABEAAAACAAkAAQADABIAAAADAAgAAQAEABEAAAADAAkAAQAEABIAAAA=")
+tile_set = ExtResource("2_bocca")
+
+[node name="EMPTY LAYER10" type="TileMapLayer" parent="." unique_id=2120510950]
 tile_set = ExtResource("2_bocca")
 
 [node name="Player" parent="." unique_id=510514557 instance=ExtResource("3_r85am")]
@@ -94,3 +102,12 @@ position = Vector2(56, -1440)
 shape = SubResource("RectangleShape2D_377ug")
 metadata/target_scene = "res://Scenes/Map_Scenes/Map_Areas/Player_House_Downstairs.tscn"
 metadata/door_type = "stairs_down"
+
+[node name="Starter_Box" type="TextureRect" parent="." unique_id=670229080]
+offset_left = 321.0
+offset_top = 140.0
+offset_right = 361.0
+offset_bottom = 180.0
+texture = ExtResource("4_bocca")
+expand_mode = 2
+stretch_mode = 2

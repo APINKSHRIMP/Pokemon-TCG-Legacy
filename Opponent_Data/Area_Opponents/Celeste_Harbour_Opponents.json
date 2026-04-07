@@ -17,6 +17,22 @@
 	  "cash_reward": "100"
 	},
 	{
+	  "name": "Gambler_Mick",
+	  "overworld_sprite": "gambler",
+	  "battle_sprite": "gambler",
+	  "music": "normal_battle",
+	  "deck": "You_win_some_n_lose_some",
+
+	  "meet_text": "I let luck decide my fate, if I battle enough then I'll win some of them at least",
+	  "rematch_text": "I'll be a lot luckier this time",
+	  "first_win_text": "Luck wasn't on my side today...",
+	  "rematch_win_text": "All it'll take is a bit of luck and I'll win",
+	  "loss_text": "Looks like luck wasn't on your side today",
+
+	  "coin_reward": "coin_pikachu_gold_3",
+	  "cash_reward": "100"
+	},
+		{
 	  "name": "Schoolboy_Adam",
 	  "overworld_sprite": "schoolboy",
 	  "battle_sprite": "schoolboy",
@@ -33,6 +49,22 @@
 	  "cash_reward": "100"
 	},
 	{
+	  "name": "Fisherman_Dave",
+	  "overworld_sprite": "Fisherman",
+	  "battle_sprite": "Fisherman",
+	  "music": "normal_battle",
+	  "deck": "Seavolutions",
+
+	  "meet_text": "I love the lighthouse, it seems to attract all kinds of fish so I always catch a lot here. I'm catching so much I need a break",
+	  "rematch_text": "Wanna see what I've caught since last time?",
+	  "first_win_text": "Even if they don't help me win, I still love my fish",
+	  "rematch_win_text": "Fishing is just good for the soul",
+	  "loss_text": "Maybe you should try picking up a rod and give fishing a go instead!",
+
+	  "coin_reward": "coin_gyarados_blue",
+	  "cash_reward": "100"
+	},
+	{
 	  "name": "Fisherman_John",
 	  "overworld_sprite": "Fisherman",
 	  "battle_sprite": "Fisherman",
@@ -45,7 +77,7 @@
 	  "rematch_win_text": "Always happy to put my fishing aside for another one!",
 	  "loss_text": "I'm not just the best round here at fishing!",
 
-	  "coin_reward": "coin_gyarados_blue",
+	  "coin_reward": "coin_blastoise_blue",
 	  "cash_reward": "100"
 	},
 	{

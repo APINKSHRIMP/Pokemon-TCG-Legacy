@@ -10,10 +10,22 @@ var opponent_placements = [
 		"position": Vector2(330, 2500),
 		"pattern": "idle_down",
 	},
+		{
+		"name": "Fisherman_Dave",
+		"position": Vector2(-600, 2600),
+		"pattern": "idle_down",
+	},
 	{
 		"name": "Schoolboy_Adam",
-		"position": Vector2(-770, 2600),
-		"pattern": "idle_down",
+		"position": Vector2(-800, 2250),
+		"pattern": "patrol_line",
+		"patrol_distance": 200,
+		"patrol_axis": "vertical",
+	},
+	{
+		"name": "Gambler_Mick",
+		"position": Vector2(-580, 2400),
+		"pattern": "idle_random",
 	},
 	{
 		"name": "Lass_Jennifer",
