@@ -111,3 +111,5 @@ offset_bottom = 180.0
 texture = ExtResource("4_bocca")
 expand_mode = 2
 stretch_mode = 2
+
+[node name="UILAYER" type="CanvasLayer" parent="." unique_id=383211045]

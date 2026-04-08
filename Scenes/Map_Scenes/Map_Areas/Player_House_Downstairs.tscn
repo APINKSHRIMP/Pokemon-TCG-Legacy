@@ -109,7 +109,7 @@ position = Vector2(209, 200)
 position = Vector2(-37, 1468)
 
 [node name="DoorArea_CelesteHarbour" type="CollisionShape2D" parent="Door Areas" unique_id=2119147692]
-position = Vector2(241, -1230)
+position = Vector2(237, -1239)
 shape = SubResource("RectangleShape2D_377ug")
 metadata/target_scene = "res://Scenes/Map_Scenes/Map_Areas/Celeste_Harbour.tscn"
 metadata/door_type = "exit_to_outside"
@@ -119,3 +119,5 @@ position = Vector2(429, -1459)
 shape = SubResource("RectangleShape2D_gymwu")
 metadata/target_scene = "res://Scenes/Map_Scenes/Map_Areas/Player_House_Upstairs.tscn"
 metadata/door_type = "stairs_up"
+
+[node name="UILAYER" type="CanvasLayer" parent="." unique_id=1060825490]

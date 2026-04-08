@@ -86,6 +86,11 @@ func load_progress():
 	if not progress.has("costumes"):
 		progress["costumes"] = []
 		save_progress()
+	if not progress.has("player_collected_starter_box"):
+		progress["player_collected_starter_box"] = false
+	if not progress.has("moving_in_completed"):
+		progress["moving_in_completed"] = false
+	save_progress()
 
 func save_progress():
 	var file = FileAccess.open(PROGRESS_PATH, FileAccess.WRITE)

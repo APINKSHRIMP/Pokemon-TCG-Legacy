@@ -1,7 +1,8 @@
 extends Node2D
 
+var player_near_box: bool = false
+
 func _ready():
-	
 	var tween = create_tween()
 	tween.tween_property(get_tree().root, "modulate", Color(1, 1, 1, 0), 0.0)
 	$"Door Areas".collision_layer = 3
@@ -17,9 +18,34 @@ func _ready():
 	else:
 		$Player.position = Vector2(50, 25)
 
-	await get_tree().process_frame
+	MapManager.initialise($Player, Node2D.new(), $UILAYER, "", [], "")
+	_apply_moving_in_visibility()
 
+	if GameState.progress.get("player_collected_starter_box", false):
+		$Starter_Box.visible = false
+
+	await get_tree().process_frame
 	tween.tween_property(get_tree().root, "modulate", Color.WHITE, 1.0)
+
+func _apply_moving_in_visibility():
+	var moving_in_done = GameState.progress.get("moving_in_completed", false)
+	if moving_in_done:
+		for layer in $UPSTAIRS.get_children():
+			if layer is TileMapLayer:
+				layer.visible = layer.name != "Moving In"
+
+func _physics_process(_delta):
+	if $Starter_Box.visible and not GameState.progress.get("player_collected_starter_box", false):
+		player_near_box = $Player.global_position.distance_to($Starter_Box.global_position) < 40.0
+	else:
+		player_near_box = false
+
+func _process(_delta):
+	if player_near_box and not MapManager.message_panel.visible and Input.is_action_just_pressed("ui_accept"):
+		$Starter_Box.visible = false
+		GameState.progress["player_collected_starter_box"] = true
+		GameState.save_progress()
+		MapManager._show_message_with_ok("Pokemon Starter deck acquired!")
 
 func _on_door_entered(body: Node2D):
 	if not body.is_in_group("player"):
