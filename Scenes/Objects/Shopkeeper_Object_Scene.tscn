@@ -1,0 +1,18 @@
+[gd_scene format=3 uid="uid://ks534vgl7i8a"]
+
+[ext_resource type="Script" uid="uid://cvtqitu2f8nxk" path="res://Scripts/Objects_And_Classes/NPC_Object_Script.gd" id="1_0f0iw"]
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_tal5p"]
+size = Vector2(49, 46)
+
+[node name="NPC" type="CharacterBody2D" unique_id=586636241]
+script = ExtResource("1_0f0iw")
+
+[node name="AnimatedSprite2D" type="AnimatedSprite2D" parent="." unique_id=1030604160]
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="." unique_id=446318610]
+position = Vector2(11.5, 15)
+shape = SubResource("RectangleShape2D_tal5p")
+
+[node name="DirectionTimer" type="Timer" parent="." unique_id=721323780]
+one_shot = true

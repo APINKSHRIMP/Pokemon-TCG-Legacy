@@ -1,6 +1,7 @@
 extends Node2D
 
 const JSON_PATH = "res://Opponent_Data/Area_Opponents/Celeste_Harbour_Opponents.json"
+const NPC_JSON_PATH = "res://Opponent_Data/Area_NPCs/Celeste_Harbour_NPCs.json"
 const SCENE_PATH = "res://Scenes/Map_Scenes/Map_Areas/Celeste_Harbour.tscn"
 const BGM_PATH = "res://Audio/BGM/beach_bgm.ogg"
 
@@ -10,7 +11,7 @@ var opponent_placements = [
 		"position": Vector2(330, 2500),
 		"pattern": "idle_down",
 	},
-		{
+	{
 		"name": "Fisherman_Dave",
 		"position": Vector2(-600, 2600),
 		"pattern": "idle_down",
@@ -48,14 +49,37 @@ var opponent_placements = [
 	}
 ]
 
+var npc_placements = [
+	{
+	 	"name": "Old_Man_Harold",
+	 	"position": Vector2(200, 2400),
+	 	"pattern": "idle_down",
+	},
+	{
+		"name": "Gift_Lady_Rose",
+		"position": Vector2(250, 2600),
+		"pattern": "idle_random"
+	},
+	{
+		"name": "Coin_Collector_Pete",
+		"position": Vector2(500,2500),
+		"pattern": "patrol_line",
+		"patrol_distance": 50,
+		"patrol_axis": "horizontal"
+	},
+	{
+		"name": "Generous_Gerald",
+		"position": Vector2(300,2000),
+		"pattern": "idle_left"
+	}
+]
+
 func _ready():
 	SoundManagerScript.play_bgm(BGM_PATH, true)
 
-	# Fade in
 	var tween = create_tween()
 	tween.tween_property(get_tree().root, "modulate", Color(1, 1, 1, 0), 0.0)
 
-	# Door setup (your existing code)
 	$"Door Areas".collision_layer = 3
 	$"Door Areas".collision_mask  = 2
 	$"Door Areas".monitoring      = true
@@ -67,14 +91,15 @@ func _ready():
 		$Player.position = GameState.interior_entry_position
 		GameState.return_to_scene = ""
 
-	# Hand off all opponent/interaction logic to MapManager
 	MapManager.initialise(
 		$Player,
 		$OPPONENTS,
 		$UILAYER,
 		JSON_PATH,
 		opponent_placements,
-		SCENE_PATH
+		SCENE_PATH,
+		NPC_JSON_PATH,
+		npc_placements
 	)
 
 	await get_tree().process_frame

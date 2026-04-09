@@ -3,12 +3,7 @@ extends Node
 # ============================================================
 # GAME STATE - Autoload Singleton
 # ============================================================
-# This script persists between scene changes. It holds data
-# that needs to survive when switching from WorldMap → Match
-# and back. Register this as an Autoload in Project Settings.
-# ============================================================
 
-# Data passed between scenes during a match
 var current_opponent_name: String = ""
 var current_opponent_json_path: String = ""
 var returning_from_battle: bool = false
@@ -20,10 +15,7 @@ var interior_entry_position: Vector2 = Vector2.ZERO
 var spawn_position: Vector2 = Vector2.ZERO
 var use_spawn_position: bool = false
 
-# The res:// path of the map level the player was on when they entered a battle.
-# After the match outro finishes we transition back to this scene.
 var return_map_scene_path: String = ""
-
 var last_interior_scene: String = ""
 
 # Progress tracking
@@ -77,7 +69,7 @@ func load_progress():
 	else:
 		progress = {"opponents_beaten": [], "cash": 1000, "coins": [], "costumes": []}
 		save_progress()
-	
+
 	# Ensure all expected fields exist for saves created before this update
 	if not progress.has("cash"):
 		progress["cash"] = 1000
@@ -85,11 +77,12 @@ func load_progress():
 		progress["coins"] = []
 	if not progress.has("costumes"):
 		progress["costumes"] = []
-		save_progress()
 	if not progress.has("player_collected_starter_box"):
 		progress["player_collected_starter_box"] = false
 	if not progress.has("moving_in_completed"):
 		progress["moving_in_completed"] = false
+	if not progress.has("gifts_received"):
+		progress["gifts_received"] = []
 	save_progress()
 
 func save_progress():
@@ -126,11 +119,7 @@ func mark_opponent_beaten(opponent_name: String):
 
 func add_coin_to_collection(coin_name: String):
 	var coins = progress.get("coins", [])
-	
-	# If coin_name doesn't have .png extension, add it
 	var coin_filename = coin_name if coin_name.ends_with(".png") else coin_name + ".png"
-	
-	# Only add if not already in collection
 	if coin_filename not in coins:
 		coins.append(coin_filename)
 		progress["coins"] = coins
@@ -156,8 +145,6 @@ func has_costume(battle_sprite: String) -> bool:
 func add_costume_to_collection(battle_sprite: String) -> void:
 	var costumes = progress.get("costumes", [])
 	var costume_filename = battle_sprite.to_lower() + ".png"
-	
-	# Only add if not already in collection
 	if costume_filename not in costumes:
 		costumes.append(costume_filename)
 		progress["costumes"] = costumes
@@ -165,3 +152,15 @@ func add_costume_to_collection(battle_sprite: String) -> void:
 
 func get_costumes() -> Array:
 	return progress.get("costumes", [])
+
+# ============================================================
+# GIFT TRACKING
+# ============================================================
+
+func has_received_gift(npc_name: String) -> bool:
+	return npc_name in progress.get("gifts_received", [])
+
+func mark_gift_received(npc_name: String):
+	if not has_received_gift(npc_name):
+		progress["gifts_received"].append(npc_name)
+		save_progress()

@@ -1,0 +1,34 @@
+{
+  "npcs": [
+    {
+      "name": "Old_Man_Harold",
+      "overworld_sprite": "oldman",
+      "npc_type": "text_only",
+      "text": "Lovely weather we're having today, isn't it?"
+    },
+    {
+      "name": "Gift_Lady_Rose",
+      "overworld_sprite": "lass",
+      "npc_type": "gift",
+      "text": "Here, take this card! I have far too many duplicates.",
+      "gift_type": "card",
+      "gift_value": "base1-9"
+    },
+    {
+      "name": "Coin_Collector_Pete",
+      "overworld_sprite": "gambler",
+      "npc_type": "gift",
+      "text": "I found this coin on the harbour floor, you take it.",
+      "gift_type": "coin",
+      "gift_value": "coin_pikachu_gold_1.png"
+    },
+    {
+      "name": "Generous_Gerald",
+      "overworld_sprite": "schoolboy",
+      "npc_type": "gift",
+      "text": "My uncle gave me some spending money, here take some!",
+      "gift_type": "cash",
+      "gift_value": "200"
+    }
+  ]
+}

@@ -1,5 +1,15 @@
 extends Node2D
 
+const NPC_JSON_PATH = "res://Opponent_Data/Area_NPCs/Card_Mart_NPCs.json"
+
+var npc_placements = [
+	{
+		"name": "Shopkeeper",
+		"position": Vector2(85, -35),  # adjust to match where shopkeeper should stand
+		"pattern": "idle_down",
+	}
+]
+
 func _ready():
 	var tween = create_tween()
 	tween.tween_property(get_tree().root, "modulate", Color(1, 1, 1, 0), 0.0)
@@ -14,9 +24,14 @@ func _ready():
 		$Player.position = GameState.spawn_position
 		GameState.use_spawn_position = false
 	else:
-		$Player.position = Vector2(200, 200)
+		$Player.position = Vector2(208, 172)
 
-	MapManager.initialise($Player, Node2D.new(), $UILAYER, "", [], "")
+	MapManager.initialise($Player, $NPCS, $UILAYER, "", [], "", NPC_JSON_PATH, npc_placements)
+	
+	print("Children of self: ")
+	for c in get_children():
+		print("  ", c.name, " - ", c)
+	
 	_apply_moving_in_visibility()
 
 	await get_tree().process_frame
@@ -48,11 +63,6 @@ func _on_door_entered(body: Node2D):
 
 	var target = nearest_shape.get_meta("target_scene")
 
-	if not target.contains("Upstairs"):
-		if not GameState.progress.get("player_collected_starter_box", false):
-			MapManager._show_message_with_ok("I should check upstairs before heading out.")
-			return
-
 	GameState.save_player_direction(body.get_current_direction())
 	body.lock_movement()
 
@@ -62,8 +72,8 @@ func _on_door_entered(body: Node2D):
 	else:
 		GameState.use_spawn_position = false
 
-	var tween = create_tween()
-	tween.tween_property(get_tree().current_scene, "modulate", Color.BLACK, 0.5)
-	tween.tween_callback(func():
+	var fade_tween = create_tween()
+	fade_tween.tween_property(get_tree().current_scene, "modulate", Color.BLACK, 0.5)
+	fade_tween.tween_callback(func():
 		get_tree().change_scene_to_file(target)
 	)

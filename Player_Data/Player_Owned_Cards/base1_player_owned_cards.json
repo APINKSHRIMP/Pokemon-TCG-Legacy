@@ -1,389 +1,389 @@
 {
-	"set_unlocked": true,
 	"owned_cards": [
 		{
 			"card_id": "base1-1",
-			"owned": 4
+			"owned": 4.0
 		},
 		{
 			"card_id": "base1-2",
-			"owned": 4
+			"owned": 4.0
 		},
 		{
 			"card_id": "base1-3",
-			"owned": 4
+			"owned": 4.0
 		},
 		{
 			"card_id": "base1-4",
-			"owned": 4
+			"owned": 4.0
 		},
 		{
 			"card_id": "base1-5",
-			"owned": 4
+			"owned": 4.0
 		},
 		{
 			"card_id": "base1-6",
-			"owned": 4
+			"owned": 4.0
 		},
 		{
 			"card_id": "base1-7",
-			"owned": 4
+			"owned": 4.0
 		},
 		{
 			"card_id": "base1-8",
-			"owned": 4
+			"owned": 4.0
 		},
 		{
 			"card_id": "base1-9",
-			"owned": 4
+			"owned": 5.0
 		},
 		{
 			"card_id": "base1-10",
-			"owned": 4
+			"owned": 4.0
 		},
 		{
 			"card_id": "base1-11",
-			"owned": 4
+			"owned": 4.0
 		},
 		{
 			"card_id": "base1-12",
-			"owned": 4
+			"owned": 4.0
 		},
 		{
 			"card_id": "base1-13",
-			"owned": 4
+			"owned": 4.0
 		},
 		{
 			"card_id": "base1-14",
-			"owned": 4
+			"owned": 4.0
 		},
 		{
 			"card_id": "base1-15",
-			"owned": 4
+			"owned": 4.0
 		},
 		{
 			"card_id": "base1-16",
-			"owned": 4
+			"owned": 4.0
 		},
 		{
 			"card_id": "base1-17",
-			"owned": 4
+			"owned": 4.0
 		},
 		{
 			"card_id": "base1-18",
-			"owned": 4
+			"owned": 4.0
 		},
 		{
 			"card_id": "base1-19",
-			"owned": 4
+			"owned": 4.0
 		},
 		{
 			"card_id": "base1-20",
-			"owned": 4
+			"owned": 4.0
 		},
 		{
 			"card_id": "base1-21",
-			"owned": 4
+			"owned": 4.0
 		},
 		{
 			"card_id": "base1-22",
-			"owned": 4
+			"owned": 4.0
 		},
 		{
 			"card_id": "base1-23",
-			"owned": 4
+			"owned": 4.0
 		},
 		{
 			"card_id": "base1-24",
-			"owned": 4
+			"owned": 4.0
 		},
 		{
 			"card_id": "base1-25",
-			"owned": 4
+			"owned": 4.0
 		},
 		{
 			"card_id": "base1-26",
-			"owned": 4
+			"owned": 4.0
 		},
 		{
 			"card_id": "base1-27",
-			"owned": 4
+			"owned": 4.0
 		},
 		{
 			"card_id": "base1-28",
-			"owned": 4
+			"owned": 4.0
 		},
 		{
 			"card_id": "base1-29",
-			"owned": 4
+			"owned": 4.0
 		},
 		{
 			"card_id": "base1-30",
-			"owned": 4
+			"owned": 4.0
 		},
 		{
 			"card_id": "base1-31",
-			"owned": 4
+			"owned": 4.0
 		},
 		{
 			"card_id": "base1-32",
-			"owned": 4
+			"owned": 4.0
 		},
 		{
 			"card_id": "base1-33",
-			"owned": 4
+			"owned": 4.0
 		},
 		{
 			"card_id": "base1-34",
-			"owned": 4
+			"owned": 4.0
 		},
 		{
 			"card_id": "base1-35",
-			"owned": 4
+			"owned": 4.0
 		},
 		{
 			"card_id": "base1-36",
-			"owned": 4
+			"owned": 4.0
 		},
 		{
 			"card_id": "base1-37",
-			"owned": 4
+			"owned": 4.0
 		},
 		{
 			"card_id": "base1-38",
-			"owned": 4
+			"owned": 4.0
 		},
 		{
 			"card_id": "base1-39",
-			"owned": 4
+			"owned": 4.0
 		},
 		{
 			"card_id": "base1-40",
-			"owned": 4
+			"owned": 4.0
 		},
 		{
 			"card_id": "base1-41",
-			"owned": 4
+			"owned": 4.0
 		},
 		{
 			"card_id": "base1-42",
-			"owned": 4
+			"owned": 4.0
 		},
 		{
 			"card_id": "base1-43",
-			"owned": 4
+			"owned": 4.0
 		},
 		{
 			"card_id": "base1-44",
-			"owned": 4
+			"owned": 4.0
 		},
 		{
 			"card_id": "base1-45",
-			"owned": 4
+			"owned": 4.0
 		},
 		{
 			"card_id": "base1-46",
-			"owned": 4
+			"owned": 4.0
 		},
 		{
 			"card_id": "base1-47",
-			"owned": 4
+			"owned": 4.0
 		},
 		{
 			"card_id": "base1-48",
-			"owned": 4
+			"owned": 4.0
 		},
 		{
 			"card_id": "base1-49",
-			"owned": 4
+			"owned": 4.0
 		},
 		{
 			"card_id": "base1-50",
-			"owned": 4
+			"owned": 4.0
 		},
 		{
 			"card_id": "base1-51",
-			"owned": 4
+			"owned": 4.0
 		},
 		{
 			"card_id": "base1-52",
-			"owned": 4
+			"owned": 4.0
 		},
 		{
 			"card_id": "base1-53",
-			"owned": 4
+			"owned": 4.0
 		},
 		{
 			"card_id": "base1-54",
-			"owned": 4
+			"owned": 4.0
 		},
 		{
 			"card_id": "base1-55",
-			"owned": 4
+			"owned": 4.0
 		},
 		{
 			"card_id": "base1-56",
-			"owned": 4
+			"owned": 4.0
 		},
 		{
 			"card_id": "base1-57",
-			"owned": 4
+			"owned": 4.0
 		},
 		{
 			"card_id": "base1-58",
-			"owned": 4
+			"owned": 4.0
 		},
 		{
 			"card_id": "base1-59",
-			"owned": 4
+			"owned": 4.0
 		},
 		{
 			"card_id": "base1-60",
-			"owned": 4
+			"owned": 4.0
 		},
 		{
 			"card_id": "base1-61",
-			"owned": 4
+			"owned": 4.0
 		},
 		{
 			"card_id": "base1-62",
-			"owned": 4
+			"owned": 4.0
 		},
 		{
 			"card_id": "base1-63",
-			"owned": 4
+			"owned": 4.0
 		},
 		{
 			"card_id": "base1-64",
-			"owned": 4
+			"owned": 4.0
 		},
 		{
 			"card_id": "base1-65",
-			"owned": 4
+			"owned": 4.0
 		},
 		{
 			"card_id": "base1-66",
-			"owned": 4
+			"owned": 4.0
 		},
 		{
 			"card_id": "base1-67",
-			"owned": 4
+			"owned": 4.0
 		},
 		{
 			"card_id": "base1-68",
-			"owned": 4
+			"owned": 4.0
 		},
 		{
 			"card_id": "base1-69",
-			"owned": 4
+			"owned": 4.0
 		},
 		{
 			"card_id": "base1-70",
-			"owned": 4
+			"owned": 4.0
 		},
 		{
 			"card_id": "base1-71",
-			"owned": 4
+			"owned": 4.0
 		},
 		{
 			"card_id": "base1-72",
-			"owned": 4
+			"owned": 4.0
 		},
 		{
 			"card_id": "base1-73",
-			"owned": 4
+			"owned": 4.0
 		},
 		{
 			"card_id": "base1-74",
-			"owned": 4
+			"owned": 4.0
 		},
 		{
 			"card_id": "base1-75",
-			"owned": 4
+			"owned": 4.0
 		},
 		{
 			"card_id": "base1-76",
-			"owned": 4
+			"owned": 4.0
 		},
 		{
 			"card_id": "base1-77",
-			"owned": 4
+			"owned": 4.0
 		},
 		{
 			"card_id": "base1-78",
-			"owned": 4
+			"owned": 4.0
 		},
 		{
 			"card_id": "base1-79",
-			"owned": 4
+			"owned": 4.0
 		},
 		{
 			"card_id": "base1-80",
-			"owned": 4
+			"owned": 4.0
 		},
 		{
 			"card_id": "base1-81",
-			"owned": 4
+			"owned": 4.0
 		},
 		{
 			"card_id": "base1-82",
-			"owned": 4
+			"owned": 4.0
 		},
 		{
 			"card_id": "base1-83",
-			"owned": 4
+			"owned": 4.0
 		},
 		{
 			"card_id": "base1-84",
-			"owned": 4
+			"owned": 4.0
 		},
 		{
 			"card_id": "base1-85",
-			"owned": 4
+			"owned": 4.0
 		},
 		{
 			"card_id": "base1-86",
-			"owned": 4
+			"owned": 4.0
 		},
 		{
 			"card_id": "base1-87",
-			"owned": 4
+			"owned": 4.0
 		},
 		{
 			"card_id": "base1-88",
-			"owned": 4
+			"owned": 4.0
 		},
 		{
 			"card_id": "base1-89",
-			"owned": 4
+			"owned": 4.0
 		},
 		{
 			"card_id": "base1-90",
-			"owned": 4
+			"owned": 4.0
 		},
 		{
 			"card_id": "base1-91",
-			"owned": 4
+			"owned": 4.0
 		},
 		{
 			"card_id": "base1-92",
-			"owned": 4
+			"owned": 4.0
 		},
 		{
 			"card_id": "base1-93",
-			"owned": 4
+			"owned": 4.0
 		},
 		{
 			"card_id": "base1-94",
-			"owned": 4
+			"owned": 4.0
 		},
 		{
 			"card_id": "base1-95",
-			"owned": 4
+			"owned": 4.0
 		},
 		{
 			"card_id": "base1-96",
-			"owned": 4
+			"owned": 4.0
 		}
-	]
+	],
+	"set_unlocked": true
 }

@@ -1,0 +1,10 @@
+{
+  "npcs": [
+    {
+      "name": "Shopkeeper",
+      "overworld_sprite": "shopkeeper",
+      "npc_type": "shop",
+      "text": "Welcome! Would you like to browse the shop?"
+    }
+  ]
+}

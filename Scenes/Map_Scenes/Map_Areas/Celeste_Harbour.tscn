@@ -980,9 +980,14 @@ position = Vector2(1, 1)
 shape = SubResource("RectangleShape2D_njjmc")
 metadata/target_scene = "res://Scenes/Map_Scenes/Map_Areas/Player_House_Downstairs.tscn"
 
+[node name="DoorArea_PlayerHouse2" type="CollisionShape2D" parent="Door Areas" unique_id=1953881513]
+position = Vector2(1540, 80)
+shape = SubResource("RectangleShape2D_njjmc")
+metadata/target_scene = "res://Scenes/Map_Scenes/Map_Areas/Card_Mart.tscn"
+
 [node name="UILAYER" type="CanvasLayer" parent="." unique_id=1479968642]
 
 [node name="OPPONENTS" type="Node2D" parent="." unique_id=1444714661]
 
 [node name="Player" parent="." unique_id=510514557 instance=ExtResource("2_0h2af")]
-position = Vector2(-35, 1496)
+position = Vector2(1511, 1595)
