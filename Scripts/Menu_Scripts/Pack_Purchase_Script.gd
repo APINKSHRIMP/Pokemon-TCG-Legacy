@@ -12,7 +12,7 @@ const CARDBACK_PATH        := "res://Image_Assets/Card_Backs_And_Decks/cardback.
 const CARD_MART_SCENE      := "res://Scenes/map_scenes/map_areas/Card_Mart.tscn"
 
 # Card display size used for the pack opening reveal
-const CARD_DISPLAY_SIZE    := Vector2(250, 350)
+const CARD_DISPLAY_SIZE    := Vector2(563, 788)
 
 # ─── State ───────────────────────────────────────────────────────────────────
 
@@ -68,7 +68,7 @@ var theme_kenney_green : Theme = preload("res://UI_Themes/kenneyUI-green.tres")
 # ─── Lifecycle ───────────────────────────────────────────────────────────────
 
 func _ready() -> void:
-	SoundManagerScript.play_bgm("res://Audio/BGM/coin_mode.ogg", true)
+	SoundManagerScript.play_bgm("res://Audio/BGM/Shop2.ogg", true)
 	
 	_load_set_dictionary()
 	_load_pack_prices()
@@ -404,7 +404,7 @@ func _begin_opening_sequence(pack_id: String) -> void:
 	fade_tw.set_parallel(true)
 	for node in ui_nodes:
 		if node != null and is_instance_valid(node):
-			fade_tw.tween_property(node, "modulate:a", 0.0, 1.5)
+			fade_tw.tween_property(node, "modulate:a", 0.0, 0.5)
 	await fade_tw.finished
 	
 	# Make them fully invisible now (so they don't block input)
@@ -448,7 +448,7 @@ func _begin_opening_sequence(pack_id: String) -> void:
 	var target_pos := Vector2(target_global_x - pack_size.x / 2.0, target_global_y - pack_size.y / 2.0)
 	
 	var move_tw := create_tween()
-	move_tw.tween_property(anim_pack, "position", target_pos, 1.0).set_ease(Tween.EASE_IN_OUT).set_trans(Tween.TRANS_QUAD)
+	move_tw.tween_property(anim_pack, "position", target_pos, 0.75).set_ease(Tween.EASE_IN_OUT).set_trans(Tween.TRANS_QUAD)
 	await move_tw.finished
 	
 	# ── Step 3: Split the pack — top 100px cut and fly off ──
@@ -503,96 +503,125 @@ func _begin_opening_sequence(pack_id: String) -> void:
 	overlay.add_child(_pack_body_rect)
 	
 	# Separate: top goes up 20px, body goes down 20px
+	SoundManagerScript.play_sfx_from_path("res://Audio/SFX/pack_tear_sfx.ogg")
 	var split_tw := create_tween()
 	split_tw.set_parallel(true)
-	split_tw.tween_property(_pack_top_rect,  "position:y", target_pos.y - 20.0, 0.5).set_ease(Tween.EASE_OUT)
-	split_tw.tween_property(_pack_body_rect, "position:y", target_pos.y + top_height + 20.0, 0.5).set_ease(Tween.EASE_OUT)
+	split_tw.tween_property(_pack_top_rect,  "position:y", target_pos.y - 20.0, 0.25).set_ease(Tween.EASE_OUT)
+	split_tw.tween_property(_pack_body_rect, "position:y", target_pos.y + top_height + 20.0, 0.25).set_ease(Tween.EASE_OUT)
 	await split_tw.finished
 	
 	# Rotate top 10 degrees and fly it off screen upward
 	var fly_tw := create_tween()
 	fly_tw.set_parallel(true)
-	fly_tw.tween_property(_pack_top_rect, "rotation_degrees", 10.0, 0.5)
-	fly_tw.tween_property(_pack_top_rect, "position:y", -200.0, 0.5).set_ease(Tween.EASE_IN)
+	fly_tw.tween_property(_pack_top_rect, "rotation_degrees", 10.0, 0.25)
+	fly_tw.tween_property(_pack_top_rect, "position:y", -200.0, 0.25).set_ease(Tween.EASE_IN)
 	await fly_tw.finished
 	_pack_top_rect.queue_free()
 	_pack_top_rect = null
 	
 	# ── Step 4: Spawn cardback behind the pack body ──
+	# Use the cardback texture's natural aspect ratio scaled to CARD_DISPLAY_SIZE.
 	var cardback_tex : Texture2D = _load_texture(CARDBACK_PATH)
+	var cb_aspect    : float     = float(cardback_tex.get_width()) / float(cardback_tex.get_height())
+	var actual_card_size : Vector2
+	if cb_aspect >= CARD_DISPLAY_SIZE.x / CARD_DISPLAY_SIZE.y:
+		actual_card_size = Vector2(CARD_DISPLAY_SIZE.x, CARD_DISPLAY_SIZE.x / cb_aspect)
+	else:
+		actual_card_size = Vector2(CARD_DISPLAY_SIZE.y * cb_aspect, CARD_DISPLAY_SIZE.y)
+	
+	var card_pos := Vector2(target_global_x - actual_card_size.x / 2.0, target_global_y - actual_card_size.y / 2.0)
+	
 	_cardback_rect = TextureRect.new()
-	_cardback_rect.texture      = cardback_tex
-	_cardback_rect.expand_mode  = TextureRect.EXPAND_IGNORE_SIZE
-	_cardback_rect.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT
-	_cardback_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	
-	# Size the cardback the same as the displayed pack body
-	_cardback_rect.size     = Vector2(pack_size.x, body_height)
-	_cardback_rect.position = _pack_body_rect.position
-	_cardback_rect.pivot_offset = Vector2(pack_size.x / 2.0, body_height / 2.0)
-	
-	# Add behind the body (lower z-index)
+	_cardback_rect.texture            = cardback_tex
+	_cardback_rect.expand_mode        = TextureRect.EXPAND_IGNORE_SIZE
+	_cardback_rect.stretch_mode       = TextureRect.STRETCH_SCALE
+	_cardback_rect.custom_minimum_size = actual_card_size
+	_cardback_rect.size               = actual_card_size
+	_cardback_rect.position           = card_pos
+	_cardback_rect.pivot_offset       = actual_card_size / 2.0
+	_cardback_rect.z_index             = _pack_cards.size() + 1  # above all cards
+	_cardback_rect.mouse_filter        = Control.MOUSE_FILTER_IGNORE
 	overlay.add_child(_cardback_rect)
-	overlay.move_child(_cardback_rect, 0)  # move to back of overlay
 	
 	# ── Step 5: Slide pack body off screen downwards, revealing cardback ──
 	var slide_tw := create_tween()
-	slide_tw.tween_property(_pack_body_rect, "position:y", viewport_size.y + 50.0, 0.5).set_ease(Tween.EASE_IN)
+	slide_tw.tween_property(_pack_body_rect, "position:y", viewport_size.y + 50.0, 0.25).set_ease(Tween.EASE_IN)
 	await slide_tw.finished
 	_pack_body_rect.queue_free()
 	_pack_body_rect = null
 	
-	# ── Steps 6–8: Generate the 10 pack cards ──
-	var pack_id_for_set : String = purchased_pack_art.rsplit("_", true, 1)[0]  # e.g. "base2" from "base2_b"
+	# ── Steps 6–8: Generate cards ──
+	var pack_id_for_set : String = purchased_pack_art.rsplit("_", true, 1)[0]
 	_pack_cards = _generate_pack_cards(pack_id_for_set)
-	_save_cards_to_player(pack_id_for_set, _pack_cards)
+	var new_card_ids : Dictionary = _save_cards_to_player(pack_id_for_set, _pack_cards)
 	_current_card_index = 0
 	
-	# Reposition cardback to screen centre now that the pack body is gone
-	var card_display_w : float = CARD_DISPLAY_SIZE.x
-	var card_display_h : float = CARD_DISPLAY_SIZE.y
-	_cardback_rect.size         = CARD_DISPLAY_SIZE
-	_cardback_rect.position     = Vector2(target_global_x - card_display_w / 2.0, target_global_y - card_display_h / 2.0)
-	_cardback_rect.pivot_offset = CARD_DISPLAY_SIZE / 2.0
+	# ── Pre-spawn only the first card (sits behind the cardback, invisible until flip) ──
+	var first_cd  : Dictionary = _pack_cards[0]
+	var first_tex : Texture2D  = _load_card_texture(first_cd.get("id", ""), actual_card_size)
+	var first_rect := TextureRect.new()
+	first_rect.texture             = first_tex
+	first_rect.expand_mode         = TextureRect.EXPAND_IGNORE_SIZE
+	first_rect.stretch_mode        = TextureRect.STRETCH_SCALE
+	first_rect.custom_minimum_size = actual_card_size
+	first_rect.size                = actual_card_size
+	first_rect.position            = card_pos
+	first_rect.pivot_offset        = actual_card_size / 2.0
+	first_rect.scale               = Vector2(0.0, 1.0)
+	first_rect.z_index             = _pack_cards.size()  # highest = on top
+	first_rect.mouse_filter        = Control.MOUSE_FILTER_IGNORE
+	overlay.add_child(first_rect)
 	
-	# ── Step 9: Flip cardback out (scale:x → 0) then flip first common in ──
-	await _flip_out_and_reveal_card(_cardback_rect, overlay, target_global_x, target_global_y)
-
-
-## Flips the given rect out (squish x to 0) then flips in the current card.
-func _flip_out_and_reveal_card(back_rect: TextureRect, overlay: CanvasLayer, cx: float, cy: float) -> void:
-	var card_display_w : float = CARD_DISPLAY_SIZE.x
-	var card_display_h : float = CARD_DISPLAY_SIZE.y
-	
-	# ── Step 9: Cardback flips out ──
+	# ── Step 9: Flip cardback out ──
+	SoundManagerScript.play_sfx(SoundManagerScript.SFX_card_draw_sound)
 	var flip_out_tw := create_tween()
-	flip_out_tw.tween_property(back_rect, "scale:x", 0.0, 0.25).set_ease(Tween.EASE_IN)
+	flip_out_tw.tween_property(_cardback_rect, "scale:x", 0.0, 0.25).set_ease(Tween.EASE_IN)
 	await flip_out_tw.finished
-	back_rect.queue_free()
+	_cardback_rect.queue_free()
 	_cardback_rect = null
 	
-	# ── Step 10: Flip the current face card in ──
-	var card_data : Dictionary = _pack_cards[_current_card_index]
-	var card_id   : String     = card_data.get("id", "")
-	
-	var card_tex : Texture2D = _load_card_texture(card_id, CARD_DISPLAY_SIZE)
-	
-	_face_card_rect = TextureRect.new()
-	_face_card_rect.texture      = card_tex
-	_face_card_rect.expand_mode  = TextureRect.EXPAND_IGNORE_SIZE
-	_face_card_rect.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT
-	_face_card_rect.size         = CARD_DISPLAY_SIZE
-	_face_card_rect.position     = Vector2(cx - card_display_w / 2.0, cy - card_display_h / 2.0)
-	_face_card_rect.pivot_offset = CARD_DISPLAY_SIZE / 2.0
-	_face_card_rect.scale        = Vector2(0.0, 1.0)  # start squished
-	_face_card_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	overlay.add_child(_face_card_rect)
-	
+	# ── Step 10: Flip first card in ──
+	_face_card_rect = first_rect
 	var flip_in_tw := create_tween()
 	flip_in_tw.tween_property(_face_card_rect, "scale:x", 1.0, 0.25).set_ease(Tween.EASE_OUT)
 	await flip_in_tw.finished
 	
-	# ── Now wait for player input ──
+	# ── Now spawn remaining cards behind using z_index ──
+	# stack_rects[i] = _pack_cards[i]. z_index decreases so higher index cards sit further back.
+	# first card has z_index = size (topmost). Card i gets z_index = size - i.
+	var stack_rects : Array = [_face_card_rect]
+	for i in range(1, _pack_cards.size()):
+		var cd : Dictionary = _pack_cards[i]
+		var fr := TextureRect.new()
+		fr.texture             = _load_card_texture(cd.get("id", ""), actual_card_size)
+		fr.expand_mode         = TextureRect.EXPAND_IGNORE_SIZE
+		fr.stretch_mode        = TextureRect.STRETCH_SCALE
+		fr.custom_minimum_size = actual_card_size
+		fr.size                = actual_card_size
+		fr.position            = card_pos
+		fr.pivot_offset        = actual_card_size / 2.0
+		fr.z_index             = _pack_cards.size() - i  # first common=size, rare=1
+		fr.mouse_filter        = Control.MOUSE_FILTER_IGNORE
+		overlay.add_child(fr)
+		stack_rects.append(fr)
+	
+	# Holo sparkle on first card if applicable
+	var active_particles : CPUParticles2D = null
+	if _pack_cards[0].get("rarity", "") == "Rare Holo":
+		active_particles = _start_holo_sparkle(_face_card_rect, _pack_cards[0], overlay)
+	
+	overlay.set_meta("stack_rects",      stack_rects)
+	overlay.set_meta("card_pos",         card_pos)
+	overlay.set_meta("actual_card_size", actual_card_size)
+	overlay.set_meta("active_particles", active_particles)
+	overlay.set_meta("new_card_ids",     new_card_ids)
+	
+	# Show NEW label if first card is new
+	var first_id : String = _pack_cards[0].get("id", "")
+	print("DEBUG: First card id=", first_id, " is_new=", new_card_ids.has(first_id), " new_card_ids=", new_card_ids)
+	if new_card_ids.has(first_id):
+		_show_new_label(_face_card_rect, overlay)
+	
 	_waiting_for_advance = true
 
 
@@ -601,10 +630,29 @@ func _advance_card_reveal() -> void:
 	if _face_card_rect == null or not is_instance_valid(_face_card_rect):
 		return
 	
-	var overlay : CanvasLayer = _face_card_rect.get_parent()
-	var viewport_size : Vector2 = get_viewport_rect().size
+	var overlay          : CanvasLayer = _face_card_rect.get_parent()
+	var viewport_size    : Vector2     = get_viewport_rect().size
+	var stack_rects      : Array       = overlay.get_meta("stack_rects")
+	var card_pos         : Vector2     = overlay.get_meta("card_pos")
+	var actual_card_size : Vector2     = overlay.get_meta("actual_card_size")
+	var new_card_ids     : Dictionary  = overlay.get_meta("new_card_ids")
 	
-	# Fly current card off screen upwards
+	# Kill any active holo particles before sliding the card away
+	var active_particles = overlay.get_meta("active_particles")
+	if active_particles != null and is_instance_valid(active_particles):
+		active_particles.queue_free()
+	overlay.set_meta("active_particles", null)
+	
+	# If the next card is a holo, start its sparkle now so it's already
+	# glittering as the current card slides away revealing it underneath.
+	var next_index : int = _current_card_index + 1
+	var new_particles : CPUParticles2D = null
+	if next_index < _pack_cards.size():
+		if _pack_cards[next_index].get("rarity", "") == "Rare Holo":
+			new_particles = _start_holo_sparkle(stack_rects[next_index], _pack_cards[next_index], overlay)
+	
+	# Slide current card off screen upward
+	SoundManagerScript.play_sfx(SoundManagerScript.SFX_card_draw_sound)
 	var fly_tw := create_tween()
 	fly_tw.tween_property(_face_card_rect, "position:y", -viewport_size.y, 0.5).set_ease(Tween.EASE_IN)
 	await fly_tw.finished
@@ -613,36 +661,23 @@ func _advance_card_reveal() -> void:
 	
 	_current_card_index += 1
 	
-	# ── Step 12: Last card has been dismissed ──
 	if _current_card_index >= _pack_cards.size():
 		_finish_opening_sequence(overlay)
 		return
 	
-	# ── Steps 9–10 repeat: flip next card in ──
-	var cx : float = viewport_size.x / 2.0
-	var cy : float = viewport_size.y / 2.0
+	# Next card is already rendered underneath — just reference it
+	_face_card_rect          = stack_rects[_current_card_index]
+	_face_card_rect.size     = actual_card_size
+	_face_card_rect.position = card_pos
+	_face_card_rect.scale    = Vector2(1.0, 1.0)
 	
-	var card_data : Dictionary = _pack_cards[_current_card_index]
-	var card_id   : String     = card_data.get("id", "")
-	var card_tex  : Texture2D  = _load_card_texture(card_id, CARD_DISPLAY_SIZE)
+	# Show NEW label if this card is new
+	var next_id : String = _pack_cards[_current_card_index].get("id", "")
+	print("DEBUG: Card index=", _current_card_index, " id=", next_id, " is_new=", new_card_ids.has(next_id))
+	if new_card_ids.has(next_id):
+		_show_new_label(_face_card_rect, overlay)
 	
-	var card_display_w : float = CARD_DISPLAY_SIZE.x
-	var card_display_h : float = CARD_DISPLAY_SIZE.y
-	
-	_face_card_rect = TextureRect.new()
-	_face_card_rect.texture      = card_tex
-	_face_card_rect.expand_mode  = TextureRect.EXPAND_IGNORE_SIZE
-	_face_card_rect.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT
-	_face_card_rect.size         = CARD_DISPLAY_SIZE
-	_face_card_rect.position     = Vector2(cx - card_display_w / 2.0, cy - card_display_h / 2.0)
-	_face_card_rect.pivot_offset = CARD_DISPLAY_SIZE / 2.0
-	_face_card_rect.scale        = Vector2(0.0, 1.0)
-	_face_card_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	overlay.add_child(_face_card_rect)
-	
-	var flip_in_tw := create_tween()
-	flip_in_tw.tween_property(_face_card_rect, "scale:x", 1.0, 0.25).set_ease(Tween.EASE_OUT)
-	await flip_in_tw.finished
+	overlay.set_meta("active_particles", new_particles)
 	
 	_waiting_for_advance = true
 
@@ -685,6 +720,74 @@ func _finish_opening_sequence(overlay: CanvasLayer) -> void:
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
+# HOLO SPARKLE
+# ═══════════════════════════════════════════════════════════════════════════════
+
+## Spawns a continuous sparkle particle system over a card rect.
+## Colour is based on the card's Pokemon type, or silver for Trainers.
+## The particles node is added to the overlay and returned for later cleanup.
+func _start_holo_sparkle(card_rect: TextureRect, card_data: Dictionary, overlay: CanvasLayer) -> CPUParticles2D:
+	var particles := CPUParticles2D.new()
+	overlay.add_child(particles)
+	
+	var card_size : Vector2 = card_rect.size
+	particles.global_position       = card_rect.global_position + card_size / 2.0
+	particles.z_index               = 5
+	particles.amount                = 150
+	particles.lifetime              = 1.5
+	particles.one_shot              = false
+	particles.explosiveness         = 0.4
+	particles.emitting              = true
+	particles.emission_shape        = CPUParticles2D.EMISSION_SHAPE_RECTANGLE
+	particles.emission_rect_extents = card_size / 2.0
+	particles.direction             = Vector2(0, 0)
+	particles.initial_velocity_min  = 0.0
+	particles.initial_velocity_max  = 0.0
+	particles.gravity               = Vector2(0, 0)
+	particles.scale_amount_min      = 3.0
+	particles.scale_amount_max      = 8.0
+	
+	
+	var sparkle_colour : Color = _get_holo_sparkle_colour(card_data)
+	var bright         : Color = sparkle_colour.lightened(1)
+	var gradient := Gradient.new()
+	gradient.set_color(0, Color(bright.r, bright.g, bright.b, 0.0))
+	gradient.add_point(0.3, sparkle_colour)
+	gradient.add_point(0.5, bright)
+	gradient.set_color(3, Color(sparkle_colour.r, sparkle_colour.g, sparkle_colour.b, 0.0))
+	particles.color_ramp = gradient
+	
+	return particles
+
+
+## Returns the sparkle colour for a holo card based on its type.
+func _get_holo_sparkle_colour(card_data: Dictionary) -> Color:
+	var supertype : String = card_data.get("supertype", "")
+	if supertype == "Pokémon" or supertype == "Pokemon":
+		var types = card_data.get("types", [])
+		if types.size() > 0:
+			return _get_type_colour(types[0])
+	# Trainer or Energy with no type → silver
+	return Color(0.85, 0.85, 0.9)
+
+
+## Returns a colour for a given Pokemon energy type string.
+func _get_type_colour(type_name: String) -> Color:
+	match type_name.to_lower():
+		"fire":      return Color(1.0, 0.2, 0.1)
+		"water":     return Color(0.2, 0.5, 1.0)
+		"grass":     return Color(0.2, 0.8, 0.3)
+		"lightning": return Color(1.0, 0.9, 0.1)
+		"darkness":  return Color(0.15, 0.1, 0.2)
+		"psychic":   return Color(0.55, 0.1, 1.0)
+		"metal":     return Color(0.6, 0.6, 0.65)
+		"fighting":  return Color(0.5, 0.3, 0.2)
+		"dragon":    return Color(0.9, 0.7, 0.2)
+		"fairy":     return Color(1.0, 0.4, 0.7)
+		_:           return Color(1.0, 1.0, 1.0)
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
 # CARD GENERATION
 # ═══════════════════════════════════════════════════════════════════════════════
 
@@ -705,57 +808,67 @@ func _generate_pack_cards(set_id: String) -> Array:
 		push_error("PackPurchase: unexpected card set format in " + json_path)
 		return []
 	
-	# Partition by rarity, filtering out Basic Energy.
-	# Rare pool = exactly "Rare" + exactly "Rare Holo" only.
 	var commons   : Array = []
 	var uncommons : Array = []
-	var rare_pool : Array = []  # "Rare" and "Rare Holo" combined
+	var rare_pool : Array = []
 	
 	for card in all_cards:
 		if _is_basic_energy(card):
 			continue
 		var rarity : String = card.get("rarity", "")
 		match rarity:
-			"Common":
-				commons.append(card)
-			"Uncommon":
-				uncommons.append(card)
-			"Rare":
-				rare_pool.append(card)
-			"Rare Holo":
-				rare_pool.append(card)
+			"Common":    commons.append(card)
+			"Uncommon":  uncommons.append(card)
+			"Rare":      rare_pool.append(card)
+			"Rare Holo": rare_pool.append(card)
 	
 	var bonus_rare : bool = randf() < 0.25 and rare_pool.size() > 0
-	
-	var result : Array = []
+	var result     : Array = []
+	var used_ids   : Dictionary = {}  # tracks card ids already picked this pack
 	
 	# Commons
 	for _i in range(6):
-		var pick := _pick_random(commons)
+		var pick := _pick_unique(commons, used_ids)
 		if not pick.is_empty():
 			result.append(pick)
 	
 	# Uncommons
 	for _i in range(3):
-		var pick := _pick_random(uncommons)
+		var pick := _pick_unique(uncommons, used_ids)
 		if not pick.is_empty():
 			result.append(pick)
 	
-	# Guaranteed rare (Rare or Rare Holo, equal weight by card count in set)
+	# Guaranteed rare
 	if rare_pool.size() > 0:
-		result.append(rare_pool[randi() % rare_pool.size()])
+		var pick := _pick_unique(rare_pool, used_ids)
+		if not pick.is_empty():
+			result.append(pick)
 	
-	# Bonus rare slot — draw from the full rare pool (Rare or Rare Holo).
+	# Bonus rare
 	if bonus_rare:
-		result.append(rare_pool[randi() % rare_pool.size()])
+		var pick := _pick_unique(rare_pool, used_ids)
+		if not pick.is_empty():
+			result.append(pick)
 	
 	return result
 
 
-## Picks a random card from pool. Pool is already filtered (no Basic Energy).
-func _pick_random(pool: Array) -> Dictionary:
+## Picks a random card from pool that hasn't already been picked this pack.
+## Shuffles the pool order on each call to avoid bias. Falls back to any card
+## if the pool is exhausted (very small sets).
+func _pick_unique(pool: Array, used_ids: Dictionary) -> Dictionary:
 	if pool.is_empty():
 		return {}
+	# Try each card in a random order
+	var indices : Array = range(pool.size())
+	indices.shuffle()
+	for i in indices:
+		var card : Dictionary = pool[i]
+		var id   : String     = card.get("id", "")
+		if not used_ids.has(id):
+			used_ids[id] = true
+			return card
+	# All cards in pool already used — fall back to any random card
 	return pool[randi() % pool.size()]
 
 
@@ -795,11 +908,11 @@ func _load_card_texture(card_id: String, target_size: Vector2) -> Texture2D:
 # SAVE CARDS TO PLAYER
 # ═══════════════════════════════════════════════════════════════════════════════
 
-## Saves all generated pack cards to the player's owned cards JSON for the set.
-## Uses the same logic as MapManager._give_card().
-func _save_cards_to_player(set_id: String, cards: Array) -> void:
+## Saves pack cards to player's owned cards JSON.
+## Returns a Dictionary of card_id → true for every card that had 0 copies before this pack.
+func _save_cards_to_player(set_id: String, cards: Array) -> Dictionary:
 	if cards.is_empty():
-		return
+		return {}
 	
 	var json_path := "res://Player_Data/Player_Owned_Cards/" + set_id + "_player_owned_cards.json"
 	
@@ -811,6 +924,8 @@ func _save_cards_to_player(set_id: String, cards: Array) -> void:
 		if parsed is Dictionary:
 			data = parsed
 	
+	var new_card_ids : Dictionary = {}
+	
 	for card in cards:
 		var card_id : String = card.get("id", "")
 		if card_id == "":
@@ -818,15 +933,55 @@ func _save_cards_to_player(set_id: String, cards: Array) -> void:
 		var found := false
 		for entry in data["owned_cards"]:
 			if entry["card_id"] == card_id:
+				# Already owned — not new
 				entry["owned"] = entry["owned"] + 1
 				found = true
 				break
 		if not found:
+			# Count was 0 before — mark as new
+			new_card_ids[card_id] = true
 			data["owned_cards"].append({"card_id": card_id, "owned": 1})
 	
 	var write_file := FileAccess.open(json_path, FileAccess.WRITE)
 	if write_file == null:
 		push_error("PackPurchase: cannot write " + json_path)
-		return
+		return new_card_ids
 	write_file.store_string(JSON.stringify(data, "\t"))
 	write_file.close()
+	
+	return new_card_ids
+
+
+## Shows a "NEW!" floating label rising from the top-centre of the given card rect.
+func _show_new_label(card_rect: TextureRect, overlay: CanvasLayer) -> void:
+	print("DEBUG: _show_new_label called. card_rect position=", card_rect.position, " size=", card_rect.size)
+	
+	var label := Label.new()
+	label.text = "NEW!"
+	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	label.vertical_alignment   = VERTICAL_ALIGNMENT_TOP
+	label.custom_minimum_size  = Vector2(200, 60)
+	label.size                 = Vector2(200, 60)
+	label.add_theme_color_override("font_color",         Color.WHITE)
+	label.add_theme_color_override("font_outline_color", Color.BLACK)
+	label.add_theme_constant_override("outline_size", 8)
+	label.add_theme_font_size_override("font_size", 52)
+	label.theme    = theme_kenney
+	label.z_index  = 100  # ensure above all cards and particles
+	label.modulate = Color.WHITE
+	
+	# Position at top-centre of the card in CanvasLayer local space
+	var spawn_x : float = card_rect.position.x + (card_rect.size.x / 2.0) - 100.0
+	var spawn_y : float = card_rect.position.y + 20.0
+	label.position = Vector2(spawn_x, spawn_y)
+	
+	print("DEBUG: NEW label spawned at position=", label.position, " z_index=", label.z_index)
+	
+	overlay.add_child(label)
+	
+	# Tween owned by the label itself so it's independent of any other tweens
+	var tw := label.create_tween()
+	tw.set_parallel(true)
+	tw.tween_property(label, "position:y", spawn_y - 220.0, 2.5)
+	tw.tween_property(label, "modulate:a", 0.0, 1.8)
+	tw.finished.connect(label.queue_free)

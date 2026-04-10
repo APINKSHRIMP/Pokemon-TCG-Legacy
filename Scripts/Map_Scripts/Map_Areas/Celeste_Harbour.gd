@@ -3,7 +3,7 @@ extends Node2D
 const JSON_PATH = "res://Opponent_Data/Area_Opponents/Celeste_Harbour_Opponents.json"
 const NPC_JSON_PATH = "res://Opponent_Data/Area_NPCs/Celeste_Harbour_NPCs.json"
 const SCENE_PATH = "res://Scenes/Map_Scenes/Map_Areas/Celeste_Harbour.tscn"
-const BGM_PATH = "res://Audio/BGM/beach_bgm.ogg"
+const BGM_PATH = "res://Audio/BGM/Celeste_Harbour_BGM.ogg"
 
 var opponent_placements = [
 	{

@@ -11,6 +11,8 @@ var npc_placements = [
 ]
 
 func _ready():
+	SoundManagerScript.play_bgm("res://Audio/BGM/Shop1.ogg", true)
+	
 	var tween = create_tween()
 	tween.tween_property(get_tree().root, "modulate", Color(1, 1, 1, 0), 0.0)
 	$"Door Areas".collision_layer = 3
