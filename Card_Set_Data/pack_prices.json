@@ -1,0 +1,42 @@
+[
+  {
+    "pack": "base1",
+    "cost": "100"
+  },
+  {
+    "pack": "base2",
+    "cost": "150"
+  },
+  {
+    "pack": "base3",
+    "cost": "200"
+  },
+  {
+    "pack": "base5",
+    "cost": "250"
+  },
+  {
+    "pack": "gym1",
+    "cost": "300"
+  },
+  {
+    "pack": "gym2",
+    "cost": "350"
+  },
+  {
+    "pack": "neo1",
+    "cost": "400"
+  },
+  {
+    "pack": "neo2",
+    "cost": "450"
+  },
+  {
+    "pack": "neo3",
+    "cost": "500"
+  },
+  {
+    "pack": "neo4",
+    "cost": "550"
+  }
+]
