@@ -6,6 +6,8 @@
 	  "battle_sprite": "Lass",
 	  "music": "chilled_battle",
 	  "deck": "Basic_Pokemon_Barrage",
+	  "position": {"x": -700, "y": 2200},
+	  "pattern": "idle_random",
 
 	  "meet_text": "I just got given some cards off my grandma, I'm not really good at battling but it's fun!",
 	  "rematch_text": "I could definitely use some more practice",
@@ -22,6 +24,8 @@
 	  "battle_sprite": "gambler",
 	  "music": "normal_battle",
 	  "deck": "You_win_some_n_lose_some",
+	  "position": {"x": -580, "y": 2400},
+	  "pattern": "idle_random",
 
 	  "meet_text": "I let luck decide my fate, if I battle enough then I'll win some of them at least",
 	  "rematch_text": "I'll be a lot luckier this time",
@@ -32,12 +36,16 @@
 	  "coin_reward": "coin_pikachu_gold_3",
 	  "cash_reward": "100"
 	},
-		{
+	{
 	  "name": "Schoolboy_Adam",
 	  "overworld_sprite": "schoolboy",
 	  "battle_sprite": "schoolboy",
 	  "music": "chilled_battle",
 	  "deck": "Status_Infliction",
+	  "position": {"x": -800, "y": 2250},
+	  "pattern": "patrol_line",
+	  "patrol_distance": 200,
+	  "patrol_axis": "vertical",
 
 	  "meet_text": "I'm trying out some new techniques using statuses. If we battle I'll show you how good they are",
 	  "rematch_text": "I'll definitely win this time round",
@@ -54,6 +62,8 @@
 	  "battle_sprite": "Fisherman",
 	  "music": "normal_battle",
 	  "deck": "Seavolutions",
+	  "position": {"x": -600, "y": 2600},
+	  "pattern": "idle_down",
 
 	  "meet_text": "I love the lighthouse, it seems to attract all kinds of fish so I always catch a lot here. I'm catching so much I need a break",
 	  "rematch_text": "Wanna see what I've caught since last time?",
@@ -70,6 +80,8 @@
 	  "battle_sprite": "Fisherman",
 	  "music": "normal_battle",
 	  "deck": "Squirty_Karps",
+	  "position": {"x": 330, "y": 2500},
+	  "pattern": "idle_down",
 
 	  "meet_text": "Hey there, I'm trying to catch the biggest fish in these waters but nothing seems to be biting. Want to help me check my bait with a battle?",
 	  "rematch_text": "Oh hey again, I don't mind another battle",
@@ -86,13 +98,17 @@
 	  "battle_sprite": "bugcatcher",
 	  "music": "chilled_battle",
 	  "deck": "I_love_bugs!",
+	  "position": {"x": 600, "y": 2500},
+	  "pattern": "patrol_line",
+	  "patrol_distance": 100,
+	  "patrol_axis": "horizontal",
 
 	  "meet_text": "Some people hate bugs but I love them! Want me to show you what I've caught?",
 	  "rematch_text": "You just love bugs as much as I do then?",
 	  "first_win_text": "Maybe bugs aren't as good as I thought...",
 	  "rematch_win_text": "Me and my bugs will win one of these days!",
 	  "loss_text": "I knew bugs were the best!!",
-	  
+
 	  "coin_reward": "coin_energy_green",
 	  "cash_reward": "100"
 	},
@@ -102,13 +118,17 @@
 	  "battle_sprite": "swimmerfemale",
 	  "music": "surrounded_sea",
 	  "deck": "poligong's_wrath",
+	  "position": {"x": 500, "y": 2700},
+	  "pattern": "idle_cycle",
+	  "patrol_distance": 100,
+	  "patrol_axis": "horizontal",
 
 	  "meet_text": "I love the water, it's so calm and warm but my cards always get wet! Help me dry them off?",
 	  "rematch_text": "I can always take a break for another match",
 	  "first_win_text": "I'll stick with my swimming...",
 	  "rematch_win_text": "Nothing like a good match and a long swim",
 	  "loss_text": "Maybe you should work on your swimming...",
-	  
+
 	  "coin_reward": "coin_energy_blue",
 	  "cash_reward": "100"
 	}

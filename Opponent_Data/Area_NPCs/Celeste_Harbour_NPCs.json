@@ -4,7 +4,9 @@
       "name": "Old_Man_Harold",
       "overworld_sprite": "oldman",
       "npc_type": "text_only",
-      "text": "Lovely weather we're having today, isn't it?"
+      "text": "Lovely weather we're having today, isn't it?",
+      "position": {"x": 200, "y": 2400},
+      "pattern": "idle_down"
     },
     {
       "name": "Gift_Lady_Rose",
@@ -12,7 +14,9 @@
       "npc_type": "gift",
       "text": "Here, take this card! I have far too many duplicates.",
       "gift_type": "card",
-      "gift_value": "base1-9"
+      "gift_value": "base1-9",
+      "position": {"x": 250, "y": 2600},
+      "pattern": "idle_random"
     },
     {
       "name": "Coin_Collector_Pete",
@@ -20,7 +24,11 @@
       "npc_type": "gift",
       "text": "I found this coin on the harbour floor, you take it.",
       "gift_type": "coin",
-      "gift_value": "coin_pikachu_gold_1.png"
+      "gift_value": "coin_pikachu_gold_1.png",
+      "position": {"x": 500, "y": 2500},
+      "pattern": "patrol_line",
+      "patrol_distance": 50,
+      "patrol_axis": "horizontal"
     },
     {
       "name": "Generous_Gerald",
@@ -28,7 +36,9 @@
       "npc_type": "gift",
       "text": "My uncle gave me some spending money, here take some!",
       "gift_type": "cash",
-      "gift_value": "200"
+      "gift_value": "200",
+      "position": {"x": 300, "y": 2000},
+      "pattern": "idle_left"
     }
   ]
 }

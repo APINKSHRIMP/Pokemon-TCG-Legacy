@@ -45,10 +45,8 @@ func initialise(
 	_json_path = json_path
 
 	_build_message_box()
-	_load_and_spawn_opponents(json_path, placements)
-
-	if npc_json_path != "" and npc_placements.size() > 0:
-		_load_and_spawn_npcs(npc_json_path, npc_placements)
+	_load_and_spawn_opponents(json_path)
+	_load_and_spawn_npcs(npc_json_path)
 
 	_player.interact_pressed.connect(_on_player_interact)
 	_player.npc_interact_pressed.connect(_on_player_npc_interact)
@@ -60,8 +58,8 @@ func initialise(
 # OPPONENT SPAWNING
 # ============================================================
 
-func _load_and_spawn_opponents(json_path: String, placements: Array):
-	if json_path == "" or placements.is_empty():
+func _load_and_spawn_opponents(json_path: String):
+	if json_path == "":
 		return
 	var file = FileAccess.open(json_path, FileAccess.READ)
 	if file == null:
@@ -70,29 +68,29 @@ func _load_and_spawn_opponents(json_path: String, placements: Array):
 	var data = JSON.parse_string(file.get_as_text())
 	file.close()
 
-	for placement in placements:
-		var opp_data = _find_by_name_in_array(data["opponents"], placement["name"])
-		if opp_data == null:
-			push_error("MapManager: Opponent not found in JSON: " + placement["name"])
+	for entry in data["opponents"]:
+		if not entry.has("position"):
+			push_error("MapManager: Opponent missing position in JSON: " + entry.get("name", "unknown"))
 			continue
 
 		var opp = opponent_scene.instantiate()
-		opp.opponent_name    = opp_data["name"]
-		opp.overworld_sprite = opp_data["overworld_sprite"]
-		opp.music            = opp_data["music"]
-		opp.deck             = opp_data["deck"]
-		opp.meet_text        = opp_data["meet_text"]
-		opp.rematch_text     = opp_data["rematch_text"]
-		opp.first_win_text   = opp_data["first_win_text"]
-		opp.rematch_win_text = opp_data["rematch_win_text"]
-		opp.loss_text        = opp_data["loss_text"]
-		opp.coin_reward      = opp_data["coin_reward"]
-		opp.cash_reward      = opp_data["cash_reward"]
-		opp.position         = placement["position"]
-		opp.movement_pattern = placement.get("pattern", "idle_random")
-		opp.patrol_distance  = placement.get("patrol_distance", 100.0)
-		opp.patrol_speed     = placement.get("patrol_speed", 60.0)
-		opp.patrol_axis      = placement.get("patrol_axis", "horizontal")
+		opp.opponent_name    = entry["name"]
+		opp.overworld_sprite = entry["overworld_sprite"]
+		opp.music            = entry["music"]
+		opp.deck             = entry["deck"]
+		opp.meet_text        = entry["meet_text"]
+		opp.rematch_text     = entry["rematch_text"]
+		opp.first_win_text   = entry["first_win_text"]
+		opp.rematch_win_text = entry["rematch_win_text"]
+		opp.loss_text        = entry["loss_text"]
+		opp.coin_reward      = entry["coin_reward"]
+		opp.cash_reward      = entry["cash_reward"]
+		opp.position         = Vector2(entry["position"]["x"], entry["position"]["y"])
+		opp.movement_pattern = entry.get("pattern", "idle_random")
+		opp.patrol_distance  = entry.get("patrol_distance", 100.0)
+		opp.patrol_speed     = entry.get("patrol_speed", 60.0)
+		opp.patrol_axis      = entry.get("patrol_axis", "horizontal")
+		opp.wander_radius    = entry.get("wander_radius", 200.0)
 
 		_opponents_container.add_child(opp)
 
@@ -100,7 +98,9 @@ func _load_and_spawn_opponents(json_path: String, placements: Array):
 # NPC SPAWNING
 # ============================================================
 
-func _load_and_spawn_npcs(json_path: String, placements: Array):
+func _load_and_spawn_npcs(json_path: String):
+	if json_path == "":
+		return
 	var file = FileAccess.open(json_path, FileAccess.READ)
 	if file == null:
 		push_error("MapManager: Cannot open NPC JSON: " + json_path)
@@ -108,34 +108,30 @@ func _load_and_spawn_npcs(json_path: String, placements: Array):
 	var data = JSON.parse_string(file.get_as_text())
 	file.close()
 
-	for placement in placements:
-		var npc_data = _find_by_name_in_array(data["npcs"], placement["name"])
-		if npc_data == null:
-			push_error("MapManager: NPC not found in JSON: " + placement["name"])
+	for entry in data["npcs"]:
+		if not entry.has("position"):
+			push_error("MapManager: NPC missing position in JSON: " + entry.get("name", "unknown"))
 			continue
 
-		var npc_type = npc_data.get("npc_type", "text_only")
+		var npc_type = entry.get("npc_type", "text_only")
 		var npc = shopkeeper_scene.instantiate() if npc_type == "shop" else npc_scene.instantiate()
 
-		npc.npc_name         = npc_data["name"]
-		npc.overworld_sprite = npc_data["overworld_sprite"]
+		npc.npc_name         = entry["name"]
+		npc.overworld_sprite = entry["overworld_sprite"]
 		npc.npc_type         = npc_type
-		npc.text             = npc_data.get("text", "")
-		npc.gift_type        = npc_data.get("gift_type", "")
-		npc.gift_value       = npc_data.get("gift_value", "")
-		npc.position         = placement["position"]
-		npc.movement_pattern = placement.get("pattern", "idle_random")
-		npc.patrol_distance  = placement.get("patrol_distance", 100.0)
-		npc.patrol_speed     = placement.get("patrol_speed", 60.0)
-		npc.patrol_axis      = placement.get("patrol_axis", "horizontal")
+		npc.text             = entry.get("text", "")
+		npc.gift_type        = entry.get("gift_type", "")
+		npc.gift_value       = entry.get("gift_value", "")
+		npc.position         = Vector2(entry["position"]["x"], entry["position"]["y"])
+		npc.movement_pattern = entry.get("pattern", "idle_down")
+		npc.patrol_distance  = entry.get("patrol_distance", 100.0)
+		npc.patrol_speed     = entry.get("patrol_speed", 60.0)
+		npc.patrol_axis      = entry.get("patrol_axis", "horizontal")
+		npc.wander_radius    = entry.get("wander_radius", 200.0)
 
 		_opponents_container.add_child(npc)
-		
-		print("NPC added to: ", _opponents_container, " in tree: ", _opponents_container.is_inside_tree())
-		print("NPC in tree: ", npc.is_inside_tree(), " visible: ", npc.visible)
-		
+
 		print("Spawned NPC: ", npc.npc_name, " at ", npc.position, " parent: ", npc.get_parent())
-		
 
 func _find_by_name_in_array(arr: Array, search_name: String):
 	for item in arr:

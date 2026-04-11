@@ -4,7 +4,9 @@
       "name": "Shopkeeper",
       "overworld_sprite": "shopkeeper",
       "npc_type": "shop",
-      "text": "Welcome! Would you like to browse the shop?"
+      "text": "Welcome! Would you like to browse the shop?",
+      "position": {"x": 85, "y": -35},
+      "pattern": "idle_down"
     }
   ]
 }

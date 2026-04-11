@@ -5,75 +5,6 @@ const NPC_JSON_PATH = "res://Opponent_Data/Area_NPCs/Celeste_Harbour_NPCs.json"
 const SCENE_PATH = "res://Scenes/Map_Scenes/Map_Areas/Celeste_Harbour.tscn"
 const BGM_PATH = "res://Audio/BGM/Celeste_Harbour_BGM.ogg"
 
-var opponent_placements = [
-	{
-		"name": "Fisherman_John",
-		"position": Vector2(330, 2500),
-		"pattern": "idle_down",
-	},
-	{
-		"name": "Fisherman_Dave",
-		"position": Vector2(-600, 2600),
-		"pattern": "idle_down",
-	},
-	{
-		"name": "Schoolboy_Adam",
-		"position": Vector2(-800, 2250),
-		"pattern": "patrol_line",
-		"patrol_distance": 200,
-		"patrol_axis": "vertical",
-	},
-	{
-		"name": "Gambler_Mick",
-		"position": Vector2(-580, 2400),
-		"pattern": "idle_random",
-	},
-	{
-		"name": "Lass_Jennifer",
-		"position": Vector2(-700, 2200),
-		"pattern": "idle_random",
-	},
-	{
-		"name": "Bug_Catcher_Alex",
-		"position": Vector2(600, 2500),
-		"pattern": "patrol_line",
-		"patrol_distance": 100,
-		"patrol_axis": "horizontal",
-	},
-	{
-		"name": "Swimmer_Jordan",
-		"position": Vector2(500, 2700),
-		"pattern": "idle_cycle",
-		"patrol_distance": 100,
-		"patrol_axis": "horizontal",
-	}
-]
-
-var npc_placements = [
-	{
-	 	"name": "Old_Man_Harold",
-	 	"position": Vector2(200, 2400),
-	 	"pattern": "idle_down",
-	},
-	{
-		"name": "Gift_Lady_Rose",
-		"position": Vector2(250, 2600),
-		"pattern": "idle_random"
-	},
-	{
-		"name": "Coin_Collector_Pete",
-		"position": Vector2(500,2500),
-		"pattern": "patrol_line",
-		"patrol_distance": 50,
-		"patrol_axis": "horizontal"
-	},
-	{
-		"name": "Generous_Gerald",
-		"position": Vector2(300,2000),
-		"pattern": "idle_left"
-	}
-]
-
 func _ready():
 	SoundManagerScript.play_bgm(BGM_PATH, true)
 
@@ -96,10 +27,10 @@ func _ready():
 		$OPPONENTS,
 		$UILAYER,
 		JSON_PATH,
-		opponent_placements,
+		[],
 		SCENE_PATH,
 		NPC_JSON_PATH,
-		npc_placements
+		[]
 	)
 
 	await get_tree().process_frame

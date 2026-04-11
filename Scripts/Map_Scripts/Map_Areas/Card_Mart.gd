@@ -2,17 +2,9 @@ extends Node2D
 
 const NPC_JSON_PATH = "res://Opponent_Data/Area_NPCs/Card_Mart_NPCs.json"
 
-var npc_placements = [
-	{
-		"name": "Shopkeeper",
-		"position": Vector2(85, -35),  # adjust to match where shopkeeper should stand
-		"pattern": "idle_down",
-	}
-]
-
 func _ready():
 	SoundManagerScript.play_bgm("res://Audio/BGM/Shop1.ogg", true)
-	
+
 	var tween = create_tween()
 	tween.tween_property(get_tree().root, "modulate", Color(1, 1, 1, 0), 0.0)
 	$"Door Areas".collision_layer = 3
@@ -28,12 +20,12 @@ func _ready():
 	else:
 		$Player.position = Vector2(208, 172)
 
-	MapManager.initialise($Player, $NPCS, $UILAYER, "", [], "", NPC_JSON_PATH, npc_placements)
-	
+	MapManager.initialise($Player, $NPCS, $UILAYER, "", [], "", NPC_JSON_PATH, [])
+
 	print("Children of self: ")
 	for c in get_children():
 		print("  ", c.name, " - ", c)
-	
+
 	_apply_moving_in_visibility()
 
 	await get_tree().process_frame
