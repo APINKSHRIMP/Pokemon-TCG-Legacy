@@ -933,12 +933,13 @@ func _save_cards_to_player(set_id: String, cards: Array) -> Dictionary:
 		var found := false
 		for entry in data["owned_cards"]:
 			if entry["card_id"] == card_id:
-				# Already owned — not new
+				if entry["owned"] == 0:
+					new_card_ids[card_id] = true
 				entry["owned"] = entry["owned"] + 1
 				found = true
 				break
 		if not found:
-			# Count was 0 before — mark as new
+			# Entry missing entirely — mark as new
 			new_card_ids[card_id] = true
 			data["owned_cards"].append({"card_id": card_id, "owned": 1})
 	
