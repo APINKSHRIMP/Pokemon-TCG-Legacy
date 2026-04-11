@@ -21,8 +21,10 @@ var npc_name: String = ""
 var overworld_sprite: String = ""
 var npc_type: String = "text_only"
 var text: String = ""
+var repeat_text: String = ""
 var gift_type: String = ""
 var gift_value: String = ""
+var post_gift_text: String = ""
 
 # Movement config (same as opponents)
 var movement_pattern: String = "idle_random"
@@ -36,6 +38,7 @@ var patrol_direction_vec: Vector2 = Vector2.ZERO
 var patrol_step: int = 0
 var distance_walked: float = 0.0
 var current_facing: String = "down"
+var _pre_interaction_facing: String = ""
 
 # random_wander state
 var _wander_origin: Vector2 = Vector2.ZERO
@@ -208,6 +211,7 @@ func pause_and_face(target_position: Vector2):
 	set_physics_process(false)
 	direction_timer.stop()
 	_is_wandering = false
+	_pre_interaction_facing = current_facing
 
 	var diff = target_position - position
 	if abs(diff.x) > abs(diff.y):
@@ -233,5 +237,23 @@ func resume_movement():
 			direction_timer.wait_time = randf_range(2.0, 5.0)
 			direction_timer.start()
 
+	if _pre_interaction_facing != "":
+		var saved = _pre_interaction_facing
+		_pre_interaction_facing = ""
+		get_tree().create_timer(1.0).timeout.connect(func():
+			if is_instance_valid(self):
+				current_facing = saved
+				animated_sprite.play("idle_" + saved)
+		)
+
 func has_gift_been_given() -> bool:
 	return GameState.has_received_gift(npc_name)
+
+func has_been_met() -> bool:
+	return GameState.progress.get("met_npcs", {}).has(npc_name)
+
+func mark_as_met():
+	if not GameState.progress.has("met_npcs"):
+		GameState.progress["met_npcs"] = {}
+	GameState.progress["met_npcs"][npc_name] = true
+	GameState.save_progress()

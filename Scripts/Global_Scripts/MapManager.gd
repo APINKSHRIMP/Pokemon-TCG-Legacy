@@ -120,8 +120,10 @@ func _load_and_spawn_npcs(json_path: String):
 		npc.overworld_sprite = entry["overworld_sprite"]
 		npc.npc_type         = npc_type
 		npc.text             = entry.get("text", "")
+		npc.repeat_text      = entry.get("repeat_text", "")
 		npc.gift_type        = entry.get("gift_type", "")
 		npc.gift_value       = entry.get("gift_value", "")
+		npc.post_gift_text   = entry.get("post_gift_text", "")
 		npc.position         = Vector2(entry["position"]["x"], entry["position"]["y"])
 		npc.movement_pattern = entry.get("pattern", "idle_down")
 		npc.patrol_distance  = entry.get("patrol_distance", 100.0)
@@ -296,10 +298,15 @@ func _on_player_npc_interact(npc: Node):
 
 	match npc.npc_type:
 		"text_only":
-			_show_message_with_ok(npc.text)
+			if npc.has_been_met() and npc.repeat_text != "":
+				_show_message_with_ok(npc.repeat_text)
+			else:
+				npc.mark_as_met()
+				_show_message_with_ok(npc.text)
 		"gift":
 			if npc.has_gift_been_given():
-				_show_message_with_ok(npc.text)
+				var after_text = npc.post_gift_text if npc.post_gift_text != "" else npc.text
+				_show_message_with_ok(after_text)
 			else:
 				_give_gift(npc)
 				_show_message_with_ok(npc.text)

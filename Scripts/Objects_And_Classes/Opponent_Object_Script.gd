@@ -37,6 +37,7 @@ var patrol_direction_vec: Vector2 = Vector2.ZERO
 var patrol_step: int = 0
 var distance_walked: float = 0.0
 var current_facing: String = "down"
+var _pre_interaction_facing: String = ""
 
 # --- random_wander state ---
 var _wander_origin: Vector2 = Vector2.ZERO
@@ -210,6 +211,7 @@ func pause_and_face(target_position: Vector2):
 	set_physics_process(false)
 	direction_timer.stop()
 	_is_wandering = false
+	_pre_interaction_facing = current_facing
 
 	var diff = target_position - position
 	if abs(diff.x) > abs(diff.y):
@@ -234,6 +236,15 @@ func resume_movement():
 		"random_wander":
 			direction_timer.wait_time = randf_range(2.0, 5.0)
 			direction_timer.start()
+
+	if _pre_interaction_facing != "":
+		var saved = _pre_interaction_facing
+		_pre_interaction_facing = ""
+		get_tree().create_timer(1.0).timeout.connect(func():
+			if is_instance_valid(self):
+				current_facing = saved
+				animated_sprite.play("idle_" + saved)
+		)
 
 func get_greeting_text() -> String:
 	if GameState.has_beaten_opponent(opponent_name):

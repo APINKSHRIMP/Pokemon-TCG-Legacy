@@ -34,6 +34,10 @@
 		"Gift_Lady_Rose",
 		"Generous_Gerald"
 	],
+	"met_npcs": {
+		"NPC2": true,
+		"Old_Man_Harold": true
+	},
 	"moving_in_completed": true,
 	"opponents_beaten": [
 		"Swimmer_Jordan",

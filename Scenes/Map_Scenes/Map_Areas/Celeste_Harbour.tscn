@@ -280,10 +280,12 @@ tile_set = ExtResource("1_njjmc")
 
 [node name="Benches Base" type="TileMapLayer" parent="TILE_MAPS/OBJECTS" unique_id=1282229295]
 position = Vector2(-1, 0)
+tile_map_data = PackedByteArray("AADt/x0AAAA1AEcAAADs/x0AAAA0AEcAAADQ/x0AAAA0AEcAAADR/x0AAAA1AEcAAAAIAB0AAAA0AEcAAAAJAB0AAAA1AEcAAAAkAB0AAAA0AEcAAAAlAB0AAAA1AEcAAABAAB0AAAA0AEcAAABBAB0AAAA1AEcAAAA=")
 tile_set = ExtResource("1_njjmc")
 
 [node name="Benches Top" type="TileMapLayer" parent="TILE_MAPS/OBJECTS" unique_id=344034239]
 position = Vector2(-1, 0)
+tile_map_data = PackedByteArray("AADQ/xwAAAA0AEYAAADR/xwAAAA1AEYAAADs/xwAAAA0AEYAAADt/xwAAAA1AEYAAAAIABwAAAA0AEYAAAAJABwAAAA1AEYAAAAkABwAAAA0AEYAAAAlABwAAAA1AEYAAABAABwAAAA0AEYAAABBABwAAAA1AEYAAAA=")
 tile_set = ExtResource("1_njjmc")
 
 [node name="NEIGHBOUR 1 (LEFT)" type="TileMap" parent="TILE_MAPS" unique_id=14553047]
@@ -988,6 +990,7 @@ metadata/target_scene = "res://Scenes/Map_Scenes/Map_Areas/Card_Mart.tscn"
 [node name="UILAYER" type="CanvasLayer" parent="." unique_id=1479968642]
 
 [node name="OPPONENTS" type="Node2D" parent="." unique_id=1444714661]
+z_index = 1
 
 [node name="Player" parent="." unique_id=510514557 instance=ExtResource("2_0h2af")]
-position = Vector2(1511, 1595)
+position = Vector2(-243, 1963)
