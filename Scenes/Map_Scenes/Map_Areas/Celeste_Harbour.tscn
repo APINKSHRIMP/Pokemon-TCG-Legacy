@@ -14,9 +14,6 @@ script = ExtResource("1_0h2af")
 position = Vector2(0, 1500)
 format = 2
 
-[node name="EMPTY GROUP" type="TileMap" parent="TILE_MAPS" unique_id=1189257547]
-format = 2
-
 [node name="EMPTY GROUP2" type="TileMap" parent="TILE_MAPS" unique_id=90439050]
 format = 2
 
@@ -953,10 +950,6 @@ position = Vector2(-8, 5)
 tile_map_data = PackedByteArray("AABXADAAAAA0AFYAAABcADQAAAA0AFYAAABhACwAAAA0AFYAAABSACwAAAA0AFYAAABSADQAAAA0AFYAAABhADAAAAA0AFYAAABFACMAAAAvADkAAABFACQAAAAvADoAAABGACMAAAAwADkAAABGACQAAAAwADoAAABHACMAAAAxADkAAABHACQAAAAxADoAAAA9ACMAAAAvADkAAAA9ACQAAAAvADoAAAA+ACMAAAAwADkAAAA+ACQAAAAwADoAAAA/ACMAAAAxADkAAAA/ACQAAAAxADoAAABIACMAAAAtADoAAABIACQAAAAtADsAAABJACMAAAAuADoAAABJACQAAAAuADsAAABcACgAAAAnABUAAABcACkAAAAnABYAAABdACgAAAAoABUAAABdACkAAAAoABYAAAA=")
 tile_set = ExtResource("1_njjmc")
 
-[node name="EMPTY65" type="TileMapLayer" parent="TILE_MAPS" unique_id=149141493]
-position = Vector2(-1, 0)
-tile_set = ExtResource("1_njjmc")
-
 [node name="EMPTY66" type="TileMapLayer" parent="TILE_MAPS" unique_id=1445207902]
 position = Vector2(-1, 0)
 tile_set = ExtResource("1_njjmc")
@@ -965,14 +958,22 @@ tile_set = ExtResource("1_njjmc")
 position = Vector2(-1, 0)
 tile_set = ExtResource("1_njjmc")
 
-[node name="NIGHT TIME FILTER" type="ColorRect" parent="." unique_id=1324935939]
-visible = false
-z_index = 20
-offset_left = -1206.0
-offset_top = -2502.0
-offset_right = 6811.0
-offset_bottom = 3984.0
-color = Color(0.006916953, 0.00278535, 0.027953068, 0.6156863)
+[node name="EMPTY65" type="TileMapLayer" parent="TILE_MAPS" unique_id=470232600]
+position = Vector2(-1, 0)
+tile_set = ExtResource("1_njjmc")
+
+[node name="PLAYER ROAD BLOCKS 1" type="TileMap" parent="TILE_MAPS" unique_id=1189257547]
+format = 2
+
+[node name="Cone Blocks" type="TileMapLayer" parent="TILE_MAPS/PLAYER ROAD BLOCKS 1" unique_id=149141493]
+position = Vector2(-1, 0)
+tile_map_data = PackedByteArray("AAA9AAwAAAAhAB0AAAA9AA0AAAAhAB0AAAA9AA4AAAAhAB0AAAA9AA8AAAAhAB0AAAA9ABAAAAAhAB0AAADf/zYAAAAhAB0AAADf/zcAAAAhAB0AAADf/zgAAAAhAB0AAAABABwAAAAhAB0AAAABAB0AAAAhAB0AAAABAB4AAAAhAB0AAAABAB8AAAAhAB0AAAABACAAAAAhAB0AAAABACEAAAAhAB0AAAABACIAAAAhAB0AAAABACMAAAAhAB0AAAABACQAAAAhAB0AAAABACUAAAAhAB0AAAA=")
+tile_set = ExtResource("1_njjmc")
+
+[node name="Gate blocks" type="TileMapLayer" parent="TILE_MAPS/PLAYER ROAD BLOCKS 1" unique_id=714366879]
+position = Vector2(-1, 0)
+tile_map_data = PackedByteArray("AAA1ANj/AAA1AE4AAAA2ANj/AAA2AE4AAAA3ANj/AAA2AE4AAAA4ANj/AAA2AE4AAAA5ANj/AAA2AE4AAAA6ANj/AAA2AE4AAAA7ANj/AAA3AE4AAAA1ANf/AAA1AE0AAAA2ANf/AAA2AE0AAAA3ANf/AAA2AE0AAAA4ANf/AAA2AE0AAAA5ANf/AAA2AE0AAAA6ANf/AAA2AE0AAAA7ANf/AAA3AE0AAAA=")
+tile_set = ExtResource("1_njjmc")
 
 [node name="Door Areas" type="Area2D" parent="." unique_id=2076333312]
 position = Vector2(-37, 1468)
@@ -994,3 +995,21 @@ z_index = 1
 
 [node name="Player" parent="." unique_id=510514557 instance=ExtResource("2_0h2af")]
 position = Vector2(-243, 1963)
+
+[node name="NIGHT TIME FILTER" type="ColorRect" parent="." unique_id=1324935939]
+visible = false
+z_index = 20
+offset_left = -1206.0
+offset_top = -2502.0
+offset_right = 6811.0
+offset_bottom = 3984.0
+color = Color(0.006916953, 0.00278535, 0.027953068, 0.6156863)
+
+[node name="EVENING FILTER" type="ColorRect" parent="." unique_id=1454888219]
+visible = false
+z_index = 20
+offset_left = -1206.0
+offset_top = -2502.0
+offset_right = 6811.0
+offset_bottom = 3984.0
+color = Color(0.47, 0.16450001, 0, 0.5803922)

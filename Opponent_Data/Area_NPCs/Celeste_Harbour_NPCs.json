@@ -1,7 +1,7 @@
 {
   "npcs": [
     {
-      "name": "Old_Man_Harold",
+      "name": "Old guy neighbour",
       "overworld_sprite": "gentleman",
       "npc_type": "text_only",
       "text": "Oh hello there - good day! Have you just recently moved in next door? Everyone in this town loves playing the Pokemon Card game. I recommend visiting the Celeste Harbour Lighthouse South West of here and introducing yourself, everyone in this neighbourhood is super friendly.",
@@ -11,12 +11,21 @@
       "wander_radius": 70
     },
     {
-      "name": "NPC2",
+      "name": "Old lady on bench",
       "overworld_sprite": "gentlelady",
       "npc_type": "text_only",
       "text": "Hello! Sadly I can't play the Pokemon card game as I'm not very good, but my grandson says 'Weaknesses' and 'Resistances' are key.",
       "repeat_text": "If you always pay attention to a Pokemon's Weaknesses and Resistances then you'll always have a good chance of winning I believe.",
       "position": {"x": -305, "y": 1962},
+      "pattern": "idle_down"
+    },
+    {
+      "name": "Maintenance guy watering sunflowers",
+      "overworld_sprite": "maintenance",
+      "npc_type": "text_only",
+      "text": "I can't battle right now, I'm on the clock. Somebody's gotta water all of these flowers.",
+      "repeat_text": "I should be finished with work soon and would love to battle when I'm done.",
+      "position": {"x": -690, "y": 2225},
       "pattern": "idle_down"
     },
     {

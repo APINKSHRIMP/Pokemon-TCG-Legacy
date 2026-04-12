@@ -5,6 +5,10 @@ const NPC_JSON_PATH = "res://Opponent_Data/Area_NPCs/Celeste_Harbour_NPCs.json"
 const SCENE_PATH = "res://Scenes/Map_Scenes/Map_Areas/Celeste_Harbour.tscn"
 const BGM_PATH = "res://Audio/BGM/Celeste_Harbour_BGM.ogg"
 
+const TILESET_DAY     = preload("res://Image_Assets/Map_Sheets/Tile_Sets/Starting_Areas.tres")
+const TILESET_EVENING = preload("res://Image_Assets/Map_Sheets/Tile_Sets/Starting_Areas_Evening.tres")
+const TILESET_NIGHT = preload("res://Image_Assets/Map_Sheets/Tile_Sets/Starting_Areas_Night.tres")
+
 func _ready():
 	SoundManagerScript.play_bgm(BGM_PATH, true)
 
@@ -33,8 +37,28 @@ func _ready():
 		[]
 	)
 
+	set_time_of_day("Night")
+
 	await get_tree().process_frame
 	tween.tween_property(get_tree().root, "modulate", Color.WHITE, 1.0)
+
+func set_time_of_day(time: String) -> void:
+	var tileset: TileSet
+	match time:
+		"Day":     tileset = TILESET_DAY
+		"Evening": tileset = TILESET_EVENING
+		"Night":   tileset = TILESET_NIGHT  # placeholder
+
+	for layer in get_tree().get_nodes_in_group(""):
+		pass
+
+	_apply_tileset($TILE_MAPS, tileset)
+
+func _apply_tileset(node: Node, tileset: TileSet) -> void:
+	if node is TileMapLayer:
+		node.tile_set = tileset
+	for child in node.get_children():
+		_apply_tileset(child, tileset)
 
 func _input(event: InputEvent) -> void:
 	if event is InputEventKey and event.pressed and event.keycode == KEY_ESCAPE:

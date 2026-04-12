@@ -38,7 +38,7 @@ var patrol_direction_vec: Vector2 = Vector2.ZERO
 var patrol_step: int = 0
 var distance_walked: float = 0.0
 var current_facing: String = "down"
-var _pre_interaction_facing: String = ""
+var _restore_timer: SceneTreeTimer = null
 
 # random_wander state
 var _wander_origin: Vector2 = Vector2.ZERO
@@ -211,7 +211,11 @@ func pause_and_face(target_position: Vector2):
 	set_physics_process(false)
 	direction_timer.stop()
 	_is_wandering = false
-	_pre_interaction_facing = current_facing
+
+	# Cancel any pending restore so it doesn't fire mid-interaction
+	if _restore_timer != null and is_instance_valid(_restore_timer):
+		_restore_timer.timeout.disconnect(_on_restore_facing)
+		_restore_timer = null
 
 	var diff = target_position - position
 	if abs(diff.x) > abs(diff.y):
@@ -236,15 +240,19 @@ func resume_movement():
 		"random_wander":
 			direction_timer.wait_time = randf_range(2.0, 5.0)
 			direction_timer.start()
+		"idle_down", "idle_up", "idle_left", "idle_right":
+			_restore_timer = get_tree().create_timer(1.0)
+			_restore_timer.timeout.connect(_on_restore_facing)
 
-	if _pre_interaction_facing != "":
-		var saved = _pre_interaction_facing
-		_pre_interaction_facing = ""
-		get_tree().create_timer(1.0).timeout.connect(func():
-			if is_instance_valid(self):
-				current_facing = saved
-				animated_sprite.play("idle_" + saved)
-		)
+func _on_restore_facing():
+	_restore_timer = null
+	if not is_instance_valid(self):
+		return
+	match movement_pattern:
+		"idle_down":  animated_sprite.play("idle_down");  current_facing = "down"
+		"idle_up":    animated_sprite.play("idle_up");    current_facing = "up"
+		"idle_left":  animated_sprite.play("idle_left");  current_facing = "left"
+		"idle_right": animated_sprite.play("idle_right"); current_facing = "right"
 
 func has_gift_been_given() -> bool:
 	return GameState.has_received_gift(npc_name)

@@ -6,7 +6,7 @@
 	  "battle_sprite": "Lass",
 	  "music": "chilled_battle",
 	  "deck": "Basic_Pokemon_Barrage",
-	  "position": {"x": -700, "y": 2200},
+	  "position": {"x": -600, "y": 2000},
 	  "pattern": "idle_random",
 
 	  "meet_text": "I just got given some cards off my grandma, I'm not really good at battling but it's fun!",

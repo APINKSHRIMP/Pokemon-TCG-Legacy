@@ -1,5 +1,5 @@
 {
-	"cash": 1550.0,
+	"cash": 1400.0,
 	"coins": [
 		"coin_pikachu_gold_1.png",
 		"coin_celebi_green.png",
@@ -35,7 +35,10 @@
 		"Generous_Gerald"
 	],
 	"met_npcs": {
+		"Maintenance guy watering sunflowers": true,
 		"NPC2": true,
+		"Old guy neighbour": true,
+		"Old lady on bench": true,
 		"Old_Man_Harold": true
 	},
 	"moving_in_completed": true,
