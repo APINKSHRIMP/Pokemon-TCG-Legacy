@@ -1982,12 +1982,9 @@ offset = Vector2(-0.38427734, 775.4363)
 [node name="Player" parent="." unique_id=510514557 instance=ExtResource("5_a0lly")]
 position = Vector2(-686, 2063)
 
-[node name="Collision Masks" type="Control" parent="." unique_id=78603167]
-layout_mode = 3
-anchors_preset = 0
-offset_right = 40.0
-offset_bottom = 40.0
+[node name="Collision Objects" type="StaticBody2D" parent="." unique_id=1982080831]
+collision_mask = 0
 
-[node name="Bin" type="CollisionShape2D" parent="Collision Masks" unique_id=497554256]
+[node name="Bin" type="CollisionShape2D" parent="Collision Objects" unique_id=1207266096]
 position = Vector2(-649, 2063)
 shape = SubResource("RectangleShape2D_7oril")

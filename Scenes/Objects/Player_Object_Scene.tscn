@@ -3,12 +3,14 @@
 [ext_resource type="Script" uid="uid://ddwhpv4d35a2l" path="res://Scripts/Objects_And_Classes/Player_Object_Script.gd" id="1_50vay"]
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_xe548"]
-size = Vector2(21, 23)
+size = Vector2(16, 23)
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_50vay"]
 size = Vector2(49, 51)
 
 [node name="Player" type="CharacterBody2D" unique_id=510514557]
+collision_layer = 2
+collision_mask = 5
 script = ExtResource("1_50vay")
 
 [node name="AnimatedSprite2D" type="AnimatedSprite2D" parent="." unique_id=2068761607]
@@ -18,6 +20,9 @@ position = Vector2(0, 2)
 shape = SubResource("RectangleShape2D_xe548")
 
 [node name="InteractionArea" type="Area2D" parent="." unique_id=1870891211]
+collision_layer = 0
+collision_mask = 4
+monitorable = false
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="InteractionArea" unique_id=1644762253]
 position = Vector2(-0.5, 1.5)

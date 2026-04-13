@@ -67,8 +67,6 @@ func _is_player_blocking() -> bool:
 	return position.distance_to(players[0].position) < 70.0
 
 func _ready():
-	collision_layer = 3
-	collision_mask = 1
 	add_to_group("opponents")
 
 	animated_sprite.sprite_frames = SpriteSheetLoader.load_sprite_frames(overworld_sprite)

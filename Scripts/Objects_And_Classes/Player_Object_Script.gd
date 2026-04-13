@@ -33,8 +33,6 @@ func set_direction(direction: String):
 
 func _ready():
 	add_to_group("player")
-	collision_layer = 2
-	collision_mask = 5
 
 	var file = FileAccess.open("res://Player_Data/Player_Current_Data.json", FileAccess.READ)
 	var player_data = JSON.parse_string(file.get_as_text())
@@ -79,22 +77,22 @@ func _physics_process(_delta):
 		animated_sprite.play("walk_" + current_direction)
 
 		# Block movement toward nearby opponent
-		if nearby_opponent:
-			var diff = nearby_opponent.position - position
-			if diff.length() < 45.0:
-				var toward = diff.normalized()
-				var dot = velocity.dot(toward)
-				if dot > 0:
-					velocity -= toward * dot
+		#if nearby_opponent:
+		#	var diff = nearby_opponent.position - position
+		#	if diff.length() < 45.0:
+		#		var toward = diff.normalized()
+		#		var dot = velocity.dot(toward)
+		#		if dot > 0:
+		#			velocity -= toward * dot
 
 		# Block movement toward nearby NPC
-		if nearby_npc:
-			var diff = nearby_npc.position - position
-			if diff.length() < 45.0:
-				var toward = diff.normalized()
-				var dot = velocity.dot(toward)
-				if dot > 0:
-					velocity -= toward * dot
+		#if nearby_npc:
+	#		var diff = nearby_npc.position - position
+#			if diff.length() < 45.0:#
+#				var toward = diff.normalized()
+#				var dot = velocity.dot(toward)
+#				if dot > 0:
+#					velocity -= toward * dot
 	else:
 		velocity = Vector2.ZERO
 		if is_moving:
