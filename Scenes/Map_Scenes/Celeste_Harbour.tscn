@@ -1,6 +1,6 @@
 [gd_scene format=4 uid="uid://d133qgd7sfd3i"]
 
-[ext_resource type="Script" uid="uid://c6rrjhjbaqu2v" path="res://Scripts/Map_Scripts/Map_Areas/Celeste_Harbour.gd" id="1_7oril"]
+[ext_resource type="Script" uid="uid://c6rrjhjbaqu2v" path="res://Scripts/Map_Scripts/Celeste_Harbour.gd" id="1_7oril"]
 [ext_resource type="TileSet" uid="uid://dqknfbtehgo6c" path="res://Image_Assets/Map_Sheets/Tile_Sets/Starting_Areas.tres" id="2_bf13f"]
 [ext_resource type="Script" uid="uid://c8kspw0hm4x0s" path="res://Scripts/Shaders/lighthouse_light.gd" id="3_u8po5"]
 [ext_resource type="Texture2D" uid="uid://cm4lgnvbaa5o2" path="res://Image_Assets/Map_Sheets/Image_Sheets/Lighthouse_Light.png" id="4_401pq"]
@@ -1004,12 +1004,12 @@ position = Vector2(-37, 1468)
 [node name="DoorArea_PlayerHouse" type="CollisionShape2D" parent="Door Areas" unique_id=1393435698]
 position = Vector2(1, 1)
 shape = SubResource("RectangleShape2D_njjmc")
-metadata/target_scene = "res://Scenes/Map_Scenes/Map_Areas/Player_House_Downstairs.tscn"
+metadata/target_scene = "res://Scenes/Map_Scenes/Player_House_Downstairs.tscn"
 
-[node name="DoorArea_PlayerHouse2" type="CollisionShape2D" parent="Door Areas" unique_id=1953881513]
+[node name="DoorArea_CardMart" type="CollisionShape2D" parent="Door Areas" unique_id=1953881513]
 position = Vector2(1540, 80)
 shape = SubResource("RectangleShape2D_njjmc")
-metadata/target_scene = "res://Scenes/Map_Scenes/Map_Areas/Card_Mart.tscn"
+metadata/target_scene = "res://Scenes/Map_Scenes/Card_Mart.tscn"
 
 [node name="UILAYER" type="CanvasLayer" parent="." unique_id=1479968642]
 

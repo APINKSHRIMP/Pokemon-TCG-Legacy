@@ -1,6 +1,6 @@
 [gd_scene format=4 uid="uid://dl0crf2i1tc85"]
 
-[ext_resource type="Script" uid="uid://b3o0hoj4kyly1" path="res://Scripts/Map_Scripts/Map_Areas/Card_Mart.gd" id="1_jgrli"]
+[ext_resource type="Script" uid="uid://b3o0hoj4kyly1" path="res://Scripts/Map_Scripts/Card_Mart.gd" id="1_jgrli"]
 [ext_resource type="TileSet" uid="uid://yus3igcnpw1m" path="res://Image_Assets/Map_Sheets/Tile_Sets/Player_Home_Tileset.tres" id="2_jgrli"]
 [ext_resource type="PackedScene" uid="uid://bprufyh8mxqom" path="res://Scenes/Objects/Player_Object_Scene.tscn" id="3_8gvms"]
 
@@ -65,7 +65,7 @@ position = Vector2(-37, 1468)
 [node name="DoorArea_CelesteHarbour" type="CollisionShape2D" parent="Door Areas" unique_id=2119147692]
 position = Vector2(245, -1272)
 shape = SubResource("RectangleShape2D_377ug")
-metadata/target_scene = "res://Scenes/Map_Scenes/Map_Areas/Celeste_Harbour.tscn"
+metadata/target_scene = "res://Scenes/Map_Scenes/Celeste_Harbour.tscn"
 metadata/door_type = "exit_to_outside"
 
 [node name="UILAYER" type="CanvasLayer" parent="." unique_id=1060825490]

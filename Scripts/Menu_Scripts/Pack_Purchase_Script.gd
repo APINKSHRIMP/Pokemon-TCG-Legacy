@@ -9,7 +9,7 @@ const PACK_PRICES_PATH     := "res://Card_Set_Data/pack_prices.json"
 const PACK_IMAGES_FOLDER   := "res://Image_Assets/Packs/"
 const CARD_SET_DATA_PATH   := "res://Card_Set_Data/"
 const CARDBACK_PATH        := "res://Image_Assets/Card_Backs_And_Decks/cardback.png"
-const CARD_MART_SCENE      := "res://Scenes/map_scenes/map_areas/Card_Mart.tscn"
+const CARD_MART_SCENE      := "res://Scenes/map_scenes/Card_Mart.tscn"
 
 # Card display size used for the pack opening reveal
 const CARD_DISPLAY_SIZE    := Vector2(563, 788)

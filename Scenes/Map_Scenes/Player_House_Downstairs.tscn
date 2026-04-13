@@ -1,6 +1,6 @@
 [gd_scene format=4 uid="uid://dkgxbihdqgsq7"]
 
-[ext_resource type="Script" uid="uid://bxy1uswsswt1l" path="res://Scripts/Map_Scripts/Map_Areas/Player_House_Downstairs.gd" id="1_s8ing"]
+[ext_resource type="Script" uid="uid://bxy1uswsswt1l" path="res://Scripts/Map_Scripts/Player_House_Downstairs.gd" id="1_s8ing"]
 [ext_resource type="TileSet" uid="uid://yus3igcnpw1m" path="res://Image_Assets/Map_Sheets/Tile_Sets/Player_Home_Tileset.tres" id="2_kd744"]
 [ext_resource type="PackedScene" uid="uid://bprufyh8mxqom" path="res://Scenes/Objects/Player_Object_Scene.tscn" id="3_hfq7f"]
 
@@ -111,13 +111,13 @@ position = Vector2(-37, 1468)
 [node name="DoorArea_CelesteHarbour" type="CollisionShape2D" parent="Door Areas" unique_id=2119147692]
 position = Vector2(237, -1239)
 shape = SubResource("RectangleShape2D_377ug")
-metadata/target_scene = "res://Scenes/Map_Scenes/Map_Areas/Celeste_Harbour.tscn"
+metadata/target_scene = "res://Scenes/Map_Scenes/Celeste_Harbour.tscn"
 metadata/door_type = "exit_to_outside"
 
 [node name="DoorArea_Downstairs" type="CollisionShape2D" parent="Door Areas" unique_id=315181582]
 position = Vector2(429, -1459)
 shape = SubResource("RectangleShape2D_gymwu")
-metadata/target_scene = "res://Scenes/Map_Scenes/Map_Areas/Player_House_Upstairs.tscn"
+metadata/target_scene = "res://Scenes/Map_Scenes/Player_House_Upstairs.tscn"
 metadata/door_type = "stairs_up"
 
 [node name="UILAYER" type="CanvasLayer" parent="." unique_id=1060825490]

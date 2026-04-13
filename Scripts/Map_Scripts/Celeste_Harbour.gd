@@ -2,7 +2,7 @@ extends Node2D
 
 const JSON_PATH = "res://Opponent_Data/Area_Opponents/Celeste_Harbour_Opponents.json"
 const NPC_JSON_PATH = "res://Opponent_Data/Area_NPCs/Celeste_Harbour_NPCs.json"
-const SCENE_PATH = "res://Scenes/Map_Scenes/Map_Areas/Celeste_Harbour.tscn"
+const SCENE_PATH = "res://Scenes/Map_Scenes/Celeste_Harbour.tscn"
 const BGM_PATH = "res://Audio/BGM/Celeste_Harbour_BGM.ogg"
 
 const TILESET_DAY     = preload("res://Image_Assets/Map_Sheets/Tile_Sets/Starting_Areas.tres")
@@ -37,7 +37,7 @@ func _ready():
 		[]
 	)
 
-	set_time_of_day("Night")
+	set_time_of_day("Day")
 
 	await get_tree().process_frame
 	tween.tween_property(get_tree().root, "modulate", Color.WHITE, 1.0)
@@ -45,9 +45,11 @@ func _ready():
 func set_time_of_day(time: String) -> void:
 	var tileset: TileSet
 	match time:
-		"Day":     tileset = TILESET_DAY
+		"Day":     
+			tileset = TILESET_DAY
+			$LIGHTS.queue_free()
 		"Evening": tileset = TILESET_EVENING
-		"Night":   tileset = TILESET_NIGHT  # placeholder
+		"Night":   tileset = TILESET_NIGHT  	
 
 	for layer in get_tree().get_nodes_in_group(""):
 		pass
