@@ -5418,6 +5418,20 @@ texture = ExtResource("1_dhcll")
 56:95/0 = 0
 56:96/0 = 0
 56:97/0 = 0
+0:95/0 = 0
+1:95/0 = 0
+2:95/0 = 0
+3:95/0 = 0
+4:95/0 = 0
+0:96/0 = 0
+1:96/0 = 0
+2:96/0 = 0
+3:96/0 = 0
+4:96/0 = 0
+0:97/0 = 0
+1:97/0 = 0
+2:97/0 = 0
 
 [resource]
+occlusion_layer_0/light_mask = 1
 sources/0 = SubResource("TileSetAtlasSource_362tc")
