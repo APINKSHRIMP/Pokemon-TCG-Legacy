@@ -3,7 +3,7 @@
 [ext_resource type="Script" uid="uid://65icfpeaid30" path="res://Scripts/Objects_And_Classes/Opponent_Object_Script.gd" id="1_fldhn"]
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_tal5p"]
-size = Vector2(9, 21)
+size = Vector2(9, 17)
 
 [node name="Opponent" type="CharacterBody2D" unique_id=586636241]
 script = ExtResource("1_fldhn")
@@ -11,7 +11,7 @@ script = ExtResource("1_fldhn")
 [node name="AnimatedSprite2D" type="AnimatedSprite2D" parent="." unique_id=1030604160]
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="." unique_id=446318610]
-position = Vector2(0, 2.5)
+position = Vector2(-0.5, 2.5)
 shape = SubResource("RectangleShape2D_tal5p")
 
 [node name="DirectionTimer" type="Timer" parent="." unique_id=721323780]

@@ -83,6 +83,13 @@ func load_progress():
 		progress["moving_in_completed"] = false
 	if not progress.has("gifts_received"):
 		progress["gifts_received"] = []
+
+	# Migrate old met_npcs dict to npc_interactions array
+	if not progress.has("npc_interactions"):
+		var old = progress.get("met_npcs", {})
+		progress["npc_interactions"] = old.keys()
+		progress.erase("met_npcs")
+
 	save_progress()
 
 func save_progress():
@@ -111,6 +118,32 @@ func has_beaten_opponent(opponent_name: String) -> bool:
 func mark_opponent_beaten(opponent_name: String):
 	if not has_beaten_opponent(opponent_name):
 		progress["opponents_beaten"].append(opponent_name)
+		save_progress()
+
+# ============================================================
+# NPC INTERACTION TRACKING
+# ============================================================
+
+func has_met_npc(npc_name: String) -> bool:
+	return npc_name in progress.get("npc_interactions", [])
+
+func mark_npc_met(npc_name: String) -> void:
+	if not has_met_npc(npc_name):
+		if not progress.has("npc_interactions"):
+			progress["npc_interactions"] = []
+		progress["npc_interactions"].append(npc_name)
+		save_progress()
+
+# ============================================================
+# GIFT TRACKING
+# ============================================================
+
+func has_received_gift(npc_name: String) -> bool:
+	return npc_name in progress.get("gifts_received", [])
+
+func mark_gift_received(npc_name: String):
+	if not has_received_gift(npc_name):
+		progress["gifts_received"].append(npc_name)
 		save_progress()
 
 # ============================================================
@@ -152,15 +185,3 @@ func add_costume_to_collection(battle_sprite: String) -> void:
 
 func get_costumes() -> Array:
 	return progress.get("costumes", [])
-
-# ============================================================
-# GIFT TRACKING
-# ============================================================
-
-func has_received_gift(npc_name: String) -> bool:
-	return npc_name in progress.get("gifts_received", [])
-
-func mark_gift_received(npc_name: String):
-	if not has_received_gift(npc_name):
-		progress["gifts_received"].append(npc_name)
-		save_progress()

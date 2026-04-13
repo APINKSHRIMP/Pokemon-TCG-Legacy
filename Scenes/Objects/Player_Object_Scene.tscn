@@ -6,7 +6,7 @@
 size = Vector2(21, 23)
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_50vay"]
-size = Vector2(42, 40)
+size = Vector2(49, 51)
 
 [node name="Player" type="CharacterBody2D" unique_id=510514557]
 script = ExtResource("1_50vay")
@@ -20,7 +20,7 @@ shape = SubResource("RectangleShape2D_xe548")
 [node name="InteractionArea" type="Area2D" parent="." unique_id=1870891211]
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="InteractionArea" unique_id=1644762253]
-position = Vector2(0, 3)
+position = Vector2(-0.5, 1.5)
 shape = SubResource("RectangleShape2D_50vay")
 
 [node name="Camera2D" type="Camera2D" parent="." unique_id=1358489532]

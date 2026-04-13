@@ -1,6 +1,6 @@
 extends Node2D
 
-const NPC_JSON_PATH = "res://Opponent_Data/Area_NPCs/Card_Mart_NPCs.json"
+const NPC_JSON_PATH = "res://NPC_and_Opponent_Data/Card_Mart_NPCs.json"
 
 func _ready():
 	SoundManagerScript.play_bgm("res://Audio/BGM/Shop1.ogg", true)

@@ -44,6 +44,12 @@ var _wander_origin: Vector2 = Vector2.ZERO
 var _wander_target: Vector2 = Vector2.ZERO
 var _is_wandering: bool = false
 
+# --- Interaction bubble ---
+var _bubble_sprite: Sprite2D = null
+
+const BUBBLE_Y_OFFSET: float = -25.0
+const BUBBLE_Z_INDEX: int = 100
+
 @onready var animated_sprite: AnimatedSprite2D = $AnimatedSprite2D
 @onready var direction_timer: Timer = $DirectionTimer
 
@@ -68,6 +74,8 @@ func _ready():
 	animated_sprite.sprite_frames = SpriteSheetLoader.load_sprite_frames(overworld_sprite)
 	animated_sprite.scale = Vector2(1, 1)
 	animated_sprite.play("idle_down")
+
+	_setup_bubble()
 
 	match movement_pattern:
 		"idle_random":
@@ -102,6 +110,42 @@ func _ready():
 			direction_timer.wait_time = randf_range(1.0, 4.0)
 			direction_timer.timeout.connect(_on_direction_timer_timeout)
 			direction_timer.start()
+
+# ============================================================
+# INTERACTION BUBBLE
+# ============================================================
+
+func _setup_bubble():
+	_bubble_sprite = Sprite2D.new()
+	_bubble_sprite.position = Vector2(0, BUBBLE_Y_OFFSET)
+	_bubble_sprite.z_index = BUBBLE_Z_INDEX
+	_bubble_sprite.visible = false
+	add_child(_bubble_sprite)
+
+func _get_bubble_texture() -> Texture2D:
+	if GameState.has_beaten_opponent(opponent_name):
+		return load("res://image_assets/misc/old_battle.png")
+	else:
+		return load("res://image_assets/misc/new_battle.png")
+
+func show_bubble():
+	if _bubble_sprite == null:
+		return
+	_bubble_sprite.texture = _get_bubble_texture()
+	_bubble_sprite.visible = true
+
+func hide_bubble():
+	if _bubble_sprite == null:
+		return
+	_bubble_sprite.visible = false
+
+func refresh_bubble():
+	if _bubble_sprite != null and _bubble_sprite.visible:
+		_bubble_sprite.texture = _get_bubble_texture()
+
+# ============================================================
+# MOVEMENT
+# ============================================================
 
 func _physics_process(delta):
 	match movement_pattern:
@@ -169,7 +213,6 @@ func _process_random_wander(delta):
 	var move_dir = to_target.normalized()
 	velocity = move_dir * patrol_speed
 
-	# Update facing from movement direction
 	if abs(move_dir.x) > abs(move_dir.y):
 		current_facing = "right" if move_dir.x > 0 else "left"
 	else:
@@ -186,7 +229,6 @@ func _pick_wander_target():
 			_wander_target = candidate
 			_is_wandering = true
 			return
-	# All directions exceed radius — walk back toward origin
 	var to_origin = (_wander_origin - position)
 	if to_origin.length() > 1.0:
 		_wander_target = position + to_origin.normalized() * step
@@ -212,7 +254,6 @@ func pause_and_face(target_position: Vector2):
 	direction_timer.stop()
 	_is_wandering = false
 
-	# Cancel any pending restore so it doesn't fire mid-interaction
 	if _restore_timer != null and is_instance_valid(_restore_timer):
 		_restore_timer.timeout.disconnect(_on_restore_facing)
 		_restore_timer = null

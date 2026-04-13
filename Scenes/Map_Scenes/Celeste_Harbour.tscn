@@ -34,6 +34,9 @@ gradient = SubResource("Gradient_gq6w5")
 fill_from = Vector2(0.5529412, 0.9823529)
 fill_to = Vector2(0.5529412, 0.45882353)
 
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_7oril"]
+size = Vector2(14, 20)
+
 [node name="CELESTE HARBOUR" type="Node2D" unique_id=332229534]
 script = ExtResource("1_7oril")
 
@@ -1977,4 +1980,14 @@ texture = ExtResource("4_401pq")
 offset = Vector2(-0.38427734, 775.4363)
 
 [node name="Player" parent="." unique_id=510514557 instance=ExtResource("5_a0lly")]
-position = Vector2(1525, 1611)
+position = Vector2(-686, 2063)
+
+[node name="Collision Masks" type="Control" parent="." unique_id=78603167]
+layout_mode = 3
+anchors_preset = 0
+offset_right = 40.0
+offset_bottom = 40.0
+
+[node name="Bin" type="CollisionShape2D" parent="Collision Masks" unique_id=497554256]
+position = Vector2(-649, 2063)
+shape = SubResource("RectangleShape2D_7oril")

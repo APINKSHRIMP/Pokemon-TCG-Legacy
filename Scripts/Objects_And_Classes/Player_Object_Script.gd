@@ -137,11 +137,15 @@ func _unhandled_input(event):
 func _on_interaction_area_body_entered(body: Node2D):
 	if body.is_in_group("opponents"):
 		nearby_opponent = body
+		body.show_bubble()
 	elif body.is_in_group("npcs"):
 		nearby_npc = body
+		body.show_bubble()
 
 func _on_interaction_area_body_exited(body: Node2D):
 	if body == nearby_opponent:
 		nearby_opponent = null
+		body.hide_bubble()
 	elif body == nearby_npc:
 		nearby_npc = null
+		body.hide_bubble()

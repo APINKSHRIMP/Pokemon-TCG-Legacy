@@ -245,6 +245,7 @@ func _on_player_interact(opponent: Node):
 		return
 	current_opponent = opponent
 	opponent.pause_and_face(_player.position)
+	opponent.hide_bubble()
 	_show_message_with_choices(opponent.get_greeting_text())
 
 func _on_yes_pressed():
@@ -278,9 +279,17 @@ func _on_yes_pressed():
 		get_tree().change_scene_to_file("res://Scenes/Main_Match_Gameplay_Scenes/Match_Start_Intro_Scene.tscn")
 
 func _on_no_pressed():
+	# Refresh bubble in case state changed (shouldn't for No, but keeps it consistent)
+	if current_opponent != null:
+		current_opponent.refresh_bubble()
+	if current_npc != null:
+		current_npc.refresh_bubble()
 	_hide_message()
 
 func _on_ok_pressed():
+	# Refresh bubble so new_talk -> old_talk update shows immediately after first interaction
+	if current_npc != null:
+		current_npc.refresh_bubble()
 	_hide_message()
 
 # ============================================================
@@ -295,6 +304,8 @@ func _on_player_npc_interact(npc: Node):
 		npc.animated_sprite.play("idle_down")
 	else:
 		npc.pause_and_face(_player.position)
+
+	npc.hide_bubble()
 
 	match npc.npc_type:
 		"text_only":

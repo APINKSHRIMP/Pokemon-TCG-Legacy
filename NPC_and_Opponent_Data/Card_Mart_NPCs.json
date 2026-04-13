@@ -8,5 +8,6 @@
       "position": {"x": 85, "y": -35},
       "pattern": "idle_down"
     }
-  ]
+  ],
+  "opponents": []
 }
