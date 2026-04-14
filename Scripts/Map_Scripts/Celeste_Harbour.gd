@@ -36,7 +36,7 @@ func _ready():
 		[]
 	)
 
-	set_time_of_day("Day")
+	set_time_of_day("Night")
 
 	await get_tree().process_frame
 	tween.tween_property(get_tree().root, "modulate", Color.WHITE, 1.0)
