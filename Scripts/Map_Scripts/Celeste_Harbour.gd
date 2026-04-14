@@ -1,6 +1,12 @@
 extends Node2D
 
-const NPC_JSON_PATH = "res://NPC_and_Opponent_Data/Celeste_Harbour_NPCs.json"
+const NPC_DAY_1_JSON_PATH = "res://NPC_and_Opponent_Data/Celeste_Harbour_NPCs_Day_1.json"
+const NPC_EVENING_1_JSON_PATH = "res://NPC_and_Opponent_Data/Celeste_Harbour_NPCs_Evening_1.json"
+const NPC_NIGHT_1_JSON_PATH = "res://NPC_and_Opponent_Data/Celeste_Harbour_NPCs_Night_1.json"
+const NPC_DAY_2_JSON_PATH = "res://NPC_and_Opponent_Data/Celeste_Harbour_NPCs_Day_2.json"
+
+var NPC_JSON_PATH = NPC_DAY_1_JSON_PATH
+
 const SCENE_PATH = "res://Scenes/Map_Scenes/Celeste_Harbour.tscn"
 const BGM_PATH = "res://Audio/BGM/Celeste_Harbour_BGM.ogg"
 
@@ -9,6 +15,9 @@ const TILESET_EVENING = preload("res://Image_Assets/Map_Sheets/Tile_Sets/Startin
 const TILESET_NIGHT = preload("res://Image_Assets/Map_Sheets/Tile_Sets/Starting_Areas_Night.tres")
 
 func _ready():
+	
+	set_time_of_day("Day")
+	
 	SoundManagerScript.play_bgm(BGM_PATH, true)
 
 	var tween = create_tween()
@@ -36,8 +45,6 @@ func _ready():
 		[]
 	)
 
-	set_time_of_day("Night")
-
 	await get_tree().process_frame
 	tween.tween_property(get_tree().root, "modulate", Color.WHITE, 1.0)
 
@@ -47,9 +54,16 @@ func set_time_of_day(time: String) -> void:
 		"Day":     
 			tileset = TILESET_DAY
 			$LIGHTS.queue_free()
-		"Evening": tileset = TILESET_EVENING
-		"Night":   tileset = TILESET_NIGHT  	
-
+			NPC_JSON_PATH = NPC_DAY_1_JSON_PATH
+		"Evening": 
+			tileset = TILESET_EVENING
+			$LIGHTS.visible = true
+			NPC_JSON_PATH = NPC_EVENING_1_JSON_PATH
+		"Night":   
+			tileset = TILESET_NIGHT  	
+			$LIGHTS.visible = true
+			NPC_JSON_PATH = NPC_NIGHT_1_JSON_PATH
+			
 	for layer in get_tree().get_nodes_in_group(""):
 		pass
 
