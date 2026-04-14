@@ -6,7 +6,7 @@
 size = Vector2(16, 23)
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_50vay"]
-size = Vector2(49, 51)
+size = Vector2(56, 56)
 
 [node name="Player" type="CharacterBody2D" unique_id=510514557]
 collision_layer = 2
@@ -25,7 +25,7 @@ collision_mask = 4
 monitorable = false
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="InteractionArea" unique_id=1644762253]
-position = Vector2(-0.5, 1.5)
+position = Vector2(-1, 1)
 shape = SubResource("RectangleShape2D_50vay")
 
 [node name="Camera2D" type="Camera2D" parent="." unique_id=1358489532]

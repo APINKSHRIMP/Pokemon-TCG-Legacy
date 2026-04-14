@@ -49,7 +49,7 @@ var _is_wandering: bool = false
 # Interaction bubble
 var _bubble_sprite: Sprite2D = null
 
-const BUBBLE_Y_OFFSET: float = -25.0
+const BUBBLE_Y_OFFSET: float = -19.0
 const BUBBLE_Z_INDEX: int = 100
 
 @onready var animated_sprite: AnimatedSprite2D = $AnimatedSprite2D
