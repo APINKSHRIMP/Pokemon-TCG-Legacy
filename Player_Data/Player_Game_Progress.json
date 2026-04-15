@@ -1,26 +1,15 @@
 {
-	"cash": 1100.0,
+	"cash": 4000.0,
 	"coins": [
-		"coin_pikachu_gold_1.png",
-		"coin_celebi_green.png",
-		"coin_deoxys_silver.png",
-		"coin_dragonite_gold_2.png",
-		"coin_espeon_purple.png",
-		"coin_energy_blue.png",
-		"coin_energy_green.png",
-		"coin_gyarados_blue.png",
-		"coin_chansey_silver.png",
-		"coin_energy_silver_2.png"
+		"coin_pikachu_gold_1.png"
 	],
 	"costumes": [
 		"1dawnplatinum.png",
-		"1lucasplatinum.png",
-		"swimmerfemale.png",
 		"bugcatcher.png",
-		"fisherman.png",
 		"schoolboy.png",
 		"lass.png"
 	],
+	"date": 1,
 	"energy_styles": [
 		"Base1",
 		"Ecard1",
@@ -29,32 +18,18 @@
 		"ex13",
 		"ex16"
 	],
-	"gifts_received": [
-		"Coin_Collector_Pete",
-		"Gift_Lady_Rose",
-		"Generous_Gerald"
-	],
-	"moving_in_completed": true,
-	"npc_interactions": [
-		"Maintenance guy watering sunflowers",
-		"NPC2",
-		"Old guy neighbour",
-		"Old lady on bench",
-		"Old_Man_Harold",
-		"Policeman blocking beach",
-		"Maintenance guy fixing the lighthouse"
-	],
-	"opponents_beaten": [
-		"Swimmer_Jordan",
-		"Bug_Catcher_Alex",
-		"Fisherman_John",
-		"Schoolboy_Adam",
-		"Lass_Jennifer"
-	],
+	"gifts_received": [],
+	"moving_in_completed": false,
+	"npc_interactions": [],
+	"opponents_beaten": [],
+	"opponents_beaten_count_current": 4.0,
+	"opponents_beaten_count_total": 5.0,
 	"packs_unlocked": [
 		"base1",
 		"base2",
 		"base3"
 	],
-	"player_collected_starter_box": true
+	"player_collected_shop_starter_set": false,
+	"player_collected_starter_box": false,
+	"time": "Day"
 }
