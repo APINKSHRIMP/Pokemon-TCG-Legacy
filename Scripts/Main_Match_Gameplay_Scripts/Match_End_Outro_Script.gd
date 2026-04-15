@@ -216,35 +216,45 @@ func build_rewards() -> void:
 	# Track current row index for vertical positioning
 	var row_index: int = 0
 	
-	# --- 1. Cash reward (always present on win) ---
+	# Check if this is the first time beating this opponent
+	var is_first_win = not GameState.has_beaten_opponent(GameState.current_opponent_name)
+	
+	# --- 1. Cash reward (always granted, tripled on first win) ---
 	var cash_amount_str = opponent_data.get("cash_reward", "0")
 	var cash_amount = int(cash_amount_str)
+	if is_first_win:
+		cash_amount *= 3
 	GameState.add_cash(cash_amount)
 	
 	var cash_label_text = str(cash_amount)
+	if is_first_win:
+		cash_label_text += " (First Win x3!)"
 	var cash_row = _create_reward_row(cash_label_text, pokedollar_icon_tex, row_index)
 	reward_rows.append(cash_row)
 	row_index += 1
 	
-	# --- 2. Coin reward (only if not already owned) ---
-	var coin_reward_key = opponent_data.get("coin_reward", "")
-	if coin_reward_key != "" and not GameState.has_coin(coin_reward_key):
-		GameState.add_coin_to_collection(coin_reward_key)
-		var coin_display_name = format_coin_name(coin_reward_key)
-		var coin_row = _create_reward_row(coin_display_name, coin_icon_tex, row_index)
-		reward_rows.append(coin_row)
-		row_index += 1
-	
-	# --- 3. Costume reward (only if not already owned) ---
-	var battle_sprite = opponent_data.get("battle_sprite", "")
-	if battle_sprite != "" and not GameState.has_costume(battle_sprite):
-		GameState.add_costume_to_collection(battle_sprite)
-		var costume_display = battle_sprite.replace("_", " ") + " Trainer Class"
-		# Capitalise the first letter of each word
-		costume_display = capitalise_words(costume_display)
-		var costume_row = _create_reward_row(costume_display, costume_icon_tex, row_index)
-		reward_rows.append(costume_row)
-		row_index += 1
+	# --- First-win-only rewards ---
+	if is_first_win:
+		# --- 2. Coin reward (first win only) ---
+		var coin_reward_key = opponent_data.get("coin_reward", "")
+		if coin_reward_key != "" and not GameState.has_coin(coin_reward_key):
+			GameState.add_coin_to_collection(coin_reward_key)
+			var coin_display_name = format_coin_name(coin_reward_key)
+			var coin_row = _create_reward_row(coin_display_name, coin_icon_tex, row_index)
+			reward_rows.append(coin_row)
+			row_index += 1
+		
+		# --- 3. Costume reward (first win only, if specified in opponent JSON) ---
+		var costume_reward_key = opponent_data.get("costume_reward", "")
+		if costume_reward_key != "" and not GameState.has_costume(costume_reward_key):
+			GameState.add_costume_to_collection(costume_reward_key)
+			var costume_display = costume_reward_key.replace("_", " ") + " Trainer Class"
+			costume_display = capitalise_words(costume_display)
+			var costume_row = _create_reward_row(costume_display, costume_icon_tex, row_index)
+			reward_rows.append(costume_row)
+			row_index += 1
+		
+		# --- 4. Future reward types (card, pack, etc.) go here ---
 	
 	# Mark opponent as beaten and increment counts (first win only)
 	GameState.mark_opponent_beaten(GameState.current_opponent_name)
@@ -379,7 +389,7 @@ func transition_back_to_map() -> void:
 	# Check if time should advance (5 unique opponents beaten this time period)
 	if battle_won:
 		var current_count = GameState.progress.get("opponents_beaten_count_current", 0)
-		if current_count == 5 and GameState.get_date() == 1:
+		if current_count == 4 and GameState.get_date() == 1:
 			GameState.advance_time("Evening")
 	
 	# Stop any win/loss jingle that may still be playing

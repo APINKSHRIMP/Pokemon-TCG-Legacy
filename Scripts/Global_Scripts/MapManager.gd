@@ -352,34 +352,8 @@ func _give_gift(npc: Node):
 
 	GameState.mark_gift_received(npc.npc_name)
 
-func _give_card(card_id: String):
-	var parts = card_id.split("-")
-	if parts.size() < 2:
-		push_error("MapManager: Invalid card_id format: " + card_id)
-		return
-	var set_name = parts[0]
-	var json_path = GameState.OWNED_CARDS_FOLDER + set_name + "_player_owned_cards.json"
-
-	var file = FileAccess.open(json_path, FileAccess.READ)
-	if file == null:
-		push_error("MapManager: Cannot open card file: " + json_path)
-		return
-	var data = JSON.parse_string(file.get_as_text())
-	file.close()
-
-	var found = false
-	for entry in data["owned_cards"]:
-		if entry["card_id"] == card_id:
-			entry["owned"] = entry["owned"] + 1
-			found = true
-			break
-
-	if not found:
-		data["owned_cards"].append({"card_id": card_id, "owned": 1})
-
-	var write_file = FileAccess.open(json_path, FileAccess.WRITE)
-	write_file.store_string(JSON.stringify(data, "\t"))
-	write_file.close()
+func _give_card(card_ids: String):
+	GameState.give_cards(card_ids)
 
 func _give_coin(coin_filename: String):
 	GameState.add_coin_to_collection(coin_filename)

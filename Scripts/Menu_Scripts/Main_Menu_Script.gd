@@ -29,6 +29,9 @@ func _ready() -> void:
 	audio_player.stream.loop = true
 	audio_player.play()
 
+	# Check if deck mode should be locked
+	var deck_locked = not GameState.progress.get("player_collected_shop_starter_set", false)
+
 	# Wait one frame so Godot finishes layout and rect.size is correct
 	await get_tree().process_frame
 
@@ -38,9 +41,20 @@ func _ready() -> void:
 		if rect:
 			# Set pivot to centre so scaling grows from the middle, not top-left
 			rect.pivot_offset = rect.size / 2.0
-			rect.mouse_entered.connect(_on_mode_hover.bind(rect, true))
-			rect.mouse_exited.connect(_on_mode_hover.bind(rect, false))
-			rect.gui_input.connect(_on_mode_clicked.bind(node_name))
+
+			if node_name == "deck_mode_background" and deck_locked:
+				rect.modulate = Color(0.4, 0.4, 0.4, 1.0)
+				rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			else:
+				rect.mouse_entered.connect(_on_mode_hover.bind(rect, true))
+				rect.mouse_exited.connect(_on_mode_hover.bind(rect, false))
+				rect.gui_input.connect(_on_mode_clicked.bind(node_name))
+
+	# Grey out the deck label too if locked
+	if deck_locked:
+		var deck_label = get_node("deck_mode_label") as Label
+		if deck_label:
+			deck_label.modulate = Color(0.4, 0.4, 0.4, 1.0)
 
 	# Make all labels pass mouse events through so they don't block hover/click
 	var label_names = [

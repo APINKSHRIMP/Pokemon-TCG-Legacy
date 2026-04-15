@@ -125,7 +125,9 @@
       "rematch_win_text": "I might never be great but at least I'm having a good time",
       "loss_text": "I didn't expect to win at all!",
       "coin_reward": "coin_energy_silver_2",
-      "cash_reward": "100"
+      "cash_reward": "50",
+      "costume_reward": "Lass",
+      "prize_cards": 2
     },
     {
       "name": "Gambler_Mick",
@@ -141,7 +143,8 @@
       "rematch_win_text": "All it'll take is a bit of luck and I'll win",
       "loss_text": "Looks like luck wasn't on your side today",
       "coin_reward": "coin_pikachu_gold_3",
-      "cash_reward": "100"
+      "cash_reward": "50",
+      "prize_cards": 2
     },
     {
       "name": "Schoolboy_Adam",
@@ -159,7 +162,8 @@
       "rematch_win_text": "Maybe I need a better tactic...",
       "loss_text": "I knew my status infliction technique would work!",
       "coin_reward": "coin_chansey_silver",
-      "cash_reward": "100"
+      "cash_reward": "50",
+      "prize_cards": 2
     },
     {
       "name": "Fisherman_Dave",
@@ -175,7 +179,8 @@
       "rematch_win_text": "Fishing is just good for the soul",
       "loss_text": "Maybe you should try picking up a rod and give fishing a go instead!",
       "coin_reward": "coin_gyarados_blue",
-      "cash_reward": "100"
+      "cash_reward": "50",
+      "prize_cards": 4
     },
     {
       "name": "Fisherman_John",
@@ -191,7 +196,8 @@
       "rematch_win_text": "Always happy to put my fishing aside for another one!",
       "loss_text": "I'm not just the best round here at fishing!",
       "coin_reward": "coin_blastoise_blue",
-      "cash_reward": "100"
+      "cash_reward": "100",
+      "prize_cards": 4
     },
     {
       "name": "Bug_Catcher_Alex",
@@ -209,7 +215,8 @@
       "rematch_win_text": "Me and my bugs will win one of these days!",
       "loss_text": "I knew bugs were the best!!",
       "coin_reward": "coin_energy_green",
-      "cash_reward": "100"
+      "cash_reward": "100",
+      "prize_cards": 4
     },
     {
       "name": "Swimmer_Jordan",
@@ -227,7 +234,8 @@
       "rematch_win_text": "Nothing like a good match and a long swim",
       "loss_text": "Maybe you should work on your swimming...",
       "coin_reward": "coin_energy_blue",
-      "cash_reward": "100"
+      "cash_reward": "100",
+      "prize_cards": 4
     }
   ]
 }

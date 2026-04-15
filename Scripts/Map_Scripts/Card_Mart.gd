@@ -4,6 +4,9 @@ const NPC_JSON_PATH = "res://NPC_and_Opponent_Data/Card_Mart_NPCs.json"
 const PROGRESS_PATH = "user://player_game_progress.json"
 const STARTER_SET_COST = 500
 
+# ── PLACEHOLDER: Replace with actual 40+ card IDs ──
+const SHOP_STARTER_CARDS = "base1-96, base1-95, base1-95, base1-94, base1-94, base1-93, base1-93, base1-91, base1-83, base1-83, base1-77, base1-65, base1-65, base1-63, base1-63, base1-59, base1-59, base1-58, base1-58, base1-69, base1-69, base1-54, base1-53, base1-53, base1-46, base1-46, base1-45, base1-45, base1-44, base1-44, base1-42, base1-36, base1-33, base1-34, base1-32, base1-30, base1-28, base1-28, base1-24, base1-19"
+
 var progress_data: Dictionary = {}
 var cash_label: Label = null
 
@@ -200,6 +203,9 @@ func _on_starter_yes():
 
 	# Remove the starter set visual
 	_remove_starter_set()
+
+	# Give the starter deck cards
+	GameState.give_cards(SHOP_STARTER_CARDS)
 
 	# Update cash display
 	_update_cash_label()

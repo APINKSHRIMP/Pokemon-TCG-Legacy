@@ -295,3 +295,60 @@ func add_costume_to_collection(battle_sprite: String) -> void:
 
 func get_costumes() -> Array:
 	return progress.get("costumes", [])
+
+# ============================================================
+# CARD GIVING (Global)
+# ============================================================
+# Accepts a comma-separated string of card IDs, e.g.:
+#   "base1-1, base2-5, base5-20"
+# Duplicates are fine — each occurrence increments owned count by 1.
+# Batches writes per set file so "base1-1, base1-1, base1-5" only
+# opens/writes the base1 file once.
+
+func give_cards(card_ids_csv: String) -> void:
+	var ids: Array = []
+	for raw in card_ids_csv.split(","):
+		var trimmed = raw.strip_edges()
+		if trimmed != "":
+			ids.append(trimmed)
+
+	if ids.is_empty():
+		push_error("GameState.give_cards: No valid card IDs in: " + card_ids_csv)
+		return
+
+	# Group by set name so we only read/write each file once
+	var by_set: Dictionary = {}
+	for card_id in ids:
+		var parts = card_id.split("-")
+		if parts.size() < 2:
+			push_error("GameState.give_cards: Invalid card_id format: " + card_id)
+			continue
+		var set_name = parts[0]
+		if not by_set.has(set_name):
+			by_set[set_name] = []
+		by_set[set_name].append(card_id)
+
+	for set_name in by_set.keys():
+		var json_path = OWNED_CARDS_FOLDER + set_name + "_player_owned_cards.json"
+		var file = FileAccess.open(json_path, FileAccess.READ)
+		if file == null:
+			push_error("GameState.give_cards: Cannot open: " + json_path)
+			continue
+		var data = JSON.parse_string(file.get_as_text())
+		file.close()
+
+		for card_id in by_set[set_name]:
+			var found = false
+			for entry in data["owned_cards"]:
+				if entry["card_id"] == card_id:
+					entry["owned"] = entry["owned"] + 1
+					found = true
+					break
+			if not found:
+				data["owned_cards"].append({"card_id": card_id, "owned": 1})
+
+		var write_file = FileAccess.open(json_path, FileAccess.WRITE)
+		write_file.store_string(JSON.stringify(data, "\t"))
+		write_file.close()
+
+	print("GameState.give_cards: Gave ", ids.size(), " cards")

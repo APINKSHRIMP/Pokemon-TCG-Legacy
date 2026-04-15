@@ -1632,7 +1632,7 @@ func setup_player():
 func setup_opponent(opponent_id: String):
 	
 	# We will need to eventually pass a number of different decks depending on the NPC opponent so load the correct one from file
-	var opponent_deck_path = "res://Opponent_Data/Opponent_Deck_Data/"+opponent_id+".json"
+	var opponent_deck_path = "res://NPC_and_Opponent_Data/Opponent_Deck_Data/"+opponent_id+".json"
 	
 	# Load the deck from the opponent data folder file
 	opponent_deck = load_deck_from_file(opponent_deck_path)
@@ -1690,7 +1690,7 @@ func draw_opening_hand(deck: Array, player_name: String = "") -> Array:
 	
 	return hand
 
-# Draws the top 6 cards from the specified player's deck and adds them to prize cards
+# Draws prize cards from the specified player's deck based on amount_of_prize_cards
 func draw_prize_cards(is_opponent: bool) -> void:
 	
 	# Get the appropriate deck and prize cards array based on whether it's player or opponent
@@ -1704,9 +1704,9 @@ func draw_prize_cards(is_opponent: bool) -> void:
 		deck = player_deck
 		prize_cards = player_prize_cards
 	
-	# Check if there are at least 6 cards in the deck
-	if deck.size() < 6:
-		print("Error: Not enough cards in deck to draw 6 prize cards. Current deck size: ", deck.size())
+	# Check if there are enough cards in the deck
+	if deck.size() < amount_of_prize_cards:
+		print("Error: Not enough cards in deck to draw ", amount_of_prize_cards, " prize cards. Current deck size: ", deck.size())
 		return
 	
 	# Draw the top 6 cards from the deck and add them to prize cards
@@ -4743,6 +4743,10 @@ func _ready() -> void:
 
 	opponent_deck_name = GameState.current_opponent_deck
 	load_opponent_data_by_name(GameState.current_opponent_name)
+	
+	# Read prize card count from opponent JSON (default 6 if not specified)
+	amount_of_prize_cards = int(opponent_data.get("prize_cards", 6))
+	
 	play_opponent_music()
 
 	# Load the player's deck name from their save data
