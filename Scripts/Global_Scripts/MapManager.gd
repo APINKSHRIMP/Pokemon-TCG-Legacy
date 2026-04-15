@@ -18,6 +18,7 @@ var _json_path: String
 
 var current_opponent: Node = null
 var current_npc: Node = null
+var shop_callback: Callable = Callable()
 
 var message_panel: PanelContainer
 var message_label: Label
@@ -322,6 +323,10 @@ func _on_player_npc_interact(npc: Node):
 				_give_gift(npc)
 				_show_message_with_ok(npc.text)
 		"shop":
+			if shop_callback.is_valid():
+				var handled = shop_callback.call(npc)
+				if handled:
+					return
 			_show_message_with_choices(npc.text)
 
 # ============================================================

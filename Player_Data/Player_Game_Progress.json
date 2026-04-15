@@ -22,8 +22,8 @@
 	"moving_in_completed": false,
 	"npc_interactions": [],
 	"opponents_beaten": [],
-	"opponents_beaten_count_current": 4.0,
-	"opponents_beaten_count_total": 5.0,
+	"opponents_beaten_count_current": 0,
+	"opponents_beaten_count_total": 0,
 	"packs_unlocked": [
 		"base1",
 		"base2",

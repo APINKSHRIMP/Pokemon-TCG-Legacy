@@ -48,7 +48,7 @@ size = Vector2(1550, 141)
 size = Vector2(254.5, 141.5)
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_f7byi"]
-size = Vector2(1216, 25)
+size = Vector2(347, 25.5)
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_jrp3f"]
 size = Vector2(1667.5, 25)
@@ -82,6 +82,9 @@ size = Vector2(6.5, 261.25)
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_j56wm"]
 size = Vector2(134.5, 46)
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_ccjfj"]
+size = Vector2(803, 21)
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_7oril"]
 size = Vector2(14, 12)
@@ -2462,7 +2465,6 @@ texture = ExtResource("4_401pq")
 offset = Vector2(-0.38427734, 775.4363)
 
 [node name="Collision Objects" type="Control" parent="." unique_id=557795143]
-visible = false
 layout_mode = 3
 anchors_preset = 0
 offset_right = 40.0
@@ -2512,59 +2514,67 @@ position = Vector2(-825, 2419)
 shape = SubResource("RectangleShape2D_bf13f")
 
 [node name="Lamp5" type="CollisionShape2D" parent="Collision Objects/Lamps Collision Group" unique_id=1358762404]
-position = Vector2(-329, 2066)
+position = Vector2(-488, 2065)
 shape = SubResource("RectangleShape2D_bf13f")
 
 [node name="Lamp6" type="CollisionShape2D" parent="Collision Objects/Lamps Collision Group" unique_id=286490385]
-position = Vector2(-329, 1985)
+position = Vector2(-488, 1984)
 shape = SubResource("RectangleShape2D_bf13f")
 
 [node name="Lamp7" type="CollisionShape2D" parent="Collision Objects/Lamps Collision Group" unique_id=1933090061]
-position = Vector2(87, 2067)
+position = Vector2(-72, 2066)
 shape = SubResource("RectangleShape2D_bf13f")
 
 [node name="Lamp8" type="CollisionShape2D" parent="Collision Objects/Lamps Collision Group" unique_id=914571523]
-position = Vector2(87, 1986)
+position = Vector2(-72, 1985)
 shape = SubResource("RectangleShape2D_bf13f")
 
 [node name="Lamp9" type="CollisionShape2D" parent="Collision Objects/Lamps Collision Group" unique_id=1348759398]
-position = Vector2(503, 2066)
+position = Vector2(343, 2067)
+shape = SubResource("RectangleShape2D_bf13f")
+
+[node name="Lamp11" type="CollisionShape2D" parent="Collision Objects/Lamps Collision Group" unique_id=1255732564]
+position = Vector2(679, 2067)
+shape = SubResource("RectangleShape2D_bf13f")
+
+[node name="Lamp12" type="CollisionShape2D" parent="Collision Objects/Lamps Collision Group" unique_id=48108777]
+position = Vector2(759, 2067)
 shape = SubResource("RectangleShape2D_bf13f")
 
 [node name="Lamp10" type="CollisionShape2D" parent="Collision Objects/Lamps Collision Group" unique_id=605797884]
-position = Vector2(503, 1985)
+position = Vector2(343, 1986)
 shape = SubResource("RectangleShape2D_bf13f")
 
 [node name="Lamp13" type="CollisionShape2D" parent="Collision Objects/Lamps Collision Group" unique_id=1817463453]
-position = Vector2(1335, 2065)
+position = Vector2(1175, 2065)
 shape = SubResource("RectangleShape2D_bf13f")
 
 [node name="Lamp14" type="CollisionShape2D" parent="Collision Objects/Lamps Collision Group" unique_id=405086227]
-position = Vector2(1335, 1984)
+position = Vector2(1175, 1984)
 shape = SubResource("RectangleShape2D_bf13f")
 
 [node name="Lamp15" type="CollisionShape2D" parent="Collision Objects/Lamps Collision Group" unique_id=1412108693]
-position = Vector2(1751, 2065)
+position = Vector2(1591, 2065)
 shape = SubResource("RectangleShape2D_bf13f")
 
 [node name="Lamp16" type="CollisionShape2D" parent="Collision Objects/Lamps Collision Group" unique_id=59214874]
-position = Vector2(1751, 1984)
+position = Vector2(1591, 1984)
 shape = SubResource("RectangleShape2D_bf13f")
 
 [node name="Lamp91" type="CollisionShape2D" parent="Collision Objects/Lamps Collision Group" unique_id=235484282]
-position = Vector2(2167, 2067)
+position = Vector2(2007, 2067)
 shape = SubResource("RectangleShape2D_bf13f")
 
 [node name="Lamp92" type="CollisionShape2D" parent="Collision Objects/Lamps Collision Group" unique_id=2019262170]
-position = Vector2(2167, 1986)
+position = Vector2(2007, 1986)
 shape = SubResource("RectangleShape2D_bf13f")
 
 [node name="Lamp93" type="CollisionShape2D" parent="Collision Objects/Lamps Collision Group" unique_id=1913568755]
-position = Vector2(2583, 2066)
+position = Vector2(2423, 2066)
 shape = SubResource("RectangleShape2D_bf13f")
 
 [node name="Lamp94" type="CollisionShape2D" parent="Collision Objects/Lamps Collision Group" unique_id=574957312]
-position = Vector2(2583, 1985)
+position = Vector2(2423, 1985)
 shape = SubResource("RectangleShape2D_bf13f")
 
 [node name="Lamp17" type="CollisionShape2D" parent="Collision Objects/Lamps Collision Group" unique_id=560998872]
@@ -2836,7 +2846,7 @@ position = Vector2(2617, 2)
 shape = SubResource("RectangleShape2D_tj6nx")
 
 [node name="Beach Hill Fence Left" type="CollisionShape2D" parent="Collision Objects/Fence and Walls" unique_id=580343142]
-position = Vector2(98, 264.5)
+position = Vector2(-336.5, 264.25)
 shape = SubResource("RectangleShape2D_f7byi")
 
 [node name="Beach Hill Fence right" type="CollisionShape2D" parent="Collision Objects/Fence and Walls" unique_id=13972216]
@@ -2923,6 +2933,10 @@ shape = SubResource("RectangleShape2D_4i81r")
 position = Vector2(772.75, -84)
 shape = SubResource("RectangleShape2D_j56wm")
 
+[node name="beach hill fence down right" type="CollisionShape2D" parent="Collision Objects/Fence and Walls" unique_id=1904026422]
+position = Vector2(304.5, 259.5)
+shape = SubResource("RectangleShape2D_ccjfj")
+
 [node name="Bins and Mailboxes" type="StaticBody2D" parent="Collision Objects" unique_id=1982080831]
 collision_mask = 0
 
@@ -2955,7 +2969,7 @@ position = Vector2(-873, 2555)
 shape = SubResource("RectangleShape2D_7oril")
 
 [node name="Bin2" type="CollisionShape2D" parent="Collision Objects/Bins and Mailboxes" unique_id=759960923]
-position = Vector2(-169, 1979)
+position = Vector2(-165, 1965)
 shape = SubResource("RectangleShape2D_7oril")
 
 [node name="Bin3" type="CollisionShape2D" parent="Collision Objects/Bins and Mailboxes" unique_id=2014571867]
@@ -3054,11 +3068,15 @@ position = Vector2(-834, 1948)
 shape = SubResource("RectangleShape2D_401pq")
 
 [node name="topdownbench2" type="CollisionShape2D" parent="Collision Objects/Benches" unique_id=328258430]
-position = Vector2(-227, 1950)
+position = Vector2(-130, 1949)
 shape = SubResource("RectangleShape2D_401pq")
 
 [node name="topdownbench3" type="CollisionShape2D" parent="Collision Objects/Benches" unique_id=1173557240]
-position = Vector2(221, 1948)
+position = Vector2(316, 1949)
+shape = SubResource("RectangleShape2D_401pq")
+
+[node name="topdownbench4" type="CollisionShape2D" parent="Collision Objects/Benches" unique_id=601356232]
+position = Vector2(765, 1948)
 shape = SubResource("RectangleShape2D_401pq")
 
 [node name="Flower boxes" type="StaticBody2D" parent="Collision Objects" unique_id=738149720]
@@ -3625,11 +3643,11 @@ position = Vector2(991, -90)
 shape = SubResource("RectangleShape2D_alx4x")
 
 [node name="Big Palm Trunk2" type="CollisionShape2D" parent="Collision Objects/Big Trees" unique_id=1907970310]
-position = Vector2(-799, -70.5)
+position = Vector2(-849, -69)
 shape = SubResource("RectangleShape2D_alx4x")
 
 [node name="Big Palm Trunk3" type="CollisionShape2D" parent="Collision Objects/Big Trees" unique_id=1017037717]
-position = Vector2(-631, -93)
+position = Vector2(-584, -93)
 shape = SubResource("RectangleShape2D_alx4x")
 
 [node name="Big Palm Trunk4" type="CollisionShape2D" parent="Collision Objects/Big Trees" unique_id=421578051]
@@ -4184,4 +4202,4 @@ position = Vector2(-15, 1865)
 collision_mask = 0
 
 [node name="Player" parent="." unique_id=510514557 instance=ExtResource("5_a0lly")]
-position = Vector2(-487, 1705)
+position = Vector2(-588, 1540)
