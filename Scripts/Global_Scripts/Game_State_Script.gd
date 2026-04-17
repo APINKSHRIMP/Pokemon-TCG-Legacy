@@ -128,14 +128,14 @@ func load_progress():
 		if parsed != null:
 			progress = parsed
 		else:
-			progress = {"opponents_beaten": [], "cash": 1000, "coins": [], "costumes": []}
+			progress = {"opponents_beaten": [], "cash": 0, "coins": [], "costumes": []}
 	else:
-		progress = {"opponents_beaten": [], "cash": 1000, "coins": [], "costumes": []}
+		progress = {"opponents_beaten": [], "cash": 0, "coins": [], "costumes": []}
 		save_progress()
 
 	# Ensure all expected fields exist for saves created before this update
 	if not progress.has("cash"):
-		progress["cash"] = 1000
+		progress["cash"] = 0
 	if not progress.has("coins"):
 		progress["coins"] = []
 	if not progress.has("costumes"):
@@ -204,6 +204,9 @@ func get_time() -> String:
 ## Returns the current date as an integer (1, 2, 3, ...)
 func get_date() -> int:
 	return int(progress.get("date", 1))
+
+func get_current_defeated() -> int:
+	return int(progress.get("opponents_beaten_count_current", 0))
 
 ## Sets the time to a specific value. Pass an empty string to auto-step.
 ## Auto-step: Day -> Evening -> Night -> Day (and increment date).

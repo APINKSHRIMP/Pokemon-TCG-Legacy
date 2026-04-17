@@ -1,13 +1,11 @@
 extends Node2D
 
 const NPC_JSON_PATH = "res://NPC_and_Opponent_Data/Card_Mart_NPCs.json"
-const PROGRESS_PATH = "user://player_game_progress.json"
 const STARTER_SET_COST = 500
 
 # ── PLACEHOLDER: Replace with actual 40+ card IDs ──
 const SHOP_STARTER_CARDS = "base1-96, base1-95, base1-95, base1-94, base1-94, base1-93, base1-93, base1-91, base1-83, base1-83, base1-77, base1-65, base1-65, base1-63, base1-63, base1-59, base1-59, base1-58, base1-58, base1-69, base1-69, base1-54, base1-53, base1-53, base1-46, base1-46, base1-45, base1-45, base1-44, base1-44, base1-42, base1-36, base1-33, base1-34, base1-32, base1-30, base1-28, base1-28, base1-24, base1-19"
 
-var progress_data: Dictionary = {}
 var cash_label: Label = null
 
 func _ready():
@@ -28,11 +26,8 @@ func _ready():
 	else:
 		$Player.position = Vector2(208, 172)
 
-	# Load progress data
-	_load_progress()
-
 	# Hide starter set if already collected
-	if progress_data.get("player_collected_shop_starter_set", false):
+	if GameState.progress.get("player_collected_shop_starter_set", false):
 		_remove_starter_set()
 
 	# Set up cash display
@@ -55,29 +50,6 @@ func _exit_tree():
 	if cash_label != null and is_instance_valid(cash_label):
 		cash_label.queue_free()
 		cash_label = null
-
-# ============================================================
-# PROGRESS FILE
-# ============================================================
-
-func _load_progress():
-	var file = FileAccess.open(PROGRESS_PATH, FileAccess.READ)
-	if file == null:
-		push_error("Card_Mart: Cannot open progress file: " + PROGRESS_PATH)
-		progress_data = {}
-		return
-	progress_data = JSON.parse_string(file.get_as_text())
-	file.close()
-	if progress_data == null:
-		progress_data = {}
-
-func _save_progress():
-	var file = FileAccess.open(PROGRESS_PATH, FileAccess.WRITE)
-	if file == null:
-		push_error("Card_Mart: Cannot write progress file: " + PROGRESS_PATH)
-		return
-	file.store_string(JSON.stringify(progress_data, "\t"))
-	file.close()
 
 # ============================================================
 # CASH LABEL (bottom-right of screen on UILAYER)
@@ -106,8 +78,7 @@ func _create_cash_label():
 func _update_cash_label():
 	if cash_label == null:
 		return
-	var cash_val = progress_data.get("cash", 0)
-	cash_label.text = "Cash: $" + str(int(cash_val))
+	cash_label.text = "Cash: $" + str(GameState.get_cash())
 
 # ============================================================
 # STARTER SET
@@ -125,16 +96,14 @@ func _remove_starter_set():
 # Return true = we handled it, false = let MapManager do default.
 
 func _on_shop_interact(npc: Node) -> bool:
-	# Reload progress each interaction to stay current
-	_load_progress()
 	_update_cash_label()
 
-	var collected_starter = progress_data.get("player_collected_shop_starter_set", false)
-	var packs_unlocked = progress_data.get("packs_unlocked", [])
+	var collected_starter = GameState.progress.get("player_collected_shop_starter_set", false)
+	var packs_unlocked = GameState.progress.get("packs_unlocked", [])
 
 	# Case 1: Starter set not yet collected — offer to buy it
 	if not collected_starter:
-		var player_cash = progress_data.get("cash", 0)
+		var player_cash = GameState.get_cash()
 		if player_cash < STARTER_SET_COST:
 			MapManager._show_message_with_ok("You need $" + str(STARTER_SET_COST) + " for this box. You don't have enough cash!")
 			return true
@@ -187,28 +156,23 @@ func _restore_yes_connection():
 func _on_starter_yes():
 	_restore_yes_connection()
 
-	# Deduct cash
-	var current_cash = progress_data.get("cash", 0)
-	progress_data["cash"] = current_cash - STARTER_SET_COST
-
-	# Mark starter as collected
-	progress_data["player_collected_shop_starter_set"] = true
-
-	# Save progress
-	_save_progress()
-
-	# Also update GameState.progress so it stays in sync
-	GameState.progress["cash"] = progress_data["cash"]
+	# Deduct cash and mark collected via GameState
+	GameState.add_cash(-STARTER_SET_COST)
 	GameState.progress["player_collected_shop_starter_set"] = true
-
-	# Remove the starter set visual
-	_remove_starter_set()
+	GameState.save_progress()
 
 	# Give the starter deck cards
 	GameState.give_cards(SHOP_STARTER_CARDS)
 
+	# Remove the starter set visual
+	_remove_starter_set()
+
 	# Update cash display
 	_update_cash_label()
+
+	# Check if time should advance to Night (player may have already beaten 4 opponents in Evening 1)
+	if GameState.get_current_defeated() == 4 and GameState.get_time() == "Evening" and GameState.get_date() == 1:
+		GameState.advance_time("Night")
 
 	# Show confirmation message
 	MapManager._hide_message()

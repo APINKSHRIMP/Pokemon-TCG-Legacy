@@ -57,7 +57,7 @@ func set_time_of_day(time: String) -> void:
 			$LIGHTS.queue_free()
 		"Evening":
 			tileset = TILESET_EVENING
-			$LIGHTS.visible = true
+			$LIGHTS.queue_free()
 		"Night":
 			tileset = TILESET_NIGHT
 			$LIGHTS.visible = true

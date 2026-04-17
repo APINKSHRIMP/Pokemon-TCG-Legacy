@@ -386,12 +386,17 @@ func transition_back_to_map() -> void:
 	transitioning = true
 	click_enabled = false
 	
-	# Check if time should advance (5 unique opponents beaten this time period)
+	# Check if time should advance
 	if battle_won:
-		var current_count = GameState.progress.get("opponents_beaten_count_current", 0)
-		if current_count == 4 and GameState.get_date() == 1:
+		# IF YOU DEFEAT THE FIRST 4 OPPONENTS IN CELESTE HARBOUR ON DAY 1 MOVE TO EVENING 1
+		if GameState.get_current_defeated() == 4 and GameState.get_time() == "Day" and GameState.get_date() == 1:
 			GameState.advance_time("Evening")
-	
+			
+		# IF YOU DEFEAT THE SECOND 4 OPPONENTS IN CELESTE HARBOUR ON EVENING 1 AND HAVE COLLECTED THE SHOP STARTER SET MOVE TO NIGHT 1
+		if GameState.get_current_defeated() == 4 and GameState.get_time() == "Evening" and GameState.get_date() == 1 \
+				and GameState.progress.get("player_collected_shop_starter_set", false):
+			GameState.advance_time("Night")
+				
 	# Stop any win/loss jingle that may still be playing
 	# SFX are played as children of SoundManagerScript, so stop and free them all
 	for child in SoundManagerScript.get_children():

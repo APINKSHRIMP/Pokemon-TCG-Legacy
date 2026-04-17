@@ -1,7 +1,7 @@
 extends Node2D
 
 # ── PLACEHOLDER: Replace with actual 60 card IDs ──
-const STARTER_BOX_CARDS = "base1-43, base1-43, base1-43, base1-43, base1-47, base1-47, base1-18, base1-26, base1-26, base1-60, base1-60, base1-53, base1-53, base1-47, base1-47, base1-27, base1-27, base1-52, base1-52, base1-52, base1-52, base1-61, base1-61,base1-61,base1-61,base1-67,base1-67,base1-67,base1-67,base1-88,base1-91,base1-94"
+const STARTER_BOX_CARDS = "base1-43, base1-43, base1-43, base1-43, base1-47, base1-47, base1-18, base1-26, base1-26, base1-60, base1-60, base1-53, base1-53, base1-47, base1-47, base1-27, base1-27, base1-52, base1-52, base1-52, base1-52, base1-61, base1-61,base1-61,base1-61,base1-67,base1-67,base1-67,base1-67,base1-88,base1-91,base1-94,base1-94"
 
 var player_near_box: bool = false
 
