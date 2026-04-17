@@ -2,12 +2,10 @@ extends Node
 
 # ============================================================
 # MAP MANAGER - Autoload singleton
-# Handles opponent/NPC spawning, message box UI, and battle flow
-# for any world map. Each map calls initialise() in _ready().
 # ============================================================
 
-var opponent_scene = preload("res://Scenes/Objects/Opponent_Object_Scene.tscn")
-var npc_scene = preload("res://Scenes/Objects/NPC_Object_Scene.tscn")
+var opponent_scene   = preload("res://Scenes/Objects/Opponent_Object_Scene.tscn")
+var npc_scene        = preload("res://Scenes/Objects/NPC_Object_Scene.tscn")
 var shopkeeper_scene = preload("res://Scenes/Objects/Shopkeeper_Object_Scene.tscn")
 
 var _player: CharacterBody2D
@@ -18,7 +16,6 @@ var _json_path: String
 
 var current_opponent: Node = null
 var current_npc: Node = null
-var shop_callback: Callable = Callable()
 
 var message_panel: PanelContainer
 var message_label: Label
@@ -27,8 +24,9 @@ var no_button: Button
 var ok_button: Button
 
 # ============================================================
-# Called by each map in its _ready()
+# INITIALISE
 # ============================================================
+
 func initialise(
 	player: CharacterBody2D,
 	opponents_container: Node2D,
@@ -71,9 +69,8 @@ func _load_and_spawn_opponents(json_path: String):
 
 	for entry in data["opponents"]:
 		if not entry.has("position"):
-			push_error("MapManager: Opponent missing position in JSON: " + entry.get("name", "unknown"))
+			push_error("MapManager: Opponent missing position: " + entry.get("name", "unknown"))
 			continue
-
 		var opp = opponent_scene.instantiate()
 		opp.opponent_name    = entry["name"]
 		opp.overworld_sprite = entry["overworld_sprite"]
@@ -92,7 +89,6 @@ func _load_and_spawn_opponents(json_path: String):
 		opp.patrol_speed     = entry.get("patrol_speed", 60.0)
 		opp.patrol_axis      = entry.get("patrol_axis", "horizontal")
 		opp.wander_radius    = entry.get("wander_radius", 200.0)
-
 		_opponents_container.add_child(opp)
 
 # ============================================================
@@ -111,20 +107,20 @@ func _load_and_spawn_npcs(json_path: String):
 
 	for entry in data["npcs"]:
 		if not entry.has("position"):
-			push_error("MapManager: NPC missing position in JSON: " + entry.get("name", "unknown"))
+			push_error("MapManager: NPC missing position: " + entry.get("name", "unknown"))
 			continue
 
-		var npc_type = entry.get("npc_type", "text_only")
-		var npc = shopkeeper_scene.instantiate() if npc_type == "shop" else npc_scene.instantiate()
+		# Use shopkeeper scene when npc_type == "shop", NPC scene for everything else
+		var is_shop = entry.get("npc_type", "") == "shop"
+		var npc = shopkeeper_scene.instantiate() if is_shop else npc_scene.instantiate()
 
 		npc.npc_name         = entry["name"]
 		npc.overworld_sprite = entry["overworld_sprite"]
-		npc.npc_type         = npc_type
+		npc.npc_type         = entry.get("npc_type", "text_only")
 		npc.text             = entry.get("text", "")
 		npc.repeat_text      = entry.get("repeat_text", "")
 		npc.gift_type        = entry.get("gift_type", "")
 		npc.gift_value       = entry.get("gift_value", "")
-		npc.post_gift_text   = entry.get("post_gift_text", "")
 		npc.position         = Vector2(entry["position"]["x"], entry["position"]["y"])
 		npc.movement_pattern = entry.get("pattern", "idle_down")
 		npc.patrol_distance  = entry.get("patrol_distance", 100.0)
@@ -132,15 +128,12 @@ func _load_and_spawn_npcs(json_path: String):
 		npc.patrol_axis      = entry.get("patrol_axis", "horizontal")
 		npc.wander_radius    = entry.get("wander_radius", 200.0)
 
+		# Shop-specific fields
+		if is_shop and npc.has_method("on_interact"):
+			npc.shop_id = entry.get("shop_id", npc.npc_name.to_lower().replace(" ", "_"))
+
 		_opponents_container.add_child(npc)
-
-		print("Spawned NPC: ", npc.npc_name, " at ", npc.position, " parent: ", npc.get_parent())
-
-func _find_by_name_in_array(arr: Array, search_name: String):
-	for item in arr:
-		if item["name"] == search_name:
-			return item
-	return null
+		print("Spawned NPC: ", npc.npc_name, " at ", npc.position)
 
 # ============================================================
 # MESSAGE BOX
@@ -206,16 +199,16 @@ func _build_message_box():
 func _show_message_with_choices(text: String):
 	message_label.text = text
 	yes_button.visible = true
-	no_button.visible = true
-	ok_button.visible = false
+	no_button.visible  = true
+	ok_button.visible  = false
 	message_panel.visible = true
 	_player.can_move = false
 
 func _show_message_with_ok(text: String):
 	message_label.text = text
 	yes_button.visible = false
-	no_button.visible = false
-	ok_button.visible = true
+	no_button.visible  = false
+	ok_button.visible  = true
 	message_panel.visible = true
 	_player.can_move = false
 
@@ -238,7 +231,7 @@ func handle_message_spacebar():
 		_on_yes_pressed()
 
 # ============================================================
-# INTERACTION FLOW - OPPONENTS
+# INTERACTION — OPPONENTS
 # ============================================================
 
 func _on_player_interact(opponent: Node):
@@ -250,13 +243,13 @@ func _on_player_interact(opponent: Node):
 	_show_message_with_choices(opponent.get_greeting_text())
 
 func _on_yes_pressed():
-	# Shop flow
+	# Shop NPC — delegate to npc.on_interact() which returns false when ready to open shop
 	if current_npc != null and current_npc.npc_type == "shop":
 		_hide_message()
 		get_tree().change_scene_to_file("res://Scenes/Main_Menu_Scenes/Pack_Purchase.tscn")
 		return
 
-	# Opponent battle flow
+	# Opponent battle
 	if current_opponent != null:
 		GameState.current_opponent_name      = current_opponent.opponent_name
 		GameState.current_opponent_deck      = current_opponent.deck
@@ -280,7 +273,6 @@ func _on_yes_pressed():
 		get_tree().change_scene_to_file("res://Scenes/Main_Match_Gameplay_Scenes/Match_Start_Intro_Scene.tscn")
 
 func _on_no_pressed():
-	# Refresh bubble in case state changed (shouldn't for No, but keeps it consistent)
 	if current_opponent != null:
 		current_opponent.refresh_bubble()
 	if current_npc != null:
@@ -288,19 +280,19 @@ func _on_no_pressed():
 	_hide_message()
 
 func _on_ok_pressed():
-	# Refresh bubble so new_talk -> old_talk update shows immediately after first interaction
 	if current_npc != null:
 		current_npc.refresh_bubble()
 	_hide_message()
 
 # ============================================================
-# INTERACTION FLOW - NPCs
+# INTERACTION — NPCs
 # ============================================================
 
 func _on_player_npc_interact(npc: Node):
 	if message_panel.visible:
 		return
 	current_npc = npc
+
 	if npc.npc_type == "shop":
 		npc.animated_sprite.play("idle_down")
 	else:
@@ -308,26 +300,31 @@ func _on_player_npc_interact(npc: Node):
 
 	npc.hide_bubble()
 
-	match npc.npc_type:
-		"text_only":
-			if npc.has_been_met() and npc.repeat_text != "":
-				_show_message_with_ok(npc.repeat_text)
-			else:
-				npc.mark_as_met()
-				_show_message_with_ok(npc.text)
-		"gift":
-			if npc.has_gift_been_given():
-				var after_text = npc.post_gift_text if npc.post_gift_text != "" else npc.text
-				_show_message_with_ok(after_text)
-			else:
-				_give_gift(npc)
-				_show_message_with_ok(npc.text)
-		"shop":
-			if shop_callback.is_valid():
-				var handled = shop_callback.call(npc)
-				if handled:
-					return
-			_show_message_with_choices(npc.text)
+	# Shop NPC: delegate entirely to its own state machine
+	if npc.npc_type == "shop" and npc.has_method("on_interact"):
+		var handled = npc.on_interact()
+		if handled:
+			return
+		# on_interact() returned false → open pack purchase
+		_show_message_with_choices(npc.text)
+		return
+
+	# Gift NPC: detected by gift_type field being non-empty
+	if npc.is_gift_npc():
+		if npc.has_gift_been_given():
+			_show_message_with_ok(npc.repeat_text if npc.repeat_text != "" else npc.text)
+		else:
+			_give_gift(npc)
+			npc.mark_as_met()
+			_show_message_with_ok(npc.text)
+		return
+
+	# Text-only NPC
+	if npc.has_been_met() and npc.repeat_text != "":
+		_show_message_with_ok(npc.repeat_text)
+	else:
+		npc.mark_as_met()
+		_show_message_with_ok(npc.text)
 
 # ============================================================
 # GIFT GIVING
@@ -336,50 +333,30 @@ func _on_player_npc_interact(npc: Node):
 func _give_gift(npc: Node):
 	match npc.gift_type:
 		"card":
-			_give_card(npc.gift_value)
+			GameState.give_cards(npc.gift_value)
 		"coin":
-			_give_coin(npc.gift_value)
+			GameState.add_coin_to_collection(npc.gift_value)
 		"cash":
-			_give_cash(int(npc.gift_value))
+			GameState.add_cash(int(npc.gift_value))
 		"energy_style":
-			_give_energy_style(npc.gift_value)
+			if not GameState.progress.has("energy_styles"):
+				GameState.progress["energy_styles"] = []
+			if not (npc.gift_value in GameState.progress["energy_styles"]):
+				GameState.progress["energy_styles"].append(npc.gift_value)
+			GameState.save_progress()
 		"costume":
-			_give_costume(npc.gift_value)
+			GameState.add_costume_to_collection(npc.gift_value)
 		"available_pack":
-			_give_available_pack(npc.gift_value)
+			if not GameState.progress.has("packs_unlocked"):
+				GameState.progress["packs_unlocked"] = []
+			if not (npc.gift_value in GameState.progress["packs_unlocked"]):
+				GameState.progress["packs_unlocked"].append(npc.gift_value)
+			GameState.save_progress()
 		"pack_of_cards":
-			_give_pack_of_cards(npc.gift_value)
-
+			push_warning("MapManager: pack_of_cards gift not yet implemented for: " + npc.gift_value)
+		_:
+			push_error("MapManager: Unknown gift_type '" + npc.gift_type + "' on NPC: " + npc.npc_name)
 	GameState.mark_gift_received(npc.npc_name)
-
-func _give_card(card_ids: String):
-	GameState.give_cards(card_ids)
-
-func _give_coin(coin_filename: String):
-	GameState.add_coin_to_collection(coin_filename)
-
-func _give_cash(amount: int):
-	GameState.add_cash(amount)
-
-func _give_energy_style(style_name: String):
-	if not GameState.progress.has("energy_styles"):
-		GameState.progress["energy_styles"] = []
-	if not (style_name in GameState.progress["energy_styles"]):
-		GameState.progress["energy_styles"].append(style_name)
-	GameState.save_progress()
-
-func _give_costume(costume_filename: String):
-	GameState.add_costume_to_collection(costume_filename)
-
-func _give_available_pack(pack_name: String):
-	if not GameState.progress.has("packs_unlocked"):
-		GameState.progress["packs_unlocked"] = []
-	if not (pack_name in GameState.progress["packs_unlocked"]):
-		GameState.progress["packs_unlocked"].append(pack_name)
-	GameState.save_progress()
-
-func _give_pack_of_cards(set_name: String):
-	push_warning("MapManager: pack_of_cards gift not yet implemented for set: " + set_name)
 
 # ============================================================
 # POST-BATTLE

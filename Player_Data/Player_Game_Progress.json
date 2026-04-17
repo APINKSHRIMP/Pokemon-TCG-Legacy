@@ -1,5 +1,5 @@
 {
-	"cash": 4000.0,
+	"cash": 1.0,
 	"coins": [
 		"coin_pikachu_gold_1.png"
 	],
@@ -30,6 +30,8 @@
 		"base3"
 	],
 	"player_collected_shop_starter_set": false,
+	"shop_state": "initial",
+	"shop_free_packs_given": false,
 	"player_collected_starter_box": false,
 	"time": "Day"
 }

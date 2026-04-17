@@ -1,6 +1,6 @@
 [gd_scene format=3 uid="uid://ks534vgl7i8a"]
 
-[ext_resource type="Script" uid="uid://cvtqitu2f8nxk" path="res://Scripts/Objects_And_Classes/NPC_Object_Script.gd" id="1_0f0iw"]
+[ext_resource type="Script" uid="uid://bh8b0yk1h1hr3" path="res://Scripts/Objects_And_Classes/Shopkeeper_Script.gd" id="1_0f0iw"]
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_tal5p"]
 size = Vector2(21.5, 43)

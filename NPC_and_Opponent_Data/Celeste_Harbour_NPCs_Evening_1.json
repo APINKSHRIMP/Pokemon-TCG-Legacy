@@ -3,11 +3,10 @@
 	{
 	  "name": "Old guy neighbour eve 1",
 	  "overworld_sprite": "gentleman",
-	  "npc_type": "gift",
 	  "gift_type": "card",
 	  "gift_value": "basep-1",
 	  "text": "I found this card on the floor while I was tidying up. I've been here all day and nobody has claimed it so you might as well take it!",
-	  "post_gift_text": "Did you get chance to visit the Card Mart yet? I normally visit the pier in the evening but I'm all worn out from cleaning up today. So I think I will just go to bed early tonight.",
+	  "repeat_text": "Did you get chance to visit the Card Mart yet? I normally visit the pier in the evening but I'm all worn out from cleaning up today. So I think I will just go to bed early tonight.",
 	  "position": {"x": -375, "y": 1625},
 	  "pattern": "idle_down",
 	  "wander_radius": 65
@@ -15,17 +14,14 @@
 	{
 	  "name": "Old lady on bench eve 1",
 	  "overworld_sprite": "gentlelady",
-	  "npc_type": "text_only",
 	  "text": "It's getting late already, oh my how the days fly when you're at my age. After a long day, make sure you always go to bed and get a good nights rest!",
 	  "repeat_text": "Nothing beats going to bed early and having a good nights sleep. I'm getting tired just thinking about going to bed.",
 	  "position": {"x": -827, "y": 1962},
 	  "pattern": "idle_down"
 	},
-	
 	{
 	  "name": "Policeman blocking beach BL",
 	  "overworld_sprite": "police",
-	  "npc_type": "text_only",
 	  "text": "There's still some Sharepedo reported in the water so we can't let anyone through yet.",
 	  "repeat_text": "Can't let you through yet until the Sharepedo are gone. It should be safe in the morning, why don't you have an early night!",
 	  "position": {"x": -545, "y": 2010},
@@ -34,7 +30,6 @@
 	{
 	  "name": "Car park guy 1",
 	  "overworld_sprite": "security",
-	  "npc_type": "text_only",
 	  "text": "I'm the parking warden for the Celeste Harbour car park but all these bikers have decided to take it over. I can't get rid of them by myself but the police are protecting the beach so I'm on my own",
 	  "repeat_text": "It's already so late and the Bikers aren't showing any sign of leaving. I can't go home until they leave they might cause some serious damage.",
 	  "position": {"x": 628, "y": 1190},
@@ -43,7 +38,6 @@
 	{
 	  "name": "badman 1",
 	  "overworld_sprite": "badman",
-	  "npc_type": "text_only",
 	  "text": "Heh, scram kid. We're having our biker gang meetup here so get lost.",
 	  "repeat_text": "Didn't you hear me? Get lost kid.",
 	  "position": {"x": 680, "y": 1695},
@@ -52,7 +46,6 @@
 	{
 	  "name": "badman 2",
 	  "overworld_sprite": "badman",
-	  "npc_type": "text_only",
 	  "text": "We're called the Cool Guy Biker Gang. We're the coolest in the world..... What are you giggling at loser?",
 	  "repeat_text": "Do you think something's funny??",
 	  "position": {"x": 680, "y": 1735},
@@ -186,7 +179,7 @@
 	  "cash_reward": "75",
 	  "prize_cards": 4
 	},
-		{
+	{
 	  "name": "Painter_Jericho",
 	  "overworld_sprite": "artist",
 	  "battle_sprite": "artist",
@@ -203,6 +196,6 @@
 	  "cash_reward": "50",
 	  "card_reward": "base1-27, base1-27",
 	  "prize_cards": 2
-	},
+	}
   ]
 }

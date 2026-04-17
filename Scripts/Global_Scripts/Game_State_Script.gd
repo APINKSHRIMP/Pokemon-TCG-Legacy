@@ -155,6 +155,13 @@ func load_progress():
 	if not progress.has("date"):
 		progress["date"] = 1
 
+	if not progress.has("shop_state"):
+		progress["shop_state"] = "initial"
+	if not progress.has("shop_free_packs_given"):
+		progress["shop_free_packs_given"] = false
+	if not progress.has("player_collected_shop_starter_set"):
+		progress["player_collected_shop_starter_set"] = false
+
 	# Migrate old met_npcs dict to npc_interactions array
 	if not progress.has("npc_interactions"):
 		var old = progress.get("met_npcs", {})

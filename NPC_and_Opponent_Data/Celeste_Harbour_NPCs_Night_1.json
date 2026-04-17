@@ -1,9 +1,8 @@
 {
-  "npcs": [	
+  "npcs": [
 	{
 	  "name": "Policeman blocking beach BL",
 	  "overworld_sprite": "police",
-	  "npc_type": "text_only",
 	  "text": "There's still some Sharepedo reported in the water so we can't let anyone through yet.",
 	  "repeat_text": "Can't let you through yet until the Sharepedo are gone. It should be safe in the morning, why don't you have an early night!",
 	  "position": {"x": -545, "y": 2010},
@@ -12,7 +11,6 @@
 	{
 	  "name": "Car park guy 1",
 	  "overworld_sprite": "security",
-	  "npc_type": "text_only",
 	  "text": "I'm the parking warden for the Celeste Harbour car park but all these bikers have decided to take it over. I can't get rid of them by myself but the police are protecting the beach so I'm on my own",
 	  "repeat_text": "I should have finished my shift and should be in bed by now but I can't go home until these bikers leave. You should head home too you know?",
 	  "position": {"x": 628, "y": 1190},
@@ -21,7 +19,6 @@
 	{
 	  "name": "badman 1",
 	  "overworld_sprite": "badman",
-	  "npc_type": "text_only",
 	  "text": "Heh, scram kid. We're having our biker gang meetup here so get lost.",
 	  "repeat_text": "Isn't it a little late for a loser like you to be wandering about?",
 	  "position": {"x": 680, "y": 1695},
@@ -30,7 +27,6 @@
 	{
 	  "name": "badman 2",
 	  "overworld_sprite": "badman",
-	  "npc_type": "text_only",
 	  "text": "We're called the Cool Guy Biker Gang. We're the coolest in the world..... What are you giggling at loser?",
 	  "repeat_text": "Why don't you go home before something bad happens?",
 	  "position": {"x": 680, "y": 1735},
@@ -108,6 +104,6 @@
 	  "cash_reward": "50",
 	  "card_reward": "base1-27, base1-27",
 	  "prize_cards": 2
-	},
+	}
   ]
 }

@@ -13,13 +13,13 @@ func _ready():
 	# Read time and date from player progress
 	var time_of_day: String = GameState.get_time()
 	var date: int = GameState.get_date()
-	if date >= 1:
-		$"TILE_MAPS/PLAYER ROAD BLOCKS 1/Cone Blocks".visible = false
-	
+
 	# Build NPC JSON path: e.g. "Celeste_Harbour_NPCs_Evening_2.json"
 	NPC_JSON_PATH = "res://NPC_and_Opponent_Data/Celeste_Harbour_NPCs_" + time_of_day + "_" + str(date) + ".json"
 
 	set_time_of_day(time_of_day)
+
+	apply_date_events(date)
 
 	SoundManagerScript.play_bgm(BGM_PATH, true)
 
@@ -65,6 +65,15 @@ func set_time_of_day(time: String) -> void:
 			$LIGHTS.visible = true
 
 	_apply_tileset($TILE_MAPS, tileset)
+
+func apply_date_events(date: int) -> void:
+	if date == 1:
+		# Player is blocked on day 1
+		$"TILE_MAPS/PLAYER ROAD BLOCKS 1/Cone Blocks".visible = false
+		
+	if date <= 3:
+		$"TILE_MAPS/JETTY2/SSANNE".visible = false
+	
 
 func _apply_tileset(node: Node, tileset: TileSet) -> void:
 	if node is TileMapLayer:
