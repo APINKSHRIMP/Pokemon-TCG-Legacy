@@ -29,6 +29,12 @@ func _apply_moving_in_visibility():
 			if layer is TileMapLayer:
 				layer.visible = layer.name != "Moving In"
 
+func _input(event: InputEvent) -> void:
+	if event is InputEventKey and event.pressed and event.keycode == KEY_ESCAPE:
+		SoundManagerScript.stop_bgm()
+		get_tree().change_scene_to_file("res://Scenes/Main_Menu_Scenes/Main_Menu_Scene.tscn")
+
+
 func _on_door_entered(body: Node2D):
 	if not body.is_in_group("player"):
 		return

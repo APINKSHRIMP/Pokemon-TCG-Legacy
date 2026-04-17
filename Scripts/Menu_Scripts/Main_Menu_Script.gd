@@ -30,7 +30,7 @@ func _ready() -> void:
 	audio_player.play()
 
 	# Check if deck mode should be locked
-	var deck_locked = not GameState.progress.get("player_collected_shop_starter_set", false)
+	var deck_locked = not GameState.progress.get("player_collected_starter_box", false)
 
 	# Wait one frame so Godot finishes layout and rect.size is correct
 	await get_tree().process_frame

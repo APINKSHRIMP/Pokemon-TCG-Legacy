@@ -105,17 +105,18 @@ func _on_shop_interact(npc: Node) -> bool:
 	if not collected_starter:
 		var player_cash = GameState.get_cash()
 		if player_cash < STARTER_SET_COST:
-			MapManager._show_message_with_ok("You need $" + str(STARTER_SET_COST) + " for this box. You don't have enough cash!")
+			MapManager._show_message_with_ok("Oh a new customer at just the right time!. The Mayor hit me with a genius new tariff so I can't afford my import of stock, so I'm discounted this collection of cards you can have for just $" + str(STARTER_SET_COST) + ". If you come back with the cash you can get a great deal but come back quick so you don't miss out!")
 			return true
 		# Show yes/no prompt for starter set purchase
-		MapManager._show_message_with_choices("I need $" + str(STARTER_SET_COST) + " for this box")
+		MapManager._show_message_with_choices("Do you want this huge bargain collection of cards for $" + str(STARTER_SET_COST) + "? It's a GREAT deal, I'm selling this at a huge loss. I have an order of packs waiting delivery... as soon as I can pay off that stupid.. uh, I mean, genius tariff. (You'd be doing me a huge favour here kid)")
+		
 		# Override yes button to our starter purchase logic
 		_connect_starter_purchase()
 		return true
 
 	# Case 2: Starter collected but no packs unlocked
 	if packs_unlocked.is_empty():
-		MapManager._show_message_with_ok("I have no packs")
+		MapManager._show_message_with_ok("Thanks for helping me out here, I've used your additional funds to pay off the remaining balance on the import so come back in the morning and I'll have my full stock back in. I'll even throw in a free pack or two just for you for helping me out!")
 		return true
 
 	# Case 3: Starter collected and packs exist — default shop flow
@@ -169,18 +170,24 @@ func _on_starter_yes():
 
 	# Update cash display
 	_update_cash_label()
-
+	
 	# Check if time should advance to Night (player may have already beaten 4 opponents in Evening 1)
 	if GameState.get_current_defeated() == 4 and GameState.get_time() == "Evening" and GameState.get_date() == 1:
 		GameState.advance_time("Night")
 
 	# Show confirmation message
 	MapManager._hide_message()
-	MapManager._show_message_with_ok("Thanks for buying the box!")
+	MapManager._show_message_with_ok("Here you go, all yours. There was some good stuff in there if you've not collected a lot already so you might want to add those new cards to your deck. (Press the escape key and then go to Cards & Deck to amend your deck)")
 
 func _on_starter_no():
 	_restore_yes_connection()
 	MapManager._on_no_pressed()
+
+func _input(event: InputEvent) -> void:
+	if event is InputEventKey and event.pressed and event.keycode == KEY_ESCAPE:
+		SoundManagerScript.stop_bgm()
+		get_tree().change_scene_to_file("res://Scenes/Main_Menu_Scenes/Main_Menu_Scene.tscn")
+
 
 # ============================================================
 # MOVING IN VISIBILITY

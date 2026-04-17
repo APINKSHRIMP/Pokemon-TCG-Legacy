@@ -13,7 +13,9 @@ func _ready():
 	# Read time and date from player progress
 	var time_of_day: String = GameState.get_time()
 	var date: int = GameState.get_date()
-
+	if date >= 1:
+		$"TILE_MAPS/PLAYER ROAD BLOCKS 1/Cone Blocks".visible = false
+	
 	# Build NPC JSON path: e.g. "Celeste_Harbour_NPCs_Evening_2.json"
 	NPC_JSON_PATH = "res://NPC_and_Opponent_Data/Celeste_Harbour_NPCs_" + time_of_day + "_" + str(date) + ".json"
 

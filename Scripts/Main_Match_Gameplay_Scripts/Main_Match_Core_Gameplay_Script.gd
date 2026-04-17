@@ -1617,7 +1617,7 @@ func load_deck_from_file(deck_file_path: String) -> Array:
 func setup_player():
 	
 	# Load the players CURRENT deck from saved files
-	var player_deck_path = "res://Player_Data/Player_Decks/"+player_deck_name+".json"
+	var player_deck_path = "user://Player_Decks/"+player_deck_name+".json"
 	
 	# Load and shuffle deck
 	player_deck = load_deck_from_file(player_deck_path)

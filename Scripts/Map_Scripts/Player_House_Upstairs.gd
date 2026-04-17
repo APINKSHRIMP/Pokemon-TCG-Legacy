@@ -1,7 +1,7 @@
 extends Node2D
 
 # ── PLACEHOLDER: Replace with actual 60 card IDs ──
-const STARTER_BOX_CARDS = "base1-43, base1-43, base1-43, base1-43, base1-47, base1-47, base1-18, base1-26, base1-26, base1-60, base1-60, base1-53, base1-53, base1-47, base1-47, base1-27, base1-27, base1-52, base1-52, base1-52, base1-52, base1-61, base1-61,base1-61,base1-61,base1-67,base1-67,base1-67,base1-67,base1-88,base1-91,base1-94,base1-94"
+const STARTER_BOX_CARDS = "base1-43, base1-43, base1-43, base1-43, base1-47, base1-47, base1-47, base1-47, base1-27, base1-27, base1-52, base1-52, base1-52, base1-52, base1-61, base1-61,base1-61,base1-61,base1-67,base1-67,base1-67,base1-67,base1-88,base1-91,base1-94,base1-94"
 
 var player_near_box: bool = false
 
@@ -50,6 +50,12 @@ func _process(_delta):
 		GameState.save_progress()
 		GameState.give_cards(STARTER_BOX_CARDS)
 		MapManager._show_message_with_ok("Pokemon Starter deck acquired!")
+
+func _input(event: InputEvent) -> void:
+	if event is InputEventKey and event.pressed and event.keycode == KEY_ESCAPE:
+		SoundManagerScript.stop_bgm()
+		get_tree().change_scene_to_file("res://Scenes/Main_Menu_Scenes/Main_Menu_Scene.tscn")
+
 
 func _on_door_entered(body: Node2D):
 	if not body.is_in_group("player"):

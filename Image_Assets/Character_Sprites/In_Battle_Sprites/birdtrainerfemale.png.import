@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://gpep0gkj3tq2"
-path="res://.godot/imported/birdtrainer.png-2bab4c743a1a2098e0384f00f1fc1c7e.ctex"
+uid="uid://by0d18tskyo1e"
+path="res://.godot/imported/birdtrainerfemale.png-250b57203bfee80d18eedbe1c7106f14.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://Image_Assets/Character_Sprites/In_Battle_Sprites/birdtrainer.png"
-dest_files=["res://.godot/imported/birdtrainer.png-2bab4c743a1a2098e0384f00f1fc1c7e.ctex"]
+source_file="res://Image_Assets/Character_Sprites/In_Battle_Sprites/birdtrainerfemale.png"
+dest_files=["res://.godot/imported/birdtrainerfemale.png-250b57203bfee80d18eedbe1c7106f14.ctex"]
 
 [params]
 

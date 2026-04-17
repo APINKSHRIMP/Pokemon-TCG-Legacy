@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://k0wd7ht5caxn"
-path="res://.godot/imported/sprite_sheet_swimmerrmale.png-edb33285377a11f7bfa27a0b4e56b3b9.ctex"
+uid="uid://gm10ckw1772w"
+path="res://.godot/imported/maintenance.png-605add7ed3374b0bfaa93d7936beca92.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://Image_Assets/Character_Sprites/Overworld_Sprites/sprite_sheet_swimmerrmale.png"
-dest_files=["res://.godot/imported/sprite_sheet_swimmerrmale.png-edb33285377a11f7bfa27a0b4e56b3b9.ctex"]
+source_file="res://Image_Assets/Character_Sprites/In_Battle_Sprites/maintenance.png"
+dest_files=["res://.godot/imported/maintenance.png-605add7ed3374b0bfaa93d7936beca92.ctex"]
 
 [params]
 

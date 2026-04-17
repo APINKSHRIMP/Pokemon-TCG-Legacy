@@ -42,11 +42,11 @@
 		},
 		{
 			"card_id": "base1-11",
-			"owned": 1.0
+			"owned": 0.0
 		},
 		{
 			"card_id": "base1-12",
-			"owned": 3.0
+			"owned": 0.0
 		},
 		{
 			"card_id": "base1-13",
@@ -54,7 +54,7 @@
 		},
 		{
 			"card_id": "base1-14",
-			"owned": 1.0
+			"owned": 0.0
 		},
 		{
 			"card_id": "base1-15",
@@ -62,11 +62,11 @@
 		},
 		{
 			"card_id": "base1-16",
-			"owned": 1.0
+			"owned": 0.0
 		},
 		{
 			"card_id": "base1-17",
-			"owned": 1.0
+			"owned": 0.0
 		},
 		{
 			"card_id": "base1-18",
@@ -82,7 +82,7 @@
 		},
 		{
 			"card_id": "base1-21",
-			"owned": 1.0
+			"owned": 0.0
 		},
 		{
 			"card_id": "base1-22",
@@ -90,7 +90,7 @@
 		},
 		{
 			"card_id": "base1-23",
-			"owned": 1.0
+			"owned": 0.0
 		},
 		{
 			"card_id": "base1-24",
@@ -106,7 +106,7 @@
 		},
 		{
 			"card_id": "base1-27",
-			"owned": 2.0
+			"owned": 0.0
 		},
 		{
 			"card_id": "base1-28",
@@ -114,11 +114,11 @@
 		},
 		{
 			"card_id": "base1-29",
-			"owned": 1.0
+			"owned": 0.0
 		},
 		{
 			"card_id": "base1-30",
-			"owned": 1.0
+			"owned": 0.0
 		},
 		{
 			"card_id": "base1-31",
@@ -130,27 +130,27 @@
 		},
 		{
 			"card_id": "base1-33",
-			"owned": 2.0
+			"owned": 0.0
 		},
 		{
 			"card_id": "base1-34",
-			"owned": 2.0
+			"owned": 0.0
 		},
 		{
 			"card_id": "base1-35",
-			"owned": 4.0
+			"owned": 0.0
 		},
 		{
 			"card_id": "base1-36",
-			"owned": 1.0
+			"owned": 0.0
 		},
 		{
 			"card_id": "base1-37",
-			"owned": 1.0
+			"owned": 0.0
 		},
 		{
 			"card_id": "base1-38",
-			"owned": 2.0
+			"owned": 0.0
 		},
 		{
 			"card_id": "base1-39",
@@ -158,11 +158,11 @@
 		},
 		{
 			"card_id": "base1-40",
-			"owned": 2.0
+			"owned": 0.0
 		},
 		{
 			"card_id": "base1-41",
-			"owned": 3.0
+			"owned": 0.0
 		},
 		{
 			"card_id": "base1-42",
@@ -170,11 +170,11 @@
 		},
 		{
 			"card_id": "base1-43",
-			"owned": 3.0
+			"owned": 0.0
 		},
 		{
 			"card_id": "base1-44",
-			"owned": 1.0
+			"owned": 0.0
 		},
 		{
 			"card_id": "base1-45",
@@ -182,11 +182,11 @@
 		},
 		{
 			"card_id": "base1-46",
-			"owned": 1.0
+			"owned": 0.0
 		},
 		{
 			"card_id": "base1-47",
-			"owned": 3.0
+			"owned": 0.0
 		},
 		{
 			"card_id": "base1-48",
@@ -194,11 +194,11 @@
 		},
 		{
 			"card_id": "base1-49",
-			"owned": 4.0
+			"owned": 0.0
 		},
 		{
 			"card_id": "base1-50",
-			"owned": 1.0
+			"owned": 0.0
 		},
 		{
 			"card_id": "base1-51",
@@ -206,39 +206,39 @@
 		},
 		{
 			"card_id": "base1-52",
-			"owned": 2.0
+			"owned": 0.0
 		},
 		{
 			"card_id": "base1-53",
-			"owned": 7.0
+			"owned": 0.0
 		},
 		{
 			"card_id": "base1-54",
-			"owned": 4.0
+			"owned": 0.0
 		},
 		{
 			"card_id": "base1-55",
-			"owned": 2.0
+			"owned": 0.0
 		},
 		{
 			"card_id": "base1-56",
-			"owned": 2.0
+			"owned": 0.0
 		},
 		{
 			"card_id": "base1-57",
-			"owned": 1.0
+			"owned": 0.0
 		},
 		{
 			"card_id": "base1-58",
-			"owned": 1.0
+			"owned": 0.0
 		},
 		{
 			"card_id": "base1-59",
-			"owned": 2.0
+			"owned": 0.0
 		},
 		{
 			"card_id": "base1-60",
-			"owned": 2.0
+			"owned": 0.0
 		},
 		{
 			"card_id": "base1-61",
@@ -246,15 +246,15 @@
 		},
 		{
 			"card_id": "base1-62",
-			"owned": 3.0
+			"owned": 0.0
 		},
 		{
 			"card_id": "base1-63",
-			"owned": 4.0
+			"owned": 0.0
 		},
 		{
 			"card_id": "base1-64",
-			"owned": 4.0
+			"owned": 0.0
 		},
 		{
 			"card_id": "base1-65",
@@ -262,15 +262,15 @@
 		},
 		{
 			"card_id": "base1-66",
-			"owned": 3.0
+			"owned": 0.0
 		},
 		{
 			"card_id": "base1-67",
-			"owned": 1.0
+			"owned": 0.0
 		},
 		{
 			"card_id": "base1-68",
-			"owned": 4.0
+			"owned": 0.0
 		},
 		{
 			"card_id": "base1-69",
@@ -286,11 +286,11 @@
 		},
 		{
 			"card_id": "base1-72",
-			"owned": 3.0
+			"owned": 0.0
 		},
 		{
 			"card_id": "base1-73",
-			"owned": 1.0
+			"owned": 0.0
 		},
 		{
 			"card_id": "base1-74",
@@ -298,7 +298,7 @@
 		},
 		{
 			"card_id": "base1-75",
-			"owned": 2.0
+			"owned": 0.0
 		},
 		{
 			"card_id": "base1-76",
@@ -306,7 +306,7 @@
 		},
 		{
 			"card_id": "base1-77",
-			"owned": 3.0
+			"owned": 0.0
 		},
 		{
 			"card_id": "base1-78",
@@ -322,7 +322,7 @@
 		},
 		{
 			"card_id": "base1-81",
-			"owned": 3.0
+			"owned": 0.0
 		},
 		{
 			"card_id": "base1-82",
@@ -330,11 +330,11 @@
 		},
 		{
 			"card_id": "base1-83",
-			"owned": 2.0
+			"owned": 0.0
 		},
 		{
 			"card_id": "base1-84",
-			"owned": 1.0
+			"owned": 0.0
 		},
 		{
 			"card_id": "base1-85",
@@ -342,7 +342,7 @@
 		},
 		{
 			"card_id": "base1-86",
-			"owned": 2.0
+			"owned": 0.0
 		},
 		{
 			"card_id": "base1-87",
@@ -350,7 +350,7 @@
 		},
 		{
 			"card_id": "base1-88",
-			"owned": 3.0
+			"owned": 0.0
 		},
 		{
 			"card_id": "base1-89",
@@ -362,27 +362,27 @@
 		},
 		{
 			"card_id": "base1-91",
-			"owned": 5.0
+			"owned": 0.0
 		},
 		{
 			"card_id": "base1-92",
-			"owned": 1.0
+			"owned": 0.0
 		},
 		{
 			"card_id": "base1-93",
-			"owned": 2.0
+			"owned": 0.0
 		},
 		{
 			"card_id": "base1-94",
-			"owned": 5.0
+			"owned": 0.0
 		},
 		{
 			"card_id": "base1-95",
-			"owned": 4.0
+			"owned": 0.0
 		},
 		{
 			"card_id": "base1-96",
-			"owned": 3.0
+			"owned": 0.0
 		}
 	],
 	"set_unlocked": true
