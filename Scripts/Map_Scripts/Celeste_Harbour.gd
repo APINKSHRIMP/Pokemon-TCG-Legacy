@@ -69,8 +69,10 @@ func set_time_of_day(time: String) -> void:
 func apply_date_events(date: int) -> void:
 	if date == 1:
 		# Player is blocked on day 1
+		$"TILE_MAPS/PLAYER ROAD BLOCKS 1/Cone Blocks".visible = true
+	else:
 		$"TILE_MAPS/PLAYER ROAD BLOCKS 1/Cone Blocks".visible = false
-		
+						
 	if date <= 3:
 		$"TILE_MAPS/JETTY2/SSANNE".visible = false
 	

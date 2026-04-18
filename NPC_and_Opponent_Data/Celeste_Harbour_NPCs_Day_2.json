@@ -5,7 +5,10 @@
 	  "overworld_sprite": "gentleman",
 	  "text": "Good morning! I'm going to spend my day here I think. The sun is warm, the wind is calm and I have nothing else to do!",
 	  "repeat_text": "I'm glad the beach has reopened today, the great Sharpedo migration is an amazing sight to behold, if not a scary one. It'll be a long time before they're back.",
-	  "position": {"x": -575, "y": 1962},
+	  "position": {
+		"x": -575,
+		"y": 1962
+	  },
 	  "pattern": "idle_down"
 	},
 	{
@@ -13,7 +16,21 @@
 	  "overworld_sprite": "maintenance",
 	  "text": "Sorry, the forest is closed off while we do some essential maintenance. We had even more wind than usual last night resulting in a lot of falling branches causing a safety hazard.",
 	  "repeat_text": "Sorry but it's going to take a least a day or maybe two. Once we've cleared all the loose branches and removed the fallen trees it'll be safe for people to enter again.",
-	  "position": {"x": 900, "y": 790},
+	  "position": {
+		"x": 900,
+		"y": 790
+	  },
+	  "pattern": "idle_down"
+	},
+	{
+	  "name": "Car park guy 1",
+	  "overworld_sprite": "security",
+	  "text": "I'm the parking warden for the Celeste Harbour car park. Yesterday we had a massive issue with a biker gang meeting here in the car park, it was incredibly stressful!!",
+	  "repeat_text": "I'm glad the bikers finally left, everything is back to normal and my job is a lot easier now. The car park shuts at night so if you play the Pokemon TCG I'll be around for a game.",
+	  "position": {
+		"x": 628,
+		"y": 1190
+	  },
 	  "pattern": "idle_down"
 	},
 	{
@@ -21,8 +38,12 @@
 	  "overworld_sprite": "police",
 	  "text": "All the Sharpedo are gone so it's safe to go to the beach again. I'm patrolling the area just to make sure.",
 	  "repeat_text": "I've been doing this job for long enough to know it's safe now but it's always good to show face for reassurance.",
-	  "position": {"x": 0, "y": 2020},
+	  "position": {
+		"x": 0,
+		"y": 2020
+	  },
 	  "pattern": "patrol_line",
+	  "patrol_speed": 40.0,
 	  "patrol_distance": 700,
 	  "patrol_axis": "horizontal"
 	},
@@ -31,8 +52,12 @@
 	  "overworld_sprite": "richboy",
 	  "text": "My girlfriend is out working at the juice bar today so I'm spending the morning running errands",
 	  "repeat_text": "If you go to buy some juice today say hello to my girlfriend for me.",
-	  "position": {"x": -800, "y": 1200},
+	  "position": {
+		"x": -690,
+		"y": 1270
+	  },
 	  "pattern": "random_wander",
+	  "patrol_speed": 60.0,
 	  "wander_radius": 65
 	},
 	{
@@ -40,7 +65,10 @@
 	  "overworld_sprite": "richgirl",
 	  "text": "Oh hey! I help run the juicebar a couple days a week, it's an easy job and at least I get to spend my day at the beach",
 	  "repeat_text": "Juice is good.",
-	  "position": {"x": 1030, "y": 2190},
+	  "position": {
+		"x": 1030,
+		"y": 2190
+	  },
 	  "pattern": "idle_down"
 	},
 	{
@@ -48,7 +76,10 @@
 	  "overworld_sprite": "lass",
 	  "text": "Mmmmmmmmmm............ Have you tried the juice here? Freshly squeezed, straight from the fruit and chilled to perfection.",
 	  "repeat_text": "...... Nothing beats an ice cold delicious juice on the beach!",
-	  "position": {"x": 1112, "y": 2233},
+	  "position": {
+		"x": 1112,
+		"y": 2233
+	  },
 	  "pattern": "idle_left"
 	},
 	{
@@ -56,7 +87,10 @@
 	  "overworld_sprite": "lass",
 	  "text": "I get the juice from here pretty much every day",
 	  "repeat_text": "I would be devastated if this place closed",
-	  "position": {"x": 858, "y": 2399},
+	  "position": {
+		"x": 858,
+		"y": 2399
+	  },
 	  "pattern": "idle_right"
 	},
 	{
@@ -64,7 +98,10 @@
 	  "overworld_sprite": "gentlelady",
 	  "text": "Sometimes you get a bonus coin as a little prize in the bottom of your cup",
 	  "repeat_text": "I normally find a prize coin after 2 or 3 cups",
-	  "position": {"x": 904, "y": 2233},
+	  "position": {
+		"x": 904,
+		"y": 2233
+	  },
 	  "pattern": "idle_left"
 	},
 	{
@@ -72,7 +109,10 @@
 	  "overworld_sprite": "fisherman",
 	  "text": "Some days if we can't catch any fish we'll come here for a juice instead",
 	  "repeat_text": "You know what they say, you can take a fish to water but you can't make it drink!..... I think that's what they say?",
-	  "position": {"x": 999, "y": 2314},
+	  "position": {
+		"x": 999,
+		"y": 2314
+	  },
 	  "pattern": "idle_left"
 	},
 	{
@@ -80,7 +120,10 @@
 	  "overworld_sprite": "fisherman",
 	  "text": "Some days if we can't catch any fish we'll come here for a juice instead",
 	  "repeat_text": "You know what they say, you can take a fish to water but you can't make it drink!..... I think that's what they say?",
-	  "position": {"x": 950, "y": 2314},
+	  "position": {
+		"x": 950,
+		"y": 2314
+	  },
 	  "pattern": "idle_right"
 	},
 	{
@@ -88,11 +131,15 @@
 	  "overworld_sprite": "sailor",
 	  "gift_type": "costume",
 	  "gift_value": "sailor",
-	  "text": "*huff* *huff* it's a hard graft looking after this dock. We don't have enough hard workers... do you fancy helping?",
+	  "text": "*huff* *huff* it's a hard graft looking after this dock. We don't have enough hard workers... Here, take this uniform. I have a lot spare because nobody wants to help out around here",
 	  "repeat_text": "We get a lot of ships come through, it's a really busy harbour",
-	  "position": {"x": 900, "y": 3210},
+	  "position": {
+		"x": 500,
+		"y": 3110
+	  },
 	  "pattern": "patrol_line",
-	  "patrol_distance": 300,
+	  "patrol_speed": 80.0,
+	  "patrol_distance": 500,
 	  "patrol_axis": "horizontal"
 	},
 	{
@@ -102,7 +149,10 @@
 	  "gift_value": "base1-1, base1-2",
 	  "text": "Hoh Hoh, I imagine you're new in town ey? We're the 3 Super Elders of the harbour. If you are able to win against us you can gain access to the Gym Hero Challenge.",
 	  "repeat_text": "You'll need some better cards if you have a hope of beating us. Come back in a few days when you're more ready.",
-	  "position": {"x": 2300, "y": 1200},
+	  "position": {
+		"x": 2300,
+		"y": 1200
+	  },
 	  "pattern": "idle_down"
 	}
   ],
@@ -113,7 +163,10 @@
 	  "battle_sprite": "swimmerfemale",
 	  "music": "surrounded_sea",
 	  "deck": "poligong's_wrath",
-	  "position": {"x": 500, "y": 2630},
+	  "position": {
+		"x": 500,
+		"y": 2630
+	  },
 	  "pattern": "idle_cycle",
 	  "meet_text": "I love the water, it's so calm and warm but my cards always get wet! I need to dry them off",
 	  "rematch_text": "I can always take a break for another match",
@@ -130,7 +183,10 @@
 	  "battle_sprite": "firebreather",
 	  "music": "normal_battle",
 	  "deck": "Hot_Air",
-	  "position": {"x": 1159, "y": 2384},
+	  "position": {
+		"x": 1159,
+		"y": 2384
+	  },
 	  "pattern": "idle_right",
 	  "meet_text": "I've been breathing that much fire that I needed an ice cold bev to cool my mouth down, but I'm ready for a match if you want.",
 	  "rematch_text": "I'm fired up and ready for another match if you want.",
@@ -142,12 +198,35 @@
 	  "prize_cards": 4
 	},
 	{
+	  "name": "Firebreather_Kenneth",
+	  "overworld_sprite": "firebreather",
+	  "battle_sprite": "firebreather",
+	  "music": "normal_battle",
+	  "deck": "Quadrapedal_Firestarters",
+	  "position": {
+		"x": 1159,
+		"y": 2384
+	  },
+	  "pattern": "idle_right",
+	  "meet_text": "I'm so used to hot drinks that it's weird to drink something nice and cold",
+	  "rematch_text": "If you want another match then let's goooooo",
+	  "first_win_text": "I have too many burns to battle well",
+	  "rematch_win_text": "I'll just stick to the firebreathing from now on, I'm good at that.",
+	  "loss_text": "Can't burn me out!",
+	  "coin_reward": "coin_arcanine_red",
+	  "cash_reward": "100",
+	  "prize_cards": 4
+	},
+	{
 	  "name": "Beach_Kid_Timothy",
 	  "overworld_sprite": "tuberboy",
 	  "battle_sprite": "tuberboy",
 	  "music": "normal_battle",
 	  "deck": "I_Love_sand_and_sea",
-	  "position": {"x": 450, "y": 2380},
+	  "position": {
+		"x": 450,
+		"y": 2380
+	  },
 	  "pattern": "idle_right",
 	  "meet_text": "I love the beach! I love the sand! I love building sandcastles! I love playing the Pokemon TCG!",
 	  "rematch_text": "I could build sandcastles and play Pokemon all day!",
@@ -163,10 +242,13 @@
 	  "overworld_sprite": "tubergirl",
 	  "battle_sprite": "tubergirl",
 	  "music": "normal_battle",
-	  "deck": "Beachy_Fun",
-	  "position": {"x": 480, "y": 2380},
+	  "deck": "Pika_and_friends",
+	  "position": {
+		"x": 480,
+		"y": 2380
+	  },
 	  "pattern": "idle_left",
-	  "meet_text": "I heard there's a scary Pokemon called Sandyghast. They sound scary and I don't like scary Pokemon",
+	  "meet_text": "I heard there's a scary Pokemon called Sandyghast. They sound scary and I don't like scary Pokemon, I only like cute pokemon!!",
 	  "rematch_text": "Yes let's play again!",
 	  "first_win_text": "You haven't seen a Sandyghast have you?",
 	  "rematch_win_text": "If you see a Sandyghast please let me know!!",
@@ -181,8 +263,12 @@
 	  "battle_sprite": "swimmermale",
 	  "music": "normal_battle",
 	  "deck": "I_See_Sea",
-	  "position": {"x": -100, "y": 2690},
+	  "position": {
+		"x": -100,
+		"y": 2690
+	  },
 	  "pattern": "patrol_line",
+	  "patrol_speed": 40.0,
 	  "patrol_distance": 250,
 	  "patrol_axis": "horizontal",
 	  "meet_text": "I'm training for a Quadrathlon. It's a 1000m Swim, Bike, Run and then 100 TCG matches!",
@@ -200,7 +286,10 @@
 	  "battle_sprite": "birdtrainermale",
 	  "music": "normal_battle",
 	  "deck": "Lil_Birbs",
-	  "position": {"x": 2030, "y": 2240},
+	  "position": {
+		"x": 2030,
+		"y": 2240
+	  },
 	  "pattern": "idle_random",
 	  "meet_text": "These Palms attract a lot of Bird Pokemon so its a good spot to watch them",
 	  "rematch_text": "Looking for more Birds round here?",
@@ -217,8 +306,12 @@
 	  "battle_sprite": "bugcatcher",
 	  "music": "chilled_battle",
 	  "deck": "I_love_bugs!",
-	  "position": {"x": 1500, "y": 2300},
+	  "position": {
+		"x": 1500,
+		"y": 2300
+	  },
 	  "pattern": "patrol_line",
+	  "patrol_speed": 20.0,
 	  "patrol_distance": 180,
 	  "patrol_axis": "horizontal",
 	  "meet_text": "Some people hate bugs but I love them! Do you love bugs too?",
@@ -237,7 +330,10 @@
 	  "battle_sprite": "bugcatcher",
 	  "music": "normal_battle",
 	  "deck": "Creepy_Crawlies",
-	  "position": {"x": 2167, "y": 2305},
+	  "position": {
+		"x": 2167,
+		"y": 2305
+	  },
 	  "pattern": "idle_up",
 	  "meet_text": "There are a lot of critters crawling around in these roots.",
 	  "rematch_text": "I've just seen a HUGE bug running around",
@@ -254,7 +350,10 @@
 	  "battle_sprite": "psychicfemale",
 	  "music": "normal_battle",
 	  "deck": "Meditation_meditation",
-	  "position": {"x": 2880, "y": 3110},
+	  "position": {
+		"x": 2880,
+		"y": 3110
+	  },
 	  "pattern": "idle_right",
 	  "meet_text": "This dock is always so quiet, it's a great spot to meditate and to battle",
 	  "rematch_text": "I've been meditating a lot since our last match",
@@ -271,7 +370,10 @@
 	  "battle_sprite": "sailor",
 	  "music": "normal_battle",
 	  "deck": "hoist_the_anchor",
-	  "position": {"x": 2040, "y": 3110},
+	  "position": {
+		"x": 2040,
+		"y": 3110
+	  },
 	  "pattern": "idle_random",
 	  "meet_text": "We're preparing for the arrival of the SS Anne so there's not much to do until then",
 	  "rematch_text": "There's still time before the SS Anne arrives",
@@ -288,7 +390,10 @@
 	  "battle_sprite": "battlegirl",
 	  "music": "normal_battle",
 	  "deck": "Brickbreaker",
-	  "position": {"x": 2650, "y": 2400},
+	  "position": {
+		"x": 2650,
+		"y": 2400
+	  },
 	  "pattern": "idle_cycle",
 	  "meet_text": "This beach is a great spot to train both my martial arts and my card skills",
 	  "rematch_text": "Want to join in with my training?",

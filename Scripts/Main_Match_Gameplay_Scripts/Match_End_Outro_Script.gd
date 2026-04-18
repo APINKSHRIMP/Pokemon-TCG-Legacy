@@ -228,7 +228,7 @@ func build_rewards() -> void:
 	
 	var cash_label_text = str(cash_amount)
 	if is_first_win:
-		cash_label_text += " (First Win x3!)"
+		cash_label_text += " (First Win ×3!)"
 	var cash_row = _create_reward_row(cash_label_text, pokedollar_icon_tex, row_index)
 	reward_rows.append(cash_row)
 	row_index += 1

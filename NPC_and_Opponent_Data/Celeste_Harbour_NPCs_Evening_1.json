@@ -7,7 +7,10 @@
 	  "gift_value": "basep-1",
 	  "text": "I found this card on the floor while I was tidying up. I've been here all day and nobody has claimed it so you might as well take it!",
 	  "repeat_text": "Did you get chance to visit the Card Mart yet? I normally visit the pier in the evening but I'm all worn out from cleaning up today. So I think I will just go to bed early tonight.",
-	  "position": {"x": -375, "y": 1625},
+	  "position": {
+		"x": -375,
+		"y": 1625
+	  },
 	  "pattern": "idle_down",
 	  "wander_radius": 65
 	},
@@ -16,7 +19,10 @@
 	  "overworld_sprite": "gentlelady",
 	  "text": "It's getting late already, oh my how the days fly when you're at my age. After a long day, make sure you always go to bed and get a good nights rest!",
 	  "repeat_text": "Nothing beats going to bed early and having a good nights sleep. I'm getting tired just thinking about going to bed.",
-	  "position": {"x": -827, "y": 1962},
+	  "position": {
+		"x": -827,
+		"y": 1962
+	  },
 	  "pattern": "idle_down"
 	},
 	{
@@ -24,7 +30,10 @@
 	  "overworld_sprite": "police",
 	  "text": "There's still some Sharepedo reported in the water so we can't let anyone through yet.",
 	  "repeat_text": "Can't let you through yet until the Sharepedo are gone. It should be safe in the morning, why don't you have an early night!",
-	  "position": {"x": -545, "y": 2010},
+	  "position": {
+		"x": -545,
+		"y": 2010
+	  },
 	  "pattern": "idle_left"
 	},
 	{
@@ -32,7 +41,10 @@
 	  "overworld_sprite": "security",
 	  "text": "I'm the parking warden for the Celeste Harbour car park but all these bikers have decided to take it over. I can't get rid of them by myself but the police are protecting the beach so I'm on my own",
 	  "repeat_text": "It's already so late and the Bikers aren't showing any sign of leaving. I can't go home until they leave they might cause some serious damage.",
-	  "position": {"x": 628, "y": 1190},
+	  "position": {
+		"x": 628,
+		"y": 1190
+	  },
 	  "pattern": "idle_down"
 	},
 	{
@@ -40,7 +52,10 @@
 	  "overworld_sprite": "badman",
 	  "text": "Heh, scram kid. We're having our biker gang meetup here so get lost.",
 	  "repeat_text": "Didn't you hear me? Get lost kid.",
-	  "position": {"x": 680, "y": 1695},
+	  "position": {
+		"x": 680,
+		"y": 1695
+	  },
 	  "pattern": "idle_down"
 	},
 	{
@@ -48,7 +63,10 @@
 	  "overworld_sprite": "badman",
 	  "text": "We're called the Cool Guy Biker Gang. We're the coolest in the world..... What are you giggling at loser?",
 	  "repeat_text": "Do you think something's funny??",
-	  "position": {"x": 680, "y": 1735},
+	  "position": {
+		"x": 680,
+		"y": 1735
+	  },
 	  "pattern": "idle_up"
 	}
   ],
@@ -59,8 +77,12 @@
 	  "battle_sprite": "Youngster",
 	  "music": "chilled_battle",
 	  "deck": "Basic_Pokemon_Barrage",
-	  "position": {"x": -800, "y": 2020},
+	  "position": {
+		"x": -800,
+		"y": 2020
+	  },
 	  "pattern": "random_wander",
+	  "patrol_speed": 60.0,
 	  "wander_radius": 65,
 	  "meet_text": "I just got given some cards off my grandma, she's so cool. I'm not really good at battling yet but it's a lot of fun!",
 	  "rematch_text": "I'm getting better at playing!'",
@@ -78,7 +100,10 @@
 	  "battle_sprite": "maintenance",
 	  "music": "chilled_battle",
 	  "deck": "Pollen_Power",
-	  "position": {"x": -690, "y": 2180},
+	  "position": {
+		"x": -690,
+		"y": 2180
+	  },
 	  "pattern": "idle_up",
 	  "wander_radius": 65,
 	  "meet_text": "Wowee, it was a long day gardening today. I'm down for a match to let off some steam now.",
@@ -96,7 +121,10 @@
 	  "battle_sprite": "maintenance",
 	  "music": "chilled_battle",
 	  "deck": "zzzap",
-	  "position": {"x": -800, "y": 2620},
+	  "position": {
+		"x": -800,
+		"y": 2620
+	  },
 	  "pattern": "idle_left",
 	  "wander_radius": 65,
 	  "meet_text": "As you can see, the new bulb installation went perrrrfectly today. I'm worn out from all the steps but always game for a match.",
@@ -114,7 +142,10 @@
 	  "battle_sprite": "gambler",
 	  "music": "normal_battle",
 	  "deck": "You_win_some_n_lose_some",
-	  "position": {"x": -860, "y": 2690},
+	  "position": {
+		"x": -860,
+		"y": 2690
+	  },
 	  "pattern": "idle_random",
 	  "meet_text": "All I need is a bit of luck, I let that decide my fate. If I battle enough then I'm bound to win some of them at least",
 	  "rematch_text": "I'll be a lot luckier this time round",
@@ -132,8 +163,12 @@
 	  "battle_sprite": "schoolboy",
 	  "music": "chilled_battle",
 	  "deck": "Status_Infliction",
-	  "position": {"x": -850, "y": 2250},
+	  "position": {
+		"x": -850,
+		"y": 2250
+	  },
 	  "pattern": "patrol_line",
+	  "patrol_speed": 60.0,
 	  "patrol_distance": 200,
 	  "patrol_axis": "vertical",
 	  "meet_text": "I'm trying out some new techniques using statuses. If we battle I'll show you how good they are",
@@ -151,7 +186,10 @@
 	  "battle_sprite": "Fisherman",
 	  "music": "normal_battle",
 	  "deck": "Fishy_Fish",
-	  "position": {"x": -600, "y": 2730},
+	  "position": {
+		"x": -600,
+		"y": 2730
+	  },
 	  "pattern": "idle_down",
 	  "meet_text": "I love the lighthouse here, it seems to attract all kinds of fish so I always catch a lot in this spot. I'm catching so many I need a break",
 	  "rematch_text": "I've caught a lot since last time.",
@@ -168,7 +206,10 @@
 	  "battle_sprite": "Fisherman",
 	  "music": "normal_battle",
 	  "deck": "Seavolutions",
-	  "position": {"x": -810, "y": 2730},
+	  "position": {
+		"x": -810,
+		"y": 2730
+	  },
 	  "pattern": "idle_down",
 	  "meet_text": "Me and my buddy Dave fish here all the time. The lighthouse is like a giant lure in the evening so we catch even more. I've got time for a break.",
 	  "rematch_text": "The evening is still young if you want another match.",
@@ -185,7 +226,10 @@
 	  "battle_sprite": "artist",
 	  "music": "normal_battle",
 	  "deck": "Art_assistants",
-	  "position": {"x": -565, "y": 2375},
+	  "position": {
+		"x": -565,
+		"y": 2375
+	  },
 	  "pattern": "idle_right",
 	  "meet_text": "The evening sun is the most perfect time to come here and paint... or play cards!",
 	  "rematch_text": "I've been painting a lot of great pieces from this spot",

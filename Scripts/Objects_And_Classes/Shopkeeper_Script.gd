@@ -65,7 +65,7 @@ const SQUARE_ORDER = ["down", "right", "up", "left"]
 
 # ── Card Mart constants ────────────────────────────────────
 const STARTER_SET_COST = 500
-const SHOP_STARTER_CARDS = "base1-96, base1-95, base1-95, base1-94, base1-94, base1-93, base1-93, base1-91, base1-83, base1-83, base1-77, base1-65, base1-65, base1-63, base1-63, base1-59, base1-59, base1-58, base1-58, base1-69, base1-69, base1-54, base1-53, base1-53, base1-46, base1-46, base1-45, base1-45, base1-44, base1-44, base1-42, base1-36, base1-33, base1-34, base1-32, base1-30, base1-28, base1-28, base1-24, base1-19"
+const SHOP_STARTER_CARDS = "base1-49, base1-49, base1-48, base1-48, base1-96, base1-95, base1-95, base1-94, base1-94, base1-93, base1-93, base1-91, base1-83, base1-83, base1-77, base1-65, base1-65, base1-63, base1-63, base1-59, base1-59, base1-58, base1-58, base1-69, base1-69, base1-54, base1-53, base1-53, base1-46, base1-46, base1-45, base1-45, base1-44, base1-44, base1-42, base1-36, base1-33, base1-34, base1-32, base1-30, base1-28, base1-28, base1-24, base1-19"
 # PLACEHOLDER: Replace with actual 20 card IDs from two base1 boosters
 const FREE_PACKS_DAY_2_CARDS = "base1-1, base1-2, base1-3, base1-4, base1-5, base1-6, base1-7, base1-8, base1-9, base1-10, base1-11, base1-12, base1-13, base1-14, base1-15, base1-16, base1-17, base1-18, base1-19, base1-20"
 
@@ -203,22 +203,22 @@ func _handle_initial():
 		_set_state("awaiting_funds")
 	else:
 		MapManager._show_message_with_choices(
-			"Do you want this huge bargain collection of cards for $"
+			"Oh a new customer at just the right time! The Mayor hit me with a genius new tariff so I can't afford my import of stock, so I'm discounting this collection of cards you can have for just $"
 			+ str(STARTER_SET_COST)
-			+ "? It's a GREAT deal, I'm selling this at a huge loss. I have an order of packs waiting delivery... as soon as I can pay off that stupid.. uh, I mean, genius tariff. (You'd be doing me a huge favour here kid)"
+			+ ". It's an absolute bargain and you'll get a lot of good cards from it. I won't be able to restock until it's sold."
 		)
 		_connect_choice_handlers("_on_starter_yes", "_on_starter_no")
 
 func _handle_awaiting_funds():
 	if GameState.get_cash() < STARTER_SET_COST:
 		MapManager._show_message_with_ok(
-			"You still don't have enough for the starter set. Come back when you've got $"
-			+ str(STARTER_SET_COST) + ". I'm sure you can earn it."
+			"I'm already letting this go for an absolute bargain so I can't lower the price any more. If you can come back with $"
+			+ str(STARTER_SET_COST) + " then it's all yours. I won't be able to restock packs until this has gone."
 		)
 	else:
 		MapManager._show_message_with_choices(
-			"Ah, you've got enough now! Do you want to buy the starter set for $"
-			+ str(STARTER_SET_COST) + "?"
+			"Hello again - nice to see you back. Are you looking to take this bargain $"
+			+ str(STARTER_SET_COST) + " bundle then? I don't have anything else in stock to sell at the moment but I promise you won't regret taking it."
 		)
 		_connect_choice_handlers("_on_starter_yes", "_on_starter_no")
 
@@ -228,7 +228,7 @@ func _handle_restocking():
 		_give_free_packs()
 	else:
 		MapManager._show_message_with_ok(
-			"Thanks for helping me out here, I've used your additional funds to pay off the remaining balance on the import so come back in the morning and I'll have my full stock back in. I'll even throw in a free pack or two just for you for helping me out!"
+			"Thanks for helping me out here, I've used the additional funds to pay off the remaining balance on the import so come back in the morning and I'll have my full stock back in. I'll even throw in a free pack or two just for you for helping me out!"
 		)
 
 func _handle_open():
@@ -247,9 +247,12 @@ func _on_starter_yes():
 	_set_state("restocking")
 
 	# Notify Card_Mart to remove the visual Starter_Set node
+		# Notify Card_Mart to remove the visual Starter_Set node and update cash
 	var map = get_tree().current_scene
 	if map.has_method("_remove_starter_set"):
 		map._remove_starter_set()
+	if map.has_method("_update_cash_label"):
+		map._update_cash_label()
 
 	# Advance to Night if player has already beaten 4 opponents this Evening
 	if GameState.get_current_defeated() == 4 and GameState.get_time() == "Evening" and GameState.get_date() == 1:
@@ -257,7 +260,7 @@ func _on_starter_yes():
 
 	MapManager._hide_message()
 	MapManager._show_message_with_ok(
-		"Here you go, all yours. There was some good stuff in there if you've not collected a lot already so you might want to add those new cards to your deck. (Press the escape key and then go to Cards & Deck to amend your deck)"
+		"Here you go, all yours. There was a lot of good stuff in there you probably didn't already have. If you've not collected a lot of cards so far you might want to add those new cards to your deck. [Press the escape key and then go to Cards & Deck to amend your deck]"
 	)
 
 func _on_starter_no():
@@ -269,13 +272,13 @@ func _on_starter_no():
 # ============================================================
 
 func _give_free_packs():
-	GameState.give_cards(FREE_PACKS_DAY_2_CARDS)
 	GameState.progress["shop_free_packs_given"] = true
 	GameState.save_progress()
 	_set_state("open")
 	MapManager._show_message_with_ok(
 		"Welcome back! As promised, here are a couple of free packs to say thank you for helping me out yesterday. My full stock is in now so feel free to browse and buy more!"
 	)
+	GameState.give_cards(FREE_PACKS_DAY_2_CARDS)
 
 # ============================================================
 # STATE HELPER

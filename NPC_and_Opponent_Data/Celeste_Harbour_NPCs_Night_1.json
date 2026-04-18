@@ -5,7 +5,10 @@
 	  "overworld_sprite": "police",
 	  "text": "There's still some Sharepedo reported in the water so we can't let anyone through yet.",
 	  "repeat_text": "Can't let you through yet until the Sharepedo are gone. It should be safe in the morning, why don't you have an early night!",
-	  "position": {"x": -545, "y": 2010},
+	  "position": {
+		"x": -545,
+		"y": 2010
+	  },
 	  "pattern": "idle_left"
 	},
 	{
@@ -13,7 +16,10 @@
 	  "overworld_sprite": "security",
 	  "text": "I'm the parking warden for the Celeste Harbour car park but all these bikers have decided to take it over. I can't get rid of them by myself but the police are protecting the beach so I'm on my own",
 	  "repeat_text": "I should have finished my shift and should be in bed by now but I can't go home until these bikers leave. You should head home too you know?",
-	  "position": {"x": 628, "y": 1190},
+	  "position": {
+		"x": 628,
+		"y": 1190
+	  },
 	  "pattern": "idle_down"
 	},
 	{
@@ -21,7 +27,10 @@
 	  "overworld_sprite": "badman",
 	  "text": "Heh, scram kid. We're having our biker gang meetup here so get lost.",
 	  "repeat_text": "Isn't it a little late for a loser like you to be wandering about?",
-	  "position": {"x": 680, "y": 1695},
+	  "position": {
+		"x": 680,
+		"y": 1695
+	  },
 	  "pattern": "idle_down"
 	},
 	{
@@ -29,7 +38,10 @@
 	  "overworld_sprite": "badman",
 	  "text": "We're called the Cool Guy Biker Gang. We're the coolest in the world..... What are you giggling at loser?",
 	  "repeat_text": "Why don't you go home before something bad happens?",
-	  "position": {"x": 680, "y": 1735},
+	  "position": {
+		"x": 680,
+		"y": 1735
+	  },
 	  "pattern": "idle_up"
 	}
   ],
@@ -40,7 +52,10 @@
 	  "battle_sprite": "maintenance",
 	  "music": "chilled_battle",
 	  "deck": "Pollen_Power",
-	  "position": {"x": -690, "y": 2180},
+	  "position": {
+		"x": -690,
+		"y": 2180
+	  },
 	  "pattern": "idle_up",
 	  "wander_radius": 65,
 	  "meet_text": "Wowee, it was a long day gardening today. I'm down for a match to let off some steam now.",
@@ -58,7 +73,10 @@
 	  "battle_sprite": "maintenance",
 	  "music": "chilled_battle",
 	  "deck": "zzzap",
-	  "position": {"x": -800, "y": 2620},
+	  "position": {
+		"x": -800,
+		"y": 2620
+	  },
 	  "pattern": "idle_left",
 	  "wander_radius": 65,
 	  "meet_text": "As you can see, the new bulb installation went perrrrfectly today. I'm worn out from all the steps but always game for a match.",
@@ -76,7 +94,10 @@
 	  "battle_sprite": "Fisherman",
 	  "music": "normal_battle",
 	  "deck": "Seavolutions",
-	  "position": {"x": -810, "y": 2730},
+	  "position": {
+		"x": -810,
+		"y": 2730
+	  },
 	  "pattern": "idle_down",
 	  "meet_text": "Me and my buddy Dave fish here all the time. The lighthouse is like a giant lure in the evening so we catch even more. I've got time for a break.",
 	  "rematch_text": "The evening is still young if you want another match.",
@@ -93,7 +114,10 @@
 	  "battle_sprite": "artist",
 	  "music": "normal_battle",
 	  "deck": "Art_assistants",
-	  "position": {"x": -565, "y": 2375},
+	  "position": {
+		"x": -565,
+		"y": 2375
+	  },
 	  "pattern": "idle_right",
 	  "meet_text": "The evening sun is the most perfect time to come here and paint... or play cards!",
 	  "rematch_text": "I've been painting a lot of great pieces from this spot",
