@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://clrofnr44rtv5"
-path="res://.godot/imported/youngster.png-f50babbe7e50ab7e02dfcecdfb46ed80.ctex"
+uid="uid://ddmp5i8n8l51o"
+path="res://.godot/imported/YOUNGSTER.png-a702967c3a56d009c5b0cecebde5ec61.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://Image_Assets/Character_Sprites/In_Battle_Sprites/youngster.png"
-dest_files=["res://.godot/imported/youngster.png-f50babbe7e50ab7e02dfcecdfb46ed80.ctex"]
+source_file="res://Image_Assets/Character_Sprites/In_Battle_Sprites/YOUNGSTER.png"
+dest_files=["res://.godot/imported/YOUNGSTER.png-a702967c3a56d009c5b0cecebde5ec61.ctex"]
 
 [params]
 

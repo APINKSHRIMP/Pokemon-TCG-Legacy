@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://b687ax6ur7jd6"
-path="res://.godot/imported/kimonogirl.png-7a7acfd03fe8eaabfec3228147586d51.ctex"
+uid="uid://biqn23wvqkhxy"
+path="res://.godot/imported/KIMONOGIRL.png-4ab93cb5e1b63c5daae8b54ca992b43f.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://Image_Assets/Character_Sprites/In_Battle_Sprites/kimonogirl.png"
-dest_files=["res://.godot/imported/kimonogirl.png-7a7acfd03fe8eaabfec3228147586d51.ctex"]
+source_file="res://Image_Assets/Character_Sprites/In_Battle_Sprites/KIMONOGIRL.png"
+dest_files=["res://.godot/imported/KIMONOGIRL.png-4ab93cb5e1b63c5daae8b54ca992b43f.ctex"]
 
 [params]
 

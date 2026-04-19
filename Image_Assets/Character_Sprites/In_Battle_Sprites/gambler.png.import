@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://uedst8rbkknl"
-path="res://.godot/imported/gambler.png-11b46f59cfa7a421807880809600e137.ctex"
+uid="uid://b0klu5m55ca6e"
+path="res://.godot/imported/GAMBLER.png-d44e7fbff11b0a1b5bbf5e16aafb7796.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://Image_Assets/Character_Sprites/In_Battle_Sprites/gambler.png"
-dest_files=["res://.godot/imported/gambler.png-11b46f59cfa7a421807880809600e137.ctex"]
+source_file="res://Image_Assets/Character_Sprites/In_Battle_Sprites/GAMBLER.png"
+dest_files=["res://.godot/imported/GAMBLER.png-d44e7fbff11b0a1b5bbf5e16aafb7796.ctex"]
 
 [params]
 

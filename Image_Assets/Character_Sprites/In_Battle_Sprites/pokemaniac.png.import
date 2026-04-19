@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://cebnffanuwkc3"
-path="res://.godot/imported/pokemaniac.png-3f3d8ec1b9913c8e15292ebb1da72361.ctex"
+uid="uid://dul78pm46jq48"
+path="res://.godot/imported/POKEMANIAC.png-072ae75d44217ac70bf07a0f99ad043d.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://Image_Assets/Character_Sprites/In_Battle_Sprites/pokemaniac.png"
-dest_files=["res://.godot/imported/pokemaniac.png-3f3d8ec1b9913c8e15292ebb1da72361.ctex"]
+source_file="res://Image_Assets/Character_Sprites/In_Battle_Sprites/POKEMANIAC.png"
+dest_files=["res://.godot/imported/POKEMANIAC.png-072ae75d44217ac70bf07a0f99ad043d.ctex"]
 
 [params]
 

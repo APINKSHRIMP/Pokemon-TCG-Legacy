@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://bgvr2y0ae6kul"
-path="res://.godot/imported/elder.png-c525acb9c53c3c2f32528fcdb66cabf3.ctex"
+uid="uid://dl0ehw3l1sp7e"
+path="res://.godot/imported/ELDER.png-e6cfde56f33f125ecc976c1f0bb43401.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://Image_Assets/Character_Sprites/In_Battle_Sprites/elder.png"
-dest_files=["res://.godot/imported/elder.png-c525acb9c53c3c2f32528fcdb66cabf3.ctex"]
+source_file="res://Image_Assets/Character_Sprites/In_Battle_Sprites/ELDER.png"
+dest_files=["res://.godot/imported/ELDER.png-e6cfde56f33f125ecc976c1f0bb43401.ctex"]
 
 [params]
 

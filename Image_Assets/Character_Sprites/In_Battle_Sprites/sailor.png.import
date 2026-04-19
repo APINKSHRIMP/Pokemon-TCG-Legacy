@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://owc8n0o7ognc"
-path="res://.godot/imported/sailor.png-ce78999e0d0ba10bf091b45e4aa2de6b.ctex"
+uid="uid://cg0dqbp2go17n"
+path="res://.godot/imported/SAILOR.png-d2f277b57175a00aed799b65525902b9.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://Image_Assets/Character_Sprites/In_Battle_Sprites/sailor.png"
-dest_files=["res://.godot/imported/sailor.png-ce78999e0d0ba10bf091b45e4aa2de6b.ctex"]
+source_file="res://Image_Assets/Character_Sprites/In_Battle_Sprites/SAILOR.png"
+dest_files=["res://.godot/imported/SAILOR.png-d2f277b57175a00aed799b65525902b9.ctex"]
 
 [params]
 

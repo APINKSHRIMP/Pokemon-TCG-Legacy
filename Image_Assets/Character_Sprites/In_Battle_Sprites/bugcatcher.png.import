@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://c4sjpyaqkglpt"
-path="res://.godot/imported/bugcatcher.png-373433644fde0967e2c5124e82f98262.ctex"
+uid="uid://bi43xyfv5hy83"
+path="res://.godot/imported/BUGCATCHER.png-28ef87ce5b552340f08113eea5fc5755.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://Image_Assets/Character_Sprites/In_Battle_Sprites/bugcatcher.png"
-dest_files=["res://.godot/imported/bugcatcher.png-373433644fde0967e2c5124e82f98262.ctex"]
+source_file="res://Image_Assets/Character_Sprites/In_Battle_Sprites/BUGCATCHER.png"
+dest_files=["res://.godot/imported/BUGCATCHER.png-28ef87ce5b552340f08113eea5fc5755.ctex"]
 
 [params]
 

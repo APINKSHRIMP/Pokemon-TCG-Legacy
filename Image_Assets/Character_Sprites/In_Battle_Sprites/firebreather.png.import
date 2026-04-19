@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://bcwhi0socl7qx"
-path="res://.godot/imported/firebreather.png-79437332d97f70f7fb30558779c81b7b.ctex"
+uid="uid://cbjv5dt4jwy5c"
+path="res://.godot/imported/FIREBREATHER.png-781d0aa9fe0ccff16fbbeacfdd7d0778.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://Image_Assets/Character_Sprites/In_Battle_Sprites/firebreather.png"
-dest_files=["res://.godot/imported/firebreather.png-79437332d97f70f7fb30558779c81b7b.ctex"]
+source_file="res://Image_Assets/Character_Sprites/In_Battle_Sprites/FIREBREATHER.png"
+dest_files=["res://.godot/imported/FIREBREATHER.png-781d0aa9fe0ccff16fbbeacfdd7d0778.ctex"]
 
 [params]
 

@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://curyqxd7p3y17"
-path="res://.godot/imported/gentleman.png-f43e20aa9e990738588aeecda27df556.ctex"
+uid="uid://c1cudm7jym7q"
+path="res://.godot/imported/GENTLEMAN.png-37af625bc93e44e20f91de4b5b19d336.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://Image_Assets/Character_Sprites/In_Battle_Sprites/gentleman.png"
-dest_files=["res://.godot/imported/gentleman.png-f43e20aa9e990738588aeecda27df556.ctex"]
+source_file="res://Image_Assets/Character_Sprites/In_Battle_Sprites/GENTLEMAN.png"
+dest_files=["res://.godot/imported/GENTLEMAN.png-37af625bc93e44e20f91de4b5b19d336.ctex"]
 
 [params]
 

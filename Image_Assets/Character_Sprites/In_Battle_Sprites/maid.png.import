@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://cvudnqpt3kgvg"
-path="res://.godot/imported/maid.png-7e23bea02eeb0e6311c9eede9d440feb.ctex"
+uid="uid://do6ygtc17rwhc"
+path="res://.godot/imported/MAID.png-d09b440159fd971d38c95f56fe52186d.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://Image_Assets/Character_Sprites/In_Battle_Sprites/maid.png"
-dest_files=["res://.godot/imported/maid.png-7e23bea02eeb0e6311c9eede9d440feb.ctex"]
+source_file="res://Image_Assets/Character_Sprites/In_Battle_Sprites/MAID.png"
+dest_files=["res://.godot/imported/MAID.png-d09b440159fd971d38c95f56fe52186d.ctex"]
 
 [params]
 

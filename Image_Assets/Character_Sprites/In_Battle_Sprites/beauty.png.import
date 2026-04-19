@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://dmnbnvhvfc3gj"
-path="res://.godot/imported/beauty.png-22e01bd046355e8df0a45d1c6599e43c.ctex"
+uid="uid://cxljiq6j8tb3q"
+path="res://.godot/imported/BEAUTY.png-68e835b463e3b3adddb5829083de62aa.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://Image_Assets/Character_Sprites/In_Battle_Sprites/beauty.png"
-dest_files=["res://.godot/imported/beauty.png-22e01bd046355e8df0a45d1c6599e43c.ctex"]
+source_file="res://Image_Assets/Character_Sprites/In_Battle_Sprites/BEAUTY.png"
+dest_files=["res://.godot/imported/BEAUTY.png-68e835b463e3b3adddb5829083de62aa.ctex"]
 
 [params]
 

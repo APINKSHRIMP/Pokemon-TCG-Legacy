@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://b43k2mo5cs5js"
-path="res://.godot/imported/lass.png-84304a89a8da0308a594c5b6401ede02.ctex"
+uid="uid://cewk2dmbosl7v"
+path="res://.godot/imported/LASS.png-d631c0e57b2338e1450b127cb4688d83.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://Image_Assets/Character_Sprites/In_Battle_Sprites/lass.png"
-dest_files=["res://.godot/imported/lass.png-84304a89a8da0308a594c5b6401ede02.ctex"]
+source_file="res://Image_Assets/Character_Sprites/In_Battle_Sprites/LASS.png"
+dest_files=["res://.godot/imported/LASS.png-d631c0e57b2338e1450b127cb4688d83.ctex"]
 
 [params]
 

@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://blfqm2x6y5gf8"
-path="res://.godot/imported/hiker.png-c663efab96e86e51970c0f21feff2e4a.ctex"
+uid="uid://cj06lqbfmeub8"
+path="res://.godot/imported/HIKER.png-84f815918d86bed5dbbcef2d33db1772.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://Image_Assets/Character_Sprites/In_Battle_Sprites/hiker.png"
-dest_files=["res://.godot/imported/hiker.png-c663efab96e86e51970c0f21feff2e4a.ctex"]
+source_file="res://Image_Assets/Character_Sprites/In_Battle_Sprites/HIKER.png"
+dest_files=["res://.godot/imported/HIKER.png-84f815918d86bed5dbbcef2d33db1772.ctex"]
 
 [params]
 

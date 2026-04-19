@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://cka7ety53scc3"
-path="res://.godot/imported/clown.png-87e70f4a5672ed32ba182c118b4fbe75.ctex"
+uid="uid://b2fuex20jmdfx"
+path="res://.godot/imported/CLOWN.png-75c7938eb01f37dac87b7dfb01ae73d9.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://Image_Assets/Character_Sprites/In_Battle_Sprites/clown.png"
-dest_files=["res://.godot/imported/clown.png-87e70f4a5672ed32ba182c118b4fbe75.ctex"]
+source_file="res://Image_Assets/Character_Sprites/In_Battle_Sprites/CLOWN.png"
+dest_files=["res://.godot/imported/CLOWN.png-75c7938eb01f37dac87b7dfb01ae73d9.ctex"]
 
 [params]
 

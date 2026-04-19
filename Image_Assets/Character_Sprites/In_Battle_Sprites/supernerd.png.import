@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://dl84pine6es87"
-path="res://.godot/imported/supernerd.png-22a6441ed7b3af281944a89e7cfb6f6e.ctex"
+uid="uid://cpcjn1wbk473q"
+path="res://.godot/imported/SUPERNERD.png-db6f5d3ba2ae700384943110ff672960.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://Image_Assets/Character_Sprites/In_Battle_Sprites/supernerd.png"
-dest_files=["res://.godot/imported/supernerd.png-22a6441ed7b3af281944a89e7cfb6f6e.ctex"]
+source_file="res://Image_Assets/Character_Sprites/In_Battle_Sprites/SUPERNERD.png"
+dest_files=["res://.godot/imported/SUPERNERD.png-db6f5d3ba2ae700384943110ff672960.ctex"]
 
 [params]
 

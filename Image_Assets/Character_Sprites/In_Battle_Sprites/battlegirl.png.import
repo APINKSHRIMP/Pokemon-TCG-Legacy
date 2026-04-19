@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://dobbi7ev8sx0o"
-path="res://.godot/imported/battlegirl.png-d486fab099d2d06580e04d95600b3277.ctex"
+uid="uid://bkxc7bdh88v36"
+path="res://.godot/imported/BATTLEGIRL.png-6c81f00030ee1b3f16ca10df7350bec1.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://Image_Assets/Character_Sprites/In_Battle_Sprites/battlegirl.png"
-dest_files=["res://.godot/imported/battlegirl.png-d486fab099d2d06580e04d95600b3277.ctex"]
+source_file="res://Image_Assets/Character_Sprites/In_Battle_Sprites/BATTLEGIRL.png"
+dest_files=["res://.godot/imported/BATTLEGIRL.png-6c81f00030ee1b3f16ca10df7350bec1.ctex"]
 
 [params]
 

@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://ccmvr6rr7diqm"
-path="res://.godot/imported/ruinmaniac.png-db1c3732fde86f1e541c5b4edb7964ff.ctex"
+uid="uid://b6osynerphg8h"
+path="res://.godot/imported/RUINMANIAC.png-4decc8ccd1f71477d1b4d6e2b61c5e3d.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://Image_Assets/Character_Sprites/In_Battle_Sprites/ruinmaniac.png"
-dest_files=["res://.godot/imported/ruinmaniac.png-db1c3732fde86f1e541c5b4edb7964ff.ctex"]
+source_file="res://Image_Assets/Character_Sprites/In_Battle_Sprites/RUINMANIAC.png"
+dest_files=["res://.godot/imported/RUINMANIAC.png-4decc8ccd1f71477d1b4d6e2b61c5e3d.ctex"]
 
 [params]
 

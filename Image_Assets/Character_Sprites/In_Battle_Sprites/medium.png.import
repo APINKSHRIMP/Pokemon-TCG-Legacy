@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://b7idbor21ompk"
-path="res://.godot/imported/medium.png-3aeb95ea1303f096643cfa91ee4c62ef.ctex"
+uid="uid://drsehkiajyg0r"
+path="res://.godot/imported/MEDIUM.png-b10f9f40a2878b8cb3ffa9d28926b1c8.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://Image_Assets/Character_Sprites/In_Battle_Sprites/medium.png"
-dest_files=["res://.godot/imported/medium.png-3aeb95ea1303f096643cfa91ee4c62ef.ctex"]
+source_file="res://Image_Assets/Character_Sprites/In_Battle_Sprites/MEDIUM.png"
+dest_files=["res://.godot/imported/MEDIUM.png-b10f9f40a2878b8cb3ffa9d28926b1c8.ctex"]
 
 [params]
 

@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://b224jex4iug7l"
-path="res://.godot/imported/richboy.png-6e85ef43ed560837905d228cb376d8f4.ctex"
+uid="uid://dlnfjsqro61b0"
+path="res://.godot/imported/RICHBOY.png-3f4231df0d3a27e590e829b8b193db69.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://Image_Assets/Character_Sprites/In_Battle_Sprites/richboy.png"
-dest_files=["res://.godot/imported/richboy.png-6e85ef43ed560837905d228cb376d8f4.ctex"]
+source_file="res://Image_Assets/Character_Sprites/In_Battle_Sprites/RICHBOY.png"
+dest_files=["res://.godot/imported/RICHBOY.png-3f4231df0d3a27e590e829b8b193db69.ctex"]
 
 [params]
 

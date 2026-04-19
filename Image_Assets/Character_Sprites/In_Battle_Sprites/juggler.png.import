@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://58bvjw75riwb"
-path="res://.godot/imported/juggler.png-fe0ce725437bdf8a8458db22a0098c48.ctex"
+uid="uid://c70mofrjquaur"
+path="res://.godot/imported/JUGGLER.png-3fcf48052b1521a4b8eba043ac420fed.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://Image_Assets/Character_Sprites/In_Battle_Sprites/juggler.png"
-dest_files=["res://.godot/imported/juggler.png-fe0ce725437bdf8a8458db22a0098c48.ctex"]
+source_file="res://Image_Assets/Character_Sprites/In_Battle_Sprites/JUGGLER.png"
+dest_files=["res://.godot/imported/JUGGLER.png-3fcf48052b1521a4b8eba043ac420fed.ctex"]
 
 [params]
 

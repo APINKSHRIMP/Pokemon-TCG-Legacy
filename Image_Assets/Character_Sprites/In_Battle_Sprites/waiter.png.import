@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://cbrybsktgs1h8"
-path="res://.godot/imported/waiter.png-191703295648fc8158f08a27ee65eb8a.ctex"
+uid="uid://b7kalcd05y002"
+path="res://.godot/imported/WAITER.png-a5c7a00798efcd3f0acbf1e091d6e27a.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://Image_Assets/Character_Sprites/In_Battle_Sprites/waiter.png"
-dest_files=["res://.godot/imported/waiter.png-191703295648fc8158f08a27ee65eb8a.ctex"]
+source_file="res://Image_Assets/Character_Sprites/In_Battle_Sprites/WAITER.png"
+dest_files=["res://.godot/imported/WAITER.png-a5c7a00798efcd3f0acbf1e091d6e27a.ctex"]
 
 [params]
 

@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://dpp5853j42n8c"
-path="res://.godot/imported/biker.png-06bf9e11a9683865b2de8dca7778d7e5.ctex"
+uid="uid://vut27b7w57og"
+path="res://.godot/imported/BIKER.png-2db2f08bb8c21efb3c2934f26a835ca6.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://Image_Assets/Character_Sprites/In_Battle_Sprites/biker.png"
-dest_files=["res://.godot/imported/biker.png-06bf9e11a9683865b2de8dca7778d7e5.ctex"]
+source_file="res://Image_Assets/Character_Sprites/In_Battle_Sprites/BIKER.png"
+dest_files=["res://.godot/imported/BIKER.png-2db2f08bb8c21efb3c2934f26a835ca6.ctex"]
 
 [params]
 

@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://4ky851fyq64f"
-path="res://.godot/imported/fisherman.png-fc4628e5ac7b965f93d1f062771d740a.ctex"
+uid="uid://up46ei3k75m5"
+path="res://.godot/imported/FISHERMAN.png-69a70e9e8617a97d2df1c5f2a0a21178.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://Image_Assets/Character_Sprites/In_Battle_Sprites/fisherman.png"
-dest_files=["res://.godot/imported/fisherman.png-fc4628e5ac7b965f93d1f062771d740a.ctex"]
+source_file="res://Image_Assets/Character_Sprites/In_Battle_Sprites/FISHERMAN.png"
+dest_files=["res://.godot/imported/FISHERMAN.png-69a70e9e8617a97d2df1c5f2a0a21178.ctex"]
 
 [params]
 

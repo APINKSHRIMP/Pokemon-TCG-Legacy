@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://cgatk22w0kq6m"
-path="res://.godot/imported/burglar.png-afdc59abb5098514e987559b07f14f62.ctex"
+uid="uid://cif1udrvgsqp6"
+path="res://.godot/imported/BURGLAR.png-c8406078e236b609fd28b94229e15775.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://Image_Assets/Character_Sprites/In_Battle_Sprites/burglar.png"
-dest_files=["res://.godot/imported/burglar.png-afdc59abb5098514e987559b07f14f62.ctex"]
+source_file="res://Image_Assets/Character_Sprites/In_Battle_Sprites/BURGLAR.png"
+dest_files=["res://.godot/imported/BURGLAR.png-c8406078e236b609fd28b94229e15775.ctex"]
 
 [params]
 
