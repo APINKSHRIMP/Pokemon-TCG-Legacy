@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://ccryk3ouc0yog"
-path="res://.godot/imported/NPC 11.png-4a736ce8efb221339c299695e2089960.ctex"
+uid="uid://bvfxbxhh4ooxr"
+path="res://.godot/imported/NPC_CAPTAIN.png-80915ff1ec19814651537e7adafde255.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://Image_Assets/Character_Sprites/Overworld_Sprites/NPC 11.png"
-dest_files=["res://.godot/imported/NPC 11.png-4a736ce8efb221339c299695e2089960.ctex"]
+source_file="res://Image_Assets/Character_Sprites/Overworld_Sprites/NPC_CAPTAIN.png"
+dest_files=["res://.godot/imported/NPC_CAPTAIN.png-80915ff1ec19814651537e7adafde255.ctex"]
 
 [params]
 

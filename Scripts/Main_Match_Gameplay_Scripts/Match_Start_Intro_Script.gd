@@ -101,7 +101,7 @@ func load_opponent_data(trainer_name: String) -> void:
 	print("Opponent with deck ", trainer_name, " not found")
 
 func load_player_data() -> void:
-	var file = FileAccess.open("res://Player_Data/Player_Current_Data.json", FileAccess.READ)
+	var file = FileAccess.open("user://Player_Current_Data.json", FileAccess.READ)
 	if file == null:
 		print("Error loading player file")
 		return
@@ -141,6 +141,7 @@ func update_ui_with_data() -> void:
 	if player_data.has("battle_sprite"):
 		var path = "res://Image_Assets/Character_Sprites/In_Battle_Sprites/" + player_data["battle_sprite"].to_lower() + ".png"
 		var tex = load(path)
+		print("TESTETEST")
 		if tex:
 			player_sprite.texture = tex
 			player_sprite.flip_h = true

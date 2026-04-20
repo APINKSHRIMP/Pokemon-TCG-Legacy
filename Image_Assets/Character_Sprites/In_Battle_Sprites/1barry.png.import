@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://bmircymq6f6sw"
-path="res://.godot/imported/NPC 21.png-6a4a1368b8aa4afd201d3bd75b951a82.ctex"
+uid="uid://cvplfeejq703c"
+path="res://.godot/imported/1barry.png-4d4a37a3f0d0c0ace83a003f1344c38c.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://Image_Assets/Character_Sprites/Overworld_Sprites/NPC 21.png"
-dest_files=["res://.godot/imported/NPC 21.png-6a4a1368b8aa4afd201d3bd75b951a82.ctex"]
+source_file="res://Image_Assets/Character_Sprites/In_Battle_Sprites/1barry.png"
+dest_files=["res://.godot/imported/1barry.png-4d4a37a3f0d0c0ace83a003f1344c38c.ctex"]
 
 [params]
 

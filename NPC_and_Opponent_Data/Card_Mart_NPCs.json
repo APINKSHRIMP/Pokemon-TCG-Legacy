@@ -2,7 +2,7 @@
   "npcs": [
     {
       "name": "Shopkeeper",
-      "overworld_sprite": "shopkeeper",
+      "sprite": "SHOPKEEPER",
       "npc_type": "shop",
       "shop_id": "card_mart",
       "text": "Welcome! Would you like to browse the shop?",

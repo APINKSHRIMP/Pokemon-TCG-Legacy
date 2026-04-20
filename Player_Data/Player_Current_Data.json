@@ -1,11 +1,9 @@
 {
-	"battle_sprite": "lass",
 	"coin": "coin_gyarados_blue",
 	"deck": "your_first_deck",
 	"energy_style": "Base1",
 	"last_pack_loaded": "base1",
 	"last_set_loaded": "basep",
 	"name": "APINKSHRIMP",
-	"overworld_sprite": "lass",
-	"sprite": "1dawnplatinum"
+	"sprite": "1POKEMONTRAINER_PLAYERF"
 }

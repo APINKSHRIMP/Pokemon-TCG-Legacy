@@ -2,7 +2,7 @@
   "npcs": [
 	{
 	  "name": "Policeman blocking beach BL",
-	  "overworld_sprite": "police",
+	  "sprite": "police",
 	  "text": "There's still some Sharepedo reported in the water so we can't let anyone through yet.",
 	  "repeat_text": "Can't let you through yet until the Sharepedo are gone. It should be safe in the morning, why don't you have an early night!",
 	  "position": {
@@ -13,7 +13,7 @@
 	},
 	{
 	  "name": "Car park guy 1",
-	  "overworld_sprite": "security",
+	  "sprite": "security",
 	  "text": "I'm the parking warden for the Celeste Harbour car park but all these bikers have decided to take it over. I can't get rid of them by myself but the police are protecting the beach so I'm on my own",
 	  "repeat_text": "I should have finished my shift and should be in bed by now but I can't go home until these bikers leave. You should head home too you know?",
 	  "position": {
@@ -24,7 +24,7 @@
 	},
 	{
 	  "name": "badman 1",
-	  "overworld_sprite": "badman",
+	  "sprite": "badman",
 	  "text": "Heh, scram kid. We're having our biker gang meetup here so get lost.",
 	  "repeat_text": "Isn't it a little late for a loser like you to be wandering about?",
 	  "position": {
@@ -35,7 +35,7 @@
 	},
 	{
 	  "name": "badman 2",
-	  "overworld_sprite": "badman",
+	  "sprite": "badman",
 	  "text": "We're called the Cool Guy Biker Gang. We're the coolest in the world..... What are you giggling at loser?",
 	  "repeat_text": "Why don't you go home before something bad happens?",
 	  "position": {
@@ -48,8 +48,7 @@
   "opponents": [
 	{
 	  "name": "Gardener Callum",
-	  "overworld_sprite": "maintenance",
-	  "battle_sprite": "maintenance",
+	  "sprite": "maintenance",
 	  "music": "chilled_battle",
 	  "deck": "Pollen_Power",
 	  "position": {
@@ -69,8 +68,7 @@
 	},
 	{
 	  "name": "Engineer Allan",
-	  "overworld_sprite": "maintenance",
-	  "battle_sprite": "maintenance",
+	  "sprite": "maintenance",
 	  "music": "chilled_battle",
 	  "deck": "zzzap",
 	  "position": {
@@ -90,8 +88,7 @@
 	},
 	{
 	  "name": "Fisherman_John",
-	  "overworld_sprite": "Fisherman",
-	  "battle_sprite": "Fisherman",
+	  "sprite": "Fisherman",
 	  "music": "normal_battle",
 	  "deck": "Seavolutions",
 	  "position": {
@@ -110,8 +107,7 @@
 	},
 	{
 	  "name": "Painter_Jericho",
-	  "overworld_sprite": "artist",
-	  "battle_sprite": "artist",
+	  "sprite": "artist",
 	  "music": "normal_battle",
 	  "deck": "Art_assistants",
 	  "position": {

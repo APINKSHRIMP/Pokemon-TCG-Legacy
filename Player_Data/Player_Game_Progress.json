@@ -4,10 +4,17 @@
 		"coin_pikachu_gold_1.png"
 	],
 	"costumes": [
-		"1dawnplatinum.png",
-		"bugcatcher.png",
-		"schoolboy.png",
-		"lass.png"
+		"1champion_f.png",
+		"1champion_m.png",
+		"1greenfrlg.png",
+		"1mayemerald.png",
+		"1pokemontrainer_playerf.png",
+		"1pokemontrainer_playerf_1.png",
+		"1pokemontrainer_playerm.png",
+		"1pokemontrainer_playerm_1.png",
+		"1wallyemerald.png",
+		"1barry.png",
+		"1ash.png"
 	],
 	"date": 1,
 	"energy_styles": [

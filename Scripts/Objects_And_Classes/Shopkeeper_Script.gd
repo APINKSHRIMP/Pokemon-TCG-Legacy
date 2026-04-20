@@ -23,7 +23,7 @@ extends CharacterBody2D
 
 # ── NPC base vars ──────────────────────────────────────────
 var npc_name: String = ""
-var overworld_sprite: String = ""
+var sprite: String = ""
 var npc_type: String = "shop"
 var text: String = ""
 var repeat_text: String = ""
@@ -78,8 +78,8 @@ var _shop_state: String = "initial"
 
 func _ready():
 	add_to_group("npcs")
-	animated_sprite.sprite_frames = SpriteSheetLoader.load_sprite_frames(overworld_sprite)
-	animated_sprite.scale = Vector2(1, 1)
+	animated_sprite.sprite_frames = SpriteSheetLoader.load_sprite_frames(sprite)
+	animated_sprite.scale = Vector2(0.5, 0.5)
 	animated_sprite.play("idle_down")
 	_setup_bubble()
 	_init_movement()
@@ -130,7 +130,6 @@ func _setup_bubble():
 	add_child(_bubble_sprite)
 
 func _get_bubble_texture() -> Texture2D:
-	# Shop NPCs always show shop_talk bubble
 	return load("res://image_assets/misc/shop_talk.png")
 
 func show_bubble():
@@ -149,181 +148,7 @@ func refresh_bubble():
 		_bubble_sprite.texture = _get_bubble_texture()
 
 # ============================================================
-# NPC TRACKING (needed by MapManager)
-# ============================================================
-
-func has_gift_been_given() -> bool:
-	return GameState.has_received_gift(npc_name)
-
-func has_been_met() -> bool:
-	return GameState.has_met_npc(npc_name)
-
-func mark_as_met() -> void:
-	GameState.mark_npc_met(npc_name)
-
-# ============================================================
-# SHOP STATE MACHINE — PUBLIC ENTRY POINT
-# ============================================================
-# Called by MapManager._on_player_npc_interact() via shop_callback.
-# Returns true  = we handled it fully (MapManager does nothing more).
-# Returns false = let MapManager open the default pack purchase UI.
-
-func on_interact() -> bool:
-	_shop_state = GameState.progress.get("shop_state", "initial")
-	print("[Shopkeeper] on_interact — state=", _shop_state,
-		  " date=", GameState.get_date(), " cash=", GameState.get_cash())
-	match _shop_state:
-		"initial":
-			_handle_initial()
-			return true
-		"awaiting_funds":
-			_handle_awaiting_funds()
-			return true
-		"restocking":
-			_handle_restocking()
-			return true
-		"open":
-			_handle_open()
-			return false  # MapManager takes over → Pack_Purchase scene
-		_:
-			push_error("[Shopkeeper] Unknown state: " + _shop_state)
-			return false
-
-# ============================================================
-# STATE HANDLERS
-# ============================================================
-
-func _handle_initial():
-	if GameState.get_cash() < STARTER_SET_COST:
-		MapManager._show_message_with_ok(
-			"Oh a new customer at just the right time! The Mayor hit me with a genius new tariff so I can't afford my import of stock, so I'm discounting this collection of cards you can have for just $"
-			+ str(STARTER_SET_COST)
-			+ ". If you come back with the cash you can get a great deal but come back quick so you don't miss out!"
-		)
-		_set_state("awaiting_funds")
-	else:
-		MapManager._show_message_with_choices(
-			"Oh a new customer at just the right time! The Mayor hit me with a genius new tariff so I can't afford my import of stock, so I'm discounting this collection of cards you can have for just $"
-			+ str(STARTER_SET_COST)
-			+ ". It's an absolute bargain and you'll get a lot of good cards from it. I won't be able to restock until it's sold."
-		)
-		_connect_choice_handlers("_on_starter_yes", "_on_starter_no")
-
-func _handle_awaiting_funds():
-	if GameState.get_cash() < STARTER_SET_COST:
-		MapManager._show_message_with_ok(
-			"I'm already letting this go for an absolute bargain so I can't lower the price any more. If you can come back with $"
-			+ str(STARTER_SET_COST) + " then it's all yours. I won't be able to restock packs until this has gone."
-		)
-	else:
-		MapManager._show_message_with_choices(
-			"Hello again - nice to see you back. Are you looking to take this bargain $"
-			+ str(STARTER_SET_COST) + " bundle then? I don't have anything else in stock to sell at the moment but I promise you won't regret taking it."
-		)
-		_connect_choice_handlers("_on_starter_yes", "_on_starter_no")
-
-func _handle_restocking():
-	var free_packs_given = GameState.progress.get("shop_free_packs_given", false)
-	if GameState.get_date() >= 2 and not free_packs_given:
-		_give_free_packs()
-	else:
-		MapManager._show_message_with_ok(
-			"Thanks for helping me out here, I've used the additional funds to pay off the remaining balance on the import so come back in the morning and I'll have my full stock back in. I'll even throw in a free pack or two just for you for helping me out!"
-		)
-
-func _handle_open():
-	MapManager._show_message_with_ok("Welcome! Would you like to browse the shop?")
-
-# ============================================================
-# STARTER SET PURCHASE
-# ============================================================
-
-func _on_starter_yes():
-	_disconnect_choice_handlers()
-	GameState.add_cash(-STARTER_SET_COST)
-	GameState.progress["player_collected_shop_starter_set"] = true
-	GameState.give_cards(SHOP_STARTER_CARDS)
-	GameState.save_progress()
-	_set_state("restocking")
-
-	# Notify Card_Mart to remove the visual Starter_Set node
-		# Notify Card_Mart to remove the visual Starter_Set node and update cash
-	var map = get_tree().current_scene
-	if map.has_method("_remove_starter_set"):
-		map._remove_starter_set()
-	if map.has_method("_update_cash_label"):
-		map._update_cash_label()
-
-	# Advance to Night if player has already beaten 4 opponents this Evening
-	if GameState.get_current_defeated() == 4 and GameState.get_time() == "Evening" and GameState.get_date() == 1:
-		GameState.advance_time("Night")
-
-	MapManager._hide_message()
-	MapManager._show_message_with_ok(
-		"Here you go, all yours. There was a lot of good stuff in there you probably didn't already have. If you've not collected a lot of cards so far you might want to add those new cards to your deck. [Press the escape key and then go to Cards & Deck to amend your deck]"
-	)
-
-func _on_starter_no():
-	_disconnect_choice_handlers()
-	MapManager._on_no_pressed()
-
-# ============================================================
-# DAY 2 FREE PACKS
-# ============================================================
-
-func _give_free_packs():
-	GameState.progress["shop_free_packs_given"] = true
-	GameState.save_progress()
-	_set_state("open")
-	MapManager._show_message_with_ok(
-		"Welcome back! As promised, here are a couple of free packs to say thank you for helping me out yesterday. My full stock is in now so feel free to browse and buy more!"
-	)
-	GameState.give_cards(FREE_PACKS_DAY_2_CARDS)
-
-# ============================================================
-# STATE HELPER
-# ============================================================
-
-func _set_state(new_state: String):
-	_shop_state = new_state
-	GameState.progress["shop_state"] = new_state
-	GameState.save_progress()
-	print("[Shopkeeper] State → ", new_state)
-
-# ============================================================
-# YES/NO BUTTON WIRING
-# ============================================================
-
-func _connect_choice_handlers(yes_func: String, no_func: String):
-	# Disconnect MapManager defaults
-	if MapManager.yes_button.pressed.is_connected(MapManager._on_yes_pressed):
-		MapManager.yes_button.pressed.disconnect(MapManager._on_yes_pressed)
-	if MapManager.no_button.pressed.is_connected(MapManager._on_no_pressed):
-		MapManager.no_button.pressed.disconnect(MapManager._on_no_pressed)
-	# Connect ours (guard against double-connect)
-	if not MapManager.yes_button.pressed.is_connected(Callable(self, yes_func)):
-		MapManager.yes_button.pressed.connect(Callable(self, yes_func))
-	if not MapManager.no_button.pressed.is_connected(Callable(self, no_func)):
-		MapManager.no_button.pressed.connect(Callable(self, no_func))
-
-func _disconnect_choice_handlers():
-	for fn in ["_on_starter_yes", "_on_starter_no"]:
-		var c = Callable(self, fn)
-		if MapManager.yes_button.pressed.is_connected(c):
-			MapManager.yes_button.pressed.disconnect(c)
-		if MapManager.no_button.pressed.is_connected(c):
-			MapManager.no_button.pressed.disconnect(c)
-	# Restore MapManager defaults
-	if not MapManager.yes_button.pressed.is_connected(MapManager._on_yes_pressed):
-		MapManager.yes_button.pressed.connect(MapManager._on_yes_pressed)
-	if not MapManager.no_button.pressed.is_connected(MapManager._on_no_pressed):
-		MapManager.no_button.pressed.connect(MapManager._on_no_pressed)
-
-func _exit_tree():
-	_disconnect_choice_handlers()
-
-# ============================================================
-# MOVEMENT (identical to NPC_Object_Script)
+# MOVEMENT
 # ============================================================
 
 func _is_player_blocking() -> bool:
@@ -469,3 +294,94 @@ func _on_restore_facing():
 		"idle_up":    animated_sprite.play("idle_up");    current_facing = "up"
 		"idle_left":  animated_sprite.play("idle_left");  current_facing = "left"
 		"idle_right": animated_sprite.play("idle_right"); current_facing = "right"
+
+# ============================================================
+# SHOP STATE MACHINE
+# ============================================================
+
+func on_interact() -> bool:
+	print("[Shopkeeper] on_interact() — state=", _shop_state)
+	match _shop_state:
+		"initial":
+			_handle_initial_state()
+			return true
+		"awaiting_funds":
+			_handle_awaiting_funds_state()
+			return true
+		"restocking":
+			_handle_restocking_state()
+			return true
+		"open":
+			_handle_open_state()
+			return false
+		_:
+			print("[Shopkeeper] Unknown state: ", _shop_state)
+			_shop_state = "open"
+			return false
+
+func _handle_initial_state():
+	print("[Shopkeeper] Initial state — offering starter set for $", STARTER_SET_COST)
+	var message = "Welcome to Card Mart! I've got a special starter pack just for you.\n\nIt contains a selection of cards to get you started.\n\nCost: $" + str(STARTER_SET_COST)
+	var cash = GameState.get_cash()
+	
+	if cash >= STARTER_SET_COST:
+		print("[Shopkeeper] Player can afford starter set")
+		MapManager._show_message_with_choices(message)
+	else:
+		print("[Shopkeeper] Player cannot afford starter set (have $" + str(cash) + ")")
+		MapManager._show_message_with_ok(message + "\n\nCome back when you've got more cash.")
+		_shop_state = "awaiting_funds"
+		GameState.progress["shop_state"] = _shop_state
+		GameState.save_progress()
+
+func _handle_awaiting_funds_state():
+	print("[Shopkeeper] Awaiting funds state")
+	var message = "Got your cash yet?"
+	var cash = GameState.get_cash()
+	
+	if cash >= STARTER_SET_COST:
+		print("[Shopkeeper] Player now has enough cash")
+		MapManager._show_message_with_choices(message + "\n\nReady to buy the starter set?")
+	else:
+		print("[Shopkeeper] Player still cannot afford it")
+		MapManager._show_message_with_ok(message)
+
+func _handle_restocking_state():
+	print("[Shopkeeper] Restocking state (Date: " + str(GameState.get_date()) + ")")
+	var message = "Come back tomorrow with more cash!"
+	if GameState.get_date() > 1:
+		print("[Shopkeeper] Day 2 reached — transitioning to open")
+		_shop_state = "open"
+		GameState.progress["shop_state"] = _shop_state
+		if not GameState.progress.get("shop_free_packs_given", false):
+			print("[Shopkeeper] Giving free packs")
+			GameState.give_cards(FREE_PACKS_DAY_2_CARDS)
+			GameState.progress["shop_free_packs_given"] = true
+			GameState.save_progress()
+			message = "Welcome back! I've restocked. Here are some free packs to get started properly."
+			MapManager._show_message_with_ok(message)
+		else:
+			message = "Welcome back! The shop is open now."
+			MapManager._show_message_with_ok(message)
+	else:
+		MapManager._show_message_with_ok(message)
+
+func _handle_open_state():
+	print("[Shopkeeper] Open state — ready to sell packs")
+	MapManager._show_message_with_ok("Welcome to Card Mart! Browse my selection.")
+
+func _finish_starter_purchase():
+	print("[Shopkeeper] Processing starter set purchase...")
+	var cash = GameState.get_cash()
+	if cash < STARTER_SET_COST:
+		print("[Shopkeeper] Purchase failed: insufficient cash")
+		return
+	
+	GameState.add_cash(-STARTER_SET_COST)
+	GameState.give_cards(SHOP_STARTER_CARDS)
+	GameState.progress["player_collected_shop_starter_set"] = true
+	_shop_state = "restocking"
+	GameState.progress["shop_state"] = _shop_state
+	GameState.save_progress()
+	print("[Shopkeeper] Starter set purchased. Transitioned to restocking state")
+	MapManager._show_message_with_ok("Thanks for your purchase! Come back tomorrow for more stock.")

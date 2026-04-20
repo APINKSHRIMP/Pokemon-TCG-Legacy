@@ -34,14 +34,14 @@ func set_direction(direction: String):
 func _ready():
 	add_to_group("player")
 
-	var file = FileAccess.open("res://Player_Data/Player_Current_Data.json", FileAccess.READ)
+	var file = FileAccess.open("user://Player_Current_Data.json", FileAccess.READ)
 	var player_data = JSON.parse_string(file.get_as_text())
 	file.close()
 
-	var sprite_name = player_data["overworld_sprite"]
+	var sprite_name = player_data["sprite"]
 	animated_sprite.sprite_frames = SpriteSheetLoader.load_sprite_frames(sprite_name)
 	animated_sprite.play("idle_down")
-	animated_sprite.scale = Vector2(1, 1)
+	animated_sprite.scale = Vector2(0.5, 0.5)
 
 	interaction_area.body_entered.connect(_on_interaction_area_body_entered)
 	interaction_area.body_exited.connect(_on_interaction_area_body_exited)

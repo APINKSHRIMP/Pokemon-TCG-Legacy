@@ -19,7 +19,7 @@ extends CharacterBody2D
 # ============================================================
 
 var npc_name: String = ""
-var overworld_sprite: String = ""
+var sprite: String = ""
 var npc_type: String = "text_only"   # kept for bubble icon: "text_only" | "shop"
 var text: String = ""
 var repeat_text: String = ""
@@ -64,8 +64,8 @@ func _is_player_blocking() -> bool:
 
 func _ready():
 	add_to_group("npcs")
-	animated_sprite.sprite_frames = SpriteSheetLoader.load_sprite_frames(overworld_sprite)
-	animated_sprite.scale = Vector2(1, 1)
+	animated_sprite.sprite_frames = SpriteSheetLoader.load_sprite_frames(sprite)
+	animated_sprite.scale = Vector2(0.5, 0.5)
 	animated_sprite.play("idle_down")
 	_setup_bubble()
 

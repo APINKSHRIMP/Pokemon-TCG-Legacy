@@ -118,7 +118,7 @@ func _load_player_data() -> void:
 		return
 
 	if data.has("overworld_sprite"):
-		var raw : String = data["overworld_sprite"]
+		var raw : String = data["sprite"]
 		if not raw.ends_with(".png"):
 			raw = raw + ".png"
 		saved_sprite_name = raw
@@ -313,8 +313,7 @@ func _on_save_pressed() -> void:
 	if selected_character_rect != null:
 		var new_sprite : String = selected_character_rect.get_meta("sprite_name", "")
 		if new_sprite != "":
-			data["battle_sprite"]    = new_sprite.trim_suffix(".png")
-			data["overworld_sprite"] = new_sprite.trim_suffix(".png")
+			data["sprite"]    = new_sprite.trim_suffix(".png")
 			saved_sprite_name = new_sprite
 
 	SoundManagerScript.play_sfx(SoundManagerScript.SFX_gamemode_select)

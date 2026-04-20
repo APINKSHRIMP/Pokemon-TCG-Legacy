@@ -73,7 +73,7 @@ func _load_and_spawn_opponents(json_path: String):
 			continue
 		var opp = opponent_scene.instantiate()
 		opp.opponent_name    = entry["name"]
-		opp.overworld_sprite = entry["overworld_sprite"]
+		opp.sprite           = entry["sprite"]
 		opp.music            = entry["music"]
 		opp.deck             = entry["deck"]
 		opp.meet_text        = entry["meet_text"]
@@ -115,7 +115,7 @@ func _load_and_spawn_npcs(json_path: String):
 		var npc = shopkeeper_scene.instantiate() if is_shop else npc_scene.instantiate()
 
 		npc.npc_name         = entry["name"]
-		npc.overworld_sprite = entry["overworld_sprite"]
+		npc.sprite           = entry["sprite"]
 		npc.npc_type         = entry.get("npc_type", "text_only")
 		npc.text             = entry.get("text", "")
 		npc.repeat_text      = entry.get("repeat_text", "")
