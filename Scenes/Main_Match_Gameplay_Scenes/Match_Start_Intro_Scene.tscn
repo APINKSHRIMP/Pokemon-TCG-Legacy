@@ -2,7 +2,7 @@
 
 [ext_resource type="Texture2D" uid="uid://b0v8vgujq8hfb" path="res://Image_Assets/Backgrounds_And_Borders/Backgrounds/battle_start_screen.png" id="1_6x0iv"]
 [ext_resource type="Script" uid="uid://b7siqta1nvfmb" path="res://Scripts/Main_Match_Gameplay_Scripts/Match_Start_Intro_Script.gd" id="1_xrwa4"]
-[ext_resource type="Texture2D" uid="uid://up46ei3k75m5" path="res://Image_Assets/Character_Sprites/In_Battle_Sprites/fisherman.png" id="2_f8er1"]
+[ext_resource type="Texture2D" uid="uid://up46ei3k75m5" path="res://Image_Assets/Character_Sprites/In_Battle_Sprites/FISHERMAN.png" id="2_f8er1"]
 [ext_resource type="Texture2D" uid="uid://cif1udrvgsqp6" path="res://Image_Assets/Character_Sprites/In_Battle_Sprites/BURGLAR.png" id="3_kihgs"]
 [ext_resource type="Theme" uid="uid://6shp5ck1tnja" path="res://UI_Themes/kenneyUI.tres" id="3_xrwa4"]
 

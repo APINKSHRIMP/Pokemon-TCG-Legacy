@@ -2,7 +2,7 @@
   "npcs": [
 	{
 	  "name": "Old guy neighbour eve 1",
-	  "sprite": "gentleman",
+	  "sprite": "NPC_OLDMAN",
 	  "gift_type": "card",
 	  "gift_value": "basep-1",
 	  "text": "I found this card on the floor while I was tidying up. I've been here all day and nobody has claimed it so you might as well take it!",
@@ -16,7 +16,7 @@
 	},
 	{
 	  "name": "Old lady on bench eve 1",
-	  "sprite": "gentlelady",
+	  "sprite": "NPC_OLDLADY",
 	  "text": "It's getting late already, oh my how the days fly when you're at my age. After a long day, make sure you always go to bed and get a good nights rest!",
 	  "repeat_text": "Nothing beats going to bed early and having a good nights sleep. I'm getting tired just thinking about going to bed.",
 	  "position": {
@@ -27,7 +27,7 @@
 	},
 	{
 	  "name": "Policeman blocking beach BL",
-	  "sprite": "police",
+	  "sprite": "policeman",
 	  "text": "There's still some Sharepedo reported in the water so we can't let anyone through yet.",
 	  "repeat_text": "Can't let you through yet until the Sharepedo are gone. It should be safe in the morning, why don't you have an early night!",
 	  "position": {
@@ -49,7 +49,7 @@
 	},
 	{
 	  "name": "badman 1",
-	  "sprite": "badman",
+	  "sprite": "roughneck",
 	  "text": "Heh, scram kid. We're having our biker gang meetup here so get lost.",
 	  "repeat_text": "Didn't you hear me? Get lost kid.",
 	  "position": {
@@ -60,7 +60,7 @@
 	},
 	{
 	  "name": "badman 2",
-	  "sprite": "badman",
+	  "sprite": "roughneck",
 	  "text": "We're called the Cool Guy Biker Gang. We're the coolest in the world..... What are you giggling at loser?",
 	  "repeat_text": "Do you think something's funny??",
 	  "position": {
@@ -73,7 +73,7 @@
   "opponents": [
 	{
 	  "name": "Youngster_Joey",
-	  "sprite": "Youngster",
+	  "sprite": "Youngster2",
 	  "music": "chilled_battle",
 	  "deck": "Basic_Pokemon_Barrage",
 	  "position": {
@@ -95,7 +95,7 @@
 	},
 	{
 	  "name": "Gardener Callum",
-	  "sprite": "maintenance",
+	  "sprite": "gardener",
 	  "music": "chilled_battle",
 	  "deck": "Pollen_Power",
 	  "position": {
@@ -115,7 +115,7 @@
 	},
 	{
 	  "name": "Engineer Allan",
-	  "sprite": "maintenance",
+	  "sprite": "worker",
 	  "music": "chilled_battle",
 	  "deck": "zzzap",
 	  "position": {
@@ -155,7 +155,7 @@
 	},
 	{
 	  "name": "Schoolboy_Adam",
-	  "sprite": "schoolboy",
+	  "sprite": "youngster3",
 	  "music": "chilled_battle",
 	  "deck": "Status_Infliction",
 	  "position": {
@@ -196,7 +196,7 @@
 	},
 	{
 	  "name": "Fisherman_John",
-	  "sprite": "Fisherman",
+	  "sprite": "FISHERMAN2",
 	  "music": "normal_battle",
 	  "deck": "Seavolutions",
 	  "position": {
