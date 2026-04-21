@@ -70,6 +70,7 @@ func apply_date_events(date: int) -> void:
 	if date == 1:
 		# Player is blocked on day 1
 		$"TILE_MAPS/PLAYER ROAD BLOCKS 1/Cone Blocks".visible = true
+		$"TILE_MAPS/OBJECTS/Car park cars".visible = false
 	else:
 		$"TILE_MAPS/PLAYER ROAD BLOCKS 1/Cone Blocks".visible = false
 						
