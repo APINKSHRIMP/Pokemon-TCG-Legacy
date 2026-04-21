@@ -12,20 +12,6 @@
 	  "pattern": "idle_down"
 	},
 	{
-	  "name": "Woman walking the neighbourhood",
-	  "sprite": "NPC 87",
-	  "text": "Hello! Nice to meet you, I live in the neighbourhood at number 11. I've just going for my morning walk to get my daily steps in!",
-	  "repeat_text": "How is the harbour treating you? My parents have lived here since before I was born so I'm sure we'll bump into each other again!",
-	  "position": {
-		"x": -800,
-		"y": 1720
-	  },
-	  "pattern": "patrol_line",
-	  "patrol_speed": 50.0,
-	  "patrol_distance": 2600,
-	  "patrol_axis": "horizontal"
-	},
-	{
 	  "name": "wurmple",
 	  "sprite": "wurmple",
 	  "text": "wurmple",
@@ -37,35 +23,13 @@
 	  "pattern": "idle_random"
 	},
 	{
-	  "name": "Sailor 2 pier 1 ",
-	  "sprite": "Sailor",
-	  "text": "I'm a deckhand round these parts so I've always got a lot of work to do",
-	  "repeat_text": "I wish I could just sail the seas without the work... that's my dream for sure.",
-	  "position": {
-		"x": 700,
-		"y": 2820
-	  },
-	  "pattern": "idle_random"
-	},
-	{
-	  "name": "captain 1 ",
-	  "sprite": "NPC_CAPTAIN",
-	  "text": "My ship be the Black Pearl, fastest vessel in these ere waters, it's big and sturdy enough to be out to sea for over a year without needing to return.",
-	  "repeat_text": "I'm making all my finally preperations and then I'll be out at sea for a long time from tomorrow, I won't be seeing dry land for at least a few months. Shame I'll be missing seeing the SS Anne dock here, but the sea calls my name",
-	  "position": {
-		"x": 1055,
-		"y": 3085
-	  },
-	  "pattern": "idle_up"
-	},
-	{
 	  "name": "lapras",
 	  "sprite": "lapras",
 	  "text": "lapras",
 	  "repeat_text": "lapras",
 	  "position": {
-		"x": -250,
-		"y": 2950
+		"x": 1200,
+		"y": 2900
 	  },
 	  "pattern": "random_wander",
 	  "patrol_speed": 30.0,
@@ -77,85 +41,8 @@
 	  "text": "Sorry, the forest is closed off while we do some essential maintenance. We had even more wind than usual last night resulting in a lot of falling branches causing a safety hazard.",
 	  "repeat_text": "Sorry but it's going to take a least a day or maybe two. Once we've cleared all the loose branches and removed the fallen trees it'll be safe for people to enter again.",
 	  "position": {
-		"x": 920,
-		"y": 900
-	  },
-	  "pattern": "idle_down"
-	},
-	{
-	  "name": "Sunbathing dude 1",
-	  "sprite": "NPC 15",
-	  "text": "It's a beautiful day today, nothing like coming to the beach and having a nap!",
-	  "repeat_text": "I can barely stay awake... zzz...",
-	  "position": {
-		"x": -222,
-		"y": 2273
-	  },
-	  "pattern": "idle_down"
-	},
-	{
-	  "name": "Sunbathing dude 2",
-	  "sprite": "NPC 03",
-	  "text": "There's always a lot of shells on this beach that have washed up from the water.",
-	  "repeat_text": "One time I saw a shellder washed up so I helped it back into the ocean.",
-	  "position": {
-		"x": 98,
-		"y": 2338
-	  },
-	  "pattern": "idle_down"
-	},
-	{
-	  "name": "Sunbathing couple m",
-	  "sprite": "YOUNGCOUPLE",
-	  "text": "Me and my girlfriend love coming to the beach. Especially when it's as warm as this",
-	  "repeat_text": "I'm not a massive fan of sand but these sunbeds keep you from getting covered in it",
-	  "position": {
-		"x": -77,
-		"y": 2406
-	  },
-	  "pattern": "idle_down"
-	},
-	{
-	  "name": "Sunbathing couple f",
-	  "sprite": "YOUNGCOUPLE_2",
-	  "text": "Me and my boyfriend used to be professional swimmers but it was far too much hard work.",
-	  "repeat_text": "I love that we can just relax on the beach without a lot of pressure from a hardcore lifestyle.",
-	  "position": {
-		"x": -45,
-		"y": 2406
-	  },
-	  "pattern": "idle_down"
-	},
-	{
-	  "name": "Mother",
-	  "sprite": "NPC 14",
-	  "text": "I always bring my little dude here, the harbour is such a great place for him to grow up.",
-	  "repeat_text": "Don't worry about him, I always make sure he's got suncream on and he doesn't move out from under this shade!",
-	  "position": {
-		"x": -366,
-		"y": 2338
-	  },
-	  "pattern": "idle_down"
-	},
-	{
-	  "name": "Child",
-	  "sprite": "NPC 14_1",
-	  "text": "GOO GOO GA GA",
-	  "repeat_text": "GOO GOO GA GAAAA",
-	  "position": {
-		"x": -338,
-		"y": 2338
-	  },
-	  "pattern": "idle_left"
-	},
-	{
-	  "name": "Mother 2",
-	  "sprite": "NPC 87",
-	  "text": "My kids love to build sandcastles every day and play that pokemon card game everyone is crazy for",
-	  "repeat_text": "I don't like to build sandcastles or play pokemon, but I love lying on the beach so I'm not complaining!",
-	  "position": {
-		"x": 242,
-		"y": 2338
+		"x": 900,
+		"y": 790
 	  },
 	  "pattern": "idle_down"
 	},
@@ -176,12 +63,13 @@
 	  "text": "All the Sharpedo are gone so it's safe to go to the beach again. I'm patrolling the area just to make sure.",
 	  "repeat_text": "I've been doing this job for long enough to know it's safe now but it's always good to show face for reassurance.",
 	  "position": {
-		"x": -710,
+		"x": 0,
 		"y": 2020
 	  },
-	  "pattern": "random_wander",
-	  "patrol_speed": 60.0,
-	  "wander_radius": 65
+	  "pattern": "patrol_line",
+	  "patrol_speed": 40.0,
+	  "patrol_distance": 700,
+	  "patrol_axis": "horizontal"
 	},
 	{
 	  "name": "Man staring out to sea day 2",
@@ -263,30 +151,6 @@
 	  "pattern": "idle_right"
 	},
 	{
-	  "name": "Kid Opening packs",
-	  "sprite": "NPC 02",
-	  "gift_type": "card",
-	  "gift_value": "base1-20",
-	  "text": "I'm opening a LOT of packs, sometimes when you open them you'll get a free bonus rare card at the end!!! I've gotten a lot of free rares so you can have this one too!",
-	  "repeat_text": "I'm soooo lucky, I keep getting bonus rares in these packs!",
-	  "position": {
-		"x": 585,
-		"y": 1520
-	  },
-	  "pattern": "idle_random"
-	},
-	{
-	  "name": "Maintenance guy watering sunflowers day 2",
-	  "sprite": "GARDENER",
-	  "text": "Another day, another dollar am I right?... I won't have time to play today, I have to head home early this evening.",
-	  "repeat_text": "Plant the flowers, trim the flowers, water the flowers, pull the weeds.... It's a never ending job!",
-	  "position": {
-		"x": -790,
-		"y": 2270
-	  },
-	  "pattern": "idle_right"
-	},
-	{
 	  "name": "Sailor working on dock",
 	  "sprite": "sailor",
 	  "gift_type": "costume",
@@ -294,7 +158,7 @@
 	  "text": "*huff* *huff* it's a hard graft looking after this dock. We don't have enough hard workers... Here, take this uniform. I have a lot spare because nobody wants to help out around here",
 	  "repeat_text": "We get a lot of ships come through, it's a really busy harbour",
 	  "position": {
-		"x": 400,
+		"x": 500,
 		"y": 3110
 	  },
 	  "pattern": "patrol_line",
@@ -303,54 +167,17 @@
 	  "patrol_axis": "horizontal"
 	},
 	{
-	  "name": "Jogger",
-	  "sprite": "Jogger",
-	  "text": "*huff* *huff* I'm training for a marathon so all I do is run all day every day, it's such hard work but rewarding",
-	  "repeat_text": "*huff* I'm on a strict time limit here!!!",
-	  "position": {
-		"x": -500,
-		"y": 2020
-	  },
-	  "pattern": "patrol_line",
-	  "patrol_speed": 120.0,
-	  "patrol_distance": 2700,
-	  "patrol_axis": "horizontal"
-	},
-	{
 	  "name": "Super Elder 1",
 	  "sprite": "elder",
-	  "text": "Hoh Hoh, I imagine you're new in town ey? I'm one of the the 3 Card Elders in town. If you beat all 3 of us in a match we will grant you access to the Gym Hero Challenge. However... Because it's the bank holiday weekend we're having the day off!",
-	  "repeat_text": "Thanks to the Bank Holiday, there are no more trains to this station for the rest of the day. The market is also shut so the plazas will be quite quiet until tomorrow.",
+	  "gift_type": "card",
+	  "gift_value": "base1-1, base1-2",
+	  "text": "Hoh Hoh, I imagine you're new in town ey? I'm one of the the 3 Card Elders in town. If you win beat all 3 of us we will grant you access to the Gym Hero Challenge.... However... Because it's the bank holiday weekend we're having the day off!",
+	  "repeat_text": "You'll need some better cards if you have a hope of beating us. Come back in a few days when you're more ready.",
 	  "position": {
-		"x": 2500,
-		"y": 1520
+		"x": 2278,
+		"y": 1252
 	  },
-	  "pattern": "random_wander",
-	  "patrol_speed": 30.0,
-	  "wander_radius": 60
-	},
-	{
-	  "name": "Woman trying to shop",
-	  "sprite": "NPC 32",
-	  "text": "I'm so stupid! I came to Market Plaza to pick up a new coin, but I forgot it's a bank holiday so of course it's shut!!",
-	  "repeat_text": "I'll have to come back tomorrow, I've been using the same coin for so long I'm desperate for a new one!",
-	  "position": {
-		"x": 2090,
-		"y": 1720
-	  },
-	  "pattern": "random_wander",
-	  "patrol_speed": 50.0,
-	  "wander_radius": 60
-	},
-	{
-	  "name": "Station manager",
-	  "sprite": "TRAINWORKER",
-	  "text": "I'm sorry but if you've come to take a train then I'm afraid you've missed the last one. With no more services running we've shut the station to do essentially maintenance before tomorrow.",
-	  "repeat_text": "Trains will be running again following normal schedule from tomorrow morning so all train tickets will be valid from tomorrow onwards.",
-	  "position": {
-		"x": 2275,
-		"y": 1440
-	  }
+	  "pattern": "idle_down"
 	}
   ],
   "opponents": [
@@ -361,7 +188,7 @@
 	  "deck": "poligong's_wrath",
 	  "position": {
 		"x": 500,
-		"y": 2590
+		"y": 2630
 	  },
 	  "pattern": "idle_cycle",
 	  "meet_text": "I love the water, it's so calm and warm but my cards always get wet! I need to dry them off",
@@ -455,8 +282,8 @@
 	  "music": "normal_battle",
 	  "deck": "I_See_Sea",
 	  "position": {
-		"x": -300,
-		"y": 2580
+		"x": -100,
+		"y": 2690
 	  },
 	  "pattern": "patrol_line",
 	  "patrol_speed": 40.0,
@@ -588,25 +415,6 @@
 	  "coin_reward": "coin_energy_brown",
 	  "cash_reward": "150",
 	  "prize_cards": 6
-	},
-	{
-	  "name": "Fisherman_Gary",
-	  "sprite": "Fisherman",
-	  "music": "normal_battle",
-	  "deck": "BIG_CATCH",
-	  "position": {
-		"x": -905,
-		"y": 2680
-	  },
-	  "pattern": "idle_left",
-	  "meet_text": "My other buddies are at the juice bar today so only me fishing today. It's lonely when you're fishing on your own",
-	  "rematch_text": "I've caught some HUGE fish today that's for sure, my buddies are missing out!",
-	  "first_win_text": "Aghhh... Maybe I should have cut my losses and gone for a juice.",
-	  "rematch_win_text": "I'm definitely giving up and going to the beach bar!",
-	  "loss_text": "I'm glad I came here today!",
-	  "coin_reward": "coin_kyogre_blue",
-	  "cash_reward": "50",
-	  "prize_cards": 4
 	}
   ]
 }

@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://bc3gxq6e7jlxb"
-path="res://.godot/imported/NPC 01.png-39f804350f12e14a383813c001404513.ctex"
+uid="uid://coitgt3ip5neu"
+path="res://.godot/imported/TRAINWORKER.png-116a66326e9c747364842cdf93c9ab72.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://Image_Assets/Character_Sprites/Overworld_Sprites/NPC 01.png"
-dest_files=["res://.godot/imported/NPC 01.png-39f804350f12e14a383813c001404513.ctex"]
+source_file="res://Image_Assets/Character_Sprites/Overworld_Sprites/TRAINWORKER.png"
+dest_files=["res://.godot/imported/TRAINWORKER.png-116a66326e9c747364842cdf93c9ab72.ctex"]
 
 [params]
 

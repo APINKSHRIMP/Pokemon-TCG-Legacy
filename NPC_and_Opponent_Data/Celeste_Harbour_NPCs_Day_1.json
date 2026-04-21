@@ -1,6 +1,100 @@
 {
   "npcs": [
 	{
+	  "name": "Biker1",
+	  "sprite": "Biker",
+	  "text": "how the hell did you manage to speak to me??",
+	  "repeat_text": "You're a hacker >:(",
+	  "position": {
+		"x": 390,
+		"y": 920
+	  },
+	  "pattern": "patrol_square",
+	  "patrol_speed": 120.0,
+	  "patrol_distance": 210,
+	  "patrol_axis": "horizontal",
+	},
+	{
+	  "name": "Biker2",
+	  "sprite": "Biker",
+	  "text": "cheating isn't cool",
+	  "repeat_text": "Unless you're just reading this in the npc data",
+	  "position": {
+		"x": 400,
+		"y": 1050
+	  },
+	  "pattern": "patrol_line",
+	  "patrol_speed": 120.0,
+	  "patrol_distance": 210,
+	  "patrol_axis": "horizontal",
+	},
+	{
+	  "name": "Biker3",
+	  "sprite": "Biker",
+	  "text": "I guess this is an easter egg",
+	  "repeat_text": "sadly it's not that exciting",
+	  "position": {
+		"x": 240,
+		"y": 1020
+	  },
+	  "pattern": "idle_down",
+	},
+	{
+	  "name": "Biker4",
+	  "sprite": "Biker",
+	  "text": "Does this make it more exciting if I add an agg",
+	  "repeat_text": "🥚",
+	  "position": {
+		"x": 240,
+		"y": 1070
+	  },
+	  "pattern": "idle_up",
+	},
+	{
+	  "name": "Biker5",
+	  "sprite": "Roughneck",
+	  "text": "🥚🥚",
+	  "repeat_text": "🥚🥚🥚",
+	  "position": {
+		"x": 750,
+		"y": 1060
+	  },
+	  "pattern": "idle_random"
+	},
+	{
+	  "name": "Biker6",
+	  "sprite": "Roughneck",
+	  "text": "🥚🥚",
+	  "repeat_text": "🥚🥚🥚",
+	  "position": {
+		"x": 300,
+		"y": 960
+	  },
+	  "pattern": "idle_random"
+	},
+	{
+	  "name": "Biker7",
+	  "sprite": "Roughneck",
+	  "text": "🥚🥚",
+	  "repeat_text": "🥚🥚🥚",
+	  "position": {
+		"x": 310,
+		"y": 1050
+	  },
+	  "pattern": "idle_random"
+	},
+	{
+	  "name": "Biker8",
+	  "sprite": "Roughneck",
+	  "text": "🥚🥚",
+	  "repeat_text": "🥚🥚🥚",
+	  "position": {
+		"x": 480,
+		"y": 1090
+	  },
+	  "pattern": "idle_random"
+	},
+	{
 	  "name": "Old guy neighbour day 1",
 	  "sprite": "NPC_OLDMAN",
 	  "text": "Oh hello there neighbour! Have you just recently moved in next door? I believe the beach is closed today but you can still go and see the lighthouse. If you get your hands on a starter deck, everyone in this town loves playing the Pokemon Card game!",

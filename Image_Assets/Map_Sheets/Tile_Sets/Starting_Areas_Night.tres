@@ -5681,6 +5681,7 @@ texture = ExtResource("1_dhcll")
 18:108/0 = 0
 19:108/0 = 0
 20:108/0 = 0
+22:104/0 = 0
 
 [resource]
 occlusion_layer_0/light_mask = 1
