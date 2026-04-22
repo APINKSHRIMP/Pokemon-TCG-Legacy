@@ -1497,6 +1497,7 @@ tile_map_data = PackedByteArray("AABFADYAAAA3AEMAAABFADcAAAA3AEQAAABFAEUAAAA3AEM
 tile_set = ExtResource("2_bf13f")
 
 [node name="SSANNE" type="TextureRect" parent="TILE_MAPS/JETTY2" unique_id=387986581]
+visible = false
 z_index = 11
 offset_left = 610.0
 offset_top = 1642.0
@@ -1527,19 +1528,6 @@ tile_set = ExtResource("2_bf13f")
 [node name="Flowers" type="TileMapLayer" parent="TILE_MAPS/JUICE BAR" unique_id=428608988]
 position = Vector2(-8, 5)
 tile_map_data = PackedByteArray("AABQAC0AAAA0AFYAAABQADcAAAA0AFYAAABWADIAAAA0AFYAAABdADcAAAA0AFYAAABjAC0AAAA0AFYAAABjADIAAAA0AFYAAAA=")
-tile_set = ExtResource("2_bf13f")
-
-[node name="PLAYER ROAD BLOCKS 1" type="TileMap" parent="TILE_MAPS" unique_id=1189257547]
-format = 2
-
-[node name="Cone Blocks" type="TileMapLayer" parent="TILE_MAPS/PLAYER ROAD BLOCKS 1" unique_id=149141493]
-position = Vector2(-543, 1)
-tile_map_data = PackedByteArray("AAABABwAAAAhAB0AAAABAB0AAAAhAB0AAAABAB4AAAAhAB0AAAABAB8AAAAhAB0AAAABACAAAAAhAB0AAAABACEAAAAhAB0AAAABACIAAAAhAB0AAAABACMAAAAhAB0AAAABACQAAAAhAB0AAAABACUAAAAhAB0AAAA=")
-tile_set = ExtResource("2_bf13f")
-
-[node name="Gate blocks" type="TileMapLayer" parent="TILE_MAPS/PLAYER ROAD BLOCKS 1" unique_id=714366879]
-position = Vector2(0, -95)
-tile_map_data = PackedByteArray("AAA1ANj/AAA1AE4AAAA2ANj/AAA2AE4AAAA3ANj/AAA2AE4AAAA4ANj/AAA2AE4AAAA5ANj/AAA2AE4AAAA6ANj/AAA2AE4AAAA7ANj/AAA3AE4AAAA1ANf/AAA1AE0AAAA2ANf/AAA2AE0AAAA3ANf/AAA2AE0AAAA4ANf/AAA2AE0AAAA5ANf/AAA2AE0AAAA6ANf/AAA2AE0AAAA7ANf/AAA3AE0AAAA=")
 tile_set = ExtResource("2_bf13f")
 
 [node name="Market Plaza" type="TileMap" parent="TILE_MAPS" unique_id=1800420119]
@@ -1619,6 +1607,24 @@ tile_set = ExtResource("2_bf13f")
 [node name="Signs" type="TileMapLayer" parent="TILE_MAPS/Market Plaza" unique_id=735350175]
 position = Vector2(-1, 0)
 tile_map_data = PackedByteArray("AACWAAoAAAAsABYAAAB/AAoAAAArABYAAAA=")
+tile_set = ExtResource("2_bf13f")
+
+[node name="PLAYER ROAD BLOCKS" type="TileMap" parent="TILE_MAPS" unique_id=1189257547]
+format = 2
+
+[node name="Cone Blocks" type="TileMapLayer" parent="TILE_MAPS/PLAYER ROAD BLOCKS" unique_id=149141493]
+position = Vector2(-543, 1)
+tile_map_data = PackedByteArray("AAABABwAAAAhAB0AAAABAB0AAAAhAB0AAAABAB4AAAAhAB0AAAABAB8AAAAhAB0AAAABACAAAAAhAB0AAAABACEAAAAhAB0AAAABACIAAAAhAB0AAAABACMAAAAhAB0AAAABACQAAAAhAB0AAAABACUAAAAhAB0AAAA=")
+tile_set = ExtResource("2_bf13f")
+
+[node name="Forest Gate block" type="TileMapLayer" parent="TILE_MAPS/PLAYER ROAD BLOCKS" unique_id=714366879]
+position = Vector2(0, -95)
+tile_map_data = PackedByteArray("AAA2AN//AAA1AE4AAAA3AN//AAA2AE4AAAA4AN//AAA2AE4AAAA5AN//AAA2AE4AAAA6AN//AAA2AE4AAAA7AN//AAA2AE4AAAA8AN//AAA3AE4AAAA2AN7/AAA1AE0AAAA3AN7/AAA2AE0AAAA4AN7/AAA2AE0AAAA5AN7/AAA2AE0AAAA6AN7/AAA2AE0AAAA7AN7/AAA2AE0AAAA8AN7/AAA3AE0AAAA=")
+tile_set = ExtResource("2_bf13f")
+
+[node name="Station Gate block" type="TileMapLayer" parent="TILE_MAPS/PLAYER ROAD BLOCKS" unique_id=2045591312]
+position = Vector2(0, -95)
+tile_map_data = PackedByteArray("AACLAAEAAAA1AE0AAACLAAIAAAA1AE4AAACMAAEAAAA2AE0AAACMAAIAAAA2AE4AAACNAAEAAAA2AE0AAACNAAIAAAA2AE4AAACOAAEAAAA2AE0AAACOAAIAAAA2AE4AAACPAAEAAAA2AE0AAACPAAIAAAA2AE4AAACQAAEAAAA2AE0AAACQAAIAAAA2AE4AAACRAAEAAAA3AE0AAACRAAIAAAA3AE4AAAA=")
 tile_set = ExtResource("2_bf13f")
 
 [node name="EMPTY70" type="TileMapLayer" parent="TILE_MAPS" unique_id=799131111]
@@ -5734,4 +5740,4 @@ position = Vector2(-15, 1865)
 collision_mask = 0
 
 [node name="Player" parent="." unique_id=510514557 instance=ExtResource("5_a0lly")]
-position = Vector2(-137, 2404)
+position = Vector2(1535, 2379)

@@ -273,7 +273,7 @@
 	  "name": "Fisherman_Dave",
 	  "sprite": "Fisherman",
 	  "music": "normal_battle",
-	  "deck": "Fishy_Fish",
+	  "deck": "fishy_fish",
 	  "position": {
 		"x": -600,
 		"y": 2730

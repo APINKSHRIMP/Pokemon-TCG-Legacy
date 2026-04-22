@@ -60,7 +60,7 @@ func _is_player_blocking() -> bool:
 	var players = get_tree().get_nodes_in_group("player")
 	if players.is_empty():
 		return false
-	return position.distance_to(players[0].position) < 70.0
+	return position.distance_to(players[0].position) < 30.0
 
 func _ready():
 	add_to_group("npcs")

@@ -1,0 +1,441 @@
+{
+  "npcs": [
+	{
+	  "name": "Old guy neighbour day 2",
+	  "sprite": "NPC_OLDMAN",
+	  "text": "Good Evening Neighbour! Just thought I'd pop by and get a drink before heading back home for the night. Hope you've had a good day.",
+	  "repeat_text": "I'm hoping to do some shopping at the market tomorrow when it reopens, it's a long walk for my old legs but it'll help keep me fit and healthy.",
+	  "position": {
+		"x": 857,
+		"y": 2313
+	  },
+	  "pattern": "idle_right"
+	},
+	{
+	  "name": "Woman walking the neighbourhood eve",
+	  "sprite": "NPC 87",
+	  "text": "I managed to walk 20,000 steps today I'm absolutely worn out.",
+	  "repeat_text": "I think I walked a bit too far today",
+	  "position": {
+		"x": 1208,
+		"y": 2398
+	  },
+	  "pattern": "idle_left"
+	},
+	{
+	  "name": "Sailor 2 pier 1",
+	  "sprite": "Sailor",
+	  "text": "I'm a deckhand round these parts so I've always got a lot of work to do",
+	  "repeat_text": "I wish I could just sail the seas without the work... that's my dream for sure.",
+	  "position": {
+		"x": 700,
+		"y": 2820
+	  },
+	  "pattern": "idle_random"
+	},
+	{
+	  "name": "captain 1 ",
+	  "sprite": "NPC_CAPTAIN",
+	  "text": "My ship be the Black Pearl, fastest vessel in these ere waters, it's big and sturdy enough to be out to sea for over a year without needing to return.",
+	  "repeat_text": "I'm making all my finally preperations and then I'll be out at sea for a long time from tomorrow, I won't be seeing dry land for at least a few months. Shame I'll be missing seeing the SS Anne dock here, but the sea calls my name",
+	  "position": {
+		"x": 1055,
+		"y": 3085
+	  },
+	  "pattern": "idle_up"
+	},
+	{
+	  "name": "Maintenance guy blocking forest",
+	  "sprite": "Gardener",
+	  "text": "Sorry, the forest is closed off while we do some essential maintenance. We had even more wind than usual last night resulting in a lot of falling branches causing a safety hazard.",
+	  "repeat_text": "Sorry but it's going to take a least a day or maybe two. Once we've cleared all the loose branches and removed the fallen trees it'll be safe for people to enter again.",
+	  "position": {
+		"x": 920,
+		"y": 900
+	  },
+	  "pattern": "idle_down"
+	},
+	{
+	  "name": "Sunbathing dude 1 eve",
+	  "sprite": "NPC 15",
+	  "text": "zzzzzzzzzzzzzzzzzz",
+	  "repeat_text": "zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz",
+	  "position": {
+		"x": -222,
+		"y": 2273
+	  },
+	  "pattern": "idle_down"
+	},
+	{
+	  "name": "Sunbathing coin giver",
+	  "sprite": "NPC 03",
+	  "text": "There's always a lot of shells on this beach that have washed up from the water, but I also found this coin. I don't play the Pokemon TCG so you can have it",
+	  "repeat_text": "One time I saw a shellder washed up so I helped it back into the ocean.",
+	"gift_type": "coin",
+	"gift_value": "coin_yampa_gold",
+	"position": {
+		"x": 98,
+		"y": 2338
+	  },
+	  "pattern": "idle_down"
+	},
+	{
+	  "name": "Mother 2 evening",
+	  "sprite": "NPC 87",
+	  "text": "It's getting late now so it's definitely nearly home time! I have to go and make dinner!",
+	  "repeat_text": "Just 5 more minutes and then it's home time!",
+	  "position": {
+		"x": 242,
+		"y": 2338
+	  },
+	  "pattern": "idle_down"
+	},
+	{
+	  "name": "Car park guy evening 2",
+	  "sprite": "security",
+	  "text": "It's nearly clocking off time, the car park shuts at night as most people are gone by evening.",
+	  "repeat_text": "It's been a slow day today, nobody really visits when it's bank holiday but I think the harbour will be overflowing tomorrow!",
+	  "position": {
+		"x": 628,
+		"y": 1190
+	  },
+	  "pattern": "idle_down"
+	},
+	{
+	  "name": "Policeman blocking beach eve 2",
+	  "sprite": "policeman",
+	  "text": "I'll be heading home soon, we've had no reports of Sharpedo today and it's getting late so most people will be off the beach in the next hour.",
+	  "repeat_text": "Tomorrow will be another busy day, the SS Anne should arrive in the morning so there'll be a lot of tourists in the harbour",
+	  "position": {
+		"x": -133,
+		"y": 1965
+	  },
+	  "pattern": "idle_down"
+	},
+	{
+	  "name": "Man staring out to sea eve 2",
+	  "sprite": "youngcouple2",
+	  "text": "I'm waiting for my girlfriend to finish work so we can head home for the night",
+	  "repeat_text": "I always get a drink before she finishes.",
+	  "position": {
+		"x": 950,
+		"y": 2235
+	  },
+	  "pattern": "idle_right"
+	},
+	{
+	  "name": "Juicebar Woman (from staring out to sea) evening",
+	  "sprite": "youngcouple_2",
+	  "text": "Last chance to get some juice before we close!",
+	  "repeat_text": "Sadly there's no discount!",
+	  "position": {
+		"x": 1030,
+		"y": 2190
+	  },
+	  "pattern": "idle_down"
+	},
+	{
+	  "name": "Sailor working on dock",
+	  "sprite": "sailor",
+	  "gift_type": "costume",
+	  "gift_value": "sailor",
+	  "text": "*huff* *huff* it's a hard graft looking after this dock. We don't have enough hard workers... Here, take this uniform. I have a lot spare because nobody wants to help out around here",
+	  "repeat_text": "We get a lot of ships come through, it's a really busy harbour",
+	  "position": {
+		"x": 400,
+		"y": 3110
+	  },
+	  "pattern": "patrol_line",
+	  "patrol_speed": 80.0,
+	  "patrol_distance": 500,
+	  "patrol_axis": "horizontal"
+	},
+	{
+	  "name": "Super Elder 1 eve",
+	  "sprite": "elder",
+	  "text": "The 3 of us will be giving out winner medals tomorrow so if you think you're good enough now come back tomorrow and try and beat us!",
+	  "repeat_text": "If you can beat all 3 of us tomorrow you can enter the gym leader challenge!",
+	  "position": {
+		"x": 2500,
+		"y": 1520
+	  },
+	  "pattern": "random_wander",
+	  "patrol_speed": 30.0,
+	  "wander_radius": 60
+	},
+	{
+	  "name": "Station manager",
+	  "sprite": "TRAINWORKER",
+	  "text": "I'm sorry but if you've come to take a train then I'm afraid you've missed the last one. With no more services running we've shut the station to do essentially maintenance before tomorrow.",
+	  "repeat_text": "Trains will be running again following normal schedule from tomorrow morning so all train tickets will be valid from tomorrow onwards.",
+	  "position": {
+		"x": 2275,
+		"y": 1440
+	  }
+	},
+	{
+	  "name": "Beach_Kid_Timothy",
+	  "sprite": "tuber_M",
+	  "position": {
+		"x": 450,
+		"y": 2380
+	  },
+	"pattern":"idle_right",
+	  "text": "Mum said it's nearly bedtime so we have to go home soon",
+	  "repeat_text": "I wish we could stay and play all day"
+	},
+	{
+	  "name": "Beach_Kid_Evie",
+	  "sprite": "tuber_F",
+	  "music": "normal_battle",
+	  "deck": "Pika_and_friends",
+	  "position": {
+		"x": 480,
+		"y": 2380
+	  },
+	  "pattern": "idle_left",
+	  "text": "I hope mummy brings us back to the beach to play again tomorrow",
+	  "repeat_text":"We normally come to the beach every day to play!"
+	},
+  ],
+  "opponents": [
+	{
+	  "name": "Swimmer_Jordan",
+	  "sprite": "swimmer_F",
+	  "music": "surrounded_sea",
+	  "deck": "whirlgong",
+	  "position": {
+		"x": 500,
+		"y": 2590
+	  },
+	  "pattern": "idle_cycle",
+	  "meet_text": "I love the water, it's so calm and warm but my cards always get wet! I need to dry them off",
+	  "rematch_text": "I can always take a break for another match",
+	  "first_win_text": "I'll stick with my swimming...",
+	  "rematch_win_text": "Nothing like a good match and a long swim",
+	  "loss_text": "Maybe you should work on your swimming...",
+	  "coin_reward": "coin_energy_blue",
+	  "cash_reward": "100",
+	  "prize_cards": 4
+	},
+	{
+	  "name": "Firebreather_Darryl",
+	  "sprite": "firebreather",
+	  "music": "normal_battle",
+	  "deck": "Hot_Air",
+	  "position": {
+		"x": 1050,
+		"y": 2475
+	  },
+	  "pattern": "idle_cycle",
+	  "meet_text": "I've been breathing that much fire that I needed an ice cold bev to cool my mouth down, but I'm ready for a match if you want.",
+	  "rematch_text": "I'm fired up and ready for another match if you want.",
+	  "first_win_text": "I burned out too quick",
+	  "rematch_win_text": "I could teach you how to firebreath... but maybe you should teach me how to play cards better!",
+	  "loss_text": "That juice was just what I needed!",
+	  "coin_reward": "coin_energy_red",
+	  "cash_reward": "100",
+	  "prize_cards": 4
+	},
+	{
+	  "name": "Firebreather_Kenneth",
+	  "sprite": "firebreather",
+	  "music": "normal_battle",
+	  "deck": "Quadrapedal_Firestarters",
+	  "position": {
+		"x": 1000,
+		"y": 2475
+	  },
+	  "pattern": "idle_cycle",
+	  "meet_text": "I'm so used to hot drinks that it's weird to drink something nice and cold",
+	  "rematch_text": "If you want another match then let's goooooo",
+	  "first_win_text": "I have too many burns to battle well",
+	  "rematch_win_text": "I'll just stick to the firebreathing from now on, I'm good at that.",
+	  "loss_text": "Can't burn me out!",
+	  "coin_reward": "coin_arcanine_red",
+	  "cash_reward": "100",
+	  "prize_cards": 4
+	},
+	{
+	  "name": "Birdspotter_Tamsin",
+	  "sprite": "birdkeeper_M",
+	  "music": "normal_battle",
+	  "deck": "Lil_Birbs",
+	  "position": {
+		"x": 1886,
+		"y": 2360
+	  },
+	  "pattern": "idle_random",
+	  "meet_text": "These Palms attract a lot of Bird Pokemon so its a good spot to watch them",
+	  "rematch_text": "Looking for more Birds round here?",
+	  "first_win_text": "I wish I could just fly away.",
+	  "rematch_win_text": "You can't fly away from all your troubles",
+	  "loss_text": "You should try bird watching with me!",
+	  "coin_reward": "coin_energy_silver_2",
+	  "cash_reward": "100",
+	  "prize_cards": 4
+	},
+	{
+	  "name": "Bug_Catcher_Alex",
+	  "sprite": "bugcatcher",
+	  "music": "chilled_battle",
+	  "deck": "I_love_bugs!",
+	  "position": {
+		"x": 1625,
+		"y": 2180
+	  },
+	  "pattern": "patrol_line",
+	  "patrol_speed": 20.0,
+	  "patrol_distance": 140,
+	  "patrol_axis": "vertical",
+	  "meet_text": "Some people hate bugs but I love them! Do you love bugs too?",
+	  "rematch_text": "You just love bugs as much as I do then?",
+	  "first_win_text": "Maybe bugs aren't as good as I thought...",
+	  "rematch_win_text": "Me and my bugs will win one of these days!",
+	  "loss_text": "I knew bugs were the best!!",
+	  "coin_reward": "coin_energy_green",
+	  "costume_reward": "bugcatcher",
+	  "cash_reward": "100",
+	  "prize_cards": 4
+	},
+	{
+	  "name": "Psychic_Brienne",
+	  "sprite": "psychic_f",
+	  "music": "normal_battle",
+	  "deck": "Meditation_meditation",
+	  "position": {
+		"x": 2880,
+		"y": 3110
+	  },
+	  "pattern": "idle_right",
+	  "meet_text": "This dock is always so quiet, it's a great spot to meditate and to battle",
+	  "rematch_text": "I've been meditating a lot since our last match",
+	  "first_win_text": "I have to focus more. Take these cards to help you focus more too",
+	  "rematch_win_text": "I'll focus harder",
+	  "loss_text": "I manifested the win",
+	  "coin_reward": "coin_energy_purple",
+	  "cash_reward": "150",
+	  "prize_cards": 6
+	},
+	{
+	  "name": "Swimmer_Todd",
+	  "sprite": "swimmer_M",
+	  "music": "normal_battle",
+	  "deck": "I_See_Sea",
+	  "position": {
+		"x": -300,
+		"y": 2580
+	  },
+	  "pattern": "patrol_line",
+	  "patrol_speed": 30.0,
+	  "patrol_distance": 250,
+	  "patrol_axis": "horizontal",
+	  "meet_text": "I'm been training for a Quadrathlon all day but I'm getting really worn out now. It's a 1000m Swim, Bike, Run and then 100 TCG matches!",
+	  "rematch_text": "I don't think I can do much more swimming I'm so tired",
+	  "first_win_text": "I can swim really well, maybe I should train using my deck more than swimming.",
+	  "rematch_win_text": "At least my swimming is going really well",
+	  "loss_text": "I am so ready for this event",
+	  "coin_reward": "coin_energy_blue_2",
+	  "cash_reward": "100",
+	  "prize_cards": 4
+	},
+	{
+	  "name": "Bug_Catcher_Johnny",
+	  "sprite": "bugcatcher2",
+	  "music": "normal_battle",
+	  "deck": "STRANGE_PLANTS",
+	  "position": {
+		"x": 2254,
+		"y": 2326
+	  },
+	  "pattern": "idle_left",
+	  "meet_text": "I love catching bugs but I also love cool plants. There are a lot of critters crawling around in these roots.",
+	  "rematch_text": "I've just seen a HUGE bug running around",
+	  "first_win_text": "I wish I could photosynthesize.",
+	  "rematch_win_text": "I could beat you at catching bugs!",
+	  "loss_text": "Grass Pokemon are great!",
+	  "coin_reward": "coin_energy_green_2",
+	  "cash_reward": "100",
+	  "prize_cards": 4
+	},
+	{
+	  "name": "Sailor_Bob",
+	  "sprite": "sailor",
+	  "music": "normal_battle",
+	  "deck": "hoist_the_anchor",
+	  "position": {
+		"x": 2040,
+		"y": 3110
+	  },
+	  "pattern": "idle_random",
+	  "meet_text": "I'm all done preparing for the arrival of the SS Anne so there's not much to do now until morning",
+	  "rematch_text": "There's still time before the SS Anne arrives",
+	  "first_win_text": "I should at least pretend to do some work on the dock",
+	  "rematch_win_text": "I won't have a lot of time to play when the ship docks",
+	  "loss_text": "All this spare time has given me a chance to practice",
+	  "coin_reward": "coin_energy_brown",
+	  "cash_reward": "150",
+	  "prize_cards": 6
+	},
+	{
+	  "name": "Battlegirl_Sofia",
+	  "sprite": "battlegirl",
+	  "music": "normal_battle",
+	  "deck": "BRICKBREAKER",
+	  "position": {
+		"x": 2645,
+		"y": 2395
+	  },
+	  "pattern": "idle_cycle",
+	  "meet_text": "This beach is a great spot to train both my martial arts and my card skills",
+	  "rematch_text": "Want to join in with my training?",
+	  "first_win_text": "A loss is always a good chance to improve",
+	  "rematch_win_text": "I'm going to keep on training",
+	  "loss_text": "I rarely lose when I've trained properly",
+	  "coin_reward": "coin_energy_brown",
+	  "cash_reward": "150",
+	  "prize_cards": 6
+	},
+	{
+		"name": "Jogger_Daniel",
+		"sprite": "Jogger",
+		"music": "normal_battle",
+		"deck": "NIDO_NIDO_MEOW",
+		"meet_text": "*huff* *huff* I've been training for my marathon all day so I'm worn out, I could do with a rest.",
+		"first_win_text": "*huff* I shouldn't have bothered stopping",
+		"rematch_text": "I'm still running as much as I can, I could do with another break",
+		"rematch_win_text": "I'm just going to focus on my running from now on",
+		"loss_text": "I'm glad I decided to take a break, that's given me an extra push to carry on",
+		"coin_reward": "coin_scorbunny_red",
+		"cash_reward": "100",
+		"position": {
+			"x": -500,
+			"y": 2015
+	  },
+	  "pattern": "patrol_line",
+	  "patrol_speed": 70.0,
+	  "patrol_distance": 2700,
+	  "patrol_axis": "horizontal"
+	},
+	{
+		"name": "Hiker_Matthew",
+		"sprite": "Hiker",
+		"music": "normal_battle",
+		"deck": "ROCKS_N_STONES",
+		"meet_text": "I've been hiking for hours and only just managed to reach the harbour and found everything is closed so now I have nothing to do for the evening.",
+		"first_win_text": "I should have just called it a night...",
+		"rematch_text": "I'll be back to hiking again tomorrow, I hike all day every day!",
+		"rematch_win_text": "I could do with a long hike to get over this loss.",
+		"loss_text": "I'm as solid as stone!",
+		"coin_reward": "coin_onix_brown",
+		"cash_reward": "100",
+		"position": {
+			"x": 2650,
+			"y": 2020
+	  },
+	  "pattern": "random_wander",
+	  "patrol_speed": 40.0,
+	  "wander_radius": 60
+	}
+  ]
+}

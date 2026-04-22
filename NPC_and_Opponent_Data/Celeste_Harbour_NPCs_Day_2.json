@@ -12,7 +12,7 @@
 	  "pattern": "idle_down"
 	},
 	{
-	  "name": "Woman walking the neighbourhood",
+	  "name": "Woman walking the neighbourhood day",
 	  "sprite": "NPC 87",
 	  "text": "Hello! Nice to meet you, I live in the neighbourhood at number 11. I've just going for my morning walk to get my daily steps in!",
 	  "repeat_text": "How is the harbour treating you? My parents have lived here since before I was born so I'm sure we'll bump into each other again!",
@@ -37,7 +37,7 @@
 	  "pattern": "idle_random"
 	},
 	{
-	  "name": "Sailor 2 pier 1 ",
+	  "name": "Sailor 2 pier 1",
 	  "sprite": "Sailor",
 	  "text": "I'm a deckhand round these parts so I've always got a lot of work to do",
 	  "repeat_text": "I wish I could just sail the seas without the work... that's my dream for sure.",
@@ -94,11 +94,13 @@
 	  "pattern": "idle_down"
 	},
 	{
-	  "name": "Sunbathing dude 2",
+	  "name": "Sunbathing coin giver",
 	  "sprite": "NPC 03",
-	  "text": "There's always a lot of shells on this beach that have washed up from the water.",
+	  "text": "There's always a lot of shells on this beach that have washed up from the water, but I also found this coin. I don't play the Pokemon TCG so you can have it",
 	  "repeat_text": "One time I saw a shellder washed up so I helped it back into the ocean.",
-	  "position": {
+	"gift_type": "coin",
+	"gift_value": "coin_yampa_gold",
+	"position": {
 		"x": 98,
 		"y": 2338
 	  },
@@ -220,7 +222,7 @@
 	},
 	{
 	  "name": "2nd Woman drinking juice",
-	  "sprite": "NPC 87",
+	  "sprite": "NPC 32",
 	  "text": "I get the juice from here pretty much every day",
 	  "repeat_text": "I would be devastated if this place closed",
 	  "position": {
@@ -230,7 +232,7 @@
 	  "pattern": "idle_right"
 	},
 	{
-	  "name": "Old Woman drinking juice",
+	  "name": "3rd woman drinking juice",
 	  "sprite": "NPC 26",
 	  "text": "Sometimes you get a bonus coin as a little prize in the bottom of your cup",
 	  "repeat_text": "I normally find a prize coin after 2 or 3 cups",
@@ -303,20 +305,6 @@
 	  "patrol_axis": "horizontal"
 	},
 	{
-	  "name": "Jogger",
-	  "sprite": "Jogger",
-	  "text": "*huff* *huff* I'm training for a marathon so all I do is run all day every day, it's such hard work but rewarding",
-	  "repeat_text": "*huff* I'm on a strict time limit here!!!",
-	  "position": {
-		"x": -500,
-		"y": 2020
-	  },
-	  "pattern": "patrol_line",
-	  "patrol_speed": 120.0,
-	  "patrol_distance": 2700,
-	  "patrol_axis": "horizontal"
-	},
-	{
 	  "name": "Super Elder 1",
 	  "sprite": "elder",
 	  "text": "Hoh Hoh, I imagine you're new in town ey? I'm one of the the 3 Card Elders in town. If you beat all 3 of us in a match we will grant you access to the Gym Hero Challenge. However... Because it's the bank holiday weekend we're having the day off!",
@@ -351,14 +339,39 @@
 		"x": 2275,
 		"y": 1440
 	  }
-	}
+	},
+	{
+		"name": "Jogger",
+		"sprite": "Jogger",
+		"meet_text": "*huff* *huff* I'm training for a marathon so all I do is run all day every day, I can't stop now!!",
+		"repeat_text": "*huff* I can't stop, I'm aiming for a personal best!!!",
+		"position": {
+			"x": -500,
+			"y": 2020
+	  },
+	  "pattern": "patrol_line",
+	  "patrol_speed": 130.0,
+	  "patrol_distance": 2700,
+	  "patrol_axis": "horizontal"
+	},
+	{
+	  "name": "Sailor_Bob",
+	  "sprite": "sailor",
+	  "position": {
+		"x": 2040,
+		"y": 3110
+	  },
+	  "pattern": "idle_random",
+	  "text": "I'm just finishing the final preparations for the arrival of the SS Anne tomorrow, there isn't much to do so will thanfkully have the evening free",
+	  "repeat_text": "The arrival of the SS Anne has been a big deal around here, It's coming straight from Vermillion city so should be packed full of Pokemon trainers"
+	},
   ],
   "opponents": [
 	{
 	  "name": "Swimmer_Jordan",
 	  "sprite": "swimmer_F",
 	  "music": "surrounded_sea",
-	  "deck": "poligong's_wrath",
+	  "deck": "whirlgong",
 	  "position": {
 		"x": 500,
 		"y": 2590
@@ -450,28 +463,6 @@
 	  "prize_cards": 2
 	},
 	{
-	  "name": "Swimmer_Todd",
-	  "sprite": "swimmer_M",
-	  "music": "normal_battle",
-	  "deck": "I_See_Sea",
-	  "position": {
-		"x": -300,
-		"y": 2580
-	  },
-	  "pattern": "patrol_line",
-	  "patrol_speed": 40.0,
-	  "patrol_distance": 250,
-	  "patrol_axis": "horizontal",
-	  "meet_text": "I'm training for a Quadrathlon. It's a 1000m Swim, Bike, Run and then 100 TCG matches!",
-	  "rematch_text": "I'm still training super hard",
-	  "first_win_text": "I can swim really well, maybe I should train using my deck more than swimming.",
-	  "rematch_win_text": "At least my swimming is going really well",
-	  "loss_text": "I am so ready for this event",
-	  "coin_reward": "coin_energy_blue_2",
-	  "cash_reward": "100",
-	  "prize_cards": 4
-	},
-	{
 	  "name": "Birdspotter_Tamsin",
 	  "sprite": "birdkeeper_M",
 	  "music": "normal_battle",
@@ -486,7 +477,7 @@
 	  "first_win_text": "I wish I could just fly away.",
 	  "rematch_win_text": "You can't fly away from all your troubles",
 	  "loss_text": "You should try bird watching with me!",
-	  "coin_reward": "coin_energy_silver_2",
+	  "coin_reward": "coin_corviknight_silver",
 	  "cash_reward": "100",
 	  "prize_cards": 4
 	},
@@ -514,25 +505,6 @@
 	  "prize_cards": 4
 	},
 	{
-	  "name": "Bug_Catcher_Johnny",
-	  "sprite": "bugcatcher2",
-	  "music": "normal_battle",
-	  "deck": "Creepy_Crawlies",
-	  "position": {
-		"x": 2167,
-		"y": 2305
-	  },
-	  "pattern": "idle_up",
-	  "meet_text": "There are a lot of critters crawling around in these roots.",
-	  "rematch_text": "I've just seen a HUGE bug running around",
-	  "first_win_text": "I've got a lot of bug pokemon cards so you can take some",
-	  "rematch_win_text": "Let's have a bug catching contest!",
-	  "loss_text": "Bugs are so great!",
-	  "coin_reward": "coin_energy_green_2",
-	  "cash_reward": "100",
-	  "prize_cards": 4
-	},
-	{
 	  "name": "Psychic_Brienne",
 	  "sprite": "psychic_f",
 	  "music": "normal_battle",
@@ -552,29 +524,51 @@
 	  "prize_cards": 6
 	},
 	{
-	  "name": "Sailor_Bob",
-	  "sprite": "sailor",
+	  "name": "Swimmer_Todd",
+	  "sprite": "swimmer_M",
 	  "music": "normal_battle",
-	  "deck": "hoist_the_anchor",
+	  "deck": "I_See_Sea",
 	  "position": {
-		"x": 2040,
-		"y": 3110
+		"x": -300,
+		"y": 2580
 	  },
-	  "pattern": "idle_random",
-	  "meet_text": "We're preparing for the arrival of the SS Anne so there's not much to do until then",
-	  "rematch_text": "There's still time before the SS Anne arrives",
-	  "first_win_text": "I should at least pretend to do some work on the dock",
-	  "rematch_win_text": "I won't have a lot of time to play when the ship docks",
-	  "loss_text": "All this spare time has given me a chance to practice",
-	  "coin_reward": "coin_somethingsomething",
-	  "cash_reward": "150",
-	  "prize_cards": 6
+	  "pattern": "patrol_line",
+	  "patrol_speed": 50.0,
+	  "patrol_distance": 250,
+	  "patrol_axis": "horizontal",
+	  "meet_text": "I'm training for a Quadrathlon. It's a 1000m Swim, Bike, Run and then 100 TCG matches!",
+	  "rematch_text": "I'm still training super hard",
+	  "first_win_text": "I can swim really well, maybe I should train using my deck more than swimming.",
+	  "rematch_win_text": "At least my swimming is going really well",
+	  "loss_text": "I am so ready for this event",
+	  "coin_reward": "coin_energy_blue_2",
+	  "cash_reward": "100",
+	  "prize_cards": 4
+	},
+	{
+	  "name": "Bug_Catcher_Johnny",
+	  "sprite": "bugcatcher2",
+	  "music": "normal_battle",
+	  "deck": "STRANGE_PLANTS",
+	  "position": {
+		"x": 2167,
+		"y": 2305
+	  },
+	  "pattern": "idle_up",
+	  "meet_text": "I love catching bugs but I also love cool plants. There are a lot of critters crawling around in these roots.",
+	  "rematch_text": "I've just seen a HUGE bug running around",
+	  "first_win_text": "I wish I could photosynthesize.",
+	  "rematch_win_text": "I could beat you at catching bugs!",
+	  "loss_text": "Grass Pokemon are great!",
+	  "coin_reward": "coin_energy_green_2",
+	  "cash_reward": "100",
+	  "prize_cards": 4
 	},
 	{
 	  "name": "Battlegirl_Sofia",
 	  "sprite": "battlegirl",
 	  "music": "normal_battle",
-	  "deck": "Brickbreaker",
+	  "deck": "BRICKBREAKER",
 	  "position": {
 		"x": 2645,
 		"y": 2395
@@ -588,25 +582,6 @@
 	  "coin_reward": "coin_energy_brown",
 	  "cash_reward": "150",
 	  "prize_cards": 6
-	},
-	{
-	  "name": "Fisherman_Gary",
-	  "sprite": "Fisherman",
-	  "music": "normal_battle",
-	  "deck": "BIG_CATCH",
-	  "position": {
-		"x": -905,
-		"y": 2680
-	  },
-	  "pattern": "idle_left",
-	  "meet_text": "My other buddies are at the juice bar today so only me fishing today. It's lonely when you're fishing on your own",
-	  "rematch_text": "I've caught some HUGE fish today that's for sure, my buddies are missing out!",
-	  "first_win_text": "Aghhh... Maybe I should have cut my losses and gone for a juice.",
-	  "rematch_win_text": "I'm definitely giving up and going to the beach bar!",
-	  "loss_text": "I'm glad I came here today!",
-	  "coin_reward": "coin_kyogre_blue",
-	  "cash_reward": "50",
-	  "prize_cards": 4
 	}
   ]
 }

@@ -53,6 +53,8 @@ func _ready():
 
 func set_time_of_day(time: String) -> void:
 	var tileset: TileSet
+	
+	# In the day turn off lights
 	match time:
 		"Day":
 			tileset = TILESET_DAY
@@ -61,20 +63,31 @@ func set_time_of_day(time: String) -> void:
 			tileset = TILESET_EVENING
 			$LIGHTS.queue_free()
 		"Night":
+			# At night turn on lights and hide the cars in the car park
 			tileset = TILESET_NIGHT
 			$LIGHTS.visible = true
+			$"TILE_MAPS/OBJECTS/Car park cars".visible = false
 
 	_apply_tileset($TILE_MAPS, tileset)
 
 func apply_date_events(date: int) -> void:
 	if date == 1:
-		# Player is blocked on day 1
-		$"TILE_MAPS/PLAYER ROAD BLOCKS 1/Cone Blocks".visible = true
+		# Player is blocked from the beach on day 1 and bikers are in car park
+		$"TILE_MAPS/PLAYER ROAD BLOCKS/Cone Blocks".visible = true
 		$"TILE_MAPS/OBJECTS/Car park cars".visible = false
 	else:
-		$"TILE_MAPS/PLAYER ROAD BLOCKS 1/Cone Blocks".visible = false
+		$"TILE_MAPS/PLAYER ROAD BLOCKS/Cone Blocks".visible = false
+
+	# Train station is shut on day 2
+	if date <= 2:
+		$"TILE_MAPS/PLAYER ROAD BLOCKS/Station Gate block".visible = true
+	else:
+		$"TILE_MAPS/PLAYER ROAD BLOCKS/Station Gate block".visible = false
 						
-	if date <= 3:
+	# SS Anne arrives on day 3
+	if date == 3:
+		$"TILE_MAPS/JETTY2/SSANNE".visible = true
+	else:
 		$"TILE_MAPS/JETTY2/SSANNE".visible = false
 	
 

@@ -12,7 +12,7 @@
 	  "pattern": "patrol_square",
 	  "patrol_speed": 120.0,
 	  "patrol_distance": 210,
-	  "patrol_axis": "horizontal",
+	  "patrol_axis": "horizontal"
 	},
 	{
 	  "name": "Biker2",

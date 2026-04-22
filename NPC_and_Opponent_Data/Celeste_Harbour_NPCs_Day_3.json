@@ -415,6 +415,25 @@
 	  "coin_reward": "coin_energy_brown",
 	  "cash_reward": "150",
 	  "prize_cards": 6
+	},
+	{
+	  "name": "Fisherman_Gary",
+	  "sprite": "Fisherman",
+	  "music": "normal_battle",
+	  "deck": "BIG_CATCH",
+	  "position": {
+		"x": -905,
+		"y": 2680
+	  },
+	  "pattern": "idle_left",
+	  "meet_text": "My other buddies are at the juice bar today so only me fishing today. It's lonely when you're fishing on your own",
+	  "rematch_text": "I've caught some HUGE fish today that's for sure, my buddies are missing out!",
+	  "first_win_text": "Aghhh... Maybe I should have cut my losses and gone for a juice.",
+	  "rematch_win_text": "I'm definitely giving up and going to the beach bar!",
+	  "loss_text": "I'm glad I came here today!",
+	  "coin_reward": "coin_kyogre_blue",
+	  "cash_reward": "50",
+	  "prize_cards": 4
 	}
   ]
 }
