@@ -7,14 +7,25 @@ extends CharacterBody2D
 signal interact_pressed(opponent)
 signal npc_interact_pressed(npc)
 
-@export var move_speed: float = 150.0
+@export var move_speed: float = 950.0
 
 var current_direction: String = "down"
 var is_moving: bool = false
-var nearby_opponent: Node = null
-var nearby_npc: Node = null
-var nearby_shopkeeper: bool = false
 var can_move: bool = true
+
+# All interactables currently overlapping the InteractionArea (opponents + npcs)
+var _nearby_candidates: Array = []
+# The currently prioritised candidate (closest) — the only one showing a bubble
+var _active_candidate: Node = null
+
+# Back-compat accessors used by MapManager / other scripts
+var nearby_opponent: Node:
+	get:
+		return _active_candidate if (_active_candidate != null and _active_candidate.is_in_group("opponents")) else null
+var nearby_npc: Node:
+	get:
+		return _active_candidate if (_active_candidate != null and _active_candidate.is_in_group("npcs")) else null
+var nearby_shopkeeper: bool = false
 
 @onready var animated_sprite: AnimatedSprite2D = $AnimatedSprite2D
 @onready var interaction_area: Area2D = $InteractionArea
@@ -49,12 +60,26 @@ func _ready():
 	if GameState.returning_from_battle:
 		position = GameState.player_position
 
+	# Seed candidates from bodies already overlapping on spawn (battle return case)
+	call_deferred("_seed_existing_overlaps")
+
+func _seed_existing_overlaps():
+	if not is_instance_valid(interaction_area):
+		return
+	for body in interaction_area.get_overlapping_bodies():
+		if body.is_in_group("opponents") or body.is_in_group("npcs"):
+			if not _nearby_candidates.has(body):
+				_nearby_candidates.append(body)
+	_update_active_candidate()
+
 func _physics_process(_delta):
 	if not can_move:
 		velocity = Vector2.ZERO
 		if is_moving:
 			animated_sprite.play("idle_" + current_direction)
 			is_moving = false
+		# Still reconcile bubbles while frozen (e.g. during messagebox)
+		_update_active_candidate()
 		return
 
 	var input_direction = Vector2.ZERO
@@ -75,24 +100,6 @@ func _physics_process(_delta):
 		is_moving = true
 		_update_direction(input_direction)
 		animated_sprite.play("walk_" + current_direction)
-
-		# Block movement toward nearby opponent
-		#if nearby_opponent:
-		#	var diff = nearby_opponent.position - position
-		#	if diff.length() < 45.0:
-		#		var toward = diff.normalized()
-		#		var dot = velocity.dot(toward)
-		#		if dot > 0:
-		#			velocity -= toward * dot
-
-		# Block movement toward nearby NPC
-		#if nearby_npc:
-	#		var diff = nearby_npc.position - position
-#			if diff.length() < 45.0:#
-#				var toward = diff.normalized()
-#				var dot = velocity.dot(toward)
-#				if dot > 0:
-#					velocity -= toward * dot
 	else:
 		velocity = Vector2.ZERO
 		if is_moving:
@@ -100,6 +107,9 @@ func _physics_process(_delta):
 			is_moving = false
 
 	move_and_slide()
+
+	# Recompute closest candidate each frame so priority follows player movement
+	_update_active_candidate()
 
 func _update_direction(direction: Vector2):
 	if abs(direction.x) > abs(direction.y):
@@ -114,16 +124,16 @@ func _unhandled_input(event):
 			MapManager.handle_message_spacebar()
 			return
 
-		if nearby_opponent:
-			interact_pressed.emit(nearby_opponent)
-		elif nearby_npc:
-			npc_interact_pressed.emit(nearby_npc)
+		if _active_candidate != null and is_instance_valid(_active_candidate):
+			if _active_candidate.is_in_group("opponents"):
+				interact_pressed.emit(_active_candidate)
+			elif _active_candidate.is_in_group("npcs"):
+				npc_interact_pressed.emit(_active_candidate)
 		elif nearby_shopkeeper:
 			MapManager.trigger_shopkeeper_interact()
 
 	if event is InputEventMouseButton:
 		if event.pressed:
-			# Click also dismisses message if open
 			if MapManager.message_panel != null and MapManager.message_panel.visible:
 				MapManager.handle_message_spacebar()
 				return
@@ -133,17 +143,47 @@ func _unhandled_input(event):
 				camera.zoom = (camera.zoom - Vector2(0.2, 0.2)).clamp(Vector2(1, 1), Vector2(4, 4))
 
 func _on_interaction_area_body_entered(body: Node2D):
-	if body.is_in_group("opponents"):
-		nearby_opponent = body
-		body.show_bubble()
-	elif body.is_in_group("npcs"):
-		nearby_npc = body
-		body.show_bubble()
+	if body.is_in_group("opponents") or body.is_in_group("npcs"):
+		if not _nearby_candidates.has(body):
+			_nearby_candidates.append(body)
+		_update_active_candidate()
 
 func _on_interaction_area_body_exited(body: Node2D):
-	if body == nearby_opponent:
-		nearby_opponent = null
+	_nearby_candidates.erase(body)
+	if body.has_method("hide_bubble"):
 		body.hide_bubble()
-	elif body == nearby_npc:
-		nearby_npc = null
-		body.hide_bubble()
+	if body == _active_candidate:
+		_active_candidate = null
+	_update_active_candidate()
+
+# ------------------------------------------------------------
+# Priority: closest candidate wins — only it shows a bubble
+# ------------------------------------------------------------
+func _update_active_candidate():
+	# Purge invalid refs
+	_nearby_candidates = _nearby_candidates.filter(func(n): return is_instance_valid(n))
+
+	if _nearby_candidates.is_empty():
+		_active_candidate = null
+		return
+
+	var closest: Node = null
+	var closest_dist_sq: float = INF
+	for n in _nearby_candidates:
+		var d_sq: float = position.distance_squared_to(n.position)
+		if d_sq < closest_dist_sq:
+			closest_dist_sq = d_sq
+			closest = n
+
+	# Hide bubbles on everyone except the closest
+	for n in _nearby_candidates:
+		if n == closest:
+			continue
+		if n.has_method("hide_bubble"):
+			n.hide_bubble()
+
+	# Always show on the active one (handles re-entry after battle + re-prioritisation)
+	if closest != null and closest.has_method("show_bubble"):
+		closest.show_bubble()
+
+	_active_candidate = closest

@@ -3,7 +3,7 @@
 [ext_resource type="Script" uid="uid://bh8b0yk1h1hr3" path="res://Scripts/Objects_And_Classes/Shopkeeper_Script.gd" id="1_0f0iw"]
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_tal5p"]
-size = Vector2(21.5, 43)
+size = Vector2(21.5, 27)
 
 [node name="NPC" type="CharacterBody2D" unique_id=586636241]
 collision_layer = 4
@@ -12,7 +12,7 @@ script = ExtResource("1_0f0iw")
 [node name="AnimatedSprite2D" type="AnimatedSprite2D" parent="." unique_id=1030604160]
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="." unique_id=446318610]
-position = Vector2(0, 9.5)
+position = Vector2(0, 1.5)
 shape = SubResource("RectangleShape2D_tal5p")
 
 [node name="DirectionTimer" type="Timer" parent="." unique_id=721323780]

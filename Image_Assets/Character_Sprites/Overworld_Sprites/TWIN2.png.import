@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://dasy373vkx5af"
-path="res://.godot/imported/GUITARIST_1.png-b8987102d1f0fff6a8cfef1eae48e3f3.ctex"
+uid="uid://dk1xvmp434dfm"
+path="res://.godot/imported/TWIN2.png-30c61f536f9ef753265a0a6df2bee028.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://Image_Assets/Character_Sprites/Overworld_Sprites/GUITARIST_1.png"
-dest_files=["res://.godot/imported/GUITARIST_1.png-b8987102d1f0fff6a8cfef1eae48e3f3.ctex"]
+source_file="res://Image_Assets/Character_Sprites/Overworld_Sprites/TWIN2.png"
+dest_files=["res://.godot/imported/TWIN2.png-30c61f536f9ef753265a0a6df2bee028.ctex"]
 
 [params]
 

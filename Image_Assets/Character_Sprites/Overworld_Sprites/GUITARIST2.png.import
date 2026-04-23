@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://bwgxmg04batpl"
-path="res://.godot/imported/NPC 50.png-dce3efa69497caa2259c134d81036dd2.ctex"
+uid="uid://bo6cra3jqx3x2"
+path="res://.godot/imported/GUITARIST2.png-c8bdc8f267314add6a7fe47c498eb722.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://Image_Assets/Character_Sprites/Overworld_Sprites/NPC 50.png"
-dest_files=["res://.godot/imported/NPC 50.png-dce3efa69497caa2259c134d81036dd2.ctex"]
+source_file="res://Image_Assets/Character_Sprites/Overworld_Sprites/GUITARIST2.png"
+dest_files=["res://.godot/imported/GUITARIST2.png-c8bdc8f267314add6a7fe47c498eb722.ctex"]
 
 [params]
 

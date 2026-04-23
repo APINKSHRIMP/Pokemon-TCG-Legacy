@@ -239,7 +239,8 @@ func _on_player_interact(opponent: Node):
 		return
 	current_opponent = opponent
 	opponent.pause_and_face(_player.position)
-	opponent.hide_bubble()
+	# Keep bubble visible during messagebox; refresh in case state changed
+	opponent.refresh_bubble()
 	_show_message_with_choices(opponent.get_greeting_text())
 
 func _on_yes_pressed():
@@ -298,10 +299,9 @@ func _on_player_npc_interact(npc: Node):
 	else:
 		npc.pause_and_face(_player.position)
 
-	npc.hide_bubble()
-
 	# Shop NPC: delegate entirely to its own state machine
 	if npc.npc_type == "shop" and npc.has_method("on_interact"):
+		npc.refresh_bubble()
 		var handled = npc.on_interact()
 		if handled:
 			return
@@ -312,18 +312,22 @@ func _on_player_npc_interact(npc: Node):
 	# Gift NPC: detected by gift_type field being non-empty
 	if npc.is_gift_npc():
 		if npc.has_gift_been_given():
+			npc.refresh_bubble()
 			_show_message_with_ok(npc.repeat_text if npc.repeat_text != "" else npc.text)
 		else:
 			_give_gift(npc)
 			npc.mark_as_met()
+			npc.refresh_bubble()   # flips to old_talk now that gift is given
 			_show_message_with_ok(npc.text)
 		return
 
-	# Text-only NPC
-	if npc.has_been_met() and npc.repeat_text != "":
+	# Text-only NPC — mark as met BEFORE showing text so icon flips immediately
+	var use_repeat = npc.has_been_met() and npc.repeat_text != ""
+	npc.mark_as_met()
+	npc.refresh_bubble()
+	if use_repeat:
 		_show_message_with_ok(npc.repeat_text)
 	else:
-		npc.mark_as_met()
 		_show_message_with_ok(npc.text)
 
 # ============================================================

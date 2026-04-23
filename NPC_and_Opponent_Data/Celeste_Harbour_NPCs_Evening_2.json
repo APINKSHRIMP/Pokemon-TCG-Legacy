@@ -197,6 +197,28 @@
 	  "text": "I hope mummy brings us back to the beach to play again tomorrow",
 	  "repeat_text":"We normally come to the beach every day to play!"
 	},
+	{
+	  "name": "Psychic_Brienne",
+	  "sprite": "psychic_f",
+	  "position": {
+		"x": 2880,
+		"y": 3110
+	  },
+	  "pattern": "idle_right",
+	  "meet_text": "This dock is always so quiet, it's a great spot to meditate and to play the pokemon TCG.",
+	  "repeat_text": "I'll be here meditating all day until tonight, Please don't disturb me until then.",
+	},
+	{
+	  "name": "Sailor_Bob",
+	  "sprite": "sailor",
+	  "position": {
+		"x": 2040,
+		"y": 3110
+	  },
+	  "pattern": "idle_random",
+	  "text": "I'm just finishing the final preparations for the arrival of the SS Anne tomorrow, there isn't much to do so I'll be done by tonight free",
+	  "repeat_text": "The arrival of the SS Anne has been a big deal around here, It's coming straight from Vermillion city so should be packed full of Pokemon trainers"
+	}
   ],
   "opponents": [
 	{
@@ -228,7 +250,7 @@
 		"y": 2475
 	  },
 	  "pattern": "idle_cycle",
-	  "meet_text": "I've been breathing that much fire that I needed an ice cold bev to cool my mouth down, but I'm ready for a match if you want.",
+	  "meet_text": "I've had plenty of juice so I'm all cooled down and need to get fired up.",
 	  "rematch_text": "I'm fired up and ready for another match if you want.",
 	  "first_win_text": "I burned out too quick",
 	  "rematch_win_text": "I could teach you how to firebreath... but maybe you should teach me how to play cards better!",
@@ -247,7 +269,7 @@
 		"y": 2475
 	  },
 	  "pattern": "idle_cycle",
-	  "meet_text": "I'm so used to hot drinks that it's weird to drink something nice and cold",
+	  "meet_text": "We're practicing all night, both firebreathing and pokemon cards!",
 	  "rematch_text": "If you want another match then let's goooooo",
 	  "first_win_text": "I have too many burns to battle well",
 	  "rematch_win_text": "I'll just stick to the firebreathing from now on, I'm good at that.",
@@ -258,7 +280,7 @@
 	},
 	{
 	  "name": "Birdspotter_Tamsin",
-	  "sprite": "birdkeeper_M",
+	  "sprite": "birdkeeper_F",
 	  "music": "normal_battle",
 	  "deck": "Lil_Birbs",
 	  "position": {
@@ -299,25 +321,6 @@
 	  "prize_cards": 4
 	},
 	{
-	  "name": "Psychic_Brienne",
-	  "sprite": "psychic_f",
-	  "music": "normal_battle",
-	  "deck": "Meditation_meditation",
-	  "position": {
-		"x": 2880,
-		"y": 3110
-	  },
-	  "pattern": "idle_right",
-	  "meet_text": "This dock is always so quiet, it's a great spot to meditate and to battle",
-	  "rematch_text": "I've been meditating a lot since our last match",
-	  "first_win_text": "I have to focus more. Take these cards to help you focus more too",
-	  "rematch_win_text": "I'll focus harder",
-	  "loss_text": "I manifested the win",
-	  "coin_reward": "coin_energy_purple",
-	  "cash_reward": "150",
-	  "prize_cards": 6
-	},
-	{
 	  "name": "Swimmer_Todd",
 	  "sprite": "swimmer_M",
 	  "music": "normal_battle",
@@ -354,28 +357,9 @@
 	  "first_win_text": "I wish I could photosynthesize.",
 	  "rematch_win_text": "I could beat you at catching bugs!",
 	  "loss_text": "Grass Pokemon are great!",
-	  "coin_reward": "coin_energy_green_2",
+	  "coin_reward": "coin_turtwig_green",
 	  "cash_reward": "100",
 	  "prize_cards": 4
-	},
-	{
-	  "name": "Sailor_Bob",
-	  "sprite": "sailor",
-	  "music": "normal_battle",
-	  "deck": "hoist_the_anchor",
-	  "position": {
-		"x": 2040,
-		"y": 3110
-	  },
-	  "pattern": "idle_random",
-	  "meet_text": "I'm all done preparing for the arrival of the SS Anne so there's not much to do now until morning",
-	  "rematch_text": "There's still time before the SS Anne arrives",
-	  "first_win_text": "I should at least pretend to do some work on the dock",
-	  "rematch_win_text": "I won't have a lot of time to play when the ship docks",
-	  "loss_text": "All this spare time has given me a chance to practice",
-	  "coin_reward": "coin_energy_brown",
-	  "cash_reward": "150",
-	  "prize_cards": 6
 	},
 	{
 	  "name": "Battlegirl_Sofia",

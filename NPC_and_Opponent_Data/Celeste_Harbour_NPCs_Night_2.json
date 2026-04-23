@@ -96,6 +96,7 @@
 	  "rematch_win_text": "I'll focus harder",
 	  "loss_text": "I manifested the win",
 	  "coin_reward": "coin_energy_purple",
+	"card_reward": "base1-10, base1-10, base1-31, base1-31",
 	  "cash_reward": "150",
 	  "prize_cards": 6
 	},

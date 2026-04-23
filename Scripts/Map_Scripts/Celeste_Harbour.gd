@@ -72,23 +72,59 @@ func set_time_of_day(time: String) -> void:
 
 func apply_date_events(date: int) -> void:
 	if date == 1:
-		# Player is blocked from the beach on day 1 and bikers are in car park
+		# Player is blocked from the beach on day 1 and bikers are in car park.
+		# Day 1 boats aren't really visible but show them anyway and they're reused on day 6 because of this.
 		$"TILE_MAPS/PLAYER ROAD BLOCKS/Cone Blocks".visible = true
-		$"TILE_MAPS/OBJECTS/Car park cars".visible = false
+		$"TILE_MAPS/JETTY/DAY 1 Boats".visible=true
 	else:
 		$"TILE_MAPS/PLAYER ROAD BLOCKS/Cone Blocks".visible = false
-
+		$"Collision Objects/BLOCKS/BEACH CONES".queue_free()
+		$"TILE_MAPS/JETTY/DAY 1 Boats".visible=false
+	
+	if date == 2:
+		$"TILE_MAPS/JETTY/DAY 2 Boats".visible=true
+		$"TILE_MAPS/OBJECTS/CAR PARK CARS/CARS DAY 2".visible=true
+	else:
+		$"TILE_MAPS/JETTY/DAY 2 Boats".visible=false
+		$"TILE_MAPS/OBJECTS/CAR PARK CARS/CARS DAY 2".visible=false
+		
 	# Train station is shut on day 2
 	if date <= 2:
 		$"TILE_MAPS/PLAYER ROAD BLOCKS/Station Gate block".visible = true
 	else:
 		$"TILE_MAPS/PLAYER ROAD BLOCKS/Station Gate block".visible = false
+		$"Collision Objects/BLOCKS/STATION GATE".queue_free()
 						
 	# SS Anne arrives on day 3
 	if date == 3:
 		$"TILE_MAPS/JETTY2/SSANNE".visible = true
+		$"TILE_MAPS/JETTY/DAY 3 Boats".visible=true
+		$"TILE_MAPS/OBJECTS/CAR PARK CARS/CARS DAY 3".visible=true
 	else:
 		$"TILE_MAPS/JETTY2/SSANNE".visible = false
+		$"TILE_MAPS/JETTY/DAY 3 Boats".visible=false
+		$"TILE_MAPS/OBJECTS/CAR PARK CARS/CARS DAY 3".visible=false
+	
+	# Forest is closed until day 4
+	if date < 4:
+		$"TILE_MAPS/PLAYER ROAD BLOCKS/Forest Gate block".visible = true
+	else:
+		$"TILE_MAPS/PLAYER ROAD BLOCKS/Forest Gate block".visible = false
+		$"Collision Objects/BLOCKS/FOREST GATE".queue_free()
+			
+	if date == 4:
+		$"TILE_MAPS/JETTY/DAY 4 Boats".visible=true
+		$"TILE_MAPS/OBJECTS/CAR PARK CARS/CARS DAY 4".visible=true
+	else:
+		$"TILE_MAPS/JETTY/DAY 4 Boats".visible=false
+		$"TILE_MAPS/OBJECTS/CAR PARK CARS/CARS DAY 4".visible=false
+	
+	if date == 5:
+		$"TILE_MAPS/JETTY/DAY 5 Boats".visible=true
+		$"TILE_MAPS/OBJECTS/CAR PARK CARS/CARS DAY 5".visible=true
+	else:
+		$"TILE_MAPS/JETTY/DAY 5 Boats".visible=false
+		$"TILE_MAPS/OBJECTS/CAR PARK CARS/CARS DAY 5".visible=false
 	
 
 func _apply_tileset(node: Node, tileset: TileSet) -> void:

@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://04xmlwf5h4cb"
-path="res://.godot/imported/TWINS_2.png-4d70d76355e52a124ef223b7517282e5.ctex"
+uid="uid://cg2jbaqmo4itq"
+path="res://.godot/imported/TWIN1.png-7b9bcd6ec2b9d74d28ab75bd007b3ef1.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://Image_Assets/Character_Sprites/Overworld_Sprites/TWINS_2.png"
-dest_files=["res://.godot/imported/TWINS_2.png-4d70d76355e52a124ef223b7517282e5.ctex"]
+source_file="res://Image_Assets/Character_Sprites/In_Battle_Sprites/TWIN1.png"
+dest_files=["res://.godot/imported/TWIN1.png-7b9bcd6ec2b9d74d28ab75bd007b3ef1.ctex"]
 
 [params]
 

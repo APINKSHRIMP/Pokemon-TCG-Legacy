@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://cjg0ncc7hycal"
-path="res://.godot/imported/TWINS.png-e2b70ab5c14046949814d66ec3e1ddb6.ctex"
+uid="uid://b8hkbt2rsxde8"
+path="res://.godot/imported/NPC_COIN_SHOPKEEPER.png-f26ad425e581917c6a7ff90ad113b2e6.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://Image_Assets/Character_Sprites/Overworld_Sprites/TWINS.png"
-dest_files=["res://.godot/imported/TWINS.png-e2b70ab5c14046949814d66ec3e1ddb6.ctex"]
+source_file="res://Image_Assets/Character_Sprites/Overworld_Sprites/NPC_COIN_SHOPKEEPER.png"
+dest_files=["res://.godot/imported/NPC_COIN_SHOPKEEPER.png-f26ad425e581917c6a7ff90ad113b2e6.ctex"]
 
 [params]
 
