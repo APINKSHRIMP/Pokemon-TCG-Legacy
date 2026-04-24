@@ -76,6 +76,7 @@ func _load_and_spawn_opponents(json_path: String):
 		opp.sprite           = entry["sprite"]
 		opp.music            = entry["music"]
 		opp.deck             = entry["deck"]
+		opp.prize_cards      = entry.get("prize_cards", 6)
 		opp.meet_text        = entry["meet_text"]
 		opp.repeat_text      = entry["repeat_text"]
 		opp.first_win_text   = entry["first_win_text"]

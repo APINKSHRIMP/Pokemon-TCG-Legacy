@@ -16,6 +16,7 @@ var opponent_name: String = ""
 var sprite: String = ""
 var music: String = ""
 var deck: String = ""
+var prize_cards: int = 6
 var meet_text: String = ""
 var repeat_text: String = ""
 var first_win_text: String = ""
@@ -293,9 +294,8 @@ func _on_restore_facing():
 		"idle_right": animated_sprite.play("idle_right"); current_facing = "right"
 
 func get_greeting_text() -> String:
-	if GameState.has_beaten_opponent(opponent_name):
-		return repeat_text
-	return meet_text
+	var body := repeat_text if GameState.has_beaten_opponent(opponent_name) else meet_text
+	return "%s\n%s\n\n(%s | %d prize cards)" % [opponent_name, body, deck, prize_cards]
 
 func get_result_text(player_won: bool) -> String:
 	if player_won:
