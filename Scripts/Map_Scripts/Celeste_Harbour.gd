@@ -66,7 +66,7 @@ func set_time_of_day(time: String) -> void:
 			# At night turn on lights and hide the cars in the car park
 			tileset = TILESET_NIGHT
 			$LIGHTS.visible = true
-			$"TILE_MAPS/OBJECTS/Car park cars".visible = false
+			$"TILE_MAPS/OBJECTS/CAR PARK CARS".visible = false
 
 	_apply_tileset($TILE_MAPS, tileset)
 

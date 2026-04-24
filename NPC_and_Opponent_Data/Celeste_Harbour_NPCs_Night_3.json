@@ -1,0 +1,374 @@
+{
+  "npcs": [
+	{
+	  "name": "Sailor working on ss anne night ",
+	  "sprite": "sailor",
+	  "text": "I've been working all day I'm absolutely shattered.",
+	  "repeat_text": "Most passengers went back to the ship earlier but I saw some shady characters actually getting off",
+	  "position": {
+		"x": 2880,
+		"y": 3110
+	  },
+	  "pattern": "idle_right"
+	},
+	{
+	  "name": "Sailor 2 pier 1 night 3",
+	  "sprite": "Sailor",
+	  "text": "Oh boy I am pooped. Some guys dressed in black headed past this way earlier as if they were going to go to the forest",
+	  "repeat_text": "The forest is still closed until morning though so not sure where they were going",
+	  "position": {
+		"x": 300,
+		"y": 3125
+	  },
+	  "pattern": "idle_left"
+	},
+	{
+	  "name": "Sailor working on dock night 3",
+	  "sprite": "sailor",
+	  "gift_type": "costume",
+	  "gift_value": "sailor",
+	  "text": "I can't wait for the SS Anne to leave now, I've never been busier",
+	  "repeat_text": "Us sailors are hard workers as it is but this is too much for us!",
+	  "position": {
+		"x": 690,
+		"y": 2680
+	  },
+	  "pattern": "idle_left"
+	},
+	{
+	  "name": "Sabrina NPC",
+	  "sprite": "GYMSABRINA",
+	  "gift_type": "card",
+	  "gift_value": "gym1-59",
+	  "text": "Your town is much quieter than Saffron. I'm Sabrina, I knew you would be coming. You'll be challenging me soon I can see that, but this might help you win against me.",
+	  "repeat_text": "Good luck with the Gym Hero Challenge. I know you're going to do well.",
+	  "position": {
+		"x": -220,
+		"y": 2490
+	  },
+	  "pattern": "idle_down"
+	},
+	{
+	  "name": "Giovanni NPC",
+	  "sprite": "TEAMROCKETBOSS",
+	  "gift_type": "card",
+	  "gift_value": "gym2-43",
+	  "text": "You shouldn't be out here so late, there's not always nice people wandering around at this hour. I promised not to cause trouble while I'm here but why not a little mischief? As proof I'm not evil, take this",
+	  "repeat_text": "I am Giovanni. I was once the leader of Team Rocket and the gym leader in Viridian. Now I'm not formerly either, but Team Rocket will always live on.",
+	  "position": {
+		"x": 920,
+		"y": 890
+	  },
+	  "pattern": "idle_up"
+	}
+  ],
+  "opponents": [
+	{
+	  "name": "Birdspotter_Gregg",
+	  "sprite": "birdkeeper_M",
+	  "music": "normal_battle",
+	  "deck": "BIG_OL_BIRBS",
+	  "position": {
+		"x": 1640,
+		"y": 2340
+	  },
+	  "pattern": "idle_random",
+	  "meet_text": "My friend got hungry so decided to head back, but I'm interested to see what birds are out at night.",
+	  "rematch_text": "This really is a great spot for birds and cards!",
+	  "first_win_text": "Do you hate birds or something?.",
+	  "rematch_win_text": "Well at least I can watch the birds from around here.",
+	  "loss_text": "Looking after birds really isn't easy!",
+	  "coin_reward": "coin_lugia_silver",
+	  "cash_reward": "150",
+	  "prize_cards": 6
+	},
+	{
+	  "name": "Guitarist_Jonesy",
+	  "sprite": "Guitarist",
+	  "music": "normal_battle",
+	  "deck": "HEAVY_METAL",
+	  "position": {
+		"x": 2480,
+		"y": 1210
+ 	},
+	  "pattern": "idle_right",
+	  "meet_text": "We're in a band and we're currently touring. We're just passing through to our next gig so having a quick jam here",
+	  "rematch_text": "Hey dude, let's rock.",
+	  "first_win_text": "Damn I snapped a string while we were jamming",
+	  "rematch_win_text": "You should come to one of our gigs!",
+	  "loss_text": "Let's goooooooooooo",
+	  "coin_reward": "coin_zapdos_gold",
+	  "cash_reward": "140",
+	  "prize_cards": 4
+	},
+	{
+	  "name": "Guitarist_Howard",
+	  "sprite": "Guitarist2",
+	  "music": "normal_battle",
+	  "deck": "ROCK_N_SHOCK",
+	  "position": {
+		"x": 2515,
+		"y": 1210
+ 	},
+	  "pattern": "idle_left",
+	  "meet_text": "We're the Toxtricity Rockers, we're a duo that's pretty big in Johto.",
+	  "rematch_text": "You here to hear a song or a rematch?",
+	  "first_win_text": "I missed a chord",
+	  "rematch_win_text": "Fancy being a roadie?",
+	  "loss_text": "If it's any consolation I'll give you a discount on our album",
+	  "coin_reward": "coin_solgaleo_gold",
+	  "cash_reward": "140",
+	  "prize_cards": 4
+	},
+	{
+	  "name": "Gardener Callum",
+	  "sprite": "gardener",
+	  "music": "chilled_battle",
+	  "deck": "Pollen_Power",
+	  "position": {
+		"x": -875,
+		"y": 2280
+	  },
+	  "pattern": "idle_left",
+	  "wander_radius": 65,
+	  "meet_text": "Wowee, it was a long day gardening today. I'm down for a match to let off some steam now.",
+	  "rematch_text": "I've got time for a rematch before my next shift.",
+	  "first_win_text": "I'm clearly too worn out from such a long shift.",
+	  "rematch_win_text": "I'll win when I'm fully rested.",
+	  "loss_text": "Even after a hard days work I can still win!",
+	  "coin_reward": "coin_bulbasaur_green",
+	  "cash_reward": "75",
+	  "prize_cards": 2
+	},
+	{
+	  "name": "Garden_Manager_Louis",
+	  "sprite": "gardener",
+	  "music": "chilled_battle",
+	  "deck": "SOLAR_POWER",
+	  "position": {
+		"x": -710,
+		"y": 2020
+	  },
+	  "pattern": "random_wander",
+	  "wander_radius": 65,
+	  "meet_text": "I might be the garden manager but I do know how to have fun",
+	  "rematch_text": "Look at how great the gardens look",
+	  "first_win_text": "Even with all this sun I couldn't win",
+	  "rematch_win_text": "Ever fancied being a gardener yourself?",
+	  "loss_text": "Plants aren't just pretty",
+	  "coin_reward": "coin_venusaur_green",
+	  "cash_reward": "75",
+	  "prize_cards": 6
+	},
+	{
+	  "name": "Sailor_Bob",
+	  "sprite": "sailor",
+	  "music": "normal_battle",
+	  "deck": "hoist_the_anchor",
+	  "position": {
+		"x": 2040,
+		"y": 3110
+	  },
+	  "pattern": "idle_random",
+	  "meet_text": "Most of the passengers have returned on board for the night now so it's quiet again as usual.",
+	  "rematch_text": "There's still time before the morning shift",
+	  "first_win_text": "I should at least pretend to do some work on the dock",
+	  "rematch_win_text": "I won't have a lot of time to during the day now the ship has docked",
+	  "loss_text": "All this spare time has given me a chance to practice",
+	  "coin_reward": "coin_energy_brown",
+	  "cash_reward": "150",
+	  "prize_cards": 6
+	},
+	{
+	  "name": "Card_Elder_Rayne",
+	  "sprite": "ELDER",
+	  "music": "hard_battle",
+	  "deck": "RAIN_DANCE",
+	  "pattern": "idle_down",
+	  "meet_text": "Hoh Hoh, are you ready to feel the torrent? If you win I'll give you a medal to prove your triumph.",
+	  "rematch_text": "Hoh Hoh! I enjoyed the battle that much I'd also like another!",
+	  "first_win_text": "Congratulations on your win. You've earned this medal and my respect.",
+	  "rematch_win_text": "Come back any time and battle us old folk.",
+	  "loss_text": "Don't be disheartened, the rain will always stop.",
+	  "coin_reward": "coin_blastoise_silver",
+	  "cash_reward": "200",
+	  "prize_cards": 6,
+	  "position": {
+		"x": 2230,
+		"y": 1252
+		}
+	  },
+	{
+	  "name": "Card_Elder_Hamish",
+	  "sprite": "ELDER",
+	  "music": "hard_battle",
+	  "deck": "HAYMAKER",
+	  "pattern": "idle_down",
+	  "meet_text": "Back for the challenge then hey? Remember you'll need to defeat all 3 of us if you want to progress.",
+	  "rematch_text": "Very well, I always enjoy a good challenge!",
+	  "first_win_text": "Well done, that was quite the battle. Take my medal and continue forth.",
+	  "rematch_win_text": "Battling like this makes me feel young again.",
+	  "loss_text": "Don't be disheartened, the rain will always stop.",
+	  "coin_reward": "coin_rayquaza_silver",
+	  "cash_reward": "200",
+	  "prize_cards": 6,
+	  "position": {
+		"x": 2326,
+		"y": 1252
+	  },
+	},
+		{
+	  "name": "Card_Elder_Waverly",
+	  "sprite": "ELDER",
+	  "music": "hard_battle",
+	  "deck": "DO_THE_WAVE",
+	  "pattern": "idle_down",
+	  "meet_text": "Are you ready to take me on then? If you win then you'll do well in the Gym Hero Challenge",
+	  "rematch_text": "Up for another round then? Happy to oblige",
+	  "first_win_text": "Well well well, what a jolly good play! You've earned this.",
+	  "rematch_win_text": "We've been winning and losing for so long it's always fun either way",
+	  "loss_text": "When you fail, get up and try again.",
+	  "coin_reward": "coin_rayquaza_silver",
+	  "cash_reward": "200",
+	  "prize_cards": 6,
+	  "position": {
+		"x": 2278,
+		"y": 1252
+	  },
+	},
+	{
+		"name": "Hiker_Ben",
+		"sprite": "Hiker",
+		"music": "normal_battle",
+		"deck": "SOLID_GROUND",
+		"meet_text": "Well that's incredibly dissapointing. I was hoping to have a trek through the forest but they've told me it's shut so I have nowhere to go now.",
+		"first_win_text": "Well that's another dissapointment to my day",
+		"rematch_text": "The forest has to be open soon surely",
+		"rematch_win_text": "The dissapointment just doesn't end",
+		"loss_text": "At least that's given me a nice little boost after the bad news",
+		"coin_reward": "coin_tyranitar_gold_2",
+		"cash_reward": "100",
+		"position": {
+			"x": 950,
+			"y": 1270
+	  },
+	  "pattern": "random_wander",
+	  "patrol_speed": 40.0,
+	  "wander_radius": 60
+	},
+	{
+	  "name": "Psychic_Brienne",
+	  "sprite": "psychic_f",
+	  "music": "normal_battle",
+	  "deck": "Meditation_meditation",
+	  "position": {
+		"x": -830,
+		"y": 1270
+	  },
+	  "pattern": "idle_left",
+	  "meet_text": "I love the peace of the harbour at night, the sound of the waves in the dark are really relaxing",
+	  "rematch_text": "It's easier to meditate at night",
+	  "first_win_text": "I have to focus more. Take these cards to help you focus more too",
+	  "rematch_win_text": "I'll focus harder",
+	  "loss_text": "I manifested the win",
+	  "coin_reward": "coin_energy_purple",
+	"card_reward": "base1-10, base1-10, base1-31, base1-31",
+	  "cash_reward": "150",
+	  "prize_cards": 6
+	},
+	{
+	  "name": "ENGINEER_BRAD",
+	  "sprite": "WORKER",
+	"deck": "WORK_HARD_PLAY_HARD",
+	"music": "normal_battle",
+	  "meet_text": "Hey, I've got some shocking cards I want to try out",
+		"rematch_text": "It's rare I have to work at night so I'm free for another match",
+		"first_win_text": "I simply cannot fix that at all",
+		"rematch_win_text": "I'm going to weld my cards at this rate",
+		"loss_text": "Hope your loss didn't come as a shock to you.",
+		"coin_reward": "coin_raichu_gold",
+		"cash_reward": "150",
+		"costume_reward": "WORKER",
+	  "position": {
+		"x": 900,
+		"y": 3155
+	  },
+	  "pattern": "idle_up"
+	},
+	{
+		"name": "Bad_Dude_Paul",
+		"sprite": "roughneck",
+		"music": "normal_battle",
+		"deck": "BAD_GUYS",
+		"meet_text": "Heh you want to try and beat me kid??",
+		"first_win_text": "Heh you're pretty tough, you wanna join our gang?",
+		"rematch_text": "Damn... they're gonna kick me out of the cool guy biker gang for this",
+		"rematch_win_text": "Now they're DEFINITELY going to kick me out of the cool guy biker gang...",
+		"loss_text": "Heh heh heh, too easy.",
+		"coin_reward": "coin_reshiram_zekrom_silver",
+		"cash_reward": "100",
+		"costume_reward": "ROUGHNECK",
+		"position": {
+			"x": -810,
+			"y": 2550
+	  },
+	  "pattern": "idle_random"
+	},
+	{
+		"name": "Bad_Dude_Wayne",
+		"sprite": "roughneck",
+		"music": "normal_battle",
+		"deck": "DARK_POISON",
+		"meet_text": "I caught these bad looking dudes heading to the forest and they gave me some interesting cards and went on their way",
+		"first_win_text": "You even seen a Dark Pokemon before?",
+		"rematch_text": "I won't lost this time",
+		"rematch_win_text": "I need some more of these Dark cards",
+		"loss_text": "You didn't stand a chance",
+		"coin_reward": "coin_darkrai_silver",
+		"cash_reward": "150",
+		"costume_reward": "ROUGHNECK",
+		"position": {
+			"x": 420,
+			"y": 1270
+	  },
+  	  "pattern": "random_wander",
+	  "wander_radius": 65,
+	},
+	{
+		"name": "ROCKET_GRUNT_DAMIEN",
+		"sprite": "TEAMROCKET_M",
+		"music": "normal_battle",
+		"deck": "ROCKET_UNDERLINGS",
+		"meet_text": "I'm here on bosses orders but we're not starting until tomorrow so you'll be good practice",
+		"first_win_text": "Oh no, don't tell the boss",
+		"rematch_text": "I'm not really a bad guy but I can't let people know that",
+		"rematch_win_text": "I'm gonna be toast",
+		"loss_text": "Ha ha, you didn't put up much of a fight.",
+		"coin_reward": "coin_rocket_blue",
+		"cash_reward": "125",
+		"position": {
+			"x": 940,
+			"y": 1050
+	  },
+  	  "pattern": "idle_left",
+	},
+	{
+		"name": "ROCKET_GRUNT_PENNY",
+		"sprite": "TEAMROCKET_F",
+		"music": "normal_battle",
+		"deck": "ROCKET_BLAST_OFF",
+		"meet_text": "Team Rocket used to be the most feared group in the world. Maybe we will be again",
+		"first_win_text": "Weren't you even a little bit scared?",
+		"rematch_text": "Have you ever heard of us before?",
+		"rematch_win_text": "I really gotta act more scary",
+		"loss_text": "If you didn't already you should definitely fear us now",
+		"coin_reward": "coin_rocket_red",
+		"cash_reward": "125",
+		"position": {
+			"x": 900,
+			"y": 1050
+	  },
+  	  "pattern": "idle_right",
+	}
+  ]
+}

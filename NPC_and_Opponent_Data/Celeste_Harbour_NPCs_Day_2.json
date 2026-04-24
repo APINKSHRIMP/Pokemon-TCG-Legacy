@@ -152,7 +152,7 @@
 	},
 	{
 	  "name": "Mother 2",
-	  "sprite": "NPC 87",
+	  "sprite": "NPC 29",
 	  "text": "My kids love to build sandcastles every day and play that pokemon card game everyone is crazy for",
 	  "repeat_text": "I don't like to build sandcastles or play pokemon, but I love lying on the beach so I'm not complaining!",
 	  "position": {
@@ -305,9 +305,9 @@
 	  "patrol_axis": "horizontal"
 	},
 	{
-	  "name": "Super Elder 1",
+	  "name": "Super Elder Hamish day 2",
 	  "sprite": "elder",
-	  "text": "Hoh Hoh, I imagine you're new in town ey? I'm one of the the 3 Card Elders in town. If you beat all 3 of us in a match we will grant you access to the Gym Hero Challenge. However... Because it's the bank holiday weekend we're having the day off!",
+	  "text": "Hoh Hoh, I imagine you're new in town ey? I'm Hamish one of the the 3 Card Elders in town. If you beat all 3 of us in a match we will grant you access to the Gym Hero Challenge. However... Because it's the bank holiday weekend we're having the day off!",
 	  "repeat_text": "Thanks to the Bank Holiday, there are no more trains to this station for the rest of the day. The market is also shut so the plazas will be quite quiet until tomorrow.",
 	  "position": {
 		"x": 2500,

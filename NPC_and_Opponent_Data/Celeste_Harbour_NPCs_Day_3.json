@@ -1,6 +1,119 @@
 {
   "npcs": [
 	{
+	  "name": "Plaza Challenger 1",
+	  "sprite": "NPC 03",
+	  "text": "I'm in the middle of an impornt match here don't disturb me!",
+	  "repeat_text": "Hey can you let me concentrate I'm losing here!",
+	  "position": {
+		"x": 2230,
+		"y": 1290
+	  },
+	  "pattern": "idle_up"
+	},
+	{
+	  "name": "Plaza Challenger 2",
+	  "sprite": "NPC 05",
+	  "text": "I'm definitely going to lose here this is so tough",
+	  "repeat_text": "I've never battled a deck as hard as this before",
+	  "position": {
+		"x": 2278,
+		"y": 1290
+	  },
+	  "pattern": "idle_up"
+	},
+	{
+	  "name": "Plaza Challenger 3",
+	  "sprite": "NPC 06",
+	  "text": "I only came here to see the beach but thought I'd try my luck with this challenge",
+	  "repeat_text": "I maybe should have just gone sunbathing instead",
+	  "position": {
+		"x": 2326,
+		"y": 1290
+	  },
+	  "pattern": "idle_up"
+	},
+	{
+	  "name": "Plaza Challenger 4",
+	  "sprite": "NPC 08",
+	  "text": "Wow this is an intense match!",
+	  "repeat_text": "I've never seen plays like this before",
+	  "position": {
+		"x": 2215,
+		"y": 1310
+	  },
+	  "pattern": "idle_up"
+	},
+	{
+	  "name": "Plaza Challenger 5",
+	  "sprite": "NPC 30",
+	  "text": "I'm no good at playing myself but I love to watch",
+	  "repeat_text": "It's a really good match to watch!",
+	  "position": {
+		"x": 2205,
+		"y": 1275
+	  },
+	  "pattern": "idle_right"
+	},
+	{
+	  "name": "Plaza Challenger 6",
+	  "sprite": "NPC 10",
+	  "text": "I thought I was too old to be good at this, but the elders are amazing",
+	  "repeat_text": "Maybe you CAN teach an old dog new tricks ho ho",
+	  "position": {
+		"x": 2350,
+		"y": 1285
+	  },
+	  "pattern": "idle_left"
+	},
+	{
+	  "name": "Plaza Challenger 7",
+	  "sprite": "NPC 13",
+	  "text": "Hey get in line!! There's a queue of us here",
+	  "repeat_text": "Ya gotta wait ya turn",
+	  "position": {
+		"x": 2345,
+		"y": 1310
+	  },
+	  "pattern": "idle_up"
+	},
+	{
+	  "name": "Plaza Challenger 7",
+	  "sprite": "NPC 14",
+	  "text": "Wow! I wish I could play as good as these",
+	  "repeat_text": "I'm pretty new to this whole card thing",
+	  "position": {
+		"x": 2315,
+		"y": 1315
+	  },
+	  "pattern": "idle_up"
+	},
+	{
+	  "name": "Plaza Challenger 8",
+	  "sprite": "NPC 17",
+	  "text": "I've been collecting for LONG time but I'll never be as good at battling as these folk are. You might be able to make more use of this than I can",
+	  "repeat_text": "I've got well over 10,000 cards, I've been collecting them for years.",
+	"gift_type":"card",
+	"gift_value":"basep-2",
+	  "position": {
+		"x": 2250,
+		"y": 1315
+	  },
+	  "pattern": "idle_up"
+	},
+		{
+	  "name": "Plaza Challenger 9",
+	  "sprite": "NPC 86",
+	  "text": "WOW! Such cool cards!!!",
+	  "repeat_text": "I wish I had cards as cool as these!",
+	  "position": {
+		"x": 2280,
+		"y": 1320
+	  },
+	  "pattern": "idle_up"
+	},
+
+	{
 	  "name": "Old guy neighbour day 3",
 	  "sprite": "NPC_OLDMAN",
 	  "text": "Hello again. I just about made it to the market but my old legs are very tired so I need a rest now. I've got a lot of shopping to be doing!",
@@ -15,8 +128,8 @@
 	  "name": "Psychic_Brienne",
 	  "sprite": "psychic_f",
 	  "position": {
-		"x": -835,
-		"y": 1257
+		"x": -830,
+		"y": 1270
 	  },
 	  "pattern": "idle_left",
 	  "meet_text": "The SS Anne has ruined my daily meditation so I've had to try a new spot today.",
@@ -55,18 +168,31 @@
 		"x": 2460, 
 		"y": 1650
 	  },
-	  "pattern": "idle_left"
+	  "pattern": "idle_down"
 	},
 	{
 	  "name": "Bakery shopkeeper",
-	  "sprite": "NPC 19",
+	  "sprite": "NPC 19_1",
 	  "text": "Get your freshly baked pastries, cakes and bread all here.",
 	  "repeat_text": "Everything is freshly baked this morning and some of the bread is still warm!",
 	  "position": {
 		"x": 2570, 
 		"y": 1650
 	  },
-	  "pattern": "idle_left"
+	  "pattern": "idle_down"
+	},
+	{
+	  "name": "Bakery lover",
+	  "sprite": "LASS2",
+		"gift_type":"costume",
+		"gift_value": "LASS2",
+	  "text": "I LOVE FRESH BREAD! It's always so warm and crispy if you get it here early enough. If you're here that must mean you love it as much as I do!! We should be best friends!!",
+	  "repeat_text": "I could eat bread with every meal. Bread for breakfast. Bread for lunch. Bread for dinner. Bread for supper. A midnight snack of bread. Hmmm. I'm hungry again now",
+	  "position": {
+		"x": 2530, 
+		"y": 1740
+	  },
+	  "pattern": "idle_random"
 	},
 	{
 	  "name": "Woman walking the neighbourhood day 3",
@@ -94,6 +220,17 @@
 	  "pattern": "idle_random"
 	},
 	{
+	  "name": "Worker on dock",
+	  "sprite": "WORKER",
+	  "text": "Hey watch yourself there, I'm doing some work on this ship here and I don't want you to get electrocuted or anything",
+	  "repeat_text": "Please be careful around the docks, don't get too close to the edge.",
+	  "position": {
+		"x": 900,
+		"y": 3155
+	  },
+	  "pattern": "idle_down"
+	},
+	{
 	  "name": "Maintenance guy blocking forest",
 	  "sprite": "Gardener",
 	  "text": "Sorry, the forest is still closed off, we haven't been able to clear the area entirely yet. We were hoping to have all the work done before today so all the passengers of the SS Anne could go out and explore.",
@@ -117,7 +254,7 @@
 	},
 	{
 	  "name": "Misty NPC",
-	  "sprite": "MISTY",
+	  "sprite": "GYMMISTY",
 	"gift_type":"card",
 	"gift_value":"gym1-30",
 	  "text": "Hey! I'm misty one of the ex Kanto Gym Leaders. A few of us have travelled here on the SS Anne to run the Gym Hero Challenge. If you're into the Pokemon TCG then you should try challenge us. Take this card as a good luck gift, it's my favourite Pokemon!",
@@ -129,8 +266,34 @@
 	  "pattern": "idle_down"
 	},
 	{
+	  "name": "LT Surge NPC",
+	  "sprite": "GYMLTSURGE",
+	"gift_type":"card",
+	"gift_value":"gym1-27",
+	  "text": "The lighthouse here reminds me of the one in Olivine City. Sorry, I didn't introduce myself there first - I'm LT Surge, I'm one of the ex Kanto Gym Leaders. Take this card as an apology.",
+	  "repeat_text": "Looks like you play the TCG too huh? If you earn entry into the challenge and can beat all 8 of us you'll get a lot of good stuff.",
+	"position": {
+		"x": -715,
+		"y": 2690
+	  },
+	  "pattern": "idle_up"
+	},
+	{
+	  "name": "Erika NPC",
+	  "sprite": "GYMERIKA",
+	"gift_type":"card",
+	"gift_value":"gym1-25",
+	  "text": "Hello, I'm Erika. I used to be a Gym Leader over in Kanto but I've sinced moved on. I'm still a Pokemon Trainer but it looks like there aren't a lot of trainers around here and every plays the TCG more. I've got a lot of cards too so you can have this.",
+	  "repeat_text": "The flowers here are beautiful and the weather is so nice. I hope I have some time to enjoy myself outside of the Gym Hero Challenge.",
+	"position": {
+		"x": -715,
+		"y": 2195
+	  },
+	  "pattern": "idle_down"
+	},
+	{
 	  "name": "Mother 2 day 3",
-	  "sprite": "NPC 87",
+	  "sprite": "NPC 29",
 	  "text": "My children just love playing at the beach all the time. If it was up to them I think they'd live on the beach!",
 	  "repeat_text": "Letting them play is a good chance for me to catch up on reading. I'm currently reading 'The History of Hisui'. I never knew Sinnoh used to be called something else, it's fascinating.",
 	  "position": {
@@ -156,8 +319,8 @@
 	  "text": "My girlfriend is working again today but I have nothing to do, so I'm just going to lay on the beach for a while.",
 	  "repeat_text": "Did you get chance to try a juice at the bar yet?",
 	  "position": {
-		"x": -365,
-		"y": 2400
+		"x": -366,
+		"y": 2405
 	  },
 	  "pattern": "idle_down",
 	},
@@ -266,14 +429,80 @@
 	  "patrol_axis": "vertical"
 	},
 	{
-	  "name": "Super Elder 1",
+	  "name": "Sailor working on ss anne ",
+	  "sprite": "sailor",
+	  "text": "The SS Anne will be sailing for a long time. ",
+	  "repeat_text": "It only makes it's trip once a year so there's a lot of work to be done when it sails",
+	  "position": {
+		"x": 2150,
+		"y": 3150
+	  },
+	  "pattern": "patrol_line",
+	  "patrol_speed": 60.0,
+	  "patrol_distance": 40,
+	  "patrol_axis": "horizontal"
+	},
+	{
+	  "name": "SS Anne waitress",
+	  "sprite": "waitress",
+	  "text": "The SS Anne is always hiring if you fancy travelling the world.",
+	  "repeat_text": "We always have a lot of spare uniforms on hand as some staff land at a nice port and decide they don't want to go back to work again!",
+	"gift_type": "costume",
+	"gift_value": "waitress",
+	  "position": {
+		"x": 2760,
+		"y": 3150
+	  },
+	  "pattern": "idle_right",
+	},
+	{
+	  "name": "SS Anne waiter",
+	  "sprite": "waiter",
+	  "text": "I've only been a waiter around a week, they were short staffed so offered me a high pay",
+	  "repeat_text": "I highly reccomend it as a career, but I don't know what I'll do after the ship returns back to Vermillion.",
+	"gift_type": "costume",
+	"gift_value": "waiter",
+	"position": {
+		"x": 2800,
+		"y": 3150
+	  },
+	  "pattern": "idle_left",
+	},
+	{
+	  "name": "Super Elder Waverly day 3",
 	  "sprite": "elder",
 	  "gift_type": "card",
-	  "gift_value": "base1-1, base1-2",
+	  "gift_value": "basep-21",
+	  "text": "Hold on there sonny boy, with the SS Anne, there's a lot of people already in the queue, it should be quieter later but take this card to help with your patience",
+	  "repeat_text": "Make sure you've earned as many cards as you can around here, you'll need them to defeat us 3",
+	  "position": {
+		"x": 2230,
+		"y": 1252
+	  },
+	  "pattern": "idle_down"
+	},
+	{
+	  "name": "Super Elder Rayne day 3",
+	  "sprite": "elder",
+	  "gift_type": "card",
+	  "gift_value": "basep-22",
 	  "text": "Hoh Hoh, are you looking to enter the Gym Hero Challenge? If you beat all 3 of us Elders we will grant you permission, but I'm already flat out with all these tourists. Take this card for now and come back in the evening and the queue should be quieter.",
 	  "repeat_text": "You might need some better cards if you have a hope of beating us, make sure you've visited the card mart today and also check out card vendor at the market if you haven't already.",
 	  "position": {
 		"x": 2278,
+		"y": 1252
+	  },
+	  "pattern": "idle_down"
+	},
+	{
+	  "name": "Super Elder Hamish day 3",
+	  "sprite": "elder",
+	  "gift_type": "card",
+	  "gift_value": "basep-23",
+	  "text": "We're not as young as we used to be but we're still the best in the harbour. If you're looking to take on the Gym Hero Challenge you'll have to try later when the passengers get back on board, otherwise you'll be stood waiting around anyway. This card might help your chances.",
+	  "repeat_text": "You might need to buy a few more packs from the Card Mart first too. A lot of people are generous to give cards away so make sure you speak to everyone around too.",
+	  "position": {
+		"x": 2326,
 		"y": 1252
 	  },
 	  "pattern": "idle_down"
@@ -304,6 +533,29 @@
 	  "patrol_speed": 50.0,
 	  "wander_radius": 60
 	},
+		{
+	  "name": "Train employee 1",
+	  "sprite": "TRAINWORKER2",
+	  "text": "I work at the station but I'm just on my break.",
+	  "repeat_text": "I'm not a big card player otherwise I'd be watching the Elders",
+	  "position": {
+		"x": 2562,
+		"y": 1145
+	  },
+	  "pattern": "idle_right"
+	},
+		{
+	  "name": "Train employee 2",
+	  "sprite": "TRAINWORKER3",
+	  "text": "I'm been tasked with litter picking with the influx of tourist.",
+	  "repeat_text": "There's plenty of bins around so I don't why people don't use them.",
+	  "position": {
+		"x": 2550,
+		"y": 1270
+	  },
+  	  "pattern": "random_wander",
+	  "wander_radius": 65,
+	},
 	{
 		"name": "Jogger day 3",
 		"sprite": "Jogger",
@@ -328,7 +580,97 @@
 	  "pattern": "idle_random",
 	  "text": "I'm going to busy until this evening now the SS Anne has docked. There were even more passengers than I initially thought there would be",
 	  "repeat_text": "I wonder what Vermillion city is like? It's crazy to see so many Pokemon trainers in one place, barely anyone is a Pokemon trainer around here."
-	}
+	},
+		{
+	  "name": "Smoking sailor",
+	  "sprite": "sailor",
+	  "position": {
+		"x": 2495,
+		"y": 2940
+	  },
+	  "pattern": "idle_right",
+	  "text": "I'm just having a cig break.",
+	  "repeat_text": "Yeah I know I know, smoking is bad"
+	},
+	{
+	  "name": "Sunbathing sailor 1",
+	  "sprite": "sailor",
+	  "position": {
+		"x": -79,
+		"y": 2405
+	  },
+	  "pattern": "idle_down",
+	  "text": "I got nothing to do until tonight so I'm taking it easy.",
+	  "repeat_text": "I aint doing work if I aint being paid for it"
+	},
+	{
+	  "name": "Sunbathing sailor 2",
+	  "sprite": "sailor",
+	  "position": {
+		"x": -46,
+		"y": 2273
+	  },
+	  "pattern": "idle_down",
+	  "text": "I actually battled Misty years ago, back when she was Cerulean's gym leader",
+	  "repeat_text": "I lost and I'm too shy to say hello. Not like she'd remember me anyway"
+	},
+	{
+	  "name": "Juice drinking sailor 1",
+	  "sprite": "sailor",
+	  "position": {
+		"x": 1065,
+		"y": 2321
+	  },
+	  "pattern": "idle_right",
+	  "text": "We haven't got juice this fresh onboard the Anne",
+	  "repeat_text": "This makes a real nice change"
+	},
+	{
+	  "name": "Juice drinking sailor 2",
+	  "sprite": "sailor",
+	  "position": {
+		"x": 1112,
+		"y": 2321
+	  },
+	  "pattern": "idle_left",
+	  "text": "We see a lot of beach bars but never one as nice as this",
+	  "repeat_text": "I wonder how much we can take back onboard with us"
+	},
+	{
+	  "name": "Juice drinking jogger",
+	  "sprite": "jogger",
+	"gift_type": "costume",
+	"gift_value": "jogger",
+	  "position": {
+		"x": 905,
+		"y": 2234
+	  },
+	  "pattern": "idle_left",
+	  "text": "Have you seen the dude running non stop all day on the Promenade? I mean I can run well but nothing like that. You look like you could motivate me to run faster, maybe we should run together some time",
+	  "repeat_text": "Come run with me sometime"
+	},
+	{
+	  "name": "Mother at bakery",
+	  "sprite": "NPC 04",
+	  "position": {
+		"x": 2355,
+		"y": 1715
+	  },
+	  "pattern": "idle_left",
+	  "text": "I tried to take a picture of Timmy here in the Croagunk board outside the station but he's too small",
+	  "repeat_text": "I brought him here for a fresh donut to cheer him up"
+	},
+	{
+	  "name": "child at bakery",
+	  "sprite": "NPC 02",
+	  "position": {
+		"x": 2335,
+		"y": 1715
+	  },
+	  "pattern": "idle_right",
+	  "text": "Mummy said I'm too small but I'm not!!!!",
+	  "repeat_text": "That's okay though because Donuts are my favouritest food ever"
+	},
   ],
   "opponents": [
 	{
@@ -649,8 +991,8 @@
 	  "music": "normal_battle",
 	  "deck": "ELEGANCE",
 	  "position": {
-		"x": -840,
-		"y": 2730
+		"x": 765,
+		"y": 1960
  	},
 	  "pattern": "idle_down",
 	  "meet_text": "I live in Celadon City so it's rare I get to the beach. I'm here to make the most of it",
@@ -668,8 +1010,8 @@
 	  "music": "normal_battle",
 	  "deck": "GIRL_POWER",
 	  "position": {
-		"x": -367,
-		"y": 2267
+		"x": -366,
+		"y": 2270
  	},
 	  "pattern": "idle_down",
 	  "meet_text": "Nothing feels better than the sand beneath your toes after being stuck in your cabin for days on end",
@@ -685,7 +1027,7 @@
 	  "name": "Young_twin_anna",
 	  "sprite": "Twin1",
 	  "music": "normal_battle",
-	  "deck": "PRETTY_PLANTS_N_BUTTERFLIES",
+	  "deck": "PRETTY_PLANTS_N_BUTTERFLY",
 	  "position": {
 		"x": 1001,
 		"y": 2383
@@ -718,6 +1060,26 @@
 	  "coin_reward": "coin_chansey_pink",
 	  "cash_reward": "80",
 	  "prize_cards": 2
+	},
+	{
+		"name": "Hiker_Matthew",
+		"sprite": "Hiker",
+		"music": "normal_battle",
+		"deck": "ROCKS_N_STONES",
+		"meet_text": "I spent all day hiking yesterday to get here and I'm glad I did. But I only have this morning and then I'll be hiking back this evening",
+		"first_win_text": "I should have hiked away earlier.",
+		"rematch_text": "I'll be hiking back again this evening, I hike all day every day!",
+		"rematch_win_text": "I could do with a long hike to get over this loss.",
+		"loss_text": "I'm as solid as stone!",
+		"coin_reward": "coin_onix_brown",
+		"cash_reward": "100",
+		"position": {
+			"x": 2650,
+			"y": 2020
+	  },
+	  "pattern": "random_wander",
+	  "patrol_speed": 40.0,
+	  "wander_radius": 60
 	}
   ]
 }

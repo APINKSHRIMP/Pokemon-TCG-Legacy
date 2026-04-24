@@ -81,7 +81,7 @@
 	},
 	{
 	  "name": "Mother 2 evening",
-	  "sprite": "NPC 87",
+	  "sprite": "NPC 29",
 	  "text": "It's getting late now so it's definitely nearly home time! I have to go and make dinner!",
 	  "repeat_text": "Just 5 more minutes and then it's home time!",
 	  "position": {
@@ -408,7 +408,7 @@
 		"deck": "ROCKS_N_STONES",
 		"meet_text": "I've been hiking for hours and only just managed to reach the harbour and found everything is closed so now I have nothing to do for the evening.",
 		"first_win_text": "I should have just called it a night...",
-		"rematch_text": "I'll be back to hiking again tomorrow, I hike all day every day!",
+		"rematch_text": "I'll be hiking back again tomorrow, I hike all day every day!",
 		"rematch_win_text": "I could do with a long hike to get over this loss.",
 		"loss_text": "I'm as solid as stone!",
 		"coin_reward": "coin_onix_brown",
