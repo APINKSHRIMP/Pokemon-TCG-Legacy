@@ -17,7 +17,7 @@ extends CharacterBody2D
 # JSON fields used (Card_Mart_NPCs.json shopkeeper entry):
 #   npc_type       : "shop"  (still used for bubble icon selection)
 #   shop_id        : unique string key e.g. "card_mart"
-#   text           : fallback/open state welcome text
+#   meet_text      : fallback/open state welcome text
 #   repeat_text    : not used for shop NPCs
 # ============================================================
 
@@ -25,7 +25,7 @@ extends CharacterBody2D
 var npc_name: String = ""
 var sprite: String = ""
 var npc_type: String = "shop"
-var text: String = ""
+var meet_text: String = ""
 var repeat_text: String = ""
 var gift_type: String = ""
 var gift_value: String = ""

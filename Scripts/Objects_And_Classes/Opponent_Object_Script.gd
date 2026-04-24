@@ -17,7 +17,7 @@ var sprite: String = ""
 var music: String = ""
 var deck: String = ""
 var meet_text: String = ""
-var rematch_text: String = ""
+var repeat_text: String = ""
 var first_win_text: String = ""
 var rematch_win_text: String = ""
 var loss_text: String = ""
@@ -294,7 +294,7 @@ func _on_restore_facing():
 
 func get_greeting_text() -> String:
 	if GameState.has_beaten_opponent(opponent_name):
-		return rematch_text
+		return repeat_text
 	return meet_text
 
 func get_result_text(player_won: bool) -> String:

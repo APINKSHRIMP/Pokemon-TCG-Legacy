@@ -1,688 +1,691 @@
 {
-  "npcs": [
-	{
-	  "name": "Plaza Challenger 5 eve",
-	  "sprite": "NPC 30",
-	  "text": "I've been watching everyone play all day",
-	  "repeat_text": "if you're going to try it then good luck!!!",
-	  "position": {
-		"x": 2200,
-		"y": 1302
-	  },
-	  "pattern": "idle_up"
-	},
-	{
-	  "name": "Plaza Challenger 6 eve",
-	  "sprite": "NPC 10",
-	  "text": "I thought I was too old to be good at this, but the elders are amazing and have been playing all day long",
-	  "repeat_text": "If you win then maybe you can teach me how to play",
-	  "position": {
-		"x": 2355,
-		"y": 1302
-	  },
-	  "pattern": "idle_up"
-	},
-	{
-	  "name": "Old guy neighbour day 3",
-	  "sprite": "NPC_OLDMAN",
-	"gift_type": "card",
-	"gift_value": "base2-11",
-	  "text": "It's been a long day for sure. While I was doing my shopping earlier I tried my luck at the Holo Rare Stand. Of course I don't actually collect any cards or play it so you can have the card I won.",
-	  "repeat_text": "I only decided to try my luck for the fun of it, it was such a thrill!",
-	  "position": {
-		"x": -375,
-		"y": 1625
-	  },
-	  "pattern": "idle_down"
-	},
-	{
-	  "name": "Psychic_Brienne",
-	  "sprite": "psychic_f",
-	  "position": {
-		"x": -830,
-		"y": 1270
-	  },
-	  "pattern": "idle_left",
-	  "meet_text": "The SS Anne has ruined my daily meditation so I've had to try a new spot today.",
-	  "repeat_text": "It's not quite as good of a spot as the dock is but here but it's still peaceful enough",
-	},
-	{
-	  "name": "Holo Rare Shopkeeper",
-	  "sprite": "NPC_HOLO_RARE_SHOPKEEPER",
-	  "npc_type": "shop",
-	  "shop_id": "card_mart",
-	  "text": "Welcome! I run a mystery holo rare system here. For $400 you can choose 1 of 3 mystery Holo Rares! You won't know what it is until you buy it but you get a hint as to the type.",
-  	  "position": {
-		"x": 1975, 
-		"y": 1650
-		},
-	  "pattern": "idle_down"
-	},
-	{
-	  "name": "Coin Shopkeeper",
-	  "sprite": "NPC_COIN_SHOPKEEPER",
-	  "npc_type": "shop",
-	  "shop_id": "card_mart",
-	  "text": "Welcome! I sell rare limited edition coins that you won't be able to buy anywhere else! They're not cheap at $250 each but I promise you they're top quality, completely unique and won't find anything like them around!",
-	  "position": {
-		"x": 2095, 
-		"y": 1650
-		},
-	  "pattern": "idle_down"
-	},
-	{
-	  "name": "Fruit and Veg shopkeeper",
-	  "sprite": "NPC 19",
-	  "text": "Hello - fresh fruit and veg for sale here. We've got everything you could ask for",
-	  "repeat_text": "I've got some discounted fruit on offer if you're interested",
-	  "position": {
-		"x": 2460, 
-		"y": 1650
-	  },
-	  "pattern": "idle_down"
-	},
-	{
-	  "name": "Bakery shopkeeper",
-	  "sprite": "NPC 19_1",
-	  "text": "Get your freshly baked pastries, cakes and bread all here.",
-	  "repeat_text": "Plenty of items still fresh to enjoy!",
-	  "position": {
-		"x": 2570, 
-		"y": 1650
-	  },
-	  "pattern": "idle_down"
-	},
-	{
-	  "name": "Bakery lover eve",
-	  "sprite": "LASS2",
-		"gift_type":"costume",
-		"gift_value": "LASS2",
-	  "text": "I LOVE FRESH BREAD! It's always so warm and crispy if you get it here early enough. If you're here that must mean you love it as much as I do!! We should be best friends!!",
-	  "repeat_text": "I got so hungry from before that I just had to come back and get some more bread. It's soooo good.",
-	  "position": {
-		"x": 2380, 
-		"y": 1700
-	  },
-	  "pattern": "idle_random"
-	},
-	{
-	  "name": "BROCK NPC",
-	  "sprite": "GYMBROCK",
-		"gift_type":"card",
-		"gift_value":"gym1-21",
-	  "text": "Hey I'm Brock. I used to be a Gym Leader a long time ago. Battling wasn't for me so I gave it up to become a Pokemon Breeder and travel the world. Have this card of my favourite Pokemon",
-	  "repeat_text": "I much prefer to play the TCG than battling so I'm looking forward to the challenge.",
-	  "position": {
-		"x": 2705, 
-		"y": 2195
-	  },
-	  "pattern": "idle_up"
-	},
-	{
-	  "name": "Sunbathing sailor 1",
-	  "sprite": "sailor",
-	  "position": {
-		"x": -79,
-		"y": 2405
-	  },
-	  "pattern": "idle_down",
-	  "text": "I got nothing to do until tonight so I'm taking it easy.",
-	  "repeat_text": "I aint doing work if I aint being paid for it"
-	},
-	{
-	  "name": "Sailor working on ss anne ",
-	  "sprite": "sailor",
-	  "text": "The SS Anne will be sailing for a long time. ",
-	  "repeat_text": "It only makes it's trip once a year so there's a lot of work to be done when it sails",
-	  "position": {
-		"x": 2150,
-		"y": 3150
-	  },
-	  "pattern": "patrol_line",
-	  "patrol_speed": 40.0,
-	  "patrol_distance": 40,
-	  "patrol_axis": "horizontal"
-	},
-	{
-	  "name": "Sunbathing sailor 2 eve",
-	  "sprite": "sailor",
-	  "position": {
-		"x": -46,
-		"y": 2273
-	  },
-	  "pattern": "idle_down",
-	  "text": "Misty left and I didn't say hello. I have to head back to the Anne so I won't have chance now",
-	  "repeat_text": "Weird how life works. You never know who you're going to run into years down the line"
-	},
-	{
-	  "name": "Worker on dock eve",
-	  "sprite": "WORKER",
-	  "text": "I'll be done with this work very soon, I'm just finishing the last bit of welding on the hull",
-	  "repeat_text": "Watch yourself around these ships, it can be dangerous if you're not careful",
-	  "position": {
-		"x": 900,
-		"y": 3155
-	  },
-	  "pattern": "idle_down"
-	},
-	
-	{
-	  "name": "SS Anne waitress",
-	  "sprite": "waitress",
-	  "text": "The SS Anne is always hiring if you fancy travelling the world.",
-	  "repeat_text": "We always have a lot of spare uniforms on hand as some staff land at a nice port and decide they don't want to go back to work again!",
-	"gift_type": "costume",
-	"gift_value": "waitress",
-	  "position": {
-		"x": 2760,
-		"y": 3150
-	  },
-	  "pattern": "idle_right",
-	},
-	{
-	  "name": "SS Anne waiter",
-	  "sprite": "waiter",
-	  "text": "I've only been a waiter around a week, they were short staffed so offered me a high pay",
-	  "repeat_text": "I highly reccomend it as a career, but I don't know what I'll do after the ship returns back to Vermillion.",
-	"gift_type": "costume",
-	"gift_value": "waiter",
-	"position": {
-		"x": 2800,
-		"y": 3150
-	  },
-	  "pattern": "idle_left",
-	},
-	{
-	  "name": "BLAINE NPC",
-	  "sprite": "GYMBLAINE",
-		"gift_type":"card",
-		"gift_value":"gym1-1",
-	  "text": "The name's Blaine. I was the gym leader on Cinnabar years ago before the volcano erupted. We moved to the Seafoam islands for a while but it was just never the same. I was the strongest Gym leader back then so take my strongest card",
-	  "repeat_text": "The Cinnabar eruption wasn't the largest shock, we knew we were on a volcano but it was still devastating. Thankfully nobody was hurt but the island was lost almost entirely.",
-	  "position": {
-		"x": 1209, 
-		"y": 2399
-	  },
-	  "pattern": "idle_left"
-	},
-	{
-	  "name": "Woman walking the neighbourhood eve 3",
-	  "sprite": "NPC 87",
-	  "text": "Do you ever end up walking more than you thought you were going to?",
-	  "repeat_text": "I always end up walking further than I should",
-	  "position": {
-		"x": 855,
-		"y": 2313
-	  },
-	  "pattern": "idle_right"
-	},
-	{
-	  "name": "Sailor 2 pier 1 day 3",
-	  "sprite": "Sailor",
-	  "text": "With the arrival of the SS Anne we're even busier than usual. We've never had this many tourists in the harbour at once",
-	  "repeat_text": "Sigh.. I wish I could just on the SS Anne and sail away on it forever.",
-	  "position": {
-		"x": 350,
-		"y": 3125
-	  },
-	  "pattern": "idle_random"
-	},
-	{
-	  "name": "Maintenance guy blocking forest",
-	  "sprite": "Gardener",
-	  "text": "Sorry, the forest is still closed off, we haven't been able to clear the area entirely yet. We were hoping to have all the work done before today so all the passengers of the SS Anne could go out and explore.",
-	  "repeat_text": "We're nearly done with it so it'll definitely be open tomorrow, my boss would kill me if we don't have it reopened before the SS Anne leaves again.",
-	  "position": {
-		"x": 920,
-		"y": 900
-	  },
-	  "pattern": "idle_down"
-	},
-	{
-	  "name": "Car park guy 1",
-	  "sprite": "security",
-	  "text": "Sorry, I can't let you into the car park unless you have car!",
-	  "repeat_text": "It's too dangerous to be wondering around on the road you know, I can't let any accidents happen under my watch.",
-	  "position": {
-		"x": 628,
-		"y": 1190
-	  },
-	  "pattern": "idle_down"
-	},
-	{
-	  "name": "Man staring out to sea evening 3",
-	  "sprite": "youngcouple2",
-	  "text": "It's nearly time for my girlfriend to finish her shift",
-	  "repeat_text": "I've got the slow cooker on so dinner will be all ready when we get home.",
-	  "position": {
-		"x": 950,
-		"y": 2235
-	  },
-	  "pattern": "idle_right",
-	},
-	{
-	  "name": "Juicebar Woman (from staring out to sea) day 3",
-	  "sprite": "youngcouple_2",
-	  "text": "Hello! Can I interest you in any juice today?",
-	  "repeat_text": "Did you get lucky and find a coin this time?",
-	  "position": {
-		"x": 1030,
-		"y": 2190
-	  },
-	  "pattern": "idle_down"
-	},
-	{
-	  "name": "Sailor working on dock day 3",
-	  "sprite": "sailor",
-	  "gift_type": "costume",
-	  "gift_value": "sailor",
-	  "text": "*huff* I knew I'd be busy with the SS Anne arriving but *huff* I didn't think I'd be THIS busy....",
-	  "repeat_text": "*huff* *huff* The SS Anne only arrives once a year and it's always the harbour's busiest days.",
-	  "position": {
-		"x": 690,
-		"y": 2680
-	  },
-	  "pattern": "patrol_line",
-	  "patrol_speed": 80.0,
-	  "patrol_distance": 200,
-	  "patrol_axis": "vertical"
-	},
-	{
-	  "name": "Station manager evening 3",
-	  "sprite": "TRAINWORKER",
-	  "text": "Good evening. The last train of the day will be departing shortly so please head through to the gate if you intend to catch it.",
-	  "repeat_text": "The trains here are always very punctual, they're never late.",
-	  "position": {
-		"x": 2020,
-		"y": 1020
-	  },
-	  "pattern": "random_wander",
-	  "patrol_speed": 50.0,
-	  "wander_radius": 60
-	},
-	{
-	  "name": "Train employee 2",
-	  "sprite": "TRAINWORKER3",
-	  "text": "I'm been tasked with litter picking with the influx of tourist.",
-	  "repeat_text": "There's plenty of bins around so I don't why people don't use them.",
-	  "position": {
-		"x": 2550,
-		"y": 1270
-	  },
-  	  "pattern": "random_wander",
-	  "wander_radius": 65,
-	},	
-	{
-	  "name": "Firebreather_Darryl",
-	  "sprite": "firebreather",
-	  "position": {
-		"x": 1050,
-		"y": 2475
-	  },
-	  "pattern": "idle_cycle",
-	  "text": "mMMMmm mMmMm MmmmMM MmMMmM mMMMmMmMm mMmMmMMm MMMmM mm mmMM MmmMMmM ",
-	  "repeat_text": "Sorry you caught me at a bad time I had a mouthful of fire fluid there",
-	  },
-	{
-	  "name": "Firebreather_Kenneth",
-	  "sprite": "firebreather",
-	  "position": {
-		"x": 1000,
-		"y": 2475
-  },
-	  "pattern": "idle_cycle",
-	  "text": "We're good at what we do and we make it look easy but it's not",
-	  "repeat_text": "It's very hard work this!",
-	},
-  ],
-  "opponents": [
-	{
-	  "name": "Swimmer_Jordan",
-	  "sprite": "swimmer_F2",
-	  "music": "surrounded_sea",
-	  "deck": "whirlgong",
-	  "position": {
-		"x": 450,
-		"y": 2590
-	  },
-	  "pattern": "idle_cycle",
-	  "meet_text": "I love the water, it's so calm and warm but my cards always get wet! I need to dry them off",
-	  "rematch_text": "My friend has just arrived from Kanto and we're spending the day swimming together, but I can take a break for a rematch",
-	  "first_win_text": "I'll stick with my swimming...",
-	  "rematch_win_text": "Nothing like a good match and a long swim",
-	  "loss_text": "Maybe you should work on your swimming...",
-	  "coin_reward": "coin_energy_blue",
-	  "cash_reward": "100",
-	  "prize_cards": 4
-	},
-	{
-	  "name": "Swimmer_Melissa",
-	  "sprite": "swimmer_F",
-	  "music": "surrounded_sea",
-	  "deck": "poligong's_wrath",
-	  "position": {
-		"x": 490,
-		"y": 2590
-	  },
-	  "pattern": "idle_cycle",
-	  "meet_text": "The sea is so much calmer and warmer here than it is back home in Kanto.",
-	  "rematch_text": "I could stay in the water here all day",
-	  "first_win_text": "I wish they made cards waterproof...",
-	  "rematch_win_text": "I really need to dry off my cards",
-	  "loss_text": "I'm glad I came here today!",
-	  "coin_reward": "coin_kyogre_blue",
-	  "cash_reward": "150",
-	  "prize_cards": 6
-	},
-	{
-	  "name": "Birdspotter_Gregg",
-	  "sprite": "birdkeeper_M",
-	  "music": "normal_battle",
-	  "deck": "BIG_OL_BIRBS",
-	  "position": {
-		"x": 1640,
-		"y": 2340
-	  },
-	  "pattern": "idle_random",
-	  "meet_text": "My friend got hungry so decided to head back, but I'm interested to see what birds come out at night.",
-	  "rematch_text": "This really is a great spot for birds and cards!",
-	  "first_win_text": "Do you hate birds or something?.",
-	  "rematch_win_text": "Well at least I can watch the birds from around here.",
-	  "loss_text": "Looking after birds really isn't easy!",
-	  "coin_reward": "coin_lugia_silver",
-	  "cash_reward": "150",
-	  "prize_cards": 6
-	},
-	{
-	  "name": "Bug_Catcher_Frankie",
-	  "sprite": "bugcatcher",
-	  "music": "chilled_battle",
-	  "deck": "BIG_BAD_BUGS!",
-	  "position": {
-		"x": 2295,
-		"y": 2160
-	  },
-	  "pattern": "idle_random",
-	  "meet_text": "Wow!!! The bugs here are so much cooler than what we have over in Viridian Forest!!",
-	  "rematch_text": "Seen any cool bug Pokemon around here since our last match?",
-	  "first_win_text": "My bugs clearly aren't as strong as the ones around here",
-	  "rematch_win_text": "Hmm I wish I could get my hands on some of these bugs instead.",
-	  "loss_text": "Bug pokemon really aren't as weak as people think",
-	  "coin_reward": "coin_genesect_purple",
-	  "costume_reward": "bugcatcher",
-	  "cash_reward": "100",
-	  "prize_cards": 4
-	},
-	{
-	  "name": "Bug_Catcher_Johnny",
-	  "sprite": "bugcatcher2",
-	  "music": "normal_battle",
-	  "deck": "STRANGE_PLANTS",
-	  "position": {
-		"x": 2167,
-		"y": 2305
-	  },
-	  "pattern": "idle_up",
-	  "meet_text": "I love catching bugs but I also love cool plants. There are a lot of critters crawling around in these roots.",
-	  "rematch_text": "I've just seen a HUGE bug running around",
-	  "first_win_text": "I wish I could photosynthesize.",
-	  "rematch_win_text": "I could beat you at catching bugs!",
-	  "loss_text": "Grass Pokemon are great!",
-	  "coin_reward": "coin_energy_green_2",
-	  "cash_reward": "100",
-	  "prize_cards": 4
-	},
-	{
-	  "name": "Fisherman_Gary",
-	  "sprite": "FISHERMAN",
-	  "music": "normal_battle",
-	  "deck": "BIG_CATCH",
-	  "position": {
-		"x": -840,
-		"y": 2730
- 	},
-	  "pattern": "idle_down",
-	  "meet_text": "I joined my buddies here to fish today but we were actually catching sooo much that they ended up leaving!",
-	  "rematch_text": "Fishing by yourslef can get lonely when nothing bites",
-	  "first_win_text": "Dang, I never lose against my buddies",
-	  "rematch_win_text": "You're probably a really good fisherman too",
-	  "loss_text": "I'm the only fisherman and best card player on this pier!",
-	  "coin_reward": "coin_gyarados_gold",
-	  "cash_reward": "150",
-	  "prize_cards": 6
-	},
-	{
-	  "name": "SS_Anne_Tourist_Edmund",
-	  "sprite": "RICHBOY",
-	  "music": "normal_battle",
-	  "deck": "ELEGANCE",
-	  "position": {
-		"x": 765,
-		"y": 1960
- 	},
-	  "pattern": "idle_down",
-	  "meet_text": "I live in Celadon City so it's rare I get to the beach. I'm here to make the most of it",
-	  "rematch_text": "It won't feel like that long before we have to head onwards.",
-	  "first_win_text": "I'm not here to win, only here for a good time",
-	  "rematch_win_text": "You're the best player I've battled around here",
-	  "loss_text": "I didn't even mean to win so that's a nice surprise.",
-	  "coin_reward": "coin_dragonite_gold",
-	  "cash_reward": "200",
-	  "prize_cards": 6
-	},
-	{
-	  "name": "SS_Anne_Tourist_Alissa",
-	  "sprite": "LADY",
-	  "music": "normal_battle",
-	  "deck": "GIRL_POWER",
-	  "position": {
-		"x": -366,
-		"y": 2270
- 	},
-	  "pattern": "idle_down",
-	  "meet_text": "Nothing feels better than the sand beneath your toes after being stuck in your cabin for days on end",
-	  "rematch_text": "I'm so relaxed I could stay here all day.",
-	  "first_win_text": "Have you ever been on a cruise before?",
-	  "rematch_win_text": "I'll have to practice more when I'm back on board",
-	  "loss_text": "Oh wonderful! I do love it when I win!",
-	  "coin_reward": "coin_jigglypuff_pink",
-	  "cash_reward": "200",
-	  "prize_cards": 6
-	},
-	{
-	  "name": "Guitarist_Jonesy",
-	  "sprite": "Guitarist",
-	  "music": "normal_battle",
-	  "deck": "HEAVY_METAL",
-	  "position": {
-		"x": 2480,
-		"y": 1210
- 	},
-	  "pattern": "idle_right",
-	  "meet_text": "We're in a band and we're currently touring. We're just passing through to our next gig so having a quick jam here",
-	  "rematch_text": "Hey dude, let's rock.",
-	  "first_win_text": "Damn I snapped a string while we were jamming",
-	  "rematch_win_text": "You should come to one of our gigs!",
-	  "loss_text": "Let's goooooooooooo",
-	  "coin_reward": "coin_zapdos_gold",
-	  "cash_reward": "140",
-	  "prize_cards": 4
-	},
-	{
-	  "name": "Guitarist_Howard",
-	  "sprite": "Guitarist2",
-	  "music": "normal_battle",
-	  "deck": "ROCK_N_SHOCK",
-	  "position": {
-		"x": 2515,
-		"y": 1210
- 	},
-	  "pattern": "idle_left",
-	  "meet_text": "We're the Toxtricity Rockers, we're a duo that's pretty big in Johto.",
-	  "rematch_text": "You here to hear a song or a rematch?",
-	  "first_win_text": "I missed a chord",
-	  "rematch_win_text": "Fancy being a roadie?",
-	  "loss_text": "If it's any consolation I'll give you a discount on our album",
-	  "coin_reward": "coin_solgaleo_gold",
-	  "cash_reward": "140",
-	  "prize_cards": 4
-	},
-	{
-		"name": "Jogger_Daniel",
-		"sprite": "Jogger",
-		"music": "normal_battle",
-		"deck": "NIDO_NIDO_MEOW",
-		"meet_text": "*huff* *huff* I've been training for my marathon all day so I'm worn out, I could do with a rest.",
-		"first_win_text": "*huff* I shouldn't have bothered stopping",
-		"rematch_text": "I'm still running as much as I can, I could do with another break",
-		"rematch_win_text": "I'm just going to focus on my running from now on",
-		"loss_text": "I'm glad I decided to take a break, that's given me an extra push to carry on",
-		"coin_reward": "coin_scorbunny_red",
-		"cash_reward": "100",
-		"position": {
-			"x": -500,
-			"y": 2015
-	  },
-	  "pattern": "patrol_line",
-	  "patrol_speed": 70.0,
-	  "patrol_distance": 2700,
-	  "patrol_axis": "horizontal"
-	},
-	{
-	  "name": "Gardener Callum",
-	  "sprite": "gardener",
-	  "music": "chilled_battle",
-	  "deck": "Pollen_Power",
-	  "position": {
-		"x": -875,
-		"y": 2280
-	  },
-	  "pattern": "idle_left",
-	  "wander_radius": 65,
-	  "meet_text": "Wowee, it was a long day gardening today. I'm down for a match to let off some steam now.",
-	  "rematch_text": "I've got time for a rematch before my next shift.",
-	  "first_win_text": "I'm clearly too worn out from such a long shift.",
-	  "rematch_win_text": "I'll win when I'm fully rested.",
-	  "loss_text": "Even after a hard days work I can still win!",
-	  "coin_reward": "coin_bulbasaur_green",
-	  "cash_reward": "75",
-	  "prize_cards": 2
-	},
-	{
-	  "name": "Garden_Manager_Louis",
-	  "sprite": "gardener",
-	  "music": "chilled_battle",
-	  "deck": "SOLAR_POWER",
-	  "position": {
-		"x": -710,
-		"y": 2020
-	  },
-	  "pattern": "random_wander",
-	  "wander_radius": 65,
-	  "meet_text": "I might be the garden manager but I do know how to have fun",
-	  "rematch_text": "Look at how great the gardens look",
-	  "first_win_text": "Even with all this sun I couldn't win",
-	  "rematch_win_text": "Ever fancied being a gardener yourself?",
-	  "loss_text": "Plants aren't just pretty",
-	  "coin_reward": "coin_venusaur_green",
-	  "cash_reward": "75",
-	  "prize_cards": 6
-	},
-	{
-	  "name": "Sailor_Bob",
-	  "sprite": "sailor",
-	  "music": "normal_battle",
-	  "deck": "hoist_the_anchor",
-	  "position": {
-		"x": 2040,
-		"y": 3110
-	  },
-	  "pattern": "idle_random",
-	  "meet_text": "Most of the passengers have returned on board for the night now so it's quiet again as usual.",
-	  "rematch_text": "There's still time before the morning shift",
-	  "first_win_text": "I should at least pretend to do some work on the dock",
-	  "rematch_win_text": "I won't have a lot of time to during the day now the ship has docked",
-	  "loss_text": "All this spare time has given me a chance to practice",
-	  "coin_reward": "coin_energy_brown",
-	  "cash_reward": "150",
-	  "prize_cards": 6
-	},
-	{
-	  "name": "Card_Elder_Rayne",
-	  "sprite": "ELDER",
-	  "music": "hard_battle",
-	  "deck": "RAIN_DANCE",
-	  "pattern": "idle_down",
-	  "meet_text": "Hoh Hoh, are you ready to feel the torrent? If you win I'll give you a medal to prove your triumph.",
-	  "rematch_text": "Hoh Hoh! I enjoyed the battle that much I'd also like another!",
-	  "first_win_text": "Congratulations on your win. You've earned this medal and my respect.",
-	  "rematch_win_text": "Come back any time and battle us old folk.",
-	  "loss_text": "Don't be disheartened, the rain will always stop.",
-	  "coin_reward": "coin_blastoise_silver",
-	  "cash_reward": "200",
-	  "prize_cards": 6,
-	  "position": {
-		"x": 2230,
-		"y": 1252
-		}
-	  },
-	{
-	  "name": "Card_Elder_Hamish",
-	  "sprite": "ELDER",
-	  "music": "hard_battle",
-	  "deck": "HAYMAKER",
-	  "pattern": "idle_down",
-	  "meet_text": "Back for the challenge then hey? Remember you'll need to defeat all 3 of us if you want to progress.",
-	  "rematch_text": "Very well, I always enjoy a good challenge!",
-	  "first_win_text": "Well done, that was quite the battle. Take my medal and continue forth.",
-	  "rematch_win_text": "Battling like this makes me feel young again.",
-	  "loss_text": "Don't be disheartened, the rain will always stop.",
-	  "coin_reward": "coin_rayquaza_silver",
-	  "cash_reward": "200",
-	  "prize_cards": 6,
-	  "position": {
-		"x": 2326,
-		"y": 1252
-	  },
-	},
+	"npcs": [
 		{
-	  "name": "Card_Elder_Waverly",
-	  "sprite": "ELDER",
-	  "music": "hard_battle",
-	  "deck": "DO_THE_WAVE",
-	  "pattern": "idle_down",
-	  "meet_text": "Are you ready to take me on then? If you win then you'll do well in the Gym Hero Challenge",
-	  "rematch_text": "Up for another round then? Happy to oblige",
-	  "first_win_text": "Well well well, what a jolly good play! You've earned this.",
-	  "rematch_win_text": "We've been winning and losing for so long it's always fun either way",
-	  "loss_text": "When you fail, get up and try again.",
-	  "coin_reward": "coin_rayquaza_silver",
-	  "cash_reward": "200",
-	  "prize_cards": 6,
-	  "position": {
-		"x": 2278,
-		"y": 1252
-	  },
-	},
-	{
-		"name": "Hiker_Ben",
-		"sprite": "Hiker",
-		"music": "normal_battle",
-		"deck": "SOLID_GROUND",
-		"meet_text": "Well that's incredibly dissapointing. I was hoping to have a trek through the forest but they've told me it's shut so I have nowhere to go now.",
-		"first_win_text": "Well that's another dissapointment to my day",
-		"rematch_text": "The forest has to be open soon surely",
-		"rematch_win_text": "The dissapointment just doesn't end",
-		"loss_text": "At least that's given me a nice little boost after the bad news",
-		"coin_reward": "coin_tyranitar_gold",
-		"cash_reward": "100",
-		"position": {
-			"x": 950,
-			"y": 1270
-	  },
-	  "pattern": "random_wander",
-	  "patrol_speed": 40.0,
-	  "wander_radius": 60
-	}
-  ]
+			"name": "PLAZA CHALLENGER 5 EVE",
+			"sprite": "NPC 30",
+			"meet_text": "I've been watching everyone play all day.",
+			"repeat_text": "if you're going to try it then good luck!!!",
+			"pattern": "idle_up",
+			"position": {
+				"x": 2200,
+				"y": 1302
+			}
+		},
+		{
+			"name": "PLAZA CHALLENGER 6 EVE",
+			"sprite": "NPC 10",
+			"meet_text": "I thought I was too old to be good at this, but the elders are amazing and have been playing all day long.",
+			"repeat_text": "If you win then maybe you can teach me how to play.",
+			"pattern": "idle_up",
+			"position": {
+				"x": 2355,
+				"y": 1302
+			}
+		},
+		{
+			"name": "OLD GUY NEIGHBOUR DAY 3",
+			"sprite": "NPC_OLDMAN",
+			"meet_text": "It's been a long day for sure. While I was doing my shopping earlier I tried my luck at the Holo Rare Stand. Of course I don't actually collect any cards or play it so you can have the card I won.",
+			"repeat_text": "I only decided to try my luck for the fun of it, it was such a thrill!",
+			"gift_type": "card",
+			"gift_value": "base2-11",
+			"pattern": "idle_down",
+			"position": {
+				"x": -375,
+				"y": 1625
+			}
+		},
+		{
+			"name": "PSYCHIC BRIENNE",
+			"sprite": "PSYCHIC_F",
+			"meet_text": "The SS Anne has ruined my daily meditation so I've had to try a new spot today.",
+			"repeat_text": "It's not quite as good of a spot as the dock is but here but it's still peaceful enough.",
+			"pattern": "idle_left",
+			"position": {
+				"x": -830,
+				"y": 1270
+			}
+		},
+		{
+			"name": "HOLO RARE SHOPKEEPER",
+			"sprite": "NPC_HOLO_RARE_SHOPKEEPER",
+			"meet_text": "Welcome! I run a mystery holo rare system here. For $400 you can choose 1 of 3 mystery Holo Rares! You won't know what it is until you buy it but you get a hint as to the type.",
+			"pattern": "idle_down",
+			"position": {
+				"x": 1975,
+				"y": 1650
+			},
+			"npc_type": "shop",
+			"shop_id": "card_mart"
+		},
+		{
+			"name": "COIN SHOPKEEPER",
+			"sprite": "NPC_COIN_SHOPKEEPER",
+			"meet_text": "Welcome! I sell rare limited edition coins that you won't be able to buy anywhere else! They're not cheap at $250 each but I promise you they're top quality, completely unique and won't find anything like them around!",
+			"pattern": "idle_down",
+			"position": {
+				"x": 2095,
+				"y": 1650
+			},
+			"npc_type": "shop",
+			"shop_id": "card_mart"
+		},
+		{
+			"name": "FRUIT AND VEG SHOPKEEPER",
+			"sprite": "NPC 19",
+			"meet_text": "Hello - fresh fruit and veg for sale here. We've got everything you could ask for.",
+			"repeat_text": "I've got some discounted fruit on offer if you're interested.",
+			"pattern": "idle_down",
+			"position": {
+				"x": 2460,
+				"y": 1650
+			}
+		},
+		{
+			"name": "BAKERY SHOPKEEPER",
+			"sprite": "NPC 19_1",
+			"meet_text": "Get your freshly baked pastries, cakes and bread all here.",
+			"repeat_text": "Plenty of items still fresh to enjoy!",
+			"pattern": "idle_down",
+			"position": {
+				"x": 2570,
+				"y": 1650
+			}
+		},
+		{
+			"name": "BAKERY LOVER EVE",
+			"sprite": "LASS2",
+			"meet_text": "I LOVE FRESH BREAD! It's always so warm and crispy if you get it here early enough. If you're here that must mean you love it as much as I do!! We should be best friends!!",
+			"repeat_text": "I got so hungry from before that I just had to come back and get some more bread. It's soooo good.",
+			"gift_type": "costume",
+			"gift_value": "LASS2",
+			"pattern": "idle_random",
+			"position": {
+				"x": 2380,
+				"y": 1700
+			}
+		},
+		{
+			"name": "BROCK NPC",
+			"sprite": "GYMBROCK",
+			"meet_text": "Hey I'm Brock. I used to be a Gym Leader a long time ago. Battling wasn't for me so I gave it up to become a Pokemon Breeder and travel the world. Have this card of my favourite Pokemon.",
+			"repeat_text": "I much prefer to play the TCG than battling so I'm looking forward to the challenge.",
+			"gift_type": "card",
+			"gift_value": "gym1-21",
+			"pattern": "idle_up",
+			"position": {
+				"x": 2705,
+				"y": 2195
+			}
+		},
+		{
+			"name": "SUNBATHING SAILOR 1",
+			"sprite": "SAILOR",
+			"meet_text": "I got nothing to do until tonight so I'm taking it easy.",
+			"repeat_text": "I aint doing work if I aint being paid for it.",
+			"pattern": "idle_down",
+			"position": {
+				"x": -79,
+				"y": 2405
+			}
+		},
+		{
+			"name": "SAILOR WORKING ON SS ANNE ",
+			"sprite": "SAILOR",
+			"meet_text": "The SS Anne will be sailing for a long time. ",
+			"repeat_text": "It only makes it's trip once a year so there's a lot of work to be done when it sails.",
+			"pattern": "patrol_line",
+			"patrol_speed": 40.0,
+			"patrol_distance": 40,
+			"patrol_axis": "horizontal",
+			"position": {
+				"x": 2150,
+				"y": 3150
+			}
+		},
+		{
+			"name": "SUNBATHING SAILOR 2 EVE",
+			"sprite": "SAILOR",
+			"meet_text": "Misty left and I didn't say hello. I have to head back to the Anne so I won't have chance now.",
+			"repeat_text": "Weird how life works. You never know who you're going to run into years down the line.",
+			"pattern": "idle_down",
+			"position": {
+				"x": -46,
+				"y": 2273
+			}
+		},
+		{
+			"name": "WORKER ON DOCK EVE",
+			"sprite": "WORKER",
+			"meet_text": "I'll be done with this work very soon, I'm just finishing the last bit of welding on the hull.",
+			"repeat_text": "Watch yourself around these ships, it can be dangerous if you're not careful.",
+			"pattern": "idle_down",
+			"position": {
+				"x": 900,
+				"y": 3155
+			}
+		},
+		{
+			"name": "SS ANNE WAITRESS",
+			"sprite": "WAITRESS",
+			"meet_text": "The SS Anne is always hiring if you fancy travelling the world.",
+			"repeat_text": "We always have a lot of spare uniforms on hand as some staff land at a nice port and decide they don't want to go back to work again!",
+			"gift_type": "costume",
+			"gift_value": "WAITRESS",
+			"pattern": "idle_right",
+			"position": {
+				"x": 2760,
+				"y": 3150
+			}
+		},
+		{
+			"name": "SS ANNE WAITER",
+			"sprite": "WAITER",
+			"meet_text": "I've only been a waiter around a week, they were short staffed so offered me a high pay.",
+			"repeat_text": "I highly reccomend it as a career, but I don't know what I'll do after the ship returns back to Vermillion.",
+			"gift_type": "costume",
+			"gift_value": "WAITER",
+			"pattern": "idle_left",
+			"position": {
+				"x": 2800,
+				"y": 3150
+			}
+		},
+		{
+			"name": "BLAINE NPC",
+			"sprite": "GYMBLAINE",
+			"meet_text": "The name's Blaine. I was the gym leader on Cinnabar years ago before the volcano erupted. We moved to the Seafoam islands for a while but it was just never the same. I was the strongest Gym leader back then so take my strongest card.",
+			"repeat_text": "The Cinnabar eruption wasn't the largest shock, we knew we were on a volcano but it was still devastating. Thankfully nobody was hurt but the island was lost almost entirely.",
+			"gift_type": "card",
+			"gift_value": "gym1-1",
+			"pattern": "idle_left",
+			"position": {
+				"x": 1209,
+				"y": 2399
+			}
+		},
+		{
+			"name": "WOMAN WALKING THE NEIGHBOURHOOD EVE 3",
+			"sprite": "NPC 87",
+			"meet_text": "Do you ever end up walking more than you thought you were going to?",
+			"repeat_text": "I always end up walking further than I should.",
+			"pattern": "idle_right",
+			"position": {
+				"x": 855,
+				"y": 2313
+			}
+		},
+		{
+			"name": "SAILOR 2 PIER 1 DAY 3",
+			"sprite": "SAILOR",
+			"meet_text": "With the arrival of the SS Anne we're even busier than usual. We've never had this many tourists in the harbour at once.",
+			"repeat_text": "Sigh.. I wish I could just on the SS Anne and sail away on it forever.",
+			"pattern": "idle_random",
+			"position": {
+				"x": 350,
+				"y": 3125
+			}
+		},
+		{
+			"name": "MAINTENANCE GUY BLOCKING FOREST",
+			"sprite": "GARDENER",
+			"meet_text": "Sorry, the forest is still closed off, we haven't been able to clear the area entirely yet. We were hoping to have all the work done before today so all the passengers of the SS Anne could go out and explore.",
+			"repeat_text": "We're nearly done with it so it'll definitely be open tomorrow, my boss would kill me if we don't have it reopened before the SS Anne leaves again.",
+			"pattern": "idle_down",
+			"position": {
+				"x": 920,
+				"y": 900
+			}
+		},
+		{
+			"name": "CAR PARK GUY 1",
+			"sprite": "SECURITY",
+			"meet_text": "Sorry, I can't let you into the car park unless you have car!",
+			"repeat_text": "It's too dangerous to be wondering around on the road you know, I can't let any accidents happen under my watch.",
+			"pattern": "idle_down",
+			"position": {
+				"x": 628,
+				"y": 1190
+			}
+		},
+		{
+			"name": "MAN STARING OUT TO SEA EVENING 3",
+			"sprite": "YOUNGCOUPLE2",
+			"meet_text": "It's nearly time for my girlfriend to finish her shift.",
+			"repeat_text": "I've got the slow cooker on so dinner will be all ready when we get home.",
+			"pattern": "idle_right",
+			"position": {
+				"x": 950,
+				"y": 2235
+			}
+		},
+		{
+			"name": "JUICEBAR WOMAN (FROM STARING OUT TO SEA) DAY 3",
+			"sprite": "YOUNGCOUPLE_2",
+			"meet_text": "Hello! Can I interest you in any juice today?",
+			"repeat_text": "Did you get lucky and find a coin this time?",
+			"pattern": "idle_down",
+			"position": {
+				"x": 1030,
+				"y": 2190
+			}
+		},
+		{
+			"name": "SAILOR WORKING ON DOCK DAY 3",
+			"sprite": "SAILOR",
+			"meet_text": "*huff* I knew I'd be busy with the SS Anne arriving but *huff* I didn't think I'd be THIS busy....",
+			"repeat_text": "*huff* *huff* The SS Anne only arrives once a year and it's always the harbour's busiest days.",
+			"gift_type": "costume",
+			"gift_value": "SAILOR",
+			"pattern": "patrol_line",
+			"patrol_speed": 80.0,
+			"patrol_distance": 200,
+			"patrol_axis": "vertical",
+			"position": {
+				"x": 690,
+				"y": 2680
+			}
+		},
+		{
+			"name": "STATION MANAGER EVENING 3",
+			"sprite": "TRAINWORKER",
+			"meet_text": "Good evening. The last train of the day will be departing shortly so please head through to the gate if you intend to catch it.",
+			"repeat_text": "The trains here are always very punctual, they're never late.",
+			"pattern": "random_wander",
+			"patrol_speed": 50.0,
+			"wander_radius": 60,
+			"position": {
+				"x": 2020,
+				"y": 1020
+			}
+		},
+		{
+			"name": "TRAIN EMPLOYEE 2",
+			"sprite": "TRAINWORKER3",
+			"meet_text": "I'm been tasked with litter picking with the influx of tourist.",
+			"repeat_text": "There's plenty of bins around so I don't why people don't use them.",
+			"pattern": "random_wander",
+			"patrol_speed": 40.0,
+			"wander_radius": 65,
+			"position": {
+				"x": 2550,
+				"y": 1270
+			}
+		},
+		{
+			"name": "FIREBREATHER DARRYL",
+			"sprite": "FIREBREATHER",
+			"meet_text": "mMMMmm mMmMm MmmmMM MmMMmM mMMMmMmMm mMmMmMMm MMMmM mm mmMM MmmMMmM.",
+			"repeat_text": "Sorry you caught me at a bad time I had a mouthful of fire fluid there.",
+			"pattern": "idle_cycle",
+			"position": {
+				"x": 1050,
+				"y": 2475
+			}
+		},
+		{
+			"name": "FIREBREATHER KENNETH",
+			"sprite": "FIREBREATHER",
+			"meet_text": "We're good at what we do and we make it look easy but it's not.",
+			"repeat_text": "It's very hard work this!",
+			"pattern": "idle_cycle",
+			"position": {
+				"x": 1000,
+				"y": 2475
+			}
+		}
+	],
+	"opponents": [
+		{
+			"name": "SWIMMER JORDAN",
+			"sprite": "SWIMMER_F2",
+			"deck": "WHIRLGONG",
+			"music": "surrounded_sea",
+			"prize_cards": 4,
+			"meet_text": "I love the water, it's so calm and warm but my cards always get wet! I need to dry them off.",
+			"repeat_text": "My friend has just arrived from Kanto and we're spending the day swimming together, but I can take a break for a rematch.",
+			"first_win_text": "I'll stick with my swimming...",
+			"rematch_win_text": "Nothing like a good match and a long swim.",
+			"loss_text": "Maybe you should work on your swimming...",
+			"cash_reward": "100",
+			"coin_reward": "coin_energy_blue",
+			"pattern": "idle_cycle",
+			"position": {
+				"x": 450,
+				"y": 2590
+			}
+		},
+		{
+			"name": "SWIMMER MELISSA",
+			"sprite": "SWIMMER_F",
+			"deck": "POLIGONG'S WRATH",
+			"music": "surrounded_sea",
+			"prize_cards": 6,
+			"meet_text": "The sea is so much calmer and warmer here than it is back home in Kanto.",
+			"repeat_text": "I could stay in the water here all day.",
+			"first_win_text": "I wish they made cards waterproof...",
+			"rematch_win_text": "I really need to dry off my cards.",
+			"loss_text": "I'm glad I came here today!",
+			"cash_reward": "150",
+			"coin_reward": "coin_kyogre_blue",
+			"pattern": "idle_cycle",
+			"position": {
+				"x": 490,
+				"y": 2590
+			}
+		},
+		{
+			"name": "BIRDSPOTTER GREGG",
+			"sprite": "BIRDKEEPER_M",
+			"deck": "BIG OL BIRBS",
+			"music": "normal_battle",
+			"prize_cards": 6,
+			"meet_text": "My friend got hungry so decided to head back, but I'm interested to see what birds come out at night.",
+			"repeat_text": "This really is a great spot for birds and cards!",
+			"first_win_text": "Do you hate birds or something?.",
+			"rematch_win_text": "Well at least I can watch the birds from around here.",
+			"loss_text": "Looking after birds really isn't easy!",
+			"cash_reward": "150",
+			"coin_reward": "coin_lugia_silver",
+			"pattern": "idle_random",
+			"position": {
+				"x": 1640,
+				"y": 2340
+			}
+		},
+		{
+			"name": "BUG CATCHER FRANKIE",
+			"sprite": "BUGCATCHER",
+			"deck": "BIG BAD BUGS!",
+			"music": "chilled_battle",
+			"prize_cards": 4,
+			"meet_text": "Wow!!! The bugs here are so much cooler than what we have over in Viridian Forest!!",
+			"repeat_text": "Seen any cool bug Pokemon around here since our last match?",
+			"first_win_text": "My bugs clearly aren't as strong as the ones around here.",
+			"rematch_win_text": "Hmm I wish I could get my hands on some of these bugs instead.",
+			"loss_text": "Bug pokemon really aren't as weak as people think.",
+			"cash_reward": "100",
+			"coin_reward": "coin_genesect_purple",
+			"costume_reward": "BUGCATCHER",
+			"pattern": "idle_random",
+			"position": {
+				"x": 2295,
+				"y": 2160
+			}
+		},
+		{
+			"name": "BUG CATCHER JOHNNY",
+			"sprite": "BUGCATCHER2",
+			"deck": "STRANGE PLANTS",
+			"music": "normal_battle",
+			"prize_cards": 4,
+			"meet_text": "I love catching bugs but I also love cool plants. There are a lot of critters crawling around in these roots.",
+			"repeat_text": "I've just seen a HUGE bug running around.",
+			"first_win_text": "I wish I could photosynthesize.",
+			"rematch_win_text": "I could beat you at catching bugs!",
+			"loss_text": "Grass Pokemon are great!",
+			"cash_reward": "100",
+			"coin_reward": "coin_energy_green_2",
+			"pattern": "idle_up",
+			"position": {
+				"x": 2167,
+				"y": 2305
+			}
+		},
+		{
+			"name": "FISHERMAN GARY",
+			"sprite": "FISHERMAN",
+			"deck": "BIG CATCH",
+			"music": "normal_battle",
+			"prize_cards": 6,
+			"meet_text": "I joined my buddies here to fish today but we were actually catching sooo much that they ended up leaving!",
+			"repeat_text": "Fishing by yourslef can get lonely when nothing bites.",
+			"first_win_text": "Dang, I never lose against my buddies.",
+			"rematch_win_text": "You're probably a really good fisherman too.",
+			"loss_text": "I'm the only fisherman and best card player on this pier!",
+			"cash_reward": "150",
+			"coin_reward": "coin_gyarados_gold",
+			"pattern": "idle_down",
+			"position": {
+				"x": -840,
+				"y": 2730
+			}
+		},
+		{
+			"name": "SS ANNE TOURIST EDMUND",
+			"sprite": "RICHBOY",
+			"deck": "ELEGANCE",
+			"music": "normal_battle",
+			"prize_cards": 6,
+			"meet_text": "I live in Celadon City so it's rare I get to the beach. I'm here to make the most of it.",
+			"repeat_text": "It won't feel like that long before we have to head onwards.",
+			"first_win_text": "I'm not here to win, only here for a good time.",
+			"rematch_win_text": "You're the best player I've battled around here.",
+			"loss_text": "I didn't even mean to win so that's a nice surprise.",
+			"cash_reward": "200",
+			"coin_reward": "coin_dragonite_gold",
+			"pattern": "idle_down",
+			"position": {
+				"x": 765,
+				"y": 1960
+			}
+		},
+		{
+			"name": "SS ANNE TOURIST ALISSA",
+			"sprite": "LADY",
+			"deck": "GIRL POWER",
+			"music": "normal_battle",
+			"prize_cards": 6,
+			"meet_text": "Nothing feels better than the sand beneath your toes after being stuck in your cabin for days on end.",
+			"repeat_text": "I'm so relaxed I could stay here all day.",
+			"first_win_text": "Have you ever been on a cruise before?",
+			"rematch_win_text": "I'll have to practice more when I'm back on board.",
+			"loss_text": "Oh wonderful! I do love it when I win!",
+			"cash_reward": "200",
+			"coin_reward": "coin_jigglypuff_pink",
+			"pattern": "idle_down",
+			"position": {
+				"x": -366,
+				"y": 2270
+			}
+		},
+		{
+			"name": "GUITARIST JONESY",
+			"sprite": "GUITARIST",
+			"deck": "HEAVY METAL",
+			"music": "normal_battle",
+			"prize_cards": 4,
+			"meet_text": "We're in a band and we're currently touring. We're just passing through to our next gig so having a quick jam here.",
+			"repeat_text": "Hey dude, let's rock.",
+			"first_win_text": "Damn I snapped a string while we were jamming.",
+			"rematch_win_text": "You should come to one of our gigs!",
+			"loss_text": "Let's goooooooooooo.",
+			"cash_reward": "140",
+			"coin_reward": "coin_zapdos_gold",
+			"pattern": "idle_right",
+			"position": {
+				"x": 2480,
+				"y": 1210
+			}
+		},
+		{
+			"name": "GUITARIST HOWARD",
+			"sprite": "GUITARIST2",
+			"deck": "ROCK N SHOCK",
+			"music": "normal_battle",
+			"prize_cards": 4,
+			"meet_text": "We're the Toxtricity Rockers, we're a duo that's pretty big in Johto.",
+			"repeat_text": "You here to hear a song or a rematch?",
+			"first_win_text": "I missed a chord.",
+			"rematch_win_text": "Fancy being a roadie?",
+			"loss_text": "If it's any consolation I'll give you a discount on our album.",
+			"cash_reward": "140",
+			"coin_reward": "coin_solgaleo_gold",
+			"pattern": "idle_left",
+			"position": {
+				"x": 2515,
+				"y": 1210
+			}
+		},
+		{
+			"name": "JOGGER DANIEL",
+			"sprite": "JOGGER",
+			"deck": "NIDO NIDO MEOW",
+			"music": "normal_battle",
+			"prize_cards": 4,
+			"meet_text": "*huff* *huff* I've been training for my marathon all day so I'm worn out, I could do with a rest.",
+			"repeat_text": "I'm still running as much as I can, I could do with another break.",
+			"first_win_text": "*huff* I shouldn't have bothered stopping.",
+			"rematch_win_text": "I'm just going to focus on my running from now on.",
+			"loss_text": "I'm glad I decided to take a break, that's given me an extra push to carry on.",
+			"cash_reward": "100",
+			"coin_reward": "coin_scorbunny_red",
+			"pattern": "patrol_line",
+			"patrol_speed": 70.0,
+			"patrol_distance": 2700,
+			"patrol_axis": "horizontal",
+			"position": {
+				"x": -500,
+				"y": 2015
+			}
+		},
+		{
+			"name": "GARDENER CALLUM",
+			"sprite": "GARDENER",
+			"deck": "POLLEN POWER",
+			"music": "chilled_battle",
+			"prize_cards": 2,
+			"meet_text": "Wowee, it was a long day gardening today. I'm down for a match to let off some steam now.",
+			"repeat_text": "I've got time for a rematch before my next shift.",
+			"first_win_text": "I'm clearly too worn out from such a long shift.",
+			"rematch_win_text": "I'll win when I'm fully rested.",
+			"loss_text": "Even after a hard days work I can still win!",
+			"cash_reward": "75",
+			"coin_reward": "coin_bulbasaur_green",
+			"pattern": "idle_left",
+			"wander_radius": 65,
+			"position": {
+				"x": -875,
+				"y": 2280
+			}
+		},
+		{
+			"name": "GARDEN MANAGER LOUIS",
+			"sprite": "GARDENER",
+			"deck": "SOLAR POWER",
+			"music": "chilled_battle",
+			"prize_cards": 6,
+			"meet_text": "I might be the garden manager but I do know how to have fun.",
+			"repeat_text": "Look at how great the gardens look.",
+			"first_win_text": "Even with all this sun I couldn't win.",
+			"rematch_win_text": "Ever fancied being a gardener yourself?",
+			"loss_text": "Plants aren't just pretty.",
+			"cash_reward": "75",
+			"coin_reward": "coin_venusaur_green",
+			"pattern": "random_wander",
+			"patrol_speed": 40.0,
+			"wander_radius": 65,
+			"position": {
+				"x": -710,
+				"y": 2020
+			}
+		},
+		{
+			"name": "SAILOR BOB",
+			"sprite": "SAILOR",
+			"deck": "HOIST THE ANCHOR",
+			"music": "normal_battle",
+			"prize_cards": 6,
+			"meet_text": "Most of the passengers have returned on board for the night now so it's quiet again as usual.",
+			"repeat_text": "There's still time before the morning shift.",
+			"first_win_text": "I should at least pretend to do some work on the dock.",
+			"rematch_win_text": "I won't have a lot of time to during the day now the ship has docked.",
+			"loss_text": "All this spare time has given me a chance to practice.",
+			"cash_reward": "150",
+			"coin_reward": "coin_energy_brown",
+			"pattern": "idle_random",
+			"position": {
+				"x": 2040,
+				"y": 3110
+			}
+		},
+		{
+			"name": "CARD ELDER RAYNE",
+			"sprite": "ELDER",
+			"deck": "RAIN DANCE",
+			"music": "hard_battle",
+			"prize_cards": 6,
+			"meet_text": "Hoh Hoh, are you ready to feel the torrent? If you win I'll give you a medal to prove your triumph.",
+			"repeat_text": "Hoh Hoh! I enjoyed the battle that much I'd also like another!",
+			"first_win_text": "Congratulations on your win. You've earned this medal and my respect.",
+			"rematch_win_text": "Come back any time and battle us old folk.",
+			"loss_text": "Don't be disheartened, the rain will always stop.",
+			"cash_reward": "200",
+			"coin_reward": "coin_blastoise_silver",
+			"pattern": "idle_down",
+			"position": {
+				"x": 2230,
+				"y": 1252
+			}
+		},
+		{
+			"name": "CARD ELDER HAMISH",
+			"sprite": "ELDER",
+			"deck": "HAYMAKER",
+			"music": "hard_battle",
+			"prize_cards": 6,
+			"meet_text": "Back for the challenge then hey? Remember you'll need to defeat all 3 of us if you want to progress.",
+			"repeat_text": "Very well, I always enjoy a good challenge!",
+			"first_win_text": "Well done, that was quite the battle. Take my medal and continue forth.",
+			"rematch_win_text": "Battling like this makes me feel young again.",
+			"loss_text": "Don't be disheartened, the rain will always stop.",
+			"cash_reward": "200",
+			"coin_reward": "coin_rayquaza_silver",
+			"pattern": "idle_down",
+			"position": {
+				"x": 2326,
+				"y": 1252
+			}
+		},
+		{
+			"name": "CARD ELDER WAVERLY",
+			"sprite": "ELDER",
+			"deck": "DO THE WAVE",
+			"music": "hard_battle",
+			"prize_cards": 6,
+			"meet_text": "Are you ready to take me on then? If you win then you'll do well in the Gym Hero Challenge.",
+			"repeat_text": "Up for another round then? Happy to oblige.",
+			"first_win_text": "Well well well, what a jolly good play! You've earned this.",
+			"rematch_win_text": "We've been winning and losing for so long it's always fun either way.",
+			"loss_text": "When you fail, get up and try again.",
+			"cash_reward": "200",
+			"coin_reward": "coin_rayquaza_silver",
+			"pattern": "idle_down",
+			"position": {
+				"x": 2278,
+				"y": 1252
+			}
+		},
+		{
+			"name": "HIKER BEN",
+			"sprite": "HIKER",
+			"deck": "SOLID GROUND",
+			"music": "normal_battle",
+			"prize_cards": 4,
+			"meet_text": "Well that's incredibly disappointing. I was hoping to have a trek through the forest but they've told me it's shut so I have nowhere to go now.",
+			"repeat_text": "The forest has to be open soon surely.",
+			"first_win_text": "Well that's another disappointment to my day.",
+			"rematch_win_text": "The disappointment just doesn't end.",
+			"loss_text": "At least that's given me a nice little boost after the bad news.",
+			"cash_reward": "100",
+			"coin_reward": "coin_tyranitar_gold",
+			"pattern": "random_wander",
+			"patrol_speed": 40.0,
+			"wander_radius": 60,
+			"position": {
+				"x": 950,
+				"y": 1270
+			}
+		}
+	]
 }

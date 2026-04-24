@@ -21,7 +21,7 @@ extends CharacterBody2D
 var npc_name: String = ""
 var sprite: String = ""
 var npc_type: String = "text_only"   # kept for bubble icon: "text_only" | "shop"
-var text: String = ""
+var meet_text: String = ""
 var repeat_text: String = ""
 var gift_type: String = ""
 var gift_value: String = ""

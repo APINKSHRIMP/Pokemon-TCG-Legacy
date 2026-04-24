@@ -77,7 +77,7 @@ func _load_and_spawn_opponents(json_path: String):
 		opp.music            = entry["music"]
 		opp.deck             = entry["deck"]
 		opp.meet_text        = entry["meet_text"]
-		opp.rematch_text     = entry["rematch_text"]
+		opp.repeat_text      = entry["repeat_text"]
 		opp.first_win_text   = entry["first_win_text"]
 		opp.rematch_win_text = entry["rematch_win_text"]
 		opp.loss_text        = entry["loss_text"]
@@ -117,7 +117,7 @@ func _load_and_spawn_npcs(json_path: String):
 		npc.npc_name         = entry["name"]
 		npc.sprite           = entry["sprite"]
 		npc.npc_type         = entry.get("npc_type", "text_only")
-		npc.text             = entry.get("text", "")
+		npc.meet_text        = entry.get("meet_text", "")
 		npc.repeat_text      = entry.get("repeat_text", "")
 		npc.gift_type        = entry.get("gift_type", "")
 		npc.gift_value       = entry.get("gift_value", "")
@@ -306,19 +306,19 @@ func _on_player_npc_interact(npc: Node):
 		if handled:
 			return
 		# on_interact() returned false → open pack purchase
-		_show_message_with_choices(npc.text)
+		_show_message_with_choices(npc.meet_text)
 		return
 
 	# Gift NPC: detected by gift_type field being non-empty
 	if npc.is_gift_npc():
 		if npc.has_gift_been_given():
 			npc.refresh_bubble()
-			_show_message_with_ok(npc.repeat_text if npc.repeat_text != "" else npc.text)
+			_show_message_with_ok(npc.repeat_text if npc.repeat_text != "" else npc.meet_text)
 		else:
 			_give_gift(npc)
 			npc.mark_as_met()
 			npc.refresh_bubble()   # flips to old_talk now that gift is given
-			_show_message_with_ok(npc.text)
+			_show_message_with_ok(npc.meet_text)
 		return
 
 	# Text-only NPC — mark as met BEFORE showing text so icon flips immediately
@@ -328,7 +328,7 @@ func _on_player_npc_interact(npc: Node):
 	if use_repeat:
 		_show_message_with_ok(npc.repeat_text)
 	else:
-		_show_message_with_ok(npc.text)
+		_show_message_with_ok(npc.meet_text)
 
 # ============================================================
 # GIFT GIVING
