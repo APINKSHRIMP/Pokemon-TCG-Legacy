@@ -602,7 +602,7 @@
 			"rematch_win_text": "I won't have a lot of time to during the day now the ship has docked.",
 			"loss_text": "All this spare time has given me a chance to practice.",
 			"cash_reward": "150",
-			"coin_reward": "coin_energy_brown",
+			"coin_reward": "coin_energy_brown_2",
 			"pattern": "idle_random",
 			"position": {
 				"x": 2040,
@@ -621,7 +621,7 @@
 			"rematch_win_text": "Come back any time and battle us old folk.",
 			"loss_text": "Don't be disheartened, the rain will always stop.",
 			"cash_reward": "200",
-			"coin_reward": "coin_blastoise_silver",
+			"coin_reward": "coin_rayquaza_silver",
 			"pattern": "idle_down",
 			"position": {
 				"x": 2230,
@@ -640,7 +640,7 @@
 			"rematch_win_text": "Battling like this makes me feel young again.",
 			"loss_text": "Don't be disheartened, the rain will always stop.",
 			"cash_reward": "200",
-			"coin_reward": "coin_rayquaza_silver",
+			"coin_reward": "coin_rayquaza_green",
 			"pattern": "idle_down",
 			"position": {
 				"x": 2326,
@@ -659,7 +659,7 @@
 			"rematch_win_text": "We've been winning and losing for so long it's always fun either way.",
 			"loss_text": "When you fail, get up and try again.",
 			"cash_reward": "200",
-			"coin_reward": "coin_rayquaza_silver",
+			"coin_reward": "coin_rayquaza_gold",
 			"pattern": "idle_down",
 			"position": {
 				"x": 2278,

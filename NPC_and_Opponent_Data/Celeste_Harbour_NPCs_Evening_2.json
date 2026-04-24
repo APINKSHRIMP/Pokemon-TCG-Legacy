@@ -288,7 +288,7 @@
 			"rematch_win_text": "You can't fly away from all your troubles.",
 			"loss_text": "You should try bird watching with me!",
 			"cash_reward": "100",
-			"coin_reward": "coin_energy_silver_2",
+			"coin_reward": "coin_corviknight_silver",
 			"pattern": "idle_random",
 			"position": {
 				"x": 1886,

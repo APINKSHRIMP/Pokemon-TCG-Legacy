@@ -49,6 +49,22 @@
 			}
 		},
 		{
+			"name": "KOGA NPC",
+			"sprite": "GYMKOGA",
+			"meet_text": "Out here in the cover of darkness too? I'm Koga. I was once the Gym Leader of Fuschia and then made it as an Indigo League Elite 4 member. I've been asked here to help in the Gym Hero challenge. As you're out here at this hour you might appreciate this.",
+			"repeat_text": "I won't take it easy on you if you come to take the challenge so be prepared.",
+			"gift_type": "card",
+			"gift_value": "gym2-10",
+			"pattern": "patrol_line",
+			"patrol_speed": 150.0,
+			"patrol_distance": 100,
+			"patrol_axis": "horizontal",
+			"position": {
+				"x": 1950,
+				"y": 2250
+			}
+		},
+		{
 			"name": "GIOVANNI NPC",
 			"sprite": "TEAMROCKETBOSS",
 			"meet_text": "You shouldn't be out here so late, there's not always nice people wandering around at this hour. I promised not to cause trouble while I'm here but why not a little mischief? As proof I'm not evil, take this.",
@@ -173,7 +189,7 @@
 			"rematch_win_text": "I won't have a lot of time to during the day now the ship has docked.",
 			"loss_text": "All this spare time has given me a chance to practice.",
 			"cash_reward": "150",
-			"coin_reward": "coin_energy_brown",
+			"coin_reward": "coin_energy_brown_2",
 			"pattern": "idle_random",
 			"position": {
 				"x": 2040,
@@ -192,7 +208,7 @@
 			"rematch_win_text": "Come back any time and battle us old folk.",
 			"loss_text": "Don't be disheartened, the rain will always stop.",
 			"cash_reward": "200",
-			"coin_reward": "coin_blastoise_silver",
+			"coin_reward": "coin_rayquaza_silver",
 			"pattern": "idle_down",
 			"position": {
 				"x": 2230,
@@ -211,7 +227,7 @@
 			"rematch_win_text": "Battling like this makes me feel young again.",
 			"loss_text": "Don't be disheartened, the rain will always stop.",
 			"cash_reward": "200",
-			"coin_reward": "coin_rayquaza_silver",
+			"coin_reward": "coin_rayquaza_green",
 			"pattern": "idle_down",
 			"position": {
 				"x": 2326,
@@ -230,7 +246,7 @@
 			"rematch_win_text": "We've been winning and losing for so long it's always fun either way.",
 			"loss_text": "When you fail, get up and try again.",
 			"cash_reward": "200",
-			"coin_reward": "coin_rayquaza_silver",
+			"coin_reward": "coin_rayquaza_gold",
 			"pattern": "idle_down",
 			"position": {
 				"x": 2278,
@@ -249,7 +265,7 @@
 			"rematch_win_text": "The disappointment just doesn't end.",
 			"loss_text": "At least that's given me a nice little boost after the bad news.",
 			"cash_reward": "100",
-			"coin_reward": "coin_tyranitar_gold_2",
+			"coin_reward": "coin_tyranitar_gold",
 			"pattern": "random_wander",
 			"patrol_speed": 40.0,
 			"wander_radius": 60,
@@ -284,13 +300,13 @@
 			"deck": "WORK HARD PLAY HARD",
 			"music": "normal_battle",
 			"prize_cards": 6,
-			"meet_text": "Hey, I've got some shocking cards I want to try out.",
+			"meet_text": "Hey, I've been working hard all day so I'm ready to play",
 			"repeat_text": "It's rare I have to work at night so I'm free for another match.",
 			"first_win_text": "I simply cannot fix that at all.",
 			"rematch_win_text": "I'm going to weld my cards at this rate.",
-			"loss_text": "Hope your loss didn't come as a shock to you.",
+			"loss_text": "You just need to work harder",
 			"cash_reward": "150",
-			"coin_reward": "coin_raichu_gold",
+			"coin_reward": "coin_koraidon_red",
 			"costume_reward": "WORKER",
 			"pattern": "idle_up",
 			"position": {

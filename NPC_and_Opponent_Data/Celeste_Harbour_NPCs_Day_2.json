@@ -431,7 +431,7 @@
 			"rematch_win_text": "You can help me build a sandcastle if you want!",
 			"loss_text": "Yaaaaaay! I love winning!",
 			"cash_reward": "75",
-			"coin_reward": "coin_pikachu_silver",
+			"coin_reward": "coin_pikachu_silver_1",
 			"pattern": "idle_right",
 			"position": {
 				"x": 450,

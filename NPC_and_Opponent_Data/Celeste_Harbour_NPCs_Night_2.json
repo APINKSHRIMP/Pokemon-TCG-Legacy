@@ -17,7 +17,7 @@
 			"meet_text": "ugh.. oooo.. hello? Good morning? oops it seems I fell asleep on the beach again... I shouldn't be out this late, thanks for waking me up. Take this as a thank you.",
 			"repeat_text": "I better head home soon, I accidentally do this all the time so my wife can probably guess what happened but she'll still be worried.",
 			"gift_type": "coin",
-			"gift_value": "coin_darkrai_silver",
+			"gift_value": "coin_darkrai_gold",
 			"pattern": "idle_down",
 			"position": {
 				"x": -222,
@@ -112,7 +112,7 @@
 			"rematch_win_text": "I won't have a lot of time to play when the ship docks.",
 			"loss_text": "All this spare time has given me a chance to practice.",
 			"cash_reward": "150",
-			"coin_reward": "coin_energy_brown",
+			"coin_reward": "coin_energy_brown_2",
 			"pattern": "idle_random",
 			"position": {
 				"x": 2040,

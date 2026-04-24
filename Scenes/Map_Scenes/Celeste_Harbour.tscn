@@ -5959,4 +5959,4 @@ position = Vector2(-15, 1865)
 collision_mask = 0
 
 [node name="Player" parent="." unique_id=510514557 instance=ExtResource("5_a0lly")]
-position = Vector2(931, 1322)
+position = Vector2(2010, 2428)
