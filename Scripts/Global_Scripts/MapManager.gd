@@ -24,6 +24,41 @@ var no_button: Button
 var ok_button: Button
 
 # ============================================================
+# GIFT DISPLAY STATE
+# ============================================================
+
+# When non-empty, the next OK press triggers the gift card/coin reveal
+# instead of dismissing the message panel. Keys: text, image_paths, kind.
+var _pending_gift_display: Dictionary = {}
+
+# Container holding the displayed card/coin TextureRects during gift reveal
+var _gift_display_container: Control = null
+
+# ── Card / set name lookup caches (populated lazily) ─────────────
+var _set_name_cache: Dictionary = {}
+var _card_name_cache: Dictionary = {}
+var _loaded_card_sets: Dictionary = {}
+
+# Set IDs that are promo sets — these use "<set_name> <card_name>"
+# instead of the usual "<set_name> set <card_name>"
+const PROMO_SET_IDS := ["basep", "np"]
+
+# Card display dimensions copied from the main gameplay script's
+# show_enlarged_array_selection_mode (card_scales dict).
+const GIFT_CARD_SIZES := {
+	1: Vector2(400, 550),
+	2: Vector2(400, 550),
+	3: Vector2(375, 515),
+	4: Vector2(350, 481),
+}
+
+const GIFT_COIN_SIZE := Vector2(250, 250)
+const GIFT_ITEM_SEPARATION := 20.0
+
+# Vertical centre point on screen for the displayed gift items
+const GIFT_DISPLAY_CENTER_Y := 400.0
+
+# ============================================================
 # INITIALISE
 # ============================================================
 
@@ -215,6 +250,7 @@ func _show_message_with_ok(text: String):
 
 func _hide_message():
 	message_panel.visible = false
+	_clear_gift_display()
 	_player.can_move = true
 	if current_opponent != null:
 		current_opponent.resume_movement()
@@ -282,6 +318,13 @@ func _on_no_pressed():
 	_hide_message()
 
 func _on_ok_pressed():
+	# If a gift display is queued, show the card/coin reveal instead of dismissing
+	if not _pending_gift_display.is_empty():
+		var d = _pending_gift_display
+		_pending_gift_display = {}
+		_show_gift_display(d["text"], d["image_paths"], d["kind"])
+		return
+
 	if current_npc != null:
 		current_npc.refresh_bubble()
 	_hide_message()
@@ -319,6 +362,7 @@ func _on_player_npc_interact(npc: Node):
 			_give_gift(npc)
 			npc.mark_as_met()
 			npc.refresh_bubble()   # flips to old_talk now that gift is given
+			_prepare_gift_display(npc.gift_type, npc.gift_value)
 			_show_message_with_ok(npc.meet_text)
 		return
 
@@ -362,6 +406,225 @@ func _give_gift(npc: Node):
 		_:
 			push_error("MapManager: Unknown gift_type '" + npc.gift_type + "' on NPC: " + npc.npc_name)
 	GameState.mark_gift_received(npc.npc_name)
+
+# ============================================================
+# GIFT DISPLAY (image(s) + name shown after gift dialogue)
+# ============================================================
+
+# Builds the pending gift display data based on the gift type.
+# Only "card" and "coin" trigger a visual reveal; other types are silent.
+func _prepare_gift_display(gift_type: String, gift_value: String) -> void:
+	_pending_gift_display = {}
+
+	match gift_type:
+		"coin":
+			# Coins are always single-value
+			_pending_gift_display = {
+				"text": "You received the " + _format_coin_name(gift_value),
+				"image_paths": ["res://Image_Assets/Coins/" + gift_value + ".png"],
+				"kind": "coin",
+			}
+		"card":
+			# gift_value may be "base1-1" or "base1-1, base2-5, base3-1, base1-3"
+			var card_ids: Array = []
+			for raw_id in gift_value.split(","):
+				var cid: String = raw_id.strip_edges()
+				if cid != "":
+					card_ids.append(cid)
+			if card_ids.is_empty():
+				return
+
+			var name_parts: Array = []
+			var paths: Array = []
+			for cid in card_ids:
+				name_parts.append(_get_card_display_name(cid) + " (" + cid + ")")
+				paths.append(_get_card_image_path(cid))
+
+			_pending_gift_display = {
+				"text": "You received " + ", ".join(name_parts),
+				"image_paths": paths,
+				"kind": "card",
+			}
+
+# Spawns the gift display (cards/coin laid out horizontally on screen) and
+# shows the message panel with the formatted text. Press OK to dismiss both.
+func _show_gift_display(text: String, image_paths: Array, kind: String) -> void:
+	_clear_gift_display()
+
+	# Container parented to the UI layer so it sits above the world
+	_gift_display_container = Control.new()
+	_gift_display_container.position = Vector2.ZERO
+	_gift_display_container.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_ui_layer.add_child(_gift_display_container)
+
+	# Pick item dimensions based on kind and count
+	var item_size: Vector2
+	if kind == "coin":
+		item_size = GIFT_COIN_SIZE
+	else:
+		var n_clamp: int = clamp(image_paths.size(), 1, 4)
+		item_size = GIFT_CARD_SIZES.get(n_clamp, GIFT_CARD_SIZES[4])
+
+	# Compute layout
+	var n: int = image_paths.size()
+	var total_width: float = n * item_size.x + (n - 1) * GIFT_ITEM_SEPARATION
+	var start_x: float = 960.0 - total_width / 2.0
+	var top_y: float = GIFT_DISPLAY_CENTER_Y - item_size.y / 2.0
+
+	# Spawn one TextureRect per image
+	for i in range(n):
+		var path: String = image_paths[i]
+		var tex: Texture2D = _load_card_image_with_fallback(path)
+		if tex == null:
+			push_warning("MapManager: gift image not found: " + path)
+			continue
+
+		var rect = TextureRect.new()
+		rect.texture             = tex
+		rect.custom_minimum_size = item_size
+		rect.size                = item_size
+		rect.position            = Vector2(start_x + i * (item_size.x + GIFT_ITEM_SEPARATION), top_y)
+		rect.stretch_mode        = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		rect.expand_mode         = TextureRect.EXPAND_FIT_WIDTH_PROPORTIONAL
+		rect.mouse_filter        = Control.MOUSE_FILTER_IGNORE
+		_gift_display_container.add_child(rect)
+
+	# Ensure the message panel renders above the gift container
+	if message_panel.get_parent() == _ui_layer:
+		_ui_layer.move_child(message_panel, _ui_layer.get_child_count() - 1)
+
+	_show_message_with_ok(text)
+
+# Removes the gift display container if it exists.
+func _clear_gift_display() -> void:
+	if _gift_display_container != null and is_instance_valid(_gift_display_container):
+		_gift_display_container.queue_free()
+	_gift_display_container = null
+
+# Loads a card image, falling back from /Large/ to /Small/ if the large
+# version is missing (failsafe — large images should always exist).
+func _load_card_image_with_fallback(path: String) -> Texture2D:
+	if path == "":
+		return null
+	if ResourceLoader.exists(path):
+		var tex = load(path)
+		if tex != null:
+			return tex
+	if "/Large/" in path:
+		var fallback: String = path.replace("/Large/", "/Small/")
+		if ResourceLoader.exists(fallback):
+			return load(fallback)
+	return null
+
+# ============================================================
+# COIN NAME FORMATTING
+# Title-cases all words and assembles the final coin display name.
+#   "coin_arcanine_red"        -> "Red Arcanine Coin"
+#   "coin_pikachu_silver_2"    -> "Silver Pikachu Coin 2"
+#   "coin_lugia_silver_2"      -> "Silver Lugia Coin 2"
+# ============================================================
+
+func _format_coin_name(raw: String) -> String:
+	var name_str: String = raw.replace("coin_", "").replace(".png", "")
+	var colours = ["red", "blue", "gold", "silver", "green", "black", "purple", "pink", "brown", "yellow", "orange", "white"]
+	var parts = name_str.split("_")
+	var colour: String = ""
+	var trailing_number: String = ""
+	var pokemon_parts: Array = []
+
+	for part in parts:
+		if part in colours:
+			colour = part
+		elif part.is_valid_int():
+			trailing_number = part
+		else:
+			pokemon_parts.append(part)
+
+	# Assemble in display order: colour, pokemon, "coin", optional number
+	var pieces: Array = []
+	if colour != "":
+		pieces.append(colour)
+	pieces.append_array(pokemon_parts)
+	pieces.append("coin")
+	if trailing_number != "":
+		pieces.append(trailing_number)
+
+	# Title-case every piece
+	var result_parts: Array = []
+	for p in pieces:
+		var s: String = p
+		if s.length() > 0:
+			result_parts.append(s.substr(0, 1).to_upper() + s.substr(1))
+	return " ".join(result_parts)
+
+# ============================================================
+# CARD NAME / IMAGE LOOKUP
+# Uses the same data sources as the deck builder:
+#   set names: res://Player_Data/Player_Owned_Cards/Set_ID_Names_Dictionary.json
+#   card data: res://Card_Set_Data/<set_id>.json
+# ============================================================
+
+func _get_card_image_path(card_uid: String) -> String:
+	var split = card_uid.split("-")
+	if split.size() != 2:
+		return ""
+	var set_code: String = split[0]
+	return "res://Image_Assets/Card_Image_Library/" + set_code + "/Large/" + card_uid + ".png"
+
+func _get_card_display_name(card_uid: String) -> String:
+	var split = card_uid.split("-")
+	if split.size() != 2:
+		return card_uid
+	var set_id: String = split[0]
+
+	_ensure_card_set_loaded(set_id)
+
+	var card_name: String = _card_name_cache.get(card_uid, card_uid)
+	var set_name: String = _get_set_name(set_id)
+
+	if set_name == "":
+		return card_name
+
+	# Promo sets use just "<set_name> <card_name>"; everything else uses
+	# "<set_name> set <card_name>"
+	if set_id in PROMO_SET_IDS:
+		return set_name + " " + card_name
+	return set_name + " set " + card_name
+
+func _get_set_name(set_id: String) -> String:
+	if _set_name_cache.is_empty():
+		_load_set_dictionary()
+	return _set_name_cache.get(set_id, "")
+
+func _load_set_dictionary() -> void:
+	var path := "res://Player_Data/Player_Owned_Cards/Set_ID_Names_Dictionary.json"
+	var file := FileAccess.open(path, FileAccess.READ)
+	if file == null:
+		push_error("MapManager: cannot open " + path)
+		return
+	var data = JSON.parse_string(file.get_as_text())
+	file.close()
+	if data is Dictionary and data.has("set_list"):
+		for entry in data["set_list"]:
+			_set_name_cache[entry.get("set_id", "")] = entry.get("set_name", "")
+
+func _ensure_card_set_loaded(set_id: String) -> void:
+	if _loaded_card_sets.has(set_id):
+		return
+	_loaded_card_sets[set_id] = true
+
+	var path := "res://Card_Set_Data/" + set_id + ".json"
+	var file := FileAccess.open(path, FileAccess.READ)
+	if file == null:
+		push_error("MapManager: cannot open " + path)
+		return
+	var data = JSON.parse_string(file.get_as_text())
+	file.close()
+	if data is Array:
+		for card in data:
+			var cid: String = card.get("id", "")
+			if cid != "":
+				_card_name_cache[cid] = card.get("name", cid)
 
 # ============================================================
 # POST-BATTLE
