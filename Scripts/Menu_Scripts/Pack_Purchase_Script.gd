@@ -49,6 +49,12 @@ var _waiting_for_advance : bool = false
 var _pack_body_rect      : TextureRect = null
 # The cut top section of the pack
 var _pack_top_rect       : TextureRect = null
+# Tracks card rects currently flying off so we can clean them up at the end
+var _flying_card_rects   : Array = []
+# Whether we are showing the final summary row of all cards
+var _showing_summary     : bool = false
+# Reference to the overlay during the opening sequence (needed for summary)
+var _opening_overlay     : CanvasLayer = null
 
 # ─── Theme references ────────────────────────────────────────────────────────
 
@@ -344,12 +350,21 @@ func _input(event: InputEvent) -> void:
 			_on_cancel_pressed()
 		return
 	
+	# Summary view: any click/space dismisses it
+	if _showing_summary:
+		var is_space_s : bool = event is InputEventKey and event.pressed and event.keycode == KEY_SPACE
+		var is_click_s : bool = event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT
+		if is_space_s or is_click_s:
+			_showing_summary = false
+			get_viewport().set_input_as_handled()
+			_finish_opening_sequence(_opening_overlay)
+		return
+	
 	# Advance card reveal on click or space
 	if _waiting_for_advance and _in_opening_sequence:
 		var is_space : bool = event is InputEventKey and event.pressed and event.keycode == KEY_SPACE
 		var is_click : bool = event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT
 		if is_space or is_click:
-			_waiting_for_advance = false
 			get_viewport().set_input_as_handled()
 			_advance_card_reveal()
 
@@ -617,6 +632,7 @@ func _begin_opening_sequence(pack_id: String) -> void:
 	overlay.set_meta("actual_card_size", actual_card_size)
 	overlay.set_meta("active_particles", active_particles)
 	overlay.set_meta("new_card_ids",     new_card_ids)
+	_opening_overlay = overlay
 	
 	# Show NEW label if first card is new
 	var first_id : String = _pack_cards[0].get("id", "")
@@ -653,21 +669,26 @@ func _advance_card_reveal() -> void:
 		if _pack_cards[next_index].get("rarity", "") == "Rare Holo":
 			new_particles = _start_holo_sparkle(stack_rects[next_index], _pack_cards[next_index], overlay)
 	
-	# Slide current card off screen upward
+	# Slide current card off screen upward — DO NOT await, let it fly while
+	# the player clicks ahead. Track the rect so we can clean it up at the end.
 	SoundManagerScript.play_sfx(SoundManagerScript.SFX_card_draw_sound)
+	var flying_card : TextureRect = _face_card_rect
+	_flying_card_rects.append(flying_card)
 	var fly_tw := create_tween()
-	fly_tw.tween_property(_face_card_rect, "position:y", -viewport_size.y, 0.5).set_ease(Tween.EASE_IN)
-	await fly_tw.finished
-	_face_card_rect.queue_free()
-	_face_card_rect = null
+	fly_tw.tween_property(flying_card, "position:y", -viewport_size.y, 0.5).set_ease(Tween.EASE_IN)
+	# When this specific card finishes flying, free it
+	fly_tw.tween_callback(Callable(self, "_on_flying_card_finished").bind(flying_card))
 	
+	_face_card_rect = null
 	_current_card_index += 1
 	
 	if _current_card_index >= _pack_cards.size():
-		_finish_opening_sequence(overlay)
+		# All cards revealed — block further advances and show summary
+		_waiting_for_advance = false
+		_show_card_summary(overlay)
 		return
 	
-	# Next card is already rendered underneath — just reference it
+	# Next card is already rendered underneath — promote it immediately
 	_face_card_rect          = stack_rects[_current_card_index]
 	_face_card_rect.size     = actual_card_size
 	_face_card_rect.position = card_pos
@@ -675,19 +696,96 @@ func _advance_card_reveal() -> void:
 	
 	# Show NEW label if this card is new
 	var next_id : String = _pack_cards[_current_card_index].get("id", "")
-	print("DEBUG: Card index=", _current_card_index, " id=", next_id, " is_new=", new_card_ids.has(next_id))
 	if new_card_ids.has(next_id):
 		_show_new_label(_face_card_rect, overlay)
 	
 	overlay.set_meta("active_particles", new_particles)
 	
+	# Re-arm immediately so the player can click again without waiting
 	_waiting_for_advance = true
+
+
+## Called when a card-flying-off tween completes. Frees the rect.
+func _on_flying_card_finished(card_rect: TextureRect) -> void:
+	if card_rect != null and is_instance_valid(card_rect):
+		_flying_card_rects.erase(card_rect)
+		card_rect.queue_free()
+
+
+## Shows all pack cards in a row across the screen for final review.
+func _show_card_summary(overlay: CanvasLayer) -> void:
+	_waiting_for_advance = false
+	
+	# Clean up any cards still flying off
+	for c in _flying_card_rects:
+		if c != null and is_instance_valid(c):
+			c.queue_free()
+	_flying_card_rects.clear()
+	
+	# Kill any lingering holo particles
+	var active_particles = overlay.get_meta("active_particles")
+	if active_particles != null and is_instance_valid(active_particles):
+		active_particles.queue_free()
+	overlay.set_meta("active_particles", null)
+	
+	# Compute card size for the row — fit all cards horizontally with small gaps
+	var viewport_size : Vector2 = get_viewport_rect().size
+	var card_count    : int     = _pack_cards.size()
+	var gap           : float   = 8.0
+	var horizontal_padding : float = 40.0
+	var available_w   : float   = viewport_size.x - (horizontal_padding * 2.0) - (gap * (card_count - 1))
+	var card_w        : float   = available_w / float(card_count)
+	# Keep aspect ratio of original card display size
+	var card_aspect   : float   = CARD_DISPLAY_SIZE.x / CARD_DISPLAY_SIZE.y
+	var card_h        : float   = card_w / card_aspect
+	# Clamp height so it doesn't exceed ~80% of screen
+	var max_h : float = viewport_size.y * 0.8
+	if card_h > max_h:
+		card_h = max_h
+		card_w = card_h * card_aspect
+	var summary_size := Vector2(card_w, card_h)
+	
+	# Compute starting X to centre the row
+	var total_row_w : float = (card_w * card_count) + (gap * (card_count - 1))
+	var start_x : float = (viewport_size.x - total_row_w) / 2.0
+	var row_y   : float = (viewport_size.y - card_h) / 2.0
+	
+	# Spawn each card in the row
+	var summary_rects : Array = []
+	for i in range(card_count):
+		var cd  : Dictionary = _pack_cards[i]
+		var tex : Texture2D  = _load_card_texture(cd.get("id", ""), summary_size)
+		var rect := TextureRect.new()
+		rect.texture             = tex
+		rect.expand_mode         = TextureRect.EXPAND_IGNORE_SIZE
+		rect.stretch_mode        = TextureRect.STRETCH_SCALE
+		rect.custom_minimum_size = summary_size
+		rect.size                = summary_size
+		rect.position            = Vector2(start_x + i * (card_w + gap), row_y)
+		rect.pivot_offset        = summary_size / 2.0
+		rect.modulate.a          = 0.0
+		rect.mouse_filter        = Control.MOUSE_FILTER_IGNORE
+		overlay.add_child(rect)
+		summary_rects.append(rect)
+	
+	# Fade them in together
+	var fade_tw := create_tween()
+	fade_tw.set_parallel(true)
+	for rect in summary_rects:
+		fade_tw.tween_property(rect, "modulate:a", 1.0, 0.35)
+	await fade_tw.finished
+	
+	# Allow the click-to-dismiss
+	_showing_summary = true
 
 
 ## Called when all cards have been revealed.
 func _finish_opening_sequence(overlay: CanvasLayer) -> void:
 	_in_opening_sequence = false
 	_waiting_for_advance = false
+	_showing_summary     = false
+	_opening_overlay     = null
+	_flying_card_rects.clear()
 	
 	# Remove the overlay
 	overlay.queue_free()
