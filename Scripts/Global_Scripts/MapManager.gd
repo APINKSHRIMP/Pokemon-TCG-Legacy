@@ -34,6 +34,9 @@ var _pending_gift_display: Dictionary = {}
 # Container holding the displayed card/coin TextureRects during gift reveal
 var _gift_display_container: Control = null
 
+# Full-screen dim overlay shown behind the gift display
+var _gift_dim_overlay: ColorRect = null
+
 # ── Card / set name lookup caches (populated lazily) ─────────────
 var _set_name_cache: Dictionary = {}
 var _card_name_cache: Dictionary = {}
@@ -43,20 +46,26 @@ var _loaded_card_sets: Dictionary = {}
 # instead of the usual "<set_name> set <card_name>"
 const PROMO_SET_IDS := ["basep", "np"]
 
-# Card display dimensions copied from the main gameplay script's
-# show_enlarged_array_selection_mode (card_scales dict).
+# Card display dimensions — Pokémon card aspect ~0.717 (W:H).
+# Single card target ~600px tall; multi-card sizes scale down progressively.
 const GIFT_CARD_SIZES := {
-	1: Vector2(400, 550),
-	2: Vector2(400, 550),
-	3: Vector2(375, 515),
-	4: Vector2(350, 481),
+	1: Vector2(430, 600),
+	2: Vector2(380, 530),
+	3: Vector2(320, 446),
+	4: Vector2(280, 390),
 }
 
 const GIFT_COIN_SIZE := Vector2(250, 250)
+
+# Costume display size — 50% larger than the standard size
+const GIFT_COSTUME_SIZE := Vector2(432, 594)
+
 const GIFT_ITEM_SEPARATION := 20.0
 
 # Vertical centre point on screen for the displayed gift items
-const GIFT_DISPLAY_CENTER_Y := 400.0
+const GIFT_DISPLAY_CENTER_Y_CARD    := 460.0
+const GIFT_DISPLAY_CENTER_Y_COIN    := 570.0
+const GIFT_DISPLAY_CENTER_Y_COSTUME := 570.0
 
 # ============================================================
 # INITIALISE
@@ -424,6 +433,13 @@ func _prepare_gift_display(gift_type: String, gift_value: String) -> void:
 				"image_paths": ["res://Image_Assets/Coins/" + gift_value + ".png"],
 				"kind": "coin",
 			}
+		"costume":
+			# Costumes are always single-value
+			_pending_gift_display = {
+				"text": "You received the " + _format_costume_name(gift_value) + " costume",
+				"image_paths": ["res://Image_Assets/Character_Sprites/In_Battle_Sprites/" + gift_value + ".png"],
+				"kind": "costume",
+			}
 		"card":
 			# gift_value may be "base1-1" or "base1-1, base2-5, base3-1, base1-3"
 			var card_ids: Array = []
@@ -448,58 +464,137 @@ func _prepare_gift_display(gift_type: String, gift_value: String) -> void:
 
 # Spawns the gift display (cards/coin laid out horizontally on screen) and
 # shows the message panel with the formatted text. Press OK to dismiss both.
+#
+# Uses the same texture-fit pattern as Card_Image_Loader_Script.load_card_image
+# and Pack_Purchase_Script._open_pack_animation:
+#   1. Load texture, read its natural dimensions
+#   2. Compute aspect-fit size against a target box
+#   3. Apply EXPAND_IGNORE_SIZE + size/custom_minimum_size all set to the
+#      computed values so the rect renders at exactly the size we want
 func _show_gift_display(text: String, image_paths: Array, kind: String) -> void:
 	_clear_gift_display()
 
-	# Container parented to the UI layer so it sits above the world
+	# Full-screen black 70%-alpha dim overlay sits behind everything gift-related
+	_gift_dim_overlay = ColorRect.new()
+	_gift_dim_overlay.color = Color(0, 0, 0, 0.7)
+	_gift_dim_overlay.anchor_right  = 1.0
+	_gift_dim_overlay.anchor_bottom = 1.0
+	_gift_dim_overlay.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_ui_layer.add_child(_gift_dim_overlay)
+
+	# Container parented to the UI layer so it sits above the world.
+	# Anchors stretch full screen so child positions are screen-pixel accurate.
 	_gift_display_container = Control.new()
-	_gift_display_container.position = Vector2.ZERO
+	_gift_display_container.anchor_right  = 1.0
+	_gift_display_container.anchor_bottom = 1.0
 	_gift_display_container.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_ui_layer.add_child(_gift_display_container)
 
-	# Pick item dimensions based on kind and count
-	var item_size: Vector2
+	# Pick target box (size budget per item) and Y centre based on kind
+	var target_box: Vector2
+	var center_y: float
 	if kind == "coin":
-		item_size = GIFT_COIN_SIZE
+		target_box = GIFT_COIN_SIZE
+		center_y = GIFT_DISPLAY_CENTER_Y_COIN
+	elif kind == "costume":
+		target_box = GIFT_COSTUME_SIZE
+		center_y = GIFT_DISPLAY_CENTER_Y_COSTUME
 	else:
 		var n_clamp: int = clamp(image_paths.size(), 1, 4)
-		item_size = GIFT_CARD_SIZES.get(n_clamp, GIFT_CARD_SIZES[4])
+		target_box = GIFT_CARD_SIZES.get(n_clamp, GIFT_CARD_SIZES[4])
+		center_y = GIFT_DISPLAY_CENTER_Y_CARD
 
-	# Compute layout
-	var n: int = image_paths.size()
-	var total_width: float = n * item_size.x + (n - 1) * GIFT_ITEM_SEPARATION
-	var start_x: float = 960.0 - total_width / 2.0
-	var top_y: float = GIFT_DISPLAY_CENTER_Y - item_size.y / 2.0
-
-	# Spawn one TextureRect per image
-	for i in range(n):
-		var path: String = image_paths[i]
+	# ── PASS 1: Load each texture and compute the actual rendered size ──
+	# (mirrors Pack_Purchase_Script lines 526-532)
+	var entries: Array = []
+	for path in image_paths:
 		var tex: Texture2D = _load_card_image_with_fallback(path)
 		if tex == null:
 			push_warning("MapManager: gift image not found: " + path)
 			continue
 
+		var actual_size: Vector2
+		if kind == "coin":
+			# Coins: force every coin to the same fixed box. STRETCH_SCALE
+			# fills the box, so even sources with different aspect ratios
+			# render at exactly the same on-screen size.
+			actual_size = target_box
+		else:
+			# Cards/costumes: aspect-fit inside the target box so the rect's
+			# width and height match the texture's true proportions.
+			# This is the same pattern as Card_Image_Loader lines 60-67.
+			var orig_w := float(tex.get_width())
+			var orig_h := float(tex.get_height())
+			if orig_w <= 0.0 or orig_h <= 0.0:
+				actual_size = target_box
+			else:
+				var scale_x := target_box.x / orig_w
+				var scale_y := target_box.y / orig_h
+				var scale_factor: float = min(scale_x, scale_y)
+				actual_size = Vector2(orig_w * scale_factor, orig_h * scale_factor)
+
+		entries.append({"texture": tex, "size": actual_size})
+
+	if entries.is_empty():
+		_show_message_with_ok(text)
+		return
+
+	# ── PASS 2: Compute total layout width and start_x for centring ──
+	# Centre the entire group horizontally on the actual viewport midpoint.
+	var total_width: float = 0.0
+	for e in entries:
+		total_width += e["size"].x
+	total_width += (entries.size() - 1) * GIFT_ITEM_SEPARATION
+
+	var viewport_size: Vector2 = get_viewport().get_visible_rect().size
+	var viewport_center_x: float = viewport_size.x / 2.0
+	var start_x: float = viewport_center_x - total_width / 2.0
+
+	# ── PASS 3: Spawn the rects ──
+	var stretch_mode_id: int
+	if kind == "coin":
+		stretch_mode_id = TextureRect.STRETCH_SCALE
+	else:
+		stretch_mode_id = TextureRect.STRETCH_SCALE  # box already aspect-fit, scale fills it
+
+	var cursor_x: float = start_x
+	for e in entries:
+		var sz: Vector2 = e["size"]
+		var top_y: float = center_y - sz.y / 2.0
+
 		var rect = TextureRect.new()
-		rect.texture             = tex
-		rect.custom_minimum_size = item_size
-		rect.size                = item_size
-		rect.position            = Vector2(start_x + i * (item_size.x + GIFT_ITEM_SEPARATION), top_y)
-		rect.stretch_mode        = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-		rect.expand_mode         = TextureRect.EXPAND_FIT_WIDTH_PROPORTIONAL
+		rect.texture             = e["texture"]
+		rect.expand_mode         = TextureRect.EXPAND_IGNORE_SIZE
+		rect.stretch_mode        = stretch_mode_id
+		rect.custom_minimum_size = sz
+		rect.size                = sz
+		rect.position            = Vector2(cursor_x, top_y)
+		rect.pivot_offset        = sz / 2.0
 		rect.mouse_filter        = Control.MOUSE_FILTER_IGNORE
 		_gift_display_container.add_child(rect)
 
-	# Ensure the message panel renders above the gift container
+		cursor_x += sz.x + GIFT_ITEM_SEPARATION
+
+	# Ensure the message panel renders above the gift container and overlay
 	if message_panel.get_parent() == _ui_layer:
 		_ui_layer.move_child(message_panel, _ui_layer.get_child_count() - 1)
 
 	_show_message_with_ok(text)
 
-# Removes the gift display container if it exists.
+	# Ensure the message panel renders above the gift container and overlay
+	if message_panel.get_parent() == _ui_layer:
+		_ui_layer.move_child(message_panel, _ui_layer.get_child_count() - 1)
+
+	_show_message_with_ok(text)
+
+# Removes the gift display container and dim overlay if they exist.
 func _clear_gift_display() -> void:
 	if _gift_display_container != null and is_instance_valid(_gift_display_container):
 		_gift_display_container.queue_free()
 	_gift_display_container = null
+	if _gift_dim_overlay != null and is_instance_valid(_gift_dim_overlay):
+		_gift_dim_overlay.queue_free()
+	_gift_dim_overlay = null
 
 # Loads a card image, falling back from /Large/ to /Small/ if the large
 # version is missing (failsafe — large images should always exist).
@@ -555,6 +650,22 @@ func _format_coin_name(raw: String) -> String:
 		var s: String = p
 		if s.length() > 0:
 			result_parts.append(s.substr(0, 1).to_upper() + s.substr(1))
+	return " ".join(result_parts)
+
+# ============================================================
+# COSTUME NAME FORMATTING
+# Underscore-separated filename → title-cased space-separated string.
+#   "red_pikachu_outfit"  -> "Red Pikachu Outfit"
+#   "trainer_red"         -> "Trainer Red"
+# ============================================================
+
+func _format_costume_name(raw: String) -> String:
+	var name_str: String = raw.replace(".png", "")
+	var parts = name_str.split("_")
+	var result_parts: Array = []
+	for p in parts:
+		if p.length() > 0:
+			result_parts.append(p.substr(0, 1).to_upper() + p.substr(1))
 	return " ".join(result_parts)
 
 # ============================================================
