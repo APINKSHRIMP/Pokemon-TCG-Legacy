@@ -39,8 +39,23 @@ var _gift_dim_overlay: ColorRect = null
 
 # ── Card / set name lookup caches (populated lazily) ─────────────
 var _set_name_cache: Dictionary = {}
-var _card_name_cache: Dictionary = {}
+# Stores full card dicts (name, rarity, supertype, types, etc.) keyed by uid
+var _card_data_cache: Dictionary = {}
 var _loaded_card_sets: Dictionary = {}
+
+# Preloaded back textures used during the gift reveal animation
+const _CARDBACK_PATH := "res://Image_Assets/Card_Backs_And_Decks/cardback.png"
+const _COINBACK_PATH := "res://Image_Assets/Coins/coin_back_basic.png"
+var _cardback_texture: Texture2D = null
+var _coinback_texture: Texture2D = null
+
+# Total animation durations (kept as constants so the OK button can be
+# re-shown after the animation completes).
+# Flip: 5 flips, each shrink+expand of equal duration.
+# Total = 2 * (0.1 + 0.2 + 0.4 + 0.8 + 1.6) = 6.2s
+const GIFT_FLIP_TOTAL_DURATION := 1.5
+# Costume: 0.5s blacked out, then 1.0s fade in
+const GIFT_COSTUME_TOTAL_DURATION := 1.5
 
 # Set IDs that are promo sets — these use "<set_name> <card_name>"
 # instead of the usual "<set_name> set <card_name>"
@@ -474,9 +489,9 @@ func _prepare_gift_display(gift_type: String, gift_value: String) -> void:
 func _show_gift_display(text: String, image_paths: Array, kind: String) -> void:
 	_clear_gift_display()
 
-	# Full-screen black 70%-alpha dim overlay sits behind everything gift-related
+	# Full-screen black 80%-alpha dim overlay sits behind everything gift-related
 	_gift_dim_overlay = ColorRect.new()
-	_gift_dim_overlay.color = Color(0, 0, 0, 0.7)
+	_gift_dim_overlay.color = Color(0, 0, 0, 0.8)
 	_gift_dim_overlay.anchor_right  = 1.0
 	_gift_dim_overlay.anchor_bottom = 1.0
 	_gift_dim_overlay.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -533,7 +548,13 @@ func _show_gift_display(text: String, image_paths: Array, kind: String) -> void:
 				var scale_factor: float = min(scale_x, scale_y)
 				actual_size = Vector2(orig_w * scale_factor, orig_h * scale_factor)
 
-		entries.append({"texture": tex, "size": actual_size})
+		# Derive the card UID from the path so we can look up rarity/types
+		# later for the holo sparkle effect (cards only — empty for others).
+		var card_uid: String = ""
+		if kind == "card":
+			card_uid = String(path).get_file().trim_suffix(".png")
+
+		entries.append({"texture": tex, "size": actual_size, "card_uid": card_uid})
 
 	if entries.is_empty():
 		_show_message_with_ok(text)
@@ -551,15 +572,18 @@ func _show_gift_display(text: String, image_paths: Array, kind: String) -> void:
 	var start_x: float = viewport_center_x - total_width / 2.0
 
 	# ── PASS 3: Spawn the rects ──
-	var stretch_mode_id: int
-	if kind == "coin":
-		stretch_mode_id = TextureRect.STRETCH_SCALE
-	else:
-		stretch_mode_id = TextureRect.STRETCH_SCALE  # box already aspect-fit, scale fills it
+	# All kinds use STRETCH_SCALE — the rect is already aspect-fit so SCALE
+	# fills it without distortion. For coins it forces a uniform render size.
+	var stretch_mode_id: int = TextureRect.STRETCH_SCALE
 
+	# Make sure back textures are loaded if we'll need them for the flip
+	if kind == "card" or kind == "coin":
+		_ensure_back_textures_loaded()
+
+	var spawned_rects: Array = []  # rect, card_uid pairs for animation pass
 	var cursor_x: float = start_x
 	for e in entries:
-		var sz: Vector2 = e["size"]
+		var sz: Vector2 = e["size"] as Vector2
 		var top_y: float = center_y - sz.y / 2.0
 
 		var rect = TextureRect.new()
@@ -572,6 +596,7 @@ func _show_gift_display(text: String, image_paths: Array, kind: String) -> void:
 		rect.pivot_offset        = sz / 2.0
 		rect.mouse_filter        = Control.MOUSE_FILTER_IGNORE
 		_gift_display_container.add_child(rect)
+		spawned_rects.append({"rect": rect, "card_uid": e["card_uid"]})
 
 		cursor_x += sz.x + GIFT_ITEM_SEPARATION
 
@@ -579,13 +604,34 @@ func _show_gift_display(text: String, image_paths: Array, kind: String) -> void:
 	if message_panel.get_parent() == _ui_layer:
 		_ui_layer.move_child(message_panel, _ui_layer.get_child_count() - 1)
 
+	# Show the message panel WITHOUT the OK button — animation must complete first
 	_show_message_with_ok(text)
+	ok_button.visible = false
 
-	# Ensure the message panel renders above the gift container and overlay
-	if message_panel.get_parent() == _ui_layer:
-		_ui_layer.move_child(message_panel, _ui_layer.get_child_count() - 1)
+	# ── PASS 4: Kick off reveal animations (parallel) ──
+	for sr in spawned_rects:
+		var rect_ref: TextureRect = sr["rect"]
+		var uid: String = sr["card_uid"]
+		match kind:
+			"coin":
+				_play_flip_animation(rect_ref, _coinback_texture, rect_ref.texture)
+			"card":
+				_play_card_flip_with_holo(rect_ref, _cardback_texture, rect_ref.texture, uid)
+			"costume":
+				_play_costume_fadein(rect_ref)
 
-	_show_message_with_ok(text)
+	# Wait for the longest animation to complete, then re-enable OK
+	var total_duration: float = 0.0
+	if kind == "costume":
+		total_duration = GIFT_COSTUME_TOTAL_DURATION
+	elif kind == "card" or kind == "coin":
+		total_duration = GIFT_FLIP_TOTAL_DURATION
+	if total_duration > 0.0:
+		await get_tree().create_timer(total_duration).timeout
+	# After awaiting, the player may have already dismissed (e.g. via cleanup).
+	# Only reveal OK if the message is still on screen.
+	if message_panel.visible and ok_button != null:
+		ok_button.visible = true
 
 # Removes the gift display container and dim overlay if they exist.
 func _clear_gift_display() -> void:
@@ -595,6 +641,126 @@ func _clear_gift_display() -> void:
 	if _gift_dim_overlay != null and is_instance_valid(_gift_dim_overlay):
 		_gift_dim_overlay.queue_free()
 	_gift_dim_overlay = null
+
+# ============================================================
+# REVEAL ANIMATIONS
+# ============================================================
+
+# Spins a rect on its vertical (Y) axis by tweening scale.x to 0 and back,
+# swapping the texture at each squash midpoint. Used for coins and cards.
+# Mirrors the pattern from Main_Match_Core_Gameplay_Script.flip_coin (line 2175)
+# but with progressively-longer durations and only one squash axis.
+#
+# Sequence:
+func _play_flip_animation(rect: TextureRect, back_tex: Texture2D, target_tex: Texture2D) -> void:
+	if rect == null or not is_instance_valid(rect):
+		return
+	if back_tex == null or target_tex == null:
+		return
+
+	# Start with back face, full width
+	rect.texture = back_tex
+	rect.pivot_offset = rect.size / 2.0
+	rect.scale = Vector2(1.0, 1.0)
+
+	var shrink_durations := [0.01, 0.02, 0.04, 0.06, 0.08, 0.1, 0.11, 0.12, 0.2]
+	# After each shrink, swap to the alternating texture
+	var swaps := [target_tex, back_tex, target_tex, back_tex, target_tex, back_tex, target_tex, back_tex, target_tex]
+
+	var tween := create_tween()
+	for i in shrink_durations.size():
+		var d: float = shrink_durations[i]
+		tween.tween_property(rect, "scale:x", 0.0, d)
+		tween.tween_callback(rect.set.bind("texture", swaps[i]))
+		tween.tween_property(rect, "scale:x", 1.0, d)
+
+	await tween.finished
+
+# Card-specific wrapper: runs the flip, then if the card is a Rare Holo,
+# starts the holo sparkle particle effect (same one Pack_Purchase uses).
+func _play_card_flip_with_holo(rect: TextureRect, back_tex: Texture2D, card_tex: Texture2D, card_uid: String) -> void:
+	await _play_flip_animation(rect, back_tex, card_tex)
+	if rect == null or not is_instance_valid(rect):
+		return
+	# Check rarity post-flip
+	var card_data: Dictionary = _get_card_data(card_uid)
+	if card_data.get("rarity", "") == "Rare Holo":
+		_start_gift_holo_sparkle(rect, card_data)
+
+# Fades a costume in: starts fully blacked-out for 0.5s, then over 1s
+# tweens modulate back to white.
+func _play_costume_fadein(rect: TextureRect) -> void:
+	if rect == null or not is_instance_valid(rect):
+		return
+	rect.modulate = Color(0, 0, 0, 1)  # fully black, opaque
+	await get_tree().create_timer(0.5).timeout
+	if rect == null or not is_instance_valid(rect):
+		return
+	var tween := create_tween()
+	tween.tween_property(rect, "modulate", Color(1, 1, 1, 1), 1.0)
+
+# Spawns a continuous sparkle particle system over a card rect. Adapted from
+# Pack_Purchase_Script._start_holo_sparkle (line 731). Parented to the gift
+# container so it's freed automatically when the gift display is dismissed.
+func _start_gift_holo_sparkle(card_rect: TextureRect, card_data: Dictionary) -> CPUParticles2D:
+	if _gift_display_container == null or not is_instance_valid(_gift_display_container):
+		return null
+
+	var particles := CPUParticles2D.new()
+	_gift_display_container.add_child(particles)
+
+	var card_size: Vector2 = card_rect.size
+	particles.global_position       = card_rect.global_position + card_size / 2.0
+	particles.z_index               = 5
+	particles.amount                = 150
+	particles.lifetime              = 1.5
+	particles.one_shot              = false
+	particles.explosiveness         = 0.4
+	particles.emitting              = true
+	particles.emission_shape        = CPUParticles2D.EMISSION_SHAPE_RECTANGLE
+	particles.emission_rect_extents = card_size / 2.0
+	particles.direction             = Vector2(0, 0)
+	particles.initial_velocity_min  = 0.0
+	particles.initial_velocity_max  = 0.0
+	particles.gravity               = Vector2(0, 0)
+	particles.scale_amount_min      = 3.0
+	particles.scale_amount_max      = 8.0
+
+	var sparkle_colour: Color = _get_holo_sparkle_colour(card_data)
+	var bright: Color = sparkle_colour.lightened(1)
+	var gradient := Gradient.new()
+	gradient.set_color(0, Color(bright.r, bright.g, bright.b, 0.0))
+	gradient.add_point(0.3, sparkle_colour)
+	gradient.add_point(0.5, bright)
+	gradient.set_color(3, Color(sparkle_colour.r, sparkle_colour.g, sparkle_colour.b, 0.0))
+	particles.color_ramp = gradient
+
+	return particles
+
+# Returns the sparkle colour for a holo card based on its primary type.
+# Trainers / Energy with no type fall back to silver.
+func _get_holo_sparkle_colour(card_data: Dictionary) -> Color:
+	var supertype: String = card_data.get("supertype", "")
+	if supertype == "Pokémon" or supertype == "Pokemon":
+		var types = card_data.get("types", [])
+		if types is Array and types.size() > 0:
+			return _get_type_colour(types[0])
+	return Color(0.85, 0.85, 0.9)
+
+# Maps a Pokemon type string to a representative colour for sparkle effects.
+func _get_type_colour(type_name: String) -> Color:
+	match type_name.to_lower():
+		"fire":      return Color(1.0, 0.2, 0.1)
+		"water":     return Color(0.2, 0.5, 1.0)
+		"grass":     return Color(0.2, 0.8, 0.3)
+		"lightning": return Color(1.0, 0.9, 0.1)
+		"darkness":  return Color(0.15, 0.1, 0.2)
+		"psychic":   return Color(0.55, 0.1, 1.0)
+		"metal":     return Color(0.6, 0.6, 0.65)
+		"fighting":  return Color(0.5, 0.3, 0.2)
+		"dragon":    return Color(0.9, 0.7, 0.2)
+		"fairy":     return Color(1.0, 0.4, 0.7)
+		_:           return Color(1.0, 1.0, 1.0)
 
 # Loads a card image, falling back from /Large/ to /Small/ if the large
 # version is missing (failsafe — large images should always exist).
@@ -690,7 +856,10 @@ func _get_card_display_name(card_uid: String) -> String:
 
 	_ensure_card_set_loaded(set_id)
 
-	var card_name: String = _card_name_cache.get(card_uid, card_uid)
+	var card_data = _card_data_cache.get(card_uid, null)
+	var card_name: String = card_uid
+	if card_data is Dictionary:
+		card_name = card_data.get("name", card_uid)
 	var set_name: String = _get_set_name(set_id)
 
 	if set_name == "":
@@ -735,7 +904,25 @@ func _ensure_card_set_loaded(set_id: String) -> void:
 		for card in data:
 			var cid: String = card.get("id", "")
 			if cid != "":
-				_card_name_cache[cid] = card.get("name", cid)
+				_card_data_cache[cid] = card
+
+func _ensure_back_textures_loaded() -> void:
+	if _cardback_texture == null:
+		_cardback_texture = load(_CARDBACK_PATH)
+	if _coinback_texture == null:
+		_coinback_texture = load(_COINBACK_PATH)
+
+# Returns the full cached card data dict (name, rarity, supertype, types, etc.)
+# or an empty Dictionary if the card isn't found.
+func _get_card_data(card_uid: String) -> Dictionary:
+	var split = card_uid.split("-")
+	if split.size() != 2:
+		return {}
+	_ensure_card_set_loaded(split[0])
+	var data = _card_data_cache.get(card_uid, null)
+	if data is Dictionary:
+		return data
+	return {}
 
 # ============================================================
 # POST-BATTLE
