@@ -167,10 +167,11 @@ func _refresh_display() -> void:
 
 
 func _get_set_name(set_id: String) -> String:
+	var id_lower := set_id.to_lower()
 	for entry in set_list:
-		if entry["set_id"] == set_id:
+		if entry["set_id"].to_lower() == id_lower:
 			return entry["set_name"]
-	return set_id.to_upper()
+	return set_id
 
 
 func _load_pack_images(pack_id: String) -> void:

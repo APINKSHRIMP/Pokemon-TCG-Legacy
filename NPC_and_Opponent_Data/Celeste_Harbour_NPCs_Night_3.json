@@ -2,7 +2,7 @@
 	"npcs": [
 		{
 			"name": "SAILOR WORKING ON SS ANNE NIGHT ",
-			"sprite": "SAILOR",
+			"sprite": "Sailor",
 			"meet_text": "I've been working all day I'm absolutely shattered.",
 			"repeat_text": "Most passengers went back to the ship earlier but I saw some shady characters actually getting off.",
 			"pattern": "idle_right",
@@ -13,7 +13,7 @@
 		},
 		{
 			"name": "SAILOR 2 PIER 1 NIGHT 3",
-			"sprite": "SAILOR",
+			"sprite": "Sailor",
 			"meet_text": "Oh boy I am pooped. Some guys dressed in black headed past this way earlier as if they were going to go to the forest.",
 			"repeat_text": "The forest is still closed until morning though so not sure where they were going.",
 			"pattern": "idle_left",
@@ -24,7 +24,7 @@
 		},
 		{
 			"name": "SAILOR WORKING ON DOCK NIGHT 3",
-			"sprite": "SAILOR",
+			"sprite": "Sailor",
 			"meet_text": "I can't wait for the SS Anne to leave now, I've never been busier.",
 			"repeat_text": "Us sailors are hard workers as it is but this is too much for us!",
 			"gift_type": "costume",
@@ -37,7 +37,7 @@
 		},
 		{
 			"name": "SABRINA NPC",
-			"sprite": "GYMSABRINA",
+			"sprite": "Gymsabrina",
 			"meet_text": "Your town is much quieter than Saffron. I'm Sabrina, I knew you would be coming. You'll be challenging me soon I can see that, but this might help you win against me.",
 			"repeat_text": "Good luck with the Gym Hero Challenge. I know you're going to do well.",
 			"gift_type": "card",
@@ -50,7 +50,7 @@
 		},
 		{
 			"name": "KOGA NPC",
-			"sprite": "GYMKOGA",
+			"sprite": "Gymkoga",
 			"meet_text": "Out here in the cover of darkness too? I'm Koga. I was once the Gym Leader of Fuschia and then made it as an Indigo League Elite 4 member. I've been asked here to help in the Gym Hero challenge. As you're out here at this hour you might appreciate this.",
 			"repeat_text": "I won't take it easy on you if you come to take the challenge so be prepared.",
 			"gift_type": "card",
@@ -66,7 +66,7 @@
 		},
 		{
 			"name": "GIOVANNI NPC",
-			"sprite": "TEAMROCKETBOSS",
+			"sprite": "Teamrocketboss",
 			"meet_text": "You shouldn't be out here so late, there's not always nice people wandering around at this hour. I promised not to cause trouble while I'm here but why not a little mischief? As proof I'm not evil, take this.",
 			"repeat_text": "I am Giovanni. I was once the leader of Team Rocket and the gym leader in Viridian. Now I'm not formally either, but Team Rocket will always live on.",
 			"gift_type": "card",
@@ -81,8 +81,8 @@
 	"opponents": [
 		{
 			"name": "BIRDSPOTTER GREGG",
-			"sprite": "BIRDKEEPER_M",
-			"deck": "BIG OL BIRBS",
+			"sprite": "Birdkeeper_M",
+			"deck": "Big Ol Birbs",
 			"music": "normal_battle",
 			"prize_cards": 6,
 			"meet_text": "My friend got hungry so decided to head back, but I'm interested to see what birds are out at night.",
@@ -100,8 +100,8 @@
 		},
 		{
 			"name": "GUITARIST JONESY",
-			"sprite": "GUITARIST",
-			"deck": "HEAVY METAL",
+			"sprite": "Guitarist",
+			"deck": "Heavy Metal",
 			"music": "normal_battle",
 			"prize_cards": 4,
 			"meet_text": "We're in a band and we're currently touring. We're just passing through to our next gig so having a quick jam here.",
@@ -119,8 +119,8 @@
 		},
 		{
 			"name": "GUITARIST HOWARD",
-			"sprite": "GUITARIST2",
-			"deck": "ROCK N SHOCK",
+			"sprite": "Guitarist2",
+			"deck": "Rock N Shock",
 			"music": "normal_battle",
 			"prize_cards": 4,
 			"meet_text": "We're the Toxtricity Rockers, we're a duo that's pretty big in Johto.",
@@ -138,8 +138,8 @@
 		},
 		{
 			"name": "GARDENER CALLUM",
-			"sprite": "GARDENER",
-			"deck": "POLLEN POWER",
+			"sprite": "Gardener",
+			"deck": "Pollen Power",
 			"music": "chilled_battle",
 			"prize_cards": 2,
 			"meet_text": "Wowee, it was a long day gardening today. I'm down for a match to let off some steam now.",
@@ -158,8 +158,8 @@
 		},
 		{
 			"name": "GARDEN MANAGER LOUIS",
-			"sprite": "GARDENER",
-			"deck": "SOLAR POWER",
+			"sprite": "Gardener",
+			"deck": "Solar Power",
 			"music": "chilled_battle",
 			"prize_cards": 6,
 			"meet_text": "I might be the garden manager but I do know how to have fun.",
@@ -179,8 +179,8 @@
 		},
 		{
 			"name": "SAILOR BOB",
-			"sprite": "SAILOR",
-			"deck": "HOIST THE ANCHOR",
+			"sprite": "Sailor",
+			"deck": "Hoist The Anchor",
 			"music": "normal_battle",
 			"prize_cards": 6,
 			"meet_text": "Most of the passengers have returned on board for the night now so it's quiet again as usual.",
@@ -198,8 +198,8 @@
 		},
 		{
 			"name": "CARD ELDER RAYNE",
-			"sprite": "ELDER",
-			"deck": "RAIN DANCE",
+			"sprite": "Elder",
+			"deck": "Rain Dance",
 			"music": "hard_battle",
 			"prize_cards": 6,
 			"meet_text": "Hoh Hoh, are you ready to feel the torrent? If you win I'll give you a medal to prove your triumph.",
@@ -217,8 +217,8 @@
 		},
 		{
 			"name": "CARD ELDER HAMISH",
-			"sprite": "ELDER",
-			"deck": "HAYMAKER",
+			"sprite": "Elder",
+			"deck": "Haymaker",
 			"music": "hard_battle",
 			"prize_cards": 6,
 			"meet_text": "Back for the challenge then hey? Remember you'll need to defeat all 3 of us if you want to progress.",
@@ -236,8 +236,8 @@
 		},
 		{
 			"name": "CARD ELDER WAVERLY",
-			"sprite": "ELDER",
-			"deck": "DO THE WAVE",
+			"sprite": "Elder",
+			"deck": "Do The Wave",
 			"music": "hard_battle",
 			"prize_cards": 6,
 			"meet_text": "Are you ready to take me on then? If you win then you'll do well in the Gym Hero Challenge.",
@@ -255,8 +255,8 @@
 		},
 		{
 			"name": "HIKER BEN",
-			"sprite": "HIKER",
-			"deck": "SOLID GROUND",
+			"sprite": "Hiker",
+			"deck": "Solid Ground",
 			"music": "normal_battle",
 			"prize_cards": 4,
 			"meet_text": "Well that's incredibly disappointing. I was hoping to have a trek through the forest but they've told me it's shut so I have nowhere to go now.",
@@ -276,8 +276,8 @@
 		},
 		{
 			"name": "PSYCHIC BRIENNE",
-			"sprite": "PSYCHIC_F",
-			"deck": "MEDITATION MEDITATION",
+			"sprite": "Psychic_F",
+			"deck": "Meditation Meditation",
 			"music": "normal_battle",
 			"prize_cards": 6,
 			"meet_text": "I love the peace of the harbour at night, the sound of the waves in the dark are really relaxing.",
@@ -296,8 +296,8 @@
 		},
 		{
 			"name": "ENGINEER BRAD",
-			"sprite": "WORKER",
-			"deck": "WORK HARD PLAY HARD",
+			"sprite": "Worker",
+			"deck": "Work Hard Play Hard",
 			"music": "normal_battle",
 			"prize_cards": 6,
 			"meet_text": "Hey, I've been working hard all day so I'm ready to play",
@@ -316,8 +316,8 @@
 		},
 		{
 			"name": "BAD DUDE PAUL",
-			"sprite": "ROUGHNECK",
-			"deck": "BAD GUYS",
+			"sprite": "Roughneck",
+			"deck": "Bad Guys",
 			"music": "normal_battle",
 			"prize_cards": 4,
 			"meet_text": "Heh you want to try and beat me kid??",
@@ -336,8 +336,8 @@
 		},
 		{
 			"name": "BAD DUDE WAYNE",
-			"sprite": "ROUGHNECK",
-			"deck": "DARK POISON",
+			"sprite": "Roughneck",
+			"deck": "Dark Poison",
 			"music": "normal_battle",
 			"prize_cards": 6,
 			"meet_text": "I caught these bad looking dudes heading to the forest and they gave me some interesting cards and went on their way.",
@@ -358,8 +358,8 @@
 		},
 		{
 			"name": "ROCKET GRUNT DAMIEN",
-			"sprite": "TEAMROCKET_M",
-			"deck": "ROCKET UNDERLINGS",
+			"sprite": "Teamrocket_M",
+			"deck": "Rocket Underlings",
 			"music": "normal_battle",
 			"prize_cards": 4,
 			"meet_text": "I'm here on bosses orders but we're not starting until tomorrow so you'll be good practice.",
@@ -377,8 +377,8 @@
 		},
 		{
 			"name": "ROCKET GRUNT PENNY",
-			"sprite": "TEAMROCKET_F",
-			"deck": "ROCKET BLAST OFF",
+			"sprite": "Teamrocket_F",
+			"deck": "Rocket Blast Off",
 			"music": "normal_battle",
 			"prize_cards": 4,
 			"meet_text": "Team Rocket used to be the most feared group in the world. Maybe we will be again.",

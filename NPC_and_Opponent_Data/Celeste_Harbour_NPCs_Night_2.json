@@ -2,7 +2,7 @@
 	"npcs": [
 		{
 			"name": "SAILOR 2 PIER 1",
-			"sprite": "SAILOR",
+			"sprite": "Sailor",
 			"meet_text": "It's always a long hard day's work on these docks, I never get an early night.",
 			"repeat_text": "Even though the harbour is a really safe place, it's still no reason to go wandering around at night if you don't have to.",
 			"pattern": "idle_random",
@@ -26,7 +26,7 @@
 		},
 		{
 			"name": "SAILOR WORKING ON DOCK",
-			"sprite": "SAILOR",
+			"sprite": "Sailor",
 			"meet_text": "I'm normally finished by now, but with the SS Anne arriving tomorrow there's still too much work to do.",
 			"repeat_text": "It's going to be even busier than a usual day tomorrow. It'll definitely be a long day.",
 			"gift_type": "costume",
@@ -44,8 +44,8 @@
 	"opponents": [
 		{
 			"name": "FIREBREATHER DARRYL",
-			"sprite": "FIREBREATHER",
-			"deck": "HOT AIR",
+			"sprite": "Firebreather",
+			"deck": "Hot Air",
 			"music": "normal_battle",
 			"prize_cards": 4,
 			"meet_text": "I've been breathing that much fire that I needed an ice cold bev to cool my mouth down, but I'm ready for a match if you want.",
@@ -63,8 +63,8 @@
 		},
 		{
 			"name": "FIREBREATHER KENNETH",
-			"sprite": "FIREBREATHER",
-			"deck": "QUADRAPEDAL FIRESTARTERS",
+			"sprite": "Firebreather",
+			"deck": "Quadrapedal Firestarters",
 			"music": "normal_battle",
 			"prize_cards": 4,
 			"meet_text": "I'm so used to hot drinks that it's weird to drink something nice and cold.",
@@ -82,8 +82,8 @@
 		},
 		{
 			"name": "PSYCHIC BRIENNE",
-			"sprite": "PSYCHIC_F",
-			"deck": "MEDITATION MEDITATION",
+			"sprite": "Psychic_F",
+			"deck": "Meditation Meditation",
 			"music": "normal_battle",
 			"prize_cards": 6,
 			"meet_text": "I love the peace of the harbour at night, the sound of the waves in the dark are really relaxing.",
@@ -102,8 +102,8 @@
 		},
 		{
 			"name": "SAILOR BOB",
-			"sprite": "SAILOR",
-			"deck": "HOIST THE ANCHOR",
+			"sprite": "Sailor",
+			"deck": "Hoist The Anchor",
 			"music": "normal_battle",
 			"prize_cards": 6,
 			"meet_text": "I'm all done preparing for the arrival of the SS Anne so there's not much to do now until morning.",
@@ -121,7 +121,7 @@
 		},
 		{
 			"name": "JOGGER DANIEL",
-			"sprite": "JOGGER",
+			"sprite": "Jogger",
 			"deck": "NIDO NIDO MEOW",
 			"music": "normal_battle",
 			"prize_cards": 4,
@@ -140,8 +140,8 @@
 		},
 		{
 			"name": "HIKER MATTHEW",
-			"sprite": "HIKER",
-			"deck": "ROCKS N STONES",
+			"sprite": "Hiker",
+			"deck": "Rocks N Stones",
 			"music": "normal_battle",
 			"prize_cards": 4,
 			"meet_text": "I've been hiking for hours and only just managed to reach the harbour and found everything is closed so now I have nothing to do for the evening.",
@@ -161,8 +161,8 @@
 		},
 		{
 			"name": "BAD DUDE PAUL",
-			"sprite": "ROUGHNECK",
-			"deck": "BAD GUYS",
+			"sprite": "Roughneck",
+			"deck": "Bad Guys",
 			"music": "normal_battle",
 			"prize_cards": 4,
 			"meet_text": "Heh you want to try and beat me kid??",

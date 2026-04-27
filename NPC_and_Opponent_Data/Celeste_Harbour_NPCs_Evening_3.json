@@ -24,7 +24,7 @@
 		},
 		{
 			"name": "OLD GUY NEIGHBOUR DAY 3",
-			"sprite": "NPC_OLDMAN",
+			"sprite": "NPC_Oldman",
 			"meet_text": "It's been a long day for sure. While I was doing my shopping earlier I tried my luck at the Holo Rare Stand. Of course I don't actually collect any cards or play it so you can have the card I won.",
 			"repeat_text": "I only decided to try my luck for the fun of it, it was such a thrill!",
 			"gift_type": "card",
@@ -37,7 +37,7 @@
 		},
 		{
 			"name": "PSYCHIC BRIENNE",
-			"sprite": "PSYCHIC_F",
+			"sprite": "Psychic_F",
 			"meet_text": "The SS Anne has ruined my daily meditation so I've had to try a new spot today.",
 			"repeat_text": "It's not quite as good of a spot as the dock is but here but it's still peaceful enough.",
 			"pattern": "idle_left",
@@ -48,7 +48,7 @@
 		},
 		{
 			"name": "HOLO RARE SHOPKEEPER",
-			"sprite": "NPC_HOLO_RARE_SHOPKEEPER",
+			"sprite": "NPC_Holo_Rare_Shopkeeper",
 			"meet_text": "Welcome! I run a mystery holo rare system here. For $400 you can choose 1 of 3 mystery Holo Rares! You won't know what it is until you buy it but you get a hint as to the type.",
 			"pattern": "idle_down",
 			"position": {
@@ -60,7 +60,7 @@
 		},
 		{
 			"name": "COIN SHOPKEEPER",
-			"sprite": "NPC_COIN_SHOPKEEPER",
+			"sprite": "NPC_Coin_Shopkeeper",
 			"meet_text": "Welcome! I sell rare limited edition coins that you won't be able to buy anywhere else! They're not cheap at $250 each but I promise you they're top quality, completely unique and won't find anything like them around!",
 			"pattern": "idle_down",
 			"position": {
@@ -94,7 +94,7 @@
 		},
 		{
 			"name": "BAKERY LOVER EVE",
-			"sprite": "LASS2",
+			"sprite": "Lass2",
 			"meet_text": "I LOVE FRESH BREAD! It's always so warm and crispy if you get it here early enough. If you're here that must mean you love it as much as I do!! We should be best friends!!",
 			"repeat_text": "I got so hungry from before that I just had to come back and get some more bread. It's soooo good.",
 			"gift_type": "costume",
@@ -107,7 +107,7 @@
 		},
 		{
 			"name": "BROCK NPC",
-			"sprite": "GYMBROCK",
+			"sprite": "Gymbrock",
 			"meet_text": "Hey I'm Brock. I used to be a Gym Leader a long time ago. Battling wasn't for me so I gave it up to become a Pokemon Breeder and travel the world. Have this card of my favourite Pokemon.",
 			"repeat_text": "I much prefer to play the TCG than battling so I'm looking forward to the challenge.",
 			"gift_type": "card",
@@ -120,7 +120,7 @@
 		},
 		{
 			"name": "SUNBATHING SAILOR 1",
-			"sprite": "SAILOR",
+			"sprite": "Sailor",
 			"meet_text": "I got nothing to do until tonight so I'm taking it easy.",
 			"repeat_text": "I aint doing work if I aint being paid for it.",
 			"pattern": "idle_down",
@@ -131,7 +131,7 @@
 		},
 		{
 			"name": "SAILOR WORKING ON SS ANNE ",
-			"sprite": "SAILOR",
+			"sprite": "Sailor",
 			"meet_text": "The SS Anne will be sailing for a long time. ",
 			"repeat_text": "It only makes it's trip once a year so there's a lot of work to be done when it sails.",
 			"pattern": "patrol_line",
@@ -145,7 +145,7 @@
 		},
 		{
 			"name": "SUNBATHING SAILOR 2 EVE",
-			"sprite": "SAILOR",
+			"sprite": "Sailor",
 			"meet_text": "Misty left and I didn't say hello. I have to head back to the Anne so I won't have chance now.",
 			"repeat_text": "Weird how life works. You never know who you're going to run into years down the line.",
 			"pattern": "idle_down",
@@ -156,7 +156,7 @@
 		},
 		{
 			"name": "WORKER ON DOCK EVE",
-			"sprite": "WORKER",
+			"sprite": "Worker",
 			"meet_text": "I'll be done with this work very soon, I'm just finishing the last bit of welding on the hull.",
 			"repeat_text": "Watch yourself around these ships, it can be dangerous if you're not careful.",
 			"pattern": "idle_down",
@@ -167,7 +167,7 @@
 		},
 		{
 			"name": "SS ANNE WAITRESS",
-			"sprite": "WAITRESS",
+			"sprite": "Waitress",
 			"meet_text": "The SS Anne is always hiring if you fancy travelling the world.",
 			"repeat_text": "We always have a lot of spare uniforms on hand as some staff land at a nice port and decide they don't want to go back to work again!",
 			"gift_type": "costume",
@@ -180,7 +180,7 @@
 		},
 		{
 			"name": "SS ANNE WAITER",
-			"sprite": "WAITER",
+			"sprite": "Waiter",
 			"meet_text": "I've only been a waiter around a week, they were short staffed so offered me a high pay.",
 			"repeat_text": "I highly reccomend it as a career, but I don't know what I'll do after the ship returns back to Vermillion.",
 			"gift_type": "costume",
@@ -193,7 +193,7 @@
 		},
 		{
 			"name": "BLAINE NPC",
-			"sprite": "GYMBLAINE",
+			"sprite": "Gymblaine",
 			"meet_text": "The name's Blaine. I was the gym leader on Cinnabar years ago before the volcano erupted. We moved to the Seafoam islands for a while but it was just never the same. I was the strongest Gym leader back then so take my strongest card.",
 			"repeat_text": "The Cinnabar eruption wasn't the largest shock, we knew we were on a volcano but it was still devastating. Thankfully nobody was hurt but the island was lost almost entirely.",
 			"gift_type": "card",
@@ -217,7 +217,7 @@
 		},
 		{
 			"name": "SAILOR 2 PIER 1 DAY 3",
-			"sprite": "SAILOR",
+			"sprite": "Sailor",
 			"meet_text": "With the arrival of the SS Anne we're even busier than usual. We've never had this many tourists in the harbour at once.",
 			"repeat_text": "Sigh.. I wish I could just on the SS Anne and sail away on it forever.",
 			"pattern": "idle_random",
@@ -228,7 +228,7 @@
 		},
 		{
 			"name": "MAINTENANCE GUY BLOCKING FOREST",
-			"sprite": "GARDENER",
+			"sprite": "Gardener",
 			"meet_text": "Sorry, the forest is still closed off, we haven't been able to clear the area entirely yet. We were hoping to have all the work done before today so all the passengers of the SS Anne could go out and explore.",
 			"repeat_text": "We're nearly done with it so it'll definitely be open tomorrow, my boss would kill me if we don't have it reopened before the SS Anne leaves again.",
 			"pattern": "idle_down",
@@ -239,7 +239,7 @@
 		},
 		{
 			"name": "CAR PARK GUY 1",
-			"sprite": "SECURITY",
+			"sprite": "Security",
 			"meet_text": "Sorry, I can't let you into the car park unless you have car!",
 			"repeat_text": "It's too dangerous to be wondering around on the road you know, I can't let any accidents happen under my watch.",
 			"pattern": "idle_down",
@@ -250,7 +250,7 @@
 		},
 		{
 			"name": "MAN STARING OUT TO SEA EVENING 3",
-			"sprite": "YOUNGCOUPLE2",
+			"sprite": "Youngcouple2",
 			"meet_text": "It's nearly time for my girlfriend to finish her shift.",
 			"repeat_text": "I've got the slow cooker on so dinner will be all ready when we get home.",
 			"pattern": "idle_right",
@@ -261,7 +261,7 @@
 		},
 		{
 			"name": "JUICEBAR WOMAN (FROM STARING OUT TO SEA) DAY 3",
-			"sprite": "YOUNGCOUPLE_2",
+			"sprite": "Youngcouple_2",
 			"meet_text": "Hello! Can I interest you in any juice today?",
 			"repeat_text": "Did you get lucky and find a coin this time?",
 			"pattern": "idle_down",
@@ -272,7 +272,7 @@
 		},
 		{
 			"name": "SAILOR WORKING ON DOCK DAY 3",
-			"sprite": "SAILOR",
+			"sprite": "Sailor",
 			"meet_text": "*huff* I knew I'd be busy with the SS Anne arriving but *huff* I didn't think I'd be THIS busy....",
 			"repeat_text": "*huff* *huff* The SS Anne only arrives once a year and it's always the harbour's busiest days.",
 			"gift_type": "costume",
@@ -288,7 +288,7 @@
 		},
 		{
 			"name": "STATION MANAGER EVENING 3",
-			"sprite": "TRAINWORKER",
+			"sprite": "Trainworker",
 			"meet_text": "Good evening. The last train of the day will be departing shortly so please head through to the gate if you intend to catch it.",
 			"repeat_text": "The trains here are always very punctual, they're never late.",
 			"pattern": "random_wander",
@@ -301,7 +301,7 @@
 		},
 		{
 			"name": "TRAIN EMPLOYEE 2",
-			"sprite": "TRAINWORKER3",
+			"sprite": "Trainworker3",
 			"meet_text": "I'm been tasked with litter picking with the influx of tourist.",
 			"repeat_text": "There's plenty of bins around so I don't why people don't use them.",
 			"pattern": "random_wander",
@@ -314,7 +314,7 @@
 		},
 		{
 			"name": "FIREBREATHER DARRYL",
-			"sprite": "FIREBREATHER",
+			"sprite": "Firebreather",
 			"meet_text": "mMMMmm mMmMm MmmmMM MmMMmM mMMMmMmMm mMmMmMMm MMMmM mm mmMM MmmMMmM.",
 			"repeat_text": "Sorry you caught me at a bad time I had a mouthful of fire fluid there.",
 			"pattern": "idle_cycle",
@@ -325,7 +325,7 @@
 		},
 		{
 			"name": "FIREBREATHER KENNETH",
-			"sprite": "FIREBREATHER",
+			"sprite": "Firebreather",
 			"meet_text": "We're good at what we do and we make it look easy but it's not.",
 			"repeat_text": "It's very hard work this!",
 			"pattern": "idle_cycle",
@@ -338,8 +338,8 @@
 	"opponents": [
 		{
 			"name": "SWIMMER JORDAN",
-			"sprite": "SWIMMER_F2",
-			"deck": "WHIRLGONG",
+			"sprite": "Swimmer_F2",
+			"deck": "Whirlgong",
 			"music": "surrounded_sea",
 			"prize_cards": 4,
 			"meet_text": "I love the water, it's so calm and warm but my cards always get wet! I need to dry them off.",
@@ -357,8 +357,8 @@
 		},
 		{
 			"name": "SWIMMER MELISSA",
-			"sprite": "SWIMMER_F",
-			"deck": "POLIGONG'S WRATH",
+			"sprite": "Swimmer_F",
+			"deck": "Poligong's Wrath",
 			"music": "surrounded_sea",
 			"prize_cards": 6,
 			"meet_text": "The sea is so much calmer and warmer here than it is back home in Kanto.",
@@ -376,8 +376,8 @@
 		},
 		{
 			"name": "BIRDSPOTTER GREGG",
-			"sprite": "BIRDKEEPER_M",
-			"deck": "BIG OL BIRBS",
+			"sprite": "Birdkeeper_M",
+			"deck": "Big Ol Birbs",
 			"music": "normal_battle",
 			"prize_cards": 6,
 			"meet_text": "My friend got hungry so decided to head back, but I'm interested to see what birds come out at night.",
@@ -395,7 +395,7 @@
 		},
 		{
 			"name": "BUG CATCHER FRANKIE",
-			"sprite": "BUGCATCHER",
+			"sprite": "Bugcatcher",
 			"deck": "BIG BAD BUGS!",
 			"music": "chilled_battle",
 			"prize_cards": 4,
@@ -415,8 +415,8 @@
 		},
 		{
 			"name": "BUG CATCHER JOHNNY",
-			"sprite": "BUGCATCHER2",
-			"deck": "STRANGE PLANTS",
+			"sprite": "Bugcatcher2",
+			"deck": "Strange Plants",
 			"music": "normal_battle",
 			"prize_cards": 4,
 			"meet_text": "I love catching bugs but I also love cool plants. There are a lot of critters crawling around in these roots.",
@@ -434,8 +434,8 @@
 		},
 		{
 			"name": "FISHERMAN GARY",
-			"sprite": "FISHERMAN",
-			"deck": "BIG CATCH",
+			"sprite": "Fisherman",
+			"deck": "Big Catch",
 			"music": "normal_battle",
 			"prize_cards": 6,
 			"meet_text": "I joined my buddies here to fish today but we were actually catching sooo much that they ended up leaving!",
@@ -453,8 +453,8 @@
 		},
 		{
 			"name": "SS ANNE TOURIST EDMUND",
-			"sprite": "RICHBOY",
-			"deck": "ELEGANCE",
+			"sprite": "Richboy",
+			"deck": "Elegance",
 			"music": "normal_battle",
 			"prize_cards": 6,
 			"meet_text": "I live in Celadon City so it's rare I get to the beach. I'm here to make the most of it.",
@@ -472,7 +472,7 @@
 		},
 		{
 			"name": "SS ANNE TOURIST ALISSA",
-			"sprite": "LADY",
+			"sprite": "Lady",
 			"deck": "GIRL POWER",
 			"music": "normal_battle",
 			"prize_cards": 6,
@@ -491,8 +491,8 @@
 		},
 		{
 			"name": "GUITARIST JONESY",
-			"sprite": "GUITARIST",
-			"deck": "HEAVY METAL",
+			"sprite": "Guitarist",
+			"deck": "Heavy Metal",
 			"music": "normal_battle",
 			"prize_cards": 4,
 			"meet_text": "We're in a band and we're currently touring. We're just passing through to our next gig so having a quick jam here.",
@@ -510,8 +510,8 @@
 		},
 		{
 			"name": "GUITARIST HOWARD",
-			"sprite": "GUITARIST2",
-			"deck": "ROCK N SHOCK",
+			"sprite": "Guitarist2",
+			"deck": "Rock N Shock",
 			"music": "normal_battle",
 			"prize_cards": 4,
 			"meet_text": "We're the Toxtricity Rockers, we're a duo that's pretty big in Johto.",
@@ -529,7 +529,7 @@
 		},
 		{
 			"name": "JOGGER DANIEL",
-			"sprite": "JOGGER",
+			"sprite": "Jogger",
 			"deck": "NIDO NIDO MEOW",
 			"music": "normal_battle",
 			"prize_cards": 4,
@@ -551,8 +551,8 @@
 		},
 		{
 			"name": "GARDENER CALLUM",
-			"sprite": "GARDENER",
-			"deck": "POLLEN POWER",
+			"sprite": "Gardener",
+			"deck": "Pollen Power",
 			"music": "chilled_battle",
 			"prize_cards": 2,
 			"meet_text": "Wowee, it was a long day gardening today. I'm down for a match to let off some steam now.",
@@ -571,8 +571,8 @@
 		},
 		{
 			"name": "GARDEN MANAGER LOUIS",
-			"sprite": "GARDENER",
-			"deck": "SOLAR POWER",
+			"sprite": "Gardener",
+			"deck": "Solar Power",
 			"music": "chilled_battle",
 			"prize_cards": 6,
 			"meet_text": "I might be the garden manager but I do know how to have fun.",
@@ -592,8 +592,8 @@
 		},
 		{
 			"name": "SAILOR BOB",
-			"sprite": "SAILOR",
-			"deck": "HOIST THE ANCHOR",
+			"sprite": "Sailor",
+			"deck": "Hoist The Anchor",
 			"music": "normal_battle",
 			"prize_cards": 6,
 			"meet_text": "Most of the passengers have returned on board for the night now so it's quiet again as usual.",
@@ -611,8 +611,8 @@
 		},
 		{
 			"name": "CARD ELDER RAYNE",
-			"sprite": "ELDER",
-			"deck": "RAIN DANCE",
+			"sprite": "Elder",
+			"deck": "Rain Dance",
 			"music": "hard_battle",
 			"prize_cards": 6,
 			"meet_text": "Hoh Hoh, are you ready to feel the torrent? If you win I'll give you a medal to prove your triumph.",
@@ -630,8 +630,8 @@
 		},
 		{
 			"name": "CARD ELDER HAMISH",
-			"sprite": "ELDER",
-			"deck": "HAYMAKER",
+			"sprite": "Elder",
+			"deck": "Haymaker",
 			"music": "hard_battle",
 			"prize_cards": 6,
 			"meet_text": "Back for the challenge then hey? Remember you'll need to defeat all 3 of us if you want to progress.",
@@ -649,8 +649,8 @@
 		},
 		{
 			"name": "CARD ELDER WAVERLY",
-			"sprite": "ELDER",
-			"deck": "DO THE WAVE",
+			"sprite": "Elder",
+			"deck": "Do The Wave",
 			"music": "hard_battle",
 			"prize_cards": 6,
 			"meet_text": "Are you ready to take me on then? If you win then you'll do well in the Gym Hero Challenge.",
@@ -668,8 +668,8 @@
 		},
 		{
 			"name": "HIKER BEN",
-			"sprite": "HIKER",
-			"deck": "SOLID GROUND",
+			"sprite": "Hiker",
+			"deck": "Solid Ground",
 			"music": "normal_battle",
 			"prize_cards": 4,
 			"meet_text": "Well that's incredibly disappointing. I was hoping to have a trek through the forest but they've told me it's shut so I have nowhere to go now.",

@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python rename_assets.py)",
+      "PowerShell(py *)"
+    ]
+  }
+}

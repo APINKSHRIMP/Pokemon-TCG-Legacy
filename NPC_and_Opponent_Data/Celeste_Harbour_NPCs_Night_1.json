@@ -2,7 +2,7 @@
 	"npcs": [
 		{
 			"name": "BIKER1",
-			"sprite": "BIKER",
+			"sprite": "Biker",
 			"meet_text": "how the hell did you manage to speak to me??",
 			"repeat_text": "You're a hacker >:(",
 			"pattern": "patrol_square",
@@ -16,7 +16,7 @@
 		},
 		{
 			"name": "BIKER2",
-			"sprite": "BIKER",
+			"sprite": "Biker",
 			"meet_text": "cheating isn't cool.",
 			"repeat_text": "Unless you're just reading this in the npc data.",
 			"pattern": "patrol_line",
@@ -30,7 +30,7 @@
 		},
 		{
 			"name": "BIKER3",
-			"sprite": "BIKER",
+			"sprite": "Biker",
 			"meet_text": "I guess this is an easter egg.",
 			"repeat_text": "sadly it's not that exciting.",
 			"pattern": "idle_down",
@@ -41,7 +41,7 @@
 		},
 		{
 			"name": "BIKER4",
-			"sprite": "BIKER",
+			"sprite": "Biker",
 			"meet_text": "Does this make it more exciting if I add an agg.",
 			"repeat_text": "🥚",
 			"pattern": "idle_up",
@@ -52,7 +52,7 @@
 		},
 		{
 			"name": "BIKER5",
-			"sprite": "ROUGHNECK",
+			"sprite": "Roughneck",
 			"meet_text": "🥚🥚",
 			"repeat_text": "🥚🥚🥚",
 			"pattern": "idle_random",
@@ -63,7 +63,7 @@
 		},
 		{
 			"name": "BIKER6",
-			"sprite": "ROUGHNECK",
+			"sprite": "Roughneck",
 			"meet_text": "🥚🥚",
 			"repeat_text": "🥚🥚🥚",
 			"pattern": "idle_random",
@@ -74,7 +74,7 @@
 		},
 		{
 			"name": "BIKER7",
-			"sprite": "ROUGHNECK",
+			"sprite": "Roughneck",
 			"meet_text": "🥚🥚",
 			"repeat_text": "🥚🥚🥚",
 			"pattern": "idle_random",
@@ -85,7 +85,7 @@
 		},
 		{
 			"name": "BIKER8",
-			"sprite": "ROUGHNECK",
+			"sprite": "Roughneck",
 			"meet_text": "🥚🥚",
 			"repeat_text": "🥚🥚🥚",
 			"pattern": "idle_random",
@@ -96,7 +96,7 @@
 		},
 		{
 			"name": "POLICEMAN BLOCKING BEACH BL",
-			"sprite": "POLICEMAN",
+			"sprite": "Policeman",
 			"meet_text": "There's still some Sharpedo reported in the water so we can't let anyone through yet.",
 			"repeat_text": "Can't let you through yet until the Sharpedo are gone. It should be safe in the morning, why don't you have an early night!",
 			"pattern": "idle_left",
@@ -107,7 +107,7 @@
 		},
 		{
 			"name": "CAR PARK GUY 1",
-			"sprite": "SECURITY",
+			"sprite": "Security",
 			"meet_text": "I'm the parking warden for the Celeste Harbour car park but all these bikers have decided to take it over. I can't get rid of them by myself but the police are protecting the beach so I'm on my own.",
 			"repeat_text": "I should have finished my shift and should be in bed by now but I can't go home until these bikers leave. You should head home too you know?",
 			"pattern": "idle_down",
@@ -118,7 +118,7 @@
 		},
 		{
 			"name": "BADMAN 1",
-			"sprite": "ROUGHNECK",
+			"sprite": "Roughneck",
 			"meet_text": "Heh, scram kid. We're having our biker gang meetup here so get lost.",
 			"repeat_text": "Isn't it a little late for a loser like you to be wandering about?",
 			"pattern": "idle_down",
@@ -129,7 +129,7 @@
 		},
 		{
 			"name": "BADMAN 2",
-			"sprite": "ROUGHNECK",
+			"sprite": "Roughneck",
 			"meet_text": "We're called the Cool Guy Biker Gang. We're the coolest in the world..... What are you giggling at loser?",
 			"repeat_text": "Why don't you go home before something bad happens?",
 			"pattern": "idle_up",
@@ -142,8 +142,8 @@
 	"opponents": [
 		{
 			"name": "GARDENER CALLUM",
-			"sprite": "GARDENER",
-			"deck": "POLLEN POWER",
+			"sprite": "Gardener",
+			"deck": "Pollen Power",
 			"music": "chilled_battle",
 			"prize_cards": 2,
 			"meet_text": "Wowee, it was a long day gardening today. I'm down for a match to let off some steam now.",
@@ -162,8 +162,8 @@
 		},
 		{
 			"name": "ENGINEER ALLAN",
-			"sprite": "WORKER",
-			"deck": "ZZZAP",
+			"sprite": "Worker",
+			"deck": "Zzzap",
 			"music": "chilled_battle",
 			"prize_cards": 3,
 			"meet_text": "As you can see, the new bulb installation went perrrrfectly today. I'm worn out from all the steps but always game for a match.",
@@ -182,8 +182,8 @@
 		},
 		{
 			"name": "FISHERMAN JOHN",
-			"sprite": "FISHERMAN2",
-			"deck": "SEAVOLUTIONS",
+			"sprite": "Fisherman2",
+			"deck": "Seavolutions",
 			"music": "normal_battle",
 			"prize_cards": 4,
 			"meet_text": "Me and my buddy Dave fish here all the time. The lighthouse is like a giant lure in the evening so we catch even more. I've got time for a break.",
@@ -201,8 +201,8 @@
 		},
 		{
 			"name": "PAINTER JERICHO",
-			"sprite": "ARTIST",
-			"deck": "ART ASSISTANTS",
+			"sprite": "Artist",
+			"deck": "Art Assistants",
 			"music": "normal_battle",
 			"prize_cards": 2,
 			"meet_text": "The evening sun is the most perfect time to come here and paint... or play cards!",

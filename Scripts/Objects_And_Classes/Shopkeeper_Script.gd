@@ -368,7 +368,6 @@ func _handle_restocking_state():
 
 func _handle_open_state():
 	print("[Shopkeeper] Open state — ready to sell packs")
-	MapManager._show_message_with_ok("Welcome to Card Mart! Browse my selection.")
 
 func _finish_starter_purchase():
 	print("[Shopkeeper] Processing starter set purchase...")

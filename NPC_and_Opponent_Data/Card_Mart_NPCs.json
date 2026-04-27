@@ -1,14 +1,17 @@
 {
-  "npcs": [
-    {
-      "name": "Shopkeeper",
-      "sprite": "SHOPKEEPER",
-      "npc_type": "shop",
-      "shop_id": "card_mart",
-      "text": "Welcome! Would you like to browse the shop?",
-      "position": {"x": 85, "y": -35},
-      "pattern": "idle_down"
-    }
-  ],
-  "opponents": []
+	"npcs": [
+		{
+			"name": "Shopkeeper",
+			"sprite": "Shopkeeper",
+			"npc_type": "shop",
+			"shop_id": "card_mart",
+			"meet_text": "Welcome! Would you like to browse the shop?",
+			"position": {
+				"x": 85,
+				"y": -35
+			},
+			"pattern": "idle_down"
+		}
+	],
+	"opponents": []
 }
