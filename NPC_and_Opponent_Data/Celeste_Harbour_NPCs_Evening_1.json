@@ -100,7 +100,7 @@
 	  "meet_text": "I found this card on the floor while I was tidying up. I've been here all day and nobody has claimed it so you might as well take it!",
 	  "repeat_text": "Did you get chance to visit the Card Mart yet? I normally visit the pier in the evening but I'm all worn out from cleaning up today. So I think I will just go to bed early tonight.",
 	  "gift_type": "card",
-	  "gift_value": "basep-1",
+	  "gift_value": "basep-11",
 	  "pattern": "idle_down",
 	  "wander_radius": 65,
 	  "position": {

@@ -2433,17 +2433,20 @@ func inbetween_turn_checks(player_turn_just_ended: bool = true) -> void:
 			print("GOOP GAS: Effect expired")
 	
 	# Clear power_disabled_until_end_of_next_turn (Dark Arbok Stare)
+	# Stare disables "until the end of your opponent's next turn", so clear the flag
+	# at the end of the AFFECTED pokemon's owner's turn (not the attacker's turn).
 	if player_turn_just_ended:
-		# Clear on opponent's pokemon at end of player's turn
-		for bp in opponent_bench:
-			bp.power_disabled_until_end_of_next_turn = false
-		if opponent_active_pokemon != null:
-			opponent_active_pokemon.power_disabled_until_end_of_next_turn = false
-	else:
+		# Player's turn just ended — clear player's own disabled flags
 		for bp in player_bench:
 			bp.power_disabled_until_end_of_next_turn = false
 		if player_active_pokemon != null:
 			player_active_pokemon.power_disabled_until_end_of_next_turn = false
+	else:
+		# Opponent's turn just ended — clear opponent's disabled flags
+		for bp in opponent_bench:
+			bp.power_disabled_until_end_of_next_turn = false
+		if opponent_active_pokemon != null:
+			opponent_active_pokemon.power_disabled_until_end_of_next_turn = false
 	
 	# Update Ditto Transform after any switches/KOs that may have happened
 	powers_and_bodies.update_ditto_transform(false)

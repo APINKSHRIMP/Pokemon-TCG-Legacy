@@ -10,7 +10,12 @@
       "Bash(awk '{print \"\\\\\"\" $0 \"\\\\\",'}\")",
       "Bash(read line *)",
       "Bash(ls \"/c/Pokemon TCG Legacy/Image_Assets/Coins/\"*.png)",
-      "Bash(ls \"/c/Pokemon TCG Legacy/Image_Assets/Character_Sprites/In_Battle_Sprites/\"*.png)"
+      "Bash(ls \"/c/Pokemon TCG Legacy/Image_Assets/Character_Sprites/In_Battle_Sprites/\"*.png)",
+      "Bash(python3 *)",
+      "Bash(python *)",
+      "PowerShell(python -c \"import openpyxl; wb = openpyxl.load_workbook\\('C:/Pokemon TCG Legacy/Opponent_Tracker.xlsx'\\); print\\('Sheets:', wb.sheetnames\\)\")",
+      "Bash(sed 's/\"name\": \"//g')",
+      "Bash(sed 's/\"//g')"
     ]
   }
 }

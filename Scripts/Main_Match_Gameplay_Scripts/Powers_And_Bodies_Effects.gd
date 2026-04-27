@@ -17,8 +17,6 @@ func is_power_blocked_by_status(pokemon: card_object) -> bool:
 		return true
 	if pokemon.special_condition in ["Paralyzed", "Asleep", "Confused"]:
 		return true
-	if pokemon.is_poisoned:
-		return true
 	return false
 
 # Returns true if a card is a trainer card

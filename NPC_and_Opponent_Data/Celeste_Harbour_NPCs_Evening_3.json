@@ -111,7 +111,7 @@
 	  "meet_text": "Hey I'm Brock. I used to be a Gym Leader a long time ago. Battling wasn't for me so I gave it up to become a Pokemon Breeder and travel the world. Have this card of my favourite Pokemon.",
 	  "repeat_text": "I much prefer to play the TCG than battling so I'm looking forward to the challenge.",
 	  "gift_type": "card",
-	  "gift_value": "gym1-21",
+	  "gift_value": "basep-7",
 	  "pattern": "idle_up",
 	  "position": {
 		"x": 2705,
@@ -197,7 +197,7 @@
 	  "meet_text": "The name's Blaine. I was the gym leader on Cinnabar years ago before the volcano erupted. We moved to the Seafoam islands for a while but it was just never the same. I was the strongest Gym leader back then so take my strongest card.",
 	  "repeat_text": "The Cinnabar eruption wasn't the largest shock, we knew we were on a volcano but it was still devastating. Thankfully nobody was hurt but the island was lost almost entirely.",
 	  "gift_type": "card",
-	  "gift_value": "gym1-1",
+	  "gift_value": "basep-6",
 	  "pattern": "idle_left",
 	  "position": {
 		"x": 1209,
@@ -406,7 +406,7 @@
 	  "loss_text": "Bug pokemon really aren't as weak as people think.",
 	  "cash_reward": "100",
 	  "coin_reward": "coin_genesect_purple",
-	  "costume_reward": "BUGCATCHER",
+	  "costume_reward": "BUGCATCHER2",
 	  "pattern": "idle_random",
 	  "position": {
 		"x": 2295,
@@ -414,15 +414,15 @@
 	  }
 	},
 	{
-	  "name": "Bug Catcher Johnny",
-	  "sprite": "Bugcatcher2",
+	  "name": "Aromagirl Penelope",
+	  "sprite": "Aromagirl",
 	  "deck": "Strange Plants",
 	  "music": "normal_battle",
 	  "prize_cards": 4,
-	  "meet_text": "I love catching bugs but I also love cool plants. There are a lot of critters crawling around in these roots.",
-	  "repeat_text": "I've just seen a HUGE bug running around.",
+	  "meet_text": "Plants can grow in all weird shapes and sizes, they're not just flowers and trees, there's a lot of different kinds out there.",
+	  "repeat_text": "I've catalogued a lot of crazy plants recently.",
 	  "first_win_text": "I wish I could photosynthesize.",
-	  "rematch_win_text": "I could beat you at catching bugs!",
+	  "rematch_win_text": "I could do with some water",
 	  "loss_text": "Grass Pokemon are great!",
 	  "cash_reward": "100",
 	  "coin_reward": "coin_energy_green_2",

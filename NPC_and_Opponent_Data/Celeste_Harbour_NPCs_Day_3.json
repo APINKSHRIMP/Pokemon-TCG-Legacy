@@ -94,7 +94,7 @@
 	  "meet_text": "I've been collecting for LONG time but I'll never be as good at battling as these folk are. You might be able to make more use of this than I can.",
 	  "repeat_text": "I've got well over 10,000 cards, I've been collecting them for years.",
 	  "gift_type": "card",
-	  "gift_value": "basep-2",
+	  "gift_value": "basep-9",
 	  "pattern": "idle_up",
 	  "position": {
 		"x": 2250,
@@ -257,7 +257,7 @@
 	  "meet_text": "Hey! I'm misty one of the ex Kanto Gym Leaders. A few of us have travelled here on the SS Anne to run the Gym Hero Challenge. If you're into the Pokemon TCG then you should try challenge us. Take this card as a good luck gift, it's my favourite Pokemon!",
 	  "repeat_text": "If you're good enough and beat us you can even buy our cards. But you need the medals of your local elders first before you can even challenge us!",
 	  "gift_type": "card",
-	  "gift_value": "gym1-30",
+	  "gift_value": "basep-20",
 	  "pattern": "idle_down",
 	  "position": {
 		"x": 98,
@@ -270,7 +270,7 @@
 	  "meet_text": "The lighthouse here reminds me of the one in Olivine City. Sorry, I didn't introduce myself there first - I'm LT Surge, I'm one of the ex Kanto Gym Leaders. Take this card as an apology.",
 	  "repeat_text": "Looks like you play the TCG too huh? If you earn entry into the challenge and can beat all 8 of us you'll get a lot of good stuff.",
 	  "gift_type": "card",
-	  "gift_value": "gym1-27",
+	  "gift_value": "basep-2",
 	  "pattern": "idle_up",
 	  "position": {
 		"x": -715,
@@ -283,7 +283,7 @@
 	  "meet_text": "Hello, I'm Erika. I used to be a Gym Leader over in Kanto but I've sinced moved on. I'm still a Pokemon Trainer but it looks like there aren't a lot of trainers around here and every plays the TCG more. I've got a lot of cards too so you can have this.",
 	  "repeat_text": "The flowers here are beautiful and the weather is so nice. I hope I have some time to enjoy myself outside of the Gym Hero Challenge.",
 	  "gift_type": "card",
-	  "gift_value": "gym1-25",
+	  "gift_value": "basep-13",
 	  "pattern": "idle_down",
 	  "position": {
 		"x": -715,
@@ -823,7 +823,7 @@
 	  "loss_text": "Bug pokemon really aren't as weak as people think.",
 	  "cash_reward": "100",
 	  "coin_reward": "coin_genesect_purple",
-	  "costume_reward": "BUGCATCHER",
+	  "costume_reward": "BUGCATCHER2",
 	  "pattern": "idle_random",
 	  "position": {
 		"x": 2295,
@@ -853,15 +853,15 @@
 	  }
 	},
 	{
-	  "name": "Bug Catcher Johnny",
-	  "sprite": "Bugcatcher2",
+	  "name": "Aromagirl Penelope",
+	  "sprite": "Aromagirl",
 	  "deck": "Strange Plants",
 	  "music": "normal_battle",
 	  "prize_cards": 4,
-	  "meet_text": "I love catching bugs but I also love cool plants. There are a lot of critters crawling around in these roots.",
-	  "repeat_text": "I've just seen a HUGE bug running around.",
+	  "meet_text": "Plants can grow in all weird shapes and sizes, they're not just flowers and trees, there's a lot of different kinds out there.",
+	  "repeat_text": "I've catalogued a lot of crazy plants recently.",
 	  "first_win_text": "I wish I could photosynthesize.",
-	  "rematch_win_text": "I could beat you at catching bugs!",
+	  "rematch_win_text": "I could do with some water",
 	  "loss_text": "Grass Pokemon are great!",
 	  "cash_reward": "100",
 	  "coin_reward": "coin_energy_green_2",
