@@ -2,7 +2,15 @@
   "permissions": {
     "allow": [
       "Bash(python rename_assets.py)",
-      "PowerShell(py *)"
+      "PowerShell(py *)",
+      "Bash(ls \"/c/Pokemon TCG Legacy/Image_Assets/Coins/\")",
+      "Bash(ls \"/c/Pokemon TCG Legacy/Image_Assets/Character_Sprites/In_Battle_Sprites/\")",
+      "Read(//tmp/**)",
+      "Bash(shuf -n 111 /tmp/all_files.txt)",
+      "Bash(awk '{print \"\\\\\"\" $0 \"\\\\\",'}\")",
+      "Bash(read line *)",
+      "Bash(ls \"/c/Pokemon TCG Legacy/Image_Assets/Coins/\"*.png)",
+      "Bash(ls \"/c/Pokemon TCG Legacy/Image_Assets/Character_Sprites/In_Battle_Sprites/\"*.png)"
     ]
   }
 }

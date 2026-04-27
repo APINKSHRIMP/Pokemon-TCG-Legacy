@@ -125,8 +125,8 @@ func update_ui_with_data() -> void:
 	if opponent_data.has("deck"):
 		opponent_deck_label.text = opponent_data["deck"].replace("_", " ")
 	
-	if opponent_data.has("battle_sprite"):
-		var path = "res://Image_Assets/Character_Sprites/In_Battle_Sprites/" + opponent_data["battle_sprite"].to_lower() + ".png"
+	if opponent_data.has("sprite"):
+		var path = "res://Image_Assets/Character_Sprites/In_Battle_Sprites/" + opponent_data["sprite"].to_lower() + ".png"
 		var tex = load(path)
 		if tex:
 			opponent_sprite.texture = tex
@@ -138,8 +138,8 @@ func update_ui_with_data() -> void:
 	if player_data.has("deck"):
 		player_deck_label.text = player_data["deck"].replace("_", " ")
 	
-	if player_data.has("battle_sprite"):
-		var path = "res://Image_Assets/Character_Sprites/In_Battle_Sprites/" + player_data["battle_sprite"].to_lower() + ".png"
+	if player_data.has("sprite"):
+		var path = "res://Image_Assets/Character_Sprites/In_Battle_Sprites/" + player_data["sprite"].to_lower() + ".png"
 		var tex = load(path)
 		print("TESTETEST")
 		if tex:

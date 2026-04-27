@@ -1,331 +1,331 @@
 {
-	"npcs": [
-		{
-			"name": "BIKER1",
-			"sprite": "Biker",
-			"meet_text": "how the hell did you manage to speak to me??",
-			"repeat_text": "You're a hacker >:(",
-			"pattern": "patrol_square",
-			"patrol_speed": 120.0,
-			"patrol_distance": 210,
-			"patrol_axis": "horizontal",
-			"position": {
-				"x": 390,
-				"y": 920
-			}
-		},
-		{
-			"name": "BIKER2",
-			"sprite": "Biker",
-			"meet_text": "cheating isn't cool.",
-			"repeat_text": "Unless you're just reading this in the npc data.",
-			"pattern": "patrol_line",
-			"patrol_speed": 120.0,
-			"patrol_distance": 210,
-			"patrol_axis": "horizontal",
-			"position": {
-				"x": 400,
-				"y": 1050
-			}
-		},
-		{
-			"name": "BIKER3",
-			"sprite": "Biker",
-			"meet_text": "I guess this is an easter egg.",
-			"repeat_text": "sadly it's not that exciting.",
-			"pattern": "idle_down",
-			"position": {
-				"x": 240,
-				"y": 1020
-			}
-		},
-		{
-			"name": "BIKER4",
-			"sprite": "Biker",
-			"meet_text": "Does this make it more exciting if I add an agg.",
-			"repeat_text": "🥚",
-			"pattern": "idle_up",
-			"position": {
-				"x": 240,
-				"y": 1070
-			}
-		},
-		{
-			"name": "BIKER5",
-			"sprite": "Roughneck",
-			"meet_text": "🥚🥚",
-			"repeat_text": "🥚🥚🥚",
-			"pattern": "idle_random",
-			"position": {
-				"x": 750,
-				"y": 1060
-			}
-		},
-		{
-			"name": "BIKER6",
-			"sprite": "Roughneck",
-			"meet_text": "🥚🥚",
-			"repeat_text": "🥚🥚🥚",
-			"pattern": "idle_random",
-			"position": {
-				"x": 300,
-				"y": 960
-			}
-		},
-		{
-			"name": "BIKER7",
-			"sprite": "Roughneck",
-			"meet_text": "🥚🥚",
-			"repeat_text": "🥚🥚🥚",
-			"pattern": "idle_random",
-			"position": {
-				"x": 310,
-				"y": 1050
-			}
-		},
-		{
-			"name": "BIKER8",
-			"sprite": "Roughneck",
-			"meet_text": "🥚🥚",
-			"repeat_text": "🥚🥚🥚",
-			"pattern": "idle_random",
-			"position": {
-				"x": 480,
-				"y": 1090
-			}
-		},
-		{
-			"name": "OLD GUY NEIGHBOUR EVE 1",
-			"sprite": "NPC_Oldman",
-			"meet_text": "I found this card on the floor while I was tidying up. I've been here all day and nobody has claimed it so you might as well take it!",
-			"repeat_text": "Did you get chance to visit the Card Mart yet? I normally visit the pier in the evening but I'm all worn out from cleaning up today. So I think I will just go to bed early tonight.",
-			"gift_type": "card",
-			"gift_value": "basep-1",
-			"pattern": "idle_down",
-			"wander_radius": 65,
-			"position": {
-				"x": -375,
-				"y": 1625
-			}
-		},
-		{
-			"name": "OLD LADY ON BENCH EVE 1",
-			"sprite": "NPC_Oldlady",
-			"meet_text": "It's getting late already, oh my how the days fly when you're at my age. After a long day, make sure you always go to bed and get a good nights rest!",
-			"repeat_text": "Nothing beats going to bed early and having a good nights sleep. I'm getting tired just thinking about going to bed.",
-			"pattern": "idle_down",
-			"position": {
-				"x": -827,
-				"y": 1962
-			}
-		},
-		{
-			"name": "POLICEMAN BLOCKING BEACH BL",
-			"sprite": "Policeman",
-			"meet_text": "There's still some Sharpedo reported in the water so we can't let anyone through yet.",
-			"repeat_text": "Can't let you through yet until the Sharpedo are gone. It should be safe in the morning, why don't you have an early night!",
-			"pattern": "idle_left",
-			"position": {
-				"x": -545,
-				"y": 2010
-			}
-		},
-		{
-			"name": "CAR PARK GUY 1",
-			"sprite": "Security",
-			"meet_text": "I'm the parking warden for the Celeste Harbour car park but all these bikers have decided to take it over. I can't get rid of them by myself but the police are protecting the beach so I'm on my own.",
-			"repeat_text": "It's already so late and the Bikers aren't showing any sign of leaving. I can't go home until they leave they might cause some serious damage.",
-			"pattern": "idle_down",
-			"position": {
-				"x": 628,
-				"y": 1190
-			}
-		},
-		{
-			"name": "BADMAN 1",
-			"sprite": "Roughneck",
-			"meet_text": "Heh, scram kid. We're having our biker gang meetup here so get lost.",
-			"repeat_text": "Didn't you hear me? Get lost kid.",
-			"pattern": "idle_down",
-			"position": {
-				"x": 680,
-				"y": 1695
-			}
-		},
-		{
-			"name": "BADMAN 2",
-			"sprite": "Roughneck",
-			"meet_text": "We're called the Cool Guy Biker Gang. We're the coolest in the world..... What are you giggling at loser?",
-			"repeat_text": "Do you think something's funny??",
-			"pattern": "idle_up",
-			"position": {
-				"x": 680,
-				"y": 1735
-			}
-		}
-	],
-	"opponents": [
-		{
-			"name": "YOUNGSTER JOEY",
-			"sprite": "Youngster2",
-			"deck": "Basic Pokemon Barrage",
-			"music": "chilled_battle",
-			"prize_cards": 2,
-			"meet_text": "I just got given some cards off my grandma, she's so cool. I'm not really good at battling yet but it's a lot of fun!",
-			"repeat_text": "I'm getting better at playing!'",
-			"first_win_text": "Take these full heal cards, you can use them to heal any status conditions your pokemon get. They're really useful.",
-			"rematch_win_text": "I'm going to win one day!",
-			"loss_text": "I didn't expect to win at all! These cards must be really good.",
-			"cash_reward": "50",
-			"coin_reward": "coin_energy_silver_2",
-			"card_reward": "base1-82, base1-82",
-			"pattern": "random_wander",
-			"patrol_speed": 60.0,
-			"wander_radius": 65,
-			"position": {
-				"x": -800,
-				"y": 2020
-			}
-		},
-		{
-			"name": "GARDENER CALLUM",
-			"sprite": "Gardener",
-			"deck": "Pollen Power",
-			"music": "chilled_battle",
-			"prize_cards": 2,
-			"meet_text": "Wowee, it was a long day gardening today. I'm down for a match to let off some steam now.",
-			"repeat_text": "I've got time for a rematch before my next shift.",
-			"first_win_text": "I'm clearly too worn out from such a long shift.",
-			"rematch_win_text": "I'll win when I'm fully rested.",
-			"loss_text": "Even after a hard days work I can still win!",
-			"cash_reward": "75",
-			"coin_reward": "coin_bulbasaur_green",
-			"pattern": "idle_up",
-			"wander_radius": 65,
-			"position": {
-				"x": -690,
-				"y": 2180
-			}
-		},
-		{
-			"name": "ENGINEER ALLAN",
-			"sprite": "Worker",
-			"deck": "Zzzap",
-			"music": "chilled_battle",
-			"prize_cards": 3,
-			"meet_text": "As you can see, the new bulb installation went perrrrfectly today. I'm worn out from all the steps but always game for a match.",
-			"repeat_text": "I won't be needing to replace the bulb any time soon so I've got time to kill.",
-			"first_win_text": "That was clearly toooooo many steps today.",
-			"rematch_win_text": "At least I'm reaaallly good at replacing bulbs.",
-			"loss_text": "I hope your loss didn't come as a shock to you.",
-			"cash_reward": "75",
-			"coin_reward": "coin_energy_gold",
-			"pattern": "idle_left",
-			"wander_radius": 65,
-			"position": {
-				"x": -800,
-				"y": 2620
-			}
-		},
-		{
-			"name": "GAMBLER MICK",
-			"sprite": "Gambler",
-			"deck": "You Win Some N Lose Some",
-			"music": "normal_battle",
-			"prize_cards": 2,
-			"meet_text": "All I need is a bit of luck, I let that decide my fate. If I battle enough then I'm bound to win some of them at least.",
-			"repeat_text": "I'll be a lot luckier this time round.",
-			"first_win_text": "Luck really wasn't on my side today...",
-			"rematch_win_text": "I just need a little bit of luck that's all.",
-			"loss_text": "Looks like luck wasn't on your side today.",
-			"cash_reward": "50",
-			"coin_reward": "coin_pikachu_gold_3",
-			"card_reward": "base1-27, base1-27",
-			"pattern": "idle_random",
-			"position": {
-				"x": -860,
-				"y": 2690
-			}
-		},
-		{
-			"name": "SCHOOLBOY ADAM",
-			"sprite": "Youngster3",
-			"deck": "Status Infliction",
-			"music": "chilled_battle",
-			"prize_cards": 2,
-			"meet_text": "I'm trying out some new techniques using statuses. If we battle I'll show you how good they are.",
-			"repeat_text": "I'll definitely win this time round.",
-			"first_win_text": "Oh man I really thought my statuses were going to cause you some trouble.",
-			"rematch_win_text": "Maybe I need a better tactic...",
-			"loss_text": "I knew my status infliction technique would work!",
-			"cash_reward": "50",
-			"coin_reward": "coin_chansey_silver",
-			"pattern": "patrol_line",
-			"patrol_speed": 60.0,
-			"patrol_distance": 200,
-			"patrol_axis": "vertical",
-			"position": {
-				"x": -850,
-				"y": 2250
-			}
-		},
-		{
-			"name": "FISHERMAN DAVE",
-			"sprite": "Fisherman",
-			"deck": "Fishy Fish",
-			"music": "normal_battle",
-			"prize_cards": 4,
-			"meet_text": "I love the lighthouse here, it seems to attract all kinds of fish so I always catch a lot in this spot. I'm catching so many I need a break.",
-			"repeat_text": "I've caught a lot since last time.",
-			"first_win_text": "Even if they don't help me win, I still love my fish.",
-			"rematch_win_text": "Fishing and Pokemon cards are both a lot of fun, I could do both all day.",
-			"loss_text": "Maybe you should try picking up a rod and give fishing a go instead!",
-			"cash_reward": "50",
-			"coin_reward": "coin_gyarados_blue",
-			"pattern": "idle_down",
-			"position": {
-				"x": -600,
-				"y": 2730
-			}
-		},
-		{
-			"name": "FISHERMAN JOHN",
-			"sprite": "Fisherman2",
-			"deck": "Seavolutions",
-			"music": "normal_battle",
-			"prize_cards": 4,
-			"meet_text": "Me and my buddy Dave fish here all the time. The lighthouse is like a giant lure in the evening so we catch even more. I've got time for a break.",
-			"repeat_text": "The evening is still young if you want another match.",
-			"first_win_text": "I'm a much better fisherman than I am a card player.",
-			"rematch_win_text": "Always happy to put my fishing aside for a rematch.",
-			"loss_text": "I'm not just the best round here at fishing!",
-			"cash_reward": "75",
-			"coin_reward": "coin_gyarados_red",
-			"pattern": "idle_down",
-			"position": {
-				"x": -810,
-				"y": 2730
-			}
-		},
-		{
-			"name": "PAINTER JERICHO",
-			"sprite": "Artist",
-			"deck": "Art Assistants",
-			"music": "normal_battle",
-			"prize_cards": 2,
-			"meet_text": "The evening sun is the most perfect time to come here and paint... or play cards!",
-			"repeat_text": "I've been painting a lot of great pieces from this spot.",
-			"first_win_text": "A win or a loss, both are equal pieces of art.",
-			"rematch_win_text": "A win or a loss, both are equal pieces of art.",
-			"loss_text": "To win is a beautiful piece of art.",
-			"cash_reward": "50",
-			"coin_reward": "coin_eevee_silver",
-			"card_reward": "base1-27, base1-27",
-			"pattern": "idle_right",
-			"position": {
-				"x": -565,
-				"y": 2375
-			}
-		}
-	]
+  "npcs": [
+	{
+	  "name": "Biker1",
+	  "sprite": "Biker",
+	  "meet_text": "how the hell did you manage to speak to me??",
+	  "repeat_text": "You're a hacker >:(",
+	  "pattern": "patrol_square",
+	  "patrol_speed": 120.0,
+	  "patrol_distance": 210,
+	  "patrol_axis": "horizontal",
+	  "position": {
+		"x": 390,
+		"y": 920
+	  }
+	},
+	{
+	  "name": "Biker2",
+	  "sprite": "Biker",
+	  "meet_text": "cheating isn't cool.",
+	  "repeat_text": "Unless you're just reading this in the npc data.",
+	  "pattern": "patrol_line",
+	  "patrol_speed": 120.0,
+	  "patrol_distance": 210,
+	  "patrol_axis": "horizontal",
+	  "position": {
+		"x": 400,
+		"y": 1050
+	  }
+	},
+	{
+	  "name": "Biker3",
+	  "sprite": "Biker",
+	  "meet_text": "I guess this is an easter egg.",
+	  "repeat_text": "sadly it's not that exciting.",
+	  "pattern": "idle_down",
+	  "position": {
+		"x": 240,
+		"y": 1020
+	  }
+	},
+	{
+	  "name": "Biker4",
+	  "sprite": "Biker",
+	  "meet_text": "Does this make it more exciting if I add an agg.",
+	  "repeat_text": "🥚",
+	  "pattern": "idle_up",
+	  "position": {
+		"x": 240,
+		"y": 1070
+	  }
+	},
+	{
+	  "name": "Biker5",
+	  "sprite": "Roughneck",
+	  "meet_text": "🥚🥚",
+	  "repeat_text": "🥚🥚🥚",
+	  "pattern": "idle_random",
+	  "position": {
+		"x": 750,
+		"y": 1060
+	  }
+	},
+	{
+	  "name": "Biker6",
+	  "sprite": "Roughneck",
+	  "meet_text": "🥚🥚",
+	  "repeat_text": "🥚🥚🥚",
+	  "pattern": "idle_random",
+	  "position": {
+		"x": 300,
+		"y": 960
+	  }
+	},
+	{
+	  "name": "Biker7",
+	  "sprite": "Roughneck",
+	  "meet_text": "🥚🥚",
+	  "repeat_text": "🥚🥚🥚",
+	  "pattern": "idle_random",
+	  "position": {
+		"x": 310,
+		"y": 1050
+	  }
+	},
+	{
+	  "name": "Biker8",
+	  "sprite": "Roughneck",
+	  "meet_text": "🥚🥚",
+	  "repeat_text": "🥚🥚🥚",
+	  "pattern": "idle_random",
+	  "position": {
+		"x": 480,
+		"y": 1090
+	  }
+	},
+	{
+	  "name": "Old Guy Neighbour Eve 1",
+	  "sprite": "NPC_Oldman",
+	  "meet_text": "I found this card on the floor while I was tidying up. I've been here all day and nobody has claimed it so you might as well take it!",
+	  "repeat_text": "Did you get chance to visit the Card Mart yet? I normally visit the pier in the evening but I'm all worn out from cleaning up today. So I think I will just go to bed early tonight.",
+	  "gift_type": "card",
+	  "gift_value": "basep-1",
+	  "pattern": "idle_down",
+	  "wander_radius": 65,
+	  "position": {
+		"x": -375,
+		"y": 1625
+	  }
+	},
+	{
+	  "name": "Old Lady On Bench Eve 1",
+	  "sprite": "NPC_Oldlady",
+	  "meet_text": "It's getting late already, oh my how the days fly when you're at my age. After a long day, make sure you always go to bed and get a good nights rest!",
+	  "repeat_text": "Nothing beats going to bed early and having a good nights sleep. I'm getting tired just thinking about going to bed.",
+	  "pattern": "idle_down",
+	  "position": {
+		"x": -827,
+		"y": 1962
+	  }
+	},
+	{
+	  "name": "Policeman Blocking Beach Bl",
+	  "sprite": "Policeman",
+	  "meet_text": "There's still some Sharpedo reported in the water so we can't let anyone through yet.",
+	  "repeat_text": "Can't let you through yet until the Sharpedo are gone. It should be safe in the morning, why don't you have an early night!",
+	  "pattern": "idle_left",
+	  "position": {
+		"x": -545,
+		"y": 2010
+	  }
+	},
+	{
+	  "name": "Car Park Guy 1",
+	  "sprite": "Security",
+	  "meet_text": "I'm the parking warden for the Celeste Harbour car park but all these bikers have decided to take it over. I can't get rid of them by myself but the police are protecting the beach so I'm on my own.",
+	  "repeat_text": "It's already so late and the Bikers aren't showing any sign of leaving. I can't go home until they leave they might cause some serious damage.",
+	  "pattern": "idle_down",
+	  "position": {
+		"x": 628,
+		"y": 1190
+	  }
+	},
+	{
+	  "name": "Badman 1",
+	  "sprite": "Roughneck",
+	  "meet_text": "Heh, scram kid. We're having our biker gang meetup here so get lost.",
+	  "repeat_text": "Didn't you hear me? Get lost kid.",
+	  "pattern": "idle_down",
+	  "position": {
+		"x": 680,
+		"y": 1695
+	  }
+	},
+	{
+	  "name": "Badman 2",
+	  "sprite": "Roughneck",
+	  "meet_text": "We're called the Cool Guy Biker Gang. We're the coolest in the world..... What are you giggling at loser?",
+	  "repeat_text": "Do you think something's funny??",
+	  "pattern": "idle_up",
+	  "position": {
+		"x": 680,
+		"y": 1735
+	  }
+	}
+  ],
+  "opponents": [
+	{
+	  "name": "Youngster Joey",
+	  "sprite": "Youngster2",
+	  "deck": "Basic Pokemon Barrage",
+	  "music": "chilled_battle",
+	  "prize_cards": 2,
+	  "meet_text": "I just got given some cards off my grandma, she's so cool. I'm not really good at battling yet but it's a lot of fun!",
+	  "repeat_text": "I'm getting better at playing!'",
+	  "first_win_text": "Take these full heal cards, you can use them to heal any status conditions your pokemon get. They're really useful.",
+	  "rematch_win_text": "I'm going to win one day!",
+	  "loss_text": "I didn't expect to win at all! These cards must be really good.",
+	  "cash_reward": "50",
+	  "coin_reward": "coin_energy_silver_2",
+	  "card_reward": "base1-82, base1-82",
+	  "pattern": "random_wander",
+	  "patrol_speed": 60.0,
+	  "wander_radius": 65,
+	  "position": {
+		"x": -800,
+		"y": 2020
+	  }
+	},
+	{
+	  "name": "Gardener Callum",
+	  "sprite": "Gardener",
+	  "deck": "Pollen Power",
+	  "music": "chilled_battle",
+	  "prize_cards": 2,
+	  "meet_text": "Wowee, it was a long day gardening today. I'm down for a match to let off some steam now.",
+	  "repeat_text": "I've got time for a rematch before my next shift.",
+	  "first_win_text": "I'm clearly too worn out from such a long shift.",
+	  "rematch_win_text": "I'll win when I'm fully rested.",
+	  "loss_text": "Even after a hard days work I can still win!",
+	  "cash_reward": "75",
+	  "coin_reward": "coin_bulbasaur_green",
+	  "pattern": "idle_up",
+	  "wander_radius": 65,
+	  "position": {
+		"x": -690,
+		"y": 2180
+	  }
+	},
+	{
+	  "name": "Engineer Allan",
+	  "sprite": "Worker",
+	  "deck": "Zzzap",
+	  "music": "chilled_battle",
+	  "prize_cards": 3,
+	  "meet_text": "As you can see, the new bulb installation went perrrrfectly today. I'm worn out from all the steps but always game for a match.",
+	  "repeat_text": "I won't be needing to replace the bulb any time soon so I've got time to kill.",
+	  "first_win_text": "That was clearly toooooo many steps today.",
+	  "rematch_win_text": "At least I'm reaaallly good at replacing bulbs.",
+	  "loss_text": "I hope your loss didn't come as a shock to you.",
+	  "cash_reward": "75",
+	  "coin_reward": "coin_energy_gold",
+	  "pattern": "idle_left",
+	  "wander_radius": 65,
+	  "position": {
+		"x": -800,
+		"y": 2620
+	  }
+	},
+	{
+	  "name": "Gambler Mick",
+	  "sprite": "Gambler",
+	  "deck": "You Win Some N Lose Some",
+	  "music": "normal_battle",
+	  "prize_cards": 2,
+	  "meet_text": "All I need is a bit of luck, I let that decide my fate. If I battle enough then I'm bound to win some of them at least.",
+	  "repeat_text": "I'll be a lot luckier this time round.",
+	  "first_win_text": "Luck really wasn't on my side today...",
+	  "rematch_win_text": "I just need a little bit of luck that's all.",
+	  "loss_text": "Looks like luck wasn't on your side today.",
+	  "cash_reward": "50",
+	  "coin_reward": "coin_pikachu_gold_3",
+	  "card_reward": "base1-27, base1-27",
+	  "pattern": "idle_random",
+	  "position": {
+		"x": -860,
+		"y": 2690
+	  }
+	},
+	{
+	  "name": "Schoolboy Adam",
+	  "sprite": "Youngster3",
+	  "deck": "Status Infliction",
+	  "music": "chilled_battle",
+	  "prize_cards": 2,
+	  "meet_text": "I'm trying out some new techniques using statuses. If we battle I'll show you how good they are.",
+	  "repeat_text": "I'll definitely win this time round.",
+	  "first_win_text": "Oh man I really thought my statuses were going to cause you some trouble.",
+	  "rematch_win_text": "Maybe I need a better tactic...",
+	  "loss_text": "I knew my status infliction technique would work!",
+	  "cash_reward": "50",
+	  "coin_reward": "coin_chansey_silver",
+	  "pattern": "patrol_line",
+	  "patrol_speed": 60.0,
+	  "patrol_distance": 200,
+	  "patrol_axis": "vertical",
+	  "position": {
+		"x": -850,
+		"y": 2250
+	  }
+	},
+	{
+	  "name": "Fisherman Dave",
+	  "sprite": "Fisherman",
+	  "deck": "Fishy Fish",
+	  "music": "normal_battle",
+	  "prize_cards": 4,
+	  "meet_text": "I love the lighthouse here, it seems to attract all kinds of fish so I always catch a lot in this spot. I'm catching so many I need a break.",
+	  "repeat_text": "I've caught a lot since last time.",
+	  "first_win_text": "Even if they don't help me win, I still love my fish.",
+	  "rematch_win_text": "Fishing and Pokemon cards are both a lot of fun, I could do both all day.",
+	  "loss_text": "Maybe you should try picking up a rod and give fishing a go instead!",
+	  "cash_reward": "50",
+	  "coin_reward": "coin_gyarados_blue",
+	  "pattern": "idle_down",
+	  "position": {
+		"x": -600,
+		"y": 2730
+	  }
+	},
+	{
+	  "name": "Fisherman John",
+	  "sprite": "Fisherman2",
+	  "deck": "Seavolutions",
+	  "music": "normal_battle",
+	  "prize_cards": 4,
+	  "meet_text": "Me and my buddy Dave fish here all the time. The lighthouse is like a giant lure in the evening so we catch even more. I've got time for a break.",
+	  "repeat_text": "The evening is still young if you want another match.",
+	  "first_win_text": "I'm a much better fisherman than I am a card player.",
+	  "rematch_win_text": "Always happy to put my fishing aside for a rematch.",
+	  "loss_text": "I'm not just the best round here at fishing!",
+	  "cash_reward": "75",
+	  "coin_reward": "coin_gyarados_red",
+	  "pattern": "idle_down",
+	  "position": {
+		"x": -810,
+		"y": 2730
+	  }
+	},
+	{
+	  "name": "Painter Jericho",
+	  "sprite": "Artist",
+	  "deck": "Art Assistants",
+	  "music": "normal_battle",
+	  "prize_cards": 2,
+	  "meet_text": "The evening sun is the most perfect time to come here and paint... or play cards!",
+	  "repeat_text": "I've been painting a lot of great pieces from this spot.",
+	  "first_win_text": "A win or a loss, both are equal pieces of art.",
+	  "rematch_win_text": "A win or a loss, both are equal pieces of art.",
+	  "loss_text": "To win is a beautiful piece of art.",
+	  "cash_reward": "50",
+	  "coin_reward": "coin_eevee_silver",
+	  "card_reward": "base1-27, base1-27",
+	  "pattern": "idle_right",
+	  "position": {
+		"x": -565,
+		"y": 2375
+	  }
+	}
+  ]
 }

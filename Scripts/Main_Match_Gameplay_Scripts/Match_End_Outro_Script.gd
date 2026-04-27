@@ -166,16 +166,16 @@ func load_player_data() -> void:
 # ============================================================
 
 func update_sprites() -> void:
-	if opponent_data.has("battle_sprite"):
-		var path = "res://Image_Assets/Character_Sprites/In_Battle_Sprites/" + opponent_data["battle_sprite"].to_lower() + ".png"
+	if opponent_data.has("sprite"):
+		var path = "res://Image_Assets/Character_Sprites/In_Battle_Sprites/" + opponent_data["sprite"].to_lower() + ".png"
 		var tex = load(path)
 		if tex:
 			opponent_sprite.texture = tex
 		else:
 			print("Could not load opponent sprite: ", path)
 	
-	if player_data.has("battle_sprite"):
-		var path = "res://Image_Assets/Character_Sprites/In_Battle_Sprites/" + player_data["battle_sprite"].to_lower() + ".png"
+	if player_data.has("sprite"):
+		var path = "res://Image_Assets/Character_Sprites/In_Battle_Sprites/" + player_data["sprite"].to_lower() + ".png"
 		var tex = load(path)
 		if tex:
 			player_sprite.texture = tex
