@@ -1,0 +1,36 @@
+[gd_scene format=4 uid="uid://bd1cf7d6oc7n0"]
+
+[ext_resource type="TileSet" uid="uid://brncoaox03ylg" path="res://Image_Assets/Map_Sheets/Tile_Sets/Verdant_Forest.tres" id="1_yg3vm"]
+
+[sub_resource type="Gradient" id="Gradient_bf13f"]
+offsets = PackedFloat32Array(0.094339624, 0.4811321)
+colors = PackedColorArray(1, 1, 1, 0.49019608, 1.1540799, 1.1540799, 1.1540799, 0)
+
+[sub_resource type="GradientTexture2D" id="GradientTexture2D_yg3vm"]
+gradient = SubResource("Gradient_bf13f")
+fill = 1
+fill_from = Vector2(0.4764706, 0.48235294)
+
+[node name="ForestLamp" type="Node2D" unique_id=368895387]
+
+[node name="LampBase" type="TileMapLayer" parent="." unique_id=220947231]
+position = Vector2(960, 544)
+tile_map_data = PackedByteArray("AABtAEIAAAAhAAQAAABtAEMAAAAhAAUAAABoAEIAAAAgAAQAAABoAEMAAAAgAAUAAADE/9//AAAlAAQAAAA=")
+tile_set = ExtResource("1_yg3vm")
+
+[node name="LampTop" type="TileMapLayer" parent="." unique_id=1136563680]
+z_index = 15
+position = Vector2(960, 544)
+tile_map_data = PackedByteArray("AABtAEIAAAAhAAQAAABtAEMAAAAhAAUAAABoAEIAAAAgAAQAAABoAEMAAAAgAAUAAADE/93/AAAlAAIAAADE/97/AAAlAAMAAAA=")
+tile_set = ExtResource("1_yg3vm")
+
+[node name="PointLight2D2" type="PointLight2D" parent="." unique_id=1175959164]
+position = Vector2(8, -8.000001)
+scale = Vector2(3.3242183, 3.3242183)
+color = Color(5.0615087, 2.9599407, 0, 0.6392157)
+energy = 0.72
+range_z_min = -961
+range_z_max = 584
+shadow_enabled = true
+shadow_color = Color(0, 0, 0, 0.79607844)
+texture = SubResource("GradientTexture2D_yg3vm")
