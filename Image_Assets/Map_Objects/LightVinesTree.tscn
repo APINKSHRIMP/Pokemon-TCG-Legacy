@@ -1,0 +1,30 @@
+[gd_scene format=4 uid="uid://bw46iqrxgoxpp"]
+
+[ext_resource type="TileSet" uid="uid://brncoaox03ylg" path="res://Image_Assets/Map_Sheets/Tile_Sets/Verdant_Forest.tres" id="1_72mi1"]
+
+[sub_resource type="CapsuleShape2D" id="CapsuleShape2D_stfnp"]
+radius = 5.9999886
+height = 21.99996
+
+[node name="ForestTree" type="Node2D" unique_id=565541350]
+
+[node name="Tree Top" type="TileMapLayer" parent="." unique_id=2058830737]
+z_index = 15
+tile_map_data = PackedByteArray("AAAAAAAAAAACAAMAABAAAAEAAAACAAQAABABAAAAAAABAAMAABABAAEAAAABAAQAABACAAAAAAAAAAMAABD+//3/AAAEAAAAABD+//7/AAAEAAEAABD+////AAAEAAIAABD+/wAAAAAEAAMAABD///3/AAADAAAAABD///7/AAADAAEAABD/////AAADAAIAABD//wAAAAADAAMAABD//wEAAAADAAQAABAAAP3/AAACAAAAABAAAP7/AAACAAEAABAAAP//AAACAAIAABABAP3/AAABAAAAABABAP7/AAABAAEAABABAP//AAABAAIAABACAP3/AAAAAAAAABACAP7/AAAAAAEAABACAP//AAAAAAIAABAAAAIAAAACAAUAABD//wIAAAADAAUAABABAAIAAAABAAUAABACAAEAAAAAAAQAABD+/wEAAAAEAAQAABD+/wIAAAAEAAUAABA=")
+tile_set = ExtResource("1_72mi1")
+
+[node name="Tree Bottom" type="TileMapLayer" parent="." unique_id=1488383354]
+tile_map_data = PackedByteArray("AAD//wMAAAADAAYAABAAAAMAAAACAAYAABABAAMAAAABAAYAABA=")
+tile_set = ExtResource("1_72mi1")
+
+[node name="Tree Shadow" type="TileMapLayer" parent="." unique_id=2072641887]
+z_index = 10
+tile_map_data = PackedByteArray("AAACAAIAAAAOAAEAAAABAAIAAAANAAEAAAAAAAIAAAAMAAEAAAD//wIAAAALAAEAAAD+/wIAAAAKAAEAAAACAAMAAAAOAAIAAAABAAMAAAANAAIAAAAAAAMAAAAMAAIAAAD//wMAAAALAAIAAAD+/wMAAAAKAAIAAAACAAQAAAAOAAMAAAABAAQAAAANAAMAAAAAAAQAAAAMAAMAAAD//wQAAAALAAMAAAD+/wQAAAAKAAMAAAACAAUAAAAOAAQAAAABAAUAAAANAAQAAAAAAAUAAAAMAAQAAAD//wUAAAALAAQAAAA=")
+tile_set = ExtResource("1_72mi1")
+
+[node name="CharacterBody2D" type="CharacterBody2D" parent="." unique_id=1180298927]
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="CharacterBody2D" unique_id=441636864]
+position = Vector2(8.999999, 52)
+rotation = -1.5726978
+shape = SubResource("CapsuleShape2D_stfnp")
