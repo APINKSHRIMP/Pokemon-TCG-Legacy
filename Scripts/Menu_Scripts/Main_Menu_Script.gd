@@ -2,10 +2,16 @@ extends Node
 
 @onready var audio_player = AudioStreamPlayer.new()
 
-# Map each TextureRect node name to its scene file path
+# Default world-map scene used when no menu-return state has been saved
+# (e.g. on a fresh game start that lands on the menu directly).
+const DEFAULT_MAP_SCENE = "res://Scenes/Map_Scenes/Celeste_Harbour.tscn"
+
+# Map each TextureRect node name to its scene file path. The world-map entry
+# is resolved dynamically at click time so it returns to whichever map the
+# player came from.
 const SCENE_MAP = {
 	"deck_mode_background": "res://Scenes/Main_Menu_Scenes/Deck_Build_And_Card_View_Scene.tscn",
-	"map_mode_background": "res://Scenes/Map_Scenes/Celeste_Harbour.tscn",
+	"map_mode_background": DEFAULT_MAP_SCENE,
 	"player_mode_background": "res://Scenes/Main_Menu_Scenes/Trainer_Card_Scene.tscn",
 	"options_mode_background": "res://Scenes/Main_Menu_Scenes/Options_Scene.tscn",
 	"coin_case_mode_background": "res://Scenes/Main_Menu_Scenes/Coin_Case_Scene.tscn",
@@ -16,8 +22,15 @@ var tweens: Dictionary = {}
 
 
 func _input(event: InputEvent) -> void:
-	if event is InputEventKey and event.pressed and event.keycode == KEY_ESCAPE:
-		get_tree().quit()
+	if event is InputEventKey and event.pressed and not event.is_echo():
+		if event.keycode == KEY_ESCAPE or event.keycode == KEY_ENTER or event.keycode == KEY_KP_ENTER:
+			get_viewport().set_input_as_handled()
+			_return_to_world_map()
+
+
+func _return_to_world_map() -> void:
+	var target: String = GameState.menu_return_scene_path if GameState.has_menu_return_state else DEFAULT_MAP_SCENE
+	get_tree().change_scene_to_file(target)
 
 
 func _ready() -> void:
@@ -96,4 +109,9 @@ func _on_mode_clicked(event: InputEvent, node_name: String) -> void:
 	# Guard: only fire on a left mouse button press, not release or other events
 	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT and event.pressed:
 		SoundManagerScript.play_sfx(SoundManagerScript.SFX_gamemode_select)
+		# World-map button: route back to the saved map scene (preserving
+		# position) rather than always defaulting to Celeste Harbour
+		if node_name == "map_mode_background":
+			_return_to_world_map()
+			return
 		get_tree().change_scene_to_file(SCENE_MAP[node_name])

@@ -1,5 +1,7 @@
 extends Node2D
 
+const SCENE_PATH = "res://Scenes/Map_Scenes/Player_House_Upstairs.tscn"
+
 # ── PLACEHOLDER: Replace with actual 60 card IDs ──
 const STARTER_BOX_CARDS = "base1-43, base1-43, base1-43, base1-43, base1-47, base1-47, base1-47, base1-47, base1-27, base1-27, base1-52, base1-52, base1-52, base1-52, base1-61, base1-61,base1-61,base1-61,base1-67,base1-67,base1-67,base1-67,base1-88,base1-91,base1-94,base1-94"
 
@@ -12,14 +14,19 @@ func _ready():
 	$"Door Areas".collision_mask = 2
 	$"Door Areas".monitoring = true
 	$"Door Areas".monitorable = true
-	$Player.set_direction(GameState.get_player_direction())
 	$"Door Areas".body_entered.connect(_on_door_entered)
 
-	if GameState.use_spawn_position:
+	if GameState.has_menu_return_state and GameState.menu_return_scene_path == SCENE_PATH:
+		$Player.position = GameState.menu_return_position
+		$Player.set_direction(GameState.menu_return_direction)
+		GameState.clear_menu_return_state()
+	elif GameState.use_spawn_position:
 		$Player.position = GameState.spawn_position
 		GameState.use_spawn_position = false
+		$Player.set_direction(GameState.get_player_direction())
 	else:
 		$Player.position = Vector2(50, 25)
+		$Player.set_direction(GameState.get_player_direction())
 
 	MapManager.initialise($Player, Node2D.new(), $UILAYER, "", [], "")
 	_apply_moving_in_visibility()
@@ -52,7 +59,19 @@ func _process(_delta):
 		MapManager._show_message_with_ok("Pokemon Starter deck acquired!")
 
 func _input(event: InputEvent) -> void:
-	if event is InputEventKey and event.pressed and event.keycode == KEY_ESCAPE:
+	if event is InputEventKey and event.pressed and not event.is_echo():
+		var is_enter: bool = event.keycode == KEY_ENTER or event.keycode == KEY_KP_ENTER
+		var is_escape: bool = event.keycode == KEY_ESCAPE
+		if not (is_enter or is_escape):
+			return
+		if is_enter and MapManager.message_panel != null and MapManager.message_panel.visible:
+			return
+		# Don't open the menu when the player is opening the starter box —
+		# Enter / Space near the box is reserved for that interaction
+		if is_enter and player_near_box and not GameState.progress.get("player_collected_starter_box", false):
+			return
+		get_viewport().set_input_as_handled()
+		GameState.save_menu_return_state(SCENE_PATH, $Player.position, $Player.get_current_direction())
 		SoundManagerScript.stop_bgm()
 		get_tree().change_scene_to_file("res://Scenes/Main_Menu_Scenes/Main_Menu_Scene.tscn")
 

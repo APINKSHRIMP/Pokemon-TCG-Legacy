@@ -1,5 +1,7 @@
 extends Node2D
 
+const SCENE_PATH = "res://Scenes/Map_Scenes/Player_House_Downstairs.tscn"
+
 func _ready():
 	var tween = create_tween()
 	tween.tween_property(get_tree().root, "modulate", Color(1, 1, 1, 0), 0.0)
@@ -7,14 +9,19 @@ func _ready():
 	$"Door Areas".collision_mask = 2
 	$"Door Areas".monitoring = true
 	$"Door Areas".monitorable = true
-	$Player.set_direction(GameState.get_player_direction())
 	$"Door Areas".body_entered.connect(_on_door_entered)
 
-	if GameState.use_spawn_position:
+	if GameState.has_menu_return_state and GameState.menu_return_scene_path == SCENE_PATH:
+		$Player.position = GameState.menu_return_position
+		$Player.set_direction(GameState.menu_return_direction)
+		GameState.clear_menu_return_state()
+	elif GameState.use_spawn_position:
 		$Player.position = GameState.spawn_position
 		GameState.use_spawn_position = false
+		$Player.set_direction(GameState.get_player_direction())
 	else:
 		$Player.position = Vector2(200, 200)
+		$Player.set_direction(GameState.get_player_direction())
 
 	MapManager.initialise($Player, Node2D.new(), $UILAYER, "", [], "")
 	_apply_moving_in_visibility()
@@ -30,7 +37,15 @@ func _apply_moving_in_visibility():
 				layer.visible = layer.name != "Moving In"
 
 func _input(event: InputEvent) -> void:
-	if event is InputEventKey and event.pressed and event.keycode == KEY_ESCAPE:
+	if event is InputEventKey and event.pressed and not event.is_echo():
+		var is_enter: bool = event.keycode == KEY_ENTER or event.keycode == KEY_KP_ENTER
+		var is_escape: bool = event.keycode == KEY_ESCAPE
+		if not (is_enter or is_escape):
+			return
+		if is_enter and MapManager.message_panel != null and MapManager.message_panel.visible:
+			return
+		get_viewport().set_input_as_handled()
+		GameState.save_menu_return_state(SCENE_PATH, $Player.position, $Player.get_current_direction())
 		SoundManagerScript.stop_bgm()
 		get_tree().change_scene_to_file("res://Scenes/Main_Menu_Scenes/Main_Menu_Scene.tscn")
 

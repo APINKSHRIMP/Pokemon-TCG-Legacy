@@ -307,6 +307,12 @@ func _on_player_interact(opponent: Node):
 func _on_yes_pressed():
 	# Shop NPC — delegate to npc.on_interact() which returns false when ready to open shop
 	if current_npc != null and current_npc.npc_type == "shop":
+		# Preserve player position and facing so they're restored when
+		# pack purchase exits back to Card Mart (Card_Mart._ready reads
+		# spawn_position / use_spawn_position / get_player_direction)
+		GameState.save_player_direction(_player.get_current_direction())
+		GameState.spawn_position = _player.position
+		GameState.use_spawn_position = true
 		_hide_message()
 		get_tree().change_scene_to_file("res://Scenes/Main_Menu_Scenes/Pack_Purchase.tscn")
 		return

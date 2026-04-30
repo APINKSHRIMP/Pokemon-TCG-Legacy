@@ -18,6 +18,30 @@ var use_spawn_position: bool = false
 var return_map_scene_path: String = ""
 var last_interior_scene: String = ""
 
+# ============================================================
+# MENU RETURN STATE
+# Set by a map scene before opening the main menu so the player
+# can be restored to the exact spot when the menu closes.
+# Survives navigation through sub-menus (deck builder, options,
+# coin case, trainer card) and is consumed by the destination
+# map scene's _ready.
+# ============================================================
+
+var has_menu_return_state: bool = false
+var menu_return_scene_path: String = ""
+var menu_return_position: Vector2 = Vector2.ZERO
+var menu_return_direction: String = "down"
+
+func save_menu_return_state(scene_path: String, pos: Vector2, direction: String) -> void:
+	has_menu_return_state = true
+	menu_return_scene_path = scene_path
+	menu_return_position = pos
+	menu_return_direction = direction
+
+func clear_menu_return_state() -> void:
+	has_menu_return_state = false
+	menu_return_scene_path = ""
+
 # Progress tracking
 var progress: Dictionary = {}
 

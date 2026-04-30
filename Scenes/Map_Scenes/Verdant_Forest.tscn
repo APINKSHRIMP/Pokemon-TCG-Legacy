@@ -1,5 +1,6 @@
 [gd_scene format=4 uid="uid://d1lfen2hksh55"]
 
+[ext_resource type="Script" path="res://Scripts/Map_Scripts/Verdant_Forest.gd" id="20_vfscr"]
 [ext_resource type="TileSet" uid="uid://brncoaox03ylg" path="res://Image_Assets/Map_Sheets/Tile_Sets/Verdant_Forest.tres" id="1_vnhbh"]
 [ext_resource type="PackedScene" uid="uid://bprufyh8mxqom" path="res://Scenes/Objects/Player_Object_Scene.tscn" id="2_06m8d"]
 [ext_resource type="PackedScene" uid="uid://c10qeone4u11s" path="res://Image_Assets/Map_Objects/DarkTree.tscn" id="4_0jajs"]
@@ -12,6 +13,7 @@
 [ext_resource type="PackedScene" uid="uid://7lprlc6fneu4" path="res://Image_Assets/Map_Objects/MediumVinesTree.tscn" id="9_x6xh7"]
 
 [node name="VerdantForest" type="Node2D" unique_id=1780779826]
+script = ExtResource("20_vfscr")
 
 [node name="BACKGROUND" type="TileMap" parent="." unique_id=1592078568]
 format = 2

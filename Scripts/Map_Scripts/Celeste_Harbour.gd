@@ -30,12 +30,19 @@ func _ready():
 	$"Door Areas".collision_mask  = 2
 	$"Door Areas".monitoring      = true
 	$"Door Areas".monitorable     = true
-	$Player.set_direction(GameState.get_player_direction())
 	$"Door Areas".body_entered.connect(_on_door_entered)
 
-	if GameState.return_to_scene == "Celeste Harbour":
+	# Returning from main menu — restore exact position and facing
+	if GameState.has_menu_return_state and GameState.menu_return_scene_path == SCENE_PATH:
+		$Player.position = GameState.menu_return_position
+		$Player.set_direction(GameState.menu_return_direction)
+		GameState.clear_menu_return_state()
+	elif GameState.return_to_scene == "Celeste Harbour":
 		$Player.position = GameState.interior_entry_position
+		$Player.set_direction(GameState.get_player_direction())
 		GameState.return_to_scene = ""
+	else:
+		$Player.set_direction(GameState.get_player_direction())
 
 	MapManager.initialise(
 		$Player,
@@ -134,7 +141,16 @@ func _apply_tileset(node: Node, tileset: TileSet) -> void:
 		_apply_tileset(child, tileset)
 
 func _input(event: InputEvent) -> void:
-	if event is InputEventKey and event.pressed and event.keycode == KEY_ESCAPE:
+	if event is InputEventKey and event.pressed and not event.is_echo():
+		var is_enter: bool = event.keycode == KEY_ENTER or event.keycode == KEY_KP_ENTER
+		var is_escape: bool = event.keycode == KEY_ESCAPE
+		if not (is_enter or is_escape):
+			return
+		# Enter doubles as ui_accept — when a dialog is open let it dismiss the dialog
+		if is_enter and MapManager.message_panel != null and MapManager.message_panel.visible:
+			return
+		get_viewport().set_input_as_handled()
+		GameState.save_menu_return_state(SCENE_PATH, $Player.position, $Player.get_current_direction())
 		SoundManagerScript.stop_bgm()
 		get_tree().change_scene_to_file("res://Scenes/Main_Menu_Scenes/Main_Menu_Scene.tscn")
 
