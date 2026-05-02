@@ -1,0 +1,138 @@
+{
+  "npcs": [
+	{
+	  "name": "Pikachu Mum",
+	  "sprite": "lass",
+	  "meet_text": "All my kids",
+	  "repeat_text": "find them",
+	  "pattern": "idle_down",
+	  "position": {
+		"x": -690,
+		"y": 2190
+	  }
+	},
+	{
+	  "name": "NAME2",
+	  "sprite": "Worker",
+	  "meet_text": "TEXT",
+	  "repeat_text": "TEXT",
+	  "pattern": "idle_right",
+	  "position": {
+		"x": -800,
+		"y": 2620
+	  }
+	}
+  ],
+  "opponents": [
+	{
+	  "name": "Pikachu Fan Marina",
+	  "sprite": "Pokekid",
+	  "deck": "Wave Surfing",
+	  "music": "chilled_battle",
+	  "prize_cards": 1,
+	  "meet_text": "Have you ever seen a Pikachu Surf, Some are really really good on a surfboard!!",
+	  "repeat_text": "Have you seen a Pikachu on a surfboard yet?",
+	  "first_win_text": "If you haven't seen a Pikachu use surf you can have this then!",
+	  "rematch_win_text": "I wish I could surf like a Pikachu",
+	  "loss_text": "Pikachu can do everything, it's the best!!!",
+	  "cash_reward": "50",
+	  "coin_reward": "coin_pikachu_blue",
+	  "card_reward": "basep-28",
+	  "pattern": "random_wander",
+	  "patrol_speed": 20.0,
+	  "wander_radius": 65,
+	  "position": {
+		"x": 1000,
+		"y": 1000
+	  }
+	},
+	{
+	  "name": "Pikachu Fan Skye",
+	  "sprite": "Pokekid",
+	  "deck": "Fly Away",
+	  "music": "chilled_battle",
+	  "prize_cards": 1,
+	  "meet_text": "Some Pokemon can use fly to take you somewhere you want to go. Turns out so can Pikachu!",
+	  "repeat_text": "I want to take a ride on a flying Pikachu",
+	  "first_win_text": "Hold onto this and try not to float away!",
+	  "rematch_win_text": "I've never see a flying Pikachu",
+	  "loss_text": "You'll never catch a Pikachu that's flying away!",
+	  "cash_reward": "50",
+	  "coin_reward": "coin_pikachu_red",
+	  "card_reward": "basep-25",
+	  "pattern": "random_wander",
+	  "patrol_speed": 20.0,
+	  "wander_radius": 65,
+	  "position": {
+		"x": 1020,
+		"y": 1020
+	  }
+	},
+	{
+	  "name": "Pikachu Fan Cami",
+	  "sprite": "Pokekid",
+	  "deck": "Snap!",
+	  "music": "chilled_battle",
+	  "prize_cards": 1,
+	  "meet_text": "I love taking pictures of Pokemon, especially Pikachu!",
+	  "repeat_text": "I'm really good with a Camera!",
+	  "first_win_text": "I took a really good picture of Pikachu and put it on this card",
+	  "rematch_win_text": "Do you want to see more pictures of Pikachu?",
+	  "loss_text": "I'll have to take a photo to remember this moment",
+	  "cash_reward": "50",
+	  "coin_reward": "coin_pikachu_gold_1",
+	  "card_reward": "basep-26",
+	  "pattern": "random_wander",
+	  "patrol_speed": 20.0,
+	  "wander_radius": 65,
+	  "position": {
+		"x": 980,
+		"y": 980
+	  }
+	},
+	{
+	  "name": "Pikachu Fan Juniper",
+	  "sprite": "Pokekid",
+	  "deck": "Forest Mouse",
+	  "music": "chilled_battle",
+	  "prize_cards": 1,
+	  "meet_text": "Did you know Pikachu live in the forest?",
+	  "repeat_text": "I've not seen any Pikachu around here yet.",
+	  "first_win_text": "I wish I could find a Pikachu around here but this is all I can find.",
+	  "rematch_win_text": "Have you found a Pikachu around here yet?",
+	  "loss_text": "If I'm lucky enough to win then I should be lucky enough to see a Pikachu!",
+	  "cash_reward": "50",
+	  "coin_reward": "coin_pikachu_gold_2",
+	  "card_reward": "basep-27",
+	  "pattern": "random_wander",
+	  "patrol_speed": 20.0,
+	  "wander_radius": 65,
+	  "position": {
+		"x": 1040,
+		"y": 1040
+	  }
+	  },
+	  {
+	  "name": "Pikachu Fan Raye",
+	  "sprite": "Pokekid",
+	  "deck": "Thunderbolt!",
+	  "music": "chilled_battle",
+	  "prize_cards": 1,
+	  "meet_text": "Go Pikachu, use Thunderbolt!!!.... I don't really have a Pikachu.",
+	  "repeat_text": "I wish I could have a Pikachu for real",
+	  "first_win_text": "Have this Pikachu card and if you get a real Pikachu can you let me have it?",
+	  "rematch_win_text": "I still don't have a Pikachu at all",
+	  "loss_text": "My Pikachu would be really strong too!",
+	  "cash_reward": "50",
+	  "coin_reward": "coin_pikachu_silver_2",
+	  "card_reward": "basep-4",
+	  "pattern": "random_wander",
+	  "patrol_speed": 20.0,
+	  "wander_radius": 65,
+	  "position": {
+		"x": 1060,
+		"y": 1060
+	  }
+	}
+  ]
+}
