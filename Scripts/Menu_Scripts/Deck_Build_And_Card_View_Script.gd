@@ -246,7 +246,7 @@ func _load_player_data() -> String:
 		return "base1"
 
 	current_deck_name = data.get("deck", "")
-	deck_name_edit.text = current_deck_name.replace("_", " ")
+	deck_name_edit.text = current_deck_name
 
 	return data.get("last_set_loaded", "base1")
 
@@ -1342,17 +1342,16 @@ func _on_save_pressed() -> void:
 	var display_name := deck_name_edit.text.strip_edges()
 	if display_name == "":
 		return
-	var file_name := display_name.replace(" ", "_")
 
 	SoundManagerScript.play_sfx(SoundManagerScript.SFX_gamemode_select)
 
 	# Write the deck file
-	_save_deck_file(file_name)
+	_save_deck_file(display_name)
 
 	# Update player_data.json with the new deck name and last set loaded
-	_save_player_data(file_name)
+	_save_player_data(display_name)
 
-	current_deck_name = file_name
+	current_deck_name = display_name
 	SoundManagerScript.play_sfx(SoundManagerScript.SFX_gamemode_select)
 
 	# Snapshot the deck so dirty-tracking knows this is the saved state

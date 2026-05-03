@@ -133,6 +133,28 @@
 		"x": 1060,
 		"y": 1060
 	  }
-	}
+	},
+	{
+	  "name": "Pikachu Fan Leaf",
+	  "sprite": "Pokekid",
+	  "deck": "Leafychu",
+	  "music": "chilled_battle",
+	  "prize_cards": 1,
+	  "meet_text": "Pikachu is just so cute, he's the cutest Pokemon ever!",
+	  "repeat_text": "I love every Pikachu.",
+	  "first_win_text": "Even though I don't have a lot of Pikachu, you can have this one.",
+	  "rematch_win_text": "I will win with my Pikachu one day!",
+	  "loss_text": "That's why I love Pikachu so much!",
+	  "cash_reward": "50",
+	  "coin_reward": "coin_pikachu_gold_4",
+	  "card_reward": "basep-1",
+	  "pattern": "random_wander",
+	  "patrol_speed": 20.0,
+	  "wander_radius": 65,
+	  "position": {
+		"x": 1080,
+		"y": 1080
+	  }
+	},
   ]
 }
