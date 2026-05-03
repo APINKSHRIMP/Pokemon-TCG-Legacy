@@ -1849,6 +1849,11 @@ position = Vector2(467, -16)
 shape = SubResource("RectangleShape2D_njjmc")
 metadata/target_scene = "res://Scenes/Map_Scenes/Card_Mart.tscn"
 
+[node name="DoorArea_VerdantForest" type="CollisionShape2D" parent="Door Areas" unique_id=401894871]
+position = Vector2(957, -599)
+shape = SubResource("RectangleShape2D_njjmc")
+metadata/target_scene = "res://Scenes/Map_Scenes/Verdant_Forest.tscn"
+
 [node name="UILAYER" type="CanvasLayer" parent="." unique_id=1479968642]
 
 [node name="OPPONENTS" type="Node2D" parent="." unique_id=1444714661]
