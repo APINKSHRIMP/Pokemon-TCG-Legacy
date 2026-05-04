@@ -7,8 +7,102 @@
 	  "repeat_text": "find them",
 	  "pattern": "idle_down",
 	  "position": {
-		"x": -690,
-		"y": 2190
+		"x": 1090,
+		"y": 950
+	  },
+	  "condition": {
+		"type": "not_all_opponents_defeated",
+		"targets": ["Pikachu Fan Marina","Pikachu Fan Skye","Pikachu Fan Cami","Pikachu Fan Juniper","Pikachu Fan Raye","Pikachu Fan Leaf"]
+	  }
+	},
+	{
+	  "name": "Pikachu Fan Marina",
+	  "sprite": "Pokekid",
+	  "meet_text": "You're such a good battler!",
+	  "repeat_text": "I'm going to train my Pikachu more!",
+	  "pattern": "idle_down",
+	  "position": {
+		"x": 1000,
+		"y": 1000
+	  },
+	  "condition": {
+		"type": "opponent_defeated",
+		"target": "Pikachu Fan Marina"
+	  }
+	},
+	{
+	  "name": "Pikachu Fan Skye",
+	  "sprite": "Pokekid",
+	  "meet_text": "You fly as well as a Pikachu!",
+	  "repeat_text": "I hope my Pikachu can fly again soon.",
+	  "pattern": "idle_down",
+	  "position": {
+		"x": 1020,
+		"y": 1020
+	  },
+	  "condition": {
+		"type": "opponent_defeated",
+		"target": "Pikachu Fan Skye"
+	  }
+	},
+	{
+	  "name": "Pikachu Fan Cami",
+	  "sprite": "Pokekid",
+	  "meet_text": "That was a great battle to photograph!",
+	  "repeat_text": "I'm still working on my Pikachu collection.",
+	  "pattern": "idle_down",
+	  "position": {
+		"x": 980,
+		"y": 980
+	  },
+	  "condition": {
+		"type": "opponent_defeated",
+		"target": "Pikachu Fan Cami"
+	  }
+	},
+	{
+	  "name": "Pikachu Fan Juniper",
+	  "sprite": "Pokekid",
+	  "meet_text": "Maybe I'll find a Pikachu in the forest now.",
+	  "repeat_text": "I still hope to find a Pikachu here.",
+	  "pattern": "idle_down",
+	  "position": {
+		"x": 1040,
+		"y": 1040
+	  },
+	  "condition": {
+		"type": "opponent_defeated",
+		"target": "Pikachu Fan Juniper"
+	  }
+	},
+	{
+	  "name": "Pikachu Fan Raye",
+	  "sprite": "Pokekid",
+	  "meet_text": "That Pikachu card was so cool!",
+	  "repeat_text": "Maybe I'll find a real Pikachu someday.",
+	  "pattern": "idle_down",
+	  "position": {
+		"x": 1060,
+		"y": 1060
+	  },
+	  "condition": {
+		"type": "opponent_defeated",
+		"target": "Pikachu Fan Raye"
+	  }
+	},
+	{
+	  "name": "Pikachu Fan Leaf",
+	  "sprite": "Pokekid",
+	  "meet_text": "You're as lovely as a Pikachu!",
+	  "repeat_text": "I love battling with Pikachu fans like you.",
+	  "pattern": "idle_down",
+	  "position": {
+		"x": 1080,
+		"y": 1080
+	  },
+	  "condition": {
+		"type": "opponent_defeated",
+		"target": "Pikachu Fan Leaf"
 	  }
 	},
 	{
@@ -44,6 +138,10 @@
 	  "position": {
 		"x": 1000,
 		"y": 1000
+	  },
+	  "condition": {
+		"type": "opponent_not_defeated",
+		"target": "Pikachu Fan Marina"
 	  }
 	},
 	{
@@ -66,6 +164,10 @@
 	  "position": {
 		"x": 1020,
 		"y": 1020
+	  },
+	  "condition": {
+		"type": "opponent_not_defeated",
+		"target": "Pikachu Fan Skye"
 	  }
 	},
 	{
@@ -88,6 +190,10 @@
 	  "position": {
 		"x": 980,
 		"y": 980
+	  },
+	  "condition": {
+		"type": "opponent_not_defeated",
+		"target": "Pikachu Fan Cami"
 	  }
 	},
 	{
@@ -110,9 +216,13 @@
 	  "position": {
 		"x": 1040,
 		"y": 1040
-	  }
 	  },
-	  {
+	  "condition": {
+		"type": "opponent_not_defeated",
+		"target": "Pikachu Fan Juniper"
+	  }
+	},
+	{
 	  "name": "Pikachu Fan Raye",
 	  "sprite": "Pokekid",
 	  "deck": "Thunderbolt!",
@@ -132,6 +242,10 @@
 	  "position": {
 		"x": 1060,
 		"y": 1060
+	  },
+	  "condition": {
+		"type": "opponent_not_defeated",
+		"target": "Pikachu Fan Raye"
 	  }
 	},
 	{
@@ -154,7 +268,35 @@
 	  "position": {
 		"x": 1080,
 		"y": 1080
+	  },
+	  "condition": {
+		"type": "opponent_not_defeated",
+		"target": "Pikachu Fan Leaf"
 	  }
 	},
+	{
+	  "name": "Pikachu Mum",
+	  "sprite": "lass",
+	  "deck": "Forest Mouse",
+	  "music": "chilled_battle",
+	  "prize_cards": 1,
+	  "meet_text": "You've beaten all my children... I'll have to fight you myself!",
+	  "repeat_text": "My Pikachu are still training hard.",
+	  "first_win_text": "I can't believe it... you beat all of us!",
+	  "rematch_win_text": "My Pikachu still have so much to learn.",
+	  "loss_text": "That's my kids' spirit! Keep training!",
+	  "cash_reward": "100",
+	  "coin_reward": "coin_pikachu_gold_1",
+	  "card_reward": "basep-4",
+	  "pattern": "idle_down",
+	  "position": {
+		"x": -690,
+		"y": 2190
+	  },
+	  "condition": {
+		"type": "all_opponents_defeated",
+		"targets": ["Pikachu Fan Marina","Pikachu Fan Skye","Pikachu Fan Cami","Pikachu Fan Juniper","Pikachu Fan Raye","Pikachu Fan Leaf"]
+	  }
+	}
   ]
 }

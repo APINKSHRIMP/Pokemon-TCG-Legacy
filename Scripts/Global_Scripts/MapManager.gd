@@ -127,6 +127,8 @@ func _load_and_spawn_opponents(json_path: String):
 	file.close()
 
 	for entry in data["opponents"]:
+		if not _evaluate_condition(entry.get("condition", {})):
+			continue
 		if not entry.has("position"):
 			push_error("MapManager: Opponent missing position: " + entry.get("name", "unknown"))
 			continue
@@ -166,6 +168,8 @@ func _load_and_spawn_npcs(json_path: String):
 	file.close()
 
 	for entry in data["npcs"]:
+		if not _evaluate_condition(entry.get("condition", {})):
+			continue
 		if not entry.has("position"):
 			push_error("MapManager: NPC missing position: " + entry.get("name", "unknown"))
 			continue
@@ -194,6 +198,51 @@ func _load_and_spawn_npcs(json_path: String):
 
 		_opponents_container.add_child(npc)
 		print("Spawned NPC: ", npc.npc_name, " at ", npc.position)
+
+# ============================================================
+# CONDITION EVALUATION
+# ============================================================
+
+func _evaluate_condition(condition: Dictionary) -> bool:
+	if condition.is_empty():
+		return true
+	var ctype = condition.get("type", "")
+	if GameState.returning_from_battle:
+		var just_beaten = GameState.current_opponent_name
+		if ctype == "opponent_not_defeated" and condition.get("target", "") == just_beaten:
+			return true
+		if ctype == "opponent_defeated" and condition.get("target", "") == just_beaten:
+			return false
+	match ctype:
+		"opponent_defeated":
+			return GameState.has_beaten_opponent(condition.get("target", ""))
+		"opponent_not_defeated":
+			return not GameState.has_beaten_opponent(condition.get("target", ""))
+		"all_opponents_defeated":
+			for t in condition.get("targets", []):
+				if not GameState.has_beaten_opponent(t):
+					return false
+			return true
+		"not_all_opponents_defeated":
+			for t in condition.get("targets", []):
+				if not GameState.has_beaten_opponent(t):
+					return true
+			return false
+		"any_opponent_defeated":
+			for t in condition.get("targets", []):
+				if GameState.has_beaten_opponent(t):
+					return true
+			return false
+		"npc_met":
+			return GameState.has_met_npc(condition.get("target", ""))
+		"npc_not_met":
+			return not GameState.has_met_npc(condition.get("target", ""))
+		"flag_set":
+			return GameState.progress.get(condition.get("flag", ""), false)
+		"flag_not_set":
+			return not GameState.progress.get(condition.get("flag", ""), false)
+	push_warning("MapManager: Unknown condition type: " + condition.get("type", ""))
+	return true
 
 # ============================================================
 # MESSAGE BOX
