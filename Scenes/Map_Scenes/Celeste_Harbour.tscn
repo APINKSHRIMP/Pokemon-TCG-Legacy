@@ -8,7 +8,10 @@
 [ext_resource type="PackedScene" uid="uid://bprufyh8mxqom" path="res://Scenes/Objects/Player_Object_Scene.tscn" id="5_a0lly"]
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_njjmc"]
-size = Vector2(23, 21)
+size = Vector2(26, 5.5)
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_h0m0o"]
+size = Vector2(120, 20)
 
 [sub_resource type="Gradient" id="Gradient_bf13f"]
 offsets = PackedFloat32Array(0.094339624, 0.4811321)
@@ -153,7 +156,7 @@ size = Vector2(36, 9.5)
 size = Vector2(14.5, 8)
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_6xmbc"]
-size = Vector2(98.5, 79.5)
+size = Vector2(98.5, 92.5)
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_ptigi"]
 size = Vector2(43, 22)
@@ -184,7 +187,7 @@ size = Vector2(77, 56)
 size = Vector2(77.5, 93)
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_muecl"]
-size = Vector2(104, 83)
+size = Vector2(104, 80)
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_0qabw"]
 size = Vector2(34, 5.5)
@@ -1840,18 +1843,18 @@ tile_set = ExtResource("2_bf13f")
 position = Vector2(-37, 1468)
 
 [node name="DoorArea_PlayerHouse" type="CollisionShape2D" parent="Door Areas" unique_id=1393435698]
-position = Vector2(-559, -8)
+position = Vector2(-560, -8)
 shape = SubResource("RectangleShape2D_njjmc")
 metadata/target_scene = "res://Scenes/Map_Scenes/Player_House_Downstairs.tscn"
 
 [node name="DoorArea_CardMart" type="CollisionShape2D" parent="Door Areas" unique_id=1953881513]
-position = Vector2(467, -16)
+position = Vector2(468, -17)
 shape = SubResource("RectangleShape2D_njjmc")
 metadata/target_scene = "res://Scenes/Map_Scenes/Card_Mart.tscn"
 
-[node name="DoorArea_VerdantForest" type="CollisionShape2D" parent="Door Areas" unique_id=401894871]
-position = Vector2(957, -599)
-shape = SubResource("RectangleShape2D_njjmc")
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Door Areas" unique_id=271657158]
+position = Vector2(959, -598)
+shape = SubResource("RectangleShape2D_h0m0o")
 metadata/target_scene = "res://Scenes/Map_Scenes/Verdant_Forest.tscn"
 
 [node name="UILAYER" type="CanvasLayer" parent="." unique_id=1479968642]
@@ -1860,6 +1863,7 @@ metadata/target_scene = "res://Scenes/Map_Scenes/Verdant_Forest.tscn"
 z_index = 1
 
 [node name="LIGHTS" type="Control" parent="." unique_id=563581829]
+visible = false
 layout_mode = 3
 anchors_preset = 0
 offset_right = 40.0
@@ -3580,7 +3584,6 @@ texture = ExtResource("4_401pq")
 offset = Vector2(-0.38427734, 775.4363)
 
 [node name="Collision Objects" type="Control" parent="." unique_id=557795143]
-visible = false
 layout_mode = 3
 anchors_preset = 0
 offset_right = 40.0
@@ -5565,7 +5568,7 @@ position = Vector2(294, -343)
 shape = SubResource("RectangleShape2D_rwc73")
 
 [node name="mart" type="CollisionShape2D" parent="Collision Objects/Other objects" unique_id=343103302]
-position = Vector2(463.75, -466.75)
+position = Vector2(463.75, -460.25)
 shape = SubResource("RectangleShape2D_6xmbc")
 
 [node name="big windmill" type="CollisionShape2D" parent="Collision Objects/Other objects" unique_id=1092219581]
@@ -5662,7 +5665,7 @@ position = Vector2(-520.25, -428)
 shape = SubResource("RectangleShape2D_fxcw1")
 
 [node name="house2" type="CollisionShape2D" parent="Collision Objects/Other objects" unique_id=1035549671]
-position = Vector2(-555, -442.5)
+position = Vector2(-555, -444)
 shape = SubResource("RectangleShape2D_muecl")
 
 [node name="Rocks" type="StaticBody2D" parent="Collision Objects" unique_id=811684731]

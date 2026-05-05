@@ -1416,7 +1416,7 @@ func _save_player_data(deck_file_name: String) -> void:
 func _on_cancel_pressed() -> void:
 	_save_last_set_loaded()
 	SoundManagerScript.stop_bgm()
-	get_tree().change_scene_to_file("res://Scenes/Main_Menu_Scenes/Main_Menu_Scene.tscn")
+	SceneCache.change_scene("res://Scenes/Main_Menu_Scenes/Main_Menu_Scene.tscn")
 
 
 ## Writes only last_set_loaded to player_data.json without touching deck name.

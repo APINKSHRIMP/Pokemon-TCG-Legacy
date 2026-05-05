@@ -7,6 +7,10 @@ const TILESET_DAY     = preload("res://Image_Assets/Map_Sheets/Tile_Sets/Startin
 const TILESET_EVENING = preload("res://Image_Assets/Map_Sheets/Tile_Sets/Starting_Areas_Evening.tres")
 const TILESET_NIGHT = preload("res://Image_Assets/Map_Sheets/Tile_Sets/Starting_Areas_Night.tres")
 
+# Default spawn used when arriving here for the first time (no door state,
+# no menu-return state). Update this to match the intended harbour entrance position.
+const DEFAULT_SPAWN_POSITION = Vector2(-600, 1500)
+
 var NPC_JSON_PATH: String = ""
 
 func _ready():
@@ -32,17 +36,39 @@ func _ready():
 	$"Door Areas".monitorable     = true
 	$"Door Areas".body_entered.connect(_on_door_entered)
 
-	# Returning from main menu — restore exact position and facing
+	# Entry positions from other maps
+	var entry_positions = {
+		"Verdant_Forest": Vector2(915, 900),
+	}
+
 	if GameState.has_menu_return_state and GameState.menu_return_scene_path == SCENE_PATH:
+		# Returning from main menu (or splash-screen resume)
 		$Player.position = GameState.menu_return_position
 		$Player.set_direction(GameState.menu_return_direction)
 		GameState.clear_menu_return_state()
+	elif GameState.returning_from_battle:
+		# Returning from battle
+		$Player.position = GameState.player_position
+		$Player.set_direction(GameState.get_player_direction())
+		GameState.returning_from_battle = false
+	elif entry_positions.has(GameState.entering_from):
+		# Returning from another map
+		$Player.position = entry_positions[GameState.entering_from]
+		$Player.set_direction(GameState.get_player_direction())
+		GameState.entering_from = ""
+		GameState.return_to_scene = ""
 	elif GameState.return_to_scene == "Celeste Harbour":
+		# Returning from interior
 		$Player.position = GameState.interior_entry_position
 		$Player.set_direction(GameState.get_player_direction())
 		GameState.return_to_scene = ""
 	else:
+		# First load or other cases
+		$Player.position = DEFAULT_SPAWN_POSITION
 		$Player.set_direction(GameState.get_player_direction())
+
+	# Persist current location so the splash screen can resume here on next launch
+	GameState.save_current_location(SCENE_PATH, $Player.position)
 
 	MapManager.initialise(
 		$Player,
@@ -151,8 +177,9 @@ func _input(event: InputEvent) -> void:
 			return
 		get_viewport().set_input_as_handled()
 		GameState.save_menu_return_state(SCENE_PATH, $Player.position, $Player.get_current_direction())
+		GameState.save_current_location(SCENE_PATH, $Player.position)
 		SoundManagerScript.stop_bgm()
-		get_tree().change_scene_to_file("res://Scenes/Main_Menu_Scenes/Main_Menu_Scene.tscn")
+		SceneCache.change_scene("res://Scenes/Main_Menu_Scenes/Main_Menu_Scene.tscn")
 
 func _on_door_entered(body: Node2D):
 	if not body.is_in_group("player"):
@@ -178,12 +205,25 @@ func _on_door_entered(body: Node2D):
 
 	var save_pos = body.position
 	save_pos.y += 5
-	GameState.interior_entry_position = save_pos
-	GameState.return_to_scene = "Celeste Harbour"
-	GameState.use_spawn_position = false
+
+	# Map scenes use entering_from for hardcoded spawn; everything else is an interior.
+	var map_scenes = ["Celeste_Harbour", "Verdant_Forest"]
+	var is_map_scene = false
+	for map_name in map_scenes:
+		if target.contains(map_name):
+			is_map_scene = true
+			break
+
+	if is_map_scene:
+		GameState.entering_from = "Celeste_Harbour"
+		GameState.return_to_scene = ""
+	else:
+		GameState.interior_entry_position = save_pos
+		GameState.return_to_scene = "Celeste Harbour"
+		GameState.entering_from = ""
 
 	var tween = create_tween()
 	tween.tween_property(get_tree().current_scene, "modulate", Color.BLACK, 0.5)
 	tween.tween_callback(func():
-		get_tree().change_scene_to_file(target)
+		SceneCache.change_scene(target)
 	)

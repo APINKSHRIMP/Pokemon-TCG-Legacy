@@ -342,7 +342,7 @@ func _on_cancel_pressed() -> void:
 	if _in_opening_sequence:
 		return
 	SoundManagerScript.stop_bgm()
-	get_tree().change_scene_to_file(CARD_MART_SCENE)
+	SceneCache.change_scene(CARD_MART_SCENE)
 
 
 func _input(event: InputEvent) -> void:

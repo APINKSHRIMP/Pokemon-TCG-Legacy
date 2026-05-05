@@ -11,7 +11,7 @@ config_version=5
 [application]
 
 config/name="Pokemon_TCG_Legacy"
-run/main_scene="uid://d1lfen2hksh55"
+run/main_scene="uid://dy73eing56d31"
 config/features=PackedStringArray("4.6", "Forward Plus")
 boot_splash/bg_color=Color(0, 0, 0, 1)
 boot_splash/image="uid://cagy8rhu6sscj"
@@ -22,6 +22,7 @@ config/icon="uid://c2ccn1nk4eauh"
 GameDataManager="*res://Scripts/Global_Scripts/Game_Data_Manager_Script.gd"
 SoundManagerScript="*res://Scripts/Global_Scripts/Sound_Manager_Script.gd"
 GameState="*res://Scripts/Global_Scripts/Game_State_Script.gd"
+SceneCache="*res://Scripts/Global_Scripts/Scene_Cache_Script.gd"
 MapManager="*uid://b1mp3uyvbbkl"
 
 [display]

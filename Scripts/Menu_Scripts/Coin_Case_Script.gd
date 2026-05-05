@@ -330,14 +330,14 @@ func _on_save_pressed() -> void:
 
 
 func _on_cancel_pressed() -> void:
-	get_tree().change_scene_to_file("res://Scenes/Main_Menu_Scenes/Main_Menu_Scene.tscn")
+	SceneCache.change_scene("res://Scenes/Main_Menu_Scenes/Main_Menu_Scene.tscn")
 
 
 # ─── Escape key ──────────────────────────────────────────────────────────────
 
 func _input(event: InputEvent) -> void:
 	if event is InputEventKey and event.pressed and event.keycode == KEY_ESCAPE:
-		get_tree().change_scene_to_file("res://Scenes/Main_Menu_Scenes/Main_Menu_Scene.tscn")
+		SceneCache.change_scene("res://Scenes/Main_Menu_Scenes/Main_Menu_Scene.tscn")
 
 	if event is InputEventMouseButton \
 			and event.button_index == MOUSE_BUTTON_LEFT \

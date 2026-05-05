@@ -2149,7 +2149,7 @@ func game_end_logic(loser_is_player: bool) -> void:
 	tween.tween_property(overlay, "color:a", 1.0, 0.5)
 	tween.tween_callback(func():
 		overlay.queue_free()
-		get_tree().change_scene_to_file("res://Scenes/Main_Match_Gameplay_Scenes/Match_End_Outro_Scene.tscn")
+		SceneCache.change_scene("res://Scenes/Main_Match_Gameplay_Scenes/Match_End_Outro_Scene.tscn")
 	)
 
 # Draws one card from the top of the deck and adds it to the hand

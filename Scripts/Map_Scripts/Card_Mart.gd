@@ -28,6 +28,9 @@ func _ready():
 		$Player.position = Vector2(208, 172)
 		$Player.set_direction(GameState.get_player_direction())
 
+	# Persist current location so the splash screen can resume here on next launch
+	GameState.save_current_location(SCENE_PATH, $Player.position)
+
 	# Hide starter set if already collected
 	if GameState.progress.get("player_collected_shop_starter_set", false):
 		_remove_starter_set()
@@ -111,8 +114,9 @@ func _input(event: InputEvent) -> void:
 			return
 		get_viewport().set_input_as_handled()
 		GameState.save_menu_return_state(SCENE_PATH, $Player.position, $Player.get_current_direction())
+		GameState.save_current_location(SCENE_PATH, $Player.position)
 		SoundManagerScript.stop_bgm()
-		get_tree().change_scene_to_file("res://Scenes/Main_Menu_Scenes/Main_Menu_Scene.tscn")
+		SceneCache.change_scene("res://Scenes/Main_Menu_Scenes/Main_Menu_Scene.tscn")
 
 # ============================================================
 # DOOR LOGIC
@@ -148,5 +152,5 @@ func _on_door_entered(body: Node2D):
 	var fade_tween = create_tween()
 	fade_tween.tween_property(get_tree().current_scene, "modulate", Color.BLACK, 0.5)
 	fade_tween.tween_callback(func():
-		get_tree().change_scene_to_file(target)
+		SceneCache.change_scene(target)
 	)

@@ -14,9 +14,57 @@ var return_to_scene: String = ""
 var interior_entry_position: Vector2 = Vector2.ZERO
 var spawn_position: Vector2 = Vector2.ZERO
 var use_spawn_position: bool = false
+var entering_from: String = ""
 
 var return_map_scene_path: String = ""
 var last_interior_scene: String = ""
+
+# ============================================================
+# CURRENT SCENE PERSISTENCE
+# Tracks the player's current map and position so that the
+# splash-screen entry point can resume them at the right place
+# after the game restarts. Updated whenever the player moves
+# between map scenes.
+# ============================================================
+
+const DEFAULT_START_SCENE := "res://Scenes/Map_Scenes/Player_House_Upstairs.tscn"
+
+func save_current_location(scene_path: String, pos: Vector2) -> void:
+	progress["current_scene_path"] = scene_path
+	progress["current_player_position"] = {"x": pos.x, "y": pos.y}
+	save_progress()
+
+func get_saved_scene_path() -> String:
+	return progress.get("current_scene_path", DEFAULT_START_SCENE)
+
+func get_saved_player_position() -> Vector2:
+	var data = progress.get("current_player_position", null)
+	if data is Dictionary and data.has("x") and data.has("y"):
+		return Vector2(float(data["x"]), float(data["y"]))
+	return Vector2.ZERO
+
+func has_saved_player_position() -> bool:
+	return progress.has("current_player_position")
+
+# Captures the live player position from whichever map scene is active and
+# writes it to disk. Called on window close so a quit-mid-walk doesn't lose
+# the player's actual position.
+func _save_live_player_position_on_quit() -> void:
+	var current_scene = get_tree().current_scene
+	if current_scene == null:
+		return
+	var scene_path := String(current_scene.scene_file_path)
+	var player = current_scene.get_node_or_null("Player")
+	if player == null:
+		return
+	if not (player is Node2D):
+		return
+	save_current_location(scene_path, player.position)
+
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_WM_CLOSE_REQUEST:
+		_save_live_player_position_on_quit()
+		get_tree().quit()
 
 # ============================================================
 # MENU RETURN STATE

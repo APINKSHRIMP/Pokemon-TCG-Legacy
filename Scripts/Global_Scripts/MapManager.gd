@@ -363,7 +363,7 @@ func _on_yes_pressed():
 		GameState.spawn_position = _player.position
 		GameState.use_spawn_position = true
 		_hide_message()
-		get_tree().change_scene_to_file("res://Scenes/Main_Menu_Scenes/Pack_Purchase.tscn")
+		SceneCache.change_scene("res://Scenes/Main_Menu_Scenes/Pack_Purchase.tscn")
 		return
 
 	# Opponent battle
@@ -387,7 +387,7 @@ func _on_yes_pressed():
 		var tween = get_tree().current_scene.create_tween()
 		tween.tween_property(overlay, "color:a", 1.0, 0.5)
 		await tween.finished
-		get_tree().change_scene_to_file("res://Scenes/Main_Match_Gameplay_Scenes/Match_Start_Intro_Scene.tscn")
+		SceneCache.change_scene("res://Scenes/Main_Match_Gameplay_Scenes/Match_Start_Intro_Scene.tscn")
 
 func _on_no_pressed():
 	if current_opponent != null:

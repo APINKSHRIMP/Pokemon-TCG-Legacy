@@ -30,7 +30,7 @@ func _input(event: InputEvent) -> void:
 
 func _return_to_world_map() -> void:
 	var target: String = GameState.menu_return_scene_path if GameState.has_menu_return_state else DEFAULT_MAP_SCENE
-	get_tree().change_scene_to_file(target)
+	SceneCache.change_scene(target)
 
 
 func _ready() -> void:
@@ -114,4 +114,4 @@ func _on_mode_clicked(event: InputEvent, node_name: String) -> void:
 		if node_name == "map_mode_background":
 			_return_to_world_map()
 			return
-		get_tree().change_scene_to_file(SCENE_MAP[node_name])
+		SceneCache.change_scene(SCENE_MAP[node_name])

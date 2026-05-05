@@ -414,4 +414,4 @@ func transition_back_to_map() -> void:
 	if map_path == "":
 		map_path = "res://Scenes/Map_Scenes/World_Maps/World_Map_Base_Scene.tscn"
 	
-	get_tree().change_scene_to_file(map_path)
+	SceneCache.change_scene(map_path)
