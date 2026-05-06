@@ -3,7 +3,6 @@
     "commit": ""
   },
   "permissions": {
-    "defaultMode": "plan",
     "allow": [
       "Read",
       "Edit",
@@ -13,13 +12,16 @@
       "Bash(git *)",
       "Bash(npm *)",
       "Bash(godot *)",
-      "PowerShell"
+      "PowerShell",
+      "Bash(dir *)",
+      "Bash(sed 's/.*instance=//')"
     ],
     "deny": [
       "Bash(git rebase *)",
       "Bash(rm -rf *)",
       "Bash(rm -r *)",
       "Bash(rm *)"
-    ]
+    ],
+    "defaultMode": "plan"
   }
 }
