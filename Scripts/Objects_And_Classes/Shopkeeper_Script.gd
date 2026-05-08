@@ -67,7 +67,7 @@ const SQUARE_ORDER = ["down", "right", "up", "left"]
 const STARTER_SET_COST = 500
 const SHOP_STARTER_CARDS = "base1-49, base1-49, base1-48, base1-48, base1-96, base1-95, base1-95, base1-94, base1-94, base1-93, base1-93, base1-91, base1-83, base1-83, base1-77, base1-65, base1-65, base1-63, base1-63, base1-59, base1-59, base1-58, base1-58, base1-69, base1-69, base1-54, base1-53, base1-53, base1-46, base1-46, base1-45, base1-45, base1-44, base1-44, base1-42, base1-36, base1-33, base1-34, base1-32, base1-30, base1-28, base1-28, base1-24, base1-19"
 # PLACEHOLDER: Replace with actual 20 card IDs from two base1 boosters
-const FREE_PACKS_DAY_2_CARDS = "base1-1, base1-2, base1-3, base1-4, base1-5, base1-6, base1-7, base1-8, base1-9, base1-10, base1-11, base1-12, base1-13, base1-14, base1-15, base1-16, base1-17, base1-18, base1-19, base1-20"
+const FREE_PACKS_DAY_2_CARDS = "base1-1"
 
 # ── Shop state ────────────────────────────────────────────
 var _shop_state: String = "initial"
@@ -84,6 +84,9 @@ func _ready():
 	_setup_bubble()
 	_init_movement()
 	_shop_state = GameState.progress.get("shop_state", "initial")
+	# Rocket Mart is always open — no day-based progression
+	if shop_id == "rocket_mart":
+		_shop_state = "open"
 	print("[Shopkeeper] Ready — shop_id=", shop_id, " state=", _shop_state,
 		  " date=", GameState.get_date(), " cash=", GameState.get_cash())
 
@@ -368,6 +371,11 @@ func _handle_restocking_state():
 
 func _handle_open_state():
 	print("[Shopkeeper] Open state — ready to sell packs")
+	if shop_id == "card_mart" and GameState.get_date() > 2 \
+			and not GameState.progress.get("shop_new_stock_shown", false):
+		GameState.progress["shop_new_stock_shown"] = true
+		GameState.save_progress()
+		meet_text = "I've just received the remaining shipment of packs so take a look at the new stock I have now!"
 
 func _finish_starter_purchase():
 	print("[Shopkeeper] Processing starter set purchase...")

@@ -1,0 +1,17 @@
+{
+	"npcs": [
+		{
+			"name": "Rocket_Shopkeeper",
+			"sprite": "Rocket_Shopkeeper",
+			"npc_type": "shop",
+			"shop_id": "rocket_mart",
+			"meet_text": "Interested in buying some special packs?",
+			"position": {
+				"x": 85,
+				"y": -35
+			},
+			"pattern": "idle_down"
+		}
+	],
+	"opponents": []
+}

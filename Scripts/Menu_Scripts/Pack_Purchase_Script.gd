@@ -11,7 +11,8 @@ const PACK_PRICES_PATH     := "res://Card_Set_Data/pack_prices.json"
 const PACK_IMAGES_FOLDER   := "res://Image_Assets/Packs/"
 const CARD_SET_DATA_PATH   := "res://Card_Set_Data/"
 const CARDBACK_PATH        := "res://Image_Assets/Card_Backs_And_Decks/cardback.png"
-const CARD_MART_SCENE      := "res://Scenes/map_scenes/Card_Mart.tscn"
+const CARD_MART_SCENE      := "res://Scenes/Map_Scenes/Card_Mart.tscn"
+const ROCKET_MART_SCENE    := "res://Scenes/Map_Scenes/Rocket_Mart.tscn"
 
 # Card display size used for the pack opening reveal
 const CARD_DISPLAY_SIZE    := Vector2(563, 788)
@@ -127,8 +128,17 @@ func _load_player_data() -> void:
 	file.close()
 	if not data is Dictionary:
 		return
-	unlocked_packs = data.get("packs_unlocked", [])
-	player_cash    = data.get("cash", 0.0)
+	player_cash = data.get("cash", 0.0)
+
+	# Available packs are determined by which shop sent the player here and the current date,
+	# not by the packs_unlocked progress list.
+	var shop_id := GameState.current_shop_id
+	if shop_id == "rocket_mart":
+		unlocked_packs = ["base5"]
+	elif GameState.get_date() <= 2:
+		unlocked_packs = ["base1"]
+	else:
+		unlocked_packs = ["base1", "base2", "base3"]
 
 
 func _get_last_pack_loaded() -> String:
@@ -338,11 +348,17 @@ func _on_prev_set() -> void:
 
 # ─── Cancel / Escape ─────────────────────────────────────────────────────────
 
+func _get_return_scene() -> String:
+	if GameState.current_shop_id == "rocket_mart":
+		return ROCKET_MART_SCENE
+	return CARD_MART_SCENE
+
+
 func _on_cancel_pressed() -> void:
 	if _in_opening_sequence:
 		return
 	SoundManagerScript.stop_bgm()
-	SceneCache.change_scene(CARD_MART_SCENE)
+	SceneCache.change_scene(_get_return_scene())
 
 
 func _input(event: InputEvent) -> void:

@@ -35,6 +35,7 @@ func _ready():
 	# Entry positions from other maps
 	var entry_positions = {
 		"Celeste_Harbour": Vector2(1775, 1880),
+		"Rocket_Mart": Vector2(278, 1080),
 	}
 
 	if GameState.has_menu_return_state and GameState.menu_return_scene_path == SCENE_PATH:

@@ -3678,7 +3678,7 @@ metadata/target_scene = "res://Scenes/Map_Scenes/Celeste_Harbour.tscn"
 [node name="DoorArea_RocketMart" type="CollisionShape2D" parent="Door Areas" unique_id=1006479648]
 position = Vector2(315, -418)
 shape = SubResource("RectangleShape2D_x6xh7")
-metadata/Target_Scene = "res://Scenes/Map_Scenes/Rocket_Mart.tscn"
+metadata/target_scene = "res://Scenes/Map_Scenes/Rocket_Mart.tscn"
 
 [node name="OPPONENTS" type="Node2D" parent="." unique_id=1249595646]
 z_index = 1

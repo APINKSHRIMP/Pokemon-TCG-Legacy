@@ -14,7 +14,8 @@
       "Bash(godot *)",
       "PowerShell",
       "Bash(dir *)",
-      "Bash(sed 's/.*instance=//')"
+      "Bash(sed 's/.*instance=//')",
+      "Bash(python3 *)"
     ],
     "deny": [
       "Bash(git rebase *)",
