@@ -7,9 +7,9 @@ extends Node2D
 
 var audio_player := AudioStreamPlayer.new()
 
-const GROW_DURATION := 5 # 7.0
-const BLACK_FADE_DURATION := 5 # 7
-const SCENE_FADE_DURATION := 2 # 3
+const GROW_DURATION := 0.2 # 7.0
+const BLACK_FADE_DURATION := 0.2 # 7
+const SCENE_FADE_DURATION := 0.2 # 3
 
 # Where to send the player after the splash. The actual destination is the
 # scene they were last in (resumed from save). If no save exists, falls
