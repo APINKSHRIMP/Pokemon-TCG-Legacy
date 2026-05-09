@@ -31,6 +31,9 @@ var ok_button: Button
 # instead of dismissing the message panel. Keys: text, image_paths, kind.
 var _pending_gift_display: Dictionary = {}
 
+# When non-empty, the next OK press launches PackOpeningManager for gifted packs.
+var _pending_pack_opening: Array = []
+
 # Container holding the displayed card/coin TextureRects during gift reveal
 var _gift_display_container: Control = null
 
@@ -405,9 +408,26 @@ func _on_ok_pressed():
 		_show_gift_display(d["text"], d["image_paths"], d["kind"])
 		return
 
+	# If pack opening is queued, launch it (player stays movement-locked)
+	if not _pending_pack_opening.is_empty():
+		var arts := _pending_pack_opening.duplicate()
+		_pending_pack_opening.clear()
+		message_panel.visible = false
+		PackOpeningManager.all_packs_opened.connect(_on_pack_opening_finished, CONNECT_ONE_SHOT)
+		PackOpeningManager.open_packs(arts)
+		return
+
 	if current_npc != null:
 		current_npc.refresh_bubble()
 	_hide_message()
+
+
+func _on_pack_opening_finished() -> void:
+	if _player != null:
+		_player.can_move = true
+	if current_npc != null:
+		current_npc.resume_movement()
+		current_npc = null
 
 # ============================================================
 # INTERACTION — NPCs
@@ -481,11 +501,24 @@ func _give_gift(npc: Node):
 			if not (npc.gift_value in GameState.progress["packs_unlocked"]):
 				GameState.progress["packs_unlocked"].append(npc.gift_value)
 			GameState.save_progress()
+		"pack":
+			var pack_arts: Array = []
+			for raw in npc.gift_value.split(","):
+				var art: String = raw.strip_edges()
+				if art != "":
+					pack_arts.append(art)
+			queue_pack_gift(pack_arts)
 		"pack_of_cards":
 			push_warning("MapManager: pack_of_cards gift not yet implemented for: " + npc.gift_value)
 		_:
 			push_error("MapManager: Unknown gift_type '" + npc.gift_type + "' on NPC: " + npc.npc_name)
 	GameState.mark_gift_received(npc.npc_name)
+
+
+# Queues a pack opening sequence to trigger on the next OK press.
+# Called by Shopkeeper_Script for Day-2 free packs.
+func queue_pack_gift(pack_arts: Array) -> void:
+	_pending_pack_opening = pack_arts.duplicate()
 
 # ============================================================
 # GIFT DISPLAY (image(s) + name shown after gift dialogue)

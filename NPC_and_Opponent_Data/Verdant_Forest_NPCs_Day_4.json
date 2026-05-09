@@ -2,13 +2,13 @@
   "npcs": [
 	{
 	  "name": "Pikachu Mum",
-	  "sprite": "lass",
+	  "sprite": "Pokefan_F",
 	  "meet_text": "All my kids",
 	  "repeat_text": "find them",
 	  "pattern": "idle_down",
 	  "position": {
-		"x": 1090,
-		"y": 950
+		"x": 1509,
+		"y": 928
 	  },
 	  "condition": {
 		"type": "not_all_opponents_defeated",
@@ -106,14 +106,16 @@
 	  }
 	},
 	{
-	  "name": "NAME2",
-	  "sprite": "Worker",
-	  "meet_text": "TEXT",
-	  "repeat_text": "TEXT",
-	  "pattern": "idle_right",
+	  "name": "Rocket Pack Gift",
+	  "sprite": "Teamrocket_M",
+	  "meet_text": "Free pack",
+	  "repeat_text": "Given pack",
+	  "gift_type": "pack",
+	  "gift_value": "base5_a",
+	  "pattern": "idle_left",
 	  "position": {
-		"x": -800,
-		"y": 2620
+		"x": 335,
+		"y": 1140
 	  }
 	}
   ],
@@ -132,12 +134,10 @@
 	  "cash_reward": "50",
 	  "coin_reward": "coin_pikachu_blue",
 	  "card_reward": "basep-28",
-	  "pattern": "random_wander",
-	  "patrol_speed": 20.0,
-	  "wander_radius": 65,
+	  "pattern": "idle_left",
 	  "position": {
-		"x": 1000,
-		"y": 1000
+		"x": 3125,
+		"y": 1045
 	  },
 	  "condition": {
 		"type": "opponent_not_defeated",
@@ -158,12 +158,10 @@
 	  "cash_reward": "50",
 	  "coin_reward": "coin_pikachu_red",
 	  "card_reward": "basep-25",
-	  "pattern": "random_wander",
-	  "patrol_speed": 20.0,
-	  "wander_radius": 65,
+	  "pattern": "idle_up",
 	  "position": {
-		"x": 1020,
-		"y": 1020
+		"x": 216,
+		"y": 500
 	  },
 	  "condition": {
 		"type": "opponent_not_defeated",
@@ -184,12 +182,10 @@
 	  "cash_reward": "50",
 	  "coin_reward": "coin_pikachu_gold_1",
 	  "card_reward": "basep-26",
-	  "pattern": "random_wander",
-	  "patrol_speed": 20.0,
-	  "wander_radius": 65,
+	  "pattern": "idle_left",
 	  "position": {
-		"x": 980,
-		"y": 980
+		"x": 3270,
+		"y": 290
 	  },
 	  "condition": {
 		"type": "opponent_not_defeated",
@@ -214,8 +210,8 @@
 	  "patrol_speed": 20.0,
 	  "wander_radius": 65,
 	  "position": {
-		"x": 1040,
-		"y": 1040
+		"x": 2050,
+		"y": 1050
 	  },
 	  "condition": {
 		"type": "opponent_not_defeated",
@@ -240,8 +236,8 @@
 	  "patrol_speed": 20.0,
 	  "wander_radius": 65,
 	  "position": {
-		"x": 1060,
-		"y": 1060
+		"x": 1760,
+		"y": 350
 	  },
 	  "condition": {
 		"type": "opponent_not_defeated",

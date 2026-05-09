@@ -358,10 +358,10 @@ func _handle_restocking_state():
 		GameState.progress["shop_state"] = _shop_state
 		if not GameState.progress.get("shop_free_packs_given", false):
 			print("[Shopkeeper] Giving free packs")
-			GameState.give_cards(FREE_PACKS_DAY_2_CARDS)
 			GameState.progress["shop_free_packs_given"] = true
 			GameState.save_progress()
-			message = "Welcome back! I've restocked. Here are some free packs to get started properly."
+			MapManager.queue_pack_gift(["base1_a", "base1_c"])
+			message = "Welcome back! I've restocked. Here are two free packs to get you started!"
 			MapManager._show_message_with_ok(message)
 		else:
 			message = "Welcome back! The shop is open now."

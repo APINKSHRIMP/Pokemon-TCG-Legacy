@@ -24,6 +24,7 @@ SoundManagerScript="*res://Scripts/Global_Scripts/Sound_Manager_Script.gd"
 GameState="*res://Scripts/Global_Scripts/Game_State_Script.gd"
 SceneCache="*res://Scripts/Global_Scripts/Scene_Cache_Script.gd"
 MapManager="*uid://b1mp3uyvbbkl"
+PackOpeningManager="*res://Scripts/Global_Scripts/Pack_Opening_Manager.gd"
 
 [display]
 

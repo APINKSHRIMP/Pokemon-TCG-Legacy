@@ -22,6 +22,7 @@ func _ready():
 		NPC_JSON_PATH = "res://NPC_and_Opponent_Data/Verdant_Forest_NPCs_Day_4.json"
 
 	SoundManagerScript.play_bgm(BGM_PATH, true)
+	set_time_of_day(time_of_day)
 
 	var tween = create_tween()
 	tween.tween_property(get_tree().root, "modulate", Color(1, 1, 1, 0), 0.0)
@@ -80,6 +81,12 @@ func _ready():
 
 	await get_tree().process_frame
 	tween.tween_property(get_tree().root, "modulate", Color.WHITE, 1.0)
+
+
+func set_time_of_day(time: String) -> void:
+	if time == "Day" or time == "Evening":
+		for lamp in find_children("ForestLamp*"):
+			lamp.get_node("PointLight2D2").visible = false
 
 
 func _input(event: InputEvent) -> void:

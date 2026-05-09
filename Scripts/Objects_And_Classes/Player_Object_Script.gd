@@ -7,7 +7,7 @@ extends CharacterBody2D
 signal interact_pressed(opponent)
 signal npc_interact_pressed(npc)
 
-@export var move_speed: float = 650.0
+@export var move_speed: float = 950.0
 
 var current_direction: String = "down"
 var is_moving: bool = false
