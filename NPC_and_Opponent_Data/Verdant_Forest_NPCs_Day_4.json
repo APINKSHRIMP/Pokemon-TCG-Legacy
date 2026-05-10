@@ -1,10 +1,10 @@
 {
   "npcs": [
 	{
-	  "name": "Pikachu Mum",
+	  "name": "Pikachu Fans' Mum",
 	  "sprite": "Pokefan_F",
-	  "meet_text": "All my kids",
-	  "repeat_text": "find them",
+	  "meet_text": "All my kids always wander off and don't come back for a while. They love looking for Pikachu around here but have never found one. If you see any of them could you tell them to come back here please?",
+	  "repeat_text": "All my kids are dressed up as Pikachu, from a distance you might mistake them for an actual Pikachu!! If you can get them all to come back here I'd appreciate it.",
 	  "pattern": "idle_down",
 	  "position": {
 		"x": 1509,
@@ -120,14 +120,27 @@
 	{
 	  "name": "Rocket Pack Gift",
 	  "sprite": "Teamrocket_M",
-	  "meet_text": "Free pack",
-	  "repeat_text": "Given pack",
+	  "meet_text": "I'm glad we can finally get our hands on these packs. You look like you haven't opened many of these so have one on me. Spread the word you can buy them here.",
+	  "repeat_text": "Hope you pulled something good from that.",
 	  "gift_type": "pack",
 	  "gift_value": "base5_a",
 	  "pattern": "idle_left",
 	  "position": {
 		"x": 335,
 		"y": 1140
+	  }
+	},
+	{
+	  "name": "Wishing well coin thrower",
+	  "sprite": "NPC24",
+	  "meet_text": "I always come here to throw a coin in the well and make a wish but they never come true. Maybe if I give this to you instead it'll work better.",
+	  "repeat_text": "You could always try making a wish by throwing a coin in yourself.",
+	  "gift_type": "coin",
+	  "gift_value": "coin_pokeball_red",
+	  "pattern": "idle_down",
+	  "position": {
+		"x": 3278,
+		"y": 1064
 	  }
 	}
   ],
@@ -283,19 +296,20 @@
 	  }
 	},
 	{
-	  "name": "Pikachu Mum",
+	  "name": "Pikachu Fans' Mum",
 	  "sprite": "Pokefan_F",
-	  "deck": "Forest Mouse",
+	  "deck": "All the Pikachu!",
 	  "music": "chilled_battle",
 	  "prize_cards": 1,
-	  "meet_text": "You've beaten all my children... I'll have to fight you myself!",
-	  "repeat_text": "My Pikachu are still training hard.",
-	  "first_win_text": "I can't believe it... you beat all of us!",
-	  "rematch_win_text": "My Pikachu still have so much to learn.",
-	  "loss_text": "That's my kids' spirit! Keep training!",
-	  "cash_reward": "100",
+	  "meet_text": "Thank you for getting them all to come back and stay here, I don't know the rules very well of this game but I'll play you as a thanks!",
+	  "repeat_text": "Want to see all of my Pikachu again?",
+	  "first_win_text": "As a thank you again, take these!",
+	  "rematch_win_text": "My kids could learn a lot from you",
+	  "loss_text": "I didn't know Pikachu could be so strong!",
+	  "cash_reward": "75",
 	  "coin_reward": "coin_pikachu_gold",
 	  "card_reward": "basep-24",
+	  "costume_reward": "PokeKid",
 	  "pattern": "idle_down",
 	  "position": {
 		"x": 1509,
@@ -304,7 +318,145 @@
 	  "condition": {
 		"type": "all_opponents_defeated",
 		"targets": ["Pikachu Fan Marina","Pikachu Fan Skye","Pikachu Fan Cami","Pikachu Fan Juniper","Pikachu Fan Raye","Pikachu Fan Leaf"]
+	  },
+	},
+	{
+	  "name": "Fossil Expert Jonathan",
+	  "sprite": "Ruinmaniac",
+	  "deck": "Earth Sea Sky",
+	  "music": "normal_battle",
+	  "prize_cards": 6,
+	  "meet_text": "There's a lot of history in this forest, it's been around for thousands of years.",
+	  "repeat_text": "You haven't found any mysterious artifacts around here have you?",
+	  "first_win_text": "We can learn a lot of things from the past.",
+	  "rematch_win_text": "Even losses are a great way to learn.",
+	  "loss_text": "You're a thing of the past!",
+	  "cash_reward": "150",
+	  "coin_reward": "coin_flygon_green",
+	  "pattern": "idle_up",
+	  "position": {
+		"x": 465,
+		"y": 1585
 	  }
-	}
+	},
+	{
+	  "name": "Gentleman Benedict",
+	  "sprite": "Gentleman",
+	  "deck": "Colorless Crusher",
+	  "music": "normal_battle",
+	  "prize_cards": 6,
+	  "meet_text": "Good day. I'm not the most youthful but I love a good match.",
+	  "repeat_text": "Hello again, up for another match ey?",
+	  "first_win_text": "Hoh, hoh, very well played there.",
+	  "rematch_win_text": "Another jolly good show old chum.",
+	  "loss_text": "At least with age comes experience!",
+	  "cash_reward": "150",
+	  "coin_reward": "coin_sirfetchd_green",
+	  "pattern": "idle_left",
+	  "position": {
+		"x": 3710,
+		"y": 1095
+	  }
+	},
+	{
+	  "name": "Ninjaboy Sasuke",
+	  "sprite": "Ninjaboy",
+	  "deck": "Ssssssnakes",
+	  "music": "normal_battle",
+	  "prize_cards": 4,
+	  "meet_text": "I love climbing the trees around here, it's good practice for my ninja skills.",
+	  "repeat_text": "I'm still training hard!",
+	  "first_win_text": "I should have been more sneaky.",
+	  "rematch_win_text": "It's hard to focus when you always lose!",
+	  "loss_text": "At least with age comes experience!",
+	  "cash_reward": "125",
+	  "coin_reward": "coin_froakie_silver",
+	  "pattern": "patrol_line",
+	  "patrol_speed": 90.0,
+	  "patrol_distance": 240,
+	  "patrol_axis": "horizontal",
+	  "position": {
+		"x": 850,
+		"y": 650
+	  }
+	},
+	{	
+	  "name": "Youngster Milo",
+	  "sprite": "Youngster",
+	  "deck": "Creepy Crawlies",
+	  "music": "normal_battle",
+	  "prize_cards": 4,
+	  "meet_text": "I've not been playing the TCG for long but I think I'm really good already.",
+	  "repeat_text": "I'm getting better all the time.",
+	  "first_win_text": "I'm not as good as I thought.",
+	  "rematch_win_text": "I can only get better!",
+	  "loss_text": "I told you I was really good!",
+	  "cash_reward": "125",
+	  "coin_reward": "coin_eeevee_blue",
+	"pattern": "random_wander",
+	  "patrol_speed": 50.0,
+	  "wander_radius": 65,
+	  "position": {
+		"x": 400,
+		"y": 400
+	  }
+	},
+	{	
+	  "name": "Card Expert Nathan",
+	  "sprite": "Cooltrainer_M3",
+	  "deck": "Energy Burn",
+	  "music": "normal_battle",
+	  "prize_cards": 6,
+	  "meet_text": "Fire Pokemon are my favourite. They're so strong.",
+	  "repeat_text": "Looking for another solid match?",
+	  "first_win_text": "Fire Pokemon are strong but they still have their weaknesses",
+	  "rematch_win_text": "It's not just about having strong Pokemon",
+	  "loss_text": "Nothing can beat the strongest Pokemon",
+	  "cash_reward": "150",
+	  "coin_reward": "coin_magmortar_electrivire_red",
+	"pattern": "idle_right",
+	  "position": {
+		"x": 3320,
+		"y": 170
+	  }
+	},
+	{	
+	  "name": "Card Expert Ruby",
+	  "sprite": "Cooltrainer_F3",
+	  "deck": "Burnt Up",
+	  "music": "normal_battle",
+	  "prize_cards": 6,
+	  "meet_text": "You have to be careful with fire in the forest!!! They're only cards though so it's completely fine!",
+	  "repeat_text": "I've been practicing safety since we last met.",
+	  "first_win_text": "I was far too safe.",
+	  "rematch_win_text": "I might try using water instead of fire, I might have better luck with that.",
+	  "loss_text": "Don't play with fire if you don't know what you're doing.",
+	  "cash_reward": "150",
+	  "coin_reward": "coin_flareon_red",
+	"pattern": "idle_right",
+	  "position": {
+		"x": 3320,
+		"y": 430
+	  }
+	},
+	{	
+	  "name": "Swimmer Bibi",
+	  "sprite": "Cooltrainer_F3",
+	  "deck": "Dark Rainstorm",
+	  "music": "normal_battle",
+	  "prize_cards": 6,
+	  "meet_text": "I much prefer cold fresh water swimming rather than the beach.",
+	  "repeat_text": "Fresh water is so much better than seawater!.",
+	  "first_win_text": "Sea water is far too salty!!",
+	  "rematch_win_text": "I'm going to be a wrinkly prune if I don't get out soon.",
+	  "loss_text": "Freshen up and take a dip!",
+	  "cash_reward": "150",
+	  "coin_reward": "coin_swampert_blue",
+		"pattern": "idle_right",
+	  "position": {
+		"x": 3320,
+		"y": 430
+	  }
+	},
   ]
 }

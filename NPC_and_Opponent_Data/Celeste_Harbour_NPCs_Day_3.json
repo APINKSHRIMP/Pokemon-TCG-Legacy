@@ -854,7 +854,7 @@
 	},
 	{
 	  "name": "Aromagirl Penelope",
-	  "sprite": "Aromagirl",
+	  "sprite": "Aromalady",
 	  "deck": "Strange Plants",
 	  "music": "normal_battle",
 	  "prize_cards": 4,
@@ -864,7 +864,7 @@
 	  "rematch_win_text": "I could do with some water",
 	  "loss_text": "Grass Pokemon are great!",
 	  "cash_reward": "100",
-	  "coin_reward": "coin_energy_green_2",
+	  "coin_reward": "coin_turtwig_green",
 	  "pattern": "idle_up",
 	  "position": {
 		"x": 2167,

@@ -19,7 +19,9 @@
       "Bash(Get-ChildItem \"C:\\\\Pokemon TCG Legacy\\\\Image_Assets\\\\Character_Sprites\\\\Overworld_Sprites\" -Filter \"*.png\")",
       "Bash(Select-Object -ExpandProperty Name)",
       "Bash(Sort-Object)",
-      "Bash(Get-ChildItem \"C:\\\\Pokemon TCG Legacy\\\\Image_Assets\\\\Character_Sprites\\\\Overworld_Sprites\\\\*.png\")"
+      "Bash(Get-ChildItem \"C:\\\\Pokemon TCG Legacy\\\\Image_Assets\\\\Character_Sprites\\\\Overworld_Sprites\\\\*.png\")",
+      "Bash(Get-ChildItem -Path \"C:\\\\Pokemon TCG Legacy\" -Directory)",
+      "Bash(Select-Object Name)"
     ],
     "deny": [
       "Bash(git rebase *)",

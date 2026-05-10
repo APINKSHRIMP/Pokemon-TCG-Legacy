@@ -26,17 +26,6 @@
 	  }
 	},
 	{
-	  "name": "Wurmple",
-	  "sprite": "Wurmple",
-	  "meet_text": "wurmple.",
-	  "repeat_text": "wurmple.",
-	  "pattern": "idle_random",
-	  "position": {
-		"x": 1440,
-		"y": 2220
-	  }
-	},
-	{
 	  "name": "Sailor 2 Pier 1",
 	  "sprite": "Sailor",
 	  "meet_text": "I'm a deckhand round these parts so I've always got a lot of work to do.",
@@ -523,7 +512,7 @@
 	},
 	{
 	  "name": "Aromagirl Penelope",
-	  "sprite": "Aromagirl",
+	  "sprite": "Aromalady",
 	  "deck": "Strange Plants",
 	  "music": "normal_battle",
 	  "prize_cards": 4,

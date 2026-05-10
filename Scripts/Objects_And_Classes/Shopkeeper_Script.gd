@@ -67,7 +67,7 @@ const SQUARE_ORDER = ["down", "right", "up", "left"]
 const STARTER_SET_COST = 500
 const SHOP_STARTER_CARDS = "base1-49, base1-49, base1-48, base1-48, base1-96, base1-95, base1-95, base1-94, base1-94, base1-93, base1-93, base1-91, base1-83, base1-83, base1-77, base1-65, base1-65, base1-63, base1-63, base1-59, base1-59, base1-58, base1-58, base1-69, base1-69, base1-54, base1-53, base1-53, base1-46, base1-46, base1-45, base1-45, base1-44, base1-44, base1-42, base1-36, base1-33, base1-34, base1-32, base1-30, base1-28, base1-28, base1-24, base1-19"
 # PLACEHOLDER: Replace with actual 20 card IDs from two base1 boosters
-const FREE_PACKS_DAY_2_CARDS = "base1-1"
+const FREE_PACKS_DAY_2_CARDS = "base1_a,base1_b"
 
 # ── Shop state ────────────────────────────────────────────
 var _shop_state: String = "initial"
