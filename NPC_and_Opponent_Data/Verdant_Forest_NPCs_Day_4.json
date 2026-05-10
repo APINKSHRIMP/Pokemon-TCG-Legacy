@@ -20,9 +20,11 @@
 	  "sprite": "Pokekid",
 	  "meet_text": "You're such a good battler!",
 	  "repeat_text": "I'm going to train my Pikachu more!",
-	  "pattern": "idle_down",
+	  "pattern": "random_wander",
+	  "patrol_speed": 20.0,
+	  "wander_radius": 65,
 	  "position": {
-		"x": 1000,
+		"x": 1425,
 		"y": 1000
 	  },
 	  "condition": {
@@ -35,10 +37,12 @@
 	  "sprite": "Pokekid",
 	  "meet_text": "You fly as well as a Pikachu!",
 	  "repeat_text": "I hope my Pikachu can fly again soon.",
-	  "pattern": "idle_down",
+	  "pattern": "random_wander",
+	  "patrol_speed": 20.0,
+	  "wander_radius": 65,
 	  "position": {
-		"x": 1020,
-		"y": 1020
+		"x": 1425,
+		"y": 1075
 	  },
 	  "condition": {
 		"type": "opponent_defeated",
@@ -50,10 +54,12 @@
 	  "sprite": "Pokekid",
 	  "meet_text": "That was a great battle to photograph!",
 	  "repeat_text": "I'm still working on my Pikachu collection.",
-	  "pattern": "idle_down",
+	  "pattern": "random_wander",
+	  "patrol_speed": 20.0,
+	  "wander_radius": 65,
 	  "position": {
-		"x": 980,
-		"y": 980
+		"x": 1500,
+		"y": 1000
 	  },
 	  "condition": {
 		"type": "opponent_defeated",
@@ -65,10 +71,12 @@
 	  "sprite": "Pokekid",
 	  "meet_text": "Maybe I'll find a Pikachu in the forest now.",
 	  "repeat_text": "I still hope to find a Pikachu here.",
-	  "pattern": "idle_down",
+	  "pattern": "random_wander",
+	  "patrol_speed": 20.0,
+	  "wander_radius": 65,
 	  "position": {
-		"x": 1040,
-		"y": 1040
+		"x": 1500,
+		"y": 1075
 	  },
 	  "condition": {
 		"type": "opponent_defeated",
@@ -80,10 +88,12 @@
 	  "sprite": "Pokekid",
 	  "meet_text": "That Pikachu card was so cool!",
 	  "repeat_text": "Maybe I'll find a real Pikachu someday.",
-	  "pattern": "idle_down",
+	  "pattern": "random_wander",
+	  "patrol_speed": 20.0,
+	  "wander_radius": 65,
 	  "position": {
-		"x": 1060,
-		"y": 1060
+		"x": 1575,
+		"y": 1000
 	  },
 	  "condition": {
 		"type": "opponent_defeated",
@@ -95,10 +105,12 @@
 	  "sprite": "Pokekid",
 	  "meet_text": "You're as lovely as a Pikachu!",
 	  "repeat_text": "I love battling with Pikachu fans like you.",
-	  "pattern": "idle_down",
+	  "pattern": "random_wander",
+	  "patrol_speed": 20.0,
+	  "wander_radius": 65,
 	  "position": {
-		"x": 1080,
-		"y": 1080
+		"x": 1575,
+		"y": 1075
 	  },
 	  "condition": {
 		"type": "opponent_defeated",
@@ -262,8 +274,8 @@
 	  "patrol_speed": 20.0,
 	  "wander_radius": 65,
 	  "position": {
-		"x": 1080,
-		"y": 1080
+		"x": -270,
+		"y": -50
 	  },
 	  "condition": {
 		"type": "opponent_not_defeated",
@@ -272,7 +284,7 @@
 	},
 	{
 	  "name": "Pikachu Mum",
-	  "sprite": "lass",
+	  "sprite": "Pokefan_F",
 	  "deck": "Forest Mouse",
 	  "music": "chilled_battle",
 	  "prize_cards": 1,
@@ -282,12 +294,12 @@
 	  "rematch_win_text": "My Pikachu still have so much to learn.",
 	  "loss_text": "That's my kids' spirit! Keep training!",
 	  "cash_reward": "100",
-	  "coin_reward": "coin_pikachu_gold_1",
-	  "card_reward": "basep-4",
+	  "coin_reward": "coin_pikachu_gold",
+	  "card_reward": "basep-24",
 	  "pattern": "idle_down",
 	  "position": {
-		"x": -690,
-		"y": 2190
+		"x": 1509,
+		"y": 928
 	  },
 	  "condition": {
 		"type": "all_opponents_defeated",

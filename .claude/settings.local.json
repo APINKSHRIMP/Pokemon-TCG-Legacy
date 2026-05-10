@@ -15,7 +15,11 @@
       "PowerShell",
       "Bash(dir *)",
       "Bash(sed 's/.*instance=//')",
-      "Bash(python3 *)"
+      "Bash(python3 *)",
+      "Bash(Get-ChildItem \"C:\\\\Pokemon TCG Legacy\\\\Image_Assets\\\\Character_Sprites\\\\Overworld_Sprites\" -Filter \"*.png\")",
+      "Bash(Select-Object -ExpandProperty Name)",
+      "Bash(Sort-Object)",
+      "Bash(Get-ChildItem \"C:\\\\Pokemon TCG Legacy\\\\Image_Assets\\\\Character_Sprites\\\\Overworld_Sprites\\\\*.png\")"
     ],
     "deny": [
       "Bash(git rebase *)",
