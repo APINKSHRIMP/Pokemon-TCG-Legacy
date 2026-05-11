@@ -17,6 +17,7 @@ var use_spawn_position: bool = false
 var entering_from: String = ""
 
 var return_map_scene_path: String = ""
+var last_battled_opponent_entry: Dictionary = {}
 var last_interior_scene: String = ""
 var current_shop_id: String = "card_mart"
 

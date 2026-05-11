@@ -106,6 +106,8 @@ func initialise(
 	_json_path = json_path
 
 	_build_message_box()
+	if not GameState.returning_from_battle:
+		GameState.last_battled_opponent_entry = {}
 	_load_and_spawn_opponents(json_path)
 	_load_and_spawn_npcs(npc_json_path)
 
@@ -155,6 +157,35 @@ func _load_and_spawn_opponents(json_path: String):
 		opp.patrol_axis      = entry.get("patrol_axis", "horizontal")
 		opp.wander_radius    = entry.get("wander_radius", 200.0)
 		_opponents_container.add_child(opp)
+
+	if GameState.returning_from_battle and not GameState.last_battled_opponent_entry.is_empty():
+		var lbe = GameState.last_battled_opponent_entry
+		var already_spawned = false
+		for child in _opponents_container.get_children():
+			if child.is_in_group("opponents") and child.opponent_name == lbe["name"]:
+				already_spawned = true
+				break
+		if not already_spawned:
+			var opp = opponent_scene.instantiate()
+			opp.opponent_name    = lbe["name"]
+			opp.sprite           = lbe["sprite"]
+			opp.music            = lbe["music"]
+			opp.deck             = lbe["deck"]
+			opp.prize_cards      = lbe.get("prize_cards", 6)
+			opp.meet_text        = lbe["meet_text"]
+			opp.repeat_text      = lbe["repeat_text"]
+			opp.first_win_text   = lbe["first_win_text"]
+			opp.rematch_win_text = lbe["rematch_win_text"]
+			opp.loss_text        = lbe["loss_text"]
+			opp.coin_reward      = lbe["coin_reward"]
+			opp.cash_reward      = lbe["cash_reward"]
+			opp.position         = lbe["position"]
+			opp.movement_pattern = lbe.get("pattern", "idle_random")
+			opp.patrol_distance  = lbe.get("patrol_distance", 100.0)
+			opp.patrol_speed     = lbe.get("patrol_speed", 60.0)
+			opp.patrol_axis      = lbe.get("patrol_axis", "horizontal")
+			opp.wander_radius    = lbe.get("wander_radius", 200.0)
+			_opponents_container.add_child(opp)
 
 # ============================================================
 # NPC SPAWNING
@@ -378,6 +409,26 @@ func _on_yes_pressed():
 		GameState.player_position            = _player.position
 		GameState.returning_from_battle      = false
 		GameState.return_map_scene_path      = _map_scene_path
+		GameState.last_battled_opponent_entry = {
+			"name":           current_opponent.opponent_name,
+			"sprite":         current_opponent.sprite,
+			"music":          current_opponent.music,
+			"deck":           current_opponent.deck,
+			"prize_cards":    current_opponent.prize_cards,
+			"meet_text":      current_opponent.meet_text,
+			"repeat_text":    current_opponent.repeat_text,
+			"first_win_text":    current_opponent.first_win_text,
+			"rematch_win_text":  current_opponent.rematch_win_text,
+			"loss_text":      current_opponent.loss_text,
+			"coin_reward":    current_opponent.coin_reward,
+			"cash_reward":    current_opponent.cash_reward,
+			"position":       current_opponent.position,
+			"pattern":        current_opponent.movement_pattern,
+			"patrol_distance": current_opponent.patrol_distance,
+			"patrol_speed":   current_opponent.patrol_speed,
+			"patrol_axis":    current_opponent.patrol_axis,
+			"wander_radius":  current_opponent.wander_radius,
+		}
 
 		_hide_message()
 		SoundManagerScript.stop_bgm()
