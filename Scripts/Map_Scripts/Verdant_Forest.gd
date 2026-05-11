@@ -7,6 +7,22 @@ const BGM_PATH = "res://Audio/BGM/Verdant_Forest_BGM.ogg"
 # no menu-return state). Matches the placement set in the .tscn.
 const DEFAULT_SPAWN_POSITION = Vector2(1770, 1850)
 
+const TILESET_DAY     = preload("res://Image_Assets/Map_Sheets/Tile_Sets/Verdant_Forest.tres")
+const TILESET_EVENING = preload("res://Image_Assets/Map_Sheets/Tile_Sets/Verdant_Forest_Evening.tres")
+const TILESET_NIGHT   = preload("res://Image_Assets/Map_Sheets/Tile_Sets/Verdant_Forest_Night.tres")
+
+const TRACKS_TILESET_DAY     = preload("res://Image_Assets/Map_Sheets/Tile_Sets/Starting_Areas.tres")
+const TRACKS_TILESET_EVENING = preload("res://Image_Assets/Map_Sheets/Tile_Sets/Starting_Areas_Evening.tres")
+const TRACKS_TILESET_NIGHT   = preload("res://Image_Assets/Map_Sheets/Tile_Sets/Starting_Areas_Night.tres")
+
+const TREE_HORIZ_DAY     = preload("res://Image_Assets/Map_Objects/TreeLineThird.png")
+const TREE_HORIZ_EVENING = preload("res://Image_Assets/Map_Objects/TreeLineThirdEvening.png")
+const TREE_HORIZ_NIGHT   = preload("res://Image_Assets/Map_Objects/TreeLineThirdNight.png")
+
+const TREE_VERT_DAY     = preload("res://Image_Assets/Map_Objects/TreeLineVertical.png")
+const TREE_VERT_EVENING = preload("res://Image_Assets/Map_Objects/TreeLineVerticalEvening.png")
+const TREE_VERT_NIGHT   = preload("res://Image_Assets/Map_Objects/TreeLineVerticalNight.png")
+
 var NPC_JSON_PATH: String = ""
 
 func _ready():
@@ -84,9 +100,74 @@ func _ready():
 
 
 func set_time_of_day(time: String) -> void:
-	if time == "Day" or time == "Evening":
+	var tileset: TileSet
+	var tracks_tileset: TileSet
+	match time:
+		"Day":
+			tileset = TILESET_DAY
+			tracks_tileset = TRACKS_TILESET_DAY
+		"Evening":
+			tileset = TILESET_EVENING
+			tracks_tileset = TRACKS_TILESET_EVENING
+		"Night":
+			tileset = TILESET_NIGHT
+			tracks_tileset = TRACKS_TILESET_NIGHT
+	_apply_tileset($TILE_MAPS, tileset)
+	var train_tracks = $TILE_MAPS.find_child("TRAIN TRACKS")
+	if train_tracks:
+		_apply_tileset(train_tracks, tracks_tileset)
+
+	var horiz_tex: Texture2D
+	var vert_tex: Texture2D
+	var is_night := time == "Night"
+	match time:
+		"Day":
+			horiz_tex = TREE_HORIZ_DAY
+			vert_tex  = TREE_VERT_DAY
+		"Evening":
+			horiz_tex = TREE_HORIZ_EVENING
+			vert_tex  = TREE_VERT_EVENING
+		"Night":
+			horiz_tex = TREE_HORIZ_NIGHT
+			vert_tex  = TREE_VERT_NIGHT
+
+	# North wall
+	var north = $TREE_WALL_NORTH_GROUP
+	north.get_node("Shadow").visible  = not is_night
+	north.get_node("Shadow2").visible = not is_night
+	for name in ["Tree_wall_north", "Tree_wall_north2", "Tree_wall_north3", "Tree_wall_north4"]:
+		north.get_node(name).texture = horiz_tex
+
+	# South wall
+	var south = $TREE_WALL_SOUTH_GROUP
+	south.get_node("Shadow").visible  = not is_night
+	south.get_node("Shadow2").visible = not is_night
+	for name in ["Tree_wall_South", "Tree_wall_South2", "Tree_wall_South3", "Tree_wall_South4"]:
+		south.get_node(name).texture = horiz_tex
+
+	# West wall
+	var west = $TREE_WALL_WEST_GROUP
+	west.get_node("SHADOW_VERTICAL2").visible = not is_night
+	west.get_node("TREE_WALL_WEST").texture = vert_tex
+
+	# East wall
+	var east = $TREE_WALL_EAST_GROUP
+	east.get_node("SHADOW_VERTICAL").visible = not is_night
+	for name in ["TREE_WALL_EAST", "TREE_WALL_EAST2"]:
+		east.get_node(name).texture = vert_tex
+
+	if not is_night:
 		for lamp in find_children("ForestLamp*"):
 			lamp.get_node("PointLight2D2").visible = false
+
+
+func _apply_tileset(node: Node, tileset: TileSet) -> void:
+	if node is TileMapLayer:
+		node.tile_set = tileset
+	for child in node.get_children():
+		if child.name == "TRAIN TRACKS":
+			continue
+		_apply_tileset(child, tileset)
 
 
 func _input(event: InputEvent) -> void:
