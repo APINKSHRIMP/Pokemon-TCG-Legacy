@@ -390,15 +390,24 @@ func _on_player_interact(opponent: Node):
 func _on_yes_pressed():
 	# Shop NPC — delegate to npc.on_interact() which returns false when ready to open shop
 	if current_npc != null and current_npc.npc_type == "shop":
-		# Preserve player position and facing so they're restored when
-		# pack purchase exits back to the shop (_ready reads
-		# spawn_position / use_spawn_position / get_player_direction)
 		GameState.current_shop_id = current_npc.shop_id
-		GameState.save_player_direction(_player.get_current_direction())
-		GameState.spawn_position = _player.position
-		GameState.use_spawn_position = true
-		_hide_message()
-		SceneCache.change_scene("res://Scenes/Main_Menu_Scenes/Pack_Purchase.tscn")
+		if current_npc.shop_id == "coin_mart":
+			# Coin shop returns to Celeste_Harbour — use menu_return_state so
+			# Celeste_Harbour._ready() restores position via has_menu_return_state
+			GameState.save_menu_return_state(
+				"res://Scenes/Map_Scenes/Celeste_Harbour.tscn",
+				_player.position,
+				_player.get_current_direction()
+			)
+			_hide_message()
+			SceneCache.change_scene("res://Scenes/Main_Menu_Scenes/Coin_Shop.tscn")
+		else:
+			# All other shops (card_mart, rocket_mart) use spawn_position
+			GameState.save_player_direction(_player.get_current_direction())
+			GameState.spawn_position = _player.position
+			GameState.use_spawn_position = true
+			_hide_message()
+			SceneCache.change_scene("res://Scenes/Main_Menu_Scenes/Pack_Purchase.tscn")
 		return
 
 	# Opponent battle

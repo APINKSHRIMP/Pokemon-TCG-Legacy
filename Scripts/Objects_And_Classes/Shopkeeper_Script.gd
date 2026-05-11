@@ -87,6 +87,8 @@ func _ready():
 	# Rocket Mart is always open — no day-based progression
 	if shop_id == "rocket_mart":
 		_shop_state = "open"
+	elif shop_id == "coin_mart":
+		_shop_state = "open"
 	print("[Shopkeeper] Ready — shop_id=", shop_id, " state=", _shop_state,
 		  " date=", GameState.get_date(), " cash=", GameState.get_cash())
 

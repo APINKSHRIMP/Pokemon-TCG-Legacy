@@ -149,14 +149,14 @@
 	{
 	  "name": "Coin Shopkeeper",
 	  "sprite": "NPC_Coin_Shopkeeper",
-	  "meet_text": "Welcome! I sell rare limited edition coins that you won't be able to buy anywhere else! They're not cheap at $250 each but I promise you they're top quality, completely unique and won't find anything like them around!",
+	  "meet_text": "Welcome! I sell rare limited edition coins that you won't be able to buy anywhere else! They're not cheap at $300 each but I promise you they're top quality, completely unique and won't find anything like them around!",
 	  "pattern": "idle_down",
 	  "position": {
 		"x": 2095,
 		"y": 1650
 	  },
 	  "npc_type": "shop",
-	  "shop_id": "card_mart"
+	  "shop_id": "coin_mart"
 	},
 	{
 	  "name": "Fruit And Veg Shopkeeper",

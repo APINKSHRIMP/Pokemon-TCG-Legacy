@@ -21,7 +21,9 @@
       "Bash(Sort-Object)",
       "Bash(Get-ChildItem \"C:\\\\Pokemon TCG Legacy\\\\Image_Assets\\\\Character_Sprites\\\\Overworld_Sprites\\\\*.png\")",
       "Bash(Get-ChildItem -Path \"C:\\\\Pokemon TCG Legacy\" -Directory)",
-      "Bash(Select-Object Name)"
+      "Bash(Select-Object Name)",
+      "Bash(Get-ChildItem -Path \"C:\\\\Pokemon TCG Legacy\\\\NPC_and_Opponent_Data\" -File -Recurse)",
+      "Bash(Select-Object FullName)"
     ],
     "deny": [
       "Bash(git rebase *)",
