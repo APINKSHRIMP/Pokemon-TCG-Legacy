@@ -401,6 +401,14 @@ func _on_yes_pressed():
 			)
 			_hide_message()
 			SceneCache.change_scene("res://Scenes/Main_Menu_Scenes/Coin_Shop.tscn")
+		elif current_npc.shop_id == "holo_mart":
+			GameState.save_menu_return_state(
+				"res://Scenes/Map_Scenes/Celeste_Harbour.tscn",
+				_player.position,
+				_player.get_current_direction()
+			)
+			_hide_message()
+			SceneCache.change_scene("res://Scenes/Main_Menu_Scenes/Holo_Rare_Shop.tscn")
 		else:
 			# All other shops (card_mart, rocket_mart) use spawn_position
 			GameState.save_player_direction(_player.get_current_direction())

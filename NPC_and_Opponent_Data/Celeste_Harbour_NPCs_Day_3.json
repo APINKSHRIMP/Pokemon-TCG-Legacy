@@ -137,14 +137,14 @@
 	{
 	  "name": "Holo Rare Shopkeeper",
 	  "sprite": "NPC_Holo_Rare_Shopkeeper",
-	  "meet_text": "Welcome! I run a mystery holo rare system here. For $400 you can choose 1 of 3 mystery Holo Rares! You won't know what it is until you buy it but you get a hint as to the type.",
+	  "meet_text": "Welcome! I deal in mystery Holo Rares. Seven types, one pick — pay $400 and find out what fate has in store for you!",
 	  "pattern": "idle_down",
 	  "position": {
 		"x": 1975,
 		"y": 1650
 	  },
 	  "npc_type": "shop",
-	  "shop_id": "card_mart"
+	  "shop_id": "holo_mart"
 	},
 	{
 	  "name": "Coin Shopkeeper",
@@ -812,7 +812,7 @@
 	},
 	{
 	  "name": "Bug Catcher Frankie",
-	  "sprite": "Bugcatcher",
+	  "sprite": "Bugcatcher2",
 	  "deck": "Big Bad Bugs!",
 	  "music": "chilled_battle",
 	  "prize_cards": 4,
