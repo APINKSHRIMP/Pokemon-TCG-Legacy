@@ -126,5 +126,24 @@
 		"y": 1180
 	  }
 	},
+	{	
+	  "name": "Ghost Whisperer Vera",
+	  "sprite": "Medium",
+	  "deck": "Terrible Nightmares",
+	  "music": "normal_battle",
+	  "prize_cards": 6,
+	  "meet_text": "This forest is haunted. I am here to speak with those from the past.",
+	  "repeat_text": "Hope you haven't joined any gangs.",
+	  "first_win_text": "Someone is looking over your shoulder.",
+	  "rematch_win_text": "The spirits must be guiding you.",
+	  "loss_text": "I was getting help from the other side.",
+	  "cash_reward": "200",
+	  "coin_reward": "Primal_Groudon_Red",
+	  "pattern": "idle_down",
+	  "position": {
+		"x": 3280,
+		"y": 1080
+	  }
+	},
   ]
 }
