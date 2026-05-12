@@ -3449,6 +3449,243 @@ position = Vector2(2271, -131)
 tile_map_data = PackedByteArray("AACz/wAAAAAxAAcAAAC0/wAAAAAyAAcAAAC7/wAAAAAxAAcAAAC8/wAAAAAyAAcAAACz/wEAAAAxAAgAAAC0/wEAAAAyAAgAAAC7/wEAAAAxAAgAAAC8/wEAAAAyAAgAAACz/+b/AAAxAAcAAACz/+f/AAAxAAgAAAC0/+b/AAAyAAcAAAC0/+f/AAAyAAgAAAC7/+b/AAAxAAcAAAC7/+f/AAAxAAgAAAC8/+b/AAAyAAcAAAC8/+f/AAAyAAgAAAA=")
 tile_set = ExtResource("1_vnhbh")
 
+[node name="LIGHTS" type="Control" parent="TILE_MAPS" unique_id=753293066]
+layout_mode = 3
+anchors_preset = 0
+offset_left = 1.0
+offset_right = 41.0
+offset_bottom = 40.0
+
+[node name="ForestLamp7" parent="TILE_MAPS/LIGHTS" unique_id=368895387 instance=ExtResource("6_3uusb")]
+position = Vector2(2583, 1566)
+rotation = -3.1415925
+scale = Vector2(1, -1)
+
+[node name="ForestLamp8" parent="TILE_MAPS/LIGHTS" unique_id=1204128653 instance=ExtResource("6_3uusb")]
+position = Vector2(2450, 1565)
+rotation = -3.1415925
+scale = Vector2(1, -1)
+
+[node name="ForestLamp9" parent="TILE_MAPS/LIGHTS" unique_id=39859176 instance=ExtResource("6_3uusb")]
+position = Vector2(2583, 1187)
+rotation = -3.1415925
+scale = Vector2(1, -1)
+
+[node name="ForestLamp10" parent="TILE_MAPS/LIGHTS" unique_id=1808440375 instance=ExtResource("6_3uusb")]
+position = Vector2(2450, 1186)
+rotation = -3.1415925
+scale = Vector2(1, -1)
+
+[node name="ForestLamp11" parent="TILE_MAPS/LIGHTS" unique_id=1753372329 instance=ExtResource("6_3uusb")]
+position = Vector2(2591, 843)
+rotation = -3.1415925
+scale = Vector2(1, -1)
+
+[node name="ForestLamp12" parent="TILE_MAPS/LIGHTS" unique_id=1466896924 instance=ExtResource("6_3uusb")]
+position = Vector2(2458, 842)
+rotation = -3.1415925
+scale = Vector2(1, -1)
+
+[node name="ForestLamp13" parent="TILE_MAPS/LIGHTS" unique_id=492505065 instance=ExtResource("6_3uusb")]
+position = Vector2(2717, 502)
+rotation = -3.1415925
+scale = Vector2(1, -1)
+
+[node name="ForestLamp14" parent="TILE_MAPS/LIGHTS" unique_id=1389828125 instance=ExtResource("6_3uusb")]
+position = Vector2(2584, 501)
+rotation = -3.1415925
+scale = Vector2(1, -1)
+
+[node name="ForestLamp15" parent="TILE_MAPS/LIGHTS" unique_id=1350068566 instance=ExtResource("6_3uusb")]
+position = Vector2(2716, 17)
+rotation = -3.1415925
+scale = Vector2(1, -1)
+
+[node name="ForestLamp16" parent="TILE_MAPS/LIGHTS" unique_id=643578244 instance=ExtResource("6_3uusb")]
+position = Vector2(2583, 16)
+rotation = -3.1415925
+scale = Vector2(1, -1)
+
+[node name="ForestLamp21" parent="TILE_MAPS/LIGHTS" unique_id=1642984986 instance=ExtResource("6_3uusb")]
+position = Vector2(1851, 1702)
+rotation = -3.1415925
+scale = Vector2(1, -1)
+
+[node name="ForestLamp22" parent="TILE_MAPS/LIGHTS" unique_id=1794930060 instance=ExtResource("6_3uusb")]
+position = Vector2(1718, 1701)
+rotation = -3.1415925
+scale = Vector2(1, -1)
+
+[node name="ForestLamp23" parent="TILE_MAPS/LIGHTS" unique_id=923318292 instance=ExtResource("6_3uusb")]
+position = Vector2(1116, 1576)
+rotation = -3.1415925
+scale = Vector2(1, -1)
+
+[node name="ForestLamp24" parent="TILE_MAPS/LIGHTS" unique_id=2116124049 instance=ExtResource("6_3uusb")]
+position = Vector2(983, 1575)
+rotation = -3.1415925
+scale = Vector2(1, -1)
+
+[node name="ForestLamp41" parent="TILE_MAPS/LIGHTS" unique_id=258295090 instance=ExtResource("6_3uusb")]
+position = Vector2(1117, 1155)
+rotation = -3.1415925
+scale = Vector2(1, -1)
+
+[node name="ForestLamp42" parent="TILE_MAPS/LIGHTS" unique_id=1627504783 instance=ExtResource("6_3uusb")]
+position = Vector2(984, 1154)
+rotation = -3.1415925
+scale = Vector2(1, -1)
+
+[node name="ForestLamp43" parent="TILE_MAPS/LIGHTS" unique_id=1494052213 instance=ExtResource("6_3uusb")]
+position = Vector2(1117, 798)
+rotation = -3.1415925
+scale = Vector2(1, -1)
+
+[node name="ForestLamp44" parent="TILE_MAPS/LIGHTS" unique_id=758711227 instance=ExtResource("6_3uusb")]
+position = Vector2(984, 797)
+rotation = -3.1415925
+scale = Vector2(1, -1)
+
+[node name="ForestLamp45" parent="TILE_MAPS/LIGHTS" unique_id=169710894 instance=ExtResource("6_3uusb")]
+position = Vector2(986, 457)
+rotation = -3.1415925
+scale = Vector2(1, -1)
+
+[node name="ForestLamp46" parent="TILE_MAPS/LIGHTS" unique_id=1273870503 instance=ExtResource("6_3uusb")]
+position = Vector2(853, 456)
+rotation = -3.1415925
+scale = Vector2(1, -1)
+
+[node name="ForestLamp47" parent="TILE_MAPS/LIGHTS" unique_id=285594691 instance=ExtResource("6_3uusb")]
+position = Vector2(986, 57)
+rotation = -3.1415925
+scale = Vector2(1, -1)
+
+[node name="ForestLamp48" parent="TILE_MAPS/LIGHTS" unique_id=410579380 instance=ExtResource("6_3uusb")]
+position = Vector2(853, 56)
+rotation = -3.1415925
+scale = Vector2(1, -1)
+
+[node name="ForestLamp29" parent="TILE_MAPS/LIGHTS" unique_id=1030138800 instance=ExtResource("6_3uusb")]
+position = Vector2(-217, 1359)
+rotation = -3.1415925
+scale = Vector2(1, -1)
+
+[node name="ForestLamp30" parent="TILE_MAPS/LIGHTS" unique_id=1130904713 instance=ExtResource("6_3uusb")]
+position = Vector2(-350, 1358)
+rotation = -3.1415925
+scale = Vector2(1, -1)
+
+[node name="ForestLamp31" parent="TILE_MAPS/LIGHTS" unique_id=44574318 instance=ExtResource("6_3uusb")]
+position = Vector2(-213, 904)
+rotation = -3.1415925
+scale = Vector2(1, -1)
+
+[node name="ForestLamp32" parent="TILE_MAPS/LIGHTS" unique_id=721674617 instance=ExtResource("6_3uusb")]
+position = Vector2(-346, 903)
+rotation = -3.1415925
+scale = Vector2(1, -1)
+
+[node name="ForestLamp35" parent="TILE_MAPS/LIGHTS" unique_id=625022761 instance=ExtResource("6_3uusb")]
+position = Vector2(-210, 14)
+rotation = -3.1415925
+scale = Vector2(1, -1)
+
+[node name="ForestLamp36" parent="TILE_MAPS/LIGHTS" unique_id=985243356 instance=ExtResource("6_3uusb")]
+position = Vector2(-343, 13)
+rotation = -3.1415925
+scale = Vector2(1, -1)
+
+[node name="ForestLamp33" parent="TILE_MAPS/LIGHTS" unique_id=1593059485 instance=ExtResource("6_3uusb")]
+position = Vector2(-211, 469)
+rotation = -3.1415925
+scale = Vector2(1, -1)
+
+[node name="ForestLamp34" parent="TILE_MAPS/LIGHTS" unique_id=1902002332 instance=ExtResource("6_3uusb")]
+position = Vector2(-344, 468)
+rotation = -3.1415925
+scale = Vector2(1, -1)
+
+[node name="ForestLamp25" parent="TILE_MAPS/LIGHTS" unique_id=584503149 instance=ExtResource("6_3uusb")]
+position = Vector2(588, 1578)
+rotation = -3.1415925
+scale = Vector2(1, -1)
+
+[node name="ForestLamp26" parent="TILE_MAPS/LIGHTS" unique_id=1520566539 instance=ExtResource("6_3uusb")]
+position = Vector2(588, 1704)
+rotation = -3.1415925
+scale = Vector2(1, -1)
+
+[node name="ForestLamp37" parent="TILE_MAPS/LIGHTS" unique_id=687014013 instance=ExtResource("6_3uusb")]
+position = Vector2(110, -118)
+rotation = -3.1415925
+scale = Vector2(1, -1)
+
+[node name="ForestLamp38" parent="TILE_MAPS/LIGHTS" unique_id=2110324157 instance=ExtResource("6_3uusb")]
+position = Vector2(110, 8)
+rotation = -3.1415925
+scale = Vector2(1, -1)
+
+[node name="ForestLamp39" parent="TILE_MAPS/LIGHTS" unique_id=1963429576 instance=ExtResource("6_3uusb")]
+position = Vector2(583, -115)
+rotation = -3.1415925
+scale = Vector2(1, -1)
+
+[node name="ForestLamp40" parent="TILE_MAPS/LIGHTS" unique_id=426982632 instance=ExtResource("6_3uusb")]
+position = Vector2(583, 11)
+rotation = -3.1415925
+scale = Vector2(1, -1)
+
+[node name="ForestLamp49" parent="TILE_MAPS/LIGHTS" unique_id=675636368 instance=ExtResource("6_3uusb")]
+position = Vector2(1415, -119)
+rotation = -3.1415925
+scale = Vector2(1, -1)
+
+[node name="ForestLamp50" parent="TILE_MAPS/LIGHTS" unique_id=552955475 instance=ExtResource("6_3uusb")]
+position = Vector2(1415, 7)
+rotation = -3.1415925
+scale = Vector2(1, -1)
+
+[node name="ForestLamp51" parent="TILE_MAPS/LIGHTS" unique_id=1835354548 instance=ExtResource("6_3uusb")]
+position = Vector2(2133, -117)
+rotation = -3.1415925
+scale = Vector2(1, -1)
+
+[node name="ForestLamp52" parent="TILE_MAPS/LIGHTS" unique_id=861493170 instance=ExtResource("6_3uusb")]
+position = Vector2(2133, 9)
+rotation = -3.1415925
+scale = Vector2(1, -1)
+
+[node name="ForestLamp27" parent="TILE_MAPS/LIGHTS" unique_id=1042884964 instance=ExtResource("6_3uusb")]
+position = Vector2(-93, 1575)
+rotation = -3.1415925
+scale = Vector2(1, -1)
+
+[node name="ForestLamp28" parent="TILE_MAPS/LIGHTS" unique_id=325090144 instance=ExtResource("6_3uusb")]
+position = Vector2(-93, 1701)
+rotation = -3.1415925
+scale = Vector2(1, -1)
+
+[node name="ForestLamp17" parent="TILE_MAPS/LIGHTS" unique_id=740315044 instance=ExtResource("6_3uusb")]
+position = Vector2(3370, 523)
+rotation = -3.1415925
+scale = Vector2(1, -1)
+
+[node name="ForestLamp18" parent="TILE_MAPS/LIGHTS" unique_id=954169541 instance=ExtResource("6_3uusb")]
+position = Vector2(3237, 522)
+rotation = -3.1415925
+scale = Vector2(1, -1)
+
+[node name="ForestLamp19" parent="TILE_MAPS/LIGHTS" unique_id=1507404463 instance=ExtResource("6_3uusb")]
+position = Vector2(3367, 20)
+rotation = -3.1415925
+scale = Vector2(1, -1)
+
+[node name="ForestLamp20" parent="TILE_MAPS/LIGHTS" unique_id=446250707 instance=ExtResource("6_3uusb")]
+position = Vector2(3231, 15)
+rotation = -3.1415925
+scale = Vector2(1, -1)
+
 [node name="EMPTY LAYER5" type="TileMapLayer" parent="." unique_id=2038536323]
 position = Vector2(2928, 400)
 tile_set = ExtResource("1_vnhbh")
@@ -3752,239 +3989,3 @@ offset_bottom = -125.0
 texture = ExtResource("13_6ll1i")
 stretch_mode = 2
 metadata/_edit_use_anchors_ = true
-
-[node name="LIGHTS" type="Control" parent="." unique_id=753293066]
-layout_mode = 3
-anchors_preset = 0
-offset_right = 40.0
-offset_bottom = 40.0
-
-[node name="ForestLamp7" parent="LIGHTS" unique_id=368895387 instance=ExtResource("6_3uusb")]
-position = Vector2(2583, 1566)
-rotation = -3.1415925
-scale = Vector2(1, -1)
-
-[node name="ForestLamp8" parent="LIGHTS" unique_id=1204128653 instance=ExtResource("6_3uusb")]
-position = Vector2(2450, 1565)
-rotation = -3.1415925
-scale = Vector2(1, -1)
-
-[node name="ForestLamp9" parent="LIGHTS" unique_id=39859176 instance=ExtResource("6_3uusb")]
-position = Vector2(2583, 1187)
-rotation = -3.1415925
-scale = Vector2(1, -1)
-
-[node name="ForestLamp10" parent="LIGHTS" unique_id=1808440375 instance=ExtResource("6_3uusb")]
-position = Vector2(2450, 1186)
-rotation = -3.1415925
-scale = Vector2(1, -1)
-
-[node name="ForestLamp11" parent="LIGHTS" unique_id=1753372329 instance=ExtResource("6_3uusb")]
-position = Vector2(2591, 843)
-rotation = -3.1415925
-scale = Vector2(1, -1)
-
-[node name="ForestLamp12" parent="LIGHTS" unique_id=1466896924 instance=ExtResource("6_3uusb")]
-position = Vector2(2458, 842)
-rotation = -3.1415925
-scale = Vector2(1, -1)
-
-[node name="ForestLamp13" parent="LIGHTS" unique_id=492505065 instance=ExtResource("6_3uusb")]
-position = Vector2(2717, 502)
-rotation = -3.1415925
-scale = Vector2(1, -1)
-
-[node name="ForestLamp14" parent="LIGHTS" unique_id=1389828125 instance=ExtResource("6_3uusb")]
-position = Vector2(2584, 501)
-rotation = -3.1415925
-scale = Vector2(1, -1)
-
-[node name="ForestLamp15" parent="LIGHTS" unique_id=1350068566 instance=ExtResource("6_3uusb")]
-position = Vector2(2716, 17)
-rotation = -3.1415925
-scale = Vector2(1, -1)
-
-[node name="ForestLamp16" parent="LIGHTS" unique_id=643578244 instance=ExtResource("6_3uusb")]
-position = Vector2(2583, 16)
-rotation = -3.1415925
-scale = Vector2(1, -1)
-
-[node name="ForestLamp21" parent="LIGHTS" unique_id=1642984986 instance=ExtResource("6_3uusb")]
-position = Vector2(1851, 1702)
-rotation = -3.1415925
-scale = Vector2(1, -1)
-
-[node name="ForestLamp22" parent="LIGHTS" unique_id=1794930060 instance=ExtResource("6_3uusb")]
-position = Vector2(1718, 1701)
-rotation = -3.1415925
-scale = Vector2(1, -1)
-
-[node name="ForestLamp23" parent="LIGHTS" unique_id=923318292 instance=ExtResource("6_3uusb")]
-position = Vector2(1116, 1576)
-rotation = -3.1415925
-scale = Vector2(1, -1)
-
-[node name="ForestLamp24" parent="LIGHTS" unique_id=2116124049 instance=ExtResource("6_3uusb")]
-position = Vector2(983, 1575)
-rotation = -3.1415925
-scale = Vector2(1, -1)
-
-[node name="ForestLamp41" parent="LIGHTS" unique_id=258295090 instance=ExtResource("6_3uusb")]
-position = Vector2(1117, 1155)
-rotation = -3.1415925
-scale = Vector2(1, -1)
-
-[node name="ForestLamp42" parent="LIGHTS" unique_id=1627504783 instance=ExtResource("6_3uusb")]
-position = Vector2(984, 1154)
-rotation = -3.1415925
-scale = Vector2(1, -1)
-
-[node name="ForestLamp43" parent="LIGHTS" unique_id=1494052213 instance=ExtResource("6_3uusb")]
-position = Vector2(1117, 798)
-rotation = -3.1415925
-scale = Vector2(1, -1)
-
-[node name="ForestLamp44" parent="LIGHTS" unique_id=758711227 instance=ExtResource("6_3uusb")]
-position = Vector2(984, 797)
-rotation = -3.1415925
-scale = Vector2(1, -1)
-
-[node name="ForestLamp45" parent="LIGHTS" unique_id=169710894 instance=ExtResource("6_3uusb")]
-position = Vector2(986, 457)
-rotation = -3.1415925
-scale = Vector2(1, -1)
-
-[node name="ForestLamp46" parent="LIGHTS" unique_id=1273870503 instance=ExtResource("6_3uusb")]
-position = Vector2(853, 456)
-rotation = -3.1415925
-scale = Vector2(1, -1)
-
-[node name="ForestLamp47" parent="LIGHTS" unique_id=285594691 instance=ExtResource("6_3uusb")]
-position = Vector2(986, 57)
-rotation = -3.1415925
-scale = Vector2(1, -1)
-
-[node name="ForestLamp48" parent="LIGHTS" unique_id=410579380 instance=ExtResource("6_3uusb")]
-position = Vector2(853, 56)
-rotation = -3.1415925
-scale = Vector2(1, -1)
-
-[node name="ForestLamp29" parent="LIGHTS" unique_id=1030138800 instance=ExtResource("6_3uusb")]
-position = Vector2(-217, 1359)
-rotation = -3.1415925
-scale = Vector2(1, -1)
-
-[node name="ForestLamp30" parent="LIGHTS" unique_id=1130904713 instance=ExtResource("6_3uusb")]
-position = Vector2(-350, 1358)
-rotation = -3.1415925
-scale = Vector2(1, -1)
-
-[node name="ForestLamp31" parent="LIGHTS" unique_id=44574318 instance=ExtResource("6_3uusb")]
-position = Vector2(-213, 904)
-rotation = -3.1415925
-scale = Vector2(1, -1)
-
-[node name="ForestLamp32" parent="LIGHTS" unique_id=721674617 instance=ExtResource("6_3uusb")]
-position = Vector2(-346, 903)
-rotation = -3.1415925
-scale = Vector2(1, -1)
-
-[node name="ForestLamp35" parent="LIGHTS" unique_id=625022761 instance=ExtResource("6_3uusb")]
-position = Vector2(-210, 14)
-rotation = -3.1415925
-scale = Vector2(1, -1)
-
-[node name="ForestLamp36" parent="LIGHTS" unique_id=985243356 instance=ExtResource("6_3uusb")]
-position = Vector2(-343, 13)
-rotation = -3.1415925
-scale = Vector2(1, -1)
-
-[node name="ForestLamp33" parent="LIGHTS" unique_id=1593059485 instance=ExtResource("6_3uusb")]
-position = Vector2(-211, 469)
-rotation = -3.1415925
-scale = Vector2(1, -1)
-
-[node name="ForestLamp34" parent="LIGHTS" unique_id=1902002332 instance=ExtResource("6_3uusb")]
-position = Vector2(-344, 468)
-rotation = -3.1415925
-scale = Vector2(1, -1)
-
-[node name="ForestLamp25" parent="LIGHTS" unique_id=584503149 instance=ExtResource("6_3uusb")]
-position = Vector2(588, 1578)
-rotation = -3.1415925
-scale = Vector2(1, -1)
-
-[node name="ForestLamp26" parent="LIGHTS" unique_id=1520566539 instance=ExtResource("6_3uusb")]
-position = Vector2(588, 1704)
-rotation = -3.1415925
-scale = Vector2(1, -1)
-
-[node name="ForestLamp37" parent="LIGHTS" unique_id=687014013 instance=ExtResource("6_3uusb")]
-position = Vector2(110, -118)
-rotation = -3.1415925
-scale = Vector2(1, -1)
-
-[node name="ForestLamp38" parent="LIGHTS" unique_id=2110324157 instance=ExtResource("6_3uusb")]
-position = Vector2(110, 8)
-rotation = -3.1415925
-scale = Vector2(1, -1)
-
-[node name="ForestLamp39" parent="LIGHTS" unique_id=1963429576 instance=ExtResource("6_3uusb")]
-position = Vector2(583, -115)
-rotation = -3.1415925
-scale = Vector2(1, -1)
-
-[node name="ForestLamp40" parent="LIGHTS" unique_id=426982632 instance=ExtResource("6_3uusb")]
-position = Vector2(583, 11)
-rotation = -3.1415925
-scale = Vector2(1, -1)
-
-[node name="ForestLamp49" parent="LIGHTS" unique_id=675636368 instance=ExtResource("6_3uusb")]
-position = Vector2(1415, -119)
-rotation = -3.1415925
-scale = Vector2(1, -1)
-
-[node name="ForestLamp50" parent="LIGHTS" unique_id=552955475 instance=ExtResource("6_3uusb")]
-position = Vector2(1415, 7)
-rotation = -3.1415925
-scale = Vector2(1, -1)
-
-[node name="ForestLamp51" parent="LIGHTS" unique_id=1835354548 instance=ExtResource("6_3uusb")]
-position = Vector2(2133, -117)
-rotation = -3.1415925
-scale = Vector2(1, -1)
-
-[node name="ForestLamp52" parent="LIGHTS" unique_id=861493170 instance=ExtResource("6_3uusb")]
-position = Vector2(2133, 9)
-rotation = -3.1415925
-scale = Vector2(1, -1)
-
-[node name="ForestLamp27" parent="LIGHTS" unique_id=1042884964 instance=ExtResource("6_3uusb")]
-position = Vector2(-93, 1575)
-rotation = -3.1415925
-scale = Vector2(1, -1)
-
-[node name="ForestLamp28" parent="LIGHTS" unique_id=325090144 instance=ExtResource("6_3uusb")]
-position = Vector2(-93, 1701)
-rotation = -3.1415925
-scale = Vector2(1, -1)
-
-[node name="ForestLamp17" parent="LIGHTS" unique_id=740315044 instance=ExtResource("6_3uusb")]
-position = Vector2(3370, 523)
-rotation = -3.1415925
-scale = Vector2(1, -1)
-
-[node name="ForestLamp18" parent="LIGHTS" unique_id=954169541 instance=ExtResource("6_3uusb")]
-position = Vector2(3237, 522)
-rotation = -3.1415925
-scale = Vector2(1, -1)
-
-[node name="ForestLamp19" parent="LIGHTS" unique_id=1507404463 instance=ExtResource("6_3uusb")]
-position = Vector2(3367, 20)
-rotation = -3.1415925
-scale = Vector2(1, -1)
-
-[node name="ForestLamp20" parent="LIGHTS" unique_id=446250707 instance=ExtResource("6_3uusb")]
-position = Vector2(3231, 15)
-rotation = -3.1415925
-scale = Vector2(1, -1)

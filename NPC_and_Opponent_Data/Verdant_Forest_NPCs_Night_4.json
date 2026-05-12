@@ -137,13 +137,79 @@
 	  "first_win_text": "Someone is looking over your shoulder.",
 	  "rematch_win_text": "The spirits must be guiding you.",
 	  "loss_text": "I was getting help from the other side.",
-	  "cash_reward": "200",
-	  "coin_reward": "Primal_Groudon_Red",
+	  "cash_reward": "220",
+	  "coin_reward": "gastly_purple",
 	  "pattern": "idle_down",
 	  "position": {
-		"x": 3280,
-		"y": 1080
+		"x": 3277,
+		"y": 1062
 	  }
 	},
+	{	
+	  "name": "Police Constable Floyd",
+	  "sprite": "Policeman",
+	  "deck": "Energy Beams",
+	  "music": "normal_battle",
+	  "prize_cards": 6,
+	  "meet_text": "Because we've just reopened the forest, my boss wants us to keep a patrol to keep an eye out for any trouble.",
+	  "repeat_text": "Have you seen anything suspicious recently?",
+	  "first_win_text": "It's a good thing this area is so safe.",
+	  "rematch_win_text": "I need more training.",
+	  "loss_text": "I should be promoted to detective!",
+	  "cash_reward": "225",
+	  "coin_reward": "growlithe_red",
+  	  "pattern": "patrol_line",
+	  "patrol_speed": 60.0,
+	  "patrol_distance": 1520,
+	  "patrol_axis": "horizontal",
+	  "position": {
+		"x": 1000,
+		"y": 1050
+	  }
+	},
+	{	
+	  "name": "Police Sergeant Douglas",
+	  "sprite": "Policeman2",
+	  "deck": "Peace Keepers",
+	  "music": "normal_battle",
+	  "prize_cards": 6,
+	  "meet_text": "You better not be up to anything. I'm the searge round ere. I'm keeping my eyes out for anything that aint right.",
+	  "repeat_text": "We're lucky nothing ever really happens round these parts.",
+	  "first_win_text": "Report back to me if you see anything dodgy immediately.",
+	  "rematch_win_text": "Don't tell anyone I'm rubbish at this.",
+	  "loss_text": "There'll be no crime around here on my watch.",
+	  "cash_reward": "225",
+	  "coin_reward": "dusclops_silver",
+  	  "pattern": "patrol_line",
+	  "patrol_speed": 40.0,
+	  "patrol_distance": 2800,
+	  "patrol_axis": "horizontal",
+	  "position": {
+		"x": -300,
+		"y": 1650
+	  }
+	},
+	{	
+	  "name": "Rocket Grunt Margot",
+	  "sprite": "Teamrocket_F",
+	  "deck": "Scavenge and Retreat",
+	  "music": "normal_battle",
+	  "prize_cards": 6,
+	  "meet_text": "Did you know Team Rocket almost ruled the world? Anybody can be a Rocket member if they want.",
+	  "repeat_text": "Have you thought about joining us yet?",
+	  "first_win_text": "I'm supposed to be recruiting so take one of our uniforms if you want to join!",
+	  "rematch_win_text": "You've got everything it takes to join us.",
+	  "loss_text": "Maybe you're not cut out to be a Rocket grunt like me.",
+	  "cash_reward": "200",
+	  "coin_reward": "rocket_silver",
+	  "costume_reward": "TeamRocket_F, TeamRocket_M",
+	  "pattern": "random_wander",
+	  "patrol_speed": 60.0,
+	  "wander_radius": 65,
+	  "position": {
+		"x": 1770,
+		"y": 200
+	  }
+	}
   ]
 }

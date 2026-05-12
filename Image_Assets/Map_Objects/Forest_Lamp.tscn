@@ -33,7 +33,7 @@ tile_set = ExtResource("1_yg3vm")
 [node name="PointLight2D2" type="PointLight2D" parent="." unique_id=1175959164]
 position = Vector2(17, 6.0332375)
 scale = Vector2(3.96875, 4.0017314)
-color = Color(2.9206014, 1.2991661, 0, 0.6156863)
+color = Color(1.4954206, 1.3741792, 0.83410376, 0.5647059)
 energy = 2.21
 range_z_min = -961
 range_z_max = 584

@@ -1,0 +1,398 @@
+{
+  "npcs": [
+	{
+	  "name": "Pikachu Fans' Mum",
+	  "sprite": "Pokefan_F",
+  	  "meet_text": "It's nearly time to go home now so I better round up my kids!",
+	  "repeat_text": "We come back here every day because they're all so obsessed with Pikachu!!",
+	  "pattern": "idle_down",
+	  "position": {
+		"x": 1509,
+		"y": 928
+	  },
+	  "condition": {
+		"type": "not_all_opponents_defeated",
+		"targets": ["Pikachu Fan Marina","Pikachu Fan Skye","Pikachu Fan Cami","Pikachu Fan Juniper","Pikachu Fan Raye","Pikachu Fan Leaf"]
+	  }
+	},
+	
+	
+	{
+	  "name": "Pikachu Fan Marina",
+	  "sprite": "Pokekid",
+	  "meet_text": "I've never even been on a surfboard before.",
+	  "repeat_text": "I wish I could surf like a Pikachu!",
+	  "pattern": "random_wander",
+	  "patrol_speed": 20.0,
+	  "wander_radius": 65,
+	  "position": {
+		"x": 1425,
+		"y": 1000
+	  },
+	  "condition": {
+		"type": "opponent_defeated",
+		"target": "Pikachu Fan Marina"
+	  }
+	},
+	{
+	  "name": "Pikachu Fan Skye",
+	  "sprite": "Pokekid",
+	  "meet_text": "I've still not seen a Pikachu fly!",
+	  "repeat_text": "I wish I could go flying toooo.",
+	  "pattern": "random_wander",
+	  "patrol_speed": 20.0,
+	  "wander_radius": 65,
+	  "position": {
+		"x": 1425,
+		"y": 1075
+	  },
+	  "condition": {
+		"type": "opponent_defeated",
+		"target": "Pikachu Fan Skye"
+	  }
+	},
+	{
+	  "name": "Pikachu Fan Cami",
+	  "sprite": "Pokekid",
+	  "meet_text": "I've been taking some good pictures on my camera recently.",
+	  "repeat_text": "I'm still working on my Pikachu picture collection. I currently don't have many.",
+	  "pattern": "random_wander",
+	  "patrol_speed": 20.0,
+	  "wander_radius": 65,
+	  "position": {
+		"x": 1500,
+		"y": 1000
+	  },
+	  "condition": {
+		"type": "opponent_defeated",
+		"target": "Pikachu Fan Cami"
+	  }
+	},
+	{
+	  "name": "Pikachu Fan Juniper",
+	  "sprite": "Pokekid",
+	  "meet_text": "I've still got my eyes open trying to find a Pikachu here!",
+	  "repeat_text": "Please tell me if you find a Pikachu running around here!!",
+	  "pattern": "random_wander",
+	  "patrol_speed": 20.0,
+	  "wander_radius": 65,
+	  "position": {
+		"x": 1500,
+		"y": 1075
+	  },
+	  "condition": {
+		"type": "opponent_defeated",
+		"target": "Pikachu Fan Juniper"
+	  }
+	},
+	{
+	  "name": "Pikachu Fan Raye",
+	  "sprite": "Pokekid",
+	  "meet_text": "Thunderbolt is such a super duper powerful attack.",
+	  "repeat_text": "I would never want to be shocked by a real Thunderbolt!!",
+	  "pattern": "random_wander",
+	  "patrol_speed": 20.0,
+	  "wander_radius": 65,
+	  "position": {
+		"x": 1575,
+		"y": 1000
+	  },
+	  "condition": {
+		"type": "opponent_defeated",
+		"target": "Pikachu Fan Raye"
+	  }
+	},
+	{
+	  "name": "Pikachu Fan Leaf",
+	  "sprite": "Pokekid",
+	  "meet_text": "Do you love Pikachu too?",
+	  "repeat_text": "I love Pikachu the most out of all of us!",
+	  "pattern": "random_wander",
+	  "patrol_speed": 20.0,
+	  "wander_radius": 65,
+	  "position": {
+		"x": 1575,
+		"y": 1075
+	  },
+	  "condition": {
+		"type": "opponent_defeated",
+		"target": "Pikachu Fan Leaf"
+	  }
+	},
+	
+	{
+	  "name": "Pikachu Fan Marina",
+	  "sprite": "Pokekid",
+	  "meet_text": "It's nearly time to go home so I won't have time to battle now.",
+	  "repeat_text": "Mum brings us back every day",
+	  "pattern": "idle_left",
+	  "position": {
+		"x": 3125,
+		"y": 1045
+	  },
+	  "condition": {
+		"type": "opponent_not_defeated",
+		"target": "Pikachu Fan Marina"
+	  }
+	},
+	{
+	  "name": "Pikachu Fan Skye",
+	  "sprite": "Pokekid",
+	  "meet_text": "I always want to battle but mum doesn't let us when it's this late.",
+	  "repeat_text": "We always come here early in the morning.",
+	  "pattern": "idle_up",
+	  "position": {
+		"x": 216,
+		"y": 500
+	  },
+	  "condition": {
+		"type": "opponent_not_defeated",
+		"target": "Pikachu Fan Skye"
+	  }
+	},
+	{
+	  "name": "Pikachu Fan Cami",
+	  "sprite": "Pokekid",
+	  "meet_text": "I'm trying to take some last minute photos before we have to leave.",
+	  "repeat_text": "I'll bring my cards back here tomorrow with the photos I've taken!",
+	  "pattern": "idle_left",
+	  "position": {
+		"x": 3270,
+		"y": 290
+	  },
+	  "condition": {
+		"type": "opponent_not_defeated",
+		"target": "Pikachu Fan Cami"
+	  }
+	},
+	{
+	  "name": "Pikachu Fan Juniper",
+	  "sprite": "Pokekid",
+	  "meet_text": "I swear I just saw a Pikachu run along by here!!",
+	  "repeat_text": "I don't have long to find it before I have to go",
+	  "pattern": "random_wander",
+	  "patrol_speed": 20.0,
+	  "wander_radius": 65,
+	  "position": {
+		"x": 2050,
+		"y": 1050
+	  },
+	  "condition": {
+		"type": "opponent_not_defeated",
+		"target": "Pikachu Fan Juniper"
+	  }
+	},
+	{
+	  "name": "Pikachu Fan Raye",
+	  "sprite": "Pokekid",
+	  "meet_text": "I know our mum worries about us when it gets this late so I better head back ",
+	  "repeat_text": "We have to be back home before it gets dark",
+	  "pattern": "random_wander",
+	  "patrol_speed": 20.0,
+	  "wander_radius": 65,
+	  "position": {
+		"x": 1760,
+		"y": 350
+	  },
+	  "condition": {
+		"type": "opponent_not_defeated",
+		"target": "Pikachu Fan Raye"
+	  }
+	},
+	{
+	  "name": "Pikachu Fan Leaf",
+	  "sprite": "Pokekid",
+	  "meet_text": "Oh dear I've just noticed the time so I can't play any more",
+	  "repeat_text": "We're not allowed to play when it gets dark",
+	  "pattern": "random_wander",
+	  "patrol_speed": 20.0,
+	  "wander_radius": 65,
+	  "position": {
+		"x": -270,
+		"y": -50
+	  },
+	  "condition": {
+		"type": "opponent_not_defeated",
+		"target": "Pikachu Fan Leaf"
+	  }
+	},
+  ],
+  "opponents": [
+	{	
+	  "name": "Old Traveller Harold",
+	  "sprite": "Gentleman2",
+	  "deck": "Solid Invertebrates",
+	  "music": "normal_battle",
+	  "prize_cards": 4,
+	  "meet_text": "I'm travelling the world with my old friend. We've been to many places in our time.",
+	  "repeat_text": "Won't be long until we move onto the next place",
+	  "first_win_text": "Well done. You could travel with us if you were older too ho ho ho.",
+	  "rematch_win_text": "Have you been aboard the SS Anne at all?",
+	  "loss_text": "Don't you worry, life isn't all about winning and losing.",
+	  "cash_reward": "125",
+	  "coin_reward": "starmie_blue",
+	  "costume_reward": "gentleman2",
+	  "pattern": "idle_left",
+	  "position": {
+		"x": 100,
+		"y": 1590
+	  }
+	},
+	{	
+	  "name": "Old Traveller Cliff",
+	  "sprite": "Gentleman3",
+	  "deck": "Hard Hitters",
+	  "music": "normal_battle",
+	  "prize_cards": 4,
+	  "meet_text": "Me and my dear friend arrived on the SS Anne. We've travelled on it a few years in the past.",
+	  "repeat_text": "I've lived in many places in my time so I always appreciate being in the now.",
+	  "first_win_text": "That's the way to do it, good effort!",
+	  "rematch_win_text": "Another fantastic play, good show.",
+	  "loss_text": "You'll never grow and mature if you win every time.",
+	  "cash_reward": "125",
+	  "coin_reward": "machamp_gold",
+	  "costume_reward": "gentleman3",
+	  "pattern": "idle_right",
+	  "position": {
+		"x": 70,
+		"y": 1590
+	  }
+	},
+	{	
+	  "name": "Clown Hubert",
+	  "sprite": "clown",
+	  "deck": "Scary Phobias",
+	  "music": "normal_battle",
+	  "prize_cards": 4,
+	  "meet_text": "Can you believe that some people are actually scared of us clowns!!!",
+	  "repeat_text": "I'm glad you don't find me scary!",
+	  "first_win_text": "I ran away from the circus for this?",
+	  "rematch_win_text": "I wonder if the circus will take me back....",
+	  "loss_text": "*honk* *honk* I can teach you how to ride a unicycle",
+	  "cash_reward": "125",
+	  "coin_reward": "arbok_purple",
+	  "pattern": "idle_cycle",
+	  "position": {
+		"x": 340,
+		"y": 400
+	  }
+	},
+	{	
+	  "name": "Clown Glenn",
+	  "sprite": "harlequin",
+	  "deck": "Strange Damage Counters",
+	  "music": "normal_battle",
+	  "prize_cards": 6,
+	  "meet_text": "Why do clowns often have stiff necks?....",
+	  "repeat_text": "I told my wife I was going to clown college....",
+	  "first_win_text": ".....Because they sleep funny!",
+	  "rematch_win_text": "..... She said you can't be serious!!!",
+	  "loss_text": "*honk* *honk* Nevermind, that's a better punchline!",
+	  "cash_reward": "150",
+	  "coin_reward": "chansey_silver_2",
+	  "pattern": "patrol_square",
+	  "patrol_speed": 80.0,
+	  "patrol_distance": 100,
+	  "position": {
+		"x": 290,
+		"y": 350
+	  }
+	},
+	{	
+	  "name": "Rocket Exec Petrel",
+	  "sprite": "Teamrocketpetrel",
+	  "deck": "Relentless Poison",
+	  "music": "normal_battle",
+	  "prize_cards": 6,
+	  "meet_text": "Heh, you've found us at the right time. We've been hiding from the police... Not that we've done anything illegal, we're just here to play this card game.",
+	  "repeat_text": "You're back for another round?",
+	  "first_win_text": "You better watch this space.",
+	  "rematch_win_text": "You should join us, we've got big things coming.",
+	  "loss_text": "Of course you didn't stand a chance against us.",
+	  "cash_reward": "200",
+	  "coin_reward": "articuno_blue",
+	  "pattern": "idle_up",
+	  "position": {
+		"x": 3300,
+		"y": 1130
+	  }
+	},
+	{	
+	  "name": "Rocket Exec Proton",
+	  "sprite": "Teamrocketproton",
+	  "deck": "Under The Shadow Of Wings",
+	  "music": "normal_battle",
+	  "prize_cards": 6,
+	  "meet_text": "This well is bringing back a lot of memories... I can't imagine you've heard of Team Rocket before but you'll hear about us soon.",
+	  "repeat_text": "Giving me another chance huh?",
+	  "first_win_text": "Heh we're in your shadow then huh.",
+	  "rematch_win_text": "It won't always be like this.",
+	  "loss_text": "We will be feared again.",
+	  "cash_reward": "200",
+	  "coin_reward": "moltres_red",
+	  "pattern": "idle_up",
+	  "position": {
+		"x": 3250,
+		"y": 1130
+	  }
+	},
+	{	
+	  "name": "Rocket Exec Archer",
+	  "sprite": "Teamrocketarcher",
+	  "deck": "Jet Shell",
+	  "music": "normal_battle",
+	  "prize_cards": 6,
+	  "meet_text": "Hello. I'm Archer one of the 4 execs of Team Rocket. We're not here to do anything illicit. Not yet anyway. We're just getting started.",
+	  "repeat_text": "If you're really that interested you should join us.",
+	  "first_win_text": "Enjoy the wins while they last.",
+	  "rematch_win_text": "Don't hang about too late.",
+	  "loss_text": "Don't take it personally.",
+	  "cash_reward": "200",
+	  "coin_reward": "zapdos_gold2",
+	  "pattern": "idle_down",
+	  "position": {
+		"x": 3277,
+		"y": 1060
+	  }
+	},
+	{	
+	  "name": "Rocket Exec Ariana",
+	  "sprite": "Teamrocketariana",
+	  "deck": "Forced Evolution",
+	  "music": "normal_battle",
+	  "prize_cards": 6,
+	  "meet_text": "Have you bought any of our card packs yet? Boss wants us to make as much money as possible as soon as we can.",
+	  "repeat_text": "You got one pack free but I won't be giving you another.",
+	  "first_win_text": "Here's a free one on me. Don't expect any more though.",
+	  "rematch_win_text": "Don't ask for anything from us.",
+	  "loss_text": "You need to try harder.",
+	  "cash_reward": "200",
+	  "coin_reward": "mewtwo_gold",
+	  "pack_reward": "base5_c",
+	  "pattern": "idle_right",
+	  "position": {
+		"x": 1760,
+		"y": 500
+	  }
+	},
+	{	
+	  "name": "Rocket Boss Giovanni",
+	  "sprite": "Teamrocketboss",
+	  "deck": "Rocket Psychic Supremacy",
+	  "music": "normal_battle",
+	  "prize_cards": 6,
+	  "meet_text": "Good evening. I believe we may have already met? I've been working tirelessly since I arrived. There seems to be a lot of money to be made in this card game.",
+	  "repeat_text": "Nice to see you again. I'm willing to play again.",
+	  "first_win_text": "Interesting. You've got a great technique.",
+	  "rematch_win_text": "You could teach me a thing or two about this.",
+	  "loss_text": "Hmm. I won't let you beat me.",
+	  "cash_reward": "250",
+	  "coin_reward": "mewtwo_purple2",
+	  "pattern": "idle_left",
+	  "position": {
+		"x": 1790,
+		"y": 500
+	  }
+	},
+  ]
+}

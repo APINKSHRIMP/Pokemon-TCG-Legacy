@@ -346,7 +346,7 @@
 	  "loss_text": "I'm not just a pretty face either.",
 	  "cash_reward": "125",
 	  "coin_reward": "coin_gloom_green",
-	"pattern": "idle_down",
+	  "pattern": "idle_down",
 	  "position": {
 		"x": 2054,
 		"y": 928

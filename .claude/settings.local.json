@@ -24,7 +24,8 @@
       "Bash(Select-Object Name)",
       "Bash(Get-ChildItem -Path \"C:\\\\Pokemon TCG Legacy\\\\NPC_and_Opponent_Data\" -File -Recurse)",
       "Bash(Select-Object FullName)",
-      "Bash(python *)"
+      "Bash(python *)",
+      "Bash(Get-ChildItem *)"
     ],
     "deny": [
       "Bash(git rebase *)",
