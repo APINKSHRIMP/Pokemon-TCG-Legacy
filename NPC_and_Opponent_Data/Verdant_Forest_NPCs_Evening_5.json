@@ -191,8 +191,8 @@
 	  "patrol_speed": 20.0,
 	  "wander_radius": 65,
 	  "position": {
-		"x": 1760,
-		"y": 350
+		"x": 1610,
+		"y": 150
 	  },
 	  "condition": {
 		"type": "opponent_not_defeated",
