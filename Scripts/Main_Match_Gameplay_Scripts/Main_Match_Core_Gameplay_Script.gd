@@ -4002,20 +4002,32 @@ func load_opponent_data_by_name(opp_name: String):
 	if file == null:
 		print("Error loading file")
 		return
-	
+
 	var json = JSON.new()
 	var error = json.parse(file.get_as_text())
 	if error != OK:
 		print("JSON parse error")
 		return
-	
+
 	var opponents = json.data["opponents"]
 	for opponent in opponents:
 		if opponent.get("name") == opp_name:
 			opponent_data = opponent
-			return
-	
-	print("Opponent with name ", opp_name, " not found")
+			break
+
+	if opponent_data.is_empty():
+		print("Opponent with name ", opp_name, " not found")
+		return
+
+	var const_file = FileAccess.open("res://NPC_and_Opponent_Data/All_NPC_Constant_Data.json", FileAccess.READ)
+	if const_file != null:
+		var const_data = JSON.parse_string(const_file.get_as_text())
+		const_file.close()
+		if const_data is Dictionary:
+			var consts: Dictionary = const_data.get("opponents", {}).get(opp_name, {})
+			for key in consts:
+				if not opponent_data.has(key):
+					opponent_data[key] = consts[key]
 
 # Play the correct music via the global SoundManager
 func play_opponent_music():

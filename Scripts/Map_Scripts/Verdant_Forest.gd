@@ -30,12 +30,12 @@ func _ready():
 	var time_of_day: String = GameState.get_time()
 	var date: int = GameState.get_date()
 
-	# Build NPC JSON path: e.g. "Verdant_Forest_NPCs_Day_4.json"
-	NPC_JSON_PATH = "res://NPC_and_Opponent_Data/Verdant_Forest_NPCs_" + time_of_day + "_" + str(date) + ".json"
+	# Build NPC JSON path: e.g. "Verdant_Forest_4_Day.json"
+	NPC_JSON_PATH = "res://NPC_and_Opponent_Data/Verdant_Forest_" + str(date) + "_" + time_of_day + ".json"
 
 	# Fall back to Day 4 if the specific time/date file doesn't exist
 	if not ResourceLoader.exists(NPC_JSON_PATH):
-		NPC_JSON_PATH = "res://NPC_and_Opponent_Data/Verdant_Forest_NPCs_Day_4.json"
+		NPC_JSON_PATH = "res://NPC_and_Opponent_Data/Verdant_Forest_4_Day.json"
 
 	SoundManagerScript.play_bgm(BGM_PATH, true)
 	set_time_of_day(time_of_day)

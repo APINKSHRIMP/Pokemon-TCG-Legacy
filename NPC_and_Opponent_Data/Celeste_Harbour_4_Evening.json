@@ -1,0 +1,536 @@
+{
+  "npcs": [
+	{
+	  "name": "Plaza Challenger 5 Eve",
+	  "meet_text": "I've been watching everyone play all day.",
+	  "repeat_text": "if you're going to try it then good luck!!!",
+	  "pattern": "idle_up",
+	  "position": {
+		"x": 2200,
+		"y": 1302
+	  }
+	},
+	{
+	  "name": "Plaza Challenger 6 Eve",
+	  "meet_text": "I thought I was too old to be good at this, but the elders are amazing and have been playing all day long.",
+	  "repeat_text": "If you win then maybe you can teach me how to play.",
+	  "pattern": "idle_up",
+	  "position": {
+		"x": 2355,
+		"y": 1302
+	  }
+	},
+	{
+	  "name": "Old Guy Neighbour Evening 3",
+	  "meet_text": "It's been a long day for sure. While I was doing my shopping earlier I tried my luck at the Holo Rare Stand. Of course I don't actually collect any cards or play it so you can have the card I won.",
+	  "repeat_text": "I only decided to try my luck for the fun of it, it was such a thrill!",
+	  "pattern": "idle_down",
+	  "position": {
+		"x": -375,
+		"y": 1625
+	  }
+	},
+	{
+	  "name": "Psychic Brienne",
+	  "meet_text": "The SS Anne has ruined my daily meditation so I've had to try a new spot today.",
+	  "repeat_text": "It's not quite as good of a spot as the dock is but here but it's still peaceful enough.",
+	  "pattern": "idle_left",
+	  "position": {
+		"x": -830,
+		"y": 1270
+	  }
+	},
+	{
+	  "name": "Holo Rare Shopkeeper",
+	  "meet_text": "Welcome! I deal in mystery Holo Rares. Seven types, one pick — pay $400 and find out what fate has in store for you!",
+	  "pattern": "idle_down",
+	  "position": {
+		"x": 1975,
+		"y": 1650
+	  }
+	},
+	{
+	  "name": "Coin Shopkeeper",
+	  "meet_text": "Welcome! I sell rare limited edition coins that you won't be able to buy anywhere else! They're not cheap at $300 each but I promise you they're top quality, completely unique and won't find anything like them around!",
+	  "pattern": "idle_down",
+	  "position": {
+		"x": 2095,
+		"y": 1650
+	  }
+	},
+	{
+	  "name": "Fruit And Veg Shopkeeper",
+	  "meet_text": "Hello - fresh fruit and veg for sale here. We've got everything you could ask for.",
+	  "repeat_text": "I've got some discounted fruit on offer if you're interested.",
+	  "pattern": "idle_down",
+	  "position": {
+		"x": 2460,
+		"y": 1650
+	  }
+	},
+	{
+	  "name": "Bakery Shopkeeper",
+	  "meet_text": "Get your freshly baked pastries, cakes and bread all here.",
+	  "repeat_text": "Plenty of items still fresh to enjoy!",
+	  "pattern": "idle_down",
+	  "position": {
+		"x": 2570,
+		"y": 1650
+	  }
+	},
+	{
+	  "name": "Bakery Lover Eve",
+	  "meet_text": "I LOVE FRESH BREAD! It's always so warm and crispy if you get it here early enough. If you're here that must mean you love it as much as I do!! We should be best friends!!",
+	  "repeat_text": "I got so hungry from before that I just had to come back and get some more bread. It's soooo good.",
+	  "pattern": "idle_random",
+	  "position": {
+		"x": 2380,
+		"y": 1700
+	  }
+	},
+	{
+	  "name": "Brock NPC",
+	  "meet_text": "Hey I'm Brock. I used to be a Gym Leader a long time ago. Battling wasn't for me so I gave it up to become a Pokemon Breeder and travel the world. Have this card of my favourite Pokemon.",
+	  "repeat_text": "I much prefer to play the TCG than battling so I'm looking forward to the challenge.",
+	  "pattern": "idle_up",
+	  "position": {
+		"x": 2705,
+		"y": 2195
+	  }
+	},
+	{
+	  "name": "Sunbathing Sailor 1",
+	  "meet_text": "I got nothing to do until tonight so I'm taking it easy.",
+	  "repeat_text": "I aint doing work if I aint being paid for it.",
+	  "pattern": "idle_down",
+	  "position": {
+		"x": -79,
+		"y": 2405
+	  }
+	},
+	{
+	  "name": "Sailor Working On SS Anne",
+	  "meet_text": "The SS Anne will be sailing for a long time. ",
+	  "repeat_text": "It only makes it's trip once a year so there's a lot of work to be done when it sails.",
+	  "pattern": "patrol_line",
+	  "patrol_speed": 40.0,
+	  "patrol_distance": 40,
+	  "patrol_axis": "horizontal",
+	  "position": {
+		"x": 2150,
+		"y": 3150
+	  }
+	},
+	{
+	  "name": "Sunbathing Sailor 2 Eve",
+	  "meet_text": "Misty left and I didn't say hello. I have to head back to the Anne so I won't have chance now.",
+	  "repeat_text": "Weird how life works. You never know who you're going to run into years down the line.",
+	  "pattern": "idle_down",
+	  "position": {
+		"x": -46,
+		"y": 2273
+	  }
+	},
+	{
+	  "name": "Worker On Dock Eve",
+	  "meet_text": "I'll be done with this work very soon, I'm just finishing the last bit of welding on the hull.",
+	  "repeat_text": "Watch yourself around these ships, it can be dangerous if you're not careful.",
+	  "pattern": "idle_down",
+	  "position": {
+		"x": 900,
+		"y": 3155
+	  }
+	},
+	{
+	  "name": "SS Anne Waitress",
+	  "meet_text": "The SS Anne is always hiring if you fancy travelling the world.",
+	  "repeat_text": "We always have a lot of spare uniforms on hand as some staff land at a nice port and decide they don't want to go back to work again!",
+	  "pattern": "idle_right",
+	  "position": {
+		"x": 2760,
+		"y": 3150
+	  }
+	},
+	{
+	  "name": "SS Anne Waiter",
+	  "meet_text": "I've only been a waiter around a week, they were short staffed so offered me a high pay.",
+	  "repeat_text": "I highly reccomend it as a career, but I don't know what I'll do after the ship returns back to Vermillion.",
+	  "pattern": "idle_left",
+	  "position": {
+		"x": 2800,
+		"y": 3150
+	  }
+	},
+	{
+	  "name": "Blaine NPC",
+	  "meet_text": "The name's Blaine. I was the gym leader on Cinnabar years ago before the volcano erupted. We moved to the Seafoam islands for a while but it was just never the same. I was the strongest Gym leader back then so take my strongest card.",
+	  "repeat_text": "The Cinnabar eruption wasn't the largest shock, we knew we were on a volcano but it was still devastating. Thankfully nobody was hurt but the island was lost almost entirely.",
+	  "pattern": "idle_left",
+	  "position": {
+		"x": 1209,
+		"y": 2399
+	  }
+	},
+	{
+	  "name": "Woman Walking The Neighbourhood Eve 3",
+	  "meet_text": "Do you ever end up walking more than you thought you were going to?",
+	  "repeat_text": "I always end up walking further than I should.",
+	  "pattern": "idle_right",
+	  "position": {
+		"x": 855,
+		"y": 2313
+	  }
+	},
+	{
+	  "name": "Sailor 2 Pier 1 Day 3",
+	  "meet_text": "With the arrival of the SS Anne we're even busier than usual. We've never had this many tourists in the harbour at once.",
+	  "repeat_text": "Sigh.. I wish I could just on the SS Anne and sail away on it forever.",
+	  "pattern": "idle_random",
+	  "position": {
+		"x": 350,
+		"y": 3125
+	  }
+	},
+	{
+	  "name": "Maintenance Guy Blocking Forest",
+	  "meet_text": "Sorry, the forest is still closed off, we haven't been able to clear the area entirely yet. We were hoping to have all the work done before today so all the passengers of the SS Anne could go out and explore.",
+	  "repeat_text": "We're nearly done with it so it'll definitely be open tomorrow, my boss would kill me if we don't have it reopened before the SS Anne leaves again.",
+	  "pattern": "idle_down",
+	  "position": {
+		"x": 920,
+		"y": 900
+	  }
+	},
+	{
+	  "name": "Car Park Guy 1",
+	  "meet_text": "Sorry, I can't let you into the car park unless you have car!",
+	  "repeat_text": "It's too dangerous to be wondering around on the road you know, I can't let any accidents happen under my watch.",
+	  "pattern": "idle_down",
+	  "position": {
+		"x": 628,
+		"y": 1190
+	  }
+	},
+	{
+	  "name": "Man Staring Out To Sea Evening 3",
+	  "meet_text": "It's nearly time for my girlfriend to finish her shift.",
+	  "repeat_text": "I've got the slow cooker on so dinner will be all ready when we get home.",
+	  "pattern": "idle_right",
+	  "position": {
+		"x": 950,
+		"y": 2235
+	  }
+	},
+	{
+	  "name": "Juicebar Woman (From Staring Out To Sea) Day 3",
+	  "meet_text": "Hello! Can I interest you in any juice today?",
+	  "repeat_text": "Did you get lucky and find a coin this time?",
+	  "pattern": "idle_down",
+	  "position": {
+		"x": 1030,
+		"y": 2190
+	  }
+	},
+	{
+	  "name": "Sailor Working On Dock Day 3",
+	  "meet_text": "*huff* I knew I'd be busy with the SS Anne arriving but *huff* I didn't think I'd be THIS busy....",
+	  "repeat_text": "*huff* *huff* The SS Anne only arrives once a year and it's always the harbour's busiest days.",
+	  "pattern": "patrol_line",
+	  "patrol_speed": 80.0,
+	  "patrol_distance": 200,
+	  "patrol_axis": "vertical",
+	  "position": {
+		"x": 690,
+		"y": 2680
+	  }
+	},
+	{
+	  "name": "Station Manager Evening 3",
+	  "meet_text": "Good evening. The last train of the day will be departing shortly so please head through to the gate if you intend to catch it.",
+	  "repeat_text": "The trains here are always very punctual, they're never late.",
+	  "pattern": "random_wander",
+	  "patrol_speed": 50.0,
+	  "wander_radius": 60,
+	  "position": {
+		"x": 2020,
+		"y": 1020
+	  }
+	},
+	{
+	  "name": "Train Employee 2",
+	  "meet_text": "I'm been tasked with litter picking with the influx of tourist.",
+	  "repeat_text": "There's plenty of bins around so I don't why people don't use them.",
+	  "pattern": "random_wander",
+	  "patrol_speed": 40.0,
+	  "wander_radius": 65,
+	  "position": {
+		"x": 2550,
+		"y": 1270
+	  }
+	},
+	{
+	  "name": "Firebreather Darryl",
+	  "meet_text": "mMMMmm mMmMm MmmmMM MmMMmM mMMMmMmMm mMmMmMMm MMMmM mm mmMM MmmMMmM.",
+	  "repeat_text": "Sorry you caught me at a bad time I had a mouthful of fire fluid there.",
+	  "pattern": "idle_cycle",
+	  "position": {
+		"x": 1050,
+		"y": 2475
+	  }
+	},
+	{
+	  "name": "Firebreather Kenneth",
+	  "meet_text": "We're good at what we do and we make it look easy but it's not.",
+	  "repeat_text": "It's very hard work this!",
+	  "pattern": "idle_cycle",
+	  "position": {
+		"x": 1000,
+		"y": 2475
+	  }
+	}
+  ],
+  "opponents": [
+	{
+	  "name": "Swimmer Jordan",
+	  "meet_text": "I love the water, it's so calm and warm but my cards always get wet! I need to dry them off.",
+	  "repeat_text": "My friend has just arrived from Kanto and we're spending the day swimming together, but I can take a break for a rematch.",
+	  "first_win_text": "I'll stick with my swimming...",
+	  "rematch_win_text": "Nothing like a good match and a long swim.",
+	  "loss_text": "Maybe you should work on your swimming...",
+	  "pattern": "idle_cycle",
+	  "position": {
+		"x": 450,
+		"y": 2590
+	  }
+	},
+	{
+	  "name": "Swimmer Melissa",
+	  "meet_text": "The sea is so much calmer and warmer here than it is back home in Kanto.",
+	  "repeat_text": "I could stay in the water here all day.",
+	  "first_win_text": "I wish they made cards waterproof...",
+	  "rematch_win_text": "I really need to dry off my cards.",
+	  "loss_text": "I'm glad I came here today!",
+	  "pattern": "idle_cycle",
+	  "position": {
+		"x": 490,
+		"y": 2590
+	  }
+	},
+	{
+	  "name": "Birdspotter Gregg",
+	  "meet_text": "My friend got hungry so decided to head back, but I'm interested to see what birds come out at night.",
+	  "repeat_text": "This really is a great spot for birds and cards!",
+	  "first_win_text": "Do you hate birds or something?.",
+	  "rematch_win_text": "Well at least I can watch the birds from around here.",
+	  "loss_text": "Looking after birds really isn't easy!",
+	  "pattern": "idle_random",
+	  "position": {
+		"x": 1640,
+		"y": 2340
+	  }
+	},
+	{
+	  "name": "Bug Catcher Frankie",
+	  "meet_text": "Wow!!! The bugs here are so much cooler than what we have over in Viridian Forest!!",
+	  "repeat_text": "Seen any cool bug Pokemon around here since our last match?",
+	  "first_win_text": "My bugs clearly aren't as strong as the ones around here.",
+	  "rematch_win_text": "Hmm I wish I could get my hands on some of these bugs instead.",
+	  "loss_text": "Bug pokemon really aren't as weak as people think.",
+	  "pattern": "idle_random",
+	  "position": {
+		"x": 2295,
+		"y": 2160
+	  }
+	},
+	{
+	  "name": "Aromagirl Penelope",
+	  "meet_text": "Plants can grow in all weird shapes and sizes, they're not just flowers and trees, there's a lot of different kinds out there.",
+	  "repeat_text": "I've catalogued a lot of crazy plants recently.",
+	  "first_win_text": "I wish I could photosynthesize.",
+	  "rematch_win_text": "I could do with some water",
+	  "loss_text": "Grass Pokemon are great!",
+	  "pattern": "idle_up",
+	  "position": {
+		"x": 2167,
+		"y": 2305
+	  }
+	},
+	{
+	  "name": "Fisherman Gary",
+	  "meet_text": "I joined my buddies here to fish today but we were actually catching sooo much that they ended up leaving!",
+	  "repeat_text": "Fishing by yourslef can get lonely when nothing bites.",
+	  "first_win_text": "Dang, I never lose against my buddies.",
+	  "rematch_win_text": "You're probably a really good fisherman too.",
+	  "loss_text": "I'm the only fisherman and best card player on this pier!",
+	  "pattern": "idle_down",
+	  "position": {
+		"x": -840,
+		"y": 2730
+	  }
+	},
+	{
+	  "name": "Tourist Edmund",
+	  "meet_text": "I live in Celadon City so it's rare I get to the beach. I'm here to make the most of it.",
+	  "repeat_text": "It won't feel like that long before we have to head onwards.",
+	  "first_win_text": "I'm not here to win, only here for a good time.",
+	  "rematch_win_text": "You're the best player I've battled around here.",
+	  "loss_text": "I didn't even mean to win so that's a nice surprise.",
+	  "pattern": "idle_down",
+	  "position": {
+		"x": 765,
+		"y": 1960
+	  }
+	},
+	{
+	  "name": "Tourist Alissa",
+	  "meet_text": "Nothing feels better than the sand beneath your toes after being stuck in your cabin for days on end.",
+	  "repeat_text": "I'm so relaxed I could stay here all day.",
+	  "first_win_text": "Have you ever been on a cruise before?",
+	  "rematch_win_text": "I'll have to practice more when I'm back on board.",
+	  "loss_text": "Oh wonderful! I do love it when I win!",
+	  "pattern": "idle_down",
+	  "position": {
+		"x": -366,
+		"y": 2270
+	  }
+	},
+	{
+	  "name": "Guitarist Jonesy",
+	  "meet_text": "We're in a band and we're currently touring. We're just passing through to our next gig so having a quick jam here.",
+	  "repeat_text": "Hey dude, let's rock.",
+	  "first_win_text": "Damn I snapped a string while we were jamming.",
+	  "rematch_win_text": "You should come to one of our gigs!",
+	  "loss_text": "Let's goooooooooooo.",
+	  "pattern": "idle_right",
+	  "position": {
+		"x": 2480,
+		"y": 1210
+	  }
+	},
+	{
+	  "name": "Guitarist Howard",
+	  "meet_text": "We're the Toxtricity Rockers, we're a duo that's pretty big in Johto.",
+	  "repeat_text": "You here to hear a song or a rematch?",
+	  "first_win_text": "I missed a chord.",
+	  "rematch_win_text": "Fancy being a roadie?",
+	  "loss_text": "If it's any consolation I'll give you a discount on our album.",
+	  "pattern": "idle_left",
+	  "position": {
+		"x": 2515,
+		"y": 1210
+	  }
+	},
+	{
+	  "name": "Jogger Daniel",
+	  "meet_text": "*huff* *huff* I've been training for my marathon all day so I'm worn out, I could do with a rest.",
+	  "repeat_text": "I'm still running as much as I can, I could do with another break.",
+	  "first_win_text": "*huff* I shouldn't have bothered stopping.",
+	  "rematch_win_text": "I'm just going to focus on my running from now on.",
+	  "loss_text": "I'm glad I decided to take a break, that's given me an extra push to carry on.",
+	  "pattern": "patrol_line",
+	  "patrol_speed": 70.0,
+	  "patrol_distance": 2700,
+	  "patrol_axis": "horizontal",
+	  "position": {
+		"x": -500,
+		"y": 2015
+	  }
+	},
+	{
+	  "name": "Gardener Callum",
+	  "meet_text": "Wowee, it was a long day gardening today. I'm down for a match to let off some steam now.",
+	  "repeat_text": "I've got time for a rematch before my next shift.",
+	  "first_win_text": "I'm clearly too worn out from such a long shift.",
+	  "rematch_win_text": "I'll win when I'm fully rested.",
+	  "loss_text": "Even after a hard days work I can still win!",
+	  "pattern": "idle_left",
+	  "wander_radius": 65,
+	  "position": {
+		"x": -875,
+		"y": 2280
+	  }
+	},
+	{
+	  "name": "Garden Manager Louis",
+	  "meet_text": "I might be the garden manager but I do know how to have fun.",
+	  "repeat_text": "Look at how great the gardens look.",
+	  "first_win_text": "Even with all this sun I couldn't win.",
+	  "rematch_win_text": "Ever fancied being a gardener yourself?",
+	  "loss_text": "Plants aren't just pretty.",
+	  "pattern": "random_wander",
+	  "patrol_speed": 40.0,
+	  "wander_radius": 65,
+	  "position": {
+		"x": -710,
+		"y": 2020
+	  }
+	},
+	{
+	  "name": "Sailor Bob",
+	  "meet_text": "Most of the passengers have returned on board for the night now so it's quiet again as usual.",
+	  "repeat_text": "There's still time before the morning shift.",
+	  "first_win_text": "I should at least pretend to do some work on the dock.",
+	  "rematch_win_text": "I won't have a lot of time to during the day now the ship has docked.",
+	  "loss_text": "All this spare time has given me a chance to practice.",
+	  "pattern": "idle_random",
+	  "position": {
+		"x": 2040,
+		"y": 3110
+	  }
+	},
+	{
+	  "name": "Card Elder Rayne",
+	  "meet_text": "Hoh Hoh, are you ready to feel the torrent? If you win I'll give you a medal to prove your triumph.",
+	  "repeat_text": "Hoh Hoh! I enjoyed the battle that much I'd also like another!",
+	  "first_win_text": "Congratulations on your win. You've earned this medal and my respect.",
+	  "rematch_win_text": "Come back any time and battle us old folk.",
+	  "loss_text": "Don't be disheartened, the rain will always stop.",
+	  "pattern": "idle_down",
+	  "position": {
+		"x": 2230,
+		"y": 1252
+	  }
+	},
+	{
+	  "name": "Card Elder Hamish",
+	  "meet_text": "Back for the challenge then hey? Remember you'll need to defeat all 3 of us if you want to progress.",
+	  "repeat_text": "Very well, I always enjoy a good challenge!",
+	  "first_win_text": "Well done, that was quite the battle. Take my medal and continue forth.",
+	  "rematch_win_text": "Battling like this makes me feel young again.",
+	  "loss_text": "Don't be disheartened, the rain will always stop.",
+	  "pattern": "idle_down",
+	  "position": {
+		"x": 2326,
+		"y": 1252
+	  }
+	},
+	{
+	  "name": "Card Elder Waverly",
+	  "meet_text": "Are you ready to take me on then? If you win then you'll do well in the Gym Hero Challenge.",
+	  "repeat_text": "Up for another round then? Happy to oblige.",
+	  "first_win_text": "Well well well, what a jolly good play! You've earned this.",
+	  "rematch_win_text": "We've been winning and losing for so long it's always fun either way.",
+	  "loss_text": "When you fail, get up and try again.",
+	  "pattern": "idle_down",
+	  "position": {
+		"x": 2278,
+		"y": 1252
+	  }
+	},
+	{
+	  "name": "Hiker Ben",
+	  "meet_text": "Well that's incredibly disappointing. I was hoping to have a trek through the forest but they've told me it's shut so I have nowhere to go now.",
+	  "repeat_text": "The forest has to be open soon surely.",
+	  "first_win_text": "Well that's another disappointment to my day.",
+	  "rematch_win_text": "The disappointment just doesn't end.",
+	  "loss_text": "At least that's given me a nice little boost after the bad news.",
+	  "pattern": "random_wander",
+	  "patrol_speed": 40.0,
+	  "wander_radius": 60,
+	  "position": {
+		"x": 950,
+		"y": 1270
+	  }
+	}
+  ]
+}

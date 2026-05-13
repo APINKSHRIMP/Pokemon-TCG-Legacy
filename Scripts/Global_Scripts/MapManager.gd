@@ -8,11 +8,17 @@ var opponent_scene   = preload("res://Scenes/Objects/Opponent_Object_Scene.tscn"
 var npc_scene        = preload("res://Scenes/Objects/NPC_Object_Scene.tscn")
 var shopkeeper_scene = preload("res://Scenes/Objects/Shopkeeper_Object_Scene.tscn")
 
+const CONSTANT_DATA_PATH := "res://NPC_and_Opponent_Data/All_NPC_Constant_Data.json"
+
 var _player: CharacterBody2D
 var _opponents_container: Node2D
 var _ui_layer: CanvasLayer
 var _map_scene_path: String
 var _json_path: String
+
+var _npc_constants: Dictionary = {}
+var _opponent_constants: Dictionary = {}
+var _constant_data_loaded: bool = false
 
 var current_opponent: Node = null
 var current_npc: Node = null
@@ -118,6 +124,24 @@ func initialise(
 		_handle_battle_return()
 
 # ============================================================
+# CONSTANT DATA
+# ============================================================
+
+func _load_constant_data() -> void:
+	if _constant_data_loaded:
+		return
+	_constant_data_loaded = true
+	var file = FileAccess.open(CONSTANT_DATA_PATH, FileAccess.READ)
+	if file == null:
+		push_error("MapManager: Cannot open constant data: " + CONSTANT_DATA_PATH)
+		return
+	var data = JSON.parse_string(file.get_as_text())
+	file.close()
+	if data is Dictionary:
+		_npc_constants = data.get("npcs", {})
+		_opponent_constants = data.get("opponents", {})
+
+# ============================================================
 # OPPONENT SPAWNING
 # ============================================================
 
@@ -131,7 +155,12 @@ func _load_and_spawn_opponents(json_path: String):
 	var data = JSON.parse_string(file.get_as_text())
 	file.close()
 
+	_load_constant_data()
 	for entry in data["opponents"]:
+		var consts: Dictionary = _opponent_constants.get(entry.get("name", ""), {})
+		for key in consts:
+			if not entry.has(key):
+				entry[key] = consts[key]
 		if not _evaluate_condition(entry.get("condition", {})):
 			continue
 		if not entry.has("position"):
@@ -201,7 +230,12 @@ func _load_and_spawn_npcs(json_path: String):
 	var data = JSON.parse_string(file.get_as_text())
 	file.close()
 
+	_load_constant_data()
 	for entry in data["npcs"]:
+		var consts: Dictionary = _npc_constants.get(entry.get("name", ""), {})
+		for key in consts:
+			if not entry.has(key):
+				entry[key] = consts[key]
 		if not _evaluate_condition(entry.get("condition", {})):
 			continue
 		if not entry.has("position"):

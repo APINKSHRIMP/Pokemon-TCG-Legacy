@@ -18,8 +18,8 @@ func _ready():
 	var time_of_day: String = GameState.get_time()
 	var date: int = GameState.get_date()
 
-	# Build NPC JSON path: e.g. "Celeste_Harbour_NPCs_Evening_2.json"
-	NPC_JSON_PATH = "res://NPC_and_Opponent_Data/Celeste_Harbour_NPCs_" + time_of_day + "_" + str(date) + ".json"
+	# Build NPC JSON path: e.g. "Celeste_Harbour_2_Evening.json"
+	NPC_JSON_PATH = "res://NPC_and_Opponent_Data/Celeste_Harbour_" + str(date) + "_" + time_of_day + ".json"
 
 	set_time_of_day(time_of_day)
 
@@ -121,16 +121,16 @@ func apply_date_events(date: int) -> void:
 		$"TILE_MAPS/JETTY/DAY 2 Boats".visible=false
 		$"TILE_MAPS/OBJECTS/CAR PARK CARS/CARS DAY 2".visible=false
 		
-	# Train station is shut on day 2
+	# Train station is shut on day 2, SS Anne arrives on day 3
 	if date <= 2:
 		$"TILE_MAPS/PLAYER ROAD BLOCKS/Station Gate block".visible = true
 	else:
 		$"TILE_MAPS/PLAYER ROAD BLOCKS/Station Gate block".visible = false
 		$"Collision Objects/BLOCKS/STATION GATE".queue_free()
-						
-	# SS Anne arrives on day 3
-	if date == 3:
 		$"TILE_MAPS/JETTY2/SSANNE".visible = true
+		
+
+	if date == 3:
 		$"TILE_MAPS/JETTY/DAY 3 Boats".visible=true
 		$"TILE_MAPS/OBJECTS/CAR PARK CARS/CARS DAY 3".visible=true
 	else:
@@ -144,6 +144,7 @@ func apply_date_events(date: int) -> void:
 	else:
 		$"TILE_MAPS/PLAYER ROAD BLOCKS/Forest Gate block".visible = false
 		$"Collision Objects/BLOCKS/FOREST GATE".queue_free()
+		
 			
 	if date == 4:
 		$"TILE_MAPS/JETTY/DAY 4 Boats".visible=true

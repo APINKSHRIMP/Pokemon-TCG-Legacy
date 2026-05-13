@@ -84,21 +84,34 @@ func load_opponent_data(trainer_name: String) -> void:
 	if file == null:
 		print("Error loading opponent file")
 		return
-	
+
 	var json = JSON.new()
 	var error = json.parse(file.get_as_text())
 	if error != OK:
 		print("JSON parse error")
 		return
-	
+
 	var opponents = json.data["opponents"]
 	for opponent in opponents:
 		if opponent.get("name") == trainer_name:
 			opponent_data = opponent
-			GameDataManager.opponent_data = opponent_data
-			return
-	
-	print("Opponent with deck ", trainer_name, " not found")
+			break
+
+	if opponent_data.is_empty():
+		print("Opponent with name ", trainer_name, " not found")
+		return
+
+	var const_file = FileAccess.open("res://NPC_and_Opponent_Data/All_NPC_Constant_Data.json", FileAccess.READ)
+	if const_file != null:
+		var const_data = JSON.parse_string(const_file.get_as_text())
+		const_file.close()
+		if const_data is Dictionary:
+			var consts: Dictionary = const_data.get("opponents", {}).get(trainer_name, {})
+			for key in consts:
+				if not opponent_data.has(key):
+					opponent_data[key] = consts[key]
+
+	GameDataManager.opponent_data = opponent_data
 
 func load_player_data() -> void:
 	var file = FileAccess.open("user://Player_Current_Data.json", FileAccess.READ)
