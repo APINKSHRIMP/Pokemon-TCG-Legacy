@@ -388,10 +388,30 @@
 	  "loss_text": "Hmm. I won't let you beat me.",
 	  "cash_reward": "250",
 	  "coin_reward": "mewtwo_purple2",
+	  "card_reward": "basep-12",
 	  "pattern": "idle_left",
 	  "position": {
 		"x": 1790,
 		"y": 500
+	  }
+	},
+	{	
+	  "name": "Psychic Nova",
+	  "sprite": "Psychic_F2",
+	  "deck": "Telekinesis",
+	  "music": "normal_battle",
+	  "prize_cards": 4,
+	  "meet_text": "If you relax your thoughts and focus your mind entirely, some people can move objects with natural telekinetic powers.",
+	  "repeat_text": "I hope you've been focusing",
+	  "first_win_text": "I have a friend who can bring out your hidden powers.",
+	  "rematch_win_text": "You have great potential. I think you have what it takes.",
+	  "loss_text": "You'll never be a master of your mind if you don't focus.",
+	  "cash_reward": "125",
+	  "coin_reward": "abra_silver",
+	  "pattern": "idle_down",
+	  "position": {
+		"x": 277,
+		"y": 1190
 	  }
 	},
   ]
