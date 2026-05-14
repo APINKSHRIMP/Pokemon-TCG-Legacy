@@ -26,7 +26,10 @@
       "Bash(Select-Object FullName)",
       "Bash(python *)",
       "Bash(Get-ChildItem *)",
-      "Skill(update-config)"
+      "Skill(update-config)",
+      "Bash(Select-Object -ExpandProperty Matches)",
+      "Bash(Select-Object -Property Value)",
+      "Bash(Sort-Object -Unique)"
     ],
     "deny": [
       "Bash(git rebase *)",
