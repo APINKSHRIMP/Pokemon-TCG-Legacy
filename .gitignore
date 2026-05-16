@@ -15,12 +15,6 @@ export_credentials.cfg
 data_*/
 mono_crash.*.json
 
-# Claude Code local settings and session data
-.claude/settings.local.json
-.claude/transcripts/
-.claude/plans/
-.claude/worktrees/
-.claude/projects/
-.claude/memory/
-.claude/.history
-.claude/*.local.json
+# Claude Code
+.claude/
+CLAUDE.md

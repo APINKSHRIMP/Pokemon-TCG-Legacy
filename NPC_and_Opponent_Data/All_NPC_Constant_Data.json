@@ -149,7 +149,7 @@
 	"Veteran Iris": { "sprite": "Veteran_F" }
   },
   "opponents": {
-	"Youngster Joey": { "sprite": "Youngster2", "deck": "Basic Pokemon Barrage", "music": "REPLACEMUSIC", "prize_cards": 2, "cash_reward": "50", "coin_reward": "REPLACECOIN", "card_reward": "base1-82, base1-82" },
+	"Youngster Joey": { "sprite": "Youngster2", "deck": "Basic Pokemon Barrage", "music": "REPLACEMUSIC", "prize_cards": 2, "cash_reward": "50", "coin_reward": "coin_rattata_silver", "card_reward": "base1-82, base1-82" },
 	"Gambler Mick": { "sprite": "Gambler", "deck": "You Win Some N Lose Some", "music": "REPLACEMUSIC", "prize_cards": 2, "cash_reward": "50", "coin_reward": "REPLACECOIN", "card_reward": "base1-27, base1-27" },
 	"Schoolboy Adam": { "sprite": "Youngster3", "deck": "Status Infliction", "music": "REPLACEMUSIC", "prize_cards": 2, "cash_reward": "50", "coin_reward": "REPLACECOIN" },
 	"Fisherman Dave": { "sprite": "Fisherman", "deck": "Fishy Fish", "music": "REPLACEMUSIC", "prize_cards": 4, "cash_reward": "50", "coin_reward": "REPLACECOIN" },
