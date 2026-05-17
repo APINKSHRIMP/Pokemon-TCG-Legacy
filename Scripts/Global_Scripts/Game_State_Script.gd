@@ -242,12 +242,35 @@ func load_progress():
 		progress["npc_interactions"] = old.keys()
 		progress.erase("met_npcs")
 
+	# Migrate old coin filenames from "coin_pikachu_gold.png" to "Pikachu Gold.png"
+	var coins_arr : Array = progress.get("coins", [])
+	var migrated_any := false
+	for i in coins_arr.size():
+		if (coins_arr[i] as String).begins_with("coin_"):
+			coins_arr[i] = _migrate_old_coin_name(coins_arr[i])
+			migrated_any = true
+	if migrated_any:
+		progress["coins"] = coins_arr
+
 	save_progress()
 
 func save_progress():
 	var file = FileAccess.open(PROGRESS_PATH, FileAccess.WRITE)
 	file.store_string(JSON.stringify(progress, "\t"))
 	file.close()
+
+# Converts old "coin_pikachu_gold_1.png" format to "Pikachu Gold 1.png".
+# Handles teamXXX compound words (teamplasma → Team Plasma, etc.).
+func _migrate_old_coin_name(old: String) -> String:
+	var base := old.replace("coin_", "").replace(".png", "")
+	for team in ["teamplasma", "teamrocket", "teamaqua", "teammagma"]:
+		base = base.replace(team, team.substr(0, 4) + "_" + team.substr(4))
+	var parts := base.split("_")
+	var titled : Array = []
+	for p in parts:
+		if p.length() > 0:
+			titled.append(p.substr(0, 1).to_upper() + p.substr(1))
+	return " ".join(titled) + ".png"
 
 # ============================================================
 # CASH

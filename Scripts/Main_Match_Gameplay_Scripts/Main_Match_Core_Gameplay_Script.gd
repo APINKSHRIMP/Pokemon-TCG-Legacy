@@ -45,8 +45,8 @@ var confusion_rules: String = "base_set_confusion_rules" # "base_set_confusion_r
 
 # Customisable in game textures
 # Load coin textures
-var tex_heads = load("res://Image_Assets/Coins/coin_pikachu_gold_1.png")
-var tex_tails = load("res://Image_Assets/Coins/coin_back_basic.png")
+var tex_heads = load("res://Image_Assets/Coins/Pikachu Gold 1.png")
+var tex_tails = load("res://Image_Assets/Coins/Back Basic.png")
 
 # Game Variables
 var turn_number: int = 0
@@ -1390,24 +1390,15 @@ func start_sparkle_effect(target_node: Control) -> CPUParticles2D:
 # Each coin can be one of a few colours so make the sparkles match	
 func get_coin_sparkle_colour() -> Color:
 	var coin_name = tex_heads.resource_path.to_lower()
-	if "_red" in coin_name:
-		return Color(1.0, 0.2, 0.2)
-	elif "_gold" in coin_name:
-		return Color(1.0, 0.85, 0.2)
-	elif "_silver" in coin_name:
-		return Color(0.85, 0.85, 0.9)
-	elif "_blue" in coin_name:
-		return Color(0.3, 0.5, 1.0)
-	elif "_green" in coin_name:
-		return Color(0.2, 0.9, 0.3)
-	elif "_pink" in coin_name:
-		return Color(1.0, 0.2, 0.7)
-	elif "_purple" in coin_name:
-		return Color(0.55, 0.1, 1)
-	elif "_black" in coin_name:
-		return Color(0, 0, 0)
-	elif "_brown" in coin_name:
-		return Color(0.5, 0.3, 0.2)
+	if " red"    in coin_name: return Color(1.0, 0.2,  0.2)
+	if " gold"   in coin_name: return Color(1.0, 0.85, 0.2)
+	if " silver" in coin_name: return Color(0.85, 0.85, 0.9)
+	if " blue"   in coin_name: return Color(0.3,  0.5,  1.0)
+	if " green"  in coin_name: return Color(0.2,  0.9,  0.3)
+	if " pink"   in coin_name: return Color(1.0,  0.2,  0.7)
+	if " purple" in coin_name: return Color(0.55, 0.1,  1.0)
+	if " black"  in coin_name: return Color(0.0,  0.0,  0.0)
+	if " brown"  in coin_name: return Color(0.5,  0.3,  0.2)
 	return Color(1.0, 1.0, 1.0)
 
 # Returns a colour for a given Pokemon type string
@@ -4729,7 +4720,9 @@ func _ready() -> void:
 	
 	if GameDataManager.player_data.has("coin"):
 		var coin_loaded_text = GameDataManager.player_data["coin"]
-		tex_heads = load("res://Image_Assets/Coins/"+coin_loaded_text+".png")
+		var _coin_tex = load("res://Image_Assets/Coins/" + coin_loaded_text + ".png")
+		if _coin_tex != null:
+			tex_heads = _coin_tex
 		
 	modulate.a = 0.0
 	var tween = create_tween()

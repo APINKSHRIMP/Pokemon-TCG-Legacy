@@ -363,23 +363,33 @@ func animate_rewards() -> void:
 # ============================================================
 # COIN NAME FORMATTING
 # ============================================================
-# Converts e.g. "coin_gyarados_blue" → "Blue Gyarados Coin"
+# Converts e.g. "Gyarados Blue" → "Blue Gyarados Coin"
 
 func format_coin_name(raw: String) -> String:
-	var name = raw.replace("coin_", "").replace(".png", "")
-	var colors = ["red", "blue", "gold", "silver", "green", "black", "purple", "pink", "brown"]
-	var parts = name.split("_")
-	var color = ""
-	var pokemon_parts = []
-	
-	for part in parts:
-		if part in colors:
-			color = part
-		else:
-			pokemon_parts.append(part)
-	
-	var result = (color + " " + " ".join(pokemon_parts) + " Coin").strip_edges()
-	return capitalise_words(result)
+	var base    := raw.trim_suffix(".png")
+	var words   := base.split(" ")
+	var colours := ["red", "blue", "gold", "silver", "green", "black", "purple",
+					"pink", "brown", "yellow", "orange", "white"]
+	var colour     := ""
+	var number     := ""
+	var name_parts : Array = []
+	var i := words.size() - 1
+	if i >= 0 and words[i].is_valid_int():
+		number = words[i]
+		i -= 1
+	if i >= 0 and words[i].to_lower() in colours:
+		colour = words[i]
+		i -= 1
+	for j in range(i + 1):
+		name_parts.append(words[j])
+	var pieces : Array = []
+	if colour != "":
+		pieces.append(colour)
+	pieces.append_array(name_parts)
+	pieces.append("Coin")
+	if number != "":
+		pieces.append(number)
+	return " ".join(pieces)
 
 func capitalise_words(text: String) -> String:
 	var words = text.split(" ")

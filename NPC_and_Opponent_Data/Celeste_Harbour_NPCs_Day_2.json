@@ -88,7 +88,7 @@
 	  "meet_text": "There's always a lot of shells on this beach that have washed up from the water, but I also found this coin. I don't play the Pokemon TCG so you can have it.",
 	  "repeat_text": "One time I saw a shellder washed up so I helped it back into the ocean.",
 	  "gift_type": "coin",
-	  "gift_value": "coin_yampa_gold",
+	  "gift_value": "Yampa Gold",
 	  "pattern": "idle_down",
 	  "position": {
 		"x": 98,
@@ -401,7 +401,7 @@
 	  "rematch_win_text": "Nothing like a good match and a long swim.",
 	  "loss_text": "Maybe you should work on your swimming...",
 	  "cash_reward": "100",
-	  "coin_reward": "coin_energy_blue",
+	  "coin_reward": "Energy Blue",
 	  "pattern": "idle_cycle",
 	  "position": {
 		"x": 500,
@@ -420,7 +420,7 @@
 	  "rematch_win_text": "You can help me build a sandcastle if you want!",
 	  "loss_text": "Yaaaaaay! I love winning!",
 	  "cash_reward": "75",
-	  "coin_reward": "coin_pikachu_silver_1",
+	  "coin_reward": "Pikachu Silver 1",
 	  "pattern": "idle_right",
 	  "position": {
 		"x": 450,
@@ -439,7 +439,7 @@
 	  "rematch_win_text": "If you see a Sandyghast please let me know!!",
 	  "loss_text": "Yaaaaaay! I won!!",
 	  "cash_reward": "75",
-	  "coin_reward": "coin_mew_pink",
+	  "coin_reward": "Mew Pink",
 	  "pattern": "idle_left",
 	  "position": {
 		"x": 480,
@@ -458,7 +458,7 @@
 	  "rematch_win_text": "You can't fly away from all your troubles.",
 	  "loss_text": "You should try bird watching with me!",
 	  "cash_reward": "100",
-	  "coin_reward": "coin_corviknight_silver",
+	  "coin_reward": "Corviknight Silver",
 	  "pattern": "idle_random",
 	  "position": {
 		"x": 2030,
@@ -477,7 +477,7 @@
 	  "rematch_win_text": "Me and my bugs will win one of these days!",
 	  "loss_text": "I knew bugs were the best!!",
 	  "cash_reward": "100",
-	  "coin_reward": "coin_energy_green",
+	  "coin_reward": "Energy Green",
 	  "costume_reward": "BUGCATCHER",
 	  "pattern": "patrol_line",
 	  "patrol_speed": 20.0,
@@ -500,7 +500,7 @@
 	  "rematch_win_text": "At least my swimming is going really well.",
 	  "loss_text": "I am so ready for this event.",
 	  "cash_reward": "100",
-	  "coin_reward": "coin_energy_blue_2",
+	  "coin_reward": "Energy Blue 2",
 	  "pattern": "patrol_line",
 	  "patrol_speed": 50.0,
 	  "patrol_distance": 250,
@@ -522,7 +522,7 @@
 	  "rematch_win_text": "I could do with some water",
 	  "loss_text": "Grass Pokemon are great!",
 	  "cash_reward": "100",
-	  "coin_reward": "coin_turtwig_green",
+	  "coin_reward": "Turtwig Green",
 	  "pattern": "idle_up",
 	  "position": {
 		"x": 2167,
@@ -541,7 +541,7 @@
 	  "rematch_win_text": "I'm going to keep on training.",
 	  "loss_text": "I rarely lose when I've trained properly.",
 	  "cash_reward": "150",
-	  "coin_reward": "coin_energy_brown",
+	  "coin_reward": "Energy Brown",
 	  "pattern": "idle_cycle",
 	  "position": {
 		"x": 2645,

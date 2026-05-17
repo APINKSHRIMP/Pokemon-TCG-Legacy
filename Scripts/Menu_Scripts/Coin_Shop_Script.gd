@@ -4,7 +4,7 @@ extends Control
 
 const INVENTORY_PATH   := "res://NPC_and_Opponent_Data/coin_shop_inventory.json"
 const COIN_FOLDER      := "res://Image_Assets/Coins"
-const COINBACK_PATH    := "res://Image_Assets/Coins/coin_back_basic.png"
+const COINBACK_PATH    := "res://Image_Assets/Coins/Back Basic.png"
 const CELESTE_HARBOUR  := "res://Scenes/Map_Scenes/Celeste_Harbour.tscn"
 const COIN_SIZE        := Vector2(200, 200)
 const COIN_SEPARATION  := 100
@@ -375,15 +375,15 @@ func _start_sparkle(target: TextureRect) -> void:
 
 func _get_coin_sparkle_colour(coin_filename: String) -> Color:
 	var n := coin_filename.to_lower()
-	if "_red"    in n: return Color(1.0, 0.2,  0.2)
-	if "_gold"   in n: return Color(1.0, 0.85, 0.2)
-	if "_silver" in n: return Color(0.85, 0.85, 0.9)
-	if "_blue"   in n: return Color(0.3,  0.5,  1.0)
-	if "_green"  in n: return Color(0.2,  0.9,  0.3)
-	if "_pink"   in n: return Color(1.0,  0.2,  0.7)
-	if "_purple" in n: return Color(0.55, 0.1,  1.0)
-	if "_black"  in n: return Color(0.0,  0.0,  0.0)
-	if "_brown"  in n: return Color(0.5,  0.3,  0.2)
+	if " red"    in n: return Color(1.0, 0.2,  0.2)
+	if " gold"   in n: return Color(1.0, 0.85, 0.2)
+	if " silver" in n: return Color(0.85, 0.85, 0.9)
+	if " blue"   in n: return Color(0.3,  0.5,  1.0)
+	if " green"  in n: return Color(0.2,  0.9,  0.3)
+	if " pink"   in n: return Color(1.0,  0.2,  0.7)
+	if " purple" in n: return Color(0.55, 0.1,  1.0)
+	if " black"  in n: return Color(0.0,  0.0,  0.0)
+	if " brown"  in n: return Color(0.5,  0.3,  0.2)
 	return Color(1.0, 1.0, 1.0)
 
 
@@ -412,35 +412,34 @@ func _play_flip_animation(rect: TextureRect, back_tex: Texture2D, target_tex: Te
 	await tween.finished
 
 
-# ─── Coin name formatting (mirrored from MapManager._format_coin_name) ────────
+# ─── Coin name formatting ────────────────────────────────────────────────────
+# Reorders colour to front and appends "Coin", number goes last.
+#   "Gyarados Blue"      -> "Blue Gyarados Coin"
+#   "Pikachu Gold 1"     -> "Gold Pikachu Coin 1"
+#   "Team Plasma Silver 2" -> "Silver Team Plasma Coin 2"
 
 func _format_coin_name(raw: String) -> String:
-	var name_str : String = raw.replace("coin_", "").replace(".png", "")
-	var colours          := ["red", "blue", "gold", "silver", "green", "black", "purple", "pink", "brown", "yellow", "orange", "white"]
-	var parts            := name_str.split("_")
-	var colour           : String = ""
-	var trailing_number  : String = ""
-	var pokemon_parts    : Array  = []
-
-	for part in parts:
-		if part in colours:
-			colour = part
-		elif part.is_valid_int():
-			trailing_number = part
-		else:
-			pokemon_parts.append(part)
-
+	var base   := raw.trim_suffix(".png")
+	var words  := base.split(" ")
+	var colours := ["red", "blue", "gold", "silver", "green", "black", "purple",
+					"pink", "brown", "yellow", "orange", "white"]
+	var colour     := ""
+	var number     := ""
+	var name_parts : Array = []
+	var i := words.size() - 1
+	if i >= 0 and words[i].is_valid_int():
+		number = words[i]
+		i -= 1
+	if i >= 0 and words[i].to_lower() in colours:
+		colour = words[i]
+		i -= 1
+	for j in range(i + 1):
+		name_parts.append(words[j])
 	var pieces : Array = []
 	if colour != "":
 		pieces.append(colour)
-	pieces.append_array(pokemon_parts)
-	pieces.append("coin")
-	if trailing_number != "":
-		pieces.append(trailing_number)
-
-	var result_parts : Array = []
-	for p in pieces:
-		var s : String = p
-		if s.length() > 0:
-			result_parts.append(s.substr(0, 1).to_upper() + s.substr(1))
-	return " ".join(result_parts)
+	pieces.append_array(name_parts)
+	pieces.append("Coin")
+	if number != "":
+		pieces.append(number)
+	return " ".join(pieces)

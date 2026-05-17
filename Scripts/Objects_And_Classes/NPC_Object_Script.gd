@@ -10,7 +10,7 @@ extends CharacterBody2D
 #
 # Gift types:
 #   "card"           - gift_value = comma-separated card IDs
-#   "coin"           - gift_value = coin filename e.g. "coin_pikachu_gold_1.png"
+#   "coin"           - gift_value = coin filename e.g. "Pikachu Gold 1"
 #   "cash"           - gift_value = amount as string e.g. "250"
 #   "energy_style"   - gift_value = style name e.g. "Base1"
 #   "costume"        - gift_value = costume filename e.g. "lass.png"

@@ -54,7 +54,7 @@ var _loaded_card_sets: Dictionary = {}
 
 # Preloaded back textures used during the gift reveal animation
 const _CARDBACK_PATH := "res://Image_Assets/Card_Backs_And_Decks/cardback.png"
-const _COINBACK_PATH := "res://Image_Assets/Coins/coin_back_basic.png"
+const _COINBACK_PATH := "res://Image_Assets/Coins/Back Basic.png"
 var _cardback_texture: Texture2D = null
 var _coinback_texture: Texture2D = null
 
@@ -970,44 +970,37 @@ func _load_card_image_with_fallback(path: String) -> Texture2D:
 
 # ============================================================
 # COIN NAME FORMATTING
-# Title-cases all words and assembles the final coin display name.
-#   "coin_arcanine_red"        -> "Red Arcanine Coin"
-#   "coin_pikachu_silver_2"    -> "Silver Pikachu Coin 2"
-#   "coin_lugia_silver_2"      -> "Silver Lugia Coin 2"
+# Reorders colour to front and appends "Coin", number goes last.
+#   "Arcanine Red"         -> "Red Arcanine Coin"
+#   "Pikachu Silver 2"     -> "Silver Pikachu Coin 2"
+#   "Team Plasma Silver 2" -> "Silver Team Plasma Coin 2"
 # ============================================================
 
 func _format_coin_name(raw: String) -> String:
-	var name_str: String = raw.replace("coin_", "").replace(".png", "")
-	var colours = ["red", "blue", "gold", "silver", "green", "black", "purple", "pink", "brown", "yellow", "orange", "white"]
-	var parts = name_str.split("_")
-	var colour: String = ""
-	var trailing_number: String = ""
-	var pokemon_parts: Array = []
-
-	for part in parts:
-		if part in colours:
-			colour = part
-		elif part.is_valid_int():
-			trailing_number = part
-		else:
-			pokemon_parts.append(part)
-
-	# Assemble in display order: colour, pokemon, "coin", optional number
-	var pieces: Array = []
+	var base    := raw.trim_suffix(".png")
+	var words   := base.split(" ")
+	var colours := ["red", "blue", "gold", "silver", "green", "black", "purple",
+					"pink", "brown", "yellow", "orange", "white"]
+	var colour     := ""
+	var number     := ""
+	var name_parts : Array = []
+	var i := words.size() - 1
+	if i >= 0 and words[i].is_valid_int():
+		number = words[i]
+		i -= 1
+	if i >= 0 and words[i].to_lower() in colours:
+		colour = words[i]
+		i -= 1
+	for j in range(i + 1):
+		name_parts.append(words[j])
+	var pieces : Array = []
 	if colour != "":
 		pieces.append(colour)
-	pieces.append_array(pokemon_parts)
-	pieces.append("coin")
-	if trailing_number != "":
-		pieces.append(trailing_number)
-
-	# Title-case every piece
-	var result_parts: Array = []
-	for p in pieces:
-		var s: String = p
-		if s.length() > 0:
-			result_parts.append(s.substr(0, 1).to_upper() + s.substr(1))
-	return " ".join(result_parts)
+	pieces.append_array(name_parts)
+	pieces.append("Coin")
+	if number != "":
+		pieces.append(number)
+	return " ".join(pieces)
 
 # ============================================================
 # COSTUME NAME FORMATTING

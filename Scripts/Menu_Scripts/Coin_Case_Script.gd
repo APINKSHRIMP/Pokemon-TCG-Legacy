@@ -3,7 +3,7 @@ extends Node
 # ─── Constants ───────────────────────────────────────────────────────────────
 
 const COIN_FOLDER        := "res://Image_Assets/Coins"
-const COIN_BACK_IMAGE    := "coin_back_basic.png"
+const COIN_BACK_IMAGE    := "Back Basic.png"
 const COIN_SIZE          := Vector2(100, 100)
 const COIN_SEPARATION    := 10
 const COLUMNS            := 17
@@ -31,7 +31,7 @@ var _active_particles    : CPUParticles2D = null
 # Tracks which rect received the most recent click — reset each frame in _input
 var _last_clicked_rect   : TextureRect = null
 
-# Flat set of owned coin filenames e.g. {"coin_pikachu_gold_1.png": true}
+# Flat set of owned coin filenames e.g. {"Pikachu Gold 1.png": true}
 # Using a Dictionary as a set gives O(1) lookups vs iterating an Array
 var _owned_coins         : Dictionary = {}
 
@@ -79,7 +79,7 @@ func _process(_delta: float) -> void:
 # ─── Data loading ────────────────────────────────────────────────────────────
 
 # Reads the "Coins" array from Player_Game_Progress.json into _owned_coins dictionary.
-# Each entry is a coin filename, e.g. "coin_pikachu_gold_1.png"
+# Each entry is a coin filename, e.g. "Pikachu Gold 1.png"
 func _load_owned_coins_list() -> void:
 	print("DEBUG CoinCase: opening ", PLAYER_PROGRESS_PATH)
 	var file := FileAccess.open(PLAYER_PROGRESS_PATH, FileAccess.READ)
@@ -391,13 +391,13 @@ func _start_sparkle(target: TextureRect) -> void:
 
 func _get_coin_sparkle_colour(coin_path: String) -> Color:
 	var n := coin_path.to_lower()
-	if "_red"    in n: return Color(1.0, 0.2,  0.2)
-	if "_gold"   in n: return Color(1.0, 0.85, 0.2)
-	if "_silver" in n: return Color(0.85, 0.85, 0.9)
-	if "_blue"   in n: return Color(0.3,  0.5,  1.0)
-	if "_green"  in n: return Color(0.2,  0.9,  0.3)
-	if "_pink"   in n: return Color(1.0,  0.2,  0.7)
-	if "_purple" in n: return Color(0.55, 0.1,  1.0)
-	if "_black"  in n: return Color(0.0,  0.0,  0.0)
-	if "_brown"  in n: return Color(0.5,  0.3,  0.2)
+	if " red"    in n: return Color(1.0, 0.2,  0.2)
+	if " gold"   in n: return Color(1.0, 0.85, 0.2)
+	if " silver" in n: return Color(0.85, 0.85, 0.9)
+	if " blue"   in n: return Color(0.3,  0.5,  1.0)
+	if " green"  in n: return Color(0.2,  0.9,  0.3)
+	if " pink"   in n: return Color(1.0,  0.2,  0.7)
+	if " purple" in n: return Color(0.55, 0.1,  1.0)
+	if " black"  in n: return Color(0.0,  0.0,  0.0)
+	if " brown"  in n: return Color(0.5,  0.3,  0.2)
 	return Color(1.0, 1.0, 1.0)
