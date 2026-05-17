@@ -408,8 +408,8 @@
 	  }
 	},
 	{
-	  "name": "Super Elder Waverly Day 3",
-	  "meet_text": "Hold on there sonny boy, with the SS Anne, there's a lot of people already in the queue, it should be quieter later but take this card to help with your patience.",
+	  "name": "Card Elder Waverly Day 3",
+	  "meet_text": "Hold on there sonny boy, with the SS Anne, you've arrived a bit too late! There's a lot of people already in the queue, by the looks of things it'll take us all day to get through this lot but it should be quieter tomorrow so take this card to help with your patience.",
 	  "repeat_text": "Make sure you've earned as many cards as you can around here, you'll need them to defeat us 3.",
 	  "pattern": "idle_down",
 	  "position": {
@@ -418,8 +418,8 @@
 	  }
 	},
 	{
-	  "name": "Super Elder Rayne Day 3",
-	  "meet_text": "Hoh Hoh, are you looking to enter the Gym Hero Challenge? If you beat all 3 of us Elders we will grant you permission, but I'm already flat out with all these tourists. Take this card for now and come back in the evening and the queue should be quieter.",
+	  "name": "Card Elder Rayne Day 3",
+	  "meet_text": "Hoh Hoh, are you looking to enter the Gym Hero Challenge? If you beat all 3 of us Elders we will grant you permission! .....However I'm already flat out with all these tourists. Take this card for now and come back tomorrow instead when it's quieter",
 	  "repeat_text": "You might need some better cards if you have a hope of beating us, make sure you've visited the card mart today and also check out card vendor at the market if you haven't already.",
 	  "pattern": "idle_down",
 	  "position": {
@@ -428,8 +428,8 @@
 	  }
 	},
 	{
-	  "name": "Super Elder Hamish Day 3",
-	  "meet_text": "We're not as young as we used to be but we're still the best in the harbour. If you're looking to take on the Gym Hero Challenge you'll have to try later when the passengers get back on board, otherwise you'll be stood waiting around anyway. This card might help your chances.",
+	  "name": "Card Elder Hamish Day 3",
+	  "meet_text": "We're not as young as we used to be but we're still the best in the harbour. If you're looking to take on the Gym Hero Challenge you're better off coming back tomorrow when there are less people waiting, otherwise you'll be stood around all day. This card might help your chances.",
 	  "repeat_text": "You might need to buy a few more packs from the Card Mart first too. A lot of people are generous to give cards away so make sure you speak to everyone around too.",
 	  "pattern": "idle_down",
 	  "position": {
@@ -591,26 +591,13 @@
 	{
 	  "name": "Swimmer Jordan",
 	  "meet_text": "I love the water, it's so calm and warm but my cards always get wet! I need to dry them off.",
-	  "repeat_text": "My friend has just arrived from Kanto and we're spending the day swimming together, but I can take a break for a rematch.",
+	  "repeat_text": "I can always take a break for another match.",
 	  "first_win_text": "I'll stick with my swimming...",
 	  "rematch_win_text": "Nothing like a good match and a long swim.",
 	  "loss_text": "Maybe you should work on your swimming...",
 	  "pattern": "idle_cycle",
 	  "position": {
-		"x": 450,
-		"y": 2590
-	  }
-	},
-	{
-	  "name": "Swimmer Melissa",
-	  "meet_text": "The sea is so much calmer and warmer here than it is back home in Kanto.",
-	  "repeat_text": "I could stay in the water here all day.",
-	  "first_win_text": "I wish they made cards waterproof...",
-	  "rematch_win_text": "I really need to dry off my cards.",
-	  "loss_text": "I'm glad I came here today!",
-	  "pattern": "idle_cycle",
-	  "position": {
-		"x": 490,
+		"x": 500,
 		"y": 2590
 	  }
 	},
@@ -764,19 +751,6 @@
 	  }
 	},
 	{
-	  "name": "Fisherman Gary",
-	  "meet_text": "I've joined my buddies here to fish today, we're catching loooooads.",
-	  "repeat_text": "The fish just won't stop biting so I can go again.",
-	  "first_win_text": "Dang, I never lose against my buddies.",
-	  "rematch_win_text": "You're probably a really good fisherman too.",
-	  "loss_text": "I'm the best fisherman and best card player on this pier!",
-	  "pattern": "idle_down",
-	  "position": {
-		"x": -840,
-		"y": 2730
-	  }
-	},
-	{
 	  "name": "Firebreather Darryl",
 	  "meet_text": "Given how busy the harbour is today we're going to have a lot of work this evening so we only have time to play this morning.",
 	  "repeat_text": "I've got time for a quick match before this evening if you want.",
@@ -800,32 +774,6 @@
 	  "position": {
 		"x": 1000,
 		"y": 2475
-	  }
-	},
-	{
-	  "name": "Tourist Edmund",
-	  "meet_text": "I live in Celadon City so it's rare I get to the beach. I'm here to make the most of it.",
-	  "repeat_text": "It won't feel like that long before we have to head onwards.",
-	  "first_win_text": "I'm not here to win, only here for a good time.",
-	  "rematch_win_text": "You're the best player I've battled around here.",
-	  "loss_text": "I didn't even mean to win so that's a nice surprise.",
-	  "pattern": "idle_down",
-	  "position": {
-		"x": 765,
-		"y": 1960
-	  }
-	},
-	{
-	  "name": "Tourist Alissa",
-	  "meet_text": "Nothing feels better than the sand beneath your toes after being stuck in your cabin for days on end.",
-	  "repeat_text": "I'm so relaxed I could stay here all day.",
-	  "first_win_text": "Have you ever been on a cruise before?",
-	  "rematch_win_text": "I'll have to practice more when I'm back on board.",
-	  "loss_text": "Oh wonderful! I do love it when I win!",
-	  "pattern": "idle_down",
-	  "position": {
-		"x": -366,
-		"y": 2270
 	  }
 	},
 	{

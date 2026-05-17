@@ -281,32 +281,6 @@
 	  }
 	},
 	{
-	  "name": "Aromagirl Penelope",
-	  "meet_text": "Plants can grow in all weird shapes and sizes, they're not just flowers and trees, there's a lot of different kinds out there.",
-	  "repeat_text": "I've catalogued a lot of crazy plants recently.",
-	  "first_win_text": "I wish I could photosynthesize.",
-	  "rematch_win_text": "I could do with some water",
-	  "loss_text": "Grass Pokemon are great!",
-	  "pattern": "idle_left",
-	  "position": {
-		"x": 2254,
-		"y": 2326
-	  }
-	},
-	{
-	  "name": "Battlegirl Sofia",
-	  "meet_text": "This beach is a great spot to train both my martial arts and my card skills.",
-	  "repeat_text": "Want to join in with my training?",
-	  "first_win_text": "A loss is always a good chance to improve.",
-	  "rematch_win_text": "I'm going to keep on training.",
-	  "loss_text": "I rarely lose when I've trained properly.",
-	  "pattern": "idle_cycle",
-	  "position": {
-		"x": 2645,
-		"y": 2395
-	  }
-	},
-	{
 	  "name": "Jogger Daniel",
 	  "meet_text": "*huff* *huff* I've been training for my marathon all day so I'm worn out, I could do with a rest.",
 	  "repeat_text": "I'm still running as much as I can, I could do with another break.",

@@ -333,6 +333,19 @@
 		"x": 277,
 		"y": 1190
 	  }
-	}
+	},
+	{
+	  "name": "Fossil Expert Jonathan",
+	  "meet_text": "There's a lot of history in this forest, it's been around for thousands of years.",
+	  "repeat_text": "You haven't found any mysterious artifacts around here have you?",
+	  "first_win_text": "We can learn a lot of things from the past.",
+	  "rematch_win_text": "Even losses are a great way to learn.",
+	  "loss_text": "You're a thing of the past!",
+	  "pattern": "idle_up",
+	  "position": {
+		"x": 465,
+		"y": 1585
+	  }
+	},
   ]
 }

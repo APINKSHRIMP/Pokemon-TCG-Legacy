@@ -287,7 +287,37 @@
 		"x": 1000,
 		"y": 2475
 	  }
-	}
+	},
+	{
+	  "name": "Card Elder Waverly Day 3",
+	  "meet_text": "Hold on there sonny boy, with the SS Anne, you've arrived a bit too late! There's a lot of people already in the queue, by the looks of things it'll take us all day to get through this lot but it should be quieter tomorrow so take this card to help with your patience.",
+	  "repeat_text": "Make sure you've earned as many cards as you can around here, you'll need them to defeat us 3.",
+	  "pattern": "idle_down",
+	  "position": {
+		"x": 2230,
+		"y": 1252
+	  }
+	},
+	{
+	  "name": "Card Elder Rayne Day 3",
+	  "meet_text": "Hoh Hoh, are you looking to enter the Gym Hero Challenge? If you beat all 3 of us Elders we will grant you permission! .....However I'm already flat out with all these tourists. Take this card for now and come back tomorrow instead when it's quieter",
+	  "repeat_text": "You might need some better cards if you have a hope of beating us, make sure you've visited the card mart today and also check out card vendor at the market if you haven't already.",
+	  "pattern": "idle_down",
+	  "position": {
+		"x": 2278,
+		"y": 1252
+	  }
+	},
+	{
+	  "name": "Card Elder Hamish Day 3",
+	  "meet_text": "We're not as young as we used to be but we're still the best in the harbour. If you're looking to take on the Gym Hero Challenge you're better off coming back tomorrow when there are less people waiting, otherwise you'll be stood around all day. This card might help your chances.",
+	  "repeat_text": "You might need to buy a few more packs from the Card Mart first too. A lot of people are generous to give cards away so make sure you speak to everyone around too.",
+	  "pattern": "idle_down",
+	  "position": {
+		"x": 2326,
+		"y": 1252
+	  }
+	},
   ],
   "opponents": [
 	{
@@ -300,19 +330,6 @@
 	  "pattern": "idle_cycle",
 	  "position": {
 		"x": 450,
-		"y": 2590
-	  }
-	},
-	{
-	  "name": "Swimmer Melissa",
-	  "meet_text": "The sea is so much calmer and warmer here than it is back home in Kanto.",
-	  "repeat_text": "I could stay in the water here all day.",
-	  "first_win_text": "I wish they made cards waterproof...",
-	  "rematch_win_text": "I really need to dry off my cards.",
-	  "loss_text": "I'm glad I came here today!",
-	  "pattern": "idle_cycle",
-	  "position": {
-		"x": 490,
 		"y": 2590
 	  }
 	},
@@ -479,45 +496,6 @@
 	  }
 	},
 	{
-	  "name": "Card Elder Rayne",
-	  "meet_text": "Hoh Hoh, are you ready to feel the torrent? If you win I'll give you a medal to prove your triumph.",
-	  "repeat_text": "Hoh Hoh! I enjoyed the battle that much I'd also like another!",
-	  "first_win_text": "Congratulations on your win. You've earned this medal and my respect.",
-	  "rematch_win_text": "Come back any time and battle us old folk.",
-	  "loss_text": "Don't be disheartened, the rain will always stop.",
-	  "pattern": "idle_down",
-	  "position": {
-		"x": 2230,
-		"y": 1252
-	  }
-	},
-	{
-	  "name": "Card Elder Hamish",
-	  "meet_text": "Back for the challenge then hey? Remember you'll need to defeat all 3 of us if you want to progress.",
-	  "repeat_text": "Very well, I always enjoy a good challenge!",
-	  "first_win_text": "Well done, that was quite the battle. Take my medal and continue forth.",
-	  "rematch_win_text": "Battling like this makes me feel young again.",
-	  "loss_text": "Don't be disheartened, the rain will always stop.",
-	  "pattern": "idle_down",
-	  "position": {
-		"x": 2326,
-		"y": 1252
-	  }
-	},
-	{
-	  "name": "Card Elder Waverly",
-	  "meet_text": "Are you ready to take me on then? If you win then you'll do well in the Gym Hero Challenge.",
-	  "repeat_text": "Up for another round then? Happy to oblige.",
-	  "first_win_text": "Well well well, what a jolly good play! You've earned this.",
-	  "rematch_win_text": "We've been winning and losing for so long it's always fun either way.",
-	  "loss_text": "When you fail, get up and try again.",
-	  "pattern": "idle_down",
-	  "position": {
-		"x": 2278,
-		"y": 1252
-	  }
-	},
-	{
 	  "name": "Hiker Ben",
 	  "meet_text": "Well that's incredibly disappointing. I was hoping to have a trek through the forest but they've told me it's shut so I have nowhere to go now.",
 	  "repeat_text": "The forest has to be open soon surely.",
@@ -531,6 +509,19 @@
 		"x": 950,
 		"y": 1270
 	  }
-	}
+	},
+	{
+	  "name": "Battlegirl Sofia",
+	  "meet_text": "This beach is a great spot to train both my martial arts and my card skills.",
+	  "repeat_text": "Want to join in with my training?",
+	  "first_win_text": "A loss is always a good chance to improve.",
+	  "rematch_win_text": "I'm going to keep on training.",
+	  "loss_text": "I rarely lose when I've trained properly.",
+	  "pattern": "idle_cycle",
+	  "position": {
+		"x": 2645,
+		"y": 2395
+	  }
+	},
   ]
 }

@@ -268,19 +268,6 @@
 	  }
 	},
 	{
-	  "name": "Fossil Expert Jonathan",
-	  "meet_text": "There's a lot of history in this forest, it's been around for thousands of years.",
-	  "repeat_text": "You haven't found any mysterious artifacts around here have you?",
-	  "first_win_text": "We can learn a lot of things from the past.",
-	  "rematch_win_text": "Even losses are a great way to learn.",
-	  "loss_text": "You're a thing of the past!",
-	  "pattern": "idle_up",
-	  "position": {
-		"x": 465,
-		"y": 1585
-	  }
-	},
-	{
 	  "name": "Gentleman Benedict",
 	  "meet_text": "Good day. I'm not the most youthful but I love a good match.",
 	  "repeat_text": "Hello again, up for another match ey?",
@@ -350,20 +337,5 @@
 		"y": 430
 	  }
 	},
-	{
-	  "name": "Swimmer Bibi",
-	  "meet_text": "I much prefer cold fresh water swimming rather than the beach.",
-	  "repeat_text": "Fresh water is so much better than seawater!.",
-	  "first_win_text": "Sea water is far too salty!!",
-	  "rematch_win_text": "I'm going to be a wrinkly prune if I don't get out soon.",
-	  "loss_text": "Freshen up and take a dip!",
-	  "pattern": "patrol_square",
-	  "patrol_speed": 40.0,
-	  "patrol_distance": 68,
-	  "position": {
-		"x": 2970,
-		"y": 998
-	  }
-	}
   ]
 }

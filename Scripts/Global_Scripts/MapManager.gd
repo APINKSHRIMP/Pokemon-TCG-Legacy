@@ -978,6 +978,12 @@ func _load_card_image_with_fallback(path: String) -> Texture2D:
 
 func _format_coin_name(raw: String) -> String:
 	var base    := raw.trim_suffix(".png")
+	var is_rare := false
+	for prefix in ["Zzzz ", "Zzz ", "Zz "]:
+		if base.begins_with(prefix):
+			base = base.trim_prefix(prefix)
+			is_rare = true
+			break
 	var words   := base.split(" ")
 	var colours := ["red", "blue", "gold", "silver", "green", "black", "purple",
 					"pink", "brown", "yellow", "orange", "white"]
@@ -994,6 +1000,8 @@ func _format_coin_name(raw: String) -> String:
 	for j in range(i + 1):
 		name_parts.append(words[j])
 	var pieces : Array = []
+	if is_rare:
+		pieces.append("Rare")
 	if colour != "":
 		pieces.append(colour)
 	pieces.append_array(name_parts)

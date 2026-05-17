@@ -1,0 +1,270 @@
+CardID,CardName,Type,EnergyType,TotalCount,DeckCount
+base1-91,Bill,Trainer,,297,82
+base1-88,Professor Oak,Trainer,,204,77
+base1-84,PlusPower,Trainer,,140,43
+base1-92,Energy Removal,Trainer,,129,44
+base1-80,Defender,Trainer,,100,39
+base1-94,Potion,Trainer,,99,35
+base1-77,Pokémon Trader,Trainer,,79,39
+base3-59,Energy Search,Trainer,,78,22
+base1-93,Gust of Wind,Trainer,,61,27
+base1-96,Double Colorless Energy,Special Energy,,56,15
+base5-73,The Boss's Way,Trainer,,44,16
+base1-95,Switch,Trainer,,39,21
+base5-76,Imposter Oak's Revenge,Trainer,,30,8
+base1-63,Squirtle,Pokemon,Water,25,7
+gym1-19,The Rocket's Trap,Trainer,,24,6
+base1-90,Super Potion,Trainer,,23,10
+base1-75,Lass,Trainer,,23,9
+base1-42,Wartortle,Pokemon,Water,22,7
+base1-20,Electabuzz,Pokemon,Lightning,20,5
+base1-76,Pokémon Breeder,Trainer,,20,9
+base3-10,Lapras,Pokemon,Water,20,6
+base3-62,Mysterious Fossil,Trainer,,20,5
+base1-55,Nidoran ♂,Pokemon,Grass,19,5
+base1-71,Computer Search,Trainer,,19,10
+base1-70,Clefairy Doll,Trainer,,18,5
+base1-83,Maintenance,Trainer,,18,7
+basep-28,Surfing Pikachu,Pokemon,Lightning,16,4
+base1-52,Machop,Pokemon,Fighting,16,4
+basep-11,Eevee,Pokemon,Colorless,16,4
+base1-43,Abra,Pokemon,Psychic,16,4
+base1-35,Magikarp,Pokemon,Water,16,4
+base1-81,Energy Retrieval,Trainer,,16,7
+base5-56,Ekans,Pokemon,Grass,16,5
+base5-67,Slowpoke,Pokemon,Psychic,16,4
+base1-48,Doduo,Pokemon,Colorless,16,4
+base1-69,Weedle,Pokemon,Grass,16,4
+base1-45,Caterpie,Pokemon,Grass,16,4
+base3-47,Geodude,Pokemon,Fighting,16,4
+base5-69,Voltorb,Pokemon,Lightning,16,4
+base1-44,Bulbasaur,Pokemon,Grass,16,4
+base2-53,Goldeen,Pokemon,Water,15,4
+base1-26,Dratini,Pokemon,Colorless,15,4
+base5-58,Koffing,Pokemon,Grass,15,4
+base1-41,Seel,Pokemon,Water,15,4
+base2-51,Eevee,Pokemon,Colorless,14,5
+base1-7,Hitmonchan,Pokemon,Fighting,14,4
+base1-30,Ivysaur,Pokemon,Grass,13,4
+base1-33,Kakuna,Pokemon,Grass,13,4
+base1-2,Blastoise,Pokemon,Water,13,4
+base1-78,Scoop Up,Trainer,,13,4
+base1-74,Item Finder,Trainer,,12,6
+base1-68,Vulpix,Pokemon,Fire,12,3
+base1-49,Drowzee,Pokemon,Psychic,12,3
+base1-46,Charmander,Pokemon,Fire,12,3
+base2-5,Kangaskhan,Pokemon,Colorless,12,3
+base5-66,Rattata,Pokemon,Colorless,12,3
+basep-25,Flying Pikachu,Pokemon,Lightning,12,3
+base1-6,Gyarados,Pokemon,Water,12,3
+base5-70,Zubat,Pokemon,Grass,12,4
+base1-37,Nidorino,Pokemon,Grass,12,4
+base2-11,Snorlax,Pokemon,Colorless,12,3
+base1-59,Poliwag,Pokemon,Water,12,3
+base2-57,Nidoran ♀,Pokemon,Grass,12,3
+base2-63,Venonat,Pokemon,Grass,12,3
+base1-25,Dewgong,Pokemon,Water,12,4
+base1-65,Staryu,Pokemon,Water,11,3
+base5-2,Dark Arbok,Pokemon,Grass,11,3
+base5-57,Grimer,Pokemon,Grass,11,3
+base5-54,Drowzee,Pokemon,Psychic,11,3
+base5-55,Eevee,Pokemon,Colorless,11,4
+base5-62,Meowth,Pokemon,Colorless,11,3
+base3-56,Tentacool,Pokemon,Water,11,3
+base3-49,Horsea,Pokemon,Water,11,3
+base5-42,Dark Persian,Pokemon,Colorless,11,4
+base5-17,Rainbow Energy,Special Energy,,11,4
+base2-52,Exeggcute,Pokemon,Grass,11,3
+base1-17,Beedrill,Pokemon,Grass,10,3
+base3-31,Arbok,Pokemon,Grass,10,3
+base3-37,Graveler,Pokemon,Fighting,10,3
+base2-9,Pinsir,Pokemon,Grass,10,3
+base5-82,Potion Energy,Special Energy,,10,3
+base1-34,Machoke,Pokemon,Fighting,10,3
+base2-40,Nidorina,Pokemon,Grass,10,3
+base2-54,Jigglypuff,Pokemon,Colorless,10,3
+base2-10,Scyther,Pokemon,Grass,10,3
+base1-32,Kadabra,Pokemon,Psychic,9,3
+base1-18,Dragonair,Pokemon,Colorless,9,3
+base1-54,Metapod,Pokemon,Grass,9,3
+base5-38,Dark Jolteon,Pokemon,Lightning,9,3
+base1-47,Diglett,Pokemon,Fighting,9,3
+base2-64,Poké Ball,Trainer,,9,4
+base1-24,Charmeleon,Pokemon,Fire,9,3
+base1-62,Sandshrew,Pokemon,Fighting,8,2
+base2-49,Bellsprout,Pokemon,Grass,8,2
+base1-60,Ponyta,Pokemon,Fire,8,2
+base5-60,Magnemite,Pokemon,Lightning,8,2
+base5-63,Oddish,Pokemon,Grass,8,2
+basep-2,Electabuzz,Pokemon,Lightning,8,2
+base3-46,Ekans,Pokemon,Grass,8,3
+base2-50,Cubone,Pokemon,Fighting,8,2
+base3-51,Krabby,Pokemon,Water,8,2
+base2-6,Mr. Mime,Pokemon,Psychic,8,2
+base2-56,Meowth,Pokemon,Colorless,8,2
+base3-53,Psyduck,Pokemon,Water,8,2
+base5-45,Dark Vaporeon,Pokemon,Water,8,3
+base1-14,Raichu,Pokemon,Lightning,8,3
+base1-28,Growlithe,Pokemon,Fire,8,2
+base1-15,Venusaur,Pokemon,Grass,8,2
+base1-66,Tangela,Pokemon,Grass,8,2
+base5-81,Full Heal Energy,Special Energy,,8,2
+gym1-12,Rocket's Moltres,Pokemon,Fire,8,2
+base1-57,Pidgey,Pokemon,Colorless,8,2
+base5-3,Dark Blastoise,Pokemon,Water,8,2
+base1-53,Magnemite,Pokemon,Lightning,8,2
+base2-61,Rhyhorn,Pokemon,Fighting,8,2
+base3-54,Shellder,Pokemon,Water,8,2
+gym2-15,Rocket's Zapdos,Pokemon,Lightning,8,2
+base5-47,Magikarp,Pokemon,Water,8,2
+base2-59,Paras,Pokemon,Grass,8,2
+base5-50,Charmander,Pokemon,Fire,8,2
+base1-11,Nidoking,Pokemon,Grass,8,3
+base1-3,Chansey,Pokemon,Colorless,8,3
+base1-82,Full Heal,Trainer,,8,3
+base1-61,Rattata,Pokemon,Colorless,8,2
+basep-26,Pikachu,Pokemon,Lightning,8,2
+base1-67,Voltorb,Pokemon,Lightning,8,2
+base5-65,Psyduck,Pokemon,Water,8,2
+base1-79,Super Energy Removal,Trainer,,7,3
+base5-8,Dark Gyarados,Pokemon,Water,7,2
+base5-53,Dratini,Pokemon,Colorless,7,2
+base1-38,Poliwhirl,Pokemon,Water,7,2
+base2-4,Jolteon,Pokemon,Lightning,7,3
+base2-33,Butterfree,Pokemon,Grass,7,2
+base3-50,Kabuto,Pokemon,Fighting,7,2
+base2-16,Wigglytuff,Pokemon,Colorless,7,2
+base1-5,Clefairy,Pokemon,Colorless,7,2
+base5-40,Dark Machoke,Pokemon,Fighting,7,2
+basep-27,Pikachu,Pokemon,Lightning,7,3
+base1-58,Pikachu,Pokemon,Lightning,7,3
+base5-41,Dark Muk,Pokemon,Grass,7,2
+base5-12,Dark Slowbro,Pokemon,Psychic,7,2
+base3-43,Slowbro,Pokemon,Psychic,7,2
+base1-64,Starmie,Pokemon,Water,7,3
+base5-83,Dark Raichu,Pokemon,Lightning,7,2
+base5-14,Dark Weezing,Pokemon,Grass,7,2
+base5-32,Dark Charmeleon,Pokemon,Fire,7,2
+base1-22,Pidgeotto,Pokemon,Colorless,6,2
+base2-36,Fearow,Pokemon,Colorless,6,2
+base5-61,Mankey,Pokemon,Fighting,6,2
+base3-32,Cloyster,Pokemon,Water,6,2
+base2-55,Mankey,Pokemon,Fighting,6,2
+base3-7,Hitmonlee,Pokemon,Fighting,6,2
+base5-52,Diglett,Pokemon,Fighting,6,2
+base3-52,Omanyte,Pokemon,Water,6,2
+base2-39,Marowak,Pokemon,Fighting,6,2
+base2-48,Weepinbell,Pokemon,Grass,6,2
+base5-68,Squirtle,Pokemon,Water,6,2
+base3-36,Golem,Pokemon,Fighting,6,2
+base2-37,Gloom,Pokemon,Grass,6,2
+base2-34,Dodrio,Pokemon,Colorless,6,2
+base3-33,Gastly,Pokemon,Psychic,6,2
+base5-4,Dark Charizard,Pokemon,Fire,6,2
+base1-56,Onix,Pokemon,Fighting,6,2
+base5-16,Rocket's Sneak Attack,Trainer,,6,2
+base3-39,Magmar,Pokemon,Fire,6,2
+base2-47,Tauros,Pokemon,Colorless,6,2
+base1-27,Farfetch'd,Pokemon,Colorless,6,2
+base5-9,Dark Hypno,Pokemon,Psychic,6,2
+base5-43,Dark Primeape,Pokemon,Fighting,6,2
+base5-34,Dark Electrode,Pokemon,Lightning,6,2
+base5-51,Dark Raticate,Pokemon,Colorless,6,2
+base5-46,Dark Wartortle,Pokemon,Water,6,2
+base3-2,Articuno,Pokemon,Water,6,2
+base1-8,Machamp,Pokemon,Fighting,6,2
+base3-38,Kingler,Pokemon,Water,6,2
+base2-7,Nidoqueen,Pokemon,Grass,6,2
+base3-13,Muk,Pokemon,Grass,6,2
+base5-6,Dark Dugtrio,Pokemon,Fighting,6,2
+base1-36,Magmar,Pokemon,Fire,6,2
+base1-31,Jynx,Pokemon,Psychic,6,2
+base2-45,Rhydon,Pokemon,Fighting,6,2
+base2-13,Venomoth,Pokemon,Grass,5,2
+base3-44,Tentacruel,Pokemon,Water,5,2
+base3-42,Seadra,Pokemon,Water,5,2
+base3-41,Sandslash,Pokemon,Fighting,5,2
+base2-12,Vaporeon,Pokemon,Water,5,2
+basep-1,Pikachu,Pokemon,Lightning,5,2
+base1-1,Alakazam,Pokemon,Psychic,5,2
+base2-1,Clefable,Pokemon,Colorless,5,2
+base5-35,Dark Flareon,Pokemon,Fire,5,2
+base3-1,Aerodactyl,Pokemon,Fighting,5,2
+base3-9,Kabutops,Pokemon,Fighting,5,2
+base3-48,Grimer,Pokemon,Grass,5,2
+base2-2,Electrode,Pokemon,Lightning,5,2
+base1-9,Magneton,Pokemon,Lightning,5,2
+base1-23,Arcanine,Pokemon,Fire,5,2
+base5-37,Dark Golduck,Pokemon,Water,5,2
+base2-35,Exeggutor,Pokemon,Grass,5,2
+base5-33,Dark Dragonair,Pokemon,Colorless,5,2
+base2-46,Seaking,Pokemon,Water,5,2
+base1-21,Electrode,Pokemon,Lightning,5,2
+base2-44,Rapidash,Pokemon,Fire,5,2
+base3-34,Golbat,Pokemon,Grass,5,2
+base3-8,Hypno,Pokemon,Psychic,5,2
+base5-10,Dark Machamp,Pokemon,Fighting,5,2
+basep-4,Pikachu,Pokemon,Lightning,5,2
+base3-4,Dragonite,Pokemon,Colorless,5,2
+base3-11,Magneton,Pokemon,Lightning,5,2
+base3-35,Golduck,Pokemon,Water,5,2
+base5-48,Porygon,Pokemon,Colorless,4,1
+basep-10,Meowth,Pokemon,Colorless,4,1
+base3-15,Zapdos,Pokemon,Lightning,4,2
+base2-62,Spearow,Pokemon,Colorless,4,1
+base1-4,Charizard,Pokemon,Fire,4,2
+base1-40,Raticate,Pokemon,Colorless,3,1
+gym1-33,Rocket's Snorlax,Pokemon,Colorless,4,2
+base2-42,Persian,Pokemon,Colorless,3,1
+base2-8,Pidgeot,Pokemon,Colorless,2,1
+basep-7,Jigglypuff,Pokemon,Colorless,2,1
+basep-18,Team Rocket's Meowth,Pokemon,Colorless,2,1
+gym1-11,Rocket's Hitmonchan,Pokemon,Fighting,4,1
+base5-59,Machop,Pokemon,Fighting,4,1
+base2-43,Primeape,Pokemon,Fighting,3,1
+base5-44,Dark Rapidash,Pokemon,Fire,4,1
+base5-64,Ponyta,Pokemon,Fire,4,1
+base1-12,Ninetales,Pokemon,Fire,2,1
+base2-38,Lickitung,Pokemon,Colorless,4,2
+base5-7,Dark Golbat,Pokemon,Grass,4,1
+gym1-13,Rocket's Scyther,Pokemon,Grass,4,1
+base5-36,Dark Gloom,Pokemon,Grass,4,1
+base5-13,Dark Vileplume,Pokemon,Grass,4,1
+base2-58,Oddish,Pokemon,Grass,4,1
+base2-15,Vileplume,Pokemon,Grass,3,1
+base2-41,Parasect,Pokemon,Grass,3,1
+base2-14,Victreebel,Pokemon,Grass,3,1
+base1-16,Zapdos,Pokemon,Lightning,4,1
+base1-10,Mewtwo,Pokemon,Psychic,4,2
+base3-40,Omastar,Pokemon,Water,4,2
+base2-60,Pikachu,Pokemon,Lightning,4,2
+base1-51,Koffing,Pokemon,Grass,4,2
+base1-19,Dugtrio,Pokemon,Fighting,4,2
+base3-57,Zubat,Pokemon,Grass,4,2
+base3-45,Weezing,Pokemon,Grass,4,2
+base5-11,Dark Magneton,Pokemon,Lightning,3,1
+base3-14,Raichu,Pokemon,Lightning,1,1
+gym2-14,Rocket's Mewtwo,Pokemon,Psychic,4,1
+base3-55,Slowpoke,Pokemon,Psychic,4,1
+base5-49,Abra,Pokemon,Psychic,4,1
+base5-5,Dark Dragonite,Pokemon,Colorless,3,2
+base1-29,Haunter,Pokemon,Psychic,4,1
+base3-5,Gengar,Pokemon,Psychic,4,1
+base5-39,Dark Kadabra,Pokemon,Psychic,3,1
+base5-1,Dark Alakazam,Pokemon,Psychic,3,1
+basep-3,Mewtwo,Pokemon,Psychic,2,1
+base2-3,Flareon,Pokemon,Fire,3,2
+base1-50,Gastly,Pokemon,Psychic,2,1
+base3-6,Haunter,Pokemon,Psychic,2,1
+basep-14,Mewtwo,Pokemon,Psychic,2,1
+base1-13,Poliwrath,Pokemon,Water,4,1
+base5-77,Nightly Garbage Run,Trainer,,4,1
+base3-58,Mr. Fuji,Trainer,,4,1
+base5-75,Digger,Trainer,,4,1
+base3-60,Gambler,Trainer,,4,1
+base5-79,Sleep!,Trainer,,4,1
+base1-72,Devolution Spray,Trainer,,4,1
+base1-85,Pokémon Center,Trainer,,2,1
+base3-61,Recycle,Trainer,,2,1
+base1-89,Revive,Trainer,,2,1
+base1-73,Impostor Professor Oak,Trainer,,2,1
