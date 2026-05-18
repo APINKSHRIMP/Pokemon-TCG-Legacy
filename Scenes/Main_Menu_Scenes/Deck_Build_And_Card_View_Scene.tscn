@@ -70,9 +70,9 @@ offset_bottom = 1077.0
 z_index = 300
 layout_mode = 0
 offset_left = 1689.0
-offset_top = 902.0
+offset_top = 938.0
 offset_right = 1915.0
-offset_bottom = 965.0
+offset_bottom = 1001.0
 theme = ExtResource("6_3fpct")
 theme_override_font_sizes/font_size = 23
 text = "save deck"
@@ -81,9 +81,9 @@ text = "save deck"
 z_index = 300
 layout_mode = 0
 offset_left = 1690.0
-offset_top = 986.0
+offset_top = 1006.0
 offset_right = 1914.0
-offset_bottom = 1049.0
+offset_bottom = 1069.0
 theme = ExtResource("7_r4yq8")
 theme_override_font_sizes/font_size = 23
 text = "cancel"
@@ -108,20 +108,20 @@ layout_mode = 0
 offset_left = 1690.0
 offset_top = 112.0
 offset_right = 1913.0
-offset_bottom = 199.0
+offset_bottom = 182.0
 theme = ExtResource("7_r4yq8")
-theme_override_font_sizes/font_size = 23
+theme_override_font_sizes/font_size = 18
 text = "EMPTY DECK"
 
 [node name="load_deck_button" type="Button" parent="." unique_id=68475397]
 z_index = 300
 layout_mode = 0
 offset_left = 1690.0
-offset_top = 223.0
+offset_top = 186.0
 offset_right = 1912.0
-offset_bottom = 310.0
+offset_bottom = 256.0
 theme = ExtResource("8_wo1ju")
-theme_override_font_sizes/font_size = 23
+theme_override_font_sizes/font_size = 18
 text = "Load deck"
 
 [node name="next_set" type="Button" parent="." unique_id=1677040637]
@@ -175,22 +175,9 @@ horizontal_alignment = 1
 [node name="ENERGY SECTION" type="Control" parent="." unique_id=1168499461]
 anchors_preset = 0
 offset_left = -2.0
-offset_top = -146.0
+offset_top = -232.0
 offset_right = 38.0
-offset_bottom = -106.0
-
-[node name="change_energy_style_button" type="Button" parent="ENERGY SECTION" unique_id=500606927]
-z_index = 100
-layout_mode = 0
-offset_left = 1692.0
-offset_top = 479.749
-offset_right = 1912.0
-offset_bottom = 558.0
-theme = ExtResource("8_wo1ju")
-theme_override_constants/line_spacing = 4
-theme_override_font_sizes/font_size = 21
-text = "change
-energy style"
+offset_bottom = -192.0
 
 [node name="ENERGY ICONS" type="Control" parent="ENERGY SECTION" unique_id=247980399]
 anchors_preset = 0
@@ -271,9 +258,9 @@ offset_bottom = 40.0
 [node name="fighting_energy_count_label" type="Label" parent="ENERGY SECTION/ENERGY LABELS" unique_id=246950334]
 z_index = 210
 layout_mode = 0
-offset_left = 1704.0
+offset_left = 1706.0
 offset_top = 580.0
-offset_right = 1762.0
+offset_right = 1764.0
 offset_bottom = 632.0
 theme = ExtResource("6_3fpct")
 theme_override_colors/font_outline_color = Color(0, 0, 0, 1)
@@ -285,9 +272,9 @@ horizontal_alignment = 1
 [node name="fire_energy_count_label" type="Label" parent="ENERGY SECTION/ENERGY LABELS" unique_id=582950044]
 z_index = 210
 layout_mode = 0
-offset_left = 1776.0
+offset_left = 1778.0
 offset_top = 580.0
-offset_right = 1834.0
+offset_right = 1836.0
 offset_bottom = 632.0
 theme = ExtResource("6_3fpct")
 theme_override_colors/font_outline_color = Color(0, 0, 0, 1)
@@ -299,9 +286,9 @@ horizontal_alignment = 1
 [node name="grass_energy_count_label" type="Label" parent="ENERGY SECTION/ENERGY LABELS" unique_id=563003976]
 z_index = 210
 layout_mode = 0
-offset_left = 1848.0
+offset_left = 1853.0
 offset_top = 580.0
-offset_right = 1906.0
+offset_right = 1911.0
 offset_bottom = 632.0
 theme = ExtResource("6_3fpct")
 theme_override_colors/font_outline_color = Color(0, 0, 0, 1)
@@ -341,9 +328,9 @@ horizontal_alignment = 1
 [node name="water_energy_count_label" type="Label" parent="ENERGY SECTION/ENERGY LABELS" unique_id=1627993579]
 z_index = 210
 layout_mode = 0
-offset_left = 1851.0
+offset_left = 1854.0
 offset_top = 680.0
-offset_right = 1909.0
+offset_right = 1912.0
 offset_bottom = 732.0
 theme = ExtResource("6_3fpct")
 theme_override_colors/font_outline_color = Color(0, 0, 0, 1)
@@ -351,3 +338,16 @@ theme_override_constants/outline_size = 10
 theme_override_font_sizes/font_size = 33
 text = "0"
 horizontal_alignment = 1
+
+[node name="change_energy_style_button" type="Button" parent="ENERGY SECTION" unique_id=500606927]
+z_index = 100
+layout_mode = 0
+offset_left = 1692.0
+offset_top = 491.749
+offset_right = 1912.0
+offset_bottom = 562.0
+theme = ExtResource("8_wo1ju")
+theme_override_constants/line_spacing = 4
+theme_override_font_sizes/font_size = 18
+text = "change
+energy style"

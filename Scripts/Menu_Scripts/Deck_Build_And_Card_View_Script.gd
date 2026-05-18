@@ -36,6 +36,21 @@ const ENERGY_STYLES : Dictionary = {
 	"ex16":   ["ex16-103",  "ex16-104",  "ex16-105",  "ex16-106",  "ex16-107",  "ex16-108"],
 }
 
+# BBCode hex colours for the per-set deck breakdown label.
+# "__trainer__" is the combined Trainer + Special Energy bucket.
+const TYPE_COLOR_HEX : Dictionary = {
+	"Colorless":   "#ffffff",
+	"Darkness":    "#1a1a1a",
+	"Fighting":    "#d9823c",
+	"Fire":        "#ff4a36",
+	"Grass":       "#47d647",
+	"Lightning":   "#ffdc14",
+	"Metal":       "#8c8c8c",
+	"Psychic":     "#c247f0",
+	"Water":       "#4592ff",
+	"__trainer__": "#c8c8c8",
+}
+
 # ─── State ───────────────────────────────────────────────────────────────────
 
 # Ordered array of dictionaries: [{set_id, set_name}, ...]
@@ -108,6 +123,9 @@ var is_zoomed : bool = false
 # because hover tracking hasn't recalculated.  Storing the reference lets
 # us skip the hover lookup and zoom straight back in.
 var last_zoomed_card : TextureRect = null
+
+# RichTextLabel showing the per-set deck breakdown (created in _ready).
+var set_breakdown_label : RichTextLabel = null
 
 # ─── Node references ─────────────────────────────────────────────────────────
 
@@ -210,6 +228,8 @@ func _ready() -> void:
 	_snapshot_deck_state()
 	_update_deck_count_label()
 	_refresh_save_button()
+	_create_set_breakdown_label()
+	_update_set_breakdown_label()
 
 	# Display the starting set
 	await get_tree().process_frame
@@ -354,6 +374,7 @@ func _ensure_set_metadata_loaded(set_id: String) -> void:
 					"name": card.get("name", ""),
 					"supertype": card.get("supertype", ""),
 					"subtypes": card.get("subtypes", []),
+					"types": card.get("types", []),
 				}
 
 	_card_metadata_cache[set_id + "-loaded"] = true
@@ -1446,6 +1467,9 @@ func _save_last_set_loaded() -> void:
 ## - Spacebar press: zooms into the hovered card's large image
 ## - Spacebar release: closes the zoom overlay and restores UI
 func _input(event: InputEvent) -> void:
+	if event is InputEventMouseButton and event.pressed:
+		_update_set_breakdown_label()
+
 	if not event is InputEventKey:
 		return
 
@@ -1597,6 +1621,9 @@ func _set_ui_visibility(visible_flag: bool) -> void:
 		nodes_to_toggle.append(energy_icons[energy_type])
 		nodes_to_toggle.append(energy_labels[energy_type])
 
+	if set_breakdown_label != null:
+		nodes_to_toggle.append(set_breakdown_label)
+
 	for node in nodes_to_toggle:
 		if node != null and is_instance_valid(node):
 			node.visible = visible_flag
@@ -1607,6 +1634,114 @@ func _set_ui_visibility(visible_flag: bool) -> void:
 ## Updates the "XX/60" label in the top bar.
 func _update_deck_count_label() -> void:
 	deck_count_label.text = str(total_deck_count) + "/" + str(DECK_SIZE)
+	_update_set_breakdown_label()
+
+
+## Creates the RichTextLabel used for the per-set deck breakdown.
+## Positioned just below the energy count labels (y≈700) and above the save
+## button (y=902), spanning the full right-panel width.
+func _create_set_breakdown_label() -> void:
+	set_breakdown_label = RichTextLabel.new()
+	set_breakdown_label.bbcode_enabled = true
+	set_breakdown_label.scroll_active  = false
+	set_breakdown_label.fit_content    = true
+	set_breakdown_label.position       = Vector2(1690.0, 544.0)
+	set_breakdown_label.size           = Vector2(230.0, 182.0)
+	set_breakdown_label.z_index        = 200
+	set_breakdown_label.mouse_filter   = Control.MOUSE_FILTER_IGNORE
+	var kenney_theme = load("res://UI_Themes/kenneyUI.tres")
+	if kenney_theme:
+		set_breakdown_label.theme = kenney_theme
+	set_breakdown_label.add_theme_font_size_override("normal_font_size", 14)
+	set_breakdown_label.add_theme_constant_override("outline_size", 2)
+	set_breakdown_label.add_theme_color_override("font_outline_color", Color(0.85, 0.85, 0.85, 0.75))
+	set_breakdown_label.add_theme_constant_override("paragraph_separation", 3)
+	add_child(set_breakdown_label)
+
+
+## Returns a display-friendly version of a set name for the breakdown label.
+## Strips a leading "EX " prefix (any case) and shortens "Team" to "Tm".
+func _format_set_name_for_breakdown(raw_name: String) -> String:
+	var name := raw_name
+	if name.length() > 3 and name.substr(0, 3).to_lower() == "ex ":
+		name = name.substr(3)
+	name = name.replace("Team ", "Tm ")
+	return name.strip_edges()
+
+
+## Rebuilds the per-set type breakdown from deck_cards.
+## Layout per set: set name on its own line (header), then all coloured count
+## tokens on the line below.  A 5 px spacer separates each set block.
+##   - Pokémon grouped by first type, in that type's colour
+##   - Trainers + Special Energies combined in light grey
+##   - Basic Energies omitted (shown by the energy icon section)
+## Safe to call before the label is created — exits silently.
+func _update_set_breakdown_label() -> void:
+	if set_breakdown_label == null:
+		return
+
+	# Accumulate counts: set_id → { type_category → count }
+	var set_type_counts : Dictionary = {}
+
+	for card_id in deck_cards:
+		var count : int = deck_cards[card_id]
+		var set_id : String = card_id.split("-")[0]
+		var meta = _get_card_meta(card_id)
+		if meta == null:
+			continue
+
+		var supertype : String = meta["supertype"]
+		var subtypes  : Array  = meta["subtypes"]
+		var types     : Array  = meta.get("types", [])
+
+		var category : String
+		if supertype == "Pokémon":
+			category = types[0] if types.size() > 0 else "Colorless"
+		elif supertype == "Trainer":
+			category = "__trainer__"
+		elif supertype == "Energy":
+			if "Special" in subtypes:
+				category = "__trainer__"
+			else:
+				continue  # basic energy shown via energy icon counts
+		else:
+			continue
+
+		if not set_type_counts.has(set_id):
+			set_type_counts[set_id] = {}
+		var tgt : Dictionary = set_type_counts[set_id]
+		tgt[category] = tgt.get(category, 0) + count
+
+	# Fixed type order: alphabetical Pokémon types, then Trainer/Special last
+	var type_order : Array = [
+		"Colorless", "Darkness", "Fighting", "Fire", "Grass",
+		"Lightning", "Metal", "Psychic", "Water", "__trainer__"
+	]
+
+	# Each set is its own [p align=center] paragraph — paragraph_separation
+	# (set as a theme constant in _create_set_breakdown_label) controls the
+	# inter-set gap in real pixels, while the \n inside the paragraph keeps
+	# the set name and its counts tight together.
+	var bbcode := ""
+	for entry in set_list:
+		var set_id : String = entry["set_id"]
+		if not set_type_counts.has(set_id):
+			continue
+		var counts       : Dictionary = set_type_counts[set_id]
+		var display_name : String     = _format_set_name_for_breakdown(entry["set_name"])
+
+		var count_line := ""
+		for type_key in type_order:
+			if counts.has(type_key):
+				var hex : String = TYPE_COLOR_HEX.get(type_key, "#ffffff")
+				if count_line != "":
+					count_line += " "
+				count_line += "[color=" + hex + "]" + str(counts[type_key]) + "[/color]"
+
+		bbcode += "[p align=center][color=#ffffff]" + display_name + "[/color]\n"
+		bbcode += "[font_size=18]" + count_line + "[/font_size][/p]"
+
+	set_breakdown_label.text = bbcode
 
 
 ## Called every time the player types or deletes in the deck name field.
