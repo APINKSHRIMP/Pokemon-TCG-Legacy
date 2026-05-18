@@ -51,6 +51,12 @@ const TYPE_COLOR_HEX : Dictionary = {
 	"__trainer__": "#c8c8c8",
 }
 
+# Display order for Pokémon types in the deck viewer.
+const POKEMON_TYPE_DISPLAY_ORDER : Array = [
+	"Grass", "Fire", "Water", "Lightning", "Psychic",
+	"Fighting", "Darkness", "Metal", "Colorless",
+]
+
 # ─── State ───────────────────────────────────────────────────────────────────
 
 # Ordered array of dictionaries: [{set_id, set_name}, ...]
@@ -98,6 +104,11 @@ var energy_picker_active : bool = false
 
 # Reference to the energy picker Control so we can free it
 var energy_picker_overlay : Control = null
+
+# Whether the deck viewer overlay is currently open
+var deck_viewer_active  : bool    = false
+# The deck viewer overlay Control (always rebuilt on open; freed on close)
+var deck_viewer_overlay : Control = null
 
 # Holds references to the 6 energy icon TextureRects from the scene tree,
 # keyed by type name: "grass", "fire", "water", "lightning", "psychic", "fighting"
@@ -158,6 +169,8 @@ var set_breakdown_label : RichTextLabel = null
 
 # The button that opens the energy style picker overlay
 @onready var change_energy_btn : Button = $"ENERGY SECTION"/change_energy_style_button
+# The button that opens the deck viewer overlay
+@onready var view_deck_btn     : Button = $view_deck_button
 
 # ─── Lifecycle ───────────────────────────────────────────────────────────────
 
@@ -179,6 +192,7 @@ func _ready() -> void:
 	next_btn.pressed.connect(_on_next_set)
 	prev_btn.pressed.connect(_on_prev_set)
 	change_energy_btn.pressed.connect(_on_change_energy_style_pressed)
+	view_deck_btn.pressed.connect(_on_view_deck_pressed)
 
 	# Limit deck name to 20 characters — LineEdit.max_length natively
 	# blocks further typing once the limit is reached
@@ -375,6 +389,7 @@ func _ensure_set_metadata_loaded(set_id: String) -> void:
 					"supertype": card.get("supertype", ""),
 					"subtypes": card.get("subtypes", []),
 					"types": card.get("types", []),
+					"evolvesFrom": card.get("evolvesFrom", ""),
 				}
 
 	_card_metadata_cache[set_id + "-loaded"] = true
@@ -989,6 +1004,315 @@ func _close_energy_picker() -> void:
 	_set_ui_visibility(true)
 
 
+# ─── Deck viewer sorting ─────────────────────────────────────────────────────
+
+## Returns a stage integer for sorting: Stage 2 = 2, Stage 1 = 1, Basic = 0, Baby = -1.
+func _get_card_stage(card_id: String) -> int:
+	var meta = _get_card_meta(card_id)
+	if meta == null:
+		return 0
+	var subtypes : Array = meta.get("subtypes", [])
+	if "Stage 2" in subtypes:
+		return 2
+	if "Stage 1" in subtypes:
+		return 1
+	if "Baby" in subtypes:
+		return -1
+	return 0
+
+
+## Returns sort priority for a Trainer subtype: 0 = Normal, 1 = Stadium, 2 = Tool.
+func _get_trainer_subtype_priority(card_id: String) -> int:
+	var meta = _get_card_meta(card_id)
+	if meta == null:
+		return 0
+	var subtypes : Array = meta.get("subtypes", [])
+	if "Stadium" in subtypes:
+		return 1
+	if "Tool" in subtypes or "Pokémon Tool" in subtypes:
+		return 2
+	return 0
+
+
+## Sorts energy card_ids: Special Energy first, then Basic, alphabetically within each.
+func _sort_energy_viewer(energy_ids: Array) -> Array:
+	var special : Array = []
+	var basic   : Array = []
+	for cid in energy_ids:
+		var meta = _get_card_meta(cid)
+		if meta != null and "Special" in meta.get("subtypes", []):
+			special.append(cid)
+		else:
+			basic.append(cid)
+	var name_sort := func(a: String, b: String) -> bool:
+		var ma = _get_card_meta(a)
+		var mb = _get_card_meta(b)
+		var na : String = ma.get("name", a) if ma != null else a
+		var nb : String = mb.get("name", b) if mb != null else b
+		return na < nb
+	special.sort_custom(name_sort)
+	basic.sort_custom(name_sort)
+	return special + basic
+
+
+## Sorts trainer card_ids: Normal → Stadium → Tool, alphabetically within each group.
+func _sort_trainers_viewer(trainer_ids: Array) -> Array:
+	trainer_ids.sort_custom(func(a: String, b: String) -> bool:
+		var pa : int = _get_trainer_subtype_priority(a)
+		var pb : int = _get_trainer_subtype_priority(b)
+		if pa != pb:
+			return pa < pb
+		var ma = _get_card_meta(a)
+		var mb = _get_card_meta(b)
+		var na : String = ma.get("name", a) if ma != null else a
+		var nb : String = mb.get("name", b) if mb != null else b
+		return na < nb
+	)
+	return trainer_ids
+
+
+## Groups Pokémon in one type bucket into evolution families, then sorts:
+##   Segments ordered by max_stage DESC; standalones before families of same max_stage.
+##   Within a family: Stage 2 → Stage 1 → Basic → Baby.
+func _sort_type_group_pokemon(type_ids: Array) -> Array:
+	if type_ids.is_empty():
+		return type_ids
+
+	# name → [card_ids] for cards in this group
+	var name_to_ids : Dictionary = {}
+	for cid in type_ids:
+		var meta = _get_card_meta(cid)
+		var cname : String = meta.get("name", cid) if meta != null else cid
+		if not name_to_ids.has(cname):
+			name_to_ids[cname] = []
+		(name_to_ids[cname] as Array).append(cid)
+
+	# Union-find: group_of[cid] = representative id
+	var group_of : Dictionary = {}
+	for cid in type_ids:
+		group_of[cid] = cid
+
+	# Three passes handles Stage 2 chains (Basic→Stage1→Stage2)
+	for _pass in range(3):
+		for cid in type_ids:
+			var meta = _get_card_meta(cid)
+			if meta == null:
+				continue
+			var from_name : String = meta.get("evolvesFrom", "")
+			if from_name == "" or not name_to_ids.has(from_name):
+				continue
+			# Path-compress my root
+			var my_root : String = group_of[cid]
+			while group_of[my_root] != my_root:
+				my_root = group_of[my_root]
+			# Union with each "from" card's root
+			for from_cid in (name_to_ids[from_name] as Array):
+				var from_root : String = group_of[from_cid]
+				while group_of[from_root] != from_root:
+					from_root = group_of[from_root]
+				if my_root != from_root:
+					group_of[from_root] = my_root
+
+	# Path-compress all
+	for cid in type_ids:
+		var root : String = group_of[cid]
+		while group_of[root] != root:
+			root = group_of[root]
+		group_of[cid] = root
+
+	# Build segments keyed by root
+	var segments : Dictionary = {}
+	for cid in type_ids:
+		var root : String = group_of[cid]
+		if not segments.has(root):
+			segments[root] = []
+		(segments[root] as Array).append(cid)
+
+	# Build segment metadata and sort cards within each segment by stage DESC
+	var segment_list : Array = []
+	for root in segments:
+		var seg_cards : Array = segments[root]
+		var max_stage : int = -99
+		for cid in seg_cards:
+			var s : int = _get_card_stage(cid)
+			if s > max_stage:
+				max_stage = s
+		seg_cards.sort_custom(func(a: String, b: String) -> bool:
+			return _get_card_stage(a) > _get_card_stage(b)
+		)
+		segment_list.append({
+			"cards":       seg_cards,
+			"max_stage":   max_stage,
+			"standalone":  seg_cards.size() == 1,
+			"first_name":  (_get_card_meta(seg_cards[0]).get("name", "") if _get_card_meta(seg_cards[0]) != null else ""),
+		})
+
+	# Sort segments: max_stage DESC → standalone first (true > false) → name ASC
+	segment_list.sort_custom(func(a: Dictionary, b: Dictionary) -> bool:
+		if a["max_stage"] != b["max_stage"]:
+			return a["max_stage"] > b["max_stage"]
+		if a["standalone"] != b["standalone"]:
+			return a["standalone"]  # true sorts before false
+		return a["first_name"] < b["first_name"]
+	)
+
+	var result : Array = []
+	for seg in segment_list:
+		result.append_array(seg["cards"])
+	return result
+
+
+## Returns the full sorted card_id list for the current deck, ready for the viewer.
+## Order: Pokémon by type → Trainers (Normal/Stadium/Tool) → Energy (Special/Basic).
+func _sort_deck_for_viewer() -> Array:
+	var pokemon_by_type : Dictionary = {}
+	var trainer_ids     : Array      = []
+	var energy_ids      : Array      = []
+
+	for card_id in deck_cards:
+		_ensure_set_metadata_loaded(card_id.split("-")[0])
+		var meta = _get_card_meta(card_id)
+		if meta == null:
+			continue
+		var supertype : String = meta.get("supertype", "")
+		if supertype == "Pokémon":
+			var types  : Array  = meta.get("types", [])
+			var ptype  : String = types[0] if types.size() > 0 else "Colorless"
+			if not pokemon_by_type.has(ptype):
+				pokemon_by_type[ptype] = []
+			(pokemon_by_type[ptype] as Array).append(card_id)
+		elif supertype == "Trainer":
+			trainer_ids.append(card_id)
+		elif supertype == "Energy":
+			energy_ids.append(card_id)
+
+	var result : Array = []
+	for ptype in POKEMON_TYPE_DISPLAY_ORDER:
+		if pokemon_by_type.has(ptype):
+			result.append_array(_sort_type_group_pokemon(pokemon_by_type[ptype]))
+	result.append_array(_sort_trainers_viewer(trainer_ids))
+	result.append_array(_sort_energy_viewer(energy_ids))
+	return result
+
+
+# ─── Deck viewer overlay ─────────────────────────────────────────────────────
+
+## Opens a full-screen overlay showing every copy of every card in the current
+## deck laid out in a scrollable grid — no count labels, just raw card images.
+## The overlay is always rebuilt fresh so it reflects the current deck state.
+func _on_view_deck_pressed() -> void:
+	if deck_viewer_active or energy_picker_active or is_zoomed:
+		return
+	if deck_cards.is_empty():
+		return
+
+	deck_viewer_active = true
+	_set_ui_visibility(false)
+
+	deck_viewer_overlay = Control.new()
+	deck_viewer_overlay.z_index = 10
+	deck_viewer_overlay.set_anchors_preset(Control.PRESET_FULL_RECT)
+	add_child(deck_viewer_overlay)
+
+	var backdrop := ColorRect.new()
+	backdrop.color          = Color(0, 0, 0, 0.55)
+	backdrop.anchor_right   = 1.0
+	backdrop.anchor_bottom  = 1.0
+	backdrop.z_index        = 55
+	deck_viewer_overlay.add_child(backdrop)
+
+	var kenney_theme = load("res://UI_Themes/kenneyUI.tres")
+
+	var title := Label.new()
+	if kenney_theme:
+		title.theme = kenney_theme
+	var _viewer_deck_name : String = current_deck_name if current_deck_name != "" else "DECK"
+	title.text                    = _viewer_deck_name + "  (" + str(total_deck_count) + " cards)"
+	title.add_theme_font_size_override("font_size", 36)
+	title.add_theme_color_override("font_color", Color.WHITE)
+	title.horizontal_alignment    = HORIZONTAL_ALIGNMENT_CENTER
+	title.position                = Vector2(200, 35)
+	title.size                    = Vector2(1200, 50)
+	title.z_index                 = 55
+	deck_viewer_overlay.add_child(title)
+
+	var viewer_scroll := ScrollContainer.new()
+	viewer_scroll.position              = Vector2(5, 110)
+	viewer_scroll.size                  = Vector2(1676, 969)
+	viewer_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	viewer_scroll.vertical_scroll_mode  = ScrollContainer.SCROLL_MODE_AUTO
+	viewer_scroll.z_index               = 0
+	viewer_scroll.clip_contents         = true
+	deck_viewer_overlay.add_child(viewer_scroll)
+
+	var margin := MarginContainer.new()
+	margin.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	margin.add_theme_constant_override("margin_left",   0)
+	margin.add_theme_constant_override("margin_right",  0)
+	margin.add_theme_constant_override("margin_top",    10)
+	margin.add_theme_constant_override("margin_bottom", 10)
+	viewer_scroll.add_child(margin)
+
+	var viewer_grid := GridContainer.new()
+	viewer_grid.columns                 = COLUMNS
+	viewer_grid.size_flags_horizontal   = Control.SIZE_EXPAND_FILL
+	viewer_grid.add_theme_constant_override("h_separation", CARD_H_SEP)
+	viewer_grid.add_theme_constant_override("v_separation", CARD_V_SEP)
+	margin.add_child(viewer_grid)
+
+	var close_btn := Button.new()
+	close_btn.text                = "close"
+	close_btn.custom_minimum_size = Vector2(226, 63)
+	close_btn.position            = Vector2(1689, 1003)
+	close_btn.z_index             = 55
+	var red_theme = load("res://UI_Themes/kenneyUI-red.tres")
+	if red_theme:
+		close_btn.theme = red_theme
+	close_btn.add_theme_font_size_override("font_size", 23)
+	close_btn.pressed.connect(_close_deck_viewer)
+	deck_viewer_overlay.add_child(close_btn)
+
+	await get_tree().process_frame
+
+	var sorted_ids : Array = _sort_deck_for_viewer()
+
+	# Add one TextureRect per copy of each card — no count label
+	for card_id in sorted_ids:
+		if not deck_viewer_active:
+			return
+		var cid        : String = card_id
+		var count      : int    = deck_cards[cid]
+		var card_set   : String = cid.split("-")[0]
+		var image_path : String = "res://Image_Assets/Card_Image_Library/" + card_set + "/Large/" + cid + ".png"
+		var card_texture        = load(image_path)
+
+		for _i in range(count):
+			if not deck_viewer_active:
+				return
+			var card_rect := TextureRect.new()
+			if card_texture != null:
+				card_rect.texture = card_texture
+			card_rect.custom_minimum_size       = CARD_SIZE
+			card_rect.size                      = CARD_SIZE
+			card_rect.expand_mode               = TextureRect.EXPAND_IGNORE_SIZE
+			card_rect.stretch_mode              = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+			card_rect.size_flags_horizontal     = Control.SIZE_SHRINK_BEGIN
+			card_rect.size_flags_vertical       = Control.SIZE_SHRINK_BEGIN
+			card_rect.mouse_filter              = Control.MOUSE_FILTER_IGNORE
+			viewer_grid.add_child(card_rect)
+			await get_tree().process_frame
+
+
+## Closes and frees the deck viewer overlay, restoring normal UI.
+## Always freed (not hidden) because the deck may have changed since it was built.
+func _close_deck_viewer() -> void:
+	deck_viewer_active = false
+	if deck_viewer_overlay != null:
+		deck_viewer_overlay.queue_free()
+		deck_viewer_overlay = null
+	_set_ui_visibility(true)
+
+
 ## Writes the energy_style field to player_data.json without touching
 ## any other fields.
 func _save_energy_style_to_player_data(style_name: String) -> void:
@@ -1479,6 +1803,10 @@ func _input(event: InputEvent) -> void:
 		if is_zoomed:
 			_hide_zoom()
 			return
+		# If the deck viewer is open, close it
+		if deck_viewer_active:
+			_close_deck_viewer()
+			return
 		# If the energy picker is open, close it (same as pressing cancel)
 		if energy_picker_active:
 			_on_energy_picker_cancel()
@@ -1493,6 +1821,8 @@ func _input(event: InputEvent) -> void:
 			if load_popup != null:
 				return
 			if energy_picker_active:
+				return
+			if deck_viewer_active:
 				return
 			if deck_name_edit.has_focus():
 				return
@@ -1614,6 +1944,7 @@ func _set_ui_visibility(visible_flag: bool) -> void:
 		deck_name_edit,
 		deck_count_label,
 		change_energy_btn,
+		view_deck_btn,
 	]
 
 	# Add all 6 energy icons and their count labels to the toggle list
@@ -1646,7 +1977,7 @@ func _create_set_breakdown_label() -> void:
 	set_breakdown_label.scroll_active  = false
 	set_breakdown_label.fit_content    = true
 	set_breakdown_label.position       = Vector2(1690.0, 544.0)
-	set_breakdown_label.size           = Vector2(230.0, 182.0)
+	set_breakdown_label.size           = Vector2(230.0, 112.0)
 	set_breakdown_label.z_index        = 200
 	set_breakdown_label.mouse_filter   = Control.MOUSE_FILTER_IGNORE
 	var kenney_theme = load("res://UI_Themes/kenneyUI.tres")
@@ -1655,7 +1986,7 @@ func _create_set_breakdown_label() -> void:
 	set_breakdown_label.add_theme_font_size_override("normal_font_size", 14)
 	set_breakdown_label.add_theme_constant_override("outline_size", 2)
 	set_breakdown_label.add_theme_color_override("font_outline_color", Color(0.85, 0.85, 0.85, 0.75))
-	set_breakdown_label.add_theme_constant_override("paragraph_separation", 3)
+	set_breakdown_label.add_theme_constant_override("paragraph_separation", 1)
 	add_child(set_breakdown_label)
 
 

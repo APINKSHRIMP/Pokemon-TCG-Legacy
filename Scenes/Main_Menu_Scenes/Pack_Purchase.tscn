@@ -1,6 +1,6 @@
 [gd_scene format=3 uid="uid://cxs5yqb3w6qpu"]
 
-[ext_resource type="Script" uid="uid://b5r8eyfq58f8d" path="res://Scripts/Menu_Scripts/Pack_Purchase_Script.gd" id="1_b0oh6"]
+[ext_resource type="Script" uid="uid://7vsbabpsv7i3" path="res://Scripts/Menu_Scripts/Pack_Purchase_Script.gd" id="1_b0oh6"]
 [ext_resource type="Shader" uid="uid://ccm481fk14lc8" path="res://Scripts/Shaders/Background_Scroll_Right_Top_Border.gdshader" id="2_je68x"]
 [ext_resource type="Texture2D" uid="uid://dieqv60p12hlk" path="res://Image_Assets/Backgrounds_And_Borders/Borders/horizontal_border.png" id="3_nn2uu"]
 [ext_resource type="Shader" uid="uid://d3gofmygrsrkm" path="res://Scripts/Shaders/Background_Scroll_Left.gdshader" id="4_mwvw3"]

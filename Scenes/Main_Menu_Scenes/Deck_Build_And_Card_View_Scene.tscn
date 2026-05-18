@@ -124,6 +124,18 @@ theme = ExtResource("8_wo1ju")
 theme_override_font_sizes/font_size = 18
 text = "Load deck"
 
+[node name="view_deck_button" type="Button" parent="." unique_id=1217613715]
+z_index = 300
+layout_mode = 0
+offset_left = 1689.0
+offset_top = 871.0
+offset_right = 1915.0
+offset_bottom = 934.0
+theme = ExtResource("8_wo1ju")
+theme_override_constants/line_spacing = 4
+theme_override_font_sizes/font_size = 23
+text = "View Deck"
+
 [node name="next_set" type="Button" parent="." unique_id=1677040637]
 z_index = 300
 layout_mode = 0
@@ -178,6 +190,19 @@ offset_left = -2.0
 offset_top = -232.0
 offset_right = 38.0
 offset_bottom = -192.0
+
+[node name="change_energy_style_button" type="Button" parent="ENERGY SECTION" unique_id=500606927]
+z_index = 100
+layout_mode = 0
+offset_left = 1692.0
+offset_top = 491.749
+offset_right = 1912.0
+offset_bottom = 562.0
+theme = ExtResource("8_wo1ju")
+theme_override_constants/line_spacing = 4
+theme_override_font_sizes/font_size = 18
+text = "change
+energy style"
 
 [node name="ENERGY ICONS" type="Control" parent="ENERGY SECTION" unique_id=247980399]
 anchors_preset = 0
@@ -338,16 +363,3 @@ theme_override_constants/outline_size = 10
 theme_override_font_sizes/font_size = 33
 text = "0"
 horizontal_alignment = 1
-
-[node name="change_energy_style_button" type="Button" parent="ENERGY SECTION" unique_id=500606927]
-z_index = 100
-layout_mode = 0
-offset_left = 1692.0
-offset_top = 491.749
-offset_right = 1912.0
-offset_bottom = 562.0
-theme = ExtResource("8_wo1ju")
-theme_override_constants/line_spacing = 4
-theme_override_font_sizes/font_size = 18
-text = "change
-energy style"
