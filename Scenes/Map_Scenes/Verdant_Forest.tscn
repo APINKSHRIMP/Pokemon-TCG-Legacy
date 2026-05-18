@@ -10,6 +10,7 @@
 [ext_resource type="PackedScene" uid="uid://ct46famw1u311" path="res://Image_Assets/Map_Objects/DarkVinesTree.tscn" id="7_442b1"]
 [ext_resource type="PackedScene" uid="uid://cc668r1nhnhq1" path="res://Image_Assets/Map_Objects/MediumTree.tscn" id="8_6ll1i"]
 [ext_resource type="PackedScene" uid="uid://7lprlc6fneu4" path="res://Image_Assets/Map_Objects/MediumVinesTree.tscn" id="9_x6xh7"]
+[ext_resource type="Texture2D" uid="uid://bqfje3ew88tpn" path="res://Image_Assets/Map_Objects/Gym_Challenge_Hall.png" id="11_8xcuo"]
 [ext_resource type="Texture2D" uid="uid://dmmkgpf4106os" path="res://Image_Assets/Map_Objects/treelineshadow.png" id="12_442b1"]
 [ext_resource type="Texture2D" uid="uid://5rb2vlanfegv" path="res://Image_Assets/Map_Objects/TreeLineThird.png" id="13_6ll1i"]
 [ext_resource type="Texture2D" uid="uid://d1bt37swpeiew" path="res://Image_Assets/Map_Objects/TreeLineVertical.png" id="14_6ll1i"]
@@ -3775,6 +3776,14 @@ scale = Vector2(1, -1)
 position = Vector2(2928, 400)
 tile_set = ExtResource("1_vnhbh")
 
+[node name="TextureRect" type="TextureRect" parent="." unique_id=1271519714]
+offset_left = 1495.0
+offset_top = -1066.0
+offset_right = 1887.0
+offset_bottom = -626.0
+scale = Vector2(1.5, 1.5)
+texture = ExtResource("11_8xcuo")
+
 [node name="Player" parent="." unique_id=510514557 instance=ExtResource("2_06m8d")]
 position = Vector2(1771, 1050)
 
@@ -3787,7 +3796,7 @@ shape = SubResource("RectangleShape2D_efv3c")
 metadata/target_scene = "res://Scenes/Map_Scenes/Celeste_Harbour.tscn"
 
 [node name="DoorArea_NorthTown" type="CollisionShape2D" parent="Door Areas" unique_id=1544821637]
-position = Vector2(1812, -1849)
+position = Vector2(2266, -2082)
 shape = SubResource("RectangleShape2D_efv3c")
 metadata/target_scene = "res://Scenes/Map_Scenes/Celeste_Harbour.tscn"
 
