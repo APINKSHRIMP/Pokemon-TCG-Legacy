@@ -22,6 +22,12 @@ const PACK_IMAGES_FOLDER := "res://Image_Assets/Packs/"
 const CARDBACK_PATH      := "res://Image_Assets/Card_Backs_And_Decks/cardback.png"
 const CARD_SET_DATA_PATH := "res://Card_Set_Data/"
 
+# God-pack tuning — see _generate_pack_cards() for full behaviour.
+const GOD_PACK_UNLOCK_AT : int   = 20      # No god packs until pack > this
+const GOD_PACK_CHANCE    : float = 0.005   # 0.5% per pack once unlocked
+const GOD_PACK_GUARANTEE : int   = 100     # Every Nth pack is guaranteed
+const GOD_PACK_SIZE      : int   = 10      # Cards per god pack
+
 var _theme_kenney : Theme = preload("res://UI_Themes/kenneyUI.tres")
 
 # ── Session state ──────────────────────────────────────────
@@ -449,6 +455,11 @@ func _show_card_summary() -> void:
 		fade_tw.tween_property(rect, "modulate:a", 1.0, 0.35)
 	await fade_tw.finished
 
+	# Sparkle on any holo rares in the summary row
+	for i in range(card_count):
+		if _pack_cards[i].get("rarity", "") == "Rare Holo":
+			_start_holo_sparkle(summary_rects[i], _pack_cards[i], true)
+
 	_showing_summary = true
 
 
@@ -486,21 +497,30 @@ func _generate_pack_cards(set_id: String) -> Array:
 				rare_pool.append(card)
 
 	# ── God-pack check ──────────────────────────────────────────
-	# Bump the lifetime pack counter, then decide: every 100th pack is a
-	# guaranteed god pack; otherwise a flat 0.5% chance per pack. The natural
-	# 0.5% roll does NOT reset the modulo cadence — pack 100, 200, 300… are
-	# always god packs no matter how lucky the player was beforehand.
+	# Bump the lifetime pack counter, then decide: every Nth pack (N =
+	# GOD_PACK_GUARANTEE) is a guaranteed god pack; otherwise a flat
+	# GOD_PACK_CHANCE roll per pack. The natural roll does NOT reset the modulo
+	# cadence — pack 100, 200, 300… are always god packs no matter how lucky
+	# the player was beforehand.
+	#
+	# A new-player lockout gates the whole feature: god packs are unavailable
+	# for the first GOD_PACK_UNLOCK_AT packs so beginners don't stumble into one
+	# before they understand the game. The counter still ticks from pack 1, so
+	# the first guaranteed god pack still lands at pack 100 (80 packs after the
+	# lockout lifts at pack 20).
 	var pack_number: int = int(GameState.progress.get("packs_opened_total", 0)) + 1
 	GameState.progress["packs_opened_total"] = pack_number
 	GameState.save_progress()
 
-	var is_god_pack: bool = (pack_number % 100 == 0) or (randf() < 0.005)
+	var god_pack_available: bool = pack_number > GOD_PACK_UNLOCK_AT
+	var is_god_pack: bool = god_pack_available \
+			and ((pack_number % GOD_PACK_GUARANTEE == 0) or (randf() < GOD_PACK_CHANCE))
 
 	if is_god_pack and holo_rares.size() > 0:
 		print("PACK_OPENING: GOD PACK at pack #", pack_number, " (", holo_rares.size(), " unique Rare Holos in set)")
 		var god_result : Array = []
 		var god_used   : Dictionary = {}
-		for _i in range(10):
+		for _i in range(GOD_PACK_SIZE):
 			var pick := _pick_unique(holo_rares, god_used)
 			if not pick.is_empty():
 				god_result.append(pick)
@@ -621,18 +641,32 @@ func _load_texture(path: String) -> Texture2D:
 
 
 # ── Holo sparkle ──────────────────────────────────────────
+# Tuning constants — big card reveal (face card, one at a time)
+const SPARKLE_BIG_AMOUNT       : int   = 216   # 180 × 1.2
+const SPARKLE_BIG_LIFETIME     : float = 2.16  # 1.8 × 1.2
+const SPARKLE_BIG_SCALE_MIN    : float = 4.32  # 3.6 × 1.2
+const SPARKLE_BIG_SCALE_MAX    : float = 11.52 # 9.6 × 1.2
+const SPARKLE_BIG_EXPLOSIVENESS: float = 0.4
 
-func _start_holo_sparkle(card_rect: TextureRect, card_data: Dictionary) -> CPUParticles2D:
+# Tuning constants — summary row (all cards shown small side-by-side)
+const SPARKLE_SMALL_AMOUNT       : int   = 96   # 120 × 0.8
+const SPARKLE_SMALL_LIFETIME     : float = 1.44 # 1.2 × 1.2
+const SPARKLE_SMALL_SCALE_MIN    : float = 1.92 # 2.4 × 0.8
+const SPARKLE_SMALL_SCALE_MAX    : float = 5.12 # 6.4 × 0.8
+const SPARKLE_SMALL_EXPLOSIVENESS: float = 0.32 # 0.4 × 0.8
+
+func _start_holo_sparkle(card_rect: TextureRect, card_data: Dictionary,
+		is_summary: bool = false) -> CPUParticles2D:
 	var particles := CPUParticles2D.new()
 	_overlay.add_child(particles)
 
 	var card_size : Vector2 = card_rect.size
 	particles.global_position       = card_rect.global_position + card_size / 2.0
-	particles.z_index               = 5
-	particles.amount                = 150
-	particles.lifetime              = 1.5
+	particles.z_index               = card_rect.z_index + 1
+	particles.amount                = SPARKLE_SMALL_AMOUNT        if is_summary else SPARKLE_BIG_AMOUNT
+	particles.lifetime              = SPARKLE_SMALL_LIFETIME      if is_summary else SPARKLE_BIG_LIFETIME
 	particles.one_shot              = false
-	particles.explosiveness         = 0.4
+	particles.explosiveness         = SPARKLE_SMALL_EXPLOSIVENESS if is_summary else SPARKLE_BIG_EXPLOSIVENESS
 	particles.emitting              = true
 	particles.emission_shape        = CPUParticles2D.EMISSION_SHAPE_RECTANGLE
 	particles.emission_rect_extents = card_size / 2.0
@@ -640,8 +674,8 @@ func _start_holo_sparkle(card_rect: TextureRect, card_data: Dictionary) -> CPUPa
 	particles.initial_velocity_min  = 0.0
 	particles.initial_velocity_max  = 0.0
 	particles.gravity               = Vector2(0, 0)
-	particles.scale_amount_min      = 3.0
-	particles.scale_amount_max      = 8.0
+	particles.scale_amount_min      = SPARKLE_SMALL_SCALE_MIN if is_summary else SPARKLE_BIG_SCALE_MIN
+	particles.scale_amount_max      = SPARKLE_SMALL_SCALE_MAX if is_summary else SPARKLE_BIG_SCALE_MAX
 
 	var sparkle_colour : Color = _get_holo_sparkle_colour(card_data)
 	var bright         : Color = sparkle_colour.lightened(1)

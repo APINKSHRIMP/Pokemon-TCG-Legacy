@@ -4,8 +4,6 @@ extends Control
 
 var PLAYER_DATA_PATH: String:
 	get: return GameState.PLAYER_CURRENT_DATA_PATH
-var PLAYER_PROGRESS_PATH: String:
-	get: return GameState.PROGRESS_PATH
 const SET_DICT_PATH        := "res://Player_Data/Player_Owned_Cards/Set_ID_Names_Dictionary.json"
 const PACK_PRICES_PATH     := "res://Card_Set_Data/pack_prices.json"
 const PACK_IMAGES_FOLDER   := "res://Image_Assets/Packs/"
@@ -94,15 +92,7 @@ func _load_pack_prices() -> void:
 
 
 func _load_player_data() -> void:
-	var file := FileAccess.open(PLAYER_PROGRESS_PATH, FileAccess.READ)
-	if file == null:
-		push_error("PackPurchase: cannot open " + PLAYER_PROGRESS_PATH)
-		return
-	var data = JSON.parse_string(file.get_as_text())
-	file.close()
-	if not data is Dictionary:
-		return
-	player_cash = data.get("cash", 0.0)
+	player_cash = float(GameState.get_cash())
 
 	var shop_id := GameState.current_shop_id
 	if shop_id == "rocket_mart":
@@ -257,29 +247,12 @@ func _on_buy_pressed() -> void:
 
 	purchased_pack_art = pack_id + "_" + selected_pack_letter
 	player_cash -= cost
-	_save_player_cash()
+	GameState.add_cash(-cost)
 
 	SoundManagerScript.play_sfx(SoundManagerScript.SFX_gamemode_select)
 
 	_begin_opening_sequence()
 
-
-func _save_player_cash() -> void:
-	var file := FileAccess.open(PLAYER_PROGRESS_PATH, FileAccess.READ)
-	if file == null:
-		push_error("PackPurchase: cannot read " + PLAYER_PROGRESS_PATH)
-		return
-	var data = JSON.parse_string(file.get_as_text())
-	file.close()
-	if not data is Dictionary:
-		return
-	data["cash"] = player_cash
-	var save_file := FileAccess.open(PLAYER_PROGRESS_PATH, FileAccess.WRITE)
-	if save_file == null:
-		push_error("PackPurchase: cannot write " + PLAYER_PROGRESS_PATH)
-		return
-	save_file.store_string(JSON.stringify(data, "\t"))
-	save_file.close()
 
 
 func _save_last_pack_loaded(pack_id: String) -> void:

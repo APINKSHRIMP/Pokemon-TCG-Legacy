@@ -25,6 +25,10 @@ var loss_text: String = ""
 var coin_reward: String = ""
 var cash_reward: String = ""
 
+# Deck restrictions block (optional). Schema documented in
+# Deck_Validation_Helper.gd. Empty dict = no restrictions.
+var restrictions: Dictionary = {}
+
 # --- Movement config (set by MapManager before adding to tree) ---
 var movement_pattern: String = "idle_random"
 var patrol_distance: float = 100.0

@@ -23,6 +23,12 @@ var _constant_data_loaded: bool = false
 var current_opponent: Node = null
 var current_npc: Node = null
 
+# True while the deck-validation popup is open. Blocks the regular
+# opponent/NPC interact handlers so the player can't re-trigger a
+# battle dialog by pressing space while the overlay is up.
+var _validation_popup_active: bool = false
+var _validation_popup_node: Control = null
+
 var message_panel: Control
 var message_label: Label
 var yes_button: Button
@@ -212,6 +218,7 @@ func _load_and_spawn_opponents(json_path: String):
 		opp.patrol_speed     = entry.get("patrol_speed", 60.0)
 		opp.patrol_axis      = entry.get("patrol_axis", "horizontal")
 		opp.wander_radius    = entry.get("wander_radius", 200.0)
+		opp.restrictions     = entry.get("restrictions", {})
 		_opponents_container.add_child(opp)
 
 	if GameState.returning_from_battle and not GameState.last_battled_opponent_entry.is_empty():
@@ -241,6 +248,7 @@ func _load_and_spawn_opponents(json_path: String):
 			opp.patrol_speed     = lbe.get("patrol_speed", 60.0)
 			opp.patrol_axis      = lbe.get("patrol_axis", "horizontal")
 			opp.wander_radius    = lbe.get("wander_radius", 200.0)
+			opp.restrictions     = lbe.get("restrictions", {})
 			_opponents_container.add_child(opp)
 
 # ============================================================
@@ -391,6 +399,8 @@ func _hide_message():
 	current_npc = null
 
 func handle_message_spacebar():
+	if _validation_popup_active:
+		return
 	if not message_panel.visible:
 		return
 	if ok_button.visible:
@@ -403,7 +413,7 @@ func handle_message_spacebar():
 # ============================================================
 
 func _on_player_interact(opponent: Node):
-	if message_panel.visible:
+	if message_panel.visible or _validation_popup_active:
 		return
 	current_opponent = opponent
 	opponent.pause_and_face(_player.position)
@@ -449,6 +459,18 @@ func _on_yes_pressed():
 
 	# Opponent battle
 	if current_opponent != null:
+		# Deck-restriction gate. If the opponent declares restrictions and the
+		# player's current deck fails validation, surface the appropriate popup
+		# / message and abort the battle. The check is deliberately placed
+		# BEFORE any GameState writes so a failed validation leaves no
+		# half-applied transition state behind.
+		if DeckValidationHelper.opponent_has_restrictions(current_opponent.restrictions):
+			var deck_path := _current_player_deck_path()
+			var v_result := DeckValidationHelper.validate(deck_path, current_opponent.restrictions)
+			if not v_result["passed"]:
+				_handle_deck_validation_failure(v_result)
+				return
+
 		GameState.current_opponent_name      = current_opponent.opponent_name
 		GameState.current_opponent_deck      = current_opponent.deck
 		GameState.current_opponent_json_path = _json_path
@@ -474,6 +496,7 @@ func _on_yes_pressed():
 			"patrol_speed":   current_opponent.patrol_speed,
 			"patrol_axis":    current_opponent.patrol_axis,
 			"wander_radius":  current_opponent.wander_radius,
+			"restrictions":   current_opponent.restrictions,
 		}
 
 		_hide_message()
@@ -541,7 +564,7 @@ func _on_pack_opening_finished() -> void:
 # ============================================================
 
 func _on_player_npc_interact(npc: Node):
-	if message_panel.visible:
+	if message_panel.visible or _validation_popup_active:
 		return
 	current_npc = npc
 
@@ -1273,3 +1296,75 @@ func _hide_cash_overlay() -> void:
 	if _cash_overlay != null and is_instance_valid(_cash_overlay):
 		_cash_overlay.queue_free()
 	_cash_overlay = null
+
+# ============================================================
+# DECK VALIDATION (opponent restrictions)
+# ============================================================
+
+func _current_player_deck_path() -> String:
+	var f := FileAccess.open("user://Player_Current_Data.json", FileAccess.READ)
+	if f == null:
+		return ""
+	var parsed = JSON.parse_string(f.get_as_text())
+	f.close()
+	if not (parsed is Dictionary):
+		return ""
+	var deck_name := String(parsed.get("deck", ""))
+	if deck_name == "":
+		return ""
+	return "user://Player_Decks/" + deck_name + ".json"
+
+# Called when the player's deck fails validation against the opponent's
+# restrictions. Picks the most useful display flavour and shows it,
+# then releases all interaction state once the popup is closed.
+#
+# mode == "banned"  → grid of the NPC's banlist           (title: "Banned cards")
+# mode == "invalid" → grid of player's offending cards    (title: "Cards in your deck that aren't allowed")
+# mode == "missing" → text-only message via the messagebox (no grid)
+func _handle_deck_validation_failure(v_result: Dictionary) -> void:
+	var mode := String(v_result.get("mode", ""))
+
+	# Missing-only failure: re-use the standard messagebox with OK.
+	if mode == "missing":
+		var lines: Array = v_result.get("missing_lines", [])
+		var body := "You can't battle me yet:\n\n" + "\n".join(lines)
+		_show_message_with_ok(body)
+		return
+
+	# Banned / invalid → hide the Yes/No box and open the card-grid popup.
+	message_panel.visible = false
+	_validation_popup_active = true
+
+	var title := ""
+	var card_ids: Array = []
+	var rule_lines: Array = v_result.get("rule_lines", [])
+	var body_lines: Array = []
+	for ln in rule_lines:
+		body_lines.append(String(ln))
+
+	if mode == "banned":
+		title = "Banned cards"
+		card_ids = v_result.get("banned_cards", [])
+		if body_lines.is_empty():
+			body_lines = ["These cards aren't allowed in your deck for this battle."]
+	else:
+		title = "Cards in your deck that aren't allowed"
+		card_ids = v_result.get("invalid_cards", [])
+
+	# If there are also missing-requirement lines, append them so the player
+	# sees the full picture in one popup.
+	var missing_lines: Array = v_result.get("missing_lines", [])
+	for ml in missing_lines:
+		body_lines.append(String(ml))
+
+	var on_closed := Callable(self, "_on_validation_popup_closed")
+	_validation_popup_node = DeckValidationPopup.show_popup(
+		_ui_layer, title, card_ids, body_lines, on_closed
+	)
+
+func _on_validation_popup_closed() -> void:
+	_validation_popup_active = false
+	_validation_popup_node = null
+	# Roll the player and opponent back to free-roam — same cleanup as
+	# pressing "No" on the original challenge dialog.
+	_hide_message()

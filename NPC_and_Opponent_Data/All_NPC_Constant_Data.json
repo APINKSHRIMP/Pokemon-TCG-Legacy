@@ -200,7 +200,7 @@
 	"Pikachu Fan Juniper": { "sprite": "Pokekid", "deck": "Forest Mouse", "music": "REPLACEMUSIC", "prize_cards": 1, "cash_reward": "50", "coin_reward": "Pikachu Gold 5", "card_reward": "basep-27" },
 	"Pikachu Fan Raye": { "sprite": "Pokekid", "deck": "Thunderbolt!", "music": "REPLACEMUSIC", "prize_cards": 1, "cash_reward": "50", "coin_reward": "Pikachu Gold 6", "card_reward": "basep-4" },
 	"Pikachu Fan Leaf": { "sprite": "Pokekid", "deck": "Leafychu", "music": "REPLACEMUSIC", "prize_cards": 1, "cash_reward": "50", "coin_reward": "Pikachu Gold 7", "card_reward": "basep-1" },
-	"Pikachu Fans' Mum": { "sprite": "Pokefan_F", "deck": "All the Pikachu!", "music": "REPLACEMUSIC", "prize_cards": 1, "cash_reward": "75", "coin_reward": "Raichu Gold", "card_reward": "basep-24", "costume_reward": "PokeKid" },
+	"Pikachu Fans' Mum": { "sprite": "Pokefan_F", "deck": "All the Pikachu!", "music": "REPLACEMUSIC", "prize_cards": 1, "cash_reward": "75", "coin_reward": "Zz Pikachu Gold", "card_reward": "basep-24", "costume_reward": "PokeKid" },
 	"Fossil Expert Jonathan": { "sprite": "Ruinmaniac", "deck": "Earth Sea Sky", "music": "REPLACEMUSIC", "prize_cards": 6, "cash_reward": "150", "coin_reward": "Aerodactyl Brown" },
 	"Gentleman Benedict": { "sprite": "Gentleman", "deck": "Colorless Crusher", "music": "REPLACEMUSIC", "prize_cards": 6, "cash_reward": "150", "coin_reward": "Kangaskhan Silver" },
 	"Ninjaboy Sasuke": { "sprite": "Ninjaboy", "deck": "Ssssssnakes", "music": "REPLACEMUSIC", "prize_cards": 4, "cash_reward": "125", "coin_reward": "Ekans Purple" },
@@ -237,6 +237,17 @@
 	"Ghost Whisperer Vera": { "sprite": "Medium", "deck": "Terrible Nightmares", "music": "REPLACEMUSIC", "prize_cards": 6, "cash_reward": "220", "coin_reward": "Gengar Purple" },
 	"Police Constable Floyd": { "sprite": "Policeman", "deck": "Energy Beams", "music": "REPLACEMUSIC", "prize_cards": 6, "cash_reward": "225", "coin_reward": "Gyarados Red" },
 	"Police Sergeant Douglas": { "sprite": "Policeman2", "deck": "Peace Keepers", "music": "REPLACEMUSIC", "prize_cards": 6, "cash_reward": "225", "coin_reward": "Machamp Brown" },
-	"Rocket Grunt Margot": { "sprite": "Teamrocket_F", "deck": "Scavenge and Retreat", "music": "REPLACEMUSIC", "prize_cards": 6, "cash_reward": "200", "coin_reward": "Golbat Gold", "costume_reward": "TeamRocket_F, TeamRocket_M" }
+	"Rocket Grunt Margot": { "sprite": "Teamrocket_F", "deck": "Scavenge and Retreat", "music": "REPLACEMUSIC", "prize_cards": 6, "cash_reward": "200", "coin_reward": "Golbat Gold", "costume_reward": "TeamRocket_F, TeamRocket_M" },
+
+	"Restriction Test 1":  { "sprite": "Lass",        "deck": "Basic Pokemon Barrage", "music": "REPLACEMUSIC", "prize_cards": 1, "cash_reward": "0", "coin_reward": "" },
+	"Restriction Test 2":  { "sprite": "Youngster",   "deck": "Basic Pokemon Barrage", "music": "REPLACEMUSIC", "prize_cards": 1, "cash_reward": "0", "coin_reward": "" },
+	"Restriction Test 3":  { "sprite": "Lass2",       "deck": "Basic Pokemon Barrage", "music": "REPLACEMUSIC", "prize_cards": 1, "cash_reward": "0", "coin_reward": "" },
+	"Restriction Test 4":  { "sprite": "Youngster2",  "deck": "Basic Pokemon Barrage", "music": "REPLACEMUSIC", "prize_cards": 1, "cash_reward": "0", "coin_reward": "" },
+	"Restriction Test 5":  { "sprite": "Lass3",       "deck": "Basic Pokemon Barrage", "music": "REPLACEMUSIC", "prize_cards": 1, "cash_reward": "0", "coin_reward": "" },
+	"Restriction Test 6":  { "sprite": "Lass",        "deck": "Basic Pokemon Barrage", "music": "REPLACEMUSIC", "prize_cards": 1, "cash_reward": "0", "coin_reward": "" },
+	"Restriction Test 7":  { "sprite": "Youngster",   "deck": "Basic Pokemon Barrage", "music": "REPLACEMUSIC", "prize_cards": 1, "cash_reward": "0", "coin_reward": "" },
+	"Restriction Test 8":  { "sprite": "Lass2",       "deck": "Basic Pokemon Barrage", "music": "REPLACEMUSIC", "prize_cards": 1, "cash_reward": "0", "coin_reward": "" },
+	"Restriction Test 9":  { "sprite": "Youngster2",  "deck": "Basic Pokemon Barrage", "music": "REPLACEMUSIC", "prize_cards": 1, "cash_reward": "0", "coin_reward": "" },
+	"Restriction Test 10": { "sprite": "Lass3",       "deck": "Basic Pokemon Barrage", "music": "REPLACEMUSIC", "prize_cards": 1, "cash_reward": "0", "coin_reward": "" }
   }
 }
