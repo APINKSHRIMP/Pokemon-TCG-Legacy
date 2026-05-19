@@ -2,8 +2,8 @@
 
 [ext_resource type="Texture2D" uid="uid://b0v8vgujq8hfb" path="res://Image_Assets/Backgrounds_And_Borders/Backgrounds/battle_start_screen.png" id="1_6x0iv"]
 [ext_resource type="Script" uid="uid://b7siqta1nvfmb" path="res://Scripts/Main_Match_Gameplay_Scripts/Match_Start_Intro_Script.gd" id="1_xrwa4"]
-[ext_resource type="Texture2D" uid="uid://up46ei3k75m5" path="res://Image_Assets/Character_Sprites/In_Battle_Sprites/FISHERMAN.png" id="2_f8er1"]
-[ext_resource type="Texture2D" uid="uid://cif1udrvgsqp6" path="res://Image_Assets/Character_Sprites/In_Battle_Sprites/BURGLAR.png" id="3_kihgs"]
+[ext_resource type="Texture2D" uid="uid://b8bojjiehifdp" path="res://Image_Assets/Character_Sprites/In_Battle_Sprites/FISHERMAN.png" id="2_f8er1"]
+[ext_resource type="Texture2D" uid="uid://bik1j01n4krb8" path="res://Image_Assets/Character_Sprites/In_Battle_Sprites/BURGLAR.png" id="3_kihgs"]
 [ext_resource type="Theme" uid="uid://6shp5ck1tnja" path="res://UI_Themes/kenneyUI.tres" id="3_xrwa4"]
 
 [sub_resource type="StyleBoxLine" id="StyleBoxLine_wfiko"]
@@ -32,7 +32,7 @@ offset_bottom = 40.0
 
 [node name="player_sprite" type="Sprite2D" parent="PLAYER" unique_id=331205399]
 position = Vector2(575, 612)
-scale = Vector2(3.435, 3.435)
+scale = Vector2(3, 3)
 texture = ExtResource("3_kihgs")
 
 [node name="player_deck_name" type="Label" parent="PLAYER" unique_id=987905608]
@@ -74,7 +74,7 @@ offset_bottom = 40.0
 
 [node name="opponent_sprite" type="Sprite2D" parent="OPPONENT" unique_id=1662131241]
 position = Vector2(1382, 420.99997)
-scale = Vector2(3.245, 3.245)
+scale = Vector2(3, 3)
 texture = ExtResource("2_f8er1")
 
 [node name="opponent_name" type="Label" parent="OPPONENT" unique_id=1186275691]

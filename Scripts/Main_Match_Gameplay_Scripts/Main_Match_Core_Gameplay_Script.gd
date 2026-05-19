@@ -46,6 +46,7 @@ var confusion_rules: String = "base_set_confusion_rules" # "base_set_confusion_r
 # Customisable in game textures
 # Load coin textures
 var tex_heads = load("res://Image_Assets/Coins/Pikachu Gold 1.png")
+var tex_opp_heads = null   # loaded after opponent_data is available; falls back to tex_heads
 var tex_tails = load("res://Image_Assets/Coins/Back Basic.png")
 
 # Game Variables
@@ -2162,46 +2163,51 @@ func draw_card_from_deck(is_opponent: bool) -> card_object:
 
 	return drawn_card
 
-# Flips a coin with animation, blocks input, shows result message, returns true for heads
-func flip_coin(silent: bool = false) -> bool:
+# Flips a coin with animation, blocks input, shows result message, returns true for heads.
+# flipper_is_opponent: when true, uses the opponent's coin texture for the heads face
+# (falls back to the player's coin if the opponent has no coin_reward / texture failed to load).
+func flip_coin(silent: bool = false, flipper_is_opponent: bool = false) -> bool:
 	var result: bool = (randi() % 2 == 0)
 	SoundManagerScript.play_sfx(SoundManagerScript.SFX_coin_flip_sound)
+
+	# Resolve which heads face to use for this flip
+	var heads_tex = tex_opp_heads if (flipper_is_opponent and tex_opp_heads != null) else tex_heads
 
 	# Show the input-blocking overlay and set initial coin image to heads
 	coin_container.visible = true
 	var coin = coin_texture
-	coin.texture = tex_heads
+	coin.texture = heads_tex
 	coin.visible = true
-	
+
 	# Force coin to a fixed display size regardless of source image dimensions
 	coin.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	coin.custom_minimum_size = Vector2(129, 129)
 	coin.size = Vector2(129, 129)
-	
+
 	# Set pivot to center so the squish effect scales from the middle, not the top edge
 	coin.pivot_offset = coin.size / 2
 	var start_y = coin.position.y
 	var flip_count = 12
 	var half_flip_time = 0.04
 	var total_time = flip_count * half_flip_time * 1.5
-	
+
 	# Position tween: arc up then back down
 	var pos_tween = create_tween()
 	pos_tween.tween_property(coin, "position:y", start_y - 400, total_time / 1.5).set_ease(Tween.EASE_OUT)
 	pos_tween.tween_property(coin, "position:y", start_y, total_time / 1.5).set_ease(Tween.EASE_IN)
-	
+
 	# Flip tween: squish scale.y to 0, swap texture, unsquish back to 1
 	var flip_tween = create_tween()
-	var textures = [tex_tails, tex_heads]
+	var textures = [tex_tails, heads_tex]
 	for i in flip_count:
 		flip_tween.tween_property(coin, "scale:y", 0.0, half_flip_time)
 		flip_tween.tween_callback(coin.set.bind("texture", textures[i % 2]))
 		flip_tween.tween_property(coin, "scale:y", 1.0, half_flip_time)
-	
+
 	await flip_tween.finished
-	
+
 	# Set the final coin face to match the actual result
-	coin.texture = tex_heads if result else tex_tails
+	coin.texture = heads_tex if result else tex_tails
 	var sparkles = null
 	if result:
 		sparkles = start_sparkle_effect(coin)
@@ -3736,7 +3742,7 @@ func process_status_between_turns(pokemon: card_object, is_opponent: bool) -> vo
 	if pokemon.is_burned:
 		if burn_rules == "base_set_burn_rules":
 			await show_message(pokemon_name.to_upper() + " IS BURNED! FLIPPING COIN...")
-			var coin = await flip_coin()
+			var coin = await flip_coin(false, is_opponent)
 			if not coin:
 				pokemon.current_hp = max(0, pokemon.current_hp - 20)
 				await show_message(pokemon_name.to_upper() + " TAKES 20 BURN DAMAGE!")
@@ -3753,7 +3759,7 @@ func process_status_between_turns(pokemon: card_object, is_opponent: bool) -> vo
 			display_hp_circles_above_align(pokemon, is_opponent)
 			print("BETWEEN TURNS: ", pokemon_name, " took 20 burn damage. HP: ", pokemon.current_hp)
 			await show_message("FLIPPING COIN TO CURE BURN...")
-			var coin = await flip_coin()
+			var coin = await flip_coin(false, is_opponent)
 			if coin:
 				pokemon.is_burned = false
 				await show_message(pokemon_name.to_upper() + " IS NO LONGER BURNED!")
@@ -3762,7 +3768,7 @@ func process_status_between_turns(pokemon: card_object, is_opponent: bool) -> vo
 
 	if pokemon.special_condition == "Asleep":
 		await show_message(pokemon_name.to_upper() + " IS ASLEEP! FLIPPING COIN...")
-		var coin = await flip_coin()
+		var coin = await flip_coin(false, is_opponent)
 		if coin:
 			pokemon.special_condition = ""
 			await show_message(pokemon_name.to_upper() + " WOKE UP!")
@@ -3783,7 +3789,7 @@ func check_confused_retreat(pokemon: card_object, is_opponent: bool, phase: Stri
 
 	if confusion_rules == "fairer_confusion_rules" and phase == "pre_energy":
 		await show_message(pokemon_name.to_upper() + " IS CONFUSED! FLIPPING COIN TO RETREAT...")
-		var coin = await flip_coin()
+		var coin = await flip_coin(false, is_opponent)
 		if not coin:
 			pokemon.current_hp = max(0, pokemon.current_hp - 20)
 			await show_message("RETREAT FAILED! " + pokemon_name.to_upper() + " HURT ITSELF FOR 20 DAMAGE!")
@@ -3801,7 +3807,7 @@ func check_confused_retreat(pokemon: card_object, is_opponent: bool, phase: Stri
 
 	if confusion_rules == "base_set_confusion_rules" and phase == "post_energy":
 		await show_message(pokemon_name.to_upper() + " IS CONFUSED! FLIPPING COIN TO RETREAT...")
-		var coin = await flip_coin()
+		var coin = await flip_coin(false, is_opponent)
 		if not coin:
 			await show_message("RETREAT FAILED! ENERGY WAS STILL DISCARDED!")
 			if is_opponent:
@@ -4637,6 +4643,13 @@ func _input(event: InputEvent) -> void:
 	# Press the escape key to quit the game
 	if event is InputEventKey and event.pressed and event.keycode == KEY_ESCAPE:
 			end_game()
+
+	# Dev cheat keys — 9 = instant win, 0 = instant lose
+	if event is InputEventKey and event.pressed and not game_is_over:
+		if event.keycode == KEY_9:
+			game_end_logic(false)   # player wins
+		elif event.keycode == KEY_0:
+			game_end_logic(true)    # player loses
 			
 	if event is InputEventMouseButton and event.pressed:
 		
@@ -4751,14 +4764,22 @@ func _ready() -> void:
 
 	opponent_deck_name = GameState.current_opponent_deck
 	load_opponent_data_by_name(GameState.current_opponent_name)
-	
+
+	# Load the opponent's coin texture for "opponent flips" animations.
+	# Falls back to the player's coin (tex_heads) at flip time if absent.
+	var _opp_coin_name: String = opponent_data.get("coin_reward", "")
+	if _opp_coin_name != "":
+		var _opp_tex = load("res://Image_Assets/Coins/" + _opp_coin_name + ".png")
+		if _opp_tex != null:
+			tex_opp_heads = _opp_tex
+
 	# Read prize card count from opponent JSON (default 6 if not specified)
 	amount_of_prize_cards = int(opponent_data.get("prize_cards", 6))
 	
 	play_opponent_music()
 
 	# Load the player's deck name from their save data
-	var pfile = FileAccess.open("res://Player_Data/Player_Current_Data.json", FileAccess.READ)
+	var pfile = FileAccess.open("user://Player_Current_Data.json", FileAccess.READ)
 	var pdata = JSON.parse_string(pfile.get_as_text())
 	pfile.close()
 	player_deck_name = pdata["deck"]

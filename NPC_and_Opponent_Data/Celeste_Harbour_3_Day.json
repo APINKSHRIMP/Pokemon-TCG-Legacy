@@ -283,6 +283,7 @@
 	},
 	{
 	  "name": "Juicebar Woman (From Staring Out To Sea) Day 3",
+	  "npc_type": "juice_vendor",
 	  "meet_text": "Hello! Can I interest you in any juice today?",
 	  "repeat_text": "Did you get lucky and find a coin this time?",
 	  "pattern": "idle_down",

@@ -112,6 +112,7 @@
 	},
 	{
 	  "name": "Juicebar Woman (From Staring Out To Sea) Evening",
+	  "npc_type": "juice_vendor",
 	  "meet_text": "Last chance to get some juice before we close!",
 	  "repeat_text": "Sadly there's no discount!",
 	  "pattern": "idle_down",

@@ -232,7 +232,7 @@ func handle_attack_confusion(attacker: card_object, is_opponent: bool) -> bool:
 		return false
 	await main.show_message(attacker.metadata["name"].to_upper() + " IS CONFUSED! FLIPPING COIN...")
 	if main._should_bail(): return false
-	var coin = await main.flip_coin()
+	var coin = await main.flip_coin(false, is_opponent)
 	if coin:
 		return false
 	var self_damage = 20
@@ -262,7 +262,7 @@ func handle_attack_blind(attacker: card_object, is_opponent: bool) -> bool:
 		return false
 	await main.show_message(attacker.metadata["name"].to_upper() + " CAN'T SEE! FLIPPING COIN...")
 	if main._should_bail(): return false
-	var blind_coin = await main.flip_coin()
+	var blind_coin = await main.flip_coin(false, is_opponent)
 	if not blind_coin:
 		await main.show_message("THE ATTACK FAILED!")
 		if main._should_bail(): return false
@@ -354,14 +354,14 @@ func resolve_attack_variable_damage(attack: Dictionary, attacker: card_object, d
 		var use_silent = (flip_count > 1 or flip_until_tails)
 		if flip_until_tails:
 			while true:
-				var coin = await main.flip_coin(use_silent)
+				var coin = await main.flip_coin(use_silent, is_opponent)
 				if coin:
 					heads_count += 1
 				else:
 					break
 		else:
 			for i in range(flip_count):
-				var coin = await main.flip_coin(use_silent)
+				var coin = await main.flip_coin(use_silent, is_opponent)
 				if coin:
 					heads_count += 1
 		
@@ -372,7 +372,7 @@ func resolve_attack_variable_damage(attack: Dictionary, attacker: card_object, d
 	
 	# ---- "IF TAILS, THIS ATTACK DOES NOTHING" (Nidoran Horn Hazard) ----
 	if "if tails, this attack does nothing" in text:
-		var coin = await main.flip_coin()
+		var coin = await main.flip_coin(false, is_opponent)
 		if not coin:
 			resolved_damage = 0
 			attack_failed = true
@@ -395,7 +395,7 @@ func resolve_attack_variable_damage(attack: Dictionary, attacker: card_object, d
 		var bonus = extract_number_before(text, "more damage")
 		if bonus <= 0:
 			bonus = 10
-		var coin = await main.flip_coin()
+		var coin = await main.flip_coin(false, is_opponent)
 		if coin:
 			resolved_damage = base_damage + bonus
 			flip_result = "heads"
@@ -1068,7 +1068,7 @@ func apply_card_text_effects(effects: Array, attacker: card_object, defender: ca
 				break
 
 		if needs_flip:
-			var coin = await main.flip_coin()
+			var coin = await main.flip_coin(false, is_opponent_attacking)
 			flip_result = "heads" if coin else "tails"
 
 	for effect in effects:
@@ -1794,10 +1794,10 @@ func execute_big_eggsplosion(attacker: card_object, defender: card_object, is_op
 	var heads = 0
 	var use_silent = energy_count > 1
 	for i in range(energy_count):
-		var coin = await main.flip_coin(use_silent)
+		var coin = await main.flip_coin(use_silent, is_opponent)
 		if coin:
 			heads += 1
-	
+
 	var base_damage = 20 * heads
 	await main.show_message("GOT " + str(heads) + " HEADS! " + str(base_damage) + " DAMAGE!")
 	if main._should_bail(): return
@@ -2221,7 +2221,7 @@ func execute_thunderstorm(attacker: card_object, defender: card_object, is_oppon
 	if target_bench.size() > 0:
 		var use_silent = target_bench.size() > 1
 		for bp in target_bench:
-			var coin = await main.flip_coin(use_silent)
+			var coin = await main.flip_coin(use_silent, is_opponent)
 			if coin:
 				bp.current_hp = max(0, bp.current_hp - 20)
 				print("THUNDERSTORM: ", bp.metadata.get("name", ""), " took 20 bench damage (heads)")
@@ -2458,7 +2458,7 @@ func execute_spacing_out(attacker: card_object, is_opponent: bool) -> void:
 		if main._should_bail(): return
 		return
 	
-	var coin = await main.flip_coin()
+	var coin = await main.flip_coin(false, is_opponent)
 	if coin:
 		attacker.current_hp = min(max_hp, attacker.current_hp + 10)
 		SoundManagerScript.play_sfx(SoundManagerScript.SFX_heal_sound)
@@ -2641,7 +2641,7 @@ func execute_snipe_no_wr(attacker: card_object, defender: card_object, is_oppone
 		return
 	
 	if requires_flip:
-		var coin = await main.flip_coin()
+		var coin = await main.flip_coin(false, is_opponent)
 		if not coin:
 			await main.show_message("TAILS! ATTACK MISSED!")
 			if main._should_bail(): return
@@ -2694,10 +2694,10 @@ func execute_continuous_fireball(attacker: card_object, defender: card_object, i
 	var flip_count = fire_energies.size()
 	var heads_count = 0
 	for i in range(flip_count):
-		var coin = await main.flip_coin(flip_count > 1)
+		var coin = await main.flip_coin(flip_count > 1, is_opponent)
 		if coin:
 			heads_count += 1
-	
+
 	var total_damage = 50 * heads_count
 	await main.show_message("GOT " + str(heads_count) + " HEADS! " + str(total_damage) + " DAMAGE!")
 	if main._should_bail(): return
@@ -2756,10 +2756,11 @@ func execute_bench_manipulation(attacker: card_object, defender: card_object, is
 	
 	var tails_count = 0
 	for i in range(bench_count):
-		var coin = await main.flip_coin(bench_count > 1)
+		# "Opponent flips coins" — the defender flips, not the attacker
+		var coin = await main.flip_coin(bench_count > 1, not is_opponent)
 		if not coin:
 			tails_count += 1
-	
+
 	var total_damage = 20 * tails_count
 	await main.show_message(str(tails_count) + " TAILS! " + str(total_damage) + " DAMAGE! (NO W/R)")
 	if main._should_bail(): return
@@ -2932,10 +2933,10 @@ func execute_magnetic_lines(attacker: card_object, defender: card_object, is_opp
 func execute_petal_whirlwind(attacker: card_object, defender: card_object, is_opponent: bool) -> void:
 	var heads_count = 0
 	for i in range(3):
-		var coin = await main.flip_coin(true)
+		var coin = await main.flip_coin(true, is_opponent)
 		if coin:
 			heads_count += 1
-	
+
 	var total_damage = 30 * heads_count
 	await main.show_message("GOT " + str(heads_count) + " HEADS! " + str(total_damage) + " DAMAGE!")
 	if main._should_bail(): return
@@ -3220,7 +3221,7 @@ func execute_fascinate(attacker: card_object, defender: card_object, is_opponent
 		if main._should_bail(): return
 		return
 	
-	var coin = await main.flip_coin()
+	var coin = await main.flip_coin(false, is_opponent)
 	if not coin:
 		await main.show_message("TAILS! FASCINATE FAILED!")
 		if main._should_bail(): return
@@ -3564,10 +3565,10 @@ func execute_surprise_thunder(attacker: card_object, defender: card_object, is_o
 		main.player_attacked_this_turn = true
 	
 	# First flip
-	var coin1 = await main.flip_coin()
+	var coin1 = await main.flip_coin(false, is_opponent)
 	if coin1:
 		# Second flip
-		var coin2 = await main.flip_coin()
+		var coin2 = await main.flip_coin(false, is_opponent)
 		var bench_damage = 20 if coin2 else 10
 		
 		var target_bench = main.player_bench if is_opponent else main.opponent_bench
@@ -3598,7 +3599,7 @@ func execute_dark_charmeleon_fireball(attacker: card_object, defender: card_obje
 		if main._should_bail(): return
 		return
 	
-	var coin = await main.flip_coin()
+	var coin = await main.flip_coin(false, is_opponent)
 	if coin:
 		# Heads: discard 1 fire energy, do 70 damage
 		var energy = fire_energies[0]

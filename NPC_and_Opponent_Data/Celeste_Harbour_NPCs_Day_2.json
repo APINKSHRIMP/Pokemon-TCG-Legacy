@@ -190,6 +190,7 @@
 	{
 	  "name": "Juicebar Woman (From Staring Out To Sea)",
 	  "sprite": "Youngcouple_2",
+	  "npc_type": "juice_vendor",
 	  "meet_text": "Oh hey! I help run the juicebar a couple days a week, it's an easy job and at least I get to spend my day at the beach.",
 	  "repeat_text": "Juice is good.",
 	  "pattern": "idle_down",

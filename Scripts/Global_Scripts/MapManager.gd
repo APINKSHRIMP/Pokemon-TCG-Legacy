@@ -23,7 +23,7 @@ var _constant_data_loaded: bool = false
 var current_opponent: Node = null
 var current_npc: Node = null
 
-var message_panel: PanelContainer
+var message_panel: Control
 var message_label: Label
 var yes_button: Button
 var no_button: Button
@@ -39,6 +39,33 @@ var _pending_gift_display: Dictionary = {}
 
 # When non-empty, the next OK press launches PackOpeningManager for gifted packs.
 var _pending_pack_opening: Array = []
+
+# ── Juice vendor state ─────────────────────────────────────────────
+# When non-empty, the next OK press shows the "delicious..." result message and
+# (if reward_coin is set) queues the gift display for the OK after that.
+# Keys: {text, reward_coin}
+var _pending_juice_result: Dictionary = {}
+
+# Temporary cash overlay (label) shown while talking to the juice vendor.
+# Mirrors Card_Mart's _create_cash_label position/style.
+var _cash_overlay: Label = null
+
+# Per-tier roll chances (%) and pity thresholds — the tier each cup falls into
+# is determined by which coins the player has already won.
+const JUICE_COST: int             = 50
+const JUICE_COST_DISCOUNT: int    = 25                # after all 3 coins won
+const JUICE_COIN_SILVER: String   = "Munchlax Silver"
+const JUICE_COIN_GOLD: String     = "Munchlax Gold"
+const JUICE_COIN_BLUE: String     = "Zz Munchlax Blue"
+const JUICE_SILVER_CHANCE: int    = 40                # cups while silver is the active tier
+const JUICE_SILVER_PITY: int      = 3
+const JUICE_GOLD_CHANCE: int      = 30                # cups while gold is the active tier
+const JUICE_GOLD_PITY: int        = 3
+const JUICE_BLUE_CHANCE: int      = 25                # cups while blue is the active tier
+const JUICE_BLUE_PITY: int        = 5
+const JUICE_BROKE_MSG: String     = "Sorry, you don't have enough cash!"
+const JUICE_NORMAL_MSG: String    = "Mmmmm, that juice was delicious."
+const JUICE_COIN_MSG: String      = "Mmmmm, that juice was delicious...... Hey, there was a coin in the bottom of the cup!"
 
 # Container holding the displayed card/coin TextureRects during gift reveal
 var _gift_display_container: Control = null
@@ -320,56 +347,16 @@ func _build_message_box():
 	if message_panel != null and is_instance_valid(message_panel):
 		message_panel.queue_free()
 
-	message_panel = PanelContainer.new()
-	message_panel.visible = false
-	message_panel.offset_left   = 200
-	message_panel.offset_top    = 800
-	message_panel.offset_right  = 1720
-	message_panel.offset_bottom = 1020
+	var box     = MessageBoxHelper.build(220.0, 24, true, 50.0)
+	message_panel = box["root"]
+	message_label = box["label"]
+	yes_button    = box["yes_btn"]
+	no_button     = box["no_btn"]
+	ok_button     = box["ok_btn"]
 
-	var style = StyleBoxFlat.new()
-	style.bg_color = Color(0.1, 0.1, 0.2, 0.95)
-	style.border_color = Color(0.8, 0.8, 1.0, 1.0)
-	style.set_border_width_all(3)
-	style.set_corner_radius_all(10)
-	style.set_content_margin_all(20)
-	message_panel.add_theme_stylebox_override("panel", style)
-
-	var vbox = VBoxContainer.new()
-	vbox.add_theme_constant_override("separation", 15)
-	message_panel.add_child(vbox)
-
-	message_label = Label.new()
-	message_label.text = ""
-	message_label.add_theme_font_size_override("font_size", 28)
-	message_label.add_theme_color_override("font_color", Color.WHITE)
-	message_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	message_label.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	vbox.add_child(message_label)
-
-	var button_container = HBoxContainer.new()
-	button_container.alignment = BoxContainer.ALIGNMENT_CENTER
-	button_container.add_theme_constant_override("separation", 40)
-	vbox.add_child(button_container)
-
-	yes_button = Button.new()
-	yes_button.text = "  Yes  "
-	yes_button.add_theme_font_size_override("font_size", 24)
 	yes_button.pressed.connect(_on_yes_pressed)
-	button_container.add_child(yes_button)
-
-	no_button = Button.new()
-	no_button.text = "  No  "
-	no_button.add_theme_font_size_override("font_size", 24)
 	no_button.pressed.connect(_on_no_pressed)
-	button_container.add_child(no_button)
-
-	ok_button = Button.new()
-	ok_button.text = "  OK  "
-	ok_button.add_theme_font_size_override("font_size", 24)
 	ok_button.pressed.connect(_on_ok_pressed)
-	ok_button.visible = false
-	button_container.add_child(ok_button)
 
 	_ui_layer.add_child(message_panel)
 
@@ -392,6 +379,7 @@ func _show_message_with_ok(text: String):
 func _hide_message():
 	message_panel.visible = false
 	_clear_gift_display()
+	_hide_cash_overlay()
 	_player.can_move = true
 	if current_opponent != null:
 		current_opponent.resume_movement()
@@ -422,6 +410,11 @@ func _on_player_interact(opponent: Node):
 	_show_message_with_choices(opponent.get_greeting_text())
 
 func _on_yes_pressed():
+	# Juice vendor — handle purchase inline, bypass the shop/battle paths below
+	if current_npc != null and current_npc.npc_type == "juice_vendor":
+		_handle_juice_purchase()
+		return
+
 	# Shop NPC — delegate to npc.on_interact() which returns false when ready to open shop
 	if current_npc != null and current_npc.npc_type == "shop":
 		GameState.current_shop_id = current_npc.shop_id
@@ -503,6 +496,16 @@ func _on_no_pressed():
 	_hide_message()
 
 func _on_ok_pressed():
+	# Juice result chain: greeting → "delicious..." message → optional coin reveal
+	if not _pending_juice_result.is_empty():
+		var jr = _pending_juice_result
+		_pending_juice_result = {}
+		# If a coin was won, queue the gift reveal to fire on the NEXT OK press
+		if jr["reward_coin"] != "":
+			_prepare_gift_display("coin", jr["reward_coin"])
+		_show_message_with_ok(jr["text"])
+		return
+
 	# If a gift display is queued, show the card/coin reveal instead of dismissing
 	if not _pending_gift_display.is_empty():
 		var d = _pending_gift_display
@@ -553,6 +556,13 @@ func _on_player_npc_interact(npc: Node):
 			return
 		# on_interact() returned false → open pack purchase
 		_show_message_with_choices(npc.meet_text)
+		return
+
+	# Juice vendor: tiered coin lottery, $50/cup ($25 after all 3 coins won)
+	if npc.npc_type == "juice_vendor":
+		npc.refresh_bubble()
+		_show_cash_overlay()
+		_show_message_with_choices(_juice_greeting_text())
 		return
 
 	# Gift NPC: detected by gift_type field being non-empty
@@ -1121,6 +1131,12 @@ func _get_card_data(card_uid: String) -> Dictionary:
 # ============================================================
 
 func _handle_battle_return():
+	# The outro scene clears battle_result before returning to signal that it
+	# already showed the win/loss dialogue — skip it here to avoid a duplicate.
+	if GameState.battle_result == "":
+		GameState.returning_from_battle = false
+		return
+
 	var fought_name = GameState.current_opponent_name
 	var fought_opponent = null
 
@@ -1137,3 +1153,121 @@ func _handle_battle_return():
 	_show_message_with_ok(fought_opponent.get_result_text(GameState.battle_result == "win"))
 	GameState.returning_from_battle = false
 	GameState.battle_result = ""
+
+# ============================================================
+# JUICE VENDOR
+# Tiered coin lottery sold by the Juicebar Woman.
+#   tier 1 (no silver yet) — Munchlax Silver,  40% per cup, pity at 3
+#   tier 2 (silver only)   — Munchlax Gold,    30% per cup, pity at 3
+#   tier 3 (silver+gold)   — Zz Munchlax Blue, 25% per cup, pity at 5
+#   tier 4 (all 3 won)     — no rewards, juice is half price
+# ============================================================
+
+func _juice_current_tier() -> String:
+	if not GameState.has_coin(JUICE_COIN_SILVER):
+		return "silver"
+	if not GameState.has_coin(JUICE_COIN_GOLD):
+		return "gold"
+	if not GameState.has_coin(JUICE_COIN_BLUE):
+		return "blue"
+	return "done"
+
+func _juice_current_cost() -> int:
+	return JUICE_COST_DISCOUNT if _juice_current_tier() == "done" else JUICE_COST
+
+# Greeting text depends on which coins the player has already won.
+func _juice_greeting_text() -> String:
+	match _juice_current_tier():
+		"silver":
+			return "Welcome! Would you like a cup of juice? Just $" + str(JUICE_COST) + "!"
+		"gold":
+			return "You won a Silver Munchlax coin? Well done! Would you like a chance at another coin with another cup?"
+		"blue":
+			return "Wow you won both the silver and gold munchlax huh? You've only the Rare coin to find now! Would you like another cup?"
+		_:
+			return "Wow no way, you're so lucky, you've won all 3 juice coins! Congrats!!! Thanks for your ongoing support at our Juice bar! While we don't have any new coins for you to win, you do get 50% off all future juice!"
+
+# Called when the player clicks Yes on the juice greeting.
+# Runs the per-tier roll (with pity), deducts cash, awards the coin if any,
+# and queues _pending_juice_result so the next OK press shows the result + reveal.
+func _handle_juice_purchase() -> void:
+	var cost: int = _juice_current_cost()
+	if GameState.get_cash() < cost:
+		_show_message_with_ok(JUICE_BROKE_MSG)
+		return
+
+	GameState.add_cash(-cost)
+
+	var tier: String = _juice_current_tier()
+	var reward: String = ""
+
+	match tier:
+		"silver":
+			var attempts_s: int = int(GameState.progress.get("juice_silver_attempts", 0)) + 1
+			GameState.progress["juice_silver_attempts"] = attempts_s
+			if randi() % 100 < JUICE_SILVER_CHANCE or attempts_s >= JUICE_SILVER_PITY:
+				reward = JUICE_COIN_SILVER
+		"gold":
+			var attempts_g: int = int(GameState.progress.get("juice_gold_attempts", 0)) + 1
+			GameState.progress["juice_gold_attempts"] = attempts_g
+			if randi() % 100 < JUICE_GOLD_CHANCE or attempts_g >= JUICE_GOLD_PITY:
+				reward = JUICE_COIN_GOLD
+		"blue":
+			var attempts_b: int = int(GameState.progress.get("juice_blue_attempts", 0)) + 1
+			GameState.progress["juice_blue_attempts"] = attempts_b
+			if randi() % 100 < JUICE_BLUE_CHANCE or attempts_b >= JUICE_BLUE_PITY:
+				reward = JUICE_COIN_BLUE
+		_:
+			# tier == "done" — no reward possible, just enjoy the cheap juice
+			pass
+
+	if reward != "":
+		GameState.add_coin_to_collection(reward)
+		_pending_juice_result = {"text": JUICE_COIN_MSG, "reward_coin": reward}
+	else:
+		_pending_juice_result = {"text": JUICE_NORMAL_MSG, "reward_coin": ""}
+
+	_update_cash_overlay()
+	GameState.save_progress()
+
+	# Chain to the result message via the existing OK pipeline
+	_on_ok_pressed()
+
+# ============================================================
+# CASH OVERLAY
+# Mirrors Card_Mart._create_cash_label position/style. Created on demand when
+# talking to the juice vendor; removed in _hide_message().
+# ============================================================
+
+func _show_cash_overlay() -> void:
+	if _cash_overlay != null and is_instance_valid(_cash_overlay):
+		_update_cash_overlay()
+		return
+	_cash_overlay = Label.new()
+	_cash_overlay.name = "JuiceCashOverlay"
+	_cash_overlay.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	_cash_overlay.vertical_alignment   = VERTICAL_ALIGNMENT_BOTTOM
+	_cash_overlay.add_theme_font_size_override("font_size", 18)
+	_cash_overlay.add_theme_color_override("font_color", Color.WHITE)
+	_cash_overlay.add_theme_color_override("font_shadow_color", Color.BLACK)
+	_cash_overlay.add_theme_constant_override("shadow_offset_x", 1)
+	_cash_overlay.add_theme_constant_override("shadow_offset_y", 1)
+	_cash_overlay.anchor_left   = 1.0
+	_cash_overlay.anchor_top    = 1.0
+	_cash_overlay.anchor_right  = 1.0
+	_cash_overlay.anchor_bottom = 1.0
+	_cash_overlay.offset_left   = -160
+	_cash_overlay.offset_top    = -40
+	_cash_overlay.offset_right  = -10
+	_cash_overlay.offset_bottom = -10
+	_ui_layer.add_child(_cash_overlay)
+	_update_cash_overlay()
+
+func _update_cash_overlay() -> void:
+	if _cash_overlay != null and is_instance_valid(_cash_overlay):
+		_cash_overlay.text = "Cash: $" + str(GameState.get_cash())
+
+func _hide_cash_overlay() -> void:
+	if _cash_overlay != null and is_instance_valid(_cash_overlay):
+		_cash_overlay.queue_free()
+	_cash_overlay = null

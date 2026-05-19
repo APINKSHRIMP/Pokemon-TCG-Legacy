@@ -593,7 +593,8 @@ func power_heal_vileplume(vileplume: card_object) -> void:
 	
 	await main.show_message("HEAL: FLIPPING COIN...")
 	if main._should_bail(): return
-	var coin = await main.flip_coin()
+	# Activated only via the player's power menu — player flips.
+	var coin = await main.flip_coin(false, false)
 	
 	if not coin:
 		await main.show_message("TAILS! HEAL FAILED!")
@@ -1076,7 +1077,9 @@ func check_transparency(defender: card_object) -> bool:
 		if is_toxic_gas_active():
 			print("TRANSPARENCY: Blocked by Toxic Gas")
 			return false
-		var coin = await main.flip_coin()
+		# Defender (Haunter's controller) is the one flipping.
+		var defender_is_opp: bool = defender == main.opponent_active_pokemon
+		var coin = await main.flip_coin(false, defender_is_opp)
 		if coin:
 			await main.show_message("TRANSPARENCY: ATTACK BLOCKED!")
 			if main._should_bail(): return true
@@ -1268,8 +1271,8 @@ func cpu_phase_activate_powers() -> void:
 				most_damage = dmg
 				most_damaged = p
 		if most_damaged != null and most_damage > 0:
-			# Flip coin
-			var coin = await main.flip_coin()
+			# CPU Vileplume Heal — opponent flips.
+			var coin = await main.flip_coin(false, true)
 			if coin:
 				most_damaged.current_hp = min(int(most_damaged.metadata.get("hp", "0")), most_damaged.current_hp + 10)
 				main.display_hp_circles_above_align(most_damaged, true)
@@ -1542,7 +1545,8 @@ func cpu_phase_activate_powers() -> void:
 		if not is_power_blocked_by_status(gloom) and not toxic_gas:
 			# Only use if player active isn't already confused
 			if main.player_active_pokemon != null and main.player_active_pokemon.special_condition != "Confused":
-				var coin = await main.flip_coin()
+				# CPU's Gloom — opponent flips.
+				var coin = await main.flip_coin(false, true)
 				gloom.power_used_this_turn = true
 				if coin:
 					main.player_active_pokemon.special_condition = "Confused"
@@ -1591,7 +1595,8 @@ func cpu_phase_activate_powers() -> void:
 	if drowzee != null and not drowzee.power_used_this_turn and not drowzee.power_disabled_until_end_of_next_turn:
 		if not is_power_blocked_by_status(drowzee) and not toxic_gas:
 			if main.player_active_pokemon != null and main.player_active_pokemon.special_condition == "":
-				var coin = await main.flip_coin()
+				# CPU's Drowzee — opponent flips.
+				var coin = await main.flip_coin(false, true)
 				drowzee.power_used_this_turn = true
 				if coin:
 					main.player_active_pokemon.special_condition = "Asleep"
@@ -1732,8 +1737,9 @@ func check_sinkhole(retreating_pokemon: card_object, is_retreating_opponent: boo
 		return
 	if is_toxic_gas_active() or main.goop_gas_active:
 		return
-	
-	var coin = await main.flip_coin()
+
+	# Dugtrio's controller (Sinkhole owner) flips — opposite of retreating side.
+	var coin = await main.flip_coin(false, not is_retreating_opponent)
 	if not coin:
 		# Tails: 20 damage to retreating pokemon (no W/R)
 		retreating_pokemon.current_hp = max(0, retreating_pokemon.current_hp - 20)
@@ -1831,8 +1837,9 @@ func check_final_beam(gyarados: card_object, attacker: card_object, is_gyarados_
 	
 	if water_count == 0:
 		return
-	
-	var coin = await main.flip_coin()
+
+	# Gyarados (Final Beam) owner flips on its own KO.
+	var coin = await main.flip_coin(false, is_gyarados_opponent)
 	if coin:
 		var damage = 20 * water_count
 		# Apply with W/R
@@ -2051,8 +2058,9 @@ func power_pollen_stench(pokemon: card_object) -> void:
 		return
 	
 	pokemon.power_used_this_turn = true
-	var coin = await main.flip_coin()
-	
+	# Player-activated Power — player flips.
+	var coin = await main.flip_coin(false, false)
+
 	if coin:
 		var defender = main.opponent_active_pokemon
 		if defender != null:
@@ -2196,8 +2204,9 @@ func power_long_distance_hypnosis(pokemon: card_object) -> void:
 		return
 	
 	pokemon.power_used_this_turn = true
-	var coin = await main.flip_coin()
-	
+	# Player-activated Power — player flips.
+	var coin = await main.flip_coin(false, false)
+
 	if coin:
 		var defender = main.opponent_active_pokemon
 		if defender != null:

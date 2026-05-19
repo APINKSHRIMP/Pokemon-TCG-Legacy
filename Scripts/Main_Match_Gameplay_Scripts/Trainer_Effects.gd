@@ -2415,7 +2415,7 @@ func effect_poke_ball(is_opponent: bool) -> void:
 	
 	await main.show_message("POKE BALL: FLIPPING COIN...")
 	if main._should_bail(): return
-	var coin = await main.flip_coin()
+	var coin = await main.flip_coin(false, is_opponent)
 	
 	if not coin:
 		await main.show_message("TAILS! POKE BALL FAILED!")
@@ -2685,8 +2685,8 @@ func effect_gambler(is_opponent: bool) -> void:
 	
 	await main.show_message("GAMBLER: HAND SHUFFLED INTO DECK! FLIPPING COIN...")
 	if main._should_bail(): return
-	
-	var coin = await main.flip_coin()
+
+	var coin = await main.flip_coin(false, is_opponent)
 	var draw_count = 8 if coin else 1
 	
 	if coin:
@@ -2714,8 +2714,8 @@ func effect_recycle(is_opponent: bool) -> void:
 	
 	await main.show_message("RECYCLE: FLIPPING COIN...")
 	if main._should_bail(): return
-	
-	var coin = await main.flip_coin()
+
+	var coin = await main.flip_coin(false, is_opponent)
 	if not coin:
 		await main.show_message("TAILS! RECYCLE FAILED!")
 		if main._should_bail(): return
@@ -3024,7 +3024,10 @@ func effect_digger(is_opponent: bool) -> void:
 	var max_rounds = 20  # Safety limit
 	
 	while rounds < max_rounds:
-		var coin = await main.flip_coin()
+		# Digger alternates: cardholder flips first, then opponent, then cardholder, etc.
+		# my_turn=true means the cardholder flips (= is_opponent), else the other side.
+		var flipper_is_opp: bool = is_opponent if my_turn else not is_opponent
+		var coin = await main.flip_coin(false, flipper_is_opp)
 		rounds += 1
 		
 		if not coin:
@@ -3180,7 +3183,7 @@ func effect_goop_gas_attack(is_opponent: bool) -> void:
 
 # Sleep!: Flip heads, defending Pokemon is Asleep
 func effect_sleep_trainer(is_opponent: bool) -> void:
-	var coin = await main.flip_coin()
+	var coin = await main.flip_coin(false, is_opponent)
 	if coin:
 		var defender = main.player_active_pokemon if is_opponent else main.opponent_active_pokemon
 		if defender != null:

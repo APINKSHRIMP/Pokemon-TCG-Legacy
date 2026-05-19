@@ -295,11 +295,12 @@ func _on_restore_facing():
 
 func get_greeting_text() -> String:
 	var body := repeat_text if GameState.has_beaten_opponent(opponent_name) else meet_text
-	return "%s\n%s\n\n(%s | %d prize cards)" % [opponent_name, body, deck, prize_cards]
+	return "%s:\n%s" % [opponent_name, body]
 
 func get_result_text(player_won: bool) -> String:
+	var raw: String
 	if player_won:
-		if not GameState.has_beaten_opponent(opponent_name):
-			return first_win_text
-		return rematch_win_text
-	return loss_text
+		raw = first_win_text if not GameState.has_beaten_opponent(opponent_name) else rematch_win_text
+	else:
+		raw = loss_text
+	return "%s:\n%s" % [opponent_name, raw]
