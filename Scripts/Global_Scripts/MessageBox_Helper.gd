@@ -45,7 +45,8 @@ const BOX_HALF_WIDTH : float = 955.0
 static func build(box_height: float = 200.0,
 				  font_size:  int   = 24,
 				  include_buttons: bool = true,
-				  extra_padding: float = 0.0) -> Dictionary:
+				  extra_padding: float = 0.0,
+				  extra_padding_top: float = -1.0) -> Dictionary:
 
 	var kenney: Theme = load(KENNEY_THEME)
 
@@ -79,11 +80,14 @@ static func build(box_height: float = 200.0,
 	root.add_child(tex_rect)
 
 	# ── Content VBox (label + optional buttons) ───────────────
-	# extra_padding pushes text further in from the left, right, and top.
+	# extra_padding pushes text in from the LEFT and RIGHT (horizontal inset).
+	# extra_padding_top pushes text DOWN from the top; if left as -1 it inherits
+	# extra_padding so the old single-value calls still behave identically.
 	var margin := 18.0
+	var pad_top: float = extra_padding_top if extra_padding_top >= 0.0 else extra_padding
 	var vbox := VBoxContainer.new()
 	vbox.offset_left   = img_x + margin + extra_padding
-	vbox.offset_top    = img_y + margin + extra_padding
+	vbox.offset_top    = img_y + margin + pad_top
 	vbox.offset_right  = img_x + BOX_HALF_WIDTH * 2.0 - margin - extra_padding
 	vbox.offset_bottom = SCREEN_H - margin
 	vbox.add_theme_constant_override("separation", 6)
@@ -94,8 +98,11 @@ static func build(box_height: float = 200.0,
 	label.theme = kenney
 	label.add_theme_font_size_override("font_size", font_size)
 	label.add_theme_color_override("font_color", Color(0, 0, 0, 1))
-	label.autowrap_mode      = TextServer.AUTOWRAP_WORD_SMART
-	label.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	# Natural height by default so optional buttons sit immediately under the
+	# text with no trailing gap. Callers that want the label to fill the box
+	# (e.g. the gift "You received…" panel) can set SIZE_EXPAND_FILL themselves
+	# after build() returns.
 	vbox.add_child(label)
 
 	# ── Optional buttons ─────────────────────────────────────

@@ -347,7 +347,9 @@ func _build_message_box():
 	if message_panel != null and is_instance_valid(message_panel):
 		message_panel.queue_free()
 
-	var box     = MessageBoxHelper.build(220.0, 24, true, 50.0)
+	# Font 36, horizontal padding 60 (50 px further right than before) and
+	# vertical padding 15 (5 px further down). Pre-battle prompt keeps this size.
+	var box     = MessageBoxHelper.build(220.0, 36, true, 60.0, 15.0)
 	message_panel = box["root"]
 	message_label = box["label"]
 	yes_button    = box["yes_btn"]

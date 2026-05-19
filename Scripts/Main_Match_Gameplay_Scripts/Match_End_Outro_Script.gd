@@ -36,17 +36,23 @@ var card_icon_tex       = preload("res://Image_Assets/Icons/Reward_Icons/card_ic
 
 # Reward tracking — built during _ready, animated afterwards
 var reward_rows: Array = []  # Each entry: { "label": Label, "icon": Sprite2D, ... }
+var _header_label: Label = null   # "Rewards:" label, animated alongside rows
 
 # Screen dimensions (matching the 1920x1080 project)
 const SCREEN_W: float        = 1920.0
 const SCREEN_CENTER_X: float = 960.0
 
-# Y positions for reward rows (local to WIN LABELS container at screen y=684).
-# Rows fly in at screen ~y=480 (above centre) and each subsequent row sits
-# 35 px ABOVE the previous, so they stack upward.
-const REWARD_START_Y: float    = -324.0   # container local → screen y 360
-const REWARD_ROW_SPACING: float =   35.0   # applied upward (subtracted per row)
-const HEADER_Y: float          = -360.0   # 36 px above the first reward row
+# Reward fly-in layout (local to WIN LABELS container at screen y=684).
+# The "Rewards:" header flies in first and lands at REWARD_ANCHOR_Y.
+# Each new reward row also flies in to REWARD_ANCHOR_Y, while the header
+# and any previously-shown rewards shift up by REWARD_ROW_SPACING so the
+# header always remains the topmost element of the stack.
+const REWARD_ANCHOR_Y: float   = -324.0   # container local → screen y 360
+const REWARD_ROW_SPACING: float =   35.0
+const HEADER_LOCAL_X: float    = -200.0   # final x for the centred header
+const HEADER_WIDTH: float      =  800.0
+const OFFSCREEN_RIGHT_X: float = 1200.0
+const OFFSCREEN_LEFT_X: float  = -1200.0
 
 # ── Gift animation ────────────────────────────────────────────
 signal player_clicked   # emitted on every valid mouse click
@@ -260,16 +266,17 @@ func animate_sprites() -> void:
 # ============================================================
 
 func build_rewards(is_first_win: bool) -> void:
-	# --- "Rewards:" header (visible immediately, not animated) ---
+	# --- "Rewards:" header — starts off-screen right, flies in during animate_rewards() ---
 	var header = Label.new()
 	header.text = "Rewards:"
 	header.theme = kenney_theme
 	header.add_theme_font_size_override("font_size", 21)
 	header.add_theme_color_override("font_color", Color(0, 0, 0, 1))
 	header.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	header.position = Vector2(-200, HEADER_Y)
-	header.size = Vector2(800, 60)
+	header.position = Vector2(OFFSCREEN_RIGHT_X, REWARD_ANCHOR_Y)
+	header.size = Vector2(HEADER_WIDTH, 60)
 	win_labels_container.add_child(header)
+	_header_label = header
 
 	var row_index: int = 0
 
@@ -322,11 +329,9 @@ func build_rewards(is_first_win: bool) -> void:
 
 
 # Helper: create a label + icon pair for one reward row.
-# Both start off-screen and will be animated in later.
-func _create_reward_row(label_text: String, icon_texture: Texture2D, row_index: int) -> Dictionary:
-	# Each successive row is stacked above the previous one
-	var y_pos = REWARD_START_Y - row_index * REWARD_ROW_SPACING
-
+# Both start off-screen at REWARD_ANCHOR_Y; animate_rewards() flies them in.
+# (row_index is unused now — the stack-from-top animation handles vertical placement.)
+func _create_reward_row(label_text: String, icon_texture: Texture2D, _row_index: int) -> Dictionary:
 	# WIN LABELS is at x=762 in screen space. Screen centre in local coords = 960 - 762 = 198.
 	var local_centre_x: float = 198.0
 	var icon_gap: float = 30.0   # icon width (20) + 10px gap
@@ -347,14 +352,14 @@ func _create_reward_row(label_text: String, icon_texture: Texture2D, row_index: 
 	var label_final_x = local_centre_x - total_width / 2.0 + icon_gap
 	var icon_final_x  = local_centre_x - total_width / 2.0
 
-	label.position = Vector2(1200.0, y_pos)
+	label.position = Vector2(OFFSCREEN_RIGHT_X, REWARD_ANCHOR_Y)
 
 	var icon = Sprite2D.new()
 	icon.texture  = icon_texture
 	icon.centered = false
 	var tex_size  = icon_texture.get_size()
 	icon.scale    = Vector2(20.0 / tex_size.x, 20.0 / tex_size.y)
-	icon.position = Vector2(-1200.0, y_pos + 5)
+	icon.position = Vector2(OFFSCREEN_LEFT_X, REWARD_ANCHOR_Y + 5)
 	win_labels_container.add_child(icon)
 
 	return {
@@ -371,6 +376,17 @@ func _create_reward_row(label_text: String, icon_texture: Texture2D, row_index: 
 func animate_rewards() -> void:
 	await get_tree().create_timer(0.3).timeout
 
+	# Step 1 — fly the "Rewards:" header in horizontally to the anchor row.
+	if _header_label != null:
+		var hdr_tween = create_tween()
+		hdr_tween.set_trans(Tween.TRANS_CUBIC)
+		hdr_tween.set_ease(Tween.EASE_OUT)
+		hdr_tween.tween_property(_header_label, "position:x", HEADER_LOCAL_X, 0.6)
+		await hdr_tween.finished
+		await get_tree().create_timer(0.3).timeout
+
+	# Step 2 — for each reward: shift the header (and any previously-shown
+	# rewards) up by ROW_SPACING, then fly the new reward in to the anchor row.
 	for i in range(reward_rows.size()):
 		var row          = reward_rows[i]
 		var label: Label    = row["label"]
@@ -380,8 +396,26 @@ func animate_rewards() -> void:
 		tween.set_parallel(true)
 		tween.set_trans(Tween.TRANS_CUBIC)
 		tween.set_ease(Tween.EASE_OUT)
+
+		# Shift the header up one row.
+		if _header_label != null:
+			tween.tween_property(_header_label, "position:y",
+				_header_label.position.y - REWARD_ROW_SPACING, 0.6)
+
+		# Shift every previously-shown reward up one row.
+		for j in range(i):
+			var prev = reward_rows[j]
+			var prev_label: Label   = prev["label"]
+			var prev_icon:  Sprite2D = prev["icon"]
+			tween.tween_property(prev_label, "position:y",
+				prev_label.position.y - REWARD_ROW_SPACING, 0.6)
+			tween.tween_property(prev_icon, "position:y",
+				prev_icon.position.y - REWARD_ROW_SPACING, 0.6)
+
+		# Fly the new reward in horizontally to the anchor row.
 		tween.tween_property(label, "position:x", row["label_final_x"], 0.6)
 		tween.tween_property(icon,  "position:x", row["icon_final_x"],  0.6)
+
 		await tween.finished
 
 		if i < reward_rows.size() - 1:
@@ -396,16 +430,22 @@ func animate_rewards() -> void:
 # Both use MOUSE_FILTER_IGNORE so clicks reach _input().
 
 func _create_msg_panels() -> void:
-	var d = MessageBoxHelper.build(220.0, 36, false, 50.0)
+	# Dialogue: tall box, font reverted from 54 → 36 (no longer needs the
+	# pre-battle size). Horizontal padding 60 = 50 px further right, vertical
+	# padding 15 = 5 px further down than the previous 10/10.
+	var d = MessageBoxHelper.build(220.0, 36, false, 60.0, 15.0)
 	_dialogue_panel = d["root"]
 	_dialogue_label = d["label"]
 	add_child(_dialogue_panel)
 
+	# Gift: compact main-match-style box with centred text
 	var g = MessageBoxHelper.build(156.0, 45, false, 0.0)
 	_gift_panel = g["root"]
 	_gift_label = g["label"]
 	_gift_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_gift_label.vertical_alignment   = VERTICAL_ALIGNMENT_CENTER
+	# Restore expand-fill so the label fills the box and vertical-centre works
+	_gift_label.size_flags_vertical  = Control.SIZE_EXPAND_FILL
 	add_child(_gift_panel)
 
 func _show_dialogue_message(text: String) -> void:

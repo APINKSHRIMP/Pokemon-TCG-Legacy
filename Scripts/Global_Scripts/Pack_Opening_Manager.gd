@@ -466,9 +466,11 @@ func _generate_pack_cards(set_id: String) -> Array:
 		push_error("PackOpeningManager: unexpected card set format in " + json_path)
 		return []
 
-	var commons   : Array = []
-	var uncommons : Array = []
-	var rare_pool : Array = []
+	var commons    : Array = []
+	var uncommons  : Array = []
+	var rares      : Array = []   # Non-holo rares only
+	var holo_rares : Array = []   # Rare Holo only — pulled exclusively for god packs
+	var rare_pool  : Array = []   # rares + holo_rares — used for the standard rare slot
 
 	for card in all_cards:
 		if _is_basic_energy(card):
@@ -476,9 +478,35 @@ func _generate_pack_cards(set_id: String) -> Array:
 		match card.get("rarity", ""):
 			"Common":    commons.append(card)
 			"Uncommon":  uncommons.append(card)
-			"Rare":      rare_pool.append(card)
-			"Rare Holo": rare_pool.append(card)
+			"Rare":
+				rares.append(card)
+				rare_pool.append(card)
+			"Rare Holo":
+				holo_rares.append(card)
+				rare_pool.append(card)
 
+	# ── God-pack check ──────────────────────────────────────────
+	# Bump the lifetime pack counter, then decide: every 100th pack is a
+	# guaranteed god pack; otherwise a flat 0.5% chance per pack. The natural
+	# 0.5% roll does NOT reset the modulo cadence — pack 100, 200, 300… are
+	# always god packs no matter how lucky the player was beforehand.
+	var pack_number: int = int(GameState.progress.get("packs_opened_total", 0)) + 1
+	GameState.progress["packs_opened_total"] = pack_number
+	GameState.save_progress()
+
+	var is_god_pack: bool = (pack_number % 100 == 0) or (randf() < 0.005)
+
+	if is_god_pack and holo_rares.size() > 0:
+		print("PACK_OPENING: GOD PACK at pack #", pack_number, " (", holo_rares.size(), " unique Rare Holos in set)")
+		var god_result : Array = []
+		var god_used   : Dictionary = {}
+		for _i in range(10):
+			var pick := _pick_unique(holo_rares, god_used)
+			if not pick.is_empty():
+				god_result.append(pick)
+		return god_result
+
+	# ── Standard pack ───────────────────────────────────────────
 	var bonus_rare : bool  = randf() < 0.25 and rare_pool.size() > 0
 	var result     : Array = []
 	var used_ids   : Dictionary = {}

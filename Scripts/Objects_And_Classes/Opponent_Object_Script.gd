@@ -295,7 +295,10 @@ func _on_restore_facing():
 
 func get_greeting_text() -> String:
 	var body := repeat_text if GameState.has_beaten_opponent(opponent_name) else meet_text
-	return "%s:\n%s" % [opponent_name, body]
+	# Pre-battle prompt includes a deck/prize-cards footer so the player knows
+	# what they're up against. The post-battle result text (get_result_text)
+	# intentionally omits this — by then the match is over.
+	return "%s:\n%s\n\n(%s | %d prize cards)" % [opponent_name, body, deck, prize_cards]
 
 func get_result_text(player_won: bool) -> String:
 	var raw: String
