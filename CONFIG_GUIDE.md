@@ -1,0 +1,561 @@
+# Pokémon TCG Legacy — Configuration Guide
+
+A living reference for every JSON-driven knob in the game. Each section lists
+the **field name**, the **allowed values**, the **file(s) that consume it**,
+and a **minimal example**.
+
+> Keep this file open while editing data files in `NPC_and_Opponent_Data/`,
+> `Card_Set_Data/`, and `Player_Data/`.
+
+---
+
+## 1. Battle Conditions (Deck Restrictions)
+
+Opponents can demand the player meet specific deck requirements before a
+battle starts. The restriction is attached to an opponent entry inside any
+`NPC_and_Opponent_Data/<Map>_<Day>_<Time>.json` file under the `opponents`
+array.
+
+**Validator:** `Scripts/Global_Scripts/Deck_Validation_Helper.gd`
+**Popup UI:** `Scripts/Global_Scripts/Deck_Validation_Popup.gd`
+**Trigger:** `MapManager._on_yes_pressed` runs validation just before the
+battle scene loads. If validation fails, a popup (or text-only message) is
+shown and the battle is aborted.
+
+### 1.1 Display modes
+
+| Mode | Triggered by | What the player sees |
+|---|---|---|
+| `banned` | `banned_card_ids` / `banned_card_names` hit | Full-screen grid titled **"Banned cards"** showing every card on the NPC's banlist |
+| `invalid` | Structural rule violated (type, set, supertype, HP, etc.) | Full-screen grid titled **"Cards in your deck that aren't allowed"** showing the offending cards from the player's deck |
+| `missing` | Required-card quantity not met | Standard messagebox text only, e.g. `"You can't battle me yet:  • Need at least 4× Alakazam (have 0)"` |
+
+If multiple categories fail at once, priority is **banned > invalid > missing**.
+Missing-requirement lines are appended to the popup body when an `invalid`-mode
+popup is shown so the player sees everything at once.
+
+### 1.2 Restriction schema
+
+```jsonc
+"restrictions": {
+
+  // ────── Strict blacklists (mode = "banned") ──────
+  "banned_card_ids":   ["base1-88", "base1-89"],       // exact card ids
+  "banned_card_names": ["Professor Oak", "Bill"],      // by name, matches across all sets
+
+  // ────── Required-quantity rules (mode = "missing") ──────
+  "required_card_ids":   [{"id": "base1-1", "min": 4}],
+  "required_card_names": [{"name": "Alakazam",       "min": 4},
+                          {"name": "Psychic Energy", "min": 10}],
+  "min_stage_2_pokemon": 4,                            // at least N Stage-2 Pokémon
+
+  // ────── Structural rules (mode = "invalid") ──────
+  "allowed_pokemon_types":         ["Fire"],           // Pokémon type whitelist
+  "allowed_energy_types":          ["Fire"],           // Energy cards matched by NAME
+  "allowed_set_ids":               ["base1", "base2"], // card id prefix whitelist
+  "allowed_pokemon_name_prefixes": ["Dark "],          // Pokémon name must start with one
+  "banned_pokemon_name_prefixes":  ["Dark "],          // Pokémon name must NOT start with one
+  "no_trainers":         true,
+  "no_special_energies": true,
+  "special_energies_only": true,                       // basic energies forbidden
+  "basic_pokemon_only":  true,                         // Stage 1/2 forbidden
+  "max_hp":              60,                           // Pokémon HP cap
+  "delta_species_only":  true,                         // Pokémon name must contain " δ"
+  "no_ex_cards":         true                          // any subtype "ex" forbidden
+}
+```
+
+### 1.3 Field reference
+
+| Field | Type | Notes |
+|---|---|---|
+| `banned_card_ids` | `String[]` | Exact card ids (`"base1-88"`). Case-insensitive. |
+| `banned_card_names` | `String[]` | Card names. Matches across **all** sets, so `"Professor Oak"` catches every reprint. |
+| `required_card_ids` | `[{id, min}]` | Per-card minimum quantity; matches one exact id. |
+| `required_card_names` | `[{name, min}]` | Per-name minimum quantity; sums copies across all sets. **Use this for energies** (e.g. `"Psychic Energy"`) because energy cards reprint into many sets. |
+| `min_stage_2_pokemon` | `int` | Total Stage-2 Pokémon copies required. |
+| `allowed_pokemon_types` | `String[]` | Pokémon `types[]` field must intersect. Values: `Fire`, `Water`, `Grass`, `Lightning`, `Psychic`, `Fighting`, `Colorless`, `Darkness`, `Metal`, `Dragon`, `Fairy`. |
+| `allowed_energy_types` | `String[]` | Matched off the energy card's **name** (`"Fire Energy"` → `Fire`). Different sets share the same name, so cross-set Fire Energies all pass. |
+| `allowed_set_ids` | `String[]` | Card id prefix (e.g. `base1`, `base5`, `gym1`). Applies to all card types. |
+| `allowed_pokemon_name_prefixes` | `String[]` | Case-insensitive name prefix list. Use `"Dark "` (with trailing space) for Team-Rocket Dark Pokémon, `"Light "` for Neo Destiny Light Pokémon. |
+| `banned_pokemon_name_prefixes` | `String[]` | Reverse of the above. |
+| `no_trainers` | `bool` | Forbid all Trainer cards. |
+| `no_special_energies` | `bool` | Forbid any energy with subtype `"Special"`. |
+| `special_energies_only` | `bool` | Forbid any energy with subtype `"Basic"`. |
+| `basic_pokemon_only` | `bool` | Only `"Basic"` or `"Baby"` subtype Pokémon. |
+| `max_hp` | `int` | Pokémon with HP > N are invalid. Trainer/Energy cards ignore this. |
+| `delta_species_only` | `bool` | Pokémon name must contain " δ" (the delta-species marker). |
+| `no_ex_cards` | `bool` | Any card whose `subtypes` array contains `"ex"` is invalid. |
+
+### 1.4 Example: gym challenge
+
+```jsonc
+{
+  "name": "Gym Leader Erika",
+  "meet_text": "As part of the Gym Challenge you may only use Grass Pokémon. No Trainers either!",
+  // ... other opponent fields ...
+  "restrictions": {
+    "allowed_pokemon_types": ["Grass"],
+    "no_trainers": true
+  }
+}
+```
+
+### 1.5 Set id reference (for `allowed_set_ids`)
+
+| Set id | Set name |
+|---|---|
+| `base1` | Base Set |
+| `base2` | Jungle |
+| `base3` | Fossil |
+| `base5` | Team Rocket |
+| `basep` | Wizards Promo |
+| `gym1` | Gym Heroes |
+| `gym2` | Gym Challenge |
+| `neo1`–`neo4` | Neo Genesis / Discovery / Revelation / Destiny |
+| `ecard1`–`ecard3` | Expedition / Aquapolis / Skyridge |
+| `ex1`–`ex16` | EX era |
+| `np` | Nintendo Promo |
+| `pop1`–`pop6` | POP series |
+| `si1` | Southern Islands |
+
+---
+
+## 2. NPC & Opponent Spawning Conditions
+
+Any NPC or opponent entry may carry a `condition` block. The entry only spawns
+if the condition evaluates to **true**.
+
+**Evaluator:** `MapManager._evaluate_condition` (MapManager.gd ≈ line 311)
+**Special case:** During the immediate return-to-map after a battle, a
+just-beaten opponent stays spawned long enough to play the result text, even
+if their `opponent_not_defeated` condition would normally hide them now.
+
+### 2.1 Condition types
+
+| `type` | Extra fields | Returns true when |
+|---|---|---|
+| `opponent_defeated` | `target: String` | The named opponent has been beaten at least once |
+| `opponent_not_defeated` | `target: String` | The named opponent has NOT been beaten |
+| `all_opponents_defeated` | `targets: String[]` | Every name in the list has been beaten |
+| `not_all_opponents_defeated` | `targets: String[]` | At least one name in the list has NOT been beaten |
+| `any_opponent_defeated` | `targets: String[]` | At least one name in the list has been beaten |
+| `npc_met` | `target: String` | The named NPC has been talked to at least once |
+| `npc_not_met` | `target: String` | The named NPC has NOT been talked to |
+| `flag_set` | `flag: String` | `GameState.progress[flag]` is truthy |
+| `flag_not_set` | `flag: String` | `GameState.progress[flag]` is falsy or missing |
+
+### 2.2 Examples
+
+```jsonc
+// Spawn only after Misty has been beaten
+"condition": { "type": "opponent_defeated", "target": "Gym Leader Misty" }
+
+// Spawn until the player completes ALL six Pikachu Fans
+"condition": {
+  "type": "not_all_opponents_defeated",
+  "targets": [
+    "Pikachu Fan Marina", "Pikachu Fan Skye",
+    "Pikachu Fan Cami",   "Pikachu Fan Juniper",
+    "Pikachu Fan Raye",   "Pikachu Fan Leaf"
+  ]
+}
+
+// Spawn after a custom progress flag has been set elsewhere
+"condition": { "type": "flag_set", "flag": "got_starter_deck" }
+```
+
+---
+
+## 3. Movement Patterns
+
+`pattern` controls how a spawned NPC or opponent moves around the map.
+The default is `"idle_random"`.
+
+**Implementation:**
+- `Scripts/Objects_And_Classes/Opponent_Object_Script.gd`
+- `Scripts/Objects_And_Classes/NPC_Object_Script.gd`
+- `Scripts/Objects_And_Classes/Shopkeeper_Script.gd`
+
+### 3.1 Pattern values
+
+| Pattern | Behaviour | Extra fields |
+|---|---|---|
+| `idle_random` | Stands still, randomly turns to face a new direction every 1–4 s | — |
+| `idle_cycle` | Stands still but cycles the `walk_down` animation (used for swimmers) | — |
+| `idle_up` / `idle_down` / `idle_left` / `idle_right` | Stationary facing the given direction; restored 1 s after a conversation | — |
+| `patrol_line` | Walks back and forth along one axis | `patrol_speed` (default `60`), `patrol_distance` (default `100`), `patrol_axis` (`"horizontal"` or `"vertical"`) |
+| `patrol_square` | Walks a square loop (down → right → up → left → repeat) | `patrol_speed`, `patrol_distance` |
+| `random_wander` | Picks short random walks within a radius of the spawn point | `patrol_speed`, `wander_radius` (default `200`) |
+
+### 3.2 Extra-field reference
+
+| Field | Type | Default | Used by |
+|---|---|---|---|
+| `patrol_speed` | float | `60.0` | `patrol_line`, `patrol_square`, `random_wander` |
+| `patrol_distance` | float | `100.0` | `patrol_line`, `patrol_square` |
+| `patrol_axis` | `"horizontal"` \| `"vertical"` | `"horizontal"` | `patrol_line` |
+| `wander_radius` | float | `200.0` | `random_wander` |
+
+### 3.3 Examples
+
+```jsonc
+{ "name": "Biker2", "pattern": "patrol_line", "patrol_speed": 120,
+  "patrol_distance": 210, "patrol_axis": "horizontal",
+  "position": { "x": 400, "y": 1050 } }
+
+{ "name": "Pikachu Fan Marina", "pattern": "random_wander",
+  "patrol_speed": 20, "wander_radius": 65,
+  "position": { "x": 1425, "y": 1000 } }
+
+{ "name": "Fisherman Dave", "pattern": "idle_down",
+  "position": { "x": -600, "y": 2730 } }
+```
+
+---
+
+## 4. NPC Types
+
+`npc_type` decides which behaviour script handles the NPC and which scene is
+instantiated. Set on the NPC's entry in `All_NPC_Constant_Data.json` (or on
+the per-map placement if it varies by location).
+
+**Dispatcher:** `MapManager._load_and_spawn_npcs` (≈ line 280) and
+`MapManager._on_player_npc_interact` (≈ line 553).
+
+| `npc_type` | Behaviour | Required extra fields |
+|---|---|---|
+| (omitted) / `"text_only"` | Plain NPC — shows `meet_text` then `repeat_text`. Optionally a gift NPC if `gift_type` is set. | — |
+| `"juice_vendor"` | Opens the juice-bar coin lottery | — (handled inline in MapManager) |
+| `"shop"` | Opens the corresponding shop scene; uses Shopkeeper state machine | `shop_id` |
+
+### 4.1 Shop ids
+
+| `shop_id` | Scene loaded | Notes |
+|---|---|---|
+| `"card_mart"` | `Scenes/Main_Menu_Scenes/Pack_Purchase.tscn` | Standard pack shop; uses Day-1 starter-set state machine |
+| `"rocket_mart"` | `Scenes/Main_Menu_Scenes/Pack_Purchase.tscn` | Forces `unlocked_packs = ["base5"]` |
+| `"coin_mart"` | `Scenes/Main_Menu_Scenes/Coin_Shop.tscn` | Reads `coin_shop_inventory.json` |
+| `"holo_mart"` | `Scenes/Main_Menu_Scenes/Holo_Rare_Shop.tscn` | — |
+
+### 4.2 Example shop NPC
+
+```jsonc
+"Holo Rare Shopkeeper": {
+  "sprite":   "NPC_Holo_Rare_Shopkeeper",
+  "npc_type": "shop",
+  "shop_id":  "holo_mart"
+}
+```
+
+---
+
+## 5. Gifts (NPC-given)
+
+A non-shop NPC becomes a **gift NPC** as soon as `gift_type` is non-empty.
+The gift is awarded the first time the player talks to them, then the NPC
+falls back to its `repeat_text` from then on.
+
+**Handler:** `MapManager._give_gift` (line 619) and
+`MapManager._prepare_gift_display` (line 666).
+**Detection:** `NPC_Object_Script.is_gift_npc()`.
+
+### 5.1 Gift types
+
+| `gift_type` | `gift_value` format | What it does | Visual reveal |
+|---|---|---|---|
+| `"card"` | Comma-separated card ids, e.g. `"base1-1, base2-5"` | Adds cards to the player's collection via `GameState.give_cards` | Card-flip animation |
+| `"cash"` | Decimal string, e.g. `"250"` | `GameState.add_cash(int(value))` | Silent |
+| `"coin"` | Coin filename without `.png`, e.g. `"Pikachu Gold"` | `GameState.add_coin_to_collection(value)` | Coin-flip animation |
+| `"costume"` | Costume key (case variants tolerated), e.g. `"Sailor"`, `"LASS2"` | `GameState.add_costume_to_collection(value)` | Fade-in costume image |
+| `"energy_style"` | Style name, e.g. `"Base1"` | Appends to `progress["energy_styles"]` | Silent |
+| `"available_pack"` | Single pack id, e.g. `"base4"` | Appends to `progress["packs_unlocked"]` — unlocks it for purchase in Card Mart | Silent |
+| `"pack"` | Comma-separated pack art codes, e.g. `"base5_a, base1_b"` | Queues `PackOpeningManager.open_packs(...)` on the next OK press — opens packs immediately | Pack opening sequence |
+| `"pack_of_cards"` | (Pack name) | **Not implemented** — currently emits a `push_warning` | n/a |
+
+### 5.2 Special placeholders seen in data
+
+| Placeholder | Meaning |
+|---|---|
+| `"REPLACECOIN"` in `gift_value` | Used in early/draft data to mark "fill in a real coin later". Treat as a TODO marker. |
+| `"REPLACEMUSIC"` in `music` field | Same idea for opponent BGM. |
+
+### 5.3 Examples
+
+```jsonc
+// Card gift (single)
+"Kid Opening Packs": { "sprite": "NPC 02", "gift_type": "card", "gift_value": "base1-20" }
+
+// Multi-card gift
+"Card Elder Hamish Day 4": { "sprite": "Elder", "gift_type": "card",
+  "gift_value": "base1-1, base1-2, base1-3" }
+
+// Cash
+"Man Staring Out To Sea": { "sprite": "Youngcouple2_2",
+  "gift_type": "cash", "gift_value": "250" }
+
+// Costume
+"Sailor Working On Dock": { "sprite": "Sailor",
+  "gift_type": "costume", "gift_value": "Sailor" }
+
+// Unlock a pack for sale in the Card Mart
+"Card Mart Rep": { "sprite": "NPC 09",
+  "gift_type": "available_pack", "gift_value": "base4" }
+
+// Immediately open one or more packs
+"Rocket Pack Gift": { "sprite": "Teamrocket_M",
+  "gift_type": "pack", "gift_value": "base5_a, base5_b" }
+```
+
+---
+
+## 6. Opponent Rewards
+
+Rewards are read after a winning match by `Match_End_Outro_Script.gd` (around
+lines 283–327). They live on the opponent's entry in
+`All_NPC_Constant_Data.json` (or on the per-map placement to override).
+
+| Field | Format | Awarded | Notes |
+|---|---|---|---|
+| `cash_reward` | Integer string, e.g. `"150"` | **Every win** | First win is tripled (×3) and the outro label shows `(First Win ×3!)` |
+| `coin_reward` | Single coin filename without `.png`, e.g. `"Pikachu Gold"` | **First win only**, and only if the player doesn't already own that coin | Triggers coin-flip animation |
+| `card_reward` | Comma-separated card ids, e.g. `"basep-3, basep-14"` | **First win only** | Added via `GameState.give_cards` |
+| `costume_reward` | Comma-separated costume keys, e.g. `"Scientist_M, Scientist_F"` | **First win only** | Per key, only added if not already owned |
+| `pack_reward` | Single pack art code, e.g. `"base5_c"` | **Not currently consumed** — present on `Rocket Exec Ariana` but no script reads it. Treat as planned/not-wired. |
+| `prize_cards` | int (1–6) | — | Number of prize cards in the match itself (not a reward) |
+| `music` | string (set id / `"REPLACEMUSIC"`) | — | BGM track played during the battle |
+| `deck` | Deck name (string) | — | Looks up `NPC_and_Opponent_Data/Opponent_Deck_Data/<deck>.json` |
+
+> **Are packs allowed as a prize?** Not via `pack_reward` (currently unused).
+> If you want a battle to award a pack, the workable mechanism is to award a
+> **card** via `card_reward` and trigger pack-opening via a gift NPC elsewhere
+> with `gift_type: "pack"`. The `pack_reward` field is reserved for future
+> wiring.
+
+### 6.1 Example opponent
+
+```jsonc
+"Card Expert Nathan": {
+  "sprite":         "Cooltrainer_M3",
+  "deck":           "Energy Burn",
+  "music":          "REPLACEMUSIC",
+  "prize_cards":    6,
+  "cash_reward":    "150",
+  "coin_reward":    "Charizard Red",
+  "card_reward":    "basep-3, basep-14",
+  "costume_reward": "Cooltrainer_M3"
+}
+```
+
+---
+
+## 7. Map Files: Day & Time Variants
+
+Each overworld map loads a different JSON file depending on the current
+**date** and **time of day**.
+
+**Loader:** `Scripts/Map_Scripts/Celeste_Harbour.gd` (≈ line 16)
+**State source:** `GameState.get_date()` and `GameState.get_time()`.
+
+### 7.1 Filename convention
+
+`NPC_and_Opponent_Data/<Map>_<Date>_<Time>.json`
+
+| Part | Allowed values |
+|---|---|
+| `<Map>` | `Celeste_Harbour`, `Verdant_Forest`, … (one per overworld scene) |
+| `<Date>` | Integer day number — `1`, `2`, `3`, `4`, `5`, … |
+| `<Time>` | `Day`, `Evening`, `Night` |
+
+So:
+
+```
+NPC_and_Opponent_Data/Celeste_Harbour_1_Day.json
+NPC_and_Opponent_Data/Celeste_Harbour_3_Night.json
+NPC_and_Opponent_Data/Verdant_Forest_4_Evening.json
+```
+
+### 7.2 File top-level shape
+
+```jsonc
+{
+  "npcs":      [ { ...npc placement... } ],
+  "opponents": [ { ...opponent placement... } ]
+}
+```
+
+Both arrays may carry per-entry `condition` blocks (see §2) to toggle entries
+on or off based on progress.
+
+### 7.3 Time cycle
+
+Time advances **Day → Evening → Night → Day** (Day rollover bumps `date`).
+Day-driven map events (e.g. boats appearing, beach blocked, SS Anne docking)
+are scripted inside the map's `.gd` file rather than the data JSON.
+
+---
+
+## 8. Card Sets, Decks & Player Data
+
+### 8.1 Card data JSON
+
+Each set lives in `Card_Set_Data/<set_id>.json` and is a flat array of card
+objects.
+
+```jsonc
+{
+  "id":         "base1-1",
+  "name":       "Alakazam",
+  "supertype":  "Pokémon",          // "Pokémon" | "Trainer" | "Energy"
+  "subtypes":   ["Stage 2"],         // "Basic", "Stage 1", "Stage 2", "Baby",
+                                     // "Special" (energies), "ex"
+  "hp":         "80",                // string, only on Pokémon
+  "types":      ["Psychic"],         // energy type(s) for Pokémon
+  "evolvesFrom":"Kadabra",
+  "attacks":    [ ... ],
+  "weaknesses": [ { "type": "Psychic", "value": "×2" } ],
+  "retreatCost":["Colorless", "Colorless", "Colorless"],
+  "convertedRetreatCost": 3,
+  "rarity":     "Rare Holo"
+}
+```
+
+**Card image path:** `res://Image_Assets/Card_Image_Library/<set_id>/Large/<card_id>.png`
+
+### 8.2 Player decks
+
+Player deck files live in `user://Player_Decks/<name>.json` (and starter
+seeds in `res://Player_Data/Player_Decks/`). The format is a simple array:
+
+```jsonc
+[
+  { "count": 15, "id": "base1-101" },
+  { "count": 4,  "id": "base1-43" },
+  { "count": 2,  "id": "base1-27" }
+]
+```
+
+| Field | Type | Notes |
+|---|---|---|
+| `id` | String | Lowercase `set-number` id. Must exist in the matching `Card_Set_Data/<set>.json`. |
+| `count` | int | Copies of the card in the deck. No engine-enforced cap; deck-builder UI enforces TCG standard limits. |
+
+The player's **currently-selected deck name** is the `deck` field of
+`user://Player_Current_Data.json`.
+
+### 8.3 Player owned cards
+
+`Player_Data/Player_Owned_Cards/<set>_player_owned_cards.json` tracks how many
+copies of each card the player owns:
+
+```jsonc
+{
+  "owned_cards": [
+    { "card_id": "base1-1", "owned": 0 },
+    { "card_id": "base1-2", "owned": 5 }
+  ]
+}
+```
+
+### 8.4 Opponent decks
+
+Opponent deck files use the same format as player decks and live at
+`NPC_and_Opponent_Data/Opponent_Deck_Data/<DeckName>.json`. The opponent's
+`deck` field (a string like `"Energy Burn"`) is mapped to the filename.
+
+---
+
+## 9. Pack Pricing
+
+**File:** `Card_Set_Data/pack_prices.json`
+**Reader:** `Scripts/Menu_Scripts/Pack_Purchase_Script.gd`
+
+```jsonc
+[
+  { "pack": "base1", "cost": "100" },
+  { "pack": "base5", "cost": "200" },
+  { "pack": "neo4",  "cost": "550" }
+]
+```
+
+| Field | Notes |
+|---|---|
+| `pack` | Set id (matches `Card_Set_Data/<set>.json`) |
+| `cost` | Cash cost, **stored as a string** but parsed to int |
+
+**Pack art codes** (for gifts and rewards) follow `<set_id>_<letter>`,
+e.g. `base1_a`, `base1_b`, `base5_c`. Their images live at
+`res://Image_Assets/Packs/<art_code>.png`.
+
+---
+
+## 10. Coin Shop Inventory
+
+**File:** `NPC_and_Opponent_Data/coin_shop_inventory.json`
+**Reader:** `Scripts/Menu_Scripts/Coin_Shop_Script.gd`
+**Currency:** Munchlax coins (Silver / Gold / Blue) won at the juice vendor.
+
+```jsonc
+{
+  "coins": [
+    { "filename": "Arceus Silver.png",       "cost": 300 },
+    { "filename": "Gardevoir Silver 2.png",  "cost": 300 }
+  ]
+}
+```
+
+| Field | Notes |
+|---|---|
+| `filename` | Coin image filename including `.png` (lives in `Image_Assets/Coins/`) |
+| `cost` | Coin cost — integer, not string |
+
+---
+
+## 11. Save / Progress Data Shape
+
+Persisted at `user://Player_Game_Progress.json` and accessed only via the
+`GameState` autoload (never bypass it — see [[project_gamestate_save_invariant]]).
+
+Key fields you'll see referenced in JSON conditions and gift hooks:
+
+| Progress key | Type | Set by |
+|---|---|---|
+| `date` | int | Time cycle / sleep flow |
+| `time` | `"Day"` \| `"Evening"` \| `"Night"` | Time cycle |
+| `cash` | int | `add_cash`, battle rewards |
+| `coins` | `String[]` of filenames | `add_coin_to_collection` |
+| `costumes` | `String[]` of lowercase `.png` keys | `add_costume_to_collection` |
+| `energy_styles` | `String[]` | Gift `energy_style` |
+| `packs_unlocked` | `String[]` of set ids | Gift `available_pack` |
+| `packs_opened_total` | int | `Pack_Opening_Manager.gd` — gates god-pack unlock (>20) and guarantee (every 100). See [[project_pack_opening_counter]]. |
+| `opponents_beaten` | `String[]` | Match outro |
+| `npcs_met` | `String[]` | First interaction |
+| `gifts_received` | `String[]` of NPC names | `mark_gift_received` |
+| `shop_state` | `"initial"` \| `"awaiting_funds"` \| `"restocking"` \| `"open"` | Shopkeeper state machine |
+| `player_collected_shop_starter_set` | bool | Day-1 starter purchase |
+| `shop_free_packs_given` | bool | Day-2 free pack drop |
+
+Custom `flag_set` / `flag_not_set` conditions read whatever key you point at
+in this dict, so feel free to invent new boolean flags as long as something
+elsewhere is setting them.
+
+---
+
+## 12. Quick-Reference Cheat Sheet
+
+| I want to… | Edit this |
+|---|---|
+| Make an opponent require a specific deck | Add `restrictions: { … }` to their entry (§1) |
+| Hide an opponent until a prerequisite is beaten | Add `condition: { type: "opponent_defeated", target: "…" }` (§2) |
+| Change how an NPC moves around | Set `pattern` plus the matching extra fields (§3) |
+| Add a new shop NPC | `npc_type: "shop"` plus the correct `shop_id` (§4) |
+| Give the player a card / costume / cash | `gift_type` + `gift_value` on the NPC (§5) |
+| Reward an opponent battle with cash + cards | `cash_reward` + `card_reward` (§6) |
+| Add a new map-day/time variant | Create `<Map>_<Day>_<Time>.json` (§7) |
+| Add a new card to a set | Append to `Card_Set_Data/<set>.json` (§8.1) |
+| Change a pack's price | Edit `Card_Set_Data/pack_prices.json` (§9) |
+| Add a coin to the Coin Shop | Append to `coin_shop_inventory.json` (§10) |
+
+---
+
+*Last updated: 2026-05-19*

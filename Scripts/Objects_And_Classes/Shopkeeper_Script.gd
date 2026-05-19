@@ -50,6 +50,10 @@ var _restore_timer: SceneTreeTimer = null
 var _wander_origin: Vector2 = Vector2.ZERO
 var _wander_target: Vector2 = Vector2.ZERO
 var _is_wandering: bool = false
+# Escape direction parked here after a wander collision; the next
+# _pick_wander_target consumes it so we step away from the obstacle
+# instead of grinding into it.
+var _blocked_dir: Vector2 = Vector2.ZERO
 
 # ── Bubble ─────────────────────────────────────────────────
 var _bubble_sprite: Sprite2D = null
@@ -164,6 +168,33 @@ func _is_player_blocking() -> bool:
 		return false
 	return position.distance_to(players[0].position) < 70.0
 
+# Other NPCs / opponents share collision layer 4 with no mask, so they pass
+# through one another physically. Mirror the player proximity rule for them
+# so wandering entities stop short instead of overlapping. Returns the
+# cardinal direction AWAY from the nearest entity inside the buffer, or
+# Vector2.ZERO when there's nothing to avoid.
+const WANDER_PROXIMITY_BUFFER: float = 30.0
+
+func _wander_proximity_escape() -> Vector2:
+	var nearest_blocker: Node = null
+	var nearest_d: float = WANDER_PROXIMITY_BUFFER
+	for group_name in ["npcs", "opponents"]:
+		for other in get_tree().get_nodes_in_group(group_name):
+			if other == self or not is_instance_valid(other):
+				continue
+			var d: float = position.distance_to(other.position)
+			if d < nearest_d:
+				nearest_d = d
+				nearest_blocker = other
+	if nearest_blocker == null:
+		return Vector2.ZERO
+	var away: Vector2 = position - nearest_blocker.position
+	if away.length() < 0.001:
+		return Vector2.ZERO
+	if abs(away.x) > abs(away.y):
+		return Vector2(sign(away.x), 0.0)
+	return Vector2(0.0, sign(away.y))
+
 func _physics_process(delta):
 	match movement_pattern:
 		"patrol_line":
@@ -183,11 +214,36 @@ func _physics_process(delta):
 				velocity = Vector2.ZERO
 				animated_sprite.play("idle_" + current_facing)
 				return
+			# Personal-space rule: only abort if our current heading is taking
+			# us TOWARD the nearby entity. If we're already heading away (or
+			# tangentially past them) the check would re-fire every frame and
+			# trap us in place even though we are correctly escaping.
+			if _is_wandering:
+				var entity_escape: Vector2 = _wander_proximity_escape()
+				if entity_escape != Vector2.ZERO:
+					var to_target: Vector2 = _wander_target - position
+					var heading_into_blocker: bool = (
+						to_target.length() > 0.001
+						and to_target.normalized().dot(entity_escape) < 0.0
+					)
+					if heading_into_blocker:
+						_blocked_dir = entity_escape
+						_is_wandering = false
+						velocity = Vector2.ZERO
+						animated_sprite.play("idle_" + current_facing)
+						return
 			_process_random_wander(delta)
 		_:
 			velocity = Vector2.ZERO
 			return
 	move_and_slide()
+	# A wander step that collides should not loop walk-into-wall indefinitely.
+	# Cancel the attempt so the next direction-timer tick picks a path AWAY
+	# from the obstacle.
+	if movement_pattern == "random_wander" and _is_wandering \
+			and get_slide_collision_count() > 0 \
+			and get_real_velocity().length() < patrol_speed * 0.3:
+		_abort_blocked_wander()
 
 func _process_patrol_line(delta):
 	velocity = patrol_direction_vec * patrol_speed
@@ -231,8 +287,31 @@ func _process_random_wander(delta):
 		current_facing = "down" if move_dir.y > 0 else "up"
 	animated_sprite.play("walk_" + current_facing)
 
+func _abort_blocked_wander() -> void:
+	# Cardinal opposite of the heading we just tried — next wander pick uses
+	# this as a hint so the NPC steps away from the obstacle.
+	var attempted: Vector2 = _wander_target - position
+	if attempted.length() < 0.001:
+		_blocked_dir = Vector2.ZERO
+	elif abs(attempted.x) > abs(attempted.y):
+		_blocked_dir = Vector2(-sign(attempted.x), 0.0)
+	else:
+		_blocked_dir = Vector2(0.0, -sign(attempted.y))
+	_is_wandering = false
+	velocity = Vector2.ZERO
+	animated_sprite.play("idle_" + current_facing)
+
 func _pick_wander_target():
 	var step = randf_range(30.0, 80.0)
+	# Consume any pending escape hint from a previous blocked attempt first.
+	if _blocked_dir != Vector2.ZERO:
+		var escape: Vector2 = _blocked_dir
+		_blocked_dir = Vector2.ZERO
+		var escape_candidate: Vector2 = position + escape * step
+		if escape_candidate.distance_to(_wander_origin) <= wander_radius:
+			_wander_target = escape_candidate
+			_is_wandering = true
+			return
 	var dirs = [Vector2.UP, Vector2.DOWN, Vector2.LEFT, Vector2.RIGHT]
 	dirs.shuffle()
 	for dir in dirs:

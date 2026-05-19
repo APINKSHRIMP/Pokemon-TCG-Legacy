@@ -55,12 +55,11 @@ static var _set_cache: Dictionary = {}
 # PUBLIC ENTRY POINT
 # ============================================================
 
-# Returns true if the opponent entry has any restriction-related keys.
-static func opponent_has_restrictions(opponent_entry: Dictionary) -> bool:
-	if not opponent_entry.has("restrictions"):
-		return false
-	var r = opponent_entry["restrictions"]
-	return r is Dictionary and not r.is_empty()
+# Returns true when the restrictions dict has any keys. The argument is the
+# restrictions block itself (as stored on Opponent_Object.restrictions), NOT
+# the full opponent entry — MapManager passes the dict directly.
+static func opponent_has_restrictions(restrictions: Dictionary) -> bool:
+	return not restrictions.is_empty()
 
 # Validates the given player deck file path against the restrictions dict.
 # `deck_path` is e.g. "user://Player_Decks/your_first_deck.json".
