@@ -2,7 +2,6 @@
 
 [ext_resource type="TileSet" uid="uid://brncoaox03ylg" path="res://Image_Assets/Map_Sheets/Tile_Sets/Verdant_Forest.tres" id="1_vnhbh"]
 [ext_resource type="PackedScene" uid="uid://bprufyh8mxqom" path="res://Scenes/Objects/Player_Object_Scene.tscn" id="2_06m8d"]
-[ext_resource type="Script" path="res://Scripts/Map_Scripts/Interactables_Script.gd" id="int_script"]
 [ext_resource type="PackedScene" uid="uid://c10qeone4u11s" path="res://Image_Assets/Map_Objects/DarkTree.tscn" id="4_0jajs"]
 [ext_resource type="TileSet" uid="uid://dqknfbtehgo6c" path="res://Image_Assets/Map_Sheets/Tile_Sets/Starting_Areas.tres" id="4_li0g5"]
 [ext_resource type="PackedScene" uid="uid://d0k3aqu382y78" path="res://Image_Assets/Map_Objects/LightTree.tscn" id="5_efv3c"]
@@ -17,6 +16,7 @@
 [ext_resource type="Texture2D" uid="uid://d1bt37swpeiew" path="res://Image_Assets/Map_Objects/TreeLineVertical.png" id="14_6ll1i"]
 [ext_resource type="Texture2D" uid="uid://doauqwj28afgv" path="res://Image_Assets/Map_Objects/treelineshadowvertical.png" id="14_x6xh7"]
 [ext_resource type="Script" uid="uid://cxeto60nl1qi2" path="res://Scripts/Map_Scripts/Verdant_Forest.gd" id="20_vfscr"]
+[ext_resource type="Script" uid="uid://cphl8h5xtm64h" path="res://Scripts/Map_Scripts/Interactables_Script.gd" id="int_script"]
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_efv3c"]
 size = Vector2(227, 62.75)
@@ -3781,10 +3781,10 @@ position = Vector2(2928, 400)
 tile_set = ExtResource("1_vnhbh")
 
 [node name="TextureRect" type="TextureRect" parent="." unique_id=1271519714]
-offset_left = 1495.0
-offset_top = -1066.0
-offset_right = 1887.0
-offset_bottom = -626.0
+offset_left = 1490.0
+offset_top = -804.0
+offset_right = 1882.0
+offset_bottom = -577.0
 scale = Vector2(1.5, 1.5)
 texture = ExtResource("11_8xcuo")
 
