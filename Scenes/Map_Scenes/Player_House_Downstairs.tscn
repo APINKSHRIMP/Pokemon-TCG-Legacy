@@ -3,7 +3,7 @@
 [ext_resource type="Script" uid="uid://bxy1uswsswt1l" path="res://Scripts/Map_Scripts/Player_House_Downstairs.gd" id="1_s8ing"]
 [ext_resource type="TileSet" uid="uid://yus3igcnpw1m" path="res://Image_Assets/Map_Sheets/Tile_Sets/Player_Home_Tileset.tres" id="2_kd744"]
 [ext_resource type="PackedScene" uid="uid://bprufyh8mxqom" path="res://Scenes/Objects/Player_Object_Scene.tscn" id="3_hfq7f"]
-[ext_resource type="Script" path="res://Scripts/Map_Scripts/Interactables_Script.gd" id="int_script"]
+[ext_resource type="Script" uid="uid://cphl8h5xtm64h" path="res://Scripts/Map_Scripts/Interactables_Script.gd" id="int_script"]
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_377ug"]
 size = Vector2(23, 10)

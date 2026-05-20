@@ -26,6 +26,13 @@ var repeat_text: String = ""
 var gift_type: String = ""
 var gift_value: String = ""
 
+# Costume-gated interaction. When required_costume is set, the NPC shows a
+# different greeting (costume_match_text) and hands over its gift ONLY while
+# the player is wearing that costume sprite. Otherwise it acts as an ordinary
+# text NPC (meet_text / repeat_text) and gives nothing.
+var required_costume: String = ""
+var costume_match_text: String = ""
+
 # Movement config
 var movement_pattern: String = "idle_random"
 var patrol_distance: float = 100.0

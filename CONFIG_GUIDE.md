@@ -307,6 +307,36 @@ falls back to its `repeat_text` from then on.
   "gift_type": "pack", "gift_value": "base5_a, base5_b" }
 ```
 
+### 5.4 Costume-gated NPCs
+
+An NPC carrying a `required_costume` field reacts to **what the player is
+currently wearing** (the `sprite` field of `Player_Current_Data.json`).
+
+**Handler:** `MapManager._handle_costume_gated_npc`.
+
+| Field | Notes |
+|---|---|
+| `required_costume` | Costume sprite name the player must be wearing. Compared case-insensitively. Presence of this field marks the NPC as costume-gated. |
+| `costume_match_text` | Greeting shown **while wearing** the required costume. |
+| `meet_text` / `repeat_text` | Greeting shown when **not** wearing it (ordinary text NPC behaviour). |
+| `gift_type` / `gift_value` | Standard gift fields (§5.1). The gift is handed over **only** while the required costume is worn, and only once. |
+
+While wearing the costume the player gets `costume_match_text` and the gift;
+otherwise they get the normal greeting and nothing — they can return later in
+the right outfit. Works with every `gift_type` in §5.1.
+
+```jsonc
+// Gives a pack of cards, but only to a player dressed as a Rocket grunt
+{
+  "name": "Rocket Grunt", "sprite": "Teamrocket_M",
+  "required_costume": "Teamrocket_M",
+  "meet_text": "What are you looking at, kid? Beat it.",
+  "repeat_text": "I told you to get lost.",
+  "costume_match_text": "Hey, you're one of us! Here, take this pack.",
+  "gift_type": "pack", "gift_value": "base1_a"
+}
+```
+
 ---
 
 ## 6. Opponent Rewards
@@ -623,6 +653,7 @@ Headline text lives in the `TV_NEWS` constant in `Interactables_Script.gd`.
 | Change how an NPC moves around | Set `pattern` plus the matching extra fields (§3) |
 | Add a new shop NPC | `npc_type: "shop"` plus the correct `shop_id` (§4) |
 | Give the player a card / costume / cash | `gift_type` + `gift_value` on the NPC (§5) |
+| Make an NPC react to what costume the player wears | `required_costume` + `costume_match_text` (§5.4) |
 | Reward an opponent battle with cash + cards | `cash_reward` + `card_reward` (§6) |
 | Add a new map-day/time variant | Create `<Map>_<Day>_<Time>.json` (§7) |
 | Add a new card to a set | Append to `Card_Set_Data/<set>.json` (§8.1) |

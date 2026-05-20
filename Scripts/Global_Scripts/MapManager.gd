@@ -292,6 +292,12 @@ func _load_and_spawn_npcs(json_path: String):
 		npc.repeat_text      = entry.get("repeat_text", "")
 		npc.gift_type        = entry.get("gift_type", "")
 		npc.gift_value       = entry.get("gift_value", "")
+
+		# Costume-gating fields live only on NPC_Object_Script, not the
+		# shopkeeper script — assign them to non-shop NPCs only.
+		if not is_shop:
+			npc.required_costume   = entry.get("required_costume", "")
+			npc.costume_match_text = entry.get("costume_match_text", "")
 		npc.position         = Vector2(entry["position"]["x"], entry["position"]["y"])
 		npc.movement_pattern = entry.get("pattern", "idle_down")
 		npc.patrol_distance  = entry.get("patrol_distance", 100.0)
@@ -623,6 +629,13 @@ func _on_player_npc_interact(npc: Node):
 		_show_message_with_choices(_juice_greeting_text())
 		return
 
+	# Costume-gated NPC: special greeting + gift only while the player wears
+	# the required costume. Checked before the generic gift path because such
+	# NPCs also carry a gift_type.
+	if npc.required_costume != "":
+		_handle_costume_gated_npc(npc)
+		return
+
 	# Gift NPC: detected by gift_type field being non-empty
 	if npc.is_gift_npc():
 		if npc.has_gift_been_given():
@@ -644,6 +657,52 @@ func _on_player_npc_interact(npc: Node):
 		_show_message_with_ok(npc.repeat_text)
 	else:
 		_show_message_with_ok(npc.meet_text)
+
+# ============================================================
+# COSTUME-GATED NPCs
+# ============================================================
+
+# Reads the player's currently-equipped costume sprite from
+# Player_Current_Data.json (the "sprite" field, no extension).
+func _player_worn_sprite() -> String:
+	var f := FileAccess.open("user://Player_Current_Data.json", FileAccess.READ)
+	if f == null:
+		return ""
+	var parsed = JSON.parse_string(f.get_as_text())
+	f.close()
+	if parsed is Dictionary:
+		return String(parsed.get("sprite", ""))
+	return ""
+
+# Handles an NPC with a required_costume. The player gets the special
+# greeting + gift only while wearing that costume; otherwise it's an
+# ordinary text interaction with no gift (they can return later).
+func _handle_costume_gated_npc(npc: Node) -> void:
+	var was_met: bool = npc.has_been_met()
+	var worn: String = _player_worn_sprite().strip_edges().to_lower()
+	var required: String = String(npc.required_costume).strip_edges().to_lower()
+	var matches: bool = worn != "" and worn == required
+
+	npc.mark_as_met()
+	npc.refresh_bubble()
+
+	if matches and npc.is_gift_npc() and not npc.has_gift_been_given():
+		# Right costume, gift not yet collected — hand it over.
+		_give_gift(npc)
+		npc.refresh_bubble()
+		_prepare_gift_display(npc.gift_type, npc.gift_value)
+		_show_message_with_ok(npc.costume_match_text)
+		return
+
+	if matches:
+		# Right costume, but the gift was already collected (or none exists).
+		var matched_txt: String = npc.costume_match_text if npc.costume_match_text != "" else npc.meet_text
+		_show_message_with_ok(matched_txt)
+		return
+
+	# Wrong / no costume — ordinary chatter, no gift handed over.
+	var plain_txt: String = npc.repeat_text if (was_met and npc.repeat_text != "") else npc.meet_text
+	_show_message_with_ok(plain_txt)
 
 # ============================================================
 # GIFT GIVING

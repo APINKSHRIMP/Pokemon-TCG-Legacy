@@ -99,8 +99,11 @@ func _load_owned_costumes_list() -> void:
 		return
 
 	print("DEBUG TrainerCard: Costumes array=", data["costumes"])
+	# Costume filenames are stored lower-cased by GameState.add_costume_to_collection,
+	# but the sprite folder uses mixed-case filenames. Key the set lower-cased (and
+	# look up lower-cased in _add_character_to_grid) so matching is case-insensitive.
 	for costume_name in data["costumes"]:
-		_owned_costumes[costume_name] = true
+		_owned_costumes[String(costume_name).to_lower()] = true
 	print("DEBUG TrainerCard: _owned_costumes populated=", _owned_costumes)
 
 
@@ -117,7 +120,7 @@ func _load_player_data() -> void:
 		push_error("TrainerCard: player_data.json is malformed")
 		return
 
-	if data.has("overworld_sprite"):
+	if data.has("sprite"):
 		var raw : String = data["sprite"]
 		if not raw.ends_with(".png"):
 			raw = raw + ".png"
@@ -195,7 +198,7 @@ func _add_character_to_grid(file_name: String) -> void:
 	rect.stretch_mode        = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	rect.expand_mode         = TextureRect.EXPAND_FIT_WIDTH_PROPORTIONAL
 
-	var is_owned : bool = _owned_costumes.has(file_name)
+	var is_owned : bool = _owned_costumes.has(file_name.to_lower())
 	print("DEBUG TrainerCard: grid file=", file_name, " is_owned=", is_owned)
 
 	rect.set_meta("sprite_name", file_name)
@@ -218,7 +221,7 @@ func _add_character_to_grid(file_name: String) -> void:
 
 func _auto_select_saved_character() -> void:
 	for child in grid.get_children():
-		if child is TextureRect and child.get_meta("sprite_name", "") == saved_sprite_name:
+		if child is TextureRect and String(child.get_meta("sprite_name", "")).to_lower() == saved_sprite_name.to_lower():
 			_select_character(child)
 			return
 

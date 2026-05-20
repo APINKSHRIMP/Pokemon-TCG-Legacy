@@ -16,6 +16,12 @@ var opponent_data: Dictionary
 var player_data: Dictionary
 var battle_won: bool = false
 
+# Opponents that must be defeated in the current time period before
+# time auto-advances (Day -> Evening, Evening -> Night). Night never
+# auto-advances — the player must sleep in bed. The counter resets on
+# every time change (see GameState.advance_time).
+const OPPONENTS_TO_ADVANCE_TIME: int = 4
+
 # Animation config
 var sprite_drift_duration: float = 5.0
 
@@ -675,13 +681,19 @@ func transition_back_to_map() -> void:
 	transitioning  = true
 	click_enabled  = false
 
-	# Time advancement checks
-	if battle_won:
-		if GameState.get_current_defeated() == 4 and GameState.get_time() == "Day" and GameState.get_date() == 1:
-			GameState.advance_time("Evening")
-		if GameState.get_current_defeated() == 4 and GameState.get_time() == "Evening" and GameState.get_date() == 1 \
-				and GameState.progress.get("player_collected_shop_starter_set", false):
-			GameState.advance_time("Night")
+	# Time advancement checks — applies to every day. Defeating enough
+	# opponents pushes Day -> Evening and Evening -> Night. Night never
+	# auto-advances; the player advances it by sleeping in bed.
+	if battle_won and GameState.get_current_defeated() >= OPPONENTS_TO_ADVANCE_TIME:
+		match GameState.get_time():
+			"Day":
+				GameState.advance_time("Evening")
+			"Evening":
+				# Day-1 onboarding gate: the player must collect the shop
+				# starter set before night. The flag stays true forever
+				# afterwards, so this is a no-op on every later day.
+				if GameState.progress.get("player_collected_shop_starter_set", false):
+					GameState.advance_time("Night")
 
 	# Stop win/loss jingle
 	for child in SoundManagerScript.get_children():

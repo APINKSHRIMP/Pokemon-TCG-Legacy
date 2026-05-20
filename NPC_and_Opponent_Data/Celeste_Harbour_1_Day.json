@@ -187,6 +187,55 @@
 		"x": -800,
 		"y": 2620
 	  }
+	},
+
+	{
+	  "name": "Costume Test 1 - Fisherman",
+	  "sprite": "Fisherman",
+	  "required_costume": "Fisherman",
+	  "meet_text": "Ahoy there! Lovely day for a spot of fishing down at the harbour.",
+	  "repeat_text": "The fish always seem to bite best near the lighthouse.",
+	  "costume_match_text": "Wow, you love fish as much as I do! Here, take this coin - every true angler should carry one.",
+	  "gift_type": "coin",
+	  "gift_value": "Gyarados Blue",
+	  "pattern": "idle_down",
+	  "position": { "x": -700, "y": 1610 }
+	},
+	{
+	  "name": "Costume Test 2 - Rocket Grunt",
+	  "sprite": "Teamrocket_M",
+	  "required_costume": "Teamrocket_M",
+	  "meet_text": "What are you looking at, kid? Beat it before I make you.",
+	  "repeat_text": "I told you to get lost. We're busy here.",
+	  "costume_match_text": "Hey, you're one of us! Here, take this pack of cards - just don't tell the boss I gave it away.",
+	  "gift_type": "pack",
+	  "gift_value": "base1_a",
+	  "pattern": "idle_down",
+	  "position": { "x": -620, "y": 1610 }
+	},
+	{
+	  "name": "Costume Test 3 - Bug Catcher",
+	  "sprite": "Bugcatcher",
+	  "required_costume": "Bugcatcher",
+	  "meet_text": "I've been catching bugs all morning. So many Caterpie out today!",
+	  "repeat_text": "Bug Pokemon are the best, no contest.",
+	  "costume_match_text": "No way, you're a bug catcher too?! Brilliant - here, have one of my spare cards.",
+	  "gift_type": "card",
+	  "gift_value": "base1-20",
+	  "pattern": "idle_down",
+	  "position": { "x": -540, "y": 1610 }
+	},
+	{
+	  "name": "Costume Test 4 - Sailor",
+	  "sprite": "Sailor",
+	  "required_costume": "Sailor",
+	  "meet_text": "The sea's been calm today. Good sailing weather, this.",
+	  "repeat_text": "Nothing beats a life out on the open water.",
+	  "costume_match_text": "A fellow sailor! You'll want the proper gear - take this waiter's uniform for working the galley.",
+	  "gift_type": "costume",
+	  "gift_value": "Waiter",
+	  "pattern": "idle_down",
+	  "position": { "x": -460, "y": 1610 }
 	}
   ],
   "opponents": [
