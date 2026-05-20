@@ -122,6 +122,9 @@ func _unhandled_input(event):
 		# If message panel is open, spacebar forwards to MapManager
 		if MapManager.message_panel != null and MapManager.message_panel.visible:
 			MapManager.handle_message_spacebar()
+			# Consume so dismissing a dialog can't re-trigger an interactable
+			# the player happens to be standing on this same frame.
+			get_viewport().set_input_as_handled()
 			return
 
 		if _active_candidate != null and is_instance_valid(_active_candidate):

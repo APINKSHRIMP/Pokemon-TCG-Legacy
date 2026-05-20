@@ -1,0 +1,30 @@
+{
+	"_comment": "Flavour text for plain interactable signs. Keyed by scene name, then by the CollisionShape2D node name under that scene's 'Interactables' node. Special shapes ('Bed', 'TV') are handled in code and need no entry here.",
+	"Celeste_Harbour": {
+		"Sign_Forest": "Verdant Forest — nature trails and the Event Hall this way.",
+		"Sign_Shop": "Celeste Harbour Card Mart — packs, singles and supplies.",
+		"Sign_Beach_Left_Big": "Beach access. Mind the tide times!",
+		"Sign_Beach_Right_Big": "‹ Magikarp Pond  |  Pikachu Pond ›",
+		"Sign_Beach_Right_Small": "Please keep the beach clean. Bins provided.",
+		"Sign_Left_Dock_Left": "West Dock — fishing boats only beyond this point.",
+		"Sign_JuiceBar": "Fresh hot berry juice served here — try your luck for a coin!",
+		"Sign_Left_Dock_Right": "Harbour Dock — watch your step near the water.",
+		"Sign_Right_Dock_Left": "East Dock — the SS Anne berths here on its annual visit.",
+		"Sign_Right_Dock_Right": "Cargo loading area — authorised personnel only.",
+		"Sign_Shop_Holo": "Holo Mart — rare holographic cards bought and sold.",
+		"Sign_Shop_Coin": "Coin Mart — collectible coins for every trainer.",
+		"Sign_Shop_Bakery": "Fresh hot bread from here!",
+		"Sign_Shop_Right": "Celeste Harbour General Store — everyday essentials.",
+		"Sign_Shop_Lighthouse": "Celeste Lighthouse — guiding ships safely home."
+	},
+	"Verdant_Forest": {
+		"Sign_South": "‹ Celeste Harbour  |  Forest depths ›",
+		"Sign_South_West": "Western trail — watch for wild Pokémon.",
+		"Sign_North_West": "Forest Mart — supplies for the trek ahead.",
+		"Sign_North": "Verdant Event Hall ahead — home of the Gym Hero Challenge.",
+		"Sign_North_East": "Eastern trail — the forest grows dense beyond here.",
+		"Sign_South_East": "Picnic area — please take your litter home."
+	},
+	"Player_House_Upstairs": {},
+	"Player_House_Downstairs": {}
+}

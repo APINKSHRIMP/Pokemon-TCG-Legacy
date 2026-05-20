@@ -4,9 +4,13 @@
 [ext_resource type="TileSet" uid="uid://yus3igcnpw1m" path="res://Image_Assets/Map_Sheets/Tile_Sets/Player_Home_Tileset.tres" id="2_g1bce"]
 [ext_resource type="PackedScene" uid="uid://bprufyh8mxqom" path="res://Scenes/Objects/Player_Object_Scene.tscn" id="3_xhodw"]
 [ext_resource type="Texture2D" uid="uid://bx3bwk33dets8" path="res://Image_Assets/Misc/starter_box.png" id="4_eucp7"]
+[ext_resource type="Script" path="res://Scripts/Map_Scripts/Interactables_Script.gd" id="int_script"]
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_377ug"]
 size = Vector2(23, 17)
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_whmvp"]
+size = Vector2(60, 74)
 
 [node name="PlayerHouseUpstairs" type="Node2D" unique_id=1007463427]
 script = ExtResource("1_whmvp")
@@ -79,7 +83,6 @@ tile_map_data = PackedByteArray("AAAPAAIAAQAuAAQAAAAPAAMAAQAuAAUAAAA=")
 tile_set = ExtResource("2_g1bce")
 
 [node name="Bed" type="TileMapLayer" parent="UPSTAIRS" unique_id=1440724849]
-visible = false
 position = Vector2(1, -5)
 tile_map_data = PackedByteArray("AAAUAAgAAQArAAsAAAAUAAkAAQArAAwAAAAUAAoAAQArAA0AAAAUAAsAAQArAA4AAAAVAAgAAQAsAAsAAAAVAAkAAQAsAAwAAAAVAAoAAQAsAA0AAAAVAAsAAQAsAA4AAAA=")
 tile_set = ExtResource("2_g1bce")
@@ -113,3 +116,10 @@ expand_mode = 2
 stretch_mode = 2
 
 [node name="UILAYER" type="CanvasLayer" parent="." unique_id=383211045]
+
+[node name="Interactables" type="Area2D" parent="." unique_id=1355057286]
+script = ExtResource("int_script")
+
+[node name="Bed" type="CollisionShape2D" parent="Interactables" unique_id=1923336825]
+position = Vector2(337, 159)
+shape = SubResource("RectangleShape2D_whmvp")

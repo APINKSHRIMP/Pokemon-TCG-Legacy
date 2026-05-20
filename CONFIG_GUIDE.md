@@ -5,7 +5,7 @@ the **field name**, the **allowed values**, the **file(s) that consume it**,
 and a **minimal example**.
 
 > Keep this file open while editing data files in `NPC_and_Opponent_Data/`,
-> `Card_Set_Data/`, and `Player_Data/`.
+> `Card_Set_Data/`, `Map_Data/`, and `Player_Data/`.
 
 ---
 
@@ -541,7 +541,80 @@ elsewhere is setting them.
 
 ---
 
-## 12. Quick-Reference Cheat Sheet
+## 12. Interactables (Signs, Bed, TV)
+
+Overworld "objects" the player interacts with by pressing **Space** while standing
+inside the object's zone.
+
+**Setup:** each map scene has an `Interactables` **Area2D** node whose children are
+named `CollisionShape2D` zones (rectangles). The shared script
+`Scripts/Map_Scripts/Interactables_Script.gd` is attached to that node.
+
+**Behaviour is chosen by the shape's NAME:**
+
+| Shape name | Behaviour |
+|---|---|
+| `Bed` | Sleep flow — see §12.2 |
+| `TV` | Cycling news headlines — see §12.3 |
+| anything else | Plain flavour text from `Interactables_Data.json` — see §12.1 |
+
+### 12.1 Sign flavour text
+
+**File:** `Map_Data/Interactables_Data.json`
+**Reader:** `Interactables_Script.gd`
+
+Keyed by **scene name** (the `.tscn` filename without extension), then by the
+**shape name**:
+
+```jsonc
+{
+  "Celeste_Harbour": {
+    "Sign_Shop_Bakery": "Fresh hot bread from here!",
+    "Sign_Beach_Right_Big": "‹ Magikarp Pond  |  Pikachu Pond ›"
+  },
+  "Verdant_Forest": { "Sign_North": "Verdant Event Hall ahead." }
+}
+```
+
+A shape with no matching entry shows a generic fallback line. `Bed` / `TV`
+shapes are handled in code and need no entry.
+
+### 12.2 Bed
+
+| Time of day | Result |
+|---|---|
+| `Day` / `Evening` | Message: *"…it's far too early to go to sleep now!"* |
+| `Night` | Yes/No prompt *"Would you like to go to sleep now?"* |
+
+Choosing **Yes** at night: fades to black over `SLEEP_FADE_DURATION` (3.0s),
+remembers the player's position, advances **`date` +1** and **`Night → Day`**
+(via `GameState.advance_time`), then reloads the scene fresh.
+
+### 12.3 TV news
+
+The TV picks the **highest progression stage** whose condition is currently met,
+then cycles through that stage's headlines on each press. Conditions are checked
+top-down in `_tv_stage()`:
+
+| Stage | Condition | Theme |
+|---|---|---|
+| 5 | `date >= 4` | Verdant Forest open |
+| 4 | `date >= 3` | SS Anne arrived |
+| 3 | `base2` or `base3` in `packs_unlocked` | New sets in store |
+| 2 | `shop_state == "open"` | Card mart selling packs |
+| 1 | (default) | Game start |
+
+Headline text lives in the `TV_NEWS` constant in `Interactables_Script.gd`.
+
+### 12.4 Adding a new interactable
+
+1. Add a named `CollisionShape2D` under the scene's `Interactables` node.
+2. **Plain text:** add an entry under that scene's key in `Interactables_Data.json`.
+3. **Custom behaviour:** add a `case` for the shape name in `_trigger()`.
+
+---
+
+## 13. Quick-Reference Cheat Sheet
 
 | I want to… | Edit this |
 |---|---|
@@ -555,7 +628,9 @@ elsewhere is setting them.
 | Add a new card to a set | Append to `Card_Set_Data/<set>.json` (§8.1) |
 | Change a pack's price | Edit `Card_Set_Data/pack_prices.json` (§9) |
 | Add a coin to the Coin Shop | Append to `coin_shop_inventory.json` (§10) |
+| Change a sign's flavour text | Edit `Map_Data/Interactables_Data.json` (§12.1) |
+| Add a new sign / object interaction | New `CollisionShape2D` under `Interactables` (§12.4) |
 
 ---
 
-*Last updated: 2026-05-19*
+*Last updated: 2026-05-20*

@@ -3,12 +3,16 @@
 [ext_resource type="Script" uid="uid://bxy1uswsswt1l" path="res://Scripts/Map_Scripts/Player_House_Downstairs.gd" id="1_s8ing"]
 [ext_resource type="TileSet" uid="uid://yus3igcnpw1m" path="res://Image_Assets/Map_Sheets/Tile_Sets/Player_Home_Tileset.tres" id="2_kd744"]
 [ext_resource type="PackedScene" uid="uid://bprufyh8mxqom" path="res://Scenes/Objects/Player_Object_Scene.tscn" id="3_hfq7f"]
+[ext_resource type="Script" path="res://Scripts/Map_Scripts/Interactables_Script.gd" id="int_script"]
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_377ug"]
 size = Vector2(23, 10)
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_gymwu"]
 size = Vector2(23, 17)
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_s8ing"]
+size = Vector2(61, 54)
 
 [node name="PlayerHouseDownstairs" type="Node2D" unique_id=1007463427]
 script = ExtResource("1_s8ing")
@@ -77,13 +81,11 @@ tile_set = ExtResource("2_kd744")
 tile_set = ExtResource("2_kd744")
 
 [node name="TV Bottom" type="TileMapLayer" parent="DOWNSTAIRS" unique_id=210839355]
-visible = false
 position = Vector2(3, 0)
 tile_map_data = PackedByteArray("AAATAAQAAQA3AAgAAAATAAUAAQA3AAkAAAAUAAQAAQA4AAgAAAAUAAUAAQA4AAkAAAAVAAQAAQA5AAgAAAAVAAUAAQA5AAkAAAA=")
 tile_set = ExtResource("2_kd744")
 
 [node name="TV TOP" type="TileMapLayer" parent="DOWNSTAIRS" unique_id=1555225686]
-visible = false
 z_index = 10
 position = Vector2(3, 0)
 tile_map_data = PackedByteArray("AAATAAMAAQA3AAcAAAAUAAMAAQA4AAcAAAAVAAMAAQA5AAcAAAA=")
@@ -121,3 +123,10 @@ metadata/target_scene = "res://Scenes/Map_Scenes/Player_House_Upstairs.tscn"
 metadata/door_type = "stairs_up"
 
 [node name="UILAYER" type="CanvasLayer" parent="." unique_id=1060825490]
+
+[node name="Interactables" type="Area2D" parent="." unique_id=1398527179]
+script = ExtResource("int_script")
+
+[node name="TV" type="CollisionShape2D" parent="Interactables" unique_id=1488498010]
+position = Vector2(333.5, 77)
+shape = SubResource("RectangleShape2D_s8ing")

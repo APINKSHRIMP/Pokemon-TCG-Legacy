@@ -35,6 +35,10 @@ var yes_button: Button
 var no_button: Button
 var ok_button: Button
 
+# Callback fired when the player presses Yes on a generic interactable
+# confirm dialog (e.g. the bed). Empty Callable when none is active.
+var _pending_confirm_yes: Callable = Callable()
+
 # ============================================================
 # GIFT DISPLAY STATE
 # ============================================================
@@ -390,6 +394,7 @@ func _hide_message():
 	message_panel.visible = false
 	_clear_gift_display()
 	_hide_cash_overlay()
+	_pending_confirm_yes = Callable()
 	_player.can_move = true
 	if current_opponent != null:
 		current_opponent.resume_movement()
@@ -397,6 +402,26 @@ func _hide_message():
 		current_npc.resume_movement()
 	current_opponent = null
 	current_npc = null
+
+# ------------------------------------------------------------
+# INTERACTABLES — public hooks for scene interactables (signs,
+# the bed, the TV). Lets them reuse the shared messagebox
+# without going through the opponent/NPC interaction paths.
+# ------------------------------------------------------------
+
+# Shows a simple OK dialog. Ignored if a dialog is already open.
+func show_interactable_message(text: String) -> void:
+	if message_panel == null or message_panel.visible:
+		return
+	_show_message_with_ok(text)
+
+# Shows a Yes/No dialog. on_yes is called (after the dialog closes)
+# only if the player chooses Yes. Ignored if a dialog is already open.
+func show_interactable_confirm(text: String, on_yes: Callable) -> void:
+	if message_panel == null or message_panel.visible:
+		return
+	_pending_confirm_yes = on_yes
+	_show_message_with_choices(text)
 
 func handle_message_spacebar():
 	if _validation_popup_active:
@@ -422,6 +447,14 @@ func _on_player_interact(opponent: Node):
 	_show_message_with_choices(opponent.get_greeting_text())
 
 func _on_yes_pressed():
+	# Generic interactable confirm (bed, etc.) — runs before opponent/NPC logic
+	if _pending_confirm_yes.is_valid():
+		var cb: Callable = _pending_confirm_yes
+		_pending_confirm_yes = Callable()
+		_hide_message()
+		cb.call()
+		return
+
 	# Juice vendor — handle purchase inline, bypass the shop/battle paths below
 	if current_npc != null and current_npc.npc_type == "juice_vendor":
 		_handle_juice_purchase()

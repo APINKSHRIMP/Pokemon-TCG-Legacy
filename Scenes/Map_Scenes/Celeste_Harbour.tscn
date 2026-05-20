@@ -6,12 +6,22 @@
 [ext_resource type="Script" uid="uid://c8kspw0hm4x0s" path="res://Scripts/Shaders/lighthouse_light.gd" id="3_u8po5"]
 [ext_resource type="Texture2D" uid="uid://cm4lgnvbaa5o2" path="res://Image_Assets/Map_Sheets/Image_Sheets/Lighthouse_Light.png" id="4_401pq"]
 [ext_resource type="PackedScene" uid="uid://bprufyh8mxqom" path="res://Scenes/Objects/Player_Object_Scene.tscn" id="5_a0lly"]
+[ext_resource type="Script" path="res://Scripts/Map_Scripts/Interactables_Script.gd" id="int_script"]
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_njjmc"]
 size = Vector2(26, 5.5)
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_h0m0o"]
 size = Vector2(120, 20)
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_m2ydn"]
+size = Vector2(50.5, 32)
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_d4ef1"]
+size = Vector2(34, 27)
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_r50et"]
+size = Vector2(18, 18)
 
 [sub_resource type="Gradient" id="Gradient_bf13f"]
 offsets = PackedFloat32Array(0.094339624, 0.4811321)
@@ -1856,6 +1866,69 @@ metadata/target_scene = "res://Scenes/Map_Scenes/Card_Mart.tscn"
 position = Vector2(959, -598)
 shape = SubResource("RectangleShape2D_h0m0o")
 metadata/target_scene = "res://Scenes/Map_Scenes/Verdant_Forest.tscn"
+
+[node name="Interactables" type="Area2D" parent="." unique_id=1377595820]
+script = ExtResource("int_script")
+
+[node name="Sign_Forest" type="CollisionShape2D" parent="Interactables" unique_id=1529929755]
+position = Vector2(852.75, 921)
+shape = SubResource("RectangleShape2D_m2ydn")
+
+[node name="Sign_Shop" type="CollisionShape2D" parent="Interactables" unique_id=1030981978]
+position = Vector2(579, 1610)
+shape = SubResource("RectangleShape2D_m2ydn")
+
+[node name="Sign_Beach_Left_Big" type="CollisionShape2D" parent="Interactables" unique_id=980093800]
+position = Vector2(659, 2089)
+shape = SubResource("RectangleShape2D_m2ydn")
+
+[node name="Sign_Beach_Right_Big" type="CollisionShape2D" parent="Interactables" unique_id=1230195467]
+position = Vector2(787, 2090)
+shape = SubResource("RectangleShape2D_m2ydn")
+
+[node name="Sign_Beach_Right_Small" type="CollisionShape2D" parent="Interactables" unique_id=124515874]
+position = Vector2(828, 2089)
+shape = SubResource("RectangleShape2D_d4ef1")
+
+[node name="Sign_Left_Dock_Left" type="CollisionShape2D" parent="Interactables" unique_id=1322629330]
+position = Vector2(478, 3069.5)
+shape = SubResource("RectangleShape2D_d4ef1")
+
+[node name="Sign_JuiceBar" type="CollisionShape2D" parent="Interactables" unique_id=2007548029]
+position = Vector2(1084, 2171)
+shape = SubResource("RectangleShape2D_d4ef1")
+
+[node name="Sign_Left_Dock_Right" type="CollisionShape2D" parent="Interactables" unique_id=1739272687]
+position = Vector2(1006, 3166)
+shape = SubResource("RectangleShape2D_d4ef1")
+
+[node name="Sign_Right_Dock_Left" type="CollisionShape2D" parent="Interactables" unique_id=555167584]
+position = Vector2(2094, 3165)
+shape = SubResource("RectangleShape2D_d4ef1")
+
+[node name="Sign_Right_Dock_Right" type="CollisionShape2D" parent="Interactables" unique_id=1658794289]
+position = Vector2(2719, 3073)
+shape = SubResource("RectangleShape2D_d4ef1")
+
+[node name="Sign_Shop_Holo" type="CollisionShape2D" parent="Interactables" unique_id=1113862036]
+position = Vector2(1942, 1668)
+shape = SubResource("RectangleShape2D_r50et")
+
+[node name="Sign_Shop_Coin" type="CollisionShape2D" parent="Interactables" unique_id=1279739434]
+position = Vector2(2054, 1668)
+shape = SubResource("RectangleShape2D_r50et")
+
+[node name="Sign_Shop_Bakery" type="CollisionShape2D" parent="Interactables" unique_id=1663229621]
+position = Vector2(2422, 1669)
+shape = SubResource("RectangleShape2D_r50et")
+
+[node name="Sign_Shop_Right" type="CollisionShape2D" parent="Interactables" unique_id=193883232]
+position = Vector2(2534, 1668)
+shape = SubResource("RectangleShape2D_r50et")
+
+[node name="Sign_Shop_Lighthouse" type="CollisionShape2D" parent="Interactables" unique_id=656852934]
+position = Vector2(-618, 2674)
+shape = SubResource("RectangleShape2D_r50et")
 
 [node name="UILAYER" type="CanvasLayer" parent="." unique_id=1479968642]
 

@@ -2,6 +2,7 @@
 
 [ext_resource type="TileSet" uid="uid://brncoaox03ylg" path="res://Image_Assets/Map_Sheets/Tile_Sets/Verdant_Forest.tres" id="1_vnhbh"]
 [ext_resource type="PackedScene" uid="uid://bprufyh8mxqom" path="res://Scenes/Objects/Player_Object_Scene.tscn" id="2_06m8d"]
+[ext_resource type="Script" path="res://Scripts/Map_Scripts/Interactables_Script.gd" id="int_script"]
 [ext_resource type="PackedScene" uid="uid://c10qeone4u11s" path="res://Image_Assets/Map_Objects/DarkTree.tscn" id="4_0jajs"]
 [ext_resource type="TileSet" uid="uid://dqknfbtehgo6c" path="res://Image_Assets/Map_Sheets/Tile_Sets/Starting_Areas.tres" id="4_li0g5"]
 [ext_resource type="PackedScene" uid="uid://d0k3aqu382y78" path="res://Image_Assets/Map_Objects/LightTree.tscn" id="5_efv3c"]
@@ -22,6 +23,9 @@ size = Vector2(227, 62.75)
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_x6xh7"]
 size = Vector2(11, 8)
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_8xcuo"]
+size = Vector2(26, 26)
 
 [node name="VerdantForest" type="Node2D" unique_id=1780779826]
 script = ExtResource("20_vfscr")
@@ -4083,3 +4087,30 @@ offset_bottom = -125.0
 texture = ExtResource("13_6ll1i")
 stretch_mode = 2
 metadata/_edit_use_anchors_ = true
+
+[node name="Interactables" type="Area2D" parent="." unique_id=1773960785]
+script = ExtResource("int_script")
+
+[node name="Sign_South" type="CollisionShape2D" parent="Interactables" unique_id=1519012387]
+position = Vector2(1712, 1600)
+shape = SubResource("RectangleShape2D_8xcuo")
+
+[node name="Sign_South_West" type="CollisionShape2D" parent="Interactables" unique_id=752555533]
+position = Vector2(1104, 1104)
+shape = SubResource("RectangleShape2D_8xcuo")
+
+[node name="Sign_North_West" type="CollisionShape2D" parent="Interactables" unique_id=321963298]
+position = Vector2(849, 336)
+shape = SubResource("RectangleShape2D_8xcuo")
+
+[node name="Sign_North" type="CollisionShape2D" parent="Interactables" unique_id=814647170]
+position = Vector2(1841, -96)
+shape = SubResource("RectangleShape2D_8xcuo")
+
+[node name="Sign_North_East" type="CollisionShape2D" parent="Interactables" unique_id=669095827]
+position = Vector2(2705, 464)
+shape = SubResource("RectangleShape2D_8xcuo")
+
+[node name="Sign_South_East" type="CollisionShape2D" parent="Interactables" unique_id=1675739471]
+position = Vector2(2576, 1040)
+shape = SubResource("RectangleShape2D_8xcuo")
