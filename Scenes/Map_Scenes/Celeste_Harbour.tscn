@@ -6,7 +6,7 @@
 [ext_resource type="Script" uid="uid://c8kspw0hm4x0s" path="res://Scripts/Shaders/lighthouse_light.gd" id="3_u8po5"]
 [ext_resource type="Texture2D" uid="uid://cm4lgnvbaa5o2" path="res://Image_Assets/Map_Sheets/Image_Sheets/Lighthouse_Light.png" id="4_401pq"]
 [ext_resource type="PackedScene" uid="uid://bprufyh8mxqom" path="res://Scenes/Objects/Player_Object_Scene.tscn" id="5_a0lly"]
-[ext_resource type="Script" path="res://Scripts/Map_Scripts/Interactables_Script.gd" id="int_script"]
+[ext_resource type="Script" uid="uid://cphl8h5xtm64h" path="res://Scripts/Map_Scripts/Interactables_Script.gd" id="int_script"]
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_njjmc"]
 size = Vector2(26, 5.5)
@@ -3657,6 +3657,7 @@ texture = ExtResource("4_401pq")
 offset = Vector2(-0.38427734, 775.4363)
 
 [node name="Collision Objects" type="Control" parent="." unique_id=557795143]
+visible = false
 layout_mode = 3
 anchors_preset = 0
 offset_right = 40.0

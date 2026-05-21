@@ -7,7 +7,8 @@ extends CharacterBody2D
 signal interact_pressed(opponent)
 signal npc_interact_pressed(npc)
 
-@export var move_speed: float = 950.0
+@export var move_speed: float = 120.0
+@export var run_multiplier: float = 2.0  # Speed/animation multiplier while Shift is held
 
 var current_direction: String = "down"
 var is_moving: bool = false
@@ -76,6 +77,7 @@ func _physics_process(_delta):
 	if not can_move:
 		velocity = Vector2.ZERO
 		if is_moving:
+			animated_sprite.speed_scale = 1.0
 			animated_sprite.play("idle_" + current_direction)
 			is_moving = false
 		# Still reconcile bubbles while frozen (e.g. during messagebox)
@@ -95,14 +97,20 @@ func _physics_process(_delta):
 
 	input_direction = input_direction.normalized()
 
+	# Hold Shift to run: doubles movement speed and the walk animation cycle
+	var is_running: bool = Input.is_key_pressed(KEY_SHIFT)
+	var speed_scale: float = run_multiplier if is_running else 1.0
+
 	if input_direction != Vector2.ZERO:
-		velocity = input_direction * move_speed
+		velocity = input_direction * move_speed * speed_scale
 		is_moving = true
 		_update_direction(input_direction)
+		animated_sprite.speed_scale = speed_scale
 		animated_sprite.play("walk_" + current_direction)
 	else:
 		velocity = Vector2.ZERO
 		if is_moving:
+			animated_sprite.speed_scale = 1.0
 			animated_sprite.play("idle_" + current_direction)
 			is_moving = false
 

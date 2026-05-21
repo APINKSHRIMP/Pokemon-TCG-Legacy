@@ -31,8 +31,8 @@ tile_map_data = PackedByteArray("AADE/93/AAAlAAIAAADE/97/AAAlAAMAAAA=")
 tile_set = ExtResource("1_yg3vm")
 
 [node name="PointLight2D2" type="PointLight2D" parent="." unique_id=1175959164]
-position = Vector2(17, 6.0332375)
-scale = Vector2(3.96875, 4.0017314)
+position = Vector2(23.000004, 12.083103)
+scale = Vector2(6.0625, 6.112881)
 color = Color(1.4954206, 1.3741792, 0.83410376, 0.5647059)
 energy = 2.21
 range_z_min = -961
