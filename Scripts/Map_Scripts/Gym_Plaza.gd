@@ -1,23 +1,36 @@
 extends Node2D
 
-const SCENE_PATH = "res://Scenes/Map_Scenes/Verdant_Forest.tscn"
+# ============================================================
+# GYM PLAZA — outdoor map
+# Structurally duplicated from Verdant Forest, so it reuses the
+# forest tilesets and tree-wall art. Connects back to Verdant
+# Forest and inward to the Gym Challenge Reception interior.
+#
+# Four shopkeeper NPCs stand in this plaza — they spawn from the
+# date/time NPC JSON (npc_type == "shop"); the shops themselves
+# are configured later.
+# ============================================================
+
+const SCENE_PATH = "res://Scenes/Map_Scenes/Gym_Plaza.tscn"
+
+# --- Tweakable -------------------------------------------------
+# Gym Plaza sits within the forest, so it reuses the forest BGM.
+# Point this at a dedicated track if one is added later.
 const BGM_PATH = "res://Audio/BGM/Verdant_Forest_BGM.ogg"
 
-# Default spawn used when arriving here for the first time (no door state,
-# no menu-return state). Matches the placement set in the .tscn.
-const DEFAULT_SPAWN_POSITION = Vector2(1770, 1850)
+# Spawn used on a first/cold arrival (matches the Player node placed in the .tscn).
+const DEFAULT_SPAWN_POSITION = Vector2(1763, 1810)
 
-# Where the player appears when returning from Gym Plaza.
-# Adjust in-editor so it sits just below the Gym Plaza gate.
-const ENTRY_FROM_GYM_PLAZA = Vector2(1816, -1650)
+# Where the player appears when walking in from Verdant Forest.
+# Adjust in-editor so it sits just inside the southern entrance.
+const ENTRY_FROM_VERDANT_FOREST = Vector2(1774, 1980)
+# ---------------------------------------------------------------
 
+# Gym Plaza shares Verdant Forest's tilesets — the scene was duplicated
+# from it and its TileMapLayers still reference Verdant_Forest.tres.
 const TILESET_DAY     = preload("res://Image_Assets/Map_Sheets/Tile_Sets/Verdant_Forest.tres")
 const TILESET_EVENING = preload("res://Image_Assets/Map_Sheets/Tile_Sets/Verdant_Forest_Evening.tres")
 const TILESET_NIGHT   = preload("res://Image_Assets/Map_Sheets/Tile_Sets/Verdant_Forest_Night.tres")
-
-const TRACKS_TILESET_DAY     = preload("res://Image_Assets/Map_Sheets/Tile_Sets/Starting_Areas.tres")
-const TRACKS_TILESET_EVENING = preload("res://Image_Assets/Map_Sheets/Tile_Sets/Starting_Areas_Evening.tres")
-const TRACKS_TILESET_NIGHT   = preload("res://Image_Assets/Map_Sheets/Tile_Sets/Starting_Areas_Night.tres")
 
 const TREE_HORIZ_DAY     = preload("res://Image_Assets/Map_Objects/TreeLineThird.png")
 const TREE_HORIZ_EVENING = preload("res://Image_Assets/Map_Objects/TreeLineThirdEvening.png")
@@ -34,12 +47,12 @@ func _ready():
 	var time_of_day: String = GameState.get_time()
 	var date: int = GameState.get_date()
 
-	# Build NPC JSON path: e.g. "Verdant_Forest_4_Day.json"
-	NPC_JSON_PATH = "res://NPC_and_Opponent_Data/Verdant_Forest_" + str(date) + "_" + time_of_day + ".json"
-
-	# Fall back to Day 4 if the specific time/date file doesn't exist
+	# Opponents + the 4 shopkeeper NPCs load from one date/time file,
+	# e.g. "Gym_Plaza_4_Day.json". These files don't exist yet — a
+	# missing path is blanked so MapManager simply spawns nothing.
+	NPC_JSON_PATH = "res://NPC_and_Opponent_Data/Gym_Plaza_" + str(date) + "_" + time_of_day + ".json"
 	if not ResourceLoader.exists(NPC_JSON_PATH):
-		NPC_JSON_PATH = "res://NPC_and_Opponent_Data/Verdant_Forest_4_Day.json"
+		NPC_JSON_PATH = ""
 
 	SoundManagerScript.play_bgm(BGM_PATH, true)
 	set_time_of_day(time_of_day)
@@ -55,9 +68,7 @@ func _ready():
 
 	# Entry positions from other maps
 	var entry_positions = {
-		"Celeste_Harbour": Vector2(1775, 1880),
-		"Rocket_Mart": Vector2(278, 1080),
-		"Gym_Plaza": ENTRY_FROM_GYM_PLAZA,
+		"Verdant_Forest": ENTRY_FROM_VERDANT_FOREST,
 	}
 
 	if GameState.has_menu_return_state and GameState.menu_return_scene_path == SCENE_PATH:
@@ -76,8 +87,8 @@ func _ready():
 		$Player.set_direction(GameState.get_player_direction())
 		GameState.entering_from = ""
 		GameState.return_to_scene = ""
-	elif GameState.return_to_scene == "Verdant Forest":
-		# Returning from interior
+	elif GameState.return_to_scene == "Gym Plaza":
+		# Returning from an interior (Gym Challenge Reception)
 		$Player.position = GameState.interior_entry_position
 		$Player.set_direction(GameState.get_player_direction())
 		GameState.return_to_scene = ""
@@ -106,21 +117,11 @@ func _ready():
 
 func set_time_of_day(time: String) -> void:
 	var tileset: TileSet
-	var tracks_tileset: TileSet
 	match time:
-		"Day":
-			tileset = TILESET_DAY
-			tracks_tileset = TRACKS_TILESET_DAY
-		"Evening":
-			tileset = TILESET_EVENING
-			tracks_tileset = TRACKS_TILESET_EVENING
-		"Night":
-			tileset = TILESET_NIGHT
-			tracks_tileset = TRACKS_TILESET_NIGHT
+		"Day":     tileset = TILESET_DAY
+		"Evening": tileset = TILESET_EVENING
+		"Night":   tileset = TILESET_NIGHT
 	_apply_tileset($TILE_MAPS, tileset)
-	var train_tracks = $TILE_MAPS.find_child("TRAIN TRACKS")
-	if train_tracks:
-		_apply_tileset(train_tracks, tracks_tileset)
 
 	var horiz_tex: Texture2D
 	var vert_tex: Texture2D
@@ -140,15 +141,16 @@ func set_time_of_day(time: String) -> void:
 	var north = $TREE_WALL_NORTH_GROUP
 	north.get_node("Shadow").visible  = not is_night
 	north.get_node("Shadow2").visible = not is_night
-	for name in ["Tree_wall_north", "Tree_wall_north2", "Tree_wall_north3", "Tree_wall_north4"]:
-		north.get_node(name).texture = horiz_tex
+	for n in ["Tree_wall_north", "Tree_wall_north2", "Tree_wall_north3", "Tree_wall_north4"]:
+		north.get_node(n).texture = horiz_tex
 
-	# South wall
-	var south = $TREE_WALL_SOUTH_GROUP
-	south.get_node("Shadow").visible  = not is_night
-	south.get_node("Shadow2").visible = not is_night
-	for name in ["Tree_wall_South", "Tree_wall_South2", "Tree_wall_South3", "Tree_wall_South4"]:
-		south.get_node(name).texture = horiz_tex
+	# South walls — Gym Plaza has two south tree-wall groups
+	for south_path in ["TREE_WALL_SOUTH_GROUP", "TREE_WALL_SOUTH_GROUP2"]:
+		var south = get_node(south_path)
+		south.get_node("Shadow").visible  = not is_night
+		south.get_node("Shadow2").visible = not is_night
+		for n in ["Tree_wall_South", "Tree_wall_South2", "Tree_wall_South3", "Tree_wall_South4"]:
+			south.get_node(n).texture = horiz_tex
 
 	# West wall
 	var west = $TREE_WALL_WEST_GROUP
@@ -158,8 +160,8 @@ func set_time_of_day(time: String) -> void:
 	# East wall
 	var east = $TREE_WALL_EAST_GROUP
 	east.get_node("SHADOW_VERTICAL").visible = not is_night
-	for name in ["TREE_WALL_EAST", "TREE_WALL_EAST2"]:
-		east.get_node(name).texture = vert_tex
+	for n in ["TREE_WALL_EAST", "TREE_WALL_EAST2"]:
+		east.get_node(n).texture = vert_tex
 
 	if not is_night:
 		for lamp in find_children("ForestLamp*"):
@@ -170,8 +172,6 @@ func _apply_tileset(node: Node, tileset: TileSet) -> void:
 	if node is TileMapLayer:
 		node.tile_set = tileset
 	for child in node.get_children():
-		if child.name == "TRAIN TRACKS":
-			continue
 		_apply_tileset(child, tileset)
 
 
@@ -188,6 +188,7 @@ func _input(event: InputEvent) -> void:
 		GameState.save_current_location(SCENE_PATH, $Player.position)
 		SoundManagerScript.stop_bgm()
 		SceneCache.change_scene("res://Scenes/Main_Menu_Scenes/Main_Menu_Scene.tscn")
+
 
 func _on_door_entered(body: Node2D):
 	if not body.is_in_group("player"):
@@ -214,7 +215,8 @@ func _on_door_entered(body: Node2D):
 	var save_pos = body.position
 	save_pos.y += 5
 
-	# Map scenes use entering_from for hardcoded spawn; everything else is an interior.
+	# Map scenes use entering_from for a hardcoded spawn; everything else
+	# is treated as an interior (Gym Challenge Reception).
 	var map_scenes = ["Celeste_Harbour", "Verdant_Forest", "Gym_Plaza"]
 	var is_map_scene = false
 	for map_name in map_scenes:
@@ -223,11 +225,11 @@ func _on_door_entered(body: Node2D):
 			break
 
 	if is_map_scene:
-		GameState.entering_from = "Verdant_Forest"
+		GameState.entering_from = "Gym_Plaza"
 		GameState.return_to_scene = ""
 	else:
 		GameState.interior_entry_position = save_pos
-		GameState.return_to_scene = "Verdant Forest"
+		GameState.return_to_scene = "Gym Plaza"
 		GameState.entering_from = ""
 
 	var tween = create_tween()

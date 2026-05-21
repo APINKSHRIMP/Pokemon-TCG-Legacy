@@ -7,7 +7,7 @@ extends CharacterBody2D
 signal interact_pressed(opponent)
 signal npc_interact_pressed(npc)
 
-@export var move_speed: float = 120.0
+@export var move_speed: float = 200.0
 @export var run_multiplier: float = 2.0  # Speed/animation multiplier while Shift is held
 
 var current_direction: String = "down"
