@@ -1,6 +1,6 @@
 [gd_scene format=4 uid="uid://d1r12n0bw1j7q"]
 
-[ext_resource type="Script" path="res://Scripts/Map_Scripts/Gym_Plaza.gd" id="1_sxuf3"]
+[ext_resource type="Script" uid="uid://ojw4o8cgyttg" path="res://Scripts/Map_Scripts/Gym_Plaza.gd" id="1_sxuf3"]
 [ext_resource type="TileSet" uid="uid://brncoaox03ylg" path="res://Image_Assets/Map_Sheets/Tile_Sets/Verdant_Forest.tres" id="2_ghe25"]
 [ext_resource type="PackedScene" uid="uid://bd1cf7d6oc7n0" path="res://Image_Assets/Map_Objects/Forest_Lamp.tscn" id="3_2p1og"]
 [ext_resource type="PackedScene" uid="uid://c10qeone4u11s" path="res://Image_Assets/Map_Objects/DarkTree.tscn" id="3_8vvmf"]
@@ -24,7 +24,7 @@ size = Vector2(104.25, 23)
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_8xcuo"]
 size = Vector2(47, 26)
 
-[node name="VerdantForest" type="Node2D" unique_id=1780779826]
+[node name="GYM_PLAZA" type="Node2D" unique_id=1780779826]
 script = ExtResource("1_sxuf3")
 
 [node name="TILE_MAPS" type="TileMap" parent="." unique_id=1701685955]
@@ -602,7 +602,7 @@ scale = Vector2(2, 2)
 texture = ExtResource("11_1bjsb")
 
 [node name="Player" parent="." unique_id=510514557 instance=ExtResource("12_qwjo6")]
-position = Vector2(1763, 1810)
+position = Vector2(1764, 1981)
 
 [node name="Door Areas" type="Area2D" parent="." unique_id=1349188176]
 position = Vector2(-37, 1468)
