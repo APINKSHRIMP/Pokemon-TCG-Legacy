@@ -7,9 +7,15 @@ const BGM_PATH = "res://Audio/BGM/Verdant_Forest_BGM.ogg"
 # no menu-return state). Matches the placement set in the .tscn.
 const DEFAULT_SPAWN_POSITION = Vector2(1770, 1850)
 
-# Where the player appears when returning from Gym Plaza.
-# Adjust in-editor so it sits just below the Gym Plaza gate.
-const ENTRY_FROM_GYM_PLAZA = Vector2(1816, -1650)
+# --- Door-return spawn points -------------------------------------------------
+# Each value is the horizontal centre of the matching DoorArea collider in
+# THIS scene, pushed ~20px below the collider's bottom edge so the player
+# always lands clear of the trigger (no immediate re-entry loop) and exits
+# from the centre of the door regardless of how they walked into it.
+const SPAWN_FROM_CELESTE_HARBOUR = Vector2(1775, 1909)  # Celeste Harbour door
+const SPAWN_FROM_GYM_PLAZA       = Vector2(1773, -280)  # Gym Plaza door
+const SPAWN_FROM_ROCKET_MART     = Vector2(278, 1064)   # Rocket Mart door
+# ------------------------------------------------------------------------------
 
 const TILESET_DAY     = preload("res://Image_Assets/Map_Sheets/Tile_Sets/Verdant_Forest.tres")
 const TILESET_EVENING = preload("res://Image_Assets/Map_Sheets/Tile_Sets/Verdant_Forest_Evening.tres")
@@ -53,11 +59,12 @@ func _ready():
 	$"Door Areas".monitorable     = true
 	$"Door Areas".body_entered.connect(_on_door_entered)
 
-	# Entry positions from other maps
+	# Hard-coded spawn point per scene the player can arrive from. The key is
+	# the value the source scene writes to GameState.entering_from.
 	var entry_positions = {
-		"Celeste_Harbour": Vector2(1775, 1880),
-		"Rocket_Mart": Vector2(278, 1080),
-		"Gym_Plaza": ENTRY_FROM_GYM_PLAZA,
+		"Celeste_Harbour": SPAWN_FROM_CELESTE_HARBOUR,
+		"Rocket_Mart":     SPAWN_FROM_ROCKET_MART,
+		"Gym_Plaza":       SPAWN_FROM_GYM_PLAZA,
 	}
 
 	if GameState.has_menu_return_state and GameState.menu_return_scene_path == SCENE_PATH:
@@ -71,16 +78,10 @@ func _ready():
 		$Player.set_direction(GameState.get_player_direction())
 		GameState.returning_from_battle = false
 	elif entry_positions.has(GameState.entering_from):
-		# Returning from another map
+		# Returning from another scene through one of this scene's doors
 		$Player.position = entry_positions[GameState.entering_from]
 		$Player.set_direction(GameState.get_player_direction())
 		GameState.entering_from = ""
-		GameState.return_to_scene = ""
-	elif GameState.return_to_scene == "Verdant Forest":
-		# Returning from interior
-		$Player.position = GameState.interior_entry_position
-		$Player.set_direction(GameState.get_player_direction())
-		GameState.return_to_scene = ""
 	else:
 		# First load or other cases
 		$Player.position = DEFAULT_SPAWN_POSITION
@@ -211,24 +212,9 @@ func _on_door_entered(body: Node2D):
 	GameState.save_player_direction(body.get_current_direction())
 	body.lock_movement()
 
-	var save_pos = body.position
-	save_pos.y += 5
-
-	# Map scenes use entering_from for hardcoded spawn; everything else is an interior.
-	var map_scenes = ["Celeste_Harbour", "Verdant_Forest", "Gym_Plaza"]
-	var is_map_scene = false
-	for map_name in map_scenes:
-		if target.contains(map_name):
-			is_map_scene = true
-			break
-
-	if is_map_scene:
-		GameState.entering_from = "Verdant_Forest"
-		GameState.return_to_scene = ""
-	else:
-		GameState.interior_entry_position = save_pos
-		GameState.return_to_scene = "Verdant Forest"
-		GameState.entering_from = ""
+	# Every scene resolves its own spawn from a hard-coded table keyed on
+	# entering_from, so this door only has to announce where we came from.
+	GameState.entering_from = "Verdant_Forest"
 
 	var tween = create_tween()
 	tween.tween_property(get_tree().current_scene, "modulate", Color.BLACK, 0.5)

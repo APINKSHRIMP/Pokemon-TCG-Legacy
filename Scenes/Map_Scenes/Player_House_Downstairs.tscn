@@ -9,7 +9,7 @@
 size = Vector2(23, 10)
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_gymwu"]
-size = Vector2(23, 17)
+size = Vector2(8, 6)
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_s8ing"]
 size = Vector2(61, 54)
@@ -81,11 +81,13 @@ tile_set = ExtResource("2_rkwje")
 tile_set = ExtResource("2_rkwje")
 
 [node name="TV Bottom" type="TileMapLayer" parent="DOWNSTAIRS" unique_id=210839355]
+visible = false
 position = Vector2(3, 0)
 tile_map_data = PackedByteArray("AAATAAQAAQA3AAgAAAATAAUAAQA3AAkAAAAUAAQAAQA4AAgAAAAUAAUAAQA4AAkAAAAVAAQAAQA5AAgAAAAVAAUAAQA5AAkAAAA=")
 tile_set = ExtResource("2_rkwje")
 
 [node name="TV TOP" type="TileMapLayer" parent="DOWNSTAIRS" unique_id=1555225686]
+visible = false
 z_index = 10
 position = Vector2(3, 0)
 tile_map_data = PackedByteArray("AAATAAMAAQA3AAcAAAAUAAMAAQA4AAcAAAAVAAMAAQA5AAcAAAA=")
@@ -111,13 +113,13 @@ position = Vector2(209, 200)
 position = Vector2(-37, 1468)
 
 [node name="DoorArea_CelesteHarbour" type="CollisionShape2D" parent="Door Areas" unique_id=2119147692]
-position = Vector2(237, -1239)
+position = Vector2(237, -1242)
 shape = SubResource("RectangleShape2D_377ug")
 metadata/target_scene = "res://Scenes/Map_Scenes/Celeste_Harbour.tscn"
 metadata/door_type = "exit_to_outside"
 
 [node name="DoorArea_Downstairs" type="CollisionShape2D" parent="Door Areas" unique_id=315181582]
-position = Vector2(429, -1459)
+position = Vector2(420, -1463)
 shape = SubResource("RectangleShape2D_gymwu")
 metadata/target_scene = "res://Scenes/Map_Scenes/Player_House_Upstairs.tscn"
 metadata/door_type = "stairs_up"

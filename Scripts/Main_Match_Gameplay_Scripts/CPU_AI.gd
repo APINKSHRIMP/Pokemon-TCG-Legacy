@@ -1957,7 +1957,278 @@ func score_parsed_effects(effects: Array, defender: card_object) -> float:
 ######################################################################################################################################################
 ###################################################### OPPONENT GENERAL FUNCTIONALITY FUNCTIONS ######################################################
 
-# Load all the opponent's data 
+# GYM2: shared end-of-attack housekeeping for the CPU's special attacks
+func gym2_cpu_finish(is_damage_attack: bool, base_damage: int, attack: Dictionary, attacker_types: Array) -> void:
+	if is_damage_attack:
+		main.last_attack_on_player = {"damage": base_damage, "attack": attack, "attacker_types": attacker_types}
+		main.opponent_attacked_this_turn = true
+	await main.check_all_knockouts()
+	if main._should_bail(): return
+	main.display_active_pokemon_energies(true)
+
+# GYM2 (GYM CHALLENGE) CPU attack dispatcher. Returns true if it fully handled the attack.
+func gym2_dispatch_cpu(attack: Dictionary, attack_name: String, _text_lower: String) -> bool:
+	var an = attack_name.to_lower()
+	var ae = main.attack_effects
+	var p = main.opponent_active_pokemon
+	var o = main.player_active_pokemon
+	var t = p.metadata.get("types", ["Colorless"])
+	var g2_base = ae.parse_attack_base_damage(attack)
+
+	if an == "roaring flames":
+		await ae.execute_roaring_flames(p, o, true)
+		await gym2_cpu_finish(true, 20, attack, t)
+		return true
+	if an == "growth":
+		await ae.execute_growth(p, true)
+		await gym2_cpu_finish(false, 0, attack, t)
+		return true
+	if an == "wide solarbeam":
+		await ae.execute_bench_choose_spread(p, o, true, 20, 2, 20, false)
+		await gym2_cpu_finish(true, 20, attack, t)
+		return true
+	if an == "summon storm":
+		await ae.execute_summon_storm(p, true)
+		await gym2_cpu_finish(false, 0, attack, t)
+		return true
+	if an == "dragon tornado":
+		await ae.execute_dragon_tornado(p, o, true, 40)
+		await gym2_cpu_finish(true, 40, attack, t)
+		return true
+	if an == "intimidate":
+		await ae.execute_intimidate(p, o, true)
+		await gym2_cpu_finish(false, 0, attack, t)
+		return true
+	if an == "giant growth":
+		await ae.execute_giant_growth(p, true)
+		await gym2_cpu_finish(false, 0, attack, t)
+		return true
+	if an == "kerzap":
+		await ae.execute_kerzap(p, o, true)
+		await gym2_cpu_finish(true, 20, attack, t)
+		return true
+	if an == "super removal":
+		await ae.execute_super_removal(p, true)
+		await gym2_cpu_finish(false, 0, attack, t)
+		return true
+	if an == "juxtapose":
+		await ae.execute_juxtapose(p, o, true)
+		await gym2_cpu_finish(false, 0, attack, t)
+		return true
+	if an == "plasma":
+		await ae.execute_plasma(p, o, true, g2_base)
+		await gym2_cpu_finish(true, g2_base, attack, t)
+		return true
+	if an == "electroburn":
+		await ae.execute_electroburn(p, o, true, g2_base)
+		await gym2_cpu_finish(true, g2_base, attack, t)
+		return true
+	if an == "love lariat":
+		await ae.execute_love_lariat(p, o, true)
+		await gym2_cpu_finish(true, 50, attack, t)
+		return true
+	if an == "overhead toss":
+		await ae.execute_overhead_toss(p, o, true, 40)
+		await gym2_cpu_finish(true, 40, attack, t)
+		return true
+	if an == "poison power":
+		await ae.execute_poison_power(p, o, true)
+		await gym2_cpu_finish(true, 20, attack, t)
+		return true
+	if an == "thunder flare":
+		await ae.execute_thunder_flare(p, o, true)
+		await gym2_cpu_finish(true, 30, attack, t)
+		return true
+	if an == "dark wave":
+		await ae.execute_dark_wave(p, o, true, g2_base)
+		await gym2_cpu_finish(true, g2_base, attack, t)
+		return true
+	if an == "damage shift":
+		await ae.execute_damage_shift(p, o, true)
+		await gym2_cpu_finish(false, 0, attack, t)
+		return true
+	if an == "bonfire":
+		await ae.execute_bonfire(p, true)
+		await gym2_cpu_finish(false, 0, attack, t)
+		return true
+	if an == "stamp":
+		await ae.execute_stamp(p, o, true)
+		await gym2_cpu_finish(true, 30, attack, t)
+		return true
+	if an == "detonate":
+		await ae.execute_detonate(p, o, true, g2_base)
+		await gym2_cpu_finish(true, g2_base, attack, t)
+		return true
+	if an == "risky attack":
+		await ae.execute_risky_attack(p, o, true, g2_base)
+		await gym2_cpu_finish(true, g2_base, attack, t)
+		return true
+	if an == "false charity":
+		await ae.execute_false_charity(p, true)
+		await gym2_cpu_finish(false, 0, attack, t)
+		return true
+	if an == "rend":
+		await ae.execute_rend(p, o, true)
+		await gym2_cpu_finish(true, 20, attack, t)
+		return true
+	if an == "obscuring gas":
+		await ae.execute_obscuring_gas(p, o, true, g2_base)
+		await gym2_cpu_finish(true, g2_base, attack, t)
+		return true
+	if an == "messenger":
+		await ae.execute_messenger(p, true)
+		await gym2_cpu_finish(false, 0, attack, t)
+		return true
+	if an == "lunar power":
+		await ae.execute_lunar_power(p, true)
+		await gym2_cpu_finish(false, 0, attack, t)
+		return true
+	if an == "errand-running":
+		await ae.execute_errand_running(p, true)
+		await gym2_cpu_finish(false, 0, attack, t)
+		return true
+	if an == "surprise":
+		await ae.execute_surprise(p, true)
+		await gym2_cpu_finish(false, 0, attack, t)
+		return true
+	if an == "power ball":
+		await ae.execute_flip_bonus_per_heads(p, o, true, g2_base, 3, 10)
+		await gym2_cpu_finish(true, g2_base, attack, t)
+		return true
+	if an == "focus energy":
+		p.gym2_focus_energy_active = true
+		await main.show_message("OPPONENT'S " + p.metadata.get("name", "").to_upper() + " IS FOCUSING ITS ENERGY!")
+		await gym2_cpu_finish(false, 0, attack, t)
+		return true
+	if an == "double-edge" and p.gym2_focus_energy_active:
+		p.gym2_focus_energy_active = false
+		await ae.execute_double_edge_boosted(p, o, true)
+		await gym2_cpu_finish(true, 80, attack, t)
+		return true
+	if an == "ice throw":
+		await ae.execute_ice_throw(p, o, true, g2_base)
+		await gym2_cpu_finish(true, g2_base, attack, t)
+		return true
+	if an == "shadow attack":
+		await ae.execute_bench_snipe_flip(p, o, true, 0, 30)
+		await gym2_cpu_finish(false, 0, attack, t)
+		return true
+	if an == "overrun":
+		await ae.execute_bench_snipe_flip(p, o, true, g2_base, 20)
+		await gym2_cpu_finish(true, g2_base, attack, t)
+		return true
+	if an == "invigorate":
+		await ae.execute_invigorate(p, true)
+		await gym2_cpu_finish(false, 0, attack, t)
+		return true
+	if an == "pendulum curse":
+		await ae.execute_pendulum_curse(p, o, true)
+		await gym2_cpu_finish(true, 20, attack, t)
+		return true
+	if an == "helping hand":
+		await ae.execute_helping_hand(p, true)
+		await gym2_cpu_finish(false, 0, attack, t)
+		return true
+	if an == "life drain":
+		await ae.execute_life_drain(p, o, true)
+		await gym2_cpu_finish(false, 0, attack, t)
+		return true
+	if an == "magic darts":
+		await ae.execute_magic_darts(p, true)
+		await gym2_cpu_finish(false, 0, attack, t)
+		return true
+	if an == "stoke":
+		await ae.execute_stoke(p, true)
+		await gym2_cpu_finish(false, 0, attack, t)
+		return true
+	if an == "energy support":
+		await ae.execute_search_typed_energy_to_hand(p, true, "Psychic")
+		await gym2_cpu_finish(false, 0, attack, t)
+		return true
+	if an == "pranks":
+		await ae.execute_pranks(p, true)
+		await gym2_cpu_finish(false, 0, attack, t)
+		return true
+	if an == "group therapy":
+		await ae.execute_group_therapy(p, true)
+		await gym2_cpu_finish(false, 0, attack, t)
+		return true
+	if an == "pulled punch":
+		await ae.execute_pulled_punch(p, o, true)
+		await gym2_cpu_finish(true, 40, attack, t)
+		return true
+	if an == "hind kick":
+		await ae.execute_hind_kick(p, o, true, g2_base)
+		await gym2_cpu_finish(true, g2_base, attack, t)
+		return true
+	if an == "call will-o'-the-wisp":
+		await ae.execute_call_wisp(p, true)
+		await gym2_cpu_finish(false, 0, attack, t)
+		return true
+	if an == "fast-acting poison":
+		await ae.execute_flip2_both_heads_status(p, o, true, g2_base, ["Confused", "Poisoned"])
+		await gym2_cpu_finish(true, g2_base, attack, t)
+		return true
+	if an == "sludge grip":
+		await ae.execute_sludge_grip(p, true)
+		await gym2_cpu_finish(false, 0, attack, t)
+		return true
+	if an == "group attack":
+		await ae.execute_group_attack(p, o, true)
+		await gym2_cpu_finish(true, 10, attack, t)
+		return true
+	if an == "bubbles":
+		await ae.execute_bubbles(p, o, true, g2_base, attack_name)
+		await gym2_cpu_finish(true, g2_base, attack, t)
+		return true
+	if an == "esp":
+		await ae.execute_esp(p, o, true)
+		await gym2_cpu_finish(false, 0, attack, t)
+		return true
+	if an == "star boomerang":
+		await ae.execute_star_boomerang(p, o, true, g2_base)
+		await gym2_cpu_finish(true, g2_base, attack, t)
+		return true
+	if an == "synchronize":
+		await ae.execute_synchronize(p, o, true, g2_base)
+		await gym2_cpu_finish(true, g2_base, attack, t)
+		return true
+	if an == "psyscan":
+		await ae.execute_psyscan(p, true)
+		await gym2_cpu_finish(false, 0, attack, t)
+		return true
+	if an == "fade out":
+		await ae.execute_fade_out(p, o, true, g2_base)
+		await gym2_cpu_finish(true, g2_base, attack, t)
+		return true
+	if an == "random esp":
+		await ae.execute_random_esp(p, o, true)
+		await gym2_cpu_finish(false, 0, attack, t)
+		return true
+	if an == "fury punch":
+		await ae.execute_fury_punch(p, o, true)
+		await gym2_cpu_finish(true, 20, attack, t)
+		return true
+	if an == "ink spurt":
+		await ae.execute_ink_spurt(p, o, true, g2_base)
+		await gym2_cpu_finish(true, g2_base, attack, t)
+		return true
+	if an == "grasping vine":
+		await ae.execute_draw_flip(p, true, 2)
+		await gym2_cpu_finish(false, 0, attack, t)
+		return true
+	if an == "lie low":
+		await ae.execute_lie_low(p, true)
+		await gym2_cpu_finish(false, 0, attack, t)
+		return true
+	if an == "earthdrill":
+		if p.gym2_lie_low_counter < 1:
+			return true
+		return false
+
+	return false
+
+# Load all the opponent's data
 func cpu_phase_attack(cpu_eval: Dictionary) -> void:
 	if main.opponent_active_pokemon == null or main.player_active_pokemon == null:
 		return
@@ -2131,6 +2402,174 @@ func cpu_phase_attack(cpu_eval: Dictionary) -> void:
 			else:
 				score -= 80.0  # Not in danger, prefer attacking
 		
+		# ---- GYM1 (GYM HEROES) ATTACK SCORING ----
+		var g1_cpu_active = main.opponent_active_pokemon
+		var g1_opp_bench = main.player_bench
+		# Discharge: expected damage from discarding all Lightning Energy (cancels the generic discard penalty)
+		if "lightning energy cards you discarded" in attack_text:
+			var g1_lc = 0
+			for e in g1_cpu_active.attached_energies:
+				if "Lightning" in main.get_energy_provided_by_card(e):
+					g1_lc += 1
+			score += 140.0 + g1_lc * 15.0 * 2.0
+			if g1_lc * 30 >= player_hp:
+				score += 150.0
+		# Take Away: escape tool — strong when about to be KO'd, wasteful otherwise
+		if "take away" in attack_name_lower:
+			score += 90.0 if cpu_will_be_koed else -80.0
+		# Crosscounter: counter-attack, excellent when expecting a heavy hit
+		if "for double that amount" in attack_text:
+			score += 120.0 if cpu_will_be_koed else 40.0
+		# Fire Wall: bonus for the counter-attack setup
+		if "active pokémon for 10 damage" in attack_text:
+			score += 20.0
+		# Shadow Images: defensive dodge shield
+		if "this effect lasts until" in attack_text:
+			score += 90.0 if cpu_will_be_koed else 45.0
+		# Deflector: damage-halving shield
+		if "divide that damage in half" in attack_text:
+			score += 80.0 if cpu_will_be_koed else 40.0
+		# Pain Amplifier: only worthwhile if the opponent has damaged Pokemon
+		if "put a damage counter on each of your opponent" in attack_text:
+			var g1_dmgd = 0
+			if main.player_active_pokemon != null and main.player_active_pokemon.get_damage_counters() > 0:
+				g1_dmgd += 1
+			for bp in g1_opp_bench:
+				if bp.get_damage_counters() > 0:
+					g1_dmgd += 1
+			score += (g1_dmgd * 30.0) if g1_dmgd > 0 else -80.0
+		# Knockout Needle: expected bonus damage from the double coin flip
+		if "30 damage plus 60 more damage" in attack_text:
+			score += 30.0
+			if main.player_active_pokemon != null and main.player_active_pokemon.current_hp <= 90:
+				score += 60.0
+		# Spread attacks: extra value for benched targets
+		if ("choose up to 3 of them" in attack_text) or ("choose up to 2 of them" in attack_text) or ("that isn't water" in attack_text) or ("each grass pokémon on your opponent's bench" in attack_text) or ("10 damage to each of your opponent's pokémon" in attack_text):
+			score += g1_opp_bench.size() * 12.0
+		# Lucky Shot: bench-only, useless without a bench target
+		if "benched pokémon and flip a coin" in attack_text:
+			score += 20.0 if g1_opp_bench.size() > 0 else -150.0
+		# Lava Burst: variable Fire-mill damage
+		if "discard the top 5 cards" in attack_text:
+			score += 25.0
+		# Water Punch: expected bonus per Water Energy
+		if "30 damage plus 10 damage for each heads" in attack_text:
+			var g1_wc = 0
+			for e in g1_cpu_active.attached_energies:
+				if "Water" in main.get_energy_provided_by_card(e):
+					g1_wc += 1
+			score += g1_wc * 5.0 * 2.0
+		# Night Spirits: expected damage scales with ghosts in play
+		if "total number of sabrina's gastlys" in attack_text:
+			var g1_ghosts = 0
+			var g1_ghost_names = ["Sabrina's Gastly", "Sabrina's Haunter", "Sabrina's Gengar"]
+			if g1_cpu_active.metadata.get("name", "") in g1_ghost_names:
+				g1_ghosts += 1
+			for bp in main.opponent_bench:
+				if bp.metadata.get("name", "") in g1_ghost_names:
+					g1_ghosts += 1
+			score += g1_ghosts * 15.0 * 2.0
+		# Eggsplosion: expected damage scales with attached Energy
+		if "number of energy attached to erika's exeggcute" in attack_text:
+			score += g1_cpu_active.attached_energies.size() * 5.0 * 2.0
+		# Full Speed Charge: heavy recoil risk
+		if "number of tails to" in attack_text:
+			score += 80.0
+			if g1_cpu_active.current_hp <= 60:
+				score -= 120.0
+		# Healing Pollen (Venomoth): only good when the CPU has damaged Pokemon
+		if "remove 1 damage counter from each of your pokémon" in attack_text:
+			var g1_team_dmg = g1_cpu_active.get_max_hp() - g1_cpu_active.current_hp
+			for bp in main.opponent_bench:
+				g1_team_dmg += bp.get_max_hp() - bp.current_hp
+			score += min(g1_team_dmg * 0.4, 90.0) if g1_team_dmg > 0 else -100.0
+		# Fairy Power / Fidget: do nothing useful for the CPU — strongly avoid
+		if "return any number of your pokémon in play" in attack_text:
+			score -= 90.0
+		if "fidget" in attack_name_lower:
+			score -= 110.0
+		# Card-advantage / search utility — modest value, prefer a real attack when one is available
+		if "shuffle your hand into your deck" in attack_text:
+			score += 25.0 if main.opponent_hand.size() <= 3 else 5.0
+		if "search your deck for a basic energy card" in attack_text:
+			score += 12.0
+		if "any number of pokémon named" in attack_text:
+			score += 18.0
+		if "search your deck for that many basic energy" in attack_text:
+			score += 15.0
+		if "from your discard pile and attach" in attack_text and "lightning energy" in attack_text:
+			score += 20.0
+		if "basic pokémon with misty in its name" in attack_text or "basic pokémon card with brock in its name" in attack_text:
+			score += 15.0 if main.opponent_bench.size() < 5 else -50.0
+		# Focus Energy: only set up when not under pressure
+		if "focus energy" in attack_name_lower:
+			score += 10.0 if not cpu_will_be_koed else -60.0
+
+		# ---- GYM2 (GYM CHALLENGE) ATTACK SCORING ----
+		if main.opponent_active_pokemon.uid.begins_with("gym2-"):
+			var g2c = main.opponent_active_pokemon
+			# Earthdrill is unusable unless Lie Low was used last turn
+			if attack_name_lower == "earthdrill" and g2c.gym2_lie_low_counter < 1:
+				score -= 9999.0
+			# Variable damage the estimator can't see
+			if attack_name_lower == "roaring flames":
+				var g2fire = 0
+				for e in g2c.attached_energies:
+					for pp in main.get_energy_provided_by_card(e):
+						if pp == "Fire":
+							g2fire += 1
+				score += g2fire * 40.0
+			if attack_name_lower == "thunder flare":
+				score += g2c.get_damage_counters() * 20.0
+			if attack_name_lower == "power ball":
+				score += 30.0
+			if attack_name_lower == "love lariat":
+				score += 40.0
+				for bp in main.opponent_bench:
+					if bp.metadata.get("name", "") == "Giovanni's Nidoking":
+						score += 60.0
+			# Self-damage attacks: avoid when they would be suicide
+			if attack_name_lower == "detonate" and g2c.current_hp <= 50:
+				score -= 250.0
+			if attack_name_lower == "risky attack" and g2c.current_hp <= 60:
+				score -= 120.0
+			if attack_name_lower == "electroburn":
+				var g2l = 0
+				for e in g2c.attached_energies:
+					for pp in main.get_energy_provided_by_card(e):
+						if pp == "Lightning":
+							g2l += 1
+				if g2c.current_hp <= g2l * 10:
+					score -= 300.0
+			# Disruption / setup utility
+			if attack_name_lower == "dark wave":
+				score += 30.0
+			if attack_name_lower == "super removal":
+				score += 25.0
+			if attack_name_lower == "dragon tornado":
+				score += main.player_bench.size() * 8.0
+			if attack_name_lower == "intimidate":
+				score += 40.0 if (main.player_active_pokemon != null and main.player_active_pokemon.get_max_hp() <= 50) else -60.0
+			if attack_name_lower == "juxtapose":
+				var g2self = g2c.get_max_hp() - g2c.current_hp
+				var g2opp = main.player_active_pokemon.get_max_hp() - main.player_active_pokemon.current_hp
+				score += float(g2self - g2opp) * 0.4
+			if attack_name_lower == "giant growth" and not g2c.ditto_giant_growth:
+				score += 20.0
+			if attack_name_lower == "lie low":
+				score += 70.0 if cpu_will_be_koed else 25.0
+			# Attacks that do nothing useful for the CPU
+			if attack_name_lower == "helping hand" or attack_name_lower == "psyscan":
+				score -= 60.0
+			if attack_name_lower == "group therapy":
+				var g2heal = 0
+				for bp in main.opponent_bench:
+					if bp.get_damage_counters() > 0:
+						g2heal += 1
+				if g2c.get_damage_counters() > 0:
+					g2heal += 1
+				score += (g2heal * 15.0) if g2heal > 0 else -70.0
+
 		# ---- GENERAL EFFECT SCORING ----
 		var effect_score = score_parsed_effects(parsed_effects, main.player_active_pokemon)
 		score += effect_score
@@ -2152,6 +2591,294 @@ func cpu_phase_attack(cpu_eval: Dictionary) -> void:
 	await main.show_message("Opponent's " + main.opponent_active_pokemon.metadata["name"].to_upper() + " used " + chosen_name.to_upper() + "!")
 	if main._should_bail(): return
 	
+	# ============================== GYM2 (GYM CHALLENGE) SPECIAL ATTACKS ==============================
+	if main.opponent_active_pokemon.uid.begins_with("gym2-"):
+		if main.opponent_active_pokemon.ditto_giant_growth and chosen_name.to_lower() == "pound":
+			chosen_attack = chosen_attack.duplicate()
+			chosen_attack["damage"] = "30"
+		if main.opponent_active_pokemon.gym2_focus_energy_active and chosen_name.to_lower() == "quick attack":
+			chosen_attack = chosen_attack.duplicate()
+			chosen_attack["damage"] = str(main.attack_effects.parse_attack_base_damage(chosen_attack) * 2) + "+"
+			main.opponent_active_pokemon.gym2_focus_energy_active = false
+		if await gym2_dispatch_cpu(chosen_attack, chosen_name, chosen_text):
+			return
+	# ============================ END GYM2 SPECIAL ATTACKS ============================
+
+	# ============================== GYM1 (GYM HEROES) SPECIAL ATTACKS ==============================
+	var g1_base = main.attack_effects.parse_attack_base_damage(chosen_attack)
+	if "phoenix flame" in chosen_name.to_lower():
+		await main.attack_effects.execute_phoenix_flame(main.opponent_active_pokemon, main.player_active_pokemon, true, g1_base)
+		if main._should_bail(): return
+		main.last_attack_on_player = {"damage": g1_base, "attack": chosen_attack, "attacker_types": cpu_types}
+		main.opponent_attacked_this_turn = true
+		await main.check_all_knockouts()
+		if main._should_bail(): return
+		main.display_active_pokemon_energies(true)
+		return
+	if "take away" in chosen_name.to_lower():
+		await main.attack_effects.execute_take_away(main.opponent_active_pokemon, main.player_active_pokemon, true)
+		if main._should_bail(): return
+		main.display_active_pokemon_energies(true)
+		return
+	if "lightning energy cards you discarded" in chosen_text:
+		await main.attack_effects.execute_discharge(main.opponent_active_pokemon, main.player_active_pokemon, true)
+		if main._should_bail(): return
+		main.last_attack_on_player = {"damage": g1_base, "attack": chosen_attack, "attacker_types": cpu_types}
+		main.opponent_attacked_this_turn = true
+		await main.check_all_knockouts()
+		if main._should_bail(): return
+		main.display_active_pokemon_energies(true)
+		return
+	if "from your discard pile and attach" in chosen_text and "lightning energy" in chosen_text:
+		var cpu_charge_count = 2 if "up to 2" in chosen_text else 1
+		await main.attack_effects.execute_charge_recover(main.opponent_active_pokemon, true, cpu_charge_count)
+		if main._should_bail(): return
+		main.display_active_pokemon_energies(true)
+		return
+	if "for double that amount" in chosen_text:
+		await main.attack_effects.execute_crosscounter(main.opponent_active_pokemon, true)
+		if main._should_bail(): return
+		main.display_active_pokemon_energies(true)
+		return
+	if "active pokémon for 10 damage" in chosen_text:
+		await main.attack_effects.execute_fire_wall(main.opponent_active_pokemon, main.player_active_pokemon, true, g1_base)
+		if main._should_bail(): return
+		main.last_attack_on_player = {"damage": g1_base, "attack": chosen_attack, "attacker_types": cpu_types}
+		main.opponent_attacked_this_turn = true
+		await main.check_all_knockouts()
+		if main._should_bail(): return
+		main.display_active_pokemon_energies(true)
+		return
+	if "this effect lasts until" in chosen_text:
+		await main.attack_effects.execute_shadow_images(main.opponent_active_pokemon, true)
+		if main._should_bail(): return
+		main.display_active_pokemon_energies(true)
+		return
+	if "put a damage counter on each of your opponent" in chosen_text:
+		await main.attack_effects.execute_pain_amplifier(main.opponent_active_pokemon, true)
+		if main._should_bail(): return
+		main.display_active_pokemon_energies(true)
+		return
+	if "unless this attack knocks out" in chosen_text:
+		await main.attack_effects.execute_call_of_the_night(main.opponent_active_pokemon, main.player_active_pokemon, true, g1_base)
+		if main._should_bail(): return
+		main.last_attack_on_player = {"damage": g1_base, "attack": chosen_attack, "attacker_types": cpu_types}
+		main.opponent_attacked_this_turn = true
+		await main.check_all_knockouts()
+		if main._should_bail(): return
+		main.display_active_pokemon_energies(true)
+		return
+	if "30 damage plus 60 more damage" in chosen_text:
+		await main.attack_effects.execute_double_coin_bonus(main.opponent_active_pokemon, main.player_active_pokemon, true, 30, 60)
+		if main._should_bail(): return
+		main.last_attack_on_player = {"damage": 30, "attack": chosen_attack, "attacker_types": cpu_types}
+		main.opponent_attacked_this_turn = true
+		await main.check_all_knockouts()
+		if main._should_bail(): return
+		main.display_active_pokemon_energies(true)
+		return
+	if "choose up to 3 of them" in chosen_text:
+		await main.attack_effects.execute_bench_choose_spread(main.opponent_active_pokemon, main.player_active_pokemon, true, g1_base, 3, 10, false)
+		if main._should_bail(): return
+		main.last_attack_on_player = {"damage": g1_base, "attack": chosen_attack, "attacker_types": cpu_types}
+		main.opponent_attacked_this_turn = true
+		main.display_active_pokemon_energies(true)
+		return
+	if "choose up to 2 of them" in chosen_text:
+		await main.attack_effects.execute_bench_choose_spread(main.opponent_active_pokemon, main.player_active_pokemon, true, 0, 2, 20, true)
+		if main._should_bail(): return
+		main.display_active_pokemon_energies(true)
+		return
+	if "that isn't water" in chosen_text:
+		await main.attack_effects.execute_water_ring(main.opponent_active_pokemon, main.player_active_pokemon, true, g1_base)
+		if main._should_bail(): return
+		main.last_attack_on_player = {"damage": g1_base, "attack": chosen_attack, "attacker_types": cpu_types}
+		main.opponent_attacked_this_turn = true
+		main.display_active_pokemon_energies(true)
+		return
+	if "discard the top 5 cards" in chosen_text:
+		await main.attack_effects.execute_lava_burst(main.opponent_active_pokemon, main.player_active_pokemon, true)
+		if main._should_bail(): return
+		main.last_attack_on_player = {"damage": 40, "attack": chosen_attack, "attacker_types": cpu_types}
+		main.opponent_attacked_this_turn = true
+		await main.check_all_knockouts()
+		if main._should_bail(): return
+		main.display_active_pokemon_energies(true)
+		return
+	if "benched pokémon and flip a coin" in chosen_text:
+		await main.attack_effects.execute_lucky_shot(main.opponent_active_pokemon, true, 30)
+		if main._should_bail(): return
+		main.display_active_pokemon_energies(true)
+		return
+	if "10 damage to each of your opponent's pokémon" in chosen_text:
+		await main.attack_effects.execute_spiral_dive(main.opponent_active_pokemon, true)
+		if main._should_bail(): return
+		main.last_attack_on_player = {"damage": 10, "attack": chosen_attack, "attacker_types": cpu_types}
+		main.opponent_attacked_this_turn = true
+		main.display_active_pokemon_energies(true)
+		return
+	if "divide that damage in half" in chosen_text:
+		await main.attack_effects.execute_deflector(main.opponent_active_pokemon, true)
+		if main._should_bail(): return
+		main.display_active_pokemon_energies(true)
+		return
+	if "shuffle your hand into your deck" in chosen_text:
+		await main.attack_effects.execute_psychic_exchange(main.opponent_active_pokemon, true)
+		if main._should_bail(): return
+		main.display_active_pokemon_energies(true)
+		return
+	if "(your choice)" in chosen_text:
+		await main.attack_effects.execute_magic_pollen(main.opponent_active_pokemon, main.player_active_pokemon, true, g1_base)
+		if main._should_bail(): return
+		main.last_attack_on_player = {"damage": g1_base, "attack": chosen_attack, "attacker_types": cpu_types}
+		main.opponent_attacked_this_turn = true
+		main.display_active_pokemon_energies(true)
+		return
+	if "30 damage plus 10 damage for each heads" in chosen_text:
+		await main.attack_effects.execute_water_punch(main.opponent_active_pokemon, main.player_active_pokemon, true, g1_base)
+		if main._should_bail(): return
+		main.last_attack_on_player = {"damage": g1_base, "attack": chosen_attack, "attacker_types": cpu_types}
+		main.opponent_attacked_this_turn = true
+		await main.check_all_knockouts()
+		if main._should_bail(): return
+		main.display_active_pokemon_energies(true)
+		return
+	if "basic pokémon with misty in its name" in chosen_text:
+		await main.attack_effects.execute_call_for_named_basic(main.opponent_active_pokemon, true, "Misty")
+		if main._should_bail(): return
+		main.display_active_pokemon_energies(true)
+		return
+	if "basic pokémon card with brock in its name" in chosen_text:
+		await main.attack_effects.execute_call_for_named_basic(main.opponent_active_pokemon, true, "Brock")
+		if main._should_bail(): return
+		main.display_active_pokemon_energies(true)
+		return
+	if "total number of sabrina's gastlys" in chosen_text:
+		await main.attack_effects.execute_night_spirits(main.opponent_active_pokemon, main.player_active_pokemon, true, g1_base)
+		if main._should_bail(): return
+		main.last_attack_on_player = {"damage": g1_base, "attack": chosen_attack, "attacker_types": cpu_types}
+		main.opponent_attacked_this_turn = true
+		await main.check_all_knockouts()
+		if main._should_bail(): return
+		main.display_active_pokemon_energies(true)
+		return
+	if "number of tails to" in chosen_text:
+		await main.attack_effects.execute_full_speed_charge(main.opponent_active_pokemon, main.player_active_pokemon, true)
+		if main._should_bail(): return
+		main.last_attack_on_player = {"damage": g1_base, "attack": chosen_attack, "attacker_types": cpu_types}
+		main.opponent_attacked_this_turn = true
+		main.display_active_pokemon_energies(true)
+		return
+	if "each grass pokémon on your opponent's bench" in chosen_text:
+		await main.attack_effects.execute_typed_bench_damage(main.opponent_active_pokemon, main.player_active_pokemon, true, g1_base, "Grass")
+		if main._should_bail(): return
+		main.last_attack_on_player = {"damage": g1_base, "attack": chosen_attack, "attacker_types": cpu_types}
+		main.opponent_attacked_this_turn = true
+		main.display_active_pokemon_energies(true)
+		return
+	if "if 1 or both of them are heads" in chosen_text:
+		await main.attack_effects.execute_flip2_any_heads_status(main.opponent_active_pokemon, main.player_active_pokemon, true, g1_base, "Confused")
+		if main._should_bail(): return
+		main.last_attack_on_player = {"damage": g1_base, "attack": chosen_attack, "attacker_types": cpu_types}
+		main.opponent_attacked_this_turn = true
+		await main.check_all_knockouts()
+		if main._should_bail(): return
+		main.display_active_pokemon_energies(true)
+		return
+	if "if 1 or both of them are tails, this attack does nothing" in chosen_text:
+		await main.attack_effects.execute_drill_tackle(main.opponent_active_pokemon, main.player_active_pokemon, true, g1_base)
+		if main._should_bail(): return
+		main.last_attack_on_player = {"damage": g1_base, "attack": chosen_attack, "attacker_types": cpu_types}
+		main.opponent_attacked_this_turn = true
+		await main.check_all_knockouts()
+		if main._should_bail(): return
+		main.display_active_pokemon_energies(true)
+		return
+	if "number of energy attached to erika's exeggcute" in chosen_text:
+		await main.attack_effects.execute_big_eggsplosion(main.opponent_active_pokemon, main.player_active_pokemon, true, g1_base)
+		if main._should_bail(): return
+		main.last_attack_on_player = {"damage": g1_base, "attack": chosen_attack, "attacker_types": cpu_types}
+		main.opponent_attacked_this_turn = true
+		await main.check_all_knockouts()
+		if main._should_bail(): return
+		main.display_active_pokemon_energies(true)
+		return
+	if "attach it to 1 of your benched pokémon" in chosen_text:
+		await main.attack_effects.execute_electric_current(main.opponent_active_pokemon, main.player_active_pokemon, true, g1_base)
+		if main._should_bail(): return
+		main.last_attack_on_player = {"damage": g1_base, "attack": chosen_attack, "attacker_types": cpu_types}
+		main.opponent_attacked_this_turn = true
+		main.display_active_pokemon_energies(true)
+		return
+	if "can't use this attack during your next turn" in chosen_text:
+		await main.attack_effects.execute_screaming_headbutt(main.opponent_active_pokemon, main.player_active_pokemon, true, g1_base, chosen_name)
+		if main._should_bail(): return
+		main.last_attack_on_player = {"damage": g1_base, "attack": chosen_attack, "attacker_types": cpu_types}
+		main.opponent_attacked_this_turn = true
+		main.display_active_pokemon_energies(true)
+		return
+	if "return any number of your pokémon in play" in chosen_text:
+		await main.attack_effects.execute_fairy_power(main.opponent_active_pokemon, true)
+		if main._should_bail(): return
+		main.display_active_pokemon_energies(true)
+		return
+	if "search your deck for a basic energy card" in chosen_text:
+		await main.attack_effects.execute_search_basic_energy_to_hand(main.opponent_active_pokemon, true)
+		if main._should_bail(): return
+		main.display_active_pokemon_energies(true)
+		return
+	if "any number of pokémon named" in chosen_text:
+		await main.attack_effects.execute_jellyfish_pod(main.opponent_active_pokemon, true, ["Tentacool", "Tentacruel", "Misty's Tentacool", "Misty's Tentacruel"])
+		if main._should_bail(): return
+		main.display_active_pokemon_energies(true)
+		return
+	if "remove 1 damage counter from each of your pokémon" in chosen_text:
+		await main.attack_effects.execute_team_heal_flip(main.opponent_active_pokemon, true, 3)
+		if main._should_bail(): return
+		main.display_active_pokemon_energies(true)
+		return
+	if "fidget" in chosen_name.to_lower():
+		await main.attack_effects.execute_fidget(main.opponent_active_pokemon, true)
+		if main._should_bail(): return
+		main.display_active_pokemon_energies(true)
+		return
+	if "return a psychic energy card attached to" in chosen_text:
+		await main.attack_effects.execute_energy_loop(main.opponent_active_pokemon, main.player_active_pokemon, true, g1_base)
+		if main._should_bail(): return
+		main.last_attack_on_player = {"damage": g1_base, "attack": chosen_attack, "attacker_types": cpu_types}
+		main.opponent_attacked_this_turn = true
+		await main.check_all_knockouts()
+		if main._should_bail(): return
+		main.display_active_pokemon_energies(true)
+		return
+	if "search your deck for that many basic energy" in chosen_text:
+		await main.attack_effects.execute_sleight_of_hand(main.opponent_active_pokemon, true)
+		if main._should_bail(): return
+		main.display_active_pokemon_energies(true)
+		return
+	if "choose 1 of them and flip a coin" in chosen_text:
+		await main.attack_effects.execute_mud_splash(main.opponent_active_pokemon, main.player_active_pokemon, true, g1_base)
+		if main._should_bail(): return
+		main.last_attack_on_player = {"damage": g1_base, "attack": chosen_attack, "attacker_types": cpu_types}
+		main.opponent_attacked_this_turn = true
+		main.display_active_pokemon_energies(true)
+		return
+	if "isn't affected by weakness, resistance" in chosen_text:
+		await main.attack_effects.execute_sonicboom(main.opponent_active_pokemon, main.player_active_pokemon, true, g1_base)
+		if main._should_bail(): return
+		main.last_attack_on_player = {"damage": g1_base, "attack": chosen_attack, "attacker_types": cpu_types}
+		main.opponent_attacked_this_turn = true
+		await main.check_all_knockouts()
+		if main._should_bail(): return
+		main.display_active_pokemon_energies(true)
+		return
+	if "focus energy" in chosen_name.to_lower():
+		await main.attack_effects.execute_focus_energy(main.opponent_active_pokemon, true)
+		if main._should_bail(): return
+		main.display_active_pokemon_energies(true)
+		return
+	# ============================ END GYM1 SPECIAL ATTACKS ============================
+
 	# Handle special CPU attacks
 	if "choose 1 of the defending" in chosen_text and "copies that attack" in chosen_text:
 		await main.attack_effects.execute_metronome(main.opponent_active_pokemon, main.player_active_pokemon, true)
@@ -2493,9 +3220,9 @@ func cpu_phase_attack(cpu_eval: Dictionary) -> void:
 	
 	# MEGA DRAIN
 	if "mega drain" in chosen_name.to_lower() or ("remove" in chosen_text and "equal to half the damage" in chosen_text):
-		await main.attack_effects.execute_mega_drain(main.opponent_active_pokemon, main.player_active_pokemon, true)
+		await main.attack_effects.execute_mega_drain(main.opponent_active_pokemon, main.player_active_pokemon, true, g1_base)
 		if main._should_bail(): return
-		main.last_attack_on_player = {"damage": 40, "attack": chosen_attack, "attacker_types": cpu_types}
+		main.last_attack_on_player = {"damage": g1_base, "attack": chosen_attack, "attacker_types": cpu_types}
 		main.opponent_attacked_this_turn = true
 		await main.check_all_knockouts()
 		if main._should_bail(): return
@@ -2561,6 +3288,15 @@ func cpu_phase_attack(cpu_eval: Dictionary) -> void:
 		chosen_attack["damage"] = "60"
 		main.opponent_active_pokemon.swords_dance_active = false
 		await main.show_message("SWORDS DANCE BOOST! SLASH DOES 60 DAMAGE!")
+		if main._should_bail(): return
+
+	# GYM1 Focus Energy: if active, double Gnaw's base damage
+	if main.opponent_active_pokemon.focus_energy_active and chosen_name.to_lower() == "gnaw":
+		chosen_attack = chosen_attack.duplicate()
+		var cpu_gnaw_doubled = main.attack_effects.parse_attack_base_damage(chosen_attack) * 2
+		chosen_attack["damage"] = str(cpu_gnaw_doubled)
+		main.opponent_active_pokemon.focus_energy_active = false
+		await main.show_message("FOCUS ENERGY! GNAW DOES " + str(cpu_gnaw_doubled) + " DAMAGE!")
 		if main._should_bail(): return
 	
 	if await main.attack_effects.handle_attack_confusion(main.opponent_active_pokemon, true):

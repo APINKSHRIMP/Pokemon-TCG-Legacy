@@ -2487,15 +2487,24 @@ func clear_end_of_turn_statuses(pokemon: card_object, is_opponent: bool) -> void
 		print("END OF TURN: ", pokemon_name, " is no longer Blind")
 		changed = true
 	
-	# Clear end_of_turn disabled attacks
+	# Clear end_of_turn disabled attacks; demote skip_one_turn -> end_of_turn so it survives the owner's NEXT turn
 	var keys_to_remove = []
+	var keys_to_demote = []
 	for atk_name in pokemon.disabled_attacks:
 		if pokemon.disabled_attacks[atk_name] == "end_of_turn":
 			keys_to_remove.append(atk_name)
 			print("END OF TURN: ", pokemon_name, " attack '", atk_name, "' re-enabled")
 			changed = true
+		elif pokemon.disabled_attacks[atk_name] == "skip_one_turn":
+			keys_to_demote.append(atk_name)
 	for key in keys_to_remove:
 		pokemon.disabled_attacks.erase(key)
+	for key in keys_to_demote:
+		pokemon.disabled_attacks[key] = "end_of_turn"
+
+	# GYM2 Brock's Dugtrio Lie Low: tick down the Earthdrill availability window
+	if pokemon.gym2_lie_low_counter > 0:
+		pokemon.gym2_lie_low_counter -= 1
 
 	if changed:
 		update_status_icons(pokemon, is_opponent)
@@ -2542,6 +2551,16 @@ func clear_jungle_defensive_statuses(pokemon: card_object, is_opponent: bool) ->
 		pokemon.attack_blocked_next_turn = false
 		pokemon.attack_blocked_by_id = -1
 		print("EXPIRED: ", pokemon.metadata.get("name", ""), " attack block wore off")
+	# GYM1: Crosscounter / Fire Wall counter-attacks and Deflector halving wear off after the opponent's turn
+	if pokemon.counter_attack_double:
+		pokemon.counter_attack_double = false
+		print("EXPIRED: ", pokemon.metadata.get("name", ""), " Crosscounter wore off")
+	if pokemon.counter_attack_fixed > 0:
+		pokemon.counter_attack_fixed = 0
+		print("EXPIRED: ", pokemon.metadata.get("name", ""), " Fire Wall wore off")
+	if pokemon.damage_halved_next_turn:
+		pokemon.damage_halved_next_turn = false
+		print("EXPIRED: ", pokemon.metadata.get("name", ""), " Deflector wore off")
 
 ########################################################### Evolution functions ##############################################################
 
@@ -2827,7 +2846,24 @@ func display_and_apply_attack_damage(attacker: card_object, defender: card_objec
 	var transparency_blocked = await powers_and_bodies.check_transparency(defender)
 	if transparency_blocked:
 		return
-	
+
+	# GYM1 Shadow Images (Rocket's Scyther): attacker flips a coin, tails = no damage. Lasts until damage gets through.
+	if defender.dodge_active and final_damage > 0:
+		await show_message(defender.metadata.get("name", "").to_upper() + "'S SHADOW IMAGES! FLIPPING...")
+		var dodge_coin = await flip_coin(false, is_opponent)
+		if not dodge_coin:
+			var dodge_pos = Vector2(530, 300) if is_opponent else Vector2(1030, 300)
+			show_floating_label("DODGED!", dodge_pos, Color.BLUE, true)
+			print("SHADOW IMAGES: ", defender.metadata.get("name", ""), " dodged the attack")
+			return
+		defender.dodge_active = false
+		update_status_icons(defender, !is_opponent)
+
+	# GYM1 Deflector (Erika's Exeggcute): halve incoming damage, rounded down to the nearest 10
+	if defender.damage_halved_next_turn and final_damage > 0:
+		final_damage = int(final_damage / 2.0 / 10.0) * 10
+		print("DEFLECTOR: damage halved to ", final_damage)
+
 	var defender_label_pos = Vector2(530, 300) if is_opponent else Vector2(1030, 300)
 	for modifier in modifiers:
 		var color_to_pass = Color.WHITE
@@ -2856,9 +2892,345 @@ func display_and_apply_attack_damage(attacker: card_object, defender: card_objec
 		await powers_and_bodies.check_strikes_back(defender, attacker, !is_opponent)
 		# Check for Dark Wartortle's Mirror Shell (counter equal damage)
 		await attack_effects.check_mirror_shell(defender, attacker, final_damage, !is_opponent)
+		# Check for GYM1 Crosscounter / Fire Wall counter-attacks
+		await attack_effects.gym1_check_counters(defender, attacker, final_damage, !is_opponent)
 
 # Parses the attack text for card effects and applies them
 # pre_flip_result: if a coin was already flipped during damage resolution, pass "heads" or "tails" to skip re-flipping
+
+# GYM2: shared end-of-attack housekeeping for the player's special attacks
+func gym2_player_finish(is_damage_attack: bool, base_damage: int, attack: Dictionary, attacker_types: Array) -> void:
+	if is_damage_attack:
+		last_attack_on_opponent = {"damage": base_damage, "attack": attack, "attacker_types": attacker_types}
+		player_attacked_this_turn = true
+	await check_all_knockouts()
+	await get_tree().create_timer(0.5).timeout
+	player_end_turn_checks()
+
+# GYM2 (GYM CHALLENGE) player attack dispatcher. Returns true if it fully handled the attack.
+func gym2_dispatch_player(attack: Dictionary, attack_name: String, _text_lower: String) -> bool:
+	var an = attack_name.to_lower()
+	var p = player_active_pokemon
+	var o = opponent_active_pokemon
+	var g2_types = p.metadata.get("types", ["Colorless"])
+	var g2_base = attack_effects.parse_attack_base_damage(attack)
+
+	if an == "roaring flames":
+		hide_attack_buttons()
+		await attack_effects.execute_roaring_flames(p, o, false)
+		await gym2_player_finish(true, 20, attack, g2_types)
+		return true
+	if an == "growth":
+		hide_attack_buttons()
+		await attack_effects.execute_growth(p, false)
+		await gym2_player_finish(false, 0, attack, g2_types)
+		return true
+	if an == "wide solarbeam":
+		hide_attack_buttons()
+		await attack_effects.execute_bench_choose_spread(p, o, false, 20, 2, 20, false)
+		await gym2_player_finish(true, 20, attack, g2_types)
+		return true
+	if an == "summon storm":
+		hide_attack_buttons()
+		await attack_effects.execute_summon_storm(p, false)
+		await gym2_player_finish(false, 0, attack, g2_types)
+		return true
+	if an == "dragon tornado":
+		hide_attack_buttons()
+		await attack_effects.execute_dragon_tornado(p, o, false, 40)
+		await gym2_player_finish(true, 40, attack, g2_types)
+		return true
+	if an == "intimidate":
+		hide_attack_buttons()
+		await attack_effects.execute_intimidate(p, o, false)
+		await gym2_player_finish(false, 0, attack, g2_types)
+		return true
+	if an == "giant growth":
+		hide_attack_buttons()
+		await attack_effects.execute_giant_growth(p, false)
+		await gym2_player_finish(false, 0, attack, g2_types)
+		return true
+	if an == "kerzap":
+		hide_attack_buttons()
+		await attack_effects.execute_kerzap(p, o, false)
+		await gym2_player_finish(true, 20, attack, g2_types)
+		return true
+	if an == "super removal":
+		hide_attack_buttons()
+		await attack_effects.execute_super_removal(p, false)
+		await gym2_player_finish(false, 0, attack, g2_types)
+		return true
+	if an == "juxtapose":
+		hide_attack_buttons()
+		await attack_effects.execute_juxtapose(p, o, false)
+		await gym2_player_finish(false, 0, attack, g2_types)
+		return true
+	if an == "plasma":
+		hide_attack_buttons()
+		await attack_effects.execute_plasma(p, o, false, g2_base)
+		await gym2_player_finish(true, g2_base, attack, g2_types)
+		return true
+	if an == "electroburn":
+		hide_attack_buttons()
+		await attack_effects.execute_electroburn(p, o, false, g2_base)
+		await gym2_player_finish(true, g2_base, attack, g2_types)
+		return true
+	if an == "love lariat":
+		hide_attack_buttons()
+		await attack_effects.execute_love_lariat(p, o, false)
+		await gym2_player_finish(true, 50, attack, g2_types)
+		return true
+	if an == "overhead toss":
+		hide_attack_buttons()
+		await attack_effects.execute_overhead_toss(p, o, false, 40)
+		await gym2_player_finish(true, 40, attack, g2_types)
+		return true
+	if an == "poison power":
+		hide_attack_buttons()
+		await attack_effects.execute_poison_power(p, o, false)
+		await gym2_player_finish(true, 20, attack, g2_types)
+		return true
+	if an == "thunder flare":
+		hide_attack_buttons()
+		await attack_effects.execute_thunder_flare(p, o, false)
+		await gym2_player_finish(true, 30, attack, g2_types)
+		return true
+	if an == "dark wave":
+		hide_attack_buttons()
+		await attack_effects.execute_dark_wave(p, o, false, g2_base)
+		await gym2_player_finish(true, g2_base, attack, g2_types)
+		return true
+	if an == "damage shift":
+		hide_attack_buttons()
+		await attack_effects.execute_damage_shift(p, o, false)
+		await gym2_player_finish(false, 0, attack, g2_types)
+		return true
+	if an == "bonfire":
+		hide_attack_buttons()
+		await attack_effects.execute_bonfire(p, false)
+		await gym2_player_finish(false, 0, attack, g2_types)
+		return true
+	if an == "stamp":
+		hide_attack_buttons()
+		await attack_effects.execute_stamp(p, o, false)
+		await gym2_player_finish(true, 30, attack, g2_types)
+		return true
+	if an == "detonate":
+		hide_attack_buttons()
+		await attack_effects.execute_detonate(p, o, false, g2_base)
+		await gym2_player_finish(true, g2_base, attack, g2_types)
+		return true
+	if an == "risky attack":
+		hide_attack_buttons()
+		await attack_effects.execute_risky_attack(p, o, false, g2_base)
+		await gym2_player_finish(true, g2_base, attack, g2_types)
+		return true
+	if an == "false charity":
+		hide_attack_buttons()
+		await attack_effects.execute_false_charity(p, false)
+		await gym2_player_finish(false, 0, attack, g2_types)
+		return true
+	if an == "rend":
+		hide_attack_buttons()
+		await attack_effects.execute_rend(p, o, false)
+		await gym2_player_finish(true, 20, attack, g2_types)
+		return true
+	if an == "obscuring gas":
+		hide_attack_buttons()
+		await attack_effects.execute_obscuring_gas(p, o, false, g2_base)
+		await gym2_player_finish(true, g2_base, attack, g2_types)
+		return true
+	if an == "messenger":
+		hide_attack_buttons()
+		await attack_effects.execute_messenger(p, false)
+		await gym2_player_finish(false, 0, attack, g2_types)
+		return true
+	if an == "lunar power":
+		hide_attack_buttons()
+		await attack_effects.execute_lunar_power(p, false)
+		await gym2_player_finish(false, 0, attack, g2_types)
+		return true
+	if an == "errand-running":
+		hide_attack_buttons()
+		await attack_effects.execute_errand_running(p, false)
+		await gym2_player_finish(false, 0, attack, g2_types)
+		return true
+	if an == "surprise":
+		hide_attack_buttons()
+		await attack_effects.execute_surprise(p, false)
+		await gym2_player_finish(false, 0, attack, g2_types)
+		return true
+	if an == "power ball":
+		hide_attack_buttons()
+		await attack_effects.execute_flip_bonus_per_heads(p, o, false, g2_base, 3, 10)
+		await gym2_player_finish(true, g2_base, attack, g2_types)
+		return true
+	if an == "focus energy":
+		hide_attack_buttons()
+		p.gym2_focus_energy_active = true
+		await show_message(p.metadata.get("name", "").to_upper() + " IS FOCUSING ITS ENERGY!")
+		await gym2_player_finish(false, 0, attack, g2_types)
+		return true
+	if an == "double-edge" and p.gym2_focus_energy_active:
+		hide_attack_buttons()
+		p.gym2_focus_energy_active = false
+		await attack_effects.execute_double_edge_boosted(p, o, false)
+		await gym2_player_finish(true, 80, attack, g2_types)
+		return true
+	if an == "ice throw":
+		hide_attack_buttons()
+		await attack_effects.execute_ice_throw(p, o, false, g2_base)
+		await gym2_player_finish(true, g2_base, attack, g2_types)
+		return true
+	if an == "shadow attack":
+		hide_attack_buttons()
+		await attack_effects.execute_bench_snipe_flip(p, o, false, 0, 30)
+		await gym2_player_finish(false, 0, attack, g2_types)
+		return true
+	if an == "overrun":
+		hide_attack_buttons()
+		await attack_effects.execute_bench_snipe_flip(p, o, false, g2_base, 20)
+		await gym2_player_finish(true, g2_base, attack, g2_types)
+		return true
+	if an == "invigorate":
+		hide_attack_buttons()
+		await attack_effects.execute_invigorate(p, false)
+		await gym2_player_finish(false, 0, attack, g2_types)
+		return true
+	if an == "pendulum curse":
+		hide_attack_buttons()
+		await attack_effects.execute_pendulum_curse(p, o, false)
+		await gym2_player_finish(true, 20, attack, g2_types)
+		return true
+	if an == "helping hand":
+		hide_attack_buttons()
+		await attack_effects.execute_helping_hand(p, false)
+		await gym2_player_finish(false, 0, attack, g2_types)
+		return true
+	if an == "life drain":
+		hide_attack_buttons()
+		await attack_effects.execute_life_drain(p, o, false)
+		await gym2_player_finish(false, 0, attack, g2_types)
+		return true
+	if an == "magic darts":
+		hide_attack_buttons()
+		await attack_effects.execute_magic_darts(p, false)
+		await gym2_player_finish(false, 0, attack, g2_types)
+		return true
+	if an == "stoke":
+		hide_attack_buttons()
+		await attack_effects.execute_stoke(p, false)
+		await gym2_player_finish(false, 0, attack, g2_types)
+		return true
+	if an == "energy support":
+		hide_attack_buttons()
+		await attack_effects.execute_search_typed_energy_to_hand(p, false, "Psychic")
+		await gym2_player_finish(false, 0, attack, g2_types)
+		return true
+	if an == "pranks":
+		hide_attack_buttons()
+		await attack_effects.execute_pranks(p, false)
+		await gym2_player_finish(false, 0, attack, g2_types)
+		return true
+	if an == "group therapy":
+		hide_attack_buttons()
+		await attack_effects.execute_group_therapy(p, false)
+		await gym2_player_finish(false, 0, attack, g2_types)
+		return true
+	if an == "pulled punch":
+		hide_attack_buttons()
+		await attack_effects.execute_pulled_punch(p, o, false)
+		await gym2_player_finish(true, 40, attack, g2_types)
+		return true
+	if an == "hind kick":
+		hide_attack_buttons()
+		await attack_effects.execute_hind_kick(p, o, false, g2_base)
+		await gym2_player_finish(true, g2_base, attack, g2_types)
+		return true
+	if an == "call will-o'-the-wisp":
+		hide_attack_buttons()
+		await attack_effects.execute_call_wisp(p, false)
+		await gym2_player_finish(false, 0, attack, g2_types)
+		return true
+	if an == "fast-acting poison":
+		hide_attack_buttons()
+		await attack_effects.execute_flip2_both_heads_status(p, o, false, g2_base, ["Confused", "Poisoned"])
+		await gym2_player_finish(true, g2_base, attack, g2_types)
+		return true
+	if an == "sludge grip":
+		hide_attack_buttons()
+		await attack_effects.execute_sludge_grip(p, false)
+		await gym2_player_finish(false, 0, attack, g2_types)
+		return true
+	if an == "group attack":
+		hide_attack_buttons()
+		await attack_effects.execute_group_attack(p, o, false)
+		await gym2_player_finish(true, 10, attack, g2_types)
+		return true
+	if an == "bubbles":
+		hide_attack_buttons()
+		await attack_effects.execute_bubbles(p, o, false, g2_base, attack_name)
+		await gym2_player_finish(true, g2_base, attack, g2_types)
+		return true
+	if an == "esp":
+		hide_attack_buttons()
+		await attack_effects.execute_esp(p, o, false)
+		await gym2_player_finish(false, 0, attack, g2_types)
+		return true
+	if an == "star boomerang":
+		hide_attack_buttons()
+		await attack_effects.execute_star_boomerang(p, o, false, g2_base)
+		await gym2_player_finish(true, g2_base, attack, g2_types)
+		return true
+	if an == "synchronize":
+		hide_attack_buttons()
+		await attack_effects.execute_synchronize(p, o, false, g2_base)
+		await gym2_player_finish(true, g2_base, attack, g2_types)
+		return true
+	if an == "psyscan":
+		hide_attack_buttons()
+		await attack_effects.execute_psyscan(p, false)
+		await gym2_player_finish(false, 0, attack, g2_types)
+		return true
+	if an == "fade out":
+		hide_attack_buttons()
+		await attack_effects.execute_fade_out(p, o, false, g2_base)
+		await gym2_player_finish(true, g2_base, attack, g2_types)
+		return true
+	if an == "random esp":
+		hide_attack_buttons()
+		await attack_effects.execute_random_esp(p, o, false)
+		await gym2_player_finish(false, 0, attack, g2_types)
+		return true
+	if an == "fury punch":
+		hide_attack_buttons()
+		await attack_effects.execute_fury_punch(p, o, false)
+		await gym2_player_finish(true, 20, attack, g2_types)
+		return true
+	if an == "ink spurt":
+		hide_attack_buttons()
+		await attack_effects.execute_ink_spurt(p, o, false, g2_base)
+		await gym2_player_finish(true, g2_base, attack, g2_types)
+		return true
+	if an == "grasping vine":
+		hide_attack_buttons()
+		await attack_effects.execute_draw_flip(p, false, 2)
+		await gym2_player_finish(false, 0, attack, g2_types)
+		return true
+	if an == "lie low":
+		hide_attack_buttons()
+		await attack_effects.execute_lie_low(p, false)
+		await gym2_player_finish(false, 0, attack, g2_types)
+		return true
+	if an == "earthdrill":
+		if p.gym2_lie_low_counter < 1:
+			await show_message("EARTHDRILL CAN'T BE USED — LIE LOW WASN'T USED LAST TURN!")
+			hide_attack_buttons()
+			return true
+		# Lie Low was used: fall through to the standard 60-damage path
+		return false
+
+	return false
 
 # Applies damage from the chosen attack to the opponent's active pokemon and refreshes the HP display
 func perform_attack(attack_index: int) -> void:
@@ -2884,7 +3256,366 @@ func perform_attack(attack_index: int) -> void:
 	
 	# Handle special attacks that have completely unique flows
 	var text_lower = attack.get("text", "").to_lower()
-	
+
+	# ============================== GYM2 (GYM CHALLENGE) SPECIAL ATTACKS ==============================
+	if player_active_pokemon.uid.begins_with("gym2-"):
+		# Koga's Ditto Giant Growth boosts Pound's base damage to 30
+		if player_active_pokemon.ditto_giant_growth and attack_name.to_lower() == "pound":
+			attack = attack.duplicate()
+			attack["damage"] = "30"
+		# Lt. Surge's Rattata Focus Energy doubles Quick Attack's base damage
+		if player_active_pokemon.gym2_focus_energy_active and attack_name.to_lower() == "quick attack":
+			attack = attack.duplicate()
+			attack["damage"] = str(attack_effects.parse_attack_base_damage(attack) * 2) + "+"
+			player_active_pokemon.gym2_focus_energy_active = false
+			await show_message("FOCUS ENERGY! QUICK ATTACK IS BOOSTED!")
+		if await gym2_dispatch_player(attack, attack_name, text_lower):
+			return
+	# ============================ END GYM2 SPECIAL ATTACKS ============================
+
+	# ============================== GYM1 (GYM HEROES) SPECIAL ATTACKS ==============================
+	var g1_base = attack_effects.parse_attack_base_damage(attack)
+	var g1_types = player_active_pokemon.metadata.get("types", ["Colorless"])
+	# PHOENIX FLAME (Blaine's Moltres): damage, flip — tails shuffles self into deck
+	if "phoenix flame" in attack_name.to_lower():
+		hide_attack_buttons()
+		await attack_effects.execute_phoenix_flame(player_active_pokemon, opponent_active_pokemon, false, g1_base)
+		last_attack_on_opponent = {"damage": g1_base, "attack": attack, "attacker_types": g1_types}
+		player_attacked_this_turn = true
+		await check_all_knockouts()
+		await get_tree().create_timer(0.5).timeout
+		player_end_turn_checks()
+		return
+	# TAKE AWAY (Erika's Dragonair): shuffle self + opponent Active into decks
+	if "take away" in attack_name.to_lower():
+		hide_attack_buttons()
+		await attack_effects.execute_take_away(player_active_pokemon, opponent_active_pokemon, false)
+		await get_tree().create_timer(0.5).timeout
+		player_end_turn_checks()
+		return
+	# DISCHARGE (Lt. Surge's Electabuzz): discard all Lightning, flip per, 30 x heads
+	if "lightning energy cards you discarded" in text_lower:
+		hide_attack_buttons()
+		await attack_effects.execute_discharge(player_active_pokemon, opponent_active_pokemon, false)
+		last_attack_on_opponent = {"damage": g1_base, "attack": attack, "attacker_types": g1_types}
+		player_attacked_this_turn = true
+		await check_all_knockouts()
+		await get_tree().create_timer(0.5).timeout
+		player_end_turn_checks()
+		return
+	# CHARGE (Lt. Surge's Electabuzz / Pikachu): take Lightning Energy from discard pile
+	if "from your discard pile and attach" in text_lower and "lightning energy" in text_lower:
+		hide_attack_buttons()
+		var charge_count = 2 if "up to 2" in text_lower else 1
+		await attack_effects.execute_charge_recover(player_active_pokemon, false, charge_count)
+		await get_tree().create_timer(0.5).timeout
+		player_end_turn_checks()
+		return
+	# CROSSCOUNTER (Rocket's Hitmonchan): set up counter-attack
+	if "for double that amount" in text_lower:
+		hide_attack_buttons()
+		await attack_effects.execute_crosscounter(player_active_pokemon, false)
+		await get_tree().create_timer(0.5).timeout
+		player_end_turn_checks()
+		return
+	# FIRE WALL (Rocket's Moltres): damage + 10-damage counter-attack
+	if "active pokémon for 10 damage" in text_lower:
+		hide_attack_buttons()
+		await attack_effects.execute_fire_wall(player_active_pokemon, opponent_active_pokemon, false, g1_base)
+		last_attack_on_opponent = {"damage": g1_base, "attack": attack, "attacker_types": g1_types}
+		player_attacked_this_turn = true
+		await check_all_knockouts()
+		await get_tree().create_timer(0.5).timeout
+		player_end_turn_checks()
+		return
+	# SHADOW IMAGES (Rocket's Scyther): dodge shield
+	if "this effect lasts until" in text_lower:
+		hide_attack_buttons()
+		await attack_effects.execute_shadow_images(player_active_pokemon, false)
+		await get_tree().create_timer(0.5).timeout
+		player_end_turn_checks()
+		return
+	# PAIN AMPLIFIER (Sabrina's Gengar): damage counter on each damaged opponent Pokemon
+	if "put a damage counter on each of your opponent" in text_lower:
+		hide_attack_buttons()
+		await attack_effects.execute_pain_amplifier(player_active_pokemon, false)
+		await get_tree().create_timer(0.5).timeout
+		player_end_turn_checks()
+		return
+	# CALL OF THE NIGHT (Sabrina's Gengar): damage, unless KO flip 2 to shuffle opponent Active away
+	if "unless this attack knocks out" in text_lower:
+		hide_attack_buttons()
+		await attack_effects.execute_call_of_the_night(player_active_pokemon, opponent_active_pokemon, false, g1_base)
+		last_attack_on_opponent = {"damage": g1_base, "attack": attack, "attacker_types": g1_types}
+		player_attacked_this_turn = true
+		await check_all_knockouts()
+		await get_tree().create_timer(0.5).timeout
+		player_end_turn_checks()
+		return
+	# KNOCKOUT NEEDLE (Misty's Seadra): flip 2 coins, both heads adds bonus damage
+	if "30 damage plus 60 more damage" in text_lower:
+		hide_attack_buttons()
+		await attack_effects.execute_double_coin_bonus(player_active_pokemon, opponent_active_pokemon, false, 30, 60)
+		last_attack_on_opponent = {"damage": 30, "attack": attack, "attacker_types": g1_types}
+		player_attacked_this_turn = true
+		await check_all_knockouts()
+		await get_tree().create_timer(0.5).timeout
+		player_end_turn_checks()
+		return
+	# ROCK SLIDE (Brock's Golem): damage + 10 to up to 3 benched
+	if "choose up to 3 of them" in text_lower:
+		hide_attack_buttons()
+		await attack_effects.execute_bench_choose_spread(player_active_pokemon, opponent_active_pokemon, false, g1_base, 3, 10, false)
+		last_attack_on_opponent = {"damage": g1_base, "attack": attack, "attacker_types": g1_types}
+		player_attacked_this_turn = true
+		await get_tree().create_timer(0.5).timeout
+		player_end_turn_checks()
+		return
+	# TUNNELING (Brock's Onix): 20 to up to 2 benched, can't attack next turn
+	if "choose up to 2 of them" in text_lower:
+		hide_attack_buttons()
+		await attack_effects.execute_bench_choose_spread(player_active_pokemon, opponent_active_pokemon, false, 0, 2, 20, true)
+		await get_tree().create_timer(0.5).timeout
+		player_end_turn_checks()
+		return
+	# WATER RING (Misty's Poliwrath): damage + 10 to non-Water benched both sides
+	if "that isn't water" in text_lower:
+		hide_attack_buttons()
+		await attack_effects.execute_water_ring(player_active_pokemon, opponent_active_pokemon, false, g1_base)
+		last_attack_on_opponent = {"damage": g1_base, "attack": attack, "attacker_types": g1_types}
+		player_attacked_this_turn = true
+		await get_tree().create_timer(0.5).timeout
+		player_end_turn_checks()
+		return
+	# LAVA BURST (Blaine's Magmar): discard top 5, 20 per Fire Energy
+	if "discard the top 5 cards" in text_lower:
+		hide_attack_buttons()
+		await attack_effects.execute_lava_burst(player_active_pokemon, opponent_active_pokemon, false)
+		last_attack_on_opponent = {"damage": 40, "attack": attack, "attacker_types": g1_types}
+		player_attacked_this_turn = true
+		await check_all_knockouts()
+		await get_tree().create_timer(0.5).timeout
+		player_end_turn_checks()
+		return
+	# LUCKY SHOT (Brock's Geodude): choose 1 benched, flip — heads 30 to it
+	if "benched pokémon and flip a coin" in text_lower:
+		hide_attack_buttons()
+		await attack_effects.execute_lucky_shot(player_active_pokemon, false, 30)
+		await get_tree().create_timer(0.5).timeout
+		player_end_turn_checks()
+		return
+	# SPIRAL DIVE (Brock's Golbat): 10 to every opponent Pokemon, no W/R
+	if "10 damage to each of your opponent's pokémon" in text_lower:
+		hide_attack_buttons()
+		await attack_effects.execute_spiral_dive(player_active_pokemon, false)
+		last_attack_on_opponent = {"damage": 10, "attack": attack, "attacker_types": g1_types}
+		player_attacked_this_turn = true
+		await get_tree().create_timer(0.5).timeout
+		player_end_turn_checks()
+		return
+	# DEFLECTOR (Erika's Exeggcute): halve incoming damage next turn
+	if "divide that damage in half" in text_lower:
+		hide_attack_buttons()
+		await attack_effects.execute_deflector(player_active_pokemon, false)
+		await get_tree().create_timer(0.5).timeout
+		player_end_turn_checks()
+		return
+	# PSYCHIC EXCHANGE (Erika's Exeggutor): shuffle hand into deck, draw 5
+	if "shuffle your hand into your deck" in text_lower:
+		hide_attack_buttons()
+		await attack_effects.execute_psychic_exchange(player_active_pokemon, false)
+		await get_tree().create_timer(0.5).timeout
+		player_end_turn_checks()
+		return
+	# MAGIC POLLEN (Erika's Gloom): damage, flip — heads applies a chosen special condition
+	if "(your choice)" in text_lower:
+		hide_attack_buttons()
+		await attack_effects.execute_magic_pollen(player_active_pokemon, opponent_active_pokemon, false, g1_base)
+		last_attack_on_opponent = {"damage": g1_base, "attack": attack, "attacker_types": g1_types}
+		player_attacked_this_turn = true
+		await get_tree().create_timer(0.5).timeout
+		player_end_turn_checks()
+		return
+	# WATER PUNCH (Misty's Poliwhirl): damage + flip per Water Energy
+	if "30 damage plus 10 damage for each heads" in text_lower:
+		hide_attack_buttons()
+		await attack_effects.execute_water_punch(player_active_pokemon, opponent_active_pokemon, false, g1_base)
+		last_attack_on_opponent = {"damage": g1_base, "attack": attack, "attacker_types": g1_types}
+		player_attacked_this_turn = true
+		await check_all_knockouts()
+		await get_tree().create_timer(0.5).timeout
+		player_end_turn_checks()
+		return
+	# CALL FOR FRIEND (Misty's Psyduck): flip — search Misty-named Basic to bench
+	if "basic pokémon with misty in its name" in text_lower:
+		hide_attack_buttons()
+		await attack_effects.execute_call_for_named_basic(player_active_pokemon, false, "Misty")
+		await get_tree().create_timer(0.5).timeout
+		player_end_turn_checks()
+		return
+	# CALL FOR FRIEND (Brock's Geodude): flip — search Brock-named Basic to bench
+	if "basic pokémon card with brock in its name" in text_lower:
+		hide_attack_buttons()
+		await attack_effects.execute_call_for_named_basic(player_active_pokemon, false, "Brock")
+		await get_tree().create_timer(0.5).timeout
+		player_end_turn_checks()
+		return
+	# NIGHT SPIRITS (Sabrina's Haunter): flip per ghost in play, 30 x heads
+	if "total number of sabrina's gastlys" in text_lower:
+		hide_attack_buttons()
+		await attack_effects.execute_night_spirits(player_active_pokemon, opponent_active_pokemon, false, g1_base)
+		last_attack_on_opponent = {"damage": g1_base, "attack": attack, "attacker_types": g1_types}
+		player_attacked_this_turn = true
+		await check_all_knockouts()
+		await get_tree().create_timer(0.5).timeout
+		player_end_turn_checks()
+		return
+	# FULL SPEED CHARGE (Blaine's Tauros): flip 4 — 20 x heads, 20 x tails recoil
+	if "number of tails to" in text_lower:
+		hide_attack_buttons()
+		await attack_effects.execute_full_speed_charge(player_active_pokemon, opponent_active_pokemon, false)
+		last_attack_on_opponent = {"damage": g1_base, "attack": attack, "attacker_types": g1_types}
+		player_attacked_this_turn = true
+		await get_tree().create_timer(0.5).timeout
+		player_end_turn_checks()
+		return
+	# BLAZE (Blaine's Growlithe): damage + 10 to each Grass on opponent bench
+	if "each grass pokémon on your opponent's bench" in text_lower:
+		hide_attack_buttons()
+		await attack_effects.execute_typed_bench_damage(player_active_pokemon, opponent_active_pokemon, false, g1_base, "Grass")
+		last_attack_on_opponent = {"damage": g1_base, "attack": attack, "attacker_types": g1_types}
+		player_attacked_this_turn = true
+		await get_tree().create_timer(0.5).timeout
+		player_end_turn_checks()
+		return
+	# SONIC DISTORTION (Sabrina's Venomoth): damage, flip 2 — 1 or both heads confuses
+	if "if 1 or both of them are heads" in text_lower:
+		hide_attack_buttons()
+		await attack_effects.execute_flip2_any_heads_status(player_active_pokemon, opponent_active_pokemon, false, g1_base, "Confused")
+		last_attack_on_opponent = {"damage": g1_base, "attack": attack, "attacker_types": g1_types}
+		player_attacked_this_turn = true
+		await check_all_knockouts()
+		await get_tree().create_timer(0.5).timeout
+		player_end_turn_checks()
+		return
+	# DRILL TACKLE (Brock's Rhyhorn): flip 2, both heads does damage else nothing
+	if "if 1 or both of them are tails, this attack does nothing" in text_lower:
+		hide_attack_buttons()
+		await attack_effects.execute_drill_tackle(player_active_pokemon, opponent_active_pokemon, false, g1_base)
+		last_attack_on_opponent = {"damage": g1_base, "attack": attack, "attacker_types": g1_types}
+		player_attacked_this_turn = true
+		await check_all_knockouts()
+		await get_tree().create_timer(0.5).timeout
+		player_end_turn_checks()
+		return
+	# EGGSPLOSION (Erika's Exeggcute): flip per attached Energy, 10 x heads
+	if "number of energy attached to erika's exeggcute" in text_lower:
+		hide_attack_buttons()
+		await attack_effects.execute_big_eggsplosion(player_active_pokemon, opponent_active_pokemon, false, g1_base)
+		last_attack_on_opponent = {"damage": g1_base, "attack": attack, "attacker_types": g1_types}
+		player_attacked_this_turn = true
+		await check_all_knockouts()
+		await get_tree().create_timer(0.5).timeout
+		player_end_turn_checks()
+		return
+	# ELECTRIC CURRENT (Lt. Surge's Electabuzz): damage + move Lightning Energy to bench
+	if "attach it to 1 of your benched pokémon" in text_lower:
+		hide_attack_buttons()
+		await attack_effects.execute_electric_current(player_active_pokemon, opponent_active_pokemon, false, g1_base)
+		last_attack_on_opponent = {"damage": g1_base, "attack": attack, "attacker_types": g1_types}
+		player_attacked_this_turn = true
+		await get_tree().create_timer(0.5).timeout
+		player_end_turn_checks()
+		return
+	# SCREAMING HEADBUTT (Sabrina's Slowbro): damage, this attack disabled next turn
+	if "can't use this attack during your next turn" in text_lower:
+		hide_attack_buttons()
+		await attack_effects.execute_screaming_headbutt(player_active_pokemon, opponent_active_pokemon, false, g1_base, attack_name)
+		last_attack_on_opponent = {"damage": g1_base, "attack": attack, "attacker_types": g1_types}
+		player_attacked_this_turn = true
+		await get_tree().create_timer(0.5).timeout
+		player_end_turn_checks()
+		return
+	# FAIRY POWER (Erika's Clefable): flip — heads returns your Pokemon to hand
+	if "return any number of your pokémon in play" in text_lower:
+		hide_attack_buttons()
+		await attack_effects.execute_fairy_power(player_active_pokemon, false)
+		await get_tree().create_timer(0.5).timeout
+		player_end_turn_checks()
+		return
+	# MOONWATCHING (Erika's Clefairy): search deck for a basic Energy to hand
+	if "search your deck for a basic energy card" in text_lower:
+		hide_attack_buttons()
+		await attack_effects.execute_search_basic_energy_to_hand(player_active_pokemon, false)
+		await get_tree().create_timer(0.5).timeout
+		player_end_turn_checks()
+		return
+	# JELLYFISH POD (Misty's Tentacool): search deck for named Pokemon to hand
+	if "any number of pokémon named" in text_lower:
+		hide_attack_buttons()
+		await attack_effects.execute_jellyfish_pod(player_active_pokemon, false, ["Tentacool", "Tentacruel", "Misty's Tentacool", "Misty's Tentacruel"])
+		await get_tree().create_timer(0.5).timeout
+		player_end_turn_checks()
+		return
+	# HEALING POLLEN (Sabrina's Venomoth): flip 3, heal each of your Pokemon per heads
+	if "remove 1 damage counter from each of your pokémon" in text_lower:
+		hide_attack_buttons()
+		await attack_effects.execute_team_heal_flip(player_active_pokemon, false, 3)
+		await get_tree().create_timer(0.5).timeout
+		player_end_turn_checks()
+		return
+	# FIDGET (Brock's Mankey): shuffle your deck
+	if "fidget" in attack_name.to_lower():
+		hide_attack_buttons()
+		await attack_effects.execute_fidget(player_active_pokemon, false)
+		await get_tree().create_timer(0.5).timeout
+		player_end_turn_checks()
+		return
+	# ENERGY LOOP (Sabrina's Abra): return a Psychic Energy to hand, then damage
+	if "return a psychic energy card attached to" in text_lower:
+		hide_attack_buttons()
+		await attack_effects.execute_energy_loop(player_active_pokemon, opponent_active_pokemon, false, g1_base)
+		last_attack_on_opponent = {"damage": g1_base, "attack": attack, "attacker_types": g1_types}
+		player_attacked_this_turn = true
+		await check_all_knockouts()
+		await get_tree().create_timer(0.5).timeout
+		player_end_turn_checks()
+		return
+	# SLEIGHT OF HAND (Sabrina's Mr. Mime): hand cards to deck, search basic Energy
+	if "search your deck for that many basic energy" in text_lower:
+		hide_attack_buttons()
+		await attack_effects.execute_sleight_of_hand(player_active_pokemon, false)
+		await get_tree().create_timer(0.5).timeout
+		player_end_turn_checks()
+		return
+	# MUD SPLASH (Misty's Seaking): damage + choose 1 benched, flip 10 to it
+	if "choose 1 of them and flip a coin" in text_lower:
+		hide_attack_buttons()
+		await attack_effects.execute_mud_splash(player_active_pokemon, opponent_active_pokemon, false, g1_base)
+		last_attack_on_opponent = {"damage": g1_base, "attack": attack, "attacker_types": g1_types}
+		player_attacked_this_turn = true
+		await get_tree().create_timer(0.5).timeout
+		player_end_turn_checks()
+		return
+	# SWIFT (Misty's Staryu): fixed damage ignoring Weakness/Resistance/effects
+	if "isn't affected by weakness, resistance" in text_lower:
+		hide_attack_buttons()
+		await attack_effects.execute_sonicboom(player_active_pokemon, opponent_active_pokemon, false, g1_base)
+		last_attack_on_opponent = {"damage": g1_base, "attack": attack, "attacker_types": g1_types}
+		player_attacked_this_turn = true
+		await check_all_knockouts()
+		await get_tree().create_timer(0.5).timeout
+		player_end_turn_checks()
+		return
+	# FOCUS ENERGY (Lt. Surge's Rattata): Gnaw doubled next turn
+	if "focus energy" in attack_name.to_lower():
+		hide_attack_buttons()
+		await attack_effects.execute_focus_energy(player_active_pokemon, false)
+		await get_tree().create_timer(0.5).timeout
+		player_end_turn_checks()
+		return
+	# ============================ END GYM1 SPECIAL ATTACKS ============================
+
 
 	# SWORDS DANCE: Buff Slash damage next turn (no damage attack)
 	if "swords dance" in attack_name.to_lower() or ("during your next turn" in text_lower and "slash" in text_lower and "instead of" in text_lower):
@@ -2933,8 +3664,8 @@ func perform_attack(attack_index: int) -> void:
 	# MEGA DRAIN: Deal damage, heal half
 	if "mega drain" in attack_name.to_lower() or ("remove" in text_lower and "equal to half the damage" in text_lower):
 		hide_attack_buttons()
-		await attack_effects.execute_mega_drain(player_active_pokemon, opponent_active_pokemon, false)
-		last_attack_on_opponent = {"damage": 40, "attack": attack, "attacker_types": player_active_pokemon.metadata.get("types", ["Colorless"])}
+		await attack_effects.execute_mega_drain(player_active_pokemon, opponent_active_pokemon, false, g1_base)
+		last_attack_on_opponent = {"damage": g1_base, "attack": attack, "attacker_types": player_active_pokemon.metadata.get("types", ["Colorless"])}
 		player_attacked_this_turn = true
 		await check_all_knockouts()
 		await get_tree().create_timer(0.5).timeout
@@ -3319,7 +4050,15 @@ func perform_attack(attack_index: int) -> void:
 		attack["damage"] = "60"
 		player_active_pokemon.swords_dance_active = false
 		await show_message("SWORDS DANCE BOOST! SLASH DOES 60 DAMAGE!")
-	
+
+	# GYM1 Focus Energy: if active, double Gnaw's base damage
+	if player_active_pokemon.focus_energy_active and attack_name.to_lower() == "gnaw":
+		attack = attack.duplicate()
+		var gnaw_doubled = attack_effects.parse_attack_base_damage(attack) * 2
+		attack["damage"] = str(gnaw_doubled)
+		player_active_pokemon.focus_energy_active = false
+		await show_message("FOCUS ENERGY! GNAW DOES " + str(gnaw_doubled) + " DAMAGE!")
+
 	if await attack_effects.handle_attack_confusion(player_active_pokemon, false):
 		hide_attack_buttons()
 		await get_tree().create_timer(0.5).timeout
@@ -3849,6 +4588,14 @@ func clear_all_statuses(pokemon: card_object, is_opponent: bool) -> void:
 	# Clear temporary type overrides when leaving play
 	pokemon.temporary_weakness = ""
 	pokemon.temporary_resistance = ""
+
+	# GYM2 Koga's Ditto Giant Growth: benching ends the HP / Pound boost
+	if pokemon.ditto_giant_growth:
+		pokemon.ditto_giant_growth = false
+		pokemon.max_hp_override = 0
+		var real_max = int(pokemon.metadata.get("hp", "0"))
+		if pokemon.current_hp > real_max:
+			pokemon.current_hp = real_max
 	
 	# Clear disabled attacks that are "while_in_play" (not "entire_game")
 	var keys_to_remove = []

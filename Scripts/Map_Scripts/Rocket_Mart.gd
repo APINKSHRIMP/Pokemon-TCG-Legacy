@@ -3,6 +3,12 @@ extends Node2D
 const SCENE_PATH = "res://Scenes/Map_Scenes/Rocket_Mart.tscn"
 const NPC_JSON_PATH = "res://NPC_and_Opponent_Data/Rocket_Mart_NPCs.json"
 
+# --- Door-return spawn point --------------------------------------------------
+# The Rocket Mart has a single door, out to Verdant Forest, so the player only
+# ever arrives here from one scene. Value matches the Player node in the .tscn.
+const SPAWN_FROM_VERDANT_FOREST = Vector2(208, 172)
+# ------------------------------------------------------------------------------
+
 var cash_label: Label = null
 
 func _ready():
@@ -16,16 +22,24 @@ func _ready():
 	$"Door Areas".monitorable     = true
 	$"Door Areas".body_entered.connect(_on_door_entered)
 
+	# Hard-coded spawn point per scene the player can arrive from. The key is
+	# the value the source scene writes to GameState.entering_from.
+	var entry_positions = {
+		"Verdant_Forest": SPAWN_FROM_VERDANT_FOREST,
+	}
+
 	if GameState.has_menu_return_state and GameState.menu_return_scene_path == SCENE_PATH:
 		$Player.position = GameState.menu_return_position
 		$Player.set_direction(GameState.menu_return_direction)
 		GameState.clear_menu_return_state()
-	elif GameState.use_spawn_position:
-		$Player.position = GameState.spawn_position
-		GameState.use_spawn_position = false
+	elif entry_positions.has(GameState.entering_from):
+		# Returning from another scene through one of this scene's doors
+		$Player.position = entry_positions[GameState.entering_from]
 		$Player.set_direction(GameState.get_player_direction())
+		GameState.entering_from = ""
 	else:
-		$Player.position = Vector2(208, 172)
+		# First load / fallback — the only entrance is from Verdant Forest
+		$Player.position = SPAWN_FROM_VERDANT_FOREST
 		$Player.set_direction(GameState.get_player_direction())
 
 	# Persist current location so the splash screen can resume here on next launch
@@ -143,12 +157,9 @@ func _on_door_entered(body: Node2D):
 	GameState.save_player_direction(body.get_current_direction())
 	body.lock_movement()
 
-	if target.contains("Upstairs"):
-		GameState.spawn_position     = Vector2(55, 25)
-		GameState.use_spawn_position = true
-	else:
-		GameState.entering_from      = "Rocket_Mart"
-		GameState.use_spawn_position = false
+	# The single door leads out to Verdant Forest — announce our origin so
+	# the forest places us at its hard-coded Rocket Mart door spawn.
+	GameState.entering_from = "Rocket_Mart"
 
 	var fade_tween = create_tween()
 	fade_tween.tween_property(get_tree().current_scene, "modulate", Color.BLACK, 0.5)

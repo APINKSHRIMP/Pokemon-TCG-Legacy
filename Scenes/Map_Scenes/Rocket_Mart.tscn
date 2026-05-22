@@ -73,7 +73,7 @@ position = Vector2(209, 136)
 position = Vector2(-37, 1468)
 
 [node name="DoorArea_VerdantForest" type="CollisionShape2D" parent="Door Areas" unique_id=2119147692]
-position = Vector2(245, -1272)
+position = Vector2(245, -1275)
 shape = SubResource("RectangleShape2D_377ug")
 metadata/target_scene = "res://Scenes/Map_Scenes/Verdant_Forest.tscn"
 metadata/door_type = "exit_to_outside"

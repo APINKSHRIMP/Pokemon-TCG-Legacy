@@ -856,7 +856,7 @@ tile_map_data = PackedByteArray("AAAOAN//AAAyACkAAAAOAOD/AAAyACoAAAAOAOH/AAAyACs
 tile_set = ExtResource("2_bf13f")
 
 [node name="Plants2" type="TileMapLayer" parent="TILE_MAPS/HOUSES 2 (TOP LEFT)" unique_id=569564037]
-position = Vector2(-937, 446)
+position = Vector2(-939, 446)
 tile_map_data = PackedByteArray("AAAPAOD/AAAqAFIAAAASAOD/AAAqAFIAAAAQAOD/AAAqAFcAAAARAOD/AAAqAFgAAAAPAOH/AAAqAFEAAAASAOH/AAAqAFEAAAAQAOH/AAAqAFUAAAARAOH/AAAqAFQAAAAPAOL/AAAqAFIAAAAQAOL/AAAqAFcAAAARAOL/AAAqAFgAAAASAOL/AAAqAFIAAAA=")
 tile_set = ExtResource("2_bf13f")
 

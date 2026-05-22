@@ -82,15 +82,30 @@ var ditto_transform_uid: String = ""         # UID of the copied card (for image
 var mirror_shell_active: bool = false                    # Dark Wartortle Mirror Shell counter-attack
 var power_disabled_until_end_of_next_turn: bool = false  # Dark Arbok Stare power disable
 
+# GYM1 (Gym Heroes) properties
+var counter_attack_double: bool = false   # Rocket's Hitmonchan Crosscounter — coin flip, heads = counter double the damage taken
+var counter_attack_fixed: int = 0         # Rocket's Moltres Fire Wall — counter this much damage when attacked
+var dodge_active: bool = false            # Rocket's Scyther Shadow Images — attacker flips, tails = no damage; lasts until damage gets through
+var damage_halved_next_turn: bool = false # Erika's Exeggcute Deflector — incoming damage halved (round down to nearest 10) next turn
+var focus_energy_active: bool = false     # Lt. Surge's Rattata Focus Energy — Gnaw base damage doubled next turn
+
+# GYM2 (Gym Challenge) properties
+var gym2_focus_energy_active: bool = false # Lt. Surge's Raticate/Rattata Focus Energy — boosted attack doubled next turn
+var gym2_lie_low_counter: int = 0          # Brock's Dugtrio Lie Low — Earthdrill is usable while this is > 0
+var ditto_giant_growth: bool = false       # Koga's Ditto Giant Growth — max HP 80, Pound base damage 30
+var max_hp_override: int = 0               # If > 0, overrides the metadata HP value (Koga's Ditto Giant Growth)
+
 # Utility: get damage counters (each counter = 10 damage)
 func get_damage_counters() -> int:
-	var max_hp = int(metadata.get("hp", "0"))
+	var max_hp = get_max_hp()
 	if max_hp <= 0:
 		return 0
 	return (max_hp - current_hp) / 10
 
-# Utility: get max HP from metadata
+# Utility: get max HP (metadata HP, unless temporarily overridden)
 func get_max_hp() -> int:
+	if max_hp_override > 0:
+		return max_hp_override
 	return int(metadata.get("hp", "0"))
 
 # Constructor - initialize the card with a UID and load its metadata

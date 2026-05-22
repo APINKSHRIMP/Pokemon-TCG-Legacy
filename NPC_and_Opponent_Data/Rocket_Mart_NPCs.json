@@ -7,8 +7,8 @@
 			"shop_id": "rocket_mart",
 			"meet_text": "Interested in buying some special packs?",
 			"position": {
-				"x": 85,
-				"y": -35
+				"x": 88,
+				"y": -30
 			},
 			"pattern": "idle_down"
 		}

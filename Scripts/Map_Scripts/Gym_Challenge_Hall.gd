@@ -1,35 +1,34 @@
 extends Node2D
 
 # ============================================================
-# GYM CHALLENGE RECEPTION — interior
-# Reached from Gym Plaza; leads onward to the Gym Challenge Hall.
-# Hosts a shopkeeper and supports opponent/NPC spawning via the
-# shared MapManager pipeline.
+# GYM CHALLENGE HALL — interior
+# Reached from the Gym Challenge Reception; this is the hall
+# where the gym challenge opponents are battled. The single door
+# leads back to the reception. Like every map script, this scene
+# resolves its spawn from a hard-coded table keyed on the origin
+# scene the player came from (GameState.entering_from).
 # ============================================================
 
-const SCENE_PATH = "res://Scenes/Map_Scenes/Gym_Challenge_Reception.tscn"
+const SCENE_PATH = "res://Scenes/Map_Scenes/Gym_Challenge_Hall.tscn"
 
 # --- Tweakable -------------------------------------------------
-# Placeholder interior BGM (shared shop track). Swap for a gym
-# reception theme if one is added later.
-const BGM_PATH = "res://Audio/BGM/Shop1.ogg"
+# Interior BGM — the Makuhita Dojo theme suits a gym challenge
+# hall. Swap for a dedicated track if one is added later.
+const BGM_PATH = "res://Audio/BGM/024_Makuhita_Dojo_PMD_Blue_Rescue_Team_OST.ogg"
 
-# Opponents + NPCs (incl. the shopkeeper) load from this file.
-# It does not exist yet — a missing file is handled silently.
-# When authored it must contain both an "opponents" and an "npcs"
-# array (either may be empty) — that's the MapManager convention.
-const NPC_JSON_PATH = "res://NPC_and_Opponent_Data/Gym_Challenge_Reception_NPCs.json"
+# Opponents + NPCs load from this file. It does not exist yet —
+# a missing file is handled silently. When authored it must
+# contain both an "opponents" and an "npcs" array (either may be
+# empty) — that's the MapManager convention. The same path feeds
+# both the opponent and NPC loaders (one file, two arrays).
+const NPC_JSON_PATH = "res://NPC_and_Opponent_Data/Gym_Challenge_Hall_NPCs.json"
 
-# --- Door-return spawn points -------------------------------------------------
-# Spawn point per scene the player can arrive from. The key is the value the
-# source scene writes to GameState.entering_from.
-#   from Gym Plaza — just inside the south door (DoorArea_Gym_Plaza).
-#   from the Hall  — just inside the hall door (DoorArea_Gym_Plaza2).
-const SPAWN_FROM_GYM_PLAZA          = Vector2(350, 450)
-const SPAWN_FROM_GYM_CHALLENGE_HALL = Vector2(220, 45)
+# --- Door-return spawn point --------------------------------------------------
+# The single door leads back to the Gym Challenge Reception, so the player
+# only ever arrives here from one scene. Value matches the Player node in
+# the .tscn — i.e. walking in from the reception.
+const SPAWN_FROM_GYM_CHALLENGE_RECEPTION = Vector2(361, 467)
 # ---------------------------------------------------------------
-
-var cash_label: Label = null
 
 func _ready():
 	SoundManagerScript.play_bgm(BGM_PATH, true)
@@ -46,8 +45,7 @@ func _ready():
 	# Hard-coded spawn point per scene the player can arrive from. The key is
 	# the value the source scene writes to GameState.entering_from.
 	var entry_positions = {
-		"Gym_Plaza":          SPAWN_FROM_GYM_PLAZA,
-		"Gym_Challenge_Hall": SPAWN_FROM_GYM_CHALLENGE_HALL,
+		"Gym_Challenge_Reception": SPAWN_FROM_GYM_CHALLENGE_RECEPTION,
 	}
 
 	if GameState.has_menu_return_state and GameState.menu_return_scene_path == SCENE_PATH:
@@ -55,29 +53,30 @@ func _ready():
 		$Player.position = GameState.menu_return_position
 		$Player.set_direction(GameState.menu_return_direction)
 		GameState.clear_menu_return_state()
+	elif GameState.returning_from_battle:
+		# Returning from battle with a hall opponent
+		$Player.position = GameState.player_position
+		$Player.set_direction(GameState.get_player_direction())
+		GameState.returning_from_battle = false
 	elif entry_positions.has(GameState.entering_from):
 		# Returning from another scene through one of this scene's doors
 		$Player.position = entry_positions[GameState.entering_from]
 		$Player.set_direction(GameState.get_player_direction())
 		GameState.entering_from = ""
 	else:
-		# First load / fallback — treat as a cold arrival from the Gym Plaza
-		$Player.position = SPAWN_FROM_GYM_PLAZA
+		# First load / fallback — the only entrance is from the reception
+		$Player.position = SPAWN_FROM_GYM_CHALLENGE_RECEPTION
 		$Player.set_direction(GameState.get_player_direction())
 
 	# Persist current location so the splash screen can resume here on next launch
 	GameState.save_current_location(SCENE_PATH, $Player.position)
 
 	# This interior has no opponent/NPC container in the .tscn — create one at
-	# runtime so MapManager has somewhere to parent the shopkeeper and any
-	# opponents/NPCs it spawns.
+	# runtime so MapManager has somewhere to parent the opponents/NPCs it spawns.
 	var npc_container := Node2D.new()
 	npc_container.name = "OPPONENTS"
 	npc_container.z_index = 1
 	add_child(npc_container)
-
-	_create_cash_label()
-	_update_cash_label()
 
 	# A missing JSON is fine — MapManager spawns nothing until the file exists.
 	# The same path feeds both the opponent and NPC loaders (one file, two arrays).
@@ -86,42 +85,6 @@ func _ready():
 
 	await get_tree().process_frame
 	tween.tween_property(get_tree().root, "modulate", Color.WHITE, 1.0)
-
-func _exit_tree():
-	if cash_label != null and is_instance_valid(cash_label):
-		cash_label.queue_free()
-		cash_label = null
-
-# ============================================================
-# CASH LABEL
-# Mirrors Card_Mart / Rocket_Mart — a persistent "Cash: $X"
-# readout, useful next to the shopkeeper.
-# ============================================================
-
-func _create_cash_label():
-	cash_label = Label.new()
-	cash_label.name = "CashLabel"
-	cash_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-	cash_label.vertical_alignment   = VERTICAL_ALIGNMENT_BOTTOM
-	cash_label.add_theme_font_size_override("font_size", 18)
-	cash_label.add_theme_color_override("font_color", Color.WHITE)
-	cash_label.add_theme_color_override("font_shadow_color", Color.BLACK)
-	cash_label.add_theme_constant_override("shadow_offset_x", 1)
-	cash_label.add_theme_constant_override("shadow_offset_y", 1)
-	cash_label.anchor_left   = 1.0
-	cash_label.anchor_top    = 1.0
-	cash_label.anchor_right  = 1.0
-	cash_label.anchor_bottom = 1.0
-	cash_label.offset_left   = -160
-	cash_label.offset_top    = -40
-	cash_label.offset_right  = -10
-	cash_label.offset_bottom = -10
-	$UILAYER.add_child(cash_label)
-
-func _update_cash_label():
-	if cash_label == null:
-		return
-	cash_label.text = "Cash: $" + str(GameState.get_cash())
 
 # ============================================================
 # INPUT
@@ -166,10 +129,9 @@ func _on_door_entered(body: Node2D):
 	GameState.save_player_direction(body.get_current_direction())
 	body.lock_movement()
 
-	# Both doors (out to the Gym Plaza, on to the Gym Challenge Hall) resolve
-	# their spawn from a hard-coded table keyed on entering_from, so we just
-	# announce our origin scene.
-	GameState.entering_from = "Gym_Challenge_Reception"
+	# The single door leads back to the Gym Challenge Reception — announce
+	# our origin so it places us at its hard-coded hall-door spawn.
+	GameState.entering_from = "Gym_Challenge_Hall"
 
 	var fade_tween = create_tween()
 	fade_tween.tween_property(get_tree().current_scene, "modulate", Color.BLACK, 0.5)

@@ -2,6 +2,13 @@ extends Node2D
 
 const SCENE_PATH = "res://Scenes/Map_Scenes/Player_House_Upstairs.tscn"
 
+# --- Door-return spawn point --------------------------------------------------
+# The only way in or out is the staircase down to the downstairs, so the
+# player only ever arrives here from one scene. Value matches the placement
+# previously used by the downstairs staircase door.
+const SPAWN_FROM_PLAYER_HOUSE_DOWNSTAIRS = Vector2(50, 20)
+# ------------------------------------------------------------------------------
+
 # ── PLACEHOLDER: Replace with actual 60 card IDs ──
 const STARTER_BOX_CARDS = "base1-43, base1-43, base1-43, base1-43, base1-47, base1-47, base1-47, base1-47, base1-27, base1-27, base1-52, base1-52, base1-52, base1-52, base1-61, base1-61,base1-61,base1-61,base1-67,base1-67,base1-67,base1-67,base1-88,base1-91,base1-94,base1-94"
 
@@ -16,16 +23,24 @@ func _ready():
 	$"Door Areas".monitorable = true
 	$"Door Areas".body_entered.connect(_on_door_entered)
 
+	# Hard-coded spawn point per scene the player can arrive from. The key is
+	# the value the source scene writes to GameState.entering_from.
+	var entry_positions = {
+		"Player_House_Downstairs": SPAWN_FROM_PLAYER_HOUSE_DOWNSTAIRS,
+	}
+
 	if GameState.has_menu_return_state and GameState.menu_return_scene_path == SCENE_PATH:
 		$Player.position = GameState.menu_return_position
 		$Player.set_direction(GameState.menu_return_direction)
 		GameState.clear_menu_return_state()
-	elif GameState.use_spawn_position:
-		$Player.position = GameState.spawn_position
-		GameState.use_spawn_position = false
+	elif entry_positions.has(GameState.entering_from):
+		# Returning from another scene through one of this scene's doors
+		$Player.position = entry_positions[GameState.entering_from]
 		$Player.set_direction(GameState.get_player_direction())
+		GameState.entering_from = ""
 	else:
-		$Player.position = Vector2(50, 25)
+		# First load / fallback — the only entrance is the staircase down
+		$Player.position = SPAWN_FROM_PLAYER_HOUSE_DOWNSTAIRS
 		$Player.set_direction(GameState.get_player_direction())
 
 	# Persist current location so the splash screen can resume here on next launch
@@ -90,8 +105,9 @@ func _on_door_entered(body: Node2D):
 	GameState.save_player_direction(body.get_current_direction())
 	body.lock_movement()
 
-	GameState.spawn_position = Vector2(360, 15)
-	GameState.use_spawn_position = true
+	# The single staircase leads down to the downstairs — announce our origin
+	# so it places us at its hard-coded foot-of-stairs spawn.
+	GameState.entering_from = "Player_House_Upstairs"
 
 	var tween = create_tween()
 	tween.tween_property(get_tree().current_scene, "modulate", Color.BLACK, 0.5)

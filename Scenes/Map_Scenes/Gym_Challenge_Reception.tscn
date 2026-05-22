@@ -140,7 +140,7 @@ metadata/target_scene = "res://Scenes/Map_Scenes/Gym_Plaza.tscn"
 metadata/door_type = "exit_to_outside"
 
 [node name="DoorArea_Gym_Plaza2" type="CollisionShape2D" parent="Door Areas" unique_id=593877742]
-position = Vector2(81, -1500)
+position = Vector2(81, -1507)
 shape = SubResource("RectangleShape2D_377ug")
 metadata/target_scene = "res://Scenes/Map_Scenes/Gym_Challenge_Hall.tscn"
 metadata/door_type = "exit_to_outside"

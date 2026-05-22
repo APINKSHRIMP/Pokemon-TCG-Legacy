@@ -4,7 +4,7 @@
 [ext_resource type="TileSet" uid="uid://yus3igcnpw1m" path="res://Image_Assets/Map_Sheets/Tile_Sets/Player_Home_Tileset.tres" id="2_g1bce"]
 [ext_resource type="PackedScene" uid="uid://bprufyh8mxqom" path="res://Scenes/Objects/Player_Object_Scene.tscn" id="3_xhodw"]
 [ext_resource type="Texture2D" uid="uid://bx3bwk33dets8" path="res://Image_Assets/Misc/starter_box.png" id="4_eucp7"]
-[ext_resource type="Script" path="res://Scripts/Map_Scripts/Interactables_Script.gd" id="int_script"]
+[ext_resource type="Script" uid="uid://cphl8h5xtm64h" path="res://Scripts/Map_Scripts/Interactables_Script.gd" id="int_script"]
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_377ug"]
 size = Vector2(23, 17)
@@ -101,7 +101,7 @@ position = Vector2(70, 22)
 position = Vector2(-37, 1468)
 
 [node name="DoorArea_Downstairs" type="CollisionShape2D" parent="Door Areas" unique_id=2119147692]
-position = Vector2(56, -1440)
+position = Vector2(59, -1447)
 shape = SubResource("RectangleShape2D_377ug")
 metadata/target_scene = "res://Scenes/Map_Scenes/Player_House_Downstairs.tscn"
 metadata/door_type = "stairs_down"

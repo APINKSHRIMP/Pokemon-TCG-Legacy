@@ -2,6 +2,14 @@ extends Node2D
 
 const SCENE_PATH = "res://Scenes/Map_Scenes/Player_House_Downstairs.tscn"
 
+# --- Door-return spawn points -------------------------------------------------
+# Spawn point per scene the player can arrive from. The key is the value the
+# source scene writes to GameState.entering_from. Values match the placements
+# previously used by each door.
+const SPAWN_FROM_CELESTE_HARBOUR        = Vector2(200, 205)  # front door from the harbour
+const SPAWN_FROM_PLAYER_HOUSE_UPSTAIRS  = Vector2(365, 10)   # foot of the stairs
+# ------------------------------------------------------------------------------
+
 func _ready():
 	var tween = create_tween()
 	tween.tween_property(get_tree().root, "modulate", Color(1, 1, 1, 0), 0.0)
@@ -11,16 +19,25 @@ func _ready():
 	$"Door Areas".monitorable = true
 	$"Door Areas".body_entered.connect(_on_door_entered)
 
+	# Hard-coded spawn point per scene the player can arrive from. The key is
+	# the value the source scene writes to GameState.entering_from.
+	var entry_positions = {
+		"Celeste_Harbour":       SPAWN_FROM_CELESTE_HARBOUR,
+		"Player_House_Upstairs": SPAWN_FROM_PLAYER_HOUSE_UPSTAIRS,
+	}
+
 	if GameState.has_menu_return_state and GameState.menu_return_scene_path == SCENE_PATH:
 		$Player.position = GameState.menu_return_position
 		$Player.set_direction(GameState.menu_return_direction)
 		GameState.clear_menu_return_state()
-	elif GameState.use_spawn_position:
-		$Player.position = GameState.spawn_position
-		GameState.use_spawn_position = false
+	elif entry_positions.has(GameState.entering_from):
+		# Returning from another scene through one of this scene's doors
+		$Player.position = entry_positions[GameState.entering_from]
 		$Player.set_direction(GameState.get_player_direction())
+		GameState.entering_from = ""
 	else:
-		$Player.position = Vector2(200, 200)
+		# First load / fallback — treat as arriving from the harbour
+		$Player.position = SPAWN_FROM_CELESTE_HARBOUR
 		$Player.set_direction(GameState.get_player_direction())
 
 	# Persist current location so the splash screen can resume here on next launch
@@ -81,11 +98,10 @@ func _on_door_entered(body: Node2D):
 	GameState.save_player_direction(body.get_current_direction())
 	body.lock_movement()
 
-	if target.contains("Upstairs"):
-		GameState.spawn_position = Vector2(55, 25)
-		GameState.use_spawn_position = true
-	else:
-		GameState.use_spawn_position = false
+	# Both doors (out to Celeste Harbour, up to the upstairs) resolve their
+	# spawn from a hard-coded table keyed on entering_from, so we just
+	# announce our origin scene.
+	GameState.entering_from = "Player_House_Downstairs"
 
 	var tween = create_tween()
 	tween.tween_property(get_tree().current_scene, "modulate", Color.BLACK, 0.5)
