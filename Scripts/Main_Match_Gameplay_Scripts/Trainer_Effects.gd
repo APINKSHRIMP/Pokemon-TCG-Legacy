@@ -29,12 +29,18 @@ func is_bench_token_trainer(card: card_object) -> bool:
 				return true
 	return false
 
-# Returns true if a card is an attached trainer (PlusPower, Defender)
+# Returns true if a card is an attached trainer (PlusPower, Defender, GYM1 Charity / Sabrina's ESP)
 func is_attached_trainer(card: card_object) -> bool:
 	if not is_trainer_card(card):
 		return false
 	var card_name = card.metadata.get("name", "").to_lower()
-	return card_name in ["pluspower", "defender"]
+	if card_name in ["pluspower", "defender"]:
+		return true
+	# GYM1 attached tools
+	var uid = card.uid.to_lower()
+	if uid == "gym1-99" or uid == "gym1-117":
+		return true
+	return false
 
 # Returns true if a card is a stadium trainer (future-proofing)
 func is_stadium_trainer(card: card_object) -> bool:
@@ -575,7 +581,127 @@ func validate_trainer_can_be_played(card: card_object, is_opponent: bool) -> Str
 					break
 			if not valid_ngr:
 				return "No valid cards in discard pile!"
-	
+
+		# ============================ GYM1 (GYM HEROES) TRAINER VALIDATIONS ============================
+		"gym1-15", "gym1-98": # Brock — heal 1 counter from each damaged Pokemon
+			var any_damaged = false
+			for p in build_field_pokemon_array(is_opponent):
+				if p.current_hp < int(p.metadata.get("hp", "0")):
+					any_damaged = true
+					break
+			if not any_damaged:
+				return "No damaged Pokemon to heal!"
+		"gym1-17", "gym1-101": # Lt. Surge — swap a Basic from hand with Active
+			if active == null:
+				return "No Active Pokemon to swap!"
+			if bench.size() >= 5:
+				return "Bench is full!"
+			var has_basic = false
+			for c in hand:
+				if c != card and main.is_basic_pokemon(c):
+					has_basic = true
+					break
+			if not has_basic:
+				return "No Basic Pokemon in hand!"
+		"gym1-18", "gym1-102": # Misty — discard 2 cards, then +20 if Misty-named attacker
+			var available = 0
+			for c in hand:
+				if c != card:
+					available += 1
+			if available < 2:
+				return "Need at least 2 other cards to discard!"
+		"gym1-19": # The Rocket's Trap — needs opponent hand cards
+			var opp_hand = main.player_hand if is_opponent else main.opponent_hand
+			if opp_hand.size() == 0:
+				return "Opponent has no cards in hand!"
+		"gym1-99": # Charity — attach to Active
+			if active == null:
+				return "No Active Pokemon to attach Charity to!"
+		"gym1-105": # Blaine's Last Resort — only if hand empty other than this
+			for c in hand:
+				if c != card:
+					return "You may only play this when no other cards are in hand!"
+		"gym1-106": # Brock's Training Method — needs a Brock-named Pokemon in deck
+			var found = false
+			for c in deck:
+				if c.metadata.get("supertype", "") == "Pokémon" and "Brock" in c.metadata.get("name", ""):
+					found = true
+					break
+			if not found:
+				return "No Brock Pokemon in deck!"
+		"gym1-109": # Erika's Maids — discard 2, search Erika Pokemon
+			var avail_e = 0
+			for c in hand:
+				if c != card:
+					avail_e += 1
+			if avail_e < 2:
+				return "Need at least 2 other cards to discard!"
+			var found_e = false
+			for c in deck:
+				if c.metadata.get("supertype", "") == "Pokémon" and "Erika" in c.metadata.get("name", ""):
+					found_e = true
+					break
+			if not found_e:
+				return "No Erika Pokemon in deck!"
+		"gym1-110": # Erika's Perfume — needs opponent hand
+			var opp_hand_ep = main.player_hand if is_opponent else main.opponent_hand
+			if opp_hand_ep.size() == 0:
+				return "Opponent has no cards in hand!"
+		"gym1-111": # Good Manners — only if no Basic in hand
+			for c in hand:
+				if c == card:
+					continue
+				if main.is_basic_pokemon(c):
+					return "You can't play this with a Basic Pokemon in hand!"
+			var found_basic = false
+			for c in deck:
+				if main.is_basic_pokemon(c):
+					found_basic = true
+					break
+			if not found_basic:
+				return "No Basic Pokemon in deck!"
+		"gym1-113": # Minion of Team Rocket — needs opponent's benched pokemon for full effect (still playable; just resolves with no-bench)
+			pass
+		"gym1-116": # Recall
+			if active == null:
+				return "No Active Pokemon!"
+			if active.attached_pre_evolutions.size() == 0:
+				return "Active has no Basic/Evolution cards to recall attacks from!"
+		"gym1-117": # Sabrina's ESP — must have a Sabrina-named pokemon in play
+			var has_sabrina = false
+			for p in build_field_pokemon_array(is_opponent):
+				if "Sabrina" in p.metadata.get("name", ""):
+					has_sabrina = true
+					break
+			if not has_sabrina:
+				return "No Sabrina Pokemon in play!"
+		"gym1-118": # Secret Mission
+			var opp_hand_sm = main.player_hand if is_opponent else main.opponent_hand
+			if opp_hand_sm.size() == 0:
+				return "Opponent has no cards in hand!"
+		"gym1-119": # Tickling Machine — needs opp to have a hand
+			var opp_hand_tm = main.player_hand if is_opponent else main.opponent_hand
+			if opp_hand_tm.size() == 0:
+				return "Opponent has no cards in hand!"
+		"gym1-121": # Blaine's Gamble — needs at least 1 other card
+			var avail_g = 0
+			for c in hand:
+				if c != card:
+					avail_g += 1
+			if avail_g < 1:
+				return "No other cards in hand to discard!"
+		"gym1-122": # Energy Flow — needs at least one energy attached to a Pokemon
+			var any_e = false
+			for p in build_field_pokemon_array(is_opponent):
+				if p.attached_energies.size() > 0:
+					any_e = true
+					break
+			if not any_e:
+				return "No attached energies to return!"
+		"gym1-126": # Trash Exchange — needs discard
+			if discard.size() == 0:
+				return "Discard pile is empty!"
+
 	return ""
 
 # Main entry point for playing a trainer card (handles animation, routing, and discard)
@@ -723,6 +849,29 @@ func resolve_standard_trainer(card: card_object, is_opponent: bool) -> void:
 		"base5-77": await effect_nightly_garbage_run(is_opponent)
 		"base5-78": await effect_goop_gas_attack(is_opponent)
 		"base5-79": await effect_sleep_trainer(is_opponent)
+		# ============================ GYM1 (GYM HEROES) STANDARD TRAINERS ============================
+		"gym1-15", "gym1-98": await gym1_effect_brock(is_opponent)
+		"gym1-16", "gym1-100": await gym1_effect_erika(is_opponent)
+		"gym1-17", "gym1-101": await gym1_effect_lt_surge(is_opponent)
+		"gym1-18", "gym1-102": await gym1_effect_misty(card, is_opponent)
+		"gym1-19": await gym1_effect_rockets_trap(is_opponent)
+		"gym1-97": await gym1_effect_blaines_quiz(is_opponent)
+		"gym1-105": await gym1_effect_blaines_last_resort(is_opponent)
+		"gym1-106": await gym1_effect_brocks_training_method(is_opponent)
+		"gym1-109": await gym1_effect_erikas_maids(card, is_opponent)
+		"gym1-110": await gym1_effect_erikas_perfume(is_opponent)
+		"gym1-111": await gym1_effect_good_manners(is_opponent)
+		"gym1-112": await gym1_effect_lt_surges_treaty(is_opponent)
+		"gym1-113": await gym1_effect_minion_of_team_rocket(is_opponent)
+		"gym1-114": await gym1_effect_mistys_wrath(is_opponent)
+		"gym1-116": await gym1_effect_recall(is_opponent)
+		"gym1-118": await gym1_effect_secret_mission(is_opponent)
+		"gym1-119": await gym1_effect_tickling_machine(is_opponent)
+		"gym1-121": await gym1_effect_blaines_gamble(card, is_opponent)
+		"gym1-122": await gym1_effect_energy_flow(is_opponent)
+		"gym1-123": await gym1_effect_mistys_duel(is_opponent)
+		"gym1-125": await gym1_effect_sabrinas_gaze(is_opponent)
+		"gym1-126": await gym1_effect_trash_exchange(is_opponent)
 		_:
 			print("Unknown trainer card: ", card_id, " (", card_name, ")")
 
@@ -819,6 +968,85 @@ func resolve_attached_trainer(card: card_object, is_opponent: bool) -> void:
 				await main.animate_card_a_to_b(hand_node, target_node, 0.3, card_texture, main.card_scales[10])
 				display_attached_trainer_cards(false)
 				await main.show_message("Defender attached to " + target.metadata.get("name", "") + "!")
+
+	# GYM1 Charity (gym1-99) — attach to your own Active Pokemon
+	elif card.uid.to_lower() == "gym1-99":
+		var active = main.opponent_active_pokemon if is_opponent else main.player_active_pokemon
+		if active == null:
+			var discard = main.opponent_discard_pile if is_opponent else main.player_discard_pile
+			card.current_location = "discard"
+			discard.append(card)
+			return
+		active.attached_cards.append(card)
+		active.gym1_charity_attached = true
+		var hand_node = main.opponent_hand_container if is_opponent else main.player_hand_container
+		var attached_node = main.opponent_attached_cards_container if is_opponent else main.player_attached_cards_container
+		var card_texture = main.get_card_texture(card)
+		await main.animate_card_a_to_b(hand_node, attached_node, 0.3, card_texture, main.card_scales[10])
+		display_attached_trainer_cards(is_opponent)
+		await main.show_message("CHARITY ATTACHED TO " + active.metadata.get("name", "").to_upper() + "!")
+		if main._should_bail(): return
+		print("CHARITY: Attached to ", active.metadata.get("name", ""))
+
+	# GYM1 Sabrina's ESP (gym1-117) — attach to a Sabrina-named pokemon in play
+	elif card.uid.to_lower() == "gym1-117":
+		# Build list of valid Sabrina-named targets
+		var sabrina_targets: Array = []
+		for p in build_field_pokemon_array(is_opponent):
+			if "Sabrina" in p.metadata.get("name", ""):
+				sabrina_targets.append(p)
+		if sabrina_targets.size() == 0:
+			var discard = main.opponent_discard_pile if is_opponent else main.player_discard_pile
+			card.current_location = "discard"
+			discard.append(card)
+			return
+
+		var target: card_object = null
+		if is_opponent:
+			# CPU: pick the highest-HP Sabrina pokemon (likely the active/intended attacker)
+			var best_hp = -1
+			for p in sabrina_targets:
+				if p.current_hp > best_hp:
+					best_hp = p.current_hp
+					target = p
+			# Prefer the active if it's a Sabrina-named pokemon
+			if main.opponent_active_pokemon != null and main.opponent_active_pokemon in sabrina_targets:
+				target = main.opponent_active_pokemon
+		else:
+			if sabrina_targets.size() == 1:
+				target = sabrina_targets[0]
+			else:
+				main.trainer_pokemon_selection_active = true
+				main.show_enlarged_array_selection_mode(sabrina_targets)
+				main.header_label.text = "ATTACH SABRINA'S ESP"
+				main.hint_label.text = "Choose a Sabrina Pokemon"
+				main.action_button.text = "ATTACH"
+				main.action_button.disabled = true
+				main.action_button.theme = main.theme_disabled
+				main.cancel_button.visible = false
+				await main.trainer_target_selected
+				if main._should_bail(): return
+				target = main.selected_card_for_action
+				main.trainer_pokemon_selection_active = false
+				main.hide_selection_mode_display_main()
+
+		if target == null:
+			var discard = main.opponent_discard_pile if is_opponent else main.player_discard_pile
+			card.current_location = "discard"
+			discard.append(card)
+			return
+
+		target.attached_cards.append(card)
+		target.gym1_sabrina_esp_attached = true
+		target.gym1_sabrina_esp_credit_active = true
+		var hand_node = main.opponent_hand_container if is_opponent else main.player_hand_container
+		var attached_node = main.opponent_attached_cards_container if is_opponent else main.player_attached_cards_container
+		var card_texture = main.get_card_texture(card)
+		await main.animate_card_a_to_b(hand_node, attached_node, 0.3, card_texture, main.card_scales[10])
+		display_attached_trainer_cards(is_opponent)
+		await main.show_message("SABRINA'S ESP ATTACHED TO " + target.metadata.get("name", "").to_upper() + "!")
+		if main._should_bail(): return
+		print("SABRINA'S ESP: Attached to ", target.metadata.get("name", ""))
 
 # --- INDIVIDUAL TRAINER EFFECTS ---
 
@@ -3195,3 +3423,1136 @@ func effect_sleep_trainer(is_opponent: bool) -> void:
 		await main.show_message("TAILS! SLEEP FAILED!")
 		if main._should_bail(): return
 	print("TRAINER: Sleep!")
+
+######################################################################################################################################################
+######################################################## GYM1 (GYM HEROES) TRAINER EFFECTS ##########################################################
+######################################################################################################################################################
+
+# Looks at the other side's hand (read-only reveal) and waits for the player to dismiss it.
+# Used by gym1-110 Erika's Perfume, gym1-118 Secret Mission. CPU just snapshots the data internally.
+func gym1_reveal_hand(reveal_to_opponent: bool, header_text: String, hint_text: String) -> void:
+	# reveal_to_opponent: true means the CPU is looking at the player's hand (no UI needed; this is a no-op for CPU)
+	# false means the player is looking at the CPU's hand (show face-up via lass-style display).
+	if reveal_to_opponent:
+		return
+	var opp_hand = main.opponent_hand
+	if opp_hand.size() == 0:
+		return
+	main.trainer_pokemon_selection_active = true
+	main.show_enlarged_array_selection_mode(opp_hand)
+	var display_container = main.large_selection_container if opp_hand.size() > 7 else main.small_selection_container
+	var display_size = main.card_scales[5] if opp_hand.size() > 7 else main.card_scales[opp_hand.size()]
+	main.display_hand_cards_array(opp_hand, display_container, display_size, false)
+	main.header_label.text = header_text
+	main.hint_label.text = hint_text
+	main.action_button.visible = false
+	main.cancel_button.visible = true
+	main.cancel_button.text = "DONE"
+	main.cancel_button.theme = main.theme_green
+	main.cancel_button.offset_left = -219.0
+	main.cancel_button.offset_right = 219.0
+	await main.trainer_target_selected
+	main.trainer_pokemon_selection_active = false
+	main.action_button.visible = true
+	main.cancel_button.text = "Cancel"
+	main.cancel_button.theme = main.theme_red
+	main.hide_selection_mode_display_main()
+
+# Called by Main_Match_Core_Gameplay_Script.display_and_apply_attack_damage when the attacker has Charity attached.
+# Returns the reduced damage. CPU never reduces. Player gets a YES/NO prompt to spare the defender at 10 HP.
+func gym1_charity_choose_reduction(attacker: card_object, defender: card_object, damage: int, is_opponent: bool) -> int:
+	if is_opponent:
+		return damage  # CPU never reduces its own damage
+	if damage <= 0:
+		return damage
+	if defender == null:
+		return damage
+	# Only meaningful when the attack would KO the defender.
+	if damage < defender.current_hp:
+		return damage
+	# Compute the reduction needed to leave the defender at 10 HP (the standard Charity use case).
+	var target_hp = 10
+	var reduction = damage - (defender.current_hp - target_hp)
+	# Round reduction UP to the nearest 10 per card text
+	reduction = int(ceil(reduction / 10.0)) * 10
+	if reduction <= 0 or reduction > damage:
+		return damage
+	# Yes/No prompt anchored on the attacker card so the player has a visible target
+	var pick = await gym1_prompt_yes_no(
+		attacker,
+		"CHARITY",
+		"Reduce damage by %d to leave %s at %d HP?" % [reduction, defender.metadata.get("name", ""), defender.current_hp - (damage - reduction)],
+		"REDUCE",
+		"FULL DAMAGE"
+	)
+	if pick:
+		return damage - reduction
+	return damage
+
+# Generic two-option (yes/no) prompt that re-uses the existing trainer_pokemon_selection UI.
+# Returns true if the player confirmed (action_button), false if cancelled (cancel_button).
+func gym1_prompt_yes_no(anchor_card: card_object, header_text: String, hint_text: String, yes_text: String, no_text: String) -> bool:
+	main.trainer_pokemon_selection_active = true
+	main.show_enlarged_array_selection_mode([anchor_card])
+	main.header_label.text = header_text
+	main.hint_label.text = hint_text
+	main.action_button.text = yes_text
+	main.action_button.disabled = false
+	main.action_button.theme = main.theme_green
+	main.cancel_button.visible = true
+	main.cancel_button.text = no_text
+	main.cancel_button.theme = main.theme_red
+	main.selected_card_for_action = anchor_card  # pre-arm action_button so YES is clickable without selecting
+	await main.trainer_target_selected
+	var pressed_yes = (main.selected_card_for_action == anchor_card)
+	main.trainer_pokemon_selection_active = false
+	main.hide_selection_mode_display_main()
+	main.cancel_button.text = "Cancel"
+	main.cancel_button.theme = main.theme_red
+	return pressed_yes
+
+# Called from inbetween_turn_checks at end of the side's own turn. Handles Charity return-to-hand, Sabrina's ESP discard,
+# Recall expiry, Misty boost expiry, and Tickling Machine restoration for the side whose turn just ended.
+func gym1_end_of_turn_cleanup(side_is_opponent: bool) -> void:
+	var active = main.opponent_active_pokemon if side_is_opponent else main.player_active_pokemon
+	var bench = main.opponent_bench if side_is_opponent else main.player_bench
+	var hand = main.opponent_hand if side_is_opponent else main.player_hand
+	var discard = main.opponent_discard_pile if side_is_opponent else main.player_discard_pile
+
+	# Clear Misty boost for this side (one-shot — clears whether used or not)
+	if side_is_opponent:
+		main.opponent_misty_boost_active = false
+	else:
+		main.player_misty_boost_active = false
+
+	# Process all pokemon owned by this side
+	var all_pokemon: Array = []
+	if active != null:
+		all_pokemon.append(active)
+	all_pokemon.append_array(bench)
+
+	for pokemon in all_pokemon:
+		# Recall expires at end of own turn
+		if pokemon.gym1_recall_active:
+			pokemon.gym1_recall_active = false
+
+		# Charity: returns to hand at end of own turn UNLESS pokemon got KO'd (KO handling clears via send_card_to_discard)
+		if pokemon.gym1_charity_attached and pokemon.current_hp > 0:
+			var charity_card: card_object = null
+			for ac in pokemon.attached_cards:
+				if ac.uid.to_lower() == "gym1-99":
+					charity_card = ac
+					break
+			if charity_card != null:
+				pokemon.attached_cards.erase(charity_card)
+				charity_card.current_location = "hand"
+				hand.append(charity_card)
+				pokemon.gym1_charity_attached = false
+				var attached_node = main.opponent_attached_cards_container if side_is_opponent else main.player_attached_cards_container
+				var hand_node = main.opponent_hand_container if side_is_opponent else main.player_hand_container
+				var tex = main.get_card_texture(charity_card)
+				main.animate_card_a_to_b(attached_node, hand_node, 0.25, tex, main.card_scales[10])
+				display_attached_trainer_cards(side_is_opponent)
+				main.refresh_hand_display(side_is_opponent)
+				print("CHARITY: returned to hand from ", pokemon.metadata.get("name", ""))
+
+		# Sabrina's ESP: discarded at end of own turn
+		if pokemon.gym1_sabrina_esp_attached:
+			var esp_card: card_object = null
+			for ac in pokemon.attached_cards:
+				if ac.uid.to_lower() == "gym1-117":
+					esp_card = ac
+					break
+			if esp_card != null:
+				pokemon.attached_cards.erase(esp_card)
+				esp_card.current_location = "discard"
+				discard.append(esp_card)
+				pokemon.gym1_sabrina_esp_attached = false
+				pokemon.gym1_sabrina_esp_credit_active = false
+				var attached_node = main.opponent_attached_cards_container if side_is_opponent else main.player_attached_cards_container
+				var discard_node = main.opponent_discard_icon if side_is_opponent else main.player_discard_icon
+				var tex = main.get_card_texture(esp_card)
+				main.animate_card_a_to_b(attached_node, discard_node, 0.25, tex, main.card_scales[10])
+				display_attached_trainer_cards(side_is_opponent)
+				main.update_discard_pile_display(side_is_opponent)
+				print("SABRINA'S ESP: discarded from ", pokemon.metadata.get("name", ""))
+
+# Restores cards held aside by Tickling Machine when the tickled side's own next turn ends.
+func gym1_restore_tickled_hand(target_is_opponent: bool) -> void:
+	var aside = main.opponent_tickled_set_aside if target_is_opponent else main.player_tickled_set_aside
+	var hand = main.opponent_hand if target_is_opponent else main.player_hand
+	if aside.size() == 0:
+		if target_is_opponent:
+			main.opponent_hand_tickled = false
+		else:
+			main.player_hand_tickled = false
+		return
+	for card in aside:
+		card.current_location = "hand"
+		hand.append(card)
+	aside.clear()
+	if target_is_opponent:
+		main.opponent_hand_tickled = false
+	else:
+		main.player_hand_tickled = false
+	main.refresh_hand_display(target_is_opponent)
+	print("TICKLING MACHINE: restored ", "opponent" if target_is_opponent else "player", "'s set-aside cards")
+
+# ============================ Heal helper ============================
+func gym1_heal_pokemon(pokemon: card_object, amount: int, is_opp: bool) -> void:
+	var max_hp = int(pokemon.metadata.get("hp", "0"))
+	if pokemon.max_hp_override > 0:
+		max_hp = pokemon.max_hp_override
+	var new_hp = min(max_hp, pokemon.current_hp + amount)
+	if new_hp > pokemon.current_hp:
+		pokemon.current_hp = new_hp
+		main.display_hp_circles_above_align(pokemon, is_opp)
+
+# ============================ gym1-15 / gym1-98 — Brock ============================
+# Heal 1 damage counter (10) from each of your Pokemon that has any damage.
+func gym1_effect_brock(is_opponent: bool) -> void:
+	var healed_any = false
+	for p in build_field_pokemon_array(is_opponent):
+		var max_hp = int(p.metadata.get("hp", "0"))
+		if p.current_hp < max_hp:
+			gym1_heal_pokemon(p, 10, is_opponent)
+			healed_any = true
+	if healed_any:
+		await main.show_message("BROCK: REMOVED 1 DAMAGE COUNTER FROM EACH DAMAGED POKEMON!")
+	else:
+		await main.show_message("BROCK: NOTHING TO HEAL!")
+	if main._should_bail(): return
+
+# ============================ gym1-16 / gym1-100 — Erika ============================
+# You may draw up to 3, then your opponent may draw up to 3. We collapse "up to" to a simple yes/no per side
+# (drawing more is almost always optimal — only skipped when the hand is already very large).
+func gym1_effect_erika(is_opponent: bool) -> void:
+	var draw_count_self = await gym1_choose_draw_count(3, is_opponent, "ERIKA — DRAW 3 CARDS?")
+	for i in range(draw_count_self):
+		await main.draw_card_from_deck(is_opponent)
+		if main._should_bail(): return
+	main.refresh_hand_display(is_opponent)
+	var other_is_opp = not is_opponent
+	var draw_count_other = await gym1_choose_draw_count(3, other_is_opp, "ERIKA — OPPONENT MAY DRAW 3")
+	for i in range(draw_count_other):
+		await main.draw_card_from_deck(other_is_opp)
+		if main._should_bail(): return
+	main.refresh_hand_display(other_is_opp)
+
+# CPU draws max unless its hand is full; player gets a YES/NO prompt (draw max or skip).
+func gym1_choose_draw_count(max_n: int, side_is_opp: bool, header_text: String) -> int:
+	if side_is_opp:
+		var hand = main.opponent_hand
+		if hand.size() >= 7:
+			return 0
+		return min(max_n, 7 - hand.size())
+	# Use the played Erika card (already in discard at this point) — instead anchor on player's active
+	var anchor: card_object = main.player_active_pokemon
+	if anchor == null:
+		# Fallback: just draw the max if there's no card to anchor on
+		return max_n
+	var hint = "Draw %d cards? (NO to skip)" % max_n
+	var yes = await gym1_prompt_yes_no(anchor, header_text, hint, "DRAW %d" % max_n, "SKIP")
+	return max_n if yes else 0
+
+# ============================ gym1-17 / gym1-101 — Lt. Surge ============================
+# Put a Basic from hand as your new Active; the old Active goes to the bench.
+func gym1_effect_lt_surge(is_opponent: bool) -> void:
+	var hand = main.opponent_hand if is_opponent else main.player_hand
+	var active = main.opponent_active_pokemon if is_opponent else main.player_active_pokemon
+	var bench = main.opponent_bench if is_opponent else main.player_bench
+	if active == null or bench.size() >= 5:
+		return
+
+	var basics_in_hand: Array = []
+	for c in hand:
+		if main.is_basic_pokemon(c):
+			basics_in_hand.append(c)
+	if basics_in_hand.size() == 0:
+		return
+
+	var chosen: card_object = null
+	if is_opponent:
+		# CPU: pick the strongest basic (highest HP) — naive heuristic
+		var best = -1
+		for c in basics_in_hand:
+			var hp = int(c.metadata.get("hp", "0"))
+			if hp > best:
+				best = hp
+				chosen = c
+	else:
+		main.trainer_pokemon_selection_active = true
+		main.show_enlarged_array_selection_mode(basics_in_hand)
+		main.header_label.text = "LT. SURGE — PROMOTE A BASIC"
+		main.hint_label.text = "Choose a Basic to swap into Active"
+		main.action_button.text = "PROMOTE"
+		main.action_button.disabled = true
+		main.action_button.theme = main.theme_disabled
+		main.cancel_button.visible = false
+		await main.trainer_target_selected
+		if main._should_bail(): return
+		chosen = main.selected_card_for_action
+		main.trainer_pokemon_selection_active = false
+		main.hide_selection_mode_display_main()
+
+	if chosen == null:
+		return
+
+	# Move the chosen basic from hand → active, push old active to bench
+	hand.erase(chosen)
+	chosen.current_hp = int(chosen.metadata.get("hp", "0"))
+	chosen.current_location = "active"
+	chosen.placed_on_field_this_turn = true
+	# Clear statuses on the demoted active
+	main.clear_all_statuses(active, is_opponent)
+	active.current_location = "bench"
+	bench.append(active)
+	if is_opponent:
+		main.opponent_active_pokemon = chosen
+	else:
+		main.player_active_pokemon = chosen
+
+	main.refresh_hand_display(is_opponent)
+	main.display_pokemon(is_opponent)
+	main.display_active_pokemon_energies(is_opponent)
+	await main.show_message("LT. SURGE: " + chosen.metadata.get("name", "").to_upper() + " IS NOW ACTIVE!")
+	if main._should_bail(): return
+
+# ============================ gym1-18 / gym1-102 — Misty ============================
+# Discard 2 other cards; this turn, if a Misty-named attacker damages the defender, +20 damage.
+func gym1_effect_misty(played_card: card_object, is_opponent: bool) -> void:
+	var hand = main.opponent_hand if is_opponent else main.player_hand
+	var discard = main.opponent_discard_pile if is_opponent else main.player_discard_pile
+
+	if is_opponent:
+		var to_discard = cpu_get_discard_priority(hand, 2, played_card)
+		for card in to_discard:
+			hand.erase(card)
+			card.current_location = "discard"
+			discard.append(card)
+		main.refresh_hand_display(true)
+		main.update_discard_pile_display(true)
+	else:
+		await player_select_cards_to_discard(hand, 2, "MISTY", "Discard 2 cards")
+		if main._should_bail(): return
+		for card in main.trainer_discard_selected:
+			hand.erase(card)
+			card.current_location = "discard"
+			discard.append(card)
+		main.trainer_discard_selected.clear()
+		main.refresh_hand_display(false)
+		main.update_discard_pile_display(false)
+
+	if is_opponent:
+		main.opponent_misty_boost_active = true
+	else:
+		main.player_misty_boost_active = true
+	await main.show_message("MISTY: NEXT MISTY ATTACK +20 DAMAGE!")
+	if main._should_bail(): return
+
+# ============================ gym1-19 — The Rocket's Trap ============================
+# Flip a coin. If heads, pick up to 3 cards at random from opp's hand (don't look) and shuffle into their deck.
+func gym1_effect_rockets_trap(is_opponent: bool) -> void:
+	await main.show_message("THE ROCKET'S TRAP! FLIPPING COIN…")
+	if main._should_bail(): return
+	var coin = await main.flip_coin(false, is_opponent)
+	if not coin:
+		await main.show_message("TAILS! NOTHING HAPPENS!")
+		if main._should_bail(): return
+		return
+	var opp_hand = main.player_hand if is_opponent else main.opponent_hand
+	var opp_deck = main.player_deck if is_opponent else main.opponent_deck
+	if opp_hand.size() == 0:
+		return
+	var picks: Array = []
+	var pool = opp_hand.duplicate()
+	pool.shuffle()
+	var n = min(3, pool.size())
+	for i in range(n):
+		picks.append(pool[i])
+	for c in picks:
+		opp_hand.erase(c)
+		c.current_location = "deck"
+		opp_deck.append(c)
+	opp_deck.shuffle()
+	main.refresh_hand_display(not is_opponent)
+	main.update_deck_icon(not is_opponent)
+	await main.show_message("HEADS! SHUFFLED " + str(n) + " CARD(S) FROM OPPONENT'S HAND INTO DECK!")
+	if main._should_bail(): return
+
+# ============================ gym1-97 — Blaine's Quiz #1 ============================
+# Adapted: coin flip (we can't run a real interactive guess). Heads = opponent guessed right (opp draws 2). Tails = opp wrong (you draw 2).
+func gym1_effect_blaines_quiz(is_opponent: bool) -> void:
+	await main.show_message("BLAINE'S QUIZ! FLIPPING COIN…")
+	if main._should_bail(): return
+	var coin = await main.flip_coin(false, is_opponent)
+	if coin:
+		# Opponent guessed right
+		var other = not is_opponent
+		for i in range(2):
+			await main.draw_card_from_deck(other)
+			if main._should_bail(): return
+		main.refresh_hand_display(other)
+		await main.show_message("HEADS! OPPONENT GUESSED RIGHT AND DREW 2 CARDS!")
+	else:
+		for i in range(2):
+			await main.draw_card_from_deck(is_opponent)
+			if main._should_bail(): return
+		main.refresh_hand_display(is_opponent)
+		await main.show_message("TAILS! OPPONENT GUESSED WRONG — YOU DREW 2 CARDS!")
+	if main._should_bail(): return
+
+# ============================ gym1-105 — Blaine's Last Resort ============================
+# Show hand to opp (it's empty here, since validation requires no other cards) then draw 5.
+func gym1_effect_blaines_last_resort(is_opponent: bool) -> void:
+	# Hand is already empty (validation guaranteed no other cards). Just draw 5.
+	for i in range(5):
+		await main.draw_card_from_deck(is_opponent)
+		if main._should_bail(): return
+	main.refresh_hand_display(is_opponent)
+	await main.show_message("BLAINE'S LAST RESORT — DREW 5 CARDS!")
+	if main._should_bail(): return
+
+# ============================ gym1-106 — Brock's Training Method ============================
+# Search deck for any Pokemon with "Brock" in its name; add to hand.
+func gym1_effect_brocks_training_method(is_opponent: bool) -> void:
+	await gym1_search_deck_by_name_substring(is_opponent, "Brock", "BROCK'S TRAINING METHOD", 1)
+
+# ============================ gym1-109 — Erika's Maids ============================
+# Discard 2 other cards; search deck for up to 2 Pokemon with "Erika" in name.
+func gym1_effect_erikas_maids(played_card: card_object, is_opponent: bool) -> void:
+	var hand = main.opponent_hand if is_opponent else main.player_hand
+	var discard = main.opponent_discard_pile if is_opponent else main.player_discard_pile
+
+	if is_opponent:
+		var to_discard = cpu_get_discard_priority(hand, 2, played_card)
+		for card in to_discard:
+			hand.erase(card)
+			card.current_location = "discard"
+			discard.append(card)
+		main.refresh_hand_display(true)
+		main.update_discard_pile_display(true)
+	else:
+		await player_select_cards_to_discard(hand, 2, "ERIKA'S MAIDS", "Discard 2 cards")
+		if main._should_bail(): return
+		for card in main.trainer_discard_selected:
+			hand.erase(card)
+			card.current_location = "discard"
+			discard.append(card)
+		main.trainer_discard_selected.clear()
+		main.refresh_hand_display(false)
+		main.update_discard_pile_display(false)
+
+	await gym1_search_deck_by_name_substring(is_opponent, "Erika", "ERIKA'S MAIDS", 2)
+
+# Generic helper: pick up to max_n Pokemon from deck whose names contain substr; add to hand.
+func gym1_search_deck_by_name_substring(is_opponent: bool, substr: String, header_text: String, max_n: int) -> void:
+	var deck = main.opponent_deck if is_opponent else main.player_deck
+	var hand = main.opponent_hand if is_opponent else main.player_hand
+
+	var candidates: Array = []
+	for c in deck:
+		if c.metadata.get("supertype", "") == "Pokémon" and substr in c.metadata.get("name", ""):
+			candidates.append(c)
+
+	if candidates.size() == 0:
+		await main.show_message("NO MATCHING POKEMON IN DECK!")
+		if main._should_bail(): return
+		deck.shuffle()
+		return
+
+	var picks: Array = []
+	if is_opponent:
+		# CPU: prefer evolutions whose pre-stage is in play; otherwise basics for setup
+		candidates.sort_custom(func(a, b):
+			var a_useful = main.get_valid_evolution_targets(a, true).size() > 0 if not main.is_basic_pokemon(a) else 0
+			var b_useful = main.get_valid_evolution_targets(b, true).size() > 0 if not main.is_basic_pokemon(b) else 0
+			return int(a_useful) > int(b_useful))
+		for i in range(min(max_n, candidates.size())):
+			picks.append(candidates[i])
+	else:
+		for i in range(min(max_n, candidates.size())):
+			var remaining: Array = []
+			for c in candidates:
+				if c not in picks:
+					remaining.append(c)
+			if remaining.size() == 0:
+				break
+			main.trainer_deck_search_active = true
+			main.show_enlarged_array_selection_mode(remaining)
+			main.header_label.text = header_text + " — CHOOSE " + str(i + 1) + "/" + str(min(max_n, candidates.size()))
+			main.hint_label.text = "Pick a Pokemon to add to your hand (cancel to stop)"
+			main.action_button.text = "TAKE"
+			main.action_button.disabled = true
+			main.action_button.theme = main.theme_disabled
+			main.cancel_button.visible = true
+			main.cancel_button.text = "DONE"
+			main.cancel_button.theme = main.theme_green
+			await main.trainer_target_selected
+			if main._should_bail(): return
+			var pick = main.selected_card_for_action
+			main.trainer_deck_search_active = false
+			main.hide_selection_mode_display_main()
+			main.cancel_button.text = "Cancel"
+			main.cancel_button.theme = main.theme_red
+			if pick == null:
+				break
+			picks.append(pick)
+
+	for c in picks:
+		deck.erase(c)
+		c.current_location = "hand"
+		hand.append(c)
+	deck.shuffle()
+	main.refresh_hand_display(is_opponent)
+	main.update_deck_icon(is_opponent)
+	await main.show_message("ADDED " + str(picks.size()) + " POKEMON TO HAND!")
+	if main._should_bail(): return
+
+# ============================ gym1-110 — Erika's Perfume ============================
+# Look at opp's hand; you may put any number of opp's Basics from their hand onto their bench.
+func gym1_effect_erikas_perfume(is_opponent: bool) -> void:
+	var opp_hand = main.player_hand if is_opponent else main.opponent_hand
+	var opp_bench = main.player_bench if is_opponent else main.opponent_bench
+	var opp_is_player = is_opponent  # the SIDE being looked at
+	var basics_in_opp_hand: Array = []
+	for c in opp_hand:
+		if main.is_basic_pokemon(c):
+			basics_in_opp_hand.append(c)
+
+	if is_opponent:
+		# CPU plays the card: chooses nothing (no tactical benefit to gifting bench setup). Just reveals + ends.
+		await main.show_message("OPPONENT LOOKED AT YOUR HAND — NOTHING WAS BENCHED")
+		if main._should_bail(): return
+		return
+
+	# Player plays the card: shows opp hand face-up, then picks basics to bench
+	await gym1_reveal_hand(false, "ERIKA'S PERFUME — OPPONENT'S HAND", "Review, then choose Basics to bench")
+
+	if basics_in_opp_hand.size() == 0:
+		await main.show_message("NO BASIC POKEMON IN OPPONENT'S HAND!")
+		if main._should_bail(): return
+		return
+	if opp_bench.size() >= 5:
+		await main.show_message("OPPONENT'S BENCH IS FULL!")
+		if main._should_bail(): return
+		return
+
+	var to_bench: Array = []
+	while to_bench.size() < basics_in_opp_hand.size() and opp_bench.size() + to_bench.size() < 5:
+		var remaining: Array = []
+		for c in basics_in_opp_hand:
+			if c not in to_bench:
+				remaining.append(c)
+		if remaining.size() == 0:
+			break
+		main.trainer_pokemon_selection_active = true
+		main.show_enlarged_array_selection_mode(remaining)
+		main.header_label.text = "ERIKA'S PERFUME — BENCH WHICH BASIC?"
+		main.hint_label.text = "Pick a Basic to put on opponent's bench (or DONE)"
+		main.action_button.text = "BENCH"
+		main.action_button.disabled = true
+		main.action_button.theme = main.theme_disabled
+		main.cancel_button.visible = true
+		main.cancel_button.text = "DONE"
+		main.cancel_button.theme = main.theme_green
+		await main.trainer_target_selected
+		if main._should_bail(): return
+		var pick = main.selected_card_for_action
+		main.trainer_pokemon_selection_active = false
+		main.hide_selection_mode_display_main()
+		main.cancel_button.text = "Cancel"
+		main.cancel_button.theme = main.theme_red
+		if pick == null:
+			break
+		to_bench.append(pick)
+
+	# Move the picks from opp's hand to opp's bench
+	for c in to_bench:
+		opp_hand.erase(c)
+		c.current_hp = int(c.metadata.get("hp", "0"))
+		c.current_location = "bench"
+		c.placed_on_field_this_turn = true
+		opp_bench.append(c)
+
+	main.refresh_hand_display(opp_is_player)
+	main.display_pokemon(opp_is_player)
+	await main.show_message("ERIKA'S PERFUME — " + str(to_bench.size()) + " BASIC(S) BENCHED!")
+	if main._should_bail(): return
+
+# ============================ gym1-111 — Good Manners ============================
+# Show your hand to opp, then search deck for a Basic Pokemon and add to hand.
+func gym1_effect_good_manners(is_opponent: bool) -> void:
+	# Hand reveal is a flavor effect; we skip the UI for CPU and just message the player.
+	if is_opponent:
+		await main.show_message("OPPONENT SHOWED THEIR HAND!")
+	else:
+		await main.show_message("YOUR HAND IS SHOWN!")
+	if main._should_bail(): return
+
+	var deck = main.opponent_deck if is_opponent else main.player_deck
+	var hand = main.opponent_hand if is_opponent else main.player_hand
+	var basics: Array = []
+	for c in deck:
+		if main.is_basic_pokemon(c):
+			basics.append(c)
+	if basics.size() == 0:
+		await main.show_message("NO BASICS IN DECK!")
+		if main._should_bail(): return
+		deck.shuffle()
+		return
+
+	var chosen: card_object = null
+	if is_opponent:
+		chosen = main.cpu_ai.cpu_search_deck_for_best_pokemon(basics)
+		if chosen == null:
+			chosen = basics[0]
+	else:
+		main.trainer_deck_search_active = true
+		main.show_enlarged_array_selection_mode(basics)
+		main.header_label.text = "GOOD MANNERS — CHOOSE A BASIC"
+		main.hint_label.text = "Add a Basic Pokemon to your hand"
+		main.action_button.text = "TAKE"
+		main.action_button.disabled = true
+		main.action_button.theme = main.theme_disabled
+		main.cancel_button.visible = false
+		await main.trainer_target_selected
+		if main._should_bail(): return
+		chosen = main.selected_card_for_action
+		main.trainer_deck_search_active = false
+		main.hide_selection_mode_display_main()
+
+	if chosen != null:
+		deck.erase(chosen)
+		chosen.current_location = "hand"
+		hand.append(chosen)
+	deck.shuffle()
+	main.refresh_hand_display(is_opponent)
+	main.update_deck_icon(is_opponent)
+	if chosen != null:
+		await main.show_message("ADDED " + chosen.metadata.get("name", "").to_upper() + " TO HAND!")
+	if main._should_bail(): return
+
+# ============================ gym1-112 — Lt. Surge's Treaty ============================
+# The OPPONENT (other side) chooses: both players take a prize, OR the card player draws 1.
+# Cross-player choice is auto-resolved (see effect_challenge precedent).
+func gym1_effect_lt_surges_treaty(is_opponent: bool) -> void:
+	# The chooser is the OTHER side
+	var chooser_is_opp = not is_opponent
+	var chooser_prizes_left = (main.opponent_prize_cards.size() if chooser_is_opp else main.player_prize_cards.size())
+	var card_player_prizes_left = (main.opponent_prize_cards.size() if is_opponent else main.player_prize_cards.size())
+
+	# Choice heuristic: take a prize if chooser is behind or tied on prizes (more aggressive recovery)
+	# else hand the card player just 1 draw (denies a free prize advancement).
+	var take_prizes = chooser_prizes_left >= card_player_prizes_left
+
+	var chooser_label = "OPPONENT" if chooser_is_opp else "PLAYER"
+	if take_prizes:
+		await main.show_message("LT. SURGE'S TREATY — " + chooser_label + " CHOOSES: EACH PLAYER TAKES A PRIZE!")
+		if main._should_bail(): return
+		# Card-player picks own prize (player) / CPU random (opponent)
+		if is_opponent:
+			# Card player = CPU
+			await main.cpu_ai.opponent_take_prize_card()
+			# Other side = real player picks
+			await gym1_player_take_own_prize()
+		else:
+			await gym1_player_take_own_prize()
+			await main.cpu_ai.opponent_take_prize_card()
+	else:
+		await main.show_message("LT. SURGE'S TREATY — " + chooser_label + " CHOOSES: CARD PLAYER DRAWS 1!")
+		await main.draw_card_from_deck(is_opponent)
+		if main._should_bail(): return
+		main.refresh_hand_display(is_opponent)
+
+# Helper: let the player pick one of their own prize cards to take.
+func gym1_player_take_own_prize() -> void:
+	if main.player_prize_cards.size() == 0:
+		return
+	main.trainer_pokemon_selection_active = true
+	main.show_enlarged_array_selection_mode(main.player_prize_cards)
+	main.header_label.text = "CHOOSE A PRIZE CARD"
+	main.hint_label.text = "Pick a prize to take into your hand"
+	main.action_button.text = "TAKE"
+	main.action_button.disabled = true
+	main.action_button.theme = main.theme_disabled
+	main.cancel_button.visible = false
+	await main.trainer_target_selected
+	if main._should_bail(): return
+	var pick = main.selected_card_for_action
+	main.trainer_pokemon_selection_active = false
+	main.hide_selection_mode_display_main()
+	if pick != null:
+		await main.take_prize_card(pick, false)
+
+# ============================ gym1-113 — Minion of Team Rocket ============================
+# Flip 2 coins. Both heads = return one of opp's bench pokemon (and attached cards) to opp's hand. Any tails = your turn ends.
+func gym1_effect_minion_of_team_rocket(is_opponent: bool) -> void:
+	await main.show_message("MINION OF TEAM ROCKET — FLIPPING 2 COINS!")
+	if main._should_bail(): return
+	var c1 = await main.flip_coin(false, is_opponent)
+	if main._should_bail(): return
+	var c2 = await main.flip_coin(false, is_opponent)
+	if main._should_bail(): return
+
+	if not (c1 and c2):
+		await main.show_message("TAILS! YOUR TURN ENDS!")
+		if main._should_bail(): return
+		if is_opponent:
+			main.opponent_turn_force_end = true
+		else:
+			main.player_turn_force_end = true
+		return
+
+	# Both heads — return an opp bench pokemon (and all attached) to opp's hand
+	var opp_bench = main.player_bench if is_opponent else main.opponent_bench
+	var opp_hand = main.player_hand if is_opponent else main.opponent_hand
+	if opp_bench.size() == 0:
+		await main.show_message("HEADS-HEADS! BUT OPPONENT HAS NO BENCHED POKEMON!")
+		if main._should_bail(): return
+		return
+
+	var target: card_object = null
+	if is_opponent:
+		# CPU picks: prefer high-HP or evolved targets to maximally disrupt
+		var best = -1
+		for bp in opp_bench:
+			var hp = int(bp.metadata.get("hp", "0"))
+			var bonus = bp.attached_pre_evolutions.size() * 50 + bp.attached_energies.size() * 20
+			var score = hp + bonus
+			if score > best:
+				best = score
+				target = bp
+	else:
+		main.trainer_pokemon_selection_active = true
+		main.show_enlarged_array_selection_mode(opp_bench)
+		main.header_label.text = "MINION — RETURN WHICH BENCHED POKEMON?"
+		main.hint_label.text = "All attached cards return to opponent's hand with it"
+		main.action_button.text = "RETURN"
+		main.action_button.disabled = true
+		main.action_button.theme = main.theme_disabled
+		main.cancel_button.visible = false
+		await main.trainer_target_selected
+		if main._should_bail(): return
+		target = main.selected_card_for_action
+		main.trainer_pokemon_selection_active = false
+		main.hide_selection_mode_display_main()
+
+	if target == null:
+		return
+
+	# Per rules: pokemon AND all attached cards go to opp's HAND (not deck, not discard)
+	var name = target.metadata.get("name", "")
+	for e in target.attached_energies:
+		e.current_location = "hand"
+		opp_hand.append(e)
+	target.attached_energies.clear()
+	for pre in target.attached_pre_evolutions:
+		pre.current_location = "hand"
+		opp_hand.append(pre)
+	target.attached_pre_evolutions.clear()
+	for ac in target.attached_cards:
+		ac.current_location = "hand"
+		opp_hand.append(ac)
+	target.attached_cards.clear()
+	main.clear_all_statuses(target, not is_opponent)
+	opp_bench.erase(target)
+	target.current_location = "hand"
+	target.current_hp = int(target.metadata.get("hp", "0"))
+	opp_hand.append(target)
+
+	main.refresh_hand_display(not is_opponent)
+	main.display_pokemon(not is_opponent)
+	await main.show_message("HEADS-HEADS! " + name.to_upper() + " AND ATTACHED CARDS RETURNED TO HAND!")
+	if main._should_bail(): return
+
+# ============================ gym1-114 — Misty's Wrath ============================
+# Reveal top 7 of deck. Pick 2 to add to hand. Discard the rest.
+func gym1_effect_mistys_wrath(is_opponent: bool) -> void:
+	var deck = main.opponent_deck if is_opponent else main.player_deck
+	var hand = main.opponent_hand if is_opponent else main.player_hand
+	var discard = main.opponent_discard_pile if is_opponent else main.player_discard_pile
+
+	var n = min(7, deck.size())
+	if n == 0:
+		await main.show_message("DECK IS EMPTY!")
+		if main._should_bail(): return
+		return
+
+	var top_n: Array = []
+	for i in range(n):
+		top_n.append(deck[i])
+	# Remove from deck
+	for c in top_n:
+		deck.erase(c)
+
+	var picks: Array = []
+	var pick_count = min(2, top_n.size())
+	if is_opponent:
+		# CPU: prefer evolutions whose target is in play, then energy, then trainers, then basics
+		var scored = top_n.duplicate()
+		scored.sort_custom(func(a, b):
+			return _gym1_search_card_priority(a) > _gym1_search_card_priority(b))
+		for i in range(pick_count):
+			picks.append(scored[i])
+	else:
+		for i in range(pick_count):
+			var remaining: Array = []
+			for c in top_n:
+				if c not in picks:
+					remaining.append(c)
+			if remaining.size() == 0:
+				break
+			main.trainer_pokemon_selection_active = true
+			main.show_enlarged_array_selection_mode(remaining)
+			main.header_label.text = "MISTY'S WRATH — PICK CARD " + str(i + 1) + "/" + str(pick_count)
+			main.hint_label.text = "Choose a card to add to your hand"
+			main.action_button.text = "TAKE"
+			main.action_button.disabled = true
+			main.action_button.theme = main.theme_disabled
+			main.cancel_button.visible = false
+			await main.trainer_target_selected
+			if main._should_bail(): return
+			var pick = main.selected_card_for_action
+			main.trainer_pokemon_selection_active = false
+			main.hide_selection_mode_display_main()
+			if pick == null:
+				break
+			picks.append(pick)
+
+	# Resolve: picks → hand, rest → discard
+	for c in picks:
+		c.current_location = "hand"
+		hand.append(c)
+	for c in top_n:
+		if c in picks:
+			continue
+		c.current_location = "discard"
+		discard.append(c)
+
+	main.refresh_hand_display(is_opponent)
+	main.update_deck_icon(is_opponent)
+	main.update_discard_pile_display(is_opponent)
+	await main.show_message("MISTY'S WRATH — KEPT " + str(picks.size()) + ", DISCARDED " + str(top_n.size() - picks.size()) + "!")
+	if main._should_bail(): return
+
+func _gym1_search_card_priority(card: card_object) -> int:
+	var st = card.metadata.get("supertype", "")
+	if st == "Pokémon":
+		if not main.is_basic_pokemon(card):
+			var t = main.get_valid_evolution_targets(card, true)
+			if t.size() > 0:
+				return 5
+			return 2
+		return 3
+	if st == "Energy":
+		return 4
+	if st == "Trainer":
+		return 4
+	return 1
+
+# ============================ gym1-116 — Recall ============================
+func gym1_effect_recall(is_opponent: bool) -> void:
+	var active = main.opponent_active_pokemon if is_opponent else main.player_active_pokemon
+	if active == null:
+		return
+	active.gym1_recall_active = true
+	await main.show_message("RECALL — ACTIVE CAN USE ANY ATTACK FROM ITS EVOLUTION CHAIN THIS TURN!")
+	if main._should_bail(): return
+
+# ============================ gym1-118 — Secret Mission ============================
+# Look at opp's hand; you may discard any number of cards from your hand; draw that many.
+func gym1_effect_secret_mission(is_opponent: bool) -> void:
+	var hand = main.opponent_hand if is_opponent else main.player_hand
+	var discard = main.opponent_discard_pile if is_opponent else main.player_discard_pile
+
+	if not is_opponent:
+		await gym1_reveal_hand(false, "SECRET MISSION — OPPONENT'S HAND", "Look at the hand, then choose cards to discard")
+
+	# Choose how many to discard
+	if hand.size() == 0:
+		await main.show_message("YOUR HAND IS EMPTY!")
+		if main._should_bail(): return
+		return
+
+	var discards: Array = []
+	if is_opponent:
+		# CPU: discards low-priority cards aggressively to refresh hand (up to half of hand)
+		var n = max(0, hand.size() - 4)  # keep top 4-ish cards, discard the rest if low-priority
+		var to_discard = cpu_get_discard_priority(hand, n)
+		discards = to_discard
+	else:
+		# Player chooses any subset to discard
+		# We'll re-use a "discard any number" UI: pick one at a time, DONE to finish
+		var remaining = hand.duplicate()
+		while remaining.size() > 0:
+			main.trainer_pokemon_selection_active = true
+			main.show_enlarged_array_selection_mode(remaining)
+			main.header_label.text = "SECRET MISSION — DISCARD WHICH? (DONE TO STOP)"
+			main.hint_label.text = "Selected so far: " + str(discards.size())
+			main.action_button.text = "DISCARD"
+			main.action_button.disabled = true
+			main.action_button.theme = main.theme_disabled
+			main.cancel_button.visible = true
+			main.cancel_button.text = "DONE"
+			main.cancel_button.theme = main.theme_green
+			await main.trainer_target_selected
+			if main._should_bail(): return
+			var pick = main.selected_card_for_action
+			main.trainer_pokemon_selection_active = false
+			main.hide_selection_mode_display_main()
+			main.cancel_button.text = "Cancel"
+			main.cancel_button.theme = main.theme_red
+			if pick == null:
+				break
+			discards.append(pick)
+			remaining.erase(pick)
+
+	# Apply discards and draw same number
+	for c in discards:
+		hand.erase(c)
+		c.current_location = "discard"
+		discard.append(c)
+	main.refresh_hand_display(is_opponent)
+	main.update_discard_pile_display(is_opponent)
+	for i in range(discards.size()):
+		await main.draw_card_from_deck(is_opponent)
+		if main._should_bail(): return
+	main.refresh_hand_display(is_opponent)
+	await main.show_message("SECRET MISSION — DISCARDED " + str(discards.size()) + ", DREW " + str(discards.size()) + "!")
+	if main._should_bail(): return
+
+# ============================ gym1-119 — Tickling Machine ============================
+# Flip a coin. Heads = opp's hand is set aside face down until end of their next turn. Tails = your turn ends.
+func gym1_effect_tickling_machine(is_opponent: bool) -> void:
+	await main.show_message("TICKLING MACHINE — FLIPPING!")
+	if main._should_bail(): return
+	var coin = await main.flip_coin(false, is_opponent)
+	if not coin:
+		await main.show_message("TAILS! YOUR TURN ENDS!")
+		if main._should_bail(): return
+		if is_opponent:
+			main.opponent_turn_force_end = true
+		else:
+			main.player_turn_force_end = true
+		return
+
+	var opp_hand = main.player_hand if is_opponent else main.opponent_hand
+	if opp_hand.size() == 0:
+		await main.show_message("HEADS! BUT OPPONENT HAS NO CARDS IN HAND!")
+		if main._should_bail(): return
+		return
+
+	# Move opp_hand into set_aside zone
+	var target_is_opp = not is_opponent
+	var aside = main.opponent_tickled_set_aside if target_is_opp else main.player_tickled_set_aside
+	for c in opp_hand.duplicate():
+		c.current_location = "set_aside"
+		aside.append(c)
+	opp_hand.clear()
+	if target_is_opp:
+		main.opponent_hand_tickled = true
+	else:
+		main.player_hand_tickled = true
+	main.refresh_hand_display(target_is_opp)
+	await main.show_message("HEADS! OPPONENT'S HAND IS SET ASIDE UNTIL END OF THEIR NEXT TURN!")
+	if main._should_bail(): return
+
+# ============================ gym1-121 — Blaine's Gamble ============================
+# Discard any number of cards; flip a coin; heads = draw twice that many.
+func gym1_effect_blaines_gamble(played_card: card_object, is_opponent: bool) -> void:
+	var hand = main.opponent_hand if is_opponent else main.player_hand
+	var discard = main.opponent_discard_pile if is_opponent else main.player_discard_pile
+
+	if hand.size() == 0:
+		return
+
+	var discards: Array = []
+	if is_opponent:
+		# CPU: discard low-priority cards (skip if hand is decent)
+		var n = max(1, hand.size() / 2)
+		var to_discard = cpu_get_discard_priority(hand, n, played_card)
+		discards = to_discard
+	else:
+		# Player picks any number
+		var remaining = hand.duplicate()
+		while remaining.size() > 0:
+			main.trainer_pokemon_selection_active = true
+			main.show_enlarged_array_selection_mode(remaining)
+			main.header_label.text = "BLAINE'S GAMBLE — DISCARD HOW MANY?"
+			main.hint_label.text = "Selected: " + str(discards.size()) + " (DONE to flip)"
+			main.action_button.text = "DISCARD"
+			main.action_button.disabled = true
+			main.action_button.theme = main.theme_disabled
+			main.cancel_button.visible = true
+			main.cancel_button.text = "DONE"
+			main.cancel_button.theme = main.theme_green
+			await main.trainer_target_selected
+			if main._should_bail(): return
+			var pick = main.selected_card_for_action
+			main.trainer_pokemon_selection_active = false
+			main.hide_selection_mode_display_main()
+			main.cancel_button.text = "Cancel"
+			main.cancel_button.theme = main.theme_red
+			if pick == null:
+				break
+			discards.append(pick)
+			remaining.erase(pick)
+
+	for c in discards:
+		hand.erase(c)
+		c.current_location = "discard"
+		discard.append(c)
+	main.refresh_hand_display(is_opponent)
+	main.update_discard_pile_display(is_opponent)
+
+	await main.show_message("BLAINE'S GAMBLE — FLIPPING!")
+	if main._should_bail(): return
+	var coin = await main.flip_coin(false, is_opponent)
+	if coin:
+		var draw_n = discards.size() * 2
+		for i in range(draw_n):
+			await main.draw_card_from_deck(is_opponent)
+			if main._should_bail(): return
+		main.refresh_hand_display(is_opponent)
+		await main.show_message("HEADS! DREW " + str(draw_n) + " CARDS!")
+	else:
+		await main.show_message("TAILS! NOTHING.")
+	if main._should_bail(): return
+
+# ============================ gym1-122 — Energy Flow ============================
+# For each of your Pokemon, you may return any number of attached Energy cards to your hand.
+func gym1_effect_energy_flow(is_opponent: bool) -> void:
+	var hand = main.opponent_hand if is_opponent else main.player_hand
+	var pokemon_list = build_field_pokemon_array(is_opponent)
+
+	var any_returned = false
+	for pokemon in pokemon_list:
+		if pokemon.attached_energies.size() == 0:
+			continue
+
+		var to_return: Array = []
+		if is_opponent:
+			# CPU heuristic: only return energy from a heavily-damaged bench pokemon, or surplus energy on the active
+			var max_hp = int(pokemon.metadata.get("hp", "0"))
+			var heavily_damaged = pokemon.current_hp <= max_hp / 2
+			if heavily_damaged:
+				to_return = pokemon.attached_energies.duplicate()
+			# else: skip
+		else:
+			# Player picks any number for this pokemon
+			var remaining = pokemon.attached_energies.duplicate()
+			while remaining.size() > 0:
+				main.trainer_pokemon_selection_active = true
+				main.show_enlarged_array_selection_mode(remaining)
+				main.header_label.text = "ENERGY FLOW — " + pokemon.metadata.get("name", "").to_upper()
+				main.hint_label.text = "Return energies to hand (DONE to move on)"
+				main.action_button.text = "RETURN"
+				main.action_button.disabled = true
+				main.action_button.theme = main.theme_disabled
+				main.cancel_button.visible = true
+				main.cancel_button.text = "DONE"
+				main.cancel_button.theme = main.theme_green
+				await main.trainer_target_selected
+				if main._should_bail(): return
+				var pick = main.selected_card_for_action
+				main.trainer_pokemon_selection_active = false
+				main.hide_selection_mode_display_main()
+				main.cancel_button.text = "Cancel"
+				main.cancel_button.theme = main.theme_red
+				if pick == null:
+					break
+				to_return.append(pick)
+				remaining.erase(pick)
+
+		if to_return.size() == 0:
+			continue
+		for e in to_return:
+			pokemon.attached_energies.erase(e)
+			e.current_location = "hand"
+			hand.append(e)
+		any_returned = true
+
+	main.refresh_hand_display(is_opponent)
+	main.display_active_pokemon_energies(is_opponent)
+	if any_returned:
+		await main.show_message("ENERGY FLOW — ENERGIES RETURNED TO HAND!")
+	else:
+		await main.show_message("ENERGY FLOW — NOTHING RETURNED.")
+	if main._should_bail(): return
+
+# ============================ gym1-123 — Misty's Duel ============================
+# Card says: rock-paper-scissors; if you don't know, flip a coin. Winner shuffles hand and draws 5.
+func gym1_effect_mistys_duel(is_opponent: bool) -> void:
+	await main.show_message("MISTY'S DUEL — FLIPPING COIN!")
+	if main._should_bail(): return
+	var coin = await main.flip_coin(false, is_opponent)
+	# Heads = card player wins; tails = other side wins
+	var winner_is_opp = is_opponent if coin else not is_opponent
+
+	var hand = main.opponent_hand if winner_is_opp else main.player_hand
+	var deck = main.opponent_deck if winner_is_opp else main.player_deck
+	# Shuffle winner's hand into deck
+	for c in hand.duplicate():
+		c.current_location = "deck"
+		deck.append(c)
+	hand.clear()
+	deck.shuffle()
+	main.refresh_hand_display(winner_is_opp)
+	# Draw 5
+	for i in range(5):
+		await main.draw_card_from_deck(winner_is_opp)
+		if main._should_bail(): return
+	main.refresh_hand_display(winner_is_opp)
+	main.update_deck_icon(winner_is_opp)
+	var who = "OPPONENT" if winner_is_opp else "YOU"
+	await main.show_message("MISTY'S DUEL — " + who + " WON AND DREW A NEW HAND OF 5!")
+	if main._should_bail(): return
+
+# ============================ gym1-125 — Sabrina's Gaze ============================
+# Each player shuffles hand into deck and draws same number of cards.
+func gym1_effect_sabrinas_gaze(_is_opponent: bool) -> void:
+	for side_is_opp in [false, true]:
+		var hand = main.opponent_hand if side_is_opp else main.player_hand
+		var deck = main.opponent_deck if side_is_opp else main.player_deck
+		var prev_count = hand.size()
+		for c in hand.duplicate():
+			c.current_location = "deck"
+			deck.append(c)
+		hand.clear()
+		deck.shuffle()
+		main.refresh_hand_display(side_is_opp)
+		for i in range(prev_count):
+			await main.draw_card_from_deck(side_is_opp)
+			if main._should_bail(): return
+		main.refresh_hand_display(side_is_opp)
+		main.update_deck_icon(side_is_opp)
+	await main.show_message("SABRINA'S GAZE — BOTH PLAYERS REDREW THEIR HANDS!")
+	if main._should_bail(): return
+
+# ============================ gym1-126 — Trash Exchange ============================
+# Shuffle your discard pile into your deck. Then discard top X cards (X = original discard count).
+func gym1_effect_trash_exchange(is_opponent: bool) -> void:
+	var deck = main.opponent_deck if is_opponent else main.player_deck
+	var discard = main.opponent_discard_pile if is_opponent else main.player_discard_pile
+	var count = discard.size()
+	if count == 0:
+		return
+	# Shuffle discard into deck
+	for c in discard.duplicate():
+		c.current_location = "deck"
+		deck.append(c)
+	discard.clear()
+	deck.shuffle()
+	main.update_discard_pile_display(is_opponent)
+	main.update_deck_icon(is_opponent)
+	# Discard top X from deck
+	var to_discard = min(count, deck.size())
+	for i in range(to_discard):
+		var c = deck.pop_front()
+		c.current_location = "discard"
+		discard.append(c)
+	main.update_discard_pile_display(is_opponent)
+	main.update_deck_icon(is_opponent)
+	await main.show_message("TRASH EXCHANGE — SHUFFLED " + str(count) + " INTO DECK, DISCARDED TOP " + str(to_discard) + "!")
+	if main._should_bail(): return

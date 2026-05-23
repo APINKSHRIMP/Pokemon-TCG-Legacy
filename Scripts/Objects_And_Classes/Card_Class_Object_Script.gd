@@ -95,6 +95,12 @@ var gym2_lie_low_counter: int = 0          # Brock's Dugtrio Lie Low — Earthdr
 var ditto_giant_growth: bool = false       # Koga's Ditto Giant Growth — max HP 80, Pound base damage 30
 var max_hp_override: int = 0               # If > 0, overrides the metadata HP value (Koga's Ditto Giant Growth)
 
+# GYM1 (Gym Heroes) Trainer attachments / per-turn buffs
+var gym1_charity_attached: bool = false       # gym1-99 Charity — outgoing damage may be reduced this turn; returns to hand at end of turn if not KO'd
+var gym1_sabrina_esp_attached: bool = false   # gym1-117 Sabrina's ESP — first coin-flip in attack auto re-flips on tails; discarded at end of turn
+var gym1_sabrina_esp_credit_active: bool = false  # one-shot re-flip credit; cleared on use, refreshed when ESP is freshly attached
+var gym1_recall_active: bool = false          # gym1-116 Recall — Active may use any attack from its Basic / Evolution chain this turn
+
 # Utility: get damage counters (each counter = 10 damage)
 func get_damage_counters() -> int:
 	var max_hp = get_max_hp()

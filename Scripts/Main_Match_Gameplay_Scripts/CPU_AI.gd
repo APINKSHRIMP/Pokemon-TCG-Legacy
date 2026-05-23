@@ -61,12 +61,26 @@ func cpu_turn_orchestrator() -> void:
 	# Phase 0: Activate beneficial Pokemon Powers (Rain Dance, Energy Trans, Damage Swap)
 	await main.powers_and_bodies.cpu_phase_activate_powers()
 	if main._should_bail(): return
-	
+	if main.opponent_turn_force_end:
+		main.opponent_turn_force_end = false
+		await get_tree().create_timer(0.5).timeout
+		await main.show_message("Your opponent ends their turn")
+		if main._should_bail(): return
+		await main.inbetween_turn_checks(false)
+		return
+
 	if main._should_bail():
 		return
 	# Phase 1a: Play Bill first (always highest priority)
 	await cpu_phase_play_trainer_cards_priority()
 	if main._should_bail(): return
+	if main.opponent_turn_force_end:
+		main.opponent_turn_force_end = false
+		await get_tree().create_timer(0.5).timeout
+		await main.show_message("Your opponent ends their turn")
+		if main._should_bail(): return
+		await main.inbetween_turn_checks(false)
+		return
 
 	if main._should_bail():
 		return
@@ -88,6 +102,13 @@ func cpu_turn_orchestrator() -> void:
 	# Phase 4b: Play remaining trainer cards after evolutions/bench plays
 	await cpu_phase_play_trainer_cards_remaining()
 	if main._should_bail(): return
+	if main.opponent_turn_force_end:
+		main.opponent_turn_force_end = false
+		await get_tree().create_timer(0.5).timeout
+		await main.show_message("Your opponent ends their turn")
+		if main._should_bail(): return
+		await main.inbetween_turn_checks(false)
+		return
 
 	if main._should_bail():
 		return
@@ -111,6 +132,13 @@ func cpu_turn_orchestrator() -> void:
 	# Phase 7b: Final trainer card check (re-evaluate after energy/retreat)
 	await cpu_phase_play_trainer_cards_remaining()
 	if main._should_bail(): return
+	if main.opponent_turn_force_end:
+		main.opponent_turn_force_end = false
+		await get_tree().create_timer(0.5).timeout
+		await main.show_message("Your opponent ends their turn")
+		if main._should_bail(): return
+		await main.inbetween_turn_checks(false)
+		return
 
 	if main._should_bail():
 		return
@@ -3551,6 +3579,31 @@ func cpu_score_trainer_card(card: card_object) -> float:
 		"base5-77": return _cpu_score_nightly_garbage_run()
 		"base5-78": return _cpu_score_goop_gas_attack()
 		"base5-79": return _cpu_score_sleep_trainer()
+		# ============================ GYM1 (GYM HEROES) CPU SCORING ============================
+		"gym1-15", "gym1-98": return _cpu_score_gym1_brock()
+		"gym1-16", "gym1-100": return _cpu_score_gym1_erika()
+		"gym1-17", "gym1-101": return _cpu_score_gym1_lt_surge()
+		"gym1-18", "gym1-102": return _cpu_score_gym1_misty()
+		"gym1-19": return _cpu_score_gym1_rockets_trap()
+		"gym1-97": return _cpu_score_gym1_blaines_quiz()
+		"gym1-99": return _cpu_score_gym1_charity()
+		"gym1-105": return _cpu_score_gym1_blaines_last_resort(card)
+		"gym1-106": return _cpu_score_gym1_brocks_training_method()
+		"gym1-109": return _cpu_score_gym1_erikas_maids()
+		"gym1-110": return _cpu_score_gym1_erikas_perfume()
+		"gym1-111": return _cpu_score_gym1_good_manners(card)
+		"gym1-112": return _cpu_score_gym1_lt_surges_treaty()
+		"gym1-113": return _cpu_score_gym1_minion()
+		"gym1-114": return _cpu_score_gym1_mistys_wrath()
+		"gym1-116": return _cpu_score_gym1_recall()
+		"gym1-117": return _cpu_score_gym1_sabrinas_esp()
+		"gym1-118": return _cpu_score_gym1_secret_mission()
+		"gym1-119": return _cpu_score_gym1_tickling_machine()
+		"gym1-121": return _cpu_score_gym1_blaines_gamble()
+		"gym1-122": return _cpu_score_gym1_energy_flow()
+		"gym1-123": return _cpu_score_gym1_mistys_duel()
+		"gym1-125": return _cpu_score_gym1_sabrinas_gaze()
+		"gym1-126": return _cpu_score_gym1_trash_exchange()
 	return 0.0
 
 func _cpu_score_professor_oak(card: card_object) -> float:
@@ -3812,6 +3865,8 @@ func cpu_phase_play_trainer_cards_priority() -> void:
 				break
 			await main.trainer_effects.play_trainer_card(best_card, true)
 			if main._should_bail(): return
+			if main.opponent_turn_force_end:
+				return  # turn was force-ended by a trainer card; let the orchestrator wrap up
 			played = true
 
 # CPU re-evaluates and plays remaining trainer cards
@@ -3839,6 +3894,8 @@ func cpu_phase_play_trainer_cards_remaining() -> void:
 				break
 			await main.trainer_effects.play_trainer_card(best_card, true)
 			if main._should_bail(): return
+			if main.opponent_turn_force_end:
+				return  # turn was force-ended by a trainer card; let the orchestrator wrap up
 			played = true
 
 # CPU search deck helpers
@@ -4090,3 +4147,226 @@ func _cpu_score_sleep_trainer() -> float:
 	if defender.special_condition != "":
 		return -20.0  # Already has a condition
 	return 30.0  # 50% chance of sleep, moderate value
+
+######################################################################################################################################################
+######################################################## GYM1 (GYM HEROES) CPU SCORING ##############################################################
+######################################################################################################################################################
+
+func _cpu_score_gym1_brock() -> float:
+	# Heal 10 from each damaged. Total healing scales with number damaged.
+	var damaged_count = 0
+	for p in get_all_cpu_field_pokemon():
+		if p.current_hp < int(p.metadata.get("hp", "0")):
+			damaged_count += 1
+	if damaged_count == 0:
+		return -100.0
+	# 30 base, +15 per additional damaged
+	return 30.0 + 15.0 * damaged_count
+
+func _cpu_score_gym1_erika() -> float:
+	var hand = main.opponent_hand
+	if hand.size() >= 6:
+		return -50.0  # Don't overdraw; symmetric refill
+	if hand.size() <= 2:
+		return 55.0
+	return 25.0
+
+func _cpu_score_gym1_lt_surge() -> float:
+	# Useful if our current active is bad against the player's active.
+	if main.opponent_active_pokemon == null:
+		return -100.0
+	if main.opponent_bench.size() >= 5:
+		return -100.0
+	var has_basic = false
+	for c in main.opponent_hand:
+		if main.is_basic_pokemon(c):
+			has_basic = true
+			break
+	if not has_basic:
+		return -100.0
+	# Score higher when our active is in trouble
+	var max_hp = int(main.opponent_active_pokemon.metadata.get("hp", "0"))
+	if main.opponent_active_pokemon.current_hp <= max_hp / 3:
+		return 55.0
+	var ko_threats = evaluate_ko_threats()
+	if ko_threats.get("cpu_active_guaranteed_ko", false):
+		return 50.0
+	return 5.0
+
+func _cpu_score_gym1_misty() -> float:
+	# Only useful if we have a Misty-named active that's set to attack and we can spare 2 cards.
+	if main.opponent_active_pokemon == null:
+		return -100.0
+	if not ("Misty" in main.opponent_active_pokemon.metadata.get("name", "")):
+		return -100.0
+	if main.opponent_hand.size() < 4:
+		return -50.0  # Don't strip the hand too thin
+	# Is the +20 going to KO?
+	if main.player_active_pokemon != null:
+		for attack in main.opponent_active_pokemon.metadata.get("attacks", []):
+			if get_unmet_energy_count(attack, main.opponent_active_pokemon) > 0:
+				continue
+			var dmg_range = main.attack_effects.estimate_attack_damage_range(attack, main.opponent_active_pokemon, main.player_active_pokemon)
+			var types = main.opponent_active_pokemon.metadata.get("types", ["Colorless"])
+			var result = main.calculate_final_damage(dmg_range["min"], types, main.player_active_pokemon)
+			if result["damage"] + 20 >= main.player_active_pokemon.current_hp and result["damage"] < main.player_active_pokemon.current_hp:
+				return 90.0  # Boost guarantees KO
+	return 25.0
+
+func _cpu_score_gym1_rockets_trap() -> float:
+	if main.player_hand.size() == 0:
+		return -100.0
+	# Coin-flip dependent. Mild disruption.
+	return 25.0 + min(3, main.player_hand.size()) * 5.0
+
+func _cpu_score_gym1_blaines_quiz() -> float:
+	# 50/50. We profit either way: we draw 2 OR opp draws 2. Slight positive expected value, but symmetric.
+	if main.opponent_hand.size() >= 7:
+		return -20.0
+	return 15.0
+
+func _cpu_score_gym1_charity() -> float:
+	# CPU never reduces own outgoing damage, so this card provides no benefit to CPU.
+	return -100.0
+
+func _cpu_score_gym1_blaines_last_resort(card: card_object) -> float:
+	# Only playable when hand has no other cards (validation checks this).
+	for c in main.opponent_hand:
+		if c != card:
+			return -100.0
+	return 100.0  # Free 5-card refill
+
+func _cpu_score_gym1_brocks_training_method() -> float:
+	var deck = main.opponent_deck
+	for c in deck:
+		if c.metadata.get("supertype", "") == "Pokémon" and "Brock" in c.metadata.get("name", ""):
+			return 75.0
+	return -100.0
+
+func _cpu_score_gym1_erikas_maids() -> float:
+	if main.opponent_hand.size() < 4:
+		return -50.0  # Don't strip hand
+	var deck = main.opponent_deck
+	for c in deck:
+		if c.metadata.get("supertype", "") == "Pokémon" and "Erika" in c.metadata.get("name", ""):
+			return 65.0
+	return -100.0
+
+func _cpu_score_gym1_erikas_perfume() -> float:
+	# CPU rarely benefits from auto-benching opponent's basics.
+	return -100.0
+
+func _cpu_score_gym1_good_manners(card: card_object) -> float:
+	# Only playable if no Basic in hand. Score very high in that case.
+	for c in main.opponent_hand:
+		if c == card:
+			continue
+		if main.is_basic_pokemon(c):
+			return -100.0
+	# Check deck has basics
+	for c in main.opponent_deck:
+		if main.is_basic_pokemon(c):
+			return 80.0
+	return -100.0
+
+func _cpu_score_gym1_lt_surges_treaty() -> float:
+	# The OPPONENT (player) chooses. Heuristic: if CPU is behind on prizes, the player will likely deny prizes (let CPU draw 1).
+	# Either way: outcome is mildly positive (1 prize OR 1 draw). Moderate but symmetric.
+	return 20.0
+
+func _cpu_score_gym1_minion() -> float:
+	if main.player_bench.size() == 0:
+		return 0.0  # Coin flip with no payoff bench
+	# 25% chance both heads. Strong disruption if it lands. Risk: turn ends.
+	return 30.0
+
+func _cpu_score_gym1_mistys_wrath() -> float:
+	if main.opponent_deck.size() == 0:
+		return -100.0
+	# Strong: see top 7, pick 2, but throw away 5. Worth it when hand is medium and deck is healthy.
+	if main.opponent_hand.size() <= 3:
+		return 55.0
+	if main.opponent_hand.size() <= 5:
+		return 35.0
+	return 10.0
+
+func _cpu_score_gym1_recall() -> float:
+	# CPU doesn't currently consider pre-evolution attacks during attack scoring; skip.
+	return -100.0
+
+func _cpu_score_gym1_sabrinas_esp() -> float:
+	# Needs a Sabrina-named pokemon in play
+	var has_sabrina = false
+	for p in get_all_cpu_field_pokemon():
+		if "Sabrina" in p.metadata.get("name", ""):
+			has_sabrina = true
+			break
+	if not has_sabrina:
+		return -100.0
+	return 30.0
+
+func _cpu_score_gym1_secret_mission() -> float:
+	# Look at opp hand (info) + discard-and-draw cycling. Worth more when our hand has dead cards.
+	if main.opponent_hand.size() <= 2:
+		return -20.0
+	return 35.0
+
+func _cpu_score_gym1_tickling_machine() -> float:
+	# Massive disruption on heads (player's whole hand). Risk: tails ends turn.
+	# Score scales with how disruptive it is — bigger player hand = better target.
+	if main.player_hand.size() == 0:
+		return -100.0
+	# Only consider once attacking phase is unlikely to be wasted: i.e. we've already attacked / can't KO.
+	# For simplicity, only play it when player has 4+ cards in hand.
+	if main.player_hand.size() >= 4:
+		return 45.0
+	return 10.0
+
+func _cpu_score_gym1_blaines_gamble() -> float:
+	if main.opponent_hand.size() < 3:
+		return -50.0  # too risky with a thin hand
+	if main.opponent_hand.size() >= 5:
+		return 40.0
+	return 15.0
+
+func _cpu_score_gym1_energy_flow() -> float:
+	# CPU only uses this on heavily-damaged bench (to save energies). Score based on that.
+	var any_target = false
+	for p in get_all_cpu_field_pokemon():
+		if p.attached_energies.size() == 0:
+			continue
+		var max_hp = int(p.metadata.get("hp", "0"))
+		if p.current_hp <= max_hp / 2:
+			any_target = true
+			break
+	if not any_target:
+		return -100.0
+	return 40.0
+
+func _cpu_score_gym1_mistys_duel() -> float:
+	# Coin flip; winner gets a fresh hand. Worth playing when our hand is thin OR very large.
+	if main.opponent_hand.size() <= 2:
+		return 45.0
+	if main.opponent_hand.size() >= 7:
+		return 35.0
+	return 10.0
+
+func _cpu_score_gym1_sabrinas_gaze() -> float:
+	# Refill both hands to their previous size. Only useful when our hand is very small.
+	if main.opponent_hand.size() <= 2:
+		return 50.0
+	return -50.0
+
+func _cpu_score_gym1_trash_exchange() -> float:
+	# Shuffle discard into deck and discard top X. Net deck recovery if discard has good cards.
+	if main.opponent_discard_pile.size() < 4:
+		return -50.0
+	# Score scales with discard usefulness
+	var useful = 0
+	for c in main.opponent_discard_pile:
+		var st = c.metadata.get("supertype", "")
+		if st == "Pokémon" or st == "Energy":
+			useful += 1
+	if useful >= 6:
+		return 40.0
+	return 15.0

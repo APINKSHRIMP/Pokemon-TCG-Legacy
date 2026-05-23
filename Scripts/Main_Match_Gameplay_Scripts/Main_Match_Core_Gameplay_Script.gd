@@ -153,6 +153,16 @@ var goop_gas_owner_is_opponent: bool = false
 var player_prizes_face_up: bool = false
 var opponent_prizes_face_up: bool = false
 
+# GYM1 (GYM HEROES) trainer match-state
+var player_misty_boost_active: bool = false       # gym1-18/102 Misty — next damage attack by Misty-named active gets +20 (one-shot, cleared at end of turn)
+var opponent_misty_boost_active: bool = false
+var player_tickled_set_aside: Array = []          # gym1-119 Tickling Machine — cards held away from hand
+var opponent_tickled_set_aside: Array = []
+var player_hand_tickled: bool = false             # true while player's hand is held in player_tickled_set_aside
+var opponent_hand_tickled: bool = false           # true while opponent's hand is held in opponent_tickled_set_aside
+var player_turn_force_end: bool = false           # set by Tickling Machine tails / Minion of Team Rocket tails (player side)
+var opponent_turn_force_end: bool = false         # set by Tickling Machine tails / Minion of Team Rocket tails (CPU side)
+
 # PRELOADED RESOURCES
 var theme_disabled = preload("res://UI_Themes/kenneyUI.tres")
 var theme_green = preload("res://UI_Themes/kenneyUI-green.tres")
@@ -2212,7 +2222,23 @@ func flip_coin(silent: bool = false, flipper_is_opponent: bool = false) -> bool:
 	if result:
 		sparkles = start_sparkle_effect(coin)
 	coin.scale.y = 1.0
-	
+
+	# GYM1 Sabrina's ESP: if the flipper's active pokemon has the credit and result is tails, auto re-flip once.
+	# (Faithful simplification of "you may re-flip those coins once" — we always take the re-flip on tails since
+	#  it can only be better than the original tails. Credit is consumed.)
+	if not result:
+		var esp_owner = opponent_active_pokemon if flipper_is_opponent else player_active_pokemon
+		if esp_owner != null and esp_owner.gym1_sabrina_esp_credit_active:
+			esp_owner.gym1_sabrina_esp_credit_active = false
+			if not silent:
+				await show_message("SABRINA'S ESP — RE-FLIPPING!")
+			result = (randi() % 2 == 0)
+			coin.texture = heads_tex if result else tex_tails
+			if result:
+				if sparkles:
+					sparkles.queue_free()
+				sparkles = start_sparkle_effect(coin)
+
 	if silent:
 		# In silent mode, just wait briefly and clean up without showing a message
 		await get_tree().create_timer(0.2).timeout
@@ -2401,6 +2427,11 @@ func inbetween_turn_checks(player_turn_just_ended: bool = true) -> void:
 			await trainer_effects.discard_pluspower_from_pokemon(player_active_pokemon, false)
 		# Tick down Defender on opponent's pokemon (Defender discards at end of opponent's NEXT turn)
 		await trainer_effects.tick_defender_counters(true)
+		# GYM1: handle Charity / Sabrina's ESP / Recall / Misty boost expiry for the player's side
+		await trainer_effects.gym1_end_of_turn_cleanup(false)
+		# GYM1 Tickling Machine: if the player's own hand was tickled, restore it at the end of their own turn
+		if player_hand_tickled:
+			trainer_effects.gym1_restore_tickled_hand(false)
 	else:
 		clear_end_of_turn_statuses(opponent_active_pokemon, true)
 		clear_defensive_statuses(player_active_pokemon, false)
@@ -2411,6 +2442,11 @@ func inbetween_turn_checks(player_turn_just_ended: bool = true) -> void:
 			await trainer_effects.discard_pluspower_from_pokemon(opponent_active_pokemon, true)
 		# Tick down Defender on player's pokemon
 		await trainer_effects.tick_defender_counters(false)
+		# GYM1: handle Charity / Sabrina's ESP / Recall / Misty boost expiry for the opponent's side
+		await trainer_effects.gym1_end_of_turn_cleanup(true)
+		# GYM1 Tickling Machine: if opponent's own hand was tickled, restore it at the end of their own turn
+		if opponent_hand_tickled:
+			trainer_effects.gym1_restore_tickled_hand(true)
 	
 	if _should_bail():
 		return
@@ -2763,14 +2799,30 @@ func start_retreat_bench_selection() -> void:
 													
 # Returns the attacks array for any given card object.
 func get_attacks_for_card(card: card_object) -> Array:
-	
+
 	# Guard against null being passed in (e.g. no active pokemon yet)
 	if card == null:
 		return []
-	
+
 	# Get the attacks if they exist
 	var attacks = card.metadata.get("attacks", [])
-	
+
+	# GYM1 Recall (gym1-116): this turn the Active may also use any attack from its Basic / Evolution chain.
+	# We add attached_pre_evolutions' attacks to the list. Energy cost still applies per rules.
+	if card.gym1_recall_active:
+		var seen_names = {}
+		for atk in attacks:
+			seen_names[atk.get("name", "")] = true
+		var extra: Array = []
+		for pre_card in card.attached_pre_evolutions:
+			for atk in pre_card.metadata.get("attacks", []):
+				var atk_name = atk.get("name", "")
+				if atk_name != "" and not seen_names.has(atk_name):
+					seen_names[atk_name] = true
+					extra.append(atk)
+		if extra.size() > 0:
+			return attacks + extra
+
 	return attacks
 
 # Read an energy card passed to this function and return what energies this card actually provides.
@@ -2863,6 +2915,12 @@ func display_and_apply_attack_damage(attacker: card_object, defender: card_objec
 	if defender.damage_halved_next_turn and final_damage > 0:
 		final_damage = int(final_damage / 2.0 / 10.0) * 10
 		print("DEFLECTOR: damage halved to ", final_damage)
+
+	# GYM1 Charity (gym1-99): the attacker's owner may reduce their own outgoing damage to spare the defender.
+	# Player gets a YES/NO prompt only if the attack would KO; CPU never reduces.
+	if attacker != null and attacker.gym1_charity_attached and final_damage > 0:
+		final_damage = await trainer_effects.gym1_charity_choose_reduction(attacker, defender, final_damage, is_opponent)
+		print("CHARITY: damage resolved to ", final_damage)
 
 	var defender_label_pos = Vector2(530, 300) if is_opponent else Vector2(1030, 300)
 	for modifier in modifiers:
@@ -4196,6 +4254,20 @@ func calculate_final_damage(base_damage: int, attacking_types: Array, defending_
 		var pp_bonus = attacker_pokemon.pluspower_count * 10
 		damage += pp_bonus
 		modifiers_applied.append("PLUSPOWER +" + str(pp_bonus))
+
+	# GYM1 Misty (gym1-18/102): +20 to next damage attack by an attacker whose name contains "Misty"
+	# Boost is owned by whichever side played the card and applies once; consumed here.
+	if damage > 0 and attacker_pokemon != null:
+		var attacker_owner_is_opp = (attacker_pokemon == opponent_active_pokemon)
+		var boost_on = (opponent_misty_boost_active if attacker_owner_is_opp else player_misty_boost_active)
+		var attacker_name = attacker_pokemon.metadata.get("name", "")
+		if boost_on and "Misty" in attacker_name:
+			damage += 20
+			modifiers_applied.append("MISTY +20")
+			if attacker_owner_is_opp:
+				opponent_misty_boost_active = false
+			else:
+				player_misty_boost_active = false
 	
 	# Apply Defender reduction (-20 damage if Defender is attached to the defending pokemon)
 	if damage > 0 and defending_pokemon.defender_turns_remaining >= 0:
@@ -5036,6 +5108,10 @@ func handle_action_normal_card() -> void:
 				return
 			hide_selection_mode_display_main()
 			await trainer_effects.play_trainer_card(trainer_to_play, false)
+			# GYM1 — Tickling Machine / Minion of Team Rocket can force-end the player's turn
+			if player_turn_force_end:
+				player_turn_force_end = false
+				await player_end_turn_checks()
 		
 		"ATTACH_ENERGY":
 			start_energy_attachment()
