@@ -3604,6 +3604,27 @@ func cpu_score_trainer_card(card: card_object) -> float:
 		"gym1-123": return _cpu_score_gym1_mistys_duel()
 		"gym1-125": return _cpu_score_gym1_sabrinas_gaze()
 		"gym1-126": return _cpu_score_gym1_trash_exchange()
+		# ============================ GYM2 (GYM CHALLENGE) CPU SCORING ============================
+		"gym2-17", "gym2-100": return _cpu_score_gym2_blaine(card)
+		"gym2-18", "gym2-104": return _cpu_score_gym2_giovanni()
+		"gym2-19", "gym2-106": return _cpu_score_gym2_koga()
+		"gym2-20", "gym2-110": return _cpu_score_gym2_sabrina()
+		"gym2-101": return _cpu_score_gym2_brocks_protection()
+		"gym2-103": return _cpu_score_gym2_erikas_kindness()
+		"gym2-105": return _cpu_score_gym2_giovannis_last_resort()
+		"gym2-107": return -100.0  # Lt. Surge's Secret Plan: simplified version, CPU skips
+		"gym2-108": return _cpu_score_gym2_mistys_wish()
+		"gym2-111": return _cpu_score_gym2_blaines_quiz_2()
+		"gym2-112": return _cpu_score_gym2_blaines_quiz_3()
+		"gym2-115": return _cpu_score_gym2_koga_ninja_trick()
+		"gym2-116": return _cpu_score_gym2_master_ball()
+		"gym2-117": return _cpu_score_gym2_max_revive(card)
+		"gym2-118": return _cpu_score_gym2_mistys_tears(card)
+		"gym2-120": return _cpu_score_gym2_rockets_secret_experiment()
+		"gym2-121": return _cpu_score_gym2_sabrinas_psychic_control()
+		"gym2-124": return _cpu_score_gym2_fervor()
+		"gym2-125": return _cpu_score_gym2_transparent_walls()
+		"gym2-126": return _cpu_score_gym2_warp_point()
 	return 0.0
 
 func _cpu_score_professor_oak(card: card_object) -> float:
@@ -4369,4 +4390,287 @@ func _cpu_score_gym1_trash_exchange() -> float:
 			useful += 1
 	if useful >= 6:
 		return 40.0
+	return 15.0
+
+######################################################################################################################################################
+###################################################### GYM2 (GYM CHALLENGE) CPU SCORING #############################################################
+######################################################################################################################################################
+
+func _cpu_score_gym2_blaine(card: card_object) -> float:
+	# Needs unused energy attach, 2 Fire energy in hand, and a Blaine in play
+	if main.opponent_energy_played_this_turn or main.opponent_blaine_double_attach_used:
+		return -100.0
+	var fire = 0
+	for c in main.opponent_hand:
+		if c == card:
+			continue
+		if c.metadata.get("supertype", "") == "Energy" and c.metadata.get("name", "") == "Fire Energy":
+			fire += 1
+	if fire < 2:
+		return -100.0
+	var has_blaine = false
+	for p in get_all_cpu_field_pokemon():
+		if "Blaine" in p.metadata.get("name", ""):
+			has_blaine = true
+			break
+	if not has_blaine:
+		return -100.0
+	return 80.0  # Double-attach is very strong
+
+func _cpu_score_gym2_giovanni() -> float:
+	# Useful only if we have a Giovanni pokemon AND a hand evolution that would otherwise be blocked
+	var has_giovanni = false
+	for p in get_all_cpu_field_pokemon():
+		if "Giovanni" in p.metadata.get("name", ""):
+			has_giovanni = true
+			break
+	if not has_giovanni:
+		return -100.0
+	# Check hand for a Giovanni evolution
+	for c in main.opponent_hand:
+		if c.metadata.get("supertype", "") != "Pokémon":
+			continue
+		if "Giovanni" not in c.metadata.get("name", ""):
+			continue
+		var subs = c.metadata.get("subtypes", [])
+		if "Stage 1" in subs or "Stage 2" in subs:
+			return 60.0
+	return -50.0
+
+func _cpu_score_gym2_koga() -> float:
+	# Worth playing if we have a Koga active about to attack the player
+	if main.opponent_active_pokemon == null or main.player_active_pokemon == null:
+		return -100.0
+	if not ("Koga" in main.opponent_active_pokemon.metadata.get("name", "")):
+		return -100.0
+	# Already poisoned? Less useful
+	if main.player_active_pokemon.is_poisoned:
+		return 5.0
+	# Check if we can actually attack this turn
+	for atk in main.opponent_active_pokemon.metadata.get("attacks", []):
+		if get_unmet_energy_count(atk, main.opponent_active_pokemon) == 0:
+			return 55.0
+	return 10.0
+
+func _cpu_score_gym2_sabrina() -> float:
+	# Useful when an inactive Sabrina has stockpiled energy that another Sabrina needs
+	var sabs: Array = []
+	for p in get_all_cpu_field_pokemon():
+		if "Sabrina" in p.metadata.get("name", ""):
+			sabs.append(p)
+	if sabs.size() < 2:
+		return -100.0
+	# Score if any source has >= 2 energies and at least one other Sabrina has 0
+	var has_loaded = false
+	var has_empty = false
+	for s in sabs:
+		if s.attached_energies.size() >= 2:
+			has_loaded = true
+		if s.attached_energies.size() == 0:
+			has_empty = true
+	if has_loaded and has_empty:
+		return 55.0
+	return 5.0
+
+func _cpu_score_gym2_brocks_protection() -> float:
+	var has_brock = false
+	var loaded = false
+	for p in get_all_cpu_field_pokemon():
+		if "Brock" in p.metadata.get("name", ""):
+			has_brock = true
+			if p.attached_energies.size() >= 2:
+				loaded = true
+	if not has_brock:
+		return -100.0
+	# More valuable when there's an energy stockpile to protect
+	if loaded:
+		return 40.0
+	return 15.0
+
+func _cpu_score_gym2_erikas_kindness() -> float:
+	# Total healing benefit minus the benefit to the player
+	var cpu_dmg = 0
+	var player_dmg = 0
+	for p in get_all_cpu_field_pokemon():
+		var dmg = int(p.metadata.get("hp", "0")) - p.current_hp
+		if dmg > 0:
+			cpu_dmg += min(20, dmg)
+	for p in [main.player_active_pokemon] + main.player_bench:
+		if p == null:
+			continue
+		var dmg2 = int(p.metadata.get("hp", "0")) - p.current_hp
+		if dmg2 > 0:
+			player_dmg += min(20, dmg2)
+	var net = cpu_dmg - player_dmg
+	if cpu_dmg == 0:
+		return -50.0
+	if net >= 20:
+		return 50.0
+	if net >= 0:
+		return 20.0
+	return -20.0
+
+func _cpu_score_gym2_giovannis_last_resort() -> float:
+	# Heals a Giovanni pokemon fully but discards hand. Worth it only when CPU is desperate and Giovanni is heavily damaged.
+	var best_damage = 0
+	for p in get_all_cpu_field_pokemon():
+		if "Giovanni" not in p.metadata.get("name", ""):
+			continue
+		var dmg = int(p.metadata.get("hp", "0")) - p.current_hp
+		if dmg > best_damage:
+			best_damage = dmg
+	if best_damage < 40:
+		return -100.0
+	# Hand discard cost
+	if main.opponent_hand.size() >= 5:
+		return -30.0
+	if best_damage >= 80:
+		return 60.0
+	return 20.0
+
+func _cpu_score_gym2_mistys_wish() -> float:
+	# Mild: drawing 1 OR a prize swap. Not high impact.
+	if main.opponent_prize_cards.size() == 0:
+		return -100.0
+	if main.opponent_hand.size() <= 3:
+		return 20.0
+	return 10.0
+
+func _cpu_score_gym2_blaines_quiz_2() -> float:
+	# 50/50 — symmetric.
+	if main.opponent_hand.size() >= 7:
+		return -20.0
+	return 12.0
+
+func _cpu_score_gym2_blaines_quiz_3() -> float:
+	# 50/50 with 3-card payout — slightly better than Quiz #2.
+	if main.opponent_hand.size() >= 6:
+		return -20.0
+	return 18.0
+
+func _cpu_score_gym2_koga_ninja_trick() -> float:
+	# Need a Koga-named active
+	if main.opponent_active_pokemon == null:
+		return -100.0
+	if not ("Koga" in main.opponent_active_pokemon.metadata.get("name", "")):
+		return -100.0
+	# Useful when the bench has a stronger defender to swap to
+	if main.opponent_bench.size() == 0:
+		return 0.0
+	return 35.0
+
+func _cpu_score_gym2_master_ball() -> float:
+	if main.opponent_deck.size() == 0:
+		return -100.0
+	# Strong tutor — 7 cards is a lot of pickup space
+	if main.opponent_hand.size() <= 4:
+		return 65.0
+	return 35.0
+
+func _cpu_score_gym2_max_revive(card: card_object) -> float:
+	if main.opponent_bench.size() >= 5:
+		return -100.0
+	# Need 2 Energy in hand
+	var e = 0
+	for c in main.opponent_hand:
+		if c == card:
+			continue
+		if c.metadata.get("supertype", "") == "Energy":
+			e += 1
+	if e < 2:
+		return -100.0
+	# Useful when a strong basic is in discard
+	var best_score = 0
+	for c in main.opponent_discard_pile:
+		if main.is_basic_pokemon(c):
+			var result = evaluate_opponents_start_setup_pokemon_choices(c, main.opponent_hand)
+			best_score = max(best_score, result.get("total_score", 0))
+	if best_score >= 250:
+		return 55.0
+	if best_score > 0:
+		return 25.0
+	return -100.0
+
+func _cpu_score_gym2_mistys_tears(card: card_object) -> float:
+	# Discard 1 → search 2 Water Energy. Need water-aligned attackers in play.
+	var avail = 0
+	for c in main.opponent_hand:
+		if c != card:
+			avail += 1
+	if avail < 1:
+		return -100.0
+	# Any Water Energy still in deck?
+	var has_water = false
+	for c in main.opponent_deck:
+		if c.metadata.get("supertype", "") == "Energy" and c.metadata.get("name", "") == "Water Energy":
+			has_water = true
+			break
+	if not has_water:
+		return -100.0
+	# Want a Water-type attacker on field
+	for p in get_all_cpu_field_pokemon():
+		if "Water" in p.metadata.get("types", []):
+			return 55.0
+	return 10.0
+
+func _cpu_score_gym2_rockets_secret_experiment() -> float:
+	# Heads = best tutor in the game; tails = trainer lock on SELF (bad).
+	# 50/50 — only play it when hand is thin and we can afford the lock risk.
+	if main.opponent_hand.size() <= 2:
+		return 45.0
+	return 10.0
+
+func _cpu_score_gym2_sabrinas_psychic_control() -> float:
+	# 50% to use one of player's discarded trainers. Score based on what's there.
+	var opp_discard = main.player_discard_pile
+	var best = 0.0
+	for c in opp_discard:
+		if not main.trainer_effects.is_trainer_card(c):
+			continue
+		if main.trainer_effects.is_attached_trainer(c) or main.trainer_effects.is_bench_token_trainer(c) or main.trainer_effects.is_stadium_trainer(c):
+			continue
+		best = max(best, cpu_score_trainer_card(c))
+	if best <= 30:
+		return -50.0
+	return best * 0.5  # half the value (50% chance)
+
+func _cpu_score_gym2_fervor() -> float:
+	# Top-3 reveal; Fire Energy to hand, rest to discard. Worth it if Fire is a major energy type for our deck.
+	var fire_in_deck = 0
+	for c in main.opponent_deck:
+		if c.metadata.get("supertype", "") == "Energy" and c.metadata.get("name", "") == "Fire Energy":
+			fire_in_deck += 1
+	if fire_in_deck == 0:
+		return -100.0
+	# Probability-ish weighting
+	if fire_in_deck >= 8:
+		return 40.0
+	if fire_in_deck >= 4:
+		return 20.0
+	return 5.0
+
+func _cpu_score_gym2_transparent_walls() -> float:
+	# Useful when the player has bench-damage attacks or we're protecting setup.
+	if main.opponent_bench.size() <= 1:
+		return -20.0
+	# Check if any of our bench is at risk (low HP)
+	for bp in main.opponent_bench:
+		var max_hp = int(bp.metadata.get("hp", "0"))
+		if bp.current_hp <= max_hp / 2:
+			return 50.0
+	return 20.0
+
+func _cpu_score_gym2_warp_point() -> float:
+	# Forces opp's bench swap AND your own. Good when player's active is hard to KO and a weaker bench exists.
+	if main.player_bench.size() == 0:
+		return -50.0
+	# Score by whether a weaker player-bench would be a better target
+	var p_active = main.player_active_pokemon
+	if p_active == null:
+		return -50.0
+	for bp in main.player_bench:
+		var bp_hp = int(bp.metadata.get("hp", "0"))
+		var pa_hp = int(p_active.metadata.get("hp", "0"))
+		if bp_hp < pa_hp:
+			return 45.0
 	return 15.0

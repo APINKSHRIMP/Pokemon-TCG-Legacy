@@ -29,7 +29,7 @@ func is_bench_token_trainer(card: card_object) -> bool:
 				return true
 	return false
 
-# Returns true if a card is an attached trainer (PlusPower, Defender, GYM1 Charity / Sabrina's ESP)
+# Returns true if a card is an attached trainer (PlusPower, Defender, GYM1 Charity / Sabrina's ESP, GYM2 Brock's Protection / Koga's Ninja Trick)
 func is_attached_trainer(card: card_object) -> bool:
 	if not is_trainer_card(card):
 		return false
@@ -39,6 +39,9 @@ func is_attached_trainer(card: card_object) -> bool:
 	# GYM1 attached tools
 	var uid = card.uid.to_lower()
 	if uid == "gym1-99" or uid == "gym1-117":
+		return true
+	# GYM2 attached tools
+	if uid == "gym2-101" or uid == "gym2-115":
 		return true
 	return false
 
@@ -702,6 +705,152 @@ func validate_trainer_can_be_played(card: card_object, is_opponent: bool) -> Str
 			if discard.size() == 0:
 				return "Discard pile is empty!"
 
+		# ============================ GYM2 (GYM CHALLENGE) TRAINER VALIDATIONS ============================
+		"gym2-17", "gym2-100": # Blaine — replaces your energy attachment this turn
+			var energy_played = main.opponent_energy_played_this_turn if is_opponent else main.player_energy_played_this_turn
+			var used_already = main.opponent_blaine_double_attach_used if is_opponent else main.player_blaine_double_attach_used
+			if energy_played:
+				return "You already attached your free Energy this turn!"
+			if used_already:
+				return "Blaine has already been played this turn!"
+			# Need at least 2 Fire Energy in hand
+			var fire_count = 0
+			for c in hand:
+				if c == card:
+					continue
+				if c.metadata.get("supertype", "") == "Energy" and "Basic" in c.metadata.get("subtypes", []) and c.metadata.get("name", "") == "Fire Energy":
+					fire_count += 1
+			if fire_count < 2:
+				return "Need at least 2 Fire Energy in hand!"
+			# Need a Blaine-named pokemon in play
+			var has_blaine = false
+			for p in build_field_pokemon_array(is_opponent):
+				if "Blaine" in p.metadata.get("name", ""):
+					has_blaine = true
+					break
+			if not has_blaine:
+				return "No Blaine Pokemon in play!"
+		"gym2-18", "gym2-104": # Giovanni — needs a Giovanni-named pokemon in play
+			var any_g = false
+			for p in build_field_pokemon_array(is_opponent):
+				if "Giovanni" in p.metadata.get("name", ""):
+					any_g = true
+					break
+			if not any_g:
+				return "No Giovanni Pokemon in play!"
+		"gym2-20", "gym2-110": # Sabrina — need at least 2 Sabrina pokemon in play, and the source must have energies
+			var sabs: Array = []
+			for p in build_field_pokemon_array(is_opponent):
+				if "Sabrina" in p.metadata.get("name", ""):
+					sabs.append(p)
+			if sabs.size() < 2:
+				return "Need at least 2 Sabrina Pokemon in play!"
+			var any_e_src = false
+			for s in sabs:
+				if s.attached_energies.size() > 0:
+					any_e_src = true
+					break
+			if not any_e_src:
+				return "No Sabrina Pokemon has energy to transfer!"
+		"gym2-101": # Brock's Protection — needs Brock-named pokemon in play
+			var any_b = false
+			for p in build_field_pokemon_array(is_opponent):
+				if "Brock" in p.metadata.get("name", ""):
+					any_b = true
+					break
+			if not any_b:
+				return "No Brock Pokemon in play!"
+		"gym2-103": # Erika's Kindness — needs at least one damaged pokemon on either side
+			var any_dmg = false
+			for p in build_field_pokemon_array(is_opponent):
+				if p.current_hp < int(p.metadata.get("hp", "0")):
+					any_dmg = true
+					break
+			if not any_dmg:
+				for p in build_field_pokemon_array(not is_opponent):
+					if p.current_hp < int(p.metadata.get("hp", "0")):
+						any_dmg = true
+						break
+			if not any_dmg:
+				return "No damaged Pokemon!"
+		"gym2-105": # Giovanni's Last Resort — needs a Giovanni-named pokemon with damage
+			var ok = false
+			for p in build_field_pokemon_array(is_opponent):
+				if "Giovanni" in p.metadata.get("name", "") and p.current_hp < int(p.metadata.get("hp", "0")):
+					ok = true
+					break
+			if not ok:
+				return "No damaged Giovanni Pokemon!"
+		"gym2-107": # Lt. Surge's Secret Plan — bench space + at least one card in hand to use
+			if bench.size() >= 5:
+				return "Bench is full!"
+			if hand.size() <= 1:
+				return "No other cards in hand!"
+		"gym2-108": # Misty's Wish — needs at least one prize and hand has at least one other card
+			var prizes = main.opponent_prize_cards if is_opponent else main.player_prize_cards
+			if prizes.size() == 0:
+				return "No Prize cards left!"
+		"gym2-111", "gym2-112": # Blaine's Quiz #2/#3 — need a card in hand to put face-down
+			var avail = 0
+			for c in hand:
+				if c != card:
+					avail += 1
+			if avail < 1:
+				return "Need at least 1 other card in hand!"
+		"gym2-115": # Koga's Ninja Trick — need a Koga-named Active
+			if active == null or not ("Koga" in active.metadata.get("name", "")):
+				return "Active Pokemon must have Koga in its name!"
+		"gym2-116": # Master Ball — needs deck
+			if deck.size() == 0:
+				return "Deck is empty!"
+		"gym2-117": # Max Revive — needs 2 Energy in hand + a Basic in discard + bench space
+			if bench.size() >= 5:
+				return "Bench is full!"
+			var energy_in_hand = 0
+			for c in hand:
+				if c == card:
+					continue
+				if c.metadata.get("supertype", "") == "Energy":
+					energy_in_hand += 1
+			if energy_in_hand < 2:
+				return "Need at least 2 Energy cards in hand!"
+			var basic_in_disc = false
+			for c in discard:
+				if main.is_basic_pokemon(c):
+					basic_in_disc = true
+					break
+			if not basic_in_disc:
+				return "No Basic Pokemon in discard pile!"
+		"gym2-118": # Misty's Tears — needs 1 other card in hand + Water Energy in deck
+			var avail_mt = 0
+			for c in hand:
+				if c != card:
+					avail_mt += 1
+			if avail_mt < 1:
+				return "Need at least 1 other card to discard!"
+			var has_water = false
+			for c in deck:
+				if c.metadata.get("supertype", "") == "Energy" and c.metadata.get("name", "") == "Water Energy":
+					has_water = true
+					break
+			if not has_water:
+				return "No Water Energy in deck!"
+		"gym2-121": # Sabrina's Psychic Control — needs trainer cards in opp's discard
+			var opp_discard = main.player_discard_pile if is_opponent else main.opponent_discard_pile
+			var any_trainer = false
+			for c in opp_discard:
+				if is_trainer_card(c) and not is_attached_trainer(c) and not is_bench_token_trainer(c) and not is_stadium_trainer(c):
+					any_trainer = true
+					break
+			if not any_trainer:
+				return "Opponent has no eligible Trainer cards in discard!"
+		"gym2-124": # Fervor — needs deck
+			if deck.size() == 0:
+				return "Deck is empty!"
+		"gym2-126": # Warp Point — at least one side needs benched pokemon
+			if main.player_bench.size() == 0 and main.opponent_bench.size() == 0:
+				return "Neither player has benched Pokemon!"
+
 	return ""
 
 # Main entry point for playing a trainer card (handles animation, routing, and discard)
@@ -872,6 +1021,25 @@ func resolve_standard_trainer(card: card_object, is_opponent: bool) -> void:
 		"gym1-123": await gym1_effect_mistys_duel(is_opponent)
 		"gym1-125": await gym1_effect_sabrinas_gaze(is_opponent)
 		"gym1-126": await gym1_effect_trash_exchange(is_opponent)
+		# ============================ GYM2 (GYM CHALLENGE) STANDARD TRAINERS ============================
+		"gym2-17", "gym2-100": await gym2_effect_blaine(is_opponent)
+		"gym2-18", "gym2-104": await gym2_effect_giovanni(is_opponent)
+		"gym2-19", "gym2-106": await gym2_effect_koga(is_opponent)
+		"gym2-20", "gym2-110": await gym2_effect_sabrina(is_opponent)
+		"gym2-103": await gym2_effect_erikas_kindness(is_opponent)
+		"gym2-105": await gym2_effect_giovannis_last_resort(is_opponent)
+		"gym2-107": await gym2_effect_lt_surges_secret_plan(is_opponent)
+		"gym2-108": await gym2_effect_mistys_wish(is_opponent)
+		"gym2-111": await gym2_effect_blaines_quiz_2(is_opponent)
+		"gym2-112": await gym2_effect_blaines_quiz_3(is_opponent)
+		"gym2-116": await gym2_effect_master_ball(is_opponent)
+		"gym2-117": await gym2_effect_max_revive(card, is_opponent)
+		"gym2-118": await gym2_effect_mistys_tears(card, is_opponent)
+		"gym2-120": await gym2_effect_rockets_secret_experiment(is_opponent)
+		"gym2-121": await gym2_effect_sabrinas_psychic_control(is_opponent)
+		"gym2-124": await gym2_effect_fervor(is_opponent)
+		"gym2-125": await gym2_effect_transparent_walls(is_opponent)
+		"gym2-126": await gym2_effect_warp_point(is_opponent)
 		_:
 			print("Unknown trainer card: ", card_id, " (", card_name, ")")
 
@@ -1047,6 +1215,81 @@ func resolve_attached_trainer(card: card_object, is_opponent: bool) -> void:
 		await main.show_message("SABRINA'S ESP ATTACHED TO " + target.metadata.get("name", "").to_upper() + "!")
 		if main._should_bail(): return
 		print("SABRINA'S ESP: Attached to ", target.metadata.get("name", ""))
+
+	# GYM2 Brock's Protection (gym2-101) — attach to a Brock-named pokemon
+	elif card.uid.to_lower() == "gym2-101":
+		await gym2_attach_named_tool(card, is_opponent, "Brock", "gym2_brocks_protection_attached", "BROCK'S PROTECTION")
+
+	# GYM2 Koga's Ninja Trick (gym2-115) — attach to Active Koga-named pokemon
+	elif card.uid.to_lower() == "gym2-115":
+		var active = main.opponent_active_pokemon if is_opponent else main.player_active_pokemon
+		if active == null or not ("Koga" in active.metadata.get("name", "")):
+			var discard = main.opponent_discard_pile if is_opponent else main.player_discard_pile
+			card.current_location = "discard"
+			discard.append(card)
+			return
+		active.attached_cards.append(card)
+		active.gym2_koga_ninja_trick_attached = true
+		var hand_node = main.opponent_hand_container if is_opponent else main.player_hand_container
+		var attached_node = main.opponent_attached_cards_container if is_opponent else main.player_attached_cards_container
+		var card_texture = main.get_card_texture(card)
+		await main.animate_card_a_to_b(hand_node, attached_node, 0.3, card_texture, main.card_scales[10])
+		display_attached_trainer_cards(is_opponent)
+		await main.show_message("KOGA'S NINJA TRICK ATTACHED TO " + active.metadata.get("name", "").to_upper() + "!")
+		if main._should_bail(): return
+		print("KOGA'S NINJA TRICK: Attached to ", active.metadata.get("name", ""))
+
+# Generic helper for "attach to a named pokemon in play" tools (Brock's Protection-style).
+func gym2_attach_named_tool(card: card_object, is_opponent: bool, name_substr: String, flag_name: String, display_name: String) -> void:
+	var targets: Array = []
+	for p in build_field_pokemon_array(is_opponent):
+		if name_substr in p.metadata.get("name", ""):
+			targets.append(p)
+	if targets.size() == 0:
+		var discard = main.opponent_discard_pile if is_opponent else main.player_discard_pile
+		card.current_location = "discard"
+		discard.append(card)
+		return
+	var target: card_object = null
+	if is_opponent:
+		# CPU: prefer pokemon with most energies attached (most worth protecting)
+		var best_e = -1
+		for p in targets:
+			if p.attached_energies.size() > best_e:
+				best_e = p.attached_energies.size()
+				target = p
+	else:
+		if targets.size() == 1:
+			target = targets[0]
+		else:
+			main.trainer_pokemon_selection_active = true
+			main.show_enlarged_array_selection_mode(targets)
+			main.header_label.text = "ATTACH " + display_name
+			main.hint_label.text = "Choose a " + name_substr + " Pokemon"
+			main.action_button.text = "ATTACH"
+			main.action_button.disabled = true
+			main.action_button.theme = main.theme_disabled
+			main.cancel_button.visible = false
+			await main.trainer_target_selected
+			if main._should_bail(): return
+			target = main.selected_card_for_action
+			main.trainer_pokemon_selection_active = false
+			main.hide_selection_mode_display_main()
+	if target == null:
+		var discard2 = main.opponent_discard_pile if is_opponent else main.player_discard_pile
+		card.current_location = "discard"
+		discard2.append(card)
+		return
+	target.attached_cards.append(card)
+	target.set(flag_name, true)
+	var hand_node = main.opponent_hand_container if is_opponent else main.player_hand_container
+	var attached_node = main.opponent_attached_cards_container if is_opponent else main.player_attached_cards_container
+	var card_texture = main.get_card_texture(card)
+	await main.animate_card_a_to_b(hand_node, attached_node, 0.3, card_texture, main.card_scales[10])
+	display_attached_trainer_cards(is_opponent)
+	await main.show_message(display_name + " ATTACHED TO " + target.metadata.get("name", "").to_upper() + "!")
+	if main._should_bail(): return
+	print(display_name, ": Attached to ", target.metadata.get("name", ""))
 
 # --- INDIVIDUAL TRAINER EFFECTS ---
 
@@ -1816,8 +2059,9 @@ func effect_super_energy_removal(is_opponent: bool) -> void:
 	var own_with_energy = own_all.filter(func(p): return p.attached_energies.size() > 0)
 	
 	# Find opponent pokemon with energy (using combined array with active last)
+	# GYM2 Brock's Protection (gym2-101): exclude protected pokemon
 	var target_all = build_field_pokemon_array(not is_opponent)
-	var target_with_energy = target_all.filter(func(p): return p.attached_energies.size() > 0)
+	var target_with_energy = target_all.filter(func(p): return p.attached_energies.size() > 0 and not p.gym2_brocks_protection_attached)
 	
 	if own_with_energy.size() == 0:
 		await main.show_message("No energy to discard from your own Pokemon!")
@@ -2399,11 +2643,12 @@ func effect_super_potion(is_opponent: bool) -> void:
 func effect_energy_removal(is_opponent: bool) -> void:
 	var target_is_opp = not is_opponent
 	var target_discard = main.player_discard_pile if is_opponent else main.opponent_discard_pile
-	
+
 	# Build combined array with energy, active last
 	var all_targets = build_field_pokemon_array(target_is_opp)
-	var targets_with_energy = all_targets.filter(func(p): return p.attached_energies.size() > 0)
-	
+	# GYM2 Brock's Protection (gym2-101): exclude protected pokemon from opp's Trainer-card energy removal
+	var targets_with_energy = all_targets.filter(func(p): return p.attached_energies.size() > 0 and not p.gym2_brocks_protection_attached)
+
 	if targets_with_energy.size() == 0:
 		await main.show_message("Opponent has no energy to remove!")
 		if main._should_bail(): return
@@ -3525,6 +3770,14 @@ func gym1_end_of_turn_cleanup(side_is_opponent: bool) -> void:
 	else:
 		main.player_misty_boost_active = false
 
+	# GYM2: clear per-turn match flags for the side whose turn just ended
+	if side_is_opponent:
+		main.opponent_blaine_double_attach_used = false
+		main.opponent_koga_poison_active = false
+	else:
+		main.player_blaine_double_attach_used = false
+		main.player_koga_poison_active = false
+
 	# Process all pokemon owned by this side
 	var all_pokemon: Array = []
 	if active != null:
@@ -3535,6 +3788,9 @@ func gym1_end_of_turn_cleanup(side_is_opponent: bool) -> void:
 		# Recall expires at end of own turn
 		if pokemon.gym1_recall_active:
 			pokemon.gym1_recall_active = false
+		# GYM2 Giovanni evolve-anywhere expires at end of own turn
+		if pokemon.gym2_giovanni_evolve_anywhere:
+			pokemon.gym2_giovanni_evolve_anywhere = false
 
 		# Charity: returns to hand at end of own turn UNLESS pokemon got KO'd (KO handling clears via send_card_to_discard)
 		if pokemon.gym1_charity_attached and pokemon.current_hp > 0:
@@ -4555,4 +4811,991 @@ func gym1_effect_trash_exchange(is_opponent: bool) -> void:
 	main.update_discard_pile_display(is_opponent)
 	main.update_deck_icon(is_opponent)
 	await main.show_message("TRASH EXCHANGE — SHUFFLED " + str(count) + " INTO DECK, DISCARDED TOP " + str(to_discard) + "!")
+	if main._should_bail(): return
+
+######################################################################################################################################################
+###################################################### GYM2 (GYM CHALLENGE) TRAINER EFFECTS #########################################################
+######################################################################################################################################################
+
+# Switch prompt for Koga's Ninja Trick (gym2-115). Returns true if a switch happened.
+func gym2_koga_ninja_trick_offer_switch(defender: card_object, defender_is_opp: bool) -> bool:
+	var bench = main.opponent_bench if defender_is_opp else main.player_bench
+	if bench.size() == 0:
+		return false
+	var chosen: card_object = null
+	if defender_is_opp:
+		# CPU side: switch in the bench pokemon with the highest HP if our active is in worse shape
+		var def_max = int(defender.metadata.get("hp", "0"))
+		var def_pct = float(defender.current_hp) / max(1, def_max)
+		var best_pct = def_pct
+		for bp in bench:
+			var max_hp = int(bp.metadata.get("hp", "0"))
+			var pct = float(bp.current_hp) / max(1, max_hp)
+			if pct > best_pct + 0.15:
+				best_pct = pct
+				chosen = bp
+		if chosen == null:
+			return false
+	else:
+		# Player chooses — YES/NO prompt anchored on the defender card
+		var yes = await gym1_prompt_yes_no(defender, "KOGA'S NINJA TRICK", "Switch " + defender.metadata.get("name", "") + " with a Benched Pokemon?", "SWITCH", "STAY")
+		if not yes:
+			return false
+		main.trainer_pokemon_selection_active = true
+		main.show_enlarged_array_selection_mode(bench)
+		main.header_label.text = "KOGA'S NINJA TRICK — SWITCH WITH WHICH?"
+		main.hint_label.text = "Choose a Benched Pokemon to swap in"
+		main.action_button.text = "SWITCH"
+		main.action_button.disabled = true
+		main.action_button.theme = main.theme_disabled
+		main.cancel_button.visible = false
+		await main.trainer_target_selected
+		if main._should_bail(): return false
+		chosen = main.selected_card_for_action
+		main.trainer_pokemon_selection_active = false
+		main.hide_selection_mode_display_main()
+	if chosen == null:
+		return false
+
+	# Perform the swap: defender → bench, chosen → active. The Koga tool stays attached to defender
+	# but the rules say "If this Pokémon goes to your Bench, discard this card." — so discard it.
+	var discard = main.opponent_discard_pile if defender_is_opp else main.player_discard_pile
+	var to_discard_tool: card_object = null
+	for ac in defender.attached_cards:
+		if ac.uid.to_lower() == "gym2-115":
+			to_discard_tool = ac
+			break
+	if to_discard_tool != null:
+		defender.attached_cards.erase(to_discard_tool)
+		to_discard_tool.current_location = "discard"
+		discard.append(to_discard_tool)
+		defender.gym2_koga_ninja_trick_attached = false
+	# Move chosen to active slot
+	bench.erase(chosen)
+	chosen.current_location = "active"
+	defender.current_location = "bench"
+	bench.append(defender)
+	if defender_is_opp:
+		main.opponent_active_pokemon = chosen
+	else:
+		main.player_active_pokemon = chosen
+	main.display_pokemon(defender_is_opp)
+	main.display_active_pokemon_energies(defender_is_opp)
+	main.update_discard_pile_display(defender_is_opp)
+	display_attached_trainer_cards(defender_is_opp)
+	await main.show_message("KOGA'S NINJA TRICK — SWITCHED IN " + chosen.metadata.get("name", "").to_upper() + "!")
+	if main._should_bail(): return false
+	return true
+
+# ============================ gym2-17 / gym2-100 — Blaine ============================
+# Instead of this turn's free Energy attach, attach 2 Fire Energy from hand to a Blaine-named Pokemon.
+func gym2_effect_blaine(is_opponent: bool) -> void:
+	var hand = main.opponent_hand if is_opponent else main.player_hand
+	# Collect 2 Fire Energies
+	var fires: Array = []
+	for c in hand:
+		if c.metadata.get("supertype", "") == "Energy" and c.metadata.get("name", "") == "Fire Energy":
+			fires.append(c)
+			if fires.size() >= 2:
+				break
+	if fires.size() < 2:
+		return
+	# Choose a Blaine pokemon
+	var blaine_targets: Array = []
+	for p in build_field_pokemon_array(is_opponent):
+		if "Blaine" in p.metadata.get("name", ""):
+			blaine_targets.append(p)
+	if blaine_targets.size() == 0:
+		return
+	var target: card_object = null
+	if is_opponent:
+		# CPU: pick the active if it's Blaine, else first Blaine bench
+		if main.opponent_active_pokemon != null and "Blaine" in main.opponent_active_pokemon.metadata.get("name", ""):
+			target = main.opponent_active_pokemon
+		else:
+			target = blaine_targets[0]
+	else:
+		if blaine_targets.size() == 1:
+			target = blaine_targets[0]
+		else:
+			main.trainer_pokemon_selection_active = true
+			main.show_enlarged_array_selection_mode(blaine_targets)
+			main.header_label.text = "BLAINE — ATTACH 2 FIRE ENERGY"
+			main.hint_label.text = "Choose a Blaine Pokemon"
+			main.action_button.text = "ATTACH"
+			main.action_button.disabled = true
+			main.action_button.theme = main.theme_disabled
+			main.cancel_button.visible = false
+			await main.trainer_target_selected
+			if main._should_bail(): return
+			target = main.selected_card_for_action
+			main.trainer_pokemon_selection_active = false
+			main.hide_selection_mode_display_main()
+	if target == null:
+		return
+	# Move the 2 Fire Energies onto the target
+	for fire in fires:
+		hand.erase(fire)
+		fire.current_location = "active" if target == (main.opponent_active_pokemon if is_opponent else main.player_active_pokemon) else "bench"
+		target.attached_energies.append(fire)
+	# Consume the energy-played-this-turn slot and mark Blaine as used
+	if is_opponent:
+		main.opponent_energy_played_this_turn = true
+		main.opponent_blaine_double_attach_used = true
+	else:
+		main.player_energy_played_this_turn = true
+		main.player_blaine_double_attach_used = true
+	main.refresh_hand_display(is_opponent)
+	main.display_active_pokemon_energies(is_opponent)
+	await main.show_message("BLAINE — 2 FIRE ENERGY ATTACHED TO " + target.metadata.get("name", "").to_upper() + "!")
+	if main._should_bail(): return
+
+# ============================ gym2-18 / gym2-104 — Giovanni ============================
+# Choose a Giovanni-named pokemon; for the rest of the turn it can evolve free of restrictions (and the buff carries through evolution).
+func gym2_effect_giovanni(is_opponent: bool) -> void:
+	var giovannis: Array = []
+	for p in build_field_pokemon_array(is_opponent):
+		if "Giovanni" in p.metadata.get("name", ""):
+			giovannis.append(p)
+	if giovannis.size() == 0:
+		return
+	var target: card_object = null
+	if is_opponent:
+		# CPU: pick the lowest-stage Giovanni first (more evolution headroom)
+		var best_stage = 999
+		for p in giovannis:
+			var subs = p.metadata.get("subtypes", [])
+			var stage = 0
+			if "Stage 1" in subs:
+				stage = 1
+			elif "Stage 2" in subs:
+				stage = 2
+			if stage < best_stage:
+				best_stage = stage
+				target = p
+	else:
+		if giovannis.size() == 1:
+			target = giovannis[0]
+		else:
+			main.trainer_pokemon_selection_active = true
+			main.show_enlarged_array_selection_mode(giovannis)
+			main.header_label.text = "GIOVANNI — CHOOSE A POKEMON"
+			main.hint_label.text = "It can evolve freely this turn"
+			main.action_button.text = "SELECT"
+			main.action_button.disabled = true
+			main.action_button.theme = main.theme_disabled
+			main.cancel_button.visible = false
+			await main.trainer_target_selected
+			if main._should_bail(): return
+			target = main.selected_card_for_action
+			main.trainer_pokemon_selection_active = false
+			main.hide_selection_mode_display_main()
+	if target == null:
+		return
+	target.gym2_giovanni_evolve_anywhere = true
+	await main.show_message("GIOVANNI — " + target.metadata.get("name", "").to_upper() + " CAN EVOLVE FREELY THIS TURN!")
+	if main._should_bail(): return
+
+# ============================ gym2-19 / gym2-106 — Koga ============================
+# This turn, any damage attack from a Koga-named pokemon poisons the defender.
+func gym2_effect_koga(is_opponent: bool) -> void:
+	if is_opponent:
+		main.opponent_koga_poison_active = true
+	else:
+		main.player_koga_poison_active = true
+	await main.show_message("KOGA — KOGA POKEMON WILL POISON DEFENDERS THIS TURN!")
+	if main._should_bail(): return
+
+# ============================ gym2-20 / gym2-110 — Sabrina ============================
+# Move all energies from one Sabrina-named pokemon to another Sabrina-named pokemon.
+func gym2_effect_sabrina(is_opponent: bool) -> void:
+	var sabrinas: Array = []
+	for p in build_field_pokemon_array(is_opponent):
+		if "Sabrina" in p.metadata.get("name", ""):
+			sabrinas.append(p)
+	if sabrinas.size() < 2:
+		return
+	var sources: Array = []
+	for s in sabrinas:
+		if s.attached_energies.size() > 0:
+			sources.append(s)
+	if sources.size() == 0:
+		return
+
+	var source: card_object = null
+	var dest: card_object = null
+
+	if is_opponent:
+		# CPU: pick the most-energy-laden Sabrina with the FEWEST attack uses (heuristic: bench candidate)
+		var best_e = 0
+		for s in sources:
+			if s.attached_energies.size() > best_e:
+				best_e = s.attached_energies.size()
+				source = s
+		# Destination: any other Sabrina (prefer active)
+		if main.opponent_active_pokemon != null and "Sabrina" in main.opponent_active_pokemon.metadata.get("name", "") and main.opponent_active_pokemon != source:
+			dest = main.opponent_active_pokemon
+		else:
+			for s in sabrinas:
+				if s != source:
+					dest = s
+					break
+	else:
+		# Player picks source then destination
+		main.trainer_pokemon_selection_active = true
+		main.show_enlarged_array_selection_mode(sources)
+		main.header_label.text = "SABRINA — PICK ENERGY SOURCE"
+		main.hint_label.text = "Move all its energies"
+		main.action_button.text = "SELECT"
+		main.action_button.disabled = true
+		main.action_button.theme = main.theme_disabled
+		main.cancel_button.visible = false
+		await main.trainer_target_selected
+		if main._should_bail(): return
+		source = main.selected_card_for_action
+		main.trainer_pokemon_selection_active = false
+		main.hide_selection_mode_display_main()
+		if source == null:
+			return
+		var dest_candidates: Array = []
+		for s in sabrinas:
+			if s != source:
+				dest_candidates.append(s)
+		if dest_candidates.size() == 0:
+			return
+		main.trainer_pokemon_selection_active = true
+		main.show_enlarged_array_selection_mode(dest_candidates)
+		main.header_label.text = "SABRINA — PICK DESTINATION"
+		main.hint_label.text = "Energy from " + source.metadata.get("name", "") + " moves here"
+		main.action_button.text = "SELECT"
+		main.action_button.disabled = true
+		main.action_button.theme = main.theme_disabled
+		main.cancel_button.visible = false
+		await main.trainer_target_selected
+		if main._should_bail(): return
+		dest = main.selected_card_for_action
+		main.trainer_pokemon_selection_active = false
+		main.hide_selection_mode_display_main()
+
+	if source == null or dest == null:
+		return
+
+	# Determine destination's location category
+	var dest_loc = "active" if dest == (main.opponent_active_pokemon if is_opponent else main.player_active_pokemon) else "bench"
+	for e in source.attached_energies:
+		e.current_location = dest_loc
+		dest.attached_energies.append(e)
+	source.attached_energies.clear()
+	main.display_active_pokemon_energies(is_opponent)
+	await main.show_message("SABRINA — ENERGIES MOVED FROM " + source.metadata.get("name", "").to_upper() + " TO " + dest.metadata.get("name", "").to_upper() + "!")
+	if main._should_bail(): return
+
+# ============================ gym2-103 — Erika's Kindness ============================
+# Heal 20 from every damaged pokemon on both sides (or 10 if it had just 1 damage counter).
+func gym2_effect_erikas_kindness(_is_opponent: bool) -> void:
+	for side in [false, true]:
+		for p in build_field_pokemon_array(side):
+			var max_hp = int(p.metadata.get("hp", "0"))
+			if p.max_hp_override > 0:
+				max_hp = p.max_hp_override
+			if p.current_hp >= max_hp:
+				continue
+			var damage = max_hp - p.current_hp
+			var heal = 20 if damage > 10 else 10
+			p.current_hp = min(max_hp, p.current_hp + heal)
+			main.display_hp_circles_above_align(p, side)
+	await main.show_message("ERIKA'S KINDNESS — REMOVED 2 DAMAGE COUNTERS FROM EVERY DAMAGED POKEMON!")
+	if main._should_bail(): return
+
+# ============================ gym2-105 — Giovanni's Last Resort ============================
+# Remove all damage counters from a Giovanni-named pokemon; then discard your hand.
+func gym2_effect_giovannis_last_resort(is_opponent: bool) -> void:
+	var giovannis: Array = []
+	for p in build_field_pokemon_array(is_opponent):
+		if "Giovanni" in p.metadata.get("name", "") and p.current_hp < int(p.metadata.get("hp", "0")):
+			giovannis.append(p)
+	if giovannis.size() == 0:
+		return
+	var target: card_object = null
+	if is_opponent:
+		# Pick the most-damaged
+		var most = 0
+		for p in giovannis:
+			var d = int(p.metadata.get("hp", "0")) - p.current_hp
+			if d > most:
+				most = d
+				target = p
+	else:
+		if giovannis.size() == 1:
+			target = giovannis[0]
+		else:
+			main.trainer_pokemon_selection_active = true
+			main.show_enlarged_array_selection_mode(giovannis)
+			main.header_label.text = "GIOVANNI'S LAST RESORT"
+			main.hint_label.text = "Choose a Giovanni Pokemon to fully heal (will discard your hand)"
+			main.action_button.text = "HEAL"
+			main.action_button.disabled = true
+			main.action_button.theme = main.theme_disabled
+			main.cancel_button.visible = false
+			await main.trainer_target_selected
+			if main._should_bail(): return
+			target = main.selected_card_for_action
+			main.trainer_pokemon_selection_active = false
+			main.hide_selection_mode_display_main()
+	if target == null:
+		return
+	var max_hp = int(target.metadata.get("hp", "0"))
+	if target.max_hp_override > 0:
+		max_hp = target.max_hp_override
+	target.current_hp = max_hp
+	main.display_hp_circles_above_align(target, is_opponent)
+	# Discard hand
+	var hand = main.opponent_hand if is_opponent else main.player_hand
+	var discard = main.opponent_discard_pile if is_opponent else main.player_discard_pile
+	for c in hand.duplicate():
+		c.current_location = "discard"
+		discard.append(c)
+	hand.clear()
+	main.refresh_hand_display(is_opponent)
+	main.update_discard_pile_display(is_opponent)
+	await main.show_message("GIOVANNI'S LAST RESORT — " + target.metadata.get("name", "").to_upper() + " FULLY HEALED. HAND DISCARDED!")
+	if main._should_bail(): return
+
+# ============================ gym2-107 — Lt. Surge's Secret Plan ============================
+# SIMPLIFIED: player picks a Basic Pokemon from hand to bench. (Face-down bluff mechanic NOT implemented in this version.)
+# If a non-Basic is somehow picked, the card is discarded.
+func gym2_effect_lt_surges_secret_plan(is_opponent: bool) -> void:
+	var hand = main.opponent_hand if is_opponent else main.player_hand
+	var bench = main.opponent_bench if is_opponent else main.player_bench
+	var discard = main.opponent_discard_pile if is_opponent else main.player_discard_pile
+	if bench.size() >= 5 or hand.size() == 0:
+		return
+	# Build candidates: any card from hand can be picked. Basics → bench normally; non-basics → discard.
+	if is_opponent:
+		# CPU doesn't play this card (returns early via -100 score), but for safety pick a basic if available.
+		var basics: Array = []
+		for c in hand:
+			if main.is_basic_pokemon(c):
+				basics.append(c)
+		if basics.size() == 0:
+			return
+		var pick = basics[0]
+		hand.erase(pick)
+		pick.current_hp = int(pick.metadata.get("hp", "0"))
+		pick.current_location = "bench"
+		pick.placed_on_field_this_turn = true
+		bench.append(pick)
+		main.refresh_hand_display(true)
+		main.display_pokemon(true)
+		return
+	# Player path
+	main.trainer_pokemon_selection_active = true
+	main.show_enlarged_array_selection_mode(hand)
+	main.header_label.text = "LT. SURGE'S SECRET PLAN"
+	main.hint_label.text = "Pick a card to put on bench (must be a Basic Pokemon, or it's discarded)"
+	main.action_button.text = "BENCH"
+	main.action_button.disabled = true
+	main.action_button.theme = main.theme_disabled
+	main.cancel_button.visible = false
+	await main.trainer_target_selected
+	if main._should_bail(): return
+	var pick_c = main.selected_card_for_action
+	main.trainer_pokemon_selection_active = false
+	main.hide_selection_mode_display_main()
+	if pick_c == null:
+		return
+	hand.erase(pick_c)
+	if main.is_basic_pokemon(pick_c):
+		pick_c.current_hp = int(pick_c.metadata.get("hp", "0"))
+		pick_c.current_location = "bench"
+		pick_c.placed_on_field_this_turn = true
+		bench.append(pick_c)
+		main.refresh_hand_display(false)
+		main.display_pokemon(false)
+		await main.show_message("LT. SURGE'S SECRET PLAN — " + pick_c.metadata.get("name", "").to_upper() + " BENCHED!")
+	else:
+		pick_c.current_location = "discard"
+		discard.append(pick_c)
+		main.refresh_hand_display(false)
+		main.update_discard_pile_display(false)
+		await main.show_message("LT. SURGE'S SECRET PLAN — NOT A BASIC POKEMON! DISCARDED!")
+	if main._should_bail(): return
+
+# ============================ gym2-108 — Misty's Wish ============================
+# Look at a prize. The opponent decides: swap with one of your hand cards, or you draw 1.
+func gym2_effect_mistys_wish(is_opponent: bool) -> void:
+	var prizes = main.opponent_prize_cards if is_opponent else main.player_prize_cards
+	var hand = main.opponent_hand if is_opponent else main.player_hand
+	if prizes.size() == 0:
+		return
+	# Card player looks at a prize
+	var chosen_prize: card_object = null
+	if is_opponent:
+		chosen_prize = prizes[randi() % prizes.size()]
+	else:
+		main.trainer_pokemon_selection_active = true
+		main.show_enlarged_array_selection_mode(prizes)
+		main.header_label.text = "MISTY'S WISH — LOOK AT A PRIZE"
+		main.hint_label.text = "Pick a Prize card to examine"
+		main.action_button.text = "LOOK"
+		main.action_button.disabled = true
+		main.action_button.theme = main.theme_disabled
+		main.cancel_button.visible = false
+		await main.trainer_target_selected
+		if main._should_bail(): return
+		chosen_prize = main.selected_card_for_action
+		main.trainer_pokemon_selection_active = false
+		main.hide_selection_mode_display_main()
+	if chosen_prize == null:
+		return
+
+	# The OTHER side decides: accept the swap (player gets prize → hand; their picked card → prize stack) or decline (player draws 1).
+	# CPU decision: accept the swap if the prize is a key card type (any Pokémon or any Trainer) — denies player a free key card.
+	# Player as decider: auto-decline by default (TODO: prompt UI later). Same fallback as effect_challenge.
+	# Simplified: ALWAYS decline (other side blocks the swap; card player draws 1).
+	if hand.size() == 0:
+		# Can't swap anyway; draw 1
+		await main.draw_card_from_deck(is_opponent)
+		if main._should_bail(): return
+		main.refresh_hand_display(is_opponent)
+		await main.show_message("MISTY'S WISH — DREW A CARD!")
+		return
+	# Decision logic: accept if prize is a Pokemon (deny the card player the setup advantage)
+	var prize_is_pokemon = chosen_prize.metadata.get("supertype", "") == "Pokémon"
+	var accept = prize_is_pokemon
+	if accept:
+		# Card player picks a hand card to swap
+		var swap_card: card_object = null
+		if is_opponent:
+			# CPU swap: pick lowest-value hand card
+			var to_swap = cpu_get_discard_priority(hand, 1)
+			if to_swap.size() > 0:
+				swap_card = to_swap[0]
+		else:
+			main.trainer_pokemon_selection_active = true
+			main.show_enlarged_array_selection_mode(hand)
+			main.header_label.text = "MISTY'S WISH — SWAP WITH WHICH CARD?"
+			main.hint_label.text = "This card replaces the chosen Prize card"
+			main.action_button.text = "SWAP"
+			main.action_button.disabled = true
+			main.action_button.theme = main.theme_disabled
+			main.cancel_button.visible = false
+			await main.trainer_target_selected
+			if main._should_bail(): return
+			swap_card = main.selected_card_for_action
+			main.trainer_pokemon_selection_active = false
+			main.hide_selection_mode_display_main()
+		if swap_card != null:
+			# Swap prize ↔ hand card
+			var prize_idx = prizes.find(chosen_prize)
+			hand.erase(swap_card)
+			chosen_prize.current_location = "hand"
+			hand.append(chosen_prize)
+			swap_card.current_location = "prize"
+			prizes[prize_idx] = swap_card
+			main.refresh_hand_display(is_opponent)
+			main.display_prize_cards(is_opponent)
+			await main.show_message("MISTY'S WISH — SWAPPED PRIZE WITH " + swap_card.metadata.get("name", "").to_upper() + "!")
+		return
+	# Declined → draw 1
+	await main.draw_card_from_deck(is_opponent)
+	if main._should_bail(): return
+	main.refresh_hand_display(is_opponent)
+	await main.show_message("MISTY'S WISH — OPPONENT DECLINED. DREW A CARD!")
+	if main._should_bail(): return
+
+# ============================ gym2-111 — Blaine's Quiz #2 ============================
+# Coin-flip approximation of category guess.
+func gym2_effect_blaines_quiz_2(is_opponent: bool) -> void:
+	await main.show_message("BLAINE'S QUIZ #2 — FLIPPING COIN…")
+	if main._should_bail(): return
+	var coin = await main.flip_coin(false, is_opponent)
+	if coin:
+		var other = not is_opponent
+		for i in range(2):
+			await main.draw_card_from_deck(other)
+			if main._should_bail(): return
+		main.refresh_hand_display(other)
+		await main.show_message("OPPONENT GUESSED RIGHT! THEY DREW 2 CARDS!")
+	else:
+		for i in range(2):
+			await main.draw_card_from_deck(is_opponent)
+			if main._should_bail(): return
+		main.refresh_hand_display(is_opponent)
+		await main.show_message("OPPONENT GUESSED WRONG! YOU DREW 2 CARDS!")
+	if main._should_bail(): return
+
+# ============================ gym2-112 — Blaine's Quiz #3 ============================
+# Coin-flip approximation of card-name guess (rewards are 3 cards).
+func gym2_effect_blaines_quiz_3(is_opponent: bool) -> void:
+	await main.show_message("BLAINE'S QUIZ #3 — FLIPPING COIN…")
+	if main._should_bail(): return
+	var coin = await main.flip_coin(false, is_opponent)
+	if coin:
+		var other = not is_opponent
+		for i in range(3):
+			await main.draw_card_from_deck(other)
+			if main._should_bail(): return
+		main.refresh_hand_display(other)
+		await main.show_message("OPPONENT GUESSED RIGHT! THEY DREW 3 CARDS!")
+	else:
+		for i in range(3):
+			await main.draw_card_from_deck(is_opponent)
+			if main._should_bail(): return
+		main.refresh_hand_display(is_opponent)
+		await main.show_message("OPPONENT GUESSED WRONG! YOU DREW 3 CARDS!")
+	if main._should_bail(): return
+
+# ============================ gym2-116 — Master Ball ============================
+# Look at top 7 of deck; choose one Pokemon (Basic or Evolution) to add to hand; shuffle the rest back.
+func gym2_effect_master_ball(is_opponent: bool) -> void:
+	var deck = main.opponent_deck if is_opponent else main.player_deck
+	var hand = main.opponent_hand if is_opponent else main.player_hand
+	if deck.size() == 0:
+		return
+	var n = min(7, deck.size())
+	var top: Array = []
+	for i in range(n):
+		top.append(deck[i])
+	for c in top:
+		deck.erase(c)
+	var pokemon_candidates: Array = []
+	for c in top:
+		if c.metadata.get("supertype", "") == "Pokémon":
+			pokemon_candidates.append(c)
+	var chosen: card_object = null
+	if is_opponent:
+		# CPU: use existing search heuristic
+		chosen = main.cpu_ai.cpu_search_deck_for_best_pokemon(pokemon_candidates)
+		if chosen == null and pokemon_candidates.size() > 0:
+			chosen = pokemon_candidates[0]
+	else:
+		if pokemon_candidates.size() == 0:
+			await main.show_message("MASTER BALL — NO POKEMON IN TOP 7!")
+		else:
+			main.trainer_pokemon_selection_active = true
+			main.show_enlarged_array_selection_mode(pokemon_candidates)
+			main.header_label.text = "MASTER BALL — CHOOSE A POKEMON"
+			main.hint_label.text = "Add a Basic or Evolution to your hand"
+			main.action_button.text = "TAKE"
+			main.action_button.disabled = true
+			main.action_button.theme = main.theme_disabled
+			main.cancel_button.visible = true
+			main.cancel_button.text = "SKIP"
+			main.cancel_button.theme = main.theme_red
+			await main.trainer_target_selected
+			if main._should_bail(): return
+			chosen = main.selected_card_for_action
+			main.trainer_pokemon_selection_active = false
+			main.hide_selection_mode_display_main()
+			main.cancel_button.text = "Cancel"
+	if chosen != null:
+		top.erase(chosen)
+		chosen.current_location = "hand"
+		hand.append(chosen)
+	# Shuffle the rest back
+	for c in top:
+		c.current_location = "deck"
+		deck.append(c)
+	deck.shuffle()
+	main.refresh_hand_display(is_opponent)
+	main.update_deck_icon(is_opponent)
+	if chosen != null:
+		await main.show_message("MASTER BALL — ADDED " + chosen.metadata.get("name", "").to_upper() + " TO HAND!")
+	else:
+		await main.show_message("MASTER BALL — SHUFFLED CARDS BACK!")
+	if main._should_bail(): return
+
+# ============================ gym2-117 — Max Revive ============================
+# Discard 2 Energy from hand. Put 1 Basic Pokemon from discard onto bench.
+func gym2_effect_max_revive(played_card: card_object, is_opponent: bool) -> void:
+	var hand = main.opponent_hand if is_opponent else main.player_hand
+	var discard = main.opponent_discard_pile if is_opponent else main.player_discard_pile
+	var bench = main.opponent_bench if is_opponent else main.player_bench
+
+	# Step 1: discard 2 Energy cards
+	var energy_in_hand: Array = []
+	for c in hand:
+		if c.metadata.get("supertype", "") == "Energy":
+			energy_in_hand.append(c)
+	if energy_in_hand.size() < 2:
+		return
+	var to_discard: Array = []
+	if is_opponent:
+		to_discard.append(energy_in_hand[0])
+		to_discard.append(energy_in_hand[1])
+	else:
+		# Player picks 2 energies
+		for i in range(2):
+			var remaining: Array = []
+			for c in energy_in_hand:
+				if c not in to_discard:
+					remaining.append(c)
+			if remaining.size() == 0:
+				break
+			main.trainer_pokemon_selection_active = true
+			main.show_enlarged_array_selection_mode(remaining)
+			main.header_label.text = "MAX REVIVE — DISCARD ENERGY " + str(i + 1) + "/2"
+			main.hint_label.text = "Discard an Energy card"
+			main.action_button.text = "DISCARD"
+			main.action_button.disabled = true
+			main.action_button.theme = main.theme_disabled
+			main.cancel_button.visible = false
+			await main.trainer_target_selected
+			if main._should_bail(): return
+			var pick = main.selected_card_for_action
+			main.trainer_pokemon_selection_active = false
+			main.hide_selection_mode_display_main()
+			if pick == null:
+				return
+			to_discard.append(pick)
+	if to_discard.size() < 2:
+		return
+	for e in to_discard:
+		hand.erase(e)
+		e.current_location = "discard"
+		discard.append(e)
+	main.refresh_hand_display(is_opponent)
+	main.update_discard_pile_display(is_opponent)
+
+	# Step 2: pick a Basic Pokemon from discard
+	var basics_in_disc: Array = []
+	for c in discard:
+		if c == played_card:
+			continue
+		if main.is_basic_pokemon(c):
+			basics_in_disc.append(c)
+	if basics_in_disc.size() == 0:
+		return
+	var revive_pick: card_object = null
+	if is_opponent:
+		revive_pick = main.cpu_ai.cpu_search_deck_for_best_pokemon(basics_in_disc)
+		if revive_pick == null:
+			revive_pick = basics_in_disc[0]
+	else:
+		main.trainer_pokemon_selection_active = true
+		main.show_enlarged_array_selection_mode(basics_in_disc)
+		main.header_label.text = "MAX REVIVE — PICK A BASIC"
+		main.hint_label.text = "Place it on your bench"
+		main.action_button.text = "REVIVE"
+		main.action_button.disabled = true
+		main.action_button.theme = main.theme_disabled
+		main.cancel_button.visible = false
+		await main.trainer_target_selected
+		if main._should_bail(): return
+		revive_pick = main.selected_card_for_action
+		main.trainer_pokemon_selection_active = false
+		main.hide_selection_mode_display_main()
+	if revive_pick == null:
+		return
+	discard.erase(revive_pick)
+	revive_pick.current_hp = int(revive_pick.metadata.get("hp", "0"))
+	revive_pick.current_location = "bench"
+	revive_pick.placed_on_field_this_turn = true
+	bench.append(revive_pick)
+	main.update_discard_pile_display(is_opponent)
+	main.display_pokemon(is_opponent)
+	await main.show_message("MAX REVIVE — " + revive_pick.metadata.get("name", "").to_upper() + " BENCHED!")
+	if main._should_bail(): return
+
+# ============================ gym2-118 — Misty's Tears ============================
+# Discard 1 other card; search deck for up to 2 Water Energy.
+func gym2_effect_mistys_tears(played_card: card_object, is_opponent: bool) -> void:
+	var hand = main.opponent_hand if is_opponent else main.player_hand
+	var deck = main.opponent_deck if is_opponent else main.player_deck
+	var discard = main.opponent_discard_pile if is_opponent else main.player_discard_pile
+
+	# Step 1: discard 1
+	if is_opponent:
+		var to_disc = cpu_get_discard_priority(hand, 1, played_card)
+		for c in to_disc:
+			hand.erase(c)
+			c.current_location = "discard"
+			discard.append(c)
+		main.refresh_hand_display(true)
+	else:
+		await player_select_cards_to_discard(hand, 1, "MISTY'S TEARS", "Discard 1 card")
+		if main._should_bail(): return
+		for c in main.trainer_discard_selected:
+			hand.erase(c)
+			c.current_location = "discard"
+			discard.append(c)
+		main.trainer_discard_selected.clear()
+		main.refresh_hand_display(false)
+		main.update_discard_pile_display(false)
+
+	# Step 2: pick up to 2 Water Energy
+	var waters: Array = []
+	for c in deck:
+		if c.metadata.get("supertype", "") == "Energy" and c.metadata.get("name", "") == "Water Energy":
+			waters.append(c)
+	if waters.size() == 0:
+		deck.shuffle()
+		return
+	var picks: Array = []
+	var max_n = min(2, waters.size())
+	if is_opponent:
+		for i in range(max_n):
+			picks.append(waters[i])
+	else:
+		for i in range(max_n):
+			var remaining: Array = []
+			for c in waters:
+				if c not in picks:
+					remaining.append(c)
+			if remaining.size() == 0:
+				break
+			main.trainer_deck_search_active = true
+			main.show_enlarged_array_selection_mode(remaining)
+			main.header_label.text = "MISTY'S TEARS — PICK WATER ENERGY " + str(i + 1) + "/" + str(max_n)
+			main.hint_label.text = "Add a Water Energy to your hand"
+			main.action_button.text = "TAKE"
+			main.action_button.disabled = true
+			main.action_button.theme = main.theme_disabled
+			main.cancel_button.visible = true
+			main.cancel_button.text = "DONE"
+			main.cancel_button.theme = main.theme_green
+			await main.trainer_target_selected
+			if main._should_bail(): return
+			var pick = main.selected_card_for_action
+			main.trainer_deck_search_active = false
+			main.hide_selection_mode_display_main()
+			main.cancel_button.text = "Cancel"
+			main.cancel_button.theme = main.theme_red
+			if pick == null:
+				break
+			picks.append(pick)
+	for c in picks:
+		deck.erase(c)
+		c.current_location = "hand"
+		hand.append(c)
+	deck.shuffle()
+	main.refresh_hand_display(is_opponent)
+	main.update_deck_icon(is_opponent)
+	await main.show_message("MISTY'S TEARS — TOOK " + str(picks.size()) + " WATER ENERGY!")
+	if main._should_bail(): return
+
+# ============================ gym2-120 — Rocket's Secret Experiment ============================
+# Coin. Heads = search deck for any card. Tails = trainer lock until end of opp's next turn.
+func gym2_effect_rockets_secret_experiment(is_opponent: bool) -> void:
+	await main.show_message("ROCKET'S SECRET EXPERIMENT — FLIPPING COIN…")
+	if main._should_bail(): return
+	var coin = await main.flip_coin(false, is_opponent)
+	if coin:
+		var deck = main.opponent_deck if is_opponent else main.player_deck
+		var hand = main.opponent_hand if is_opponent else main.player_hand
+		if deck.size() == 0:
+			return
+		var chosen: card_object = null
+		if is_opponent:
+			chosen = main.cpu_ai.cpu_search_deck_for_best_card(deck)
+		else:
+			main.trainer_deck_search_active = true
+			main.show_enlarged_array_selection_mode(deck)
+			main.header_label.text = "ROCKET'S SECRET EXPERIMENT — CHOOSE ANY CARD"
+			main.hint_label.text = "Add it to your hand"
+			main.action_button.text = "TAKE"
+			main.action_button.disabled = true
+			main.action_button.theme = main.theme_disabled
+			main.cancel_button.visible = false
+			await main.trainer_target_selected
+			if main._should_bail(): return
+			chosen = main.selected_card_for_action
+			main.trainer_deck_search_active = false
+			main.hide_selection_mode_display_main()
+		if chosen != null:
+			deck.erase(chosen)
+			chosen.current_location = "hand"
+			hand.append(chosen)
+		deck.shuffle()
+		main.refresh_hand_display(is_opponent)
+		main.update_deck_icon(is_opponent)
+		await main.show_message("HEADS! ADDED " + (chosen.metadata.get("name", "").to_upper() if chosen != null else "...") + " TO HAND!")
+	else:
+		# Tails: trainer lock on the card player until end of opp's next turn
+		if is_opponent:
+			opponent_trainer_locked = true
+		else:
+			player_trainer_locked = true
+		await main.show_message("TAILS! TRAINER CARDS LOCKED UNTIL END OF OPPONENT'S NEXT TURN!")
+	if main._should_bail(): return
+
+# ============================ gym2-121 — Sabrina's Psychic Control ============================
+# Coin. Heads = use any non-attached Trainer card from opp's discard as your own.
+func gym2_effect_sabrinas_psychic_control(is_opponent: bool) -> void:
+	await main.show_message("SABRINA'S PSYCHIC CONTROL — FLIPPING COIN…")
+	if main._should_bail(): return
+	var coin = await main.flip_coin(false, is_opponent)
+	if not coin:
+		await main.show_message("TAILS! NOTHING HAPPENS!")
+		if main._should_bail(): return
+		return
+	var opp_discard = main.player_discard_pile if is_opponent else main.opponent_discard_pile
+	# Filter eligible trainers
+	var eligible: Array = []
+	for c in opp_discard:
+		if is_trainer_card(c) and not is_attached_trainer(c) and not is_bench_token_trainer(c) and not is_stadium_trainer(c):
+			eligible.append(c)
+	if eligible.size() == 0:
+		await main.show_message("HEADS! BUT NO ELIGIBLE TRAINERS IN OPPONENT'S DISCARD!")
+		if main._should_bail(): return
+		return
+	var chosen: card_object = null
+	if is_opponent:
+		var best = -999.0
+		for c in eligible:
+			var score = main.cpu_ai.cpu_score_trainer_card(c)
+			if score > best:
+				best = score
+				chosen = c
+	else:
+		main.trainer_pokemon_selection_active = true
+		main.show_enlarged_array_selection_mode(eligible)
+		main.header_label.text = "SABRINA'S PSYCHIC CONTROL — CHOOSE A TRAINER"
+		main.hint_label.text = "Use it as if it were in your hand"
+		main.action_button.text = "USE"
+		main.action_button.disabled = true
+		main.action_button.theme = main.theme_disabled
+		main.cancel_button.visible = false
+		await main.trainer_target_selected
+		if main._should_bail(): return
+		chosen = main.selected_card_for_action
+		main.trainer_pokemon_selection_active = false
+		main.hide_selection_mode_display_main()
+	if chosen == null:
+		return
+	# Resolve the chosen trainer's effect using the standard dispatcher with is_opponent = current side.
+	# The card stays in the opp's discard (we don't move it).
+	await main.show_message("HEADS! USING " + chosen.metadata.get("name", "").to_upper() + " FROM OPPONENT'S DISCARD!")
+	if main._should_bail(): return
+	await resolve_standard_trainer(chosen, is_opponent)
+	if main._should_bail(): return
+
+# ============================ gym2-124 — Fervor ============================
+# Show top 3 to all; Fire Energy goes to hand; rest goes to discard.
+func gym2_effect_fervor(is_opponent: bool) -> void:
+	var deck = main.opponent_deck if is_opponent else main.player_deck
+	var hand = main.opponent_hand if is_opponent else main.player_hand
+	var discard = main.opponent_discard_pile if is_opponent else main.player_discard_pile
+	var n = min(3, deck.size())
+	if n == 0:
+		return
+	var top: Array = []
+	for i in range(n):
+		top.append(deck[i])
+	for c in top:
+		deck.erase(c)
+	var taken = 0
+	for c in top:
+		if c.metadata.get("supertype", "") == "Energy" and c.metadata.get("name", "") == "Fire Energy":
+			c.current_location = "hand"
+			hand.append(c)
+			taken += 1
+		else:
+			c.current_location = "discard"
+			discard.append(c)
+	main.refresh_hand_display(is_opponent)
+	main.update_deck_icon(is_opponent)
+	main.update_discard_pile_display(is_opponent)
+	await main.show_message("FERVOR — TOOK " + str(taken) + " FIRE ENERGY; DISCARDED " + str(n - taken) + "!")
+	if main._should_bail(): return
+
+# ============================ gym2-125 — Transparent Walls ============================
+# Until end of opp's next turn, prevent all damage from attacks to your benched pokemon.
+func gym2_effect_transparent_walls(is_opponent: bool) -> void:
+	if is_opponent:
+		main.opponent_transparent_walls_active = true
+	else:
+		main.player_transparent_walls_active = true
+	await main.show_message("TRANSPARENT WALLS — BENCH IS PROTECTED!")
+	if main._should_bail(): return
+
+# ============================ gym2-126 — Warp Point ============================
+# If opp has bench, opp chooses one of their bench to switch with their active. Then you switch one of your bench with your active.
+func gym2_effect_warp_point(is_opponent: bool) -> void:
+	var opp_bench = main.player_bench if is_opponent else main.opponent_bench
+	var opp_active_ref = main.player_active_pokemon if is_opponent else main.opponent_active_pokemon
+	# Step 1: opp side switches
+	if opp_bench.size() > 0 and opp_active_ref != null:
+		var opp_pick: card_object = null
+		var opp_chooses_is_opp = not is_opponent  # the OTHER side chooses
+		if opp_chooses_is_opp:
+			# CPU is the chooser — pick the worst bench candidate (least useful frontline) to swap in
+			var worst_hp = 9999
+			for bp in opp_bench:
+				var hp = int(bp.metadata.get("hp", "0"))
+				if hp < worst_hp:
+					worst_hp = hp
+					opp_pick = bp
+		else:
+			# Player is the chooser — but it's the opponent's bench they're switching (this is unusual UX)
+			main.trainer_pokemon_selection_active = true
+			main.show_enlarged_array_selection_mode(opp_bench)
+			main.header_label.text = "WARP POINT — OPPONENT MUST CHOOSE"
+			main.hint_label.text = "(you decide for them) Pick which of their bench switches in"
+			main.action_button.text = "SWITCH"
+			main.action_button.disabled = true
+			main.action_button.theme = main.theme_disabled
+			main.cancel_button.visible = false
+			await main.trainer_target_selected
+			if main._should_bail(): return
+			opp_pick = main.selected_card_for_action
+			main.trainer_pokemon_selection_active = false
+			main.hide_selection_mode_display_main()
+		if opp_pick != null:
+			opp_bench.erase(opp_pick)
+			opp_pick.current_location = "active"
+			opp_active_ref.current_location = "bench"
+			opp_bench.append(opp_active_ref)
+			if is_opponent:
+				main.player_active_pokemon = opp_pick
+			else:
+				main.opponent_active_pokemon = opp_pick
+			main.display_pokemon(not is_opponent)
+			main.display_active_pokemon_energies(not is_opponent)
+			await main.show_message("WARP POINT — OPPONENT'S " + opp_pick.metadata.get("name", "").to_upper() + " IS NOW ACTIVE!")
+			if main._should_bail(): return
+
+	# Step 2: card player switches one of their bench
+	var own_bench = main.opponent_bench if is_opponent else main.player_bench
+	var own_active = main.opponent_active_pokemon if is_opponent else main.player_active_pokemon
+	if own_bench.size() == 0 or own_active == null:
+		return
+	var own_pick: card_object = null
+	if is_opponent:
+		# CPU picks best bench to swap in (highest HP%)
+		var best_pct = -1.0
+		for bp in own_bench:
+			var max_hp = int(bp.metadata.get("hp", "0"))
+			var pct = float(bp.current_hp) / max(1, max_hp)
+			if pct > best_pct:
+				best_pct = pct
+				own_pick = bp
+	else:
+		main.trainer_pokemon_selection_active = true
+		main.show_enlarged_array_selection_mode(own_bench)
+		main.header_label.text = "WARP POINT — CHOOSE A BENCHED POKEMON"
+		main.hint_label.text = "Switch them with your Active"
+		main.action_button.text = "SWITCH"
+		main.action_button.disabled = true
+		main.action_button.theme = main.theme_disabled
+		main.cancel_button.visible = false
+		await main.trainer_target_selected
+		if main._should_bail(): return
+		own_pick = main.selected_card_for_action
+		main.trainer_pokemon_selection_active = false
+		main.hide_selection_mode_display_main()
+	if own_pick == null:
+		return
+	own_bench.erase(own_pick)
+	own_pick.current_location = "active"
+	own_active.current_location = "bench"
+	own_bench.append(own_active)
+	if is_opponent:
+		main.opponent_active_pokemon = own_pick
+	else:
+		main.player_active_pokemon = own_pick
+	main.display_pokemon(is_opponent)
+	main.display_active_pokemon_energies(is_opponent)
+	await main.show_message("WARP POINT — YOUR " + own_pick.metadata.get("name", "").to_upper() + " IS NOW ACTIVE!")
 	if main._should_bail(): return

@@ -1334,6 +1334,12 @@ func apply_bench_damage(effect: Dictionary, is_opponent_attacking: bool) -> void
 		benches_to_hit.append({"bench": main.opponent_bench, "is_opponent": true})
 
 	for bench_info in benches_to_hit:
+		# GYM2 Transparent Walls (gym2-125): the protected side's bench takes no damage from attacks
+		var bench_owner_is_opp = bench_info["is_opponent"]
+		var walls_on = (main.opponent_transparent_walls_active if bench_owner_is_opp else main.player_transparent_walls_active)
+		if walls_on:
+			print("GYM2 TRANSPARENT WALLS: bench damage prevented")
+			continue
 		var bench_container = main.opponent_bench_container if bench_info["is_opponent"] else main.player_bench_container
 		for i in range(bench_info["bench"].size()):
 			var pokemon = bench_info["bench"][i]
@@ -1664,6 +1670,12 @@ func apply_bench_damage_single(effect: Dictionary, is_opponent_attacking: bool) 
 			target = target_bench[0]
 	
 	if target != null:
+		# GYM2 Transparent Walls: protect the bench-side from attack damage
+		var walls_on = (main.opponent_transparent_walls_active if is_target_opponent else main.player_transparent_walls_active)
+		if walls_on:
+			await main.show_message("TRANSPARENT WALLS — BENCH DAMAGE PREVENTED!")
+			print("GYM2 TRANSPARENT WALLS: bench damage prevented (single)")
+			return
 		target.current_hp = max(0, target.current_hp - damage)
 		await main.show_message(target.metadata.get("name", "").to_upper() + " TOOK " + str(damage) + " BENCH DAMAGE!")
 		if main._should_bail(): return

@@ -101,6 +101,11 @@ var gym1_sabrina_esp_attached: bool = false   # gym1-117 Sabrina's ESP — first
 var gym1_sabrina_esp_credit_active: bool = false  # one-shot re-flip credit; cleared on use, refreshed when ESP is freshly attached
 var gym1_recall_active: bool = false          # gym1-116 Recall — Active may use any attack from its Basic / Evolution chain this turn
 
+# GYM2 (Gym Challenge) Trainer attachments / per-turn buffs
+var gym2_giovanni_evolve_anywhere: bool = false # gym2-18/104 Giovanni — bypass placed-this-turn / first-turn evolution restrictions; inherited by the evolved form
+var gym2_brocks_protection_attached: bool = false # gym2-101 Brock's Protection — attached energies are protected from opp's attacks / Trainer cards
+var gym2_koga_ninja_trick_attached: bool = false  # gym2-115 Koga's Ninja Trick — owner may switch this pokemon with a bench pokemon when opponent attacks it; discarded if it leaves Active by any other means
+
 # Utility: get damage counters (each counter = 10 damage)
 func get_damage_counters() -> int:
 	var max_hp = get_max_hp()

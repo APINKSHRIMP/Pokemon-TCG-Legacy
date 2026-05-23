@@ -163,6 +163,14 @@ var opponent_hand_tickled: bool = false           # true while opponent's hand i
 var player_turn_force_end: bool = false           # set by Tickling Machine tails / Minion of Team Rocket tails (player side)
 var opponent_turn_force_end: bool = false         # set by Tickling Machine tails / Minion of Team Rocket tails (CPU side)
 
+# GYM2 (GYM CHALLENGE) trainer match-state
+var player_blaine_double_attach_used: bool = false  # gym2-17/100 Blaine — replaces this turn's energy attachment; one-shot per turn
+var opponent_blaine_double_attach_used: bool = false
+var player_koga_poison_active: bool = false         # gym2-19/106 Koga — if this turn a Koga-named attacker damages defender, Poison them
+var opponent_koga_poison_active: bool = false
+var player_transparent_walls_active: bool = false   # gym2-125 Transparent Walls — bench-damage protection until end of opp's next turn
+var opponent_transparent_walls_active: bool = false
+
 # PRELOADED RESOURCES
 var theme_disabled = preload("res://UI_Themes/kenneyUI.tres")
 var theme_green = preload("res://UI_Themes/kenneyUI-green.tres")
@@ -2464,6 +2472,14 @@ func inbetween_turn_checks(player_turn_just_ended: bool = true) -> void:
 		if (goop_gas_owner_is_opponent and player_turn_just_ended) or (not goop_gas_owner_is_opponent and not player_turn_just_ended):
 			goop_gas_active = false
 			print("GOOP GAS: Effect expired")
+
+	# GYM2 Transparent Walls: expire at end of opponent's next turn (same timing pattern as Goop Gas)
+	if player_transparent_walls_active and not player_turn_just_ended:
+		player_transparent_walls_active = false
+		print("GYM2 TRANSPARENT WALLS (player) expired")
+	if opponent_transparent_walls_active and player_turn_just_ended:
+		opponent_transparent_walls_active = false
+		print("GYM2 TRANSPARENT WALLS (opponent) expired")
 	
 	# Clear power_disabled_until_end_of_next_turn (Dark Arbok Stare)
 	# Stare disables "until the end of your opponent's next turn", so clear the flag
@@ -2605,19 +2621,25 @@ func get_valid_evolution_targets(evolution_card: card_object, is_opponent: bool)
 	var active = opponent_active_pokemon if is_opponent else player_active_pokemon
 	var bench = opponent_bench if is_opponent else player_bench
 	var valid_targets = []
-	
-	if turn_number <= 2:
-		return []
-	
+
+	# GYM2 Giovanni allows evolving on turn 1+ and ignores the placed-this-turn restriction for a tagged pokemon.
+	var first_turn_block = turn_number <= 2
+
 	for bench_pokemon in bench:
-		if not bench_pokemon.placed_on_field_this_turn:
-			if can_evolve_from(evolution_card, bench_pokemon):
-				valid_targets.append(bench_pokemon)
-	
-	if active != null and not active.placed_on_field_this_turn:
-		if can_evolve_from(evolution_card, active):
+		var giovanni_override = bench_pokemon.gym2_giovanni_evolve_anywhere
+		if first_turn_block and not giovanni_override:
+			continue
+		if bench_pokemon.placed_on_field_this_turn and not giovanni_override:
+			continue
+		if can_evolve_from(evolution_card, bench_pokemon):
+			valid_targets.append(bench_pokemon)
+
+	if active != null:
+		var giovanni_override_a = active.gym2_giovanni_evolve_anywhere
+		var block = (first_turn_block and not giovanni_override_a) or (active.placed_on_field_this_turn and not giovanni_override_a)
+		if not block and can_evolve_from(evolution_card, active):
 			valid_targets.append(active)
-	
+
 	return valid_targets
 
 # Stores the evolution card and enters target selection mode for the player to pick which Pokemon to evolve
@@ -2680,6 +2702,10 @@ func perform_evolution(is_opponent: bool) -> void:
 	
 	# Mark as played this turn so it can't evolve again immediately
 	evo_card.placed_on_field_this_turn = true
+
+	# GYM2 Giovanni: pass the evolve-anywhere buff onto the new top card per card rules
+	if target_card.gym2_giovanni_evolve_anywhere:
+		evo_card.gym2_giovanni_evolve_anywhere = true
 	
 	# Remove evolution card from the correct hand
 	var hand = opponent_hand if is_opponent else player_hand
@@ -2911,6 +2937,22 @@ func display_and_apply_attack_damage(attacker: card_object, defender: card_objec
 		defender.dodge_active = false
 		update_status_icons(defender, !is_opponent)
 
+	# GYM2 Koga's Ninja Trick (gym2-115): defender's owner may switch this active with a benched pokemon before damage.
+	if defender.gym2_koga_ninja_trick_attached:
+		var defender_owner_is_opp = (defender == opponent_active_pokemon)
+		var bench_for_swap = opponent_bench if defender_owner_is_opp else player_bench
+		if bench_for_swap.size() > 0:
+			var swapped = await trainer_effects.gym2_koga_ninja_trick_offer_switch(defender, defender_owner_is_opp)
+			if swapped:
+				# Damage now lands on the NEW active (the swapped-in pokemon). Re-resolve final_damage briefly:
+				var new_defender = opponent_active_pokemon if defender_owner_is_opp else player_active_pokemon
+				if new_defender != null:
+					defender = new_defender
+					var attacker_types_re = attacker.metadata.get("types", ["Colorless"]) if attacker != null else ["Colorless"]
+					var redo = calculate_final_damage(base_damage if base_damage > 0 else final_damage, attacker_types_re, defender, attacker)
+					final_damage = redo["damage"]
+					modifiers = redo["modifiers"]
+
 	# GYM1 Deflector (Erika's Exeggcute): halve incoming damage, rounded down to the nearest 10
 	if defender.damage_halved_next_turn and final_damage > 0:
 		final_damage = int(final_damage / 2.0 / 10.0) * 10
@@ -2952,6 +2994,16 @@ func display_and_apply_attack_damage(attacker: card_object, defender: card_objec
 		await attack_effects.check_mirror_shell(defender, attacker, final_damage, !is_opponent)
 		# Check for GYM1 Crosscounter / Fire Wall counter-attacks
 		await attack_effects.gym1_check_counters(defender, attacker, final_damage, !is_opponent)
+		# GYM2 Koga (gym2-19/106): a Koga-named attacker that damaged the defender this turn poisons them
+		if attacker != null:
+			var attacker_owner_is_opp = (attacker == opponent_active_pokemon)
+			var koga_on = (opponent_koga_poison_active if attacker_owner_is_opp else player_koga_poison_active)
+			var attacker_name = attacker.metadata.get("name", "")
+			if koga_on and "Koga" in attacker_name and not defender.is_poisoned and defender.special_condition != "Asleep":
+				defender.is_poisoned = true
+				defender.poison_damage = 10
+				update_status_icons(defender, !is_opponent)
+				print("GYM2 KOGA: Poisoned ", defender.metadata.get("name", ""))
 
 # Parses the attack text for card effects and applies them
 # pre_flip_result: if a coin was already flipped during damage resolution, pass "heads" or "tails" to skip re-flipping
