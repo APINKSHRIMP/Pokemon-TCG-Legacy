@@ -336,6 +336,8 @@ func get_unmet_energy_count(attack: Dictionary, pokemon: card_object) -> int:
 		return 0
 
 	var pool = []
+	# gym1-47 Erika's Oddish Photosynthesis: all energy attached provides Grass instead of usual type
+	var photosynthesis_on = main.powers_and_bodies.is_photosynthesis_active(pokemon)
 	for attached in pokemon.attached_energies:
 		# Charizard Energy Burn: all energy attached to Charizard counts as Fire
 		if main.powers_and_bodies.is_energy_burn_active(pokemon):
@@ -345,6 +347,10 @@ func get_unmet_energy_count(attack: Dictionary, pokemon: card_object) -> int:
 			if provided.size() > 1:
 				for _i in range(provided.size() - 1):
 					pool.append("Fire")
+		elif photosynthesis_on:
+			var provided = main.get_energy_provided_by_card(attached)
+			for _i in range(max(1, provided.size())):
+				pool.append("Grass")
 		# Ditto Transform: all energy counts as any type
 		elif pokemon.is_ditto_transformed:
 			var provided = main.get_energy_provided_by_card(attached)
@@ -1291,7 +1297,13 @@ func cpu_phase_energy_attachment(cpu_eval: Dictionary) -> void:
 	if "Special" in subtypes:
 		await main.special_energy_effects.apply_on_attach_effects(energy, target, true)
 		if main._should_bail(): return
-	
+
+	# GYM2 Blaine's Ninetales Healing Fire — heal 10 when Fire energy is attached from hand
+	await main.powers_and_bodies.check_healing_fire(target, energy, true)
+	if main._should_bail(): return
+	# GYM2 Sabrina's Gastly Gaseous Form — +10 HP per Psychic energy attached
+	main.powers_and_bodies.refresh_gaseous_form_hp()
+
 	# Fix 2: Invalidate CPU evaluation cache after energy attachment
 	invalidate_cpu_evaluation()
 	
@@ -2619,6 +2631,11 @@ func cpu_phase_attack(cpu_eval: Dictionary) -> void:
 	await main.show_message("Opponent's " + main.opponent_active_pokemon.metadata["name"].to_upper() + " used " + chosen_name.to_upper() + "!")
 	if main._should_bail(): return
 
+	# GYM2 Misty's Gyarados Rebellion — flip 2; both tails cancels the attack and shuffles Gyarados into deck
+	if await main.powers_and_bodies.check_rebellion(main.opponent_active_pokemon, true):
+		main.opponent_attacked_this_turn = true
+		return
+
 	# GYM1-120 Vermilion City Gym pre-attack flip (CPU side). Optional flip for Lt. Surge attacker.
 	await main.maybe_vermilion_lt_surge_flip(main.opponent_active_pokemon, true)
 	if main._should_bail(): return
@@ -3477,6 +3494,10 @@ func cpu_phase_bench_play() -> void:
 
 		# GYM2-119 Rocket's Minefield Gym — coin flip per benched Basic from hand; tails = 20 damage
 		await main.trainer_effects.gym2_minefield_gym_trigger(best_card, true)
+		if main._should_bail(): return
+
+		# GYM2 Giovanni's Persian Call the Boss — search deck for a Giovanni trainer
+		await main.powers_and_bodies.trigger_call_the_boss(best_card, true)
 		if main._should_bail(): return
 
 # R.5: Selects the best bench replacement and performs the retreat

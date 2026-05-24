@@ -46,6 +46,8 @@ func reset_power_used_flags(is_opponent: bool) -> void:
 		active.power_used_this_turn = false
 	for bp in bench:
 		bp.power_used_this_turn = false
+	# Refresh Gaseous Form HP each turn in case Toxic Gas / Goop Gas state changed
+	refresh_gaseous_form_hp()
 
 # Discards PlusPower from a pokemon at end of turn
 
@@ -71,7 +73,7 @@ func open_power_menu() -> void:
 				continue
 			var ability_name = ability.get("name", "")
 			# Skip passive powers (they don't go in menu)
-			if ability_name in ["Strikes Back", "Energy Burn", "Invisible Wall", "Thick Skinned", "Retreat Aid", "Prehistoric Power", "Toxic Gas", "Transparency", "Kabuto Armor", "Clairvoyance", "Transform", "Sinkhole", "Hay Fever", "Sticky Goo", "Frenzy", "Final Beam", "Sneak Attack", "Summon Minions", "Reel In"]:
+			if ability_name in ["Strikes Back", "Energy Burn", "Invisible Wall", "Thick Skinned", "Retreat Aid", "Prehistoric Power", "Toxic Gas", "Transparency", "Kabuto Armor", "Clairvoyance", "Transform", "Sinkhole", "Hay Fever", "Sticky Goo", "Frenzy", "Final Beam", "Sneak Attack", "Summon Minions", "Reel In", "Bench Guard", "Pollen Defense", "Flee", "Rebirth", "Shell Armor", "Restless Sleep", "Strange Barrier", "Photosynthesis", "Fortitude", "Call the Boss", "Rebellion", "Psylink", "Healing Fire", "Energy Drain", "Scram", "Relaxing Scent", "Shock Blast", "Gaseous Form"]:
 				continue
 			# Toxic Gas blocks all other powers
 			if toxic_gas_active:
@@ -125,6 +127,11 @@ func open_power_menu() -> void:
 	if main.trainer_effects.gym2_saffron_has_target(false):
 		available_powers.append({"pokemon": null, "ability": {"name": "Saffron City Gym", "type": "Stadium", "text": "Return 1 basic Energy from a Sabrina Pokemon to your hand."}})
 
+	# Brock's Ninetales Shapeshift discard option — only when a form is attached
+	for p_check in all_pokemon:
+		if p_check.shapeshift_form_card != null:
+			available_powers.append({"pokemon": p_check, "ability": {"name": "Discard Form", "type": "Pokémon Power", "text": "Discard the Evolution card attached as a Shapeshift form."}})
+
 	if available_powers.size() == 0:
 		await main.show_message("No Pokemon Powers available!")
 		return
@@ -175,6 +182,13 @@ func activate_power(pokemon: card_object, ability: Dictionary) -> void:
 		"Celadon City Gym": await main.trainer_effects.gym1_celadon_activate(false)
 		"Fuchsia City Gym": await main.trainer_effects.gym2_fuchsia_activate(false)
 		"Saffron City Gym": await main.trainer_effects.gym2_saffron_activate(false)
+		"Energy Charge": await power_energy_charge(pokemon)
+		"Fragrance Trap": await power_fragrance_trap(pokemon)
+		"Natural Healing": await power_natural_healing(pokemon)
+		"Shapeshift": await power_shapeshift(pokemon)
+		"Discard Form": await power_shapeshift_discard(pokemon)
+		"Soak Up": await power_soak_up(pokemon)
+		"Emerge": await power_emerge(pokemon)
 		_: await main.show_message("Power not implemented: " + ability_name)
 
 # Damage Swap (Alakazam): Move 1 damage counter between your pokemon
@@ -1706,6 +1720,10 @@ func cpu_phase_activate_powers() -> void:
 					await main.show_message("Trickery: Swapped a prize with top of deck!")
 					if main._should_bail(): return
 
+	# --- GYM1 + GYM2 POWERS ---
+	await cpu_phase_gym_powers()
+	if main._should_bail(): return
+
 
 # Helper to find a CPU pokemon with a specific power name
 
@@ -2377,3 +2395,1219 @@ func check_frenzy_bonus(attacker: card_object) -> int:
 			if not is_toxic_gas_active() and not main.goop_gas_active:
 				return 30
 	return 0
+
+######################################################################################################################################################
+######################################################## GYM1 (GYM HEROES) POWERS AND BODIES ########################################################
+######################################################################################################################################################
+
+# Returns true if `pokemon` carries the named ability AND the ability is currently usable.
+# `works_through_status`: ability text contains "even while Asleep/Confused/Paralyzed".
+# Always blocked by Toxic Gas / Goop Gas Attack.
+func _power_active_on(pokemon: card_object, power_name: String, works_through_status: bool = false) -> bool:
+	if pokemon == null or pokemon.current_hp <= 0:
+		return false
+	if is_toxic_gas_active() or main.goop_gas_active:
+		return false
+	if pokemon.power_disabled_until_end_of_next_turn:
+		return false
+	var has_it: bool = false
+	for ab in pokemon.metadata.get("abilities", []):
+		if ab.get("name", "") == power_name:
+			has_it = true
+			break
+	if not has_it:
+		return false
+	if not works_through_status and is_power_blocked_by_status(pokemon):
+		return false
+	return true
+
+# Helper: locate a Pokemon Power on a side by ability name. Returns the card_object or null.
+func _find_pokemon_with_power_on_side(power_name: String, is_opponent: bool) -> card_object:
+	var active = main.opponent_active_pokemon if is_opponent else main.player_active_pokemon
+	var bench = main.opponent_bench if is_opponent else main.player_bench
+	if active != null:
+		for ab in active.metadata.get("abilities", []):
+			if ab.get("name", "") == power_name:
+				return active
+	for bp in bench:
+		for ab in bp.metadata.get("abilities", []):
+			if ab.get("name", "") == power_name:
+				return bp
+	return null
+
+# --- gym1-2 Brock's Rhydon — Bench Guard ---
+# When a benched Pokemon on Rhydon's side takes damage, owner may redirect 10 of that damage to Rhydon.
+# Called BEFORE damage is applied to a benched pokemon. Returns the damage that should actually land
+# on the original target (caller applies the redirected 10 to Rhydon separately).
+func check_bench_guard(damaged_pokemon: card_object, damage: int, owner_is_opp: bool) -> int:
+	if damaged_pokemon == null or damage <= 0:
+		return damage
+	# Find a benched Brock's Rhydon on the SAME side as the damaged pokemon
+	var bench = main.opponent_bench if owner_is_opp else main.player_bench
+	if damaged_pokemon not in bench:
+		return damage
+	var rhydon: card_object = null
+	for bp in bench:
+		if bp == damaged_pokemon:
+			continue
+		if _power_active_on(bp, "Bench Guard", false):
+			rhydon = bp
+			break
+	if rhydon == null:
+		return damage
+	# Player opt-in vs CPU automatic
+	var redirect: bool = false
+	if owner_is_opp:
+		# CPU: redirect if Rhydon has enough HP buffer (more than 20) and the bench pokemon is more valuable
+		if rhydon.current_hp > 20:
+			redirect = true
+	else:
+		redirect = await main.trainer_effects.gym1_prompt_yes_no(rhydon, "BENCH GUARD", \
+			rhydon.metadata.get("name", "") + " may take 10 damage instead?", "REDIRECT", "DECLINE")
+		if main._should_bail(): return damage
+	if not redirect:
+		return damage
+	# Redirect 10 to Rhydon (capped at the actual damage)
+	var redirected: int = min(10, damage)
+	rhydon.current_hp = max(0, rhydon.current_hp - redirected)
+	main.display_hp_circles_above_align(rhydon, owner_is_opp)
+	await main.show_message("BENCH GUARD: " + rhydon.metadata.get("name", "").to_upper() + " TOOK " + str(redirected) + " DAMAGE INSTEAD!")
+	if main._should_bail(): return damage - redirected
+	return damage - redirected
+
+# --- gym1-5 Erika's Vileplume — Pollen Defense ---
+# When an attack damages Vileplume (your Active), flip; heads -> opponent's Active becomes Confused.
+# Works even while Vileplume is Asleep/Confused/Paralyzed.
+func check_pollen_defense(damaged_pokemon: card_object, attacker: card_object, is_damaged_opp: bool) -> void:
+	if damaged_pokemon == null or attacker == null:
+		return
+	if damaged_pokemon != (main.opponent_active_pokemon if is_damaged_opp else main.player_active_pokemon):
+		return
+	if not _power_active_on(damaged_pokemon, "Pollen Defense", true):
+		return
+	var defender_is_player: bool = not is_damaged_opp
+	var coin = await main.flip_coin(not defender_is_player, defender_is_player)
+	if main._should_bail(): return
+	if not coin:
+		await main.show_message("POLLEN DEFENSE: TAILS!")
+		return
+	if attacker.special_condition == "Confused":
+		await main.show_message("POLLEN DEFENSE: " + attacker.metadata.get("name", "").to_upper() + " IS ALREADY CONFUSED!")
+		return
+	if attacker.is_bench_token:
+		return
+	# Snorlax Thick Skinned check
+	for ab in attacker.metadata.get("abilities", []):
+		if ab.get("name", "") == "Thick Skinned" and not is_toxic_gas_active():
+			await main.show_message("THICK SKINNED PREVENTS CONFUSION!")
+			return
+	attacker.special_condition = "Confused"
+	main.update_status_icons(attacker, not is_damaged_opp)
+	await main.show_message("POLLEN DEFENSE: " + attacker.metadata.get("name", "").to_upper() + " IS NOW CONFUSED!")
+	if main._should_bail(): return
+
+# --- gym1-8 Lt. Surge's Magneton — Energy Charge ---
+# As often as you like: take 1 Lightning Energy from one of your Pokemon, attach to active Magneton.
+func power_energy_charge(magneton: card_object) -> void:
+	if magneton == null:
+		return
+	var is_opp: bool = (magneton == main.opponent_active_pokemon)
+	# Build list of sources (any of your other pokemon that has a Lightning energy)
+	var sources: Array = []
+	var bench = main.opponent_bench if is_opp else main.player_bench
+	for bp in bench:
+		if bp == magneton:
+			continue
+		for e in bp.attached_energies:
+			if "Lightning" in main.get_energy_provided_by_card(e):
+				sources.append(bp)
+				break
+	if sources.size() == 0:
+		if not is_opp:
+			await main.show_message("NO LIGHTNING ENERGY ON YOUR OTHER POKEMON!")
+		return
+	var source: card_object = null
+	if is_opp:
+		# CPU: pick any source with spare lightning
+		source = sources[0]
+	else:
+		if sources.size() == 1:
+			source = sources[0]
+		else:
+			main.trainer_pokemon_selection_active = true
+			main.show_enlarged_array_selection_mode(sources)
+			main.header_label.text = "ENERGY CHARGE"
+			main.hint_label.text = "Choose a Pokemon to take Lightning Energy from"
+			main.action_button.text = "SELECT"
+			main.action_button.disabled = true
+			main.action_button.theme = main.theme_disabled
+			main.cancel_button.visible = true
+			await main.trainer_target_selected
+			if main._should_bail(): return
+			source = main.selected_card_for_action
+			main.trainer_pokemon_selection_active = false
+			main.hide_selection_mode_display_main()
+		if source == null:
+			return
+	# Move one Lightning energy
+	var moved: card_object = null
+	for e in source.attached_energies:
+		if "Lightning" in main.get_energy_provided_by_card(e):
+			moved = e
+			break
+	if moved == null:
+		return
+	source.attached_energies.erase(moved)
+	magneton.attached_energies.append(moved)
+	main.display_active_pokemon_energies(is_opp)
+	main.display_pokemon(is_opp)
+	await main.show_message("ENERGY CHARGE: MOVED LIGHTNING ENERGY TO " + magneton.metadata.get("name", "").to_upper() + "!")
+	# Energy Charge is multi-use per turn — DO NOT set power_used_this_turn
+
+# --- gym1-10 Misty's Tentacruel — Flee ---
+# After damage hits Tentacruel as Active, owner may switch with a bench pokemon to prevent other effects.
+# Returns true if Tentacruel fled (caller should skip remaining attack effects on it).
+func check_flee(damaged_pokemon: card_object, is_damaged_opp: bool) -> bool:
+	if damaged_pokemon == null or damaged_pokemon.current_hp <= 0:
+		return false
+	if damaged_pokemon != (main.opponent_active_pokemon if is_damaged_opp else main.player_active_pokemon):
+		return false
+	if not _power_active_on(damaged_pokemon, "Flee", false):
+		return false
+	var bench = main.opponent_bench if is_damaged_opp else main.player_bench
+	if bench.size() == 0:
+		return false
+	var do_flee: bool = false
+	if is_damaged_opp:
+		# CPU: flee if HP is critical or there's a healthier replacement
+		var hp_pct = float(damaged_pokemon.current_hp) / max(1, int(damaged_pokemon.metadata.get("hp", "0")))
+		if hp_pct <= 0.4:
+			do_flee = true
+	else:
+		do_flee = await main.trainer_effects.gym1_prompt_yes_no(damaged_pokemon, "FLEE", \
+			"Switch " + damaged_pokemon.metadata.get("name", "") + " with a bench Pokemon?", "FLEE", "STAY")
+		if main._should_bail(): return false
+	if not do_flee:
+		return false
+	# Choose replacement
+	var replacement: card_object = null
+	if is_damaged_opp:
+		replacement = main.cpu_ai.pick_best_bench_replacement(bench, main.player_active_pokemon, main.cpu_ai.get_cpu_evaluation())
+		if replacement == null:
+			replacement = bench[0]
+	else:
+		if bench.size() == 1:
+			replacement = bench[0]
+		else:
+			main.trainer_pokemon_selection_active = true
+			main.show_enlarged_array_selection_mode(bench)
+			main.header_label.text = "FLEE"
+			main.hint_label.text = "Choose a bench Pokemon to switch to"
+			main.action_button.text = "SELECT"
+			main.action_button.disabled = true
+			main.action_button.theme = main.theme_disabled
+			main.cancel_button.visible = false
+			await main.trainer_target_selected
+			if main._should_bail(): return false
+			replacement = main.selected_card_for_action
+			main.trainer_pokemon_selection_active = false
+			main.hide_selection_mode_display_main()
+		if replacement == null:
+			return false
+	# Perform swap (no retreat cost)
+	if is_damaged_opp:
+		main.opponent_bench.erase(replacement)
+		main.opponent_bench.append(damaged_pokemon)
+		damaged_pokemon.current_location = "bench"
+		replacement.current_location = "active"
+		main.opponent_active_pokemon = replacement
+	else:
+		main.player_bench.erase(replacement)
+		main.player_bench.append(damaged_pokemon)
+		damaged_pokemon.current_location = "bench"
+		replacement.current_location = "active"
+		main.player_active_pokemon = replacement
+	main.clear_all_statuses(damaged_pokemon, is_damaged_opp)
+	main.display_pokemon(is_damaged_opp)
+	main.display_active_pokemon_energies(is_damaged_opp)
+	await main.show_message("FLEE: " + damaged_pokemon.metadata.get("name", "").to_upper() + " SWITCHED OUT!")
+	if main._should_bail(): return true
+	return true
+
+# --- gym1-12 Rocket's Moltres — Rebirth ---
+# When Moltres is KO'd, owner may return it to hand instead of discarding.
+# Blocked if Asleep/Confused/Paralyzed when KO'd.
+# Returns true if rebirth was used (caller should skip the discard step).
+func check_rebirth(pokemon: card_object, is_opp: bool) -> bool:
+	if pokemon == null:
+		return false
+	# Look for the Rebirth ability
+	var has_it: bool = false
+	for ab in pokemon.metadata.get("abilities", []):
+		if ab.get("name", "") == "Rebirth":
+			has_it = true
+			break
+	if not has_it:
+		return false
+	# Blocked by status / toxic gas
+	if pokemon.special_condition in ["Paralyzed", "Asleep", "Confused"]:
+		return false
+	if is_toxic_gas_active() or main.goop_gas_active:
+		return false
+	var do_rebirth: bool = false
+	if is_opp:
+		do_rebirth = true  # CPU always rebirths
+	else:
+		do_rebirth = await main.trainer_effects.gym1_prompt_yes_no(pokemon, "REBIRTH", \
+			"Return " + pokemon.metadata.get("name", "") + " to your hand instead of discarding?", "REBIRTH", "DISCARD")
+		if main._should_bail(): return false
+	if not do_rebirth:
+		return false
+	# Return Moltres to hand (attached cards/energies/pre-evos all go to discard)
+	var discard_pile = main.opponent_discard_pile if is_opp else main.player_discard_pile
+	for e in pokemon.attached_energies:
+		e.current_location = "discard"
+		discard_pile.append(e)
+	pokemon.attached_energies.clear()
+	for c in pokemon.attached_cards:
+		c.current_location = "discard"
+		discard_pile.append(c)
+	pokemon.attached_cards.clear()
+	for pre in pokemon.attached_pre_evolutions:
+		pre.current_location = "discard"
+		discard_pile.append(pre)
+	pokemon.attached_pre_evolutions.clear()
+	pokemon.current_hp = int(pokemon.metadata.get("hp", "0"))
+	pokemon.special_condition = ""
+	pokemon.is_poisoned = false
+	pokemon.is_burned = false
+	pokemon.pluspower_count = 0
+	pokemon.defender_turns_remaining = -1
+	pokemon.current_location = "hand"
+	var hand = main.opponent_hand if is_opp else main.player_hand
+	hand.append(pokemon)
+	main.refresh_hand_display(is_opp)
+	main.update_discard_pile_display(is_opp)
+	await main.show_message("REBIRTH: " + pokemon.metadata.get("name", "").to_upper() + " RETURNED TO HAND!")
+	if main._should_bail(): return true
+	return true
+
+# --- gym1-26 Erika's Victreebel — Fragrance Trap ---
+# Once/turn: flip; heads, switch one of opponent's bench with their Active.
+func power_fragrance_trap(victreebel: card_object) -> void:
+	if victreebel == null or victreebel.power_used_this_turn:
+		return
+	var is_opp: bool = (victreebel == main.opponent_active_pokemon or victreebel in main.opponent_bench)
+	var opp_bench = main.player_bench if is_opp else main.opponent_bench
+	if opp_bench.size() == 0:
+		if not is_opp:
+			await main.show_message("OPPONENT HAS NO BENCHED POKEMON!")
+		return
+	victreebel.power_used_this_turn = true
+	# Owner flips
+	var coin = await main.flip_coin(is_opp, not is_opp)
+	if main._should_bail(): return
+	if not coin:
+		await main.show_message("FRAGRANCE TRAP: TAILS!")
+		return
+	# Choose opponent's bench pokemon to bring up
+	var target: card_object = null
+	if is_opp:
+		# CPU picks player's bench pokemon that helps the CPU most (e.g. lowest HP%, weakest, no energy)
+		var best_score = 999999.0
+		for bp in main.player_bench:
+			var max_hp = int(bp.metadata.get("hp", "0"))
+			var hp_pct = float(bp.current_hp) / max(1, max_hp)
+			var e_count = bp.attached_energies.size()
+			var s = hp_pct * 100.0 + e_count * 30.0
+			if s < best_score:
+				best_score = s
+				target = bp
+	else:
+		main.trainer_pokemon_selection_active = true
+		main.show_enlarged_array_selection_mode(opp_bench)
+		main.header_label.text = "FRAGRANCE TRAP"
+		main.hint_label.text = "Choose an opponent bench Pokemon to bring up"
+		main.action_button.text = "SELECT"
+		main.action_button.disabled = true
+		main.action_button.theme = main.theme_disabled
+		main.cancel_button.visible = false
+		await main.trainer_target_selected
+		if main._should_bail(): return
+		target = main.selected_card_for_action
+		main.trainer_pokemon_selection_active = false
+		main.hide_selection_mode_display_main()
+	if target == null:
+		return
+	# Swap target with opponent's Active
+	var opp_active_var = "player_active_pokemon" if is_opp else "opponent_active_pokemon"
+	var old_active = main.player_active_pokemon if is_opp else main.opponent_active_pokemon
+	if is_opp:
+		main.player_bench.erase(target)
+		main.player_bench.append(old_active)
+		main.player_active_pokemon = target
+	else:
+		main.opponent_bench.erase(target)
+		main.opponent_bench.append(old_active)
+		main.opponent_active_pokemon = target
+	if old_active != null:
+		old_active.current_location = "bench"
+	target.current_location = "active"
+	main.clear_all_statuses(old_active, not is_opp)
+	main.display_pokemon(not is_opp)
+	main.display_active_pokemon_energies(not is_opp)
+	await main.show_message("FRAGRANCE TRAP: " + target.metadata.get("name", "").to_upper() + " WAS DRAGGED OUT!")
+	if main._should_bail(): return
+
+# --- gym1-29 Misty's Cloyster — Shell Armor ---
+# Passive: -10 damage (after W/R). Blocked by status / Toxic Gas.
+func apply_shell_armor(defender: card_object, damage: int) -> int:
+	if defender == null or damage <= 0:
+		return damage
+	if not _power_active_on(defender, "Shell Armor", false):
+		return damage
+	var reduced: int = max(0, damage - 10)
+	print("SHELL ARMOR: ", damage, " -> ", reduced)
+	return reduced
+
+# --- gym1-33 Rocket's Snorlax — Restless Sleep ---
+# If opp's attack damages Snorlax while Snorlax is Asleep, deal 20 to attacker.
+# Works through ALL status (the card text only excludes the case "if it's already Asleep" — flipped condition).
+# Re-read: "if your opponent's attack does damage to Rocket's Snorlax and Rocket's Snorlax is already Asleep (even if it's Knocked Out), this power does 20 damage to the attacking Pokémon."
+# So it triggers WHEN Snorlax is Asleep at time of damage.
+func check_restless_sleep(damaged_pokemon: card_object, attacker: card_object, is_damaged_opp: bool) -> void:
+	if damaged_pokemon == null or attacker == null:
+		return
+	if damaged_pokemon.special_condition != "Asleep":
+		return
+	# Card-side check
+	var has_it: bool = false
+	for ab in damaged_pokemon.metadata.get("abilities", []):
+		if ab.get("name", "") == "Restless Sleep":
+			has_it = true
+			break
+	if not has_it:
+		return
+	if is_toxic_gas_active() or main.goop_gas_active:
+		return
+	attacker.current_hp = max(0, attacker.current_hp - 20)
+	var attacker_is_opp: bool = not is_damaged_opp
+	main.display_hp_circles_above_align(attacker, attacker_is_opp)
+	var label_pos = Vector2(1030, 300) if attacker_is_opp else Vector2(530, 300)
+	main.show_floating_label("-20HP", label_pos, true)
+	await main.show_message("RESTLESS SLEEP: " + attacker.metadata.get("name", "").to_upper() + " TOOK 20 DAMAGE!")
+	if main._should_bail(): return
+
+# --- gym1-42 Erika's Dratini — Strange Barrier ---
+# When a Basic Pokemon attack (any side, including own) does ≥20 to Dratini (after W/R), reduce to 10.
+func apply_strange_barrier(defender: card_object, attacker: card_object, damage: int) -> int:
+	if defender == null or attacker == null or damage < 20:
+		return damage
+	if not _power_active_on(defender, "Strange Barrier", false):
+		return damage
+	# Attacker must be a Basic Pokemon (Stage 1/2 attackers are NOT capped)
+	var subtypes = attacker.metadata.get("subtypes", [])
+	if "Basic" not in subtypes:
+		return damage
+	print("STRANGE BARRIER: ", damage, " -> 10")
+	return 10
+
+# --- gym1-47 Erika's Oddish — Photosynthesis ---
+# All attached energy provides Grass. Works through status.
+func is_photosynthesis_active(pokemon: card_object) -> bool:
+	if pokemon == null:
+		return false
+	if is_toxic_gas_active() or main.goop_gas_active:
+		return false
+	for ab in pokemon.metadata.get("abilities", []):
+		if ab.get("name", "") == "Photosynthesis":
+			return true
+	return false
+
+# --- gym1-65 Blaine's Vulpix — Natural Healing ---
+# Once/turn: remove 1 damage counter (10 HP).
+func power_natural_healing(vulpix: card_object) -> void:
+	if vulpix == null or vulpix.power_used_this_turn:
+		return
+	var max_hp = int(vulpix.metadata.get("hp", "0"))
+	if vulpix.current_hp >= max_hp:
+		if not (vulpix == main.opponent_active_pokemon or vulpix in main.opponent_bench):
+			await main.show_message(vulpix.metadata.get("name", "").to_upper() + " HAS NO DAMAGE TO HEAL!")
+		return
+	vulpix.power_used_this_turn = true
+	var is_opp: bool = (vulpix == main.opponent_active_pokemon or vulpix in main.opponent_bench)
+	vulpix.current_hp = min(max_hp, vulpix.current_hp + 10)
+	main.display_hp_circles_above_align(vulpix, is_opp)
+	SoundManagerScript.play_sfx(SoundManagerScript.SFX_heal_sound)
+	await main.show_message("NATURAL HEALING: " + vulpix.metadata.get("name", "").to_upper() + " HEALED 10 HP!")
+	if main._should_bail(): return
+
+######################################################################################################################################################
+######################################################## GYM2 (GYM CHALLENGE) POWERS AND BODIES #####################################################
+######################################################################################################################################################
+
+# --- gym2-3 Brock's Ninetales — Shapeshift ---
+# Active: attach Evolution card from hand; Ninetales uses that card's attacks instead of its own.
+# Card's ability/HP/types stay as Ninetales. Discarding the form (also a free action) is a separate menu entry.
+func power_shapeshift(ninetales: card_object) -> void:
+	if ninetales == null:
+		return
+	# If form already attached, decline new attach (card says "attach an Evolution card" — implicit one form at a time per current setup)
+	var is_opp: bool = (ninetales == main.opponent_active_pokemon or ninetales in main.opponent_bench)
+	var hand = main.opponent_hand if is_opp else main.player_hand
+	var evolutions: Array = []
+	for c in hand:
+		if c.metadata.get("supertype", "").to_lower() != "pokémon" and c.metadata.get("supertype", "").to_lower() != "pokemon":
+			continue
+		var sts = c.metadata.get("subtypes", [])
+		if "Stage 1" in sts or "Stage 2" in sts:
+			evolutions.append(c)
+	if evolutions.size() == 0:
+		if not is_opp:
+			await main.show_message("NO EVOLUTION CARDS IN HAND!")
+		return
+	var chosen: card_object = null
+	if is_opp:
+		# CPU picks the evolution with strongest attack (highest base damage)
+		var best_dmg = -1
+		for ev in evolutions:
+			for atk in ev.metadata.get("attacks", []):
+				var d_raw = atk.get("damage", "0")
+				var d = int(str(d_raw).replace("+", "").replace("×", "").replace("x", "")) if str(d_raw) != "" else 0
+				if d > best_dmg:
+					best_dmg = d
+					chosen = ev
+	else:
+		if evolutions.size() == 1:
+			chosen = evolutions[0]
+		else:
+			main.trainer_pokemon_selection_active = true
+			main.show_enlarged_array_selection_mode(evolutions)
+			main.header_label.text = "SHAPESHIFT"
+			main.hint_label.text = "Choose an Evolution card to attach as a form"
+			main.action_button.text = "SELECT"
+			main.action_button.disabled = true
+			main.action_button.theme = main.theme_disabled
+			main.cancel_button.visible = true
+			await main.trainer_target_selected
+			if main._should_bail(): return
+			chosen = main.selected_card_for_action
+			main.trainer_pokemon_selection_active = false
+			main.hide_selection_mode_display_main()
+		if chosen == null:
+			return
+	# Discard previous form if any
+	if ninetales.shapeshift_form_card != null:
+		var prev_form = ninetales.shapeshift_form_card
+		var discard_pile = main.opponent_discard_pile if is_opp else main.player_discard_pile
+		prev_form.current_location = "discard"
+		discard_pile.append(prev_form)
+		main.update_discard_pile_display(is_opp)
+	# Attach new form
+	hand.erase(chosen)
+	chosen.current_location = "attached"
+	ninetales.shapeshift_form_card = chosen
+	ninetales.shapeshift_form_uid = chosen.uid
+	ninetales.shapeshift_form_metadata = chosen.metadata.duplicate(true)
+	# Mirror the form's attacks onto Ninetales (preserve original attacks for revert)
+	if not ninetales.metadata.has("_original_attacks"):
+		ninetales.metadata["_original_attacks"] = ninetales.metadata.get("attacks", [])
+	ninetales.metadata["attacks"] = chosen.metadata.get("attacks", [])
+	ninetales.power_used_this_turn = true
+	main.refresh_hand_display(is_opp)
+	await main.show_message("SHAPESHIFT: " + ninetales.metadata.get("name", "").to_upper() + " IS NOW " + chosen.metadata.get("name", "").to_upper() + "!")
+	if main._should_bail(): return
+
+# Active: discard the attached Shapeshift form (counts as a free action per card text)
+func power_shapeshift_discard(ninetales: card_object) -> void:
+	if ninetales == null or ninetales.shapeshift_form_card == null:
+		return
+	var is_opp: bool = (ninetales == main.opponent_active_pokemon or ninetales in main.opponent_bench)
+	var prev_form = ninetales.shapeshift_form_card
+	var discard_pile = main.opponent_discard_pile if is_opp else main.player_discard_pile
+	prev_form.current_location = "discard"
+	discard_pile.append(prev_form)
+	# Restore original attacks
+	if ninetales.metadata.has("_original_attacks"):
+		ninetales.metadata["attacks"] = ninetales.metadata.get("_original_attacks", [])
+		ninetales.metadata.erase("_original_attacks")
+	ninetales.shapeshift_form_card = null
+	ninetales.shapeshift_form_uid = ""
+	ninetales.shapeshift_form_metadata = {}
+	main.update_discard_pile_display(is_opp)
+	await main.show_message("SHAPESHIFT FORM DISCARDED!")
+	if main._should_bail(): return
+
+# If Ninetales gets Asleep/Confused/Paralyzed, all attached forms are discarded.
+func shapeshift_check_status_discard(pokemon: card_object) -> void:
+	if pokemon == null or pokemon.shapeshift_form_card == null:
+		return
+	if pokemon.special_condition in ["Asleep", "Confused", "Paralyzed"]:
+		var is_opp: bool = (pokemon == main.opponent_active_pokemon or pokemon in main.opponent_bench)
+		var prev_form = pokemon.shapeshift_form_card
+		var discard_pile = main.opponent_discard_pile if is_opp else main.player_discard_pile
+		prev_form.current_location = "discard"
+		discard_pile.append(prev_form)
+		if pokemon.metadata.has("_original_attacks"):
+			pokemon.metadata["attacks"] = pokemon.metadata.get("_original_attacks", [])
+			pokemon.metadata.erase("_original_attacks")
+		pokemon.shapeshift_form_card = null
+		pokemon.shapeshift_form_uid = ""
+		pokemon.shapeshift_form_metadata = {}
+		main.update_discard_pile_display(is_opp)
+		await main.show_message("SHAPESHIFT FORM DISCARDED DUE TO STATUS!")
+
+# --- gym2-6 Giovanni's Machamp — Fortitude ---
+# When Machamp would be KO'd by an opponent's attack, flip; heads, survive with 10 HP.
+# Blocked if already Asleep/Confused/Paralyzed.
+# Returns true if survived.
+func check_fortitude(pokemon: card_object) -> bool:
+	if pokemon == null or pokemon.current_hp > 0:
+		return false
+	var has_it: bool = false
+	for ab in pokemon.metadata.get("abilities", []):
+		if ab.get("name", "") == "Fortitude":
+			has_it = true
+			break
+	if not has_it:
+		return false
+	if pokemon.special_condition in ["Asleep", "Confused", "Paralyzed"]:
+		return false
+	if is_toxic_gas_active() or main.goop_gas_active:
+		return false
+	# Owner flips
+	var is_opp: bool = (pokemon == main.opponent_active_pokemon or pokemon in main.opponent_bench)
+	var coin = await main.flip_coin(is_opp, not is_opp)
+	if main._should_bail(): return false
+	if not coin:
+		await main.show_message("FORTITUDE: TAILS!")
+		return false
+	pokemon.current_hp = 10
+	main.display_hp_circles_above_align(pokemon, is_opp)
+	await main.show_message("FORTITUDE: " + pokemon.metadata.get("name", "").to_upper() + " SURVIVED WITH 10 HP!")
+	if main._should_bail(): return true
+	return true
+
+# --- gym2-8 Giovanni's Persian — Call the Boss ---
+# When Persian comes into play from hand, owner may search deck for a Giovanni trainer card.
+func trigger_call_the_boss(persian: card_object, is_opp: bool) -> void:
+	if persian == null:
+		return
+	var has_it: bool = false
+	for ab in persian.metadata.get("abilities", []):
+		if ab.get("name", "") == "Call the Boss":
+			has_it = true
+			break
+	if not has_it:
+		return
+	if is_toxic_gas_active() or main.goop_gas_active:
+		return
+	var deck = main.opponent_deck if is_opp else main.player_deck
+	var hand = main.opponent_hand if is_opp else main.player_hand
+	var giovanni_cards: Array = []
+	for c in deck:
+		if c.metadata.get("name", "") == "Giovanni":
+			giovanni_cards.append(c)
+	if giovanni_cards.size() == 0:
+		return
+	var do_search: bool = false
+	if is_opp:
+		do_search = true
+	else:
+		do_search = await main.trainer_effects.gym1_prompt_yes_no(persian, "CALL THE BOSS", \
+			"Search deck for a Giovanni trainer card?", "SEARCH", "DECLINE")
+		if main._should_bail(): return
+	if not do_search:
+		return
+	# CPU + Player flow: pick the first Giovanni
+	var chosen: card_object = giovanni_cards[0]
+	if not is_opp and giovanni_cards.size() > 1:
+		main.trainer_pokemon_selection_active = true
+		main.show_enlarged_array_selection_mode(giovanni_cards)
+		main.header_label.text = "CALL THE BOSS"
+		main.hint_label.text = "Choose a Giovanni card to take"
+		main.action_button.text = "SELECT"
+		main.action_button.disabled = true
+		main.action_button.theme = main.theme_disabled
+		main.cancel_button.visible = true
+		await main.trainer_target_selected
+		if main._should_bail(): return
+		chosen = main.selected_card_for_action
+		main.trainer_pokemon_selection_active = false
+		main.hide_selection_mode_display_main()
+		if chosen == null:
+			return
+	deck.erase(chosen)
+	chosen.current_location = "hand"
+	hand.append(chosen)
+	deck.shuffle()
+	main.refresh_hand_display(is_opp)
+	main.update_deck_icon(is_opp)
+	await main.show_message("CALL THE BOSS: TOOK GIOVANNI FROM DECK!")
+	if main._should_bail(): return
+
+# --- gym2-13 Misty's Gyarados — Rebellion ---
+# When Gyarados attacks, flip 2 coins. Both tails: attack does nothing AND shuffle Gyarados+attached into deck.
+# Works through Confusion.
+# Returns true if attack was negated.
+func check_rebellion(attacker: card_object, is_opp: bool) -> bool:
+	if attacker == null:
+		return false
+	var has_it: bool = false
+	for ab in attacker.metadata.get("abilities", []):
+		if ab.get("name", "") == "Rebellion":
+			has_it = true
+			break
+	if not has_it:
+		return false
+	if is_toxic_gas_active() or main.goop_gas_active:
+		return false
+	# Owner flips
+	var attacker_is_player: bool = not is_opp
+	var c1 = await main.flip_coin(not attacker_is_player, attacker_is_player)
+	if main._should_bail(): return false
+	var c2 = await main.flip_coin(not attacker_is_player, attacker_is_player)
+	if main._should_bail(): return false
+	if c1 or c2:
+		await main.show_message("REBELLION: AT LEAST ONE HEADS — ATTACK PROCEEDS!")
+		return false
+	await main.show_message("REBELLION: TWO TAILS — ATTACK FIZZLES!")
+	if main._should_bail(): return true
+	# Shuffle Gyarados + attached into deck
+	var deck = main.opponent_deck if is_opp else main.player_deck
+	for e in attacker.attached_energies:
+		e.current_location = "deck"
+		deck.append(e)
+	attacker.attached_energies.clear()
+	for c in attacker.attached_cards:
+		c.current_location = "deck"
+		deck.append(c)
+	attacker.attached_cards.clear()
+	for pre in attacker.attached_pre_evolutions:
+		pre.current_location = "deck"
+		deck.append(pre)
+	attacker.attached_pre_evolutions.clear()
+	attacker.current_hp = int(attacker.metadata.get("hp", "0"))
+	attacker.special_condition = ""
+	attacker.is_poisoned = false
+	attacker.is_burned = false
+	attacker.pluspower_count = 0
+	attacker.defender_turns_remaining = -1
+	attacker.current_location = "deck"
+	if attacker == main.opponent_active_pokemon:
+		main.opponent_active_pokemon = null
+	elif attacker == main.player_active_pokemon:
+		main.player_active_pokemon = null
+	elif attacker in main.opponent_bench:
+		main.opponent_bench.erase(attacker)
+	elif attacker in main.player_bench:
+		main.player_bench.erase(attacker)
+	deck.append(attacker)
+	deck.shuffle()
+	main.display_pokemon(is_opp)
+	main.update_deck_icon(is_opp)
+	await main.show_message("MISTY'S GYARADOS WAS SHUFFLED INTO DECK!")
+	if main._should_bail(): return true
+	# If Gyarados was the active, post-KO logic triggers (must pick new active)
+	if (is_opp and main.opponent_active_pokemon == null) or (not is_opp and main.player_active_pokemon == null):
+		await main.handle_post_knockout(is_opp)
+	return true
+
+# --- gym2-16 Sabrina's Alakazam — Psylink ---
+# Alakazam always has a copy of every attack of your Psychic Pokemon in play, with their original cost.
+# Returns the merged attack list (Alakazam's own + every other Psychic-typed pokemon you control).
+func get_psylink_attacks(alakazam: card_object, is_alakazam_opp: bool) -> Array:
+	var attacks: Array = alakazam.metadata.get("attacks", []).duplicate()
+	if not _power_active_on(alakazam, "Psylink", false):
+		return attacks
+	var own_field: Array = []
+	var own_active = main.opponent_active_pokemon if is_alakazam_opp else main.player_active_pokemon
+	var own_bench = main.opponent_bench if is_alakazam_opp else main.player_bench
+	if own_active != null:
+		own_field.append(own_active)
+	own_field.append_array(own_bench)
+	for p in own_field:
+		if p == alakazam:
+			continue
+		if "Psychic" not in p.metadata.get("types", []):
+			continue
+		for atk in p.metadata.get("attacks", []):
+			attacks.append(atk)
+	return attacks
+
+# --- gym2-21 Blaine's Ninetales — Healing Fire ---
+# When a Fire energy is attached to Ninetales from hand, remove 1 damage counter.
+# Blocked if Asleep/Confused/Paralyzed.
+func check_healing_fire(pokemon: card_object, energy: card_object, is_opp: bool) -> void:
+	if pokemon == null or energy == null:
+		return
+	if not _power_active_on(pokemon, "Healing Fire", false):
+		return
+	# Energy must provide Fire
+	var provided = main.get_energy_provided_by_card(energy)
+	if "Fire" not in provided:
+		return
+	var max_hp = int(pokemon.metadata.get("hp", "0"))
+	if pokemon.current_hp >= max_hp:
+		return
+	pokemon.current_hp = min(max_hp, pokemon.current_hp + 10)
+	main.display_hp_circles_above_align(pokemon, is_opp)
+	SoundManagerScript.play_sfx(SoundManagerScript.SFX_heal_sound)
+	await main.show_message("HEALING FIRE: " + pokemon.metadata.get("name", "").to_upper() + " HEALED 10 HP!")
+	if main._should_bail(): return
+
+# --- gym2-26 Koga's Muk — Energy Drain ---
+# When an opp attack damages Muk, flip; heads, discard 1 energy from the attacker.
+# Works even if Muk KO'd. Blocked if Muk was Asleep/Confused/Paralyzed when attacked.
+func check_energy_drain(damaged_pokemon: card_object, attacker: card_object, is_damaged_opp: bool) -> void:
+	if damaged_pokemon == null or attacker == null:
+		return
+	var has_it: bool = false
+	for ab in damaged_pokemon.metadata.get("abilities", []):
+		if ab.get("name", "") == "Energy Drain":
+			has_it = true
+			break
+	if not has_it:
+		return
+	if damaged_pokemon.special_condition in ["Asleep", "Confused", "Paralyzed"]:
+		return
+	if is_toxic_gas_active() or main.goop_gas_active:
+		return
+	if attacker.attached_energies.size() == 0:
+		return
+	# Owner of Muk flips
+	var defender_is_player: bool = not is_damaged_opp
+	var coin = await main.flip_coin(not defender_is_player, defender_is_player)
+	if main._should_bail(): return
+	if not coin:
+		await main.show_message("ENERGY DRAIN: TAILS!")
+		return
+	# Owner of Muk chooses which energy to discard
+	var chosen_energy: card_object = null
+	if defender_is_player:
+		main.trainer_pokemon_selection_active = true
+		main.show_enlarged_array_selection_mode(attacker.attached_energies)
+		main.header_label.text = "ENERGY DRAIN"
+		main.hint_label.text = "Choose 1 energy on the attacker to discard"
+		main.action_button.text = "SELECT"
+		main.action_button.disabled = true
+		main.action_button.theme = main.theme_disabled
+		main.cancel_button.visible = false
+		await main.trainer_target_selected
+		if main._should_bail(): return
+		chosen_energy = main.selected_card_for_action
+		main.trainer_pokemon_selection_active = false
+		main.hide_selection_mode_display_main()
+	else:
+		# CPU picks first energy
+		chosen_energy = attacker.attached_energies[0]
+	if chosen_energy == null:
+		return
+	attacker.attached_energies.erase(chosen_energy)
+	chosen_energy.current_location = "discard"
+	var attacker_is_opp: bool = not is_damaged_opp
+	var discard_pile = main.opponent_discard_pile if attacker_is_opp else main.player_discard_pile
+	discard_pile.append(chosen_energy)
+	main.display_active_pokemon_energies(attacker_is_opp)
+	main.update_discard_pile_display(attacker_is_opp)
+	await main.show_message("ENERGY DRAIN: DISCARDED " + chosen_energy.metadata.get("name", "").to_upper() + "!")
+	if main._should_bail(): return
+
+# --- gym2-35 Brock's Primeape — Scram ---
+# If Primeape ever has exactly 10 HP left, shuffle it (and attached cards) into deck.
+# Blocked if Asleep/Confused/Paralyzed.
+# Returns true if scrammed.
+func check_scram(pokemon: card_object, is_opp: bool) -> bool:
+	if pokemon == null:
+		return false
+	if pokemon.current_hp != 10:
+		return false
+	var has_it: bool = false
+	for ab in pokemon.metadata.get("abilities", []):
+		if ab.get("name", "") == "Scram":
+			has_it = true
+			break
+	if not has_it:
+		return false
+	if pokemon.special_condition in ["Asleep", "Confused", "Paralyzed"]:
+		return false
+	if is_toxic_gas_active() or main.goop_gas_active:
+		return false
+	# Shuffle into deck
+	var deck = main.opponent_deck if is_opp else main.player_deck
+	for e in pokemon.attached_energies:
+		e.current_location = "deck"
+		deck.append(e)
+	pokemon.attached_energies.clear()
+	for c in pokemon.attached_cards:
+		c.current_location = "deck"
+		deck.append(c)
+	pokemon.attached_cards.clear()
+	for pre in pokemon.attached_pre_evolutions:
+		pre.current_location = "deck"
+		deck.append(pre)
+	pokemon.attached_pre_evolutions.clear()
+	pokemon.current_hp = int(pokemon.metadata.get("hp", "0"))
+	pokemon.current_location = "deck"
+	if pokemon == main.opponent_active_pokemon:
+		main.opponent_active_pokemon = null
+	elif pokemon == main.player_active_pokemon:
+		main.player_active_pokemon = null
+	elif pokemon in main.opponent_bench:
+		main.opponent_bench.erase(pokemon)
+	elif pokemon in main.player_bench:
+		main.player_bench.erase(pokemon)
+	deck.append(pokemon)
+	deck.shuffle()
+	main.display_pokemon(is_opp)
+	main.update_deck_icon(is_opp)
+	await main.show_message("SCRAM: " + pokemon.metadata.get("name", "").to_upper() + " WAS SHUFFLED INTO DECK!")
+	if main._should_bail(): return true
+	return true
+
+# --- gym2-38 Erika's Bellsprout — Soak Up ---
+# Once/turn: move up to 2 Grass energy from your other pokemon to Bellsprout.
+func power_soak_up(bellsprout: card_object) -> void:
+	if bellsprout == null or bellsprout.power_used_this_turn:
+		return
+	var is_opp: bool = (bellsprout == main.opponent_active_pokemon or bellsprout in main.opponent_bench)
+	# Build source pokemon list (any of your other pokemon with Grass energy)
+	var moved_count := 0
+	for _i in range(2):
+		var sources: Array = []
+		var active = main.opponent_active_pokemon if is_opp else main.player_active_pokemon
+		var bench = main.opponent_bench if is_opp else main.player_bench
+		var all_p: Array = []
+		if active != null:
+			all_p.append(active)
+		all_p.append_array(bench)
+		for p in all_p:
+			if p == bellsprout:
+				continue
+			for e in p.attached_energies:
+				if "Grass" in main.get_energy_provided_by_card(e):
+					sources.append(p)
+					break
+		if sources.size() == 0:
+			break
+		var source: card_object = null
+		if is_opp:
+			source = sources[0]
+		else:
+			if sources.size() == 1:
+				source = sources[0]
+			else:
+				main.trainer_pokemon_selection_active = true
+				main.show_enlarged_array_selection_mode(sources)
+				main.header_label.text = "SOAK UP (" + str(moved_count) + "/2)"
+				main.hint_label.text = "Choose a Pokemon to take Grass Energy from (or cancel to stop)"
+				main.action_button.text = "SELECT"
+				main.action_button.disabled = true
+				main.action_button.theme = main.theme_disabled
+				main.cancel_button.visible = true
+				await main.trainer_target_selected
+				if main._should_bail(): return
+				source = main.selected_card_for_action
+				main.trainer_pokemon_selection_active = false
+				main.hide_selection_mode_display_main()
+			if source == null:
+				break
+		var moved: card_object = null
+		for e in source.attached_energies:
+			if "Grass" in main.get_energy_provided_by_card(e):
+				moved = e
+				break
+		if moved == null:
+			break
+		source.attached_energies.erase(moved)
+		bellsprout.attached_energies.append(moved)
+		moved_count += 1
+		main.display_active_pokemon_energies(is_opp)
+		main.display_pokemon(is_opp)
+	bellsprout.power_used_this_turn = true
+	if moved_count > 0:
+		await main.show_message("SOAK UP: MOVED " + str(moved_count) + " GRASS ENERGY!")
+		if main._should_bail(): return
+	elif not is_opp:
+		await main.show_message("NO GRASS ENERGY TO MOVE!")
+
+# --- gym2-41 Erika's Ivysaur — Relaxing Scent ---
+# While Ivysaur is your Active Pokemon, all damage (after W/R) to any pokemon is halved (round up to nearest 10).
+func is_relaxing_scent_active_on_side(is_opp: bool) -> bool:
+	var active = main.opponent_active_pokemon if is_opp else main.player_active_pokemon
+	if active == null:
+		return false
+	return _power_active_on(active, "Relaxing Scent", false)
+
+func apply_relaxing_scent(damage: int) -> int:
+	if damage <= 0:
+		return damage
+	if not (is_relaxing_scent_active_on_side(true) or is_relaxing_scent_active_on_side(false)):
+		return damage
+	# Round UP to nearest 10
+	var half = int(ceil(damage / 2.0 / 10.0)) * 10
+	print("RELAXING SCENT: ", damage, " -> ", half)
+	return half
+
+# --- gym2-47 Koga's Kakuna — Emerge ---
+# Once/turn: flip heads, search deck for "Koga's Beedrill" and evolve Kakuna into it (free, bypasses placed-this-turn).
+func power_emerge(kakuna: card_object) -> void:
+	if kakuna == null or kakuna.power_used_this_turn:
+		return
+	var is_opp: bool = (kakuna == main.opponent_active_pokemon or kakuna in main.opponent_bench)
+	var deck = main.opponent_deck if is_opp else main.player_deck
+	# Find Koga's Beedrill in deck
+	var beedrills: Array = []
+	for c in deck:
+		if c.metadata.get("name", "") == "Koga's Beedrill" and c.metadata.get("evolvesFrom", "") == "Koga's Kakuna":
+			beedrills.append(c)
+	if beedrills.size() == 0:
+		if not is_opp:
+			await main.show_message("NO KOGA'S BEEDRILL IN DECK!")
+		return
+	kakuna.power_used_this_turn = true
+	var coin = await main.flip_coin(is_opp, not is_opp)
+	if main._should_bail(): return
+	if not coin:
+		await main.show_message("EMERGE: TAILS!")
+		return
+	# Evolve: move Kakuna to attached_pre_evolutions of Beedrill, replace card in active/bench
+	var beedrill: card_object = beedrills[0]
+	deck.erase(beedrill)
+	beedrill.current_hp = int(beedrill.metadata.get("hp", "0"))
+	beedrill.current_location = "active" if kakuna == (main.opponent_active_pokemon if is_opp else main.player_active_pokemon) else "bench"
+	# Carry damage forward
+	var kakuna_max = int(kakuna.metadata.get("hp", "0"))
+	var damage_taken = kakuna_max - kakuna.current_hp
+	beedrill.current_hp = max(10, int(beedrill.metadata.get("hp", "0")) - damage_taken)
+	# Carry attachments
+	beedrill.attached_energies = kakuna.attached_energies.duplicate()
+	beedrill.attached_cards = kakuna.attached_cards.duplicate()
+	beedrill.attached_pre_evolutions = kakuna.attached_pre_evolutions.duplicate()
+	# Demote Kakuna into the pre-evolution chain
+	kakuna.current_location = "attached_preevo"
+	beedrill.attached_pre_evolutions.append(kakuna)
+	# Replace in board
+	if kakuna == main.opponent_active_pokemon:
+		main.opponent_active_pokemon = beedrill
+	elif kakuna == main.player_active_pokemon:
+		main.player_active_pokemon = beedrill
+	elif kakuna in main.opponent_bench:
+		var idx = main.opponent_bench.find(kakuna)
+		main.opponent_bench[idx] = beedrill
+	elif kakuna in main.player_bench:
+		var idx = main.player_bench.find(kakuna)
+		main.player_bench[idx] = beedrill
+	# Mark evolution sickness off (Koga's Beedrill should still get attack)
+	beedrill.placed_on_field_this_turn = false
+	deck.shuffle()
+	main.display_pokemon(is_opp)
+	main.display_active_pokemon_energies(is_opp)
+	main.update_deck_icon(is_opp)
+	await main.show_message("EMERGE: KAKUNA EVOLVED INTO KOGA'S BEEDRILL!")
+	if main._should_bail(): return
+
+# --- gym2-52 Lt. Surge's Electrode — Shock Blast ---
+# If Active Electrode gets damaged (even if KO'd), flip; tails -> 20 damage to BOTH actives.
+# Works through ALL status.
+func check_shock_blast(damaged_pokemon: card_object, is_damaged_opp: bool) -> void:
+	if damaged_pokemon == null:
+		return
+	if damaged_pokemon != (main.opponent_active_pokemon if is_damaged_opp else main.player_active_pokemon):
+		return
+	var has_it: bool = false
+	for ab in damaged_pokemon.metadata.get("abilities", []):
+		if ab.get("name", "") == "Shock Blast":
+			has_it = true
+			break
+	if not has_it:
+		return
+	if is_toxic_gas_active() or main.goop_gas_active:
+		return
+	var defender_is_player: bool = not is_damaged_opp
+	var coin = await main.flip_coin(not defender_is_player, defender_is_player)
+	if main._should_bail(): return
+	if coin:
+		await main.show_message("SHOCK BLAST: HEADS — NO EFFECT!")
+		return
+	# Tails: 20 to BOTH actives
+	var both: Array = []
+	if main.player_active_pokemon != null:
+		both.append({"p": main.player_active_pokemon, "is_opp": false})
+	if main.opponent_active_pokemon != null:
+		both.append({"p": main.opponent_active_pokemon, "is_opp": true})
+	for info in both:
+		var p = info["p"]
+		p.current_hp = max(0, p.current_hp - 20)
+		main.display_hp_circles_above_align(p, info["is_opp"])
+		var lbl_pos = Vector2(1030, 300) if info["is_opp"] else Vector2(530, 300)
+		main.show_floating_label("-20HP", lbl_pos, true)
+	await main.show_message("SHOCK BLAST: TAILS — 20 DAMAGE TO BOTH ACTIVES!")
+	if main._should_bail(): return
+
+# --- gym2-97 Sabrina's Gastly — Gaseous Form ---
+# +10 HP per Psychic energy attached. Works through status.
+# Returns the effective max HP for any pokemon (call from get_max_hp path).
+func compute_gaseous_form_bonus_hp(pokemon: card_object) -> int:
+	if pokemon == null:
+		return 0
+	var has_it: bool = false
+	for ab in pokemon.metadata.get("abilities", []):
+		if ab.get("name", "") == "Gaseous Form":
+			has_it = true
+			break
+	if not has_it:
+		return 0
+	if is_toxic_gas_active() or main.goop_gas_active:
+		return 0
+	var psy := 0
+	for e in pokemon.attached_energies:
+		if "Psychic" in main.get_energy_provided_by_card(e):
+			psy += 1
+	return psy * 10
+
+# Recomputes max_hp_override for any pokemon with Gaseous Form when its energies change.
+# Called after every energy attach / discard.
+func refresh_gaseous_form_hp() -> void:
+	var all_p: Array = []
+	if main.player_active_pokemon != null:
+		all_p.append(main.player_active_pokemon)
+	all_p.append_array(main.player_bench)
+	if main.opponent_active_pokemon != null:
+		all_p.append(main.opponent_active_pokemon)
+	all_p.append_array(main.opponent_bench)
+	for p in all_p:
+		var bonus = compute_gaseous_form_bonus_hp(p)
+		if bonus > 0:
+			var base = int(p.metadata.get("hp", "0"))
+			var new_max = base + bonus
+			# Preserve damage taken when raising/lowering the cap
+			var damage_taken = max(0, p.max_hp_override - p.current_hp) if p.max_hp_override > 0 else (base - p.current_hp)
+			p.max_hp_override = new_max
+			p.current_hp = max(0, new_max - damage_taken)
+		else:
+			# Only clear override if it was set BY Gaseous Form (use ability presence check)
+			var has_it: bool = false
+			for ab in p.metadata.get("abilities", []):
+				if ab.get("name", "") == "Gaseous Form":
+					has_it = true
+					break
+			if has_it and p.max_hp_override > 0:
+				var base2 = int(p.metadata.get("hp", "0"))
+				var damage_taken2 = max(0, p.max_hp_override - p.current_hp)
+				p.max_hp_override = 0
+				p.current_hp = max(0, base2 - damage_taken2)
+
+######################################################################################################################################################
+######################################################## GYM1 + GYM2 CPU POWER ACTIVATIONS ###########################################################
+######################################################################################################################################################
+
+# Called from cpu_phase_activate_powers() to activate gym1/gym2 active powers in CPU's turn.
+func cpu_phase_gym_powers() -> void:
+	# --- Energy Charge (gym1-8 Lt. Surge's Magneton) ---
+	var magneton = _find_pokemon_with_power_on_side("Energy Charge", true)
+	if magneton != null and magneton == main.opponent_active_pokemon and _power_active_on(magneton, "Energy Charge", false):
+		var keep_going: bool = true
+		while keep_going:
+			keep_going = false
+			# Find a bench source with Lightning energy
+			var src: card_object = null
+			for bp in main.opponent_bench:
+				for e in bp.attached_energies:
+					if "Lightning" in main.get_energy_provided_by_card(e):
+						# Only steal if the source has spare energy
+						if bp.attached_energies.size() > 1 or _cpu_unmet_energy(bp) > 0:
+							src = bp
+							break
+				if src != null:
+					break
+			if src == null:
+				break
+			# Only consolidate if Magneton actually needs Lightning
+			if _cpu_unmet_energy(magneton) == 0:
+				break
+			await power_energy_charge(magneton)
+			if main._should_bail(): return
+			keep_going = true
+
+	# --- Fragrance Trap (gym1-26 Erika's Victreebel) ---
+	var victreebel = _find_pokemon_with_power_on_side("Fragrance Trap", true)
+	if victreebel != null and not victreebel.power_used_this_turn and _power_active_on(victreebel, "Fragrance Trap", false):
+		# Only use if player has bench targets weaker than their active
+		if main.player_bench.size() > 0 and main.player_active_pokemon != null:
+			var pa_hp = float(main.player_active_pokemon.current_hp)
+			var has_weaker: bool = false
+			for bp in main.player_bench:
+				if float(bp.current_hp) < pa_hp:
+					has_weaker = true
+					break
+			if has_weaker:
+				await power_fragrance_trap(victreebel)
+				if main._should_bail(): return
+
+	# --- Natural Healing (gym1-65 Blaine's Vulpix) ---
+	var vulpix = _find_pokemon_with_power_on_side("Natural Healing", true)
+	if vulpix != null and not vulpix.power_used_this_turn and _power_active_on(vulpix, "Natural Healing", false):
+		if vulpix.current_hp < int(vulpix.metadata.get("hp", "0")):
+			await power_natural_healing(vulpix)
+			if main._should_bail(): return
+
+	# --- Shapeshift (gym2-3 Brock's Ninetales) ---
+	var ninetales = _find_pokemon_with_power_on_side("Shapeshift", true)
+	if ninetales != null and not ninetales.power_used_this_turn and _power_active_on(ninetales, "Shapeshift", false):
+		# Use if CPU has any evolution card in hand
+		var has_evo: bool = false
+		for c in main.opponent_hand:
+			if c.metadata.get("supertype", "").to_lower() in ["pokémon", "pokemon"]:
+				var sts = c.metadata.get("subtypes", [])
+				if "Stage 1" in sts or "Stage 2" in sts:
+					has_evo = true
+					break
+		if has_evo and ninetales.shapeshift_form_card == null:
+			await power_shapeshift(ninetales)
+			if main._should_bail(): return
+
+	# --- Soak Up (gym2-38 Erika's Bellsprout) ---
+	var bellsprout = _find_pokemon_with_power_on_side("Soak Up", true)
+	if bellsprout != null and not bellsprout.power_used_this_turn and _power_active_on(bellsprout, "Soak Up", false):
+		# Use if any other CPU pokemon has Grass energy and Bellsprout still needs energy
+		if _cpu_unmet_energy(bellsprout) > 0:
+			var has_grass: bool = false
+			var all_p: Array = []
+			if main.opponent_active_pokemon != null:
+				all_p.append(main.opponent_active_pokemon)
+			all_p.append_array(main.opponent_bench)
+			for p in all_p:
+				if p == bellsprout:
+					continue
+				for e in p.attached_energies:
+					if "Grass" in main.get_energy_provided_by_card(e):
+						has_grass = true
+						break
+				if has_grass:
+					break
+			if has_grass:
+				await power_soak_up(bellsprout)
+				if main._should_bail(): return
+
+	# --- Emerge (gym2-47 Koga's Kakuna) ---
+	var kakuna = _find_pokemon_with_power_on_side("Emerge", true)
+	if kakuna != null and not kakuna.power_used_this_turn and _power_active_on(kakuna, "Emerge", false):
+		# Use if Koga's Beedrill exists in deck
+		var has_beedrill: bool = false
+		for c in main.opponent_deck:
+			if c.metadata.get("name", "") == "Koga's Beedrill" and c.metadata.get("evolvesFrom", "") == "Koga's Kakuna":
+				has_beedrill = true
+				break
+		if has_beedrill:
+			await power_emerge(kakuna)
+			if main._should_bail(): return
+
+# Helper: cumulative unmet energy across all of a pokemon's attacks (cheap CPU heuristic)
+func _cpu_unmet_energy(p: card_object) -> int:
+	var best := 9999
+	for atk in p.metadata.get("attacks", []):
+		var u = main.cpu_ai.get_unmet_energy_count(atk, p)
+		if u < best:
+			best = u
+	return best if best < 9999 else 0

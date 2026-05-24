@@ -106,6 +106,11 @@ var gym2_giovanni_evolve_anywhere: bool = false # gym2-18/104 Giovanni — bypas
 var gym2_brocks_protection_attached: bool = false # gym2-101 Brock's Protection — attached energies are protected from opp's attacks / Trainer cards
 var gym2_koga_ninja_trick_attached: bool = false  # gym2-115 Koga's Ninja Trick — owner may switch this pokemon with a bench pokemon when opponent attacks it; discarded if it leaves Active by any other means
 
+# GYM1 + GYM2 Pokemon Powers / Bodies — per-pokemon state
+var shapeshift_form_metadata: Dictionary = {}   # gym2-3 Brock's Ninetales Shapeshift: metadata of the Evolution card attached as a form
+var shapeshift_form_uid: String = ""            # uid of the attached form card (for textures + discard reference)
+var shapeshift_form_card: card_object = null    # the actual Evolution card object attached (to discard back to pile)
+
 # Utility: get damage counters (each counter = 10 damage)
 func get_damage_counters() -> int:
 	var max_hp = get_max_hp()

@@ -1343,17 +1343,19 @@ func apply_bench_damage(effect: Dictionary, is_opponent_attacking: bool) -> void
 		var bench_container = main.opponent_bench_container if bench_info["is_opponent"] else main.player_bench_container
 		for i in range(bench_info["bench"].size()):
 			var pokemon = bench_info["bench"][i]
-			pokemon.current_hp = max(0, pokemon.current_hp - damage)
-			print("BENCH DAMAGE: ", pokemon.metadata.get("name", ""), " took ", damage, " damage. HP: ", pokemon.current_hp)
-			
+			# GYM1 Brock's Rhydon Bench Guard — owner may redirect 10 to Rhydon
+			var effective_damage = await main.powers_and_bodies.check_bench_guard(pokemon, damage, bench_owner_is_opp)
+			pokemon.current_hp = max(0, pokemon.current_hp - effective_damage)
+			print("BENCH DAMAGE: ", pokemon.metadata.get("name", ""), " took ", effective_damage, " damage. HP: ", pokemon.current_hp)
+
 			# Show floating label at this bench pokemon's approximate position
 			var bench_card_ui = null
 			if i < bench_container.get_child_count():
 				bench_card_ui = bench_container.get_child(i)
 			if bench_card_ui != null and is_instance_valid(bench_card_ui):
 				var label_pos = bench_card_ui.global_position + Vector2(0, -20)
-				main.show_floating_label("-" + str(damage), label_pos, true)
-			
+				main.show_floating_label("-" + str(effective_damage), label_pos, true)
+
 			# Stagger labels by 0.1 seconds for visual sequence
 			await get_tree().create_timer(0.1).timeout
 			if main._should_bail(): return
@@ -1676,10 +1678,12 @@ func apply_bench_damage_single(effect: Dictionary, is_opponent_attacking: bool) 
 			await main.show_message("TRANSPARENT WALLS — BENCH DAMAGE PREVENTED!")
 			print("GYM2 TRANSPARENT WALLS: bench damage prevented (single)")
 			return
-		target.current_hp = max(0, target.current_hp - damage)
-		await main.show_message(target.metadata.get("name", "").to_upper() + " TOOK " + str(damage) + " BENCH DAMAGE!")
+		# GYM1 Brock's Rhydon Bench Guard — owner may redirect 10 to Rhydon
+		var effective_damage = await main.powers_and_bodies.check_bench_guard(target, damage, is_target_opponent)
+		target.current_hp = max(0, target.current_hp - effective_damage)
+		await main.show_message(target.metadata.get("name", "").to_upper() + " TOOK " + str(effective_damage) + " BENCH DAMAGE!")
 		if main._should_bail(): return
-		print("BENCH DAMAGE SINGLE: ", target.metadata.get("name", ""), " took ", damage)
+		print("BENCH DAMAGE SINGLE: ", target.metadata.get("name", ""), " took ", effective_damage)
 
 # Leech Seed: heal 1 damage counter from attacker if damage was dealt
 func apply_leech_seed(attacker: card_object, defender: card_object, is_opponent_attacking: bool) -> void:

@@ -1986,6 +1986,9 @@ func add_pokemon_to_bench(pokemon: card_object) -> void:
 	# Add the pokemon to the bench array
 	player_bench.append(pokemon)
 	print("Pokemon added to bench. Bench size: ", player_bench.size())
+	# GYM2 Giovanni's Persian Call the Boss — search deck for a Giovanni trainer when Persian comes into play from hand
+	if original_location == "hand":
+		await powers_and_bodies.trigger_call_the_boss(pokemon, false)
 
 # Function that get's the card position/location/object. Called from various functions when trying to find a specific card object
 func find_card_ui_for_object(card_obj: card_object) -> TextureRect:
@@ -2136,6 +2139,11 @@ func perform_energy_attachment() -> void:
 	# Apply special energy on-attach effects (Rainbow self-damage, Full Heal cure, Potion heal, etc.)
 	if "Special" in subtypes:
 		await special_energy_effects.apply_on_attach_effects(energy_card, target_pokemon, false)
+
+	# GYM2 Blaine's Ninetales Healing Fire — heal 10 when Fire energy is attached from hand
+	await powers_and_bodies.check_healing_fire(target_pokemon, energy_card, false)
+	# GYM2 Sabrina's Gastly Gaseous Form — +10 HP per Psychic energy attached
+	powers_and_bodies.refresh_gaseous_form_hp()
 
 # Called when any win/loss condition is met to end the match
 func game_end_logic(loser_is_player: bool) -> void:
@@ -2881,6 +2889,12 @@ func get_attacks_for_card(card: card_object) -> Array:
 		if extra.size() > 0:
 			return attacks + extra
 
+	# GYM2 Sabrina's Alakazam Psylink — also gain attacks of every Psychic Pokemon you control
+	for ab in card.metadata.get("abilities", []):
+		if ab.get("name", "") == "Psylink":
+			var is_opp_psylink: bool = (card == opponent_active_pokemon or card in opponent_bench)
+			return powers_and_bodies.get_psylink_attacks(card, is_opp_psylink)
+
 	return attacks
 
 # Read an energy card passed to this function and return what energies this card actually provides.
@@ -3022,6 +3036,18 @@ func display_and_apply_attack_damage(attacker: card_object, defender: card_objec
 	if final_damage > 0:
 		SoundManagerScript.play_sfx(SoundManagerScript.SFX_damage_sound)
 		await powers_and_bodies.check_strikes_back(defender, attacker, !is_opponent)
+		# GYM1 Rocket's Snorlax Restless Sleep — 20 to attacker if Snorlax was Asleep
+		await powers_and_bodies.check_restless_sleep(defender, attacker, !is_opponent)
+		# GYM1 Erika's Vileplume Pollen Defense — flip to Confuse attacker
+		await powers_and_bodies.check_pollen_defense(defender, attacker, !is_opponent)
+		# GYM2 Koga's Muk Energy Drain — flip to discard 1 attacker energy
+		await powers_and_bodies.check_energy_drain(defender, attacker, !is_opponent)
+		# GYM2 Lt. Surge's Electrode Shock Blast — flip tails, 20 to both actives
+		await powers_and_bodies.check_shock_blast(defender, !is_opponent)
+		# GYM2 Brock's Primeape Scram — at exactly 10 HP, shuffle into deck
+		await powers_and_bodies.check_scram(defender, !is_opponent)
+		# GYM1 Misty's Tentacruel Flee — owner may switch out to prevent further attack effects
+		await powers_and_bodies.check_flee(defender, !is_opponent)
 		# Check for Dark Wartortle's Mirror Shell (counter equal damage)
 		await attack_effects.check_mirror_shell(defender, attacker, final_damage, !is_opponent)
 		# Check for GYM1 Crosscounter / Fire Wall counter-attacks
@@ -3405,6 +3431,14 @@ func perform_attack(attack_index: int) -> void:
 	
 	SoundManagerScript.play_sfx(SoundManagerScript.SFX_attack_sound)
 	await show_message((player_active_pokemon.metadata["name"] + " USED " + attack_name).to_upper())
+
+	# GYM2 Misty's Gyarados Rebellion — flip 2; both tails shuffles Gyarados into deck and cancels the attack
+	if await powers_and_bodies.check_rebellion(player_active_pokemon, false):
+		player_attacked_this_turn = true
+		hide_attack_buttons()
+		await get_tree().create_timer(0.5).timeout
+		player_end_turn_checks()
+		return
 
 	# GYM1-120 Vermilion City Gym pre-attack flip (player). Optional flip for Lt. Surge attacker.
 	await maybe_vermilion_lt_surge_flip(player_active_pokemon, false)
@@ -4405,7 +4439,28 @@ func calculate_final_damage(base_damage: int, attacking_types: Array, defending_
 	# Apply Kabuto Armor (halve damage, rounded down to nearest 10)
 	if damage > 0:
 		damage = powers_and_bodies.apply_kabuto_armor(defending_pokemon, damage)
-	
+
+	# GYM1 Misty's Cloyster Shell Armor — -10 damage taken
+	if damage > 0:
+		var pre_shell = damage
+		damage = powers_and_bodies.apply_shell_armor(defending_pokemon, damage)
+		if damage < pre_shell:
+			modifiers_applied.append("SHELL ARMOR -10")
+
+	# GYM1 Erika's Dratini Strange Barrier — cap damage from a Basic attacker at 10 when ≥20
+	if damage >= 20 and attacker_pokemon != null:
+		var pre_barrier = damage
+		damage = powers_and_bodies.apply_strange_barrier(defending_pokemon, attacker_pokemon, damage)
+		if damage < pre_barrier:
+			modifiers_applied.append("STRANGE BARRIER -> 10")
+
+	# GYM2 Erika's Ivysaur Relaxing Scent — while Ivysaur is Active anywhere, damage is halved (round up to nearest 10)
+	if damage > 0:
+		var pre_scent = damage
+		damage = powers_and_bodies.apply_relaxing_scent(damage)
+		if damage < pre_scent:
+			modifiers_applied.append("RELAXING SCENT (halved)")
+
 	return {"damage": damage, "modifiers": modifiers_applied}
 
 ############################################################# Knockout functions ##################################################################
@@ -4414,19 +4469,23 @@ func calculate_final_damage(base_damage: int, attacking_types: Array, defending_
 func check_and_handle_knockout(pokemon: card_object, is_opponent: bool) -> bool:
 	if pokemon == null or pokemon.current_hp > 0:
 		return false
-	
+
+	# GYM2 Giovanni's Machamp Fortitude — flip to survive with 10 HP
+	if await powers_and_bodies.check_fortitude(pokemon):
+		return false
+
 	var ko_name = pokemon.metadata.get("name", "Unknown")
 	var active = opponent_active_pokemon if is_opponent else player_active_pokemon
 	var bench = opponent_bench if is_opponent else player_bench
 	var discard_node = opponent_discard_icon if is_opponent else player_discard_icon
 	var active_container = opponent_active_container if is_opponent else player_active_container
-	
+
 	# Save destiny bond flag BEFORE send_card_to_discard clears it
 	var had_destiny_bond = pokemon.has_destiny_bond
-	
+
 	SoundManagerScript.play_sfx(SoundManagerScript.SFX_knockout_sound)
 	await show_message(ko_name.to_upper() + " WAS KNOCKED OUT!")
-	
+
 	# BASE5: Dark Gyarados Final Beam - triggers when KO'd by attack
 	var ko_abilities = pokemon.metadata.get("abilities", [])
 	for ab in ko_abilities:
@@ -4435,6 +4494,24 @@ func check_and_handle_knockout(pokemon: card_object, is_opponent: bool) -> bool:
 			var attacker = player_active_pokemon if is_opponent else opponent_active_pokemon
 			await powers_and_bodies.check_final_beam(pokemon, attacker, is_opponent)
 			break
+
+	# GYM1 Rocket's Moltres Rebirth — return to hand instead of discarding
+	# Must trigger AFTER Final Beam (so Final Beam still resolves) but BEFORE the discard animation.
+	if await powers_and_bodies.check_rebirth(pokemon, is_opponent):
+		# Clean up board state same as KO but route to hand
+		if pokemon == active:
+			if is_opponent:
+				opponent_active_pokemon = null
+			else:
+				player_active_pokemon = null
+		elif pokemon in bench:
+			bench.erase(pokemon)
+		var status_container_rb = opponent_status_container if is_opponent else player_status_container
+		for child in status_container_rb.get_children():
+			child.queue_free()
+		display_pokemon(is_opponent)
+		cpu_ai.invalidate_cpu_evaluation()
+		return true
 	
 	# Grab UI references before any animations that might free nodes
 	var pokemon_ui = find_card_ui_for_object(pokemon)
@@ -4660,6 +4737,8 @@ func apply_status_effect(effect: Dictionary, attacker: card_object, defender: ca
 	await show_message(target_pokemon.metadata["name"].to_upper() + " IS NOW " + status.to_upper() + "!")
 	print("STATUS APPLIED: ", target_pokemon.metadata["name"], " is now ", status)
 	update_status_icons(target_pokemon, is_target_opponent)
+	# GYM2 Brock's Ninetales Shapeshift — A/C/P status discards the attached form
+	await powers_and_bodies.shapeshift_check_status_discard(target_pokemon)
 
 # Processes poison damage, burn damage/flip, and sleep wake-up between turns for one pokemon
 func process_status_between_turns(pokemon: card_object, is_opponent: bool) -> void:
