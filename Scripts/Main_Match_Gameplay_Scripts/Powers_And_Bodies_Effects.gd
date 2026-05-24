@@ -113,19 +113,27 @@ func open_power_menu() -> void:
 			if not already_added:
 				available_powers.append({"pokemon": main.player_active_pokemon, "ability": {"name": "Discard", "type": "Pokémon Power", "text": "Discard this card."}})
 	
+	# GYM1-107 Celadon City Gym (Stadium): treat as an activatable power. Add a synthetic entry that targets the stadium card itself.
+	if main.trainer_effects.gym1_celadon_has_target(false):
+		available_powers.append({"pokemon": null, "ability": {"name": "Celadon City Gym", "type": "Stadium", "text": "Discard an Energy from one of your Erika Pokemon to cure it of all status conditions."}})
+
 	if available_powers.size() == 0:
 		await main.show_message("No Pokemon Powers available!")
 		return
-	
+
 	# Create power buttons
 	main.main_buttons_container.visible = false
 	main.attack_buttons_container.visible = true
-	
+
 	for power_info in available_powers:
 		var pokemon = power_info["pokemon"]
 		var ability = power_info["ability"]
 		var btn = Button.new()
-		btn.text = pokemon.metadata.get("name", "") + " - " + ability.get("name", "")
+		if pokemon == null:
+			# Stadium activation entry
+			btn.text = "STADIUM - " + ability.get("name", "")
+		else:
+			btn.text = pokemon.metadata.get("name", "") + " - " + ability.get("name", "")
 		btn.custom_minimum_size = Vector2(450, 50)
 		btn.theme = main.theme_blue
 		main.attack_buttons_container.add_child(btn)
@@ -136,7 +144,7 @@ func open_power_menu() -> void:
 func activate_power(pokemon: card_object, ability: Dictionary) -> void:
 	main.hide_attack_buttons()
 	var ability_name = ability.get("name", "")
-	
+
 	match ability_name:
 		"Damage Swap": await power_damage_swap(pokemon)
 		"Rain Dance": await power_rain_dance(pokemon)
@@ -156,6 +164,7 @@ func activate_power(pokemon: card_object, ability: Dictionary) -> void:
 		"Gather Fire": await power_gather_fire(pokemon)
 		"Long-Distance Hypnosis": await power_long_distance_hypnosis(pokemon)
 		"Trickery": await power_trickery(pokemon)
+		"Celadon City Gym": await main.trainer_effects.gym1_celadon_activate(false)
 		_: await main.show_message("Power not implemented: " + ability_name)
 
 # Damage Swap (Alakazam): Move 1 damage counter between your pokemon
@@ -1191,6 +1200,12 @@ func cpu_phase_activate_powers() -> void:
 	# or is_power_blocked_by_status() as appropriate. Rain Dance/Energy Trans/etc. are also
 	# blocked by Toxic Gas since they are Pokemon Powers.
 	var toxic_gas = is_toxic_gas_active()
+
+	# GYM1-107 Celadon City Gym (Stadium): activate if CPU has a status-afflicted Erika pokemon with energy.
+	# Not affected by toxic_gas (Stadium card, not a Pokemon Power).
+	if main.trainer_effects.gym1_celadon_has_target(true):
+		await main.trainer_effects.gym1_celadon_activate(true)
+		if main._should_bail(): return
 	
 	# Rain Dance: attach all Water Energy to Water Pokemon
 	var blastoise = _find_cpu_pokemon_with_power("Rain Dance")
@@ -1862,7 +1877,7 @@ func trigger_summon_minions(dragonite: card_object, is_opponent: bool) -> void:
 	var deck = main.opponent_deck if is_opponent else main.player_deck
 	var bench = main.opponent_bench if is_opponent else main.player_bench
 	
-	if bench.size() >= 5:
+	if bench.size() >= main.get_max_bench_size():
 		await main.show_message("BENCH IS FULL! CAN'T SUMMON MINIONS!")
 		if main._should_bail(): return
 		return
@@ -1914,7 +1929,7 @@ func trigger_summon_minions(dragonite: card_object, is_opponent: bool) -> void:
 			pick.placed_on_field_this_turn = true
 			bench.append(pick)
 		
-		if bench.size() >= 5:
+		if bench.size() >= main.get_max_bench_size():
 			break
 	
 	deck.shuffle()

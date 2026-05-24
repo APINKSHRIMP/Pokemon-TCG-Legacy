@@ -1950,7 +1950,7 @@ func execute_call_for_pokemon(attacker: card_object, is_opponent: bool, search_n
 	var bench = main.opponent_bench if is_opponent else main.player_bench
 	var deck = main.opponent_deck if is_opponent else main.player_deck
 	
-	if bench.size() >= 5:
+	if bench.size() >= main.get_max_bench_size():
 		await main.show_message("BENCH IS FULL!")
 		if main._should_bail(): return
 		return
@@ -4740,7 +4740,7 @@ func execute_call_for_named_basic(attacker: card_object, is_opponent: bool, name
 		return
 	var bench = main.opponent_bench if is_opponent else main.player_bench
 	var deck = main.opponent_deck if is_opponent else main.player_deck
-	if bench.size() >= 5:
+	if bench.size() >= main.get_max_bench_size():
 		await main.show_message("BENCH IS FULL!")
 		if main._should_bail(): return
 		return
@@ -6183,7 +6183,7 @@ func execute_group_attack(attacker: card_object, defender: card_object, is_oppon
 	var added = 0
 	if is_opponent:
 		for z in zubats:
-			if bench.size() >= 5:
+			if bench.size() >= main.get_max_bench_size():
 				break
 			deck.erase(z)
 			z.current_location = "bench"

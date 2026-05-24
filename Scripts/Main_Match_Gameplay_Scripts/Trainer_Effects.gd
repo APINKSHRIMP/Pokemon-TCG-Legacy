@@ -424,7 +424,15 @@ func validate_trainer_can_be_played(card: card_object, is_opponent: bool) -> Str
 					break
 			if not has_energy:
 				return "Opponent has no energy to remove!"
-		
+			# GYM1-103 No Removal Gym tax: need 2 OTHER cards in hand
+			if main.is_stadium_in_play("gym1-103"):
+				var others_er = 0
+				for c in hand:
+					if c != card:
+						others_er += 1
+				if others_er < 2:
+					return "No Removal Gym: need 2 other cards in hand!"
+
 		"base1-79": # Super Energy Removal
 			# Check own pokemon have energy
 			var own_all = build_field_pokemon_array(is_opponent)
@@ -444,9 +452,17 @@ func validate_trainer_can_be_played(card: card_object, is_opponent: bool) -> Str
 					break
 			if not target_has_energy:
 				return "Opponent has no energy to remove!"
+			# GYM1-103 No Removal Gym tax: need 2 OTHER cards in hand
+			if main.is_stadium_in_play("gym1-103"):
+				var others_ser = 0
+				for c in hand:
+					if c != card:
+						others_ser += 1
+				if others_ser < 2:
+					return "No Removal Gym: need 2 other cards in hand!"
 		
 		"base1-70": # Clefairy Doll
-			if bench.size() >= 5:
+			if bench.size() >= main.get_max_bench_size():
 				return "Bench is full! Cannot place Clefairy Doll!"
 		
 		"base1-71": # Computer Search
@@ -496,7 +512,7 @@ func validate_trainer_can_be_played(card: card_object, is_opponent: bool) -> Str
 				return "Need at least 2 other cards in hand!"
 		
 		"base1-89": # Revive
-			if bench.size() >= 5:
+			if bench.size() >= main.get_max_bench_size():
 				return "Bench is full!"
 			var basics_in_discard = []
 			for c in discard:
@@ -597,7 +613,7 @@ func validate_trainer_can_be_played(card: card_object, is_opponent: bool) -> Str
 		"gym1-17", "gym1-101": # Lt. Surge — swap a Basic from hand with Active
 			if active == null:
 				return "No Active Pokemon to swap!"
-			if bench.size() >= 5:
+			if bench.size() >= main.get_max_bench_size():
 				return "Bench is full!"
 			var has_basic = false
 			for c in hand:
@@ -782,7 +798,7 @@ func validate_trainer_can_be_played(card: card_object, is_opponent: bool) -> Str
 			if not ok:
 				return "No damaged Giovanni Pokemon!"
 		"gym2-107": # Lt. Surge's Secret Plan — bench space + at least one card in hand to use
-			if bench.size() >= 5:
+			if bench.size() >= main.get_max_bench_size():
 				return "Bench is full!"
 			if hand.size() <= 1:
 				return "No other cards in hand!"
@@ -804,7 +820,7 @@ func validate_trainer_can_be_played(card: card_object, is_opponent: bool) -> Str
 			if deck.size() == 0:
 				return "Deck is empty!"
 		"gym2-117": # Max Revive — needs 2 Energy in hand + a Basic in discard + bench space
-			if bench.size() >= 5:
+			if bench.size() >= main.get_max_bench_size():
 				return "Bench is full!"
 			var energy_in_hand = 0
 			for c in hand:
@@ -885,11 +901,18 @@ func play_trainer_card(card: card_object, is_opponent: bool) -> void:
 	elif is_attached_trainer(card):
 		await resolve_attached_trainer(card, is_opponent)
 	elif is_stadium_trainer(card):
-		# Future-proofing: route to stadium handler
-		print("Stadium cards not yet implemented")
-		card.current_location = "discard"
-		discard.append(card)
+		await resolve_stadium_trainer(card, is_opponent)
 	else:
+		# GYM1-103 No Removal Gym: Energy Removal / Super Energy Removal require an extra 2-card hand discard
+		var card_uid_lower = card.uid.to_lower()
+		if card_uid_lower in ["base1-92", "base1-79"]:
+			var paid = await gym1_no_removal_gym_pay_tax(card, is_opponent)
+			if not paid:
+				# Tax failed (shouldn't normally happen due to validation) — refund the card
+				card.current_location = "hand"
+				hand.append(card)
+				main.refresh_hand_display(is_opponent)
+				return
 		# Standard trainer: send to discard and update display BEFORE resolving effect
 		card.current_location = "discard"
 		discard.append(card)
@@ -948,6 +971,9 @@ func show_trainer_card_played_animation(card: card_object, is_opponent: bool) ->
 	elif is_attached_trainer(card):
 		# Don't animate here - attached trainers animate to their target in resolve_attached_trainer
 		pass
+	elif is_stadium_trainer(card):
+		# Stadium cards animate to the stadium zone (the resolve_stadium_trainer function handles the rest)
+		await main.animate_card_a_to_b(hand_container_node, main.stadium_card_container, 0.3, card_texture, main.card_scales[10])
 	else:
 		# Standard trainers animate to the discard pile
 		var discard_node = main.opponent_discard_icon if is_opponent else main.player_discard_icon
@@ -1046,7 +1072,7 @@ func resolve_standard_trainer(card: card_object, is_opponent: bool) -> void:
 # Resolves bench token trainer placement (Clefairy Doll, Mysterious Fossil)
 func resolve_bench_token_trainer(card: card_object, is_opponent: bool) -> void:
 	var bench = main.opponent_bench if is_opponent else main.player_bench
-	if bench.size() >= 5:
+	if bench.size() >= main.get_max_bench_size():
 		await main.show_message("Bench is full! Cannot place " + card.metadata.get("name", "") + "!")
 		var discard = main.opponent_discard_pile if is_opponent else main.player_discard_pile
 		card.current_location = "discard"
@@ -2406,7 +2432,7 @@ func effect_pokemon_flute(is_opponent: bool) -> void:
 	var target_discard = main.player_discard_pile if is_opponent else main.opponent_discard_pile
 	var target_is_opponent = not is_opponent
 	
-	if target_bench.size() >= 5:
+	if target_bench.size() >= main.get_max_bench_size():
 		await main.show_message("Opponent's bench is full!")
 		if main._should_bail(): return
 		return
@@ -2507,7 +2533,7 @@ func effect_revive(is_opponent: bool) -> void:
 	var bench = main.opponent_bench if is_opponent else main.player_bench
 	var discard = main.opponent_discard_pile if is_opponent else main.player_discard_pile
 	
-	if bench.size() >= 5:
+	if bench.size() >= main.get_max_bench_size():
 		await main.show_message("Bench is full!")
 		if main._should_bail(): return
 		return
@@ -3390,7 +3416,7 @@ func effect_challenge(is_opponent: bool) -> void:
 		# CPU played Challenge - player decides
 		# For simplicity, auto-decline (player draws 2 for CPU, CPU draws 2 for player)
 		# Actually the rule is: if opponent declines OR both benches full, the player who played it draws 2
-		if own_bench.size() >= 5 and opp_bench.size() >= 5:
+		if own_bench.size() >= main.get_max_bench_size() and opp_bench.size() >= main.get_max_bench_size():
 			# Both benches full
 			for i in range(2):
 				await main.draw_card_from_deck(is_opponent)
@@ -3420,7 +3446,7 @@ func effect_challenge(is_opponent: bool) -> void:
 		if cpu_has_basics and opp_bench.size() < 5:
 			accepted = true
 		
-		if not accepted or (own_bench.size() >= 5 and opp_bench.size() >= 5):
+		if not accepted or (own_bench.size() >= main.get_max_bench_size() and opp_bench.size() >= main.get_max_bench_size()):
 			# Declined or both full
 			for i in range(2):
 				await main.draw_card_from_deck(is_opponent)
@@ -3917,7 +3943,7 @@ func gym1_effect_lt_surge(is_opponent: bool) -> void:
 	var hand = main.opponent_hand if is_opponent else main.player_hand
 	var active = main.opponent_active_pokemon if is_opponent else main.player_active_pokemon
 	var bench = main.opponent_bench if is_opponent else main.player_bench
-	if active == null or bench.size() >= 5:
+	if active == null or bench.size() >= main.get_max_bench_size():
 		return
 
 	var basics_in_hand: Array = []
@@ -4189,7 +4215,7 @@ func gym1_effect_erikas_perfume(is_opponent: bool) -> void:
 		await main.show_message("NO BASIC POKEMON IN OPPONENT'S HAND!")
 		if main._should_bail(): return
 		return
-	if opp_bench.size() >= 5:
+	if opp_bench.size() >= main.get_max_bench_size():
 		await main.show_message("OPPONENT'S BENCH IS FULL!")
 		if main._should_bail(): return
 		return
@@ -4814,6 +4840,339 @@ func gym1_effect_trash_exchange(is_opponent: bool) -> void:
 	if main._should_bail(): return
 
 ######################################################################################################################################################
+######################################################## STADIUM CARD INFRASTRUCTURE ################################################################
+######################################################################################################################################################
+
+# Main entry point for playing any Stadium card. Discards any existing stadium to its owner's pile,
+# installs the new card in the stadium zone, refreshes the display, and runs any on-play effect.
+func resolve_stadium_trainer(card: card_object, is_opponent: bool) -> void:
+	# Discard the existing stadium to its OWNER's discard pile (not the new player's pile)
+	if main.current_stadium_card != null:
+		var prev = main.current_stadium_card
+		var prev_owner_discard = main.opponent_discard_pile if main.current_stadium_owner_is_opponent else main.player_discard_pile
+		var prev_owner_discard_node = main.opponent_discard_icon if main.current_stadium_owner_is_opponent else main.player_discard_icon
+		prev.current_location = "discard"
+		prev_owner_discard.append(prev)
+		var prev_texture = main.get_card_texture(prev)
+		await main.animate_card_a_to_b(main.stadium_card_container, prev_owner_discard_node, 0.25, prev_texture, main.card_scales[10])
+		if main._should_bail(): return
+		await main.show_message(prev.metadata.get("name", "") + " WAS DISCARDED!")
+		if main._should_bail(): return
+		main.current_stadium_card = null
+		main.update_discard_pile_display(main.current_stadium_owner_is_opponent)
+
+	# Install new stadium
+	card.current_location = "stadium"
+	main.current_stadium_card = card
+	main.current_stadium_owner_is_opponent = is_opponent
+	display_stadium_card()
+	await main.show_message(card.metadata.get("name", "").to_upper() + " IS NOW IN PLAY!")
+	if main._should_bail(): return
+
+	# Run on-play effect (only Narrow Gym needs one)
+	var uid = card.uid.to_lower()
+	if uid == "gym1-124":
+		await gym1_narrow_gym_on_play()
+
+# Renders the current stadium card image inside the stadium_card_container node
+func display_stadium_card() -> void:
+	# Clear any existing child card display
+	for child in main.stadium_card_container.get_children():
+		if child.name == "stadium_card_image":
+			# Reuse the existing TextureRect node
+			if main.current_stadium_card == null:
+				child.visible = false
+				child.texture = null
+			else:
+				var tex = main.get_card_texture(main.current_stadium_card)
+				child.texture = tex
+				child.visible = true
+
+# ---------- Stadium discard-to-owner helper (used when a stadium is removed by other effects) ----------
+func remove_current_stadium(reason: String = "") -> void:
+	if main.current_stadium_card == null:
+		return
+	var stadium = main.current_stadium_card
+	var owner_discard = main.opponent_discard_pile if main.current_stadium_owner_is_opponent else main.player_discard_pile
+	stadium.current_location = "discard"
+	owner_discard.append(stadium)
+	main.current_stadium_card = null
+	display_stadium_card()
+	main.update_discard_pile_display(main.current_stadium_owner_is_opponent)
+	if reason != "":
+		print("STADIUM REMOVED (" + reason + "): " + stadium.metadata.get("name", ""))
+
+######################################################################################################################################################
+######################################################## GYM1 STADIUM EFFECTS #######################################################################
+######################################################################################################################################################
+
+# gym1-124 Narrow Gym on-play: if either player has 5 benched Pokemon, return one to their hand.
+# Per card text: opponent (relative to the player who played it) chooses theirs FIRST if both must return.
+func gym1_narrow_gym_on_play() -> void:
+	# Determine "you" and "opponent" relative to who played the card
+	var player_played = not main.current_stadium_owner_is_opponent
+	# If both have 5 bench, opponent (relative to the player who played) goes first
+	# "opponent" relative to the stadium player is the OTHER side
+	var stadium_player_is_opp = main.current_stadium_owner_is_opponent
+	# Force-relative resolution
+	var first_side_is_opp = not stadium_player_is_opp   # the opponent of the player who played
+	var second_side_is_opp = stadium_player_is_opp
+
+	await gym1_narrow_gym_force_return_to_hand(first_side_is_opp)
+	if main._should_bail(): return
+	await gym1_narrow_gym_force_return_to_hand(second_side_is_opp)
+
+# Returns one of the side's benched pokemon (their choice) to their hand if their bench has 5
+func gym1_narrow_gym_force_return_to_hand(side_is_opponent: bool) -> void:
+	var bench = main.opponent_bench if side_is_opponent else main.player_bench
+	if bench.size() < 5:
+		return
+	var hand = main.opponent_hand if side_is_opponent else main.player_hand
+	var who = "OPPONENT" if side_is_opponent else "YOU"
+
+	var chosen: card_object = null
+	if side_is_opponent:
+		# CPU picks the bench pokemon with the lowest strategic value (fewest energies, lowest HP %)
+		var best_score = 99999.0
+		for bp in bench:
+			var max_hp = int(bp.metadata.get("hp", "0"))
+			var hp_pct = float(bp.current_hp) / max(1, max_hp)
+			var energy_count = bp.attached_energies.size()
+			var s = energy_count * 100.0 + hp_pct * 50.0  # lower = worse, choose worst
+			if s < best_score:
+				best_score = s
+				chosen = bp
+	else:
+		# Player chooses
+		main.trainer_pokemon_selection_active = true
+		main.show_enlarged_array_selection_mode(bench)
+		main.header_label.text = "NARROW GYM"
+		main.hint_label.text = "Bench is full — choose a Pokemon to return to your hand"
+		main.action_button.text = "SELECT"
+		main.action_button.disabled = true
+		main.action_button.theme = main.theme_disabled
+		main.cancel_button.visible = false
+		await main.trainer_target_selected
+		if main._should_bail(): return
+		chosen = main.selected_card_for_action
+		main.trainer_pokemon_selection_active = false
+		main.hide_selection_mode_display_main()
+	if chosen == null:
+		return
+
+	# Return chosen + all its attached cards/energies to the hand
+	var to_return: Array = [chosen]
+	to_return.append_array(chosen.attached_energies)
+	to_return.append_array(chosen.attached_cards)
+	to_return.append_array(chosen.attached_pre_evolutions)
+
+	chosen.attached_energies.clear()
+	chosen.attached_cards.clear()
+	chosen.attached_pre_evolutions.clear()
+	chosen.current_hp = int(chosen.metadata.get("hp", "0"))
+	chosen.special_condition = ""
+	chosen.is_poisoned = false
+	chosen.is_burned = false
+	chosen.pluspower_count = 0
+	chosen.defender_turns_remaining = -1
+
+	bench.erase(chosen)
+	for c in to_return:
+		c.current_location = "hand"
+		hand.append(c)
+
+	main.display_pokemon(side_is_opponent)
+	main.refresh_hand_display(side_is_opponent)
+	await main.show_message(who + " RETURNED " + chosen.metadata.get("name", "").to_upper() + " TO HAND!")
+	if main._should_bail(): return
+
+# gym1-107 Celadon City Gym activation — discard 1 energy from an Erika-named Pokemon to clear its status conditions.
+# Triggered from the power button (player) or cpu_phase_activate_powers (CPU).
+func gym1_celadon_activate(is_opponent: bool) -> void:
+	# Build list of eligible pokemon (Erika in name, has at least 1 energy, has any status condition)
+	var bench = main.opponent_bench if is_opponent else main.player_bench
+	var active = main.opponent_active_pokemon if is_opponent else main.player_active_pokemon
+	var all_p: Array = []
+	if active != null:
+		all_p.append(active)
+	all_p.append_array(bench)
+
+	var eligible: Array = []
+	for p in all_p:
+		if not ("Erika" in p.metadata.get("name", "")):
+			continue
+		if p.attached_energies.size() == 0:
+			continue
+		if p.special_condition == "" and not p.is_poisoned and not p.is_burned:
+			continue
+		eligible.append(p)
+
+	if eligible.size() == 0:
+		if not is_opponent:
+			await main.show_message("NO ELIGIBLE ERIKA POKEMON!")
+		return
+
+	var target: card_object = null
+	var energy_to_discard: card_object = null
+	if is_opponent:
+		# CPU: pick the eligible pokemon with the most "value" to keep status-free (highest HP %)
+		var best_score = -1.0
+		for p in eligible:
+			var max_hp = int(p.metadata.get("hp", "0"))
+			var hp_pct = float(p.current_hp) / max(1, max_hp)
+			if hp_pct > best_score:
+				best_score = hp_pct
+				target = p
+		if target == null:
+			return
+		# CPU picks the LOWEST-priority energy to discard (last attached / non-special)
+		energy_to_discard = target.attached_energies[target.attached_energies.size() - 1]
+	else:
+		# Player chooses Erika pokemon
+		main.trainer_pokemon_selection_active = true
+		main.show_enlarged_array_selection_mode(eligible)
+		main.header_label.text = "CELADON CITY GYM"
+		main.hint_label.text = "Choose an Erika Pokemon to cure (discards 1 energy)"
+		main.action_button.text = "SELECT"
+		main.action_button.disabled = true
+		main.action_button.theme = main.theme_disabled
+		main.cancel_button.visible = true
+		await main.trainer_target_selected
+		if main._should_bail(): return
+		target = main.selected_card_for_action
+		main.trainer_pokemon_selection_active = false
+		main.hide_selection_mode_display_main()
+		if target == null:
+			return
+
+		# Player chooses which energy to discard
+		main.defender_energy_discard_active = true
+		main.show_enlarged_array_selection_mode(target.attached_energies)
+		main.header_label.text = "CHOOSE ENERGY TO DISCARD"
+		main.hint_label.text = "Select an energy to discard from " + target.metadata.get("name", "")
+		main.action_button.text = "DISCARD"
+		main.action_button.disabled = true
+		main.action_button.theme = main.theme_disabled
+		main.cancel_button.visible = true
+		await main.defender_energy_chosen
+		if main._should_bail(): return
+		energy_to_discard = main.selected_card_for_action
+		main.defender_energy_discard_active = false
+		main.hide_selection_mode_display_main()
+		if energy_to_discard == null:
+			return
+
+	# Discard energy
+	target.attached_energies.erase(energy_to_discard)
+	var owner_discard = main.opponent_discard_pile if is_opponent else main.player_discard_pile
+	var owner_discard_node = main.opponent_discard_icon if is_opponent else main.player_discard_icon
+	energy_to_discard.current_location = "discard"
+	owner_discard.append(energy_to_discard)
+	var from_node = main.find_card_ui_for_object(target)
+	if from_node == null:
+		from_node = main.opponent_active_container if is_opponent else main.player_active_container
+	var energy_texture = main.get_card_texture(energy_to_discard)
+	await main.animate_card_a_to_b(from_node, owner_discard_node, 0.2, energy_texture, main.card_scales[10])
+	if main._should_bail(): return
+
+	# Clear status conditions
+	target.special_condition = ""
+	target.is_poisoned = false
+	target.poison_damage = 0
+	target.is_burned = false
+	target.burn_damage = 0
+	main.update_status_icons(target, !is_opponent)
+	main.display_active_pokemon_energies(is_opponent)
+	main.update_discard_pile_display(is_opponent)
+	await main.show_message("CELADON CITY GYM: " + target.metadata.get("name", "").to_upper() + " IS CURED!")
+	if main._should_bail(): return
+
+	# Mark used for this turn
+	if is_opponent:
+		main.opponent_celadon_used_this_turn = true
+	else:
+		main.player_celadon_used_this_turn = true
+
+# Checks if the side has a valid target for the Celadon activation. Used by power menu + CPU AI.
+func gym1_celadon_has_target(is_opponent: bool) -> bool:
+	if not main.is_stadium_in_play("gym1-107"):
+		return false
+	if is_opponent and main.opponent_celadon_used_this_turn:
+		return false
+	if not is_opponent and main.player_celadon_used_this_turn:
+		return false
+	var bench = main.opponent_bench if is_opponent else main.player_bench
+	var active = main.opponent_active_pokemon if is_opponent else main.player_active_pokemon
+	var all_p: Array = []
+	if active != null:
+		all_p.append(active)
+	all_p.append_array(bench)
+	for p in all_p:
+		if not ("Erika" in p.metadata.get("name", "")):
+			continue
+		if p.attached_energies.size() == 0:
+			continue
+		if p.special_condition == "" and not p.is_poisoned and not p.is_burned:
+			continue
+		return true
+	return false
+
+# Centralized "No Removal Gym (gym1-103) tax" — discards 2 cards from the side's hand
+# before an Energy Removal / Super Energy Removal resolves. Returns false if the play should be aborted.
+func gym1_no_removal_gym_pay_tax(card: card_object, is_opponent: bool) -> bool:
+	if not main.is_stadium_in_play("gym1-103"):
+		return true
+	var hand = main.opponent_hand if is_opponent else main.player_hand
+	var discard = main.opponent_discard_pile if is_opponent else main.player_discard_pile
+	var discard_node = main.opponent_discard_icon if is_opponent else main.player_discard_icon
+	var hand_node = main.opponent_hand_container if is_opponent else main.player_hand_container
+
+	var available: Array = []
+	for c in hand:
+		if c != card:
+			available.append(c)
+	if available.size() < 2:
+		await main.show_message("NO REMOVAL GYM: NOT ENOUGH CARDS TO DISCARD!")
+		return false
+
+	var to_discard: Array = []
+	if is_opponent:
+		# CPU picks the lowest-priority 2 cards (uses existing helper)
+		to_discard = cpu_get_discard_priority(hand, 2, card)
+	else:
+		# Player picks 2 cards
+		await main.show_message("NO REMOVAL GYM: DISCARD 2 CARDS FROM YOUR HAND")
+		if main._should_bail(): return false
+		main.trainer_discard_selection_active = true
+		main.trainer_discard_cards_needed = 2
+		main.trainer_discard_selected = []
+		main.header_label.text = "NO REMOVAL GYM"
+		main.hint_label.text = "Choose 2 cards to discard"
+		main.action_button.text = "DISCARD (0/2)"
+		main.action_button.disabled = true
+		main.action_button.theme = main.theme_disabled
+		main.cancel_button.visible = false
+		main.show_enlarged_array_selection_mode(available)
+		await main.trainer_discard_selection_done
+		if main._should_bail(): return false
+		to_discard = main.trainer_discard_selected.duplicate()
+		main.trainer_discard_selection_active = false
+		main.trainer_discard_selected = []
+		main.hide_selection_mode_display_main()
+
+	# Discard chosen cards
+	for c in to_discard:
+		hand.erase(c)
+		c.current_location = "discard"
+		discard.append(c)
+		var ctex = main.get_card_texture(c)
+		await main.animate_card_a_to_b(hand_node, discard_node, 0.2, ctex, main.card_scales[10])
+		if main._should_bail(): return false
+	main.refresh_hand_display(is_opponent)
+	main.update_discard_pile_display(is_opponent)
+	return true
+
+######################################################################################################################################################
 ###################################################### GYM2 (GYM CHALLENGE) TRAINER EFFECTS #########################################################
 ######################################################################################################################################################
 
@@ -5168,7 +5527,7 @@ func gym2_effect_lt_surges_secret_plan(is_opponent: bool) -> void:
 	var hand = main.opponent_hand if is_opponent else main.player_hand
 	var bench = main.opponent_bench if is_opponent else main.player_bench
 	var discard = main.opponent_discard_pile if is_opponent else main.player_discard_pile
-	if bench.size() >= 5 or hand.size() == 0:
+	if bench.size() >= main.get_max_bench_size() or hand.size() == 0:
 		return
 	# Build candidates: any card from hand can be picked. Basics → bench normally; non-basics → discard.
 	if is_opponent:

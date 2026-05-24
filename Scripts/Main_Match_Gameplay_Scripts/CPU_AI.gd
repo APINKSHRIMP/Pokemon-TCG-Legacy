@@ -2618,7 +2618,11 @@ func cpu_phase_attack(cpu_eval: Dictionary) -> void:
 	SoundManagerScript.play_sfx(SoundManagerScript.SFX_attack_sound)
 	await main.show_message("Opponent's " + main.opponent_active_pokemon.metadata["name"].to_upper() + " used " + chosen_name.to_upper() + "!")
 	if main._should_bail(): return
-	
+
+	# GYM1-120 Vermilion City Gym pre-attack flip (CPU side). Optional flip for Lt. Surge attacker.
+	await main.maybe_vermilion_lt_surge_flip(main.opponent_active_pokemon, true)
+	if main._should_bail(): return
+
 	# ============================== GYM2 (GYM CHALLENGE) SPECIAL ATTACKS ==============================
 	if main.opponent_active_pokemon.uid.begins_with("gym2-"):
 		if main.opponent_active_pokemon.ditto_giant_growth and chosen_name.to_lower() == "pound":
@@ -3604,6 +3608,14 @@ func cpu_score_trainer_card(card: card_object) -> float:
 		"gym1-123": return _cpu_score_gym1_mistys_duel()
 		"gym1-125": return _cpu_score_gym1_sabrinas_gaze()
 		"gym1-126": return _cpu_score_gym1_trash_exchange()
+		# ============================ GYM1 (GYM HEROES) STADIUM SCORING ============================
+		"gym1-103": return _cpu_score_gym1_no_removal_gym()
+		"gym1-104": return _cpu_score_gym1_rockets_training_gym()
+		"gym1-107": return _cpu_score_gym1_celadon_city_gym()
+		"gym1-108": return _cpu_score_gym1_cerulean_city_gym()
+		"gym1-115": return _cpu_score_gym1_pewter_city_gym()
+		"gym1-120": return _cpu_score_gym1_vermilion_city_gym()
+		"gym1-124": return _cpu_score_gym1_narrow_gym()
 		# ============================ GYM2 (GYM CHALLENGE) CPU SCORING ============================
 		"gym2-17", "gym2-100": return _cpu_score_gym2_blaine(card)
 		"gym2-18", "gym2-104": return _cpu_score_gym2_giovanni()
@@ -3799,7 +3811,7 @@ func _cpu_score_pokemon_center() -> float:
 	return 0.0
 
 func _cpu_score_revive() -> float:
-	if main.opponent_bench.size() >= 5: return 0.0
+	if main.opponent_bench.size() >= main.get_max_bench_size(): return 0.0
 	for c in main.opponent_discard_pile:
 		if main.is_basic_pokemon(c):
 			var result = evaluate_opponents_start_setup_pokemon_choices(c, main.opponent_hand)
@@ -4115,7 +4127,7 @@ func _cpu_score_the_bosss_way() -> float:
 func _cpu_score_challenge() -> float:
 	var cpu_bench = main.opponent_bench
 	var cpu_deck = main.opponent_deck
-	if cpu_bench.size() >= 5:
+	if cpu_bench.size() >= main.get_max_bench_size():
 		return 50.0  # Bench full, we'll draw 2 if declined
 	# Check if CPU has basics in deck
 	var has_basics = false
@@ -4196,7 +4208,7 @@ func _cpu_score_gym1_lt_surge() -> float:
 	# Useful if our current active is bad against the player's active.
 	if main.opponent_active_pokemon == null:
 		return -100.0
-	if main.opponent_bench.size() >= 5:
+	if main.opponent_bench.size() >= main.get_max_bench_size():
 		return -100.0
 	var has_basic = false
 	for c in main.opponent_hand:
@@ -4568,7 +4580,7 @@ func _cpu_score_gym2_master_ball() -> float:
 	return 35.0
 
 func _cpu_score_gym2_max_revive(card: card_object) -> float:
-	if main.opponent_bench.size() >= 5:
+	if main.opponent_bench.size() >= main.get_max_bench_size():
 		return -100.0
 	# Need 2 Energy in hand
 	var e = 0
@@ -4674,3 +4686,127 @@ func _cpu_score_gym2_warp_point() -> float:
 		if bp_hp < pa_hp:
 			return 45.0
 	return 15.0
+
+############################################# GYM1 (GYM HEROES) STADIUM SCORING #####################################################
+
+# Returns the number of CPU pokemon in play (active + bench) whose name contains the given substring.
+func _cpu_count_named_pokemon_in_play(name_substring: String) -> int:
+	var n = 0
+	if main.opponent_active_pokemon != null and name_substring in main.opponent_active_pokemon.metadata.get("name", ""):
+		n += 1
+	for bp in main.opponent_bench:
+		if name_substring in bp.metadata.get("name", ""):
+			n += 1
+	return n
+
+# Returns the count of player pokemon in play whose name contains the substring (for "stadium helps opponent" checks)
+func _player_count_named_pokemon_in_play(name_substring: String) -> int:
+	var n = 0
+	if main.player_active_pokemon != null and name_substring in main.player_active_pokemon.metadata.get("name", ""):
+		n += 1
+	for bp in main.player_bench:
+		if name_substring in bp.metadata.get("name", ""):
+			n += 1
+	return n
+
+# Generic check: does the current stadium already benefit the CPU? If yes, avoid overwriting it.
+func _cpu_current_stadium_helps_cpu() -> bool:
+	if main.current_stadium_card == null:
+		return false
+	# If CPU played the current stadium, assume it's helpful to them
+	if main.current_stadium_owner_is_opponent:
+		return true
+	# Otherwise check: if the active stadium is one of the synergy stadiums and CPU has matching pokemon
+	var uid = main.current_stadium_card.uid.to_lower()
+	match uid:
+		"gym1-104": return false  # +1 retreat on Active hurts both equally; usually neutral
+		"gym1-108": return _cpu_count_named_pokemon_in_play("Misty") > 0
+		"gym1-115": return _cpu_count_named_pokemon_in_play("Brock") > 0
+		"gym1-120": return _cpu_count_named_pokemon_in_play("Lt. Surge") > 0
+	return false
+
+# gym1-103 No Removal Gym — taxes opponent's Energy Removal/Super Energy Removal cards 2 hand discards each.
+# Only useful if player is likely to use those. Assume modest base value.
+func _cpu_score_gym1_no_removal_gym() -> float:
+	if _cpu_current_stadium_helps_cpu():
+		return -50.0
+	# Mild value — disrupts player removal cards. Higher if our active has lots of energy invested.
+	var score = 15.0
+	if main.opponent_active_pokemon != null:
+		score += float(main.opponent_active_pokemon.attached_energies.size()) * 8.0
+	return score
+
+# gym1-104 Rocket's Training Gym — +1 retreat for both Active pokemon. Helps the side whose Active has high cost already.
+func _cpu_score_gym1_rockets_training_gym() -> float:
+	if _cpu_current_stadium_helps_cpu():
+		return -50.0
+	# Bad if our own active needs to retreat soon; good if player's active wants to retreat
+	if main.opponent_active_pokemon == null:
+		return 0.0
+	var our_cost = main.opponent_active_pokemon.metadata.get("retreatCost", []).size()
+	var player_cost = 0
+	if main.player_active_pokemon != null:
+		player_cost = main.player_active_pokemon.metadata.get("retreatCost", []).size()
+	# Score = how much it hurts player relative to us
+	return float(player_cost - our_cost) * 12.0 + 5.0
+
+# gym1-107 Celadon City Gym — needs Erika pokemon in deck/play to be valuable
+func _cpu_score_gym1_celadon_city_gym() -> float:
+	if _cpu_current_stadium_helps_cpu():
+		return -50.0
+	var erika_in_play = _cpu_count_named_pokemon_in_play("Erika")
+	var erika_in_deck_hand = 0
+	for c in main.opponent_deck:
+		if "Erika" in c.metadata.get("name", ""):
+			erika_in_deck_hand += 1
+	for c in main.opponent_hand:
+		if "Erika" in c.metadata.get("name", ""):
+			erika_in_deck_hand += 1
+	if erika_in_play == 0 and erika_in_deck_hand == 0:
+		return -100.0
+	return 20.0 + erika_in_play * 25.0 + erika_in_deck_hand * 5.0
+
+# gym1-108 Cerulean City Gym — Misty-named pokemon retreat -1
+func _cpu_score_gym1_cerulean_city_gym() -> float:
+	if _cpu_current_stadium_helps_cpu():
+		return -50.0
+	var misty_count = _cpu_count_named_pokemon_in_play("Misty")
+	var player_misty = _player_count_named_pokemon_in_play("Misty")
+	if misty_count == 0 and player_misty == 0:
+		return -100.0
+	# Helps both sides equally, prefer if CPU has more
+	return (misty_count - player_misty) * 30.0 + 10.0
+
+# gym1-115 Pewter City Gym — Brock-named pokemon ignore resistance
+func _cpu_score_gym1_pewter_city_gym() -> float:
+	if _cpu_current_stadium_helps_cpu():
+		return -50.0
+	var brock_count = _cpu_count_named_pokemon_in_play("Brock")
+	var player_brock = _player_count_named_pokemon_in_play("Brock")
+	if brock_count == 0 and player_brock == 0:
+		return -100.0
+	return (brock_count - player_brock) * 30.0 + 10.0
+
+# gym1-120 Vermilion City Gym — Lt. Surge attackers may flip for +10 / -10 self
+func _cpu_score_gym1_vermilion_city_gym() -> float:
+	if _cpu_current_stadium_helps_cpu():
+		return -50.0
+	var surge_count = _cpu_count_named_pokemon_in_play("Lt. Surge")
+	var player_surge = _player_count_named_pokemon_in_play("Lt. Surge")
+	if surge_count == 0 and player_surge == 0:
+		return -100.0
+	return (surge_count - player_surge) * 30.0 + 10.0
+
+# gym1-124 Narrow Gym — bench cap reduced to 4. Good when opponent has 5 bench (forces a return).
+func _cpu_score_gym1_narrow_gym() -> float:
+	if _cpu_current_stadium_helps_cpu():
+		return -50.0
+	# Bad if CPU itself has 5 bench
+	if main.opponent_bench.size() >= 5:
+		return -100.0
+	var score = 0.0
+	if main.player_bench.size() >= 5:
+		score += 60.0  # forces player to return one
+	# Score by how much CPU has bench room headroom vs player
+	score += float(main.player_bench.size() - main.opponent_bench.size()) * 10.0
+	return score

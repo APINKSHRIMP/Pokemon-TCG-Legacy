@@ -132,8 +132,18 @@ var trainer_bench_token_discard_active: bool = false
 var pokedex_cards: Array = []
 var pokedex_reorder_result: Array = []
 
-# Stadium zone placeholder (future-proofing)
+# Stadium zone — only one stadium can be in play at a time. New stadium discards old to its owner's pile.
 var current_stadium_card: card_object = null
+var current_stadium_owner_is_opponent: bool = false  # tracks which side OWNS the stadium (for discard pile destination only)
+
+# Stadium activatable effects (per-turn flags)
+var player_celadon_used_this_turn: bool = false      # gym1-107 Celadon City Gym — once-per-turn-per-player activation
+var opponent_celadon_used_this_turn: bool = false
+
+# Stadium one-shot attack modifiers — gym1-120 Vermilion City Gym (Lt. Surge attacker coin flip)
+var vermilion_lt_surge_bonus_damage: int = 0          # +10 added by calculate_final_damage when set, cleared after read
+var vermilion_lt_surge_self_damage_pending: int = 0   # 10 applied to attacker after damage resolves
+var vermilion_lt_surge_attacker_is_opponent: bool = false  # which side the pending self-damage belongs to
 
 # POKEMON POWER VARIABLES
 var power_menu_active: bool = false
@@ -242,6 +252,7 @@ var action_button_positions_stored: bool = false
 @onready var played_trainer_container = $trainer_block_screen_container/played_trainer_card_container
 @onready var player_attached_cards_container = $ACTIVE_POKEMON/PLAYER/player_active_pokemon_attached_cards
 @onready var opponent_attached_cards_container = $ACTIVE_POKEMON/OPPONENT/opponent_active_pokemon_attached_cards
+@onready var stadium_card_container = $CARD_COLLECTIONS/stadium_card
 
 # QUICK REFERENCE VECTORS JUST USED FOR EASY SWAPPING OF SIZES FOR DEVELOPMENT
 var card_scales: Dictionary = {
@@ -763,7 +774,7 @@ func update_action_button() -> void:
 	var action_type = action_info["action"]
 	
 	if action_type == "SET_POKEMON" and not match_just_started_basic_pokemon_required:
-		if player_bench.size() >= 5:
+		if player_bench.size() >= get_max_bench_size():
 			action_button.disabled = true
 			action_button.text = "BENCH FULL"
 			# If no card is selected, disable the button and change the colour to show it can't be clicked	
@@ -1943,10 +1954,10 @@ func set_player_active_pokemon() -> void:
 
 # Function to add a card from the player's hand to the bench
 func add_pokemon_to_bench(pokemon: card_object) -> void:
-	
-	# Set max on bench to 5
-	if player_bench.size() >= 5:
-		print("Error: Bench is full (maximum 5 pokemon)")
+
+	# Set max bench size (defaults to 5; reduced to 4 by gym1-124 Narrow Gym)
+	if player_bench.size() >= get_max_bench_size():
+		print("Error: Bench is full (maximum " + str(get_max_bench_size()) + " pokemon)")
 		return
 		
 	# Validate that the card is a basic pokemon
@@ -2413,6 +2424,13 @@ func inbetween_turn_checks(player_turn_just_ended: bool = true) -> void:
 	opponent_retreated_this_turn = false
 	reset_field_pokemon_turn_flags(false)
 	reset_field_pokemon_turn_flags(true)
+
+	# Stadium per-turn flag resets — clear the flag belonging to the side whose turn JUST ended,
+	# so that side can use it again next turn (and the other side already has theirs cleared from earlier).
+	if player_turn_just_ended:
+		player_celadon_used_this_turn = false
+	else:
+		opponent_celadon_used_this_turn = false
 	
 	# Mirror move tracking: clear if the side that just ended their turn didn't attack
 	if player_turn_just_ended:
@@ -3005,6 +3023,16 @@ func display_and_apply_attack_damage(attacker: card_object, defender: card_objec
 				update_status_icons(defender, !is_opponent)
 				print("GYM2 KOGA: Poisoned ", defender.metadata.get("name", ""))
 
+	# GYM1-120 Vermilion City Gym: queued self-damage from Lt. Surge tails — apply to attacker after damage resolves
+	if vermilion_lt_surge_self_damage_pending > 0 and attacker != null:
+		var v_self_dmg = vermilion_lt_surge_self_damage_pending
+		vermilion_lt_surge_self_damage_pending = 0
+		var attacker_pos = Vector2(1030, 300) if is_opponent else Vector2(530, 300)
+		show_floating_label("VERMILION -" + str(v_self_dmg) + "HP", attacker_pos, Color.RED, true)
+		attacker.current_hp = max(0, attacker.current_hp - v_self_dmg)
+		display_hp_circles_above_align(attacker, is_opponent)
+		print("VERMILION GYM TAILS: ", attacker.metadata.get("name", ""), " took ", v_self_dmg, " self-damage")
+
 # Parses the attack text for card effects and applies them
 # pre_flip_result: if a coin was already flipped during damage resolution, pass "heads" or "tails" to skip re-flipping
 
@@ -3363,7 +3391,10 @@ func perform_attack(attack_index: int) -> void:
 	
 	SoundManagerScript.play_sfx(SoundManagerScript.SFX_attack_sound)
 	await show_message((player_active_pokemon.metadata["name"] + " USED " + attack_name).to_upper())
-	
+
+	# GYM1-120 Vermilion City Gym pre-attack flip (player). Optional flip for Lt. Surge attacker.
+	await maybe_vermilion_lt_surge_flip(player_active_pokemon, false)
+
 	# Handle special attacks that have completely unique flows
 	var text_lower = attack.get("text", "").to_lower()
 
@@ -4259,15 +4290,23 @@ func calculate_final_damage(base_damage: int, attacking_types: Array, defending_
 				modifiers_applied.append("WEAKNESS " + value)
 	
 	# Apply resistance (check temporary override from Porygon Conversion 2 first)
-	var resistances = defending_pokemon.metadata.get("resistances", [])
-	for resistance in resistances:
-		var resistance_type = resistance["type"]
-		if defending_pokemon.temporary_resistance != "":
-			resistance_type = defending_pokemon.temporary_resistance
-		if resistance_type in attacking_types:
-			var value = int(resistance["value"])
-			damage = max(0, damage + value)
-			modifiers_applied.append("RESISTANCE " + resistance["value"])
+	# GYM1-115 Pewter City Gym — Pokemon with "Brock" in name ignore Resistance on their attacks
+	var skip_resistance = false
+	if is_stadium_in_play("gym1-115") and attacker_pokemon != null:
+		var atk_name_pewter = attacker_pokemon.metadata.get("name", "")
+		if "Brock" in atk_name_pewter:
+			skip_resistance = true
+			modifiers_applied.append("PEWTER GYM (NO RESISTANCE)")
+	if not skip_resistance:
+		var resistances = defending_pokemon.metadata.get("resistances", [])
+		for resistance in resistances:
+			var resistance_type = resistance["type"]
+			if defending_pokemon.temporary_resistance != "":
+				resistance_type = defending_pokemon.temporary_resistance
+			if resistance_type in attacking_types:
+				var value = int(resistance["value"])
+				damage = max(0, damage + value)
+				modifiers_applied.append("RESISTANCE " + resistance["value"])
 	
 	# Apply shielded damage threshold (Onix Harden)
 	# If the damage after weakness/resistance is AT OR BELOW the threshold, prevent it entirely
@@ -4320,6 +4359,12 @@ func calculate_final_damage(base_damage: int, attacking_types: Array, defending_
 				opponent_misty_boost_active = false
 			else:
 				player_misty_boost_active = false
+
+	# GYM1-120 Vermilion City Gym — one-shot bonus damage from Lt. Surge attacker coin flip (set by pre-attack hook)
+	if damage > 0 and vermilion_lt_surge_bonus_damage > 0:
+		damage += vermilion_lt_surge_bonus_damage
+		modifiers_applied.append("VERMILION +" + str(vermilion_lt_surge_bonus_damage))
+		vermilion_lt_surge_bonus_damage = 0
 	
 	# Apply Defender reduction (-20 damage if Defender is attached to the defending pokemon)
 	if damage > 0 and defending_pokemon.defender_turns_remaining >= 0:
@@ -4787,7 +4832,7 @@ func get_retreat_cost(pokemon: card_object) -> int:
 	if pokemon == null:
 		return 0
 	var cost = pokemon.metadata.get("retreatCost", []).size()
-	
+
 	# Dodrio Retreat Aid: reduce retreat cost by 1 while Dodrio is on the bench
 	var bench = []
 	if pokemon == player_active_pokemon or pokemon in player_bench:
@@ -4801,12 +4846,81 @@ func get_retreat_cost(pokemon: card_object) -> int:
 				if bp.special_condition not in ["Paralyzed", "Asleep", "Confused"] and not bp.is_poisoned:
 					cost = max(0, cost - 1)
 					break
-	
+
 	# Dark Muk Sticky Goo: opponent pays 2 more to retreat
 	var is_player_pokemon = (pokemon == player_active_pokemon or pokemon in player_bench)
 	cost += powers_and_bodies.get_sticky_goo_cost(is_player_pokemon)
-	
+
+	# GYM1-104 The Rocket's Training Gym — both players pay +1 Colorless to retreat their Active Pokemon
+	if is_stadium_in_play("gym1-104"):
+		cost += 1
+	# GYM1-108 Cerulean City Gym — Pokemon with "Misty" in name pay 1 less to retreat
+	if is_stadium_in_play("gym1-108"):
+		var pname = pokemon.metadata.get("name", "")
+		if "Misty" in pname:
+			cost = max(0, cost - 1)
+
 	return cost
+
+# Returns true if the named stadium (uid) is the currently active stadium card
+func is_stadium_in_play(uid: String) -> bool:
+	if current_stadium_card == null:
+		return false
+	return current_stadium_card.uid.to_lower() == uid.to_lower()
+
+# Returns the bench cap. Reduced to 4 while gym1-124 Narrow Gym is in play.
+func get_max_bench_size() -> int:
+	if is_stadium_in_play("gym1-124"):
+		return 4
+	return 5
+
+# GYM1-120 Vermilion City Gym pre-attack flip. If stadium is in play and attacker name contains "Lt. Surge",
+# the attacker MAY flip a coin. Heads = +10 damage; tails = 10 self-damage after attack.
+# Player gets a YES/NO prompt (always; the upside is free unless attacker would be KO'd by 10 self-damage).
+# CPU heuristic: skip if the 10 self-damage would KO the attacker or leave it 1-shot to player; otherwise flip.
+func maybe_vermilion_lt_surge_flip(attacker: card_object, is_opponent: bool) -> void:
+	if attacker == null:
+		return
+	if not is_stadium_in_play("gym1-120"):
+		return
+	if not ("Lt. Surge" in attacker.metadata.get("name", "")):
+		return
+
+	var wants_flip := false
+	if is_opponent:
+		# CPU heuristic: don't flip if 10 self-damage would KO us; otherwise always take the chance for +10
+		if attacker.current_hp <= 10:
+			wants_flip = false
+		else:
+			wants_flip = true
+	else:
+		# Player chooses
+		wants_flip = await trainer_effects.gym1_prompt_yes_no(
+			attacker,
+			"VERMILION CITY GYM",
+			"Flip coin? Heads: +10 damage. Tails: 10 self-damage.",
+			"FLIP",
+			"SKIP"
+		)
+		if _should_bail(): return
+
+	if not wants_flip:
+		return
+
+	await show_message("VERMILION CITY GYM: Flipping coin...")
+	if _should_bail(): return
+	var heads = await flip_coin(false, is_opponent)
+	if _should_bail(): return
+	if heads:
+		vermilion_lt_surge_bonus_damage = 10
+		vermilion_lt_surge_self_damage_pending = 0
+		await show_message("HEADS! +10 damage!")
+	else:
+		vermilion_lt_surge_bonus_damage = 0
+		vermilion_lt_surge_self_damage_pending = 10
+		vermilion_lt_surge_attacker_is_opponent = is_opponent
+		await show_message("TAILS! " + attacker.metadata.get("name", "") + " takes 10 self-damage after the attack.")
+	if _should_bail(): return
 
 # Loads the small card image texture for any card object by its UID
 func get_card_texture(card: card_object) -> Texture2D:
