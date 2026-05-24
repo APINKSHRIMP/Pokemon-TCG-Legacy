@@ -139,6 +139,8 @@ var current_stadium_owner_is_opponent: bool = false  # tracks which side OWNS th
 # Stadium activatable effects (per-turn flags)
 var player_celadon_used_this_turn: bool = false      # gym1-107 Celadon City Gym — once-per-turn-per-player activation
 var opponent_celadon_used_this_turn: bool = false
+var player_fuchsia_used_this_turn: bool = false      # gym2-114 Fuchsia City Gym — once-per-turn-per-player Koga shuffle
+var opponent_fuchsia_used_this_turn: bool = false
 
 # Stadium one-shot attack modifiers — gym1-120 Vermilion City Gym (Lt. Surge attacker coin flip)
 var vermilion_lt_surge_bonus_damage: int = 0          # +10 added by calculate_final_damage when set, cleared after read
@@ -2429,8 +2431,10 @@ func inbetween_turn_checks(player_turn_just_ended: bool = true) -> void:
 	# so that side can use it again next turn (and the other side already has theirs cleared from earlier).
 	if player_turn_just_ended:
 		player_celadon_used_this_turn = false
+		player_fuchsia_used_this_turn = false
 	else:
 		opponent_celadon_used_this_turn = false
+		opponent_fuchsia_used_this_turn = false
 	
 	# Mirror move tracking: clear if the side that just ended their turn didn't attack
 	if player_turn_just_ended:
@@ -2746,7 +2750,17 @@ func perform_evolution(is_opponent: bool) -> void:
 	
 	print(target_card.metadata["name"], " evolved into ", evo_card.metadata["name"], "! (Damage carried: ", damage_taken, ")")
 	clear_all_statuses(target_card, is_opponent)
-	
+
+	# GYM2-123 Viridian City Gym — when a Giovanni-named pokemon evolves, heal 20 (or 10 if only 1 counter)
+	if is_stadium_in_play("gym2-123") and "Giovanni" in evo_card.metadata.get("name", ""):
+		var counters = max_hp_new - evo_card.current_hp
+		if counters > 0:
+			var heal_amount = 20 if counters >= 20 else 10
+			evo_card.current_hp = min(max_hp_new, evo_card.current_hp + heal_amount)
+			display_hp_circles_above_align(evo_card, is_opponent)
+			await show_message("VIRIDIAN CITY GYM: " + evo_card.metadata.get("name", "").to_upper() + " HEALED " + str(heal_amount) + " HP!")
+			if _should_bail(): return
+
 	# BASE5: When-played powers trigger when evolved from hand
 	var evo_name = evo_card.metadata.get("name", "")
 	if evo_name == "Dark Dragonite":
@@ -4273,21 +4287,29 @@ func calculate_final_damage(base_damage: int, attacking_types: Array, defending_
 		return {"damage": damage, "modifiers": modifiers_applied}
 	
 	# Apply weakness (check temporary override from Porygon Conversion 1 first)
-	var weaknesses = defending_pokemon.metadata.get("weaknesses", [])
-	for weakness in weaknesses:
-		var weakness_type = weakness["type"]
-		# If Conversion 1 changed this pokemon's weakness, use the override
-		if defending_pokemon.temporary_weakness != "":
-			weakness_type = defending_pokemon.temporary_weakness
-		if weakness_type in attacking_types:
-			var value = weakness["value"]
-			if "×" in value:
-				var multiplier = int(value.replace("×", "").strip_edges())
-				damage = damage * multiplier
-				modifiers_applied.append("WEAKNESS " + value)
-			elif "+" in value:
-				damage = damage + int(value.replace("+", "").strip_edges())
-				modifiers_applied.append("WEAKNESS " + value)
+	# GYM2-113 Cinnabar City Gym — Ignore Weakness when a Water Pokemon attacks a Blaine-named pokemon
+	var skip_weakness = false
+	if is_stadium_in_play("gym2-113") and attacker_pokemon != null:
+		var def_name_cinnabar = defending_pokemon.metadata.get("name", "")
+		if "Blaine" in def_name_cinnabar and "Water" in attacking_types:
+			skip_weakness = true
+			modifiers_applied.append("CINNABAR GYM (NO WEAKNESS)")
+	if not skip_weakness:
+		var weaknesses = defending_pokemon.metadata.get("weaknesses", [])
+		for weakness in weaknesses:
+			var weakness_type = weakness["type"]
+			# If Conversion 1 changed this pokemon's weakness, use the override
+			if defending_pokemon.temporary_weakness != "":
+				weakness_type = defending_pokemon.temporary_weakness
+			if weakness_type in attacking_types:
+				var value = weakness["value"]
+				if "×" in value:
+					var multiplier = int(value.replace("×", "").strip_edges())
+					damage = damage * multiplier
+					modifiers_applied.append("WEAKNESS " + value)
+				elif "+" in value:
+					damage = damage + int(value.replace("+", "").strip_edges())
+					modifiers_applied.append("WEAKNESS " + value)
 	
 	# Apply resistance (check temporary override from Porygon Conversion 2 first)
 	# GYM1-115 Pewter City Gym — Pokemon with "Brock" in name ignore Resistance on their attacks
@@ -4299,14 +4321,22 @@ func calculate_final_damage(base_damage: int, attacking_types: Array, defending_
 			modifiers_applied.append("PEWTER GYM (NO RESISTANCE)")
 	if not skip_resistance:
 		var resistances = defending_pokemon.metadata.get("resistances", [])
+		# GYM2-109 Resistance Gym — each pokemon's Resistance is reduced by 20 (e.g. -30 -> -10, -20 -> 0)
+		var resistance_reduction = 20 if is_stadium_in_play("gym2-109") else 0
 		for resistance in resistances:
 			var resistance_type = resistance["type"]
 			if defending_pokemon.temporary_resistance != "":
 				resistance_type = defending_pokemon.temporary_resistance
 			if resistance_type in attacking_types:
 				var value = int(resistance["value"])
-				damage = max(0, damage + value)
-				modifiers_applied.append("RESISTANCE " + resistance["value"])
+				if resistance_reduction > 0:
+					# Resistance values are negative (e.g. -30). Reducing means adding +20 capped at 0.
+					value = min(0, value + resistance_reduction)
+				if value < 0:
+					damage = max(0, damage + value)
+					modifiers_applied.append("RESISTANCE " + str(value))
+				else:
+					modifiers_applied.append("RESISTANCE NULLIFIED")
 	
 	# Apply shielded damage threshold (Onix Harden)
 	# If the damage after weakness/resistance is AT OR BELOW the threshold, prevent it entirely
@@ -5264,6 +5294,8 @@ func handle_action_normal_card() -> void:
 					var bench_texture = get_card_texture(bench_card)
 					await animate_card_a_to_b(player_hand_container, player_bench_container, 0.3, bench_texture, card_scales[11])
 					display_pokemon(false)
+					# GYM2-119 Rocket's Minefield Gym — coin flip per benched Basic from hand; tails = 20 damage
+					await trainer_effects.gym2_minefield_gym_trigger(bench_card, false)
 		
 		"PLAY_TRAINER":
 			var trainer_to_play = selected_card_for_action

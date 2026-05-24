@@ -3475,6 +3475,10 @@ func cpu_phase_bench_play() -> void:
 		main.display_pokemon(true)
 		main.refresh_hand_display(true)
 
+		# GYM2-119 Rocket's Minefield Gym — coin flip per benched Basic from hand; tails = 20 damage
+		await main.trainer_effects.gym2_minefield_gym_trigger(best_card, true)
+		if main._should_bail(): return
+
 # R.5: Selects the best bench replacement and performs the retreat
 func cpu_phase_evolution() -> void:
 	if main.turn_number <= 2:
@@ -3637,6 +3641,14 @@ func cpu_score_trainer_card(card: card_object) -> float:
 		"gym2-124": return _cpu_score_gym2_fervor()
 		"gym2-125": return _cpu_score_gym2_transparent_walls()
 		"gym2-126": return _cpu_score_gym2_warp_point()
+		# ============================ GYM2 (GYM CHALLENGE) STADIUM SCORING ============================
+		"gym2-102": return _cpu_score_gym2_chaos_gym()
+		"gym2-109": return _cpu_score_gym2_resistance_gym()
+		"gym2-113": return _cpu_score_gym2_cinnabar_city_gym()
+		"gym2-114": return _cpu_score_gym2_fuchsia_city_gym()
+		"gym2-119": return _cpu_score_gym2_rockets_minefield_gym()
+		"gym2-122": return _cpu_score_gym2_saffron_city_gym()
+		"gym2-123": return _cpu_score_gym2_viridian_city_gym()
 	return 0.0
 
 func _cpu_score_professor_oak(card: card_object) -> float:
@@ -4810,3 +4822,115 @@ func _cpu_score_gym1_narrow_gym() -> float:
 	# Score by how much CPU has bench room headroom vs player
 	score += float(main.player_bench.size() - main.opponent_bench.size()) * 10.0
 	return score
+
+############################################# GYM2 (GYM CHALLENGE) STADIUM SCORING ##################################################
+
+# gym2-102 Chaos Gym — Every non-stadium trainer played has a 50% chance of fizzling.
+# Good when player relies on trainers heavily AND CPU has few trainers in hand (so it doesn't backfire).
+func _cpu_score_gym2_chaos_gym() -> float:
+	if _cpu_current_stadium_helps_cpu():
+		return -50.0
+	# Count trainers in CPU's own hand vs estimate of player's reliance
+	var cpu_trainers_in_hand = 0
+	for c in main.opponent_hand:
+		if main.trainer_effects.is_trainer_card(c) and not main.trainer_effects.is_stadium_trainer(c):
+			cpu_trainers_in_hand += 1
+	# Heuristic: each CPU trainer-in-hand is -10 (fizzle risk); player hand size > 5 is +5 each over (probably has trainers)
+	var score = 25.0
+	score -= cpu_trainers_in_hand * 10.0
+	if main.player_hand.size() > 5:
+		score += (main.player_hand.size() - 5) * 5.0
+	return score
+
+# gym2-109 Resistance Gym — All Resistance reduced by 20. Helps whichever side ATTACKS pokemon with Resistance.
+# Hard to tell at score time who'll benefit more; assume neutral-positive when player's active has resistance.
+func _cpu_score_gym2_resistance_gym() -> float:
+	if _cpu_current_stadium_helps_cpu():
+		return -50.0
+	var score = 5.0
+	# +25 if player's active has resistance
+	if main.player_active_pokemon != null and main.player_active_pokemon.metadata.get("resistances", []).size() > 0:
+		score += 25.0
+	# -25 if CPU's active has resistance (we'd lose protection)
+	if main.opponent_active_pokemon != null and main.opponent_active_pokemon.metadata.get("resistances", []).size() > 0:
+		score -= 25.0
+	return score
+
+# gym2-113 Cinnabar City Gym — Water Pokemon ignore Weakness vs Blaine pokemon. Useful for Blaine decks vs Water threats.
+func _cpu_score_gym2_cinnabar_city_gym() -> float:
+	if _cpu_current_stadium_helps_cpu():
+		return -50.0
+	var cpu_blaine = _cpu_count_named_pokemon_in_play("Blaine")
+	var player_blaine = _player_count_named_pokemon_in_play("Blaine")
+	if cpu_blaine == 0 and player_blaine == 0:
+		return -100.0
+	# Cinnabar HURTS the side with Blaine pokemon (their Weakness to Water becomes ignored), so prefer ONLY if player has Blaine and CPU doesn't
+	# Wait — re-read: "Ignore Weakness when a Water Pokemon does damage to a Blaine pokemon"
+	# So a Water attacker getting +0 instead of doubled means LESS damage to the Blaine defender. This HELPS the Blaine side.
+	# So CPU plays it if CPU has Blaine pokemon (especially Fire types — Blaine pokemon are weak to Water).
+	return (cpu_blaine - player_blaine) * 30.0 + 10.0
+
+# gym2-114 Fuchsia City Gym — once-per-turn Koga shuffle recovery
+func _cpu_score_gym2_fuchsia_city_gym() -> float:
+	if _cpu_current_stadium_helps_cpu():
+		return -50.0
+	var cpu_koga = _cpu_count_named_pokemon_in_play("Koga")
+	var koga_in_deck_hand = 0
+	for c in main.opponent_deck:
+		if "Koga" in c.metadata.get("name", ""):
+			koga_in_deck_hand += 1
+	for c in main.opponent_hand:
+		if "Koga" in c.metadata.get("name", ""):
+			koga_in_deck_hand += 1
+	if cpu_koga == 0 and koga_in_deck_hand == 0:
+		return -100.0
+	return 15.0 + cpu_koga * 20.0 + koga_in_deck_hand * 3.0
+
+# gym2-119 Rocket's Minefield Gym — coin flip per Basic benched from hand; tails = 20 damage
+# Good when CPU has its bench mostly set up and player is still benching pokemon.
+func _cpu_score_gym2_rockets_minefield_gym() -> float:
+	if _cpu_current_stadium_helps_cpu():
+		return -50.0
+	# Bad if CPU still has many Basics in hand to bench
+	var cpu_basics_in_hand = 0
+	for c in main.opponent_hand:
+		if main.is_basic_pokemon(c):
+			cpu_basics_in_hand += 1
+	var score = 30.0
+	score -= cpu_basics_in_hand * 12.0
+	# Better if our bench is already set up
+	if main.opponent_bench.size() >= 3:
+		score += 15.0
+	return score
+
+# gym2-122 Saffron City Gym — return basic Energy from Sabrina pokemon to hand (recycle)
+func _cpu_score_gym2_saffron_city_gym() -> float:
+	if _cpu_current_stadium_helps_cpu():
+		return -50.0
+	var cpu_sabrina = _cpu_count_named_pokemon_in_play("Sabrina")
+	var sabrina_in_deck_hand = 0
+	for c in main.opponent_deck:
+		if "Sabrina" in c.metadata.get("name", ""):
+			sabrina_in_deck_hand += 1
+	for c in main.opponent_hand:
+		if "Sabrina" in c.metadata.get("name", ""):
+			sabrina_in_deck_hand += 1
+	if cpu_sabrina == 0 and sabrina_in_deck_hand == 0:
+		return -100.0
+	return 10.0 + cpu_sabrina * 20.0 + sabrina_in_deck_hand * 2.0
+
+# gym2-123 Viridian City Gym — Giovanni pokemon heal 20 (or 10) when evolving
+func _cpu_score_gym2_viridian_city_gym() -> float:
+	if _cpu_current_stadium_helps_cpu():
+		return -50.0
+	var cpu_giovanni = _cpu_count_named_pokemon_in_play("Giovanni")
+	var giovanni_in_deck_hand = 0
+	for c in main.opponent_deck:
+		if "Giovanni" in c.metadata.get("name", ""):
+			giovanni_in_deck_hand += 1
+	for c in main.opponent_hand:
+		if "Giovanni" in c.metadata.get("name", ""):
+			giovanni_in_deck_hand += 1
+	if cpu_giovanni == 0 and giovanni_in_deck_hand == 0:
+		return -100.0
+	return 15.0 + cpu_giovanni * 15.0 + giovanni_in_deck_hand * 3.0

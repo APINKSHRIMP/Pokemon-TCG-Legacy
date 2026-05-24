@@ -889,9 +889,30 @@ func play_trainer_card(card: card_object, is_opponent: bool) -> void:
 	# Remove from hand first
 	hand.erase(card)
 	main.refresh_hand_display(is_opponent)
-	
+
 	SoundManagerScript.play_sfx(SoundManagerScript.SFX_trainer_sound)
-	
+
+	# GYM2-102 Chaos Gym — Whenever a player plays a non-Stadium Trainer, flip a coin. Tails: card is wasted (discarded with no effect).
+	# Simplification: the "opponent may steal the card" mechanic is skipped (same approach as Lt. Surge's Secret Plan).
+	if main.is_stadium_in_play("gym2-102") and not is_stadium_trainer(card):
+		await main.show_message("CHAOS GYM: FLIPPING COIN FOR " + card_name.to_upper() + "...")
+		if main._should_bail(): return
+		var chaos_heads = await main.flip_coin(false, is_opponent)
+		if main._should_bail(): return
+		if not chaos_heads:
+			await main.show_message("TAILS! " + card_name.to_upper() + " IS DISCARDED WITH NO EFFECT!")
+			if main._should_bail(): return
+			card.current_location = "discard"
+			discard.append(card)
+			var hand_node_chaos = main.opponent_hand_container if is_opponent else main.player_hand_container
+			var discard_node_chaos = main.opponent_discard_icon if is_opponent else main.player_discard_icon
+			var ctex_chaos = main.get_card_texture(card)
+			await main.animate_card_a_to_b(hand_node_chaos, discard_node_chaos, 0.3, ctex_chaos, main.card_scales[10])
+			if main._should_bail(): return
+			main.update_discard_pile_display(is_opponent)
+			main.cpu_ai.invalidate_cpu_evaluation()
+			return
+
 	# Step 1: Show trainer card animation
 	await show_trainer_card_played_animation(card, is_opponent)
 	
@@ -4262,6 +4283,11 @@ func gym1_effect_erikas_perfume(is_opponent: bool) -> void:
 	await main.show_message("ERIKA'S PERFUME — " + str(to_bench.size()) + " BASIC(S) BENCHED!")
 	if main._should_bail(): return
 
+	# GYM2-119 Rocket's Minefield Gym — coin flip per pokemon benched from hand
+	for c in to_bench:
+		await gym2_minefield_gym_trigger(c, opp_is_player)
+		if main._should_bail(): return
+
 # ============================ gym1-111 — Good Manners ============================
 # Show your hand to opp, then search deck for a Basic Pokemon and add to hand.
 func gym1_effect_good_manners(is_opponent: bool) -> void:
@@ -6157,4 +6183,274 @@ func gym2_effect_warp_point(is_opponent: bool) -> void:
 	main.display_pokemon(is_opponent)
 	main.display_active_pokemon_energies(is_opponent)
 	await main.show_message("WARP POINT — YOUR " + own_pick.metadata.get("name", "").to_upper() + " IS NOW ACTIVE!")
+	if main._should_bail(): return
+
+######################################################################################################################################################
+######################################################## GYM2 STADIUM EFFECTS #######################################################################
+######################################################################################################################################################
+
+# GYM2-119 Rocket's Minefield Gym trigger — call after a Basic Pokemon is benched from hand.
+# Flip a coin; tails puts MINEFIELD_DAMAGE (20) on the pokemon.
+const MINEFIELD_TAILS_DAMAGE: int = 20
+
+func gym2_minefield_gym_trigger(pokemon: card_object, is_opponent: bool) -> void:
+	if not main.is_stadium_in_play("gym2-119"):
+		return
+	if pokemon == null:
+		return
+	# Only triggers for actual Basic Pokemon (not bench tokens like Mysterious Fossil / Clefairy Doll)
+	if not main.is_basic_pokemon(pokemon):
+		return
+	if pokemon.is_bench_token:
+		return
+
+	await main.show_message("ROCKET'S MINEFIELD GYM: FLIPPING FOR " + pokemon.metadata.get("name", "").to_upper() + "!")
+	if main._should_bail(): return
+	var heads = await main.flip_coin(false, is_opponent)
+	if main._should_bail(): return
+	if heads:
+		await main.show_message("HEADS! " + pokemon.metadata.get("name", "").to_upper() + " IS SAFE!")
+		if main._should_bail(): return
+		return
+	# Tails: apply damage
+	pokemon.current_hp = max(0, pokemon.current_hp - MINEFIELD_TAILS_DAMAGE)
+	main.display_hp_circles_above_align(pokemon, not is_opponent)
+	await main.show_message("TAILS! " + pokemon.metadata.get("name", "").to_upper() + " TAKES " + str(MINEFIELD_TAILS_DAMAGE) + " DAMAGE!")
+	if main._should_bail(): return
+	# Knockouts from Minefield are handled by the normal KO check next time check_all_knockouts runs.
+	await main.check_and_handle_knockout(pokemon, is_opponent)
+
+# ============================ gym2-114 Fuchsia City Gym ============================
+# Activatable: once per player's turn, may flip a coin. Heads shuffles a chosen Koga pokemon
+# (and all attached cards/energies/pre-evolutions) into its owner's deck.
+
+func gym2_fuchsia_has_target(is_opponent: bool) -> bool:
+	if not main.is_stadium_in_play("gym2-114"):
+		return false
+	if is_opponent and main.opponent_fuchsia_used_this_turn:
+		return false
+	if not is_opponent and main.player_fuchsia_used_this_turn:
+		return false
+	# Eligibility: any Koga-named pokemon in play (active or bench)
+	var active = main.opponent_active_pokemon if is_opponent else main.player_active_pokemon
+	var bench = main.opponent_bench if is_opponent else main.player_bench
+	if active != null and "Koga" in active.metadata.get("name", ""):
+		return true
+	for bp in bench:
+		if "Koga" in bp.metadata.get("name", ""):
+			return true
+	return false
+
+func gym2_fuchsia_activate(is_opponent: bool) -> void:
+	# Mark used immediately (regardless of flip outcome, per "once during each player's turn")
+	if is_opponent:
+		main.opponent_fuchsia_used_this_turn = true
+	else:
+		main.player_fuchsia_used_this_turn = true
+
+	# Build list of Koga-named pokemon
+	var active = main.opponent_active_pokemon if is_opponent else main.player_active_pokemon
+	var bench = main.opponent_bench if is_opponent else main.player_bench
+	var deck = main.opponent_deck if is_opponent else main.player_deck
+	var eligible: Array = []
+	if active != null and "Koga" in active.metadata.get("name", ""):
+		eligible.append(active)
+	for bp in bench:
+		if "Koga" in bp.metadata.get("name", ""):
+			eligible.append(bp)
+	if eligible.size() == 0:
+		return
+
+	# Flip first
+	await main.show_message("FUCHSIA CITY GYM: FLIPPING COIN...")
+	if main._should_bail(): return
+	var heads = await main.flip_coin(false, is_opponent)
+	if main._should_bail(): return
+	if not heads:
+		await main.show_message("TAILS! NO EFFECT.")
+		return
+
+	# Pick which Koga to shuffle in
+	var chosen: card_object = null
+	if is_opponent:
+		# CPU: pick the most-damaged Koga pokemon (recovery is most valuable for hurt ones)
+		var most_damaged = 0
+		for p in eligible:
+			var dmg = int(p.metadata.get("hp", "0")) - p.current_hp
+			if dmg > most_damaged:
+				most_damaged = dmg
+				chosen = p
+		if chosen == null:
+			chosen = eligible[0]  # fallback
+	else:
+		# Player chooses
+		main.trainer_pokemon_selection_active = true
+		main.show_enlarged_array_selection_mode(eligible)
+		main.header_label.text = "FUCHSIA CITY GYM"
+		main.hint_label.text = "Choose a Koga Pokemon to shuffle into your deck (with all attached)"
+		main.action_button.text = "SELECT"
+		main.action_button.disabled = true
+		main.action_button.theme = main.theme_disabled
+		main.cancel_button.visible = true
+		await main.trainer_target_selected
+		if main._should_bail(): return
+		chosen = main.selected_card_for_action
+		main.trainer_pokemon_selection_active = false
+		main.hide_selection_mode_display_main()
+		if chosen == null:
+			return
+
+	# Special case: if chosen is the active and bench is empty, we'd lose the match — disallow
+	if chosen == active and bench.size() == 0:
+		await main.show_message("CAN'T SHUFFLE YOUR ONLY POKEMON!")
+		return
+
+	# Gather all the cards that go back to the deck with this pokemon
+	var to_shuffle: Array = [chosen]
+	to_shuffle.append_array(chosen.attached_energies)
+	to_shuffle.append_array(chosen.attached_cards)
+	to_shuffle.append_array(chosen.attached_pre_evolutions)
+
+	chosen.attached_energies.clear()
+	chosen.attached_cards.clear()
+	chosen.attached_pre_evolutions.clear()
+	chosen.current_hp = int(chosen.metadata.get("hp", "0"))
+	chosen.special_condition = ""
+	chosen.is_poisoned = false
+	chosen.is_burned = false
+	chosen.pluspower_count = 0
+	chosen.defender_turns_remaining = -1
+
+	# If chosen was active, promote a bench pokemon to active first
+	if chosen == active:
+		var promoted: card_object = bench[0]
+		bench.erase(promoted)
+		promoted.current_location = "active"
+		if is_opponent:
+			main.opponent_active_pokemon = promoted
+		else:
+			main.player_active_pokemon = promoted
+	else:
+		bench.erase(chosen)
+
+	# Move cards to deck and shuffle
+	for c in to_shuffle:
+		c.current_location = "deck"
+		deck.append(c)
+	deck.shuffle()
+
+	main.display_pokemon(is_opponent)
+	main.display_active_pokemon_energies(is_opponent)
+	main.update_deck_icon(is_opponent)
+	await main.show_message("FUCHSIA CITY GYM: " + chosen.metadata.get("name", "").to_upper() + " SHUFFLED INTO DECK!")
+	if main._should_bail(): return
+
+# ============================ gym2-122 Saffron City Gym ============================
+# Activatable (as often as you like during your turn): return 1 basic Energy from a Sabrina-named pokemon to hand.
+
+func gym2_saffron_has_target(is_opponent: bool) -> bool:
+	if not main.is_stadium_in_play("gym2-122"):
+		return false
+	var active = main.opponent_active_pokemon if is_opponent else main.player_active_pokemon
+	var bench = main.opponent_bench if is_opponent else main.player_bench
+	var all_p: Array = []
+	if active != null:
+		all_p.append(active)
+	all_p.append_array(bench)
+	for p in all_p:
+		if not ("Sabrina" in p.metadata.get("name", "")):
+			continue
+		for e in p.attached_energies:
+			if main.is_basic_energy_card(e):
+				return true
+	return false
+
+func gym2_saffron_activate(is_opponent: bool) -> void:
+	var active = main.opponent_active_pokemon if is_opponent else main.player_active_pokemon
+	var bench = main.opponent_bench if is_opponent else main.player_bench
+	var hand = main.opponent_hand if is_opponent else main.player_hand
+	var all_p: Array = []
+	if active != null:
+		all_p.append(active)
+	all_p.append_array(bench)
+
+	var eligible: Array = []
+	for p in all_p:
+		if not ("Sabrina" in p.metadata.get("name", "")):
+			continue
+		for e in p.attached_energies:
+			if main.is_basic_energy_card(e):
+				eligible.append(p)
+				break
+
+	if eligible.size() == 0:
+		if not is_opponent:
+			await main.show_message("NO SABRINA POKEMON WITH BASIC ENERGY!")
+		return
+
+	var target: card_object = null
+	var energy_to_return: card_object = null
+	if is_opponent:
+		# CPU: pick the pokemon with the most excess energy (least likely to need it)
+		var most_excess = -1
+		for p in eligible:
+			var basics = 0
+			for e in p.attached_energies:
+				if main.is_basic_energy_card(e):
+					basics += 1
+			if basics > most_excess:
+				most_excess = basics
+				target = p
+		if target == null:
+			return
+		# Pick first basic energy
+		for e in target.attached_energies:
+			if main.is_basic_energy_card(e):
+				energy_to_return = e
+				break
+	else:
+		main.trainer_pokemon_selection_active = true
+		main.show_enlarged_array_selection_mode(eligible)
+		main.header_label.text = "SAFFRON CITY GYM"
+		main.hint_label.text = "Choose a Sabrina Pokemon to return 1 basic Energy from"
+		main.action_button.text = "SELECT"
+		main.action_button.disabled = true
+		main.action_button.theme = main.theme_disabled
+		main.cancel_button.visible = true
+		await main.trainer_target_selected
+		if main._should_bail(): return
+		target = main.selected_card_for_action
+		main.trainer_pokemon_selection_active = false
+		main.hide_selection_mode_display_main()
+		if target == null:
+			return
+
+		# Player picks which basic energy to return
+		var basic_energies: Array = []
+		for e in target.attached_energies:
+			if main.is_basic_energy_card(e):
+				basic_energies.append(e)
+		main.defender_energy_discard_active = true
+		main.show_enlarged_array_selection_mode(basic_energies)
+		main.header_label.text = "CHOOSE ENERGY TO RETURN"
+		main.hint_label.text = "Select a basic Energy to return to your hand"
+		main.action_button.text = "RETURN"
+		main.action_button.disabled = true
+		main.action_button.theme = main.theme_disabled
+		main.cancel_button.visible = true
+		await main.defender_energy_chosen
+		if main._should_bail(): return
+		energy_to_return = main.selected_card_for_action
+		main.defender_energy_discard_active = false
+		main.hide_selection_mode_display_main()
+		if energy_to_return == null:
+			return
+
+	# Move energy from attached_energies back to hand
+	target.attached_energies.erase(energy_to_return)
+	energy_to_return.current_location = "hand"
+	hand.append(energy_to_return)
+	main.display_active_pokemon_energies(is_opponent)
+	main.refresh_hand_display(is_opponent)
+	await main.show_message("SAFFRON CITY GYM: RETURNED 1 ENERGY FROM " + target.metadata.get("name", "").to_upper() + "!")
 	if main._should_bail(): return

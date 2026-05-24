@@ -117,6 +117,14 @@ func open_power_menu() -> void:
 	if main.trainer_effects.gym1_celadon_has_target(false):
 		available_powers.append({"pokemon": null, "ability": {"name": "Celadon City Gym", "type": "Stadium", "text": "Discard an Energy from one of your Erika Pokemon to cure it of all status conditions."}})
 
+	# GYM2-114 Fuchsia City Gym (Stadium): once-per-turn flip → heads shuffles a Koga pokemon into deck
+	if main.trainer_effects.gym2_fuchsia_has_target(false):
+		available_powers.append({"pokemon": null, "ability": {"name": "Fuchsia City Gym", "type": "Stadium", "text": "Flip a coin. Heads: shuffle 1 of your Koga Pokemon (with all attached cards) into your deck."}})
+
+	# GYM2-122 Saffron City Gym (Stadium): return 1 basic Energy from a Sabrina pokemon to hand (unlimited)
+	if main.trainer_effects.gym2_saffron_has_target(false):
+		available_powers.append({"pokemon": null, "ability": {"name": "Saffron City Gym", "type": "Stadium", "text": "Return 1 basic Energy from a Sabrina Pokemon to your hand."}})
+
 	if available_powers.size() == 0:
 		await main.show_message("No Pokemon Powers available!")
 		return
@@ -165,6 +173,8 @@ func activate_power(pokemon: card_object, ability: Dictionary) -> void:
 		"Long-Distance Hypnosis": await power_long_distance_hypnosis(pokemon)
 		"Trickery": await power_trickery(pokemon)
 		"Celadon City Gym": await main.trainer_effects.gym1_celadon_activate(false)
+		"Fuchsia City Gym": await main.trainer_effects.gym2_fuchsia_activate(false)
+		"Saffron City Gym": await main.trainer_effects.gym2_saffron_activate(false)
 		_: await main.show_message("Power not implemented: " + ability_name)
 
 # Damage Swap (Alakazam): Move 1 damage counter between your pokemon
@@ -1206,6 +1216,59 @@ func cpu_phase_activate_powers() -> void:
 	if main.trainer_effects.gym1_celadon_has_target(true):
 		await main.trainer_effects.gym1_celadon_activate(true)
 		if main._should_bail(): return
+
+	# GYM2-114 Fuchsia City Gym (Stadium): activate if CPU has a damaged Koga pokemon worth recovering.
+	# Heuristic: only fire if a Koga pokemon has >= 40 damage (worth the deck recycle / coin flip risk).
+	if main.trainer_effects.gym2_fuchsia_has_target(true):
+		var fuchsia_should_use = false
+		var fuchsia_candidates: Array = []
+		if main.opponent_active_pokemon != null and "Koga" in main.opponent_active_pokemon.metadata.get("name", ""):
+			fuchsia_candidates.append(main.opponent_active_pokemon)
+		for bp in main.opponent_bench:
+			if "Koga" in bp.metadata.get("name", ""):
+				fuchsia_candidates.append(bp)
+		for p in fuchsia_candidates:
+			var dmg = int(p.metadata.get("hp", "0")) - p.current_hp
+			if dmg >= 40:
+				fuchsia_should_use = true
+				break
+		if fuchsia_should_use:
+			await main.trainer_effects.gym2_fuchsia_activate(true)
+			if main._should_bail(): return
+
+	# GYM2-122 Saffron City Gym (Stadium): return basic Energy to hand from Sabrina pokemon.
+	# Heuristic: only use if CPU has an OVER-energized Sabrina pokemon (more attached than needed for any attack).
+	while main.trainer_effects.gym2_saffron_has_target(true):
+		var saffron_used = false
+		var active = main.opponent_active_pokemon
+		var sabrina_targets: Array = []
+		if active != null and "Sabrina" in active.metadata.get("name", ""):
+			sabrina_targets.append(active)
+		for bp in main.opponent_bench:
+			if "Sabrina" in bp.metadata.get("name", ""):
+				sabrina_targets.append(bp)
+		var any_excess = false
+		for p in sabrina_targets:
+			# Excess energy = more attached than the highest-cost attack
+			var max_cost = 0
+			for atk in p.metadata.get("attacks", []):
+				var c = atk.get("cost", []).size()
+				if c > max_cost:
+					max_cost = c
+			var basics = 0
+			for e in p.attached_energies:
+				if main.is_basic_energy_card(e):
+					basics += 1
+			if basics > max_cost:
+				any_excess = true
+				break
+		if not any_excess:
+			break
+		await main.trainer_effects.gym2_saffron_activate(true)
+		if main._should_bail(): return
+		saffron_used = true
+		if not saffron_used:
+			break
 	
 	# Rain Dance: attach all Water Energy to Water Pokemon
 	var blastoise = _find_cpu_pokemon_with_power("Rain Dance")
