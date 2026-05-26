@@ -498,5 +498,18 @@
 		"y": 2395
 	  }
 	},
+	{
+	  "name": "Fisherman Dave",
+	  "meet_text": "I love the lighthouse here, it seems to attract all kinds of fish so I always catch a lot in this spot. I'm catching so many I need a break.",
+	  "repeat_text": "I've caught a lot since last time.",
+	  "first_win_text": "Even if they don't help me win, I still love my fish.",
+	  "rematch_win_text": "Fishing and Pokemon cards are both a lot of fun, I could do both all day.",
+	  "loss_text": "Maybe you should try picking up a rod and give fishing a go instead!",
+	  "pattern": "idle_down",
+	  "position": {
+		"x": -600,
+		"y": 2730
+	  }
+	},
   ]
 }

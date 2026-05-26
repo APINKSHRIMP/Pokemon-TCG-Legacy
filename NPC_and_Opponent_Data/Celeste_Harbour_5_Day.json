@@ -1,13 +1,53 @@
 {
   "npcs": [
 	{
-	  "name": "Plaza Challenger 5 day 4",
-	  "meet_text": "I enjoy watching the elders play, they're so highly skilled",
-	  "repeat_text": "Have you beaten them yourself yet?",
+	  "name": "Plaza Challenger 1",
+	  "meet_text": "I'm in the middle of an impornt match here don't disturb me!",
+	  "repeat_text": "Hey can you let me concentrate I'm losing here!",
 	  "pattern": "idle_up",
 	  "position": {
-		"x": 2200,
-		"y": 1302
+		"x": 2230,
+		"y": 1290
+	  }
+	},
+	{
+	  "name": "Plaza Challenger 2",
+	  "meet_text": "I'm definitely going to lose here this is so tough.",
+	  "repeat_text": "I've never battled a deck as hard as this before.",
+	  "pattern": "idle_up",
+	  "position": {
+		"x": 2278,
+		"y": 1290
+	  }
+	},
+	{
+	  "name": "Plaza Challenger 3",
+	  "meet_text": "I only came here to see the beach but thought I'd try my luck with this challenge.",
+	  "repeat_text": "I maybe should have just gone sunbathing instead.",
+	  "pattern": "idle_up",
+	  "position": {
+		"x": 2326,
+		"y": 1290
+	  }
+	},
+	{
+	  "name": "Plaza Challenger 4",
+	  "meet_text": "Wow this is an intense match!",
+	  "repeat_text": "I've never seen plays like this before.",
+	  "pattern": "idle_up",
+	  "position": {
+		"x": 2215,
+		"y": 1310
+	  }
+	},
+	{
+	  "name": "Plaza Challenger 5",
+	  "meet_text": "I'm no good at playing myself but I love to watch.",
+	  "repeat_text": "It's a really good match to watch!",
+	  "pattern": "idle_right",
+	  "position": {
+		"x": 2205,
+		"y": 1275
 	  }
 	},
 	{
@@ -21,6 +61,26 @@
 	  }
 	},
 	{
+	  "name": "Plaza Challenger 7",
+	  "meet_text": "Hey get in line!! There's a queue of us here.",
+	  "repeat_text": "Ya gotta wait ya turn.",
+	  "pattern": "idle_up",
+	  "position": {
+		"x": 2345,
+		"y": 1310
+	  }
+	},
+	{
+	  "name": "Plaza Challenger 7b",
+	  "meet_text": "Wow! I wish I could play as good as these.",
+	  "repeat_text": "I'm pretty new to this whole card thing.",
+	  "pattern": "idle_up",
+	  "position": {
+		"x": 2315,
+		"y": 1315
+	  }
+	},
+	{
 	  "name": "Plaza Challenger 8",
 	  "meet_text": "I've been collecting for a LONG time but I'll never be as good at battling as these folk are. You might be able to make more use of this than I can.",
 	  "repeat_text": "I've got well over 10,000 cards, I've been collecting them for years.",
@@ -28,6 +88,26 @@
 	  "position": {
 		"x": 2250,
 		"y": 1315
+	  }
+	},
+	{
+	  "name": "Plaza Challenger 9",
+	  "meet_text": "WOW! Such cool cards!!!",
+	  "repeat_text": "I wish I had cards as cool as these!",
+	  "pattern": "idle_up",
+	  "position": {
+		"x": 2280,
+		"y": 1320
+	  }
+	},
+	{
+	  "name": "Old Guy Neighbour Day 3",
+	  "meet_text": "Hello again. I just about made it to the market but my old legs are very tired so I need a rest now. I've got a lot of shopping to be doing!",
+	  "repeat_text": "The card and coin stall might be of interest to you over in the other corner. They don't sell packs of cards like the card mart so it's worth having a browse.",
+	  "pattern": "idle_left",
+	  "position": {
+		"x": 2640,
+		"y": 1703
 	  }
 	},
 	{
@@ -42,7 +122,7 @@
 	},
 	{
 	  "name": "Holo Rare Shopkeeper",
-	  "meet_text": "Welcome! I run a Holo Rare card gacha shop. For $400 you can choose one of 7 mystery cards. You'll receive a random Holo Rare from either the Base, Jungle or Fossil set. You'll know what type the card is but won't know what card you're going to get until after you buy it!",
+	  "meet_text": "Welcome! I run a Holo Rare card gacha shop. For $400 you can choose one of 7 mystery cards. You'll receive a random Holo Rare from either the Base, Jungle or Fossil set. You'll know what energy type the card is but won't know what card you're going to get until after you buy it!",
 	  "pattern": "idle_down",
 	  "position": {
 		"x": 1975,
@@ -89,13 +169,46 @@
 	  }
 	},
 	{
-	  "name": "Sailor 2 Pier 1 Day 4",
-	  "meet_text": "Yesterday was super busy with the SS Anne. We've never had this many tourists in the harbour at once.",
-	  "repeat_text": "At least it's not as busy today but I still wish I could just on the SS Anne and sail away on it forever.",
+	  "name": "Woman Walking The Neighbourhood Day 3",
+	  "meet_text": "Hello! I'm getting my daily steps in like I do every day, but I decided to do it on the beach instead today.",
+	  "repeat_text": "The sand is much harder to walk on but it's nice being next to the ocean.",
+	  "pattern": "patrol_line",
+	  "patrol_speed": 30.0,
+	  "patrol_distance": 280,
+	  "patrol_axis": "horizontal",
+	  "position": {
+		"x": 1500,
+		"y": 2510
+	  }
+	},
+	{
+	  "name": "Sailor 2 Pier 1 Day 3",
+	  "meet_text": "With the arrival of the SS Anne we're even busier than usual. We've never had this many tourists in the harbour at once.",
+	  "repeat_text": "Sigh.. I wish I could just on the SS Anne and sail away on it forever.",
 	  "pattern": "idle_random",
 	  "position": {
 		"x": 350,
 		"y": 3125
+	  }
+	},
+	{
+	  "name": "Worker On Dock",
+	  "meet_text": "Hey watch yourself there, I'm doing some work on this ship here and I don't want you to get electrocuted or anything.",
+	  "repeat_text": "Please be careful around the docks, don't get too close to the edge.",
+	  "pattern": "idle_down",
+	  "position": {
+		"x": 900,
+		"y": 3155
+	  }
+	},
+	{
+	  "name": "Maintenance Guy Blocking Forest",
+	  "meet_text": "Sorry, the forest is still closed off, we haven't been able to clear the area entirely yet. We were hoping to have all the work done before today so all the passengers of the SS Anne could go out and explore.",
+	  "repeat_text": "We're nearly done with it so it'll definitely be open tomorrow, my boss would kill me if we don't have it reopened before the SS Anne leaves again.",
+	  "pattern": "idle_down",
+	  "position": {
+		"x": 920,
+		"y": 900
 	  }
 	},
 	{
@@ -125,7 +238,7 @@
 	  "pattern": "idle_up",
 	  "position": {
 		"x": -715,
-		"y": 2680
+		"y": 2690
 	  }
 	},
 	{
@@ -220,6 +333,36 @@
 	  }
 	},
 	{
+	  "name": "Kid Opening Packs Day 3",
+	  "meet_text": "Wow! The nice shopkeeper man just got some cool new packs in. I'm spending all of my pocket money on them and I keep getting bonus rares! You can have this one too!",
+	  "repeat_text": "I hope every pack in the future gives you bonus rares!",
+	  "pattern": "idle_random",
+	  "position": {
+		"x": 290,
+		"y": 1600
+	  }
+	},
+	{
+	  "name": "Maintenance Guy Watering Sunflowers Day 3",
+	  "meet_text": "I feel like I'm just a lean mean flower watering machine....",
+	  "repeat_text": "Thankfully the boss is letting me finish early today so I'll be around the pier to play cards this evening.",
+	  "pattern": "idle_left",
+	  "position": {
+		"x": -630,
+		"y": 2270
+	  }
+	},
+	{
+	  "name": "Boss Maintenance Guy Watering Sunflowers Day 3",
+	  "meet_text": "I'm Callum's boss. My boss told me to come here to check everything was being done correctly but of course it's all fine.",
+	  "repeat_text": "I trust my employees fully, but I don't think my boss trusts me!! ",
+	  "pattern": "idle_random",
+	  "position": {
+		"x": -830,
+		"y": 2210
+	  }
+	},
+	{
 	  "name": "Sailor Working On Dock Day 3",
 	  "meet_text": "*huff* I knew I'd be busy with the SS Anne arriving but *huff* I didn't think I'd be THIS busy....",
 	  "repeat_text": "*huff* *huff* The SS Anne only arrives once a year and it's always the harbour's busiest days.",
@@ -266,6 +409,36 @@
 	  }
 	},
 	{
+	  "name": "Card Elder Waverly Day 3",
+	  "meet_text": "Hold on there sonny boy, with the SS Anne, you've arrived a bit too late! There's a lot of people already in the queue, by the looks of things it'll take us all day to get through this lot but it should be quieter tomorrow so take this card to help with your patience.",
+	  "repeat_text": "Make sure you've earned as many cards as you can around here, you'll need them to defeat us 3.",
+	  "pattern": "idle_down",
+	  "position": {
+		"x": 2230,
+		"y": 1252
+	  }
+	},
+	{
+	  "name": "Card Elder Rayne Day 3",
+	  "meet_text": "Hoh Hoh, are you looking to enter the Gym Hero Challenge? If you beat all 3 of us Elders we will grant you permission! .....However I'm already flat out with all these tourists. Take this card for now and come back tomorrow instead when it's quieter",
+	  "repeat_text": "You might need some better cards if you have a hope of beating us, make sure you've visited the card mart today and also check out card vendor at the market if you haven't already.",
+	  "pattern": "idle_down",
+	  "position": {
+		"x": 2278,
+		"y": 1252
+	  }
+	},
+	{
+	  "name": "Card Elder Hamish Day 3",
+	  "meet_text": "We're not as young as we used to be but we're still the best in the harbour. If you're looking to take on the Gym Hero Challenge you're better off coming back tomorrow when there are less people waiting, otherwise you'll be stood around all day. This card might help your chances.",
+	  "repeat_text": "You might need to buy a few more packs from the Card Mart first too. A lot of people are generous to give cards away so make sure you speak to everyone around too.",
+	  "pattern": "idle_down",
+	  "position": {
+		"x": 2326,
+		"y": 1252
+	  }
+	},
+	{
 	  "name": "Woman Trying To Shop Day 3",
 	  "meet_text": "I managed pick up a new coin from the shopkeeper over there. It was super expensive but I absolutely love visiting Galar so I had to have a little wooloo.",
 	  "repeat_text": "Can you believe that over in Galar Wooloo just wander around in the open? I think I wish we had those over here but I guess the weather is too warm for them.",
@@ -280,7 +453,7 @@
 	{
 	  "name": "Station Manager Day 3",
 	  "meet_text": "Good day. Trains run all day from here, but they're normally fully booked way in advance so you won't be able to just hop on any train and be on your way.",
-	  "repeat_text": "Have you got any questions about the train departures?",
+	  "repeat_text": "Do you require any further assistance?",
 	  "pattern": "random_wander",
 	  "patrol_speed": 50.0,
 	  "wander_radius": 60,
@@ -297,6 +470,18 @@
 	  "position": {
 		"x": 2562,
 		"y": 1145
+	  }
+	},
+	{
+	  "name": "Train Employee 2",
+	  "meet_text": "I'm been tasked with litter picking with the influx of tourist.",
+	  "repeat_text": "There's plenty of bins around so I don't why people don't use them.",
+	  "pattern": "random_wander",
+	  "patrol_speed": 40.0,
+	  "wander_radius": 65,
+	  "position": {
+		"x": 2550,
+		"y": 1270
 	  }
 	},
 	{
@@ -407,26 +592,13 @@
 	{
 	  "name": "Swimmer Jordan",
 	  "meet_text": "I love the water, it's so calm and warm but my cards always get wet! I need to dry them off.",
-	  "repeat_text": "My friend has just arrived from Kanto and we're spending the day swimming together, but I can take a break for a rematch.",
+	  "repeat_text": "I can always take a break for another match.",
 	  "first_win_text": "I'll stick with my swimming...",
 	  "rematch_win_text": "Nothing like a good match and a long swim.",
 	  "loss_text": "Maybe you should work on your swimming...",
 	  "pattern": "idle_cycle",
 	  "position": {
-		"x": 450,
-		"y": 2590
-	  }
-	},
-	{
-	  "name": "Swimmer Melissa",
-	  "meet_text": "The sea is so much calmer and warmer here than it is back home in Kanto.",
-	  "repeat_text": "I could stay in the water here all day.",
-	  "first_win_text": "I wish they made cards waterproof...",
-	  "rematch_win_text": "I really need to dry off my cards.",
-	  "loss_text": "I'm glad I came here today!",
-	  "pattern": "idle_cycle",
-	  "position": {
-		"x": 490,
+		"x": 500,
 		"y": 2590
 	  }
 	},
@@ -567,15 +739,15 @@
 	  }
 	},
 	{
-	  "name": "Fisherman Gary",
-	  "meet_text": "I've joined my buddies here to fish today, we're catching loooooads.",
-	  "repeat_text": "The fish just won't stop biting so I can go again.",
-	  "first_win_text": "Dang, I never lose against my buddies.",
-	  "rematch_win_text": "You're probably a really good fisherman too.",
-	  "loss_text": "I'm the best fisherman and best card player on this pier!",
+	  "name": "Fisherman Dave",
+	  "meet_text": "I love the lighthouse here, it seems to attract all kinds of fish so I always catch a lot in this spot. I'm catching so many I need a break.",
+	  "repeat_text": "I've caught a lot since last time.",
+	  "first_win_text": "Even if they don't help me win, I still love my fish.",
+	  "rematch_win_text": "Fishing and Pokemon cards are both a lot of fun, I could do both all day.",
+	  "loss_text": "Maybe you should try picking up a rod and give fishing a go instead!",
 	  "pattern": "idle_down",
 	  "position": {
-		"x": -840,
+		"x": -600,
 		"y": 2730
 	  }
 	},
@@ -603,32 +775,6 @@
 	  "position": {
 		"x": 1000,
 		"y": 2475
-	  }
-	},
-	{
-	  "name": "Tourist Edmund",
-	  "meet_text": "I live in Celadon City so it's rare I get to the beach. I'm here to make the most of it.",
-	  "repeat_text": "It won't feel like that long before we have to head onwards.",
-	  "first_win_text": "I'm not here to win, only here for a good time.",
-	  "rematch_win_text": "You're the best player I've battled around here.",
-	  "loss_text": "I didn't even mean to win so that's a nice surprise.",
-	  "pattern": "idle_down",
-	  "position": {
-		"x": 765,
-		"y": 1960
-	  }
-	},
-	{
-	  "name": "Tourist Alissa",
-	  "meet_text": "Nothing feels better than the sand beneath your toes after being stuck in your cabin for days on end.",
-	  "repeat_text": "I'm so relaxed I could stay here all day.",
-	  "first_win_text": "Have you ever been on a cruise before?",
-	  "rematch_win_text": "I'll have to practice more when I'm back on board.",
-	  "loss_text": "Oh wonderful! I do love it when I win!",
-	  "pattern": "idle_down",
-	  "position": {
-		"x": -366,
-		"y": 2270
 	  }
 	},
 	{
@@ -671,45 +817,6 @@
 		"x": 2650,
 		"y": 2020
 	  }
-	},
-	{
-	  "name": "Card Elder Rayne",
-	  "meet_text": "Hoh Hoh, are you ready to feel the torrent? If you win I'll give you a medal to prove your triumph.",
-	  "repeat_text": "Hoh Hoh! I enjoyed the battle that much I'd also like another!",
-	  "first_win_text": "Congratulations on your win. You've earned this medal and my respect.",
-	  "rematch_win_text": "Come back any time and battle us old folk.",
-	  "loss_text": "Don't be disheartened, the rain will always stop.",
-	  "pattern": "idle_down",
-	  "position": {
-		"x": 2230,
-		"y": 1252
-	  }
-	},
-	{
-	  "name": "Card Elder Hamish",
-	  "meet_text": "Here for the challenge then hey? Remember you'll need to defeat all 3 of us if you want to progress.",
-	  "repeat_text": "Very well, I always enjoy a good challenge!",
-	  "first_win_text": "Well done, that was quite the battle. Take my medal and continue forth.",
-	  "rematch_win_text": "Battling like this makes me feel young again.",
-	  "loss_text": "Don't be disheartened, the rain will always stop.",
-	  "pattern": "idle_down",
-	  "position": {
-		"x": 2326,
-		"y": 1252
-	  }
-	},
-	{
-	  "name": "Card Elder Waverly",
-	  "meet_text": "Are you ready to take me on then? If you win then you'll do well in the Gym Hero Challenge.",
-	  "repeat_text": "Up for another round then? Happy to oblige.",
-	  "first_win_text": "Well well well, what a jolly good play! You've earned this.",
-	  "rematch_win_text": "We've been winning and losing for so long it's always fun either way.",
-	  "loss_text": "When you fail, get up and try again.",
-	  "pattern": "idle_down",
-	  "position": {
-		"x": 2278,
-		"y": 1252
-	  }
-	},
+	}
   ]
 }
