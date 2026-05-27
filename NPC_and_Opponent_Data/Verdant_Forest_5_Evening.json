@@ -176,8 +176,8 @@
 	  "patrol_speed": 20.0,
 	  "wander_radius": 65,
 	  "position": {
-		"x": 1610,
-		"y": 150
+		"x": 1760,
+		"y": 350
 	  },
 	  "condition": {
 		"type": "opponent_not_defeated",
@@ -199,141 +199,19 @@
 		"type": "opponent_not_defeated",
 		"target": "Pikachu Fan Leaf"
 	  }
+	},
+	{
+	  "name": "Rocket Pack Gift",
+	  "meet_text": "I'm glad we can finally get our hands on these packs. You look like you haven't opened many of these so have one on me. Spread the word you can buy them here.",
+	  "repeat_text": "Hope you pulled something good from that.",
+	  "pattern": "idle_left",
+	  "position": {
+		"x": 335,
+		"y": 1140
+	  }
 	}
   ],
   "opponents": [
-	{
-	  "name": "Old Traveller Harold",
-	  "meet_text": "I'm travelling the world with my old friend. We've been to many places in our time.",
-	  "repeat_text": "Won't be long until we move onto the next place",
-	  "first_win_text": "Well done. You could travel with us if you were older too ho ho ho.",
-	  "rematch_win_text": "Have you been aboard the SS Anne at all?",
-	  "loss_text": "Don't you worry, life isn't all about winning and losing.",
-	  "pattern": "idle_left",
-	  "position": {
-		"x": 100,
-		"y": 1590
-	  }
-	},
-	{
-	  "name": "Old Traveller Cliff",
-	  "meet_text": "Me and my dear friend arrived on the SS Anne. We've travelled on it a few years in the past.",
-	  "repeat_text": "I've lived in many places in my time so I always appreciate being in the now.",
-	  "first_win_text": "That's the way to do it, good effort!",
-	  "rematch_win_text": "Another fantastic play, good show.",
-	  "loss_text": "You'll never grow and mature if you win every time.",
-	  "pattern": "idle_right",
-	  "position": {
-		"x": 70,
-		"y": 1590
-	  }
-	},
-	{
-	  "name": "Clown Hubert",
-	  "meet_text": "Can you believe that some people are actually scared of us clowns!!!",
-	  "repeat_text": "I'm glad you don't find me scary!",
-	  "first_win_text": "I ran away from the circus for this?",
-	  "rematch_win_text": "I wonder if the circus will take me back....",
-	  "loss_text": "*honk* *honk* I can teach you how to ride a unicycle",
-	  "pattern": "idle_cycle",
-	  "position": {
-		"x": 340,
-		"y": 400
-	  }
-	},
-	{
-	  "name": "Clown Glenn",
-	  "meet_text": "Why do clowns often have stiff necks?....",
-	  "repeat_text": "I told my wife I was going to clown college....",
-	  "first_win_text": ".....Because they sleep funny!",
-	  "rematch_win_text": "..... She said you can't be serious!!!",
-	  "loss_text": "*honk* *honk* Nevermind, that's a better punchline!",
-	  "pattern": "patrol_square",
-	  "patrol_speed": 80.0,
-	  "patrol_distance": 100,
-	  "position": {
-		"x": 290,
-		"y": 350
-	  }
-	},
-	{
-	  "name": "Rocket Exec Petrel",
-	  "meet_text": "Heh, you've found us at the right time. We've been hiding from the police... Not that we've done anything illegal, we're just here to play this card game.",
-	  "repeat_text": "You're back for another round?",
-	  "first_win_text": "You better watch this space.",
-	  "rematch_win_text": "You should join us, we've got big things coming.",
-	  "loss_text": "Of course you didn't stand a chance against us.",
-	  "pattern": "idle_up",
-	  "position": {
-		"x": 3300,
-		"y": 1130
-	  }
-	},
-	{
-	  "name": "Rocket Exec Proton",
-	  "meet_text": "This well is bringing back a lot of memories... I can't imagine you've heard of Team Rocket before but you'll hear about us soon.",
-	  "repeat_text": "Giving me another chance huh?",
-	  "first_win_text": "Heh we're in your shadow then huh.",
-	  "rematch_win_text": "It won't always be like this.",
-	  "loss_text": "We will be feared again.",
-	  "pattern": "idle_up",
-	  "position": {
-		"x": 3250,
-		"y": 1130
-	  }
-	},
-	{
-	  "name": "Rocket Exec Archer",
-	  "meet_text": "Hello. I'm Archer one of the 4 execs of Team Rocket. We're not here to do anything illicit. Not yet anyway. We're just getting started.",
-	  "repeat_text": "If you're really that interested you should join us.",
-	  "first_win_text": "Enjoy the wins while they last.",
-	  "rematch_win_text": "Don't hang about too late.",
-	  "loss_text": "Don't take it personally.",
-	  "pattern": "idle_down",
-	  "position": {
-		"x": 3277,
-		"y": 1060
-	  }
-	},
-	{
-	  "name": "Rocket Exec Ariana",
-	  "meet_text": "Have you bought any of our card packs yet? Boss wants us to make as much money as possible as soon as we can.",
-	  "repeat_text": "You got one pack free but I won't be giving you another.",
-	  "first_win_text": "Here's a free one on me. Don't expect any more though.",
-	  "rematch_win_text": "Don't ask for anything from us.",
-	  "loss_text": "You need to try harder.",
-	  "pattern": "idle_right",
-	  "position": {
-		"x": 1760,
-		"y": 500
-	  }
-	},
-	{
-	  "name": "Rocket Boss Giovanni",
-	  "meet_text": "Good evening. I believe we may have already met? I've been working tirelessly since I arrived. There seems to be a lot of money to be made in this card game.",
-	  "repeat_text": "Nice to see you again. I'm willing to play again.",
-	  "first_win_text": "Interesting. You've got a great technique.",
-	  "rematch_win_text": "You could teach me a thing or two about this.",
-	  "loss_text": "Hmm. I won't let you beat me.",
-	  "pattern": "idle_left",
-	  "position": {
-		"x": 1790,
-		"y": 500
-	  }
-	},
-	{
-	  "name": "Psychic Nova",
-	  "meet_text": "If you relax your thoughts and focus your mind entirely, some people can move objects with natural telekinetic powers.",
-	  "repeat_text": "I hope you've been focusing",
-	  "first_win_text": "I have a friend who can bring out your hidden powers.",
-	  "rematch_win_text": "You have great potential. I think you have what it takes.",
-	  "loss_text": "You'll never be a master of your mind if you don't focus.",
-	  "pattern": "idle_down",
-	  "position": {
-		"x": 277,
-		"y": 1190
-	  }
-	},
 	{
 	  "name": "Fossil Expert Jonathan",
 	  "meet_text": "There's a lot of history in this forest, it's been around for thousands of years.",
@@ -347,5 +225,149 @@
 		"y": 1585
 	  }
 	},
+	{
+	  "name": "Ninjaboy Sasuke",
+	  "meet_text": "I love climbing the trees around here, it's good practice for my ninja skills.",
+	  "repeat_text": "I'm still training hard!",
+	  "first_win_text": "I should have been more sneaky.",
+	  "rematch_win_text": "It's hard to focus when you always lose!",
+	  "loss_text": "At least with age comes experience!",
+	  "pattern": "patrol_line",
+	  "patrol_speed": 90.0,
+	  "patrol_distance": 240,
+	  "patrol_axis": "horizontal",
+	  "position": {
+		"x": 850,
+		"y": 650
+	  }
+	},
+	{
+	  "name": "Card Expert Nathan",
+	  "meet_text": "Fire Pokemon are my favourite. They're so strong.",
+	  "repeat_text": "Looking for another solid match?",
+	  "first_win_text": "Fire Pokemon are strong but they still have their weaknesses",
+	  "rematch_win_text": "It's not just about having strong Pokemon",
+	  "loss_text": "Nothing can beat the strongest Pokemon",
+	  "pattern": "idle_right",
+	  "position": {
+		"x": 3320,
+		"y": 170
+	  }
+	},
+	{
+	  "name": "Card Expert Ruby",
+	  "meet_text": "You have to be careful with fire in the forest!!! They're only cards though so it's completely fine!",
+	  "repeat_text": "I've been practicing safety since we last met.",
+	  "first_win_text": "I was far too safe.",
+	  "rematch_win_text": "I might try using water instead of fire, I might have better luck with that.",
+	  "loss_text": "Don't play with fire if you don't know what you're doing.",
+	  "pattern": "idle_right",
+	  "position": {
+		"x": 3320,
+		"y": 430
+	  }
+	},
+	{
+	  "name": "Forest Ranger Tucker",
+	  "meet_text": "There's a lot of poisonous Pokemon out here in the trees so you have to be careful when you're wandering off the paths.",
+	  "repeat_text": "Hope you've not been stung!",
+	  "first_win_text": "You can clearly handle yourself so you should be fine.",
+	  "rematch_win_text": "Don't let your guard down!",
+	  "loss_text": "You might need to report to first aid...",
+	  "pattern": "random_wander",
+	  "patrol_speed": 50.0,
+	  "wander_radius": 65,
+	  "position": {
+		"x": 2640,
+		"y": 610
+	  }
+	},
+	{
+	  "name": "Lady Fiona",
+	  "meet_text": "There's always beauty to be found in even the most seemingly ugly things.",
+	  "repeat_text": "Life and everything in it is beauty.",
+	  "first_win_text": "Wouldn't you agree that ugliness can still be beautiful?",
+	  "rematch_win_text": "I always love to see the beauty in things.",
+	  "loss_text": "I'm not just a pretty face either.",
+	  "pattern": "idle_down",
+	  "position": {
+		"x": 2054,
+		"y": 928
+	  }
+	},
+	{
+	  "name": "Backpacker Patrick",
+	  "meet_text": "I've been all over the world and seen a lot of different places.",
+	  "repeat_text": "Nothing like putting on a backpack and going exploring",
+	  "first_win_text": "It's all about the experience.",
+	  "rematch_win_text": "I should get going...",
+	  "loss_text": "Carrying all this weight makes me stronger in every sense",
+	  "pattern": "random_wander",
+	  "patrol_speed": 50.0,
+	  "wander_radius": 65,
+	  "position": {
+		"x": -270,
+		"y": 1650
+	  }
+	},
+	{
+	  "name": "Card Expert Aurora",
+	  "meet_text": "The weather here is always good but I love a good storm.",
+	  "repeat_text": "I might take a trip to somewhere colder.",
+	  "first_win_text": "You won't need an umbrella then.",
+	  "rematch_win_text": "Maybe I need an umbrella...",
+	  "loss_text": "You'll never be ready for a true storm.",
+	  "pattern": "idle_down",
+	  "position": {
+		"x": 2980,
+		"y": 1125
+	  }
+	},
+	{
+	  "name": "Mad Scientist Leonard",
+	  "meet_text": "I'm right on the edge of finishing my best invention, it's going to change the world.",
+	  "repeat_text": "I still haven't figure out the right formulas yet.",
+	  "first_win_text": "I just can't seem to get the right formula. I need more assistants",
+	  "rematch_win_text": "You could defintely help me with this.",
+	  "loss_text": "Remember my name, I'll be all over every scientific news outlet soon!",
+	  "pattern": "random_wander",
+	  "patrol_speed": 40.0,
+	  "wander_radius": 65,
+	  "position": {
+		"x": 3660,
+		"y": 1100
+	  }
+	},
+	{
+	  "name": "Doctor Mortimor",
+	  "meet_text": "I'm a pretty good Doctor but the work is stressful so I like to take a walk in the forest to clear my head in the evening.",
+	  "repeat_text": "I'm still enjoying the fresh air after my long shift.",
+	  "first_win_text": "Medical school is long and hard, I didn't have a lot of time to practice cards.",
+	  "rematch_win_text": "I'm always too tired!",
+	  "loss_text": "I can treat you for any bad ailment other than a loss!",
+	  "pattern": "patrol_line",
+	  "patrol_speed": 30.0,
+	  "patrol_distance": 3100,
+	  "patrol_axis": "horizontal",
+	  "position": {
+		"x": -50,
+		"y": -50
+	  }
+	},
+	{
+	  "name": "Hiker Walter",
+	  "meet_text": "I've been travelling for hours, for days on end. I hike everywhere. It's a lot of hard work but I see a lot.",
+	  "repeat_text": "My legs are still aching, need a rest.",
+	  "first_win_text": "I should have taken my hiking backpack off, I couldn't concentrate.",
+	  "rematch_win_text": "I'm still too focused on the hike and not the game.",
+	  "loss_text": "If you hike everywhere like me you learn how to do a lot.",
+	  "pattern": "random_wander",
+	  "patrol_speed": 60.0,
+	  "wander_radius": 65,
+	  "position": {
+		"x": 400,
+		"y": 350
+	  }
+	}
   ]
 }

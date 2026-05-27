@@ -295,6 +295,22 @@
 	  }
 	},
 	{
+	  "name": "Swimmer Todd",
+	  "meet_text": "I'm training for a Quadrathlon. It's a 1000m Swim, Bike, Run and then 100 TCG matches!",
+	  "repeat_text": "I'm still training super hard.",
+	  "first_win_text": "I can swim really well, maybe I should train using my deck more than swimming.",
+	  "rematch_win_text": "At least my swimming is going really well.",
+	  "loss_text": "I am so ready for this event.",
+	  "pattern": "patrol_line",
+	  "patrol_speed": 50.0,
+	  "patrol_distance": 250,
+	  "patrol_axis": "horizontal",
+	  "position": {
+		"x": -300,
+		"y": 2580
+	  }
+	},
+	{
 	  "name": "Swimmer Melissa",
 	  "meet_text": "The sea is so much calmer and warmer here than it is back home in Kanto.",
 	  "repeat_text": "I could stay in the water here all day.",
@@ -416,21 +432,6 @@
 	  }
 	},
 	{
-	  "name": "Garden Manager Louis",
-	  "meet_text": "I might be the garden manager but I do know how to have fun.",
-	  "repeat_text": "Look at how great the gardens look.",
-	  "first_win_text": "Even with all this sun I couldn't win.",
-	  "rematch_win_text": "Ever fancied being a gardener yourself?",
-	  "loss_text": "Plants aren't just pretty.",
-	  "pattern": "random_wander",
-	  "patrol_speed": 40.0,
-	  "wander_radius": 65,
-	  "position": {
-		"x": -710,
-		"y": 2020
-	  }
-	},
-	{
 	  "name": "Sailor Bob",
 	  "meet_text": "Most of the passengers have returned on board for the night now so it's quiet again as usual.",
 	  "repeat_text": "There's still time before the morning shift.",
@@ -483,21 +484,6 @@
 	  }
 	},
 	{
-	  "name": "Hiker Ben",
-	  "meet_text": "Well that's incredibly disappointing. I was hoping to have a trek through the forest but they've told me it's shut so I have nowhere to go now.",
-	  "repeat_text": "The forest has to be open soon surely.",
-	  "first_win_text": "Well that's another disappointment to my day.",
-	  "rematch_win_text": "The disappointment just doesn't end.",
-	  "loss_text": "At least that's given me a nice little boost after the bad news.",
-	  "pattern": "random_wander",
-	  "patrol_speed": 40.0,
-	  "wander_radius": 60,
-	  "position": {
-		"x": 950,
-		"y": 1270
-	  }
-	},
-	{
 	  "name": "Engineer Brad",
 	  "meet_text": "Hey, I've been working hard all day so I'm ready to play",
 	  "repeat_text": "It's rare I have to work at night so I'm free for another match.",
@@ -523,5 +509,18 @@
 		"y": 2395
 	  }
 	},
+	{
+	  "name": "Painter Jericho",
+	  "meet_text": "The evening sun is the most perfect time to come here and paint... or play cards!",
+	  "repeat_text": "I've been painting a lot of great pieces from this spot.",
+	  "first_win_text": "A win or a loss, both are equal pieces of art.",
+	  "rematch_win_text": "A win or a loss, both are equal pieces of art.",
+	  "loss_text": "To win is a beautiful piece of art.",
+	  "pattern": "idle_right",
+	  "position": {
+		"x": -565,
+		"y": 2375
+	  }
+	}
   ]
 }

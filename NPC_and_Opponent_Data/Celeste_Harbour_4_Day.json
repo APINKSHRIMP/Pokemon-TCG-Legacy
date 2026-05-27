@@ -200,16 +200,6 @@
 	  }
 	},
 	{
-	  "name": "Mother Of Twins",
-	  "meet_text": "We're only visiting the harbour but my kids wanted some Pokemon cards so I bought them a few to play with.",
-	  "repeat_text": "Please take it easy on them!",
-	  "pattern": "idle_right",
-	  "position": {
-		"x": 954,
-		"y": 2396
-	  }
-	},
-	{
 	  "name": "3rd Woman Drinking Juice",
 	  "meet_text": "I just saw the girl over there get a bonus coin in her cup.",
 	  "repeat_text": "I also got a munchlax coin once just like that but mine was a different colour!",
@@ -580,32 +570,6 @@
 	  }
 	},
 	{
-	  "name": "Young Twin Anna",
-	  "meet_text": "I've always wanted to play with Pokemon Cards and mummy finally got us some!",
-	  "repeat_text": "Yay we get to play again?",
-	  "first_win_text": "Oh nooooo, I really wanted to win.",
-	  "rematch_win_text": "Please let me win!!",
-	  "loss_text": "Yay!! mummy must have got us the best cards ever.",
-	  "pattern": "idle_left",
-	  "position": {
-		"x": 1001,
-		"y": 2383
-	  }
-	},
-	{
-	  "name": "Young Twin Nella",
-	  "meet_text": "I've always wanted to play with Pokemon Cards and mummy finally got us some!",
-	  "repeat_text": "Yay we get to play again?",
-	  "first_win_text": "Oh nooooo, I really wanted to win.",
-	  "rematch_win_text": "Please let me win!!",
-	  "loss_text": "Yay!! mummy must have got us the best cards ever.",
-	  "pattern": "idle_left",
-	  "position": {
-		"x": 1001,
-		"y": 2403
-	  }
-	},
-	{
 	  "name": "Hiker Matthew",
 	  "meet_text": "I spent all day hiking yesterday to get here and I'm glad I did. But I only have this morning and then I'll be hiking back this evening.",
 	  "repeat_text": "I'll be hiking back again this evening, I hike all day every day!",
@@ -657,6 +621,50 @@
 	  "position": {
 		"x": 2278,
 		"y": 1252
+	  }
+	},
+	{
+	  "name": "Youngster Joey",
+	  "meet_text": "I just got given some cards off my grandma, she's so cool. I'm not really good at battling yet but it's a lot of fun!",
+	  "repeat_text": "I'm getting better at playing!'",
+	  "first_win_text": "Take these full heal cards, you can use them to heal any status conditions your pokemon get. They're really useful.",
+	  "rematch_win_text": "I'm going to win one day!",
+	  "loss_text": "I didn't expect to win at all! These cards must be really good.",
+	  "pattern": "random_wander",
+	  "patrol_speed": 40.0,
+	  "wander_radius": 65,
+	  "position": {
+		"x": -800,
+		"y": 2020
+	  }
+	},
+	{
+	  "name": "Gambler Mick",
+	  "meet_text": "All I need is a bit of luck, I let that decide my fate. If I battle enough then I'm bound to win some of them at least.",
+	  "repeat_text": "I'll be a lot luckier this time round.",
+	  "first_win_text": "Luck really wasn't on my side today...",
+	  "rematch_win_text": "I just need a little bit of luck that's all.",
+	  "loss_text": "Looks like luck wasn't on your side today.",
+	  "pattern": "idle_random",
+	  "position": {
+		"x": -860,
+		"y": 2690
+	  }
+	},
+	{
+	  "name": "Schoolboy Adam",
+	  "meet_text": "I'm trying out some new techniques using statuses. If we battle I'll show you how good they are.",
+	  "repeat_text": "I'll definitely win this time round.",
+	  "first_win_text": "Oh man I really thought my statuses were going to cause you some trouble.",
+	  "rematch_win_text": "Maybe I need a better tactic...",
+	  "loss_text": "I knew my status infliction technique would work!",
+	  "pattern": "patrol_line",
+	  "patrol_speed": 70.0,
+	  "patrol_distance": 200,
+	  "patrol_axis": "vertical",
+	  "position": {
+		"x": -850,
+		"y": 2250
 	  }
 	},
   ]
