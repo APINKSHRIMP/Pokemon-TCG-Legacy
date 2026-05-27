@@ -1,6 +1,16 @@
 {
   "npcs": [
 	{
+	  "name": "Maintenance Guy Fixing The Lighthouse day 3",
+	  "meet_text": "The lighthouse electrics have been a bit iffy since I replaced the bulb the other day so I've gotta go back up and take a look.",
+	  "repeat_text": "This is the only excercise I do and even that is too much...",
+	  "pattern": "idle_right",
+	  "position": {
+		"x": -800,
+		"y": 2620
+	  }
+	},
+	{
 	  "name": "Plaza Challenger 1",
 	  "meet_text": "I'm in the middle of an impornt match here don't disturb me!",
 	  "repeat_text": "Hey can you let me concentrate I'm losing here!",
@@ -485,19 +495,6 @@
 	  }
 	},
 	{
-	  "name": "Jogger Day 3",
-	  "meet_text": "*huff* *huff* I'm trying to beat my personal best again today so I can't stop and talk!!",
-	  "repeat_text": "*huff* Are you looking to get into running too or something?",
-	  "pattern": "patrol_line",
-	  "patrol_speed": 130.0,
-	  "patrol_distance": 2700,
-	  "patrol_axis": "horizontal",
-	  "position": {
-		"x": -500,
-		"y": 2020
-	  }
-	},
-	{
 	  "name": "Sailor Bob Day 3",
 	  "meet_text": "I'm going to busy until this evening now the SS Anne has docked. There were even more passengers than I initially thought there would be.",
 	  "repeat_text": "I wonder what Vermillion city is like? It's crazy to see so many Pokemon trainers in one place, barely anyone is a Pokemon trainer around here.",
@@ -590,19 +587,6 @@
   ],
   "opponents": [
 	{
-	  "name": "Swimmer Jordan",
-	  "meet_text": "I love the water, it's so calm and warm but my cards always get wet! I need to dry them off.",
-	  "repeat_text": "I can always take a break for another match.",
-	  "first_win_text": "I'll stick with my swimming...",
-	  "rematch_win_text": "Nothing like a good match and a long swim.",
-	  "loss_text": "Maybe you should work on your swimming...",
-	  "pattern": "idle_cycle",
-	  "position": {
-		"x": 500,
-		"y": 2590
-	  }
-	},
-	{
 	  "name": "Beach Kid Timothy",
 	  "meet_text": "I love the beach! I love the sand! I love building sandcastles! I love playing the Pokemon TCG!",
 	  "repeat_text": "I could build sandcastles and play Pokemon all day!",
@@ -655,22 +639,6 @@
 	  }
 	},
 	{
-	  "name": "Bug Catcher Alex",
-	  "meet_text": "Some people hate bugs but I love them! Do you love bugs too?",
-	  "repeat_text": "You just love bugs as much as I do then?",
-	  "first_win_text": "Maybe bugs aren't as good as I thought...",
-	  "rematch_win_text": "Me and my bugs will win one of these days!",
-	  "loss_text": "I knew bugs were the best!!",
-	  "pattern": "patrol_line",
-	  "patrol_speed": 20.0,
-	  "patrol_distance": 200,
-	  "patrol_axis": "horizontal",
-	  "position": {
-		"x": 1730,
-		"y": 2300
-	  }
-	},
-	{
 	  "name": "Bug Catcher Frankie",
 	  "meet_text": "Wow!!! The bugs here are so much cooler than what we have over in Viridian Forest!!",
 	  "repeat_text": "Seen any cool bug Pokemon around here since our last match?",
@@ -684,22 +652,6 @@
 	  }
 	},
 	{
-	  "name": "Swimmer Todd",
-	  "meet_text": "I'm training for a Quadrathlon. It's a 1000m Swim, Bike, Run and then 100 TCG matches!",
-	  "repeat_text": "I'm still training super hard.",
-	  "first_win_text": "I can swim really well, maybe I should train using my deck more than swimming.",
-	  "rematch_win_text": "At least my swimming is going really well.",
-	  "loss_text": "I am so ready for this event.",
-	  "pattern": "patrol_line",
-	  "patrol_speed": 50.0,
-	  "patrol_distance": 250,
-	  "patrol_axis": "horizontal",
-	  "position": {
-		"x": -300,
-		"y": 2580
-	  }
-	},
-	{
 	  "name": "Aromagirl Penelope",
 	  "meet_text": "Plants can grow in all weird shapes and sizes, they're not just flowers and trees, there's a lot of different kinds out there.",
 	  "repeat_text": "I've catalogued a lot of crazy plants recently.",
@@ -710,19 +662,6 @@
 	  "position": {
 		"x": 2167,
 		"y": 2305
-	  }
-	},
-	{
-	  "name": "Battlegirl Sofia",
-	  "meet_text": "This beach is a great spot to train both my martial arts and my card skills.",
-	  "repeat_text": "Want to join in with my training?",
-	  "first_win_text": "A loss is always a good chance to improve.",
-	  "rematch_win_text": "I'm going to keep on training.",
-	  "loss_text": "I rarely lose when I've trained properly.",
-	  "pattern": "idle_cycle",
-	  "position": {
-		"x": 2645,
-		"y": 2395
 	  }
 	},
 	{

@@ -29,6 +29,12 @@ var cash_reward: String = ""
 # Deck_Validation_Helper.gd. Empty dict = no restrictions.
 var restrictions: Dictionary = {}
 
+# Optional. When non-empty the opponent is a multi-game series —
+# intermediate games skip the outro and bounce back to the intro,
+# only the deciding game shows rewards / loss flavour.
+# Currently supported: "best_of_3"
+var match_format: String = ""
+
 # --- Movement config (set by MapManager before adding to tree) ---
 var movement_pattern: String = "idle_random"
 var patrol_distance: float = 100.0

@@ -105,20 +105,6 @@
 	  }
 	},
 	{
-	  "name": "Gardener Callum",
-	  "meet_text": "Wowee, it was a long day gardening today. I'm down for a match to let off some steam now.",
-	  "repeat_text": "I've got time for a rematch before my next shift.",
-	  "first_win_text": "I'm clearly too worn out from such a long shift.",
-	  "rematch_win_text": "I'll win when I'm fully rested.",
-	  "loss_text": "Even after a hard days work I can still win!",
-	  "pattern": "idle_left",
-	  "wander_radius": 65,
-	  "position": {
-		"x": -875,
-		"y": 2280
-	  }
-	},
-	{
 	  "name": "Garden Manager Louis",
 	  "meet_text": "I might be the garden manager but I do know how to have fun.",
 	  "repeat_text": "Look at how great the gardens look.",
@@ -147,45 +133,6 @@
 	  }
 	},
 	{
-	  "name": "Card Elder Rayne",
-	  "meet_text": "Hoh Hoh, are you ready to feel the torrent? If you win I'll give you a medal to prove your triumph.",
-	  "repeat_text": "Hoh Hoh! I enjoyed the battle that much I'd also like another!",
-	  "first_win_text": "Congratulations on your win. You've earned this medal and my respect.",
-	  "rematch_win_text": "Come back any time and battle us old folk.",
-	  "loss_text": "Don't be disheartened, the rain will always stop.",
-	  "pattern": "idle_down",
-	  "position": {
-		"x": 2230,
-		"y": 1252
-	  }
-	},
-	{
-	  "name": "Card Elder Hamish",
-	  "meet_text": "Back for the challenge then hey? Remember you'll need to defeat all 3 of us if you want to progress.",
-	  "repeat_text": "Very well, I always enjoy a good challenge!",
-	  "first_win_text": "Well done, that was quite the battle. Take my medal and continue forth.",
-	  "rematch_win_text": "Battling like this makes me feel young again.",
-	  "loss_text": "Don't be disheartened, the rain will always stop.",
-	  "pattern": "idle_down",
-	  "position": {
-		"x": 2326,
-		"y": 1252
-	  }
-	},
-	{
-	  "name": "Card Elder Waverly",
-	  "meet_text": "Are you ready to take me on then? If you win then you'll do well in the Gym Hero Challenge.",
-	  "repeat_text": "Up for another round then? Happy to oblige.",
-	  "first_win_text": "Well well well, what a jolly good play! You've earned this.",
-	  "rematch_win_text": "We've been winning and losing for so long it's always fun either way.",
-	  "loss_text": "When you fail, get up and try again.",
-	  "pattern": "idle_down",
-	  "position": {
-		"x": 2278,
-		"y": 1252
-	  }
-	},
-	{
 	  "name": "Hiker Ben",
 	  "meet_text": "Well that's incredibly disappointing. I was hoping to have a trek through the forest but they've told me it's shut so I have nowhere to go now.",
 	  "repeat_text": "The forest has to be open soon surely.",
@@ -201,19 +148,6 @@
 	  }
 	},
 	{
-	  "name": "Psychic Brienne",
-	  "meet_text": "I love the peace of the harbour at night, the sound of the waves in the dark are really relaxing.",
-	  "repeat_text": "It's easier to meditate at night.",
-	  "first_win_text": "I have to focus more. Take these cards to help you focus more too.",
-	  "rematch_win_text": "I'll focus harder.",
-	  "loss_text": "I manifested the win.",
-	  "pattern": "idle_left",
-	  "position": {
-		"x": -830,
-		"y": 1270
-	  }
-	},
-	{
 	  "name": "Engineer Brad",
 	  "meet_text": "Hey, I've been working hard all day so I'm ready to play",
 	  "repeat_text": "It's rare I have to work at night so I'm free for another match.",
@@ -224,19 +158,6 @@
 	  "position": {
 		"x": 900,
 		"y": 3155
-	  }
-	},
-	{
-	  "name": "Bad Dude Paul",
-	  "meet_text": "Heh you want to try and beat me kid??",
-	  "repeat_text": "Damn... they're gonna kick me out of the cool guy biker gang for this.",
-	  "first_win_text": "Heh you're pretty tough, you wanna join our gang?",
-	  "rematch_win_text": "Now they're DEFINITELY going to kick me out of the cool guy biker gang...",
-	  "loss_text": "Heh heh heh, too easy.",
-	  "pattern": "idle_random",
-	  "position": {
-		"x": -810,
-		"y": 2550
 	  }
 	},
 	{
@@ -279,6 +200,6 @@
 		"x": 900,
 		"y": 1050
 	  }
-	}
+	},
   ]
 }

@@ -223,6 +223,7 @@ func _load_and_spawn_opponents(json_path: String):
 		opp.patrol_axis      = entry.get("patrol_axis", "horizontal")
 		opp.wander_radius    = entry.get("wander_radius", 200.0)
 		opp.restrictions     = entry.get("restrictions", {})
+		opp.match_format     = entry.get("match_format", "")
 		_opponents_container.add_child(opp)
 
 	if GameState.returning_from_battle and not GameState.last_battled_opponent_entry.is_empty():
@@ -253,6 +254,7 @@ func _load_and_spawn_opponents(json_path: String):
 			opp.patrol_axis      = lbe.get("patrol_axis", "horizontal")
 			opp.wander_radius    = lbe.get("wander_radius", 200.0)
 			opp.restrictions     = lbe.get("restrictions", {})
+			opp.match_format     = lbe.get("match_format", "")
 			_opponents_container.add_child(opp)
 
 # ============================================================
@@ -536,7 +538,15 @@ func _on_yes_pressed():
 			"patrol_axis":    current_opponent.patrol_axis,
 			"wander_radius":  current_opponent.wander_radius,
 			"restrictions":   current_opponent.restrictions,
+			"match_format":   current_opponent.match_format,
 		}
+
+		# Best-of-N opponents: kick off a fresh series. Single-match opponents
+		# clear any stale series state so the outro flows normally.
+		if current_opponent.match_format != "":
+			GameState.start_match_series(current_opponent.opponent_name, current_opponent.match_format)
+		else:
+			GameState.clear_match_series()
 
 		_hide_message()
 		SoundManagerScript.stop_bgm()

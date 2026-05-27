@@ -431,47 +431,8 @@
 	  }
 	},
 	{
-	  "name": "Beach Kid Timothy",
-	  "meet_text": "I love the beach! I love the sand! I love building sandcastles! I love playing the Pokemon TCG!",
-	  "repeat_text": "I could build sandcastles and play Pokemon all day!",
-	  "first_win_text": "Please don't destroy my sandcastles!!!",
-	  "rematch_win_text": "You can help me build a sandcastle if you want!",
-	  "loss_text": "Yaaaaaay! I love winning!",
-	  "pattern": "idle_right",
-	  "position": {
-		"x": 450,
-		"y": 2380
-	  }
-	},
-	{
-	  "name": "Beach Kid Evie",
-	  "meet_text": "I heard there's a scary Pokemon called Sandyghast. They sound scary and I don't like scary Pokemon, I only like cute pokemon!!",
-	  "repeat_text": "Yes let's play again!",
-	  "first_win_text": "You haven't seen a Sandyghast have you?",
-	  "rematch_win_text": "If you see a Sandyghast please let me know!!",
-	  "loss_text": "Yaaaaaay! I won!!",
-	  "pattern": "idle_left",
-	  "position": {
-		"x": 480,
-		"y": 2380
-	  }
-	},
-	{
-	  "name": "Birdspotter Tamsin",
-	  "meet_text": "These Palms attract a lot of Bird Pokemon so its a good spot to watch them.",
-	  "repeat_text": "Me and my buddy love watching the birds round here but I can take my eyes off them for a rematch.",
-	  "first_win_text": "I wish I could just fly away.",
-	  "rematch_win_text": "You can't fly away from all your troubles.",
-	  "loss_text": "You should try bird watching with me!",
-	  "pattern": "idle_random",
-	  "position": {
-		"x": 1530,
-		"y": 2320
-	  }
-	},
-	{
 	  "name": "Birdspotter Gregg",
-	  "meet_text": "I'm out with my friend looking for birds round here. She said this is a great spot to find them but also a great spot to battle.",
+	  "meet_text": "My friend said this is a great spot to find them but also a great spot to battle.",
 	  "repeat_text": "This really is a great spot for birds and cards!",
 	  "first_win_text": "Do you hate birds or something?.",
 	  "rematch_win_text": "Well at least I can watch the birds from around here.",
@@ -538,19 +499,6 @@
 	  "position": {
 		"x": 2167,
 		"y": 2305
-	  }
-	},
-	{
-	  "name": "Battlegirl Sofia",
-	  "meet_text": "This beach is a great spot to train both my martial arts and my card skills.",
-	  "repeat_text": "Want to join in with my training?",
-	  "first_win_text": "A loss is always a good chance to improve.",
-	  "rematch_win_text": "I'm going to keep on training.",
-	  "loss_text": "I rarely lose when I've trained properly.",
-	  "pattern": "idle_cycle",
-	  "position": {
-		"x": 2645,
-		"y": 2395
 	  }
 	},
 	{

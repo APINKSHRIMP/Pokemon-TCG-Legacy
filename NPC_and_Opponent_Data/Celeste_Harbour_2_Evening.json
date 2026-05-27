@@ -311,6 +311,32 @@
 		"x": 2650,
 		"y": 2020
 	  }
+	},
+	{
+	  "name": "Gambler Mick",
+	  "meet_text": "All I need is a bit of luck, I let that decide my fate. If I battle enough then I'm bound to win some of them at least.",
+	  "repeat_text": "I'll be a lot luckier this time round.",
+	  "first_win_text": "Luck really wasn't on my side today...",
+	  "rematch_win_text": "I just need a little bit of luck that's all.",
+	  "loss_text": "Looks like luck wasn't on your side today.",
+	  "pattern": "idle_random",
+	  "position": {
+		"x": -860,
+		"y": 2690
+	  }
+	},
+	{
+	  "name": "Painter Jericho",
+	  "meet_text": "The evening sun is the most perfect time to come here and paint... or play cards!",
+	  "repeat_text": "I've been painting a lot of great pieces from this spot.",
+	  "first_win_text": "A win or a loss, both are equal pieces of art.",
+	  "rematch_win_text": "A win or a loss, both are equal pieces of art.",
+	  "loss_text": "To win is a beautiful piece of art.",
+	  "pattern": "idle_right",
+	  "position": {
+		"x": -565,
+		"y": 2375
+	  }
 	}
   ]
 }

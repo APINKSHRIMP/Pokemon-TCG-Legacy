@@ -22,6 +22,47 @@ var last_interior_scene: String = ""
 var current_shop_id: String = "card_mart"
 
 # ============================================================
+# MATCH SERIES (best-of-N support)
+# ============================================================
+# Ephemeral — never saved to disk. Quitting the app mid-series
+# resets the player to challenging the opponent fresh.
+# Driven by an opponent's optional "match_format" field
+# (e.g. "best_of_3"). Mid-series rematches bypass the outro and
+# route straight to the intro; only the deciding game shows
+# the outro/rewards.
+var series_active: bool = false
+var series_format: String = ""
+var series_opponent_name: String = ""
+var series_wins: int = 0
+var series_losses: int = 0
+var series_required_to_win: int = 0
+var series_total_games: int = 0
+
+func start_match_series(opponent_name: String, match_format: String) -> void:
+	series_opponent_name = opponent_name
+	series_format = match_format
+	series_wins = 0
+	series_losses = 0
+	match match_format:
+		"best_of_3":
+			series_total_games = 3
+			series_required_to_win = 2
+		_:
+			# Unknown format — fall back to a single match.
+			clear_match_series()
+			return
+	series_active = true
+
+func clear_match_series() -> void:
+	series_active = false
+	series_format = ""
+	series_opponent_name = ""
+	series_wins = 0
+	series_losses = 0
+	series_total_games = 0
+	series_required_to_win = 0
+
+# ============================================================
 # CURRENT SCENE PERSISTENCE
 # Tracks the player's current map and position so that the
 # splash-screen entry point can resume them at the right place

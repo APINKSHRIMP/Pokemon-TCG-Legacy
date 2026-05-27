@@ -409,36 +409,6 @@
 	  }
 	},
 	{
-	  "name": "Card Elder Waverly Day 3",
-	  "meet_text": "Hold on there sonny boy, with the SS Anne, you've arrived a bit too late! There's a lot of people already in the queue, by the looks of things it'll take us all day to get through this lot but it should be quieter tomorrow so take this card to help with your patience.",
-	  "repeat_text": "Make sure you've earned as many cards as you can around here, you'll need them to defeat us 3.",
-	  "pattern": "idle_down",
-	  "position": {
-		"x": 2230,
-		"y": 1252
-	  }
-	},
-	{
-	  "name": "Card Elder Rayne Day 3",
-	  "meet_text": "Hoh Hoh, are you looking to enter the Gym Hero Challenge? If you beat all 3 of us Elders we will grant you permission! .....However I'm already flat out with all these tourists. Take this card for now and come back tomorrow instead when it's quieter",
-	  "repeat_text": "You might need some better cards if you have a hope of beating us, make sure you've visited the card mart today and also check out card vendor at the market if you haven't already.",
-	  "pattern": "idle_down",
-	  "position": {
-		"x": 2278,
-		"y": 1252
-	  }
-	},
-	{
-	  "name": "Card Elder Hamish Day 3",
-	  "meet_text": "We're not as young as we used to be but we're still the best in the harbour. If you're looking to take on the Gym Hero Challenge you're better off coming back tomorrow when there are less people waiting, otherwise you'll be stood around all day. This card might help your chances.",
-	  "repeat_text": "You might need to buy a few more packs from the Card Mart first too. A lot of people are generous to give cards away so make sure you speak to everyone around too.",
-	  "pattern": "idle_down",
-	  "position": {
-		"x": 2326,
-		"y": 1252
-	  }
-	},
-	{
 	  "name": "Woman Trying To Shop Day 3",
 	  "meet_text": "I managed pick up a new coin from the shopkeeper over there. It was super expensive but I absolutely love visiting Galar so I had to have a little wooloo.",
 	  "repeat_text": "Can you believe that over in Galar Wooloo just wander around in the open? I think I wish we had those over here but I guess the weather is too warm for them.",

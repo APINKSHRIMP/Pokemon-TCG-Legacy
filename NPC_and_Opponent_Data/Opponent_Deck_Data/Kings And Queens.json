@@ -1,54 +1,54 @@
 [
 	{
-		"count": 4,
-		"id": "base1-11"
+		"count": 6,
+		"id": "base1-102"
 	},
 	{
-		"count": 4,
-		"id": "base1-37"
-	},
-	{
-		"count": 4,
-		"id": "base1-55"
-	},
-	{
-		"count": 2,
-		"id": "base1-76"
-	},
-	{
-		"count": 2,
-		"id": "base1-77"
-	},
-	{
-		"count": 2,
-		"id": "base1-88"
-	},
-	{
-		"count": 4,
-		"id": "base1-91"
-	},
-	{
-		"count": 2,
-		"id": "base1-92"
-	},
-	{
-		"count": 4,
-		"id": "base1-96"
-	},
-	{
-		"count": 20,
+		"count": 16,
 		"id": "base1-99"
 	},
 	{
 		"count": 4,
-		"id": "base2-40"
+		"id": "base3-59"
 	},
 	{
 		"count": 4,
-		"id": "base2-57"
+		"id": "base5-74"
+	},
+	{
+		"count": 2,
+		"id": "gym2-116"
+	},
+	{
+		"count": 3,
+		"id": "gym2-23"
 	},
 	{
 		"count": 4,
-		"id": "base2-7"
+		"id": "gym2-44"
+	},
+	{
+		"count": 4,
+		"id": "gym2-45"
+	},
+	{
+		"count": 2,
+		"id": "gym2-5"
+	},
+	{
+		"count": 3,
+		"id": "gym2-7"
+	},
+	{
+		"count": 4,
+		"id": "gym2-73"
+	},
+	{
+		"count": 4,
+		"id": "gym2-75"
+	},
+	{
+		"count": 4,
+		"id": "gym2-76"
 	}
 ]

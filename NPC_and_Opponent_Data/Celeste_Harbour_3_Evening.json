@@ -322,19 +322,6 @@
   ],
   "opponents": [
 	{
-	  "name": "Swimmer Jordan",
-	  "meet_text": "I love the water, it's so calm and warm but my cards always get wet! I need to dry them off.",
-	  "repeat_text": "My friend has just arrived from Kanto and we're spending the day swimming together, but I can take a break for a rematch.",
-	  "first_win_text": "I'll stick with my swimming...",
-	  "rematch_win_text": "Nothing like a good match and a long swim.",
-	  "loss_text": "Maybe you should work on your swimming...",
-	  "pattern": "idle_cycle",
-	  "position": {
-		"x": 450,
-		"y": 2590
-	  }
-	},
-	{
 	  "name": "Birdspotter Gregg",
 	  "meet_text": "My friend got hungry so decided to head back, but I'm interested to see what birds come out at night.",
 	  "repeat_text": "This really is a great spot for birds and cards!",
@@ -374,19 +361,6 @@
 	  }
 	},
 	{
-	  "name": "Fisherman Gary",
-	  "meet_text": "I joined my buddies here to fish today but we were actually catching sooo much that they ended up leaving!",
-	  "repeat_text": "Fishing by yourslef can get lonely when nothing bites.",
-	  "first_win_text": "Dang, I never lose against my buddies.",
-	  "rematch_win_text": "You're probably a really good fisherman too.",
-	  "loss_text": "I'm the only fisherman and best card player on this pier!",
-	  "pattern": "idle_down",
-	  "position": {
-		"x": -840,
-		"y": 2730
-	  }
-	},
-	{
 	  "name": "Guitarist Jonesy",
 	  "meet_text": "We're in a band and we're currently touring. We're just passing through to our next gig so having a quick jam here.",
 	  "repeat_text": "Hey dude, let's rock.",
@@ -410,22 +384,6 @@
 	  "position": {
 		"x": 2515,
 		"y": 1210
-	  }
-	},
-	{
-	  "name": "Jogger Daniel",
-	  "meet_text": "*huff* *huff* I've been training for my marathon all day so I'm worn out, I could do with a rest.",
-	  "repeat_text": "I'm still running as much as I can, I could do with another break.",
-	  "first_win_text": "*huff* I shouldn't have bothered stopping.",
-	  "rematch_win_text": "I'm just going to focus on my running from now on.",
-	  "loss_text": "I'm glad I decided to take a break, that's given me an extra push to carry on.",
-	  "pattern": "patrol_line",
-	  "patrol_speed": 70.0,
-	  "patrol_distance": 2700,
-	  "patrol_axis": "horizontal",
-	  "position": {
-		"x": -500,
-		"y": 2015
 	  }
 	},
 	{
@@ -486,16 +444,17 @@
 	  }
 	},
 	{
-	  "name": "Battlegirl Sofia",
-	  "meet_text": "This beach is a great spot to train both my martial arts and my card skills.",
-	  "repeat_text": "Want to join in with my training?",
-	  "first_win_text": "A loss is always a good chance to improve.",
-	  "rematch_win_text": "I'm going to keep on training.",
-	  "loss_text": "I rarely lose when I've trained properly.",
-	  "pattern": "idle_cycle",
+	  "name": "Engineer Allan",
+	  "meet_text": "I just had to replace an old fuse so other than the walk up to the top that's another easy day's work. I'm worn out from all the steps but always game for a match.",
+	  "repeat_text": "I won't be needing to replace the bulb any time soon so I've got time to kill.",
+	  "first_win_text": "That was clearly toooooo many steps today.",
+	  "rematch_win_text": "At least I'm reaaallly good at replacing bulbs.",
+	  "loss_text": "I hope your loss didn't come as a shock to you.",
+	  "pattern": "idle_left",
+	  "wander_radius": 65,
 	  "position": {
-		"x": 2645,
-		"y": 2395
+		"x": -800,
+		"y": 2620
 	  }
 	},
   ]

@@ -352,6 +352,37 @@
   ],
   "opponents": [
 	{
+	  "name": "Schoolboy Adam",
+	  "meet_text": "I'm trying out some new techniques using statuses. If we battle I'll show you how good they are.",
+	  "repeat_text": "I'll definitely win this time round.",
+	  "first_win_text": "Oh man I really thought my statuses were going to cause you some trouble.",
+	  "rematch_win_text": "Maybe I need a better tactic...",
+	  "loss_text": "I knew my status infliction technique would work!",
+	  "pattern": "patrol_line",
+	  "patrol_speed": 70.0,
+	  "patrol_distance": 200,
+	  "patrol_axis": "vertical",
+	  "position": {
+		"x": -850,
+		"y": 2250
+	  }
+	},
+	{
+	  "name": "Youngster Joey",
+	  "meet_text": "I just got given some cards off my grandma, she's so cool. I'm not really good at battling yet but it's a lot of fun!",
+	  "repeat_text": "I'm getting better at playing!'",
+	  "first_win_text": "Take these full heal cards, you can use them to heal any status conditions your pokemon get. They're really useful.",
+	  "rematch_win_text": "I'm going to win one day!",
+	  "loss_text": "I didn't expect to win at all! These cards must be really good.",
+	  "pattern": "random_wander",
+	  "patrol_speed": 40.0,
+	  "wander_radius": 65,
+	  "position": {
+		"x": -800,
+		"y": 2020
+	  }
+	},
+	{
 	  "name": "Swimmer Jordan",
 	  "meet_text": "I love the water, it's so calm and warm but my cards always get wet! I need to dry them off.",
 	  "repeat_text": "I can always take a break for another match.",

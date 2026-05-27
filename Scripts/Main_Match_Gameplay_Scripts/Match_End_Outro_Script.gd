@@ -103,6 +103,31 @@ func _ready() -> void:
 
 	battle_won = (GameState.battle_result == "win")
 
+	# ── Best-of-N series handling ──
+	# If the player is in a match series for this opponent and the series
+	# isn't decided yet, bypass the outro entirely (no dialogue, no rewards,
+	# no jingle) and bounce straight back to the intro for the next round.
+	# Only after the series is decided (e.g. 2 wins or 2 losses in best_of_3)
+	# do we fall through to the normal outro flow. The deciding game's
+	# battle_result always matches the overall series result, so battle_won
+	# is already correct.
+	if GameState.series_active and GameState.series_opponent_name == GameState.current_opponent_name:
+		if battle_won:
+			GameState.series_wins += 1
+		else:
+			GameState.series_losses += 1
+
+		var decided: bool = (
+			GameState.series_wins >= GameState.series_required_to_win
+			or GameState.series_losses >= GameState.series_required_to_win
+		)
+
+		if not decided:
+			_transition_to_next_round()
+			return
+
+		GameState.clear_match_series()
+
 	load_opponent_data(GameState.current_opponent_name)
 	load_player_data()
 
@@ -671,6 +696,22 @@ func _get_card_display_name(card_uid: String) -> String:
 			if card.get("id", "") == card_uid:
 				return card.get("name", card_uid)
 	return card_uid
+
+# ============================================================
+# SCENE TRANSITION — NEXT ROUND OF A MATCH SERIES
+# ============================================================
+# Called when a best-of-N series is mid-progress. Skips every part of
+# the outro (sprites, dialogue, rewards, jingle) and jumps straight to
+# the intro scene so the player goes from match end → next match intro
+# without seeing reward UI. battle_result is cleared so MapManager
+# wouldn't try to treat this as a battle return if it ever ran later.
+func _transition_to_next_round() -> void:
+	transitioning = true
+	click_enabled = false
+	GameState.battle_result = ""
+	GameState.returning_from_battle = false
+	SoundManagerScript.stop_bgm()
+	SceneCache.change_scene("res://Scenes/Main_Match_Gameplay_Scenes/Match_Start_Intro_Scene.tscn")
 
 # ============================================================
 # SCENE TRANSITION — BACK TO MAP
