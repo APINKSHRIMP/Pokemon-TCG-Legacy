@@ -1,0 +1,157 @@
+{
+  "npcs": [
+  ],
+  "opponents": [
+	{
+	  "name": "Card Expert Aurora",
+	  "meet_text": "The weather here is always good but I love a good storm.",
+	  "repeat_text": "I might take a trip to somewhere colder.",
+	  "first_win_text": "You won't need an umbrella then.",
+	  "rematch_win_text": "Maybe I need an umbrella...",
+	  "loss_text": "You'll never be ready for a true storm.",
+	  "pattern": "idle_down",
+	  "position": {
+		"x": 2980,
+		"y": 1125
+	  }
+	},
+	{
+	  "name": "Shady Character Owen",
+	  "meet_text": "Me and my pal here are from different gangs but we can still hang out.",
+	  "repeat_text": "You not joined our crew yet?",
+	  "first_win_text": "Heh you could be cool enough to be one of us too.",
+	  "rematch_win_text": "You should really think about signing up.",
+	  "loss_text": "You're too weak to join a cool crew like us",
+	  "pattern": "idle_left",
+	  "position": {
+		"x": 295,
+		"y": 1180
+	  }
+	},
+	{
+	  "name": "Shady Character Bernard",
+	  "meet_text": "We might be shady but we're not bad guys.",
+	  "repeat_text": "Hope you haven't joined any gangs.",
+	  "first_win_text": "Just coz you're strong, don't go joining any gangs to show off.",
+	  "rematch_win_text": "You're enough to bring down an entire gang by yourself.",
+	  "loss_text": "Of course you weren't going to win against me.",
+	  "pattern": "idle_right",
+	  "position": {
+		"x": 265,
+		"y": 1180
+	  }
+	},
+	{
+	  "name": "Ghost Whisperer Vera",
+	  "meet_text": "This forest is haunted. I am here to speak with those from the past.",
+	  "repeat_text": "Hope you haven't joined any gangs.",
+	  "first_win_text": "Someone is looking over your shoulder.",
+	  "rematch_win_text": "The spirits must be guiding you.",
+	  "loss_text": "I was getting help from the other side.",
+	  "pattern": "idle_down",
+	  "position": {
+		"x": 3277,
+		"y": 1062
+	  }
+	},
+	{
+	  "name": "Veteran Sylvester",
+	  "meet_text": "We've travelled the world together and settled here recently. We've been aboard the SS Anne before and it looks like it hasn't changed in years.",
+	  "repeat_text": "Good evening, hope you're keeping well.",
+	  "first_win_text": "You already appear well travelled. Maybe you could join us on our next adventure.",
+	  "rematch_win_text": "A great match as always.",
+	  "loss_text": "Don't let this get you down.",
+	  "pattern": "idle_left",
+	  "position": {
+		"x": 1989,
+		"y": 110
+	  }
+	},
+	{
+	  "name": "Clown Hubert",
+	  "meet_text": "Can you believe that some people are actually scared of us clowns!!!",
+	  "repeat_text": "I'm glad you don't find me scary!",
+	  "first_win_text": "I ran away from the circus for this?",
+	  "rematch_win_text": "I wonder if the circus will take me back....",
+	  "loss_text": "*honk* *honk* I can teach you how to ride a unicycle",
+	  "pattern": "idle_cycle",
+	  "position": {
+		"x": 340,
+		"y": 400
+	  }
+	},
+	{
+	  "name": "Clown Glenn",
+	  "meet_text": "Why do clowns often have stiff necks?....",
+	  "repeat_text": "I told my wife I was going to clown college....",
+	  "first_win_text": ".....Because they sleep funny!",
+	  "rematch_win_text": "..... She said you can't be serious!!!",
+	  "loss_text": "*honk* *honk* Nevermind, that's a better punchline!",
+	  "pattern": "patrol_square",
+	  "patrol_speed": 80.0,
+	  "patrol_distance": 100,
+	  "position": {
+		"x": 290,
+		"y": 350
+	  }
+	},
+	{
+	  "name": "Police Constable Floyd",
+	  "meet_text": "Because we've just reopened the forest, my boss wants us to keep a patrol to keep an eye out for any trouble.",
+	  "repeat_text": "Have you seen anything suspicious recently?",
+	  "first_win_text": "It's a good thing this area is so safe.",
+	  "rematch_win_text": "I need more training.",
+	  "loss_text": "I should be promoted to detective!",
+	  "pattern": "patrol_line",
+	  "patrol_speed": 60.0,
+	  "patrol_distance": 1520,
+	  "patrol_axis": "horizontal",
+	  "position": {
+		"x": 1000,
+		"y": 1050
+	  }
+	},
+	{
+	  "name": "Card Expert Aurora",
+	  "meet_text": "The weather here is always good but I love a good storm.",
+	  "repeat_text": "I might take a trip to somewhere colder.",
+	  "first_win_text": "You won't need an umbrella then.",
+	  "rematch_win_text": "Maybe I need an umbrella...",
+	  "loss_text": "You'll never be ready for a true storm.",
+	  "pattern": "idle_down",
+	  "position": {
+		"x": 2980,
+		"y": 1125
+	  }
+	},
+	{
+	  "name": "Police Sergeant Douglas",
+	  "meet_text": "You better not be up to anything. I'm the searge round ere. I'm keeping my eyes out for anything that aint right.",
+	  "repeat_text": "We're lucky nothing ever really happens round these parts.",
+	  "first_win_text": "Report back to me if you see anything dodgy immediately.",
+	  "rematch_win_text": "Don't tell anyone I'm rubbish at this.",
+	  "loss_text": "There'll be no crime around here on my watch.",
+	  "pattern": "patrol_line",
+	  "patrol_speed": 40.0,
+	  "patrol_distance": 2800,
+	  "patrol_axis": "horizontal",
+	  "position": {
+		"x": -300,
+		"y": 1650
+	  }
+	},
+	{
+	  "name": "Psychic Eli",
+	  "meet_text": "I can teach you to unleash your hidden potential. You have to be ready to empty your mind, focus and concentrate.",
+	  "repeat_text": "I am now able speak to you through your mind without the need to talk.",
+	  "first_win_text": "You have the power. Focus. Direct. Start small and train hard.",
+	  "rematch_win_text": "You have great potential. I think you have what it takes.",
+	  "loss_text": "I was wrong. You lack the discipline it takes.",
+	  "pattern": "idle_down",
+	  "position": {
+		"x": 295,
+		"y": 1190
+	  }
+	},
+  ]
+}

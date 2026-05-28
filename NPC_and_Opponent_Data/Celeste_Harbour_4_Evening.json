@@ -432,19 +432,6 @@
 	  }
 	},
 	{
-	  "name": "Sailor Bob",
-	  "meet_text": "Most of the passengers have returned on board for the night now so it's quiet again as usual.",
-	  "repeat_text": "There's still time before the morning shift.",
-	  "first_win_text": "I should at least pretend to do some work on the dock.",
-	  "rematch_win_text": "I won't have a lot of time to during the day now the ship has docked.",
-	  "loss_text": "All this spare time has given me a chance to practice.",
-	  "pattern": "idle_random",
-	  "position": {
-		"x": 2040,
-		"y": 3110
-	  }
-	},
-	{
 	  "name": "Card Elder Rayne",
 	  "meet_text": "Hoh Hoh, are you ready to feel the torrent? If you win I'll give you a medal to prove your triumph.",
 	  "repeat_text": "Hoh Hoh! I enjoyed the battle that much I'd also like another!",

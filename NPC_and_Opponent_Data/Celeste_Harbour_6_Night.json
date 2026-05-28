@@ -66,33 +66,6 @@
   ],
   "opponents": [
 	{
-	  "name": "Birdspotter Gregg",
-	  "meet_text": "My friend got hungry so decided to head back, but I'm interested to see what birds are out at night.",
-	  "repeat_text": "This really is a great spot for birds and cards!",
-	  "first_win_text": "Do you hate birds or something?.",
-	  "rematch_win_text": "Well at least I can watch the birds from around here.",
-	  "loss_text": "Looking after birds really isn't easy!",
-	  "pattern": "idle_random",
-	  "position": {
-		"x": 1640,
-		"y": 2340
-	  }
-	},
-	{
-	  "name": "Gardener Callum",
-	  "meet_text": "Wowee, it was a long day gardening today. I'm down for a match to let off some steam now.",
-	  "repeat_text": "I've got time for a rematch before my next shift.",
-	  "first_win_text": "I'm clearly too worn out from such a long shift.",
-	  "rematch_win_text": "I'll win when I'm fully rested.",
-	  "loss_text": "Even after a hard days work I can still win!",
-	  "pattern": "idle_left",
-	  "wander_radius": 65,
-	  "position": {
-		"x": -875,
-		"y": 2280
-	  }
-	},
-	{
 	  "name": "Card Elder Rayne",
 	  "meet_text": "Hoh Hoh, are you ready to feel the torrent? If you win I'll give you a medal to prove your triumph.",
 	  "repeat_text": "Hoh Hoh! I enjoyed the battle that much I'd also like another!",
@@ -132,19 +105,6 @@
 	  }
 	},
 	{
-	  "name": "Psychic Brienne",
-	  "meet_text": "I love the peace of the harbour at night, the sound of the waves in the dark are really relaxing.",
-	  "repeat_text": "It's easier to meditate at night.",
-	  "first_win_text": "I have to focus more. Take these cards to help you focus more too.",
-	  "rematch_win_text": "I'll focus harder.",
-	  "loss_text": "I manifested the win.",
-	  "pattern": "idle_left",
-	  "position": {
-		"x": -830,
-		"y": 1270
-	  }
-	},
-	{
 	  "name": "Engineer Brad",
 	  "meet_text": "Hey, I've been working hard all day so I'm ready to play",
 	  "repeat_text": "It's rare I have to work at night so I'm free for another match.",
@@ -155,19 +115,6 @@
 	  "position": {
 		"x": 900,
 		"y": 3155
-	  }
-	},
-	{
-	  "name": "Bad Dude Paul",
-	  "meet_text": "Heh you want to try and beat me kid??",
-	  "repeat_text": "Damn... they're gonna kick me out of the cool guy biker gang for this.",
-	  "first_win_text": "Heh you're pretty tough, you wanna join our gang?",
-	  "rematch_win_text": "Now they're DEFINITELY going to kick me out of the cool guy biker gang...",
-	  "loss_text": "Heh heh heh, too easy.",
-	  "pattern": "idle_random",
-	  "position": {
-		"x": -810,
-		"y": 2550
 	  }
 	},
 	{
@@ -186,6 +133,19 @@
 	  }
 	},
 	{
+	  "name": "Psychic Brienne",
+	  "meet_text": "I love the peace of the harbour at night, the sound of the waves in the dark are really relaxing.",
+	  "repeat_text": "It's easier to meditate at night.",
+	  "first_win_text": "I have to focus more. Take these cards to help you focus more too.",
+	  "rematch_win_text": "I'll focus harder.",
+	  "loss_text": "I manifested the win.",
+	  "pattern": "idle_left",
+	  "position": {
+		"x": -830,
+		"y": 1270
+	  }
+	},
+	{
 	  "name": "Painter Jericho",
 	  "meet_text": "The evening sun is the most perfect time to come here and paint... or play cards!",
 	  "repeat_text": "I've been painting a lot of great pieces from this spot.",
@@ -199,17 +159,30 @@
 	  }
 	},
 	{
-	  "name": "Battlegirl Sofia",
-	  "meet_text": "This beach is a great spot to train both my martial arts and my card skills.",
-	  "repeat_text": "Want to join in with my training?",
-	  "first_win_text": "A loss is always a good chance to improve.",
-	  "rematch_win_text": "I'm going to keep on training.",
-	  "loss_text": "I rarely lose when I've trained properly.",
+	  "name": "Firebreather Darryl",
+	  "meet_text": "I've had plenty of juice so I'm all cooled down and need to get fired up.",
+	  "repeat_text": "I'm fired up and ready for another match if you want.",
+	  "first_win_text": "I burned out too quick.",
+	  "rematch_win_text": "I could teach you how to firebreath... but maybe you should teach me how to play cards better!",
+	  "loss_text": "That juice was just what I needed!",
 	  "pattern": "idle_cycle",
 	  "position": {
-		"x": 2645,
-		"y": 2395
+		"x": 1050,
+		"y": 2475
 	  }
-	}
+	},
+	{
+	  "name": "Firebreather Kenneth",
+	  "meet_text": "We're practicing all night, both firebreathing and pokemon cards!",
+	  "repeat_text": "If you want another match then let's goooooo.",
+	  "first_win_text": "I have too many burns to battle well.",
+	  "rematch_win_text": "I'll just stick to the firebreathing from now on, I'm good at that.",
+	  "loss_text": "Can't burn me out!",
+	  "pattern": "idle_cycle",
+	  "position": {
+		"x": 1000,
+		"y": 2475
+	  }
+	},
   ]
 }

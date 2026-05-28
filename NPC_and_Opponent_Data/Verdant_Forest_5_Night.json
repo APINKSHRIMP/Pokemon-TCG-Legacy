@@ -18,34 +18,6 @@
 	  }
 	},
 	{
-	  "name": "Card Expert Aurora",
-	  "meet_text": "The weather here is always good but I love a good storm.",
-	  "repeat_text": "I might take a trip to somewhere colder.",
-	  "first_win_text": "You won't need an umbrella then.",
-	  "rematch_win_text": "Maybe I need an umbrella...",
-	  "loss_text": "You'll never be ready for a true storm.",
-	  "pattern": "idle_down",
-	  "position": {
-		"x": 2980,
-		"y": 1125
-	  }
-	},
-	{
-	  "name": "Mad Scientist Leonard",
-	  "meet_text": "I'm right on the edge of finishing my best invention, it's going to change the world.",
-	  "repeat_text": "I still haven't figure out the right formulas yet.",
-	  "first_win_text": "I just can't seem to get the right formula. I need more assistants",
-	  "rematch_win_text": "You could defintely help me with this.",
-	  "loss_text": "Remember my name, I'll be all over every scientific news outlet soon!",
-	  "pattern": "random_wander",
-	  "patrol_speed": 40.0,
-	  "wander_radius": 65,
-	  "position": {
-		"x": 3660,
-		"y": 1100
-	  }
-	},
-	{
 	  "name": "Hiker Walter",
 	  "meet_text": "I've been travelling for hours, for days on end. I hike everywhere. It's a lot of hard work but I see a lot.",
 	  "repeat_text": "My legs are still aching, need a rest.",
@@ -87,51 +59,6 @@
 	  }
 	},
 	{
-	  "name": "Ghost Whisperer Vera",
-	  "meet_text": "This forest is haunted. I am here to speak with those from the past.",
-	  "repeat_text": "Hope you haven't joined any gangs.",
-	  "first_win_text": "Someone is looking over your shoulder.",
-	  "rematch_win_text": "The spirits must be guiding you.",
-	  "loss_text": "I was getting help from the other side.",
-	  "pattern": "idle_down",
-	  "position": {
-		"x": 3277,
-		"y": 1062
-	  }
-	},
-	{
-	  "name": "Police Constable Floyd",
-	  "meet_text": "Because we've just reopened the forest, my boss wants us to keep a patrol to keep an eye out for any trouble.",
-	  "repeat_text": "Have you seen anything suspicious recently?",
-	  "first_win_text": "It's a good thing this area is so safe.",
-	  "rematch_win_text": "I need more training.",
-	  "loss_text": "I should be promoted to detective!",
-	  "pattern": "patrol_line",
-	  "patrol_speed": 60.0,
-	  "patrol_distance": 1520,
-	  "patrol_axis": "horizontal",
-	  "position": {
-		"x": 1000,
-		"y": 1050
-	  }
-	},
-	{
-	  "name": "Police Sergeant Douglas",
-	  "meet_text": "You better not be up to anything. I'm the searge round ere. I'm keeping my eyes out for anything that aint right.",
-	  "repeat_text": "We're lucky nothing ever really happens round these parts.",
-	  "first_win_text": "Report back to me if you see anything dodgy immediately.",
-	  "rematch_win_text": "Don't tell anyone I'm rubbish at this.",
-	  "loss_text": "There'll be no crime around here on my watch.",
-	  "pattern": "patrol_line",
-	  "patrol_speed": 40.0,
-	  "patrol_distance": 2800,
-	  "patrol_axis": "horizontal",
-	  "position": {
-		"x": -300,
-		"y": 1650
-	  }
-	},
-	{
 	  "name": "Rocket Grunt Margot",
 	  "meet_text": "Did you know Team Rocket almost ruled the world? Anybody can be a Rocket member if they want.",
 	  "repeat_text": "Have you thought about joining us yet?",
@@ -144,7 +71,34 @@
 	  "position": {
 		"x": 1770,
 		"y": 200
+	  },
+	},
+	{
+	  "name": "Rocket Exec Ariana",
+	  "meet_text": "Have you bought any of our card packs yet? Boss wants us to make as much money as possible as soon as we can.",
+	  "repeat_text": "You got one pack free but I won't be giving you another.",
+	  "first_win_text": "Here's a free one on me. Don't expect any more though.",
+	  "rematch_win_text": "Don't ask for anything from us.",
+	  "loss_text": "You need to try harder.",
+	  "pattern": "idle_right",
+	  "position": {
+		"x": 1760,
+		"y": 500
 	  }
-	}
+	},
+	{
+	  "name": "Rocket Boss Giovanni",
+	  "meet_text": "Good evening. I believe we may have already met? I've been working tirelessly since I arrived. There seems to be a lot of money to be made in this card game.",
+	  "repeat_text": "Nice to see you again. I'm willing to play again.",
+	  "first_win_text": "Interesting. You've got a great technique.",
+	  "rematch_win_text": "You could teach me a thing or two about this.",
+	  "loss_text": "Hmm. I won't let you beat me.",
+	  "pattern": "idle_left",
+	  "position": {
+		"x": 1790,
+		"y": 500
+	  }
+	},
+	
   ]
 }
