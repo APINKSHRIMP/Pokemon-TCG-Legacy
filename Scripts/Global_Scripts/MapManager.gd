@@ -1470,3 +1470,132 @@ func _on_validation_popup_closed() -> void:
 	# Roll the player and opponent back to free-roam — same cleanup as
 	# pressing "No" on the original challenge dialog.
 	_hide_message()
+
+# ============================================================
+# DEBUG / TESTING CHEATS (overworld only)
+# ------------------------------------------------------------
+# Number row 1-9 set the in-game date to that value; 0 sets date 10.
+# M / E / N set the time of day to Day / Evening / Night.
+# Any of those date/time keys also resets the current-period defeated
+# count to 0, then reloads the active map scene in place so its
+# date/time NPC & opponent JSON is reloaded — handy for sweeping
+# through all 30 day/time placements without restarting the game.
+# The player is restored to the exact spot they were standing.
+#
+# C bumps the current-period defeated count (opponents_beaten_count_current)
+# by 1 and flashes a large on-screen label for 2s. This is the same count
+# the outro reads to auto-advance time at 4 wins, so pressing C to 3 then
+# winning a real battle (→4) exercises the genuine time-advance path.
+#
+# Lives here in the MapManager autoload so it applies to every map
+# scene without per-scene duplication. Guarded to fire ONLY in
+# overworld map scenes, so it never interferes with battles/menus.
+# ============================================================
+
+const _MAP_SCENES_PREFIX := "res://Scenes/Map_Scenes/"
+
+var _debug_defeated_label: Label = null
+var _debug_label_token: int = 0
+
+func _unhandled_input(event: InputEvent) -> void:
+	if not (event is InputEventKey and event.pressed and not event.is_echo()):
+		return
+
+	var current := get_tree().current_scene
+	if current == null:
+		return
+	if not String(current.scene_file_path).begins_with(_MAP_SCENES_PREFIX):
+		return
+
+	# C — bump the defeated count and flash the label. No reset, no reload.
+	if event.keycode == KEY_C:
+		GameState.progress["opponents_beaten_count_current"] = GameState.get_current_defeated() + 1
+		GameState.save_progress()
+		print("DEBUG: opponents defeated = ", GameState.get_current_defeated())
+		get_viewport().set_input_as_handled()
+		_debug_flash_defeated_count()
+		return
+
+	var new_date: int = -1
+	var new_time: String = ""
+
+	match event.keycode:
+		KEY_1, KEY_KP_1: new_date = 1
+		KEY_2, KEY_KP_2: new_date = 2
+		KEY_3, KEY_KP_3: new_date = 3
+		KEY_4, KEY_KP_4: new_date = 4
+		KEY_5, KEY_KP_5: new_date = 5
+		KEY_6, KEY_KP_6: new_date = 6
+		KEY_7, KEY_KP_7: new_date = 7
+		KEY_8, KEY_KP_8: new_date = 8
+		KEY_9, KEY_KP_9: new_date = 9
+		KEY_0, KEY_KP_0: new_date = 10
+		KEY_M: new_time = "Day"
+		KEY_E: new_time = "Evening"
+		KEY_N: new_time = "Night"
+		_: return
+
+	if new_date != -1:
+		GameState.progress["date"] = new_date
+		print("DEBUG: date set to ", new_date)
+	else:
+		GameState.progress["time"] = new_time
+		print("DEBUG: time set to ", new_time)
+	# Changing date/time wipes the current-period defeated count, mirroring
+	# what advance_time() does so testing always starts from a clean slate.
+	GameState.progress["opponents_beaten_count_current"] = 0
+	GameState.save_progress()
+
+	get_viewport().set_input_as_handled()
+	_debug_reload_map_in_place(current)
+
+# Reloads the supplied map scene, restoring the player to their current
+# spot/direction via the same menu-return path every map scene honours
+# in its _ready().
+func _debug_reload_map_in_place(current: Node) -> void:
+	var scene_path := String(current.scene_file_path)
+	var pos: Vector2 = Vector2.ZERO
+	var dir: String = "down"
+	var player := current.get_node_or_null("Player")
+	if player is Node2D:
+		pos = player.position
+		if player.has_method("get_current_direction"):
+			dir = player.get_current_direction()
+
+	GameState.save_menu_return_state(scene_path, pos, dir)
+	SceneCache.change_scene(scene_path)
+
+# Shows a big "Opponents defeated: N" label on the current scene's UI layer
+# for 2 seconds. Re-pressing C refreshes the text and restarts the timer.
+func _debug_flash_defeated_count() -> void:
+	if _ui_layer == null or not is_instance_valid(_ui_layer):
+		return
+
+	if _debug_defeated_label == null or not is_instance_valid(_debug_defeated_label):
+		_debug_defeated_label = Label.new()
+		_debug_defeated_label.name = "DebugDefeatedLabel"
+		_debug_defeated_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		_debug_defeated_label.vertical_alignment   = VERTICAL_ALIGNMENT_CENTER
+		_debug_defeated_label.add_theme_font_size_override("font_size", 72)
+		_debug_defeated_label.add_theme_color_override("font_color", Color.WHITE)
+		_debug_defeated_label.add_theme_color_override("font_outline_color", Color.BLACK)
+		_debug_defeated_label.add_theme_constant_override("outline_size", 12)
+		_debug_defeated_label.anchor_left   = 0.0
+		_debug_defeated_label.anchor_right  = 1.0
+		_debug_defeated_label.anchor_top    = 0.0
+		_debug_defeated_label.anchor_bottom = 0.0
+		_debug_defeated_label.offset_top    = 80
+		_debug_defeated_label.offset_bottom = 200
+		_debug_defeated_label.mouse_filter  = Control.MOUSE_FILTER_IGNORE
+		_ui_layer.add_child(_debug_defeated_label)
+
+	_debug_defeated_label.text = "Opponents defeated: " + str(GameState.get_current_defeated())
+
+	_debug_label_token += 1
+	var my_token: int = _debug_label_token
+	await get_tree().create_timer(2.0).timeout
+	# Only the most recent C press tears the label down, so rapid presses
+	# keep it visible and just reset the 2s countdown.
+	if my_token == _debug_label_token and _debug_defeated_label != null and is_instance_valid(_debug_defeated_label):
+		_debug_defeated_label.queue_free()
+		_debug_defeated_label = null
