@@ -287,6 +287,7 @@ func _load_and_spawn_npcs(json_path: String):
 		var is_shop = entry.get("npc_type", "") == "shop"
 		var npc = shopkeeper_scene.instantiate() if is_shop else npc_scene.instantiate()
 
+		print("Attempting to load NPC: ", entry.get("name", "UNKNOWN"))
 		npc.npc_name         = entry["name"]
 		npc.sprite           = entry["sprite"]
 		npc.npc_type         = entry.get("npc_type", "text_only")

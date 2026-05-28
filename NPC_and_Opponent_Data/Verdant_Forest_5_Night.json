@@ -100,5 +100,44 @@
 	  }
 	},
 	
+	{
+	  "name": "Rocket Exec Petrel",
+	  "meet_text": "Heh, you've found us at the right time. We've been hiding from the police... Not that we've done anything illegal, we're just here to play this card game.",
+	  "repeat_text": "You're back for another round?",
+	  "first_win_text": "You better watch this space.",
+	  "rematch_win_text": "You should join us, we've got big things coming.",
+	  "loss_text": "Of course you didn't stand a chance against us.",
+	  "pattern": "idle_up",
+	  "position": {
+		"x": 3300,
+		"y": 1130
+	  }
+	},
+	{
+	  "name": "Rocket Exec Proton",
+	  "meet_text": "This well is bringing back a lot of memories... I can't imagine you've heard of Team Rocket before but you'll hear about us soon.",
+	  "repeat_text": "Giving me another chance huh?",
+	  "first_win_text": "Heh we're in your shadow then huh.",
+	  "rematch_win_text": "It won't always be like this.",
+	  "loss_text": "We will be feared again.",
+	  "pattern": "idle_up",
+	  "position": {
+		"x": 3250,
+		"y": 1130
+	  }
+	},
+	{
+	  "name": "Rocket Exec Archer",
+	  "meet_text": "Hello. I'm Archer one of the 4 execs of Team Rocket. We're not here to do anything illicit. Not yet anyway. We're just getting started.",
+	  "repeat_text": "If you're really that interested you should join us.",
+	  "first_win_text": "Enjoy the wins while they last.",
+	  "rematch_win_text": "Don't hang about too late.",
+	  "loss_text": "Don't take it personally.",
+	  "pattern": "idle_down",
+	  "position": {
+		"x": 3277,
+		"y": 1060
+	  }
+	},
   ]
 }

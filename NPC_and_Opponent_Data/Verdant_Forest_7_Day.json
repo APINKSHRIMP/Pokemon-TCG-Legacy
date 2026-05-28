@@ -347,5 +347,39 @@
 		"y": 1590
 	  }
 	},
+	{
+	  "name": "Ex Gym Leader Brock",
+	  "meet_text": "I'm Brock, the Ex Gym Leader of Pewter City and expert on Rock-type Pokemon. I'm practicing hard before the challenge begins. Did you know about the ruleset? Some trainer cards are banned for the challenge so you can't use them in your deck. Show me your best.",
+	  "repeat_text": "I really enjoyed our last match. Want to give it another shot?",
+	  "first_win_text": "You overcame my rock hard defence!",
+	  "rematch_win_text": "Looks like you're the stronger one.",
+	  "loss_text": "The best offense is a good defense! That's my way of doing things!",
+	  "pattern": "idle_left",
+	  "position": {
+		"x": 1540,
+		"y": 1595
+	  },
+	  "restrictions": {
+		"banned_card_ids":   ["base1-75","base1-79","base1-92","base5-16","base5-72","base5-76","gym1-19","gym1-103","gym2-102"],
+		"banned_card_names": ["Lass","Super Energy Removal","Energy Removal","Rocket's Sneak Attack","Imposter Oak's Revenge","The Rocket's Trap","No Removal Gym","Chaos Gym"]
+	  }
+	},
+	{
+	  "name": "Ex Gym Leader Misty",
+	  "meet_text": "This bridge really reminds me of home. I'm Misty, the Ex Gym Leader of Cerulean. I'm known for my all out Water-type offensive. This is only a practice but I won't hold back and we'll still play by the banned trainer cards rules.",
+	  "repeat_text": "I haven't got time to go swimming today so do you want another match?",
+	  "first_win_text": "You really are strong and skilled!",
+	  "rematch_win_text": "Glad to see you're really learning a thing or two!",
+	  "loss_text": "Yaaaay! That feels great!",
+	  "pattern": "idle_right",
+	  "position": {
+		"x": 3325,
+		"y": 325
+	  },
+	  "restrictions": {
+		"banned_card_ids":   ["base1-75","base1-79","base1-92","base5-16","base5-72","base5-76","gym1-19","gym1-103","gym2-102"],
+		"banned_card_names": ["Lass","Super Energy Removal","Energy Removal","Rocket's Sneak Attack","Imposter Oak's Revenge","The Rocket's Trap","No Removal Gym","Chaos Gym"]
+	  }
+	},
   ]
 }

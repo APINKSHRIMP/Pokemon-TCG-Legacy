@@ -436,5 +436,90 @@
 		"y": 998
 	  }
 	},
+	{
+	  "name": "Ex Gym Leader Erika",
+	  "meet_text": "Hello, such pleasant weather here, I'm afraid I may doze off... My name is Erika. I was the leader of Celadon Gym. If you want a match with me you'll need to make sure you don't use any banned trainer cards.",
+	  "repeat_text": "Plants are such delicate things. The amount of water, the condition of the soil, the temperature differences, the changing weather can have such a huge effect. Sorry.. you want another match?",
+	  "first_win_text": "That was a delightful match. I felt inspired",
+	  "rematch_win_text": "Losing leaves a bitter aftertaste... But knowing that there are strong players spurs me to do better...",
+	  "loss_text": "Oh... Is that all?",
+	  "pattern": "idle_right",
+	  "position": {
+		"x": 1560,
+		"y": 270
+	  },
+	  "restrictions": {
+		"banned_card_ids":   ["base1-75","base1-79","base1-92","base5-16","base5-72","base5-76","gym1-19","gym1-103","gym2-102"],
+		"banned_card_names": ["Lass","Super Energy Removal","Energy Removal","Rocket's Sneak Attack","Imposter Oak's Revenge","The Rocket's Trap","No Removal Gym","Chaos Gym"]
+	  }
+	},
+	{
+	  "name": "Ex Gym Leader Blaine",
+	  "meet_text": "Hah! I'm Blaine! I was the Leader of Cinnabar Gym before it burned down in the volcanic eruption. I retired but I'm here to help run this challenge. You won't be able to use certain trainers in your deck if you're taking part.",
+	  "repeat_text": "I'll never give up until I win.",
+	  "first_win_text": "Awesome. I've burned out...",
+	  "rematch_win_text": "I have burned down to nothing! Not even ashes remain!",
+	  "loss_text": "My fiery Pokémon will incinerate all challengers!",
+	  "pattern": "idle_up",
+	  "position": {
+		"x": 455,
+		"y": 500
+	  },
+	  "restrictions": {
+		"banned_card_ids":   ["base1-75","base1-79","base1-92","base5-16","base5-72","base5-76","gym1-19","gym1-103","gym2-102"],
+		"banned_card_names": ["Lass","Super Energy Removal","Energy Removal","Rocket's Sneak Attack","Imposter Oak's Revenge","The Rocket's Trap","No Removal Gym","Chaos Gym"]
+	  }
+	},
+	{
+	  "name": "Ex Gym Leader Koga",
+	  "meet_text": "Fwahaha! I am Koga. I was part of the Elite Four but most importantly an Ex Gym Leader. My style will confound and destroy you! Confusion, sleep, poison... Prepare to be the victim of my sinister technique!",
+	  "repeat_text": "I, too, must pursue further discipline.",
+	  "first_win_text": "Humph! You have proven your worth!",
+	  "rematch_win_text": "I subjected you to everything I could muster. But my efforts failed. I must hone my skills",
+	  "loss_text": "Have you learned to fear the techniques of the ninja?",
+	  "pattern": "idle_up",
+	  "position": {
+		"x": 65,
+		"y": 1565
+	  },
+	  "restrictions": {
+		"banned_card_ids":   ["base1-75","base1-79","base1-92","base5-16","base5-72","base5-76","gym1-19","gym1-103","gym2-102"],
+		"banned_card_names": ["Lass","Super Energy Removal","Energy Removal","Rocket's Sneak Attack","Imposter Oak's Revenge","The Rocket's Trap","No Removal Gym","Chaos Gym"]
+	  }
+	},
+	{
+	  "name": "Ex Gym Leader Sabrina",
+	  "meet_text": "I had a vision of your arrival! My name is Sabrina. I have had psychic powers since I was a child. You're here to play against me. I will grant you a match.",
+	  "repeat_text": "I knew you would return and this too shall not be the last time we meet.",
+	  "first_win_text": "This loss shocks me! But a loss is a loss. I admit I didn't work hard enough to win.",
+	  "rematch_win_text": "Your power... It far exceeds what I foresaw... Maybe it isn't possible to fully predict what the future holds...",
+	  "loss_text": "This turned out exactly as I had predicted.",
+	  "pattern": "idle_down",
+	  "position": {
+		"x": 2060,
+		"y": 1180
+	  },
+	  "restrictions": {
+		"banned_card_ids":   ["base1-75","base1-79","base1-92","base5-16","base5-72","base5-76","gym1-19","gym1-103","gym2-102"],
+		"banned_card_names": ["Lass","Super Energy Removal","Energy Removal","Rocket's Sneak Attack","Imposter Oak's Revenge","The Rocket's Trap","No Removal Gym","Chaos Gym"]
+	  }
+	},
+	{
+	  "name": "Ex Gym Leader Giovanni",
+	  "meet_text": "I shall spare you a moment of my time. I am the ex Gym Leader Giovanni. I believe Team Rocket has arrived but I know nothing of their plans. I am merely here for the Gym Hero Challenge.",
+	  "repeat_text": "Two things are inevitable: my success and your failure.",
+	  "first_win_text": "What? Me, lose?!",
+	  "rematch_win_text": "I hope we meet again...",
+	  "loss_text": "Mark my words. Not being able to measure your own strength shows that you are still but a child.",
+	  "pattern": "idle_up",
+	  "position": {
+		"x": 275,
+		"y": 1200
+	  },
+	  "restrictions": {
+		"banned_card_ids":   ["base1-75","base1-79","base1-92","base5-16","base5-72","base5-76","gym1-19","gym1-103","gym2-102"],
+		"banned_card_names": ["Lass","Super Energy Removal","Energy Removal","Rocket's Sneak Attack","Imposter Oak's Revenge","The Rocket's Trap","No Removal Gym","Chaos Gym"]
+	  }
+	},
   ]
 }
