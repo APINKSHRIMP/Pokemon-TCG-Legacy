@@ -30,7 +30,7 @@ var _validation_popup_active: bool = false
 var _validation_popup_node: Control = null
 
 var message_panel: Control
-var message_label: Label
+var message_label: RichTextLabel
 var yes_button: Button
 var no_button: Button
 var ok_button: Button
@@ -368,9 +368,7 @@ func _build_message_box():
 	if message_panel != null and is_instance_valid(message_panel):
 		message_panel.queue_free()
 
-	# Font 36, horizontal padding 60 (50 px further right than before) and
-	# vertical padding 15 (5 px further down). Pre-battle prompt keeps this size.
-	var box     = MessageBoxHelper.build(220.0, 36, true, 60.0, 15.0)
+	var box     = MessageBoxHelper.build(220.0, 28, true, 35.0, 5.0, 10.0)
 	message_panel = box["root"]
 	message_label = box["label"]
 	yes_button    = box["yes_btn"]

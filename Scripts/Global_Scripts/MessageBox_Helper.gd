@@ -16,7 +16,11 @@ class_name MessageBoxHelper
 
 # All messageboxes in the game share this image.
 const TEXTURE_PATH = "res://Image_Assets/Messageboxes/bluesquaremessagebox.png"
-const KENNEY_THEME = "res://UI_Themes/kenneyUI.tres"
+const KENNEY_THEME       = "res://UI_Themes/kenneyUI.tres"
+const KENNEY_THEME_GREEN = "res://UI_Themes/kenneyUI-green.tres"
+const KENNEY_THEME_RED   = "res://UI_Themes/kenneyUI-red.tres"
+const KENNEY_THEME_BLUE  = "res://UI_Themes/kenneyUI-blue.tres"
+const MSG_FONT_PATH = "res://UI_Themes/LupinademoRegular-X3ovd.otf"
 
 # Reference screen dimensions
 const SCREEN_W : float = 1920.0
@@ -46,9 +50,14 @@ static func build(box_height: float = 200.0,
 				  font_size:  int   = 24,
 				  include_buttons: bool = true,
 				  extra_padding: float = 0.0,
-				  extra_padding_top: float = -1.0) -> Dictionary:
+				  extra_padding_top: float = -1.0,
+				  extra_padding_right: float = -1.0) -> Dictionary:
 
 	var kenney: Theme = load(KENNEY_THEME)
+	var msg_font: FontFile = load(MSG_FONT_PATH)
+	var msg_font_bold := FontVariation.new()
+	msg_font_bold.base_font = msg_font
+	msg_font_bold.variation_embolden = 1.0
 
 	# ── Root ─────────────────────────────────────────────────
 	# Explicitly sized to the full reference screen so children
@@ -84,21 +93,28 @@ static func build(box_height: float = 200.0,
 	# extra_padding_top pushes text DOWN from the top; if left as -1 it inherits
 	# extra_padding so the old single-value calls still behave identically.
 	var margin := 18.0
-	var pad_top: float = extra_padding_top if extra_padding_top >= 0.0 else extra_padding
+	var pad_top:   float = extra_padding_top   if extra_padding_top   >= 0.0 else extra_padding
+	var pad_right: float = extra_padding_right if extra_padding_right >= 0.0 else extra_padding
 	var vbox := VBoxContainer.new()
 	vbox.offset_left   = img_x + margin + extra_padding
 	vbox.offset_top    = img_y + margin + pad_top
-	vbox.offset_right  = img_x + BOX_HALF_WIDTH * 2.0 - margin - extra_padding
-	vbox.offset_bottom = SCREEN_H - margin
+	vbox.offset_right  = img_x + BOX_HALF_WIDTH * 2.0 - margin - pad_right
+	vbox.offset_bottom = SCREEN_H - (65.0 if include_buttons else margin)
 	vbox.add_theme_constant_override("separation", 6)
 	root.add_child(vbox)
 
 	# ── Text label ────────────────────────────────────────────
-	var label := Label.new()
-	label.theme = kenney
-	label.add_theme_font_size_override("font_size", font_size)
-	label.add_theme_color_override("font_color", Color(0, 0, 0, 1))
-	label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	# RichTextLabel so [b]...[/b] tags can bold the speaker name and footer
+	# while leaving body text in the regular weight.
+	var label := RichTextLabel.new()
+	label.bbcode_enabled = true
+	label.scroll_active  = false
+	label.fit_content    = true
+	label.add_theme_font_override("normal_font", msg_font)
+	label.add_theme_font_override("bold_font",   msg_font_bold)
+	label.add_theme_font_size_override("normal_font_size", font_size)
+	label.add_theme_font_size_override("bold_font_size",   font_size)
+	label.add_theme_color_override("default_color", Color(0, 0, 0, 1))
 	# Natural height by default so optional buttons sit immediately under the
 	# text with no trailing gap. Callers that want the label to fill the box
 	# (e.g. the gift "You received…" panel) can set SIZE_EXPAND_FILL themselves
@@ -111,29 +127,42 @@ static func build(box_height: float = 200.0,
 	var ok_btn:  Button = null
 
 	if include_buttons:
+		var kenney_green: Theme = load(KENNEY_THEME_GREEN)
+		var kenney_red:   Theme = load(KENNEY_THEME_RED)
+		var kenney_blue:  Theme = load(KENNEY_THEME_BLUE)
+
+		# Buttons are anchored to a fixed position at the bottom of the box,
+		# independent of text length so they never shift around.
 		var btn_row := HBoxContainer.new()
 		btn_row.alignment = BoxContainer.ALIGNMENT_CENTER
 		btn_row.add_theme_constant_override("separation", 30)
-		vbox.add_child(btn_row)
+		btn_row.offset_left   = img_x + margin
+		btn_row.offset_top    = SCREEN_H - 65.0
+		btn_row.offset_right  = img_x + BOX_HALF_WIDTH * 2.0 - margin
+		btn_row.offset_bottom = SCREEN_H - 20.0
+		root.add_child(btn_row)
 
 		yes_btn = Button.new()
 		yes_btn.text = "  Yes  "
-		yes_btn.theme = kenney
+		yes_btn.theme = kenney_green
 		yes_btn.add_theme_font_size_override("font_size", 20)
+		yes_btn.custom_minimum_size = Vector2(144, 0)
 		yes_btn.visible = false
 		btn_row.add_child(yes_btn)
 
 		no_btn = Button.new()
 		no_btn.text = "  No  "
-		no_btn.theme = kenney
+		no_btn.theme = kenney_red
 		no_btn.add_theme_font_size_override("font_size", 20)
+		no_btn.custom_minimum_size = Vector2(144, 0)
 		no_btn.visible = false
 		btn_row.add_child(no_btn)
 
 		ok_btn = Button.new()
 		ok_btn.text = "  OK  "
-		ok_btn.theme = kenney
+		ok_btn.theme = kenney_blue
 		ok_btn.add_theme_font_size_override("font_size", 20)
+		ok_btn.custom_minimum_size = Vector2(144, 0)
 		ok_btn.visible = false
 		btn_row.add_child(ok_btn)
 

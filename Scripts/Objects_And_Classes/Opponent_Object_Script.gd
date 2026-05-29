@@ -391,7 +391,7 @@ func get_greeting_text() -> String:
 	# Pre-battle prompt includes a deck/prize-cards footer so the player knows
 	# what they're up against. The post-battle result text (get_result_text)
 	# intentionally omits this — by then the match is over.
-	return "%s:\n%s\n\n(%s | %d prize cards)" % [opponent_name, body, deck, prize_cards]
+	return "[font_size=27][b]%s:[/b][/font_size]\n%s\n[font_size=8] [/font_size]\n[font_size=17][b](%s | %d prize cards)[/b][/font_size]" % [opponent_name, body, deck, prize_cards]
 
 func get_result_text(player_won: bool) -> String:
 	var raw: String
@@ -399,4 +399,4 @@ func get_result_text(player_won: bool) -> String:
 		raw = first_win_text if not GameState.has_beaten_opponent(opponent_name) else rematch_win_text
 	else:
 		raw = loss_text
-	return "%s:\n%s" % [opponent_name, raw]
+	return "[b]%s:[/b] %s" % [opponent_name, raw]

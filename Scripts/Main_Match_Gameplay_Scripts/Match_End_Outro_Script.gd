@@ -78,9 +78,9 @@ var _gift_container: Control   = null
 #   _dialogue_panel — opponent win/loss text (small font, extra padding)
 #   _gift_panel     — "You received…" notices (larger font, default padding)
 var _dialogue_panel: Control = null
-var _dialogue_label: Label   = null
+var _dialogue_label: RichTextLabel = null
 var _gift_panel:     Control = null
-var _gift_label:     Label   = null
+var _gift_label:     RichTextLabel = null
 
 const CARDBACK_PATH = "res://Image_Assets/Card_Backs_And_Decks/cardback.png"
 const COINBACK_PATH = "res://Image_Assets/Coins/Back Basic.png"
@@ -473,10 +473,9 @@ func _create_msg_panels() -> void:
 	var g = MessageBoxHelper.build(156.0, 45, false, 0.0)
 	_gift_panel = g["root"]
 	_gift_label = g["label"]
-	_gift_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	_gift_label.vertical_alignment   = VERTICAL_ALIGNMENT_CENTER
-	# Restore expand-fill so the label fills the box and vertical-centre works
-	_gift_label.size_flags_vertical  = Control.SIZE_EXPAND_FILL
+	# RichTextLabel: horizontal centre via BBCode; vertical via expand-fill + fit_content off
+	_gift_label.fit_content         = false
+	_gift_label.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	add_child(_gift_panel)
 
 func _show_dialogue_message(text: String) -> void:
@@ -493,7 +492,7 @@ func _hide_dialogue_message() -> void:
 func _show_gift_message(text: String) -> void:
 	if _gift_panel == null:
 		return
-	_gift_label.text    = text
+	_gift_label.text    = "[center]" + text + "[/center]"
 	_gift_panel.visible = true
 	move_child(_gift_panel, get_child_count() - 1)
 
