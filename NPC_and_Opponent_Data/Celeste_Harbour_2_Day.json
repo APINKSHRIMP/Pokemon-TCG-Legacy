@@ -232,13 +232,14 @@
 	},
 	{
 	  "name": "Kid Opening Packs",
-	  "meet_text": "I'm opening a LOT of packs, sometimes when you open them you'll get a free bonus rare card at the end!!! I've gotten a lot of free rares so you can have this one too!",
-	  "repeat_text": "I'm soooo lucky, I keep getting bonus rares in these packs!",
+	  "meet_text": "I'm opening a LOT of packs, sometimes when you open them you'll get a free bonus rare card at the end!!! My mum said we should always share, I've bought a lot of packs and gotten a lot of free rares so you can have this!",
+	  "repeat_text": "I'm soooo lucky, I keep getting bonus rares in these packs! Did you get one in yours?",
 	  "pattern": "idle_random",
 	  "position": {
 		"x": 585,
 		"y": 1520
 	  }
+	  "condition": { "type": "npc_not_met", "target": "Kid Opening Packs" }
 	},
 	{
 	  "name": "Maintenance Guy Watering Sunflowers Day 2",

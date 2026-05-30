@@ -111,19 +111,7 @@
 		"y": 1050
 	  }
 	},
-	{
-	  "name": "Card Expert Aurora",
-	  "meet_text": "The weather here is always good but I love a good storm.",
-	  "repeat_text": "I might take a trip to somewhere colder.",
-	  "first_win_text": "You won't need an umbrella then.",
-	  "rematch_win_text": "Maybe I need an umbrella...",
-	  "loss_text": "You'll never be ready for a true storm.",
-	  "pattern": "idle_down",
-	  "position": {
-		"x": 2980,
-		"y": 1125
-	  }
-	},
+	
 	{
 	  "name": "Police Sergeant Douglas",
 	  "meet_text": "You better not be up to anything. I'm the searge round ere. I'm keeping my eyes out for anything that aint right.",

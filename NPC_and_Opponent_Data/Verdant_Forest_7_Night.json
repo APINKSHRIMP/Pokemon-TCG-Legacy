@@ -114,20 +114,7 @@
 		"y": 300
 	  }
 	},
-	{
-	  "name": "Rocket Grunt Margot",
-	  "meet_text": "Did you know Team Rocket almost ruled the world? Anybody can be a Rocket member if they want.",
-	  "repeat_text": "Have you thought about joining us yet?",
-	  "first_win_text": "I'm supposed to be recruiting so take one of our uniforms if you want to join!",
-	  "rematch_win_text": "You've got everything it takes to join us.",
-	  "loss_text": "Maybe you're not cut out to be a Rocket grunt like me.",
-	  "pattern": "random_wander",
-	  "patrol_speed": 60.0,
-	  "wander_radius": 65,
-	  "position": {
-		"x": 1770,
-		"y": 200
-	  },
+	
 	},
 	{
 	  "name": "Rocket Exec Petrel",
