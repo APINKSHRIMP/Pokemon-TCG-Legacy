@@ -114,8 +114,6 @@
 		"y": 300
 	  }
 	},
-	
-	},
 	{
 	  "name": "Rocket Exec Petrel",
 	  "meet_text": "Heh, you've found us at the right time. We've been hiding from the police... Not that we've done anything illegal, we're just here to play this card game.",
@@ -244,6 +242,6 @@
 		"banned_card_ids":   ["base1-75","base1-79","base1-92","base5-16","base5-72","base5-76","gym1-19","gym1-103","gym2-102"],
 		"banned_card_names": ["Lass","Super Energy Removal","Energy Removal","Rocket's Sneak Attack","Imposter Oak's Revenge","The Rocket's Trap","No Removal Gym","Chaos Gym"]
 	  }
-	},
+	}
   ]
 }

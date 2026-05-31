@@ -247,6 +247,6 @@
 	"Ex Gym Leader Koga": {"sprite": "Ex_Gym_Leader_Koga", "deck": "Ninja Ambush", "music": "REPLACEMUSIC", "prize_cards": 6, "cash_reward": "200", "coin_reward": "Energy Colorless Silver", "pack_reward": "Gym2_a", "card_reward": "Gym2-10"},
 	"Ex Gym Leader Sabrina": {"sprite": "Ex_Gym_Leader_Sabrina", "deck": "Psychic Uplink", "music": "REPLACEMUSIC", "prize_cards": 6, "cash_reward": "200", "coin_reward": "Energy Psychic Purple", "pack_reward": "Gym2_b", "card_reward": "Gym2-16"},
 	"Ex Gym Leader Blaine": {"sprite": "Ex_Gym_Leader_Blaine", "deck": "Burning Slot Machine", "music": "REPLACEMUSIC", "prize_cards": 6, "cash_reward": "200", "coin_reward": "Energy Fire Red", "pack_reward": "Gym2_c", "card_reward": "Gym2-1"},
-	"Ex Gym Leader Giovanni": {"sprite": "Ex_Gym_Leader_Giovanni", "deck": "Kings And Queens", "music": "REPLACEMUSIC", "prize_cards": 6, "cash_reward": "200", "coin_reward": "Energy Darkness Black", "pack_reward": "Gym2_d", "card_reward": "Gym2-7"},
+	"Ex Gym Leader Giovanni": {"sprite": "Ex_Gym_Leader_Giovanni", "deck": "Kings And Queens", "music": "REPLACEMUSIC", "prize_cards": 6, "cash_reward": "200", "coin_reward": "Energy Darkness Black", "pack_reward": "Gym2_d", "card_reward": "Gym2-7"}
 	}
 }

@@ -21,7 +21,7 @@ const BGM_PATH = "res://Audio/BGM/024_Makuhita_Dojo_PMD_Blue_Rescue_Team_OST.ogg
 # contain both an "opponents" and an "npcs" array (either may be
 # empty) — that's the MapManager convention. The same path feeds
 # both the opponent and NPC loaders (one file, two arrays).
-const NPC_JSON_PATH = "res://NPC_and_Opponent_Data/Gym_Challenge_Hall_NPCs.json"
+const NPC_JSON_PATH = "res://NPC_and_Opponent_Data/Gym_Challenge_Hall_Day_9.json"
 
 # --- Door-return spawn point --------------------------------------------------
 # The single door leads back to the Gym Challenge Reception, so the player

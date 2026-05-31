@@ -349,6 +349,20 @@ func _evaluate_condition(condition: Dictionary) -> bool:
 				if GameState.has_beaten_opponent(t):
 					return true
 			return false
+		"all":
+			# Compound AND — every sub-condition must pass. Sub-conditions live
+			# in "conditions" and are evaluated recursively (so they honour the
+			# returning_from_battle special-case individually).
+			for sub in condition.get("conditions", []):
+				if not _evaluate_condition(sub):
+					return false
+			return true
+		"any":
+			# Compound OR — at least one sub-condition must pass.
+			for sub in condition.get("conditions", []):
+				if _evaluate_condition(sub):
+					return true
+			return false
 		"npc_met":
 			return GameState.has_met_npc(condition.get("target", ""))
 		"npc_not_met":

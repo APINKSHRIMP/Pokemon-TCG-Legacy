@@ -238,7 +238,7 @@
 	  "position": {
 		"x": 585,
 		"y": 1520
-	  }
+	  },
 	  "condition": { "type": "npc_not_met", "target": "Kid Opening Packs" }
 	},
 	{
@@ -466,6 +466,6 @@
 		"x": -300,
 		"y": 2580
 	  }
-	},
+	}
   ]
 }
