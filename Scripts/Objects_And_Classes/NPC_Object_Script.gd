@@ -46,6 +46,7 @@ var patrol_step: int = 0
 var distance_walked: float = 0.0
 var current_facing: String = "down"
 var _restore_timer: SceneTreeTimer = null
+var _glance_timer: SceneTreeTimer = null
 
 var _wander_origin: Vector2 = Vector2.ZERO
 var _wander_target: Vector2 = Vector2.ZERO
@@ -66,6 +67,20 @@ const BUBBLE_Z_INDEX: int = 100
 const DIRECTIONS   = ["up", "down", "left", "right"]
 const DIR_VECTORS  = {"up": Vector2.UP, "down": Vector2.DOWN, "left": Vector2.LEFT, "right": Vector2.RIGHT}
 const SQUARE_ORDER = ["down", "right", "up", "left"]
+
+func _primary_dir_for_pattern() -> String:
+	match movement_pattern:
+		"idle_down_random":  return "down"
+		"idle_up_random":    return "up"
+		"idle_left_random":  return "left"
+		"idle_right_random": return "right"
+	return "down"
+
+func _glance_dirs_for_pattern() -> Array:
+	match movement_pattern:
+		"idle_down_random", "idle_up_random":    return ["left", "right"]
+		"idle_left_random", "idle_right_random": return ["up", "down"]
+	return ["left", "right"]
 
 func _is_player_blocking() -> bool:
 	var players = get_tree().get_nodes_in_group("player")
@@ -118,6 +133,13 @@ func _ready():
 		"idle_right":  animated_sprite.play("idle_right")
 		"idle_up":     animated_sprite.play("idle_up")
 		"idle_down":   animated_sprite.play("idle_down")
+		"idle_down_random", "idle_up_random", "idle_left_random", "idle_right_random":
+			var primary := _primary_dir_for_pattern()
+			current_facing = primary
+			animated_sprite.play("idle_" + primary)
+			direction_timer.wait_time = randf_range(2.0, 15.0)
+			direction_timer.timeout.connect(_on_direction_timer_timeout)
+			direction_timer.start()
 		"patrol_line":
 			distance_walked = 0.0
 			if patrol_axis == "horizontal":
@@ -322,6 +344,7 @@ func _pick_wander_target():
 	_is_wandering = true
 
 func _on_direction_timer_timeout():
+	var auto_restart := true
 	match movement_pattern:
 		"idle_random":
 			var new_dir = DIRECTIONS[randi() % DIRECTIONS.size()]
@@ -330,7 +353,29 @@ func _on_direction_timer_timeout():
 		"random_wander":
 			if not _is_wandering:
 				_pick_wander_target()
-	direction_timer.wait_time = randf_range(2.0, 5.0)
+		"idle_down_random", "idle_up_random", "idle_left_random", "idle_right_random":
+			var dirs := _glance_dirs_for_pattern()
+			var glance_dir: String = dirs[randi() % 2]
+			current_facing = glance_dir
+			animated_sprite.play("idle_" + glance_dir)
+			if _glance_timer != null and is_instance_valid(_glance_timer) \
+					and _glance_timer.timeout.is_connected(_on_glance_end):
+				_glance_timer.timeout.disconnect(_on_glance_end)
+			_glance_timer = get_tree().create_timer(randf_range(0.6, 1.8))
+			_glance_timer.timeout.connect(_on_glance_end)
+			auto_restart = false
+	if auto_restart:
+		direction_timer.wait_time = randf_range(2.0, 5.0)
+		direction_timer.start()
+
+func _on_glance_end():
+	_glance_timer = null
+	if not is_instance_valid(self):
+		return
+	var primary := _primary_dir_for_pattern()
+	current_facing = primary
+	animated_sprite.play("idle_" + primary)
+	direction_timer.wait_time = randf_range(2.0, 15.0)
 	direction_timer.start()
 
 func pause_and_face(target_position: Vector2):
@@ -341,6 +386,10 @@ func pause_and_face(target_position: Vector2):
 	if _restore_timer != null and is_instance_valid(_restore_timer):
 		_restore_timer.timeout.disconnect(_on_restore_facing)
 		_restore_timer = null
+	if _glance_timer != null and is_instance_valid(_glance_timer) \
+			and _glance_timer.timeout.is_connected(_on_glance_end):
+		_glance_timer.timeout.disconnect(_on_glance_end)
+		_glance_timer = null
 	var diff = target_position - position
 	if abs(diff.x) > abs(diff.y):
 		current_facing = "right" if diff.x > 0 else "left"
@@ -367,6 +416,12 @@ func resume_movement():
 		"idle_down", "idle_up", "idle_left", "idle_right":
 			_restore_timer = get_tree().create_timer(1.0)
 			_restore_timer.timeout.connect(_on_restore_facing)
+		"idle_down_random", "idle_up_random", "idle_left_random", "idle_right_random":
+			var primary := _primary_dir_for_pattern()
+			current_facing = primary
+			animated_sprite.play("idle_" + primary)
+			direction_timer.wait_time = randf_range(2.0, 15.0)
+			direction_timer.start()
 
 func _on_restore_facing():
 	_restore_timer = null

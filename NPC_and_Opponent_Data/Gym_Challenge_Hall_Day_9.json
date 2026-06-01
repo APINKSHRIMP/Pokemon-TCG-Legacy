@@ -5,7 +5,7 @@
 			"meet_text": "Hah, that was a rock hard battle! You've got real grit, kid. The next leader is waiting for you - go and show Misty what you're made of!",
 			"repeat_text": "Keep that defence as solid as a rock for the leaders ahead of you.",
 			"pattern": "idle_down",
-			"position": { "x": 240, "y": 284 },
+			"position": { "x": 240, "y": 300 },
 			"condition": { "type": "opponent_defeated", "target": "Gym Challenge Brock" }
 		},
 		{
@@ -13,7 +13,7 @@
 			"meet_text": "You can't challenge me without defeating Brock first! Beat him, then come back and we can play.",
 			"repeat_text": "Go and beat Brock over there, then it'll be my turn to make a splash with you!",
 			"pattern": "idle_down",
-			"position": { "x": 320, "y": 284 },
+			"position": { "x": 320, "y": 300 },
 			"condition": { "type": "opponent_not_defeated", "target": "Gym Challenge Brock" }
 		},
 		{
@@ -21,7 +21,7 @@
 			"meet_text": "That was a really enjoyable match, we should play again sometime! Good luck with the rest of the challenge - Lt. Surge is up next, don't let him shock you!",
 			"repeat_text": "Stay afloat out there! The leaders only get tougher from here.",
 			"pattern": "idle_down",
-			"position": { "x": 320, "y": 284 },
+			"position": { "x": 320, "y": 300 },
 			"condition": { "type": "opponent_defeated", "target": "Gym Challenge Misty" }
 		},
 		{
@@ -29,7 +29,7 @@
 			"meet_text": "Whoa there, recruit! Defeat Misty before you come buzzing around me. No shortcuts in my unit!",
 			"repeat_text": "No Misty, no match. Go on, move it move it!",
 			"pattern": "idle_down",
-			"position": { "x": 400, "y": 284 },
+			"position": { "x": 400, "y": 300 },
 			"condition": { "type": "opponent_not_defeated", "target": "Gym Challenge Misty" }
 		},
 		{
@@ -37,7 +37,7 @@
 			"meet_text": "Not bad, soldier! You've got the voltage after all. Erika's next - watch she doesn't put you to sleep! Good luck out there.",
 			"repeat_text": "Onward and upward, recruit! Don't short out now.",
 			"pattern": "idle_down",
-			"position": { "x": 400, "y": 284 },
+			"position": { "x": 400, "y": 300 },
 			"condition": { "type": "opponent_defeated", "target": "Gym Challenge Lt. Surge" }
 		},
 		{
@@ -45,7 +45,7 @@
 			"meet_text": "Oh... I'm afraid you must defeat Lt. Surge before challenging me. Patience, like a flower, takes time to bloom.",
 			"repeat_text": "Please best Lt. Surge first, then return to me when you are ready.",
 			"pattern": "idle_down",
-			"position": { "x": 480, "y": 284 },
+			"position": { "x": 480, "y": 300 },
 			"condition": { "type": "opponent_not_defeated", "target": "Gym Challenge Lt. Surge" }
 		},
 		{
@@ -53,7 +53,7 @@
 			"meet_text": "What a wonderful battle. We should share tea sometime. Koga awaits you next - do be careful of his poisons. May the rest of your challenge bloom beautifully.",
 			"repeat_text": "Take a moment to breathe before facing Koga. Good luck.",
 			"pattern": "idle_down",
-			"position": { "x": 480, "y": 284 },
+			"position": { "x": 480, "y": 300 },
 			"condition": { "type": "opponent_defeated", "target": "Gym Challenge Erika" }
 		},
 		{
@@ -119,7 +119,131 @@
 			"pattern": "idle_down",
 			"position": { "x": 480, "y": 189 },
 			"condition": { "type": "opponent_defeated", "target": "Gym Challenge Giovanni" }
-		}
+		},
+
+		{ "name": "Spec L01", "sprite": "NPC01",      "meet_text": "", "repeat_text": "", "pattern": "idle_right",        "position": { "x": -14, "y": 100 } },
+		{ "name": "Spec L02", "sprite": "NPC02",      "meet_text": "", "repeat_text": "", "pattern": "idle_right",        "position": { "x": -14, "y": 129 } },
+		{ "name": "Spec L03", "sprite": "NPC03",      "meet_text": "", "repeat_text": "", "pattern": "idle_right",        "position": { "x": -14, "y": 158 } },
+		{ "name": "Spec L04", "sprite": "NPC04",      "meet_text": "", "repeat_text": "", "pattern": "idle_right",        "position": { "x": -14, "y": 187 } },
+		{ "name": "Spec L05", "sprite": "NPC05",      "meet_text": "", "repeat_text": "", "pattern": "idle_right_random", "position": { "x": -14, "y": 216 } },
+		{ "name": "Spec L06", "sprite": "NPC06",      "meet_text": "", "repeat_text": "", "pattern": "idle_right",        "position": { "x": -14, "y": 245 } },
+		{ "name": "Spec L07", "sprite": "NPC07",      "meet_text": "", "repeat_text": "", "pattern": "idle_right_random", "position": { "x": -14, "y": 274 } },
+		{ "name": "Spec L31", "sprite": "NPC35",      "meet_text": "", "repeat_text": "", "pattern": "idle_right",        "position": { "x": -14, "y": 303 } },
+		{ "name": "Spec L32", "sprite": "NPC36",      "meet_text": "", "repeat_text": "", "pattern": "idle_right_random", "position": { "x": -14, "y": 332 } },
+
+		{ "name": "Spec L11", "sprite": "NPC11",      "meet_text": "", "repeat_text": "", "pattern": "idle_right",        "position": { "x": 19, "y": 116 } },
+		{ "name": "Spec L12", "sprite": "NPC12",      "meet_text": "", "repeat_text": "", "pattern": "idle_right_random", "position": { "x": 19, "y": 145 } },
+		{ "name": "Spec L13", "sprite": "NPC16",      "meet_text": "", "repeat_text": "", "pattern": "idle_right",        "position": { "x": 19, "y": 174 } },
+		{ "name": "Spec L14", "sprite": "NPC17",      "meet_text": "", "repeat_text": "", "pattern": "idle_right_random", "position": { "x": 19, "y": 203 } },
+		{ "name": "Spec L15", "sprite": "NPC19",      "meet_text": "", "repeat_text": "", "pattern": "idle_right",        "position": { "x": 19, "y": 232 } },
+		{ "name": "Spec L16", "sprite": "NPC20",      "meet_text": "", "repeat_text": "", "pattern": "idle_right_random", "position": { "x": 19, "y": 261 } },
+		{ "name": "Spec L17", "sprite": "NPC21",      "meet_text": "", "repeat_text": "", "pattern": "idle_right",        "position": { "x": 19, "y": 290 } },
+		{ "name": "Spec L33", "sprite": "Camper",     "meet_text": "", "repeat_text": "", "pattern": "idle_right",        "position": { "x": 19, "y": 319 } },
+		{ "name": "Spec L34", "sprite": "Picnicker",  "meet_text": "", "repeat_text": "", "pattern": "idle_right",        "position": { "x": 19, "y": 348 } },
+
+		{ "name": "Spec L21", "sprite": "NPC25",      "meet_text": "", "repeat_text": "", "pattern": "idle_right_random", "position": { "x": 51, "y": 132 } },
+		{ "name": "Spec L22", "sprite": "NPC28",      "meet_text": "", "repeat_text": "", "pattern": "idle_right",        "position": { "x": 51, "y": 161 } },
+		{ "name": "Spec L23", "sprite": "NPC29",      "meet_text": "", "repeat_text": "", "pattern": "idle_right",        "position": { "x": 51, "y": 190 } },
+		{ "name": "Spec L24", "sprite": "NPC30",      "meet_text": "", "repeat_text": "", "pattern": "idle_right",        "position": { "x": 51, "y": 219 } },
+		{ "name": "Spec L25", "sprite": "NPC31",      "meet_text": "", "repeat_text": "", "pattern": "idle_right_random", "position": { "x": 51, "y": 248 } },
+		{ "name": "Spec L26", "sprite": "NPC32",      "meet_text": "", "repeat_text": "", "pattern": "idle_right",        "position": { "x": 51, "y": 277 } },
+		{ "name": "Spec L27", "sprite": "NPC33",      "meet_text": "", "repeat_text": "", "pattern": "idle_right",        "position": { "x": 51, "y": 306 } },
+		{ "name": "Spec L35", "sprite": "Juggler",    "meet_text": "", "repeat_text": "", "pattern": "idle_right",        "position": { "x": 51, "y": 335 } },
+		{ "name": "Spec L36", "sprite": "Musician",   "meet_text": "", "repeat_text": "", "pattern": "idle_right",        "position": { "x": 51, "y": 364 } },
+
+		{ "name": "Spec L08", "sprite": "NPC08",       "meet_text": "", "repeat_text": "", "pattern": "idle_right",        "position": { "x": 83, "y": 152 } },
+		{ "name": "Spec L09", "sprite": "NPC09",       "meet_text": "", "repeat_text": "", "pattern": "idle_right_random", "position": { "x": 83, "y": 181 } },
+		{ "name": "Spec L10", "sprite": "NPC10",       "meet_text": "", "repeat_text": "", "pattern": "idle_right",        "position": { "x": 83, "y": 210 } },
+		{ "name": "Spec L18", "sprite": "NPC22",       "meet_text": "", "repeat_text": "", "pattern": "idle_right_random", "position": { "x": 83, "y": 239 } },
+		{ "name": "Spec L19", "sprite": "NPC23",       "meet_text": "", "repeat_text": "", "pattern": "idle_right",        "position": { "x": 83, "y": 268 } },
+		{ "name": "Spec L20", "sprite": "NPC24",       "meet_text": "", "repeat_text": "", "pattern": "idle_right",        "position": { "x": 83, "y": 297 } },
+		{ "name": "Spec L28", "sprite": "NPC34",       "meet_text": "", "repeat_text": "", "pattern": "idle_right",        "position": { "x": 83, "y": 326 } },
+		{ "name": "Spec L37", "sprite": "Fisherman2",  "meet_text": "", "repeat_text": "", "pattern": "idle_right",        "position": { "x": 83, "y": 355 } },
+		{ "name": "Spec L38", "sprite": "Reporter",    "meet_text": "", "repeat_text": "", "pattern": "idle_right",        "position": { "x": 83, "y": 384 } },
+
+		{ "name": "Spec T31", "sprite": "Parasollady",       "meet_text": "", "repeat_text": "", "pattern": "idle_down_random", "position": { "x": 210, "y": -15 } },
+		{ "name": "Spec T32", "sprite": "ParasolLady2",      "meet_text": "", "repeat_text": "", "pattern": "idle_down",        "position": { "x": 245, "y": -15 } },
+		{ "name": "Spec T33", "sprite": "Pokemonbreeder_M",  "meet_text": "", "repeat_text": "", "pattern": "idle_down",        "position": { "x": 280, "y": -15 } },
+		{ "name": "Spec T34", "sprite": "Pokemonbreeder_F",  "meet_text": "", "repeat_text": "", "pattern": "idle_down",        "position": { "x": 315, "y": -15 } },
+		{ "name": "Spec T35", "sprite": "Pokemonbreeder_M2", "meet_text": "", "repeat_text": "", "pattern": "idle_down_random", "position": { "x": 350, "y": -15 } },
+		{ "name": "Spec T36", "sprite": "Pokemonbreeder_F2", "meet_text": "", "repeat_text": "", "pattern": "idle_down",        "position": { "x": 385, "y": -15 } },
+		{ "name": "Spec T37", "sprite": "Bugcatcher",        "meet_text": "", "repeat_text": "", "pattern": "idle_down_random", "position": { "x": 420, "y": -15 } },
+		{ "name": "Spec T38", "sprite": "Bugcatcher2",       "meet_text": "", "repeat_text": "", "pattern": "idle_down",        "position": { "x": 455, "y": -15 } },
+		{ "name": "Spec T39", "sprite": "Cyclist_M",         "meet_text": "", "repeat_text": "", "pattern": "idle_down",        "position": { "x": 490, "y": -15 } },
+		{ "name": "Spec T40", "sprite": "Cyclist_F",         "meet_text": "", "repeat_text": "", "pattern": "idle_down",        "position": { "x": 525, "y": -15 } },
+
+		{ "name": "Spec T01", "sprite": "NPC37",  "meet_text": "", "repeat_text": "", "pattern": "idle_down",        "position": { "x": 210, "y": 15 } },
+		{ "name": "Spec T02", "sprite": "NPC39",  "meet_text": "", "repeat_text": "", "pattern": "idle_down_random", "position": { "x": 245, "y": 15 } },
+		{ "name": "Spec T03", "sprite": "NPC40",  "meet_text": "", "repeat_text": "", "pattern": "idle_down",        "position": { "x": 280, "y": 15 } },
+		{ "name": "Spec T04", "sprite": "NPC41",  "meet_text": "", "repeat_text": "", "pattern": "idle_down",        "position": { "x": 315, "y": 15 } },
+		{ "name": "Spec T05", "sprite": "NPC42",  "meet_text": "", "repeat_text": "", "pattern": "idle_down",        "position": { "x": 350, "y": 15 } },
+		{ "name": "Spec T06", "sprite": "NPC43",  "meet_text": "", "repeat_text": "", "pattern": "idle_down_random", "position": { "x": 385, "y": 15 } },
+		{ "name": "Spec T07", "sprite": "NPC44",  "meet_text": "", "repeat_text": "", "pattern": "idle_down",        "position": { "x": 420, "y": 15 } },
+		{ "name": "Spec T08", "sprite": "NPC45",  "meet_text": "", "repeat_text": "", "pattern": "idle_down_random", "position": { "x": 455, "y": 15 } },
+		{ "name": "Spec T09", "sprite": "NPC46",  "meet_text": "", "repeat_text": "", "pattern": "idle_down",        "position": { "x": 490, "y": 15 } },
+		{ "name": "Spec T10", "sprite": "NPC 02", "meet_text": "", "repeat_text": "", "pattern": "idle_down",        "position": { "x": 525, "y": 15 } },
+
+		{ "name": "Spec T11", "sprite": "NPC 03", "meet_text": "", "repeat_text": "", "pattern": "idle_down_random", "position": { "x": 210, "y": 47 } },
+		{ "name": "Spec T12", "sprite": "NPC 04", "meet_text": "", "repeat_text": "", "pattern": "idle_down",        "position": { "x": 245, "y": 47 } },
+		{ "name": "Spec T13", "sprite": "NPC 05", "meet_text": "", "repeat_text": "", "pattern": "idle_down_random", "position": { "x": 280, "y": 47 } },
+		{ "name": "Spec T14", "sprite": "NPC 06", "meet_text": "", "repeat_text": "", "pattern": "idle_down",        "position": { "x": 315, "y": 47 } },
+		{ "name": "Spec T15", "sprite": "NPC 07", "meet_text": "", "repeat_text": "", "pattern": "idle_down",        "position": { "x": 350, "y": 47 } },
+		{ "name": "Spec T16", "sprite": "NPC 08", "meet_text": "", "repeat_text": "", "pattern": "idle_down",        "position": { "x": 385, "y": 47 } },
+		{ "name": "Spec T17", "sprite": "NPC 09", "meet_text": "", "repeat_text": "", "pattern": "idle_down",        "position": { "x": 420, "y": 47 } },
+		{ "name": "Spec T18", "sprite": "NPC 10", "meet_text": "", "repeat_text": "", "pattern": "idle_down_random", "position": { "x": 455, "y": 47 } },
+		{ "name": "Spec T19", "sprite": "NPC 85", "meet_text": "", "repeat_text": "", "pattern": "idle_down",        "position": { "x": 490, "y": 47 } },
+		{ "name": "Spec T20", "sprite": "NPC 86", "meet_text": "", "repeat_text": "", "pattern": "idle_down",        "position": { "x": 525, "y": 47 } },
+
+		{ "name": "Spec T21", "sprite": "NPC 87", "meet_text": "", "repeat_text": "", "pattern": "idle_down",        "position": { "x": 210, "y": 79 } },
+		{ "name": "Spec T22", "sprite": "NPC 88", "meet_text": "", "repeat_text": "", "pattern": "idle_down",        "position": { "x": 245, "y": 79 } },
+		{ "name": "Spec T23", "sprite": "NPC 89", "meet_text": "", "repeat_text": "", "pattern": "idle_down",        "position": { "x": 280, "y": 79 } },
+		{ "name": "Spec T24", "sprite": "NPC 90", "meet_text": "", "repeat_text": "", "pattern": "idle_down_random", "position": { "x": 315, "y": 79 } },
+		{ "name": "Spec T25", "sprite": "Beauty",  "meet_text": "", "repeat_text": "", "pattern": "idle_down",        "position": { "x": 350, "y": 79 } },
+		{ "name": "Spec T26", "sprite": "Beauty2", "meet_text": "", "repeat_text": "", "pattern": "idle_down",        "position": { "x": 385, "y": 79 } },
+		{ "name": "Spec T27", "sprite": "Beauty3", "meet_text": "", "repeat_text": "", "pattern": "idle_down_random", "position": { "x": 420, "y": 79 } },
+		{ "name": "Spec T28", "sprite": "Lass",    "meet_text": "", "repeat_text": "", "pattern": "idle_down",        "position": { "x": 455, "y": 79 } },
+		{ "name": "Spec T29", "sprite": "Lass2",   "meet_text": "", "repeat_text": "", "pattern": "idle_down_random", "position": { "x": 490, "y": 79 } },
+		{ "name": "Spec T30", "sprite": "Lass3",   "meet_text": "", "repeat_text": "", "pattern": "idle_down",        "position": { "x": 525, "y": 79 } },
+
+		{ "name": "Spec R01", "sprite": "Gentleman",      "meet_text": "", "repeat_text": "", "pattern": "idle_left",        "position": { "x": 605, "y": 163 } },
+		{ "name": "Spec R02", "sprite": "Gentleman2",     "meet_text": "", "repeat_text": "", "pattern": "idle_left_random", "position": { "x": 605, "y": 192 } },
+		{ "name": "Spec R03", "sprite": "Gentleman3",     "meet_text": "", "repeat_text": "", "pattern": "idle_left",        "position": { "x": 605, "y": 221 } },
+		{ "name": "Spec R04", "sprite": "Youngster",      "meet_text": "", "repeat_text": "", "pattern": "idle_left",        "position": { "x": 605, "y": 250 } },
+		{ "name": "Spec R05", "sprite": "Youngster2",     "meet_text": "", "repeat_text": "", "pattern": "idle_left",        "position": { "x": 605, "y": 279 } },
+		{ "name": "Spec R06", "sprite": "Youngster3",     "meet_text": "", "repeat_text": "", "pattern": "idle_left",        "position": { "x": 605, "y": 308 } },
+		{ "name": "Spec R07", "sprite": "Cooltrainer_M",  "meet_text": "", "repeat_text": "", "pattern": "idle_left_random", "position": { "x": 605, "y": 337 } },
+		{ "name": "Spec R31", "sprite": "Socialite2",     "meet_text": "", "repeat_text": "", "pattern": "idle_left",        "position": { "x": 605, "y": 366 } },
+		{ "name": "Spec R32", "sprite": "RichBoy2",       "meet_text": "", "repeat_text": "", "pattern": "idle_left_random", "position": { "x": 605, "y": 395 } },
+
+		{ "name": "Spec R11", "sprite": "Cooltrainer_M3", "meet_text": "", "repeat_text": "", "pattern": "idle_left_random", "position": { "x": 637, "y": 144 } },
+		{ "name": "Spec R12", "sprite": "Cooltrainer_F3", "meet_text": "", "repeat_text": "", "pattern": "idle_left",        "position": { "x": 637, "y": 173 } },
+		{ "name": "Spec R13", "sprite": "Hiker",          "meet_text": "", "repeat_text": "", "pattern": "idle_left",        "position": { "x": 637, "y": 202 } },
+		{ "name": "Spec R14", "sprite": "Hiker2",         "meet_text": "", "repeat_text": "", "pattern": "idle_left",        "position": { "x": 637, "y": 231 } },
+		{ "name": "Spec R15", "sprite": "Pokemaniac",     "meet_text": "", "repeat_text": "", "pattern": "idle_left",        "position": { "x": 637, "y": 260 } },
+		{ "name": "Spec R16", "sprite": "Supernerd",      "meet_text": "", "repeat_text": "", "pattern": "idle_left",        "position": { "x": 637, "y": 289 } },
+		{ "name": "Spec R17", "sprite": "Collector",      "meet_text": "", "repeat_text": "", "pattern": "idle_left_random", "position": { "x": 637, "y": 318 } },
+		{ "name": "Spec R33", "sprite": "Scientist_F",    "meet_text": "", "repeat_text": "", "pattern": "idle_left",        "position": { "x": 637, "y": 347 } },
+		{ "name": "Spec R34", "sprite": "Teacher",        "meet_text": "", "repeat_text": "", "pattern": "idle_left_random", "position": { "x": 637, "y": 376 } },
+
+		{ "name": "Spec R21", "sprite": "Lady",           "meet_text": "", "repeat_text": "", "pattern": "idle_left",        "position": { "x": 669, "y": 127 } },
+		{ "name": "Spec R22", "sprite": "Lady2",          "meet_text": "", "repeat_text": "", "pattern": "idle_left_random", "position": { "x": 669, "y": 156 } },
+		{ "name": "Spec R23", "sprite": "Richboy",        "meet_text": "", "repeat_text": "", "pattern": "idle_left",        "position": { "x": 669, "y": 185 } },
+		{ "name": "Spec R24", "sprite": "Socialite",      "meet_text": "", "repeat_text": "", "pattern": "idle_left_random", "position": { "x": 669, "y": 214 } },
+		{ "name": "Spec R25", "sprite": "Blackbelt",      "meet_text": "", "repeat_text": "", "pattern": "idle_left",        "position": { "x": 669, "y": 243 } },
+		{ "name": "Spec R26", "sprite": "Blackbelt2",     "meet_text": "", "repeat_text": "", "pattern": "idle_left_random", "position": { "x": 669, "y": 272 } },
+		{ "name": "Spec R27", "sprite": "Psychic_M",      "meet_text": "", "repeat_text": "", "pattern": "idle_left",        "position": { "x": 669, "y": 301 } },
+		{ "name": "Spec R35", "sprite": "Medium",         "meet_text": "", "repeat_text": "", "pattern": "idle_left",        "position": { "x": 669, "y": 330 } },
+		{ "name": "Spec R36", "sprite": "Rancher",        "meet_text": "", "repeat_text": "", "pattern": "idle_left",        "position": { "x": 669, "y": 359 } },
+
+		{ "name": "Spec R08", "sprite": "Cooltrainer_F",  "meet_text": "", "repeat_text": "", "pattern": "idle_left",        "position": { "x": 700, "y": 109 } },
+		{ "name": "Spec R09", "sprite": "Cooltrainer_M2", "meet_text": "", "repeat_text": "", "pattern": "idle_left_random", "position": { "x": 700, "y": 138 } },
+		{ "name": "Spec R10", "sprite": "Cooltrainer_F2", "meet_text": "", "repeat_text": "", "pattern": "idle_left",        "position": { "x": 700, "y": 167 } },
+		{ "name": "Spec R18", "sprite": "Gambler",        "meet_text": "", "repeat_text": "", "pattern": "idle_left",        "position": { "x": 700, "y": 196 } },
+		{ "name": "Spec R19", "sprite": "Pokefan_F",      "meet_text": "", "repeat_text": "", "pattern": "idle_left",        "position": { "x": 700, "y": 225 } },
+		{ "name": "Spec R20", "sprite": "Pokefan_M",      "meet_text": "", "repeat_text": "", "pattern": "idle_left",        "position": { "x": 700, "y": 254 } },
+		{ "name": "Spec R28", "sprite": "Psychic_F",      "meet_text": "", "repeat_text": "", "pattern": "idle_left_random", "position": { "x": 700, "y": 283 } },
+		{ "name": "Spec R37", "sprite": "Sailor",         "meet_text": "", "repeat_text": "", "pattern": "idle_left",        "position": { "x": 700, "y": 312 } },
+		{ "name": "Spec R38", "sprite": "Scientist_M",    "meet_text": "", "repeat_text": "", "pattern": "idle_left_random", "position": { "x": 700, "y": 341 } }
 	],
 	"opponents": [
 		{
@@ -131,7 +255,7 @@
 			"rematch_win_text": "Still as solid as ever, but you're the stronger one.",
 			"loss_text": "The best offense is a good defense! That's my way of doing things. Come back when your rocks are harder!",
 			"pattern": "idle_down",
-			"position": { "x": 240, "y": 284 },
+			"position": { "x": 240, "y": 300 },
 			"condition": { "type": "opponent_not_defeated", "target": "Gym Challenge Brock" },
 			"restrictions": {
 				"banned_card_ids":   ["base1-75","base1-79","base1-92","base5-16","base5-72","base5-76","gym1-19","gym1-103","gym2-102"],
@@ -147,7 +271,7 @@
 			"rematch_win_text": "Glad to see you're really making a splash!",
 			"loss_text": "Yaaaay! My Water Pokemon washed you right out!",
 			"pattern": "idle_down",
-			"position": { "x": 320, "y": 284 },
+			"position": { "x": 320, "y": 300 },
 			"condition": {
 				"type": "all",
 				"conditions": [
@@ -169,7 +293,7 @@
 			"rematch_win_text": "You've got more voltage than I figured, kid.",
 			"loss_text": "Hahaha! You got SHOCKED, kid!",
 			"pattern": "idle_down",
-			"position": { "x": 400, "y": 284 },
+			"position": { "x": 400, "y": 300 },
 			"condition": {
 				"type": "all",
 				"conditions": [
@@ -191,7 +315,7 @@
 			"rematch_win_text": "You play with such grace.",
 			"loss_text": "Oh... is that all? My garden remains in full bloom.",
 			"pattern": "idle_down",
-			"position": { "x": 480, "y": 284 },
+			"position": { "x": 480, "y": 300 },
 			"condition": {
 				"type": "all",
 				"conditions": [

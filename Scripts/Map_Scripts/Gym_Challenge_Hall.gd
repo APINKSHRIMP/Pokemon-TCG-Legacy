@@ -16,12 +16,10 @@ const SCENE_PATH = "res://Scenes/Map_Scenes/Gym_Challenge_Hall.tscn"
 # hall. Swap for a dedicated track if one is added later.
 const BGM_PATH = "res://Audio/BGM/024_Makuhita_Dojo_PMD_Blue_Rescue_Team_OST.ogg"
 
-# Opponents + NPCs load from this file. It does not exist yet —
-# a missing file is handled silently. When authored it must
-# contain both an "opponents" and an "npcs" array (either may be
-# empty) — that's the MapManager convention. The same path feeds
-# both the opponent and NPC loaders (one file, two arrays).
-const NPC_JSON_PATH = "res://NPC_and_Opponent_Data/Gym_Challenge_Hall_Day_9.json"
+# NPC_JSON_PATH is built dynamically in _ready() from the current game day
+# and time-of-day so the hall loads the correct opponent/NPC file each
+# session. Naming convention: Gym_Challenge_Hall_{Time}_{Day}.json
+var NPC_JSON_PATH: String = ""
 
 # --- Door-return spawn point --------------------------------------------------
 # The single door leads back to the Gym Challenge Reception, so the player
@@ -31,6 +29,10 @@ const SPAWN_FROM_GYM_CHALLENGE_RECEPTION = Vector2(361, 467)
 # ---------------------------------------------------------------
 
 func _ready():
+	var time_of_day: String = GameState.get_time()
+	var date: int = GameState.get_date()
+	NPC_JSON_PATH = "res://NPC_and_Opponent_Data/Gym_Challenge_Hall_" + time_of_day + "_" + str(date) + ".json"
+
 	SoundManagerScript.play_bgm(BGM_PATH, true)
 
 	var tween = create_tween()

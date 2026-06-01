@@ -166,7 +166,13 @@
 	"Gym Challenge Blaine Locked": { "sprite": "Gym_Challenge_Blaine" },
 	"Gym Challenge Blaine Defeated": { "sprite": "Gym_Challenge_Blaine" },
 	"Gym Challenge Giovanni Locked": { "sprite": "Gym_Challenge_Giovanni" },
-	"Gym Challenge Giovanni Defeated": { "sprite": "Gym_Challenge_Giovanni" }
+	"Gym Challenge Giovanni Defeated": { "sprite": "Gym_Challenge_Giovanni" },
+	"Gym Receptionist 1": { "sprite": "Gym_Receptionist" },
+	"Gym Receptionist 2": { "sprite": "Gym_Headset2" },
+	"Gym Receptionist 3": { "sprite": "Gym_Helper" },
+	"Gym Security 1": { "sprite": "Gym_Security" },
+	"Gym Security 2": { "sprite": "Gym_Security" },
+	"Gym Shopkeeper": { "sprite": "Gym_Shopkeeper" }
   },
   "opponents": {
 	"Youngster Joey": { "sprite": "Youngster2", "deck": "Basic Pokemon Barrage", "music": "REPLACEMUSIC", "prize_cards": 2, "cash_reward": "50", "coin_reward": "Rattata Silver", "card_reward": "base1-82, base1-82" },

@@ -14,11 +14,9 @@ const SCENE_PATH = "res://Scenes/Map_Scenes/Gym_Challenge_Reception.tscn"
 # reception theme if one is added later.
 const BGM_PATH = "res://Audio/BGM/Shop1.ogg"
 
-# Opponents + NPCs (incl. the shopkeeper) load from this file.
-# It does not exist yet — a missing file is handled silently.
-# When authored it must contain both an "opponents" and an "npcs"
-# array (either may be empty) — that's the MapManager convention.
-const NPC_JSON_PATH = "res://NPC_and_Opponent_Data/Gym_Challenge_Reception_NPCs.json"
+# NPC_JSON_PATH is built dynamically in _ready() from the current game day
+# and time-of-day. Naming convention: Gym_Challenge_Reception_{Time}_{Day}.json
+var NPC_JSON_PATH: String = ""
 
 # --- Door-return spawn points -------------------------------------------------
 # Spawn point per scene the player can arrive from. The key is the value the
@@ -32,6 +30,10 @@ const SPAWN_FROM_GYM_CHALLENGE_HALL = Vector2(220, 45)
 var cash_label: Label = null
 
 func _ready():
+	var time_of_day: String = GameState.get_time()
+	var date: int = GameState.get_date()
+	NPC_JSON_PATH = "res://NPC_and_Opponent_Data/Gym_Challenge_Reception_" + time_of_day + "_" + str(date) + ".json"
+
 	SoundManagerScript.play_bgm(BGM_PATH, true)
 
 	var tween = create_tween()
@@ -55,6 +57,11 @@ func _ready():
 		$Player.position = GameState.menu_return_position
 		$Player.set_direction(GameState.menu_return_direction)
 		GameState.clear_menu_return_state()
+	elif GameState.returning_from_battle:
+		# Returning from a battle triggered by a reception opponent
+		$Player.position = GameState.player_position
+		$Player.set_direction(GameState.get_player_direction())
+		GameState.returning_from_battle = false
 	elif entry_positions.has(GameState.entering_from):
 		# Returning from another scene through one of this scene's doors
 		$Player.position = entry_positions[GameState.entering_from]
