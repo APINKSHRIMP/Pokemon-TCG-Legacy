@@ -1,476 +1,670 @@
 {
-  "npcs": [
-    {
-      "name": "Gym Challenge Brock Defeated",
-      "sprite": "Gym_Challenge_Brock",
-      "meet_text": "Hah, that was a rock hard battle! You've got real grit, kid. The next leader is waiting for you - go and show Misty what you're made of!",
-      "repeat_text": "Keep that defence as solid as a rock for the leaders ahead of you.",
-      "pattern": "idle_down",
-      "position": {
-        "x": 233,
-        "y": 301
-      },
-      "condition": {
-        "type": "opponent_defeated",
-        "target": "Gym Challenge Brock"
-      }
-    },
-    {
-      "name": "Gym Challenge Misty Locked",
-      "sprite": "Gym_Challenge_Misty",
-      "meet_text": "You can't challenge me without defeating Brock first! Beat him, then come back and we can play.",
-      "repeat_text": "Go and beat Brock over there, then it'll be my turn to make a splash with you!",
-      "pattern": "idle_down",
-      "position": {
-        "x": 314,
-        "y": 301
-      },
-      "condition": {
-        "type": "opponent_not_defeated",
-        "target": "Gym Challenge Brock"
-      }
-    },
-    {
-      "name": "Gym Challenge Misty Defeated",
-      "sprite": "Gym_Challenge_Misty",
-      "meet_text": "That was a really enjoyable match, we should play again sometime! Good luck with the rest of the challenge - Lt. Surge is up next, don't let him shock you!",
-      "repeat_text": "Stay afloat out there! The leaders only get tougher from here.",
-      "pattern": "idle_down",
-      "position": {
-        "x": 314,
-        "y": 301
-      },
-      "condition": {
-        "type": "opponent_defeated",
-        "target": "Gym Challenge Misty"
-      }
-    },
-    {
-      "name": "Gym Challenge Lt. Surge Locked",
-      "sprite": "Gym_Challenge_Lt._Surge",
-      "meet_text": "Whoa there, recruit! Defeat Misty before you come buzzing around me. No shortcuts in my unit!",
-      "repeat_text": "No Misty, no match. Go on, move it move it!",
-      "pattern": "idle_down",
-      "position": {
-        "x": 396,
-        "y": 301
-      },
-      "condition": {
-        "type": "opponent_not_defeated",
-        "target": "Gym Challenge Misty"
-      }
-    },
-    {
-      "name": "Gym Challenge Lt. Surge Defeated",
-      "sprite": "Gym_Challenge_Lt._Surge",
-      "meet_text": "Not bad, soldier! You've got the voltage after all. Erika's next - watch she doesn't put you to sleep! Good luck out there.",
-      "repeat_text": "Onward and upward, recruit! Don't short out now.",
-      "pattern": "idle_down",
-      "position": {
-        "x": 396,
-        "y": 301
-      },
-      "condition": {
-        "type": "opponent_defeated",
-        "target": "Gym Challenge Lt. Surge"
-      }
-    },
-    {
-      "name": "Gym Challenge Erika Locked",
-      "sprite": "Gym_Challenge_Erika",
-      "meet_text": "Oh... I'm afraid you must defeat Lt. Surge before challenging me. Patience, like a flower, takes time to bloom.",
-      "repeat_text": "Please best Lt. Surge first, then return to me when you are ready.",
-      "pattern": "idle_down",
-      "position": {
-        "x": 478,
-        "y": 301
-      },
-      "condition": {
-        "type": "opponent_not_defeated",
-        "target": "Gym Challenge Lt. Surge"
-      }
-    },
-    {
-      "name": "Gym Challenge Erika Defeated",
-      "sprite": "Gym_Challenge_Erika",
-      "meet_text": "What a wonderful battle. We should share tea sometime. Koga awaits you next - do be careful of his poisons. May the rest of your challenge bloom beautifully.",
-      "repeat_text": "Take a moment to breathe before facing Koga. Good luck.",
-      "pattern": "idle_down",
-      "position": {
-        "x": 478,
-        "y": 301
-      },
-      "condition": {
-        "type": "opponent_defeated",
-        "target": "Gym Challenge Erika"
-      }
-    },
-    {
-      "name": "Gym Challenge Koga Locked",
-      "sprite": "Gym_Challenge_Koga",
-      "meet_text": "A true ninja knows their order, challenger. Defeat Erika first, then seek me out from the shadows.",
-      "repeat_text": "Erika stands between us. Best her, then return to face my poisons.",
-      "pattern": "idle_down",
-      "position": {
-        "x": 233,
-        "y": 202
-      },
-      "condition": {
-        "type": "opponent_not_defeated",
-        "target": "Gym Challenge Erika"
-      }
-    },
-    {
-      "name": "Gym Challenge Koga Defeated",
-      "sprite": "Gym_Challenge_Koga",
-      "meet_text": "Fwahaha... you have bested my arts. Sabrina senses your approach already... her mind games are not to be taken lightly. Good fortune, challenger.",
-      "repeat_text": "Tread carefully from here - Sabrina sees all that is to come.",
-      "pattern": "idle_down",
-      "position": {
-        "x": 233,
-        "y": 202
-      },
-      "condition": {
-        "type": "opponent_defeated",
-        "target": "Gym Challenge Koga"
-      }
-    },
-    {
-      "name": "Gym Challenge Sabrina Locked",
-      "sprite": "Gym_Challenge_Sabrina",
-      "meet_text": "I see you have not yet defeated Koga. Return when his poison no longer clouds your path.",
-      "repeat_text": "Koga first. The future cannot be rushed, challenger.",
-      "pattern": "idle_down",
-      "position": {
-        "x": 314,
-        "y": 202
-      },
-      "condition": {
-        "type": "opponent_not_defeated",
-        "target": "Gym Challenge Koga"
-      }
-    },
-    {
-      "name": "Gym Challenge Sabrina Defeated",
-      "sprite": "Gym_Challenge_Sabrina",
-      "meet_text": "Our minds have touched, and yours prevailed. Blaine burns bright ahead - do not let his flames consume you. Good luck.",
-      "repeat_text": "Blaine's fire awaits you. I have already seen it.",
-      "pattern": "idle_down",
-      "position": {
-        "x": 314,
-        "y": 202
-      },
-      "condition": {
-        "type": "opponent_defeated",
-        "target": "Gym Challenge Sabrina"
-      }
-    },
-    {
-      "name": "Gym Challenge Blaine Locked",
-      "sprite": "Gym_Challenge_Blaine",
-      "meet_text": "Cool your jets! Defeat Sabrina first, then we'll see if you can handle my flames!",
-      "repeat_text": "No Sabrina, no fire. Come back when you've put out her mind games!",
-      "pattern": "idle_down",
-      "position": {
-        "x": 396,
-        "y": 202
-      },
-      "condition": {
-        "type": "opponent_not_defeated",
-        "target": "Gym Challenge Sabrina"
-      }
-    },
-    {
-      "name": "Gym Challenge Blaine Defeated",
-      "sprite": "Gym_Challenge_Blaine",
-      "meet_text": "What a blazing match! You've got real fire in you. Only Giovanni remains now - the leader of them all. Give it everything you've got! Good luck!",
-      "repeat_text": "Giovanni is the final wall. Burn bright, challenger!",
-      "pattern": "idle_down",
-      "position": {
-        "x": 396,
-        "y": 202
-      },
-      "condition": {
-        "type": "opponent_defeated",
-        "target": "Gym Challenge Blaine"
-      }
-    },
-    {
-      "name": "Gym Challenge Giovanni Locked",
-      "sprite": "Gym_Challenge_Giovanni",
-      "meet_text": "You are not yet worthy to face me. Defeat Blaine, then perhaps I shall grace you with a match.",
-      "repeat_text": "Best Blaine first. Only then will I rise from this seat to meet you.",
-      "pattern": "idle_down",
-      "position": {
-        "x": 478,
-        "y": 202
-      },
-      "condition": {
-        "type": "opponent_not_defeated",
-        "target": "Gym Challenge Blaine"
-      }
-    },
-    {
-      "name": "Gym Challenge Giovanni Defeated",
-      "sprite": "Gym_Challenge_Giovanni",
-      "meet_text": "You have conquered the entire Gym Challenge. I underestimated you... Savour this victory, champion. You have earned my respect, and that is no small thing.",
-      "repeat_text": "The challenge is complete. You stand above us all now.",
-      "pattern": "idle_down",
-      "position": {
-        "x": 478,
-        "y": 202
-      },
-      "condition": {
-        "type": "opponent_defeated",
-        "target": "Gym Challenge Giovanni"
-      }
-    }
-  ],
-  "opponents": [
-    {
-      "name": "Gym Challenge Brock",
-      "sprite": "Gym_Challenge_Brock",
-      "deck": "Pewter Crusher",
-      "music": "gym_battle",
-      "prize_cards": 6,
-      "match_format": "best_of_3",
-      "meet_text": "I'm Brock, leader of Pewter Gym, and the Gym Challenge starts here with me. I lead with a rock hard defence. Are you ready to face my rock hard defence deck? Remember, the banned trainer cards aren't allowed in here.",
-      "repeat_text": "Show me that rock hard resolve again!",
-      "first_win_text": "Heh, you cracked right through my defence! You've earned the right to move on. Take this coin.",
-      "rematch_win_text": "Still as solid as ever, but you're the stronger one.",
-      "loss_text": "The best offense is a good defense! That's my way of doing things. Come back when your rocks are harder!",
-      "cash_reward": "200",
-      "coin_reward": "Energy Fighting Brown 2",
-      "pattern": "idle_down",
-      "position": {
-        "x": 233,
-        "y": 301
-      },
-      "condition": {
-        "type": "opponent_not_defeated",
-        "target": "Gym Challenge Brock"
-      },
-      "restrictions": {
-        "banned_card_ids":   ["base1-75","base1-79","base1-92","base5-16","base5-72","base5-76","gym1-19","gym1-103","gym2-102"],
-        "banned_card_names": ["Lass","Super Energy Removal","Energy Removal","Rocket's Sneak Attack","Imposter Oak's Revenge","The Rocket's Trap","No Removal Gym","Chaos Gym"]
-      }
-    },
-    {
-      "name": "Gym Challenge Misty",
-      "sprite": "Gym_Challenge_Misty",
-      "deck": "Misty's Wrath",
-      "music": "gym_battle",
-      "prize_cards": 6,
-      "match_format": "best_of_3",
-      "meet_text": "I'm Misty of Cerulean Gym! So you got past Brock? Good. My Water deck flows like a tidal wave - let's see if you can stay afloat! No banned trainer cards, remember the rules.",
-      "repeat_text": "Ready to dive in again?",
-      "first_win_text": "You really are strong and skilled! Take my coin and go show Lt. Surge what you've got.",
-      "rematch_win_text": "Glad to see you're really making a splash!",
-      "loss_text": "Yaaaay! My Water Pokemon washed you right out!",
-      "cash_reward": "200",
-      "coin_reward": "Energy Water Blue 2",
-      "pattern": "idle_down",
-      "position": {
-        "x": 314,
-        "y": 301
-      },
-      "condition": {
-        "type": "all",
-        "conditions": [
-          { "type": "opponent_defeated", "target": "Gym Challenge Brock" },
-          { "type": "opponent_not_defeated", "target": "Gym Challenge Misty" }
-        ]
-      },
-      "restrictions": {
-        "banned_card_ids":   ["base1-75","base1-79","base1-92","base5-16","base5-72","base5-76","gym1-19","gym1-103","gym2-102"],
-        "banned_card_names": ["Lass","Super Energy Removal","Energy Removal","Rocket's Sneak Attack","Imposter Oak's Revenge","The Rocket's Trap","No Removal Gym","Chaos Gym"]
-      }
-    },
-    {
-      "name": "Gym Challenge Lt. Surge",
-      "sprite": "Gym_Challenge_Lt._Surge",
-      "deck": "Power Surge",
-      "music": "gym_battle",
-      "prize_cards": 6,
-      "match_format": "best_of_3",
-      "meet_text": "I'm Lt. Surge! You beat the little lady, huh? Don't get cocky, kid. My Electric deck'll fry you where you stand! And don't even think about those banned trainer cards.",
-      "repeat_text": "Back for another jolt, soldier?",
-      "first_win_text": "Ha! You shorted out my whole army. Take the coin and move out!",
-      "rematch_win_text": "You've got more voltage than I figured, kid.",
-      "loss_text": "Hahaha! You got SHOCKED, kid!",
-      "cash_reward": "200",
-      "coin_reward": "Energy Lightning Gold 2",
-      "pattern": "idle_down",
-      "position": {
-        "x": 396,
-        "y": 301
-      },
-      "condition": {
-        "type": "all",
-        "conditions": [
-          { "type": "opponent_defeated", "target": "Gym Challenge Misty" },
-          { "type": "opponent_not_defeated", "target": "Gym Challenge Lt. Surge" }
-        ]
-      },
-      "restrictions": {
-        "banned_card_ids":   ["base1-75","base1-79","base1-92","base5-16","base5-72","base5-76","gym1-19","gym1-103","gym2-102"],
-        "banned_card_names": ["Lass","Super Energy Removal","Energy Removal","Rocket's Sneak Attack","Imposter Oak's Revenge","The Rocket's Trap","No Removal Gym","Chaos Gym"]
-      }
-    },
-    {
-      "name": "Gym Challenge Erika",
-      "sprite": "Gym_Challenge_Erika",
-      "deck": "Life Draining Pollen",
-      "music": "gym_battle",
-      "prize_cards": 6,
-      "match_format": "best_of_3",
-      "meet_text": "Oh... hello. I am Erika of Celadon Gym. You made it past Lt. Surge? How lovely. My Grass Pokemon are delicate, but their bloom can be overwhelming. Shall we begin? Do mind the banned trainer cards.",
-      "repeat_text": "Another match? How refreshing.",
-      "first_win_text": "That was a delightful match. I felt inspired. Please, take this coin.",
-      "rematch_win_text": "You play with such grace.",
-      "loss_text": "Oh... is that all? My garden remains in full bloom.",
-      "cash_reward": "200",
-      "coin_reward": "Energy Grass Green 2",
-      "pattern": "idle_down",
-      "position": {
-        "x": 478,
-        "y": 301
-      },
-      "condition": {
-        "type": "all",
-        "conditions": [
-          { "type": "opponent_defeated", "target": "Gym Challenge Lt. Surge" },
-          { "type": "opponent_not_defeated", "target": "Gym Challenge Erika" }
-        ]
-      },
-      "restrictions": {
-        "banned_card_ids":   ["base1-75","base1-79","base1-92","base5-16","base5-72","base5-76","gym1-19","gym1-103","gym2-102"],
-        "banned_card_names": ["Lass","Super Energy Removal","Energy Removal","Rocket's Sneak Attack","Imposter Oak's Revenge","The Rocket's Trap","No Removal Gym","Chaos Gym"]
-      }
-    },
-    {
-      "name": "Gym Challenge Koga",
-      "sprite": "Gym_Challenge_Koga",
-      "deck": "Koga's Ninja Poison",
-      "music": "gym_battle",
-      "prize_cards": 6,
-      "match_format": "best_of_3",
-      "meet_text": "Fwahahaha! I am Koga of Fuchsia Gym, master of poison and the ninja arts. Erika's petals have wilted before you? Impressive. But my toxins seep where you cannot see. Prepare yourself! No banned trainer cards permitted.",
-      "repeat_text": "Do you dare face my poisons again?",
-      "first_win_text": "Heh... you saw through my smoke. A worthy challenger. This coin is yours.",
-      "rematch_win_text": "Your eyes grow sharper each time we meet.",
-      "loss_text": "Fwahaha! My poison courses through your veins. You were no match!",
-      "cash_reward": "200",
-      "coin_reward": "Energy Colorless Silver 2",
-      "pattern": "idle_down",
-      "position": {
-        "x": 233,
-        "y": 202
-      },
-      "condition": {
-        "type": "all",
-        "conditions": [
-          { "type": "opponent_defeated", "target": "Gym Challenge Erika" },
-          { "type": "opponent_not_defeated", "target": "Gym Challenge Koga" }
-        ]
-      },
-      "restrictions": {
-        "banned_card_ids":   ["base1-75","base1-79","base1-92","base5-16","base5-72","base5-76","gym1-19","gym1-103","gym2-102"],
-        "banned_card_names": ["Lass","Super Energy Removal","Energy Removal","Rocket's Sneak Attack","Imposter Oak's Revenge","The Rocket's Trap","No Removal Gym","Chaos Gym"]
-      }
-    },
-    {
-      "name": "Gym Challenge Sabrina",
-      "sprite": "Gym_Challenge_Sabrina",
-      "deck": "Mixed Aura",
-      "music": "gym_battle",
-      "prize_cards": 6,
-      "match_format": "best_of_3",
-      "meet_text": "I am Sabrina of Saffron Gym. I foresaw your arrival the moment Koga fell. My Psychic power bends the battle to my will. Let us see if your mind can withstand mine. The banned trainer cards have no place here.",
-      "repeat_text": "I already know how this ends... but play on.",
-      "first_win_text": "...You shattered my vision. Astonishing. Take this coin; it was always meant for you.",
-      "rematch_win_text": "Your future grows brighter.",
-      "loss_text": "Just as I foresaw. Your mind was no match for mine.",
-      "cash_reward": "200",
-      "coin_reward": "Energy Psychic Purple 2",
-      "pattern": "idle_down",
-      "position": {
-        "x": 314,
-        "y": 202
-      },
-      "condition": {
-        "type": "all",
-        "conditions": [
-          { "type": "opponent_defeated", "target": "Gym Challenge Koga" },
-          { "type": "opponent_not_defeated", "target": "Gym Challenge Sabrina" }
-        ]
-      },
-      "restrictions": {
-        "banned_card_ids":   ["base1-75","base1-79","base1-92","base5-16","base5-72","base5-76","gym1-19","gym1-103","gym2-102"],
-        "banned_card_names": ["Lass","Super Energy Removal","Energy Removal","Rocket's Sneak Attack","Imposter Oak's Revenge","The Rocket's Trap","No Removal Gym","Chaos Gym"]
-      }
-    },
-    {
-      "name": "Gym Challenge Blaine",
-      "sprite": "Gym_Challenge_Blaine",
-      "deck": "Stoke The Flames",
-      "music": "gym_battle",
-      "prize_cards": 6,
-      "match_format": "best_of_3",
-      "meet_text": "Hah! I'm Blaine of Cinnabar Gym! So you scattered Sabrina's mind games? Then let's heat things up! My Fire deck burns hotter than the Cinnabar volcano. Can you take the heat? And no banned trainer cards!",
-      "repeat_text": "Ready to get burned again?",
-      "first_win_text": "Awesome! I've burned out... You've earned this coin. Giovanni is all that stands in your way now.",
-      "rematch_win_text": "You're a real firebrand!",
-      "loss_text": "Hah! You got burned to a crisp! Not even ashes remain!",
-      "cash_reward": "200",
-      "coin_reward": "Energy Fire Red 2",
-      "pattern": "idle_down",
-      "position": {
-        "x": 396,
-        "y": 202
-      },
-      "condition": {
-        "type": "all",
-        "conditions": [
-          { "type": "opponent_defeated", "target": "Gym Challenge Sabrina" },
-          { "type": "opponent_not_defeated", "target": "Gym Challenge Blaine" }
-        ]
-      },
-      "restrictions": {
-        "banned_card_ids":   ["base1-75","base1-79","base1-92","base5-16","base5-72","base5-76","gym1-19","gym1-103","gym2-102"],
-        "banned_card_names": ["Lass","Super Energy Removal","Energy Removal","Rocket's Sneak Attack","Imposter Oak's Revenge","The Rocket's Trap","No Removal Gym","Chaos Gym"]
-      }
-    },
-    {
-      "name": "Gym Challenge Giovanni",
-      "sprite": "Gym_Challenge_Giovanni",
-      "deck": "The Might Of The Boss",
-      "music": "gym_battle",
-      "prize_cards": 6,
-      "match_format": "best_of_3",
-      "meet_text": "So. You've defeated every leader to reach me. I am Giovanni of Viridian Gym, the final and greatest of the Gym Leaders. I will show you the true meaning of power. This is where your challenge ends! And yes, the banned trainer cards stay out of this.",
-      "repeat_text": "You wish to challenge me once more?",
-      "first_win_text": "...Impossible. You have bested every leader, even me. You are a true champion of the Gym Challenge. Take this coin - you have earned it, and more.",
-      "rematch_win_text": "You continue to surpass my expectations.",
-      "loss_text": "Ha! This is the extent of your power? You are not yet ready to defeat me.",
-      "cash_reward": "200",
-      "coin_reward": "Energy Darkness Black 2",
-      "pattern": "idle_down",
-      "position": {
-        "x": 478,
-        "y": 202
-      },
-      "condition": {
-        "type": "all",
-        "conditions": [
-          { "type": "opponent_defeated", "target": "Gym Challenge Blaine" },
-          { "type": "opponent_not_defeated", "target": "Gym Challenge Giovanni" }
-        ]
-      },
-      "restrictions": {
-        "banned_card_ids":   ["base1-75","base1-79","base1-92","base5-16","base5-72","base5-76","gym1-19","gym1-103","gym2-102"],
-        "banned_card_names": ["Lass","Super Energy Removal","Energy Removal","Rocket's Sneak Attack","Imposter Oak's Revenge","The Rocket's Trap","No Removal Gym","Chaos Gym"]
-      }
-    }
-  ]
+	"npcs": [
+		{
+			"name": "Gym Challenge Brock Defeated",
+			"sprite": "Gym_Challenge_Brock",
+			"meet_text": "Hah, that was a rock hard battle! You've got real grit, kid. The next leader is waiting for you - go and show Misty what you're made of!",
+			"repeat_text": "Keep that defence as solid as a rock for the leaders ahead of you.",
+			"pattern": "idle_down",
+			"position": {
+				"x": 240.0,
+				"y": 284.0
+			},
+			"condition": {
+				"type": "opponent_defeated",
+				"target": "Gym Challenge Brock"
+			}
+		},
+		{
+			"name": "Gym Challenge Misty Locked",
+			"sprite": "Gym_Challenge_Misty",
+			"meet_text": "You can't challenge me without defeating Brock first! Beat him, then come back and we can play.",
+			"repeat_text": "Go and beat Brock over there, then it'll be my turn to make a splash with you!",
+			"pattern": "idle_down",
+			"position": {
+				"x": 320.0,
+				"y": 284.0
+			},
+			"condition": {
+				"type": "opponent_not_defeated",
+				"target": "Gym Challenge Brock"
+			}
+		},
+		{
+			"name": "Gym Challenge Misty Defeated",
+			"sprite": "Gym_Challenge_Misty",
+			"meet_text": "That was a really enjoyable match, we should play again sometime! Good luck with the rest of the challenge - Lt. Surge is up next, don't let him shock you!",
+			"repeat_text": "Stay afloat out there! The leaders only get tougher from here.",
+			"pattern": "idle_down",
+			"position": {
+				"x": 320.0,
+				"y": 284.0
+			},
+			"condition": {
+				"type": "opponent_defeated",
+				"target": "Gym Challenge Misty"
+			}
+		},
+		{
+			"name": "Gym Challenge Lt. Surge Locked",
+			"sprite": "Gym_Challenge_Lt_Surge",
+			"meet_text": "Whoa there, recruit! Defeat Misty before you come buzzing around me. No shortcuts in my unit!",
+			"repeat_text": "No Misty, no match. Go on, move it move it!",
+			"pattern": "idle_down",
+			"position": {
+				"x": 400.0,
+				"y": 284.0
+			},
+			"condition": {
+				"type": "opponent_not_defeated",
+				"target": "Gym Challenge Misty"
+			}
+		},
+		{
+			"name": "Gym Challenge Lt. Surge Defeated",
+			"sprite": "Gym_Challenge_Lt_Surge",
+			"meet_text": "Not bad, soldier! You've got the voltage after all. Erika's next - watch she doesn't put you to sleep! Good luck out there.",
+			"repeat_text": "Onward and upward, recruit! Don't short out now.",
+			"pattern": "idle_down",
+			"position": {
+				"x": 400.0,
+				"y": 284.0
+			},
+			"condition": {
+				"type": "opponent_defeated",
+				"target": "Gym Challenge Lt. Surge"
+			}
+		},
+		{
+			"name": "Gym Challenge Erika Locked",
+			"sprite": "Gym_Challenge_Erika",
+			"meet_text": "Oh... I'm afraid you must defeat Lt. Surge before challenging me. Patience, like a flower, takes time to bloom.",
+			"repeat_text": "Please best Lt. Surge first, then return to me when you are ready.",
+			"pattern": "idle_down",
+			"position": {
+				"x": 480.0,
+				"y": 284.0
+			},
+			"condition": {
+				"type": "opponent_not_defeated",
+				"target": "Gym Challenge Lt. Surge"
+			}
+		},
+		{
+			"name": "Gym Challenge Erika Defeated",
+			"sprite": "Gym_Challenge_Erika",
+			"meet_text": "What a wonderful battle. We should share tea sometime. Koga awaits you next - do be careful of his poisons. May the rest of your challenge bloom beautifully.",
+			"repeat_text": "Take a moment to breathe before facing Koga. Good luck.",
+			"pattern": "idle_down",
+			"position": {
+				"x": 480.0,
+				"y": 284.0
+			},
+			"condition": {
+				"type": "opponent_defeated",
+				"target": "Gym Challenge Erika"
+			}
+		},
+		{
+			"name": "Gym Challenge Koga Locked",
+			"sprite": "Gym_Challenge_Koga",
+			"meet_text": "A true ninja knows their order, challenger. Defeat Erika first, then seek me out from the shadows.",
+			"repeat_text": "Erika stands between us. Best her, then return to face my poisons.",
+			"pattern": "idle_down",
+			"position": {
+				"x": 240.0,
+				"y": 189.0
+			},
+			"condition": {
+				"type": "opponent_not_defeated",
+				"target": "Gym Challenge Erika"
+			}
+		},
+		{
+			"name": "Gym Challenge Koga Defeated",
+			"sprite": "Gym_Challenge_Koga",
+			"meet_text": "Fwahaha... you have bested my arts. Sabrina senses your approach already... her mind games are not to be taken lightly. Good fortune, challenger.",
+			"repeat_text": "Tread carefully from here - Sabrina sees all that is to come.",
+			"pattern": "idle_down",
+			"position": {
+				"x": 240.0,
+				"y": 189.0
+			},
+			"condition": {
+				"type": "opponent_defeated",
+				"target": "Gym Challenge Koga"
+			}
+		},
+		{
+			"name": "Gym Challenge Sabrina Locked",
+			"sprite": "Gym_Challenge_Sabrina",
+			"meet_text": "I see you have not yet defeated Koga. Return when his poison no longer clouds your path.",
+			"repeat_text": "Koga first. The future cannot be rushed, challenger.",
+			"pattern": "idle_down",
+			"position": {
+				"x": 320.0,
+				"y": 189.0
+			},
+			"condition": {
+				"type": "opponent_not_defeated",
+				"target": "Gym Challenge Koga"
+			}
+		},
+		{
+			"name": "Gym Challenge Sabrina Defeated",
+			"sprite": "Gym_Challenge_Sabrina",
+			"meet_text": "Our minds have touched, and yours prevailed. Blaine burns bright ahead - do not let his flames consume you. Good luck.",
+			"repeat_text": "Blaine's fire awaits you. I have already seen it.",
+			"pattern": "idle_down",
+			"position": {
+				"x": 320.0,
+				"y": 189.0
+			},
+			"condition": {
+				"type": "opponent_defeated",
+				"target": "Gym Challenge Sabrina"
+			}
+		},
+		{
+			"name": "Gym Challenge Blaine Locked",
+			"sprite": "Gym_Challenge_Blaine",
+			"meet_text": "Cool your jets! Defeat Sabrina first, then we'll see if you can handle my flames!",
+			"repeat_text": "No Sabrina, no fire. Come back when you've put out her mind games!",
+			"pattern": "idle_down",
+			"position": {
+				"x": 400.0,
+				"y": 189.0
+			},
+			"condition": {
+				"type": "opponent_not_defeated",
+				"target": "Gym Challenge Sabrina"
+			}
+		},
+		{
+			"name": "Gym Challenge Blaine Defeated",
+			"sprite": "Gym_Challenge_Blaine",
+			"meet_text": "What a blazing match! You've got real fire in you. Only Giovanni remains now - the leader of them all. Give it everything you've got! Good luck!",
+			"repeat_text": "Giovanni is the final wall. Burn bright, challenger!",
+			"pattern": "idle_down",
+			"position": {
+				"x": 400.0,
+				"y": 189.0
+			},
+			"condition": {
+				"type": "opponent_defeated",
+				"target": "Gym Challenge Blaine"
+			}
+		},
+		{
+			"name": "Gym Challenge Giovanni Locked",
+			"sprite": "Gym_Challenge_Giovanni",
+			"meet_text": "You are not yet worthy to face me. Defeat Blaine, then perhaps I shall grace you with a match.",
+			"repeat_text": "Best Blaine first. Only then will I rise from this seat to meet you.",
+			"pattern": "idle_down",
+			"position": {
+				"x": 480.0,
+				"y": 189.0
+			},
+			"condition": {
+				"type": "opponent_not_defeated",
+				"target": "Gym Challenge Blaine"
+			}
+		},
+		{
+			"name": "Gym Challenge Giovanni Defeated",
+			"sprite": "Gym_Challenge_Giovanni",
+			"meet_text": "You have conquered the entire Gym Challenge. I underestimated you... Savour this victory, champion. You have earned my respect, and that is no small thing.",
+			"repeat_text": "The challenge is complete. You stand above us all now.",
+			"pattern": "idle_down",
+			"position": {
+				"x": 480.0,
+				"y": 189.0
+			},
+			"condition": {
+				"type": "opponent_defeated",
+				"target": "Gym Challenge Giovanni"
+			}
+		}
+	],
+	"opponents": [
+		{
+			"name": "Gym Challenge Brock",
+			"sprite": "Gym_Challenge_Brock",
+			"deck": "Pewter Crusher",
+			"music": "gym_battle",
+			"prize_cards": 6.0,
+			"match_format": "best_of_3",
+			"meet_text": "I'm Brock, leader of Pewter Gym, and the Gym Challenge starts here with me. I lead with a rock hard defence. Are you ready to face my rock hard defence deck? Remember, the banned trainer cards aren't allowed in here.",
+			"repeat_text": "Show me that rock hard resolve again!",
+			"first_win_text": "Heh, you cracked right through my defence! You've earned the right to move on. Take this coin.",
+			"rematch_win_text": "Still as solid as ever, but you're the stronger one.",
+			"loss_text": "The best offense is a good defense! That's my way of doing things. Come back when your rocks are harder!",
+			"cash_reward": "200",
+			"coin_reward": "Energy Fighting Brown 2",
+			"pattern": "idle_down",
+			"position": {
+				"x": 240.0,
+				"y": 284.0
+			},
+			"condition": {
+				"type": "opponent_not_defeated",
+				"target": "Gym Challenge Brock"
+			},
+			"restrictions": {
+				"banned_card_ids": [
+					"base1-75",
+					"base1-79",
+					"base1-92",
+					"base5-16",
+					"base5-72",
+					"base5-76",
+					"gym1-19",
+					"gym1-103",
+					"gym2-102"
+				],
+				"banned_card_names": [
+					"Lass",
+					"Super Energy Removal",
+					"Energy Removal",
+					"Rocket's Sneak Attack",
+					"Imposter Oak's Revenge",
+					"The Rocket's Trap",
+					"No Removal Gym",
+					"Chaos Gym"
+				]
+			}
+		},
+		{
+			"name": "Gym Challenge Misty",
+			"sprite": "Gym_Challenge_Misty",
+			"deck": "Misty's Wrath",
+			"music": "gym_battle",
+			"prize_cards": 6.0,
+			"match_format": "best_of_3",
+			"meet_text": "I'm Misty of Cerulean Gym! So you got past Brock? Good. My Water deck flows like a tidal wave - let's see if you can stay afloat! No banned trainer cards, remember the rules.",
+			"repeat_text": "Ready to dive in again?",
+			"first_win_text": "You really are strong and skilled! Take my coin and go show Lt. Surge what you've got.",
+			"rematch_win_text": "Glad to see you're really making a splash!",
+			"loss_text": "Yaaaay! My Water Pokemon washed you right out!",
+			"cash_reward": "200",
+			"coin_reward": "Energy Water Blue 2",
+			"pattern": "idle_down",
+			"position": {
+				"x": 320.0,
+				"y": 284.0
+			},
+			"condition": {
+				"type": "all",
+				"conditions": [
+					{
+						"type": "opponent_defeated",
+						"target": "Gym Challenge Brock"
+					},
+					{
+						"type": "opponent_not_defeated",
+						"target": "Gym Challenge Misty"
+					}
+				]
+			},
+			"restrictions": {
+				"banned_card_ids": [
+					"base1-75",
+					"base1-79",
+					"base1-92",
+					"base5-16",
+					"base5-72",
+					"base5-76",
+					"gym1-19",
+					"gym1-103",
+					"gym2-102"
+				],
+				"banned_card_names": [
+					"Lass",
+					"Super Energy Removal",
+					"Energy Removal",
+					"Rocket's Sneak Attack",
+					"Imposter Oak's Revenge",
+					"The Rocket's Trap",
+					"No Removal Gym",
+					"Chaos Gym"
+				]
+			}
+		},
+		{
+			"name": "Gym Challenge Lt. Surge",
+			"sprite": "Gym_Challenge_Lt_Surge",
+			"deck": "Power Surge",
+			"music": "gym_battle",
+			"prize_cards": 6.0,
+			"match_format": "best_of_3",
+			"meet_text": "I'm Lt. Surge! You beat the little lady, huh? Don't get cocky, kid. My Electric deck'll fry you where you stand! And don't even think about those banned trainer cards.",
+			"repeat_text": "Back for another jolt, soldier?",
+			"first_win_text": "Ha! You shorted out my whole army. Take the coin and move out!",
+			"rematch_win_text": "You've got more voltage than I figured, kid.",
+			"loss_text": "Hahaha! You got SHOCKED, kid!",
+			"cash_reward": "200",
+			"coin_reward": "Energy Lightning Gold 2",
+			"pattern": "idle_down",
+			"position": {
+				"x": 400.0,
+				"y": 284.0
+			},
+			"condition": {
+				"type": "all",
+				"conditions": [
+					{
+						"type": "opponent_defeated",
+						"target": "Gym Challenge Misty"
+					},
+					{
+						"type": "opponent_not_defeated",
+						"target": "Gym Challenge Lt. Surge"
+					}
+				]
+			},
+			"restrictions": {
+				"banned_card_ids": [
+					"base1-75",
+					"base1-79",
+					"base1-92",
+					"base5-16",
+					"base5-72",
+					"base5-76",
+					"gym1-19",
+					"gym1-103",
+					"gym2-102"
+				],
+				"banned_card_names": [
+					"Lass",
+					"Super Energy Removal",
+					"Energy Removal",
+					"Rocket's Sneak Attack",
+					"Imposter Oak's Revenge",
+					"The Rocket's Trap",
+					"No Removal Gym",
+					"Chaos Gym"
+				]
+			}
+		},
+		{
+			"name": "Gym Challenge Erika",
+			"sprite": "Gym_Challenge_Erika",
+			"deck": "Life Draining Pollen",
+			"music": "gym_battle",
+			"prize_cards": 6.0,
+			"match_format": "best_of_3",
+			"meet_text": "Oh... hello. I am Erika of Celadon Gym. You made it past Lt. Surge? How lovely. My Grass Pokemon are delicate, but their bloom can be overwhelming. Shall we begin? Do mind the banned trainer cards.",
+			"repeat_text": "Another match? How refreshing.",
+			"first_win_text": "That was a delightful match. I felt inspired. Please, take this coin.",
+			"rematch_win_text": "You play with such grace.",
+			"loss_text": "Oh... is that all? My garden remains in full bloom.",
+			"cash_reward": "200",
+			"coin_reward": "Energy Grass Green 2",
+			"pattern": "idle_down",
+			"position": {
+				"x": 480.0,
+				"y": 284.0
+			},
+			"condition": {
+				"type": "all",
+				"conditions": [
+					{
+						"type": "opponent_defeated",
+						"target": "Gym Challenge Lt. Surge"
+					},
+					{
+						"type": "opponent_not_defeated",
+						"target": "Gym Challenge Erika"
+					}
+				]
+			},
+			"restrictions": {
+				"banned_card_ids": [
+					"base1-75",
+					"base1-79",
+					"base1-92",
+					"base5-16",
+					"base5-72",
+					"base5-76",
+					"gym1-19",
+					"gym1-103",
+					"gym2-102"
+				],
+				"banned_card_names": [
+					"Lass",
+					"Super Energy Removal",
+					"Energy Removal",
+					"Rocket's Sneak Attack",
+					"Imposter Oak's Revenge",
+					"The Rocket's Trap",
+					"No Removal Gym",
+					"Chaos Gym"
+				]
+			}
+		},
+		{
+			"name": "Gym Challenge Koga",
+			"sprite": "Gym_Challenge_Koga",
+			"deck": "Koga's Ninja Poison",
+			"music": "gym_battle",
+			"prize_cards": 6.0,
+			"match_format": "best_of_3",
+			"meet_text": "Fwahahaha! I am Koga of Fuchsia Gym, master of poison and the ninja arts. Erika's petals have wilted before you? Impressive. But my toxins seep where you cannot see. Prepare yourself! No banned trainer cards permitted.",
+			"repeat_text": "Do you dare face my poisons again?",
+			"first_win_text": "Heh... you saw through my smoke. A worthy challenger. This coin is yours.",
+			"rematch_win_text": "Your eyes grow sharper each time we meet.",
+			"loss_text": "Fwahaha! My poison courses through your veins. You were no match!",
+			"cash_reward": "200",
+			"coin_reward": "Energy Colorless Silver 2",
+			"pattern": "idle_down",
+			"position": {
+				"x": 240.0,
+				"y": 189.0
+			},
+			"condition": {
+				"type": "all",
+				"conditions": [
+					{
+						"type": "opponent_defeated",
+						"target": "Gym Challenge Erika"
+					},
+					{
+						"type": "opponent_not_defeated",
+						"target": "Gym Challenge Koga"
+					}
+				]
+			},
+			"restrictions": {
+				"banned_card_ids": [
+					"base1-75",
+					"base1-79",
+					"base1-92",
+					"base5-16",
+					"base5-72",
+					"base5-76",
+					"gym1-19",
+					"gym1-103",
+					"gym2-102"
+				],
+				"banned_card_names": [
+					"Lass",
+					"Super Energy Removal",
+					"Energy Removal",
+					"Rocket's Sneak Attack",
+					"Imposter Oak's Revenge",
+					"The Rocket's Trap",
+					"No Removal Gym",
+					"Chaos Gym"
+				]
+			}
+		},
+		{
+			"name": "Gym Challenge Sabrina",
+			"sprite": "Gym_Challenge_Sabrina",
+			"deck": "Mixed Aura",
+			"music": "gym_battle",
+			"prize_cards": 6.0,
+			"match_format": "best_of_3",
+			"meet_text": "I am Sabrina of Saffron Gym. I foresaw your arrival the moment Koga fell. My Psychic power bends the battle to my will. Let us see if your mind can withstand mine. The banned trainer cards have no place here.",
+			"repeat_text": "I already know how this ends... but play on.",
+			"first_win_text": "...You shattered my vision. Astonishing. Take this coin; it was always meant for you.",
+			"rematch_win_text": "Your future grows brighter.",
+			"loss_text": "Just as I foresaw. Your mind was no match for mine.",
+			"cash_reward": "200",
+			"coin_reward": "Energy Psychic Purple 2",
+			"pattern": "idle_down",
+			"position": {
+				"x": 320.0,
+				"y": 189.0
+			},
+			"condition": {
+				"type": "all",
+				"conditions": [
+					{
+						"type": "opponent_defeated",
+						"target": "Gym Challenge Koga"
+					},
+					{
+						"type": "opponent_not_defeated",
+						"target": "Gym Challenge Sabrina"
+					}
+				]
+			},
+			"restrictions": {
+				"banned_card_ids": [
+					"base1-75",
+					"base1-79",
+					"base1-92",
+					"base5-16",
+					"base5-72",
+					"base5-76",
+					"gym1-19",
+					"gym1-103",
+					"gym2-102"
+				],
+				"banned_card_names": [
+					"Lass",
+					"Super Energy Removal",
+					"Energy Removal",
+					"Rocket's Sneak Attack",
+					"Imposter Oak's Revenge",
+					"The Rocket's Trap",
+					"No Removal Gym",
+					"Chaos Gym"
+				]
+			}
+		},
+		{
+			"name": "Gym Challenge Blaine",
+			"sprite": "Gym_Challenge_Blaine",
+			"deck": "Stoke The Flames",
+			"music": "gym_battle",
+			"prize_cards": 6.0,
+			"match_format": "best_of_3",
+			"meet_text": "Hah! I'm Blaine of Cinnabar Gym! So you scattered Sabrina's mind games? Then let's heat things up! My Fire deck burns hotter than the Cinnabar volcano. Can you take the heat? And no banned trainer cards!",
+			"repeat_text": "Ready to get burned again?",
+			"first_win_text": "Awesome! I've burned out... You've earned this coin. Giovanni is all that stands in your way now.",
+			"rematch_win_text": "You're a real firebrand!",
+			"loss_text": "Hah! You got burned to a crisp! Not even ashes remain!",
+			"cash_reward": "200",
+			"coin_reward": "Energy Fire Red 2",
+			"pattern": "idle_down",
+			"position": {
+				"x": 400.0,
+				"y": 189.0
+			},
+			"condition": {
+				"type": "all",
+				"conditions": [
+					{
+						"type": "opponent_defeated",
+						"target": "Gym Challenge Sabrina"
+					},
+					{
+						"type": "opponent_not_defeated",
+						"target": "Gym Challenge Blaine"
+					}
+				]
+			},
+			"restrictions": {
+				"banned_card_ids": [
+					"base1-75",
+					"base1-79",
+					"base1-92",
+					"base5-16",
+					"base5-72",
+					"base5-76",
+					"gym1-19",
+					"gym1-103",
+					"gym2-102"
+				],
+				"banned_card_names": [
+					"Lass",
+					"Super Energy Removal",
+					"Energy Removal",
+					"Rocket's Sneak Attack",
+					"Imposter Oak's Revenge",
+					"The Rocket's Trap",
+					"No Removal Gym",
+					"Chaos Gym"
+				]
+			}
+		},
+		{
+			"name": "Gym Challenge Giovanni",
+			"sprite": "Gym_Challenge_Giovanni",
+			"deck": "The Might Of The Boss",
+			"music": "gym_battle",
+			"prize_cards": 6.0,
+			"match_format": "best_of_3",
+			"meet_text": "So. You've defeated every leader to reach me. I am Giovanni of Viridian Gym, the final and greatest of the Gym Leaders. I will show you the true meaning of power. This is where your challenge ends! And yes, the banned trainer cards stay out of this.",
+			"repeat_text": "You wish to challenge me once more?",
+			"first_win_text": "...Impossible. You have bested every leader, even me. You are a true champion of the Gym Challenge. Take this coin - you have earned it, and more.",
+			"rematch_win_text": "You continue to surpass my expectations.",
+			"loss_text": "Ha! This is the extent of your power? You are not yet ready to defeat me.",
+			"cash_reward": "200",
+			"coin_reward": "Energy Darkness Black 2",
+			"pattern": "idle_down",
+			"position": {
+				"x": 480.0,
+				"y": 189.0
+			},
+			"condition": {
+				"type": "all",
+				"conditions": [
+					{
+						"type": "opponent_defeated",
+						"target": "Gym Challenge Blaine"
+					},
+					{
+						"type": "opponent_not_defeated",
+						"target": "Gym Challenge Giovanni"
+					}
+				]
+			},
+			"restrictions": {
+				"banned_card_ids": [
+					"base1-75",
+					"base1-79",
+					"base1-92",
+					"base5-16",
+					"base5-72",
+					"base5-76",
+					"gym1-19",
+					"gym1-103",
+					"gym2-102"
+				],
+				"banned_card_names": [
+					"Lass",
+					"Super Energy Removal",
+					"Energy Removal",
+					"Rocket's Sneak Attack",
+					"Imposter Oak's Revenge",
+					"The Rocket's Trap",
+					"No Removal Gym",
+					"Chaos Gym"
+				]
+			}
+		}
+	]
 }

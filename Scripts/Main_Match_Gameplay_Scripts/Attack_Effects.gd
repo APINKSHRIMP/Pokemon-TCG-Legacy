@@ -1354,7 +1354,8 @@ func apply_bench_damage(effect: Dictionary, is_opponent_attacking: bool) -> void
 				bench_card_ui = bench_container.get_child(i)
 			if bench_card_ui != null and is_instance_valid(bench_card_ui):
 				var label_pos = bench_card_ui.global_position + Vector2(0, -20)
-				main.show_floating_label("-" + str(effective_damage), label_pos, true)
+				main.show_floating_label("-" + str(effective_damage), label_pos, Color.WHITE, true,)
+				
 
 			# Stagger labels by 0.1 seconds for visual sequence
 			await get_tree().create_timer(0.1).timeout
@@ -2061,7 +2062,7 @@ func execute_sonicboom(attacker: card_object, defender: card_object, is_opponent
 	
 	# Display WITHOUT W/R modifiers — pass empty modifiers and use base_damage directly
 	var defender_label_pos = Vector2(530, 300) if is_opponent else Vector2(1030, 300)
-	main.show_floating_label("-" + str(final_damage) + "HP", defender_label_pos, true)
+	main.show_floating_label("-" + str(final_damage) + "HP", defender_label_pos, Color.WHITE, true)
 	defender.current_hp = max(0, defender.current_hp - final_damage)
 	main.display_hp_circles_above_align(defender, !is_opponent)
 	await main.show_message("SONICBOOM: " + str(final_damage) + " DAMAGE! (IGNORES W/R)")
