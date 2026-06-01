@@ -172,7 +172,7 @@
 	"Gym Receptionist 3": { "sprite": "Gym_Helper" },
 	"Gym Security 1": { "sprite": "Gym_Security" },
 	"Gym Security 2": { "sprite": "Gym_Security" },
-	"Gym Shopkeeper": { "sprite": "Gym_Shopkeeper" }
+	"Gym Shopkeeper": { "sprite": "Gym_Shopkeeper", "npc_type": "shop", "shop_id": "gym_mart" }
   },
   "opponents": {
 	"Youngster Joey": { "sprite": "Youngster2", "deck": "Basic Pokemon Barrage", "music": "REPLACEMUSIC", "prize_cards": 2, "cash_reward": "50", "coin_reward": "Rattata Silver", "card_reward": "base1-82, base1-82" },

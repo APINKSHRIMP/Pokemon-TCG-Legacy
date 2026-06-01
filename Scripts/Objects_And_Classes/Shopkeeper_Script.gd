@@ -88,12 +88,9 @@ func _ready():
 	_setup_bubble()
 	_init_movement()
 	_shop_state = GameState.progress.get("shop_state", "initial")
-	# Rocket Mart is always open — no day-based progression
-	if shop_id == "rocket_mart":
-		_shop_state = "open"
-	elif shop_id == "coin_mart":
-		_shop_state = "open"
-	elif shop_id == "holo_mart":
+	# These shops have no day-based progression — always open
+	if shop_id == "rocket_mart" or shop_id == "gym_mart" \
+			or shop_id == "coin_mart" or shop_id == "holo_mart":
 		_shop_state = "open"
 	print("[Shopkeeper] Ready — shop_id=", shop_id, " state=", _shop_state,
 		  " date=", GameState.get_date(), " cash=", GameState.get_cash())

@@ -5,21 +5,21 @@
 			"meet_text": "Welcome! Are you here to register for the Gym Hero Challenge as an entrant? The challenge entrance fee is $500 which must be paid in full up front. You need only pay once for full access to the challenge and you are welcome to enter and leave as often as you like while the challenge is ongoing.",
 			"repeat_text": "Thank you! Your entrace fee is covered and your registration is complete. Please make your way through the door on the left to enter the challenge hall. You fill find the Gym Heros waiting for you in the main hall. Spectator access only is the door on the right.",
 			"pattern": "idle_down",
-			"position": { "x": 305, "y": 70 }
+			"position": { "x": 308, "y": 70 }
 		},
 		{
 			"name": "Gym Receptionist 2",
 			"meet_text": "The Gym Challenge is best of 3 format and you cannot use any of these cards: Lass, Super Energy Removal, Energy Removal, Rocket's Sneak Attack, Imposter Oak's Revenge, The Rocket's Trap, No Removal Gym or Chaos Gym",
 			"repeat_text": "The Gym Challenge is best of 3 format and you cannot use any of these cards: Lass, Super Energy Removal, Energy Removal, Rocket's Sneak Attack, Imposter Oak's Revenge, The Rocket's Trap, No Removal Gym or Chaos Gym",
 			"pattern": "idle_down",
-			"position": { "x": 350, "y": 70 }
+			"position": { "x": 355, "y": 70 }
 		},
 		{
 			"name": "Gym Receptionist 3",
 			"meet_text": "Welcome! Sorry - If you're looking to register to enter the challenge, please speak with my colleague on the other side of the desk. She will be able to take your entrance fee and register you into the challenge. This side is spectator entrance only.",
 			"repeat_text": "Welcome! Sorry - If you're looking to register to enter the challenge, please speak with my colleague on the other side of the desk. She will be able to take your entrance fee and register you into the challenge. This side is spectator entrance only.",
 			"pattern": "idle_down",
-			"position": { "x": 395, "y": 70 }
+			"position": { "x": 398, "y": 70 }
 		},
 		{
 			"name": "Gym Security 1",
@@ -40,7 +40,7 @@
 			"meet_text": "Welcome! Purchase your gym hero and gym challenge packs here!",
 			"repeat_text": "Welcome! Purchase your gym hero and gym challenge packs here!",
 			"pattern": "idle_right",
-			"position": { "x": 50, "y": 340 }
+			"position": { "x": 55, "y": 340 }
 		}
 	],
 	"opponents": [

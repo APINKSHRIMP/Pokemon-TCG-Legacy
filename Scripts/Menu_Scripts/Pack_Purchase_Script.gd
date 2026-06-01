@@ -9,6 +9,7 @@ const PACK_PRICES_PATH     := "res://Card_Set_Data/pack_prices.json"
 const PACK_IMAGES_FOLDER   := "res://Image_Assets/Packs/"
 const CARD_MART_SCENE      := "res://Scenes/Map_Scenes/Card_Mart.tscn"
 const ROCKET_MART_SCENE    := "res://Scenes/Map_Scenes/Rocket_Mart.tscn"
+const GYM_RECEPTION_SCENE  := "res://Scenes/Map_Scenes/Gym_Challenge_Reception.tscn"
 
 # ─── State ───────────────────────────────────────────────────────────────────
 
@@ -97,6 +98,8 @@ func _load_player_data() -> void:
 	var shop_id := GameState.current_shop_id
 	if shop_id == "rocket_mart":
 		unlocked_packs = ["base5"]
+	elif shop_id == "gym_mart":
+		unlocked_packs = ["gym1", "gym2"]
 	elif GameState.get_date() <= 2:
 		unlocked_packs = ["base1"]
 	else:
@@ -149,7 +152,7 @@ func _get_set_name(set_id: String) -> String:
 func _load_pack_images(pack_id: String) -> void:
 	for child in pack_hbox.get_children():
 		child.queue_free()
-	var letters : Array[String] = ["a", "b", "c"]
+	var letters : Array[String] = ["a", "b", "c", "d"]
 	for letter in letters:
 		var path : String = PACK_IMAGES_FOLDER + pack_id + "_" + letter + ".png"
 		var tex : Texture2D = _load_texture(path)
@@ -163,6 +166,14 @@ func _load_pack_images(pack_id: String) -> void:
 		rect.mouse_filter = Control.MOUSE_FILTER_STOP
 		rect.gui_input.connect(_on_pack_clicked.bind(rect, letter))
 		pack_hbox.add_child(rect)
+	if pack_hbox.get_child_count() >= 4:
+		pack_hbox.add_theme_constant_override("separation", 30)
+		pack_hbox.offset_left  = 50.0
+		pack_hbox.offset_right = 1682.0
+	else:
+		pack_hbox.remove_theme_constant_override("separation")
+		pack_hbox.offset_left  = 155.0
+		pack_hbox.offset_right = 1787.0
 
 
 func _load_texture(path: String) -> Texture2D:
@@ -296,6 +307,8 @@ func _on_prev_set() -> void:
 func _get_return_scene() -> String:
 	if GameState.current_shop_id == "rocket_mart":
 		return ROCKET_MART_SCENE
+	elif GameState.current_shop_id == "gym_mart":
+		return GYM_RECEPTION_SCENE
 	return CARD_MART_SCENE
 
 

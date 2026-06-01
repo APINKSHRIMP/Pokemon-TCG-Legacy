@@ -57,6 +57,11 @@ func _ready():
 		$Player.position = GameState.menu_return_position
 		$Player.set_direction(GameState.menu_return_direction)
 		GameState.clear_menu_return_state()
+	elif GameState.use_spawn_position:
+		# Returning from the pack shop — restore exact position in front of shopkeeper
+		$Player.position = GameState.spawn_position
+		$Player.set_direction(GameState.get_player_direction())
+		GameState.use_spawn_position = false
 	elif GameState.returning_from_battle:
 		# Returning from a battle triggered by a reception opponent
 		$Player.position = GameState.player_position

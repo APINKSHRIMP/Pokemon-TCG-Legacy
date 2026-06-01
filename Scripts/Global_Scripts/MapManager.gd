@@ -630,10 +630,7 @@ func _on_player_npc_interact(npc: Node):
 		return
 	current_npc = npc
 
-	if npc.npc_type == "shop":
-		npc.animated_sprite.play("idle_down")
-	else:
-		npc.pause_and_face(_player.position)
+	npc.pause_and_face(_player.position)
 
 	# Shop NPC: delegate entirely to its own state machine
 	if npc.npc_type == "shop" and npc.has_method("on_interact"):
