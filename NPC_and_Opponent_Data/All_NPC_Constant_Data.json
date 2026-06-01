@@ -151,7 +151,22 @@
 	"Pikachu Fan Leaf": { "sprite": "Pokekid" },
 	"Rocket Pack Gift": { "sprite": "Teamrocket_M", "gift_type": "pack", "gift_value": "base5_a" },
 	"Wishing well coin thrower": { "sprite": "NPC24", "gift_type": "coin", "gift_value": "REPLACECOIN" },
-	"Veteran Iris": { "sprite": "Veteran_F" }
+	"Veteran Iris": { "sprite": "Veteran_F" },
+	"Gym Challenge Brock Defeated": { "sprite": "Gym_Challenge_Brock" },
+	"Gym Challenge Misty Locked": { "sprite": "Gym_Challenge_Misty" },
+	"Gym Challenge Misty Defeated": { "sprite": "Gym_Challenge_Misty" },
+	"Gym Challenge Lt. Surge Locked": { "sprite": "Gym_Challenge_Lt_Surge" },
+	"Gym Challenge Lt. Surge Defeated": { "sprite": "Gym_Challenge_Lt_Surge" },
+	"Gym Challenge Erika Locked": { "sprite": "Gym_Challenge_Erika" },
+	"Gym Challenge Erika Defeated": { "sprite": "Gym_Challenge_Erika" },
+	"Gym Challenge Koga Locked": { "sprite": "Gym_Challenge_Koga" },
+	"Gym Challenge Koga Defeated": { "sprite": "Gym_Challenge_Koga" },
+	"Gym Challenge Sabrina Locked": { "sprite": "Gym_Challenge_Sabrina" },
+	"Gym Challenge Sabrina Defeated": { "sprite": "Gym_Challenge_Sabrina" },
+	"Gym Challenge Blaine Locked": { "sprite": "Gym_Challenge_Blaine" },
+	"Gym Challenge Blaine Defeated": { "sprite": "Gym_Challenge_Blaine" },
+	"Gym Challenge Giovanni Locked": { "sprite": "Gym_Challenge_Giovanni" },
+	"Gym Challenge Giovanni Defeated": { "sprite": "Gym_Challenge_Giovanni" }
   },
   "opponents": {
 	"Youngster Joey": { "sprite": "Youngster2", "deck": "Basic Pokemon Barrage", "music": "REPLACEMUSIC", "prize_cards": 2, "cash_reward": "50", "coin_reward": "Rattata Silver", "card_reward": "base1-82, base1-82" },
@@ -247,6 +262,14 @@
 	"Ex Gym Leader Koga": {"sprite": "Ex_Gym_Leader_Koga", "deck": "Ninja Ambush", "music": "REPLACEMUSIC", "prize_cards": 6, "cash_reward": "200", "coin_reward": "Energy Colorless Silver", "pack_reward": "Gym2_a", "card_reward": "Gym2-10"},
 	"Ex Gym Leader Sabrina": {"sprite": "Ex_Gym_Leader_Sabrina", "deck": "Psychic Uplink", "music": "REPLACEMUSIC", "prize_cards": 6, "cash_reward": "200", "coin_reward": "Energy Psychic Purple", "pack_reward": "Gym2_b", "card_reward": "Gym2-16"},
 	"Ex Gym Leader Blaine": {"sprite": "Ex_Gym_Leader_Blaine", "deck": "Burning Slot Machine", "music": "REPLACEMUSIC", "prize_cards": 6, "cash_reward": "200", "coin_reward": "Energy Fire Red", "pack_reward": "Gym2_c", "card_reward": "Gym2-1"},
-	"Ex Gym Leader Giovanni": {"sprite": "Ex_Gym_Leader_Giovanni", "deck": "Kings And Queens", "music": "REPLACEMUSIC", "prize_cards": 6, "cash_reward": "200", "coin_reward": "Energy Darkness Black", "pack_reward": "Gym2_d", "card_reward": "Gym2-7"}
+	"Ex Gym Leader Giovanni": {"sprite": "Ex_Gym_Leader_Giovanni", "deck": "Kings And Queens", "music": "REPLACEMUSIC", "prize_cards": 6, "cash_reward": "200", "coin_reward": "Energy Darkness Black", "pack_reward": "Gym2_d", "card_reward": "Gym2-7"},
+	"Gym Challenge Brock": { "sprite": "Gym_Challenge_Brock", "deck": "Pewter Crusher", "music": "gym_battle", "prize_cards": 6, "cash_reward": "200", "coin_reward": "Energy Fighting Brown 2", "pack_reward": "Gym1-a", "card_reward": "Gym1-1" },
+	"Gym Challenge Misty": { "sprite": "Gym_Challenge_Misty", "deck": "Misty's Wrath", "music": "gym_battle", "prize_cards": 6, "cash_reward": "200", "coin_reward": "Energy Water Blue 2", "pack_reward": "Gym1-b", "card_reward": "Gym1-1" },
+	"Gym Challenge Lt. Surge": { "sprite": "Gym_Challenge_Lt_Surge", "deck": "Power Surge", "music": "gym_battle", "prize_cards": 6, "cash_reward": "200", "coin_reward": "Energy Lightning Gold 2", "pack_reward": "Gym1-c", "card_reward": "Gym1-1" },
+	"Gym Challenge Erika": { "sprite": "Gym_Challenge_Erika", "deck": "Life Draining Pollen", "music": "gym_battle", "prize_cards": 6, "cash_reward": "200", "coin_reward": "Energy Grass Green 2", "pack_reward": "Gym1-d", "card_reward": "Gym1-1" },
+	"Gym Challenge Koga": { "sprite": "Gym_Challenge_Koga", "deck": "Koga's Ninja Poison", "music": "gym_battle", "prize_cards": 6, "cash_reward": "200", "coin_reward": "Energy Colorless Silver 2", "pack_reward": "Gym2-a", "card_reward": "Gym1-1" },
+	"Gym Challenge Sabrina": { "sprite": "Gym_Challenge_Sabrina", "deck": "Mixed Aura", "music": "gym_battle", "prize_cards": 6, "cash_reward": "200", "coin_reward": "Energy Psychic Purple 2", "pack_reward": "Gym2-b", "card_reward": "Gym1-1" },
+	"Gym Challenge Blaine": { "sprite": "Gym_Challenge_Blaine", "deck": "Stoke The Flames", "music": "gym_battle", "prize_cards": 6, "cash_reward": "200", "coin_reward": "Energy Fire Red 2", "pack_reward": "Gym2-c", "card_reward": "Gym1-1" },
+	"Gym Challenge Giovanni": { "sprite": "Gym_Challenge_Giovanni", "deck": "The Might Of The Boss", "music": "gym_battle", "prize_cards": 6, "cash_reward": "200", "coin_reward": "Energy Darkness Black 2", "pack_reward": "Gym2-d", "card_reward": "Gym1-1" }
 	}
 }
