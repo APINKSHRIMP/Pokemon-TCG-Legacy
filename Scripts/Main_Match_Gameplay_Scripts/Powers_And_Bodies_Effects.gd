@@ -12,6 +12,49 @@ extends Node
 
 var main: Node
 
+# ── Power dispatch registry ────────────────────────────────────────────────────
+# Maps ability name → async Callable(pokemon). Player path only; CPU path is separate.
+# Add new set powers by calling _register_<set>_powers() from _ensure_power_dispatch_ready().
+var _power_dispatch: Dictionary = {}
+var _power_dispatch_ready := false
+
+func _ensure_power_dispatch_ready() -> void:
+	if _power_dispatch_ready:
+		return
+	_power_dispatch_ready = true
+	_register_all_powers()
+	# When adding Neo1/Neo2/etc., append: _register_neo1_powers()
+
+func _register_all_powers() -> void:
+	_power_dispatch["Damage Swap"]           = func(p): await power_damage_swap(p)
+	_power_dispatch["Rain Dance"]            = func(p): await power_rain_dance(p)
+	_power_dispatch["Energy Trans"]          = func(p): await power_energy_trans(p)
+	_power_dispatch["Buzzap"]                = func(p): await power_buzzap(p)
+	_power_dispatch["Discard"]               = func(p): await power_bench_token_discard(p)
+	_power_dispatch["Shift"]                 = func(p): await power_shift(p)
+	_power_dispatch["Heal"]                  = func(p): await power_heal_vileplume(p)
+	_power_dispatch["Peek"]                  = func(p): await power_peek(p)
+	_power_dispatch["Step In"]               = func(p): await power_step_in(p)
+	_power_dispatch["Curse"]                 = func(p): await power_curse(p)
+	_power_dispatch["Strange Behavior"]      = func(p): await power_strange_behavior(p)
+	_power_dispatch["Cowardice"]             = func(p): await power_cowardice(p)
+	_power_dispatch["Evolutionary Light"]    = func(p): await power_evolutionary_light(p)
+	_power_dispatch["Pollen Stench"]         = func(p): await power_pollen_stench(p)
+	_power_dispatch["Matter Exchange"]       = func(p): await power_matter_exchange(p)
+	_power_dispatch["Gather Fire"]           = func(p): await power_gather_fire(p)
+	_power_dispatch["Long-Distance Hypnosis"]= func(p): await power_long_distance_hypnosis(p)
+	_power_dispatch["Trickery"]              = func(p): await power_trickery(p)
+	_power_dispatch["Celadon City Gym"]      = func(p): await main.trainer_effects.gym1_celadon_activate(false)
+	_power_dispatch["Fuchsia City Gym"]      = func(p): await main.trainer_effects.gym2_fuchsia_activate(false)
+	_power_dispatch["Saffron City Gym"]      = func(p): await main.trainer_effects.gym2_saffron_activate(false)
+	_power_dispatch["Energy Charge"]         = func(p): await power_energy_charge(p)
+	_power_dispatch["Fragrance Trap"]        = func(p): await power_fragrance_trap(p)
+	_power_dispatch["Natural Healing"]       = func(p): await power_natural_healing(p)
+	_power_dispatch["Shapeshift"]            = func(p): await power_shapeshift(p)
+	_power_dispatch["Discard Form"]          = func(p): await power_shapeshift_discard(p)
+	_power_dispatch["Soak Up"]               = func(p): await power_soak_up(p)
+	_power_dispatch["Emerge"]                = func(p): await power_emerge(p)
+
 func is_power_blocked_by_status(pokemon: card_object) -> bool:
 	if pokemon == null:
 		return true
@@ -56,9 +99,9 @@ func reset_power_used_flags(is_opponent: bool) -> void:
 	var active = main.opponent_active_pokemon if is_opponent else main.player_active_pokemon
 	var bench = main.opponent_bench if is_opponent else main.player_bench
 	if active != null:
-		active.power_used_this_turn = false
+		active.reset_power_used()
 	for bp in bench:
-		bp.power_used_this_turn = false
+		bp.reset_power_used()
 	# Refresh Gaseous Form HP each turn in case Toxic Gas / Goop Gas state changed
 	refresh_gaseous_form_hp()
 
@@ -171,38 +214,12 @@ func open_power_menu() -> void:
 
 func activate_power(pokemon: card_object, ability: Dictionary) -> void:
 	main.hide_attack_buttons()
+	_ensure_power_dispatch_ready()
 	var ability_name = ability.get("name", "")
-
-	match ability_name:
-		"Damage Swap": await power_damage_swap(pokemon)
-		"Rain Dance": await power_rain_dance(pokemon)
-		"Energy Trans": await power_energy_trans(pokemon)
-		"Buzzap": await power_buzzap(pokemon)
-		"Discard": await power_bench_token_discard(pokemon)
-		"Shift": await power_shift(pokemon)
-		"Heal": await power_heal_vileplume(pokemon)
-		"Peek": await power_peek(pokemon)
-		"Step In": await power_step_in(pokemon)
-		"Curse": await power_curse(pokemon)
-		"Strange Behavior": await power_strange_behavior(pokemon)
-		"Cowardice": await power_cowardice(pokemon)
-		"Evolutionary Light": await power_evolutionary_light(pokemon)
-		"Pollen Stench": await power_pollen_stench(pokemon)
-		"Matter Exchange": await power_matter_exchange(pokemon)
-		"Gather Fire": await power_gather_fire(pokemon)
-		"Long-Distance Hypnosis": await power_long_distance_hypnosis(pokemon)
-		"Trickery": await power_trickery(pokemon)
-		"Celadon City Gym": await main.trainer_effects.gym1_celadon_activate(false)
-		"Fuchsia City Gym": await main.trainer_effects.gym2_fuchsia_activate(false)
-		"Saffron City Gym": await main.trainer_effects.gym2_saffron_activate(false)
-		"Energy Charge": await power_energy_charge(pokemon)
-		"Fragrance Trap": await power_fragrance_trap(pokemon)
-		"Natural Healing": await power_natural_healing(pokemon)
-		"Shapeshift": await power_shapeshift(pokemon)
-		"Discard Form": await power_shapeshift_discard(pokemon)
-		"Soak Up": await power_soak_up(pokemon)
-		"Emerge": await power_emerge(pokemon)
-		_: await main.show_message("Power not implemented: " + ability_name)
+	if _power_dispatch.has(ability_name):
+		await _power_dispatch[ability_name].call(pokemon)
+		return
+	await main.show_message("Power not implemented: " + ability_name)
 
 # Damage Swap (Alakazam): Move 1 damage counter between your pokemon
 

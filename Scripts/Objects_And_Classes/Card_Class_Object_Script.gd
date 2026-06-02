@@ -145,6 +145,28 @@ func get_damage_counters() -> int:
 		return 0
 	return (max_hp - current_hp) / 10
 
+# ── Per-turn flag resets ───────────────────────────────────────────────────────
+# Centralised reset helpers. When adding a new per-turn flag, add the reset here
+# so callers don't need updating — only the card_object method needs the new line.
+
+# Clear one-shot attack-boost flags. Call at end of any attack in the generic
+# (non-dispatch) path so lingering boosts expire after each turn.
+func clear_attack_boost_flags() -> void:
+	swords_dance_active = false
+	focus_energy_active = false
+	gym2_focus_energy_active = false
+	# Add future one-shot per-turn attack boosts here.
+
+# Called for all field pokemon at inter-turn (placed_on_field resets each turn for both sides).
+func reset_placed_this_turn() -> void:
+	placed_on_field_this_turn = false
+
+# Called for all field pokemon belonging to the side whose turn just ended.
+func reset_power_used() -> void:
+	power_used_this_turn = false
+
+# ── Utility ────────────────────────────────────────────────────────────────────
+
 # Utility: get max HP (metadata HP, unless temporarily overridden)
 func get_max_hp() -> int:
 	if max_hp_override > 0:

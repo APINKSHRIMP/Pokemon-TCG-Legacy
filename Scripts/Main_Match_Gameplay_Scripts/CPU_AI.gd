@@ -2461,8 +2461,8 @@ func cpu_phase_attack(cpu_eval: Dictionary) -> void:
 	
 	var _cpu_pae2 = main.attack_effects.parse_card_text_effects(chosen_attack.get("text", ""), main.opponent_active_pokemon.metadata.get("name", ""))
 	
-	# Clear swords dance after any attack
-	main.opponent_active_pokemon.swords_dance_active = false
+	# Clear one-shot attack boosts after any attack completes
+	main.opponent_active_pokemon.clear_attack_boost_flags()
 	if _cpu_pae2.size() > 0:
 		await main.attack_effects.apply_card_text_effects(_cpu_pae2, main.opponent_active_pokemon, main.player_active_pokemon, true, flip_result)
 	if main._should_bail(): return

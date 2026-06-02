@@ -2399,16 +2399,16 @@ func player_pick_prize_card() -> void:
 
 ############################################### Start and end of turn checks and sets ################################################
 
-# Resets placed_on_field_this_turn to false for all pokemon on the specified player's field
+# Resets per-turn placement flags for all field pokemon on one side.
 func reset_field_pokemon_turn_flags(is_opponent: bool) -> void:
 	var active = opponent_active_pokemon if is_opponent else player_active_pokemon
 	var bench = opponent_bench if is_opponent else player_bench
 
 	if active != null:
-		active.placed_on_field_this_turn = false
+		active.reset_placed_this_turn()
 
 	for bench_pokemon in bench:
-		bench_pokemon.placed_on_field_this_turn = false
+		bench_pokemon.reset_placed_this_turn()
 
 # Called at the start of the player's turn to perform mandatory actions
 func player_start_turn_checks() -> void:
@@ -3241,8 +3241,8 @@ func perform_attack(attack_index: int) -> void:
 	
 	var _pae_effects = attack_effects.parse_card_text_effects(attack.get("text", ""), player_active_pokemon.metadata.get("name", ""))
 	
-	# Clear swords dance after any attack
-	player_active_pokemon.swords_dance_active = false
+	# Clear one-shot attack boosts after any attack completes
+	player_active_pokemon.clear_attack_boost_flags()
 	if _pae_effects.size() > 0:
 		await attack_effects.apply_card_text_effects(_pae_effects, player_active_pokemon, opponent_active_pokemon, false, flip_result)
 	

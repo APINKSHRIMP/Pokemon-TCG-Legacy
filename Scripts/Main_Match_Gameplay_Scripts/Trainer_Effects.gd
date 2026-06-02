@@ -10,6 +10,428 @@ extends Node
 
 var main: Node
 
+# ── Trainer dispatch registry ──────────────────────────────────────────────────
+# Maps lowercased card UID → async Callable(card, is_opponent).
+# Add new set registrations by calling _register_<set>_trainers() from _ensure_trainer_dispatch_ready().
+var _trainer_dispatch: Dictionary = {}
+var _trainer_dispatch_ready := false
+
+func _ensure_trainer_dispatch_ready() -> void:
+	if _trainer_dispatch_ready:
+		return
+	_trainer_dispatch_ready = true
+	_register_base_trainers()
+	_register_gym1_trainers()
+	_register_gym2_trainers()
+	# When adding Neo1/Neo2/etc., append: _register_neo1_trainers()
+
+func _register_base_trainers() -> void:
+	_trainer_dispatch["base1-88"] = func(c, opp): await effect_professor_oak(c, opp)
+	_trainer_dispatch["base1-89"] = func(c, opp): await effect_revive(opp)
+	_trainer_dispatch["base1-90"] = func(c, opp): await effect_super_potion(opp)
+	_trainer_dispatch["base1-91"] = func(c, opp): await effect_bill(opp)
+	_trainer_dispatch["base1-92"] = func(c, opp): await effect_energy_removal(opp)
+	_trainer_dispatch["base1-93"] = func(c, opp): await effect_gust_of_wind(opp)
+	_trainer_dispatch["base1-94"] = func(c, opp): await effect_potion(opp)
+	_trainer_dispatch["base1-95"] = func(c, opp): await effect_switch(opp)
+	_trainer_dispatch["base1-71"] = func(c, opp): await effect_computer_search(c, opp)
+	_trainer_dispatch["base1-72"] = func(c, opp): await effect_devolution_spray(opp)
+	_trainer_dispatch["base1-73"] = func(c, opp): await effect_impostor_professor_oak(opp)
+	_trainer_dispatch["base1-74"] = func(c, opp): await effect_item_finder(c, opp)
+	_trainer_dispatch["base1-75"] = func(c, opp): await effect_lass(opp)
+	_trainer_dispatch["base1-76"] = func(c, opp): await effect_pokemon_breeder(opp)
+	_trainer_dispatch["base1-77"] = func(c, opp): await effect_pokemon_trader(c, opp)
+	_trainer_dispatch["base1-78"] = func(c, opp): await effect_scoop_up(opp)
+	_trainer_dispatch["base1-79"] = func(c, opp): await effect_super_energy_removal(opp)
+	_trainer_dispatch["base1-81"] = func(c, opp): await effect_energy_retrieval(c, opp)
+	_trainer_dispatch["base1-82"] = func(c, opp): await effect_full_heal(opp)
+	_trainer_dispatch["base1-83"] = func(c, opp): await effect_maintenance(c, opp)
+	_trainer_dispatch["base1-85"] = func(c, opp): await effect_pokemon_center(opp)
+	_trainer_dispatch["base1-86"] = func(c, opp): await effect_pokemon_flute(opp)
+	_trainer_dispatch["base1-87"] = func(c, opp): await effect_pokedex(opp)
+	_trainer_dispatch["base2-64"] = func(c, opp): await effect_poke_ball(opp)
+	_trainer_dispatch["base3-58"] = func(c, opp): await effect_mr_fuji(opp)
+	_trainer_dispatch["base3-59"] = func(c, opp): await effect_energy_search(opp)
+	_trainer_dispatch["base3-60"] = func(c, opp): await effect_gambler(opp)
+	_trainer_dispatch["base3-61"] = func(c, opp): await effect_recycle(opp)
+	var fn_hctr = func(c, opp): await effect_here_comes_team_rocket(opp)
+	_trainer_dispatch["base5-15"] = fn_hctr;  _trainer_dispatch["base5-71"] = fn_hctr
+	var fn_rsa = func(c, opp): await effect_rockets_sneak_attack(opp)
+	_trainer_dispatch["base5-16"] = fn_rsa;   _trainer_dispatch["base5-72"] = fn_rsa
+	_trainer_dispatch["base5-73"] = func(c, opp): await effect_the_boss_way(opp)
+	_trainer_dispatch["base5-74"] = func(c, opp): await effect_challenge(opp)
+	_trainer_dispatch["base5-75"] = func(c, opp): await effect_digger(opp)
+	_trainer_dispatch["base5-76"] = func(c, opp): await effect_imposter_oaks_revenge(c, opp)
+	_trainer_dispatch["base5-77"] = func(c, opp): await effect_nightly_garbage_run(opp)
+	_trainer_dispatch["base5-78"] = func(c, opp): await effect_goop_gas_attack(opp)
+	_trainer_dispatch["base5-79"] = func(c, opp): await effect_sleep_trainer(opp)
+
+func _register_gym1_trainers() -> void:
+	var fn_brock = func(c, opp): await gym1_effect_brock(opp)
+	_trainer_dispatch["gym1-15"] = fn_brock;  _trainer_dispatch["gym1-98"] = fn_brock
+	var fn_erika = func(c, opp): await gym1_effect_erika(opp)
+	_trainer_dispatch["gym1-16"] = fn_erika;  _trainer_dispatch["gym1-100"] = fn_erika
+	var fn_surge = func(c, opp): await gym1_effect_lt_surge(opp)
+	_trainer_dispatch["gym1-17"] = fn_surge;  _trainer_dispatch["gym1-101"] = fn_surge
+	var fn_misty = func(c, opp): await gym1_effect_misty(c, opp)
+	_trainer_dispatch["gym1-18"] = fn_misty;  _trainer_dispatch["gym1-102"] = fn_misty
+	_trainer_dispatch["gym1-19"]  = func(c, opp): await gym1_effect_rockets_trap(opp)
+	_trainer_dispatch["gym1-97"]  = func(c, opp): await gym1_effect_blaines_quiz(opp)
+	_trainer_dispatch["gym1-105"] = func(c, opp): await gym1_effect_blaines_last_resort(opp)
+	_trainer_dispatch["gym1-106"] = func(c, opp): await gym1_effect_brocks_training_method(opp)
+	_trainer_dispatch["gym1-109"] = func(c, opp): await gym1_effect_erikas_maids(c, opp)
+	_trainer_dispatch["gym1-110"] = func(c, opp): await gym1_effect_erikas_perfume(opp)
+	_trainer_dispatch["gym1-111"] = func(c, opp): await gym1_effect_good_manners(opp)
+	_trainer_dispatch["gym1-112"] = func(c, opp): await gym1_effect_lt_surges_treaty(opp)
+	_trainer_dispatch["gym1-113"] = func(c, opp): await gym1_effect_minion_of_team_rocket(opp)
+	_trainer_dispatch["gym1-114"] = func(c, opp): await gym1_effect_mistys_wrath(opp)
+	_trainer_dispatch["gym1-116"] = func(c, opp): await gym1_effect_recall(opp)
+	_trainer_dispatch["gym1-118"] = func(c, opp): await gym1_effect_secret_mission(opp)
+	_trainer_dispatch["gym1-119"] = func(c, opp): await gym1_effect_tickling_machine(opp)
+	_trainer_dispatch["gym1-121"] = func(c, opp): await gym1_effect_blaines_gamble(c, opp)
+	_trainer_dispatch["gym1-122"] = func(c, opp): await gym1_effect_energy_flow(opp)
+	_trainer_dispatch["gym1-123"] = func(c, opp): await gym1_effect_mistys_duel(opp)
+	_trainer_dispatch["gym1-125"] = func(c, opp): await gym1_effect_sabrinas_gaze(opp)
+	_trainer_dispatch["gym1-126"] = func(c, opp): await gym1_effect_trash_exchange(opp)
+
+func _register_gym2_trainers() -> void:
+
+	var fn_blaine = func(c, opp): await gym2_effect_blaine(opp)
+	_trainer_dispatch["gym2-17"] = fn_blaine;  _trainer_dispatch["gym2-100"] = fn_blaine
+	var fn_giovanni = func(c, opp): await gym2_effect_giovanni(opp)
+	_trainer_dispatch["gym2-18"] = fn_giovanni; _trainer_dispatch["gym2-104"] = fn_giovanni
+	var fn_koga = func(c, opp): await gym2_effect_koga(opp)
+	_trainer_dispatch["gym2-19"] = fn_koga;    _trainer_dispatch["gym2-106"] = fn_koga
+	var fn_sabrina = func(c, opp): await gym2_effect_sabrina(opp)
+	_trainer_dispatch["gym2-20"] = fn_sabrina; _trainer_dispatch["gym2-110"] = fn_sabrina
+	_trainer_dispatch["gym2-103"] = func(c, opp): await gym2_effect_erikas_kindness(opp)
+	_trainer_dispatch["gym2-105"] = func(c, opp): await gym2_effect_giovannis_last_resort(opp)
+	_trainer_dispatch["gym2-107"] = func(c, opp): await gym2_effect_lt_surges_secret_plan(opp)
+	_trainer_dispatch["gym2-108"] = func(c, opp): await gym2_effect_mistys_wish(opp)
+	_trainer_dispatch["gym2-111"] = func(c, opp): await gym2_effect_blaines_quiz_2(opp)
+	_trainer_dispatch["gym2-112"] = func(c, opp): await gym2_effect_blaines_quiz_3(opp)
+	_trainer_dispatch["gym2-116"] = func(c, opp): await gym2_effect_master_ball(opp)
+	_trainer_dispatch["gym2-117"] = func(c, opp): await gym2_effect_max_revive(c, opp)
+	_trainer_dispatch["gym2-118"] = func(c, opp): await gym2_effect_mistys_tears(c, opp)
+	_trainer_dispatch["gym2-120"] = func(c, opp): await gym2_effect_rockets_secret_experiment(opp)
+	_trainer_dispatch["gym2-121"] = func(c, opp): await gym2_effect_sabrinas_psychic_control(opp)
+	_trainer_dispatch["gym2-124"] = func(c, opp): await gym2_effect_fervor(opp)
+	_trainer_dispatch["gym2-125"] = func(c, opp): await gym2_effect_transparent_walls(opp)
+	_trainer_dispatch["gym2-126"] = func(c, opp): await gym2_effect_warp_point(opp)
+
+# ── Trainer validation registry ────────────────────────────────────────────────
+# Maps lowercased card UID → Callable(card, is_opponent) -> String.
+# Returns "" if valid, or an error message string if the card cannot be played.
+# Global checks (trainer lock, Hay Fever) are handled inline in validate_trainer_can_be_played.
+var _validator_dispatch: Dictionary = {}
+var _validator_dispatch_ready := false
+
+func _ensure_validator_dispatch_ready() -> void:
+	if _validator_dispatch_ready:
+		return
+	_validator_dispatch_ready = true
+	_register_base_validations()
+	_register_gym1_validations()
+	_register_gym2_validations()
+	# When adding Neo1/Neo2/etc., append: _register_neo1_validations()
+
+func _register_base_validations() -> void:
+	_validator_dispatch["base1-76"] = func(c, opp):  # Pokemon Breeder
+		var hand = main.opponent_hand if opp else main.player_hand
+		var active = main.opponent_active_pokemon if opp else main.player_active_pokemon
+		var bench = main.opponent_bench if opp else main.player_bench
+		var stage2_cards = hand.filter(func(x): return x != c and "Stage 2" in x.metadata.get("subtypes",[]))
+		if stage2_cards.is_empty(): return "No Stage 2 Pokemon in hand to play!"
+		var all_in_play = ([] + ([active] if active else []) + bench)
+		for s2 in stage2_cards:
+			for p in all_in_play:
+				if not p.placed_on_field_this_turn and main.is_basic_pokemon(p) and _basic_matches_stage2(p, s2):
+					return ""
+		return "No valid Basic Pokemon to evolve with Breeder!"
+
+	_validator_dispatch["base1-72"] = func(c, opp):  # Devolution Spray
+		var active = main.opponent_active_pokemon if opp else main.player_active_pokemon
+		var bench = main.opponent_bench if opp else main.player_bench
+		if active != null and active.attached_pre_evolutions.size() > 0: return ""
+		for bp in bench:
+			if bp.attached_pre_evolutions.size() > 0: return ""
+		return "No evolved Pokemon to devolve!"
+
+	_validator_dispatch["base1-94"] = func(c, opp):  # Potion
+		var damaged = build_field_pokemon_array(opp).filter(func(p): return p.current_hp < int(p.metadata.get("hp","0")))
+		return "" if damaged.size() > 0 else "No Pokemon with damage to heal!"
+
+	_validator_dispatch["base1-90"] = func(c, opp):  # Super Potion
+		for p in build_field_pokemon_array(opp):
+			if p.current_hp < int(p.metadata.get("hp","0")) and p.attached_energies.size() > 0: return ""
+		return "No Pokemon with both damage and energy for Super Potion!"
+
+	_validator_dispatch["base1-92"] = func(c, opp):  # Energy Removal
+		for p in build_field_pokemon_array(not opp):
+			if p.attached_energies.size() > 0:
+				if main.is_stadium_in_play("gym1-103"):
+					var others = (main.opponent_hand if opp else main.player_hand).filter(func(x): return x != c)
+					if others.size() < 2: return "No Removal Gym: need 2 other cards in hand!"
+				return ""
+		return "Opponent has no energy to remove!"
+
+	_validator_dispatch["base1-79"] = func(c, opp):  # Super Energy Removal
+		var own_has_e = build_field_pokemon_array(opp).any(func(p): return p.attached_energies.size() > 0)
+		if not own_has_e: return "You have no energy to discard for Super Energy Removal!"
+		var opp_has_e = build_field_pokemon_array(not opp).any(func(p): return p.attached_energies.size() > 0)
+		if not opp_has_e: return "Opponent has no energy to remove!"
+		if main.is_stadium_in_play("gym1-103"):
+			var others = (main.opponent_hand if opp else main.player_hand).filter(func(x): return x != c)
+			if others.size() < 2: return "No Removal Gym: need 2 other cards in hand!"
+		return ""
+
+	_validator_dispatch["base1-70"] = func(c, opp):  # Clefairy Doll
+		var bench = main.opponent_bench if opp else main.player_bench
+		return "" if bench.size() < main.get_max_bench_size() else "Bench is full! Cannot place Clefairy Doll!"
+
+	_validator_dispatch["base1-71"] = func(c, opp):  # Computer Search
+		var others = (main.opponent_hand if opp else main.player_hand).filter(func(x): return x != c)
+		return "" if others.size() >= 2 else "Need at least 2 other cards in hand to discard!"
+
+	_validator_dispatch["base1-74"] = func(c, opp):  # Item Finder
+		var hand = main.opponent_hand if opp else main.player_hand
+		var discard = main.opponent_discard_pile if opp else main.player_discard_pile
+		if hand.filter(func(x): return x != c).size() < 2: return "Need at least 2 other cards in hand to discard!"
+		if discard.filter(func(x): return is_trainer_card(x)).is_empty(): return "No Trainer cards in the discard pile!"
+		return ""
+
+	_validator_dispatch["base1-81"] = func(c, opp):  # Energy Retrieval
+		var hand = main.opponent_hand if opp else main.player_hand
+		var discard = main.opponent_discard_pile if opp else main.player_discard_pile
+		if discard.filter(func(x): return main.is_basic_energy_card(x)).is_empty(): return "No Basic Energy in discard pile!"
+		if hand.filter(func(x): return x != c).is_empty(): return "Need at least 1 other card in hand to discard!"
+		return ""
+
+	_validator_dispatch["base1-83"] = func(c, opp):  # Maintenance
+		var others = (main.opponent_hand if opp else main.player_hand).filter(func(x): return x != c)
+		return "" if others.size() >= 2 else "Need at least 2 other cards in hand!"
+
+	_validator_dispatch["base1-89"] = func(c, opp):  # Revive
+		var bench = main.opponent_bench if opp else main.player_bench
+		var discard = main.opponent_discard_pile if opp else main.player_discard_pile
+		if bench.size() >= main.get_max_bench_size(): return "Bench is full!"
+		if discard.filter(func(x): return main.is_basic_pokemon(x)).is_empty(): return "No Basic Pokemon in discard pile!"
+		return ""
+
+	_validator_dispatch["base1-93"] = func(c, opp):  # Gust of Wind
+		var opp_bench = main.player_bench if opp else main.opponent_bench
+		return "" if opp_bench.size() > 0 else "Opponent has no bench Pokemon!"
+
+	_validator_dispatch["base1-95"] = func(c, opp):  # Switch
+		var bench = main.opponent_bench if opp else main.player_bench
+		return "" if bench.size() > 0 else "No bench Pokemon to switch with!"
+
+	_validator_dispatch["base1-86"] = func(c, opp):  # Pokemon Flute
+		var opp_bench = main.player_bench if opp else main.opponent_bench
+		if opp_bench.size() >= 5: return "Opponent's bench is full!"
+		var opp_discard = main.player_discard_pile if opp else main.opponent_discard_pile
+		return "" if opp_discard.any(func(x): return main.is_basic_pokemon(x)) else "No Basic Pokemon in opponent's discard pile!"
+
+	_validator_dispatch["base1-82"] = func(c, opp):  # Full Heal
+		var active = main.opponent_active_pokemon if opp else main.player_active_pokemon
+		if active == null: return "No active Pokemon!"
+		return "" if (active.special_condition != "" or active.is_poisoned or active.is_burned) else "Active Pokemon has no conditions to heal!"
+
+	_validator_dispatch["base1-77"] = func(c, opp):  # Pokemon Trader
+		var hand = main.opponent_hand if opp else main.player_hand
+		var deck = main.opponent_deck if opp else main.player_deck
+		if hand.filter(func(x): return x != c and x.metadata.get("supertype","").to_lower() == "pokémon").is_empty(): return "No Pokemon in hand to trade!"
+		if deck.filter(func(x): return x.metadata.get("supertype","").to_lower() == "pokémon").is_empty(): return "No Pokemon in deck to trade for!"
+		return ""
+
+	var fn_rsa_v = func(c, opp):  # Rocket's Sneak Attack
+		var target = main.player_hand if opp else main.opponent_hand
+		return "" if target.any(func(x): return x.metadata.get("supertype","") == "Trainer") else "Opponent has no Trainer cards in hand!"
+	_validator_dispatch["base5-16"] = fn_rsa_v;  _validator_dispatch["base5-72"] = fn_rsa_v
+
+	_validator_dispatch["base5-73"] = func(c, opp):  # The Boss's Way
+		var deck = main.opponent_deck if opp else main.player_deck
+		for x in deck:
+			var st = x.metadata.get("subtypes",[])
+			if x.metadata.get("name","").begins_with("Dark ") and x.metadata.get("supertype","") == "Pokémon" and ("Stage 1" in st or "Stage 2" in st): return ""
+		return "No Dark evolution cards in deck!"
+
+	_validator_dispatch["base5-76"] = func(c, opp):  # Imposter Oak's Revenge
+		var others = (main.opponent_hand if opp else main.player_hand).filter(func(x): return x != c)
+		return "" if others.size() >= 1 else "Need at least 1 other card in hand to discard!"
+
+	_validator_dispatch["base5-77"] = func(c, opp):  # Nightly Garbage Run
+		var discard = main.opponent_discard_pile if opp else main.player_discard_pile
+		for x in discard:
+			if x.metadata.get("supertype","") == "Pokémon" or main.is_basic_energy_card(x): return ""
+		return "No valid cards in discard pile!"
+
+func _register_gym1_validations() -> void:
+	var fn_brock_v = func(c, opp):  # gym1-15/98 Brock
+		return "" if build_field_pokemon_array(opp).any(func(p): return p.current_hp < int(p.metadata.get("hp","0"))) else "No damaged Pokemon to heal!"
+	_validator_dispatch["gym1-15"] = fn_brock_v;  _validator_dispatch["gym1-98"] = fn_brock_v
+
+	var fn_surge_v = func(c, opp):  # gym1-17/101 Lt. Surge
+		var active = main.opponent_active_pokemon if opp else main.player_active_pokemon
+		var bench = main.opponent_bench if opp else main.player_bench
+		var hand = main.opponent_hand if opp else main.player_hand
+		if active == null: return "No Active Pokemon to swap!"
+		if bench.size() >= main.get_max_bench_size(): return "Bench is full!"
+		return "" if hand.any(func(x): return x != c and main.is_basic_pokemon(x)) else "No Basic Pokemon in hand!"
+	_validator_dispatch["gym1-17"] = fn_surge_v;  _validator_dispatch["gym1-101"] = fn_surge_v
+
+	var fn_misty_v = func(c, opp):  # gym1-18/102 Misty
+		var others = (main.opponent_hand if opp else main.player_hand).filter(func(x): return x != c)
+		return "" if others.size() >= 2 else "Need at least 2 other cards to discard!"
+	_validator_dispatch["gym1-18"] = fn_misty_v;  _validator_dispatch["gym1-102"] = fn_misty_v
+
+	_validator_dispatch["gym1-19"]  = func(c, opp):  # Rocket's Trap
+		var opp_hand = main.player_hand if opp else main.opponent_hand
+		return "" if opp_hand.size() > 0 else "Opponent has no cards in hand!"
+
+	_validator_dispatch["gym1-99"]  = func(c, opp):  # Charity
+		var active = main.opponent_active_pokemon if opp else main.player_active_pokemon
+		return "" if active != null else "No Active Pokemon to attach Charity to!"
+
+	_validator_dispatch["gym1-105"] = func(c, opp):  # Blaine's Last Resort
+		var hand = main.opponent_hand if opp else main.player_hand
+		return "" if hand.filter(func(x): return x != c).is_empty() else "You may only play this when no other cards are in hand!"
+
+	_validator_dispatch["gym1-106"] = func(c, opp):  # Brock's Training Method
+		var deck = main.opponent_deck if opp else main.player_deck
+		return "" if deck.any(func(x): return x.metadata.get("supertype","") == "Pokémon" and "Brock" in x.metadata.get("name","")) else "No Brock Pokemon in deck!"
+
+	_validator_dispatch["gym1-109"] = func(c, opp):  # Erika's Maids
+		var hand = main.opponent_hand if opp else main.player_hand
+		var deck = main.opponent_deck if opp else main.player_deck
+		if hand.filter(func(x): return x != c).size() < 2: return "Need at least 2 other cards to discard!"
+		return "" if deck.any(func(x): return x.metadata.get("supertype","") == "Pokémon" and "Erika" in x.metadata.get("name","")) else "No Erika Pokemon in deck!"
+
+	_validator_dispatch["gym1-110"] = func(c, opp):  # Erika's Perfume
+		var opp_hand = main.player_hand if opp else main.opponent_hand
+		return "" if opp_hand.size() > 0 else "Opponent has no cards in hand!"
+
+	_validator_dispatch["gym1-111"] = func(c, opp):  # Good Manners
+		var hand = main.opponent_hand if opp else main.player_hand
+		var deck = main.opponent_deck if opp else main.player_deck
+		for x in hand:
+			if x != c and main.is_basic_pokemon(x): return "You can't play this with a Basic Pokemon in hand!"
+		return "" if deck.any(func(x): return main.is_basic_pokemon(x)) else "No Basic Pokemon in deck!"
+
+	_validator_dispatch["gym1-113"] = func(c, opp): return ""  # Minion — always playable
+
+	_validator_dispatch["gym1-116"] = func(c, opp):  # Recall
+		var active = main.opponent_active_pokemon if opp else main.player_active_pokemon
+		if active == null: return "No Active Pokemon!"
+		return "" if active.attached_pre_evolutions.size() > 0 else "Active has no Basic/Evolution cards to recall attacks from!"
+
+	_validator_dispatch["gym1-117"] = func(c, opp):  # Sabrina's ESP
+		return "" if build_field_pokemon_array(opp).any(func(p): return "Sabrina" in p.metadata.get("name","")) else "No Sabrina Pokemon in play!"
+
+	_validator_dispatch["gym1-118"] = func(c, opp):  # Secret Mission
+		var opp_hand = main.player_hand if opp else main.opponent_hand
+		return "" if opp_hand.size() > 0 else "Opponent has no cards in hand!"
+
+	_validator_dispatch["gym1-119"] = func(c, opp):  # Tickling Machine
+		var opp_hand = main.player_hand if opp else main.opponent_hand
+		return "" if opp_hand.size() > 0 else "Opponent has no cards in hand!"
+
+	_validator_dispatch["gym1-121"] = func(c, opp):  # Blaine's Gamble
+		var others = (main.opponent_hand if opp else main.player_hand).filter(func(x): return x != c)
+		return "" if others.size() >= 1 else "No other cards in hand to discard!"
+
+	_validator_dispatch["gym1-122"] = func(c, opp):  # Energy Flow
+		return "" if build_field_pokemon_array(opp).any(func(p): return p.attached_energies.size() > 0) else "No attached energies to return!"
+
+	_validator_dispatch["gym1-126"] = func(c, opp):  # Trash Exchange
+		var discard = main.opponent_discard_pile if opp else main.player_discard_pile
+		return "" if discard.size() > 0 else "Discard pile is empty!"
+
+func _register_gym2_validations() -> void:
+	var fn_blaine_v = func(c, opp):  # gym2-17/100 Blaine
+		var hand = main.opponent_hand if opp else main.player_hand
+		var ep = main.opponent_energy_played_this_turn if opp else main.player_energy_played_this_turn
+		var used = main.opponent_blaine_double_attach_used if opp else main.player_blaine_double_attach_used
+		if ep: return "You already attached your free Energy this turn!"
+		if used: return "Blaine has already been played this turn!"
+		var fire_count = hand.filter(func(x): return x != c and x.metadata.get("supertype","") == "Energy" and "Basic" in x.metadata.get("subtypes",[]) and x.metadata.get("name","") == "Fire Energy").size()
+		if fire_count < 2: return "Need at least 2 Fire Energy in hand!"
+		return "" if build_field_pokemon_array(opp).any(func(p): return "Blaine" in p.metadata.get("name","")) else "No Blaine Pokemon in play!"
+	_validator_dispatch["gym2-17"] = fn_blaine_v;  _validator_dispatch["gym2-100"] = fn_blaine_v
+
+	var fn_giovanni_v = func(c, opp):  # gym2-18/104 Giovanni
+		return "" if build_field_pokemon_array(opp).any(func(p): return "Giovanni" in p.metadata.get("name","")) else "No Giovanni Pokemon in play!"
+	_validator_dispatch["gym2-18"] = fn_giovanni_v; _validator_dispatch["gym2-104"] = fn_giovanni_v
+
+	var fn_sabrina_v = func(c, opp):  # gym2-20/110 Sabrina
+		var sabs = build_field_pokemon_array(opp).filter(func(p): return "Sabrina" in p.metadata.get("name",""))
+		if sabs.size() < 2: return "Need at least 2 Sabrina Pokemon in play!"
+		return "" if sabs.any(func(p): return p.attached_energies.size() > 0) else "No Sabrina Pokemon has energy to transfer!"
+	_validator_dispatch["gym2-20"] = fn_sabrina_v; _validator_dispatch["gym2-110"] = fn_sabrina_v
+
+	_validator_dispatch["gym2-101"] = func(c, opp):  # Brock's Protection
+		return "" if build_field_pokemon_array(opp).any(func(p): return "Brock" in p.metadata.get("name","")) else "No Brock Pokemon in play!"
+
+	_validator_dispatch["gym2-103"] = func(c, opp):  # Erika's Kindness
+		for side in [opp, not opp]:
+			if build_field_pokemon_array(side).any(func(p): return p.current_hp < int(p.metadata.get("hp","0"))): return ""
+		return "No damaged Pokemon!"
+
+	_validator_dispatch["gym2-105"] = func(c, opp):  # Giovanni's Last Resort
+		for p in build_field_pokemon_array(opp):
+			if "Giovanni" in p.metadata.get("name","") and p.current_hp < int(p.metadata.get("hp","0")): return ""
+		return "No damaged Giovanni Pokemon!"
+
+	_validator_dispatch["gym2-107"] = func(c, opp):  # Lt. Surge's Secret Plan
+		var bench = main.opponent_bench if opp else main.player_bench
+		var hand = main.opponent_hand if opp else main.player_hand
+		if bench.size() >= main.get_max_bench_size(): return "Bench is full!"
+		return "" if hand.size() > 1 else "No other cards in hand!"
+
+	_validator_dispatch["gym2-108"] = func(c, opp):  # Misty's Wish
+		var prizes = main.opponent_prize_cards if opp else main.player_prize_cards
+		return "" if prizes.size() > 0 else "No Prize cards left!"
+
+	var fn_bq_v = func(c, opp):  # Blaine's Quiz 2/3
+		var others = (main.opponent_hand if opp else main.player_hand).filter(func(x): return x != c)
+		return "" if others.size() >= 1 else "Need at least 1 other card in hand!"
+	_validator_dispatch["gym2-111"] = fn_bq_v;  _validator_dispatch["gym2-112"] = fn_bq_v
+
+	_validator_dispatch["gym2-115"] = func(c, opp):  # Koga's Ninja Trick
+		var active = main.opponent_active_pokemon if opp else main.player_active_pokemon
+		return "" if (active != null and "Koga" in active.metadata.get("name","")) else "Active Pokemon must have Koga in its name!"
+
+	_validator_dispatch["gym2-116"] = func(c, opp):  # Master Ball
+		var deck = main.opponent_deck if opp else main.player_deck
+		return "" if deck.size() > 0 else "Deck is empty!"
+
+	_validator_dispatch["gym2-117"] = func(c, opp):  # Max Revive
+		var bench = main.opponent_bench if opp else main.player_bench
+		var hand = main.opponent_hand if opp else main.player_hand
+		var discard = main.opponent_discard_pile if opp else main.player_discard_pile
+		if bench.size() >= main.get_max_bench_size(): return "Bench is full!"
+		if hand.filter(func(x): return x != c and x.metadata.get("supertype","") == "Energy").size() < 2: return "Need at least 2 Energy cards in hand!"
+		return "" if discard.any(func(x): return main.is_basic_pokemon(x)) else "No Basic Pokemon in discard pile!"
+
+	_validator_dispatch["gym2-118"] = func(c, opp):  # Misty's Tears
+		var hand = main.opponent_hand if opp else main.player_hand
+		var deck = main.opponent_deck if opp else main.player_deck
+		if hand.filter(func(x): return x != c).is_empty(): return "Need at least 1 other card to discard!"
+		return "" if deck.any(func(x): return x.metadata.get("supertype","") == "Energy" and x.metadata.get("name","") == "Water Energy") else "No Water Energy in deck!"
+
+	_validator_dispatch["gym2-121"] = func(c, opp):  # Sabrina's Psychic Control
+		var opp_discard = main.player_discard_pile if opp else main.opponent_discard_pile
+		for x in opp_discard:
+			if is_trainer_card(x) and not is_attached_trainer(x) and not is_bench_token_trainer(x) and not is_stadium_trainer(x): return ""
+		return "Opponent has no eligible Trainer cards in discard!"
+
+	_validator_dispatch["gym2-124"] = func(c, opp):  # Fervor
+		var deck = main.opponent_deck if opp else main.player_deck
+		return "" if deck.size() > 0 else "Deck is empty!"
+
+	_validator_dispatch["gym2-126"] = func(c, opp):  # Warp Point
+		return "" if (main.player_bench.size() > 0 or main.opponent_bench.size() > 0) else "Neither player has benched Pokemon!"
+
 # Trainer lock flags (Psyduck Headache)
 var player_trainer_locked: bool = false
 var opponent_trainer_locked: bool = false
@@ -319,531 +741,15 @@ func validate_trainer_can_be_played(card: card_object, is_opponent: bool) -> Str
 		return "Trainer cards are locked this turn!"
 	if not is_opponent and player_trainer_locked:
 		return "Trainer cards are locked this turn!"
-	
+
 	# Check Hay Fever (Dark Vileplume) - blocks all trainer cards
 	if main.powers_and_bodies.is_hay_fever_active():
 		return "Hay Fever: No Trainer cards can be played!"
-	
-	# Check Goop Gas doesn't block trainers (it only blocks powers)
-	
-	var card_id = card.uid.to_lower()
-	var active = main.opponent_active_pokemon if is_opponent else main.player_active_pokemon
-	var bench = main.opponent_bench if is_opponent else main.player_bench
-	var hand = main.opponent_hand if is_opponent else main.player_hand
-	var deck = main.opponent_deck if is_opponent else main.player_deck
-	var discard = main.opponent_discard_pile if is_opponent else main.player_discard_pile
-	var opp_active = main.player_active_pokemon if is_opponent else main.opponent_active_pokemon
-	var opp_bench = main.player_bench if is_opponent else main.opponent_bench
-	
-	match card_id:
-		"base1-76": # Pokemon Breeder
-			# Check for Stage 2 in hand AND a matching Basic in play
-			var stage2_cards = []
-			for c in hand:
-				if c == card:
-					continue
-				var subtypes = c.metadata.get("subtypes", [])
-				if "Stage 2" in subtypes:
-					stage2_cards.append(c)
-			if stage2_cards.size() == 0:
-				return "No Stage 2 Pokemon in hand to play!"
-			# Check if any Stage 2 has a matching Basic on field
-			var has_valid_target = false
-			var all_in_play = []
-			if active != null:
-				all_in_play.append(active)
-			all_in_play.append_array(bench)
-			for s2 in stage2_cards:
-				for pokemon in all_in_play:
-					if pokemon.placed_on_field_this_turn:
-						continue
-					if not main.is_basic_pokemon(pokemon):
-						continue
-					if _basic_matches_stage2(pokemon, s2):
-						has_valid_target = true
-						break
-				if has_valid_target:
-					break
-			if not has_valid_target:
-				return "No valid Basic Pokemon to evolve with Breeder!"
-		
-		"base1-72": # Devolution Spray
-			var has_evolved = false
-			if active != null and active.attached_pre_evolutions.size() > 0:
-				has_evolved = true
-			for bp in bench:
-				if bp.attached_pre_evolutions.size() > 0:
-					has_evolved = true
-					break
-			if not has_evolved:
-				return "No evolved Pokemon to devolve!"
-		
-		"base1-94": # Potion
-			var damaged = build_field_pokemon_array(is_opponent).filter(func(p): return p.current_hp < int(p.metadata.get("hp", "0")))
-			if damaged.size() == 0:
-				return "No Pokemon with damage to heal!"
-		
-		"base1-90": # Super Potion
-			var valid_targets = []
-			var all_pokemon = build_field_pokemon_array(is_opponent)
-			for p in all_pokemon:
-				if p.current_hp < int(p.metadata.get("hp", "0")) and p.attached_energies.size() > 0:
-					valid_targets.append(p)
-			if valid_targets.size() == 0:
-				return "No Pokemon with both damage and energy for Super Potion!"
-		
-		"base1-92": # Energy Removal
-			var opp_all = build_field_pokemon_array(not is_opponent)
-			var has_energy = false
-			for p in opp_all:
-				if p.attached_energies.size() > 0:
-					has_energy = true
-					break
-			if not has_energy:
-				return "Opponent has no energy to remove!"
-			# GYM1-103 No Removal Gym tax: need 2 OTHER cards in hand
-			if main.is_stadium_in_play("gym1-103"):
-				var others_er = 0
-				for c in hand:
-					if c != card:
-						others_er += 1
-				if others_er < 2:
-					return "No Removal Gym: need 2 other cards in hand!"
 
-		"base1-79": # Super Energy Removal
-			# Check own pokemon have energy
-			var own_all = build_field_pokemon_array(is_opponent)
-			var own_has_energy = false
-			for p in own_all:
-				if p.attached_energies.size() > 0:
-					own_has_energy = true
-					break
-			if not own_has_energy:
-				return "You have no energy to discard for Super Energy Removal!"
-			# Check opponent pokemon have energy
-			var target_all = build_field_pokemon_array(not is_opponent)
-			var target_has_energy = false
-			for p in target_all:
-				if p.attached_energies.size() > 0:
-					target_has_energy = true
-					break
-			if not target_has_energy:
-				return "Opponent has no energy to remove!"
-			# GYM1-103 No Removal Gym tax: need 2 OTHER cards in hand
-			if main.is_stadium_in_play("gym1-103"):
-				var others_ser = 0
-				for c in hand:
-					if c != card:
-						others_ser += 1
-				if others_ser < 2:
-					return "No Removal Gym: need 2 other cards in hand!"
-		
-		"base1-70": # Clefairy Doll
-			if bench.size() >= main.get_max_bench_size():
-				return "Bench is full! Cannot place Clefairy Doll!"
-		
-		"base1-71": # Computer Search
-			if hand.size() < 3: # Need at least 2 cards to discard + the computer search itself is already removed
-				# hand still contains the card at this point for player validation
-				var cards_available = 0
-				for c in hand:
-					if c != card:
-						cards_available += 1
-				if cards_available < 2:
-					return "Need at least 2 other cards in hand to discard!"
-		
-		"base1-74": # Item Finder
-			var cards_available = 0
-			for c in hand:
-				if c != card:
-					cards_available += 1
-			if cards_available < 2:
-				return "Need at least 2 other cards in hand to discard!"
-			var trainers_in_discard = []
-			for c in discard:
-				if is_trainer_card(c):
-					trainers_in_discard.append(c)
-			if trainers_in_discard.size() == 0:
-				return "No Trainer cards in the discard pile!"
-		
-		"base1-81": # Energy Retrieval
-			var basic_energies_in_discard = []
-			for c in discard:
-				if main.is_basic_energy_card(c):
-					basic_energies_in_discard.append(c)
-			if basic_energies_in_discard.size() == 0:
-				return "No Basic Energy in discard pile!"
-			var cards_available_er = 0
-			for c in hand:
-				if c != card:
-					cards_available_er += 1
-			if cards_available_er < 1:
-				return "Need at least 1 other card in hand to discard!"
-		
-		"base1-83": # Maintenance
-			var cards_available_m = 0
-			for c in hand:
-				if c != card:
-					cards_available_m += 1
-			if cards_available_m < 2:
-				return "Need at least 2 other cards in hand!"
-		
-		"base1-89": # Revive
-			if bench.size() >= main.get_max_bench_size():
-				return "Bench is full!"
-			var basics_in_discard = []
-			for c in discard:
-				if main.is_basic_pokemon(c):
-					basics_in_discard.append(c)
-			if basics_in_discard.size() == 0:
-				return "No Basic Pokemon in discard pile!"
-		
-		"base1-93": # Gust of Wind
-			var opp_bench_gust = main.player_bench if is_opponent else main.opponent_bench
-			if opp_bench_gust.size() == 0:
-				return "Opponent has no bench Pokemon!"
-		
-		"base1-95": # Switch
-			if bench.size() == 0:
-				return "No bench Pokemon to switch with!"
-		
-		"base1-86": # Pokemon Flute
-			var target_bench_flute = main.player_bench if is_opponent else main.opponent_bench
-			if target_bench_flute.size() >= 5:
-				return "Opponent's bench is full!"
-			var target_discard_flute = main.player_discard_pile if is_opponent else main.opponent_discard_pile
-			var has_basic = false
-			for c in target_discard_flute:
-				if main.is_basic_pokemon(c):
-					has_basic = true
-					break
-			if not has_basic:
-				return "No Basic Pokemon in opponent's discard pile!"
-		
-		"base1-82": # Full Heal
-			if active == null:
-				return "No active Pokemon!"
-			if active.special_condition == "" and not active.is_poisoned and not active.is_burned:
-				return "Active Pokemon has no conditions to heal!"
-		
-		"base1-77": # Pokemon Trader
-			var pokemon_in_hand = []
-			for c in hand:
-				if c != card and c.metadata.get("supertype", "").to_lower() == "pokémon":
-					pokemon_in_hand.append(c)
-			if pokemon_in_hand.size() == 0:
-				return "No Pokemon in hand to trade!"
-			var pokemon_in_deck = []
-			for c in deck:
-				if c.metadata.get("supertype", "").to_lower() == "pokémon":
-					pokemon_in_deck.append(c)
-			if pokemon_in_deck.size() == 0:
-				return "No Pokemon in deck to trade for!"
-	
-		"base5-16", "base5-72": # Rocket's Sneak Attack
-			var target = main.player_hand if is_opponent else main.opponent_hand
-			var has_trainer = false
-			for c in target:
-				if c.metadata.get("supertype", "") == "Trainer":
-					has_trainer = true
-					break
-			if not has_trainer:
-				return "Opponent has no Trainer cards in hand!"
-		
-		"base5-73": # The Boss's Way
-			var has_dark = false
-			for c in deck:
-				var name = c.metadata.get("name", "")
-				var st = c.metadata.get("subtypes", [])
-				if name.begins_with("Dark ") and c.metadata.get("supertype", "") == "Pokémon" and ("Stage 1" in st or "Stage 2" in st):
-					has_dark = true
-					break
-			if not has_dark:
-				return "No Dark evolution cards in deck!"
-		
-		"base5-76": # Imposter Oak's Revenge
-			var cards_available_ior = 0
-			for c in hand:
-				if c != card:
-					cards_available_ior += 1
-			if cards_available_ior < 1:
-				return "Need at least 1 other card in hand to discard!"
-		
-		"base5-77": # Nightly Garbage Run
-			var valid_ngr = false
-			for c in discard:
-				if c.metadata.get("supertype", "") == "Pokémon" or main.is_basic_energy_card(c):
-					valid_ngr = true
-					break
-			if not valid_ngr:
-				return "No valid cards in discard pile!"
-
-		# ============================ GYM1 (GYM HEROES) TRAINER VALIDATIONS ============================
-		"gym1-15", "gym1-98": # Brock — heal 1 counter from each damaged Pokemon
-			var any_damaged = false
-			for p in build_field_pokemon_array(is_opponent):
-				if p.current_hp < int(p.metadata.get("hp", "0")):
-					any_damaged = true
-					break
-			if not any_damaged:
-				return "No damaged Pokemon to heal!"
-		"gym1-17", "gym1-101": # Lt. Surge — swap a Basic from hand with Active
-			if active == null:
-				return "No Active Pokemon to swap!"
-			if bench.size() >= main.get_max_bench_size():
-				return "Bench is full!"
-			var has_basic = false
-			for c in hand:
-				if c != card and main.is_basic_pokemon(c):
-					has_basic = true
-					break
-			if not has_basic:
-				return "No Basic Pokemon in hand!"
-		"gym1-18", "gym1-102": # Misty — discard 2 cards, then +20 if Misty-named attacker
-			var available = 0
-			for c in hand:
-				if c != card:
-					available += 1
-			if available < 2:
-				return "Need at least 2 other cards to discard!"
-		"gym1-19": # The Rocket's Trap — needs opponent hand cards
-			var opp_hand = main.player_hand if is_opponent else main.opponent_hand
-			if opp_hand.size() == 0:
-				return "Opponent has no cards in hand!"
-		"gym1-99": # Charity — attach to Active
-			if active == null:
-				return "No Active Pokemon to attach Charity to!"
-		"gym1-105": # Blaine's Last Resort — only if hand empty other than this
-			for c in hand:
-				if c != card:
-					return "You may only play this when no other cards are in hand!"
-		"gym1-106": # Brock's Training Method — needs a Brock-named Pokemon in deck
-			var found = false
-			for c in deck:
-				if c.metadata.get("supertype", "") == "Pokémon" and "Brock" in c.metadata.get("name", ""):
-					found = true
-					break
-			if not found:
-				return "No Brock Pokemon in deck!"
-		"gym1-109": # Erika's Maids — discard 2, search Erika Pokemon
-			var avail_e = 0
-			for c in hand:
-				if c != card:
-					avail_e += 1
-			if avail_e < 2:
-				return "Need at least 2 other cards to discard!"
-			var found_e = false
-			for c in deck:
-				if c.metadata.get("supertype", "") == "Pokémon" and "Erika" in c.metadata.get("name", ""):
-					found_e = true
-					break
-			if not found_e:
-				return "No Erika Pokemon in deck!"
-		"gym1-110": # Erika's Perfume — needs opponent hand
-			var opp_hand_ep = main.player_hand if is_opponent else main.opponent_hand
-			if opp_hand_ep.size() == 0:
-				return "Opponent has no cards in hand!"
-		"gym1-111": # Good Manners — only if no Basic in hand
-			for c in hand:
-				if c == card:
-					continue
-				if main.is_basic_pokemon(c):
-					return "You can't play this with a Basic Pokemon in hand!"
-			var found_basic = false
-			for c in deck:
-				if main.is_basic_pokemon(c):
-					found_basic = true
-					break
-			if not found_basic:
-				return "No Basic Pokemon in deck!"
-		"gym1-113": # Minion of Team Rocket — needs opponent's benched pokemon for full effect (still playable; just resolves with no-bench)
-			pass
-		"gym1-116": # Recall
-			if active == null:
-				return "No Active Pokemon!"
-			if active.attached_pre_evolutions.size() == 0:
-				return "Active has no Basic/Evolution cards to recall attacks from!"
-		"gym1-117": # Sabrina's ESP — must have a Sabrina-named pokemon in play
-			var has_sabrina = false
-			for p in build_field_pokemon_array(is_opponent):
-				if "Sabrina" in p.metadata.get("name", ""):
-					has_sabrina = true
-					break
-			if not has_sabrina:
-				return "No Sabrina Pokemon in play!"
-		"gym1-118": # Secret Mission
-			var opp_hand_sm = main.player_hand if is_opponent else main.opponent_hand
-			if opp_hand_sm.size() == 0:
-				return "Opponent has no cards in hand!"
-		"gym1-119": # Tickling Machine — needs opp to have a hand
-			var opp_hand_tm = main.player_hand if is_opponent else main.opponent_hand
-			if opp_hand_tm.size() == 0:
-				return "Opponent has no cards in hand!"
-		"gym1-121": # Blaine's Gamble — needs at least 1 other card
-			var avail_g = 0
-			for c in hand:
-				if c != card:
-					avail_g += 1
-			if avail_g < 1:
-				return "No other cards in hand to discard!"
-		"gym1-122": # Energy Flow — needs at least one energy attached to a Pokemon
-			var any_e = false
-			for p in build_field_pokemon_array(is_opponent):
-				if p.attached_energies.size() > 0:
-					any_e = true
-					break
-			if not any_e:
-				return "No attached energies to return!"
-		"gym1-126": # Trash Exchange — needs discard
-			if discard.size() == 0:
-				return "Discard pile is empty!"
-
-		# ============================ GYM2 (GYM CHALLENGE) TRAINER VALIDATIONS ============================
-		"gym2-17", "gym2-100": # Blaine — replaces your energy attachment this turn
-			var energy_played = main.opponent_energy_played_this_turn if is_opponent else main.player_energy_played_this_turn
-			var used_already = main.opponent_blaine_double_attach_used if is_opponent else main.player_blaine_double_attach_used
-			if energy_played:
-				return "You already attached your free Energy this turn!"
-			if used_already:
-				return "Blaine has already been played this turn!"
-			# Need at least 2 Fire Energy in hand
-			var fire_count = 0
-			for c in hand:
-				if c == card:
-					continue
-				if c.metadata.get("supertype", "") == "Energy" and "Basic" in c.metadata.get("subtypes", []) and c.metadata.get("name", "") == "Fire Energy":
-					fire_count += 1
-			if fire_count < 2:
-				return "Need at least 2 Fire Energy in hand!"
-			# Need a Blaine-named pokemon in play
-			var has_blaine = false
-			for p in build_field_pokemon_array(is_opponent):
-				if "Blaine" in p.metadata.get("name", ""):
-					has_blaine = true
-					break
-			if not has_blaine:
-				return "No Blaine Pokemon in play!"
-		"gym2-18", "gym2-104": # Giovanni — needs a Giovanni-named pokemon in play
-			var any_g = false
-			for p in build_field_pokemon_array(is_opponent):
-				if "Giovanni" in p.metadata.get("name", ""):
-					any_g = true
-					break
-			if not any_g:
-				return "No Giovanni Pokemon in play!"
-		"gym2-20", "gym2-110": # Sabrina — need at least 2 Sabrina pokemon in play, and the source must have energies
-			var sabs: Array = []
-			for p in build_field_pokemon_array(is_opponent):
-				if "Sabrina" in p.metadata.get("name", ""):
-					sabs.append(p)
-			if sabs.size() < 2:
-				return "Need at least 2 Sabrina Pokemon in play!"
-			var any_e_src = false
-			for s in sabs:
-				if s.attached_energies.size() > 0:
-					any_e_src = true
-					break
-			if not any_e_src:
-				return "No Sabrina Pokemon has energy to transfer!"
-		"gym2-101": # Brock's Protection — needs Brock-named pokemon in play
-			var any_b = false
-			for p in build_field_pokemon_array(is_opponent):
-				if "Brock" in p.metadata.get("name", ""):
-					any_b = true
-					break
-			if not any_b:
-				return "No Brock Pokemon in play!"
-		"gym2-103": # Erika's Kindness — needs at least one damaged pokemon on either side
-			var any_dmg = false
-			for p in build_field_pokemon_array(is_opponent):
-				if p.current_hp < int(p.metadata.get("hp", "0")):
-					any_dmg = true
-					break
-			if not any_dmg:
-				for p in build_field_pokemon_array(not is_opponent):
-					if p.current_hp < int(p.metadata.get("hp", "0")):
-						any_dmg = true
-						break
-			if not any_dmg:
-				return "No damaged Pokemon!"
-		"gym2-105": # Giovanni's Last Resort — needs a Giovanni-named pokemon with damage
-			var ok = false
-			for p in build_field_pokemon_array(is_opponent):
-				if "Giovanni" in p.metadata.get("name", "") and p.current_hp < int(p.metadata.get("hp", "0")):
-					ok = true
-					break
-			if not ok:
-				return "No damaged Giovanni Pokemon!"
-		"gym2-107": # Lt. Surge's Secret Plan — bench space + at least one card in hand to use
-			if bench.size() >= main.get_max_bench_size():
-				return "Bench is full!"
-			if hand.size() <= 1:
-				return "No other cards in hand!"
-		"gym2-108": # Misty's Wish — needs at least one prize and hand has at least one other card
-			var prizes = main.opponent_prize_cards if is_opponent else main.player_prize_cards
-			if prizes.size() == 0:
-				return "No Prize cards left!"
-		"gym2-111", "gym2-112": # Blaine's Quiz #2/#3 — need a card in hand to put face-down
-			var avail = 0
-			for c in hand:
-				if c != card:
-					avail += 1
-			if avail < 1:
-				return "Need at least 1 other card in hand!"
-		"gym2-115": # Koga's Ninja Trick — need a Koga-named Active
-			if active == null or not ("Koga" in active.metadata.get("name", "")):
-				return "Active Pokemon must have Koga in its name!"
-		"gym2-116": # Master Ball — needs deck
-			if deck.size() == 0:
-				return "Deck is empty!"
-		"gym2-117": # Max Revive — needs 2 Energy in hand + a Basic in discard + bench space
-			if bench.size() >= main.get_max_bench_size():
-				return "Bench is full!"
-			var energy_in_hand = 0
-			for c in hand:
-				if c == card:
-					continue
-				if c.metadata.get("supertype", "") == "Energy":
-					energy_in_hand += 1
-			if energy_in_hand < 2:
-				return "Need at least 2 Energy cards in hand!"
-			var basic_in_disc = false
-			for c in discard:
-				if main.is_basic_pokemon(c):
-					basic_in_disc = true
-					break
-			if not basic_in_disc:
-				return "No Basic Pokemon in discard pile!"
-		"gym2-118": # Misty's Tears — needs 1 other card in hand + Water Energy in deck
-			var avail_mt = 0
-			for c in hand:
-				if c != card:
-					avail_mt += 1
-			if avail_mt < 1:
-				return "Need at least 1 other card to discard!"
-			var has_water = false
-			for c in deck:
-				if c.metadata.get("supertype", "") == "Energy" and c.metadata.get("name", "") == "Water Energy":
-					has_water = true
-					break
-			if not has_water:
-				return "No Water Energy in deck!"
-		"gym2-121": # Sabrina's Psychic Control — needs trainer cards in opp's discard
-			var opp_discard = main.player_discard_pile if is_opponent else main.opponent_discard_pile
-			var any_trainer = false
-			for c in opp_discard:
-				if is_trainer_card(c) and not is_attached_trainer(c) and not is_bench_token_trainer(c) and not is_stadium_trainer(c):
-					any_trainer = true
-					break
-			if not any_trainer:
-				return "Opponent has no eligible Trainer cards in discard!"
-		"gym2-124": # Fervor — needs deck
-			if deck.size() == 0:
-				return "Deck is empty!"
-		"gym2-126": # Warp Point — at least one side needs benched pokemon
-			if main.player_bench.size() == 0 and main.opponent_bench.size() == 0:
-				return "Neither player has benched Pokemon!"
-
+	_ensure_validator_dispatch_ready()
+	var uid = card.uid.to_lower()
+	if _validator_dispatch.has(uid):
+		return _validator_dispatch[uid].call(card, is_opponent)
 	return ""
 
 # Main entry point for playing a trainer card (handles animation, routing, and discard)
@@ -981,91 +887,12 @@ func show_trainer_card_played_animation(card: card_object, is_opponent: bool) ->
 
 # Routes a standard trainer card to its specific effect function
 func resolve_standard_trainer(card: card_object, is_opponent: bool) -> void:
-	var card_id = card.uid.to_lower()
-	var card_name = card.metadata.get("name", "").to_lower()
-	
-	match card_id:
-		"base1-91": await effect_bill(is_opponent)
-		"base1-88": await effect_professor_oak(card, is_opponent)
-		"base1-71": await effect_computer_search(card, is_opponent)
-		"base1-72": await effect_devolution_spray(is_opponent)
-		"base1-73": await effect_impostor_professor_oak(is_opponent)
-		"base1-74": await effect_item_finder(card, is_opponent)
-		"base1-75": await effect_lass(is_opponent)
-		"base1-76": await effect_pokemon_breeder(is_opponent)
-		"base1-77": await effect_pokemon_trader(card, is_opponent)
-		"base1-78": await effect_scoop_up(is_opponent)
-		"base1-79": await effect_super_energy_removal(is_opponent)
-		"base1-81": await effect_energy_retrieval(card, is_opponent)
-		"base1-82": await effect_full_heal(is_opponent)
-		"base1-83": await effect_maintenance(card, is_opponent)
-		"base1-85": await effect_pokemon_center(is_opponent)
-		"base1-86": await effect_pokemon_flute(is_opponent)
-		"base1-87": await effect_pokedex(is_opponent)
-		"base1-89": await effect_revive(is_opponent)
-		"base1-90": await effect_super_potion(is_opponent)
-		"base1-92": await effect_energy_removal(is_opponent)
-		"base1-93": await effect_gust_of_wind(is_opponent)
-		"base1-94": await effect_potion(is_opponent)
-		"base1-95": await effect_switch(is_opponent)
-		"base2-64": await effect_poke_ball(is_opponent)
-		"base3-58": await effect_mr_fuji(is_opponent)
-		"base3-59": await effect_energy_search(is_opponent)
-		"base3-60": await effect_gambler(is_opponent)
-		"base3-61": await effect_recycle(is_opponent)
-		"base5-15", "base5-71": await effect_here_comes_team_rocket(is_opponent)
-		"base5-16", "base5-72": await effect_rockets_sneak_attack(is_opponent)
-		"base5-73": await effect_the_boss_way(is_opponent)
-		"base5-74": await effect_challenge(is_opponent)
-		"base5-75": await effect_digger(is_opponent)
-		"base5-76": await effect_imposter_oaks_revenge(card, is_opponent)
-		"base5-77": await effect_nightly_garbage_run(is_opponent)
-		"base5-78": await effect_goop_gas_attack(is_opponent)
-		"base5-79": await effect_sleep_trainer(is_opponent)
-		# ============================ GYM1 (GYM HEROES) STANDARD TRAINERS ============================
-		"gym1-15", "gym1-98": await gym1_effect_brock(is_opponent)
-		"gym1-16", "gym1-100": await gym1_effect_erika(is_opponent)
-		"gym1-17", "gym1-101": await gym1_effect_lt_surge(is_opponent)
-		"gym1-18", "gym1-102": await gym1_effect_misty(card, is_opponent)
-		"gym1-19": await gym1_effect_rockets_trap(is_opponent)
-		"gym1-97": await gym1_effect_blaines_quiz(is_opponent)
-		"gym1-105": await gym1_effect_blaines_last_resort(is_opponent)
-		"gym1-106": await gym1_effect_brocks_training_method(is_opponent)
-		"gym1-109": await gym1_effect_erikas_maids(card, is_opponent)
-		"gym1-110": await gym1_effect_erikas_perfume(is_opponent)
-		"gym1-111": await gym1_effect_good_manners(is_opponent)
-		"gym1-112": await gym1_effect_lt_surges_treaty(is_opponent)
-		"gym1-113": await gym1_effect_minion_of_team_rocket(is_opponent)
-		"gym1-114": await gym1_effect_mistys_wrath(is_opponent)
-		"gym1-116": await gym1_effect_recall(is_opponent)
-		"gym1-118": await gym1_effect_secret_mission(is_opponent)
-		"gym1-119": await gym1_effect_tickling_machine(is_opponent)
-		"gym1-121": await gym1_effect_blaines_gamble(card, is_opponent)
-		"gym1-122": await gym1_effect_energy_flow(is_opponent)
-		"gym1-123": await gym1_effect_mistys_duel(is_opponent)
-		"gym1-125": await gym1_effect_sabrinas_gaze(is_opponent)
-		"gym1-126": await gym1_effect_trash_exchange(is_opponent)
-		# ============================ GYM2 (GYM CHALLENGE) STANDARD TRAINERS ============================
-		"gym2-17", "gym2-100": await gym2_effect_blaine(is_opponent)
-		"gym2-18", "gym2-104": await gym2_effect_giovanni(is_opponent)
-		"gym2-19", "gym2-106": await gym2_effect_koga(is_opponent)
-		"gym2-20", "gym2-110": await gym2_effect_sabrina(is_opponent)
-		"gym2-103": await gym2_effect_erikas_kindness(is_opponent)
-		"gym2-105": await gym2_effect_giovannis_last_resort(is_opponent)
-		"gym2-107": await gym2_effect_lt_surges_secret_plan(is_opponent)
-		"gym2-108": await gym2_effect_mistys_wish(is_opponent)
-		"gym2-111": await gym2_effect_blaines_quiz_2(is_opponent)
-		"gym2-112": await gym2_effect_blaines_quiz_3(is_opponent)
-		"gym2-116": await gym2_effect_master_ball(is_opponent)
-		"gym2-117": await gym2_effect_max_revive(card, is_opponent)
-		"gym2-118": await gym2_effect_mistys_tears(card, is_opponent)
-		"gym2-120": await gym2_effect_rockets_secret_experiment(is_opponent)
-		"gym2-121": await gym2_effect_sabrinas_psychic_control(is_opponent)
-		"gym2-124": await gym2_effect_fervor(is_opponent)
-		"gym2-125": await gym2_effect_transparent_walls(is_opponent)
-		"gym2-126": await gym2_effect_warp_point(is_opponent)
-		_:
-			print("Unknown trainer card: ", card_id, " (", card_name, ")")
+	_ensure_trainer_dispatch_ready()
+	var uid = card.uid.to_lower()
+	if _trainer_dispatch.has(uid):
+		await _trainer_dispatch[uid].call(card, is_opponent)
+		return
+	print("Unknown trainer card: ", card.uid, " (", card.metadata.get("name",""), ")")
 
 # Resolves bench token trainer placement (Clefairy Doll, Mysterious Fossil)
 func resolve_bench_token_trainer(card: card_object, is_opponent: bool) -> void:
