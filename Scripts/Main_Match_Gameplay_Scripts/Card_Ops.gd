@@ -302,6 +302,34 @@ func place_on_bench(pokemon: card_object, is_opponent: bool) -> bool:
 	main.display_pokemon(is_opponent)
 	return true
 
+# ── Selection UI ──────────────────────────────────────────────────────────────────────────
+
+# Show the enlarged card selection UI and wait for the player to pick one card from `pool`.
+# Returns the chosen card_object (or null if cancelled). Pass search_mode=true when searching
+# a deck (sets trainer_deck_search_active instead of trainer_pokemon_selection_active).
+func prompt_select_card(pool: Array, header: String, hint: String, btn_text: String, cancelable: bool, search_mode: bool = false) -> card_object:
+	main.opponent_blocker.visible = false
+	if search_mode:
+		main.trainer_deck_search_active = true
+	else:
+		main.trainer_pokemon_selection_active = true
+	main.show_enlarged_array_selection_mode(pool)
+	main.cancel_button.visible = cancelable
+	main.header_label.text = header
+	main.hint_label.text = hint
+	main.action_button.text = btn_text
+	main.action_button.disabled = true
+	main.action_button.theme = main.theme_disabled
+	await main.trainer_target_selected
+	var sel = main.selected_card_for_action
+	if search_mode:
+		main.trainer_deck_search_active = false
+	else:
+		main.trainer_pokemon_selection_active = false
+	main.hide_selection_mode_display_main()
+	main.opponent_blocker.visible = true
+	return sel
+
 # ── Bench Damage ──────────────────────────────────────────────────────────────────────────
 
 # Apply `damage` to a bench pokemon and show a floating damage label above its bench position.

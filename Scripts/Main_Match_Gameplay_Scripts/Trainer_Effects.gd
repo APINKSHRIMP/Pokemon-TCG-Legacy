@@ -100,6 +100,7 @@ func discard_pluspower_from_pokemon(pokemon: card_object, is_opponent: bool) -> 
 		# Animate PlusPower from attached cards container to discard pile
 		var card_texture = main.get_card_texture(card)
 		await main.animate_card_a_to_b(attached_node, discard_node, 0.2, card_texture, main.card_scales[10])
+		if main._should_bail(): return
 	pokemon.pluspower_count = 0
 	main.update_discard_pile_display(is_opponent)
 	display_attached_trainer_cards(is_opponent)
@@ -162,30 +163,6 @@ func display_attached_trainer_cards(is_opponent: bool) -> void:
 		display.mouse_filter = Control.MOUSE_FILTER_IGNORE
 
 ############################################### Section B: SHARED CPU DISCARD PRIORITY #############################################################
-
-# Plays a healing animation: restores red HP circles to green with delay, shows floating +HP label
-func play_heal_animation(pokemon: card_object, heal_amount: int, is_opponent: bool) -> void:
-	SoundManagerScript.play_sfx(SoundManagerScript.SFX_heal_sound)
-	if heal_amount <= 0:
-		return
-	var loc = main.get_pokemon_screen_location(pokemon)
-	if not loc.is_empty():
-		main.show_floating_label("+" + str(heal_amount) + " HP", loc["position"] + Vector2(0, -20), Color.GREEN, true)
-	
-	# Animate HP circles restoring one by one with delay
-	var circles_to_restore = heal_amount / 10
-	var active = main.opponent_active_pokemon if is_opponent else main.player_active_pokemon
-	var display_pokemon_ref = pokemon if pokemon == active else active
-	for i in range(circles_to_restore):
-		# Temporarily set HP partway through the heal for incremental circle display
-		var partial_hp = (pokemon.current_hp - heal_amount) + ((i + 1) * 10)
-		var saved_hp = pokemon.current_hp
-		pokemon.current_hp = min(partial_hp, saved_hp)
-		main.display_hp_circles_above_align(display_pokemon_ref if display_pokemon_ref != null else pokemon, is_opponent)
-		pokemon.current_hp = saved_hp
-		await get_tree().create_timer(0.2).timeout
-	main.display_hp_circles_above_align(display_pokemon_ref if display_pokemon_ref != null else pokemon, is_opponent)
-	main.display_pokemon(is_opponent)
 
 # Builds a combined array of bench + active pokemon with active last (for enlarged display with spacer)
 func cpu_get_discard_priority(hand: Array, count: int, exclude_card: card_object = null) -> Array:
@@ -1160,18 +1137,8 @@ func resolve_attached_trainer(card: card_object, is_opponent: bool) -> void:
 			if targets.size() == 0:
 				return
 			
-			main.trainer_pokemon_selection_active = true
-			main.show_enlarged_array_selection_mode(targets)
-			main.header_label.text = "ATTACH DEFENDER"
-			main.hint_label.text = "Choose a Pokemon to attach Defender to"
-			main.action_button.text = "ATTACH"
-			main.action_button.disabled = true
-			main.action_button.theme = main.theme_disabled
-			main.cancel_button.visible = false
-			await main.trainer_target_selected
-			var target = main.selected_card_for_action
-			main.trainer_pokemon_selection_active = false
-			main.hide_selection_mode_display_main()
+			var target = await main.card_ops.prompt_select_card(targets, "ATTACH DEFENDER", "Choose a Pokemon to attach Defender to", "ATTACH", false)
+			if main._should_bail(): return
 			
 			if target != null:
 				target.attached_cards.append(card)
@@ -1231,19 +1198,8 @@ func resolve_attached_trainer(card: card_object, is_opponent: bool) -> void:
 			if sabrina_targets.size() == 1:
 				target = sabrina_targets[0]
 			else:
-				main.trainer_pokemon_selection_active = true
-				main.show_enlarged_array_selection_mode(sabrina_targets)
-				main.header_label.text = "ATTACH SABRINA'S ESP"
-				main.hint_label.text = "Choose a Sabrina Pokemon"
-				main.action_button.text = "ATTACH"
-				main.action_button.disabled = true
-				main.action_button.theme = main.theme_disabled
-				main.cancel_button.visible = false
-				await main.trainer_target_selected
+				target = await main.card_ops.prompt_select_card(sabrina_targets, "ATTACH SABRINA'S ESP", "Choose a Sabrina Pokemon", "ATTACH", false)
 				if main._should_bail(): return
-				target = main.selected_card_for_action
-				main.trainer_pokemon_selection_active = false
-				main.hide_selection_mode_display_main()
 
 		if target == null:
 			var discard = main.opponent_discard_pile if is_opponent else main.player_discard_pile
@@ -1309,19 +1265,8 @@ func gym2_attach_named_tool(card: card_object, is_opponent: bool, name_substr: S
 		if targets.size() == 1:
 			target = targets[0]
 		else:
-			main.trainer_pokemon_selection_active = true
-			main.show_enlarged_array_selection_mode(targets)
-			main.header_label.text = "ATTACH " + display_name
-			main.hint_label.text = "Choose a " + name_substr + " Pokemon"
-			main.action_button.text = "ATTACH"
-			main.action_button.disabled = true
-			main.action_button.theme = main.theme_disabled
-			main.cancel_button.visible = false
-			await main.trainer_target_selected
+			target = await main.card_ops.prompt_select_card(targets, "ATTACH " + display_name, "Choose a " + name_substr + " Pokemon", "ATTACH", false)
 			if main._should_bail(): return
-			target = main.selected_card_for_action
-			main.trainer_pokemon_selection_active = false
-			main.hide_selection_mode_display_main()
 	if target == null:
 		var discard2 = main.opponent_discard_pile if is_opponent else main.player_discard_pile
 		card.current_location = "discard"
@@ -1434,20 +1379,9 @@ func effect_computer_search(played_card: card_object, is_opponent: bool) -> void
 		
 		# Player searches deck
 		if deck.size() > 0:
-			main.trainer_deck_search_active = true
-			main.show_enlarged_array_selection_mode(deck)
-			main.header_label.text = "SEARCH YOUR DECK"
-			main.hint_label.text = "Select any card to add to your hand"
-			main.action_button.text = "TAKE CARD"
-			main.action_button.disabled = true
-			main.action_button.theme = main.theme_disabled
-			main.cancel_button.visible = false
-			await main.trainer_target_selected
+			var chosen = await main.card_ops.prompt_select_card(deck, "SEARCH YOUR DECK", "Select any card to add to your hand", "TAKE CARD", false, true)
 			if main._should_bail(): return
-			var chosen = main.selected_card_for_action
-			main.trainer_deck_search_active = false
-			main.hide_selection_mode_display_main()
-			
+
 			if chosen != null:
 				deck.erase(chosen)
 				chosen.current_location = "hand"
@@ -1484,19 +1418,8 @@ func effect_devolution_spray(is_opponent: bool) -> void:
 		return
 	else:
 		# Step 1: Player selects which pokemon to devolve
-		main.trainer_pokemon_selection_active = true
-		main.show_enlarged_array_selection_mode(evolved_pokemon)
-		main.header_label.text = "DEVOLUTION SPRAY"
-		main.hint_label.text = "Choose an evolved Pokemon to devolve"
-		main.action_button.text = "SELECT"
-		main.action_button.disabled = true
-		main.action_button.theme = main.theme_disabled
-		main.cancel_button.visible = false
-		await main.trainer_target_selected
+		var target = await main.card_ops.prompt_select_card(evolved_pokemon, "DEVOLUTION SPRAY", "Choose an evolved Pokemon to devolve", "SELECT", false)
 		if main._should_bail(): return
-		var target = main.selected_card_for_action
-		main.trainer_pokemon_selection_active = false
-		main.hide_selection_mode_display_main()
 		
 		if target == null:
 			return
@@ -1508,19 +1431,8 @@ func effect_devolution_spray(is_opponent: bool) -> void:
 			devolve_to = target.attached_pre_evolutions[0]
 		else:
 			# Multiple options (Stage 2 → show Basic and Stage 1)
-			main.trainer_pokemon_selection_active = true
-			main.show_enlarged_array_selection_mode(target.attached_pre_evolutions)
-			main.header_label.text = "DEVOLVE TO WHICH STAGE?"
-			main.hint_label.text = "Select which card to devolve " + target.metadata.get("name", "") + " into"
-			main.action_button.text = "DEVOLVE"
-			main.action_button.disabled = true
-			main.action_button.theme = main.theme_disabled
-			main.cancel_button.visible = false
-			await main.trainer_target_selected
+			devolve_to = await main.card_ops.prompt_select_card(target.attached_pre_evolutions, "DEVOLVE TO WHICH STAGE?", "Select which card to devolve " + target.metadata.get("name", "") + " into", "DEVOLVE", false)
 			if main._should_bail(): return
-			devolve_to = main.selected_card_for_action
-			main.trainer_pokemon_selection_active = false
-			main.hide_selection_mode_display_main()
 		
 		if devolve_to == null:
 			return
@@ -1671,19 +1583,8 @@ func effect_item_finder(played_card: card_object, is_opponent: bool) -> void:
 		main.refresh_hand_display(false)
 		
 		# Player picks from discard trainers
-		main.trainer_deck_search_active = true
-		main.show_enlarged_array_selection_mode(trainers_in_discard)
-		main.header_label.text = "ITEM FINDER"
-		main.hint_label.text = "Select a Trainer card from your discard pile"
-		main.action_button.text = "RETRIEVE"
-		main.action_button.disabled = true
-		main.action_button.theme = main.theme_disabled
-		main.cancel_button.visible = false
-		await main.trainer_target_selected
+		var chosen = await main.card_ops.prompt_select_card(trainers_in_discard, "ITEM FINDER", "Select a Trainer card from your discard pile", "RETRIEVE", false, true)
 		if main._should_bail(): return
-		var chosen = main.selected_card_for_action
-		main.trainer_deck_search_active = false
-		main.hide_selection_mode_display_main()
 		
 		if chosen != null:
 			discard.erase(chosen)
@@ -1814,23 +1715,12 @@ func effect_pokemon_breeder(is_opponent: bool) -> void:
 					return
 	else:
 		# Player: select Stage 2 card, then select matching Basic
-		main.trainer_pokemon_selection_active = true
-		main.show_enlarged_array_selection_mode(stage2_cards)
-		main.header_label.text = "POKEMON BREEDER"
-		main.hint_label.text = "Select a Stage 2 Pokemon to play"
-		main.action_button.text = "SELECT"
-		main.action_button.disabled = true
-		main.action_button.theme = main.theme_disabled
-		main.cancel_button.visible = false
-		await main.trainer_target_selected
+		var s2_card = await main.card_ops.prompt_select_card(stage2_cards, "POKEMON BREEDER", "Select a Stage 2 Pokemon to play", "SELECT", false)
 		if main._should_bail(): return
-		var s2_card = main.selected_card_for_action
-		main.trainer_pokemon_selection_active = false
-		main.hide_selection_mode_display_main()
-		
+
 		if s2_card == null:
 			return
-		
+
 		# Find valid basic targets - bench first, active last (for spacer display)
 		var targets = []
 		for bp in bench:
@@ -1838,26 +1728,14 @@ func effect_pokemon_breeder(is_opponent: bool) -> void:
 				targets.append(bp)
 		if active != null and not active.placed_on_field_this_turn and main.is_basic_pokemon(active) and _basic_matches_stage2(active, s2_card):
 			targets.append(active)
-		
+
 		if targets.size() == 0:
 			await main.show_message("No valid Basic Pokemon to evolve!")
 			if main._should_bail(): return
-			# Put the Stage 2 back (it wasn't removed from hand yet by this function)
 			return
-		
-		main.trainer_pokemon_selection_active = true
-		main.show_enlarged_array_selection_mode(targets)
-		main.header_label.text = "POKEMON BREEDER"
-		main.hint_label.text = "Select a Basic Pokemon to evolve into " + s2_card.metadata.get("name", "")
-		main.action_button.text = "EVOLVE"
-		main.action_button.disabled = true
-		main.action_button.theme = main.theme_disabled
-		main.cancel_button.visible = false
-		await main.trainer_target_selected
+
+		var target = await main.card_ops.prompt_select_card(targets, "POKEMON BREEDER", "Select a Basic Pokemon to evolve into " + s2_card.metadata.get("name", ""), "EVOLVE", false)
 		if main._should_bail(): return
-		var target = main.selected_card_for_action
-		main.trainer_pokemon_selection_active = false
-		main.hide_selection_mode_display_main()
 		
 		if target != null:
 			main.evolution_card_awaiting_target = s2_card
@@ -1911,38 +1789,14 @@ func effect_pokemon_trader(played_card: card_object, is_opponent: bool) -> void:
 			if main._should_bail(): return
 			main.refresh_hand_display(true)
 	else:
-		# Player picks card to trade from hand
-		main.trainer_pokemon_selection_active = true
-		main.show_enlarged_array_selection_mode(pokemon_in_hand)
-		main.header_label.text = "POKEMON TRADER"
-		main.hint_label.text = "Select a Pokemon from your hand to trade"
-		main.action_button.text = "TRADE"
-		main.action_button.disabled = true
-		main.action_button.theme = main.theme_disabled
-		main.cancel_button.visible = false
-		await main.trainer_target_selected
+		var card_to_trade = await main.card_ops.prompt_select_card(pokemon_in_hand, "POKEMON TRADER", "Select a Pokemon from your hand to trade", "TRADE", false)
 		if main._should_bail(): return
-		var card_to_trade = main.selected_card_for_action
-		main.trainer_pokemon_selection_active = false
-		main.hide_selection_mode_display_main()
-		
+
 		if card_to_trade == null:
 			return
-		
-		# Player picks card from deck
-		main.trainer_deck_search_active = true
-		main.show_enlarged_array_selection_mode(pokemon_in_deck)
-		main.header_label.text = "POKEMON TRADER"
-		main.hint_label.text = "Select a Pokemon from your deck"
-		main.action_button.text = "TAKE"
-		main.action_button.disabled = true
-		main.action_button.theme = main.theme_disabled
-		main.cancel_button.visible = false
-		await main.trainer_target_selected
+
+		var search_card = await main.card_ops.prompt_select_card(pokemon_in_deck, "POKEMON TRADER", "Select a Pokemon from your deck", "TAKE", false, true)
 		if main._should_bail(): return
-		var search_card = main.selected_card_for_action
-		main.trainer_deck_search_active = false
-		main.hide_selection_mode_display_main()
 		
 		if search_card != null:
 			hand.erase(card_to_trade)
@@ -1987,19 +1841,8 @@ func effect_scoop_up(is_opponent: bool) -> void:
 		if target == null:
 			return
 	else:
-		main.trainer_pokemon_selection_active = true
-		main.show_enlarged_array_selection_mode(all_in_play)
-		main.header_label.text = "SCOOP UP"
-		main.hint_label.text = "Select a Pokemon to return its Basic card to your hand"
-		main.action_button.text = "SCOOP UP"
-		main.action_button.disabled = true
-		main.action_button.theme = main.theme_disabled
-		main.cancel_button.visible = false
-		await main.trainer_target_selected
+		target = await main.card_ops.prompt_select_card(all_in_play, "SCOOP UP", "Select a Pokemon to return its Basic card to your hand", "SCOOP UP", false)
 		if main._should_bail(): return
-		target = main.selected_card_for_action
-		main.trainer_pokemon_selection_active = false
-		main.hide_selection_mode_display_main()
 	
 	if target == null:
 		return
@@ -2125,20 +1968,8 @@ func effect_super_energy_removal(is_opponent: bool) -> void:
 		main.update_discard_pile_display(false)
 		main.update_discard_pile_display(true)
 	else:
-		# Step 1: Player selects which of their own pokemon to discard energy from
-		main.trainer_pokemon_selection_active = true
-		main.show_enlarged_array_selection_mode(own_with_energy)
-		main.header_label.text = "SUPER ENERGY REMOVAL - YOUR POKEMON"
-		main.hint_label.text = "Select your Pokemon to discard 1 energy from"
-		main.action_button.text = "SELECT"
-		main.action_button.disabled = true
-		main.action_button.theme = main.theme_disabled
-		main.cancel_button.visible = false
-		await main.trainer_target_selected
+		var source = await main.card_ops.prompt_select_card(own_with_energy, "SUPER ENERGY REMOVAL - YOUR POKEMON", "Select your Pokemon to discard 1 energy from", "SELECT", false)
 		if main._should_bail(): return
-		var source = main.selected_card_for_action
-		main.trainer_pokemon_selection_active = false
-		main.hide_selection_mode_display_main()
 		
 		if source == null or source.attached_energies.size() == 0:
 			return
@@ -2166,20 +1997,8 @@ func effect_super_energy_removal(is_opponent: bool) -> void:
 		main.display_active_pokemon_energies(false)
 		main.update_discard_pile_display(false)
 		
-		# Step 3: Player selects opponent pokemon to remove energy from
-		main.trainer_pokemon_selection_active = true
-		main.show_enlarged_array_selection_mode(target_with_energy)
-		main.header_label.text = "SUPER ENERGY REMOVAL - OPPONENT"
-		main.hint_label.text = "Select opponent's Pokemon to remove up to 2 energy"
-		main.action_button.text = "SELECT"
-		main.action_button.disabled = true
-		main.action_button.theme = main.theme_disabled
-		main.cancel_button.visible = false
-		await main.trainer_target_selected
+		var target = await main.card_ops.prompt_select_card(target_with_energy, "SUPER ENERGY REMOVAL - OPPONENT", "Select opponent's Pokemon to remove up to 2 energy", "SELECT", false)
 		if main._should_bail(): return
-		var target = main.selected_card_for_action
-		main.trainer_pokemon_selection_active = false
-		main.hide_selection_mode_display_main()
 		
 		if target == null:
 			return
@@ -2448,19 +2267,8 @@ func effect_pokemon_flute(is_opponent: bool) -> void:
 		# CPU never plays this (scored -100)
 		return
 	else:
-		main.trainer_deck_search_active = true
-		main.show_enlarged_array_selection_mode(basics_in_discard)
-		main.header_label.text = "POKEMON FLUTE"
-		main.hint_label.text = "Choose a Basic Pokemon to place on opponent's bench"
-		main.action_button.text = "PLACE"
-		main.action_button.disabled = true
-		main.action_button.theme = main.theme_disabled
-		main.cancel_button.visible = false
-		await main.trainer_target_selected
+		var chosen = await main.card_ops.prompt_select_card(basics_in_discard, "POKEMON FLUTE", "Choose a Basic Pokemon to place on opponent's bench", "PLACE", false, true)
 		if main._should_bail(): return
-		var chosen = main.selected_card_for_action
-		main.trainer_deck_search_active = false
-		main.hide_selection_mode_display_main()
 		
 		if chosen != null:
 			target_discard.erase(chosen)
@@ -2566,19 +2374,8 @@ func effect_revive(is_opponent: bool) -> void:
 			await main.show_message("Opponent revived " + best.metadata.get("name", "") + " at half HP!")
 			if main._should_bail(): return
 	else:
-		main.trainer_deck_search_active = true
-		main.show_enlarged_array_selection_mode(basics_in_discard)
-		main.header_label.text = "REVIVE"
-		main.hint_label.text = "Select a Basic Pokemon to revive at half HP"
-		main.action_button.text = "REVIVE"
-		main.action_button.disabled = true
-		main.action_button.theme = main.theme_disabled
-		main.cancel_button.visible = false
-		await main.trainer_target_selected
+		var chosen = await main.card_ops.prompt_select_card(basics_in_discard, "REVIVE", "Select a Basic Pokemon to revive at half HP", "REVIVE", false, true)
 		if main._should_bail(): return
-		var chosen = main.selected_card_for_action
-		main.trainer_deck_search_active = false
-		main.hide_selection_mode_display_main()
 		
 		if chosen != null:
 			discard.erase(chosen)
@@ -2626,19 +2423,8 @@ func effect_super_potion(is_opponent: bool) -> void:
 			if main._should_bail(): return
 			main.update_discard_pile_display(true)
 	else:
-		main.trainer_pokemon_selection_active = true
-		main.show_enlarged_array_selection_mode(valid_targets)
-		main.header_label.text = "SUPER POTION"
-		main.hint_label.text = "Select a Pokemon to heal (will discard 1 energy)"
-		main.action_button.text = "HEAL"
-		main.action_button.disabled = true
-		main.action_button.theme = main.theme_disabled
-		main.cancel_button.visible = false
-		await main.trainer_target_selected
+		var target = await main.card_ops.prompt_select_card(valid_targets, "SUPER POTION", "Select a Pokemon to heal (will discard 1 energy)", "HEAL", false)
 		if main._should_bail(): return
-		var target = main.selected_card_for_action
-		main.trainer_pokemon_selection_active = false
-		main.hide_selection_mode_display_main()
 		
 		if target != null:
 			# Animate energy discard
@@ -2688,20 +2474,9 @@ func effect_energy_removal(is_opponent: bool) -> void:
 		await main.show_message("Opponent removed energy from " + target.metadata.get("name", "") + "!")
 		if main._should_bail(): return
 	else:
-		main.trainer_pokemon_selection_active = true
-		main.show_enlarged_array_selection_mode(targets_with_energy)
-		main.header_label.text = "ENERGY REMOVAL"
-		main.hint_label.text = "Select opponent's Pokemon to remove energy from"
-		main.action_button.text = "SELECT"
-		main.action_button.disabled = true
-		main.action_button.theme = main.theme_disabled
-		main.cancel_button.visible = false
-		await main.trainer_target_selected
+		var target = await main.card_ops.prompt_select_card(targets_with_energy, "ENERGY REMOVAL", "Select opponent's Pokemon to remove energy from", "SELECT", false)
 		if main._should_bail(): return
-		var target = main.selected_card_for_action
-		main.trainer_pokemon_selection_active = false
-		main.hide_selection_mode_display_main()
-		
+
 		if target != null and target.attached_energies.size() > 0:
 			main.defender_energy_discard_active = true
 			main.show_enlarged_array_selection_mode(target.attached_energies)
@@ -2758,19 +2533,8 @@ func effect_gust_of_wind(is_opponent: bool) -> void:
 				best = bp
 		new_active = best
 	else:
-		main.trainer_pokemon_selection_active = true
-		main.show_enlarged_array_selection_mode(target_bench)
-		main.header_label.text = "GUST OF WIND"
-		main.hint_label.text = "Select opponent's bench Pokemon to pull forward"
-		main.action_button.text = "SWITCH"
-		main.action_button.disabled = true
-		main.action_button.theme = main.theme_disabled
-		main.cancel_button.visible = false
-		await main.trainer_target_selected
+		new_active = await main.card_ops.prompt_select_card(target_bench, "GUST OF WIND", "Select opponent's bench Pokemon to pull forward", "SWITCH", false)
 		if main._should_bail(): return
-		new_active = main.selected_card_for_action
-		main.trainer_pokemon_selection_active = false
-		main.hide_selection_mode_display_main()
 	
 	if new_active != null:
 		var old_active = main.player_active_pokemon if is_opponent else main.opponent_active_pokemon
@@ -2811,19 +2575,8 @@ func effect_potion(is_opponent: bool) -> void:
 		await main.card_ops.heal_pokemon(target, 20, true)
 		if main._should_bail(): return
 	else:
-		main.trainer_pokemon_selection_active = true
-		main.show_enlarged_array_selection_mode(damaged)
-		main.header_label.text = "POTION"
-		main.hint_label.text = "Select a Pokemon to heal (up to 20 HP)"
-		main.action_button.text = "HEAL"
-		main.action_button.disabled = true
-		main.action_button.theme = main.theme_disabled
-		main.cancel_button.visible = false
-		await main.trainer_target_selected
+		var target = await main.card_ops.prompt_select_card(damaged, "POTION", "Select a Pokemon to heal (up to 20 HP)", "HEAL", false)
 		if main._should_bail(): return
-		var target = main.selected_card_for_action
-		main.trainer_pokemon_selection_active = false
-		main.hide_selection_mode_display_main()
 
 		if target != null:
 			await main.card_ops.heal_pokemon(target, 20, false)
@@ -2861,19 +2614,8 @@ func effect_switch(is_opponent: bool) -> void:
 		await main.show_message("Opponent switched to " + replacement.metadata.get("name", "") + "!")
 		if main._should_bail(): return
 	else:
-		main.trainer_pokemon_selection_active = true
-		main.show_enlarged_array_selection_mode(bench)
-		main.header_label.text = "SWITCH"
-		main.hint_label.text = "Select a bench Pokemon to switch with your active"
-		main.action_button.text = "SWITCH"
-		main.action_button.disabled = true
-		main.action_button.theme = main.theme_disabled
-		main.cancel_button.visible = false
-		await main.trainer_target_selected
+		var replacement = await main.card_ops.prompt_select_card(bench, "SWITCH", "Select a bench Pokemon to switch with your active", "SWITCH", false)
 		if main._should_bail(): return
-		var replacement = main.selected_card_for_action
-		main.trainer_pokemon_selection_active = false
-		main.hide_selection_mode_display_main()
 		
 		if replacement != null:
 			bench.erase(replacement)
@@ -2958,19 +2700,8 @@ func effect_poke_ball(is_opponent: bool) -> void:
 		chosen = best
 	else:
 		# Player selects from matching cards
-		main.trainer_deck_search_active = true
-		main.show_enlarged_array_selection_mode(matching)
-		main.cancel_button.visible = true
-		main.header_label.text = "POKE BALL: CHOOSE A POKEMON"
-		main.hint_label.text = "Select a Basic or Evolution Pokemon"
-		main.action_button.text = "TAKE"
-		main.action_button.disabled = true
-		main.action_button.theme = main.theme_disabled
-		await main.trainer_target_selected
+		chosen = await main.card_ops.prompt_select_card(matching, "POKE BALL: CHOOSE A POKEMON", "Select a Basic or Evolution Pokemon", "TAKE", true, true)
 		if main._should_bail(): return
-		chosen = main.selected_card_for_action
-		main.trainer_deck_search_active = false
-		main.hide_selection_mode_display_main()
 	
 	if chosen != null:
 		var hand = main.opponent_hand if is_opponent else main.player_hand
@@ -3024,19 +2755,8 @@ func effect_mr_fuji(is_opponent: bool) -> void:
 					chosen = bp
 	else:
 		# Player selects
-		main.trainer_pokemon_selection_active = true
-		main.show_enlarged_array_selection_mode(bench)
-		main.cancel_button.visible = false
-		main.header_label.text = "MR. FUJI: CHOOSE A BENCHED POKEMON"
-		main.hint_label.text = "This Pokemon and all attached cards will be shuffled into your deck"
-		main.action_button.text = "SHUFFLE BACK"
-		main.action_button.disabled = true
-		main.action_button.theme = main.theme_disabled
-		await main.trainer_target_selected
+		chosen = await main.card_ops.prompt_select_card(bench, "MR. FUJI: CHOOSE A BENCHED POKEMON", "This Pokemon and all attached cards will be shuffled into your deck", "SHUFFLE BACK", false)
 		if main._should_bail(): return
-		chosen = main.selected_card_for_action
-		main.trainer_pokemon_selection_active = false
-		main.hide_selection_mode_display_main()
 	
 	if chosen == null:
 		return
@@ -3125,21 +2845,8 @@ func effect_energy_search(is_opponent: bool) -> void:
 			chosen = basic_energies[0]
 	else:
 		# Player selects
-		main.opponent_blocker.visible = false
-		main.trainer_deck_search_active = true
-		main.show_enlarged_array_selection_mode(basic_energies)
-		main.cancel_button.visible = false
-		main.header_label.text = "ENERGY SEARCH: CHOOSE A BASIC ENERGY"
-		main.hint_label.text = "Select a basic Energy card to add to your hand"
-		main.action_button.text = "SELECT"
-		main.action_button.disabled = true
-		main.action_button.theme = main.theme_disabled
-		await main.trainer_target_selected
+		chosen = await main.card_ops.prompt_select_card(basic_energies, "ENERGY SEARCH: CHOOSE A BASIC ENERGY", "Select a basic Energy card to add to your hand", "SELECT", false, true)
 		if main._should_bail(): return
-		chosen = main.selected_card_for_action
-		main.trainer_deck_search_active = false
-		main.hide_selection_mode_display_main()
-		main.opponent_blocker.visible = true
 	
 	if chosen != null:
 		deck.erase(chosen)
@@ -3236,19 +2943,8 @@ func effect_recycle(is_opponent: bool) -> void:
 		chosen = best_card
 	else:
 		# Player selects
-		main.trainer_pokemon_selection_active = true
-		main.show_enlarged_array_selection_mode(discard)
-		main.cancel_button.visible = false
-		main.header_label.text = "RECYCLE: CHOOSE A CARD"
-		main.hint_label.text = "This card will be placed on top of your deck"
-		main.action_button.text = "RECYCLE"
-		main.action_button.disabled = true
-		main.action_button.theme = main.theme_disabled
-		await main.trainer_target_selected
+		chosen = await main.card_ops.prompt_select_card(discard, "RECYCLE: CHOOSE A CARD", "This card will be placed on top of your deck", "RECYCLE", false)
 		if main._should_bail(): return
-		chosen = main.selected_card_for_action
-		main.trainer_pokemon_selection_active = false
-		main.hide_selection_mode_display_main()
 	
 	if chosen != null:
 		discard.erase(chosen)
@@ -3300,16 +2996,8 @@ func effect_rockets_sneak_attack(is_opponent: bool) -> void:
 	
 	if not is_opponent:
 		# Player sees opponent's hand and picks a trainer
-		main.trainer_pokemon_selection_active = true
-		main.show_enlarged_array_selection_mode(trainer_cards)
-		main.header_label.text = "CHOOSE A TRAINER TO SHUFFLE INTO DECK"
-		main.action_button.text = "SELECT"
-		main.action_button.disabled = true
-		await main.trainer_target_selected
+		selected = await main.card_ops.prompt_select_card(trainer_cards, "CHOOSE A TRAINER TO SHUFFLE INTO DECK", "", "SELECT", false)
 		if main._should_bail(): return
-		selected = main.selected_card_for_action
-		main.trainer_pokemon_selection_active = false
-		main.hide_selection_mode_display_main()
 	else:
 		# CPU picks the most impactful trainer (highest discard priority = keep, so pick lowest)
 		var best: card_object = null
@@ -3356,16 +3044,8 @@ func effect_the_boss_way(is_opponent: bool) -> void:
 	var selected: card_object = null
 	
 	if not is_opponent:
-		main.trainer_pokemon_selection_active = true
-		main.show_enlarged_array_selection_mode(dark_evolutions)
-		main.header_label.text = "CHOOSE A DARK EVOLUTION CARD"
-		main.action_button.text = "SELECT"
-		main.action_button.disabled = true
-		await main.trainer_target_selected
+		selected = await main.card_ops.prompt_select_card(dark_evolutions, "CHOOSE A DARK EVOLUTION CARD", "", "SELECT", false, true)
 		if main._should_bail(): return
-		selected = main.selected_card_for_action
-		main.trainer_pokemon_selection_active = false
-		main.hide_selection_mode_display_main()
 	else:
 		selected = main.cpu_ai.cpu_search_deck_for_best_pokemon(dark_evolutions)
 		if selected == null:
@@ -3443,16 +3123,8 @@ func effect_challenge(is_opponent: bool) -> void:
 					player_basics.append(card)
 			
 			if player_basics.size() > 0 and main.player_bench.size() < 5:
-				main.trainer_pokemon_selection_active = true
-				main.show_enlarged_array_selection_mode(player_basics)
-				main.header_label.text = "CHOOSE BASIC POKÉMON FOR BENCH"
-				main.action_button.text = "SELECT"
-				main.action_button.disabled = true
-				await main.trainer_target_selected
+				var player_pick = await main.card_ops.prompt_select_card(player_basics, "CHOOSE BASIC POKÉMON FOR BENCH", "", "SELECT", false, true)
 				if main._should_bail(): return
-				var player_pick = main.selected_card_for_action
-				main.trainer_pokemon_selection_active = false
-				main.hide_selection_mode_display_main()
 				
 				if player_pick != null:
 					player_deck.erase(player_pick)
@@ -3607,16 +3279,8 @@ func effect_nightly_garbage_run(is_opponent: bool) -> void:
 			if remaining.size() == 0:
 				break
 			
-			main.trainer_pokemon_selection_active = true
-			main.show_enlarged_array_selection_mode(remaining)
-			main.header_label.text = "CHOOSE CARD " + str(i + 1) + "/" + str(max_picks) + " (OR DONE)"
-			main.action_button.text = "SELECT"
-			main.action_button.disabled = true
-			await main.trainer_target_selected
+			var pick = await main.card_ops.prompt_select_card(remaining, "CHOOSE CARD " + str(i + 1) + "/" + str(max_picks) + " (OR DONE)", "", "SELECT", true)
 			if main._should_bail(): return
-			var pick = main.selected_card_for_action
-			main.trainer_pokemon_selection_active = false
-			main.hide_selection_mode_display_main()
 			
 			if pick != null:
 				chosen.append(pick)
@@ -3932,19 +3596,8 @@ func gym1_effect_lt_surge(is_opponent: bool) -> void:
 				best = hp
 				chosen = c
 	else:
-		main.trainer_pokemon_selection_active = true
-		main.show_enlarged_array_selection_mode(basics_in_hand)
-		main.header_label.text = "LT. SURGE — PROMOTE A BASIC"
-		main.hint_label.text = "Choose a Basic to swap into Active"
-		main.action_button.text = "PROMOTE"
-		main.action_button.disabled = true
-		main.action_button.theme = main.theme_disabled
-		main.cancel_button.visible = false
-		await main.trainer_target_selected
+		chosen = await main.card_ops.prompt_select_card(basics_in_hand, "LT. SURGE — PROMOTE A BASIC", "Choose a Basic to swap into Active", "PROMOTE", false)
 		if main._should_bail(): return
-		chosen = main.selected_card_for_action
-		main.trainer_pokemon_selection_active = false
-		main.hide_selection_mode_display_main()
 
 	if chosen == null:
 		return
@@ -4123,23 +3776,8 @@ func gym1_search_deck_by_name_substring(is_opponent: bool, substr: String, heade
 					remaining.append(c)
 			if remaining.size() == 0:
 				break
-			main.trainer_deck_search_active = true
-			main.show_enlarged_array_selection_mode(remaining)
-			main.header_label.text = header_text + " — CHOOSE " + str(i + 1) + "/" + str(min(max_n, candidates.size()))
-			main.hint_label.text = "Pick a Pokemon to add to your hand (cancel to stop)"
-			main.action_button.text = "TAKE"
-			main.action_button.disabled = true
-			main.action_button.theme = main.theme_disabled
-			main.cancel_button.visible = true
-			main.cancel_button.text = "DONE"
-			main.cancel_button.theme = main.theme_green
-			await main.trainer_target_selected
+			var pick = await main.card_ops.prompt_select_card(remaining, header_text + " — CHOOSE " + str(i + 1) + "/" + str(min(max_n, candidates.size())), "Pick a Pokemon to add to your hand (cancel to stop)", "TAKE", true, true)
 			if main._should_bail(): return
-			var pick = main.selected_card_for_action
-			main.trainer_deck_search_active = false
-			main.hide_selection_mode_display_main()
-			main.cancel_button.text = "Cancel"
-			main.cancel_button.theme = main.theme_red
 			if pick == null:
 				break
 			picks.append(pick)
@@ -4191,23 +3829,8 @@ func gym1_effect_erikas_perfume(is_opponent: bool) -> void:
 				remaining.append(c)
 		if remaining.size() == 0:
 			break
-		main.trainer_pokemon_selection_active = true
-		main.show_enlarged_array_selection_mode(remaining)
-		main.header_label.text = "ERIKA'S PERFUME — BENCH WHICH BASIC?"
-		main.hint_label.text = "Pick a Basic to put on opponent's bench (or DONE)"
-		main.action_button.text = "BENCH"
-		main.action_button.disabled = true
-		main.action_button.theme = main.theme_disabled
-		main.cancel_button.visible = true
-		main.cancel_button.text = "DONE"
-		main.cancel_button.theme = main.theme_green
-		await main.trainer_target_selected
+		var pick = await main.card_ops.prompt_select_card(remaining, "ERIKA'S PERFUME — BENCH WHICH BASIC?", "Pick a Basic to put on opponent's bench (or DONE)", "BENCH", true)
 		if main._should_bail(): return
-		var pick = main.selected_card_for_action
-		main.trainer_pokemon_selection_active = false
-		main.hide_selection_mode_display_main()
-		main.cancel_button.text = "Cancel"
-		main.cancel_button.theme = main.theme_red
 		if pick == null:
 			break
 		to_bench.append(pick)
@@ -4258,19 +3881,8 @@ func gym1_effect_good_manners(is_opponent: bool) -> void:
 		if chosen == null:
 			chosen = basics[0]
 	else:
-		main.trainer_deck_search_active = true
-		main.show_enlarged_array_selection_mode(basics)
-		main.header_label.text = "GOOD MANNERS — CHOOSE A BASIC"
-		main.hint_label.text = "Add a Basic Pokemon to your hand"
-		main.action_button.text = "TAKE"
-		main.action_button.disabled = true
-		main.action_button.theme = main.theme_disabled
-		main.cancel_button.visible = false
-		await main.trainer_target_selected
+		chosen = await main.card_ops.prompt_select_card(basics, "GOOD MANNERS — CHOOSE A BASIC", "Add a Basic Pokemon to your hand", "TAKE", false, true)
 		if main._should_bail(): return
-		chosen = main.selected_card_for_action
-		main.trainer_deck_search_active = false
-		main.hide_selection_mode_display_main()
 
 	if chosen != null:
 		deck.erase(chosen)
@@ -4318,19 +3930,8 @@ func gym1_effect_lt_surges_treaty(is_opponent: bool) -> void:
 func gym1_player_take_own_prize() -> void:
 	if main.player_prize_cards.size() == 0:
 		return
-	main.trainer_pokemon_selection_active = true
-	main.show_enlarged_array_selection_mode(main.player_prize_cards)
-	main.header_label.text = "CHOOSE A PRIZE CARD"
-	main.hint_label.text = "Pick a prize to take into your hand"
-	main.action_button.text = "TAKE"
-	main.action_button.disabled = true
-	main.action_button.theme = main.theme_disabled
-	main.cancel_button.visible = false
-	await main.trainer_target_selected
+	var pick = await main.card_ops.prompt_select_card(main.player_prize_cards, "CHOOSE A PRIZE CARD", "Pick a prize to take into your hand", "TAKE", false)
 	if main._should_bail(): return
-	var pick = main.selected_card_for_action
-	main.trainer_pokemon_selection_active = false
-	main.hide_selection_mode_display_main()
 	if pick != null:
 		await main.take_prize_card(pick, false)
 
@@ -4373,19 +3974,8 @@ func gym1_effect_minion_of_team_rocket(is_opponent: bool) -> void:
 				best = score
 				target = bp
 	else:
-		main.trainer_pokemon_selection_active = true
-		main.show_enlarged_array_selection_mode(opp_bench)
-		main.header_label.text = "MINION — RETURN WHICH BENCHED POKEMON?"
-		main.hint_label.text = "All attached cards return to opponent's hand with it"
-		main.action_button.text = "RETURN"
-		main.action_button.disabled = true
-		main.action_button.theme = main.theme_disabled
-		main.cancel_button.visible = false
-		await main.trainer_target_selected
+		target = await main.card_ops.prompt_select_card(opp_bench, "MINION — RETURN WHICH BENCHED POKEMON?", "All attached cards return to opponent's hand with it", "RETURN", false)
 		if main._should_bail(): return
-		target = main.selected_card_for_action
-		main.trainer_pokemon_selection_active = false
-		main.hide_selection_mode_display_main()
 
 	if target == null:
 		return
@@ -4452,19 +4042,8 @@ func gym1_effect_mistys_wrath(is_opponent: bool) -> void:
 					remaining.append(c)
 			if remaining.size() == 0:
 				break
-			main.trainer_pokemon_selection_active = true
-			main.show_enlarged_array_selection_mode(remaining)
-			main.header_label.text = "MISTY'S WRATH — PICK CARD " + str(i + 1) + "/" + str(pick_count)
-			main.hint_label.text = "Choose a card to add to your hand"
-			main.action_button.text = "TAKE"
-			main.action_button.disabled = true
-			main.action_button.theme = main.theme_disabled
-			main.cancel_button.visible = false
-			await main.trainer_target_selected
+			var pick = await main.card_ops.prompt_select_card(remaining, "MISTY'S WRATH — PICK CARD " + str(i + 1) + "/" + str(pick_count), "Choose a card to add to your hand", "TAKE", false)
 			if main._should_bail(): return
-			var pick = main.selected_card_for_action
-			main.trainer_pokemon_selection_active = false
-			main.hide_selection_mode_display_main()
 			if pick == null:
 				break
 			picks.append(pick)
@@ -4535,21 +4114,8 @@ func gym1_effect_secret_mission(is_opponent: bool) -> void:
 		# We'll re-use a "discard any number" UI: pick one at a time, DONE to finish
 		var remaining = hand.duplicate()
 		while remaining.size() > 0:
-			main.trainer_pokemon_selection_active = true
-			main.show_enlarged_array_selection_mode(remaining)
-			main.header_label.text = "SECRET MISSION — DISCARD WHICH? (DONE TO STOP)"
-			main.hint_label.text = "Selected so far: " + str(discards.size())
-			main.action_button.text = "DISCARD"
-			main.action_button.disabled = true
-			main.action_button.theme = main.theme_disabled
-			main.cancel_button.visible = true
-			main.cancel_button.text = "DONE"
-			main.cancel_button.theme = main.theme_green
-			await main.trainer_target_selected
+			var pick = await main.card_ops.prompt_select_card(remaining, "SECRET MISSION — DISCARD WHICH? (DONE TO STOP)", "Selected so far: " + str(discards.size()), "DISCARD", true)
 			if main._should_bail(): return
-			var pick = main.selected_card_for_action
-			main.trainer_pokemon_selection_active = false
-			main.hide_selection_mode_display_main()
 			main.cancel_button.text = "Cancel"
 			main.cancel_button.theme = main.theme_red
 			if pick == null:
@@ -4624,21 +4190,8 @@ func gym1_effect_blaines_gamble(played_card: card_object, is_opponent: bool) -> 
 		# Player picks any number
 		var remaining = hand.duplicate()
 		while remaining.size() > 0:
-			main.trainer_pokemon_selection_active = true
-			main.show_enlarged_array_selection_mode(remaining)
-			main.header_label.text = "BLAINE'S GAMBLE — DISCARD HOW MANY?"
-			main.hint_label.text = "Selected: " + str(discards.size()) + " (DONE to flip)"
-			main.action_button.text = "DISCARD"
-			main.action_button.disabled = true
-			main.action_button.theme = main.theme_disabled
-			main.cancel_button.visible = true
-			main.cancel_button.text = "DONE"
-			main.cancel_button.theme = main.theme_green
-			await main.trainer_target_selected
+			var pick = await main.card_ops.prompt_select_card(remaining, "BLAINE'S GAMBLE — DISCARD HOW MANY?", "Selected: " + str(discards.size()) + " (DONE to flip)", "DISCARD", true)
 			if main._should_bail(): return
-			var pick = main.selected_card_for_action
-			main.trainer_pokemon_selection_active = false
-			main.hide_selection_mode_display_main()
 			main.cancel_button.text = "Cancel"
 			main.cancel_button.theme = main.theme_red
 			if pick == null:
@@ -4688,23 +4241,8 @@ func gym1_effect_energy_flow(is_opponent: bool) -> void:
 			# Player picks any number for this pokemon
 			var remaining = pokemon.attached_energies.duplicate()
 			while remaining.size() > 0:
-				main.trainer_pokemon_selection_active = true
-				main.show_enlarged_array_selection_mode(remaining)
-				main.header_label.text = "ENERGY FLOW — " + pokemon.metadata.get("name", "").to_upper()
-				main.hint_label.text = "Return energies to hand (DONE to move on)"
-				main.action_button.text = "RETURN"
-				main.action_button.disabled = true
-				main.action_button.theme = main.theme_disabled
-				main.cancel_button.visible = true
-				main.cancel_button.text = "DONE"
-				main.cancel_button.theme = main.theme_green
-				await main.trainer_target_selected
+				var pick = await main.card_ops.prompt_select_card(remaining, "ENERGY FLOW — " + pokemon.metadata.get("name", "").to_upper(), "Return energies to hand (DONE to move on)", "RETURN", true)
 				if main._should_bail(): return
-				var pick = main.selected_card_for_action
-				main.trainer_pokemon_selection_active = false
-				main.hide_selection_mode_display_main()
-				main.cancel_button.text = "Cancel"
-				main.cancel_button.theme = main.theme_red
 				if pick == null:
 					break
 				to_return.append(pick)
@@ -4901,19 +4439,8 @@ func gym1_narrow_gym_force_return_to_hand(side_is_opponent: bool) -> void:
 				chosen = bp
 	else:
 		# Player chooses
-		main.trainer_pokemon_selection_active = true
-		main.show_enlarged_array_selection_mode(bench)
-		main.header_label.text = "NARROW GYM"
-		main.hint_label.text = "Bench is full — choose a Pokemon to return to your hand"
-		main.action_button.text = "SELECT"
-		main.action_button.disabled = true
-		main.action_button.theme = main.theme_disabled
-		main.cancel_button.visible = false
-		await main.trainer_target_selected
+		chosen = await main.card_ops.prompt_select_card(bench, "NARROW GYM", "Bench is full — choose a Pokemon to return to your hand", "SELECT", false)
 		if main._should_bail(): return
-		chosen = main.selected_card_for_action
-		main.trainer_pokemon_selection_active = false
-		main.hide_selection_mode_display_main()
 	if chosen == null:
 		return
 
@@ -4986,19 +4513,8 @@ func gym1_celadon_activate(is_opponent: bool) -> void:
 		energy_to_discard = target.attached_energies[target.attached_energies.size() - 1]
 	else:
 		# Player chooses Erika pokemon
-		main.trainer_pokemon_selection_active = true
-		main.show_enlarged_array_selection_mode(eligible)
-		main.header_label.text = "CELADON CITY GYM"
-		main.hint_label.text = "Choose an Erika Pokemon to cure (discards 1 energy)"
-		main.action_button.text = "SELECT"
-		main.action_button.disabled = true
-		main.action_button.theme = main.theme_disabled
-		main.cancel_button.visible = true
-		await main.trainer_target_selected
+		target = await main.card_ops.prompt_select_card(eligible, "CELADON CITY GYM", "Choose an Erika Pokemon to cure (discards 1 energy)", "SELECT", true)
 		if main._should_bail(): return
-		target = main.selected_card_for_action
-		main.trainer_pokemon_selection_active = false
-		main.hide_selection_mode_display_main()
 		if target == null:
 			return
 
@@ -5157,19 +4673,8 @@ func gym2_koga_ninja_trick_offer_switch(defender: card_object, defender_is_opp: 
 		var yes = await gym1_prompt_yes_no(defender, "KOGA'S NINJA TRICK", "Switch " + defender.metadata.get("name", "") + " with a Benched Pokemon?", "SWITCH", "STAY")
 		if not yes:
 			return false
-		main.trainer_pokemon_selection_active = true
-		main.show_enlarged_array_selection_mode(bench)
-		main.header_label.text = "KOGA'S NINJA TRICK — SWITCH WITH WHICH?"
-		main.hint_label.text = "Choose a Benched Pokemon to swap in"
-		main.action_button.text = "SWITCH"
-		main.action_button.disabled = true
-		main.action_button.theme = main.theme_disabled
-		main.cancel_button.visible = false
-		await main.trainer_target_selected
+		chosen = await main.card_ops.prompt_select_card(bench, "KOGA'S NINJA TRICK — SWITCH WITH WHICH?", "Choose a Benched Pokemon to swap in", "SWITCH", false)
 		if main._should_bail(): return false
-		chosen = main.selected_card_for_action
-		main.trainer_pokemon_selection_active = false
-		main.hide_selection_mode_display_main()
 	if chosen == null:
 		return false
 
@@ -5234,19 +4739,8 @@ func gym2_effect_blaine(is_opponent: bool) -> void:
 		if blaine_targets.size() == 1:
 			target = blaine_targets[0]
 		else:
-			main.trainer_pokemon_selection_active = true
-			main.show_enlarged_array_selection_mode(blaine_targets)
-			main.header_label.text = "BLAINE — ATTACH 2 FIRE ENERGY"
-			main.hint_label.text = "Choose a Blaine Pokemon"
-			main.action_button.text = "ATTACH"
-			main.action_button.disabled = true
-			main.action_button.theme = main.theme_disabled
-			main.cancel_button.visible = false
-			await main.trainer_target_selected
+			target = await main.card_ops.prompt_select_card(blaine_targets, "BLAINE — ATTACH 2 FIRE ENERGY", "Choose a Blaine Pokemon", "ATTACH", false)
 			if main._should_bail(): return
-			target = main.selected_card_for_action
-			main.trainer_pokemon_selection_active = false
-			main.hide_selection_mode_display_main()
 	if target == null:
 		return
 	# Move the 2 Fire Energies onto the target
@@ -5293,19 +4787,8 @@ func gym2_effect_giovanni(is_opponent: bool) -> void:
 		if giovannis.size() == 1:
 			target = giovannis[0]
 		else:
-			main.trainer_pokemon_selection_active = true
-			main.show_enlarged_array_selection_mode(giovannis)
-			main.header_label.text = "GIOVANNI — CHOOSE A POKEMON"
-			main.hint_label.text = "It can evolve freely this turn"
-			main.action_button.text = "SELECT"
-			main.action_button.disabled = true
-			main.action_button.theme = main.theme_disabled
-			main.cancel_button.visible = false
-			await main.trainer_target_selected
+			target = await main.card_ops.prompt_select_card(giovannis, "GIOVANNI — CHOOSE A POKEMON", "It can evolve freely this turn", "SELECT", false)
 			if main._should_bail(): return
-			target = main.selected_card_for_action
-			main.trainer_pokemon_selection_active = false
-			main.hide_selection_mode_display_main()
 	if target == null:
 		return
 	target.gym2_giovanni_evolve_anywhere = true
@@ -5358,19 +4841,8 @@ func gym2_effect_sabrina(is_opponent: bool) -> void:
 					break
 	else:
 		# Player picks source then destination
-		main.trainer_pokemon_selection_active = true
-		main.show_enlarged_array_selection_mode(sources)
-		main.header_label.text = "SABRINA — PICK ENERGY SOURCE"
-		main.hint_label.text = "Move all its energies"
-		main.action_button.text = "SELECT"
-		main.action_button.disabled = true
-		main.action_button.theme = main.theme_disabled
-		main.cancel_button.visible = false
-		await main.trainer_target_selected
+		source = await main.card_ops.prompt_select_card(sources, "SABRINA — PICK ENERGY SOURCE", "Move all its energies", "SELECT", false)
 		if main._should_bail(): return
-		source = main.selected_card_for_action
-		main.trainer_pokemon_selection_active = false
-		main.hide_selection_mode_display_main()
 		if source == null:
 			return
 		var dest_candidates: Array = []
@@ -5379,19 +4851,8 @@ func gym2_effect_sabrina(is_opponent: bool) -> void:
 				dest_candidates.append(s)
 		if dest_candidates.size() == 0:
 			return
-		main.trainer_pokemon_selection_active = true
-		main.show_enlarged_array_selection_mode(dest_candidates)
-		main.header_label.text = "SABRINA — PICK DESTINATION"
-		main.hint_label.text = "Energy from " + source.metadata.get("name", "") + " moves here"
-		main.action_button.text = "SELECT"
-		main.action_button.disabled = true
-		main.action_button.theme = main.theme_disabled
-		main.cancel_button.visible = false
-		await main.trainer_target_selected
+		dest = await main.card_ops.prompt_select_card(dest_candidates, "SABRINA — PICK DESTINATION", "Energy from " + source.metadata.get("name", "") + " moves here", "SELECT", false)
 		if main._should_bail(): return
-		dest = main.selected_card_for_action
-		main.trainer_pokemon_selection_active = false
-		main.hide_selection_mode_display_main()
 
 	if source == null or dest == null:
 		return
@@ -5443,19 +4904,8 @@ func gym2_effect_giovannis_last_resort(is_opponent: bool) -> void:
 		if giovannis.size() == 1:
 			target = giovannis[0]
 		else:
-			main.trainer_pokemon_selection_active = true
-			main.show_enlarged_array_selection_mode(giovannis)
-			main.header_label.text = "GIOVANNI'S LAST RESORT"
-			main.hint_label.text = "Choose a Giovanni Pokemon to fully heal (will discard your hand)"
-			main.action_button.text = "HEAL"
-			main.action_button.disabled = true
-			main.action_button.theme = main.theme_disabled
-			main.cancel_button.visible = false
-			await main.trainer_target_selected
+			target = await main.card_ops.prompt_select_card(giovannis, "GIOVANNI'S LAST RESORT", "Choose a Giovanni Pokemon to fully heal (will discard your hand)", "HEAL", false)
 			if main._should_bail(): return
-			target = main.selected_card_for_action
-			main.trainer_pokemon_selection_active = false
-			main.hide_selection_mode_display_main()
 	if target == null:
 		return
 	await main.card_ops.heal_pokemon(target, target.get_max_hp(), is_opponent)
@@ -5500,19 +4950,8 @@ func gym2_effect_lt_surges_secret_plan(is_opponent: bool) -> void:
 		main.display_pokemon(true)
 		return
 	# Player path
-	main.trainer_pokemon_selection_active = true
-	main.show_enlarged_array_selection_mode(hand)
-	main.header_label.text = "LT. SURGE'S SECRET PLAN"
-	main.hint_label.text = "Pick a card to put on bench (must be a Basic Pokemon, or it's discarded)"
-	main.action_button.text = "BENCH"
-	main.action_button.disabled = true
-	main.action_button.theme = main.theme_disabled
-	main.cancel_button.visible = false
-	await main.trainer_target_selected
+	var pick_c = await main.card_ops.prompt_select_card(hand, "LT. SURGE'S SECRET PLAN", "Pick a card to put on bench (must be a Basic Pokemon, or it's discarded)", "BENCH", false)
 	if main._should_bail(): return
-	var pick_c = main.selected_card_for_action
-	main.trainer_pokemon_selection_active = false
-	main.hide_selection_mode_display_main()
 	if pick_c == null:
 		return
 	hand.erase(pick_c)
@@ -5544,19 +4983,8 @@ func gym2_effect_mistys_wish(is_opponent: bool) -> void:
 	if is_opponent:
 		chosen_prize = prizes[randi() % prizes.size()]
 	else:
-		main.trainer_pokemon_selection_active = true
-		main.show_enlarged_array_selection_mode(prizes)
-		main.header_label.text = "MISTY'S WISH — LOOK AT A PRIZE"
-		main.hint_label.text = "Pick a Prize card to examine"
-		main.action_button.text = "LOOK"
-		main.action_button.disabled = true
-		main.action_button.theme = main.theme_disabled
-		main.cancel_button.visible = false
-		await main.trainer_target_selected
+		chosen_prize = await main.card_ops.prompt_select_card(prizes, "MISTY'S WISH — LOOK AT A PRIZE", "Pick a Prize card to examine", "LOOK", false)
 		if main._should_bail(): return
-		chosen_prize = main.selected_card_for_action
-		main.trainer_pokemon_selection_active = false
-		main.hide_selection_mode_display_main()
 	if chosen_prize == null:
 		return
 
@@ -5582,19 +5010,8 @@ func gym2_effect_mistys_wish(is_opponent: bool) -> void:
 			if to_swap.size() > 0:
 				swap_card = to_swap[0]
 		else:
-			main.trainer_pokemon_selection_active = true
-			main.show_enlarged_array_selection_mode(hand)
-			main.header_label.text = "MISTY'S WISH — SWAP WITH WHICH CARD?"
-			main.hint_label.text = "This card replaces the chosen Prize card"
-			main.action_button.text = "SWAP"
-			main.action_button.disabled = true
-			main.action_button.theme = main.theme_disabled
-			main.cancel_button.visible = false
-			await main.trainer_target_selected
+			swap_card = await main.card_ops.prompt_select_card(hand, "MISTY'S WISH — SWAP WITH WHICH CARD?", "This card replaces the chosen Prize card", "SWAP", false)
 			if main._should_bail(): return
-			swap_card = main.selected_card_for_action
-			main.trainer_pokemon_selection_active = false
-			main.hide_selection_mode_display_main()
 		if swap_card != null:
 			# Swap prize ↔ hand card
 			var prize_idx = prizes.find(chosen_prize)
@@ -5674,21 +5091,8 @@ func gym2_effect_master_ball(is_opponent: bool) -> void:
 		if pokemon_candidates.size() == 0:
 			await main.show_message("MASTER BALL — NO POKEMON IN TOP 7!")
 		else:
-			main.trainer_pokemon_selection_active = true
-			main.show_enlarged_array_selection_mode(pokemon_candidates)
-			main.header_label.text = "MASTER BALL — CHOOSE A POKEMON"
-			main.hint_label.text = "Add a Basic or Evolution to your hand"
-			main.action_button.text = "TAKE"
-			main.action_button.disabled = true
-			main.action_button.theme = main.theme_disabled
-			main.cancel_button.visible = true
-			main.cancel_button.text = "SKIP"
-			main.cancel_button.theme = main.theme_red
-			await main.trainer_target_selected
+			chosen = await main.card_ops.prompt_select_card(pokemon_candidates, "MASTER BALL — CHOOSE A POKEMON", "Add a Basic or Evolution to your hand", "TAKE", true, true)
 			if main._should_bail(): return
-			chosen = main.selected_card_for_action
-			main.trainer_pokemon_selection_active = false
-			main.hide_selection_mode_display_main()
 			main.cancel_button.text = "Cancel"
 	if chosen != null:
 		top.erase(chosen)
@@ -5734,19 +5138,8 @@ func gym2_effect_max_revive(played_card: card_object, is_opponent: bool) -> void
 					remaining.append(c)
 			if remaining.size() == 0:
 				break
-			main.trainer_pokemon_selection_active = true
-			main.show_enlarged_array_selection_mode(remaining)
-			main.header_label.text = "MAX REVIVE — DISCARD ENERGY " + str(i + 1) + "/2"
-			main.hint_label.text = "Discard an Energy card"
-			main.action_button.text = "DISCARD"
-			main.action_button.disabled = true
-			main.action_button.theme = main.theme_disabled
-			main.cancel_button.visible = false
-			await main.trainer_target_selected
+			var pick = await main.card_ops.prompt_select_card(remaining, "MAX REVIVE — DISCARD ENERGY " + str(i + 1) + "/2", "Discard an Energy card", "DISCARD", false)
 			if main._should_bail(): return
-			var pick = main.selected_card_for_action
-			main.trainer_pokemon_selection_active = false
-			main.hide_selection_mode_display_main()
 			if pick == null:
 				return
 			to_discard.append(pick)
@@ -5774,19 +5167,8 @@ func gym2_effect_max_revive(played_card: card_object, is_opponent: bool) -> void
 		if revive_pick == null:
 			revive_pick = basics_in_disc[0]
 	else:
-		main.trainer_pokemon_selection_active = true
-		main.show_enlarged_array_selection_mode(basics_in_disc)
-		main.header_label.text = "MAX REVIVE — PICK A BASIC"
-		main.hint_label.text = "Place it on your bench"
-		main.action_button.text = "REVIVE"
-		main.action_button.disabled = true
-		main.action_button.theme = main.theme_disabled
-		main.cancel_button.visible = false
-		await main.trainer_target_selected
+		revive_pick = await main.card_ops.prompt_select_card(basics_in_disc, "MAX REVIVE — PICK A BASIC", "Place it on your bench", "REVIVE", false)
 		if main._should_bail(): return
-		revive_pick = main.selected_card_for_action
-		main.trainer_pokemon_selection_active = false
-		main.hide_selection_mode_display_main()
 	if revive_pick == null:
 		return
 	discard.erase(revive_pick)
@@ -5846,22 +5228,8 @@ func gym2_effect_mistys_tears(played_card: card_object, is_opponent: bool) -> vo
 					remaining.append(c)
 			if remaining.size() == 0:
 				break
-			main.trainer_deck_search_active = true
-			main.show_enlarged_array_selection_mode(remaining)
-			main.header_label.text = "MISTY'S TEARS — PICK WATER ENERGY " + str(i + 1) + "/" + str(max_n)
-			main.hint_label.text = "Add a Water Energy to your hand"
-			main.action_button.text = "TAKE"
-			main.action_button.disabled = true
-			main.action_button.theme = main.theme_disabled
-			main.cancel_button.visible = true
-			main.cancel_button.text = "DONE"
-			main.cancel_button.theme = main.theme_green
-			await main.trainer_target_selected
+			var pick = await main.card_ops.prompt_select_card(remaining, "MISTY'S TEARS — PICK WATER ENERGY " + str(i + 1) + "/" + str(max_n), "Add a Water Energy to your hand", "TAKE", true, true)
 			if main._should_bail(): return
-			var pick = main.selected_card_for_action
-			main.trainer_deck_search_active = false
-			main.hide_selection_mode_display_main()
-			main.cancel_button.text = "Cancel"
 			main.cancel_button.theme = main.theme_red
 			if pick == null:
 				break
@@ -5891,19 +5259,8 @@ func gym2_effect_rockets_secret_experiment(is_opponent: bool) -> void:
 		if is_opponent:
 			chosen = main.cpu_ai.cpu_search_deck_for_best_card(deck)
 		else:
-			main.trainer_deck_search_active = true
-			main.show_enlarged_array_selection_mode(deck)
-			main.header_label.text = "ROCKET'S SECRET EXPERIMENT — CHOOSE ANY CARD"
-			main.hint_label.text = "Add it to your hand"
-			main.action_button.text = "TAKE"
-			main.action_button.disabled = true
-			main.action_button.theme = main.theme_disabled
-			main.cancel_button.visible = false
-			await main.trainer_target_selected
+			chosen = await main.card_ops.prompt_select_card(deck, "ROCKET'S SECRET EXPERIMENT — CHOOSE ANY CARD", "Add it to your hand", "TAKE", false, true)
 			if main._should_bail(): return
-			chosen = main.selected_card_for_action
-			main.trainer_deck_search_active = false
-			main.hide_selection_mode_display_main()
 		if chosen != null:
 			deck.erase(chosen)
 			chosen.current_location = "hand"
@@ -5950,19 +5307,8 @@ func gym2_effect_sabrinas_psychic_control(is_opponent: bool) -> void:
 				best = score
 				chosen = c
 	else:
-		main.trainer_pokemon_selection_active = true
-		main.show_enlarged_array_selection_mode(eligible)
-		main.header_label.text = "SABRINA'S PSYCHIC CONTROL — CHOOSE A TRAINER"
-		main.hint_label.text = "Use it as if it were in your hand"
-		main.action_button.text = "USE"
-		main.action_button.disabled = true
-		main.action_button.theme = main.theme_disabled
-		main.cancel_button.visible = false
-		await main.trainer_target_selected
+		chosen = await main.card_ops.prompt_select_card(eligible, "SABRINA'S PSYCHIC CONTROL — CHOOSE A TRAINER", "Use it as if it were in your hand", "USE", false)
 		if main._should_bail(): return
-		chosen = main.selected_card_for_action
-		main.trainer_pokemon_selection_active = false
-		main.hide_selection_mode_display_main()
 	if chosen == null:
 		return
 	# Resolve the chosen trainer's effect using the standard dispatcher with is_opponent = current side.
@@ -6030,19 +5376,8 @@ func gym2_effect_warp_point(is_opponent: bool) -> void:
 					opp_pick = bp
 		else:
 			# Player is the chooser — but it's the opponent's bench they're switching (this is unusual UX)
-			main.trainer_pokemon_selection_active = true
-			main.show_enlarged_array_selection_mode(opp_bench)
-			main.header_label.text = "WARP POINT — OPPONENT MUST CHOOSE"
-			main.hint_label.text = "(you decide for them) Pick which of their bench switches in"
-			main.action_button.text = "SWITCH"
-			main.action_button.disabled = true
-			main.action_button.theme = main.theme_disabled
-			main.cancel_button.visible = false
-			await main.trainer_target_selected
+			opp_pick = await main.card_ops.prompt_select_card(opp_bench, "WARP POINT — OPPONENT MUST CHOOSE", "(you decide for them) Pick which of their bench switches in", "SWITCH", false)
 			if main._should_bail(): return
-			opp_pick = main.selected_card_for_action
-			main.trainer_pokemon_selection_active = false
-			main.hide_selection_mode_display_main()
 		if opp_pick != null:
 			opp_bench.erase(opp_pick)
 			opp_pick.current_location = "active"
@@ -6073,19 +5408,8 @@ func gym2_effect_warp_point(is_opponent: bool) -> void:
 				best_pct = pct
 				own_pick = bp
 	else:
-		main.trainer_pokemon_selection_active = true
-		main.show_enlarged_array_selection_mode(own_bench)
-		main.header_label.text = "WARP POINT — CHOOSE A BENCHED POKEMON"
-		main.hint_label.text = "Switch them with your Active"
-		main.action_button.text = "SWITCH"
-		main.action_button.disabled = true
-		main.action_button.theme = main.theme_disabled
-		main.cancel_button.visible = false
-		await main.trainer_target_selected
+		own_pick = await main.card_ops.prompt_select_card(own_bench, "WARP POINT — CHOOSE A BENCHED POKEMON", "Switch them with your Active", "SWITCH", false)
 		if main._should_bail(): return
-		own_pick = main.selected_card_for_action
-		main.trainer_pokemon_selection_active = false
-		main.hide_selection_mode_display_main()
 	if own_pick == null:
 		return
 	own_bench.erase(own_pick)
@@ -6200,19 +5524,8 @@ func gym2_fuchsia_activate(is_opponent: bool) -> void:
 			chosen = eligible[0]  # fallback
 	else:
 		# Player chooses
-		main.trainer_pokemon_selection_active = true
-		main.show_enlarged_array_selection_mode(eligible)
-		main.header_label.text = "FUCHSIA CITY GYM"
-		main.hint_label.text = "Choose a Koga Pokemon to shuffle into your deck (with all attached)"
-		main.action_button.text = "SELECT"
-		main.action_button.disabled = true
-		main.action_button.theme = main.theme_disabled
-		main.cancel_button.visible = true
-		await main.trainer_target_selected
+		chosen = await main.card_ops.prompt_select_card(eligible, "FUCHSIA CITY GYM", "Choose a Koga Pokemon to shuffle into your deck (with all attached)", "SELECT", true)
 		if main._should_bail(): return
-		chosen = main.selected_card_for_action
-		main.trainer_pokemon_selection_active = false
-		main.hide_selection_mode_display_main()
 		if chosen == null:
 			return
 
@@ -6325,19 +5638,8 @@ func gym2_saffron_activate(is_opponent: bool) -> void:
 				energy_to_return = e
 				break
 	else:
-		main.trainer_pokemon_selection_active = true
-		main.show_enlarged_array_selection_mode(eligible)
-		main.header_label.text = "SAFFRON CITY GYM"
-		main.hint_label.text = "Choose a Sabrina Pokemon to return 1 basic Energy from"
-		main.action_button.text = "SELECT"
-		main.action_button.disabled = true
-		main.action_button.theme = main.theme_disabled
-		main.cancel_button.visible = true
-		await main.trainer_target_selected
+		target = await main.card_ops.prompt_select_card(eligible, "SAFFRON CITY GYM", "Choose a Sabrina Pokemon to return 1 basic Energy from", "SELECT", true)
 		if main._should_bail(): return
-		target = main.selected_card_for_action
-		main.trainer_pokemon_selection_active = false
-		main.hide_selection_mode_display_main()
 		if target == null:
 			return
 
