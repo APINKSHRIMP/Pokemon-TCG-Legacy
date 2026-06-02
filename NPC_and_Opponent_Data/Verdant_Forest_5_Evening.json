@@ -11,7 +11,14 @@
 	  },
 	  "condition": {
 		"type": "not_all_opponents_defeated",
-		"targets": ["Pikachu Fan Marina","Pikachu Fan Skye","Pikachu Fan Cami","Pikachu Fan Juniper","Pikachu Fan Raye","Pikachu Fan Leaf"]
+		"targets": [
+		  "Pikachu Fan Marina",
+		  "Pikachu Fan Skye",
+		  "Pikachu Fan Cami",
+		  "Pikachu Fan Juniper",
+		  "Pikachu Fan Raye",
+          "Pikachu Fan Leaf"
+		]
 	  }
 	},
 	{
@@ -201,7 +208,7 @@
 	  }
 	},
 	{
-	  "name": "Rocket Pack Gift",
+	  "name": "VF 5,7,8 D,E Rocket Pack Gift",
 	  "meet_text": "I'm glad we can finally get our hands on these packs. You look like you haven't opened many of these so have one on me. Spread the word you can buy them here.",
 	  "repeat_text": "Hope you pulled something good from that.",
 	  "pattern": "idle_left",
@@ -298,7 +305,7 @@
 		"y": 400
 	  }
 	},
-		{
+	{
 	  "name": "Gentleman Benedict",
 	  "meet_text": "Good day. I'm not the most youthful but I love a good match.",
 	  "repeat_text": "Hello again, up for another match ey?",

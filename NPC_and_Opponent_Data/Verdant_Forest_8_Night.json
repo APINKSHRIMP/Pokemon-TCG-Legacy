@@ -1,6 +1,5 @@
 {
-  "npcs": [
-  ],
+  "npcs": [],
   "opponents": [
 	{
 	  "name": "Card Expert Aurora",
@@ -111,7 +110,6 @@
 		"y": 1050
 	  }
 	},
-	
 	{
 	  "name": "Police Sergeant Douglas",
 	  "meet_text": "You better not be up to anything. I'm the searge round ere. I'm keeping my eyes out for anything that aint right.",

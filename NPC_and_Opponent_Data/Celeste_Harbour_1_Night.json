@@ -1,7 +1,7 @@
 {
   "npcs": [
 	{
-	  "name": "Biker1",
+	  "name": "CH 1 Biker1",
 	  "meet_text": "how the hell did you manage to speak to me??",
 	  "repeat_text": "You're a hacker >:(",
 	  "pattern": "patrol_square",
@@ -14,7 +14,7 @@
 	  }
 	},
 	{
-	  "name": "Biker2",
+	  "name": "CH 1 Biker2",
 	  "meet_text": "cheating isn't cool.",
 	  "repeat_text": "Unless you're just reading this in the npc data.",
 	  "pattern": "patrol_line",
@@ -27,7 +27,7 @@
 	  }
 	},
 	{
-	  "name": "Biker3",
+	  "name": "CH 1 Biker3",
 	  "meet_text": "I guess this is an easter egg.",
 	  "repeat_text": "sadly it's not that exciting.",
 	  "pattern": "idle_down",
@@ -37,7 +37,7 @@
 	  }
 	},
 	{
-	  "name": "Biker4",
+	  "name": "CH 1 Biker4",
 	  "meet_text": "Does this make it more exciting if I add an agg.",
 	  "repeat_text": "🥚",
 	  "pattern": "idle_up",
@@ -47,7 +47,7 @@
 	  }
 	},
 	{
-	  "name": "Biker5",
+	  "name": "CH 1 Biker5",
 	  "meet_text": "🥚🥚",
 	  "repeat_text": "🥚🥚🥚",
 	  "pattern": "idle_random",
@@ -57,7 +57,7 @@
 	  }
 	},
 	{
-	  "name": "Biker6",
+	  "name": "CH 1 Biker6",
 	  "meet_text": "🥚🥚",
 	  "repeat_text": "🥚🥚🥚",
 	  "pattern": "idle_random",
@@ -67,7 +67,7 @@
 	  }
 	},
 	{
-	  "name": "Biker7",
+	  "name": "CH 1 Biker7",
 	  "meet_text": "🥚🥚",
 	  "repeat_text": "🥚🥚🥚",
 	  "pattern": "idle_random",
@@ -77,7 +77,7 @@
 	  }
 	},
 	{
-	  "name": "Biker8",
+	  "name": "CH 1 Biker8",
 	  "meet_text": "🥚🥚",
 	  "repeat_text": "🥚🥚🥚",
 	  "pattern": "idle_random",
@@ -87,7 +87,7 @@
 	  }
 	},
 	{
-	  "name": "Policeman Blocking Beach Bl",
+	  "name": "CH 1 E,N Policeman Blocking Beach",
 	  "meet_text": "There's still some Sharpedo reported in the water so we can't let anyone through yet.",
 	  "repeat_text": "Can't let you through yet until the Sharpedo are gone. It should be safe in the morning, why don't you have an early night!",
 	  "pattern": "idle_left",
@@ -97,7 +97,7 @@
 	  }
 	},
 	{
-	  "name": "Car Park Guy 1",
+	  "name": "CH 1 N Car Park Guy",
 	  "meet_text": "I'm the parking warden for the Celeste Harbour car park but all these bikers have decided to take it over. I can't get rid of them by myself but the police are protecting the beach so I'm on my own.",
 	  "repeat_text": "I should have finished my shift and should be in bed by now but I can't go home until these bikers leave. You should head home too you know?",
 	  "pattern": "idle_down",
@@ -107,7 +107,7 @@
 	  }
 	},
 	{
-	  "name": "Badman 1",
+	  "name": "CH 1 N Badman 1",
 	  "meet_text": "Heh, scram kid. We're having our biker gang meetup here so get lost.",
 	  "repeat_text": "Isn't it a little late for a loser like you to be wandering about?",
 	  "pattern": "idle_down",
@@ -117,7 +117,7 @@
 	  }
 	},
 	{
-	  "name": "Badman 2",
+	  "name": "CH 1 N Badman 2",
 	  "meet_text": "We're called the Cool Guy Biker Gang. We're the coolest in the world..... What are you giggling at loser?",
 	  "repeat_text": "Why don't you go home before something bad happens?",
 	  "pattern": "idle_up",

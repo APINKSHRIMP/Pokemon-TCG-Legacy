@@ -109,7 +109,7 @@
 	  }
 	},
 	{
-	  "name": "CH 1 Policeman Blocking Beach",
+	  "name": "CH 1 D Policeman Blocking Beach",
 	  "meet_text": "We've currently got a large migration of Sharpedo passing through the harbour so it's not safe for anyone to be on the beach at the moment, it's going to be shut for the rest of the day but we'll reopen tomorrow.",
 	  "repeat_text": "Sorry if you came here to see the beach but we'll reopen it once all of the Sharpedo have passed through. They migrate this way once a year but they tend to go through pretty quick so should be gone by the morning.",
 	  "pattern": "idle_left",
@@ -119,7 +119,7 @@
 	  }
 	},
 	{
-	  "name": "CH 1 Badman 1",
+	  "name": "CH 1 D,E Badman 1",
 	  "meet_text": "Heh, scram kid. We're having our biker gang meetup here so get lost.",
 	  "repeat_text": "Didn't you hear me? Get lost kid.",
 	  "pattern": "idle_down",
@@ -139,7 +139,7 @@
 	  }
 	},
 	{
-	  "name": "CH 1 Badman 2",
+	  "name": "CH 1 D,E Badman 2",
 	  "meet_text": "We're called the Cool Guy Biker Gang. We're the coolest in the world..... What are you giggling at loser?",
 	  "repeat_text": "Do you think something's funny??",
 	  "pattern": "idle_up",
@@ -149,7 +149,7 @@
 	  }
 	},
 	{
-	  "name": "Man Staring Out To Sea",
+	  "name": "CH 1 D Man Staring Out To Sea",
 	  "meet_text": "Hello and welcome to the neighbourhood. Celeste Harbour is so serene. It's such a great place to live and got everything we need. Here take this as a welcome gift to help you get settled here.",
 	  "repeat_text": "Me and my girlfriend moved here recently too, It's always so quiet and the water is always warm. I don't think we'll ever leave.",
 	  "pattern": "idle_left",
@@ -159,7 +159,7 @@
 	  }
 	},
 	{
-	  "name": "Woman Staring Out To Sea",
+	  "name": "CH 1 D Woman Staring Out To Sea",
 	  "meet_text": "I'm so glad we moved here. It smells like freshly cut grass and warm sea air every day here.",
 	  "repeat_text": "My husband is so kind and generous, we've already made a lot of great friends here.",
 	  "pattern": "idle_left",
@@ -169,7 +169,7 @@
 	  }
 	},
 	{
-	  "name": "Maintenance Guy Watering Sunflowers",
+	  "name": "CH 1 D Maintenance Guy Watering Sunflowers",
 	  "meet_text": "As much as I would love to have a game, I can't right now... My boss will get mad if I do while I'm on the clock. I've gotta water all of the flowers on this pier and it's gonna take me ages. I'm due to finish this evening.",
 	  "repeat_text": "I should be finished with this shortly, hopefully by this evening. As soon as I'm done with work I'll be up for a match. Come find me later when I've finished.",
 	  "pattern": "idle_down",
@@ -179,7 +179,7 @@
 	  }
 	},
 	{
-	  "name": "Maintenance Guy Fixing The Lighthouse",
+	  "name": "CH 1 D Maintenance Guy Fixing Lighthouse",
 	  "meet_text": "I'm just about to replace the lighthouse bulb with a new one. It's a loooooonnnnng way to the top, probably about 10,000 steps! I'm getting too old to be doing this but it's an important job.",
 	  "repeat_text": "Weellll... it's not really 10,000 steps but it feels like that many. Can't let the lightbulb get worn out - If it does it'll mean a lot of trouble for the harbour so the responsibility is larger than the climb up!",
 	  "pattern": "idle_right",

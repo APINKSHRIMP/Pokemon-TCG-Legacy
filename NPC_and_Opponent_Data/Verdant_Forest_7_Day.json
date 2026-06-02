@@ -1,7 +1,7 @@
 {
   "npcs": [
 	{
-	  "name": "Old Guy Neighbour Day 4",
+	  "name": "VF 5,7,8 D Old Guy Neighbour",
 	  "meet_text": "Out in the forest too hey? I'm glad they managed to reopen it today, the storm we had last week was really bad.",
 	  "repeat_text": "If I was younger I'd do a daily run in here. It's always cool with the shade of the trees and there's a lot of water with all the ponds.",
 	  "pattern": "idle_left",
@@ -21,7 +21,14 @@
 	  },
 	  "condition": {
 		"type": "not_all_opponents_defeated",
-		"targets": ["Pikachu Fan Marina","Pikachu Fan Skye","Pikachu Fan Cami","Pikachu Fan Juniper","Pikachu Fan Raye","Pikachu Fan Leaf"]
+		"targets": [
+		  "Pikachu Fan Marina",
+		  "Pikachu Fan Skye",
+		  "Pikachu Fan Cami",
+		  "Pikachu Fan Juniper",
+		  "Pikachu Fan Raye",
+          "Pikachu Fan Leaf"
+		]
 	  }
 	},
 	{
@@ -121,7 +128,7 @@
 	  }
 	},
 	{
-	  "name": "Rocket Pack Gift",
+	  "name": "VF 5,7,8 D,E Rocket Pack Gift",
 	  "meet_text": "I'm glad we can finally get our hands on these packs. You look like you haven't opened many of these so have one on me. Spread the word you can buy them here.",
 	  "repeat_text": "Hope you pulled something good from that.",
 	  "pattern": "idle_left",
@@ -131,7 +138,7 @@
 	  }
 	},
 	{
-	  "name": "Wishing well coin thrower",
+	  "name": "VF 5-8 D Wishing Well Coin Thrower",
 	  "meet_text": "I always come here to throw a coin in the well and make a wish but they never come true. Maybe if I give this to you instead it'll work better.",
 	  "repeat_text": "You could always try making a wish by throwing a coin in yourself.",
 	  "pattern": "idle_down",
@@ -264,7 +271,14 @@
 	  },
 	  "condition": {
 		"type": "all_opponents_defeated",
-		"targets": ["Pikachu Fan Marina","Pikachu Fan Skye","Pikachu Fan Cami","Pikachu Fan Juniper","Pikachu Fan Raye","Pikachu Fan Leaf"]
+		"targets": [
+		  "Pikachu Fan Marina",
+		  "Pikachu Fan Skye",
+		  "Pikachu Fan Cami",
+		  "Pikachu Fan Juniper",
+		  "Pikachu Fan Raye",
+          "Pikachu Fan Leaf"
+		]
 	  }
 	},
 	{
@@ -360,8 +374,27 @@
 		"y": 1595
 	  },
 	  "restrictions": {
-		"banned_card_ids":   ["base1-75","base1-79","base1-92","base5-16","base5-72","base5-76","gym1-19","gym1-103","gym2-102"],
-		"banned_card_names": ["Lass","Super Energy Removal","Energy Removal","Rocket's Sneak Attack","Imposter Oak's Revenge","The Rocket's Trap","No Removal Gym","Chaos Gym"]
+		"banned_card_ids": [
+		  "base1-75",
+		  "base1-79",
+		  "base1-92",
+		  "base5-16",
+		  "base5-72",
+		  "base5-76",
+		  "gym1-19",
+		  "gym1-103",
+          "gym2-102"
+		],
+		"banned_card_names": [
+		  "Lass",
+		  "Super Energy Removal",
+		  "Energy Removal",
+		  "Rocket's Sneak Attack",
+		  "Imposter Oak's Revenge",
+		  "The Rocket's Trap",
+		  "No Removal Gym",
+          "Chaos Gym"
+		]
 	  }
 	},
 	{
@@ -377,8 +410,27 @@
 		"y": 325
 	  },
 	  "restrictions": {
-		"banned_card_ids":   ["base1-75","base1-79","base1-92","base5-16","base5-72","base5-76","gym1-19","gym1-103","gym2-102"],
-		"banned_card_names": ["Lass","Super Energy Removal","Energy Removal","Rocket's Sneak Attack","Imposter Oak's Revenge","The Rocket's Trap","No Removal Gym","Chaos Gym"]
+		"banned_card_ids": [
+		  "base1-75",
+		  "base1-79",
+		  "base1-92",
+		  "base5-16",
+		  "base5-72",
+		  "base5-76",
+		  "gym1-19",
+		  "gym1-103",
+          "gym2-102"
+		],
+		"banned_card_names": [
+		  "Lass",
+		  "Super Energy Removal",
+		  "Energy Removal",
+		  "Rocket's Sneak Attack",
+		  "Imposter Oak's Revenge",
+		  "The Rocket's Trap",
+		  "No Removal Gym",
+          "Chaos Gym"
+		]
 	  }
 	}
   ]

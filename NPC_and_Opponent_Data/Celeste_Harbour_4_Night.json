@@ -1,215 +1,215 @@
 {
   "npcs": [
-	{
-	  "name": "Sailor Working On SS Anne Night",
-	  "meet_text": "I've been working all day I'm absolutely shattered.",
-	  "repeat_text": "Most passengers went back to the ship earlier but I saw some shady characters actually getting off.",
-	  "pattern": "idle_right",
-	  "position": {
-		"x": 2880,
-		"y": 3110
-	  }
-	},
-	{
-	  "name": "Sailor 2 Pier 1 Night 3",
-	  "meet_text": "Oh boy I am pooped. Some guys dressed in black headed past this way earlier as if they were going to go to the forest.",
-	  "repeat_text": "The forest is still closed until morning though so not sure where they were going.",
-	  "pattern": "idle_left",
-	  "position": {
-		"x": 300,
-		"y": 3125
-	  }
-	},
-	{
-	  "name": "Sailor Working On Dock Night 3",
-	  "meet_text": "I can't wait for the SS Anne to leave now, I've never been busier.",
-	  "repeat_text": "Us sailors are hard workers as it is but this is too much for us!",
-	  "pattern": "idle_left",
-	  "position": {
-		"x": 690,
-		"y": 2680
-	  }
-	},
-	{
-	  "name": "Sabrina NPC",
-	  "meet_text": "Your town is much quieter than Saffron. I'm Sabrina, I knew you would be coming. You'll be challenging me soon I can see that, but this might help you win against me.",
-	  "repeat_text": "Good luck with the Gym Hero Challenge. I know you're going to do well.",
-	  "pattern": "idle_down",
-	  "position": {
-		"x": -220,
-		"y": 2490
-	  }
-	},
-	{
-	  "name": "Koga NPC",
-	  "meet_text": "Out here in the cover of darkness too? I'm Koga. I was once the Gym Leader of Fuschia and then made it as an Indigo League Elite 4 member. I've been asked here to help in the Gym Hero challenge. As you're out here at this hour you might appreciate this.",
-	  "repeat_text": "I won't take it easy on you if you come to take the challenge so be prepared.",
-	  "pattern": "patrol_line",
-	  "patrol_speed": 150.0,
-	  "patrol_distance": 100,
-	  "patrol_axis": "horizontal",
-	  "position": {
-		"x": 1950,
-		"y": 2250
-	  }
-	},
-	{
-	  "name": "Giovanni NPC",
-	  "meet_text": "You shouldn't be out here so late, there's not always nice people wandering around at this hour. I promised not to cause trouble while I'm here but why not a little mischief? As proof I'm not evil, take this.",
-	  "repeat_text": "I am Giovanni. I was once the leader of Team Rocket and the gym leader in Viridian. Now I'm not formally either, but Team Rocket will always live on.",
-	  "pattern": "idle_up",
-	  "position": {
-		"x": 920,
-		"y": 890
-	  }
-	}
+    {
+      "name": "CH 3-6 N Sailor Working On SS Anne",
+      "meet_text": "I've been working all day I'm absolutely shattered.",
+      "repeat_text": "Most passengers went back to the ship earlier but I saw some shady characters actually getting off.",
+      "pattern": "idle_right",
+      "position": {
+        "x": 2880,
+        "y": 3110
+      }
+    },
+    {
+      "name": "CH 3-6 N Sailor 2 Pier 1",
+      "meet_text": "Oh boy I am pooped. Some guys dressed in black headed past this way earlier as if they were going to go to the forest.",
+      "repeat_text": "The forest is still closed until morning though so not sure where they were going.",
+      "pattern": "idle_left",
+      "position": {
+        "x": 300,
+        "y": 3125
+      }
+    },
+    {
+      "name": "CH 3-6 N Sailor Working On Dock",
+      "meet_text": "I can't wait for the SS Anne to leave now, I've never been busier.",
+      "repeat_text": "Us sailors are hard workers as it is but this is too much for us!",
+      "pattern": "idle_left",
+      "position": {
+        "x": 690,
+        "y": 2680
+      }
+    },
+    {
+      "name": "CH 3-6 N Sabrina",
+      "meet_text": "Your town is much quieter than Saffron. I'm Sabrina, I knew you would be coming. You'll be challenging me soon I can see that, but this might help you win against me.",
+      "repeat_text": "Good luck with the Gym Hero Challenge. I know you're going to do well.",
+      "pattern": "idle_down",
+      "position": {
+        "x": -220,
+        "y": 2490
+      }
+    },
+    {
+      "name": "CH 3-6 N Koga",
+      "meet_text": "Out here in the cover of darkness too? I'm Koga. I was once the Gym Leader of Fuschia and then made it as an Indigo League Elite 4 member. I've been asked here to help in the Gym Hero challenge. As you're out here at this hour you might appreciate this.",
+      "repeat_text": "I won't take it easy on you if you come to take the challenge so be prepared.",
+      "pattern": "patrol_line",
+      "patrol_speed": 150.0,
+      "patrol_distance": 100,
+      "patrol_axis": "horizontal",
+      "position": {
+        "x": 1950,
+        "y": 2250
+      }
+    },
+    {
+      "name": "CH 3-6 N Giovanni",
+      "meet_text": "You shouldn't be out here so late, there's not always nice people wandering around at this hour. I promised not to cause trouble while I'm here but why not a little mischief? As proof I'm not evil, take this.",
+      "repeat_text": "I am Giovanni. I was once the leader of Team Rocket and the gym leader in Viridian. Now I'm not formally either, but Team Rocket will always live on.",
+      "pattern": "idle_up",
+      "position": {
+        "x": 920,
+        "y": 890
+      }
+    }
   ],
   "opponents": [
-	{
-	  "name": "Birdspotter Gregg",
-	  "meet_text": "My friend got hungry so decided to head back, but I'm interested to see what birds are out at night.",
-	  "repeat_text": "This really is a great spot for birds and cards!",
-	  "first_win_text": "Do you hate birds or something?.",
-	  "rematch_win_text": "Well at least I can watch the birds from around here.",
-	  "loss_text": "Looking after birds really isn't easy!",
-	  "pattern": "idle_random",
-	  "position": {
-		"x": 1640,
-		"y": 2340
-	  }
-	},
-	{
-	  "name": "Gardener Callum",
-	  "meet_text": "Wowee, it was a long day gardening today. I'm down for a match to let off some steam now.",
-	  "repeat_text": "I've got time for a rematch before my next shift.",
-	  "first_win_text": "I'm clearly too worn out from such a long shift.",
-	  "rematch_win_text": "I'll win when I'm fully rested.",
-	  "loss_text": "Even after a hard days work I can still win!",
-	  "pattern": "idle_left",
-	  "wander_radius": 65,
-	  "position": {
-		"x": -875,
-		"y": 2280
-	  }
-	},
-	{
-	  "name": "Card Elder Rayne",
-	  "meet_text": "Hoh Hoh, are you ready to feel the torrent? If you win I'll give you a medal to prove your triumph.",
-	  "repeat_text": "Hoh Hoh! I enjoyed the battle that much I'd also like another!",
-	  "first_win_text": "Congratulations on your win. You've earned this medal and my respect.",
-	  "rematch_win_text": "Come back any time and battle us old folk.",
-	  "loss_text": "Don't be disheartened, the rain will always stop.",
-	  "pattern": "idle_down",
-	  "position": {
-		"x": 2230,
-		"y": 1252
-	  }
-	},
-	{
-	  "name": "Card Elder Hamish",
-	  "meet_text": "Back for the challenge then hey? Remember you'll need to defeat all 3 of us if you want to progress.",
-	  "repeat_text": "Very well, I always enjoy a good challenge!",
-	  "first_win_text": "Well done, that was quite the battle. Take my medal and continue forth.",
-	  "rematch_win_text": "Battling like this makes me feel young again.",
-	  "loss_text": "Don't be disheartened, the rain will always stop.",
-	  "pattern": "idle_down",
-	  "position": {
-		"x": 2326,
-		"y": 1252
-	  }
-	},
-	{
-	  "name": "Card Elder Waverly",
-	  "meet_text": "Are you ready to take me on then? If you win then you'll do well in the Gym Hero Challenge.",
-	  "repeat_text": "Up for another round then? Happy to oblige.",
-	  "first_win_text": "Well well well, what a jolly good play! You've earned this.",
-	  "rematch_win_text": "We've been winning and losing for so long it's always fun either way.",
-	  "loss_text": "When you fail, get up and try again.",
-	  "pattern": "idle_down",
-	  "position": {
-		"x": 2278,
-		"y": 1252
-	  }
-	},
-	{
-	  "name": "Psychic Brienne",
-	  "meet_text": "I love the peace of the harbour at night, the sound of the waves in the dark are really relaxing.",
-	  "repeat_text": "It's easier to meditate at night.",
-	  "first_win_text": "I have to focus more. Take these cards to help you focus more too.",
-	  "rematch_win_text": "I'll focus harder.",
-	  "loss_text": "I manifested the win.",
-	  "pattern": "idle_left",
-	  "position": {
-		"x": -830,
-		"y": 1270
-	  }
-	},
-	{
-	  "name": "Engineer Brad",
-	  "meet_text": "Hey, I've been working hard all day so I'm ready to play",
-	  "repeat_text": "It's rare I have to work at night so I'm free for another match.",
-	  "first_win_text": "I simply cannot fix that at all.",
-	  "rematch_win_text": "I'm going to weld my cards at this rate.",
-	  "loss_text": "You just need to work harder",
-	  "pattern": "idle_up",
-	  "position": {
-		"x": 900,
-		"y": 3155
-	  }
-	},
-	{
-	  "name": "Bad Dude Paul",
-	  "meet_text": "Heh you want to try and beat me kid??",
-	  "repeat_text": "Damn... they're gonna kick me out of the cool guy biker gang for this.",
-	  "first_win_text": "Heh you're pretty tough, you wanna join our gang?",
-	  "rematch_win_text": "Now they're DEFINITELY going to kick me out of the cool guy biker gang...",
-	  "loss_text": "Heh heh heh, too easy.",
-	  "pattern": "idle_random",
-	  "position": {
-		"x": -810,
-		"y": 2550
-	  }
-	},
-	{
-	  "name": "Bad Dude Wayne",
-	  "meet_text": "I caught these bad looking dudes heading to the forest and they gave me some interesting cards and went on their way.",
-	  "repeat_text": "I won't lost this time.",
-	  "first_win_text": "You even seen a Dark Pokemon before?",
-	  "rematch_win_text": "I need some more of these Dark cards.",
-	  "loss_text": "You didn't stand a chance.",
-	  "pattern": "random_wander",
-	  "patrol_speed": 40.0,
-	  "wander_radius": 65,
-	  "position": {
-		"x": 420,
-		"y": 1270
-	  }
-	},
-	{
-	  "name": "Painter Jericho",
-	  "meet_text": "The evening sun is the most perfect time to come here and paint... or play cards!",
-	  "repeat_text": "I've been painting a lot of great pieces from this spot.",
-	  "first_win_text": "A win or a loss, both are equal pieces of art.",
-	  "rematch_win_text": "A win or a loss, both are equal pieces of art.",
-	  "loss_text": "To win is a beautiful piece of art.",
-	  "pattern": "idle_right",
-	  "position": {
-		"x": -565,
-		"y": 2375
-	  }
-	},
-	{
-	  "name": "Battlegirl Sofia",
-	  "meet_text": "This beach is a great spot to train both my martial arts and my card skills.",
-	  "repeat_text": "Want to join in with my training?",
-	  "first_win_text": "A loss is always a good chance to improve.",
-	  "rematch_win_text": "I'm going to keep on training.",
-	  "loss_text": "I rarely lose when I've trained properly.",
-	  "pattern": "idle_cycle",
-	  "position": {
-		"x": 2645,
-		"y": 2395
-	  }
-	}
+    {
+      "name": "Birdspotter Gregg",
+      "meet_text": "My friend got hungry so decided to head back, but I'm interested to see what birds are out at night.",
+      "repeat_text": "This really is a great spot for birds and cards!",
+      "first_win_text": "Do you hate birds or something?.",
+      "rematch_win_text": "Well at least I can watch the birds from around here.",
+      "loss_text": "Looking after birds really isn't easy!",
+      "pattern": "idle_random",
+      "position": {
+        "x": 1640,
+        "y": 2340
+      }
+    },
+    {
+      "name": "Gardener Callum",
+      "meet_text": "Wowee, it was a long day gardening today. I'm down for a match to let off some steam now.",
+      "repeat_text": "I've got time for a rematch before my next shift.",
+      "first_win_text": "I'm clearly too worn out from such a long shift.",
+      "rematch_win_text": "I'll win when I'm fully rested.",
+      "loss_text": "Even after a hard days work I can still win!",
+      "pattern": "idle_left",
+      "wander_radius": 65,
+      "position": {
+        "x": -875,
+        "y": 2280
+      }
+    },
+    {
+      "name": "Card Elder Rayne",
+      "meet_text": "Hoh Hoh, are you ready to feel the torrent? If you win I'll give you a medal to prove your triumph.",
+      "repeat_text": "Hoh Hoh! I enjoyed the battle that much I'd also like another!",
+      "first_win_text": "Congratulations on your win. You've earned this medal and my respect.",
+      "rematch_win_text": "Come back any time and battle us old folk.",
+      "loss_text": "Don't be disheartened, the rain will always stop.",
+      "pattern": "idle_down",
+      "position": {
+        "x": 2230,
+        "y": 1252
+      }
+    },
+    {
+      "name": "Card Elder Hamish",
+      "meet_text": "Back for the challenge then hey? Remember you'll need to defeat all 3 of us if you want to progress.",
+      "repeat_text": "Very well, I always enjoy a good challenge!",
+      "first_win_text": "Well done, that was quite the battle. Take my medal and continue forth.",
+      "rematch_win_text": "Battling like this makes me feel young again.",
+      "loss_text": "Don't be disheartened, the rain will always stop.",
+      "pattern": "idle_down",
+      "position": {
+        "x": 2326,
+        "y": 1252
+      }
+    },
+    {
+      "name": "Card Elder Waverly",
+      "meet_text": "Are you ready to take me on then? If you win then you'll do well in the Gym Hero Challenge.",
+      "repeat_text": "Up for another round then? Happy to oblige.",
+      "first_win_text": "Well well well, what a jolly good play! You've earned this.",
+      "rematch_win_text": "We've been winning and losing for so long it's always fun either way.",
+      "loss_text": "When you fail, get up and try again.",
+      "pattern": "idle_down",
+      "position": {
+        "x": 2278,
+        "y": 1252
+      }
+    },
+    {
+      "name": "Psychic Brienne",
+      "meet_text": "I love the peace of the harbour at night, the sound of the waves in the dark are really relaxing.",
+      "repeat_text": "It's easier to meditate at night.",
+      "first_win_text": "I have to focus more. Take these cards to help you focus more too.",
+      "rematch_win_text": "I'll focus harder.",
+      "loss_text": "I manifested the win.",
+      "pattern": "idle_left",
+      "position": {
+        "x": -830,
+        "y": 1270
+      }
+    },
+    {
+      "name": "Engineer Brad",
+      "meet_text": "Hey, I've been working hard all day so I'm ready to play",
+      "repeat_text": "It's rare I have to work at night so I'm free for another match.",
+      "first_win_text": "I simply cannot fix that at all.",
+      "rematch_win_text": "I'm going to weld my cards at this rate.",
+      "loss_text": "You just need to work harder",
+      "pattern": "idle_up",
+      "position": {
+        "x": 900,
+        "y": 3155
+      }
+    },
+    {
+      "name": "Bad Dude Paul",
+      "meet_text": "Heh you want to try and beat me kid??",
+      "repeat_text": "Damn... they're gonna kick me out of the cool guy biker gang for this.",
+      "first_win_text": "Heh you're pretty tough, you wanna join our gang?",
+      "rematch_win_text": "Now they're DEFINITELY going to kick me out of the cool guy biker gang...",
+      "loss_text": "Heh heh heh, too easy.",
+      "pattern": "idle_random",
+      "position": {
+        "x": -810,
+        "y": 2550
+      }
+    },
+    {
+      "name": "Bad Dude Wayne",
+      "meet_text": "I caught these bad looking dudes heading to the forest and they gave me some interesting cards and went on their way.",
+      "repeat_text": "I won't lost this time.",
+      "first_win_text": "You even seen a Dark Pokemon before?",
+      "rematch_win_text": "I need some more of these Dark cards.",
+      "loss_text": "You didn't stand a chance.",
+      "pattern": "random_wander",
+      "patrol_speed": 40.0,
+      "wander_radius": 65,
+      "position": {
+        "x": 420,
+        "y": 1270
+      }
+    },
+    {
+      "name": "Painter Jericho",
+      "meet_text": "The evening sun is the most perfect time to come here and paint... or play cards!",
+      "repeat_text": "I've been painting a lot of great pieces from this spot.",
+      "first_win_text": "A win or a loss, both are equal pieces of art.",
+      "rematch_win_text": "A win or a loss, both are equal pieces of art.",
+      "loss_text": "To win is a beautiful piece of art.",
+      "pattern": "idle_right",
+      "position": {
+        "x": -565,
+        "y": 2375
+      }
+    },
+    {
+      "name": "Battlegirl Sofia",
+      "meet_text": "This beach is a great spot to train both my martial arts and my card skills.",
+      "repeat_text": "Want to join in with my training?",
+      "first_win_text": "A loss is always a good chance to improve.",
+      "rematch_win_text": "I'm going to keep on training.",
+      "loss_text": "I rarely lose when I've trained properly.",
+      "pattern": "idle_cycle",
+      "position": {
+        "x": 2645,
+        "y": 2395
+      }
+    }
   ]
 }

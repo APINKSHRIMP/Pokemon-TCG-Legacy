@@ -11,7 +11,14 @@
 	  },
 	  "condition": {
 		"type": "not_all_opponents_defeated",
-		"targets": ["Pikachu Fan Marina","Pikachu Fan Skye","Pikachu Fan Cami","Pikachu Fan Juniper","Pikachu Fan Raye","Pikachu Fan Leaf"]
+		"targets": [
+		  "Pikachu Fan Marina",
+		  "Pikachu Fan Skye",
+		  "Pikachu Fan Cami",
+		  "Pikachu Fan Juniper",
+		  "Pikachu Fan Raye",
+          "Pikachu Fan Leaf"
+		]
 	  }
 	},
 	{
@@ -201,7 +208,7 @@
 	  }
 	},
 	{
-	  "name": "Rocket Pack Gift",
+	  "name": "VF 5,7,8 D,E Rocket Pack Gift",
 	  "meet_text": "I'm glad we can finally get our hands on these packs. You look like you haven't opened many of these so have one on me. Spread the word you can buy them here.",
 	  "repeat_text": "Hope you pulled something good from that.",
 	  "pattern": "idle_left",
@@ -377,7 +384,6 @@
 		"y": 110
 	  }
 	},
-	
 	{
 	  "name": "Swimmer Bibi",
 	  "meet_text": "I much prefer cold fresh water swimming rather than the beach.",
@@ -409,7 +415,6 @@
 		"y": 1650
 	  }
 	},
-	
 	{
 	  "name": "Ex Gym Leader Erika",
 	  "meet_text": "Hello, such pleasant weather here, I'm afraid I may doze off... My name is Erika. I was the leader of Celadon Gym. If you want a match with me you'll need to make sure you don't use any banned trainer cards.",
@@ -423,8 +428,27 @@
 		"y": 270
 	  },
 	  "restrictions": {
-		"banned_card_ids":   ["base1-75","base1-79","base1-92","base5-16","base5-72","base5-76","gym1-19","gym1-103","gym2-102"],
-		"banned_card_names": ["Lass","Super Energy Removal","Energy Removal","Rocket's Sneak Attack","Imposter Oak's Revenge","The Rocket's Trap","No Removal Gym","Chaos Gym"]
+		"banned_card_ids": [
+		  "base1-75",
+		  "base1-79",
+		  "base1-92",
+		  "base5-16",
+		  "base5-72",
+		  "base5-76",
+		  "gym1-19",
+		  "gym1-103",
+          "gym2-102"
+		],
+		"banned_card_names": [
+		  "Lass",
+		  "Super Energy Removal",
+		  "Energy Removal",
+		  "Rocket's Sneak Attack",
+		  "Imposter Oak's Revenge",
+		  "The Rocket's Trap",
+		  "No Removal Gym",
+          "Chaos Gym"
+		]
 	  }
 	},
 	{
@@ -440,8 +464,27 @@
 		"y": 500
 	  },
 	  "restrictions": {
-		"banned_card_ids":   ["base1-75","base1-79","base1-92","base5-16","base5-72","base5-76","gym1-19","gym1-103","gym2-102"],
-		"banned_card_names": ["Lass","Super Energy Removal","Energy Removal","Rocket's Sneak Attack","Imposter Oak's Revenge","The Rocket's Trap","No Removal Gym","Chaos Gym"]
+		"banned_card_ids": [
+		  "base1-75",
+		  "base1-79",
+		  "base1-92",
+		  "base5-16",
+		  "base5-72",
+		  "base5-76",
+		  "gym1-19",
+		  "gym1-103",
+          "gym2-102"
+		],
+		"banned_card_names": [
+		  "Lass",
+		  "Super Energy Removal",
+		  "Energy Removal",
+		  "Rocket's Sneak Attack",
+		  "Imposter Oak's Revenge",
+		  "The Rocket's Trap",
+		  "No Removal Gym",
+          "Chaos Gym"
+		]
 	  }
 	},
 	{
@@ -457,8 +500,27 @@
 		"y": 1565
 	  },
 	  "restrictions": {
-		"banned_card_ids":   ["base1-75","base1-79","base1-92","base5-16","base5-72","base5-76","gym1-19","gym1-103","gym2-102"],
-		"banned_card_names": ["Lass","Super Energy Removal","Energy Removal","Rocket's Sneak Attack","Imposter Oak's Revenge","The Rocket's Trap","No Removal Gym","Chaos Gym"]
+		"banned_card_ids": [
+		  "base1-75",
+		  "base1-79",
+		  "base1-92",
+		  "base5-16",
+		  "base5-72",
+		  "base5-76",
+		  "gym1-19",
+		  "gym1-103",
+          "gym2-102"
+		],
+		"banned_card_names": [
+		  "Lass",
+		  "Super Energy Removal",
+		  "Energy Removal",
+		  "Rocket's Sneak Attack",
+		  "Imposter Oak's Revenge",
+		  "The Rocket's Trap",
+		  "No Removal Gym",
+          "Chaos Gym"
+		]
 	  }
 	},
 	{
@@ -474,8 +536,27 @@
 		"y": 1180
 	  },
 	  "restrictions": {
-		"banned_card_ids":   ["base1-75","base1-79","base1-92","base5-16","base5-72","base5-76","gym1-19","gym1-103","gym2-102"],
-		"banned_card_names": ["Lass","Super Energy Removal","Energy Removal","Rocket's Sneak Attack","Imposter Oak's Revenge","The Rocket's Trap","No Removal Gym","Chaos Gym"]
+		"banned_card_ids": [
+		  "base1-75",
+		  "base1-79",
+		  "base1-92",
+		  "base5-16",
+		  "base5-72",
+		  "base5-76",
+		  "gym1-19",
+		  "gym1-103",
+          "gym2-102"
+		],
+		"banned_card_names": [
+		  "Lass",
+		  "Super Energy Removal",
+		  "Energy Removal",
+		  "Rocket's Sneak Attack",
+		  "Imposter Oak's Revenge",
+		  "The Rocket's Trap",
+		  "No Removal Gym",
+          "Chaos Gym"
+		]
 	  }
 	},
 	{
@@ -491,8 +572,27 @@
 		"y": 1200
 	  },
 	  "restrictions": {
-		"banned_card_ids":   ["base1-75","base1-79","base1-92","base5-16","base5-72","base5-76","gym1-19","gym1-103","gym2-102"],
-		"banned_card_names": ["Lass","Super Energy Removal","Energy Removal","Rocket's Sneak Attack","Imposter Oak's Revenge","The Rocket's Trap","No Removal Gym","Chaos Gym"]
+		"banned_card_ids": [
+		  "base1-75",
+		  "base1-79",
+		  "base1-92",
+		  "base5-16",
+		  "base5-72",
+		  "base5-76",
+		  "gym1-19",
+		  "gym1-103",
+          "gym2-102"
+		],
+		"banned_card_names": [
+		  "Lass",
+		  "Super Energy Removal",
+		  "Energy Removal",
+		  "Rocket's Sneak Attack",
+		  "Imposter Oak's Revenge",
+		  "The Rocket's Trap",
+		  "No Removal Gym",
+          "Chaos Gym"
+		]
 	  }
 	}
   ]

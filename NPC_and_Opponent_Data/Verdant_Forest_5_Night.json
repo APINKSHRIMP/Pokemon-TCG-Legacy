@@ -1,6 +1,5 @@
 {
-  "npcs": [
-  ],
+  "npcs": [],
   "opponents": [
 	{
 	  "name": "Forest Ranger Tucker",
@@ -99,7 +98,6 @@
 		"y": 500
 	  }
 	},
-	
 	{
 	  "name": "Rocket Exec Petrel",
 	  "meet_text": "Heh, you've found us at the right time. We've been hiding from the police... Not that we've done anything illegal, we're just here to play this card game.",

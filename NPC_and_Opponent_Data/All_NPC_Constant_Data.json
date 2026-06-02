@@ -1,281 +1,1515 @@
 {
   "npcs": {
-	"CH 1 Biker1": { "sprite": "Biker" },
-	"CH 1 Biker2": { "sprite": "Biker" },
-	"CH 1 Biker3": { "sprite": "Biker" },
-	"CH 1 Biker4": { "sprite": "Biker" },
-	"CH 1 Biker5": { "sprite": "Roughneck" },
-	"CH 1 Biker6": { "sprite": "Roughneck" },
-	"CH 1 Biker7": { "sprite": "Roughneck" },
-	"CH 1 Biker8": { "sprite": "Roughneck" },
-	"CH 1 D Old Guy Neighbour": { "sprite": "NPC_Oldman" },
-	"CH 1 E Old Guy Neighbour": { "sprite": "NPC_Oldman", "gift_type": "card", "gift_value": "basep-11" },
-	"CH 2 D Old Guy Neighbour": { "sprite": "NPC_Oldman" },
-	"CH 3 D Old Guy Neighbour": { "sprite": "NPC_Oldman" },
-	"CH 3 E Old Guy Neighbour": { "sprite": "NPC_Oldman", "gift_type": "card", "gift_value": "base2-11" },
-	"CH 4 D Old Guy Neighbour": { "sprite": "NPC_Oldman" },
-	"Old Lady On Bench Day 1": { "sprite": "NPC_Oldlady" },
-	"Old Lady On Bench Eve 1": { "sprite": "NPC_Oldlady" },
-	"Policeman Blocking Beach": { "sprite": "Policeman" },
-	"Policeman Blocking Beach Day 2": { "sprite": "Policeman" },
-	"Policeman Blocking Beach Bl": { "sprite": "Policeman" },
-	"Policeman Blocking Beach Eve 2": { "sprite": "Policeman" },
-	"Badman 1": { "sprite": "Roughneck" },
-	"Badman 2": { "sprite": "Roughneck" },
-	"Car Park Guy 1": { "sprite": "Security" },
-	"Car Park Guy Evening 2": { "sprite": "Security" },
-	"Man Staring Out To Sea": { "sprite": "Youngcouple2_2", "gift_type": "cash", "gift_value": "250" },
-	"Woman Staring Out To Sea": { "sprite": "Youngcouple2" },
-	"Maintenance Guy Watering Sunflowers": { "sprite": "Gardener" },
-	"Maintenance Guy Fixing The Lighthouse": { "sprite": "Worker" },
-	"Maintenance Guy Fixing The Lighthouse day 3": { "sprite": "Worker" },
-	"Woman Walking The Neighbourhood Day 2": { "sprite": "NPC 87" },
-	"Sailor 2 Pier 1": { "sprite": "Sailor" },
-	"Captain 1": { "sprite": "NPC_Captain" },
-	"Lapras": { "sprite": "Lapras" },
-	"Maintenance Guy Blocking Forest": { "sprite": "Gardener" },
-	"Sunbathing Dude 1": { "sprite": "NPC 15" },
-	"Sunbathing Dude 1 Eve": { "sprite": "NPC 15" },
-	"Sunbathing Dude 1 Night": { "sprite": "NPC 15", "gift_type": "coin", "gift_value": "REPLACECOIN" },
-	"Sunbathing Coin Giver": { "sprite": "NPC 03", "gift_type": "coin", "gift_value": "REPLACECOIN" },
-	"Sunbathing Couple M": { "sprite": "Youngcouple" },
-	"Sunbathing Couple F": { "sprite": "Youngcouple_2" },
-	"Mother": { "sprite": "NPC 14" },
-	"Mother of beach kids": { "sprite": "NPC 14" },
-	"Child": { "sprite": "NPC 14_1" },
-	"Mother 2": { "sprite": "NPC 29" },
-	"Mother 2 Evening": { "sprite": "NPC 29" },
-	"Kid Opening Packs": { "sprite": "NPC 02", "gift_type": "pack", "gift_value": "base1-a" },
-	"Maintenance Guy Watering Sunflowers Day 2": { "sprite": "Gardener" },
-	"Sailor Working On Dock": { "sprite": "Sailor", "gift_type": "costume", "gift_value": "Sailor" },
-	"Super Elder Hamish Day 2": { "sprite": "Elder" },
-	"Woman Trying To Shop": { "sprite": "NPC 32" },
-	"Station Manager": { "sprite": "Trainworker" },
-	"Jogger": { "sprite": "Jogger" },
-	"Sailor Bob": { "sprite": "Sailor" },
-	"Firebreather Darryl": { "sprite": "Firebreather" },
-	"Firebreather Kenneth": { "sprite": "Firebreather" },
-	"Psychic Brienne": { "sprite": "Psychic_F" },
-	"Man Staring Out To Sea Day 2": { "sprite": "Youngcouple2" },
-	"Juicebar Woman (From Staring Out To Sea)": { "sprite": "Youngcouple_2", "npc_type": "juice_vendor" },
-	"Woman Drinking Juice": { "sprite": "NPC 09" },
-	"2nd Woman Drinking Juice": { "sprite": "NPC 32" },
-	"3rd Woman Drinking Juice": { "sprite": "NPC 26" },
-	"Fisherman Drinking Juice": { "sprite": "Fisherman" },
-	"Fisherman 2 Drinking Juice": { "sprite": "Fisherman2" },
-	"Plaza Challenger 1": { "sprite": "NPC 03" },
-	"Plaza Challenger 2": { "sprite": "NPC 05" },
-	"Plaza Challenger 3": { "sprite": "NPC 06" },
-	"Plaza Challenger 4": { "sprite": "NPC 08" },
-	"Plaza Challenger 5": { "sprite": "NPC 30" },
-	"Plaza Challenger 5 day 4": { "sprite": "NPC 30" },
-	"Plaza Challenger 6": { "sprite": "NPC 10" },
-	"Plaza Challenger 7": { "sprite": "NPC 13" },
-	"Plaza Challenger 7b": { "sprite": "NPC 14" },
-	"Plaza Challenger 8": { "sprite": "NPC 17", "gift_type": "card", "gift_value": "basep-9" },
-	"Plaza Challenger 9": { "sprite": "NPC 86" },
-	"Holo Rare Shopkeeper": { "sprite": "NPC_Holo_Rare_Shopkeeper", "npc_type": "shop", "shop_id": "holo_mart" },
-	"Coin Shopkeeper": { "sprite": "NPC_Coin_Shopkeeper", "npc_type": "shop", "shop_id": "coin_mart" },
-	"Fruit And Veg Shopkeeper": { "sprite": "NPC 19" },
-	"Bakery Shopkeeper": { "sprite": "NPC 19_1" },
-	"Bakery Lover": { "sprite": "Lass2", "gift_type": "costume", "gift_value": "LASS2" },
-	"Woman Walking The Neighbourhood Day 3": { "sprite": "NPC 87" },
-	"Sailor 2 Pier 1 Day 3": { "sprite": "Sailor" },
-	"Sailor 2 Pier 1 Day 4": { "sprite": "Sailor" },
-	"Worker On Dock": { "sprite": "Worker" },
-	"Sunbathing Dude 1 Day 3": { "sprite": "NPC 07" },
-	"Misty NPC": { "sprite": "Gym_Leader_Misty", "gift_type": "card", "gift_value": "basep-20" },
-	"Lt Surge NPC": { "sprite": "Gym_Leader_Lt_Surge", "gift_type": "card", "gift_value": "basep-2" },
-	"Erika NPC": { "sprite": "Gym_Leader_Erika", "gift_type": "card", "gift_value": "basep-13" },
-	"Mother 2 Day 3": { "sprite": "NPC 29" },
-	"Card Elder Waverly Day 3": { "sprite": "Elder" },
-	"Card Elder Rayne Day 3": { "sprite": "Elder" },
-	"Card Elder Hamish Day 3": { "sprite": "Elder" },
-	"Man Staring Out To Sea Day 3": { "sprite": "Youngcouple2" },
-	"Juicebar Woman (From Staring Out To Sea) Day 3": { "sprite": "Youngcouple_2", "npc_type": "juice_vendor" },
-	"Employee F Drinking Juice": { "sprite": "NPC 01_1" },
-	"2nd Woman Drinking Juice Day 3": { "sprite": "NPC 32" },
-	"Mother Of Twins": { "sprite": "NPC 88" },
-	"Kid Opening Packs Day 3": { "sprite": "NPC 02", "gift_type": "card", "gift_value": "base2-5" },
-	"Maintenance Guy Watering Sunflowers Day 3": { "sprite": "Gardener" },
-	"Boss Maintenance Guy Watering Sunflowers Day 3": { "sprite": "Gardener" },
-	"Sailor Working On Dock Day 3": { "sprite": "Sailor", "gift_type": "costume", "gift_value": "Sailor" },
-	"Sailor Working On SS Anne": { "sprite": "Sailor" },
-	"SS Anne Waitress": { "sprite": "Waitress", "gift_type": "costume", "gift_value": "WAITRESS" },
-	"SS Anne Waiter": { "sprite": "Waiter", "gift_type": "costume", "gift_value": "WAITER" },
-	"Super Elder Waverly Day 3": { "sprite": "Elder", "gift_type": "card", "gift_value": "basep-21" },
-	"Super Elder Rayne Day 3": { "sprite": "Elder", "gift_type": "card", "gift_value": "basep-22" },
-	"Super Elder Hamish Day 3": { "sprite": "Elder", "gift_type": "card", "gift_value": "basep-23" },
-	"Woman Trying To Shop Day 3": { "sprite": "NPC 32" },
-	"Station Manager Day 3": { "sprite": "Trainworker" },
-	"Train Employee 1": { "sprite": "Trainworker2" },
-	"Train Employee 2": { "sprite": "Trainworker3" },
-	"Jogger Day 3": { "sprite": "Jogger" },
-	"Sailor Bob Day 3": { "sprite": "Sailor" },
-	"Smoking Sailor": { "sprite": "Sailor" },
-	"Sunbathing Sailor 1": { "sprite": "Sailor" },
-	"Sunbathing Sailor 2": { "sprite": "Sailor" },
-	"Juice Drinking Sailor 1": { "sprite": "Sailor" },
-	"Juice Drinking Sailor 2": { "sprite": "Sailor" },
-	"Juice Drinking Jogger": { "sprite": "Jogger", "gift_type": "costume", "gift_value": "Jogger" },
-	"Mother At Bakery": { "sprite": "NPC 04" },
-	"Child At Bakery": { "sprite": "NPC 02" },
-	"Woman Walking The Neighbourhood Eve": { "sprite": "NPC 87" },
-	"Super Elder 1 Eve": { "sprite": "Elder" },
-	"Beach Kid Timothy": { "sprite": "Tuber_M" },
-	"Beach Kid Evie": { "sprite": "Tuber_F" },
-	"Man Staring Out To Sea Eve 2": { "sprite": "Youngcouple2" },
-	"Juicebar Woman (From Staring Out To Sea) Evening": { "sprite": "Youngcouple_2", "npc_type": "juice_vendor" },
-	"Plaza Challenger 5 Eve": { "sprite": "NPC 30" },
-	"Plaza Challenger 6 Eve": { "sprite": "NPC 10" },
-	"Brock NPC": { "sprite": "Gym_Leader_Brock", "gift_type": "card", "gift_value": "basep-7" },
-	"Sunbathing Sailor 2 Eve": { "sprite": "Sailor" },
-	"Worker On Dock Eve": { "sprite": "Worker" },
-	"Bakery Lover Eve": { "sprite": "Lass2", "gift_type": "costume", "gift_value": "Lass2" },
-	"Blaine NPC": { "sprite": "Gym_Leader_Blaine", "gift_type": "card", "gift_value": "basep-6" },
-	"Woman Walking The Neighbourhood Eve 3": { "sprite": "NPC 87" },
-	"Man Staring Out To Sea Evening 3": { "sprite": "Youngcouple2" },
-	"Station Manager Evening 3": { "sprite": "Trainworker" },
-	"Sailor Working On Dock Night 3": { "sprite": "Sailor", "gift_type": "costume", "gift_value": "Sailor" },
-	"Sailor Working On SS Anne Night": { "sprite": "Sailor" },
-	"Sailor 2 Pier 1 Night 3": { "sprite": "Sailor" },
-	"Sabrina NPC": { "sprite": "Gym_Leader_Sabrina", "gift_type": "card", "gift_value": "basep-19" },
-	"Koga NPC": { "sprite": "Gym_Leader_Koga", "gift_type": "card", "gift_value": "basep-10" },
-	"Giovanni NPC": { "sprite": "Teamrocketboss", "gift_type": "card", "gift_value": "basep-18" },
-	"Pikachu Mum": { "sprite": "Pokefan_F" },
-	"Pikachu Fan Marina": { "sprite": "Pokekid" },
-	"Pikachu Fan Skye": { "sprite": "Pokekid" },
-	"Pikachu Fan Cami": { "sprite": "Pokekid" },
-	"Pikachu Fan Juniper": { "sprite": "Pokekid" },
-	"Pikachu Fan Raye": { "sprite": "Pokekid" },
-	"Pikachu Fan Leaf": { "sprite": "Pokekid" },
-	"Rocket Pack Gift": { "sprite": "Teamrocket_M", "gift_type": "pack", "gift_value": "base5_a" },
-	"Wishing well coin thrower": { "sprite": "NPC24", "gift_type": "coin", "gift_value": "REPLACECOIN" },
-	"Veteran Iris": { "sprite": "Veteran_F" },
-	"Gym Challenge Brock Defeated": { "sprite": "Gym_Challenge_Brock" },
-	"Gym Challenge Misty Locked": { "sprite": "Gym_Challenge_Misty" },
-	"Gym Challenge Misty Defeated": { "sprite": "Gym_Challenge_Misty" },
-	"Gym Challenge Lt. Surge Locked": { "sprite": "Gym_Challenge_Lt_Surge" },
-	"Gym Challenge Lt. Surge Defeated": { "sprite": "Gym_Challenge_Lt_Surge" },
-	"Gym Challenge Erika Locked": { "sprite": "Gym_Challenge_Erika" },
-	"Gym Challenge Erika Defeated": { "sprite": "Gym_Challenge_Erika" },
-	"Gym Challenge Koga Locked": { "sprite": "Gym_Challenge_Koga" },
-	"Gym Challenge Koga Defeated": { "sprite": "Gym_Challenge_Koga" },
-	"Gym Challenge Sabrina Locked": { "sprite": "Gym_Challenge_Sabrina" },
-	"Gym Challenge Sabrina Defeated": { "sprite": "Gym_Challenge_Sabrina" },
-	"Gym Challenge Blaine Locked": { "sprite": "Gym_Challenge_Blaine" },
-	"Gym Challenge Blaine Defeated": { "sprite": "Gym_Challenge_Blaine" },
-	"Gym Challenge Giovanni Locked": { "sprite": "Gym_Challenge_Giovanni" },
-	"Gym Challenge Giovanni Defeated": { "sprite": "Gym_Challenge_Giovanni" },
-	"Gym Receptionist 1": { "sprite": "Gym_Receptionist" },
-	"Gym Receptionist 2": { "sprite": "Gym_Headset2" },
-	"Gym Receptionist 3": { "sprite": "Gym_Helper" },
-	"Gym Security 1": { "sprite": "Gym_Security" },
-	"Gym Security 2": { "sprite": "Gym_Security" },
-	"Gym Shopkeeper": { "sprite": "Gym_Shopkeeper", "npc_type": "shop", "shop_id": "gym_mart" }
+	"CH 1 Biker1": {
+	  "sprite": "Biker"
+	},
+	"CH 1 Biker2": {
+	  "sprite": "Biker"
+	},
+	"CH 1 Biker3": {
+	  "sprite": "Biker"
+	},
+	"CH 1 Biker4": {
+	  "sprite": "Biker"
+	},
+	"CH 1 Biker5": {
+	  "sprite": "Roughneck"
+	},
+	"CH 1 Biker6": {
+	  "sprite": "Roughneck"
+	},
+	"CH 1 Biker7": {
+	  "sprite": "Roughneck"
+	},
+	"CH 1 Biker8": {
+	  "sprite": "Roughneck"
+	},
+	"CH 1 D Old Guy Neighbour": {
+	  "sprite": "NPC_Oldman"
+	},
+	"CH 1 E Old Guy Neighbour": {
+	  "sprite": "NPC_Oldman",
+	  "gift_type": "card",
+	  "gift_value": "basep-11"
+	},
+	"CH 2 D Old Guy Neighbour": {
+	  "sprite": "NPC_Oldman"
+	},
+	"CH 3 D Old Guy Neighbour": {
+	  "sprite": "NPC_Oldman"
+	},
+	"CH 3 E Old Guy Neighbour": {
+	  "sprite": "NPC_Oldman",
+	  "gift_type": "card",
+	  "gift_value": "base2-11"
+	},
+	"CH 4 D Old Guy Neighbour": {
+	  "sprite": "NPC_Oldman"
+	},
+	"CH 1 D Old Lady On Bench": {
+	  "sprite": "NPC_Oldlady"
+	},
+	"CH 1 E Old Lady On Bench": {
+	  "sprite": "NPC_Oldlady"
+	},
+	"CH 1 D Policeman Blocking Beach": {
+	  "sprite": "Policeman"
+	},
+	"CH 2 D Policeman Blocking Beach": {
+	  "sprite": "Policeman"
+	},
+	"CH 1 E,N Policeman Blocking Beach": {
+	  "sprite": "Policeman"
+	},
+	"CH 2 E Policeman Blocking Beach": {
+	  "sprite": "Policeman"
+	},
+	"CH 1 D,E Badman 1": {
+	  "sprite": "Roughneck"
+	},
+	"CH 1 D,E Badman 2": {
+	  "sprite": "Roughneck"
+	},
+	"CH 1 D Man Staring Out To Sea": {
+	  "sprite": "Youngcouple2_2",
+	  "gift_type": "cash",
+	  "gift_value": "250"
+	},
+	"CH 1 D Woman Staring Out To Sea": {
+	  "sprite": "Youngcouple2"
+	},
+	"CH 1 D Maintenance Guy Watering Sunflowers": {
+	  "sprite": "Gardener"
+	},
+	"CH 1 D Maintenance Guy Fixing Lighthouse": {
+	  "sprite": "Worker"
+	},
+	"CH 3 D Maintenance Guy Fixing Lighthouse": {
+	  "sprite": "Worker"
+	},
+	"CH 2 D Woman Walking Neighbourhood": {
+	  "sprite": "NPC 87"
+	},
+	"CH 2 D,E Sailor 2 Pier 1": {
+	  "sprite": "Sailor"
+	},
+	"CH 2 D,E Captain 1": {
+	  "sprite": "NPC_Captain"
+	},
+	"CH 2 D Lapras": {
+	  "sprite": "Lapras"
+	},
+	"CH 2 D,E Maintenance Guy Blocking Forest": {
+	  "sprite": "Gardener"
+	},
+	"CH 2 D Sunbathing Dude 1": {
+	  "sprite": "NPC 15"
+	},
+	"CH 2 E Sunbathing Dude 1": {
+	  "sprite": "NPC 15"
+	},
+	"CH 2 N Sunbathing Dude 1": {
+	  "sprite": "NPC 15",
+	  "gift_type": "coin",
+	  "gift_value": "REPLACECOIN"
+	},
+	"CH 2 D,E Sunbathing Coin Giver": {
+	  "sprite": "NPC 03",
+	  "gift_type": "coin",
+	  "gift_value": "REPLACECOIN"
+	},
+	"CH 2 D Sunbathing Couple M": {
+	  "sprite": "Youngcouple"
+	},
+	"CH 2 D Sunbathing Couple F": {
+	  "sprite": "Youngcouple_2"
+	},
+	"CH 2 D Mother": {
+	  "sprite": "NPC 14"
+	},
+	"CH 3-6 D Mother Of Beach Kids": {
+	  "sprite": "NPC 14"
+	},
+	"CH 2 D Child": {
+	  "sprite": "NPC 14_1"
+	},
+	"CH 2 D Mother 2": {
+	  "sprite": "NPC 29"
+	},
+	"CH 2 E Mother 2": {
+	  "sprite": "NPC 29"
+	},
+	"CH 2 D Kid Opening Packs": {
+	  "sprite": "NPC 02",
+	  "gift_type": "pack",
+	  "gift_value": "base1-a"
+	},
+	"CH 2 D Maintenance Guy Watering Sunflowers": {
+	  "sprite": "Gardener"
+	},
+	"CH 2 D,E Sailor Working On Dock": {
+	  "sprite": "Sailor",
+	  "gift_type": "costume",
+	  "gift_value": "Sailor"
+	},
+	"CH 2 D Super Elder Hamish": {
+	  "sprite": "Elder"
+	},
+	"CH 2 D Woman Trying To Shop": {
+	  "sprite": "NPC 32"
+	},
+	"CH 2 D,E Station Manager": {
+	  "sprite": "Trainworker"
+	},
+	"CH 2 D Jogger": {
+	  "sprite": "Jogger"
+	},
+	"CH 2 D,E Sailor Bob": {
+	  "sprite": "Sailor"
+	},
+	"CH 2 D Man Staring Out To Sea": {
+	  "sprite": "Youngcouple2"
+	},
+	"CH 2 D Juicebar Woman": {
+	  "sprite": "Youngcouple_2",
+	  "npc_type": "juice_vendor"
+	},
+	"CH 2 D Woman Drinking Juice": {
+	  "sprite": "NPC 09"
+	},
+	"CH 2 D 2nd Woman Drinking Juice": {
+	  "sprite": "NPC 32"
+	},
+	"CH 2 D 3rd Woman Drinking Juice": {
+	  "sprite": "NPC 26"
+	},
+	"CH 2 D Fisherman Drinking Juice": {
+	  "sprite": "Fisherman"
+	},
+	"CH 2 D Fisherman 2 Drinking Juice": {
+	  "sprite": "Fisherman2"
+	},
+	"CH 3,5 D Plaza Challenger 1": {
+	  "sprite": "NPC 03"
+	},
+	"CH 3,5 D Plaza Challenger 2": {
+	  "sprite": "NPC 05"
+	},
+	"CH 3,5 D Plaza Challenger 3": {
+	  "sprite": "NPC 06"
+	},
+	"CH 3,5 D Plaza Challenger 4": {
+	  "sprite": "NPC 08"
+	},
+	"CH 3,5 D Plaza Challenger 5": {
+	  "sprite": "NPC 30"
+	},
+	"CH 4,6 D Plaza Challenger 5": {
+	  "sprite": "NPC 30"
+	},
+	"CH 3-6 D Plaza Challenger 6": {
+	  "sprite": "NPC 10"
+	},
+	"CH 3,5 D Plaza Challenger 7": {
+	  "sprite": "NPC 13"
+	},
+	"CH 3,5 D Plaza Challenger 7b": {
+	  "sprite": "NPC 14"
+	},
+	"CH 3-6 D Plaza Challenger 8": {
+	  "sprite": "NPC 17",
+	  "gift_type": "card",
+	  "gift_value": "basep-9"
+	},
+	"CH 3,5 D Plaza Challenger 9": {
+	  "sprite": "NPC 86"
+	},
+	"CH 3-6 D,E Holo Rare Shopkeeper": {
+	  "sprite": "NPC_Holo_Rare_Shopkeeper",
+	  "npc_type": "shop",
+	  "shop_id": "holo_mart"
+	},
+	"CH 3-6 D,E Coin Shopkeeper": {
+	  "sprite": "NPC_Coin_Shopkeeper",
+	  "npc_type": "shop",
+	  "shop_id": "coin_mart"
+	},
+	"CH 3-6 D,E Fruit And Veg Shopkeeper": {
+	  "sprite": "NPC 19"
+	},
+	"CH 3-6 D,E Bakery Shopkeeper": {
+	  "sprite": "NPC 19_1"
+	},
+	"CH 3-6 D Bakery Lover": {
+	  "sprite": "Lass2",
+	  "gift_type": "costume",
+	  "gift_value": "LASS2"
+	},
+	"CH 3-6 D Woman Walking Neighbourhood": {
+	  "sprite": "NPC 87"
+	},
+	"CH 3-6 Sailor 2 Pier 1": {
+	  "sprite": "Sailor"
+	},
+	"CH 4,6 D Sailor 2 Pier 1": {
+	  "sprite": "Sailor"
+	},
+	"CH 3-5 D Worker On Dock": {
+	  "sprite": "Worker"
+	},
+	"CH 3-6 D Sunbathing Dude 1": {
+	  "sprite": "NPC 07"
+	},
+	"CH 3-6 D Misty": {
+	  "sprite": "Gym_Leader_Misty",
+	  "gift_type": "card",
+	  "gift_value": "basep-20"
+	},
+	"CH 3-6 D Lt Surge": {
+	  "sprite": "Gym_Leader_Lt_Surge",
+	  "gift_type": "card",
+	  "gift_value": "basep-2"
+	},
+	"CH 3-6 D Erika": {
+	  "sprite": "Gym_Leader_Erika",
+	  "gift_type": "card",
+	  "gift_value": "basep-13"
+	},
+	"CH 3-5 Card Elder Waverly": {
+	  "sprite": "Elder"
+	},
+	"CH 3-5 Card Elder Rayne": {
+	  "sprite": "Elder"
+	},
+	"CH 3-5 Card Elder Hamish": {
+	  "sprite": "Elder"
+	},
+	"CH 3-6 D Man Staring Out To Sea": {
+	  "sprite": "Youngcouple2"
+	},
+	"CH 3-6 D,E Juicebar Woman": {
+	  "sprite": "Youngcouple_2",
+	  "npc_type": "juice_vendor"
+	},
+	"CH 3-6 D Employee F Drinking Juice": {
+	  "sprite": "NPC 01_1"
+	},
+	"CH 3-6 D 2nd Woman Drinking Juice": {
+	  "sprite": "NPC 32"
+	},
+	"CH 3 D Mother Of Twins": {
+	  "sprite": "NPC 88"
+	},
+	"CH 3,5 D Kid Opening Packs": {
+	  "sprite": "NPC 02",
+	  "gift_type": "card",
+	  "gift_value": "base2-5"
+	},
+	"CH 3,5,6 D Maintenance Guy Watering Sunflowers": {
+	  "sprite": "Gardener"
+	},
+	"CH 3,5,6 D Boss Maintenance Guy": {
+	  "sprite": "Gardener"
+	},
+	"CH 3-6 D,E Sailor Working On Dock": {
+	  "sprite": "Sailor",
+	  "gift_type": "costume",
+	  "gift_value": "Sailor"
+	},
+	"CH 3-6 D,E Sailor Working On SS Anne": {
+	  "sprite": "Sailor"
+	},
+	"CH 3-6 D,E SS Anne Waitress": {
+	  "sprite": "Waitress",
+	  "gift_type": "costume",
+	  "gift_value": "WAITRESS"
+	},
+	"CH 3-6 D,E SS Anne Waiter": {
+	  "sprite": "Waiter",
+	  "gift_type": "costume",
+	  "gift_value": "WAITER"
+	},
+	"CH 3-5 Super Elder Waverly": {
+	  "sprite": "Elder",
+	  "gift_type": "card",
+	  "gift_value": "basep-21"
+	},
+	"CH 3-5 Super Elder Rayne": {
+	  "sprite": "Elder",
+	  "gift_type": "card",
+	  "gift_value": "basep-22"
+	},
+	"CH 3-5 Super Elder Hamish": {
+	  "sprite": "Elder",
+	  "gift_type": "card",
+	  "gift_value": "basep-23"
+	},
+	"CH 3-6 D Woman Trying To Shop": {
+	  "sprite": "NPC 32"
+	},
+	"CH 3-6 D Station Manager": {
+	  "sprite": "Trainworker"
+	},
+	"CH 3-6 D Train Employee 1": {
+	  "sprite": "Trainworker2"
+	},
+	"CH 3-6 D,E Train Employee 2": {
+	  "sprite": "Trainworker3"
+	},
+	"CH 4-6 D Jogger": {
+	  "sprite": "Jogger"
+	},
+	"CH 3-5 D Sailor Bob": {
+	  "sprite": "Sailor"
+	},
+	"CH 3-6 D Smoking Sailor": {
+	  "sprite": "Sailor"
+	},
+	"CH 3-6 D,E Sunbathing Sailor 1": {
+	  "sprite": "Sailor"
+	},
+	"CH 3-6 D Sunbathing Sailor 2": {
+	  "sprite": "Sailor"
+	},
+	"CH 3-6 D Juice Drinking Sailor 1": {
+	  "sprite": "Sailor"
+	},
+	"CH 3-6 D Juice Drinking Sailor 2": {
+	  "sprite": "Sailor"
+	},
+	"CH 3-6 D Juice Drinking Jogger": {
+	  "sprite": "Jogger",
+	  "gift_type": "costume",
+	  "gift_value": "Jogger"
+	},
+	"CH 3-6 D Mother At Bakery": {
+	  "sprite": "NPC 04"
+	},
+	"CH 3-6 D Child At Bakery": {
+	  "sprite": "NPC 02"
+	},
+	"CH 2 E Woman Walking Neighbourhood": {
+	  "sprite": "NPC 87"
+	},
+	"CH 2 E Super Elder": {
+	  "sprite": "Elder"
+	},
+	"CH 2 E Man Staring Out To Sea": {
+	  "sprite": "Youngcouple2"
+	},
+	"CH 2 E Juicebar Woman": {
+	  "sprite": "Youngcouple_2",
+	  "npc_type": "juice_vendor"
+	},
+	"CH 3-6 E Plaza Challenger 5": {
+	  "sprite": "NPC 30"
+	},
+	"CH 3-6 E Plaza Challenger 6": {
+	  "sprite": "NPC 10"
+	},
+	"CH 3-6 E Brock": {
+	  "sprite": "Gym_Leader_Brock",
+	  "gift_type": "card",
+	  "gift_value": "basep-7"
+	},
+	"CH 3-6 E Sunbathing Sailor 2": {
+	  "sprite": "Sailor"
+	},
+	"CH 3-6 E Worker On Dock": {
+	  "sprite": "Worker"
+	},
+	"CH 3-6 E Bakery Lover": {
+	  "sprite": "Lass2",
+	  "gift_type": "costume",
+	  "gift_value": "Lass2"
+	},
+	"CH 3-6 E Blaine": {
+	  "sprite": "Gym_Leader_Blaine",
+	  "gift_type": "card",
+	  "gift_value": "basep-6"
+	},
+	"CH 3-6 E Woman Walking Neighbourhood": {
+	  "sprite": "NPC 87"
+	},
+	"CH 3-6 E Man Staring Out To Sea": {
+	  "sprite": "Youngcouple2"
+	},
+	"CH 3-6 E Station Manager": {
+	  "sprite": "Trainworker"
+	},
+	"CH 3-6 N Sailor Working On Dock": {
+	  "sprite": "Sailor",
+	  "gift_type": "costume",
+	  "gift_value": "Sailor"
+	},
+	"CH 3-6 N Sailor Working On SS Anne": {
+	  "sprite": "Sailor"
+	},
+	"CH 3-6 N Sailor 2 Pier 1": {
+	  "sprite": "Sailor"
+	},
+	"CH 3-6 N Sabrina": {
+	  "sprite": "Gym_Leader_Sabrina",
+	  "gift_type": "card",
+	  "gift_value": "basep-19"
+	},
+	"CH 3-6 N Koga": {
+	  "sprite": "Gym_Leader_Koga",
+	  "gift_type": "card",
+	  "gift_value": "basep-10"
+	},
+	"CH 3-6 N Giovanni": {
+	  "sprite": "Teamrocketboss",
+	  "gift_type": "card",
+	  "gift_value": "basep-18"
+	},
+	"Pikachu Mum": {
+	  "sprite": "Pokefan_F"
+	},
+	"Pikachu Fan Marina": {
+	  "sprite": "Pokekid"
+	},
+	"Pikachu Fan Skye": {
+	  "sprite": "Pokekid"
+	},
+	"Pikachu Fan Cami": {
+	  "sprite": "Pokekid"
+	},
+	"Pikachu Fan Juniper": {
+	  "sprite": "Pokekid"
+	},
+	"Pikachu Fan Raye": {
+	  "sprite": "Pokekid"
+	},
+	"Pikachu Fan Leaf": {
+	  "sprite": "Pokekid"
+	},
+	"VF 5,7,8 D,E Rocket Pack Gift": {
+	  "sprite": "Teamrocket_M",
+	  "gift_type": "pack",
+	  "gift_value": "base5_a"
+	},
+	"VF 5-8 D Wishing Well Coin Thrower": {
+	  "sprite": "NPC24",
+	  "gift_type": "coin",
+	  "gift_value": "REPLACECOIN"
+	},
+	"VF 6 N Veteran Iris": {
+	  "sprite": "Veteran_F"
+	},
+	"Gym Challenge Brock Defeated": {
+	  "sprite": "Gym_Challenge_Brock"
+	},
+	"Gym Challenge Misty Locked": {
+	  "sprite": "Gym_Challenge_Misty"
+	},
+	"Gym Challenge Misty Defeated": {
+	  "sprite": "Gym_Challenge_Misty"
+	},
+	"Gym Challenge Lt. Surge Locked": {
+	  "sprite": "Gym_Challenge_Lt_Surge"
+	},
+	"Gym Challenge Lt. Surge Defeated": {
+	  "sprite": "Gym_Challenge_Lt_Surge"
+	},
+	"Gym Challenge Erika Locked": {
+	  "sprite": "Gym_Challenge_Erika"
+	},
+	"Gym Challenge Erika Defeated": {
+	  "sprite": "Gym_Challenge_Erika"
+	},
+	"Gym Challenge Koga Locked": {
+	  "sprite": "Gym_Challenge_Koga"
+	},
+	"Gym Challenge Koga Defeated": {
+	  "sprite": "Gym_Challenge_Koga"
+	},
+	"Gym Challenge Sabrina Locked": {
+	  "sprite": "Gym_Challenge_Sabrina"
+	},
+	"Gym Challenge Sabrina Defeated": {
+	  "sprite": "Gym_Challenge_Sabrina"
+	},
+	"Gym Challenge Blaine Locked": {
+	  "sprite": "Gym_Challenge_Blaine"
+	},
+	"Gym Challenge Blaine Defeated": {
+	  "sprite": "Gym_Challenge_Blaine"
+	},
+	"Gym Challenge Giovanni Locked": {
+	  "sprite": "Gym_Challenge_Giovanni"
+	},
+	"Gym Challenge Giovanni Defeated": {
+	  "sprite": "Gym_Challenge_Giovanni"
+	},
+	"GH 9 Gym Receptionist 1": {
+	  "sprite": "Gym_Receptionist"
+	},
+	"GH 9 Gym Receptionist 2": {
+	  "sprite": "Gym_Headset2"
+	},
+	"GH 9 Gym Receptionist 3": {
+	  "sprite": "Gym_Helper"
+	},
+	"GH 9 Gym Security 1": {
+	  "sprite": "Gym_Security"
+	},
+	"GH 9 Gym Security 2": {
+	  "sprite": "Gym_Security"
+	},
+	"GH 9 Gym Shopkeeper": {
+	  "sprite": "Gym_Shopkeeper",
+	  "npc_type": "shop",
+	  "shop_id": "gym_mart"
+	},
+	"CH 1 N Badman 1": {
+	  "sprite": "Roughneck"
+	},
+	"CH 1 N Badman 2": {
+	  "sprite": "Roughneck"
+	},
+	"CH 1 E Car Park Guy": {
+	  "sprite": "Security"
+	},
+	"CH 1 N Car Park Guy": {
+	  "sprite": "Security"
+	},
+	"CH 2 D Car Park Guy": {
+	  "sprite": "Security"
+	},
+	"CH 2 E Car Park Guy": {
+	  "sprite": "Security"
+	},
+	"CH 3-6 D,E Car Park Guy": {
+	  "sprite": "Security"
+	},
+	"CH 2 E Old Guy Neighbour": {
+	  "sprite": "NPC_Oldman"
+	},
+	"CH 2 E Beach Kid Timothy": {
+	  "sprite": "Tuber_M"
+	},
+	"CH 2 E Beach Kid Evie": {
+	  "sprite": "Tuber_F"
+	},
+	"CH 2 D,E Psychic Brienne": {
+	  "sprite": "Psychic_F"
+	},
+	"CH 2 N Sailor 2 Pier 1": {
+	  "sprite": "Sailor"
+	},
+	"CH 2 N Sailor Working On Dock": {
+	  "sprite": "Sailor"
+	},
+	"CH 2,6 D Firebreather Darryl": {
+	  "sprite": "Firebreather"
+	},
+	"CH 2,6 D Firebreather Kenneth": {
+	  "sprite": "Firebreather"
+	},
+	"CH 3-5 D,E Psychic Brienne": {
+	  "sprite": "Psychic_F"
+	},
+	"CH 3-6 E Old Guy Neighbour": {
+	  "sprite": "NPC_Oldman"
+	},
+	"CH 3-6 D 3rd Woman Drinking Juice": {
+	  "sprite": "NPC 26"
+	},
+	"CH 3-6 D,E Maintenance Guy Blocking Forest": {
+	  "sprite": "Gardener"
+	},
+	"CH 3-6 E Firebreather Darryl": {
+	  "sprite": "Firebreather"
+	},
+	"CH 3-6 E Firebreather Kenneth": {
+	  "sprite": "Firebreather"
+	},
+	"VF 5,7,8 D Old Guy Neighbour": {
+	  "sprite": "NPC_Oldman"
+	},
+	"CH 1 D Car Park Guy": {
+	  "sprite": "Security"
+	}
   },
   "opponents": {
-	"Youngster Joey": { "sprite": "Youngster2", "deck": "Basic Pokemon Barrage", "music": "REPLACEMUSIC", "prize_cards": 2, "cash_reward": "50", "coin_reward": "Rattata Silver", "card_reward": "base1-82, base1-82" },
-	"Gambler Mick": { "sprite": "Gambler", "deck": "You Win Some N Lose Some", "music": "REPLACEMUSIC", "prize_cards": 2, "cash_reward": "50", "coin_reward": "Farfetchd Silver", "card_reward": "base1-27, base1-27" },
-	"Schoolboy Adam": { "sprite": "Youngster3", "deck": "Status Infliction", "music": "REPLACEMUSIC", "prize_cards": 2, "cash_reward": "50", "coin_reward": "Drowzee Gold" },
-	"Fisherman Dave": { "sprite": "Fisherman", "deck": "Fishy Fish", "music": "REPLACEMUSIC", "prize_cards": 4, "cash_reward": "50", "coin_reward": "Magikarp Gold" },
-	"Gardener Callum": { "sprite": "Gardener", "deck": "Pollen Power", "music": "REPLACEMUSIC", "prize_cards": 2, "cash_reward": "75", "coin_reward": "Bulbasaur Green" },
-	"Engineer Allan": { "sprite": "Worker", "deck": "Zzzap", "music": "REPLACEMUSIC", "prize_cards": 3, "cash_reward": "75", "coin_reward": "Voltorb Gold" },
-	"Painter Jericho": { "sprite": "Artist", "deck": "Art Assistants", "music": "REPLACEMUSIC", "prize_cards": 2, "cash_reward": "50", "coin_reward": "Eevee Silver", "card_reward": "base1-27, base1-27" },
-	"Fisherman John": { "sprite": "Fisherman2", "deck": "Seavolutions", "music": "REPLACEMUSIC", "prize_cards": 4, "cash_reward": "75", "coin_reward": "Squirtle Blue" },
-	"Swimmer Jordan": { "sprite": "Swimmer_F2", "deck": "Whirlgong", "music": "REPLACEMUSIC", "prize_cards": 4, "cash_reward": "100", "coin_reward": "Poliwag Blue" },
-	"Beach Kid Timothy": { "sprite": "Tuber_M", "deck": "I Love Sand And Sea", "music": "REPLACEMUSIC", "prize_cards": 2, "cash_reward": "90", "coin_reward": "Diglett Brown" },
-	"Beach Kid Evie": { "sprite": "Tuber_F", "deck": "Pika And Friends", "music": "REPLACEMUSIC", "prize_cards": 2, "cash_reward": "75", "coin_reward": "Pikachu Gold" },
-	"Birdspotter Tamsin": { "sprite": "Birdkeeper_F", "deck": "Lil Birbs", "music": "REPLACEMUSIC", "prize_cards": 4, "cash_reward": "100", "coin_reward": "Dodou Brown" },
-	"Bug Catcher Alex": { "sprite": "Bugcatcher", "deck": "I Love Bugs!", "music": "REPLACEMUSIC", "prize_cards": 4, "cash_reward": "100", "coin_reward": "Caterpie Green", "costume_reward": "BUGCATCHER" },
-	"Swimmer Todd": { "sprite": "Swimmer_M", "deck": "I See Sea", "music": "REPLACEMUSIC", "prize_cards": 4, "cash_reward": "100", "coin_reward": "Tentacool Blue" },
-	"Aromagirl Penelope": { "sprite": "Aromalady", "deck": "Strange Plants", "music": "REPLACEMUSIC", "prize_cards": 4, "cash_reward": "100", "coin_reward": "Bellsprout Green" },
-	"Battlegirl Sofia": { "sprite": "Battlegirl", "deck": "Brickbreaker", "music": "REPLACEMUSIC", "prize_cards": 6, "cash_reward": "150", "coin_reward": "Mankey Gold" },
-	"Swimmer Melissa": { "sprite": "Swimmer_F", "deck": "Poligong's Wrath", "music": "REPLACEMUSIC", "prize_cards": 6, "cash_reward": "150", "coin_reward": "Dewgong Blue" },
-	"Birdspotter Gregg": { "sprite": "Birdkeeper_M", "deck": "Big Ol Birbs", "music": "REPLACEMUSIC", "prize_cards": 6, "cash_reward": "150", "coin_reward": "Pidgeotto Silver" },
-	"Bug Catcher Frankie": { "sprite": "Bugcatcher2", "deck": "Big Bad Bugs!", "music": "REPLACEMUSIC", "prize_cards": 4, "cash_reward": "100", "coin_reward": "Pinsir Brown", "costume_reward": "BUGCATCHER2" },
-	"Fisherman Gary": { "sprite": "Fisherman", "deck": "Big Catch", "music": "REPLACEMUSIC", "prize_cards": 6, "cash_reward": "150", "coin_reward": "Gyarados Blue" },
-	"Firebreather Darryl": { "sprite": "Firebreather", "deck": "Hot Air", "music": "REPLACEMUSIC", "prize_cards": 4, "cash_reward": "100", "coin_reward": "Magmar Red" },
-	"Firebreather Kenneth": { "sprite": "Firebreather", "deck": "Quadrapedal Firestarters", "music": "REPLACEMUSIC", "prize_cards": 4, "cash_reward": "100", "coin_reward": "Ponyta Red" },
-	"Tourist Edmund": { "sprite": "Richboy", "deck": "Elegance", "music": "REPLACEMUSIC", "prize_cards": 6, "cash_reward": "200", "coin_reward": "Dratini Blue" },
-	"Tourist Alissa": { "sprite": "Lady", "deck": "Girl Power", "music": "REPLACEMUSIC", "prize_cards": 6, "cash_reward": "200", "coin_reward": "Clefairy Pink" },
-	"Young Twin Anna": { "sprite": "Twin1", "deck": "Pretty Plants N Butterfly", "music": "REPLACEMUSIC", "prize_cards": 2, "cash_reward": "80", "coin_reward": "Butterfree Purple" },
-	"Young Twin Nella": { "sprite": "Twin2", "deck": "Scary Plants N Bees", "music": "REPLACEMUSIC", "prize_cards": 2, "cash_reward": "80", "coin_reward": "Beedrill Green" },
-	"Hiker Matthew": { "sprite": "Hiker", "deck": "Rocks N Stones", "music": "REPLACEMUSIC", "prize_cards": 4, "cash_reward": "100", "coin_reward": "Geodude Gold" },
-	"Guitarist Jonesy": { "sprite": "Guitarist", "deck": "Heavy Metal", "music": "REPLACEMUSIC", "prize_cards": 4, "cash_reward": "140", "coin_reward": "Magnemite Silver" },
-	"Guitarist Howard": { "sprite": "Guitarist2", "deck": "Rock N Shock", "music": "REPLACEMUSIC", "prize_cards": 4, "cash_reward": "140", "coin_reward": "Raichu Gold 2" },
-	"Jogger Daniel": { "sprite": "Jogger", "deck": "Nido Nido Meow", "music": "REPLACEMUSIC", "prize_cards": 4, "cash_reward": "100", "coin_reward": "Nidoking Purple" },
-	"Garden Manager Louis": { "sprite": "Gardener", "deck": "Solar Power", "music": "REPLACEMUSIC", "prize_cards": 6, "cash_reward": "75", "coin_reward": "Venusaur Green" },
-	"Sailor Bob": { "sprite": "Sailor", "deck": "Hoist The Anchor", "music": "REPLACEMUSIC", "prize_cards": 6, "cash_reward": "150", "coin_reward": "Wartortle Blue" },
-	"Card Elder Rayne": { "sprite": "Elder", "deck": "Rain Dance", "music": "REPLACEMUSIC", "prize_cards": 6, "cash_reward": "200", "coin_reward": "Blastoise Blue", "match_format": "best_of_3" },
-	"Card Elder Hamish": { "sprite": "Elder", "deck": "Haymaker", "music": "REPLACEMUSIC", "prize_cards": 6, "cash_reward": "200", "coin_reward": "Hitmonchan Silver", "match_format": "best_of_3" },
-	"Card Elder Waverly": { "sprite": "Elder", "deck": "Do The Wave", "music": "REPLACEMUSIC", "prize_cards": 6, "cash_reward": "200", "coin_reward": "Wigglytuff Pink", "match_format": "best_of_3" },
-	"Hiker Ben": { "sprite": "Hiker", "deck": "Solid Ground", "music": "REPLACEMUSIC", "prize_cards": 4, "cash_reward": "100", "coin_reward": "Dugtrio Brown" },
-	"Psychic Brienne": { "sprite": "Psychic_F", "deck": "Meditation Meditation", "music": "REPLACEMUSIC", "prize_cards": 6, "cash_reward": "150", "coin_reward": "Mewtwo Purple", "card_reward": "basep-3, basep-14" },
-	"Engineer Brad": { "sprite": "Worker", "deck": "Work Hard Play Hard", "music": "REPLACEMUSIC", "prize_cards": 6, "cash_reward": "150", "coin_reward": "Tauros Silver", "costume_reward": "WORKER" },
-	"Bad Dude Paul": { "sprite": "Roughneck", "deck": "Bad Guys", "music": "REPLACEMUSIC", "prize_cards": 4, "cash_reward": "100", "coin_reward": "Muk Purple", "costume_reward": "ROUGHNECK" },
-	"Bad Dude Wayne": { "sprite": "Roughneck", "deck": "Dark Poison", "music": "REPLACEMUSIC", "prize_cards": 6, "cash_reward": "150", "coin_reward": "Weezing Purple", "card_reward": "basep-17" },
-	"Rocket Grunt Damien": { "sprite": "Teamrocket_M", "deck": "Rocket Underlings", "music": "REPLACEMUSIC", "prize_cards": 4, "cash_reward": "125", "coin_reward": "Team Rocket Red" },
-	"Rocket Grunt Penny": { "sprite": "Teamrocket_F", "deck": "Rocket Blast Off", "music": "REPLACEMUSIC", "prize_cards": 4, "cash_reward": "125", "coin_reward": "Team Rocket Blue" },
-	"Pikachu Fan Marina": { "sprite": "Pokekid", "deck": "Wave Surfing", "music": "REPLACEMUSIC", "prize_cards": 1, "cash_reward": "50", "coin_reward": "Pikachu Gold 2", "card_reward": "basep-28" },
-	"Pikachu Fan Skye": { "sprite": "Pokekid", "deck": "Fly Away", "music": "REPLACEMUSIC", "prize_cards": 1, "cash_reward": "50", "coin_reward": "Pikachu Gold 3", "card_reward": "basep-25" },
-	"Pikachu Fan Cami": { "sprite": "Pokekid", "deck": "Snap!", "music": "REPLACEMUSIC", "prize_cards": 1, "cash_reward": "50", "coin_reward": "Pikachu Gold 4", "card_reward": "basep-26" },
-	"Pikachu Fan Juniper": { "sprite": "Pokekid", "deck": "Forest Mouse", "music": "REPLACEMUSIC", "prize_cards": 1, "cash_reward": "50", "coin_reward": "Pikachu Gold 5", "card_reward": "basep-27" },
-	"Pikachu Fan Raye": { "sprite": "Pokekid", "deck": "Thunderbolt!", "music": "REPLACEMUSIC", "prize_cards": 1, "cash_reward": "50", "coin_reward": "Pikachu Gold 6", "card_reward": "basep-4" },
-	"Pikachu Fan Leaf": { "sprite": "Pokekid", "deck": "Leafychu", "music": "REPLACEMUSIC", "prize_cards": 1, "cash_reward": "50", "coin_reward": "Pikachu Gold 7", "card_reward": "basep-1" },
-	"Pikachu Mum": { "sprite": "Pokefan_F", "deck": "All the Pikachu!", "music": "REPLACEMUSIC", "prize_cards": 1, "cash_reward": "75", "coin_reward": "Zz Pikachu Gold", "card_reward": "basep-24", "costume_reward": "PokeKid" },
-	"Fossil Expert Jonathan": { "sprite": "Ruinmaniac", "deck": "Earth Sea Sky", "music": "REPLACEMUSIC", "prize_cards": 6, "cash_reward": "150", "coin_reward": "Aerodactyl Brown" },
-	"Gentleman Benedict": { "sprite": "Gentleman", "deck": "Colorless Crusher", "music": "REPLACEMUSIC", "prize_cards": 6, "cash_reward": "150", "coin_reward": "Kangaskhan Silver" },
-	"Ninjaboy Sasuke": { "sprite": "Ninjaboy", "deck": "Ssssssnakes", "music": "REPLACEMUSIC", "prize_cards": 4, "cash_reward": "125", "coin_reward": "Ekans Purple" },
-	"Youngster Milo": { "sprite": "Youngster", "deck": "Creepy Crawlies", "music": "REPLACEMUSIC", "prize_cards": 4, "cash_reward": "125", "coin_reward": "Paras Green" },
-	"Card Expert Nathan": { "sprite": "Cooltrainer_M3", "deck": "Energy Burn", "music": "REPLACEMUSIC", "prize_cards": 6, "cash_reward": "150", "coin_reward": "Charizard Red" },
-	"Card Expert Ruby": { "sprite": "Cooltrainer_F3", "deck": "Burnt Up", "music": "REPLACEMUSIC", "prize_cards": 6, "cash_reward": "150", "coin_reward": "Charmeleon Red" },
-	"Swimmer Bibi": { "sprite": "Swimmer_F3", "deck": "Dark Rainstorm", "music": "REPLACEMUSIC", "prize_cards": 6, "cash_reward": "150", "coin_reward": "Blastoise Blue 2" },
-	"Forest Ranger Tucker": { "sprite": "Pokemonranger_M", "deck": "Poisonous Stingers", "music": "REPLACEMUSIC", "prize_cards": 6, "cash_reward": "150", "coin_reward": "Kakuna Gold" },
-	"Lady Fiona": { "sprite": "Lady2", "deck": "Foul Toxins", "music": "REPLACEMUSIC", "prize_cards": 4, "cash_reward": "125", "coin_reward": "Grimer Purple"},
-	"Doctor Mortimor": { "sprite": "Doctor", "deck": "Self Affliction", "music": "REPLACEMUSIC", "prize_cards": 6, "cash_reward": "150", "coin_reward": "Gloom Green" },
-	"Psychic Nova": { "sprite": "Psychic_F2", "deck": "Telekinesis", "music": "REPLACEMUSIC", "prize_cards": 4, "cash_reward": "125", "coin_reward": "Alakazam Purple" },
-	"Nature Lover Erin": { "sprite": "Pokemonbreeder_F2", "deck": "Forest Guardians", "music": "REPLACEMUSIC", "prize_cards": 6, "cash_reward": "150", "coin_reward": "Ivysaur Green" },
-	"Young Sage Kai": { "sprite": "Sage", "deck": "Thunder Ball", "music": "REPLACEMUSIC", "prize_cards": 4, "cash_reward": "125", "coin_reward": "Electrode Gold"},
-	"Youngster Cooper": { "sprite": "Youngster3", "deck": "Solid Dynamite", "music": "REPLACEMUSIC", "prize_cards": 4, "cash_reward": "125", "coin_reward": "Magneton Gold" },
-	"Gambler Victor": { "sprite": "Gambler", "deck": "Risky Flips", "music": "REPLACEMUSIC", "prize_cards": 4, "cash_reward": "125", "coin_reward": "Primeape Brown" },
-	"Old Traveller Harold": { "sprite": "Gentleman2", "deck": "Solid Invertebrates", "music": "REPLACEMUSIC", "prize_cards": 4, "cash_reward": "125", "coin_reward": "Kingler Blue", "costume_reward": "gentleman2" },
-	"Old Traveller Cliff": { "sprite": "Gentleman3", "deck": "Hard Hitters", "music": "REPLACEMUSIC", "prize_cards": 4, "cash_reward": "125", "coin_reward": "Cubone Brown", "costume_reward": "gentleman3" },
-	"Clown Hubert": { "sprite": "clown", "deck": "Scary Phobias", "music": "REPLACEMUSIC", "prize_cards": 4, "cash_reward": "125", "coin_reward": "Venomoth Purple" },
-	"Clown Glenn": { "sprite": "harlequin", "deck": "Strange Damage Counters", "music": "REPLACEMUSIC", "prize_cards": 6, "cash_reward": "150", "coin_reward": "Slowbro Pink" },
-	"Rocket Exec Petrel": { "sprite": "Teamrocketpetrel", "deck": "Relentless Poison", "music": "REPLACEMUSIC", "prize_cards": 6, "cash_reward": "200", "coin_reward": "Arbok Purple" },
-	"Rocket Exec Proton": { "sprite": "Teamrocketproton", "deck": "Under The Shadow Of Wings", "music": "REPLACEMUSIC", "prize_cards": 6, "cash_reward": "200", "coin_reward": "Dragonite Gold" },
-	"Rocket Exec Archer": { "sprite": "Teamrocketarcher", "deck": "Jet Shell", "music": "REPLACEMUSIC", "prize_cards": 6, "cash_reward": "200", "coin_reward": "Blastoise Silver" },
-	"Rocket Exec Ariana": { "sprite": "Teamrocketariana", "deck": "Forced Evolution", "music": "REPLACEMUSIC", "prize_cards": 6, "cash_reward": "200", "coin_reward": "Eevee Gold", "pack_reward": "base5_c" },
-	"Rocket Boss Giovanni": { "sprite": "Teamrocketboss", "deck": "Rocket Psychic Supremacy", "music": "REPLACEMUSIC", "prize_cards": 6, "cash_reward": "250", "coin_reward": "Zz Mewtwo Purple 3", "card_reward": "basep-12" },
-	"Backpacker Patrick": { "sprite": "Backpacker_M", "deck": "Land N Sea", "music": "REPLACEMUSIC", "prize_cards": 4, "cash_reward": "125", "coin_reward": "Omanyte Blue" },
-	"Card Expert Aurora": { "sprite": "Cooltrainer_F4", "deck": "Hailstorm", "music": "REPLACEMUSIC", "prize_cards": 6, "cash_reward": "150", "coin_reward": "Lapras Blue" },
-	"Mad Scientist Leonard": { "sprite": "Scientist_M2", "deck": "Headache", "music": "REPLACEMUSIC", "prize_cards": 6, "cash_reward": "150", "coin_reward": "Golduck Blue", "costume_reward": "Scientist_M,Scientist_F" },
-	"Hiker Walter": { "sprite": "Hiker2", "deck": "Solid Workers", "music": "REPLACEMUSIC", "prize_cards": 6, "cash_reward": "150", "coin_reward": "Machop Brown" },
-	"Veteran Sylvester": { "sprite": "Veteran_M2", "deck": "Lost At Sea", "music": "REPLACEMUSIC", "prize_cards": 6, "cash_reward": "125", "coin_reward": "Slowpoke Purple", "costume_reward": "Veteran_F, VeteranM_2" },
-	"Psychic Eli": { "sprite": "Psychic_M2", "deck": "Mind Control", "music": "REPLACEMUSIC", "prize_cards": 6, "cash_reward": "125", "coin_reward": "Hypno Gold", "costume_reward": "Psychic_F, Psychic_F2, Psychic_M, Psychic_M2" },
-	"Light Engineer Chase": { "sprite": "Worker2", "deck": "Shock And Awe", "music": "REPLACEMUSIC", "prize_cards": 6, "cash_reward": "125", "coin_reward": "Electrode Silver", "card_reward": "basep-5" },
-	"Shady Character Owen": { "sprite": "Roughneck2", "deck": "Thunder Rush", "music": "REPLACEMUSIC", "prize_cards": 6, "cash_reward": "175", "coin_reward": "Jolteon Silver", "costume_reward": "roughneck2" },
-	"Shady Character Bernard": { "sprite": "Roughneck", "deck": "Neverending Flames", "music": "REPLACEMUSIC", "prize_cards": 6, "cash_reward": "200", "coin_reward": "Charizard Red 2" },
-	"Ghost Whisperer Vera": { "sprite": "Medium", "deck": "Terrible Nightmares", "music": "REPLACEMUSIC", "prize_cards": 6, "cash_reward": "220", "coin_reward": "Gengar Purple" },
-	"Police Constable Floyd": { "sprite": "Policeman", "deck": "Energy Beams", "music": "REPLACEMUSIC", "prize_cards": 6, "cash_reward": "225", "coin_reward": "Gyarados Red" },
-	"Police Sergeant Douglas": { "sprite": "Policeman2", "deck": "Peace Keepers", "music": "REPLACEMUSIC", "prize_cards": 6, "cash_reward": "225", "coin_reward": "Machamp Brown" },
-	"Rocket Grunt Margot": { "sprite": "Teamrocket_F", "deck": "Scavenge and Retreat", "music": "REPLACEMUSIC", "prize_cards": 6, "cash_reward": "200", "coin_reward": "Golbat Gold", "costume_reward": "TeamRocket_F, TeamRocket_M" },
-	"Ex Gym Leader Brock": {"sprite": "Ex_Gym_Leader_Brock", "deck": "Pewter Compassion", "music": "REPLACEMUSIC", "prize_cards": 6, "cash_reward": "200", "coin_reward": "Energy Fighting Brown", "pack_reward": "Gym1_a", "card_reward": "Gym1-2"},
-	"Ex Gym Leader Misty": {"sprite": "Ex_Gym_Leader_Misty", "deck": "Cold Water Warmup", "music": "REPLACEMUSIC", "prize_cards": 6, "cash_reward": "200", "coin_reward": "Energy Water Blue", "pack_reward": "Gym1_b", "card_reward": "Gym2-12"},
-	"Ex Gym Leader Lt. Surge": {"sprite": "Ex_Gym_Leader_Lt_Surge", "deck": "Static Charge", "music": "REPLACEMUSIC", "prize_cards": 6, "cash_reward": "200", "coin_reward": "Energy Lightning Gold", "pack_reward": "Gym1_c", "card_reward": "Gym1-8"},
-	"Ex Gym Leader Erika": {"sprite": "Ex_Gym_Leader_Erika", "deck": "Sunbathing", "music": "REPLACEMUSIC", "prize_cards": 6, "cash_reward": "200", "coin_reward": "Energy Grass Green", "pack_reward": "Gym1_d", "card_reward": "Gym2-4"},
-	"Ex Gym Leader Koga": {"sprite": "Ex_Gym_Leader_Koga", "deck": "Ninja Ambush", "music": "REPLACEMUSIC", "prize_cards": 6, "cash_reward": "200", "coin_reward": "Energy Colorless Silver", "pack_reward": "Gym2_a", "card_reward": "Gym2-10"},
-	"Ex Gym Leader Sabrina": {"sprite": "Ex_Gym_Leader_Sabrina", "deck": "Psychic Uplink", "music": "REPLACEMUSIC", "prize_cards": 6, "cash_reward": "200", "coin_reward": "Energy Psychic Purple", "pack_reward": "Gym2_b", "card_reward": "Gym2-16"},
-	"Ex Gym Leader Blaine": {"sprite": "Ex_Gym_Leader_Blaine", "deck": "Burning Slot Machine", "music": "REPLACEMUSIC", "prize_cards": 6, "cash_reward": "200", "coin_reward": "Energy Fire Red", "pack_reward": "Gym2_c", "card_reward": "Gym2-1"},
-	"Ex Gym Leader Giovanni": {"sprite": "Ex_Gym_Leader_Giovanni", "deck": "Kings And Queens", "music": "REPLACEMUSIC", "prize_cards": 6, "cash_reward": "200", "coin_reward": "Energy Darkness Black", "pack_reward": "Gym2_d", "card_reward": "Gym2-7"},
-	"Gym Challenge Brock": { "sprite": "Gym_Challenge_Brock", "deck": "Pewter Crusher", "music": "gym_battle", "prize_cards": 6, "cash_reward": "200", "coin_reward": "Energy Fighting Brown 2", "pack_reward": "Gym1-a", "card_reward": "Gym1-1" },
-	"Gym Challenge Misty": { "sprite": "Gym_Challenge_Misty", "deck": "Misty's Wrath", "music": "gym_battle", "prize_cards": 6, "cash_reward": "200", "coin_reward": "Energy Water Blue 2", "pack_reward": "Gym1-b", "card_reward": "Gym1-1" },
-	"Gym Challenge Lt. Surge": { "sprite": "Gym_Challenge_Lt_Surge", "deck": "Power Surge", "music": "gym_battle", "prize_cards": 6, "cash_reward": "200", "coin_reward": "Energy Lightning Gold 2", "pack_reward": "Gym1-c", "card_reward": "Gym1-1" },
-	"Gym Challenge Erika": { "sprite": "Gym_Challenge_Erika", "deck": "Life Draining Pollen", "music": "gym_battle", "prize_cards": 6, "cash_reward": "200", "coin_reward": "Energy Grass Green 2", "pack_reward": "Gym1-d", "card_reward": "Gym1-1" },
-	"Gym Challenge Koga": { "sprite": "Gym_Challenge_Koga", "deck": "Koga's Ninja Poison", "music": "gym_battle", "prize_cards": 6, "cash_reward": "200", "coin_reward": "Energy Colorless Silver 2", "pack_reward": "Gym2-a", "card_reward": "Gym1-1" },
-	"Gym Challenge Sabrina": { "sprite": "Gym_Challenge_Sabrina", "deck": "Mixed Aura", "music": "gym_battle", "prize_cards": 6, "cash_reward": "200", "coin_reward": "Energy Psychic Purple 2", "pack_reward": "Gym2-b", "card_reward": "Gym1-1" },
-	"Gym Challenge Blaine": { "sprite": "Gym_Challenge_Blaine", "deck": "Stoke The Flames", "music": "gym_battle", "prize_cards": 6, "cash_reward": "200", "coin_reward": "Energy Fire Red 2", "pack_reward": "Gym2-c", "card_reward": "Gym1-1" },
-	"Gym Challenge Giovanni": { "sprite": "Gym_Challenge_Giovanni", "deck": "The Might Of The Boss", "music": "gym_battle", "prize_cards": 6, "cash_reward": "200", "coin_reward": "Energy Darkness Black 2", "pack_reward": "Gym2-d", "card_reward": "Gym1-1" }
+	"Youngster Joey": {
+	  "sprite": "Youngster2",
+	  "deck": "Basic Pokemon Barrage",
+	  "music": "REPLACEMUSIC",
+	  "prize_cards": 2,
+	  "cash_reward": "50",
+	  "coin_reward": "Rattata Silver",
+	  "card_reward": "base1-82, base1-82"
+	},
+	"Gambler Mick": {
+	  "sprite": "Gambler",
+	  "deck": "You Win Some N Lose Some",
+	  "music": "REPLACEMUSIC",
+	  "prize_cards": 2,
+	  "cash_reward": "50",
+	  "coin_reward": "Farfetchd Silver",
+	  "card_reward": "base1-27, base1-27"
+	},
+	"Schoolboy Adam": {
+	  "sprite": "Youngster3",
+	  "deck": "Status Infliction",
+	  "music": "REPLACEMUSIC",
+	  "prize_cards": 2,
+	  "cash_reward": "50",
+	  "coin_reward": "Drowzee Gold"
+	},
+	"Fisherman Dave": {
+	  "sprite": "Fisherman",
+	  "deck": "Fishy Fish",
+	  "music": "REPLACEMUSIC",
+	  "prize_cards": 4,
+	  "cash_reward": "50",
+	  "coin_reward": "Magikarp Gold"
+	},
+	"Gardener Callum": {
+	  "sprite": "Gardener",
+	  "deck": "Pollen Power",
+	  "music": "REPLACEMUSIC",
+	  "prize_cards": 2,
+	  "cash_reward": "75",
+	  "coin_reward": "Bulbasaur Green"
+	},
+	"Engineer Allan": {
+	  "sprite": "Worker",
+	  "deck": "Zzzap",
+	  "music": "REPLACEMUSIC",
+	  "prize_cards": 3,
+	  "cash_reward": "75",
+	  "coin_reward": "Voltorb Gold"
+	},
+	"Painter Jericho": {
+	  "sprite": "Artist",
+	  "deck": "Art Assistants",
+	  "music": "REPLACEMUSIC",
+	  "prize_cards": 2,
+	  "cash_reward": "50",
+	  "coin_reward": "Eevee Silver",
+	  "card_reward": "base1-27, base1-27"
+	},
+	"Fisherman John": {
+	  "sprite": "Fisherman2",
+	  "deck": "Seavolutions",
+	  "music": "REPLACEMUSIC",
+	  "prize_cards": 4,
+	  "cash_reward": "75",
+	  "coin_reward": "Squirtle Blue"
+	},
+	"Swimmer Jordan": {
+	  "sprite": "Swimmer_F2",
+	  "deck": "Whirlgong",
+	  "music": "REPLACEMUSIC",
+	  "prize_cards": 4,
+	  "cash_reward": "100",
+	  "coin_reward": "Poliwag Blue"
+	},
+	"Beach Kid Timothy": {
+	  "sprite": "Tuber_M",
+	  "deck": "I Love Sand And Sea",
+	  "music": "REPLACEMUSIC",
+	  "prize_cards": 2,
+	  "cash_reward": "90",
+	  "coin_reward": "Diglett Brown"
+	},
+	"Beach Kid Evie": {
+	  "sprite": "Tuber_F",
+	  "deck": "Pika And Friends",
+	  "music": "REPLACEMUSIC",
+	  "prize_cards": 2,
+	  "cash_reward": "75",
+	  "coin_reward": "Pikachu Gold"
+	},
+	"Birdspotter Tamsin": {
+	  "sprite": "Birdkeeper_F",
+	  "deck": "Lil Birbs",
+	  "music": "REPLACEMUSIC",
+	  "prize_cards": 4,
+	  "cash_reward": "100",
+	  "coin_reward": "Dodou Brown"
+	},
+	"Bug Catcher Alex": {
+	  "sprite": "Bugcatcher",
+	  "deck": "I Love Bugs!",
+	  "music": "REPLACEMUSIC",
+	  "prize_cards": 4,
+	  "cash_reward": "100",
+	  "coin_reward": "Caterpie Green",
+	  "costume_reward": "BUGCATCHER"
+	},
+	"Swimmer Todd": {
+	  "sprite": "Swimmer_M",
+	  "deck": "I See Sea",
+	  "music": "REPLACEMUSIC",
+	  "prize_cards": 4,
+	  "cash_reward": "100",
+	  "coin_reward": "Tentacool Blue"
+	},
+	"Aromagirl Penelope": {
+	  "sprite": "Aromalady",
+	  "deck": "Strange Plants",
+	  "music": "REPLACEMUSIC",
+	  "prize_cards": 4,
+	  "cash_reward": "100",
+	  "coin_reward": "Bellsprout Green"
+	},
+	"Battlegirl Sofia": {
+	  "sprite": "Battlegirl",
+	  "deck": "Brickbreaker",
+	  "music": "REPLACEMUSIC",
+	  "prize_cards": 6,
+	  "cash_reward": "150",
+	  "coin_reward": "Mankey Gold"
+	},
+	"Swimmer Melissa": {
+	  "sprite": "Swimmer_F",
+	  "deck": "Poligong's Wrath",
+	  "music": "REPLACEMUSIC",
+	  "prize_cards": 6,
+	  "cash_reward": "150",
+	  "coin_reward": "Dewgong Blue"
+	},
+	"Birdspotter Gregg": {
+	  "sprite": "Birdkeeper_M",
+	  "deck": "Big Ol Birbs",
+	  "music": "REPLACEMUSIC",
+	  "prize_cards": 6,
+	  "cash_reward": "150",
+	  "coin_reward": "Pidgeotto Silver"
+	},
+	"Bug Catcher Frankie": {
+	  "sprite": "Bugcatcher2",
+	  "deck": "Big Bad Bugs!",
+	  "music": "REPLACEMUSIC",
+	  "prize_cards": 4,
+	  "cash_reward": "100",
+	  "coin_reward": "Pinsir Brown",
+	  "costume_reward": "BUGCATCHER2"
+	},
+	"Fisherman Gary": {
+	  "sprite": "Fisherman",
+	  "deck": "Big Catch",
+	  "music": "REPLACEMUSIC",
+	  "prize_cards": 6,
+	  "cash_reward": "150",
+	  "coin_reward": "Gyarados Blue"
+	},
+	"Firebreather Darryl": {
+	  "sprite": "Firebreather",
+	  "deck": "Hot Air",
+	  "music": "REPLACEMUSIC",
+	  "prize_cards": 4,
+	  "cash_reward": "100",
+	  "coin_reward": "Magmar Red"
+	},
+	"Firebreather Kenneth": {
+	  "sprite": "Firebreather",
+	  "deck": "Quadrapedal Firestarters",
+	  "music": "REPLACEMUSIC",
+	  "prize_cards": 4,
+	  "cash_reward": "100",
+	  "coin_reward": "Ponyta Red"
+	},
+	"Tourist Edmund": {
+	  "sprite": "Richboy",
+	  "deck": "Elegance",
+	  "music": "REPLACEMUSIC",
+	  "prize_cards": 6,
+	  "cash_reward": "200",
+	  "coin_reward": "Dratini Blue"
+	},
+	"Tourist Alissa": {
+	  "sprite": "Lady",
+	  "deck": "Girl Power",
+	  "music": "REPLACEMUSIC",
+	  "prize_cards": 6,
+	  "cash_reward": "200",
+	  "coin_reward": "Clefairy Pink"
+	},
+	"Young Twin Anna": {
+	  "sprite": "Twin1",
+	  "deck": "Pretty Plants N Butterfly",
+	  "music": "REPLACEMUSIC",
+	  "prize_cards": 2,
+	  "cash_reward": "80",
+	  "coin_reward": "Butterfree Purple"
+	},
+	"Young Twin Nella": {
+	  "sprite": "Twin2",
+	  "deck": "Scary Plants N Bees",
+	  "music": "REPLACEMUSIC",
+	  "prize_cards": 2,
+	  "cash_reward": "80",
+	  "coin_reward": "Beedrill Green"
+	},
+	"Hiker Matthew": {
+	  "sprite": "Hiker",
+	  "deck": "Rocks N Stones",
+	  "music": "REPLACEMUSIC",
+	  "prize_cards": 4,
+	  "cash_reward": "100",
+	  "coin_reward": "Geodude Gold"
+	},
+	"Guitarist Jonesy": {
+	  "sprite": "Guitarist",
+	  "deck": "Heavy Metal",
+	  "music": "REPLACEMUSIC",
+	  "prize_cards": 4,
+	  "cash_reward": "140",
+	  "coin_reward": "Magnemite Silver"
+	},
+	"Guitarist Howard": {
+	  "sprite": "Guitarist2",
+	  "deck": "Rock N Shock",
+	  "music": "REPLACEMUSIC",
+	  "prize_cards": 4,
+	  "cash_reward": "140",
+	  "coin_reward": "Raichu Gold 2"
+	},
+	"Jogger Daniel": {
+	  "sprite": "Jogger",
+	  "deck": "Nido Nido Meow",
+	  "music": "REPLACEMUSIC",
+	  "prize_cards": 4,
+	  "cash_reward": "100",
+	  "coin_reward": "Nidoking Purple"
+	},
+	"Garden Manager Louis": {
+	  "sprite": "Gardener",
+	  "deck": "Solar Power",
+	  "music": "REPLACEMUSIC",
+	  "prize_cards": 6,
+	  "cash_reward": "75",
+	  "coin_reward": "Venusaur Green"
+	},
+	"Sailor Bob": {
+	  "sprite": "Sailor",
+	  "deck": "Hoist The Anchor",
+	  "music": "REPLACEMUSIC",
+	  "prize_cards": 6,
+	  "cash_reward": "150",
+	  "coin_reward": "Wartortle Blue"
+	},
+	"Card Elder Rayne": {
+	  "sprite": "Elder",
+	  "deck": "Rain Dance",
+	  "music": "REPLACEMUSIC",
+	  "prize_cards": 6,
+	  "cash_reward": "200",
+	  "coin_reward": "Blastoise Blue",
+	  "match_format": "best_of_3"
+	},
+	"Card Elder Hamish": {
+	  "sprite": "Elder",
+	  "deck": "Haymaker",
+	  "music": "REPLACEMUSIC",
+	  "prize_cards": 6,
+	  "cash_reward": "200",
+	  "coin_reward": "Hitmonchan Silver",
+	  "match_format": "best_of_3"
+	},
+	"Card Elder Waverly": {
+	  "sprite": "Elder",
+	  "deck": "Do The Wave",
+	  "music": "REPLACEMUSIC",
+	  "prize_cards": 6,
+	  "cash_reward": "200",
+	  "coin_reward": "Wigglytuff Pink",
+	  "match_format": "best_of_3"
+	},
+	"Hiker Ben": {
+	  "sprite": "Hiker",
+	  "deck": "Solid Ground",
+	  "music": "REPLACEMUSIC",
+	  "prize_cards": 4,
+	  "cash_reward": "100",
+	  "coin_reward": "Dugtrio Brown"
+	},
+	"Psychic Brienne": {
+	  "sprite": "Psychic_F",
+	  "deck": "Meditation Meditation",
+	  "music": "REPLACEMUSIC",
+	  "prize_cards": 6,
+	  "cash_reward": "150",
+	  "coin_reward": "Mewtwo Purple",
+	  "card_reward": "basep-3, basep-14"
+	},
+	"Engineer Brad": {
+	  "sprite": "Worker",
+	  "deck": "Work Hard Play Hard",
+	  "music": "REPLACEMUSIC",
+	  "prize_cards": 6,
+	  "cash_reward": "150",
+	  "coin_reward": "Tauros Silver",
+	  "costume_reward": "WORKER"
+	},
+	"Bad Dude Paul": {
+	  "sprite": "Roughneck",
+	  "deck": "Bad Guys",
+	  "music": "REPLACEMUSIC",
+	  "prize_cards": 4,
+	  "cash_reward": "100",
+	  "coin_reward": "Muk Purple",
+	  "costume_reward": "ROUGHNECK"
+	},
+	"Bad Dude Wayne": {
+	  "sprite": "Roughneck",
+	  "deck": "Dark Poison",
+	  "music": "REPLACEMUSIC",
+	  "prize_cards": 6,
+	  "cash_reward": "150",
+	  "coin_reward": "Weezing Purple",
+	  "card_reward": "basep-17"
+	},
+	"Rocket Grunt Damien": {
+	  "sprite": "Teamrocket_M",
+	  "deck": "Rocket Underlings",
+	  "music": "REPLACEMUSIC",
+	  "prize_cards": 4,
+	  "cash_reward": "125",
+	  "coin_reward": "Team Rocket Red"
+	},
+	"Rocket Grunt Penny": {
+	  "sprite": "Teamrocket_F",
+	  "deck": "Rocket Blast Off",
+	  "music": "REPLACEMUSIC",
+	  "prize_cards": 4,
+	  "cash_reward": "125",
+	  "coin_reward": "Team Rocket Blue"
+	},
+	"Pikachu Fan Marina": {
+	  "sprite": "Pokekid",
+	  "deck": "Wave Surfing",
+	  "music": "REPLACEMUSIC",
+	  "prize_cards": 1,
+	  "cash_reward": "50",
+	  "coin_reward": "Pikachu Gold 2",
+	  "card_reward": "basep-28"
+	},
+	"Pikachu Fan Skye": {
+	  "sprite": "Pokekid",
+	  "deck": "Fly Away",
+	  "music": "REPLACEMUSIC",
+	  "prize_cards": 1,
+	  "cash_reward": "50",
+	  "coin_reward": "Pikachu Gold 3",
+	  "card_reward": "basep-25"
+	},
+	"Pikachu Fan Cami": {
+	  "sprite": "Pokekid",
+	  "deck": "Snap!",
+	  "music": "REPLACEMUSIC",
+	  "prize_cards": 1,
+	  "cash_reward": "50",
+	  "coin_reward": "Pikachu Gold 4",
+	  "card_reward": "basep-26"
+	},
+	"Pikachu Fan Juniper": {
+	  "sprite": "Pokekid",
+	  "deck": "Forest Mouse",
+	  "music": "REPLACEMUSIC",
+	  "prize_cards": 1,
+	  "cash_reward": "50",
+	  "coin_reward": "Pikachu Gold 5",
+	  "card_reward": "basep-27"
+	},
+	"Pikachu Fan Raye": {
+	  "sprite": "Pokekid",
+	  "deck": "Thunderbolt!",
+	  "music": "REPLACEMUSIC",
+	  "prize_cards": 1,
+	  "cash_reward": "50",
+	  "coin_reward": "Pikachu Gold 6",
+	  "card_reward": "basep-4"
+	},
+	"Pikachu Fan Leaf": {
+	  "sprite": "Pokekid",
+	  "deck": "Leafychu",
+	  "music": "REPLACEMUSIC",
+	  "prize_cards": 1,
+	  "cash_reward": "50",
+	  "coin_reward": "Pikachu Gold 7",
+	  "card_reward": "basep-1"
+	},
+	"Pikachu Mum": {
+	  "sprite": "Pokefan_F",
+	  "deck": "All the Pikachu!",
+	  "music": "REPLACEMUSIC",
+	  "prize_cards": 1,
+	  "cash_reward": "75",
+	  "coin_reward": "Zz Pikachu Gold",
+	  "card_reward": "basep-24",
+	  "costume_reward": "PokeKid"
+	},
+	"Fossil Expert Jonathan": {
+	  "sprite": "Ruinmaniac",
+	  "deck": "Earth Sea Sky",
+	  "music": "REPLACEMUSIC",
+	  "prize_cards": 6,
+	  "cash_reward": "150",
+	  "coin_reward": "Aerodactyl Brown"
+	},
+	"Gentleman Benedict": {
+	  "sprite": "Gentleman",
+	  "deck": "Colorless Crusher",
+	  "music": "REPLACEMUSIC",
+	  "prize_cards": 6,
+	  "cash_reward": "150",
+	  "coin_reward": "Kangaskhan Silver"
+	},
+	"Ninjaboy Sasuke": {
+	  "sprite": "Ninjaboy",
+	  "deck": "Ssssssnakes",
+	  "music": "REPLACEMUSIC",
+	  "prize_cards": 4,
+	  "cash_reward": "125",
+	  "coin_reward": "Ekans Purple"
+	},
+	"Youngster Milo": {
+	  "sprite": "Youngster",
+	  "deck": "Creepy Crawlies",
+	  "music": "REPLACEMUSIC",
+	  "prize_cards": 4,
+	  "cash_reward": "125",
+	  "coin_reward": "Paras Green"
+	},
+	"Card Expert Nathan": {
+	  "sprite": "Cooltrainer_M3",
+	  "deck": "Energy Burn",
+	  "music": "REPLACEMUSIC",
+	  "prize_cards": 6,
+	  "cash_reward": "150",
+	  "coin_reward": "Charizard Red"
+	},
+	"Card Expert Ruby": {
+	  "sprite": "Cooltrainer_F3",
+	  "deck": "Burnt Up",
+	  "music": "REPLACEMUSIC",
+	  "prize_cards": 6,
+	  "cash_reward": "150",
+	  "coin_reward": "Charmeleon Red"
+	},
+	"Swimmer Bibi": {
+	  "sprite": "Swimmer_F3",
+	  "deck": "Dark Rainstorm",
+	  "music": "REPLACEMUSIC",
+	  "prize_cards": 6,
+	  "cash_reward": "150",
+	  "coin_reward": "Blastoise Blue 2"
+	},
+	"Forest Ranger Tucker": {
+	  "sprite": "Pokemonranger_M",
+	  "deck": "Poisonous Stingers",
+	  "music": "REPLACEMUSIC",
+	  "prize_cards": 6,
+	  "cash_reward": "150",
+	  "coin_reward": "Kakuna Gold"
+	},
+	"Lady Fiona": {
+	  "sprite": "Lady2",
+	  "deck": "Foul Toxins",
+	  "music": "REPLACEMUSIC",
+	  "prize_cards": 4,
+	  "cash_reward": "125",
+	  "coin_reward": "Grimer Purple"
+	},
+	"Doctor Mortimor": {
+	  "sprite": "Doctor",
+	  "deck": "Self Affliction",
+	  "music": "REPLACEMUSIC",
+	  "prize_cards": 6,
+	  "cash_reward": "150",
+	  "coin_reward": "Gloom Green"
+	},
+	"Psychic Nova": {
+	  "sprite": "Psychic_F2",
+	  "deck": "Telekinesis",
+	  "music": "REPLACEMUSIC",
+	  "prize_cards": 4,
+	  "cash_reward": "125",
+	  "coin_reward": "Alakazam Purple"
+	},
+	"Nature Lover Erin": {
+	  "sprite": "Pokemonbreeder_F2",
+	  "deck": "Forest Guardians",
+	  "music": "REPLACEMUSIC",
+	  "prize_cards": 6,
+	  "cash_reward": "150",
+	  "coin_reward": "Ivysaur Green"
+	},
+	"Young Sage Kai": {
+	  "sprite": "Sage",
+	  "deck": "Thunder Ball",
+	  "music": "REPLACEMUSIC",
+	  "prize_cards": 4,
+	  "cash_reward": "125",
+	  "coin_reward": "Electrode Gold"
+	},
+	"Youngster Cooper": {
+	  "sprite": "Youngster3",
+	  "deck": "Solid Dynamite",
+	  "music": "REPLACEMUSIC",
+	  "prize_cards": 4,
+	  "cash_reward": "125",
+	  "coin_reward": "Magneton Gold"
+	},
+	"Gambler Victor": {
+	  "sprite": "Gambler",
+	  "deck": "Risky Flips",
+	  "music": "REPLACEMUSIC",
+	  "prize_cards": 4,
+	  "cash_reward": "125",
+	  "coin_reward": "Primeape Brown"
+	},
+	"Old Traveller Harold": {
+	  "sprite": "Gentleman2",
+	  "deck": "Solid Invertebrates",
+	  "music": "REPLACEMUSIC",
+	  "prize_cards": 4,
+	  "cash_reward": "125",
+	  "coin_reward": "Kingler Blue",
+	  "costume_reward": "gentleman2"
+	},
+	"Old Traveller Cliff": {
+	  "sprite": "Gentleman3",
+	  "deck": "Hard Hitters",
+	  "music": "REPLACEMUSIC",
+	  "prize_cards": 4,
+	  "cash_reward": "125",
+	  "coin_reward": "Cubone Brown",
+	  "costume_reward": "gentleman3"
+	},
+	"Clown Hubert": {
+	  "sprite": "clown",
+	  "deck": "Scary Phobias",
+	  "music": "REPLACEMUSIC",
+	  "prize_cards": 4,
+	  "cash_reward": "125",
+	  "coin_reward": "Venomoth Purple"
+	},
+	"Clown Glenn": {
+	  "sprite": "harlequin",
+	  "deck": "Strange Damage Counters",
+	  "music": "REPLACEMUSIC",
+	  "prize_cards": 6,
+	  "cash_reward": "150",
+	  "coin_reward": "Slowbro Pink"
+	},
+	"Rocket Exec Petrel": {
+	  "sprite": "Teamrocketpetrel",
+	  "deck": "Relentless Poison",
+	  "music": "REPLACEMUSIC",
+	  "prize_cards": 6,
+	  "cash_reward": "200",
+	  "coin_reward": "Arbok Purple"
+	},
+	"Rocket Exec Proton": {
+	  "sprite": "Teamrocketproton",
+	  "deck": "Under The Shadow Of Wings",
+	  "music": "REPLACEMUSIC",
+	  "prize_cards": 6,
+	  "cash_reward": "200",
+	  "coin_reward": "Dragonite Gold"
+	},
+	"Rocket Exec Archer": {
+	  "sprite": "Teamrocketarcher",
+	  "deck": "Jet Shell",
+	  "music": "REPLACEMUSIC",
+	  "prize_cards": 6,
+	  "cash_reward": "200",
+	  "coin_reward": "Blastoise Silver"
+	},
+	"Rocket Exec Ariana": {
+	  "sprite": "Teamrocketariana",
+	  "deck": "Forced Evolution",
+	  "music": "REPLACEMUSIC",
+	  "prize_cards": 6,
+	  "cash_reward": "200",
+	  "coin_reward": "Eevee Gold",
+	  "pack_reward": "base5_c"
+	},
+	"Rocket Boss Giovanni": {
+	  "sprite": "Teamrocketboss",
+	  "deck": "Rocket Psychic Supremacy",
+	  "music": "REPLACEMUSIC",
+	  "prize_cards": 6,
+	  "cash_reward": "250",
+	  "coin_reward": "Zz Mewtwo Purple 3",
+	  "card_reward": "basep-12"
+	},
+	"Backpacker Patrick": {
+	  "sprite": "Backpacker_M",
+	  "deck": "Land N Sea",
+	  "music": "REPLACEMUSIC",
+	  "prize_cards": 4,
+	  "cash_reward": "125",
+	  "coin_reward": "Omanyte Blue"
+	},
+	"Card Expert Aurora": {
+	  "sprite": "Cooltrainer_F4",
+	  "deck": "Hailstorm",
+	  "music": "REPLACEMUSIC",
+	  "prize_cards": 6,
+	  "cash_reward": "150",
+	  "coin_reward": "Lapras Blue"
+	},
+	"Mad Scientist Leonard": {
+	  "sprite": "Scientist_M2",
+	  "deck": "Headache",
+	  "music": "REPLACEMUSIC",
+	  "prize_cards": 6,
+	  "cash_reward": "150",
+	  "coin_reward": "Golduck Blue",
+	  "costume_reward": "Scientist_M,Scientist_F"
+	},
+	"Hiker Walter": {
+	  "sprite": "Hiker2",
+	  "deck": "Solid Workers",
+	  "music": "REPLACEMUSIC",
+	  "prize_cards": 6,
+	  "cash_reward": "150",
+	  "coin_reward": "Machop Brown"
+	},
+	"Veteran Sylvester": {
+	  "sprite": "Veteran_M2",
+	  "deck": "Lost At Sea",
+	  "music": "REPLACEMUSIC",
+	  "prize_cards": 6,
+	  "cash_reward": "125",
+	  "coin_reward": "Slowpoke Purple",
+	  "costume_reward": "Veteran_F, VeteranM_2"
+	},
+	"Psychic Eli": {
+	  "sprite": "Psychic_M2",
+	  "deck": "Mind Control",
+	  "music": "REPLACEMUSIC",
+	  "prize_cards": 6,
+	  "cash_reward": "125",
+	  "coin_reward": "Hypno Gold",
+	  "costume_reward": "Psychic_F, Psychic_F2, Psychic_M, Psychic_M2"
+	},
+	"Light Engineer Chase": {
+	  "sprite": "Worker2",
+	  "deck": "Shock And Awe",
+	  "music": "REPLACEMUSIC",
+	  "prize_cards": 6,
+	  "cash_reward": "125",
+	  "coin_reward": "Electrode Silver",
+	  "card_reward": "basep-5"
+	},
+	"Shady Character Owen": {
+	  "sprite": "Roughneck2",
+	  "deck": "Thunder Rush",
+	  "music": "REPLACEMUSIC",
+	  "prize_cards": 6,
+	  "cash_reward": "175",
+	  "coin_reward": "Jolteon Silver",
+	  "costume_reward": "roughneck2"
+	},
+	"Shady Character Bernard": {
+	  "sprite": "Roughneck",
+	  "deck": "Neverending Flames",
+	  "music": "REPLACEMUSIC",
+	  "prize_cards": 6,
+	  "cash_reward": "200",
+	  "coin_reward": "Charizard Red 2"
+	},
+	"Ghost Whisperer Vera": {
+	  "sprite": "Medium",
+	  "deck": "Terrible Nightmares",
+	  "music": "REPLACEMUSIC",
+	  "prize_cards": 6,
+	  "cash_reward": "220",
+	  "coin_reward": "Gengar Purple"
+	},
+	"Police Constable Floyd": {
+	  "sprite": "Policeman",
+	  "deck": "Energy Beams",
+	  "music": "REPLACEMUSIC",
+	  "prize_cards": 6,
+	  "cash_reward": "225",
+	  "coin_reward": "Gyarados Red"
+	},
+	"Police Sergeant Douglas": {
+	  "sprite": "Policeman2",
+	  "deck": "Peace Keepers",
+	  "music": "REPLACEMUSIC",
+	  "prize_cards": 6,
+	  "cash_reward": "225",
+	  "coin_reward": "Machamp Brown"
+	},
+	"Rocket Grunt Margot": {
+	  "sprite": "Teamrocket_F",
+	  "deck": "Scavenge and Retreat",
+	  "music": "REPLACEMUSIC",
+	  "prize_cards": 6,
+	  "cash_reward": "200",
+	  "coin_reward": "Golbat Gold",
+	  "costume_reward": "TeamRocket_F, TeamRocket_M"
+	},
+	"Ex Gym Leader Brock": {
+	  "sprite": "Ex_Gym_Leader_Brock",
+	  "deck": "Pewter Compassion",
+	  "music": "REPLACEMUSIC",
+	  "prize_cards": 6,
+	  "cash_reward": "200",
+	  "coin_reward": "Energy Fighting Brown",
+	  "pack_reward": "Gym1_a",
+	  "card_reward": "Gym1-2"
+	},
+	"Ex Gym Leader Misty": {
+	  "sprite": "Ex_Gym_Leader_Misty",
+	  "deck": "Cold Water Warmup",
+	  "music": "REPLACEMUSIC",
+	  "prize_cards": 6,
+	  "cash_reward": "200",
+	  "coin_reward": "Energy Water Blue",
+	  "pack_reward": "Gym1_b",
+	  "card_reward": "Gym2-12"
+	},
+	"Ex Gym Leader Lt. Surge": {
+	  "sprite": "Ex_Gym_Leader_Lt_Surge",
+	  "deck": "Static Charge",
+	  "music": "REPLACEMUSIC",
+	  "prize_cards": 6,
+	  "cash_reward": "200",
+	  "coin_reward": "Energy Lightning Gold",
+	  "pack_reward": "Gym1_c",
+	  "card_reward": "Gym1-8"
+	},
+	"Ex Gym Leader Erika": {
+	  "sprite": "Ex_Gym_Leader_Erika",
+	  "deck": "Sunbathing",
+	  "music": "REPLACEMUSIC",
+	  "prize_cards": 6,
+	  "cash_reward": "200",
+	  "coin_reward": "Energy Grass Green",
+	  "pack_reward": "Gym1_d",
+	  "card_reward": "Gym2-4"
+	},
+	"Ex Gym Leader Koga": {
+	  "sprite": "Ex_Gym_Leader_Koga",
+	  "deck": "Ninja Ambush",
+	  "music": "REPLACEMUSIC",
+	  "prize_cards": 6,
+	  "cash_reward": "200",
+	  "coin_reward": "Energy Colorless Silver",
+	  "pack_reward": "Gym2_a",
+	  "card_reward": "Gym2-10"
+	},
+	"Ex Gym Leader Sabrina": {
+	  "sprite": "Ex_Gym_Leader_Sabrina",
+	  "deck": "Psychic Uplink",
+	  "music": "REPLACEMUSIC",
+	  "prize_cards": 6,
+	  "cash_reward": "200",
+	  "coin_reward": "Energy Psychic Purple",
+	  "pack_reward": "Gym2_b",
+	  "card_reward": "Gym2-16"
+	},
+	"Ex Gym Leader Blaine": {
+	  "sprite": "Ex_Gym_Leader_Blaine",
+	  "deck": "Burning Slot Machine",
+	  "music": "REPLACEMUSIC",
+	  "prize_cards": 6,
+	  "cash_reward": "200",
+	  "coin_reward": "Energy Fire Red",
+	  "pack_reward": "Gym2_c",
+	  "card_reward": "Gym2-1"
+	},
+	"Ex Gym Leader Giovanni": {
+	  "sprite": "Ex_Gym_Leader_Giovanni",
+	  "deck": "Kings And Queens",
+	  "music": "REPLACEMUSIC",
+	  "prize_cards": 6,
+	  "cash_reward": "200",
+	  "coin_reward": "Energy Darkness Black",
+	  "pack_reward": "Gym2_d",
+	  "card_reward": "Gym2-7"
+	},
+	"Gym Challenge Brock": {
+	  "sprite": "Gym_Challenge_Brock",
+	  "deck": "Pewter Crusher",
+	  "music": "gym_battle",
+	  "prize_cards": 6,
+	  "cash_reward": "200",
+	  "coin_reward": "Energy Fighting Brown 2",
+	  "pack_reward": "Gym1-a",
+	  "card_reward": "Gym1-1"
+	},
+	"Gym Challenge Misty": {
+	  "sprite": "Gym_Challenge_Misty",
+	  "deck": "Misty's Wrath",
+	  "music": "gym_battle",
+	  "prize_cards": 6,
+	  "cash_reward": "200",
+	  "coin_reward": "Energy Water Blue 2",
+	  "pack_reward": "Gym1-b",
+	  "card_reward": "Gym1-1"
+	},
+	"Gym Challenge Lt. Surge": {
+	  "sprite": "Gym_Challenge_Lt_Surge",
+	  "deck": "Power Surge",
+	  "music": "gym_battle",
+	  "prize_cards": 6,
+	  "cash_reward": "200",
+	  "coin_reward": "Energy Lightning Gold 2",
+	  "pack_reward": "Gym1-c",
+	  "card_reward": "Gym1-1"
+	},
+	"Gym Challenge Erika": {
+	  "sprite": "Gym_Challenge_Erika",
+	  "deck": "Life Draining Pollen",
+	  "music": "gym_battle",
+	  "prize_cards": 6,
+	  "cash_reward": "200",
+	  "coin_reward": "Energy Grass Green 2",
+	  "pack_reward": "Gym1-d",
+	  "card_reward": "Gym1-1"
+	},
+	"Gym Challenge Koga": {
+	  "sprite": "Gym_Challenge_Koga",
+	  "deck": "Koga's Ninja Poison",
+	  "music": "gym_battle",
+	  "prize_cards": 6,
+	  "cash_reward": "200",
+	  "coin_reward": "Energy Colorless Silver 2",
+	  "pack_reward": "Gym2-a",
+	  "card_reward": "Gym1-1"
+	},
+	"Gym Challenge Sabrina": {
+	  "sprite": "Gym_Challenge_Sabrina",
+	  "deck": "Mixed Aura",
+	  "music": "gym_battle",
+	  "prize_cards": 6,
+	  "cash_reward": "200",
+	  "coin_reward": "Energy Psychic Purple 2",
+	  "pack_reward": "Gym2-b",
+	  "card_reward": "Gym1-1"
+	},
+	"Gym Challenge Blaine": {
+	  "sprite": "Gym_Challenge_Blaine",
+	  "deck": "Stoke The Flames",
+	  "music": "gym_battle",
+	  "prize_cards": 6,
+	  "cash_reward": "200",
+	  "coin_reward": "Energy Fire Red 2",
+	  "pack_reward": "Gym2-c",
+	  "card_reward": "Gym1-1"
+	},
+	"Gym Challenge Giovanni": {
+	  "sprite": "Gym_Challenge_Giovanni",
+	  "deck": "The Might Of The Boss",
+	  "music": "gym_battle",
+	  "prize_cards": 6,
+	  "cash_reward": "200",
+	  "coin_reward": "Energy Darkness Black 2",
+	  "pack_reward": "Gym2-d",
+	  "card_reward": "Gym1-1"
 	}
+  }
 }

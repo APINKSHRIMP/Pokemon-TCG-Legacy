@@ -1186,7 +1186,7 @@ func apply_self_damage(effect: Dictionary, attacker: card_object, is_opponent_at
 	var label_x = 1030 if is_opponent_attacking else 530
 	await main.show_message(name.to_upper() + " DEALT " + str(damage) + " DAMAGE TO ITSELF!")
 	if main._should_bail(): return
-	main.show_floating_label("-" + str(damage) + "HP", Vector2(label_x, 300), true)
+	main.show_floating_label("-" + str(damage) + "HP", Vector2(label_x, 300), Color.RED, true)
 	main.display_hp_circles_above_align(attacker, is_opponent_attacking)
 	print("EFFECT APPLIED: ", name, " took ", damage, " self-damage. HP: ", attacker.current_hp)
 

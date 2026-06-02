@@ -11,7 +11,14 @@
 	  },
 	  "condition": {
 		"type": "not_all_opponents_defeated",
-		"targets": ["Pikachu Fan Marina","Pikachu Fan Skye","Pikachu Fan Cami","Pikachu Fan Juniper","Pikachu Fan Raye","Pikachu Fan Leaf"]
+		"targets": [
+		  "Pikachu Fan Marina",
+		  "Pikachu Fan Skye",
+		  "Pikachu Fan Cami",
+		  "Pikachu Fan Juniper",
+		  "Pikachu Fan Raye",
+          "Pikachu Fan Leaf"
+		]
 	  }
 	},
 	{

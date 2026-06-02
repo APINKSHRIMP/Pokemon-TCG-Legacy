@@ -11,7 +11,14 @@
 	  },
 	  "condition": {
 		"type": "not_all_opponents_defeated",
-		"targets": ["Pikachu Fan Marina","Pikachu Fan Skye","Pikachu Fan Cami","Pikachu Fan Juniper","Pikachu Fan Raye","Pikachu Fan Leaf"]
+		"targets": [
+		  "Pikachu Fan Marina",
+		  "Pikachu Fan Skye",
+		  "Pikachu Fan Cami",
+		  "Pikachu Fan Juniper",
+		  "Pikachu Fan Raye",
+          "Pikachu Fan Leaf"
+		]
 	  }
 	},
 	{
@@ -111,7 +118,7 @@
 	  }
 	},
 	{
-	  "name": "Wishing well coin thrower",
+	  "name": "VF 5-8 D Wishing Well Coin Thrower",
 	  "meet_text": "I always come here to throw a coin in the well and make a wish but they never come true. Maybe if I give this to you instead it'll work better.",
 	  "repeat_text": "You could always try making a wish by throwing a coin in yourself.",
 	  "pattern": "idle_down",
@@ -244,7 +251,14 @@
 	  },
 	  "condition": {
 		"type": "all_opponents_defeated",
-		"targets": ["Pikachu Fan Marina","Pikachu Fan Skye","Pikachu Fan Cami","Pikachu Fan Juniper","Pikachu Fan Raye","Pikachu Fan Leaf"]
+		"targets": [
+		  "Pikachu Fan Marina",
+		  "Pikachu Fan Skye",
+		  "Pikachu Fan Cami",
+		  "Pikachu Fan Juniper",
+		  "Pikachu Fan Raye",
+          "Pikachu Fan Leaf"
+		]
 	  }
 	},
 	{

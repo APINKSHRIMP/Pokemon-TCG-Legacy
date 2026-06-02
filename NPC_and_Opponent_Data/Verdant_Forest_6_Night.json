@@ -1,7 +1,7 @@
 {
   "npcs": [
 	{
-	  "name": "Veteran Iris",
+	  "name": "VF 6 N Veteran Iris",
 	  "meet_text": "Me and my husband used to go everywhere, all over the world, but we've slowed down since moving here. It's peaceful here and it makes you appreciate the smaller things",
 	  "repeat_text": "The world is large and there's a lot in it, but even this forest itself is a world of it's own, full of life entirely self contained that will never leave it's boundaries.",
 	  "pattern": "idle_left",
