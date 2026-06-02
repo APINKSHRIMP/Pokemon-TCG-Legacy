@@ -1359,11 +1359,8 @@ func player_select_cards_to_discard(hand: Array, count: int, title: String, hint
 	main.hide_selection_mode_display_main()
 # Master scoring function: returns the CPU priority score for a trainer card
 func effect_bill(is_opponent: bool) -> void:
-	for i in range(2):
-		await main.draw_card_from_deck(is_opponent)
-		if main._should_bail(): return
-		main.refresh_hand_display(is_opponent)
-	main.update_deck_icon(is_opponent)
+	await main.card_ops.draw_n(is_opponent, 2)
+	if main._should_bail(): return
 
 # base1-88 — Professor Oak: Discard hand, draw 7
 func effect_professor_oak(played_card: card_object, is_opponent: bool) -> void:
@@ -1389,11 +1386,8 @@ func effect_professor_oak(played_card: card_object, is_opponent: bool) -> void:
 	if main._should_bail(): return
 	
 	# Draw 7 new cards with animation per card
-	for i in range(7):
-		await main.draw_card_from_deck(is_opponent)
-		if main._should_bail(): return
-		main.refresh_hand_display(is_opponent)
-	main.update_deck_icon(is_opponent)
+	await main.card_ops.draw_n(is_opponent, 7)
+	if main._should_bail(): return
 
 # base1-71 — Computer Search: Discard 2, search deck for any 1 card
 func effect_computer_search(played_card: card_object, is_opponent: bool) -> void:
@@ -1619,11 +1613,8 @@ func effect_impostor_professor_oak(is_opponent: bool) -> void:
 	if main._should_bail(): return
 	
 	# Draw 7 cards with per-card animation
-	for i in range(7):
-		await main.draw_card_from_deck(target_is_opponent)
-		if main._should_bail(): return
-		main.refresh_hand_display(target_is_opponent)
-	main.update_deck_icon(target_is_opponent)
+	await main.card_ops.draw_n(target_is_opponent, 7)
+	if main._should_bail(): return
 	await main.show_message("Hand was shuffled into deck and drew 7 cards!")
 	if main._should_bail(): return
 
@@ -2020,18 +2011,7 @@ func effect_scoop_up(is_opponent: bool) -> void:
 		target.attached_pre_evolutions.erase(basic_card)
 	
 	# Discard all attachments (energies, evolutions, attached cards)
-	for energy in target.attached_energies:
-		energy.current_location = "discard"
-		discard.append(energy)
-	target.attached_energies.clear()
-	for evo in target.attached_pre_evolutions:
-		evo.current_location = "discard"
-		discard.append(evo)
-	target.attached_pre_evolutions.clear()
-	for att in target.attached_cards:
-		att.current_location = "discard"
-		discard.append(att)
-	target.attached_cards.clear()
+	main.card_ops.discard_all_attachments(target, is_opponent)
 	
 	# If the target itself is NOT the basic (it's an evolution), discard it too
 	if target != basic_card:
@@ -2379,10 +2359,8 @@ func effect_maintenance(played_card: card_object, is_opponent: bool) -> void:
 			card.current_location = "deck"
 			deck.append(card)
 		deck.shuffle()
-		await main.draw_card_from_deck(true)
+		await main.card_ops.draw_n(true, 1)
 		if main._should_bail(): return
-		main.refresh_hand_display(true)
-		main.update_deck_icon(true)
 		await main.show_message("Opponent shuffled 2 cards into deck and drew 1!")
 		if main._should_bail(): return
 	else:
@@ -2394,10 +2372,8 @@ func effect_maintenance(played_card: card_object, is_opponent: bool) -> void:
 			deck.append(card)
 		main.trainer_discard_selected.clear()
 		deck.shuffle()
-		await main.draw_card_from_deck(false)
+		await main.card_ops.draw_n(false, 1)
 		if main._should_bail(): return
-		main.refresh_hand_display(false)
-		main.update_deck_icon(false)
 
 # base1-85 — Pokemon Center: Heal all damage, discard energy from healed pokemon
 func effect_pokemon_center(is_opponent: bool) -> void:
@@ -2645,11 +2621,8 @@ func effect_super_potion(is_opponent: bool) -> void:
 			var energy = best_target.attached_energies.pop_back()
 			energy.current_location = "discard"
 			discard.append(energy)
-			var max_hp = int(best_target.metadata.get("hp", "0"))
-			var heal = min(40, max_hp - best_target.current_hp)
-			best_target.current_hp = min(max_hp, best_target.current_hp + heal)
 			main.display_active_pokemon_energies(true)
-			await play_heal_animation(best_target, heal, true)
+			await main.card_ops.heal_pokemon(best_target, 40, true)
 			if main._should_bail(): return
 			main.update_discard_pile_display(true)
 	else:
@@ -2680,10 +2653,7 @@ func effect_super_potion(is_opponent: bool) -> void:
 			if main._should_bail(): return
 			main.display_active_pokemon_energies(false)
 			main.update_discard_pile_display(false)
-			var max_hp = int(target.metadata.get("hp", "0"))
-			var heal = min(40, max_hp - target.current_hp)
-			target.current_hp = min(max_hp, target.current_hp + heal)
-			await play_heal_animation(target, heal, false)
+			await main.card_ops.heal_pokemon(target, 40, false)
 			if main._should_bail(): return
 
 # base1-92 — Energy Removal: Discard 1 energy from opponent's pokemon
@@ -2838,10 +2808,7 @@ func effect_potion(is_opponent: bool) -> void:
 	
 	if is_opponent:
 		var target = damaged[0]
-		var max_hp = int(target.metadata.get("hp", "0"))
-		var heal = min(20, max_hp - target.current_hp)
-		target.current_hp = min(max_hp, target.current_hp + heal)
-		await play_heal_animation(target, heal, true)
+		await main.card_ops.heal_pokemon(target, 20, true)
 		if main._should_bail(): return
 	else:
 		main.trainer_pokemon_selection_active = true
@@ -2857,12 +2824,9 @@ func effect_potion(is_opponent: bool) -> void:
 		var target = main.selected_card_for_action
 		main.trainer_pokemon_selection_active = false
 		main.hide_selection_mode_display_main()
-		
+
 		if target != null:
-			var max_hp = int(target.metadata.get("hp", "0"))
-			var heal = min(20, max_hp - target.current_hp)
-			target.current_hp = min(max_hp, target.current_hp + heal)
-			await play_heal_animation(target, heal, false)
+			await main.card_ops.heal_pokemon(target, 20, false)
 			if main._should_bail(): return
 
 # base1-95 — Switch: Free retreat (swap active with bench)
@@ -3215,11 +3179,8 @@ func effect_gambler(is_opponent: bool) -> void:
 		await main.show_message("TAILS! DRAWING 1 CARD!")
 	if main._should_bail(): return
 	
-	for i in range(draw_count):
-		await main.draw_card_from_deck(is_opponent)
-		if main._should_bail(): return
-	
-	main.refresh_hand_display(is_opponent)
+	await main.card_ops.draw_n(is_opponent, draw_count)
+	if main._should_bail(): return
 	print("GAMBLER: ", "Heads" if coin else "Tails", " -> Drew ", draw_count, " cards")
 
 # base3-61 — Recycle: Flip coin, if heads put a card from discard on top of deck
@@ -3439,19 +3400,15 @@ func effect_challenge(is_opponent: bool) -> void:
 		# Actually the rule is: if opponent declines OR both benches full, the player who played it draws 2
 		if own_bench.size() >= main.get_max_bench_size() and opp_bench.size() >= main.get_max_bench_size():
 			# Both benches full
-			for i in range(2):
-				await main.draw_card_from_deck(is_opponent)
-				if main._should_bail(): return
-			main.refresh_hand_display(is_opponent)
+			await main.card_ops.draw_n(is_opponent, 2)
+			if main._should_bail(): return
 			await main.show_message("BOTH BENCHES FULL! DREW 2 CARDS!")
 			if main._should_bail(): return
 			return
 		# CPU played it - player can accept or decline
 		# Simplify: player declines, CPU draws 2
-		for i in range(2):
-			await main.draw_card_from_deck(is_opponent)
-			if main._should_bail(): return
-		main.refresh_hand_display(is_opponent)
+		await main.card_ops.draw_n(is_opponent, 2)
+		if main._should_bail(): return
 		await main.show_message("CHALLENGE DECLINED! DREW 2 CARDS!")
 		if main._should_bail(): return
 	else:
@@ -3469,10 +3426,8 @@ func effect_challenge(is_opponent: bool) -> void:
 		
 		if not accepted or (own_bench.size() >= main.get_max_bench_size() and opp_bench.size() >= main.get_max_bench_size()):
 			# Declined or both full
-			for i in range(2):
-				await main.draw_card_from_deck(is_opponent)
-				if main._should_bail(): return
-			main.refresh_hand_display(is_opponent)
+			await main.card_ops.draw_n(is_opponent, 2)
+			if main._should_bail(): return
 			await main.show_message("CHALLENGE DECLINED! DREW 2 CARDS!")
 			if main._should_bail(): return
 		else:
@@ -3615,11 +3570,8 @@ func effect_imposter_oaks_revenge(played_card: card_object, is_opponent: bool) -
 	if main._should_bail(): return
 	
 	var draw_count = min(4, opp_deck.size())
-	for i in range(draw_count):
-		await main.draw_card_from_deck(!is_opponent)
-		if main._should_bail(): return
-	main.refresh_hand_display(!is_opponent)
-	
+	await main.card_ops.draw_n(!is_opponent, draw_count)
+	if main._should_bail(): return
 	await main.show_message("OPPONENT DREW " + str(draw_count) + " CARDS!")
 	if main._should_bail(): return
 	print("TRAINER: Imposter Oak's Revenge")
@@ -3931,16 +3883,12 @@ func gym1_effect_brock(is_opponent: bool) -> void:
 # (drawing more is almost always optimal — only skipped when the hand is already very large).
 func gym1_effect_erika(is_opponent: bool) -> void:
 	var draw_count_self = await gym1_choose_draw_count(3, is_opponent, "ERIKA — DRAW 3 CARDS?")
-	for i in range(draw_count_self):
-		await main.draw_card_from_deck(is_opponent)
-		if main._should_bail(): return
-	main.refresh_hand_display(is_opponent)
+	await main.card_ops.draw_n(is_opponent, draw_count_self)
+	if main._should_bail(): return
 	var other_is_opp = not is_opponent
 	var draw_count_other = await gym1_choose_draw_count(3, other_is_opp, "ERIKA — OPPONENT MAY DRAW 3")
-	for i in range(draw_count_other):
-		await main.draw_card_from_deck(other_is_opp)
-		if main._should_bail(): return
-	main.refresh_hand_display(other_is_opp)
+	await main.card_ops.draw_n(other_is_opp, draw_count_other)
+	if main._should_bail(): return
 
 # CPU draws max unless its hand is full; player gets a YES/NO prompt (draw max or skip).
 func gym1_choose_draw_count(max_n: int, side_is_opp: bool, header_text: String) -> int:
@@ -4092,16 +4040,12 @@ func gym1_effect_blaines_quiz(is_opponent: bool) -> void:
 	if coin:
 		# Opponent guessed right
 		var other = not is_opponent
-		for i in range(2):
-			await main.draw_card_from_deck(other)
-			if main._should_bail(): return
-		main.refresh_hand_display(other)
+		await main.card_ops.draw_n(other, 2)
+		if main._should_bail(): return
 		await main.show_message("HEADS! OPPONENT GUESSED RIGHT AND DREW 2 CARDS!")
 	else:
-		for i in range(2):
-			await main.draw_card_from_deck(is_opponent)
-			if main._should_bail(): return
-		main.refresh_hand_display(is_opponent)
+		await main.card_ops.draw_n(is_opponent, 2)
+		if main._should_bail(): return
 		await main.show_message("TAILS! OPPONENT GUESSED WRONG — YOU DREW 2 CARDS!")
 	if main._should_bail(): return
 
@@ -4109,10 +4053,8 @@ func gym1_effect_blaines_quiz(is_opponent: bool) -> void:
 # Show hand to opp (it's empty here, since validation requires no other cards) then draw 5.
 func gym1_effect_blaines_last_resort(is_opponent: bool) -> void:
 	# Hand is already empty (validation guaranteed no other cards). Just draw 5.
-	for i in range(5):
-		await main.draw_card_from_deck(is_opponent)
-		if main._should_bail(): return
-	main.refresh_hand_display(is_opponent)
+	await main.card_ops.draw_n(is_opponent, 5)
+	if main._should_bail(): return
 	await main.show_message("BLAINE'S LAST RESORT — DREW 5 CARDS!")
 	if main._should_bail(): return
 
@@ -4369,9 +4311,8 @@ func gym1_effect_lt_surges_treaty(is_opponent: bool) -> void:
 			await main.cpu_ai.opponent_take_prize_card()
 	else:
 		await main.show_message("LT. SURGE'S TREATY — " + chooser_label + " CHOOSES: CARD PLAYER DRAWS 1!")
-		await main.draw_card_from_deck(is_opponent)
+		await main.card_ops.draw_n(is_opponent, 1)
 		if main._should_bail(): return
-		main.refresh_hand_display(is_opponent)
 
 # Helper: let the player pick one of their own prize cards to take.
 func gym1_player_take_own_prize() -> void:
@@ -4623,10 +4564,8 @@ func gym1_effect_secret_mission(is_opponent: bool) -> void:
 		discard.append(c)
 	main.refresh_hand_display(is_opponent)
 	main.update_discard_pile_display(is_opponent)
-	for i in range(discards.size()):
-		await main.draw_card_from_deck(is_opponent)
-		if main._should_bail(): return
-	main.refresh_hand_display(is_opponent)
+	await main.card_ops.draw_n(is_opponent, discards.size())
+	if main._should_bail(): return
 	await main.show_message("SECRET MISSION — DISCARDED " + str(discards.size()) + ", DREW " + str(discards.size()) + "!")
 	if main._should_bail(): return
 
@@ -4718,12 +4657,10 @@ func gym1_effect_blaines_gamble(played_card: card_object, is_opponent: bool) -> 
 	if main._should_bail(): return
 	var coin = await main.flip_coin(false, is_opponent)
 	if coin:
-		var draw_n = discards.size() * 2
-		for i in range(draw_n):
-			await main.draw_card_from_deck(is_opponent)
-			if main._should_bail(): return
-		main.refresh_hand_display(is_opponent)
-		await main.show_message("HEADS! DREW " + str(draw_n) + " CARDS!")
+		var blaine_draw = discards.size() * 2
+		await main.card_ops.draw_n(is_opponent, blaine_draw)
+		if main._should_bail(): return
+		await main.show_message("HEADS! DREW " + str(blaine_draw) + " CARDS!")
 	else:
 		await main.show_message("TAILS! NOTHING.")
 	if main._should_bail(): return
@@ -4808,11 +4745,8 @@ func gym1_effect_mistys_duel(is_opponent: bool) -> void:
 	deck.shuffle()
 	main.refresh_hand_display(winner_is_opp)
 	# Draw 5
-	for i in range(5):
-		await main.draw_card_from_deck(winner_is_opp)
-		if main._should_bail(): return
-	main.refresh_hand_display(winner_is_opp)
-	main.update_deck_icon(winner_is_opp)
+	await main.card_ops.draw_n(winner_is_opp, 5)
+	if main._should_bail(): return
 	var who = "OPPONENT" if winner_is_opp else "YOU"
 	await main.show_message("MISTY'S DUEL — " + who + " WON AND DREW A NEW HAND OF 5!")
 	if main._should_bail(): return
@@ -4830,11 +4764,8 @@ func gym1_effect_sabrinas_gaze(_is_opponent: bool) -> void:
 		hand.clear()
 		deck.shuffle()
 		main.refresh_hand_display(side_is_opp)
-		for i in range(prev_count):
-			await main.draw_card_from_deck(side_is_opp)
-			if main._should_bail(): return
-		main.refresh_hand_display(side_is_opp)
-		main.update_deck_icon(side_is_opp)
+		await main.card_ops.draw_n(side_is_opp, prev_count)
+		if main._should_bail(): return
 	await main.show_message("SABRINA'S GAZE — BOTH PLAYERS REDREW THEIR HANDS!")
 	if main._should_bail(): return
 
@@ -5480,15 +5411,13 @@ func gym2_effect_sabrina(is_opponent: bool) -> void:
 func gym2_effect_erikas_kindness(_is_opponent: bool) -> void:
 	for side in [false, true]:
 		for p in build_field_pokemon_array(side):
-			var max_hp = int(p.metadata.get("hp", "0"))
-			if p.max_hp_override > 0:
-				max_hp = p.max_hp_override
+			var max_hp = p.get_max_hp()
 			if p.current_hp >= max_hp:
 				continue
 			var damage = max_hp - p.current_hp
 			var heal = 20 if damage > 10 else 10
-			p.current_hp = min(max_hp, p.current_hp + heal)
-			main.display_hp_circles_above_align(p, side)
+			await main.card_ops.heal_pokemon(p, heal, side)
+			if main._should_bail(): return
 	await main.show_message("ERIKA'S KINDNESS — REMOVED 2 DAMAGE COUNTERS FROM EVERY DAMAGED POKEMON!")
 	if main._should_bail(): return
 
@@ -5529,11 +5458,8 @@ func gym2_effect_giovannis_last_resort(is_opponent: bool) -> void:
 			main.hide_selection_mode_display_main()
 	if target == null:
 		return
-	var max_hp = int(target.metadata.get("hp", "0"))
-	if target.max_hp_override > 0:
-		max_hp = target.max_hp_override
-	target.current_hp = max_hp
-	main.display_hp_circles_above_align(target, is_opponent)
+	await main.card_ops.heal_pokemon(target, target.get_max_hp(), is_opponent)
+	if main._should_bail(): return
 	# Discard hand
 	var hand = main.opponent_hand if is_opponent else main.player_hand
 	var discard = main.opponent_discard_pile if is_opponent else main.player_discard_pile
@@ -5640,9 +5566,8 @@ func gym2_effect_mistys_wish(is_opponent: bool) -> void:
 	# Simplified: ALWAYS decline (other side blocks the swap; card player draws 1).
 	if hand.size() == 0:
 		# Can't swap anyway; draw 1
-		await main.draw_card_from_deck(is_opponent)
+		await main.card_ops.draw_n(is_opponent, 1)
 		if main._should_bail(): return
-		main.refresh_hand_display(is_opponent)
 		await main.show_message("MISTY'S WISH — DREW A CARD!")
 		return
 	# Decision logic: accept if prize is a Pokemon (deny the card player the setup advantage)
@@ -5683,9 +5608,8 @@ func gym2_effect_mistys_wish(is_opponent: bool) -> void:
 			await main.show_message("MISTY'S WISH — SWAPPED PRIZE WITH " + swap_card.metadata.get("name", "").to_upper() + "!")
 		return
 	# Declined → draw 1
-	await main.draw_card_from_deck(is_opponent)
+	await main.card_ops.draw_n(is_opponent, 1)
 	if main._should_bail(): return
-	main.refresh_hand_display(is_opponent)
 	await main.show_message("MISTY'S WISH — OPPONENT DECLINED. DREW A CARD!")
 	if main._should_bail(): return
 
@@ -5697,16 +5621,12 @@ func gym2_effect_blaines_quiz_2(is_opponent: bool) -> void:
 	var coin = await main.flip_coin(false, is_opponent)
 	if coin:
 		var other = not is_opponent
-		for i in range(2):
-			await main.draw_card_from_deck(other)
-			if main._should_bail(): return
-		main.refresh_hand_display(other)
+		await main.card_ops.draw_n(other, 2)
+		if main._should_bail(): return
 		await main.show_message("OPPONENT GUESSED RIGHT! THEY DREW 2 CARDS!")
 	else:
-		for i in range(2):
-			await main.draw_card_from_deck(is_opponent)
-			if main._should_bail(): return
-		main.refresh_hand_display(is_opponent)
+		await main.card_ops.draw_n(is_opponent, 2)
+		if main._should_bail(): return
 		await main.show_message("OPPONENT GUESSED WRONG! YOU DREW 2 CARDS!")
 	if main._should_bail(): return
 
@@ -5718,16 +5638,12 @@ func gym2_effect_blaines_quiz_3(is_opponent: bool) -> void:
 	var coin = await main.flip_coin(false, is_opponent)
 	if coin:
 		var other = not is_opponent
-		for i in range(3):
-			await main.draw_card_from_deck(other)
-			if main._should_bail(): return
-		main.refresh_hand_display(other)
+		await main.card_ops.draw_n(other, 3)
+		if main._should_bail(): return
 		await main.show_message("OPPONENT GUESSED RIGHT! THEY DREW 3 CARDS!")
 	else:
-		for i in range(3):
-			await main.draw_card_from_deck(is_opponent)
-			if main._should_bail(): return
-		main.refresh_hand_display(is_opponent)
+		await main.card_ops.draw_n(is_opponent, 3)
+		if main._should_bail(): return
 		await main.show_message("OPPONENT GUESSED WRONG! YOU DREW 3 CARDS!")
 	if main._should_bail(): return
 

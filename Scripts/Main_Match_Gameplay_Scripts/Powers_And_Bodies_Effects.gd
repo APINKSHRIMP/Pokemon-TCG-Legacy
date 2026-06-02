@@ -15,7 +15,20 @@ var main: Node
 func is_power_blocked_by_status(pokemon: card_object) -> bool:
 	if pokemon == null:
 		return true
-	if pokemon.special_condition in ["Paralyzed", "Asleep", "Confused"]:
+	return pokemon.is_status_blocked()
+
+# Full power-blocker check: status conditions, Toxic Gas, Goop Gas, and temporary disable flag.
+# Pass works_through_status=true for powers like Buzzap that still work while statused.
+func is_power_blocked(pokemon: card_object, works_through_status: bool = false) -> bool:
+	if pokemon == null:
+		return true
+	if not works_through_status and pokemon.is_status_blocked():
+		return true
+	if is_toxic_gas_active():
+		return true
+	if main.goop_gas_active:
+		return true
+	if pokemon.power_disabled_until_end_of_next_turn:
 		return true
 	return false
 
@@ -1624,10 +1637,9 @@ func cpu_phase_activate_powers() -> void:
 					main.opponent_hand.erase(card)
 					card.current_location = "discard"
 					main.opponent_discard_pile.append(card)
-					await main.draw_card_from_deck(true)
+					await main.card_ops.draw_n(true, 1)
 					if main._should_bail(): return
 					kadabra.power_used_this_turn = true
-					main.refresh_hand_display(true)
 					await main.show_message("Matter Exchange: Swapped a card!")
 					if main._should_bail(): return
 	
@@ -2217,10 +2229,8 @@ func power_matter_exchange(pokemon: card_object) -> void:
 	main.player_discard_pile.append(selected)
 	main.update_discard_pile_display(false)
 	
-	await main.draw_card_from_deck(false)
+	await main.card_ops.draw_n(false, 1)
 	if main._should_bail(): return
-	main.refresh_hand_display(false)
-	
 	await main.show_message("MATTER EXCHANGE: DISCARDED 1, DREW 1!")
 	if main._should_bail(): return
 	print("POWER: Matter Exchange")

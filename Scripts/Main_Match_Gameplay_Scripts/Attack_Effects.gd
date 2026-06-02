@@ -10,6 +10,676 @@ extends Node
 
 var main: Node
 
+######################################################################################################################################################
+################################################# UNIFIED ATTACK DISPATCH ###########################################################################
+######################################################################################################################################################
+#
+# dispatch_attack: single entry point for both player and CPU attack execution.
+# Handles GYM2 (name-based), GYM1, and Base1-5 (text-based) special attacks.
+# Returns true if the attack was fully handled (including post-attack cleanup via _attack_finish).
+# Returns false to fall through to the generic damage/text-effects path in perform_attack.
+#
+# Replaces: gym2_dispatch_player (Main), gym2_dispatch_cpu (CPU_AI), and the GYM1/Base
+# if-chains in both perform_attack and cpu_phase_attack.
+#
+
+func dispatch_attack(attack: Dictionary, attacker: card_object, defender: card_object, is_opponent: bool) -> bool:
+	var attack_name = attack.get("name", "")
+	var an = attack_name.to_lower()
+	var text_lower = attack.get("text", "").to_lower()
+	var base = parse_attack_base_damage(attack)
+	var types = attacker.metadata.get("types", ["Colorless"])
+
+	if not is_opponent:
+		main.hide_attack_buttons()
+
+	# ============================= GYM2 (GYM CHALLENGE) — name-based dispatch ==============================
+
+	if an == "roaring flames":
+		await execute_roaring_flames(attacker, defender, is_opponent)
+		await _attack_finish(true, 20, attack, types, is_opponent)
+		return true
+	if an == "growth":
+		await execute_growth(attacker, is_opponent)
+		await _attack_finish(false, 0, attack, types, is_opponent)
+		return true
+	if an == "wide solarbeam":
+		await execute_bench_choose_spread(attacker, defender, is_opponent, 20, 2, 20, false)
+		await _attack_finish(true, 20, attack, types, is_opponent)
+		return true
+	if an == "summon storm":
+		await execute_summon_storm(attacker, is_opponent)
+		await _attack_finish(false, 0, attack, types, is_opponent)
+		return true
+	if an == "dragon tornado":
+		await execute_dragon_tornado(attacker, defender, is_opponent, 40)
+		await _attack_finish(true, 40, attack, types, is_opponent)
+		return true
+	if an == "intimidate":
+		await execute_intimidate(attacker, defender, is_opponent)
+		await _attack_finish(false, 0, attack, types, is_opponent)
+		return true
+	if an == "giant growth":
+		await execute_giant_growth(attacker, is_opponent)
+		await _attack_finish(false, 0, attack, types, is_opponent)
+		return true
+	if an == "kerzap":
+		await execute_kerzap(attacker, defender, is_opponent)
+		await _attack_finish(true, 20, attack, types, is_opponent)
+		return true
+	if an == "super removal":
+		await execute_super_removal(attacker, is_opponent)
+		await _attack_finish(false, 0, attack, types, is_opponent)
+		return true
+	if an == "juxtapose":
+		await execute_juxtapose(attacker, defender, is_opponent)
+		await _attack_finish(false, 0, attack, types, is_opponent)
+		return true
+	if an == "plasma":
+		await execute_plasma(attacker, defender, is_opponent, base)
+		await _attack_finish(true, base, attack, types, is_opponent)
+		return true
+	if an == "electroburn":
+		await execute_electroburn(attacker, defender, is_opponent, base)
+		await _attack_finish(true, base, attack, types, is_opponent)
+		return true
+	if an == "love lariat":
+		await execute_love_lariat(attacker, defender, is_opponent)
+		await _attack_finish(true, 50, attack, types, is_opponent)
+		return true
+	if an == "overhead toss":
+		await execute_overhead_toss(attacker, defender, is_opponent, 40)
+		await _attack_finish(true, 40, attack, types, is_opponent)
+		return true
+	if an == "poison power":
+		await execute_poison_power(attacker, defender, is_opponent)
+		await _attack_finish(true, 20, attack, types, is_opponent)
+		return true
+	if an == "thunder flare":
+		await execute_thunder_flare(attacker, defender, is_opponent)
+		await _attack_finish(true, 30, attack, types, is_opponent)
+		return true
+	if an == "dark wave":
+		await execute_dark_wave(attacker, defender, is_opponent, base)
+		await _attack_finish(true, base, attack, types, is_opponent)
+		return true
+	if an == "damage shift":
+		await execute_damage_shift(attacker, defender, is_opponent)
+		await _attack_finish(false, 0, attack, types, is_opponent)
+		return true
+	if an == "bonfire":
+		await execute_bonfire(attacker, is_opponent)
+		await _attack_finish(false, 0, attack, types, is_opponent)
+		return true
+	if an == "stamp":
+		await execute_stamp(attacker, defender, is_opponent)
+		await _attack_finish(true, 30, attack, types, is_opponent)
+		return true
+	if an == "detonate":
+		await execute_detonate(attacker, defender, is_opponent, base)
+		await _attack_finish(true, base, attack, types, is_opponent)
+		return true
+	if an == "risky attack":
+		await execute_risky_attack(attacker, defender, is_opponent, base)
+		await _attack_finish(true, base, attack, types, is_opponent)
+		return true
+	if an == "false charity":
+		await execute_false_charity(attacker, is_opponent)
+		await _attack_finish(false, 0, attack, types, is_opponent)
+		return true
+	if an == "rend":
+		await execute_rend(attacker, defender, is_opponent)
+		await _attack_finish(true, 20, attack, types, is_opponent)
+		return true
+	if an == "obscuring gas":
+		await execute_obscuring_gas(attacker, defender, is_opponent, base)
+		await _attack_finish(true, base, attack, types, is_opponent)
+		return true
+	if an == "messenger":
+		await execute_messenger(attacker, is_opponent)
+		await _attack_finish(false, 0, attack, types, is_opponent)
+		return true
+	if an == "lunar power":
+		await execute_lunar_power(attacker, is_opponent)
+		await _attack_finish(false, 0, attack, types, is_opponent)
+		return true
+	if an == "errand-running":
+		await execute_errand_running(attacker, is_opponent)
+		await _attack_finish(false, 0, attack, types, is_opponent)
+		return true
+	if an == "surprise":
+		await execute_surprise(attacker, is_opponent)
+		await _attack_finish(false, 0, attack, types, is_opponent)
+		return true
+	if an == "power ball":
+		await execute_flip_bonus_per_heads(attacker, defender, is_opponent, base, 3, 10)
+		await _attack_finish(true, base, attack, types, is_opponent)
+		return true
+	if an == "focus energy":
+		attacker.gym2_focus_energy_active = true
+		if is_opponent:
+			await main.show_message("OPPONENT'S " + attacker.metadata.get("name", "").to_upper() + " IS FOCUSING ITS ENERGY!")
+		else:
+			await main.show_message(attacker.metadata.get("name", "").to_upper() + " IS FOCUSING ITS ENERGY!")
+		await _attack_finish(false, 0, attack, types, is_opponent)
+		return true
+	if an == "double-edge" and attacker.gym2_focus_energy_active:
+		attacker.gym2_focus_energy_active = false
+		await execute_double_edge_boosted(attacker, defender, is_opponent)
+		await _attack_finish(true, 80, attack, types, is_opponent)
+		return true
+	if an == "ice throw":
+		await execute_ice_throw(attacker, defender, is_opponent, base)
+		await _attack_finish(true, base, attack, types, is_opponent)
+		return true
+	if an == "shadow attack":
+		await execute_bench_snipe_flip(attacker, defender, is_opponent, 0, 30)
+		await _attack_finish(false, 0, attack, types, is_opponent)
+		return true
+	if an == "overrun":
+		await execute_bench_snipe_flip(attacker, defender, is_opponent, base, 20)
+		await _attack_finish(true, base, attack, types, is_opponent)
+		return true
+	if an == "invigorate":
+		await execute_invigorate(attacker, is_opponent)
+		await _attack_finish(false, 0, attack, types, is_opponent)
+		return true
+	if an == "pendulum curse":
+		await execute_pendulum_curse(attacker, defender, is_opponent)
+		await _attack_finish(true, 20, attack, types, is_opponent)
+		return true
+	if an == "helping hand":
+		await execute_helping_hand(attacker, is_opponent)
+		await _attack_finish(false, 0, attack, types, is_opponent)
+		return true
+	if an == "life drain":
+		await execute_life_drain(attacker, defender, is_opponent)
+		await _attack_finish(false, 0, attack, types, is_opponent)
+		return true
+	if an == "magic darts":
+		await execute_magic_darts(attacker, is_opponent)
+		await _attack_finish(false, 0, attack, types, is_opponent)
+		return true
+	if an == "stoke":
+		await execute_stoke(attacker, is_opponent)
+		await _attack_finish(false, 0, attack, types, is_opponent)
+		return true
+	if an == "energy support":
+		await execute_search_typed_energy_to_hand(attacker, is_opponent, "Psychic")
+		await _attack_finish(false, 0, attack, types, is_opponent)
+		return true
+	if an == "pranks":
+		await execute_pranks(attacker, is_opponent)
+		await _attack_finish(false, 0, attack, types, is_opponent)
+		return true
+	if an == "group therapy":
+		await execute_group_therapy(attacker, is_opponent)
+		await _attack_finish(false, 0, attack, types, is_opponent)
+		return true
+	if an == "pulled punch":
+		await execute_pulled_punch(attacker, defender, is_opponent)
+		await _attack_finish(true, 40, attack, types, is_opponent)
+		return true
+	if an == "hind kick":
+		await execute_hind_kick(attacker, defender, is_opponent, base)
+		await _attack_finish(true, base, attack, types, is_opponent)
+		return true
+	if an == "call will-o'-the-wisp":
+		await execute_call_wisp(attacker, is_opponent)
+		await _attack_finish(false, 0, attack, types, is_opponent)
+		return true
+	if an == "fast-acting poison":
+		await execute_flip2_both_heads_status(attacker, defender, is_opponent, base, ["Confused", "Poisoned"])
+		await _attack_finish(true, base, attack, types, is_opponent)
+		return true
+	if an == "sludge grip":
+		await execute_sludge_grip(attacker, is_opponent)
+		await _attack_finish(false, 0, attack, types, is_opponent)
+		return true
+	if an == "group attack":
+		await execute_group_attack(attacker, defender, is_opponent)
+		await _attack_finish(true, 10, attack, types, is_opponent)
+		return true
+	if an == "bubbles":
+		await execute_bubbles(attacker, defender, is_opponent, base, attack_name)
+		await _attack_finish(true, base, attack, types, is_opponent)
+		return true
+	if an == "esp":
+		await execute_esp(attacker, defender, is_opponent)
+		await _attack_finish(false, 0, attack, types, is_opponent)
+		return true
+	if an == "star boomerang":
+		await execute_star_boomerang(attacker, defender, is_opponent, base)
+		await _attack_finish(true, base, attack, types, is_opponent)
+		return true
+	if an == "synchronize":
+		await execute_synchronize(attacker, defender, is_opponent, base)
+		await _attack_finish(true, base, attack, types, is_opponent)
+		return true
+	if an == "psyscan":
+		await execute_psyscan(attacker, is_opponent)
+		await _attack_finish(false, 0, attack, types, is_opponent)
+		return true
+	if an == "fade out":
+		await execute_fade_out(attacker, defender, is_opponent, base)
+		await _attack_finish(true, base, attack, types, is_opponent)
+		return true
+	if an == "random esp":
+		await execute_random_esp(attacker, defender, is_opponent)
+		await _attack_finish(false, 0, attack, types, is_opponent)
+		return true
+	if an == "fury punch":
+		await execute_fury_punch(attacker, defender, is_opponent)
+		await _attack_finish(true, 20, attack, types, is_opponent)
+		return true
+	if an == "ink spurt":
+		await execute_ink_spurt(attacker, defender, is_opponent, base)
+		await _attack_finish(true, base, attack, types, is_opponent)
+		return true
+	if an == "grasping vine":
+		await execute_draw_flip(attacker, is_opponent, 2)
+		await _attack_finish(false, 0, attack, types, is_opponent)
+		return true
+	if an == "lie low":
+		await execute_lie_low(attacker, is_opponent)
+		await _attack_finish(false, 0, attack, types, is_opponent)
+		return true
+	if an == "earthdrill":
+		if attacker.gym2_lie_low_counter < 1:
+			if not is_opponent:
+				await main.show_message("EARTHDRILL CAN'T BE USED — LIE LOW WASN'T USED LAST TURN!")
+			await _attack_finish(false, 0, attack, types, is_opponent)
+			return true
+		# Lie Low was active — fall through to the standard 60-damage path
+		return false
+
+	# ============================= GYM1 (GYM HEROES) — text-based dispatch ==============================
+
+	if "phoenix flame" in an:
+		await execute_phoenix_flame(attacker, defender, is_opponent, base)
+		await _attack_finish(true, base, attack, types, is_opponent)
+		return true
+	if "take away" in an:
+		await execute_take_away(attacker, defender, is_opponent)
+		await _attack_finish(false, 0, attack, types, is_opponent)
+		return true
+	if "lightning energy cards you discarded" in text_lower:
+		await execute_discharge(attacker, defender, is_opponent)
+		await _attack_finish(true, base, attack, types, is_opponent)
+		return true
+	if "from your discard pile and attach" in text_lower and "lightning energy" in text_lower:
+		var charge_count = 2 if "up to 2" in text_lower else 1
+		await execute_charge_recover(attacker, is_opponent, charge_count)
+		await _attack_finish(false, 0, attack, types, is_opponent)
+		return true
+	if "for double that amount" in text_lower:
+		await execute_crosscounter(attacker, is_opponent)
+		await _attack_finish(false, 0, attack, types, is_opponent)
+		return true
+	if "active pokémon for 10 damage" in text_lower:
+		await execute_fire_wall(attacker, defender, is_opponent, base)
+		await _attack_finish(true, base, attack, types, is_opponent)
+		return true
+	if "this effect lasts until" in text_lower:
+		await execute_shadow_images(attacker, is_opponent)
+		await _attack_finish(false, 0, attack, types, is_opponent)
+		return true
+	if "put a damage counter on each of your opponent" in text_lower:
+		await execute_pain_amplifier(attacker, is_opponent)
+		await _attack_finish(false, 0, attack, types, is_opponent)
+		return true
+	if "unless this attack knocks out" in text_lower:
+		await execute_call_of_the_night(attacker, defender, is_opponent, base)
+		await _attack_finish(true, base, attack, types, is_opponent)
+		return true
+	if "30 damage plus 60 more damage" in text_lower:
+		await execute_double_coin_bonus(attacker, defender, is_opponent, 30, 60)
+		await _attack_finish(true, 30, attack, types, is_opponent)
+		return true
+	if "choose up to 3 of them" in text_lower:
+		await execute_bench_choose_spread(attacker, defender, is_opponent, base, 3, 10, false)
+		await _attack_finish(true, base, attack, types, is_opponent)
+		return true
+	if "choose up to 2 of them" in text_lower:
+		await execute_bench_choose_spread(attacker, defender, is_opponent, 0, 2, 20, true)
+		await _attack_finish(false, 0, attack, types, is_opponent)
+		return true
+	if "that isn't water" in text_lower:
+		await execute_water_ring(attacker, defender, is_opponent, base)
+		await _attack_finish(true, base, attack, types, is_opponent)
+		return true
+	if "discard the top 5 cards" in text_lower:
+		await execute_lava_burst(attacker, defender, is_opponent)
+		await _attack_finish(true, 40, attack, types, is_opponent)
+		return true
+	if "benched pokémon and flip a coin" in text_lower:
+		await execute_lucky_shot(attacker, is_opponent, 30)
+		await _attack_finish(false, 0, attack, types, is_opponent)
+		return true
+	if "10 damage to each of your opponent's pokémon" in text_lower:
+		await execute_spiral_dive(attacker, is_opponent)
+		await _attack_finish(true, 10, attack, types, is_opponent)
+		return true
+	if "divide that damage in half" in text_lower:
+		await execute_deflector(attacker, is_opponent)
+		await _attack_finish(false, 0, attack, types, is_opponent)
+		return true
+	if "shuffle your hand into your deck" in text_lower:
+		await execute_psychic_exchange(attacker, is_opponent)
+		await _attack_finish(false, 0, attack, types, is_opponent)
+		return true
+	if "(your choice)" in text_lower:
+		await execute_magic_pollen(attacker, defender, is_opponent, base)
+		await _attack_finish(true, base, attack, types, is_opponent)
+		return true
+	if "30 damage plus 10 damage for each heads" in text_lower:
+		await execute_water_punch(attacker, defender, is_opponent, base)
+		await _attack_finish(true, base, attack, types, is_opponent)
+		return true
+	if "basic pokémon with misty in its name" in text_lower:
+		await execute_call_for_named_basic(attacker, is_opponent, "Misty")
+		await _attack_finish(false, 0, attack, types, is_opponent)
+		return true
+	if "basic pokémon card with brock in its name" in text_lower:
+		await execute_call_for_named_basic(attacker, is_opponent, "Brock")
+		await _attack_finish(false, 0, attack, types, is_opponent)
+		return true
+	if "total number of sabrina's gastlys" in text_lower:
+		await execute_night_spirits(attacker, defender, is_opponent, base)
+		await _attack_finish(true, base, attack, types, is_opponent)
+		return true
+	if "number of tails to" in text_lower:
+		await execute_full_speed_charge(attacker, defender, is_opponent)
+		await _attack_finish(true, base, attack, types, is_opponent)
+		return true
+	if "each grass pokémon on your opponent's bench" in text_lower:
+		await execute_typed_bench_damage(attacker, defender, is_opponent, base, "Grass")
+		await _attack_finish(true, base, attack, types, is_opponent)
+		return true
+	if "if 1 or both of them are heads" in text_lower:
+		await execute_flip2_any_heads_status(attacker, defender, is_opponent, base, "Confused")
+		await _attack_finish(true, base, attack, types, is_opponent)
+		return true
+	if "if 1 or both of them are tails, this attack does nothing" in text_lower:
+		await execute_drill_tackle(attacker, defender, is_opponent, base)
+		await _attack_finish(true, base, attack, types, is_opponent)
+		return true
+	if "number of energy attached to erika's exeggcute" in text_lower:
+		await execute_big_eggsplosion(attacker, defender, is_opponent, base)
+		await _attack_finish(true, base, attack, types, is_opponent)
+		return true
+	if "attach it to 1 of your benched pokémon" in text_lower:
+		await execute_electric_current(attacker, defender, is_opponent, base)
+		await _attack_finish(true, base, attack, types, is_opponent)
+		return true
+	if "can't use this attack during your next turn" in text_lower:
+		await execute_screaming_headbutt(attacker, defender, is_opponent, base, attack_name)
+		await _attack_finish(true, base, attack, types, is_opponent)
+		return true
+	if "return any number of your pokémon in play" in text_lower:
+		await execute_fairy_power(attacker, is_opponent)
+		await _attack_finish(false, 0, attack, types, is_opponent)
+		return true
+	if "search your deck for a basic energy card" in text_lower:
+		await execute_search_basic_energy_to_hand(attacker, is_opponent)
+		await _attack_finish(false, 0, attack, types, is_opponent)
+		return true
+	if "any number of pokémon named" in text_lower:
+		await execute_jellyfish_pod(attacker, is_opponent, ["Tentacool", "Tentacruel", "Misty's Tentacool", "Misty's Tentacruel"])
+		await _attack_finish(false, 0, attack, types, is_opponent)
+		return true
+	if "remove 1 damage counter from each of your pokémon" in text_lower:
+		await execute_team_heal_flip(attacker, is_opponent, 3)
+		await _attack_finish(false, 0, attack, types, is_opponent)
+		return true
+	if "fidget" in an:
+		await execute_fidget(attacker, is_opponent)
+		await _attack_finish(false, 0, attack, types, is_opponent)
+		return true
+	if "return a psychic energy card attached to" in text_lower:
+		await execute_energy_loop(attacker, defender, is_opponent, base)
+		await _attack_finish(true, base, attack, types, is_opponent)
+		return true
+	if "search your deck for that many basic energy" in text_lower:
+		await execute_sleight_of_hand(attacker, is_opponent)
+		await _attack_finish(false, 0, attack, types, is_opponent)
+		return true
+	if "choose 1 of them and flip a coin" in text_lower:
+		await execute_mud_splash(attacker, defender, is_opponent, base)
+		await _attack_finish(true, base, attack, types, is_opponent)
+		return true
+	if "isn't affected by weakness, resistance" in text_lower:
+		await execute_sonicboom(attacker, defender, is_opponent, base)
+		await _attack_finish(true, base, attack, types, is_opponent)
+		return true
+	# GYM1 Focus Energy (Lt. Surge's Rattata) — must come after GYM2 "focus energy" exact match above
+	if "focus energy" in an:
+		await execute_focus_energy(attacker, is_opponent)
+		await _attack_finish(false, 0, attack, types, is_opponent)
+		return true
+
+	# ============================= BASE SETS + GENERIC SPECIAL ATTACKS ==============================
+
+	if "swords dance" in an or ("during your next turn" in text_lower and "slash" in text_lower and "instead of" in text_lower):
+		await execute_swords_dance(attacker, is_opponent)
+		await _attack_finish(false, 0, attack, types, is_opponent)
+		return true
+	if "return the defending" in text_lower and "to your opponent" in text_lower and "hand" in text_lower:
+		await execute_hurricane(attacker, defender, is_opponent)
+		await _attack_finish(false, 0, attack, types, is_opponent)
+		return true
+	if "chain lightning" in an or ("same type as the defending" in text_lower and "damage to each benched" in text_lower):
+		await execute_chain_lightning(attacker, defender, is_opponent)
+		await _attack_finish(false, 0, attack, types, is_opponent)
+		return true
+	if "number of energy attached" in text_lower and "times the number of heads" in text_lower:
+		await execute_big_eggsplosion(attacker, defender, is_opponent)
+		await _attack_finish(false, 0, attack, types, is_opponent)
+		return true
+	if "boyfriends" in an or "for each nidoking" in text_lower:
+		await execute_boyfriends(attacker, defender, is_opponent)
+		await _attack_finish(false, 0, attack, types, is_opponent)
+		return true
+	if "mega drain" in an or ("remove" in text_lower and "equal to half the damage" in text_lower and "equal to half the damage done" not in text_lower):
+		await execute_mega_drain(attacker, defender, is_opponent, base)
+		await _attack_finish(true, base, attack, types, is_opponent)
+		return true
+	if "leech life" in an or ("remove" in text_lower and "equal to the damage done" in text_lower and "half" not in text_lower and "unless" not in text_lower):
+		var ll_base = parse_attack_base_damage(attack)
+		await execute_leech_life(attacker, defender, is_opponent, ll_base)
+		await _attack_finish(true, ll_base, attack, types, is_opponent)
+		return true
+	if "equal to half the damage done" in text_lower and "remove" in text_lower and "mega drain" not in an:
+		await execute_mega_drain(attacker, defender, is_opponent)
+		await _attack_finish(true, 40, attack, types, is_opponent)
+		return true
+	# BASE5: target-any attack (Stare, Flitter, Dig Under, Coin Hurl)
+	if "choose 1 of your opponent's pokémon" in text_lower and "damage to that pokémon" in text_lower:
+		var disable_power = "power stops working" in text_lower
+		if disable_power:
+			await execute_stare(attacker, defender, is_opponent)
+		else:
+			var snipe_base = parse_attack_base_damage(attack)
+			if snipe_base <= 0:
+				snipe_base = extract_number_before(text_lower, "damage to that")
+			var flip_req = "flip a coin" in text_lower and "if heads" in text_lower
+			await execute_snipe_no_wr(attacker, defender, is_opponent, snipe_base, flip_req)
+		var pae_extra = parse_card_text_effects(attack.get("text", ""), attacker.metadata.get("name", ""))
+		if pae_extra.size() > 0:
+			await apply_card_text_effects(pae_extra, attacker, defender, is_opponent, "")
+			if main._should_bail(): return true
+		await _attack_finish(true, base, attack, types, is_opponent)
+		return true
+	if "number of coins equal to the number of pokémon on" in text_lower and "tails" in text_lower:
+		await execute_bench_manipulation(attacker, defender, is_opponent)
+		await _attack_finish(true, 0, attack, types, is_opponent)
+		return true
+	if "flip a number of coins equal to the number of fire energy" in text_lower:
+		await execute_continuous_fireball(attacker, defender, is_opponent)
+		await _attack_finish(true, 0, attack, types, is_opponent)
+		return true
+	if "shuffles his or her active pokémon" in text_lower and "into his or her deck" in text_lower:
+		await execute_fling(attacker, defender, is_opponent)
+		await _attack_finish(false, 0, attack, types, is_opponent)
+		return true
+	if "choose 1 of them and attach that energy card to it" in text_lower:
+		await execute_magnetic_lines(attacker, defender, is_opponent)
+		await _attack_finish(true, 30, attack, types, is_opponent)
+		return true
+	if "30 damage times the number of heads" in text_lower and "2 or more heads" in text_lower:
+		await execute_petal_whirlwind(attacker, defender, is_opponent)
+		await _attack_finish(true, 0, attack, types, is_opponent)
+		return true
+	if "total number of koffing" in text_lower:
+		await execute_mass_explosion(attacker, defender, is_opponent)
+		await _attack_finish(true, 0, attack, types, is_opponent)
+		return true
+	if "take all energy cards attached" in text_lower and "benched pokémon" in text_lower and "any way you choose" in text_lower:
+		await execute_energy_bomb(attacker, defender, is_opponent)
+		await _attack_finish(true, 30, attack, types, is_opponent)
+		return true
+	if "discard 1 energy card attached" in text_lower and "draw up to" in text_lower:
+		await execute_third_eye(attacker, is_opponent)
+		await _attack_finish(false, 0, attack, types, is_opponent)
+		return true
+	if "before doing damage, choose 1 of your opponent" in text_lower and "switch it with the defending" in text_lower:
+		await execute_drag_off(attacker, defender, is_opponent)
+		await _attack_finish(true, 0, attack, types, is_opponent)
+		return true
+	if "you may discard 1 fire energy" in text_lower and "10 damage to it" in text_lower:
+		await execute_flame_pillar(attacker, defender, is_opponent)
+		await _attack_finish(true, 30, attack, types, is_opponent)
+		return true
+	if "attacks the defending pokémon for an equal amount of damage" in text_lower:
+		await execute_mirror_shell(attacker, is_opponent)
+		await _attack_finish(false, 0, attack, types, is_opponent)
+		return true
+	if "evolution card named gyarados or dark gyarados" in text_lower:
+		await execute_rapid_evolution(attacker, is_opponent)
+		await _attack_finish(false, 0, attack, types, is_opponent)
+		return true
+	if "shuffle" in text_lower and "into your deck" in text_lower and "discard all cards attached" in text_lower:
+		await execute_vanish(attacker, is_opponent)
+		await _attack_finish(false, 0, attack, types, is_opponent)
+		return true
+	if "magnemite" in text_lower and "magneton" in text_lower and "on your bench" in text_lower:
+		await execute_magnetism(attacker, defender, is_opponent)
+		await _attack_finish(true, 10, attack, types, is_opponent)
+		return true
+	if "shuffle your opponent" in text_lower and "deck" in text_lower:
+		await execute_mischief(attacker, is_opponent)
+		await _attack_finish(false, 0, attack, types, is_opponent)
+		return true
+	if "second coin" in text_lower and "benched pokémon" in text_lower:
+		await execute_surprise_thunder(attacker, defender, is_opponent)
+		await _attack_finish(true, 30, attack, types, is_opponent)
+		return true
+	if "search your deck for a psychic energy" in text_lower and "attach it" in text_lower:
+		await execute_afternoon_nap(attacker, is_opponent)
+		await _attack_finish(false, 0, attack, types, is_opponent)
+		return true
+	if "fascinate" in an or ("choose 1 of your opponent's benched" in text_lower and "switch it with the defending" in text_lower and "this attack does" not in text_lower):
+		await execute_fascinate(attacker, defender, is_opponent)
+		await _attack_finish(false, 0, attack, types, is_opponent)
+		return true
+	if "don't apply weakness and resistance for this attack" in text_lower:
+		await execute_sonicboom(attacker, defender, is_opponent, base)
+		await _attack_finish(true, base, attack, types, is_opponent)
+		return true
+	if "discard any number of fire energy" in text_lower and "discard that many cards" in text_lower:
+		await execute_wildfire(attacker, is_opponent)
+		await _attack_finish(false, 0, attack, types, is_opponent)
+		return true
+	if "choose 3 of your opponent's benched" in text_lower and "10 damage to each of them" in text_lower:
+		await execute_gigashock(attacker, defender, is_opponent)
+		await _attack_finish(true, 30, attack, types, is_opponent)
+		return true
+	if "for each of your opponent's benched" in text_lower and "flip a coin" in text_lower and "damage times the number of tails" in text_lower:
+		await execute_thunderstorm(attacker, defender, is_opponent)
+		await _attack_finish(true, 40, attack, types, is_opponent)
+		return true
+	if "look at up to 3 cards" in text_lower and "rearrange" in text_lower:
+		await execute_prophecy(attacker, is_opponent)
+		await _attack_finish(false, 0, attack, types, is_opponent)
+		return true
+	if "energy cards from your discard pile into your hand" in text_lower and "damage to itself" in text_lower:
+		await execute_energy_conversion(attacker, is_opponent)
+		await _attack_finish(false, 0, attack, types, is_opponent)
+		return true
+	if "remove a damage counter from" in text_lower and "can't be used if" in text_lower and "no damage counters" in text_lower:
+		await execute_spacing_out(attacker, is_opponent)
+		await _attack_finish(false, 0, attack, types, is_opponent)
+		return true
+	if "discard 1 psychic energy" in text_lower and "trainer card from your discard pile" in text_lower:
+		await execute_scavenge(attacker, is_opponent)
+		await _attack_finish(false, 0, attack, types, is_opponent)
+		return true
+	if "search your deck for" in text_lower and ("put it onto your bench" in text_lower or "put it on your bench" in text_lower):
+		var call_names: Array = []
+		var call_type: String = ""
+		var search_text = attack.get("text", "")
+		if "named Bellsprout" in search_text:
+			call_names = ["Bellsprout"]
+		elif "named Oddish" in search_text:
+			call_names = ["Oddish"]
+		elif "named Krabby" in search_text:
+			call_names = ["Krabby"]
+		elif "Nidoran" in search_text:
+			call_names = ["Nidoran ♀", "Nidoran ♂"]
+		elif "Fighting Basic" in search_text:
+			call_type = "Fighting"
+		else:
+			var atk_types = attacker.metadata.get("types", [])
+			if atk_types.size() > 0:
+				call_type = atk_types[0]
+		await execute_call_for_pokemon(attacker, is_opponent, call_names, call_type)
+		await _attack_finish(false, 0, attack, types, is_opponent)
+		return true
+	if "choose 1 of the defending" in text_lower and "copies that attack" in text_lower:
+		await execute_metronome(attacker, defender, is_opponent)
+		await _attack_finish(false, 0, attack, types, is_opponent)
+		return true
+	if "mirror move" in an or ("was attacked last turn" in text_lower and "final result" in text_lower):
+		await execute_mirror_move(attacker, defender, is_opponent)
+		await _attack_finish(false, 0, attack, types, is_opponent)
+		return true
+	if "choose 1 of the defending" in text_lower and "can't use that attack" in text_lower:
+		await execute_amnesia(attacker, defender, is_opponent)
+		await _attack_finish(false, 0, attack, types, is_opponent)
+		return true
+	if "conversion 1" in an or ("change it to a type" in text_lower and "weakness" in text_lower):
+		await execute_conversion(attacker, defender, is_opponent, true)
+		await _attack_finish(false, 0, attack, types, is_opponent)
+		return true
+	if "conversion 2" in an or ("resistance to a type" in text_lower and "change" in text_lower):
+		await execute_conversion(attacker, defender, is_opponent, false)
+		await _attack_finish(false, 0, attack, types, is_opponent)
+		return true
+
+	return false
+
+
+# Post-attack cleanup shared by both player and CPU. Handles:
+#   - Recording last_attack / attacked_this_turn (when is_damage is true)
+#   - check_all_knockouts
+#   - display_active_pokemon_energies
+#   - Player: hide_attack_buttons + end-of-turn delay + player_end_turn_checks
+func _attack_finish(is_damage: bool, base_dmg: int, attack: Dictionary, types: Array, is_opponent: bool) -> void:
+	if is_damage:
+		if is_opponent:
+			main.last_attack_on_player = {"damage": base_dmg, "attack": attack, "attacker_types": types}
+			main.opponent_attacked_this_turn = true
+		else:
+			main.last_attack_on_opponent = {"damage": base_dmg, "attack": attack, "attacker_types": types}
+			main.player_attacked_this_turn = true
+	await main.check_all_knockouts()
+	if main._should_bail(): return
+	main.display_active_pokemon_energies(is_opponent)
+	if not is_opponent:
+		await main.get_tree().create_timer(0.5).timeout
+		main.player_end_turn_checks()
+
+
 func get_flip_context(text: String, effect_pos: int) -> String:
 	var before = text.substr(0, effect_pos)
 	var heads_pos = before.rfind("if heads")
@@ -1395,16 +2065,11 @@ func apply_retreat_lock(defender: card_object, is_opponent_attacking: bool) -> v
 # Draws cards for the attacker
 func apply_draw_effect(effect: Dictionary, is_opponent_attacking: bool) -> void:
 	var count = effect.get("count", 1)
-	for i in range(count):
-		await main.draw_card_from_deck(is_opponent_attacking)
-		if main._should_bail(): return
+	await main.card_ops.draw_n(is_opponent_attacking, count)
+	if main._should_bail(): return
 	var who = "CPU" if is_opponent_attacking else "Player"
 	await main.show_message(who.to_upper() + " DREW " + str(count) + " CARD(S)!")
 	if main._should_bail(): return
-	if is_opponent_attacking:
-		main.refresh_hand_display(true)
-	else:
-		main.refresh_hand_display(false)
 	print("EFFECT APPLIED: ", who, " drew ", count, " card(s)")
 
 # Heals damage from the attacker
@@ -1806,8 +2471,7 @@ func execute_chain_lightning(attacker: card_object, defender: card_object, is_op
 		for pokemon in bench_info["bench"]:
 			var pokemon_types = pokemon.metadata.get("types", [])
 			if target_type in pokemon_types:
-				pokemon.current_hp = max(0, pokemon.current_hp - 10)
-				print("CHAIN LIGHTNING: ", pokemon.metadata.get("name", ""), " took 10 damage")
+				main.card_ops.apply_bench_damage(pokemon, 10, bench_info["is_opponent"])
 	await main.show_message("CHAIN LIGHTNING HIT ALL " + target_type.to_upper() + " BENCHED POKEMON!")
 	if main._should_bail(): return
 	await main.check_all_knockouts()
@@ -2184,8 +2848,7 @@ func execute_gigashock(attacker: card_object, defender: card_object, is_opponent
 	if target_bench.size() <= 3:
 		# Hit all bench pokemon
 		for bp in target_bench:
-			bp.current_hp = max(0, bp.current_hp - 10)
-			print("GIGASHOCK: ", bp.metadata.get("name", ""), " took 10 bench damage")
+			main.card_ops.apply_bench_damage(bp, 10, is_target_opponent)
 		await main.show_message("GIGASHOCK HIT ALL BENCHED POKEMON FOR 10 DAMAGE!")
 		if main._should_bail(): return
 	else:
@@ -2218,16 +2881,14 @@ func execute_gigashock(attacker: card_object, defender: card_object, is_opponent
 				if chosen != null:
 					targets_chosen.append(chosen)
 			for bp in targets_chosen:
-				bp.current_hp = max(0, bp.current_hp - 10)
-				print("GIGASHOCK: ", bp.metadata.get("name", ""), " took 10 bench damage")
+				main.card_ops.apply_bench_damage(bp, 10, is_target_opponent)
 			await main.show_message("GIGASHOCK HIT " + str(targets_chosen.size()) + " BENCHED POKEMON!")
 			if main._should_bail(): return
 		else:
 			# CPU picks 3 weakest from player bench
 			var targets = main.cpu_ai.cpu_choose_bench_damage_targets(3, 10)
 			for bp in targets:
-				bp.current_hp = max(0, bp.current_hp - 10)
-				print("GIGASHOCK: ", bp.metadata.get("name", ""), " took 10 bench damage")
+				main.card_ops.apply_bench_damage(bp, 10, is_target_opponent)
 			await main.show_message("GIGASHOCK HIT " + str(targets.size()) + " BENCHED POKEMON!")
 			if main._should_bail(): return
 	
@@ -3163,11 +3824,8 @@ func execute_third_eye(attacker: card_object, is_opponent: bool) -> void:
 	
 	# Draw up to 3 cards
 	var draw_count = min(3, (main.opponent_deck if is_opponent else main.player_deck).size())
-	for i in range(draw_count):
-		await main.draw_card_from_deck(is_opponent)
-		if main._should_bail(): return
-	main.refresh_hand_display(is_opponent)
-	
+	await main.card_ops.draw_n(is_opponent, draw_count)
+	if main._should_bail(): return
 	await main.show_message("DREW " + str(draw_count) + " CARD(S)!")
 	if main._should_bail(): return
 	print("ATTACK EXECUTED: Third Eye - drew ", draw_count, " cards")

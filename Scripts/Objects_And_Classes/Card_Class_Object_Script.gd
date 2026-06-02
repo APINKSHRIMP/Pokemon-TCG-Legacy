@@ -111,6 +111,33 @@ var shapeshift_form_metadata: Dictionary = {}   # gym2-3 Brock's Ninetales Shape
 var shapeshift_form_uid: String = ""            # uid of the attached form card (for textures + discard reference)
 var shapeshift_form_card: card_object = null    # the actual Evolution card object attached (to discard back to pile)
 
+# Returns true if this pokemon has an ability with the given name
+func has_ability(ability_name: String) -> bool:
+	for ab in metadata.get("abilities", []):
+		if ab.get("name", "") == ability_name:
+			return true
+	return false
+
+# Returns the first ability Dictionary matching the given name, or {} if not found
+func get_ability(ability_name: String) -> Dictionary:
+	for ab in metadata.get("abilities", []):
+		if ab.get("name", "") == ability_name:
+			return ab
+	return {}
+
+# Returns true if this card is owned by the opponent side
+func is_owner_opp(main_ref: Node) -> bool:
+	return (self == main_ref.opponent_active_pokemon
+		or self in main_ref.opponent_bench
+		or self in main_ref.opponent_hand
+		or self in main_ref.opponent_deck
+		or self in main_ref.opponent_discard_pile
+		or self in main_ref.opponent_prize_cards)
+
+# Returns true if a special condition (Asleep/Confused/Paralyzed) is blocking this pokemon's powers or attacks
+func is_status_blocked() -> bool:
+	return special_condition in ["Paralyzed", "Asleep", "Confused"]
+
 # Utility: get damage counters (each counter = 10 damage)
 func get_damage_counters() -> int:
 	var max_hp = get_max_hp()
