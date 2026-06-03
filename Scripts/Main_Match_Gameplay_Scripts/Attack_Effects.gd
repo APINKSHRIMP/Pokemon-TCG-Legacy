@@ -24,7 +24,21 @@ func _ensure_dispatch_ready() -> void:
 	_register_gym2_attacks()
 	_register_gym1_attacks()
 	_register_base_attacks()
+	_register_si1_attacks()
 	# When adding Neo1/Neo2/etc., append: _register_neo1_attacks()
+
+func _register_si1_attacks() -> void:
+	_attack_dispatch["rainbow wave"]    = func(atk, a, d, opp): await execute_rainbow_wave(a, opp);            await _attack_finish(false, 0,   atk, a.metadata.get("types",["Colorless"]), opp)
+	_attack_dispatch["strange scent"]  = func(atk, a, d, opp): await execute_strange_scent(a, opp);           await _attack_finish(false, 0,   atk, a.metadata.get("types",["Colorless"]), opp)
+	_attack_dispatch["tentacle grip"]  = func(atk, a, d, opp): await execute_tentacle_grip(a, opp);           await _attack_finish(false, 0,   atk, a.metadata.get("types",["Colorless"]), opp)
+	_attack_dispatch["squirt"]         = func(atk, a, d, opp): await execute_squirt(a, opp);                   await _attack_finish(false, 0,   atk, a.metadata.get("types",["Colorless"]), opp)
+	_attack_dispatch["gentle song"]    = func(atk, a, d, opp): await execute_gentle_song(a, d, opp);          await _attack_finish(false, 0,   atk, a.metadata.get("types",["Colorless"]), opp)
+	_attack_dispatch["sharpshooter"]   = func(atk, a, d, opp): await execute_sharpshooter(a, opp);            await _attack_finish(false, 0,   atk, a.metadata.get("types",["Colorless"]), opp)
+	_attack_dispatch["revelation"]     = func(atk, a, d, opp): await execute_revelation(a, opp);              await _attack_finish(false, 0,   atk, a.metadata.get("types",["Colorless"]), opp)
+	_attack_dispatch["lick wounds"]    = func(atk, a, d, opp): await execute_lick_wounds(a, opp);             await _attack_finish(false, 0,   atk, a.metadata.get("types",["Colorless"]), opp)
+	_attack_dispatch["tongue stretch"] = func(atk, a, d, opp): await execute_tongue_stretch(a, opp);          await _attack_finish(false, 0,   atk, a.metadata.get("types",["Colorless"]), opp)
+	_attack_dispatch["paradise pollen"]= func(atk, a, d, opp): await execute_paradise_pollen(a, opp);         await _attack_finish(false, 0,   atk, a.metadata.get("types",["Colorless"]), opp)
+	_attack_dispatch["rampage"]        = func(atk, a, d, opp): var b=parse_attack_base_damage(atk); await execute_rampage(a, d, opp, b); await _attack_finish(true, b, atk, a.metadata.get("types",["Colorless"]), opp)
 
 func _register_gym2_attacks() -> void:
 	_attack_dispatch["roaring flames"]     = func(atk, a, d, opp): await execute_roaring_flames(a, d, opp);     await _attack_finish(true,  20,  atk, a.metadata.get("types", ["Colorless"]), opp)
@@ -215,6 +229,8 @@ func _register_base_attacks() -> void:
 		else:                   await execute_call_for_pokemon(a, opp, [], "Fighting")
 		await _attack_finish(false, 0, atk, a.metadata.get("types",["Colorless"]), opp)
 
+	# Earthdrill: pre-registry special case handles the lock; damage is generic path. Entry here only for audit visibility.
+	_attack_dispatch["earthdrill"] = func(_atk, _a, _d, _opp): pass  # always intercepted above; never reached
 	# ── Newly-implemented effects (base1–base5, gym1, gym2) ────────────────────
 	# Super Fang: half HP damage (Raticate, Lt. Surge's Raticate)
 	_attack_dispatch["super fang"]   = func(atk, a, d, opp): await execute_super_fang(a, d, opp);          await _attack_finish(true,  0,   atk, a.metadata.get("types",["Colorless"]), opp)
@@ -276,13 +292,15 @@ func dispatch_attack(attack: Dictionary, attacker: card_object, defender: card_o
 		return true
 
 	# Earthdrill: only valid after Lie Low; otherwise cancel and return true (attack fails)
+	# When Lie Low IS active, return false → falls through to generic 60-damage path (no text effects needed)
 	if an == "earthdrill":
 		if attacker.gym2_lie_low_counter < 1:
 			if not is_opponent:
 				await main.show_message("EARTHDRILL CAN'T BE USED — LIE LOW WASN'T USED LAST TURN!")
 			await _attack_finish(false, 0, attack, types, is_opponent)
 			return true
-		# Lie Low was active — fall through to the standard 60-damage path
+		attacker.gym2_lie_low_counter = 0
+		# Lie Low was active — fall through to the generic 60-damage path
 		return false
 
 	# ============================= Registry dispatch (GYM2 + future sets) ================================
@@ -6574,3 +6592,494 @@ func execute_lie_low(attacker: card_object, is_opponent: bool) -> void:
 	main.update_status_icons(attacker, is_opponent)
 	await main.show_message(attacker.metadata.get("name", "").to_upper() + " LIES LOW — DAMAGE REDUCED BY 20 NEXT TURN!")
 	if main._should_bail(): return
+
+######################################################################################################################################################
+############################################################## SI1 (SOUTHERN ISLANDS) EFFECTS ########################################################
+######################################################################################################################################################
+
+# MEW — Rainbow Wave: Choose a type of Energy attached to Mew → 20 damage to every opponent
+# Pokémon of that type (active + bench), ignoring Weakness and Resistance.
+func execute_rainbow_wave(attacker: card_object, is_opponent: bool) -> void:
+	if await handle_attack_confusion(attacker, is_opponent): return
+	if await handle_attack_blind(attacker, is_opponent): return
+	if attacker.attached_energies.is_empty():
+		await main.show_message("NO ENERGY ATTACHED TO MEW!")
+		if main._should_bail(): return
+		return
+
+	# Build list of unique energy types currently on Mew
+	var available_types: Array = []
+	for e in attacker.attached_energies:
+		for t in main.get_energy_provided_by_card(e):
+			if t != "Colorless" and t not in available_types:
+				available_types.append(t)
+	if available_types.is_empty():
+		await main.show_message("MEW HAS NO TYPED ENERGY!")
+		if main._should_bail(): return
+		return
+
+	var chosen_type: String = ""
+	if is_opponent:
+		# CPU picks the type that hits the most opposing Pokémon
+		var player_all: Array = []
+		if main.player_active_pokemon != null:
+			player_all.append(main.player_active_pokemon)
+		player_all.append_array(main.player_bench)
+		var best_count = -1
+		for t in available_types:
+			var count = player_all.filter(func(p): return t in p.metadata.get("types", [])).size()
+			if count > best_count:
+				best_count = count
+				chosen_type = t
+		if chosen_type == "":
+			chosen_type = available_types[0]
+		await main.show_message("MEW USES RAINBOW WAVE — " + chosen_type.to_upper() + " TYPE!")
+		if main._should_bail(): return
+	else:
+		# Player picks from available energy types via a simple text-list prompt
+		# Convert to "cards" for the selection UI — reuse energy cards as stand-ins
+		var type_cards: Array = []
+		for e in attacker.attached_energies:
+			for t in main.get_energy_provided_by_card(e):
+				if t != "Colorless" and not type_cards.any(func(c): return t in main.get_energy_provided_by_card(c)):
+					type_cards.append(e)
+					break
+		if type_cards.size() == 1:
+			chosen_type = available_types[0]
+			await main.show_message("RAINBOW WAVE — " + chosen_type.to_upper() + " TYPE!")
+			if main._should_bail(): return
+		else:
+			var picked = await main.card_ops.prompt_select_card(type_cards, "RAINBOW WAVE", "Choose an Energy type for Rainbow Wave", "SELECT", false)
+			if main._should_bail(): return
+			if picked == null:
+				return
+			var types_on_picked = main.get_energy_provided_by_card(picked)
+			chosen_type = types_on_picked.filter(func(t): return t != "Colorless")[0] if types_on_picked.any(func(t): return t != "Colorless") else types_on_picked[0]
+
+	# Deal 20 damage to every opponent Pokémon of the chosen type, no W/R
+	var target_side_opp = not is_opponent
+	var targets: Array = []
+	if main.opponent_active_pokemon != null if target_side_opp else main.player_active_pokemon != null:
+		var active = main.opponent_active_pokemon if target_side_opp else main.player_active_pokemon
+		if active != null and chosen_type in active.metadata.get("types", []):
+			targets.append({"p": active, "is_opp": target_side_opp})
+	var bench = main.opponent_bench if target_side_opp else main.player_bench
+	for bp in bench:
+		if chosen_type in bp.metadata.get("types", []):
+			targets.append({"p": bp, "is_opp": target_side_opp})
+
+	if targets.is_empty():
+		await main.show_message("RAINBOW WAVE — NO " + chosen_type.to_upper() + " POKÉMON TO HIT!")
+		if main._should_bail(): return
+		return
+
+	for entry in targets:
+		var p = entry["p"]
+		main.card_ops.apply_bench_damage(p, 20, entry["is_opp"])
+	SoundManagerScript.play_sfx(SoundManagerScript.SFX_damage_sound)
+	await main.check_all_knockouts()
+	if main._should_bail(): return
+	await main.show_message("RAINBOW WAVE HITS " + str(targets.size()) + " " + chosen_type.to_upper() + " POKÉMON FOR 20 EACH!")
+	if main._should_bail(): return
+
+# IVYSAUR — Strange Scent: Each player flips a coin. Each player who gets heads removes
+# 3 damage counters from their own Pokémon (or all if fewer than 3 total).
+func execute_strange_scent(attacker: card_object, is_opponent: bool) -> void:
+	if await handle_attack_confusion(attacker, is_opponent): return
+	if await handle_attack_blind(attacker, is_opponent): return
+
+	await main.show_message("STRANGE SCENT! BOTH PLAYERS FLIP A COIN...")
+	if main._should_bail(): return
+
+	# Attacker's side flips
+	var attacker_coin = await main.flip_coin(false, is_opponent)
+	if main._should_bail(): return
+	if attacker_coin:
+		await _strange_scent_heal_side(is_opponent, 3)
+		if main._should_bail(): return
+
+	# Defender's side flips
+	var defender_coin = await main.flip_coin(false, not is_opponent)
+	if main._should_bail(): return
+	if defender_coin:
+		await _strange_scent_heal_side(not is_opponent, 3)
+		if main._should_bail(): return
+
+	if not attacker_coin and not defender_coin:
+		await main.show_message("BOTH TAILS — NO HEALING!")
+		if main._should_bail(): return
+
+func _strange_scent_heal_side(is_opp: bool, counters_to_remove: int) -> void:
+	var all_p: Array = []
+	var active = main.opponent_active_pokemon if is_opp else main.player_active_pokemon
+	if active != null: all_p.append(active)
+	all_p.append_array(main.opponent_bench if is_opp else main.player_bench)
+
+	var damaged = all_p.filter(func(p): return p.current_hp < p.get_max_hp())
+	if damaged.is_empty():
+		await main.show_message(("OPPONENT" if is_opp else "YOU") + " HEADS! NO DAMAGE TO REMOVE.")
+		if main._should_bail(): return
+		return
+
+	var remaining = counters_to_remove
+	if is_opp:
+		# CPU removes counters from most damaged first
+		damaged.sort_custom(func(a, b): return a.current_hp < b.current_hp)
+		for p in damaged:
+			if remaining <= 0: break
+			var removable = min(remaining, p.get_damage_counters())
+			if removable > 0:
+				await main.card_ops.heal_pokemon(p, removable * 10, true)
+				if main._should_bail(): return
+				remaining -= removable
+	else:
+		# Player distributes 3 counters across their damaged Pokémon — simplified: auto-remove from most damaged
+		damaged.sort_custom(func(a, b): return a.current_hp < b.current_hp)
+		for p in damaged:
+			if remaining <= 0: break
+			var removable = min(remaining, p.get_damage_counters())
+			if removable > 0:
+				await main.card_ops.heal_pokemon(p, removable * 10, false)
+				if main._should_bail(): return
+				remaining -= removable
+	SoundManagerScript.play_sfx(SoundManagerScript.SFX_heal_sound)
+	await main.show_message(("OPPONENT" if is_opp else "YOU") + " REMOVED " + str((counters_to_remove - remaining)) + " DAMAGE COUNTER(S)!")
+	if main._should_bail(): return
+
+# TENTACRUEL — Tentacle Grip: Flip N coins (N = Water Energy on Tentacruel). Each heads = draw 2 cards.
+func execute_tentacle_grip(attacker: card_object, is_opponent: bool) -> void:
+	if await handle_attack_confusion(attacker, is_opponent): return
+	if await handle_attack_blind(attacker, is_opponent): return
+
+	var water_count = 0
+	for e in attacker.attached_energies:
+		if "Water" in main.get_energy_provided_by_card(e):
+			water_count += 1
+	if water_count == 0:
+		await main.show_message("NO WATER ENERGY ATTACHED — NOTHING HAPPENS!")
+		if main._should_bail(): return
+		return
+
+	await main.show_message("TENTACLE GRIP! FLIPPING " + str(water_count) + " COIN(S)...")
+	if main._should_bail(): return
+
+	var heads_total = 0
+	for i in range(water_count):
+		var coin = await main.flip_coin(water_count > 1, is_opponent)
+		if main._should_bail(): return
+		if coin:
+			heads_total += 1
+
+	if heads_total == 0:
+		await main.show_message("ALL TAILS — NO CARDS DRAWN!")
+		if main._should_bail(): return
+		return
+
+	var to_draw = heads_total * 2
+	await main.card_ops.draw_n(is_opponent, to_draw)
+	if main._should_bail(): return
+	await main.show_message(str(heads_total) + " HEADS! DREW " + str(to_draw) + " CARDS!")
+	if main._should_bail(): return
+
+# MARILL — Squirt: Choose any opponent Pokémon (active or bench). 10 damage, no W/R.
+func execute_squirt(attacker: card_object, is_opponent: bool) -> void:
+	if await handle_attack_confusion(attacker, is_opponent): return
+	if await handle_attack_blind(attacker, is_opponent): return
+
+	var target_is_opp = not is_opponent
+	var all_targets: Array = []
+	var active = main.opponent_active_pokemon if target_is_opp else main.player_active_pokemon
+	if active != null: all_targets.append(active)
+	all_targets.append_array(main.opponent_bench if target_is_opp else main.player_bench)
+
+	if all_targets.is_empty():
+		return
+
+	var target: card_object = null
+	if is_opponent:
+		target = main.player_active_pokemon
+	else:
+		target = await main.card_ops.prompt_select_card(all_targets, "SQUIRT — CHOOSE TARGET", "Select an opponent Pokémon to hit for 10 (no W/R)", "SQUIRT", false)
+		if main._should_bail(): return
+	if target == null: return
+
+	var target_is_active = (target == (main.opponent_active_pokemon if target_is_opp else main.player_active_pokemon))
+	if target_is_active:
+		# Active: apply directly, no W/R
+		var label_pos = Vector2(530, 300) if is_opponent else Vector2(1030, 300)
+		main.show_floating_label("-10HP", label_pos, Color.WHITE, true)
+		target.current_hp = max(0, target.current_hp - 10)
+		main.display_hp_circles_above_align(target, target_is_opp)
+		SoundManagerScript.play_sfx(SoundManagerScript.SFX_damage_sound)
+		await main.powers_and_bodies.dispatch_on_damage(target, attacker, 10, target_is_opp)
+		if main._should_bail(): return
+	else:
+		main.card_ops.apply_bench_damage(target, 10, target_is_opp)
+		SoundManagerScript.play_sfx(SoundManagerScript.SFX_damage_sound)
+
+	await main.check_all_knockouts()
+	if main._should_bail(): return
+	await main.show_message("SQUIRT! 10 DAMAGE TO " + target.metadata.get("name", "").to_upper() + "! (NO W/R)")
+	if main._should_bail(): return
+
+# LAPRAS — Gentle Song: Heal self 20 HP, heal defender 20 HP, then defender is Asleep.
+func execute_gentle_song(attacker: card_object, defender: card_object, is_opponent: bool) -> void:
+	if await handle_attack_confusion(attacker, is_opponent): return
+	if await handle_attack_blind(attacker, is_opponent): return
+	await main.card_ops.heal_pokemon(attacker, 20, is_opponent)
+	if main._should_bail(): return
+	if defender != null:
+		await main.card_ops.heal_pokemon(defender, 20, not is_opponent)
+		if main._should_bail(): return
+		main.card_ops.apply_status(defender, "Asleep", not is_opponent)
+	await main.show_message("GENTLE SONG: BOTH POKÉMON SOOTHED. OPPONENT IS NOW ASLEEP!")
+	if main._should_bail(): return
+
+# EXEGGUTOR — Sharpshooter: Choose target. Flip N coins (N = Grass Energy on Exeggutor).
+# 10 damage per heads to chosen target, no W/R.
+func execute_sharpshooter(attacker: card_object, is_opponent: bool) -> void:
+	if await handle_attack_confusion(attacker, is_opponent): return
+	if await handle_attack_blind(attacker, is_opponent): return
+
+	var grass_count = 0
+	for e in attacker.attached_energies:
+		if "Grass" in main.get_energy_provided_by_card(e):
+			grass_count += 1
+	if grass_count == 0:
+		await main.show_message("NO GRASS ENERGY — NOTHING HAPPENS!")
+		if main._should_bail(): return
+		return
+
+	# Pick target from all opponent Pokémon
+	var target_is_opp = not is_opponent
+	var all_targets: Array = []
+	var active = main.opponent_active_pokemon if target_is_opp else main.player_active_pokemon
+	if active != null: all_targets.append(active)
+	all_targets.append_array(main.opponent_bench if target_is_opp else main.player_bench)
+	if all_targets.is_empty(): return
+
+	var target: card_object = null
+	if is_opponent:
+		target = all_targets[0]
+		for p in all_targets:
+			if p.current_hp > (target.current_hp if target != null else 0):
+				target = p
+	else:
+		target = await main.card_ops.prompt_select_card(all_targets, "SHARPSHOOTER — CHOOSE TARGET", "Flip " + str(grass_count) + " coin(s) for 10 damage per heads", "SELECT", false)
+		if main._should_bail(): return
+	if target == null: return
+
+	await main.show_message("SHARPSHOOTER! FLIPPING " + str(grass_count) + " COIN(S)...")
+	if main._should_bail(): return
+
+	var heads = 0
+	for i in range(grass_count):
+		if await main.flip_coin(grass_count > 1, is_opponent):
+			heads += 1
+		if main._should_bail(): return
+
+	var damage = heads * 10
+	if damage == 0:
+		await main.show_message("ALL TAILS — NO DAMAGE!")
+		if main._should_bail(): return
+		return
+
+	var target_is_active = (target == (main.opponent_active_pokemon if target_is_opp else main.player_active_pokemon))
+	if target_is_active:
+		var label_pos = Vector2(530, 300) if is_opponent else Vector2(1030, 300)
+		main.show_floating_label("-" + str(damage) + "HP", label_pos, Color.WHITE, true)
+		target.current_hp = max(0, target.current_hp - damage)
+		main.display_hp_circles_above_align(target, target_is_opp)
+		SoundManagerScript.play_sfx(SoundManagerScript.SFX_damage_sound)
+		await main.powers_and_bodies.dispatch_on_damage(target, attacker, damage, target_is_opp)
+		if main._should_bail(): return
+	else:
+		main.card_ops.apply_bench_damage(target, damage, target_is_opp)
+		SoundManagerScript.play_sfx(SoundManagerScript.SFX_damage_sound)
+
+	await main.check_all_knockouts()
+	if main._should_bail(): return
+	await main.show_message(str(heads) + " HEADS! " + str(damage) + " DAMAGE TO " + target.metadata.get("name", "").to_upper() + "! (NO W/R)")
+	if main._should_bail(): return
+
+# SLOWKING — Revelation: Flip coin. Heads = search deck for a Trainer card, add to hand.
+func execute_revelation(attacker: card_object, is_opponent: bool) -> void:
+	if await handle_attack_confusion(attacker, is_opponent): return
+	if await handle_attack_blind(attacker, is_opponent): return
+
+	var coin = await main.flip_coin(false, is_opponent)
+	if main._should_bail(): return
+	if not coin:
+		await main.show_message("TAILS! REVELATION FAILED!")
+		if main._should_bail(): return
+		return
+
+	var filter = func(c): return main.trainer_effects.is_trainer_card(c) and not main.trainer_effects.is_attached_trainer(c) and not main.trainer_effects.is_bench_token_trainer(c)
+	var found = await main.card_ops.search_deck_to_hand(is_opponent, filter, "REVELATION — SEARCH FOR A TRAINER", 1)
+	if main._should_bail(): return
+	if found.is_empty():
+		await main.show_message("HEADS! NO TRAINER CARDS IN DECK!")
+	else:
+		await main.show_message("HEADS! FOUND " + found[0].metadata.get("name", "").to_upper() + "!")
+	if main._should_bail(): return
+
+# LICKITUNG — Lick Wounds: Flip coin. Heads = choose any Pokémon from either side
+# with damage counters → remove 2 damage counters (or 1 if only 1 remains).
+func execute_lick_wounds(attacker: card_object, is_opponent: bool) -> void:
+	if await handle_attack_confusion(attacker, is_opponent): return
+	if await handle_attack_blind(attacker, is_opponent): return
+
+	var coin = await main.flip_coin(false, is_opponent)
+	if main._should_bail(): return
+	if not coin:
+		await main.show_message("TAILS! LICK WOUNDS FAILED!")
+		if main._should_bail(): return
+		return
+
+	# Gather all Pokémon from both sides that have damage
+	var all_candidates: Array = []
+	for poke in [main.player_active_pokemon, main.opponent_active_pokemon]:
+		if poke != null and poke.current_hp < poke.get_max_hp():
+			all_candidates.append(poke)
+	for bp in main.player_bench:
+		if bp.current_hp < bp.get_max_hp(): all_candidates.append(bp)
+	for bp in main.opponent_bench:
+		if bp.current_hp < bp.get_max_hp(): all_candidates.append(bp)
+
+	if all_candidates.is_empty():
+		await main.show_message("HEADS! NO POKÉMON WITH DAMAGE!")
+		if main._should_bail(): return
+		return
+
+	var target: card_object = null
+	if is_opponent:
+		# CPU heals the Pokémon with the most damage on its own side
+		var own_damaged = all_candidates.filter(func(p): return p == main.opponent_active_pokemon or p in main.opponent_bench)
+		target = own_damaged[0] if not own_damaged.is_empty() else all_candidates[0]
+		for p in own_damaged:
+			if p.get_damage_counters() > target.get_damage_counters():
+				target = p
+	else:
+		target = await main.card_ops.prompt_select_card(all_candidates, "LICK WOUNDS — CHOOSE TARGET", "Remove 2 damage counters (or 1 if only 1)", "HEAL", false)
+		if main._should_bail(): return
+	if target == null: return
+
+	var heal = min(2, target.get_damage_counters()) * 10
+	var target_is_opp = target == main.opponent_active_pokemon or target in main.opponent_bench
+	await main.card_ops.heal_pokemon(target, heal, target_is_opp)
+	if main._should_bail(): return
+	await main.show_message("LICK WOUNDS HEALED " + target.metadata.get("name", "").to_upper() + " FOR " + str(heal) + " HP!")
+	if main._should_bail(): return
+
+# LICKITUNG — Tongue Stretch: Flip coin. Heads = choose any opponent Pokémon → 20 damage, no W/R.
+func execute_tongue_stretch(attacker: card_object, is_opponent: bool) -> void:
+	if await handle_attack_confusion(attacker, is_opponent): return
+	if await handle_attack_blind(attacker, is_opponent): return
+
+	var coin = await main.flip_coin(false, is_opponent)
+	if main._should_bail(): return
+	if not coin:
+		await main.show_message("TAILS! TONGUE STRETCH FAILED!")
+		if main._should_bail(): return
+		return
+
+	var target_is_opp = not is_opponent
+	var all_targets: Array = []
+	var active = main.opponent_active_pokemon if target_is_opp else main.player_active_pokemon
+	if active != null: all_targets.append(active)
+	all_targets.append_array(main.opponent_bench if target_is_opp else main.player_bench)
+	if all_targets.is_empty(): return
+
+	var target: card_object = null
+	if is_opponent:
+		target = main.player_active_pokemon
+	else:
+		target = await main.card_ops.prompt_select_card(all_targets, "TONGUE STRETCH — CHOOSE TARGET", "20 damage, no Weakness or Resistance", "STRETCH", false)
+		if main._should_bail(): return
+	if target == null: return
+
+	var target_is_active = (target == (main.opponent_active_pokemon if target_is_opp else main.player_active_pokemon))
+	if target_is_active:
+		var label_pos = Vector2(530, 300) if is_opponent else Vector2(1030, 300)
+		main.show_floating_label("-20HP", label_pos, Color.WHITE, true)
+		target.current_hp = max(0, target.current_hp - 20)
+		main.display_hp_circles_above_align(target, target_is_opp)
+		SoundManagerScript.play_sfx(SoundManagerScript.SFX_damage_sound)
+		await main.powers_and_bodies.dispatch_on_damage(target, attacker, 20, target_is_opp)
+		if main._should_bail(): return
+	else:
+		main.card_ops.apply_bench_damage(target, 20, target_is_opp)
+		SoundManagerScript.play_sfx(SoundManagerScript.SFX_damage_sound)
+
+	await main.check_all_knockouts()
+	if main._should_bail(): return
+	await main.show_message("TONGUE STRETCH! 20 DAMAGE TO " + target.metadata.get("name", "").to_upper() + "! (NO W/R)")
+	if main._should_bail(): return
+
+# VILEPLUME — Paradise Pollen: Flip coin. Heads = heal Vileplume 20 HP, then optionally
+# heal one benched Pokémon 20 HP.
+func execute_paradise_pollen(attacker: card_object, is_opponent: bool) -> void:
+	if await handle_attack_confusion(attacker, is_opponent): return
+	if await handle_attack_blind(attacker, is_opponent): return
+
+	var coin = await main.flip_coin(false, is_opponent)
+	if main._should_bail(): return
+	if not coin:
+		await main.show_message("TAILS! PARADISE POLLEN FAILED!")
+		if main._should_bail(): return
+		return
+
+	# Heal Vileplume itself
+	await main.card_ops.heal_pokemon(attacker, 20, is_opponent)
+	if main._should_bail(): return
+
+	# Heal one benched Pokémon with damage counters
+	var bench = main.opponent_bench if is_opponent else main.player_bench
+	var bench_damaged = bench.filter(func(p): return p.current_hp < p.get_max_hp())
+	if bench_damaged.is_empty():
+		await main.show_message("PARADISE POLLEN! VILEPLUME HEALED. NO BENCHED POKÉMON WITH DAMAGE.")
+		if main._should_bail(): return
+		return
+
+	var bench_target: card_object = null
+	if is_opponent:
+		for p in bench_damaged:
+			if bench_target == null or p.get_damage_counters() > bench_target.get_damage_counters():
+				bench_target = p
+	else:
+		bench_target = await main.card_ops.prompt_select_card(bench_damaged, "PARADISE POLLEN", "Choose a Benched Pokémon to heal 20 HP", "HEAL", false)
+		if main._should_bail(): return
+	if bench_target != null:
+		await main.card_ops.heal_pokemon(bench_target, 20, is_opponent)
+		if main._should_bail(): return
+	await main.show_message("PARADISE POLLEN! VILEPLUME AND " + (bench_target.metadata.get("name", "") if bench_target else "BENCH") + " HEALED!")
+	if main._should_bail(): return
+
+# PRIMEAPE — Rampage: 20 + 10 per damage counter on Primeape. Then flip coin:
+# if tails, Primeape is now Confused.
+func execute_rampage(attacker: card_object, defender: card_object, is_opponent: bool, base_damage: int) -> void:
+	if await handle_attack_confusion(attacker, is_opponent): return
+	if await handle_attack_blind(attacker, is_opponent): return
+
+	var counters = attacker.get_damage_counters()
+	var total_damage = base_damage + counters * 10
+
+	var attacking_types = attacker.metadata.get("types", ["Colorless"])
+	var result = main.calculate_final_damage(total_damage, attacking_types, defender, attacker)
+	var final_damage = result["damage"]
+	if not main.check_defender_invincible(defender, not is_opponent):
+		final_damage = main.apply_defender_no_damage_shield(defender, final_damage, not is_opponent)
+		await main.display_and_apply_attack_damage(attacker, defender, final_damage, result["modifiers"], is_opponent, total_damage)
+		if main._should_bail(): return
+
+	if counters > 0:
+		await main.show_message("RAMPAGE! " + str(counters) + " COUNTER(S) — " + str(total_damage) + " BASE DAMAGE!")
+		if main._should_bail(): return
+
+	# Post-damage self-confusion flip
+	var coin = await main.flip_coin(false, is_opponent)
+	if main._should_bail(): return
+	if not coin:
+		main.card_ops.apply_status(attacker, "Confused", is_opponent)
+		await main.show_message("TAILS! " + attacker.metadata.get("name", "").to_upper() + " IS NOW CONFUSED!")
+		if main._should_bail(): return

@@ -1,20 +1,21 @@
 Pokemon TCG Legacy — Set Audit Report
-Generated: 2026-06-03 11:06:55
-Sets audited: base1, base2, base3, base5, gym1, gym2
+Generated: 2026-06-03 12:50:36
+Sets audited: base1, base2, base3, base5, gym1, gym2, si1
 
 ====================================================================================================
 SUMMARY TABLE
 ====================================================================================================
 Set        Atk Tot Atk Impl  Atk ?Gen Atk Miss     Trn Tot Trn Impl Trn Miss     Pwr Tot Pwr Impl Pwr Miss
 ----------------------------------------------------------------------------------------------------
-base1          114        6       106        2          26       26        0           6        6        0
-base2           85       13        70        2           1        1        0           6        6        0
+base1          114        6       108        0          26       26        0           6        6        0
+base2           85       14        71        0           1        1        0           6        6        0
 base3           69       12        57        0           5        5        0          10       10        0
-base5           88       27        60        1           9        9        0          14       14        0
-gym1           153       47        99        7          35       35        0          11       11        0
-gym2           163       66        94        3          31       31        0          13       13        0
+base5           88       27        61        0           9        9        0          14       14        0
+gym1           153       47       106        0          35       35        0          11       11        0
+gym2           163       67        96        0          31       31        0          13       13        0
+si1             31       11        20        0           0        0        0           0        0        0
 ----------------------------------------------------------------------------------------------------
-TOTAL          672      171       486       15         107      107        0          60       60        0
+TOTAL          703      184       519        0         107      107        0          60       60        0
 ====================================================================================================
 
 LEGEND:
@@ -68,7 +69,7 @@ MISSING ITEMS DETAIL
   [ATTACK ? generic] Electabuzz (base1-20) — "Thundershock"
   [ATTACK ? generic] Electabuzz (base1-20) — "Thunderpunch"
   [ATTACK ? generic] Electrode (base1-21) — "Electric Shock"
-  [ATTACK MISSING  ] Pidgeotto (base1-22) — "Whirlwind"
+  [ATTACK ? generic] Pidgeotto (base1-22) — "Whirlwind"
   [ATTACK ? generic] Arcanine (base1-23) — "Flamethrower"
   [ATTACK ? generic] Arcanine (base1-23) — "Take Down"
   [ATTACK ? generic] Charmeleon (base1-24) — "Slash"
@@ -123,7 +124,7 @@ MISSING ITEMS DETAIL
   [ATTACK ? generic] Nidoran ♂ (base1-55) — "Horn Hazard"
   [ATTACK ? generic] Onix (base1-56) — "Rock Throw"
   [ATTACK ? generic] Onix (base1-56) — "Harden"
-  [ATTACK MISSING  ] Pidgey (base1-57) — "Whirlwind"
+  [ATTACK ? generic] Pidgey (base1-57) — "Whirlwind"
   [ATTACK ? generic] Pikachu (base1-58) — "Gnaw"
   [ATTACK ? generic] Pikachu (base1-58) — "Thunder Jolt"
   [ATTACK ? generic] Poliwag (base1-59) — "Water Gun"
@@ -166,9 +167,9 @@ MISSING ITEMS DETAIL
   [ATTACK ? generic] Vileplume (base2-15) — "Petal Dance"
   [ATTACK ? generic] Wigglytuff (base2-16) — "Lullaby"
   [ATTACK ? generic] Wigglytuff (base2-16) — "Do the Wave"
-  [ATTACK MISSING  ] Butterfree (base2-33) — "Whirlwind"
+  [ATTACK ? generic] Butterfree (base2-33) — "Whirlwind"
   [ATTACK ? generic] Dodrio (base2-34) — "Rage"
-  [ATTACK MISSING  ] Exeggutor (base2-35) — "Teleport"
+  [ATTACK ? generic] Exeggutor (base2-35) — "Teleport"
   [ATTACK ? generic] Fearow (base2-36) — "Agility"
   [ATTACK ? generic] Fearow (base2-36) — "Drill Peck"
   [ATTACK ? generic] Gloom (base2-37) — "Poisonpowder"
@@ -191,7 +192,6 @@ MISSING ITEMS DETAIL
   [ATTACK ? generic] Seaking (base2-46) — "Horn Attack"
   [ATTACK ? generic] Seaking (base2-46) — "Waterfall"
   [ATTACK ? generic] Tauros (base2-47) — "Stomp"
-  [ATTACK ? generic] Tauros (base2-47) — "Rampage"
   [ATTACK ? generic] Weepinbell (base2-48) — "Poisonpowder"
   [ATTACK ? generic] Weepinbell (base2-48) — "Razor Leaf"
   [ATTACK ? generic] Bellsprout (base2-49) — "Vine Whip"
@@ -297,7 +297,7 @@ MISSING ITEMS DETAIL
   [ATTACK ? generic] Dark Golduck (base5-37) — "Super Psy"
   [ATTACK ? generic] Dark Jolteon (base5-38) — "Lightning Flash"
   [ATTACK ? generic] Dark Jolteon (base5-38) — "Thunder Attack"
-  [ATTACK MISSING  ] Dark Machoke (base5-40) — "Knock Back"
+  [ATTACK ? generic] Dark Machoke (base5-40) — "Knock Back"
   [ATTACK ? generic] Dark Muk (base5-41) — "Sludge Punch"
   [ATTACK ? generic] Dark Persian (base5-42) — "Poison Claws"
   [ATTACK ? generic] Dark Primeape (base5-43) — "Frenzied Attack"
@@ -343,7 +343,7 @@ MISSING ITEMS DETAIL
   [ATTACK ? generic] Erika's Clefable (gym1-3) — "Moon Impact"
   [ATTACK ? generic] Erika's Dragonair (gym1-4) — "Blizzard"
   [ATTACK ? generic] Lt. Surge's Fearow (gym1-7) — "Repeating Drill"
-  [ATTACK MISSING  ] Lt. Surge's Fearow (gym1-7) — "Clutch"
+  [ATTACK ? generic] Lt. Surge's Fearow (gym1-7) — "Clutch"
   [ATTACK ? generic] Lt. Surge's Magneton (gym1-8) — "Mega Shock"
   [ATTACK ? generic] Misty's Seadra (gym1-9) — "Tail Snap"
   [ATTACK ? generic] Misty's Tentacruel (gym1-10) — "Jellyfish Poison"
@@ -351,7 +351,7 @@ MISSING ITEMS DETAIL
   [ATTACK ? generic] Rocket's Scyther (gym1-13) — "Blinding Scythe"
   [ATTACK ? generic] Brock's Golem (gym1-20) — "Fissure"
   [ATTACK ? generic] Brock's Onix (gym1-21) — "Bind"
-  [ATTACK MISSING  ] Brock's Rhyhorn (gym1-22) — "Horn Toss"
+  [ATTACK ? generic] Brock's Rhyhorn (gym1-22) — "Horn Toss"
   [ATTACK ? generic] Brock's Rhyhorn (gym1-22) — "Take Down"
   [ATTACK ? generic] Brock's Sandslash (gym1-23) — "Needles"
   [ATTACK ? generic] Brock's Sandslash (gym1-23) — "Sandstorm"
@@ -364,7 +364,7 @@ MISSING ITEMS DETAIL
   [ATTACK ? generic] Misty's Goldeen (gym1-30) — "Horn Hazard"
   [ATTACK ? generic] Misty's Tentacool (gym1-32) — "Mysterious Light"
   [ATTACK ? generic] Rocket's Snorlax (gym1-33) — "Collapse"
-  [ATTACK MISSING  ] Blaine's Growlithe (gym1-35) — "Shake"
+  [ATTACK ? generic] Blaine's Growlithe (gym1-35) — "Shake"
   [ATTACK ? generic] Blaine's Growlithe (gym1-35) — "Fire Tackle"
   [ATTACK ? generic] Blaine's Kangaskhan (gym1-36) — "Child's Punch"
   [ATTACK ? generic] Blaine's Kangaskhan (gym1-36) — "One-Two Punch"
@@ -401,14 +401,14 @@ MISSING ITEMS DETAIL
   [ATTACK ? generic] Blaine's Ponyta (gym1-63) — "Agility"
   [ATTACK ? generic] Blaine's Tauros (gym1-64) — "3-Pronged Tail"
   [ATTACK ? generic] Blaine's Vulpix (gym1-65) — "Tail Fan"
-  [ATTACK MISSING  ] Brock's Mankey (gym1-67) — "Taunt"
+  [ATTACK ? generic] Brock's Mankey (gym1-67) — "Taunt"
   [ATTACK ? generic] Brock's Mankey (gym1-67) — "Light Kick"
   [ATTACK ? generic] Brock's Mankey (gym1-68) — "Karate Chop"
   [ATTACK ? generic] Brock's Onix (gym1-69) — "Bellow"
   [ATTACK ? generic] Brock's Onix (gym1-69) — "Rock Throw"
   [ATTACK ? generic] Brock's Sandshrew (gym1-71) — "Defense Curl"
   [ATTACK ? generic] Brock's Sandshrew (gym1-71) — "Rolling Attack"
-  [ATTACK MISSING  ] Brock's Sandshrew (gym1-72) — "Sand Pit"
+  [ATTACK ? generic] Brock's Sandshrew (gym1-72) — "Sand Pit"
   [ATTACK ? generic] Brock's Vulpix (gym1-73) — "Flame"
   [ATTACK ? generic] Brock's Vulpix (gym1-73) — "Quick Attack"
   [ATTACK ? generic] Brock's Zubat (gym1-74) — "Wing Attack"
@@ -425,7 +425,7 @@ MISSING ITEMS DETAIL
   [ATTACK ? generic] Lt. Surge's Magnemite (gym1-80) — "Tackle"
   [ATTACK ? generic] Lt. Surge's Pikachu (gym1-81) — "Lightning Tail"
   [ATTACK ? generic] Lt. Surge's Rattata (gym1-82) — "Gnaw"
-  [ATTACK MISSING  ] Lt. Surge's Spearow (gym1-83) — "Whirlwind"
+  [ATTACK ? generic] Lt. Surge's Spearow (gym1-83) — "Whirlwind"
   [ATTACK ? generic] Lt. Surge's Spearow (gym1-83) — "Razor Wind"
   [ATTACK ? generic] Lt. Surge's Voltorb (gym1-84) — "Spin Ball"
   [ATTACK ? generic] Lt. Surge's Voltorb (gym1-84) — "Double Spin"
@@ -440,7 +440,7 @@ MISSING ITEMS DETAIL
   [ATTACK ? generic] Misty's Shellder (gym1-89) — "Clamp"
   [ATTACK ? generic] Sabrina's Drowzee (gym1-92) — "Suggestion"
   [ATTACK ? generic] Sabrina's Drowzee (gym1-92) — "Headbutt"
-  [ATTACK MISSING  ] Sabrina's Gastly (gym1-93) — "Spook"
+  [ATTACK ? generic] Sabrina's Gastly (gym1-93) — "Spook"
   [ATTACK ? generic] Sabrina's Mr. Mime (gym1-94) — "Slap"
   [ATTACK ? generic] Sabrina's Slowpoke (gym1-95) — "Lazy Attack"
   [ATTACK ? generic] Sabrina's Venonat (gym1-96) — "Poison Antennae"
@@ -463,7 +463,6 @@ MISSING ITEMS DETAIL
   [ATTACK ? generic] Rocket's Mewtwo (gym2-14) — "Hypnoblast"
   [ATTACK ? generic] Rocket's Mewtwo (gym2-14) — "Psyburn"
   [ATTACK ? generic] Blaine's Ninetales (gym2-21) — "Burn Up"
-  [ATTACK MISSING  ] Brock's Dugtrio (gym2-22) — "Earthdrill"
   [ATTACK ? generic] Giovanni's Nidoqueen (gym2-23) — "Mega Kick"
   [ATTACK ? generic] Giovanni's Pinsir (gym2-24) — "Snapping Pincers"
   [ATTACK ? generic] Koga's Arbok (gym2-25) — "Poison Buildup"
@@ -471,7 +470,7 @@ MISSING ITEMS DETAIL
   [ATTACK ? generic] Koga's Pidgeotto (gym2-27) — "Quick Turn"
   [ATTACK ? generic] Koga's Pidgeotto (gym2-27) — "Aerial Maneuvers"
   [ATTACK ? generic] Lt. Surge's Jolteon (gym2-28) — "High Voltage"
-  [ATTACK MISSING  ] Sabrina's Gengar (gym2-29) — "Shadow Bind"
+  [ATTACK ? generic] Sabrina's Gengar (gym2-29) — "Shadow Bind"
   [ATTACK ? generic] Sabrina's Golduck (gym2-30) — "Water Spray"
   [ATTACK ? generic] Blaine's Charmeleon (gym2-31) — "Fire Claws"
   [ATTACK ? generic] Blaine's Dodrio (gym2-32) — "Mega Peck"
@@ -535,7 +534,7 @@ MISSING ITEMS DETAIL
   [ATTACK ? generic] Lt. Surge's Voltorb (gym2-86) — "Bouncing Ball"
   [ATTACK ? generic] Misty's Magikarp (gym2-88) — "Play Dead"
   [ATTACK ? generic] Misty's Magikarp (gym2-88) — "Leap"
-  [ATTACK MISSING  ] Misty's Seel (gym2-91) — "Frostbite"
+  [ATTACK ? generic] Misty's Seel (gym2-91) — "Frostbite"
   [ATTACK ? generic] Misty's Seel (gym2-91) — "Mirage"
   [ATTACK ? generic] Sabrina's Abra (gym2-93) — "Pound"
   [ATTACK ? generic] Sabrina's Abra (gym2-94) — "Quick Attack"
@@ -545,11 +544,33 @@ MISSING ITEMS DETAIL
   [ATTACK ? generic] Sabrina's Porygon (gym2-98) — "Barrier Attack"
   [ATTACK ? generic] Sabrina's Psyduck (gym2-99) — "Scratch"
 
+=== SI1 missing items ===
+  [ATTACK ? generic] Pidgeot (si1-2) — "Supersonic Flight"
+  [ATTACK ? generic] Pidgeot (si1-2) — "Slicing Wind"
+  [ATTACK ? generic] Onix (si1-3) — "Slam"
+  [ATTACK ? generic] Onix (si1-3) — "Body Slam"
+  [ATTACK ? generic] Togepi (si1-4) — "Bawl"
+  [ATTACK ? generic] Ivysaur (si1-5) — "Razor Leaf"
+  [ATTACK ? generic] Raticate (si1-6) — "Sharp Teeth"
+  [ATTACK ? generic] Ledyba (si1-7) — "Gnaw"
+  [ATTACK ? generic] Ledyba (si1-7) — "Agility"
+  [ATTACK ? generic] Jigglypuff (si1-8) — "Tempting Eyes"
+  [ATTACK ? generic] Jigglypuff (si1-8) — "Sing"
+  [ATTACK ? generic] Butterfree (si1-9) — "Fly"
+  [ATTACK ? generic] Butterfree (si1-9) — "Rainbow Powder"
+  [ATTACK ? generic] Tentacruel (si1-10) — "Poison Sting"
+  [ATTACK ? generic] Marill (si1-11) — "Rolling Tackle"
+  [ATTACK ? generic] Lapras (si1-12) — "Ice Beam"
+  [ATTACK ? generic] Slowking (si1-14) — "Psychic"
+  [ATTACK ? generic] Wartortle (si1-15) — "Water Gun"
+  [ATTACK ? generic] Vileplume (si1-17) — "Horrid Pollen"
+  [ATTACK ? generic] Primeape (si1-18) — "Low Kick"
+
 ====================================================================================================
 DISPATCH REGISTRY SIZES (for reference)
 ====================================================================================================
-  _attack_dispatch keys   : 149
-  execute_ func names     : 142
+  _attack_dispatch keys   : 161
+  execute_ func names     : 153
   _trainer_dispatch keys  : 87
   Stadium_Ids constants   : 14
   _power_dispatch keys    : 28
