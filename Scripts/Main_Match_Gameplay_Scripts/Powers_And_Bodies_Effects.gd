@@ -2462,6 +2462,7 @@ func power_energy_charge(magneton: card_object) -> void:
 	main.display_active_pokemon_energies(is_opp)
 	main.display_pokemon(is_opp)
 	await main.show_message("ENERGY CHARGE: MOVED LIGHTNING ENERGY TO " + magneton.metadata.get("name", "").to_upper() + "!")
+	if main._should_bail(): return
 	# Energy Charge is multi-use per turn — DO NOT set power_used_this_turn
 
 # --- gym1-10 Misty's Tentacruel — Flee ---

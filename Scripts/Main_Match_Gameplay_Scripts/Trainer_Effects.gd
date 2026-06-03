@@ -1241,86 +1241,84 @@ func effect_devolution_spray(is_opponent: bool) -> void:
 		if main._should_bail(): return
 		return
 	
+	var target: card_object = null
+	var devolve_to: card_object = null
+
 	if is_opponent:
-		return
+		# CPU picks the most damaged evolved pokemon
+		var worst_pct = 1.0
+		for p in evolved_pokemon:
+			var max_hp = int(p.metadata.get("hp", "0"))
+			if max_hp <= 0:
+				continue
+			var pct = float(p.current_hp) / float(max_hp)
+			if pct < worst_pct:
+				worst_pct = pct
+				target = p
+		if target == null:
+			target = evolved_pokemon[0]
+		# CPU always devolves to the lowest pre-evolution (the basic)
+		devolve_to = target.attached_pre_evolutions[0]
+		await main.show_message("Opponent used Devolution Spray on " + target.metadata.get("name", "") + "!")
+		if main._should_bail(): return
 	else:
 		# Step 1: Player selects which pokemon to devolve
-		var target = await main.card_ops.prompt_select_card(evolved_pokemon, "DEVOLUTION SPRAY", "Choose an evolved Pokemon to devolve", "SELECT", false)
+		target = await main.card_ops.prompt_select_card(evolved_pokemon, "DEVOLUTION SPRAY", "Choose an evolved Pokemon to devolve", "SELECT", false)
 		if main._should_bail(): return
-		
 		if target == null:
 			return
-		
 		# Step 2: If multiple pre-evolutions exist (Stage 2), let player choose which to devolve to
-		var devolve_to: card_object = null
 		if target.attached_pre_evolutions.size() == 1:
-			# Only one option (Stage 1 → Basic)
 			devolve_to = target.attached_pre_evolutions[0]
 		else:
-			# Multiple options (Stage 2 → show Basic and Stage 1)
 			devolve_to = await main.card_ops.prompt_select_card(target.attached_pre_evolutions, "DEVOLVE TO WHICH STAGE?", "Select which card to devolve " + target.metadata.get("name", "") + " into", "DEVOLVE", false)
 			if main._should_bail(): return
-		
 		if devolve_to == null:
 			return
-		
-		# Save the field position BEFORE discarding
-		var field_location = target.current_location
-		
-		# Find the index of the chosen card in the pre-evolution chain
-		var devolve_index = target.attached_pre_evolutions.find(devolve_to)
-		
-		# Discard the current top card (the evolved form) to the discard pile
-		var evo_card = target
-		evo_card.current_location = "discard"
-		discard.append(evo_card)
-		
-		# Discard all pre-evolutions ABOVE the chosen devolve target
-		# Pre-evolutions are stored [Basic, Stage1] - discard everything after devolve_index
-		var cards_to_discard_from_chain = []
-		for i in range(devolve_index + 1, target.attached_pre_evolutions.size()):
-			cards_to_discard_from_chain.append(target.attached_pre_evolutions[i])
-		for card in cards_to_discard_from_chain:
-			card.current_location = "discard"
-			discard.append(card)
-			target.attached_pre_evolutions.erase(card)
-		
-		# Remove the devolve_to card from the chain (it becomes the new pokemon)
-		target.attached_pre_evolutions.erase(devolve_to)
-		
-		# Transfer attachments from the old top card to the new form
-		devolve_to.attached_energies = evo_card.attached_energies.duplicate()
-		evo_card.attached_energies.clear()
-		# Keep only pre-evolutions below the devolve target
-		devolve_to.attached_pre_evolutions = target.attached_pre_evolutions.duplicate()
-		target.attached_pre_evolutions.clear()
-		devolve_to.attached_cards = evo_card.attached_cards.duplicate()
-		evo_card.attached_cards.clear()
-		
-		# Transfer damage, clamping so it has at least 10 HP
-		var max_hp_old = int(evo_card.metadata.get("hp", "0"))
-		var damage_taken = max_hp_old - evo_card.current_hp
-		var new_max_hp = int(devolve_to.metadata.get("hp", "0"))
-		devolve_to.current_hp = max(10, new_max_hp - damage_taken)
-		devolve_to.current_location = field_location
-		
-		# Clear statuses
-		main.clear_all_statuses(devolve_to, is_opponent)
-		
-		# Replace in the appropriate slot
-		if evo_card == (main.opponent_active_pokemon if is_opponent else main.player_active_pokemon):
-			if is_opponent:
-				main.opponent_active_pokemon = devolve_to
-			else:
-				main.player_active_pokemon = devolve_to
+
+	# ── Shared devolve logic (both CPU and player) ───────────────────────────
+	var field_location = target.current_location
+	var devolve_index = target.attached_pre_evolutions.find(devolve_to)
+	var evo_card = target
+	evo_card.current_location = "discard"
+	discard.append(evo_card)
+	# Discard all pre-evolutions above the chosen devolve target
+	var cards_to_discard_from_chain = []
+	for i in range(devolve_index + 1, target.attached_pre_evolutions.size()):
+		cards_to_discard_from_chain.append(target.attached_pre_evolutions[i])
+	for card in cards_to_discard_from_chain:
+		card.current_location = "discard"
+		discard.append(card)
+		target.attached_pre_evolutions.erase(card)
+	target.attached_pre_evolutions.erase(devolve_to)
+	# Transfer attachments to the new form
+	devolve_to.attached_energies = evo_card.attached_energies.duplicate()
+	evo_card.attached_energies.clear()
+	devolve_to.attached_pre_evolutions = target.attached_pre_evolutions.duplicate()
+	target.attached_pre_evolutions.clear()
+	devolve_to.attached_cards = evo_card.attached_cards.duplicate()
+	evo_card.attached_cards.clear()
+	# Transfer damage, clamping so it has at least 10 HP
+	var max_hp_old = int(evo_card.metadata.get("hp", "0"))
+	var damage_taken = max_hp_old - evo_card.current_hp
+	var new_max_hp = int(devolve_to.metadata.get("hp", "0"))
+	devolve_to.current_hp = max(10, new_max_hp - damage_taken)
+	devolve_to.current_location = field_location
+	main.clear_all_statuses(devolve_to, is_opponent)
+	# Replace in the appropriate slot
+	var active_ref = main.opponent_active_pokemon if is_opponent else main.player_active_pokemon
+	if evo_card == active_ref:
+		if is_opponent:
+			main.opponent_active_pokemon = devolve_to
 		else:
-			var b = main.opponent_bench if is_opponent else main.player_bench
-			var idx = b.find(evo_card)
-			if idx != -1:
-				b[idx] = devolve_to
-		
-		main.display_pokemon(is_opponent)
-		main.display_active_pokemon_energies(is_opponent)
+			main.player_active_pokemon = devolve_to
+	else:
+		var b = main.opponent_bench if is_opponent else main.player_bench
+		var idx = b.find(evo_card)
+		if idx != -1:
+			b[idx] = devolve_to
+	main.display_pokemon(is_opponent)
+	main.display_active_pokemon_energies(is_opponent)
 		main.update_discard_pile_display(is_opponent)
 		await main.show_message(evo_card.metadata.get("name", "") + " devolved into " + devolve_to.metadata.get("name", "") + "!")
 		if main._should_bail(): return
@@ -4242,6 +4240,7 @@ func gym1_narrow_gym_on_play() -> void:
 	await gym1_narrow_gym_force_return_to_hand(first_side_is_opp)
 	if main._should_bail(): return
 	await gym1_narrow_gym_force_return_to_hand(second_side_is_opp)
+	if main._should_bail(): return
 
 # Returns one of the side's benched pokemon (their choice) to their hand if their bench has 5
 func gym1_narrow_gym_force_return_to_hand(side_is_opponent: bool) -> void:
@@ -4280,9 +4279,7 @@ func gym1_narrow_gym_force_return_to_hand(side_is_opponent: bool) -> void:
 	chosen.attached_cards.clear()
 	chosen.attached_pre_evolutions.clear()
 	chosen.current_hp = int(chosen.metadata.get("hp", "0"))
-	chosen.special_condition = ""
-	chosen.is_poisoned = false
-	chosen.is_burned = false
+	main.clear_all_statuses(chosen, side_is_opponent)
 	chosen.pluspower_count = 0
 	chosen.defender_turns_remaining = -1
 
@@ -4375,12 +4372,7 @@ func gym1_celadon_activate(is_opponent: bool) -> void:
 	if main._should_bail(): return
 
 	# Clear status conditions
-	target.special_condition = ""
-	target.is_poisoned = false
-	target.poison_damage = 0
-	target.is_burned = false
-	target.burn_damage = 0
-	main.update_status_icons(target, !is_opponent)
+	main.clear_all_statuses(target, is_opponent)
 	main.display_active_pokemon_energies(is_opponent)
 	main.update_discard_pile_display(is_opponent)
 	await main.show_message("CELADON CITY GYM: " + target.metadata.get("name", "").to_upper() + " IS CURED!")
@@ -4849,6 +4841,7 @@ func gym2_effect_mistys_wish(is_opponent: bool) -> void:
 			main.refresh_hand_display(is_opponent)
 			main.display_prize_cards(is_opponent)
 			await main.show_message("MISTY'S WISH — SWAPPED PRIZE WITH " + swap_card.metadata.get("name", "").to_upper() + "!")
+			if main._should_bail(): return
 		return
 	# Declined → draw 1
 	await main.card_ops.draw_n(is_opponent, 1)
@@ -5370,9 +5363,7 @@ func gym2_fuchsia_activate(is_opponent: bool) -> void:
 	chosen.attached_cards.clear()
 	chosen.attached_pre_evolutions.clear()
 	chosen.current_hp = int(chosen.metadata.get("hp", "0"))
-	chosen.special_condition = ""
-	chosen.is_poisoned = false
-	chosen.is_burned = false
+	main.clear_all_statuses(chosen, is_opponent)
 	chosen.pluspower_count = 0
 	chosen.defender_turns_remaining = -1
 

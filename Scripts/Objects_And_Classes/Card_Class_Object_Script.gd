@@ -94,6 +94,11 @@ var gym2_focus_energy_active: bool = false # Lt. Surge's Raticate/Rattata Focus 
 var gym2_lie_low_counter: int = 0          # Brock's Dugtrio Lie Low — Earthdrill is usable while this is > 0
 var ditto_giant_growth: bool = false       # Koga's Ditto Giant Growth — max HP 80, Pound base damage 30
 var max_hp_override: int = 0               # If > 0, overrides the metadata HP value (Koga's Ditto Giant Growth)
+var gym2_mega_burn_locked: bool = false    # Sabrina's Alakazam Mega Burn — can't use this attack next turn
+
+# Coin-flip attack block (Sand-attack, Smokescreen, Lightning Flash, Sandstorm, Mirage)
+# When set, the pokemon must flip before attacking: tails = attack fails
+var attack_flip_blocked: bool = false      # If true, this pokemon must flip before attacking next turn
 
 # GYM1 (Gym Heroes) Trainer attachments / per-turn buffs
 var gym1_charity_attached: bool = false       # gym1-99 Charity — outgoing damage may be reduced this turn; returns to hand at end of turn if not KO'd

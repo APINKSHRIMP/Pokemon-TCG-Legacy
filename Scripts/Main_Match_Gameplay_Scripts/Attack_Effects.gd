@@ -215,6 +215,22 @@ func _register_base_attacks() -> void:
 		else:                   await execute_call_for_pokemon(a, opp, [], "Fighting")
 		await _attack_finish(false, 0, atk, a.metadata.get("types",["Colorless"]), opp)
 
+	# ── Newly-implemented effects (base1–base5, gym1, gym2) ────────────────────
+	# Super Fang: half HP damage (Raticate, Lt. Surge's Raticate)
+	_attack_dispatch["super fang"]   = func(atk, a, d, opp): await execute_super_fang(a, d, opp);          await _attack_finish(true,  0,   atk, a.metadata.get("types",["Colorless"]), opp)
+	# Mind Shock: damage ignoring W/R (Dark Alakazam, Dark Kadabra, Sabrina's Drowzee)
+	_attack_dispatch["mind shock"]   = func(atk, a, d, opp): var b=parse_attack_base_damage(atk); await execute_mind_shock(a, d, opp, b);   await _attack_finish(true,  b,   atk, a.metadata.get("types",["Colorless"]), opp)
+	# Mega Burn: damage + can't use next turn (Sabrina's Alakazam)
+	_attack_dispatch["mega burn"]    = func(atk, a, d, opp): var b=parse_attack_base_damage(atk); await execute_mega_burn(a, d, opp, b);    await _attack_finish(true,  b,   atk, a.metadata.get("types",["Colorless"]), opp)
+	# Hook Shot: damage ignoring Resistance (Brock's Geodude gym1-66)
+	_attack_dispatch["hook shot"]    = func(atk, a, d, opp): var b=parse_attack_base_damage(atk); await execute_hook_shot(a, d, opp, b);    await _attack_finish(true,  b,   atk, a.metadata.get("types",["Colorless"]), opp)
+	# Brock's Zubat Alert: draw 1 card + self switch
+	_attack_dispatch["alert"]        = func(atk, a, d, opp): await execute_brock_zubat_alert(a, opp);      await _attack_finish(false, 0,   atk, a.metadata.get("types",["Colorless"]), opp)
+	# Oddish Sprout: search deck for Oddish and bench it
+	_attack_dispatch["sprout"]       = func(atk, a, d, opp): await execute_oddish_sprout(a, opp);          await _attack_finish(false, 0,   atk, a.metadata.get("types",["Colorless"]), opp)
+	# Dark Alakazam Teleport Blast: damage first, then self switch (both already parse via text, explicit dispatch for clarity)
+	_attack_dispatch["teleport blast"] = func(atk, a, d, opp): var b=parse_attack_base_damage(atk); var types=a.metadata.get("types",["Colorless"]); var r=main.calculate_final_damage(b,types,d,a); if not main.check_defender_invincible(d,!opp): var fd=main.apply_defender_no_damage_shield(d,r["damage"],!opp); await main.display_and_apply_attack_damage(a,d,fd,r["modifiers"],opp,b); if main._should_bail(): return; await apply_self_switch(a,opp); await _attack_finish(true, b, atk, types, opp)
+
 ######################################################################################################################################################
 ################################################# UNIFIED ATTACK DISPATCH ###########################################################################
 ######################################################################################################################################################
@@ -250,6 +266,13 @@ func dispatch_attack(attack: Dictionary, attacker: card_object, defender: card_o
 		attacker.gym2_focus_energy_active = false
 		await execute_double_edge_boosted(attacker, defender, is_opponent)
 		await _attack_finish(true, 80, attack, types, is_opponent)
+		return true
+
+	# Mega Burn: locked for one turn after use
+	if an == "mega burn" and attacker.gym2_mega_burn_locked:
+		if not is_opponent:
+			await main.show_message("MEGA BURN CAN'T BE USED AGAIN THIS SOON!")
+		await _attack_finish(false, 0, attack, types, is_opponent)
 		return true
 
 	# Earthdrill: only valid after Lie Low; otherwise cancel and return true (attack fails)
@@ -1315,6 +1338,13 @@ func parse_card_text_effects(attack_text: String, attacker_name: String) -> Arra
 		effects.append({"type": "bench_damage_single", "target": "opponent_bench", "damage": damage, "flip": "none"})
 		print("EFFECT PARSED: Bench Damage Single -> ", damage)
 
+	# --- COIN-FLIP ATTACK BLOCK (Sand-attack, Smokescreen, Lightning Flash, Mirage) ---
+	# "If the Defending Pokémon tries to attack during your opponent's next turn,
+	#  your opponent flips a coin. If tails, that attack does nothing."
+	if "tries to attack" in text and ("flips a coin" in text or "flip a coin" in text) and "does nothing" in text:
+		effects.append({"type": "flip_attack_block", "target": "defender", "flip": "none"})
+		print("EFFECT PARSED: Coin-flip Attack Block -> Defender")
+
 	# --- TRAINER LOCK (Psyduck Headache) ---
 	if "can't play trainer" in text and "next turn" in text:
 		effects.append({"type": "trainer_lock", "target": "opponent", "flip": "none"})
@@ -1420,6 +1450,9 @@ func apply_card_text_effects(effects: Array, attacker: card_object, defender: ca
 			if main._should_bail(): return
 		if effect["type"] == "shielded_damage":
 			apply_shielded_damage(effect, attacker, is_opponent_attacking)
+		if effect["type"] == "flip_attack_block":
+			await apply_flip_attack_block(defender, is_opponent_attacking)
+			if main._should_bail(): return
 		if effect["type"] == "force_switch":
 			await apply_force_switch(effect, is_opponent_attacking)
 			if main._should_bail(): return
@@ -1673,6 +1706,92 @@ func apply_retreat_lock(defender: card_object, is_opponent_attacking: bool) -> v
 	await main.show_message(defender.metadata.get("name", "").to_upper() + " CAN'T RETREAT!")
 	if main._should_bail(): return
 	print("EFFECT APPLIED: Retreat locked for ", defender.metadata.get("name", ""))
+
+# Coin-flip attack block (Sand-attack, Smokescreen) — defender must flip before attacking next turn
+func apply_flip_attack_block(defender: card_object, is_opponent_attacking: bool) -> void:
+	if defender == null:
+		return
+	defender.attack_flip_blocked = true
+	defender.attack_blocked_by_id = -1  # not pokemon-specific, just a turn-long effect
+	main.update_status_icons(defender, not is_opponent_attacking)
+	await main.show_message(defender.metadata.get("name", "").to_upper() + " MUST FLIP BEFORE ATTACKING NEXT TURN!")
+	if main._should_bail(): return
+	print("EFFECT APPLIED: Coin-flip attack block on ", defender.metadata.get("name", ""))
+
+# SUPER FANG (Raticate, Lt. Surge's Raticate): damage = half defender's remaining HP, rounded up to 10
+func execute_super_fang(attacker: card_object, defender: card_object, is_opponent: bool) -> void:
+	if await handle_attack_confusion(attacker, is_opponent): return
+	if await handle_attack_blind(attacker, is_opponent): return
+	if defender == null or defender.current_hp <= 0:
+		return
+	if main.check_defender_invincible(defender, not is_opponent):
+		return
+	var damage = int(ceil(defender.current_hp / 2.0 / 10.0)) * 10
+	var label_pos = Vector2(530, 300) if is_opponent else Vector2(1030, 300)
+	main.show_floating_label("-" + str(damage) + "HP", label_pos, Color.WHITE, true)
+	defender.current_hp = max(0, defender.current_hp - damage)
+	main.display_hp_circles_above_align(defender, not is_opponent)
+	SoundManagerScript.play_sfx(SoundManagerScript.SFX_damage_sound)
+	await main.powers_and_bodies.dispatch_on_damage(defender, attacker, damage, not is_opponent)
+	if main._should_bail(): return
+	await main.show_message("SUPER FANG! " + str(damage) + " DAMAGE! (HALF HP)")
+	if main._should_bail(): return
+	print("SUPER FANG: ", damage, " damage (half of ", defender.current_hp + damage, " HP)")
+
+# MIND SHOCK (Dark Alakazam, Dark Kadabra, Sabrina's Drowzee): damage ignoring W/R
+func execute_mind_shock(attacker: card_object, defender: card_object, is_opponent: bool, base_damage: int) -> void:
+	if await handle_attack_confusion(attacker, is_opponent): return
+	if await handle_attack_blind(attacker, is_opponent): return
+	if main.check_defender_invincible(defender, not is_opponent):
+		return
+	var final_damage = main.apply_defender_no_damage_shield(defender, base_damage, not is_opponent)
+	var label_pos = Vector2(530, 300) if is_opponent else Vector2(1030, 300)
+	main.show_floating_label("-" + str(final_damage) + "HP", label_pos, Color.WHITE, true)
+	defender.current_hp = max(0, defender.current_hp - final_damage)
+	main.display_hp_circles_above_align(defender, not is_opponent)
+	SoundManagerScript.play_sfx(SoundManagerScript.SFX_damage_sound)
+	await main.powers_and_bodies.dispatch_on_damage(defender, attacker, final_damage, not is_opponent)
+	if main._should_bail(): return
+	await main.show_message("MIND SHOCK: " + str(final_damage) + " DAMAGE! (NO W/R)")
+	if main._should_bail(): return
+
+# MEGA BURN (Sabrina's Alakazam): deal damage then lock this attack for next turn
+func execute_mega_burn(attacker: card_object, defender: card_object, is_opponent: bool, base_damage: int) -> void:
+	if await handle_attack_confusion(attacker, is_opponent): return
+	if await handle_attack_blind(attacker, is_opponent): return
+	var attacking_types = attacker.metadata.get("types", ["Colorless"])
+	var result = main.calculate_final_damage(base_damage, attacking_types, defender, attacker)
+	var final_damage = result["damage"]
+	if not main.check_defender_invincible(defender, not is_opponent):
+		final_damage = main.apply_defender_no_damage_shield(defender, final_damage, not is_opponent)
+		await main.display_and_apply_attack_damage(attacker, defender, final_damage, result["modifiers"], is_opponent, base_damage)
+		if main._should_bail(): return
+	attacker.gym2_mega_burn_locked = true
+	await main.show_message("MEGA BURN! " + attacker.metadata.get("name", "").to_upper() + " CAN'T USE THIS ATTACK NEXT TURN!")
+	if main._should_bail(): return
+
+# HOOK SHOT (Brock's Geodude): damage ignoring Resistance only
+func execute_hook_shot(attacker: card_object, defender: card_object, is_opponent: bool, base_damage: int) -> void:
+	if await handle_attack_confusion(attacker, is_opponent): return
+	if await handle_attack_blind(attacker, is_opponent): return
+	var attacking_types = attacker.metadata.get("types", ["Colorless"])
+	# Calculate damage with Weakness but skip Resistance
+	var result = main.calculate_final_damage(base_damage, attacking_types, defender, attacker)
+	var modifiers = result["modifiers"]
+	var final_damage = result["damage"]
+	# Re-add resistance that calculate_final_damage subtracted
+	var resistances = defender.metadata.get("resistances", [])
+	for r in resistances:
+		if r["type"] in attacking_types:
+			var resist_val = int(r["value"])
+			final_damage -= resist_val  # subtract the negative value = add back the resistance reduction
+			modifiers.append("NO RESISTANCE")
+			break
+	final_damage = max(0, final_damage)
+	if not main.check_defender_invincible(defender, not is_opponent):
+		final_damage = main.apply_defender_no_damage_shield(defender, final_damage, not is_opponent)
+		await main.display_and_apply_attack_damage(attacker, defender, final_damage, modifiers, is_opponent, base_damage)
+		if main._should_bail(): return
 
 # Draws cards for the attacker
 func apply_draw_effect(effect: Dictionary, is_opponent_attacking: bool) -> void:
@@ -2171,13 +2290,10 @@ func execute_mega_drain(attacker: card_object, defender: card_object, is_opponen
 	# Heal attacker for half of actual damage dealt (rounded up to nearest 10)
 	var actual_damage = min(final_damage, defender.current_hp + final_damage)  # damage before KO check
 	var heal_amount = int(ceil(actual_damage / 2.0 / 10.0)) * 10
-	var max_hp = int(attacker.metadata.get("hp", "0"))
-	var healed = min(heal_amount, max_hp - attacker.current_hp)
-	if healed > 0:
-		attacker.current_hp = min(max_hp, attacker.current_hp + healed)
-		SoundManagerScript.play_sfx(SoundManagerScript.SFX_heal_sound)
-		main.display_hp_circles_above_align(attacker, is_opponent)
-		await main.show_message(attacker.metadata.get("name", "").to_upper() + " HEALED " + str(healed) + " HP!")
+	if heal_amount > 0:
+		await main.card_ops.heal_pokemon(attacker, heal_amount, is_opponent)
+		if main._should_bail(): return
+		await main.show_message(attacker.metadata.get("name", "").to_upper() + " HEALED " + str(heal_amount) + " HP!")
 		if main._should_bail(): return
 
 # LEECH LIFE: Deal damage, heal equal to damage dealt after W/R
@@ -2201,14 +2317,51 @@ func execute_leech_life(attacker: card_object, defender: card_object, is_opponen
 	if main._should_bail(): return
 	
 	# Heal attacker equal to final damage dealt
-	var max_hp = int(attacker.metadata.get("hp", "0"))
-	var healed = min(final_damage, max_hp - attacker.current_hp)
-	if healed > 0:
-		attacker.current_hp = min(max_hp, attacker.current_hp + healed)
-		SoundManagerScript.play_sfx(SoundManagerScript.SFX_heal_sound)
-		main.display_hp_circles_above_align(attacker, is_opponent)
-		await main.show_message(attacker.metadata.get("name", "").to_upper() + " DRAINED " + str(healed) + " HP!")
+	if final_damage > 0:
+		await main.card_ops.heal_pokemon(attacker, final_damage, is_opponent)
 		if main._should_bail(): return
+		var healed = min(final_damage, int(attacker.metadata.get("hp", "0")) - attacker.current_hp + final_damage)
+		await main.show_message(attacker.metadata.get("name", "").to_upper() + " DRAINED " + str(final_damage) + " HP!")
+		if main._should_bail(): return
+
+# BROCK'S ZUBAT ALERT: Draw 1 card, then switch Brock's Zubat with a bench pokemon
+func execute_brock_zubat_alert(attacker: card_object, is_opponent: bool) -> void:
+	if await handle_attack_confusion(attacker, is_opponent): return
+	if await handle_attack_blind(attacker, is_opponent): return
+	await main.card_ops.draw_n(is_opponent, 1)
+	if main._should_bail(): return
+	await main.show_message("ALERT! DREW 1 CARD!")
+	if main._should_bail(): return
+	var bench = main.opponent_bench if is_opponent else main.player_bench
+	if bench.is_empty():
+		return
+	# Reuse apply_self_switch from the text parser system
+	await apply_self_switch(attacker, is_opponent)
+	if main._should_bail(): return
+
+# ODDISH SPROUT: Search deck for a Basic Pokemon named Oddish and bench it
+func execute_oddish_sprout(attacker: card_object, is_opponent: bool) -> void:
+	if await handle_attack_confusion(attacker, is_opponent): return
+	if await handle_attack_blind(attacker, is_opponent): return
+	var bench = main.opponent_bench if is_opponent else main.player_bench
+	if bench.size() >= main.get_max_bench_size():
+		await main.show_message("BENCH IS FULL!")
+		if main._should_bail(): return
+		return
+	var filter = func(c): return main.is_basic_pokemon(c) and "Oddish" in c.metadata.get("name", "")
+	var found = await main.card_ops.search_deck_to_hand(is_opponent, filter, "SEARCH FOR ODDISH", 1)
+	if main._should_bail(): return
+	if found.is_empty():
+		await main.show_message("NO ODDISH IN DECK!")
+		if main._should_bail(): return
+		return
+	var oddish = found[0]
+	# Move from hand to bench immediately
+	var hand = main.opponent_hand if is_opponent else main.player_hand
+	hand.erase(oddish)
+	main.card_ops.place_on_bench(oddish, is_opponent)
+	await main.show_message("SPROUT! " + oddish.metadata.get("name", "").to_upper() + " PLACED ON BENCH!")
+	if main._should_bail(): return
 
 # CALL FOR FAMILY/FRIEND: Search deck for specific basic pokemon
 func execute_call_for_pokemon(attacker: card_object, is_opponent: bool, search_names: Array, search_type: String) -> void:
@@ -2707,9 +2860,8 @@ func execute_spacing_out(attacker: card_object, is_opponent: bool) -> void:
 	
 	var coin = await main.flip_coin(false, is_opponent)
 	if coin:
-		attacker.current_hp = min(max_hp, attacker.current_hp + 10)
-		SoundManagerScript.play_sfx(SoundManagerScript.SFX_heal_sound)
-		main.display_hp_circles_above_align(attacker, is_opponent)
+		await main.card_ops.heal_pokemon(attacker, 10, is_opponent)
+		if main._should_bail(): return
 		await main.show_message("SPACING OUT: HEALED 10 HP!")
 		if main._should_bail(): return
 	else:
@@ -2989,10 +3141,9 @@ func execute_bench_manipulation(attacker: card_object, defender: card_object, is
 		defender.current_hp = max(0, defender.current_hp - total_damage)
 		main.display_hp_circles_above_align(defender, !is_opponent)
 		main.show_floating_label("-" + str(total_damage) + "HP", Vector2(530 if is_opponent else 1030, 300), Color.WHITE)
-		if total_damage > 0:
-			SoundManagerScript.play_sfx(SoundManagerScript.SFX_damage_sound)
-			await main.powers_and_bodies.check_strikes_back(defender, attacker, !is_opponent)
-			if main._should_bail(): return
+		SoundManagerScript.play_sfx(SoundManagerScript.SFX_damage_sound)
+		await main.powers_and_bodies.dispatch_on_damage(defender, attacker, total_damage, !is_opponent)
+		if main._should_bail(): return
 	
 	if is_opponent:
 		main.last_attack_on_player = {"damage": total_damage, "attack": {}, "attacker_types": attacker.metadata.get("types", ["Colorless"])}
@@ -3339,6 +3490,24 @@ func execute_third_eye(attacker: card_object, is_opponent: bool) -> void:
 	print("ATTACK EXECUTED: Third Eye - drew ", draw_count, " cards")
 
 # Dark Machoke - Drag Off: Switch bench->active before damage, then 20 damage
+# Swap a bench pokemon from the TARGET side (opposite of attacker) into the active slot.
+# Clears statuses on the demoted active and refreshes display for that side.
+func _force_bench_to_active(selected: card_object, attacker_is_opp: bool) -> void:
+	var target_is_opp = not attacker_is_opp
+	var old_active = main.opponent_active_pokemon if target_is_opp else main.player_active_pokemon
+	var bench    = main.opponent_bench if target_is_opp else main.player_bench
+	bench.erase(selected)
+	bench.append(old_active)
+	old_active.current_location = "bench"
+	selected.current_location   = "active"
+	if target_is_opp:
+		main.opponent_active_pokemon = selected
+	else:
+		main.player_active_pokemon = selected
+	main.clear_all_statuses(old_active, target_is_opp)
+	main.display_pokemon(target_is_opp)
+	main.display_active_pokemon_energies(target_is_opp)
+
 func execute_drag_off(attacker: card_object, defender: card_object, is_opponent: bool) -> void:
 	var target_bench = main.player_bench if is_opponent else main.opponent_bench
 	
@@ -3361,28 +3530,7 @@ func execute_drag_off(attacker: card_object, defender: card_object, is_opponent:
 	if selected == null:
 		return
 
-	# Switch the selected bench with active
-	var old_active: card_object
-	if is_opponent:
-		old_active = main.player_active_pokemon
-		main.player_bench.erase(selected)
-		main.player_bench.append(old_active)
-		old_active.current_location = "bench"
-		selected.current_location = "active"
-		main.player_active_pokemon = selected
-		main.clear_all_statuses(old_active, false)
-	else:
-		old_active = main.opponent_active_pokemon
-		main.opponent_bench.erase(selected)
-		main.opponent_bench.append(old_active)
-		old_active.current_location = "bench"
-		selected.current_location = "active"
-		main.opponent_active_pokemon = selected
-		main.clear_all_statuses(old_active, true)
-	
-	main.display_pokemon(!is_opponent)
-	main.display_active_pokemon_energies(!is_opponent)
-	
+	_force_bench_to_active(selected, is_opponent)
 	await main.show_message("DRAGGED " + selected.metadata.get("name", "").to_upper() + " TO ACTIVE!")
 	if main._should_bail(): return
 	
@@ -3439,27 +3587,7 @@ func execute_fascinate(attacker: card_object, defender: card_object, is_opponent
 	if selected == null:
 		return
 
-	# Switch
-	var old_active: card_object
-	if is_opponent:
-		old_active = main.player_active_pokemon
-		main.player_bench.erase(selected)
-		main.player_bench.append(old_active)
-		old_active.current_location = "bench"
-		selected.current_location = "active"
-		main.player_active_pokemon = selected
-		main.clear_all_statuses(old_active, false)
-	else:
-		old_active = main.opponent_active_pokemon
-		main.opponent_bench.erase(selected)
-		main.opponent_bench.append(old_active)
-		old_active.current_location = "bench"
-		selected.current_location = "active"
-		main.opponent_active_pokemon = selected
-		main.clear_all_statuses(old_active, true)
-	
-	main.display_pokemon(!is_opponent)
-	main.display_active_pokemon_energies(!is_opponent)
+	_force_bench_to_active(selected, is_opponent)
 	await main.show_message(selected.metadata.get("name", "").to_upper() + " WAS SWITCHED IN!")
 	if main._should_bail(): return
 	print("ATTACK EXECUTED: Fascinate - switched in ", selected.metadata.get("name", ""))
