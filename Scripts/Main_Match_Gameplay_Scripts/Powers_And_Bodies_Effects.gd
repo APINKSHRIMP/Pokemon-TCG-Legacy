@@ -55,6 +55,61 @@ func _register_all_powers() -> void:
 	_power_dispatch["Soak Up"]               = func(p): await power_soak_up(p)
 	_power_dispatch["Emerge"]                = func(p): await power_emerge(p)
 
+# ── On-damage and pre-KO event hooks ──────────────────────────────────────────
+# Each Callable is fired after active-pokemon damage resolves (on_damage) or
+# just before a KO'd pokemon's discard sequence begins (pre_ko).
+# Signature: func(defender, attacker, damage: int, is_def_opp: bool) — for on_damage
+# Signature: func(pokemon, attacker, is_pokemon_opp: bool)           — for pre_ko
+# attack_effects registers its own hooks at startup via register_on_damage_hook.
+var _on_damage_hooks: Array = []
+var _pre_ko_hooks: Array = []
+
+func register_on_damage_hook(fn: Callable) -> void:
+	_on_damage_hooks.append(fn)
+
+func register_pre_ko_hook(fn: Callable) -> void:
+	_pre_ko_hooks.append(fn)
+
+func _register_all_power_hooks() -> void:
+	_on_damage_hooks.clear()
+	_pre_ko_hooks.clear()
+	_on_damage_hooks.append(func(def, atk, dmg, is_def_opp): await check_strikes_back(def, atk, is_def_opp))
+	_on_damage_hooks.append(func(def, atk, dmg, is_def_opp): await check_restless_sleep(def, atk, is_def_opp))
+	_on_damage_hooks.append(func(def, atk, dmg, is_def_opp): await check_pollen_defense(def, atk, is_def_opp))
+	_on_damage_hooks.append(func(def, atk, dmg, is_def_opp): await check_energy_drain(def, atk, is_def_opp))
+	_on_damage_hooks.append(func(def, atk, dmg, is_def_opp): await check_shock_blast(def, is_def_opp))
+	_on_damage_hooks.append(func(def, atk, dmg, is_def_opp): await check_scram(def, is_def_opp))
+	_on_damage_hooks.append(func(def, atk, dmg, is_def_opp): await check_flee(def, is_def_opp))
+	_on_damage_hooks.append(func(def, atk, dmg, is_def_opp): await check_koga_poison(def, atk, is_def_opp))
+	_pre_ko_hooks.append(func(poke, atk, is_poke_opp): await check_final_beam(poke, atk, is_poke_opp))
+
+# Fires all on-damage hooks in registration order. Called once from Main after active damage lands.
+func dispatch_on_damage(defender: card_object, attacker: card_object, damage: int, is_def_opp: bool) -> void:
+	for fn in _on_damage_hooks:
+		if main._should_bail(): return
+		await fn.call(defender, attacker, damage, is_def_opp)
+
+# Fires all pre-KO hooks. Called once from Main before the KO'd pokemon is discarded.
+func dispatch_pre_ko(pokemon: card_object, attacker: card_object, is_pokemon_opp: bool) -> void:
+	for fn in _pre_ko_hooks:
+		if main._should_bail(): return
+		await fn.call(pokemon, attacker, is_pokemon_opp)
+
+# GYM2 Koga (gym2-19/106) poison: a Koga-named attacker that dealt damage this turn poisons the defender.
+func check_koga_poison(defender: card_object, attacker: card_object, is_def_opp: bool) -> void:
+	if attacker == null or defender == null:
+		return
+	var attacker_owner_is_opp = (attacker == main.opponent_active_pokemon)
+	var koga_on = main.opponent_koga_poison_active if attacker_owner_is_opp else main.player_koga_poison_active
+	if not koga_on:
+		return
+	if not ("Koga" in attacker.metadata.get("name", "")):
+		return
+	if defender.is_poisoned or defender.special_condition == "Asleep":
+		return
+	main.card_ops.apply_status(defender, "Poisoned", is_def_opp)
+	print("GYM2 KOGA: Poisoned ", defender.metadata.get("name", ""))
+
 func is_power_blocked_by_status(pokemon: card_object) -> bool:
 	if pokemon == null:
 		return true
@@ -1564,16 +1619,14 @@ func cpu_phase_activate_powers() -> void:
 				var coin = await main.flip_coin(false, true)
 				gloom.power_used_this_turn = true
 				if coin:
-					main.player_active_pokemon.special_condition = "Confused"
-					main.update_status_icons(main.player_active_pokemon, false)
+					main.card_ops.apply_status(main.player_active_pokemon, "Confused", false)
 					await main.show_message("Pollen Stench: Defending Pokemon is Confused!")
 					if main._should_bail(): return
 				else:
 					# Tails: own active confused
 					var cpu_active = main.opponent_active_pokemon
 					if cpu_active != null:
-						cpu_active.special_condition = "Confused"
-						main.update_status_icons(cpu_active, true)
+						main.card_ops.apply_status(cpu_active, "Confused", true)
 						await main.show_message("Pollen Stench: Tails! Own active is Confused!")
 						if main._should_bail(): return
 	
@@ -1614,15 +1667,13 @@ func cpu_phase_activate_powers() -> void:
 				var coin = await main.flip_coin(false, true)
 				drowzee.power_used_this_turn = true
 				if coin:
-					main.player_active_pokemon.special_condition = "Asleep"
-					main.update_status_icons(main.player_active_pokemon, false)
+					main.card_ops.apply_status(main.player_active_pokemon, "Asleep", false)
 					await main.show_message("Long-Distance Hypnosis: Defending Pokemon is Asleep!")
 					if main._should_bail(): return
 				else:
 					var cpu_active = main.opponent_active_pokemon
 					if cpu_active != null:
-						cpu_active.special_condition = "Asleep"
-						main.update_status_icons(cpu_active, true)
+						main.card_ops.apply_status(cpu_active, "Asleep", true)
 						await main.show_message("Long-Distance Hypnosis: Tails! Own active is Asleep!")
 						if main._should_bail(): return
 	
@@ -2051,15 +2102,13 @@ func power_pollen_stench(pokemon: card_object) -> void:
 	if coin:
 		var defender = main.opponent_active_pokemon
 		if defender != null:
-			defender.special_condition = "Confused"
-			main.update_status_icons(defender, true)
+			main.card_ops.apply_status(defender, "Confused", true)
 			await main.show_message("HEADS! " + defender.metadata.get("name", "").to_upper() + " IS NOW CONFUSED!")
 			if main._should_bail(): return
 	else:
 		var active = main.player_active_pokemon
 		if active != null:
-			active.special_condition = "Confused"
-			main.update_status_icons(active, false)
+			main.card_ops.apply_status(active, "Confused", false)
 			await main.show_message("TAILS! " + active.metadata.get("name", "").to_upper() + " IS NOW CONFUSED!")
 			if main._should_bail(): return
 	print("POWER: Pollen Stench")
@@ -2179,15 +2228,13 @@ func power_long_distance_hypnosis(pokemon: card_object) -> void:
 	if coin:
 		var defender = main.opponent_active_pokemon
 		if defender != null:
-			defender.special_condition = "Asleep"
-			main.update_status_icons(defender, true)
+			main.card_ops.apply_status(defender, "Asleep", true)
 			await main.show_message("HEADS! " + defender.metadata.get("name", "").to_upper() + " IS NOW ASLEEP!")
 			if main._should_bail(): return
 	else:
 		var active = main.player_active_pokemon
 		if active != null:
-			active.special_condition = "Asleep"
-			main.update_status_icons(active, false)
+			main.card_ops.apply_status(active, "Asleep", false)
 			await main.show_message("TAILS! " + active.metadata.get("name", "").to_upper() + " IS NOW ASLEEP!")
 			if main._should_bail(): return
 	print("POWER: Long-Distance Hypnosis")
@@ -2366,8 +2413,7 @@ func check_pollen_defense(damaged_pokemon: card_object, attacker: card_object, i
 		if ab.get("name", "") == "Thick Skinned" and not is_toxic_gas_active():
 			await main.show_message("THICK SKINNED PREVENTS CONFUSION!")
 			return
-	attacker.special_condition = "Confused"
-	main.update_status_icons(attacker, not is_damaged_opp)
+	main.card_ops.apply_status(attacker, "Confused", not is_damaged_opp)
 	await main.show_message("POLLEN DEFENSE: " + attacker.metadata.get("name", "").to_upper() + " IS NOW CONFUSED!")
 	if main._should_bail(): return
 

@@ -225,6 +225,13 @@ func _register_base_attacks() -> void:
 # Returns false to fall through to the generic damage/text-effects path in perform_attack.
 #
 
+# Called from Main._ready() after powers_and_bodies is initialised.
+# Registers attack-effects on-damage hooks into the powers event bus so Main's
+# apply_damage can call a single dispatch_on_damage instead of individual check_ calls.
+func register_on_damage_hooks(powers: Node) -> void:
+	powers.register_on_damage_hook(func(def, atk, dmg, is_def_opp): await check_mirror_shell(def, atk, dmg, is_def_opp))
+	powers.register_on_damage_hook(func(def, atk, dmg, is_def_opp): await gym1_check_counters(def, atk, dmg, is_def_opp))
+
 func dispatch_attack(attack: Dictionary, attacker: card_object, defender: card_object, is_opponent: bool) -> bool:
 	_ensure_dispatch_ready()
 	var attack_name = attack.get("name", "")
@@ -1703,10 +1710,7 @@ func apply_self_heal(effect: Dictionary, attacker: card_object, is_opponent_atta
 
 # Applies the toxic upgrade setting poison damage to 20
 func apply_toxic(defender: card_object, is_opponent_attacking: bool) -> void:
-	defender.is_poisoned = true
-	defender.poison_damage = 20
-	var is_def_opponent = !is_opponent_attacking
-	main.update_status_icons(defender, is_def_opponent)
+	main.card_ops.apply_status(defender, "Toxic", not is_opponent_attacking)
 	print("EFFECT APPLIED: ", defender.metadata.get("name", ""), " poison upgraded to Toxic (20 damage)")
 
 # Sets destiny bond flag on the attacker
@@ -2261,14 +2265,11 @@ func execute_call_for_pokemon(attacker: card_object, is_opponent: bool, search_n
 	
 	if chosen != null and bench.size() < 5:
 		deck.erase(chosen)
-		chosen.current_location = "bench"
 		chosen.current_hp = int(chosen.metadata.get("hp", "0"))
-		chosen.placed_on_field_this_turn = true
-		bench.append(chosen)
+		main.card_ops.place_on_bench(chosen, is_opponent)
 		await main.show_message(chosen.metadata.get("name", "").to_upper() + " WAS PLACED ON THE BENCH!")
 		if main._should_bail(): return
-		main.display_pokemon(is_opponent)
-	
+
 	# Shuffle deck after search
 	deck.shuffle()
 ######################################################### SPECIAL ATTACK FUNCTIONS ############################################################
@@ -3171,8 +3172,7 @@ func execute_petal_whirlwind(attacker: card_object, defender: card_object, is_op
 	
 	# 2+ heads = self confused
 	if heads_count >= 2:
-		attacker.special_condition = "Confused"
-		main.update_status_icons(attacker, is_opponent)
+		main.card_ops.apply_status(attacker, "Confused", is_opponent)
 		await main.show_message(attacker.metadata.get("name", "").to_upper() + " IS NOW CONFUSED!")
 		if main._should_bail(): return
 	
@@ -4671,16 +4671,9 @@ func execute_psychic_exchange(attacker: card_object, is_opponent: bool) -> void:
 	deck.shuffle()
 	main.refresh_hand_display(is_opponent)
 	main.update_deck_icon(is_opponent)
-	var drawn = 0
-	for i in range(5):
-		if deck.size() == 0:
-			break
-		await main.draw_card_from_deck(is_opponent)
-		if main._should_bail(): return
-		drawn += 1
-	main.refresh_hand_display(is_opponent)
-	main.update_deck_icon(is_opponent)
-	await main.show_message("PSYCHIC EXCHANGE! DREW " + str(drawn) + " NEW CARDS!")
+	await main.card_ops.draw_n(is_opponent, 5)
+	if main._should_bail(): return
+	await main.show_message("PSYCHIC EXCHANGE! DREW 5 NEW CARDS!")
 	if main._should_bail(): return
 
 # MOONWATCHING (Erika's Clefairy): search your deck for a basic Energy card and put it into your hand
@@ -4827,13 +4820,10 @@ func execute_call_for_named_basic(attacker: card_object, is_opponent: bool, name
 		if main._should_bail(): return
 	if chosen != null and bench.size() < 5:
 		deck.erase(chosen)
-		chosen.current_location = "bench"
 		chosen.current_hp = int(chosen.metadata.get("hp", "0"))
-		chosen.placed_on_field_this_turn = true
-		bench.append(chosen)
+		main.card_ops.place_on_bench(chosen, is_opponent)
 		await main.show_message(chosen.metadata.get("name", "").to_upper() + " WAS PLACED ON THE BENCH!")
 		if main._should_bail(): return
-		main.display_pokemon(is_opponent)
 	deck.shuffle()
 	main.update_deck_icon(is_opponent)
 
@@ -5877,17 +5867,9 @@ func execute_helping_hand(attacker: card_object, is_opponent: bool) -> void:
 	main.display_hp_circles_above_align(chosen, is_opponent)
 	main.display_pokemon(!is_opponent)
 	SoundManagerScript.play_sfx(SoundManagerScript.SFX_heal_sound)
-	var deck = main.player_deck
-	var drawn = 0
-	for i in range(counters):
-		if deck.size() == 0:
-			break
-		await main.draw_card_from_deck(false)
-		if main._should_bail(): return
-		drawn += 1
-	main.refresh_hand_display(false)
-	main.update_deck_icon(false)
-	await main.show_message("HELPING HAND HEALED " + chosen.metadata.get("name", "").to_upper() + " AND DREW " + str(drawn) + " CARDS!")
+	await main.card_ops.draw_n(false, counters)
+	if main._should_bail(): return
+	await main.show_message("HELPING HAND HEALED " + chosen.metadata.get("name", "").to_upper() + " AND DREW " + str(counters) + " CARDS!")
 	if main._should_bail(): return
 
 # LIFE DRAIN (Sabrina's Kadabra): flip — heads puts damage counters so the Defender has 10 HP left
@@ -6253,10 +6235,8 @@ func execute_esp(attacker: card_object, defender: card_object, is_opponent: bool
 	if heads == 1:
 		await main.show_message("EXACTLY 1 HEADS! DRAW A CARD!")
 		if main._should_bail(): return
-		await main.draw_card_from_deck(is_opponent)
+		await main.card_ops.draw_n(is_opponent, 1)
 		if main._should_bail(): return
-		main.refresh_hand_display(is_opponent)
-		main.update_deck_icon(is_opponent)
 	elif heads == 2:
 		await main.show_message("EXACTLY 2 HEADS! 20 DAMAGE!")
 		if main._should_bail(): return
@@ -6415,17 +6395,9 @@ func execute_draw_flip(attacker: card_object, is_opponent: bool, count: int) -> 
 		await main.show_message("TAILS! NO CARDS DRAWN.")
 		if main._should_bail(): return
 		return
-	var deck = main.opponent_deck if is_opponent else main.player_deck
-	var drawn = 0
-	for i in range(count):
-		if deck.size() == 0:
-			break
-		await main.draw_card_from_deck(is_opponent)
-		if main._should_bail(): return
-		drawn += 1
-	main.refresh_hand_display(is_opponent)
-	main.update_deck_icon(is_opponent)
-	await main.show_message("HEADS! DREW " + str(drawn) + " CARD(S)!")
+	await main.card_ops.draw_n(is_opponent, count)
+	if main._should_bail(): return
+	await main.show_message("HEADS! DREW " + str(count) + " CARD(S)!")
 	if main._should_bail(): return
 
 # PSYSCAN (Sabrina's Abra): look at the opponent's hand

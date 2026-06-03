@@ -169,7 +169,7 @@ func _register_base_validations() -> void:
 	_validator_dispatch["base1-92"] = func(c, opp):  # Energy Removal
 		for p in build_field_pokemon_array(not opp):
 			if p.attached_energies.size() > 0:
-				if main.is_stadium_in_play("gym1-103"):
+				if main.is_stadium_in_play(StadiumIds.NO_REMOVAL_GYM):
 					var others = (main.opponent_hand if opp else main.player_hand).filter(func(x): return x != c)
 					if others.size() < 2: return "No Removal Gym: need 2 other cards in hand!"
 				return ""
@@ -180,7 +180,7 @@ func _register_base_validations() -> void:
 		if not own_has_e: return "You have no energy to discard for Super Energy Removal!"
 		var opp_has_e = build_field_pokemon_array(not opp).any(func(p): return p.attached_energies.size() > 0)
 		if not opp_has_e: return "Opponent has no energy to remove!"
-		if main.is_stadium_in_play("gym1-103"):
+		if main.is_stadium_in_play(StadiumIds.NO_REMOVAL_GYM):
 			var others = (main.opponent_hand if opp else main.player_hand).filter(func(x): return x != c)
 			if others.size() < 2: return "No Removal Gym: need 2 other cards in hand!"
 		return ""
@@ -777,7 +777,7 @@ func play_trainer_card(card: card_object, is_opponent: bool) -> void:
 
 	# GYM2-102 Chaos Gym — Whenever a player plays a non-Stadium Trainer, flip a coin. Tails: card is wasted (discarded with no effect).
 	# Simplification: the "opponent may steal the card" mechanic is skipped (same approach as Lt. Surge's Secret Plan).
-	if main.is_stadium_in_play("gym2-102") and not is_stadium_trainer(card):
+	if main.is_stadium_in_play(StadiumIds.CHAOS_GYM) and not is_stadium_trainer(card):
 		await main.show_message("CHAOS GYM: FLIPPING COIN FOR " + card_name.to_upper() + "...")
 		if main._should_bail(): return
 		var chaos_heads = await main.flip_coin(false, is_opponent)
@@ -3150,8 +3150,7 @@ func effect_sleep_trainer(is_opponent: bool) -> void:
 	if coin:
 		var defender = main.player_active_pokemon if is_opponent else main.opponent_active_pokemon
 		if defender != null:
-			defender.special_condition = "Asleep"
-			main.update_status_icons(defender, !is_opponent)
+			main.card_ops.apply_status(defender, "Asleep", not is_opponent)
 			await main.show_message(defender.metadata.get("name", "").to_upper() + " IS NOW ASLEEP!")
 			if main._should_bail(): return
 	else:
@@ -4395,7 +4394,7 @@ func gym1_celadon_activate(is_opponent: bool) -> void:
 
 # Checks if the side has a valid target for the Celadon activation. Used by power menu + CPU AI.
 func gym1_celadon_has_target(is_opponent: bool) -> bool:
-	if not main.is_stadium_in_play("gym1-107"):
+	if not main.is_stadium_in_play(StadiumIds.CELADON_CITY_GYM):
 		return false
 	if is_opponent and main.opponent_celadon_used_this_turn:
 		return false
@@ -4420,7 +4419,7 @@ func gym1_celadon_has_target(is_opponent: bool) -> bool:
 # Centralized "No Removal Gym (gym1-103) tax" — discards 2 cards from the side's hand
 # before an Energy Removal / Super Energy Removal resolves. Returns false if the play should be aborted.
 func gym1_no_removal_gym_pay_tax(card: card_object, is_opponent: bool) -> bool:
-	if not main.is_stadium_in_play("gym1-103"):
+	if not main.is_stadium_in_play(StadiumIds.NO_REMOVAL_GYM):
 		return true
 	var hand = main.opponent_hand if is_opponent else main.player_hand
 	var discard = main.opponent_discard_pile if is_opponent else main.player_discard_pile
@@ -5261,7 +5260,7 @@ func gym2_effect_warp_point(is_opponent: bool) -> void:
 const MINEFIELD_TAILS_DAMAGE: int = 20
 
 func gym2_minefield_gym_trigger(pokemon: card_object, is_opponent: bool) -> void:
-	if not main.is_stadium_in_play("gym2-119"):
+	if not main.is_stadium_in_play(StadiumIds.ROCKETS_MINEFIELD_GYM):
 		return
 	if pokemon == null:
 		return
@@ -5292,7 +5291,7 @@ func gym2_minefield_gym_trigger(pokemon: card_object, is_opponent: bool) -> void
 # (and all attached cards/energies/pre-evolutions) into its owner's deck.
 
 func gym2_fuchsia_has_target(is_opponent: bool) -> bool:
-	if not main.is_stadium_in_play("gym2-114"):
+	if not main.is_stadium_in_play(StadiumIds.FUCHSIA_CITY_GYM):
 		return false
 	if is_opponent and main.opponent_fuchsia_used_this_turn:
 		return false
@@ -5405,7 +5404,7 @@ func gym2_fuchsia_activate(is_opponent: bool) -> void:
 # Activatable (as often as you like during your turn): return 1 basic Energy from a Sabrina-named pokemon to hand.
 
 func gym2_saffron_has_target(is_opponent: bool) -> bool:
-	if not main.is_stadium_in_play("gym2-122"):
+	if not main.is_stadium_in_play(StadiumIds.SAFFRON_CITY_GYM):
 		return false
 	var active = main.opponent_active_pokemon if is_opponent else main.player_active_pokemon
 	var bench = main.opponent_bench if is_opponent else main.player_bench

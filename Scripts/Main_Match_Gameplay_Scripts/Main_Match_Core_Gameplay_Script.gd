@@ -2786,7 +2786,7 @@ func perform_evolution(is_opponent: bool) -> void:
 	clear_all_statuses(target_card, is_opponent)
 
 	# GYM2-123 Viridian City Gym — when a Giovanni-named pokemon evolves, heal 20 (or 10 if only 1 counter)
-	if is_stadium_in_play("gym2-123") and "Giovanni" in evo_card.metadata.get("name", ""):
+	if is_stadium_in_play(StadiumIds.VIRIDIAN_CITY_GYM) and "Giovanni" in evo_card.metadata.get("name", ""):
 		var counters = max_hp_new - evo_card.current_hp
 		if counters > 0:
 			var heal_amount = 20 if counters >= 20 else 10
@@ -3058,36 +3058,9 @@ func display_and_apply_attack_damage(attacker: card_object, defender: card_objec
 	print(attacker.metadata["name"] + " dealt " + str(final_damage) + " damage to " + defender.metadata["name"] + "! HP remaining: " + str(defender.current_hp))
 	display_hp_circles_above_align(defender, !is_opponent)
 	
-	# Check for Machamp's Strikes Back power (triggers when Machamp takes damage)
 	if final_damage > 0:
 		SoundManagerScript.play_sfx(SoundManagerScript.SFX_damage_sound)
-		await powers_and_bodies.check_strikes_back(defender, attacker, !is_opponent)
-		# GYM1 Rocket's Snorlax Restless Sleep — 20 to attacker if Snorlax was Asleep
-		await powers_and_bodies.check_restless_sleep(defender, attacker, !is_opponent)
-		# GYM1 Erika's Vileplume Pollen Defense — flip to Confuse attacker
-		await powers_and_bodies.check_pollen_defense(defender, attacker, !is_opponent)
-		# GYM2 Koga's Muk Energy Drain — flip to discard 1 attacker energy
-		await powers_and_bodies.check_energy_drain(defender, attacker, !is_opponent)
-		# GYM2 Lt. Surge's Electrode Shock Blast — flip tails, 20 to both actives
-		await powers_and_bodies.check_shock_blast(defender, !is_opponent)
-		# GYM2 Brock's Primeape Scram — at exactly 10 HP, shuffle into deck
-		await powers_and_bodies.check_scram(defender, !is_opponent)
-		# GYM1 Misty's Tentacruel Flee — owner may switch out to prevent further attack effects
-		await powers_and_bodies.check_flee(defender, !is_opponent)
-		# Check for Dark Wartortle's Mirror Shell (counter equal damage)
-		await attack_effects.check_mirror_shell(defender, attacker, final_damage, !is_opponent)
-		# Check for GYM1 Crosscounter / Fire Wall counter-attacks
-		await attack_effects.gym1_check_counters(defender, attacker, final_damage, !is_opponent)
-		# GYM2 Koga (gym2-19/106): a Koga-named attacker that damaged the defender this turn poisons them
-		if attacker != null:
-			var attacker_owner_is_opp = (attacker == opponent_active_pokemon)
-			var koga_on = (opponent_koga_poison_active if attacker_owner_is_opp else player_koga_poison_active)
-			var attacker_name = attacker.metadata.get("name", "")
-			if koga_on and "Koga" in attacker_name and not defender.is_poisoned and defender.special_condition != "Asleep":
-				defender.is_poisoned = true
-				defender.poison_damage = 10
-				update_status_icons(defender, !is_opponent)
-				print("GYM2 KOGA: Poisoned ", defender.metadata.get("name", ""))
+		await powers_and_bodies.dispatch_on_damage(defender, attacker, final_damage, !is_opponent)
 
 	# GYM1-120 Vermilion City Gym: queued self-damage from Lt. Surge tails — apply to attacker after damage resolves
 	if vermilion_lt_surge_self_damage_pending > 0 and attacker != null:
@@ -3262,7 +3235,7 @@ func calculate_final_damage(base_damage: int, attacking_types: Array, defending_
 	# Apply weakness (check temporary override from Porygon Conversion 1 first)
 	# GYM2-113 Cinnabar City Gym — Ignore Weakness when a Water Pokemon attacks a Blaine-named pokemon
 	var skip_weakness = false
-	if is_stadium_in_play("gym2-113") and attacker_pokemon != null:
+	if is_stadium_in_play(StadiumIds.CINNABAR_CITY_GYM) and attacker_pokemon != null:
 		var def_name_cinnabar = defending_pokemon.metadata.get("name", "")
 		if "Blaine" in def_name_cinnabar and "Water" in attacking_types:
 			skip_weakness = true
@@ -3287,7 +3260,7 @@ func calculate_final_damage(base_damage: int, attacking_types: Array, defending_
 	# Apply resistance (check temporary override from Porygon Conversion 2 first)
 	# GYM1-115 Pewter City Gym — Pokemon with "Brock" in name ignore Resistance on their attacks
 	var skip_resistance = false
-	if is_stadium_in_play("gym1-115") and attacker_pokemon != null:
+	if is_stadium_in_play(StadiumIds.PEWTER_CITY_GYM) and attacker_pokemon != null:
 		var atk_name_pewter = attacker_pokemon.metadata.get("name", "")
 		if "Brock" in atk_name_pewter:
 			skip_resistance = true
@@ -3295,7 +3268,7 @@ func calculate_final_damage(base_damage: int, attacking_types: Array, defending_
 	if not skip_resistance:
 		var resistances = defending_pokemon.metadata.get("resistances", [])
 		# GYM2-109 Resistance Gym — each pokemon's Resistance is reduced by 20 (e.g. -30 -> -10, -20 -> 0)
-		var resistance_reduction = 20 if is_stadium_in_play("gym2-109") else 0
+		var resistance_reduction = 20 if is_stadium_in_play(StadiumIds.RESISTANCE_GYM) else 0
 		for resistance in resistances:
 			var resistance_type = resistance["type"]
 			if defending_pokemon.temporary_resistance != "":
@@ -3425,14 +3398,9 @@ func check_and_handle_knockout(pokemon: card_object, is_opponent: bool) -> bool:
 	SoundManagerScript.play_sfx(SoundManagerScript.SFX_knockout_sound)
 	await show_message(ko_name.to_upper() + " WAS KNOCKED OUT!")
 
-	# BASE5: Dark Gyarados Final Beam - triggers when KO'd by attack
-	var ko_abilities = pokemon.metadata.get("abilities", [])
-	for ab in ko_abilities:
-		if ab.get("name", "") == "Final Beam":
-			# Find the attacker (the other side's active)
-			var attacker = player_active_pokemon if is_opponent else opponent_active_pokemon
-			await powers_and_bodies.check_final_beam(pokemon, attacker, is_opponent)
-			break
+	# Pre-KO event hooks (Final Beam and any future on-KO powers registered in Powers)
+	var ko_attacker = player_active_pokemon if is_opponent else opponent_active_pokemon
+	await powers_and_bodies.dispatch_pre_ko(pokemon, ko_attacker, is_opponent)
 
 	# GYM1 Rocket's Moltres Rebirth — return to hand instead of discarding
 	# Must trigger AFTER Final Beam (so Final Beam still resolves) but BEFORE the discard animation.
@@ -3900,10 +3868,10 @@ func get_retreat_cost(pokemon: card_object) -> int:
 	cost += powers_and_bodies.get_sticky_goo_cost(is_player_pokemon)
 
 	# GYM1-104 The Rocket's Training Gym — both players pay +1 Colorless to retreat their Active Pokemon
-	if is_stadium_in_play("gym1-104"):
+	if is_stadium_in_play(StadiumIds.ROCKETS_TRAINING_GYM):
 		cost += 1
 	# GYM1-108 Cerulean City Gym — Pokemon with "Misty" in name pay 1 less to retreat
-	if is_stadium_in_play("gym1-108"):
+	if is_stadium_in_play(StadiumIds.CERULEAN_CITY_GYM):
 		var pname = pokemon.metadata.get("name", "")
 		if "Misty" in pname:
 			cost = max(0, cost - 1)
@@ -3918,7 +3886,7 @@ func is_stadium_in_play(uid: String) -> bool:
 
 # Returns the bench cap. Reduced to 4 while gym1-124 Narrow Gym is in play.
 func get_max_bench_size() -> int:
-	if is_stadium_in_play("gym1-124"):
+	if is_stadium_in_play(StadiumIds.NARROW_GYM):
 		return 4
 	return 5
 
@@ -3929,7 +3897,7 @@ func get_max_bench_size() -> int:
 func maybe_vermilion_lt_surge_flip(attacker: card_object, is_opponent: bool) -> void:
 	if attacker == null:
 		return
-	if not is_stadium_in_play("gym1-120"):
+	if not is_stadium_in_play(StadiumIds.VERMILION_CITY_GYM):
 		return
 	if not ("Lt. Surge" in attacker.metadata.get("name", "")):
 		return
@@ -4772,7 +4740,11 @@ func _ready() -> void:
 	card_ops.set_script(preload("res://Scripts/Main_Match_Gameplay_Scripts/Card_Ops.gd"))
 	add_child(card_ops)
 	card_ops.main = self
-	
+
+	# Register all on-damage and pre-KO power hooks, then let attack_effects add its own.
+	powers_and_bodies._register_all_power_hooks()
+	attack_effects.register_on_damage_hooks(powers_and_bodies)
+
 	var opponent_name = GameState.current_opponent_name
 	
 	if GameDataManager.player_data.has("coin"):
