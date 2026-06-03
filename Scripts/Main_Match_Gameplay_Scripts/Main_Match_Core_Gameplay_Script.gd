@@ -303,6 +303,7 @@ var trainer_effects: Node
 var cpu_ai: Node
 var powers_and_bodies: Node
 var card_ops: Node
+var trainer_dsl: Node
 
 # Fix 1: Set metadata cache — keyed by set prefix string, value is parsed Array from JSON
 var _set_metadata_cache: Dictionary = {}
@@ -4740,6 +4741,11 @@ func _ready() -> void:
 	card_ops.set_script(preload("res://Scripts/Main_Match_Gameplay_Scripts/Card_Ops.gd"))
 	add_child(card_ops)
 	card_ops.main = self
+
+	trainer_dsl = Node.new()
+	trainer_dsl.set_script(preload("res://Scripts/Main_Match_Gameplay_Scripts/Trainer_Effects_Simple_DSL.gd"))
+	add_child(trainer_dsl)
+	trainer_dsl.main = self
 
 	# Register all on-damage and pre-KO power hooks, then let attack_effects add its own.
 	powers_and_bodies._register_all_power_hooks()
