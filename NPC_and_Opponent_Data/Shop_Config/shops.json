@@ -1,0 +1,28 @@
+{
+  "card_mart": {
+    "menu_scene": "res://Scenes/Main_Menu_Scenes/Pack_Purchase.tscn",
+    "return_mode": "spawn_position"
+  },
+  "rocket_mart": {
+    "always_open": true,
+    "menu_scene": "res://Scenes/Main_Menu_Scenes/Pack_Purchase.tscn",
+    "return_mode": "spawn_position"
+  },
+  "gym_mart": {
+    "always_open": true,
+    "menu_scene": "res://Scenes/Main_Menu_Scenes/Pack_Purchase.tscn",
+    "return_mode": "spawn_position"
+  },
+  "coin_mart": {
+    "always_open": true,
+    "menu_scene": "res://Scenes/Main_Menu_Scenes/Coin_Shop.tscn",
+    "return_mode": "menu_return",
+    "return_scene": "res://Scenes/Map_Scenes/Celeste_Harbour.tscn"
+  },
+  "holo_mart": {
+    "always_open": true,
+    "menu_scene": "res://Scenes/Main_Menu_Scenes/Holo_Rare_Shop.tscn",
+    "return_mode": "menu_return",
+    "return_scene": "res://Scenes/Map_Scenes/Celeste_Harbour.tscn"
+  }
+}

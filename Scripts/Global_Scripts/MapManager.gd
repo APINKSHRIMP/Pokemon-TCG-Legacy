@@ -9,6 +9,10 @@ var npc_scene        = preload("res://Scenes/Objects/NPC_Object_Scene.tscn")
 var shopkeeper_scene = preload("res://Scenes/Objects/Shopkeeper_Object_Scene.tscn")
 
 const CONSTANT_DATA_PATH := "res://NPC_and_Opponent_Data/All_NPC_Constant_Data.json"
+const SHOP_CONFIG_PATH   := "res://NPC_and_Opponent_Data/Shop_Config/shops.json"
+
+var _shop_configs: Dictionary = {}
+var _shop_configs_loaded: bool = false
 
 var _player: CharacterBody2D
 var _opponents_container: Node2D
@@ -177,6 +181,17 @@ func _load_constant_data() -> void:
 	if data is Dictionary:
 		_npc_constants = data.get("npcs", {})
 		_opponent_constants = data.get("opponents", {})
+
+func _get_shop_config(shop_id: String) -> Dictionary:
+	if not _shop_configs_loaded:
+		_shop_configs_loaded = true
+		var file = FileAccess.open(SHOP_CONFIG_PATH, FileAccess.READ)
+		if file != null:
+			var parsed = JSON.parse_string(file.get_as_text())
+			file.close()
+			if parsed is Dictionary:
+				_shop_configs = parsed
+	return _shop_configs.get(shop_id, {})
 
 # ============================================================
 # OPPONENT SPAWNING
@@ -481,34 +496,25 @@ func _on_yes_pressed():
 		_handle_juice_purchase()
 		return
 
-	# Shop NPC — delegate to npc.on_interact() which returns false when ready to open shop
+	# Shop NPC — open the appropriate menu scene from shop config
 	if current_npc != null and current_npc.npc_type == "shop":
 		GameState.current_shop_id = current_npc.shop_id
-		if current_npc.shop_id == "coin_mart":
-			# Coin shop returns to Celeste_Harbour — use menu_return_state so
-			# Celeste_Harbour._ready() restores position via has_menu_return_state
+		var shop_cfg := _get_shop_config(current_npc.shop_id)
+		if shop_cfg.is_empty():
+			push_error("MapManager: No shop config for shop_id: " + current_npc.shop_id)
+			return
+		_hide_message()
+		if shop_cfg.get("return_mode", "spawn_position") == "menu_return":
 			GameState.save_menu_return_state(
-				"res://Scenes/Map_Scenes/Celeste_Harbour.tscn",
+				shop_cfg.get("return_scene", _map_scene_path),
 				_player.position,
 				_player.get_current_direction()
 			)
-			_hide_message()
-			SceneCache.change_scene("res://Scenes/Main_Menu_Scenes/Coin_Shop.tscn")
-		elif current_npc.shop_id == "holo_mart":
-			GameState.save_menu_return_state(
-				"res://Scenes/Map_Scenes/Celeste_Harbour.tscn",
-				_player.position,
-				_player.get_current_direction()
-			)
-			_hide_message()
-			SceneCache.change_scene("res://Scenes/Main_Menu_Scenes/Holo_Rare_Shop.tscn")
 		else:
-			# All other shops (card_mart, rocket_mart) use spawn_position
 			GameState.save_player_direction(_player.get_current_direction())
 			GameState.spawn_position = _player.position
 			GameState.use_spawn_position = true
-			_hide_message()
-			SceneCache.change_scene("res://Scenes/Main_Menu_Scenes/Pack_Purchase.tscn")
+		SceneCache.change_scene(shop_cfg["menu_scene"])
 		return
 
 	# Opponent battle

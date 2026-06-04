@@ -26,7 +26,6 @@ var nearby_opponent: Node:
 var nearby_npc: Node:
 	get:
 		return _active_candidate if (_active_candidate != null and _active_candidate.is_in_group("npcs")) else null
-var nearby_shopkeeper: bool = false
 
 @onready var animated_sprite: AnimatedSprite2D = $AnimatedSprite2D
 @onready var interaction_area: Area2D = $InteractionArea
@@ -140,8 +139,6 @@ func _unhandled_input(event):
 				interact_pressed.emit(_active_candidate)
 			elif _active_candidate.is_in_group("npcs"):
 				npc_interact_pressed.emit(_active_candidate)
-		elif nearby_shopkeeper:
-			MapManager.trigger_shopkeeper_interact()
 
 	if event is InputEventMouseButton:
 		if event.pressed:
