@@ -77,6 +77,7 @@ func send_array_to_discard(cards: Array, is_opponent: bool, animate: bool = fals
 
 # Discard all energies and pre-evolutions attached to a pokemon.
 func discard_all_attachments(pokemon: card_object, is_opponent: bool) -> void:
+	var discard = main.opponent_discard_pile if is_opponent else main.player_discard_pile
 	for card in pokemon.attached_energies.duplicate():
 		discard_energy_from_pokemon(card, is_opponent)
 	pokemon.attached_energies.clear()

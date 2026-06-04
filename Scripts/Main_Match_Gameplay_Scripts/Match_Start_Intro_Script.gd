@@ -143,6 +143,7 @@ func update_ui_with_data() -> void:
 		var tex = load(path)
 		if tex:
 			opponent_sprite.texture = tex
+			_normalize_sprite_scale(opponent_sprite, tex)
 		else:
 			print("Could not load opponent sprite: ", path)
 	
@@ -154,12 +155,18 @@ func update_ui_with_data() -> void:
 	if player_data.has("sprite"):
 		var path = "res://Image_Assets/Character_Sprites/In_Battle_Sprites/" + player_data["sprite"].to_lower() + ".png"
 		var tex = load(path)
-		print("TESTETEST")
 		if tex:
 			player_sprite.texture = tex
 			player_sprite.flip_h = true
+			_normalize_sprite_scale(player_sprite, tex)
 		else:
 			print("Could not load player sprite: ", path)
+
+func _normalize_sprite_scale(sprite: Sprite2D, tex: Texture2D) -> void:
+	const TARGET: float = 480.0
+	var tex_size := tex.get_size()
+	var s := minf(TARGET / tex_size.x, TARGET / tex_size.y)
+	sprite.scale = Vector2(s, s)
 
 # ============================================================
 # ANIMATION

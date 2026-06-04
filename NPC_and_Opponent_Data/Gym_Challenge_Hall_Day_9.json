@@ -1447,6 +1447,7 @@
 	{
 	  "name": "Gym Challenge Brock",
 	  "match_format": "best_of_3",
+	  "music": "Gym Leader Challenge Battle (Pokemon Card GB2 - Duel Vs Fortress Leader)",
 	  "meet_text": "I'm Brock, leader of Pewter Gym, and the Gym Challenge starts here with me. I lead with a rock hard defence. Are you ready to face my rock hard defence deck? Remember, the banned trainer cards aren't allowed in here.",
 	  "repeat_text": "Show me that rock hard resolve again!",
 	  "first_win_text": "Heh, you cracked right through my defence! You've earned the right to move on. Take this coin.",
@@ -1488,6 +1489,7 @@
 	{
 	  "name": "Gym Challenge Misty",
 	  "match_format": "best_of_3",
+	  "music": "Gym Leader Challenge Battle (Pokemon Card GB2 - Duel Vs Fortress Leader)",
 	  "meet_text": "I'm Misty of Cerulean Gym! So you got past Brock? Good. My Water deck flows like a tidal wave - let's see if you can stay afloat! No banned trainer cards, remember the rules.",
 	  "repeat_text": "Ready to dive in again?",
 	  "first_win_text": "You really are strong and skilled! Take my coin and go show Lt. Surge what you've got.",
@@ -1537,7 +1539,7 @@
 	},
 	{
 	  "name": "Gym Challenge Lt. Surge",
-	  "match_format": "best_of_3",
+	  "music": "Gym Leader Challenge Battle (Pokemon Card GB2 - Duel Vs Fortress Leader)",
 	  "meet_text": "I'm Lt. Surge! You beat the little lady, huh? Don't get cocky, kid. My Electric deck'll fry you where you stand! And don't even think about those banned trainer cards.",
 	  "repeat_text": "Back for another jolt, soldier?",
 	  "first_win_text": "Ha! You shorted out my whole army. Take the coin and move out!",
@@ -1588,6 +1590,7 @@
 	{
 	  "name": "Gym Challenge Erika",
 	  "match_format": "best_of_3",
+	  "music": "Gym Leader Challenge Battle (Pokemon Card GB2 - Duel Vs Fortress Leader)",
 	  "meet_text": "Oh... hello. I am Erika of Celadon Gym. You made it past Lt. Surge? How lovely. My Grass Pokemon are delicate, but their bloom can be overwhelming. Shall we begin? Do mind the banned trainer cards.",
 	  "repeat_text": "Another match? How refreshing.",
 	  "first_win_text": "That was a delightful match. I felt inspired. Please, take this coin.",
@@ -1638,6 +1641,7 @@
 	{
 	  "name": "Gym Challenge Koga",
 	  "match_format": "best_of_3",
+	  "music": "Gym Leader Challenge Battle (Pokemon Card GB2 - Duel Vs Fortress Leader)",
 	  "meet_text": "Fwahahaha! I am Koga of Fuchsia Gym, master of poison and the ninja arts. Erika's petals have wilted before you? Impressive. But my toxins seep where you cannot see. Prepare yourself! No banned trainer cards permitted.",
 	  "repeat_text": "Do you dare face my poisons again?",
 	  "first_win_text": "Heh... you saw through my smoke. A worthy challenger. This coin is yours.",
@@ -1688,6 +1692,7 @@
 	{
 	  "name": "Gym Challenge Sabrina",
 	  "match_format": "best_of_3",
+	  "music": "Gym Leader Challenge Battle (Pokemon Card GB2 - Duel Vs Fortress Leader)",
 	  "meet_text": "I am Sabrina of Saffron Gym. I foresaw your arrival the moment Koga fell. My Psychic power bends the battle to my will. Let us see if your mind can withstand mine. The banned trainer cards have no place here.",
 	  "repeat_text": "I already know how this ends... but play on.",
 	  "first_win_text": "...You shattered my vision. Astonishing. Take this coin; it was always meant for you.",
@@ -1738,6 +1743,7 @@
 	{
 	  "name": "Gym Challenge Blaine",
 	  "match_format": "best_of_3",
+	  "music": "Gym Leader Challenge Battle (Pokemon Card GB2 - Duel Vs Fortress Leader)",
 	  "meet_text": "Hah! I'm Blaine of Cinnabar Gym! So you scattered Sabrina's mind games? Then let's heat things up! My Fire deck burns hotter than the Cinnabar volcano. Can you take the heat? And no banned trainer cards!",
 	  "repeat_text": "Ready to get burned again?",
 	  "first_win_text": "Awesome! I've burned out... You've earned this coin. Giovanni is all that stands in your way now.",
@@ -1788,6 +1794,7 @@
 	{
 	  "name": "Gym Challenge Giovanni",
 	  "match_format": "best_of_3",
+	  "music": "Gym Leader Challenge Battle (Pokemon Card GB2 - Duel Vs Fortress Leader)",
 	  "meet_text": "So. You've defeated every leader to reach me. I am Giovanni of Viridian Gym, the final and greatest of the Gym Leaders. I will show you the true meaning of power. This is where your challenge ends! And yes, the banned trainer cards stay out of this.",
 	  "repeat_text": "You wish to challenge me once more?",
 	  "first_win_text": "...Impossible. You have bested every leader, even me. You are a true champion of the Gym Challenge. Take this coin - you have earned it, and more.",

@@ -31,6 +31,7 @@ const SFX_battle_loss = preload("res://Audio/SFX/battle_loss_sound.ogg")
 
 # --- BGM player (persists until stopped or replaced) ---
 var bgm_player: AudioStreamPlayer = null
+var _current_bgm_path: String = ""
 
 # --- SFX: play a preloaded AudioStream as a one-shot ---
 func play_sfx(sound: AudioStream) -> void:
@@ -52,8 +53,10 @@ func play_sfx_from_path(path: String) -> void:
 # If loop is true the track will repeat. Calling this while BGM is
 # already playing will stop the old track and start the new one.
 func play_bgm(path: String, loop: bool = true) -> void:
+	if _current_bgm_path == path and bgm_player != null:
+		return
 	stop_bgm()
-	
+
 	var stream = load(path)
 	if stream == null:
 		print("SoundManager: Could not load BGM at: ", path)
@@ -67,6 +70,7 @@ func play_bgm(path: String, loop: bool = true) -> void:
 	if loop:
 		bgm_player.stream.loop = true
 	
+	_current_bgm_path = path
 	bgm_player.play()
 
 # --- BGM: stop and free the current BGM player ---
@@ -75,3 +79,4 @@ func stop_bgm() -> void:
 		bgm_player.stop()
 		bgm_player.queue_free()
 		bgm_player = null
+	_current_bgm_path = ""

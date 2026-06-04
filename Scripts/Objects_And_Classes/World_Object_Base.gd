@@ -34,6 +34,8 @@ var current_facing: String = "down"
 var _restore_timer: SceneTreeTimer = null
 var _glance_timer: SceneTreeTimer = null
 
+var lock_facing: bool = false
+
 var _wander_origin: Vector2 = Vector2.ZERO
 var _wander_target: Vector2 = Vector2.ZERO
 var _is_wandering: bool = false
@@ -359,6 +361,8 @@ func pause_and_face(target_position: Vector2):
 			and _glance_timer.timeout.is_connected(_on_glance_end):
 		_glance_timer.timeout.disconnect(_on_glance_end)
 		_glance_timer = null
+	if lock_facing:
+		return
 	var diff = target_position - position
 	if abs(diff.x) > abs(diff.y):
 		current_facing = "right" if diff.x > 0 else "left"

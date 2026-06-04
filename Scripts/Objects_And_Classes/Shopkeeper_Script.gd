@@ -40,6 +40,7 @@ var _shop_state: String = "initial"
 func _ready():
 	add_to_group("npcs")
 	player_block_distance = 70.0
+	lock_facing = true
 	super._ready()
 	_load_shop_config()
 	_shop_state = GameState.progress.get("shop_state", "initial")

@@ -1363,9 +1363,9 @@ func effect_devolution_spray(is_opponent: bool) -> void:
 			b[idx] = devolve_to
 	main.display_pokemon(is_opponent)
 	main.display_active_pokemon_energies(is_opponent)
-		main.update_discard_pile_display(is_opponent)
-		await main.show_message(evo_card.metadata.get("name", "") + " devolved into " + devolve_to.metadata.get("name", "") + "!")
-		if main._should_bail(): return
+	main.update_discard_pile_display(is_opponent)
+	await main.show_message(evo_card.metadata.get("name", "") + " devolved into " + devolve_to.metadata.get("name", "") + "!")
+	if main._should_bail(): return
 
 # base1-73 — Impostor Professor Oak: Opponent shuffles hand into deck, draws 7
 func effect_impostor_professor_oak(is_opponent: bool) -> void:

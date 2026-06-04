@@ -342,8 +342,8 @@
 	  "loss_text": "Was that luck or was it skill?",
 	  "pattern": "idle_random",
 	  "position": {
-		"x": 3320,
-		"y": 410
+		"x": 3300,
+		"y": -40
 	  }
 	},
 	{

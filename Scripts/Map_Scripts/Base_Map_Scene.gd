@@ -127,7 +127,7 @@ func _ready():
 	)
 
 	await get_tree().process_frame
-	tween.tween_property(get_tree().root, "modulate", Color.WHITE, 1.0)
+3	tween.tween_property(get_tree().root, "modulate", Color.WHITE, 1.0)
 
 func _exit_tree():
 	_remove_cash_label()
@@ -165,7 +165,7 @@ func _on_door_entered(body: Node2D):
 	var nearest_dist := INF
 	for child in door_area.get_children():
 		if child is CollisionShape2D:
-			var dist := child.global_position.distance_to(body.global_position)
+			var dist: float = child.global_position.distance_to(body.global_position)
 			if dist < nearest_dist:
 				nearest_dist = dist
 				nearest_shape = child

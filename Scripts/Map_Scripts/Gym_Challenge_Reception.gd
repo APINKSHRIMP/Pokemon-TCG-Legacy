@@ -8,7 +8,7 @@ extends BaseMapScene
 # ============================================================
 
 const SCENE_PATH = "res://Scenes/Map_Scenes/Gym_Challenge_Reception.tscn"
-const BGM_PATH   = "res://Audio/BGM/Shop1.ogg"
+const BGM_PATH   = "res://Audio/BGM/Gym Leader Challenge Hall (Pokmon Card GB2 - GRs Challenge Cup).ogg"
 
 const SPAWN_FROM_GYM_PLAZA          = Vector2(350, 450)
 const SPAWN_FROM_GYM_CHALLENGE_HALL = Vector2(220, 45)

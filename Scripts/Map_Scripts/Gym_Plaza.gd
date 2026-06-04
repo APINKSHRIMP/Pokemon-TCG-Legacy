@@ -8,7 +8,7 @@ extends BaseMapScene
 # ============================================================
 
 const SCENE_PATH = "res://Scenes/Map_Scenes/Gym_Plaza.tscn"
-const BGM_PATH = "res://Audio/BGM/Verdant_Forest_BGM.ogg"
+const BGM_PATH = "res://Audio/BGM/Gym Leader Challenge Hall (Pokmon Card GB2 - GRs Challenge Cup).ogg"
 
 const DEFAULT_SPAWN_POSITION             = Vector2(1763, 1810)
 const SPAWN_FROM_VERDANT_FOREST          = Vector2(1760, 2130)

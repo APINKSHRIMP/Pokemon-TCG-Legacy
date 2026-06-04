@@ -2,8 +2,8 @@
 
 [ext_resource type="Texture2D" uid="uid://b0v8vgujq8hfb" path="res://Image_Assets/Backgrounds_And_Borders/Backgrounds/battle_start_screen.png" id="1_6x0iv"]
 [ext_resource type="Script" uid="uid://b7siqta1nvfmb" path="res://Scripts/Main_Match_Gameplay_Scripts/Match_Start_Intro_Script.gd" id="1_xrwa4"]
-[ext_resource type="Texture2D" uid="uid://b8bojjiehifdp" path="res://Image_Assets/Character_Sprites/In_Battle_Sprites/FISHERMAN.png" id="2_f8er1"]
-[ext_resource type="Texture2D" uid="uid://bik1j01n4krb8" path="res://Image_Assets/Character_Sprites/In_Battle_Sprites/BURGLAR.png" id="3_kihgs"]
+[ext_resource type="Texture2D" uid="uid://b8bojjiehifdp" path="res://Image_Assets/Character_Sprites/In_Battle_Sprites/Fisherman.png" id="2_f8er1"]
+[ext_resource type="Texture2D" uid="uid://bik1j01n4krb8" path="res://Image_Assets/Character_Sprites/In_Battle_Sprites/Burglar.png" id="3_kihgs"]
 [ext_resource type="Theme" uid="uid://6shp5ck1tnja" path="res://UI_Themes/kenneyUI.tres" id="3_xrwa4"]
 
 [sub_resource type="StyleBoxLine" id="StyleBoxLine_wfiko"]
@@ -45,24 +45,24 @@ theme = ExtResource("3_xrwa4")
 theme_override_colors/font_color = Color(0, 0, 0, 1)
 theme_override_colors/font_outline_color = Color(0.14999998, 0.39083332, 1, 0.65882355)
 theme_override_constants/outline_size = 3
-theme_override_font_sizes/font_size = 40
+theme_override_font_sizes/font_size = 32
 theme_override_styles/normal = SubResource("StyleBoxLine_wfiko")
 text = "HAVING A GOOD TIME"
 horizontal_alignment = 1
 
 [node name="player_name" type="Label" parent="PLAYER" unique_id=1275751203]
 layout_mode = 0
-offset_left = 38.0
-offset_top = 208.0
-offset_right = 887.0
-offset_bottom = 323.0
+offset_left = 22.0
+offset_top = 243.0
+offset_right = 871.0
+offset_bottom = 358.0
 theme = ExtResource("3_xrwa4")
 theme_override_colors/font_color = Color(0, 0, 0, 1)
 theme_override_colors/font_shadow_color = Color(0, 0.6726453, 2.1074393, 0.54901963)
 theme_override_colors/font_outline_color = Color(0, 0.72787535, 1.7602391, 1)
 theme_override_constants/shadow_offset_x = 10
 theme_override_constants/shadow_offset_y = 7
-theme_override_font_sizes/font_size = 72
+theme_override_font_sizes/font_size = 53
 theme_override_styles/normal = SubResource("StyleBoxEmpty_kjmdn")
 text = "APINKSHRIMP"
 horizontal_alignment = 1
@@ -79,32 +79,32 @@ texture = ExtResource("2_f8er1")
 
 [node name="opponent_name" type="Label" parent="OPPONENT" unique_id=1186275691]
 layout_mode = 0
-offset_left = 905.0
-offset_top = 686.0
-offset_right = 1985.0
-offset_bottom = 801.0
+offset_left = 843.0
+offset_top = 713.0
+offset_right = 1923.0
+offset_bottom = 828.0
 theme = ExtResource("3_xrwa4")
 theme_override_colors/font_color = Color(0, 0, 0, 1)
 theme_override_colors/font_shadow_color = Color(0, 0.6726453, 2.1074393, 0.54901963)
 theme_override_colors/font_outline_color = Color(0, 0.72787535, 1.7602391, 1)
 theme_override_constants/shadow_offset_x = 10
 theme_override_constants/shadow_offset_y = 7
-theme_override_font_sizes/font_size = 72
+theme_override_font_sizes/font_size = 53
 theme_override_styles/normal = SubResource("StyleBoxEmpty_kjmdn")
 text = "FISHERMAN JOHN"
 horizontal_alignment = 1
 
 [node name="opponent_deck_name" type="Label" parent="OPPONENT" unique_id=962249100]
 layout_mode = 0
-offset_left = 994.0
-offset_top = 783.0
-offset_right = 1903.0
-offset_bottom = 854.0
+offset_left = 939.0
+offset_top = 784.0
+offset_right = 1848.0
+offset_bottom = 855.0
 theme = ExtResource("3_xrwa4")
 theme_override_colors/font_color = Color(0, 0, 0, 1)
 theme_override_colors/font_outline_color = Color(0.14999998, 0.39083332, 1, 0.65882355)
 theme_override_constants/outline_size = 3
-theme_override_font_sizes/font_size = 40
+theme_override_font_sizes/font_size = 32
 theme_override_styles/normal = SubResource("StyleBoxLine_wfiko")
 text = "DESTROYER OF WORLDS"
 horizontal_alignment = 1

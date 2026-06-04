@@ -17,7 +17,6 @@ func _scene_setup():
 		_remove_starter_set()
 	_create_cash_label()
 	_update_cash_label()
-	_apply_moving_in_visibility($DOWNSTAIRS)
 
 # ============================================================
 # STARTER SET VISUAL

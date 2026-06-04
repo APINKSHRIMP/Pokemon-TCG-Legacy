@@ -849,7 +849,7 @@
 	"Hiker Matthew": {
 	  "sprite": "Hiker",
 	  "deck": "Rocks N Stones",
-	  "music": "REPLACEMUSIC",
+	  "music": "normal_battle",
 	  "prize_cards": 4,
 	  "cash_reward": "100",
 	  "coin_reward": "Geodude Gold"

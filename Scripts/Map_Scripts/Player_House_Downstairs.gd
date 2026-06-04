@@ -1,11 +1,13 @@
 extends BaseMapScene
 
 const SCENE_PATH = "res://Scenes/Map_Scenes/Player_House_Downstairs.tscn"
+const BGM_PATH   = "res://Audio/BGM/Player Home (003 File Select PMD Blue Rescue Team OST).ogg"
 
 const SPAWN_FROM_CELESTE_HARBOUR       = Vector2(200, 205)
 const SPAWN_FROM_PLAYER_HOUSE_UPSTAIRS = Vector2(365, 10)
 
 func get_scene_path() -> String:      return SCENE_PATH
+func get_bgm_path() -> String:        return BGM_PATH
 func get_default_spawn() -> Vector2:  return SPAWN_FROM_CELESTE_HARBOUR
 func get_entry_positions() -> Dictionary:
 	return {

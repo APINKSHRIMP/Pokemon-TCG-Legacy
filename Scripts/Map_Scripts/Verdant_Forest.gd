@@ -1,7 +1,7 @@
 extends BaseMapScene
 
 const SCENE_PATH = "res://Scenes/Map_Scenes/Verdant_Forest.tscn"
-const BGM_PATH = "res://Audio/BGM/Verdant_Forest_BGM.ogg"
+const BGM_PATH = "res://Audio/BGM/Verdant Forest (Pokemon Platinum OST_ Eterna Forest).ogg"
 
 const DEFAULT_SPAWN_POSITION    = Vector2(1770, 1850)
 const SPAWN_FROM_CELESTE_HARBOUR = Vector2(1775, 1909)
