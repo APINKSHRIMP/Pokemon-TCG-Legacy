@@ -1,5 +1,5 @@
 Pokemon TCG Legacy — Set Audit Report
-Generated: 2026-06-03 12:50:36
+Generated: 2026-06-03 14:16:55
 Sets audited: base1, base2, base3, base5, gym1, gym2, si1
 
 ====================================================================================================
@@ -569,9 +569,9 @@ MISSING ITEMS DETAIL
 ====================================================================================================
 DISPATCH REGISTRY SIZES (for reference)
 ====================================================================================================
-  _attack_dispatch keys   : 161
-  execute_ func names     : 153
-  _trainer_dispatch keys  : 87
-  Stadium_Ids constants   : 14
-  _power_dispatch keys    : 28
+  _attack_dispatch keys   : 186
+  execute_ func names     : 175
+  _trainer_dispatch keys  : 89
+  Stadium_Ids constants   : 16
+  _power_dispatch keys    : 32
 

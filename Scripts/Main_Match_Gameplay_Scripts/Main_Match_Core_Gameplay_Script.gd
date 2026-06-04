@@ -2016,6 +2016,12 @@ func add_pokemon_to_bench(pokemon: card_object) -> void:
 	# GYM2 Giovanni's Persian Call the Boss — search deck for a Giovanni trainer when Persian comes into play from hand
 	if original_location == "hand":
 		await powers_and_bodies.trigger_call_the_boss(pokemon, false)
+	# NEO2 [Engage]/[Increase] (Unown [E]/[I]): on-play triggers
+	if original_location == "hand":
+		if "[Engage]" in str(pokemon.metadata.get("abilities",[])):
+			await powers_and_bodies.trigger_neo2_unown_engage(pokemon, false)
+		elif "[Increase]" in str(pokemon.metadata.get("abilities",[])):
+			await powers_and_bodies.trigger_neo2_unown_increase(pokemon, false)
 
 # Function that get's the card position/location/object. Called from various functions when trying to find a specific card object
 func find_card_ui_for_object(card_obj: card_object) -> TextureRect:
@@ -2171,6 +2177,8 @@ func perform_energy_attachment() -> void:
 	await powers_and_bodies.check_healing_fire(target_pokemon, energy_card, false)
 	# GYM2 Sabrina's Gastly Gaseous Form — +10 HP per Psychic energy attached
 	powers_and_bodies.refresh_gaseous_form_hp()
+	# NEO2 Energy Evolution (Eevee neo2-38): on energy attach, flip for matching evo
+	await powers_and_bodies.check_energy_evolution(target_pokemon, energy_card, false)
 
 # Called when any win/loss condition is met to end the match
 func game_end_logic(loser_is_player: bool) -> void:
@@ -2321,8 +2329,7 @@ func send_card_to_discard(card: card_object, is_opponent: bool) -> void:
 	powers_and_bodies.revert_ditto_if_needed(card)
 	
 	for energy in card.attached_energies:
-		energy.current_location = "discard"
-		discard.append(energy)
+		card_ops.discard_energy_from_pokemon(energy, is_opponent, true)  # is_ko_discard=true: skip Ecogym
 	card.attached_energies.clear()
 	
 	for pre_evo in card.attached_pre_evolutions:
@@ -2435,7 +2442,11 @@ func player_start_turn_checks() -> void:
 	# Update Ditto Transform state (may need to re-transform after opponent turn changes)
 	powers_and_bodies.update_ditto_transform(false)
 	powers_and_bodies.update_ditto_transform(true)
-	
+
+	# NEO1: process turn-start tools (Gold Berry, Berry, Miracle Berry) and Char counters for player's side
+	await powers_and_bodies.process_turn_start_tools_and_counters(false)
+	if _should_bail(): return
+
 # Called when the player presses the end turn button to reset per-turn variables and begin next turn
 func player_end_turn_checks() -> void:
 	opponent_blocker.visible = true
@@ -2483,6 +2494,10 @@ func inbetween_turn_checks(player_turn_just_ended: bool = true) -> void:
 
 	# Remove end-of-turn statuses from the pokemon whose owner's turn just ended
 	if player_turn_just_ended:
+		# NEO1: clear jaw_clamp/screech flags that were set this turn (affect the opponent's side)
+		powers_and_bodies.clear_neo1_flags_end_of_turn(true)
+		# NEO2: clear lock_on/counter/pursuit/secrete_poison/slime/gaze flags (affect the opponent's side)
+		powers_and_bodies.clear_neo2_flags_end_of_turn(true)
 		clear_end_of_turn_statuses(player_active_pokemon, false)
 		clear_defensive_statuses(opponent_active_pokemon, true)
 		clear_jungle_defensive_statuses(opponent_active_pokemon, true)
@@ -2498,6 +2513,10 @@ func inbetween_turn_checks(player_turn_just_ended: bool = true) -> void:
 		if player_hand_tickled:
 			trainer_effects.gym1_restore_tickled_hand(false)
 	else:
+		# NEO1: clear jaw_clamp/screech flags that were set this turn (affect the player's side)
+		powers_and_bodies.clear_neo1_flags_end_of_turn(false)
+		# NEO2: clear lock_on/counter/pursuit/secrete_poison/slime/gaze flags (affect the player's side)
+		powers_and_bodies.clear_neo2_flags_end_of_turn(false)
 		clear_end_of_turn_statuses(opponent_active_pokemon, true)
 		clear_defensive_statuses(player_active_pokemon, false)
 		clear_jungle_defensive_statuses(player_active_pokemon, false)
@@ -2810,6 +2829,13 @@ func perform_evolution(is_opponent: bool) -> void:
 		await powers_and_bodies.trigger_sneak_attack(evo_card, is_opponent)
 	elif evo_name == "Dark Slowbro":
 		await powers_and_bodies.trigger_reel_in(evo_card, is_opponent)
+	# NEO1: on-play power triggers
+	elif evo_name in ["Feraligatr"] and evo_card.has_ability("Berserk"):
+		await powers_and_bodies.trigger_neo1_berserk(evo_card, is_opponent)
+	elif evo_name in ["Meganium"] and evo_card.has_ability("Herbal Scent"):
+		await powers_and_bodies.trigger_neo1_herbal_scent(evo_card, is_opponent)
+	elif evo_name in ["Typhlosion"] and evo_card.has_ability("Fire Boost"):
+		await powers_and_bodies.trigger_neo1_fire_boost(evo_card, is_opponent)
 	 
 ########################################################### Retreat functions ##############################################################
 
@@ -2836,7 +2862,11 @@ func can_retreat(is_opponent: bool) -> Dictionary:
 		return {"can_retreat": false, "reason": active.metadata.get("name", "") + " is Asleep and cannot retreat!"}
 	if active.attached_energies.size() < get_retreat_cost(active):
 		return {"can_retreat": false, "reason": "Not enough energy to retreat!"}
-	
+
+	# Snorlax Guard (basep-49): opposing active Snorlax blocks retreat
+	if powers_and_bodies.check_guard_body(is_opponent):
+		return {"can_retreat": false, "reason": "Guard! The opposing Pokemon prevents you from retreating!"}
+
 	return {"can_retreat": true, "reason": ""}
 
 # Initiates the retreat flow: validates, then shows attached energies for the player to select for discarding
@@ -3004,6 +3034,12 @@ func display_and_apply_attack_damage(attacker: card_object, defender: card_objec
 	if transparency_blocked:
 		return
 
+	# Check Mew's Neutral Shield (basep-47): blocks all effects from Evolved Pokemon
+	if attacker != null and powers_and_bodies.check_neutral_shield(defender, attacker):
+		await show_message("NEUTRAL SHIELD! " + defender.metadata.get("name","").to_upper() + " IS PROTECTED FROM EVOLVED POKEMON!")
+		if _should_bail(): return
+		return
+
 	# GYM1 Shadow Images (Rocket's Scyther): attacker flips a coin, tails = no damage. Lasts until damage gets through.
 	if defender.dodge_active and final_damage > 0:
 		await show_message(defender.metadata.get("name", "").to_upper() + "'S SHADOW IMAGES! FLIPPING...")
@@ -3015,6 +3051,19 @@ func display_and_apply_attack_damage(attacker: card_object, defender: card_objec
 			return
 		defender.dodge_active = false
 		update_status_icons(defender, !is_opponent)
+
+	# NEO2 Slime (Wooper neo2-71): if defender has slime_active, attacker must flip; tails = no damage
+	if defender.slime_active and final_damage > 0:
+		defender.slime_active = false
+		var slime_name = defender.metadata.get("name","").to_upper()
+		await show_message(slime_name + "'S SLIME! " + ("OPPONENT" if is_opponent else "YOU") + " MUST FLIP!")
+		var slime_coin = await flip_coin(false, is_opponent)
+		if not slime_coin:
+			show_floating_label("SLIMED!", Vector2(530 if is_opponent else 1030, 300), Color.GREEN, true)
+			await show_message("TAILS! " + slime_name + " IS PROTECTED BY SLIME!")
+			if _should_bail(): return
+			return
+		print("SLIME: tails would block but got heads — damage proceeds")
 
 	# GYM2 Koga's Ninja Trick (gym2-115): defender's owner may switch this active with a benched pokemon before damage.
 	if defender.gym2_koga_ninja_trick_attached:
@@ -3036,6 +3085,16 @@ func display_and_apply_attack_damage(attacker: card_object, defender: card_objec
 	if defender.damage_halved_next_turn and final_damage > 0:
 		final_damage = int(final_damage / 2.0 / 10.0) * 10
 		print("DEFLECTOR: damage halved to ", final_damage)
+
+	# NEO1 Screech (neo1-31/69): +20 damage from next attack received
+	if defender.screech_damage_bonus > 0 and final_damage > 0:
+		final_damage += defender.screech_damage_bonus
+		print("SCREECH BONUS: +", defender.screech_damage_bonus, " damage, total ", final_damage)
+		defender.screech_damage_bonus = 0
+
+	# NEO1 Sprout Tower (neo1-97 Stadium): Colorless Pokemon attacks reduced by 30
+	if final_damage > 0 and attacker != null:
+		final_damage = powers_and_bodies.apply_sprout_tower_reduction(attacker, final_damage)
 
 	# GYM1 Charity (gym1-99): the attacker's owner may reduce their own outgoing damage to spare the defender.
 	# Player gets a YES/NO prompt only if the attack would KO; CPU never reduces.
@@ -3103,6 +3162,13 @@ func perform_attack(attack_index: int) -> void:
 	
 	SoundManagerScript.play_sfx(SoundManagerScript.SFX_attack_sound)
 	await show_message((player_active_pokemon.metadata["name"] + " USED " + attack_name).to_upper())
+
+	# Baby Pokemon rule: player must flip before attacking a Baby Pokemon (tails = turn ends)
+	if await attack_effects.check_baby_rule(opponent_active_pokemon, false):
+		hide_attack_buttons()
+		await get_tree().create_timer(0.5).timeout
+		player_end_turn_checks()
+		return
 
 	# GYM2 Misty's Gyarados Rebellion — flip 2; both tails shuffles Gyarados into deck and cancels the attack
 	if await powers_and_bodies.check_rebellion(player_active_pokemon, false):
@@ -3301,6 +3367,10 @@ func calculate_final_damage(base_damage: int, attacking_types: Array, defending_
 				else:
 					modifiers_applied.append("RESISTANCE NULLIFIED")
 	
+	# NEO2 Unown type reductions: [D] Darkness, [M] Metal, [N] Colorless — -30 from specific type
+	if damage > 0 and attacker_pokemon != null:
+		damage = powers_and_bodies.apply_unown_type_reductions(attacker_pokemon, defending_pokemon, damage, modifiers_applied)
+
 	# Apply shielded damage threshold (Onix Harden)
 	# If the damage after weakness/resistance is AT OR BELOW the threshold, prevent it entirely
 	if defending_pokemon.shielded_damage_threshold > 0 and damage > 0:
@@ -3401,6 +3471,19 @@ func check_and_handle_knockout(pokemon: card_object, is_opponent: bool) -> bool:
 
 	# GYM2 Giovanni's Machamp Fortitude — flip to survive with 10 HP
 	if await powers_and_bodies.check_fortitude(pokemon):
+		return false
+
+	# NEO1 Endure (neo1-43 Phanpy): survive KO with 10 HP if endure_active flag is set
+	if pokemon.endure_active and pokemon.current_hp <= 0:
+		pokemon.endure_active = false
+		pokemon.current_hp = 10
+		display_hp_circles_above_align(pokemon, is_opponent)
+		await show_message("ENDURE! " + pokemon.metadata.get("name","").to_upper() + " SURVIVED WITH 10 HP!")
+		if _should_bail(): return false
+		return false
+
+	# NEO1 Focus Band (neo1-86 Tool): flip — heads survive with 10 HP
+	if await powers_and_bodies.check_focus_band(pokemon, is_opponent):
 		return false
 
 	var ko_name = pokemon.metadata.get("name", "Unknown")
@@ -3586,6 +3669,11 @@ func handle_post_knockout(is_opponent: bool) -> void:
 		await show_message("OPPONENT SET " + new_active.metadata["name"].to_upper() + " AS THEIR ACTIVE POKEMON!")
 		# Fix 2: Invalidate CPU evaluation cache after replacement
 		cpu_ai.invalidate_cpu_evaluation()
+		# NEO2 Spikes (Forretress): 10 damage to new opponent active
+		await powers_and_bodies.check_spikes(new_active, true)
+		if _should_bail(): return
+		await check_all_knockouts()
+		if _should_bail(): return
 	else:
 		knockout_bench_selection_active = true
 		show_enlarged_array_selection_mode(player_bench)
@@ -4187,8 +4275,23 @@ func handle_action_retreat_bench() -> void:
 	powers_and_bodies.update_ditto_transform(false)
 	powers_and_bodies.update_ditto_transform(true)
 	
+	# NEO2 Pursuit (Umbreon): if retreating pokemon has pursuit_active, take 10 damage
+	if retreating_pokemon.pursuit_active:
+		retreating_pokemon.pursuit_active = false
+		retreating_pokemon.current_hp = max(0, retreating_pokemon.current_hp - 10)
+		display_hp_circles_above_align(retreating_pokemon, false)
+		await show_message("PURSUIT! " + retreating_pokemon.metadata.get("name","").to_upper() + " TAKES 10 DAMAGE FOR RETREATING!")
+		if _should_bail(): return
+		await check_all_knockouts()
+		if _should_bail(): return
+
 	# Sinkhole (Dark Dugtrio): damage to retreating Pokemon
 	await powers_and_bodies.check_sinkhole(retreating_pokemon, false)
+	if _should_bail(): return
+	await check_all_knockouts()
+	if _should_bail(): return
+	# NEO2 Spikes (Forretress): 10 damage to new active pokemon (player's bench→active)
+	await powers_and_bodies.check_spikes(new_active, false)
 	if _should_bail(): return
 	await check_all_knockouts()
 	if _should_bail(): return
@@ -4211,6 +4314,12 @@ func handle_action_knockout_bench() -> void:
 	display_pokemon(false)
 	display_active_pokemon_energies(false)
 	display_hp_circles_above_align(player_active_pokemon, false)
+
+	# NEO2 Spikes (Forretress): 10 damage to player's new active after KO replacement
+	await powers_and_bodies.check_spikes(new_active, false)
+	if _should_bail(): return
+	await check_all_knockouts()
+	if _should_bail(): return
 
 	knockout_replacement_chosen.emit()
 

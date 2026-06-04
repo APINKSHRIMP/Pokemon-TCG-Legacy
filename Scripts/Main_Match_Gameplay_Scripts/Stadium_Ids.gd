@@ -27,3 +27,11 @@ const FUCHSIA_CITY_GYM    = "gym2-114"  # Koga's Pokemon: flip to shuffle back i
 const ROCKETS_MINEFIELD_GYM = "gym2-119" # Bench damage when playing Trainer cards
 const SAFFRON_CITY_GYM    = "gym2-122"  # Sabrina's Pokemon: return basic Energy to hand
 const VIRIDIAN_CITY_GYM   = "gym2-123"  # Giovanni's Pokemon can evolve on the first turn
+
+# ── Base Set Promos (basep) ────────────────────────────────────────────────────
+const LUCKY_STADIUM    = "basep-41"  # Once per turn each player flips — heads draws 1 card
+const POKEMON_TOWER    = "basep-42"  # Prevents cards from being recovered from the discard pile
+
+# ── Neo Genesis (neo1) ────────────────────────────────────────────────────────
+const ECOGYM           = "neo1-84"   # Opponent-discarded non-Colorless energy returns to owner's hand
+const SPROUT_TOWER     = "neo1-97"   # Colorless Pokémon attacks deal -30 damage

@@ -89,6 +89,23 @@ var dodge_active: bool = false            # Rocket's Scyther Shadow Images — a
 var damage_halved_next_turn: bool = false # Erika's Exeggcute Deflector — incoming damage halved (round down to nearest 10) next turn
 var focus_energy_active: bool = false     # Lt. Surge's Rattata Focus Energy — Gnaw base damage doubled next turn
 
+# BASEP (Base Set Promos) properties
+var lightning_rod_marked: bool = false   # basep-46 Electabuzz Lightning Rod — takes 20 bonus damage from Lightning Bolt
+
+# NEO1 (Neo Genesis) properties
+var screech_damage_bonus: int = 0      # neo1-31/69 Screech: +20 damage from next attack received this turn
+var has_char_counter: bool = false     # neo1-47 Quilava Char: each turn owner flips; tails = 20 damage
+var endure_active: bool = false        # neo1-43 Phanpy Endure: survive KO at 10 HP one time
+var jaw_clamp_locked: bool = false     # neo1-31 Croconaw Jaw Clamp: target can't retreat next turn
+
+# NEO2 (Neo Discovery) properties
+var lock_on_active: bool = false           # neo2-7/26 Magnemite: next Electric Bolt treats tails as heads
+var counter_active: bool = false           # neo2-16/35 Wobbuffet: if damaged, flip for equal counter-damage
+var pursuit_active: bool = false           # neo2-32 Umbreon: retreating opponent takes 10 damage
+var secrete_poison_active: bool = false    # neo2-41 Kakuna: if hit, attacker poisoned + 10 to each opp bench
+var slime_active: bool = false             # neo2-71 Wooper: attacker flips before damaging, tails = no damage
+var gaze_suppressed: bool = false          # neo2-40 Igglybuff Gaze: this pokemon's power is suppressed this turn
+
 # GYM2 (Gym Challenge) properties
 var gym2_focus_energy_active: bool = false # Lt. Surge's Raticate/Rattata Focus Energy — boosted attack doubled next turn
 var gym2_lie_low_counter: int = 0          # Brock's Dugtrio Lie Low — Earthdrill is usable while this is > 0

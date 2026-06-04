@@ -44,11 +44,13 @@ func get_energy_types_provided(card_name: String) -> Array:
 			return ["Colorless"]
 		"Potion Energy":
 			return ["Colorless"]
+		"Darkness Energy":
+			return ["Darkness"]
+		"Metal Energy":
+			return ["Metal"]
+		"Recycle Energy":
+			return ["Colorless"]
 		# --- FUTURE SETS: Add new special energies below ---
-		# "Darkness Energy":
-		#	return ["Darkness"]
-		# "Metal Energy":
-		#	return ["Metal"]
 		# "Boost Energy":
 		#	return ["Colorless", "Colorless", "Colorless"]
 		# "Dark Metal Energy":
@@ -68,23 +70,24 @@ func is_known_special_energy(card_name: String) -> bool:
 # Called BEFORE the energy is attached. If not allowed, the attachment is blocked.
 func can_attach_to(energy_card: card_object, target_pokemon: card_object) -> Dictionary:
 	var card_name = energy_card.metadata.get("name", "")
-	
+
+	# Pure Body (basep-53 Suicune): while Suicune is the opposing Active, special energy attachment is blocked
+	var target_is_opp = (target_pokemon == main.opponent_active_pokemon or target_pokemon in main.opponent_bench)
+	var opposing_active = main.player_active_pokemon if target_is_opp else main.opponent_active_pokemon
+	if opposing_active != null and not main.powers_and_bodies.is_power_blocked(opposing_active):
+		for ab in opposing_active.metadata.get("abilities", []):
+			if ab.get("name", "") == "Pure Body":
+				return {"allowed": false, "reason": "PURE BODY! " + opposing_active.metadata.get("name", "").to_upper() + " PREVENTS SPECIAL ENERGY ATTACHMENT!"}
+
 	match card_name:
-		"Rainbow Energy", "Full Heal Energy", "Potion Energy", "Double Colorless Energy":
-			# No restrictions — can attach to any pokemon
+		"Rainbow Energy", "Full Heal Energy", "Potion Energy", "Double Colorless Energy", \
+		"Darkness Energy", "Metal Energy", "Recycle Energy":
 			return {"allowed": true, "reason": ""}
 		# --- FUTURE SETS: Add type-locked energies below ---
 		# "Boost Energy":
 		#	var subtypes = target_pokemon.metadata.get("subtypes", [])
 		#	if "Stage 2" not in subtypes:
 		#		return {"allowed": false, "reason": "Boost Energy can only be attached to Stage 2 Pokémon!"}
-		#	return {"allowed": true, "reason": ""}
-		# "Darkness Energy":
-		#	var types = target_pokemon.metadata.get("types", [])
-		#	# Darkness Energy CAN be attached to any pokemon, but only provides Darkness to Dark types
-		#	return {"allowed": true, "reason": ""}
-		# "Metal Energy":
-		#	# Same as Darkness — can attach to anything
 		#	return {"allowed": true, "reason": ""}
 		_:
 			# Unknown special energy — allow by default
@@ -208,17 +211,12 @@ func get_outgoing_damage_modifier(pokemon: card_object) -> Dictionary:
 	for energy in pokemon.attached_energies:
 		var energy_name = energy.metadata.get("name", "")
 		match energy_name:
-			# "Darkness Energy":
-			#	# +10 damage to attacks if attached to a Dark/Darkness-type pokemon
-			#	# -10 damage (to self) if attached to non-Dark/Darkness type
-			#	if "Darkness" in pokemon_types or pokemon.metadata.get("name", "").begins_with("Dark "):
-			#		bonus += 10
-			#	else:
-			#		# Self-damage of 10 is handled by apply_darkness_self_damage() at end of turn
-			#		pass
+			"Darkness Energy":
+				# +10 outgoing damage to the opponent's Active per Darkness Energy attached
+				bonus += 10
 			_:
 				pass
-	
+
 	return {"bonus": bonus}
 
 # Returns incoming damage reduction from special energies (e.g. Metal Energy)
@@ -229,13 +227,12 @@ func get_incoming_damage_reduction(pokemon: card_object) -> int:
 	for energy in pokemon.attached_energies:
 		var energy_name = energy.metadata.get("name", "")
 		match energy_name:
-			# "Metal Energy":
-			#	# -10 incoming damage if attached to a Metal-type pokemon
-			#	if "Metal" in pokemon_types:
-			#		reduction += 10
+			"Metal Energy":
+				# -10 incoming damage (after W/R) per Metal Energy attached
+				reduction += 10
 			_:
 				pass
-	
+
 	return reduction
 
 ######################################################################################################################################################
@@ -292,25 +289,19 @@ func score_special_energy_attachment(energy_card: card_object, target_pokemon: c
 			if is_active:
 				score += 10.0
 		
+		"Darkness Energy":
+			score += 20.0
+			if is_active:
+				score += 15.0
+		"Metal Energy":
+			score += 20.0
+			if is_active:
+				score += 10.0
+		"Recycle Energy":
+			score += 10.0
+			if is_active:
+				score += 5.0
 		# --- FUTURE SETS ---
-		# "Boost Energy":
-		#	# 3 colorless but discards at end of turn — only good for immediate attack
-		#	if is_active:
-		#		score += 40.0  # Great for attacking this turn
-		#	else:
-		#		score -= 50.0  # Terrible on bench (wasted next turn)
-		
-		# "Darkness Energy":
-		#	var is_dark = target_pokemon.metadata.get("name", "").begins_with("Dark ") or "Darkness" in target_pokemon.metadata.get("types", [])
-		#	if is_dark:
-		#		score += 35.0  # +10 damage bonus
-		#	else:
-		#		score -= 15.0  # Self-damage penalty
-		
-		# "Metal Energy":
-		#	if "Metal" in target_pokemon.metadata.get("types", []):
-		#		score += 35.0  # -10 incoming damage
-		#	else:
-		#		score += 5.0  # Still provides Metal energy at least
-	
+		# "Boost Energy": if is_active: score += 40.0 else: score -= 50.0
+
 	return score

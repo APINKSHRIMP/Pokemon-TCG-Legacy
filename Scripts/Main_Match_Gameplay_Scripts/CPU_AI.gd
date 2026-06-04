@@ -49,7 +49,9 @@ func opponent_start_turn_checks() -> void:
 	main.powers_and_bodies.update_ditto_transform(true)
 	main.powers_and_bodies.update_ditto_transform(false)
 
-	# Future: resolve any start-of-turn triggered effects here
+	# NEO1: process turn-start tools (Gold Berry, Berry, Miracle Berry) and Char counters for CPU's side
+	await main.powers_and_bodies.process_turn_start_tools_and_counters(true)
+	if main._should_bail(): return
 
 	await cpu_turn_orchestrator()
 	if main._should_bail(): return
@@ -338,6 +340,8 @@ func get_unmet_energy_count(attack: Dictionary, pokemon: card_object) -> int:
 	var pool = []
 	# gym1-47 Erika's Oddish Photosynthesis: all energy attached provides Grass instead of usual type
 	var photosynthesis_on = main.powers_and_bodies.is_photosynthesis_active(pokemon)
+	# NEO1 Wild Growth: Grass Energy on Grass Pokemon counts as 2 Grass
+	var wild_growth_on = main.powers_and_bodies.is_wild_growth_active() and "Grass" in pokemon.metadata.get("types", [])
 	for attached in pokemon.attached_energies:
 		# Charizard Energy Burn: all energy attached to Charizard counts as Fire
 		if main.powers_and_bodies.is_energy_burn_active(pokemon):
@@ -351,6 +355,13 @@ func get_unmet_energy_count(attack: Dictionary, pokemon: card_object) -> int:
 			var provided = main.get_energy_provided_by_card(attached)
 			for _i in range(max(1, provided.size())):
 				pool.append("Grass")
+		elif wild_growth_on:
+			var provided = main.get_energy_provided_by_card(attached)
+			if "Grass" in provided:
+				pool.append("Grass")
+				pool.append("Grass")  # Wild Growth: 1 Grass Energy = 2 Grass
+			else:
+				pool.append_array(provided)
 		# Ditto Transform: all energy counts as any type
 		elif pokemon.is_ditto_transformed:
 			var provided = main.get_energy_provided_by_card(attached)
@@ -1130,7 +1141,21 @@ func execute_cpu_retreat(cpu_eval: Dictionary) -> void:
 	if main._should_bail(): return
 	await main.check_all_knockouts()
 	if main._should_bail(): return
-	
+	# NEO2 Pursuit (Umbreon): if retreating opponent pokemon has pursuit_active, take 10 damage
+	if old_active.pursuit_active:
+		old_active.pursuit_active = false
+		old_active.current_hp = max(0, old_active.current_hp - 10)
+		main.display_hp_circles_above_align(old_active, true)
+		await main.show_message("PURSUIT! " + old_active.metadata.get("name","").to_upper() + " TAKES 10 DAMAGE FOR RETREATING!")
+		if main._should_bail(): return
+		await main.check_all_knockouts()
+		if main._should_bail(): return
+	# NEO2 Spikes (Forretress): 10 damage to new opponent active after CPU retreat
+	await main.powers_and_bodies.check_spikes(best_replacement, true)
+	if main._should_bail(): return
+	await main.check_all_knockouts()
+	if main._should_bail(): return
+
 	# Fix 2: Invalidate CPU evaluation cache after retreat changes board
 	invalidate_cpu_evaluation()
 
@@ -1300,6 +1325,9 @@ func cpu_phase_energy_attachment(cpu_eval: Dictionary) -> void:
 
 	# GYM2 Blaine's Ninetales Healing Fire — heal 10 when Fire energy is attached from hand
 	await main.powers_and_bodies.check_healing_fire(target, energy, true)
+	if main._should_bail(): return
+	# NEO2 Energy Evolution (Eevee neo2-38): on energy attach, flip for matching evo
+	await main.powers_and_bodies.check_energy_evolution(target, energy, true)
 	if main._should_bail(): return
 	# GYM2 Sabrina's Gastly Gaseous Form — +10 HP per Psychic energy attached
 	main.powers_and_bodies.refresh_gaseous_form_hp()
@@ -2333,6 +2361,219 @@ func cpu_phase_attack(cpu_eval: Dictionary) -> void:
 					g2heal += 1
 				score += (g2heal * 15.0) if g2heal > 0 else -70.0
 
+		# ---- SI1 (SOUTHERN ISLANDS) + BASEP (BASE SET PROMOS) ATTACK SCORING ----
+		# SI1 attacks (all have 0 base damage in dispatch; score by utility)
+		if attack_name_lower == "sharpshooter":
+			score += 20.0 * min(1, main.player_bench.size())
+		if attack_name_lower == "gentle song":
+			var opp_e_count = main.player_active_pokemon.attached_energies.size() if main.player_active_pokemon != null else 0
+			score += opp_e_count * 15.0
+		if attack_name_lower == "revelation":
+			score += 20.0 if main.opponent_hand.size() <= 3 else 5.0
+		if attack_name_lower == "lick wounds":
+			var own_dmg = main.opponent_active_pokemon.get_max_hp() - main.opponent_active_pokemon.current_hp
+			score += min(own_dmg * 0.5, 50.0) if own_dmg > 0 else -80.0
+		if attack_name_lower == "paradise pollen":
+			score += 20.0 if (main.player_active_pokemon != null and main.player_active_pokemon.special_condition == "") else -40.0
+		if attack_name_lower == "rainbow wave":
+			score += 20.0
+		if attack_name_lower == "strange scent":
+			score += 15.0 if (main.player_active_pokemon != null and main.player_active_pokemon.special_condition == "") else -40.0
+		if attack_name_lower == "tongue stretch":
+			score += 15.0
+		if attack_name_lower == "squirt":
+			var own_dmg2 = main.opponent_active_pokemon.get_max_hp() - main.opponent_active_pokemon.current_hp
+			score += min(own_dmg2 * 0.4, 40.0) if own_dmg2 > 0 else -80.0
+		if attack_name_lower == "tentacle grip":
+			score += 20.0
+		# basep attacks (explicit scoring for attacks estimator can't fully score)
+		if attack_name_lower == "sacred wing":
+			score += 40.0  # expected average: 0.5×60 + 0.5×20 = 40
+		if attack_name_lower == "miraculous comeback":
+			var total_poke = (1 if main.opponent_active_pokemon != null else 0) + main.opponent_bench.size() \
+				+ (1 if main.player_active_pokemon != null else 0) + main.player_bench.size()
+			score += total_poke * 5.0
+		if attack_name_lower == "pain split":
+			score += main.opponent_active_pokemon.get_damage_counters() * 8.0
+		if attack_name_lower == "seething anger":
+			score += main.opponent_active_pokemon.get_damage_counters() * 5.0
+		if attack_name_lower == "lightning rod":
+			score += 10.0
+		if attack_name_lower == "lightning bolt":
+			var has_mark = false
+			if main.player_active_pokemon != null and main.player_active_pokemon.lightning_rod_marked:
+				has_mark = true
+			if not has_mark:
+				for bp in main.player_bench:
+					if bp.lightning_rod_marked:
+						has_mark = true
+						break
+			if has_mark:
+				score += 20.0
+		if attack_name_lower == "energy absorption":
+			var discard_e = 0
+			for c in main.opponent_discard_pile:
+				if c.metadata.get("supertype", "") == "Energy":
+					discard_e += 1
+			score += min(discard_e * 15.0, 50.0)
+		if attack_name_lower == "recharge":
+			var has_lightning = false
+			for e in main.opponent_active_pokemon.attached_energies:
+				if "Lightning" in main.get_energy_provided_by_card(e):
+					has_lightning = true
+					break
+			score += 25.0 if not has_lightning else 5.0
+		if attack_name_lower == "let's play!":
+			score += 20.0 if main.opponent_bench.size() < 5 else -50.0
+		if attack_name_lower == "jump over":
+			score += 10.0 * main.player_bench.size()
+		if attack_name_lower == "energy control":
+			var opp_e = main.player_active_pokemon.attached_energies.size() if main.player_active_pokemon != null else 0
+			score += min(opp_e * 10.0, 40.0)
+		if attack_name_lower == "devolution beam":
+			var evolved_c = 0
+			if main.player_active_pokemon != null and main.player_active_pokemon.attached_pre_evolutions.size() > 0:
+				evolved_c += 1
+			for bp in main.player_bench:
+				if bp.attached_pre_evolutions.size() > 0:
+					evolved_c += 1
+			score += evolved_c * 15.0
+		if attack_name_lower == "burning fire":
+			var spare_fire = 0
+			for e in main.opponent_active_pokemon.attached_energies:
+				if "Fire" in main.get_energy_provided_by_card(e):
+					spare_fire += 1
+			score += min(spare_fire * 8.0, 40.0)
+		if attack_name_lower == "protective flame":
+			score += main.opponent_bench.size() * 10.0
+		if attack_name_lower == "paint" or attack_name_lower == "texture magic":
+			score += 15.0
+		if attack_name_lower == "rapid spin":
+			score += 15.0
+
+		# ---- NEO1 (NEO GENESIS) ATTACK SCORING ----
+		if attack_name_lower == "riptide":
+			var water_count = 0
+			for c in main.opponent_discard_pile:
+				if c.metadata.get("supertype","") == "Energy" and "Water" in main.get_energy_provided_by_card(c):
+					water_count += 1
+			score += water_count * 8.0  # scale with water in discard
+		if attack_name_lower == "flower dance":
+			var bellosom_count = 0
+			var all_field: Array = []
+			if main.player_active_pokemon != null: all_field.append(main.player_active_pokemon)
+			if main.opponent_active_pokemon != null: all_field.append(main.opponent_active_pokemon)
+			all_field.append_array(main.player_bench + main.opponent_bench)
+			for p in all_field:
+				if "Bellossom" in p.metadata.get("name",""):
+					bellosom_count += 1
+			score += bellosom_count * 25.0  # 30 damage per bellossom
+		if attack_name_lower == "zzzap":
+			var power_count = 0
+			var all_field2: Array = []
+			if main.player_active_pokemon != null: all_field2.append(main.player_active_pokemon)
+			all_field2.append_array(main.player_bench)
+			for p in all_field2:
+				for ab in p.metadata.get("abilities",[]):
+					if ab.get("type","") in ["Pokémon Power","Pokemon Power"]:
+						power_count += 1
+						break
+			score += power_count * 15.0  # 20 damage per powered pokemon
+		if attack_name_lower == "earthquake":
+			var bench_penalty = main.opponent_bench.size() * 10.0
+			score -= bench_penalty  # penalize own bench damage
+		if attack_name_lower == "flame wheel":
+			var fire_count = 0
+			for e in main.opponent_active_pokemon.attached_energies:
+				if "Fire" in main.get_energy_provided_by_card(e):
+					fire_count += 1
+			if fire_count < 3:
+				score -= 9999.0  # can't use without 3 fire
+		if attack_name_lower == "elemental blast":
+			var has_fire = false; var has_water = false; var has_lightning = false
+			for e in main.opponent_active_pokemon.attached_energies:
+				var prov = main.get_energy_provided_by_card(e)
+				if "Fire" in prov: has_fire = true
+				if "Water" in prov: has_water = true
+				if "Lightning" in prov: has_lightning = true
+			if not (has_fire and has_water and has_lightning):
+				score -= 9999.0  # can't use without all three
+		if attack_name_lower == "chomp":
+			score += main.opponent_active_pokemon.get_damage_counters() * 5.0
+		if attack_name_lower == "riptide" or attack_name_lower == "blizzard":
+			if main.opponent_bench.size() > 0 and attack_name_lower == "blizzard":
+				score -= main.opponent_bench.size() * 5.0  # mild penalty for own bench risk
+		if attack_name_lower == "endure":
+			score += 30.0 if cpu_will_be_koed else -50.0
+		if attack_name_lower == "eeeeeeek":
+			score += 20.0 if main.opponent_hand.size() <= 2 else -50.0
+		if attack_name_lower == "squaredance" or attack_name_lower == "pilfer":
+			score += 10.0
+		if attack_name_lower == "super metronome":
+			score += 40.0  # copying opponent attack can be very powerful
+		if attack_name_lower == "screech":
+			score += 15.0  # sets up future damage bonus
+		if attack_name_lower == "zzzap":
+			score -= 10.0 if main.opponent_bench.size() > 0 else 0.0  # penalize if own pokemon have powers too
+
+		# ---- NEO2 (NEO DISCOVERY) ATTACK SCORING ----
+		if attack_name_lower == "hydrocutter":
+			var energy_count = min(3, main.opponent_active_pokemon.attached_energies.size())
+			score += energy_count * 15.0  # more energy = more coin flips = more damage
+		if attack_name_lower == "false swipe":
+			var def_hp = main.player_active_pokemon.current_hp if main.player_active_pokemon else 0
+			score += max(0, def_hp / 2.0)  # always useful; value = half current HP
+		if attack_name_lower == "trample":
+			var bench_count = main.player_bench.size() + main.opponent_bench.size()
+			score += bench_count * 10.0  # more bench = more bonus damage
+		if attack_name_lower == "crunch":
+			score += 20.0  # future damage bonus is very useful
+		if attack_name_lower == "sketch":
+			var last = main.last_attack_on_opponent
+			if not last.is_empty() and last.has("damage"):
+				score += float(last["damage"]) * 0.8
+		if attack_name_lower == "counter":
+			score += 25.0 if cpu_will_be_koed else 10.0
+		if attack_name_lower == "shockwave":
+			var opp_pokemon_count = 1 + main.player_bench.size()
+			score += opp_pokemon_count * 8.0  # 10 to each + force switch
+		if attack_name_lower == "belly drum":
+			score += 15.0 if main.opponent_active_pokemon.current_hp >= 40 else -9999.0  # needs HP to spare
+		if attack_name_lower == "fury cutter":
+			score += 25.0  # average expected ~30 damage
+		if attack_name_lower == "burst":
+			score -= main.opponent_bench.size() * 5.0  # penalize if own bench at risk
+		if attack_name_lower == "electric bolt":
+			if main.opponent_active_pokemon.lock_on_active:
+				score += 40.0  # guaranteed hit
+		if attack_name_lower == "spike barrage":
+			var water_count = 0
+			for e in main.opponent_active_pokemon.attached_energies:
+				if "Water" in main.get_energy_provided_by_card(e):
+					water_count += 1
+			score += water_count * 15.0
+		if attack_name_lower == "collect fire":
+			var has_fire_discard = false
+			for c in main.opponent_discard_pile:
+				if c.metadata.get("supertype","") == "Energy" and "Fire" in main.get_energy_provided_by_card(c):
+					has_fire_discard = true
+					break
+			if not has_fire_discard: score -= 20.0
+		if attack_name_lower == "dust devil":
+			var non_fighting_count = 0
+			for poke in [main.player_active_pokemon] + main.player_bench + main.opponent_bench:
+				if poke != null and "Fighting" not in poke.metadata.get("types",["Colorless"]):
+					non_fighting_count += 1
+			score += non_fighting_count * 8.0
+		if attack_name_lower == "triple poison":
+			score += 30.0  # 30/turn is very powerful
+		if attack_name_lower == "secrete poison":
+			score += 20.0  # reactive counter is situationally good
+		if attack_name_lower == "harden":
+			score += 15.0  # defensive setup
+		if attack_name_lower == "lock-on":
+			score += 30.0 if not main.opponent_active_pokemon.lock_on_active else -50.0  # only once
+
 		# ---- GENERAL EFFECT SCORING ----
 		var effect_score = score_parsed_effects(parsed_effects, main.player_active_pokemon)
 		score += effect_score
@@ -2353,6 +2594,10 @@ func cpu_phase_attack(cpu_eval: Dictionary) -> void:
 	SoundManagerScript.play_sfx(SoundManagerScript.SFX_attack_sound)
 	await main.show_message("Opponent's " + main.opponent_active_pokemon.metadata["name"].to_upper() + " used " + chosen_name.to_upper() + "!")
 	if main._should_bail(): return
+
+	# Baby Pokemon rule: CPU must flip before attacking a Baby Pokemon (tails = CPU turn ends)
+	if await main.attack_effects.check_baby_rule(main.player_active_pokemon, true):
+		return
 
 	# GYM2 Misty's Gyarados Rebellion — flip 2; both tails cancels the attack and shuffles Gyarados into deck
 	if await main.powers_and_bodies.check_rebellion(main.opponent_active_pokemon, true):
@@ -2571,6 +2816,13 @@ func cpu_phase_bench_play() -> void:
 		# GYM2 Giovanni's Persian Call the Boss — search deck for a Giovanni trainer
 		await main.powers_and_bodies.trigger_call_the_boss(best_card, true)
 		if main._should_bail(): return
+		# NEO2 [Engage]/[Increase] (Unown [E]/[I]): on-play triggers
+		if "[Engage]" in str(best_card.metadata.get("abilities",[])):
+			await main.powers_and_bodies.trigger_neo2_unown_engage(best_card, true)
+			if main._should_bail(): return
+		elif "[Increase]" in str(best_card.metadata.get("abilities",[])):
+			await main.powers_and_bodies.trigger_neo2_unown_increase(best_card, true)
+			if main._should_bail(): return
 
 # R.5: Selects the best bench replacement and performs the retreat
 func cpu_phase_evolution() -> void:
@@ -2742,7 +2994,176 @@ func cpu_score_trainer_card(card: card_object) -> float:
 		"gym2-119": return _cpu_score_gym2_rockets_minefield_gym()
 		"gym2-122": return _cpu_score_gym2_saffron_city_gym()
 		"gym2-123": return _cpu_score_gym2_viridian_city_gym()
+		# ============================ NEO1 (NEO GENESIS) TRAINER SCORING ============================
+		"neo1-83": return 40.0   # Arcade Game: coin flip game corner, decent
+		"neo1-85": return _cpu_score_neo1_energy_charge()
+		"neo1-86": return _cpu_score_neo1_focus_band()
+		"neo1-87": return _cpu_score_neo1_mary()
+		"neo1-88": return 60.0   # PokéGear: look at top 7 for trainers, good
+		"neo1-89": return _cpu_score_neo1_super_energy_retrieval()
+		"neo1-90": return 50.0   # Time Capsule: recover cards, moderate
+		"neo1-91": return 60.0   # Bill's Teleporter: heads draw 4
+		"neo1-92": return 30.0   # Card-Flip Game: draw 2 if correct
+		"neo1-93": return _cpu_score_neo1_gold_berry()
+		"neo1-94": return _cpu_score_neo1_miracle_berry()
+		"neo1-95": return 55.0   # New Pokédex: see top 5, rearrange
+		"neo1-96": return _cpu_score_neo1_professor_elm()
+		"neo1-97": return 60.0   # Sprout Tower stadium: useful defensive
+		"neo1-98": return _cpu_score_neo1_super_scoop_up()
+		"neo1-99": return _cpu_score_neo1_berry()
+		"neo1-100": return _cpu_score_neo1_double_gust()
+		"neo1-101": return _cpu_score_neo1_moo_moo_milk()
+		"neo1-102": return 40.0  # Pokemon March: bench search
+		"neo1-103": return _cpu_score_neo1_super_rod()
+		# neo1-84 Ecogym and neo1-97 Sprout Tower handled by stadiums (scored above)
+		"neo1-84": return 50.0   # Ecogym stadium: protect non-colorless energy
+		# ---- NEO2 (NEO DISCOVERY) TRAINER SCORING ----
+		"neo2-72": return _cpu_score_neo2_fossil_egg()
+		"neo2-73": return _cpu_score_neo2_hyper_devolution_spray()
+		"neo2-74": return _cpu_score_neo2_ruin_wall()
+		"neo2-75": return 40.0  # Energy Ark: 2 coin flips for basic energy
 	return 0.0
+
+func _cpu_score_neo1_energy_charge() -> float:
+	var energy_in_discard = 0
+	for c in main.opponent_discard_pile:
+		if c.metadata.get("supertype","") == "Energy":
+			energy_in_discard += 1
+	return 40.0 if energy_in_discard >= 2 else 10.0
+
+func _cpu_score_neo1_focus_band() -> float:
+	var active = main.opponent_active_pokemon
+	if active == null: return -50.0
+	# Only attach if active doesn't already have a tool
+	for ac in active.attached_cards:
+		if main.trainer_effects.is_attached_trainer(ac):
+			return -50.0
+	var hp_pct = float(active.current_hp) / max(1, active.get_max_hp())
+	return 60.0 if hp_pct < 0.5 else 30.0
+
+func _cpu_score_neo1_mary() -> float:
+	var hand_size = main.opponent_hand.size()
+	return 50.0 if hand_size <= 3 else 20.0
+
+func _cpu_score_neo1_super_energy_retrieval() -> float:
+	var basic_e = 0
+	for c in main.opponent_discard_pile:
+		if c.metadata.get("supertype","") == "Energy" and "Basic" in c.metadata.get("subtypes",[]):
+			basic_e += 1
+	if basic_e < 2: return -50.0
+	return 70.0 if basic_e >= 4 else 50.0
+
+func _cpu_score_neo1_gold_berry() -> float:
+	var all_cpu: Array = []
+	if main.opponent_active_pokemon != null: all_cpu.append(main.opponent_active_pokemon)
+	all_cpu.append_array(main.opponent_bench)
+	for p in all_cpu:
+		var dmg = p.get_max_hp() - p.current_hp
+		# Only attach if no tool already and has 40+ damage
+		var has_tool = false
+		for ac in p.attached_cards:
+			if main.trainer_effects.is_attached_trainer(ac): has_tool = true; break
+		if not has_tool and dmg >= 40:
+			return 65.0
+	# Check if about to take damage
+	if main.opponent_active_pokemon != null:
+		for ac in main.opponent_active_pokemon.attached_cards:
+			if main.trainer_effects.is_attached_trainer(ac): return -50.0
+		return 35.0  # preemptive attachment
+	return -50.0
+
+func _cpu_score_neo1_miracle_berry() -> float:
+	var active = main.opponent_active_pokemon
+	if active == null: return -50.0
+	if active.special_condition != "" or active.is_poisoned or active.is_burned:
+		# Already have status — miracle berry will cure it at turn start
+		for ac in active.attached_cards:
+			if main.trainer_effects.is_attached_trainer(ac): return -50.0
+		return 70.0
+	for ac in active.attached_cards:
+		if main.trainer_effects.is_attached_trainer(ac): return -50.0
+	return 25.0  # preemptive
+
+func _cpu_score_neo1_professor_elm() -> float:
+	var hand = main.opponent_hand
+	# Only use if hand is bad (few cards or mostly unhelpful)
+	if hand.size() > 5: return -20.0
+	return 70.0 if hand.size() <= 3 else 40.0
+
+func _cpu_score_neo1_super_scoop_up() -> float:
+	# Good to scoop when a bench pokemon is badly damaged
+	var best_dmg = 0
+	for bp in main.opponent_bench:
+		var dmg = bp.get_max_hp() - bp.current_hp
+		if dmg > best_dmg: best_dmg = dmg
+	return 60.0 if best_dmg >= 40 else 20.0
+
+func _cpu_score_neo1_berry() -> float:
+	var all_cpu: Array = []
+	if main.opponent_active_pokemon != null: all_cpu.append(main.opponent_active_pokemon)
+	all_cpu.append_array(main.opponent_bench)
+	for p in all_cpu:
+		var dmg = p.get_max_hp() - p.current_hp
+		var has_tool = false
+		for ac in p.attached_cards:
+			if main.trainer_effects.is_attached_trainer(ac): has_tool = true; break
+		if not has_tool and dmg >= 20:
+			return 45.0
+	if main.opponent_active_pokemon != null:
+		for ac in main.opponent_active_pokemon.attached_cards:
+			if main.trainer_effects.is_attached_trainer(ac): return -50.0
+		return 25.0
+	return -50.0
+
+func _cpu_score_neo1_double_gust() -> float:
+	# Use when player has a weaker benched target
+	var player_bench = main.player_bench
+	if player_bench.size() == 0: return -50.0
+	var weakest_bench_hp = 9999
+	for bp in player_bench:
+		weakest_bench_hp = min(weakest_bench_hp, bp.current_hp)
+	var player_active_hp = main.player_active_pokemon.current_hp if main.player_active_pokemon != null else 9999
+	return 60.0 if weakest_bench_hp < player_active_hp else 20.0
+
+func _cpu_score_neo1_moo_moo_milk() -> float:
+	var all_cpu: Array = []
+	if main.opponent_active_pokemon != null: all_cpu.append(main.opponent_active_pokemon)
+	all_cpu.append_array(main.opponent_bench)
+	var max_dmg = 0
+	for p in all_cpu:
+		max_dmg = max(max_dmg, p.get_max_hp() - p.current_hp)
+	return 50.0 if max_dmg >= 30 else 10.0
+
+func _cpu_score_neo1_super_rod() -> float:
+	var has_evo = false; var has_basic = false
+	for c in main.opponent_discard_pile:
+		if c.metadata.get("supertype","") == "Pokémon":
+			var sub = c.metadata.get("subtypes",[])
+			if "Stage 1" in sub or "Stage 2" in sub: has_evo = true
+			if "Basic" in sub: has_basic = true
+	return 60.0 if has_evo else (40.0 if has_basic else -50.0)
+
+func _cpu_score_neo2_fossil_egg() -> float:
+	var bench = main.opponent_bench
+	if bench.size() >= main.get_max_bench_size(): return -100.0
+	for c in main.opponent_hand + main.opponent_deck:
+		if "Mysterious Fossil" in c.metadata.get("evolvesFrom",""):
+			return 50.0
+	return -50.0
+
+func _cpu_score_neo2_hyper_devolution_spray() -> float:
+	var all_cpu = ([main.opponent_active_pokemon] if main.opponent_active_pokemon else []) + main.opponent_bench
+	for p in all_cpu:
+		if p.attached_pre_evolutions.size() > 0:
+			return 30.0
+	return -100.0
+
+func _cpu_score_neo2_ruin_wall() -> float:
+	if main.opponent_bench.size() >= main.get_max_bench_size(): return -100.0
+	for c in main.opponent_deck:
+		if "Unown" in c.metadata.get("name","") and main.is_basic_pokemon(c):
+			return 45.0
+	return -50.0
 
 func _cpu_score_professor_oak(card: card_object) -> float:
 	var hand = main.opponent_hand

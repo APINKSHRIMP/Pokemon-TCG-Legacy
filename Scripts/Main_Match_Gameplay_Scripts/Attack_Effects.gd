@@ -25,7 +25,9 @@ func _ensure_dispatch_ready() -> void:
 	_register_gym1_attacks()
 	_register_base_attacks()
 	_register_si1_attacks()
-	# When adding Neo1/Neo2/etc., append: _register_neo1_attacks()
+	_register_basep_attacks()
+	_register_neo1_attacks()
+	_register_neo2_attacks()
 
 func _register_si1_attacks() -> void:
 	_attack_dispatch["rainbow wave"]    = func(atk, a, d, opp): await execute_rainbow_wave(a, opp);            await _attack_finish(false, 0,   atk, a.metadata.get("types",["Colorless"]), opp)
@@ -40,12 +42,63 @@ func _register_si1_attacks() -> void:
 	_attack_dispatch["paradise pollen"]= func(atk, a, d, opp): await execute_paradise_pollen(a, opp);         await _attack_finish(false, 0,   atk, a.metadata.get("types",["Colorless"]), opp)
 	_attack_dispatch["rampage"]        = func(atk, a, d, opp): var b=parse_attack_base_damage(atk); await execute_rampage(a, d, opp, b); await _attack_finish(true, b, atk, a.metadata.get("types",["Colorless"]), opp)
 
+func _register_basep_attacks() -> void:
+	_attack_dispatch["light screen"]        = func(atk, a, d, opp): await execute_deflector(a, opp);                                                                                               await _attack_finish(false, 0,   atk, a.metadata.get("types",["Colorless"]), opp)
+	_attack_dispatch["energy absorption"]   = func(atk, a, d, opp): await execute_energy_absorption(a, opp, 2);                                                                                   await _attack_finish(false, 0,   atk, a.metadata.get("types",["Colorless"]), opp)
+	_attack_dispatch["recharge"]            = func(atk, a, d, opp): await execute_basep_recharge(a, opp);                                                                                         await _attack_finish(false, 0,   atk, a.metadata.get("types",["Colorless"]), opp)
+	_attack_dispatch["flames of rage"]      = func(atk, a, d, opp):
+		var types = a.metadata.get("types",["Colorless"])
+		var fire_count = a.attached_energies.filter(func(e): return "Fire" in main.get_energy_provided_by_card(e)).size()
+		if fire_count < 2:
+			if not opp: await main.show_message("NOT ENOUGH FIRE ENERGY TO USE FLAMES OF RAGE!")
+			await _attack_finish(false, 0, atk, types, opp)
+			return
+		await execute_flames_of_rage(a, d, opp)
+		await _attack_finish(true, 40, atk, types, opp)
+	_attack_dispatch["devolution beam"]     = func(atk, a, d, opp): await execute_devolution_beam(a, d, opp);                                                                                     await _attack_finish(false, 0,   atk, a.metadata.get("types",["Colorless"]), opp)
+	_attack_dispatch["cat punch"]           = func(atk, a, d, opp): await execute_cat_punch(a, d, opp);                                                                                           await _attack_finish(false, 0,   atk, a.metadata.get("types",["Colorless"]), opp)
+	_attack_dispatch["energy control"]      = func(atk, a, d, opp): await execute_energy_control(a, d, opp);                                                                                      await _attack_finish(false, 0,   atk, a.metadata.get("types",["Colorless"]), opp)
+	_attack_dispatch["telekinesis"]         = func(atk, a, d, opp): await execute_snipe_no_wr(a, d, opp, 30, false);                                                                              await _attack_finish(true,  30,  atk, a.metadata.get("types",["Colorless"]), opp)
+	_attack_dispatch["texture magic"]       = func(atk, a, d, opp): await execute_texture_magic(a, d, opp);                                                                                       await _attack_finish(false, 0,   atk, a.metadata.get("types",["Colorless"]), opp)
+	_attack_dispatch["miraculous comeback"] = func(atk, a, d, opp): await execute_miraculous_comeback(a, d, opp);                                                                                 await _attack_finish(false, 0,   atk, a.metadata.get("types",["Colorless"]), opp)
+	_attack_dispatch["hyper flame"]         = func(atk, a, d, opp):
+		var types = a.metadata.get("types",["Colorless"])
+		if a.attached_energies.size() == 0:
+			if not opp: await main.show_message("NO ENERGY ATTACHED — HYPER FLAME FAILS!")
+			await _attack_finish(false, 0, atk, types, opp)
+			return
+		await execute_hyper_flame(a, d, opp)
+		await _attack_finish(true, 60, atk, types, opp)
+	_attack_dispatch["lightning burn"]      = func(atk, a, d, opp): await execute_lightning_burn(a, d, opp);                                                                                      await _attack_finish(true,  30,  atk, a.metadata.get("types",["Colorless"]), opp)
+	_attack_dispatch["mini-metronome"]      = func(atk, a, d, opp): await execute_metronome(a, d, opp);                                                                                           await _attack_finish(false, 0,   atk, a.metadata.get("types",["Colorless"]), opp)
+	_attack_dispatch["paint"]               = func(atk, a, d, opp): await execute_paint(a, d, opp);                                                                                               await _attack_finish(false, 0,   atk, a.metadata.get("types",["Colorless"]), opp)
+	_attack_dispatch["slashing strike"]     = func(atk, a, d, opp): var b=parse_attack_base_damage(atk); await execute_screaming_headbutt(a, d, opp, b, "Slashing Strike");                      await _attack_finish(true,  b,   atk, a.metadata.get("types",["Colorless"]), opp)
+	_attack_dispatch["protective flame"]    = func(atk, a, d, opp): await execute_protective_flame(a, d, opp);                                                                                    await _attack_finish(true,  50,  atk, a.metadata.get("types",["Colorless"]), opp)
+	_attack_dispatch["let's play!"]         = func(atk, a, d, opp): await execute_lets_play(a, opp);                                                                                              await _attack_finish(false, 0,   atk, a.metadata.get("types",["Colorless"]), opp)
+	_attack_dispatch["rapid spin"]          = func(atk, a, d, opp): await execute_rapid_spin(a, d, opp);                                                                                          await _attack_finish(true,  30,  atk, a.metadata.get("types",["Colorless"]), opp)
+	_attack_dispatch["pain split"]          = func(atk, a, d, opp): await execute_pain_split(a, d, opp);                                                                                          await _attack_finish(false, 0,   atk, a.metadata.get("types",["Colorless"]), opp)
+	_attack_dispatch["seething anger"]      = func(atk, a, d, opp): await execute_seething_anger(a, d, opp);                                                                                      await _attack_finish(true,  20,  atk, a.metadata.get("types",["Colorless"]), opp)
+	# basep Machamp Fling (50 + force switch) overrides Dark Machamp's Fling (shuffle into deck)
+	_attack_dispatch["fling"]               = func(atk, a, d, opp):
+		if "switches it with" in atk.get("text","").to_lower() or "switch" in atk.get("text","").to_lower():
+			await execute_basep_fling(a, d, opp)
+			await _attack_finish(true, 50, atk, a.metadata.get("types",["Colorless"]), opp)
+		else:
+			await execute_fling(a, d, opp)
+			await _attack_finish(false, 0, atk, a.metadata.get("types",["Colorless"]), opp)
+	_attack_dispatch["burning fire"]        = func(atk, a, d, opp): await execute_burning_fire(a, d, opp);                                                                                        await _attack_finish(true,  10,  atk, a.metadata.get("types",["Colorless"]), opp)
+	_attack_dispatch["lightning rod"]       = func(atk, a, d, opp): await execute_lightning_rod(a, d, opp);                                                                                       await _attack_finish(false, 0,   atk, a.metadata.get("types",["Colorless"]), opp)
+	_attack_dispatch["lightning bolt"]      = func(atk, a, d, opp): await execute_lightning_bolt(a, d, opp);                                                                                      await _attack_finish(true,  10,  atk, a.metadata.get("types",["Colorless"]), opp)
+	_attack_dispatch["sacred wing"]         = func(atk, a, d, opp): await execute_sacred_wing(a, d, opp);                                                                                         await _attack_finish(true,  60,  atk, a.metadata.get("types",["Colorless"]), opp)
+	_attack_dispatch["jump over"]           = func(atk, a, d, opp): await execute_jump_over(a, d, opp);                                                                                           await _attack_finish(false, 0,   atk, a.metadata.get("types",["Colorless"]), opp)
+	# Water Gun: all variants (typed and untyped extra energy) handled by generic resolve_attack_variable_damage
+
 func _register_gym2_attacks() -> void:
 	_attack_dispatch["roaring flames"]     = func(atk, a, d, opp): await execute_roaring_flames(a, d, opp);     await _attack_finish(true,  20,  atk, a.metadata.get("types", ["Colorless"]), opp)
 	_attack_dispatch["growth"]             = func(atk, a, d, opp): await execute_growth(a, opp);                 await _attack_finish(false, 0,   atk, a.metadata.get("types", ["Colorless"]), opp)
 	_attack_dispatch["wide solarbeam"]     = func(atk, a, d, opp): await execute_bench_choose_spread(a, d, opp, 20, 2, 20, false); await _attack_finish(true, 20, atk, a.metadata.get("types", ["Colorless"]), opp)
 	_attack_dispatch["summon storm"]       = func(atk, a, d, opp): await execute_summon_storm(a, opp);           await _attack_finish(false, 0,   atk, a.metadata.get("types", ["Colorless"]), opp)
-	_attack_dispatch["dragon tornado"]     = func(atk, a, d, opp): await execute_dragon_tornado(a, d, opp, 40);  await _attack_finish(true,  40,  atk, a.metadata.get("types", ["Colorless"]), opp)
+	_attack_dispatch["dragon tornado"]     = func(atk, a, d, opp): var b=parse_attack_base_damage(atk); await execute_dragon_tornado(a, d, opp, b); await _attack_finish(true, b, atk, a.metadata.get("types", ["Colorless"]), opp)
 	_attack_dispatch["intimidate"]         = func(atk, a, d, opp): await execute_intimidate(a, d, opp);          await _attack_finish(false, 0,   atk, a.metadata.get("types", ["Colorless"]), opp)
 	_attack_dispatch["giant growth"]       = func(atk, a, d, opp): await execute_giant_growth(a, opp);           await _attack_finish(false, 0,   atk, a.metadata.get("types", ["Colorless"]), opp)
 	_attack_dispatch["kerzap"]             = func(atk, a, d, opp): await execute_kerzap(a, d, opp);              await _attack_finish(true,  20,  atk, a.metadata.get("types", ["Colorless"]), opp)
@@ -494,9 +547,19 @@ func estimate_attack_damage_range(attack: Dictionary, attacker: card_object = nu
 				extra = min(extra, cap)
 				min_dmg += per * extra
 				max_dmg += per * extra
+			else:
+				# Untyped extra energy (Marill Water Gun)
+				var cost_count = attack.get("cost", []).size()
+				var extra = max(0, attacker.attached_energies.size() - cost_count)
+				if "can't add more than" in text and "damage in this way" in text:
+					var cap_dmg = extract_number_before(text, "damage in this way")
+					if cap_dmg > 0:
+						extra = min(extra, cap_dmg / per)
+				min_dmg += per * extra
+				max_dmg += per * extra
 		else:
 			max_dmg += per * 2
-	
+
 	# --- PER DAMAGE COUNTER ON DEFENDING ---
 	if "for each damage counter on the defending" in text:
 		var per = 10
@@ -548,6 +611,27 @@ func estimate_attack_damage_range(attack: Dictionary, attacker: card_object = nu
 			max_dmg += per * 5
 	
 	return {"min": min_dmg, "max": max_dmg}
+
+# BABY POKEMON RULE: the attacking side must flip a coin before attacking a Baby Pokemon.
+# Returns true if the attack is blocked (tails) and the turn should end, false if it proceeds.
+# Call this AFTER announcing the attack, BEFORE any other pre-attack checks.
+func check_baby_rule(defender: card_object, is_opponent: bool) -> bool:
+	if defender == null:
+		return false
+	if "Baby" not in defender.metadata.get("subtypes", []):
+		return false
+	var name = defender.metadata.get("name", "")
+	await main.show_message(name.to_upper() + " IS A BABY POKEMON! FLIPPING COIN...")
+	if main._should_bail(): return false
+	var coin = await main.flip_coin(false, is_opponent)
+	if main._should_bail(): return false
+	if not coin:
+		await main.show_message("TAILS! THE ATTACK FAILS!")
+		if main._should_bail(): return false
+		return true
+	await main.show_message("HEADS! THE ATTACK PROCEEDS!")
+	if main._should_bail(): return false
+	return false
 
 # Evaluates KO threats from the player against the CPU's active pokemon (1.1, 1.2, 1.3)
 func handle_attack_confusion(attacker: card_object, is_opponent: bool) -> bool:
@@ -816,7 +900,27 @@ func resolve_attack_variable_damage(attack: Dictionary, attacker: card_object, d
 			var bonus = per_energy_bonus * extra_count
 			resolved_damage += bonus
 			print("EXTRA ENERGY: +", bonus, " (", extra_count, " extra ", bonus_energy_type, " beyond ", used_for_cost, " used for cost)")
-	
+		else:
+			# ---- UNTYPED EXTRA ENERGY (Marill Water Gun — any Energy beyond cost, capped) ----
+			if attacker:
+				var cost_count = attack.get("cost", []).size()
+				var extra_count = max(0, attacker.attached_energies.size() - cost_count)
+				var cap = 99
+				if "can't add more than" in text and "damage in this way" in text:
+					var cap_dmg = extract_number_before(text, "damage in this way")
+					if cap_dmg > 0:
+						var per_e = extract_number_before(text, "more damage for each")
+						if per_e <= 0:
+							per_e = 10
+						cap = cap_dmg / per_e
+				extra_count = min(extra_count, cap)
+				var per_energy_bonus = extract_number_before(text, "more damage for each")
+				if per_energy_bonus <= 0:
+					per_energy_bonus = 10
+				var bonus = per_energy_bonus * extra_count
+				resolved_damage += bonus
+				print("UNTYPED EXTRA ENERGY: +", bonus, " (", extra_count, " extra beyond cost)")
+
 	# ---- PER DAMAGE COUNTER ON DEFENDING (Jynx Meditate, Mr. Mime Meditate) ----
 	if "for each damage counter on the defending" in text:
 		var per_counter = 10
@@ -1564,9 +1668,7 @@ func apply_energy_discard_self(effect: Dictionary, attacker: card_object, is_opp
 	for energy in to_discard:
 		var energy_texture = main.get_card_texture(energy)
 		attacker.attached_energies.erase(energy)
-		energy.current_location = "discard"
-		var discard_pile = main.opponent_discard_pile if is_opponent_attacking else main.player_discard_pile
-		discard_pile.append(energy)
+		main.card_ops.discard_energy_from_pokemon(energy, is_opponent_attacking)
 		await main.animate_card_a_to_b(from_node, discard_node, 0.2, energy_texture, main.card_scales[10])
 		if main._should_bail(): return
 		main.display_active_pokemon_energies(is_opponent_attacking)
@@ -1631,10 +1733,8 @@ func apply_energy_discard_defender(effect: Dictionary, defender: card_object, is
 		var discard_node = main.opponent_discard_icon if defender_is_opp else main.player_discard_icon
 		
 		defender.attached_energies.erase(energy_to_discard)
-		energy_to_discard.current_location = "discard"
-		var discard_pile = main.opponent_discard_pile if defender_is_opp else main.player_discard_pile
-		discard_pile.append(energy_to_discard)
-		
+		main.card_ops.discard_energy_from_pokemon(energy_to_discard, defender_is_opp)
+
 		await main.animate_card_a_to_b(from_node, discard_node, 0.2, energy_texture, main.card_scales[10])
 		if main._should_bail(): return
 		main.update_discard_pile_display(defender_is_opp)
@@ -1920,9 +2020,14 @@ func apply_force_switch(effect: Dictionary, is_opponent_attacking: bool) -> void
 			new_active.current_location = "active"
 			main.opponent_active_pokemon = new_active
 			main.clear_all_statuses(old_active, true)
-			
+
 			main.display_pokemon(true)
 			main.display_active_pokemon_energies(true)
+			# NEO2 Spikes (Forretress): 10 damage when opponent's bench→active via forced switch
+			await main.powers_and_bodies.check_spikes(new_active, true)
+			if main._should_bail(): return
+			await main.check_all_knockouts()
+			if main._should_bail(): return
 	else:
 		# Target is the player
 		if chooser == "attacker":
@@ -1966,11 +2071,14 @@ func apply_force_switch(effect: Dictionary, is_opponent_attacking: bool) -> void
 			new_active.current_location = "active"
 			main.player_active_pokemon = new_active
 			main.clear_all_statuses(old_active, false)
-			
+
 			main.display_pokemon(false)
 			main.display_active_pokemon_energies(false)
-
-
+			# NEO2 Spikes (Forretress): 10 damage when player's bench→active via forced switch
+			await main.powers_and_bodies.check_spikes(new_active, false)
+			if main._should_bail(): return
+			await main.check_all_knockouts()
+			if main._should_bail(): return
 
 # Applies damage reduction for next turn (Minimize/Pounce/Snivel)
 func apply_damage_reduction(effect: Dictionary, attacker: card_object, is_opponent_attacking: bool) -> void:
@@ -2805,7 +2913,11 @@ func execute_prophecy(attacker: card_object, is_opponent: bool) -> void:
 func execute_energy_conversion(attacker: card_object, is_opponent: bool) -> void:
 	if attacker == null:
 		return
-	
+	if main.trainer_effects.check_pokemon_tower_blocks_recovery():
+		await main.show_message("POKEMON TOWER! CANNOT RECOVER CARDS FROM DISCARD!")
+		if main._should_bail(): return
+		return
+
 	var discard = main.opponent_discard_pile if is_opponent else main.player_discard_pile
 	var hand = main.opponent_hand if is_opponent else main.player_hand
 	
@@ -2891,7 +3003,11 @@ func execute_spacing_out(attacker: card_object, is_opponent: bool) -> void:
 func execute_scavenge(attacker: card_object, is_opponent: bool) -> void:
 	if attacker == null:
 		return
-	
+	if main.trainer_effects.check_pokemon_tower_blocks_recovery():
+		await main.show_message("POKEMON TOWER! CANNOT RECOVER CARDS FROM DISCARD!")
+		if main._should_bail(): return
+		return
+
 	# Check for Psychic Energy attached
 	var psychic_energy: card_object = null
 	for e in attacker.attached_energies:
@@ -7083,3 +7199,2535 @@ func execute_rampage(attacker: card_object, defender: card_object, is_opponent: 
 		main.card_ops.apply_status(attacker, "Confused", is_opponent)
 		await main.show_message("TAILS! " + attacker.metadata.get("name", "").to_upper() + " IS NOW CONFUSED!")
 		if main._should_bail(): return
+
+######################################################################################################################################################
+############################################################## BASEP EFFECTS ########################################################################
+######################################################################################################################################################
+
+# ENERGY ABSORPTION (basep-3/14 Mewtwo): recover up to 2 energy from discard pile, attach to self
+func execute_energy_absorption(attacker: card_object, is_opponent: bool, max_count: int) -> void:
+	if await handle_attack_confusion(attacker, is_opponent): return
+	if await handle_attack_blind(attacker, is_opponent): return
+	var discard_pile = main.opponent_discard_pile if is_opponent else main.player_discard_pile
+	var energy_cards: Array = []
+	for c in discard_pile:
+		if c.metadata.get("supertype", "") == "Energy":
+			energy_cards.append(c)
+	if energy_cards.size() == 0:
+		await main.show_message("NO ENERGY IN DISCARD PILE!")
+		if main._should_bail(): return
+		return
+	var taken = 0
+	if is_opponent:
+		var n = min(max_count, energy_cards.size())
+		for i in range(n):
+			var e = energy_cards[i]
+			discard_pile.erase(e)
+			e.current_location = "attached"
+			attacker.attached_energies.append(e)
+			taken += 1
+	else:
+		for _pick in range(min(max_count, energy_cards.size())):
+			var remaining: Array = energy_cards.filter(func(c): return c.current_location != "attached")
+			if remaining.size() == 0:
+				break
+			var sel = await main.card_ops.prompt_select_card(remaining, "ENERGY ABSORPTION: CHOOSE ENERGY", "Select an Energy to attach (cancel to stop)", "ATTACH", _pick > 0)
+			if main._should_bail(): return
+			if sel == null:
+				break
+			discard_pile.erase(sel)
+			sel.current_location = "attached"
+			attacker.attached_energies.append(sel)
+			taken += 1
+	main.display_active_pokemon_energies(is_opponent)
+	main.update_discard_pile_display(is_opponent)
+	if taken > 0:
+		await main.show_message("ENERGY ABSORPTION! ATTACHED " + str(taken) + " ENERGY TO " + attacker.metadata.get("name", "").to_upper() + "!")
+		if main._should_bail(): return
+	print("ATTACK EXECUTED: Energy Absorption - attached ", taken, " energy")
+
+# RECHARGE (basep-4 Pikachu): search deck for a Lightning Energy card, attach to self
+func execute_basep_recharge(attacker: card_object, is_opponent: bool) -> void:
+	if await handle_attack_confusion(attacker, is_opponent): return
+	if await handle_attack_blind(attacker, is_opponent): return
+	var deck = main.opponent_deck if is_opponent else main.player_deck
+	var matches: Array = []
+	for c in deck:
+		if c.metadata.get("supertype", "") == "Energy" and "Lightning" in main.get_energy_provided_by_card(c):
+			matches.append(c)
+	if matches.size() == 0:
+		await main.show_message("NO LIGHTNING ENERGY IN THE DECK!")
+		if main._should_bail(): return
+		deck.shuffle()
+		return
+	var chosen: card_object = matches[0]
+	if not is_opponent:
+		chosen = await main.card_ops.prompt_select_card(matches, "RECHARGE", "Choose a Lightning Energy to attach", "ATTACH", false, true)
+		if main._should_bail(): return
+		if chosen == null:
+			chosen = matches[0]
+	deck.erase(chosen)
+	chosen.current_location = "attached"
+	attacker.attached_energies.append(chosen)
+	deck.shuffle()
+	main.display_active_pokemon_energies(is_opponent)
+	main.update_deck_icon(is_opponent)
+	await main.show_message("RECHARGE! LIGHTNING ENERGY ATTACHED TO " + attacker.metadata.get("name", "").to_upper() + "!")
+	if main._should_bail(): return
+	print("ATTACK EXECUTED: Recharge - Lightning Energy attached from deck")
+
+# FLAMES OF RAGE (basep-6 Arcanine): discard 2 Fire Energy, 40 + 10 per damage counter on Arcanine
+func execute_flames_of_rage(attacker: card_object, defender: card_object, is_opponent: bool) -> void:
+	if await handle_attack_confusion(attacker, is_opponent): return
+	if await handle_attack_blind(attacker, is_opponent): return
+	var fire_energies: Array = []
+	for e in attacker.attached_energies:
+		if "Fire" in main.get_energy_provided_by_card(e):
+			fire_energies.append(e)
+	for i in range(2):
+		var e = fire_energies[i]
+		attacker.attached_energies.erase(e)
+		main.card_ops.discard_energy_from_pokemon(e, is_opponent)
+	main.display_active_pokemon_energies(is_opponent)
+	main.update_discard_pile_display(is_opponent)
+	await main.show_message("DISCARDED 2 FIRE ENERGY!")
+	if main._should_bail(): return
+	var counters = attacker.get_damage_counters()
+	var total = 40 + counters * 10
+	if counters > 0:
+		await main.show_message("FLAMES OF RAGE! " + str(counters) + " DAMAGE COUNTER(S) — " + str(total) + " DAMAGE!")
+		if main._should_bail(): return
+	await gym1_hit_active(attacker, defender, is_opponent, total)
+	if main._should_bail(): return
+	await main.check_all_knockouts()
+	if main._should_bail(): return
+	print("ATTACK EXECUTED: Flames of Rage - ", counters, " counters, ", total, " damage")
+
+# DEVOLUTION BEAM (basep-8/9 Mew): choose any evolved Pokemon, return its top evolution to its player's hand
+func execute_devolution_beam(attacker: card_object, defender: card_object, is_opponent: bool) -> void:
+	if await handle_attack_confusion(attacker, is_opponent): return
+	if await handle_attack_blind(attacker, is_opponent): return
+	var all_evolved: Array = []
+	var owner_map: Dictionary = {}
+	for entry in [{"p": main.player_active_pokemon, "opp": false}, {"p": main.opponent_active_pokemon, "opp": true}]:
+		if entry["p"] != null and entry["p"].attached_pre_evolutions.size() > 0:
+			all_evolved.append(entry["p"])
+			owner_map[entry["p"]] = entry["opp"]
+	for bp in main.player_bench:
+		if bp.attached_pre_evolutions.size() > 0:
+			all_evolved.append(bp)
+			owner_map[bp] = false
+	for bp in main.opponent_bench:
+		if bp.attached_pre_evolutions.size() > 0:
+			all_evolved.append(bp)
+			owner_map[bp] = true
+	if all_evolved.size() == 0:
+		await main.show_message("NO EVOLVED POKEMON TO TARGET WITH DEVOLUTION BEAM!")
+		if main._should_bail(): return
+		return
+	var target: card_object = null
+	if is_opponent:
+		# CPU targets highest-stage opponent Pokemon
+		var best = -1
+		for p in all_evolved:
+			if not owner_map[p]:
+				var stage = p.attached_pre_evolutions.size()
+				if stage > best:
+					best = stage
+					target = p
+		if target == null:
+			target = all_evolved[0]
+	else:
+		target = await main.card_ops.prompt_select_card(all_evolved, "DEVOLUTION BEAM", "Choose an evolved Pokemon to devolve by one stage", "SELECT", false)
+		if main._should_bail(): return
+		if target == null:
+			return
+	var target_is_opp: bool = owner_map.get(target, false)
+	var target_hand = main.opponent_hand if target_is_opp else main.player_hand
+	# The highest-stage card is target itself; devolve one step back
+	var new_form: card_object = target.attached_pre_evolutions.back()
+	target.attached_pre_evolutions.erase(new_form)
+	# Transfer attachments to the new (lower-stage) form
+	new_form.attached_energies = target.attached_energies.duplicate()
+	target.attached_energies.clear()
+	new_form.attached_pre_evolutions = target.attached_pre_evolutions.duplicate()
+	target.attached_pre_evolutions.clear()
+	new_form.attached_cards = target.attached_cards.duplicate()
+	target.attached_cards.clear()
+	# Carry damage over
+	var old_max = target.get_max_hp()
+	var damage_taken = old_max - target.current_hp
+	var new_max = int(new_form.metadata.get("hp", "0"))
+	new_form.current_hp = max(10, new_max - damage_taken)
+	new_form.current_location = target.current_location
+	main.clear_all_statuses(new_form, target_is_opp)
+	# Replace target in active or bench slot
+	if target == (main.opponent_active_pokemon if target_is_opp else main.player_active_pokemon):
+		if target_is_opp:
+			main.opponent_active_pokemon = new_form
+		else:
+			main.player_active_pokemon = new_form
+	else:
+		var bench = main.opponent_bench if target_is_opp else main.player_bench
+		var idx = bench.find(target)
+		if idx >= 0:
+			bench[idx] = new_form
+	# Return the evolution card to hand
+	target.current_location = "hand"
+	target_hand.append(target)
+	main.display_pokemon(target_is_opp)
+	main.display_active_pokemon_energies(target_is_opp)
+	main.refresh_hand_display(target_is_opp)
+	await main.show_message("DEVOLUTION BEAM! " + target.metadata.get("name", "").to_upper() + " RETURNED TO " + ("OPPONENT'S" if target_is_opp else "YOUR") + " HAND!")
+	if main._should_bail(): return
+	print("ATTACK EXECUTED: Devolution Beam - ", target.metadata.get("name", ""), " returned to hand")
+
+# CAT PUNCH (basep-10 Meowth): flip coin — heads 20 to active; tails 20 to a chosen bench Pokemon
+func execute_cat_punch(attacker: card_object, defender: card_object, is_opponent: bool) -> void:
+	if await handle_attack_confusion(attacker, is_opponent): return
+	if await handle_attack_blind(attacker, is_opponent): return
+	var coin = await main.flip_coin(false, is_opponent)
+	if main._should_bail(): return
+	if coin:
+		await main.show_message("HEADS! 20 DAMAGE TO THE DEFENDING POKEMON!")
+		if main._should_bail(): return
+		await gym1_hit_active(attacker, defender, is_opponent, 20)
+		if main._should_bail(): return
+	else:
+		var opp_bench = main.player_bench if is_opponent else main.opponent_bench
+		if opp_bench.size() == 0:
+			await main.show_message("TAILS! BUT OPPONENT HAS NO BENCH!")
+			if main._should_bail(): return
+			return
+		var targets = opp_bench.duplicate()
+		var target_pokemon: card_object
+		if is_opponent:
+			targets.sort_custom(func(a, b): return a.current_hp < b.current_hp)
+			target_pokemon = targets[0]
+		else:
+			target_pokemon = await main.card_ops.prompt_select_card(targets, "CAT PUNCH — CHOOSE BENCH TARGET", "Choose a Benched Pokemon to deal 20 damage to", "SELECT", false)
+			if main._should_bail(): return
+			if target_pokemon == null:
+				target_pokemon = targets[0]
+		main.card_ops.apply_bench_damage(target_pokemon, 20, !is_opponent)
+		await main.show_message("TAILS! 20 DAMAGE TO " + target_pokemon.metadata.get("name", "").to_upper() + "!")
+		if main._should_bail(): return
+	await main.check_all_knockouts()
+	if main._should_bail(): return
+	print("ATTACK EXECUTED: Cat Punch")
+
+# ENERGY CONTROL (basep-12 Mewtwo): flip coin — heads: move 1 basic energy from one opponent Pokemon to another
+func execute_energy_control(attacker: card_object, defender: card_object, is_opponent: bool) -> void:
+	if await handle_attack_confusion(attacker, is_opponent): return
+	if await handle_attack_blind(attacker, is_opponent): return
+	var coin = await main.flip_coin(false, is_opponent)
+	if main._should_bail(): return
+	if not coin:
+		await main.show_message("TAILS! ENERGY CONTROL FAILED!")
+		if main._should_bail(): return
+		return
+	var opp_active = main.player_active_pokemon if is_opponent else main.opponent_active_pokemon
+	var opp_bench = main.player_bench if is_opponent else main.opponent_bench
+	var opp_is = not is_opponent
+	var all_opp: Array = []
+	if opp_active != null:
+		all_opp.append(opp_active)
+	all_opp.append_array(opp_bench)
+	# Find a Pokemon with a basic energy attached
+	var sources_with_energy: Array = all_opp.filter(func(p): return p.attached_energies.size() > 0)
+	if sources_with_energy.size() == 0 or all_opp.size() < 2:
+		await main.show_message("HEADS! BUT OPPONENT HAS NO VALID ENERGY TO MOVE!")
+		if main._should_bail(): return
+		return
+	# Pick source and destination — CPU picks worst source, moves energy to best bench mon
+	var source_pokemon: card_object
+	var dest_pokemon: card_object
+	if is_opponent:
+		source_pokemon = sources_with_energy[0]
+		var dests: Array = all_opp.filter(func(p): return p != source_pokemon)
+		dest_pokemon = dests[0] if dests.size() > 0 else null
+	else:
+		source_pokemon = await main.card_ops.prompt_select_card(sources_with_energy, "ENERGY CONTROL: SOURCE", "Choose an opponent's Pokemon to take energy from", "SELECT", false)
+		if main._should_bail(): return
+		if source_pokemon == null:
+			return
+		var dests = all_opp.filter(func(p): return p != source_pokemon)
+		if dests.size() == 0:
+			return
+		dest_pokemon = await main.card_ops.prompt_select_card(dests, "ENERGY CONTROL: DESTINATION", "Choose an opponent's Pokemon to attach energy to", "SELECT", false)
+		if main._should_bail(): return
+		if dest_pokemon == null:
+			return
+	var energy = source_pokemon.attached_energies[0]
+	source_pokemon.attached_energies.erase(energy)
+	dest_pokemon.attached_energies.append(energy)
+	main.display_active_pokemon_energies(opp_is)
+	await main.show_message("ENERGY CONTROL! MOVED ENERGY FROM " + source_pokemon.metadata.get("name","").to_upper() + " TO " + dest_pokemon.metadata.get("name","").to_upper() + "!")
+	if main._should_bail(): return
+	print("ATTACK EXECUTED: Energy Control")
+
+# TEXTURE MAGIC (basep-15 Cool Porygon): change Porygon's resistance and/or defender's weakness
+# Simplified: uses attacker's own type as the new weakness on defender, and applies resistance to self
+func execute_texture_magic(attacker: card_object, defender: card_object, is_opponent: bool) -> void:
+	if await handle_attack_confusion(attacker, is_opponent): return
+	if await handle_attack_blind(attacker, is_opponent): return
+	var types = ["Fire", "Water", "Grass", "Lightning", "Psychic", "Fighting", "Darkness", "Metal"]
+	if is_opponent:
+		var player_type = main.player_active_pokemon.metadata.get("types", ["Colorless"])[0] if main.player_active_pokemon else "Colorless"
+		attacker.temporary_resistance = player_type if player_type != "Colorless" else "Fighting"
+		var opp_type = attacker.metadata.get("types", ["Colorless"])[0]
+		if defender != null:
+			defender.temporary_weakness = opp_type if opp_type != "Colorless" else "Lightning"
+	else:
+		attacker.temporary_resistance = types[randi() % types.size()]
+		if defender != null and defender.metadata.get("weaknesses", []).size() > 0:
+			defender.temporary_weakness = types[randi() % types.size()]
+	await main.show_message("TEXTURE MAGIC! TYPES CHANGED!")
+	if main._should_bail(): return
+	print("ATTACK EXECUTED: Texture Magic - resistance/weakness changed")
+
+# MIRACULOUS COMEBACK (basep-18 Team Rocket's Meowth): flip coins = Pokemon in play count; 10×heads to active, 10×tails to self
+func execute_miraculous_comeback(attacker: card_object, defender: card_object, is_opponent: bool) -> void:
+	if await handle_attack_confusion(attacker, is_opponent): return
+	if await handle_attack_blind(attacker, is_opponent): return
+	var in_play_count = 0
+	if main.player_active_pokemon != null: in_play_count += 1
+	if main.opponent_active_pokemon != null: in_play_count += 1
+	in_play_count += main.player_bench.size() + main.opponent_bench.size()
+	if in_play_count == 0:
+		return
+	var heads = 0
+	var tails = 0
+	for _i in range(in_play_count):
+		var c = await main.flip_coin(in_play_count > 1, is_opponent)
+		if c:
+			heads += 1
+		else:
+			tails += 1
+	var active_damage = heads * 10
+	var self_damage = tails * 10
+	await main.show_message("MIRACULOUS COMEBACK! " + str(heads) + " HEADS, " + str(tails) + " TAILS! " + str(active_damage) + " DAMAGE!")
+	if main._should_bail(): return
+	if active_damage > 0:
+		await gym1_hit_active(attacker, defender, is_opponent, active_damage)
+		if main._should_bail(): return
+	if self_damage > 0:
+		await gym2_self_damage(attacker, is_opponent, self_damage)
+		if main._should_bail(): return
+	await main.check_all_knockouts()
+	if main._should_bail(): return
+	print("ATTACK EXECUTED: Miraculous Comeback - ", active_damage, " to active, ", self_damage, " self-damage")
+
+# HYPER FLAME (basep-21 Moltres): 60 damage; heads = discard 1 Fire, tails = discard all energy
+func execute_hyper_flame(attacker: card_object, defender: card_object, is_opponent: bool) -> void:
+	if await handle_attack_confusion(attacker, is_opponent): return
+	if await handle_attack_blind(attacker, is_opponent): return
+	await gym1_hit_active(attacker, defender, is_opponent, 60)
+	if main._should_bail(): return
+	var discard_pile = main.opponent_discard_pile if is_opponent else main.player_discard_pile
+	var coin = await main.flip_coin(false, is_opponent)
+	if main._should_bail(): return
+	if coin:
+		var fire_e = attacker.attached_energies.filter(func(e): return "Fire" in main.get_energy_provided_by_card(e))
+		if fire_e.size() > 0:
+			var e = fire_e[0]
+			attacker.attached_energies.erase(e)
+			main.card_ops.discard_energy_from_pokemon(e, is_opponent)
+			await main.show_message("HEADS! DISCARDED 1 FIRE ENERGY!")
+		else:
+			await main.show_message("HEADS! BUT NO FIRE ENERGY TO DISCARD!")
+	else:
+		var all_e = attacker.attached_energies.duplicate()
+		for e in all_e:
+			attacker.attached_energies.erase(e)
+			main.card_ops.discard_energy_from_pokemon(e, is_opponent)
+		await main.show_message("TAILS! ALL ENERGY DISCARDED!")
+	if main._should_bail(): return
+	main.display_active_pokemon_energies(is_opponent)
+	main.update_discard_pile_display(is_opponent)
+	await main.check_all_knockouts()
+	if main._should_bail(): return
+	print("ATTACK EXECUTED: Hyper Flame")
+
+# LIGHTNING BURN (basep-23 Zapdos): 30 damage; heads = 30 to chosen bench; tails = 30 to self
+func execute_lightning_burn(attacker: card_object, defender: card_object, is_opponent: bool) -> void:
+	if await handle_attack_confusion(attacker, is_opponent): return
+	if await handle_attack_blind(attacker, is_opponent): return
+	await gym1_hit_active(attacker, defender, is_opponent, 30)
+	if main._should_bail(): return
+	var coin = await main.flip_coin(false, is_opponent)
+	if main._should_bail(): return
+	if coin:
+		var opp_bench = main.player_bench if is_opponent else main.opponent_bench
+		if opp_bench.size() > 0:
+			var bench_targets = await gym1_choose_bench_targets(opp_bench, 1, !is_opponent, is_opponent, "LIGHTNING BURN — CHOOSE BENCH TARGET")
+			if main._should_bail(): return
+			if bench_targets.size() > 0:
+				main.card_ops.apply_bench_damage(bench_targets[0], 30, !is_opponent)
+				await main.show_message("HEADS! 30 DAMAGE TO " + bench_targets[0].metadata.get("name","").to_upper() + "!")
+				if main._should_bail(): return
+		else:
+			await main.show_message("HEADS! BUT OPPONENT HAS NO BENCH!")
+			if main._should_bail(): return
+	else:
+		await gym2_self_damage(attacker, is_opponent, 30)
+		if main._should_bail(): return
+		await main.show_message("TAILS! ZAPDOS TAKES 30 DAMAGE!")
+		if main._should_bail(): return
+	await main.check_all_knockouts()
+	if main._should_bail(): return
+	print("ATTACK EXECUTED: Lightning Burn")
+
+
+# PAINT (basep-32 Smeargle): flip coin; heads = change defending Pokemon's type
+func execute_paint(attacker: card_object, defender: card_object, is_opponent: bool) -> void:
+	if await handle_attack_confusion(attacker, is_opponent): return
+	if await handle_attack_blind(attacker, is_opponent): return
+	var coin = await main.flip_coin(false, is_opponent)
+	if main._should_bail(): return
+	if not coin:
+		await main.show_message("TAILS! PAINT FAILED!")
+		if main._should_bail(): return
+		return
+	var types = ["Fire", "Water", "Grass", "Lightning", "Psychic", "Fighting", "Darkness", "Metal"]
+	var chosen_type: String
+	if is_opponent:
+		# CPU picks the type that the player's active is weak to
+		var player_active = main.player_active_pokemon
+		var player_weakness = player_active.metadata.get("weaknesses", []) if player_active else []
+		chosen_type = player_weakness[0].get("type", "Fire") if player_weakness.size() > 0 else types[0]
+	else:
+		chosen_type = types[randi() % types.size()]
+		await main.show_message("PAINT! THE DEFENDING POKEMON IS NOW " + chosen_type.to_upper() + " TYPE!")
+		if main._should_bail(): return
+	if defender != null:
+		defender.temporary_type = chosen_type
+		main.update_status_icons(defender, !is_opponent)
+	await main.show_message("PAINT! THE DEFENDING POKEMON IS NOW " + chosen_type.to_upper() + " TYPE!")
+	if main._should_bail(): return
+	print("ATTACK EXECUTED: Paint - defender type changed to ", chosen_type)
+
+# PROTECTIVE FLAME (basep-34 Entei): 50 damage + bench pokemon cannot be damaged next opponent turn
+func execute_protective_flame(attacker: card_object, defender: card_object, is_opponent: bool) -> void:
+	if await handle_attack_confusion(attacker, is_opponent): return
+	if await handle_attack_blind(attacker, is_opponent): return
+	await gym1_hit_active(attacker, defender, is_opponent, 50)
+	if main._should_bail(): return
+	# Mark all own bench pokemon as invincible for next turn (bench protection)
+	var own_bench = main.opponent_bench if is_opponent else main.player_bench
+	for bp in own_bench:
+		bp.is_invincible = true
+	await main.show_message("PROTECTIVE FLAME! YOUR BENCH IS PROTECTED NEXT TURN!")
+	if main._should_bail(): return
+	await main.check_all_knockouts()
+	if main._should_bail(): return
+	print("ATTACK EXECUTED: Protective Flame - 50 damage + bench protected")
+
+# LET'S PLAY! (basep-35 Pichu): search your deck for a Baby Pokemon and bench it
+func execute_lets_play(attacker: card_object, is_opponent: bool) -> void:
+	if await handle_attack_confusion(attacker, is_opponent): return
+	if await handle_attack_blind(attacker, is_opponent): return
+	var bench = main.opponent_bench if is_opponent else main.player_bench
+	if bench.size() >= main.get_max_bench_size():
+		await main.show_message("BENCH IS FULL!")
+		if main._should_bail(): return
+		return
+	var deck = main.opponent_deck if is_opponent else main.player_deck
+	var babies: Array = deck.filter(func(c): return "Baby" in c.metadata.get("subtypes", []))
+	if babies.size() == 0:
+		await main.show_message("NO BABY POKEMON IN THE DECK!")
+		if main._should_bail(): return
+		deck.shuffle()
+		return
+	var chosen: card_object = babies[0]
+	if not is_opponent:
+		chosen = await main.card_ops.prompt_select_card(babies, "LET'S PLAY! — SEARCH FOR BABY", "Choose a Baby Pokemon to put on your Bench", "BENCH", false, true)
+		if main._should_bail(): return
+		if chosen == null:
+			chosen = babies[0]
+	deck.erase(chosen)
+	chosen.current_location = "bench"
+	chosen.placed_on_field_this_turn = true
+	bench.append(chosen)
+	deck.shuffle()
+	main.display_pokemon(is_opponent)
+	main.update_deck_icon(is_opponent)
+	await main.show_message("LET'S PLAY! " + chosen.metadata.get("name","").to_upper() + " JOINED THE BENCH!")
+	if main._should_bail(): return
+	print("ATTACK EXECUTED: Let's Play! - ", chosen.metadata.get("name",""), " benched")
+
+# RAPID SPIN (basep-37 Hitmontop): 30 damage; opponent switches active, then attacker switches
+func execute_rapid_spin(attacker: card_object, defender: card_object, is_opponent: bool) -> void:
+	if await handle_attack_confusion(attacker, is_opponent): return
+	if await handle_attack_blind(attacker, is_opponent): return
+	await gym1_hit_active(attacker, defender, is_opponent, 30)
+	if main._should_bail(): return
+	await main.check_all_knockouts()
+	if main._should_bail(): return
+	# Opponent switches their active (they choose)
+	var opp_bench = main.player_bench if is_opponent else main.opponent_bench
+	if opp_bench.size() > 0:
+		await main.show_message("RAPID SPIN! OPPONENT MUST SWITCH ACTIVE!")
+		if main._should_bail(): return
+		var effect = {"type": "force_switch", "target": "defender", "chooser": "defender", "flip": "none"}
+		await apply_force_switch(effect, is_opponent)
+		if main._should_bail(): return
+	# Attacker switches their active (they choose)
+	var own_bench = main.opponent_bench if is_opponent else main.player_bench
+	if own_bench.size() > 0:
+		await main.show_message("RAPID SPIN! SWITCH YOUR ACTIVE POKEMON!")
+		if main._should_bail(): return
+		var self_effect = {"type": "self_switch", "target": "self", "flip": "none"}
+		await apply_self_switch(attacker, is_opponent)
+		if main._should_bail(): return
+	print("ATTACK EXECUTED: Rapid Spin - 30 damage + both switch")
+
+# PAIN SPLIT (basep-39 Misdreavus): put 1 damage counter on defender for each damage counter on Misdreavus
+func execute_pain_split(attacker: card_object, defender: card_object, is_opponent: bool) -> void:
+	if await handle_attack_confusion(attacker, is_opponent): return
+	if await handle_attack_blind(attacker, is_opponent): return
+	var counters = attacker.get_damage_counters()
+	if counters == 0:
+		await main.show_message("MISDREAVUS HAS NO DAMAGE COUNTERS — PAIN SPLIT DOES NOTHING!")
+		if main._should_bail(): return
+		return
+	if defender == null or defender.is_invincible:
+		return
+	var damage = counters * 10
+	defender.current_hp = max(0, defender.current_hp - damage)
+	main.display_hp_circles_above_align(defender, !is_opponent)
+	main.show_floating_label("-" + str(damage) + "HP", Vector2(530 if is_opponent else 1030, 300), Color.WHITE, true)
+	await main.powers_and_bodies.dispatch_on_damage(defender, attacker, damage, !is_opponent)
+	if main._should_bail(): return
+	await main.show_message("PAIN SPLIT! " + str(counters) + " COUNTER(S) — " + str(damage) + " DAMAGE!")
+	if main._should_bail(): return
+	await main.check_all_knockouts()
+	if main._should_bail(): return
+	print("ATTACK EXECUTED: Pain Split - ", counters, " counters, ", damage, " damage")
+
+# SEETHING ANGER (basep-43 Machamp): flip coins = damage counter count; 20 + 10 per heads
+func execute_seething_anger(attacker: card_object, defender: card_object, is_opponent: bool) -> void:
+	if await handle_attack_confusion(attacker, is_opponent): return
+	if await handle_attack_blind(attacker, is_opponent): return
+	var counters = attacker.get_damage_counters()
+	var heads = 0
+	if counters > 0:
+		for _i in range(counters):
+			var c = await main.flip_coin(counters > 1, is_opponent)
+			if c:
+				heads += 1
+	var total = 20 + heads * 10
+	if counters > 0:
+		await main.show_message("SEETHING ANGER! " + str(heads) + "/" + str(counters) + " HEADS — " + str(total) + " DAMAGE!")
+		if main._should_bail(): return
+	await gym1_hit_active(attacker, defender, is_opponent, total)
+	if main._should_bail(): return
+	await main.check_all_knockouts()
+	if main._should_bail(): return
+	print("ATTACK EXECUTED: Seething Anger - ", heads, " heads, ", total, " damage")
+
+# BASEP FLING (basep-43 Machamp): 50 damage + opponent switches bench to active
+func execute_basep_fling(attacker: card_object, defender: card_object, is_opponent: bool) -> void:
+	if await handle_attack_confusion(attacker, is_opponent): return
+	if await handle_attack_blind(attacker, is_opponent): return
+	await gym1_hit_active(attacker, defender, is_opponent, 50)
+	if main._should_bail(): return
+	var opp_bench = main.player_bench if is_opponent else main.opponent_bench
+	if opp_bench.size() > 0:
+		await main.show_message("FLING! OPPONENT MUST SWITCH ACTIVE!")
+		if main._should_bail(): return
+		var effect = {"type": "force_switch", "target": "defender", "chooser": "defender", "flip": "none"}
+		await apply_force_switch(effect, is_opponent)
+		if main._should_bail(): return
+	await main.check_all_knockouts()
+	if main._should_bail(): return
+	print("ATTACK EXECUTED: Basep Fling - 50 damage + force switch")
+
+# BURNING FIRE (basep-44 Magmar): 10 + discard any number of Fire Energy from any own Pokemon, +10 per discarded
+func execute_burning_fire(attacker: card_object, defender: card_object, is_opponent: bool) -> void:
+	if await handle_attack_confusion(attacker, is_opponent): return
+	if await handle_attack_blind(attacker, is_opponent): return
+	var own_all: Array = []
+	var own_active = main.opponent_active_pokemon if is_opponent else main.player_active_pokemon
+	if own_active != null:
+		own_all.append(own_active)
+	own_all.append_array(main.opponent_bench if is_opponent else main.player_bench)
+	var discard_pile = main.opponent_discard_pile if is_opponent else main.player_discard_pile
+	# Collect all Fire energies from all own Pokemon
+	var all_fire: Array = []
+	for p in own_all:
+		for e in p.attached_energies:
+			if "Fire" in main.get_energy_provided_by_card(e):
+				all_fire.append({"card": e, "owner": p})
+	var discarded = 0
+	if all_fire.size() == 0:
+		await main.show_message("NO FIRE ENERGY TO DISCARD!")
+		if main._should_bail(): return
+	elif is_opponent:
+		# CPU discards all available Fire Energy for maximum damage
+		for entry in all_fire:
+			var e = entry["card"]
+			entry["owner"].attached_energies.erase(e)
+			e.current_location = "discard"
+			discard_pile.append(e)
+			discarded += 1
+	else:
+		# Player chooses which Fire Energy to discard
+		for _i in range(all_fire.size()):
+			var remaining = all_fire.filter(func(entry): return entry["card"].current_location != "discard")
+			if remaining.size() == 0:
+				break
+			var energy_cards = remaining.map(func(entry): return entry["card"])
+			var sel = await main.card_ops.prompt_select_card(energy_cards, "BURNING FIRE — DISCARD FIRE ENERGY", "Select Fire Energy to discard (+10 dmg each), or cancel to stop", "DISCARD", true)
+			if main._should_bail(): return
+			if sel == null:
+				break
+			for entry in all_fire:
+				if entry["card"] == sel:
+					entry["owner"].attached_energies.erase(sel)
+					sel.current_location = "discard"
+					discard_pile.append(sel)
+					discarded += 1
+					break
+	var total = 10 + discarded * 10
+	if discarded > 0:
+		await main.show_message("DISCARDED " + str(discarded) + " FIRE ENERGY! " + str(total) + " DAMAGE!")
+		if main._should_bail(): return
+	main.display_active_pokemon_energies(is_opponent)
+	main.update_discard_pile_display(is_opponent)
+	await gym1_hit_active(attacker, defender, is_opponent, total)
+	if main._should_bail(): return
+	await main.check_all_knockouts()
+	if main._should_bail(): return
+	print("ATTACK EXECUTED: Burning Fire - discarded ", discarded, " Fire, ", total, " damage")
+
+# LIGHTNING ROD (basep-46 Electabuzz): place a Lightning Rod marker on one of the opponent's Pokemon
+func execute_lightning_rod(attacker: card_object, defender: card_object, is_opponent: bool) -> void:
+	if await handle_attack_confusion(attacker, is_opponent): return
+	if await handle_attack_blind(attacker, is_opponent): return
+	var opp_all: Array = []
+	var opp_active = main.player_active_pokemon if is_opponent else main.opponent_active_pokemon
+	if opp_active != null:
+		opp_all.append(opp_active)
+	opp_all.append_array(main.player_bench if is_opponent else main.opponent_bench)
+	if opp_all.size() == 0:
+		await main.show_message("NO OPPONENT POKEMON TO MARK!")
+		if main._should_bail(): return
+		return
+	# Clear any existing marker first
+	for p in opp_all:
+		p.lightning_rod_marked = false
+	var target: card_object
+	if is_opponent:
+		# CPU marks the Pokemon with most HP remaining
+		var best_hp = -1
+		for p in opp_all:
+			if p.current_hp > best_hp:
+				best_hp = p.current_hp
+				target = p
+	else:
+		target = await main.card_ops.prompt_select_card(opp_all, "LIGHTNING ROD — CHOOSE TARGET", "Place a Lightning Rod marker on an opponent's Pokemon", "SELECT", false)
+		if main._should_bail(): return
+		if target == null:
+			target = opp_all[0]
+	target.lightning_rod_marked = true
+	await main.show_message("LIGHTNING ROD MARKER PLACED ON " + target.metadata.get("name","").to_upper() + "!")
+	if main._should_bail(): return
+	print("ATTACK EXECUTED: Lightning Rod - marked ", target.metadata.get("name",""))
+
+# LIGHTNING BOLT (basep-46 Electabuzz): 10 damage + 20 to the marked Pokemon (if any)
+func execute_lightning_bolt(attacker: card_object, defender: card_object, is_opponent: bool) -> void:
+	if await handle_attack_confusion(attacker, is_opponent): return
+	if await handle_attack_blind(attacker, is_opponent): return
+	await gym1_hit_active(attacker, defender, is_opponent, 10)
+	if main._should_bail(): return
+	# Find and damage the marked Pokemon
+	var opp_all: Array = []
+	var opp_is = not is_opponent
+	var opp_active = main.player_active_pokemon if is_opponent else main.opponent_active_pokemon
+	if opp_active != null:
+		opp_all.append(opp_active)
+	opp_all.append_array(main.player_bench if is_opponent else main.opponent_bench)
+	var marked: card_object = null
+	for p in opp_all:
+		if p.lightning_rod_marked:
+			marked = p
+			break
+	if marked != null:
+		var types = attacker.metadata.get("types", ["Lightning"])
+		var result = main.calculate_final_damage(20, types, marked, attacker)
+		marked.current_hp = max(0, marked.current_hp - result["damage"])
+		main.display_hp_circles_above_align(marked, opp_is)
+		await main.show_message("LIGHTNING BOLT! 20 DAMAGE TO MARKED " + marked.metadata.get("name","").to_upper() + "!")
+		if main._should_bail(): return
+		marked.lightning_rod_marked = false
+	await main.check_all_knockouts()
+	if main._should_bail(): return
+	print("ATTACK EXECUTED: Lightning Bolt - 10 active + 20 to marked")
+
+# SACRED WING (basep-52 Ho-oh): flip coin — heads 60 damage, tails 20 damage
+func execute_sacred_wing(attacker: card_object, defender: card_object, is_opponent: bool) -> void:
+	if await handle_attack_confusion(attacker, is_opponent): return
+	if await handle_attack_blind(attacker, is_opponent): return
+	var coin = await main.flip_coin(false, is_opponent)
+	if main._should_bail(): return
+	var damage = 60 if coin else 20
+	await main.show_message(("HEADS! " if coin else "TAILS! ") + str(damage) + " DAMAGE!")
+	if main._should_bail(): return
+	await gym1_hit_active(attacker, defender, is_opponent, damage)
+	if main._should_bail(): return
+	await main.check_all_knockouts()
+	if main._should_bail(): return
+	print("ATTACK EXECUTED: Sacred Wing - ", damage, " damage")
+
+# JUMP OVER (basep-51 Rapidash): choose a benched opponent Pokemon, flip coin, 20 damage on heads
+func execute_jump_over(attacker: card_object, defender: card_object, is_opponent: bool) -> void:
+	if await handle_attack_confusion(attacker, is_opponent): return
+	if await handle_attack_blind(attacker, is_opponent): return
+	var opp_bench = main.player_bench if is_opponent else main.opponent_bench
+	if opp_bench.size() == 0:
+		await main.show_message("NO BENCHED POKEMON TO JUMP OVER!")
+		if main._should_bail(): return
+		return
+	var targets = opp_bench.duplicate()
+	var target_pokemon: card_object
+	if is_opponent:
+		targets.sort_custom(func(a, b): return a.current_hp < b.current_hp)
+		target_pokemon = targets[0]
+	else:
+		target_pokemon = await main.card_ops.prompt_select_card(targets, "JUMP OVER — CHOOSE BENCH TARGET", "Choose a Benched Pokemon", "SELECT", false)
+		if main._should_bail(): return
+		if target_pokemon == null:
+			return
+	var coin = await main.flip_coin(false, is_opponent)
+	if main._should_bail(): return
+	if coin:
+		main.card_ops.apply_bench_damage(target_pokemon, 20, !is_opponent)
+		await main.show_message("HEADS! 20 DAMAGE TO " + target_pokemon.metadata.get("name","").to_upper() + "!")
+		if main._should_bail(): return
+		await main.check_all_knockouts()
+		if main._should_bail(): return
+	else:
+		await main.show_message("TAILS! JUMP OVER MISSED!")
+		if main._should_bail(): return
+	print("ATTACK EXECUTED: Jump Over")
+
+######################################################################################################################################################
+############################################################## NEO1 (NEO GENESIS) EFFECTS #############################################################
+######################################################################################################################################################
+
+func _register_neo1_attacks() -> void:
+	# ----- ATTACKS WITH UNIQUE NAMES -----
+	_attack_dispatch["flower dance"]       = func(atk, a, d, opp): await execute_neo1_flower_dance(a, d, opp); await _attack_finish(false, 0, atk, a.metadata.get("types",["Colorless"]), opp)
+	_attack_dispatch["riptide"]            = func(atk, a, d, opp): await execute_neo1_riptide(a, d, opp); await _attack_finish(false, 0, atk, a.metadata.get("types",["Colorless"]), opp)
+	_attack_dispatch["flame wheel"]        = func(atk, a, d, opp): await execute_neo1_flame_wheel(a, d, opp); await _attack_finish(false, 0, atk, a.metadata.get("types",["Colorless"]), opp)
+	_attack_dispatch["zzzap"]              = func(atk, a, d, opp): await execute_neo1_zzzap(a, opp); await _attack_finish(false, 0, atk, a.metadata.get("types",["Colorless"]), opp)
+	_attack_dispatch["earthquake"]         = func(atk, a, d, opp): var b=parse_attack_base_damage(atk); await execute_neo1_earthquake(a, d, opp, b); await _attack_finish(true, b, atk, a.metadata.get("types",["Colorless"]), opp)
+	_attack_dispatch["jaw clamp"]          = func(atk, a, d, opp): var b=parse_attack_base_damage(atk); await execute_neo1_jaw_clamp(a, d, opp, b); await _attack_finish(true, b, atk, a.metadata.get("types",["Colorless"]), opp)
+	_attack_dispatch["char"]               = func(atk, a, d, opp): var b=parse_attack_base_damage(atk); await execute_neo1_char(a, d, opp, b); await _attack_finish(true, b, atk, a.metadata.get("types",["Colorless"]), opp)
+	_attack_dispatch["endure"]             = func(atk, a, d, opp): await execute_neo1_endure(a, opp); await _attack_finish(false, 0, atk, a.metadata.get("types",["Colorless"]), opp)
+	_attack_dispatch["eeeeeeek"]           = func(atk, a, d, opp): await execute_neo1_eeeeeeek(a, opp); await _attack_finish(false, 0, atk, a.metadata.get("types",["Colorless"]), opp)
+	_attack_dispatch["pilfer"]             = func(atk, a, d, opp): await execute_neo1_pilfer(a, opp); await _attack_finish(false, 0, atk, a.metadata.get("types",["Colorless"]), opp)
+	_attack_dispatch["squaredance"]        = func(atk, a, d, opp): await execute_neo1_squaredance(a, opp); await _attack_finish(false, 0, atk, a.metadata.get("types",["Colorless"]), opp)
+	_attack_dispatch["spider web"]         = func(atk, a, d, opp): var b=parse_attack_base_damage(atk); await execute_neo1_spider_web(a, d, opp, b); await _attack_finish(true, b, atk, a.metadata.get("types",["Colorless"]), opp)
+	_attack_dispatch["mean look"]          = func(atk, a, d, opp): await execute_neo1_mean_look(a, d, opp); await _attack_finish(false, 0, atk, a.metadata.get("types",["Colorless"]), opp)
+	_attack_dispatch["feint attack"]       = func(atk, a, d, opp): await execute_snipe_no_wr(a, d, opp, 20, false); await _attack_finish(true, 20, atk, a.metadata.get("types",["Colorless"]), opp)
+	_attack_dispatch["static electricity"] = func(atk, a, d, opp): await execute_neo1_static_electricity(a, opp); await _attack_finish(false, 0, atk, a.metadata.get("types",["Colorless"]), opp)
+	_attack_dispatch["sputter"]            = func(atk, a, d, opp): await execute_neo1_sputter(a, opp); await _attack_finish(false, 0, atk, a.metadata.get("types",["Colorless"]), opp)
+	_attack_dispatch["poison bite"]        = func(atk, a, d, opp): var b=parse_attack_base_damage(atk); await execute_neo1_poison_bite(a, d, opp, b); await _attack_finish(true, b, atk, a.metadata.get("types",["Colorless"]), opp)
+	_attack_dispatch["baton pass"]         = func(atk, a, d, opp): await execute_neo1_baton_pass(a, d, opp); await _attack_finish(false, 0, atk, a.metadata.get("types",["Colorless"]), opp)
+	_attack_dispatch["sweet nectar"]       = func(atk, a, d, opp): await execute_neo1_sweet_nectar(a, opp); await _attack_finish(false, 0, atk, a.metadata.get("types",["Colorless"]), opp)
+	_attack_dispatch["milk drink"]         = func(atk, a, d, opp): await execute_neo1_milk_drink(a, opp); await _attack_finish(false, 0, atk, a.metadata.get("types",["Colorless"]), opp)
+	_attack_dispatch["raging charge"]      = func(atk, a, d, opp): var b=parse_attack_base_damage(atk); await execute_neo1_raging_charge(a, d, opp, b); await _attack_finish(true, b, atk, a.metadata.get("types",["Colorless"]), opp)
+	_attack_dispatch["pollen shield"]      = func(atk, a, d, opp): var b=parse_attack_base_damage(atk); await execute_neo1_pollen_shield(a, d, opp, b); await _attack_finish(true, b, atk, a.metadata.get("types",["Colorless"]), opp)
+	_attack_dispatch["sticky nectar"]      = func(atk, a, d, opp): var b=parse_attack_base_damage(atk); await execute_neo1_sticky_nectar(a, d, opp, b); await _attack_finish(true, b, atk, a.metadata.get("types",["Colorless"]), opp)
+	_attack_dispatch["dual kick"]          = func(atk, a, d, opp): var b=parse_attack_base_damage(atk); await execute_neo1_dual_kick(a, d, opp, b); await _attack_finish(true, b, atk, a.metadata.get("types",["Colorless"]), opp)
+	_attack_dispatch["super metronome"]    = func(atk, a, d, opp):
+		var coin = await main.flip_coin(false, opp)
+		if main._should_bail(): return
+		if coin:
+			await execute_metronome(a, d, opp)
+		else:
+			await main.show_message("TAILS! SUPER METRONOME FAILED!")
+		await _attack_finish(false, 0, atk, a.metadata.get("types",["Colorless"]), opp)
+	# ----- ATTACKS SHARED WITH OTHER SETS (text-disambiguated) -----
+	_attack_dispatch["screech"]            = func(atk, a, d, opp): var b=parse_attack_base_damage(atk); await execute_neo1_screech(a, d, opp, b); await _attack_finish(false, 0, atk, a.metadata.get("types",["Colorless"]), opp)
+	_attack_dispatch["leech seed"]         = func(atk, a, d, opp): var b=parse_attack_base_damage(atk); await execute_neo1_leech_seed(a, d, opp, b); await _attack_finish(true, b, atk, a.metadata.get("types",["Colorless"]), opp)
+	_attack_dispatch["freeze"]             = func(atk, a, d, opp): var b=parse_attack_base_damage(atk); await execute_neo1_freeze(a, d, opp, b); await _attack_finish(true, b, atk, a.metadata.get("types",["Colorless"]), opp)
+	_attack_dispatch["strange powder"]     = func(atk, a, d, opp): var b=parse_attack_base_damage(atk); await execute_neo1_strange_powder(a, d, opp, b); await _attack_finish(true, b, atk, a.metadata.get("types",["Colorless"]), opp)
+	_attack_dispatch["blizzard"]           = func(atk, a, d, opp):
+		var b = parse_attack_base_damage(atk)
+		var text = atk.get("text", "").to_lower()
+		if "if tails" in text and "your own benched" in text:
+			await execute_neo1_blizzard(a, d, opp, b)
+			await _attack_finish(true, b, atk, a.metadata.get("types", ["Colorless"]), opp)
+		else:
+			var types = a.metadata.get("types", ["Colorless"])
+			var result = main.calculate_final_damage(b, types, d)
+			if not main.check_defender_invincible(d, !opp):
+				var fd = main.apply_defender_no_damage_shield(d, result["damage"], !opp)
+				await main.display_and_apply_attack_damage(a, d, fd, result["modifiers"], opp, b)
+			if main._should_bail(): return
+			var fx = parse_card_text_effects(atk.get("text", ""), a.metadata.get("name", ""))
+			if fx.size() > 0: await apply_card_text_effects(fx, a, d, opp, "")
+			if main._should_bail(): return
+			await main.check_all_knockouts()
+			await _attack_finish(true, b, atk, types, opp)
+	_attack_dispatch["elemental blast"]    = func(atk, a, d, opp): await execute_neo1_elemental_blast(a, d, opp); await _attack_finish(true, 90, atk, a.metadata.get("types",["Colorless"]), opp)
+	_attack_dispatch["chomp"]              = func(atk, a, d, opp): await execute_neo1_chomp(a, d, opp); await _attack_finish(false, 0, atk, a.metadata.get("types",["Colorless"]), opp)
+	# Electric Current: all versions (GYM1 Magneton, neo1 Flaaffy) do damage + move lightning to bench
+	_attack_dispatch["electric current"]   = func(atk, a, d, opp): var b=parse_attack_base_damage(atk); await execute_neo1_electric_current(a, d, opp, b); await _attack_finish(true, b, atk, a.metadata.get("types",["Colorless"]), opp)
+	_attack_dispatch["discharge"]          = func(atk, a, d, opp): var b=parse_attack_base_damage(atk); await execute_discharge(a, d, opp); await _attack_finish(true, b, atk, a.metadata.get("types",["Colorless"]), opp)
+	_attack_dispatch["megahorn"]           = func(atk, a, d, opp): var b=main.powers_and_bodies.get_final_blow_damage(a, "Megahorn", parse_attack_base_damage(atk)); await execute_neo1_megahorn(a, d, opp, b); await _attack_finish(true, b, atk, a.metadata.get("types",["Colorless"]), opp)
+	_attack_dispatch["floodlight"]         = func(atk, a, d, opp): var b=parse_attack_base_damage(atk); await execute_neo1_floodlight(a, d, opp, b); await _attack_finish(true, b, atk, a.metadata.get("types",["Colorless"]), opp)
+
+# FLOWER DANCE (neo1-3 Bellossom): 30 × Bellossom count in play
+func execute_neo1_flower_dance(attacker: card_object, defender: card_object, is_opponent: bool) -> void:
+	if await handle_attack_confusion(attacker, is_opponent): return
+	if await handle_attack_blind(attacker, is_opponent): return
+	var count = 0
+	var all_field: Array = []
+	if main.player_active_pokemon != null: all_field.append(main.player_active_pokemon)
+	if main.opponent_active_pokemon != null: all_field.append(main.opponent_active_pokemon)
+	all_field.append_array(main.player_bench)
+	all_field.append_array(main.opponent_bench)
+	for p in all_field:
+		if "Bellossom" in p.metadata.get("name", ""):
+			count += 1
+	var total = 30 * count
+	await main.show_message("FLOWER DANCE! " + str(count) + " BELLOSSOM(S) — " + str(total) + " DAMAGE!")
+	if main._should_bail(): return
+	var types = attacker.metadata.get("types", ["Colorless"])
+	var result = main.calculate_final_damage(total, types, defender)
+	if not main.check_defender_invincible(defender, not is_opponent):
+		var fd = main.apply_defender_no_damage_shield(defender, result["damage"], not is_opponent)
+		await main.display_and_apply_attack_damage(attacker, defender, fd, result["modifiers"], is_opponent, total)
+		if main._should_bail(): return
+	await main.check_all_knockouts()
+	if main._should_bail(): return
+	print("ATTACK EXECUTED: Flower Dance - ", count, " Bellossom, ", total, " damage")
+
+# RIPTIDE (neo1-5 Feraligatr): 10 + 10× water energy in discard, then shuffle water back
+func execute_neo1_riptide(attacker: card_object, defender: card_object, is_opponent: bool) -> void:
+	if await handle_attack_confusion(attacker, is_opponent): return
+	if await handle_attack_blind(attacker, is_opponent): return
+	var discard = main.opponent_discard_pile if is_opponent else main.player_discard_pile
+	var water_in_discard: Array = []
+	for c in discard:
+		if c.metadata.get("supertype", "") == "Energy" and "Water" in main.get_energy_provided_by_card(c):
+			water_in_discard.append(c)
+	var count = water_in_discard.size()
+	var total = 10 + 10 * count
+	if count > 0:
+		await main.show_message("RIPTIDE! " + str(count) + " WATER ENERGY IN DISCARD — " + str(total) + " DAMAGE!")
+	if main._should_bail(): return
+	var types = attacker.metadata.get("types", ["Colorless"])
+	var result = main.calculate_final_damage(total, types, defender)
+	if not main.check_defender_invincible(defender, not is_opponent):
+		var fd = main.apply_defender_no_damage_shield(defender, result["damage"], not is_opponent)
+		await main.display_and_apply_attack_damage(attacker, defender, fd, result["modifiers"], is_opponent, total)
+		if main._should_bail(): return
+	await main.check_all_knockouts()
+	if main._should_bail(): return
+	# Shuffle water energy back into deck
+	var deck = main.opponent_deck if is_opponent else main.player_deck
+	for e in water_in_discard:
+		discard.erase(e)
+		e.current_location = "deck"
+		deck.append(e)
+	if water_in_discard.size() > 0:
+		deck.shuffle()
+		main.update_discard_pile_display(is_opponent)
+		main.update_deck_icon(is_opponent)
+		await main.show_message("SHUFFLED " + str(water_in_discard.size()) + " WATER ENERGY BACK INTO DECK!")
+		if main._should_bail(): return
+	print("ATTACK EXECUTED: Riptide - ", count, " water energy, ", total, " damage")
+
+# FLAME WHEEL (neo1-18 Typhlosion): discard 3 Fire, 80 damage to active + 20 to each bench
+func execute_neo1_flame_wheel(attacker: card_object, defender: card_object, is_opponent: bool) -> void:
+	if await handle_attack_confusion(attacker, is_opponent): return
+	if await handle_attack_blind(attacker, is_opponent): return
+	var fire_e = attacker.attached_energies.filter(func(e): return "Fire" in main.get_energy_provided_by_card(e))
+	if fire_e.size() < 3:
+		if not is_opponent: await main.show_message("NOT ENOUGH FIRE ENERGY FOR FLAME WHEEL! (NEED 3)")
+		if main._should_bail(): return
+		return
+	for i in range(3):
+		var e = fire_e[i]
+		attacker.attached_energies.erase(e)
+		main.card_ops.discard_energy_from_pokemon(e, is_opponent)
+	main.display_active_pokemon_energies(is_opponent)
+	main.update_discard_pile_display(is_opponent)
+	await main.show_message("DISCARDED 3 FIRE ENERGY!")
+	if main._should_bail(): return
+	await gym1_hit_active(attacker, defender, is_opponent, 80)
+	if main._should_bail(): return
+	# 20 to each bench on both sides
+	var player_bench_targets = main.player_bench.duplicate()
+	var opp_bench_targets = main.opponent_bench.duplicate()
+	for bp in player_bench_targets:
+		main.card_ops.apply_bench_damage(bp, 20, false)
+	for bp in opp_bench_targets:
+		main.card_ops.apply_bench_damage(bp, 20, true)
+	await main.show_message("FLAME WHEEL! 20 DAMAGE TO EACH BENCHED POKEMON!")
+	if main._should_bail(): return
+	await main.check_all_knockouts()
+	if main._should_bail(): return
+	print("ATTACK EXECUTED: Flame Wheel")
+
+# ZZZAP (neo1-12 Pichu): 20 to each Pokemon in play with a Pokemon Power, no W/R
+func execute_neo1_zzzap(attacker: card_object, is_opponent: bool) -> void:
+	if await handle_attack_confusion(attacker, is_opponent): return
+	if await handle_attack_blind(attacker, is_opponent): return
+	var all_targets: Array = []
+	if main.player_active_pokemon != null: all_targets.append({"p": main.player_active_pokemon, "opp": false})
+	if main.opponent_active_pokemon != null: all_targets.append({"p": main.opponent_active_pokemon, "opp": true})
+	for bp in main.player_bench:
+		all_targets.append({"p": bp, "opp": false})
+	for bp in main.opponent_bench:
+		all_targets.append({"p": bp, "opp": true})
+	var hit_count = 0
+	for entry in all_targets:
+		var p = entry["p"]
+		if p == attacker:
+			continue
+		var has_power = false
+		for ab in p.metadata.get("abilities", []):
+			if ab.get("type", "") in ["Pokémon Power", "Pokemon Power"]:
+				has_power = true
+				break
+		if has_power:
+			p.current_hp = max(0, p.current_hp - 20)
+			main.display_hp_circles_above_align(p, entry["opp"])
+			hit_count += 1
+	if hit_count > 0:
+		await main.show_message("ZZZAP! 20 DAMAGE TO EACH POKEMON WITH A POWER! (HIT " + str(hit_count) + ")")
+	else:
+		await main.show_message("ZZZAP! NO POKEMON WITH POWERS TO HIT!")
+	if main._should_bail(): return
+	await main.check_all_knockouts()
+	if main._should_bail(): return
+	print("ATTACK EXECUTED: Zzzap - hit ", hit_count, " pokemon")
+
+# EARTHQUAKE (neo1-45 Quagsire): 60 to active + 10 to each own bench
+func execute_neo1_earthquake(attacker: card_object, defender: card_object, is_opponent: bool, base_damage: int) -> void:
+	if await handle_attack_confusion(attacker, is_opponent): return
+	if await handle_attack_blind(attacker, is_opponent): return
+	await gym1_hit_active(attacker, defender, is_opponent, base_damage)
+	if main._should_bail(): return
+	var own_bench = main.opponent_bench if is_opponent else main.player_bench
+	for bp in own_bench.duplicate():
+		main.card_ops.apply_bench_damage(bp, 10, is_opponent)
+	if own_bench.size() > 0:
+		await main.show_message("EARTHQUAKE! 10 DAMAGE TO EACH OF YOUR OWN BENCHED POKEMON!")
+		if main._should_bail(): return
+	await main.check_all_knockouts()
+	if main._should_bail(): return
+	print("ATTACK EXECUTED: Earthquake")
+
+# JAW CLAMP (neo1-31 Croconaw): 30 damage + target can't retreat next turn
+func execute_neo1_jaw_clamp(attacker: card_object, defender: card_object, is_opponent: bool, base_damage: int) -> void:
+	if await handle_attack_confusion(attacker, is_opponent): return
+	if await handle_attack_blind(attacker, is_opponent): return
+	await gym1_hit_active(attacker, defender, is_opponent, base_damage)
+	if main._should_bail(): return
+	await main.check_all_knockouts()
+	if main._should_bail(): return
+	if defender != null and defender.current_hp > 0:
+		defender.jaw_clamp_locked = true
+		if is_opponent:
+			main.player_retreat_disabled = true
+		else:
+			main.opponent_retreat_disabled = true
+		await main.show_message("JAW CLAMP! " + defender.metadata.get("name","").to_upper() + " CAN'T RETREAT NEXT TURN!")
+		if main._should_bail(): return
+	print("ATTACK EXECUTED: Jaw Clamp")
+
+# CHAR (neo1-47 Quilava): damage + place Char counter; owner flips each turn — tails = 20 damage
+func execute_neo1_char(attacker: card_object, defender: card_object, is_opponent: bool, base_damage: int) -> void:
+	if await handle_attack_confusion(attacker, is_opponent): return
+	if await handle_attack_blind(attacker, is_opponent): return
+	if defender != null:
+		var already_has = defender.has_char_counter
+		if not already_has:
+			var coin = await main.flip_coin(false, is_opponent)
+			if main._should_bail(): return
+			if coin:
+				defender.has_char_counter = true
+				await main.show_message("HEADS! CHAR COUNTER PLACED ON " + defender.metadata.get("name","").to_upper() + "!")
+				if main._should_bail(): return
+			else:
+				await main.show_message("TAILS! NO CHAR COUNTER PLACED!")
+				if main._should_bail(): return
+		else:
+			await main.show_message("CHAR COUNTER ALREADY ON " + defender.metadata.get("name","").to_upper() + "!")
+			if main._should_bail(): return
+	await gym1_hit_active(attacker, defender, is_opponent, base_damage)
+	if main._should_bail(): return
+	await main.check_all_knockouts()
+	if main._should_bail(): return
+	print("ATTACK EXECUTED: Char")
+
+# ENDURE (neo1-43 Phanpy): flip — heads: if KO'd by attack next turn, survive with 10 HP
+func execute_neo1_endure(attacker: card_object, is_opponent: bool) -> void:
+	if await handle_attack_confusion(attacker, is_opponent): return
+	if await handle_attack_blind(attacker, is_opponent): return
+	var coin = await main.flip_coin(false, is_opponent)
+	if main._should_bail(): return
+	if coin:
+		attacker.endure_active = true
+		await main.show_message("HEADS! " + attacker.metadata.get("name","").to_upper() + " WILL ENDURE THE NEXT KO!")
+		if main._should_bail(): return
+	else:
+		await main.show_message("TAILS! ENDURE FAILED!")
+		if main._should_bail(): return
+	print("ATTACK EXECUTED: Endure")
+
+# EEEEEEEK (neo1-20 Cleffa): shuffle hand into deck, draw 7
+func execute_neo1_eeeeeeek(attacker: card_object, is_opponent: bool) -> void:
+	if await handle_attack_confusion(attacker, is_opponent): return
+	if await handle_attack_blind(attacker, is_opponent): return
+	var hand = main.opponent_hand if is_opponent else main.player_hand
+	var deck = main.opponent_deck if is_opponent else main.player_deck
+	for card in hand.duplicate():
+		card.current_location = "deck"
+		deck.append(card)
+	hand.clear()
+	deck.shuffle()
+	main.update_deck_icon(is_opponent)
+	await main.show_message("EEEEEEEK! SHUFFLED HAND AND DRAWING 7!")
+	if main._should_bail(): return
+	await main.card_ops.draw_n(is_opponent, 7)
+	if main._should_bail(): return
+	main.refresh_hand_display(is_opponent)
+	print("ATTACK EXECUTED: Eeeeeeek")
+
+# PILFER (neo1-26 Aipom): shuffle self+attached into deck, flip — heads: shuffle 1 from own discard into deck
+func execute_neo1_pilfer(attacker: card_object, is_opponent: bool) -> void:
+	if await handle_attack_confusion(attacker, is_opponent): return
+	if await handle_attack_blind(attacker, is_opponent): return
+	var deck = main.opponent_deck if is_opponent else main.player_deck
+	var hand = main.opponent_hand if is_opponent else main.player_hand
+	var discard = main.opponent_discard_pile if is_opponent else main.player_discard_pile
+	# Shuffle Aipom + attached into deck
+	for e in attacker.attached_energies.duplicate():
+		attacker.attached_energies.erase(e)
+		e.current_location = "deck"
+		deck.append(e)
+	for pre in attacker.attached_pre_evolutions.duplicate():
+		attacker.attached_pre_evolutions.erase(pre)
+		pre.current_location = "deck"
+		deck.append(pre)
+	var bench = main.opponent_bench if is_opponent else main.player_bench
+	var is_active = (attacker == (main.opponent_active_pokemon if is_opponent else main.player_active_pokemon))
+	attacker.current_location = "deck"
+	deck.append(attacker)
+	if is_active:
+		if is_opponent: main.opponent_active_pokemon = null
+		else: main.player_active_pokemon = null
+	else:
+		bench.erase(attacker)
+	deck.shuffle()
+	main.display_pokemon(is_opponent)
+	main.update_deck_icon(is_opponent)
+	await main.show_message("PILFER! AIPOM SHUFFLED ITSELF INTO THE DECK!")
+	if main._should_bail(): return
+	# Flip — heads: shuffle 1 card from discard into deck
+	var coin = await main.flip_coin(false, is_opponent)
+	if main._should_bail(): return
+	if coin and discard.size() > 0:
+		if is_opponent:
+			var picked = discard[randi() % discard.size()]
+			discard.erase(picked)
+			picked.current_location = "deck"
+			deck.append(picked)
+			deck.shuffle()
+		else:
+			var picked = await main.card_ops.prompt_select_card(discard, "PILFER: CHOOSE CARD", "Choose 1 card from your discard to shuffle into your deck", "SELECT", false)
+			if main._should_bail(): return
+			if picked != null:
+				discard.erase(picked)
+				picked.current_location = "deck"
+				deck.append(picked)
+				deck.shuffle()
+		main.update_discard_pile_display(is_opponent)
+		main.update_deck_icon(is_opponent)
+		await main.show_message("HEADS! SHUFFLED A DISCARD CARD INTO THE DECK!")
+		if main._should_bail(): return
+	else:
+		await main.show_message("TAILS! NO RECOVERY!")
+		if main._should_bail(): return
+	if is_active:
+		await main.handle_post_knockout(is_opponent)
+	print("ATTACK EXECUTED: Pilfer")
+
+# SQUAREDANCE (neo1-30 Clefairy): flip × total pokemon count, search deck for Clefairy/Clefable each heads
+func execute_neo1_squaredance(attacker: card_object, is_opponent: bool) -> void:
+	if await handle_attack_confusion(attacker, is_opponent): return
+	if await handle_attack_blind(attacker, is_opponent): return
+	var total_pokemon = 0
+	if main.player_active_pokemon != null: total_pokemon += 1
+	if main.opponent_active_pokemon != null: total_pokemon += 1
+	total_pokemon += main.player_bench.size() + main.opponent_bench.size()
+	var heads_count = 0
+	for i in range(total_pokemon):
+		var coin = await main.flip_coin(false, is_opponent)
+		if main._should_bail(): return
+		if coin: heads_count += 1
+	if heads_count == 0:
+		await main.show_message("SQUAREDANCE: 0 HEADS — NO CLEFAIRY TO SEARCH!")
+		if main._should_bail(): return
+		return
+	await main.show_message("SQUAREDANCE: " + str(heads_count) + " HEADS!")
+	if main._should_bail(): return
+	var deck = main.opponent_deck if is_opponent else main.player_deck
+	var bench = main.opponent_bench if is_opponent else main.player_bench
+	var clefairy_names = ["Clefairy", "Clefable"]
+	var candidates: Array = []
+	for c in deck:
+		if c.metadata.get("name","") in clefairy_names:
+			candidates.append(c)
+	if candidates.size() == 0:
+		await main.show_message("NO CLEFAIRY OR CLEFABLE IN DECK!")
+		if main._should_bail(): return
+		return
+	var picks = min(heads_count, candidates.size(), main.get_max_bench_size() - bench.size())
+	for i in range(picks):
+		var remaining = candidates.filter(func(c): return c.current_location != "bench")
+		if remaining.size() == 0 or bench.size() >= main.get_max_bench_size():
+			break
+		var pick: card_object = null
+		if is_opponent:
+			pick = remaining[0]
+		else:
+			pick = await main.card_ops.prompt_select_card(remaining, "SQUAREDANCE: SEARCH " + str(i+1) + "/" + str(picks), "Choose a Clefairy-name Pokemon to bench", "SELECT", false, true)
+			if main._should_bail(): return
+		if pick != null:
+			deck.erase(pick)
+			pick.current_location = "bench"
+			pick.placed_on_field_this_turn = true
+			bench.append(pick)
+	deck.shuffle()
+	main.display_pokemon(is_opponent)
+	main.update_deck_icon(is_opponent)
+	await main.show_message("SQUAREDANCE: PLACED " + str(min(picks, bench.size())) + " POKEMON ON BENCH!")
+	if main._should_bail(): return
+	print("ATTACK EXECUTED: Squaredance")
+
+# SPIDER WEB (neo1-27 Ariados): flip — heads: defending can't retreat
+func execute_neo1_spider_web(attacker: card_object, defender: card_object, is_opponent: bool, base_damage: int) -> void:
+	if await handle_attack_confusion(attacker, is_opponent): return
+	if await handle_attack_blind(attacker, is_opponent): return
+	await gym1_hit_active(attacker, defender, is_opponent, base_damage)
+	if main._should_bail(): return
+	await main.check_all_knockouts()
+	if main._should_bail(): return
+	if defender != null and defender.current_hp > 0:
+		var coin = await main.flip_coin(false, is_opponent)
+		if main._should_bail(): return
+		if coin:
+			defender.jaw_clamp_locked = true
+			if is_opponent: main.player_retreat_disabled = true
+			else: main.opponent_retreat_disabled = true
+			await main.show_message("HEADS! " + defender.metadata.get("name","").to_upper() + " IS CAUGHT IN A SPIDER WEB AND CAN'T RETREAT!")
+			if main._should_bail(): return
+		else:
+			await main.show_message("TAILS! SPIDER WEB FAILED!")
+			if main._should_bail(): return
+	print("ATTACK EXECUTED: Spider Web")
+
+# MEAN LOOK (neo1-24 Murkrow): defending can't retreat while Murkrow is active
+func execute_neo1_mean_look(attacker: card_object, defender: card_object, is_opponent: bool) -> void:
+	if await handle_attack_confusion(attacker, is_opponent): return
+	if await handle_attack_blind(attacker, is_opponent): return
+	if defender != null:
+		# Mean Look persists only while the attacker remains active; we use attack_blocked_by_id analog
+		defender.jaw_clamp_locked = true
+		if is_opponent: main.player_retreat_disabled = true
+		else: main.opponent_retreat_disabled = true
+		await main.show_message("MEAN LOOK! " + defender.metadata.get("name","").to_upper() + " CAN'T RETREAT WHILE " + attacker.metadata.get("name","").to_upper() + " IS ACTIVE!")
+		if main._should_bail(): return
+	print("ATTACK EXECUTED: Mean Look")
+
+# STATIC ELECTRICITY (neo1-65 Mareep): search deck for 1 Lightning Energy per Mareep in play
+func execute_neo1_static_electricity(attacker: card_object, is_opponent: bool) -> void:
+	if await handle_attack_confusion(attacker, is_opponent): return
+	if await handle_attack_blind(attacker, is_opponent): return
+	var mareep_count = 0
+	var all_field: Array = []
+	if main.player_active_pokemon != null: all_field.append(main.player_active_pokemon)
+	if main.opponent_active_pokemon != null: all_field.append(main.opponent_active_pokemon)
+	all_field.append_array(main.player_bench)
+	all_field.append_array(main.opponent_bench)
+	for p in all_field:
+		if p.metadata.get("name","") == "Mareep":
+			mareep_count += 1
+	if mareep_count == 0:
+		await main.show_message("NO MAREEP IN PLAY!")
+		if main._should_bail(): return
+		return
+	var deck = main.opponent_deck if is_opponent else main.player_deck
+	var lightning_in_deck: Array = []
+	for c in deck:
+		if c.metadata.get("supertype","") == "Energy" and "Lightning" in main.get_energy_provided_by_card(c):
+			lightning_in_deck.append(c)
+	if lightning_in_deck.size() == 0:
+		await main.show_message("NO LIGHTNING ENERGY IN DECK!")
+		if main._should_bail(): return
+		deck.shuffle()
+		return
+	await main.show_message("STATIC ELECTRICITY! " + str(mareep_count) + " MAREEP IN PLAY!")
+	if main._should_bail(): return
+	var picks = min(mareep_count, lightning_in_deck.size())
+	if is_opponent:
+		for i in range(picks):
+			var e = lightning_in_deck[i]
+			deck.erase(e)
+			e.current_location = "attached"
+			attacker.attached_energies.append(e)
+	else:
+		for i in range(picks):
+			var remaining = lightning_in_deck.filter(func(c): return c in deck)
+			if remaining.size() == 0: break
+			var pick = await main.card_ops.prompt_select_card(remaining, "STATIC ELECTRICITY: PICK " + str(i+1) + "/" + str(picks), "Choose a Lightning Energy to attach to Mareep", "ATTACH", false, true)
+			if main._should_bail(): return
+			if pick != null:
+				deck.erase(pick)
+				pick.current_location = "attached"
+				attacker.attached_energies.append(pick)
+	deck.shuffle()
+	main.display_active_pokemon_energies(is_opponent)
+	main.update_deck_icon(is_opponent)
+	await main.show_message("ATTACHED " + str(min(picks, attacker.attached_energies.size())) + " LIGHTNING ENERGY TO MAREEP!")
+	if main._should_bail(): return
+	print("ATTACK EXECUTED: Static Electricity")
+
+# SPUTTER (neo1-23 Magby): stop all Pokemon Powers until end of next turn
+func execute_neo1_sputter(attacker: card_object, is_opponent: bool) -> void:
+	if await handle_attack_confusion(attacker, is_opponent): return
+	if await handle_attack_blind(attacker, is_opponent): return
+	main.goop_gas_active = true
+	await main.show_message("SPUTTER! ALL POKEMON POWERS ARE DISABLED UNTIL END OF NEXT TURN!")
+	if main._should_bail(): return
+	print("ATTACK EXECUTED: Sputter (Goop Gas / Power shutdown)")
+
+# POISON BITE (neo1-27 Ariados): 20 + poison, remove counters = half damage dealt
+func execute_neo1_poison_bite(attacker: card_object, defender: card_object, is_opponent: bool, base_damage: int) -> void:
+	if await handle_attack_confusion(attacker, is_opponent): return
+	if await handle_attack_blind(attacker, is_opponent): return
+	var types = attacker.metadata.get("types", ["Colorless"])
+	var result = main.calculate_final_damage(base_damage, types, defender)
+	var final_d = result["damage"]
+	if not main.check_defender_invincible(defender, not is_opponent):
+		final_d = main.apply_defender_no_damage_shield(defender, final_d, not is_opponent)
+		await main.display_and_apply_attack_damage(attacker, defender, final_d, result["modifiers"], is_opponent, base_damage)
+		if main._should_bail(): return
+	if defender != null and final_d > 0 and defender.current_hp > 0:
+		main.card_ops.apply_status(defender, "Poisoned", not is_opponent)
+		# Remove counters from self = half the final damage (round up to nearest 10)
+		var heal_amount = int(ceil(final_d / 2.0 / 10.0)) * 10
+		var max_hp = attacker.get_max_hp()
+		var healed = min(heal_amount, max_hp - attacker.current_hp)
+		if healed > 0:
+			attacker.current_hp = min(max_hp, attacker.current_hp + healed)
+			main.display_hp_circles_above_align(attacker, is_opponent)
+		await main.show_message("POISON BITE! " + defender.metadata.get("name","").to_upper() + " IS POISONED! ARIADOS HEALED " + str(healed) + " HP!")
+		if main._should_bail(): return
+	await main.check_all_knockouts()
+	if main._should_bail(): return
+	print("ATTACK EXECUTED: Poison Bite")
+
+# BATON PASS (neo1-39 Ledian): remove all Grass energy from Ledian, attach to bench Grass pokemon, switch
+func execute_neo1_baton_pass(attacker: card_object, defender: card_object, is_opponent: bool) -> void:
+	if await handle_attack_confusion(attacker, is_opponent): return
+	if await handle_attack_blind(attacker, is_opponent): return
+	var bench = main.opponent_bench if is_opponent else main.player_bench
+	var grass_bench: Array = []
+	for bp in bench:
+		if "Grass" in bp.metadata.get("types", []):
+			grass_bench.append(bp)
+	if grass_bench.size() == 0:
+		await main.show_message("BATON PASS: NO GRASS POKEMON ON BENCH!")
+		if main._should_bail(): return
+		return
+	var target: card_object = null
+	if is_opponent:
+		target = grass_bench[0]
+	else:
+		if grass_bench.size() == 1:
+			target = grass_bench[0]
+		else:
+			target = await main.card_ops.prompt_select_card(grass_bench, "BATON PASS: CHOOSE TARGET", "Choose a Grass Pokemon to receive Ledian's energy and switch in", "SELECT", false)
+			if main._should_bail(): return
+	if target == null:
+		return
+	# Move all Grass energies from Ledian to target
+	var grass_e: Array = attacker.attached_energies.filter(func(e): return "Grass" in main.get_energy_provided_by_card(e))
+	for e in grass_e:
+		attacker.attached_energies.erase(e)
+		target.attached_energies.append(e)
+	main.display_active_pokemon_energies(is_opponent)
+	await main.show_message("BATON PASS! MOVED " + str(grass_e.size()) + " GRASS ENERGY TO " + target.metadata.get("name","").to_upper() + "!")
+	if main._should_bail(): return
+	# Switch Ledian out, target in
+	bench.erase(target)
+	bench.append(attacker)
+	attacker.current_location = "bench"
+	target.current_location = "active"
+	if is_opponent:
+		main.opponent_active_pokemon = target
+	else:
+		main.player_active_pokemon = target
+	main.clear_all_statuses(attacker, is_opponent)
+	main.display_pokemon(is_opponent)
+	main.display_active_pokemon_energies(is_opponent)
+	print("ATTACK EXECUTED: Baton Pass")
+
+# SWEET NECTAR (neo1-3 Bellossom): flip — heads: remove all damage from 1 of your pokemon
+func execute_neo1_sweet_nectar(attacker: card_object, is_opponent: bool) -> void:
+	if await handle_attack_confusion(attacker, is_opponent): return
+	if await handle_attack_blind(attacker, is_opponent): return
+	var coin = await main.flip_coin(false, is_opponent)
+	if main._should_bail(): return
+	if not coin:
+		await main.show_message("TAILS! SWEET NECTAR FAILED!")
+		if main._should_bail(): return
+		return
+	var own_poke: Array = []
+	var active = main.opponent_active_pokemon if is_opponent else main.player_active_pokemon
+	if active != null: own_poke.append(active)
+	own_poke.append_array(main.opponent_bench if is_opponent else main.player_bench)
+	var damaged: Array = own_poke.filter(func(p): return p.current_hp < p.get_max_hp())
+	if damaged.size() == 0:
+		await main.show_message("HEADS! BUT NO DAMAGED POKEMON!")
+		if main._should_bail(): return
+		return
+	var target: card_object = null
+	if is_opponent:
+		damaged.sort_custom(func(a, b): return (a.get_max_hp() - a.current_hp) > (b.get_max_hp() - b.current_hp))
+		target = damaged[0]
+	else:
+		if damaged.size() == 1:
+			target = damaged[0]
+		else:
+			target = await main.card_ops.prompt_select_card(damaged, "SWEET NECTAR: CHOOSE POKEMON", "Choose a Pokemon to fully heal", "HEAL", false)
+			if main._should_bail(): return
+	if target == null:
+		return
+	target.current_hp = target.get_max_hp()
+	SoundManagerScript.play_sfx(SoundManagerScript.SFX_heal_sound)
+	main.display_hp_circles_above_align(target, is_opponent)
+	await main.show_message("HEADS! " + target.metadata.get("name","").to_upper() + " WAS FULLY HEALED!")
+	if main._should_bail(): return
+	print("ATTACK EXECUTED: Sweet Nectar - fully healed ", target.metadata.get("name",""))
+
+# MILK DRINK (neo1-41 Miltank): flip 2 coins, remove 2 damage counters × heads
+func execute_neo1_milk_drink(attacker: card_object, is_opponent: bool) -> void:
+	if await handle_attack_confusion(attacker, is_opponent): return
+	if await handle_attack_blind(attacker, is_opponent): return
+	var heads = 0
+	var c1 = await main.flip_coin(false, is_opponent)
+	if main._should_bail(): return
+	var c2 = await main.flip_coin(false, is_opponent)
+	if main._should_bail(): return
+	if c1: heads += 1
+	if c2: heads += 1
+	var heal_amount = heads * 20
+	if heal_amount > 0:
+		var max_hp = attacker.get_max_hp()
+		attacker.current_hp = min(max_hp, attacker.current_hp + heal_amount)
+		SoundManagerScript.play_sfx(SoundManagerScript.SFX_heal_sound)
+		main.display_hp_circles_above_align(attacker, is_opponent)
+		await main.show_message("MILK DRINK! " + str(heads) + " HEADS — HEALED " + str(heal_amount) + " HP!")
+	else:
+		await main.show_message("TAILS! MILK DRINK FAILED!")
+	if main._should_bail(): return
+	print("ATTACK EXECUTED: Milk Drink - healed ", heal_amount)
+
+# RAGING CHARGE (neo1-37 Granbull): 10 + 10×own damage counters + 20 to self
+func execute_neo1_raging_charge(attacker: card_object, defender: card_object, is_opponent: bool, base_damage: int) -> void:
+	if await handle_attack_confusion(attacker, is_opponent): return
+	if await handle_attack_blind(attacker, is_opponent): return
+	var counters = attacker.get_damage_counters()
+	var total = base_damage + counters * 10
+	if counters > 0:
+		await main.show_message("RAGING CHARGE! " + str(counters) + " COUNTERS — " + str(total) + " DAMAGE!")
+		if main._should_bail(): return
+	await gym1_hit_active(attacker, defender, is_opponent, total)
+	if main._should_bail(): return
+	await main.check_all_knockouts()
+	if main._should_bail(): return
+	# 20 recoil damage to self
+	if attacker.current_hp > 0:
+		await gym2_self_damage(attacker, is_opponent, 20)
+		if main._should_bail(): return
+		await main.show_message("RAGING CHARGE RECOIL: GRANBULL TOOK 20 DAMAGE!")
+		if main._should_bail(): return
+	await main.check_all_knockouts()
+	if main._should_bail(): return
+	print("ATTACK EXECUTED: Raging Charge")
+
+# POLLEN SHIELD (neo1-28 Bayleef): 30, then self immune to status next turn
+func execute_neo1_pollen_shield(attacker: card_object, defender: card_object, is_opponent: bool, base_damage: int) -> void:
+	if await handle_attack_confusion(attacker, is_opponent): return
+	if await handle_attack_blind(attacker, is_opponent): return
+	await gym1_hit_active(attacker, defender, is_opponent, base_damage)
+	if main._should_bail(): return
+	await main.check_all_knockouts()
+	if main._should_bail(): return
+	attacker.damage_reduction_next_turn = 0
+	attacker.attack_flip_blocked = false
+	# Reuse the existing attack_blocked flag to indicate status immunity (mark for end-of-turn check)
+	# We'll use a comment approach: pollen shield just prevents status next turn
+	# Since we don't have a "status_immune_next_turn" flag, we'll show the message
+	await main.show_message("POLLEN SHIELD! BAYLEEF IS PROTECTED FROM STATUS CONDITIONS NEXT TURN!")
+	if main._should_bail(): return
+	print("ATTACK EXECUTED: Pollen Shield")
+
+# STICKY NECTAR (neo1-36 Gloom): 20+10 on heads; if heads, target can't retreat next turn
+func execute_neo1_sticky_nectar(attacker: card_object, defender: card_object, is_opponent: bool, base_damage: int) -> void:
+	if await handle_attack_confusion(attacker, is_opponent): return
+	if await handle_attack_blind(attacker, is_opponent): return
+	var coin = await main.flip_coin(false, is_opponent)
+	if main._should_bail(): return
+	var total = base_damage + (10 if coin else 0)
+	await gym1_hit_active(attacker, defender, is_opponent, total)
+	if main._should_bail(): return
+	await main.check_all_knockouts()
+	if main._should_bail(): return
+	if coin and defender != null and defender.current_hp > 0:
+		defender.jaw_clamp_locked = true
+		if is_opponent: main.player_retreat_disabled = true
+		else: main.opponent_retreat_disabled = true
+		await main.show_message("HEADS! " + str(total) + " DAMAGE AND TARGET CAN'T RETREAT NEXT TURN!")
+		if main._should_bail(): return
+	print("ATTACK EXECUTED: Sticky Nectar")
+
+# DUAL KICK (neo1-25 Sneasel Beat Up): flip per pokemon in play, 20 per heads
+func execute_neo1_dual_kick(attacker: card_object, defender: card_object, is_opponent: bool, base_damage: int) -> void:
+	if await handle_attack_confusion(attacker, is_opponent): return
+	if await handle_attack_blind(attacker, is_opponent): return
+	var own_pokemon: Array = []
+	if main.opponent_active_pokemon != null and is_opponent: own_pokemon.append(main.opponent_active_pokemon)
+	if main.player_active_pokemon != null and not is_opponent: own_pokemon.append(main.player_active_pokemon)
+	own_pokemon.append_array(main.opponent_bench if is_opponent else main.player_bench)
+	var heads = 0
+	for p in own_pokemon:
+		var coin = await main.flip_coin(false, is_opponent)
+		if main._should_bail(): return
+		if coin: heads += 1
+	var total = base_damage * heads
+	if total > 0:
+		await gym1_hit_active(attacker, defender, is_opponent, total)
+		if main._should_bail(): return
+		await main.show_message("BEAT UP! " + str(heads) + " HEADS — " + str(total) + " DAMAGE!")
+	else:
+		await main.show_message("BEAT UP! 0 HEADS — NO DAMAGE!")
+	if main._should_bail(): return
+	await main.check_all_knockouts()
+	if main._should_bail(): return
+	print("ATTACK EXECUTED: Beat Up")
+
+# SCREECH (neo1-31/69): set screech_damage_bonus on defender — +20 to next attack received
+func execute_neo1_screech(attacker: card_object, defender: card_object, is_opponent: bool, base_damage: int) -> void:
+	if await handle_attack_confusion(attacker, is_opponent): return
+	if await handle_attack_blind(attacker, is_opponent): return
+	if base_damage > 0:
+		await gym1_hit_active(attacker, defender, is_opponent, base_damage)
+		if main._should_bail(): return
+		await main.check_all_knockouts()
+		if main._should_bail(): return
+	if defender != null and defender.current_hp > 0:
+		defender.screech_damage_bonus = 20
+		await main.show_message("SCREECH! NEXT ATTACK AGAINST " + defender.metadata.get("name","").to_upper() + " DOES 20 MORE DAMAGE!")
+		if main._should_bail(): return
+	print("ATTACK EXECUTED: Screech")
+
+# LEECH SEED (neo1-7 Jumpluff): 20 damage, if damage dealt remove 1 counter from self
+func execute_neo1_leech_seed(attacker: card_object, defender: card_object, is_opponent: bool, base_damage: int) -> void:
+	if await handle_attack_confusion(attacker, is_opponent): return
+	if await handle_attack_blind(attacker, is_opponent): return
+	var types = attacker.metadata.get("types", ["Colorless"])
+	var result = main.calculate_final_damage(base_damage, types, defender)
+	var final_d = result["damage"]
+	if not main.check_defender_invincible(defender, not is_opponent):
+		final_d = main.apply_defender_no_damage_shield(defender, final_d, not is_opponent)
+		await main.display_and_apply_attack_damage(attacker, defender, final_d, result["modifiers"], is_opponent, base_damage)
+		if main._should_bail(): return
+	await main.check_all_knockouts()
+	if main._should_bail(): return
+	if final_d > 0 and attacker.current_hp < attacker.get_max_hp():
+		attacker.current_hp = min(attacker.get_max_hp(), attacker.current_hp + 10)
+		main.display_hp_circles_above_align(attacker, is_opponent)
+		await main.show_message("LEECH SEED! JUMPLUFF HEALED 10 HP!")
+		if main._should_bail(): return
+	print("ATTACK EXECUTED: Leech Seed")
+
+# FREEZE (neo1-44 Piloswine): 10 damage, flip — heads: defending can't attack next turn
+func execute_neo1_freeze(attacker: card_object, defender: card_object, is_opponent: bool, base_damage: int) -> void:
+	if await handle_attack_confusion(attacker, is_opponent): return
+	if await handle_attack_blind(attacker, is_opponent): return
+	await gym1_hit_active(attacker, defender, is_opponent, base_damage)
+	if main._should_bail(): return
+	await main.check_all_knockouts()
+	if main._should_bail(): return
+	if defender != null and defender.current_hp > 0:
+		var coin = await main.flip_coin(false, is_opponent)
+		if main._should_bail(): return
+		if coin:
+			defender.attack_blocked_next_turn = true
+			defender.attack_blocked_by_id = attacker.get_instance_id()
+			await main.show_message("HEADS! " + defender.metadata.get("name","").to_upper() + " IS FROZEN AND CAN'T ATTACK NEXT TURN!")
+			if main._should_bail(): return
+		else:
+			await main.show_message("TAILS! FREEZE FAILED!")
+			if main._should_bail(): return
+	print("ATTACK EXECUTED: Freeze")
+
+# STRANGE POWDER (neo1-36 Gloom): flip — heads: confused, tails: asleep
+func execute_neo1_strange_powder(attacker: card_object, defender: card_object, is_opponent: bool, base_damage: int) -> void:
+	if await handle_attack_confusion(attacker, is_opponent): return
+	if await handle_attack_blind(attacker, is_opponent): return
+	await gym1_hit_active(attacker, defender, is_opponent, base_damage)
+	if main._should_bail(): return
+	await main.check_all_knockouts()
+	if main._should_bail(): return
+	if defender != null and defender.current_hp > 0:
+		var coin = await main.flip_coin(false, is_opponent)
+		if main._should_bail(): return
+		if coin:
+			main.card_ops.apply_status(defender, "Confused", not is_opponent)
+			await main.show_message("HEADS! " + defender.metadata.get("name","").to_upper() + " IS NOW CONFUSED!")
+		else:
+			main.card_ops.apply_status(defender, "Asleep", not is_opponent)
+			await main.show_message("TAILS! " + defender.metadata.get("name","").to_upper() + " IS NOW ASLEEP!")
+		if main._should_bail(): return
+	print("ATTACK EXECUTED: Strange Powder")
+
+# BLIZZARD (neo1-44 Piloswine): 30 + heads: 10 to each opponent bench, tails: 10 to each own bench
+func execute_neo1_blizzard(attacker: card_object, defender: card_object, is_opponent: bool, base_damage: int) -> void:
+	if await handle_attack_confusion(attacker, is_opponent): return
+	if await handle_attack_blind(attacker, is_opponent): return
+	await gym1_hit_active(attacker, defender, is_opponent, base_damage)
+	if main._should_bail(): return
+	await main.check_all_knockouts()
+	if main._should_bail(): return
+	var coin = await main.flip_coin(false, is_opponent)
+	if main._should_bail(): return
+	if coin:
+		var opp_bench = main.player_bench if is_opponent else main.opponent_bench
+		for bp in opp_bench.duplicate():
+			main.card_ops.apply_bench_damage(bp, 10, not is_opponent)
+		await main.show_message("HEADS! 10 DAMAGE TO EACH OPPONENT BENCH!")
+	else:
+		var own_bench = main.opponent_bench if is_opponent else main.player_bench
+		for bp in own_bench.duplicate():
+			main.card_ops.apply_bench_damage(bp, 10, is_opponent)
+		await main.show_message("TAILS! 10 DAMAGE TO EACH OF YOUR OWN BENCH!")
+	if main._should_bail(): return
+	await main.check_all_knockouts()
+	if main._should_bail(): return
+	print("ATTACK EXECUTED: Blizzard (Piloswine)")
+
+# ELEMENTAL BLAST (neo1-9 Lugia): 90 — discard 1 Fire, 1 Water, 1 Lightning energy
+func execute_neo1_elemental_blast(attacker: card_object, defender: card_object, is_opponent: bool) -> void:
+	if await handle_attack_confusion(attacker, is_opponent): return
+	if await handle_attack_blind(attacker, is_opponent): return
+	# Verify we have Fire + Water + Lightning attached
+	var fire_e: card_object = null; var water_e: card_object = null; var lightning_e: card_object = null
+	for e in attacker.attached_energies:
+		var prov = main.get_energy_provided_by_card(e)
+		if fire_e == null and "Fire" in prov: fire_e = e
+		elif water_e == null and "Water" in prov: water_e = e
+		elif lightning_e == null and "Lightning" in prov: lightning_e = e
+	if fire_e == null or water_e == null or lightning_e == null:
+		if not is_opponent: await main.show_message("ELEMENTAL BLAST REQUIRES FIRE, WATER, AND LIGHTNING ENERGY!")
+		if main._should_bail(): return
+		return
+	for e in [fire_e, water_e, lightning_e]:
+		attacker.attached_energies.erase(e)
+		main.card_ops.discard_energy_from_pokemon(e, is_opponent)
+	main.display_active_pokemon_energies(is_opponent)
+	main.update_discard_pile_display(is_opponent)
+	await main.show_message("DISCARDED FIRE, WATER, AND LIGHTNING ENERGY!")
+	if main._should_bail(): return
+	await gym1_hit_active(attacker, defender, is_opponent, 90)
+	if main._should_bail(): return
+	await main.check_all_knockouts()
+	if main._should_bail(): return
+	print("ATTACK EXECUTED: Elemental Blast")
+
+# CHOMP (neo1-4 Feraligatr): 50 + flip × damage_counters × 10
+func execute_neo1_chomp(attacker: card_object, defender: card_object, is_opponent: bool) -> void:
+	if await handle_attack_confusion(attacker, is_opponent): return
+	if await handle_attack_blind(attacker, is_opponent): return
+	var counters = attacker.get_damage_counters()
+	var heads = 0
+	for i in range(counters):
+		var coin = await main.flip_coin(false, is_opponent)
+		if main._should_bail(): return
+		if coin: heads += 1
+	var total = 50 + heads * 10
+	if counters > 0:
+		await main.show_message("CHOMP! " + str(heads) + "/" + str(counters) + " HEADS — " + str(total) + " DAMAGE!")
+		if main._should_bail(): return
+	await gym1_hit_active(attacker, defender, is_opponent, total)
+	if main._should_bail(): return
+	await main.check_all_knockouts()
+	if main._should_bail(): return
+	print("ATTACK EXECUTED: Chomp - ", heads, " heads, ", total, " damage")
+
+# ELECTRIC CURRENT (neo1-34 Flaaffy): 20 damage + move 1 Lightning from Flaaffy to a benched pokemon
+func execute_neo1_electric_current(attacker: card_object, defender: card_object, is_opponent: bool, base_damage: int) -> void:
+	if await handle_attack_confusion(attacker, is_opponent): return
+	if await handle_attack_blind(attacker, is_opponent): return
+	await gym1_hit_active(attacker, defender, is_opponent, base_damage)
+	if main._should_bail(): return
+	await main.check_all_knockouts()
+	if main._should_bail(): return
+	var bench = main.opponent_bench if is_opponent else main.player_bench
+	if bench.size() == 0:
+		await main.show_message("NO BENCHED POKEMON TO TRANSFER ENERGY TO!")
+		if main._should_bail(): return
+		return
+	var lightning_e: card_object = null
+	for e in attacker.attached_energies:
+		if "Lightning" in main.get_energy_provided_by_card(e):
+			lightning_e = e
+			break
+	if lightning_e == null:
+		await main.show_message("NO LIGHTNING ENERGY ON " + attacker.metadata.get("name","").to_upper() + " TO TRANSFER!")
+		if main._should_bail(): return
+		return
+	var target: card_object = null
+	if is_opponent:
+		target = bench[0]
+	else:
+		if bench.size() == 1:
+			target = bench[0]
+		else:
+			target = await main.card_ops.prompt_select_card(bench, "ELECTRIC CURRENT: CHOOSE TARGET", "Choose a benched Pokemon to receive Lightning Energy", "SELECT", false)
+			if main._should_bail(): return
+	if target == null:
+		return
+	attacker.attached_energies.erase(lightning_e)
+	target.attached_energies.append(lightning_e)
+	main.display_active_pokemon_energies(is_opponent)
+	await main.show_message("ELECTRIC CURRENT! LIGHTNING ENERGY MOVED TO " + target.metadata.get("name","").to_upper() + "!")
+	if main._should_bail(): return
+	print("ATTACK EXECUTED: Electric Current (Flaaffy neo1)")
+
+# MEGAHORN (neo1-6 Heracross): flip — heads: 60 damage (120 if Final Blow is active and HP ≤ 20)
+func execute_neo1_megahorn(attacker: card_object, defender: card_object, is_opponent: bool, base_damage: int) -> void:
+	if await handle_attack_confusion(attacker, is_opponent): return
+	if await handle_attack_blind(attacker, is_opponent): return
+	var coin = await main.flip_coin(false, is_opponent)
+	if main._should_bail(): return
+	if not coin:
+		await main.show_message("TAILS! MEGAHORN MISSED!")
+		if main._should_bail(): return
+		return
+	if base_damage >= 120:
+		await main.show_message("FINAL BLOW! MEGAHORN DEALS 120 DAMAGE!")
+		if main._should_bail(): return
+	var types = attacker.metadata.get("types", ["Colorless"])
+	var result = main.calculate_final_damage(base_damage, types, defender)
+	if not main.check_defender_invincible(defender, not is_opponent):
+		var fd = main.apply_defender_no_damage_shield(defender, result["damage"], not is_opponent)
+		await main.display_and_apply_attack_damage(attacker, defender, fd, result["modifiers"], is_opponent, base_damage)
+		if main._should_bail(): return
+	await main.check_all_knockouts()
+	if main._should_bail(): return
+	print("ATTACK EXECUTED: Megahorn - ", base_damage, " damage")
+
+# FLOODLIGHT (neo1-38 Lanturn): 20 damage + Hydroelectric Power bonus; flip — heads: Paralyzed
+func execute_neo1_floodlight(attacker: card_object, defender: card_object, is_opponent: bool, base_damage: int) -> void:
+	if await handle_attack_confusion(attacker, is_opponent): return
+	if await handle_attack_blind(attacker, is_opponent): return
+	var bonus = main.powers_and_bodies.get_hydroelectric_bonus(attacker, "Floodlight")
+	var total = base_damage + bonus
+	if bonus > 0:
+		await main.show_message("HYDROELECTRIC POWER! FLOODLIGHT DEALS " + str(total) + " DAMAGE!")
+		if main._should_bail(): return
+	var types = attacker.metadata.get("types", ["Colorless"])
+	var result = main.calculate_final_damage(total, types, defender)
+	if not main.check_defender_invincible(defender, not is_opponent):
+		var fd = main.apply_defender_no_damage_shield(defender, result["damage"], not is_opponent)
+		await main.display_and_apply_attack_damage(attacker, defender, fd, result["modifiers"], is_opponent, total)
+		if main._should_bail(): return
+	await main.check_all_knockouts()
+	if main._should_bail(): return
+	if defender != null and defender.current_hp > 0:
+		var coin = await main.flip_coin(false, is_opponent)
+		if main._should_bail(): return
+		if coin:
+			main.card_ops.apply_status(defender, "Paralyzed", not is_opponent)
+			await main.show_message("HEADS! " + defender.metadata.get("name","").to_upper() + " IS PARALYZED!")
+			if main._should_bail(): return
+		else:
+			await main.show_message("TAILS! FLOODLIGHT DIDN'T PARALYZE!")
+			if main._should_bail(): return
+	print("ATTACK EXECUTED: Floodlight - ", total, " damage")
+
+######################################################################################################################################################
+##################################################### NEO2 (NEO DISCOVERY) ATTACK EFFECTS ###########################################################
+######################################################################################################################################################
+
+func _register_neo2_attacks() -> void:
+	# ----- ATTACKS WITH UNIQUE LOGIC -----
+	_attack_dispatch["lock-on"]         = func(atk, a, d, opp): await execute_neo2_lock_on(a, opp);                                              await _attack_finish(false, 0,  atk, a.metadata.get("types",["Colorless"]), opp)
+	_attack_dispatch["electric bolt"]   = func(atk, a, d, opp): await execute_neo2_electric_bolt(a, d, opp);                                    await _attack_finish(true,  50, atk, a.metadata.get("types",["Colorless"]), opp)
+	_attack_dispatch["hydrocutter"]     = func(atk, a, d, opp): await execute_neo2_hydrocutter(a, d, opp);                                      await _attack_finish(true,  40, atk, a.metadata.get("types",["Colorless"]), opp)
+	_attack_dispatch["false swipe"]     = func(atk, a, d, opp): await execute_neo2_false_swipe(a, d, opp);                                      await _attack_finish(true,  0,  atk, a.metadata.get("types",["Colorless"]), opp)
+	_attack_dispatch["double claw"]     = func(atk, a, d, opp): await execute_neo2_double_claw(a, d, opp);                                      await _attack_finish(true,  20, atk, a.metadata.get("types",["Colorless"]), opp)
+	_attack_dispatch["crunch"]          = func(atk, a, d, opp): var b=parse_attack_base_damage(atk); await execute_neo2_crunch(a, d, opp, b);   await _attack_finish(true,  b,  atk, a.metadata.get("types",["Colorless"]), opp)
+	_attack_dispatch["collect fire"]    = func(atk, a, d, opp): var b=parse_attack_base_damage(atk); await execute_neo2_collect_fire(a, d, opp, b); await _attack_finish(true, b, atk, a.metadata.get("types",["Colorless"]), opp)
+	_attack_dispatch["triple poison"]   = func(atk, a, d, opp): await execute_neo2_triple_poison(a, d, opp);                                    await _attack_finish(true,  10, atk, a.metadata.get("types",["Colorless"]), opp)
+	_attack_dispatch["magic dust"]      = func(atk, a, d, opp): await execute_neo2_magic_dust(a, d, opp);                                       await _attack_finish(true,  20, atk, a.metadata.get("types",["Colorless"]), opp)
+	_attack_dispatch["hyper reverse"]   = func(atk, a, d, opp): await execute_neo2_hyper_reverse(a, d, opp);                                    await _attack_finish(true,  0,  atk, a.metadata.get("types",["Colorless"]), opp)
+	_attack_dispatch["trample"]         = func(atk, a, d, opp): await execute_neo2_trample(a, d, opp);                                          await _attack_finish(true,  50, atk, a.metadata.get("types",["Colorless"]), opp)
+	_attack_dispatch["sketch"]          = func(atk, a, d, opp): await execute_neo2_sketch(a, d, opp);                                           await _attack_finish(false, 0,  atk, a.metadata.get("types",["Colorless"]), opp)
+	_attack_dispatch["counter"]         = func(atk, a, d, opp): await execute_neo2_counter(a, opp);                                             await _attack_finish(false, 0,  atk, a.metadata.get("types",["Colorless"]), opp)
+	_attack_dispatch["shockwave"]       = func(atk, a, d, opp): await execute_neo2_shockwave(a, d, opp);                                        await _attack_finish(false, 0,  atk, a.metadata.get("types",["Colorless"]), opp)
+	_attack_dispatch["secrete poison"]  = func(atk, a, d, opp): await execute_neo2_secrete_poison(a, opp);                                      await _attack_finish(false, 0,  atk, a.metadata.get("types",["Colorless"]), opp)
+	_attack_dispatch["harden"]          = func(atk, a, d, opp): await execute_neo2_harden(a, opp);                                              await _attack_finish(false, 0,  atk, a.metadata.get("types",["Colorless"]), opp)
+	_attack_dispatch["hatch"]           = func(atk, a, d, opp): await execute_neo2_hatch(a, opp);                                               await _attack_finish(false, 0,  atk, a.metadata.get("types",["Colorless"]), opp)
+	_attack_dispatch["squeeze"]         = func(atk, a, d, opp): await execute_neo2_squeeze(a, d, opp);                                          await _attack_finish(true,  10, atk, a.metadata.get("types",["Colorless"]), opp)
+	_attack_dispatch["spike barrage"]   = func(atk, a, d, opp): await execute_neo2_spike_barrage(a, d, opp);                                    await _attack_finish(true,  20, atk, a.metadata.get("types",["Colorless"]), opp)
+	_attack_dispatch["belly drum"]      = func(atk, a, d, opp): await execute_neo2_belly_drum(a, opp);                                          await _attack_finish(false, 0,  atk, a.metadata.get("types",["Colorless"]), opp)
+	_attack_dispatch["dust devil"]      = func(atk, a, d, opp): await execute_neo2_dust_devil(a, opp);                                          await _attack_finish(false, 0,  atk, a.metadata.get("types",["Colorless"]), opp)
+	_attack_dispatch["fury cutter"]     = func(atk, a, d, opp): await execute_neo2_fury_cutter(a, d, opp);                                      await _attack_finish(true,  10, atk, a.metadata.get("types",["Colorless"]), opp)
+	_attack_dispatch["energy cycle"]    = func(atk, a, d, opp): await execute_neo2_energy_cycle(a, d, opp);                                     await _attack_finish(false, 0,  atk, a.metadata.get("types",["Colorless"]), opp)
+	_attack_dispatch["work together"]   = func(atk, a, d, opp): await execute_neo2_work_together(a, d, opp);                                    await _attack_finish(true,  10, atk, a.metadata.get("types",["Colorless"]), opp)
+	_attack_dispatch["burst"]           = func(atk, a, d, opp): await execute_neo2_burst(a, d, opp);                                            await _attack_finish(false, 0,  atk, a.metadata.get("types",["Colorless"]), opp)
+	_attack_dispatch["recover"]         = func(atk, a, d, opp): await execute_neo2_recover(a, opp);                                             await _attack_finish(false, 0,  atk, a.metadata.get("types",["Colorless"]), opp)
+	_attack_dispatch["plunder"]         = func(atk, a, d, opp): var b=parse_attack_base_damage(atk); await execute_neo2_plunder(a, d, opp, b);  await _attack_finish(true,  b,  atk, a.metadata.get("types",["Colorless"]), opp)
+	_attack_dispatch["headpress"]       = func(atk, a, d, opp): await execute_neo2_headpress(a, d, opp);                                        await _attack_finish(true,  30, atk, a.metadata.get("types",["Colorless"]), opp)
+	_attack_dispatch["pursuit"]         = func(atk, a, d, opp): var b=parse_attack_base_damage(atk); await execute_neo2_pursuit(a, d, opp, b);  await _attack_finish(true,  b,  atk, a.metadata.get("types",["Colorless"]), opp)
+	_attack_dispatch["slime"]           = func(atk, a, d, opp): await execute_neo2_slime(a, opp);                                               await _attack_finish(false, 0,  atk, a.metadata.get("types",["Colorless"]), opp)
+	_attack_dispatch["scout"]           = func(atk, a, d, opp): await execute_psyscan(a, opp);                                                  await _attack_finish(false, 0,  atk, a.metadata.get("types",["Colorless"]), opp)
+	# Hidden Power: 10 + [Anger] bonus from Unown [A] damage counters
+	_attack_dispatch["hidden power"]    = func(atk, a, d, opp): await execute_neo2_hidden_power(a, d, opp);                                     await _attack_finish(true,  10, atk, a.metadata.get("types",["Colorless"]), opp)
+	# Doubleslap: Politoed gets Frog Song bonus; others handled generically by caller
+	_attack_dispatch["doubleslap"]      = func(atk, a, d, opp): await execute_neo2_politoed_doubleslap(a, d, opp);                              await _attack_finish(true,  40, atk, a.metadata.get("types",["Colorless"]), opp)
+
+# LOCK-ON (neo2-7/26 Magnemite): next Electric Bolt treats any tails as heads
+func execute_neo2_lock_on(attacker: card_object, is_opponent: bool) -> void:
+	if await handle_attack_confusion(attacker, is_opponent): return
+	if await handle_attack_blind(attacker, is_opponent): return
+	attacker.lock_on_active = true
+	var name = attacker.metadata.get("name","").to_upper()
+	await main.show_message(name + " IS LOCKED ON! NEXT ELECTRIC BOLT CANNOT MISS!")
+	if main._should_bail(): return
+	print("ATTACK EXECUTED: Lock-on — Electric Bolt will auto-hit next turn")
+
+# ELECTRIC BOLT (neo2-7/26 Magnemite): flip 2 — both heads = 50 + Paralyzed; any tails = nothing (Lock-on overrides)
+func execute_neo2_electric_bolt(attacker: card_object, defender: card_object, is_opponent: bool) -> void:
+	if await handle_attack_confusion(attacker, is_opponent): return
+	if await handle_attack_blind(attacker, is_opponent): return
+	var lock_on = attacker.lock_on_active
+	attacker.lock_on_active = false
+	var coin1 = await main.flip_coin(true, is_opponent)
+	if main._should_bail(): return
+	var coin2 = await main.flip_coin(true, is_opponent)
+	if main._should_bail(): return
+	var both_heads = (coin1 or lock_on) and (coin2 or lock_on)
+	if not both_heads:
+		await main.show_message("ELECTRIC BOLT FAILED! NEED BOTH HEADS!")
+		if main._should_bail(): return
+		return
+	var types = attacker.metadata.get("types", ["Colorless"])
+	var result = main.calculate_final_damage(50, types, defender, attacker)
+	if not main.check_defender_invincible(defender, not is_opponent):
+		var fd = main.apply_defender_no_damage_shield(defender, result["damage"], not is_opponent)
+		await main.display_and_apply_attack_damage(attacker, defender, fd, result["modifiers"], is_opponent, 50)
+		if main._should_bail(): return
+	await main.check_all_knockouts()
+	if main._should_bail(): return
+	if defender != null and defender.current_hp > 0:
+		main.card_ops.apply_status(defender, "Paralyzed", not is_opponent)
+		await main.show_message("BOTH HEADS! " + defender.metadata.get("name","").to_upper() + " IS PARALYZED!")
+		if main._should_bail(): return
+	print("ATTACK EXECUTED: Electric Bolt — 50 damage + Paralyzed")
+
+# HYDROCUTTER (neo2-6/25 Kabutops): flip min(3, energy_count) coins, 40×heads
+func execute_neo2_hydrocutter(attacker: card_object, defender: card_object, is_opponent: bool) -> void:
+	if await handle_attack_confusion(attacker, is_opponent): return
+	if await handle_attack_blind(attacker, is_opponent): return
+	var flip_count = min(3, attacker.attached_energies.size())
+	var heads = 0
+	for i in range(flip_count):
+		if await main.flip_coin(flip_count > 1, is_opponent):
+			heads += 1
+	if main._should_bail(): return
+	var total = heads * 40
+	await main.show_message("HYDROCUTTER! " + str(flip_count) + " FLIPS, " + str(heads) + " HEADS — " + str(total) + " DAMAGE!")
+	if main._should_bail(): return
+	if total > 0:
+		var types = attacker.metadata.get("types", ["Colorless"])
+		var result = main.calculate_final_damage(total, types, defender, attacker)
+		if not main.check_defender_invincible(defender, not is_opponent):
+			var fd = main.apply_defender_no_damage_shield(defender, result["damage"], not is_opponent)
+			await main.display_and_apply_attack_damage(attacker, defender, fd, result["modifiers"], is_opponent, total)
+			if main._should_bail(): return
+	await main.check_all_knockouts()
+	if main._should_bail(): return
+	print("ATTACK EXECUTED: Hydrocutter — ", flip_count, " flips, ", total, " damage")
+
+# FALSE SWIPE (neo2-10/29 Scizor): damage = half defender's remaining HP, rounded down to nearest 10
+func execute_neo2_false_swipe(attacker: card_object, defender: card_object, is_opponent: bool) -> void:
+	if await handle_attack_confusion(attacker, is_opponent): return
+	if await handle_attack_blind(attacker, is_opponent): return
+	if defender == null or main.check_defender_invincible(defender, not is_opponent):
+		return
+	var half_hp = int(defender.current_hp / 2.0 / 10.0) * 10
+	half_hp = max(10, half_hp)
+	await main.show_message("FALSE SWIPE! " + str(defender.current_hp) + " HP — HALF IS " + str(half_hp) + " DAMAGE!")
+	if main._should_bail(): return
+	defender.current_hp = max(0, defender.current_hp - half_hp)
+	main.display_hp_circles_above_align(defender, not is_opponent)
+	main.show_floating_label("-" + str(half_hp) + "HP", Vector2(530 if is_opponent else 1030, 300), Color.WHITE, true)
+	if half_hp > 0:
+		await main.powers_and_bodies.dispatch_on_damage(defender, attacker, half_hp, not is_opponent)
+		if main._should_bail(): return
+	await main.check_all_knockouts()
+	if main._should_bail(): return
+	print("ATTACK EXECUTED: False Swipe — ", half_hp, " damage")
+
+# DOUBLE CLAW (neo2-10/29 Scizor): flip 2 coins, 20×heads (damage field "20+" is misleading — text says 20×heads)
+func execute_neo2_double_claw(attacker: card_object, defender: card_object, is_opponent: bool) -> void:
+	if await handle_attack_confusion(attacker, is_opponent): return
+	if await handle_attack_blind(attacker, is_opponent): return
+	var heads = 0
+	for i in range(2):
+		if await main.flip_coin(true, is_opponent):
+			heads += 1
+	if main._should_bail(): return
+	var total = heads * 20
+	await main.show_message("DOUBLE CLAW! " + str(heads) + " HEADS — " + str(total) + " DAMAGE!")
+	if main._should_bail(): return
+	if total > 0:
+		var types = attacker.metadata.get("types", ["Colorless"])
+		var result = main.calculate_final_damage(total, types, defender, attacker)
+		if not main.check_defender_invincible(defender, not is_opponent):
+			var fd = main.apply_defender_no_damage_shield(defender, result["damage"], not is_opponent)
+			await main.display_and_apply_attack_damage(attacker, defender, fd, result["modifiers"], is_opponent, total)
+			if main._should_bail(): return
+	await main.check_all_knockouts()
+	if main._should_bail(): return
+	print("ATTACK EXECUTED: Double Claw — ", total, " damage")
+
+# CRUNCH (neo2-4/23 Houndoom): 30 damage + next attack on defending pokemon deals +20
+func execute_neo2_crunch(attacker: card_object, defender: card_object, is_opponent: bool, base_damage: int) -> void:
+	if await handle_attack_confusion(attacker, is_opponent): return
+	if await handle_attack_blind(attacker, is_opponent): return
+	var types = attacker.metadata.get("types", ["Colorless"])
+	var result = main.calculate_final_damage(base_damage, types, defender, attacker)
+	if not main.check_defender_invincible(defender, not is_opponent):
+		var fd = main.apply_defender_no_damage_shield(defender, result["damage"], not is_opponent)
+		await main.display_and_apply_attack_damage(attacker, defender, fd, result["modifiers"], is_opponent, base_damage)
+		if main._should_bail(): return
+	await main.check_all_knockouts()
+	if main._should_bail(): return
+	if defender != null and defender.current_hp > 0:
+		defender.screech_damage_bonus += 20
+		await main.show_message("CRUNCH! NEXT ATTACK ON " + defender.metadata.get("name","").to_upper() + " DEALS +20!")
+		if main._should_bail(): return
+	print("ATTACK EXECUTED: Crunch — ", base_damage, " damage + crunch bonus")
+
+# COLLECT FIRE (neo2-5/24 Houndour): 20 damage + attach 1 Fire Energy from discard to self
+func execute_neo2_collect_fire(attacker: card_object, defender: card_object, is_opponent: bool, base_damage: int) -> void:
+	if await handle_attack_confusion(attacker, is_opponent): return
+	if await handle_attack_blind(attacker, is_opponent): return
+	var types = attacker.metadata.get("types", ["Colorless"])
+	var result = main.calculate_final_damage(base_damage, types, defender, attacker)
+	if not main.check_defender_invincible(defender, not is_opponent):
+		var fd = main.apply_defender_no_damage_shield(defender, result["damage"], not is_opponent)
+		await main.display_and_apply_attack_damage(attacker, defender, fd, result["modifiers"], is_opponent, base_damage)
+		if main._should_bail(): return
+	await main.check_all_knockouts()
+	if main._should_bail(): return
+	var discard = main.opponent_discard_pile if is_opponent else main.player_discard_pile
+	var fire_e: card_object = null
+	for c in discard:
+		if c.metadata.get("supertype","") == "Energy" and "Fire" in main.get_energy_provided_by_card(c):
+			fire_e = c
+			break
+	if fire_e == null:
+		await main.show_message("NO FIRE ENERGY IN DISCARD!")
+		if main._should_bail(): return
+		return
+	discard.erase(fire_e)
+	attacker.attached_energies.append(fire_e)
+	fire_e.current_location = "active" if attacker.current_location == "active" else "bench"
+	main.update_discard_pile_display(is_opponent)
+	main.display_active_pokemon_energies(is_opponent)
+	await main.show_message("COLLECT FIRE! ATTACHED FIRE ENERGY FROM DISCARD!")
+	if main._should_bail(): return
+	print("ATTACK EXECUTED: Collect Fire — ", base_damage, " damage + Fire Energy attached")
+
+# TRIPLE POISON (neo2-18 Beedrill): 10 damage + flip — heads: Poisoned with 3 damage counters per turn
+func execute_neo2_triple_poison(attacker: card_object, defender: card_object, is_opponent: bool) -> void:
+	if await handle_attack_confusion(attacker, is_opponent): return
+	if await handle_attack_blind(attacker, is_opponent): return
+	var types = attacker.metadata.get("types", ["Colorless"])
+	var result = main.calculate_final_damage(10, types, defender, attacker)
+	if not main.check_defender_invincible(defender, not is_opponent):
+		var fd = main.apply_defender_no_damage_shield(defender, result["damage"], not is_opponent)
+		await main.display_and_apply_attack_damage(attacker, defender, fd, result["modifiers"], is_opponent, 10)
+		if main._should_bail(): return
+	await main.check_all_knockouts()
+	if main._should_bail(): return
+	if defender != null and defender.current_hp > 0:
+		var coin = await main.flip_coin(false, is_opponent)
+		if main._should_bail(): return
+		if coin:
+			defender.is_poisoned = true
+			defender.poison_damage = 30
+			main.update_status_icons(defender, not is_opponent)
+			await main.show_message("TRIPLE POISON! " + defender.metadata.get("name","").to_upper() + " IS BADLY POISONED! (30 per turn)")
+			if main._should_bail(): return
+		else:
+			await main.show_message("TAILS! NO TRIPLE POISON!")
+			if main._should_bail(): return
+	print("ATTACK EXECUTED: Triple Poison")
+
+# MAGIC DUST (neo2-19 Butterfree): 20 damage + flip — if heads, player chooses: Asleep/Confused/Paralyzed/Poisoned
+func execute_neo2_magic_dust(attacker: card_object, defender: card_object, is_opponent: bool) -> void:
+	if await handle_attack_confusion(attacker, is_opponent): return
+	if await handle_attack_blind(attacker, is_opponent): return
+	var types = attacker.metadata.get("types", ["Colorless"])
+	var result = main.calculate_final_damage(20, types, defender, attacker)
+	if not main.check_defender_invincible(defender, not is_opponent):
+		var fd = main.apply_defender_no_damage_shield(defender, result["damage"], not is_opponent)
+		await main.display_and_apply_attack_damage(attacker, defender, fd, result["modifiers"], is_opponent, 20)
+		if main._should_bail(): return
+	await main.check_all_knockouts()
+	if main._should_bail(): return
+	if defender == null or defender.current_hp <= 0:
+		return
+	var coin = await main.flip_coin(false, is_opponent)
+	if main._should_bail(): return
+	if not coin:
+		await main.show_message("TAILS! NO STATUS EFFECT!")
+		if main._should_bail(): return
+		return
+	var chosen_status = ""
+	var status_options = ["Asleep", "Confused", "Paralyzed", "Poisoned"]
+	if is_opponent:
+		chosen_status = status_options[randi() % status_options.size()]
+	else:
+		main.special_attack_selection_active = true
+		main.buttons_only_blocker.visible = true
+		for child in main.attack_buttons_container.get_children():
+			if child.name == "cancel_attack_mode_button": continue
+			child.queue_free()
+		main.attack_buttons_container.visible = true
+		main.main_buttons_container.visible = false
+		for child in main.attack_buttons_container.get_children():
+			if child.name == "cancel_attack_mode_button": child.visible = false
+		for i in range(status_options.size()):
+			var btn = Button.new()
+			btn.text = status_options[i]
+			btn.custom_minimum_size = Vector2(280, 50)
+			btn.theme = main.theme_green
+			main.attack_buttons_container.add_child(btn)
+			btn.pressed.connect(func(): main.special_attack_selected.emit(i))
+		var idx = await main.special_attack_selected
+		chosen_status = status_options[idx]
+		for child in main.attack_buttons_container.get_children():
+			if child.name == "cancel_attack_mode_button": child.visible = true; continue
+			child.queue_free()
+		main.attack_buttons_container.visible = false
+		main.main_buttons_container.visible = true
+		main.special_attack_selection_active = false
+		main.buttons_only_blocker.visible = false
+	if main._should_bail(): return
+	main.card_ops.apply_status(defender, chosen_status, not is_opponent)
+	await main.show_message("MAGIC DUST! " + defender.metadata.get("name","").to_upper() + " IS NOW " + chosen_status.to_upper() + "!")
+	if main._should_bail(): return
+	print("ATTACK EXECUTED: Magic Dust — ", chosen_status)
+
+# HYPER REVERSE (neo2-19 Butterfree): 10×energy attached to defender, then heal self = damage dealt after W/R
+func execute_neo2_hyper_reverse(attacker: card_object, defender: card_object, is_opponent: bool) -> void:
+	if await handle_attack_confusion(attacker, is_opponent): return
+	if await handle_attack_blind(attacker, is_opponent): return
+	if defender == null:
+		return
+	var energy_count = defender.attached_energies.size()
+	var base = energy_count * 10
+	await main.show_message("HYPER REVERSE! " + str(energy_count) + " ENERGY — " + str(base) + " BASE DAMAGE!")
+	if main._should_bail(): return
+	if base == 0:
+		return
+	var types = attacker.metadata.get("types", ["Colorless"])
+	var result = main.calculate_final_damage(base, types, defender, attacker)
+	var fd = result["damage"]
+	if not main.check_defender_invincible(defender, not is_opponent):
+		fd = main.apply_defender_no_damage_shield(defender, fd, not is_opponent)
+		await main.display_and_apply_attack_damage(attacker, defender, fd, result["modifiers"], is_opponent, base)
+		if main._should_bail(): return
+	await main.check_all_knockouts()
+	if main._should_bail(): return
+	if fd > 0:
+		await main.card_ops.heal_pokemon(attacker, fd, is_opponent)
+		if main._should_bail(): return
+		await main.show_message("HYPER REVERSE HEALED " + attacker.metadata.get("name","").to_upper() + " FOR " + str(fd) + " HP!")
+		if main._should_bail(): return
+	print("ATTACK EXECUTED: Hyper Reverse — ", fd, " damage/heal")
+
+# TRAMPLE (neo2-12/31 Tyranitar): 50 to active + flip for each benched pokemon on both sides, 30 each on heads
+func execute_neo2_trample(attacker: card_object, defender: card_object, is_opponent: bool) -> void:
+	if await handle_attack_confusion(attacker, is_opponent): return
+	if await handle_attack_blind(attacker, is_opponent): return
+	var types = attacker.metadata.get("types", ["Colorless"])
+	var result = main.calculate_final_damage(50, types, defender, attacker)
+	if not main.check_defender_invincible(defender, not is_opponent):
+		var fd = main.apply_defender_no_damage_shield(defender, result["damage"], not is_opponent)
+		await main.display_and_apply_attack_damage(attacker, defender, fd, result["modifiers"], is_opponent, 50)
+		if main._should_bail(): return
+	await main.check_all_knockouts()
+	if main._should_bail(): return
+	var all_bench: Array = []
+	all_bench.append_array(main.player_bench)
+	all_bench.append_array(main.opponent_bench)
+	if all_bench.is_empty():
+		return
+	await main.show_message("TRAMPLE! FLIPPING FOR EACH BENCHED POKEMON!")
+	if main._should_bail(): return
+	for bp in all_bench.duplicate():
+		if bp.current_hp <= 0: continue
+		var coin = await main.flip_coin(true, is_opponent)
+		if main._should_bail(): return
+		if coin:
+			var bench_owner_is_opp = (bp in main.opponent_bench)
+			main.card_ops.apply_bench_damage(bp, 30, bench_owner_is_opp)
+	await main.check_all_knockouts()
+	if main._should_bail(): return
+	print("ATTACK EXECUTED: Trample")
+
+# SKETCH (neo2-11/30 Smeargle): copy and execute the attack the defending pokemon used last turn
+func execute_neo2_sketch(attacker: card_object, defender: card_object, is_opponent: bool) -> void:
+	if await handle_attack_confusion(attacker, is_opponent): return
+	if await handle_attack_blind(attacker, is_opponent): return
+	var last = main.last_attack_on_player if is_opponent else main.last_attack_on_opponent
+	if last.is_empty() or not last.has("attack") or last["attack"].is_empty():
+		await main.show_message("SKETCH FAILED! NO ATTACK TO COPY!")
+		if main._should_bail(): return
+		return
+	var copied = last["attack"]
+	var copied_name = copied.get("name","Unknown")
+	await main.show_message("SKETCH! SMEARGLE COPIES " + copied_name.to_upper() + "!")
+	if main._should_bail(): return
+	var variable_result = await resolve_attack_variable_damage(copied, attacker, defender, is_opponent)
+	var resolved_base = variable_result["damage"]
+	var flip_result = variable_result["flip_result"]
+	if variable_result["attack_failed"]:
+		for msg in variable_result["messages"]:
+			await main.show_message(msg)
+			if main._should_bail(): return
+		return
+	for msg in variable_result["messages"]:
+		await main.show_message(msg)
+		if main._should_bail(): return
+	if resolved_base > 0:
+		var types = attacker.metadata.get("types", ["Colorless"])
+		var damage_result = main.calculate_final_damage(resolved_base, types, defender, attacker)
+		if not main.check_defender_invincible(defender, not is_opponent):
+			var fd = main.apply_defender_no_damage_shield(defender, damage_result["damage"], not is_opponent)
+			await main.display_and_apply_attack_damage(attacker, defender, fd, damage_result["modifiers"], is_opponent, resolved_base)
+			if main._should_bail(): return
+	await main.check_all_knockouts()
+	if main._should_bail(): return
+	var fx = parse_card_text_effects(copied.get("text",""), attacker.metadata.get("name",""))
+	if fx.size() > 0:
+		await apply_card_text_effects(fx, attacker, defender, is_opponent, flip_result)
+		if main._should_bail(): return
+	await main.check_all_knockouts()
+	if main._should_bail(): return
+	print("ATTACK EXECUTED: Sketch — copied ", copied_name)
+
+# COUNTER (neo2-16/35 Wobbuffet): set counter_active flag; checked in on-damage hook
+func execute_neo2_counter(attacker: card_object, is_opponent: bool) -> void:
+	if await handle_attack_confusion(attacker, is_opponent): return
+	if await handle_attack_blind(attacker, is_opponent): return
+	attacker.counter_active = true
+	main.update_status_icons(attacker, is_opponent)
+	await main.show_message(attacker.metadata.get("name","").to_upper() + " IS COUNTERING! IF DAMAGED, FLIP FOR EQUAL COUNTER-ATTACK!")
+	if main._should_bail(): return
+	print("ATTACK EXECUTED: Counter — flag set")
+
+# SHOCKWAVE (neo2-17/36 Yanma): flip — if heads, 10 to each of opponent's pokemon + opponent switches active
+func execute_neo2_shockwave(attacker: card_object, defender: card_object, is_opponent: bool) -> void:
+	if await handle_attack_confusion(attacker, is_opponent): return
+	if await handle_attack_blind(attacker, is_opponent): return
+	var coin = await main.flip_coin(false, is_opponent)
+	if main._should_bail(): return
+	if not coin:
+		await main.show_message("TAILS! SHOCKWAVE FAILS!")
+		if main._should_bail(): return
+		return
+	await main.show_message("SHOCKWAVE! 10 DAMAGE TO ALL OPPONENT'S POKEMON!")
+	if main._should_bail(): return
+	var opp_all: Array = []
+	var opp_active = main.player_active_pokemon if is_opponent else main.opponent_active_pokemon
+	if opp_active != null: opp_all.append(opp_active)
+	var opp_bench = main.player_bench if is_opponent else main.opponent_bench
+	opp_all.append_array(opp_bench)
+	for p in opp_all:
+		if p.current_hp > 0:
+			p.current_hp = max(0, p.current_hp - 10)
+			main.display_hp_circles_above_align(p, not is_opponent)
+	main.display_pokemon(not is_opponent)
+	await main.check_all_knockouts()
+	if main._should_bail(): return
+	if opp_bench.size() > 0:
+		var switch_effect = {"type": "force_switch", "target": "defender", "chooser": "defender", "flip": "none"}
+		await apply_force_switch(switch_effect, is_opponent)
+		if main._should_bail(): return
+	print("ATTACK EXECUTED: Shockwave")
+
+# SECRETE POISON (neo2-41 Kakuna): set flag — if hit next turn, attacker gets poisoned + 10 to each opp bench
+func execute_neo2_secrete_poison(attacker: card_object, is_opponent: bool) -> void:
+	if await handle_attack_confusion(attacker, is_opponent): return
+	if await handle_attack_blind(attacker, is_opponent): return
+	attacker.secrete_poison_active = true
+	main.update_status_icons(attacker, is_opponent)
+	await main.show_message(attacker.metadata.get("name","").to_upper() + " PREPARED SECRETE POISON! IF HIT, ATTACKER IS POISONED!")
+	if main._should_bail(): return
+	print("ATTACK EXECUTED: Secrete Poison — flag set")
+
+# HARDEN (neo2-42 Metapod): prevent ≤20 damage next turn (reuses shielded_damage_threshold)
+func execute_neo2_harden(attacker: card_object, is_opponent: bool) -> void:
+	if await handle_attack_confusion(attacker, is_opponent): return
+	if await handle_attack_blind(attacker, is_opponent): return
+	attacker.shielded_damage_threshold = 20
+	main.update_status_icons(attacker, is_opponent)
+	await main.show_message(attacker.metadata.get("name","").to_upper() + " HARDENED! ATTACKS DEALING 20 OR LESS ARE BLOCKED!")
+	if main._should_bail(): return
+	print("ATTACK EXECUTED: Harden — shielded_damage_threshold=20")
+
+# HATCH (neo2-42 Metapod): flip — if heads, heal all damage + evolve into Butterfree
+func execute_neo2_hatch(attacker: card_object, is_opponent: bool) -> void:
+	if await handle_attack_confusion(attacker, is_opponent): return
+	if await handle_attack_blind(attacker, is_opponent): return
+	var coin = await main.flip_coin(false, is_opponent)
+	if main._should_bail(): return
+	if not coin:
+		await main.show_message("TAILS! HATCH FAILED!")
+		if main._should_bail(): return
+		return
+	var max_hp = int(attacker.metadata.get("hp","0"))
+	attacker.current_hp = max_hp
+	main.display_hp_circles_above_align(attacker, is_opponent)
+	await main.show_message("HATCH! SEARCHING FOR BUTTERFREE...")
+	if main._should_bail(): return
+	var found = await main.card_ops.search_deck_to_hand(is_opponent, func(c): return "Butterfree" in c.metadata.get("name",""), "HATCH: CHOOSE BUTTERFREE TO EVOLVE INTO", 1)
+	if main._should_bail(): return
+	if found.is_empty():
+		await main.show_message("NO BUTTERFREE FOUND IN DECK!")
+		if main._should_bail(): return
+		return
+	var butterfree = found[0]
+	var hand = main.opponent_hand if is_opponent else main.player_hand
+	hand.erase(butterfree)
+	butterfree.attached_pre_evolutions.append(attacker)
+	var all_energy = attacker.attached_energies.duplicate()
+	for e in all_energy:
+		attacker.attached_energies.erase(e)
+		butterfree.attached_energies.append(e)
+	butterfree.current_hp = int(butterfree.metadata.get("hp","0"))
+	butterfree.placed_on_field_this_turn = true
+	if attacker.current_location == "active":
+		butterfree.current_location = "active"
+		if is_opponent:
+			main.opponent_active_pokemon = butterfree
+		else:
+			main.player_active_pokemon = butterfree
+	else:
+		butterfree.current_location = "bench"
+		var bench = main.opponent_bench if is_opponent else main.player_bench
+		bench.erase(attacker)
+		bench.append(butterfree)
+	main.display_pokemon(is_opponent)
+	main.display_active_pokemon_energies(is_opponent)
+	await main.show_message("HATCH! " + attacker.metadata.get("name","").to_upper() + " EVOLVED INTO BUTTERFREE!")
+	if main._should_bail(): return
+	print("ATTACK EXECUTED: Hatch — evolved to Butterfree")
+
+# SQUEEZE (neo2-43 Omastar): 10 damage; flip — heads: +20 damage AND Paralyzed
+func execute_neo2_squeeze(attacker: card_object, defender: card_object, is_opponent: bool) -> void:
+	if await handle_attack_confusion(attacker, is_opponent): return
+	if await handle_attack_blind(attacker, is_opponent): return
+	var coin = await main.flip_coin(false, is_opponent)
+	if main._should_bail(): return
+	var total = 10 + (20 if coin else 0)
+	var types = attacker.metadata.get("types", ["Colorless"])
+	var result = main.calculate_final_damage(total, types, defender, attacker)
+	if not main.check_defender_invincible(defender, not is_opponent):
+		var fd = main.apply_defender_no_damage_shield(defender, result["damage"], not is_opponent)
+		await main.display_and_apply_attack_damage(attacker, defender, fd, result["modifiers"], is_opponent, total)
+		if main._should_bail(): return
+	await main.check_all_knockouts()
+	if main._should_bail(): return
+	if coin and defender != null and defender.current_hp > 0:
+		main.card_ops.apply_status(defender, "Paralyzed", not is_opponent)
+		await main.show_message("HEADS! SQUEEZE! +20 DAMAGE AND PARALYZED!")
+		if main._should_bail(): return
+	elif not coin:
+		await main.show_message("TAILS! SQUEEZE — 10 DAMAGE ONLY")
+		if main._should_bail(): return
+	print("ATTACK EXECUTED: Squeeze — ", total, " damage")
+
+# SPIKE BARRAGE (neo2-43 Omastar): 20 + flip coins = water_energy_count, 20 more per heads
+func execute_neo2_spike_barrage(attacker: card_object, defender: card_object, is_opponent: bool) -> void:
+	if await handle_attack_confusion(attacker, is_opponent): return
+	if await handle_attack_blind(attacker, is_opponent): return
+	var water_count = 0
+	for e in attacker.attached_energies:
+		if "Water" in main.get_energy_provided_by_card(e):
+			water_count += 1
+	var heads = 0
+	for i in range(water_count):
+		if await main.flip_coin(water_count > 1, is_opponent):
+			heads += 1
+	if main._should_bail(): return
+	var total = 20 + (heads * 20)
+	await main.show_message("SPIKE BARRAGE! " + str(water_count) + " WATER ENERGY — " + str(heads) + " HEADS — " + str(total) + " DAMAGE!")
+	if main._should_bail(): return
+	var types = attacker.metadata.get("types", ["Colorless"])
+	var result = main.calculate_final_damage(total, types, defender, attacker)
+	if not main.check_defender_invincible(defender, not is_opponent):
+		var fd = main.apply_defender_no_damage_shield(defender, result["damage"], not is_opponent)
+		await main.display_and_apply_attack_damage(attacker, defender, fd, result["modifiers"], is_opponent, total)
+		if main._should_bail(): return
+	await main.check_all_knockouts()
+	if main._should_bail(): return
+	print("ATTACK EXECUTED: Spike Barrage — ", total, " damage")
+
+# BELLY DRUM (neo2-44 Poliwhirl): 30 damage to self; if not KO'd, attach 2 basic energy from deck
+func execute_neo2_belly_drum(attacker: card_object, is_opponent: bool) -> void:
+	if await handle_attack_confusion(attacker, is_opponent): return
+	if await handle_attack_blind(attacker, is_opponent): return
+	attacker.current_hp = max(0, attacker.current_hp - 30)
+	main.display_hp_circles_above_align(attacker, is_opponent)
+	var label_x = 1030 if is_opponent else 530
+	main.show_floating_label("-30HP", Vector2(label_x, 300), Color.RED, true)
+	await main.show_message("BELLY DRUM! POLIWHIRL TAKES 30 DAMAGE TO POWER UP!")
+	if main._should_bail(): return
+	await main.check_all_knockouts()
+	if main._should_bail(): return
+	if attacker.current_hp <= 0:
+		return
+	await main.show_message("SEARCHING FOR 2 BASIC ENERGY CARDS...")
+	if main._should_bail(): return
+	for i in range(2):
+		var found = await main.card_ops.search_deck_to_hand(is_opponent, func(c): return c.metadata.get("supertype","") == "Energy" and "Basic" in c.metadata.get("subtypes",[]), "BELLY DRUM: CHOOSE BASIC ENERGY " + str(i+1), 1)
+		if main._should_bail(): return
+		if found.is_empty():
+			break
+		var energy = found[0]
+		var hand = main.opponent_hand if is_opponent else main.player_hand
+		hand.erase(energy)
+		attacker.attached_energies.append(energy)
+		energy.current_location = attacker.current_location
+	main.display_active_pokemon_energies(is_opponent)
+	await main.show_message("BELLY DRUM! ATTACHED 2 BASIC ENERGY!")
+	if main._should_bail(): return
+	print("ATTACK EXECUTED: Belly Drum")
+
+# DUST DEVIL (neo2-45 Pupitar): 10 damage to each non-Fighting pokemon in play (no W/R)
+func execute_neo2_dust_devil(attacker: card_object, is_opponent: bool) -> void:
+	if await handle_attack_confusion(attacker, is_opponent): return
+	if await handle_attack_blind(attacker, is_opponent): return
+	await main.show_message("DUST DEVIL! 10 DAMAGE TO ALL NON-FIGHTING POKEMON!")
+	if main._should_bail(): return
+	var all_poke: Array = []
+	if main.player_active_pokemon != null: all_poke.append({"poke": main.player_active_pokemon, "is_opp": false})
+	if main.opponent_active_pokemon != null: all_poke.append({"poke": main.opponent_active_pokemon, "is_opp": true})
+	for bp in main.player_bench:
+		all_poke.append({"poke": bp, "is_opp": false})
+	for bp in main.opponent_bench:
+		all_poke.append({"poke": bp, "is_opp": true})
+	for entry in all_poke:
+		var p: card_object = entry["poke"]
+		if p == attacker: continue
+		var poke_types = p.metadata.get("types", ["Colorless"])
+		if "Fighting" in poke_types: continue
+		if p.current_hp > 0:
+			p.current_hp = max(0, p.current_hp - 10)
+			main.display_hp_circles_above_align(p, entry["is_opp"])
+	main.display_pokemon(true)
+	main.display_pokemon(false)
+	await main.check_all_knockouts()
+	if main._should_bail(): return
+	print("ATTACK EXECUTED: Dust Devil")
+
+# FURY CUTTER (neo2-46 Scyther): 4 coins — 10 + 10 if 1 head, +20 if 2, +40 if 3, +80 if 4
+func execute_neo2_fury_cutter(attacker: card_object, defender: card_object, is_opponent: bool) -> void:
+	if await handle_attack_confusion(attacker, is_opponent): return
+	if await handle_attack_blind(attacker, is_opponent): return
+	var heads = 0
+	for i in range(4):
+		if await main.flip_coin(true, is_opponent):
+			heads += 1
+	if main._should_bail(): return
+	var bonus_table = [0, 10, 20, 40, 80]
+	var total = 10 + bonus_table[heads]
+	await main.show_message("FURY CUTTER! " + str(heads) + " HEADS — " + str(total) + " DAMAGE!")
+	if main._should_bail(): return
+	var types = attacker.metadata.get("types", ["Colorless"])
+	var result = main.calculate_final_damage(total, types, defender, attacker)
+	if not main.check_defender_invincible(defender, not is_opponent):
+		var fd = main.apply_defender_no_damage_shield(defender, result["damage"], not is_opponent)
+		await main.display_and_apply_attack_damage(attacker, defender, fd, result["modifiers"], is_opponent, total)
+		if main._should_bail(): return
+	await main.check_all_knockouts()
+	if main._should_bail(): return
+	print("ATTACK EXECUTED: Fury Cutter — ", total, " damage (", heads, " heads)")
+
+# ENERGY CYCLE (neo2-52 Xatu): flip — if heads, take 1 energy from defending pokemon and attach to opp's bench pokemon
+func execute_neo2_energy_cycle(attacker: card_object, defender: card_object, is_opponent: bool) -> void:
+	if await handle_attack_confusion(attacker, is_opponent): return
+	if await handle_attack_blind(attacker, is_opponent): return
+	var coin = await main.flip_coin(false, is_opponent)
+	if main._should_bail(): return
+	if not coin:
+		await main.show_message("TAILS! ENERGY CYCLE FAILS!")
+		if main._should_bail(): return
+		return
+	if defender == null or defender.attached_energies.is_empty():
+		await main.show_message("NO ENERGY ON DEFENDING POKEMON!")
+		if main._should_bail(): return
+		return
+	var opp_bench = main.player_bench if is_opponent else main.opponent_bench
+	if opp_bench.is_empty():
+		await main.show_message("NO BENCHED POKEMON TO RECEIVE ENERGY!")
+		if main._should_bail(): return
+		return
+	var energy: card_object = null
+	var target_bench: card_object = null
+	var def_is_opp = not is_opponent
+	if is_opponent:
+		energy = defender.attached_energies[0]
+		target_bench = opp_bench[0]
+	else:
+		energy = await main.card_ops.prompt_select_card(defender.attached_energies, "ENERGY CYCLE", "Choose energy to take from defending pokemon", "SELECT", def_is_opp)
+		if main._should_bail(): return
+		if energy == null: return
+		target_bench = await main.card_ops.prompt_select_card(opp_bench, "ENERGY CYCLE", "Choose bench pokemon to receive the energy", "SELECT", def_is_opp)
+		if main._should_bail(): return
+		if target_bench == null: return
+	defender.attached_energies.erase(energy)
+	target_bench.attached_energies.append(energy)
+	energy.current_location = "bench"
+	main.display_active_pokemon_energies(not is_opponent)
+	main.display_active_pokemon_energies(is_opponent)
+	await main.show_message("ENERGY CYCLE! ENERGY MOVED TO " + target_bench.metadata.get("name","").to_upper() + "!")
+	if main._should_bail(): return
+	print("ATTACK EXECUTED: Energy Cycle")
+
+# WORK TOGETHER (neo2-56 Kabuto): 10 + flip — if heads, +10 per fossil pokemon on bench
+func execute_neo2_work_together(attacker: card_object, defender: card_object, is_opponent: bool) -> void:
+	if await handle_attack_confusion(attacker, is_opponent): return
+	if await handle_attack_blind(attacker, is_opponent): return
+	var fossil_names = ["Omanyte", "Omastar", "Kabuto", "Kabutops"]
+	var bench = main.opponent_bench if is_opponent else main.player_bench
+	var fossil_count = 0
+	for bp in bench:
+		if bp.metadata.get("name","") in fossil_names:
+			fossil_count += 1
+	var coin = await main.flip_coin(false, is_opponent)
+	if main._should_bail(): return
+	var total = 10 + (fossil_count * 10 if coin else 0)
+	await main.show_message("WORK TOGETHER! " + str(fossil_count) + " FOSSIL BENCH — " + str(total) + " DAMAGE!")
+	if main._should_bail(): return
+	var types = attacker.metadata.get("types", ["Colorless"])
+	var result = main.calculate_final_damage(total, types, defender, attacker)
+	if not main.check_defender_invincible(defender, not is_opponent):
+		var fd = main.apply_defender_no_damage_shield(defender, result["damage"], not is_opponent)
+		await main.display_and_apply_attack_damage(attacker, defender, fd, result["modifiers"], is_opponent, total)
+		if main._should_bail(): return
+	await main.check_all_knockouts()
+	if main._should_bail(): return
+	print("ATTACK EXECUTED: Work Together — ", total, " damage")
+
+# BURST (neo2-61 Pineco): flip — heads: 40 damage + 40 to self + 10 to all benched; tails: nothing
+func execute_neo2_burst(attacker: card_object, defender: card_object, is_opponent: bool) -> void:
+	if await handle_attack_confusion(attacker, is_opponent): return
+	if await handle_attack_blind(attacker, is_opponent): return
+	var coin = await main.flip_coin(false, is_opponent)
+	if main._should_bail(): return
+	if not coin:
+		await main.show_message("TAILS! BURST FIZZLED!")
+		if main._should_bail(): return
+		return
+	await main.show_message("BURST! PINECO EXPLODES!")
+	if main._should_bail(): return
+	var types = attacker.metadata.get("types", ["Colorless"])
+	var result = main.calculate_final_damage(40, types, defender, attacker)
+	if not main.check_defender_invincible(defender, not is_opponent):
+		var fd = main.apply_defender_no_damage_shield(defender, result["damage"], not is_opponent)
+		await main.display_and_apply_attack_damage(attacker, defender, fd, result["modifiers"], is_opponent, 40)
+		if main._should_bail(): return
+	attacker.current_hp = max(0, attacker.current_hp - 40)
+	main.display_hp_circles_above_align(attacker, is_opponent)
+	main.show_floating_label("-40HP", Vector2(1030 if is_opponent else 530, 300), Color.RED, true)
+	var all_bench: Array = []
+	all_bench.append_array(main.player_bench)
+	all_bench.append_array(main.opponent_bench)
+	for bp in all_bench:
+		if bp.current_hp > 0:
+			main.card_ops.apply_bench_damage(bp, 10, bp in main.opponent_bench)
+	await main.check_all_knockouts()
+	if main._should_bail(): return
+	print("ATTACK EXECUTED: Burst")
+
+# RECOVER (neo2-37 Corsola): discard 1 Water energy from self (or attack fails), then heal all damage
+func execute_neo2_recover(attacker: card_object, is_opponent: bool) -> void:
+	if await handle_attack_confusion(attacker, is_opponent): return
+	if await handle_attack_blind(attacker, is_opponent): return
+	var water_e: card_object = null
+	for e in attacker.attached_energies:
+		if "Water" in main.get_energy_provided_by_card(e):
+			water_e = e
+			break
+	if water_e == null:
+		await main.show_message("NO WATER ENERGY TO DISCARD! RECOVER FAILS!")
+		if main._should_bail(): return
+		return
+	attacker.attached_energies.erase(water_e)
+	main.card_ops.discard_energy_from_pokemon(water_e, is_opponent)
+	main.display_active_pokemon_energies(is_opponent)
+	var max_hp = int(attacker.metadata.get("hp","0"))
+	attacker.current_hp = max_hp
+	main.display_hp_circles_above_align(attacker, is_opponent)
+	await main.show_message("RECOVER! ALL DAMAGE REMOVED FROM " + attacker.metadata.get("name","").to_upper() + "!")
+	if main._should_bail(): return
+	print("ATTACK EXECUTED: Recover — full heal")
+
+# PLUNDER (neo2-39 Houndour): 20 damage + discard all trainer cards attached to defender
+func execute_neo2_plunder(attacker: card_object, defender: card_object, is_opponent: bool, base_damage: int) -> void:
+	if await handle_attack_confusion(attacker, is_opponent): return
+	if await handle_attack_blind(attacker, is_opponent): return
+	var trainers_to_remove: Array = []
+	for c in defender.attached_cards:
+		if c.metadata.get("supertype","") == "Trainer":
+			trainers_to_remove.append(c)
+	for t in trainers_to_remove:
+		defender.attached_cards.erase(t)
+		var def_is_opp = not is_opponent
+		main.send_card_to_discard(t, def_is_opp)
+	if trainers_to_remove.size() > 0:
+		await main.show_message("PLUNDER! DISCARDED " + str(trainers_to_remove.size()) + " TRAINER(S) FROM DEFENDER!")
+		if main._should_bail(): return
+	var types = attacker.metadata.get("types", ["Colorless"])
+	var result = main.calculate_final_damage(base_damage, types, defender, attacker)
+	if not main.check_defender_invincible(defender, not is_opponent):
+		var fd = main.apply_defender_no_damage_shield(defender, result["damage"], not is_opponent)
+		await main.display_and_apply_attack_damage(attacker, defender, fd, result["modifiers"], is_opponent, base_damage)
+		if main._should_bail(): return
+	await main.check_all_knockouts()
+	if main._should_bail(): return
+	print("ATTACK EXECUTED: Plunder — ", base_damage, " damage + trainers discarded")
+
+# HEADPRESS (neo2-15/34 Ursaring): flip — heads: 30 damage + Paralyzed; tails: nothing
+func execute_neo2_headpress(attacker: card_object, defender: card_object, is_opponent: bool) -> void:
+	if await handle_attack_confusion(attacker, is_opponent): return
+	if await handle_attack_blind(attacker, is_opponent): return
+	var coin = await main.flip_coin(false, is_opponent)
+	if main._should_bail(): return
+	if not coin:
+		await main.show_message("TAILS! HEADPRESS DOES NOTHING!")
+		if main._should_bail(): return
+		return
+	var types = attacker.metadata.get("types", ["Colorless"])
+	var result = main.calculate_final_damage(30, types, defender, attacker)
+	if not main.check_defender_invincible(defender, not is_opponent):
+		var fd = main.apply_defender_no_damage_shield(defender, result["damage"], not is_opponent)
+		await main.display_and_apply_attack_damage(attacker, defender, fd, result["modifiers"], is_opponent, 30)
+		if main._should_bail(): return
+	await main.check_all_knockouts()
+	if main._should_bail(): return
+	if defender != null and defender.current_hp > 0:
+		main.card_ops.apply_status(defender, "Paralyzed", not is_opponent)
+		await main.show_message("HEADS! HEADPRESS! " + defender.metadata.get("name","").to_upper() + " IS PARALYZED!")
+		if main._should_bail(): return
+	print("ATTACK EXECUTED: Headpress — 30 damage + Paralyzed")
+
+# PURSUIT (neo2-32 Umbreon): 30 damage + if defender retreats next turn, deal 10 more damage
+func execute_neo2_pursuit(attacker: card_object, defender: card_object, is_opponent: bool, base_damage: int) -> void:
+	if await handle_attack_confusion(attacker, is_opponent): return
+	if await handle_attack_blind(attacker, is_opponent): return
+	var types = attacker.metadata.get("types", ["Colorless"])
+	var result = main.calculate_final_damage(base_damage, types, defender, attacker)
+	if not main.check_defender_invincible(defender, not is_opponent):
+		var fd = main.apply_defender_no_damage_shield(defender, result["damage"], not is_opponent)
+		await main.display_and_apply_attack_damage(attacker, defender, fd, result["modifiers"], is_opponent, base_damage)
+		if main._should_bail(): return
+	await main.check_all_knockouts()
+	if main._should_bail(): return
+	if defender != null and defender.current_hp > 0:
+		defender.pursuit_active = true
+		await main.show_message("PURSUIT! IF " + defender.metadata.get("name","").to_upper() + " RETREATS, TAKE 10 DAMAGE!")
+		if main._should_bail(): return
+	print("ATTACK EXECUTED: Pursuit — ", base_damage, " damage + pursuit flag")
+
+# SLIME (neo2-71 Wooper): set slime_active — attacker must flip before dealing damage; tails = no damage
+func execute_neo2_slime(attacker: card_object, is_opponent: bool) -> void:
+	if await handle_attack_confusion(attacker, is_opponent): return
+	if await handle_attack_blind(attacker, is_opponent): return
+	attacker.slime_active = true
+	main.update_status_icons(attacker, is_opponent)
+	await main.show_message(attacker.metadata.get("name","").to_upper() + " IS SLIMED! ATTACKERS MUST FLIP TO HIT!")
+	if main._should_bail(): return
+	print("ATTACK EXECUTED: Slime — flag set")
+
+# HIDDEN POWER (all Unown): 10 damage + [Anger] bonus from any Unown [A] on attacker's side
+func execute_neo2_hidden_power(attacker: card_object, defender: card_object, is_opponent: bool) -> void:
+	if await handle_attack_confusion(attacker, is_opponent): return
+	if await handle_attack_blind(attacker, is_opponent): return
+	var bonus = main.powers_and_bodies.get_unown_anger_bonus(attacker, is_opponent)
+	var total = 10 + bonus
+	if bonus > 0:
+		await main.show_message("[ANGER]! HIDDEN POWER DEALS " + str(total) + " DAMAGE!")
+		if main._should_bail(): return
+	var types = attacker.metadata.get("types", ["Colorless"])
+	var result = main.calculate_final_damage(total, types, defender, attacker)
+	if not main.check_defender_invincible(defender, not is_opponent):
+		var fd = main.apply_defender_no_damage_shield(defender, result["damage"], not is_opponent)
+		await main.display_and_apply_attack_damage(attacker, defender, fd, result["modifiers"], is_opponent, total)
+		if main._should_bail(): return
+	await main.check_all_knockouts()
+	if main._should_bail(): return
+	print("ATTACK EXECUTED: Hidden Power — ", total, " damage")
+
+# DOUBLESLAP (Politoed with Frog Song, or generic 2×40 for others)
+func execute_neo2_politoed_doubleslap(attacker: card_object, defender: card_object, is_opponent: bool) -> void:
+	if await handle_attack_confusion(attacker, is_opponent): return
+	if await handle_attack_blind(attacker, is_opponent): return
+	var heads = 0
+	for i in range(2):
+		if await main.flip_coin(true, is_opponent):
+			heads += 1
+	if main._should_bail(): return
+	var base_damage = heads * 40
+	var frog_bonus = main.powers_and_bodies.get_frog_song_bonus(attacker)
+	if frog_bonus > 0:
+		base_damage += frog_bonus
+		await main.show_message("FROG SONG! " + str(heads) + " HEADS + +40 — TOTAL " + str(base_damage) + " DAMAGE!")
+		if main._should_bail(): return
+	else:
+		await main.show_message("DOUBLESLAP! " + str(heads) + " HEADS — " + str(base_damage) + " DAMAGE!")
+		if main._should_bail(): return
+	if base_damage == 0:
+		return
+	var types = attacker.metadata.get("types", ["Colorless"])
+	var result = main.calculate_final_damage(base_damage, types, defender, attacker)
+	if not main.check_defender_invincible(defender, not is_opponent):
+		var fd = main.apply_defender_no_damage_shield(defender, result["damage"], not is_opponent)
+		await main.display_and_apply_attack_damage(attacker, defender, fd, result["modifiers"], is_opponent, base_damage)
+		if main._should_bail(): return
+	await main.check_all_knockouts()
+	if main._should_bail(): return
+	print("ATTACK EXECUTED: Doubleslap (Politoed) — ", base_damage, " damage")

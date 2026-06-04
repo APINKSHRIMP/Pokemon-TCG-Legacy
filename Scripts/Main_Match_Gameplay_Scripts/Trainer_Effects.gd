@@ -23,7 +23,9 @@ func _ensure_trainer_dispatch_ready() -> void:
 	_register_base_trainers()
 	_register_gym1_trainers()
 	_register_gym2_trainers()
-	# When adding Neo1/Neo2/etc., append: _register_neo1_trainers()
+	_register_basep_trainers()
+	_register_neo1_trainers()
+	_register_neo2_trainers()
 
 func _register_base_trainers() -> void:
 	_trainer_dispatch["base1-88"] = func(c, opp): await effect_professor_oak(c, opp)
@@ -118,6 +120,30 @@ func _register_gym2_trainers() -> void:
 	_trainer_dispatch["gym2-124"] = func(c, opp): await gym2_effect_fervor(opp)
 	_trainer_dispatch["gym2-125"] = func(c, opp): await gym2_effect_transparent_walls(opp)
 	_trainer_dispatch["gym2-126"] = func(c, opp): await gym2_effect_warp_point(opp)
+
+func _register_basep_trainers() -> void:
+	_trainer_dispatch["basep-16"] = func(c, opp): await effect_computer_error(opp)
+	_trainer_dispatch["basep-40"] = func(c, opp): await effect_pokemon_center(opp)
+	# basep-41 Lucky Stadium and basep-42 Pokemon Tower are handled via resolve_stadium_trainer
+
+func _register_neo1_trainers() -> void:
+	_trainer_dispatch["neo1-83"] = func(c, opp): await effect_neo1_arcade_game(opp)
+	# neo1-84 Ecogym and neo1-97 Sprout Tower are stadiums — handled via resolve_stadium_trainer
+	_trainer_dispatch["neo1-85"] = func(c, opp): await effect_neo1_energy_charge(opp)
+	# neo1-86 Focus Band, neo1-93 Gold Berry, neo1-94 Miracle Berry, neo1-99 Berry — attached tools
+	_trainer_dispatch["neo1-87"] = func(c, opp): await effect_neo1_mary(opp)
+	_trainer_dispatch["neo1-88"] = func(c, opp): await effect_neo1_pokegear(opp)
+	_trainer_dispatch["neo1-89"] = func(c, opp): await effect_neo1_super_energy_retrieval(c, opp)
+	_trainer_dispatch["neo1-90"] = func(c, opp): await effect_neo1_time_capsule(opp)
+	_trainer_dispatch["neo1-91"] = func(c, opp): await effect_neo1_bills_teleporter(opp)
+	_trainer_dispatch["neo1-92"] = func(c, opp): await effect_neo1_card_flip_game(opp)
+	_trainer_dispatch["neo1-95"] = func(c, opp): await effect_neo1_new_pokedex(opp)
+	_trainer_dispatch["neo1-96"] = func(c, opp): await effect_neo1_professor_elm(c, opp)
+	_trainer_dispatch["neo1-98"] = func(c, opp): await effect_neo1_super_scoop_up(opp)
+	_trainer_dispatch["neo1-100"] = func(c, opp): await effect_neo1_double_gust(opp)
+	_trainer_dispatch["neo1-101"] = func(c, opp): await effect_neo1_moo_moo_milk(opp)
+	_trainer_dispatch["neo1-102"] = func(c, opp): await effect_neo1_pokemon_march(opp)
+	_trainer_dispatch["neo1-103"] = func(c, opp): await effect_neo1_super_rod(opp)
 
 # ── Trainer validation registry ────────────────────────────────────────────────
 # Maps lowercased card UID → Callable(card, is_opponent) -> String.
@@ -465,6 +491,9 @@ func is_attached_trainer(card: card_object) -> bool:
 	# GYM2 attached tools
 	if uid == "gym2-101" or uid == "gym2-115":
 		return true
+	# NEO1 Pokemon Tools
+	if uid in ["neo1-86", "neo1-93", "neo1-94", "neo1-99"]:
+		return true
 	return false
 
 # Returns true if a card is a stadium trainer (future-proofing)
@@ -775,6 +804,16 @@ func play_trainer_card(card: card_object, is_opponent: bool) -> void:
 
 	SoundManagerScript.play_sfx(SoundManagerScript.SFX_trainer_sound)
 
+	# NEO1 Mind Games (Slowking): whenever opponent plays a Trainer, may flip — heads: cancel it (card goes to top of deck)
+	if not is_stadium_trainer(card):
+		if await main.powers_and_bodies.check_mind_games(is_opponent):
+			var opp_deck = main.opponent_deck if is_opponent else main.player_deck
+			card.current_location = "deck"
+			opp_deck.insert(0, card)
+			main.update_deck_icon(is_opponent)
+			main.refresh_hand_display(is_opponent)
+			return
+
 	# GYM2-102 Chaos Gym — Whenever a player plays a non-Stadium Trainer, flip a coin. Tails: card is wasted (discarded with no effect).
 	# Simplification: the "opponent may steal the card" mechanic is skipped (same approach as Lt. Surge's Secret Plan).
 	if main.is_stadium_in_play(StadiumIds.CHAOS_GYM) and not is_stadium_trainer(card):
@@ -1049,6 +1088,11 @@ func resolve_attached_trainer(card: card_object, is_opponent: bool) -> void:
 	# GYM2 Brock's Protection (gym2-101) — attach to a Brock-named pokemon
 	elif card.uid.to_lower() == "gym2-101":
 		await gym2_attach_named_tool(card, is_opponent, "Brock", "gym2_brocks_protection_attached", "BROCK'S PROTECTION")
+
+	# NEO1 Pokemon Tools (Focus Band, Gold Berry, Miracle Berry, Berry): attach to chosen Pokemon
+	elif card.uid.to_lower() in ["neo1-86", "neo1-93", "neo1-94", "neo1-99"]:
+		await neo1_attach_tool(card, is_opponent)
+		return
 
 	# GYM2 Koga's Ninja Trick (gym2-115) — attach to Active Koga-named pokemon
 	elif card.uid.to_lower() == "gym2-115":
@@ -1357,9 +1401,13 @@ func effect_impostor_professor_oak(is_opponent: bool) -> void:
 
 # base1-74 — Item Finder: Discard 2, retrieve 1 Trainer from discard
 func effect_item_finder(played_card: card_object, is_opponent: bool) -> void:
+	if check_pokemon_tower_blocks_recovery():
+		await main.show_message("POKEMON TOWER! CANNOT RECOVER CARDS FROM DISCARD!")
+		if main._should_bail(): return
+		return
 	var hand = main.opponent_hand if is_opponent else main.player_hand
 	var discard = main.opponent_discard_pile if is_opponent else main.player_discard_pile
-	
+
 	# Find trainer cards in discard pile (exclude the Item Finder just played)
 	var trainers_in_discard = []
 	for card in discard:
@@ -1884,15 +1932,19 @@ func effect_super_energy_removal(is_opponent: bool) -> void:
 
 # base1-81 — Energy Retrieval: Discard 1, get up to 2 Basic Energy from discard
 func effect_energy_retrieval(played_card: card_object, is_opponent: bool) -> void:
+	if check_pokemon_tower_blocks_recovery():
+		await main.show_message("POKEMON TOWER! CANNOT RECOVER CARDS FROM DISCARD!")
+		if main._should_bail(): return
+		return
 	var hand = main.opponent_hand if is_opponent else main.player_hand
 	var discard = main.opponent_discard_pile if is_opponent else main.player_discard_pile
-	
+
 	# Find basic energy in discard
 	var basic_energies = []
 	for card in discard:
 		if main.is_basic_energy_card(card):
 			basic_energies.append(card)
-	
+
 	if basic_energies.size() == 0:
 		await main.show_message("No Basic Energy cards in discard pile!")
 		if main._should_bail(): return
@@ -3075,6 +3127,10 @@ func effect_imposter_oaks_revenge(played_card: card_object, is_opponent: bool) -
 
 # Nightly Garbage Run: Choose up to 3 Basic Pokemon/Evolution/basic Energy from discard, shuffle into deck
 func effect_nightly_garbage_run(is_opponent: bool) -> void:
+	if check_pokemon_tower_blocks_recovery():
+		await main.show_message("POKEMON TOWER! CANNOT RECOVER CARDS FROM DISCARD!")
+		if main._should_bail(): return
+		return
 	var discard = main.opponent_discard_pile if is_opponent else main.player_discard_pile
 	var deck = main.opponent_deck if is_opponent else main.player_deck
 	
@@ -5489,3 +5545,935 @@ func gym2_saffron_activate(is_opponent: bool) -> void:
 	main.refresh_hand_display(is_opponent)
 	await main.show_message("SAFFRON CITY GYM: RETURNED 1 ENERGY FROM " + target.metadata.get("name", "").to_upper() + "!")
 	if main._should_bail(): return
+
+######################################################################################################################################################
+############################################################## BASEP TRAINER EFFECTS ###############################################################
+######################################################################################################################################################
+
+# basep-16 Computer Error (Rocket's Secret Machine): both players may draw up to 5 cards; turn ends
+func effect_computer_error(is_opponent: bool) -> void:
+	# Playing player draws up to 5
+	var own_deck = main.opponent_deck if is_opponent else main.player_deck
+	var draw_count = min(5, own_deck.size())
+	if draw_count > 0:
+		await main.card_ops.draw_n(is_opponent, draw_count)
+		if main._should_bail(): return
+		await main.show_message(("OPPONENT" if is_opponent else "YOU") + " DREW " + str(draw_count) + " CARD(S)!")
+		if main._should_bail(): return
+	# Opponent draws up to 5
+	var opp_is = not is_opponent
+	var opp_deck = main.player_deck if is_opponent else main.opponent_deck
+	var opp_draw = min(5, opp_deck.size())
+	if opp_draw > 0:
+		await main.card_ops.draw_n(opp_is, opp_draw)
+		if main._should_bail(): return
+		await main.show_message(("YOU" if is_opponent else "OPPONENT") + " DREW " + str(opp_draw) + " CARD(S)!")
+		if main._should_bail(): return
+	await main.show_message("COMPUTER ERROR! TURN ENDS!")
+	if main._should_bail(): return
+	# Signal turn-end: playing side cannot attack this turn
+	if is_opponent:
+		main.opponent_turn_force_end = true
+	else:
+		main.player_turn_force_end = true
+	print("TRAINER EFFECT: Computer Error - turn force-ended")
+
+######################################################################################################################################################
+############################################################## BASEP STADIUM EFFECTS ###############################################################
+######################################################################################################################################################
+
+# LUCKY STADIUM (basep-41): per-turn flip — heads draws 1 card (offered via power menu as synthetic entry)
+func basep_lucky_stadium_has_target(is_opponent: bool) -> bool:
+	if main.current_stadium_card == null:
+		return false
+	return main.current_stadium_card.uid.to_lower() == StadiumIds.LUCKY_STADIUM
+
+func basep_lucky_stadium_activate(is_opponent: bool) -> void:
+	var coin = await main.flip_coin(false, is_opponent)
+	if main._should_bail(): return
+	if coin:
+		await main.card_ops.draw_n(is_opponent, 1)
+		if main._should_bail(): return
+		await main.show_message("LUCKY STADIUM! HEADS — DREW 1 CARD!")
+	else:
+		await main.show_message("LUCKY STADIUM! TAILS — NO DRAW!")
+	if main._should_bail(): return
+	print("STADIUM: Lucky Stadium - ", "heads" if coin else "tails")
+
+# POKEMON TOWER (basep-42): block recovery from discard pile to hand
+# Returns true if recovery should be blocked
+func check_pokemon_tower_blocks_recovery() -> bool:
+	if main.current_stadium_card == null:
+		return false
+	return main.current_stadium_card.uid.to_lower() == StadiumIds.POKEMON_TOWER
+
+######################################################################################################################################################
+############################################################## NEO1 (NEO GENESIS) TRAINER EFFECTS ###################################################
+######################################################################################################################################################
+
+# HELPER: Attach a Pokemon Tool to a chosen Pokemon (checks for existing tool)
+func neo1_attach_tool(card: card_object, is_opponent: bool) -> void:
+	var targets = build_field_pokemon_array(is_opponent)
+	# Filter out pokemon that already have a tool attached
+	var valid_targets: Array = []
+	for p in targets:
+		var has_tool = false
+		for ac in p.attached_cards:
+			if is_attached_trainer(ac) and ac.uid.to_lower() in ["neo1-86","neo1-93","neo1-94","neo1-99","gym1-99","gym1-117","gym2-101","gym2-115"]:
+				has_tool = true
+				break
+		if not has_tool:
+			valid_targets.append(p)
+	if valid_targets.size() == 0:
+		await main.show_message("ALL POKEMON ALREADY HAVE A TOOL ATTACHED!")
+		if main._should_bail(): return
+		var discard = main.opponent_discard_pile if is_opponent else main.player_discard_pile
+		card.current_location = "discard"
+		discard.append(card)
+		return
+	var target: card_object = null
+	if is_opponent:
+		# CPU: attach to active if no tool, otherwise bench
+		target = valid_targets[0]
+	else:
+		if valid_targets.size() == 1:
+			target = valid_targets[0]
+		else:
+			target = await main.card_ops.prompt_select_card(valid_targets, "ATTACH " + card.metadata.get("name",""), "Choose a Pokemon to attach " + card.metadata.get("name","") + " to", "ATTACH", false)
+			if main._should_bail(): return
+	if target == null:
+		var discard2 = main.opponent_discard_pile if is_opponent else main.player_discard_pile
+		card.current_location = "discard"
+		discard2.append(card)
+		return
+	target.attached_cards.append(card)
+	var hand_node = main.opponent_hand_container if is_opponent else main.player_hand_container
+	var attached_node = main.opponent_attached_cards_container if is_opponent else main.player_attached_cards_container
+	var card_texture = main.get_card_texture(card)
+	await main.animate_card_a_to_b(hand_node, attached_node, 0.3, card_texture, main.card_scales[10])
+	display_attached_trainer_cards(is_opponent)
+	await main.show_message(card.metadata.get("name","").to_upper() + " ATTACHED TO " + target.metadata.get("name","").to_upper() + "!")
+	if main._should_bail(): return
+	print("TRAINER: ", card.metadata.get("name",""), " attached to ", target.metadata.get("name",""))
+
+# ARCADE GAME (neo1-83): Shuffle deck, reveal top 3 — if 2+ share name, take matching; otherwise shuffle all back
+func effect_neo1_arcade_game(is_opponent: bool) -> void:
+	var deck = main.opponent_deck if is_opponent else main.player_deck
+	var hand = main.opponent_hand if is_opponent else main.player_hand
+	deck.shuffle()
+	main.update_deck_icon(is_opponent)
+	if deck.size() < 2:
+		await main.show_message("ARCADE GAME: NOT ENOUGH CARDS IN DECK!")
+		if main._should_bail(): return
+		return
+	var reveal_count = min(3, deck.size())
+	var revealed: Array = []
+	for i in range(reveal_count):
+		revealed.append(deck[i])
+	await main.show_message("ARCADE GAME: REVEALED " + str(reveal_count) + " CARDS!")
+	if main._should_bail(): return
+	# Check if 2+ share the same name
+	var name_counts: Dictionary = {}
+	for c in revealed:
+		var n = c.metadata.get("name","")
+		name_counts[n] = name_counts.get(n, 0) + 1
+	var match_name = ""
+	for n in name_counts:
+		if name_counts[n] >= 2:
+			match_name = n
+			break
+	if match_name != "":
+		# Take all cards with matching name, shuffle rest back
+		var taken: Array = []
+		var shuffle_back: Array = []
+		for c in revealed:
+			if c.metadata.get("name","") == match_name:
+				taken.append(c)
+			else:
+				shuffle_back.append(c)
+		for c in taken:
+			deck.erase(c)
+			c.current_location = "hand"
+			hand.append(c)
+		for c in shuffle_back:
+			pass  # still in deck
+		deck.shuffle()
+		main.refresh_hand_display(is_opponent)
+		main.update_deck_icon(is_opponent)
+		await main.show_message("ARCADE GAME: MATCH! TOOK " + str(taken.size()) + " " + match_name.to_upper() + "(S)!")
+		if main._should_bail(): return
+	else:
+		deck.shuffle()
+		main.update_deck_icon(is_opponent)
+		await main.show_message("ARCADE GAME: NO MATCH! SHUFFLED ALL BACK!")
+		if main._should_bail(): return
+	print("TRAINER: Arcade Game")
+
+# ENERGY CHARGE (neo1-85): flip coin, heads → shuffle up to 2 energy from discard into deck
+func effect_neo1_energy_charge(is_opponent: bool) -> void:
+	var coin = await main.flip_coin(false, is_opponent)
+	if main._should_bail(): return
+	if not coin:
+		await main.show_message("ENERGY CHARGE: TAILS!")
+		if main._should_bail(): return
+		return
+	var discard = main.opponent_discard_pile if is_opponent else main.player_discard_pile
+	var deck = main.opponent_deck if is_opponent else main.player_deck
+	var energy_cards: Array = discard.filter(func(c): return c.metadata.get("supertype","") == "Energy")
+	if energy_cards.size() == 0:
+		await main.show_message("ENERGY CHARGE: HEADS! BUT NO ENERGY IN DISCARD!")
+		if main._should_bail(): return
+		return
+	var picks = min(2, energy_cards.size())
+	if is_opponent:
+		for i in range(picks):
+			var e = energy_cards[i]
+			discard.erase(e)
+			e.current_location = "deck"
+			deck.append(e)
+	else:
+		for i in range(picks):
+			var remaining = energy_cards.filter(func(c): return c in discard)
+			if remaining.size() == 0: break
+			var pick = await main.card_ops.prompt_select_card(remaining, "ENERGY CHARGE: PICK " + str(i+1) + "/" + str(picks), "Choose an Energy to shuffle into your deck", "SELECT", false)
+			if main._should_bail(): return
+			if pick != null:
+				discard.erase(pick)
+				pick.current_location = "deck"
+				deck.append(pick)
+	deck.shuffle()
+	main.update_discard_pile_display(is_opponent)
+	main.update_deck_icon(is_opponent)
+	await main.show_message("ENERGY CHARGE: HEADS! SHUFFLED ENERGY INTO DECK!")
+	if main._should_bail(): return
+	print("TRAINER: Energy Charge")
+
+# MARY (neo1-87): draw 2 cards, then shuffle 2 cards from hand back into deck
+func effect_neo1_mary(is_opponent: bool) -> void:
+	await main.card_ops.draw_n(is_opponent, 2)
+	if main._should_bail(): return
+	main.refresh_hand_display(is_opponent)
+	var hand = main.opponent_hand if is_opponent else main.player_hand
+	var deck = main.opponent_deck if is_opponent else main.player_deck
+	if hand.size() <= 2:
+		for c in hand.duplicate():
+			hand.erase(c)
+			c.current_location = "deck"
+			deck.append(c)
+	else:
+		var to_return = 2
+		for i in range(to_return):
+			var remaining = hand.duplicate()
+			if remaining.size() == 0: break
+			if is_opponent:
+				var pick = remaining[remaining.size() - 1]
+				hand.erase(pick)
+				pick.current_location = "deck"
+				deck.append(pick)
+			else:
+				var pick = await main.card_ops.prompt_select_card(remaining, "MARY: SHUFFLE BACK " + str(i+1) + "/" + str(to_return), "Choose a card to shuffle back into your deck", "SELECT", false)
+				if main._should_bail(): return
+				if pick != null:
+					hand.erase(pick)
+					pick.current_location = "deck"
+					deck.append(pick)
+	deck.shuffle()
+	main.refresh_hand_display(is_opponent)
+	main.update_deck_icon(is_opponent)
+	await main.show_message("MARY: DREW 2 CARDS, SHUFFLED 2 BACK!")
+	if main._should_bail(): return
+	print("TRAINER: Mary")
+
+# POKEGEAR (neo1-88): look at top 7 — if trainer found, may take 1; can't play more trainers this turn
+func effect_neo1_pokegear(is_opponent: bool) -> void:
+	var deck = main.opponent_deck if is_opponent else main.player_deck
+	var hand = main.opponent_hand if is_opponent else main.player_hand
+	var reveal_count = min(7, deck.size())
+	if reveal_count == 0:
+		await main.show_message("POKEGEAR: DECK IS EMPTY!")
+		if main._should_bail(): return
+		return
+	var revealed: Array = []
+	for i in range(reveal_count):
+		revealed.append(deck[i])
+	var trainers: Array = revealed.filter(func(c): return c.metadata.get("supertype","") == "Trainer")
+	if trainers.size() == 0:
+		await main.show_message("POKEGEAR: NO TRAINERS IN TOP " + str(reveal_count) + " CARDS!")
+		if main._should_bail(): return
+		# Lock trainers
+		if is_opponent: opponent_trainer_locked = true
+		else: player_trainer_locked = true
+		return
+	var pick: card_object = null
+	if is_opponent:
+		pick = trainers[0]
+	else:
+		if trainers.size() == 1:
+			pick = trainers[0]
+		else:
+			pick = await main.card_ops.prompt_select_card(trainers, "POKEGEAR: CHOOSE TRAINER", "Choose a Trainer card to take from top 7", "TAKE", true)
+			if main._should_bail(): return
+	if pick != null:
+		deck.erase(pick)
+		pick.current_location = "hand"
+		hand.append(pick)
+		await main.show_message("POKEGEAR: TOOK " + pick.metadata.get("name","").to_upper() + "!")
+		if main._should_bail(): return
+	deck.shuffle()
+	main.refresh_hand_display(is_opponent)
+	main.update_deck_icon(is_opponent)
+	if is_opponent: opponent_trainer_locked = true
+	else: player_trainer_locked = true
+	print("TRAINER: PokéGear")
+
+# SUPER ENERGY RETRIEVAL (neo1-89): discard 2 from hand, take up to 4 basic energy from discard
+func effect_neo1_super_energy_retrieval(card: card_object, is_opponent: bool) -> void:
+	var hand = main.opponent_hand if is_opponent else main.player_hand
+	var discard = main.opponent_discard_pile if is_opponent else main.player_discard_pile
+	var others = hand.filter(func(c): return c != card)
+	if others.size() < 2:
+		await main.show_message("SUPER ENERGY RETRIEVAL: NEED 2 OTHER CARDS IN HAND TO DISCARD!")
+		if main._should_bail(): return
+		return
+	var discarded_count = 0
+	if is_opponent:
+		var priority = cpu_get_discard_priority(others, 2)
+		for c in priority:
+			hand.erase(c)
+			c.current_location = "discard"
+			discard.append(c)
+			discarded_count += 1
+	else:
+		var discarded: Array = await main.card_ops.discard_from_hand(is_opponent, 2, card)
+		discarded_count = discarded.size()
+	if discarded_count < 2:
+		return
+	main.refresh_hand_display(is_opponent)
+	main.update_discard_pile_display(is_opponent)
+	var basic_energy: Array = discard.filter(func(c): return c.metadata.get("supertype","") == "Energy" and "Basic" in c.metadata.get("subtypes",[]))
+	if basic_energy.size() == 0:
+		await main.show_message("SUPER ENERGY RETRIEVAL: NO BASIC ENERGY IN DISCARD!")
+		if main._should_bail(): return
+		return
+	var takes = min(4, basic_energy.size())
+	if is_opponent:
+		for i in range(takes):
+			var e = basic_energy[i]
+			discard.erase(e)
+			e.current_location = "hand"
+			hand.append(e)
+	else:
+		for i in range(takes):
+			var remaining = basic_energy.filter(func(c): return c in discard)
+			if remaining.size() == 0: break
+			var pick = await main.card_ops.prompt_select_card(remaining, "SUPER ENERGY RETRIEVAL: PICK " + str(i+1) + "/" + str(takes), "Choose a basic Energy to take", "SELECT", false)
+			if main._should_bail(): return
+			if pick != null:
+				discard.erase(pick)
+				pick.current_location = "hand"
+				hand.append(pick)
+	main.refresh_hand_display(is_opponent)
+	main.update_discard_pile_display(is_opponent)
+	await main.show_message("SUPER ENERGY RETRIEVAL: TOOK UP TO 4 BASIC ENERGY FROM DISCARD!")
+	if main._should_bail(): return
+	print("TRAINER: Super Energy Retrieval")
+
+# TIME CAPSULE (neo1-90): both players may recover up to 5 cards from discard to deck; trainer locked
+func effect_neo1_time_capsule(is_opponent: bool) -> void:
+	# Opponent acts first (if CPU played it) or second (if player played it)
+	var sides = [true, false] if is_opponent else [false, true]
+	for side in sides:
+		var discard = main.opponent_discard_pile if side else main.player_discard_pile
+		var deck = main.opponent_deck if side else main.player_deck
+		var valid: Array = []
+		for c in discard:
+			var st = c.metadata.get("supertype","")
+			var sub = c.metadata.get("subtypes",[])
+			if st == "Pokémon" and ("Basic" in sub or "Stage 1" in sub or "Stage 2" in sub):
+				valid.append(c)
+			elif st == "Energy" and "Basic" in sub:
+				valid.append(c)
+		if valid.size() == 0:
+			if side == is_opponent:
+				await main.show_message("TIME CAPSULE: OPPONENT HAS NO VALID CARDS IN DISCARD!")
+			else:
+				await main.show_message("TIME CAPSULE: YOU HAVE NO VALID CARDS IN DISCARD!")
+			if main._should_bail(): return
+			continue
+		var picks = min(5, valid.size())
+		var chosen: Array = []
+		if side == is_opponent:
+			# CPU or opponent: pick top cards
+			if side:
+				for i in range(picks):
+					chosen.append(valid[i])
+			else:
+				chosen = valid.slice(0, picks)
+		else:
+			if side:
+				for i in range(picks):
+					chosen.append(valid[i])
+			else:
+				for i in range(picks):
+					var remaining = valid.filter(func(c): return c not in chosen)
+					if remaining.size() == 0: break
+					var pick = await main.card_ops.prompt_select_card(remaining, "TIME CAPSULE: PICK " + str(i+1) + "/" + str(picks), "Choose a card to shuffle into your deck", "SELECT", true)
+					if main._should_bail(): return
+					if pick != null:
+						chosen.append(pick)
+					else:
+						break
+		for c in chosen:
+			discard.erase(c)
+			c.current_location = "deck"
+			deck.append(c)
+		deck.shuffle()
+		main.update_discard_pile_display(side)
+		main.update_deck_icon(side)
+		if chosen.size() > 0:
+			await main.show_message("TIME CAPSULE: SHUFFLED " + str(chosen.size()) + " CARD(S) INTO " + ("OPPONENT'S" if side else "YOUR") + " DECK!")
+			if main._should_bail(): return
+	if is_opponent: opponent_trainer_locked = true
+	else: player_trainer_locked = true
+	print("TRAINER: Time Capsule")
+
+# BILL'S TELEPORTER (neo1-91): flip — heads draw 4 cards
+func effect_neo1_bills_teleporter(is_opponent: bool) -> void:
+	var coin = await main.flip_coin(false, is_opponent)
+	if main._should_bail(): return
+	if coin:
+		await main.card_ops.draw_n(is_opponent, 4)
+		if main._should_bail(): return
+		main.refresh_hand_display(is_opponent)
+		await main.show_message("BILL'S TELEPORTER: HEADS! DREW 4 CARDS!")
+	else:
+		await main.show_message("BILL'S TELEPORTER: TAILS!")
+	if main._should_bail(): return
+	print("TRAINER: Bill's Teleporter")
+
+# CARD-FLIP GAME (neo1-92): guess a face-down prize type, reveal it, if right draw 2
+func effect_neo1_card_flip_game(is_opponent: bool) -> void:
+	var prizes = main.opponent_prize_cards if is_opponent else main.player_prize_cards
+	if prizes.size() == 0:
+		await main.show_message("CARD-FLIP GAME: NO PRIZE CARDS!")
+		if main._should_bail(): return
+		return
+	var types = ["Energy", "Trainer", "Pokemon"]
+	var guess_str: String = ""
+	if is_opponent:
+		guess_str = types[randi() % types.size()]
+	else:
+		main.special_attack_selection_active = true
+		main.buttons_only_blocker.visible = true
+		main.attack_buttons_container.visible = true
+		main.main_buttons_container.visible = false
+		for child in main.attack_buttons_container.get_children():
+			if child.name == "cancel_attack_mode_button": child.visible = false; continue
+			child.queue_free()
+		for i in range(types.size()):
+			var btn = Button.new()
+			btn.text = types[i]
+			btn.custom_minimum_size = Vector2(200, 50)
+			btn.theme = main.theme_blue
+			main.attack_buttons_container.add_child(btn)
+			btn.pressed.connect(func(): main.special_attack_selected.emit(i))
+		var selected = await main.special_attack_selected
+		for child in main.attack_buttons_container.get_children():
+			if child.name == "cancel_attack_mode_button": child.visible = true; continue
+			child.queue_free()
+		main.attack_buttons_container.visible = false
+		main.main_buttons_container.visible = true
+		main.special_attack_selection_active = false
+		main.buttons_only_blocker.visible = false
+		guess_str = types[selected]
+	# Pick a random face-down prize
+	var prize_idx = randi() % prizes.size()
+	var prize = prizes[prize_idx]
+	var actual_super = prize.metadata.get("supertype", "Pokémon")
+	var actual_type: String = "Pokemon"
+	if actual_super == "Energy": actual_type = "Energy"
+	elif actual_super == "Trainer": actual_type = "Trainer"
+	await main.show_message("CARD-FLIP GAME: YOU GUESSED " + guess_str.to_upper() + "! THE PRIZE IS... " + actual_type.to_upper() + "!")
+	if main._should_bail(): return
+	if guess_str == actual_type:
+		await main.card_ops.draw_n(is_opponent, 2)
+		if main._should_bail(): return
+		main.refresh_hand_display(is_opponent)
+		await main.show_message("CORRECT! DREW 2 CARDS!")
+	else:
+		await main.show_message("WRONG! NO DRAW!")
+	if main._should_bail(): return
+	print("TRAINER: Card-Flip Game - guess:", guess_str, " actual:", actual_type)
+
+# NEW POKEDEX (neo1-95): shuffle deck, then look at top 5 and rearrange
+func effect_neo1_new_pokedex(is_opponent: bool) -> void:
+	var deck = main.opponent_deck if is_opponent else main.player_deck
+	deck.shuffle()
+	main.update_deck_icon(is_opponent)
+	var reveal_count = min(5, deck.size())
+	if reveal_count == 0:
+		await main.show_message("NEW POKEDEX: DECK IS EMPTY!")
+		if main._should_bail(): return
+		return
+	var top_cards: Array = []
+	for i in range(reveal_count):
+		top_cards.append(deck[i])
+	if is_opponent:
+		# CPU: sort energy first if needed
+		pass  # simple: keep as-is
+		await main.show_message("OPPONENT USED NEW POKEDEX TO REARRANGE DECK!")
+		if main._should_bail(): return
+	else:
+		var reordered: Array = []
+		var remaining = top_cards.duplicate()
+		for pick in range(reveal_count):
+			if remaining.size() == 1:
+				reordered.append(remaining[0])
+				break
+			var chosen = await main.card_ops.prompt_select_card(remaining, "NEW POKEDEX: POSITION " + str(pick + 1) + " FROM TOP", "", "PLACE", false)
+			if main._should_bail(): return
+			if chosen != null:
+				reordered.append(chosen)
+				remaining.erase(chosen)
+		for i in range(reordered.size()):
+			deck[i] = reordered[i]
+		await main.show_message("NEW POKEDEX: REARRANGED TOP " + str(reveal_count) + " CARDS!")
+		if main._should_bail(): return
+	print("TRAINER: New Pokédex")
+
+# PROFESSOR ELM (neo1-96): shuffle hand into deck, draw 7, trainer locked
+func effect_neo1_professor_elm(card: card_object, is_opponent: bool) -> void:
+	var hand = main.opponent_hand if is_opponent else main.player_hand
+	var deck = main.opponent_deck if is_opponent else main.player_deck
+	for c in hand.duplicate():
+		if c == card: continue  # already discarded
+		c.current_location = "deck"
+		deck.append(c)
+	hand.clear()
+	deck.shuffle()
+	main.refresh_hand_display(is_opponent)
+	main.update_deck_icon(is_opponent)
+	await main.show_message("PROFESSOR ELM: SHUFFLED HAND INTO DECK!")
+	if main._should_bail(): return
+	await main.card_ops.draw_n(is_opponent, 7)
+	if main._should_bail(): return
+	main.refresh_hand_display(is_opponent)
+	if is_opponent: opponent_trainer_locked = true
+	else: player_trainer_locked = true
+	await main.show_message("PROFESSOR ELM: DREW 7 CARDS!")
+	if main._should_bail(): return
+	print("TRAINER: Professor Elm")
+
+# SUPER SCOOP UP (neo1-98): flip — heads return 1 pokemon + attached to hand
+func effect_neo1_super_scoop_up(is_opponent: bool) -> void:
+	var coin = await main.flip_coin(false, is_opponent)
+	if main._should_bail(): return
+	if not coin:
+		await main.show_message("SUPER SCOOP UP: TAILS!")
+		if main._should_bail(): return
+		return
+	var all_poke: Array = []
+	if main.opponent_active_pokemon != null and is_opponent: all_poke.append(main.opponent_active_pokemon)
+	if main.player_active_pokemon != null and not is_opponent: all_poke.append(main.player_active_pokemon)
+	all_poke.append_array(main.opponent_bench if is_opponent else main.player_bench)
+	if all_poke.size() == 0:
+		await main.show_message("SUPER SCOOP UP: NO POKEMON TO RETURN!")
+		if main._should_bail(): return
+		return
+	var target: card_object = null
+	if is_opponent:
+		# CPU: scoop the most-damaged non-active, or active if nothing better
+		var bench = main.opponent_bench
+		if bench.size() > 0:
+			bench.sort_custom(func(a,b): return (a.get_max_hp()-a.current_hp) > (b.get_max_hp()-b.current_hp))
+			target = bench[0]
+		else:
+			target = main.opponent_active_pokemon
+	else:
+		if all_poke.size() == 1:
+			target = all_poke[0]
+		else:
+			target = await main.card_ops.prompt_select_card(all_poke, "SUPER SCOOP UP: CHOOSE POKEMON", "Choose a Pokemon to return to hand", "SELECT", false)
+			if main._should_bail(): return
+	if target == null:
+		return
+	var hand = main.opponent_hand if is_opponent else main.player_hand
+	var discard = main.opponent_discard_pile if is_opponent else main.player_discard_pile
+	var bench_ref = main.opponent_bench if is_opponent else main.player_bench
+	var is_active = (target == (main.opponent_active_pokemon if is_opponent else main.player_active_pokemon))
+	# Discard attached energies and pre-evos, return target to hand
+	for e in target.attached_energies.duplicate():
+		target.attached_energies.erase(e)
+		e.current_location = "discard"
+		discard.append(e)
+	for pre in target.attached_pre_evolutions.duplicate():
+		target.attached_pre_evolutions.erase(pre)
+		pre.current_location = "discard"
+		discard.append(pre)
+	for ac in target.attached_cards.duplicate():
+		target.attached_cards.erase(ac)
+		ac.current_location = "discard"
+		discard.append(ac)
+	target.current_hp = target.get_max_hp()
+	main.clear_all_statuses(target, is_opponent)
+	target.pluspower_count = 0
+	target.current_location = "hand"
+	hand.append(target)
+	if is_active:
+		if is_opponent: main.opponent_active_pokemon = null
+		else: main.player_active_pokemon = null
+	else:
+		bench_ref.erase(target)
+	main.display_pokemon(is_opponent)
+	main.refresh_hand_display(is_opponent)
+	main.update_discard_pile_display(is_opponent)
+	await main.show_message("SUPER SCOOP UP! HEADS! " + target.metadata.get("name","").to_upper() + " RETURNED TO HAND!")
+	if main._should_bail(): return
+	if is_active:
+		await main.handle_post_knockout(is_opponent)
+	print("TRAINER: Super Scoop Up - returned ", target.metadata.get("name",""))
+
+# DOUBLE GUST (neo1-100): opponent switches player's chosen bench with player's active; player switches opponent's chosen bench with opponent's active
+func effect_neo1_double_gust(is_opponent: bool) -> void:
+	# Step 1: The player who played Double Gust forces the opponent to switch
+	var opp_bench_for_gust = main.player_bench if is_opponent else main.opponent_bench
+	if opp_bench_for_gust.size() > 0:
+		var gust_target: card_object = null
+		if is_opponent:
+			# CPU chose a bench pokemon from player's side to bring up
+			opp_bench_for_gust.sort_custom(func(a,b): return a.current_hp < b.current_hp)
+			gust_target = opp_bench_for_gust[0]
+		else:
+			gust_target = await main.card_ops.prompt_select_card(opp_bench_for_gust, "DOUBLE GUST: CHOOSE OPPONENT'S BENCH", "Choose which opponent bench Pokemon to bring up", "SELECT", false)
+			if main._should_bail(): return
+		if gust_target != null:
+			var old_active = main.player_active_pokemon if is_opponent else main.opponent_active_pokemon
+			if is_opponent:
+				main.player_bench.erase(gust_target)
+				if old_active != null: main.player_bench.append(old_active)
+				main.player_active_pokemon = gust_target
+			else:
+				main.opponent_bench.erase(gust_target)
+				if old_active != null: main.opponent_bench.append(old_active)
+				main.opponent_active_pokemon = gust_target
+			if old_active != null: old_active.current_location = "bench"
+			gust_target.current_location = "active"
+			main.clear_all_statuses(old_active, not is_opponent)
+			main.display_pokemon(not is_opponent)
+			await main.show_message("DOUBLE GUST! " + gust_target.metadata.get("name","").to_upper() + " WAS DRAGGED OUT!")
+			if main._should_bail(): return
+	# Step 2: Now the opponent forces the other player to switch
+	var own_bench_for_gust = main.opponent_bench if is_opponent else main.player_bench
+	if own_bench_for_gust.size() > 0:
+		var gust_target2: card_object = null
+		if is_opponent:
+			gust_target2 = await main.card_ops.prompt_select_card(own_bench_for_gust, "DOUBLE GUST: OPPONENT CHOOSES YOUR BENCH", "Opponent is choosing which of your bench Pokemon to bring up", "SELECT", false)
+			if main._should_bail(): return
+		else:
+			own_bench_for_gust.sort_custom(func(a,b): return a.current_hp < b.current_hp)
+			gust_target2 = own_bench_for_gust[0]
+		if gust_target2 != null:
+			var old_active2 = main.opponent_active_pokemon if is_opponent else main.player_active_pokemon
+			if is_opponent:
+				main.opponent_bench.erase(gust_target2)
+				if old_active2 != null: main.opponent_bench.append(old_active2)
+				main.opponent_active_pokemon = gust_target2
+			else:
+				main.player_bench.erase(gust_target2)
+				if old_active2 != null: main.player_bench.append(old_active2)
+				main.player_active_pokemon = gust_target2
+			if old_active2 != null: old_active2.current_location = "bench"
+			gust_target2.current_location = "active"
+			main.clear_all_statuses(old_active2, is_opponent)
+			main.display_pokemon(is_opponent)
+			await main.show_message("DOUBLE GUST! " + gust_target2.metadata.get("name","").to_upper() + " WAS BROUGHT OUT!")
+			if main._should_bail(): return
+	print("TRAINER: Double Gust")
+
+# MOO-MOO MILK (neo1-101): choose 1 pokemon, flip 2, remove 2 damage counters × heads
+func effect_neo1_moo_moo_milk(is_opponent: bool) -> void:
+	var all_poke: Array = []
+	if main.opponent_active_pokemon != null and is_opponent: all_poke.append(main.opponent_active_pokemon)
+	if main.player_active_pokemon != null and not is_opponent: all_poke.append(main.player_active_pokemon)
+	all_poke.append_array(main.opponent_bench if is_opponent else main.player_bench)
+	var damaged: Array = all_poke.filter(func(p): return p.current_hp < p.get_max_hp())
+	if damaged.size() == 0:
+		await main.show_message("MOO-MOO MILK: NO DAMAGED POKEMON!")
+		if main._should_bail(): return
+		return
+	var target: card_object = null
+	if is_opponent:
+		damaged.sort_custom(func(a,b): return (a.get_max_hp()-a.current_hp) > (b.get_max_hp()-b.current_hp))
+		target = damaged[0]
+	else:
+		if damaged.size() == 1: target = damaged[0]
+		else:
+			target = await main.card_ops.prompt_select_card(damaged, "MOO-MOO MILK: CHOOSE POKEMON", "Choose a Pokemon to heal", "SELECT", false)
+			if main._should_bail(): return
+	if target == null: return
+	var c1 = await main.flip_coin(false, is_opponent)
+	if main._should_bail(): return
+	var c2 = await main.flip_coin(false, is_opponent)
+	if main._should_bail(): return
+	var heads = (1 if c1 else 0) + (1 if c2 else 0)
+	var heal = heads * 20
+	if heal > 0:
+		target.current_hp = min(target.get_max_hp(), target.current_hp + heal)
+		SoundManagerScript.play_sfx(SoundManagerScript.SFX_heal_sound)
+		main.display_hp_circles_above_align(target, is_opponent)
+		await main.show_message("MOO-MOO MILK: " + str(heads) + " HEADS — HEALED " + str(heal) + " HP FROM " + target.metadata.get("name","").to_upper() + "!")
+	else:
+		await main.show_message("MOO-MOO MILK: 0 HEADS — NO HEALING!")
+	if main._should_bail(): return
+	print("TRAINER: Moo-Moo Milk - healed ", heal)
+
+# POKEMON MARCH (neo1-102): opponent may bench 1 basic, then player may bench 1 basic
+func effect_neo1_pokemon_march(is_opponent: bool) -> void:
+	var sides = [not is_opponent, is_opponent]  # opponent's side acts first, then player's side
+	for side in sides:
+		var deck = main.opponent_deck if side else main.player_deck
+		var bench = main.opponent_bench if side else main.player_bench
+		if bench.size() >= main.get_max_bench_size():
+			continue
+		var basics: Array = []
+		for c in deck:
+			if main.is_basic_pokemon(c):
+				basics.append(c)
+		if basics.size() == 0:
+			continue
+		var pick: card_object = null
+		if side:
+			# CPU's side
+			pick = main.cpu_ai.cpu_search_deck_for_best_pokemon(basics)
+			if pick == null: pick = basics[0]
+		else:
+			# Player's side
+			pick = await main.card_ops.prompt_select_card(basics, "POKEMON MARCH: BENCH A BASIC", "Choose a Basic Pokemon to put on your bench", "SELECT", true, true)
+			if main._should_bail(): return
+		if pick != null:
+			deck.erase(pick)
+			pick.current_location = "bench"
+			pick.placed_on_field_this_turn = true
+			bench.append(pick)
+			deck.shuffle()
+			main.display_pokemon(side)
+			main.update_deck_icon(side)
+			await main.show_message("POKEMON MARCH: " + pick.metadata.get("name","").to_upper() + " PLACED ON " + ("OPPONENT'S" if side else "YOUR") + " BENCH!")
+			if main._should_bail(): return
+	print("TRAINER: Pokémon March")
+
+# SUPER ROD (neo1-103): flip — heads: evolution from discard to hand; tails: basic from discard to hand
+func effect_neo1_super_rod(is_opponent: bool) -> void:
+	var discard = main.opponent_discard_pile if is_opponent else main.player_discard_pile
+	var hand = main.opponent_hand if is_opponent else main.player_hand
+	var coin = await main.flip_coin(false, is_opponent)
+	if main._should_bail(): return
+	if coin:
+		var evolutions: Array = discard.filter(func(c): return c.metadata.get("supertype","") == "Pokémon" and ("Stage 1" in c.metadata.get("subtypes",[]) or "Stage 2" in c.metadata.get("subtypes",[])))
+		if evolutions.size() == 0:
+			await main.show_message("SUPER ROD: HEADS! BUT NO EVOLUTION IN DISCARD!")
+			if main._should_bail(): return
+			return
+		var pick: card_object = null
+		if is_opponent:
+			pick = evolutions[0]
+		else:
+			if evolutions.size() == 1: pick = evolutions[0]
+			else:
+				pick = await main.card_ops.prompt_select_card(evolutions, "SUPER ROD: CHOOSE EVOLUTION", "Choose an Evolution card to take from discard", "SELECT", false)
+				if main._should_bail(): return
+		if pick != null:
+			discard.erase(pick)
+			pick.current_location = "hand"
+			hand.append(pick)
+			main.refresh_hand_display(is_opponent)
+			main.update_discard_pile_display(is_opponent)
+			await main.show_message("SUPER ROD: HEADS! TOOK " + pick.metadata.get("name","").to_upper() + " FROM DISCARD!")
+			if main._should_bail(): return
+	else:
+		var basics: Array = discard.filter(func(c): return c.metadata.get("supertype","") == "Pokémon" and "Basic" in c.metadata.get("subtypes",[]))
+		if basics.size() == 0:
+			await main.show_message("SUPER ROD: TAILS! BUT NO BASIC IN DISCARD!")
+			if main._should_bail(): return
+			return
+		var pick: card_object = null
+		if is_opponent:
+			pick = basics[0]
+		else:
+			if basics.size() == 1: pick = basics[0]
+			else:
+				pick = await main.card_ops.prompt_select_card(basics, "SUPER ROD: CHOOSE BASIC", "Choose a Basic Pokemon to take from discard", "SELECT", false)
+				if main._should_bail(): return
+		if pick != null:
+			discard.erase(pick)
+			pick.current_location = "hand"
+			hand.append(pick)
+			main.refresh_hand_display(is_opponent)
+			main.update_discard_pile_display(is_opponent)
+			await main.show_message("SUPER ROD: TAILS! TOOK " + pick.metadata.get("name","").to_upper() + " FROM DISCARD!")
+			if main._should_bail(): return
+	print("TRAINER: Super Rod")
+
+######################################################################################################################################################
+##################################################### NEO2 (NEO DISCOVERY) TRAINER EFFECTS ##########################################################
+######################################################################################################################################################
+
+func _register_neo2_trainers() -> void:
+	_trainer_dispatch["neo2-72"] = func(c, opp): await effect_neo2_fossil_egg(opp)
+	_trainer_dispatch["neo2-73"] = func(c, opp): await effect_neo2_hyper_devolution_spray(opp)
+	_trainer_dispatch["neo2-74"] = func(c, opp): await effect_neo2_ruin_wall(opp)
+	_trainer_dispatch["neo2-75"] = func(c, opp): await effect_neo2_energy_ark(opp)
+
+# FOSSIL EGG (neo2-72): flip — if heads, bench a fossil evolution from deck or hand (treated as Basic)
+func effect_neo2_fossil_egg(is_opponent: bool) -> void:
+	var bench = main.opponent_bench if is_opponent else main.player_bench
+	if bench.size() >= main.get_max_bench_size():
+		await main.show_message("BENCH IS FULL! FOSSIL EGG FAILS!")
+		if main._should_bail(): return
+		return
+	var coin = await main.flip_coin(false, is_opponent)
+	if main._should_bail(): return
+	if not coin:
+		await main.show_message("TAILS! FOSSIL EGG FAILS!")
+		if main._should_bail(): return
+		return
+	# Check hand first
+	var hand = main.opponent_hand if is_opponent else main.player_hand
+	var fossil_filter = func(c: card_object) -> bool:
+		return "Mysterious Fossil" in c.metadata.get("evolvesFrom","")
+	var hand_fossils = hand.filter(fossil_filter)
+	var deck = main.opponent_deck if is_opponent else main.player_deck
+	var deck_fossils = deck.filter(fossil_filter)
+	if hand_fossils.is_empty() and deck_fossils.is_empty():
+		await main.show_message("FOSSIL EGG: NO FOSSIL POKEMON FOUND!")
+		if main._should_bail(): return
+		return
+	var chosen: card_object = null
+	var from_deck = false
+	if not hand_fossils.is_empty():
+		if is_opponent:
+			chosen = hand_fossils[0]
+		else:
+			chosen = await main.card_ops.prompt_select_card(hand_fossils, "FOSSIL EGG: FROM HAND", "Choose fossil from hand to bench", "SELECT", false)
+			if main._should_bail(): return
+	if chosen == null and not deck_fossils.is_empty():
+		if is_opponent:
+			chosen = deck_fossils[0]
+		else:
+			chosen = await main.card_ops.prompt_select_card(deck_fossils, "FOSSIL EGG: FROM DECK", "Choose fossil from deck to bench", "SELECT", false)
+			if main._should_bail(): return
+		from_deck = true
+	if chosen == null: return
+	if from_deck:
+		deck.erase(chosen)
+		deck.shuffle()
+		main.update_deck_icon(is_opponent)
+	else:
+		hand.erase(chosen)
+	chosen.placed_on_field_this_turn = true
+	chosen.current_location = "bench"
+	chosen.current_hp = int(chosen.metadata.get("hp","0"))
+	bench.append(chosen)
+	main.display_pokemon(is_opponent)
+	main.refresh_hand_display(is_opponent)
+	await main.show_message("FOSSIL EGG! " + chosen.metadata.get("name","").to_upper() + " PLACED ON BENCH AS BASIC!")
+	if main._should_bail(): return
+	print("TRAINER: Fossil Egg — ", chosen.metadata.get("name",""))
+
+# HYPER DEVOLUTION SPRAY (neo2-73): return highest-stage evolution card from chosen evolved pokemon to hand
+func effect_neo2_hyper_devolution_spray(is_opponent: bool) -> void:
+	var active = main.opponent_active_pokemon if is_opponent else main.player_active_pokemon
+	var bench = main.opponent_bench if is_opponent else main.player_bench
+	var evolved: Array = []
+	if active != null and active.attached_pre_evolutions.size() > 0:
+		evolved.append(active)
+	for bp in bench:
+		if bp.attached_pre_evolutions.size() > 0:
+			evolved.append(bp)
+	if evolved.is_empty():
+		await main.show_message("NO EVOLVED POKEMON TO USE HYPER DEVOLUTION SPRAY ON!")
+		if main._should_bail(): return
+		return
+	var target: card_object = null
+	if is_opponent:
+		target = evolved[0]
+	else:
+		target = await main.card_ops.prompt_select_card(evolved, "HYPER DEVOLUTION SPRAY", "Choose an evolved Pokemon to devolve", "SELECT", false)
+		if main._should_bail(): return
+	if target == null: return
+	# The card itself IS the top stage — put it in hand, restore the pre-evo
+	var hand = main.opponent_hand if is_opponent else main.player_hand
+	var pre_evo = target.attached_pre_evolutions.back()
+	# Move energy and attached cards to the pre-evo
+	for e in target.attached_energies.duplicate():
+		target.attached_energies.erase(e)
+		pre_evo.attached_energies.append(e)
+	for c in target.attached_cards.duplicate():
+		target.attached_cards.erase(c)
+		pre_evo.attached_cards.append(c)
+	pre_evo.attached_pre_evolutions = target.attached_pre_evolutions.duplicate()
+	pre_evo.attached_pre_evolutions.erase(pre_evo)
+	target.attached_pre_evolutions.clear()
+	target.attached_energies.clear()
+	target.attached_cards.clear()
+	pre_evo.placed_on_field_this_turn = true
+	pre_evo.current_location = target.current_location
+	if target.current_location == "active":
+		if is_opponent:
+			main.opponent_active_pokemon = pre_evo
+		else:
+			main.player_active_pokemon = pre_evo
+	else:
+		bench.erase(target)
+		bench.append(pre_evo)
+	target.current_location = "hand"
+	hand.append(target)
+	main.display_pokemon(is_opponent)
+	main.display_active_pokemon_energies(is_opponent)
+	main.refresh_hand_display(is_opponent)
+	await main.show_message("HYPER DEVOLUTION SPRAY! " + target.metadata.get("name","").to_upper() + " RETURNED TO HAND!")
+	if main._should_bail(): return
+	print("TRAINER: Hyper Devolution Spray — devolved ", target.metadata.get("name",""))
+
+# RUIN WALL (neo2-74): search deck for an Unown, put it on bench
+func effect_neo2_ruin_wall(is_opponent: bool) -> void:
+	var bench = main.opponent_bench if is_opponent else main.player_bench
+	if bench.size() >= main.get_max_bench_size():
+		await main.show_message("RUIN WALL: BENCH IS FULL!")
+		if main._should_bail(): return
+		return
+	var found = await main.card_ops.search_deck_to_hand(is_opponent, func(c): return "Unown" in c.metadata.get("name","") and main.is_basic_pokemon(c), "RUIN WALL: CHOOSE AN UNOWN FROM DECK", 1)
+	if main._should_bail(): return
+	if found.is_empty():
+		await main.show_message("RUIN WALL: NO UNOWN FOUND IN DECK!")
+		if main._should_bail(): return
+		return
+	var unown = found[0]
+	var hand = main.opponent_hand if is_opponent else main.player_hand
+	hand.erase(unown)
+	var placed = main.card_ops.place_on_bench(unown, is_opponent)
+	if placed:
+		await main.show_message("RUIN WALL! " + unown.metadata.get("name","").to_upper() + " PLACED ON BENCH!")
+		if main._should_bail(): return
+	print("TRAINER: Ruin Wall — ", unown.metadata.get("name",""))
+
+# ENERGY ARK (neo2-75): flip 2 — for each heads, search deck for a Basic Energy card to hand
+func effect_neo2_energy_ark(is_opponent: bool) -> void:
+	var heads = 0
+	for i in range(2):
+		if await main.flip_coin(true, is_opponent):
+			heads += 1
+	if main._should_bail(): return
+	if heads == 0:
+		await main.show_message("ENERGY ARK: 0 HEADS — NO ENERGY!")
+		if main._should_bail(): return
+		return
+	await main.show_message("ENERGY ARK: " + str(heads) + " HEADS — SEARCHING FOR " + str(heads) + " BASIC ENERGY!")
+	if main._should_bail(): return
+	for i in range(heads):
+		var found = await main.card_ops.search_deck_to_hand(is_opponent, func(c): return c.metadata.get("supertype","") == "Energy" and "Basic" in c.metadata.get("subtypes",[]), "ENERGY ARK: CHOOSE BASIC ENERGY " + str(i+1), 1)
+		if main._should_bail(): return
+	main.refresh_hand_display(is_opponent)
+	await main.show_message("ENERGY ARK! " + str(heads) + " BASIC ENERGY ADDED TO HAND!")
+	if main._should_bail(): return
+	print("TRAINER: Energy Ark — ", heads, " energy retrieved")

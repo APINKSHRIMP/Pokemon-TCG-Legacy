@@ -26,6 +26,33 @@ func draw_n(is_opponent: bool, count: int) -> void:
 
 # ── Discard ───────────────────────────────────────────────────────────────────────────────
 
+# Routes an energy card removed from a Pokemon to the correct pile:
+# Recycle Energy and Ecogym (non-Colorless) return to owner's hand; others go to discard.
+# Pass is_ko_discard=true for KO sequences so Ecogym protection is skipped.
+func discard_energy_from_pokemon(energy: card_object, is_owner_opp: bool, is_ko_discard: bool = false) -> void:
+	var card_name = energy.metadata.get("name", "")
+	if card_name == "Recycle Energy":
+		var hand = main.opponent_hand if is_owner_opp else main.player_hand
+		energy.current_location = "hand"
+		if not hand.has(energy):
+			hand.append(energy)
+		main.refresh_hand_display(is_owner_opp)
+		return
+	# Ecogym (neo1-84): non-Colorless energies discarded by attack/power/trainer return to owner's hand
+	if not is_ko_discard and main.is_stadium_in_play(StadiumIds.ECOGYM):
+		var provided = main.get_energy_provided_by_card(energy)
+		var is_colorless = provided.is_empty() or (provided.size() == 1 and provided[0] == "Colorless")
+		if not is_colorless:
+			var hand = main.opponent_hand if is_owner_opp else main.player_hand
+			energy.current_location = "hand"
+			if not hand.has(energy):
+				hand.append(energy)
+			main.refresh_hand_display(is_owner_opp)
+			return
+	var discard = main.opponent_discard_pile if is_owner_opp else main.player_discard_pile
+	energy.current_location = "discard"
+	discard.append(energy)
+
 # Move a single card to the given side's discard pile. Optionally animate it.
 func send_to_discard(card: card_object, is_opponent: bool, animate: bool = false, anim_from: Control = null) -> void:
 	if animate:
@@ -50,10 +77,8 @@ func send_array_to_discard(cards: Array, is_opponent: bool, animate: bool = fals
 
 # Discard all energies and pre-evolutions attached to a pokemon.
 func discard_all_attachments(pokemon: card_object, is_opponent: bool) -> void:
-	var discard = main.opponent_discard_pile if is_opponent else main.player_discard_pile
 	for card in pokemon.attached_energies.duplicate():
-		card.current_location = "discard"
-		discard.append(card)
+		discard_energy_from_pokemon(card, is_opponent)
 	pokemon.attached_energies.clear()
 	for card in pokemon.attached_pre_evolutions.duplicate():
 		card.current_location = "discard"
@@ -282,9 +307,14 @@ func remove_one_energy(target: card_object, target_owner_is_opponent: bool,
 		return null
 
 	target.attached_energies.erase(chosen)
-	await send_to_discard(chosen, target_owner_is_opponent, true,
-		main.opponent_active_container if target_owner_is_opponent else main.player_active_container)
-	if main._should_bail(): return null
+	if chosen.metadata.get("name", "") == "Recycle Energy":
+		discard_energy_from_pokemon(chosen, target_owner_is_opponent)
+		await main.show_message("RECYCLE ENERGY RETURNED TO HAND!")
+		if main._should_bail(): return null
+	else:
+		await send_to_discard(chosen, target_owner_is_opponent, true,
+			main.opponent_active_container if target_owner_is_opponent else main.player_active_container)
+		if main._should_bail(): return null
 	main.display_active_pokemon_energies(target_owner_is_opponent)
 	return chosen
 
@@ -336,6 +366,12 @@ func prompt_select_card(pool: Array, header: String, hint: String, btn_text: Str
 # Does not check KO — caller is responsible for running check_all_knockouts afterwards.
 func apply_bench_damage(pokemon: card_object, damage: int, is_opponent: bool) -> void:
 	if damage <= 0:
+		return
+	# Articuno Aurora Veil (basep-48): bench immune to attack damage
+	if main.powers_and_bodies.check_aurora_veil(is_opponent):
+		return
+	# Protective Flame / invincible flag on bench pokemon
+	if pokemon.is_invincible:
 		return
 	pokemon.current_hp = max(0, pokemon.current_hp - damage)
 	var loc = main.get_pokemon_screen_location(pokemon)
