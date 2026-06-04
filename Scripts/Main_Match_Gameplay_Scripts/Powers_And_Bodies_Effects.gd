@@ -23,7 +23,7 @@ func _ensure_power_dispatch_ready() -> void:
 		return
 	_power_dispatch_ready = true
 	_register_all_powers()
-	# When adding Neo1/Neo2/etc., append: _register_neo1_powers()
+	# Neo1 and Neo2 powers are registered via _register_neo1_powers() / _register_neo2_powers() called from _register_all_powers()
 
 func _register_all_powers() -> void:
 	_power_dispatch["Damage Swap"]           = func(p): await power_damage_swap(p)
@@ -1307,9 +1307,7 @@ func cpu_phase_activate_powers() -> void:
 		await main.trainer_effects.gym2_saffron_activate(true)
 		if main._should_bail(): return
 		saffron_used = true
-		if not saffron_used:
-			break
-	
+
 	# Rain Dance: attach all Water Energy to Water Pokemon
 	var blastoise = _find_cpu_pokemon_with_power("Rain Dance")
 	if blastoise != null and not is_power_blocked_by_status(blastoise) and not toxic_gas:
@@ -3820,7 +3818,6 @@ func _register_neo1_powers() -> void:
 	_power_dispatch["Playful Punch"]      = func(p): await power_neo1_playful_punch(p)
 
 # Called from _register_all_powers at startup
-# (add _register_neo1_powers() call there)
 
 # ── Passive checks (called directly from Main / Attack_Effects) ────────────────────────────────────────────────────────────────────────────────────────
 

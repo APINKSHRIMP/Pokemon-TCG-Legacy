@@ -91,6 +91,8 @@ func _register_basep_attacks() -> void:
 	_attack_dispatch["lightning bolt"]      = func(atk, a, d, opp): await execute_lightning_bolt(a, d, opp);                                                                                      await _attack_finish(true,  10,  atk, a.metadata.get("types",["Colorless"]), opp)
 	_attack_dispatch["sacred wing"]         = func(atk, a, d, opp): await execute_sacred_wing(a, d, opp);                                                                                         await _attack_finish(true,  60,  atk, a.metadata.get("types",["Colorless"]), opp)
 	_attack_dispatch["jump over"]           = func(atk, a, d, opp): await execute_jump_over(a, d, opp);                                                                                           await _attack_finish(false, 0,   atk, a.metadata.get("types",["Colorless"]), opp)
+	# Challenge is always treated as denied — always 30 damage (no real-world birthday detection)
+	_attack_dispatch["birthday surprise"]   = func(atk, a, d, opp): await execute_birthday_surprise(a, d, opp);                                                                                   await _attack_finish(true,  30,  atk, a.metadata.get("types",["Colorless"]), opp)
 	# Water Gun: all variants (typed and untyped extra energy) handled by generic resolve_attack_variable_damage
 
 func _register_gym2_attacks() -> void:
@@ -153,6 +155,15 @@ func _register_gym2_attacks() -> void:
 	_attack_dispatch["ink spurt"]          = func(atk, a, d, opp): var b = parse_attack_base_damage(atk); await execute_ink_spurt(a, d, opp, b);          await _attack_finish(true,  b,   atk, a.metadata.get("types", ["Colorless"]), opp)
 	_attack_dispatch["grasping vine"]      = func(atk, a, d, opp): await execute_draw_flip(a, opp, 2);           await _attack_finish(false, 0,   atk, a.metadata.get("types", ["Colorless"]), opp)
 	_attack_dispatch["lie low"]            = func(atk, a, d, opp): await execute_lie_low(a, opp);                await _attack_finish(false, 0,   atk, a.metadata.get("types", ["Colorless"]), opp)
+	# Retaliation gate: requires 2+ damage counters on attacker
+	_attack_dispatch["retaliation"]        = func(atk, a, d, opp):
+		var b = parse_attack_base_damage(atk)
+		if a.get_damage_counters() < 2:
+			if not opp: await main.show_message(a.metadata.get("name","").to_upper() + " NEEDS 2 OR MORE DAMAGE COUNTERS TO USE RETALIATION!")
+			await _attack_finish(false, 0, atk, a.metadata.get("types",["Colorless"]), opp)
+			return
+		await execute_retaliation(a, d, opp, b)
+		await _attack_finish(true, b, atk, a.metadata.get("types",["Colorless"]), opp)
 
 func _register_gym1_attacks() -> void:
 	_attack_dispatch["phoenix flame"]       = func(atk, a, d, opp): var b=parse_attack_base_damage(atk); await execute_phoenix_flame(a, d, opp, b);                                               await _attack_finish(true,  b,   atk, a.metadata.get("types",["Colorless"]), opp)
@@ -7980,6 +7991,10 @@ func _register_neo1_attacks() -> void:
 	_attack_dispatch["discharge"]          = func(atk, a, d, opp): var b=parse_attack_base_damage(atk); await execute_discharge(a, d, opp); await _attack_finish(true, b, atk, a.metadata.get("types",["Colorless"]), opp)
 	_attack_dispatch["megahorn"]           = func(atk, a, d, opp): var b=main.powers_and_bodies.get_final_blow_damage(a, "Megahorn", parse_attack_base_damage(atk)); await execute_neo1_megahorn(a, d, opp, b); await _attack_finish(true, b, atk, a.metadata.get("types",["Colorless"]), opp)
 	_attack_dispatch["floodlight"]         = func(atk, a, d, opp): var b=parse_attack_base_damage(atk); await execute_neo1_floodlight(a, d, opp, b); await _attack_finish(true, b, atk, a.metadata.get("types",["Colorless"]), opp)
+	_attack_dispatch["fin slap"]           = func(atk, a, d, opp): var b=parse_attack_base_damage(atk); await execute_neo1_fin_slap(a, d, opp, b); await _attack_finish(true, b, atk, a.metadata.get("types",["Colorless"]), opp)
+	_attack_dispatch["scary face"]         = func(atk, a, d, opp): await execute_neo1_scary_face(a, d, opp); await _attack_finish(false, 0, atk, a.metadata.get("types",["Colorless"]), opp)
+	_attack_dispatch["sweep away"]         = func(atk, a, d, opp): var b=parse_attack_base_damage(atk); await execute_neo1_sweep_away(a, d, opp, b); await _attack_finish(true, b, atk, a.metadata.get("types",["Colorless"]), opp)
+	_attack_dispatch["fire wind"]          = func(atk, a, d, opp): var b=parse_attack_base_damage(atk); await execute_neo1_fire_wind(a, d, opp, b); await _attack_finish(true, b, atk, a.metadata.get("types",["Colorless"]), opp)
 
 # FLOWER DANCE (neo1-3 Bellossom): 30 × Bellossom count in play
 func execute_neo1_flower_dance(attacker: card_object, defender: card_object, is_opponent: bool) -> void:
@@ -8869,6 +8884,118 @@ func execute_neo1_floodlight(attacker: card_object, defender: card_object, is_op
 			if main._should_bail(): return
 	print("ATTACK EXECUTED: Floodlight - ", total, " damage")
 
+# BIRTHDAY SURPRISE (basep-24 _____'s Pikachu): birthday challenge always treated as denied — always 30 damage
+func execute_birthday_surprise(attacker: card_object, defender: card_object, is_opponent: bool) -> void:
+	if await handle_attack_confusion(attacker, is_opponent): return
+	if await handle_attack_blind(attacker, is_opponent): return
+	await main.show_message("BIRTHDAY SURPRISE! 30 DAMAGE!")
+	if main._should_bail(): return
+	await gym1_hit_active(attacker, defender, is_opponent, 30)
+	if main._should_bail(): return
+	await main.check_all_knockouts()
+	if main._should_bail(): return
+	print("ATTACK EXECUTED: Birthday Surprise — 30 damage")
+
+# FIN SLAP (neo1-62 Horsea): 20 damage; +10 if Horsea was damaged during opponent's last turn
+func execute_neo1_fin_slap(attacker: card_object, defender: card_object, is_opponent: bool, base_damage: int) -> void:
+	if await handle_attack_confusion(attacker, is_opponent): return
+	if await handle_attack_blind(attacker, is_opponent): return
+	var last_hit = main.last_attack_on_player if not is_opponent else main.last_attack_on_opponent
+	var was_damaged = not last_hit.is_empty() and last_hit.get("damage", 0) > 0
+	var total = base_damage + (10 if was_damaged else 0)
+	if was_damaged:
+		await main.show_message("FIN SLAP! HORSEA WAS HIT LAST TURN — " + str(total) + " DAMAGE!")
+		if main._should_bail(): return
+	await gym1_hit_active(attacker, defender, is_opponent, total)
+	if main._should_bail(): return
+	await main.check_all_knockouts()
+	if main._should_bail(): return
+	print("ATTACK EXECUTED: Fin Slap — ", total, " damage")
+
+# SCARY FACE (neo1-75 Spinarak / ecard3 Snubbull): flip coin — heads: defender can't attack or retreat next turn
+func execute_neo1_scary_face(attacker: card_object, defender: card_object, is_opponent: bool) -> void:
+	if await handle_attack_confusion(attacker, is_opponent): return
+	if await handle_attack_blind(attacker, is_opponent): return
+	var coin = await main.flip_coin(false, is_opponent)
+	if main._should_bail(): return
+	if coin:
+		defender.attack_blocked_next_turn = true
+		defender.attack_blocked_by_id = attacker.get_instance_id()
+		if is_opponent:
+			main.player_retreat_disabled = true
+		else:
+			main.opponent_retreat_disabled = true
+		main.update_status_icons(defender, not is_opponent)
+		await main.show_message("HEADS! " + defender.metadata.get("name","").to_upper() + " CAN'T ATTACK OR RETREAT NEXT TURN!")
+		if main._should_bail(): return
+	else:
+		await main.show_message("TAILS! SCARY FACE HAD NO EFFECT!")
+		if main._should_bail(): return
+	print("ATTACK EXECUTED: Scary Face")
+
+# SWEEP AWAY (neo1-32 Croconaw): 50 damage + discard top 3 cards from attacker's own deck
+func execute_neo1_sweep_away(attacker: card_object, defender: card_object, is_opponent: bool, base_damage: int) -> void:
+	if await handle_attack_confusion(attacker, is_opponent): return
+	if await handle_attack_blind(attacker, is_opponent): return
+	await gym1_hit_active(attacker, defender, is_opponent, base_damage)
+	if main._should_bail(): return
+	await main.check_all_knockouts()
+	if main._should_bail(): return
+	var own_deck = main.opponent_deck if is_opponent else main.player_deck
+	var own_discard = main.opponent_discard_pile if is_opponent else main.player_discard_pile
+	var count = 0
+	for _i in range(3):
+		if own_deck.is_empty():
+			break
+		var top = own_deck[own_deck.size() - 1]
+		own_deck.remove_at(own_deck.size() - 1)
+		top.current_location = "discard"
+		own_discard.append(top)
+		count += 1
+	if count > 0:
+		main.update_discard_pile_display(is_opponent)
+		main.update_deck_icon(is_opponent)
+		await main.show_message("SWEEP AWAY! DISCARDED TOP " + str(count) + " CARDS FROM OWN DECK!")
+		if main._should_bail(): return
+	print("ATTACK EXECUTED: Sweep Away — ", base_damage, " damage, milled ", count, " own cards")
+
+# FIRE WIND (neo1-46 Quilava): 20 to active + flip 2 coins, 10×heads to a chosen opposing bench Pokemon (no W/R)
+func execute_neo1_fire_wind(attacker: card_object, defender: card_object, is_opponent: bool, base_damage: int) -> void:
+	if await handle_attack_confusion(attacker, is_opponent): return
+	if await handle_attack_blind(attacker, is_opponent): return
+	await gym1_hit_active(attacker, defender, is_opponent, base_damage)
+	if main._should_bail(): return
+	var opp_bench = main.player_bench if is_opponent else main.opponent_bench
+	if opp_bench.is_empty():
+		await main.check_all_knockouts()
+		if main._should_bail(): return
+		print("ATTACK EXECUTED: Fire Wind — ", base_damage, " damage, no bench targets")
+		return
+	var target: card_object = null
+	if is_opponent:
+		var sorted_bench = opp_bench.duplicate()
+		sorted_bench.sort_custom(func(a, b): return a.current_hp < b.current_hp)
+		target = sorted_bench[0]
+	else:
+		target = await main.card_ops.prompt_select_card(opp_bench, "FIRE WIND — CHOOSE BENCH TARGET", "Choose an opposing Benched Pokémon to deal flip damage to", "SELECT", false)
+		if main._should_bail(): return
+	if target == null:
+		await main.check_all_knockouts()
+		return
+	var heads = 0
+	for _i in range(2):
+		if await main.flip_coin(true, is_opponent):
+			heads += 1
+	if main._should_bail(): return
+	var bench_damage = heads * 10
+	await main.show_message("FIRE WIND! " + str(heads) + " HEADS — " + str(bench_damage) + " DAMAGE TO " + target.metadata.get("name","").to_upper() + "!")
+	if main._should_bail(): return
+	if bench_damage > 0:
+		main.card_ops.apply_bench_damage(target, bench_damage, not is_opponent)
+	await main.check_all_knockouts()
+	if main._should_bail(): return
+	print("ATTACK EXECUTED: Fire Wind — ", base_damage, " active, ", bench_damage, " bench")
+
 ######################################################################################################################################################
 ##################################################### NEO2 (NEO DISCOVERY) ATTACK EFFECTS ###########################################################
 ######################################################################################################################################################
@@ -8910,6 +9037,36 @@ func _register_neo2_attacks() -> void:
 	_attack_dispatch["hidden power"]    = func(atk, a, d, opp): await execute_neo2_hidden_power(a, d, opp);                                     await _attack_finish(true,  10, atk, a.metadata.get("types",["Colorless"]), opp)
 	# Doubleslap: Politoed gets Frog Song bonus; others handled generically by caller
 	_attack_dispatch["doubleslap"]      = func(atk, a, d, opp): await execute_neo2_politoed_doubleslap(a, d, opp);                              await _attack_finish(true,  40, atk, a.metadata.get("types",["Colorless"]), opp)
+	# Flamethrower: Houndoom requires Fire energy or attack fails; all other versions use generic discard-after-damage
+	_attack_dispatch["flamethrower"]    = func(atk, a, d, opp):
+		var types = a.metadata.get("types",["Colorless"])
+		var b = parse_attack_base_damage(atk)
+		var text = atk.get("text","").to_lower()
+		if "or this attack does nothing" in text:
+			var fire_e: Array = []
+			for e in a.attached_energies:
+				if "Fire" in main.get_energy_provided_by_card(e):
+					fire_e.append(e)
+					break
+			if fire_e.is_empty():
+				if not opp: await main.show_message(a.metadata.get("name","").to_upper() + "'S FLAMETHROWER FIZZLED — NO FIRE ENERGY TO DISCARD!")
+				await _attack_finish(false, 0, atk, types, opp)
+				return
+			a.attached_energies.erase(fire_e[0])
+			main.card_ops.discard_energy_from_pokemon(fire_e[0], opp)
+			main.display_active_pokemon_energies(opp)
+			main.update_discard_pile_display(opp)
+		var result = main.calculate_final_damage(b, types, d, a)
+		if not main.check_defender_invincible(d, !opp):
+			var fd = main.apply_defender_no_damage_shield(d, result["damage"], !opp)
+			await main.display_and_apply_attack_damage(a, d, fd, result["modifiers"], opp, b)
+		if main._should_bail(): return
+		if "or this attack does nothing" not in text:
+			var fx = parse_card_text_effects(atk.get("text",""), a.metadata.get("name",""))
+			if fx.size() > 0: await apply_card_text_effects(fx, a, d, opp, "")
+			if main._should_bail(): return
+		await main.check_all_knockouts()
+		await _attack_finish(true, b, atk, types, opp)
 
 # LOCK-ON (neo2-7/26 Magnemite): next Electric Bolt treats any tails as heads
 func execute_neo2_lock_on(attacker: card_object, is_opponent: bool) -> void:
