@@ -96,6 +96,10 @@
       "position": {
         "x": 2705,
         "y": 2195
+      },
+      "condition": {
+        "type": "npc_not_met",
+        "target": "CH 3-6 E Brock"
       }
     },
     {
@@ -169,6 +173,10 @@
       "position": {
         "x": 1209,
         "y": 2399
+      },
+      "condition": {
+        "type": "npc_not_met",
+        "target": "CH 3-6 E Blaine"
       }
     },
     {

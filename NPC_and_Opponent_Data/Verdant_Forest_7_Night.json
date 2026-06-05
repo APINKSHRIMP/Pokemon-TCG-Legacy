@@ -225,6 +225,10 @@
 		  "No Removal Gym",
           "Chaos Gym"
 		]
+	  },
+	  "condition": {
+		"type": "npc_met",
+		"target": "CH 3-6 E Brock"
 	  }
 	},
 	{
@@ -261,6 +265,10 @@
 		  "No Removal Gym",
           "Chaos Gym"
 		]
+	  },
+	  "condition": {
+		"type": "npc_met",
+		"target": "CH 3-6 D Misty"
 	  }
 	},
 	{
@@ -297,6 +305,10 @@
 		  "No Removal Gym",
           "Chaos Gym"
 		]
+	  },
+	  "condition": {
+		"type": "npc_met",
+		"target": "CH 3-6 D Lt Surge"
 	  }
 	}
   ]

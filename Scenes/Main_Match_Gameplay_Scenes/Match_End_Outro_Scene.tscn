@@ -1,10 +1,10 @@
-[gd_scene format=3 uid="uid://bq1stytrtp7ka"]
+[gd_scene format=3 uid="uid://8skfed3qttcv"]
 
 [ext_resource type="Script" uid="uid://5a2e2mnmbimo" path="res://Scripts/Main_Match_Gameplay_Scripts/Match_End_Outro_Script.gd" id="1_77suw"]
 [ext_resource type="Texture2D" uid="uid://ptklm68n8cm5" path="res://Image_Assets/Backgrounds_And_Borders/Backgrounds/battle_win_screen.png" id="2_77suw"]
 [ext_resource type="Texture2D" uid="uid://bnlir2ilxd7xv" path="res://Image_Assets/Character_Sprites/In_Battle_Sprites/Roughneck.png" id="3_1ms7e"]
 [ext_resource type="Theme" uid="uid://6shp5ck1tnja" path="res://UI_Themes/kenneyUI.tres" id="4_djk4x"]
-[ext_resource type="Texture2D" uid="uid://b8bojjiehifdp" path="res://Image_Assets/Character_Sprites/In_Battle_Sprites/fisherman.png" id="5_2d22p"]
+[ext_resource type="Texture2D" uid="uid://b8bojjiehifdp" path="res://Image_Assets/Character_Sprites/In_Battle_Sprites/Fisherman.png" id="5_2d22p"]
 
 [node name="MatchOutro" type="Control" unique_id=1733053257]
 layout_mode = 3

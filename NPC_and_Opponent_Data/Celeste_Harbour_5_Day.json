@@ -219,6 +219,10 @@
 	  "position": {
 		"x": 98,
 		"y": 2338
+	  },
+	  "condition": {
+		"type": "npc_not_met",
+		"target": "CH 3-6 D Misty"
 	  }
 	},
 	{
@@ -229,6 +233,10 @@
 	  "position": {
 		"x": -715,
 		"y": 2690
+	  },
+	  "condition": {
+		"type": "npc_not_met",
+		"target": "CH 3-6 D Lt Surge"
 	  }
 	},
 	{
@@ -239,6 +247,10 @@
 	  "position": {
 		"x": -715,
 		"y": 2195
+	  },
+	  "condition": {
+		"type": "npc_not_met",
+		"target": "CH 3-6 D Erika"
 	  }
 	},
 	{
@@ -330,6 +342,10 @@
 	  "position": {
 		"x": 290,
 		"y": 1600
+	  },
+	  "condition": {
+		"type": "npc_not_met",
+		"target": "CH 3,5 D Kid Opening Packs"
 	  }
 	},
 	{

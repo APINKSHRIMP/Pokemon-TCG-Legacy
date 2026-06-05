@@ -38,6 +38,10 @@
       "position": {
         "x": -220,
         "y": 2490
+      },
+      "condition": {
+        "type": "npc_not_met",
+        "target": "CH 3-6 N Sabrina"
       }
     },
     {
@@ -51,6 +55,10 @@
       "position": {
         "x": 1950,
         "y": 2250
+      },
+      "condition": {
+        "type": "npc_not_met",
+        "target": "CH 3-6 N Koga"
       }
     },
     {
@@ -61,6 +69,10 @@
       "position": {
         "x": 920,
         "y": 890
+      },
+      "condition": {
+        "type": "npc_not_met",
+        "target": "CH 3-6 N Giovanni"
       }
     }
   ],

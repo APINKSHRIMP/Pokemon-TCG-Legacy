@@ -1,0 +1,200 @@
+[gd_scene format=3 uid="uid://bq1stytrtp7ka"]
+
+[ext_resource type="Script" uid="uid://5a2e2mnmbimo" path="res://Scripts/Main_Match_Gameplay_Scripts/Match_End_Outro_Script.gd" id="1_77suw"]
+[ext_resource type="Texture2D" uid="uid://dt46cpr8vv6wq" path="res://Image_Assets/Backgrounds_And_Borders/Backgrounds/bo3_win.png" id="2_r0mww"]
+[ext_resource type="Texture2D" uid="uid://bnlir2ilxd7xv" path="res://Image_Assets/Character_Sprites/In_Battle_Sprites/Roughneck.png" id="3_1ms7e"]
+[ext_resource type="Texture2D" uid="uid://k0kqp66uti43" path="res://Image_Assets/Backgrounds_And_Borders/Backgrounds/bo3_loss.png" id="3_niypa"]
+[ext_resource type="Theme" uid="uid://6shp5ck1tnja" path="res://UI_Themes/kenneyUI.tres" id="4_djk4x"]
+[ext_resource type="Texture2D" uid="uid://da4futxxi7t86" path="res://Image_Assets/Icons/Reward_Icons/win.png" id="4_oqwfk"]
+[ext_resource type="Texture2D" uid="uid://b8bojjiehifdp" path="res://Image_Assets/Character_Sprites/In_Battle_Sprites/Fisherman.png" id="5_2d22p"]
+[ext_resource type="Texture2D" uid="uid://cvmtq7ea3s8kc" path="res://Image_Assets/Icons/Reward_Icons/loss.png" id="5_s4g8e"]
+
+[sub_resource type="StyleBoxEmpty" id="StyleBoxEmpty_3pk57"]
+
+[node name="MatchOutro" type="Control" unique_id=1733053257]
+layout_mode = 3
+anchors_preset = 0
+offset_right = 40.0
+offset_bottom = 40.0
+script = ExtResource("1_77suw")
+
+[node name="win_background" type="TextureRect" parent="." unique_id=767324208]
+layout_mode = 0
+offset_right = 1920.0
+offset_bottom = 1080.0
+pivot_offset = Vector2(960, 540)
+texture = ExtResource("2_r0mww")
+expand_mode = 1
+
+[node name="loss_background" type="TextureRect" parent="." unique_id=1612952727]
+visible = false
+layout_mode = 0
+offset_right = 1920.0
+offset_bottom = 1080.0
+pivot_offset = Vector2(960, 540)
+texture = ExtResource("3_niypa")
+expand_mode = 1
+
+[node name="win1" type="TextureRect" parent="." unique_id=1170911997]
+visible = false
+layout_mode = 0
+offset_left = 558.0
+offset_top = 418.0
+offset_right = 821.0
+offset_bottom = 679.0
+texture = ExtResource("4_oqwfk")
+expand_mode = 1
+stretch_mode = 4
+
+[node name="win2" type="TextureRect" parent="." unique_id=795886946]
+layout_mode = 0
+offset_left = 833.0
+offset_top = 416.0
+offset_right = 1096.0
+offset_bottom = 677.0
+texture = ExtResource("4_oqwfk")
+expand_mode = 1
+stretch_mode = 4
+
+[node name="win3" type="TextureRect" parent="." unique_id=815328557]
+visible = false
+layout_mode = 0
+offset_left = 1110.0
+offset_top = 416.0
+offset_right = 1373.0
+offset_bottom = 677.0
+texture = ExtResource("4_oqwfk")
+expand_mode = 1
+stretch_mode = 4
+
+[node name="loss1" type="TextureRect" parent="." unique_id=1853390492]
+layout_mode = 0
+offset_left = 540.0
+offset_top = 418.0
+offset_right = 840.0
+offset_bottom = 716.0
+texture = ExtResource("5_s4g8e")
+expand_mode = 1
+stretch_mode = 4
+
+[node name="loss2" type="TextureRect" parent="." unique_id=1518684081]
+visible = false
+layout_mode = 0
+offset_left = 813.0
+offset_top = 415.0
+offset_right = 1113.0
+offset_bottom = 713.0
+texture = ExtResource("5_s4g8e")
+expand_mode = 1
+stretch_mode = 4
+
+[node name="loss3" type="TextureRect" parent="." unique_id=1473166152]
+visible = false
+layout_mode = 0
+offset_left = 1091.0
+offset_top = 416.0
+offset_right = 1391.0
+offset_bottom = 714.0
+texture = ExtResource("5_s4g8e")
+expand_mode = 1
+stretch_mode = 4
+
+[node name="PLAYER" type="Control" parent="." unique_id=1104552899]
+anchors_preset = 0
+offset_right = 40.0
+offset_bottom = 40.0
+
+[node name="player_sprite" type="Sprite2D" parent="PLAYER" unique_id=1689390984]
+position = Vector2(390, 532)
+scale = Vector2(3.005, 3.005)
+texture = ExtResource("3_1ms7e")
+
+[node name="OPPONENT" type="Control" parent="." unique_id=267946829]
+anchors_preset = 0
+offset_right = 40.0
+offset_bottom = 40.0
+
+[node name="opponent_sprite" type="Sprite2D" parent="OPPONENT" unique_id=45801470]
+position = Vector2(1559, 504)
+scale = Vector2(3.005, 3.005)
+texture = ExtResource("5_2d22p")
+
+[node name="WIN LABELS" type="Control" parent="." unique_id=1707489407]
+anchors_preset = 0
+offset_left = 762.0
+offset_top = 684.0
+offset_right = 1149.0
+offset_bottom = 858.0
+
+[node name="cash_placeholder_label" type="Label" parent="WIN LABELS" unique_id=834013740]
+visible = false
+layout_mode = 0
+offset_left = 103.0
+offset_top = 39.0
+offset_right = 307.0
+offset_bottom = 105.0
+theme = ExtResource("4_djk4x")
+theme_override_colors/font_color = Color(0, 0, 0, 1)
+theme_override_font_sizes/font_size = 58
+text = "¥ 100 "
+horizontal_alignment = 1
+
+[node name="coin_placeholder_label" type="Label" parent="WIN LABELS" unique_id=2050886002]
+visible = false
+layout_mode = 0
+offset_left = -135.0
+offset_top = 120.0
+offset_right = 600.0
+offset_bottom = 178.0
+theme = ExtResource("4_djk4x")
+theme_override_colors/font_color = Color(0, 0, 0, 1)
+theme_override_font_sizes/font_size = 40
+text = "Silver FERALIGATR COIN"
+horizontal_alignment = 1
+
+[node name="character_reward_label" type="Label" parent="WIN LABELS" unique_id=1808348610]
+visible = false
+layout_mode = 0
+offset_left = -53.0
+offset_top = 177.0
+offset_right = 494.0
+offset_bottom = 235.0
+theme = ExtResource("4_djk4x")
+theme_override_colors/font_color = Color(0, 0, 0, 1)
+theme_override_font_sizes/font_size = 40
+text = "Fisherman"
+horizontal_alignment = 1
+
+[node name="round_loss" type="Label" parent="." unique_id=1165007436]
+layout_mode = 0
+offset_left = 530.0
+offset_top = 222.0
+offset_right = 1379.0
+offset_bottom = 337.0
+theme = ExtResource("4_djk4x")
+theme_override_colors/font_color = Color(0, 0, 0, 1)
+theme_override_colors/font_shadow_color = Color(2.1074393, 0, 0.08021311, 0.54901963)
+theme_override_colors/font_outline_color = Color(0, 0, 0, 1)
+theme_override_constants/shadow_offset_x = 10
+theme_override_constants/shadow_offset_y = 7
+theme_override_font_sizes/font_size = 109
+theme_override_styles/normal = SubResource("StyleBoxEmpty_3pk57")
+text = "ROUND 2"
+horizontal_alignment = 1
+
+[node name="round_win" type="Label" parent="." unique_id=1497619290]
+layout_mode = 0
+offset_left = 530.0
+offset_top = 222.0
+offset_right = 1379.0
+offset_bottom = 337.0
+theme = ExtResource("4_djk4x")
+theme_override_colors/font_color = Color(0, 0, 0, 1)
+theme_override_colors/font_shadow_color = Color(0, 2.1074393, 0.08021391, 0.54901963)
+theme_override_colors/font_outline_color = Color(0, 0, 0, 1)
+theme_override_constants/shadow_offset_x = 10
+theme_override_constants/shadow_offset_y = 7
+theme_override_font_sizes/font_size = 109
+theme_override_styles/normal = SubResource("StyleBoxEmpty_3pk57")
+text = "ROUND 2"
+horizontal_alignment = 1

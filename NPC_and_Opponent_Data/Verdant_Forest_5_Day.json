@@ -135,6 +135,10 @@
 	  "position": {
 		"x": 335,
 		"y": 1140
+	  },
+	  "condition": {
+		"type": "npc_not_met",
+		"target": "VF 5,7,8 D,E Rocket Pack Gift"
 	  }
 	},
 	{
@@ -145,6 +149,10 @@
 	  "position": {
 		"x": 3278,
 		"y": 1064
+	  },
+	  "condition": {
+		"type": "npc_not_met",
+		"target": "VF 5-8 D Wishing Well Coin Thrower"
 	  }
 	}
   ],

@@ -127,7 +127,7 @@ func _ready():
 	)
 
 	await get_tree().process_frame
-3	tween.tween_property(get_tree().root, "modulate", Color.WHITE, 1.0)
+	tween.tween_property(get_tree().root, "modulate", Color.WHITE, 1.0)
 
 func _exit_tree():
 	_remove_cash_label()

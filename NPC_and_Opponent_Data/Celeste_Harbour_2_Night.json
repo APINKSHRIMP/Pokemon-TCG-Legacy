@@ -18,6 +18,10 @@
       "position": {
         "x": -222,
         "y": 2273
+      },
+      "condition": {
+        "type": "npc_not_met",
+        "target": "CH 2 N Sunbathing Dude 1"
       }
     },
     {
