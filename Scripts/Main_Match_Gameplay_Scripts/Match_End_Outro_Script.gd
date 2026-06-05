@@ -104,29 +104,19 @@ func _ready() -> void:
 	battle_won = (GameState.battle_result == "win")
 
 	# ── Best-of-N series handling ──
-	# If the player is in a match series for this opponent and the series
-	# isn't decided yet, bypass the outro entirely (no dialogue, no rewards,
-	# no jingle) and bounce straight back to the intro for the next round.
-	# Only after the series is decided (e.g. 2 wins or 2 losses in best_of_3)
-	# do we fall through to the normal outro flow. The deciding game's
-	# battle_result always matches the overall series result, so battle_won
-	# is already correct.
+	# After every game in a series, record the result and hand off to the
+	# Best_Of_3_Transition scene which handles the round-counter animation.
+	# That scene decides whether to route to the next-round intro or (when
+	# the series is decided) to the final outro. battle_result is left intact
+	# so the outro can read it correctly on the deciding game.
 	if GameState.series_active and GameState.series_opponent_name == GameState.current_opponent_name:
 		if battle_won:
 			GameState.series_wins += 1
 		else:
 			GameState.series_losses += 1
-
-		var decided: bool = (
-			GameState.series_wins >= GameState.series_required_to_win
-			or GameState.series_losses >= GameState.series_required_to_win
-		)
-
-		if not decided:
-			_transition_to_next_round()
-			return
-
-		GameState.clear_match_series()
+		GameState.series_round_results.append("win" if battle_won else "loss")
+		_transition_to_bo3_scene()
+		return
 
 	load_opponent_data(GameState.current_opponent_name)
 	load_player_data()
@@ -705,20 +695,16 @@ func _get_card_display_name(card_uid: String) -> String:
 	return card_uid
 
 # ============================================================
-# SCENE TRANSITION — NEXT ROUND OF A MATCH SERIES
+# SCENE TRANSITION — BO3 TRANSITION SCENE
 # ============================================================
-# Called when a best-of-N series is mid-progress. Skips every part of
-# the outro (sprites, dialogue, rewards, jingle) and jumps straight to
-# the intro scene so the player goes from match end → next match intro
-# without seeing reward UI. battle_result is cleared so MapManager
-# wouldn't try to treat this as a battle return if it ever ran later.
-func _transition_to_next_round() -> void:
+# Always called after any match in a best-of-N series, regardless of
+# whether the series is decided. The BO3 transition scene handles
+# routing to the next round's intro or the final outro itself.
+func _transition_to_bo3_scene() -> void:
 	transitioning = true
 	click_enabled = false
-	GameState.battle_result = ""
-	GameState.returning_from_battle = false
 	SoundManagerScript.stop_bgm()
-	SceneCache.change_scene("res://Scenes/Main_Match_Gameplay_Scenes/Match_Start_Intro_Scene.tscn")
+	SceneCache.change_scene("res://Scenes/Main_Match_Gameplay_Scenes/Best_Of_3_Transition.tscn")
 
 # ============================================================
 # SCENE TRANSITION — BACK TO MAP

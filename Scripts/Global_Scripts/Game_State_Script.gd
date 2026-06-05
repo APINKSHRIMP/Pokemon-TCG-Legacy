@@ -37,12 +37,14 @@ var series_wins: int = 0
 var series_losses: int = 0
 var series_required_to_win: int = 0
 var series_total_games: int = 0
+var series_round_results: Array = []
 
 func start_match_series(opponent_name: String, match_format: String) -> void:
 	series_opponent_name = opponent_name
 	series_format = match_format
 	series_wins = 0
 	series_losses = 0
+	series_round_results = []
 	match match_format:
 		"best_of_3":
 			series_total_games = 3
@@ -61,6 +63,7 @@ func clear_match_series() -> void:
 	series_losses = 0
 	series_total_games = 0
 	series_required_to_win = 0
+	series_round_results = []
 
 # ============================================================
 # CURRENT SCENE PERSISTENCE
