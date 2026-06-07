@@ -1546,6 +1546,8 @@ func _unhandled_input(event: InputEvent) -> void:
 		KEY_8, KEY_KP_8: new_date = 8
 		KEY_9, KEY_KP_9: new_date = 9
 		KEY_0, KEY_KP_0: new_date = 10
+		KEY_MINUS:       new_date = 11
+		KEY_EQUAL:       new_date = 12
 		KEY_M: new_time = "Day"
 		KEY_E: new_time = "Evening"
 		KEY_N: new_time = "Night"

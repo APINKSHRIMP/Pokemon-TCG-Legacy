@@ -1,4 +1,4 @@
-{
+﻿{
   "npcs": [
     {
       "name": "Gym Challenge Brock Defeated",
@@ -222,17 +222,6 @@
       }
     },
     {
-      "name": "Spec L02",
-      "sprite": "NPC02",
-      "meet_text": "",
-      "repeat_text": "",
-      "pattern": "idle_right",
-      "position": {
-        "x": -14,
-        "y": 129
-      }
-    },
-    {
       "name": "Spec L03",
       "sprite": "NPC03",
       "meet_text": "",
@@ -354,17 +343,6 @@
       }
     },
     {
-      "name": "Spec L17",
-      "sprite": "NPC21",
-      "meet_text": "",
-      "repeat_text": "",
-      "pattern": "idle_right",
-      "position": {
-        "x": 19,
-        "y": 290
-      }
-    },
-    {
       "name": "Spec L33",
       "sprite": "Camper",
       "meet_text": "",
@@ -453,17 +431,6 @@
       }
     },
     {
-      "name": "Spec L35",
-      "sprite": "Juggler",
-      "meet_text": "",
-      "repeat_text": "",
-      "pattern": "idle_right",
-      "position": {
-        "x": 51,
-        "y": 335
-      }
-    },
-    {
       "name": "Spec L36",
       "sprite": "Musician",
       "meet_text": "",
@@ -494,17 +461,6 @@
       "position": {
         "x": 83,
         "y": 181
-      }
-    },
-    {
-      "name": "Spec L10",
-      "sprite": "NPC10",
-      "meet_text": "",
-      "repeat_text": "",
-      "pattern": "idle_right",
-      "position": {
-        "x": 83,
-        "y": 210
       }
     },
     {
@@ -948,28 +904,6 @@
       }
     },
     {
-      "name": "Spec T30",
-      "sprite": "Lass3",
-      "meet_text": "",
-      "repeat_text": "",
-      "pattern": "idle_down",
-      "position": {
-        "x": 525,
-        "y": 79
-      }
-    },
-    {
-      "name": "Spec R01",
-      "sprite": "Gentleman",
-      "meet_text": "",
-      "repeat_text": "",
-      "pattern": "idle_left",
-      "position": {
-        "x": 605,
-        "y": 163
-      }
-    },
-    {
       "name": "Spec R02",
       "sprite": "Gentleman2",
       "meet_text": "",
@@ -1091,17 +1025,6 @@
       }
     },
     {
-      "name": "Spec R16",
-      "sprite": "Supernerd",
-      "meet_text": "",
-      "repeat_text": "",
-      "pattern": "idle_left",
-      "position": {
-        "x": 637,
-        "y": 289
-      }
-    },
-    {
       "name": "Spec R17",
       "sprite": "Collector",
       "meet_text": "",
@@ -1154,17 +1077,6 @@
       "position": {
         "x": 669,
         "y": 156
-      }
-    },
-    {
-      "name": "Spec R23",
-      "sprite": "Richboy",
-      "meet_text": "",
-      "repeat_text": "",
-      "pattern": "idle_left",
-      "position": {
-        "x": 669,
-        "y": 185
       }
     },
     {
@@ -1289,17 +1201,6 @@
       }
     },
     {
-      "name": "Spec R37",
-      "sprite": "Sailor",
-      "meet_text": "",
-      "repeat_text": "",
-      "pattern": "idle_left",
-      "position": {
-        "x": 700,
-        "y": 312
-      }
-    },
-    {
       "name": "Spec R38",
       "sprite": "Scientist_M",
       "meet_text": "",
@@ -1308,6 +1209,105 @@
       "position": {
         "x": 700,
         "y": 341
+      }
+    },
+    {
+      "name": "Spec L04",
+      "sprite": "NPC02",
+      "meet_text": "",
+      "repeat_text": "",
+      "pattern": "idle_right",
+      "position": {
+        "x": -14,
+        "y": 187
+      }
+    },
+    {
+      "name": "Spec L14",
+      "sprite": "NPC21",
+      "meet_text": "",
+      "repeat_text": "",
+      "pattern": "idle_right",
+      "position": {
+        "x": 19,
+        "y": 203
+      }
+    },
+    {
+      "name": "Spec L25",
+      "sprite": "Juggler",
+      "meet_text": "",
+      "repeat_text": "",
+      "pattern": "idle_right",
+      "position": {
+        "x": 51,
+        "y": 248
+      }
+    },
+    {
+      "name": "Spec L19",
+      "sprite": "NPC10",
+      "meet_text": "",
+      "repeat_text": "",
+      "pattern": "idle_right",
+      "position": {
+        "x": 83,
+        "y": 268
+      }
+    },
+    {
+      "name": "Spec T25",
+      "sprite": "Lass3",
+      "meet_text": "",
+      "repeat_text": "",
+      "pattern": "idle_down",
+      "position": {
+        "x": 350,
+        "y": 79
+      }
+    },
+    {
+      "name": "Spec R04",
+      "sprite": "Gentleman",
+      "meet_text": "",
+      "repeat_text": "",
+      "pattern": "idle_left",
+      "position": {
+        "x": 605,
+        "y": 250
+      }
+    },
+    {
+      "name": "Spec R14",
+      "sprite": "Supernerd",
+      "meet_text": "",
+      "repeat_text": "",
+      "pattern": "idle_left",
+      "position": {
+        "x": 637,
+        "y": 231
+      }
+    },
+    {
+      "name": "Spec R24",
+      "sprite": "Richboy",
+      "meet_text": "",
+      "repeat_text": "",
+      "pattern": "idle_left",
+      "position": {
+        "x": 669,
+        "y": 214
+      }
+    },
+    {
+      "name": "Spec R19",
+      "sprite": "Sailor",
+      "meet_text": "",
+      "repeat_text": "",
+      "pattern": "idle_left",
+      "position": {
+        "x": 700,
+        "y": 225
       }
     }
   ],
