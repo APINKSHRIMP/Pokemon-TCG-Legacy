@@ -25,5 +25,5 @@ func get_npc_json_path() -> String:      return _npc_json_path
 func _scene_setup():
 	var time_of_day: String = GameState.get_time()
 	var date: int = GameState.get_date()
-	var path := "res://NPC_and_Opponent_Data/Gym_Challenge_Hall_" + time_of_day + "_" + str(date) + ".json"
+	var path := "res://NPC_and_Opponent_Data/Gym_Challenge_Hall_" + str(date) + "_" + time_of_day + ".json"
 	_npc_json_path = path if ResourceLoader.exists(path) else ""
