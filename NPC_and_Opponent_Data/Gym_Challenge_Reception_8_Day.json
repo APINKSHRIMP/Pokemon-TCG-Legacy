@@ -1,0 +1,107 @@
+{
+  "npcs": [
+	{
+	  "name": "GH 9 Gym Receptionist 1",
+	  "meet_text": "Welcome! Are you here to enter the Gym Hero Challenge? The entrance fee is $500 which must be paid in full up front and the challenge begins tomorrow. Winning will grant you a large cash prize, free travel on any Bakushin transport service and a unique coin! Are you entering?",
+	  "repeat_text": "Thank you for registering early. You need only pay once for full access to the challenge and you are welcome to enter and leave as often as you like while the challenge is ongoing from tomorrow morning. Good luck!!",
+	  "pattern": "idle_down",
+	  "position": {
+		"x": 308,
+		"y": 70
+	  }
+	},
+	{
+	  "name": "GH 9 Gym Receptionist 2",
+	  "meet_text": "Each Gym Hero Challenge match is in best of 3 format. You must win at least 2 matches to progress to the next game. There is also a banned trainer list. You cannot use any of the following cards: Lass, Super Energy Removal, Energy Removal, Rocket's Sneak Attack, Imposter Oak's Revenge, The Rocket's Trap, No Removal Gym or Chaos Gym",
+	  "repeat_text": "Each Gym Hero Challenge match is in best of 3 format. You must win at least 2 matches to progress to the next game. There is also a banned trainer list. You cannot use any of the following cards: Lass, Super Energy Removal, Energy Removal, Rocket's Sneak Attack, Imposter Oak's Revenge, The Rocket's Trap, No Removal Gym or Chaos Gym",
+	  "pattern": "idle_down",
+	  "position": {
+		"x": 355,
+		"y": 70
+	  }
+	},
+	{
+	  "name": "GH 9 Gym Receptionist 3",
+	  "meet_text": "Welcome! Sorry - If you're looking to register to enter the challenge, please speak with my colleague on the other side of the desk. She will be able to take your entrance fee and register you into the challenge. This side is spectator entrance only.",
+	  "repeat_text": "Welcome! Sorry - If you're looking to register to enter the challenge, please speak with my colleague on the other side of the desk. She will be able to take your entrance fee and register you into the challenge. This side is spectator entrance only.",
+	  "pattern": "idle_down",
+	  "position": {
+		"x": 398,
+		"y": 70
+	  }
+	},
+	{
+	  "name": "GH 9 Gym Security 1",
+	  "meet_text": "The Gym Hero Challenge does not start until tomorrow morning. We are still making final preperations but you can register for the challenge at the reception desk to your right.",
+	  "repeat_text": "Once you have registered for the challenge you can enter the hall from tomorrow morning.",
+	  "pattern": "idle_down",
+	  "position": {
+		"x": 220,
+		"y": 40
+	  }
+	},
+	{
+	  "name": "GH 9 Gym Security 2",
+	  "meet_text": "The Gym Hero Challenge doesn't start until tomorrow morning so no spectators are allowed in until then. Please purchase a spectator entry ticket at the desk, or you can register to enter into the competition yourself.",
+	  "repeat_text": "Only spectators will be allowed to enter through here from tomorrow onwards. All entrants into the competition need to use the other door",
+	  "pattern": "idle_down",
+	  "position": {
+		"x": 482,
+		"y": 40
+	  }
+	},
+	{
+	  "name": "GH 9 Gym Shopkeeper",
+	  "meet_text": "Welcome! The challenge start tomorrow but you can purchase your gym hero and gym challenge packs here today!",
+	  "repeat_text": "Welcome! The challenge start tomorrow but you can purchase your gym hero and gym challenge packs here today!",
+	  "pattern": "idle_right",
+	  "position": {
+		"x": 55,
+		"y": 340
+	  }
+	}
+  ],
+  "opponents": [
+	{
+	  "name": "Gym Challenge Brock",
+	  "match_format": "best_of_3",
+	  "meet_text": "I'm Brock, leader of Pewter Gym, and the Gym Challenge starts here with me. I lead with a rock hard defence. Are you ready to face my rock hard defence deck? Remember, the banned trainer cards aren't allowed in here.",
+	  "repeat_text": "Show me that rock hard resolve again!",
+	  "first_win_text": "Heh, you cracked right through my defence! You've earned the right to move on. Take this coin.",
+	  "rematch_win_text": "Still as solid as ever, but you're the stronger one.",
+	  "loss_text": "The best offense is a good defense! That's my way of doing things. Come back when your rocks are harder!",
+	  "pattern": "idle_down",
+	  "position": {
+		"x": 240,
+		"y": 284
+	  },
+	  "condition": {
+		"type": "opponent_not_defeated",
+		"target": "Gym Challenge Brock"
+	  },
+	  "restrictions": {
+		"banned_card_ids": [
+		  "base1-75",
+		  "base1-79",
+		  "base1-92",
+		  "base5-16",
+		  "base5-72",
+		  "base5-76",
+		  "gym1-19",
+		  "gym1-103",
+          "gym2-102"
+		],
+		"banned_card_names": [
+		  "Lass",
+		  "Super Energy Removal",
+		  "Energy Removal",
+		  "Rocket's Sneak Attack",
+		  "Imposter Oak's Revenge",
+		  "The Rocket's Trap",
+		  "No Removal Gym",
+          "Chaos Gym"
+		]
+	  }
+	}
+  ]
+}

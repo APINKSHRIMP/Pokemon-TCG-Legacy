@@ -17,6 +17,9 @@ const AUDIENCE_COUNTS: Dictionary = {
 	9:  { "Day": [32, 36, 32], "Evening": [20, 24, 20], "Night": [8,  12,  8] },
 	10: { "Day": [28, 32, 28], "Evening": [14, 16, 14], "Night": [5,   7,  5] },
 	11: { "Day": [22, 24, 22], "Evening": [8,  12,  8], "Night": [3,   5,  3] },
+	12: { "Day": [10, 10, 10], "Evening": [8,  12,  8], "Night": [3,   5,  3] },
+	13: { "Day": [6, 6, 6], "Evening": [4,  4,  4], "Night": [2,  1,  1] },
+	14: { "Day": [6, 6, 6], "Evening": [2,  2,  2], "Night": [1,   0,  2] },
 }
 
 # ============================================================
@@ -32,7 +35,7 @@ const REGEN_PCT_TIME_ADVANCE := 0.9  # 90% change after a time-zone transition
 # Chance that any individual NPC uses the _random pattern variant
 # instead of the plain facing direction.
 # ============================================================
-const RANDOM_PATTERN_CHANCE := 0.25
+const RANDOM_PATTERN_CHANCE := 0.3
 
 # ============================================================
 # TWEAKABLE: NPC SPRITE POOL
@@ -45,8 +48,8 @@ const NPC_SPRITE_POOL: Array = [
 	"NPC21", "NPC22", "NPC23", "NPC24", "NPC25",
 	"NPC28", "NPC29", "NPC30", 
 	"NPC40", "NPC 02", "NPC 03", "NPC 04", "NPC 05", "NPC 06",
-	"NPC 07", "NPC 08", "NPC 10", "NPC 13", "NPC 14", "NPC 15", "NPC 17", "NPC 18",
-	"NPC 26", "NPC 30", "NPC 31", "NPC 32", "NPC 18", "NPC 33", "NPC 34", "NPC 18",
+	"NPC 07", "NPC 08", "NPC 10", "NPC 13", "NPC 14", "NPC 15", "NPC 17",
+	"NPC 26", "NPC 30", "NPC 31", "NPC 32", "NPC 18", "NPC 33", "NPC 34",
 	"NPC 85", "NPC 86", "NPC 87", "NPC 88",
 	"Aromalady", "Artist", "Artist2",
 	"Backers_F", "Backers_F2", "Backers_M", "Backers_M2", "Bakushin_Clerk", "Bakushin_Sailor", "Battlegirl", "Battlegirl2", "Beauty",
@@ -57,18 +60,17 @@ const NPC_SPRITE_POOL: Array = [
 	"Lady", "Lady2", "Youngster", "Youngster2", "Youngster3",
 	"Cooltrainer_M", "Cooltrainer_F", "Cooltrainer_M2",
 	"Cooltrainer_M3", "Cooltrainer_M4", "Cooltrainer_F3", "Cooltrainer_F4",
-	"Hiker", "Collector", "Richboy", "RichBoy2", "Socialite2",
-	"Psychic_M", "Psychic_F", "Medium_1", "Rancher", "Teacher",
+	"Hiker", "Collector", "Richboy", "RichBoy2", "Socialite2", "Medium_1", "Rancher",
 	"Lass", "Lass2", "Lass3", "Pokefan_F", "Pokefan_F2",
 	"Pokemonbreeder_M", "Pokemonbreeder_M2", "Pokemonbreeder_F", "Pokemonbreeder_F2",
 	"Pokemonranger_M", "Pokemonranger_M2", "Pokemonranger_F", "Pokemonranger_F2",
 	"Psychic_F", "Psychic_F2", "Psychic_M", "Psychic_M2", 
-	"Bugcatcher", "Bugcatcher2", "Richboy", "Richboy2", "Roughneck", "Roughneck2", "Sage",
+	"Bugcatcher", "Bugcatcher2", "Roughneck", "Roughneck2", "Sage",
 	"Beauty2", "Beauty3", "Sailor", "Camper", "Picnicker",
 	"Fisherman2", "Fisherman", "Juggler", "Supernerd", "Guitarist", "Guitarist2",
 	"Pokefan_M", "Pokefan_M2", "Dancer", "Elder", "Fisher", "Hoopster", "Idol", "NurseryAide",
 	"Schoolkid_F", "Schoolkid_F2", "Schoolkid_M", "Schoolkid_M2", "Schoolkid_M3", "Smasher",
-	"Socialite", "Socialite2", "Striker", "Teacher", "Twin1", "Twin3", "Twin5",
+	"Socialite", "Striker", "Teacher", "Twin1", "Twin3", "Twin5",
 	"Veteran_M", "Veteran_M2", "Veteran_F", "Waiter2", "Waiter",
 	"Youngcouple", "Youngcouple_2", "Youngcouple2", "Youngcouple2_2",   
 ]
@@ -135,8 +137,8 @@ static func update_audience_state(
 	from_plaza: bool, returning_from_battle: bool
 ) -> void:
 	var existing: Dictionary = GameState.progress.get("gym_challenge_audience", {})
-	var stored_time: String  = GameState.progress.get("gym_challenge_audience_time", "")
-	var stored_date: int     = int(GameState.progress.get("gym_challenge_audience_date", 0))
+	var stored_time: String  = existing.get("saved_time", "")
+	var stored_date: int     = int(existing.get("saved_date", 0))
 
 	var counts: Array  = _get_counts(date, time)
 	var left_count: int  = counts[0]
@@ -160,9 +162,11 @@ static func update_audience_state(
 	else:
 		return  # Hall → Reception → Hall: audience unchanged
 
-	GameState.progress["gym_challenge_audience"]      = new_audience
-	GameState.progress["gym_challenge_audience_time"] = time
-	GameState.progress["gym_challenge_audience_date"] = date
+	new_audience["saved_date"] = date
+	new_audience["saved_time"] = time
+	GameState.progress["gym_challenge_audience"] = new_audience
+	GameState.progress.erase("gym_challenge_audience_date")
+	GameState.progress.erase("gym_challenge_audience_time")
 	GameState.save_progress()
 
 
