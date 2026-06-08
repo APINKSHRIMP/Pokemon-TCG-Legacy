@@ -33,3 +33,6 @@ func _scene_setup():
 	_npc_json_path = path if ResourceLoader.exists(path) else ""
 	_create_cash_label()
 	_update_cash_label()
+	# If arriving from the plaza (not from the hall), flag the audience for partial regen
+	if GameState.entering_from != "Gym_Challenge_Hall":
+		GameState.progress["gym_challenge_audience_from_plaza"] = true

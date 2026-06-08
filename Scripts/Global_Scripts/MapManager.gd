@@ -330,6 +330,30 @@ func _load_and_spawn_npcs(json_path: String):
 		_opponents_container.add_child(npc)
 		print("Spawned NPC: ", npc.npc_name, " at ", npc.position)
 
+## Instantiate a single NPC entry dict into the current opponents container.
+## Skips condition evaluation — intended for programmatically built entries
+## such as dynamically generated audience members.
+func spawn_npc_entry(entry: Dictionary) -> void:
+	if not entry.has("position"):
+		return
+	var npc = npc_scene.instantiate()
+	npc.npc_name         = entry.get("name", "")
+	npc.sprite           = entry.get("sprite", "")
+	npc.npc_type         = entry.get("npc_type", "text_only")
+	npc.meet_text        = entry.get("meet_text", "")
+	npc.repeat_text      = entry.get("repeat_text", "")
+	npc.gift_type        = entry.get("gift_type", "")
+	npc.gift_value       = entry.get("gift_value", "")
+	npc.required_costume   = entry.get("required_costume", "")
+	npc.costume_match_text = entry.get("costume_match_text", "")
+	npc.position         = Vector2(entry["position"]["x"], entry["position"]["y"])
+	npc.movement_pattern = entry.get("pattern", "idle_down")
+	npc.patrol_distance  = entry.get("patrol_distance", 100.0)
+	npc.patrol_speed     = entry.get("patrol_speed", 60.0)
+	npc.patrol_axis      = entry.get("patrol_axis", "horizontal")
+	npc.wander_radius    = entry.get("wander_radius", 200.0)
+	_opponents_container.add_child(npc)
+
 # ============================================================
 # CONDITION EVALUATION
 # ============================================================

@@ -22,8 +22,18 @@ func get_entry_positions() -> Dictionary:
 func get_opponent_json_path() -> String: return _npc_json_path
 func get_npc_json_path() -> String:      return _npc_json_path
 
+func _ready():
+	super._ready()
+	for entry in GymChallengeAudienceManager.get_audience_npc_entries():
+		MapManager.spawn_npc_entry(entry)
+
 func _scene_setup():
 	var time_of_day: String = GameState.get_time()
 	var date: int = GameState.get_date()
 	var path := "res://NPC_and_Opponent_Data/Gym_Challenge_Hall_" + str(date) + "_" + time_of_day + ".json"
 	_npc_json_path = path if ResourceLoader.exists(path) else ""
+	var from_plaza: bool = GameState.progress.get("gym_challenge_audience_from_plaza", false)
+	GameState.progress["gym_challenge_audience_from_plaza"] = false
+	GymChallengeAudienceManager.update_audience_state(
+		date, time_of_day, from_plaza, GameState.returning_from_battle
+	)

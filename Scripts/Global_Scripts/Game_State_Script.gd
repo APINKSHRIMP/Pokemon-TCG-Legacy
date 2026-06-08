@@ -273,6 +273,15 @@ func load_progress():
 	if not progress.has("date"):
 		progress["date"] = 1
 
+	if not progress.has("gym_challenge_audience"):
+		progress["gym_challenge_audience"] = {}
+	if not progress.has("gym_challenge_audience_time"):
+		progress["gym_challenge_audience_time"] = ""
+	if not progress.has("gym_challenge_audience_date"):
+		progress["gym_challenge_audience_date"] = 0
+	if not progress.has("gym_challenge_audience_from_plaza"):
+		progress["gym_challenge_audience_from_plaza"] = false
+
 	if not progress.has("shop_state"):
 		progress["shop_state"] = "initial"
 	if not progress.has("shop_free_packs_given"):
