@@ -10,7 +10,10 @@
 size = Vector2(23, 17)
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_whmvp"]
-size = Vector2(60, 74)
+size = Vector2(51, 68)
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_g1bce"]
+size = Vector2(40, 25)
 
 [node name="PlayerHouseUpstairs" type="Node2D" unique_id=1007463427]
 script = ExtResource("1_whmvp")
@@ -106,19 +109,25 @@ shape = SubResource("RectangleShape2D_377ug")
 metadata/target_scene = "res://Scenes/Map_Scenes/Player_House_Downstairs.tscn"
 metadata/door_type = "stairs_down"
 
-[node name="Starter_Box" type="TextureRect" parent="." unique_id=670229080]
-offset_left = 166.0
-offset_top = 77.0
-offset_right = 220.0
-offset_bottom = 127.0
-texture = ExtResource("4_eucp7")
-stretch_mode = 3
-
 [node name="UILAYER" type="CanvasLayer" parent="." unique_id=383211045]
 
 [node name="Interactables" type="Area2D" parent="." unique_id=1355057286]
 script = ExtResource("int_script")
 
 [node name="Bed" type="CollisionShape2D" parent="Interactables" unique_id=1923336825]
-position = Vector2(337, 159)
+position = Vector2(337.5, 157)
 shape = SubResource("RectangleShape2D_whmvp")
+
+[node name="Starter_Box" type="TextureRect" parent="Interactables" unique_id=670229080]
+offset_left = 177.0
+offset_top = 92.0
+offset_right = 208.0
+offset_bottom = 112.0
+texture = ExtResource("4_eucp7")
+stretch_mode = 3
+
+[node name="box_area" type="Area2D" parent="Interactables/Starter_Box" unique_id=63502065]
+
+[node name="Box_Collision" type="CollisionShape2D" parent="Interactables/Starter_Box/box_area" unique_id=1308145011]
+position = Vector2(16, 9)
+shape = SubResource("RectangleShape2D_g1bce")

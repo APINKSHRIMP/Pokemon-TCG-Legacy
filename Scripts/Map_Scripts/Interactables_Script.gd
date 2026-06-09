@@ -121,8 +121,6 @@ func _shape_at(world_pos: Vector2) -> String:
 
 func _trigger(shape_name: String) -> void:
 	match shape_name:
-		"Bed":
-			_interact_bed()
 		"TV":
 			_interact_tv()
 		_:

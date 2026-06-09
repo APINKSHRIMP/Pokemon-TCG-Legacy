@@ -318,7 +318,34 @@ func save_progress():
 
 func mark_first_launch_complete() -> void:
 	progress["first_launch_complete"] = true
+	# Safety reset: zero every owned card and lock all pack sets so a game
+	# reset always starts clean regardless of leftover user:// data.
+	_reset_all_owned_cards()
+	progress["packs_unlocked"] = []
 	save_progress()
+
+func _reset_all_owned_cards() -> void:
+	var dir := DirAccess.open(OWNED_CARDS_FOLDER)
+	if dir == null:
+		return
+	dir.list_dir_begin()
+	var fname := dir.get_next()
+	while fname != "":
+		if fname.ends_with("_player_owned_cards.json"):
+			var path := OWNED_CARDS_FOLDER + fname
+			var f := FileAccess.open(path, FileAccess.READ)
+			if f != null:
+				var data = JSON.parse_string(f.get_as_text())
+				f.close()
+				if data is Dictionary and data.has("owned_cards"):
+					for entry in data["owned_cards"]:
+						entry["owned"] = 0
+					var wf := FileAccess.open(path, FileAccess.WRITE)
+					if wf != null:
+						wf.store_string(JSON.stringify(data, "\t"))
+						wf.close()
+		fname = dir.get_next()
+	dir.list_dir_end()
 
 # Converts old "coin_pikachu_gold_1.png" format to "Pikachu Gold 1.png".
 # Handles teamXXX compound words (teamplasma → Team Plasma, etc.).

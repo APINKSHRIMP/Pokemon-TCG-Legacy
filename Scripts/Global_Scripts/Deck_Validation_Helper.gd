@@ -62,7 +62,7 @@ static func opponent_has_restrictions(restrictions: Dictionary) -> bool:
 	return not restrictions.is_empty()
 
 # Validates the given player deck file path against the restrictions dict.
-# `deck_path` is e.g. "user://Player_Decks/your_first_deck.json".
+# `deck_path` is e.g. "user://Player_Decks/Your First Deck.json".
 static func validate(deck_path: String, restrictions: Dictionary) -> Dictionary:
 	var result := {
 		"passed":         true,

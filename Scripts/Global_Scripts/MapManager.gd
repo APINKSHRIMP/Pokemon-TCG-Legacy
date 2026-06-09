@@ -43,6 +43,10 @@ var ok_button: Button
 # confirm dialog (e.g. the bed). Empty Callable when none is active.
 var _pending_confirm_yes: Callable = Callable()
 
+# One-shot callback fired on the next OK press, before the default
+# dismiss logic. Used by scene interactables to chain message sequences.
+var _pending_ok_action: Callable = Callable()
+
 # ============================================================
 # GIFT DISPLAY STATE
 # ============================================================
@@ -475,6 +479,13 @@ func show_interactable_message(text: String) -> void:
 		return
 	_show_message_with_ok(text)
 
+# Shows an OK dialog then fires on_ok when the player dismisses it.
+# If the panel is already visible (called from within a chain), just
+# swaps the text in place — does NOT guard on message_panel.visible.
+func show_message_then(text: String, on_ok: Callable) -> void:
+	_pending_ok_action = on_ok
+	_show_message_with_ok(text)
+
 # Shows a Yes/No dialog. on_yes is called (after the dialog closes)
 # only if the player chooses Yes. Ignored if a dialog is already open.
 func show_interactable_confirm(text: String, on_yes: Callable) -> void:
@@ -637,6 +648,13 @@ func _on_ok_pressed():
 		message_panel.visible = false
 		PackOpeningManager.all_packs_opened.connect(_on_pack_opening_finished, CONNECT_ONE_SHOT)
 		PackOpeningManager.open_packs(arts)
+		return
+
+	# One-shot interactable callback (e.g. multi-step starter box sequence)
+	if _pending_ok_action.is_valid():
+		var cb := _pending_ok_action
+		_pending_ok_action = Callable()
+		cb.call()
 		return
 
 	if current_npc != null:

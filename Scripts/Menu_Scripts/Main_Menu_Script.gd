@@ -42,8 +42,12 @@ func _ready() -> void:
 	audio_player.stream.loop = true
 	audio_player.play()
 
-	# Check if deck mode should be locked
-	var deck_locked = not GameState.progress.get("player_collected_starter_box", false)
+	# Check if deck/coin-case modes should be locked (require starter box)
+	var starter_collected = GameState.progress.get("player_collected_starter_box", false)
+	var locked_modes := {}
+	if not starter_collected:
+		locked_modes["deck_mode_background"]      = "deck_mode_label"
+		locked_modes["coin_case_mode_background"] = "coin_case_label"
 
 	# Wait one frame so Godot finishes layout and rect.size is correct
 	await get_tree().process_frame
@@ -55,7 +59,7 @@ func _ready() -> void:
 			# Set pivot to centre so scaling grows from the middle, not top-left
 			rect.pivot_offset = rect.size / 2.0
 
-			if node_name == "deck_mode_background" and deck_locked:
+			if locked_modes.has(node_name):
 				rect.modulate = Color(0.4, 0.4, 0.4, 1.0)
 				rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
 			else:
@@ -63,11 +67,12 @@ func _ready() -> void:
 				rect.mouse_exited.connect(_on_mode_hover.bind(rect, false))
 				rect.gui_input.connect(_on_mode_clicked.bind(node_name))
 
-	# Grey out the deck label too if locked
-	if deck_locked:
-		var deck_label = get_node("deck_mode_label") as Label
-		if deck_label:
-			deck_label.modulate = Color(0.4, 0.4, 0.4, 1.0)
+	# Grey out labels for locked modes
+	for _bg_name in locked_modes.keys():
+		var label_name: String = locked_modes[_bg_name]
+		var lbl = get_node(label_name) as Label
+		if lbl:
+			lbl.modulate = Color(0.4, 0.4, 0.4, 1.0)
 
 	# Make all labels pass mouse events through so they don't block hover/click
 	var label_names = [

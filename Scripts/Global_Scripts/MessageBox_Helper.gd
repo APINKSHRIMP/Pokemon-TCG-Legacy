@@ -58,6 +58,9 @@ static func build(box_height: float = 200.0,
 	var msg_font_bold := FontVariation.new()
 	msg_font_bold.base_font = msg_font
 	msg_font_bold.variation_embolden = 1.0
+	var msg_font_italic := FontVariation.new()
+	msg_font_italic.base_font = msg_font
+	msg_font_italic.variation_transform = Transform2D(Vector2(1.0, 0.0), Vector2(-0.25, 1.0), Vector2(0.0, 0.0))
 
 	# ── Root ─────────────────────────────────────────────────
 	# Explicitly sized to the full reference screen so children
@@ -110,10 +113,12 @@ static func build(box_height: float = 200.0,
 	label.bbcode_enabled = true
 	label.scroll_active  = false
 	label.fit_content    = true
-	label.add_theme_font_override("normal_font", msg_font)
-	label.add_theme_font_override("bold_font",   msg_font_bold)
-	label.add_theme_font_size_override("normal_font_size", font_size)
-	label.add_theme_font_size_override("bold_font_size",   font_size)
+	label.add_theme_font_override("normal_font",   msg_font)
+	label.add_theme_font_override("bold_font",     msg_font_bold)
+	label.add_theme_font_override("italics_font",  msg_font_italic)
+	label.add_theme_font_size_override("normal_font_size",   font_size)
+	label.add_theme_font_size_override("bold_font_size",     font_size)
+	label.add_theme_font_size_override("italics_font_size",  font_size)
 	label.add_theme_color_override("default_color", Color(0, 0, 0, 1))
 	# Natural height by default so optional buttons sit immediately under the
 	# text with no trailing gap. Callers that want the label to fill the box
