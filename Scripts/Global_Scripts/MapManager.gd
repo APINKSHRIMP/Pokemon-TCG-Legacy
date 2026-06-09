@@ -1554,6 +1554,8 @@ const _MAP_SCENES_PREFIX := "res://Scenes/Map_Scenes/"
 
 var _debug_defeated_label: Label = null
 var _debug_label_token: int = 0
+var _debug_cash_label: Label = null
+var _debug_cash_token: int = 0
 
 func _unhandled_input(event: InputEvent) -> void:
 	if not (event is InputEventKey and event.pressed and not event.is_echo()):
@@ -1572,6 +1574,20 @@ func _unhandled_input(event: InputEvent) -> void:
 		print("DEBUG: opponents defeated = ", GameState.get_current_defeated())
 		get_viewport().set_input_as_handled()
 		_debug_flash_defeated_count()
+		return
+
+	# P / O — adjust cash by ±200 and flash the delta.
+	if event.keycode == KEY_P:
+		GameState.add_cash(200)
+		print("DEBUG: cash = ", GameState.get_cash())
+		get_viewport().set_input_as_handled()
+		_debug_flash_cash(200)
+		return
+	if event.keycode == KEY_O:
+		GameState.add_cash(-200)
+		print("DEBUG: cash = ", GameState.get_cash())
+		get_viewport().set_input_as_handled()
+		_debug_flash_cash(-200)
 		return
 
 	var new_date: int = -1
@@ -1659,3 +1675,36 @@ func _debug_flash_defeated_count() -> void:
 	if my_token == _debug_label_token and _debug_defeated_label != null and is_instance_valid(_debug_defeated_label):
 		_debug_defeated_label.queue_free()
 		_debug_defeated_label = null
+
+# Shows a "+200 Cash" / "-200 Cash" label for 2 seconds. Same token pattern as above.
+func _debug_flash_cash(delta: int) -> void:
+	if _ui_layer == null or not is_instance_valid(_ui_layer):
+		return
+
+	if _debug_cash_label == null or not is_instance_valid(_debug_cash_label):
+		_debug_cash_label = Label.new()
+		_debug_cash_label.name = "DebugCashLabel"
+		_debug_cash_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		_debug_cash_label.vertical_alignment   = VERTICAL_ALIGNMENT_CENTER
+		_debug_cash_label.add_theme_font_size_override("font_size", 72)
+		_debug_cash_label.add_theme_color_override("font_outline_color", Color.BLACK)
+		_debug_cash_label.add_theme_constant_override("outline_size", 12)
+		_debug_cash_label.anchor_left   = 0.0
+		_debug_cash_label.anchor_right  = 1.0
+		_debug_cash_label.anchor_top    = 0.0
+		_debug_cash_label.anchor_bottom = 0.0
+		_debug_cash_label.offset_top    = 280
+		_debug_cash_label.offset_bottom = 400
+		_debug_cash_label.mouse_filter  = Control.MOUSE_FILTER_IGNORE
+		_ui_layer.add_child(_debug_cash_label)
+
+	var prefix := "+" if delta > 0 else ""
+	_debug_cash_label.text = prefix + str(delta) + " Cash  (Total: " + str(GameState.get_cash()) + ")"
+	_debug_cash_label.add_theme_color_override("font_color", Color.GREEN if delta > 0 else Color.RED)
+
+	_debug_cash_token += 1
+	var my_token: int = _debug_cash_token
+	await get_tree().create_timer(2.0).timeout
+	if my_token == _debug_cash_token and _debug_cash_label != null and is_instance_valid(_debug_cash_label):
+		_debug_cash_label.queue_free()
+		_debug_cash_label = null

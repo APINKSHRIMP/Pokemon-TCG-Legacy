@@ -1,6 +1,6 @@
 {
 	"first_launch_complete": false,
-	"cash": 1.0,
+	"cash": 50.0,
 	"coins": [
 		"Pikachu Silver.png"
 	],
@@ -19,12 +19,7 @@
 	],
 	"date": 1,
 	"energy_styles": [
-		"Base1",
-		"Ecard1",
-		"ex1",
-		"ex9",
-		"ex13",
-		"ex16"
+		"Base1"
 	],
 	"gifts_received": [],
 	"moving_in_completed": false,

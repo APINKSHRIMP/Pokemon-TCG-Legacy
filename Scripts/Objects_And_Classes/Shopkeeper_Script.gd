@@ -90,32 +90,35 @@ func on_interact() -> bool:
 
 func _handle_initial_state():
 	print("[Shopkeeper] Initial state — offering starter set for $", STARTER_SET_COST)
-	var message = "Welcome to Card Mart! I've got a special starter pack just for you.\n\nIt contains a selection of cards to get you started.\n\nCost: $" + str(STARTER_SET_COST)
+	var message = "Hello there! I've not seen you before, I assume you're new in town? Sadly thanks to the new tariffs introduced, I can't afford the import on my regular stock shipment this week and I'm all out of packs. So I've put all of my spare stock into this box here and I'm selling it for super cheap to make just enough to pay the import charge. I'm only looking for $" + str(STARTER_SET_COST)+" for it. It's an amazing bargain I promise you."
 	var cash = GameState.get_cash()
 	if cash >= STARTER_SET_COST:
 		print("[Shopkeeper] Player can afford starter set")
+		MapManager._pending_confirm_yes = _finish_starter_purchase
 		MapManager._show_message_with_choices(message)
 	else:
 		print("[Shopkeeper] Player cannot afford starter set (have $" + str(cash) + ")")
-		MapManager._show_message_with_ok(message + "\n\nCome back when you've got more cash.")
+		MapManager._show_message_with_ok(message + " If you want it you better hurry back with the funds soon, otherwise somebody might snap up this bargain first!")
 		_shop_state = "awaiting_funds"
 		GameState.progress["shop_state"] = _shop_state
 		GameState.save_progress()
 
 func _handle_awaiting_funds_state():
 	print("[Shopkeeper] Awaiting funds state")
-	var message = "Got your cash yet?"
 	var cash = GameState.get_cash()
 	if cash >= STARTER_SET_COST:
+		var message = "Hello again! You're in luck, nobody has taken this off me yet so you still have a chance to grab this bargain before someone else does! It contains a load of good cards that will be really useful to you. Would you like to buy it? It's a once in a lifetime offer, you won't get the chance again!"
 		print("[Shopkeeper] Player now has enough cash")
-		MapManager._show_message_with_choices(message + "\n\nReady to buy the starter set?")
+		MapManager._pending_confirm_yes = _finish_starter_purchase
+		MapManager._show_message_with_choices(message)
 	else:
+		var message = "I won't be able to afford the import on my regular packs until somebody takes this, so until then I won't have anything else to sell I'm afraid. I promise this is an absolute steal, I'm selling it all at a great loss but I have no other choice. If you're just starting out in the TCG it'll help you massively. As a bonus, if you do take this off my hands today I'll throw in a free pack for you when you return."
 		print("[Shopkeeper] Player still cannot afford it")
 		MapManager._show_message_with_ok(message)
 
 func _handle_restocking_state():
 	print("[Shopkeeper] Restocking state (Date: " + str(GameState.get_date()) + ")")
-	var message = "Come back tomorrow with more cash!"
+	var message = "Thanks again, I should have the shipment of stock in by tomorrow, so come back in the morning and I'll have plenty of packs for you then."
 	if GameState.get_date() > 1:
 		print("[Shopkeeper] Day 2 reached — transitioning to open")
 		_shop_state = "open"
@@ -125,7 +128,7 @@ func _handle_restocking_state():
 			GameState.progress["shop_free_packs_given"] = true
 			GameState.save_progress()
 			MapManager.queue_pack_gift(["base1_a", "base1_c"])
-			message = "Welcome back! I've restocked. Here are two free packs to get you started!"
+			message = "Welcome back! Good to see you again. As expected my stocks arrived today so I have plenty of packs now. However... they only sent me Base packs. As a thanks, here are two free packs to get you started! I should get my other sets in tomorrow but I'll give you a discount on Base set packs as an apology."
 			MapManager._show_message_with_ok(message)
 		else:
 			message = "Welcome back! The shop is open now."
@@ -139,7 +142,7 @@ func _handle_open_state():
 			and not GameState.progress.get("shop_new_stock_shown", false):
 		GameState.progress["shop_new_stock_shown"] = true
 		GameState.save_progress()
-		meet_text = "I've just received the remaining shipment of packs so take a look at the new stock I have now!"
+		meet_text = "I've just received the remaining shipment of packs. I now have Jungle and Fossil packs in for sale so take a look."
 
 func _finish_starter_purchase():
 	print("[Shopkeeper] Processing starter set purchase...")
@@ -153,5 +156,10 @@ func _finish_starter_purchase():
 	_shop_state = "restocking"
 	GameState.progress["shop_state"] = _shop_state
 	GameState.save_progress()
+	var scene = get_tree().current_scene
+	if scene.has_method("_remove_starter_set"):
+		scene._remove_starter_set()
+	if scene.has_method("_update_cash_label"):
+		scene._update_cash_label()
 	print("[Shopkeeper] Starter set purchased. Transitioned to restocking state")
-	MapManager._show_message_with_ok("Thanks for your purchase! Come back tomorrow for more stock.")
+	MapManager._show_message_with_ok("Thanks for your purchase! I'll get the order in right away for my usual shipment now so they'll be here for tomorrow morning. I'll throw you a couple packs in for free as a thank you when you come back! ")

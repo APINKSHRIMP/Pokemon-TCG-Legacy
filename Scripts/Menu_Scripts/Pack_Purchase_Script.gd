@@ -138,7 +138,14 @@ func _refresh_display() -> void:
 	pack_cost_amount.text = str(cost)
 	your_money_amount.text = str(int(player_cash))
 	_update_buy_button()
+	_update_nav_buttons()
 	_save_last_pack_loaded(pack_id)
+
+
+func _update_nav_buttons() -> void:
+	var multi := unlocked_packs.size() > 1
+	next_btn.visible = multi
+	prev_btn.visible = multi
 
 
 func _get_set_name(set_id: String) -> String:
@@ -151,6 +158,7 @@ func _get_set_name(set_id: String) -> String:
 
 func _load_pack_images(pack_id: String) -> void:
 	for child in pack_hbox.get_children():
+		pack_hbox.remove_child(child)
 		child.queue_free()
 	var letters : Array[String] = ["a", "b", "c", "d"]
 	for letter in letters:
@@ -437,5 +445,6 @@ func _on_pack_opening_finished() -> void:
 	cancel_button.disabled = false
 	next_btn.disabled      = false
 	prev_btn.disabled      = false
+	_update_nav_buttons()
 	your_money_amount.text = str(int(player_cash))
 	_update_buy_button()

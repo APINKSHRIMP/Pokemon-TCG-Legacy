@@ -58,10 +58,10 @@ tile_set = ExtResource("2_jgrli")
 tile_set = ExtResource("2_jgrli")
 
 [node name="Starter_Set" type="TextureRect" parent="MART" unique_id=1285393150]
-offset_left = 162.0
-offset_top = 10.0
-offset_right = 202.0
-offset_bottom = 50.0
+offset_left = 161.0
+offset_top = 16.0
+offset_right = 192.0
+offset_bottom = 37.0
 texture = ExtResource("3_onott")
 expand_mode = 2
 stretch_mode = 2
