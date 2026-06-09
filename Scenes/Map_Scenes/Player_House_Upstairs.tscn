@@ -107,13 +107,12 @@ metadata/target_scene = "res://Scenes/Map_Scenes/Player_House_Downstairs.tscn"
 metadata/door_type = "stairs_down"
 
 [node name="Starter_Box" type="TextureRect" parent="." unique_id=670229080]
-offset_left = 177.0
-offset_top = 91.0
-offset_right = 217.0
-offset_bottom = 131.0
+offset_left = 166.0
+offset_top = 77.0
+offset_right = 220.0
+offset_bottom = 127.0
 texture = ExtResource("4_eucp7")
-expand_mode = 2
-stretch_mode = 2
+stretch_mode = 3
 
 [node name="UILAYER" type="CanvasLayer" parent="." unique_id=383211045]
 

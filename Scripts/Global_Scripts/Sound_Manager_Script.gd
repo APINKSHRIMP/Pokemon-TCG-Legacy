@@ -29,6 +29,9 @@ const SFX_battle_start = preload("res://Audio/SFX/battle_start.ogg")
 const SFX_battle_win = preload("res://Audio/SFX/battle_win_sound.ogg")
 const SFX_battle_loss = preload("res://Audio/SFX/battle_loss_sound.ogg")
 
+const SFX_taxi_intro = preload("res://Audio/SFX/Taxi_intro.ogg")
+const SFX_taxi_out   = preload("res://Audio/SFX/Taxi_out.ogg")
+
 # --- BGM player (persists until stopped or replaced) ---
 var bgm_player: AudioStreamPlayer = null
 var _current_bgm_path: String = ""

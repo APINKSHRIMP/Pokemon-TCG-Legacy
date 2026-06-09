@@ -15,6 +15,16 @@ func get_entry_positions() -> Dictionary:
 		"Player_House_Upstairs": SPAWN_FROM_PLAYER_HOUSE_UPSTAIRS,
 	}
 
+func _ready() -> void:
+	super._ready()
+	if GameState.progress.get("show_intro_house_message", false):
+		GameState.progress.erase("show_intro_house_message")
+		GameState.save_progress()
+		MapManager._show_message_with_ok(
+			"Home sweet home. Looks like the movers have already moved everything in for me, but I should check upstairs to make sure that everything has been delivered."
+		)
+
+
 func _scene_setup():
 	_apply_moving_in_visibility($DOWNSTAIRS)
 
