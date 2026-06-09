@@ -101,3 +101,18 @@ theme_override_colors/font_placeholder_color = Color(0.25565845, 0.25565895, 0.2
 theme_override_font_sizes/font_size = 41
 placeholder_text = "Enter your name....."
 alignment = 1
+
+[node name="player_dob_label" type="LineEdit" parent="." unique_id=387429105]
+z_index = 300
+layout_mode = 0
+offset_left = 1700.0
+offset_top = 17.0
+offset_right = 1890.0
+offset_bottom = 85.0
+theme = ExtResource("4_t1d7u")
+theme_override_colors/font_color = Color(0, 0, 0, 1)
+theme_override_colors/font_uneditable_color = Color(0, 0, 0, 1)
+theme_override_font_sizes/font_size = 26
+text = "DOB: --/--"
+alignment = 1
+editable = false

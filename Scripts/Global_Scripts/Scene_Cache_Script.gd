@@ -17,6 +17,8 @@ extends Node
 # Every scene path that should be preloaded. Add new map / interior
 # paths here as they're created.
 const SCENES_TO_PRELOAD: Array = [
+	# First-boot setup
+	"res://Scenes/Intro_And_Animation_Scenes/First_Boot_Setup_Scene.tscn",
 	# Map scenes
 	"res://Scenes/Map_Scenes/Celeste_Harbour.tscn",
 	"res://Scenes/Map_Scenes/Verdant_Forest.tscn",

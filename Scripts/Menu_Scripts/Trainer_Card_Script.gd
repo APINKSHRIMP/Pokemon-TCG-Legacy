@@ -37,6 +37,7 @@ var _owned_costumes         : Dictionary = {}
 @onready var save_btn    : Button        = $"trainer_save_button"
 @onready var cancel_btn  : Button        = $"trainer_cancel_button"
 @onready var name_box    : LineEdit      = $"player_name"
+@onready var dob_label   : LineEdit      = $"player_dob_label"
 @onready var audio_player = AudioStreamPlayer.new()
 
 # ─── Lifecycle ───────────────────────────────────────────────────────────────
@@ -128,6 +129,9 @@ func _load_player_data() -> void:
 
 	if data.has("name"):
 		saved_player_name = data["name"]
+
+	var dob: String = data.get("date_of_birth", "")
+	dob_label.text = "DOB: " + (dob if dob != "" else "--/--")
 
 
 # ─── Name box ────────────────────────────────────────────────────────────────

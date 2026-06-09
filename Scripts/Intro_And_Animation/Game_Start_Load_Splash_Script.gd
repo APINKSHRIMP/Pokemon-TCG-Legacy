@@ -82,6 +82,11 @@ func _change_to_saved_scene() -> void:
 	while not SceneCache.is_all_loaded():
 		await get_tree().process_frame
 
+	# First-boot: route new players to the trainer card setup screen.
+	if not GameState.progress.get("first_launch_complete", true):
+		SceneCache.change_scene("res://Scenes/Intro_And_Animation_Scenes/First_Boot_Setup_Scene.tscn")
+		return
+
 	# Determine where to send the player
 	var target_scene: String = GameState.get_saved_scene_path()
 

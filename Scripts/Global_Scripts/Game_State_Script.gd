@@ -288,6 +288,10 @@ func load_progress():
 		progress["shop_free_packs_given"] = false
 	if not progress.has("player_collected_shop_starter_set"):
 		progress["player_collected_shop_starter_set"] = false
+	# Existing saves predate this field — treat them as already launched.
+	# New games get false from the seed file, so this migration never fires for them.
+	if not progress.has("first_launch_complete"):
+		progress["first_launch_complete"] = true
 
 	# Migrate old met_npcs dict to npc_interactions array
 	if not progress.has("npc_interactions"):
@@ -311,6 +315,10 @@ func save_progress():
 	var file = FileAccess.open(PROGRESS_PATH, FileAccess.WRITE)
 	file.store_string(JSON.stringify(progress, "\t"))
 	file.close()
+
+func mark_first_launch_complete() -> void:
+	progress["first_launch_complete"] = true
+	save_progress()
 
 # Converts old "coin_pikachu_gold_1.png" format to "Pikachu Gold 1.png".
 # Handles teamXXX compound words (teamplasma → Team Plasma, etc.).

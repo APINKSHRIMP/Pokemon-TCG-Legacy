@@ -1,0 +1,60 @@
+[gd_scene format=3 uid="uid://dq8bx5t3vrq7a"]
+
+[ext_resource type="Script" uid="uid://c5s6k2f9p0m3n" path="res://Scripts/Intro_And_Animation/First_Boot_Setup_Script.gd" id="1_setup"]
+[ext_resource type="Shader" uid="uid://ccm481fk14lc8" path="res://Scripts/Shaders/Background_Scroll_Right_Top_Border.gdshader" id="2_kftsc"]
+[ext_resource type="Texture2D" uid="uid://dieqv60p12hlk" path="res://Image_Assets/Backgrounds_And_Borders/Borders/horizontal_border.png" id="3_2qd32"]
+[ext_resource type="Shader" uid="uid://d3gofmygrsrkm" path="res://Scripts/Shaders/Background_Scroll_Left.gdshader" id="4_2qd32"]
+[ext_resource type="Texture2D" uid="uid://he803mdt247f" path="res://Image_Assets/Backgrounds_And_Borders/Backgrounds/background5.png" id="5_2qd32"]
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_border"]
+shader = ExtResource("2_kftsc")
+shader_parameter/scroll_speed = -0.009
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_bg"]
+shader = ExtResource("4_2qd32")
+shader_parameter/scroll_speed = 0.002
+shader_parameter/tint = Vector4(1, 1, 1, 1)
+
+[node name="FIRST BOOT SETUP" type="Control"]
+layout_mode = 3
+anchors_preset = 0
+offset_right = 40.0
+offset_bottom = 40.0
+script = ExtResource("1_setup")
+
+[node name="BACKGROUND" type="Control" parent="."]
+anchors_preset = 0
+offset_top = 59.0
+offset_right = 40.0
+offset_bottom = 99.0
+
+[node name="top_border" type="TextureRect" parent="BACKGROUND"]
+z_index = 200
+material = SubResource("ShaderMaterial_border")
+layout_mode = 0
+offset_top = -59.0
+offset_right = 1921.0
+offset_bottom = 48.0
+texture = ExtResource("3_2qd32")
+stretch_mode = 1
+
+[node name="bottom_border" type="TextureRect" parent="BACKGROUND"]
+z_index = 200
+material = SubResource("ShaderMaterial_border")
+layout_mode = 0
+offset_top = 918.0
+offset_right = 1921.0
+offset_bottom = 1021.0
+texture = ExtResource("3_2qd32")
+stretch_mode = 1
+
+[node name="background_scroller" type="TextureRect" parent="BACKGROUND"]
+material = SubResource("ShaderMaterial_bg")
+layout_mode = 0
+offset_left = -2.0000002
+offset_top = 45.000004
+offset_right = 6622.0
+offset_bottom = 4462.0
+scale = Vector2(0.29, 0.29)
+texture = ExtResource("5_2qd32")
+stretch_mode = 1
