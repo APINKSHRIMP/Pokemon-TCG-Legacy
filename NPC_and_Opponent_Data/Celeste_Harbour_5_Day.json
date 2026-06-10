@@ -232,7 +232,7 @@
 	  "pattern": "idle_up",
 	  "position": {
 		"x": -715,
-		"y": 2690
+		"y": 2680
 	  },
 	  "condition": {
 		"type": "npc_not_met",
@@ -643,7 +643,7 @@
 	  "pattern": "idle_down",
 	  "position": {
 		"x": -720,
-		"y": 2730
+		"y": 2735
 	  }
 	},
 	{
@@ -656,7 +656,7 @@
 	  "pattern": "idle_down",
 	  "position": {
 		"x": -600,
-		"y": 2730
+		"y": 2735
 	  }
 	},
 	{

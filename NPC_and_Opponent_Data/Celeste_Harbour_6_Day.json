@@ -494,7 +494,7 @@
       "pattern": "idle_down",
       "position": {
         "x": -720,
-        "y": 2730
+        "y": 2735
       }
     },
     {
@@ -507,7 +507,7 @@
       "pattern": "idle_down",
       "position": {
         "x": -840,
-        "y": 2730
+        "y": 2735
       }
     },
     {
@@ -652,7 +652,7 @@
       "pattern": "idle_down",
       "position": {
         "x": -600,
-        "y": 2730
+        "y": 2735
       }
     },
     {

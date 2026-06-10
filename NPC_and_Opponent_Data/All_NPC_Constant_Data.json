@@ -142,7 +142,7 @@
 	"CH 2 D Kid Opening Packs": {
 	  "sprite": "NPC 02",
 	  "gift_type": "pack",
-	  "gift_value": "base1-a"
+	  "gift_value": "base1_a"
 	},
 	"CH 2 D Maintenance Guy Watering Sunflowers": {
 	  "sprite": "Gardener"

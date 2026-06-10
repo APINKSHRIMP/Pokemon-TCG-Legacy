@@ -94,8 +94,8 @@
 	  "patrol_speed": 30.0,
 	  "wander_radius": 65,
 	  "position": {
-		"x": -400,
-		"y": 1660
+		"x": -150,
+		"y": 1710
 	  }
 	},
 	{
@@ -214,8 +214,8 @@
 	  "loss_text": "Looks like luck wasn't on your side today.",
 	  "pattern": "idle_random",
 	  "position": {
-		"x": -860,
-		"y": 2690
+		"x": -615,
+		"y": 2510
 	  }
 	},
 	{
@@ -244,7 +244,7 @@
 	  "pattern": "idle_down",
 	  "position": {
 		"x": -600,
-		"y": 2730
+		"y": 2735
 	  }
 	}
   ]

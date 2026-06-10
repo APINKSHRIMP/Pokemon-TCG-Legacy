@@ -248,8 +248,8 @@
 	  "card_reward": "base1-27, base1-27",
 	  "pattern": "idle_random",
 	  "position": {
-		"x": -860,
-		"y": 2690
+		"x": -615,
+		"y": 2510
 	  }
 	},
 	{
@@ -290,7 +290,7 @@
 	  "pattern": "idle_down",
 	  "position": {
 		"x": -600,
-		"y": 2730
+		"y": 2735
 	  }
 	}
   ]
