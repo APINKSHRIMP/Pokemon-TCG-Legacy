@@ -609,6 +609,7 @@ func _save_cards_to_player(set_id: String, cards: Array) -> Dictionary:
 			new_card_ids[card_id] = true
 			data["owned_cards"].append({"card_id": card_id, "owned": 1})
 
+	data["set_unlocked"] = true
 	var write_file := FileAccess.open(json_path, FileAccess.WRITE)
 	if write_file == null:
 		push_error("PackOpeningManager: cannot write " + json_path)

@@ -542,6 +542,7 @@ func give_cards(card_ids_csv: String) -> void:
 			if not found:
 				data["owned_cards"].append({"card_id": card_id, "owned": 1})
 
+		data["set_unlocked"] = true
 		var write_file = FileAccess.open(json_path, FileAccess.WRITE)
 		write_file.store_string(JSON.stringify(data, "\t"))
 		write_file.close()
