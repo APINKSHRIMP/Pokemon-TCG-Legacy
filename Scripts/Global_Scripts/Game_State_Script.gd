@@ -21,6 +21,8 @@ var last_battled_opponent_entry: Dictionary = {}
 var last_interior_scene: String = ""
 var current_shop_id: String = "card_mart"
 
+var sleep_wakeup_fade: bool = false
+
 # ============================================================
 # MATCH SERIES (best-of-N support)
 # ============================================================

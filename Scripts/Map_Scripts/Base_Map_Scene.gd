@@ -84,8 +84,21 @@ func _ready():
 	if bgm != "":
 		SoundManagerScript.play_bgm(bgm, true)
 
-	var tween := create_tween()
-	tween.tween_property(get_tree().root, "modulate", Color(1, 1, 1, 0), 0.0)
+	var is_sleep_wakeup := GameState.sleep_wakeup_fade
+	GameState.sleep_wakeup_fade = false
+
+	# For sleep: add a black overlay to the UI layer immediately so the scene is
+	# covered on the first rendered frame, then fade it out after setup completes.
+	# For all other transitions: snap root to transparent so it fades in normally.
+	var _sleep_overlay: ColorRect = null
+	if is_sleep_wakeup:
+		_sleep_overlay = ColorRect.new()
+		_sleep_overlay.color = Color.BLACK
+		_sleep_overlay.size = get_viewport().get_visible_rect().size
+		_sleep_overlay.position = Vector2.ZERO
+		_ui_layer.add_child(_sleep_overlay)
+	else:
+		get_tree().root.set("modulate", Color(1, 1, 1, 0))
 
 	_setup_doors()
 	_scene_setup()
@@ -127,7 +140,13 @@ func _ready():
 	)
 
 	await get_tree().process_frame
-	tween.tween_property(get_tree().root, "modulate", Color.WHITE, 1.0)
+	if _sleep_overlay != null:
+		var tween := create_tween()
+		tween.tween_property(_sleep_overlay, "modulate:a", 0.0, 1.5)
+		tween.tween_callback(_sleep_overlay.queue_free)
+	else:
+		var tween := create_tween()
+		tween.tween_property(get_tree().root, "modulate", Color.WHITE, 1.0)
 
 func _exit_tree():
 	_remove_cash_label()

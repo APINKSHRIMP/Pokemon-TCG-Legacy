@@ -11,9 +11,18 @@ const NOTE_TEXT = "\"Hi Sweetie, we found these tucked away in a cupboard when w
 
 var _box_sparkle: CPUParticles2D = null
 var _box_triggered: bool = false
-const SLEEP_FADE_DURATION := 3.0
+var _player_in_bed_area: bool = true  # starts true to suppress any load-time trigger
+const SLEEP_FADE_DURATION := 2.5
 const BED_TOO_EARLY_TEXT := "Nothing wrong with an early night but it's far too early to go to sleep now!"
-const BED_SLEEP_PROMPT := "Would you like to go to sleep now?"
+const BED_SLEEP_PROMPT_DEFAULT := "Should I go to sleep now?"
+const BED_SLEEP_PROMPT_NIGHT_EXTRAS: Dictionary = {
+	1: "I'll finish unpacking and moving in everything tomorrow before I head out. The beach should be open too.",
+	2: "The SS Anne docks tomorrow. I've never seen it with my own eyes!",
+	3: "Hopefully the forest will be open again in the morning.",
+	7: "The Gym Hero Challenge registration opens in the morning.",
+	8: "The Gym Hero Challenge starts tomorrow!"
+}
+const NEXT_MORNING_FONT := "res://UI_Themes/kenvector_future.ttf"
 
 func get_scene_path() -> String:      return SCENE_PATH
 func get_bgm_path() -> String:        return BGM_PATH
@@ -38,6 +47,29 @@ func _scene_setup():
 	interactables.monitoring     = true
 	interactables.monitorable    = true
 	interactables.body_entered.connect(_on_bed_body_entered)
+	interactables.body_exited.connect(_on_bed_body_exited)
+	_init_bed_overlap_state()
+
+func _init_bed_overlap_state() -> void:
+	# Wait a few physics frames for overlap detection to settle, then check
+	# whether the player is actually inside. If not, clear the suppression flag
+	# so normal entry works. If they are inside, they must exit and re-enter.
+	await get_tree().physics_frame
+	await get_tree().physics_frame
+	await get_tree().physics_frame
+	if not is_inside_tree():
+		return
+	var player_inside := false
+	for body in ($Interactables as Area2D).get_overlapping_bodies():
+		if body.is_in_group("player"):
+			player_inside = true
+			break
+	if not player_inside:
+		_player_in_bed_area = false
+
+func _on_bed_body_exited(body: Node2D) -> void:
+	if body.is_in_group("player"):
+		_player_in_bed_area = false
 
 func _start_box_sparkle() -> void:
 	_box_sparkle = CPUParticles2D.new()
@@ -88,13 +120,22 @@ func _on_box_body_entered(body: Node2D) -> void:
 func _on_box_step2() -> void:
 	MapManager.show_message_then(NOTE_TEXT, _on_box_step3)
 
+func _get_sleep_prompt() -> String:
+	var day := GameState.get_date()
+	var extra: String = BED_SLEEP_PROMPT_NIGHT_EXTRAS.get(day, "")
+	if extra != "":
+		return BED_SLEEP_PROMPT_DEFAULT + " " + extra
+	return BED_SLEEP_PROMPT_DEFAULT
+
 func _on_bed_body_entered(body: Node2D) -> void:
 	if not body.is_in_group("player"):
+		return
+	if _player_in_bed_area:
 		return
 	if MapManager.message_panel != null and MapManager.message_panel.visible:
 		return
 	if GameState.get_time() == "Night":
-		MapManager.show_interactable_confirm(BED_SLEEP_PROMPT, _do_sleep)
+		MapManager.show_interactable_confirm(_get_sleep_prompt(), _do_sleep)
 	else:
 		MapManager.show_interactable_message(BED_TOO_EARLY_TEXT)
 
@@ -102,10 +143,32 @@ func _do_sleep() -> void:
 	if _player != null and _player.has_method("lock_movement"):
 		_player.lock_movement()
 	var scene_path := get_scene_path()
-	GameState.save_menu_return_state(scene_path, _player.position, _player.get_current_direction())
+	GameState.save_menu_return_state(scene_path, _player.position, "left")
+	if GameState.get_date() == 1:
+		GameState.progress["moving_in_completed"] = true
 	GameState.advance_time("Day")
+	GameState.sleep_wakeup_fade = true
 	var tween := create_tween()
 	tween.tween_property(self, "modulate", Color.BLACK, SLEEP_FADE_DURATION)
+	tween.tween_callback(_show_next_morning_label.bind(scene_path))
+
+func _show_next_morning_label(scene_path: String) -> void:
+	var vp_size := get_viewport().get_visible_rect().size
+	var label := Label.new()
+	label.text = "The next morning..."
+	label.add_theme_font_override("font", load(NEXT_MORNING_FONT))
+	label.add_theme_font_size_override("font_size", 24)
+	label.add_theme_color_override("font_color", Color.WHITE)
+	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	label.size = vp_size
+	label.position = Vector2.ZERO
+	label.modulate = Color(1.0, 1.0, 1.0, 0.0)
+	_ui_layer.add_child(label)
+	var tween := create_tween()
+	tween.tween_property(label, "modulate", Color.WHITE, 0.5)
+	tween.tween_interval(1.5)
+	tween.tween_property(label, "modulate", Color(1.0, 1.0, 1.0, 0.0), 0.5)
 	tween.tween_callback(func(): SceneCache.change_scene(scene_path))
 
 func _on_box_step3() -> void:
