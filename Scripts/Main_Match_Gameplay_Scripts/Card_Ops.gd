@@ -221,6 +221,11 @@ func recover_to_hand(card: card_object, is_opponent: bool, animate: bool = false
 func heal_pokemon(pokemon: card_object, amount: int, is_opponent: bool) -> void:
 	if amount <= 0:
 		return
+	# MATCH EFFECTS: no_healing zeroes the heal; healing_multiplier scales it
+	amount = main.match_effects.modify_heal_amount(amount, is_opponent)
+	if amount <= 0:
+		main.show_floating_label("HEALING BLOCKED", Vector2(530 if !is_opponent else 1030, 300), Color.RED, true)
+		return
 	var max_hp = pokemon.get_max_hp()
 	var actual_heal = min(amount, max_hp - pokemon.current_hp)
 	if actual_heal <= 0:
@@ -251,6 +256,9 @@ func heal_pokemon(pokemon: card_object, amount: int, is_opponent: bool) -> void:
 
 # Apply a named status condition to a pokemon and refresh its status icons.
 func apply_status(pokemon: card_object, status: String, is_opponent: bool) -> void:
+	# MATCH EFFECT: no_status_effects — special conditions cannot be applied
+	if main.match_effects.status_blocked(is_opponent) and status != "":
+		return
 	match status:
 		"Poisoned":
 			pokemon.is_poisoned = true

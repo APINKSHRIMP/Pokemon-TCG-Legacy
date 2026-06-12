@@ -242,6 +242,7 @@ func _load_and_spawn_opponents(json_path: String):
 		opp.patrol_axis      = entry.get("patrol_axis", "horizontal")
 		opp.wander_radius    = entry.get("wander_radius", 200.0)
 		opp.restrictions     = entry.get("restrictions", {})
+		opp.match_effects    = entry.get("match_effects", [])
 		opp.match_format     = entry.get("match_format", "")
 		_opponents_container.add_child(opp)
 
@@ -273,6 +274,7 @@ func _load_and_spawn_opponents(json_path: String):
 			opp.patrol_axis      = lbe.get("patrol_axis", "horizontal")
 			opp.wander_radius    = lbe.get("wander_radius", 200.0)
 			opp.restrictions     = lbe.get("restrictions", {})
+			opp.match_effects    = lbe.get("match_effects", [])
 			opp.match_format     = lbe.get("match_format", "")
 			_opponents_container.add_child(opp)
 
@@ -592,6 +594,7 @@ func _on_yes_pressed():
 			"patrol_axis":    current_opponent.patrol_axis,
 			"wander_radius":  current_opponent.wander_radius,
 			"restrictions":   current_opponent.restrictions,
+			"match_effects":  current_opponent.match_effects,
 			"match_format":   current_opponent.match_format,
 		}
 
@@ -1606,6 +1609,7 @@ func _unhandled_input(event: InputEvent) -> void:
 		KEY_0, KEY_KP_0: new_date = 10
 		KEY_MINUS:       new_date = 11
 		KEY_EQUAL:       new_date = 12
+		KEY_BRACKETLEFT: new_date = 0  # Date 0 = match-effects test day (Celeste_Harbour_0_Day.json)
 		KEY_M: new_time = "Day"
 		KEY_E: new_time = "Evening"
 		KEY_N: new_time = "Night"

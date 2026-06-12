@@ -775,6 +775,13 @@ func validate_trainer_can_be_played(card: card_object, is_opponent: bool) -> Str
 	if main.powers_and_bodies.is_hay_fever_active():
 		return "Hay Fever: No Trainer cards can be played!"
 
+	# MATCH EFFECT: trainer_discard_cost — must have enough OTHER cards in hand to pay
+	var rule_discard_cost = main.match_effects.trainer_discard_cost(is_opponent)
+	if rule_discard_cost > 0:
+		var hand = main.opponent_hand if is_opponent else main.player_hand
+		if hand.size() - 1 < rule_discard_cost:
+			return "Special match rule: you must discard " + str(rule_discard_cost) + " other card(s) to play a Trainer!"
+
 	_ensure_validator_dispatch_ready()
 	var uid = card.uid.to_lower()
 	if _validator_dispatch.has(uid):
@@ -797,7 +804,23 @@ func play_trainer_card(card: card_object, is_opponent: bool) -> void:
 	var discard = main.opponent_discard_pile if is_opponent else main.player_discard_pile
 	var who = "Opponent" if is_opponent else "You"
 	var card_name = card.metadata.get("name", "Unknown")
-	
+
+	# MATCH EFFECT: trainer_discard_cost — pay the discard cost before the trainer resolves.
+	# (Cost is paid even if Mind Games / Chaos Gym later wastes the card.)
+	var rule_discard_cost = main.match_effects.trainer_discard_cost(is_opponent)
+	if rule_discard_cost > 0:
+		if hand.size() - 1 < rule_discard_cost:
+			await main.show_message("NOT ENOUGH CARDS TO PAY THE TRAINER COST!")
+			if main._should_bail(): return
+			return
+		if not is_opponent:
+			await main.show_message("SPECIAL MATCH RULE: DISCARD " + str(rule_discard_cost) + " CARD(S) TO PLAY " + card_name.to_upper() + "!")
+			if main._should_bail(): return
+		var paid = await main.card_ops.discard_from_hand(is_opponent, rule_discard_cost, card)
+		if main._should_bail(): return
+		if paid.size() < rule_discard_cost:
+			return
+
 	# Remove from hand first
 	hand.erase(card)
 	main.refresh_hand_display(is_opponent)
@@ -1745,7 +1768,7 @@ func effect_scoop_up(is_opponent: bool) -> void:
 	
 	# Return basic card to hand with fresh state
 	basic_card.current_location = "hand"
-	basic_card.current_hp = int(basic_card.metadata.get("hp", "0"))
+	basic_card.current_hp = basic_card.get_max_hp()
 	basic_card.pluspower_count = 0
 	basic_card.defender_turns_remaining = -1
 	main.clear_all_statuses(basic_card, is_opponent)
@@ -2150,7 +2173,7 @@ func effect_pokemon_flute(is_opponent: bool) -> void:
 		if chosen != null:
 			target_discard.erase(chosen)
 			chosen.current_location = "bench"
-			chosen.current_hp = int(chosen.metadata.get("hp", "0"))
+			chosen.current_hp = chosen.get_max_hp()
 			chosen.placed_on_field_this_turn = true
 			target_bench.append(chosen)
 			# Animate from discard to bench
@@ -3399,6 +3422,10 @@ func gym1_restore_tickled_hand(target_is_opponent: bool) -> void:
 
 # ============================ Heal helper ============================
 func gym1_heal_pokemon(pokemon: card_object, amount: int, is_opp: bool) -> void:
+	# MATCH EFFECTS: no_healing / healing_multiplier gate
+	amount = main.match_effects.modify_heal_amount(amount, is_opp)
+	if amount <= 0:
+		return
 	var max_hp = int(pokemon.metadata.get("hp", "0"))
 	if pokemon.max_hp_override > 0:
 		max_hp = pokemon.max_hp_override
@@ -3484,7 +3511,7 @@ func gym1_effect_lt_surge(is_opponent: bool) -> void:
 
 	# Move the chosen basic from hand → active, push old active to bench
 	hand.erase(chosen)
-	chosen.current_hp = int(chosen.metadata.get("hp", "0"))
+	chosen.current_hp = chosen.get_max_hp()
 	chosen.current_location = "active"
 	chosen.placed_on_field_this_turn = true
 	# Clear statuses on the demoted active
@@ -3718,7 +3745,7 @@ func gym1_effect_erikas_perfume(is_opponent: bool) -> void:
 	# Move the picks from opp's hand to opp's bench
 	for c in to_bench:
 		opp_hand.erase(c)
-		c.current_hp = int(c.metadata.get("hp", "0"))
+		c.current_hp = c.get_max_hp()
 		c.current_location = "bench"
 		c.placed_on_field_this_turn = true
 		opp_bench.append(c)
@@ -3877,7 +3904,7 @@ func gym1_effect_minion_of_team_rocket(is_opponent: bool) -> void:
 	main.clear_all_statuses(target, not is_opponent)
 	opp_bench.erase(target)
 	target.current_location = "hand"
-	target.current_hp = int(target.metadata.get("hp", "0"))
+	target.current_hp = target.get_max_hp()
 	opp_hand.append(target)
 
 	main.refresh_hand_display(not is_opponent)
@@ -4334,7 +4361,7 @@ func gym1_narrow_gym_force_return_to_hand(side_is_opponent: bool) -> void:
 	chosen.attached_energies.clear()
 	chosen.attached_cards.clear()
 	chosen.attached_pre_evolutions.clear()
-	chosen.current_hp = int(chosen.metadata.get("hp", "0"))
+	chosen.current_hp = chosen.get_max_hp()
 	main.clear_all_statuses(chosen, side_is_opponent)
 	chosen.pluspower_count = 0
 	chosen.defender_turns_remaining = -1
@@ -4623,11 +4650,14 @@ func gym2_effect_blaine(is_opponent: bool) -> void:
 		fire.current_location = "active" if target == (main.opponent_active_pokemon if is_opponent else main.player_active_pokemon) else "bench"
 		target.attached_energies.append(fire)
 	# Consume the energy-played-this-turn slot and mark Blaine as used
+	# MATCH EFFECT: extra_energy_per_turn — flag only set once the per-turn limit is reached
 	if is_opponent:
-		main.opponent_energy_played_this_turn = true
+		main.opponent_energy_attach_count += 1
+		main.opponent_energy_played_this_turn = main.opponent_energy_attach_count >= main.match_effects.energy_attach_limit(true)
 		main.opponent_blaine_double_attach_used = true
 	else:
-		main.player_energy_played_this_turn = true
+		main.player_energy_attach_count += 1
+		main.player_energy_played_this_turn = main.player_energy_attach_count >= main.match_effects.energy_attach_limit(false)
 		main.player_blaine_double_attach_used = true
 	main.refresh_hand_display(is_opponent)
 	main.display_active_pokemon_energies(is_opponent)
@@ -4816,7 +4846,7 @@ func gym2_effect_lt_surges_secret_plan(is_opponent: bool) -> void:
 			return
 		var pick = basics[0]
 		hand.erase(pick)
-		pick.current_hp = int(pick.metadata.get("hp", "0"))
+		pick.current_hp = pick.get_max_hp()
 		pick.current_location = "bench"
 		pick.placed_on_field_this_turn = true
 		bench.append(pick)
@@ -4830,7 +4860,7 @@ func gym2_effect_lt_surges_secret_plan(is_opponent: bool) -> void:
 		return
 	hand.erase(pick_c)
 	if main.is_basic_pokemon(pick_c):
-		pick_c.current_hp = int(pick_c.metadata.get("hp", "0"))
+		pick_c.current_hp = pick_c.get_max_hp()
 		pick_c.current_location = "bench"
 		pick_c.placed_on_field_this_turn = true
 		bench.append(pick_c)
@@ -5047,7 +5077,7 @@ func gym2_effect_max_revive(played_card: card_object, is_opponent: bool) -> void
 	if revive_pick == null:
 		return
 	discard.erase(revive_pick)
-	revive_pick.current_hp = int(revive_pick.metadata.get("hp", "0"))
+	revive_pick.current_hp = revive_pick.get_max_hp()
 	revive_pick.current_location = "bench"
 	revive_pick.placed_on_field_this_turn = true
 	bench.append(revive_pick)
@@ -5418,7 +5448,7 @@ func gym2_fuchsia_activate(is_opponent: bool) -> void:
 	chosen.attached_energies.clear()
 	chosen.attached_cards.clear()
 	chosen.attached_pre_evolutions.clear()
-	chosen.current_hp = int(chosen.metadata.get("hp", "0"))
+	chosen.current_hp = chosen.get_max_hp()
 	main.clear_all_statuses(chosen, is_opponent)
 	chosen.pluspower_count = 0
 	chosen.defender_turns_remaining = -1
@@ -6216,7 +6246,8 @@ func effect_neo1_moo_moo_milk(is_opponent: bool) -> void:
 	var c2 = await main.flip_coin(false, is_opponent)
 	if main._should_bail(): return
 	var heads = (1 if c1 else 0) + (1 if c2 else 0)
-	var heal = heads * 20
+	# MATCH EFFECTS: no_healing / healing_multiplier gate
+	var heal = main.match_effects.modify_heal_amount(heads * 20, is_opponent)
 	if heal > 0:
 		target.current_hp = min(target.get_max_hp(), target.current_hp + heal)
 		SoundManagerScript.play_sfx(SoundManagerScript.SFX_heal_sound)
@@ -6372,7 +6403,7 @@ func effect_neo2_fossil_egg(is_opponent: bool) -> void:
 		hand.erase(chosen)
 	chosen.placed_on_field_this_turn = true
 	chosen.current_location = "bench"
-	chosen.current_hp = int(chosen.metadata.get("hp","0"))
+	chosen.current_hp = chosen.get_max_hp()
 	bench.append(chosen)
 	main.display_pokemon(is_opponent)
 	main.refresh_hand_display(is_opponent)

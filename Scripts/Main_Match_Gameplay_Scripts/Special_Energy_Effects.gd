@@ -128,14 +128,17 @@ func apply_on_attach_effects(energy_card: card_object, target_pokemon: card_obje
 		
 		"Potion Energy":
 			# Heal 1 damage counter (10 HP) when played from hand
+			# MATCH EFFECTS: no_healing / healing_multiplier gate
 			var max_hp = int(target_pokemon.metadata.get("hp", "0"))
-			if target_pokemon.current_hp < max_hp:
-				target_pokemon.current_hp = min(max_hp, target_pokemon.current_hp + 10)
+			var rule_heal = main.match_effects.modify_heal_amount(10, is_opponent)
+			if rule_heal > 0 and target_pokemon.current_hp < max_hp:
+				var actual_heal = min(rule_heal, max_hp - target_pokemon.current_hp)
+				target_pokemon.current_hp = min(max_hp, target_pokemon.current_hp + rule_heal)
 				main.display_hp_circles_above_align(target_pokemon, is_opponent)
 				SoundManagerScript.play_sfx(SoundManagerScript.SFX_heal_sound)
 				var label_x = 1030 if is_opponent else 530
-				main.show_floating_label("+10HP", Vector2(label_x, 300), true)
-				await main.show_message("POTION ENERGY HEALED 10 HP FROM " + pokemon_name + "!")
+				main.show_floating_label("+" + str(actual_heal) + "HP", Vector2(label_x, 300), true)
+				await main.show_message("POTION ENERGY HEALED " + str(actual_heal) + " HP FROM " + pokemon_name + "!")
 				if main._should_bail(): return true
 				return true
 			return false

@@ -20,6 +20,10 @@ var cash_reward: String = ""
 # Deck_Validation_Helper.gd. Empty dict = no restrictions.
 var restrictions: Dictionary = {}
 
+# Match-wide rule modifiers block (optional). Schema documented in
+# Match_Effects.gd. Empty array = no special rules.
+var match_effects: Array = []
+
 # Optional. When non-empty the opponent is a multi-game series —
 # intermediate games skip the outro and bounce back to the intro,
 # only the deciding game shows rewards / loss flavour.

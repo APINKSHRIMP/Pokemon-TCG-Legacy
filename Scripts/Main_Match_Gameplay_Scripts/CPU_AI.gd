@@ -42,6 +42,12 @@ func opponent_start_turn_checks() -> void:
 	if drawn_card == null:
 		return
 
+	# MATCH EFFECT: draw_count — draw extra cards at turn start (deck-out handled inside)
+	for extra_draw in range(main.match_effects.turn_start_draw_count(true) - 1):
+		var extra_card = await main.draw_card_from_deck(true)
+		if extra_card == null:
+			return
+
 	main.refresh_hand_display(true)
 	main.update_deck_icon(true)
 
@@ -118,8 +124,15 @@ func cpu_turn_orchestrator() -> void:
 	var retreat_deferred = await cpu_phase_retreat_first_pass(cpu_eval)
 
 	# Phase 6: Energy attachment
-	await cpu_phase_energy_attachment(cpu_eval)
-	if main._should_bail(): return
+	# MATCH EFFECT: extra_energy_per_turn — loop until the per-turn limit is reached
+	# (the phase early-returns once opponent_energy_played_this_turn flips or hand is empty)
+	for _attach_round in range(main.match_effects.energy_attach_limit(true)):
+		await cpu_phase_energy_attachment(cpu_eval)
+		if main._should_bail(): return
+		if main.opponent_energy_played_this_turn:
+			break
+		invalidate_cpu_evaluation()
+		cpu_eval = get_cpu_evaluation()
 
 	if main._should_bail():
 		return
@@ -342,9 +355,16 @@ func get_unmet_energy_count(attack: Dictionary, pokemon: card_object) -> int:
 	var photosynthesis_on = main.powers_and_bodies.is_photosynthesis_active(pokemon)
 	# NEO1 Wild Growth: Grass Energy on Grass Pokemon counts as 2 Grass
 	var wild_growth_on = main.powers_and_bodies.is_wild_growth_active() and "Grass" in pokemon.metadata.get("types", [])
+	# MATCH EFFECT: rainbow_energy — every attached energy provides any type
+	# (multi-providers like DCE provide that many "Any" units)
+	var rainbow_rule_on = main.match_effects.rainbow_energy_active(main.match_effects.is_card_on_opponent_side(pokemon))
 	for attached in pokemon.attached_energies:
+		if rainbow_rule_on:
+			var provided_rainbow = main.get_energy_provided_by_card(attached)
+			for _i in range(max(1, provided_rainbow.size())):
+				pool.append("Any")
 		# Charizard Energy Burn: all energy attached to Charizard counts as Fire
-		if main.powers_and_bodies.is_energy_burn_active(pokemon):
+		elif main.powers_and_bodies.is_energy_burn_active(pokemon):
 			pool.append("Fire")
 			# If the energy provides 2 (like DCE), add a second Fire
 			var provided = main.get_energy_provided_by_card(attached)
@@ -1020,6 +1040,9 @@ func is_retreat_cost_worthwhile(cpu_eval: Dictionary) -> bool:
 func cpu_phase_retreat_first_pass(cpu_eval: Dictionary) -> bool:
 	if main.opponent_active_pokemon == null or main.opponent_bench.size() == 0:
 		return false
+	# MATCH EFFECT: no_retreat — CPU never considers retreating when blocked
+	if main.match_effects.retreat_blocked(true):
+		return false
 	if main.opponent_retreated_this_turn:
 		return false
 	if main.opponent_active_pokemon.special_condition in ["Paralyzed", "Asleep"]:
@@ -1058,6 +1081,9 @@ func cpu_phase_retreat_first_pass(cpu_eval: Dictionary) -> bool:
 func cpu_phase_retreat_second_pass(cpu_eval: Dictionary) -> void:
 	if main.opponent_active_pokemon == null or main.opponent_bench.size() == 0:
 		return
+	# MATCH EFFECT: no_retreat — CPU never considers retreating when blocked
+	if main.match_effects.retreat_blocked(true):
+		return
 	if main.opponent_retreated_this_turn:
 		return
 	if main.opponent_active_pokemon.special_condition in ["Paralyzed", "Asleep"]:
@@ -1087,6 +1113,9 @@ func cpu_phase_retreat_second_pass(cpu_eval: Dictionary) -> void:
 	
 # Scores each bench pokemon as a potential active replacement, returns the best choice
 func execute_cpu_retreat(cpu_eval: Dictionary) -> void:
+	# MATCH EFFECT: no_retreat — belt-and-braces guard for any direct callers
+	if main.match_effects.retreat_blocked(true):
+		return
 	var best_replacement = pick_best_bench_replacement(main.opponent_bench, main.player_active_pokemon, cpu_eval)
 
 	if best_replacement == null:
@@ -1300,7 +1329,9 @@ func cpu_phase_energy_attachment(cpu_eval: Dictionary) -> void:
 	# Perform the attachment
 	main.opponent_hand.erase(energy)
 	target.attached_energies.append(energy)
-	main.opponent_energy_played_this_turn = true
+	# MATCH EFFECT: extra_energy_per_turn — flag only set once the per-turn limit is reached
+	main.opponent_energy_attach_count += 1
+	main.opponent_energy_played_this_turn = main.opponent_energy_attach_count >= main.match_effects.energy_attach_limit(true)
 
 	await main.show_message("Opponent attached " + energy.metadata["name"].to_upper() + " to " + target.metadata["name"].to_upper() + "!")
 	if main._should_bail(): return
@@ -1331,6 +1362,10 @@ func cpu_phase_energy_attachment(cpu_eval: Dictionary) -> void:
 	if main._should_bail(): return
 	# GYM2 Sabrina's Gastly Gaseous Form — +10 HP per Psychic energy attached
 	main.powers_and_bodies.refresh_gaseous_form_hp()
+
+	# MATCH EFFECTS: energy_attach_halve_hp / energy_attach_full_heal
+	await main.apply_energy_attach_match_effects(target, true)
+	if main._should_bail(): return
 
 	# Fix 2: Invalidate CPU evaluation cache after energy attachment
 	invalidate_cpu_evaluation()
@@ -2620,8 +2655,11 @@ func cpu_phase_attack(cpu_eval: Dictionary) -> void:
 			main.opponent_active_pokemon.gym2_focus_energy_active = false
 
 	# Unified dispatch: handles GYM2, GYM1, Base1-5, and generic special attacks.
-	if await main.attack_effects.dispatch_attack(chosen_attack, main.opponent_active_pokemon, main.player_active_pokemon, true):
-		return
+	# MATCH EFFECT: raw_damage_only — skip special dispatch so the attack falls through
+	# to the generic printed-damage path with no card-text effects.
+	if not main.match_effects.raw_damage_only(true):
+		if await main.attack_effects.dispatch_attack(chosen_attack, main.opponent_active_pokemon, main.player_active_pokemon, true):
+			return
 
 	# Check attack_blocked flag (Tail Wag / Leer) - benching either pokemon ends this
 	if main.opponent_active_pokemon.attack_blocked_next_turn:
@@ -2674,7 +2712,12 @@ func cpu_phase_attack(cpu_eval: Dictionary) -> void:
 		return
 	
 	# Resolve variable damage with coin flips
-	var variable_result = await main.attack_effects.resolve_attack_variable_damage(chosen_attack, main.opponent_active_pokemon, main.player_active_pokemon, true)
+	# MATCH EFFECT: raw_damage_only — flatten "20x"/"10+" to the printed number, no flips
+	var variable_result
+	if main.match_effects.raw_damage_only(true):
+		variable_result = {"damage": main.attack_effects.parse_attack_base_damage(chosen_attack), "flip_result": "", "attack_failed": false, "messages": []}
+	else:
+		variable_result = await main.attack_effects.resolve_attack_variable_damage(chosen_attack, main.opponent_active_pokemon, main.player_active_pokemon, true)
 	var resolved_base = variable_result["damage"]
 	var flip_result = variable_result["flip_result"]
 	
@@ -2709,8 +2752,9 @@ func cpu_phase_attack(cpu_eval: Dictionary) -> void:
 	main.last_attack_on_player = {"damage": final_damage, "attack": chosen_attack, "attacker_types": cpu_types}
 	main.opponent_attacked_this_turn = true
 	
-	var _cpu_pae2 = main.attack_effects.parse_card_text_effects(chosen_attack.get("text", ""), main.opponent_active_pokemon.metadata.get("name", ""))
-	
+	# MATCH EFFECT: raw_damage_only — card-text effects are skipped entirely
+	var _cpu_pae2 = [] if main.match_effects.raw_damage_only(true) else main.attack_effects.parse_card_text_effects(chosen_attack.get("text", ""), main.opponent_active_pokemon.metadata.get("name", ""))
+
 	# Clear one-shot attack boosts after any attack completes
 	main.opponent_active_pokemon.clear_attack_boost_flags()
 	if _cpu_pae2.size() > 0:
@@ -3405,14 +3449,16 @@ func cpu_phase_play_trainer_cards_priority() -> void:
 		played = false
 		var best_card: card_object = null
 		var best_score = 29.9 # Threshold: play cards scoring >= 30
-		
+		# MATCH EFFECT: trainer_discard_cost — demand more value when each trainer costs cards
+		best_score += 10.0 * main.match_effects.trainer_discard_cost(true)
+
 		for card in main.opponent_hand:
 			if not main.trainer_effects.is_trainer_card(card): continue
 			var score = cpu_score_trainer_card(card)
 			if score > best_score:
 				best_score = score
 				best_card = card
-		
+
 		if best_card != null:
 			# Validate the card can actually be played before committing
 			var validation_error = main.trainer_effects.validate_trainer_can_be_played(best_card, true)
@@ -3438,14 +3484,16 @@ func cpu_phase_play_trainer_cards_remaining() -> void:
 		played = false
 		var best_card: card_object = null
 		var best_score = 29.9 # Threshold: play cards scoring >= 30
-		
+		# MATCH EFFECT: trainer_discard_cost — demand more value when each trainer costs cards
+		best_score += 10.0 * main.match_effects.trainer_discard_cost(true)
+
 		for card in main.opponent_hand:
 			if not main.trainer_effects.is_trainer_card(card): continue
 			var score = cpu_score_trainer_card(card)
 			if score > best_score:
 				best_score = score
 				best_card = card
-		
+
 		if best_card != null:
 			# Validate the card can actually be played before committing
 			var validation_error = main.trainer_effects.validate_trainer_can_be_played(best_card, true)

@@ -1939,11 +1939,13 @@ func apply_self_heal(effect: Dictionary, attacker: card_object, is_opponent_atta
 	var amount = effect.get("amount", -1)
 	var healed = 0
 
+	# MATCH EFFECTS: no_healing / healing_multiplier gate
 	if amount == -1:
-		healed = max_hp - attacker.current_hp
-		attacker.current_hp = max_hp
+		healed = main.match_effects.modify_heal_amount(max_hp - attacker.current_hp, is_opponent_attacking)
+		healed = min(healed, max_hp - attacker.current_hp)
+		attacker.current_hp = attacker.current_hp + healed
 	else:
-		var heal_hp = amount * 10
+		var heal_hp = main.match_effects.modify_heal_amount(amount * 10, is_opponent_attacking)
 		healed = min(heal_hp, max_hp - attacker.current_hp)
 		attacker.current_hp = min(max_hp, attacker.current_hp + heal_hp)
 
@@ -2206,11 +2208,14 @@ func apply_bench_damage_single(effect: Dictionary, is_opponent_attacking: bool) 
 # Leech Seed: heal 1 damage counter from attacker if damage was dealt
 func apply_leech_seed(attacker: card_object, defender: card_object, is_opponent_attacking: bool) -> void:
 	var max_hp = int(attacker.metadata.get("hp", "0"))
-	if attacker.current_hp < max_hp and defender.current_hp > 0:
-		attacker.current_hp = min(max_hp, attacker.current_hp + 10)
+	# MATCH EFFECTS: no_healing / healing_multiplier gate
+	var rule_heal = main.match_effects.modify_heal_amount(10, is_opponent_attacking)
+	if rule_heal > 0 and attacker.current_hp < max_hp and defender.current_hp > 0:
+		var actual_heal = min(rule_heal, max_hp - attacker.current_hp)
+		attacker.current_hp = min(max_hp, attacker.current_hp + rule_heal)
 		main.display_hp_circles_above_align(attacker, is_opponent_attacking)
 		SoundManagerScript.play_sfx(SoundManagerScript.SFX_heal_sound)
-		await main.show_message(attacker.metadata.get("name", "").to_upper() + " HEALED 10 HP!")
+		await main.show_message(attacker.metadata.get("name", "").to_upper() + " HEALED " + str(actual_heal) + " HP!")
 		if main._should_bail(): return
 		print("LEECH SEED: ", attacker.metadata.get("name", ""), " healed 10 HP")
 
@@ -2555,7 +2560,7 @@ func execute_call_for_pokemon(attacker: card_object, is_opponent: bool, search_n
 	
 	if chosen != null and bench.size() < 5:
 		deck.erase(chosen)
-		chosen.current_hp = int(chosen.metadata.get("hp", "0"))
+		chosen.current_hp = chosen.get_max_hp()
 		main.card_ops.place_on_bench(chosen, is_opponent)
 		await main.show_message(chosen.metadata.get("name", "").to_upper() + " WAS PLACED ON THE BENCH!")
 		if main._should_bail(): return
@@ -3345,7 +3350,7 @@ func execute_fling(attacker: card_object, defender: card_object, is_opponent: bo
 	# Shuffle the active pokemon itself back
 	target_active.current_location = "deck"
 	main.clear_all_statuses(target_active, !is_opponent)
-	target_active.current_hp = int(target_active.metadata.get("hp", "0"))
+	target_active.current_hp = target_active.get_max_hp()
 	target_deck.append(target_active)
 	
 	# Shuffle deck
@@ -3924,7 +3929,7 @@ func execute_vanish(attacker: card_object, is_opponent: bool) -> void:
 	# Shuffle Abra into deck
 	main.clear_all_statuses(attacker, is_opponent)
 	attacker.pluspower_count = 0
-	attacker.current_hp = int(attacker.metadata.get("hp", "0"))
+	attacker.current_hp = attacker.get_max_hp()
 	attacker.current_location = "deck"
 	deck.append(attacker)
 	
@@ -4189,7 +4194,7 @@ func gym1_shuffle_into_deck(pokemon: card_object, is_pokemon_opponent: bool) -> 
 		deck.append(ac)
 	pokemon.attached_cards.clear()
 	main.clear_all_statuses(pokemon, is_pokemon_opponent)
-	pokemon.current_hp = int(pokemon.metadata.get("hp", "0"))
+	pokemon.current_hp = pokemon.get_max_hp()
 	pokemon.current_location = "deck"
 	deck.append(pokemon)
 	var was_active = false
@@ -4885,7 +4890,7 @@ func gym1_return_pokemon_to_hand(pokemon: card_object, is_pokemon_opponent: bool
 		hand.append(ac)
 	pokemon.attached_cards.clear()
 	main.clear_all_statuses(pokemon, is_pokemon_opponent)
-	pokemon.current_hp = int(pokemon.metadata.get("hp", "0"))
+	pokemon.current_hp = pokemon.get_max_hp()
 	pokemon.current_location = "hand"
 	hand.append(pokemon)
 	if is_pokemon_opponent:
@@ -5042,11 +5047,12 @@ func execute_team_heal_flip(attacker: card_object, is_opponent: bool, flip_count
 	if own_active != null:
 		all_own.append(own_active)
 	all_own.append_array(own_bench)
-	var heal = heads * 10
+	# MATCH EFFECTS: no_healing / healing_multiplier gate
+	var heal = main.match_effects.modify_heal_amount(heads * 10, is_opponent)
 	var healed_any = false
 	for p in all_own:
 		var max_hp = int(p.metadata.get("hp", "0"))
-		if p.current_hp < max_hp:
+		if heal > 0 and p.current_hp < max_hp:
 			p.current_hp = min(max_hp, p.current_hp + heal)
 			healed_any = true
 	if healed_any:
@@ -5093,7 +5099,7 @@ func execute_call_for_named_basic(attacker: card_object, is_opponent: bool, name
 		if main._should_bail(): return
 	if chosen != null and bench.size() < 5:
 		deck.erase(chosen)
-		chosen.current_hp = int(chosen.metadata.get("hp", "0"))
+		chosen.current_hp = chosen.get_max_hp()
 		main.card_ops.place_on_bench(chosen, is_opponent)
 		await main.show_message(chosen.metadata.get("name", "").to_upper() + " WAS PLACED ON THE BENCH!")
 		if main._should_bail(): return
@@ -6306,8 +6312,10 @@ func execute_group_therapy(attacker: card_object, is_opponent: bool) -> void:
 	var healed = 0
 	for entry in all_pokemon:
 		var p = entry["p"]
-		if p.get_damage_counters() > 0:
-			p.current_hp = min(p.get_max_hp(), p.current_hp + 10)
+		# MATCH EFFECTS: no_healing / healing_multiplier gate (per side)
+		var rule_heal = main.match_effects.modify_heal_amount(10, entry["opp"])
+		if rule_heal > 0 and p.get_damage_counters() > 0:
+			p.current_hp = min(p.get_max_hp(), p.current_hp + rule_heal)
 			main.display_hp_circles_above_align(p, entry["opp"])
 			healed += 1
 	main.display_pokemon(false)
@@ -6440,7 +6448,7 @@ func execute_group_attack(attacker: card_object, defender: card_object, is_oppon
 				break
 			deck.erase(z)
 			z.current_location = "bench"
-			z.current_hp = int(z.metadata.get("hp", "0"))
+			z.current_hp = z.get_max_hp()
 			z.placed_on_field_this_turn = true
 			bench.append(z)
 			added += 1
@@ -6458,7 +6466,7 @@ func execute_group_attack(attacker: card_object, defender: card_object, is_oppon
 				break
 			deck.erase(sel)
 			sel.current_location = "bench"
-			sel.current_hp = int(sel.metadata.get("hp", "0"))
+			sel.current_hp = sel.get_max_hp()
 			sel.placed_on_field_this_turn = true
 			bench.append(sel)
 			added += 1
@@ -6576,7 +6584,7 @@ func execute_fade_out(attacker: card_object, defender: card_object, is_opponent:
 	attacker.attached_energies.clear()
 	main.clear_all_statuses(attacker, is_opponent)
 	attacker.pluspower_count = 0
-	attacker.current_hp = int(attacker.metadata.get("hp", "0"))
+	attacker.current_hp = attacker.get_max_hp()
 	attacker.current_location = "hand"
 	hand.append(attacker)
 	var was_active = false
@@ -7974,7 +7982,7 @@ func _register_neo1_attacks() -> void:
 			await _attack_finish(true, b, atk, a.metadata.get("types", ["Colorless"]), opp)
 		else:
 			var types = a.metadata.get("types", ["Colorless"])
-			var result = main.calculate_final_damage(b, types, d)
+			var result = main.calculate_final_damage(b, types, d, a)
 			if not main.check_defender_invincible(d, !opp):
 				var fd = main.apply_defender_no_damage_shield(d, result["damage"], !opp)
 				await main.display_and_apply_attack_damage(a, d, fd, result["modifiers"], opp, b)
@@ -8013,7 +8021,7 @@ func execute_neo1_flower_dance(attacker: card_object, defender: card_object, is_
 	await main.show_message("FLOWER DANCE! " + str(count) + " BELLOSSOM(S) — " + str(total) + " DAMAGE!")
 	if main._should_bail(): return
 	var types = attacker.metadata.get("types", ["Colorless"])
-	var result = main.calculate_final_damage(total, types, defender)
+	var result = main.calculate_final_damage(total, types, defender, attacker)
 	if not main.check_defender_invincible(defender, not is_opponent):
 		var fd = main.apply_defender_no_damage_shield(defender, result["damage"], not is_opponent)
 		await main.display_and_apply_attack_damage(attacker, defender, fd, result["modifiers"], is_opponent, total)
@@ -8037,7 +8045,7 @@ func execute_neo1_riptide(attacker: card_object, defender: card_object, is_oppon
 		await main.show_message("RIPTIDE! " + str(count) + " WATER ENERGY IN DISCARD — " + str(total) + " DAMAGE!")
 	if main._should_bail(): return
 	var types = attacker.metadata.get("types", ["Colorless"])
-	var result = main.calculate_final_damage(total, types, defender)
+	var result = main.calculate_final_damage(total, types, defender, attacker)
 	if not main.check_defender_invincible(defender, not is_opponent):
 		var fd = main.apply_defender_no_damage_shield(defender, result["damage"], not is_opponent)
 		await main.display_and_apply_attack_damage(attacker, defender, fd, result["modifiers"], is_opponent, total)
@@ -8431,7 +8439,7 @@ func execute_neo1_poison_bite(attacker: card_object, defender: card_object, is_o
 	if await handle_attack_confusion(attacker, is_opponent): return
 	if await handle_attack_blind(attacker, is_opponent): return
 	var types = attacker.metadata.get("types", ["Colorless"])
-	var result = main.calculate_final_damage(base_damage, types, defender)
+	var result = main.calculate_final_damage(base_damage, types, defender, attacker)
 	var final_d = result["damage"]
 	if not main.check_defender_invincible(defender, not is_opponent):
 		final_d = main.apply_defender_no_damage_shield(defender, final_d, not is_opponent)
@@ -8440,7 +8448,8 @@ func execute_neo1_poison_bite(attacker: card_object, defender: card_object, is_o
 	if defender != null and final_d > 0 and defender.current_hp > 0:
 		main.card_ops.apply_status(defender, "Poisoned", not is_opponent)
 		# Remove counters from self = half the final damage (round up to nearest 10)
-		var heal_amount = int(ceil(final_d / 2.0 / 10.0)) * 10
+		# MATCH EFFECTS: no_healing / healing_multiplier gate
+		var heal_amount = main.match_effects.modify_heal_amount(int(ceil(final_d / 2.0 / 10.0)) * 10, is_opponent)
 		var max_hp = attacker.get_max_hp()
 		var healed = min(heal_amount, max_hp - attacker.current_hp)
 		if healed > 0:
@@ -8547,7 +8556,8 @@ func execute_neo1_milk_drink(attacker: card_object, is_opponent: bool) -> void:
 	if main._should_bail(): return
 	if c1: heads += 1
 	if c2: heads += 1
-	var heal_amount = heads * 20
+	# MATCH EFFECTS: no_healing / healing_multiplier gate
+	var heal_amount = main.match_effects.modify_heal_amount(heads * 20, is_opponent)
 	if heal_amount > 0:
 		var max_hp = attacker.get_max_hp()
 		attacker.current_hp = min(max_hp, attacker.current_hp + heal_amount)
@@ -8663,7 +8673,7 @@ func execute_neo1_leech_seed(attacker: card_object, defender: card_object, is_op
 	if await handle_attack_confusion(attacker, is_opponent): return
 	if await handle_attack_blind(attacker, is_opponent): return
 	var types = attacker.metadata.get("types", ["Colorless"])
-	var result = main.calculate_final_damage(base_damage, types, defender)
+	var result = main.calculate_final_damage(base_damage, types, defender, attacker)
 	var final_d = result["damage"]
 	if not main.check_defender_invincible(defender, not is_opponent):
 		final_d = main.apply_defender_no_damage_shield(defender, final_d, not is_opponent)
@@ -8671,10 +8681,13 @@ func execute_neo1_leech_seed(attacker: card_object, defender: card_object, is_op
 		if main._should_bail(): return
 	await main.check_all_knockouts()
 	if main._should_bail(): return
-	if final_d > 0 and attacker.current_hp < attacker.get_max_hp():
-		attacker.current_hp = min(attacker.get_max_hp(), attacker.current_hp + 10)
+	# MATCH EFFECTS: no_healing / healing_multiplier gate
+	var rule_heal = main.match_effects.modify_heal_amount(10, is_opponent)
+	if rule_heal > 0 and final_d > 0 and attacker.current_hp < attacker.get_max_hp():
+		var actual_heal = min(rule_heal, attacker.get_max_hp() - attacker.current_hp)
+		attacker.current_hp = min(attacker.get_max_hp(), attacker.current_hp + rule_heal)
 		main.display_hp_circles_above_align(attacker, is_opponent)
-		await main.show_message("LEECH SEED! JUMPLUFF HEALED 10 HP!")
+		await main.show_message("LEECH SEED! JUMPLUFF HEALED " + str(actual_heal) + " HP!")
 		if main._should_bail(): return
 	print("ATTACK EXECUTED: Leech Seed")
 
@@ -8846,7 +8859,7 @@ func execute_neo1_megahorn(attacker: card_object, defender: card_object, is_oppo
 		await main.show_message("FINAL BLOW! MEGAHORN DEALS 120 DAMAGE!")
 		if main._should_bail(): return
 	var types = attacker.metadata.get("types", ["Colorless"])
-	var result = main.calculate_final_damage(base_damage, types, defender)
+	var result = main.calculate_final_damage(base_damage, types, defender, attacker)
 	if not main.check_defender_invincible(defender, not is_opponent):
 		var fd = main.apply_defender_no_damage_shield(defender, result["damage"], not is_opponent)
 		await main.display_and_apply_attack_damage(attacker, defender, fd, result["modifiers"], is_opponent, base_damage)
@@ -8865,7 +8878,7 @@ func execute_neo1_floodlight(attacker: card_object, defender: card_object, is_op
 		await main.show_message("HYDROELECTRIC POWER! FLOODLIGHT DEALS " + str(total) + " DAMAGE!")
 		if main._should_bail(): return
 	var types = attacker.metadata.get("types", ["Colorless"])
-	var result = main.calculate_final_damage(total, types, defender)
+	var result = main.calculate_final_damage(total, types, defender, attacker)
 	if not main.check_defender_invincible(defender, not is_opponent):
 		var fd = main.apply_defender_no_damage_shield(defender, result["damage"], not is_opponent)
 		await main.display_and_apply_attack_damage(attacker, defender, fd, result["modifiers"], is_opponent, total)
@@ -9239,6 +9252,11 @@ func execute_neo2_triple_poison(attacker: card_object, defender: card_object, is
 		var coin = await main.flip_coin(false, is_opponent)
 		if main._should_bail(): return
 		if coin:
+			# MATCH EFFECT: no_status_effects — poison cannot be applied
+			if main.match_effects.status_blocked(not is_opponent):
+				await main.show_message("SPECIAL MATCH RULE: STATUS EFFECTS CANNOT BE APPLIED!")
+				if main._should_bail(): return
+				return
 			defender.is_poisoned = true
 			defender.poison_damage = 30
 			main.update_status_icons(defender, not is_opponent)
@@ -9493,7 +9511,7 @@ func execute_neo2_hatch(attacker: card_object, is_opponent: bool) -> void:
 	for e in all_energy:
 		attacker.attached_energies.erase(e)
 		butterfree.attached_energies.append(e)
-	butterfree.current_hp = int(butterfree.metadata.get("hp","0"))
+	butterfree.current_hp = butterfree.get_max_hp()
 	butterfree.placed_on_field_this_turn = true
 	if attacker.current_location == "active":
 		butterfree.current_location = "active"

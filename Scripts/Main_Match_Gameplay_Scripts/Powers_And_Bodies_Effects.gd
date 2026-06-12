@@ -687,10 +687,16 @@ func power_heal_vileplume(vileplume: card_object) -> void:
 	if main._should_bail(): return
 	
 	if target != null:
-		target.current_hp = min(int(target.metadata.get("hp", "0")), target.current_hp + 10)
+		# MATCH EFFECTS: no_healing / healing_multiplier gate
+		var rule_heal = main.match_effects.modify_heal_amount(10, main.match_effects.is_card_on_opponent_side(target))
+		if rule_heal <= 0:
+			await main.show_message("SPECIAL MATCH RULE: HEALING IS BLOCKED!")
+			if main._should_bail(): return
+			return
+		target.current_hp = min(int(target.metadata.get("hp", "0")), target.current_hp + rule_heal)
 		SoundManagerScript.play_sfx(SoundManagerScript.SFX_heal_sound)
 		main.display_hp_circles_above_align(target, false)
-		await main.show_message("HEALED 10 HP FROM " + target.metadata.get("name", "").to_upper() + "!")
+		await main.show_message("HEALED " + str(rule_heal) + " HP FROM " + target.metadata.get("name", "").to_upper() + "!")
 		if main._should_bail(): return
 		print("POWER USED: Vileplume Heal on ", target.metadata.get("name", ""))
 
@@ -1162,6 +1168,9 @@ func is_prehistoric_power_active() -> bool:
 # TOXIC GAS (Muk): Ignore all other Pokemon Powers
 # Returns true if Toxic Gas is currently active
 func is_toxic_gas_active() -> bool:
+	# MATCH EFFECT: powers_blocked — all Powers/Bodies disabled for the whole match
+	if main.match_effects.powers_blocked():
+		return true
 	# Goop Gas Attack trainer also disables all powers
 	if main.goop_gas_active:
 		return true
@@ -2625,7 +2634,7 @@ func check_rebirth(pokemon: card_object, is_opp: bool) -> bool:
 		pre.current_location = "discard"
 		discard_pile.append(pre)
 	pokemon.attached_pre_evolutions.clear()
-	pokemon.current_hp = int(pokemon.metadata.get("hp", "0"))
+	pokemon.current_hp = pokemon.get_max_hp()
 	pokemon.special_condition = ""
 	pokemon.is_poisoned = false
 	pokemon.is_burned = false
@@ -2771,12 +2780,19 @@ func power_natural_healing(vulpix: card_object) -> void:
 		if not (vulpix == main.opponent_active_pokemon or vulpix in main.opponent_bench):
 			await main.show_message(vulpix.metadata.get("name", "").to_upper() + " HAS NO DAMAGE TO HEAL!")
 		return
-	vulpix.power_used_this_turn = true
 	var is_opp: bool = (vulpix == main.opponent_active_pokemon or vulpix in main.opponent_bench)
-	vulpix.current_hp = min(max_hp, vulpix.current_hp + 10)
+	# MATCH EFFECTS: no_healing / healing_multiplier gate (don't consume the power if blocked)
+	var rule_heal = main.match_effects.modify_heal_amount(10, is_opp)
+	if rule_heal <= 0:
+		if not is_opp:
+			await main.show_message("SPECIAL MATCH RULE: HEALING IS BLOCKED!")
+		return
+	vulpix.power_used_this_turn = true
+	var actual_heal = min(rule_heal, max_hp - vulpix.current_hp)
+	vulpix.current_hp = min(max_hp, vulpix.current_hp + rule_heal)
 	main.display_hp_circles_above_align(vulpix, is_opp)
 	SoundManagerScript.play_sfx(SoundManagerScript.SFX_heal_sound)
-	await main.show_message("NATURAL HEALING: " + vulpix.metadata.get("name", "").to_upper() + " HEALED 10 HP!")
+	await main.show_message("NATURAL HEALING: " + vulpix.metadata.get("name", "").to_upper() + " HEALED " + str(actual_heal) + " HP!")
 	if main._should_bail(): return
 
 ######################################################################################################################################################
@@ -3002,7 +3018,7 @@ func check_rebellion(attacker: card_object, is_opp: bool) -> bool:
 		pre.current_location = "deck"
 		deck.append(pre)
 	attacker.attached_pre_evolutions.clear()
-	attacker.current_hp = int(attacker.metadata.get("hp", "0"))
+	attacker.current_hp = attacker.get_max_hp()
 	attacker.special_condition = ""
 	attacker.is_poisoned = false
 	attacker.is_burned = false
@@ -3065,10 +3081,15 @@ func check_healing_fire(pokemon: card_object, energy: card_object, is_opp: bool)
 	var max_hp = int(pokemon.metadata.get("hp", "0"))
 	if pokemon.current_hp >= max_hp:
 		return
-	pokemon.current_hp = min(max_hp, pokemon.current_hp + 10)
+	# MATCH EFFECTS: no_healing / healing_multiplier gate
+	var rule_heal = main.match_effects.modify_heal_amount(10, is_opp)
+	if rule_heal <= 0:
+		return
+	var actual_heal = min(rule_heal, max_hp - pokemon.current_hp)
+	pokemon.current_hp = min(max_hp, pokemon.current_hp + rule_heal)
 	main.display_hp_circles_above_align(pokemon, is_opp)
 	SoundManagerScript.play_sfx(SoundManagerScript.SFX_heal_sound)
-	await main.show_message("HEALING FIRE: " + pokemon.metadata.get("name", "").to_upper() + " HEALED 10 HP!")
+	await main.show_message("HEALING FIRE: " + pokemon.metadata.get("name", "").to_upper() + " HEALED " + str(actual_heal) + " HP!")
 	if main._should_bail(): return
 
 # --- gym2-26 Koga's Muk — Energy Drain ---
@@ -3151,7 +3172,7 @@ func check_scram(pokemon: card_object, is_opp: bool) -> bool:
 		pre.current_location = "deck"
 		deck.append(pre)
 	pokemon.attached_pre_evolutions.clear()
-	pokemon.current_hp = int(pokemon.metadata.get("hp", "0"))
+	pokemon.current_hp = pokemon.get_max_hp()
 	pokemon.current_location = "deck"
 	if pokemon == main.opponent_active_pokemon:
 		main.opponent_active_pokemon = null
@@ -3267,7 +3288,7 @@ func power_emerge(kakuna: card_object) -> void:
 	# Evolve: move Kakuna to attached_pre_evolutions of Beedrill, replace card in active/bench
 	var beedrill: card_object = beedrills[0]
 	deck.erase(beedrill)
-	beedrill.current_hp = int(beedrill.metadata.get("hp", "0"))
+	beedrill.current_hp = beedrill.get_max_hp()
 	beedrill.current_location = "active" if kakuna == (main.opponent_active_pokemon if is_opp else main.player_active_pokemon) else "bench"
 	# Carry damage forward
 	var kakuna_max = int(kakuna.metadata.get("hp", "0"))
@@ -3651,7 +3672,7 @@ func check_bolt(damaged: card_object, attacker: card_object, damage: int, is_dam
 		deck.append(ac)
 	damaged.attached_cards.clear()
 	main.clear_all_statuses(damaged, is_damaged_opp)
-	damaged.current_hp = int(damaged.metadata.get("hp", "0"))
+	damaged.current_hp = damaged.get_max_hp()
 	damaged.current_location = "deck"
 	deck.append(damaged)
 	deck.shuffle()
@@ -3960,8 +3981,9 @@ func process_turn_start_tools_and_counters(is_opponent: bool) -> void:
 				var tool_name = tool.metadata.get("name", "")
 				var max_hp = pokemon.get_max_hp()
 				if tool_name == "Gold Berry":
-					if max_hp - pokemon.current_hp >= 40:
-						pokemon.current_hp = min(max_hp, pokemon.current_hp + 40)
+					# MATCH EFFECTS: healing gate — berry is NOT consumed while healing is blocked
+					if max_hp - pokemon.current_hp >= 40 and main.match_effects.modify_heal_amount(40, is_opponent) > 0:
+						pokemon.current_hp = min(max_hp, pokemon.current_hp + main.match_effects.modify_heal_amount(40, is_opponent))
 						SoundManagerScript.play_sfx(SoundManagerScript.SFX_heal_sound)
 						main.display_hp_circles_above_align(pokemon, is_opponent)
 						pokemon.attached_cards.erase(tool)
@@ -3972,8 +3994,9 @@ func process_turn_start_tools_and_counters(is_opponent: bool) -> void:
 						await main.show_message("GOLD BERRY! " + pokemon.metadata.get("name","").to_upper() + " HEALED 40 HP!")
 						if main._should_bail(): return
 				elif tool_name == "Berry":
-					if max_hp - pokemon.current_hp >= 20:
-						pokemon.current_hp = min(max_hp, pokemon.current_hp + 20)
+					# MATCH EFFECTS: healing gate — berry is NOT consumed while healing is blocked
+					if max_hp - pokemon.current_hp >= 20 and main.match_effects.modify_heal_amount(20, is_opponent) > 0:
+						pokemon.current_hp = min(max_hp, pokemon.current_hp + main.match_effects.modify_heal_amount(20, is_opponent))
 						SoundManagerScript.play_sfx(SoundManagerScript.SFX_heal_sound)
 						main.display_hp_circles_above_align(pokemon, is_opponent)
 						pokemon.attached_cards.erase(tool)
@@ -4520,7 +4543,7 @@ func check_energy_evolution(eevee: card_object, energy: card_object, is_opponent
 	for e in all_energy:
 		eevee.attached_energies.erase(e)
 		evo_card.attached_energies.append(e)
-	evo_card.current_hp = int(evo_card.metadata.get("hp","0"))
+	evo_card.current_hp = evo_card.get_max_hp()
 	evo_card.placed_on_field_this_turn = true
 	if eevee.current_location == "active":
 		evo_card.current_location = "active"
@@ -4708,7 +4731,7 @@ func power_neo2_revive_fossil(omanyte: card_object) -> void:
 	hand.erase(fossil_poke)
 	fossil_poke.placed_on_field_this_turn = true
 	fossil_poke.current_location = "bench"
-	fossil_poke.current_hp = int(fossil_poke.metadata.get("hp","0"))
+	fossil_poke.current_hp = fossil_poke.get_max_hp()
 	bench.append(fossil_poke)
 	main.display_pokemon(is_opponent)
 	await main.show_message("REVIVE FOSSIL! " + fossil_poke.metadata.get("name","").to_upper() + " WAS PLACED ON THE BENCH!")

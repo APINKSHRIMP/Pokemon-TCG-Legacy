@@ -80,6 +80,10 @@ var bench_setup_phase_active = false
 
 var player_energy_played_this_turn: bool = false
 var opponent_energy_played_this_turn: bool = false
+# MATCH EFFECT: extra_energy_per_turn — attach counters. The bools above keep meaning
+# "limit reached" so all existing readers work unchanged; these track how many so far.
+var player_energy_attach_count: int = 0
+var opponent_energy_attach_count: int = 0
 
 var energy_card_awaiting_target: card_object = null  # Stores the energy card while selecting its target
 var card_attach_mode_active: bool = false
@@ -304,6 +308,7 @@ var cpu_ai: Node
 var powers_and_bodies: Node
 var card_ops: Node
 var trainer_dsl: Node
+var match_effects: Node
 
 # Fix 1: Set metadata cache — keyed by set prefix string, value is parsed Array from JSON
 var _set_metadata_cache: Dictionary = {}
@@ -1672,8 +1677,8 @@ func setup_player():
 	# Load and shuffle deck
 	player_deck = load_deck_from_file(player_deck_path)
 	
-	# Draw opening hand with mulligan
-	player_hand = draw_opening_hand(player_deck, "Player")
+	# Draw opening hand with mulligan (opening_hand_size match effect may override the count)
+	player_hand = draw_opening_hand(player_deck, "Player", match_effects.opening_hand_size(false))
 	
 	# Display the hand on the main screen at the top centre
 	display_hand_cards_array(player_hand, player_hand_container, card_scales[11])
@@ -1687,26 +1692,28 @@ func setup_opponent(opponent_id: String):
 	# Load the deck from the opponent data folder file
 	opponent_deck = load_deck_from_file(opponent_deck_path)
 	
-	# Draw opening cards and mulligan
-	opponent_hand = draw_opening_hand(opponent_deck, "Opponent")
+	# Draw opening cards and mulligan (opening_hand_size match effect may override the count)
+	opponent_hand = draw_opening_hand(opponent_deck, "Opponent", match_effects.opening_hand_size(true))
 	
 	# Display the cards in the top right in tiny size just for visual cue
 	display_hand_cards_array(opponent_hand, opponent_hand_container, card_scales[11.55], hide_hidden_cards)
 
 # Function to draw opening hand with mulligan logic for both player and opponent
-func draw_opening_hand(deck: Array, player_name: String = "") -> Array:
+# hand_size -1 = use the default (amount_of_cards_to_draw); otherwise the opening_hand_size match effect override
+func draw_opening_hand(deck: Array, player_name: String = "", hand_size: int = -1) -> Array:
 	# Set the opening variables that will be overwritten by the function
 	var hand = []
 	var has_basic_pokemon = false
-	
+	var cards_to_draw = amount_of_cards_to_draw if hand_size <= 0 else hand_size
+
 	# We need to mulligan if no basic pokemon in hand for each draw. May take multiple attempts
 	while not has_basic_pokemon:
-		
+
 		# Clear the hand every time this loops otherwise cards would just be continued to be added
 		hand.clear()
-		
+
 		# Now draw X (default is 7) cards and put them in the hand
-		for i in range(amount_of_cards_to_draw):
+		for i in range(cards_to_draw):
 			
 			# Pop front removes the same card from the deck so you don't need to do a .remove and a .add at the same time
 			var drawn_card = deck.pop_front() 
@@ -2148,7 +2155,9 @@ func perform_energy_attachment() -> void:
 	target_pokemon.attached_energies.append(energy_card)
 	print("Attached ", energy_card.metadata.get("name", "Unknown Energy"), " to ", target_pokemon.metadata.get("name", "Unknown Pokemon"))
 	player_hand.erase(energy_card)
-	player_energy_played_this_turn = true
+	# MATCH EFFECT: extra_energy_per_turn — flag only set once the per-turn limit is reached
+	player_energy_attach_count += 1
+	player_energy_played_this_turn = player_energy_attach_count >= match_effects.energy_attach_limit(false)
 	
 	# Clear the attachment variables and exit attach mode
 	energy_card_awaiting_target = null
@@ -2179,6 +2188,32 @@ func perform_energy_attachment() -> void:
 	powers_and_bodies.refresh_gaseous_form_hp()
 	# NEO2 Energy Evolution (Eevee neo2-38): on energy attach, flip for matching evo
 	await powers_and_bodies.check_energy_evolution(target_pokemon, energy_card, false)
+
+	# MATCH EFFECTS: energy_attach_halve_hp / energy_attach_full_heal
+	await apply_energy_attach_match_effects(target_pokemon, false)
+
+# MATCH EFFECTS: energy_attach_halve_hp / energy_attach_full_heal — runs after an energy
+# card is attached from hand (both sides). Halve first, then heal; the heal goes through
+# heal_pokemon so no_healing wins and healing_multiplier is irrelevant (full heal caps).
+func apply_energy_attach_match_effects(target_pokemon: card_object, is_opponent: bool) -> void:
+	if target_pokemon == null or game_is_over:
+		return
+	if match_effects.energy_attach_halve_hp(is_opponent):
+		var new_hp = match_effects.halve_hp_round_up_10(target_pokemon.current_hp)
+		if new_hp < target_pokemon.current_hp:
+			var lost_hp = target_pokemon.current_hp - new_hp
+			target_pokemon.current_hp = new_hp
+			SoundManagerScript.play_sfx(SoundManagerScript.SFX_poison_sound)
+			show_floating_label("-" + str(lost_hp) + "HP", Vector2(1030 if is_opponent else 530, 300), Color.RED, true)
+			display_hp_circles_above_align(target_pokemon, is_opponent)
+			await show_message("SPECIAL MATCH RULE: " + target_pokemon.metadata.get("name", "").to_upper() + "'S HP WAS HALVED!")
+			if _should_bail(): return
+	if match_effects.energy_attach_full_heal(is_opponent):
+		var missing_hp = target_pokemon.get_max_hp() - target_pokemon.current_hp
+		if missing_hp > 0:
+			await show_message("SPECIAL MATCH RULE: ATTACHING ENERGY FULLY HEALS " + target_pokemon.metadata.get("name", "").to_upper() + "!")
+			if _should_bail(): return
+			await card_ops.heal_pokemon(target_pokemon, missing_hp, is_opponent)
 
 # Called when any win/loss condition is met to end the match
 func game_end_logic(loser_is_player: bool) -> void:
@@ -2241,7 +2276,9 @@ func draw_card_from_deck(is_opponent: bool) -> card_object:
 # flipper_is_opponent: when true, uses the opponent's coin texture for the heads face
 # (falls back to the player's coin if the opponent has no coin_reward / texture failed to load).
 func flip_coin(silent: bool = false, flipper_is_opponent: bool = false) -> bool:
-	var result: bool = (randi() % 2 == 0)
+	# MATCH EFFECT: coin_flip_override — every flip forced to heads/tails (animation still plays)
+	var rule_override: String = match_effects.coin_override(flipper_is_opponent)
+	var result: bool = (rule_override == "heads") if rule_override != "" else (randi() % 2 == 0)
 	SoundManagerScript.play_sfx(SoundManagerScript.SFX_coin_flip_sound)
 
 	# Resolve which heads face to use for this flip
@@ -2290,7 +2327,7 @@ func flip_coin(silent: bool = false, flipper_is_opponent: bool = false) -> bool:
 	# GYM1 Sabrina's ESP: if the flipper's active pokemon has the credit and result is tails, auto re-flip once.
 	# (Faithful simplification of "you may re-flip those coins once" — we always take the re-flip on tails since
 	#  it can only be better than the original tails. Credit is consumed.)
-	if not result:
+	if not result and rule_override == "":
 		var esp_owner = opponent_active_pokemon if flipper_is_opponent else player_active_pokemon
 		if esp_owner != null and esp_owner.gym1_sabrina_esp_credit_active:
 			esp_owner.gym1_sabrina_esp_credit_active = false
@@ -2429,12 +2466,18 @@ func player_start_turn_checks() -> void:
 	turn_number += 1
 	print("PLAYER'S TURN START. TURN NUMBER IS ", turn_number)
 	var drawn_card = await draw_card_from_deck(false)
-	
+
 	opponents_turn_active = false
 	update_main_screen_buttons()
-	
+
 	if drawn_card == null:
 		return
+
+	# MATCH EFFECT: draw_count — draw extra cards at turn start (deck-out handled inside)
+	for extra_draw in range(match_effects.turn_start_draw_count(false) - 1):
+		var extra_card = await draw_card_from_deck(false)
+		if extra_card == null:
+			return
 
 	refresh_hand_display(false)
 	update_deck_icon(false)
@@ -2470,6 +2513,8 @@ func inbetween_turn_checks(player_turn_just_ended: bool = true) -> void:
 	player_retreated_this_turn = false
 	opponent_energy_played_this_turn = false
 	opponent_retreated_this_turn = false
+	player_energy_attach_count = 0
+	opponent_energy_attach_count = 0
 	reset_field_pokemon_turn_flags(false)
 	reset_field_pokemon_turn_flags(true)
 
@@ -2588,9 +2633,27 @@ func inbetween_turn_checks(player_turn_just_ended: bool = true) -> void:
 		return
 
 	await check_all_knockouts()
-	
+
 	if _should_bail():
 		return
+
+	# MATCH EFFECT: end_of_turn_heal — every pokemon in play (active + bench) heals X
+	# between turns. Routed through heal_pokemon so no_healing/healing_multiplier apply.
+	for heal_side in [false, true]:
+		var rule_heal = match_effects.end_of_turn_heal_amount(heal_side)
+		if rule_heal <= 0:
+			continue
+		var side_active = opponent_active_pokemon if heal_side else player_active_pokemon
+		var side_bench = opponent_bench if heal_side else player_bench
+		var side_pokemon = []
+		if side_active != null:
+			side_pokemon.append(side_active)
+		side_pokemon.append_array(side_bench)
+		for heal_target in side_pokemon:
+			if heal_target.current_hp < heal_target.get_max_hp() and not heal_target.is_bench_token:
+				await card_ops.heal_pokemon(heal_target, rule_heal, heal_side)
+				if _should_bail():
+					return
 
 	if player_turn_just_ended:
 		await cpu_ai.opponent_start_turn_checks()
@@ -2814,11 +2877,22 @@ func perform_evolution(is_opponent: bool) -> void:
 	# GYM2-123 Viridian City Gym — when a Giovanni-named pokemon evolves, heal 20 (or 10 if only 1 counter)
 	if is_stadium_in_play(StadiumIds.VIRIDIAN_CITY_GYM) and "Giovanni" in evo_card.metadata.get("name", ""):
 		var counters = max_hp_new - evo_card.current_hp
-		if counters > 0:
-			var heal_amount = 20 if counters >= 20 else 10
+		# MATCH EFFECTS: no_healing / healing_multiplier gate
+		var viridian_heal = match_effects.modify_heal_amount(20 if counters >= 20 else 10, is_opponent)
+		if counters > 0 and viridian_heal > 0:
+			var heal_amount = viridian_heal
 			evo_card.current_hp = min(max_hp_new, evo_card.current_hp + heal_amount)
 			display_hp_circles_above_align(evo_card, is_opponent)
 			await show_message("VIRIDIAN CITY GYM: " + evo_card.metadata.get("name", "").to_upper() + " HEALED " + str(heal_amount) + " HP!")
+			if _should_bail(): return
+
+	# MATCH EFFECT: evolve_full_heal — evolving fully heals (unless healing is blocked)
+	if match_effects.evolve_full_heal(is_opponent) and not match_effects.healing_blocked(is_opponent):
+		if evo_card.current_hp < evo_card.get_max_hp():
+			evo_card.current_hp = evo_card.get_max_hp()
+			SoundManagerScript.play_sfx(SoundManagerScript.SFX_heal_sound)
+			display_hp_circles_above_align(evo_card, is_opponent)
+			await show_message("SPECIAL MATCH RULE: " + evo_card.metadata.get("name", "").to_upper() + " WAS FULLY HEALED BY EVOLVING!")
 			if _should_bail(): return
 
 	# BASE5: When-played powers trigger when evolved from hand
@@ -2848,6 +2922,9 @@ func can_retreat(is_opponent: bool) -> Dictionary:
 	
 	if already_retreated:
 		return {"can_retreat": false, "reason": "You have already retreated this turn!"}
+	# MATCH EFFECT: no_retreat — retreating is blocked for this side all match
+	if match_effects.retreat_blocked(is_opponent):
+		return {"can_retreat": false, "reason": "Special match rule: retreating is not allowed!"}
 	if active == null:
 		return {"can_retreat": false, "reason": "No active Pokemon!"}
 	if active.is_bench_token:
@@ -3197,8 +3274,11 @@ func perform_attack(attack_index: int) -> void:
 
 	# Unified dispatch: handles GYM2 (name), GYM1, Base1-5 (text-pattern), and generic special attacks.
 	# Returns true if fully handled (including post-attack cleanup); false falls through to generic path.
-	if await attack_effects.dispatch_attack(attack, player_active_pokemon, opponent_active_pokemon, false):
-		return
+	# MATCH EFFECT: raw_damage_only — skip special dispatch so the attack falls through
+	# to the generic printed-damage path with no card-text effects.
+	if not match_effects.raw_damage_only(false):
+		if await attack_effects.dispatch_attack(attack, player_active_pokemon, opponent_active_pokemon, false):
+			return
 
 	# Check attack_blocked flag (Tail Wag / Leer) - benching either pokemon ends this
 	if player_active_pokemon.attack_blocked_next_turn:
@@ -3256,7 +3336,12 @@ func perform_attack(attack_index: int) -> void:
 		return
 	
 	# Resolve variable damage (coin flips, per-energy, per-counter, etc.) BEFORE weakness/resistance
-	var variable_result = await attack_effects.resolve_attack_variable_damage(attack, player_active_pokemon, opponent_active_pokemon, false)
+	# MATCH EFFECT: raw_damage_only — flatten "20x"/"10+" to the printed number, no flips
+	var variable_result
+	if match_effects.raw_damage_only(false):
+		variable_result = {"damage": attack_effects.parse_attack_base_damage(attack), "flip_result": "", "attack_failed": false, "messages": []}
+	else:
+		variable_result = await attack_effects.resolve_attack_variable_damage(attack, player_active_pokemon, opponent_active_pokemon, false)
 	var resolved_base = variable_result["damage"]
 	var flip_result = variable_result["flip_result"]
 	
@@ -3295,8 +3380,9 @@ func perform_attack(attack_index: int) -> void:
 	last_attack_on_opponent = {"damage": final_damage, "attack": attack, "attacker_types": attacking_types}
 	player_attacked_this_turn = true
 	
-	var _pae_effects = attack_effects.parse_card_text_effects(attack.get("text", ""), player_active_pokemon.metadata.get("name", ""))
-	
+	# MATCH EFFECT: raw_damage_only — card-text effects are skipped entirely
+	var _pae_effects = [] if match_effects.raw_damage_only(false) else attack_effects.parse_card_text_effects(attack.get("text", ""), player_active_pokemon.metadata.get("name", ""))
+
 	# Clear one-shot attack boosts after any attack completes
 	player_active_pokemon.clear_attack_boost_flags()
 	if _pae_effects.size() > 0:
@@ -3323,6 +3409,13 @@ func calculate_final_damage(base_damage: int, attacking_types: Array, defending_
 		if "Blaine" in def_name_cinnabar and "Water" in attacking_types:
 			skip_weakness = true
 			modifiers_applied.append("CINNABAR GYM (NO WEAKNESS)")
+	# MATCH EFFECT: ignore_weakness — side-aware for real attacks; for attacker-less calls
+	# (CPU planning) only a both-sides rule applies, so planning never sees a one-sided rule
+	if not skip_weakness:
+		if attacker_pokemon != null:
+			skip_weakness = match_effects.ignore_weakness(match_effects.is_card_on_opponent_side(attacker_pokemon))
+		else:
+			skip_weakness = match_effects.ignore_weakness_global()
 	if not skip_weakness:
 		var weaknesses = defending_pokemon.metadata.get("weaknesses", [])
 		for weakness in weaknesses:
@@ -3348,6 +3441,12 @@ func calculate_final_damage(base_damage: int, attacking_types: Array, defending_
 		if "Brock" in atk_name_pewter:
 			skip_resistance = true
 			modifiers_applied.append("PEWTER GYM (NO RESISTANCE)")
+	# MATCH EFFECT: ignore_resistance — same side-awareness rules as ignore_weakness above
+	if not skip_resistance:
+		if attacker_pokemon != null:
+			skip_resistance = match_effects.ignore_resistance(match_effects.is_card_on_opponent_side(attacker_pokemon))
+		else:
+			skip_resistance = match_effects.ignore_resistance_global()
 	if not skip_resistance:
 		var resistances = defending_pokemon.metadata.get("resistances", [])
 		# GYM2-109 Resistance Gym — each pokemon's Resistance is reduced by 20 (e.g. -30 -> -10, -20 -> 0)
@@ -3459,6 +3558,29 @@ func calculate_final_damage(base_damage: int, attacking_types: Array, defending_
 		damage = powers_and_bodies.apply_relaxing_scent(damage)
 		if damage < pre_scent:
 			modifiers_applied.append("RELAXING SCENT (halved)")
+
+	# MATCH EFFECTS: flat damage rules. Bonuses only apply to real attacks (attacker known,
+	# not hitting itself) so CPU planning calls and self/recoil damage are unaffected.
+	if damage > 0 and attacker_pokemon != null and defending_pokemon != attacker_pokemon:
+		var rule_bonus = match_effects.attack_damage_bonus(attacker_pokemon, match_effects.is_card_on_opponent_side(attacker_pokemon))
+		if rule_bonus > 0:
+			damage += rule_bonus
+			modifiers_applied.append("RULE +" + str(rule_bonus))
+
+	# MATCH EFFECT: type_damage_reduction — defender-keyed, so it also applies to
+	# attacker-less planning calls (the CPU correctly values it when choosing attacks)
+	if damage > 0:
+		var rule_reduction = match_effects.damage_reduction_for(defending_pokemon, match_effects.is_card_on_opponent_side(defending_pokemon))
+		if rule_reduction > 0:
+			var applied_reduction = min(damage, rule_reduction)
+			damage -= applied_reduction
+			modifiers_applied.append("RULE -" + str(applied_reduction))
+
+	# MATCH EFFECT: zero_attack_damage — applied LAST, wins over every bonus above
+	if damage > 0 and attacker_pokemon != null and defending_pokemon != attacker_pokemon:
+		if match_effects.zero_attack_damage(match_effects.is_card_on_opponent_side(attacker_pokemon)):
+			damage = 0
+			modifiers_applied.append("ZERO DAMAGE RULE")
 
 	return {"damage": damage, "modifiers": modifiers_applied}
 
@@ -3601,15 +3723,17 @@ func check_all_knockouts() -> Dictionary:
 			if should_award_prize:
 				player_prize_kos += 1
 			
-	for i in range(opponent_prize_kos):
+	# MATCH EFFECT: double_prizes — multiply prize-awarding KOs (after the no_prize_on_ko
+	# filter, so bench tokens still award nothing). Existing size() guards handle overflow.
+	for i in range(opponent_prize_kos * match_effects.prizes_per_ko(false)):
 		if player_prize_cards.size() > 0:
 			opponent_blocker.visible = false
 			await player_pick_prize_card()
 			await prize_card_taken
 			opponent_blocker.visible = true
-	
+
 	# Opponent takes prizes for player KOs
-	for i in range(player_prize_kos):
+	for i in range(player_prize_kos * match_effects.prizes_per_ko(true)):
 		if opponent_prize_cards.size() > 0:
 			await cpu_ai.opponent_take_prize_card()
 	
@@ -3724,6 +3848,11 @@ func apply_status_effect(effect: Dictionary, attacker: card_object, defender: ca
 		print("STATUS BLOCKED: ", target_pokemon.metadata.get("name", ""), " is a bench token - immune to status")
 		return
 
+	# MATCH EFFECT: no_status_effects — special conditions cannot be applied
+	if match_effects.status_blocked(is_target_opponent):
+		await show_message("SPECIAL MATCH RULE: STATUS EFFECTS CANNOT BE APPLIED!")
+		return
+
 	# Snorlax Thick Skinned: can't become Asleep, Confused, Paralyzed, or Poisoned
 	# Blocked by Muk's Toxic Gas (it's a Pokemon Power)
 	var target_abilities = target_pokemon.metadata.get("abilities", [])
@@ -3760,13 +3889,15 @@ func process_status_between_turns(pokemon: card_object, is_opponent: bool) -> vo
 	var pokemon_name = pokemon.metadata.get("name", "Unknown")
 
 	if pokemon.is_poisoned:
-		pokemon.current_hp = max(0, pokemon.current_hp - pokemon.poison_damage)
+		# MATCH EFFECT: poison_damage_multiplier — scale the poison tick
+		var poison_tick = match_effects.poison_tick_damage(pokemon.poison_damage, is_opponent)
+		pokemon.current_hp = max(0, pokemon.current_hp - poison_tick)
 		var label = "TOXIC" if pokemon.poison_damage == 20 else "POISON"
 		SoundManagerScript.play_sfx(SoundManagerScript.SFX_poison_sound)
-		show_floating_label("-" + str(pokemon.poison_damage) + "HP", Vector2(530 if !is_opponent else 1030, 300), Color.PURPLE, true)
+		show_floating_label("-" + str(poison_tick) + "HP", Vector2(530 if !is_opponent else 1030, 300), Color.PURPLE, true)
 		display_hp_circles_above_align(pokemon, is_opponent)
-		await show_message(pokemon_name.to_upper() + " TAKES " + str(pokemon.poison_damage) + " " + label + " DAMAGE!")
-		print("BETWEEN TURNS: ", pokemon_name, " took ", pokemon.poison_damage, " poison damage. HP: ", pokemon.current_hp)
+		await show_message(pokemon_name.to_upper() + " TAKES " + str(poison_tick) + " " + label + " DAMAGE!")
+		print("BETWEEN TURNS: ", pokemon_name, " took ", poison_tick, " poison damage. HP: ", pokemon.current_hp)
 
 	if pokemon.is_burned:
 		if burn_rules == "base_set_burn_rules":
@@ -3952,6 +4083,12 @@ func has_evolution(base_pokemon: card_object, card_array: Array, stage_type: Str
 func get_retreat_cost(pokemon: card_object) -> int:
 	if pokemon == null:
 		return 0
+
+	# MATCH EFFECT: free_retreat — retreating costs nothing for this side
+	var pokemon_is_opponent = (pokemon == opponent_active_pokemon or pokemon in opponent_bench)
+	if match_effects.retreat_is_free(pokemon_is_opponent):
+		return 0
+
 	var cost = pokemon.metadata.get("retreatCost", []).size()
 
 	# Dodrio Retreat Aid: reduce retreat cost by 1 while Dodrio is on the bench
@@ -3981,6 +4118,9 @@ func get_retreat_cost(pokemon: card_object) -> int:
 		if "Misty" in pname:
 			cost = max(0, cost - 1)
 
+	# MATCH EFFECT: retreat_cost_modifier — flat adjustment to retreat cost (floor 0)
+	cost = max(0, cost + match_effects.retreat_cost_modifier(pokemon_is_opponent))
+
 	return cost
 
 # Returns true if the named stadium (uid) is the currently active stadium card
@@ -3990,10 +4130,33 @@ func is_stadium_in_play(uid: String) -> bool:
 	return current_stadium_card.uid.to_lower() == uid.to_lower()
 
 # Returns the bench cap. Reduced to 4 while gym1-124 Narrow Gym is in play.
+# May be reduced further by the bench_size_limit match effect.
 func get_max_bench_size() -> int:
+	var cap = 5
 	if is_stadium_in_play(StadiumIds.NARROW_GYM):
-		return 4
-	return 5
+		cap = 4
+	var rule_cap = match_effects.max_bench_size_override()
+	if rule_cap > 0:
+		cap = min(cap, rule_cap)
+	return cap
+
+# MATCH EFFECT: max_hp_modifier — apply the per-side max HP shift to every pokemon card
+# in deck + hand at game start (floor 10 HP). current_hp follows so cards start full.
+func apply_max_hp_modifier_match_effect() -> void:
+	for side in [false, true]:
+		var shift = match_effects.max_hp_modifier(side)
+		if shift == 0:
+			continue
+		var piles = [player_deck, player_hand] if not side else [opponent_deck, opponent_hand]
+		for pile in piles:
+			for card in pile:
+				if card.metadata.get("supertype", "") != "Pokémon":
+					continue
+				var base_hp = int(card.metadata.get("hp", "0"))
+				if base_hp <= 0:
+					continue
+				card.max_hp_override = max(10, base_hp + shift)
+				card.current_hp = card.max_hp_override
 
 # GYM1-120 Vermilion City Gym pre-attack flip. If stadium is in play and attacker name contains "Lt. Surge",
 # the attacker MAY flip a coin. Heads = +10 damage; tails = 10 self-damage after attack.
@@ -4508,7 +4671,13 @@ func cancel_button_pressed_hide_selection_mode() -> void:
 		cancel_button.theme = theme_red
 		draw_prize_cards(true)
 		hide_selection_mode_display_main()
-	
+
+		# MATCH EFFECTS: announce this opponent's special rules at the start of each game
+		if match_effects.has_any():
+			await show_message("SPECIAL MATCH RULES ARE IN EFFECT!")
+			for rule_line in match_effects.get_announcement_lines():
+				await show_message(rule_line)
+
 		await show_message("FLIPPING COIN TO DECIDE WHICH PLAYER GOES FIRST")
 	
 		var who_starts = await flip_coin()
@@ -4862,6 +5031,11 @@ func _ready() -> void:
 	add_child(trainer_dsl)
 	trainer_dsl.main = self
 
+	match_effects = Node.new()
+	match_effects.set_script(preload("res://Scripts/Main_Match_Gameplay_Scripts/Match_Effects.gd"))
+	add_child(match_effects)
+	match_effects.main = self
+
 	# Register all on-damage and pre-KO power hooks, then let attack_effects add its own.
 	powers_and_bodies._register_all_power_hooks()
 	attack_effects.register_on_damage_hooks(powers_and_bodies)
@@ -4902,6 +5076,10 @@ func _ready() -> void:
 	opponent_deck_name = GameState.current_opponent_deck
 	load_opponent_data_by_name(GameState.current_opponent_name)
 
+	# Parse this opponent's match-wide rule modifiers (must happen before setup_player —
+	# opening_hand_size and max_hp_modifier act during setup)
+	match_effects.initialize(opponent_data)
+
 	# Load the opponent's coin texture for "opponent flips" animations.
 	# Falls back to the player's coin (tex_heads) at flip time if absent.
 	var _opp_coin_name: String = opponent_data.get("coin_reward", "")
@@ -4924,6 +5102,10 @@ func _ready() -> void:
 	# BEGIN THE GAME SETUP
 	setup_player()
 	setup_opponent(opponent_deck_name)
+
+	# MATCH EFFECT: max_hp_modifier — shift every pokemon's max HP for the whole game.
+	# Applied to deck + hand per side (prizes are drawn from the deck later, so this covers all cards).
+	apply_max_hp_modifier_match_effect()
 	
 	# Player hand and opponent hand have to be connected after the intiial setup to prevent bugs on clicking
 	player_hand_container.gui_input.connect(array_container_clicked.bind(player_hand))
