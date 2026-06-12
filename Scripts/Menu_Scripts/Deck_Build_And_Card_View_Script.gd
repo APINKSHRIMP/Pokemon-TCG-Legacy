@@ -300,6 +300,23 @@ func _build_unlocked_indices() -> void:
 		file.close()
 		if data is Dictionary and data.get("set_unlocked", false):
 			unlocked_indices.append(i)
+	_update_set_nav_buttons()
+
+
+func _update_set_nav_buttons() -> void:
+	var enabled := unlocked_indices.size() > 1
+	next_btn.disabled = !enabled
+	prev_btn.disabled = !enabled
+	var grey_sb := StyleBoxFlat.new()
+	grey_sb.bg_color = Color(0.67, 0.67, 0.67, 1.0)
+	grey_sb.set_corner_radius_all(5)
+	grey_sb.content_margin_left   = 8.0
+	grey_sb.content_margin_right  = 8.0
+	grey_sb.content_margin_top    = 6.0
+	grey_sb.content_margin_bottom = 6.0
+	for btn: Button in [next_btn, prev_btn]:
+		btn.add_theme_stylebox_override("disabled", grey_sb)
+		btn.add_theme_color_override("font_disabled_color", Color(0.35, 0.35, 0.35, 1.0))
 
 
 ## Finds the position in unlocked_indices that matches the given set_id.

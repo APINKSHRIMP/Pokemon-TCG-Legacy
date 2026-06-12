@@ -121,7 +121,173 @@ popup is shown so the player sees everything at once.
 
 ---
 
-## 2. NPC & Opponent Spawning Conditions
+## 2. Match Effects (Special Battle Rules)
+
+Opponents can carry **match-wide rule modifiers** that are active for the whole
+battle — e.g. "all Fire Pokémon deal +20 damage", "no retreating", "every coin
+flip lands on heads". They are the in-battle counterpart to §1's pre-battle
+deck restrictions, and both blocks can sit on the same opponent entry.
+
+**Parser / rules API:** `Scripts/Main_Match_Gameplay_Scripts/Match_Effects.gd`
+(the schema is also documented in its header comment)
+**Loaded by:** `MapManager._load_and_spawn_opponents` → re-read in the match by
+`Main_Match_Core_Gameplay_Script.load_opponent_data_by_name`
+**Announced:** at the start of **each game** (after bench setup, before the
+opening coin flip) as a "SPECIAL MATCH RULES ARE IN EFFECT!" message sequence —
+one line per effect.
+
+Works automatically with `match_format: "best_of_3"` (games 2 and 3 reload the
+scene and re-read the JSON) and alongside `restrictions`.
+
+### 2.1 Syntax
+
+`match_effects` is an **array of effect objects**, sibling of `restrictions`
+on the opponent entry. Multiple effects stack in one battle.
+
+```jsonc
+{
+  "name": "Gym Leader Blaine",
+  // ... other opponent fields ...
+  "restrictions":  { "allowed_pokemon_types": ["Fire"] },   // optional, §1
+  "match_effects": [
+    { "type": "type_damage_bonus", "pokemon_type": "Fire", "amount": 20 },
+    { "type": "no_retreat", "applies_to": "player" },
+    { "type": "coin_flip_override", "result": "heads" }
+  ]
+}
+```
+
+Every effect object has:
+
+| Field | Required | Notes |
+|---|---|---|
+| `type` | yes | One of the effect types in §2.2. Unknown types print a warning and are ignored. |
+| `applies_to` | no | `"both"` (default) \| `"player"` \| `"opponent"`. `"player"` = the human, `"opponent"` = the CPU. For offensive effects it selects whose **attacks/actions** are affected; for defensive effects (`type_damage_reduction`, `no_status_effects`, `max_hp_modifier`, `end_of_turn_heal`, `no_healing`, `healing_multiplier`) it selects whose **Pokémon** are affected. |
+| *(params)* | varies | Per-type parameters listed below. |
+
+**Stacking rules:** additive effects (damage bonuses, reductions, heals,
+modifiers) stack if listed twice. Override-style effects
+(`coin_flip_override`, `draw_count`, `opening_hand_size`, `bench_size_limit`,
+`trainer_discard_cost`, `extra_energy_per_turn`) — the **last matching entry
+in the array wins**.
+
+### 2.2 Effect type reference
+
+#### Damage rules
+
+| `type` | Params | What it does |
+|---|---|---|
+| `type_damage_bonus` | `pokemon_type`, `amount` | Pokémon of that type deal +X attack damage (e.g. all Fire +20). Stacks. |
+| `evolved_damage_bonus` | `amount` | All evolved (non-Basic) Pokémon deal +X attack damage. |
+| `stage_damage_bonus` | `basic`, `stage1`, `stage2` (each optional) | Per-stage flat attack bonus, e.g. Stage 1 +10, Stage 2 +20. |
+| `type_damage_reduction` | `pokemon_type`, `amount` | Damage dealt **to** Pokémon of that type is reduced by X (e.g. Grass take 20 less). |
+| `ignore_weakness` | — | Weakness is skipped in damage calculation. |
+| `ignore_resistance` | — | Resistance is skipped in damage calculation. |
+| `ignore_weakness_and_resistance` | — | Both skipped (same as listing the two above). |
+| `zero_attack_damage` | — | All raw attack damage becomes 0. Attack effects still happen. Applied **last** — wins over every bonus. |
+| `raw_damage_only` | — | Attacks lose their effects and only do printed damage. Variable attacks are flattened with **no coin flips**: a `20×` attack just does 20, a `10+` attack does 10. |
+
+Damage rules only affect **attack** damage. Self-damage, recoil, bench splash
+and poison ticks are untouched (poison has its own effect below).
+
+#### Turn flow & resources
+
+| `type` | Params | What it does |
+|---|---|---|
+| `draw_count` | `count` | Draw N cards instead of 1 at the start of each turn. |
+| `opening_hand_size` | `count` | Opening hands are N cards instead of 7 (mulligan rules unchanged). |
+| `extra_energy_per_turn` | `count` | Players may attach N energy cards per turn instead of 1. |
+| `trainer_discard_cost` | `count` | To play a Trainer you must first discard N **other** cards from your hand (CPU pays too, and demands more value before playing trainers). |
+| `bench_size_limit` | `size` | Maximum bench size (combines with Narrow Gym — the lower cap wins). |
+| `double_prizes` | — | Every knockout awards 2 prize cards instead of 1 (bench tokens still award none). |
+
+#### Retreat rules
+
+| `type` | Params | What it does |
+|---|---|---|
+| `no_retreat` | — | Retreating is blocked entirely. Beats `free_retreat` if both present. |
+| `free_retreat` | — | Retreating costs no energy. |
+| `retreat_cost_modifier` | `amount` (can be negative) | Added to every retreat cost, floored at 0 (e.g. +1 = everything pays one more). |
+
+#### Healing rules
+
+| `type` | Params | What it does |
+|---|---|---|
+| `no_healing` | — | All healing is blocked — potions, powers, berries, attack heals, and the attach/evolve heal effects below. **Beats every other healing effect.** Berries are not consumed while blocked. |
+| `healing_multiplier` | `multiplier` | All healing is scaled (2 = doubled). |
+| `end_of_turn_heal` | `amount` | Every Pokémon in play (active + bench, both sides unless `applies_to`) heals X HP between turns. |
+| `energy_attach_full_heal` | — | Attaching an energy card from hand fully heals that Pokémon. |
+| `energy_attach_halve_hp` | — | Attaching an energy card from hand halves that Pokémon's current HP (rounded up to the nearest 10, never below 10 — 50 → 30). |
+| `evolve_full_heal` | — | Evolving fully heals the Pokémon. |
+
+Damage-counter **transfer** powers (Damage Swap etc.) are not "healing" and
+ignore these rules.
+
+#### Status & powers
+
+| `type` | Params | What it does |
+|---|---|---|
+| `no_status_effects` | — | Poison / Toxic / Burn / Sleep / Confusion / Paralysis cannot be applied. |
+| `poison_damage_multiplier` | `multiplier` | The between-turns poison tick is scaled (2 = doubled). |
+| `powers_blocked` | — | All Pokémon Powers and Poké-Bodies stop working (rides the same gate as Muk's Toxic Gas). `applies_to` is ignored — always both sides. |
+
+#### Coins, energy & HP
+
+| `type` | Params | What it does |
+|---|---|---|
+| `coin_flip_override` | `result`: `"heads"` \| `"tails"` | Every coin flip is forced to that result (animation still plays). Disables Sabrina's ESP re-flip. |
+| `rainbow_energy` | — | Every attached energy counts as **any** type. Double Colorless still provides 2 units. |
+| `max_hp_modifier` | `amount` (can be negative) | Every Pokémon's max HP is shifted by ±X for the whole game, floored at 10. Cards start play at the shifted max. |
+
+### 2.3 Examples
+
+```jsonc
+// Symmetric pair of simple rules
+"match_effects": [
+  { "type": "draw_count", "count": 2 },
+  { "type": "double_prizes" }
+]
+
+// One-sided handicap battle: only the PLAYER cannot retreat,
+// and only the OPPONENT's Pokémon heal at end of turn
+"match_effects": [
+  { "type": "no_retreat",       "applies_to": "player" },
+  { "type": "end_of_turn_heal", "amount": 10, "applies_to": "opponent" }
+]
+
+// Full gauntlet: best-of-3 + deck restriction + several effects at once
+{
+  "name": "Arena Master",
+  "match_format": "best_of_3",
+  "restrictions":  { "banned_card_names": ["Bill"] },
+  "match_effects": [
+    { "type": "type_damage_bonus", "pokemon_type": "Fire", "amount": 10 },
+    { "type": "no_retreat", "applies_to": "player" },
+    { "type": "coin_flip_override", "result": "heads" }
+  ]
+}
+```
+
+### 2.4 Testing day
+
+`NPC_and_Opponent_Data/Celeste_Harbour_0_Day.json` is a dedicated test day with
+**one opponent per effect** (33 total) lined up in Celeste Harbour, plus a
+best-of-3 combo opponent. Reach it with the **`[`** debug key (sets date 0).
+They all use the `Match Effect Test` deck and announce their rule as their
+greeting text.
+
+### 2.5 Known limitations
+
+- CPU attack **scoring** ignores attacker-side damage bonuses and
+  `zero_attack_damage` — the AI still picks attacks normally under those rules.
+- `max_hp_modifier` conflicts with the two cards that manage their own HP
+  override: Koga's Ditto (Giant Growth) and Sabrina's Gastly (Gaseous Form).
+- Under `trainer_discard_cost`, the cost is paid even if Mind Games or Chaos
+  Gym subsequently wastes the trainer.
+
+---
+
+## 3. NPC & Opponent Spawning Conditions
 
 Any NPC or opponent entry may carry a `condition` block. The entry only spawns
 if the condition evaluates to **true**.
@@ -131,7 +297,7 @@ if the condition evaluates to **true**.
 just-beaten opponent stays spawned long enough to play the result text, even
 if their `opponent_not_defeated` condition would normally hide them now.
 
-### 2.1 Condition types
+### 3.1 Condition types
 
 | `type` | Extra fields | Returns true when |
 |---|---|---|
@@ -145,7 +311,7 @@ if their `opponent_not_defeated` condition would normally hide them now.
 | `flag_set` | `flag: String` | `GameState.progress[flag]` is truthy |
 | `flag_not_set` | `flag: String` | `GameState.progress[flag]` is falsy or missing |
 
-### 2.2 Examples
+### 3.2 Examples
 
 ```jsonc
 // Spawn only after Misty has been beaten
@@ -167,7 +333,7 @@ if their `opponent_not_defeated` condition would normally hide them now.
 
 ---
 
-## 3. Movement Patterns
+## 4. Movement Patterns
 
 `pattern` controls how a spawned NPC or opponent moves around the map.
 The default is `"idle_random"`.
@@ -177,7 +343,7 @@ The default is `"idle_random"`.
 - `Scripts/Objects_And_Classes/NPC_Object_Script.gd`
 - `Scripts/Objects_And_Classes/Shopkeeper_Script.gd`
 
-### 3.1 Pattern values
+### 4.1 Pattern values
 
 | Pattern | Behaviour | Extra fields |
 |---|---|---|
@@ -188,7 +354,7 @@ The default is `"idle_random"`.
 | `patrol_square` | Walks a square loop (down → right → up → left → repeat) | `patrol_speed`, `patrol_distance` |
 | `random_wander` | Picks short random walks within a radius of the spawn point | `patrol_speed`, `wander_radius` (default `200`) |
 
-### 3.2 Extra-field reference
+### 4.2 Extra-field reference
 
 | Field | Type | Default | Used by |
 |---|---|---|---|
@@ -197,7 +363,7 @@ The default is `"idle_random"`.
 | `patrol_axis` | `"horizontal"` \| `"vertical"` | `"horizontal"` | `patrol_line` |
 | `wander_radius` | float | `200.0` | `random_wander` |
 
-### 3.3 Examples
+### 4.3 Examples
 
 ```jsonc
 { "name": "Biker2", "pattern": "patrol_line", "patrol_speed": 120,
@@ -214,7 +380,7 @@ The default is `"idle_random"`.
 
 ---
 
-## 4. NPC Types
+## 5. NPC Types
 
 `npc_type` decides which behaviour script handles the NPC and which scene is
 instantiated. Set on the NPC's entry in `All_NPC_Constant_Data.json` (or on
@@ -229,7 +395,7 @@ the per-map placement if it varies by location).
 | `"juice_vendor"` | Opens the juice-bar coin lottery | — (handled inline in MapManager) |
 | `"shop"` | Opens the corresponding shop scene; uses Shopkeeper state machine | `shop_id` |
 
-### 4.1 Shop ids
+### 5.1 Shop ids
 
 | `shop_id` | Scene loaded | Notes |
 |---|---|---|
@@ -238,7 +404,7 @@ the per-map placement if it varies by location).
 | `"coin_mart"` | `Scenes/Main_Menu_Scenes/Coin_Shop.tscn` | Reads `coin_shop_inventory.json` |
 | `"holo_mart"` | `Scenes/Main_Menu_Scenes/Holo_Rare_Shop.tscn` | — |
 
-### 4.2 Example shop NPC
+### 5.2 Example shop NPC
 
 ```jsonc
 "Holo Rare Shopkeeper": {
@@ -250,7 +416,7 @@ the per-map placement if it varies by location).
 
 ---
 
-## 5. Gifts (NPC-given)
+## 6. Gifts (NPC-given)
 
 A non-shop NPC becomes a **gift NPC** as soon as `gift_type` is non-empty.
 The gift is awarded the first time the player talks to them, then the NPC
@@ -260,7 +426,7 @@ falls back to its `repeat_text` from then on.
 `MapManager._prepare_gift_display` (line 666).
 **Detection:** `NPC_Object_Script.is_gift_npc()`.
 
-### 5.1 Gift types
+### 6.1 Gift types
 
 | `gift_type` | `gift_value` format | What it does | Visual reveal |
 |---|---|---|---|
@@ -273,14 +439,14 @@ falls back to its `repeat_text` from then on.
 | `"pack"` | Comma-separated pack art codes, e.g. `"base5_a, base1_b"` | Queues `PackOpeningManager.open_packs(...)` on the next OK press — opens packs immediately | Pack opening sequence |
 | `"pack_of_cards"` | (Pack name) | **Not implemented** — currently emits a `push_warning` | n/a |
 
-### 5.2 Special placeholders seen in data
+### 6.2 Special placeholders seen in data
 
 | Placeholder | Meaning |
 |---|---|
 | `"REPLACECOIN"` in `gift_value` | Used in early/draft data to mark "fill in a real coin later". Treat as a TODO marker. |
 | `"REPLACEMUSIC"` in `music` field | Same idea for opponent BGM. |
 
-### 5.3 Examples
+### 6.3 Examples
 
 ```jsonc
 // Card gift (single)
@@ -307,7 +473,7 @@ falls back to its `repeat_text` from then on.
   "gift_type": "pack", "gift_value": "base5_a, base5_b" }
 ```
 
-### 5.4 Costume-gated NPCs
+### 6.4 Costume-gated NPCs
 
 An NPC carrying a `required_costume` field reacts to **what the player is
 currently wearing** (the `sprite` field of `Player_Current_Data.json`).
@@ -319,11 +485,11 @@ currently wearing** (the `sprite` field of `Player_Current_Data.json`).
 | `required_costume` | Costume sprite name the player must be wearing. Compared case-insensitively. Presence of this field marks the NPC as costume-gated. |
 | `costume_match_text` | Greeting shown **while wearing** the required costume. |
 | `meet_text` / `repeat_text` | Greeting shown when **not** wearing it (ordinary text NPC behaviour). |
-| `gift_type` / `gift_value` | Standard gift fields (§5.1). The gift is handed over **only** while the required costume is worn, and only once. |
+| `gift_type` / `gift_value` | Standard gift fields (§6.1). The gift is handed over **only** while the required costume is worn, and only once. |
 
 While wearing the costume the player gets `costume_match_text` and the gift;
 otherwise they get the normal greeting and nothing — they can return later in
-the right outfit. Works with every `gift_type` in §5.1.
+the right outfit. Works with every `gift_type` in §6.1.
 
 ```jsonc
 // Gives a pack of cards, but only to a player dressed as a Rocket grunt
@@ -339,7 +505,7 @@ the right outfit. Works with every `gift_type` in §5.1.
 
 ---
 
-## 6. Opponent Rewards
+## 7. Opponent Rewards
 
 Rewards are read after a winning match by `Match_End_Outro_Script.gd` (around
 lines 283–327). They live on the opponent's entry in
@@ -362,7 +528,7 @@ lines 283–327). They live on the opponent's entry in
 > with `gift_type: "pack"`. The `pack_reward` field is reserved for future
 > wiring.
 
-### 6.1 Example opponent
+### 7.1 Example opponent
 
 ```jsonc
 "Card Expert Nathan": {
@@ -379,7 +545,7 @@ lines 283–327). They live on the opponent's entry in
 
 ---
 
-## 7. Map Files: Day & Time Variants
+## 8. Map Files: Day & Time Variants
 
 Each overworld map loads a different JSON file depending on the current
 **date** and **time of day**.
@@ -387,7 +553,7 @@ Each overworld map loads a different JSON file depending on the current
 **Loader:** `Scripts/Map_Scripts/Celeste_Harbour.gd` (≈ line 16)
 **State source:** `GameState.get_date()` and `GameState.get_time()`.
 
-### 7.1 Filename convention
+### 8.1 Filename convention
 
 `NPC_and_Opponent_Data/<Map>_<Date>_<Time>.json`
 
@@ -405,7 +571,7 @@ NPC_and_Opponent_Data/Celeste_Harbour_3_Night.json
 NPC_and_Opponent_Data/Verdant_Forest_4_Evening.json
 ```
 
-### 7.2 File top-level shape
+### 8.2 File top-level shape
 
 ```jsonc
 {
@@ -414,10 +580,10 @@ NPC_and_Opponent_Data/Verdant_Forest_4_Evening.json
 }
 ```
 
-Both arrays may carry per-entry `condition` blocks (see §2) to toggle entries
+Both arrays may carry per-entry `condition` blocks (see §3) to toggle entries
 on or off based on progress.
 
-### 7.3 Time cycle
+### 8.3 Time cycle
 
 Time advances **Day → Evening → Night → Day** (Day rollover bumps `date`).
 Day-driven map events (e.g. boats appearing, beach blocked, SS Anne docking)
@@ -425,9 +591,9 @@ are scripted inside the map's `.gd` file rather than the data JSON.
 
 ---
 
-## 8. Card Sets, Decks & Player Data
+## 9. Card Sets, Decks & Player Data
 
-### 8.1 Card data JSON
+### 9.1 Card data JSON
 
 Each set lives in `Card_Set_Data/<set_id>.json` and is a flat array of card
 objects.
@@ -452,7 +618,7 @@ objects.
 
 **Card image path:** `res://Image_Assets/Card_Image_Library/<set_id>/Large/<card_id>.png`
 
-### 8.2 Player decks
+### 9.2 Player decks
 
 Player deck files live in `user://Player_Decks/<name>.json` (and starter
 seeds in `res://Player_Data/Player_Decks/`). The format is a simple array:
@@ -473,7 +639,7 @@ seeds in `res://Player_Data/Player_Decks/`). The format is a simple array:
 The player's **currently-selected deck name** is the `deck` field of
 `user://Player_Current_Data.json`.
 
-### 8.3 Player owned cards
+### 9.3 Player owned cards
 
 `Player_Data/Player_Owned_Cards/<set>_player_owned_cards.json` tracks how many
 copies of each card the player owns:
@@ -487,7 +653,7 @@ copies of each card the player owns:
 }
 ```
 
-### 8.4 Opponent decks
+### 9.4 Opponent decks
 
 Opponent deck files use the same format as player decks and live at
 `NPC_and_Opponent_Data/Opponent_Deck_Data/<DeckName>.json`. The opponent's
@@ -495,7 +661,7 @@ Opponent deck files use the same format as player decks and live at
 
 ---
 
-## 9. Pack Pricing
+## 10. Pack Pricing
 
 **File:** `Card_Set_Data/pack_prices.json`
 **Reader:** `Scripts/Menu_Scripts/Pack_Purchase_Script.gd`
@@ -519,7 +685,7 @@ e.g. `base1_a`, `base1_b`, `base5_c`. Their images live at
 
 ---
 
-## 10. Coin Shop Inventory
+## 11. Coin Shop Inventory
 
 **File:** `NPC_and_Opponent_Data/coin_shop_inventory.json`
 **Reader:** `Scripts/Menu_Scripts/Coin_Shop_Script.gd`
@@ -541,7 +707,7 @@ e.g. `base1_a`, `base1_b`, `base5_c`. Their images live at
 
 ---
 
-## 11. Save / Progress Data Shape
+## 12. Save / Progress Data Shape
 
 Persisted at `user://Player_Game_Progress.json` and accessed only via the
 `GameState` autoload (never bypass it — see [[project_gamestate_save_invariant]]).
@@ -571,7 +737,7 @@ elsewhere is setting them.
 
 ---
 
-## 12. Interactables (Signs, Bed, TV)
+## 13. Interactables (Signs, Bed, TV)
 
 Overworld "objects" the player interacts with by pressing **Space** while standing
 inside the object's zone.
@@ -584,11 +750,11 @@ named `CollisionShape2D` zones (rectangles). The shared script
 
 | Shape name | Behaviour |
 |---|---|
-| `Bed` | Sleep flow — see §12.2 |
-| `TV` | Cycling news headlines — see §12.3 |
-| anything else | Plain flavour text from `Interactables_Data.json` — see §12.1 |
+| `Bed` | Sleep flow — see §13.2 |
+| `TV` | Cycling news headlines — see §13.3 |
+| anything else | Plain flavour text from `Interactables_Data.json` — see §13.1 |
 
-### 12.1 Sign flavour text
+### 13.1 Sign flavour text
 
 **File:** `Map_Data/Interactables_Data.json`
 **Reader:** `Interactables_Script.gd`
@@ -609,7 +775,7 @@ Keyed by **scene name** (the `.tscn` filename without extension), then by the
 A shape with no matching entry shows a generic fallback line. `Bed` / `TV`
 shapes are handled in code and need no entry.
 
-### 12.2 Bed
+### 13.2 Bed
 
 | Time of day | Result |
 |---|---|
@@ -620,7 +786,7 @@ Choosing **Yes** at night: fades to black over `SLEEP_FADE_DURATION` (3.0s),
 remembers the player's position, advances **`date` +1** and **`Night → Day`**
 (via `GameState.advance_time`), then reloads the scene fresh.
 
-### 12.3 TV news
+### 13.3 TV news
 
 The TV picks the **highest progression stage** whose condition is currently met,
 then cycles through that stage's headlines on each press. Conditions are checked
@@ -636,7 +802,7 @@ top-down in `_tv_stage()`:
 
 Headline text lives in the `TV_NEWS` constant in `Interactables_Script.gd`.
 
-### 12.4 Adding a new interactable
+### 13.4 Adding a new interactable
 
 1. Add a named `CollisionShape2D` under the scene's `Interactables` node.
 2. **Plain text:** add an entry under that scene's key in `Interactables_Data.json`.
@@ -644,24 +810,25 @@ Headline text lives in the `TV_NEWS` constant in `Interactables_Script.gd`.
 
 ---
 
-## 13. Quick-Reference Cheat Sheet
+## 14. Quick-Reference Cheat Sheet
 
 | I want to… | Edit this |
 |---|---|
 | Make an opponent require a specific deck | Add `restrictions: { … }` to their entry (§1) |
-| Hide an opponent until a prerequisite is beaten | Add `condition: { type: "opponent_defeated", target: "…" }` (§2) |
-| Change how an NPC moves around | Set `pattern` plus the matching extra fields (§3) |
-| Add a new shop NPC | `npc_type: "shop"` plus the correct `shop_id` (§4) |
-| Give the player a card / costume / cash | `gift_type` + `gift_value` on the NPC (§5) |
-| Make an NPC react to what costume the player wears | `required_costume` + `costume_match_text` (§5.4) |
-| Reward an opponent battle with cash + cards | `cash_reward` + `card_reward` (§6) |
-| Add a new map-day/time variant | Create `<Map>_<Day>_<Time>.json` (§7) |
-| Add a new card to a set | Append to `Card_Set_Data/<set>.json` (§8.1) |
-| Change a pack's price | Edit `Card_Set_Data/pack_prices.json` (§9) |
-| Add a coin to the Coin Shop | Append to `coin_shop_inventory.json` (§10) |
-| Change a sign's flavour text | Edit `Map_Data/Interactables_Data.json` (§12.1) |
-| Add a new sign / object interaction | New `CollisionShape2D` under `Interactables` (§12.4) |
+| Give a battle special rules (damage boosts, no retreat, forced flips…) | Add `match_effects: [ … ]` to the opponent entry (§2) |
+| Hide an opponent until a prerequisite is beaten | Add `condition: { type: "opponent_defeated", target: "…" }` (§3) |
+| Change how an NPC moves around | Set `pattern` plus the matching extra fields (§4) |
+| Add a new shop NPC | `npc_type: "shop"` plus the correct `shop_id` (§5) |
+| Give the player a card / costume / cash | `gift_type` + `gift_value` on the NPC (§6) |
+| Make an NPC react to what costume the player wears | `required_costume` + `costume_match_text` (§6.4) |
+| Reward an opponent battle with cash + cards | `cash_reward` + `card_reward` (§7) |
+| Add a new map-day/time variant | Create `<Map>_<Day>_<Time>.json` (§8) |
+| Add a new card to a set | Append to `Card_Set_Data/<set>.json` (§9.1) |
+| Change a pack's price | Edit `Card_Set_Data/pack_prices.json` (§10) |
+| Add a coin to the Coin Shop | Append to `coin_shop_inventory.json` (§11) |
+| Change a sign's flavour text | Edit `Map_Data/Interactables_Data.json` (§13.1) |
+| Add a new sign / object interaction | New `CollisionShape2D` under `Interactables` (§13.4) |
 
 ---
 
-*Last updated: 2026-05-20*
+*Last updated: 2026-06-12*
