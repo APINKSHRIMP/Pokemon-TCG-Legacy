@@ -14,6 +14,63 @@ size = Vector2(8, 6)
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_s8ing"]
 size = Vector2(61, 54)
 
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_kd744"]
+size = Vector2(32, 12)
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_hfq7f"]
+size = Vector2(26, 9.125)
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_p0i1x"]
+size = Vector2(15, 7.5)
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_a7ra0"]
+size = Vector2(66, 24)
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_bhrxx"]
+size = Vector2(5, 19.5)
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_q6fep"]
+size = Vector2(33, 29)
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_kum48"]
+size = Vector2(17, 16)
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_kkalq"]
+size = Vector2(5, 34)
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_0hr5k"]
+size = Vector2(14, 13)
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_q4spl"]
+size = Vector2(45, 23)
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_fymqn"]
+size = Vector2(26, 30)
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_624em"]
+size = Vector2(41, 17)
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_ssctv"]
+size = Vector2(80, 14)
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_ljis0"]
+size = Vector2(12, 19)
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_3l403"]
+size = Vector2(414, 8)
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_jxttn"]
+size = Vector2(18, 261)
+
+[sub_resource type="ConvexPolygonShape2D" id="ConvexPolygonShape2D_m48fr"]
+points = PackedVector2Array(18, -17.5, -16, -0.5, 18, -0.5)
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_m48fr"]
+size = Vector2(356.5, 20.5)
+
+[sub_resource type="ConvexPolygonShape2D" id="ConvexPolygonShape2D_kd744"]
+points = PackedVector2Array(213, -132, 163, -132, 163, -112)
+
 [node name="PlayerHouseDownstairs" type="Node2D" unique_id=1007463427]
 script = ExtResource("1_m8vm5")
 
@@ -65,45 +122,45 @@ position = Vector2(9, 0)
 tile_map_data = PackedByteArray("AAAFAP//AQA1AAAAAAAFAAAAAQA1AAEAAAAFAAEAAQA1AAIAAAAGAP//AQA2AAAAAAAGAAAAAQA2AAEAAAAGAAEAAQA2AAIAAAAHAP//AQAqAAgAAAAHAAAAAQAqAAkAAAAHAAEAAQAqAAoAAAAIAP//AQArAAgAAAAIAAAAAQArAAkAAAAIAAEAAQArAAoAAAAJAAAAAQAsAAkAAAAJAAEAAQAsAAoAAAA=")
 tile_set = ExtResource("2_rkwje")
 
-[node name="Other Furniture" type="TileMapLayer" parent="DOWNSTAIRS" unique_id=288472063]
-visible = false
+[node name="Post Move In" type="TileMap" parent="DOWNSTAIRS" unique_id=1159922539]
+format = 2
+
+[node name="Other Furniture" type="TileMapLayer" parent="DOWNSTAIRS/Post Move In" unique_id=288472063]
 position = Vector2(9, 0)
-tile_map_data = PackedByteArray("AAADAAQAAQArAAIAAAADAAUAAQArAAMAAAADAAYAAQArAAQAAAADAAcAAQArAAUAAAAGAAQAAQAsAAIAAAAGAAUAAQAsAAMAAAAGAAYAAQAsAAQAAAAGAAcAAQAsAAUAAAARAAcAAQAuAAsAAAARAAgAAQAuAAwAAAARAAkAAQAuAA0AAAAUAAcAAQAuAAgAAAAUAAgAAQAuAAkAAAAUAAkAAQAuAAoAAAAXAAcAAQAwAAsAAAAXAAgAAQAwAAwAAAAXAAkAAQAwAA0AAAAQAAcAAQAtAAsAAAAQAAgAAQAtAAwAAAAQAAkAAQAtAA0AAAATAAcAAQAtAAgAAAATAAgAAQAtAAkAAAATAAkAAQAtAAoAAAAWAAcAAQAvAAsAAAAWAAgAAQAvAAwAAAAWAAkAAQAvAA0AAAAVAAcAAQAvAAgAAAAVAAgAAQAvAAkAAAAVAAkAAQAvAAoAAAAKAAAAAQAoAAkAAAALAAAAAQApAAkAAAAKAP//AQAoAAgAAAAKAAEAAQAoAAoAAAALAP//AQApAAgAAAALAAEAAQApAAoAAAAMAP//AQApAAwAAAAMAAAAAQApAA0AAAAMAAEAAQApAA4AAAANAP//AQAoAAwAAAANAAAAAQAoAA0AAAANAAEAAQAoAA4AAAAAAAMAAQA1ABQAAAAAAAQAAQA5AAIAAAAAAAUAAQA5AAMAAAAYAAwAAQA5AAIAAAAYAA0AAQA5AAMAAAAAAAwAAQA5AAIAAAAAAA0AAQA5AAMAAAAAAAIAAQA1ABMAAAA=")
+tile_map_data = PackedByteArray("AAARAAcAAQAuAAsAAAARAAgAAQAuAAwAAAARAAkAAQAuAA0AAAAUAAcAAQAuAAgAAAAUAAgAAQAuAAkAAAAUAAkAAQAuAAoAAAAXAAcAAQAwAAsAAAAXAAgAAQAwAAwAAAAXAAkAAQAwAA0AAAAQAAcAAQAtAAsAAAAQAAgAAQAtAAwAAAAQAAkAAQAtAA0AAAATAAcAAQAtAAgAAAATAAgAAQAtAAkAAAATAAkAAQAtAAoAAAAWAAcAAQAvAAsAAAAWAAgAAQAvAAwAAAAWAAkAAQAvAA0AAAAVAAcAAQAvAAgAAAAVAAgAAQAvAAkAAAAVAAkAAQAvAAoAAAAKAAAAAQAoAAkAAAALAAAAAQApAAkAAAAKAP//AQAoAAgAAAAKAAEAAQAoAAoAAAALAP//AQApAAgAAAALAAEAAQApAAoAAAAMAP//AQApAAwAAAAMAAAAAQApAA0AAAAMAAEAAQApAA4AAAANAP//AQAoAAwAAAANAAAAAQAoAA0AAAANAAEAAQAoAA4AAAAAAAMAAQA1ABQAAAAAAAQAAQA5AAIAAAAAAAUAAQA5AAMAAAAYAAwAAQA5AAIAAAAYAA0AAQA5AAMAAAAAAAwAAQA5AAIAAAAAAA0AAQA5AAMAAAAAAAIAAQA1ABMAAAA=")
 tile_set = ExtResource("2_rkwje")
 
-[node name="Dining Table" type="TileMapLayer" parent="DOWNSTAIRS" unique_id=269382490]
-visible = false
+[node name="Dining Chairs" type="TileMapLayer" parent="DOWNSTAIRS/Post Move In" unique_id=1658052145]
+tile_map_data = PackedByteArray("AAADAAQAAQArAAIAAAADAAUAAQArAAMAAAADAAYAAQArAAQAAAADAAcAAQArAAUAAAAHAAQAAQAsAAIAAAAHAAUAAQAsAAMAAAAHAAYAAQAsAAQAAAAHAAcAAQAsAAUAAAA=")
+tile_set = ExtResource("2_rkwje")
+
+[node name="Dining Table" type="TileMapLayer" parent="DOWNSTAIRS/Post Move In" unique_id=269382490]
 position = Vector2(9, -6)
 tile_map_data = PackedByteArray("AAAEAAUAAQAiAAkAAAAEAAYAAQAiAAoAAAAEAAcAAQAiAAsAAAAFAAUAAQAjAAkAAAAFAAYAAQAjAAoAAAAFAAcAAQAjAAsAAAA=")
 tile_set = ExtResource("2_rkwje")
 
-[node name="Furniture Top" type="TileMapLayer" parent="DOWNSTAIRS" unique_id=1961142987]
-tile_set = ExtResource("2_rkwje")
-
-[node name="TV Bottom" type="TileMapLayer" parent="DOWNSTAIRS" unique_id=210839355]
-visible = false
+[node name="TV Bottom" type="TileMapLayer" parent="DOWNSTAIRS/Post Move In" unique_id=210839355]
 position = Vector2(3, 0)
 tile_map_data = PackedByteArray("AAATAAQAAQA3AAgAAAATAAUAAQA3AAkAAAAUAAQAAQA4AAgAAAAUAAUAAQA4AAkAAAAVAAQAAQA5AAgAAAAVAAUAAQA5AAkAAAA=")
 tile_set = ExtResource("2_rkwje")
 
-[node name="TV TOP" type="TileMapLayer" parent="DOWNSTAIRS" unique_id=1555225686]
-visible = false
+[node name="TV TOP" type="TileMapLayer" parent="DOWNSTAIRS/Post Move In" unique_id=1555225686]
 z_index = 10
 position = Vector2(3, 0)
 tile_map_data = PackedByteArray("AAATAAMAAQA3AAcAAAAUAAMAAQA4AAcAAAAVAAMAAQA5AAcAAAA=")
 tile_set = ExtResource("2_rkwje")
 
-[node name="Flowers" type="TileMapLayer" parent="DOWNSTAIRS" unique_id=682781235]
-visible = false
+[node name="Flowers" type="TileMapLayer" parent="DOWNSTAIRS/Post Move In" unique_id=682781235]
 position = Vector2(2, -5)
 tile_map_data = PackedByteArray("AAAUAAgAAQA1ABAAAAA=")
 tile_set = ExtResource("2_rkwje")
 
 [node name="Moving In" type="TileMapLayer" parent="DOWNSTAIRS" unique_id=12486184]
+visible = false
 tile_map_data = PackedByteArray("AAAEAAwAAQABAA4AAAAEAA0AAQABAA8AAAAFAAwAAQACAA4AAAAFAA0AAQACAA8AAAAVAAwAAQABAA4AAAAVAA0AAQABAA8AAAAWAAwAAQACAA4AAAAWAA0AAQACAA8AAAAXAAQAAQABAA4AAAAXAAUAAQABAA8AAAAYAAQAAQACAA4AAAAPAAEAAQABAA4AAAAPAAIAAQABAA8AAAAQAAEAAQACAA4AAAAQAAIAAQACAA8AAAARAAEAAQAAAA4AAAAQAAMAAQAAAA4AAAACAA0AAQAAAA4AAAADAAwAAQAAAA4AAAAUAA0AAQAAAA4AAAAYAAUAAQAAAA4AAAAYAAYAAQA0ABcAAAAFAAoAAQA0ABcAAAAGAAsAAQA0ABcAAAAOAAMAAQA0ABcAAAANAAIAAQA0ABcAAAATAAwAAQA0ABcAAAALAAIAAQA0AAQAAAACAAsAAQA0AAQAAAARAAwAAQA0AAQAAAAWAAYAAQA0AAQAAAAHAAwAAQA4AAUAAAAHAA0AAQA4AAYAAAASAAIAAQA4AAUAAAASAAMAAQA4AAYAAAAEAAQAAQADABEAAAAEAAUAAQADABIAAAAFAAQAAQAEABEAAAAFAAUAAQAEABIAAAAWAAgAAQADABEAAAAWAAkAAQADABIAAAAXAAgAAQAEABEAAAAXAAkAAQAEABIAAAA=")
 tile_set = ExtResource("2_rkwje")
 
-[node name="EMPTY LAYER14" type="TileMapLayer" parent="DOWNSTAIRS" unique_id=1658052145]
+[node name="EMPTY LAYER15" type="TileMapLayer" parent="DOWNSTAIRS" unique_id=157072256]
 tile_set = ExtResource("2_rkwje")
 
 [node name="Player" parent="." unique_id=510514557 instance=ExtResource("3_484m0")]
@@ -119,7 +176,7 @@ metadata/target_scene = "res://Scenes/Map_Scenes/Celeste_Harbour.tscn"
 metadata/door_type = "exit_to_outside"
 
 [node name="DoorArea_Downstairs" type="CollisionShape2D" parent="Door Areas" unique_id=315181582]
-position = Vector2(420, -1463)
+position = Vector2(447, -1477)
 shape = SubResource("RectangleShape2D_gymwu")
 metadata/target_scene = "res://Scenes/Map_Scenes/Player_House_Upstairs.tscn"
 metadata/door_type = "stairs_up"
@@ -127,8 +184,196 @@ metadata/door_type = "stairs_up"
 [node name="UILAYER" type="CanvasLayer" parent="." unique_id=1060825490]
 
 [node name="Interactables" type="Area2D" parent="." unique_id=1398527179]
+visible = false
 script = ExtResource("4_c3q6k")
 
 [node name="TV" type="CollisionShape2D" parent="Interactables" unique_id=1488498010]
 position = Vector2(333.5, 77)
 shape = SubResource("RectangleShape2D_s8ing")
+
+[node name="Collision Objects" type="Control" parent="." unique_id=1670387472]
+layout_mode = 3
+anchors_preset = 0
+offset_left = 207.0
+offset_top = 101.0
+offset_right = 247.0
+offset_bottom = 141.0
+
+[node name="Moving In" type="StaticBody2D" parent="Collision Objects" unique_id=1687475644]
+visible = false
+position = Vector2(-5, 4)
+collision_mask = 0
+
+[node name="BigBoxes" type="CollisionShape2D" parent="Collision Objects/Moving In" unique_id=1237598407]
+position = Vector2(-122, -22)
+shape = SubResource("RectangleShape2D_kd744")
+
+[node name="BigBoxes2" type="CollisionShape2D" parent="Collision Objects/Moving In" unique_id=1564917188]
+position = Vector2(166, 40)
+shape = SubResource("RectangleShape2D_kd744")
+
+[node name="BoxStack" type="CollisionShape2D" parent="Collision Objects/Moving In" unique_id=1488842249]
+position = Vector2(148, 91.875)
+shape = SubResource("RectangleShape2D_hfq7f")
+
+[node name="BoxStack2" type="CollisionShape2D" parent="Collision Objects/Moving In" unique_id=1957845699]
+position = Vector2(-124, 90.25)
+shape = SubResource("RectangleShape2D_hfq7f")
+
+[node name="BoxStack3" type="CollisionShape2D" parent="Collision Objects/Moving In" unique_id=1163312807]
+position = Vector2(180, -36.5625)
+shape = SubResource("RectangleShape2D_hfq7f")
+
+[node name="BoxStack4" type="CollisionShape2D" parent="Collision Objects/Moving In" unique_id=1070519940]
+position = Vector2(52, -84)
+shape = SubResource("RectangleShape2D_hfq7f")
+
+[node name="Box" type="CollisionShape2D" parent="Collision Objects/Moving In" unique_id=670718699]
+position = Vector2(-147, 89.5)
+shape = SubResource("RectangleShape2D_p0i1x")
+
+[node name="Box2" type="CollisionShape2D" parent="Collision Objects/Moving In" unique_id=1988992113]
+position = Vector2(-163, 105)
+shape = SubResource("RectangleShape2D_p0i1x")
+
+[node name="Box3" type="CollisionShape2D" parent="Collision Objects/Moving In" unique_id=846516950]
+position = Vector2(125, 105)
+shape = SubResource("RectangleShape2D_p0i1x")
+
+[node name="Box4" type="CollisionShape2D" parent="Collision Objects/Moving In" unique_id=1903602725]
+position = Vector2(189, -23.75)
+shape = SubResource("RectangleShape2D_p0i1x")
+
+[node name="Box5" type="CollisionShape2D" parent="Collision Objects/Moving In" unique_id=1749288930]
+position = Vector2(60.5, -54)
+shape = SubResource("RectangleShape2D_p0i1x")
+
+[node name="Box6" type="CollisionShape2D" parent="Collision Objects/Moving In" unique_id=440423971]
+position = Vector2(77, -87)
+shape = SubResource("RectangleShape2D_p0i1x")
+
+[node name="Box7" type="CollisionShape2D" parent="Collision Objects/Moving In" unique_id=835187893]
+position = Vector2(-17, -68)
+shape = SubResource("RectangleShape2D_p0i1x")
+
+[node name="Box8" type="CollisionShape2D" parent="Collision Objects/Moving In" unique_id=611859207]
+position = Vector2(159, -6)
+shape = SubResource("RectangleShape2D_p0i1x")
+
+[node name="Box9" type="CollisionShape2D" parent="Collision Objects/Moving In" unique_id=944809939]
+position = Vector2(79, 90)
+shape = SubResource("RectangleShape2D_p0i1x")
+
+[node name="Box10" type="CollisionShape2D" parent="Collision Objects/Moving In" unique_id=527011250]
+position = Vector2(-162, 76)
+shape = SubResource("RectangleShape2D_p0i1x")
+
+[node name="Post Move In" type="Control" parent="Collision Objects" unique_id=124906755]
+visible = false
+anchors_preset = 0
+offset_right = 40.0
+offset_bottom = 40.0
+
+[node name="Furniture" type="StaticBody2D" parent="Collision Objects/Post Move In" unique_id=1610745997]
+position = Vector2(-5, 4)
+collision_mask = 0
+
+[node name="Cabinets" type="CollisionShape2D" parent="Collision Objects/Post Move In/Furniture" unique_id=1737998508]
+position = Vector2(-2, -108)
+shape = SubResource("RectangleShape2D_a7ra0")
+
+[node name="DiningChair" type="CollisionShape2D" parent="Collision Objects/Post Move In/Furniture" unique_id=808875719]
+position = Vector2(-152.5, 2.25)
+shape = SubResource("RectangleShape2D_bhrxx")
+
+[node name="DiningChair2" type="CollisionShape2D" parent="Collision Objects/Post Move In/Furniture" unique_id=106253163]
+position = Vector2(-152, -30)
+shape = SubResource("RectangleShape2D_bhrxx")
+
+[node name="DiningChair3" type="CollisionShape2D" parent="Collision Objects/Post Move In/Furniture" unique_id=1774567645]
+position = Vector2(-76, -30)
+shape = SubResource("RectangleShape2D_bhrxx")
+
+[node name="DiningChair4" type="CollisionShape2D" parent="Collision Objects/Post Move In/Furniture" unique_id=353431589]
+position = Vector2(-76, 1)
+shape = SubResource("RectangleShape2D_bhrxx")
+
+[node name="Table" type="CollisionShape2D" parent="Collision Objects/Post Move In/Furniture" unique_id=1808062177]
+position = Vector2(-113.5, -10.5)
+shape = SubResource("RectangleShape2D_q6fep")
+
+[node name="Table2" type="CollisionShape2D" parent="Collision Objects/Post Move In/Furniture" unique_id=881655624]
+position = Vector2(128, 28)
+shape = SubResource("RectangleShape2D_q6fep")
+
+[node name="Plant" type="CollisionShape2D" parent="Collision Objects/Post Move In/Furniture" unique_id=1557160073]
+position = Vector2(-185.5, -29)
+shape = SubResource("RectangleShape2D_kum48")
+
+[node name="Plant2" type="CollisionShape2D" parent="Collision Objects/Post Move In/Furniture" unique_id=2137535041]
+position = Vector2(-185, 101)
+shape = SubResource("RectangleShape2D_kum48")
+
+[node name="Plant3" type="CollisionShape2D" parent="Collision Objects/Post Move In/Furniture" unique_id=550603944]
+position = Vector2(199, 102)
+shape = SubResource("RectangleShape2D_kum48")
+
+[node name="Sofa" type="CollisionShape2D" parent="Collision Objects/Post Move In/Furniture" unique_id=1704404913]
+position = Vector2(75.5, 24)
+shape = SubResource("RectangleShape2D_kkalq")
+
+[node name="Sofa2" type="CollisionShape2D" parent="Collision Objects/Post Move In/Furniture" unique_id=868724933]
+position = Vector2(178, 24)
+shape = SubResource("RectangleShape2D_kkalq")
+
+[node name="Bin" type="CollisionShape2D" parent="Collision Objects/Post Move In/Furniture" unique_id=757392446]
+position = Vector2(-185, -53)
+shape = SubResource("RectangleShape2D_0hr5k")
+
+[node name="TV" type="CollisionShape2D" parent="Collision Objects/Post Move In/Furniture" unique_id=861641804]
+position = Vector2(128.5, -33.5)
+shape = SubResource("RectangleShape2D_q4spl")
+
+[node name="PermFurniture" type="StaticBody2D" parent="Collision Objects" unique_id=1518571135]
+
+[node name="Fridge" type="CollisionShape2D" parent="Collision Objects/PermFurniture" unique_id=1628534470]
+position = Vector2(-101, -99)
+shape = SubResource("RectangleShape2D_fymqn")
+
+[node name="Sink" type="CollisionShape2D" parent="Collision Objects/PermFurniture" unique_id=1210794667]
+position = Vector2(-63.5, -97.5)
+shape = SubResource("RectangleShape2D_624em")
+
+[node name="Worktops" type="CollisionShape2D" parent="Collision Objects/PermFurniture" unique_id=1902110083]
+position = Vector2(-161, -93)
+shape = SubResource("RectangleShape2D_ssctv")
+
+[node name="Worktopcorner" type="CollisionShape2D" parent="Collision Objects/PermFurniture" unique_id=1304165318]
+position = Vector2(-194, -81.5)
+shape = SubResource("RectangleShape2D_ljis0")
+
+[node name="Walls" type="StaticBody2D" parent="Collision Objects" unique_id=2096628193]
+
+[node name="Bottom Wall" type="CollisionShape2D" parent="Collision Objects/Walls" unique_id=961475288]
+position = Vector2(2, 126)
+shape = SubResource("RectangleShape2D_3l403")
+
+[node name="Vert Wall" type="CollisionShape2D" parent="Collision Objects/Walls" unique_id=1356906417]
+position = Vector2(-208, -3)
+shape = SubResource("RectangleShape2D_jxttn")
+
+[node name="Vert Wall2" type="CollisionShape2D" parent="Collision Objects/Walls" unique_id=433985104]
+position = Vector2(209, -4)
+shape = SubResource("RectangleShape2D_jxttn")
+
+[node name="Stairs" type="CollisionShape2D" parent="Collision Objects/Walls" unique_id=1480150939]
+position = Vector2(185, -74.5)
+shape = SubResource("ConvexPolygonShape2D_m48fr")
+
+[node name="Top Wall" type="CollisionShape2D" parent="Collision Objects/Walls" unique_id=77451028]
+position = Vector2(-20.25, -118.25)
+shape = SubResource("RectangleShape2D_m48fr")
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Collision Objects/Walls" unique_id=226517112]
+position = Vector2(-5, 4)
+shape = SubResource("ConvexPolygonShape2D_kd744")
