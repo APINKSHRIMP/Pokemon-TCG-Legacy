@@ -11,6 +11,9 @@ gradient = SubResource("Gradient_bf13f")
 fill = 1
 fill_from = Vector2(0.4764706, 0.48235294)
 
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_yg3vm"]
+size = Vector2(11, 9)
+
 [node name="ForestLamp" type="Node2D" unique_id=368895387]
 
 [node name="LampBase2" type="TileMapLayer" parent="." unique_id=851329148]
@@ -40,3 +43,9 @@ range_z_max = 584
 shadow_enabled = true
 shadow_color = Color(0, 0, 0, 0.79607844)
 texture = SubResource("GradientTexture2D_yg3vm")
+
+[node name="Lamp_Body" type="StaticBody2D" parent="." unique_id=1263029496]
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Lamp_Body" unique_id=524986156]
+position = Vector2(7.5, 15.5)
+shape = SubResource("RectangleShape2D_yg3vm")

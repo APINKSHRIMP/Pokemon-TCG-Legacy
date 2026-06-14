@@ -18,11 +18,23 @@
 [ext_resource type="Script" uid="uid://cxeto60nl1qi2" path="res://Scripts/Map_Scripts/Verdant_Forest.gd" id="20_vfscr"]
 [ext_resource type="Script" uid="uid://cphl8h5xtm64h" path="res://Scripts/Map_Scripts/Interactables_Script.gd" id="int_script"]
 
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_dpqdb"]
+size = Vector2(24, 15)
+
+[sub_resource type="CircleShape2D" id="CircleShape2D_mu53r"]
+radius = 53.15073
+
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_efv3c"]
 size = Vector2(300, 3.375)
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_x6xh7"]
-size = Vector2(11, 8)
+size = Vector2(7.5, 34)
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_mu53r"]
+size = Vector2(2453, 573)
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_tm7ot"]
+size = Vector2(452, 2192)
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_8xcuo"]
 size = Vector2(26, 26)
@@ -520,13 +532,20 @@ tile_set = ExtResource("1_vnhbh")
 [node name="Bridge" type="TileMapLayer" parent="TILE_MAPS/PONDS/GOLDEN BRIDGE" unique_id=1594823322]
 position = Vector2(2685, 114)
 scale = Vector2(1.5, 1.5)
-tile_map_data = PackedByteArray("AAAMAP//AAAzAAoAAAAMAAAAAAAzAAoAAAAMAAEAAAAzAAoAAAANAP//AAA0AAoAAAANAAAAAAA0AAoAAAANAAEAAAA0AAoAAAAOAAAAAAA1AAoAAAAOAAEAAAA1AAoAAAAPAP//AAA2AAoAAAAPAAAAAAA2AAoAAAAPAAEAAAA2AAoAAAAQAP//AAA3AAoAAAAQAAAAAAA3AAoAAAAQAAEAAAA3AAoAAAAMAAIAAAAzAAoAAAAMAAMAAAAzAAoAAAAMAAQAAAAzAAoAAAANAAIAAAA0AAoAAAANAAMAAAA0AAoAAAANAAQAAAA0AAoAAAAOAAMAAAA1AAoAAAAOAAQAAAA1AAoAAAAPAAIAAAA2AAoAAAAPAAMAAAA2AAoAAAAPAAQAAAA2AAoAAAAQAAIAAAA3AAoAAAAQAAMAAAA3AAoAAAAQAAQAAAA3AAoAAAAMAAUAAAAzAAoAAAAMAAYAAAAzAAoAAAAMAAcAAAAzAAoAAAANAAUAAAA0AAoAAAANAAYAAAA0AAoAAAANAAcAAAA0AAoAAAAOAAYAAAA1AAoAAAAOAAcAAAA1AAoAAAAPAAUAAAA2AAoAAAAPAAYAAAA2AAoAAAAPAAcAAAA2AAoAAAAQAAUAAAA3AAoAAAAQAAYAAAA3AAoAAAAQAAcAAAA3AAoAAAAMAP7/AAAzAAoAAAANAP7/AAA0AAoAAAAOAP7/AAA1AAoAAAAOAP//AAA1AAoAAAAPAP7/AAA2AAoAAAAQAP7/AAA3AAoAAAAOAAIAAAA1AAoAAAAOAAUAAAA1AAoAAAAMAAgAAAAzAAoAAAANAAgAAAA0AAoAAAAOAAgAAAA1AAoAAAAPAAgAAAA2AAoAAAAQAAgAAAA3AAoAAAAMAAkAAAAzAAoAAAANAAkAAAA0AAoAAAAOAAkAAAA1AAoAAAAPAAkAAAA2AAoAAAAQAAkAAAA3AAoAAAAMAAoAAAAzAAoAAAANAAoAAAA0AAoAAAAOAAoAAAA1AAoAAAAPAAoAAAA2AAoAAAAQAAoAAAA3AAoAAAAMAPz/AAAzAAkAAAANAPz/AAA0AAkAAAAPAPz/AAA2AAkAAAAQAPz/AAA3AAkAAAAMAPv/AAAzAAgAAAANAPv/AAA0AAgAAAAOAPz/AAA1AAkAAAAPAPv/AAA2AAgAAAAQAPv/AAA3AAgAAAAMAP3/AAAzAAoAAAANAP3/AAA0AAoAAAAOAP3/AAA1AAoAAAAPAP3/AAA2AAoAAAAQAP3/AAA3AAoAAAA=")
+tile_map_data = PackedByteArray("AAAMAP//AAAzAAoAAAAMAAAAAAAzAAoAAAAMAAEAAAAzAAoAAAANAP//AAA0AAoAAAANAAAAAAA0AAoAAAANAAEAAAA0AAoAAAAOAAAAAAA1AAoAAAAOAAEAAAA1AAoAAAAPAP//AAA2AAoAAAAPAAAAAAA2AAoAAAAPAAEAAAA2AAoAAAAQAP//AAA3AAoAAAAQAAAAAAA3AAoAAAAQAAEAAAA3AAoAAAAMAAIAAAAzAAoAAAAMAAMAAAAzAAoAAAAMAAQAAAAzAAoAAAANAAIAAAA0AAoAAAANAAMAAAA0AAoAAAANAAQAAAA0AAoAAAAOAAMAAAA1AAoAAAAOAAQAAAA1AAoAAAAPAAIAAAA2AAoAAAAPAAMAAAA2AAoAAAAPAAQAAAA2AAoAAAAQAAIAAAA3AAoAAAAQAAMAAAA3AAoAAAAQAAQAAAA3AAoAAAAMAAUAAAAzAAoAAAAMAAYAAAAzAAoAAAAMAAcAAAAzAAoAAAANAAUAAAA0AAoAAAANAAYAAAA0AAoAAAANAAcAAAA0AAoAAAAOAAYAAAA1AAoAAAAOAAcAAAA1AAoAAAAPAAUAAAA2AAoAAAAPAAYAAAA2AAoAAAAPAAcAAAA2AAoAAAAQAAUAAAA3AAoAAAAQAAYAAAA3AAoAAAAQAAcAAAA3AAoAAAAMAP7/AAAzAAoAAAANAP7/AAA0AAoAAAAOAP7/AAA1AAoAAAAOAP//AAA1AAoAAAAPAP7/AAA2AAoAAAAQAP7/AAA3AAoAAAAOAAIAAAA1AAoAAAAOAAUAAAA1AAoAAAAMAAgAAAAzAAoAAAANAAgAAAA0AAoAAAAOAAgAAAA1AAoAAAAPAAgAAAA2AAoAAAAQAAgAAAA3AAoAAAAMAAkAAAAzAAoAAAANAAkAAAA0AAoAAAAOAAkAAAA1AAoAAAAPAAkAAAA2AAoAAAAQAAkAAAA3AAoAAAAMAAoAAAAzAAoAAAANAAoAAAA0AAoAAAAOAAoAAAA1AAoAAAAPAAoAAAA2AAoAAAAQAAoAAAA3AAoAAAAMAPz/AAAzAAkAAAANAPz/AAA0AAkAAAAPAPz/AAA2AAkAAAAQAPz/AAA3AAkAAAAOAPz/AAA1AAkAAAAMAP3/AAAzAAoAAAANAP3/AAA0AAoAAAAOAP3/AAA1AAoAAAAPAP3/AAA2AAoAAAAQAP3/AAA3AAoAAAA=")
 tile_set = ExtResource("1_vnhbh")
 
-[node name="BridgeKnobs" type="TileMapLayer" parent="TILE_MAPS/PONDS/GOLDEN BRIDGE" unique_id=574039897]
+[node name="BridgeKnobsBase" type="TileMapLayer" parent="TILE_MAPS/PONDS/GOLDEN BRIDGE" unique_id=574039897]
 position = Vector2(2685, 114)
 scale = Vector2(1.5, 1.5)
-tile_map_data = PackedByteArray("AAAMAAoAAAAzAA4AAAANAAoAAAA0AA4AAAAPAAoAAAA2AA4AAAAQAAoAAAA3AA4AAAAMAAsAAAAzAA8AAAANAAsAAAA0AA8AAAAOAAsAAAA1AA8AAAAPAAsAAAA2AA8AAAAQAAsAAAA3AA8AAAAMAAUAAAAzAAgAAAANAAUAAAA0AAgAAAAPAAUAAAA2AAgAAAAQAAUAAAA3AAgAAAAMAAYAAAAzAAkAAAANAAYAAAA0AAkAAAAOAAYAAAA1AAkAAAAPAAYAAAA2AAkAAAAQAAYAAAA3AAkAAAAMAAAAAAAzAAgAAAANAAAAAAA0AAgAAAAPAAAAAAA2AAgAAAAQAAAAAAA3AAgAAAAMAAEAAAAzAAkAAAANAAEAAAA0AAkAAAAOAAEAAAA1AAkAAAAPAAEAAAA2AAkAAAAQAAEAAAA3AAkAAAA=")
+tile_map_data = PackedByteArray("AAAMAAsAAAAzAA8AAAANAAsAAAA0AA8AAAAOAAsAAAA1AA8AAAAPAAsAAAA2AA8AAAAQAAsAAAA3AA8AAAAMAAYAAAAzAAkAAAANAAYAAAA0AAkAAAAOAAYAAAA1AAkAAAAPAAYAAAA2AAkAAAAQAAYAAAA3AAkAAAAMAAEAAAAzAAkAAAANAAEAAAA0AAkAAAAOAAEAAAA1AAkAAAAPAAEAAAA2AAkAAAAQAAEAAAA3AAkAAAA=")
+tile_set = ExtResource("1_vnhbh")
+
+[node name="BridgeKnobsTop" type="TileMapLayer" parent="TILE_MAPS/PONDS/GOLDEN BRIDGE" unique_id=1849468254]
+z_index = 10
+position = Vector2(2685, 114)
+scale = Vector2(1.5, 1.5)
+tile_map_data = PackedByteArray("AAAMAAoAAAAzAA4AAAANAAoAAAA0AA4AAAAPAAoAAAA2AA4AAAAQAAoAAAA3AA4AAAAMAAUAAAAzAAgAAAANAAUAAAA0AAgAAAAPAAUAAAA2AAgAAAAQAAUAAAA3AAgAAAAMAAAAAAAzAAgAAAANAAAAAAA0AAgAAAAPAAAAAAA2AAgAAAAQAAAAAAA3AAgAAAAMAPv/AAAzAAgAAAANAPv/AAA0AAgAAAAPAPv/AAA2AAgAAAAQAPv/AAA3AAgAAAA=")
 tile_set = ExtResource("1_vnhbh")
 
 [node name="Flowers" type="TileMapLayer" parent="TILE_MAPS/PONDS/GOLDEN BRIDGE" unique_id=177574033]
@@ -1106,6 +1125,25 @@ position = Vector2(3301, 179)
 rotation = -3.1415925
 scale = Vector2(1, -1)
 
+[node name="Bridge_Collision" type="StaticBody2D" parent="TILE_MAPS/PONDS/GOLDEN BRIDGE" unique_id=280754524]
+
+[node name="Bridge_Left" type="CollisionPolygon2D" parent="TILE_MAPS/PONDS/GOLDEN BRIDGE/Bridge_Collision" unique_id=2097177695]
+position = Vector2(2985, 77)
+polygon = PackedVector2Array(5, -18, -411, -18, -411, 274, 14, 274, 14, 186, 21, 186, 21, 178, 14, 178, 13, 67, 21, 67, 21, 58, 14, 58, 14, -54, 21, -54, 21, -62, -4, -62, -4, -53, 5, -53)
+
+[node name="Bridge_Left2" type="CollisionPolygon2D" parent="TILE_MAPS/PONDS/GOLDEN BRIDGE/Bridge_Collision" unique_id=1305574089]
+position = Vector2(3081, 77)
+scale = Vector2(-1, 1)
+polygon = PackedVector2Array(5, -18, -411, -18, -411, 274, 14, 274, 14, 186, 21, 186, 21, 178, 14, 178, 13, 67, 21, 67, 21, 58, 14, 58, 14, -54, 21, -54, 21, -62, -4, -62, -4, -53, 5, -53)
+
+[node name="Bottom_Ball" type="CollisionShape2D" parent="TILE_MAPS/PONDS/GOLDEN BRIDGE/Bridge_Collision" unique_id=1715991673]
+position = Vector2(2992, 378.5)
+shape = SubResource("RectangleShape2D_dpqdb")
+
+[node name="Bottom_Ball2" type="CollisionShape2D" parent="TILE_MAPS/PONDS/GOLDEN BRIDGE/Bridge_Collision" unique_id=1591860450]
+position = Vector2(3071, 378)
+shape = SubResource("RectangleShape2D_dpqdb")
+
 [node name="MAGIKARP_POND_L" type="TileMap" parent="TILE_MAPS/PONDS" unique_id=1005239186]
 position = Vector2(347, 1096)
 format = 2
@@ -1146,6 +1184,7 @@ tile_map_data = PackedByteArray("AABJ/ycAAAAjAAIAAABJ/zQAAAAiAAIAABBK/yMAAAAiAAI
 tile_set = ExtResource("1_vnhbh")
 
 [node name="MAGIKARP_POND_L_TREES" type="Control" parent="TILE_MAPS/PONDS/MAGIKARP_POND_L" unique_id=387835284]
+visible = false
 layout_mode = 3
 anchors_preset = 0
 offset_right = 40.0
@@ -1674,6 +1713,18 @@ position = Vector2(-164, -44)
 
 [node name="ForestLamp2" parent="TILE_MAPS/PONDS/MAGIKARP_POND_L/MAGIKARP_POND_L_LIGHTS" unique_id=256155381 instance=ExtResource("6_3uusb")]
 position = Vector2(14, -44)
+
+[node name="Karp_Collision" type="StaticBody2D" parent="TILE_MAPS/PONDS/MAGIKARP_POND_L" unique_id=741170526]
+
+[node name="North_Collision" type="CollisionPolygon2D" parent="TILE_MAPS/PONDS/MAGIKARP_POND_L/Karp_Collision" unique_id=1007182827]
+polygon = PackedVector2Array(-369, -49, -369, -97, -339, -97, -339, -145, -309, -145, -309, -180, -261, -180, -261, -233, -292, -233, -292, -325, -161, -325, -161, -293, -132, -293, -132, -325, -102, -325, -102, -355, -34, -355, -34, -323, -4, -323, -4, -290, 25, -290, 25, -321, 160, -321, 160, -250, 124, -250, 124, -163, 159, -163, 159, -132, 206, -132, 206, -115, 236, -115, 237, -148, 251, -148, 251, -178, 282, -178, 282, -209, 313, -209, 313, -243, 429, -243, 429, -159, 394, -159, 394, -117, 364, -117, 364, -42, 346, -42, 346, -32, 31, -32, 31, -48, 18, -48, 18, -63, 2, -63, 2, -74, -11, -74, -11, -91, -119, -91, -119, -75, -138, -75, -138, -63, -155, -63, -155, -45, -172, -45, -172, -32, -382, -32, -382, -49)
+
+[node name="Hut" type="CollisionShape2D" parent="TILE_MAPS/PONDS/MAGIKARP_POND_L/Karp_Collision" unique_id=933818135]
+position = Vector2(-67, -113)
+shape = SubResource("CircleShape2D_mu53r")
+
+[node name="CollisionPolygon2D" type="CollisionPolygon2D" parent="TILE_MAPS/PONDS/MAGIKARP_POND_L/Karp_Collision" unique_id=15601910]
+polygon = PackedVector2Array(16, 46, 363, 46, 363, 112, 395, 112, 395, 160, 428, 160, 428, 248, 321, 248, 321, 214, 287, 214, 287, 182, 254, 182, 254, 155, 238, 155, 238, 116, 203, 116, 203, 134, 155, 134, 155, 148, 124, 148, 124, 193, 156, 193, 156, 260, 31, 260, 31, 227, -6, 227, -6, 259, -35, 259, -35, 294, -97, 294, -97, 259, -128, 259, -128, 224, -165, 224, -165, 258, -289, 258, -289, 191, -256, 191, -255, 132, -277, 132, -277, 165, -309, 165, -309, 216, -384, 216, -384, 192, -353, 192, -352, 114, -320, 114, -320, 83, -369, 83, -369, 53, -385, 53, -385, 46, -166, 46, -166, 50, -149, 50, -149, 66, -133, 66, -133, 81, -116, 81, -116, 97, -100, 97, -100, 113, -33, 113, -33, 96, -17, 96, -17, 81, 0, 81, 0, 65, 16, 65)
 
 [node name="MAGIKARP_POND_R" type="TileMap" parent="TILE_MAPS/PONDS" unique_id=1071826388]
 position = Vector2(3206, 1096)
@@ -2547,6 +2598,14 @@ position = Vector2(-2832, 94)
 
 [node name="ForestLamp2" parent="TILE_MAPS/PONDS/MAGIKARP_POND_R/MAGIKARP_POND_R_LIGHTS" unique_id=2144425603 instance=ExtResource("6_3uusb")]
 position = Vector2(-2833, -122)
+
+[node name="Karp_Collision" type="StaticBody2D" parent="TILE_MAPS/PONDS/MAGIKARP_POND_R" unique_id=638557130]
+
+[node name="North_Collision" type="CollisionPolygon2D" parent="TILE_MAPS/PONDS/MAGIKARP_POND_R/Karp_Collision" unique_id=1960806805]
+polygon = PackedVector2Array(-369, -49, -369, -97, -339, -97, -339, -145, -309, -145, -309, -180, -261, -180, -261, -233, -292, -233, -292, -325, -161, -325, -161, -293, -132, -293, -132, -325, -102, -325, -102, -355, -34, -355, -34, -323, -4, -323, -4, -290, 25, -290, 25, -321, 160, -321, 160, -250, 124, -250, 124, -163, 159, -163, 159, -132, 206, -132, 206, -115, 236, -115, 237, -148, 251, -148, 251, -178, 282, -178, 282, -209, 313, -209, 313, -243, 429, -243, 429, -159, 394, -159, 394, -117, 364, -117, 364, -42, 346, -42, 346, -32, 94, -32, 94, -75, 79, -75, 79, -93, 64, -93, 64, -110, 48, -110, 48, -124, 30, -124, 30, -138, -164, -138, -164, -124, -182, -124, -182, -112, -198, -112, -198, -98, -213, -98, -213, -82, -230, -82, -229, -25, -385, -25, -385, -49)
+
+[node name="CollisionPolygon2D" type="CollisionPolygon2D" parent="TILE_MAPS/PONDS/MAGIKARP_POND_R/Karp_Collision" unique_id=279730892]
+polygon = PackedVector2Array(94, 47, 363, 46, 363, 112, 395, 112, 395, 160, 428, 160, 428, 248, 321, 248, 321, 214, 287, 214, 287, 182, 254, 182, 254, 155, 238, 155, 238, 116, 203, 116, 203, 134, 155, 134, 155, 148, 124, 148, 124, 193, 156, 193, 156, 260, 31, 260, 31, 227, -6, 227, -6, 259, -35, 259, -35, 294, -97, 294, -97, 259, -128, 259, -128, 224, -165, 224, -165, 258, -289, 258, -289, 191, -256, 191, -255, 132, -277, 132, -277, 165, -309, 165, -309, 216, -384, 216, -384, 192, -353, 192, -352, 114, -320, 114, -320, 83, -369, 83, -369, 53, -385, 53, -385, 46, -229, 46, -229, 80, -213, 80, -213, 97, -197, 97, -197, 113, -182, 113, -182, 127, -165, 127, -165, 145, 30, 145, 30, 129, 47, 129, 47, 113, 63, 113, 63, 98, 79, 98, 79, 81, 94, 81)
 
 [node name="PIKACHU_POND" type="TileMap" parent="TILE_MAPS/PONDS" unique_id=103018190]
 position = Vector2(1, -78)
@@ -3539,6 +3598,7 @@ tile_map_data = PackedByteArray("AACq//X/AAAcABUAAACq//b/AAAcABYAAACq//f/AAAgAAQ
 tile_set = ExtResource("1_vnhbh")
 
 [node name="LIGHTS" type="Control" parent="TILE_MAPS" unique_id=753293066]
+visible = false
 layout_mode = 3
 anchors_preset = 0
 offset_left = 1.0
@@ -3814,7 +3874,7 @@ position = Vector2(1771, 1050)
 position = Vector2(-37, 1471)
 
 [node name="DoorArea_CelesteHarbour" type="CollisionShape2D" parent="Door Areas" unique_id=2053991931]
-position = Vector2(1815, 474)
+position = Vector2(1815, 526)
 shape = SubResource("RectangleShape2D_efv3c")
 metadata/target_scene = "res://Scenes/Map_Scenes/Celeste_Harbour.tscn"
 
@@ -3824,7 +3884,7 @@ shape = SubResource("RectangleShape2D_efv3c")
 metadata/target_scene = "res://Scenes/Map_Scenes/Gym_Plaza.tscn"
 
 [node name="DoorArea_RocketMart" type="CollisionShape2D" parent="Door Areas" unique_id=1006479648]
-position = Vector2(315, -426)
+position = Vector2(315.75, -451)
 shape = SubResource("RectangleShape2D_x6xh7")
 metadata/target_scene = "res://Scenes/Map_Scenes/Rocket_Mart.tscn"
 
@@ -3833,8 +3893,13 @@ z_index = 1
 
 [node name="UILAYER" type="CanvasLayer" parent="." unique_id=48845880]
 
-[node name="TREE_WALL_NORTH_GROUP" type="Control" parent="." unique_id=23598271]
+[node name="TREE_WALL_NORTH" type="Control" parent="." unique_id=1738207341]
 layout_mode = 3
+anchors_preset = 0
+offset_right = 40.0
+offset_bottom = 40.0
+
+[node name="TREE_WALL_NORTH_GROUP" type="Control" parent="TREE_WALL_NORTH" unique_id=23598271]
 anchors_preset = 0
 offset_left = -3.0
 offset_top = -220.0
@@ -3842,7 +3907,7 @@ offset_right = 37.0
 offset_bottom = -180.0
 metadata/_edit_use_anchors_ = true
 
-[node name="Shadow" type="TextureRect" parent="TREE_WALL_NORTH_GROUP" unique_id=460378061]
+[node name="Shadow" type="TextureRect" parent="TREE_WALL_NORTH/TREE_WALL_NORTH_GROUP" unique_id=460378061]
 layout_mode = 1
 anchors_preset = -1
 anchor_left = -1.0
@@ -3857,7 +3922,7 @@ texture = ExtResource("12_442b1")
 expand_mode = 1
 metadata/_edit_use_anchors_ = true
 
-[node name="Shadow2" type="TextureRect" parent="TREE_WALL_NORTH_GROUP" unique_id=759950302]
+[node name="Shadow2" type="TextureRect" parent="TREE_WALL_NORTH/TREE_WALL_NORTH_GROUP" unique_id=759950302]
 layout_mode = 1
 anchors_preset = -1
 anchor_left = 1.275
@@ -3873,7 +3938,7 @@ texture = ExtResource("12_442b1")
 expand_mode = 1
 metadata/_edit_use_anchors_ = true
 
-[node name="Tree_wall_north" type="TextureRect" parent="TREE_WALL_NORTH_GROUP" unique_id=740595105]
+[node name="Tree_wall_north" type="TextureRect" parent="TREE_WALL_NORTH/TREE_WALL_NORTH_GROUP" unique_id=740595105]
 layout_mode = 1
 anchors_preset = -1
 anchor_left = -1.0
@@ -3888,7 +3953,7 @@ texture = ExtResource("13_6ll1i")
 stretch_mode = 2
 metadata/_edit_use_anchors_ = true
 
-[node name="Tree_wall_north2" type="TextureRect" parent="TREE_WALL_NORTH_GROUP" unique_id=2015228411]
+[node name="Tree_wall_north2" type="TextureRect" parent="TREE_WALL_NORTH/TREE_WALL_NORTH_GROUP" unique_id=2015228411]
 layout_mode = 1
 anchors_preset = -1
 anchor_left = 1.275
@@ -3903,7 +3968,7 @@ scale = Vector2(-1, 1)
 texture = ExtResource("13_6ll1i")
 metadata/_edit_use_anchors_ = true
 
-[node name="Tree_wall_north3" type="TextureRect" parent="TREE_WALL_NORTH_GROUP" unique_id=2046348053]
+[node name="Tree_wall_north3" type="TextureRect" parent="TREE_WALL_NORTH/TREE_WALL_NORTH_GROUP" unique_id=2046348053]
 layout_mode = 1
 anchors_preset = -1
 anchor_left = 1.275
@@ -3918,7 +3983,7 @@ scale = Vector2(-1, 1)
 texture = ExtResource("13_6ll1i")
 metadata/_edit_use_anchors_ = true
 
-[node name="Tree_wall_north4" type="TextureRect" parent="TREE_WALL_NORTH_GROUP" unique_id=1718953221]
+[node name="Tree_wall_north4" type="TextureRect" parent="TREE_WALL_NORTH/TREE_WALL_NORTH_GROUP" unique_id=1718953221]
 layout_mode = 1
 anchors_preset = -1
 anchor_left = -1.0
@@ -3933,15 +3998,14 @@ texture = ExtResource("13_6ll1i")
 stretch_mode = 2
 metadata/_edit_use_anchors_ = true
 
-[node name="TREE_WALL_NORTH_GROUP2" type="Control" parent="." unique_id=753213499]
-layout_mode = 3
+[node name="TREE_WALL_NORTH_GROUP2" type="Control" parent="TREE_WALL_NORTH" unique_id=753213499]
 anchors_preset = 0
 offset_top = 2.0
 offset_right = 40.0
 offset_bottom = 42.0
 metadata/_edit_use_anchors_ = true
 
-[node name="Shadow" type="TextureRect" parent="TREE_WALL_NORTH_GROUP2" unique_id=819187510]
+[node name="Shadow" type="TextureRect" parent="TREE_WALL_NORTH/TREE_WALL_NORTH_GROUP2" unique_id=819187510]
 layout_mode = 1
 anchors_preset = -1
 anchor_left = -1.0
@@ -3956,7 +4020,7 @@ texture = ExtResource("12_442b1")
 expand_mode = 1
 metadata/_edit_use_anchors_ = true
 
-[node name="Shadow2" type="TextureRect" parent="TREE_WALL_NORTH_GROUP2" unique_id=550427857]
+[node name="Shadow2" type="TextureRect" parent="TREE_WALL_NORTH/TREE_WALL_NORTH_GROUP2" unique_id=550427857]
 layout_mode = 1
 anchors_preset = -1
 anchor_left = 1.275
@@ -3972,7 +4036,7 @@ texture = ExtResource("12_442b1")
 expand_mode = 1
 metadata/_edit_use_anchors_ = true
 
-[node name="Tree_wall_north" type="TextureRect" parent="TREE_WALL_NORTH_GROUP2" unique_id=614728117]
+[node name="Tree_wall_north" type="TextureRect" parent="TREE_WALL_NORTH/TREE_WALL_NORTH_GROUP2" unique_id=614728117]
 layout_mode = 1
 anchors_preset = -1
 anchor_left = -1.0
@@ -3987,7 +4051,7 @@ texture = ExtResource("13_6ll1i")
 stretch_mode = 2
 metadata/_edit_use_anchors_ = true
 
-[node name="Tree_wall_north2" type="TextureRect" parent="TREE_WALL_NORTH_GROUP2" unique_id=1184402246]
+[node name="Tree_wall_north2" type="TextureRect" parent="TREE_WALL_NORTH/TREE_WALL_NORTH_GROUP2" unique_id=1184402246]
 layout_mode = 1
 anchors_preset = -1
 anchor_left = 1.275
@@ -4002,7 +4066,7 @@ scale = Vector2(-1, 1)
 texture = ExtResource("13_6ll1i")
 metadata/_edit_use_anchors_ = true
 
-[node name="Tree_wall_north3" type="TextureRect" parent="TREE_WALL_NORTH_GROUP2" unique_id=1309874987]
+[node name="Tree_wall_north3" type="TextureRect" parent="TREE_WALL_NORTH/TREE_WALL_NORTH_GROUP2" unique_id=1309874987]
 layout_mode = 1
 anchors_preset = -1
 anchor_left = 1.275
@@ -4017,7 +4081,7 @@ scale = Vector2(-1, 1)
 texture = ExtResource("13_6ll1i")
 metadata/_edit_use_anchors_ = true
 
-[node name="Tree_wall_north4" type="TextureRect" parent="TREE_WALL_NORTH_GROUP2" unique_id=915433021]
+[node name="Tree_wall_north4" type="TextureRect" parent="TREE_WALL_NORTH/TREE_WALL_NORTH_GROUP2" unique_id=915433021]
 layout_mode = 1
 anchors_preset = -1
 anchor_left = -1.0
@@ -4031,6 +4095,17 @@ offset_bottom = -125.0
 texture = ExtResource("13_6ll1i")
 stretch_mode = 2
 metadata/_edit_use_anchors_ = true
+
+[node name="Collision_Body" type="StaticBody2D" parent="TREE_WALL_NORTH" unique_id=1284470760]
+position = Vector2(-3, -220)
+
+[node name="Tree_Block" type="CollisionShape2D" parent="TREE_WALL_NORTH/Collision_Body" unique_id=1797870242]
+position = Vector2(438.5, -184.5)
+shape = SubResource("RectangleShape2D_mu53r")
+
+[node name="Tree_Block2" type="CollisionShape2D" parent="TREE_WALL_NORTH/Collision_Body" unique_id=1074609748]
+position = Vector2(3125, -176)
+shape = SubResource("RectangleShape2D_mu53r")
 
 [node name="TREE_WALL_WEST_GROUP" type="Control" parent="." unique_id=968032922]
 layout_mode = 3
@@ -4058,6 +4133,13 @@ offset_bottom = 1796.0
 scale = Vector2(-1, 1)
 texture = ExtResource("14_6ll1i")
 metadata/_edit_use_anchors_ = true
+
+[node name="Collision_Body2" type="StaticBody2D" parent="TREE_WALL_WEST_GROUP" unique_id=1031542514]
+position = Vector2(-939, -66)
+
+[node name="Tree_Block_Vert" type="CollisionShape2D" parent="TREE_WALL_WEST_GROUP/Collision_Body2" unique_id=1938424641]
+position = Vector2(259, 918)
+shape = SubResource("RectangleShape2D_tm7ot")
 
 [node name="TREE_WALL_EAST_GROUP" type="Control" parent="." unique_id=1652513967]
 layout_mode = 3
@@ -4102,6 +4184,13 @@ offset_right = 4169.0
 offset_bottom = 1800.0
 texture = ExtResource("14_6ll1i")
 metadata/_edit_use_anchors_ = true
+
+[node name="Collision_Body" type="StaticBody2D" parent="TREE_WALL_EAST_GROUP" unique_id=1634764830]
+position = Vector2(-3, -220)
+
+[node name="Tree_Block_Vert" type="CollisionShape2D" parent="TREE_WALL_EAST_GROUP/Collision_Body" unique_id=2054301483]
+position = Vector2(3982, 1101)
+shape = SubResource("RectangleShape2D_tm7ot")
 
 [node name="TREE_WALL_SOUTH_GROUP" type="Control" parent="." unique_id=503310730]
 layout_mode = 3
@@ -4206,6 +4295,18 @@ offset_bottom = -125.0
 texture = ExtResource("13_6ll1i")
 stretch_mode = 2
 metadata/_edit_use_anchors_ = true
+
+[node name="Collision_Body" type="StaticBody2D" parent="TREE_WALL_SOUTH_GROUP" unique_id=1674329102]
+z_index = 20
+position = Vector2(-3, -220)
+
+[node name="Tree_Block" type="CollisionShape2D" parent="TREE_WALL_SOUTH_GROUP/Collision_Body" unique_id=1494369457]
+position = Vector2(449.5, 35.5)
+shape = SubResource("RectangleShape2D_mu53r")
+
+[node name="Tree_Block2" type="CollisionShape2D" parent="TREE_WALL_SOUTH_GROUP/Collision_Body" unique_id=1189492690]
+position = Vector2(3105, 35)
+shape = SubResource("RectangleShape2D_mu53r")
 
 [node name="Interactables" type="Area2D" parent="." unique_id=1773960785]
 script = ExtResource("int_script")

@@ -72,11 +72,17 @@ func set_time_of_day(time: String) -> void:
 		"Evening": horiz_tex = TREE_HORIZ_EVENING;  vert_tex = TREE_VERT_EVENING
 		"Night":   horiz_tex = TREE_HORIZ_NIGHT;    vert_tex = TREE_VERT_NIGHT
 
-	var north = $TREE_WALL_NORTH_GROUP
-	north.get_node("Shadow").visible  = not is_night
-	north.get_node("Shadow2").visible = not is_night
+	var north1 = $TREE_WALL_NORTH/TREE_WALL_NORTH_GROUP
+	north1.get_node("Shadow").visible  = not is_night
+	north1.get_node("Shadow2").visible = not is_night
 	for n in ["Tree_wall_north", "Tree_wall_north2", "Tree_wall_north3", "Tree_wall_north4"]:
-		north.get_node(n).texture = horiz_tex
+		north1.get_node(n).texture = horiz_tex
+
+	var north2 = $TREE_WALL_NORTH/TREE_WALL_NORTH_GROUP2
+	north2.get_node("Shadow").visible  = not is_night
+	north2.get_node("Shadow2").visible = not is_night
+	for n in ["Tree_wall_north", "Tree_wall_north2", "Tree_wall_north3", "Tree_wall_north4"]:
+		north2.get_node(n).texture = horiz_tex
 
 	var south = $TREE_WALL_SOUTH_GROUP
 	south.get_node("Shadow").visible  = not is_night
