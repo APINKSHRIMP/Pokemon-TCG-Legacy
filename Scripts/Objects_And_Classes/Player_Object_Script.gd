@@ -146,9 +146,9 @@ func _unhandled_input(event):
 				MapManager.handle_message_spacebar()
 				return
 			if event.button_index == MOUSE_BUTTON_WHEEL_UP:
-				camera.zoom = (camera.zoom + Vector2(0.2, 0.2)).clamp(Vector2(1, 1), Vector2(4, 4))
+				camera.zoom = (camera.zoom + Vector2(0.05, 0.05)).clamp(Vector2(0.5, 0.5), Vector2(10, 10))
 			elif event.button_index == MOUSE_BUTTON_WHEEL_DOWN:
-				camera.zoom = (camera.zoom - Vector2(0.2, 0.2)).clamp(Vector2(1, 1), Vector2(4, 4))
+				camera.zoom = (camera.zoom - Vector2(0.05, 0.05)).clamp(Vector2(0.5, 0.5), Vector2(10, 10))
 
 func _on_interaction_area_body_entered(body: Node2D):
 	if body.is_in_group("opponents") or body.is_in_group("npcs"):
