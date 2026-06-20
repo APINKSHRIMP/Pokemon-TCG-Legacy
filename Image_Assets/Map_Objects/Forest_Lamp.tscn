@@ -3,7 +3,7 @@
 [ext_resource type="TileSet" uid="uid://brncoaox03ylg" path="res://Image_Assets/Map_Sheets/Tile_Sets/Verdant_Forest.tres" id="1_yg3vm"]
 
 [sub_resource type="Gradient" id="Gradient_bf13f"]
-offsets = PackedFloat32Array(0.094339624, 0.4811321)
+offsets = PackedFloat32Array(0, 0.5943396)
 colors = PackedColorArray(1, 1, 1, 0.49019608, 1.1540799, 1.1540799, 1.1540799, 0)
 
 [sub_resource type="GradientTexture2D" id="GradientTexture2D_yg3vm"]
@@ -29,10 +29,10 @@ tile_set = ExtResource("1_yg3vm")
 
 [node name="PointLight2D2" type="PointLight2D" parent="." unique_id=1175959164]
 visible = false
-position = Vector2(23.000004, 12.083103)
-scale = Vector2(6.0625, 6.112881)
-color = Color(1.4954206, 1.3741792, 0.83410376, 0.5647059)
-energy = 2.21
+position = Vector2(25.000002, -3.9169147)
+scale = Vector2(3.5937505, 3.623615)
+color = Color(0.4725, 0.36749998, 0.17249997, 0.5882353)
+energy = 16.0
 range_z_min = -961
 range_z_max = 584
 shadow_enabled = true
