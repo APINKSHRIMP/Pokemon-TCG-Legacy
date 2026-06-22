@@ -16,13 +16,13 @@ const TRACKS_TILESET_DAY     = preload("res://Image_Assets/Map_Sheets/Tile_Sets/
 const TRACKS_TILESET_EVENING = preload("res://Image_Assets/Map_Sheets/Tile_Sets/Starting_Areas_Evening.tres")
 const TRACKS_TILESET_NIGHT   = preload("res://Image_Assets/Map_Sheets/Tile_Sets/Starting_Areas_Night.tres")
 
-const TREE_HORIZ_DAY     = preload("res://Image_Assets/Map_Objects/TreeLineThird.png")
-const TREE_HORIZ_EVENING = preload("res://Image_Assets/Map_Objects/TreeLineThirdEvening.png")
-const TREE_HORIZ_NIGHT   = preload("res://Image_Assets/Map_Objects/TreeLineThirdNight.png")
+const TREE_HORIZ_DAY     = preload("res://Image_Assets/Map_Objects/Forest/TreeLineThird.png")
+const TREE_HORIZ_EVENING = preload("res://Image_Assets/Map_Objects/Forest/TreeLineThirdEvening.png")
+const TREE_HORIZ_NIGHT   = preload("res://Image_Assets/Map_Objects/Forest/TreeLineThirdNight.png")
 
-const TREE_VERT_DAY     = preload("res://Image_Assets/Map_Objects/TreeLineVertical.png")
-const TREE_VERT_EVENING = preload("res://Image_Assets/Map_Objects/TreeLineVerticalEvening.png")
-const TREE_VERT_NIGHT   = preload("res://Image_Assets/Map_Objects/TreeLineVerticalNight.png")
+const TREE_VERT_DAY     = preload("res://Image_Assets/Map_Objects/Forest/TreeLineVertical.png")
+const TREE_VERT_EVENING = preload("res://Image_Assets/Map_Objects/Forest/TreeLineVerticalEvening.png")
+const TREE_VERT_NIGHT   = preload("res://Image_Assets/Map_Objects/Forest/TreeLineVerticalNight.png")
 
 var _npc_json_path: String = ""
 

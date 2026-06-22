@@ -5,7 +5,7 @@
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_dig5e"]
 size = Vector2(15, 4)
 
-[node name="Stump" type="Node2D" unique_id=1867661211]
+[node name="Mushroom" type="Node2D" unique_id=1867661211]
 
 [node name="TopLayer" type="TileMapLayer" parent="." unique_id=1914071472]
 position = Vector2(2928, 400)

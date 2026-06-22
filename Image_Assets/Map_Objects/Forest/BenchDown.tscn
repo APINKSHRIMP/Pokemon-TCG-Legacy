@@ -5,21 +5,22 @@
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_dig5e"]
 size = Vector2(26, 1)
 
-[node name="Bench" type="Node2D" unique_id=1867661211]
+[node name="BenchDown" type="Node2D" unique_id=1867661211]
 
 [node name="TopLayer" type="TileMapLayer" parent="." unique_id=1914071472]
+z_index = 10
 position = Vector2(2928, 400)
-tile_map_data = PackedByteArray(0, 0, 73, 255, 231, 255, 0, 0, 46, 0, 2, 0, 0, 0, 74, 255, 231, 255, 0, 0, 47, 0, 2, 0, 0, 0)
+tile_map_data = PackedByteArray(0, 0, 73, 255, 231, 255, 0, 0, 47, 0, 7, 0, 0, 0, 74, 255, 231, 255, 0, 0, 48, 0, 7, 0, 0, 0)
 tile_set = ExtResource("1_bgy5j")
 
 [node name="BottomLayer" type="TileMapLayer" parent="." unique_id=1958844998]
-z_index = 10
 position = Vector2(2928, 400)
-tile_map_data = PackedByteArray(0, 0, 73, 255, 232, 255, 0, 0, 46, 0, 3, 0, 0, 0, 74, 255, 232, 255, 0, 0, 47, 0, 3, 0, 0, 0)
+tile_map_data = PackedByteArray(0, 0, 73, 255, 232, 255, 0, 0, 47, 0, 8, 0, 0, 0, 74, 255, 232, 255, 0, 0, 48, 0, 8, 0, 0, 0)
 tile_set = ExtResource("1_bgy5j")
 
 [node name="Body" type="StaticBody2D" parent="." unique_id=21124656]
 
 [node name="Collision" type="CollisionShape2D" parent="Body" unique_id=2102854939]
-position = Vector2(14, 1.5)
+visible = false
+position = Vector2(16, 2)
 shape = SubResource("RectangleShape2D_dig5e")

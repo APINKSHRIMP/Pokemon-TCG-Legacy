@@ -5,16 +5,16 @@
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_dig5e"]
 size = Vector2(1, 21)
 
-[node name="Stump" type="Node2D" unique_id=1867661211]
+[node name="BenchSide" type="Node2D" unique_id=1867661211]
 
 [node name="BottomLayer" type="TileMapLayer" parent="." unique_id=1958844998]
-z_index = 10
 position = Vector2(2928, 400)
-tile_map_data = PackedByteArray(0, 0, 73, 255, 232, 255, 0, 0, 32, 0, 5, 0, 0, 0, 73, 255, 231, 255, 0, 0, 32, 0, 4, 0, 0, 0)
+tile_map_data = PackedByteArray(0, 0, 73, 255, 232, 255, 0, 0, 32, 0, 7, 0, 0, 0, 73, 255, 231, 255, 0, 0, 32, 0, 6, 0, 0, 0)
 tile_set = ExtResource("1_tl4b0")
 
 [node name="Body" type="StaticBody2D" parent="." unique_id=21124656]
 
 [node name="Collision" type="CollisionShape2D" parent="Body" unique_id=2102854939]
-position = Vector2(-0.5, 9.5)
+visible = false
+position = Vector2(-2.5, 9.5)
 shape = SubResource("RectangleShape2D_dig5e")
