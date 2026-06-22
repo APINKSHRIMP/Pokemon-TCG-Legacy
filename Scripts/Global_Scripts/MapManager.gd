@@ -448,8 +448,10 @@ func _show_message_with_choices(text: String):
 	message_panel.visible = true
 	_player.can_move = false
 
-func _show_message_with_ok(text: String):
+func _show_message_with_ok(text: String, font_size: int = 24):
 	message_label.text = text
+	message_label.add_theme_font_size_override("normal_font_size", font_size)
+	message_label.add_theme_font_size_override("bold_font_size",   font_size)
 	yes_button.visible = false
 	no_button.visible  = false
 	ok_button.visible  = true
@@ -476,10 +478,10 @@ func _hide_message():
 # ------------------------------------------------------------
 
 # Shows a simple OK dialog. Ignored if a dialog is already open.
-func show_interactable_message(text: String) -> void:
+func show_interactable_message(text: String, font_size: int = 24) -> void:
 	if message_panel == null or message_panel.visible:
 		return
-	_show_message_with_ok(text)
+	_show_message_with_ok(text, font_size)
 
 # Shows an OK dialog then fires on_ok when the player dismisses it.
 # If the panel is already visible (called from within a chain), just

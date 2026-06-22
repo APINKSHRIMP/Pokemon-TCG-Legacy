@@ -8,7 +8,6 @@ size = Vector2(26, 1)
 [node name="BenchDown" type="Node2D" unique_id=1867661211]
 
 [node name="TopLayer" type="TileMapLayer" parent="." unique_id=1914071472]
-z_index = 10
 position = Vector2(2928, 400)
 tile_map_data = PackedByteArray(0, 0, 73, 255, 231, 255, 0, 0, 47, 0, 7, 0, 0, 0, 74, 255, 231, 255, 0, 0, 48, 0, 7, 0, 0, 0)
 tile_set = ExtResource("1_bgy5j")

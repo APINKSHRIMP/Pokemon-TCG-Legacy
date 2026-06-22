@@ -21,7 +21,6 @@
 [ext_resource type="PackedScene" uid="uid://bvp2l2ughrfhb" path="res://Image_Assets/Map_Objects/Forest/SignBig.tscn" id="16_fcwnl"]
 [ext_resource type="PackedScene" uid="uid://xjjm3nhjfaml" path="res://Image_Assets/Map_Objects/Forest/MossyRock.tscn" id="16_w8rq4"]
 [ext_resource type="PackedScene" uid="uid://be4g3djbonv6f" path="res://Image_Assets/Map_Objects/Forest/Log.tscn" id="17_2dtkk"]
-[ext_resource type="Texture2D" uid="uid://dffdtqfrxsuy8" path="res://Image_Assets/Map_Objects/Forest/Pergola.png" id="19_dpqdb"]
 [ext_resource type="PackedScene" uid="uid://c20wykpaipq77" path="res://Image_Assets/Map_Objects/Forest/Bin.tscn" id="20_shmuv"]
 [ext_resource type="Script" uid="uid://cxeto60nl1qi2" path="res://Scripts/Map_Scripts/Verdant_Forest.gd" id="20_vfscr"]
 [ext_resource type="PackedScene" uid="uid://3iioxklvu6u8" path="res://Image_Assets/Map_Objects/Forest/BenchDown.tscn" id="21_fcwnl"]
@@ -29,6 +28,7 @@
 [ext_resource type="PackedScene" uid="uid://cbvg324qq2q1m" path="res://Image_Assets/Map_Objects/Forest/SignSmall.tscn" id="22_dy23j"]
 [ext_resource type="PackedScene" uid="uid://cb0xs6xrtohk6" path="res://Image_Assets/Map_Objects/Forest/HalfTree.tscn" id="25_ucmik"]
 [ext_resource type="PackedScene" uid="uid://dmisq6y8l67qm" path="res://Image_Assets/Map_Objects/Forest/MossEvoRock.tscn" id="27_0wdh4"]
+[ext_resource type="Script" uid="uid://cphl8h5xtm64h" path="res://Scripts/Map_Scripts/Interactables_Script.gd" id="int_script"]
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_mk6rm"]
 size = Vector2(19, 7)
@@ -77,6 +77,17 @@ size = Vector2(25, 8.5)
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_0qbvq"]
 size = Vector2(130, 119)
 
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_aklnl"]
+size = Vector2(6, 396.5)
+
+[sub_resource type="CapsuleShape2D" id="CapsuleShape2D_0qbvq"]
+radius = 8.0
+height = 34.0
+
+[sub_resource type="CapsuleShape2D" id="CapsuleShape2D_aklnl"]
+radius = 11.0
+height = 46.0
+
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_efv3c"]
 size = Vector2(300, 3.375)
 
@@ -88,6 +99,12 @@ size = Vector2(2453, 573)
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_tm7ot"]
 size = Vector2(452, 2192)
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_8xcuo"]
+size = Vector2(54, 28)
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_w8rq4"]
+size = Vector2(27, 24.75)
 
 [node name="VerdantForest" type="Node2D" unique_id=1780779826]
 script = ExtResource("20_vfscr")
@@ -161,6 +178,7 @@ tile_map_data = PackedByteArray("AAAcAEEAAAANABIAAAAcAEIAAAANABMAAAAdAEEAAAAOABI
 tile_set = ExtResource("1_vnhbh")
 
 [node name="TreeHollow2Top" type="TileMapLayer" parent="TILE_MAPS/Objects" unique_id=221558695]
+z_index = 9
 position = Vector2(2920, 412)
 tile_map_data = PackedByteArray("AAAcAD8AAAANABAAAAAcAEAAAAANABEAAAAdAD8AAAAOABAAAAAdAEAAAAAOABEAAAAeAD8AAAAPABAAAAAeAEAAAAAPABEAAAA=")
 tile_set = ExtResource("1_vnhbh")
@@ -2038,7 +2056,7 @@ rotation = 3.1415925
 scale = Vector2(1, -1)
 
 [node name="LightTree77" parent="TILE_MAPS/PONDS/MAGIKARP_POND_L/MAGIKARP_POND_L_TREES/MAGIKARP_TREES_BOTTOM" unique_id=974409930 instance=ExtResource("5_efv3c")]
-position = Vector2(-659, 128)
+position = Vector2(-656, 115)
 rotation = 3.1415925
 scale = Vector2(1, -1)
 
@@ -2058,7 +2076,12 @@ rotation = 3.1415925
 scale = Vector2(1, -1)
 
 [node name="MediumVinesTree56" parent="TILE_MAPS/PONDS/MAGIKARP_POND_L/MAGIKARP_POND_L_TREES/MAGIKARP_TREES_BOTTOM" unique_id=742633175 instance=ExtResource("9_x6xh7")]
-position = Vector2(-665, 252)
+position = Vector2(-688, 226)
+rotation = 3.1415925
+scale = Vector2(1, -1)
+
+[node name="MediumVinesTree59" parent="TILE_MAPS/PONDS/MAGIKARP_POND_L/MAGIKARP_POND_L_TREES/MAGIKARP_TREES_BOTTOM" unique_id=222730925 instance=ExtResource("9_x6xh7")]
+position = Vector2(-652, 270)
 rotation = 3.1415925
 scale = Vector2(1, -1)
 
@@ -2068,7 +2091,7 @@ rotation = 3.1415925
 scale = Vector2(1, -1)
 
 [node name="LightTree75" parent="TILE_MAPS/PONDS/MAGIKARP_POND_L/MAGIKARP_POND_L_TREES/MAGIKARP_TREES_BOTTOM" unique_id=877217328 instance=ExtResource("5_efv3c")]
-position = Vector2(-663, 319)
+position = Vector2(-663, 329)
 rotation = 3.1415925
 scale = Vector2(1, -1)
 
@@ -2262,12 +2285,12 @@ position = Vector2(-191, 986)
 position = Vector2(-272, 980)
 
 [node name="DarkVinesTree66" parent="TILE_MAPS/PONDS/MAGIKARP_POND_L/MAGIKARP_POND_L_TREES/MAGIKARP_TREES_BOTTOM" unique_id=854062251 instance=ExtResource("7_442b1")]
-position = Vector2(-716, 349)
+position = Vector2(-708, 347)
 rotation = 3.1415925
 scale = Vector2(1, -1)
 
 [node name="DarkVinesTree67" parent="TILE_MAPS/PONDS/MAGIKARP_POND_L/MAGIKARP_POND_L_TREES/MAGIKARP_TREES_BOTTOM" unique_id=1775509350 instance=ExtResource("7_442b1")]
-position = Vector2(-664, 388)
+position = Vector2(-658, 389)
 rotation = 3.1415925
 scale = Vector2(1, -1)
 
@@ -2277,17 +2300,22 @@ rotation = 3.1415925
 scale = Vector2(1, -1)
 
 [node name="DarkTree52" parent="TILE_MAPS/PONDS/MAGIKARP_POND_L/MAGIKARP_POND_L_TREES/MAGIKARP_TREES_BOTTOM" unique_id=1634375200 instance=ExtResource("4_0jajs")]
-position = Vector2(-663, 458)
+position = Vector2(-654, 435)
+rotation = 3.1415925
+scale = Vector2(1, -1)
+
+[node name="DarkTree60" parent="TILE_MAPS/PONDS/MAGIKARP_POND_L/MAGIKARP_POND_L_TREES/MAGIKARP_TREES_BOTTOM" unique_id=1501250447 instance=ExtResource("4_0jajs")]
+position = Vector2(-706, 467)
 rotation = 3.1415925
 scale = Vector2(1, -1)
 
 [node name="MediumVinesTree50" parent="TILE_MAPS/PONDS/MAGIKARP_POND_L/MAGIKARP_POND_L_TREES/MAGIKARP_TREES_BOTTOM" unique_id=2147473877 instance=ExtResource("9_x6xh7")]
-position = Vector2(-718, 487)
+position = Vector2(-660, 485)
 rotation = 3.1415925
 scale = Vector2(1, -1)
 
 [node name="MediumVinesTree51" parent="TILE_MAPS/PONDS/MAGIKARP_POND_L/MAGIKARP_POND_L_TREES/MAGIKARP_TREES_BOTTOM" unique_id=1228886392 instance=ExtResource("9_x6xh7")]
-position = Vector2(-695, 523)
+position = Vector2(-717, 506)
 rotation = 3.1415925
 scale = Vector2(1, -1)
 
@@ -2602,16 +2630,16 @@ position = Vector2(2359, 263)
 position = Vector2(2115, 208)
 
 [node name="DarkVinesTree61" parent="TILE_MAPS/PONDS/MAGIKARP_POND_L/MAGIKARP_POND_L_TREES/MAGIKARP_TREES_TOP" unique_id=3434742 instance=ExtResource("7_442b1")]
-position = Vector2(2056, 237)
+position = Vector2(2049, 223)
 
 [node name="LightVinesTree44" parent="TILE_MAPS/PONDS/MAGIKARP_POND_L/MAGIKARP_POND_L_TREES/MAGIKARP_TREES_TOP" unique_id=536863868 instance=ExtResource("6_7yrxg")]
 position = Vector2(2173, 249)
 
 [node name="LightVinesTree51" parent="TILE_MAPS/PONDS/MAGIKARP_POND_L/MAGIKARP_POND_L_TREES/MAGIKARP_TREES_TOP" unique_id=2117163815 instance=ExtResource("6_7yrxg")]
-position = Vector2(2107, 269)
+position = Vector2(2095, 262)
 
 [node name="LightVinesTree52" parent="TILE_MAPS/PONDS/MAGIKARP_POND_L/MAGIKARP_POND_L_TREES/MAGIKARP_TREES_TOP" unique_id=434579050 instance=ExtResource("6_7yrxg")]
-position = Vector2(2058, 301)
+position = Vector2(2052, 295)
 
 [node name="MediumTree56" parent="TILE_MAPS/PONDS/MAGIKARP_POND_L/MAGIKARP_POND_L_TREES/MAGIKARP_TREES_TOP" unique_id=1432020835 instance=ExtResource("8_6ll1i")]
 position = Vector2(2528, 275)
@@ -2752,13 +2780,16 @@ position = Vector2(2186, 332)
 position = Vector2(2163, 379)
 
 [node name="MediumVinesTree47" parent="TILE_MAPS/PONDS/MAGIKARP_POND_L/MAGIKARP_POND_L_TREES/MAGIKARP_TREES_TOP" unique_id=403959810 instance=ExtResource("9_x6xh7")]
-position = Vector2(2067, 366)
+position = Vector2(2052, 359)
 
 [node name="DarkVinesTree47" parent="TILE_MAPS/PONDS/MAGIKARP_POND_L/MAGIKARP_POND_L_TREES/MAGIKARP_TREES_TOP" unique_id=1302234581 instance=ExtResource("7_442b1")]
 position = Vector2(2230, 369)
 
 [node name="DarkVinesTree58" parent="TILE_MAPS/PONDS/MAGIKARP_POND_L/MAGIKARP_POND_L_TREES/MAGIKARP_TREES_TOP" unique_id=1188622264 instance=ExtResource("7_442b1")]
-position = Vector2(2060, 413)
+position = Vector2(2090, 392)
+
+[node name="DarkVinesTree62" parent="TILE_MAPS/PONDS/MAGIKARP_POND_L/MAGIKARP_POND_L_TREES/MAGIKARP_TREES_TOP" unique_id=1363859040 instance=ExtResource("7_442b1")]
+position = Vector2(2050, 427)
 
 [node name="LightVinesTree41" parent="TILE_MAPS/PONDS/MAGIKARP_POND_L/MAGIKARP_POND_L_TREES/MAGIKARP_TREES_TOP" unique_id=796235320 instance=ExtResource("6_7yrxg")]
 position = Vector2(2277, 418)
@@ -2773,13 +2804,13 @@ position = Vector2(2130, 420)
 position = Vector2(2114, 448)
 
 [node name="LightTree68" parent="TILE_MAPS/PONDS/MAGIKARP_POND_L/MAGIKARP_POND_L_TREES/MAGIKARP_TREES_TOP" unique_id=1308332496 instance=ExtResource("5_efv3c")]
-position = Vector2(2063, 465)
+position = Vector2(2049, 473)
 
 [node name="MediumVinesTree48" parent="TILE_MAPS/PONDS/MAGIKARP_POND_L/MAGIKARP_POND_L_TREES/MAGIKARP_TREES_TOP" unique_id=617959519 instance=ExtResource("9_x6xh7")]
 position = Vector2(2095, 498)
 
 [node name="MediumVinesTree49" parent="TILE_MAPS/PONDS/MAGIKARP_POND_L/MAGIKARP_POND_L_TREES/MAGIKARP_TREES_TOP" unique_id=750453582 instance=ExtResource("9_x6xh7")]
-position = Vector2(2057, 532)
+position = Vector2(2053, 540)
 
 [node name="DarkVinesTree48" parent="TILE_MAPS/PONDS/MAGIKARP_POND_L/MAGIKARP_POND_L_TREES/MAGIKARP_TREES_TOP" unique_id=1054676555 instance=ExtResource("7_442b1")]
 position = Vector2(2159, 465)
@@ -5802,52 +5833,46 @@ offset_bottom = 40.0
 
 [node name="LeafTunnel" type="Control" parent="Objects" unique_id=1299045874]
 anchors_preset = 0
-offset_right = 40.0
-offset_bottom = 40.0
+offset_left = 49.0
+offset_top = -209.0
+offset_right = 89.0
+offset_bottom = -169.0
+scale = Vector2(1.2, 1.2)
 
-[node name="LeafTunnel2" type="TextureRect" parent="Objects/LeafTunnel" unique_id=514405938]
-z_index = 14
-layout_mode = 0
-offset_left = -284.0
-offset_top = 623.0
-offset_right = -179.0
-offset_bottom = 776.0
-texture = ExtResource("19_dpqdb")
-expand_mode = 1
-stretch_mode = 4
+[node name="LeafTunnelBottomLayer" type="TileMapLayer" parent="Objects/LeafTunnel" unique_id=1438127766]
+position = Vector2(2928, 400)
+tile_map_data = PackedByteArray("AAA4/ycAAAAnACMAAAA4/ygAAAAnACQAAAA5/ycAAAAoACMAAAA5/ygAAAAoACQAAAA8/ycAAAArACMAAAA8/ygAAAArACQAAAA=")
+tile_set = ExtResource("1_vnhbh")
 
-[node name="LeafTunnel3" type="TextureRect" parent="Objects/LeafTunnel" unique_id=1414265545]
-z_index = 14
-layout_mode = 0
-offset_left = -284.0
-offset_top = 714.0
-offset_right = -179.0
-offset_bottom = 867.0
-texture = ExtResource("19_dpqdb")
-expand_mode = 1
-stretch_mode = 4
+[node name="LeafTunnelTopLayer5" type="TileMapLayer" parent="Objects/LeafTunnel" unique_id=436678116]
+z_index = 10
+position = Vector2(2928, 144)
+tile_map_data = PackedByteArray("AAA4/yIAAAAnAB4AAAA4/yMAAAAnAB8AAAA4/yQAAAAnACAAAAA4/yUAAAAnACEAAAA4/yYAAAAnACIAAAA5/yIAAAAoAB4AAAA5/yMAAAAoAB8AAAA5/yQAAAAoACAAAAA5/yUAAAAoACEAAAA5/yYAAAAoACIAAAA6/yIAAAApAB4AAAA6/yMAAAApAB8AAAA6/yQAAAApACAAAAA6/yUAAAApACEAAAA6/yYAAAApACIAAAA7/yIAAAAqAB4AAAA7/yMAAAAqAB8AAAA7/yQAAAAqACAAAAA7/yUAAAAqACEAAAA7/yYAAAAqACIAAAA8/yIAAAArAB4AAAA8/yMAAAArAB8AAAA8/yQAAAArACAAAAA8/yUAAAArACEAAAA8/yYAAAArACIAAAA=")
+tile_set = ExtResource("1_vnhbh")
 
-[node name="LeafTunnel4" type="TextureRect" parent="Objects/LeafTunnel" unique_id=1862165622]
-z_index = 14
-layout_mode = 0
-offset_left = -284.0
-offset_top = 805.0
-offset_right = -179.0
-offset_bottom = 958.0
-texture = ExtResource("19_dpqdb")
-expand_mode = 1
-stretch_mode = 4
+[node name="LeafTunnelTopLayer4" type="TileMapLayer" parent="Objects/LeafTunnel" unique_id=1133889369]
+z_index = 10
+position = Vector2(2928, 208)
+tile_map_data = PackedByteArray("AAA4/yIAAAAnAB4AAAA4/yMAAAAnAB8AAAA4/yQAAAAnACAAAAA4/yUAAAAnACEAAAA4/yYAAAAnACIAAAA5/yIAAAAoAB4AAAA5/yMAAAAoAB8AAAA5/yQAAAAoACAAAAA5/yUAAAAoACEAAAA5/yYAAAAoACIAAAA6/yIAAAApAB4AAAA6/yMAAAApAB8AAAA6/yQAAAApACAAAAA6/yUAAAApACEAAAA6/yYAAAApACIAAAA7/yIAAAAqAB4AAAA7/yMAAAAqAB8AAAA7/yQAAAAqACAAAAA7/yUAAAAqACEAAAA7/yYAAAAqACIAAAA8/yIAAAArAB4AAAA8/yMAAAArAB8AAAA8/yQAAAArACAAAAA8/yUAAAArACEAAAA8/yYAAAArACIAAAA=")
+tile_set = ExtResource("1_vnhbh")
 
-[node name="LeafTunnel5" type="TextureRect" parent="Objects/LeafTunnel" unique_id=2124896379]
-z_index = 14
-layout_mode = 0
-offset_left = -284.0
-offset_top = 896.0
-offset_right = -179.0
-offset_bottom = 1049.0
-texture = ExtResource("19_dpqdb")
-expand_mode = 1
-stretch_mode = 4
+[node name="LeafTunnelTopLayer3" type="TileMapLayer" parent="Objects/LeafTunnel" unique_id=616612125]
+z_index = 10
+position = Vector2(2928, 272)
+tile_map_data = PackedByteArray("AAA4/yIAAAAnAB4AAAA4/yMAAAAnAB8AAAA4/yQAAAAnACAAAAA4/yUAAAAnACEAAAA4/yYAAAAnACIAAAA5/yIAAAAoAB4AAAA5/yMAAAAoAB8AAAA5/yQAAAAoACAAAAA5/yUAAAAoACEAAAA5/yYAAAAoACIAAAA6/yIAAAApAB4AAAA6/yMAAAApAB8AAAA6/yQAAAApACAAAAA6/yUAAAApACEAAAA6/yYAAAApACIAAAA7/yIAAAAqAB4AAAA7/yMAAAAqAB8AAAA7/yQAAAAqACAAAAA7/yUAAAAqACEAAAA7/yYAAAAqACIAAAA8/yIAAAArAB4AAAA8/yMAAAArAB8AAAA8/yQAAAArACAAAAA8/yUAAAArACEAAAA8/yYAAAArACIAAAA=")
+tile_set = ExtResource("1_vnhbh")
+
+[node name="LeafTunnelTopLayer2" type="TileMapLayer" parent="Objects/LeafTunnel" unique_id=1226470135]
+z_index = 10
+position = Vector2(2928, 336)
+tile_map_data = PackedByteArray("AAA4/yIAAAAnAB4AAAA4/yMAAAAnAB8AAAA4/yQAAAAnACAAAAA4/yUAAAAnACEAAAA4/yYAAAAnACIAAAA5/yIAAAAoAB4AAAA5/yMAAAAoAB8AAAA5/yQAAAAoACAAAAA5/yUAAAAoACEAAAA5/yYAAAAoACIAAAA6/yIAAAApAB4AAAA6/yMAAAApAB8AAAA6/yQAAAApACAAAAA6/yUAAAApACEAAAA6/yYAAAApACIAAAA7/yIAAAAqAB4AAAA7/yMAAAAqAB8AAAA7/yQAAAAqACAAAAA7/yUAAAAqACEAAAA7/yYAAAAqACIAAAA8/yIAAAArAB4AAAA8/yMAAAArAB8AAAA8/yQAAAArACAAAAA8/yUAAAArACEAAAA8/yYAAAArACIAAAA=")
+tile_set = ExtResource("1_vnhbh")
+
+[node name="LeafTunnelTopLayer" type="TileMapLayer" parent="Objects/LeafTunnel" unique_id=2134747850]
+z_index = 10
+position = Vector2(2928, 400)
+tile_map_data = PackedByteArray("AAA4/yIAAAAnAB4AAAA4/yMAAAAnAB8AAAA4/yQAAAAnACAAAAA4/yUAAAAnACEAAAA4/yYAAAAnACIAAAA5/yIAAAAoAB4AAAA5/yMAAAAoAB8AAAA5/yQAAAAoACAAAAA5/yUAAAAoACEAAAA5/yYAAAAoACIAAAA6/yIAAAApAB4AAAA6/yMAAAApAB8AAAA6/yQAAAApACAAAAA6/yUAAAApACEAAAA6/yYAAAApACIAAAA7/yIAAAAqAB4AAAA7/yMAAAAqAB8AAAA7/yQAAAAqACAAAAA7/yUAAAAqACEAAAA7/yYAAAAqACIAAAA8/yIAAAArAB4AAAA8/yMAAAArAB8AAAA8/yQAAAArACAAAAA8/yUAAAArACEAAAA8/yYAAAArACIAAAA=")
+tile_set = ExtResource("1_vnhbh")
 
 [node name="Bins" type="Control" parent="Objects" unique_id=123937535]
 anchors_preset = 0
@@ -5943,6 +5968,9 @@ scale = Vector2(-1, 1)
 
 [node name="BenchDown2" parent="Objects/Benches" unique_id=1793082921 instance=ExtResource("21_fcwnl")]
 position = Vector2(3401, 1368)
+
+[node name="BenchSide6" parent="Objects/Benches" unique_id=1452391025 instance=ExtResource("22_56w1d")]
+position = Vector2(432, 511)
 
 [node name="Rocks" type="Control" parent="Objects" unique_id=1762152970]
 anchors_preset = 0
@@ -6319,7 +6347,7 @@ position = Vector2(1756, 87)
 position = Vector2(933, 1496)
 
 [node name="FishPondSign" parent="Objects/Signs" unique_id=18965718 instance=ExtResource("16_56w1d")]
-position = Vector2(-68, 1586)
+position = Vector2(-54, 1569)
 
 [node name="Windmillsign" parent="Objects/Signs" unique_id=681147358 instance=ExtResource("16_fcwnl")]
 position = Vector2(3656, 20)
@@ -6462,6 +6490,36 @@ scale = Vector2(-1, 1)
 [node name="HalfTree7" parent="Objects/DeadWood" unique_id=1839416590 instance=ExtResource("25_ucmik")]
 position = Vector2(2894, 1584)
 scale = Vector2(-1, 1)
+
+[node name="Collisions" type="StaticBody2D" parent="Objects" unique_id=1634106243]
+
+[node name="Windmill" type="CollisionPolygon2D" parent="Objects/Collisions" unique_id=94942651]
+position = Vector2(5, -260)
+polygon = PackedVector2Array(3522, 229, 3565, 258, 3642, 258, 3666, 251, 3680, 222, 3680, 169, 3664, 113, 3547, 113, 3522, 176)
+
+[node name="Tunnel" type="CollisionShape2D" parent="Objects/Collisions" unique_id=1517757562]
+position = Vector2(-269, 828.75)
+shape = SubResource("RectangleShape2D_aklnl")
+
+[node name="Tunnel2" type="CollisionShape2D" parent="Objects/Collisions" unique_id=1902103094]
+position = Vector2(-191.5, 830.5)
+shape = SubResource("RectangleShape2D_aklnl")
+
+[node name="BottomRightPond" type="CollisionPolygon2D" parent="Objects/Collisions" unique_id=2115783521]
+polygon = PackedVector2Array(3241, 1400, 3241, 1446, 3288, 1446, 3288, 1495, 3321, 1495, 3321, 1520, 3288, 1520, 3288, 1563, 3256, 1563, 3256, 1612, 3144, 1612, 3144, 1563, 3061, 1563, 3061, 1496, 3131, 1496, 3131, 1447, 3162, 1447, 3162, 1400)
+
+[node name="FishPond" type="CollisionPolygon2D" parent="Objects/Collisions" unique_id=847941065]
+polygon = PackedVector2Array(-342, 1529, -303, 1529, -303, 1581, -257, 1581, -257, 1528, -121, 1528, -121, 1576, -73, 1576, -73, 1624, -25, 1624, -25, 1663, -73, 1663, -73, 1711, -113, 1711, -113, 1657, -160, 1657, -160, 1708, -295, 1708, -295, 1658, -376, 1658, -375, 1575, -342, 1575)
+
+[node name="TreeHollowSmall" type="CollisionShape2D" parent="Objects/Collisions" unique_id=317118752]
+position = Vector2(539, 526)
+rotation = 1.5707964
+shape = SubResource("CapsuleShape2D_0qbvq")
+
+[node name="TreHollowBig" type="CollisionShape2D" parent="Objects/Collisions" unique_id=1588685922]
+position = Vector2(3392, 1453)
+rotation = -1.5707964
+shape = SubResource("CapsuleShape2D_aklnl")
 
 [node name="Player" parent="." unique_id=510514557 instance=ExtResource("2_06m8d")]
 position = Vector2(1771, 1050)
@@ -6702,10 +6760,6 @@ shape = SubResource("RectangleShape2D_mu53r")
 position = Vector2(3125, -176)
 shape = SubResource("RectangleShape2D_mu53r")
 
-[node name="Windmill" type="CollisionPolygon2D" parent="TREE_WALL_NORTH/Collision_Body" unique_id=94942651]
-position = Vector2(8, -40)
-polygon = PackedVector2Array(3522, 229, 3565, 258, 3642, 258, 3666, 251, 3680, 222, 3680, 169, 3664, 113, 3547, 113, 3522, 176)
-
 [node name="TREE_WALL_WEST_GROUP" type="Control" parent="." unique_id=968032922]
 layout_mode = 3
 anchors_preset = 0
@@ -6911,7 +6965,63 @@ shape = SubResource("RectangleShape2D_mu53r")
 position = Vector2(3105, 35)
 shape = SubResource("RectangleShape2D_mu53r")
 
-[node name="UILAYER" type="CanvasLayer" parent="." unique_id=48845880]
+[node name="Interactables" type="Area2D" parent="." unique_id=1773960785]
+script = ExtResource("int_script")
 
-[node name="BenchSide" parent="." unique_id=1452391025 instance=ExtResource("22_56w1d")]
-position = Vector2(432, 511)
+[node name="Sign_Entrance" type="CollisionShape2D" parent="Interactables" unique_id=1519012387]
+position = Vector2(1842, 1647)
+shape = SubResource("RectangleShape2D_8xcuo")
+
+[node name="Sign_GoldPlaza" type="CollisionShape2D" parent="Interactables" unique_id=1541098404]
+position = Vector2(1778, 107)
+shape = SubResource("RectangleShape2D_8xcuo")
+
+[node name="Sign_Windmill" type="CollisionShape2D" parent="Interactables" unique_id=986627949]
+position = Vector2(3678, 40)
+shape = SubResource("RectangleShape2D_8xcuo")
+
+[node name="Sign_Pokeball" type="CollisionShape2D" parent="Interactables" unique_id=291602878]
+position = Vector2(92, 241)
+shape = SubResource("RectangleShape2D_8xcuo")
+
+[node name="Sign_Fishpond" type="CollisionShape2D" parent="Interactables" unique_id=500274020]
+position = Vector2(-47, 1596.25)
+shape = SubResource("RectangleShape2D_w8rq4")
+
+[node name="Sign_Johto" type="CollisionShape2D" parent="Interactables" unique_id=547986021]
+position = Vector2(940, 1523)
+shape = SubResource("RectangleShape2D_w8rq4")
+
+[node name="Sign_RoadsignC" type="CollisionShape2D" parent="Interactables" unique_id=1451653515]
+position = Vector2(1608, 1012)
+shape = SubResource("RectangleShape2D_w8rq4")
+
+[node name="Sign_RoadsignCW" type="CollisionShape2D" parent="Interactables" unique_id=12766712]
+position = Vector2(978, 1035)
+shape = SubResource("RectangleShape2D_w8rq4")
+
+[node name="Sign_RoadsignCE" type="CollisionShape2D" parent="Interactables" unique_id=137316824]
+position = Vector2(2563.5, 1034.625)
+shape = SubResource("RectangleShape2D_w8rq4")
+
+[node name="Sign_RoadsignE" type="CollisionShape2D" parent="Interactables" unique_id=365847690]
+position = Vector2(3253, 630)
+shape = SubResource("RectangleShape2D_w8rq4")
+
+[node name="Sign_RoadsignNE" type="CollisionShape2D" parent="Interactables" unique_id=1691678874]
+position = Vector2(2978, 54)
+shape = SubResource("RectangleShape2D_w8rq4")
+
+[node name="Sign_RoadsignNW" type="CollisionShape2D" parent="Interactables" unique_id=1416128293]
+position = Vector2(1002, 51)
+shape = SubResource("RectangleShape2D_w8rq4")
+
+[node name="Sign_RoadsignW" type="CollisionShape2D" parent="Interactables" unique_id=784389295]
+position = Vector2(-121, 1086)
+shape = SubResource("RectangleShape2D_w8rq4")
+
+[node name="Sign_RoadsignSW" type="CollisionShape2D" parent="Interactables" unique_id=2032954162]
+position = Vector2(414, 1645)
+shape = SubResource("RectangleShape2D_w8rq4")
+
+[node name="UILAYER" type="CanvasLayer" parent="." unique_id=48845880]

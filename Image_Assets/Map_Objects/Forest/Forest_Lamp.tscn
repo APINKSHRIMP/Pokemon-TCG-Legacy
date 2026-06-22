@@ -12,7 +12,7 @@ fill = 1
 fill_from = Vector2(0.4764706, 0.48235294)
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_yg3vm"]
-size = Vector2(11, 9)
+size = Vector2(11, 5)
 
 [node name="ForestLamp" type="Node2D" unique_id=368895387]
 
@@ -42,5 +42,5 @@ texture = SubResource("GradientTexture2D_yg3vm")
 [node name="Lamp_Body" type="StaticBody2D" parent="." unique_id=1263029496]
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="Lamp_Body" unique_id=524986156]
-position = Vector2(7.5, 15.5)
+position = Vector2(7.5, 17.5)
 shape = SubResource("RectangleShape2D_yg3vm")

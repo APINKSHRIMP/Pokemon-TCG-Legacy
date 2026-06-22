@@ -2,9 +2,8 @@
 
 [ext_resource type="TileSet" uid="uid://brncoaox03ylg" path="res://Image_Assets/Map_Sheets/Tile_Sets/Verdant_Forest.tres" id="1_lxpmv"]
 
-[sub_resource type="CapsuleShape2D" id="CapsuleShape2D_stfnp"]
-radius = 5.9999886
-height = 21.99996
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_jdae1"]
+size = Vector2(4.0342197, 18.999966)
 
 [node name="ForestTree" type="Node2D" unique_id=565541350]
 
@@ -25,6 +24,6 @@ tile_set = ExtResource("1_lxpmv")
 [node name="CharacterBody2D" type="CharacterBody2D" parent="." unique_id=1180298927]
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="CharacterBody2D" unique_id=441636864]
-position = Vector2(8.999999, 52)
+position = Vector2(6.4999976, 47.99905)
 rotation = -1.5726978
-shape = SubResource("CapsuleShape2D_stfnp")
+shape = SubResource("RectangleShape2D_jdae1")

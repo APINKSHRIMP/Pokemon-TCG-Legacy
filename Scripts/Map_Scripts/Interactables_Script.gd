@@ -127,7 +127,10 @@ func _trigger(shape_name: String) -> void:
 			var text: String = _flavour_text.get(shape_name, "")
 			if text == "":
 				text = MISSING_TEXT
-			MapManager.show_interactable_message(text)
+			if shape_name.begins_with("Sign_"):
+				MapManager.show_interactable_message("[center]" + text + "[/center]", 38)
+			else:
+				MapManager.show_interactable_message(text)
 
 
 # ============================================================

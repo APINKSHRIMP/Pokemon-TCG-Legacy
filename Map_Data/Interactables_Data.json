@@ -18,12 +18,20 @@
 		"Sign_Shop_Lighthouse": "Celeste Lighthouse — guiding ships safely home."
 	},
 	"Verdant_Forest": {
-		"Sign_South": "‹ Celeste Harbour  |  Forest depths ›",
-		"Sign_South_West": "Western trail — watch for wild Pokémon.",
-		"Sign_North_West": "Forest Mart — supplies for the trek ahead.",
-		"Sign_North": "Verdant Event Hall ahead — home of the Gym Hero Challenge.",
-		"Sign_North_East": "Eastern trail — the forest grows dense beyond here.",
-		"Sign_South_East": "Picnic area — please take your litter home."
+		"Sign_Entrance": "Verdant Forest National Park\nPlease stick to walking routes to avoid potentailly dangerous Pokemon and place all litter into the bins provided",
+		"Sign_GoldPlaza": "\nAurelius Plaza",
+		"Sign_Windmill": "Verdant Windmill\nHistoric building over 500 years old. Please do not touch.",
+		"Sign_Pokeball": "\nPokeball Plaza",
+		"Sign_Fishpond": "Fishing Pond\nFishing Permit Required. No angling permitted without license.",
+		"Sign_Johto": "\nMemory of the Johto Guardians",
+		"Sign_RoadsignC": "^     \n< Forest Hut | Aurelius Plaza | Wishing Well >",
+		"Sign_RoadsignCW": "^   \n< Forest Hut | Plazas | Pikachu Pond >",
+		"Sign_RoadsignCE": "^     \n< Pikachu Pond | Aurelius Bridge | Wishing Well >",
+		"Sign_RoadsignE": "< Aurelius Bridge | Wishing Well | Verdant Windmill >\nV  ",
+		"Sign_RoadsignNE": "< Aurelius Plaza | Aurelius Bridge | Verdant Windmill >\nV  ",
+		"Sign_RoadsignNW": "< Pokeball Plaza | Forest Hut | Aurelius Plaza >   \nV  ",
+		"Sign_RoadsignW": "^ Pokeball Plaza | Fishing Pond | Forest Hut >        \nV  ",
+		"Sign_RoadsignSW": "\n< Fishing Pond | Forest Entrance >"
 	},
 	"Player_House_Upstairs": {},
 	"Player_House_Downstairs": {}
