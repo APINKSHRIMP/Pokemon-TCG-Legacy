@@ -4,10 +4,10 @@
 	  "name": "Pikachu Mum",
 	  "meet_text": "It's nearly time to go home now so I better round up my kids!",
 	  "repeat_text": "We come back here every day because they're all so obsessed with Pikachu!!",
-	  "pattern": "idle_down",
+	  "pattern": "idle_right",
 	  "position": {
-		"x": 1509,
-		"y": 928
+		"x": 198,
+		"y": 164
 	  },
 	  "condition": {
 		"type": "not_all_opponents_defeated",
@@ -29,8 +29,8 @@
 	  "patrol_speed": 20.0,
 	  "wander_radius": 65,
 	  "position": {
-		"x": 1425,
-		"y": 1000
+		"x": 0,
+		"y": 100
 	  },
 	  "condition": {
 		"type": "opponent_defeated",
@@ -45,8 +45,8 @@
 	  "patrol_speed": 20.0,
 	  "wander_radius": 65,
 	  "position": {
-		"x": 1425,
-		"y": 1075
+		"x": 275,
+		"y": 100
 	  },
 	  "condition": {
 		"type": "opponent_defeated",
@@ -61,8 +61,8 @@
 	  "patrol_speed": 20.0,
 	  "wander_radius": 65,
 	  "position": {
-		"x": 1500,
-		"y": 1000
+		"x": 0,
+		"y": 250
 	  },
 	  "condition": {
 		"type": "opponent_defeated",
@@ -77,8 +77,8 @@
 	  "patrol_speed": 20.0,
 	  "wander_radius": 65,
 	  "position": {
-		"x": 1500,
-		"y": 1075
+		"x": 125,
+		"y": 300
 	  },
 	  "condition": {
 		"type": "opponent_defeated",
@@ -93,8 +93,8 @@
 	  "patrol_speed": 20.0,
 	  "wander_radius": 65,
 	  "position": {
-		"x": 1575,
-		"y": 1000
+		"x": 275,
+		"y": 250
 	  },
 	  "condition": {
 		"type": "opponent_defeated",
@@ -109,8 +109,8 @@
 	  "patrol_speed": 20.0,
 	  "wander_radius": 65,
 	  "position": {
-		"x": 1575,
-		"y": 1075
+		"x": 275,
+		"y": 100
 	  },
 	  "condition": {
 		"type": "opponent_defeated",

@@ -4,10 +4,10 @@
 	  "name": "Pikachu Mum",
 	  "meet_text": "All my kids always wander off and don't come back for a while. They love looking for Pikachu around here but have never found one. If you see any of them could you tell them to come back here please?",
 	  "repeat_text": "All my kids are dressed up as Pikachu, from a distance you might mistake them for an actual Pikachu!! If you can get them all to come back here I'd appreciate it.",
-	  "pattern": "idle_down",
+	  "pattern": "idle_right",
 	  "position": {
-		"x": 1509,
-		"y": 928
+		"x": 198,
+		"y": 164
 	  },
 	  "condition": {
 		"type": "not_all_opponents_defeated",
@@ -29,8 +29,8 @@
 	  "patrol_speed": 20.0,
 	  "wander_radius": 65,
 	  "position": {
-		"x": 1425,
-		"y": 1000
+		"x": 0,
+		"y": 100
 	  },
 	  "condition": {
 		"type": "opponent_defeated",
@@ -45,8 +45,8 @@
 	  "patrol_speed": 20.0,
 	  "wander_radius": 65,
 	  "position": {
-		"x": 1425,
-		"y": 1075
+		"x": 275,
+		"y": 100
 	  },
 	  "condition": {
 		"type": "opponent_defeated",
@@ -61,8 +61,8 @@
 	  "patrol_speed": 20.0,
 	  "wander_radius": 65,
 	  "position": {
-		"x": 1500,
-		"y": 1000
+		"x": 0,
+		"y": 250
 	  },
 	  "condition": {
 		"type": "opponent_defeated",
@@ -77,8 +77,8 @@
 	  "patrol_speed": 20.0,
 	  "wander_radius": 65,
 	  "position": {
-		"x": 1500,
-		"y": 1075
+		"x": 125,
+		"y": 300
 	  },
 	  "condition": {
 		"type": "opponent_defeated",
@@ -93,8 +93,8 @@
 	  "patrol_speed": 20.0,
 	  "wander_radius": 65,
 	  "position": {
-		"x": 1575,
-		"y": 1000
+		"x": 275,
+		"y": 250
 	  },
 	  "condition": {
 		"type": "opponent_defeated",
@@ -109,8 +109,8 @@
 	  "patrol_speed": 20.0,
 	  "wander_radius": 65,
 	  "position": {
-		"x": 1575,
-		"y": 1075
+		"x": 275,
+		"y": 100
 	  },
 	  "condition": {
 		"type": "opponent_defeated",
@@ -124,7 +124,7 @@
 	  "pattern": "idle_down",
 	  "position": {
 		"x": 3278,
-		"y": 1064
+		"y": 1052
 	  },
 	  "condition": {
 		"type": "npc_not_met",
@@ -140,11 +140,15 @@
 	  "first_win_text": "If you haven't seen a Pikachu use surf you can have this then!",
 	  "rematch_win_text": "I wish I could surf like a Pikachu",
 	  "loss_text": "Pikachu can do everything, it's the best!!!",
-	  "pattern": "idle_left",
+	  "pattern": "idle_random",
 	  "position": {
-		"x": 3125,
-		"y": 1045
+		"x": 3272,
+		"y": 1427
 	  },
+	  "match_effects": [
+		{"type": "ignore_weakness_and_resistance"},
+		{"type": "energy_attach_full_heal"}
+	  ],
 	  "condition": {
 		"type": "opponent_not_defeated",
 		"target": "Pikachu Fan Marina"
@@ -157,11 +161,17 @@
 	  "first_win_text": "Hold onto this and try not to float away!",
 	  "rematch_win_text": "I've never see a flying Pikachu",
 	  "loss_text": "You'll never catch a Pikachu that's flying away!",
-	  "pattern": "idle_up",
+	  "pattern": "random_wander",
+	  "patrol_speed": 20.0,
+	  "wander_radius": 65,
 	  "position": {
-		"x": 216,
-		"y": 500
+		"x": 900,
+		"y": 1470
 	  },
+	  "match_effects": [
+		{"type": "ignore_weakness_and_resistance"},
+		{"type": "coin_flip_override", "result": "heads"}
+	  ],
 	  "condition": {
 		"type": "opponent_not_defeated",
 		"target": "Pikachu Fan Skye"
@@ -174,11 +184,17 @@
 	  "first_win_text": "I took a really good picture of Pikachu and put it on this card",
 	  "rematch_win_text": "Do you want to see more pictures of Pikachu?",
 	  "loss_text": "I'll have to take a photo to remember this moment",
-	  "pattern": "idle_left",
+	  "pattern": "random_wander",
+	  "patrol_speed": 20.0,
+	  "wander_radius": 65,
 	  "position": {
-		"x": 3270,
-		"y": 290
+		"x": 3600,
+		"y": 50
 	  },
+	  "match_effects": [
+		{"type": "ignore_weakness_and_resistance"},
+		{"type": "raw_damage_only"}
+	  ],
 	  "condition": {
 		"type": "opponent_not_defeated",
 		"target": "Pikachu Fan Cami"
@@ -191,13 +207,15 @@
 	  "first_win_text": "I wish I could find a Pikachu around here but this is all I can find.",
 	  "rematch_win_text": "Have you found a Pikachu around here yet?",
 	  "loss_text": "If I'm lucky enough to win then I should be lucky enough to see a Pikachu!",
-	  "pattern": "random_wander",
-	  "patrol_speed": 20.0,
-	  "wander_radius": 65,
+	  "pattern": "idle_random",
 	  "position": {
-		"x": 2050,
-		"y": 1050
+		"x": -307,
+		"y": 1680
 	  },
+	  "match_effects": [
+		{"type": "ignore_weakness_and_resistance"},
+		{"type": "max_hp_modifier", "amount": 50}
+	  ],
 	  "condition": {
 		"type": "opponent_not_defeated",
 		"target": "Pikachu Fan Juniper"
@@ -214,9 +232,13 @@
 	  "patrol_speed": 20.0,
 	  "wander_radius": 65,
 	  "position": {
-		"x": 1610,
-		"y": 150
+		"x": 2025,
+		"y": 1025
 	  },
+	  "match_effects": [
+		{"type": "ignore_weakness_and_resistance"},
+		{"type": "extra_energy_per_turn", "count": 2}
+	  ],
 	  "condition": {
 		"type": "opponent_not_defeated",
 		"target": "Pikachu Fan Raye"
@@ -229,13 +251,19 @@
 	  "first_win_text": "Even though I don't have a lot of Pikachu, you can have this one.",
 	  "rematch_win_text": "I will win with my Pikachu one day!",
 	  "loss_text": "That's why I love Pikachu so much!",
-	  "pattern": "random_wander",
-	  "patrol_speed": 20.0,
+	  "pattern": "patrol_line",
+	  "patrol_axis": "vertical",
+	  "patrol_distance": 350.0,
+	  "patrol_speed": 50.0,
 	  "wander_radius": 65,
 	  "position": {
-		"x": -270,
-		"y": -50
+		"x": -250,
+		"y": 650
 	  },
+	  "match_effects": [
+		{"type": "ignore_weakness_and_resistance"},
+		{"type": "type_damage_bonus", "pokemon_type": "Lightning", "amount": 20}
+	  ],
 	  "condition": {
 		"type": "opponent_not_defeated",
 		"target": "Pikachu Fan Leaf"
