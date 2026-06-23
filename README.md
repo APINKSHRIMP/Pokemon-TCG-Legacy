@@ -1,21 +1,76 @@
 # Pokémon TCG Legacy
 ![Trainer icons](Image_Assets/Screenshots/banner.gif)
 
-Pokemon TCG Legacy is a built entirely from the ground up spiritual successor and modern take on the original Pokémon Trading Card GB games. Pokémon TCG 2: The Invasion of Team GR! (2001) was the last true single player Pokemon TCG game and each game that has followed has been entirely focused on PvP online experiences with an aim to make as much money from real life purchases as possible. **Pokémon TCG Legacy** focuses on what's been missing since the glory days of the GB games: a single-player campaign and story focusing on building your own collection through strategic battles against uniquely crafted CPU opponents, collecting cards and unlocking new sets naturally as you progress.
+# Update as of 23/06/2026
+Work is still going well, fully implemented all sets from Base set to end of Neo cards with bugs that need fixing. Progress is still being made daily, multiple map areas have been made and currently around 100 opponents with unique decks implemented, and each gives a unique coin as a win reward, so currently over 100+ coins to collect and use. 
 
-The story isn't a continuation from the original Pokemon TCG GB and GB2, Instead it captures the spirit of what made those games legendary - the satisfaction of earning and collecting new cards to experiment deck building with and facing off against opponents with wildly different strategies and playstyles. Every battle earns you closer to completing a set and every victory feels rewarding. No reliance on established metas and seeing the same deck every match, leaving you free to fully experiment with your favourite cards without a reliance on using the most powerful meta for each set.
+Starting system has been added to game so there is a natural intro and instead of a "tutorial", the game is learnt to be played naturally through regular gameplay progression. 
 
-The game has been created entirely in Godot with custom GD script code, so this isn't a rom hack or an RPG maker game release, it has been made 100% from it's own foundations in Godot GD script code.
+Key things **already implemented** to look forward to: 
+1) All cards from Base set Gym Hero/Challenge can be used, earned and purchased from in shops
+2) Pack opening experience with higher hit rates than regular tcg. God packs?
+3) 100+ Opponents to find in the overworld ready to be battled each with a unique decks and a unqiue coin reward 
+4) "Open world" style gameplay with 3 Large map areas implemented
+5) "Boss" battles with meta decks and gym leaders resulting in story progression and big rewards
+6) Challenge battles with bonus gameplay modifiers such as damage mutipliers, weakness and resistance changes, double energy attachment and card restrictions.
+7) Kanto era ends with Gym Hero Challenge, a best of 3 with every kanto gym leader in order to progress to the Neo set game area.
+
+# Planned features and gameplay progression plan before considering done
+
+1) Most immediate requirements are now just fixing all the bugs within the battle system and main game.
+2) More NPCs need adding to flesh out the world and add flavour text, guidance or gifts.
+3) All decks needs battling against fully and adjusting to make them as good as possible. A lot of decks will require tweaking.
+4) Add card sleeves/backs to be available to purchase and customise.
+6) Add Pokemon to the overworld to flesh out the world along with the additional NPCs.
+7) Add Challenge decks with bonus modifiers after Gym Challenge.
+8) Add "End" of Kanto area (planned but not implemented so no spoilers).
+
+9) (Potentially add 4th time slot. Currently just Day-Evening-Night but may add Morning-Afternoon-Evening-Night for more overworld variation each day)
+
+---- Consider this phase 1 finished and a 'finished' game that's playable with a story and rich enough features to be a dozen or so hours gameplay ----
+
+# Future features considered as phase 2 definitely coming
+1) Add Neo set era cards available to use and purchase
+2) Create another 100+ decks from Neo era with 100+ Opponents to match
+3) Allow pokemon to be followers by giving each pokemon a unique item acquired as gifts or puchased from shops
+4) Allow some pokemon to evolve by getting X amount of match wins with it as a follower
+5) Add "Southern Island" with complete SI set gifted for beating all opponents (1 of each card) which then makes then availble for sale.
+6) Recreate Southern island cards as custom cards to fix terrible reverse holo images
+7) 3-4 new map areas for Neo era cards. Travel between all areas via train or boat
+8) Recreate custom translated versions of the Pokemon VS set and implement into the game
+9) Add Johto Gym Challenge same as Kanto Gym challenge but with VS set
+10) Add "End" of Johto area
+
+---- Consider this end of phase 2 and next large update to game ====
+
+# Final features planned 
+1) Implement all EX generation card sets from Ruby Sapphire to end of Delta species
+2) Implement EX era overworlds and opponents
+3) Add double battle matches as per EX era rulesets
+
+---- Consider this finished game as intended and planned ----
+
+# Unplanned features as of 06/2026
+1) Diamond/Pearl onwards currently not planned to be implemented
+2) Release will be windows exe only, no android/controller support
+
+## The Game
+
+Pokemon TCG Legacy is my modern take on a spiritual successor to the original Pokémon Trading Card GB games. Pokémon TCG 2: The Invasion of Team GR! (2001) was the last true single player Pokemon TCG game experience as each game that followed has been entirely online PvP focsused experiences. **Pokémon TCG Legacy** focuses on what's been missing this whole time since the old GB games: A single-player campaign and story focusing on building your collection of cards through in game battles against unique and varied decks, unlocking new sets naturally as you progress.
+
+The story isn't related or a continuation from the original Pokemon TCG GB and GB2, instead it captures the spirit of what made those games fun. The focus is to capture the satisfaction of earning and collecting new cards and not only allowing but rewarding experimentation with deck building and facing off against opponents with wildly different decks and strategies. You don't have to focus or rely on established metas and you won't be seeing the same deck every match, leaving you free to fully experiment with your favourite cards that you want to use, without the reliance on using the most powerful meta for each set.
+
+The game has been created entirely from the ground up in Godot with custom GD script code, so this isn't a rom hack or an RPG maker game release, it has been made 100% from it's own foundations in Godot GD script code.
 
 ## Core Features
 
 ### Rich open world
-Explore a rich open world with many areas to visit and explore. Potential secrets and NPCs found in far corners for you to investigate. Each area is filled with dozens of NPCs and opponents to play against, each with unique flavour. Unlock more areas to explore as you naturally progress through the game.
+Explore a vibrant open world with plenty of unique and vast areas to visit and explore. Potentially find secrets and rewards for eaxploring as each area is filled with dozens of entirely unique NPCs and opponents to play against. Unlock more areas, NPCs, sets and opponents naturally as you progress through the game.
 
 ![battle](Image_Assets/Screenshots/overworld.gif)
 
 ### Battle Simulation Built From Scratch
-Fight against 100+ curated CPU opponent decks in a battle engine built from the ground up. You won't be battling against random weak opponents, you will be put up against decks with strategy and synergy. Opponents play competently and make your victories feel earned. Battles are quick and fun but meaningful enough to matter and you're rewarded greatly for every win.
+Fight against hundreds of unqiue CPU opponent decks in a battle engine built from the ground up. You won't be battling against random weak opponents, a lot of decks will be genuinely challenging as opponents play competently and make your victories feel earned. Battles are quick and fun but meaningful enough to matter and you're rewarded greatly for every new win.
 
 ![battle](Image_Assets/Screenshots/battle.gif)
 
@@ -91,9 +146,4 @@ This project exists because the TCG GB games filled a niche that modern Pokémon
 
 ---
 
-**Status**: Active Development and technically playable
-**Engine**: Godot 4.6  
-**Progress**: 
-- First 4 sets of card effects fully implemented
-- First overworld map completed with day/night cycles
-- 40+ unique opponents and decks to battle using gen 1 sets
+**Status**: Active Development and technically playable. | **Engine**: Godot 4.6
