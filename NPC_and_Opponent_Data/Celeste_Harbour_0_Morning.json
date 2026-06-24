@@ -1,0 +1,639 @@
+{
+	"npcs": [],
+	"opponents": [
+		{
+			"name": "Test Fire Bonus",
+			"sprite": "Firebreather",
+			"music": "TEST",
+			"deck": "Match Effect Test",
+			"prize_cards": 2,
+			"meet_text": "ALL FIRE POKEMON +20 DAMAGE",
+			"repeat_text": "ALL FIRE POKEMON +20 DAMAGE",
+			"first_win_text": "ALL FIRE POKEMON +20 DAMAGE",
+			"rematch_win_text": "ALL FIRE POKEMON +20 DAMAGE",
+			"loss_text": "ALL FIRE POKEMON +20 DAMAGE",
+			"coin_reward": "TEST",
+			"cash_reward": "0",
+			"pattern": "idle_down",
+			"position": { "x": -905, "y": 2030 },
+			"match_effects": [
+				{ "type": "type_damage_bonus", "pokemon_type": "Fire", "amount": 20 }
+			]
+		},
+		{
+			"name": "Test Ignore Weakness",
+			"sprite": "Youngster2",
+			"music": "TEST",
+			"deck": "Match Effect Test",
+			"prize_cards": 2,
+			"meet_text": "ALL WEAKNESSES ARE IGNORED",
+			"repeat_text": "ALL WEAKNESSES ARE IGNORED",
+			"first_win_text": "ALL WEAKNESSES ARE IGNORED",
+			"rematch_win_text": "ALL WEAKNESSES ARE IGNORED",
+			"loss_text": "ALL WEAKNESSES ARE IGNORED",
+			"coin_reward": "TEST",
+			"cash_reward": "0",
+			"pattern": "idle_down",
+			"position": { "x": -935, "y": 2030 },
+			"match_effects": [
+				{ "type": "ignore_weakness" }
+			]
+		},
+		{
+			"name": "Test Ignore Resistance",
+			"sprite": "Youngster3",
+			"music": "TEST",
+			"deck": "Match Effect Test",
+			"prize_cards": 2,
+			"meet_text": "ALL RESISTANCES ARE IGNORED",
+			"repeat_text": "ALL RESISTANCES ARE IGNORED",
+			"first_win_text": "ALL RESISTANCES ARE IGNORED",
+			"rematch_win_text": "ALL RESISTANCES ARE IGNORED",
+			"loss_text": "ALL RESISTANCES ARE IGNORED",
+			"coin_reward": "TEST",
+			"cash_reward": "0",
+			"pattern": "idle_down",
+			"position": { "x": -965, "y": 2030 },
+			"match_effects": [
+				{ "type": "ignore_resistance" }
+			]
+		},
+		{
+			"name": "Test Ignore Weakness And Resistance",
+			"sprite": "Gambler",
+			"music": "TEST",
+			"deck": "Match Effect Test",
+			"prize_cards": 2,
+			"meet_text": "WEAKNESS AND RESISTANCE ARE IGNORED",
+			"repeat_text": "WEAKNESS AND RESISTANCE ARE IGNORED",
+			"first_win_text": "WEAKNESS AND RESISTANCE ARE IGNORED",
+			"rematch_win_text": "WEAKNESS AND RESISTANCE ARE IGNORED",
+			"loss_text": "WEAKNESS AND RESISTANCE ARE IGNORED",
+			"coin_reward": "TEST",
+			"cash_reward": "0",
+			"pattern": "idle_down",
+			"position": { "x": -995, "y": 2030 },
+			"match_effects": [
+				{ "type": "ignore_weakness_and_resistance" }
+			]
+		},
+		{
+			"name": "Test No Retreat",
+			"sprite": "Hiker",
+			"music": "TEST",
+			"deck": "Match Effect Test",
+			"prize_cards": 2,
+			"meet_text": "NO RETREATING ALLOWED",
+			"repeat_text": "NO RETREATING ALLOWED",
+			"first_win_text": "NO RETREATING ALLOWED",
+			"rematch_win_text": "NO RETREATING ALLOWED",
+			"loss_text": "NO RETREATING ALLOWED",
+			"coin_reward": "TEST",
+			"cash_reward": "0",
+			"pattern": "idle_down",
+			"position": { "x": -1025, "y": 2030 },
+			"match_effects": [
+				{ "type": "no_retreat" }
+			]
+		},
+		{
+			"name": "Test Evolved Bonus",
+			"sprite": "Gardener",
+			"music": "TEST",
+			"deck": "Match Effect Test",
+			"prize_cards": 2,
+			"meet_text": "EVOLVED POKEMON +10 DAMAGE",
+			"repeat_text": "EVOLVED POKEMON +10 DAMAGE",
+			"first_win_text": "EVOLVED POKEMON +10 DAMAGE",
+			"rematch_win_text": "EVOLVED POKEMON +10 DAMAGE",
+			"loss_text": "EVOLVED POKEMON +10 DAMAGE",
+			"coin_reward": "TEST",
+			"cash_reward": "0",
+			"pattern": "idle_down",
+			"position": { "x": -1055, "y": 2030 },
+			"match_effects": [
+				{ "type": "evolved_damage_bonus", "amount": 10 }
+			]
+		},
+		{
+			"name": "Test Stage Bonus",
+			"sprite": "Worker",
+			"music": "TEST",
+			"deck": "Match Effect Test",
+			"prize_cards": 2,
+			"meet_text": "STAGE 1 +10 DAMAGE, STAGE 2 +20 DAMAGE",
+			"repeat_text": "STAGE 1 +10 DAMAGE, STAGE 2 +20 DAMAGE",
+			"first_win_text": "STAGE 1 +10 DAMAGE, STAGE 2 +20 DAMAGE",
+			"rematch_win_text": "STAGE 1 +10 DAMAGE, STAGE 2 +20 DAMAGE",
+			"loss_text": "STAGE 1 +10 DAMAGE, STAGE 2 +20 DAMAGE",
+			"coin_reward": "TEST",
+			"cash_reward": "0",
+			"pattern": "idle_down",
+			"position": { "x": -1085, "y": 2030 },
+			"match_effects": [
+				{ "type": "stage_damage_bonus", "stage1": 10, "stage2": 20 }
+			]
+		},
+		{
+			"name": "Test Draw Two",
+			"sprite": "Artist",
+			"music": "TEST",
+			"deck": "Match Effect Test",
+			"prize_cards": 2,
+			"meet_text": "DRAW 2 CARDS AT THE START OF EACH TURN",
+			"repeat_text": "DRAW 2 CARDS AT THE START OF EACH TURN",
+			"first_win_text": "DRAW 2 CARDS AT THE START OF EACH TURN",
+			"rematch_win_text": "DRAW 2 CARDS AT THE START OF EACH TURN",
+			"loss_text": "DRAW 2 CARDS AT THE START OF EACH TURN",
+			"coin_reward": "TEST",
+			"cash_reward": "0",
+			"pattern": "idle_down",
+			"position": { "x": -1115, "y": 2030 },
+			"match_effects": [
+				{ "type": "draw_count", "count": 2 }
+			]
+		},
+		{
+			"name": "Test Zero Damage",
+			"sprite": "Roughneck",
+			"music": "TEST",
+			"deck": "Match Effect Test",
+			"prize_cards": 2,
+			"meet_text": "ALL ATTACK DAMAGE IS REDUCED TO 0",
+			"repeat_text": "ALL ATTACK DAMAGE IS REDUCED TO 0",
+			"first_win_text": "ALL ATTACK DAMAGE IS REDUCED TO 0",
+			"rematch_win_text": "ALL ATTACK DAMAGE IS REDUCED TO 0",
+			"loss_text": "ALL ATTACK DAMAGE IS REDUCED TO 0",
+			"coin_reward": "TEST",
+			"cash_reward": "0",
+			"pattern": "idle_down",
+			"position": { "x": -1145, "y": 2030 },
+			"match_effects": [
+				{ "type": "zero_attack_damage" }
+			]
+		},
+		{
+			"name": "Test No Healing",
+			"sprite": "Doctor",
+			"music": "TEST",
+			"deck": "Match Effect Test",
+			"prize_cards": 2,
+			"meet_text": "HEALING IS BLOCKED ENTIRELY",
+			"repeat_text": "HEALING IS BLOCKED ENTIRELY",
+			"first_win_text": "HEALING IS BLOCKED ENTIRELY",
+			"rematch_win_text": "HEALING IS BLOCKED ENTIRELY",
+			"loss_text": "HEALING IS BLOCKED ENTIRELY",
+			"coin_reward": "TEST",
+			"cash_reward": "0",
+			"pattern": "idle_down",
+			"position": { "x": -1175, "y": 2030 },
+			"match_effects": [
+				{ "type": "no_healing" }
+			]
+		},
+		{
+			"name": "Test Double Healing",
+			"sprite": "Aromalady",
+			"music": "TEST",
+			"deck": "Match Effect Test",
+			"prize_cards": 2,
+			"meet_text": "ALL HEALING IS DOUBLED",
+			"repeat_text": "ALL HEALING IS DOUBLED",
+			"first_win_text": "ALL HEALING IS DOUBLED",
+			"rematch_win_text": "ALL HEALING IS DOUBLED",
+			"loss_text": "ALL HEALING IS DOUBLED",
+			"coin_reward": "TEST",
+			"cash_reward": "0",
+			"pattern": "idle_down",
+			"position": { "x": -1205, "y": 2030 },
+			"match_effects": [
+				{ "type": "healing_multiplier", "multiplier": 2 }
+			]
+		},
+		{
+			"name": "Test Grass Defense",
+			"sprite": "Bugcatcher",
+			"music": "TEST",
+			"deck": "Match Effect Test",
+			"prize_cards": 2,
+			"meet_text": "GRASS POKEMON TAKE 20 LESS DAMAGE",
+			"repeat_text": "GRASS POKEMON TAKE 20 LESS DAMAGE",
+			"first_win_text": "GRASS POKEMON TAKE 20 LESS DAMAGE",
+			"rematch_win_text": "GRASS POKEMON TAKE 20 LESS DAMAGE",
+			"loss_text": "GRASS POKEMON TAKE 20 LESS DAMAGE",
+			"coin_reward": "TEST",
+			"cash_reward": "0",
+			"pattern": "idle_down",
+			"position": { "x": -1235, "y": 2030 },
+			"match_effects": [
+				{ "type": "type_damage_reduction", "pokemon_type": "Grass", "amount": 20 }
+			]
+		},
+		{
+			"name": "Test Double Prizes",
+			"sprite": "Richboy",
+			"music": "TEST",
+			"deck": "Match Effect Test",
+			"prize_cards": 4,
+			"meet_text": "EVERY KNOCKOUT GIVES 2 PRIZE CARDS",
+			"repeat_text": "EVERY KNOCKOUT GIVES 2 PRIZE CARDS",
+			"first_win_text": "EVERY KNOCKOUT GIVES 2 PRIZE CARDS",
+			"rematch_win_text": "EVERY KNOCKOUT GIVES 2 PRIZE CARDS",
+			"loss_text": "EVERY KNOCKOUT GIVES 2 PRIZE CARDS",
+			"coin_reward": "TEST",
+			"cash_reward": "0",
+			"pattern": "idle_down",
+			"position": { "x": -1265, "y": 2030 },
+			"match_effects": [
+				{ "type": "double_prizes" }
+			]
+		},
+		{
+			"name": "Test Powers Blocked",
+			"sprite": "Psychic_F",
+			"music": "TEST",
+			"deck": "Match Effect Test",
+			"prize_cards": 2,
+			"meet_text": "ALL POKEMON POWERS STOP WORKING",
+			"repeat_text": "ALL POKEMON POWERS STOP WORKING",
+			"first_win_text": "ALL POKEMON POWERS STOP WORKING",
+			"rematch_win_text": "ALL POKEMON POWERS STOP WORKING",
+			"loss_text": "ALL POKEMON POWERS STOP WORKING",
+			"coin_reward": "TEST",
+			"cash_reward": "0",
+			"pattern": "idle_down",
+			"position": { "x": -1295, "y": 2030 },
+			"match_effects": [
+				{ "type": "powers_blocked" }
+			]
+		},
+		{
+			"name": "Test Raw Damage Only",
+			"sprite": "Blackbelt",
+			"music": "TEST",
+			"deck": "Match Effect Test",
+			"prize_cards": 2,
+			"meet_text": "ATTACKS LOSE THEIR EFFECTS AND ONLY DO RAW DAMAGE",
+			"repeat_text": "ATTACKS LOSE THEIR EFFECTS AND ONLY DO RAW DAMAGE",
+			"first_win_text": "ATTACKS LOSE THEIR EFFECTS AND ONLY DO RAW DAMAGE",
+			"rematch_win_text": "ATTACKS LOSE THEIR EFFECTS AND ONLY DO RAW DAMAGE",
+			"loss_text": "ATTACKS LOSE THEIR EFFECTS AND ONLY DO RAW DAMAGE",
+			"coin_reward": "TEST",
+			"cash_reward": "0",
+			"pattern": "idle_down",
+			"position": { "x": -1325, "y": 2030 },
+			"match_effects": [
+				{ "type": "raw_damage_only" }
+			]
+		},
+		{
+			"name": "Test Rainbow Energy",
+			"sprite": "Guitarist",
+			"music": "TEST",
+			"deck": "Match Effect Test",
+			"prize_cards": 2,
+			"meet_text": "ANY ENERGY TYPE ACTS AS EVERY ENERGY TYPE",
+			"repeat_text": "ANY ENERGY TYPE ACTS AS EVERY ENERGY TYPE",
+			"first_win_text": "ANY ENERGY TYPE ACTS AS EVERY ENERGY TYPE",
+			"rematch_win_text": "ANY ENERGY TYPE ACTS AS EVERY ENERGY TYPE",
+			"loss_text": "ANY ENERGY TYPE ACTS AS EVERY ENERGY TYPE",
+			"coin_reward": "TEST",
+			"cash_reward": "0",
+			"pattern": "idle_down",
+			"position": { "x": -1355, "y": 2030 },
+			"match_effects": [
+				{ "type": "rainbow_energy" }
+			]
+		},
+		{
+			"name": "Test Trainer Tax",
+			"sprite": "Gentleman",
+			"music": "TEST",
+			"deck": "Match Effect Test",
+			"prize_cards": 2,
+			"meet_text": "DISCARD 1 CARD FROM HAND TO PLAY A TRAINER",
+			"repeat_text": "DISCARD 1 CARD FROM HAND TO PLAY A TRAINER",
+			"first_win_text": "DISCARD 1 CARD FROM HAND TO PLAY A TRAINER",
+			"rematch_win_text": "DISCARD 1 CARD FROM HAND TO PLAY A TRAINER",
+			"loss_text": "DISCARD 1 CARD FROM HAND TO PLAY A TRAINER",
+			"coin_reward": "TEST",
+			"cash_reward": "0",
+			"pattern": "idle_down",
+			"position": { "x": -1385, "y": 2030 },
+			"match_effects": [
+				{ "type": "trainer_discard_cost", "count": 1 }
+			]
+		},
+		{
+			"name": "Test End Of Turn Heal",
+			"sprite": "Lady",
+			"music": "TEST",
+			"deck": "Match Effect Test",
+			"prize_cards": 2,
+			"meet_text": "EVERY POKEMON HEALS 10 HP AT THE END OF EACH TURN",
+			"repeat_text": "EVERY POKEMON HEALS 10 HP AT THE END OF EACH TURN",
+			"first_win_text": "EVERY POKEMON HEALS 10 HP AT THE END OF EACH TURN",
+			"rematch_win_text": "EVERY POKEMON HEALS 10 HP AT THE END OF EACH TURN",
+			"loss_text": "EVERY POKEMON HEALS 10 HP AT THE END OF EACH TURN",
+			"coin_reward": "TEST",
+			"cash_reward": "0",
+			"pattern": "idle_down",
+			"position": { "x": -1415, "y": 2030 },
+			"match_effects": [
+				{ "type": "end_of_turn_heal", "amount": 10 }
+			]
+		},
+		{
+			"name": "Test No Status",
+			"sprite": "Sailor",
+			"music": "TEST",
+			"deck": "Match Effect Test",
+			"prize_cards": 2,
+			"meet_text": "STATUS EFFECTS DO NOT WORK",
+			"repeat_text": "STATUS EFFECTS DO NOT WORK",
+			"first_win_text": "STATUS EFFECTS DO NOT WORK",
+			"rematch_win_text": "STATUS EFFECTS DO NOT WORK",
+			"loss_text": "STATUS EFFECTS DO NOT WORK",
+			"coin_reward": "TEST",
+			"cash_reward": "0",
+			"pattern": "idle_down",
+			"position": { "x": -1445, "y": 2030 },
+			"match_effects": [
+				{ "type": "no_status_effects" }
+			]
+		},
+		{
+			"name": "Test All Heads",
+			"sprite": "Gambler",
+			"music": "TEST",
+			"deck": "Match Effect Test",
+			"prize_cards": 2,
+			"meet_text": "EVERY COIN FLIP LANDS ON HEADS",
+			"repeat_text": "EVERY COIN FLIP LANDS ON HEADS",
+			"first_win_text": "EVERY COIN FLIP LANDS ON HEADS",
+			"rematch_win_text": "EVERY COIN FLIP LANDS ON HEADS",
+			"loss_text": "EVERY COIN FLIP LANDS ON HEADS",
+			"coin_reward": "TEST",
+			"cash_reward": "0",
+			"pattern": "idle_down",
+			"position": { "x": -1475, "y": 2030 },
+			"match_effects": [
+				{ "type": "coin_flip_override", "result": "heads" }
+			]
+		},
+		{
+			"name": "Test All Tails",
+			"sprite": "Biker",
+			"music": "TEST",
+			"deck": "Match Effect Test",
+			"prize_cards": 2,
+			"meet_text": "EVERY COIN FLIP LANDS ON TAILS",
+			"repeat_text": "EVERY COIN FLIP LANDS ON TAILS",
+			"first_win_text": "EVERY COIN FLIP LANDS ON TAILS",
+			"rematch_win_text": "EVERY COIN FLIP LANDS ON TAILS",
+			"loss_text": "EVERY COIN FLIP LANDS ON TAILS",
+			"coin_reward": "TEST",
+			"cash_reward": "0",
+			"pattern": "idle_down",
+			"position": { "x": -1505, "y": 2030 },
+			"match_effects": [
+				{ "type": "coin_flip_override", "result": "tails" }
+			]
+		},
+		{
+			"name": "Test Energy Full Heal",
+			"sprite": "Swimmer_M",
+			"music": "TEST",
+			"deck": "Match Effect Test",
+			"prize_cards": 2,
+			"meet_text": "ATTACHING AN ENERGY CARD FULLY HEALS A POKEMON",
+			"repeat_text": "ATTACHING AN ENERGY CARD FULLY HEALS A POKEMON",
+			"first_win_text": "ATTACHING AN ENERGY CARD FULLY HEALS A POKEMON",
+			"rematch_win_text": "ATTACHING AN ENERGY CARD FULLY HEALS A POKEMON",
+			"loss_text": "ATTACHING AN ENERGY CARD FULLY HEALS A POKEMON",
+			"coin_reward": "TEST",
+			"cash_reward": "0",
+			"pattern": "idle_down",
+			"position": { "x": -1535, "y": 2030 },
+			"match_effects": [
+				{ "type": "energy_attach_full_heal" }
+			]
+		},
+		{
+			"name": "Test Energy Halve HP",
+			"sprite": "Burglar",
+			"music": "TEST",
+			"deck": "Match Effect Test",
+			"prize_cards": 2,
+			"meet_text": "ATTACHING AN ENERGY CARD HALVES A POKEMON'S HP",
+			"repeat_text": "ATTACHING AN ENERGY CARD HALVES A POKEMON'S HP",
+			"first_win_text": "ATTACHING AN ENERGY CARD HALVES A POKEMON'S HP",
+			"rematch_win_text": "ATTACHING AN ENERGY CARD HALVES A POKEMON'S HP",
+			"loss_text": "ATTACHING AN ENERGY CARD HALVES A POKEMON'S HP",
+			"coin_reward": "TEST",
+			"cash_reward": "0",
+			"pattern": "idle_down",
+			"position": { "x": -1565, "y": 2030 },
+			"match_effects": [
+				{ "type": "energy_attach_halve_hp" }
+			]
+		},
+		{
+			"name": "Test Evolve Full Heal",
+			"sprite": "Twin1",
+			"music": "TEST",
+			"deck": "Match Effect Test",
+			"prize_cards": 2,
+			"meet_text": "EVOLVING FULLY HEALS A POKEMON",
+			"repeat_text": "EVOLVING FULLY HEALS A POKEMON",
+			"first_win_text": "EVOLVING FULLY HEALS A POKEMON",
+			"rematch_win_text": "EVOLVING FULLY HEALS A POKEMON",
+			"loss_text": "EVOLVING FULLY HEALS A POKEMON",
+			"coin_reward": "TEST",
+			"cash_reward": "0",
+			"pattern": "idle_down",
+			"position": { "x": -1595, "y": 2030 },
+			"match_effects": [
+				{ "type": "evolve_full_heal" }
+			]
+		},
+		{
+			"name": "Test Two Energy",
+			"sprite": "Guitarist2",
+			"music": "TEST",
+			"deck": "Match Effect Test",
+			"prize_cards": 2,
+			"meet_text": "ATTACH 2 ENERGY CARDS PER TURN",
+			"repeat_text": "ATTACH 2 ENERGY CARDS PER TURN",
+			"first_win_text": "ATTACH 2 ENERGY CARDS PER TURN",
+			"rematch_win_text": "ATTACH 2 ENERGY CARDS PER TURN",
+			"loss_text": "ATTACH 2 ENERGY CARDS PER TURN",
+			"coin_reward": "TEST",
+			"cash_reward": "0",
+			"pattern": "idle_down",
+			"position": { "x": -1625, "y": 2030 },
+			"match_effects": [
+				{ "type": "extra_energy_per_turn", "count": 2 }
+			]
+		},
+		{
+			"name": "Test Max HP Plus",
+			"sprite": "Battlegirl",
+			"music": "TEST",
+			"deck": "Match Effect Test",
+			"prize_cards": 2,
+			"meet_text": "ALL POKEMON HAVE +20 MAX HP",
+			"repeat_text": "ALL POKEMON HAVE +20 MAX HP",
+			"first_win_text": "ALL POKEMON HAVE +20 MAX HP",
+			"rematch_win_text": "ALL POKEMON HAVE +20 MAX HP",
+			"loss_text": "ALL POKEMON HAVE +20 MAX HP",
+			"coin_reward": "TEST",
+			"cash_reward": "0",
+			"pattern": "idle_down",
+			"position": { "x": -1655, "y": 2030 },
+			"match_effects": [
+				{ "type": "max_hp_modifier", "amount": 20 }
+			]
+		},
+		{
+			"name": "Test Max HP Minus",
+			"sprite": "Jogger",
+			"music": "TEST",
+			"deck": "Match Effect Test",
+			"prize_cards": 2,
+			"meet_text": "ALL POKEMON HAVE -20 MAX HP",
+			"repeat_text": "ALL POKEMON HAVE -20 MAX HP",
+			"first_win_text": "ALL POKEMON HAVE -20 MAX HP",
+			"rematch_win_text": "ALL POKEMON HAVE -20 MAX HP",
+			"loss_text": "ALL POKEMON HAVE -20 MAX HP",
+			"coin_reward": "TEST",
+			"cash_reward": "0",
+			"pattern": "idle_down",
+			"position": { "x": -1685, "y": 2030 },
+			"match_effects": [
+				{ "type": "max_hp_modifier", "amount": -20 }
+			]
+		},
+		{
+			"name": "Test Double Poison",
+			"sprite": "Ninjaboy",
+			"music": "TEST",
+			"deck": "Match Effect Test",
+			"prize_cards": 2,
+			"meet_text": "POISON DAMAGE IS DOUBLED",
+			"repeat_text": "POISON DAMAGE IS DOUBLED",
+			"first_win_text": "POISON DAMAGE IS DOUBLED",
+			"rematch_win_text": "POISON DAMAGE IS DOUBLED",
+			"loss_text": "POISON DAMAGE IS DOUBLED",
+			"coin_reward": "TEST",
+			"cash_reward": "0",
+			"pattern": "idle_down",
+			"position": { "x": -1715, "y": 2030 },
+			"match_effects": [
+				{ "type": "poison_damage_multiplier", "multiplier": 2 }
+			]
+		},
+		{
+			"name": "Test Bench Limit",
+			"sprite": "Tuber_M",
+			"music": "TEST",
+			"deck": "Match Effect Test",
+			"prize_cards": 2,
+			"meet_text": "BENCH IS LIMITED TO 3 POKEMON",
+			"repeat_text": "BENCH IS LIMITED TO 3 POKEMON",
+			"first_win_text": "BENCH IS LIMITED TO 3 POKEMON",
+			"rematch_win_text": "BENCH IS LIMITED TO 3 POKEMON",
+			"loss_text": "BENCH IS LIMITED TO 3 POKEMON",
+			"coin_reward": "TEST",
+			"cash_reward": "0",
+			"pattern": "idle_down",
+			"position": { "x": -1745, "y": 2030 },
+			"match_effects": [
+				{ "type": "bench_size_limit", "size": 3 }
+			]
+		},
+		{
+			"name": "Test Small Hands",
+			"sprite": "Tuber_F",
+			"music": "TEST",
+			"deck": "Match Effect Test",
+			"prize_cards": 2,
+			"meet_text": "OPENING HANDS ARE 5 CARDS",
+			"repeat_text": "OPENING HANDS ARE 5 CARDS",
+			"first_win_text": "OPENING HANDS ARE 5 CARDS",
+			"rematch_win_text": "OPENING HANDS ARE 5 CARDS",
+			"loss_text": "OPENING HANDS ARE 5 CARDS",
+			"coin_reward": "TEST",
+			"cash_reward": "0",
+			"pattern": "idle_down",
+			"position": { "x": -1775, "y": 2030 },
+			"match_effects": [
+				{ "type": "opening_hand_size", "count": 5 }
+			]
+		},
+		{
+			"name": "Test Heavy Retreat",
+			"sprite": "Hiker2",
+			"music": "TEST",
+			"deck": "Match Effect Test",
+			"prize_cards": 2,
+			"meet_text": "RETREATING COSTS 1 MORE ENERGY",
+			"repeat_text": "RETREATING COSTS 1 MORE ENERGY",
+			"first_win_text": "RETREATING COSTS 1 MORE ENERGY",
+			"rematch_win_text": "RETREATING COSTS 1 MORE ENERGY",
+			"loss_text": "RETREATING COSTS 1 MORE ENERGY",
+			"coin_reward": "TEST",
+			"cash_reward": "0",
+			"pattern": "idle_down",
+			"position": { "x": -1805, "y": 2030 },
+			"match_effects": [
+				{ "type": "retreat_cost_modifier", "amount": 1 }
+			]
+		},
+		{
+			"name": "Test Free Retreat",
+			"sprite": "Swimmer_F",
+			"music": "TEST",
+			"deck": "Match Effect Test",
+			"prize_cards": 2,
+			"meet_text": "ALL RETREATS ARE FREE",
+			"repeat_text": "ALL RETREATS ARE FREE",
+			"first_win_text": "ALL RETREATS ARE FREE",
+			"rematch_win_text": "ALL RETREATS ARE FREE",
+			"loss_text": "ALL RETREATS ARE FREE",
+			"coin_reward": "TEST",
+			"cash_reward": "0",
+			"pattern": "idle_down",
+			"position": { "x": -1835, "y": 2030 },
+			"match_effects": [
+				{ "type": "free_retreat" }
+			]
+		},
+		{
+			"name": "Test Combo Best Of Three",
+			"sprite": "Elder",
+			"music": "TEST",
+			"deck": "Match Effect Test",
+			"prize_cards": 2,
+			"match_format": "best_of_3",
+			"meet_text": "BEST OF 3 - DRAW 2, NO PLAYER RETREAT, FIRE +10, ALL HEADS, BILL BANNED",
+			"repeat_text": "BEST OF 3 - DRAW 2, NO PLAYER RETREAT, FIRE +10, ALL HEADS, BILL BANNED",
+			"first_win_text": "BEST OF 3 - DRAW 2, NO PLAYER RETREAT, FIRE +10, ALL HEADS, BILL BANNED",
+			"rematch_win_text": "BEST OF 3 - DRAW 2, NO PLAYER RETREAT, FIRE +10, ALL HEADS, BILL BANNED",
+			"loss_text": "BEST OF 3 - DRAW 2, NO PLAYER RETREAT, FIRE +10, ALL HEADS, BILL BANNED",
+			"coin_reward": "TEST",
+			"cash_reward": "0",
+			"pattern": "idle_down",
+			"position": { "x": -1865, "y": 2030 },
+			"restrictions": {
+				"banned_card_names": ["Bill"]
+			},
+			"match_effects": [
+				{ "type": "draw_count", "count": 2 },
+				{ "type": "no_retreat", "applies_to": "player" },
+				{ "type": "type_damage_bonus", "pokemon_type": "Fire", "amount": 10 },
+				{ "type": "coin_flip_override", "result": "heads" }
+			]
+		}
+	]
+}

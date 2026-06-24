@@ -17,10 +17,9 @@ var player_data: Dictionary
 var battle_won: bool = false
 
 # Opponents that must be defeated in the current time period before
-# time auto-advances (Day -> Evening, Evening -> Night). Night never
-# auto-advances — the player must sleep in bed. The counter resets on
-# every time change (see GameState.advance_time).
-const OPPONENTS_TO_ADVANCE_TIME: int = 4
+# time auto-advances. Night never auto-advances — the player must sleep
+# in bed. The counter resets on every time change (see GameState.advance_time).
+const OPPONENTS_TO_ADVANCE_TIME: int = 3
 
 # Animation config
 var sprite_drift_duration: float = 5.0
@@ -716,11 +715,13 @@ func transition_back_to_map() -> void:
 	click_enabled  = false
 
 	# Time advancement checks — applies to every day. Defeating enough
-	# opponents pushes Day -> Evening and Evening -> Night. Night never
+	# opponents pushes Morning -> Afternoon -> Evening -> Night. Night never
 	# auto-advances; the player advances it by sleeping in bed.
 	if battle_won and GameState.get_current_defeated() >= OPPONENTS_TO_ADVANCE_TIME:
 		match GameState.get_time():
-			"Day":
+			"Morning":
+				GameState.advance_time("Afternoon")
+			"Afternoon":
 				GameState.advance_time("Evening")
 			"Evening":
 				# Day-1 onboarding gate: the player must collect the shop

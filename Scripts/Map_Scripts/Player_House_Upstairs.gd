@@ -146,7 +146,7 @@ func _do_sleep() -> void:
 	GameState.save_menu_return_state(scene_path, _player.position, "left")
 	if GameState.get_date() == 1:
 		GameState.progress["moving_in_completed"] = true
-	GameState.advance_time("Day")
+	GameState.advance_time("Morning")
 	GameState.sleep_wakeup_fade = true
 	var tween := create_tween()
 	tween.tween_property(self, "modulate", Color.BLACK, SLEEP_FADE_DURATION)

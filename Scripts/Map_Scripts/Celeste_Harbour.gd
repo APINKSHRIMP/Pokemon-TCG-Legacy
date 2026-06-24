@@ -3,9 +3,10 @@ extends BaseMapScene
 const SCENE_PATH = "res://Scenes/Map_Scenes/Celeste_Harbour.tscn"
 const BGM_PATH = "res://Audio/BGM/Celeste_Harbour_BGM.ogg"
 
-const TILESET_DAY     = preload("res://Image_Assets/Map_Sheets/Tile_Sets/Starting_Areas.tres")
-const TILESET_EVENING = preload("res://Image_Assets/Map_Sheets/Tile_Sets/Starting_Areas_Evening.tres")
-const TILESET_NIGHT   = preload("res://Image_Assets/Map_Sheets/Tile_Sets/Starting_Areas_Night.tres")
+const TILESET_MORNING   = preload("res://Image_Assets/Map_Sheets/Tile_Sets/Starting_Areas_Morning.tres")
+const TILESET_AFTERNOON = preload("res://Image_Assets/Map_Sheets/Tile_Sets/Starting_Areas_Afternoon.tres")
+const TILESET_EVENING   = preload("res://Image_Assets/Map_Sheets/Tile_Sets/Starting_Areas_Evening.tres")
+const TILESET_NIGHT     = preload("res://Image_Assets/Map_Sheets/Tile_Sets/Starting_Areas_Night.tres")
 
 const DEFAULT_SPAWN_POSITION             = Vector2(-600, 1500)
 const SPAWN_FROM_VERDANT_FOREST          = Vector2(918, 900)
@@ -200,8 +201,11 @@ func _scene_setup():
 func set_time_of_day(time: String) -> void:
 	var tileset: TileSet
 	match time:
-		"Day":
-			tileset = TILESET_DAY
+		"Morning":
+			tileset = TILESET_MORNING
+			$LIGHTS.queue_free()
+		"Afternoon":
+			tileset = TILESET_AFTERNOON
 			$LIGHTS.queue_free()
 		"Evening":
 			tileset = TILESET_EVENING

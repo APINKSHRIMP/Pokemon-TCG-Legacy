@@ -271,7 +271,9 @@ func load_progress():
 	if not progress.has("opponents_beaten_count_total"):
 		progress["opponents_beaten_count_total"] = 0
 	if not progress.has("time"):
-		progress["time"] = "Day"
+		progress["time"] = "Morning"
+	elif progress.get("time") == "Day":
+		progress["time"] = "Morning"
 	if not progress.has("date"):
 		progress["date"] = 1
 
@@ -391,9 +393,9 @@ func mark_opponent_beaten(opponent_name: String):
 # TIME / DATE SYSTEM
 # ============================================================
 
-## Returns the current time of day string ("Day", "Evening", "Night")
+## Returns the current time of day string ("Morning", "Afternoon", "Evening", "Night")
 func get_time() -> String:
-	return progress.get("time", "Day")
+	return progress.get("time", "Morning")
 
 ## Returns the current date as an integer (1, 2, 3, ...)
 func get_date() -> int:
@@ -403,23 +405,25 @@ func get_current_defeated() -> int:
 	return int(progress.get("opponents_beaten_count_current", 0))
 
 ## Sets the time to a specific value. Pass an empty string to auto-step.
-## Auto-step: Day -> Evening -> Night -> Day (and increment date).
+## Auto-step: Morning -> Afternoon -> Evening -> Night -> Morning (and increment date).
 ## Resets opponents_beaten_count_current to 0 on every time change.
 func advance_time(new_time: String = "") -> void:
 	if new_time == "":
 		# Auto-step to next time period
 		match get_time():
-			"Day":
+			"Morning":
+				new_time = "Afternoon"
+			"Afternoon":
 				new_time = "Evening"
 			"Evening":
 				new_time = "Night"
 			"Night":
-				new_time = "Day"
+				new_time = "Morning"
 				progress["date"] = get_date() + 1
 			_:
-				new_time = "Day"
-	elif new_time == "Day" and get_time() == "Night":
-		# If explicitly moving from Night to Day, also increment date
+				new_time = "Morning"
+	elif new_time == "Morning" and get_time() == "Night":
+		# If explicitly moving from Night to Morning, also increment date
 		progress["date"] = get_date() + 1
 
 	progress["time"] = new_time

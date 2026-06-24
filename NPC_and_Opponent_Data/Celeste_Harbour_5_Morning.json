@@ -1,0 +1,759 @@
+{
+  "npcs": [
+	{
+	  "name": "CH 3,5 D Plaza Challenger 1",
+	  "meet_text": "I'm in the middle of an impornt match here don't disturb me!",
+	  "repeat_text": "Hey can you let me concentrate I'm losing here!",
+	  "pattern": "idle_up",
+	  "position": {
+		"x": 2230,
+		"y": 1290
+	  }
+	},
+	{
+	  "name": "CH 3,5 D Plaza Challenger 2",
+	  "meet_text": "I'm definitely going to lose here this is so tough.",
+	  "repeat_text": "I've never battled a deck as hard as this before.",
+	  "pattern": "idle_up",
+	  "position": {
+		"x": 2278,
+		"y": 1290
+	  }
+	},
+	{
+	  "name": "CH 3,5 D Plaza Challenger 3",
+	  "meet_text": "I only came here to see the beach but thought I'd try my luck with this challenge.",
+	  "repeat_text": "I maybe should have just gone sunbathing instead.",
+	  "pattern": "idle_up",
+	  "position": {
+		"x": 2326,
+		"y": 1290
+	  }
+	},
+	{
+	  "name": "CH 3,5 D Plaza Challenger 4",
+	  "meet_text": "Wow this is an intense match!",
+	  "repeat_text": "I've never seen plays like this before.",
+	  "pattern": "idle_up",
+	  "position": {
+		"x": 2215,
+		"y": 1310
+	  }
+	},
+	{
+	  "name": "CH 3,5 D Plaza Challenger 5",
+	  "meet_text": "I'm no good at playing myself but I love to watch.",
+	  "repeat_text": "It's a really good match to watch!",
+	  "pattern": "idle_right",
+	  "position": {
+		"x": 2205,
+		"y": 1275
+	  }
+	},
+	{
+	  "name": "CH 3-6 D Plaza Challenger 6",
+	  "meet_text": "I thought I was too old to be good at this, but the elders are amazing.",
+	  "repeat_text": "Maybe you CAN teach an old dog new tricks ho ho.",
+	  "pattern": "idle_left",
+	  "position": {
+		"x": 2350,
+		"y": 1285
+	  }
+	},
+	{
+	  "name": "CH 3,5 D Plaza Challenger 7",
+	  "meet_text": "Hey get in line!! There's a queue of us here.",
+	  "repeat_text": "Ya gotta wait ya turn.",
+	  "pattern": "idle_up",
+	  "position": {
+		"x": 2345,
+		"y": 1310
+	  }
+	},
+	{
+	  "name": "CH 3,5 D Plaza Challenger 7b",
+	  "meet_text": "Wow! I wish I could play as good as these.",
+	  "repeat_text": "I'm pretty new to this whole card thing.",
+	  "pattern": "idle_up",
+	  "position": {
+		"x": 2315,
+		"y": 1315
+	  }
+	},
+	{
+	  "name": "CH 3-6 D Plaza Challenger 8",
+	  "meet_text": "I've been collecting for a LONG time but I'll never be as good at battling as these folk are. You might be able to make more use of this than I can.",
+	  "repeat_text": "I've got well over 10,000 cards, I've been collecting them for years.",
+	  "pattern": "idle_up",
+	  "position": {
+		"x": 2250,
+		"y": 1315
+	  }
+	},
+	{
+	  "name": "CH 3,5 D Plaza Challenger 9",
+	  "meet_text": "WOW! Such cool cards!!!",
+	  "repeat_text": "I wish I had cards as cool as these!",
+	  "pattern": "idle_up",
+	  "position": {
+		"x": 2280,
+		"y": 1320
+	  }
+	},
+	{
+	  "name": "CH 3 D Old Guy Neighbour",
+	  "meet_text": "Hello again. I just about made it to the market but my old legs are very tired so I need a rest now. I've got a lot of shopping to be doing!",
+	  "repeat_text": "The card and coin stall might be of interest to you over in the other corner. They don't sell packs of cards like the card mart so it's worth having a browse.",
+	  "pattern": "idle_left",
+	  "position": {
+		"x": 2640,
+		"y": 1703
+	  }
+	},
+	{
+	  "name": "CH 3-5 D,E Psychic Brienne",
+	  "meet_text": "The SS Anne has ruined my daily meditation so I've had to try a new spot today.",
+	  "repeat_text": "It's not quite as good of a spot as the dock is but here but it's still peaceful enough.",
+	  "pattern": "idle_left",
+	  "position": {
+		"x": -830,
+		"y": 1270
+	  }
+	},
+	{
+	  "name": "CH 3-6 D,E Holo Rare Shopkeeper",
+	  "meet_text": "Welcome! I run a Holo Rare card gacha shop. For $400 you can choose one of 7 mystery cards. You'll receive a random Holo Rare from either the Base, Jungle or Fossil set. You'll know what energy type the card is but won't know what card you're going to get until after you buy it!",
+	  "pattern": "idle_down",
+	  "position": {
+		"x": 1975,
+		"y": 1650
+	  }
+	},
+	{
+	  "name": "CH 3-6 D,E Coin Shopkeeper",
+	  "meet_text": "Welcome! I sell rare limited edition coins that you won't be able to buy anywhere else! They're not cheap at $300 each but I promise you they're top quality, completely unique and won't find anything like them around!",
+	  "pattern": "idle_down",
+	  "position": {
+		"x": 2095,
+		"y": 1650
+	  }
+	},
+	{
+	  "name": "CH 3-6 D,E Fruit And Veg Shopkeeper",
+	  "meet_text": "Hello - fresh fruit and veg for sale here. We've got everything you could ask for.",
+	  "repeat_text": "It's all grown locally here so it'll be the freshest food you can find in the harbour!",
+	  "pattern": "idle_down",
+	  "position": {
+		"x": 2460,
+		"y": 1650
+	  }
+	},
+	{
+	  "name": "CH 3-6 D,E Bakery Shopkeeper",
+	  "meet_text": "Get your freshly baked pastries, cakes and bread all here.",
+	  "repeat_text": "Everything is freshly baked this morning and some of the bread is still warm!",
+	  "pattern": "idle_down",
+	  "position": {
+		"x": 2570,
+		"y": 1650
+	  }
+	},
+	{
+	  "name": "CH 3-6 D Bakery Lover",
+	  "meet_text": "I LOVE FRESH BREAD! It's always so warm and crispy if you get it here early enough. If you're here that must mean you love it as much as I do!! We should be best friends!!",
+	  "repeat_text": "I could eat bread with every meal. Bread for breakfast. Bread for lunch. Bread for dinner. Bread for supper. A midnight snack of bread. Hmmm. I'm hungry again now.",
+	  "pattern": "idle_random",
+	  "position": {
+		"x": 2530,
+		"y": 1740
+	  }
+	},
+	{
+	  "name": "CH 3-6 D Woman Walking Neighbourhood",
+	  "meet_text": "Hello! I'm getting my daily steps in like I do every day, but I decided to do it on the beach instead today.",
+	  "repeat_text": "The sand is much harder to walk on but it's nice being next to the ocean.",
+	  "pattern": "patrol_line",
+	  "patrol_speed": 30.0,
+	  "patrol_distance": 280,
+	  "patrol_axis": "horizontal",
+	  "position": {
+		"x": 1500,
+		"y": 2510
+	  }
+	},
+	{
+	  "name": "CH 3-6 Sailor 2 Pier 1",
+	  "meet_text": "With the arrival of the SS Anne we're even busier than usual. We've never had this many tourists in the harbour at once.",
+	  "repeat_text": "Sigh.. I wish I could just on the SS Anne and sail away on it forever.",
+	  "pattern": "idle_random",
+	  "position": {
+		"x": 350,
+		"y": 3125
+	  }
+	},
+	{
+	  "name": "CH 3-5 D Worker On Dock",
+	  "meet_text": "Hey watch yourself there, I'm doing some work on this ship here and I don't want you to get electrocuted or anything.",
+	  "repeat_text": "Please be careful around the docks, don't get too close to the edge.",
+	  "pattern": "idle_down",
+	  "position": {
+		"x": 900,
+		"y": 3155
+	  }
+	},
+	{
+	  "name": "CH 3-6 D Sunbathing Dude 1",
+	  "meet_text": "We've been at sea for a few days now and finally docked here so it's nice to be back on Land.",
+	  "repeat_text": "I've come all the way from Saffron city, I'm one of the managers working at Silph Co.",
+	  "pattern": "idle_down",
+	  "position": {
+		"x": -222,
+		"y": 2273
+	  }
+	},
+	{
+	  "name": "CH 3-6 D Misty",
+	  "meet_text": "Hey! I'm misty one of the ex Kanto Gym Leaders. A few of us have travelled here on the SS Anne to run the Gym Hero Challenge. If you're into the Pokemon TCG then you should try challenge us. Take this card as a good luck gift, it's my favourite Pokemon!",
+	  "repeat_text": "If you're good enough and beat us you can even buy our cards. But you need the medals of your local elders first before you can even challenge us!",
+	  "pattern": "idle_down",
+	  "position": {
+		"x": 98,
+		"y": 2338
+	  },
+	  "condition": {
+		"type": "npc_not_met",
+		"target": "CH 3-6 D Misty"
+	  }
+	},
+	{
+	  "name": "CH 3-6 D Lt Surge",
+	  "meet_text": "The lighthouse here reminds me of the one in Olivine City. Sorry, I didn't introduce myself there first - I'm LT Surge, I'm one of the ex Kanto Gym Leaders. Take this card as an apology.",
+	  "repeat_text": "Looks like you play the TCG too huh? If you earn entry into the challenge and can beat all 8 of us you'll get a lot of good stuff.",
+	  "pattern": "idle_up",
+	  "position": {
+		"x": -715,
+		"y": 2680
+	  },
+	  "condition": {
+		"type": "npc_not_met",
+		"target": "CH 3-6 D Lt Surge"
+	  }
+	},
+	{
+	  "name": "CH 3-6 D Erika",
+	  "meet_text": "Hello, I'm Erika. I used to be a Gym Leader over in Kanto but I've sinced moved on. I'm still a Pokemon Trainer but it looks like there aren't a lot of trainers around here and every plays the TCG more. I've got a lot of cards too so you can have this.",
+	  "repeat_text": "The flowers here are beautiful and the weather is so nice. I hope I have some time to enjoy myself outside of the Gym Hero Challenge.",
+	  "pattern": "idle_down",
+	  "position": {
+		"x": -715,
+		"y": 2195
+	  },
+	  "condition": {
+		"type": "npc_not_met",
+		"target": "CH 3-6 D Erika"
+	  }
+	},
+	{
+	  "name": "CH 3-6 D Mother Of Beach Kids",
+	  "meet_text": "My children just love playing at the beach all the time. If it was up to them I think they'd live on the beach!",
+	  "repeat_text": "Letting them play is a good chance for me to catch up on reading. I'm currently reading 'The History of Hisui'. I never knew Sinnoh used to be called something else, it's fascinating.",
+	  "pattern": "idle_down",
+	  "position": {
+		"x": 242,
+		"y": 2338
+	  }
+	},
+	{
+	  "name": "CH 3-6 D,E Car Park Guy",
+	  "meet_text": "Sorry, I can't let you into the car park unless you have car!",
+	  "repeat_text": "It's too dangerous to be wondering around on the road you know, I can't let any accidents happen under my watch.",
+	  "pattern": "idle_down",
+	  "position": {
+		"x": 628,
+		"y": 1190
+	  }
+	},
+	{
+	  "name": "CH 3-6 D Man Staring Out To Sea",
+	  "meet_text": "My girlfriend is working again today but I have nothing to do, so I'm just going to lay on the beach for a while.",
+	  "repeat_text": "Did you get chance to try a juice at the bar yet?",
+	  "pattern": "idle_down",
+	  "position": {
+		"x": -366,
+		"y": 2405
+	  }
+	},
+	{
+	  "name": "CH 3-6 D,E Juicebar Woman",
+	  "npc_type": "juice_vendor",
+	  "meet_text": "Hello! Can I interest you in any juice today?",
+	  "repeat_text": "Did you get lucky and find a coin this time?",
+	  "pattern": "idle_down",
+	  "position": {
+		"x": 1030,
+		"y": 2190
+	  }
+	},
+	{
+	  "name": "CH 3-6 D Employee F Drinking Juice",
+	  "meet_text": "I'm an employee on the SS Anne. It's hard work sometimes but it definitely has it's perks.",
+	  "repeat_text": "I'm on a rest day today so I can enjoy this beautiful harbour.",
+	  "pattern": "idle_left",
+	  "position": {
+		"x": 1112,
+		"y": 2233
+	  }
+	},
+	{
+	  "name": "CH 3-6 D 2nd Woman Drinking Juice",
+	  "meet_text": "I managed to get a coin in my cup today, hooray!",
+	  "repeat_text": "It's got a cute little picture of Munchlax on it.",
+	  "pattern": "idle_right",
+	  "position": {
+		"x": 855,
+		"y": 2315
+	  }
+	},
+	{
+	  "name": "CH 3-6 D Mother Of Beach Kids",
+	  "meet_text": "My children just love playing at the beach all the time. If it was up to them I think they'd live on the beach!",
+	  "repeat_text": "Letting them play is a good chance for me to catch up on reading. I'm currently reading 'The History of Hisui'. I never knew Sinnoh used to be called something else, it's fascinating.",
+	  "pattern": "idle_down",
+	  "position": {
+		"x": 242,
+		"y": 2338
+	  }
+	},
+	{
+	  "name": "CH 3-6 D 3rd Woman Drinking Juice",
+	  "meet_text": "I just saw the girl over there get a bonus coin in her cup.",
+	  "repeat_text": "I also got a munchlax coin once just like that but mine was a different colour!",
+	  "pattern": "idle_left",
+	  "position": {
+		"x": 1208,
+		"y": 2384
+	  }
+	},
+	{
+	  "name": "CH 3,5 D Kid Opening Packs",
+	  "meet_text": "Wow! The nice shopkeeper man just got some cool new packs in. I'm spending all of my pocket money on them and I keep getting bonus rares! You can have this one too!",
+	  "repeat_text": "I hope every pack in the future gives you bonus rares!",
+	  "pattern": "idle_random",
+	  "position": {
+		"x": 290,
+		"y": 1600
+	  },
+	  "condition": {
+		"type": "npc_not_met",
+		"target": "CH 3,5 D Kid Opening Packs"
+	  }
+	},
+	{
+	  "name": "CH 3,5,6 D Maintenance Guy Watering Sunflowers",
+	  "meet_text": "I feel like I'm just a lean mean flower watering machine....",
+	  "repeat_text": "Thankfully the boss is letting me finish early today so I'll be around the pier to play cards this evening.",
+	  "pattern": "idle_left",
+	  "position": {
+		"x": -630,
+		"y": 2270
+	  }
+	},
+	{
+	  "name": "CH 3,5,6 D Boss Maintenance Guy",
+	  "meet_text": "I'm Callum's boss. My boss told me to come here to check everything was being done correctly but of course it's all fine.",
+	  "repeat_text": "I trust my employees fully, but I don't think my boss trusts me!! ",
+	  "pattern": "idle_random",
+	  "position": {
+		"x": -830,
+		"y": 2210
+	  }
+	},
+	{
+	  "name": "CH 3-6 D,E Sailor Working On Dock",
+	  "meet_text": "*huff* I knew I'd be busy with the SS Anne arriving but *huff* I didn't think I'd be THIS busy....",
+	  "repeat_text": "*huff* *huff* The SS Anne only arrives once a year and it's always the harbour's busiest days.",
+	  "pattern": "patrol_line",
+	  "patrol_speed": 80.0,
+	  "patrol_distance": 200,
+	  "patrol_axis": "vertical",
+	  "position": {
+		"x": 690,
+		"y": 2680
+	  }
+	},
+	{
+	  "name": "CH 3-6 D,E Sailor Working On SS Anne",
+	  "meet_text": "The SS Anne will be sailing for a long time. ",
+	  "repeat_text": "It only makes it's trip once a year so there's a lot of work to be done when it sails.",
+	  "pattern": "patrol_line",
+	  "patrol_speed": 60.0,
+	  "patrol_distance": 40,
+	  "patrol_axis": "horizontal",
+	  "position": {
+		"x": 2150,
+		"y": 3150
+	  }
+	},
+	{
+	  "name": "CH 3-6 D,E SS Anne Waitress",
+	  "meet_text": "The SS Anne is always hiring if you fancy travelling the world.",
+	  "repeat_text": "We always have a lot of spare uniforms on hand as some staff land at a nice port and decide they don't want to go back to work again!",
+	  "pattern": "idle_right",
+	  "position": {
+		"x": 2760,
+		"y": 3150
+	  }
+	},
+	{
+	  "name": "CH 3-6 D,E SS Anne Waiter",
+	  "meet_text": "I've only been a waiter around a week, they were short staffed so offered me a high pay.",
+	  "repeat_text": "I highly reccomend it as a career, but I don't know what I'll do after the ship returns back to Vermillion.",
+	  "pattern": "idle_left",
+	  "position": {
+		"x": 2800,
+		"y": 3150
+	  }
+	},
+	{
+	  "name": "CH 3-6 D Woman Trying To Shop",
+	  "meet_text": "I managed pick up a new coin from the shopkeeper over there. It was super expensive but I absolutely love visiting Galar so I had to have a little wooloo.",
+	  "repeat_text": "Can you believe that over in Galar Wooloo just wander around in the open? I think I wish we had those over here but I guess the weather is too warm for them.",
+	  "pattern": "random_wander",
+	  "patrol_speed": 50.0,
+	  "wander_radius": 60,
+	  "position": {
+		"x": 2090,
+		"y": 1720
+	  }
+	},
+	{
+	  "name": "CH 3-6 D Station Manager",
+	  "meet_text": "Good day. Trains run all day from here, but they're normally fully booked way in advance so you won't be able to just hop on any train and be on your way.",
+	  "repeat_text": "Do you require any further assistance?",
+	  "pattern": "random_wander",
+	  "patrol_speed": 50.0,
+	  "wander_radius": 60,
+	  "position": {
+		"x": 2020,
+		"y": 1020
+	  }
+	},
+	{
+	  "name": "CH 3-6 D Train Employee 1",
+	  "meet_text": "I work at the station but I'm just on my break.",
+	  "repeat_text": "I'm not a big card player otherwise I'd be watching the Elders.",
+	  "pattern": "idle_right",
+	  "position": {
+		"x": 2562,
+		"y": 1145
+	  }
+	},
+	{
+	  "name": "CH 3-6 D,E Train Employee 2",
+	  "meet_text": "I'm been tasked with litter picking with the influx of tourist.",
+	  "repeat_text": "There's plenty of bins around so I don't why people don't use them.",
+	  "pattern": "random_wander",
+	  "patrol_speed": 40.0,
+	  "wander_radius": 65,
+	  "position": {
+		"x": 2550,
+		"y": 1270
+	  }
+	},
+	{
+	  "name": "CH 3-5 D Sailor Bob",
+	  "meet_text": "I'm going to busy until this evening now the SS Anne has docked. There were even more passengers than I initially thought there would be.",
+	  "repeat_text": "I wonder what Vermillion city is like? It's crazy to see so many Pokemon trainers in one place, barely anyone is a Pokemon trainer around here.",
+	  "pattern": "idle_random",
+	  "position": {
+		"x": 2040,
+		"y": 3110
+	  }
+	},
+	{
+	  "name": "CH 3-6 D Smoking Sailor",
+	  "meet_text": "I'm just having a cig break.",
+	  "repeat_text": "Yeah I know I know, smoking is bad.",
+	  "pattern": "idle_right",
+	  "position": {
+		"x": 2495,
+		"y": 2940
+	  }
+	},
+	{
+	  "name": "CH 3-6 D,E Sunbathing Sailor 1",
+	  "meet_text": "I got nothing to do until tonight so I'm taking it easy.",
+	  "repeat_text": "I aint doing work if I aint being paid for it.",
+	  "pattern": "idle_down",
+	  "position": {
+		"x": -79,
+		"y": 2405
+	  }
+	},
+	{
+	  "name": "CH 3-6 D Sunbathing Sailor 2",
+	  "meet_text": "I actually battled Misty years ago, back when she was Cerulean's gym leader.",
+	  "repeat_text": "I lost and I'm too shy to say hello. Not like she'd remember me anyway.",
+	  "pattern": "idle_down",
+	  "position": {
+		"x": -46,
+		"y": 2273
+	  }
+	},
+	{
+	  "name": "CH 3-6 D Juice Drinking Sailor 1",
+	  "meet_text": "We haven't got juice this fresh onboard the Anne.",
+	  "repeat_text": "This makes a real nice change.",
+	  "pattern": "idle_right",
+	  "position": {
+		"x": 1065,
+		"y": 2321
+	  }
+	},
+	{
+	  "name": "CH 3-6 D Juice Drinking Sailor 2",
+	  "meet_text": "We see a lot of beach bars but never one as nice as this.",
+	  "repeat_text": "I wonder how much we can take back onboard with us.",
+	  "pattern": "idle_left",
+	  "position": {
+		"x": 1112,
+		"y": 2321
+	  }
+	},
+	{
+	  "name": "CH 3-6 D Juice Drinking Jogger",
+	  "meet_text": "Have you seen the dude running non stop all day on the Promenade? I mean I can run well but nothing like that. You look like you could motivate me to run faster, maybe we should run together some time.",
+	  "repeat_text": "Come run with me sometime.",
+	  "pattern": "idle_left",
+	  "position": {
+		"x": 905,
+		"y": 2234
+	  }
+	},
+	{
+	  "name": "CH 3-6 D Mother At Bakery",
+	  "meet_text": "I tried to take a picture of Timmy here in the Croagunk board outside the station but he's too small.",
+	  "repeat_text": "I brought him here for a fresh donut to cheer him up.",
+	  "pattern": "idle_left",
+	  "position": {
+		"x": 2355,
+		"y": 1715
+	  }
+	},
+	{
+	  "name": "CH 3-6 D Child At Bakery",
+	  "meet_text": "Mummy said I'm too small but I'm not!!!!",
+	  "repeat_text": "That's okay though because Donuts are my favouritest food ever.",
+	  "pattern": "idle_right",
+	  "position": {
+		"x": 2335,
+		"y": 1715
+	  }
+	}
+  ],
+  "opponents": [
+	{
+	  "name": "Swimmer Jordan",
+	  "meet_text": "I love the water, it's so calm and warm but my cards always get wet! I need to dry them off.",
+	  "repeat_text": "I can always take a break for another match.",
+	  "first_win_text": "I'll stick with my swimming...",
+	  "rematch_win_text": "Nothing like a good match and a long swim.",
+	  "loss_text": "Maybe you should work on your swimming...",
+	  "pattern": "idle_cycle",
+	  "position": {
+		"x": 500,
+		"y": 2590
+	  }
+	},
+	{
+	  "name": "Beach Kid Timothy",
+	  "meet_text": "I love the beach! I love the sand! I love building sandcastles! I love playing the Pokemon TCG!",
+	  "repeat_text": "I could build sandcastles and play Pokemon all day!",
+	  "first_win_text": "Please don't destroy my sandcastles!!!",
+	  "rematch_win_text": "You can help me build a sandcastle if you want!",
+	  "loss_text": "Yaaaaaay! I love winning!",
+	  "pattern": "idle_right",
+	  "position": {
+		"x": 450,
+		"y": 2380
+	  }
+	},
+	{
+	  "name": "Beach Kid Evie",
+	  "meet_text": "I heard there's a scary Pokemon called Sandyghast. They sound scary and I don't like scary Pokemon, I only like cute pokemon!!",
+	  "repeat_text": "Yes let's play again!",
+	  "first_win_text": "You haven't seen a Sandyghast have you?",
+	  "rematch_win_text": "If you see a Sandyghast please let me know!!",
+	  "loss_text": "Yaaaaaay! I won!!",
+	  "pattern": "idle_left",
+	  "position": {
+		"x": 480,
+		"y": 2380
+	  }
+	},
+	{
+	  "name": "Birdspotter Tamsin",
+	  "meet_text": "These Palms attract a lot of Bird Pokemon so its a good spot to watch them.",
+	  "repeat_text": "Me and my buddy love watching the birds round here but I can take my eyes off them for a rematch.",
+	  "first_win_text": "I wish I could just fly away.",
+	  "rematch_win_text": "You can't fly away from all your troubles.",
+	  "loss_text": "You should try bird watching with me!",
+	  "pattern": "idle_random",
+	  "position": {
+		"x": 1530,
+		"y": 2320
+	  }
+	},
+	{
+	  "name": "Bug Catcher Alex",
+	  "meet_text": "Some people hate bugs but I love them! Do you love bugs too?",
+	  "repeat_text": "You just love bugs as much as I do then?",
+	  "first_win_text": "Maybe bugs aren't as good as I thought...",
+	  "rematch_win_text": "Me and my bugs will win one of these days!",
+	  "loss_text": "I knew bugs were the best!!",
+	  "pattern": "patrol_line",
+	  "patrol_speed": 20.0,
+	  "patrol_distance": 200,
+	  "patrol_axis": "horizontal",
+	  "position": {
+		"x": 1730,
+		"y": 2300
+	  }
+	},
+	{
+	  "name": "Battlegirl Sofia",
+	  "meet_text": "This beach is a great spot to train both my martial arts and my card skills.",
+	  "repeat_text": "Want to join in with my training?",
+	  "first_win_text": "A loss is always a good chance to improve.",
+	  "rematch_win_text": "I'm going to keep on training.",
+	  "loss_text": "I rarely lose when I've trained properly.",
+	  "pattern": "idle_cycle",
+	  "position": {
+		"x": 2645,
+		"y": 2395
+	  }
+	},
+	{
+	  "name": "Fisherman John",
+	  "meet_text": "Me and my buddy Dave fish here all the time. The lighthouse is like a giant lure in the evening so we catch even more. I've got time for a break.",
+	  "repeat_text": "The fish can wait if you want another match.",
+	  "first_win_text": "I'm a much better fisherman than I am a card player.",
+	  "rematch_win_text": "Always happy to put my fishing aside for a rematch.",
+	  "loss_text": "I'm not just the best round here at fishing!",
+	  "pattern": "idle_down",
+	  "position": {
+		"x": -720,
+		"y": 2735
+	  }
+	},
+	{
+	  "name": "Fisherman Dave",
+	  "meet_text": "I love the lighthouse here, it seems to attract all kinds of fish so I always catch a lot in this spot. I'm catching so many I need a break.",
+	  "repeat_text": "I've caught a lot since last time.",
+	  "first_win_text": "Even if they don't help me win, I still love my fish.",
+	  "rematch_win_text": "Fishing and Pokemon cards are both a lot of fun, I could do both all day.",
+	  "loss_text": "Maybe you should try picking up a rod and give fishing a go instead!",
+	  "pattern": "idle_down",
+	  "position": {
+		"x": -600,
+		"y": 2735
+	  }
+	},
+	{
+	  "name": "Guitarist Jonesy",
+	  "meet_text": "We're in a band and we're currently touring. We're just passing through to our next gig so having a quick jam here.",
+	  "repeat_text": "Hey dude, let's rock.",
+	  "first_win_text": "Damn I snapped a string while we were jamming.",
+	  "rematch_win_text": "You should come to one of our gigs!",
+	  "loss_text": "Let's goooooooooooo.",
+	  "pattern": "idle_right",
+	  "position": {
+		"x": 2480,
+		"y": 1210
+	  }
+	},
+	{
+	  "name": "Guitarist Howard",
+	  "meet_text": "We're the Toxtricity Rockers, we're a duo that's pretty big in Johto.",
+	  "repeat_text": "You here to hear a song or a rematch?",
+	  "first_win_text": "I missed a chord.",
+	  "rematch_win_text": "Fancy being a roadie?",
+	  "loss_text": "If it's any consolation I'll give you a discount on our album.",
+	  "pattern": "idle_left",
+	  "position": {
+		"x": 2515,
+		"y": 1210
+	  }
+	},
+	{
+	  "name": "Jogger Daniel",
+	  "meet_text": "*huff* *huff* I've been training for my marathon all day so I'm worn out, I could do with a rest.",
+	  "repeat_text": "I'm still running as much as I can, I could do with another break.",
+	  "first_win_text": "*huff* I shouldn't have bothered stopping.",
+	  "rematch_win_text": "I'm just going to focus on my running from now on.",
+	  "loss_text": "I'm glad I decided to take a break, that's given me an extra push to carry on.",
+	  "pattern": "patrol_line",
+	  "patrol_speed": 70.0,
+	  "patrol_distance": 2700,
+	  "patrol_axis": "horizontal",
+	  "position": {
+		"x": -500,
+		"y": 2015
+	  }
+	},
+	{
+	  "name": "Hiker Ben",
+	  "meet_text": "Well that's incredibly disappointing. I was hoping to have a trek through the forest but they've told me it's shut so I have nowhere to go now.",
+	  "repeat_text": "The forest has to be open soon surely.",
+	  "first_win_text": "Well that's another disappointment to my day.",
+	  "rematch_win_text": "The disappointment just doesn't end.",
+	  "loss_text": "At least that's given me a nice little boost after the bad news.",
+	  "pattern": "random_wander",
+	  "patrol_speed": 40.0,
+	  "wander_radius": 60,
+	  "position": {
+		"x": 950,
+		"y": 1270
+	  }
+	},
+	{
+	  "name": "Card Elder Rayne",
+	  "meet_text": "Hoh Hoh, are you ready to feel the torrent? If you win I'll give you a medal to prove your triumph.",
+	  "repeat_text": "Hoh Hoh! I enjoyed the battle that much I'd also like another!",
+	  "first_win_text": "Congratulations on your win. You've earned this medal and my respect.",
+	  "rematch_win_text": "Come back any time and battle us old folk.",
+	  "loss_text": "Don't be disheartened, the rain will always stop.",
+	  "pattern": "idle_down",
+	  "position": {
+		"x": 2230,
+		"y": 1252
+	  }
+	},
+	{
+	  "name": "Card Elder Hamish",
+	  "meet_text": "Here for the challenge then hey? Remember you'll need to defeat all 3 of us if you want to progress.",
+	  "repeat_text": "Very well, I always enjoy a good challenge!",
+	  "first_win_text": "Well done, that was quite the battle. Take my medal and continue forth.",
+	  "rematch_win_text": "Battling like this makes me feel young again.",
+	  "loss_text": "Don't be disheartened, the rain will always stop.",
+	  "pattern": "idle_down",
+	  "position": {
+		"x": 2326,
+		"y": 1252
+	  }
+	},
+	{
+	  "name": "Card Elder Waverly",
+	  "meet_text": "Are you ready to take me on then? If you win then you'll do well in the Gym Hero Challenge.",
+	  "repeat_text": "Up for another round then? Happy to oblige.",
+	  "first_win_text": "Well well well, what a jolly good play! You've earned this.",
+	  "rematch_win_text": "We've been winning and losing for so long it's always fun either way.",
+	  "loss_text": "When you fail, get up and try again.",
+	  "pattern": "idle_down",
+	  "position": {
+		"x": 2278,
+		"y": 1252
+	  }
+	}
+  ]
+}

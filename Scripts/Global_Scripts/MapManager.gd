@@ -1538,7 +1538,7 @@ func _on_validation_popup_closed() -> void:
 # DEBUG / TESTING CHEATS (overworld only)
 # ------------------------------------------------------------
 # Number row 1-9 set the in-game date to that value; 0 sets date 10.
-# M / E / N set the time of day to Day / Evening / Night.
+# M / A / E / N set the time of day to Morning / Afternoon / Evening / Night.
 # Any of those date/time keys also resets the current-period defeated
 # count to 0, then reloads the active map scene in place so its
 # date/time NPC & opponent JSON is reloaded — handy for sweeping
@@ -1547,8 +1547,8 @@ func _on_validation_popup_closed() -> void:
 #
 # C bumps the current-period defeated count (opponents_beaten_count_current)
 # by 1 and flashes a large on-screen label for 2s. This is the same count
-# the outro reads to auto-advance time at 4 wins, so pressing C to 3 then
-# winning a real battle (→4) exercises the genuine time-advance path.
+# the outro reads to auto-advance time at 3 wins, so pressing C to 2 then
+# winning a real battle (→3) exercises the genuine time-advance path.
 #
 # Lives here in the MapManager autoload so it applies to every map
 # scene without per-scene duplication. Guarded to fire ONLY in
@@ -1611,8 +1611,9 @@ func _unhandled_input(event: InputEvent) -> void:
 		KEY_0, KEY_KP_0: new_date = 10
 		KEY_MINUS:       new_date = 11
 		KEY_EQUAL:       new_date = 12
-		KEY_BRACKETLEFT: new_date = 0  # Date 0 = match-effects test day (Celeste_Harbour_0_Day.json)
-		KEY_M: new_time = "Day"
+		KEY_BRACKETLEFT: new_date = 0  # Date 0 = match-effects test day (Celeste_Harbour_0_Morning.json)
+		KEY_M: new_time = "Morning"
+		KEY_A: new_time = "Afternoon"
 		KEY_E: new_time = "Evening"
 		KEY_N: new_time = "Night"
 		_: return

@@ -316,7 +316,7 @@ func _on_save_pressed() -> void:
 	GameState.progress["costumes"] = costumes
 
 	GameState.progress["date"] = 1
-	GameState.progress["time"] = "Day"
+	GameState.progress["time"] = "Morning"
 	GameState.progress["taxi_intro_pending"] = true
 	GameState.mark_first_launch_complete()
 

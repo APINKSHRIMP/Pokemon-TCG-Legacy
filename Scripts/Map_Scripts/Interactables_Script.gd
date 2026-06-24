@@ -159,8 +159,8 @@ func _do_sleep() -> void:
 		_player.get_current_direction()
 	)
 
-	# Sleep through the night: date +1 and Night -> Day.
-	GameState.advance_time("Day")
+	# Sleep through the night: date +1 and Night -> Morning.
+	GameState.advance_time("Morning")
 
 	var tween := create_tween()
 	tween.tween_property(_scene_root, "modulate", Color.BLACK, SLEEP_FADE_DURATION)

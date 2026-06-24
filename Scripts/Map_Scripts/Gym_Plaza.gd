@@ -15,17 +15,20 @@ const SPAWN_FROM_VERDANT_FOREST          = Vector2(1760, 2130)
 const SPAWN_FROM_GYM_CHALLENGE_RECEPTION = Vector2(1757, 1219)
 
 # Gym Plaza shares Verdant Forest's tilesets
-const TILESET_DAY     = preload("res://Image_Assets/Map_Sheets/Tile_Sets/Verdant_Forest.tres")
-const TILESET_EVENING = preload("res://Image_Assets/Map_Sheets/Tile_Sets/Verdant_Forest_Evening.tres")
-const TILESET_NIGHT   = preload("res://Image_Assets/Map_Sheets/Tile_Sets/Verdant_Forest_Night.tres")
+const TILESET_MORNING   = preload("res://Image_Assets/Map_Sheets/Tile_Sets/Verdant_Forest_Morning.tres")
+const TILESET_AFTERNOON = preload("res://Image_Assets/Map_Sheets/Tile_Sets/Verdant_Forest_Afternoon.tres")
+const TILESET_EVENING   = preload("res://Image_Assets/Map_Sheets/Tile_Sets/Verdant_Forest_Evening.tres")
+const TILESET_NIGHT     = preload("res://Image_Assets/Map_Sheets/Tile_Sets/Verdant_Forest_Night.tres")
 
-const TREE_HORIZ_DAY     = preload("res://Image_Assets/Map_Objects/Forest/TreeLineThird.png")
-const TREE_HORIZ_EVENING = preload("res://Image_Assets/Map_Objects/Forest/TreeLineThirdEvening.png")
-const TREE_HORIZ_NIGHT   = preload("res://Image_Assets/Map_Objects/Forest/TreeLineThirdNight.png")
+const TREE_HORIZ_MORNING   = preload("res://Image_Assets/Map_Objects/Forest/TreeLineThirdMorning.png")
+const TREE_HORIZ_AFTERNOON = preload("res://Image_Assets/Map_Objects/Forest/TreeLineThirdAfternoon.png")
+const TREE_HORIZ_EVENING   = preload("res://Image_Assets/Map_Objects/Forest/TreeLineThirdEvening.png")
+const TREE_HORIZ_NIGHT     = preload("res://Image_Assets/Map_Objects/Forest/TreeLineThirdNight.png")
 
-const TREE_VERT_DAY     = preload("res://Image_Assets/Map_Objects/Forest/TreeLineVertical.png")
-const TREE_VERT_EVENING = preload("res://Image_Assets/Map_Objects/Forest/TreeLineVerticalEvening.png")
-const TREE_VERT_NIGHT   = preload("res://Image_Assets/Map_Objects/Forest/TreeLineVerticalNight.png")
+const TREE_VERT_MORNING   = preload("res://Image_Assets/Map_Objects/Forest/TreeLineVerticalMorning.png")
+const TREE_VERT_AFTERNOON = preload("res://Image_Assets/Map_Objects/Forest/TreeLineVerticalAfternoon.png")
+const TREE_VERT_EVENING   = preload("res://Image_Assets/Map_Objects/Forest/TreeLineVerticalEvening.png")
+const TREE_VERT_NIGHT     = preload("res://Image_Assets/Map_Objects/Forest/TreeLineVerticalNight.png")
 
 var _npc_json_path: String = ""
 
@@ -51,18 +54,20 @@ func _scene_setup():
 func set_time_of_day(time: String) -> void:
 	var tileset: TileSet
 	match time:
-		"Day":     tileset = TILESET_DAY
-		"Evening": tileset = TILESET_EVENING
-		"Night":   tileset = TILESET_NIGHT
+		"Morning":   tileset = TILESET_MORNING
+		"Afternoon": tileset = TILESET_AFTERNOON
+		"Evening":   tileset = TILESET_EVENING
+		"Night":     tileset = TILESET_NIGHT
 	_apply_tileset($TILE_MAPS, tileset)
 
 	var horiz_tex: Texture2D
 	var vert_tex: Texture2D
 	var is_night := time == "Night"
 	match time:
-		"Day":     horiz_tex = TREE_HORIZ_DAY;     vert_tex = TREE_VERT_DAY
-		"Evening": horiz_tex = TREE_HORIZ_EVENING;  vert_tex = TREE_VERT_EVENING
-		"Night":   horiz_tex = TREE_HORIZ_NIGHT;    vert_tex = TREE_VERT_NIGHT
+		"Morning":   horiz_tex = TREE_HORIZ_MORNING;   vert_tex = TREE_VERT_MORNING
+		"Afternoon": horiz_tex = TREE_HORIZ_AFTERNOON;  vert_tex = TREE_VERT_AFTERNOON
+		"Evening":   horiz_tex = TREE_HORIZ_EVENING;    vert_tex = TREE_VERT_EVENING
+		"Night":     horiz_tex = TREE_HORIZ_NIGHT;      vert_tex = TREE_VERT_NIGHT
 
 	var north = $TREE_WALL_NORTH_GROUP
 	north.get_node("Shadow").visible  = not is_night

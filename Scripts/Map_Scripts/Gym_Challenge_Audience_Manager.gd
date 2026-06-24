@@ -14,12 +14,12 @@ class_name GymChallengeAudienceManager
 # Left and right stands hold 36 max; top stand holds 40 max.
 # ============================================================
 const AUDIENCE_COUNTS: Dictionary = {
-	9:  { "Day": [32, 36, 32], "Evening": [20, 24, 20], "Night": [8,  12,  8] },
-	10: { "Day": [28, 32, 28], "Evening": [14, 16, 14], "Night": [5,   7,  5] },
-	11: { "Day": [22, 24, 22], "Evening": [8,  12,  8], "Night": [3,   5,  3] },
-	12: { "Day": [10, 10, 10], "Evening": [8,  12,  8], "Night": [3,   5,  3] },
-	13: { "Day": [6, 6, 6], "Evening": [4,  4,  4], "Night": [2,  1,  1] },
-	14: { "Day": [6, 6, 6], "Evening": [2,  2,  2], "Night": [1,   0,  2] },
+	9:  { "Morning": [32, 36, 32], "Afternoon": [28, 32, 28], "Evening": [20, 24, 20], "Night": [8,  12,  8] },
+	10: { "Morning": [28, 32, 28], "Afternoon": [22, 26, 22], "Evening": [14, 16, 14], "Night": [5,   7,  5] },
+	11: { "Morning": [22, 24, 22], "Afternoon": [16, 18, 16], "Evening": [8,  12,  8], "Night": [3,   5,  3] },
+	12: { "Morning": [10, 10, 10], "Afternoon": [9,  10,  9], "Evening": [8,  12,  8], "Night": [3,   5,  3] },
+	13: { "Morning": [6,   6,  6], "Afternoon": [5,   5,  5], "Evening": [4,   4,  4], "Night": [2,   1,  1] },
+	14: { "Morning": [6,   6,  6], "Afternoon": [4,   4,  4], "Evening": [2,   2,  2], "Night": [1,   0,  2] },
 }
 
 # ============================================================
