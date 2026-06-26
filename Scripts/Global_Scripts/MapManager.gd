@@ -1612,10 +1612,10 @@ func _unhandled_input(event: InputEvent) -> void:
 		KEY_MINUS:       new_date = 11
 		KEY_EQUAL:       new_date = 12
 		KEY_BRACKETLEFT: new_date = 0  # Date 0 = match-effects test day (Celeste_Harbour_0_Morning.json)
-		KEY_M: new_time = "Morning"
-		KEY_A: new_time = "Afternoon"
-		KEY_E: new_time = "Evening"
-		KEY_N: new_time = "Night"
+		KEY_H: new_time = "Morning"
+		KEY_J: new_time = "Afternoon"
+		KEY_K: new_time = "Evening"
+		KEY_L: new_time = "Night"
 		_: return
 
 	if new_date != -1:

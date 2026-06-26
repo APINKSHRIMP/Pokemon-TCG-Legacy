@@ -1,0 +1,261 @@
+{
+  "npcs": [],
+  "opponents": [
+    {
+      "name": "Pikachu Fan Marina",
+      "meet_text": "Have you ever seen a Pikachu Surf, Some are really really good on a surfboard!!",
+      "repeat_text": "Have you seen a Pikachu on a surfboard yet?",
+      "first_win_text": "If you haven't seen a Pikachu use surf you can have this then!",
+      "rematch_win_text": "I wish I could surf like a Pikachu",
+      "loss_text": "Pikachu can do everything, it's the best!!!",
+      "pattern": "idle_random",
+      "position": {
+        "x": 3272,
+        "y": 1427
+      },
+      "match_effects": [
+        {
+          "type": "ignore_weakness_and_resistance"
+        },
+        {
+          "type": "energy_attach_full_heal"
+        }
+      ],
+      "condition": {
+        "type": "opponent_not_defeated",
+        "target": "Pikachu Fan Marina"
+      }
+    },
+    {
+      "name": "Pikachu Fan Skye",
+      "meet_text": "Some Pokemon can use fly to take you somewhere you want to go. Turns out so can Pikachu!",
+      "repeat_text": "I want to take a ride on a flying Pikachu",
+      "first_win_text": "Hold onto this and try not to float away!",
+      "rematch_win_text": "I've never see a flying Pikachu",
+      "loss_text": "You'll never catch a Pikachu that's flying away!",
+      "pattern": "random_wander",
+      "patrol_speed": 20.0,
+      "wander_radius": 65,
+      "position": {
+        "x": 900,
+        "y": 1470
+      },
+      "match_effects": [
+        {
+          "type": "ignore_weakness_and_resistance"
+        },
+        {
+          "type": "coin_flip_override",
+          "result": "heads"
+        }
+      ],
+      "condition": {
+        "type": "opponent_not_defeated",
+        "target": "Pikachu Fan Skye"
+      }
+    },
+    {
+      "name": "Pikachu Fan Cami",
+      "meet_text": "I love taking pictures of Pokemon, especially Pikachu!",
+      "repeat_text": "I'm really good with a Camera!",
+      "first_win_text": "I took a really good picture of Pikachu and put it on this card",
+      "rematch_win_text": "Do you want to see more pictures of Pikachu?",
+      "loss_text": "I'll have to take a photo to remember this moment",
+      "pattern": "random_wander",
+      "patrol_speed": 20.0,
+      "wander_radius": 65,
+      "position": {
+        "x": 3600,
+        "y": 50
+      },
+      "match_effects": [
+        {
+          "type": "ignore_weakness_and_resistance"
+        },
+        {
+          "type": "raw_damage_only"
+        }
+      ],
+      "condition": {
+        "type": "opponent_not_defeated",
+        "target": "Pikachu Fan Cami"
+      }
+    },
+    {
+      "name": "Pikachu Fan Juniper",
+      "meet_text": "Did you know Pikachu live in the forest?",
+      "repeat_text": "I've not seen any Pikachu around here yet.",
+      "first_win_text": "I wish I could find a Pikachu around here but this is all I can find.",
+      "rematch_win_text": "Have you found a Pikachu around here yet?",
+      "loss_text": "If I'm lucky enough to win then I should be lucky enough to see a Pikachu!",
+      "pattern": "idle_random",
+      "position": {
+        "x": -307,
+        "y": 1680
+      },
+      "match_effects": [
+        {
+          "type": "ignore_weakness_and_resistance"
+        },
+        {
+          "type": "max_hp_modifier",
+          "amount": 50
+        }
+      ],
+      "condition": {
+        "type": "opponent_not_defeated",
+        "target": "Pikachu Fan Juniper"
+      }
+    },
+    {
+      "name": "Pikachu Fan Raye",
+      "meet_text": "Go Pikachu, use Thunderbolt!!!.... I don't really have a Pikachu.",
+      "repeat_text": "I wish I could have a Pikachu for real",
+      "first_win_text": "Have this Pikachu card and if you get a real Pikachu can you let me have it?",
+      "rematch_win_text": "I still don't have a Pikachu at all",
+      "loss_text": "My Pikachu would be really strong too!",
+      "pattern": "random_wander",
+      "patrol_speed": 20.0,
+      "wander_radius": 65,
+      "position": {
+        "x": 2025,
+        "y": 1025
+      },
+      "match_effects": [
+        {
+          "type": "ignore_weakness_and_resistance"
+        },
+        {
+          "type": "extra_energy_per_turn",
+          "count": 2
+        }
+      ],
+      "condition": {
+        "type": "opponent_not_defeated",
+        "target": "Pikachu Fan Raye"
+      }
+    },
+    {
+      "name": "Pikachu Fan Leaf",
+      "meet_text": "Pikachu is just so cute, he's the cutest Pokemon ever!",
+      "repeat_text": "I love every Pikachu.",
+      "first_win_text": "Even though I don't have a lot of Pikachu, you can have this one.",
+      "rematch_win_text": "I will win with my Pikachu one day!",
+      "loss_text": "That's why I love Pikachu so much!",
+      "pattern": "patrol_line",
+      "patrol_axis": "vertical",
+      "patrol_distance": 350.0,
+      "patrol_speed": 50.0,
+      "wander_radius": 65,
+      "position": {
+        "x": -250,
+        "y": 650
+      },
+      "match_effects": [
+        {
+          "type": "ignore_weakness_and_resistance"
+        },
+        {
+          "type": "type_damage_bonus",
+          "pokemon_type": "Lightning",
+          "amount": 20
+        }
+      ],
+      "condition": {
+        "type": "opponent_not_defeated",
+        "target": "Pikachu Fan Leaf"
+      }
+    },
+    {
+      "name": "Pikachu Mum",
+      "meet_text": "Thank you for getting them all to come back and stay here, I don't know the rules very well of this game but I'll play you as a thanks!",
+      "repeat_text": "Want to see all of my Pikachu again?",
+      "first_win_text": "As a thank you again, take these!",
+      "rematch_win_text": "My kids could learn a lot from you",
+      "loss_text": "I didn't know Pikachu could be so strong!",
+      "pattern": "idle_down",
+      "position": {
+        "x": 1509,
+        "y": 928
+      },
+      "condition": {
+        "type": "all_opponents_defeated",
+        "targets": [
+          "Pikachu Fan Marina",
+          "Pikachu Fan Skye",
+          "Pikachu Fan Cami",
+          "Pikachu Fan Juniper",
+          "Pikachu Fan Raye",
+          "Pikachu Fan Leaf"
+        ]
+      }
+    },
+    {
+      "name": "Old Traveller Harold",
+      "meet_text": "I'm travelling the world with my old friend. We've been to many places in our time.",
+      "repeat_text": "Won't be long until we move onto the next place",
+      "first_win_text": "Well done. You could travel with us if you were older too ho ho ho.",
+      "rematch_win_text": "Have you been aboard the SS Anne at all?",
+      "loss_text": "Don't you worry, life isn't all about winning and losing.",
+      "pattern": "idle_left",
+      "position": {
+        "x": 100,
+        "y": 1590
+      }
+    },
+    {
+      "name": "Old Traveller Cliff",
+      "meet_text": "Me and my dear friend arrived on the SS Anne. We've travelled on it a few years in the past.",
+      "repeat_text": "I've lived in many places in my time so I always appreciate being in the now.",
+      "first_win_text": "That's the way to do it, good effort!",
+      "rematch_win_text": "Another fantastic play, good show.",
+      "loss_text": "You'll never grow and mature if you win every time.",
+      "pattern": "idle_right",
+      "position": {
+        "x": 70,
+        "y": 1590
+      }
+    },
+    {
+      "name": "Swimmer Bibi",
+      "meet_text": "I much prefer cold fresh water swimming rather than the beach.",
+      "repeat_text": "Fresh water is so much better than seawater!.",
+      "first_win_text": "Sea water is far too salty!!",
+      "rematch_win_text": "I'm going to be a wrinkly prune if I don't get out soon.",
+      "loss_text": "Freshen up and take a dip!",
+      "pattern": "patrol_square",
+      "patrol_speed": 40.0,
+      "patrol_distance": 68,
+      "position": {
+        "x": 2970,
+        "y": 998
+      }
+    },
+    {
+      "name": "Young Sage Kai",
+      "meet_text": "Have you ever tried meditating in the forest? The atmosphere is perfect for it.",
+      "repeat_text": "Hope you're taking it easy out here.",
+      "first_win_text": "I'm going to try and reconnect with nature.",
+      "rematch_win_text": "Join me in a meditation?",
+      "loss_text": "Focus on your breath more.",
+      "pattern": "idle_left",
+      "position": {
+        "x": 3708,
+        "y": 1092
+      }
+    },
+    {
+      "name": "Lady Fiona",
+      "meet_text": "There's always beauty to be found in even the most seemingly ugly things.",
+      "repeat_text": "Life and everything in it is beauty.",
+      "first_win_text": "Wouldn't you agree that ugliness can still be beautiful?",
+      "rematch_win_text": "I always love to see the beauty in things.",
+      "loss_text": "I'm not just a pretty face either.",
+      "pattern": "idle_down",
+      "position": {
+        "x": 2054,
+        "y": 928
+      }
+    }
+  ]
+}

@@ -1,0 +1,104 @@
+{
+  "npcs": [],
+  "opponents": [
+    {
+      "name": "Police Constable Floyd",
+      "meet_text": "Because we've just reopened the forest, my boss wants us to keep a patrol to keep an eye out for any trouble.",
+      "repeat_text": "Have you seen anything suspicious recently?",
+      "first_win_text": "It's a good thing this area is so safe.",
+      "rematch_win_text": "I need more training.",
+      "loss_text": "I should be promoted to detective!",
+      "pattern": "patrol_line",
+      "patrol_speed": 60.0,
+      "patrol_distance": 1520,
+      "patrol_axis": "horizontal",
+      "position": {
+        "x": 1000,
+        "y": 1050
+      }
+    },
+    {
+      "name": "Police Sergeant Douglas",
+      "meet_text": "You better not be up to anything. I'm the searge round ere. I'm keeping my eyes out for anything that aint right.",
+      "repeat_text": "We're lucky nothing ever really happens round these parts.",
+      "first_win_text": "Report back to me if you see anything dodgy immediately.",
+      "rematch_win_text": "Don't tell anyone I'm rubbish at this.",
+      "loss_text": "There'll be no crime around here on my watch.",
+      "pattern": "patrol_line",
+      "patrol_speed": 40.0,
+      "patrol_distance": 2800,
+      "patrol_axis": "horizontal",
+      "position": {
+        "x": -300,
+        "y": 1650
+      }
+    },
+    {
+      "name": "Lady Fiona",
+      "meet_text": "There's always beauty to be found in even the most seemingly ugly things.",
+      "repeat_text": "Life and everything in it is beauty.",
+      "first_win_text": "Wouldn't you agree that ugliness can still be beautiful?",
+      "rematch_win_text": "I always love to see the beauty in things.",
+      "loss_text": "I'm not just a pretty face either.",
+      "pattern": "idle_down",
+      "position": {
+        "x": 2054,
+        "y": 928
+      }
+    },
+    {
+      "name": "Backpacker Patrick",
+      "meet_text": "I've been all over the world and seen a lot of different places.",
+      "repeat_text": "Nothing like putting on a backpack and going exploring",
+      "first_win_text": "It's all about the experience.",
+      "rematch_win_text": "I should get going...",
+      "loss_text": "Carrying all this weight makes me stronger in every sense",
+      "pattern": "random_wander",
+      "patrol_speed": 50.0,
+      "wander_radius": 65,
+      "position": {
+        "x": -270,
+        "y": 1650
+      }
+    },
+    {
+      "name": "Gambler Victor",
+      "meet_text": "You need a lot of luck in life, some things are entirely up to chance.",
+      "repeat_text": "You can't let things get you down if you get unlucky.",
+      "first_win_text": "Heh, next time I might win, next time I might not. It's all a gamble",
+      "rematch_win_text": "If I flip a coin 10,000 times, there's still a chance I never get heads.",
+      "loss_text": "Was that luck or was it skill?",
+      "pattern": "idle_random",
+      "position": {
+        "x": 3300,
+        "y": -40
+      }
+    },
+    {
+      "name": "Veteran Sylvester",
+      "meet_text": "We've travelled the world together and settled here recently. We've been aboard the SS Anne before and it looks like it hasn't changed in years.",
+      "repeat_text": "Good evening, hope you're keeping well.",
+      "first_win_text": "You already appear well travelled. Maybe you could join us on our next adventure.",
+      "rematch_win_text": "A great match as always.",
+      "loss_text": "Don't let this get you down.",
+      "pattern": "idle_left",
+      "position": {
+        "x": 1989,
+        "y": 110
+      }
+    },
+    {
+      "name": "Card Expert Aurora",
+      "meet_text": "The weather here is always good but I love a good storm.",
+      "repeat_text": "I might take a trip to somewhere colder.",
+      "first_win_text": "You won't need an umbrella then.",
+      "rematch_win_text": "Maybe I need an umbrella...",
+      "loss_text": "You'll never be ready for a true storm.",
+      "pattern": "idle_down",
+      "position": {
+        "x": 2980,
+        "y": 1125
+      }
+    }
+  ]
+}

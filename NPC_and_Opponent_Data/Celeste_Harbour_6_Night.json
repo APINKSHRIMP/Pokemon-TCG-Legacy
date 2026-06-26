@@ -78,55 +78,82 @@
   ],
   "opponents": [
     {
-      "name": "Card Elder Rayne",
-      "meet_text": "Hoh Hoh, are you ready to feel the torrent? If you win I'll give you a medal to prove your triumph.",
-      "repeat_text": "Hoh Hoh! I enjoyed the battle that much I'd also like another!",
-      "first_win_text": "Congratulations on your win. You've earned this medal and my respect.",
-      "rematch_win_text": "Come back any time and battle us old folk.",
-      "loss_text": "Don't be disheartened, the rain will always stop.",
-      "pattern": "idle_down",
+      "name": "Painter Jericho",
+      "meet_text": "The evening sun is the most perfect time to come here and paint... or play cards!",
+      "repeat_text": "I've been painting a lot of great pieces from this spot.",
+      "first_win_text": "A win or a loss, both are equal pieces of art.",
+      "rematch_win_text": "A win or a loss, both are equal pieces of art.",
+      "loss_text": "To win is a beautiful piece of art.",
+      "pattern": "idle_right",
       "position": {
-        "x": 2230,
-        "y": 1252
+        "x": -565,
+        "y": 2375
       }
     },
     {
-      "name": "Card Elder Hamish",
-      "meet_text": "Back for the challenge then hey? Remember you'll need to defeat all 3 of us if you want to progress.",
-      "repeat_text": "Very well, I always enjoy a good challenge!",
-      "first_win_text": "Well done, that was quite the battle. Take my medal and continue forth.",
-      "rematch_win_text": "Battling like this makes me feel young again.",
-      "loss_text": "Don't be disheartened, the rain will always stop.",
-      "pattern": "idle_down",
+      "name": "Engineer Allan",
+      "meet_text": "As you can see, the new bulb installation went perrrrfectly today. I'm worn out from all the steps but always game for a match.",
+      "repeat_text": "I won't be needing to replace the bulb any time soon so I've got time to kill.",
+      "first_win_text": "That was clearly toooooo many steps today.",
+      "rematch_win_text": "At least I'm reaaallly good at replacing bulbs.",
+      "loss_text": "I hope your loss didn't come as a shock to you.",
+      "pattern": "idle_left",
+      "wander_radius": 65,
       "position": {
-        "x": 2326,
-        "y": 1252
+        "x": -800,
+        "y": 2620
       }
     },
     {
-      "name": "Card Elder Waverly",
-      "meet_text": "Are you ready to take me on then? If you win then you'll do well in the Gym Hero Challenge.",
-      "repeat_text": "Up for another round then? Happy to oblige.",
-      "first_win_text": "Well well well, what a jolly good play! You've earned this.",
-      "rematch_win_text": "We've been winning and losing for so long it's always fun either way.",
-      "loss_text": "When you fail, get up and try again.",
-      "pattern": "idle_down",
+      "name": "Birdspotter Tamsin",
+      "meet_text": "These Palms attract a lot of Bird Pokemon so its a good spot to watch them.",
+      "repeat_text": "Looking for more Birds round here?",
+      "first_win_text": "I wish I could just fly away.",
+      "rematch_win_text": "You can't fly away from all your troubles.",
+      "loss_text": "You should try bird watching with me!",
+      "pattern": "idle_random",
       "position": {
-        "x": 2278,
-        "y": 1252
+        "x": 1886,
+        "y": 2360
       }
     },
     {
-      "name": "Engineer Brad",
-      "meet_text": "Hey, I've been working hard all day so I'm ready to play",
-      "repeat_text": "It's rare I have to work at night so I'm free for another match.",
-      "first_win_text": "I simply cannot fix that at all.",
-      "rematch_win_text": "I'm going to weld my cards at this rate.",
-      "loss_text": "You just need to work harder",
-      "pattern": "idle_up",
+      "name": "Firebreather Darryl",
+      "meet_text": "I've been breathing that much fire that I needed an ice cold bev to cool my mouth down, but I'm ready for a match if you want.",
+      "repeat_text": "I'm fired up and ready for another match if you want.",
+      "first_win_text": "I burned out too quick.",
+      "rematch_win_text": "I could teach you how to firebreath... but maybe you should teach me how to play cards better!",
+      "loss_text": "That juice was just what I needed!",
+      "pattern": "idle_cycle",
       "position": {
-        "x": 900,
-        "y": 3155
+        "x": 1050,
+        "y": 2475
+      }
+    },
+    {
+      "name": "Firebreather Kenneth",
+      "meet_text": "I'm so used to hot drinks that it's weird to drink something nice and cold.",
+      "repeat_text": "If you want another match then let's goooooo.",
+      "first_win_text": "I have too many burns to battle well.",
+      "rematch_win_text": "I'll just stick to the firebreathing from now on, I'm good at that.",
+      "loss_text": "Can't burn me out!",
+      "pattern": "idle_cycle",
+      "position": {
+        "x": 1000,
+        "y": 2475
+      }
+    },
+    {
+      "name": "Psychic Brienne",
+      "meet_text": "I love the peace of the harbour at night, the sound of the waves in the dark are really relaxing.",
+      "repeat_text": "It's easier to meditate at night.",
+      "first_win_text": "I have to focus more. Take these cards to help you focus more too.",
+      "rematch_win_text": "I'll focus harder.",
+      "loss_text": "I manifested the win.",
+      "pattern": "idle_right",
+      "position": {
+        "x": 2880,
+        "y": 3110
       }
     },
     {
@@ -142,58 +169,6 @@
       "position": {
         "x": 420,
         "y": 1270
-      }
-    },
-    {
-      "name": "Psychic Brienne",
-      "meet_text": "I love the peace of the harbour at night, the sound of the waves in the dark are really relaxing.",
-      "repeat_text": "It's easier to meditate at night.",
-      "first_win_text": "I have to focus more. Take these cards to help you focus more too.",
-      "rematch_win_text": "I'll focus harder.",
-      "loss_text": "I manifested the win.",
-      "pattern": "idle_left",
-      "position": {
-        "x": -830,
-        "y": 1270
-      }
-    },
-    {
-      "name": "Painter Jericho",
-      "meet_text": "The evening sun is the most perfect time to come here and paint... or play cards!",
-      "repeat_text": "I've been painting a lot of great pieces from this spot.",
-      "first_win_text": "A win or a loss, both are equal pieces of art.",
-      "rematch_win_text": "A win or a loss, both are equal pieces of art.",
-      "loss_text": "To win is a beautiful piece of art.",
-      "pattern": "idle_right",
-      "position": {
-        "x": -565,
-        "y": 2375
-      }
-    },
-    {
-      "name": "Firebreather Darryl",
-      "meet_text": "I've had plenty of juice so I'm all cooled down and need to get fired up.",
-      "repeat_text": "I'm fired up and ready for another match if you want.",
-      "first_win_text": "I burned out too quick.",
-      "rematch_win_text": "I could teach you how to firebreath... but maybe you should teach me how to play cards better!",
-      "loss_text": "That juice was just what I needed!",
-      "pattern": "idle_cycle",
-      "position": {
-        "x": 1050,
-        "y": 2475
-      }
-    },
-    {
-      "name": "Firebreather Kenneth",
-      "meet_text": "We're practicing all night, both firebreathing and pokemon cards!",
-      "repeat_text": "If you want another match then let's goooooo.",
-      "first_win_text": "I have too many burns to battle well.",
-      "rematch_win_text": "I'll just stick to the firebreathing from now on, I'm good at that.",
-      "loss_text": "Can't burn me out!",
-      "pattern": "idle_cycle",
-      "position": {
-        "x": 1000,
-        "y": 2475
       }
     }
   ]

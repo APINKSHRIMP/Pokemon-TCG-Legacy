@@ -1,0 +1,163 @@
+{
+  "npcs": [],
+  "opponents": [
+    {
+      "name": "Fisherman Dave",
+      "meet_text": "I love the lighthouse here, it seems to attract all kinds of fish so I always catch a lot in this spot. I'm catching so many I need a break.",
+      "repeat_text": "I've caught a lot since last time.",
+      "first_win_text": "Even if they don't help me win, I still love my fish.",
+      "rematch_win_text": "Fishing and Pokemon cards are both a lot of fun, I could do both all day.",
+      "loss_text": "Maybe you should try picking up a rod and give fishing a go instead!",
+      "pattern": "idle_down",
+      "position": {
+        "x": -600,
+        "y": 2735
+      }
+    },
+    {
+      "name": "Fisherman John",
+      "meet_text": "Me and my buddy Dave fish here all the time. The lighthouse is like a giant lure in the evening so we catch even more. I've got time for a break.",
+      "repeat_text": "The evening is still young if you want another match.",
+      "first_win_text": "I'm a much better fisherman than I am a card player.",
+      "rematch_win_text": "Always happy to put my fishing aside for a rematch.",
+      "loss_text": "I'm not just the best round here at fishing!",
+      "pattern": "idle_down",
+      "position": {
+        "x": -840,
+        "y": 2735
+      }
+    },
+    {
+      "name": "Beach Kid Timothy",
+      "meet_text": "I love the beach! I love the sand! I love building sandcastles! I love playing the Pokemon TCG!",
+      "repeat_text": "I could build sandcastles and play Pokemon all day!",
+      "first_win_text": "Please don't destroy my sandcastles!!!",
+      "rematch_win_text": "You can help me build a sandcastle if you want!",
+      "loss_text": "Yaaaaaay! I love winning!",
+      "pattern": "idle_right",
+      "position": {
+        "x": 450,
+        "y": 2380
+      }
+    },
+    {
+      "name": "Beach Kid Evie",
+      "meet_text": "I heard there's a scary Pokemon called Sandyghast. They sound scary and I don't like scary Pokemon, I only like cute pokemon!!",
+      "repeat_text": "Yes let's play again!",
+      "first_win_text": "You haven't seen a Sandyghast have you?",
+      "rematch_win_text": "If you see a Sandyghast please let me know!!",
+      "loss_text": "Yaaaaaay! I won!!",
+      "pattern": "idle_left",
+      "position": {
+        "x": 480,
+        "y": 2380
+      }
+    },
+    {
+      "name": "Birdspotter Tamsin",
+      "meet_text": "These Palms attract a lot of Bird Pokemon so its a good spot to watch them.",
+      "repeat_text": "Looking for more Birds round here?",
+      "first_win_text": "I wish I could just fly away.",
+      "rematch_win_text": "You can't fly away from all your troubles.",
+      "loss_text": "You should try bird watching with me!",
+      "pattern": "idle_random",
+      "position": {
+        "x": 1886,
+        "y": 2360
+      }
+    },
+    {
+      "name": "Hiker Matthew",
+      "meet_text": "I've been hiking for hours and only just managed to reach the harbour and found everything is closed so now I have nothing to do for the evening.",
+      "repeat_text": "I'll be hiking back again tomorrow, I hike all day every day!",
+      "first_win_text": "I should have just called it a night...",
+      "rematch_win_text": "I could do with a long hike to get over this loss.",
+      "loss_text": "I'm as solid as stone!",
+      "pattern": "random_wander",
+      "patrol_speed": 40.0,
+      "wander_radius": 60,
+      "position": {
+        "x": 2650,
+        "y": 2020
+      }
+    },
+    {
+      "name": "Firebreather Darryl",
+      "meet_text": "I've been breathing that much fire that I needed an ice cold bev to cool my mouth down, but I'm ready for a match if you want.",
+      "repeat_text": "I'm fired up and ready for another match if you want.",
+      "first_win_text": "I burned out too quick.",
+      "rematch_win_text": "I could teach you how to firebreath... but maybe you should teach me how to play cards better!",
+      "loss_text": "That juice was just what I needed!",
+      "pattern": "idle_cycle",
+      "position": {
+        "x": 1050,
+        "y": 2475
+      }
+    },
+    {
+      "name": "Firebreather Kenneth",
+      "meet_text": "I'm so used to hot drinks that it's weird to drink something nice and cold.",
+      "repeat_text": "If you want another match then let's goooooo.",
+      "first_win_text": "I have too many burns to battle well.",
+      "rematch_win_text": "I'll just stick to the firebreathing from now on, I'm good at that.",
+      "loss_text": "Can't burn me out!",
+      "pattern": "idle_cycle",
+      "position": {
+        "x": 1000,
+        "y": 2475
+      }
+    },
+    {
+      "name": "Young Twin Anna",
+      "meet_text": "I've always wanted to play with Pokemon Cards and mummy finally got us some!",
+      "repeat_text": "Yay we get to play again?",
+      "first_win_text": "Oh nooooo, I really wanted to win.",
+      "rematch_win_text": "Please let me win!!",
+      "loss_text": "Yay!! mummy must have got us the best cards ever.",
+      "pattern": "idle_left",
+      "position": {
+        "x": 1001,
+        "y": 2383
+      }
+    },
+    {
+      "name": "Young Twin Nella",
+      "meet_text": "I've always wanted to play with Pokemon Cards and mummy finally got us some!",
+      "repeat_text": "Yay we get to play again?",
+      "first_win_text": "Oh nooooo, I really wanted to win.",
+      "rematch_win_text": "Please let me win!!",
+      "loss_text": "Yay!! mummy must have got us the best cards ever.",
+      "pattern": "idle_left",
+      "position": {
+        "x": 1001,
+        "y": 2403
+      }
+    },
+    {
+      "name": "Aromagirl Penelope",
+      "meet_text": "Plants can grow in all weird shapes and sizes, they're not just flowers and trees, there's a lot of different kinds out there.",
+      "repeat_text": "I've catalogued a lot of crazy plants recently.",
+      "first_win_text": "I wish I could photosynthesize.",
+      "rematch_win_text": "I could do with some water",
+      "loss_text": "Grass Pokemon are great!",
+      "pattern": "idle_up",
+      "position": {
+        "x": 2167,
+        "y": 2305
+      }
+    },
+    {
+      "name": "Bug Catcher Frankie",
+      "meet_text": "Wow!!! The bugs here are so much cooler than what we have over in Viridian Forest!!",
+      "repeat_text": "Seen any cool bug Pokemon around here since our last match?",
+      "first_win_text": "My bugs clearly aren't as strong as the ones around here.",
+      "rematch_win_text": "Hmm I wish I could get my hands on some of these bugs instead.",
+      "loss_text": "Bug pokemon really aren't as weak as people think.",
+      "pattern": "idle_random",
+      "position": {
+        "x": 2295,
+        "y": 2160
+      }
+    }
+  ]
+}

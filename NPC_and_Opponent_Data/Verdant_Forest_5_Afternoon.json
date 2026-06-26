@@ -1,351 +1,388 @@
 {
   "npcs": [
-	{
-	  "name": "VF 5,7,8 D Old Guy Neighbour",
-	  "meet_text": "Hello there, out in the forest too hey? I'm glad they managed to reopen it today, the storm we had last week was really bad and I was worried half of the forest would be flooded or gone!",
-	  "repeat_text": "If I was younger I'd do my daily run in here. It's always cool with the shade of the trees so it's never as hot as out in the harbour.",
-	  "pattern": "idle_down",
-	  "position": {
-		"x": 1502,
-		"y": 985
-	  }
-	},
-	{
-	  "name": "Pikachu Mum",
-	  "meet_text": "All my kids always wander off and don't come back for a while. They love looking for Pikachu around here but have never found one. If you see any of them could you tell them to come back here please?",
-	  "repeat_text": "All my kids are dressed up as Pikachu, from a distance you might mistake them for an actual Pikachu!! If you can get them all to come back here I'd appreciate it.",
-	  "pattern": "idle_right",
-	  "position": {
-		"x": 198,
-		"y": 164
-	  },
-	  "condition": {
-		"type": "not_all_opponents_defeated",
-		"targets": [
-		  "Pikachu Fan Marina",
-		  "Pikachu Fan Skye",
-		  "Pikachu Fan Cami",
-		  "Pikachu Fan Juniper",
-		  "Pikachu Fan Raye",
+    {
+      "name": "VF 5,7,8 D Old Guy Neighbour",
+      "meet_text": "Hello there, out in the forest too hey? I'm glad they managed to reopen it today, the storm we had last week was really bad and I was worried half of the forest would be flooded or gone!",
+      "repeat_text": "If I was younger I'd do my daily run in here. It's always cool with the shade of the trees so it's never as hot as out in the harbour.",
+      "pattern": "idle_down",
+      "position": {
+        "x": 1502,
+        "y": 985
+      }
+    },
+    {
+      "name": "Pikachu Mum",
+      "meet_text": "All my kids always wander off and don't come back for a while. They love looking for Pikachu around here but have never found one. If you see any of them could you tell them to come back here please?",
+      "repeat_text": "All my kids are dressed up as Pikachu, from a distance you might mistake them for an actual Pikachu!! If you can get them all to come back here I'd appreciate it.",
+      "pattern": "idle_right",
+      "position": {
+        "x": 198,
+        "y": 164
+      },
+      "condition": {
+        "type": "not_all_opponents_defeated",
+        "targets": [
+          "Pikachu Fan Marina",
+          "Pikachu Fan Skye",
+          "Pikachu Fan Cami",
+          "Pikachu Fan Juniper",
+          "Pikachu Fan Raye",
           "Pikachu Fan Leaf"
-		]
-	  }
-	},
-	{
-	  "name": "Pikachu Fan Marina",
-	  "meet_text": "I've never even been on a surfboard before.",
-	  "repeat_text": "I wish I could surf like a Pikachu!",
-	  "pattern": "random_wander",
-	  "patrol_speed": 20.0,
-	  "wander_radius": 65,
-	  "position": {
-		"x": 0,
-		"y": 100
-	  },
-	  "condition": {
-		"type": "opponent_defeated",
-		"target": "Pikachu Fan Marina"
-	  }
-	},
-	{
-	  "name": "Pikachu Fan Skye",
-	  "meet_text": "I've still not seen a Pikachu fly!",
-	  "repeat_text": "I wish I could go flying toooo.",
-	  "pattern": "random_wander",
-	  "patrol_speed": 20.0,
-	  "wander_radius": 65,
-	  "position": {
-		"x": 275,
-		"y": 100
-	  },
-	  "condition": {
-		"type": "opponent_defeated",
-		"target": "Pikachu Fan Skye"
-	  }
-	},
-	{
-	  "name": "Pikachu Fan Cami",
-	  "meet_text": "I've been taking some good pictures on my camera recently.",
-	  "repeat_text": "I'm still working on my Pikachu picture collection. I currently don't have many.",
-	  "pattern": "random_wander",
-	  "patrol_speed": 20.0,
-	  "wander_radius": 65,
-	  "position": {
-		"x": 0,
-		"y": 250
-	  },
-	  "condition": {
-		"type": "opponent_defeated",
-		"target": "Pikachu Fan Cami"
-	  }
-	},
-	{
-	  "name": "Pikachu Fan Juniper",
-	  "meet_text": "I've still got my eyes open trying to find a Pikachu here!",
-	  "repeat_text": "Please tell me if you find a Pikachu running around here!!",
-	  "pattern": "random_wander",
-	  "patrol_speed": 20.0,
-	  "wander_radius": 65,
-	  "position": {
-		"x": 125,
-		"y": 300
-	  },
-	  "condition": {
-		"type": "opponent_defeated",
-		"target": "Pikachu Fan Juniper"
-	  }
-	},
-	{
-	  "name": "Pikachu Fan Raye",
-	  "meet_text": "Thunderbolt is such a super duper powerful attack.",
-	  "repeat_text": "I would never want to be shocked by a real Thunderbolt!!",
-	  "pattern": "random_wander",
-	  "patrol_speed": 20.0,
-	  "wander_radius": 65,
-	  "position": {
-		"x": 275,
-		"y": 250
-	  },
-	  "condition": {
-		"type": "opponent_defeated",
-		"target": "Pikachu Fan Raye"
-	  }
-	},
-	{
-	  "name": "Pikachu Fan Leaf",
-	  "meet_text": "Do you love Pikachu too?",
-	  "repeat_text": "I love Pikachu the most out of all of us!",
-	  "pattern": "random_wander",
-	  "patrol_speed": 20.0,
-	  "wander_radius": 65,
-	  "position": {
-		"x": 275,
-		"y": 100
-	  },
-	  "condition": {
-		"type": "opponent_defeated",
-		"target": "Pikachu Fan Leaf"
-	  }
-	},
-	{
-	  "name": "VF 5,7,8 D,E Rocket Pack Gift",
-	  "meet_text": "I'm glad we can finally get our hands on these packs. You look like you haven't opened many of these so have one on me. Spread the word you can buy them here.",
-	  "repeat_text": "Hope you pulled something good from that.",
-	  "pattern": "idle_left",
-	  "position": {
-		"x": 329,
-		"y": 1136
-	  },
-	  "condition": {
-		"type": "npc_not_met",
-		"target": "VF 5,7,8 D,E Rocket Pack Gift"
-	  }
-	},
-	{
-	  "name": "VF 5-8 D Wishing Well Coin Thrower",
-	  "meet_text": "I always come here to throw a coin in the well and make a wish but they never come true. Maybe if I give this to you instead it'll work better.",
-	  "repeat_text": "You could always try making a wish by throwing a coin in yourself.",
-	  "pattern": "idle_down",
-	  "position": {
-		"x": 3278,
-		"y": 1052
-	  },
-	  "condition": {
-		"type": "npc_not_met",
-		"target": "VF 5-8 D Wishing Well Coin Thrower"
-	  }
-	}
+        ]
+      }
+    },
+    {
+      "name": "Pikachu Fan Marina",
+      "meet_text": "I've never even been on a surfboard before.",
+      "repeat_text": "I wish I could surf like a Pikachu!",
+      "pattern": "random_wander",
+      "patrol_speed": 20.0,
+      "wander_radius": 65,
+      "position": {
+        "x": 0,
+        "y": 100
+      },
+      "condition": {
+        "type": "opponent_defeated",
+        "target": "Pikachu Fan Marina"
+      }
+    },
+    {
+      "name": "Pikachu Fan Skye",
+      "meet_text": "I've still not seen a Pikachu fly!",
+      "repeat_text": "I wish I could go flying toooo.",
+      "pattern": "random_wander",
+      "patrol_speed": 20.0,
+      "wander_radius": 65,
+      "position": {
+        "x": 275,
+        "y": 100
+      },
+      "condition": {
+        "type": "opponent_defeated",
+        "target": "Pikachu Fan Skye"
+      }
+    },
+    {
+      "name": "Pikachu Fan Cami",
+      "meet_text": "I've been taking some good pictures on my camera recently.",
+      "repeat_text": "I'm still working on my Pikachu picture collection. I currently don't have many.",
+      "pattern": "random_wander",
+      "patrol_speed": 20.0,
+      "wander_radius": 65,
+      "position": {
+        "x": 0,
+        "y": 250
+      },
+      "condition": {
+        "type": "opponent_defeated",
+        "target": "Pikachu Fan Cami"
+      }
+    },
+    {
+      "name": "Pikachu Fan Juniper",
+      "meet_text": "I've still got my eyes open trying to find a Pikachu here!",
+      "repeat_text": "Please tell me if you find a Pikachu running around here!!",
+      "pattern": "random_wander",
+      "patrol_speed": 20.0,
+      "wander_radius": 65,
+      "position": {
+        "x": 125,
+        "y": 300
+      },
+      "condition": {
+        "type": "opponent_defeated",
+        "target": "Pikachu Fan Juniper"
+      }
+    },
+    {
+      "name": "Pikachu Fan Raye",
+      "meet_text": "Thunderbolt is such a super duper powerful attack.",
+      "repeat_text": "I would never want to be shocked by a real Thunderbolt!!",
+      "pattern": "random_wander",
+      "patrol_speed": 20.0,
+      "wander_radius": 65,
+      "position": {
+        "x": 275,
+        "y": 250
+      },
+      "condition": {
+        "type": "opponent_defeated",
+        "target": "Pikachu Fan Raye"
+      }
+    },
+    {
+      "name": "Pikachu Fan Leaf",
+      "meet_text": "Do you love Pikachu too?",
+      "repeat_text": "I love Pikachu the most out of all of us!",
+      "pattern": "random_wander",
+      "patrol_speed": 20.0,
+      "wander_radius": 65,
+      "position": {
+        "x": 275,
+        "y": 100
+      },
+      "condition": {
+        "type": "opponent_defeated",
+        "target": "Pikachu Fan Leaf"
+      }
+    },
+    {
+      "name": "VF 5,7,8 D,E Rocket Pack Gift",
+      "meet_text": "I'm glad we can finally get our hands on these packs. You look like you haven't opened many of these so have one on me. Spread the word you can buy them here.",
+      "repeat_text": "Hope you pulled something good from that.",
+      "pattern": "idle_left",
+      "position": {
+        "x": 329,
+        "y": 1136
+      },
+      "condition": {
+        "type": "npc_not_met",
+        "target": "VF 5,7,8 D,E Rocket Pack Gift"
+      }
+    },
+    {
+      "name": "VF 5-8 D Wishing Well Coin Thrower",
+      "meet_text": "I always come here to throw a coin in the well and make a wish but they never come true. Maybe if I give this to you instead it'll work better.",
+      "repeat_text": "You could always try making a wish by throwing a coin in yourself.",
+      "pattern": "idle_down",
+      "position": {
+        "x": 3278,
+        "y": 1052
+      },
+      "condition": {
+        "type": "npc_not_met",
+        "target": "VF 5-8 D Wishing Well Coin Thrower"
+      }
+    }
   ],
   "opponents": [
-	{
-	  "name": "Pikachu Fan Marina",
-	  "meet_text": "Have you ever seen a Pikachu Surf, Some are really really good on a surfboard!!",
-	  "repeat_text": "Have you seen a Pikachu on a surfboard yet?",
-	  "first_win_text": "If you haven't seen a Pikachu use surf you can have this then!",
-	  "rematch_win_text": "I wish I could surf like a Pikachu",
-	  "loss_text": "Pikachu can do everything, it's the best!!!",
-	  "pattern": "idle_random",
-	  "position": {
-		"x": 3272,
-		"y": 1427
-	  },
-	  "match_effects": [
-		{"type": "ignore_weakness_and_resistance"},
-		{"type": "energy_attach_full_heal"}
-	  ],
-	  "condition": {
-		"type": "opponent_not_defeated",
-		"target": "Pikachu Fan Marina"
-	  }
-	},
-	{
-	  "name": "Pikachu Fan Skye",
-	  "meet_text": "Some Pokemon can use fly to take you somewhere you want to go. Turns out so can Pikachu!",
-	  "repeat_text": "I want to take a ride on a flying Pikachu",
-	  "first_win_text": "Hold onto this and try not to float away!",
-	  "rematch_win_text": "I've never see a flying Pikachu",
-	  "loss_text": "You'll never catch a Pikachu that's flying away!",
-	  "pattern": "random_wander",
-	  "patrol_speed": 20.0,
-	  "wander_radius": 65,
-	  "position": {
-		"x": 900,
-		"y": 1470
-	  },
-	  "match_effects": [
-		{"type": "ignore_weakness_and_resistance"},
-		{"type": "coin_flip_override", "result": "heads"}
-	  ],
-	  "condition": {
-		"type": "opponent_not_defeated",
-		"target": "Pikachu Fan Skye"
-	  }
-	},
-	{
-	  "name": "Pikachu Fan Cami",
-	  "meet_text": "I love taking pictures of Pokemon, especially Pikachu!",
-	  "repeat_text": "I'm really good with a Camera!",
-	  "first_win_text": "I took a really good picture of Pikachu and put it on this card",
-	  "rematch_win_text": "Do you want to see more pictures of Pikachu?",
-	  "loss_text": "I'll have to take a photo to remember this moment",
-  	  "pattern": "random_wander",
-	  "patrol_speed": 20.0,
-	  "wander_radius": 65,
-	  "position": {
-		"x": 3600,
-		"y": 50
-	  },
-	  "match_effects": [
-		{"type": "ignore_weakness_and_resistance"},
-		{"type": "raw_damage_only"}
-	  ],
-	  "condition": {
-		"type": "opponent_not_defeated",
-		"target": "Pikachu Fan Cami"
-	  }
-	},
-	{
-	  "name": "Pikachu Fan Juniper",
-	  "meet_text": "Did you know Pikachu live in the forest?",
-	  "repeat_text": "I've not seen any Pikachu around here yet.",
-	  "first_win_text": "I wish I could find a Pikachu around here but this is all I can find.",
-	  "rematch_win_text": "Have you found a Pikachu around here yet?",
-	  "loss_text": "If I'm lucky enough to win then I should be lucky enough to see a Pikachu!",
-	  "pattern": "idle_random",
-	  "position": {
-		"x": -307,
-		"y": 1680
-	  },
-	  "match_effects": [
-		{"type": "ignore_weakness_and_resistance"},
-		{"type": "max_hp_modifier", "amount": 50}
-	  ],
-	  "condition": {
-		"type": "opponent_not_defeated",
-		"target": "Pikachu Fan Juniper"
-	  }
-	},
-	{
-	  "name": "Pikachu Fan Raye",
-	  "meet_text": "Go Pikachu, use Thunderbolt!!!.... I don't really have a Pikachu.",
-	  "repeat_text": "I wish I could have a Pikachu for real",
-	  "first_win_text": "Have this Pikachu card and if you get a real Pikachu can you let me have it?",
-	  "rematch_win_text": "I still don't have a Pikachu at all",
-	  "loss_text": "My Pikachu would be really strong too!",
-	  "pattern": "random_wander",
-	  "patrol_speed": 20.0,
-	  "wander_radius": 65,
-	  "position": {
-		"x": 2025,
-		"y": 1025
-	  },
-	  "match_effects": [
-		{"type": "ignore_weakness_and_resistance"},
-		{"type": "extra_energy_per_turn", "count": 2}
-	  ],
-	  "condition": {
-		"type": "opponent_not_defeated",
-		"target": "Pikachu Fan Raye"
-	  }
-	},
-	{
-	  "name": "Pikachu Fan Leaf",
-	  "meet_text": "Pikachu is just so cute, he's the cutest Pokemon ever!",
-	  "repeat_text": "I love every Pikachu.",
-	  "first_win_text": "Even though I don't have a lot of Pikachu, you can have this one.",
-	  "rematch_win_text": "I will win with my Pikachu one day!",
-	  "loss_text": "That's why I love Pikachu so much!",
-	  "pattern": "patrol_line",
-	"patrol_axis": "vertical",
-	"patrol_distance": 350.0,
-	  "patrol_speed": 50.0,
-	  "wander_radius": 65,
-	  "position": {
-		"x": -250,
-		"y": 650
-	  },
-	  "match_effects": [
-		{"type": "ignore_weakness_and_resistance"},
-		{"type": "type_damage_bonus", "pokemon_type": "Lightning", "amount": 20}
-	  ],
-	  "condition": {
-		"type": "opponent_not_defeated",
-		"target": "Pikachu Fan Leaf"
-	  }
-	},
-	{
-	  "name": "Pikachu Mum",
-	  "meet_text": "Thank you for getting them all to come back and stay here, I don't know the rules very well of this game but I'll play you as a thanks!",
-	  "repeat_text": "Want to see all of my Pikachu again?",
-	  "first_win_text": "As a thank you again, take these!",
-	  "rematch_win_text": "My kids could learn a lot from you",
-	  "loss_text": "I didn't know Pikachu could be so strong!",
-	  "pattern": "idle_random",
-	  "position": {
-		"x": 180,
-		"y": 230
-	  },
-	  "condition": {
-		"type": "all_opponents_defeated",
-		"targets": [
-		  "Pikachu Fan Marina",
-		  "Pikachu Fan Skye",
-		  "Pikachu Fan Cami",
-		  "Pikachu Fan Juniper",
-		  "Pikachu Fan Raye",
-          "Pikachu Fan Leaf"
-		]
-	  }
-	},
-	{
-	  "name": "Ninjaboy Sasuke",
-	  "meet_text": "I love climbing the trees around here, it's good practice for my ninja skills.",
-	  "repeat_text": "I'm still training hard!",
-	  "first_win_text": "I should have been more sneaky.",
-	  "rematch_win_text": "It's hard to focus when you always lose!",
-	  "loss_text": "At least with age comes experience!",
-	  "pattern": "patrol_square",
-	  "patrol_speed": 90.0,
-	  "patrol_distance": 70,
-	  "position": {
-		"x": 500,
-		"y": 485
-	  }
-	},
-	{
-	  "name": "Youngster Milo",
-	  "meet_text": "I've not been playing the TCG for long but I think I'm really good already.",
-	  "repeat_text": "I'm getting better all the time.",
-	  "first_win_text": "I'm not as good as I thought.",
-	  "rematch_win_text": "I can only get better!",
-	  "loss_text": "I told you I was really good!",
-	  "pattern": "random_wander",
-	  "patrol_speed": 50.0,
-	  "wander_radius": 65,
-	  "position": {
-		"x": 1625,
-		"y": 25
-	  }
-	}
+    {
+      "name": "Pikachu Fan Marina",
+      "meet_text": "Have you ever seen a Pikachu Surf, Some are really really good on a surfboard!!",
+      "repeat_text": "Have you seen a Pikachu on a surfboard yet?",
+      "first_win_text": "If you haven't seen a Pikachu use surf you can have this then!",
+      "rematch_win_text": "I wish I could surf like a Pikachu",
+      "loss_text": "Pikachu can do everything, it's the best!!!",
+      "pattern": "idle_random",
+      "position": {
+        "x": 3272,
+        "y": 1427
+      },
+      "match_effects": [
+        {
+          "type": "ignore_weakness_and_resistance"
+        },
+        {
+          "type": "energy_attach_full_heal"
+        }
+      ],
+      "condition": {
+        "type": "opponent_not_defeated",
+        "target": "Pikachu Fan Marina"
+      }
+    },
+    {
+      "name": "Pikachu Fan Skye",
+      "meet_text": "Some Pokemon can use fly to take you somewhere you want to go. Turns out so can Pikachu!",
+      "repeat_text": "I want to take a ride on a flying Pikachu",
+      "first_win_text": "Hold onto this and try not to float away!",
+      "rematch_win_text": "I've never see a flying Pikachu",
+      "loss_text": "You'll never catch a Pikachu that's flying away!",
+      "pattern": "random_wander",
+      "patrol_speed": 20.0,
+      "wander_radius": 65,
+      "position": {
+        "x": 900,
+        "y": 1470
+      },
+      "match_effects": [
+        {
+          "type": "ignore_weakness_and_resistance"
+        },
+        {
+          "type": "coin_flip_override",
+          "result": "heads"
+        }
+      ],
+      "condition": {
+        "type": "opponent_not_defeated",
+        "target": "Pikachu Fan Skye"
+      }
+    },
+    {
+      "name": "Pikachu Fan Cami",
+      "meet_text": "I love taking pictures of Pokemon, especially Pikachu!",
+      "repeat_text": "I'm really good with a Camera!",
+      "first_win_text": "I took a really good picture of Pikachu and put it on this card",
+      "rematch_win_text": "Do you want to see more pictures of Pikachu?",
+      "loss_text": "I'll have to take a photo to remember this moment",
+      "pattern": "random_wander",
+      "patrol_speed": 20.0,
+      "wander_radius": 65,
+      "position": {
+        "x": 3600,
+        "y": 50
+      },
+      "match_effects": [
+        {
+          "type": "ignore_weakness_and_resistance"
+        },
+        {
+          "type": "raw_damage_only"
+        }
+      ],
+      "condition": {
+        "type": "opponent_not_defeated",
+        "target": "Pikachu Fan Cami"
+      }
+    },
+    {
+      "name": "Pikachu Fan Juniper",
+      "meet_text": "Did you know Pikachu live in the forest?",
+      "repeat_text": "I've not seen any Pikachu around here yet.",
+      "first_win_text": "I wish I could find a Pikachu around here but this is all I can find.",
+      "rematch_win_text": "Have you found a Pikachu around here yet?",
+      "loss_text": "If I'm lucky enough to win then I should be lucky enough to see a Pikachu!",
+      "pattern": "idle_random",
+      "position": {
+        "x": -307,
+        "y": 1680
+      },
+      "match_effects": [
+        {
+          "type": "ignore_weakness_and_resistance"
+        },
+        {
+          "type": "max_hp_modifier",
+          "amount": 50
+        }
+      ],
+      "condition": {
+        "type": "opponent_not_defeated",
+        "target": "Pikachu Fan Juniper"
+      }
+    },
+    {
+      "name": "Pikachu Fan Raye",
+      "meet_text": "Go Pikachu, use Thunderbolt!!!.... I don't really have a Pikachu.",
+      "repeat_text": "I wish I could have a Pikachu for real",
+      "first_win_text": "Have this Pikachu card and if you get a real Pikachu can you let me have it?",
+      "rematch_win_text": "I still don't have a Pikachu at all",
+      "loss_text": "My Pikachu would be really strong too!",
+      "pattern": "random_wander",
+      "patrol_speed": 20.0,
+      "wander_radius": 65,
+      "position": {
+        "x": 2025,
+        "y": 1025
+      },
+      "match_effects": [
+        {
+          "type": "ignore_weakness_and_resistance"
+        },
+        {
+          "type": "extra_energy_per_turn",
+          "count": 2
+        }
+      ],
+      "condition": {
+        "type": "opponent_not_defeated",
+        "target": "Pikachu Fan Raye"
+      }
+    },
+    {
+      "name": "Pikachu Fan Leaf",
+      "meet_text": "Pikachu is just so cute, he's the cutest Pokemon ever!",
+      "repeat_text": "I love every Pikachu.",
+      "first_win_text": "Even though I don't have a lot of Pikachu, you can have this one.",
+      "rematch_win_text": "I will win with my Pikachu one day!",
+      "loss_text": "That's why I love Pikachu so much!",
+      "pattern": "patrol_line",
+      "patrol_axis": "vertical",
+      "patrol_distance": 350.0,
+      "patrol_speed": 50.0,
+      "wander_radius": 65,
+      "position": {
+        "x": -250,
+        "y": 650
+      },
+      "match_effects": [
+        {
+          "type": "ignore_weakness_and_resistance"
+        },
+        {
+          "type": "type_damage_bonus",
+          "pokemon_type": "Lightning",
+          "amount": 20
+        }
+      ],
+      "condition": {
+        "type": "opponent_not_defeated",
+        "target": "Pikachu Fan Leaf"
+      }
+    },
+    {
+      "name": "Youngster Milo",
+      "meet_text": "I've not been playing the TCG for long but I think I'm really good already.",
+      "repeat_text": "I'm getting better all the time.",
+      "first_win_text": "I'm not as good as I thought.",
+      "rematch_win_text": "I can only get better!",
+      "loss_text": "I told you I was really good!",
+      "pattern": "random_wander",
+      "patrol_speed": 50.0,
+      "wander_radius": 65,
+      "position": {
+        "x": 400,
+        "y": 400
+      }
+    },
+    {
+      "name": "Ninjaboy Sasuke",
+      "meet_text": "I love climbing the trees around here, it's good practice for my ninja skills.",
+      "repeat_text": "I'm still training hard!",
+      "first_win_text": "I should have been more sneaky.",
+      "rematch_win_text": "It's hard to focus when you always lose!",
+      "loss_text": "At least with age comes experience!",
+      "pattern": "patrol_line",
+      "patrol_speed": 90.0,
+      "patrol_distance": 240,
+      "patrol_axis": "horizontal",
+      "position": {
+        "x": 850,
+        "y": 650
+      }
+    },
+    {
+      "name": "Doctor Mortimor",
+      "meet_text": "I'm a pretty good Doctor but the work is stressful so I like to take a walk in the forest to clear my head in the evening.",
+      "repeat_text": "I'm still enjoying the fresh air after my long shift.",
+      "first_win_text": "Medical school is long and hard, I didn't have a lot of time to practice cards.",
+      "rematch_win_text": "I'm always too tired!",
+      "loss_text": "I can treat you for any bad ailment other than a loss!",
+      "pattern": "patrol_line",
+      "patrol_speed": 30.0,
+      "patrol_distance": 3100,
+      "patrol_axis": "horizontal",
+      "position": {
+        "x": -50,
+        "y": -50
+      }
+    },
+    {
+      "name": "Rocket Grunt Margot",
+      "meet_text": "Did you know Team Rocket almost ruled the world? Anybody can be a Rocket member if they want.",
+      "repeat_text": "Have you thought about joining us yet?",
+      "first_win_text": "I'm supposed to be recruiting so take one of our uniforms if you want to join!",
+      "rematch_win_text": "You've got everything it takes to join us.",
+      "loss_text": "Maybe you're not cut out to be a Rocket grunt like me.",
+      "pattern": "random_wander",
+      "patrol_speed": 60.0,
+      "wander_radius": 65,
+      "position": {
+        "x": 1770,
+        "y": 200
+      }
+    }
   ]
 }

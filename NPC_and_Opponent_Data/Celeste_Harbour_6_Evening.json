@@ -280,16 +280,30 @@
   ],
   "opponents": [
     {
-      "name": "Birdspotter Tamsin",
-      "meet_text": "These Palms attract a lot of Bird Pokemon so its a good spot to watch them.",
-      "repeat_text": "Me and my buddy love watching the birds round here but I can take my eyes off them for a rematch.",
-      "first_win_text": "I wish I could just fly away.",
-      "rematch_win_text": "You can't fly away from all your troubles.",
-      "loss_text": "You should try bird watching with me!",
-      "pattern": "idle_random",
+      "name": "Painter Jericho",
+      "meet_text": "The evening sun is the most perfect time to come here and paint... or play cards!",
+      "repeat_text": "I've been painting a lot of great pieces from this spot.",
+      "first_win_text": "A win or a loss, both are equal pieces of art.",
+      "rematch_win_text": "A win or a loss, both are equal pieces of art.",
+      "loss_text": "To win is a beautiful piece of art.",
+      "pattern": "idle_right",
       "position": {
-        "x": 1530,
-        "y": 2320
+        "x": -565,
+        "y": 2375
+      }
+    },
+    {
+      "name": "Engineer Allan",
+      "meet_text": "As you can see, the new bulb installation went perrrrfectly today. I'm worn out from all the steps but always game for a match.",
+      "repeat_text": "I won't be needing to replace the bulb any time soon so I've got time to kill.",
+      "first_win_text": "That was clearly toooooo many steps today.",
+      "rematch_win_text": "At least I'm reaaallly good at replacing bulbs.",
+      "loss_text": "I hope your loss didn't come as a shock to you.",
+      "pattern": "idle_left",
+      "wander_radius": 65,
+      "position": {
+        "x": -800,
+        "y": 2620
       }
     },
     {
@@ -309,55 +323,42 @@
       }
     },
     {
-      "name": "Swimmer Melissa",
-      "meet_text": "The sea is so much calmer and warmer here than it is back home in Kanto.",
-      "repeat_text": "I could stay in the water here all day.",
-      "first_win_text": "I wish they made cards waterproof...",
-      "rematch_win_text": "I really need to dry off my cards.",
-      "loss_text": "I'm glad I came here today!",
+      "name": "Birdspotter Tamsin",
+      "meet_text": "These Palms attract a lot of Bird Pokemon so its a good spot to watch them.",
+      "repeat_text": "Looking for more Birds round here?",
+      "first_win_text": "I wish I could just fly away.",
+      "rematch_win_text": "You can't fly away from all your troubles.",
+      "loss_text": "You should try bird watching with me!",
+      "pattern": "idle_random",
+      "position": {
+        "x": 1886,
+        "y": 2360
+      }
+    },
+    {
+      "name": "Firebreather Darryl",
+      "meet_text": "I've been breathing that much fire that I needed an ice cold bev to cool my mouth down, but I'm ready for a match if you want.",
+      "repeat_text": "I'm fired up and ready for another match if you want.",
+      "first_win_text": "I burned out too quick.",
+      "rematch_win_text": "I could teach you how to firebreath... but maybe you should teach me how to play cards better!",
+      "loss_text": "That juice was just what I needed!",
       "pattern": "idle_cycle",
       "position": {
-        "x": 490,
-        "y": 2590
+        "x": 1050,
+        "y": 2475
       }
     },
     {
-      "name": "Aromagirl Penelope",
-      "meet_text": "Plants can grow in all weird shapes and sizes, they're not just flowers and trees, there's a lot of different kinds out there.",
-      "repeat_text": "I've catalogued a lot of crazy plants recently.",
-      "first_win_text": "I wish I could photosynthesize.",
-      "rematch_win_text": "I could do with some water",
-      "loss_text": "Grass Pokemon are great!",
-      "pattern": "idle_up",
+      "name": "Firebreather Kenneth",
+      "meet_text": "I'm so used to hot drinks that it's weird to drink something nice and cold.",
+      "repeat_text": "If you want another match then let's goooooo.",
+      "first_win_text": "I have too many burns to battle well.",
+      "rematch_win_text": "I'll just stick to the firebreathing from now on, I'm good at that.",
+      "loss_text": "Can't burn me out!",
+      "pattern": "idle_cycle",
       "position": {
-        "x": 2167,
-        "y": 2305
-      }
-    },
-    {
-      "name": "Fisherman Gary",
-      "meet_text": "I joined my buddies here to fish today but we were actually catching sooo much that they ended up leaving!",
-      "repeat_text": "Fishing by yourslef can get lonely when nothing bites.",
-      "first_win_text": "Dang, I never lose against my buddies.",
-      "rematch_win_text": "You're probably a really good fisherman too.",
-      "loss_text": "I'm the only fisherman and best card player on this pier!",
-      "pattern": "idle_down",
-      "position": {
-        "x": -840,
-        "y": 2735
-      }
-    },
-    {
-      "name": "Card Elder Rayne",
-      "meet_text": "Hoh Hoh, are you ready to feel the torrent? If you win I'll give you a medal to prove your triumph.",
-      "repeat_text": "Hoh Hoh! I enjoyed the battle that much I'd also like another!",
-      "first_win_text": "Congratulations on your win. You've earned this medal and my respect.",
-      "rematch_win_text": "Come back any time and battle us old folk.",
-      "loss_text": "Don't be disheartened, the rain will always stop.",
-      "pattern": "idle_down",
-      "position": {
-        "x": 2230,
-        "y": 1252
+        "x": 1000,
+        "y": 2475
       }
     },
     {
@@ -370,6 +371,19 @@
       "pattern": "idle_down",
       "position": {
         "x": 2326,
+        "y": 1252
+      }
+    },
+    {
+      "name": "Card Elder Rayne",
+      "meet_text": "Hoh Hoh, are you ready to feel the torrent? If you win I'll give you a medal to prove your triumph.",
+      "repeat_text": "Hoh Hoh! I enjoyed the battle that much I'd also like another!",
+      "first_win_text": "Congratulations on your win. You've earned this medal and my respect.",
+      "rematch_win_text": "Come back any time and battle us old folk.",
+      "loss_text": "Don't be disheartened, the rain will always stop.",
+      "pattern": "idle_down",
+      "position": {
+        "x": 2230,
         "y": 1252
       }
     },
@@ -387,99 +401,16 @@
       }
     },
     {
-      "name": "Engineer Brad",
-      "meet_text": "Hey, I've been working hard all day so I'm ready to play",
-      "repeat_text": "It's rare I have to work at night so I'm free for another match.",
-      "first_win_text": "I simply cannot fix that at all.",
-      "rematch_win_text": "I'm going to weld my cards at this rate.",
-      "loss_text": "You just need to work harder",
-      "pattern": "idle_up",
+      "name": "Fisherman Gary",
+      "meet_text": "I joined my buddies here to fish today but we were actually catching sooo much that they ended up leaving!",
+      "repeat_text": "Fishing by yourslef can get lonely when nothing bites.",
+      "first_win_text": "Dang, I never lose against my buddies.",
+      "rematch_win_text": "You're probably a really good fisherman too.",
+      "loss_text": "I'm the only fisherman and best card player on this pier!",
+      "pattern": "idle_down",
       "position": {
-        "x": 900,
-        "y": 3155
-      }
-    },
-    {
-      "name": "Painter Jericho",
-      "meet_text": "The evening sun is the most perfect time to come here and paint... or play cards!",
-      "repeat_text": "I've been painting a lot of great pieces from this spot.",
-      "first_win_text": "A win or a loss, both are equal pieces of art.",
-      "rematch_win_text": "A win or a loss, both are equal pieces of art.",
-      "loss_text": "To win is a beautiful piece of art.",
-      "pattern": "idle_right",
-      "position": {
-        "x": -565,
-        "y": 2375
-      }
-    },
-    {
-      "name": "Youngster Joey",
-      "meet_text": "I just got given some cards off my grandma, she's so cool. I'm not really good at battling yet but it's a lot of fun!",
-      "repeat_text": "I'm getting better at playing!'",
-      "first_win_text": "Take these full heal cards, you can use them to heal any status conditions your pokemon get. They're really useful.",
-      "rematch_win_text": "I'm going to win one day!",
-      "loss_text": "I didn't expect to win at all! These cards must be really good.",
-      "pattern": "random_wander",
-      "patrol_speed": 40.0,
-      "wander_radius": 65,
-      "position": {
-        "x": -800,
-        "y": 2020
-      }
-    },
-    {
-      "name": "Gambler Mick",
-      "meet_text": "All I need is a bit of luck, I let that decide my fate. If I battle enough then I'm bound to win some of them at least.",
-      "repeat_text": "I'll be a lot luckier this time round.",
-      "first_win_text": "Luck really wasn't on my side today...",
-      "rematch_win_text": "I just need a little bit of luck that's all.",
-      "loss_text": "Looks like luck wasn't on your side today.",
-      "pattern": "idle_random",
-      "position": {
-        "x": -615,
-        "y": 2510
-      }
-    },
-    {
-      "name": "Schoolboy Adam",
-      "meet_text": "I'm trying out some new techniques using statuses. If we battle I'll show you how good they are.",
-      "repeat_text": "I'll definitely win this time round.",
-      "first_win_text": "Oh man I really thought my statuses were going to cause you some trouble.",
-      "rematch_win_text": "Maybe I need a better tactic...",
-      "loss_text": "I knew my status infliction technique would work!",
-      "pattern": "patrol_line",
-      "patrol_speed": 70.0,
-      "patrol_distance": 200,
-      "patrol_axis": "vertical",
-      "position": {
-        "x": -850,
-        "y": 2250
-      }
-    },
-    {
-      "name": "Firebreather Darryl",
-      "meet_text": "I've had plenty of juice so I'm all cooled down and need to get fired up.",
-      "repeat_text": "I'm fired up and ready for another match if you want.",
-      "first_win_text": "I burned out too quick.",
-      "rematch_win_text": "I could teach you how to firebreath... but maybe you should teach me how to play cards better!",
-      "loss_text": "That juice was just what I needed!",
-      "pattern": "idle_cycle",
-      "position": {
-        "x": 1050,
-        "y": 2475
-      }
-    },
-    {
-      "name": "Firebreather Kenneth",
-      "meet_text": "We're practicing all night, both firebreathing and pokemon cards!",
-      "repeat_text": "If you want another match then let's goooooo.",
-      "first_win_text": "I have too many burns to battle well.",
-      "rematch_win_text": "I'll just stick to the firebreathing from now on, I'm good at that.",
-      "loss_text": "Can't burn me out!",
-      "pattern": "idle_cycle",
-      "position": {
-        "x": 1000,
-        "y": 2475
+        "x": -840,
+        "y": 2735
       }
     }
   ]

@@ -1,0 +1,259 @@
+{
+  "npcs": [],
+  "opponents": [
+    {
+      "name": "Gambler Mick",
+      "meet_text": "All I need is a bit of luck, I let that decide my fate. If I battle enough then I'm bound to win some of them at least.",
+      "repeat_text": "I'll be a lot luckier this time round.",
+      "first_win_text": "Luck really wasn't on my side today...",
+      "rematch_win_text": "I just need a little bit of luck that's all.",
+      "loss_text": "Looks like luck wasn't on your side today.",
+      "pattern": "idle_random",
+      "position": {
+        "x": -620,
+        "y": 2510
+      }
+    },
+    {
+      "name": "Fisherman Dave",
+      "meet_text": "I love the lighthouse here, it seems to attract all kinds of fish so I always catch a lot in this spot. I'm catching so many I need a break.",
+      "repeat_text": "I've caught a lot since last time.",
+      "first_win_text": "Even if they don't help me win, I still love my fish.",
+      "rematch_win_text": "Fishing and Pokemon cards are both a lot of fun, I could do both all day.",
+      "loss_text": "Maybe you should try picking up a rod and give fishing a go instead!",
+      "pattern": "idle_down",
+      "position": {
+        "x": -600,
+        "y": 2735
+      }
+    },
+    {
+      "name": "Beach Kid Timothy",
+      "meet_text": "I love the beach! I love the sand! I love building sandcastles! I love playing the Pokemon TCG!",
+      "repeat_text": "I could build sandcastles and play Pokemon all day!",
+      "first_win_text": "Please don't destroy my sandcastles!!!",
+      "rematch_win_text": "You can help me build a sandcastle if you want!",
+      "loss_text": "Yaaaaaay! I love winning!",
+      "pattern": "idle_right",
+      "position": {
+        "x": 450,
+        "y": 2380
+      }
+    },
+    {
+      "name": "Beach Kid Evie",
+      "meet_text": "I heard there's a scary Pokemon called Sandyghast. They sound scary and I don't like scary Pokemon, I only like cute pokemon!!",
+      "repeat_text": "Yes let's play again!",
+      "first_win_text": "You haven't seen a Sandyghast have you?",
+      "rematch_win_text": "If you see a Sandyghast please let me know!!",
+      "loss_text": "Yaaaaaay! I won!!",
+      "pattern": "idle_left",
+      "position": {
+        "x": 480,
+        "y": 2380
+      }
+    },
+    {
+      "name": "Birdspotter Tamsin",
+      "meet_text": "These Palms attract a lot of Bird Pokemon so its a good spot to watch them.",
+      "repeat_text": "Looking for more Birds round here?",
+      "first_win_text": "I wish I could just fly away.",
+      "rematch_win_text": "You can't fly away from all your troubles.",
+      "loss_text": "You should try bird watching with me!",
+      "pattern": "idle_random",
+      "position": {
+        "x": 1886,
+        "y": 2360
+      }
+    },
+    {
+      "name": "Swimmer Jordan",
+      "meet_text": "I love the water, it's so calm and warm but my cards always get wet! I need to dry them off.",
+      "repeat_text": "My friend has just arrived from Kanto and we're spending the day swimming together, but I can take a break for a rematch.",
+      "first_win_text": "I'll stick with my swimming...",
+      "rematch_win_text": "Nothing like a good match and a long swim.",
+      "loss_text": "Maybe you should work on your swimming...",
+      "pattern": "idle_cycle",
+      "position": {
+        "x": 450,
+        "y": 2590
+      }
+    },
+    {
+      "name": "Bug Catcher Alex",
+      "meet_text": "Some people hate bugs but I love them! Do you love bugs too?",
+      "repeat_text": "You just love bugs as much as I do then?",
+      "first_win_text": "Maybe bugs aren't as good as I thought...",
+      "rematch_win_text": "Me and my bugs will win one of these days!",
+      "loss_text": "I knew bugs were the best!!",
+      "pattern": "patrol_line",
+      "patrol_speed": 20.0,
+      "patrol_distance": 140,
+      "patrol_axis": "vertical",
+      "position": {
+        "x": 1625,
+        "y": 2180
+      }
+    },
+    {
+      "name": "Hiker Matthew",
+      "meet_text": "I've been hiking for hours and only just managed to reach the harbour and found everything is closed so now I have nothing to do for the evening.",
+      "repeat_text": "I'll be hiking back again tomorrow, I hike all day every day!",
+      "first_win_text": "I should have just called it a night...",
+      "rematch_win_text": "I could do with a long hike to get over this loss.",
+      "loss_text": "I'm as solid as stone!",
+      "pattern": "random_wander",
+      "patrol_speed": 40.0,
+      "wander_radius": 60,
+      "position": {
+        "x": 2650,
+        "y": 2020
+      }
+    },
+    {
+      "name": "Young Twin Anna",
+      "meet_text": "I've always wanted to play with Pokemon Cards and mummy finally got us some!",
+      "repeat_text": "Yay we get to play again?",
+      "first_win_text": "Oh nooooo, I really wanted to win.",
+      "rematch_win_text": "Please let me win!!",
+      "loss_text": "Yay!! mummy must have got us the best cards ever.",
+      "pattern": "idle_left",
+      "position": {
+        "x": 1001,
+        "y": 2383
+      }
+    },
+    {
+      "name": "Young Twin Nella",
+      "meet_text": "I've always wanted to play with Pokemon Cards and mummy finally got us some!",
+      "repeat_text": "Yay we get to play again?",
+      "first_win_text": "Oh nooooo, I really wanted to win.",
+      "rematch_win_text": "Please let me win!!",
+      "loss_text": "Yay!! mummy must have got us the best cards ever.",
+      "pattern": "idle_left",
+      "position": {
+        "x": 1001,
+        "y": 2403
+      }
+    },
+    {
+      "name": "Bug Catcher Frankie",
+      "meet_text": "Wow!!! The bugs here are so much cooler than what we have over in Viridian Forest!!",
+      "repeat_text": "Seen any cool bug Pokemon around here since our last match?",
+      "first_win_text": "My bugs clearly aren't as strong as the ones around here.",
+      "rematch_win_text": "Hmm I wish I could get my hands on some of these bugs instead.",
+      "loss_text": "Bug pokemon really aren't as weak as people think.",
+      "pattern": "idle_random",
+      "position": {
+        "x": 2295,
+        "y": 2160
+      }
+    },
+    {
+      "name": "Guitarist Jonesy",
+      "meet_text": "We're in a band and we're currently touring. We're just passing through to our next gig so having a quick jam here.",
+      "repeat_text": "Hey dude, let's rock.",
+      "first_win_text": "Damn I snapped a string while we were jamming.",
+      "rematch_win_text": "You should come to one of our gigs!",
+      "loss_text": "Let's goooooooooooo.",
+      "pattern": "idle_right",
+      "position": {
+        "x": 2480,
+        "y": 1210
+      }
+    },
+    {
+      "name": "Guitarist Howard",
+      "meet_text": "We're the Toxtricity Rockers, we're a duo that's pretty big in Johto.",
+      "repeat_text": "You here to hear a song or a rematch?",
+      "first_win_text": "I missed a chord.",
+      "rematch_win_text": "Fancy being a roadie?",
+      "loss_text": "If it's any consolation I'll give you a discount on our album.",
+      "pattern": "idle_left",
+      "position": {
+        "x": 2515,
+        "y": 1210
+      }
+    },
+    {
+      "name": "Hiker Ben",
+      "meet_text": "Well that's incredibly disappointing. I was hoping to have a trek through the forest but they've told me it's shut so I have nowhere to go now.",
+      "repeat_text": "The forest has to be open soon surely.",
+      "first_win_text": "Well that's another disappointment to my day.",
+      "rematch_win_text": "The disappointment just doesn't end.",
+      "loss_text": "At least that's given me a nice little boost after the bad news.",
+      "pattern": "random_wander",
+      "patrol_speed": 40.0,
+      "wander_radius": 60,
+      "position": {
+        "x": 950,
+        "y": 1270
+      }
+    },
+    {
+      "name": "Card Elder Hamish",
+      "meet_text": "Back for the challenge then hey? Remember you'll need to defeat all 3 of us if you want to progress.",
+      "repeat_text": "Very well, I always enjoy a good challenge!",
+      "first_win_text": "Well done, that was quite the battle. Take my medal and continue forth.",
+      "rematch_win_text": "Battling like this makes me feel young again.",
+      "loss_text": "Don't be disheartened, the rain will always stop.",
+      "pattern": "idle_down",
+      "position": {
+        "x": 2326,
+        "y": 1252
+      }
+    },
+    {
+      "name": "Card Elder Rayne",
+      "meet_text": "Hoh Hoh, are you ready to feel the torrent? If you win I'll give you a medal to prove your triumph.",
+      "repeat_text": "Hoh Hoh! I enjoyed the battle that much I'd also like another!",
+      "first_win_text": "Congratulations on your win. You've earned this medal and my respect.",
+      "rematch_win_text": "Come back any time and battle us old folk.",
+      "loss_text": "Don't be disheartened, the rain will always stop.",
+      "pattern": "idle_down",
+      "position": {
+        "x": 2230,
+        "y": 1252
+      }
+    },
+    {
+      "name": "Card Elder Waverly",
+      "meet_text": "Are you ready to take me on then? If you win then you'll do well in the Gym Hero Challenge.",
+      "repeat_text": "Up for another round then? Happy to oblige.",
+      "first_win_text": "Well well well, what a jolly good play! You've earned this.",
+      "rematch_win_text": "We've been winning and losing for so long it's always fun either way.",
+      "loss_text": "When you fail, get up and try again.",
+      "pattern": "idle_down",
+      "position": {
+        "x": 2278,
+        "y": 1252
+      }
+    },
+    {
+      "name": "Tourist Alissa",
+      "meet_text": "Nothing feels better than the sand beneath your toes after being stuck in your cabin for days on end.",
+      "repeat_text": "I'm so relaxed I could stay here all day.",
+      "first_win_text": "Have you ever been on a cruise before?",
+      "rematch_win_text": "I'll have to practice more when I'm back on board.",
+      "loss_text": "Oh wonderful! I do love it when I win!",
+      "pattern": "idle_down",
+      "position": {
+        "x": -366,
+        "y": 2270
+      }
+    },
+    {
+      "name": "Tourist Edmund",
+      "meet_text": "I live in Celadon City so it's rare I get to the beach. I'm here to make the most of it.",
+      "repeat_text": "It won't feel like that long before we have to head onwards.",
+      "first_win_text": "I'm not here to win, only here for a good time.",
+      "rematch_win_text": "You're the best player I've battled around here.",
+      "loss_text": "I didn't even mean to win so that's a nice surprise.",
+      "pattern": "idle_down",
+      "position": {
+        "x": 765,
+        "y": 1960
+      }
+    }
+  ]
+}

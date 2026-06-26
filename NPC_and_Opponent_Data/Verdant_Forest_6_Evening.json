@@ -1,323 +1,452 @@
 {
   "npcs": [
-	{
-	  "name": "Pikachu Mum",
-	  "meet_text": "It's nearly time to go home now so I better round up my kids!",
-	  "repeat_text": "We come back here every day because they're all so obsessed with Pikachu!!",
-	  "pattern": "idle_right",
-	  "position": {
-		"x": 198,
-		"y": 164
-	  },
-	  "condition": {
-		"type": "not_all_opponents_defeated",
-		"targets": [
-		  "Pikachu Fan Marina",
-		  "Pikachu Fan Skye",
-		  "Pikachu Fan Cami",
-		  "Pikachu Fan Juniper",
-		  "Pikachu Fan Raye",
+    {
+      "name": "Pikachu Mum",
+      "meet_text": "It's nearly time to go home now so I better round up my kids!",
+      "repeat_text": "We come back here every day because they're all so obsessed with Pikachu!!",
+      "pattern": "idle_right",
+      "position": {
+        "x": 198,
+        "y": 164
+      },
+      "condition": {
+        "type": "not_all_opponents_defeated",
+        "targets": [
+          "Pikachu Fan Marina",
+          "Pikachu Fan Skye",
+          "Pikachu Fan Cami",
+          "Pikachu Fan Juniper",
+          "Pikachu Fan Raye",
           "Pikachu Fan Leaf"
-		]
-	  }
-	},
-	{
-	  "name": "Pikachu Fan Marina",
-	  "meet_text": "I've never even been on a surfboard before.",
-	  "repeat_text": "I wish I could surf like a Pikachu!",
-	  "pattern": "random_wander",
-	  "patrol_speed": 20.0,
-	  "wander_radius": 65,
-	  "position": {
-		"x": 0,
-		"y": 100
-	  },
-	  "condition": {
-		"type": "opponent_defeated",
-		"target": "Pikachu Fan Marina"
-	  }
-	},
-	{
-	  "name": "Pikachu Fan Skye",
-	  "meet_text": "I've still not seen a Pikachu fly!",
-	  "repeat_text": "I wish I could go flying toooo.",
-	  "pattern": "random_wander",
-	  "patrol_speed": 20.0,
-	  "wander_radius": 65,
-	  "position": {
-		"x": 275,
-		"y": 100
-	  },
-	  "condition": {
-		"type": "opponent_defeated",
-		"target": "Pikachu Fan Skye"
-	  }
-	},
-	{
-	  "name": "Pikachu Fan Cami",
-	  "meet_text": "I've been taking some good pictures on my camera recently.",
-	  "repeat_text": "I'm still working on my Pikachu picture collection. I currently don't have many.",
-	  "pattern": "random_wander",
-	  "patrol_speed": 20.0,
-	  "wander_radius": 65,
-	  "position": {
-		"x": 0,
-		"y": 250
-	  },
-	  "condition": {
-		"type": "opponent_defeated",
-		"target": "Pikachu Fan Cami"
-	  }
-	},
-	{
-	  "name": "Pikachu Fan Juniper",
-	  "meet_text": "I've still got my eyes open trying to find a Pikachu here!",
-	  "repeat_text": "Please tell me if you find a Pikachu running around here!!",
-	  "pattern": "random_wander",
-	  "patrol_speed": 20.0,
-	  "wander_radius": 65,
-	  "position": {
-		"x": 125,
-		"y": 300
-	  },
-	  "condition": {
-		"type": "opponent_defeated",
-		"target": "Pikachu Fan Juniper"
-	  }
-	},
-	{
-	  "name": "Pikachu Fan Raye",
-	  "meet_text": "Thunderbolt is such a super duper powerful attack.",
-	  "repeat_text": "I would never want to be shocked by a real Thunderbolt!!",
-	  "pattern": "random_wander",
-	  "patrol_speed": 20.0,
-	  "wander_radius": 65,
-	  "position": {
-		"x": 275,
-		"y": 250
-	  },
-	  "condition": {
-		"type": "opponent_defeated",
-		"target": "Pikachu Fan Raye"
-	  }
-	},
-	{
-	  "name": "Pikachu Fan Leaf",
-	  "meet_text": "Do you love Pikachu too?",
-	  "repeat_text": "I love Pikachu the most out of all of us!",
-	  "pattern": "random_wander",
-	  "patrol_speed": 20.0,
-	  "wander_radius": 65,
-	  "position": {
-		"x": 275,
-		"y": 100
-	  },
-	  "condition": {
-		"type": "opponent_defeated",
-		"target": "Pikachu Fan Leaf"
-	  }
-	},
-	{
-	  "name": "Pikachu Fan Marina",
-	  "meet_text": "It's nearly time to go home so I won't have time to battle now.",
-	  "repeat_text": "Mum brings us back every day",
-	  "pattern": "idle_left",
-	  "position": {
-		"x": 3125,
-		"y": 1045
-	  },
-	  "condition": {
-		"type": "opponent_not_defeated",
-		"target": "Pikachu Fan Marina"
-	  }
-	},
-	{
-	  "name": "Pikachu Fan Skye",
-	  "meet_text": "I always want to battle but mum doesn't let us when it's this late.",
-	  "repeat_text": "We always come here early in the morning.",
-	  "pattern": "idle_up",
-	  "position": {
-		"x": 216,
-		"y": 500
-	  },
-	  "condition": {
-		"type": "opponent_not_defeated",
-		"target": "Pikachu Fan Skye"
-	  }
-	},
-	{
-	  "name": "Pikachu Fan Cami",
-	  "meet_text": "I'm trying to take some last minute photos before we have to leave.",
-	  "repeat_text": "I'll bring my cards back here tomorrow with the photos I've taken!",
-	  "pattern": "idle_left",
-	  "position": {
-		"x": 3270,
-		"y": 290
-	  },
-	  "condition": {
-		"type": "opponent_not_defeated",
-		"target": "Pikachu Fan Cami"
-	  }
-	},
-	{
-	  "name": "Pikachu Fan Juniper",
-	  "meet_text": "I swear I just saw a Pikachu run along by here!!",
-	  "repeat_text": "I don't have long to find it before I have to go",
-	  "pattern": "random_wander",
-	  "patrol_speed": 20.0,
-	  "wander_radius": 65,
-	  "position": {
-		"x": 2050,
-		"y": 1050
-	  },
-	  "condition": {
-		"type": "opponent_not_defeated",
-		"target": "Pikachu Fan Juniper"
-	  }
-	},
-	{
-	  "name": "Pikachu Fan Raye",
-	  "meet_text": "I know our mum worries about us when it gets this late so I better head back ",
-	  "repeat_text": "We have to be back home before it gets dark",
-	  "pattern": "random_wander",
-	  "patrol_speed": 20.0,
-	  "wander_radius": 65,
-	  "position": {
-		"x": 1610,
-		"y": 150
-	  },
-	  "condition": {
-		"type": "opponent_not_defeated",
-		"target": "Pikachu Fan Raye"
-	  }
-	},
-	{
-	  "name": "Pikachu Fan Leaf",
-	  "meet_text": "Oh dear I've just noticed the time so I can't play any more",
-	  "repeat_text": "We're not allowed to play when it gets dark",
-	  "pattern": "random_wander",
-	  "patrol_speed": 20.0,
-	  "wander_radius": 65,
-	  "position": {
-		"x": -270,
-		"y": -50
-	  },
-	  "condition": {
-		"type": "opponent_not_defeated",
-		"target": "Pikachu Fan Leaf"
-	  }
-	}
+        ]
+      }
+    },
+    {
+      "name": "Pikachu Fan Marina",
+      "meet_text": "I've never even been on a surfboard before.",
+      "repeat_text": "I wish I could surf like a Pikachu!",
+      "pattern": "random_wander",
+      "patrol_speed": 20.0,
+      "wander_radius": 65,
+      "position": {
+        "x": 0,
+        "y": 100
+      },
+      "condition": {
+        "type": "opponent_defeated",
+        "target": "Pikachu Fan Marina"
+      }
+    },
+    {
+      "name": "Pikachu Fan Skye",
+      "meet_text": "I've still not seen a Pikachu fly!",
+      "repeat_text": "I wish I could go flying toooo.",
+      "pattern": "random_wander",
+      "patrol_speed": 20.0,
+      "wander_radius": 65,
+      "position": {
+        "x": 275,
+        "y": 100
+      },
+      "condition": {
+        "type": "opponent_defeated",
+        "target": "Pikachu Fan Skye"
+      }
+    },
+    {
+      "name": "Pikachu Fan Cami",
+      "meet_text": "I've been taking some good pictures on my camera recently.",
+      "repeat_text": "I'm still working on my Pikachu picture collection. I currently don't have many.",
+      "pattern": "random_wander",
+      "patrol_speed": 20.0,
+      "wander_radius": 65,
+      "position": {
+        "x": 0,
+        "y": 250
+      },
+      "condition": {
+        "type": "opponent_defeated",
+        "target": "Pikachu Fan Cami"
+      }
+    },
+    {
+      "name": "Pikachu Fan Juniper",
+      "meet_text": "I've still got my eyes open trying to find a Pikachu here!",
+      "repeat_text": "Please tell me if you find a Pikachu running around here!!",
+      "pattern": "random_wander",
+      "patrol_speed": 20.0,
+      "wander_radius": 65,
+      "position": {
+        "x": 125,
+        "y": 300
+      },
+      "condition": {
+        "type": "opponent_defeated",
+        "target": "Pikachu Fan Juniper"
+      }
+    },
+    {
+      "name": "Pikachu Fan Raye",
+      "meet_text": "Thunderbolt is such a super duper powerful attack.",
+      "repeat_text": "I would never want to be shocked by a real Thunderbolt!!",
+      "pattern": "random_wander",
+      "patrol_speed": 20.0,
+      "wander_radius": 65,
+      "position": {
+        "x": 275,
+        "y": 250
+      },
+      "condition": {
+        "type": "opponent_defeated",
+        "target": "Pikachu Fan Raye"
+      }
+    },
+    {
+      "name": "Pikachu Fan Leaf",
+      "meet_text": "Do you love Pikachu too?",
+      "repeat_text": "I love Pikachu the most out of all of us!",
+      "pattern": "random_wander",
+      "patrol_speed": 20.0,
+      "wander_radius": 65,
+      "position": {
+        "x": 275,
+        "y": 100
+      },
+      "condition": {
+        "type": "opponent_defeated",
+        "target": "Pikachu Fan Leaf"
+      }
+    },
+    {
+      "name": "Pikachu Fan Marina",
+      "meet_text": "It's nearly time to go home so I won't have time to battle now.",
+      "repeat_text": "Mum brings us back every day",
+      "pattern": "idle_left",
+      "position": {
+        "x": 3125,
+        "y": 1045
+      },
+      "condition": {
+        "type": "opponent_not_defeated",
+        "target": "Pikachu Fan Marina"
+      }
+    },
+    {
+      "name": "Pikachu Fan Skye",
+      "meet_text": "I always want to battle but mum doesn't let us when it's this late.",
+      "repeat_text": "We always come here early in the morning.",
+      "pattern": "idle_up",
+      "position": {
+        "x": 216,
+        "y": 500
+      },
+      "condition": {
+        "type": "opponent_not_defeated",
+        "target": "Pikachu Fan Skye"
+      }
+    },
+    {
+      "name": "Pikachu Fan Cami",
+      "meet_text": "I'm trying to take some last minute photos before we have to leave.",
+      "repeat_text": "I'll bring my cards back here tomorrow with the photos I've taken!",
+      "pattern": "idle_left",
+      "position": {
+        "x": 3270,
+        "y": 290
+      },
+      "condition": {
+        "type": "opponent_not_defeated",
+        "target": "Pikachu Fan Cami"
+      }
+    },
+    {
+      "name": "Pikachu Fan Juniper",
+      "meet_text": "I swear I just saw a Pikachu run along by here!!",
+      "repeat_text": "I don't have long to find it before I have to go",
+      "pattern": "random_wander",
+      "patrol_speed": 20.0,
+      "wander_radius": 65,
+      "position": {
+        "x": 2050,
+        "y": 1050
+      },
+      "condition": {
+        "type": "opponent_not_defeated",
+        "target": "Pikachu Fan Juniper"
+      }
+    },
+    {
+      "name": "Pikachu Fan Raye",
+      "meet_text": "I know our mum worries about us when it gets this late so I better head back ",
+      "repeat_text": "We have to be back home before it gets dark",
+      "pattern": "random_wander",
+      "patrol_speed": 20.0,
+      "wander_radius": 65,
+      "position": {
+        "x": 1610,
+        "y": 150
+      },
+      "condition": {
+        "type": "opponent_not_defeated",
+        "target": "Pikachu Fan Raye"
+      }
+    },
+    {
+      "name": "Pikachu Fan Leaf",
+      "meet_text": "Oh dear I've just noticed the time so I can't play any more",
+      "repeat_text": "We're not allowed to play when it gets dark",
+      "pattern": "random_wander",
+      "patrol_speed": 20.0,
+      "wander_radius": 65,
+      "position": {
+        "x": -270,
+        "y": -50
+      },
+      "condition": {
+        "type": "opponent_not_defeated",
+        "target": "Pikachu Fan Leaf"
+      }
+    }
   ],
   "opponents": [
-	{
-	  "name": "Old Traveller Harold",
-	  "meet_text": "I'm travelling the world with my old friend. We've been to many places in our time.",
-	  "repeat_text": "Won't be long until we move onto the next place",
-	  "first_win_text": "Well done. You could travel with us if you were older too ho ho ho.",
-	  "rematch_win_text": "Have you been aboard the SS Anne at all?",
-	  "loss_text": "Don't you worry, life isn't all about winning and losing.",
-	  "pattern": "idle_left",
-	  "position": {
-		"x": 100,
-		"y": 1590
-	  }
-	},
-	{
-	  "name": "Old Traveller Cliff",
-	  "meet_text": "Me and my dear friend arrived on the SS Anne. We've travelled on it a few years in the past.",
-	  "repeat_text": "I've lived in many places in my time so I always appreciate being in the now.",
-	  "first_win_text": "That's the way to do it, good effort!",
-	  "rematch_win_text": "Another fantastic play, good show.",
-	  "loss_text": "You'll never grow and mature if you win every time.",
-	  "pattern": "idle_right",
-	  "position": {
-		"x": 70,
-		"y": 1590
-	  }
-	},
-	{
-	  "name": "Clown Hubert",
-	  "meet_text": "Can you believe that some people are actually scared of us clowns!!!",
-	  "repeat_text": "I'm glad you don't find me scary!",
-	  "first_win_text": "I ran away from the circus for this?",
-	  "rematch_win_text": "I wonder if the circus will take me back....",
-	  "loss_text": "*honk* *honk* I can teach you how to ride a unicycle",
-	  "pattern": "idle_cycle",
-	  "position": {
-		"x": 340,
-		"y": 400
-	  }
-	},
-	{
-	  "name": "Clown Glenn",
-	  "meet_text": "Why do clowns often have stiff necks?....",
-	  "repeat_text": "I told my wife I was going to clown college....",
-	  "first_win_text": ".....Because they sleep funny!",
-	  "rematch_win_text": "..... She said you can't be serious!!!",
-	  "loss_text": "*honk* *honk* Nevermind, that's a better punchline!",
-	  "pattern": "patrol_square",
-	  "patrol_speed": 80.0,
-	  "patrol_distance": 100,
-	  "position": {
-		"x": 290,
-		"y": 350
-	  }
-	},
-	{
-	  "name": "Psychic Nova",
-	  "meet_text": "If you relax your thoughts and focus your mind entirely, some people can move objects with natural telekinetic powers.",
-	  "repeat_text": "I hope you've been focusing",
-	  "first_win_text": "I have a friend who can bring out your hidden powers.",
-	  "rematch_win_text": "You have great potential. I think you have what it takes.",
-	  "loss_text": "You'll never be a master of your mind if you don't focus.",
-	  "pattern": "idle_down",
-	  "position": {
-		"x": 277,
-		"y": 1190
-	  }
-	},
-	{
-	  "name": "Mad Scientist Leonard",
-	  "meet_text": "I'm right on the edge of finishing my best invention, it's going to change the world.",
-	  "repeat_text": "I still haven't figure out the right formulas yet.",
-	  "first_win_text": "I just can't seem to get the right formula. I need more assistants",
-	  "rematch_win_text": "You could defintely help me with this.",
-	  "loss_text": "Remember my name, I'll be all over every scientific news outlet soon!",
-	  "pattern": "random_wander",
-	  "patrol_speed": 40.0,
-	  "wander_radius": 65,
-	  "position": {
-		"x": 3660,
-		"y": 1100
-	  }
-	},
-	{
-	  "name": "Forest Ranger Tucker",
-	  "meet_text": "There's a lot of poisonous Pokemon out here in the trees so you have to be careful when you're wandering off the paths.",
-	  "repeat_text": "Hope you've not been stung!",
-	  "first_win_text": "You can clearly handle yourself so you should be fine.",
-	  "rematch_win_text": "Don't let your guard down!",
-	  "loss_text": "You might need to report to first aid...",
-	  "pattern": "random_wander",
-	  "patrol_speed": 50.0,
-	  "wander_radius": 65,
-	  "position": {
-		"x": 2640,
-		"y": 610
-	  }
-	},
-	{
-	  "name": "Youngster Cooper",
-	  "meet_text": "Have you ever seen a pokemon EXPLODE before? It's CRAZY!",
-	  "repeat_text": "I PROMISE I haven't blown anything up!!",
-	  "first_win_text": "Nothing worse than a dud",
-	  "rematch_win_text": "I feel like I'm going to explode",
-	  "loss_text": "BOOOOOOOOOOM!!!",
-	  "pattern": "idle_random",
-	  "position": {
-		"x": 210,
-		"y": 290
-	  }
-	}
+    {
+      "name": "Youngster Milo",
+      "meet_text": "I've not been playing the TCG for long but I think I'm really good already.",
+      "repeat_text": "I'm getting better all the time.",
+      "first_win_text": "I'm not as good as I thought.",
+      "rematch_win_text": "I can only get better!",
+      "loss_text": "I told you I was really good!",
+      "pattern": "random_wander",
+      "patrol_speed": 50.0,
+      "wander_radius": 65,
+      "position": {
+        "x": 400,
+        "y": 400
+      }
+    },
+    {
+      "name": "Ninjaboy Sasuke",
+      "meet_text": "I love climbing the trees around here, it's good practice for my ninja skills.",
+      "repeat_text": "I'm still training hard!",
+      "first_win_text": "I should have been more sneaky.",
+      "rematch_win_text": "It's hard to focus when you always lose!",
+      "loss_text": "At least with age comes experience!",
+      "pattern": "patrol_line",
+      "patrol_speed": 90.0,
+      "patrol_distance": 240,
+      "patrol_axis": "horizontal",
+      "position": {
+        "x": 850,
+        "y": 650
+      }
+    },
+    {
+      "name": "RIVAL 6",
+      "_MISSING_ENTRY": true
+    },
+    {
+      "name": "Forest Ranger Tucker",
+      "meet_text": "There's a lot of poisonous Pokemon out here in the trees so you have to be careful when you're wandering off the paths.",
+      "repeat_text": "Hope you've not been stung!",
+      "first_win_text": "You can clearly handle yourself so you should be fine.",
+      "rematch_win_text": "Don't let your guard down!",
+      "loss_text": "You might need to report to first aid...",
+      "pattern": "random_wander",
+      "patrol_speed": 50.0,
+      "wander_radius": 65,
+      "position": {
+        "x": 2640,
+        "y": 610
+      }
+    },
+    {
+      "name": "Youngster Cooper",
+      "meet_text": "Have you ever seen a pokemon EXPLODE before? It's CRAZY!",
+      "repeat_text": "I PROMISE I haven't blown anything up!!",
+      "first_win_text": "Nothing worse than a dud",
+      "rematch_win_text": "I feel like I'm going to explode",
+      "loss_text": "BOOOOOOOOOOM!!!",
+      "pattern": "idle_random",
+      "position": {
+        "x": 210,
+        "y": 290
+      }
+    },
+    {
+      "name": "Clown Hubert",
+      "meet_text": "Can you believe that some people are actually scared of us clowns!!!",
+      "repeat_text": "I'm glad you don't find me scary!",
+      "first_win_text": "I ran away from the circus for this?",
+      "rematch_win_text": "I wonder if the circus will take me back....",
+      "loss_text": "*honk* *honk* I can teach you how to ride a unicycle",
+      "pattern": "idle_cycle",
+      "position": {
+        "x": 340,
+        "y": 400
+      }
+    },
+    {
+      "name": "Clown Glenn",
+      "meet_text": "Why do clowns often have stiff necks?....",
+      "repeat_text": "I told my wife I was going to clown college....",
+      "first_win_text": ".....Because they sleep funny!",
+      "rematch_win_text": "..... She said you can't be serious!!!",
+      "loss_text": "*honk* *honk* Nevermind, that's a better punchline!",
+      "pattern": "patrol_square",
+      "patrol_speed": 80.0,
+      "patrol_distance": 100,
+      "position": {
+        "x": 290,
+        "y": 350
+      }
+    },
+    {
+      "name": "Psychic Nova",
+      "meet_text": "If you relax your thoughts and focus your mind entirely, some people can move objects with natural telekinetic powers.",
+      "repeat_text": "I hope you've been focusing",
+      "first_win_text": "I have a friend who can bring out your hidden powers.",
+      "rematch_win_text": "You have great potential. I think you have what it takes.",
+      "loss_text": "You'll never be a master of your mind if you don't focus.",
+      "pattern": "idle_down",
+      "position": {
+        "x": 277,
+        "y": 1190
+      }
+    },
+    {
+      "name": "Mad Scientist Leonard",
+      "meet_text": "I'm right on the edge of finishing my best invention, it's going to change the world.",
+      "repeat_text": "I still haven't figure out the right formulas yet.",
+      "first_win_text": "I just can't seem to get the right formula. I need more assistants",
+      "rematch_win_text": "You could defintely help me with this.",
+      "loss_text": "Remember my name, I'll be all over every scientific news outlet soon!",
+      "pattern": "random_wander",
+      "patrol_speed": 40.0,
+      "wander_radius": 65,
+      "position": {
+        "x": 3660,
+        "y": 1100
+      }
+    },
+    {
+      "name": "Ex Gym Leader Brock",
+      "meet_text": "I'm Brock, the Ex Gym Leader of Pewter City and expert on Rock-type Pokemon. I'm practicing hard before the challenge begins. Did you know about the ruleset? Some trainer cards are banned for the challenge so you can't use them in your deck. Show me your best.",
+      "repeat_text": "I really enjoyed our last match. Want to give it another shot?",
+      "first_win_text": "You overcame my rock hard defence!",
+      "rematch_win_text": "Looks like you're the stronger one.",
+      "loss_text": "The best offense is a good defense! That's my way of doing things!",
+      "pattern": "idle_left",
+      "position": {
+        "x": 1540,
+        "y": 1595
+      },
+      "restrictions": {
+        "banned_card_ids": [
+          "base1-75",
+          "base1-79",
+          "base1-92",
+          "base5-16",
+          "base5-72",
+          "base5-76",
+          "gym1-19",
+          "gym1-103",
+          "gym2-102"
+        ],
+        "banned_card_names": [
+          "Lass",
+          "Super Energy Removal",
+          "Energy Removal",
+          "Rocket's Sneak Attack",
+          "Imposter Oak's Revenge",
+          "The Rocket's Trap",
+          "No Removal Gym",
+          "Chaos Gym"
+        ]
+      },
+      "condition": {
+        "type": "npc_met",
+        "target": "CH 3-6 E Brock"
+      }
+    },
+    {
+      "name": "Ex Gym Leader Misty",
+      "meet_text": "This bridge really reminds me of home. I'm Misty, the Ex Gym Leader of Cerulean. I'm known for my all out Water-type offensive. This is only a practice but I won't hold back and we'll still play by the banned trainer cards rules.",
+      "repeat_text": "I haven't got time to go swimming today so do you want another match?",
+      "first_win_text": "You really are strong and skilled!",
+      "rematch_win_text": "Glad to see you're really learning a thing or two!",
+      "loss_text": "Yaaaay! That feels great!",
+      "pattern": "idle_right",
+      "position": {
+        "x": 3325,
+        "y": 325
+      },
+      "restrictions": {
+        "banned_card_ids": [
+          "base1-75",
+          "base1-79",
+          "base1-92",
+          "base5-16",
+          "base5-72",
+          "base5-76",
+          "gym1-19",
+          "gym1-103",
+          "gym2-102"
+        ],
+        "banned_card_names": [
+          "Lass",
+          "Super Energy Removal",
+          "Energy Removal",
+          "Rocket's Sneak Attack",
+          "Imposter Oak's Revenge",
+          "The Rocket's Trap",
+          "No Removal Gym",
+          "Chaos Gym"
+        ]
+      },
+      "condition": {
+        "type": "npc_met",
+        "target": "CH 3-6 D Misty"
+      }
+    },
+    {
+      "name": "Ex Gym Leader Koga",
+      "meet_text": "Fwahaha! I am Koga. I was part of the Elite Four but most importantly an Ex Gym Leader. My style will confound and destroy you! Confusion, sleep, poison... Prepare to be the victim of my sinister technique!",
+      "repeat_text": "I, too, must pursue further discipline.",
+      "first_win_text": "Humph! You have proven your worth!",
+      "rematch_win_text": "I subjected you to everything I could muster. But my efforts failed. I must hone my skills",
+      "loss_text": "Have you learned to fear the techniques of the ninja?",
+      "pattern": "idle_up",
+      "position": {
+        "x": 65,
+        "y": 1565
+      },
+      "restrictions": {
+        "banned_card_ids": [
+          "base1-75",
+          "base1-79",
+          "base1-92",
+          "base5-16",
+          "base5-72",
+          "base5-76",
+          "gym1-19",
+          "gym1-103",
+          "gym2-102"
+        ],
+        "banned_card_names": [
+          "Lass",
+          "Super Energy Removal",
+          "Energy Removal",
+          "Rocket's Sneak Attack",
+          "Imposter Oak's Revenge",
+          "The Rocket's Trap",
+          "No Removal Gym",
+          "Chaos Gym"
+        ]
+      },
+      "condition": {
+        "type": "npc_met",
+        "target": "CH 3-6 N Koga"
+      }
+    }
   ]
 }

@@ -1,0 +1,129 @@
+{
+  "npcs": [],
+  "opponents": [
+    {
+      "name": "Gardener Callum",
+      "meet_text": "Wowee, it was a long day gardening today. I'm down for a match to let off some steam now.",
+      "repeat_text": "I've got time for a rematch before my next shift.",
+      "first_win_text": "I'm clearly too worn out from such a long shift.",
+      "rematch_win_text": "I'll win when I'm fully rested.",
+      "loss_text": "Even after a hard days work I can still win!",
+      "pattern": "idle_up",
+      "wander_radius": 65,
+      "position": {
+        "x": -690,
+        "y": 2180
+      }
+    },
+    {
+      "name": "Hiker Matthew",
+      "meet_text": "I've been hiking for hours and only just managed to reach the harbour and found everything is closed so now I have nothing to do for the evening.",
+      "repeat_text": "I'll be hiking back again tomorrow, I hike all day every day!",
+      "first_win_text": "I should have just called it a night...",
+      "rematch_win_text": "I could do with a long hike to get over this loss.",
+      "loss_text": "I'm as solid as stone!",
+      "pattern": "random_wander",
+      "patrol_speed": 40.0,
+      "wander_radius": 60,
+      "position": {
+        "x": 2650,
+        "y": 2020
+      }
+    },
+    {
+      "name": "Sailor Bob",
+      "meet_text": "I'm all done preparing for the arrival of the SS Anne so there's not much to do now until morning.",
+      "repeat_text": "There's still time before the SS Anne arrives.",
+      "first_win_text": "I should at least pretend to do some work on the dock.",
+      "rematch_win_text": "I won't have a lot of time to play when the ship docks.",
+      "loss_text": "All this spare time has given me a chance to practice.",
+      "pattern": "idle_random",
+      "position": {
+        "x": 2040,
+        "y": 3110
+      }
+    },
+    {
+      "name": "Bad Dude Paul",
+      "meet_text": "Heh you want to try and beat me kid??",
+      "repeat_text": "Damn... they're gonna kick me out of the cool guy biker gang for this.",
+      "first_win_text": "Heh you're pretty tough, you wanna join our gang?",
+      "rematch_win_text": "Now they're DEFINITELY going to kick me out of the cool guy biker gang...",
+      "loss_text": "Heh heh heh, too easy.",
+      "pattern": "idle_random",
+      "position": {
+        "x": -810,
+        "y": 2550
+      }
+    },
+    {
+      "name": "Garden Manager Louis",
+      "meet_text": "I might be the garden manager but I do know how to have fun.",
+      "repeat_text": "Look at how great the gardens look.",
+      "first_win_text": "Even with all this sun I couldn't win.",
+      "rematch_win_text": "Ever fancied being a gardener yourself?",
+      "loss_text": "Plants aren't just pretty.",
+      "pattern": "random_wander",
+      "patrol_speed": 40.0,
+      "wander_radius": 65,
+      "position": {
+        "x": -710,
+        "y": 2020
+      }
+    },
+    {
+      "name": "Hiker Ben",
+      "meet_text": "Well that's incredibly disappointing. I was hoping to have a trek through the forest but they've told me it's shut so I have nowhere to go now.",
+      "repeat_text": "The forest has to be open soon surely.",
+      "first_win_text": "Well that's another disappointment to my day.",
+      "rematch_win_text": "The disappointment just doesn't end.",
+      "loss_text": "At least that's given me a nice little boost after the bad news.",
+      "pattern": "random_wander",
+      "patrol_speed": 40.0,
+      "wander_radius": 60,
+      "position": {
+        "x": 950,
+        "y": 1270
+      }
+    },
+    {
+      "name": "Engineer Brad",
+      "meet_text": "Hey, I've been working hard all day so I'm ready to play",
+      "repeat_text": "It's rare I have to work at night so I'm free for another match.",
+      "first_win_text": "I simply cannot fix that at all.",
+      "rematch_win_text": "I'm going to weld my cards at this rate.",
+      "loss_text": "You just need to work harder",
+      "pattern": "idle_up",
+      "position": {
+        "x": 900,
+        "y": 3155
+      }
+    },
+    {
+      "name": "Rocket Grunt Damien",
+      "meet_text": "I'm here on bosses orders but we're not starting until tomorrow so you'll be good practice.",
+      "repeat_text": "I'm not really a bad guy but I can't let people know that.",
+      "first_win_text": "Oh no, don't tell the boss.",
+      "rematch_win_text": "I'm gonna be toast.",
+      "loss_text": "Ha ha, you didn't put up much of a fight.",
+      "pattern": "idle_left",
+      "position": {
+        "x": 940,
+        "y": 1050
+      }
+    },
+    {
+      "name": "Rocket Grunt Penny",
+      "meet_text": "Team Rocket used to be the most feared group in the world. Maybe we will be again.",
+      "repeat_text": "Have you ever heard of us before?",
+      "first_win_text": "Weren't you even a little bit scared?",
+      "rematch_win_text": "I really gotta act more scary.",
+      "loss_text": "If you didn't already you should definitely fear us now.",
+      "pattern": "idle_right",
+      "position": {
+        "x": 900,
+        "y": 1050
+      }
+    }
+  ]
+}

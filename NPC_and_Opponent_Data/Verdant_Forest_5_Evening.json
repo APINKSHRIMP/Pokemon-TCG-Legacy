@@ -1,326 +1,352 @@
 {
   "npcs": [
-	{
-	  "name": "Pikachu Mum",
-	  "meet_text": "It's nearly time to go home now so I better round up my kids!",
-	  "repeat_text": "We come back here every day because they're all so obsessed with Pikachu!!",
-	  "pattern": "idle_right",
-	  "position": {
-		"x": 198,
-		"y": 164
-	  },
-	  "condition": {
-		"type": "not_all_opponents_defeated",
-		"targets": [
-		  "Pikachu Fan Marina",
-		  "Pikachu Fan Skye",
-		  "Pikachu Fan Cami",
-		  "Pikachu Fan Juniper",
-		  "Pikachu Fan Raye",
+    {
+      "name": "Pikachu Mum",
+      "meet_text": "It's nearly time to go home now so I better round up my kids!",
+      "repeat_text": "We come back here every day because they're all so obsessed with Pikachu!!",
+      "pattern": "idle_right",
+      "position": {
+        "x": 198,
+        "y": 164
+      },
+      "condition": {
+        "type": "not_all_opponents_defeated",
+        "targets": [
+          "Pikachu Fan Marina",
+          "Pikachu Fan Skye",
+          "Pikachu Fan Cami",
+          "Pikachu Fan Juniper",
+          "Pikachu Fan Raye",
           "Pikachu Fan Leaf"
-		]
-	  }
-	},
-	{
-	  "name": "Pikachu Fan Marina",
-	  "meet_text": "I've never even been on a surfboard before.",
-	  "repeat_text": "I wish I could surf like a Pikachu!",
-	  "pattern": "random_wander",
-	  "patrol_speed": 20.0,
-	  "wander_radius": 65,
-	  "position": {
-		"x": 0,
-		"y": 100
-	  },
-	  "condition": {
-		"type": "opponent_defeated",
-		"target": "Pikachu Fan Marina"
-	  }
-	},
-	{
-	  "name": "Pikachu Fan Skye",
-	  "meet_text": "I've still not seen a Pikachu fly!",
-	  "repeat_text": "I wish I could go flying toooo.",
-	  "pattern": "random_wander",
-	  "patrol_speed": 20.0,
-	  "wander_radius": 65,
-	  "position": {
-		"x": 275,
-		"y": 100
-	  },
-	  "condition": {
-		"type": "opponent_defeated",
-		"target": "Pikachu Fan Skye"
-	  }
-	},
-	{
-	  "name": "Pikachu Fan Cami",
-	  "meet_text": "I've been taking some good pictures on my camera recently.",
-	  "repeat_text": "I'm still working on my Pikachu picture collection. I currently don't have many.",
-	  "pattern": "random_wander",
-	  "patrol_speed": 20.0,
-	  "wander_radius": 65,
-	  "position": {
-		"x": 0,
-		"y": 250
-	  },
-	  "condition": {
-		"type": "opponent_defeated",
-		"target": "Pikachu Fan Cami"
-	  }
-	},
-	{
-	  "name": "Pikachu Fan Juniper",
-	  "meet_text": "I've still got my eyes open trying to find a Pikachu here!",
-	  "repeat_text": "Please tell me if you find a Pikachu running around here!!",
-	  "pattern": "random_wander",
-	  "patrol_speed": 20.0,
-	  "wander_radius": 65,
-	  "position": {
-		"x": 125,
-		"y": 300
-	  },
-	  "condition": {
-		"type": "opponent_defeated",
-		"target": "Pikachu Fan Juniper"
-	  }
-	},
-	{
-	  "name": "Pikachu Fan Raye",
-	  "meet_text": "Thunderbolt is such a super duper powerful attack.",
-	  "repeat_text": "I would never want to be shocked by a real Thunderbolt!!",
-	  "pattern": "random_wander",
-	  "patrol_speed": 20.0,
-	  "wander_radius": 65,
-	  "position": {
-		"x": 275,
-		"y": 250
-	  },
-	  "condition": {
-		"type": "opponent_defeated",
-		"target": "Pikachu Fan Raye"
-	  }
-	},
-	{
-	  "name": "Pikachu Fan Leaf",
-	  "meet_text": "Do you love Pikachu too?",
-	  "repeat_text": "I love Pikachu the most out of all of us!",
-	  "pattern": "random_wander",
-	  "patrol_speed": 20.0,
-	  "wander_radius": 65,
-	  "position": {
-		"x": 275,
-		"y": 100
-	  },
-	  "condition": {
-		"type": "opponent_defeated",
-		"target": "Pikachu Fan Leaf"
-	  }
-	},
-	{
-	  "name": "Pikachu Fan Marina",
-	  "meet_text": "It's nearly time to go home so I won't have time to battle now.",
-	  "repeat_text": "Mum brings us back every day",
-	  "pattern": "idle_left",
-	  "position": {
-		"x": 3125,
-		"y": 1045
-	  },
-	  "condition": {
-		"type": "opponent_not_defeated",
-		"target": "Pikachu Fan Marina"
-	  }
-	},
-	{
-	  "name": "Pikachu Fan Skye",
-	  "meet_text": "I always want to battle but mum doesn't let us when it's this late.",
-	  "repeat_text": "We always come here early in the morning.",
-	  "pattern": "idle_up",
-	  "position": {
-		"x": 216,
-		"y": 500
-	  },
-	  "condition": {
-		"type": "opponent_not_defeated",
-		"target": "Pikachu Fan Skye"
-	  }
-	},
-	{
-	  "name": "Pikachu Fan Cami",
-	  "meet_text": "I'm trying to take some last minute photos before we have to leave.",
-	  "repeat_text": "I'll bring my cards back here tomorrow with the photos I've taken!",
-	  "pattern": "idle_left",
-	  "position": {
-		"x": 3270,
-		"y": 290
-	  },
-	  "condition": {
-		"type": "opponent_not_defeated",
-		"target": "Pikachu Fan Cami"
-	  }
-	},
-	{
-	  "name": "Pikachu Fan Juniper",
-	  "meet_text": "I swear I just saw a Pikachu run along by here!!",
-	  "repeat_text": "I don't have long to find it before I have to go",
-	  "pattern": "random_wander",
-	  "patrol_speed": 20.0,
-	  "wander_radius": 65,
-	  "position": {
-		"x": 2050,
-		"y": 1050
-	  },
-	  "condition": {
-		"type": "opponent_not_defeated",
-		"target": "Pikachu Fan Juniper"
-	  }
-	},
-	{
-	  "name": "Pikachu Fan Raye",
-	  "meet_text": "I know our mum worries about us when it gets this late so I better head back ",
-	  "repeat_text": "We have to be back home before it gets dark",
-	  "pattern": "random_wander",
-	  "patrol_speed": 20.0,
-	  "wander_radius": 65,
-	  "position": {
-		"x": 1760,
-		"y": 350
-	  },
-	  "condition": {
-		"type": "opponent_not_defeated",
-		"target": "Pikachu Fan Raye"
-	  }
-	},
-	{
-	  "name": "Pikachu Fan Leaf",
-	  "meet_text": "Oh dear I've just noticed the time so I can't play any more",
-	  "repeat_text": "We're not allowed to play when it gets dark",
-	  "pattern": "random_wander",
-	  "patrol_speed": 20.0,
-	  "wander_radius": 65,
-	  "position": {
-		"x": -270,
-		"y": -50
-	  },
-	  "condition": {
-		"type": "opponent_not_defeated",
-		"target": "Pikachu Fan Leaf"
-	  }
-	},
-	{
-	  "name": "VF 5,7,8 D,E Rocket Pack Gift",
-	  "meet_text": "I'm glad we can finally get our hands on these packs. You look like you haven't opened many of these so have one on me. Spread the word you can buy them here.",
-	  "repeat_text": "Hope you pulled something good from that.",
-	  "pattern": "idle_left",
-	  "position": {
-		"x": 329,
-		"y": 1136
-	  },
-	  "condition": {
-		"type": "npc_not_met",
-		"target": "VF 5,7,8 D,E Rocket Pack Gift"
-	  }
-	}
+        ]
+      }
+    },
+    {
+      "name": "Pikachu Fan Marina",
+      "meet_text": "I've never even been on a surfboard before.",
+      "repeat_text": "I wish I could surf like a Pikachu!",
+      "pattern": "random_wander",
+      "patrol_speed": 20.0,
+      "wander_radius": 65,
+      "position": {
+        "x": 0,
+        "y": 100
+      },
+      "condition": {
+        "type": "opponent_defeated",
+        "target": "Pikachu Fan Marina"
+      }
+    },
+    {
+      "name": "Pikachu Fan Skye",
+      "meet_text": "I've still not seen a Pikachu fly!",
+      "repeat_text": "I wish I could go flying toooo.",
+      "pattern": "random_wander",
+      "patrol_speed": 20.0,
+      "wander_radius": 65,
+      "position": {
+        "x": 275,
+        "y": 100
+      },
+      "condition": {
+        "type": "opponent_defeated",
+        "target": "Pikachu Fan Skye"
+      }
+    },
+    {
+      "name": "Pikachu Fan Cami",
+      "meet_text": "I've been taking some good pictures on my camera recently.",
+      "repeat_text": "I'm still working on my Pikachu picture collection. I currently don't have many.",
+      "pattern": "random_wander",
+      "patrol_speed": 20.0,
+      "wander_radius": 65,
+      "position": {
+        "x": 0,
+        "y": 250
+      },
+      "condition": {
+        "type": "opponent_defeated",
+        "target": "Pikachu Fan Cami"
+      }
+    },
+    {
+      "name": "Pikachu Fan Juniper",
+      "meet_text": "I've still got my eyes open trying to find a Pikachu here!",
+      "repeat_text": "Please tell me if you find a Pikachu running around here!!",
+      "pattern": "random_wander",
+      "patrol_speed": 20.0,
+      "wander_radius": 65,
+      "position": {
+        "x": 125,
+        "y": 300
+      },
+      "condition": {
+        "type": "opponent_defeated",
+        "target": "Pikachu Fan Juniper"
+      }
+    },
+    {
+      "name": "Pikachu Fan Raye",
+      "meet_text": "Thunderbolt is such a super duper powerful attack.",
+      "repeat_text": "I would never want to be shocked by a real Thunderbolt!!",
+      "pattern": "random_wander",
+      "patrol_speed": 20.0,
+      "wander_radius": 65,
+      "position": {
+        "x": 275,
+        "y": 250
+      },
+      "condition": {
+        "type": "opponent_defeated",
+        "target": "Pikachu Fan Raye"
+      }
+    },
+    {
+      "name": "Pikachu Fan Leaf",
+      "meet_text": "Do you love Pikachu too?",
+      "repeat_text": "I love Pikachu the most out of all of us!",
+      "pattern": "random_wander",
+      "patrol_speed": 20.0,
+      "wander_radius": 65,
+      "position": {
+        "x": 275,
+        "y": 100
+      },
+      "condition": {
+        "type": "opponent_defeated",
+        "target": "Pikachu Fan Leaf"
+      }
+    },
+    {
+      "name": "Pikachu Fan Marina",
+      "meet_text": "It's nearly time to go home so I won't have time to battle now.",
+      "repeat_text": "Mum brings us back every day",
+      "pattern": "idle_left",
+      "position": {
+        "x": 3125,
+        "y": 1045
+      },
+      "condition": {
+        "type": "opponent_not_defeated",
+        "target": "Pikachu Fan Marina"
+      }
+    },
+    {
+      "name": "Pikachu Fan Skye",
+      "meet_text": "I always want to battle but mum doesn't let us when it's this late.",
+      "repeat_text": "We always come here early in the morning.",
+      "pattern": "idle_up",
+      "position": {
+        "x": 216,
+        "y": 500
+      },
+      "condition": {
+        "type": "opponent_not_defeated",
+        "target": "Pikachu Fan Skye"
+      }
+    },
+    {
+      "name": "Pikachu Fan Cami",
+      "meet_text": "I'm trying to take some last minute photos before we have to leave.",
+      "repeat_text": "I'll bring my cards back here tomorrow with the photos I've taken!",
+      "pattern": "idle_left",
+      "position": {
+        "x": 3270,
+        "y": 290
+      },
+      "condition": {
+        "type": "opponent_not_defeated",
+        "target": "Pikachu Fan Cami"
+      }
+    },
+    {
+      "name": "Pikachu Fan Juniper",
+      "meet_text": "I swear I just saw a Pikachu run along by here!!",
+      "repeat_text": "I don't have long to find it before I have to go",
+      "pattern": "random_wander",
+      "patrol_speed": 20.0,
+      "wander_radius": 65,
+      "position": {
+        "x": 2050,
+        "y": 1050
+      },
+      "condition": {
+        "type": "opponent_not_defeated",
+        "target": "Pikachu Fan Juniper"
+      }
+    },
+    {
+      "name": "Pikachu Fan Raye",
+      "meet_text": "I know our mum worries about us when it gets this late so I better head back ",
+      "repeat_text": "We have to be back home before it gets dark",
+      "pattern": "random_wander",
+      "patrol_speed": 20.0,
+      "wander_radius": 65,
+      "position": {
+        "x": 1760,
+        "y": 350
+      },
+      "condition": {
+        "type": "opponent_not_defeated",
+        "target": "Pikachu Fan Raye"
+      }
+    },
+    {
+      "name": "Pikachu Fan Leaf",
+      "meet_text": "Oh dear I've just noticed the time so I can't play any more",
+      "repeat_text": "We're not allowed to play when it gets dark",
+      "pattern": "random_wander",
+      "patrol_speed": 20.0,
+      "wander_radius": 65,
+      "position": {
+        "x": -270,
+        "y": -50
+      },
+      "condition": {
+        "type": "opponent_not_defeated",
+        "target": "Pikachu Fan Leaf"
+      }
+    },
+    {
+      "name": "VF 5,7,8 D,E Rocket Pack Gift",
+      "meet_text": "I'm glad we can finally get our hands on these packs. You look like you haven't opened many of these so have one on me. Spread the word you can buy them here.",
+      "repeat_text": "Hope you pulled something good from that.",
+      "pattern": "idle_left",
+      "position": {
+        "x": 329,
+        "y": 1136
+      },
+      "condition": {
+        "type": "npc_not_met",
+        "target": "VF 5,7,8 D,E Rocket Pack Gift"
+      }
+    }
   ],
   "opponents": [
-	{
-	  "name": "Ninjaboy Sasuke",
-	  "meet_text": "I love climbing the trees around here, it's good practice for my ninja skills.",
-	  "repeat_text": "I'm still training hard!",
-	  "first_win_text": "I should have been more sneaky.",
-	  "rematch_win_text": "It's hard to focus when you always lose!",
-	  "loss_text": "At least with age comes experience!",
-	  "pattern": "patrol_line",
-	  "patrol_speed": 90.0,
-	  "patrol_distance": 240,
-	  "patrol_axis": "horizontal",
-	  "position": {
-		"x": 850,
-		"y": 650
-	  }
-	},
-	{
-	  "name": "Rocket Exec Petrel",
-	  "meet_text": "Heh, you've found us at the right time. We've been hiding from the police... Not that we've done anything illegal, we're just here to play this card game.",
-	  "repeat_text": "You're back for another round?",
-	  "first_win_text": "You better watch this space.",
-	  "rematch_win_text": "You should join us, we've got big things coming.",
-	  "loss_text": "Of course you didn't stand a chance against us.",
-	  "pattern": "idle_up",
-	  "position": {
-		"x": 3300,
-		"y": 1130
-	  }
-	},
-	{
-	  "name": "Rocket Exec Proton",
-	  "meet_text": "This well is bringing back a lot of memories... I can't imagine you've heard of Team Rocket before but you'll hear about us soon.",
-	  "repeat_text": "Giving me another chance huh?",
-	  "first_win_text": "Heh we're in your shadow then huh.",
-	  "rematch_win_text": "It won't always be like this.",
-	  "loss_text": "We will be feared again.",
-	  "pattern": "idle_up",
-	  "position": {
-		"x": 3250,
-		"y": 1130
-	  }
-	},
-	{
-	  "name": "Rocket Exec Archer",
-	  "meet_text": "Hello. I'm Archer one of the 4 execs of Team Rocket. We're not here to do anything illicit. Not yet anyway. We're just getting started.",
-	  "repeat_text": "If you're really that interested you should join us.",
-	  "first_win_text": "Enjoy the wins while they last.",
-	  "rematch_win_text": "Don't hang about too late.",
-	  "loss_text": "Don't take it personally.",
-	  "pattern": "idle_down",
-	  "position": {
-		"x": 3277,
-		"y": 1060
-	  }
-	},
-	{
-	  "name": "Doctor Mortimor",
-	  "meet_text": "I'm a pretty good Doctor but the work is stressful so I like to take a walk in the forest to clear my head in the evening.",
-	  "repeat_text": "I'm still enjoying the fresh air after my long shift.",
-	  "first_win_text": "Medical school is long and hard, I didn't have a lot of time to practice cards.",
-	  "rematch_win_text": "I'm always too tired!",
-	  "loss_text": "I can treat you for any bad ailment other than a loss!",
-	  "pattern": "patrol_line",
-	  "patrol_speed": 30.0,
-	  "patrol_distance": 3100,
-	  "patrol_axis": "horizontal",
-	  "position": {
-		"x": -50,
-		"y": -50
-	  }
-	},
-	{
-	  "name": "Youngster Milo",
-	  "meet_text": "I've not been playing the TCG for long but I think I'm really good already.",
-	  "repeat_text": "I'm getting better all the time.",
-	  "first_win_text": "I'm not as good as I thought.",
-	  "rematch_win_text": "I can only get better!",
-	  "loss_text": "I told you I was really good!",
-	  "pattern": "random_wander",
-	  "patrol_speed": 50.0,
-	  "wander_radius": 65,
-	  "position": {
-		"x": 400,
-		"y": 400
-	  }
-	},
-	{
-	  "name": "Gentleman Benedict",
-	  "meet_text": "Good day. I'm not the most youthful but I love a good match.",
-	  "repeat_text": "Hello again, up for another match ey?",
-	  "first_win_text": "Hoh, hoh, very well played there.",
-	  "rematch_win_text": "Another jolly good show old chum.",
-	  "loss_text": "At least with age comes experience!",
-	  "pattern": "idle_left",
-	  "position": {
-		"x": 3710,
-		"y": 1095
-	  }
-	}
+    {
+      "name": "Youngster Milo",
+      "meet_text": "I've not been playing the TCG for long but I think I'm really good already.",
+      "repeat_text": "I'm getting better all the time.",
+      "first_win_text": "I'm not as good as I thought.",
+      "rematch_win_text": "I can only get better!",
+      "loss_text": "I told you I was really good!",
+      "pattern": "random_wander",
+      "patrol_speed": 50.0,
+      "wander_radius": 65,
+      "position": {
+        "x": 400,
+        "y": 400
+      }
+    },
+    {
+      "name": "Ninjaboy Sasuke",
+      "meet_text": "I love climbing the trees around here, it's good practice for my ninja skills.",
+      "repeat_text": "I'm still training hard!",
+      "first_win_text": "I should have been more sneaky.",
+      "rematch_win_text": "It's hard to focus when you always lose!",
+      "loss_text": "At least with age comes experience!",
+      "pattern": "patrol_line",
+      "patrol_speed": 90.0,
+      "patrol_distance": 240,
+      "patrol_axis": "horizontal",
+      "position": {
+        "x": 850,
+        "y": 650
+      }
+    },
+    {
+      "name": "Doctor Mortimor",
+      "meet_text": "I'm a pretty good Doctor but the work is stressful so I like to take a walk in the forest to clear my head in the evening.",
+      "repeat_text": "I'm still enjoying the fresh air after my long shift.",
+      "first_win_text": "Medical school is long and hard, I didn't have a lot of time to practice cards.",
+      "rematch_win_text": "I'm always too tired!",
+      "loss_text": "I can treat you for any bad ailment other than a loss!",
+      "pattern": "patrol_line",
+      "patrol_speed": 30.0,
+      "patrol_distance": 3100,
+      "patrol_axis": "horizontal",
+      "position": {
+        "x": -50,
+        "y": -50
+      }
+    },
+    {
+      "name": "Rocket Grunt Margot",
+      "meet_text": "Did you know Team Rocket almost ruled the world? Anybody can be a Rocket member if they want.",
+      "repeat_text": "Have you thought about joining us yet?",
+      "first_win_text": "I'm supposed to be recruiting so take one of our uniforms if you want to join!",
+      "rematch_win_text": "You've got everything it takes to join us.",
+      "loss_text": "Maybe you're not cut out to be a Rocket grunt like me.",
+      "pattern": "random_wander",
+      "patrol_speed": 60.0,
+      "wander_radius": 65,
+      "position": {
+        "x": 1770,
+        "y": 200
+      }
+    },
+    {
+      "name": "Pikachu Mum",
+      "meet_text": "Thank you for getting them all to come back and stay here, I don't know the rules very well of this game but I'll play you as a thanks!",
+      "repeat_text": "Want to see all of my Pikachu again?",
+      "first_win_text": "As a thank you again, take these!",
+      "rematch_win_text": "My kids could learn a lot from you",
+      "loss_text": "I didn't know Pikachu could be so strong!",
+      "pattern": "idle_down",
+      "position": {
+        "x": 1509,
+        "y": 928
+      },
+      "condition": {
+        "type": "all_opponents_defeated",
+        "targets": [
+          "Pikachu Fan Marina",
+          "Pikachu Fan Skye",
+          "Pikachu Fan Cami",
+          "Pikachu Fan Juniper",
+          "Pikachu Fan Raye",
+          "Pikachu Fan Leaf"
+        ]
+      }
+    },
+    {
+      "name": "Rocket Exec Proton",
+      "meet_text": "This well is bringing back a lot of memories... I can't imagine you've heard of Team Rocket before but you'll hear about us soon.",
+      "repeat_text": "Giving me another chance huh?",
+      "first_win_text": "Heh we're in your shadow then huh.",
+      "rematch_win_text": "It won't always be like this.",
+      "loss_text": "We will be feared again.",
+      "pattern": "idle_up",
+      "position": {
+        "x": 3250,
+        "y": 1130
+      }
+    },
+    {
+      "name": "Rocket Exec Petrel",
+      "meet_text": "Heh, you've found us at the right time. We've been hiding from the police... Not that we've done anything illegal, we're just here to play this card game.",
+      "repeat_text": "You're back for another round?",
+      "first_win_text": "You better watch this space.",
+      "rematch_win_text": "You should join us, we've got big things coming.",
+      "loss_text": "Of course you didn't stand a chance against us.",
+      "pattern": "idle_up",
+      "position": {
+        "x": 3300,
+        "y": 1130
+      }
+    },
+    {
+      "name": "Rocket Exec Archer",
+      "meet_text": "Hello. I'm Archer one of the 4 execs of Team Rocket. We're not here to do anything illicit. Not yet anyway. We're just getting started.",
+      "repeat_text": "If you're really that interested you should join us.",
+      "first_win_text": "Enjoy the wins while they last.",
+      "rematch_win_text": "Don't hang about too late.",
+      "loss_text": "Don't take it personally.",
+      "pattern": "idle_down",
+      "position": {
+        "x": 3277,
+        "y": 1060
+      }
+    }
   ]
 }

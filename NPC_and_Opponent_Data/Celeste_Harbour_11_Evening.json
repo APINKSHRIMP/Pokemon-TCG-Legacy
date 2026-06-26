@@ -1,0 +1,154 @@
+{
+  "npcs": [],
+  "opponents": [
+    {
+      "name": "Engineer Allan",
+      "meet_text": "As you can see, the new bulb installation went perrrrfectly today. I'm worn out from all the steps but always game for a match.",
+      "repeat_text": "I won't be needing to replace the bulb any time soon so I've got time to kill.",
+      "first_win_text": "That was clearly toooooo many steps today.",
+      "rematch_win_text": "At least I'm reaaallly good at replacing bulbs.",
+      "loss_text": "I hope your loss didn't come as a shock to you.",
+      "pattern": "idle_left",
+      "wander_radius": 65,
+      "position": {
+        "x": -800,
+        "y": 2620
+      }
+    },
+    {
+      "name": "Gardener Callum",
+      "meet_text": "Wowee, it was a long day gardening today. I'm down for a match to let off some steam now.",
+      "repeat_text": "I've got time for a rematch before my next shift.",
+      "first_win_text": "I'm clearly too worn out from such a long shift.",
+      "rematch_win_text": "I'll win when I'm fully rested.",
+      "loss_text": "Even after a hard days work I can still win!",
+      "pattern": "idle_up",
+      "wander_radius": 65,
+      "position": {
+        "x": -690,
+        "y": 2180
+      }
+    },
+    {
+      "name": "Sailor Bob",
+      "meet_text": "I'm all done preparing for the arrival of the SS Anne so there's not much to do now until morning.",
+      "repeat_text": "There's still time before the SS Anne arrives.",
+      "first_win_text": "I should at least pretend to do some work on the dock.",
+      "rematch_win_text": "I won't have a lot of time to play when the ship docks.",
+      "loss_text": "All this spare time has given me a chance to practice.",
+      "pattern": "idle_random",
+      "position": {
+        "x": 2040,
+        "y": 3110
+      }
+    },
+    {
+      "name": "Aromagirl Penelope",
+      "meet_text": "Plants can grow in all weird shapes and sizes, they're not just flowers and trees, there's a lot of different kinds out there.",
+      "repeat_text": "I've catalogued a lot of crazy plants recently.",
+      "first_win_text": "I wish I could photosynthesize.",
+      "rematch_win_text": "I could do with some water",
+      "loss_text": "Grass Pokemon are great!",
+      "pattern": "idle_up",
+      "position": {
+        "x": 2167,
+        "y": 2305
+      }
+    },
+    {
+      "name": "Bug Catcher Frankie",
+      "meet_text": "Wow!!! The bugs here are so much cooler than what we have over in Viridian Forest!!",
+      "repeat_text": "Seen any cool bug Pokemon around here since our last match?",
+      "first_win_text": "My bugs clearly aren't as strong as the ones around here.",
+      "rematch_win_text": "Hmm I wish I could get my hands on some of these bugs instead.",
+      "loss_text": "Bug pokemon really aren't as weak as people think.",
+      "pattern": "idle_random",
+      "position": {
+        "x": 2295,
+        "y": 2160
+      }
+    },
+    {
+      "name": "Guitarist Jonesy",
+      "meet_text": "We're in a band and we're currently touring. We're just passing through to our next gig so having a quick jam here.",
+      "repeat_text": "Hey dude, let's rock.",
+      "first_win_text": "Damn I snapped a string while we were jamming.",
+      "rematch_win_text": "You should come to one of our gigs!",
+      "loss_text": "Let's goooooooooooo.",
+      "pattern": "idle_right",
+      "position": {
+        "x": 2480,
+        "y": 1210
+      }
+    },
+    {
+      "name": "Guitarist Howard",
+      "meet_text": "We're the Toxtricity Rockers, we're a duo that's pretty big in Johto.",
+      "repeat_text": "You here to hear a song or a rematch?",
+      "first_win_text": "I missed a chord.",
+      "rematch_win_text": "Fancy being a roadie?",
+      "loss_text": "If it's any consolation I'll give you a discount on our album.",
+      "pattern": "idle_left",
+      "position": {
+        "x": 2515,
+        "y": 1210
+      }
+    },
+    {
+      "name": "Birdspotter Gregg",
+      "meet_text": "My friend said this is a great spot to find them but also a great spot to battle.",
+      "repeat_text": "This really is a great spot for birds and cards!",
+      "first_win_text": "Do you hate birds or something?.",
+      "rematch_win_text": "Well at least I can watch the birds from around here.",
+      "loss_text": "Looking after birds really isn't easy!",
+      "pattern": "idle_random",
+      "position": {
+        "x": 1640,
+        "y": 2340
+      }
+    },
+    {
+      "name": "Garden Manager Louis",
+      "meet_text": "I might be the garden manager but I do know how to have fun.",
+      "repeat_text": "Look at how great the gardens look.",
+      "first_win_text": "Even with all this sun I couldn't win.",
+      "rematch_win_text": "Ever fancied being a gardener yourself?",
+      "loss_text": "Plants aren't just pretty.",
+      "pattern": "random_wander",
+      "patrol_speed": 40.0,
+      "wander_radius": 65,
+      "position": {
+        "x": -710,
+        "y": 2020
+      }
+    },
+    {
+      "name": "Hiker Ben",
+      "meet_text": "Well that's incredibly disappointing. I was hoping to have a trek through the forest but they've told me it's shut so I have nowhere to go now.",
+      "repeat_text": "The forest has to be open soon surely.",
+      "first_win_text": "Well that's another disappointment to my day.",
+      "rematch_win_text": "The disappointment just doesn't end.",
+      "loss_text": "At least that's given me a nice little boost after the bad news.",
+      "pattern": "random_wander",
+      "patrol_speed": 40.0,
+      "wander_radius": 60,
+      "position": {
+        "x": 950,
+        "y": 1270
+      }
+    },
+    {
+      "name": "Engineer Brad",
+      "meet_text": "Hey, I've been working hard all day so I'm ready to play",
+      "repeat_text": "It's rare I have to work at night so I'm free for another match.",
+      "first_win_text": "I simply cannot fix that at all.",
+      "rematch_win_text": "I'm going to weld my cards at this rate.",
+      "loss_text": "You just need to work harder",
+      "pattern": "idle_up",
+      "position": {
+        "x": 900,
+        "y": 3155
+      }
+    }
+  ]
+}

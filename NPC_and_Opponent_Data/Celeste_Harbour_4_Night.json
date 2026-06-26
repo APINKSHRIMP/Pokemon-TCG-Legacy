@@ -78,16 +78,16 @@
   ],
   "opponents": [
     {
-      "name": "Birdspotter Gregg",
-      "meet_text": "My friend got hungry so decided to head back, but I'm interested to see what birds are out at night.",
-      "repeat_text": "This really is a great spot for birds and cards!",
-      "first_win_text": "Do you hate birds or something?.",
-      "rematch_win_text": "Well at least I can watch the birds from around here.",
-      "loss_text": "Looking after birds really isn't easy!",
-      "pattern": "idle_random",
+      "name": "Painter Jericho",
+      "meet_text": "The evening sun is the most perfect time to come here and paint... or play cards!",
+      "repeat_text": "I've been painting a lot of great pieces from this spot.",
+      "first_win_text": "A win or a loss, both are equal pieces of art.",
+      "rematch_win_text": "A win or a loss, both are equal pieces of art.",
+      "loss_text": "To win is a beautiful piece of art.",
+      "pattern": "idle_right",
       "position": {
-        "x": 1640,
-        "y": 2340
+        "x": -565,
+        "y": 2375
       }
     },
     {
@@ -97,50 +97,11 @@
       "first_win_text": "I'm clearly too worn out from such a long shift.",
       "rematch_win_text": "I'll win when I'm fully rested.",
       "loss_text": "Even after a hard days work I can still win!",
-      "pattern": "idle_left",
+      "pattern": "idle_up",
       "wander_radius": 65,
       "position": {
-        "x": -875,
-        "y": 2280
-      }
-    },
-    {
-      "name": "Card Elder Rayne",
-      "meet_text": "Hoh Hoh, are you ready to feel the torrent? If you win I'll give you a medal to prove your triumph.",
-      "repeat_text": "Hoh Hoh! I enjoyed the battle that much I'd also like another!",
-      "first_win_text": "Congratulations on your win. You've earned this medal and my respect.",
-      "rematch_win_text": "Come back any time and battle us old folk.",
-      "loss_text": "Don't be disheartened, the rain will always stop.",
-      "pattern": "idle_down",
-      "position": {
-        "x": 2230,
-        "y": 1252
-      }
-    },
-    {
-      "name": "Card Elder Hamish",
-      "meet_text": "Back for the challenge then hey? Remember you'll need to defeat all 3 of us if you want to progress.",
-      "repeat_text": "Very well, I always enjoy a good challenge!",
-      "first_win_text": "Well done, that was quite the battle. Take my medal and continue forth.",
-      "rematch_win_text": "Battling like this makes me feel young again.",
-      "loss_text": "Don't be disheartened, the rain will always stop.",
-      "pattern": "idle_down",
-      "position": {
-        "x": 2326,
-        "y": 1252
-      }
-    },
-    {
-      "name": "Card Elder Waverly",
-      "meet_text": "Are you ready to take me on then? If you win then you'll do well in the Gym Hero Challenge.",
-      "repeat_text": "Up for another round then? Happy to oblige.",
-      "first_win_text": "Well well well, what a jolly good play! You've earned this.",
-      "rematch_win_text": "We've been winning and losing for so long it's always fun either way.",
-      "loss_text": "When you fail, get up and try again.",
-      "pattern": "idle_down",
-      "position": {
-        "x": 2278,
-        "y": 1252
+        "x": -690,
+        "y": 2180
       }
     },
     {
@@ -150,23 +111,10 @@
       "first_win_text": "I have to focus more. Take these cards to help you focus more too.",
       "rematch_win_text": "I'll focus harder.",
       "loss_text": "I manifested the win.",
-      "pattern": "idle_left",
+      "pattern": "idle_right",
       "position": {
-        "x": -830,
-        "y": 1270
-      }
-    },
-    {
-      "name": "Engineer Brad",
-      "meet_text": "Hey, I've been working hard all day so I'm ready to play",
-      "repeat_text": "It's rare I have to work at night so I'm free for another match.",
-      "first_win_text": "I simply cannot fix that at all.",
-      "rematch_win_text": "I'm going to weld my cards at this rate.",
-      "loss_text": "You just need to work harder",
-      "pattern": "idle_up",
-      "position": {
-        "x": 900,
-        "y": 3155
+        "x": 2880,
+        "y": 3110
       }
     },
     {
@@ -183,6 +131,19 @@
       }
     },
     {
+      "name": "Birdspotter Gregg",
+      "meet_text": "My friend said this is a great spot to find them but also a great spot to battle.",
+      "repeat_text": "This really is a great spot for birds and cards!",
+      "first_win_text": "Do you hate birds or something?.",
+      "rematch_win_text": "Well at least I can watch the birds from around here.",
+      "loss_text": "Looking after birds really isn't easy!",
+      "pattern": "idle_random",
+      "position": {
+        "x": 1640,
+        "y": 2340
+      }
+    },
+    {
       "name": "Bad Dude Wayne",
       "meet_text": "I caught these bad looking dudes heading to the forest and they gave me some interesting cards and went on their way.",
       "repeat_text": "I won't lost this time.",
@@ -195,19 +156,6 @@
       "position": {
         "x": 420,
         "y": 1270
-      }
-    },
-    {
-      "name": "Painter Jericho",
-      "meet_text": "The evening sun is the most perfect time to come here and paint... or play cards!",
-      "repeat_text": "I've been painting a lot of great pieces from this spot.",
-      "first_win_text": "A win or a loss, both are equal pieces of art.",
-      "rematch_win_text": "A win or a loss, both are equal pieces of art.",
-      "loss_text": "To win is a beautiful piece of art.",
-      "pattern": "idle_right",
-      "position": {
-        "x": -565,
-        "y": 2375
       }
     },
     {

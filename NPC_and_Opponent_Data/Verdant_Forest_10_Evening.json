@@ -1,0 +1,161 @@
+{
+  "npcs": [],
+  "opponents": [
+    {
+      "name": "Ninjaboy Sasuke",
+      "meet_text": "I love climbing the trees around here, it's good practice for my ninja skills.",
+      "repeat_text": "I'm still training hard!",
+      "first_win_text": "I should have been more sneaky.",
+      "rematch_win_text": "It's hard to focus when you always lose!",
+      "loss_text": "At least with age comes experience!",
+      "pattern": "patrol_line",
+      "patrol_speed": 90.0,
+      "patrol_distance": 240,
+      "patrol_axis": "horizontal",
+      "position": {
+        "x": 850,
+        "y": 650
+      }
+    },
+    {
+      "name": "Forest Ranger Tucker",
+      "meet_text": "There's a lot of poisonous Pokemon out here in the trees so you have to be careful when you're wandering off the paths.",
+      "repeat_text": "Hope you've not been stung!",
+      "first_win_text": "You can clearly handle yourself so you should be fine.",
+      "rematch_win_text": "Don't let your guard down!",
+      "loss_text": "You might need to report to first aid...",
+      "pattern": "random_wander",
+      "patrol_speed": 50.0,
+      "wander_radius": 65,
+      "position": {
+        "x": 2640,
+        "y": 610
+      }
+    },
+    {
+      "name": "Police Constable Floyd",
+      "meet_text": "Because we've just reopened the forest, my boss wants us to keep a patrol to keep an eye out for any trouble.",
+      "repeat_text": "Have you seen anything suspicious recently?",
+      "first_win_text": "It's a good thing this area is so safe.",
+      "rematch_win_text": "I need more training.",
+      "loss_text": "I should be promoted to detective!",
+      "pattern": "patrol_line",
+      "patrol_speed": 60.0,
+      "patrol_distance": 1520,
+      "patrol_axis": "horizontal",
+      "position": {
+        "x": 1000,
+        "y": 1050
+      }
+    },
+    {
+      "name": "Police Sergeant Douglas",
+      "meet_text": "You better not be up to anything. I'm the searge round ere. I'm keeping my eyes out for anything that aint right.",
+      "repeat_text": "We're lucky nothing ever really happens round these parts.",
+      "first_win_text": "Report back to me if you see anything dodgy immediately.",
+      "rematch_win_text": "Don't tell anyone I'm rubbish at this.",
+      "loss_text": "There'll be no crime around here on my watch.",
+      "pattern": "patrol_line",
+      "patrol_speed": 40.0,
+      "patrol_distance": 2800,
+      "patrol_axis": "horizontal",
+      "position": {
+        "x": -300,
+        "y": 1650
+      }
+    },
+    {
+      "name": "Young Sage Kai",
+      "meet_text": "Have you ever tried meditating in the forest? The atmosphere is perfect for it.",
+      "repeat_text": "Hope you're taking it easy out here.",
+      "first_win_text": "I'm going to try and reconnect with nature.",
+      "rematch_win_text": "Join me in a meditation?",
+      "loss_text": "Focus on your breath more.",
+      "pattern": "idle_left",
+      "position": {
+        "x": 3708,
+        "y": 1092
+      }
+    },
+    {
+      "name": "Backpacker Patrick",
+      "meet_text": "I've been all over the world and seen a lot of different places.",
+      "repeat_text": "Nothing like putting on a backpack and going exploring",
+      "first_win_text": "It's all about the experience.",
+      "rematch_win_text": "I should get going...",
+      "loss_text": "Carrying all this weight makes me stronger in every sense",
+      "pattern": "random_wander",
+      "patrol_speed": 50.0,
+      "wander_radius": 65,
+      "position": {
+        "x": -270,
+        "y": 1650
+      }
+    },
+    {
+      "name": "Shady Character Owen",
+      "meet_text": "Me and my pal here are from different gangs but we can still hang out.",
+      "repeat_text": "You not joined our crew yet?",
+      "first_win_text": "Heh you could be cool enough to be one of us too.",
+      "rematch_win_text": "You should really think about signing up.",
+      "loss_text": "You're too weak to join a cool crew like us",
+      "pattern": "idle_left",
+      "position": {
+        "x": 295,
+        "y": 1180
+      }
+    },
+    {
+      "name": "Shady Character Bernard",
+      "meet_text": "We might be shady but we're not bad guys.",
+      "repeat_text": "Hope you haven't joined any gangs.",
+      "first_win_text": "Just coz you're strong, don't go joining any gangs to show off.",
+      "rematch_win_text": "You're enough to bring down an entire gang by yourself.",
+      "loss_text": "Of course you weren't going to win against me.",
+      "pattern": "idle_right",
+      "position": {
+        "x": 265,
+        "y": 1180
+      }
+    },
+    {
+      "name": "Gambler Victor",
+      "meet_text": "You need a lot of luck in life, some things are entirely up to chance.",
+      "repeat_text": "You can't let things get you down if you get unlucky.",
+      "first_win_text": "Heh, next time I might win, next time I might not. It's all a gamble",
+      "rematch_win_text": "If I flip a coin 10,000 times, there's still a chance I never get heads.",
+      "loss_text": "Was that luck or was it skill?",
+      "pattern": "idle_random",
+      "position": {
+        "x": 3300,
+        "y": -40
+      }
+    },
+    {
+      "name": "Veteran Sylvester",
+      "meet_text": "We've travelled the world together and settled here recently. We've been aboard the SS Anne before and it looks like it hasn't changed in years.",
+      "repeat_text": "Good evening, hope you're keeping well.",
+      "first_win_text": "You already appear well travelled. Maybe you could join us on our next adventure.",
+      "rematch_win_text": "A great match as always.",
+      "loss_text": "Don't let this get you down.",
+      "pattern": "idle_left",
+      "position": {
+        "x": 1989,
+        "y": 110
+      }
+    },
+    {
+      "name": "Card Expert Aurora",
+      "meet_text": "The weather here is always good but I love a good storm.",
+      "repeat_text": "I might take a trip to somewhere colder.",
+      "first_win_text": "You won't need an umbrella then.",
+      "rematch_win_text": "Maybe I need an umbrella...",
+      "loss_text": "You'll never be ready for a true storm.",
+      "pattern": "idle_down",
+      "position": {
+        "x": 2980,
+        "y": 1125
+      }
+    }
+  ]
+}
