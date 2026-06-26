@@ -1,7 +1,7 @@
 [gd_scene format=4 uid="uid://d133qgd7sfd3i"]
 
 [ext_resource type="Script" uid="uid://c6rrjhjbaqu2v" path="res://Scripts/Map_Scripts/Celeste_Harbour.gd" id="1_7oril"]
-[ext_resource type="TileSet" uid="uid://dqknfbtehgo6c" path="res://Image_Assets/Map_Sheets/Tile_Sets/Starting_Areas.tres" id="2_bf13f"]
+[ext_resource type="TileSet" uid="uid://dqknfbtehgo6c" path="res://Image_Assets/Map_Sheets/Tile_Sets/Celeste_Harbour_Morning.tres" id="2_bf13f"]
 [ext_resource type="Texture2D" uid="uid://dslssbvbc204s" path="res://Image_Assets/Map_Objects/ssanne.png" id="3_bf13f"]
 [ext_resource type="Texture2D" uid="uid://dmmkgpf4106os" path="res://Image_Assets/Map_Objects/Forest/treelineshadow.png" id="3_bphsk"]
 [ext_resource type="Script" uid="uid://c8kspw0hm4x0s" path="res://Scripts/Shaders/lighthouse_light.gd" id="3_u8po5"]

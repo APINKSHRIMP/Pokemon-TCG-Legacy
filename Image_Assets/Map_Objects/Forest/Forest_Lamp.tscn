@@ -1,6 +1,6 @@
 [gd_scene format=3 uid="uid://bd1cf7d6oc7n0"]
 
-[ext_resource type="TileSet" uid="uid://brncoaox03ylg" path="res://Image_Assets/Map_Sheets/Tile_Sets/Verdant_Forest.tres" id="1_yg3vm"]
+[ext_resource type="TileSet" uid="uid://brncoaox03ylg" path="res://Image_Assets/Map_Sheets/Tile_Sets/Verdant_Forest_Afternoon.tres" id="1_yg3vm"]
 
 [sub_resource type="Gradient" id="Gradient_bf13f"]
 offsets = PackedFloat32Array(0, 0.5943396)
@@ -28,7 +28,6 @@ tile_map_data = PackedByteArray(0, 0, 196, 255, 221, 255, 0, 0, 37, 0, 2, 0, 0, 
 tile_set = ExtResource("1_yg3vm")
 
 [node name="PointLight2D2" type="PointLight2D" parent="." unique_id=1175959164]
-visible = false
 position = Vector2(29.499985, 0.62046385)
 scale = Vector2(4.4218745, 4.458621)
 color = Color(0.4725, 0.36749998, 0.17249997, 0.5882353)

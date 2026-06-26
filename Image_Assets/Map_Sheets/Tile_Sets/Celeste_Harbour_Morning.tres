@@ -1,9 +1,9 @@
 [gd_resource type="TileSet" format=3 uid="uid://dqknfbtehgo6c"]
 
-[ext_resource type="Texture2D" uid="uid://38sevv223yr7" path="res://Image_Assets/Map_Sheets/Image_Sheets/Starting_Areas_Sheet.png" id="1_qpr2f"]
+[ext_resource type="Texture2D" uid="uid://btdk43cgymjsk" path="res://Image_Assets/Map_Sheets/Image_Sheets/Celeste_Harbour_Morning.png" id="1_cjmee"]
 
 [sub_resource type="TileSetAtlasSource" id="TileSetAtlasSource_362tc"]
-texture = ExtResource("1_qpr2f")
+texture = ExtResource("1_cjmee")
 0:0/0 = 0
 1:0/0 = 0
 2:0/0 = 0

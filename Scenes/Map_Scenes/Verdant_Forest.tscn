@@ -1,9 +1,9 @@
 [gd_scene format=4 uid="uid://d1lfen2hksh55"]
 
-[ext_resource type="TileSet" uid="uid://brncoaox03ylg" path="res://Image_Assets/Map_Sheets/Tile_Sets/Verdant_Forest.tres" id="1_vnhbh"]
+[ext_resource type="TileSet" uid="uid://brncoaox03ylg" path="res://Image_Assets/Map_Sheets/Tile_Sets/Verdant_Forest_Afternoon.tres" id="1_vnhbh"]
 [ext_resource type="PackedScene" uid="uid://bprufyh8mxqom" path="res://Scenes/Objects/Player_Object_Scene.tscn" id="2_06m8d"]
 [ext_resource type="PackedScene" uid="uid://c10qeone4u11s" path="res://Image_Assets/Map_Objects/Forest/DarkTree.tscn" id="4_0jajs"]
-[ext_resource type="TileSet" uid="uid://dqknfbtehgo6c" path="res://Image_Assets/Map_Sheets/Tile_Sets/Starting_Areas.tres" id="4_li0g5"]
+[ext_resource type="TileSet" uid="uid://dqknfbtehgo6c" path="res://Image_Assets/Map_Sheets/Tile_Sets/Celeste_Harbour_Morning.tres" id="4_li0g5"]
 [ext_resource type="PackedScene" uid="uid://d0k3aqu382y78" path="res://Image_Assets/Map_Objects/Forest/LightTree.tscn" id="5_efv3c"]
 [ext_resource type="PackedScene" uid="uid://bd1cf7d6oc7n0" path="res://Image_Assets/Map_Objects/Forest/Forest_Lamp.tscn" id="6_3uusb"]
 [ext_resource type="PackedScene" uid="uid://bw46iqrxgoxpp" path="res://Image_Assets/Map_Objects/Forest/LightVinesTree.tscn" id="6_7yrxg"]

@@ -1,9 +1,9 @@
 [gd_resource type="TileSet" format=3 uid="uid://brncoaox03ylg"]
 
-[ext_resource type="Texture2D" uid="uid://bjj5i6gaq8haj" path="res://Image_Assets/Map_Sheets/Image_Sheets/Verdant_Forest_Day.png" id="1_cswvj"]
+[ext_resource type="Texture2D" uid="uid://tg6ree2b0xh0" path="res://Image_Assets/Map_Sheets/Image_Sheets/Verdant_Forest_Morning.png" id="1_e137y"]
 
 [sub_resource type="TileSetAtlasSource" id="TileSetAtlasSource_t2yrq"]
-texture = ExtResource("1_cswvj")
+texture = ExtResource("1_e137y")
 0:0/0 = 0
 1:0/0 = 0
 2:0/0 = 0

@@ -13,10 +13,10 @@ const TILESET_AFTERNOON = preload("res://Image_Assets/Map_Sheets/Tile_Sets/Verda
 const TILESET_EVENING   = preload("res://Image_Assets/Map_Sheets/Tile_Sets/Verdant_Forest_Evening.tres")
 const TILESET_NIGHT     = preload("res://Image_Assets/Map_Sheets/Tile_Sets/Verdant_Forest_Night.tres")
 
-const TRACKS_TILESET_MORNING   = preload("res://Image_Assets/Map_Sheets/Tile_Sets/Starting_Areas_Morning.tres")
-const TRACKS_TILESET_AFTERNOON = preload("res://Image_Assets/Map_Sheets/Tile_Sets/Starting_Areas_Afternoon.tres")
-const TRACKS_TILESET_EVENING   = preload("res://Image_Assets/Map_Sheets/Tile_Sets/Starting_Areas_Evening.tres")
-const TRACKS_TILESET_NIGHT     = preload("res://Image_Assets/Map_Sheets/Tile_Sets/Starting_Areas_Night.tres")
+const TRACKS_TILESET_MORNING   = preload("res://Image_Assets/Map_Sheets/Tile_Sets/Celeste_Harbour_Morning.tres")
+const TRACKS_TILESET_AFTERNOON = preload("res://Image_Assets/Map_Sheets/Tile_Sets/Celeste_Harbour_Afternoon.tres")
+const TRACKS_TILESET_EVENING   = preload("res://Image_Assets/Map_Sheets/Tile_Sets/Celeste_Harbour_Evening.tres")
+const TRACKS_TILESET_NIGHT     = preload("res://Image_Assets/Map_Sheets/Tile_Sets/Celeste_Harbour_Night.tres")
 
 const TREE_HORIZ_MORNING   = preload("res://Image_Assets/Map_Objects/Forest/TreeLineThirdMorning.png")
 const TREE_HORIZ_AFTERNOON = preload("res://Image_Assets/Map_Objects/Forest/TreeLineThirdAfternoon.png")
