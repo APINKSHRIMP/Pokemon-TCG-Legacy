@@ -91,9 +91,9 @@ text = "cancel"
 [node name="player_name" type="LineEdit" parent="." unique_id=622026657]
 z_index = 300
 layout_mode = 0
-offset_left = 653.0
+offset_left = 501.0
 offset_top = 17.0
-offset_right = 1202.0
+offset_right = 1294.0
 offset_bottom = 85.434326
 theme = ExtResource("4_t1d7u")
 theme_override_colors/font_color = Color(0, 0, 0, 1)

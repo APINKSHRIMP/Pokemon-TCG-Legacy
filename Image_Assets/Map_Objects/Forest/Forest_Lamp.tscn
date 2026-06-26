@@ -28,12 +28,13 @@ tile_map_data = PackedByteArray(0, 0, 196, 255, 221, 255, 0, 0, 37, 0, 2, 0, 0, 
 tile_set = ExtResource("1_yg3vm")
 
 [node name="PointLight2D2" type="PointLight2D" parent="." unique_id=1175959164]
-position = Vector2(29.499985, 0.62046385)
-scale = Vector2(4.4218745, 4.458621)
-color = Color(0.4725, 0.36749998, 0.17249997, 0.5882353)
-energy = 12.05
-range_z_min = -961
-range_z_max = 584
+position = Vector2(14, 1)
+scale = Vector2(5.2968755, 5.3408933)
+color = Color(0.3883725, 0.34562916, 0.26624864, 0.56078434)
+energy = 16.0
+blend_mode = 2
+range_z_min = -999
+range_z_max = 999
 shadow_enabled = true
 shadow_color = Color(0, 0, 0, 0.79607844)
 texture = SubResource("GradientTexture2D_yg3vm")

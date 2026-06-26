@@ -138,6 +138,21 @@ Built in **Godot 4.6** using GDScript. The battle engine handles complex card in
 
 ![Godot](Image_Assets/Screenshots/godot.gif)
 
+## Cheat Codes
+
+Enter any of the codes below as your player name on the Trainer Card screen and hit Save to activate the cheat. A confirmation message will appear on screen.
+
+| Code | Effect |
+|---|---|
+| `CHT.All_Cards_1` | Set all Base Set → Gym Challenge cards to ×99 |
+| `CHT.All_Cards_2` | Set all Neo Genesis → e-Card Skyridge cards to ×99 |
+| `CHT.All_Cards_3` | Set all EX Ruby & Sapphire → EX Team Rocket Returns cards to ×99 |
+| `CHT.All_Cards_4` | Set all EX Deoxys → EX Power Keepers cards to ×99 |
+| `CHT.Gimme_Cash` | Set cash to ₽99,999 |
+| `CHT.Add_Starter_Set` | Add the house starter deck cards to your collection |
+| `CHT.Add_Shop_Set` | Add the shop starter set cards to your collection |
+| `CHT.Remove_All_Cards` | Set all owned cards to 0 |
+
 ## Inspiration
 
 This project exists because the TCG GB games filled a niche that modern Pokémon TCG games have abandoned. I hate constantly battling the same 2 meta decks match after match and needing to pay real money to progress in game, that's not what the original games were about. They were all for the satisfaction of building something fun and experimenting with the cards you like.

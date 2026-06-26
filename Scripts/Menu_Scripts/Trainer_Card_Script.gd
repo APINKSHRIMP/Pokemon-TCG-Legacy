@@ -7,7 +7,7 @@ const SPRITE_SIZE        := Vector2(100, 200)
 const SPRITE_SEPARATION  := -4
 # At 250px + 10px gap = 260px per cell across 1920px usable width → 7 columns
 const COLUMNS            := 9
-const MAX_NAME_LENGTH    := 15
+const MAX_NAME_LENGTH    := 21
 
 var PLAYER_DATA_PATH: String:
 	get: return GameState.PLAYER_CURRENT_DATA_PATH
@@ -26,6 +26,9 @@ var saved_player_name       : String = ""
 
 var _active_tween           : Tween = null
 var _last_clicked_rect      : TextureRect = null
+
+var _cheat_label            : Label = null
+var _cheat_label_token      : int = 0
 
 # Flat set of owned costume filenames e.g. {"1dawn_platinum.png": true}
 # Using a Dictionary as a set gives O(1) lookups vs iterating an Array
@@ -341,6 +344,10 @@ func _on_save_pressed() -> void:
 	save_btn.disabled = true
 	save_btn.theme    = load("res://UI_Themes/kenneyUI.tres")
 
+	var cheat_msg := CheatManager.check_and_apply(new_name)
+	if cheat_msg != "":
+		_flash_cheat_message(cheat_msg)
+
 
 func _on_cancel_pressed() -> void:
 	SceneCache.change_scene("res://Scenes/Main_Menu_Scenes/Main_Menu_Scene.tscn")
@@ -362,3 +369,34 @@ func _check_click_miss() -> void:
 	if _last_clicked_rect == null:
 		SoundManagerScript.play_sfx(SoundManagerScript.SFX_minus_select)
 	_last_clicked_rect = null
+
+
+# ─── Cheat notification ──────────────────────────────────────────────────────
+
+func _flash_cheat_message(message: String) -> void:
+	if _cheat_label == null or not is_instance_valid(_cheat_label):
+		var layer := CanvasLayer.new()
+		layer.name = "CheatCanvasLayer"
+		layer.layer = 128
+		get_tree().root.add_child(layer)
+
+		_cheat_label = Label.new()
+		_cheat_label.name = "CheatNotificationLabel"
+		_cheat_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		_cheat_label.vertical_alignment   = VERTICAL_ALIGNMENT_CENTER
+		_cheat_label.add_theme_font_size_override("font_size", 64)
+		_cheat_label.add_theme_color_override("font_color", Color(1.0, 0.85, 0.0))
+		_cheat_label.add_theme_color_override("font_outline_color", Color.BLACK)
+		_cheat_label.add_theme_constant_override("outline_size", 10)
+		_cheat_label.set_anchors_preset(Control.PRESET_FULL_RECT)
+		_cheat_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		layer.add_child(_cheat_label)
+
+	_cheat_label.text = message
+
+	_cheat_label_token += 1
+	var my_token := _cheat_label_token
+	await get_tree().create_timer(2.5).timeout
+	if my_token == _cheat_label_token and _cheat_label != null and is_instance_valid(_cheat_label):
+		_cheat_label.get_parent().queue_free()
+		_cheat_label = null
