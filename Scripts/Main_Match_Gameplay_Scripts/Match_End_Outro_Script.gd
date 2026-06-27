@@ -81,7 +81,7 @@ var _dialogue_label: RichTextLabel = null
 var _gift_panel:     Control = null
 var _gift_label:     RichTextLabel = null
 
-const CARDBACK_PATH = "res://Image_Assets/Card_Backs_And_Decks/cardback.png"
+const CARDBACK_PATH = "res://Image_Assets/Card_Backs_And_Decks/default_large.png"
 const COINBACK_PATH = "res://Image_Assets/Coins/Back Basic.png"
 const GIFT_FLIP_DURATIONS = [0.01, 0.02, 0.04, 0.06, 0.08, 0.1, 0.11, 0.12, 0.2]
 

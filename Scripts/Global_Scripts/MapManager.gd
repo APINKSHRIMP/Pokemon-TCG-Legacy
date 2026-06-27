@@ -98,7 +98,7 @@ var _card_data_cache: Dictionary = {}
 var _loaded_card_sets: Dictionary = {}
 
 # Preloaded back textures used during the gift reveal animation
-const _CARDBACK_PATH := "res://Image_Assets/Card_Backs_And_Decks/cardback.png"
+const _CARDBACK_PATH := "res://Image_Assets/Card_Backs_And_Decks/default_large.png"
 const _COINBACK_PATH := "res://Image_Assets/Coins/Back Basic.png"
 var _cardback_texture: Texture2D = null
 var _coinback_texture: Texture2D = null
@@ -244,6 +244,7 @@ func _load_and_spawn_opponents(json_path: String):
 		opp.restrictions     = entry.get("restrictions", {})
 		opp.match_effects    = entry.get("match_effects", [])
 		opp.match_format     = entry.get("match_format", "")
+		opp.sleeve           = entry.get("sleeve", "")
 		_opponents_container.add_child(opp)
 
 	if GameState.returning_from_battle and not GameState.last_battled_opponent_entry.is_empty():
@@ -276,6 +277,7 @@ func _load_and_spawn_opponents(json_path: String):
 			opp.restrictions     = lbe.get("restrictions", {})
 			opp.match_effects    = lbe.get("match_effects", [])
 			opp.match_format     = lbe.get("match_format", "")
+			opp.sleeve           = lbe.get("sleeve", "")
 			_opponents_container.add_child(opp)
 
 # ============================================================
@@ -598,6 +600,7 @@ func _on_yes_pressed():
 			"restrictions":   current_opponent.restrictions,
 			"match_effects":  current_opponent.match_effects,
 			"match_format":   current_opponent.match_format,
+			"sleeve":         current_opponent.sleeve,
 		}
 
 		# Best-of-N opponents: kick off a fresh series. Single-match opponents

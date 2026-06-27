@@ -303,6 +303,9 @@ func load_progress():
 		progress["npc_interactions"] = old.keys()
 		progress.erase("met_npcs")
 
+	if not progress.has("sleeves"):
+		progress["sleeves"] = ["default"]
+
 	# Migrate old coin filenames from "coin_pikachu_gold.png" to "Pikachu Gold.png"
 	var coins_arr : Array = progress.get("coins", [])
 	var migrated_any := false
@@ -496,6 +499,23 @@ func add_costume_to_collection(battle_sprite: String) -> void:
 
 func get_costumes() -> Array:
 	return progress.get("costumes", [])
+
+# ============================================================
+# SLEEVE COLLECTION
+# ============================================================
+
+func has_sleeve(sleeve_name: String) -> bool:
+	return sleeve_name in progress.get("sleeves", [])
+
+func add_sleeve_to_collection(sleeve_name: String) -> void:
+	var sleeves = progress.get("sleeves", [])
+	if sleeve_name not in sleeves:
+		sleeves.append(sleeve_name)
+		progress["sleeves"] = sleeves
+		save_progress()
+
+func get_sleeves() -> Array:
+	return progress.get("sleeves", [])
 
 # ============================================================
 # CARD GIVING (Global)

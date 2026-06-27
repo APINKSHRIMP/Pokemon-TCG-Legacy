@@ -29,6 +29,7 @@ var match_effects: Array = []
 # only the deciding game shows rewards / loss flavour.
 # Currently supported: "best_of_3"
 var match_format: String = ""
+var sleeve: String = ""
 
 func _ready():
 	add_to_group("opponents")

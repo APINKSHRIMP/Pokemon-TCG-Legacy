@@ -33,6 +33,9 @@
 		"base3"
 	],
 	"player_collected_shop_starter_set": false,
+	"sleeves": [
+		"default"
+	],
 	"shop_state": "initial",
 	"shop_free_packs_given": false,
 	"player_collected_starter_box": false,

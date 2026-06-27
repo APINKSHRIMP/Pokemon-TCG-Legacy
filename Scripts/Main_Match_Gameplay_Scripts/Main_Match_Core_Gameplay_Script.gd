@@ -193,7 +193,12 @@ var theme_green = preload("res://UI_Themes/kenneyUI-green.tres")
 var theme_blue = preload("res://UI_Themes/kenneyUI-blue.tres")
 var theme_red = preload("res://UI_Themes/kenneyUI-red.tres")
 var card_display_script = preload("res://Scripts/Global_Scripts/Card_Image_Loader_Script.gd")
-var card_back_texture = preload("res://Image_Assets/Card_Backs_And_Decks/cardbacksmall.png")
+var card_back_texture: Texture2D          # player's sleeve small — set in _ready
+var opponent_card_back_texture: Texture2D # opponent's sleeve small — set in _ready
+var player_sleeve_small: String = ""
+var opponent_sleeve_small: String = ""
+var player_sleeve_border_color: Color = Color(0.15, 0.15, 0.15, 1.0)
+var opponent_sleeve_border_color: Color = Color(0.15, 0.15, 0.15, 1.0)
 
 #signals
 signal message_acknowledged
@@ -430,7 +435,10 @@ func show_enlarged_array_selection_mode(card_array: Array) -> void:
 	update_selection_mode_labels(card_array, match_just_started_basic_pokemon_required)
 	
 	var should_hide = hide_hidden_cards and (card_array == opponent_hand or card_array == player_prize_cards or card_array == opponent_prize_cards)
-	
+	var selection_sleeve: String = ""
+	if should_hide:
+		selection_sleeve = opponent_sleeve_small if (card_array == opponent_hand or card_array == opponent_prize_cards) else player_sleeve_small
+
 	# --- UNIFIED SIZING SYSTEM ---
 	# The white zone is the usable display area between the hint label bottom and the action buttons.
 	# Screen height = 816. Hint label bottom ≈ 165. Button top ≈ 771. Padding = 20px each side.
@@ -446,7 +454,7 @@ func show_enlarged_array_selection_mode(card_array: Array) -> void:
 		# Large scroller: use fixed card_scales[5] as before — scroller handles overflow.
 		selection_scroller.visible = true
 		large_selection_container.visible = true
-		display_hand_cards_array(card_array, large_selection_container, card_scales[5], should_hide)
+		display_hand_cards_array(card_array, large_selection_container, card_scales[5], should_hide, 1300.0, 12, selection_sleeve)
 	else:
 		small_selection_container.visible = true
 		small_selection_container.custom_minimum_size = Vector2(0, 0)
@@ -544,7 +552,7 @@ func show_enlarged_array_selection_mode(card_array: Array) -> void:
 		small_selection_container.offset_top = new_offset_top
 		small_selection_container.offset_bottom = new_offset_bottom
 		
-		display_hand_cards_array(card_array, small_selection_container, card_size, should_hide)
+		display_hand_cards_array(card_array, small_selection_container, card_size, should_hide, 1300.0, 12, selection_sleeve)
 
 # Both the cancel button and action button will hide selection mode so function is vaguely named for both actions
 func hide_selection_mode_display_main() -> void:
@@ -632,7 +640,7 @@ func hide_selection_mode_display_main() -> void:
 		card.mouse_filter = MOUSE_FILTER_PASS
 	
 # Displays both the player and opponents hand cards. Shows players at the top of screen and opponents in top right smaller.
-func display_hand_cards_array(hand: Array, hand_container, card_size: Vector2, face_down: bool = false, max_hand_width: float = 1300.0, max_before_overlap: int = 12):
+func display_hand_cards_array(hand: Array, hand_container, card_size: Vector2, face_down: bool = false, max_hand_width: float = 1300.0, max_before_overlap: int = 12, sleeve_path: String = ""):
 	
 	# Clear existing cards from container to prevent stale entries when cards leave or enter the hand
 	for child in hand_container.get_children():
@@ -681,13 +689,13 @@ func display_hand_cards_array(hand: Array, hand_container, card_size: Vector2, f
 			var hand_card_to_display = TextureRect.new()
 			hand_card_to_display.set_script(card_display_script)
 			hand_container.add_child(hand_card_to_display)
-			hand_card_to_display.load_card_image(this_card_in_hand.uid, card_size, this_card_in_hand, face_down)
+			hand_card_to_display.load_card_image(this_card_in_hand.uid, card_size, this_card_in_hand, face_down, sleeve_path)
 			hand_card_to_display.card_clicked.connect(this_card_clicked)
 						
 # Refreshes the hand display for either player or opponent using standard sizes and containers
 func refresh_hand_display(is_opponent: bool) -> void:
 	if is_opponent:
-		display_hand_cards_array(opponent_hand, opponent_hand_container, card_scales[11.55], hide_hidden_cards, 400, 7)
+		display_hand_cards_array(opponent_hand, opponent_hand_container, card_scales[11.55], hide_hidden_cards, 400, 7, opponent_sleeve_small)
 	else:
 		display_hand_cards_array(player_hand, player_hand_container, card_scales[11])
 
@@ -893,7 +901,8 @@ func display_prize_cards(is_opponent: bool) -> void:
 		prize_cards_container.add_child(prize_card_display)
 		
 		# Load the card image with a size appropriate for prize cards
-		prize_card_display.load_card_image(prize_card.uid, card_scales[11.55], prize_card, hide_hidden_cards)
+		var prize_sleeve = opponent_sleeve_small if is_opponent else player_sleeve_small
+		prize_card_display.load_card_image(prize_card.uid, card_scales[11.55], prize_card, hide_hidden_cards, prize_sleeve)
 		
 		# Connect the signal so prize cards can be clicked if needed
 		prize_card_display.card_clicked.connect(this_card_clicked)	
@@ -1162,7 +1171,8 @@ func show_message(message_text: String) -> void:
 	msgbox_texture.visible = false
 	msgbox_container.visible = false
 
-# Changes the deck icon to show how many cards are (roughly)
+# Changes the deck icon to show how many cards remain.
+# Draws ceil(count/5) stacked sleeve images, each offset -2px on x, to suggest depth.
 func update_deck_icon(is_opponent: bool) -> void:
 	var deck = opponent_deck if is_opponent else player_deck
 	var widget = opponent_deck_icon if is_opponent else player_deck_icon
@@ -1171,22 +1181,49 @@ func update_deck_icon(is_opponent: bool) -> void:
 	var count_label = widget.get_node("opponent_deck_count_label") if is_opponent else widget.get_node("player_deck_count_label")
 	count_label.text = str(count)
 
+	# Remove previously stacked sleeve children
+	for child in widget.get_children():
+		if child.get_meta("sleeve_stack", false):
+			child.queue_free()
+	widget.texture = null
+
 	if count == 0:
-		widget.texture = null
 		return
 
-	var image_path: String
-	if count >= 42:
-		image_path = "res://Image_Assets/Card_Backs_And_Decks/1deckfulltrans_clean.png"
-	elif count >= 35:
-		image_path = "res://Image_Assets/Card_Backs_And_Decks/2deck3quarts.png"
-	elif count >= 20:
-		image_path = "res://Image_Assets/Card_Backs_And_Decks/3deckhalf.png"
-	elif count >= 10:
-		image_path = "res://Image_Assets/Card_Backs_And_Decks/4deckquarter.png"
-	else:
-		image_path = "res://Image_Assets/Card_Backs_And_Decks/cardbacksmall.png"
-	widget.texture = load(image_path)
+	var sleeve_tex: Texture2D = opponent_card_back_texture if is_opponent else card_back_texture
+	if sleeve_tex == null:
+		return
+
+	var stack_count = ceili(count / 5.0)
+
+	# Add from back to front so the front card (i=0) is drawn last (on top).
+	# Positive x offset so cards peek to the right, giving a deck-of-cards depth.
+	# Each card is wrapped in a dark ColorRect border (1px on all sides).
+	for i in range(stack_count - 1, -1, -1):
+		var border = ColorRect.new()
+		border.set_meta("sleeve_stack", true)
+		border.color = opponent_sleeve_border_color if is_opponent else player_sleeve_border_color
+		border.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+		border.offset_left = i * 2
+		border.offset_right = i * 2
+		border.mouse_filter = MOUSE_FILTER_IGNORE
+
+		var card = TextureRect.new()
+		card.texture = sleeve_tex
+		card.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		card.stretch_mode = TextureRect.STRETCH_SCALE
+		card.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+		card.offset_left = 1
+		card.offset_right = -1
+		card.offset_top = 1
+		card.offset_bottom = -1
+		card.mouse_filter = MOUSE_FILTER_IGNORE
+
+		border.add_child(card)
+		widget.add_child(border)
+
+	# Keep count label rendered on top of all stacked cards
+	widget.move_child(count_label, -1)
 	
 # Enables or disables all main screen buttons based on current game state
 func update_main_screen_buttons() -> void:
@@ -1696,7 +1733,7 @@ func setup_opponent(opponent_id: String):
 	opponent_hand = draw_opening_hand(opponent_deck, "Opponent", match_effects.opening_hand_size(true))
 	
 	# Display the cards in the top right in tiny size just for visual cue
-	display_hand_cards_array(opponent_hand, opponent_hand_container, card_scales[11.55], hide_hidden_cards)
+	display_hand_cards_array(opponent_hand, opponent_hand_container, card_scales[11.55], hide_hidden_cards, 1300.0, 12, opponent_sleeve_small)
 
 # Function to draw opening hand with mulligan logic for both player and opponent
 # hand_size -1 = use the default (amount_of_cards_to_draw); otherwise the opening_hand_size match effect override
@@ -2266,9 +2303,9 @@ func draw_card_from_deck(is_opponent: bool) -> card_object:
 	hand.append(drawn_card)
 
 	if is_opponent:
-		await animate_card_a_to_b(opponent_deck_icon, opponent_hand_container, 0.2)
+		await animate_card_a_to_b(opponent_deck_icon, opponent_hand_container, 0.2, opponent_card_back_texture)
 	else:
-		await animate_card_a_to_b(player_deck_icon, player_hand_container,0.3)
+		await animate_card_a_to_b(player_deck_icon, player_hand_container, 0.3, card_back_texture)
 
 	return drawn_card
 
@@ -2413,7 +2450,7 @@ func take_prize_card(card: card_object, is_opponent: bool) -> void:
 	
 	var card_ui = find_card_ui_for_object(card)
 	# For opponent, always show card back during animation to hide the card
-	var card_texture = card_back_texture if is_opponent else get_card_texture(card)
+	var card_texture = opponent_card_back_texture if is_opponent else get_card_texture(card)
 	
 	prizes.erase(card)
 	card.current_location = "hand"
@@ -4263,6 +4300,29 @@ func get_pokemon_type_colour(pokemon: card_object) -> Color:
 #################################################### OPPONENT PRIORITISE FUNCTIONALITY FUNCTIONS #####################################################
 
 # Function to get lowest cost attack for a pokemon by looping through all attacks. Returns a dictionary with "cost" (convertedEnergyCost), "damage" (as int), and "attack_name"
+func _resolve_sleeve_path(sleeve_name: String, small: bool) -> String:
+	var default_path = "res://Image_Assets/Card_Backs_And_Decks/" + ("default_small.png" if small else "default_large.png")
+	if sleeve_name == "" or sleeve_name == "default":
+		return default_path
+	var path = "res://Image_Assets/Card_Backs_And_Decks/" + sleeve_name + ".jpg"
+	# Verify the asset is actually loadable — .jpg files may not be imported yet
+	if load(path) != null:
+		return path
+	return default_path
+
+# Samples the right-center edge pixel of a sleeve texture and returns it darkened 50%.
+# Used to give each deck's stack border a colour that complements the sleeve art.
+func _derive_sleeve_border_color(tex: Texture2D) -> Color:
+	var fallback := Color(0.15, 0.15, 0.15, 1.0)
+	if tex == null:
+		return fallback
+	var img: Image = tex.get_image()
+	if img == null or img.is_empty():
+		return fallback
+	img.decompress()
+	var sampled := img.get_pixel(img.get_width() - 1, img.get_height() / 2)
+	return sampled.darkened(0.5)
+
 func load_opponent_data_by_name(opp_name: String):
 	var file = FileAccess.open(GameState.current_opponent_json_path, FileAccess.READ)
 	if file == null:
@@ -5098,6 +5158,14 @@ func _ready() -> void:
 	var pdata = JSON.parse_string(pfile.get_as_text())
 	pfile.close()
 	player_deck_name = pdata["deck"]
+
+	# Load sleeve textures for player and opponent
+	player_sleeve_small = _resolve_sleeve_path(pdata.get("sleeve", "default"), true)
+	opponent_sleeve_small = _resolve_sleeve_path(opponent_data.get("sleeve", ""), true)
+	card_back_texture = load(player_sleeve_small)
+	opponent_card_back_texture = load(opponent_sleeve_small)
+	player_sleeve_border_color = _derive_sleeve_border_color(card_back_texture)
+	opponent_sleeve_border_color = _derive_sleeve_border_color(opponent_card_back_texture)
 
 	# BEGIN THE GAME SETUP
 	setup_player()
