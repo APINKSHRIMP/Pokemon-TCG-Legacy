@@ -98,7 +98,7 @@ var _card_data_cache: Dictionary = {}
 var _loaded_card_sets: Dictionary = {}
 
 # Preloaded back textures used during the gift reveal animation
-const _CARDBACK_PATH := "res://Image_Assets/Card_Backs_And_Decks/default_large.png"
+const _CARDBACK_PATH := "res://Image_Assets/Sleeves/1_Default_English.png"
 const _COINBACK_PATH := "res://Image_Assets/Coins/Back Basic.png"
 var _cardback_texture: Texture2D = null
 var _coinback_texture: Texture2D = null

@@ -6,7 +6,7 @@
 [ext_resource type="Theme" uid="uid://mbsg4xqnedxi" path="res://UI_Themes/kenneyUI-red.tres" id="4_oru8a"]
 [ext_resource type="Theme" uid="uid://bb6vwl0h1flws" path="res://UI_Themes/kenneyUI-blue.tres" id="5_4djes"]
 [ext_resource type="Theme" uid="uid://bnhngmri4tfgr" path="res://UI_Themes/kenneyUI-green.tres" id="6_qlbwx"]
-[ext_resource type="Texture2D" uid="uid://dmay144mc3hmo" path="res://Image_Assets/Card_Backs_And_Decks/1deckfulltrans_clean.png" id="7_ac61d"]
+[ext_resource type="Texture2D" uid="uid://dmay144mc3hmo" path="res://Image_Assets/Sleeves/1deckfulltrans_clean.png" id="7_ac61d"]
 [ext_resource type="Theme" uid="uid://6shp5ck1tnja" path="res://UI_Themes/kenneyUI.tres" id="8_bo6tk"]
 [ext_resource type="Texture2D" uid="uid://41l5prxtsvdk" path="res://Image_Assets/Messageboxes/bluesquaremessagebox.png" id="9_amelh"]
 

@@ -4301,10 +4301,10 @@ func get_pokemon_type_colour(pokemon: card_object) -> Color:
 
 # Function to get lowest cost attack for a pokemon by looping through all attacks. Returns a dictionary with "cost" (convertedEnergyCost), "damage" (as int), and "attack_name"
 func _resolve_sleeve_path(sleeve_name: String, small: bool) -> String:
-	var default_path = "res://Image_Assets/Card_Backs_And_Decks/" + ("default_small.png" if small else "default_large.png")
+	var default_path = "res://Image_Assets/Sleeves/1_Default_English.png"
 	if sleeve_name == "" or sleeve_name == "default":
 		return default_path
-	var path = "res://Image_Assets/Card_Backs_And_Decks/" + sleeve_name + ".jpg"
+	var path = "res://Image_Assets/Sleeves/" + sleeve_name + ".jpg"
 	# Verify the asset is actually loadable — .jpg files may not be imported yet
 	if load(path) != null:
 		return path

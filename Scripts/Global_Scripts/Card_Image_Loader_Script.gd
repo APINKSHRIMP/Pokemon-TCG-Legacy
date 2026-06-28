@@ -37,12 +37,12 @@ func load_card_image(card_passed_uid: String, card_target_size, card_object_ref:
 
 	if card_target_size.x < 250 or card_target_size.y < 350:
 		if face_down:
-			card_image_path = sleeve_path if sleeve_path != "" else "res://Image_Assets/Card_Backs_And_Decks/default_small.png"
+			card_image_path = sleeve_path if sleeve_path != "" else "res://Image_Assets/Sleeves/1_Default_English.png"
 		else:
 			card_image_path="res://Image_Assets/Card_Image_Library/"+card_set+"/Small/"+card_passed_uid+".png"
 	else:
 		if face_down:
-			card_image_path = sleeve_path if sleeve_path != "" else "res://Image_Assets/Card_Backs_And_Decks/default_large.png"
+			card_image_path = sleeve_path if sleeve_path != "" else "res://Image_Assets/Sleeves/1_Default_English.png"
 		else:
 			card_image_path="res://Image_Assets/Card_Image_Library/"+card_set+"/Large/"+card_passed_uid+".png"
 	

@@ -19,7 +19,7 @@ signal all_packs_opened
 
 const CARD_DISPLAY_SIZE  := Vector2(563, 788)
 const PACK_IMAGES_FOLDER := "res://Image_Assets/Packs/"
-const CARDBACK_PATH      := "res://Image_Assets/Card_Backs_And_Decks/cardback.png"
+const CARDBACK_PATH      := "res://Image_Assets/Sleeves/cardback.png"
 const CARD_SET_DATA_PATH := "res://Card_Set_Data/"
 
 # God-pack tuning — see _generate_pack_cards() for full behaviour.
