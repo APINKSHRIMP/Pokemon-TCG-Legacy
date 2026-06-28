@@ -1,6 +1,6 @@
 [gd_scene format=3 uid="uid://d05074vitqyoh"]
 
-[ext_resource type="Script" uid="uid://c1yumpfxp1ebh" path="res://Scripts/Menu_Scripts/Trainer_Card_Script.gd" id="1_0828g"]
+[ext_resource type="Script" uid="uid://c1yumpfxp1ebh" path="res://Scripts/Menu_Scripts/Costume_Script.gd" id="1_0828g"]
 [ext_resource type="Shader" uid="uid://ccm481fk14lc8" path="res://Scripts/Shaders/Background_Scroll_Right_Top_Border.gdshader" id="2_kftsc"]
 [ext_resource type="Texture2D" uid="uid://dieqv60p12hlk" path="res://Image_Assets/Backgrounds_And_Borders/Borders/horizontal_border.png" id="3_2qd32"]
 [ext_resource type="Shader" uid="uid://d3gofmygrsrkm" path="res://Scripts/Shaders/Background_Scroll_Left.gdshader" id="4_2qd32"]

@@ -211,6 +211,8 @@ func _on_door_entered(body: Node2D):
 # INPUT — main menu shortcut
 # ============================================================
 
+var _menu_canvas_layer: CanvasLayer = null
+
 func _input(event: InputEvent) -> void:
 	if not (event is InputEventKey and event.pressed and not event.is_echo()):
 		return
@@ -222,12 +224,39 @@ func _input(event: InputEvent) -> void:
 		return
 	if not _allow_menu_open(is_enter):
 		return
-	var scene_path := get_scene_path()
+	if _menu_canvas_layer != null:
+		return
 	get_viewport().set_input_as_handled()
+	_open_menu_overlay()
+
+func _open_menu_overlay() -> void:
+	var scene_path := get_scene_path()
 	GameState.save_menu_return_state(scene_path, _player.position, _player.get_current_direction())
 	GameState.save_current_location(scene_path, _player.position)
 	SoundManagerScript.stop_bgm()
-	SceneCache.change_scene("res://Scenes/Main_Menu_Scenes/Main_Menu_Scene.tscn")
+	_player.lock_movement()
+
+	_menu_canvas_layer = CanvasLayer.new()
+	_menu_canvas_layer.layer = 10
+	add_child(_menu_canvas_layer)
+
+	var menu_packed: PackedScene = SceneCache.get_packed_scene("res://Scenes/Main_Menu_Scenes/Main_Menu_Scene.tscn")
+	if menu_packed == null:
+		menu_packed = load("res://Scenes/Main_Menu_Scenes/Main_Menu_Scene.tscn")
+	var menu_instance: Node = menu_packed.instantiate()
+	menu_instance.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	menu_instance.is_overlay = true
+	menu_instance.close_overlay_callback = _close_menu_overlay
+	_menu_canvas_layer.add_child(menu_instance)
+
+func _close_menu_overlay() -> void:
+	if _menu_canvas_layer != null and is_instance_valid(_menu_canvas_layer):
+		_menu_canvas_layer.queue_free()
+		_menu_canvas_layer = null
+	_player.unlock_movement()
+	var bgm := get_bgm_path()
+	if bgm != "":
+		SoundManagerScript.play_bgm(bgm, false)
 
 # ============================================================
 # CASH LABEL — opt-in

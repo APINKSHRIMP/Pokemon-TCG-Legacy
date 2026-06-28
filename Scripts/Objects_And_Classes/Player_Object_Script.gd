@@ -35,6 +35,9 @@ func lock_movement():
 	can_move = false
 	velocity = Vector2.ZERO
 
+func unlock_movement():
+	can_move = true
+
 func get_current_direction() -> String:
 	return current_direction
 

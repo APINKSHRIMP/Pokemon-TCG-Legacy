@@ -1,18 +1,21 @@
 [gd_scene format=3 uid="uid://sd3crp0k4w67"]
 
 [ext_resource type="Script" uid="uid://d31lopv6mm8la" path="res://Scripts/Menu_Scripts/Main_Menu_Script.gd" id="1_mfee1"]
-[ext_resource type="Texture2D" uid="uid://degk17sx8q4mr" path="res://Image_Assets/Main_Menu_Images/deck_mode.png" id="1_pirq4"]
-[ext_resource type="Texture2D" uid="uid://dha51fw450he" path="res://Image_Assets/Main_Menu_Images/map_mode.png" id="2_mfee1"]
-[ext_resource type="Texture2D" uid="uid://bwoe2jmpei611" path="res://Image_Assets/Main_Menu_Images/player_mode.png" id="3_xhmi8"]
-[ext_resource type="Texture2D" uid="uid://c68w15ma8ytwb" path="res://Image_Assets/Main_Menu_Images/options_mode.png" id="4_lj1sn"]
-[ext_resource type="Texture2D" uid="uid://bb66wdtlkuwnm" path="res://Image_Assets/Main_Menu_Images/coin_case_mode.png" id="5_yxv5o"]
-[ext_resource type="Shader" uid="uid://ccm481fk14lc8" path="res://Scripts/Shaders/Background_Scroll_Right_Top_Border.gdshader" id="6_8uls3"]
-[ext_resource type="Texture2D" uid="uid://dieqv60p12hlk" path="res://Image_Assets/Backgrounds_And_Borders/Borders/horizontal_border.png" id="7_hd3b5"]
+[ext_resource type="Texture2D" uid="uid://cv0t3ho27wcug" path="res://Image_Assets/Main_Menu_Images/Box_Cards.png" id="2_y8i8l"]
+[ext_resource type="Texture2D" uid="uid://1lr7s6kb870p" path="res://Image_Assets/Main_Menu_Images/Icon_Cards.png" id="3_r75kf"]
+[ext_resource type="Texture2D" uid="uid://bjhocu4rlebo1" path="res://Image_Assets/Main_Menu_Images/Box_Info.png" id="4_r75kf"]
+[ext_resource type="Texture2D" uid="uid://c2rulvjc3s5ip" path="res://Image_Assets/Main_Menu_Images/Icon_ID.png" id="5_sac41"]
+[ext_resource type="Texture2D" uid="uid://bkpso5ehyk61" path="res://Image_Assets/Main_Menu_Images/Box_Costumes.png" id="6_mtorm"]
+[ext_resource type="Texture2D" uid="uid://dqle8py8utx0g" path="res://Image_Assets/Main_Menu_Images/Icon_Costumes.png" id="7_kh622"]
 [ext_resource type="Theme" uid="uid://6shp5ck1tnja" path="res://UI_Themes/kenneyUI.tres" id="8_vkwfo"]
-
-[sub_resource type="ShaderMaterial" id="ShaderMaterial_v2sbh"]
-shader = ExtResource("6_8uls3")
-shader_parameter/scroll_speed = -0.009
+[ext_resource type="Texture2D" uid="uid://08g3crutekp5" path="res://Image_Assets/Main_Menu_Images/Box_Coins.png" id="8_vu7wy"]
+[ext_resource type="Texture2D" uid="uid://0jj4ixchaeii" path="res://Image_Assets/Main_Menu_Images/Icon_Coins.png" id="9_xunj8"]
+[ext_resource type="Texture2D" uid="uid://dvuaxveioqvcj" path="res://Image_Assets/Main_Menu_Images/Box_Sleeves.png" id="10_vgyvy"]
+[ext_resource type="Texture2D" uid="uid://f3ahiwce6o8e" path="res://Image_Assets/Main_Menu_Images/Icon_Sleeves.png" id="11_3pm3b"]
+[ext_resource type="Texture2D" uid="uid://bmbu51xkxqmc2" path="res://Image_Assets/Main_Menu_Images/Box_Options.png" id="12_4alst"]
+[ext_resource type="Texture2D" uid="uid://5keherb4pm8r" path="res://Image_Assets/Main_Menu_Images/Icon_Options.png" id="13_2wiak"]
+[ext_resource type="Texture2D" uid="uid://dvfpd5fem06mr" path="res://Image_Assets/Main_Menu_Images/Icon_Close.png" id="14_8hwlk"]
+[ext_resource type="Texture2D" uid="uid://cr20au1st6auv" path="res://Image_Assets/Main_Menu_Images/Icon_Power.png" id="15_3owim"]
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_fyaru"]
 
@@ -31,77 +34,43 @@ offset_bottom = 99.0
 
 [node name="white_background" type="ColorRect" parent="BACKGROUND" unique_id=1276736523]
 layout_mode = 0
+offset_top = -59.0
 offset_right = 1921.0
-offset_bottom = 969.0
+offset_bottom = 1021.0
+color = Color(0, 0, 0, 0.5254902)
 
-[node name="top_border" type="TextureRect" parent="BACKGROUND" unique_id=1192851701]
-material = SubResource("ShaderMaterial_v2sbh")
-layout_mode = 0
-offset_top = -55.0
-offset_right = 1920.0
-offset_bottom = 48.0
-texture = ExtResource("7_hd3b5")
-stretch_mode = 1
+[node name="deck" type="Control" parent="." unique_id=944124811]
+anchors_preset = 0
+offset_right = 40.0
+offset_bottom = 40.0
 
-[node name="bottom_border" type="TextureRect" parent="BACKGROUND" unique_id=1660859995]
-material = SubResource("ShaderMaterial_v2sbh")
-layout_mode = 0
-offset_top = 915.0
-offset_right = 1920.0
-offset_bottom = 1018.0
-texture = ExtResource("7_hd3b5")
-stretch_mode = 1
-
-[node name="deck_mode_background" type="TextureRect" parent="." unique_id=1976214605]
+[node name="deck_mode_background" type="TextureRect" parent="deck" unique_id=1976214605]
 material = SubResource("ShaderMaterial_fyaru")
 layout_mode = 0
-offset_left = 13.0
-offset_top = 116.0
-offset_right = 750.0
-offset_bottom = 644.0
-texture = ExtResource("1_pirq4")
-
-[node name="map_mode_background" type="TextureRect" parent="." unique_id=601312769]
-layout_mode = 0
-offset_left = 765.0
-offset_top = 116.0
-offset_right = 1552.0
-offset_bottom = 644.0
-texture = ExtResource("2_mfee1")
-
-[node name="player_mode_background" type="TextureRect" parent="." unique_id=289710629]
-layout_mode = 0
-offset_left = 13.0
-offset_top = 658.0
-offset_right = 972.2375
-offset_bottom = 965.0
-texture = ExtResource("3_xhmi8")
+offset_left = 31.0
+offset_top = 47.0
+offset_right = 701.0
+offset_bottom = 837.50354
+texture = ExtResource("2_y8i8l")
 expand_mode = 1
+stretch_mode = 4
 
-[node name="options_mode_background" type="TextureRect" parent="." unique_id=1693785905]
+[node name="deck_icon" type="TextureRect" parent="deck" unique_id=856587590]
 layout_mode = 0
-offset_left = 1572.0
-offset_top = 116.0
-offset_right = 1908.0
-offset_bottom = 644.0
-texture = ExtResource("4_lj1sn")
+offset_left = 97.0
+offset_top = 323.0
+offset_right = 697.0824
+offset_bottom = 815.0
+texture = ExtResource("3_r75kf")
 expand_mode = 1
+stretch_mode = 4
 
-[node name="coin_case_mode_background" type="TextureRect" parent="." unique_id=1001564756]
+[node name="deck_mode_label" type="Label" parent="deck" unique_id=1713870272]
 layout_mode = 0
-offset_left = 985.0
-offset_top = 658.0
-offset_right = 1907.3839
-offset_bottom = 965.0
-texture = ExtResource("5_yxv5o")
-expand_mode = 1
-
-[node name="deck_mode_label" type="Label" parent="." unique_id=1713870272]
-layout_mode = 0
-offset_left = 115.0
-offset_top = 271.0
-offset_right = 671.0
-offset_bottom = 514.0
+offset_left = 107.0
+offset_top = 89.0
+offset_right = 663.0
+offset_bottom = 332.0
 theme = ExtResource("8_vkwfo")
 theme_override_colors/font_outline_color = Color(0, 0, 0, 1)
 theme_override_constants/outline_size = 20
@@ -110,27 +79,194 @@ text = "CARDS &
 DECK"
 horizontal_alignment = 1
 
-[node name="map_mode_label" type="Label" parent="." unique_id=102588052]
+[node name="info" type="Control" parent="." unique_id=377292553]
+anchors_preset = 0
+offset_right = 40.0
+offset_bottom = 40.0
+
+[node name="info_mode_background" type="TextureRect" parent="info" unique_id=930660608]
 layout_mode = 0
-offset_left = 909.0
-offset_top = 287.0
-offset_right = 1465.0
-offset_bottom = 530.0
+offset_left = 750.0
+offset_top = 43.0
+offset_right = 1890.0
+offset_bottom = 253.0
+texture = ExtResource("4_r75kf")
+expand_mode = 1
+stretch_mode = 4
+
+[node name="info_icon" type="TextureRect" parent="info" unique_id=733696162]
+layout_mode = 0
+offset_left = 805.0
+offset_top = 84.0
+offset_right = 978.5294
+offset_bottom = 202.0
+texture = ExtResource("5_sac41")
+expand_mode = 1
+stretch_mode = 4
+
+[node name="info_label" type="Label" parent="info" unique_id=2105330849]
+layout_mode = 0
+offset_left = 1032.0
+offset_top = 88.0
+offset_right = 1798.0
+offset_bottom = 208.0
 theme = ExtResource("8_vkwfo")
 theme_override_colors/font_outline_color = Color(0, 0, 0, 1)
 theme_override_constants/outline_size = 20
-theme_override_font_sizes/font_size = 106
-text = "WORLD
-MAP"
+theme_override_font_sizes/font_size = 99
+text = "Player Info"
 horizontal_alignment = 1
 
-[node name="options_mode_label" type="Label" parent="." unique_id=212949974]
+[node name="costume" type="Control" parent="." unique_id=1237420987]
+anchors_preset = 0
+offset_top = -8.0
+offset_right = 40.0
+offset_bottom = 32.0
+
+[node name="costume_mode_background" type="TextureRect" parent="costume" unique_id=289710629]
 layout_mode = 0
-offset_left = 1555.0001
-offset_top = 580.00006
-offset_right = 2119.0
-offset_bottom = 703.00006
-rotation = -0.945367
+offset_left = 750.0
+offset_top = 293.0
+offset_right = 1890.0
+offset_bottom = 503.0
+texture = ExtResource("6_mtorm")
+expand_mode = 1
+stretch_mode = 4
+
+[node name="costumes_icon" type="TextureRect" parent="costume" unique_id=1199801120]
+layout_mode = 0
+offset_left = 744.0
+offset_top = 248.0
+offset_right = 1105.0
+offset_bottom = 487.0
+texture = ExtResource("7_kh622")
+expand_mode = 1
+stretch_mode = 4
+
+[node name="costumes_label" type="Label" parent="costume" unique_id=1557545621]
+layout_mode = 0
+offset_left = 1118.0
+offset_top = 331.0
+offset_right = 1726.0
+offset_bottom = 438.0
+theme = ExtResource("8_vkwfo")
+theme_override_colors/font_outline_color = Color(0, 0, 0, 1)
+theme_override_constants/outline_size = 20
+theme_override_font_sizes/font_size = 99
+text = "Costumes"
+horizontal_alignment = 1
+
+[node name="coin" type="Control" parent="." unique_id=1844590669]
+anchors_preset = 0
+offset_top = -16.0
+offset_right = 40.0
+offset_bottom = 24.0
+
+[node name="coin_case_mode_background" type="TextureRect" parent="coin" unique_id=1001564756]
+layout_mode = 0
+offset_left = 750.0
+offset_top = 543.0
+offset_right = 1890.0
+offset_bottom = 753.0
+texture = ExtResource("8_vu7wy")
+expand_mode = 1
+stretch_mode = 4
+
+[node name="coin_icon" type="TextureRect" parent="coin" unique_id=157614114]
+layout_mode = 0
+offset_left = 745.0
+offset_top = 530.0
+offset_right = 1100.0
+offset_bottom = 736.0
+texture = ExtResource("9_xunj8")
+expand_mode = 1
+stretch_mode = 4
+
+[node name="coin_case_label" type="Label" parent="coin" unique_id=1528376637]
+layout_mode = 0
+offset_left = 1137.0
+offset_top = 585.0
+offset_right = 1771.0
+offset_bottom = 697.0
+theme = ExtResource("8_vkwfo")
+theme_override_colors/font_outline_color = Color(0, 0, 0, 1)
+theme_override_constants/outline_size = 20
+theme_override_font_sizes/font_size = 99
+text = "COIN CASE"
+horizontal_alignment = 1
+
+[node name="sleeves" type="Control" parent="." unique_id=1533606610]
+anchors_preset = 0
+offset_top = -16.0
+offset_right = 40.0
+offset_bottom = 24.0
+
+[node name="sleeves_mode_background" type="TextureRect" parent="sleeves" unique_id=144830301]
+layout_mode = 0
+offset_left = 750.0
+offset_top = 793.0
+offset_right = 1890.0
+offset_bottom = 1003.0
+texture = ExtResource("10_vgyvy")
+expand_mode = 1
+stretch_mode = 4
+
+[node name="sleeves_icon" type="TextureRect" parent="sleeves" unique_id=1082448745]
+layout_mode = 0
+offset_left = 740.0
+offset_top = 781.0
+offset_right = 1060.0
+offset_bottom = 990.0
+texture = ExtResource("11_3pm3b")
+expand_mode = 1
+stretch_mode = 4
+
+[node name="sleeves_label" type="Label" parent="sleeves" unique_id=2071060092]
+layout_mode = 0
+offset_left = 1131.0
+offset_top = 834.0
+offset_right = 1739.0
+offset_bottom = 946.0
+theme = ExtResource("8_vkwfo")
+theme_override_colors/font_outline_color = Color(0, 0, 0, 1)
+theme_override_constants/outline_size = 20
+theme_override_font_sizes/font_size = 99
+text = "Sleeves"
+horizontal_alignment = 1
+
+[node name="options" type="Control" parent="." unique_id=1911793543]
+anchors_preset = 0
+offset_top = 8.0
+offset_right = 40.0
+offset_bottom = 48.0
+
+[node name="options_mode_background" type="TextureRect" parent="options" unique_id=1693785905]
+layout_mode = 0
+offset_left = 31.0
+offset_top = 846.0
+offset_right = 704.1102
+offset_bottom = 969.0
+texture = ExtResource("12_4alst")
+expand_mode = 1
+stretch_mode = 4
+
+[node name="options_icon" type="TextureRect" parent="options" unique_id=1364825669]
+layout_mode = 0
+offset_left = 47.0
+offset_top = 833.0
+offset_right = 196.0
+offset_bottom = 982.0
+texture = ExtResource("13_2wiak")
+expand_mode = 1
+stretch_mode = 4
+
+[node name="options_mode_label" type="Label" parent="options" unique_id=212949974]
+layout_mode = 0
+offset_left = 149.0
+offset_top = 864.00006
+offset_right = 712.9999
+offset_bottom = 987.00006
+rotation = -0.0001808852
 theme = ExtResource("8_vkwfo")
 theme_override_colors/font_outline_color = Color(0, 0, 0, 1)
 theme_override_constants/outline_size = 20
@@ -138,28 +274,56 @@ theme_override_font_sizes/font_size = 76
 text = "OPTIONS"
 horizontal_alignment = 1
 
-[node name="player_mode_label" type="Label" parent="." unique_id=2105330849]
+[node name="close" type="Control" parent="." unique_id=869741767]
+anchors_preset = 0
+offset_right = 40.0
+offset_bottom = 40.0
+
+[node name="map_mode_background" type="TextureRect" parent="close" unique_id=601312769]
 layout_mode = 0
-offset_left = 17.0
-offset_top = 791.0
-offset_right = 960.0
-offset_bottom = 911.0
+offset_left = 505.0
+offset_top = 999.0
+offset_right = 565.0
+offset_bottom = 1061.3438
+texture = ExtResource("14_8hwlk")
+expand_mode = 1
+
+[node name="map_mode_label" type="Label" parent="close" unique_id=102588052]
+layout_mode = 0
+offset_left = 574.0
+offset_top = 999.0
+offset_right = 1006.0
+offset_bottom = 1061.0
 theme = ExtResource("8_vkwfo")
 theme_override_colors/font_outline_color = Color(0, 0, 0, 1)
 theme_override_constants/outline_size = 20
-theme_override_font_sizes/font_size = 86
-text = "TRAINER CARD"
+theme_override_font_sizes/font_size = 54
+text = "Close menu"
 horizontal_alignment = 1
 
-[node name="coin_case_label" type="Label" parent="." unique_id=1528376637]
+[node name="exit" type="Control" parent="." unique_id=1707839561]
+anchors_preset = 0
+offset_right = 40.0
+offset_bottom = 40.0
+
+[node name="exit_game_button" type="TextureRect" parent="exit" unique_id=1663155494]
 layout_mode = 0
-offset_left = 1155.0
-offset_top = 784.0
-offset_right = 1763.0
-offset_bottom = 891.0
+offset_left = 1124.0
+offset_top = 999.0
+offset_right = 1184.0
+offset_bottom = 1061.3622
+texture = ExtResource("15_3owim")
+expand_mode = 1
+
+[node name="exit_game_label" type="Label" parent="exit" unique_id=1687530234]
+layout_mode = 0
+offset_left = 1197.0
+offset_top = 1000.0
+offset_right = 1557.0
+offset_bottom = 1062.0
 theme = ExtResource("8_vkwfo")
 theme_override_colors/font_outline_color = Color(0, 0, 0, 1)
 theme_override_constants/outline_size = 20
-theme_override_font_sizes/font_size = 86
-text = "COIN CASE"
+theme_override_font_sizes/font_size = 54
+text = "Exit Game"
 horizontal_alignment = 1

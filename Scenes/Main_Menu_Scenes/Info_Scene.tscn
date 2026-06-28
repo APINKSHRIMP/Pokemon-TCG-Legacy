@@ -1,0 +1,19 @@
+[gd_scene format=3 uid="uid://b1nf0sc3ne1234"]
+
+[ext_resource type="Script" path="res://Scripts/Menu_Scripts/Info_Scene_Script.gd" id="1_info1"]
+
+[node name="INFO" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+script = ExtResource("1_info1")
+
+[node name="placeholder_label" type="Label" parent="."]
+layout_mode = 0
+offset_left = 760.0
+offset_top = 490.0
+offset_right = 1160.0
+offset_bottom = 590.0
+text = "Info Scene - Coming Soon"
+horizontal_alignment = 1
