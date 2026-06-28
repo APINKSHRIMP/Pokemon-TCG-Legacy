@@ -1,19 +1,109 @@
-[gd_scene format=3 uid="uid://b5l33v3sc3ne12"]
+[gd_scene format=3 uid="uid://cy4yr3u2eg64"]
 
-[ext_resource type="Script" path="res://Scripts/Menu_Scripts/Sleeves_Scene_Script.gd" id="1_slv1"]
+[ext_resource type="Script" uid="uid://buaesiarnil37" path="res://Scripts/Menu_Scripts/Sleeves_Scene_Script.gd" id="1_qhu8h"]
+[ext_resource type="Shader" uid="uid://ccm481fk14lc8" path="res://Scripts/Shaders/Background_Scroll_Right_Top_Border.gdshader" id="2_ru3d7"]
+[ext_resource type="Texture2D" uid="uid://dieqv60p12hlk" path="res://Image_Assets/Backgrounds_And_Borders/Borders/horizontal_border.png" id="3_5g1no"]
+[ext_resource type="Shader" uid="uid://d3gofmygrsrkm" path="res://Scripts/Shaders/Background_Scroll_Left.gdshader" id="4_t6g1l"]
+[ext_resource type="Texture2D" uid="uid://he803mdt247f" path="res://Image_Assets/Backgrounds_And_Borders/Backgrounds/background5.png" id="5_2lokm"]
+[ext_resource type="Theme" uid="uid://6shp5ck1tnja" path="res://UI_Themes/kenneyUI.tres" id="6_q0djy"]
+[ext_resource type="Theme" uid="uid://mbsg4xqnedxi" path="res://UI_Themes/kenneyUI-red.tres" id="7_4mpb6"]
+[ext_resource type="Theme" uid="uid://bb6vwl0h1flws" path="res://UI_Themes/kenneyUI-blue.tres" id="8_bw06a"]
 
-[node name="SLEEVES" type="Control"]
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_ui6o0"]
+shader = ExtResource("2_ru3d7")
+shader_parameter/scroll_speed = -0.009
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_joqtv"]
+shader = ExtResource("4_t6g1l")
+shader_parameter/scroll_speed = 0.002
+shader_parameter/tint = Vector4(1, 1, 1, 1)
+
+[node name="SLEEVES" type="Control" unique_id=1135142225]
 layout_mode = 3
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
-script = ExtResource("1_slv1")
+anchors_preset = 0
+offset_right = 40.0
+offset_bottom = 40.0
+script = ExtResource("1_qhu8h")
 
-[node name="placeholder_label" type="Label" parent="."]
+[node name="BACKGROUND" type="Control" parent="." unique_id=1194530090]
+anchors_preset = 0
+offset_top = 59.0
+offset_right = 40.0
+offset_bottom = 99.0
+
+[node name="top_border" type="TextureRect" parent="BACKGROUND" unique_id=1290623622]
+z_index = 200
+material = SubResource("ShaderMaterial_ui6o0")
 layout_mode = 0
-offset_left = 700.0
-offset_top = 490.0
-offset_right = 1220.0
-offset_bottom = 590.0
-text = "Sleeves Scene - Coming Soon"
+offset_top = -59.0
+offset_right = 1921.0
+offset_bottom = 48.0
+texture = ExtResource("3_5g1no")
+stretch_mode = 1
+
+[node name="bottom_border" type="TextureRect" parent="BACKGROUND" unique_id=1945451914]
+z_index = 200
+material = SubResource("ShaderMaterial_ui6o0")
+layout_mode = 0
+offset_top = 918.0
+offset_right = 1921.0
+offset_bottom = 1021.0
+texture = ExtResource("3_5g1no")
+stretch_mode = 1
+
+[node name="background_scroller" type="TextureRect" parent="BACKGROUND" unique_id=643590526]
+material = SubResource("ShaderMaterial_joqtv")
+layout_mode = 0
+offset_left = -2.0000002
+offset_top = 45.000004
+offset_right = 6622.0
+offset_bottom = 4462.0
+scale = Vector2(0.29, 0.29)
+texture = ExtResource("5_2lokm")
+stretch_mode = 1
+
+[node name="sleeves_grid_container" type="GridContainer" parent="." unique_id=730960467]
+layout_mode = 0
+offset_left = 15.0
+offset_top = 111.0
+offset_right = 1908.0
+offset_bottom = 977.0
+
+[node name="sleeves_save_button" type="Button" parent="." unique_id=2078421001]
+z_index = 300
+layout_mode = 0
+offset_left = 568.0
+offset_top = 998.0
+offset_right = 912.0
+offset_bottom = 1061.0
+theme = ExtResource("6_q0djy")
+text = "save"
+
+[node name="sleeves_cancel_button" type="Button" parent="." unique_id=118328617]
+z_index = 300
+layout_mode = 0
+offset_left = 935.0
+offset_top = 998.0
+offset_right = 1279.0
+offset_bottom = 1061.0
+theme = ExtResource("7_4mpb6")
+text = "cancel"
+
+[node name="large_header_text_label" type="Label" parent="." unique_id=689700749]
+z_index = 999
+layout_mode = 0
+offset_left = -40.0
+offset_top = 17.0
+offset_right = 1960.0
+offset_bottom = 89.0
+theme = ExtResource("8_bw06a")
+theme_override_colors/font_color = Color(0, 0, 0, 1)
+theme_override_colors/font_shadow_color = Color(1.0187511, 1.0187511, 1.0187511, 1)
+theme_override_constants/line_spacing = 3
+theme_override_constants/shadow_offset_x = 0
+theme_override_constants/shadow_offset_y = 0
+theme_override_constants/shadow_outline_size = 20
+theme_override_font_sizes/font_size = 61
+text = "Sleeves"
 horizontal_alignment = 1
+vertical_alignment = 1

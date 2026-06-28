@@ -26,18 +26,11 @@ offset_right = 40.0
 offset_bottom = 40.0
 script = ExtResource("1_mfee1")
 
-[node name="BACKGROUND" type="Control" parent="." unique_id=33343848]
-anchors_preset = 0
-offset_top = 59.0
-offset_right = 40.0
-offset_bottom = 99.0
-
-[node name="white_background" type="ColorRect" parent="BACKGROUND" unique_id=1276736523]
+[node name="black_background" type="ColorRect" parent="." unique_id=1276736523]
 layout_mode = 0
-offset_top = -59.0
 offset_right = 1921.0
-offset_bottom = 1021.0
-color = Color(0, 0, 0, 0.5254902)
+offset_bottom = 1080.0
+color = Color(0, 0, 0, 0.8392157)
 
 [node name="deck" type="Control" parent="." unique_id=944124811]
 anchors_preset = 0
