@@ -1,19 +1,157 @@
-[gd_scene format=3 uid="uid://b1nf0sc3ne1234"]
+[gd_scene format=3 uid="uid://dd8m4dsyj377s"]
 
-[ext_resource type="Script" path="res://Scripts/Menu_Scripts/Info_Scene_Script.gd" id="1_info1"]
+[ext_resource type="Script" path="res://Scripts/Menu_Scripts/Info_Script.gd" id="1_7a6hn"]
+[ext_resource type="Shader" uid="uid://ccm481fk14lc8" path="res://Scripts/Shaders/Background_Scroll_Right_Top_Border.gdshader" id="2_1ktwe"]
+[ext_resource type="Texture2D" uid="uid://dieqv60p12hlk" path="res://Image_Assets/Backgrounds_And_Borders/Borders/horizontal_border.png" id="3_xfvrr"]
+[ext_resource type="Shader" uid="uid://d3gofmygrsrkm" path="res://Scripts/Shaders/Background_Scroll_Left.gdshader" id="4_tp5en"]
+[ext_resource type="Texture2D" uid="uid://he803mdt247f" path="res://Image_Assets/Backgrounds_And_Borders/Backgrounds/background5.png" id="5_68nwl"]
+[ext_resource type="Theme" uid="uid://6shp5ck1tnja" path="res://UI_Themes/kenneyUI.tres" id="6_a35wf"]
+[ext_resource type="Theme" uid="uid://mbsg4xqnedxi" path="res://UI_Themes/kenneyUI-red.tres" id="7_4qkhj"]
+[ext_resource type="Theme" uid="uid://h1f7iqhh7ycb" path="res://UI_Themes/kenneyUI-yellow.tres" id="8_1ktwe"]
 
-[node name="INFO" type="Control"]
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_ui6o0"]
+shader = ExtResource("2_1ktwe")
+shader_parameter/scroll_speed = -0.009
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_2qd32"]
+shader = ExtResource("4_tp5en")
+shader_parameter/scroll_speed = 0.002
+shader_parameter/tint = Vector4(1, 1, 1, 1)
+
+[node name="INFO" type="Control" unique_id=1422498273]
 layout_mode = 3
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
-script = ExtResource("1_info1")
+anchors_preset = 0
+offset_right = 40.0
+offset_bottom = 40.0
+script = ExtResource("1_7a6hn")
 
-[node name="placeholder_label" type="Label" parent="."]
+[node name="BACKGROUND" type="Control" parent="." unique_id=1910160496]
+anchors_preset = 0
+offset_top = 59.0
+offset_right = 40.0
+offset_bottom = 99.0
+
+[node name="top_border" type="TextureRect" parent="BACKGROUND" unique_id=1975445398]
+z_index = 200
+material = SubResource("ShaderMaterial_ui6o0")
 layout_mode = 0
-offset_left = 760.0
-offset_top = 490.0
-offset_right = 1160.0
-offset_bottom = 590.0
-text = "Info Scene - Coming Soon"
-horizontal_alignment = 1
+offset_top = -59.0
+offset_right = 1921.0
+offset_bottom = 48.0
+texture = ExtResource("3_xfvrr")
+stretch_mode = 1
+
+[node name="bottom_border" type="TextureRect" parent="BACKGROUND" unique_id=554163774]
+z_index = 200
+material = SubResource("ShaderMaterial_ui6o0")
+layout_mode = 0
+offset_top = 918.0
+offset_right = 1921.0
+offset_bottom = 1021.0
+texture = ExtResource("3_xfvrr")
+stretch_mode = 1
+
+[node name="background_scroller" type="TextureRect" parent="BACKGROUND" unique_id=688350770]
+material = SubResource("ShaderMaterial_2qd32")
+layout_mode = 0
+offset_left = -2.0000002
+offset_top = 45.000004
+offset_right = 6622.0
+offset_bottom = 4462.0
+scale = Vector2(0.29, 0.29)
+texture = ExtResource("5_68nwl")
+stretch_mode = 1
+
+[node name="info_save_button" type="Button" parent="." unique_id=1626410143]
+z_index = 300
+layout_mode = 0
+offset_left = 568.0
+offset_top = 998.0
+offset_right = 912.0
+offset_bottom = 1061.0
+theme = ExtResource("6_a35wf")
+text = "save"
+
+[node name="info_cancel_button" type="Button" parent="." unique_id=2119908794]
+z_index = 300
+layout_mode = 0
+offset_left = 935.0
+offset_top = 998.0
+offset_right = 1279.0
+offset_bottom = 1061.0
+theme = ExtResource("7_4qkhj")
+text = "cancel"
+
+[node name="player_name" type="LineEdit" parent="." unique_id=622026657]
+z_index = 300
+layout_mode = 0
+offset_left = 1017.0
+offset_top = 182.0
+offset_right = 1810.0
+offset_bottom = 250.43433
+theme = ExtResource("6_a35wf")
+theme_override_colors/font_color = Color(0, 0, 0, 1)
+theme_override_colors/font_placeholder_color = Color(0.25565845, 0.25565895, 0.25565854, 0.6)
+theme_override_font_sizes/font_size = 41
+placeholder_text = "Enter your name....."
+alignment = 1
+
+[node name="player_dob_label" type="LineEdit" parent="." unique_id=387429105]
+z_index = 300
+layout_mode = 0
+offset_left = 1019.0
+offset_top = 270.0
+offset_right = 1209.0
+offset_bottom = 338.0
+theme = ExtResource("6_a35wf")
+theme_override_colors/font_color = Color(0, 0, 0, 1)
+theme_override_colors/font_uneditable_color = Color(0, 0, 0, 1)
+theme_override_font_sizes/font_size = 26
+text = "DOB: --/--"
+alignment = 1
+editable = false
+
+[node name="statistics" type="Control" parent="." unique_id=1867820725]
+anchors_preset = 0
+offset_left = 1024.0
+offset_top = 367.0
+offset_right = 1811.0
+offset_bottom = 877.0
+
+[node name="medals_button" type="Button" parent="." unique_id=971801696]
+z_index = 300
+layout_mode = 0
+offset_left = 1221.0
+offset_top = 836.0
+offset_right = 1628.0
+offset_bottom = 905.0
+theme = ExtResource("8_1ktwe")
+text = "View MEDALS"
+
+[node name="PlayerSprite" type="TextureRect" parent="." unique_id=541156267]
+layout_mode = 0
+offset_left = 215.0
+offset_top = 164.0
+offset_right = 577.0
+offset_bottom = 564.0
+
+[node name="Sleeve" type="TextureRect" parent="." unique_id=677402168]
+layout_mode = 0
+offset_left = 55.0
+offset_top = 636.0
+offset_right = 232.0
+offset_bottom = 822.0
+
+[node name="DeckName" type="Label" parent="." unique_id=517027793]
+layout_mode = 0
+offset_left = 251.0
+offset_top = 779.0
+offset_right = 750.0
+offset_bottom = 853.0
+
+[node name="Coin" type="TextureRect" parent="." unique_id=170594007]
+layout_mode = 0
+offset_left = 86.0
+offset_top = 879.0
+offset_right = 126.0
+offset_bottom = 919.0

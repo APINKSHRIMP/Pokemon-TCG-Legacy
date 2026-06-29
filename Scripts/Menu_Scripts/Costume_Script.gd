@@ -7,7 +7,6 @@ const SPRITE_SIZE        := Vector2(100, 200)
 const SPRITE_SEPARATION  := -4
 # At 250px + 10px gap = 260px per cell across 1920px usable width → 7 columns
 const COLUMNS            := 9
-const MAX_NAME_LENGTH    := 21
 
 var PLAYER_DATA_PATH: String:
 	get: return GameState.PLAYER_CURRENT_DATA_PATH
@@ -21,14 +20,9 @@ var selected_character_rect : TextureRect = null
 
 # The sprite name stored in player_data.json on load — used to detect unsaved changes
 var saved_sprite_name       : String = ""
-# The player name loaded from json — tracked to detect unsaved name changes too
-var saved_player_name       : String = ""
 
 var _active_tween           : Tween = null
 var _last_clicked_rect      : TextureRect = null
-
-var _cheat_label            : Label = null
-var _cheat_label_token      : int = 0
 
 # Flat set of owned costume filenames e.g. {"1dawn_platinum.png": true}
 # Using a Dictionary as a set gives O(1) lookups vs iterating an Array
@@ -39,8 +33,6 @@ var _owned_costumes         : Dictionary = {}
 @onready var grid        : GridContainer = $"trainer_grid_container"
 @onready var save_btn    : Button        = $"trainer_save_button"
 @onready var cancel_btn  : Button        = $"trainer_cancel_button"
-@onready var name_box    : LineEdit      = $"player_name"
-@onready var dob_label   : LineEdit      = $"player_dob_label"
 @onready var audio_player = AudioStreamPlayer.new()
 
 # ─── Lifecycle ───────────────────────────────────────────────────────────────
@@ -56,12 +48,6 @@ func _ready() -> void:
 
 	_load_owned_costumes_list()
 	_load_player_data()
-
-	# LineEdit natively supports max_length and single-line input
-	name_box.text = saved_player_name
-	name_box.alignment = HORIZONTAL_ALIGNMENT_CENTER
-	name_box.max_length = MAX_NAME_LENGTH
-	name_box.text_changed.connect(_on_name_changed)
 
 	save_btn.disabled = true
 	save_btn.pressed.connect(_on_save_pressed)
@@ -129,20 +115,6 @@ func _load_player_data() -> void:
 		if not raw.ends_with(".png"):
 			raw = raw + ".png"
 		saved_sprite_name = raw
-
-	if data.has("name"):
-		saved_player_name = data["name"]
-
-	var dob: String = data.get("date_of_birth", "")
-	dob_label.text = "DOB: " + (dob if dob != "" else "--/--")
-
-
-# ─── Name box ────────────────────────────────────────────────────────────────
-
-func _on_name_changed(_new_text: String) -> void:
-	# max_length on LineEdit already blocks characters over the limit,
-	# so we just need to check whether the save button state needs updating
-	_refresh_save_button_state()
 
 
 # ─── Scroll container setup ──────────────────────────────────────────────────
@@ -292,9 +264,7 @@ func _refresh_save_button_state() -> void:
 	if selected_character_rect != null:
 		sprite_changed = selected_character_rect.get_meta("sprite_name", "") != saved_sprite_name
 
-	var name_changed := name_box.text.strip_edges() != saved_player_name
-
-	if sprite_changed or name_changed:
+	if sprite_changed:
 		save_btn.disabled = false
 		var green_theme = load("res://UI_Themes/kenneyUI-green.tres")
 		if green_theme:
@@ -326,14 +296,6 @@ func _on_save_pressed() -> void:
 			data["sprite"]    = new_sprite.trim_suffix(".png")
 			saved_sprite_name = new_sprite
 
-	SoundManagerScript.play_sfx(SoundManagerScript.SFX_gamemode_select)
-
-	# Save name — trim whitespace before storing
-	var new_name := name_box.text.strip_edges()
-	if new_name != "":
-		data["name"]      = new_name
-		saved_player_name = new_name
-
 	var write_file := FileAccess.open(PLAYER_DATA_PATH, FileAccess.WRITE)
 	if write_file == null:
 		push_error("TrainerCard: cannot write " + PLAYER_DATA_PATH)
@@ -341,12 +303,10 @@ func _on_save_pressed() -> void:
 	write_file.store_string(JSON.stringify(data, "\t"))
 	write_file.close()
 
+	SoundManagerScript.play_sfx(SoundManagerScript.SFX_gamemode_select)
+
 	save_btn.disabled = true
 	save_btn.theme    = load("res://UI_Themes/kenneyUI.tres")
-
-	var cheat_msg := CheatManager.check_and_apply(new_name)
-	if cheat_msg != "":
-		_flash_cheat_message(cheat_msg)
 
 
 func _on_cancel_pressed() -> void:
@@ -369,34 +329,3 @@ func _check_click_miss() -> void:
 	if _last_clicked_rect == null:
 		SoundManagerScript.play_sfx(SoundManagerScript.SFX_minus_select)
 	_last_clicked_rect = null
-
-
-# ─── Cheat notification ──────────────────────────────────────────────────────
-
-func _flash_cheat_message(message: String) -> void:
-	if _cheat_label == null or not is_instance_valid(_cheat_label):
-		var layer := CanvasLayer.new()
-		layer.name = "CheatCanvasLayer"
-		layer.layer = 128
-		get_tree().root.add_child(layer)
-
-		_cheat_label = Label.new()
-		_cheat_label.name = "CheatNotificationLabel"
-		_cheat_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		_cheat_label.vertical_alignment   = VERTICAL_ALIGNMENT_CENTER
-		_cheat_label.add_theme_font_size_override("font_size", 64)
-		_cheat_label.add_theme_color_override("font_color", Color(1.0, 0.85, 0.0))
-		_cheat_label.add_theme_color_override("font_outline_color", Color.BLACK)
-		_cheat_label.add_theme_constant_override("outline_size", 10)
-		_cheat_label.set_anchors_preset(Control.PRESET_FULL_RECT)
-		_cheat_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		layer.add_child(_cheat_label)
-
-	_cheat_label.text = message
-
-	_cheat_label_token += 1
-	var my_token := _cheat_label_token
-	await get_tree().create_timer(2.5).timeout
-	if my_token == _cheat_label_token and _cheat_label != null and is_instance_valid(_cheat_label):
-		_cheat_label.get_parent().queue_free()
-		_cheat_label = null
