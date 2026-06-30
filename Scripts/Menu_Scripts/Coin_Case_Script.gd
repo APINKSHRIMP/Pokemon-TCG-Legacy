@@ -35,6 +35,11 @@ var _last_clicked_rect   : TextureRect = null
 # Using a Dictionary as a set gives O(1) lookups vs iterating an Array
 var _owned_coins         : Dictionary = {}
 
+# ─── Zoom state ──────────────────────────────────────────────────────────────
+var zoom_overlay     : CanvasLayer = null
+var is_zoomed        : bool = false
+var last_zoomed_coin : TextureRect = null
+
 # ─── Node references ─────────────────────────────────────────────────────────
 
 @onready var grid        : GridContainer = $"coin_grid_container"
@@ -333,17 +338,30 @@ func _on_cancel_pressed() -> void:
 	SceneCache.change_scene("res://Scenes/Main_Menu_Scenes/Main_Menu_Scene.tscn")
 
 
-# ─── Escape key ──────────────────────────────────────────────────────────────
+# ─── Escape / Spacebar input ─────────────────────────────────────────────────
 
 func _input(event: InputEvent) -> void:
-	if event is InputEventKey and event.pressed and event.keycode == KEY_ESCAPE:
-		SceneCache.change_scene("res://Scenes/Main_Menu_Scenes/Main_Menu_Scene.tscn")
+	if event is InputEventKey:
+		if event.pressed and event.keycode == KEY_ESCAPE:
+			if is_zoomed:
+				_hide_zoom()
+				return
+			SceneCache.change_scene("res://Scenes/Main_Menu_Scenes/Main_Menu_Scene.tscn")
+			return
+
+		if event.keycode == KEY_SPACE:
+			if event.pressed and not event.is_echo():
+				var rect = _get_hovered_coin()
+				if rect == null and last_zoomed_coin != null and is_instance_valid(last_zoomed_coin):
+					rect = last_zoomed_coin
+				if rect != null:
+					_show_zoom(rect)
+			elif not event.pressed:
+				_hide_zoom()
 
 	if event is InputEventMouseButton \
 			and event.button_index == MOUSE_BUTTON_LEFT \
 			and event.pressed:
-		# Defer the miss-check to the end of the frame so all gui_input signals
-		# on rects have had a chance to fire and set _last_clicked_rect first
 		call_deferred("_check_click_miss")
 
 
@@ -351,6 +369,65 @@ func _check_click_miss() -> void:
 	if _last_clicked_rect == null:
 		SoundManagerScript.play_sfx(SoundManagerScript.SFX_minus_select)
 	_last_clicked_rect = null
+
+
+# ─── Coin zoom ───────────────────────────────────────────────────────────────
+
+func _get_hovered_coin() -> TextureRect:
+	var hovered = get_viewport().gui_get_hovered_control()
+	if hovered == null:
+		return null
+	var node = hovered
+	for i in range(5):
+		if node == null:
+			return null
+		if node.has_meta("coin_name") and node.get_meta("is_owned", false):
+			return node as TextureRect
+		node = node.get_parent()
+	return null
+
+
+func _show_zoom(rect: TextureRect) -> void:
+	if is_zoomed:
+		return
+	if rect.texture == null:
+		return
+
+	is_zoomed = true
+	last_zoomed_coin = rect
+
+	zoom_overlay = CanvasLayer.new()
+	zoom_overlay.layer = 150
+	add_child(zoom_overlay)
+
+	var backdrop := ColorRect.new()
+	backdrop.color         = Color(0, 0, 0, 0.95)
+	backdrop.anchor_right  = 1.0
+	backdrop.anchor_bottom = 1.0
+	zoom_overlay.add_child(backdrop)
+
+	# Scale to 5× the grid cell size (100×100), capped so it fits on screen
+	var tex_size  := rect.texture.get_size()
+	var target    := Vector2(500.0, 500.0)
+	var s         := minf(target.x / tex_size.x, target.y / tex_size.y)
+	var disp_size := Vector2(tex_size.x * s, tex_size.y * s)
+
+	var zoom_rect := TextureRect.new()
+	zoom_rect.texture      = rect.texture
+	zoom_rect.expand_mode  = TextureRect.EXPAND_IGNORE_SIZE
+	zoom_rect.stretch_mode = TextureRect.STRETCH_SCALE
+	zoom_rect.size         = disp_size
+	zoom_rect.position     = Vector2((1920.0 - disp_size.x) / 2.0, (1080.0 - disp_size.y) / 2.0)
+	zoom_overlay.add_child(zoom_rect)
+
+
+func _hide_zoom() -> void:
+	if not is_zoomed:
+		return
+	is_zoomed = false
+	if zoom_overlay != null:
+		zoom_overlay.queue_free()
+		zoom_overlay = null
 
 # ─── Sparkle particles ───────────────────────────────────────────────────────
 

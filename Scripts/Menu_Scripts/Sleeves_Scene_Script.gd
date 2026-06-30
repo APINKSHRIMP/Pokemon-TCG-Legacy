@@ -25,6 +25,11 @@ var _last_clicked     : Control = null
 # Flat set of owned sleeve base names (no extension), e.g. {"Ditto": true}
 var _owned_sleeves    : Dictionary = {}
 
+# ─── Zoom state ──────────────────────────────────────────────────────────────
+var zoom_overlay       : CanvasLayer = null
+var is_zoomed          : bool = false
+var last_zoomed_sleeve : Control = null
+
 # ─── Node references ─────────────────────────────────────────────────────────
 
 @onready var grid        : GridContainer = $"sleeves_grid_container"
@@ -286,11 +291,26 @@ func _on_cancel_pressed() -> void:
 	SceneCache.change_scene("res://Scenes/Main_Menu_Scenes/Main_Menu_Scene.tscn")
 
 
-# ─── Escape key ──────────────────────────────────────────────────────────────
+# ─── Escape / Spacebar input ─────────────────────────────────────────────────
 
 func _input(event: InputEvent) -> void:
-	if event is InputEventKey and event.pressed and event.keycode == KEY_ESCAPE:
-		SceneCache.change_scene("res://Scenes/Main_Menu_Scenes/Main_Menu_Scene.tscn")
+	if event is InputEventKey:
+		if event.pressed and event.keycode == KEY_ESCAPE:
+			if is_zoomed:
+				_hide_zoom()
+				return
+			SceneCache.change_scene("res://Scenes/Main_Menu_Scenes/Main_Menu_Scene.tscn")
+			return
+
+		if event.keycode == KEY_SPACE:
+			if event.pressed and not event.is_echo():
+				var wrapper = _get_hovered_sleeve()
+				if wrapper == null and last_zoomed_sleeve != null and is_instance_valid(last_zoomed_sleeve):
+					wrapper = last_zoomed_sleeve
+				if wrapper != null:
+					_show_zoom(wrapper)
+			elif not event.pressed:
+				_hide_zoom()
 
 	if event is InputEventMouseButton \
 			and event.button_index == MOUSE_BUTTON_LEFT \
@@ -302,3 +322,67 @@ func _check_click_miss() -> void:
 	if _last_clicked == null:
 		SoundManagerScript.play_sfx(SoundManagerScript.SFX_minus_select)
 	_last_clicked = null
+
+
+# ─── Sleeve zoom ─────────────────────────────────────────────────────────────
+
+func _get_hovered_sleeve() -> Control:
+	var hovered = get_viewport().gui_get_hovered_control()
+	if hovered == null:
+		return null
+	var node = hovered
+	for i in range(5):
+		if node == null:
+			return null
+		if node.has_meta("sleeve_name") and node.get_meta("is_owned", false):
+			return node as Control
+		node = node.get_parent()
+	return null
+
+
+func _show_zoom(wrapper: Control) -> void:
+	if is_zoomed:
+		return
+	var rect : TextureRect = null
+	for child in wrapper.get_children():
+		if child is TextureRect:
+			rect = child
+			break
+	if rect == null or rect.texture == null:
+		return
+
+	is_zoomed = true
+	last_zoomed_sleeve = wrapper
+
+	zoom_overlay = CanvasLayer.new()
+	zoom_overlay.layer = 150
+	add_child(zoom_overlay)
+
+	var backdrop := ColorRect.new()
+	backdrop.color         = Color(0, 0, 0, 0.95)
+	backdrop.anchor_right  = 1.0
+	backdrop.anchor_bottom = 1.0
+	zoom_overlay.add_child(backdrop)
+
+	# Fit within 980px tall (50px margin top+bottom), up to 1000px wide
+	var tex_size  := rect.texture.get_size()
+	var target    := Vector2(1000.0, 980.0)
+	var s         := minf(target.x / tex_size.x, target.y / tex_size.y)
+	var disp_size := Vector2(tex_size.x * s, tex_size.y * s)
+
+	var zoom_rect := TextureRect.new()
+	zoom_rect.texture             = rect.texture
+	zoom_rect.expand_mode         = TextureRect.EXPAND_IGNORE_SIZE
+	zoom_rect.stretch_mode        = TextureRect.STRETCH_SCALE
+	zoom_rect.size                = disp_size
+	zoom_rect.position            = Vector2((1920.0 - disp_size.x) / 2.0, (1080.0 - disp_size.y) / 2.0)
+	zoom_overlay.add_child(zoom_rect)
+
+
+func _hide_zoom() -> void:
+	if not is_zoomed:
+		return
+	is_zoomed = false
+	if zoom_overlay != null:
+		zoom_overlay.queue_free()
+		zoom_overlay = null

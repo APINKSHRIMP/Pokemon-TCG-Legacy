@@ -1893,16 +1893,13 @@ func _show_zoom(card_rect: TextureRect) -> void:
 	var card_set := card_id.split("-")[0]
 	# Build path to the LARGE version of the card image
 	var large_path := "res://Image_Assets/Card_Image_Library/" + card_set + "/Large/" + card_id + ".png"
-	var large_texture = load(large_path)
+	var large_texture : Texture2D = load(large_path)
 	if large_texture == null:
 		push_error("DeckBuild: missing large card image " + large_path)
 		return
 
 	is_zoomed = true
 	last_zoomed_card = card_rect
-
-	# Hide all UI elements except backgrounds
-	_set_ui_visibility(false)
 
 	# Build the overlay — CanvasLayer renders above everything at layer 150
 	zoom_overlay = CanvasLayer.new()
@@ -1911,20 +1908,23 @@ func _show_zoom(card_rect: TextureRect) -> void:
 
 	# Semi-transparent black backdrop
 	var backdrop := ColorRect.new()
-	backdrop.color = Color(0, 0, 0, 0.75)
+	backdrop.color = Color(0, 0, 0, 0.95)
 	backdrop.anchor_right  = 1.0
 	backdrop.anchor_bottom = 1.0
 	zoom_overlay.add_child(backdrop)
 
-	# The large card image, centered on screen
+	# The large card image, sized to fill most of vertical space (~50px margin top/bottom)
+	var tex_size  := large_texture.get_size()
+	var target    := Vector2(1000.0, 980.0)
+	var s         := minf(target.x / tex_size.x, target.y / tex_size.y)
+	var disp_size := Vector2(tex_size.x * s, tex_size.y * s)
+
 	var zoom_card := TextureRect.new()
-	zoom_card.texture = large_texture
-	zoom_card.custom_minimum_size = Vector2(600, 825)
-	zoom_card.size                = Vector2(600, 825)
-	zoom_card.expand_mode         = TextureRect.EXPAND_IGNORE_SIZE
-	zoom_card.stretch_mode        = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-	# Center it: (1920 - 600) / 2 = 660,  (1080 - 825) / 2 ≈ 128
-	zoom_card.position = Vector2(660, 128)
+	zoom_card.texture      = large_texture
+	zoom_card.expand_mode  = TextureRect.EXPAND_IGNORE_SIZE
+	zoom_card.stretch_mode = TextureRect.STRETCH_SCALE
+	zoom_card.size         = disp_size
+	zoom_card.position     = Vector2((1920.0 - disp_size.x) / 2.0, (1080.0 - disp_size.y) / 2.0)
 	zoom_overlay.add_child(zoom_card)
 
 
@@ -1939,42 +1939,6 @@ func _hide_zoom() -> void:
 		zoom_overlay.queue_free()
 		zoom_overlay = null
 
-	# Restore UI visibility
-	_set_ui_visibility(true)
-
-
-## Hides or shows all UI elements except top_border, bottom_border,
-## and background_scroller. When zooming, we want only the card visible
-## against the background.
-func _set_ui_visibility(visible_flag: bool) -> void:
-	# The scroll container is the grid's parent (created in _wrap_grid_in_scroll_container)
-	var scroll = grid.get_parent()
-	var nodes_to_toggle := [
-		scroll,
-		save_btn,
-		cancel_btn,
-		empty_btn,
-		load_btn,
-		next_btn,
-		prev_btn,
-		set_label,
-		deck_name_edit,
-		deck_count_label,
-		change_energy_btn,
-		view_deck_btn,
-	]
-
-	# Add all 6 energy icons and their count labels to the toggle list
-	for energy_type in ENERGY_TYPES:
-		nodes_to_toggle.append(energy_icons[energy_type])
-		nodes_to_toggle.append(energy_labels[energy_type])
-
-	if set_breakdown_label != null:
-		nodes_to_toggle.append(set_breakdown_label)
-
-	for node in nodes_to_toggle:
-		if node != null and is_instance_valid(node):
-			node.visible = visible_flag
 
 
 # ─── UI helpers ──────────────────────────────────────────────────────────────
@@ -2015,6 +1979,37 @@ func _format_set_name_for_breakdown(raw_name: String) -> String:
 		name = name.substr(3)
 	name = name.replace("Team ", "Tm ")
 	return name.strip_edges()
+
+
+## Hides or shows all UI elements so overlays (deck viewer, energy picker) can
+## take over the full screen without interference from the main deck-build UI.
+func _set_ui_visibility(visible_flag: bool) -> void:
+	var scroll = grid.get_parent()
+	var nodes_to_toggle := [
+		scroll,
+		save_btn,
+		cancel_btn,
+		empty_btn,
+		load_btn,
+		next_btn,
+		prev_btn,
+		set_label,
+		deck_name_edit,
+		deck_count_label,
+		change_energy_btn,
+		view_deck_btn,
+	]
+
+	for energy_type in ENERGY_TYPES:
+		nodes_to_toggle.append(energy_icons[energy_type])
+		nodes_to_toggle.append(energy_labels[energy_type])
+
+	if set_breakdown_label != null:
+		nodes_to_toggle.append(set_breakdown_label)
+
+	for node in nodes_to_toggle:
+		if node != null and is_instance_valid(node):
+			node.visible = visible_flag
 
 
 ## Rebuilds the per-set type breakdown from deck_cards.
