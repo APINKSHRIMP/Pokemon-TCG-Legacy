@@ -810,7 +810,28 @@ Headline text lives in the `TV_NEWS` constant in `Interactables_Script.gd`.
 
 ---
 
-## 14. Quick-Reference Cheat Sheet
+## 14. Cheat Codes
+
+Enter the code **exactly** as shown as your player name on the name-entry screen. The cheat is applied immediately and the game returns you to the normal name prompt. Codes are case-sensitive and must not have leading/trailing spaces.
+
+**Implementation:** `Scripts/Global_Scripts/Cheat_Manager.gd`
+
+| Code | Effect | Sets affected |
+|---|---|---|
+| `CHT.All_Cards_1` | Set every card in Base/Gym sets to **99 copies** | `base1`, `base2`, `base3`, `base5`, `gym1`, `gym2` |
+| `CHT.All_Cards_2` | Set every card in Neo/e-Card sets to **99 copies** | `neo1`, `neo2`, `neo3`, `neo4`, `ecard1`, `ecard2`, `ecard3` |
+| `CHT.All_Cards_3` | Set every card in EX Series 1 sets to **99 copies** | `ex1`–`ex8` |
+| `CHT.All_Cards_4` | Set every card in EX Series 2 sets to **99 copies** | `ex9`–`ex16` |
+| `CHT.Gimme_Cash` | Set cash to **99,999** | — |
+| `CHT.Add_Starter_Set` | Add the starter-box card bundle to the collection | — |
+| `CHT.Add_Shop_Set` | Add the shop starter card bundle to the collection | — |
+| `CHT.Remove_All_Cards` | Set **all** owned card counts to 0 across every set | all sets |
+
+> `CHT.All_Cards_*` also marks each affected set as `set_unlocked: true` in the owned-cards file. `CHT.Remove_All_Cards` zeroes counts but does **not** clear `set_unlocked`.
+
+---
+
+## 15. Quick-Reference Cheat Sheet
 
 | I want to… | Edit this |
 |---|---|
@@ -831,4 +852,4 @@ Headline text lives in the `TV_NEWS` constant in `Interactables_Script.gd`.
 
 ---
 
-*Last updated: 2026-06-12*
+*Last updated: 2026-06-29*

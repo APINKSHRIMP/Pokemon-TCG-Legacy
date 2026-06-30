@@ -259,6 +259,9 @@ func apply_status(pokemon: card_object, status: String, is_opponent: bool) -> vo
 	# MATCH EFFECT: no_status_effects — special conditions cannot be applied
 	if main.match_effects.status_blocked(is_opponent) and status != "":
 		return
+	# NEO4 Flash Touch (Light Ledian): immune to special conditions while Active
+	if pokemon != null and pokemon.neo4_immune_to_status and status != "":
+		return
 	match status:
 		"Poisoned":
 			pokemon.is_poisoned = true
@@ -378,6 +381,10 @@ func apply_bench_damage(pokemon: card_object, damage: int, is_opponent: bool) ->
 		return
 	# Articuno Aurora Veil (basep-48): bench immune to attack damage
 	if main.powers_and_bodies.check_aurora_veil(is_opponent):
+		return
+	# NEO4 Ice Pillar (Light Dewgong): prevent attack damage to your benched while it is your Active
+	var ip_active = main.opponent_active_pokemon if is_opponent else main.player_active_pokemon
+	if ip_active != null and ip_active.neo4_prevent_bench_damage:
 		return
 	# Protective Flame / invincible flag on bench pokemon
 	if pokemon.is_invincible:

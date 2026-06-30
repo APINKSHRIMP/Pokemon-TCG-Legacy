@@ -2066,6 +2066,15 @@ func add_pokemon_to_bench(pokemon: card_object) -> void:
 			await powers_and_bodies.trigger_neo2_unown_engage(pokemon, false)
 		elif "[Increase]" in str(pokemon.metadata.get("abilities",[])):
 			await powers_and_bodies.trigger_neo2_unown_increase(pokemon, false)
+	# NEO4 on-bench-from-hand triggers
+	if original_location == "hand":
+		# Hot Plate (Dark Magcargo): any active Magcargo deals 10 to a newly-benched Basic/Baby
+		var subs_n4 = pokemon.metadata.get("subtypes", [])
+		if "Basic" in subs_n4 or "Baby" in subs_n4:
+			powers_and_bodies.check_neo4_hot_plate(pokemon, false)
+		# [Vanish] (Unown [V]): on play, may return another Unown to hand
+		if pokemon.has_ability("[Vanish]"):
+			await powers_and_bodies.trigger_neo4_vanish(pokemon, false)
 
 # Function that get's the card position/location/object. Called from various functions when trying to find a specific card object
 func find_card_ui_for_object(card_obj: card_object) -> TextureRect:
@@ -2225,6 +2234,13 @@ func perform_energy_attachment() -> void:
 	powers_and_bodies.refresh_gaseous_form_hp()
 	# NEO2 Energy Evolution (Eevee neo2-38): on energy attach, flip for matching evo
 	await powers_and_bodies.check_energy_evolution(target_pokemon, energy_card, false)
+	# NEO3 Triggered Poison (Crobat neo3-4): if energy is attached to a pokemon with triggered_poison_active, poison it
+	await powers_and_bodies.check_triggered_poison(target_pokemon, false)
+	# NEO3 Lightning Burst (Flaaffy neo3-28): when Lightning Energy is attached, deal 10 to each opp benched pokemon
+	powers_and_bodies.check_lightning_burst(target_pokemon, energy_card, false)
+	# NEO4 Conductivity (Dark Ampharos neo4-1): opponent's Ampharos deals 10 to this Pokemon
+	powers_and_bodies.check_neo4_conductivity(target_pokemon, false)
+	if _should_bail(): return
 
 	# MATCH EFFECTS: energy_attach_halve_hp / energy_attach_full_heal
 	await apply_energy_attach_match_effects(target_pokemon, false)
@@ -2580,6 +2596,8 @@ func inbetween_turn_checks(player_turn_just_ended: bool = true) -> void:
 		powers_and_bodies.clear_neo1_flags_end_of_turn(true)
 		# NEO2: clear lock_on/counter/pursuit/secrete_poison/slime/gaze flags (affect the opponent's side)
 		powers_and_bodies.clear_neo2_flags_end_of_turn(true)
+		# NEO3: clear triggered_poison/high_speed_locked/submerge/legendary_body flags
+		powers_and_bodies.clear_neo3_flags_end_of_turn(true)
 		clear_end_of_turn_statuses(player_active_pokemon, false)
 		clear_defensive_statuses(opponent_active_pokemon, true)
 		clear_jungle_defensive_statuses(opponent_active_pokemon, true)
@@ -2599,6 +2617,8 @@ func inbetween_turn_checks(player_turn_just_ended: bool = true) -> void:
 		powers_and_bodies.clear_neo1_flags_end_of_turn(false)
 		# NEO2: clear lock_on/counter/pursuit/secrete_poison/slime/gaze flags (affect the player's side)
 		powers_and_bodies.clear_neo2_flags_end_of_turn(false)
+		# NEO3: clear triggered_poison/high_speed_locked/submerge/legendary_body flags
+		powers_and_bodies.clear_neo3_flags_end_of_turn(false)
 		clear_end_of_turn_statuses(opponent_active_pokemon, true)
 		clear_defensive_statuses(player_active_pokemon, false)
 		clear_jungle_defensive_statuses(player_active_pokemon, false)
@@ -2947,7 +2967,14 @@ func perform_evolution(is_opponent: bool) -> void:
 		await powers_and_bodies.trigger_neo1_herbal_scent(evo_card, is_opponent)
 	elif evo_name in ["Typhlosion"] and evo_card.has_ability("Fire Boost"):
 		await powers_and_bodies.trigger_neo1_fire_boost(evo_card, is_opponent)
-	 
+	# NEO4: on-play (evolve from hand) power triggers
+	elif evo_card.has_ability("Surprise Bite"):
+		await powers_and_bodies.trigger_neo4_surprise_bite(evo_card, is_opponent)
+	elif evo_card.has_ability("Gift"):
+		await powers_and_bodies.trigger_neo4_gift(evo_card, is_opponent)
+	elif evo_card.has_ability("Tag Team"):
+		await powers_and_bodies.trigger_neo4_tag_team(evo_card, is_opponent)
+
 ########################################################### Retreat functions ##############################################################
 
 # Checks if a Pokemon can retreat, returning a dictionary with "can_retreat" and "reason" if blocked
@@ -3072,6 +3099,82 @@ func get_attacks_for_card(card: card_object) -> Array:
 			var is_opp_psylink: bool = (card == opponent_active_pokemon or card in opponent_bench)
 			return powers_and_bodies.get_psylink_attacks(card, is_opp_psylink)
 
+	# NEO3 Genetic Memory (Kingdra neo3-19): replace the "Genetic Memory" meta-attack button with
+	# the actual pre-evo attacks, each with empty cost (free, per card text).
+	var has_genetic_memory_atk = false
+	for atk in attacks:
+		if atk.get("name", "") == "Genetic Memory":
+			has_genetic_memory_atk = true
+			break
+	if has_genetic_memory_atk and card.attached_pre_evolutions.size() > 0:
+		var gm_base: Array = []
+		for atk in attacks:
+			if atk.get("name", "") != "Genetic Memory":
+				gm_base.append(atk)
+		var seen_gm: Dictionary = {}
+		for atk in gm_base:
+			seen_gm[atk.get("name", "")] = true
+		for pre_card in card.attached_pre_evolutions:
+			for atk in pre_card.metadata.get("attacks", []):
+				var atk_name = atk.get("name", "")
+				if atk_name != "" and not seen_gm.has(atk_name):
+					seen_gm[atk_name] = true
+					var free_atk = atk.duplicate()
+					free_atk["cost"] = []
+					free_atk["convertedEnergyCost"] = 0
+					gm_base.append(free_atk)
+		return gm_base
+
+	# NEO3 Mimic (Sudowoodo neo3-26): while Active and not statused, also gain the defender's attacks.
+	# Slam stays available; defender attacks are appended with their original costs.
+	if card == player_active_pokemon or card == opponent_active_pokemon:
+		for ab in card.metadata.get("abilities", []):
+			if ab.get("name", "") == "Mimic" and not card.gaze_suppressed:
+				if not card.is_status_blocked():
+					var mimic_defender = opponent_active_pokemon if (card == player_active_pokemon) else player_active_pokemon
+					if mimic_defender != null:
+						var seen_mimic: Dictionary = {}
+						for atk in attacks:
+							seen_mimic[atk.get("name", "")] = true
+						var mimic_extra: Array = []
+						for atk in mimic_defender.metadata.get("attacks", []):
+							var n = atk.get("name", "")
+							if n != "" and not seen_mimic.has(n):
+								mimic_extra.append(atk)
+						if mimic_extra.size() > 0:
+							return attacks + mimic_extra
+				break
+
+	# NEO3 Prehistoric Memory (Aerodactyl neo3-15): evolved pokemon can use attacks from their pre-evo chain.
+	# Works for any evolved pokemon on either side while any non-statused Aerodactyl with this power is in play.
+	if card.attached_pre_evolutions.size() > 0:
+		var prehistoric_active = false
+		var all_field: Array = []
+		if player_active_pokemon: all_field.append(player_active_pokemon)
+		if opponent_active_pokemon: all_field.append(opponent_active_pokemon)
+		all_field.append_array(player_bench)
+		all_field.append_array(opponent_bench)
+		for p in all_field:
+			if p.gaze_suppressed or p.is_status_blocked(): continue
+			for ab in p.metadata.get("abilities", []):
+				if ab.get("name", "") == "Prehistoric Memory":
+					prehistoric_active = true
+					break
+			if prehistoric_active: break
+		if prehistoric_active:
+			var seen_names: Dictionary = {}
+			for atk in attacks:
+				seen_names[atk.get("name", "")] = true
+			var extra: Array = []
+			for pre_card in card.attached_pre_evolutions:
+				for atk in pre_card.metadata.get("attacks", []):
+					var atk_name = atk.get("name", "")
+					if atk_name != "" and not seen_names.has(atk_name):
+						seen_names[atk_name] = true
+						extra.append(atk)
+			if extra.size() > 0:
+				return attacks + extra
+
 	return attacks
 
 # Read an energy card passed to this function and return what energies this card actually provides.
@@ -3126,6 +3229,12 @@ func check_defender_invincible(defender: card_object, is_opponent: bool = false)
 # Checks if the defender has a no-damage shield active
 # Returns the adjusted damage (0 if shielded, otherwise the original value)
 func apply_defender_no_damage_shield(defender: card_object, damage: int, is_opponent: bool = false) -> int:
+	# NEO4 Pulse Guard (Light Jolteon): prevent incoming damage at or above threshold
+	if defender.neo4_prevent_high_damage > 0 and damage >= defender.neo4_prevent_high_damage:
+		var pg_pos = Vector2(530, 300) if !is_opponent else Vector2(1030, 300)
+		show_floating_label("PULSE GUARD", pg_pos, Color.BLUE, true)
+		print("PULSE GUARD: prevented ", damage, " damage")
+		return 0
 	if not defender.has_no_damage:
 		return damage
 	var label_pos = Vector2(530, 300) if !is_opponent else Vector2(1030, 300)
@@ -3619,6 +3728,10 @@ func calculate_final_damage(base_damage: int, attacking_types: Array, defending_
 			damage = 0
 			modifiers_applied.append("ZERO DAMAGE RULE")
 
+	# NEO3 Hard Shell (Shuckle neo3-51): if damage is <= 40, reduce to 10
+	if damage > 0 and defending_pokemon != null and attacker_pokemon != defending_pokemon:
+		damage = powers_and_bodies.apply_hard_shell(defending_pokemon, damage, modifiers_applied)
+
 	return {"damage": damage, "modifiers": modifiers_applied}
 
 ############################################################# Knockout functions ##################################################################
@@ -3639,6 +3752,10 @@ func check_and_handle_knockout(pokemon: card_object, is_opponent: bool) -> bool:
 		display_hp_circles_above_align(pokemon, is_opponent)
 		await show_message("ENDURE! " + pokemon.metadata.get("name","").to_upper() + " SURVIVED WITH 10 HP!")
 		if _should_bail(): return false
+		return false
+
+	# NEO3 Time Travel (Celebi neo3-3): if KO'd by attack, flip — heads: survive by shuffling Celebi back into deck
+	if await powers_and_bodies.check_time_travel(pokemon, is_opponent):
 		return false
 
 	# NEO1 Focus Band (neo1-86 Tool): flip — heads survive with 10 HP
@@ -4047,6 +4164,12 @@ func clear_all_statuses(pokemon: card_object, is_opponent: bool) -> void:
 	pokemon.temporary_weakness = ""
 	pokemon.temporary_resistance = ""
 
+	# NEO3: clear flags that should expire when the pokemon leaves the active slot
+	pokemon.night_eyes_used = false
+	pokemon.submerge_active = false
+	pokemon.triggered_poison_active = false
+	pokemon.neo3_high_speed_locked = false
+
 	# GYM2 Koga's Ditto Giant Growth: benching ends the HP / Pound boost
 	if pokemon.ditto_giant_growth:
 		pokemon.ditto_giant_growth = false
@@ -4157,6 +4280,22 @@ func get_retreat_cost(pokemon: card_object) -> int:
 
 	# MATCH EFFECT: retreat_cost_modifier — flat adjustment to retreat cost (floor 0)
 	cost = max(0, cost + match_effects.retreat_cost_modifier(pokemon_is_opponent))
+
+	# NEO4 Broken Ground Gym (neo4-92): each player pays +1 to retreat a Baby/Basic Pokemon
+	if is_stadium_in_play(StadiumIds.BROKEN_GROUND_GYM):
+		var subs = pokemon.metadata.get("subtypes", [])
+		if "Basic" in subs or "Baby" in subs:
+			cost += 1
+
+	# NEO4 Unown [Z] (neo4-60) [Zoom]: while it is benched, Unown pay no Energy to retreat
+	if "Unown" in pokemon.metadata.get("name", ""):
+		for bp in bench:
+			if bp.has_ability("[Zoom]") and not bp.is_status_blocked():
+				return 0
+
+	# NEO3 Balloon Berry (neo3-60 Tool): makes retreat free
+	if trainer_effects.check_balloon_berry_retreat_free(pokemon):
+		return 0
 
 	return cost
 
@@ -4487,17 +4626,19 @@ func handle_action_retreat_bench() -> void:
 	hide_selection_mode_display_main()
 	await animate_retreat(player_active_pokemon, new_active, retreat_energies_selected, false)
 
+	# NEO3 Balloon Berry (neo3-60): if the retreating pokemon used Balloon Berry for free retreat, discard it
+	trainer_effects.consume_balloon_berry(player_active_pokemon, false)
 	clear_all_statuses(player_active_pokemon, false)
 	player_active_pokemon = new_active
 	retreat_energies_selected.clear()
 
 	display_pokemon(false)
 	display_active_pokemon_energies(false)
-	
+
 	# Update Ditto Transform after active switch
 	powers_and_bodies.update_ditto_transform(false)
 	powers_and_bodies.update_ditto_transform(true)
-	
+
 	# NEO2 Pursuit (Umbreon): if retreating pokemon has pursuit_active, take 10 damage
 	if retreating_pokemon.pursuit_active:
 		retreating_pokemon.pursuit_active = false
@@ -4511,6 +4652,10 @@ func handle_action_retreat_bench() -> void:
 	# Sinkhole (Dark Dugtrio): damage to retreating Pokemon
 	await powers_and_bodies.check_sinkhole(retreating_pokemon, false)
 	if _should_bail(): return
+	await check_all_knockouts()
+	if _should_bail(): return
+	# NEO3 Magma Pool (Magcargo neo3-33): when Magcargo retreats, both pokemon take 20 damage
+	powers_and_bodies.check_magma_pool(retreating_pokemon, player_active_pokemon, false)
 	await check_all_knockouts()
 	if _should_bail(): return
 	# NEO2 Spikes (Forretress): 10 damage to new active pokemon (player's bench→active)

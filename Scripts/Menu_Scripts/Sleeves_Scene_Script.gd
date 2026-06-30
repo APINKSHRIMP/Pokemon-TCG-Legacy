@@ -3,8 +3,8 @@ extends Node
 # ─── Constants ───────────────────────────────────────────────────────────────
 
 const SLEEVE_FOLDER  := "res://Image_Assets/Sleeves"
-const COLUMNS        := 6
-const CELL_SIZE      := Vector2(313, 438)
+const COLUMNS        := 8
+const CELL_SIZE      := Vector2(234, 327)
 const H_SEP          := 2
 const V_SEP          := 2
 

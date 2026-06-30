@@ -106,6 +106,20 @@ var secrete_poison_active: bool = false    # neo2-41 Kakuna: if hit, attacker po
 var slime_active: bool = false             # neo2-71 Wooper: attacker flips before damaging, tails = no damage
 var gaze_suppressed: bool = false          # neo2-40 Igglybuff Gaze: this pokemon's power is suppressed this turn
 
+# NEO3 (Neo Revelation) properties
+var night_eyes_used: bool = false          # neo3-11 Misdreavus Night Eyes: set on defender; Perish Song checks this
+var triggered_poison_active: bool = false  # neo3-4 Crobat Triggered Poison: if opp attaches energy to this, it becomes Poisoned
+var neo3_high_speed_locked: bool = false   # neo3-36 Piloswine High-Speed Charge: can't use next turn
+var submerge_active: bool = false          # neo3-32 Lanturn Submerge: type is Water this turn
+var legendary_body_active: bool = false    # neo3-17/22/27 Legendary Body: while Active, trainer effects ignored
+
+# NEO4 (Neo Destiny) properties
+var neo4_immune_to_status: bool = false        # neo4-24 Light Ledian Flash Touch: can't be statused while Active
+var neo4_prevent_high_damage: int = 0          # neo4-48 Light Jolteon Pulse Guard: prevent incoming damage >= this value next turn
+var neo4_prevent_bench_damage: bool = false    # neo4-45 Light Dewgong Ice Pillar: prevent attack damage to your benched next turn
+var neo4_counter_flip_20: bool = false         # neo4-109 Shining Mewtwo Reflect Shield: flip to prevent damage + 20 to attacker
+var neo4_cant_evolve_next_turn: bool = false   # neo4-19 Dark Omastar Dark Tentacle: defender can't evolve next turn
+
 # GYM2 (Gym Challenge) properties
 var gym2_focus_energy_active: bool = false # Lt. Surge's Raticate/Rattata Focus Energy — boosted attack doubled next turn
 var gym2_lie_low_counter: int = 0          # Brock's Dugtrio Lie Low — Earthdrill is usable while this is > 0

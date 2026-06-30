@@ -58,9 +58,12 @@ func _register_all_powers() -> void:
 	_power_dispatch["Solar Power"]          = func(p): await power_solar_power(p)
 	_power_dispatch["[Join]"]               = func(p): await power_join_unown(p)
 	_power_dispatch["Lucky Stadium"]        = func(p): await main.trainer_effects.basep_lucky_stadium_activate(false)
+	_power_dispatch["Healing Field"]        = func(p): await main.trainer_effects.neo3_healing_field_activate(false)
 	_power_dispatch["Chain Reaction"]      = func(p): await power_chain_reaction(p)
 	_register_neo1_powers()
 	_register_neo2_powers()
+	_register_neo3_powers()
+	_register_neo4_powers()
 
 # ── On-damage and pre-KO event hooks ──────────────────────────────────────────
 # Each Callable is fired after active-pokemon damage resolves (on_damage) or
@@ -91,6 +94,8 @@ func _register_all_power_hooks() -> void:
 	_on_damage_hooks.append(func(def, atk, dmg, is_def_opp): await check_bolt(def, atk, dmg, is_def_opp))
 	_on_damage_hooks.append(func(def, atk, dmg, is_def_opp): await check_neo2_counter(def, atk, dmg, is_def_opp))
 	_on_damage_hooks.append(func(def, atk, dmg, is_def_opp): await check_neo2_secrete_poison(def, atk, dmg, is_def_opp))
+	_on_damage_hooks.append(func(def, atk, dmg, is_def_opp): await check_neo4_fluffy_wool(def, atk, is_def_opp))
+	_on_damage_hooks.append(func(def, atk, dmg, is_def_opp): await check_neo4_counters(def, atk, is_def_opp))
 	_pre_ko_hooks.append(func(poke, atk, is_poke_opp): await check_final_beam(poke, atk, is_poke_opp))
 
 # Fires all on-damage hooks in registration order. Called once from Main after active damage lands.
@@ -194,7 +199,7 @@ func open_power_menu() -> void:
 				continue
 			var ability_name = ability.get("name", "")
 			# Skip passive powers (they don't go in menu)
-			if ability_name in ["Strikes Back", "Energy Burn", "Invisible Wall", "Thick Skinned", "Retreat Aid", "Prehistoric Power", "Toxic Gas", "Transparency", "Kabuto Armor", "Clairvoyance", "Transform", "Sinkhole", "Hay Fever", "Sticky Goo", "Frenzy", "Final Beam", "Sneak Attack", "Summon Minions", "Reel In", "Bench Guard", "Pollen Defense", "Flee", "Rebirth", "Shell Armor", "Restless Sleep", "Strange Barrier", "Photosynthesis", "Fortitude", "Call the Boss", "Rebellion", "Psylink", "Healing Fire", "Energy Drain", "Scram", "Relaxing Scent", "Shock Blast", "Gaseous Form", "Bolt", "Neutral Shield", "Aurora Veil", "Guard", "Pure Body", "Berserk", "Final Blow", "Herbal Scent", "Wild Growth", "Mind Games", "Fire Boost", "Hydroelectric Power", "Spikes", "Frog Song", "[Anger]", "[Darkness]", "[Metal]", "[Normal]", "Energy Evolution"]:
+			if ability_name in ["Strikes Back", "Energy Burn", "Invisible Wall", "Thick Skinned", "Retreat Aid", "Prehistoric Power", "Toxic Gas", "Transparency", "Kabuto Armor", "Clairvoyance", "Transform", "Sinkhole", "Hay Fever", "Sticky Goo", "Frenzy", "Final Beam", "Sneak Attack", "Summon Minions", "Reel In", "Bench Guard", "Pollen Defense", "Flee", "Rebirth", "Shell Armor", "Restless Sleep", "Strange Barrier", "Photosynthesis", "Fortitude", "Call the Boss", "Rebellion", "Psylink", "Healing Fire", "Energy Drain", "Scram", "Relaxing Scent", "Shock Blast", "Gaseous Form", "Bolt", "Neutral Shield", "Aurora Veil", "Guard", "Pure Body", "Berserk", "Final Blow", "Herbal Scent", "Wild Growth", "Mind Games", "Fire Boost", "Hydroelectric Power", "Spikes", "Frog Song", "[Anger]", "[Darkness]", "[Metal]", "[Normal]", "Energy Evolution", "Conductivity", "Surprise Bite", "Scare", "Deep Sleep", "Hot Plate", "Fluffy Wool", "Gift", "Tag Team", "Miraculous Wind", "[Chase]", "[Perform]", "[XXXXX]", "[Zoom]", "[Vanish]"]:
 				continue
 			# Toxic Gas blocks all other powers
 			if toxic_gas_active:
@@ -253,6 +258,22 @@ func open_power_menu() -> void:
 
 	# basep-41 Lucky Stadium: per-turn flip to draw a card
 	if main.trainer_effects.basep_lucky_stadium_has_target(false):
+		available_powers.append({"pokemon": null, "ability": {"name": "Lucky Stadium", "type": "Stadium", "text": "Flip a coin. If heads, draw 1 card."}})
+
+	# neo3-61 Healing Field: once per turn, flip — heads removes 2 damage counters from your Active
+	if main.trainer_effects.neo3_healing_field_active():
+		available_powers.append({"pokemon": null, "ability": {"name": "Healing Field", "type": "Stadium", "text": "Flip a coin. If heads, remove 2 damage counters from your Active Pokemon."}})
+
+	# neo4-95 Radio Tower: once per turn, look at the top 2 cards of your deck
+	if main.trainer_effects.neo4_radio_tower_active():
+		available_powers.append({"pokemon": null, "ability": {"name": "Radio Tower", "type": "Stadium", "text": "Look at the top 2 cards of your deck and put them back in the same order."}})
+
+	# neo4-99 Energy Stadium: once per turn, flip — heads put a basic Energy from discard to hand
+	if main.trainer_effects.neo4_energy_stadium_active():
+		available_powers.append({"pokemon": null, "ability": {"name": "Energy Stadium", "type": "Stadium", "text": "Flip a coin. If heads, put a basic Energy from your discard pile into your hand."}})
+
+	# neo4-100 Lucky Stadium: once per turn, flip — heads draw a card (reuses the Lucky Stadium dispatch)
+	if main.trainer_effects.neo4_lucky_stadium_active():
 		available_powers.append({"pokemon": null, "ability": {"name": "Lucky Stadium", "type": "Stadium", "text": "Flip a coin. If heads, draw 1 card."}})
 
 	# Brock's Ninetales Shapeshift discard option — only when a form is attached
@@ -1229,6 +1250,12 @@ func cpu_phase_activate_powers() -> void:
 		await main.trainer_effects.basep_lucky_stadium_activate(true)
 		if main._should_bail(): return
 
+	# neo3-61 Healing Field: CPU uses if its Active pokemon has damage
+	if main.trainer_effects.neo3_healing_field_active():
+		if main.opponent_active_pokemon != null and main.opponent_active_pokemon.current_hp < main.opponent_active_pokemon.get_max_hp():
+			await main.trainer_effects.neo3_healing_field_activate(true)
+			if main._should_bail(): return
+
 	# basep-5 Special Delivery (Dragonite): CPU draws if deck not empty
 	if not toxic_gas:
 		var dragonite = _find_cpu_pokemon_with_power("Special Delivery")
@@ -1763,6 +1790,12 @@ func cpu_phase_activate_powers() -> void:
 	if main._should_bail(): return
 	# --- NEO2 POWERS ---
 	await cpu_phase_neo2_powers()
+	if main._should_bail(): return
+	# --- NEO3 POWERS ---
+	await cpu_phase_neo3_powers()
+	if main._should_bail(): return
+	# --- NEO4 POWERS ---
+	await cpu_phase_neo4_powers()
 	if main._should_bail(): return
 
 
@@ -4971,3 +5004,1046 @@ func cpu_phase_neo1_powers() -> void:
 		if all_opp_safe:
 			await power_neo1_playful_punch(elekid)
 			if main._should_bail(): return
+
+######################################################################################################################################################
+##################################################### NEO3 (NEO REVELATION) POWERS & BODIES ##########################################################
+######################################################################################################################################################
+
+func _register_neo3_powers() -> void:
+	# Active powers
+	_power_dispatch["Softboiled"]           = func(p): await power_neo3_softboiled(p)
+	_power_dispatch["Howl"]                 = func(p): await power_neo3_howl(p)
+	_power_dispatch["Electromagnetic Power"] = func(p): await power_neo3_electromagnetic_power(p)
+	_power_dispatch["Energy Converter"]     = func(p): await power_neo3_energy_converter(p)
+	_power_dispatch["Submerge"]             = func(p): await power_neo3_submerge(p)
+	_power_dispatch["[Bear]"]               = func(p): await power_neo3_unown_bear(p)
+	_power_dispatch["[Yield]"]              = func(p): await power_neo3_unown_yield(p)
+
+# ── PASSIVE BODIES ──────────────────────────────────────────────────────────────
+
+# CRYSTAL BODY (neo3-12 Porygon2): opponent's effects on Porygon2 are prevented (but damage still applies)
+# This is queried from apply_attack_effects_on_target. Returns true if effects are blocked.
+func has_crystal_body(pokemon: card_object) -> bool:
+	if pokemon == null: return false
+	for ab in pokemon.metadata.get("abilities",[]):
+		if ab.get("name","") == "Crystal Body":
+			if not pokemon.gaze_suppressed and not is_power_blocked_by_status(pokemon):
+				if not is_toxic_gas_active() and not main.goop_gas_active:
+					return true
+	return false
+
+# LEGENDARY BODY (neo3-17 Entei, neo3-22 Raikou, neo3-27 Suicune Rare): while Active, trainer effects ignored
+# Called from play_trainer_card in Main_Match. Returns true if trainer should be blocked.
+func check_legendary_body_blocks_trainer(is_opponent_playing_trainer: bool) -> bool:
+	# The defender of the trainer effect is the opponent of the player playing it
+	var target_active = main.player_active_pokemon if is_opponent_playing_trainer else main.opponent_active_pokemon
+	if target_active == null: return false
+	for ab in target_active.metadata.get("abilities",[]):
+		if ab.get("name","") == "Legendary Body":
+			if not target_active.gaze_suppressed and not is_power_blocked_by_status(target_active):
+				if not is_toxic_gas_active() and not main.goop_gas_active:
+					return true
+	return false
+
+# LIGHTNING BURST (neo3-28 Flaaffy): when a Lightning Energy is attached to Flaaffy, deal 10 to each opp bench
+# Called from perform_energy_attachment and CPU energy attach.
+func check_lightning_burst(pokemon: card_object, energy_card: card_object, is_opponent: bool) -> void:
+	for ab in pokemon.metadata.get("abilities",[]):
+		if ab.get("name","") == "Lightning Burst":
+			if not pokemon.gaze_suppressed and not is_power_blocked_by_status(pokemon):
+				if not is_toxic_gas_active() and not main.goop_gas_active:
+					if "Lightning" in main.get_energy_provided_by_card(energy_card):
+						var opp_bench = main.player_bench if is_opponent else main.opponent_bench
+						if not opp_bench.is_empty():
+							for bp in opp_bench:
+								main.card_ops.apply_damage_to_pokemon(bp, 10, not is_opponent)
+							main.display_pokemon(not is_opponent)
+
+# MAGMA POOL (neo3-33 Magcargo): when Magcargo retreats, both pokemon take 20 damage (no W/R)
+# Called from handle_action_retreat_bench and execute_cpu_retreat after the swap completes.
+func check_magma_pool(retreating: card_object, new_active: card_object, is_opponent: bool) -> void:
+	for ab in retreating.metadata.get("abilities",[]):
+		if ab.get("name","") == "Magma Pool":
+			if not retreating.gaze_suppressed and not is_power_blocked_by_status(retreating):
+				if not is_toxic_gas_active() and not main.goop_gas_active:
+					main.card_ops.apply_damage_to_pokemon(retreating, 20, is_opponent)
+					main.card_ops.apply_damage_to_pokemon(new_active, 20, is_opponent)
+					main.display_pokemon(is_opponent)
+					return
+
+# [KEEP] (neo3-46 Murkrow): once per turn, may prevent opponent from playing a trainer on Murkrow
+# This is a passive blocking ability similar to Crystal Body but trainer-specific.
+# Implemented as a check in play_trainer_card, same as Legendary Body.
+func check_keep_blocks_trainer_on_murkrow(target: card_object, is_opponent_playing: bool) -> bool:
+	if target == null: return false
+	var target_name = target.metadata.get("name","")
+	if "Murkrow" not in target_name: return false
+	for ab in target.metadata.get("abilities",[]):
+		if ab.get("name","") == "[Keep]":
+			if not target.gaze_suppressed and not is_power_blocked_by_status(target):
+				if not is_toxic_gas_active() and not main.goop_gas_active:
+					return true
+	return false
+
+# ALLERGIC POLLEN (neo3-9 Jumpluff): when Jumpluff is damaged by an attack, attacker becomes Poisoned
+func check_allergic_pollen(jumpluff: card_object, attacker: card_object, is_jumpluff_opponent: bool) -> void:
+	if jumpluff == null or attacker == null: return
+	for ab in jumpluff.metadata.get("abilities",[]):
+		if ab.get("name","") == "Allergic Pollen":
+			if not jumpluff.gaze_suppressed and not is_power_blocked_by_status(jumpluff):
+				if not is_toxic_gas_active() and not main.goop_gas_active:
+					if not attacker.is_poisoned:
+						attacker.is_poisoned = true
+						attacker.poison_damage = 10
+						main.update_status_icons(attacker, not is_jumpluff_opponent)
+
+# HARD SHELL (neo3-51 Shuckle): if damage is ≤ 40, reduce it to 10
+# Called from calculate_final_damage in Main_Match after all modifiers.
+func apply_hard_shell(defender: card_object, damage: int, modifiers_applied: Array) -> int:
+	if defender == null: return damage
+	for ab in defender.metadata.get("abilities",[]):
+		if ab.get("name","") == "Hard Shell":
+			if not defender.gaze_suppressed and not is_power_blocked_by_status(defender):
+				if not is_toxic_gas_active() and not main.goop_gas_active:
+					if damage <= 40:
+						modifiers_applied.append("Hard Shell (→10)")
+						return 10
+	return damage
+
+# ── NEO3 FLAG CLEARING ─────────────────────────────────────────────────────────
+
+func clear_neo3_flags_end_of_turn(is_opponent: bool) -> void:
+	var active = main.opponent_active_pokemon if is_opponent else main.player_active_pokemon
+	var bench = main.opponent_bench if is_opponent else main.player_bench
+	var all_poke: Array = []
+	if active != null: all_poke.append(active)
+	all_poke.append_array(bench)
+	for p in all_poke:
+		p.triggered_poison_active = false
+		p.neo3_high_speed_locked = false
+		p.submerge_active = false
+		# NEO4 per-turn protection flags (last until your next turn ends)
+		p.neo4_prevent_high_damage = 0
+		p.neo4_prevent_bench_damage = false
+		p.neo4_cant_evolve_next_turn = false
+		# night_eyes_used intentionally NOT cleared here (persists across turns for Perish Song)
+		# legendary_body_active is metadata-based, not per-turn
+
+# ── TRIGGERED POISON (neo3-4 Crobat) ─────────────────────────────────────────
+
+func check_triggered_poison(pokemon: card_object, is_opponent: bool) -> void:
+	if pokemon == null: return
+	if pokemon.triggered_poison_active and not pokemon.is_poisoned:
+		pokemon.is_poisoned = true
+		pokemon.poison_damage = 10
+		pokemon.triggered_poison_active = false
+		main.update_status_icons(pokemon, is_opponent)
+		print("TRIGGERED POISON: ", pokemon.metadata.get("name",""), " poisoned from energy attachment")
+
+# ── TIME TRAVEL (neo3-3 Celebi) ───────────────────────────────────────────────
+
+# Called just before a KO in check_and_handle_knockout.
+# If pokemon is Celebi with Time Travel ability: flip — heads = shuffle back into deck instead of KO.
+# Returns true if KO was prevented.
+func check_time_travel(pokemon: card_object, is_opponent: bool) -> bool:
+	if pokemon == null: return false
+	var has_tt = false
+	for ab in pokemon.metadata.get("abilities",[]):
+		if ab.get("name","") == "Time Travel":
+			has_tt = true
+			break
+	if not has_tt: return false
+	if is_power_blocked_by_status(pokemon): return false
+	if is_toxic_gas_active() or main.goop_gas_active: return false
+	var coin = await main.flip_coin(false, is_opponent)
+	if main._should_bail(): return false
+	if not coin:
+		await main.show_message("TIME TRAVEL: TAILS — " + pokemon.metadata.get("name","").to_upper() + " IS KNOCKED OUT!")
+		if main._should_bail(): return false
+		return false
+	# Heads: shuffle Celebi + all attached cards into deck
+	var own_deck = main.opponent_deck if is_opponent else main.player_deck
+	var all_attached: Array = []
+	all_attached.append_array(pokemon.attached_energies)
+	all_attached.append_array(pokemon.attached_cards)
+	all_attached.append_array(pokemon.attached_pre_evolutions)
+	for c in all_attached:
+		c.current_location = "deck"
+		own_deck.append(c)
+	pokemon.attached_energies.clear()
+	pokemon.attached_cards.clear()
+	pokemon.attached_pre_evolutions.clear()
+	pokemon.current_hp = pokemon.get_max_hp()
+	pokemon.current_location = "deck"
+	own_deck.append(pokemon)
+	own_deck.shuffle()
+	# Remove from active/bench
+	var own_active = main.opponent_active_pokemon if is_opponent else main.player_active_pokemon
+	if own_active == pokemon:
+		if is_opponent:
+			main.opponent_active_pokemon = null
+		else:
+			main.player_active_pokemon = null
+	else:
+		var own_bench = main.opponent_bench if is_opponent else main.player_bench
+		own_bench.erase(pokemon)
+	main.update_deck_icon(is_opponent)
+	await main.show_message("TIME TRAVEL! HEADS! " + pokemon.metadata.get("name","").to_upper() + " WAS SHUFFLED BACK INTO THE DECK!")
+	if main._should_bail(): return true
+	print("TIME TRAVEL: ", pokemon.metadata.get("name",""), " avoided KO and shuffled into deck")
+	return true
+
+# ── ACTIVE POWERS ─────────────────────────────────────────────────────────────
+
+# SOFTBOILED (neo3-15/16 Chansey): heal 4 damage counters from any of your pokemon; discard 1 energy
+func power_neo3_softboiled(pokemon: card_object) -> void:
+	var is_opponent = pokemon.is_owner_opp(main)
+	if is_power_blocked_by_status(pokemon):
+		await main.show_message("SOFTBOILED: BLOCKED BY STATUS!")
+		if main._should_bail(): return
+		return
+	# Must discard 1 energy from Chansey
+	if pokemon.attached_energies.is_empty():
+		await main.show_message("SOFTBOILED: NO ENERGY TO DISCARD!")
+		if main._should_bail(): return
+		return
+	var targets: Array = []
+	var own_active = main.opponent_active_pokemon if is_opponent else main.player_active_pokemon
+	var own_bench = main.opponent_bench if is_opponent else main.player_bench
+	if own_active != null: targets.append(own_active)
+	targets.append_array(own_bench)
+	var heal_targets = targets.filter(func(p): return p.current_hp < p.get_max_hp())
+	if heal_targets.is_empty():
+		await main.show_message("SOFTBOILED: ALL POKEMON ARE AT FULL HP!")
+		if main._should_bail(): return
+		return
+	# Discard 1 energy from Chansey
+	var e_to_discard: card_object = null
+	if is_opponent:
+		e_to_discard = pokemon.attached_energies[0]
+	else:
+		if pokemon.attached_energies.size() == 1:
+			e_to_discard = pokemon.attached_energies[0]
+		else:
+			e_to_discard = await main.card_ops.prompt_select_card(pokemon.attached_energies.duplicate(), "SOFTBOILED!", "Choose an energy to discard from Chansey", "DISCARD", false)
+			if main._should_bail(): return
+			if e_to_discard == null: e_to_discard = pokemon.attached_energies[0]
+	main.card_ops.discard_energy_from_pokemon(e_to_discard, is_opponent)
+	main.display_active_pokemon_energies(is_opponent)
+	# Choose target to heal
+	var target: card_object = null
+	if is_opponent:
+		var best_dmg = 0
+		for p in heal_targets:
+			var dmg = p.get_max_hp() - p.current_hp
+			if dmg > best_dmg:
+				best_dmg = dmg
+				target = p
+	else:
+		target = await main.card_ops.prompt_select_card(heal_targets, "SOFTBOILED!", "Choose a Pokemon to heal 4 damage counters (40 HP)", "HEAL", false)
+		if main._should_bail(): return
+		if target == null: target = heal_targets[0]
+	if target != null:
+		target.current_hp = min(target.get_max_hp(), target.current_hp + 40)
+		main.display_hp_circles_above_align(target, is_opponent)
+		pokemon.power_used_this_turn = true
+		await main.show_message("SOFTBOILED! HEALED 4 DAMAGE COUNTERS FROM " + target.metadata.get("name","").to_upper() + "!")
+		if main._should_bail(): return
+	print("POWER USED: Softboiled — healed ", target.metadata.get("name","") if target != null else "none")
+
+# HOWL (neo3-16 Chansey non-holo): +20 damage on all your attacks this turn
+func power_neo3_howl(pokemon: card_object) -> void:
+	var is_opponent = pokemon.is_owner_opp(main)
+	if is_power_blocked_by_status(pokemon):
+		await main.show_message("HOWL: BLOCKED BY STATUS!")
+		if main._should_bail(): return
+		return
+	if pokemon.power_used_this_turn:
+		await main.show_message("HOWL: ALREADY USED THIS TURN!")
+		if main._should_bail(): return
+		return
+	# Set a pluspower-like bonus on the attacker (use pluspower_count on the active, or screech_damage_bonus)
+	var own_active = main.opponent_active_pokemon if is_opponent else main.player_active_pokemon
+	if own_active != null:
+		own_active.screech_damage_bonus += 20
+	pokemon.power_used_this_turn = true
+	await main.show_message("HOWL! ALL ATTACKS DO +20 DAMAGE THIS TURN!")
+	if main._should_bail(): return
+	print("POWER USED: Howl — +20 attack bonus")
+
+# ELECTROMAGNETIC POWER (neo3-29 Golbat... wait, that's neo3-28 Ampharos? checking original spec)
+# Actually Flaaffy (neo3-28) has "Lightning Burst" body. Let me check:
+# The original task specified: Electromagnetic Power is Ampharos (neo3-1).
+# Active: Discard 1 Lightning energy to deal 20 to any opponent's pokemon (no W/R)
+func power_neo3_electromagnetic_power(pokemon: card_object) -> void:
+	var is_opponent = pokemon.is_owner_opp(main)
+	if is_power_blocked_by_status(pokemon):
+		await main.show_message("ELECTROMAGNETIC POWER: BLOCKED BY STATUS!")
+		if main._should_bail(): return
+		return
+	if is_toxic_gas_active() or main.goop_gas_active:
+		await main.show_message("ELECTROMAGNETIC POWER: BLOCKED BY TOXIC GAS!")
+		if main._should_bail(): return
+		return
+	if pokemon.power_used_this_turn:
+		await main.show_message("ELECTROMAGNETIC POWER: ALREADY USED THIS TURN!")
+		if main._should_bail(): return
+		return
+	# Find Lightning energy on this pokemon
+	var lightning_e: Array = []
+	for e in pokemon.attached_energies:
+		if "Lightning" in main.get_energy_provided_by_card(e):
+			lightning_e.append(e)
+	if lightning_e.is_empty():
+		await main.show_message("ELECTROMAGNETIC POWER: NO LIGHTNING ENERGY ATTACHED!")
+		if main._should_bail(): return
+		return
+	# Discard 1 Lightning
+	var e_to_discard = lightning_e[0]
+	if not is_opponent and lightning_e.size() > 1:
+		e_to_discard = await main.card_ops.prompt_select_card(lightning_e, "ELECTROMAGNETIC POWER!", "Choose a Lightning Energy to discard", "DISCARD", false)
+		if main._should_bail(): return
+		if e_to_discard == null: e_to_discard = lightning_e[0]
+	main.card_ops.discard_energy_from_pokemon(e_to_discard, is_opponent)
+	main.display_active_pokemon_energies(is_opponent)
+	# Choose target (any opponent pokemon)
+	var opp_active = main.player_active_pokemon if is_opponent else main.opponent_active_pokemon
+	var opp_bench = main.player_bench if is_opponent else main.opponent_bench
+	var all_opp: Array = []
+	if opp_active != null: all_opp.append(opp_active)
+	all_opp.append_array(opp_bench)
+	if all_opp.is_empty():
+		await main.show_message("ELECTROMAGNETIC POWER: NO TARGETS!")
+		if main._should_bail(): return
+		return
+	var target: card_object = null
+	if is_opponent:
+		var lowest = 999
+		for p in all_opp:
+			if p.current_hp < lowest:
+				lowest = p.current_hp
+				target = p
+	else:
+		target = await main.card_ops.prompt_select_card(all_opp, "ELECTROMAGNETIC POWER!", "Choose an opponent's Pokemon for 20 damage (no W/R)", "SELECT", false)
+		if main._should_bail(): return
+		if target == null: target = opp_active
+	if target != null:
+		main.card_ops.apply_damage_to_pokemon(target, 20, not is_opponent)
+		main.display_hp_circles_above_align(target, not is_opponent)
+		pokemon.power_used_this_turn = true
+		await main.show_message("ELECTROMAGNETIC POWER! 20 DAMAGE TO " + target.metadata.get("name","").to_upper() + "!")
+		if main._should_bail(): return
+		await main.check_all_knockouts()
+		if main._should_bail(): return
+	print("POWER USED: Electromagnetic Power — 20 to chosen target")
+
+# ENERGY CONVERTER (neo3-12 Porygon2): once per turn, discard 3 energy from hand, attach 1 of any type to Porygon2
+func power_neo3_energy_converter(pokemon: card_object) -> void:
+	var is_opponent = pokemon.is_owner_opp(main)
+	if is_power_blocked_by_status(pokemon):
+		await main.show_message("ENERGY CONVERTER: BLOCKED BY STATUS!")
+		if main._should_bail(): return
+		return
+	if is_toxic_gas_active() or main.goop_gas_active:
+		await main.show_message("ENERGY CONVERTER: BLOCKED BY TOXIC GAS!")
+		if main._should_bail(): return
+		return
+	if pokemon.power_used_this_turn:
+		await main.show_message("ENERGY CONVERTER: ALREADY USED THIS TURN!")
+		if main._should_bail(): return
+		return
+	var own_hand = main.opponent_hand if is_opponent else main.player_hand
+	var own_discard = main.opponent_discard_pile if is_opponent else main.player_discard_pile
+	var energies_in_hand: Array = []
+	for c in own_hand:
+		if c.metadata.get("supertype","") == "Energy":
+			energies_in_hand.append(c)
+	if energies_in_hand.size() < 3:
+		await main.show_message("ENERGY CONVERTER: NEED 3 ENERGY IN HAND TO DISCARD!")
+		if main._should_bail(): return
+		return
+	# Discard 3 energy from hand
+	var to_discard: Array = []
+	if is_opponent:
+		to_discard = energies_in_hand.slice(0, 3)
+	else:
+		to_discard = energies_in_hand.slice(0, 3)  # Simplified: first 3
+	for e in to_discard:
+		own_hand.erase(e)
+		e.current_location = "discard"
+		own_discard.append(e)
+	main.update_discard_pile_display(is_opponent)
+	main.refresh_hand_display(is_opponent)
+	# Search deck for any basic energy and attach to Porygon2
+	var own_deck = main.opponent_deck if is_opponent else main.player_deck
+	var basic_energies_in_deck: Array = []
+	for c in own_deck:
+		if c.metadata.get("supertype","") == "Energy" and "Basic" in c.metadata.get("subtypes",[]):
+			basic_energies_in_deck.append(c)
+	if basic_energies_in_deck.is_empty():
+		await main.show_message("ENERGY CONVERTER: NO BASIC ENERGY IN DECK!")
+		if main._should_bail(): return
+		pokemon.power_used_this_turn = true
+		return
+	var chosen_energy: card_object = null
+	if is_opponent:
+		chosen_energy = basic_energies_in_deck[0]
+	else:
+		chosen_energy = await main.card_ops.prompt_select_card(basic_energies_in_deck, "ENERGY CONVERTER!", "Choose a Basic Energy from your deck to attach to Porygon2", "ATTACH", false)
+		if main._should_bail(): return
+		if chosen_energy == null: chosen_energy = basic_energies_in_deck[0]
+	own_deck.erase(chosen_energy)
+	chosen_energy.current_location = "active"
+	pokemon.attached_energies.append(chosen_energy)
+	own_deck.shuffle()
+	main.update_deck_icon(is_opponent)
+	main.display_active_pokemon_energies(is_opponent)
+	pokemon.power_used_this_turn = true
+	await main.show_message("ENERGY CONVERTER! DISCARDED 3 ENERGY, ATTACHED " + chosen_energy.metadata.get("name","").to_upper() + "!")
+	if main._should_bail(): return
+	print("POWER USED: Energy Converter — attached ", chosen_energy.metadata.get("name",""))
+
+# SUBMERGE (neo3-32 Lanturn): type is Water this turn (prevents effects against Water); set flag
+func power_neo3_submerge(pokemon: card_object) -> void:
+	var is_opponent = pokemon.is_owner_opp(main)
+	if is_power_blocked_by_status(pokemon):
+		await main.show_message("SUBMERGE: BLOCKED BY STATUS!")
+		if main._should_bail(): return
+		return
+	if is_toxic_gas_active() or main.goop_gas_active:
+		await main.show_message("SUBMERGE: BLOCKED BY TOXIC GAS!")
+		if main._should_bail(): return
+		return
+	if pokemon.power_used_this_turn:
+		await main.show_message("SUBMERGE: ALREADY USED THIS TURN!")
+		if main._should_bail(): return
+		return
+	pokemon.submerge_active = true
+	pokemon.temporary_type = "Water"
+	pokemon.power_used_this_turn = true
+	await main.show_message("SUBMERGE! " + pokemon.metadata.get("name","").to_upper() + " IS NOW A WATER TYPE — EFFECTS CAN'T BE USED ON IT THIS TURN!")
+	if main._should_bail(): return
+	print("POWER USED: Submerge — Lanturn becomes Water type")
+
+# [BEAR] (neo3-? Unown [B]): once per turn, search deck for 1 Trainer card and put in hand
+func power_neo3_unown_bear(pokemon: card_object) -> void:
+	var is_opponent = pokemon.is_owner_opp(main)
+	if is_power_blocked_by_status(pokemon):
+		await main.show_message("[BEAR]: BLOCKED BY STATUS!")
+		if main._should_bail(): return
+		return
+	if pokemon.power_used_this_turn:
+		await main.show_message("[BEAR]: ALREADY USED THIS TURN!")
+		if main._should_bail(): return
+		return
+	await main.card_ops.search_deck_to_hand(is_opponent, func(c): return c.metadata.get("supertype","") == "Trainer", "[BEAR]! CHOOSE A TRAINER CARD", 1)
+	if main._should_bail(): return
+	pokemon.power_used_this_turn = true
+	main.refresh_hand_display(is_opponent)
+	await main.show_message("[BEAR]! TRAINER CARD RETRIEVED!")
+	if main._should_bail(): return
+	print("POWER USED: [Bear] — trainer retrieved from deck")
+
+# [YIELD] (neo3-? Unown [Y]): once per turn, search deck for 1 Basic Pokemon and put in hand
+func power_neo3_unown_yield(pokemon: card_object) -> void:
+	var is_opponent = pokemon.is_owner_opp(main)
+	if is_power_blocked_by_status(pokemon):
+		await main.show_message("[YIELD]: BLOCKED BY STATUS!")
+		if main._should_bail(): return
+		return
+	if pokemon.power_used_this_turn:
+		await main.show_message("[YIELD]: ALREADY USED THIS TURN!")
+		if main._should_bail(): return
+		return
+	await main.card_ops.search_deck_to_hand(is_opponent, func(c): return c.metadata.get("supertype","") == "Pokémon" and "Basic" in c.metadata.get("subtypes",[]), "[YIELD]! CHOOSE A BASIC POKEMON", 1)
+	if main._should_bail(): return
+	pokemon.power_used_this_turn = true
+	main.refresh_hand_display(is_opponent)
+	await main.show_message("[YIELD]! BASIC POKEMON RETRIEVED!")
+	if main._should_bail(): return
+	print("POWER USED: [Yield] — basic pokemon retrieved from deck")
+
+# ── CPU PHASE ─────────────────────────────────────────────────────────────────
+
+func cpu_phase_neo3_powers() -> void:
+	if is_toxic_gas_active(): return
+	# Electromagnetic Power (Ampharos): use if there's a Lightning energy attached and a low-HP target
+	var ampharos = _find_cpu_pokemon_with_power("Electromagnetic Power")
+	if ampharos != null and not ampharos.power_used_this_turn and not is_power_blocked_by_status(ampharos):
+		var has_lightning = false
+		for e in ampharos.attached_energies:
+			if "Lightning" in main.get_energy_provided_by_card(e):
+				has_lightning = true
+				break
+		if has_lightning:
+			var opp_active = main.player_active_pokemon
+			if opp_active != null and opp_active.current_hp <= 30:
+				await power_neo3_electromagnetic_power(ampharos)
+				if main._should_bail(): return
+	# Softboiled (Chansey): use if any pokemon has damage
+	var chansey = _find_cpu_pokemon_with_power("Softboiled")
+	if chansey != null and not chansey.power_used_this_turn and not is_power_blocked_by_status(chansey):
+		if not chansey.attached_energies.is_empty():
+			var has_damage = false
+			var all_cpu = ([main.opponent_active_pokemon] if main.opponent_active_pokemon != null else []) + main.opponent_bench
+			for p in all_cpu:
+				if p.current_hp < p.get_max_hp():
+					has_damage = true
+					break
+			if has_damage:
+				await power_neo3_softboiled(chansey)
+				if main._should_bail(): return
+	# Energy Converter (Porygon2): use if deck is big enough
+	var porygon2 = _find_cpu_pokemon_with_power("Energy Converter")
+	if porygon2 != null and not porygon2.power_used_this_turn and not is_power_blocked_by_status(porygon2):
+		var energy_in_hand = main.opponent_hand.filter(func(c): return c.metadata.get("supertype","") == "Energy").size()
+		if energy_in_hand >= 3:
+			await power_neo3_energy_converter(porygon2)
+			if main._should_bail(): return
+	# [Bear] Unown: always search for a trainer
+	var unown_bear = _find_cpu_pokemon_with_power("[Bear]")
+	if unown_bear != null and not unown_bear.power_used_this_turn and not is_power_blocked_by_status(unown_bear):
+		await power_neo3_unown_bear(unown_bear)
+		if main._should_bail(): return
+	# [Yield] Unown: search for a basic if bench not full
+	var unown_yield = _find_cpu_pokemon_with_power("[Yield]")
+	if unown_yield != null and not unown_yield.power_used_this_turn and not is_power_blocked_by_status(unown_yield):
+		if main.opponent_bench.size() < main.get_max_bench_size():
+			await power_neo3_unown_yield(unown_yield)
+			if main._should_bail(): return
+
+######################################################################################################################################################
+############################################################## NEO4 (NEO DESTINY) POWERS ############################################################
+######################################################################################################################################################
+
+func _register_neo4_powers() -> void:
+	# Active powers
+	_power_dispatch["Spatial Distortion"] = func(p): await power_neo4_spatial_distortion(p)
+	_power_dispatch["Cunning"]            = func(p): await power_neo4_cunning(p)
+	_power_dispatch["Drive Off"]          = func(p): await power_neo4_drive_off(p)
+	_power_dispatch["[Give]"]             = func(p): await power_neo4_give(p)
+	_power_dispatch["[Want]"]             = func(p): await power_neo4_want(p)
+	_power_dispatch["[Help]"]             = func(p): await power_neo4_help(p)
+	_power_dispatch["[Quicken]"]          = func(p): await power_neo4_quicken(p)
+	_power_dispatch["[Laugh]"]            = func(p): await power_neo4_laugh(p)
+	_power_dispatch["[Search]"]           = func(p): await power_neo4_search(p)
+	_power_dispatch["[Tell]"]             = func(p): await power_neo4_tell(p)
+	# Stadium per-turn activatable entries
+	_power_dispatch["Radio Tower"]        = func(p): await main.trainer_effects.neo4_radio_tower_activate(false)
+	_power_dispatch["Energy Stadium"]     = func(p): await main.trainer_effects.neo4_energy_stadium_activate(false)
+
+# Helper: standard once-per-turn power preamble. Returns false if the power can't be used.
+func _neo4_power_ready(pokemon: card_object, label: String) -> bool:
+	if is_power_blocked(pokemon):
+		await main.show_message(label + ": BLOCKED!")
+		return false
+	if pokemon.power_used_this_turn:
+		await main.show_message(label + ": ALREADY USED THIS TURN!")
+		return false
+	return true
+
+# SPATIAL DISTORTION (neo4-8 Dark Porygon2): flip heads, put a Stadium from discard into play
+func power_neo4_spatial_distortion(pokemon: card_object) -> void:
+	var is_opponent = pokemon.is_owner_opp(main)
+	if not await _neo4_power_ready(pokemon, "SPATIAL DISTORTION"): return
+	var coin = await main.flip_coin(false, is_opponent)
+	if main._should_bail(): return
+	pokemon.power_used_this_turn = true
+	if not coin:
+		await main.show_message("SPATIAL DISTORTION: TAILS!")
+		if main._should_bail(): return
+		return
+	var discard = main.opponent_discard_pile if is_opponent else main.player_discard_pile
+	var stadiums: Array = []
+	for c in discard:
+		if main.trainer_effects.is_stadium_trainer(c):
+			stadiums.append(c)
+	if stadiums.is_empty():
+		await main.show_message("SPATIAL DISTORTION: NO STADIUM IN DISCARD!")
+		if main._should_bail(): return
+		return
+	var chosen: card_object = stadiums[0]
+	if not is_opponent:
+		chosen = await main.card_ops.prompt_select_card(stadiums, "SPATIAL DISTORTION!", "Choose a Stadium from your discard to put into play", "SELECT", false)
+		if main._should_bail(): return
+		if chosen == null: chosen = stadiums[0]
+	discard.erase(chosen)
+	await main.trainer_effects.resolve_stadium_trainer(chosen, is_opponent)
+	if main._should_bail(): return
+	await main.show_message("SPATIAL DISTORTION! HEADS! " + chosen.metadata.get("name","").to_upper() + " IS IN PLAY!")
+	if main._should_bail(): return
+	print("POWER USED: Spatial Distortion")
+
+# CUNNING (neo4-20 Dark Slowking): flip heads, look at top of opp deck; may shuffle opp deck
+func power_neo4_cunning(pokemon: card_object) -> void:
+	var is_opponent = pokemon.is_owner_opp(main)
+	if not await _neo4_power_ready(pokemon, "CUNNING"): return
+	var coin = await main.flip_coin(false, is_opponent)
+	if main._should_bail(): return
+	pokemon.power_used_this_turn = true
+	if not coin:
+		await main.show_message("CUNNING: TAILS!")
+		if main._should_bail(): return
+		return
+	var opp_deck = main.player_deck if is_opponent else main.opponent_deck
+	if opp_deck.is_empty():
+		await main.show_message("CUNNING: OPPONENT'S DECK IS EMPTY!")
+		if main._should_bail(): return
+		return
+	await main.show_message("CUNNING! TOP OF OPPONENT'S DECK: " + opp_deck[0].metadata.get("name","").to_upper() + "!")
+	if main._should_bail(): return
+	if not is_opponent:
+		opp_deck.shuffle()
+		main.update_deck_icon(not is_opponent)
+		await main.show_message("CUNNING! OPPONENT'S DECK WAS SHUFFLED!")
+	if main._should_bail(): return
+	print("POWER USED: Cunning")
+
+# DRIVE OFF (neo4-12 Light Arcanine): while Active, opp chooses a benched and switches with Defending
+func power_neo4_drive_off(pokemon: card_object) -> void:
+	var is_opponent = pokemon.is_owner_opp(main)
+	var own_active = main.opponent_active_pokemon if is_opponent else main.player_active_pokemon
+	if pokemon != own_active:
+		await main.show_message("DRIVE OFF: ONLY WORKS WHILE ACTIVE!")
+		if main._should_bail(): return
+		return
+	if not await _neo4_power_ready(pokemon, "DRIVE OFF"): return
+	var opp_bench = main.player_bench if is_opponent else main.opponent_bench
+	if opp_bench.is_empty():
+		await main.show_message("DRIVE OFF: OPPONENT HAS NO BENCH!")
+		if main._should_bail(): return
+		return
+	pokemon.power_used_this_turn = true
+	await main.attack_effects.apply_force_switch({"chooser": "defender"}, is_opponent)
+	if main._should_bail(): return
+	await main.show_message("DRIVE OFF! OPPONENT SWITCHED THEIR ACTIVE POKEMON!")
+	if main._should_bail(): return
+	print("POWER USED: Drive Off")
+
+# [GIVE] (neo4-27 Unown [G]): flip heads, search deck for a basic Energy and attach to 1 of your Pokemon
+func power_neo4_give(pokemon: card_object) -> void:
+	var is_opponent = pokemon.is_owner_opp(main)
+	if not await _neo4_power_ready(pokemon, "[GIVE]"): return
+	var coin = await main.flip_coin(false, is_opponent)
+	if main._should_bail(): return
+	pokemon.power_used_this_turn = true
+	if not coin:
+		await main.show_message("[GIVE]: TAILS!")
+		if main._should_bail(): return
+		return
+	var deck = main.opponent_deck if is_opponent else main.player_deck
+	var basic_e: card_object = null
+	for c in deck:
+		if c.metadata.get("supertype","") == "Energy" and "Basic" in c.metadata.get("subtypes",[]):
+			basic_e = c
+			break
+	if basic_e == null:
+		await main.show_message("[GIVE]: NO BASIC ENERGY IN DECK!")
+		if main._should_bail(): return
+		return
+	var targets = main.attack_effects._neo4_opp_targets(not is_opponent)  # own side
+	if targets.is_empty():
+		return
+	var target: card_object = targets[0]
+	if not is_opponent:
+		target = await main.card_ops.prompt_select_card(targets, "[GIVE]!", "Choose a Pokemon to attach a basic Energy to", "SELECT", false)
+		if main._should_bail(): return
+		if target == null: target = targets[0]
+	deck.erase(basic_e)
+	var own_active = main.opponent_active_pokemon if is_opponent else main.player_active_pokemon
+	basic_e.current_location = "active" if target == own_active else "bench"
+	target.attached_energies.append(basic_e)
+	deck.shuffle()
+	main.update_deck_icon(is_opponent)
+	main.display_pokemon(is_opponent)
+	main.display_active_pokemon_energies(is_opponent)
+	await main.show_message("[GIVE]! HEADS! ENERGY ATTACHED TO " + target.metadata.get("name","").to_upper() + "!")
+	if main._should_bail(): return
+	print("POWER USED: [Give]")
+
+# [WANT] (neo4-29 Unown [W]): flip heads, put a Trainer from discard into hand
+func power_neo4_want(pokemon: card_object) -> void:
+	var is_opponent = pokemon.is_owner_opp(main)
+	if not await _neo4_power_ready(pokemon, "[WANT]"): return
+	var coin = await main.flip_coin(false, is_opponent)
+	if main._should_bail(): return
+	pokemon.power_used_this_turn = true
+	if not coin:
+		await main.show_message("[WANT]: TAILS!")
+		if main._should_bail(): return
+		return
+	var discard = main.opponent_discard_pile if is_opponent else main.player_discard_pile
+	var hand = main.opponent_hand if is_opponent else main.player_hand
+	var trainers: Array = []
+	for c in discard:
+		if c.metadata.get("supertype","") == "Trainer":
+			trainers.append(c)
+	if trainers.is_empty():
+		await main.show_message("[WANT]: NO TRAINER IN DISCARD!")
+		if main._should_bail(): return
+		return
+	var chosen: card_object = trainers[0]
+	if not is_opponent:
+		chosen = await main.card_ops.prompt_select_card(trainers, "[WANT]!", "Choose a Trainer from your discard", "SELECT", false)
+		if main._should_bail(): return
+		if chosen == null: chosen = trainers[0]
+	discard.erase(chosen)
+	chosen.current_location = "hand"
+	hand.append(chosen)
+	main.update_discard_pile_display(is_opponent)
+	main.refresh_hand_display(is_opponent)
+	await main.show_message("[WANT]! HEADS! " + chosen.metadata.get("name","").to_upper() + " RETURNED TO HAND!")
+	if main._should_bail(): return
+	print("POWER USED: [Want]")
+
+# [HELP] (neo4-28 Unown [H]): shuffle hand into deck, draw a new hand of same size
+func power_neo4_help(pokemon: card_object) -> void:
+	var is_opponent = pokemon.is_owner_opp(main)
+	if not await _neo4_power_ready(pokemon, "[HELP]"): return
+	pokemon.power_used_this_turn = true
+	var hand = main.opponent_hand if is_opponent else main.player_hand
+	var deck = main.opponent_deck if is_opponent else main.player_deck
+	var n = hand.size()
+	for c in hand.duplicate():
+		c.current_location = "deck"
+		deck.append(c)
+	hand.clear()
+	deck.shuffle()
+	await main.card_ops.draw_n(is_opponent, n)
+	if main._should_bail(): return
+	main.update_deck_icon(is_opponent)
+	main.refresh_hand_display(is_opponent)
+	await main.show_message("[HELP]! SHUFFLED HAND AND DREW " + str(n) + " NEW CARDS!")
+	if main._should_bail(): return
+	print("POWER USED: [Help]")
+
+# [QUICKEN] (neo4-59 Unown [Q]): flip heads, prevent all effects to your Unown next turn (invincible)
+func power_neo4_quicken(pokemon: card_object) -> void:
+	var is_opponent = pokemon.is_owner_opp(main)
+	# usable even if statused — only check toxic gas / disable
+	if is_toxic_gas_active() or main.goop_gas_active or pokemon.power_disabled_until_end_of_next_turn:
+		await main.show_message("[QUICKEN]: BLOCKED!")
+		if main._should_bail(): return
+		return
+	if pokemon.power_used_this_turn:
+		await main.show_message("[QUICKEN]: ALREADY USED THIS TURN!")
+		if main._should_bail(): return
+		return
+	pokemon.power_used_this_turn = true
+	var coin = await main.flip_coin(false, is_opponent)
+	if main._should_bail(): return
+	if not coin:
+		await main.show_message("[QUICKEN]: TAILS!")
+		if main._should_bail(): return
+		return
+	var own_active = main.opponent_active_pokemon if is_opponent else main.player_active_pokemon
+	var own_bench = main.opponent_bench if is_opponent else main.player_bench
+	var all_own: Array = []
+	if own_active != null: all_own.append(own_active)
+	all_own.append_array(own_bench)
+	for p in all_own:
+		if "Unown" in p.metadata.get("name",""):
+			p.is_invincible = true
+			main.update_status_icons(p, is_opponent)
+	await main.show_message("[QUICKEN]! HEADS! YOUR UNOWN ARE PROTECTED NEXT TURN!")
+	if main._should_bail(): return
+	print("POWER USED: [Quicken]")
+
+# [LAUGH] (neo4-86 Unown [L]): flip heads, each player shuffles their deck
+func power_neo4_laugh(pokemon: card_object) -> void:
+	var is_opponent = pokemon.is_owner_opp(main)
+	if is_toxic_gas_active() or main.goop_gas_active or pokemon.power_disabled_until_end_of_next_turn:
+		await main.show_message("[LAUGH]: BLOCKED!")
+		if main._should_bail(): return
+		return
+	if pokemon.power_used_this_turn:
+		await main.show_message("[LAUGH]: ALREADY USED THIS TURN!")
+		if main._should_bail(): return
+		return
+	pokemon.power_used_this_turn = true
+	var coin = await main.flip_coin(false, is_opponent)
+	if main._should_bail(): return
+	if not coin:
+		await main.show_message("[LAUGH]: TAILS!")
+		if main._should_bail(): return
+		return
+	main.player_deck.shuffle()
+	main.opponent_deck.shuffle()
+	main.update_deck_icon(false)
+	main.update_deck_icon(true)
+	await main.show_message("[LAUGH]! HEADS! BOTH DECKS SHUFFLED!")
+	if main._should_bail(): return
+	print("POWER USED: [Laugh]")
+
+# [SEARCH] (neo4-87 Unown [S]): look at 1 of your Prize cards (flavor)
+func power_neo4_search(pokemon: card_object) -> void:
+	var is_opponent = pokemon.is_owner_opp(main)
+	if pokemon.power_used_this_turn:
+		await main.show_message("[SEARCH]: ALREADY USED THIS TURN!")
+		if main._should_bail(): return
+		return
+	pokemon.power_used_this_turn = true
+	var prizes = main.opponent_prize_cards if is_opponent else main.player_prize_cards
+	if prizes.is_empty():
+		await main.show_message("[SEARCH]: NO PRIZE CARDS!")
+		if main._should_bail(): return
+		return
+	await main.show_message("[SEARCH]! YOU PEEKED AT A PRIZE CARD: " + prizes[0].metadata.get("name","").to_upper() + "!")
+	if main._should_bail(): return
+	print("POWER USED: [Search]")
+
+# [TELL] (neo4-88 Unown [T]): flip heads, look at opp hand and show yours (flavor)
+func power_neo4_tell(pokemon: card_object) -> void:
+	var is_opponent = pokemon.is_owner_opp(main)
+	if pokemon.power_used_this_turn:
+		await main.show_message("[TELL]: ALREADY USED THIS TURN!")
+		if main._should_bail(): return
+		return
+	pokemon.power_used_this_turn = true
+	var coin = await main.flip_coin(false, is_opponent)
+	if main._should_bail(): return
+	if not coin:
+		await main.show_message("[TELL]: TAILS!")
+		if main._should_bail(): return
+		return
+	var opp_hand = main.player_hand if is_opponent else main.opponent_hand
+	await main.show_message("[TELL]! HEADS! OPPONENT HAS " + str(opp_hand.size()) + " CARDS IN HAND!")
+	if main._should_bail(): return
+	print("POWER USED: [Tell]")
+
+# ── NEO4 PLAY-FROM-HAND TRIGGERS ──────────────────────────────────────────────
+
+# SURPRISE BITE (neo4-2 Dark Crobat): when played from hand, 20 to a chosen opp Pokemon (no W/R)
+func trigger_neo4_surprise_bite(crobat: card_object, is_opponent: bool) -> void:
+	if is_power_blocked(crobat):
+		return
+	var targets = main.attack_effects._neo4_opp_targets(is_opponent)
+	if targets.is_empty():
+		return
+	var target: card_object = targets[0]
+	if not is_opponent:
+		target = await main.card_ops.prompt_select_card(targets, "SURPRISE BITE!", "Choose an opponent's Pokemon for 20 damage (no W/R)", "SELECT", false)
+		if main._should_bail(): return
+		if target == null: target = targets[0]
+	else:
+		var lowest = 999
+		for t in targets:
+			if t.current_hp < lowest:
+				lowest = t.current_hp
+				target = t
+	main.card_ops.apply_bench_damage(target, 20, not is_opponent)
+	main.display_pokemon(not is_opponent)
+	await main.show_message("SURPRISE BITE! 20 DAMAGE TO " + target.metadata.get("name","").to_upper() + "!")
+	if main._should_bail(): return
+	await main.check_all_knockouts()
+	if main._should_bail(): return
+	print("POWER: Surprise Bite")
+
+# GIFT (neo4-15 Light Togetic): when played, each player may search deck for a Pokemon Tool to hand
+func trigger_neo4_gift(togetic: card_object, is_opponent: bool) -> void:
+	if is_power_blocked(togetic):
+		return
+	# Opponent searches first (auto)
+	_neo4_search_tool_to_hand(not is_opponent, true)
+	# You search
+	await _neo4_search_tool_to_hand(is_opponent, is_opponent)
+	if main._should_bail(): return
+	await main.show_message("GIFT! EACH PLAYER MAY HAVE SEARCHED FOR A POKEMON TOOL!")
+	if main._should_bail(): return
+	print("POWER: Gift")
+
+func _neo4_search_tool_to_hand(side_is_opponent: bool, auto: bool) -> void:
+	var deck = main.opponent_deck if side_is_opponent else main.player_deck
+	var hand = main.opponent_hand if side_is_opponent else main.player_hand
+	var tools: Array = []
+	for c in deck:
+		if c.metadata.get("supertype","") == "Trainer" and "Pokémon Tool" in c.metadata.get("subtypes",[]):
+			tools.append(c)
+	if tools.is_empty():
+		return
+	var chosen: card_object = tools[0]
+	if not auto:
+		chosen = await main.card_ops.prompt_select_card(tools, "GIFT!", "Choose a Pokemon Tool from your deck", "SELECT", false)
+		if main._should_bail(): return
+		if chosen == null:
+			return
+	deck.erase(chosen)
+	chosen.current_location = "hand"
+	hand.append(chosen)
+	deck.shuffle()
+	main.update_deck_icon(side_is_opponent)
+	main.refresh_hand_display(side_is_opponent)
+
+# TAG TEAM (neo4-25 Light Machamp): when played on bench, heal Active 30 and switch Machamp to Active
+func trigger_neo4_tag_team(machamp: card_object, is_opponent: bool) -> void:
+	var own_bench = main.opponent_bench if is_opponent else main.player_bench
+	if machamp not in own_bench:
+		return
+	var active = main.opponent_active_pokemon if is_opponent else main.player_active_pokemon
+	if active != null:
+		var heal = min(30, active.get_max_hp() - active.current_hp)
+		active.current_hp += heal
+		main.display_hp_circles_above_align(active, is_opponent)
+		active.current_location = "bench"
+		own_bench.append(active)
+	own_bench.erase(machamp)
+	machamp.current_location = "active"
+	if is_opponent:
+		main.opponent_active_pokemon = machamp
+	else:
+		main.player_active_pokemon = machamp
+	main.display_pokemon(is_opponent)
+	main.display_active_pokemon_energies(is_opponent)
+	await main.show_message("TAG TEAM! " + machamp.metadata.get("name","").to_upper() + " SWITCHED IN, ACTIVE HEALED!")
+	if main._should_bail(): return
+	print("POWER: Tag Team")
+
+# [VANISH] (neo4-89 Unown [V]): when played from hand, flip heads return another Unown to hand (discard attachments)
+func trigger_neo4_vanish(unown_v: card_object, is_opponent: bool) -> void:
+	if is_power_blocked(unown_v):
+		return
+	var coin = await main.flip_coin(false, is_opponent)
+	if main._should_bail(): return
+	if not coin:
+		await main.show_message("[VANISH]: TAILS!")
+		if main._should_bail(): return
+		return
+	var own_active = main.opponent_active_pokemon if is_opponent else main.player_active_pokemon
+	var own_bench = main.opponent_bench if is_opponent else main.player_bench
+	var unowns: Array = []
+	if own_active != null and own_active != unown_v and "Unown" in own_active.metadata.get("name",""):
+		unowns.append(own_active)
+	for bp in own_bench:
+		if bp != unown_v and "Unown" in bp.metadata.get("name",""):
+			unowns.append(bp)
+	if unowns.is_empty():
+		await main.show_message("[VANISH]: NO OTHER UNOWN TO RETURN!")
+		if main._should_bail(): return
+		return
+	var chosen: card_object = unowns[0]
+	if not is_opponent:
+		chosen = await main.card_ops.prompt_select_card(unowns, "[VANISH]!", "Choose an Unown to return to your hand", "SELECT", false)
+		if main._should_bail(): return
+		if chosen == null: chosen = unowns[0]
+	# Discard attachments, return the Unown to hand
+	var discard = main.opponent_discard_pile if is_opponent else main.player_discard_pile
+	for c in chosen.attached_energies + chosen.attached_cards + chosen.attached_pre_evolutions:
+		c.current_location = "discard"
+		discard.append(c)
+	chosen.attached_energies.clear()
+	chosen.attached_cards.clear()
+	chosen.attached_pre_evolutions.clear()
+	var hand = main.opponent_hand if is_opponent else main.player_hand
+	if own_active == chosen:
+		if is_opponent: main.opponent_active_pokemon = null
+		else: main.player_active_pokemon = null
+	else:
+		own_bench.erase(chosen)
+	chosen.current_hp = chosen.get_max_hp()
+	chosen.current_location = "hand"
+	hand.append(chosen)
+	main.display_pokemon(is_opponent)
+	main.refresh_hand_display(is_opponent)
+	main.update_discard_pile_display(is_opponent)
+	await main.show_message("[VANISH]! HEADS! " + chosen.metadata.get("name","").to_upper() + " RETURNED TO HAND!")
+	if main._should_bail(): return
+	print("POWER: [Vanish]")
+
+# ── NEO4 PASSIVE HOOKS ────────────────────────────────────────────────────────
+
+# CONDUCTIVITY (neo4-1 Dark Ampharos): when opponent attaches Energy to a Pokemon, 10 to that Pokemon (no W/R)
+# Called from energy-attachment sites. `target` received energy; `target_is_opponent` = target's side.
+func check_neo4_conductivity(target: card_object, target_is_opponent: bool) -> void:
+	if target == null: return
+	# Dark Ampharos belongs to the side opposing the attacher (= opposing the target's owner)
+	var amp_active = main.player_active_pokemon if target_is_opponent else main.opponent_active_pokemon
+	var amp_bench = main.player_bench if target_is_opponent else main.opponent_bench
+	var amphs: Array = []
+	if amp_active != null and amp_active.has_ability("Conductivity"): amphs.append(amp_active)
+	for bp in amp_bench:
+		if bp.has_ability("Conductivity"): amphs.append(bp)
+	if amphs.size() != 1:
+		return  # stops working with more than 1 Dark Ampharos
+	var amp = amphs[0]
+	if is_power_blocked_by_status(amp) or is_toxic_gas_active() or main.goop_gas_active:
+		return
+	main.card_ops.apply_bench_damage(target, 10, target_is_opponent)
+	main.display_pokemon(target_is_opponent)
+	print("CONDUCTIVITY: 10 damage to ", target.metadata.get("name",""))
+
+# HOT PLATE (neo4-18 Dark Magcargo): when a Basic/Baby is benched from hand, active Magcargo deals 10 to it
+func check_neo4_hot_plate(benched: card_object, benched_is_opponent: bool) -> void:
+	if benched == null: return
+	for side_opp in [false, true]:
+		var active = main.opponent_active_pokemon if side_opp else main.player_active_pokemon
+		if active != null and active.has_ability("Hot Plate"):
+			if not is_power_blocked_by_status(active) and not is_toxic_gas_active() and not main.goop_gas_active:
+				main.card_ops.apply_bench_damage(benched, 10, benched_is_opponent)
+				main.display_pokemon(benched_is_opponent)
+				print("HOT PLATE: 10 damage to benched ", benched.metadata.get("name",""))
+				return
+
+# FLUFFY WOOL (neo4-26 Light Piloswine): if Active Piloswine damaged by attack, flip heads attacker Asleep
+func check_neo4_fluffy_wool(defender: card_object, attacker: card_object, is_def_opp: bool) -> void:
+	if defender == null or attacker == null: return
+	if not defender.has_ability("Fluffy Wool"): return
+	var own_active = main.opponent_active_pokemon if is_def_opp else main.player_active_pokemon
+	if defender != own_active: return
+	if defender.is_status_blocked(): return
+	var coin = await main.flip_coin(false, is_def_opp)
+	if main._should_bail(): return
+	if coin:
+		main.card_ops.apply_status(attacker, "Asleep", not is_def_opp)
+		await main.show_message("FLUFFY WOOL! " + attacker.metadata.get("name","").to_upper() + " FELL ASLEEP!")
+		if main._should_bail(): return
+
+# REFLECT SHIELD / COUNTERATTACK CLAWS: if Active was damaged, flip → 20/2-counters to attacker
+func check_neo4_counters(defender: card_object, attacker: card_object, is_def_opp: bool) -> void:
+	if defender == null or attacker == null: return
+	# Reflect Shield (Shining Mewtwo)
+	if defender.neo4_counter_flip_20:
+		defender.neo4_counter_flip_20 = false
+		var coin = await main.flip_coin(false, is_def_opp)
+		if main._should_bail(): return
+		if coin:
+			main.card_ops.apply_bench_damage(attacker, 20, not is_def_opp)
+			main.display_pokemon(not is_def_opp)
+			await main.show_message("REFLECT SHIELD! 20 DAMAGE TO " + attacker.metadata.get("name","").to_upper() + "!")
+			if main._should_bail(): return
+	# Counterattack Claws (neo4-97 Tool)
+	var has_claws = false
+	for ac in defender.attached_cards:
+		if ac.uid.to_lower() == "neo4-97":
+			has_claws = true
+			break
+	if has_claws:
+		var own_active = main.opponent_active_pokemon if is_def_opp else main.player_active_pokemon
+		if defender == own_active:
+			var coin2 = await main.flip_coin(false, is_def_opp)
+			if main._should_bail(): return
+			if coin2:
+				main.card_ops.apply_bench_damage(attacker, 20, not is_def_opp)
+				main.display_pokemon(not is_def_opp)
+				await main.show_message("COUNTERATTACK CLAWS! 20 DAMAGE TO " + attacker.metadata.get("name","").to_upper() + "!")
+			# Discard the claws
+			for ac in defender.attached_cards.duplicate():
+				if ac.uid.to_lower() == "neo4-97":
+					defender.attached_cards.erase(ac)
+					var discard = main.opponent_discard_pile if is_def_opp else main.player_discard_pile
+					ac.current_location = "discard"
+					discard.append(ac)
+			main.trainer_effects.display_attached_trainer_cards(is_def_opp)
+			main.update_discard_pile_display(is_def_opp)
+			if main._should_bail(): return
+
+# CPU activation of neo4 stadium effects (called from cpu_phase_activate_powers)
+func cpu_phase_neo4_powers() -> void:
+	if main.trainer_effects.neo4_lucky_stadium_active():
+		await main.trainer_effects.neo4_lucky_stadium_activate(true)
+		if main._should_bail(): return
+	if main.trainer_effects.neo4_energy_stadium_active():
+		await main.trainer_effects.neo4_energy_stadium_activate(true)
+		if main._should_bail(): return
+	if main.trainer_effects.neo4_radio_tower_active():
+		await main.trainer_effects.neo4_radio_tower_activate(true)
+		if main._should_bail(): return

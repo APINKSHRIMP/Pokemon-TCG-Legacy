@@ -26,6 +26,8 @@ func _ensure_trainer_dispatch_ready() -> void:
 	_register_basep_trainers()
 	_register_neo1_trainers()
 	_register_neo2_trainers()
+	_register_neo3_trainers()
+	_register_neo4_trainers()
 
 func _register_base_trainers() -> void:
 	_trainer_dispatch["base1-88"] = func(c, opp): await effect_professor_oak(c, opp)
@@ -493,6 +495,12 @@ func is_attached_trainer(card: card_object) -> bool:
 		return true
 	# NEO1 Pokemon Tools
 	if uid in ["neo1-86", "neo1-93", "neo1-94", "neo1-99"]:
+		return true
+	# NEO3 Pokemon Tools
+	if uid == "neo3-60":
+		return true
+	# NEO4 Pokemon Tools (EXP.ALL, Counterattack Claws, Magnifier)
+	if uid in ["neo4-93", "neo4-97", "neo4-101"]:
 		return true
 	return false
 
@@ -1115,6 +1123,16 @@ func resolve_attached_trainer(card: card_object, is_opponent: bool) -> void:
 	# NEO1 Pokemon Tools (Focus Band, Gold Berry, Miracle Berry, Berry): attach to chosen Pokemon
 	elif card.uid.to_lower() in ["neo1-86", "neo1-93", "neo1-94", "neo1-99"]:
 		await neo1_attach_tool(card, is_opponent)
+		return
+
+	# NEO3 Balloon Berry (neo3-60): attach to chosen Pokemon — makes retreat free once, then discards
+	elif card.uid.to_lower() == "neo3-60":
+		await neo3_attach_tool(card, is_opponent)
+		return
+
+	# NEO4 Pokemon Tools (EXP.ALL, Counterattack Claws, Magnifier): attach to a chosen Pokemon
+	elif card.uid.to_lower() in ["neo4-93", "neo4-97", "neo4-101"]:
+		await neo3_attach_tool(card, is_opponent)
 		return
 
 	# GYM2 Koga's Ninja Trick (gym2-115) — attach to Active Koga-named pokemon
@@ -5649,7 +5667,7 @@ func neo1_attach_tool(card: card_object, is_opponent: bool) -> void:
 	for p in targets:
 		var has_tool = false
 		for ac in p.attached_cards:
-			if is_attached_trainer(ac) and ac.uid.to_lower() in ["neo1-86","neo1-93","neo1-94","neo1-99","gym1-99","gym1-117","gym2-101","gym2-115"]:
+			if is_attached_trainer(ac) and ac.uid.to_lower() in ["neo1-86","neo1-93","neo1-94","neo1-99","neo3-60","neo4-93","neo4-97","neo4-101","gym1-99","gym1-117","gym2-101","gym2-115"]:
 				has_tool = true
 				break
 		if not has_tool:
@@ -6508,3 +6526,516 @@ func effect_neo2_energy_ark(is_opponent: bool) -> void:
 	await main.show_message("ENERGY ARK! " + str(heads) + " BASIC ENERGY ADDED TO HAND!")
 	if main._should_bail(): return
 	print("TRAINER: Energy Ark — ", heads, " energy retrieved")
+
+######################################################################################################################################################
+######################################################## NEO3 (NEO REVELATION) TRAINER EFFECTS #######################################################
+######################################################################################################################################################
+
+func _register_neo3_trainers() -> void:
+	# neo3-60 Balloon Berry is a Tool — handled by resolve_attached_trainer
+	# neo3-61 Healing Field is a Stadium — handled by resolve_stadium_trainer + neo3_healing_field_activate
+	# neo3-62 Pokemon Breeder Fields
+	_trainer_dispatch["neo3-62"] = func(c, opp): await effect_neo3_pokemon_breeder_fields(c, opp)
+	# neo3-63 Rocket's Hideout is a Stadium — handled by resolve_stadium_trainer
+	# neo3-64 Old Rod
+	_trainer_dispatch["neo3-64"] = func(c, opp): await effect_neo3_old_rod(c, opp)
+
+# ── Tool attachment helper shared with neo3 tools ────────────────────────────
+
+# Attach a neo3 Pokemon Tool to a chosen Pokemon (one tool per pokemon; same as neo1_attach_tool)
+func neo3_attach_tool(card: card_object, is_opponent: bool) -> void:
+	var targets = build_field_pokemon_array(is_opponent)
+	var valid_targets: Array = []
+	for p in targets:
+		var has_tool = false
+		for ac in p.attached_cards:
+			if is_attached_trainer(ac) and ac.uid.to_lower() in ["neo1-86","neo1-93","neo1-94","neo1-99","neo3-60","neo4-93","neo4-97","neo4-101","gym1-99","gym1-117","gym2-101","gym2-115"]:
+				has_tool = true
+				break
+		if not has_tool:
+			valid_targets.append(p)
+	if valid_targets.size() == 0:
+		await main.show_message("ALL POKEMON ALREADY HAVE A TOOL ATTACHED!")
+		if main._should_bail(): return
+		var discard = main.opponent_discard_pile if is_opponent else main.player_discard_pile
+		card.current_location = "discard"
+		discard.append(card)
+		return
+	var target: card_object = null
+	if is_opponent:
+		target = valid_targets[0]
+	else:
+		if valid_targets.size() == 1:
+			target = valid_targets[0]
+		else:
+			target = await main.card_ops.prompt_select_card(valid_targets, "ATTACH " + card.metadata.get("name",""), "Choose a Pokemon to attach " + card.metadata.get("name","") + " to", "ATTACH", false)
+			if main._should_bail(): return
+	if target == null:
+		var discard2 = main.opponent_discard_pile if is_opponent else main.player_discard_pile
+		card.current_location = "discard"
+		discard2.append(card)
+		return
+	target.attached_cards.append(card)
+	var hand_node = main.opponent_hand_container if is_opponent else main.player_hand_container
+	var attached_node = main.opponent_attached_cards_container if is_opponent else main.player_attached_cards_container
+	var card_texture = main.get_card_texture(card)
+	await main.animate_card_a_to_b(hand_node, attached_node, 0.3, card_texture, main.card_scales[10])
+	display_attached_trainer_cards(is_opponent)
+	await main.show_message(card.metadata.get("name","").to_upper() + " ATTACHED TO " + target.metadata.get("name","").to_upper() + "!")
+	if main._should_bail(): return
+	print("TRAINER: ", card.metadata.get("name",""), " attached to ", target.metadata.get("name",""))
+
+# BALLOON BERRY (neo3-60): check if the pokemon with Balloon Berry attached wants to retreat.
+# Called from get_retreat_cost() — if this pokemon has a Balloon Berry, its retreat cost is 0.
+# The berry is discarded when the pokemon actually retreats (hooked in handle_action_retreat_bench).
+func check_balloon_berry_retreat_free(pokemon: card_object) -> bool:
+	if pokemon == null:
+		return false
+	for ac in pokemon.attached_cards:
+		if ac.uid.to_lower() == "neo3-60":
+			return true
+	return false
+
+# Discard Balloon Berry from the given pokemon after a free retreat is used.
+func consume_balloon_berry(pokemon: card_object, is_opponent: bool) -> void:
+	for ac in pokemon.attached_cards.duplicate():
+		if ac.uid.to_lower() == "neo3-60":
+			pokemon.attached_cards.erase(ac)
+			var discard = main.opponent_discard_pile if is_opponent else main.player_discard_pile
+			ac.current_location = "discard"
+			discard.append(ac)
+			display_attached_trainer_cards(is_opponent)
+			main.update_discard_pile_display(is_opponent)
+			print("BALLOON BERRY: consumed for free retreat")
+			break
+
+# ── HEALING FIELD (neo3-61) ───────────────────────────────────────────────────
+
+func neo3_healing_field_active() -> bool:
+	if main.current_stadium_card == null:
+		return false
+	return main.current_stadium_card.uid.to_lower() == StadiumIds.HEALING_FIELD
+
+func neo3_healing_field_activate(is_opponent: bool) -> void:
+	var coin = await main.flip_coin(false, is_opponent)
+	if main._should_bail(): return
+	if coin:
+		var active = main.opponent_active_pokemon if is_opponent else main.player_active_pokemon
+		if active != null:
+			var healed = min(20, active.get_max_hp() - active.current_hp)
+			active.current_hp = min(active.get_max_hp(), active.current_hp + 20)
+			main.display_hp_circles_above_align(active, is_opponent)
+			await main.show_message("HEALING FIELD! HEADS! REMOVED 2 DAMAGE COUNTERS FROM " + active.metadata.get("name","").to_upper() + "!")
+		else:
+			await main.show_message("HEALING FIELD! HEADS! BUT NO ACTIVE POKEMON!")
+	else:
+		await main.show_message("HEALING FIELD! TAILS — NO HEALING!")
+	if main._should_bail(): return
+	print("STADIUM: Healing Field - ", "heads" if coin else "tails")
+
+# ── POKEMON BREEDER FIELDS (neo3-62) ─────────────────────────────────────────
+
+# For each Basic Pokemon on your bench, flip; heads = search deck for its Evolution and put in hand
+func effect_neo3_pokemon_breeder_fields(card: card_object, is_opponent: bool) -> void:
+	var discard = main.opponent_discard_pile if is_opponent else main.player_discard_pile
+	card.current_location = "discard"
+	discard.append(card)
+	var own_bench = main.opponent_bench if is_opponent else main.player_bench
+	var own_deck = main.opponent_deck if is_opponent else main.player_deck
+	var own_hand = main.opponent_hand if is_opponent else main.player_hand
+	var basic_bench: Array = []
+	for bp in own_bench:
+		if "Basic" in bp.metadata.get("subtypes",[]):
+			basic_bench.append(bp)
+	if basic_bench.is_empty():
+		await main.show_message("POKEMON BREEDER FIELDS: NO BASIC POKEMON ON BENCH!")
+		if main._should_bail(): return
+		return
+	var searched = 0
+	for bp in basic_bench:
+		var coin = await main.flip_coin(true, is_opponent)
+		if main._should_bail(): return
+		if not coin:
+			await main.show_message("TAILS FOR " + bp.metadata.get("name","").to_upper() + "!")
+			if main._should_bail(): return
+			continue
+		var evo_name = bp.metadata.get("evolvesTo", [])
+		if evo_name.is_empty():
+			await main.show_message("HEADS FOR " + bp.metadata.get("name","").to_upper() + " BUT NO EVOLUTION!")
+			if main._should_bail(): return
+			continue
+		var first_evo = evo_name[0]
+		var found_card: card_object = null
+		for c in own_deck:
+			if c.metadata.get("name","") == first_evo:
+				found_card = c
+				break
+		if found_card == null:
+			await main.show_message("HEADS! BUT " + first_evo.to_upper() + " NOT IN DECK!")
+			if main._should_bail(): return
+			continue
+		own_deck.erase(found_card)
+		found_card.current_location = "hand"
+		own_hand.append(found_card)
+		searched += 1
+		await main.show_message("POKEMON BREEDER FIELDS! " + first_evo.to_upper() + " ADDED TO HAND!")
+		if main._should_bail(): return
+	own_deck.shuffle()
+	main.update_deck_icon(is_opponent)
+	main.refresh_hand_display(is_opponent)
+	if searched == 0:
+		await main.show_message("POKEMON BREEDER FIELDS: NO EVOLUTIONS FOUND!")
+	else:
+		await main.show_message("POKEMON BREEDER FIELDS: " + str(searched) + " EVOLUTION(S) RETRIEVED!")
+	if main._should_bail(): return
+	print("TRAINER: Pokemon Breeder Fields — ", searched, " evolutions retrieved")
+
+# ── ROCKET'S HIDEOUT (neo3-63) ────────────────────────────────────────────────
+
+# Called from get_retreat_cost / calculate_final_damage hooks (if using StadiumIds.ROCKETS_HIDEOUT):
+# Pokemon with "Dark" in name get +20 HP (handled via a max_hp_override or the calculate_final_damage hook).
+# This function applies the +20 HP override to all "Dark"-named pokemon in play if Rocket's Hideout enters.
+# Also called at start of check to see if a pokemon qualifies.
+func rockets_hideout_bonus_hp(pokemon: card_object) -> int:
+	if not main.is_stadium_in_play(StadiumIds.ROCKETS_HIDEOUT):
+		return 0
+	var pname = pokemon.metadata.get("name","")
+	if "Dark" in pname:
+		return 20
+	return 0
+
+# ── OLD ROD (neo3-64) ────────────────────────────────────────────────────────
+
+# Flip 2 coins: both heads = choose 1 Pokemon from discard to hand; both tails = choose 1 Trainer from discard to hand
+func effect_neo3_old_rod(card: card_object, is_opponent: bool) -> void:
+	var discard = main.opponent_discard_pile if is_opponent else main.player_discard_pile
+	card.current_location = "discard"
+	discard.append(card)
+	var coin1 = await main.flip_coin(true, is_opponent)
+	if main._should_bail(): return
+	var coin2 = await main.flip_coin(true, is_opponent)
+	if main._should_bail(): return
+	var own_hand = main.opponent_hand if is_opponent else main.player_hand
+	if coin1 and coin2:
+		# Both heads: recover 1 Pokemon from discard to hand
+		var pokemon_in_discard: Array = []
+		for c in discard:
+			if c.metadata.get("supertype","") == "Pokémon" and c != card:
+				pokemon_in_discard.append(c)
+		if pokemon_in_discard.is_empty():
+			await main.show_message("OLD ROD: BOTH HEADS! BUT NO POKEMON IN DISCARD!")
+			if main._should_bail(): return
+			return
+		var chosen: card_object = null
+		if is_opponent:
+			chosen = pokemon_in_discard[0]
+		else:
+			chosen = await main.card_ops.prompt_select_card(pokemon_in_discard, "OLD ROD!", "BOTH HEADS! Choose a Pokemon from your discard to put in your hand", "RETRIEVE", false)
+			if main._should_bail(): return
+			if chosen == null: chosen = pokemon_in_discard[0]
+		discard.erase(chosen)
+		chosen.current_location = "hand"
+		own_hand.append(chosen)
+		main.update_discard_pile_display(is_opponent)
+		main.refresh_hand_display(is_opponent)
+		await main.show_message("OLD ROD! BOTH HEADS! " + chosen.metadata.get("name","").to_upper() + " RETURNED TO HAND!")
+		if main._should_bail(): return
+	elif not coin1 and not coin2:
+		# Both tails: recover 1 Trainer from discard to hand
+		var trainers_in_discard: Array = []
+		for c in discard:
+			if c.metadata.get("supertype","") == "Trainer" and c != card:
+				trainers_in_discard.append(c)
+		if trainers_in_discard.is_empty():
+			await main.show_message("OLD ROD: BOTH TAILS! BUT NO TRAINER IN DISCARD!")
+			if main._should_bail(): return
+			return
+		var chosen_t: card_object = null
+		if is_opponent:
+			chosen_t = trainers_in_discard[0]
+		else:
+			chosen_t = await main.card_ops.prompt_select_card(trainers_in_discard, "OLD ROD!", "BOTH TAILS! Choose a Trainer from your discard to put in your hand", "RETRIEVE", false)
+			if main._should_bail(): return
+			if chosen_t == null: chosen_t = trainers_in_discard[0]
+		discard.erase(chosen_t)
+		chosen_t.current_location = "hand"
+		own_hand.append(chosen_t)
+		main.update_discard_pile_display(is_opponent)
+		main.refresh_hand_display(is_opponent)
+		await main.show_message("OLD ROD! BOTH TAILS! " + chosen_t.metadata.get("name","").to_upper() + " RETURNED TO HAND!")
+		if main._should_bail(): return
+	else:
+		await main.show_message("OLD ROD: 1 HEAD, 1 TAIL — NO EFFECT!")
+		if main._should_bail(): return
+	print("TRAINER: Old Rod — coin1=", coin1, " coin2=", coin2)
+
+######################################################################################################################################################
+############################################################## NEO4 (NEO DESTINY) TRAINER EFFECTS ###################################################
+######################################################################################################################################################
+
+func _register_neo4_trainers() -> void:
+	# Stadiums (neo4-92 Broken Ground Gym, neo4-95 Radio Tower, neo4-99 Energy Stadium, neo4-100 Lucky Stadium)
+	#   are handled via resolve_stadium_trainer; per-turn effects via power menu (Radio Tower/Energy Stadium/Lucky Stadium).
+	# Tools (neo4-93 EXP.ALL, neo4-97 Counterattack Claws, neo4-101 Magnifier) handled via resolve_attached_trainer.
+	_trainer_dispatch["neo4-94"]  = func(c, opp): await effect_neo4_impostor_oaks_invention(opp)
+	_trainer_dispatch["neo4-96"]  = func(c, opp): await effect_neo4_thought_wave_machine(opp)
+	_trainer_dispatch["neo4-98"]  = func(c, opp): await effect_neo4_energy_amplifier(c, opp)
+	_trainer_dispatch["neo4-102"] = func(c, opp): await effect_neo4_personality_test(opp)
+	_trainer_dispatch["neo4-103"] = func(c, opp): await effect_neo4_evil_deeds(opp)
+	_trainer_dispatch["neo4-104"] = func(c, opp): await effect_neo4_heal_powder(opp)
+	_trainer_dispatch["neo4-105"] = func(c, opp): await effect_neo4_mail_from_bill(opp)
+
+# IMPOSTOR PROFESSOR OAK'S INVENTION (neo4-94): look at opp prizes; may shuffle into deck and re-draw new prizes
+func effect_neo4_impostor_oaks_invention(is_opponent: bool) -> void:
+	var opp_prizes = main.player_prize_cards if is_opponent else main.opponent_prize_cards
+	var opp_deck = main.player_deck if is_opponent else main.opponent_deck
+	var n = opp_prizes.size()
+	if n == 0:
+		await main.show_message("IMPOSTOR OAK'S INVENTION: OPPONENT HAS NO PRIZES!")
+		if main._should_bail(): return
+		return
+	# Shuffle opponent's prizes into their deck
+	for p in opp_prizes.duplicate():
+		p.current_location = "deck"
+		opp_deck.append(p)
+	opp_prizes.clear()
+	opp_deck.shuffle()
+	# Re-draw the same number of new prizes off the top
+	for i in range(n):
+		if opp_deck.is_empty(): break
+		var c = opp_deck.pop_front()
+		c.current_location = "prize"
+		opp_prizes.append(c)
+	main.update_deck_icon(not is_opponent)
+	if main.has_method("display_prize_cards"):
+		main.display_prize_cards(not is_opponent)
+	await main.show_message("IMPOSTOR OAK'S INVENTION! OPPONENT'S PRIZES WERE SHUFFLED AND RE-DEALT!")
+	if main._should_bail(): return
+	print("TRAINER: Impostor Professor Oak's Invention — ", n, " prizes re-dealt")
+
+# THOUGHT WAVE MACHINE (neo4-96): flip until tails; per head return an Energy from opp Active to opp hand; turn ends
+func effect_neo4_thought_wave_machine(is_opponent: bool) -> void:
+	var opp_active = main.player_active_pokemon if is_opponent else main.opponent_active_pokemon
+	var opp_hand = main.player_hand if is_opponent else main.opponent_hand
+	var heads = 0
+	while true:
+		var coin = await main.flip_coin(true, is_opponent)
+		if main._should_bail(): return
+		if coin:
+			heads += 1
+		else:
+			break
+	var returned = 0
+	if opp_active != null:
+		for i in range(heads):
+			if opp_active.attached_energies.is_empty(): break
+			var e = opp_active.attached_energies.pop_back()
+			e.current_location = "hand"
+			opp_hand.append(e)
+			returned += 1
+		main.display_active_pokemon_energies(not is_opponent)
+		main.refresh_hand_display(not is_opponent)
+	await main.show_message("THOUGHT WAVE MACHINE! " + str(heads) + " HEADS — RETURNED " + str(returned) + " ENERGY! YOUR TURN IS OVER!")
+	if main._should_bail(): return
+	# End turn (Rocket's Secret Machine: you don't get to attack)
+	if is_opponent:
+		main.opponent_attacked_this_turn = true
+	else:
+		main.player_attacked_this_turn = true
+		main.player_end_turn_checks()
+	print("TRAINER: Thought Wave Machine — ", returned, " energy returned")
+
+# ENERGY AMPLIFIER (neo4-98): shuffle an Energy from hand into deck; flip heads search up to 3 basic Energy to hand
+func effect_neo4_energy_amplifier(card: card_object, is_opponent: bool) -> void:
+	var hand = main.opponent_hand if is_opponent else main.player_hand
+	var deck = main.opponent_deck if is_opponent else main.player_deck
+	var energy_in_hand: Array = []
+	for c in hand:
+		if c.metadata.get("supertype","") == "Energy":
+			energy_in_hand.append(c)
+	if energy_in_hand.is_empty():
+		await main.show_message("ENERGY AMPLIFIER: NO ENERGY IN HAND!")
+		if main._should_bail(): return
+		return
+	var to_shuffle: card_object = energy_in_hand[0]
+	if not is_opponent:
+		to_shuffle = await main.card_ops.prompt_select_card(energy_in_hand, "ENERGY AMPLIFIER", "Choose an Energy to shuffle into your deck", "SELECT", false)
+		if main._should_bail(): return
+		if to_shuffle == null: to_shuffle = energy_in_hand[0]
+	hand.erase(to_shuffle)
+	to_shuffle.current_location = "deck"
+	deck.append(to_shuffle)
+	deck.shuffle()
+	main.refresh_hand_display(is_opponent)
+	main.update_deck_icon(is_opponent)
+	var coin = await main.flip_coin(false, is_opponent)
+	if main._should_bail(): return
+	if not coin:
+		await main.show_message("ENERGY AMPLIFIER: TAILS — NO SEARCH!")
+		if main._should_bail(): return
+		return
+	var found = await main.card_ops.search_deck_to_hand(is_opponent, func(c): return c.metadata.get("supertype","") == "Energy" and "Basic" in c.metadata.get("subtypes",[]), "ENERGY AMPLIFIER: choose up to 3 basic Energy", 3)
+	if main._should_bail(): return
+	await main.show_message("ENERGY AMPLIFIER! HEADS — FOUND " + str(found.size()) + " BASIC ENERGY!")
+	if main._should_bail(): return
+	print("TRAINER: Energy Amplifier — ", found.size(), " energy to hand")
+
+# POKEMON PERSONALITY TEST (neo4-102): guessing game (simplified to a coin flip outcome)
+func effect_neo4_personality_test(is_opponent: bool) -> void:
+	var hand = main.opponent_hand if is_opponent else main.player_hand
+	var has_evo = false
+	for c in hand:
+		if c.metadata.get("supertype","") == "Pokémon" and ("Stage 1" in c.metadata.get("subtypes",[]) or "Stage 2" in c.metadata.get("subtypes",[])):
+			has_evo = true
+			break
+	if not has_evo:
+		await main.show_message("POKEMON PERSONALITY TEST: NO EVOLUTION CARD IN HAND!")
+		if main._should_bail(): return
+		return
+	# Opponent guesses; simplified as a coin flip (heads = opponent guessed right → opponent draws 3; tails = you draw 3)
+	var coin = await main.flip_coin(false, is_opponent)
+	if main._should_bail(): return
+	if coin:
+		await main.card_ops.draw_n(not is_opponent, 3)
+		await main.show_message("POKEMON PERSONALITY TEST! OPPONENT GUESSED RIGHT — THEY DREW 3 CARDS!")
+	else:
+		await main.card_ops.draw_n(is_opponent, 3)
+		await main.show_message("POKEMON PERSONALITY TEST! OPPONENT GUESSED WRONG — YOU DREW 3 CARDS!")
+	if main._should_bail(): return
+	print("TRAINER: Pokemon Personality Test — heads=", coin)
+
+# TEAM ROCKET'S EVIL DEEDS (neo4-103): choose a card from opp hand, shuffle into deck; opp may draw up to 2
+func effect_neo4_evil_deeds(is_opponent: bool) -> void:
+	var opp_hand = main.player_hand if is_opponent else main.opponent_hand
+	var opp_deck = main.player_deck if is_opponent else main.opponent_deck
+	if opp_hand.is_empty():
+		await main.show_message("TEAM ROCKET'S EVIL DEEDS: OPPONENT'S HAND IS EMPTY!")
+		if main._should_bail(): return
+		return
+	var chosen: card_object = opp_hand[0]
+	if not is_opponent:
+		chosen = await main.card_ops.prompt_select_card(opp_hand.duplicate(), "TEAM ROCKET'S EVIL DEEDS", "Choose a card from opponent's hand to shuffle into their deck", "SELECT", false)
+		if main._should_bail(): return
+		if chosen == null: chosen = opp_hand[0]
+	opp_hand.erase(chosen)
+	chosen.current_location = "deck"
+	opp_deck.append(chosen)
+	opp_deck.shuffle()
+	main.update_deck_icon(not is_opponent)
+	main.refresh_hand_display(not is_opponent)
+	await main.card_ops.draw_n(not is_opponent, 2)
+	if main._should_bail(): return
+	await main.show_message("TEAM ROCKET'S EVIL DEEDS! A CARD WAS SHUFFLED AWAY; OPPONENT DREW 2!")
+	if main._should_bail(): return
+	print("TRAINER: Team Rocket's Evil Deeds")
+
+# HEAL POWDER (neo4-104): flip heads, Active no longer statused + remove 2 damage counters
+func effect_neo4_heal_powder(is_opponent: bool) -> void:
+	var active = main.opponent_active_pokemon if is_opponent else main.player_active_pokemon
+	if active == null:
+		await main.show_message("HEAL POWDER: NO ACTIVE POKEMON!")
+		if main._should_bail(): return
+		return
+	var coin = await main.flip_coin(false, is_opponent)
+	if main._should_bail(): return
+	if not coin:
+		await main.show_message("HEAL POWDER: TAILS — NO EFFECT!")
+		if main._should_bail(): return
+		return
+	main.clear_all_statuses(active, is_opponent)
+	var heal = min(20, active.get_max_hp() - active.current_hp)
+	active.current_hp += heal
+	main.display_hp_circles_above_align(active, is_opponent)
+	await main.show_message("HEAL POWDER! HEADS! " + active.metadata.get("name","").to_upper() + " HEALED AND CURED!")
+	if main._should_bail(): return
+	print("TRAINER: Heal Powder")
+
+# MAIL FROM BILL (neo4-105): draw until you have 4 cards in hand (can't play with 5+)
+func effect_neo4_mail_from_bill(is_opponent: bool) -> void:
+	var hand = main.opponent_hand if is_opponent else main.player_hand
+	var needed = 4 - hand.size()
+	if needed <= 0:
+		await main.show_message("MAIL FROM BILL: HAND ALREADY HAS 4 OR MORE CARDS!")
+		if main._should_bail(): return
+		return
+	await main.card_ops.draw_n(is_opponent, needed)
+	if main._should_bail(): return
+	await main.show_message("MAIL FROM BILL! DREW UP TO 4 CARDS!")
+	if main._should_bail(): return
+	print("TRAINER: Mail from Bill — drew ", needed)
+
+# ── NEO4 STADIUM PER-TURN EFFECTS ─────────────────────────────────────────────
+
+# RADIO TOWER (neo4-95): once per turn, look at top 2 of deck and put them back in the same order
+func neo4_radio_tower_active() -> bool:
+	if main.current_stadium_card == null:
+		return false
+	return main.current_stadium_card.uid.to_lower() == StadiumIds.RADIO_TOWER
+
+func neo4_radio_tower_activate(is_opponent: bool) -> void:
+	var deck = main.opponent_deck if is_opponent else main.player_deck
+	if deck.is_empty():
+		await main.show_message("RADIO TOWER: DECK IS EMPTY!")
+		if main._should_bail(): return
+		return
+	var names: Array = []
+	for i in range(min(2, deck.size())):
+		names.append(deck[i].metadata.get("name",""))
+	await main.show_message("RADIO TOWER! TOP CARDS: " + ", ".join(names).to_upper())
+	if main._should_bail(): return
+	print("STADIUM: Radio Tower — viewed top 2")
+
+# ENERGY STADIUM (neo4-99): once per turn, flip; heads put a basic Energy from discard to hand
+func neo4_energy_stadium_active() -> bool:
+	if main.current_stadium_card == null:
+		return false
+	return main.current_stadium_card.uid.to_lower() == StadiumIds.ENERGY_STADIUM
+
+func neo4_energy_stadium_activate(is_opponent: bool) -> void:
+	var coin = await main.flip_coin(false, is_opponent)
+	if main._should_bail(): return
+	if not coin:
+		await main.show_message("ENERGY STADIUM! TAILS — NO ENERGY!")
+		if main._should_bail(): return
+		return
+	var discard = main.opponent_discard_pile if is_opponent else main.player_discard_pile
+	var hand = main.opponent_hand if is_opponent else main.player_hand
+	var basics: Array = []
+	for c in discard:
+		if c.metadata.get("supertype","") == "Energy" and "Basic" in c.metadata.get("subtypes",[]):
+			basics.append(c)
+	if basics.is_empty():
+		await main.show_message("ENERGY STADIUM! HEADS — BUT NO BASIC ENERGY IN DISCARD!")
+		if main._should_bail(): return
+		return
+	var chosen: card_object = basics[0]
+	if not is_opponent:
+		chosen = await main.card_ops.prompt_select_card(basics, "ENERGY STADIUM!", "Choose a basic Energy from your discard to put in your hand", "SELECT", false)
+		if main._should_bail(): return
+		if chosen == null: chosen = basics[0]
+	discard.erase(chosen)
+	chosen.current_location = "hand"
+	hand.append(chosen)
+	main.update_discard_pile_display(is_opponent)
+	main.refresh_hand_display(is_opponent)
+	await main.show_message("ENERGY STADIUM! HEADS — " + chosen.metadata.get("name","").to_upper() + " ADDED TO HAND!")
+	if main._should_bail(): return
+	print("STADIUM: Energy Stadium — basic energy recovered")
+
+# LUCKY STADIUM (neo4-100): once per turn, flip; heads draw a card
+func neo4_lucky_stadium_active() -> bool:
+	if main.current_stadium_card == null:
+		return false
+	return main.current_stadium_card.uid.to_lower() == StadiumIds.NEO4_LUCKY_STADIUM
+
+func neo4_lucky_stadium_activate(is_opponent: bool) -> void:
+	var coin = await main.flip_coin(false, is_opponent)
+	if main._should_bail(): return
+	if coin:
+		await main.card_ops.draw_n(is_opponent, 1)
+		if main._should_bail(): return
+		await main.show_message("LUCKY STADIUM! HEADS — DREW 1 CARD!")
+	else:
+		await main.show_message("LUCKY STADIUM! TAILS — NO DRAW!")
+	if main._should_bail(): return
+	print("STADIUM: Lucky Stadium (neo4) - ", "heads" if coin else "tails")

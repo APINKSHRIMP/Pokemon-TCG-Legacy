@@ -1,7 +1,7 @@
 [gd_scene format=4 uid="uid://d1r12n0bw1j7q"]
 
 [ext_resource type="Script" uid="uid://ojw4o8cgyttg" path="res://Scripts/Map_Scripts/Gym_Plaza.gd" id="1_sxuf3"]
-[ext_resource type="TileSet" uid="uid://brncoaox03ylg" path="res://Image_Assets/Map_Sheets/Tile_Sets/Verdant_Forest_Afternoon.tres" id="2_ghe25"]
+[ext_resource type="TileSet" uid="uid://brncoaox03ylg" path="res://Image_Assets/Map_Sheets/Tile_Sets/Verdant_Forest_Morning.tres" id="2_ghe25"]
 [ext_resource type="PackedScene" uid="uid://bd1cf7d6oc7n0" path="res://Image_Assets/Map_Objects/Forest/Forest_Lamp.tscn" id="3_2p1og"]
 [ext_resource type="PackedScene" uid="uid://c10qeone4u11s" path="res://Image_Assets/Map_Objects/Forest/DarkTree.tscn" id="3_8vvmf"]
 [ext_resource type="PackedScene" uid="uid://cc668r1nhnhq1" path="res://Image_Assets/Map_Objects/Forest/MediumTree.tscn" id="4_kl6gy"]

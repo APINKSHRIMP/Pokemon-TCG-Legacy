@@ -35,3 +35,13 @@ const POKEMON_TOWER    = "basep-42"  # Prevents cards from being recovered from 
 # ── Neo Genesis (neo1) ────────────────────────────────────────────────────────
 const ECOGYM           = "neo1-84"   # Opponent-discarded non-Colorless energy returns to owner's hand
 const SPROUT_TOWER     = "neo1-97"   # Colorless Pokémon attacks deal -30 damage
+
+# ── Neo Revelation (neo3) ─────────────────────────────────────────────────────
+const HEALING_FIELD    = "neo3-61"   # Once per turn each player may flip — heads remove 2 damage counters from Active
+const ROCKETS_HIDEOUT  = "neo3-63"   # Pokemon with "Dark" in name get +20 HP
+
+# ── Neo Destiny (neo4) ────────────────────────────────────────────────────────
+const BROKEN_GROUND_GYM = "neo4-92"  # Each player pays Colorless more to retreat a Baby/Basic Pokemon
+const RADIO_TOWER       = "neo4-95"  # Once per turn each player may look at top 2 of deck, put back same order
+const ENERGY_STADIUM    = "neo4-99"  # Once per turn each player may flip — heads basic Energy from discard to hand
+const NEO4_LUCKY_STADIUM = "neo4-100" # Once per turn each player may flip — heads draw a card

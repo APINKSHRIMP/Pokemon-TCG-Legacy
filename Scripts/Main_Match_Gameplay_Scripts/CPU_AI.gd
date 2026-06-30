@@ -1157,14 +1157,20 @@ func execute_cpu_retreat(cpu_eval: Dictionary) -> void:
 	print("CPU retreated " + old_active.metadata["name"] + " for " + best_replacement.metadata["name"])
 	await main.animate_retreat(old_active, best_replacement, discarded_energies, true)
 	if main._should_bail(): return
+	# NEO3 Balloon Berry (neo3-60): if CPU used Balloon Berry for free retreat, discard it
+	main.trainer_effects.consume_balloon_berry(old_active, true)
 	main.clear_all_statuses(old_active, true)
 	main.display_pokemon(true)
 	main.display_active_pokemon_energies(true)
-	
+
 	# Update Ditto Transform after active switch
 	main.powers_and_bodies.update_ditto_transform(true)
 	main.powers_and_bodies.update_ditto_transform(false)
-	
+
+	# NEO3 Magma Pool (Magcargo neo3-33): when Magcargo retreats, both pokemon take 20 damage
+	main.powers_and_bodies.check_magma_pool(old_active, main.opponent_active_pokemon, true)
+	await main.check_all_knockouts()
+	if main._should_bail(): return
 	# Sinkhole (Dark Dugtrio): damage to retreating Pokemon
 	await main.powers_and_bodies.check_sinkhole(old_active, true)
 	if main._should_bail(): return
@@ -1362,6 +1368,14 @@ func cpu_phase_energy_attachment(cpu_eval: Dictionary) -> void:
 	if main._should_bail(): return
 	# GYM2 Sabrina's Gastly Gaseous Form — +10 HP per Psychic energy attached
 	main.powers_and_bodies.refresh_gaseous_form_hp()
+	# NEO3 Triggered Poison (Crobat neo3-4): if energy is attached to a pokemon with triggered_poison_active, poison it
+	await main.powers_and_bodies.check_triggered_poison(target, true)
+	if main._should_bail(): return
+	# NEO3 Lightning Burst (Flaaffy neo3-28): when Lightning Energy attached, deal 10 to each player bench
+	main.powers_and_bodies.check_lightning_burst(target, energy, true)
+	# NEO4 Conductivity (Dark Ampharos neo4-1): opponent's Ampharos deals 10 to this Pokemon
+	main.powers_and_bodies.check_neo4_conductivity(target, true)
+	if main._should_bail(): return
 
 	# MATCH EFFECTS: energy_attach_halve_hp / energy_attach_full_heal
 	await main.apply_energy_attach_match_effects(target, true)
