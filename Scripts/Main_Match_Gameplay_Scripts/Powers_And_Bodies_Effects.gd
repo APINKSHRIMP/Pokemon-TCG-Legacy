@@ -64,6 +64,7 @@ func _register_all_powers() -> void:
 	_register_neo2_powers()
 	_register_neo3_powers()
 	_register_neo4_powers()
+	_register_np_powers()
 
 # ── On-damage and pre-KO event hooks ──────────────────────────────────────────
 # Each Callable is fired after active-pokemon damage resolves (on_damage) or
@@ -199,7 +200,7 @@ func open_power_menu() -> void:
 				continue
 			var ability_name = ability.get("name", "")
 			# Skip passive powers (they don't go in menu)
-			if ability_name in ["Strikes Back", "Energy Burn", "Invisible Wall", "Thick Skinned", "Retreat Aid", "Prehistoric Power", "Toxic Gas", "Transparency", "Kabuto Armor", "Clairvoyance", "Transform", "Sinkhole", "Hay Fever", "Sticky Goo", "Frenzy", "Final Beam", "Sneak Attack", "Summon Minions", "Reel In", "Bench Guard", "Pollen Defense", "Flee", "Rebirth", "Shell Armor", "Restless Sleep", "Strange Barrier", "Photosynthesis", "Fortitude", "Call the Boss", "Rebellion", "Psylink", "Healing Fire", "Energy Drain", "Scram", "Relaxing Scent", "Shock Blast", "Gaseous Form", "Bolt", "Neutral Shield", "Aurora Veil", "Guard", "Pure Body", "Berserk", "Final Blow", "Herbal Scent", "Wild Growth", "Mind Games", "Fire Boost", "Hydroelectric Power", "Spikes", "Frog Song", "[Anger]", "[Darkness]", "[Metal]", "[Normal]", "Energy Evolution", "Conductivity", "Surprise Bite", "Scare", "Deep Sleep", "Hot Plate", "Fluffy Wool", "Gift", "Tag Team", "Miraculous Wind", "[Chase]", "[Perform]", "[XXXXX]", "[Zoom]", "[Vanish]"]:
+			if ability_name in ["Strikes Back", "Energy Burn", "Invisible Wall", "Thick Skinned", "Retreat Aid", "Prehistoric Power", "Toxic Gas", "Transparency", "Kabuto Armor", "Clairvoyance", "Transform", "Sinkhole", "Hay Fever", "Sticky Goo", "Frenzy", "Final Beam", "Sneak Attack", "Summon Minions", "Reel In", "Bench Guard", "Pollen Defense", "Flee", "Rebirth", "Shell Armor", "Restless Sleep", "Strange Barrier", "Photosynthesis", "Fortitude", "Call the Boss", "Rebellion", "Psylink", "Healing Fire", "Energy Drain", "Scram", "Relaxing Scent", "Shock Blast", "Gaseous Form", "Bolt", "Neutral Shield", "Aurora Veil", "Guard", "Pure Body", "Berserk", "Final Blow", "Herbal Scent", "Wild Growth", "Mind Games", "Fire Boost", "Hydroelectric Power", "Spikes", "Frog Song", "[Anger]", "[Darkness]", "[Metal]", "[Normal]", "Energy Evolution", "Conductivity", "Surprise Bite", "Scare", "Deep Sleep", "Hot Plate", "Fluffy Wool", "Gift", "Tag Team", "Miraculous Wind", "[Chase]", "[Perform]", "[XXXXX]", "[Zoom]", "[Vanish]", "Rain Dish", "Burning Aura", "Synchronized Lift"]:
 				continue
 			# Toxic Gas blocks all other powers
 			if toxic_gas_active:
@@ -209,6 +210,9 @@ func open_power_menu() -> void:
 				continue
 			# NEO2 Gaze (Igglybuff): suppress this pokemon's power for the turn
 			if pokemon.gaze_suppressed:
+				continue
+			# SCARE (neo4-5 Dark Feraligatr): opponent's active Feraligatr blocks Baby Pokémon powers
+			if "Baby" in pokemon.metadata.get("subtypes", []) and is_scare_active(false):
 				continue
 			# Check if usable
 			if ability_name != "Buzzap" and is_power_blocked_by_status(pokemon):
@@ -1796,6 +1800,9 @@ func cpu_phase_activate_powers() -> void:
 	if main._should_bail(): return
 	# --- NEO4 POWERS ---
 	await cpu_phase_neo4_powers()
+	if main._should_bail(): return
+	# --- NP POWERS ---
+	await cpu_phase_np_powers()
 	if main._should_bail(): return
 
 
@@ -5129,6 +5136,18 @@ func clear_neo3_flags_end_of_turn(is_opponent: bool) -> void:
 		# night_eyes_used intentionally NOT cleared here (persists across turns for Perish Song)
 		# legendary_body_active is metadata-based, not per-turn
 
+# ── NEO4 FLAG CLEARING ─────────────────────────────────────────────────────────
+# Clears per-turn neo4 flags for the side that just finished their own turn.
+# is_opponent: true = clear opponent's pokemon, false = clear player's pokemon.
+func clear_neo4_flags_end_of_turn(is_opponent: bool) -> void:
+	var active = main.opponent_active_pokemon if is_opponent else main.player_active_pokemon
+	var bench = main.opponent_bench if is_opponent else main.player_bench
+	var all_poke: Array = []
+	if active != null: all_poke.append(active)
+	all_poke.append_array(bench)
+	for p in all_poke:
+		p.perform_damage_stored = 0
+
 # ── TRIGGERED POISON (neo3-4 Crobat) ─────────────────────────────────────────
 
 func check_triggered_poison(pokemon: card_object, is_opponent: bool) -> void:
@@ -6036,6 +6055,92 @@ func check_neo4_counters(defender: card_object, attacker: card_object, is_def_op
 			main.update_discard_pile_display(is_def_opp)
 			if main._should_bail(): return
 
+# SCARE (neo4-5 Dark Feraligatr): while Active and not A/C/P, opponent's Baby Pokémon can't attack
+# and their Pokémon Powers stop working. victim_is_opponent = the side being suppressed.
+func is_scare_active(victim_is_opponent: bool) -> bool:
+	var opp_active = main.player_active_pokemon if victim_is_opponent else main.opponent_active_pokemon
+	if opp_active == null: return false
+	if not opp_active.has_ability("Scare"): return false
+	if is_power_blocked_by_status(opp_active) or is_toxic_gas_active() or main.goop_gas_active: return false
+	return true
+
+# DEEP SLEEP (neo4-6 Dark Gengar): while any Dark Gengar is in play and not A/C/P,
+# sleeping Pokémon flip 2 coins — must get BOTH heads to wake up (either tails = still asleep).
+func is_deep_sleep_active() -> bool:
+	for side in [false, true]:
+		var active = main.opponent_active_pokemon if side else main.player_active_pokemon
+		var bench = main.opponent_bench if side else main.player_bench
+		if active != null and active.has_ability("Deep Sleep") and not is_power_blocked_by_status(active) and not is_toxic_gas_active() and not main.goop_gas_active:
+			return true
+		for bp in bench:
+			if bp.has_ability("Deep Sleep") and not is_power_blocked_by_status(bp) and not is_toxic_gas_active() and not main.goop_gas_active:
+				return true
+	return false
+
+# MIRACULOUS WIND (neo4-14 Light Dragonite): while Active and not A/C/P, all Special Energy
+# provides only Colorless and their passive effects (Darkness bonus, Metal reduction) are suppressed.
+func is_miraculous_wind_active() -> bool:
+	for side in [false, true]:
+		var active = main.opponent_active_pokemon if side else main.player_active_pokemon
+		if active != null and active.has_ability("Miraculous Wind") and not is_power_blocked_by_status(active) and not is_toxic_gas_active() and not main.goop_gas_active:
+			return true
+	return false
+
+# [CHASE] (neo4-57 Unown [C]): when opponent retreats, flip — heads puts 1 damage counter (with W/R)
+# retreating_is_opponent: true if the CPU/opponent is retreating
+func check_neo4_chase(retreating_pokemon: card_object, retreating_is_opponent: bool) -> void:
+	if retreating_pokemon == null: return
+	var chase_active = main.player_active_pokemon if retreating_is_opponent else main.opponent_active_pokemon
+	if chase_active == null: return
+	if not chase_active.has_ability("[Chase]"): return
+	if is_power_blocked_by_status(chase_active) or is_toxic_gas_active() or main.goop_gas_active: return
+	var coin = await main.flip_coin(false, not retreating_is_opponent)
+	if main._should_bail(): return
+	if not coin:
+		await main.show_message("[CHASE]! TAILS — NO DAMAGE.")
+		if main._should_bail(): return
+		return
+	# Apply 10 damage with Weakness and Resistance (Unown [C] is Psychic)
+	var attacker_types = ["Psychic"]
+	var result = main.calculate_final_damage(10, attacker_types, retreating_pokemon, chase_active)
+	retreating_pokemon.current_hp = max(0, retreating_pokemon.current_hp - result["damage"])
+	main.display_hp_circles_above_align(retreating_pokemon, retreating_is_opponent)
+	await main.show_message("[CHASE]! HEADS — " + retreating_pokemon.metadata.get("name","").to_upper() + " TAKES " + str(result["damage"]) + " DAMAGE!")
+	if main._should_bail(): return
+	print("[Chase]: ", result["damage"], " damage to ", retreating_pokemon.metadata.get("name",""))
+
+# [PERFORM] (neo4-58 Unown [P]): if Unown [P] was damaged while Active last turn, Hidden Power
+# does that much more damage. Works even if Confused.
+func get_perform_bonus(attacker: card_object, is_opponent: bool) -> int:
+	if attacker == null: return 0
+	if "Unown [P]" not in attacker.metadata.get("name", ""): return 0
+	if not attacker.has_ability("[Perform]"): return 0
+	# [Perform] works even if Confused but still blocked by Asleep/Paralyzed
+	var sc = attacker.special_condition
+	if sc == "Asleep" or sc == "Paralyzed": return 0
+	if is_toxic_gas_active() or main.goop_gas_active: return 0
+	return attacker.perform_damage_stored
+
+# [XXXXX] (neo4-30 Unown [X]): when any of your Unown uses Hidden Power, flip until tails,
+# add 10 per heads. Only 1 Unown [X] can apply per turn.
+func get_xxxxx_bonus(attacker: card_object, is_opponent: bool) -> int:
+	if attacker == null: return 0
+	if "Unown" not in attacker.metadata.get("name", ""): return 0
+	if main.xxxxx_used_this_turn: return 0
+	# Check if any Unown [X] is on the attacker's side, not A/C/P
+	var own_active = main.opponent_active_pokemon if is_opponent else main.player_active_pokemon
+	var own_bench = main.opponent_bench if is_opponent else main.player_bench
+	var has_x: bool = false
+	if own_active != null and own_active.has_ability("[XXXXX]") and not is_power_blocked_by_status(own_active):
+		has_x = true
+	if not has_x:
+		for bp in own_bench:
+			if bp.has_ability("[XXXXX]") and not is_power_blocked_by_status(bp):
+				has_x = true
+				break
+	if not has_x: return 0
+	return -1  # sentinel: caller must flip until tails
+
 # CPU activation of neo4 stadium effects (called from cpu_phase_activate_powers)
 func cpu_phase_neo4_powers() -> void:
 	if main.trainer_effects.neo4_lucky_stadium_active():
@@ -6047,3 +6152,233 @@ func cpu_phase_neo4_powers() -> void:
 	if main.trainer_effects.neo4_radio_tower_active():
 		await main.trainer_effects.neo4_radio_tower_activate(true)
 		if main._should_bail(): return
+
+######################################################################################################################################################
+######################################################## NP (NINTENDO PROMOS) POWERS AND BODIES #######################################################
+######################################################################################################################################################
+
+func _register_np_powers() -> void:
+	_power_dispatch["Magnetic Call"] = func(p): await power_magnetic_call(p)
+
+# MAGNETIC CALL (np-22 Beldum): flip; heads → search deck for Metal Basic Pokémon → Bench
+func power_magnetic_call(beldum: card_object) -> void:
+	if is_power_blocked_by_status(beldum):
+		await main.show_message("MAGNETIC CALL IS BLOCKED BY STATUS!")
+		if main._should_bail(): return
+		return
+	if beldum.power_used_this_turn:
+		await main.show_message("MAGNETIC CALL ALREADY USED THIS TURN!")
+		if main._should_bail(): return
+		return
+	var is_opponent = (beldum == main.opponent_active_pokemon or beldum in main.opponent_bench)
+	var bench = main.opponent_bench if is_opponent else main.player_bench
+	var deck = main.opponent_deck if is_opponent else main.player_deck
+	if bench.size() >= 5:
+		await main.show_message("BENCH IS FULL! CANNOT USE MAGNETIC CALL!")
+		if main._should_bail(): return
+		return
+	beldum.power_used_this_turn = true
+	await main.show_message("MAGNETIC CALL!")
+	if main._should_bail(): return
+	var coin = await main.flip_coin(false, is_opponent)
+	if main._should_bail(): return
+	if not coin:
+		await main.show_message("TAILS! MAGNETIC CALL FAILS!")
+		if main._should_bail(): return
+		return
+	var metal_basics: Array = []
+	for c in deck:
+		var subtypes = c.metadata.get("subtypes", [])
+		var types = c.metadata.get("types", [])
+		if "Basic" in subtypes and "Metal" in types:
+			metal_basics.append(c)
+	if metal_basics.is_empty():
+		await main.show_message("HEADS! BUT NO METAL BASIC POKÉMON IN DECK!")
+		if main._should_bail(): return
+		main.card_ops.shuffle_deck(is_opponent)
+		return
+	var chosen: card_object
+	if is_opponent:
+		chosen = metal_basics[0]
+	else:
+		chosen = await main.card_ops.prompt_select_card(metal_basics, "MAGNETIC CALL", "Choose a Metal Basic Pokémon to bench", "BENCH", false)
+		if main._should_bail(): return
+	if chosen == null:
+		main.card_ops.shuffle_deck(is_opponent)
+		return
+	deck.erase(chosen)
+	chosen.current_location = "bench"
+	bench.append(chosen)
+	main.card_ops.shuffle_deck(is_opponent)
+	main.display_pokemon(is_opponent)
+	await main.show_message("HEADS! " + chosen.metadata.get("name", "").to_upper() + " PLACED ON BENCH!")
+	if main._should_bail(): return
+	print("POWER: Magnetic Call — ", chosen.metadata.get("name", ""), " benched")
+
+# NP FRENZY (np-37/38/39 Kyogre/Groudon/Rayquaza ex): +40 damage if specific opponent legendary in play
+func get_np_frenzy_bonus(attacker: card_object, is_opponent: bool) -> int:
+	if attacker == null: return 0
+	if is_toxic_gas_active() or main.goop_gas_active: return 0
+	var attacker_name = attacker.metadata.get("name", "").to_lower()
+	var triggers: Array = []
+	if "kyogre" in attacker_name:
+		for ab in attacker.metadata.get("abilities", []):
+			if ab.get("name", "") == "Frenzy" and ab.get("type", "") in ["Poké-Body", "Poke-Body"]:
+				triggers = ["Groudon", "Groudon ex", "Rayquaza", "Rayquaza ex"]
+				break
+	elif "groudon" in attacker_name:
+		for ab in attacker.metadata.get("abilities", []):
+			if ab.get("name", "") == "Frenzy" and ab.get("type", "") in ["Poké-Body", "Poke-Body"]:
+				triggers = ["Kyogre", "Kyogre ex", "Rayquaza", "Rayquaza ex"]
+				break
+	elif "rayquaza" in attacker_name:
+		for ab in attacker.metadata.get("abilities", []):
+			if ab.get("name", "") == "Frenzy" and ab.get("type", "") in ["Poké-Body", "Poke-Body"]:
+				triggers = ["Kyogre", "Kyogre ex", "Groudon", "Groudon ex"]
+				break
+	if triggers.is_empty(): return 0
+	var opp_active = main.player_active_pokemon if is_opponent else main.opponent_active_pokemon
+	var opp_bench = main.player_bench if is_opponent else main.opponent_bench
+	var all_opp: Array = []
+	if opp_active != null: all_opp.append(opp_active)
+	all_opp.append_array(opp_bench)
+	for p in all_opp:
+		var pname = p.metadata.get("name", "")
+		for t in triggers:
+			if t == pname:
+				print("NP FRENZY: +40 (", attacker.metadata.get("name",""), " vs ", pname, ")")
+				return 40
+	return 0
+
+# PURE BODY (np-30/basep-53 Suicune): when Water Energy attached from hand, discard one energy from Suicune.
+# Returns true if attachment should be blocked (no energies to discard).
+func check_pure_body_block(energy_card: card_object, target_pokemon: card_object) -> bool:
+	if target_pokemon == null: return false
+	if is_power_blocked(target_pokemon): return false
+	for ab in target_pokemon.metadata.get("abilities", []):
+		if ab.get("name", "") != "Pure Body": continue
+		var energy_name = energy_card.metadata.get("name", "")
+		var provided = main.special_energy_effects.get_energy_types_provided(energy_name)
+		if provided.is_empty():
+			provided = energy_card.metadata.get("types", [])
+		if "Water" in provided:
+			return target_pokemon.attached_energies.is_empty()
+	return false
+
+# Trigger Pure Body discard after Water Energy is attached. Call after energy is appended.
+func check_pure_body_discard(energy_card: card_object, target_pokemon: card_object, is_opponent: bool) -> void:
+	if target_pokemon == null: return
+	if is_power_blocked(target_pokemon): return
+	for ab in target_pokemon.metadata.get("abilities", []):
+		if ab.get("name", "") != "Pure Body": continue
+		var energy_name = energy_card.metadata.get("name", "")
+		var provided = main.special_energy_effects.get_energy_types_provided(energy_name)
+		if provided.is_empty():
+			provided = energy_card.metadata.get("types", [])
+		if "Water" not in provided: return
+		if target_pokemon.attached_energies.is_empty(): return
+		var to_discard: card_object = null
+		if is_opponent:
+			to_discard = target_pokemon.attached_energies[0]
+		else:
+			if target_pokemon.attached_energies.size() == 1:
+				to_discard = target_pokemon.attached_energies[0]
+			else:
+				to_discard = await main.card_ops.prompt_select_card(target_pokemon.attached_energies.duplicate(), "PURE BODY", "Choose an energy to discard from " + target_pokemon.metadata.get("name",""), "DISCARD", false)
+				if main._should_bail(): return
+				if to_discard == null:
+					to_discard = target_pokemon.attached_energies[0]
+		main.card_ops.discard_energy_from_pokemon(to_discard, is_opponent)
+		main.display_active_pokemon_energies(is_opponent)
+		await main.show_message("PURE BODY! AN ENERGY WAS DISCARDED FROM " + target_pokemon.metadata.get("name","").to_upper() + "!")
+		if main._should_bail(): return
+		return
+
+# RAIN DISH / BURNING AURA: passive body effects between turns
+func apply_np_between_turn_bodies() -> void:
+	# RAIN DISH (np-20 Ludicolo): remove 1 damage counter from Ludicolo between turns
+	for side in [false, true]:
+		var active = main.opponent_active_pokemon if side else main.player_active_pokemon
+		var bench_arr = main.opponent_bench if side else main.player_bench
+		var all_poke: Array = []
+		if active != null: all_poke.append(active)
+		all_poke.append_array(bench_arr)
+		for p in all_poke:
+			if p.current_hp <= 0: continue
+			if is_toxic_gas_active() or main.goop_gas_active: continue
+			if is_power_blocked_by_status(p): continue
+			for ab in p.metadata.get("abilities", []):
+				if ab.get("name", "") == "Rain Dish":
+					var max_hp = p.get_max_hp()
+					if p.current_hp < max_hp:
+						p.current_hp = min(max_hp, p.current_hp + 10)
+						main.display_hp_circles_above_align(p, side)
+						await main.show_message("RAIN DISH! " + p.metadata.get("name","").to_upper() + " RECOVERED 10 HP!")
+						if main._should_bail(): return
+
+	# BURNING AURA (np-34 Typhlosion): while Active, put 1 damage counter on EACH Active between turns
+	for side in [false, true]:
+		var active = main.opponent_active_pokemon if side else main.player_active_pokemon
+		if active == null: continue
+		if is_toxic_gas_active() or main.goop_gas_active: continue
+		if is_power_blocked_by_status(active): continue
+		for ab in active.metadata.get("abilities", []):
+			if ab.get("name", "") == "Burning Aura":
+				var opp_active = main.player_active_pokemon if side else main.opponent_active_pokemon
+				active.current_hp = max(0, active.current_hp - 10)
+				main.display_hp_circles_above_align(active, side)
+				if opp_active != null:
+					opp_active.current_hp = max(0, opp_active.current_hp - 10)
+					main.display_hp_circles_above_align(opp_active, not side)
+				await main.show_message("BURNING AURA! BOTH ACTIVE POKÉMON TAKE 10 DAMAGE!")
+				if main._should_bail(): return
+				await main.check_all_knockouts()
+				if main._should_bail(): return
+				break
+
+# SYNCHRONIZED LIFT (np-31/32/33 Moltres/Articuno/Zapdos ex): free retreat if specific partners in play
+func check_synchronized_lift(pokemon: card_object, is_opponent: bool) -> bool:
+	if pokemon == null: return false
+	if is_toxic_gas_active() or main.goop_gas_active: return false
+	if is_power_blocked_by_status(pokemon): return false
+	var ab_text = ""
+	for ab in pokemon.metadata.get("abilities", []):
+		if ab.get("name", "") == "Synchronized Lift":
+			ab_text = ab.get("text", "").to_lower()
+			break
+	if ab_text == "": return false
+	var bench_arr = main.opponent_bench if is_opponent else main.player_bench
+	var own_active = main.opponent_active_pokemon if is_opponent else main.player_active_pokemon
+	var all_own: Array = []
+	if own_active != null: all_own.append(own_active)
+	all_own.append_array(bench_arr)
+	var has_articuno = false
+	var has_zapdos = false
+	var has_moltres = false
+	for p in all_own:
+		var pname = p.metadata.get("name", "").to_lower()
+		if "articuno ex" in pname: has_articuno = true
+		if "zapdos ex" in pname: has_zapdos = true
+		if "moltres ex" in pname: has_moltres = true
+	if "articuno ex" in ab_text and not has_articuno: return false
+	if "zapdos ex" in ab_text and not has_zapdos: return false
+	if "moltres ex" in ab_text and not has_moltres: return false
+	return true
+
+# CPU phase for NP active powers (Magnetic Call)
+func cpu_phase_np_powers() -> void:
+	if is_toxic_gas_active() or main.goop_gas_active: return
+	var all_opp: Array = []
+	if main.opponent_active_pokemon != null: all_opp.append(main.opponent_active_pokemon)
+	all_opp.append_array(main.opponent_bench)
+	for p in all_opp:
+		if p.power_used_this_turn: continue
+		if is_power_blocked_by_status(p): continue
+		for ab in p.metadata.get("abilities", []):
+			if ab.get("name", "") == "Magnetic Call":
+				if main.opponent_bench.size() < 5:
+					var has_metal_basic = main.opponent_deck.any(func(c):
+						return "Basic" in c.metadata.get("subtypes", []) and "Metal" in c.metadata.get("types", []))
+					if has_metal_basic:
+						await power_magnetic_call(p)
+						if main._should_bail(): return

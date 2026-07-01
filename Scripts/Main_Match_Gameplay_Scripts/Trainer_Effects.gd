@@ -28,6 +28,7 @@ func _ensure_trainer_dispatch_ready() -> void:
 	_register_neo2_trainers()
 	_register_neo3_trainers()
 	_register_neo4_trainers()
+	_register_np_trainers()
 
 func _register_base_trainers() -> void:
 	_trainer_dispatch["base1-88"] = func(c, opp): await effect_professor_oak(c, opp)
@@ -7039,3 +7040,102 @@ func neo4_lucky_stadium_activate(is_opponent: bool) -> void:
 		await main.show_message("LUCKY STADIUM! TAILS — NO DRAW!")
 	if main._should_bail(): return
 	print("STADIUM: Lucky Stadium (neo4) - ", "heads" if coin else "tails")
+
+######################################################################################################################################################
+######################################################## NP (NINTENDO PROMOS) TRAINER EFFECTS #########################################################
+######################################################################################################################################################
+
+func _register_np_trainers() -> void:
+	_trainer_dispatch["np-26"]  = func(c, opp): await effect_np_tropical_wind(opp)
+	_trainer_dispatch["np-27"]  = func(c, opp): await effect_np_tropical_tidal_wave(opp)
+	_trainer_dispatch["np-36"]  = func(c, opp): await effect_np_tropical_tidal_wave(opp)
+	# np-28 Championship Arena is a Stadium — handled via resolve_stadium_trainer
+
+# TROPICAL WIND (np-26): flip; heads remove 2 damage counters from each Active (min 1 if only 1), tails each Active is now Asleep
+func effect_np_tropical_wind(is_opponent: bool) -> void:
+	await main.show_message("TROPICAL WIND!")
+	if main._should_bail(): return
+	var coin = await main.flip_coin(false, is_opponent)
+	if main._should_bail(): return
+	if coin:
+		# Heal each Active pokemon by 2 damage counters (20 HP), but if they only have 1 counter heal only 1
+		for side in [false, true]:
+			var active = main.opponent_active_pokemon if side else main.player_active_pokemon
+			if active == null: continue
+			var max_hp = active.get_max_hp()
+			var counters = active.get_damage_counters()
+			var heal = min(2, counters) * 10
+			if heal > 0:
+				active.current_hp = min(max_hp, active.current_hp + heal)
+				main.display_hp_circles_above_align(active, side)
+		await main.show_message("TROPICAL WIND! HEADS — BOTH ACTIVE POKÉMON RECOVER UP TO 20 HP!")
+		if main._should_bail(): return
+	else:
+		for side in [false, true]:
+			var active = main.opponent_active_pokemon if side else main.player_active_pokemon
+			if active == null: continue
+			main.card_ops.apply_status(active, "Asleep", side)
+		main.update_status_icons(main.player_active_pokemon, false)
+		main.update_status_icons(main.opponent_active_pokemon, true)
+		await main.show_message("TROPICAL WIND! TAILS — BOTH ACTIVE POKÉMON ARE NOW ASLEEP!")
+		if main._should_bail(): return
+	main.display_pokemon(false)
+	main.display_pokemon(true)
+	print("TRAINER: Tropical Wind - ", "heads (heal)" if coin else "tails (sleep)")
+
+# TROPICAL TIDAL WAVE (np-27/np-36): flip; heads discard all opponent's Trainers in play,
+# tails discard all your own (non-supporter) Trainers in play. Effectively targets the Stadium.
+func effect_np_tropical_tidal_wave(is_opponent: bool) -> void:
+	await main.show_message("TROPICAL TIDAL WAVE!")
+	if main._should_bail(): return
+	var coin = await main.flip_coin(false, is_opponent)
+	if main._should_bail(): return
+	if coin:
+		if main.current_stadium_card != null and main.current_stadium_owner_is_opponent != is_opponent:
+			var sname = main.current_stadium_card.metadata.get("name","").to_upper()
+			remove_current_stadium("Tropical Tidal Wave (heads)")
+			await main.show_message("TROPICAL TIDAL WAVE! HEADS — " + sname + " DISCARDED!")
+		else:
+			await main.show_message("TROPICAL TIDAL WAVE! HEADS — OPPONENT HAS NO TRAINERS IN PLAY!")
+	else:
+		if main.current_stadium_card != null and main.current_stadium_owner_is_opponent == is_opponent:
+			var sname = main.current_stadium_card.metadata.get("name","").to_upper()
+			remove_current_stadium("Tropical Tidal Wave (tails)")
+			await main.show_message("TROPICAL TIDAL WAVE! TAILS — YOUR " + sname + " WAS DISCARDED!")
+		else:
+			await main.show_message("TROPICAL TIDAL WAVE! TAILS — YOU HAVE NO TRAINERS IN PLAY!")
+	if main._should_bail(): return
+	print("TRAINER: Tropical Tidal Wave - ", "heads" if coin else "tails")
+
+# CHAMPIONSHIP ARENA (np-28 Stadium): at end of each player's turn, if that player has 8+ cards
+# in hand, they discard down to 7.
+func np_championship_arena_check(player_turn_just_ended: bool) -> void:
+	if main.current_stadium_card == null: return
+	if main.current_stadium_card.uid.to_lower() != StadiumIds.CHAMPIONSHIP_ARENA: return
+	# The side whose turn just ended must discard if they have 8+ cards
+	var is_opponent_side = not player_turn_just_ended  # opponent's turn just ended = true
+	var hand = main.opponent_hand if is_opponent_side else main.player_hand
+	if hand.size() < 8: return
+	var excess = hand.size() - 7
+	await main.show_message("CHAMPIONSHIP ARENA! " + ("OPPONENT HAS" if is_opponent_side else "YOU HAVE") + " " + str(hand.size()) + " CARDS — DISCARD " + str(excess) + "!")
+	if main._should_bail(): return
+	for i in range(excess):
+		if hand.is_empty(): break
+		if is_opponent_side:
+			var discarded = hand[-1]
+			hand.erase(discarded)
+			discarded.current_location = "discard"
+			main.opponent_discard_pile.append(discarded)
+		else:
+			var remaining = hand.size() - 7
+			var chosen = await main.card_ops.prompt_select_card(hand.duplicate(), "CHAMPIONSHIP ARENA", "Discard a card (" + str(remaining) + " more to discard)", "DISCARD", false)
+			if main._should_bail(): return
+			if chosen == null:
+				chosen = hand[-1]
+			hand.erase(chosen)
+			chosen.current_location = "discard"
+			main.player_discard_pile.append(chosen)
+		if main._should_bail(): return
+	main.refresh_hand_display(is_opponent_side)
+	main.update_discard_pile_display(is_opponent_side)
+	print("STADIUM: Championship Arena — ", is_opponent_side, " discarded ", excess, " card(s)")

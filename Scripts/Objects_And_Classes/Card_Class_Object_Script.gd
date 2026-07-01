@@ -119,6 +119,7 @@ var neo4_prevent_high_damage: int = 0          # neo4-48 Light Jolteon Pulse Gua
 var neo4_prevent_bench_damage: bool = false    # neo4-45 Light Dewgong Ice Pillar: prevent attack damage to your benched next turn
 var neo4_counter_flip_20: bool = false         # neo4-109 Shining Mewtwo Reflect Shield: flip to prevent damage + 20 to attacker
 var neo4_cant_evolve_next_turn: bool = false   # neo4-19 Dark Omastar Dark Tentacle: defender can't evolve next turn
+var perform_damage_stored: int = 0             # neo4-58 Unown [P] [Perform]: damage received while Active last opponent turn
 
 # GYM2 (Gym Challenge) properties
 var gym2_focus_energy_active: bool = false # Lt. Surge's Raticate/Rattata Focus Energy — boosted attack doubled next turn

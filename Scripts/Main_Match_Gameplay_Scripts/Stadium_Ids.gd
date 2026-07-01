@@ -45,3 +45,6 @@ const BROKEN_GROUND_GYM = "neo4-92"  # Each player pays Colorless more to retrea
 const RADIO_TOWER       = "neo4-95"  # Once per turn each player may look at top 2 of deck, put back same order
 const ENERGY_STADIUM    = "neo4-99"  # Once per turn each player may flip — heads basic Energy from discard to hand
 const NEO4_LUCKY_STADIUM = "neo4-100" # Once per turn each player may flip — heads draw a card
+
+# ── Nintendo Promos (np) ───────────────────────────────────────────────────────
+const CHAMPIONSHIP_ARENA  = "np-28"   # At end of each player's turn, if 8+ cards in hand discard to 7

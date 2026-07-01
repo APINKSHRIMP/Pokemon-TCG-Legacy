@@ -101,6 +101,7 @@ var player_retreat_disabled: bool = false
 var opponent_retreat_disabled: bool = false
 var player_retreated_this_turn: bool = false
 var opponent_retreated_this_turn: bool = false
+var xxxxx_used_this_turn: bool = false  # neo4-30 Unown [X] [XXXXX]: only one bonus per turn
 
 # Mirror Move: stores the last attack result so Pidgeotto can copy it
 var last_attack_on_player: Dictionary = {}   # {"damage": int, "attack": Dictionary, "attacker_types": Array}
@@ -2197,7 +2198,15 @@ func perform_energy_attachment() -> void:
 			card_attach_mode_active = false
 			hide_selection_mode_display_main()
 			return
-	
+	# Pure Body (Suicune): block Water Energy if Suicune has no energies to discard
+	if powers_and_bodies.check_pure_body_block(energy_card, target_pokemon):
+		await show_message("PURE BODY! " + target_pokemon.metadata.get("name","").to_upper() + " HAS NO ENERGY TO DISCARD!")
+		energy_card_awaiting_target = null
+		selected_card_for_action = null
+		card_attach_mode_active = false
+		hide_selection_mode_display_main()
+		return
+
 	target_pokemon.attached_energies.append(energy_card)
 	print("Attached ", energy_card.metadata.get("name", "Unknown Energy"), " to ", target_pokemon.metadata.get("name", "Unknown Pokemon"))
 	player_hand.erase(energy_card)
@@ -2240,6 +2249,9 @@ func perform_energy_attachment() -> void:
 	powers_and_bodies.check_lightning_burst(target_pokemon, energy_card, false)
 	# NEO4 Conductivity (Dark Ampharos neo4-1): opponent's Ampharos deals 10 to this Pokemon
 	powers_and_bodies.check_neo4_conductivity(target_pokemon, false)
+	if _should_bail(): return
+	# NP Pure Body (Suicune): discard an energy after Water Energy is attached
+	await powers_and_bodies.check_pure_body_discard(energy_card, target_pokemon, false)
 	if _should_bail(): return
 
 	# MATCH EFFECTS: energy_attach_halve_hp / energy_attach_full_heal
@@ -2568,6 +2580,7 @@ func inbetween_turn_checks(player_turn_just_ended: bool = true) -> void:
 	opponent_retreated_this_turn = false
 	player_energy_attach_count = 0
 	opponent_energy_attach_count = 0
+	xxxxx_used_this_turn = false
 	reset_field_pokemon_turn_flags(false)
 	reset_field_pokemon_turn_flags(true)
 
@@ -2598,6 +2611,8 @@ func inbetween_turn_checks(player_turn_just_ended: bool = true) -> void:
 		powers_and_bodies.clear_neo2_flags_end_of_turn(true)
 		# NEO3: clear triggered_poison/high_speed_locked/submerge/legendary_body flags
 		powers_and_bodies.clear_neo3_flags_end_of_turn(true)
+		# NEO4: clear perform_damage_stored on the player's own pokemon (just finished their attack turn)
+		powers_and_bodies.clear_neo4_flags_end_of_turn(false)
 		clear_end_of_turn_statuses(player_active_pokemon, false)
 		clear_defensive_statuses(opponent_active_pokemon, true)
 		clear_jungle_defensive_statuses(opponent_active_pokemon, true)
@@ -2619,6 +2634,8 @@ func inbetween_turn_checks(player_turn_just_ended: bool = true) -> void:
 		powers_and_bodies.clear_neo2_flags_end_of_turn(false)
 		# NEO3: clear triggered_poison/high_speed_locked/submerge/legendary_body flags
 		powers_and_bodies.clear_neo3_flags_end_of_turn(false)
+		# NEO4: clear perform_damage_stored on the opponent's own pokemon (just finished their attack turn)
+		powers_and_bodies.clear_neo4_flags_end_of_turn(true)
 		clear_end_of_turn_statuses(opponent_active_pokemon, true)
 		clear_defensive_statuses(player_active_pokemon, false)
 		clear_jungle_defensive_statuses(player_active_pokemon, false)
@@ -2691,6 +2708,20 @@ func inbetween_turn_checks(player_turn_just_ended: bool = true) -> void:
 
 	await check_all_knockouts()
 
+	if _should_bail():
+		return
+
+	# NP between-turn passive bodies: Rain Dish (heal Ludicolo), Burning Aura (damage both Actives)
+	await powers_and_bodies.apply_np_between_turn_bodies()
+	if _should_bail():
+		return
+
+	await check_all_knockouts()
+	if _should_bail():
+		return
+
+	# NP Championship Arena: at end of each player's turn, if 8+ cards in hand discard to 7
+	await trainer_effects.np_championship_arena_check(player_turn_just_ended)
 	if _should_bail():
 		return
 
@@ -3350,6 +3381,10 @@ func display_and_apply_attack_damage(attacker: card_object, defender: card_objec
 	if final_damage > 0:
 		SoundManagerScript.play_sfx(SoundManagerScript.SFX_damage_sound)
 		await powers_and_bodies.dispatch_on_damage(defender, attacker, final_damage, !is_opponent)
+		# [PERFORM] (neo4-58 Unown [P]): record damage taken while Active for next turn's Hidden Power bonus
+		var def_is_opp = (defender == opponent_active_pokemon)
+		if defender.has_ability("[Perform]") and defender == (opponent_active_pokemon if def_is_opp else player_active_pokemon):
+			defender.perform_damage_stored = final_damage
 
 	# GYM1-120 Vermilion City Gym: queued self-damage from Lt. Surge tails — apply to attacker after damage resolves
 	if vermilion_lt_surge_self_damage_pending > 0 and attacker != null:
@@ -3388,6 +3423,14 @@ func perform_attack(attack_index: int) -> void:
 
 	# Baby Pokemon rule: player must flip before attacking a Baby Pokemon (tails = turn ends)
 	if await attack_effects.check_baby_rule(opponent_active_pokemon, false):
+		hide_attack_buttons()
+		await get_tree().create_timer(0.5).timeout
+		player_end_turn_checks()
+		return
+
+	# SCARE (neo4-5 Dark Feraligatr): opponent's active Dark Feraligatr blocks Baby from attacking
+	if "Baby" in player_active_pokemon.metadata.get("subtypes", []) and powers_and_bodies.is_scare_active(false):
+		await show_message("SCARE! DARK FERALIGATR PREVENTS BABY POKÉMON FROM ATTACKING!")
 		hide_attack_buttons()
 		await get_tree().create_timer(0.5).timeout
 		player_end_turn_checks()
@@ -3646,6 +3689,13 @@ func calculate_final_damage(base_damage: int, attacking_types: Array, defending_
 		if frenzy_bonus > 0:
 			damage += frenzy_bonus
 			modifiers_applied.append("FRENZY +" + str(frenzy_bonus))
+	# NP Frenzy (Kyogre/Groudon/Rayquaza ex): +40 damage if specific legendary on opponent's side
+	if attacker_pokemon != null:
+		var is_atk_opp = (attacker_pokemon == opponent_active_pokemon or attacker_pokemon in opponent_bench)
+		var np_frenzy = powers_and_bodies.get_np_frenzy_bonus(attacker_pokemon, is_atk_opp)
+		if np_frenzy > 0:
+			damage += np_frenzy
+			modifiers_applied.append("FRENZY +" + str(np_frenzy))
 	
 	# Apply PlusPower bonus (+10 per PlusPower attached to the attacker)
 	# PlusPower is applied AFTER weakness/resistance per original TCG rules
@@ -4081,16 +4131,32 @@ func process_status_between_turns(pokemon: card_object, is_opponent: bool) -> vo
 				print("BETWEEN TURNS: ", pokemon_name, " cured of burn (heads)")
 
 	if pokemon.special_condition == "Asleep":
-		await show_message(pokemon_name.to_upper() + " IS ASLEEP! FLIPPING COIN...")
-		var coin = await flip_coin(false, is_opponent)
-		if coin:
-			pokemon.special_condition = ""
-			await show_message(pokemon_name.to_upper() + " WOKE UP!")
-			update_status_icons(pokemon, is_opponent)
-			print("BETWEEN TURNS: ", pokemon_name, " woke up (heads)")
+		# DEEP SLEEP (neo4-6 Dark Gengar): flip 2 coins — BOTH must be heads to wake up
+		if powers_and_bodies.is_deep_sleep_active():
+			await show_message("DEEP SLEEP! " + pokemon_name.to_upper() + " IS IN DEEP SLEEP! FLIPPING 2 COINS...")
+			var c1 = await flip_coin(false, is_opponent)
+			if _should_bail(): return
+			var c2 = await flip_coin(false, is_opponent)
+			if _should_bail(): return
+			if c1 and c2:
+				pokemon.special_condition = ""
+				await show_message(pokemon_name.to_upper() + " WOKE UP! (BOTH HEADS)")
+				update_status_icons(pokemon, is_opponent)
+				print("BETWEEN TURNS: ", pokemon_name, " woke up from Deep Sleep (both heads)")
+			else:
+				await show_message(pokemon_name.to_upper() + " IS STILL ASLEEP! (DEEP SLEEP)")
+				print("BETWEEN TURNS: ", pokemon_name, " still asleep via Deep Sleep")
 		else:
-			await show_message(pokemon_name.to_upper() + " IS STILL ASLEEP!")
-			print("BETWEEN TURNS: ", pokemon_name, " still asleep (tails)")
+			await show_message(pokemon_name.to_upper() + " IS ASLEEP! FLIPPING COIN...")
+			var coin = await flip_coin(false, is_opponent)
+			if coin:
+				pokemon.special_condition = ""
+				await show_message(pokemon_name.to_upper() + " WOKE UP!")
+				update_status_icons(pokemon, is_opponent)
+				print("BETWEEN TURNS: ", pokemon_name, " woke up (heads)")
+			else:
+				await show_message(pokemon_name.to_upper() + " IS STILL ASLEEP!")
+				print("BETWEEN TURNS: ", pokemon_name, " still asleep (tails)")
 
 # Checks confusion retreat rules at the given phase, returns true if retreat should proceed
 func check_confused_retreat(pokemon: card_object, is_opponent: bool, phase: String) -> bool:
@@ -4295,6 +4361,10 @@ func get_retreat_cost(pokemon: card_object) -> int:
 
 	# NEO3 Balloon Berry (neo3-60 Tool): makes retreat free
 	if trainer_effects.check_balloon_berry_retreat_free(pokemon):
+		return 0
+
+	# NP Synchronized Lift (np-31/32/33 Moltres/Articuno/Zapdos ex): free retreat if partners in play
+	if powers_and_bodies.check_synchronized_lift(pokemon, pokemon_is_opponent):
 		return 0
 
 	return cost
@@ -4611,6 +4681,10 @@ func handle_action_retreat_bench() -> void:
 		display_active_pokemon_energies(false)
 		return
 
+	# [CHASE] (neo4-57 Unown [C]): opponent's active Unown [C] may deal 1 damage counter when we retreat
+	await powers_and_bodies.check_neo4_chase(player_active_pokemon, false)
+	if _should_bail(): return
+
 	player_bench.erase(new_active)
 	player_bench.append(player_active_pokemon)
 
@@ -4620,7 +4694,7 @@ func handle_action_retreat_bench() -> void:
 	player_retreated_this_turn = true
 	retreat_bench_selection_active = false
 	selected_card_for_action = null
-	
+
 	var retreating_pokemon = player_active_pokemon  # Save ref before reassignment
 
 	hide_selection_mode_display_main()

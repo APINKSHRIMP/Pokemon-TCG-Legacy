@@ -1145,6 +1145,10 @@ func execute_cpu_retreat(cpu_eval: Dictionary) -> void:
 		main.display_active_pokemon_energies(true)
 		return
 
+	# [CHASE] (neo4-57 Unown [C]): player's active Unown [C] may deal 1 damage counter when CPU retreats
+	await main.powers_and_bodies.check_neo4_chase(main.opponent_active_pokemon, true)
+	if main._should_bail(): return
+
 	# Swap positions
 	var old_active = main.opponent_active_pokemon
 	main.opponent_bench.erase(best_replacement)
@@ -1331,6 +1335,10 @@ func cpu_phase_energy_attachment(cpu_eval: Dictionary) -> void:
 		if not attach_check["allowed"]:
 			print("CPU energy attachment blocked: ", attach_check["reason"])
 			return
+	# Pure Body (Suicune): block Water Energy if Suicune has no energies to discard
+	if main.powers_and_bodies.check_pure_body_block(energy, target):
+		print("CPU energy attachment blocked: Pure Body — no energy to discard")
+		return
 
 	# Perform the attachment
 	main.opponent_hand.erase(energy)
@@ -1375,6 +1383,9 @@ func cpu_phase_energy_attachment(cpu_eval: Dictionary) -> void:
 	main.powers_and_bodies.check_lightning_burst(target, energy, true)
 	# NEO4 Conductivity (Dark Ampharos neo4-1): opponent's Ampharos deals 10 to this Pokemon
 	main.powers_and_bodies.check_neo4_conductivity(target, true)
+	if main._should_bail(): return
+	# NP Pure Body (Suicune): discard an energy after Water Energy attached
+	await main.powers_and_bodies.check_pure_body_discard(energy, target, true)
 	if main._should_bail(): return
 
 	# MATCH EFFECTS: energy_attach_halve_hp / energy_attach_full_heal
@@ -2646,6 +2657,12 @@ func cpu_phase_attack(cpu_eval: Dictionary) -> void:
 
 	# Baby Pokemon rule: CPU must flip before attacking a Baby Pokemon (tails = CPU turn ends)
 	if await main.attack_effects.check_baby_rule(main.player_active_pokemon, true):
+		return
+
+	# SCARE (neo4-5 Dark Feraligatr): player's active Dark Feraligatr blocks CPU Baby from attacking
+	if "Baby" in main.opponent_active_pokemon.metadata.get("subtypes", []) and main.powers_and_bodies.is_scare_active(true):
+		await main.show_message("SCARE! DARK FERALIGATR PREVENTS BABY POKÉMON FROM ATTACKING!")
+		if main._should_bail(): return
 		return
 
 	# GYM2 Misty's Gyarados Rebellion — flip 2; both tails cancels the attack and shuffles Gyarados into deck

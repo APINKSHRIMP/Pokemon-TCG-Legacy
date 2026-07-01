@@ -31,6 +31,9 @@ var main: Node
 # Returns the energy types this special energy card provides while attached/in play.
 # This is called by Main_Match_Core_Gameplay_Script.get_energy_provided_by_card() for special energies.
 func get_energy_types_provided(card_name: String) -> Array:
+	# MIRACULOUS WIND (neo4-14 Light Dragonite): all Special Energy becomes Colorless while active
+	if main.powers_and_bodies.is_miraculous_wind_active():
+		return ["Colorless"]
 	match card_name:
 		"Double Colorless Energy":
 			return ["Colorless", "Colorless"]
@@ -71,13 +74,15 @@ func is_known_special_energy(card_name: String) -> bool:
 func can_attach_to(energy_card: card_object, target_pokemon: card_object) -> Dictionary:
 	var card_name = energy_card.metadata.get("name", "")
 
-	# Pure Body (basep-53 Suicune): while Suicune is the opposing Active, special energy attachment is blocked
-	var target_is_opp = (target_pokemon == main.opponent_active_pokemon or target_pokemon in main.opponent_bench)
-	var opposing_active = main.player_active_pokemon if target_is_opp else main.opponent_active_pokemon
-	if opposing_active != null and not main.powers_and_bodies.is_power_blocked(opposing_active):
-		for ab in opposing_active.metadata.get("abilities", []):
+	# Pure Body (basep-53/np-30 Suicune): when attaching Water Energy to Suicune,
+	# Suicune must have at least 1 energy to discard — block if it has none.
+	if not main.powers_and_bodies.is_power_blocked(target_pokemon):
+		for ab in target_pokemon.metadata.get("abilities", []):
 			if ab.get("name", "") == "Pure Body":
-				return {"allowed": false, "reason": "PURE BODY! " + opposing_active.metadata.get("name", "").to_upper() + " PREVENTS SPECIAL ENERGY ATTACHMENT!"}
+				var energy_provided = get_energy_types_provided(card_name)
+				if "Water" in energy_provided:
+					if target_pokemon.attached_energies.is_empty():
+						return {"allowed": false, "reason": "PURE BODY! " + target_pokemon.metadata.get("name", "").to_upper() + " HAS NO ENERGY TO DISCARD!"}
 
 	match card_name:
 		"Rainbow Energy", "Full Heal Energy", "Potion Energy", "Double Colorless Energy", \
@@ -208,9 +213,12 @@ func process_end_of_turn_discards(is_opponent: bool) -> void:
 # Returns: {"bonus": int, "reduction": int}
 # bonus = extra damage added to attacks, reduction = damage reduced from incoming attacks
 func get_outgoing_damage_modifier(pokemon: card_object) -> Dictionary:
+	# MIRACULOUS WIND: suppress Darkness/Metal passive effects
+	if main.powers_and_bodies.is_miraculous_wind_active():
+		return {"bonus": 0}
 	var bonus = 0
 	#var pokemon_types = pokemon.metadata.get("types", [])
-	
+
 	for energy in pokemon.attached_energies:
 		var energy_name = energy.metadata.get("name", "")
 		match energy_name:
@@ -224,9 +232,12 @@ func get_outgoing_damage_modifier(pokemon: card_object) -> Dictionary:
 
 # Returns incoming damage reduction from special energies (e.g. Metal Energy)
 func get_incoming_damage_reduction(pokemon: card_object) -> int:
+	# MIRACULOUS WIND: suppress Metal Energy damage reduction
+	if main.powers_and_bodies.is_miraculous_wind_active():
+		return 0
 	var reduction = 0
 	#var pokemon_types = pokemon.metadata.get("types", [])
-	
+
 	for energy in pokemon.attached_energies:
 		var energy_name = energy.metadata.get("name", "")
 		match energy_name:
