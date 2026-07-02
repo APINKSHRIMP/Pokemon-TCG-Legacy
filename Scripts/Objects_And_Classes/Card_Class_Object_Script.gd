@@ -143,11 +143,41 @@ var gym2_giovanni_evolve_anywhere: bool = false # gym2-18/104 Giovanni — bypas
 var gym2_brocks_protection_attached: bool = false # gym2-101 Brock's Protection — attached energies are protected from opp's attacks / Trainer cards
 var gym2_koga_ninja_trick_attached: bool = false  # gym2-115 Koga's Ninja Trick — owner may switch this pokemon with a bench pokemon when opponent attacks it; discarded if it leaves Active by any other means
 
-# ECARD1 (Expedition) Trainer attachments
-var ecard1_strength_charm_triggered_this_turn: bool = false # ecard1-150 Strength Charm — set true when the +10 damage bonus is applied; discarded at end of that turn
+# ── Generic expiring-effects store ─────────────────────────────────────────────
+# Replaces one-off per-set boolean flags for temporary effects. Keys are short
+# effect-id strings (e.g. "tailwind", "strength_charm_triggered"). Values hold a
+# duration tag and optional payload. Durations:
+#   "end_of_own_turn"       — cleared when this card's owner's turn ends
+#   "end_of_opponent_turn"  — cleared when the other side's turn ends
+#   "until_leaves_play"     — cleared only in send_card_to_discard / return-to-hand paths
+# New sets must use set_effect/has_effect for temporary per-pokemon state instead
+# of adding new one-off booleans here.
+var active_effects: Dictionary = {}
 
-# ECARD1 (Expedition) Poké-Power flags
-var ecard1_tailwind_active: bool = false # ecard1-9 Dragonite's Tailwind — this Pokemon's Retreat Cost is 0 for the rest of the turn
+func set_effect(effect_id: String, duration: String, data = null) -> void:
+	active_effects[effect_id] = {"duration": duration, "data": data}
+
+func has_effect(effect_id: String) -> bool:
+	return active_effects.has(effect_id)
+
+func get_effect_data(effect_id: String):
+	if not active_effects.has(effect_id):
+		return null
+	return active_effects[effect_id]["data"]
+
+func clear_effect(effect_id: String) -> void:
+	active_effects.erase(effect_id)
+
+func clear_effects_with_duration(duration: String) -> void:
+	var to_remove: Array = []
+	for k in active_effects:
+		if active_effects[k]["duration"] == duration:
+			to_remove.append(k)
+	for k in to_remove:
+		active_effects.erase(k)
+
+func clear_all_expiring_effects() -> void:
+	active_effects.clear()
 
 # GYM1 + GYM2 Pokemon Powers / Bodies — per-pokemon state
 var shapeshift_form_metadata: Dictionary = {}   # gym2-3 Brock's Ninetales Shapeshift: metadata of the Evolution card attached as a form

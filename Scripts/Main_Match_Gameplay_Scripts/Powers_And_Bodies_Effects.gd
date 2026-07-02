@@ -76,15 +76,33 @@ func _register_all_powers() -> void:
 var _on_damage_hooks: Array = []
 var _pre_ko_hooks: Array = []
 
+# Damage-modifier hooks: called from Main.calculate_final_damage AFTER Weakness/Resistance.
+# Signature: fn(damage: int, attacker: card_object, defender: card_object, modifiers: Array) -> int
+# Each hook returns the (possibly reduced/increased) damage. NOT async — no awaits allowed inside.
+# All NEW passive damage-modifying bodies from ecard2 onward register a hook here; do not edit
+# calculate_final_damage directly.
+var _damage_modifier_hooks: Array = []
+
 func register_on_damage_hook(fn: Callable) -> void:
 	_on_damage_hooks.append(fn)
 
 func register_pre_ko_hook(fn: Callable) -> void:
 	_pre_ko_hooks.append(fn)
 
+func add_damage_modifier_hook(fn: Callable) -> void:
+	_damage_modifier_hooks.append(fn)
+
+func run_damage_modifier_hooks(damage: int, attacker: card_object, defender: card_object, modifiers: Array) -> int:
+	for fn in _damage_modifier_hooks:
+		damage = fn.call(damage, attacker, defender, modifiers)
+	return damage
+
 func _register_all_power_hooks() -> void:
 	_on_damage_hooks.clear()
 	_pre_ko_hooks.clear()
+	_damage_modifier_hooks.clear()
+	_damage_modifier_hooks.append(func(dmg, atk, def, mods): return _hook_ecard1_reduction_bodies(dmg, atk, def, mods))
+	_damage_modifier_hooks.append(func(dmg, atk, def, mods): return _hook_ecard1_strength_charm(dmg, atk, def, mods))
 	_on_damage_hooks.append(func(def, atk, dmg, is_def_opp): await check_strikes_back(def, atk, is_def_opp))
 	_on_damage_hooks.append(func(def, atk, dmg, is_def_opp): await check_restless_sleep(def, atk, is_def_opp))
 	_on_damage_hooks.append(func(def, atk, dmg, is_def_opp): await check_pollen_defense(def, atk, is_def_opp))
@@ -217,8 +235,12 @@ func open_power_menu() -> void:
 			if ability_type != "Pokémon Power" and ability_type != "Pokemon Power" and ability_type != "Poké-Power" and ability_type != "Poke-Power":
 				continue
 			var ability_name = ability.get("name", "")
-			# Skip passive powers (they don't go in menu)
-			if ability_name in ["Strikes Back", "Energy Burn", "Invisible Wall", "Thick Skinned", "Retreat Aid", "Prehistoric Power", "Toxic Gas", "Transparency", "Kabuto Armor", "Clairvoyance", "Transform", "Sinkhole", "Hay Fever", "Sticky Goo", "Frenzy", "Final Beam", "Sneak Attack", "Summon Minions", "Reel In", "Bench Guard", "Pollen Defense", "Flee", "Rebirth", "Shell Armor", "Restless Sleep", "Strange Barrier", "Photosynthesis", "Fortitude", "Call the Boss", "Rebellion", "Psylink", "Healing Fire", "Energy Drain", "Scram", "Relaxing Scent", "Shock Blast", "Gaseous Form", "Bolt", "Neutral Shield", "Aurora Veil", "Guard", "Pure Body", "Berserk", "Final Blow", "Herbal Scent", "Wild Growth", "Mind Games", "Fire Boost", "Hydroelectric Power", "Spikes", "Frog Song", "[Anger]", "[Darkness]", "[Metal]", "[Normal]", "Energy Evolution", "Conductivity", "Surprise Bite", "Scare", "Deep Sleep", "Hot Plate", "Fluffy Wool", "Gift", "Tag Team", "Miraculous Wind", "[Chase]", "[Perform]", "[XXXXX]", "[Zoom]", "[Vanish]", "Rain Dish", "Burning Aura", "Synchronized Lift"]:
+			# Only offer abilities that have a registered activation function — passives (and
+			# not-yet-implemented powers) simply aren't in _power_dispatch, so they never
+			# appear here. This is derived from _power_dispatch instead of a hand-maintained
+			# skip list; see activate_power() which uses the same dictionary.
+			_ensure_power_dispatch_ready()
+			if not _power_dispatch.has(ability_name):
 				continue
 			# Toxic Gas blocks all other powers
 			if toxic_gas_active:
@@ -6840,12 +6862,9 @@ func power_ecard1_moonlight(clefable: card_object) -> void:
 		if main._should_bail(): return
 		return
 	var deck = main.opponent_deck if is_opponent else main.player_deck
-	var card_to_return: card_object = null
-	if is_opponent:
-		card_to_return = hand[0]
-	else:
-		card_to_return = await main.card_ops.prompt_select_card(hand, "MOONLIGHT", "Select a card to put back on your deck", "SELECT", true)
-		if main._should_bail(): return
+	var card_to_return: card_object = await main.card_ops.choose_card(hand, is_opponent,
+			"MOONLIGHT", "Select a card to put back on your deck", "SELECT", true, func(_c): return 0.0)
+	if main._should_bail(): return
 	if card_to_return == null: return
 	clefable.power_used_this_turn = true
 	hand.erase(card_to_return)
@@ -6860,12 +6879,9 @@ func power_ecard1_moonlight(clefable: card_object) -> void:
 		deck.shuffle()
 		main.update_deck_icon(is_opponent)
 		return
-	var chosen: card_object = null
-	if is_opponent:
-		chosen = basic_energies[0]
-	else:
-		chosen = await main.card_ops.prompt_select_card(basic_energies, "MOONLIGHT", "Select a basic Energy to add to hand", "SELECT", false, true)
-		if main._should_bail(): return
+	var chosen: card_object = await main.card_ops.choose_card(basic_energies, is_opponent,
+			"MOONLIGHT", "Select a basic Energy to add to hand", "SELECT", false, Callable(), true)
+	if main._should_bail(): return
 	if chosen != null:
 		deck.erase(chosen)
 		chosen.current_location = "hand"
@@ -6949,8 +6965,9 @@ func power_ecard1_poison_pollen(vileplume: card_object) -> void:
 	print("POWER USED: Poison Pollen")
 
 # PSYMIMIC (Alakazam ecard1-1): once per turn, instead of attacking, copy one of the opponent's Active Pokemon's attacks.
-# Simplification: automatically copies the opponent's Active's highest-damage attack (energy cost/discard requirements
-# of the copied attack are not separately re-validated against Alakazam's own attachments).
+# Energy cost is validated against Alakazam's own attached energy via execute_copied_attack(require_cost=true).
+# Simplification: automatically copies the opponent's Active's highest-damage attack rather than
+# letting the player choose which attack to copy.
 func power_ecard1_psymimic(alakazam: card_object) -> void:
 	var is_opponent = alakazam.is_owner_opp(main)
 	if is_power_blocked_by_status(alakazam):
@@ -6983,7 +7000,7 @@ func power_ecard1_psymimic(alakazam: card_object) -> void:
 	alakazam.power_used_this_turn = true
 	await main.show_message("PSYMIMIC! COPYING " + chosen_attack.get("name","").to_upper() + "!")
 	if main._should_bail(): return
-	await main.attack_effects.dispatch_attack(chosen_attack, alakazam, opp_active, is_opponent)
+	await main.attack_effects.execute_copied_attack(chosen_attack, alakazam, opp_active, is_opponent, true)
 	if main._should_bail(): return
 	print("POWER USED: Psymimic — copied ", chosen_attack.get("name",""))
 
@@ -7043,7 +7060,7 @@ func power_ecard1_tailwind(dragonite: card_object) -> void:
 	var active = main.opponent_active_pokemon if is_opponent else main.player_active_pokemon
 	if active == null: return
 	dragonite.power_used_this_turn = true
-	active.ecard1_tailwind_active = true
+	active.set_effect("ecard1_tailwind", "end_of_own_turn")
 	await main.show_message("TAILWIND! " + active.metadata.get("name","").to_upper() + "'S RETREAT COST IS NOW 0!")
 	if main._should_bail(): return
 	print("POWER USED: Tailwind")
@@ -7143,3 +7160,36 @@ func cpu_phase_ecard1_powers() -> void:
 		if main.player_prize_cards.size() <= 3:
 			await power_ecard1_chaos_move(chaos_move)
 			if main._should_bail(): return
+
+######################################################################################################################################################
+################################################## DAMAGE-MODIFIER HOOK EXEMPLARS (Phase 3) ##########################################################
+######################################################################################################################################################
+
+# ECARD1 Poké-Bodies: Exoskeleton (Metapod) -20, Rock Body (Golem) -10, after W/R.
+func _hook_ecard1_reduction_bodies(damage: int, _attacker: card_object, defender: card_object, modifiers: Array) -> int:
+	if damage <= 0 or defender == null:
+		return damage
+	if is_power_blocked_by_status(defender):
+		return damage
+	for ability in defender.metadata.get("abilities", []):
+		var ab_name = ability.get("name", "")
+		if ab_name == "Exoskeleton":
+			var r = min(damage, 20)
+			modifiers.append("EXOSKELETON -" + str(r))
+			return damage - r
+		elif ab_name == "Rock Body":
+			var r = min(damage, 10)
+			modifiers.append("ROCK BODY -" + str(r))
+			return damage - r
+	return damage
+
+# ECARD1 Strength Charm (ecard1-150): +10 to attacker's damage once; flags itself for end-of-turn discard.
+func _hook_ecard1_strength_charm(damage: int, attacker: card_object, _defender: card_object, modifiers: Array) -> int:
+	if damage <= 0 or attacker == null:
+		return damage
+	for ac in attacker.attached_cards:
+		if ac.uid.to_lower() == "ecard1-150":
+			modifiers.append("STRENGTH CHARM +10")
+			attacker.set_effect("ecard1_strength_charm_triggered", "end_of_own_turn")
+			return damage + 10
+	return damage

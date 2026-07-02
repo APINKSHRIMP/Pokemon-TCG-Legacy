@@ -372,6 +372,32 @@ func prompt_select_card(pool: Array, header: String, hint: String, btn_text: Str
 	main.opponent_blocker.visible = true
 	return sel
 
+# ── Unified chooser ─────────────────────────────────────────────────────────────
+# One call site for "pick a card from a pool" that works for BOTH sides:
+#  - player (is_opponent == false): shows the standard selection UI
+#  - CPU (is_opponent == true): picks the highest-ranked card via cpu_rank_fn,
+#    or pool[0] when no ranker is given.
+# cpu_rank_fn signature: fn(card: card_object) -> float  (higher = better)
+# Returns null if the pool is empty or the player cancels (when cancelable).
+# NEW SETS MUST USE THIS instead of hand-writing `if is_opponent:` branches.
+func choose_card(pool: Array, is_opponent: bool, header: String, hint: String,
+		btn_text: String, cancelable: bool, cpu_rank_fn: Callable = Callable(),
+		search_mode: bool = false) -> card_object:
+	if pool.is_empty():
+		return null
+	if is_opponent:
+		if cpu_rank_fn.is_valid():
+			var best: card_object = pool[0]
+			var best_score: float = -INF
+			for c in pool:
+				var s = float(cpu_rank_fn.call(c))
+				if s > best_score:
+					best_score = s
+					best = c
+			return best
+		return pool[0]
+	return await prompt_select_card(pool, header, hint, btn_text, cancelable, search_mode)
+
 # ── Bench Damage ──────────────────────────────────────────────────────────────────────────
 
 # Apply `damage` to a bench pokemon and show a floating damage label above its bench position.

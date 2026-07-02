@@ -317,7 +317,6 @@ var trainer_effects: Node
 var cpu_ai: Node
 var powers_and_bodies: Node
 var card_ops: Node
-var trainer_dsl: Node
 var match_effects: Node
 
 # Fix 1: Set metadata cache — keyed by set prefix string, value is parsed Array from JSON
@@ -1891,8 +1890,18 @@ func get_card_metadata(card_uid: String):
 	return null
 
 # Main function to check if a card is a basic pokemon or not. Will return true or false
+# Returns true if the card is a Pokémon-ex (2-prize KO). Subtype casing is inconsistent across
+# sets in Card_Set_Data (ex1-16/pop use "ex" lowercase, np uses "EX" uppercase) — check case-insensitively.
+func is_ex_pokemon(card: card_object) -> bool:
+	if card == null:
+		return false
+	for st in card.metadata.get("subtypes", []):
+		if str(st).to_lower() == "ex":
+			return true
+	return false
+
 func is_basic_pokemon(card: card_object) -> bool:
-	
+
 	# Get the metadata from the card object directly
 	var card_full_metadata = card.metadata
 	
@@ -2458,6 +2467,7 @@ func send_card_to_discard(card: card_object, is_opponent: bool) -> void:
 	card.has_destiny_bond = false
 	card.pluspower_count = 0
 	card.defender_turns_remaining = -1
+	card.clear_all_expiring_effects()
 	card.no_prize_on_ko = false
 	card.is_bench_token = false
 	card.power_used_this_turn = false
@@ -3713,14 +3723,8 @@ func calculate_final_damage(base_damage: int, attacking_types: Array, defending_
 		damage += pp_bonus
 		modifiers_applied.append("PLUSPOWER +" + str(pp_bonus))
 
-	# ECARD1 Strength Charm (ecard1-150): +10 damage once attached, then discarded at end of the turn it triggers
-	if damage > 0 and attacker_pokemon != null:
-		for ac in attacker_pokemon.attached_cards:
-			if ac.uid.to_lower() == "ecard1-150":
-				damage += 10
-				modifiers_applied.append("STRENGTH CHARM +10")
-				attacker_pokemon.ecard1_strength_charm_triggered_this_turn = true
-				break
+	# Registered damage-modifier hooks (passive bodies, attached tools — see Powers_And_Bodies_Effects)
+	damage = powers_and_bodies.run_damage_modifier_hooks(damage, attacker_pokemon, defending_pokemon, modifiers_applied)
 
 	# GYM1 Misty (gym1-18/102): +20 to next damage attack by an attacker whose name contains "Misty"
 	# Boost is owned by whichever side played the card and applies once; consumed here.
@@ -3748,21 +3752,6 @@ func calculate_final_damage(base_damage: int, attacking_types: Array, defending_
 		damage -= reduction
 		modifiers_applied.append("DEFENDER -" + str(reduction))
 
-	# ECARD1 Poké-Bodies: Exoskeleton (Metapod) -20, Rock Body (Golem) -10 (after Weakness/Resistance)
-	if damage > 0 and not powers_and_bodies.is_power_blocked_by_status(defending_pokemon):
-		for ability in defending_pokemon.metadata.get("abilities", []):
-			var ab_name = ability.get("name", "")
-			if ab_name == "Exoskeleton":
-				var reduction2 = min(damage, 20)
-				damage -= reduction2
-				modifiers_applied.append("EXOSKELETON -" + str(reduction2))
-				break
-			elif ab_name == "Rock Body":
-				var reduction3 = min(damage, 10)
-				damage -= reduction3
-				modifiers_applied.append("ROCK BODY -" + str(reduction3))
-				break
-	
 	# Apply Kabuto Armor (halve damage, rounded down to nearest 10)
 	if damage > 0:
 		damage = powers_and_bodies.apply_kabuto_armor(defending_pokemon, damage)
@@ -3948,17 +3937,19 @@ func check_all_knockouts() -> Dictionary:
 	
 	for pokemon in opponent_to_check:
 		var should_award_prize = not pokemon.no_prize_on_ko
+		var prizes_for_this_ko = 2 if is_ex_pokemon(pokemon) else 1
 		if await check_and_handle_knockout(pokemon, true):
 			results["opponent_kos"] += 1
 			if should_award_prize:
-				opponent_prize_kos += 1
-	
+				opponent_prize_kos += prizes_for_this_ko
+
 	for pokemon in player_to_check:
 		var should_award_prize = not pokemon.no_prize_on_ko
+		var prizes_for_this_ko = 2 if is_ex_pokemon(pokemon) else 1
 		if await check_and_handle_knockout(pokemon, false):
 			results["player_kos"] += 1
 			if should_award_prize:
-				player_prize_kos += 1
+				player_prize_kos += prizes_for_this_ko
 			
 	# MATCH EFFECT: double_prizes — multiply prize-awarding KOs (after the no_prize_on_ko
 	# filter, so bench tokens still award nothing). Existing size() guards handle overflow.
@@ -4344,7 +4335,7 @@ func get_retreat_cost(pokemon: card_object) -> int:
 		return 0
 
 	# ECARD1 Tailwind (Dragonite): this Pokemon's Retreat Cost is 0 for the rest of the turn
-	if pokemon.ecard1_tailwind_active:
+	if pokemon.has_effect("ecard1_tailwind"):
 		return 0
 
 	# MATCH EFFECT: free_retreat — retreating costs nothing for this side
@@ -5341,11 +5332,6 @@ func _ready() -> void:
 	card_ops.set_script(preload("res://Scripts/Main_Match_Gameplay_Scripts/Card_Ops.gd"))
 	add_child(card_ops)
 	card_ops.main = self
-
-	trainer_dsl = Node.new()
-	trainer_dsl.set_script(preload("res://Scripts/Main_Match_Gameplay_Scripts/Trainer_Effects_Simple_DSL.gd"))
-	add_child(trainer_dsl)
-	trainer_dsl.main = self
 
 	match_effects = Node.new()
 	match_effects.set_script(preload("res://Scripts/Main_Match_Gameplay_Scripts/Match_Effects.gd"))

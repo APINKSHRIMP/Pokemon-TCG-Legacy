@@ -14070,6 +14070,66 @@ func execute_np_mix_up(attacker: card_object, defender: card_object, is_opponent
 	print("ATTACK EXECUTED: Mix-Up")
 
 ######################################################################################################################################################
+######################################################## FOREIGN-ATTACK EXECUTION ###################################################################
+######################################################################################################################################################
+
+# Executes an attack the attacker does not own (copy effects: Psymimic, Mimic,
+# Metronome, TM cards). Handles BOTH dispatch-table attacks and generic attacks.
+# If require_cost is true, the attacker's attached energy must satisfy the copied
+# attack's cost or the function shows a message and returns false.
+func execute_copied_attack(attack: Dictionary, attacker: card_object, defender: card_object,
+		is_opponent: bool, require_cost: bool) -> bool:
+	if require_cost and main.cpu_ai.get_unmet_energy_count(attack, attacker) > 0:
+		await main.show_message("NOT ENOUGH ENERGY TO COPY " + attack.get("name","").to_upper() + "!")
+		if main._should_bail(): return false
+		return false
+	if await dispatch_attack(attack, attacker, defender, is_opponent):
+		return true
+	await execute_generic_copied_attack(attack, attacker, defender, is_opponent)
+	return true
+
+# Generic path for a copied attack with no dispatch entry: variable-damage resolution
+# (coin-flip ×/+ patterns, condition gates) + Weakness/Resistance + standard card-text effects.
+func execute_generic_copied_attack(attack: Dictionary, attacker: card_object, defender: card_object, is_opponent: bool) -> void:
+	if await handle_attack_confusion(attacker, is_opponent): return
+	if await handle_attack_blind(attacker, is_opponent): return
+	var variable_result = await resolve_attack_variable_damage(attack, attacker, defender, is_opponent)
+	if main._should_bail(): return
+	var resolved_base: int = variable_result["damage"]
+	var flip_result: String = variable_result["flip_result"]
+
+	if variable_result["attack_failed"]:
+		for msg in variable_result["messages"]:
+			await main.show_message(msg)
+			if main._should_bail(): return
+		var _failed_effects = parse_card_text_effects(attack.get("text", ""), attacker.metadata.get("name", ""))
+		if _failed_effects.size() > 0:
+			await apply_card_text_effects(_failed_effects, attacker, defender, is_opponent, flip_result)
+			if main._should_bail(): return
+		print("ATTACK EXECUTED (copied, generic path, failed): ", attack.get("name",""))
+		return
+
+	for msg in variable_result["messages"]:
+		await main.show_message(msg)
+		if main._should_bail(): return
+
+	var types = attacker.metadata.get("types", ["Colorless"])
+	if resolved_base > 0:
+		var result = main.calculate_final_damage(resolved_base, types, defender, attacker)
+		if not main.check_defender_invincible(defender, not is_opponent):
+			var fd = main.apply_defender_no_damage_shield(defender, result["damage"], not is_opponent)
+			await main.display_and_apply_attack_damage(attacker, defender, fd, result["modifiers"], is_opponent, resolved_base)
+			if main._should_bail(): return
+
+	var effects = parse_card_text_effects(attack.get("text", ""), attacker.metadata.get("name", ""))
+	if effects.size() > 0:
+		await apply_card_text_effects(effects, attacker, defender, is_opponent, flip_result)
+		if main._should_bail(): return
+	await main.check_all_knockouts()
+	if main._should_bail(): return
+	print("ATTACK EXECUTED (copied, generic path): ", attack.get("name",""))
+
+######################################################################################################################################################
 ##################################################### ECARD1 (EXPEDITION) ATTACK EFFECTS #############################################################
 ######################################################################################################################################################
 

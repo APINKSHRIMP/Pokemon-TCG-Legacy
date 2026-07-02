@@ -3421,9 +3421,6 @@ func gym1_end_of_turn_cleanup(side_is_opponent: bool) -> void:
 		# Recall expires at end of own turn
 		if pokemon.gym1_recall_active:
 			pokemon.gym1_recall_active = false
-		# ECARD1 Tailwind expires at end of own turn
-		if pokemon.ecard1_tailwind_active:
-			pokemon.ecard1_tailwind_active = false
 		# GYM2 Giovanni evolve-anywhere expires at end of own turn
 		if pokemon.gym2_giovanni_evolve_anywhere:
 			pokemon.gym2_giovanni_evolve_anywhere = false
@@ -3470,7 +3467,7 @@ func gym1_end_of_turn_cleanup(side_is_opponent: bool) -> void:
 				print("SABRINA'S ESP: discarded from ", pokemon.metadata.get("name", ""))
 
 		# ECARD1 Strength Charm: discarded at end of the turn its +10 bonus was applied
-		if pokemon.ecard1_strength_charm_triggered_this_turn:
+		if pokemon.has_effect("ecard1_strength_charm_triggered"):
 			var charm_card: card_object = null
 			for ac in pokemon.attached_cards:
 				if ac.uid.to_lower() == "ecard1-150":
@@ -3487,7 +3484,6 @@ func gym1_end_of_turn_cleanup(side_is_opponent: bool) -> void:
 				display_attached_trainer_cards(side_is_opponent)
 				main.update_discard_pile_display(side_is_opponent)
 				print("STRENGTH CHARM: discarded from ", pokemon.metadata.get("name", ""))
-			pokemon.ecard1_strength_charm_triggered_this_turn = false
 
 		# ECARD1 Multi Technical Machine 01: discarded at end of every turn, regardless of use
 		var tm_card: card_object = null
@@ -3506,6 +3502,21 @@ func gym1_end_of_turn_cleanup(side_is_opponent: bool) -> void:
 			display_attached_trainer_cards(side_is_opponent)
 			main.update_discard_pile_display(side_is_opponent)
 			print("MULTI TECHNICAL MACHINE 01: discarded from ", pokemon.metadata.get("name", ""))
+
+		# Generic expiring-effects: clear everything tagged end_of_own_turn for this side.
+		# Must run LAST in this loop body — effects like Strength Charm's trigger flag are
+		# read above (to decide whether to discard the tool) before being cleared here.
+		pokemon.clear_effects_with_duration("end_of_own_turn")
+
+	# Generic expiring-effects: effects on the OTHER side tagged to expire when THIS side's turn ends
+	var other_active = main.player_active_pokemon if side_is_opponent else main.opponent_active_pokemon
+	var other_bench = main.player_bench if side_is_opponent else main.opponent_bench
+	var other_pokemon: Array = []
+	if other_active != null:
+		other_pokemon.append(other_active)
+	other_pokemon.append_array(other_bench)
+	for op in other_pokemon:
+		op.clear_effects_with_duration("end_of_opponent_turn")
 
 # Restores cards held aside by Tickling Machine when the tickled side's own next turn ends.
 func gym1_restore_tickled_hand(target_is_opponent: bool) -> void:
@@ -7432,12 +7443,10 @@ func effect_ecard1_pokemon_nurse(is_opponent: bool) -> void:
 		await main.show_message("NO POKEMON WITH DAMAGE!")
 		if main._should_bail(): return
 		return
-	var target: card_object = null
-	if is_opponent:
-		target = damaged[0]
-	else:
-		target = await main.card_ops.prompt_select_card(damaged, "POKEMON NURSE", "Select a Pokemon to fully heal (its Energy will be discarded)", "HEAL", false)
-		if main._should_bail(): return
+	var target: card_object = await main.card_ops.choose_card(damaged, is_opponent,
+			"POKEMON NURSE", "Select a Pokemon to fully heal (its Energy will be discarded)", "HEAL", false,
+			func(c): return float(int(c.metadata.get("hp","0")) - c.current_hp))
+	if main._should_bail(): return
 	if target == null:
 		return
 	var max_hp = int(target.metadata.get("hp","0"))
