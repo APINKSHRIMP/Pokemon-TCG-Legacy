@@ -277,6 +277,10 @@ func apply_status(pokemon: card_object, status: String, is_opponent: bool) -> vo
 	if pokemon != null and (status == "Poisoned" or status == "Toxic") and not main.powers_and_bodies.is_power_blocked(pokemon):
 		if pokemon.has_ability("Poison Resistance"):
 			return
+	# ECARD3 Immunity (Machamp): prevents all Special Conditions from opponent's attacks
+	if pokemon != null and status != "" and not main.powers_and_bodies.is_power_blocked(pokemon):
+		if pokemon.has_ability("Immunity"):
+			return
 	match status:
 		"Poisoned":
 			pokemon.is_poisoned = true
@@ -291,6 +295,17 @@ func apply_status(pokemon: card_object, status: String, is_opponent: bool) -> vo
 		"Blind":
 			pokemon.is_blind = true
 	main.update_status_icons(pokemon, is_opponent)
+	# ECARD3 Mirror Coat (Wobbuffet): if Wobbuffet becomes Poisoned or Burned, mirror that same
+	# status onto the opposing Active Pokemon (approximated as "the Defending Pokemon" since this
+	# function is only ever called with an attack/effect already in progress). Guarded against
+	# re-triggering if the opposing Pokemon already has the same status (prevents ping-pong).
+	if pokemon != null and (status == "Poisoned" or status == "Burned") and not main.powers_and_bodies.is_power_blocked(pokemon):
+		if pokemon.has_ability("Mirror Coat"):
+			var opposing_active = main.player_active_pokemon if is_opponent else main.opponent_active_pokemon
+			if opposing_active != null and opposing_active != pokemon:
+				var already_has = opposing_active.is_poisoned if status == "Poisoned" else opposing_active.is_burned
+				if not already_has:
+					apply_status(opposing_active, status, not is_opponent)
 
 # Remove all status conditions from a pokemon and refresh its icons.
 func clear_statuses(pokemon: card_object, is_opponent: bool) -> void:

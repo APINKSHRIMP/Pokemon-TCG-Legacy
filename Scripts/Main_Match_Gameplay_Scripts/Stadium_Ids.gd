@@ -54,3 +54,9 @@ const APRICORN_FOREST  = "ecard2-118" # Once per player's turn: flip to search a
 const POKEMON_PARK     = "ecard2-131" # Passive: energy attached from hand to a Benched Pokemon removes 1 damage counter
 const UNDERSEA_RUINS   = "ecard2-138" # Once per player's turn: flip to devolve one of your own Evolved Pokemon
 const POWER_PLANT      = "ecard2-139" # Once per player's turn: discard a basic Energy to swap for one from the discard pile
+
+# ── Skyridge (ecard3) ─────────────────────────────────────────────────────────
+const ANCIENT_RUINS     = "ecard3-119" # Once per player's turn: if no Supporter played and none revealed in hand, draw a card
+const MIRAGE_STADIUM    = "ecard3-132" # Passive: any retreat attempt requires a coin flip — tails blocks the retreat
+const MYSTERY_ZONE      = "ecard3-137" # Once per player's turn: search a basic Energy to hand, must return an Evolution card from hand to deck
+const UNDERGROUND_LAKE  = "ecard3-141" # Once per player's turn: put an Omanyte or Kabuto from discard onto the Bench

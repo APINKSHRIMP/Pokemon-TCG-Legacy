@@ -150,6 +150,12 @@ var player_undersea_ruins_used_this_turn: bool = false    # ecard2-138 Undersea 
 var opponent_undersea_ruins_used_this_turn: bool = false
 var player_power_plant_used_this_turn: bool = false       # ecard2-139 Power Plant
 var opponent_power_plant_used_this_turn: bool = false
+var player_ancient_ruins_used_this_turn: bool = false      # ecard3-119 Ancient Ruins
+var opponent_ancient_ruins_used_this_turn: bool = false
+var player_mystery_zone_used_this_turn: bool = false        # ecard3-137 Mystery Zone
+var opponent_mystery_zone_used_this_turn: bool = false
+var player_underground_lake_used_this_turn: bool = false    # ecard3-141 Underground Lake
+var opponent_underground_lake_used_this_turn: bool = false
 var player_fuchsia_used_this_turn: bool = false      # gym2-114 Fuchsia City Gym — once-per-turn-per-player Koga shuffle
 var opponent_fuchsia_used_this_turn: bool = false
 
@@ -2233,6 +2239,14 @@ func perform_energy_attachment() -> void:
 		card_attach_mode_active = false
 		hide_selection_mode_display_main()
 		return
+	# ECARD3 Water Immunity (Articuno) / Fire Immunity (Moltres): can't attach that type of Energy
+	if powers_and_bodies.check_ecard3_type_immunity_block(energy_card, target_pokemon):
+		await show_message("CAN'T ATTACH THAT ENERGY TYPE TO " + target_pokemon.metadata.get("name","").to_upper() + "!")
+		energy_card_awaiting_target = null
+		selected_card_for_action = null
+		card_attach_mode_active = false
+		hide_selection_mode_display_main()
+		return
 
 	target_pokemon.attached_energies.append(energy_card)
 	print("Attached ", energy_card.metadata.get("name", "Unknown Energy"), " to ", target_pokemon.metadata.get("name", "Unknown Pokemon"))
@@ -2283,6 +2297,10 @@ func perform_energy_attachment() -> void:
 	# ECARD2 Pokemon Park: energy attached from hand to a Benched Pokemon heals 1 damage counter
 	if target_pokemon != player_active_pokemon:
 		trainer_effects.pokemon_park_on_bench_energy_attach(target_pokemon, false)
+	# ECARD2/ECARD3 Crystal Type: matching-type Energy attach temporarily changes the holder's type
+	powers_and_bodies.check_crystal_type_attach(target_pokemon, energy_card, false)
+	# ECARD3 Self-healing (Flareon): Fire Energy attach from hand cures all Special Conditions
+	powers_and_bodies.check_ecard3_self_healing(target_pokemon, energy_card, false)
 
 	# MATCH EFFECTS: energy_attach_halve_hp / energy_attach_full_heal
 	await apply_energy_attach_match_effects(target_pokemon, false)
@@ -2623,12 +2641,18 @@ func inbetween_turn_checks(player_turn_just_ended: bool = true) -> void:
 		player_apricorn_forest_used_this_turn = false
 		player_undersea_ruins_used_this_turn = false
 		player_power_plant_used_this_turn = false
+		player_ancient_ruins_used_this_turn = false
+		player_mystery_zone_used_this_turn = false
+		player_underground_lake_used_this_turn = false
 	else:
 		opponent_celadon_used_this_turn = false
 		opponent_fuchsia_used_this_turn = false
 		opponent_apricorn_forest_used_this_turn = false
 		opponent_undersea_ruins_used_this_turn = false
 		opponent_power_plant_used_this_turn = false
+		opponent_ancient_ruins_used_this_turn = false
+		opponent_mystery_zone_used_this_turn = false
+		opponent_underground_lake_used_this_turn = false
 	
 	# Mirror move tracking: clear if the side that just ended their turn didn't attack
 	if player_turn_just_ended:
@@ -2760,6 +2784,11 @@ func inbetween_turn_checks(player_turn_just_ended: bool = true) -> void:
 	# ECARD2 Healing Berry: at the end of ANY turn (both sides, not just the owner's own), if the
 	# holder has 20 HP or less, remove 3 damage counters and discard the berry
 	await trainer_effects.ecard2_healing_berry_check()
+	if _should_bail(): return
+
+	# ECARD3 Star Piece: between turns, if the holder is Benched with 2+ damage counters,
+	# may search deck for an Evolution card that Pokemon evolves into and auto-evolve it
+	await trainer_effects.ecard3_star_piece_check()
 	if _should_bail(): return
 
 	await check_all_knockouts()
@@ -2919,6 +2948,18 @@ func get_valid_evolution_targets(evolution_card: card_object, is_opponent: bool)
 		if not block and can_evolve_from(evolution_card, active):
 			valid_targets.append(active)
 
+	# ECARD3 Primal Aura (Kabutops): while EITHER side's Active is Kabutops, neither player can
+	# evolve a Benched Pokemon
+	var kabutops_active = (player_active_pokemon != null and player_active_pokemon.has_ability("Primal Aura") and not powers_and_bodies.is_power_blocked_by_status(player_active_pokemon)) or (opponent_active_pokemon != null and opponent_active_pokemon.has_ability("Primal Aura") and not powers_and_bodies.is_power_blocked_by_status(opponent_active_pokemon))
+	if kabutops_active:
+		valid_targets = valid_targets.filter(func(t): return t == active)
+
+	# ECARD3 Primal Stare (Omastar): while Omastar is your opponent's Active Pokemon, you can't
+	# evolve YOUR Active Pokemon (Benched evolutions are unaffected)
+	var opposing_active = opponent_active_pokemon if not is_opponent else player_active_pokemon
+	if opposing_active != null and opposing_active.has_ability("Primal Stare") and not powers_and_bodies.is_power_blocked_by_status(opposing_active):
+		valid_targets = valid_targets.filter(func(t): return t != active)
+
 	return valid_targets
 
 # Stores the evolution card and enters target selection mode for the player to pick which Pokemon to evolve
@@ -3051,6 +3092,19 @@ func perform_evolution(is_opponent: bool) -> void:
 		await powers_and_bodies.trigger_neo4_gift(evo_card, is_opponent)
 	elif evo_card.has_ability("Tag Team"):
 		await powers_and_bodies.trigger_neo4_tag_team(evo_card, is_opponent)
+	# ECARD3: on-play (evolve from hand) power triggers
+	elif evo_card.has_ability("Energy Recharge"):
+		await powers_and_bodies.trigger_ecard3_energy_recharge(evo_card, is_opponent)
+	elif evo_card.has_ability("Venom Spray"):
+		await powers_and_bodies.trigger_ecard3_venom_spray(evo_card, is_opponent)
+	elif evo_card.has_ability("Manipulate"):
+		await powers_and_bodies.trigger_ecard3_manipulate(evo_card, is_opponent)
+	elif evo_card.has_ability("Flame Vapor"):
+		await powers_and_bodies.trigger_ecard3_flame_vapor(evo_card, is_opponent)
+	elif evo_card.has_ability("Streaming Mantle"):
+		await powers_and_bodies.trigger_ecard3_streaming_mantle(evo_card, is_opponent)
+	elif evo_card.has_ability("Attract Energy"):
+		await powers_and_bodies.trigger_ecard3_attract_energy(evo_card, is_opponent)
 
 ########################################################### Retreat functions ##############################################################
 
@@ -3578,13 +3632,15 @@ func perform_attack(attack_index: int) -> void:
 		player_active_pokemon.swords_dance_active = false
 		await show_message("SWORDS DANCE BOOST! SLASH DOES 60 DAMAGE!")
 
-	# GYM1 Focus Energy: if active, double Gnaw's base damage
-	if player_active_pokemon.focus_energy_active and attack_name.to_lower() == "gnaw":
+	# GYM1 Focus Energy (Rattata's Gnaw) / ECARD3 Focus Energy (Machoke's Mega Punch): if active,
+	# double the boosted attack's base damage. Both share the gym1-style focus_energy_active flag
+	# — only one of these two Pokemon lines can ever be Active at a time, so no collision.
+	if player_active_pokemon.focus_energy_active and attack_name.to_lower() in ["gnaw", "mega punch"]:
 		attack = attack.duplicate()
-		var gnaw_doubled = attack_effects.parse_attack_base_damage(attack) * 2
-		attack["damage"] = str(gnaw_doubled)
+		var doubled = attack_effects.parse_attack_base_damage(attack) * 2
+		attack["damage"] = str(doubled)
 		player_active_pokemon.focus_energy_active = false
-		await show_message("FOCUS ENERGY! GNAW DOES " + str(gnaw_doubled) + " DAMAGE!")
+		await show_message("FOCUS ENERGY! " + attack_name.to_upper() + " DOES " + str(doubled) + " DAMAGE!")
 
 	if await attack_effects.handle_attack_confusion(player_active_pokemon, false):
 		hide_attack_buttons()
@@ -3660,10 +3716,20 @@ func perform_attack(attack_index: int) -> void:
 func calculate_final_damage(base_damage: int, attacking_types: Array, defending_pokemon: card_object, attacker_pokemon: card_object = null) -> Dictionary:
 	var damage = base_damage
 	var modifiers_applied = []
-	
+
 	if defending_pokemon == null:
 		return {"damage": damage, "modifiers": modifiers_applied}
-	
+
+	# ECARD2/ECARD3 Crystal Type + Crystal Shard: if the attacker's own type is currently
+	# overridden (temporary Crystal Type energy-attach, or permanent Crystal Shard Tool), use the
+	# effective type for Weakness-triggering instead of whatever the caller happened to compute
+	# from metadata — single centralized fix point rather than rewiring every execute_ function's
+	# own "var types = attacker.metadata.get('types', ...)" line.
+	if attacker_pokemon != null:
+		var effective_types = attacker_pokemon.get_effective_types()
+		if effective_types != attacker_pokemon.metadata.get("types", ["Colorless"]):
+			attacking_types = effective_types
+
 	# Apply weakness (check temporary override from Porygon Conversion 1 first)
 	# GYM2-113 Cinnabar City Gym — Ignore Weakness when a Water Pokemon attacks a Blaine-named pokemon
 	var skip_weakness = false
@@ -4396,6 +4462,19 @@ func get_retreat_cost(pokemon: card_object) -> int:
 	if pokemon.has_effect("ecard1_tailwind"):
 		return 0
 
+	# ECARD3 Psychoflow (Abra): Retreat Cost is 0 as long as a Psychic Energy is attached to it
+	if pokemon.has_ability("Psychoflow") and not powers_and_bodies.is_power_blocked(pokemon):
+		for e in pokemon.attached_energies:
+			if "Psychic" in get_energy_provided_by_card(e):
+				return 0
+
+	# ECARD3 Slippery Skin (Dunsparce): Retreat Cost is 0 as long as the Defending Pokemon is Evolved
+	if pokemon.has_ability("Slippery Skin") and not powers_and_bodies.is_power_blocked(pokemon):
+		var dunsparce_is_opp = (pokemon == opponent_active_pokemon or pokemon in opponent_bench)
+		var defending = player_active_pokemon if dunsparce_is_opp else opponent_active_pokemon
+		if defending != null and not is_basic_pokemon(defending):
+			return 0
+
 	# MATCH EFFECT: free_retreat — retreating costs nothing for this side
 	var pokemon_is_opponent = (pokemon == opponent_active_pokemon or pokemon in opponent_bench)
 	if match_effects.retreat_is_free(pokemon_is_opponent):
@@ -4788,6 +4867,18 @@ func action_button_pressed_perform_action() -> void:
 # Performs the player's retreat: confusion checks, bench swap, animation, and status clearing
 func handle_action_retreat_bench() -> void:
 	var new_active = selected_card_for_action
+
+	# ECARD3 Mirage Stadium: any retreat attempt requires a coin flip — tails blocks it entirely
+	var mirage_ok = await trainer_effects.mirage_stadium_check(false)
+	if _should_bail(): return
+	if not mirage_ok:
+		retreat_bench_selection_active = false
+		selected_card_for_action = null
+		retreat_energies_selected.clear()
+		hide_selection_mode_display_main()
+		display_pokemon(false)
+		display_active_pokemon_energies(false)
+		return
 
 	var pre_check = await check_confused_retreat(player_active_pokemon, false, "pre_energy")
 	if not pre_check:

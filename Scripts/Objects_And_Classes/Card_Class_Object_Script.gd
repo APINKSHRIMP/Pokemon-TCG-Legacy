@@ -246,6 +246,21 @@ func get_max_hp() -> int:
 		return max_hp_override
 	return int(metadata.get("hp", "0"))
 
+# Returns this Pokemon's current type(s), accounting for temporary overrides:
+# Crystal Shard (ecard3-122, permanent while attached) takes priority over Crystal Type
+# (ecard2/ecard3 Poké-Body, "crystal_type_active" in the expiring-effects store, until end of
+# the holder's own turn). Falls back to the printed metadata type. Use this instead of reading
+# metadata.get("types", ...) directly anywhere a Pokemon's OWN current type matters for a
+# type-restricted effect (bench-type-splash, retreat-cost-by-type, etc.) — weakness/resistance
+# triggering on THIS Pokemon as an attacker is handled centrally in Main's calculate_final_damage.
+func get_effective_types() -> Array:
+	for ac in attached_cards:
+		if ac.uid.to_lower() == "ecard3-122":
+			return ["Colorless"]
+	if has_effect("crystal_type_active"):
+		return [get_effect_data("crystal_type_active")]
+	return metadata.get("types", ["Colorless"])
+
 # Constructor - initialize the card with a UID and load its metadata
 func _init(card_uid: String, card_metadata: Dictionary) -> void:
 	uid = card_uid

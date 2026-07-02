@@ -31,6 +31,7 @@ func _ensure_trainer_dispatch_ready() -> void:
 	_register_np_trainers()
 	_register_ecard1_trainers()
 	_register_ecard2_trainers()
+	_register_ecard3_trainers()
 
 func _register_base_trainers() -> void:
 	_trainer_dispatch["base1-88"] = func(c, opp): await effect_professor_oak(c, opp)
@@ -3610,6 +3611,25 @@ func gym1_end_of_turn_cleanup(side_is_opponent: bool) -> void:
 				display_attached_trainer_cards(side_is_opponent)
 				main.update_discard_pile_display(side_is_opponent)
 				print("MEMORY BERRY: discarded from ", pokemon.metadata.get("name", ""))
+
+		# ECARD3 Crystal Shard (ecard3-122): discarded at the end of any turn its holder attacked
+		if attacked_this_turn:
+			var cs_card: card_object = null
+			for ac in pokemon.attached_cards:
+				if ac.uid.to_lower() == "ecard3-122":
+					cs_card = ac
+					break
+			if cs_card != null:
+				pokemon.attached_cards.erase(cs_card)
+				cs_card.current_location = "discard"
+				discard.append(cs_card)
+				var attached_node6 = main.opponent_attached_cards_container if side_is_opponent else main.player_attached_cards_container
+				var discard_node6 = main.opponent_discard_icon if side_is_opponent else main.player_discard_icon
+				var tex6 = main.get_card_texture(cs_card)
+				main.animate_card_a_to_b(attached_node6, discard_node6, 0.25, tex6, main.card_scales[10])
+				display_attached_trainer_cards(side_is_opponent)
+				main.update_discard_pile_display(side_is_opponent)
+				print("CRYSTAL SHARD: discarded from ", pokemon.metadata.get("name", ""))
 
 		# Generic expiring-effects: clear everything tagged end_of_own_turn for this side.
 		# Must run LAST in this loop body — effects like Strength Charm's trigger flag are
@@ -8305,3 +8325,477 @@ func effect_ecard2_traveling_salesman(is_opponent: bool) -> void:
 	await main.show_message("TRAVELING SALESMAN! ADDED " + str(found.size()) + " CARD(S) TO HAND!")
 	if main._should_bail(): return
 	print("TRAINER: Traveling Salesman — found ", found.size())
+
+######################################################################################################################################################
+######################################################### ECARD3 (SKYRIDGE) STADIUMS ##################################################################
+######################################################################################################################################################
+
+# ANCIENT RUINS (ecard3-119): once per player's turn (before attacking), if that player hasn't
+# played a Supporter this turn, may reveal hand; if no Supporter card is revealed, draw a card
+func ancient_ruins_active(is_opponent: bool) -> bool:
+	if main.current_stadium_card == null: return false
+	if main.current_stadium_card.uid.to_lower() != StadiumIds.ANCIENT_RUINS: return false
+	if is_opponent and main.opponent_ancient_ruins_used_this_turn: return false
+	if not is_opponent and main.player_ancient_ruins_used_this_turn: return false
+	return true
+
+func ancient_ruins_activate(is_opponent: bool) -> void:
+	if is_opponent:
+		main.opponent_ancient_ruins_used_this_turn = true
+	else:
+		main.player_ancient_ruins_used_this_turn = true
+	var hand = main.opponent_hand if is_opponent else main.player_hand
+	var has_supporter = hand.any(func(c): return "Supporter" in c.metadata.get("subtypes", []))
+	await main.show_message("ANCIENT RUINS! REVEALING HAND!")
+	if main._should_bail(): return
+	if has_supporter:
+		await main.show_message("A SUPPORTER CARD WAS REVEALED — NO EFFECT!")
+		if main._should_bail(): return
+		return
+	await main.card_ops.draw_n(is_opponent, 1)
+	if main._should_bail(): return
+	await main.show_message("NO SUPPORTER REVEALED! DREW A CARD!")
+	if main._should_bail(): return
+	print("STADIUM: Ancient Ruins")
+
+# MIRAGE STADIUM (ecard3-132): whenever a player tries to retreat, flip a coin. Heads: retreat
+# proceeds normally. Tails: the retreat does not happen (no Energy discarded). Called from both
+# the player's handle_action_retreat_bench and CPU's execute_cpu_retreat, before any cost is paid.
+func mirage_stadium_check(is_opponent: bool) -> bool:
+	if main.current_stadium_card == null: return true
+	if main.current_stadium_card.uid.to_lower() != StadiumIds.MIRAGE_STADIUM: return true
+	var coin = await main.flip_coin(false, is_opponent)
+	if main._should_bail(): return false
+	if coin:
+		return true
+	await main.show_message("MIRAGE STADIUM! TAILS — THE RETREAT DOES NOT HAPPEN!")
+	if main._should_bail(): return false
+	print("STADIUM: Mirage Stadium — retreat blocked")
+	return false
+
+# MYSTERY ZONE (ecard3-137): once per player's turn, if that player has an Evolution card in
+# hand, may search deck for a basic Energy to hand, then must put an Evolution card from hand
+# into the deck and shuffle
+func mystery_zone_active(is_opponent: bool) -> bool:
+	if main.current_stadium_card == null: return false
+	if main.current_stadium_card.uid.to_lower() != StadiumIds.MYSTERY_ZONE: return false
+	if is_opponent and main.opponent_mystery_zone_used_this_turn: return false
+	if not is_opponent and main.player_mystery_zone_used_this_turn: return false
+	var hand = main.opponent_hand if is_opponent else main.player_hand
+	return hand.any(func(c): return c.metadata.get("supertype","") == "Pokémon" and not main.is_basic_pokemon(c))
+
+func mystery_zone_activate(is_opponent: bool) -> void:
+	if is_opponent:
+		main.opponent_mystery_zone_used_this_turn = true
+	else:
+		main.player_mystery_zone_used_this_turn = true
+	var hand = main.opponent_hand if is_opponent else main.player_hand
+	var evolutions = hand.filter(func(c): return c.metadata.get("supertype","") == "Pokémon" and not main.is_basic_pokemon(c))
+	if evolutions.is_empty():
+		return
+	var filter_fn = func(c): return gym1_is_basic_energy(c)
+	var found = await main.card_ops.search_deck_to_hand(is_opponent, filter_fn, "MYSTERY ZONE: CHOOSE A BASIC ENERGY (OPTIONAL)", 1)
+	if main._should_bail(): return
+	if found.size() > 0:
+		await main.show_message("MYSTERY ZONE! FOUND " + found[0].metadata.get("name","").to_upper() + "!")
+		if main._should_bail(): return
+	evolutions = hand.filter(func(c): return c.metadata.get("supertype","") == "Pokémon" and not main.is_basic_pokemon(c))
+	if evolutions.is_empty(): return
+	var to_return: card_object = evolutions[0]
+	if not is_opponent and evolutions.size() > 1:
+		to_return = await main.card_ops.prompt_select_card(evolutions, "MYSTERY ZONE", "Choose an Evolution card to put into your deck", "RETURN", false)
+		if main._should_bail(): return
+		if to_return == null: to_return = evolutions[0]
+	var deck = main.opponent_deck if is_opponent else main.player_deck
+	hand.erase(to_return)
+	to_return.current_location = "deck"
+	deck.append(to_return)
+	deck.shuffle()
+	main.refresh_hand_display(is_opponent)
+	main.update_deck_icon(is_opponent)
+	await main.show_message("MYSTERY ZONE! RETURNED " + to_return.metadata.get("name","").to_upper() + " TO THE DECK!")
+	if main._should_bail(): return
+	print("STADIUM: Mystery Zone")
+
+# UNDERGROUND LAKE (ecard3-141): once per player's turn, may put an Omanyte or Kabuto from the
+# discard pile onto the Bench (counts as a Basic Pokemon)
+func underground_lake_active(is_opponent: bool) -> bool:
+	if main.current_stadium_card == null: return false
+	if main.current_stadium_card.uid.to_lower() != StadiumIds.UNDERGROUND_LAKE: return false
+	if is_opponent and main.opponent_underground_lake_used_this_turn: return false
+	if not is_opponent and main.player_underground_lake_used_this_turn: return false
+	var bench = main.opponent_bench if is_opponent else main.player_bench
+	if bench.size() >= main.get_max_bench_size(): return false
+	var discard = main.opponent_discard_pile if is_opponent else main.player_discard_pile
+	return discard.any(func(c): return c.metadata.get("name","") in ["Omanyte","Kabuto"])
+
+func underground_lake_activate(is_opponent: bool) -> void:
+	if is_opponent:
+		main.opponent_underground_lake_used_this_turn = true
+	else:
+		main.player_underground_lake_used_this_turn = true
+	var bench = main.opponent_bench if is_opponent else main.player_bench
+	if bench.size() >= main.get_max_bench_size(): return
+	var discard = main.opponent_discard_pile if is_opponent else main.player_discard_pile
+	var candidates = discard.filter(func(c): return c.metadata.get("name","") in ["Omanyte","Kabuto"])
+	if candidates.is_empty(): return
+	var chosen: card_object = candidates[0]
+	if not is_opponent and candidates.size() > 1:
+		chosen = await main.card_ops.prompt_select_card(candidates, "UNDERGROUND LAKE", "Choose Omanyte or Kabuto to put onto your Bench", "BENCH", false)
+		if main._should_bail(): return
+		if chosen == null: return
+	discard.erase(chosen)
+	chosen.current_location = "bench"
+	chosen.current_hp = chosen.get_max_hp()
+	bench.append(chosen)
+	main.display_pokemon(is_opponent)
+	main.update_discard_pile_display(is_opponent)
+	await main.show_message("UNDERGROUND LAKE! " + chosen.metadata.get("name","").to_upper() + " ADDED TO BENCH!")
+	if main._should_bail(): return
+	print("STADIUM: Underground Lake")
+
+######################################################################################################################################################
+######################################################### ECARD3 (SKYRIDGE) TOOLS ####################################################################
+######################################################################################################################################################
+
+# STAR PIECE (ecard3-139): at any time between turns, if the holder is Benched with 2+ damage
+# counters, may search the deck for an Evolution card it evolves into and auto-evolve it
+# (counts as evolving), then discard Star Piece. Called once per turn-end from Main's
+# inbetween_turn_checks, mirroring Healing Berry's both-sides check.
+func ecard3_star_piece_check() -> void:
+	for side in [false, true]:
+		var bench = main.opponent_bench if side else main.player_bench
+		for p in bench.duplicate():
+			if p.get_damage_counters() < 2: continue
+			var star: card_object = null
+			for ac in p.attached_cards:
+				if ac.uid.to_lower() == "ecard3-139":
+					star = ac
+					break
+			if star == null: continue
+			var deck = main.opponent_deck if side else main.player_deck
+			var p_name = p.metadata.get("name","")
+			var candidates = deck.filter(func(c): return c.metadata.get("evolvesFrom","") == p_name)
+			if candidates.is_empty(): continue
+			var do_it = side
+			if not side:
+				do_it = await gym1_prompt_yes_no(p, "STAR PIECE", "Search your deck for an Evolution card and evolve " + p_name.to_upper() + "?", "EVOLVE", "SKIP")
+				if main._should_bail(): return
+			if not do_it: continue
+			var evo_card: card_object = candidates[0]
+			if not side and candidates.size() > 1:
+				evo_card = await main.card_ops.prompt_select_card(candidates, "STAR PIECE", "Choose an Evolution card", "EVOLVE", false)
+				if main._should_bail(): return
+				if evo_card == null: continue
+			deck.erase(evo_card)
+			var max_hp_old = p.get_max_hp()
+			var damage_taken = max_hp_old - p.current_hp
+			var max_hp_new = int(evo_card.metadata.get("hp", "0"))
+			evo_card.current_hp = max(1, max_hp_new - damage_taken)
+			evo_card.attached_energies = p.attached_energies.duplicate()
+			p.attached_energies.clear()
+			evo_card.attached_pre_evolutions = p.attached_pre_evolutions.duplicate()
+			p.attached_pre_evolutions.clear()
+			evo_card.attached_pre_evolutions.append(p)
+			evo_card.placed_on_field_this_turn = true
+			evo_card.current_location = "bench"
+			var idx = bench.find(p)
+			if idx >= 0: bench[idx] = evo_card
+			p.attached_cards.erase(star)
+			var discard = main.opponent_discard_pile if side else main.player_discard_pile
+			star.current_location = "discard"
+			discard.append(star)
+			deck.shuffle()
+			main.display_pokemon(side)
+			main.display_active_pokemon_energies(side)
+			main.update_deck_icon(side)
+			main.update_discard_pile_display(side)
+			await main.show_message("STAR PIECE! " + p_name.to_upper() + " EVOLVED INTO " + evo_card.metadata.get("name","").to_upper() + "!")
+			if main._should_bail(): return
+			print("TOOL: Star Piece — evolved ", p_name, " into ", evo_card.metadata.get("name",""))
+
+######################################################################################################################################################
+######################################################### ECARD3 (SKYRIDGE) TRAINERS ##################################################################
+######################################################################################################################################################
+
+func _register_ecard3_trainers() -> void:
+	_trainer_dispatch["ecard3-120"] = func(c, opp): await effect_ecard3_relic_hunter(opp)
+	_trainer_dispatch["ecard3-121"] = func(c, opp): await effect_ecard3_apricorn_maker(opp)
+	_trainer_dispatch["ecard3-123"] = func(c, opp): await effect_ecard3_desert_shaman(opp)
+	_trainer_dispatch["ecard3-124"] = func(c, opp): await effect_ecard3_fast_ball(opp)
+	_trainer_dispatch["ecard3-125"] = func(c, opp): await effect_ecard3_fisherman(opp)
+	_trainer_dispatch["ecard3-126"] = func(c, opp): await effect_ecard3_friend_ball(opp)
+	_trainer_dispatch["ecard3-127"] = func(c, opp): await effect_ecard3_hyper_potion(opp)
+	_trainer_dispatch["ecard3-128"] = func(c, opp): await effect_ecard3_lure_ball(opp)
+	_trainer_dispatch["ecard3-138"] = func(c, opp): await effect_ecard3_oracle(opp)
+	_trainer_dispatch["ecard3-140"] = func(c, opp): await effect_ecard3_underground_expedition(opp)
+	# ecard3-119/132/137/141 (Stadiums) route via resolve_stadium_trainer.
+	# ecard3-122/139 (Pokemon Tools) and ecard3-129/130/131/133/134/135/136 (Technical Machines)
+	# route via is_attached_trainer()/resolve_attached_trainer() — none need a _trainer_dispatch entry.
+
+# RELIC HUNTER (ecard3-120): search deck for up to 2 Supporter and/or Stadium cards to hand
+func effect_ecard3_relic_hunter(is_opponent: bool) -> void:
+	var filter_fn = func(c): return "Supporter" in c.metadata.get("subtypes",[]) or "Stadium" in c.metadata.get("subtypes",[])
+	var found = await main.card_ops.search_deck_to_hand(is_opponent, filter_fn, "RELIC HUNTER: CHOOSE UP TO 2 SUPPORTER/STADIUM CARDS", 2)
+	if main._should_bail(): return
+	await main.show_message("RELIC HUNTER! ADDED " + str(found.size()) + " CARD(S) TO HAND!" if found.size() > 0 else "NO MATCHING CARDS IN DECK!")
+	if main._should_bail(): return
+	print("TRAINER: Relic Hunter — found ", found.size())
+
+# APRICORN MAKER (ecard3-121): search deck for up to 2 Trainer cards with "Ball" in their name
+func effect_ecard3_apricorn_maker(is_opponent: bool) -> void:
+	var filter_fn = func(c): return c.metadata.get("supertype","") == "Trainer" and "Ball" in c.metadata.get("name","")
+	var found = await main.card_ops.search_deck_to_hand(is_opponent, filter_fn, "APRICORN MAKER: CHOOSE UP TO 2 BALL CARDS", 2)
+	if main._should_bail(): return
+	await main.show_message("APRICORN MAKER! ADDED " + str(found.size()) + " CARD(S) TO HAND!" if found.size() > 0 else "NO BALL CARDS IN DECK!")
+	if main._should_bail(): return
+	print("TRAINER: Apricorn Maker — found ", found.size())
+
+# DESERT SHAMAN (ecard3-123): shuffle your hand into your deck and draw 4; opponent does the same
+func effect_ecard3_desert_shaman(is_opponent: bool) -> void:
+	for side in [is_opponent, not is_opponent]:
+		var hand = main.opponent_hand if side else main.player_hand
+		var deck = main.opponent_deck if side else main.player_deck
+		for c in hand.duplicate():
+			hand.erase(c)
+			c.current_location = "deck"
+			deck.append(c)
+		deck.shuffle()
+		main.refresh_hand_display(side)
+		main.update_deck_icon(side)
+		await main.card_ops.draw_n(side, 4)
+		if main._should_bail(): return
+	await main.show_message("DESERT SHAMAN! BOTH PLAYERS SHUFFLED THEIR HAND AND DREW 4!")
+	if main._should_bail(): return
+	print("TRAINER: Desert Shaman")
+
+# FAST BALL (ecard3-124): search deck for an Evolution card to hand
+func effect_ecard3_fast_ball(is_opponent: bool) -> void:
+	var filter_fn = func(c): return c.metadata.get("supertype","") == "Pokémon" and not main.is_basic_pokemon(c)
+	var found = await main.card_ops.search_deck_to_hand(is_opponent, filter_fn, "FAST BALL: CHOOSE AN EVOLUTION CARD", 1)
+	if main._should_bail(): return
+	await main.show_message("FAST BALL! FOUND " + found[0].metadata.get("name","").to_upper() + "!" if found.size() > 0 else "NO EVOLUTION CARDS IN DECK!")
+	if main._should_bail(): return
+	print("TRAINER: Fast Ball — found ", found.size())
+
+# FISHERMAN (ecard3-125): choose up to 4 basic Energy cards from discard pile to hand
+func effect_ecard3_fisherman(is_opponent: bool) -> void:
+	var discard = main.opponent_discard_pile if is_opponent else main.player_discard_pile
+	var hand = main.opponent_hand if is_opponent else main.player_hand
+	var candidates = discard.filter(func(c): return gym1_is_basic_energy(c))
+	if candidates.is_empty():
+		await main.show_message("NO BASIC ENERGY IN YOUR DISCARD PILE!")
+		if main._should_bail(): return
+		return
+	var want = min(4, candidates.size())
+	var chosen: Array = []
+	if is_opponent:
+		for i in range(want): chosen.append(candidates[i])
+	else:
+		main.trainer_discard_selected.clear()
+		main.trainer_discard_cards_needed = want
+		main.trainer_discard_selection_active = true
+		main.show_enlarged_array_selection_mode(candidates)
+		main.header_label.text = "FISHERMAN: CHOOSE UP TO " + str(want) + " BASIC ENERGY"
+		main.hint_label.text = "SELECT " + str(want) + " CARD(S)"
+		main.action_button.text = str(want) + " MORE"
+		main.action_button.disabled = true
+		main.action_button.theme = main.theme_disabled
+		main.cancel_button.visible = false
+		await main.trainer_discard_selection_done
+		main.trainer_discard_selection_active = false
+		main.hide_selection_mode_display_main()
+		if main._should_bail(): return
+		chosen = main.trainer_discard_selected.duplicate()
+		main.trainer_discard_selected.clear()
+	for c in chosen:
+		discard.erase(c)
+		c.current_location = "hand"
+		hand.append(c)
+	main.refresh_hand_display(is_opponent)
+	main.update_discard_pile_display(is_opponent)
+	await main.show_message("FISHERMAN! ADDED " + str(chosen.size()) + " ENERGY TO HAND!")
+	if main._should_bail(): return
+	print("TRAINER: Fisherman — recovered ", chosen.size())
+
+# FRIEND BALL (ecard3-126): choose 1 opponent Pokemon, search deck for a Baby/Basic/Evolution
+# card of the same type to hand
+func effect_ecard3_friend_ball(is_opponent: bool) -> void:
+	var opp_active = main.player_active_pokemon if is_opponent else main.opponent_active_pokemon
+	var opp_bench = main.player_bench if is_opponent else main.opponent_bench
+	var opp_all: Array = []
+	if opp_active != null: opp_all.append(opp_active)
+	opp_all.append_array(opp_bench)
+	if opp_all.is_empty():
+		await main.show_message("OPPONENT HAS NO POKEMON!")
+		if main._should_bail(): return
+		return
+	var target: card_object = opp_all[0]
+	if not is_opponent and opp_all.size() > 1:
+		target = await main.card_ops.prompt_select_card(opp_all, "FRIEND BALL", "Choose 1 of your opponent's Pokemon", "SELECT", false)
+		if main._should_bail(): return
+		if target == null: return
+	var target_types = target.metadata.get("types", [])
+	var filter_fn = func(c): return c.metadata.get("supertype","") == "Pokémon" and not c.metadata.get("types",[]).filter(func(t): return t in target_types).is_empty()
+	var found = await main.card_ops.search_deck_to_hand(is_opponent, filter_fn, "FRIEND BALL: CHOOSE A MATCHING-TYPE POKEMON", 1)
+	if main._should_bail(): return
+	await main.show_message("FRIEND BALL! FOUND " + found[0].metadata.get("name","").to_upper() + "!" if found.size() > 0 else "NO MATCHING POKEMON IN DECK!")
+	if main._should_bail(): return
+	print("TRAINER: Friend Ball — found ", found.size())
+
+# HYPER POTION (ecard3-127): choose 1 own Pokemon, discard 1 or 2 basic Energy from it —
+# 1 discarded heals up to 3 counters, 2 discarded heals up to 5 counters
+func effect_ecard3_hyper_potion(is_opponent: bool) -> void:
+	var all_own = build_field_pokemon_array(is_opponent)
+	var candidates = all_own.filter(func(p): return p.attached_energies.filter(func(e): return gym1_is_basic_energy(e)).size() > 0)
+	if candidates.is_empty():
+		await main.show_message("NO POKEMON WITH BASIC ENERGY ATTACHED!")
+		if main._should_bail(): return
+		return
+	var target: card_object = candidates[0]
+	if not is_opponent and candidates.size() > 1:
+		target = await main.card_ops.prompt_select_card(candidates, "HYPER POTION", "Select a Pokemon to heal", "SELECT", false)
+		if main._should_bail(): return
+		if target == null: return
+	var basics = target.attached_energies.filter(func(e): return gym1_is_basic_energy(e))
+	var want = min(2, basics.size())
+	if not is_opponent and want >= 2:
+		var confirm_2 = await gym1_prompt_yes_no(target, "HYPER POTION", "Discard 2 basic Energy to heal up to 5? (No = discard 1 to heal up to 3)", "DISCARD 2", "DISCARD 1")
+		if main._should_bail(): return
+		want = 2 if confirm_2 else 1
+	var discarded: Array = []
+	for i in range(want):
+		var pool = target.attached_energies.filter(func(e): return gym1_is_basic_energy(e) and e not in discarded)
+		if pool.is_empty(): break
+		var chosen: card_object = pool[0]
+		if not is_opponent and pool.size() > 1:
+			chosen = await main.card_ops.prompt_select_card(pool, "HYPER POTION", "Select a basic Energy to discard", "DISCARD", false)
+			if main._should_bail(): return
+			if chosen == null: break
+		discarded.append(chosen)
+	if discarded.is_empty(): return
+	for e in discarded:
+		target.attached_energies.erase(e)
+		main.card_ops.discard_energy_from_pokemon(e, is_opponent)
+	main.display_active_pokemon_energies(is_opponent)
+	var heal_amount = 50 if discarded.size() >= 2 else 30
+	await main.card_ops.heal_pokemon(target, heal_amount, is_opponent)
+	if main._should_bail(): return
+	await main.show_message("HYPER POTION! " + target.metadata.get("name","").to_upper() + " HEALED!")
+	if main._should_bail(): return
+	print("TRAINER: Hyper Potion — discarded ", discarded.size(), " healed up to ", heal_amount)
+
+# LURE BALL (ecard3-128): flip 3 coins, for each heads recover an Evolution card from discard to hand
+func effect_ecard3_lure_ball(is_opponent: bool) -> void:
+	var heads = 0
+	for i in range(3):
+		if await main.flip_coin(true, is_opponent): heads += 1
+	if main._should_bail(): return
+	if heads == 0:
+		await main.show_message("NO HEADS — NO EFFECT!")
+		if main._should_bail(): return
+		return
+	var discard = main.opponent_discard_pile if is_opponent else main.player_discard_pile
+	var recovered = 0
+	for i in range(heads):
+		var candidates = discard.filter(func(c): return c.metadata.get("supertype","") == "Pokémon" and not main.is_basic_pokemon(c))
+		if candidates.is_empty(): break
+		var chosen: card_object = candidates[0]
+		if not is_opponent and candidates.size() > 1:
+			chosen = await main.card_ops.prompt_select_card(candidates, "LURE BALL", "Choose an Evolution card to recover (" + str(heads - recovered) + " remaining)", "RECOVER", false)
+			if main._should_bail(): return
+			if chosen == null: break
+		await main.card_ops.recover_to_hand(chosen, is_opponent)
+		if main._should_bail(): return
+		recovered += 1
+	await main.show_message(str(heads) + " HEADS! RECOVERED " + str(recovered) + " EVOLUTION CARD(S)!")
+	if main._should_bail(): return
+	print("TRAINER: Lure Ball — recovered ", recovered)
+
+# ORACLE (ecard3-138): choose 2 cards from your deck, shuffle the rest, put the 2 chosen on top in any order
+func effect_ecard3_oracle(is_opponent: bool) -> void:
+	var deck = main.opponent_deck if is_opponent else main.player_deck
+	if deck.is_empty():
+		await main.show_message("DECK IS EMPTY!")
+		if main._should_bail(): return
+		return
+	var want = min(2, deck.size())
+	var chosen: Array = []
+	if is_opponent:
+		var ranked = deck.duplicate()
+		ranked.sort_custom(func(a, b): return _cpu_pokedex_priority(a) > _cpu_pokedex_priority(b))
+		for i in range(want): chosen.append(ranked[i])
+	else:
+		main.trainer_discard_selected.clear()
+		main.trainer_discard_cards_needed = want
+		main.trainer_discard_selection_active = true
+		main.show_enlarged_array_selection_mode(deck)
+		main.header_label.text = "ORACLE: CHOOSE " + str(want) + " CARDS (SELECTION ORDER = TOP OF DECK ORDER)"
+		main.hint_label.text = "SELECT " + str(want) + " CARD(S)"
+		main.action_button.text = str(want) + " MORE"
+		main.action_button.disabled = true
+		main.action_button.theme = main.theme_disabled
+		main.cancel_button.visible = false
+		await main.trainer_discard_selection_done
+		main.trainer_discard_selection_active = false
+		main.hide_selection_mode_display_main()
+		if main._should_bail(): return
+		chosen = main.trainer_discard_selected.duplicate()
+		main.trainer_discard_selected.clear()
+	for c in chosen:
+		deck.erase(c)
+	deck.shuffle()
+	for i in range(chosen.size() - 1, -1, -1):
+		deck.push_front(chosen[i])
+	main.update_deck_icon(is_opponent)
+	await main.show_message("ORACLE! PLACED " + str(chosen.size()) + " CARD(S) ON TOP OF THE DECK!")
+	if main._should_bail(): return
+	print("TRAINER: Oracle — stacked ", chosen.size())
+
+# UNDERGROUND EXPEDITION (ecard3-140): look at bottom 4 cards, put 2 into hand, return the rest
+# to the bottom in any order
+func effect_ecard3_underground_expedition(is_opponent: bool) -> void:
+	var deck = main.opponent_deck if is_opponent else main.player_deck
+	var hand = main.opponent_hand if is_opponent else main.player_hand
+	if deck.is_empty():
+		await main.show_message("DECK IS EMPTY!")
+		if main._should_bail(): return
+		return
+	var count = min(4, deck.size())
+	var bottom_cards: Array = []
+	for i in range(deck.size() - count, deck.size()):
+		bottom_cards.append(deck[i])
+	await main.show_message("UNDERGROUND EXPEDITION: LOOKING AT BOTTOM " + str(count) + " CARDS!")
+	if main._should_bail(): return
+	var want = min(2, bottom_cards.size())
+	var chosen: Array = []
+	if is_opponent:
+		var ranked = bottom_cards.duplicate()
+		ranked.sort_custom(func(a, b): return _cpu_pokedex_priority(a) > _cpu_pokedex_priority(b))
+		for i in range(want): chosen.append(ranked[i])
+	else:
+		main.trainer_discard_selected.clear()
+		main.trainer_discard_cards_needed = want
+		main.trainer_discard_selection_active = true
+		main.show_enlarged_array_selection_mode(bottom_cards)
+		main.header_label.text = "UNDERGROUND EXPEDITION: CHOOSE " + str(want) + " CARDS FOR YOUR HAND"
+		main.hint_label.text = "SELECT " + str(want) + " CARD(S)"
+		main.action_button.text = str(want) + " MORE"
+		main.action_button.disabled = true
+		main.action_button.theme = main.theme_disabled
+		main.cancel_button.visible = false
+		await main.trainer_discard_selection_done
+		main.trainer_discard_selection_active = false
+		main.hide_selection_mode_display_main()
+		if main._should_bail(): return
+		chosen = main.trainer_discard_selected.duplicate()
+		main.trainer_discard_selected.clear()
+	for c in chosen:
+		deck.erase(c)
+		c.current_location = "hand"
+		hand.append(c)
+	main.refresh_hand_display(is_opponent)
+	main.update_deck_icon(is_opponent)
+	await main.show_message("UNDERGROUND EXPEDITION! ADDED " + str(chosen.size()) + " CARD(S) TO HAND!")
+	if main._should_bail(): return
+	print("TRAINER: Underground Expedition — took ", chosen.size())

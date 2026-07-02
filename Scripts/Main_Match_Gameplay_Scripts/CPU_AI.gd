@@ -379,6 +379,12 @@ func get_unmet_energy_count(attack: Dictionary, pokemon: card_object) -> int:
 			var provided_dark = main.get_energy_provided_by_card(attached)
 			for _i in range(max(1, provided_dark.size())):
 				pool.append("Darkness")
+		# ECARD3 Rare Metal (Steelix): basic Energy attached to Steelix provides Metal instead
+		elif main.powers_and_bodies.is_ecard3_rare_metal_active(pokemon) and "Special" not in attached.metadata.get("subtypes", []):
+			pool.append("Metal")
+		# ECARD3 Prismatic Body (Ditto): basic Energy attached to Ditto provides any 1 type
+		elif main.powers_and_bodies.is_ecard3_prismatic_body_active(pokemon) and "Special" not in attached.metadata.get("subtypes", []):
+			pool.append("Any")
 		# ECARD2 Ion Coating (Lanturn): Lightning Energy on this Pokemon counts as Water this turn
 		elif pokemon.has_effect("ecard2_ion_coating") and "Lightning" in main.get_energy_provided_by_card(attached):
 			pool.append("Water")
@@ -1132,7 +1138,13 @@ func execute_cpu_retreat(cpu_eval: Dictionary) -> void:
 	if best_replacement == null:
 		print("CPU retreat failed: no valid bench replacement")
 		return
-		
+
+	# ECARD3 Mirage Stadium: any retreat attempt requires a coin flip — tails blocks it entirely
+	var mirage_ok = await main.trainer_effects.mirage_stadium_check(true)
+	if main._should_bail(): return
+	if not mirage_ok:
+		return
+
 	var pre_check = await main.check_confused_retreat(main.opponent_active_pokemon, true, "pre_energy")
 	if not pre_check:
 		main.display_hp_circles_above_align(main.opponent_active_pokemon, true)
@@ -1356,6 +1368,10 @@ func cpu_phase_energy_attachment(cpu_eval: Dictionary) -> void:
 	if main.powers_and_bodies.check_anti_lightning_block(energy, target):
 		print("CPU energy attachment blocked: Anti-Lightning")
 		return
+	# ECARD3 Water Immunity (Articuno) / Fire Immunity (Moltres): can't attach that type of Energy
+	if main.powers_and_bodies.check_ecard3_type_immunity_block(energy, target):
+		print("CPU energy attachment blocked: type immunity")
+		return
 
 	# Perform the attachment
 	main.opponent_hand.erase(energy)
@@ -1407,6 +1423,10 @@ func cpu_phase_energy_attachment(cpu_eval: Dictionary) -> void:
 	# ECARD2 Pokemon Park: energy attached from hand to a Benched Pokemon heals 1 damage counter
 	if target != main.opponent_active_pokemon:
 		main.trainer_effects.pokemon_park_on_bench_energy_attach(target, true)
+	# ECARD2/ECARD3 Crystal Type: matching-type Energy attach temporarily changes the holder's type
+	main.powers_and_bodies.check_crystal_type_attach(target, energy, true)
+	# ECARD3 Self-healing (Flareon): Fire Energy attach from hand cures all Special Conditions
+	main.powers_and_bodies.check_ecard3_self_healing(target, energy, true)
 
 	# MATCH EFFECTS: energy_attach_halve_hp / energy_attach_full_heal
 	await main.apply_energy_attach_match_effects(target, true)
@@ -2745,13 +2765,13 @@ func cpu_phase_attack(cpu_eval: Dictionary) -> void:
 		await main.show_message("SWORDS DANCE BOOST! SLASH DOES 60 DAMAGE!")
 		if main._should_bail(): return
 
-	# GYM1 Focus Energy: if active, double Gnaw's base damage
-	if main.opponent_active_pokemon.focus_energy_active and chosen_name.to_lower() == "gnaw":
+	# GYM1 Focus Energy (Gnaw) / ECARD3 Focus Energy (Mega Punch): if active, double base damage
+	if main.opponent_active_pokemon.focus_energy_active and chosen_name.to_lower() in ["gnaw", "mega punch"]:
 		chosen_attack = chosen_attack.duplicate()
-		var cpu_gnaw_doubled = main.attack_effects.parse_attack_base_damage(chosen_attack) * 2
-		chosen_attack["damage"] = str(cpu_gnaw_doubled)
+		var cpu_doubled = main.attack_effects.parse_attack_base_damage(chosen_attack) * 2
+		chosen_attack["damage"] = str(cpu_doubled)
 		main.opponent_active_pokemon.focus_energy_active = false
-		await main.show_message("FOCUS ENERGY! GNAW DOES " + str(cpu_gnaw_doubled) + " DAMAGE!")
+		await main.show_message("FOCUS ENERGY! " + chosen_name.to_upper() + " DOES " + str(cpu_doubled) + " DAMAGE!")
 		if main._should_bail(): return
 	
 	if await main.attack_effects.handle_attack_confusion(main.opponent_active_pokemon, true):
@@ -3158,6 +3178,25 @@ func cpu_score_trainer_card(card: card_object) -> float:
 		"ecard2-138": return 20.0  # Undersea Ruins (Stadium): situational, usually self-harming
 		"ecard2-139": return 40.0  # Power Plant (Stadium): energy type flexibility
 		"ecard2-141": return 40.0  # Weakness Guard: situational defensive utility
+		# ---- ECARD3 (SKYRIDGE) TRAINER SCORING ----
+		"ecard3-119": return 45.0  # Ancient Ruins (Stadium): passive card-advantage safety net
+		"ecard3-120": return 55.0  # Relic Hunter: search for Supporter/Stadium, good consistency tool
+		"ecard3-121": return 40.0  # Apricorn Maker: only useful with Ball cards in deck
+		"ecard3-123": return 50.0  # Desert Shaman: symmetric hand refresh, situational
+		"ecard3-124": return _cpu_score_poke_ball()  # Fast Ball
+		"ecard3-125": return 45.0  # Fisherman: energy recovery, useful mid-late game
+		"ecard3-126": return _cpu_score_poke_ball()  # Friend Ball
+		"ecard3-127": return _cpu_score_potion()  # Hyper Potion
+		"ecard3-128": return 35.0  # Lure Ball: coin-flip dependent Evolution recovery
+		"ecard3-132": return 15.0  # Mirage Stadium (Stadium): hurts both sides' retreat equally, low proactive value
+		"ecard3-137": return 40.0  # Mystery Zone (Stadium): situational Evolution-for-Energy trade
+		"ecard3-138": return 55.0  # Oracle: deck manipulation, solid consistency
+		"ecard3-140": return 50.0  # Underground Expedition: bottom-of-deck card advantage
+		"ecard3-141": return 45.0  # Underground Lake (Stadium): free bench Pokemon if Omanyte/Kabuto in discard
+		"ecard3-122": return 40.0  # Crystal Shard (Tool): type-override utility, discards itself after attacking
+		"ecard3-139": return 35.0  # Star Piece (Tool): situational bench-evolve trigger
+		"ecard3-129", "ecard3-130", "ecard3-131", "ecard3-133", "ecard3-134", "ecard3-135", "ecard3-136":
+			return 30.0  # Miracle Sphere/Mystery Plate (Technical Machines): situational, energy-combo/prize-count gated
 	return 0.0
 
 func _cpu_score_neo1_energy_charge() -> float:
