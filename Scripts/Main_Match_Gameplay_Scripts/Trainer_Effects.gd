@@ -29,6 +29,7 @@ func _ensure_trainer_dispatch_ready() -> void:
 	_register_neo3_trainers()
 	_register_neo4_trainers()
 	_register_np_trainers()
+	_register_ecard1_trainers()
 
 func _register_base_trainers() -> void:
 	_trainer_dispatch["base1-88"] = func(c, opp): await effect_professor_oak(c, opp)
@@ -502,6 +503,9 @@ func is_attached_trainer(card: card_object) -> bool:
 		return true
 	# NEO4 Pokemon Tools (EXP.ALL, Counterattack Claws, Magnifier)
 	if uid in ["neo4-93", "neo4-97", "neo4-101"]:
+		return true
+	# ECARD1 Strength Charm (Pokemon Tool) + Multi Technical Machine 01
+	if uid in ["ecard1-150", "ecard1-144"]:
 		return true
 	return false
 
@@ -1124,6 +1128,44 @@ func resolve_attached_trainer(card: card_object, is_opponent: bool) -> void:
 	# NEO1 Pokemon Tools (Focus Band, Gold Berry, Miracle Berry, Berry): attach to chosen Pokemon
 	elif card.uid.to_lower() in ["neo1-86", "neo1-93", "neo1-94", "neo1-99"]:
 		await neo1_attach_tool(card, is_opponent)
+		return
+
+	# ECARD1 Strength Charm (ecard1-150): Pokemon Tool — shares the one-tool-per-Pokemon slot
+	elif card.uid.to_lower() == "ecard1-150":
+		await neo1_attach_tool(card, is_opponent)
+		return
+
+	# ECARD1 Multi Technical Machine 01 (ecard1-144): attach to any Pokemon in play (own subtype, no tool-slot restriction)
+	elif card.uid.to_lower() == "ecard1-144":
+		var targets = build_field_pokemon_array(is_opponent)
+		if targets.size() == 0:
+			var discard_tm = main.opponent_discard_pile if is_opponent else main.player_discard_pile
+			card.current_location = "discard"
+			discard_tm.append(card)
+			return
+		var target_tm: card_object = null
+		if is_opponent:
+			target_tm = main.opponent_active_pokemon if main.opponent_active_pokemon != null else targets[0]
+		else:
+			if targets.size() == 1:
+				target_tm = targets[0]
+			else:
+				target_tm = await main.card_ops.prompt_select_card(targets, "ATTACH MULTI TECHNICAL MACHINE 01", "Choose a Pokemon to attach it to", "ATTACH", false)
+				if main._should_bail(): return
+		if target_tm == null:
+			var discard_tm2 = main.opponent_discard_pile if is_opponent else main.player_discard_pile
+			card.current_location = "discard"
+			discard_tm2.append(card)
+			return
+		target_tm.attached_cards.append(card)
+		var hand_node_tm = main.opponent_hand_container if is_opponent else main.player_hand_container
+		var attached_node_tm = main.opponent_attached_cards_container if is_opponent else main.player_attached_cards_container
+		var card_texture_tm = main.get_card_texture(card)
+		await main.animate_card_a_to_b(hand_node_tm, attached_node_tm, 0.3, card_texture_tm, main.card_scales[10])
+		display_attached_trainer_cards(is_opponent)
+		await main.show_message("MULTI TECHNICAL MACHINE 01 ATTACHED TO " + target_tm.metadata.get("name","").to_upper() + "!")
+		if main._should_bail(): return
+		print("TRAINER: Multi Technical Machine 01 attached to ", target_tm.metadata.get("name",""))
 		return
 
 	# NEO3 Balloon Berry (neo3-60): attach to chosen Pokemon — makes retreat free once, then discards
@@ -3355,6 +3397,12 @@ func gym1_end_of_turn_cleanup(side_is_opponent: bool) -> void:
 	else:
 		main.player_misty_boost_active = false
 
+	# ECARD1 Burning Energy: clears at end of the turn it was activated on
+	if side_is_opponent:
+		main.opponent_ecard1_burning_energy_active = false
+	else:
+		main.player_ecard1_burning_energy_active = false
+
 	# GYM2: clear per-turn match flags for the side whose turn just ended
 	if side_is_opponent:
 		main.opponent_blaine_double_attach_used = false
@@ -3373,6 +3421,9 @@ func gym1_end_of_turn_cleanup(side_is_opponent: bool) -> void:
 		# Recall expires at end of own turn
 		if pokemon.gym1_recall_active:
 			pokemon.gym1_recall_active = false
+		# ECARD1 Tailwind expires at end of own turn
+		if pokemon.ecard1_tailwind_active:
+			pokemon.ecard1_tailwind_active = false
 		# GYM2 Giovanni evolve-anywhere expires at end of own turn
 		if pokemon.gym2_giovanni_evolve_anywhere:
 			pokemon.gym2_giovanni_evolve_anywhere = false
@@ -3417,6 +3468,44 @@ func gym1_end_of_turn_cleanup(side_is_opponent: bool) -> void:
 				display_attached_trainer_cards(side_is_opponent)
 				main.update_discard_pile_display(side_is_opponent)
 				print("SABRINA'S ESP: discarded from ", pokemon.metadata.get("name", ""))
+
+		# ECARD1 Strength Charm: discarded at end of the turn its +10 bonus was applied
+		if pokemon.ecard1_strength_charm_triggered_this_turn:
+			var charm_card: card_object = null
+			for ac in pokemon.attached_cards:
+				if ac.uid.to_lower() == "ecard1-150":
+					charm_card = ac
+					break
+			if charm_card != null:
+				pokemon.attached_cards.erase(charm_card)
+				charm_card.current_location = "discard"
+				discard.append(charm_card)
+				var attached_node2 = main.opponent_attached_cards_container if side_is_opponent else main.player_attached_cards_container
+				var discard_node2 = main.opponent_discard_icon if side_is_opponent else main.player_discard_icon
+				var tex2 = main.get_card_texture(charm_card)
+				main.animate_card_a_to_b(attached_node2, discard_node2, 0.25, tex2, main.card_scales[10])
+				display_attached_trainer_cards(side_is_opponent)
+				main.update_discard_pile_display(side_is_opponent)
+				print("STRENGTH CHARM: discarded from ", pokemon.metadata.get("name", ""))
+			pokemon.ecard1_strength_charm_triggered_this_turn = false
+
+		# ECARD1 Multi Technical Machine 01: discarded at end of every turn, regardless of use
+		var tm_card: card_object = null
+		for ac in pokemon.attached_cards:
+			if ac.uid.to_lower() == "ecard1-144":
+				tm_card = ac
+				break
+		if tm_card != null:
+			pokemon.attached_cards.erase(tm_card)
+			tm_card.current_location = "discard"
+			discard.append(tm_card)
+			var attached_node3 = main.opponent_attached_cards_container if side_is_opponent else main.player_attached_cards_container
+			var discard_node3 = main.opponent_discard_icon if side_is_opponent else main.player_discard_icon
+			var tex3 = main.get_card_texture(tm_card)
+			main.animate_card_a_to_b(attached_node3, discard_node3, 0.25, tex3, main.card_scales[10])
+			display_attached_trainer_cards(side_is_opponent)
+			main.update_discard_pile_display(side_is_opponent)
+			print("MULTI TECHNICAL MACHINE 01: discarded from ", pokemon.metadata.get("name", ""))
 
 # Restores cards held aside by Tickling Machine when the tickled side's own next turn ends.
 func gym1_restore_tickled_hand(target_is_opponent: bool) -> void:
@@ -5668,7 +5757,7 @@ func neo1_attach_tool(card: card_object, is_opponent: bool) -> void:
 	for p in targets:
 		var has_tool = false
 		for ac in p.attached_cards:
-			if is_attached_trainer(ac) and ac.uid.to_lower() in ["neo1-86","neo1-93","neo1-94","neo1-99","neo3-60","neo4-93","neo4-97","neo4-101","gym1-99","gym1-117","gym2-101","gym2-115"]:
+			if is_attached_trainer(ac) and ac.uid.to_lower() in ["neo1-86","neo1-93","neo1-94","neo1-99","neo3-60","neo4-93","neo4-97","neo4-101","gym1-99","gym1-117","gym2-101","gym2-115","ecard1-150"]:
 				has_tool = true
 				break
 		if not has_tool:
@@ -6550,7 +6639,7 @@ func neo3_attach_tool(card: card_object, is_opponent: bool) -> void:
 	for p in targets:
 		var has_tool = false
 		for ac in p.attached_cards:
-			if is_attached_trainer(ac) and ac.uid.to_lower() in ["neo1-86","neo1-93","neo1-94","neo1-99","neo3-60","neo4-93","neo4-97","neo4-101","gym1-99","gym1-117","gym2-101","gym2-115"]:
+			if is_attached_trainer(ac) and ac.uid.to_lower() in ["neo1-86","neo1-93","neo1-94","neo1-99","neo3-60","neo4-93","neo4-97","neo4-101","gym1-99","gym1-117","gym2-101","gym2-115","ecard1-150"]:
 				has_tool = true
 				break
 		if not has_tool:
@@ -7138,4 +7227,407 @@ func np_championship_arena_check(player_turn_just_ended: bool) -> void:
 		if main._should_bail(): return
 	main.refresh_hand_display(is_opponent_side)
 	main.update_discard_pile_display(is_opponent_side)
+
+############################################### ECARD1 (EXPEDITION) TRAINERS #########################################################################
+
+func _register_ecard1_trainers() -> void:
+	_trainer_dispatch["ecard1-137"] = func(c, opp): await effect_ecard1_bills_maintenance(opp)
+	_trainer_dispatch["ecard1-138"] = func(c, opp): await effect_ecard1_copycat(opp)
+	_trainer_dispatch["ecard1-139"] = func(c, opp): await effect_ecard1_dual_ball(opp)
+	_trainer_dispatch["ecard1-140"] = func(c, opp): await effect_ecard1_energy_removal_2(opp)
+	_trainer_dispatch["ecard1-141"] = func(c, opp): await effect_ecard1_energy_restore(opp)
+	_trainer_dispatch["ecard1-142"] = func(c, opp): await effect_ecard1_marys_impulse(opp)
+	_trainer_dispatch["ecard1-143"] = func(c, opp): await effect_ecard1_master_ball(opp)
+	_trainer_dispatch["ecard1-145"] = func(c, opp): await effect_ecard1_pokemon_nurse(opp)
+	_trainer_dispatch["ecard1-146"] = func(c, opp): await effect_ecard1_pokemon_reversal(opp)
+	_trainer_dispatch["ecard1-147"] = func(c, opp): await effect_ecard1_power_charge(opp)
+	_trainer_dispatch["ecard1-148"] = func(c, opp): await effect_ecard1_professor_elms_training_method(opp)
+	_trainer_dispatch["ecard1-149"] = func(c, opp): await effect_ecard1_professor_oaks_research(opp)
+	_trainer_dispatch["ecard1-151"] = func(c, opp): await effect_neo1_super_scoop_up(opp)
+	_trainer_dispatch["ecard1-152"] = func(c, opp): await effect_ecard1_warp_point(opp)
+	_trainer_dispatch["ecard1-153"] = func(c, opp): await effect_energy_search(opp)
+	_trainer_dispatch["ecard1-154"] = func(c, opp): await effect_full_heal(opp)
+	_trainer_dispatch["ecard1-155"] = func(c, opp): await effect_neo1_moo_moo_milk(opp)
+	_trainer_dispatch["ecard1-156"] = func(c, opp): await effect_potion(opp)
+	_trainer_dispatch["ecard1-157"] = func(c, opp): await effect_switch(opp)
+	# ecard1-144 Multi Technical Machine 01 and ecard1-150 Strength Charm are attached
+	# trainers — routed via is_attached_trainer()/resolve_attached_trainer(), not this dispatch.
+
+# BILL'S MAINTENANCE (ecard1-137): if you have cards in hand, shuffle 1 into deck, then draw 3
+func effect_ecard1_bills_maintenance(is_opponent: bool) -> void:
+	var hand = main.opponent_hand if is_opponent else main.player_hand
+	var deck = main.opponent_deck if is_opponent else main.player_deck
+	if hand.size() > 0:
+		if is_opponent:
+			var to_shuffle = cpu_get_discard_priority(hand, 1)
+			for card in to_shuffle:
+				hand.erase(card)
+				card.current_location = "deck"
+				deck.append(card)
+			deck.shuffle()
+		else:
+			await player_select_cards_to_discard(hand, 1, "BILL'S MAINTENANCE", "Select 1 card to shuffle into your deck")
+			if main._should_bail(): return
+			for card in main.trainer_discard_selected:
+				hand.erase(card)
+				card.current_location = "deck"
+				deck.append(card)
+			main.trainer_discard_selected.clear()
+			deck.shuffle()
+		main.refresh_hand_display(is_opponent)
+		main.update_deck_icon(is_opponent)
+	await main.card_ops.draw_n(is_opponent, 3)
+	if main._should_bail(): return
+	print("TRAINER: Bill's Maintenance")
+
+# COPYCAT (ecard1-138): shuffle hand into deck, draw = opponent's hand size
+func effect_ecard1_copycat(is_opponent: bool) -> void:
+	var hand = main.opponent_hand if is_opponent else main.player_hand
+	var deck = main.opponent_deck if is_opponent else main.player_deck
+	var opp_hand_size = (main.player_hand if is_opponent else main.opponent_hand).size()
+	for card in hand.duplicate():
+		hand.erase(card)
+		card.current_location = "deck"
+		deck.append(card)
+	deck.shuffle()
+	main.refresh_hand_display(is_opponent)
+	main.update_deck_icon(is_opponent)
+	if opp_hand_size > 0:
+		await main.card_ops.draw_n(is_opponent, opp_hand_size)
+		if main._should_bail(): return
+	print("TRAINER: Copycat - drew ", opp_hand_size)
+
+# DUAL BALL (ecard1-139): flip 2 coins; for each heads search deck for 1 Basic (non-Baby) Pokemon
+func effect_ecard1_dual_ball(is_opponent: bool) -> void:
+	await main.show_message("DUAL BALL: FLIPPING 2 COINS...")
+	if main._should_bail(): return
+	var heads_count = 0
+	for i in range(2):
+		var coin = await main.flip_coin(false, is_opponent)
+		if main._should_bail(): return
+		if coin:
+			heads_count += 1
+	if heads_count == 0:
+		await main.show_message("DUAL BALL: NO HEADS — NO POKEMON FOUND!")
+		if main._should_bail(): return
+		return
+	var filter_fn = func(c): return c.metadata.get("supertype","") == "Pokémon" and "Basic" in c.metadata.get("subtypes",[]) and "Baby" not in c.metadata.get("subtypes",[])
+	var found = await main.card_ops.search_deck_to_hand(is_opponent, filter_fn, "DUAL BALL: CHOOSE UP TO " + str(heads_count) + " BASIC POKEMON", heads_count)
+	if main._should_bail(): return
+	await main.show_message("DUAL BALL: ADDED " + str(found.size()) + " POKEMON TO HAND!")
+	if main._should_bail(): return
+	print("TRAINER: Dual Ball - ", heads_count, " heads, found ", found.size())
+
+# ENERGY REMOVAL 2 (ecard1-140): flip a coin; heads discard 1 Energy from opponent's Pokemon
+func effect_ecard1_energy_removal_2(is_opponent: bool) -> void:
+	await main.show_message("ENERGY REMOVAL 2: FLIPPING COIN...")
+	if main._should_bail(): return
+	var coin = await main.flip_coin(false, is_opponent)
+	if main._should_bail(): return
+	if not coin:
+		await main.show_message("TAILS! ENERGY REMOVAL 2 FAILED!")
+		if main._should_bail(): return
+		return
+	await effect_energy_removal(is_opponent)
+	if main._should_bail(): return
+	print("TRAINER: Energy Removal 2 - heads")
+
+# ENERGY RESTORE (ecard1-141): flip 3 coins; for each heads, put a basic Energy from discard into hand
+func effect_ecard1_energy_restore(is_opponent: bool) -> void:
+	var discard = main.opponent_discard_pile if is_opponent else main.player_discard_pile
+	await main.show_message("ENERGY RESTORE: FLIPPING 3 COINS...")
+	if main._should_bail(): return
+	var heads_count = 0
+	for i in range(3):
+		var coin = await main.flip_coin(false, is_opponent)
+		if main._should_bail(): return
+		if coin:
+			heads_count += 1
+	if heads_count == 0:
+		await main.show_message("ENERGY RESTORE: NO HEADS!")
+		if main._should_bail(): return
+		return
+	var moved = 0
+	for i in range(heads_count):
+		var basic_energies = discard.filter(func(c): return c.metadata.get("supertype","") == "Energy" and "Special" not in c.metadata.get("subtypes",[]))
+		if basic_energies.is_empty():
+			break
+		var chosen: card_object = null
+		if is_opponent:
+			chosen = basic_energies[0]
+		else:
+			chosen = await main.card_ops.prompt_select_card(basic_energies, "ENERGY RESTORE", "Select a basic Energy to return to hand (" + str(heads_count - moved) + " remaining)", "SELECT", false, true)
+			if main._should_bail(): return
+			if chosen == null:
+				break
+		await main.card_ops.recover_to_hand(chosen, is_opponent, true)
+		if main._should_bail(): return
+		moved += 1
+	await main.show_message("ENERGY RESTORE: RETURNED " + str(moved) + " ENERGY TO HAND!")
+	if main._should_bail(): return
+	print("TRAINER: Energy Restore - ", heads_count, " heads, moved ", moved)
+
+# MARY'S IMPULSE (ecard1-142): flip until tails; draw 2 for each heads
+func effect_ecard1_marys_impulse(is_opponent: bool) -> void:
+	await main.show_message("MARY'S IMPULSE: FLIPPING COINS...")
+	if main._should_bail(): return
+	var heads_count = 0
+	while true:
+		var coin = await main.flip_coin(false, is_opponent)
+		if main._should_bail(): return
+		if not coin:
+			break
+		heads_count += 1
+		if heads_count >= 20:  # safety cap against pathological RNG streaks
+			break
+	if heads_count == 0:
+		await main.show_message("MARY'S IMPULSE: TAILS ON FIRST FLIP!")
+		if main._should_bail(): return
+		return
+	await main.card_ops.draw_n(is_opponent, heads_count * 2)
+	if main._should_bail(): return
+	print("TRAINER: Mary's Impulse - ", heads_count, " heads, drew ", heads_count * 2)
+
+# MASTER BALL (ecard1-143): look at top 7 of deck; may take 1 Basic or Evolution card; shuffle the rest back
+func effect_ecard1_master_ball(is_opponent: bool) -> void:
+	var deck = main.opponent_deck if is_opponent else main.player_deck
+	var hand = main.opponent_hand if is_opponent else main.player_hand
+	if deck.size() == 0:
+		await main.show_message("DECK IS EMPTY!")
+		if main._should_bail(): return
+		return
+	var look_count = min(7, deck.size())
+	var top_cards: Array = []
+	for i in range(look_count):
+		top_cards.append(deck[i])
+	var candidates = top_cards.filter(func(c): return c.metadata.get("supertype","") == "Pokémon" and ("Basic" in c.metadata.get("subtypes",[]) or "Stage 1" in c.metadata.get("subtypes",[]) or "Stage 2" in c.metadata.get("subtypes",[])))
+	await main.show_message("MASTER BALL: LOOKING AT TOP " + str(look_count) + " CARDS!")
+	if main._should_bail(): return
+	var chosen: card_object = null
+	if candidates.size() > 0:
+		if is_opponent:
+			chosen = main.cpu_ai.cpu_search_deck_for_best_card(candidates)
+		else:
+			chosen = await main.card_ops.prompt_select_card(candidates, "MASTER BALL", "Choose a Basic or Evolution card to add to your hand (optional)", "TAKE", true)
+			if main._should_bail(): return
+	if chosen != null:
+		deck.erase(chosen)
+		chosen.current_location = "hand"
+		hand.append(chosen)
+		main.refresh_hand_display(is_opponent)
+		await main.show_message("MASTER BALL: ADDED " + chosen.metadata.get("name","").to_upper() + " TO HAND!")
+		if main._should_bail(): return
+	else:
+		await main.show_message("MASTER BALL: NO CARD TAKEN!")
+		if main._should_bail(): return
+	deck.shuffle()
+	main.update_deck_icon(is_opponent)
+	print("TRAINER: Master Ball - ", "took a card" if chosen != null else "took nothing")
+
+# POKEMON NURSE (ecard1-145): heal all damage from 1 chosen Pokemon, then discard its Energy
+func effect_ecard1_pokemon_nurse(is_opponent: bool) -> void:
+	var all_pokemon = build_field_pokemon_array(is_opponent)
+	var damaged = all_pokemon.filter(func(p): return p.current_hp < int(p.metadata.get("hp","0")))
+	if damaged.size() == 0:
+		await main.show_message("NO POKEMON WITH DAMAGE!")
+		if main._should_bail(): return
+		return
+	var target: card_object = null
+	if is_opponent:
+		target = damaged[0]
+	else:
+		target = await main.card_ops.prompt_select_card(damaged, "POKEMON NURSE", "Select a Pokemon to fully heal (its Energy will be discarded)", "HEAL", false)
+		if main._should_bail(): return
+	if target == null:
+		return
+	var max_hp = int(target.metadata.get("hp","0"))
+	await main.card_ops.heal_pokemon(target, max_hp - target.current_hp, is_opponent)
+	if main._should_bail(): return
+	if target.attached_energies.size() > 0:
+		var discard = main.opponent_discard_pile if is_opponent else main.player_discard_pile
+		for energy in target.attached_energies.duplicate():
+			energy.current_location = "discard"
+			discard.append(energy)
+		target.attached_energies.clear()
+	main.display_pokemon(is_opponent)
+	main.display_active_pokemon_energies(is_opponent)
+	main.update_discard_pile_display(is_opponent)
+	await main.show_message("POKEMON NURSE: " + target.metadata.get("name","").to_upper() + " FULLY HEALED, ENERGY DISCARDED!")
+	if main._should_bail(): return
+	print("TRAINER: Pokemon Nurse - healed and discarded energy from ", target.metadata.get("name",""))
+
+# POKEMON REVERSAL (ecard1-146): choose opponent's bench Pokemon, flip; heads swap it into the Defending spot
+func effect_ecard1_pokemon_reversal(is_opponent: bool) -> void:
+	var target_bench = main.player_bench if is_opponent else main.opponent_bench
+	var target_is_opp = not is_opponent
+	if target_bench.size() == 0:
+		await main.show_message("OPPONENT HAS NO BENCH POKEMON!")
+		if main._should_bail(): return
+		return
+	var chosen: card_object = null
+	if is_opponent:
+		var best: card_object = null
+		var best_score = -999.0
+		for bp in target_bench:
+			var score = (200.0 - bp.current_hp) + (100.0 if bp.attached_energies.size() == 0 else 0.0)
+			if score > best_score:
+				best_score = score
+				best = bp
+		chosen = best
+	else:
+		chosen = await main.card_ops.prompt_select_card(target_bench, "POKEMON REVERSAL", "Select opponent's bench Pokemon", "SELECT", false)
+		if main._should_bail(): return
+	if chosen == null:
+		return
+	await main.show_message("POKEMON REVERSAL: FLIPPING COIN...")
+	if main._should_bail(): return
+	var coin = await main.flip_coin(false, is_opponent)
+	if main._should_bail(): return
+	if not coin:
+		await main.show_message("TAILS! POKEMON REVERSAL FAILED!")
+		if main._should_bail(): return
+		return
+	var old_active = main.player_active_pokemon if is_opponent else main.opponent_active_pokemon
+	target_bench.erase(chosen)
+	target_bench.append(old_active)
+	old_active.current_location = "bench"
+	chosen.current_location = "active"
+	if is_opponent:
+		main.player_active_pokemon = chosen
+	else:
+		main.opponent_active_pokemon = chosen
+	await main.animate_retreat(old_active, chosen, [], target_is_opp)
+	if main._should_bail(): return
+	main.clear_all_statuses(old_active, target_is_opp)
+	main.display_pokemon(target_is_opp)
+	main.display_active_pokemon_energies(target_is_opp)
+	await main.show_message("HEADS! " + chosen.metadata.get("name","").to_upper() + " SWITCHED IN!")
+	if main._should_bail(): return
+	print("TRAINER: Pokemon Reversal - heads")
+
+# POWER CHARGE (ecard1-147): flip; heads shuffle 2 Energy cards from discard into deck (1 if only 1)
+func effect_ecard1_power_charge(is_opponent: bool) -> void:
+	var discard = main.opponent_discard_pile if is_opponent else main.player_discard_pile
+	var deck = main.opponent_deck if is_opponent else main.player_deck
+	await main.show_message("POWER CHARGE: FLIPPING COIN...")
+	if main._should_bail(): return
+	var coin = await main.flip_coin(false, is_opponent)
+	if main._should_bail(): return
+	if not coin:
+		await main.show_message("TAILS! POWER CHARGE FAILED!")
+		if main._should_bail(): return
+		return
+	var energies_in_discard = discard.filter(func(c): return c.metadata.get("supertype","") == "Energy")
+	if energies_in_discard.is_empty():
+		await main.show_message("NO ENERGY IN DISCARD PILE!")
+		if main._should_bail(): return
+		return
+	var want = min(2, energies_in_discard.size())
+	var moved: Array = []
+	for i in range(want):
+		var pool = discard.filter(func(c): return c.metadata.get("supertype","") == "Energy")
+		if pool.is_empty(): break
+		var chosen: card_object = null
+		if is_opponent:
+			chosen = pool[0]
+		else:
+			chosen = await main.card_ops.prompt_select_card(pool, "POWER CHARGE", "Select an Energy to shuffle into your deck (" + str(want - moved.size()) + " remaining)", "SELECT", false, true)
+			if main._should_bail(): return
+			if chosen == null: break
+		discard.erase(chosen)
+		chosen.current_location = "deck"
+		deck.append(chosen)
+		moved.append(chosen)
+	deck.shuffle()
+	main.update_deck_icon(is_opponent)
+	main.update_discard_pile_display(is_opponent)
+	await main.show_message("HEADS! SHUFFLED " + str(moved.size()) + " ENERGY INTO DECK!")
+	if main._should_bail(): return
+	print("TRAINER: Power Charge - moved ", moved.size())
+
+# PROFESSOR ELM'S TRAINING METHOD (ecard1-148): search deck for 1 Evolution card
+func effect_ecard1_professor_elms_training_method(is_opponent: bool) -> void:
+	var filter_fn = func(c): return c.metadata.get("supertype","") == "Pokémon" and ("Stage 1" in c.metadata.get("subtypes",[]) or "Stage 2" in c.metadata.get("subtypes",[]))
+	var found = await main.card_ops.search_deck_to_hand(is_opponent, filter_fn, "PROFESSOR ELM'S TRAINING METHOD: CHOOSE AN EVOLUTION CARD", 1)
+	if main._should_bail(): return
+	if found.is_empty():
+		await main.show_message("NO EVOLUTION CARDS IN DECK!")
+		if main._should_bail(): return
+		return
+	await main.show_message("ADDED " + found[0].metadata.get("name","").to_upper() + " TO HAND!")
+	if main._should_bail(): return
+	print("TRAINER: Professor Elm's Training Method")
+
+# PROFESSOR OAK'S RESEARCH (ecard1-149): shuffle hand into deck, draw 5
+func effect_ecard1_professor_oaks_research(is_opponent: bool) -> void:
+	var hand = main.opponent_hand if is_opponent else main.player_hand
+	var deck = main.opponent_deck if is_opponent else main.player_deck
+	for card in hand.duplicate():
+		hand.erase(card)
+		card.current_location = "deck"
+		deck.append(card)
+	deck.shuffle()
+	main.refresh_hand_display(is_opponent)
+	main.update_deck_icon(is_opponent)
+	await main.card_ops.draw_n(is_opponent, 5)
+	if main._should_bail(): return
+	print("TRAINER: Professor Oak's Research")
+
+# WARP POINT (ecard1-152): opponent switches Defending with bench (their choice, if any); then you switch Active with bench (your choice, if any)
+func effect_ecard1_warp_point(is_opponent: bool) -> void:
+	var opp_target_bench = main.player_bench if is_opponent else main.opponent_bench
+	var opp_target_is_opp = not is_opponent
+	if opp_target_bench.size() > 0:
+		var opp_active = main.player_active_pokemon if is_opponent else main.opponent_active_pokemon
+		var new_opp_active: card_object = null
+		if opp_target_is_opp:
+			var cpu_eval = main.cpu_ai.get_cpu_evaluation()
+			new_opp_active = main.cpu_ai.pick_best_bench_replacement(opp_target_bench, main.player_active_pokemon, cpu_eval)
+			if new_opp_active == null:
+				new_opp_active = opp_target_bench[0]
+		else:
+			new_opp_active = await main.card_ops.prompt_select_card(opp_target_bench, "WARP POINT", "Opponent switches: select a bench Pokemon", "SWITCH", false)
+			if main._should_bail(): return
+		if new_opp_active != null:
+			opp_target_bench.erase(new_opp_active)
+			opp_target_bench.append(opp_active)
+			opp_active.current_location = "bench"
+			new_opp_active.current_location = "active"
+			if opp_target_is_opp:
+				main.opponent_active_pokemon = new_opp_active
+			else:
+				main.player_active_pokemon = new_opp_active
+			await main.animate_retreat(opp_active, new_opp_active, [], opp_target_is_opp)
+			if main._should_bail(): return
+			main.clear_all_statuses(opp_active, opp_target_is_opp)
+			main.display_pokemon(opp_target_is_opp)
+			main.display_active_pokemon_energies(opp_target_is_opp)
+
+	var own_bench = main.opponent_bench if is_opponent else main.player_bench
+	if own_bench.size() > 0:
+		var own_active = main.opponent_active_pokemon if is_opponent else main.player_active_pokemon
+		var new_own_active: card_object = null
+		if is_opponent:
+			var cpu_eval2 = main.cpu_ai.get_cpu_evaluation()
+			new_own_active = main.cpu_ai.pick_best_bench_replacement(own_bench, main.player_active_pokemon, cpu_eval2)
+			if new_own_active == null:
+				new_own_active = own_bench[0]
+		else:
+			new_own_active = await main.card_ops.prompt_select_card(own_bench, "WARP POINT", "Select a bench Pokemon to switch in", "SWITCH", false)
+			if main._should_bail(): return
+		if new_own_active != null:
+			own_bench.erase(new_own_active)
+			own_bench.append(own_active)
+			own_active.current_location = "bench"
+			new_own_active.current_location = "active"
+			if is_opponent:
+				main.opponent_active_pokemon = new_own_active
+			else:
+				main.player_active_pokemon = new_own_active
+			await main.animate_retreat(own_active, new_own_active, [], is_opponent)
+			if main._should_bail(): return
+			main.clear_all_statuses(own_active, is_opponent)
+			main.display_pokemon(is_opponent)
+			main.display_active_pokemon_energies(is_opponent)
+	print("TRAINER: Warp Point")
 	print("STADIUM: Championship Arena — ", is_opponent_side, " discarded ", excess, " card(s)")

@@ -371,6 +371,14 @@ func get_unmet_energy_count(attack: Dictionary, pokemon: card_object) -> int:
 			if provided.size() > 1:
 				for _i in range(provided.size() - 1):
 					pool.append("Fire")
+		# ECARD1 Burning Energy (Charizard): basic Energy on this side counts as Fire this turn
+		elif main.powers_and_bodies.is_ecard1_burning_energy_active(pokemon) and "Special" not in attached.metadata.get("subtypes", []):
+			pool.append("Fire")
+		# ECARD1 Dark Aura (Tyranitar): all Energy attached to Tyranitar counts as Darkness
+		elif main.powers_and_bodies.is_ecard1_dark_aura_active(pokemon):
+			var provided_dark = main.get_energy_provided_by_card(attached)
+			for _i in range(max(1, provided_dark.size())):
+				pool.append("Darkness")
 		elif photosynthesis_on:
 			var provided = main.get_energy_provided_by_card(attached)
 			for _i in range(max(1, provided.size())):
@@ -2535,7 +2543,7 @@ func cpu_phase_attack(cpu_eval: Dictionary) -> void:
 			all_field2.append_array(main.player_bench)
 			for p in all_field2:
 				for ab in p.metadata.get("abilities",[]):
-					if ab.get("type","") in ["Pokémon Power","Pokemon Power"]:
+					if ab.get("type","") in ["Pokémon Power","Pokemon Power","Poké-Power","Poke-Power"]:
 						power_count += 1
 						break
 			score += power_count * 15.0  # 20 damage per powered pokemon
@@ -3097,6 +3105,28 @@ func cpu_score_trainer_card(card: card_object) -> float:
 		"neo2-73": return _cpu_score_neo2_hyper_devolution_spray()
 		"neo2-74": return _cpu_score_neo2_ruin_wall()
 		"neo2-75": return 40.0  # Energy Ark: 2 coin flips for basic energy
+		# ---- ECARD1 (EXPEDITION) TRAINER SCORING ----
+		"ecard1-137": return _cpu_score_maintenance() # Bill's Maintenance: shuffle-1/draw-3, same family as Maintenance
+		"ecard1-138": return 55.0  # Copycat: value depends on opponent's hand size, moderate default
+		"ecard1-139": return _cpu_score_poke_ball()  # Dual Ball
+		"ecard1-140": return _cpu_score_energy_removal()  # Energy Removal 2
+		"ecard1-141": return 45.0  # Energy Restore: coin-flip dependent basic energy recovery
+		"ecard1-142": return 55.0  # Mary's Impulse: variable draw, decent default
+		"ecard1-143": return _cpu_score_poke_ball()  # Master Ball
+		"ecard1-144": return 35.0  # Multi Technical Machine 01: situational, one-turn attack swap
+		"ecard1-145": return _cpu_score_pokemon_center()  # Pokemon Nurse
+		"ecard1-146": return _cpu_score_gust_of_wind()  # Pokemon Reversal
+		"ecard1-147": return 40.0  # Power Charge: coin-flip energy recycling
+		"ecard1-148": return _cpu_score_neo1_professor_elm()  # Professor Elm's Training Method
+		"ecard1-149": return _cpu_score_professor_oak(card)  # Professor Oak's Research
+		"ecard1-150": return 35.0  # Strength Charm: modest one-off damage boost
+		"ecard1-151": return _cpu_score_neo1_super_scoop_up()  # Super Scoop Up
+		"ecard1-152": return _cpu_score_gust_of_wind()  # Warp Point
+		"ecard1-153": return 70.0  # Energy Search
+		"ecard1-154": return _cpu_score_full_heal()
+		"ecard1-155": return _cpu_score_neo1_moo_moo_milk()  # Moo-Moo Milk
+		"ecard1-156": return _cpu_score_potion()
+		"ecard1-157": return _cpu_score_switch()
 	return 0.0
 
 func _cpu_score_neo1_energy_charge() -> float:

@@ -173,6 +173,10 @@ var opponent_prizes_face_up: bool = false
 # GYM1 (GYM HEROES) trainer match-state
 var player_misty_boost_active: bool = false       # gym1-18/102 Misty — next damage attack by Misty-named active gets +20 (one-shot, cleared at end of turn)
 var opponent_misty_boost_active: bool = false
+
+# ECARD1 Charizard Burning Energy: while active, all basic Energy on that side's Pokemon counts as Fire (cleared at end of turn)
+var player_ecard1_burning_energy_active: bool = false
+var opponent_ecard1_burning_energy_active: bool = false
 var player_tickled_set_aside: Array = []          # gym1-119 Tickling Machine — cards held away from hand
 var opponent_tickled_set_aside: Array = []
 var player_hand_tickled: bool = false             # true while player's hand is held in player_tickled_set_aside
@@ -3108,6 +3112,11 @@ func get_attacks_for_card(card: card_object) -> Array:
 	# Get the attacks if they exist
 	var attacks = card.metadata.get("attacks", [])
 
+	# ECARD1 Multi Technical Machine 01 (ecard1-144): holder may use this card's attack INSTEAD of its own
+	for ac in card.attached_cards:
+		if ac.uid.to_lower() == "ecard1-144":
+			return ac.metadata.get("attacks", [])
+
 	# GYM1 Recall (gym1-116): this turn the Active may also use any attack from its Basic / Evolution chain.
 	# We add attached_pre_evolutions' attacks to the list. Energy cost still applies per rules.
 	if card.gym1_recall_active:
@@ -3704,6 +3713,15 @@ func calculate_final_damage(base_damage: int, attacking_types: Array, defending_
 		damage += pp_bonus
 		modifiers_applied.append("PLUSPOWER +" + str(pp_bonus))
 
+	# ECARD1 Strength Charm (ecard1-150): +10 damage once attached, then discarded at end of the turn it triggers
+	if damage > 0 and attacker_pokemon != null:
+		for ac in attacker_pokemon.attached_cards:
+			if ac.uid.to_lower() == "ecard1-150":
+				damage += 10
+				modifiers_applied.append("STRENGTH CHARM +10")
+				attacker_pokemon.ecard1_strength_charm_triggered_this_turn = true
+				break
+
 	# GYM1 Misty (gym1-18/102): +20 to next damage attack by an attacker whose name contains "Misty"
 	# Boost is owned by whichever side played the card and applies once; consumed here.
 	if damage > 0 and attacker_pokemon != null:
@@ -3729,6 +3747,21 @@ func calculate_final_damage(base_damage: int, attacking_types: Array, defending_
 		var reduction = min(damage, 20)
 		damage -= reduction
 		modifiers_applied.append("DEFENDER -" + str(reduction))
+
+	# ECARD1 Poké-Bodies: Exoskeleton (Metapod) -20, Rock Body (Golem) -10 (after Weakness/Resistance)
+	if damage > 0 and not powers_and_bodies.is_power_blocked_by_status(defending_pokemon):
+		for ability in defending_pokemon.metadata.get("abilities", []):
+			var ab_name = ability.get("name", "")
+			if ab_name == "Exoskeleton":
+				var reduction2 = min(damage, 20)
+				damage -= reduction2
+				modifiers_applied.append("EXOSKELETON -" + str(reduction2))
+				break
+			elif ab_name == "Rock Body":
+				var reduction3 = min(damage, 10)
+				damage -= reduction3
+				modifiers_applied.append("ROCK BODY -" + str(reduction3))
+				break
 	
 	# Apply Kabuto Armor (halve damage, rounded down to nearest 10)
 	if damage > 0:
@@ -4308,6 +4341,10 @@ func has_evolution(base_pokemon: card_object, card_array: Array, stage_type: Str
 # Returns the retreat cost count for a Pokemon, or 0 if no retreat cost exists
 func get_retreat_cost(pokemon: card_object) -> int:
 	if pokemon == null:
+		return 0
+
+	# ECARD1 Tailwind (Dragonite): this Pokemon's Retreat Cost is 0 for the rest of the turn
+	if pokemon.ecard1_tailwind_active:
 		return 0
 
 	# MATCH EFFECT: free_retreat — retreating costs nothing for this side

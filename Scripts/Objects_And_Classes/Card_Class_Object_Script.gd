@@ -143,6 +143,12 @@ var gym2_giovanni_evolve_anywhere: bool = false # gym2-18/104 Giovanni — bypas
 var gym2_brocks_protection_attached: bool = false # gym2-101 Brock's Protection — attached energies are protected from opp's attacks / Trainer cards
 var gym2_koga_ninja_trick_attached: bool = false  # gym2-115 Koga's Ninja Trick — owner may switch this pokemon with a bench pokemon when opponent attacks it; discarded if it leaves Active by any other means
 
+# ECARD1 (Expedition) Trainer attachments
+var ecard1_strength_charm_triggered_this_turn: bool = false # ecard1-150 Strength Charm — set true when the +10 damage bonus is applied; discarded at end of that turn
+
+# ECARD1 (Expedition) Poké-Power flags
+var ecard1_tailwind_active: bool = false # ecard1-9 Dragonite's Tailwind — this Pokemon's Retreat Cost is 0 for the rest of the turn
+
 # GYM1 + GYM2 Pokemon Powers / Bodies — per-pokemon state
 var shapeshift_form_metadata: Dictionary = {}   # gym2-3 Brock's Ninetales Shapeshift: metadata of the Evolution card attached as a form
 var shapeshift_form_uid: String = ""            # uid of the attached form card (for textures + discard reference)
