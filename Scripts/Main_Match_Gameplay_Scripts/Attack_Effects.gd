@@ -32,6 +32,7 @@ func _ensure_dispatch_ready() -> void:
 	_register_neo4_attacks()
 	_register_np_attacks()
 	_register_ecard1_attacks()
+	_register_ecard2_attacks()
 
 func _register_si1_attacks() -> void:
 	_attack_dispatch["rainbow wave"]    = func(atk, a, d, opp): await execute_rainbow_wave(a, opp);            await _attack_finish(false, 0,   atk, a.metadata.get("types",["Colorless"]), opp)
@@ -74,7 +75,7 @@ func _register_basep_attacks() -> void:
 		await execute_hyper_flame(a, d, opp)
 		await _attack_finish(true, 60, atk, types, opp)
 	_attack_dispatch["lightning burn"]      = func(atk, a, d, opp): await execute_lightning_burn(a, d, opp);                                                                                      await _attack_finish(true,  30,  atk, a.metadata.get("types",["Colorless"]), opp)
-	_attack_dispatch["mini-metronome"]      = func(atk, a, d, opp): await execute_metronome(a, d, opp);                                                                                           await _attack_finish(false, 0,   atk, a.metadata.get("types",["Colorless"]), opp)
+	_attack_dispatch["mini-metronome"]      = func(atk, a, d, opp): await execute_metronome(a, d, opp, atk)
 	_attack_dispatch["paint"]               = func(atk, a, d, opp): await execute_paint(a, d, opp);                                                                                               await _attack_finish(false, 0,   atk, a.metadata.get("types",["Colorless"]), opp)
 	_attack_dispatch["slashing strike"]     = func(atk, a, d, opp): var b=parse_attack_base_damage(atk); await execute_screaming_headbutt(a, d, opp, b, "Slashing Strike");                      await _attack_finish(true,  b,   atk, a.metadata.get("types",["Colorless"]), opp)
 	_attack_dispatch["protective flame"]    = func(atk, a, d, opp): await execute_protective_flame(a, d, opp);                                                                                    await _attack_finish(true,  50,  atk, a.metadata.get("types",["Colorless"]), opp)
@@ -271,7 +272,7 @@ func _register_base_attacks() -> void:
 	_attack_dispatch["energy conversion"]  = func(atk, a, d, opp): await execute_energy_conversion(a, opp);                                               await _attack_finish(false, 0,  atk, a.metadata.get("types",["Colorless"]), opp)
 	_attack_dispatch["spacing out"]        = func(atk, a, d, opp): await execute_spacing_out(a, opp);                                                     await _attack_finish(false, 0,  atk, a.metadata.get("types",["Colorless"]), opp)
 	_attack_dispatch["scavenge"]           = func(atk, a, d, opp): await execute_scavenge(a, opp);                                                        await _attack_finish(false, 0,  atk, a.metadata.get("types",["Colorless"]), opp)
-	_attack_dispatch["metronome"]          = func(atk, a, d, opp): await execute_metronome(a, d, opp);                                                    await _attack_finish(false, 0,  atk, a.metadata.get("types",["Colorless"]), opp)
+	_attack_dispatch["metronome"]          = func(atk, a, d, opp): await execute_metronome(a, d, opp, atk)
 	_attack_dispatch["mirror move"]        = func(atk, a, d, opp): await execute_mirror_move(a, d, opp);                                                  await _attack_finish(false, 0,  atk, a.metadata.get("types",["Colorless"]), opp)
 	_attack_dispatch["amnesia"]            = func(atk, a, d, opp): await execute_amnesia(a, d, opp);                                                      await _attack_finish(false, 0,  atk, a.metadata.get("types",["Colorless"]), opp)
 	_attack_dispatch["conversion 1"]       = func(atk, a, d, opp): await execute_conversion(a, d, opp, true);                                             await _attack_finish(false, 0,  atk, a.metadata.get("types",["Colorless"]), opp)
@@ -998,101 +999,62 @@ func resolve_attack_variable_damage(attack: Dictionary, attacker: card_object, d
 
 # Displays modifier floating labels, the damage floating label, applies HP reduction,
 # and updates the HP circles for the defender
-func execute_metronome(attacker: card_object, defender: card_object, is_opponent: bool) -> void:
+# Shared pool-gather + choose step for any "copy one of the defender's attacks" effect
+# (Metronome, ESP's 3-heads effect, Super Metronome). Returns {} if there's nothing to copy.
+func _choose_metronome_copy(attacker: card_object, defender: card_object, is_opponent: bool) -> Dictionary:
 	var defender_attacks = main.get_attacks_for_card(defender)
-	if defender_attacks.size() == 0:
+	if defender_attacks.is_empty():
+		return {}
+	var cpu_types = attacker.metadata.get("types", ["Colorless"])
+	var cpu_rank = func(atk: Dictionary) -> float:
+		var dmg_range = estimate_attack_damage_range(atk, attacker, defender)
+		var result = main.calculate_final_damage(dmg_range["max"], cpu_types, defender)
+		var score = float(result["damage"])
+		var parsed = parse_card_text_effects(atk.get("text", ""), attacker.metadata.get("name", ""))
+		score += main.cpu_ai.score_parsed_effects(parsed, defender)
+		return score
+	return await choose_attack_from_pool(defender_attacks, is_opponent, cpu_rank)
+
+# Top-level Metronome, chosen directly as the player's own attack (mini-metronome / metronome
+# dispatch entries). Self-finishing: execute_copied_attack guarantees _attack_finish fires exactly
+# once internally (dispatch-registered copied attacks self-finish via their own lambda; the
+# generic fallback path self-finishes via execute_generic_copied_attack). Do NOT call
+# _attack_finish again after this, here or in the dispatch registration.
+func execute_metronome(attacker: card_object, defender: card_object, is_opponent: bool, source_attack: Dictionary) -> void:
+	var chosen_attack = await _choose_metronome_copy(attacker, defender, is_opponent)
+	if chosen_attack.is_empty():
+		await main.show_message("NO ATTACKS TO COPY!")
+		if main._should_bail(): return
+		# Metronome was still the player's chosen attack this turn even though it fizzled — must
+		# still consume the turn (matches every other "attack does nothing" case in this file).
+		await _attack_finish(false, 0, source_attack, attacker.metadata.get("types", ["Colorless"]), is_opponent)
+		return
+
+	await main.show_message(attacker.metadata["name"].to_upper() + " COPIES " + chosen_attack.get("name", "").to_upper() + "!")
+	if main._should_bail(): return
+
+	# Metronome ignores energy costs and discard requirements per its card text.
+	await execute_copied_attack(chosen_attack, attacker, defender, is_opponent, false)
+	if main._should_bail(): return
+
+# Nested "copy an attack" sub-effect used by ESP (3-heads) and Super Metronome — these are one
+# effect WITHIN an attack that already has its own dispatch entry with its own trailing
+# _attack_finish call, so this variant must NOT self-finish (and, to guarantee that, always uses
+# the generic-only resolution rather than routing through dispatch_attack, which would
+# self-finish via its own registered lambda and cause a double _attack_finish call).
+func execute_metronome_copy_no_finish(attacker: card_object, defender: card_object, is_opponent: bool) -> void:
+	var chosen_attack = await _choose_metronome_copy(attacker, defender, is_opponent)
+	if chosen_attack.is_empty():
 		await main.show_message("NO ATTACKS TO COPY!")
 		if main._should_bail(): return
 		return
-	
-	var chosen_attack: Dictionary = {}
-	
-	if is_opponent:
-		# CPU chooses: pick the attack with highest damage potential
-		var best_score = -999.0
-		var cpu_types = attacker.metadata.get("types", ["Colorless"])
-		for attack in defender_attacks:
-			var dmg_range = estimate_attack_damage_range(attack, attacker, defender)
-			var result = main.calculate_final_damage(dmg_range["max"], cpu_types, defender)
-			var score = float(result["damage"])
-			var parsed = parse_card_text_effects(attack.get("text", ""), attacker.metadata.get("name", ""))
-			score += main.cpu_ai.score_parsed_effects(parsed, defender)
-			if score > best_score:
-				best_score = score
-				chosen_attack = attack
-	else:
-		# Player chooses: show attack names as buttons
-		main.special_attack_selection_active = true
-		main.buttons_only_blocker.visible = true
-		
-		# Clear and show attack buttons
-		for child in main.attack_buttons_container.get_children():
-			if child.name == "cancel_attack_mode_button":
-				continue
-			child.queue_free()
-		
-		main.attack_buttons_container.visible = true
-		main.main_buttons_container.visible = false
-		# Hide the cancel button within the attack buttons container
-		for child in main.attack_buttons_container.get_children():
-			if child.name == "cancel_attack_mode_button":
-				child.visible = false
-		
-		for i in range(defender_attacks.size()):
-			var atk = defender_attacks[i]
-			var btn = Button.new()
-			btn.text = atk.get("name", "Attack") + " (" + str(atk.get("damage", "0")) + ")"
-			btn.custom_minimum_size = Vector2(350, 50)
-			btn.theme = main.theme_green
-			main.attack_buttons_container.add_child(btn)
-			btn.pressed.connect(func(): main.special_attack_selected.emit(i))
-		
-		var selected_index = await main.special_attack_selected
-		chosen_attack = defender_attacks[selected_index]
-		
-		# Clean up buttons
-		for child in main.attack_buttons_container.get_children():
-			if child.name == "cancel_attack_mode_button":
-				child.visible = true
-				continue
-			child.queue_free()
-		main.attack_buttons_container.visible = false
-		main.main_buttons_container.visible = true
-		main.special_attack_selection_active = false
-		main.buttons_only_blocker.visible = false
-	
+
 	await main.show_message(attacker.metadata["name"].to_upper() + " COPIES " + chosen_attack.get("name", "").to_upper() + "!")
 	if main._should_bail(): return
-	
-	# Execute the copied attack (ignore energy costs and energy discard requirements)
-	var variable_result = await resolve_attack_variable_damage(chosen_attack, attacker, defender, is_opponent)
-	var resolved_base = variable_result["damage"]
-	var flip_result = variable_result["flip_result"]
-	
-	if variable_result["attack_failed"]:
-		for msg in variable_result["messages"]:
-			await main.show_message(msg)
-			if main._should_bail(): return
-		return
-	
-	for msg in variable_result["messages"]:
-		await main.show_message(msg)
-		if main._should_bail(): return
-	
-	# Use attacker's own type for Metronome (Clefairy stays Colorless)
-	var attacking_types = attacker.metadata.get("types", ["Colorless"])
-	var result = main.calculate_final_damage(resolved_base, attacking_types, defender)
-	var final_damage = result["damage"]
-	
-	if defender.is_invincible:
-		var inv_label_pos = Vector2(530, 300) if !is_opponent else Vector2(1030, 300)
-		main.show_floating_label("NO EFFECT", inv_label_pos, Color.WHITE)
-		return
 
-	final_damage = main.apply_defender_no_damage_shield(defender, final_damage, !is_opponent)
-	await main.display_and_apply_attack_damage(attacker, defender, final_damage, result["modifiers"], is_opponent, resolved_base)
+	await execute_generic_copied_attack(chosen_attack, attacker, defender, is_opponent, false)
 	if main._should_bail(): return
-	
+
 	# Apply non-discard effects from the copied attack
 	var attack_text = chosen_attack.get("text", "")
 	var effects = parse_card_text_effects(attack_text, attacker.metadata.get("name", ""))
@@ -5313,14 +5275,15 @@ func execute_roaring_flames(attacker: card_object, defender: card_object, is_opp
 	if main._should_bail(): return
 
 # GROWTH (Erika's Venusaur): flip — heads lets you attach up to 2 Grass Energy from hand to self
-func execute_growth(attacker: card_object, is_opponent: bool) -> void:
+func execute_growth(attacker: card_object, is_opponent: bool, require_flip: bool = true) -> void:
 	if await handle_attack_confusion(attacker, is_opponent): return
 	if await handle_attack_blind(attacker, is_opponent): return
-	var coin = await main.flip_coin(false, is_opponent)
-	if not coin:
-		await main.show_message("TAILS! GROWTH DID NOTHING!")
-		if main._should_bail(): return
-		return
+	if require_flip:
+		var coin = await main.flip_coin(false, is_opponent)
+		if not coin:
+			await main.show_message("TAILS! GROWTH DID NOTHING!")
+			if main._should_bail(): return
+			return
 	var hand = main.opponent_hand if is_opponent else main.player_hand
 	var grass: Array = []
 	for c in hand:
@@ -5356,7 +5319,7 @@ func execute_growth(attacker: card_object, is_opponent: bool) -> void:
 			attached += 1
 	main.display_active_pokemon_energies(is_opponent)
 	main.refresh_hand_display(is_opponent)
-	await main.show_message("HEADS! ATTACHED " + str(attached) + " GRASS ENERGY!")
+	await main.show_message(("HEADS! " if require_flip else "") + "ATTACHED " + str(attached) + " GRASS ENERGY!")
 	if main._should_bail(): return
 
 # SUMMON STORM (Giovanni's Gyarados): flip 2 — both heads does 20 to every other Pokemon, no W/R
@@ -6016,6 +5979,31 @@ func execute_flip_bonus_per_heads(attacker: card_object, defender: card_object, 
 	await main.check_all_knockouts()
 	if main._should_bail(): return
 
+# DYNAMIC-COUNT FLIP (ecard2 Damage Blast/Lateral Eggsplosion/Conduction/Water Bullet/Heavy Metal/
+# Energy Kiss, etc.): flip a number of coins equal to some counted resource (damage counters on
+# the defender, attached energy count, etc.) rather than a fixed 1-5/until-tails count.
+# multiplicative=false: damage = base + per_heads*heads (e.g. "30 plus 10 more per heads")
+# multiplicative=true:  damage = base * heads          (e.g. "10 times the number of heads")
+func execute_flip_dynamic(attacker: card_object, defender: card_object, is_opponent: bool, flip_count: int, base: int, per_heads: int, multiplicative: bool) -> void:
+	if await handle_attack_confusion(attacker, is_opponent): return
+	if await handle_attack_blind(attacker, is_opponent): return
+	var heads = 0
+	if flip_count > 0:
+		await main.show_message("FLIPPING " + str(flip_count) + " COINS!")
+		if main._should_bail(): return
+		for i in range(flip_count):
+			if await main.flip_coin(true, is_opponent):
+				heads += 1
+	var total = (base * heads) if multiplicative else (base + per_heads * heads)
+	await main.show_message(str(heads) + " HEADS — " + str(total) + " DAMAGE!")
+	if main._should_bail(): return
+	if total > 0:
+		await gym1_hit_active(attacker, defender, is_opponent, total)
+		if main._should_bail(): return
+	await main.check_all_knockouts()
+	if main._should_bail(): return
+	print("ATTACK EXECUTED: dynamic flip — ", total, " damage (", heads, "/", flip_count, " heads)")
+
 # DOUBLE-EDGE BOOSTED (Lt. Surge's Raticate, after Focus Energy): doubled base damage and self damage
 func execute_double_edge_boosted(attacker: card_object, defender: card_object, is_opponent: bool) -> void:
 	if await handle_attack_confusion(attacker, is_opponent): return
@@ -6555,7 +6543,7 @@ func execute_esp(attacker: card_object, defender: card_object, is_opponent: bool
 	elif heads == 3:
 		await main.show_message("ALL 3 HEADS! ESP COPIES AN ATTACK!")
 		if main._should_bail(): return
-		await execute_metronome(attacker, defender, is_opponent)
+		await execute_metronome_copy_no_finish(attacker, defender, is_opponent)
 		if main._should_bail(): return
 		await main.check_all_knockouts()
 		if main._should_bail(): return
@@ -7992,7 +7980,7 @@ func _register_neo1_attacks() -> void:
 		var coin = await main.flip_coin(false, opp)
 		if main._should_bail(): return
 		if coin:
-			await execute_metronome(a, d, opp)
+			await execute_metronome_copy_no_finish(a, d, opp)
 		else:
 			await main.show_message("TAILS! SUPER METRONOME FAILED!")
 		await _attack_finish(false, 0, atk, a.metadata.get("types",["Colorless"]), opp)
@@ -14073,10 +14061,15 @@ func execute_np_mix_up(attacker: card_object, defender: card_object, is_opponent
 ######################################################## FOREIGN-ATTACK EXECUTION ###################################################################
 ######################################################################################################################################################
 
-# Executes an attack the attacker does not own (copy effects: Psymimic, Mimic,
-# Metronome, TM cards). Handles BOTH dispatch-table attacks and generic attacks.
-# If require_cost is true, the attacker's attached energy must satisfy the copied
-# attack's cost or the function shows a message and returns false.
+# Executes an attack the attacker does not own — for effects that pick ONE attack out of a pool
+# and immediately execute it (Metronome, Psymimic, and future copy effects). NOT used by effects
+# that instead grant an attack as a normal attack-menu button (Mimic, Genetic Memory, Prehistoric
+# Memory, Multi Technical Machine 01 — those work by returning extra entries from
+# get_attacks_for_card() and go through the ordinary perform_attack()/dispatch_attack() flow).
+# Handles BOTH dispatch-table attacks and generic attacks. If require_cost is true, the attacker's
+# attached energy must satisfy the copied attack's cost or the function shows a message and
+# returns false (Metronome ignores cost per its card text; Psymimic pays it from Alakazam's own
+# energy per its card text).
 func execute_copied_attack(attack: Dictionary, attacker: card_object, defender: card_object,
 		is_opponent: bool, require_cost: bool) -> bool:
 	if require_cost and main.cpu_ai.get_unmet_energy_count(attack, attacker) > 0:
@@ -14085,18 +14078,80 @@ func execute_copied_attack(attack: Dictionary, attacker: card_object, defender: 
 		return false
 	if await dispatch_attack(attack, attacker, defender, is_opponent):
 		return true
-	await execute_generic_copied_attack(attack, attacker, defender, is_opponent)
+	await execute_generic_copied_attack(attack, attacker, defender, is_opponent, true)
 	return true
+
+# ── Attack chooser (generic "pick an attack from a pool" UI) ──────────────────────
+# Used by any copy-an-attack effect to let the player pick which attack to copy, or the CPU to
+# rank and auto-pick one. Reuses the attack-button UI real estate (attack_buttons_container) —
+# the same mechanism the normal attack menu uses — so it looks and behaves consistently.
+# cpu_rank_fn(attack: Dictionary) -> float, higher = better; defaults to highest printed damage.
+# Returns {} if the pool is empty.
+func choose_attack_from_pool(pool: Array, is_opponent: bool, cpu_rank_fn: Callable = Callable()) -> Dictionary:
+	if pool.is_empty():
+		return {}
+
+	if is_opponent:
+		var best: Dictionary = pool[0]
+		var best_score: float = -INF
+		for atk in pool:
+			var s: float = float(cpu_rank_fn.call(atk)) if cpu_rank_fn.is_valid() else float(parse_attack_base_damage(atk))
+			if s > best_score:
+				best_score = s
+				best = atk
+		return best
+
+	# Player: show the pool as a temporary button list in the attack-button container
+	main.special_attack_selection_active = true
+	main.buttons_only_blocker.visible = true
+	for child in main.attack_buttons_container.get_children():
+		if child.name == "cancel_attack_mode_button":
+			continue
+		child.queue_free()
+	main.attack_buttons_container.visible = true
+	main.main_buttons_container.visible = false
+	for child in main.attack_buttons_container.get_children():
+		if child.name == "cancel_attack_mode_button":
+			child.visible = false
+
+	for i in range(pool.size()):
+		var atk = pool[i]
+		var btn = Button.new()
+		btn.text = atk.get("name", "Attack") + " (" + str(atk.get("damage", "0")) + ")"
+		btn.custom_minimum_size = Vector2(350, 50)
+		btn.theme = main.theme_green
+		main.attack_buttons_container.add_child(btn)
+		btn.pressed.connect(func(): main.special_attack_selected.emit(i))
+
+	var selected_index: int = await main.special_attack_selected
+	var chosen: Dictionary = pool[selected_index]
+
+	for child in main.attack_buttons_container.get_children():
+		if child.name == "cancel_attack_mode_button":
+			child.visible = true
+			continue
+		child.queue_free()
+	main.attack_buttons_container.visible = false
+	main.main_buttons_container.visible = true
+	main.special_attack_selection_active = false
+	main.buttons_only_blocker.visible = false
+	return chosen
 
 # Generic path for a copied attack with no dispatch entry: variable-damage resolution
 # (coin-flip ×/+ patterns, condition gates) + Weakness/Resistance + standard card-text effects.
-func execute_generic_copied_attack(attack: Dictionary, attacker: card_object, defender: card_object, is_opponent: bool) -> void:
+# finish=true means this call must itself trigger the turn-consuming _attack_finish bookkeeping
+# (top-level Metronome, or any direct execute_copied_attack caller). finish=false is for effects
+# nested INSIDE another attack that already has its own dispatch-registered _attack_finish call
+# (ESP's 3-heads effect, Super Metronome) — those must not finish a second time.
+func execute_generic_copied_attack(attack: Dictionary, attacker: card_object, defender: card_object, is_opponent: bool, finish: bool = true) -> void:
 	if await handle_attack_confusion(attacker, is_opponent): return
 	if await handle_attack_blind(attacker, is_opponent): return
 	var variable_result = await resolve_attack_variable_damage(attack, attacker, defender, is_opponent)
 	if main._should_bail(): return
 	var resolved_base: int = variable_result["damage"]
 	var flip_result: String = variable_result["flip_result"]
+
+	var types = attacker.metadata.get("types", ["Colorless"])
 
 	if variable_result["attack_failed"]:
 		for msg in variable_result["messages"]:
@@ -14106,6 +14161,13 @@ func execute_generic_copied_attack(attack: Dictionary, attacker: card_object, de
 		if _failed_effects.size() > 0:
 			await apply_card_text_effects(_failed_effects, attacker, defender, is_opponent, flip_result)
 			if main._should_bail(): return
+		if finish:
+			# Still consumes the turn's attack, same as any other failed attack — must finish the turn.
+			await _attack_finish(false, 0, attack, types, is_opponent)
+			if main._should_bail(): return
+		else:
+			await main.check_all_knockouts()
+			if main._should_bail(): return
 		print("ATTACK EXECUTED (copied, generic path, failed): ", attack.get("name",""))
 		return
 
@@ -14113,20 +14175,27 @@ func execute_generic_copied_attack(attack: Dictionary, attacker: card_object, de
 		await main.show_message(msg)
 		if main._should_bail(): return
 
-	var types = attacker.metadata.get("types", ["Colorless"])
+	var is_damage = false
 	if resolved_base > 0:
 		var result = main.calculate_final_damage(resolved_base, types, defender, attacker)
 		if not main.check_defender_invincible(defender, not is_opponent):
 			var fd = main.apply_defender_no_damage_shield(defender, result["damage"], not is_opponent)
 			await main.display_and_apply_attack_damage(attacker, defender, fd, result["modifiers"], is_opponent, resolved_base)
 			if main._should_bail(): return
+			is_damage = true
 
 	var effects = parse_card_text_effects(attack.get("text", ""), attacker.metadata.get("name", ""))
 	if effects.size() > 0:
 		await apply_card_text_effects(effects, attacker, defender, is_opponent, flip_result)
 		if main._should_bail(): return
-	await main.check_all_knockouts()
-	if main._should_bail(): return
+	if finish:
+		# _attack_finish covers check_all_knockouts + energy display refresh + ending the turn —
+		# this is the single point where the copied attack's turn-consuming side effects happen.
+		await _attack_finish(is_damage, resolved_base, attack, types, is_opponent)
+		if main._should_bail(): return
+	else:
+		await main.check_all_knockouts()
+		if main._should_bail(): return
 	print("ATTACK EXECUTED (copied, generic path): ", attack.get("name",""))
 
 ######################################################################################################################################################
@@ -14664,3 +14733,1327 @@ func execute_ecard1_take_down(attacker: card_object, defender: card_object, is_o
 	await main.check_all_knockouts()
 	if main._should_bail(): return
 	print("ATTACK EXECUTED: Take Down — ", base_damage, " damage + ", recoil, " self")
+
+######################################################################################################################################################
+##################################################### ECARD2 (AQUAPOLIS) ATTACK EFFECTS ##############################################################
+######################################################################################################################################################
+
+func _register_ecard2_attacks() -> void:
+	# ── Reuse (identical mechanic to an existing function) ──────────────────────
+	_attack_dispatch["copy"]         = func(atk, a, d, opp): await execute_metronome(a, d, opp, atk)
+	_attack_dispatch["crush"]        = func(atk, a, d, opp): await execute_big_eggsplosion(a, d, opp); await _attack_finish(true, 0, atk, a.metadata.get("types",["Colorless"]), opp)
+	_attack_dispatch["long tongue"]  = func(atk, a, d, opp): var b=parse_attack_base_damage(atk); await execute_snipe_no_wr(a, d, opp, b, false); await _attack_finish(true, b, atk, a.metadata.get("types",["Colorless"]), opp)
+	_attack_dispatch["mug"]          = func(atk, a, d, opp): var b=parse_attack_base_damage(atk); await execute_neo2_plunder(a, d, opp, b); await _attack_finish(true, b, atk, a.metadata.get("types",["Colorless"]), opp)
+	_attack_dispatch["charge up"]    = func(atk, a, d, opp): await execute_ecard1_energy_draw(a, opp); await _attack_finish(false, 0, atk, a.metadata.get("types",["Colorless"]), opp)
+
+	# ── Disambiguated overrides (existing key, different mechanic for ecard2's card) ──
+	_attack_dispatch["growth"] = func(atk, a, d, opp):
+		var text = atk.get("text","").to_lower()
+		await execute_growth(a, opp, "flip a coin" in text)
+		await _attack_finish(false, 0, atk, a.metadata.get("types",["Colorless"]), opp)
+	_attack_dispatch["energy support"] = func(atk, a, d, opp):
+		var text = atk.get("text","").to_lower()
+		if "benched pokémon" in text or "benched pokemon" in text:
+			await execute_ecard2_energy_support(a, d, opp)
+			await _attack_finish(false, 0, atk, a.metadata.get("types",["Colorless"]), opp)
+		else:
+			await execute_search_typed_energy_to_hand(a, opp, "Psychic")
+			await _attack_finish(false, 0, atk, a.metadata.get("types",["Colorless"]), opp)
+	_attack_dispatch["collect fire"] = func(atk, a, d, opp):
+		var text = atk.get("text","").to_lower()
+		if "flip a coin" in text:
+			await execute_ecard2_collect_fire_flip(a, opp)
+			await _attack_finish(false, 0, atk, a.metadata.get("types",["Colorless"]), opp)
+		else:
+			var b = parse_attack_base_damage(atk)
+			await execute_neo2_collect_fire(a, d, opp, b)
+			await _attack_finish(true, b, atk, a.metadata.get("types",["Colorless"]), opp)
+	_attack_dispatch["mini-metronome"] = func(atk, a, d, opp):
+		var text = atk.get("text","").to_lower()
+		if "flip a coin" in text:
+			var coin = await main.flip_coin(false, opp)
+			if main._should_bail(): return
+			if coin:
+				await execute_metronome(a, d, opp, atk)
+			else:
+				await main.show_message("TAILS! MINI-METRONOME FAILED!")
+				if main._should_bail(): return
+				await _attack_finish(false, 0, atk, a.metadata.get("types",["Colorless"]), opp)
+		else:
+			await execute_metronome(a, d, opp, atk)
+
+	# ── Dynamic-count coin flips (inline via execute_flip_dynamic) ──────────────
+	_attack_dispatch["damage blast"] = func(atk, a, d, opp):
+		await execute_flip_dynamic(a, d, opp, d.get_damage_counters(), 30, 10, false)
+		await _attack_finish(true, 30, atk, a.metadata.get("types",["Colorless"]), opp)
+	_attack_dispatch["lateral eggsplosion"] = func(atk, a, d, opp):
+		var bench = main.opponent_bench if opp else main.player_bench
+		var fc = 0
+		for bp in bench: fc += bp.attached_energies.size()
+		await execute_flip_dynamic(a, d, opp, fc, 30, 10, false)
+		await _attack_finish(true, 30, atk, a.metadata.get("types",["Colorless"]), opp)
+	_attack_dispatch["water bullet"] = func(atk, a, d, opp):
+		var fc = 0
+		for e in a.attached_energies:
+			if "Water" in main.get_energy_provided_by_card(e): fc += 1
+		await execute_flip_dynamic(a, d, opp, fc, 30, 10, false)
+		await _attack_finish(true, 30, atk, a.metadata.get("types",["Colorless"]), opp)
+	_attack_dispatch["heavy metal"] = func(atk, a, d, opp):
+		var fc = 0
+		for e in a.attached_energies:
+			if "Metal" in main.get_energy_provided_by_card(e): fc += 1
+		await execute_flip_dynamic(a, d, opp, fc, 30, 20, false)
+		await _attack_finish(true, 30, atk, a.metadata.get("types",["Colorless"]), opp)
+	_attack_dispatch["energy kiss"] = func(atk, a, d, opp):
+		await execute_flip_dynamic(a, d, opp, d.attached_energies.size(), 10, 0, true)
+		await _attack_finish(true, 0, atk, a.metadata.get("types",["Colorless"]), opp)
+	_attack_dispatch["conduction"]   = func(atk, a, d, opp): await execute_ecard2_conduction(a, d, opp);            await _attack_finish(true, 30, atk, a.metadata.get("types",["Colorless"]), opp)
+	_attack_dispatch["fire blow"]    = func(atk, a, d, opp): await execute_ecard2_fire_blow(a, d, opp);             await _attack_finish(true, 30, atk, a.metadata.get("types",["Colorless"]), opp)
+
+	# ── Novel attacks ────────────────────────────────────────────────────────────
+	_attack_dispatch["minor errand-running"] = func(atk, a, d, opp): await execute_ecard2_minor_errand_running(a, opp); await _attack_finish(false, 0, atk, a.metadata.get("types",["Colorless"]), opp)
+	_attack_dispatch["deep dive"]            = func(atk, a, d, opp): await execute_ecard2_deep_dive(a, opp);           await _attack_finish(false, 0, atk, a.metadata.get("types",["Colorless"]), opp)
+	_attack_dispatch["baby outing"]          = func(atk, a, d, opp): await execute_ecard2_baby_outing(a, opp);         await _attack_finish(false, 0, atk, a.metadata.get("types",["Colorless"]), opp)
+	_attack_dispatch["spy"]                  = func(atk, a, d, opp): await execute_ecard2_spy(a, opp);                 await _attack_finish(false, 0, atk, a.metadata.get("types",["Colorless"]), opp)
+	_attack_dispatch["shuffle attack"]       = func(atk, a, d, opp): await execute_ecard2_shuffle_attack(a, d, opp);   await _attack_finish(false, 0, atk, a.metadata.get("types",["Colorless"]), opp)
+	_attack_dispatch["bursting hand"]        = func(atk, a, d, opp): await execute_ecard2_bursting_hand(a, d, opp);    await _attack_finish(true, 0, atk, a.metadata.get("types",["Colorless"]), opp)
+	_attack_dispatch["psychic"] = func(atk, a, d, opp):
+		var text = atk.get("text","").to_lower()
+		if "times the number of energy" in text:
+			var total = 10 * d.attached_energies.size()
+			await gym1_hit_active(a, d, opp, total)
+			await main.check_all_knockouts()
+			await _attack_finish(true, total, atk, a.metadata.get("types",["Colorless"]), opp)
+		else:
+			var b = parse_attack_base_damage(atk)
+			await gym1_hit_active(a, d, opp, b)
+			await main.check_all_knockouts()
+			await _attack_finish(true, b, atk, a.metadata.get("types",["Colorless"]), opp)
+	_attack_dispatch["fishing tail"]  = func(atk, a, d, opp): await execute_ecard2_fishing_tail(a, opp);   await _attack_finish(false, 0, atk, a.metadata.get("types",["Colorless"]), opp)
+	_attack_dispatch["data sort"]     = func(atk, a, d, opp): await execute_ecard2_data_sort(a, opp);      await _attack_finish(false, 0, atk, a.metadata.get("types",["Colorless"]), opp)
+	_attack_dispatch["snatch"]        = func(atk, a, d, opp): var b=parse_attack_base_damage(atk); await execute_ecard2_snatch(a, d, opp, b); await _attack_finish(true, b, atk, a.metadata.get("types",["Colorless"]), opp)
+	_attack_dispatch["spiral aura"]   = func(atk, a, d, opp): var b=parse_attack_base_damage(atk); await execute_ecard2_spiral_aura(a, d, opp, b); await _attack_finish(true, b, atk, a.metadata.get("types",["Colorless"]), opp)
+	_attack_dispatch["sleep inducer"] = func(atk, a, d, opp): await execute_ecard2_sleep_inducer(a, opp);  await _attack_finish(false, 0, atk, a.metadata.get("types",["Colorless"]), opp)
+	_attack_dispatch["paint trick"]   = func(atk, a, d, opp): await execute_ecard2_paint_trick(a, d, opp); await _attack_finish(false, 0, atk, a.metadata.get("types",["Colorless"]), opp)
+	_attack_dispatch["triple spin"]   = func(atk, a, d, opp): await execute_ecard2_triple_spin(a, d, opp); await _attack_finish(true, 0, atk, a.metadata.get("types",["Colorless"]), opp)
+	_attack_dispatch["cross-cut"] = func(atk, a, d, opp):
+		var subtypes = d.metadata.get("subtypes", [])
+		var b = 40 if ("Stage 1" in subtypes or "Stage 2" in subtypes) else 20
+		await gym1_hit_active(a, d, opp, b)
+		await main.check_all_knockouts()
+		await _attack_finish(true, b, atk, a.metadata.get("types",["Colorless"]), opp)
+	_attack_dispatch["steel wave"]    = func(atk, a, d, opp): var b=parse_attack_base_damage(atk); await execute_ecard2_steel_wave(a, d, opp, b); await _attack_finish(true, b, atk, a.metadata.get("types",["Colorless"]), opp)
+	_attack_dispatch["called shot"]   = func(atk, a, d, opp): await execute_ecard2_called_shot(a, opp);    await _attack_finish(true, 0, atk, a.metadata.get("types",["Colorless"]), opp)
+	_attack_dispatch["triple bone"]   = func(atk, a, d, opp): await execute_ecard2_triple_bone(a, opp);    await _attack_finish(true, 0, atk, a.metadata.get("types",["Colorless"]), opp)
+	_attack_dispatch["energy kick"]   = func(atk, a, d, opp): await execute_ecard2_energy_kick(a, d, opp); await _attack_finish(true, 0, atk, a.metadata.get("types",["Colorless"]), opp)
+	_attack_dispatch["destructive roar"] = func(atk, a, d, opp): await execute_ecard2_destructive_roar(a, opp); await _attack_finish(false, 0, atk, a.metadata.get("types",["Colorless"]), opp)
+	_attack_dispatch["dark impact"]   = func(atk, a, d, opp): var b=parse_attack_base_damage(atk); await execute_ecard2_dark_impact(a, d, opp, b); await _attack_finish(true, b, atk, a.metadata.get("types",["Colorless"]), opp)
+	_attack_dispatch["addictive pollen"] = func(atk, a, d, opp): await execute_ecard2_addictive_pollen(a, opp); await _attack_finish(false, 0, atk, a.metadata.get("types",["Colorless"]), opp)
+	_attack_dispatch["miracle tail"]  = func(atk, a, d, opp): await execute_ecard2_miracle_tail(a, d, opp); await _attack_finish(false, 0, atk, a.metadata.get("types",["Colorless"]), opp)
+	_attack_dispatch["rush"]          = func(atk, a, d, opp): await execute_ecard2_rush(a, d, opp);        await _attack_finish(true, 0, atk, a.metadata.get("types",["Colorless"]), opp)
+	_attack_dispatch["rob"]           = func(atk, a, d, opp): await execute_ecard2_rob(a, opp);            await _attack_finish(false, 0, atk, a.metadata.get("types",["Colorless"]), opp)
+	_attack_dispatch["burning sludge"] = func(atk, a, d, opp): await execute_ecard2_burning_sludge(a, d, opp); await _attack_finish(false, 0, atk, a.metadata.get("types",["Colorless"]), opp)
+	_attack_dispatch["electric tackle"] = func(atk, a, d, opp): await execute_ecard2_electric_tackle(a, d, opp); await _attack_finish(true, 20, atk, a.metadata.get("types",["Colorless"]), opp)
+	_attack_dispatch["iron smash"]    = func(atk, a, d, opp): await execute_ecard2_iron_smash(a, d, opp);  await _attack_finish(true, 0, atk, a.metadata.get("types",["Colorless"]), opp)
+	_attack_dispatch["super slice"]   = func(atk, a, d, opp): var b=parse_attack_base_damage(atk); await execute_ecard2_super_slice(a, d, opp, b); await _attack_finish(true, b, atk, a.metadata.get("types",["Colorless"]), opp)
+	_attack_dispatch["peck attack"]   = func(atk, a, d, opp): await execute_ecard2_peck_attack(a, d, opp); await _attack_finish(true, 0, atk, a.metadata.get("types",["Colorless"]), opp)
+	_attack_dispatch["earth rift"] = func(atk, a, d, opp):
+		var text = atk.get("text","").to_lower()
+		if "can't be used during your next turn" in text:
+			await execute_ecard2_earth_rift(a, d, opp)
+			await _attack_finish(true, 30, atk, a.metadata.get("types",["Colorless"]), opp)
+		else:
+			var b = parse_attack_base_damage(atk)
+			await gym1_hit_active(a, d, opp, b)
+			await main.check_all_knockouts()
+			await _attack_finish(true, b, atk, a.metadata.get("types",["Colorless"]), opp)
+	_attack_dispatch["skedaddle"]     = func(atk, a, d, opp): await execute_ecard2_skedaddle(a, opp);      await _attack_finish(false, 0, atk, a.metadata.get("types",["Colorless"]), opp)
+	_attack_dispatch["growth spurt"]  = func(atk, a, d, opp): await execute_ecard2_growth_spurt(a, opp);   await _attack_finish(false, 0, atk, a.metadata.get("types",["Colorless"]), opp)
+	_attack_dispatch["spore evolution"] = func(atk, a, d, opp): await execute_ecard2_spore_evolution(a, opp); await _attack_finish(false, 0, atk, a.metadata.get("types",["Colorless"]), opp)
+	_attack_dispatch["mountain eater"] = func(atk, a, d, opp): await execute_ecard2_mountain_eater(a, opp); await _attack_finish(false, 0, atk, a.metadata.get("types",["Colorless"]), opp)
+	_attack_dispatch["gigacrush"]     = func(atk, a, d, opp): await execute_ecard2_gigacrush(a, opp);      await _attack_finish(false, 0, atk, a.metadata.get("types",["Colorless"]), opp)
+	_attack_dispatch["aqua sonic"]    = func(atk, a, d, opp): var b=parse_attack_base_damage(atk); await execute_ecard2_aqua_sonic(a, d, opp, b); await _attack_finish(true, b, atk, a.metadata.get("types",["Colorless"]), opp)
+	_attack_dispatch["lightning storm"] = func(atk, a, d, opp): var b=parse_attack_base_damage(atk); await execute_ecard2_lightning_storm(a, d, opp, b); await _attack_finish(true, b, atk, a.metadata.get("types",["Colorless"]), opp)
+	_attack_dispatch["dual burn"]     = func(atk, a, d, opp): var b=parse_attack_base_damage(atk); await execute_ecard2_dual_burn(a, d, opp, b); await _attack_finish(true, b, atk, a.metadata.get("types",["Colorless"]), opp)
+	_attack_dispatch["roasting heat"] = func(atk, a, d, opp): await execute_ecard2_roasting_heat(a, d, opp); await _attack_finish(true, 20, atk, a.metadata.get("types",["Colorless"]), opp)
+	_attack_dispatch["energy punch"]  = func(atk, a, d, opp): var b=parse_attack_base_damage(atk); await execute_ecard2_energy_punch(a, d, opp, b); await _attack_finish(true, b, atk, a.metadata.get("types",["Colorless"]), opp)
+	_attack_dispatch["stretch tail"] = func(atk, a, d, opp): await execute_ecard2_stretch_tail(a, opp); await _attack_finish(false, 0, atk, a.metadata.get("types",["Colorless"]), opp)
+
+# ENERGY SUPPORT (Exeggcute ecard2-77): flip; heads search deck for Psychic Energy, attach to a Benched Pokemon
+func execute_ecard2_energy_support(attacker: card_object, defender: card_object, is_opponent: bool) -> void:
+	if await handle_attack_confusion(attacker, is_opponent): return
+	if await handle_attack_blind(attacker, is_opponent): return
+	var coin = await main.flip_coin(false, is_opponent)
+	if main._should_bail(): return
+	if not coin:
+		await main.show_message("TAILS! ENERGY SUPPORT HAD NO EFFECT!")
+		if main._should_bail(): return
+		return
+	var bench = main.opponent_bench if is_opponent else main.player_bench
+	if bench.is_empty():
+		await main.show_message("HEADS! BUT NO BENCHED POKEMON!")
+		if main._should_bail(): return
+		return
+	var deck = main.opponent_deck if is_opponent else main.player_deck
+	var psychic_e: Array = []
+	for c in deck:
+		if gym1_is_basic_energy(c) and "Psychic" in main.get_energy_provided_by_card(c):
+			psychic_e.append(c)
+	if psychic_e.is_empty():
+		await main.show_message("HEADS! BUT NO PSYCHIC ENERGY IN DECK!")
+		if main._should_bail(): return
+		deck.shuffle()
+		return
+	var target: card_object = null
+	if is_opponent:
+		target = bench[0]
+	else:
+		target = await main.card_ops.prompt_select_card(bench, "ENERGY SUPPORT", "Select a Benched Pokemon to attach Psychic Energy to", "ATTACH", false)
+		if main._should_bail(): return
+	if target == null:
+		deck.shuffle()
+		return
+	var energy = psychic_e[0]
+	deck.erase(energy)
+	energy.current_location = "bench"
+	target.attached_energies.append(energy)
+	deck.shuffle()
+	main.update_deck_icon(is_opponent)
+	main.display_pokemon(is_opponent)
+	await main.show_message("HEADS! PSYCHIC ENERGY ATTACHED TO " + target.metadata.get("name","").to_upper() + "!")
+	if main._should_bail(): return
+	print("ATTACK EXECUTED: Energy Support (ecard2)")
+
+# COLLECT FIRE flip variant (Vulpix ecard2-116): if any Fire Energy in discard, flip; heads attach 1 to self
+func execute_ecard2_collect_fire_flip(attacker: card_object, is_opponent: bool) -> void:
+	if await handle_attack_confusion(attacker, is_opponent): return
+	if await handle_attack_blind(attacker, is_opponent): return
+	var discard = main.opponent_discard_pile if is_opponent else main.player_discard_pile
+	var fire_e: card_object = null
+	for c in discard:
+		if c.metadata.get("supertype","") == "Energy" and "Fire" in main.get_energy_provided_by_card(c):
+			fire_e = c
+			break
+	if fire_e == null:
+		await main.show_message("NO FIRE ENERGY IN DISCARD PILE!")
+		if main._should_bail(): return
+		return
+	var coin = await main.flip_coin(false, is_opponent)
+	if main._should_bail(): return
+	if not coin:
+		await main.show_message("TAILS! COLLECT FIRE HAD NO EFFECT!")
+		if main._should_bail(): return
+		return
+	discard.erase(fire_e)
+	attacker.attached_energies.append(fire_e)
+	fire_e.current_location = "active" if attacker.current_location == "active" else "bench"
+	main.update_discard_pile_display(is_opponent)
+	main.display_active_pokemon_energies(is_opponent)
+	await main.show_message("HEADS! ATTACHED FIRE ENERGY FROM DISCARD!")
+	if main._should_bail(): return
+	print("ATTACK EXECUTED: Collect Fire (ecard2, flip)")
+
+# CONDUCTION (Lanturn ecard2-20): discard all Lightning from self, flip that many, 30 + 40/heads
+func execute_ecard2_conduction(attacker: card_object, defender: card_object, is_opponent: bool) -> void:
+	if await handle_attack_confusion(attacker, is_opponent): return
+	if await handle_attack_blind(attacker, is_opponent): return
+	var lightning: Array = []
+	for e in attacker.attached_energies:
+		if "Lightning" in main.get_energy_provided_by_card(e):
+			lightning.append(e)
+	for e in lightning:
+		main.card_ops.discard_energy_from_pokemon(e, is_opponent)
+	main.display_active_pokemon_energies(is_opponent)
+	await execute_flip_dynamic(attacker, defender, is_opponent, lightning.size(), 30, 40, false)
+	if main._should_bail(): return
+	print("ATTACK EXECUTED: Conduction")
+
+# FIRE BLOW (Arcanine): player/CPU chooses how many attached Fire Energy to discard, then flips that many; 30 + 30/heads
+func execute_ecard2_fire_blow(attacker: card_object, defender: card_object, is_opponent: bool) -> void:
+	if await handle_attack_confusion(attacker, is_opponent): return
+	if await handle_attack_blind(attacker, is_opponent): return
+	var fire_e: Array = []
+	for e in attacker.attached_energies:
+		if "Fire" in main.get_energy_provided_by_card(e):
+			fire_e.append(e)
+	var discard_count = 0
+	if fire_e.size() > 0:
+		if is_opponent:
+			discard_count = fire_e.size()
+		else:
+			var coin_yes = await gym1_prompt_yes_no(attacker, "FIRE BLOW", "Discard all " + str(fire_e.size()) + " Fire Energy attached to Arcanine to power up this attack?", "DISCARD ALL", "SKIP")
+			if main._should_bail(): return
+			if coin_yes:
+				discard_count = fire_e.size()
+	for i in range(discard_count):
+		main.card_ops.discard_energy_from_pokemon(fire_e[i], is_opponent)
+	main.display_active_pokemon_energies(is_opponent)
+	await execute_flip_dynamic(attacker, defender, is_opponent, discard_count, 30, 30, false)
+	if main._should_bail(): return
+	print("ATTACK EXECUTED: Fire Blow")
+
+# MINOR ERRAND-RUNNING (Togepi): flip 2; for each heads search deck for a basic Energy card to hand
+func execute_ecard2_minor_errand_running(attacker: card_object, is_opponent: bool) -> void:
+	if await handle_attack_confusion(attacker, is_opponent): return
+	if await handle_attack_blind(attacker, is_opponent): return
+	var heads = 0
+	for i in range(2):
+		if await main.flip_coin(true, is_opponent): heads += 1
+	if main._should_bail(): return
+	if heads == 0:
+		await main.show_message("NO HEADS — NO EFFECT!")
+		if main._should_bail(): return
+		return
+	var deck = main.opponent_deck if is_opponent else main.player_deck
+	var hand = main.opponent_hand if is_opponent else main.player_hand
+	var found = 0
+	for i in range(heads):
+		var basics = deck.filter(func(c): return gym1_is_basic_energy(c))
+		if basics.is_empty(): break
+		var chosen: card_object = null
+		if is_opponent:
+			chosen = basics[0]
+		else:
+			chosen = await main.card_ops.prompt_select_card(basics, "MINOR ERRAND-RUNNING", "Select a basic Energy (" + str(heads - found) + " remaining)", "SELECT", false, true)
+			if main._should_bail(): return
+			if chosen == null: break
+		deck.erase(chosen)
+		chosen.current_location = "hand"
+		hand.append(chosen)
+		found += 1
+	deck.shuffle()
+	main.refresh_hand_display(is_opponent)
+	main.update_deck_icon(is_opponent)
+	await main.show_message(str(heads) + " HEADS! FOUND " + str(found) + " BASIC ENERGY!")
+	if main._should_bail(): return
+	print("ATTACK EXECUTED: Minor Errand-Running")
+
+# DEEP DIVE (Wooper): flip 3; for each heads remove 1 damage counter from self
+func execute_ecard2_deep_dive(attacker: card_object, is_opponent: bool) -> void:
+	if await handle_attack_confusion(attacker, is_opponent): return
+	if await handle_attack_blind(attacker, is_opponent): return
+	var heads = 0
+	for i in range(3):
+		if await main.flip_coin(true, is_opponent): heads += 1
+	if main._should_bail(): return
+	var heal = heads * 10
+	if heal > 0:
+		await main.card_ops.heal_pokemon(attacker, heal, is_opponent)
+		if main._should_bail(): return
+	await main.show_message(str(heads) + " HEADS! HEALED " + str(heal) + " HP!")
+	if main._should_bail(): return
+	print("ATTACK EXECUTED: Deep Dive")
+
+# BABY OUTING (Kangaskhan): look at top 3, take 1, shuffle rest
+func execute_ecard2_baby_outing(attacker: card_object, is_opponent: bool) -> void:
+	if await handle_attack_confusion(attacker, is_opponent): return
+	if await handle_attack_blind(attacker, is_opponent): return
+	var top_cards = main.card_ops.peek_top_n(is_opponent, 3)
+	if top_cards.is_empty():
+		await main.show_message("DECK IS EMPTY!")
+		if main._should_bail(): return
+		return
+	await main.show_message("BABY OUTING: LOOKING AT TOP " + str(top_cards.size()) + " CARDS!")
+	if main._should_bail(): return
+	var chosen: card_object = null
+	if is_opponent:
+		chosen = main.cpu_ai.cpu_search_deck_for_best_card(top_cards)
+	else:
+		chosen = await main.card_ops.prompt_select_card(top_cards, "BABY OUTING", "Choose a card to add to your hand", "TAKE", true)
+		if main._should_bail(): return
+	var deck = main.opponent_deck if is_opponent else main.player_deck
+	if chosen != null:
+		deck.erase(chosen)
+		chosen.current_location = "hand"
+		(main.opponent_hand if is_opponent else main.player_hand).append(chosen)
+		main.refresh_hand_display(is_opponent)
+	deck.shuffle()
+	main.update_deck_icon(is_opponent)
+	await main.show_message("ADDED " + (chosen.metadata.get("name","").to_upper() if chosen != null else "NOTHING") + " TO HAND!")
+	if main._should_bail(): return
+	print("ATTACK EXECUTED: Baby Outing")
+
+# SPY (Sentret): look at the top 3 cards of the opponent's deck (reveal only, order unchanged)
+func execute_ecard2_spy(attacker: card_object, is_opponent: bool) -> void:
+	if await handle_attack_confusion(attacker, is_opponent): return
+	if await handle_attack_blind(attacker, is_opponent): return
+	var top_cards = main.card_ops.peek_top_n(not is_opponent, 3)
+	if top_cards.is_empty():
+		await main.show_message("OPPONENT'S DECK IS EMPTY!")
+		if main._should_bail(): return
+		return
+	if not is_opponent:
+		var names: Array = []
+		for c in top_cards: names.append(c.metadata.get("name",""))
+		await main.show_message("SPY! TOP OF OPPONENT'S DECK: " + ", ".join(names))
+		if main._should_bail(): return
+	else:
+		await main.show_message("OPPONENT PEEKED AT THE TOP OF YOUR DECK!")
+		if main._should_bail(): return
+	print("ATTACK EXECUTED: Spy")
+
+# SHUFFLE ATTACK (Slowking): look at N = defender's attached energy count cards on top of opponent's deck
+func execute_ecard2_shuffle_attack(attacker: card_object, defender: card_object, is_opponent: bool) -> void:
+	if await handle_attack_confusion(attacker, is_opponent): return
+	if await handle_attack_blind(attacker, is_opponent): return
+	var n = defender.attached_energies.size()
+	if n <= 0:
+		await main.show_message("DEFENDING POKEMON HAS NO ENERGY — NOTHING TO LOOK AT!")
+		if main._should_bail(): return
+		return
+	var top_cards = main.card_ops.peek_top_n(not is_opponent, n)
+	if not is_opponent and top_cards.size() > 0:
+		var names: Array = []
+		for c in top_cards: names.append(c.metadata.get("name",""))
+		await main.show_message("SHUFFLE ATTACK! TOP OF OPPONENT'S DECK: " + ", ".join(names))
+		if main._should_bail(): return
+	else:
+		await main.show_message("OPPONENT PEEKED AT THE TOP OF YOUR DECK!")
+		if main._should_bail(): return
+	print("ATTACK EXECUTED: Shuffle Attack")
+
+# BURSTING HAND (Slowking): look at opponent hand; 10 damage per Energy card there
+func execute_ecard2_bursting_hand(attacker: card_object, defender: card_object, is_opponent: bool) -> void:
+	if await handle_attack_confusion(attacker, is_opponent): return
+	if await handle_attack_blind(attacker, is_opponent): return
+	var opp_hand = main.player_hand if is_opponent else main.opponent_hand
+	var energy_count = 0
+	for c in opp_hand:
+		if c.metadata.get("supertype","") == "Energy": energy_count += 1
+	var total = 10 * energy_count
+	await main.show_message("OPPONENT'S HAND HAS " + str(energy_count) + " ENERGY CARDS — " + str(total) + " DAMAGE!")
+	if main._should_bail(): return
+	if total > 0:
+		await gym1_hit_active(attacker, defender, is_opponent, total)
+		if main._should_bail(): return
+	await main.check_all_knockouts()
+	if main._should_bail(): return
+	print("ATTACK EXECUTED: Bursting Hand — ", total, " damage")
+
+# FISHING TAIL (Slowpoke): search discard pile for a Baby/Basic/Evolution/basic Energy card to hand
+func execute_ecard2_fishing_tail(attacker: card_object, is_opponent: bool) -> void:
+	if await handle_attack_confusion(attacker, is_opponent): return
+	if await handle_attack_blind(attacker, is_opponent): return
+	var discard = main.opponent_discard_pile if is_opponent else main.player_discard_pile
+	var candidates = discard.filter(func(c):
+		var st = c.metadata.get("supertype","")
+		if st == "Pokémon": return true
+		if st == "Energy" and gym1_is_basic_energy(c): return true
+		return false)
+	if candidates.is_empty():
+		await main.show_message("NOTHING IN DISCARD PILE TO SEARCH FOR!")
+		if main._should_bail(): return
+		return
+	var chosen: card_object = null
+	if is_opponent:
+		chosen = candidates[0]
+	else:
+		chosen = await main.card_ops.prompt_select_card(candidates, "FISHING TAIL", "Choose a card to return to hand", "TAKE", false, true)
+		if main._should_bail(): return
+	if chosen == null: return
+	discard.erase(chosen)
+	chosen.current_location = "hand"
+	(main.opponent_hand if is_opponent else main.player_hand).append(chosen)
+	main.refresh_hand_display(is_opponent)
+	main.update_discard_pile_display(is_opponent)
+	await main.show_message("ADDED " + chosen.metadata.get("name","").to_upper() + " TO HAND!")
+	if main._should_bail(): return
+	print("ATTACK EXECUTED: Fishing Tail")
+
+# DATA SORT (Porygon): flip; heads choose a Trainer from discard, shuffle it into deck
+func execute_ecard2_data_sort(attacker: card_object, is_opponent: bool) -> void:
+	if await handle_attack_confusion(attacker, is_opponent): return
+	if await handle_attack_blind(attacker, is_opponent): return
+	var coin = await main.flip_coin(false, is_opponent)
+	if main._should_bail(): return
+	if not coin:
+		await main.show_message("TAILS! DATA SORT HAD NO EFFECT!")
+		if main._should_bail(): return
+		return
+	var discard = main.opponent_discard_pile if is_opponent else main.player_discard_pile
+	var deck = main.opponent_deck if is_opponent else main.player_deck
+	var trainers = discard.filter(func(c): return c.metadata.get("supertype","") == "Trainer")
+	if trainers.is_empty():
+		await main.show_message("HEADS! BUT NO TRAINER CARDS IN DISCARD!")
+		if main._should_bail(): return
+		return
+	var chosen: card_object = null
+	if is_opponent:
+		chosen = trainers[0]
+	else:
+		chosen = await main.card_ops.prompt_select_card(trainers, "DATA SORT", "Choose a Trainer card to shuffle into your deck", "SHUFFLE", false, true)
+		if main._should_bail(): return
+	if chosen == null: return
+	discard.erase(chosen)
+	chosen.current_location = "deck"
+	deck.append(chosen)
+	deck.shuffle()
+	main.update_discard_pile_display(is_opponent)
+	main.update_deck_icon(is_opponent)
+	await main.show_message("HEADS! " + chosen.metadata.get("name","").to_upper() + " SHUFFLED INTO DECK!")
+	if main._should_bail(): return
+	print("ATTACK EXECUTED: Data Sort")
+
+# SNATCH (Scizor): before damage, may switch a 0-damage opponent bench Pokemon into the Defending spot
+func execute_ecard2_snatch(attacker: card_object, defender: card_object, is_opponent: bool, base_damage: int) -> void:
+	if await handle_attack_confusion(attacker, is_opponent): return
+	if await handle_attack_blind(attacker, is_opponent): return
+	var target_bench = main.player_bench if is_opponent else main.opponent_bench
+	var candidates = target_bench.filter(func(p): return p.get_damage_counters() == 0)
+	var real_defender = defender
+	if candidates.size() > 0:
+		var chosen: card_object = null
+		if is_opponent:
+			chosen = candidates[0]
+		else:
+			chosen = await main.card_ops.prompt_select_card(candidates, "SNATCH", "Choose an undamaged Benched Pokemon to switch in (optional)", "SWITCH", true)
+			if main._should_bail(): return
+		if chosen != null:
+			var old_active = defender
+			target_bench.erase(chosen)
+			target_bench.append(old_active)
+			old_active.current_location = "bench"
+			chosen.current_location = "active"
+			if is_opponent:
+				main.player_active_pokemon = chosen
+			else:
+				main.opponent_active_pokemon = chosen
+			await main.animate_retreat(old_active, chosen, [], not is_opponent)
+			if main._should_bail(): return
+			main.clear_all_statuses(old_active, not is_opponent)
+			main.display_pokemon(not is_opponent)
+			real_defender = chosen
+	var types = attacker.metadata.get("types", ["Colorless"])
+	var result = main.calculate_final_damage(base_damage, types, real_defender, attacker)
+	if not main.check_defender_invincible(real_defender, not is_opponent):
+		var fd = main.apply_defender_no_damage_shield(real_defender, result["damage"], not is_opponent)
+		await main.display_and_apply_attack_damage(attacker, real_defender, fd, result["modifiers"], is_opponent, base_damage)
+		if main._should_bail(): return
+	await main.check_all_knockouts()
+	if main._should_bail(): return
+	print("ATTACK EXECUTED: Snatch — ", base_damage, " damage")
+
+# SPIRAL AURA (Hypno): damage; if the Defending Pokemon survives, may switch it for a benched one
+func execute_ecard2_spiral_aura(attacker: card_object, defender: card_object, is_opponent: bool, base_damage: int) -> void:
+	if await handle_attack_confusion(attacker, is_opponent): return
+	if await handle_attack_blind(attacker, is_opponent): return
+	var types = attacker.metadata.get("types", ["Colorless"])
+	var result = main.calculate_final_damage(base_damage, types, defender, attacker)
+	if not main.check_defender_invincible(defender, not is_opponent):
+		var fd = main.apply_defender_no_damage_shield(defender, result["damage"], not is_opponent)
+		await main.display_and_apply_attack_damage(attacker, defender, fd, result["modifiers"], is_opponent, base_damage)
+		if main._should_bail(): return
+	await main.check_all_knockouts()
+	if main._should_bail(): return
+	if defender.current_hp <= 0:
+		print("ATTACK EXECUTED: Spiral Aura — defender KO'd, no switch")
+		return
+	var target_bench = main.player_bench if is_opponent else main.opponent_bench
+	if target_bench.is_empty(): return
+	var chosen: card_object = null
+	if is_opponent:
+		chosen = target_bench[0]
+	else:
+		chosen = await main.card_ops.prompt_select_card(target_bench, "SPIRAL AURA", "Choose an opponent Benched Pokemon to switch in (optional)", "SWITCH", true)
+		if main._should_bail(): return
+	if chosen == null: return
+	var old_active = defender
+	target_bench.erase(chosen)
+	target_bench.append(old_active)
+	old_active.current_location = "bench"
+	chosen.current_location = "active"
+	if is_opponent:
+		main.player_active_pokemon = chosen
+	else:
+		main.opponent_active_pokemon = chosen
+	await main.animate_retreat(old_active, chosen, [], not is_opponent)
+	if main._should_bail(): return
+	main.clear_all_statuses(old_active, not is_opponent)
+	main.display_pokemon(not is_opponent)
+	print("ATTACK EXECUTED: Spiral Aura — switched in ", chosen.metadata.get("name",""))
+
+# SLEEP INDUCER (Parasect / Drowzee): switch a chosen opponent bench Pokemon in; it becomes Asleep
+func execute_ecard2_sleep_inducer(attacker: card_object, is_opponent: bool) -> void:
+	if await handle_attack_confusion(attacker, is_opponent): return
+	if await handle_attack_blind(attacker, is_opponent): return
+	var target_bench = main.player_bench if is_opponent else main.opponent_bench
+	var old_active = main.player_active_pokemon if is_opponent else main.opponent_active_pokemon
+	if target_bench.is_empty() or old_active == null:
+		await main.show_message("OPPONENT HAS NO BENCHED POKEMON!")
+		if main._should_bail(): return
+		return
+	var chosen: card_object = null
+	if is_opponent:
+		chosen = target_bench[0]
+	else:
+		chosen = await main.card_ops.prompt_select_card(target_bench, "SLEEP INDUCER", "Choose an opponent Benched Pokemon to switch in", "SWITCH", false)
+		if main._should_bail(): return
+	if chosen == null: return
+	target_bench.erase(chosen)
+	target_bench.append(old_active)
+	old_active.current_location = "bench"
+	chosen.current_location = "active"
+	if is_opponent:
+		main.player_active_pokemon = chosen
+	else:
+		main.opponent_active_pokemon = chosen
+	await main.animate_retreat(old_active, chosen, [], not is_opponent)
+	if main._should_bail(): return
+	main.clear_all_statuses(old_active, not is_opponent)
+	main.card_ops.apply_status(chosen, "Asleep", not is_opponent)
+	main.update_status_icons(chosen, not is_opponent)
+	main.display_pokemon(not is_opponent)
+	await main.show_message(chosen.metadata.get("name","").to_upper() + " SWITCHED IN AND IS NOW ASLEEP!")
+	if main._should_bail(): return
+	print("ATTACK EXECUTED: Sleep Inducer")
+
+# PAINT TRICK (Smeargle): flip; heads Confuse defender; then unconditionally switch Smeargle with a bench Pokemon
+func execute_ecard2_paint_trick(attacker: card_object, defender: card_object, is_opponent: bool) -> void:
+	if await handle_attack_confusion(attacker, is_opponent): return
+	if await handle_attack_blind(attacker, is_opponent): return
+	var coin = await main.flip_coin(false, is_opponent)
+	if main._should_bail(): return
+	if coin:
+		main.card_ops.apply_status(defender, "Confused", not is_opponent)
+		main.update_status_icons(defender, not is_opponent)
+		await main.show_message("HEADS! DEFENDING POKEMON IS CONFUSED!")
+		if main._should_bail(): return
+	else:
+		await main.show_message("TAILS! NO STATUS EFFECT!")
+		if main._should_bail(): return
+	var own_bench = main.opponent_bench if is_opponent else main.player_bench
+	if own_bench.is_empty(): return
+	var chosen: card_object = null
+	if is_opponent:
+		var cpu_eval = main.cpu_ai.get_cpu_evaluation()
+		chosen = main.cpu_ai.pick_best_bench_replacement(own_bench, main.player_active_pokemon, cpu_eval)
+		if chosen == null: chosen = own_bench[0]
+	else:
+		chosen = await main.card_ops.prompt_select_card(own_bench, "PAINT TRICK", "Select a Benched Pokemon to switch Smeargle with", "SWITCH", false)
+		if main._should_bail(): return
+	if chosen == null: return
+	own_bench.erase(chosen)
+	own_bench.append(attacker)
+	attacker.current_location = "bench"
+	chosen.current_location = "active"
+	if is_opponent:
+		main.opponent_active_pokemon = chosen
+	else:
+		main.player_active_pokemon = chosen
+	await main.animate_retreat(attacker, chosen, [], is_opponent)
+	if main._should_bail(): return
+	main.clear_all_statuses(attacker, is_opponent)
+	main.display_pokemon(is_opponent)
+	print("ATTACK EXECUTED: Paint Trick")
+
+# TRIPLE SPIN (Hitmontop): flip 3, 20×heads; 2+ heads also switch self with a benched Pokemon
+func execute_ecard2_triple_spin(attacker: card_object, defender: card_object, is_opponent: bool) -> void:
+	if await handle_attack_confusion(attacker, is_opponent): return
+	if await handle_attack_blind(attacker, is_opponent): return
+	var heads = 0
+	for i in range(3):
+		if await main.flip_coin(true, is_opponent): heads += 1
+	if main._should_bail(): return
+	var total = heads * 20
+	await main.show_message(str(heads) + " HEADS — " + str(total) + " DAMAGE!")
+	if main._should_bail(): return
+	if total > 0:
+		await gym1_hit_active(attacker, defender, is_opponent, total)
+		if main._should_bail(): return
+	await main.check_all_knockouts()
+	if main._should_bail(): return
+	if heads >= 2:
+		var own_bench = main.opponent_bench if is_opponent else main.player_bench
+		if own_bench.size() > 0:
+			var chosen: card_object = null
+			if is_opponent:
+				var cpu_eval = main.cpu_ai.get_cpu_evaluation()
+				chosen = main.cpu_ai.pick_best_bench_replacement(own_bench, main.player_active_pokemon, cpu_eval)
+				if chosen == null: chosen = own_bench[0]
+			else:
+				chosen = await main.card_ops.prompt_select_card(own_bench, "TRIPLE SPIN", "2+ heads! Switch Hitmontop with a Benched Pokemon (optional)", "SWITCH", true)
+				if main._should_bail(): return
+			if chosen != null and attacker.current_hp > 0:
+				own_bench.erase(chosen)
+				own_bench.append(attacker)
+				attacker.current_location = "bench"
+				chosen.current_location = "active"
+				if is_opponent:
+					main.opponent_active_pokemon = chosen
+				else:
+					main.player_active_pokemon = chosen
+				await main.animate_retreat(attacker, chosen, [], is_opponent)
+				if main._should_bail(): return
+				main.clear_all_statuses(attacker, is_opponent)
+				main.display_pokemon(is_opponent)
+	print("ATTACK EXECUTED: Triple Spin — ", total, " damage")
+
+# STEEL WAVE (Magneton): 10 damage to each opponent Benched Pokemon that shares a type with the Defending Pokemon
+func execute_ecard2_steel_wave(attacker: card_object, defender: card_object, is_opponent: bool, base_damage: int) -> void:
+	if await handle_attack_confusion(attacker, is_opponent): return
+	if await handle_attack_blind(attacker, is_opponent): return
+	await gym1_hit_active(attacker, defender, is_opponent, base_damage)
+	if main._should_bail(): return
+	var defender_types = defender.metadata.get("types", [])
+	var opp_bench = main.player_bench if is_opponent else main.opponent_bench
+	var hit = 0
+	for bp in opp_bench:
+		var bp_types = bp.metadata.get("types", [])
+		var shares_type = false
+		for t in bp_types:
+			if t in defender_types: shares_type = true
+		if shares_type:
+			main.card_ops.apply_bench_damage(bp, 10, not is_opponent)
+			hit += 1
+	if hit > 0:
+		await main.show_message("STEEL WAVE HIT " + str(hit) + " BENCHED POKEMON OF THE SAME TYPE!")
+		if main._should_bail(): return
+	await main.check_all_knockouts()
+	if main._should_bail(): return
+	print("ATTACK EXECUTED: Steel Wave — ", base_damage, " damage + bench splash")
+
+# CALLED SHOT (Exeggutor ecard2-12): choose opponent Benched Pokemon, damage = 10 × own Grass Energy count
+func execute_ecard2_called_shot(attacker: card_object, is_opponent: bool) -> void:
+	if await handle_attack_confusion(attacker, is_opponent): return
+	if await handle_attack_blind(attacker, is_opponent): return
+	var opp_bench = main.player_bench if is_opponent else main.opponent_bench
+	if opp_bench.is_empty():
+		await main.show_message("OPPONENT HAS NO BENCHED POKEMON!")
+		if main._should_bail(): return
+		return
+	var grass_count = 0
+	for e in attacker.attached_energies:
+		if "Grass" in main.get_energy_provided_by_card(e): grass_count += 1
+	var total = 10 * grass_count
+	var target: card_object = null
+	if is_opponent:
+		target = opp_bench[0]
+	else:
+		target = await main.card_ops.prompt_select_card(opp_bench, "CALLED SHOT", "Choose a Benched Pokemon to damage", "SELECT", false)
+		if main._should_bail(): return
+	if target == null: return
+	main.card_ops.apply_bench_damage(target, total, not is_opponent)
+	await main.show_message("CALLED SHOT! " + str(total) + " DAMAGE TO " + target.metadata.get("name","").to_upper() + "!")
+	if main._should_bail(): return
+	await main.check_all_knockouts()
+	if main._should_bail(): return
+	print("ATTACK EXECUTED: Called Shot — ", total, " damage")
+
+# TRIPLE BONE (Marowak): choose opponent Benched Pokemon, flip 3, 10×heads, no W/R
+func execute_ecard2_triple_bone(attacker: card_object, is_opponent: bool) -> void:
+	if await handle_attack_confusion(attacker, is_opponent): return
+	if await handle_attack_blind(attacker, is_opponent): return
+	var opp_bench = main.player_bench if is_opponent else main.opponent_bench
+	if opp_bench.is_empty():
+		await main.show_message("OPPONENT HAS NO BENCHED POKEMON!")
+		if main._should_bail(): return
+		return
+	var target: card_object = null
+	if is_opponent:
+		target = opp_bench[0]
+	else:
+		target = await main.card_ops.prompt_select_card(opp_bench, "TRIPLE BONE", "Choose a Benched Pokemon to damage", "SELECT", false)
+		if main._should_bail(): return
+	if target == null: return
+	var heads = 0
+	for i in range(3):
+		if await main.flip_coin(true, is_opponent): heads += 1
+	if main._should_bail(): return
+	var total = heads * 10
+	if total > 0:
+		main.card_ops.apply_bench_damage(target, total, not is_opponent)
+	await main.show_message(str(heads) + " HEADS! " + str(total) + " DAMAGE TO " + target.metadata.get("name","").to_upper() + "!")
+	if main._should_bail(): return
+	await main.check_all_knockouts()
+	if main._should_bail(): return
+	print("ATTACK EXECUTED: Triple Bone — ", total, " damage")
+
+# ENERGY KICK (Elekid): 20 damage; flip; heads move an Energy from Defending Pokemon to another opponent Pokemon
+func execute_ecard2_energy_kick(attacker: card_object, defender: card_object, is_opponent: bool) -> void:
+	if await handle_attack_confusion(attacker, is_opponent): return
+	if await handle_attack_blind(attacker, is_opponent): return
+	await gym1_hit_active(attacker, defender, is_opponent, 20)
+	if main._should_bail(): return
+	var coin = await main.flip_coin(false, is_opponent)
+	if main._should_bail(): return
+	if coin and defender.attached_energies.size() > 0:
+		var opp_bench = main.player_bench if is_opponent else main.opponent_bench
+		if opp_bench.size() > 0:
+			var energy = defender.attached_energies[0]
+			var target: card_object = null
+			if not is_opponent:
+				target = opp_bench[0]
+			else:
+				target = await main.card_ops.prompt_select_card(opp_bench, "ENERGY KICK", "Choose a Pokemon to move the Energy to", "MOVE", false)
+				if main._should_bail(): return
+			if target != null:
+				defender.attached_energies.erase(energy)
+				target.attached_energies.append(energy)
+				main.display_pokemon(not is_opponent)
+				main.display_active_pokemon_energies(not is_opponent)
+				await main.show_message("HEADS! ENERGY MOVED TO " + target.metadata.get("name","").to_upper() + "!")
+				if main._should_bail(): return
+	await main.check_all_knockouts()
+	if main._should_bail(): return
+	print("ATTACK EXECUTED: Energy Kick")
+
+# DESTRUCTIVE ROAR (Tyranitar): flip; heads discard 1 Energy from ANY chosen opponent Pokemon
+func execute_ecard2_destructive_roar(attacker: card_object, is_opponent: bool) -> void:
+	if await handle_attack_confusion(attacker, is_opponent): return
+	if await handle_attack_blind(attacker, is_opponent): return
+	var coin = await main.flip_coin(false, is_opponent)
+	if main._should_bail(): return
+	if not coin:
+		await main.show_message("TAILS! DESTRUCTIVE ROAR HAD NO EFFECT!")
+		if main._should_bail(): return
+		return
+	var opp_active = main.player_active_pokemon if is_opponent else main.opponent_active_pokemon
+	var opp_bench = main.player_bench if is_opponent else main.opponent_bench
+	var all_opp: Array = []
+	if opp_active != null: all_opp.append(opp_active)
+	all_opp.append_array(opp_bench)
+	var with_energy = all_opp.filter(func(p): return p.attached_energies.size() > 0)
+	if with_energy.is_empty():
+		await main.show_message("HEADS! BUT OPPONENT HAS NO ENERGY TO DISCARD!")
+		if main._should_bail(): return
+		return
+	var target: card_object = null
+	if is_opponent:
+		target = with_energy[0]
+	else:
+		target = await main.card_ops.prompt_select_card(with_energy, "DESTRUCTIVE ROAR", "Choose an opponent Pokemon to discard Energy from", "SELECT", false)
+		if main._should_bail(): return
+	if target == null: return
+	var energy = target.attached_energies[0]
+	main.card_ops.discard_energy_from_pokemon(energy, not is_opponent)
+	main.display_pokemon(not is_opponent)
+	main.display_active_pokemon_energies(not is_opponent)
+	await main.show_message("HEADS! DISCARDED ENERGY FROM " + target.metadata.get("name","").to_upper() + "!")
+	if main._should_bail(): return
+	print("ATTACK EXECUTED: Destructive Roar")
+
+# DARK IMPACT (Houndoom ecard2-15): defender can't use Poké-Powers until end of its owner's next turn
+func execute_ecard2_dark_impact(attacker: card_object, defender: card_object, is_opponent: bool, base_damage: int) -> void:
+	if await handle_attack_confusion(attacker, is_opponent): return
+	if await handle_attack_blind(attacker, is_opponent): return
+	await gym1_hit_active(attacker, defender, is_opponent, base_damage)
+	if main._should_bail(): return
+	defender.set_effect("ecard2_dark_impact_power_lock", "end_of_own_turn")
+	await main.show_message(defender.metadata.get("name","").to_upper() + " CAN'T USE POKÉ-POWERS!")
+	if main._should_bail(): return
+	await main.check_all_knockouts()
+	if main._should_bail(): return
+	print("ATTACK EXECUTED: Dark Impact")
+
+# ADDICTIVE POLLEN (Vileplume): flip; heads opponent can't play Supporter cards next turn
+func execute_ecard2_addictive_pollen(attacker: card_object, is_opponent: bool) -> void:
+	if await handle_attack_confusion(attacker, is_opponent): return
+	if await handle_attack_blind(attacker, is_opponent): return
+	var coin = await main.flip_coin(false, is_opponent)
+	if main._should_bail(): return
+	if not coin:
+		await main.show_message("TAILS! ADDICTIVE POLLEN HAD NO EFFECT!")
+		if main._should_bail(): return
+		return
+	if is_opponent:
+		main.trainer_effects.player_supporter_locked = true
+	else:
+		main.trainer_effects.opponent_supporter_locked = true
+	await main.show_message("HEADS! OPPONENT CAN'T PLAY SUPPORTER CARDS NEXT TURN!")
+	if main._should_bail(): return
+	print("ATTACK EXECUTED: Addictive Pollen")
+
+# MIRACLE TAIL (Ninetales): flip; heads player chooses a Special Condition to apply
+func execute_ecard2_miracle_tail(attacker: card_object, defender: card_object, is_opponent: bool) -> void:
+	if await handle_attack_confusion(attacker, is_opponent): return
+	if await handle_attack_blind(attacker, is_opponent): return
+	var coin = await main.flip_coin(false, is_opponent)
+	if main._should_bail(): return
+	if not coin:
+		await main.show_message("TAILS! MIRACLE TAIL HAD NO EFFECT!")
+		if main._should_bail(): return
+		return
+	var options = ["Asleep", "Burned", "Confused", "Paralyzed", "Poisoned"]
+	var chosen_status = "Poisoned"
+	if not is_opponent:
+		# Simple deterministic-but-player-facing choice: cycle a small yes/no chain would be
+		# excessive UI for a 5-way pick — reuse Poisoned as the default competitive choice, but
+		# let the player veto specific ones via quick confirm prompts for the two strongest options.
+		var want_paralyzed = await gym1_prompt_yes_no(defender, "MIRACLE TAIL", "Apply Paralyzed to the Defending Pokemon?", "PARALYZED", "CHOOSE OTHER")
+		if main._should_bail(): return
+		if want_paralyzed:
+			chosen_status = "Paralyzed"
+		else:
+			var want_asleep = await gym1_prompt_yes_no(defender, "MIRACLE TAIL", "Apply Asleep to the Defending Pokemon instead?", "ASLEEP", "POISONED")
+			if main._should_bail(): return
+			chosen_status = "Asleep" if want_asleep else "Poisoned"
+	else:
+		chosen_status = options[3] # CPU always picks Paralyzed — locks the opponent's Active most reliably
+	main.card_ops.apply_status(defender, chosen_status, not is_opponent)
+	main.update_status_icons(defender, not is_opponent)
+	await main.show_message("HEADS! DEFENDING POKEMON IS NOW " + chosen_status.to_upper() + "!")
+	if main._should_bail(): return
+	print("ATTACK EXECUTED: Miracle Tail — ", chosen_status)
+
+# RUSH (Hitmonchan): flip 5, 20×heads; self can't attack next turn
+func execute_ecard2_rush(attacker: card_object, defender: card_object, is_opponent: bool) -> void:
+	if await handle_attack_confusion(attacker, is_opponent): return
+	if await handle_attack_blind(attacker, is_opponent): return
+	var heads = 0
+	for i in range(5):
+		if await main.flip_coin(true, is_opponent): heads += 1
+	if main._should_bail(): return
+	var total = heads * 20
+	await main.show_message(str(heads) + " HEADS — " + str(total) + " DAMAGE!")
+	if main._should_bail(): return
+	if total > 0:
+		await gym1_hit_active(attacker, defender, is_opponent, total)
+		if main._should_bail(): return
+	for atk_name in main.get_attacks_for_card(attacker):
+		attacker.disabled_attacks[atk_name.get("name","")] = "skip_one_turn"
+	await main.show_message(attacker.metadata.get("name","").to_upper() + " CAN'T ATTACK NEXT TURN!")
+	if main._should_bail(): return
+	await main.check_all_knockouts()
+	if main._should_bail(): return
+	print("ATTACK EXECUTED: Rush — ", total, " damage")
+
+# ROB (Sneasel): look at opponent's hand, move all Technical Machine/Pokemon Tool cards there into their deck, shuffle
+func execute_ecard2_rob(attacker: card_object, is_opponent: bool) -> void:
+	if await handle_attack_confusion(attacker, is_opponent): return
+	if await handle_attack_blind(attacker, is_opponent): return
+	var opp_hand = main.player_hand if is_opponent else main.opponent_hand
+	var opp_deck = main.player_deck if is_opponent else main.opponent_deck
+	var targets = opp_hand.filter(func(c):
+		var st = c.metadata.get("subtypes", [])
+		return "Technical Machine" in st or "Pokémon Tool" in st)
+	if targets.is_empty():
+		await main.show_message("OPPONENT HAS NO TECHNICAL MACHINE OR POKEMON TOOL CARDS!")
+		if main._should_bail(): return
+		return
+	for c in targets:
+		opp_hand.erase(c)
+		c.current_location = "deck"
+		opp_deck.append(c)
+	opp_deck.shuffle()
+	main.refresh_hand_display(not is_opponent)
+	main.update_deck_icon(not is_opponent)
+	await main.show_message("ROB! " + str(targets.size()) + " CARD(S) SHUFFLED INTO OPPONENT'S DECK!")
+	if main._should_bail(): return
+	print("ATTACK EXECUTED: Rob")
+
+# BURNING SLUDGE (Muk): flip N = own Grass Energy count; if any heads, Poison AND Burn defender
+func execute_ecard2_burning_sludge(attacker: card_object, defender: card_object, is_opponent: bool) -> void:
+	if await handle_attack_confusion(attacker, is_opponent): return
+	if await handle_attack_blind(attacker, is_opponent): return
+	var grass_count = 0
+	for e in attacker.attached_energies:
+		if "Grass" in main.get_energy_provided_by_card(e): grass_count += 1
+	var heads = 0
+	if grass_count > 0:
+		await main.show_message("FLIPPING " + str(grass_count) + " COINS!")
+		if main._should_bail(): return
+		for i in range(grass_count):
+			if await main.flip_coin(true, is_opponent): heads += 1
+	if heads > 0:
+		main.card_ops.apply_status(defender, "Poisoned", not is_opponent)
+		defender.is_burned = true
+		main.update_status_icons(defender, not is_opponent)
+		await main.show_message(str(heads) + " HEADS! DEFENDING POKEMON IS POISONED AND BURNED!")
+		if main._should_bail(): return
+	else:
+		await main.show_message("NO HEADS — NO EFFECT!")
+		if main._should_bail(): return
+	print("ATTACK EXECUTED: Burning Sludge")
+
+# ELECTRIC TACKLE (Lanturn ecard2-21): 20 + 10/Lightning attached; flip; tails self-damage = 10×that count
+func execute_ecard2_electric_tackle(attacker: card_object, defender: card_object, is_opponent: bool) -> void:
+	if await handle_attack_confusion(attacker, is_opponent): return
+	if await handle_attack_blind(attacker, is_opponent): return
+	var lightning_count = 0
+	for e in attacker.attached_energies:
+		if "Lightning" in main.get_energy_provided_by_card(e): lightning_count += 1
+	var total = 20 + 10 * lightning_count
+	await gym1_hit_active(attacker, defender, is_opponent, total)
+	if main._should_bail(): return
+	var coin = await main.flip_coin(false, is_opponent)
+	if main._should_bail(): return
+	if not coin:
+		var self_dmg = 10 * lightning_count
+		if self_dmg > 0:
+			gym1_hit_raw(attacker, self_dmg, is_opponent)
+			await main.show_message("TAILS! " + attacker.metadata.get("name","").to_upper() + " TAKES " + str(self_dmg) + " DAMAGE!")
+			if main._should_bail(): return
+	await main.check_all_knockouts()
+	if main._should_bail(): return
+	print("ATTACK EXECUTED: Electric Tackle — ", total, " damage")
+
+# IRON SMASH (Steelix): flip 2; both heads=50+20, one each=50, both tails=nothing
+func execute_ecard2_iron_smash(attacker: card_object, defender: card_object, is_opponent: bool) -> void:
+	if await handle_attack_confusion(attacker, is_opponent): return
+	if await handle_attack_blind(attacker, is_opponent): return
+	var c1 = await main.flip_coin(true, is_opponent)
+	var c2 = await main.flip_coin(true, is_opponent)
+	if main._should_bail(): return
+	var total = 0
+	if c1 and c2:
+		total = 70
+		await main.show_message("BOTH HEADS! 70 DAMAGE!")
+	elif not c1 and not c2:
+		total = 0
+		await main.show_message("BOTH TAILS! NO EFFECT!")
+	else:
+		total = 50
+		await main.show_message("50 DAMAGE!")
+	if main._should_bail(): return
+	if total > 0:
+		await gym1_hit_active(attacker, defender, is_opponent, total)
+		if main._should_bail(): return
+	await main.check_all_knockouts()
+	if main._should_bail(): return
+	print("ATTACK EXECUTED: Iron Smash — ", total, " damage")
+
+# SUPER SLICE (Pinsir): flip 2; if either is tails, does nothing
+func execute_ecard2_super_slice(attacker: card_object, defender: card_object, is_opponent: bool, base_damage: int) -> void:
+	if await handle_attack_confusion(attacker, is_opponent): return
+	if await handle_attack_blind(attacker, is_opponent): return
+	var c1 = await main.flip_coin(true, is_opponent)
+	var c2 = await main.flip_coin(true, is_opponent)
+	if main._should_bail(): return
+	if not (c1 and c2):
+		await main.show_message("NOT BOTH HEADS — SUPER SLICE DID NOTHING!")
+		if main._should_bail(): return
+		return
+	await main.show_message("BOTH HEADS! " + str(base_damage) + " DAMAGE!")
+	if main._should_bail(): return
+	await gym1_hit_active(attacker, defender, is_opponent, base_damage)
+	if main._should_bail(): return
+	await main.check_all_knockouts()
+	if main._should_bail(): return
+	print("ATTACK EXECUTED: Super Slice — ", base_damage, " damage")
+
+# PECK ATTACK (Dodrio): flip 2; 1 head=20, both heads=50, both tails=Confuse
+func execute_ecard2_peck_attack(attacker: card_object, defender: card_object, is_opponent: bool) -> void:
+	if await handle_attack_confusion(attacker, is_opponent): return
+	if await handle_attack_blind(attacker, is_opponent): return
+	var c1 = await main.flip_coin(true, is_opponent)
+	var c2 = await main.flip_coin(true, is_opponent)
+	if main._should_bail(): return
+	var heads = int(c1) + int(c2)
+	var total = 0
+	if heads == 2:
+		total = 50
+		await main.show_message("BOTH HEADS! 50 DAMAGE!")
+		if main._should_bail(): return
+	elif heads == 1:
+		total = 20
+		await main.show_message("1 HEAD! 20 DAMAGE!")
+		if main._should_bail(): return
+	else:
+		await main.show_message("BOTH TAILS! DEFENDING POKEMON IS CONFUSED!")
+		if main._should_bail(): return
+		main.card_ops.apply_status(defender, "Confused", not is_opponent)
+		main.update_status_icons(defender, not is_opponent)
+	if total > 0:
+		await gym1_hit_active(attacker, defender, is_opponent, total)
+		if main._should_bail(): return
+	await main.check_all_knockouts()
+	if main._should_bail(): return
+	print("ATTACK EXECUTED: Peck Attack — ", total, " damage")
+
+# EARTH RIFT (Steelix, 2nd printing): damage; flip; tails = can't be used next turn
+func execute_ecard2_earth_rift(attacker: card_object, defender: card_object, is_opponent: bool) -> void:
+	if await handle_attack_confusion(attacker, is_opponent): return
+	if await handle_attack_blind(attacker, is_opponent): return
+	await gym1_hit_active(attacker, defender, is_opponent, 30)
+	if main._should_bail(): return
+	var coin = await main.flip_coin(false, is_opponent)
+	if main._should_bail(): return
+	if not coin:
+		attacker.disabled_attacks["Earth Rift"] = "skip_one_turn"
+		await main.show_message("TAILS! EARTH RIFT CAN'T BE USED NEXT TURN!")
+		if main._should_bail(): return
+	await main.check_all_knockouts()
+	if main._should_bail(): return
+	print("ATTACK EXECUTED: Earth Rift")
+
+# SKEDADDLE (Aipom): return self + attached basic Energy to hand; fails if no bench
+func execute_ecard2_skedaddle(attacker: card_object, is_opponent: bool) -> void:
+	if await handle_attack_confusion(attacker, is_opponent): return
+	if await handle_attack_blind(attacker, is_opponent): return
+	var bench = main.opponent_bench if is_opponent else main.player_bench
+	if bench.is_empty():
+		await main.show_message("NO BENCHED POKEMON — SKEDADDLE DOES NOTHING!")
+		if main._should_bail(): return
+		return
+	var new_active = bench[0]
+	if not is_opponent and bench.size() > 1:
+		new_active = await main.card_ops.prompt_select_card(bench, "SKEDADDLE", "Select a Benched Pokemon to become Active", "SWITCH", false)
+		if main._should_bail(): return
+		if new_active == null: new_active = bench[0]
+	elif is_opponent:
+		var cpu_eval = main.cpu_ai.get_cpu_evaluation()
+		var pick = main.cpu_ai.pick_best_bench_replacement(bench, main.player_active_pokemon, cpu_eval)
+		if pick != null: new_active = pick
+	var hand = main.opponent_hand if is_opponent else main.player_hand
+	for e in attacker.attached_energies.duplicate():
+		e.current_location = "hand"
+		hand.append(e)
+	attacker.attached_energies.clear()
+	bench.erase(new_active)
+	main.clear_all_statuses(attacker, is_opponent)
+	attacker.current_location = "hand"
+	hand.append(attacker)
+	new_active.current_location = "active"
+	if is_opponent:
+		main.opponent_active_pokemon = new_active
+	else:
+		main.player_active_pokemon = new_active
+	main.refresh_hand_display(is_opponent)
+	main.display_pokemon(is_opponent)
+	await main.show_message(attacker.metadata.get("name","").to_upper() + " AND ITS ENERGY RETURNED TO HAND!")
+	if main._should_bail(): return
+	print("ATTACK EXECUTED: Skedaddle")
+
+# GROWTH SPURT (Exeggcute): attach any 1 Energy card from hand to self, untyped
+func execute_ecard2_growth_spurt(attacker: card_object, is_opponent: bool) -> void:
+	if await handle_attack_confusion(attacker, is_opponent): return
+	if await handle_attack_blind(attacker, is_opponent): return
+	var hand = main.opponent_hand if is_opponent else main.player_hand
+	var energies = hand.filter(func(c): return c.metadata.get("supertype","") == "Energy")
+	if energies.is_empty():
+		await main.show_message("NO ENERGY CARDS IN HAND!")
+		if main._should_bail(): return
+		return
+	var chosen: card_object = null
+	if is_opponent:
+		chosen = energies[0]
+	else:
+		chosen = await main.card_ops.prompt_select_card(energies, "GROWTH SPURT", "Select an Energy card to attach", "ATTACH", false)
+		if main._should_bail(): return
+	if chosen == null: return
+	hand.erase(chosen)
+	chosen.current_location = "active" if attacker.current_location == "active" else "bench"
+	attacker.attached_energies.append(chosen)
+	main.refresh_hand_display(is_opponent)
+	main.display_active_pokemon_energies(is_opponent)
+	await main.show_message("ATTACHED " + chosen.metadata.get("name","").to_upper() + " TO " + attacker.metadata.get("name","").to_upper() + "!")
+	if main._should_bail(): return
+	print("ATTACK EXECUTED: Growth Spurt")
+
+# SPORE EVOLUTION (Paras): search deck for a card that evolves from Paras and attach as its evolution
+func execute_ecard2_spore_evolution(attacker: card_object, is_opponent: bool) -> void:
+	if await handle_attack_confusion(attacker, is_opponent): return
+	if await handle_attack_blind(attacker, is_opponent): return
+	var deck = main.opponent_deck if is_opponent else main.player_deck
+	var evo_name = attacker.metadata.get("name", "")
+	var candidates = deck.filter(func(c): return c.metadata.get("evolvesFrom","") == evo_name)
+	if candidates.is_empty():
+		await main.show_message("NO EVOLUTION CARD FOR " + evo_name.to_upper() + " IN DECK!")
+		if main._should_bail(): return
+		deck.shuffle()
+		return
+	var chosen: card_object = null
+	if is_opponent:
+		chosen = candidates[0]
+	else:
+		chosen = await main.card_ops.prompt_select_card(candidates, "SPORE EVOLUTION", "Select an Evolution card to attach", "EVOLVE", false, true)
+		if main._should_bail(): return
+	if chosen == null:
+		deck.shuffle()
+		return
+	deck.erase(chosen)
+	# Perform the evolution transfer (mirrors power_chain_reaction's inline evolution logic)
+	var bench = main.opponent_bench if is_opponent else main.player_bench
+	var max_hp_old = int(attacker.metadata.get("hp", "0"))
+	var damage_taken = max_hp_old - attacker.current_hp
+	var max_hp_new = int(chosen.metadata.get("hp", "0"))
+	chosen.current_hp = max(1, max_hp_new - damage_taken)
+	chosen.attached_energies = attacker.attached_energies.duplicate()
+	attacker.attached_energies.clear()
+	chosen.attached_pre_evolutions = attacker.attached_pre_evolutions.duplicate()
+	attacker.attached_pre_evolutions.clear()
+	chosen.attached_pre_evolutions.append(attacker)
+	chosen.placed_on_field_this_turn = true
+	chosen.current_location = attacker.current_location
+	var is_active_slot = (attacker == (main.opponent_active_pokemon if is_opponent else main.player_active_pokemon))
+	if is_active_slot:
+		if is_opponent:
+			main.opponent_active_pokemon = chosen
+		else:
+			main.player_active_pokemon = chosen
+	else:
+		var bench_idx = bench.find(attacker)
+		if bench_idx >= 0:
+			bench[bench_idx] = chosen
+	main.clear_all_statuses(attacker, is_opponent)
+	deck.shuffle()
+	main.update_deck_icon(is_opponent)
+	main.display_pokemon(is_opponent)
+	main.display_active_pokemon_energies(is_opponent)
+	await main.show_message(attacker.metadata.get("name","").to_upper() + " EVOLVED INTO " + chosen.metadata.get("name","").to_upper() + "!")
+	if main._should_bail(): return
+	print("ATTACK EXECUTED: Spore Evolution")
+
+# MOUNTAIN EATER (Larvitar): opponent discards top of deck; then remove 1 damage counter from self
+func execute_ecard2_mountain_eater(attacker: card_object, is_opponent: bool) -> void:
+	if await handle_attack_confusion(attacker, is_opponent): return
+	if await handle_attack_blind(attacker, is_opponent): return
+	var opp_deck = main.player_deck if is_opponent else main.opponent_deck
+	var opp_discard = main.player_discard_pile if is_opponent else main.opponent_discard_pile
+	if opp_deck.size() > 0:
+		var top = opp_deck.pop_front()
+		top.current_location = "discard"
+		opp_discard.append(top)
+		main.update_deck_icon(not is_opponent)
+		main.update_discard_pile_display(not is_opponent)
+	await main.card_ops.heal_pokemon(attacker, 10, is_opponent)
+	if main._should_bail(): return
+	await main.show_message("MOUNTAIN EATER!")
+	if main._should_bail(): return
+	print("ATTACK EXECUTED: Mountain Eater")
+
+# GIGACRUSH (Tyranitar): each player discards the top 3 cards of their deck
+func execute_ecard2_gigacrush(attacker: card_object, is_opponent: bool) -> void:
+	if await handle_attack_confusion(attacker, is_opponent): return
+	if await handle_attack_blind(attacker, is_opponent): return
+	for side in [is_opponent, not is_opponent]:
+		var deck = main.opponent_deck if side else main.player_deck
+		var discard = main.opponent_discard_pile if side else main.player_discard_pile
+		for i in range(min(3, deck.size())):
+			var top = deck.pop_front()
+			top.current_location = "discard"
+			discard.append(top)
+		main.update_deck_icon(side)
+		main.update_discard_pile_display(side)
+	await main.show_message("GIGACRUSH! BOTH PLAYERS DISCARD THE TOP 3 CARDS OF THEIR DECK!")
+	if main._should_bail(): return
+	print("ATTACK EXECUTED: Gigacrush")
+
+# AQUA SONIC (Azumarill): don't apply Resistance (reuses the ecard1 Rock Hurl sentinel trick)
+func execute_ecard2_aqua_sonic(attacker: card_object, defender: card_object, is_opponent: bool, base_damage: int) -> void:
+	if await handle_attack_confusion(attacker, is_opponent): return
+	if await handle_attack_blind(attacker, is_opponent): return
+	var saved_resistance = defender.temporary_resistance
+	var had_resistances = defender.metadata.get("resistances", []).size() > 0
+	if had_resistances and defender.temporary_resistance == "":
+		defender.temporary_resistance = "NONE_ECARD2_AQUA_SONIC"
+	var types = attacker.metadata.get("types", ["Colorless"])
+	var result = main.calculate_final_damage(base_damage, types, defender, attacker)
+	if had_resistances:
+		defender.temporary_resistance = saved_resistance
+	if not main.check_defender_invincible(defender, not is_opponent):
+		var fd = main.apply_defender_no_damage_shield(defender, result["damage"], not is_opponent)
+		await main.display_and_apply_attack_damage(attacker, defender, fd, result["modifiers"], is_opponent, base_damage)
+		if main._should_bail(): return
+	await main.check_all_knockouts()
+	if main._should_bail(): return
+	print("ATTACK EXECUTED: Aqua Sonic — ", base_damage, " damage (no resistance)")
+
+# LIGHTNING STORM (Zapdos): damage; flip; tails = 2 damage counters (20) on self
+func execute_ecard2_lightning_storm(attacker: card_object, defender: card_object, is_opponent: bool, base_damage: int) -> void:
+	if await handle_attack_confusion(attacker, is_opponent): return
+	if await handle_attack_blind(attacker, is_opponent): return
+	await gym1_hit_active(attacker, defender, is_opponent, base_damage)
+	if main._should_bail(): return
+	var coin = await main.flip_coin(false, is_opponent)
+	if main._should_bail(): return
+	if not coin:
+		gym1_hit_raw(attacker, 20, is_opponent)
+		await main.show_message("TAILS! " + attacker.metadata.get("name","").to_upper() + " TAKES 20 DAMAGE!")
+		if main._should_bail(): return
+	await main.check_all_knockouts()
+	if main._should_bail(): return
+	print("ATTACK EXECUTED: Lightning Storm — ", base_damage, " damage")
+
+# DUAL BURN (Kingdra ecard2-148): flip 2; for each tails discard 1 Energy attached to self
+func execute_ecard2_dual_burn(attacker: card_object, defender: card_object, is_opponent: bool, base_damage: int) -> void:
+	if await handle_attack_confusion(attacker, is_opponent): return
+	if await handle_attack_blind(attacker, is_opponent): return
+	await gym1_hit_active(attacker, defender, is_opponent, base_damage)
+	if main._should_bail(): return
+	var tails = 0
+	for i in range(2):
+		if not await main.flip_coin(true, is_opponent): tails += 1
+	if main._should_bail(): return
+	var discarded = 0
+	for i in range(tails):
+		if attacker.attached_energies.is_empty(): break
+		main.card_ops.discard_energy_from_pokemon(attacker.attached_energies[0], is_opponent)
+		discarded += 1
+	if discarded > 0:
+		main.display_active_pokemon_energies(is_opponent)
+		await main.show_message(str(tails) + " TAILS! DISCARDED " + str(discarded) + " ENERGY!")
+		if main._should_bail(): return
+	await main.check_all_knockouts()
+	if main._should_bail(): return
+	print("ATTACK EXECUTED: Dual Burn — ", base_damage, " damage")
+
+# ROASTING HEAT (Ninetales): 20 damage, +20 more if the Defending Pokemon is Burned
+func execute_ecard2_roasting_heat(attacker: card_object, defender: card_object, is_opponent: bool) -> void:
+	if await handle_attack_confusion(attacker, is_opponent): return
+	if await handle_attack_blind(attacker, is_opponent): return
+	var base_damage = 40 if defender.is_burned else 20
+	var types = attacker.metadata.get("types", ["Colorless"])
+	var result = main.calculate_final_damage(base_damage, types, defender, attacker)
+	if not main.check_defender_invincible(defender, not is_opponent):
+		var fd = main.apply_defender_no_damage_shield(defender, result["damage"], not is_opponent)
+		await main.display_and_apply_attack_damage(attacker, defender, fd, result["modifiers"], is_opponent, base_damage)
+		if main._should_bail(): return
+	await main.check_all_knockouts()
+	if main._should_bail(): return
+	print("ATTACK EXECUTED: Roasting Heat — ", base_damage, " damage")
+
+# ENERGY PUNCH (Tyrogue): damage; flip; heads discard a Special Energy card attached to the Defending Pokemon
+func execute_ecard2_energy_punch(attacker: card_object, defender: card_object, is_opponent: bool, base_damage: int) -> void:
+	if await handle_attack_confusion(attacker, is_opponent): return
+	if await handle_attack_blind(attacker, is_opponent): return
+	await gym1_hit_active(attacker, defender, is_opponent, base_damage)
+	if main._should_bail(): return
+	var coin = await main.flip_coin(false, is_opponent)
+	if main._should_bail(): return
+	if coin:
+		var special_e: card_object = null
+		for e in defender.attached_energies:
+			if "Special" in e.metadata.get("subtypes", []):
+				special_e = e
+				break
+		if special_e != null:
+			main.card_ops.discard_energy_from_pokemon(special_e, not is_opponent)
+			main.display_active_pokemon_energies(not is_opponent)
+			await main.show_message("HEADS! DISCARDED A SPECIAL ENERGY FROM THE DEFENDING POKEMON!")
+			if main._should_bail(): return
+		else:
+			await main.show_message("HEADS! BUT NO SPECIAL ENERGY TO DISCARD!")
+			if main._should_bail(): return
+	await main.check_all_knockouts()
+	if main._should_bail(): return
+	print("ATTACK EXECUTED: Energy Punch — ", base_damage, " damage")
+
+# STRETCH TAIL (Aipom): flip; heads choose 1 opponent Benched Pokemon, 10 damage to it
+func execute_ecard2_stretch_tail(attacker: card_object, is_opponent: bool) -> void:
+	if await handle_attack_confusion(attacker, is_opponent): return
+	if await handle_attack_blind(attacker, is_opponent): return
+	var coin = await main.flip_coin(false, is_opponent)
+	if main._should_bail(): return
+	if not coin:
+		await main.show_message("TAILS! STRETCH TAIL HAD NO EFFECT!")
+		if main._should_bail(): return
+		return
+	var opp_bench = main.player_bench if is_opponent else main.opponent_bench
+	if opp_bench.is_empty():
+		await main.show_message("HEADS! BUT OPPONENT HAS NO BENCHED POKEMON!")
+		if main._should_bail(): return
+		return
+	var target: card_object = null
+	if is_opponent:
+		target = opp_bench[0]
+	else:
+		target = await main.card_ops.prompt_select_card(opp_bench, "STRETCH TAIL", "Choose a Benched Pokemon to damage", "SELECT", false)
+		if main._should_bail(): return
+	if target == null: return
+	main.card_ops.apply_bench_damage(target, 10, not is_opponent)
+	await main.show_message("HEADS! 10 DAMAGE TO " + target.metadata.get("name","").to_upper() + "!")
+	if main._should_bail(): return
+	await main.check_all_knockouts()
+	if main._should_bail(): return
+	print("ATTACK EXECUTED: Stretch Tail")

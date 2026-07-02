@@ -144,6 +144,12 @@ var current_stadium_owner_is_opponent: bool = false  # tracks which side OWNS th
 # Stadium activatable effects (per-turn flags)
 var player_celadon_used_this_turn: bool = false      # gym1-107 Celadon City Gym — once-per-turn-per-player activation
 var opponent_celadon_used_this_turn: bool = false
+var player_apricorn_forest_used_this_turn: bool = false   # ecard2-118 Apricorn Forest
+var opponent_apricorn_forest_used_this_turn: bool = false
+var player_undersea_ruins_used_this_turn: bool = false    # ecard2-138 Undersea Ruins
+var opponent_undersea_ruins_used_this_turn: bool = false
+var player_power_plant_used_this_turn: bool = false       # ecard2-139 Power Plant
+var opponent_power_plant_used_this_turn: bool = false
 var player_fuchsia_used_this_turn: bool = false      # gym2-114 Fuchsia City Gym — once-per-turn-per-player Koga shuffle
 var opponent_fuchsia_used_this_turn: bool = false
 
@@ -2219,6 +2225,14 @@ func perform_energy_attachment() -> void:
 		card_attach_mode_active = false
 		hide_selection_mode_display_main()
 		return
+	# ECARD2 Anti-Lightning (Zapdos): can't attach Lightning Energy from hand to Zapdos
+	if powers_and_bodies.check_anti_lightning_block(energy_card, target_pokemon):
+		await show_message("ANTI-LIGHTNING! CAN'T ATTACH LIGHTNING ENERGY TO " + target_pokemon.metadata.get("name","").to_upper() + "!")
+		energy_card_awaiting_target = null
+		selected_card_for_action = null
+		card_attach_mode_active = false
+		hide_selection_mode_display_main()
+		return
 
 	target_pokemon.attached_energies.append(energy_card)
 	print("Attached ", energy_card.metadata.get("name", "Unknown Energy"), " to ", target_pokemon.metadata.get("name", "Unknown Pokemon"))
@@ -2266,6 +2280,9 @@ func perform_energy_attachment() -> void:
 	# NP Pure Body (Suicune): discard an energy after Water Energy is attached
 	await powers_and_bodies.check_pure_body_discard(energy_card, target_pokemon, false)
 	if _should_bail(): return
+	# ECARD2 Pokemon Park: energy attached from hand to a Benched Pokemon heals 1 damage counter
+	if target_pokemon != player_active_pokemon:
+		trainer_effects.pokemon_park_on_bench_energy_attach(target_pokemon, false)
 
 	# MATCH EFFECTS: energy_attach_halve_hp / energy_attach_full_heal
 	await apply_energy_attach_match_effects(target_pokemon, false)
@@ -2603,9 +2620,15 @@ func inbetween_turn_checks(player_turn_just_ended: bool = true) -> void:
 	if player_turn_just_ended:
 		player_celadon_used_this_turn = false
 		player_fuchsia_used_this_turn = false
+		player_apricorn_forest_used_this_turn = false
+		player_undersea_ruins_used_this_turn = false
+		player_power_plant_used_this_turn = false
 	else:
 		opponent_celadon_used_this_turn = false
 		opponent_fuchsia_used_this_turn = false
+		opponent_apricorn_forest_used_this_turn = false
+		opponent_undersea_ruins_used_this_turn = false
+		opponent_power_plant_used_this_turn = false
 	
 	# Mirror move tracking: clear if the side that just ended their turn didn't attack
 	if player_turn_just_ended:
@@ -2729,6 +2752,15 @@ func inbetween_turn_checks(player_turn_just_ended: bool = true) -> void:
 	await powers_and_bodies.apply_np_between_turn_bodies()
 	if _should_bail():
 		return
+
+	# Rocket's Hideout (neo3): safety-net refresh for Dark-named pokemon placed while it's active
+	if is_stadium_in_play(StadiumIds.ROCKETS_HIDEOUT):
+		powers_and_bodies.refresh_rockets_hideout_hp()
+
+	# ECARD2 Healing Berry: at the end of ANY turn (both sides, not just the owner's own), if the
+	# holder has 20 HP or less, remove 3 damage counters and discard the berry
+	await trainer_effects.ecard2_healing_berry_check()
+	if _should_bail(): return
 
 	await check_all_knockouts()
 	if _should_bail():
@@ -3122,9 +3154,9 @@ func get_attacks_for_card(card: card_object) -> Array:
 	# Get the attacks if they exist
 	var attacks = card.metadata.get("attacks", [])
 
-	# ECARD1 Multi Technical Machine 01 (ecard1-144): holder may use this card's attack INSTEAD of its own
+	# Any Technical Machine card (ecard1-144, ecard2's 8 Cubes, etc.): holder may use its attack INSTEAD of its own
 	for ac in card.attached_cards:
-		if ac.uid.to_lower() == "ecard1-144":
+		if "Technical Machine" in ac.metadata.get("subtypes", []):
 			return ac.metadata.get("attacks", [])
 
 	# GYM1 Recall (gym1-116): this turn the Active may also use any attack from its Basic / Evolution chain.
@@ -3224,6 +3256,29 @@ func get_attacks_for_card(card: card_object) -> Array:
 						extra.append(atk)
 			if extra.size() > 0:
 				return attacks + extra
+
+	# ECARD2 Memory Berry (ecard2-128): holder may also use any attack from its Basic Pokemon card
+	# or any Evolution card it evolved from, at that attack's real cost (not free, unlike Genetic
+	# Memory). Discarded at end of any turn the holder attacks — see gym1_end_of_turn_cleanup.
+	if card.attached_pre_evolutions.size() > 0:
+		var has_memory_berry = false
+		for ac in card.attached_cards:
+			if ac.uid.to_lower() == "ecard2-128":
+				has_memory_berry = true
+				break
+		if has_memory_berry:
+			var seen_mb: Dictionary = {}
+			for atk in attacks:
+				seen_mb[atk.get("name", "")] = true
+			var mb_extra: Array = []
+			for pre_card in card.attached_pre_evolutions:
+				for atk in pre_card.metadata.get("attacks", []):
+					var atk_name = atk.get("name", "")
+					if atk_name != "" and not seen_mb.has(atk_name):
+						seen_mb[atk_name] = true
+						mb_extra.append(atk)
+			if mb_extra.size() > 0:
+				return attacks + mb_extra
 
 	return attacks
 
@@ -3658,7 +3713,10 @@ func calculate_final_damage(base_damage: int, attacking_types: Array, defending_
 	if not skip_resistance:
 		var resistances = defending_pokemon.metadata.get("resistances", [])
 		# GYM2-109 Resistance Gym — each pokemon's Resistance is reduced by 20 (e.g. -30 -> -10, -20 -> 0)
-		var resistance_reduction = 20 if is_stadium_in_play(StadiumIds.RESISTANCE_GYM) else 0
+		# ECARD2 Enervating Pollen (Gloom): while any Gloom is in play, each Active Pokemon's
+		# Resistance only reduces damage by 10 (same math as Resistance Gym — defending_pokemon
+		# here is always an Active, since bench damage bypasses this weakness/resistance path)
+		var resistance_reduction = 20 if (is_stadium_in_play(StadiumIds.RESISTANCE_GYM) or powers_and_bodies.is_enervating_pollen_active()) else 0
 		for resistance in resistances:
 			var resistance_type = resistance["type"]
 			if defending_pokemon.temporary_resistance != "":
@@ -4363,6 +4421,48 @@ func get_retreat_cost(pokemon: card_object) -> int:
 	var is_player_pokemon = (pokemon == player_active_pokemon or pokemon in player_bench)
 	cost += powers_and_bodies.get_sticky_goo_cost(is_player_pokemon)
 
+	# ECARD2 self-reduction Poké-Bodies: Extreme Speed (Arcanine, -1 per Energy attached),
+	# Lightweight (Skiploom/Hoppip, -1 per Grass Energy attached)
+	if not powers_and_bodies.is_power_blocked(pokemon):
+		for ab in pokemon.metadata.get("abilities", []):
+			if ab.get("name", "") == "Extreme Speed":
+				cost = max(0, cost - pokemon.attached_energies.size())
+			elif ab.get("name", "") == "Lightweight":
+				var grass_n = 0
+				for e in pokemon.attached_energies:
+					if "Grass" in get_energy_provided_by_card(e): grass_n += 1
+				cost = max(0, cost - grass_n)
+
+	# ECARD2 Heavyweight (Muk): +2 while a Grass Energy is attached to Muk itself
+	if not powers_and_bodies.is_power_blocked(pokemon):
+		for ab in pokemon.metadata.get("abilities", []):
+			if ab.get("name", "") == "Heavyweight":
+				for e in pokemon.attached_energies:
+					if "Grass" in get_energy_provided_by_card(e):
+						cost += 2
+						break
+
+	# ECARD2 Conductive Body (Magnemite): -1 per Magnemite on the SAME side's bench
+	if not powers_and_bodies.is_power_blocked(pokemon):
+		for ab in pokemon.metadata.get("abilities", []):
+			if ab.get("name", "") == "Conductive Body":
+				var mag_count = 0
+				for bp in bench:
+					if bp.metadata.get("name", "") == "Magnemite": mag_count += 1
+				cost = max(0, cost - mag_count)
+
+	# ECARD2 Gluey Slime (Ariados): while ANY Ariados is in play, both sides pay +1 to retreat their
+	# Active (capped at +1 total regardless of how many Ariados are in play)
+	var all_field_ariados: Array = []
+	if player_active_pokemon != null: all_field_ariados.append(player_active_pokemon)
+	all_field_ariados.append_array(player_bench)
+	if opponent_active_pokemon != null: all_field_ariados.append(opponent_active_pokemon)
+	all_field_ariados.append_array(opponent_bench)
+	for p in all_field_ariados:
+		if p.metadata.get("name", "") == "Ariados" and not powers_and_bodies.is_power_blocked(p):
+			cost += 1
+			break
+
 	# GYM1-104 The Rocket's Training Gym — both players pay +1 Colorless to retreat their Active Pokemon
 	if is_stadium_in_play(StadiumIds.ROCKETS_TRAINING_GYM):
 		cost += 1
@@ -4712,6 +4812,8 @@ func handle_action_retreat_bench() -> void:
 	# [CHASE] (neo4-57 Unown [C]): opponent's active Unown [C] may deal 1 damage counter when we retreat
 	await powers_and_bodies.check_neo4_chase(player_active_pokemon, false)
 	if _should_bail(): return
+	# ECARD2 Suction Cups (Octillery): if opponent's Active is Octillery, discard our energy when we retreat
+	powers_and_bodies.check_suction_cups(player_active_pokemon, false)
 
 	player_bench.erase(new_active)
 	player_bench.append(player_active_pokemon)

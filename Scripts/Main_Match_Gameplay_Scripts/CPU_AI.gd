@@ -379,6 +379,9 @@ func get_unmet_energy_count(attack: Dictionary, pokemon: card_object) -> int:
 			var provided_dark = main.get_energy_provided_by_card(attached)
 			for _i in range(max(1, provided_dark.size())):
 				pool.append("Darkness")
+		# ECARD2 Ion Coating (Lanturn): Lightning Energy on this Pokemon counts as Water this turn
+		elif pokemon.has_effect("ecard2_ion_coating") and "Lightning" in main.get_energy_provided_by_card(attached):
+			pool.append("Water")
 		elif photosynthesis_on:
 			var provided = main.get_energy_provided_by_card(attached)
 			for _i in range(max(1, provided.size())):
@@ -1156,6 +1159,8 @@ func execute_cpu_retreat(cpu_eval: Dictionary) -> void:
 	# [CHASE] (neo4-57 Unown [C]): player's active Unown [C] may deal 1 damage counter when CPU retreats
 	await main.powers_and_bodies.check_neo4_chase(main.opponent_active_pokemon, true)
 	if main._should_bail(): return
+	# ECARD2 Suction Cups (Octillery): if player's Active is Octillery, discard CPU's energy when it retreats
+	main.powers_and_bodies.check_suction_cups(main.opponent_active_pokemon, true)
 
 	# Swap positions
 	var old_active = main.opponent_active_pokemon
@@ -1347,6 +1352,10 @@ func cpu_phase_energy_attachment(cpu_eval: Dictionary) -> void:
 	if main.powers_and_bodies.check_pure_body_block(energy, target):
 		print("CPU energy attachment blocked: Pure Body — no energy to discard")
 		return
+	# ECARD2 Anti-Lightning (Zapdos): can't attach Lightning Energy from hand to Zapdos
+	if main.powers_and_bodies.check_anti_lightning_block(energy, target):
+		print("CPU energy attachment blocked: Anti-Lightning")
+		return
 
 	# Perform the attachment
 	main.opponent_hand.erase(energy)
@@ -1395,6 +1404,9 @@ func cpu_phase_energy_attachment(cpu_eval: Dictionary) -> void:
 	# NP Pure Body (Suicune): discard an energy after Water Energy attached
 	await main.powers_and_bodies.check_pure_body_discard(energy, target, true)
 	if main._should_bail(): return
+	# ECARD2 Pokemon Park: energy attached from hand to a Benched Pokemon heals 1 damage counter
+	if target != main.opponent_active_pokemon:
+		main.trainer_effects.pokemon_park_on_bench_energy_attach(target, true)
 
 	# MATCH EFFECTS: energy_attach_halve_hp / energy_attach_full_heal
 	await main.apply_energy_attach_match_effects(target, true)
@@ -3127,6 +3139,25 @@ func cpu_score_trainer_card(card: card_object) -> float:
 		"ecard1-155": return _cpu_score_neo1_moo_moo_milk()  # Moo-Moo Milk
 		"ecard1-156": return _cpu_score_potion()
 		"ecard1-157": return _cpu_score_switch()
+		# ---- ECARD2 (AQUAPOLIS) TRAINER SCORING ----
+		"ecard2-119", "ecard2-121", "ecard2-122", "ecard2-124", "ecard2-127", "ecard2-129", "ecard2-132", "ecard2-140":
+			return 30.0  # Type Cubes: situational, one-turn attack swap onto a type-matching Pokemon
+		"ecard2-120": return 45.0  # Energy Switch: modest utility, energy redistribution
+		"ecard2-123": return 65.0  # Forest Guardian: card selection with deck reshuffle, solid value
+		"ecard2-125": return 35.0  # Healing Berry: passive safety net, low upfront value
+		"ecard2-126": return 60.0  # Juggler: draw power at the cost of energy, good if energy-flooded
+		"ecard2-128": return 40.0  # Memory Berry: situational extra attack access
+		"ecard2-130": return 70.0  # Pokemon Fan Club: free bench development, high value early
+		"ecard2-131": return 50.0  # Pokemon Park (Stadium): passive bench-healing utility
+		"ecard2-133": return 55.0  # Seer: conditional basic energy fetch
+		"ecard2-134": return _cpu_score_energy_removal()  # Super Energy Removal 2: same family as Energy Removal
+		"ecard2-135": return 35.0  # Time Shard: reactive, situational energy recovery
+		"ecard2-136": return 25.0  # Town Volunteers: defensive deck-thinning-protection, low proactive value
+		"ecard2-137": return 30.0  # Traveling Salesman: only useful with TM/Tool cards in deck
+		"ecard2-118": return 55.0  # Apricorn Forest (Stadium): free bench development over time
+		"ecard2-138": return 20.0  # Undersea Ruins (Stadium): situational, usually self-harming
+		"ecard2-139": return 40.0  # Power Plant (Stadium): energy type flexibility
+		"ecard2-141": return 40.0  # Weakness Guard: situational defensive utility
 	return 0.0
 
 func _cpu_score_neo1_energy_charge() -> float:

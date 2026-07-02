@@ -48,3 +48,9 @@ const NEO4_LUCKY_STADIUM = "neo4-100" # Once per turn each player may flip — h
 
 # ── Nintendo Promos (np) ───────────────────────────────────────────────────────
 const CHAMPIONSHIP_ARENA  = "np-28"   # At end of each player's turn, if 8+ cards in hand discard to 7
+
+# ── Aquapolis (ecard2) ─────────────────────────────────────────────────────────
+const APRICORN_FOREST  = "ecard2-118" # Once per player's turn: flip to search a matching-type Basic onto the bench
+const POKEMON_PARK     = "ecard2-131" # Passive: energy attached from hand to a Benched Pokemon removes 1 damage counter
+const UNDERSEA_RUINS   = "ecard2-138" # Once per player's turn: flip to devolve one of your own Evolved Pokemon
+const POWER_PLANT      = "ecard2-139" # Once per player's turn: discard a basic Energy to swap for one from the discard pile

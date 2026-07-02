@@ -150,6 +150,17 @@ func discard_from_hand(is_opponent: bool, count: int, exclude_card: card_object 
 # then move them to hand. Deck is shuffled after.
 # Player sees a multi-select view; CPU receives the first N matches sorted by caller preference.
 # Returns the list of cards moved to hand (empty on cancel or no matches).
+# Look at the top N cards of a deck (read-only — no side effects on the deck itself).
+# Used by any "look at the top N cards" attack/trainer effect (Baby Outing, Spy, Seer, Forest
+# Guardian, Shuffle Attack, etc.) — callers handle taking/reordering/revealing on top of this.
+func peek_top_n(is_opponent_deck: bool, n: int) -> Array:
+	var deck = main.opponent_deck if is_opponent_deck else main.player_deck
+	var count = min(n, deck.size())
+	var top_cards: Array = []
+	for i in range(count):
+		top_cards.append(deck[i])
+	return top_cards
+
 func search_deck_to_hand(is_opponent: bool, filter_fn: Callable, prompt: String, count: int = 1) -> Array:
 	var deck = main.opponent_deck if is_opponent else main.player_deck
 	var hand = main.opponent_hand if is_opponent else main.player_hand
@@ -262,6 +273,10 @@ func apply_status(pokemon: card_object, status: String, is_opponent: bool) -> vo
 	# NEO4 Flash Touch (Light Ledian): immune to special conditions while Active
 	if pokemon != null and pokemon.neo4_immune_to_status and status != "":
 		return
+	# ECARD2 Poison Resistance (Scizor): can't be Poisoned (Toxic counts as Poisoned here too)
+	if pokemon != null and (status == "Poisoned" or status == "Toxic") and not main.powers_and_bodies.is_power_blocked(pokemon):
+		if pokemon.has_ability("Poison Resistance"):
+			return
 	match status:
 		"Poisoned":
 			pokemon.is_poisoned = true
