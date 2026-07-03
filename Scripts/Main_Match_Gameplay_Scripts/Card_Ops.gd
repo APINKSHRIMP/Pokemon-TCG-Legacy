@@ -281,6 +281,13 @@ func apply_status(pokemon: card_object, status: String, is_opponent: bool) -> vo
 	if pokemon != null and status != "" and not main.powers_and_bodies.is_power_blocked(pokemon):
 		if pokemon.has_ability("Immunity"):
 			return
+	# EX1 Protective Dust (Dustox): card text prevents ALL non-damage attack effects, simplified
+	# here to blocking Special Condition application — the same scope as Immunity/Poison
+	# Resistance above, which this codebase already treats as the standard depth for this class
+	# of "prevent effects from attacks" ability.
+	if pokemon != null and status != "" and not main.powers_and_bodies.is_power_blocked(pokemon):
+		if pokemon.has_ability("Protective Dust"):
+			return
 	match status:
 		"Poisoned":
 			pokemon.is_poisoned = true
@@ -451,3 +458,29 @@ func apply_bench_damage(pokemon: card_object, damage: int, is_opponent: bool) ->
 		var label_pos = loc["position"] + Vector2(loc["size"].x / 2.0, -10)
 		main.show_floating_label("-" + str(damage), label_pos, Color.RED, true)
 	main.display_pokemon(is_opponent)
+
+# ── Double-Battle-Ready Accessors ─────────────────────────────────────────────────────────
+#
+# Single battles have exactly one Active Pokemon per side. The ex-series (and later sets)
+# word attacks/powers as "each Active Pokemon" / "each Defending Pokemon" because the real
+# card game supports Double Battles (2 Active per side). This engine is single-battle only
+# today, so these return single-element lists — but any effect code written against "each
+# Active" / "each Defending" wording MUST iterate these instead of touching
+# player_active_pokemon / opponent_active_pokemon directly. When Double Battles are added,
+# only these three functions need to change; every effect built on top of them keeps working.
+
+# All of a side's Active Pokemon. [] if none in play, [active] in single battles.
+func get_active_pokemon(is_opponent: bool) -> Array:
+	var active = main.opponent_active_pokemon if is_opponent else main.player_active_pokemon
+	return [active] if active != null else []
+
+# All of the OTHER side's Active Pokemon, relative to an attacker/effect-owner side.
+# e.g. get_defending_pokemon(is_opponent) from inside an attack function returns the
+# Pokemon(s) being attacked.
+func get_defending_pokemon(attacker_is_opponent: bool) -> Array:
+	return get_active_pokemon(not attacker_is_opponent)
+
+# All of a side's Pokemon currently in play (Active + Bench).
+func get_all_pokemon_in_play(is_opponent: bool) -> Array:
+	var bench = main.opponent_bench if is_opponent else main.player_bench
+	return get_active_pokemon(is_opponent) + bench

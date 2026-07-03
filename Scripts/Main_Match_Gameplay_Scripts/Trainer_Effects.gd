@@ -32,6 +32,7 @@ func _ensure_trainer_dispatch_ready() -> void:
 	_register_ecard1_trainers()
 	_register_ecard2_trainers()
 	_register_ecard3_trainers()
+	_register_ex1_trainers()
 
 func _register_base_trainers() -> void:
 	_trainer_dispatch["base1-88"] = func(c, opp): await effect_professor_oak(c, opp)
@@ -470,6 +471,11 @@ var opponent_trainer_locked: bool = false
 var player_supporter_locked: bool = false   # ecard2 Addictive Pollen (Vileplume) — no Supporter cards this turn
 var opponent_supporter_locked: bool = false
 
+# EX1+: real TCG rule — only 1 Supporter card per turn. Retroactively covers every existing
+# Supporter (ecard1-3 onward); reset at the start of each side's own turn.
+var player_played_supporter_this_turn: bool = false
+var opponent_played_supporter_this_turn: bool = false
+
 func is_trainer_card(card: card_object) -> bool:
 	return card.metadata.get("supertype", "").to_lower() == "trainer"
 
@@ -808,6 +814,11 @@ func validate_trainer_can_be_played(card: card_object, is_opponent: bool) -> Str
 			return "Addictive Pollen: Supporter cards are locked this turn!"
 		if not is_opponent and player_supporter_locked:
 			return "Addictive Pollen: Supporter cards are locked this turn!"
+		# EX1+: only 1 Supporter card per turn
+		if is_opponent and opponent_played_supporter_this_turn:
+			return "You can only play 1 Supporter card each turn!"
+		if not is_opponent and player_played_supporter_this_turn:
+			return "You can only play 1 Supporter card each turn!"
 
 	# MATCH EFFECT: trainer_discard_cost — must have enough OTHER cards in hand to pay
 	var rule_discard_cost = main.match_effects.trainer_discard_cost(is_opponent)
@@ -837,6 +848,11 @@ func play_trainer_card(card: card_object, is_opponent: bool) -> void:
 	if "Supporter" in card.metadata.get("subtypes", []):
 		if (is_opponent and opponent_supporter_locked) or (not is_opponent and player_supporter_locked):
 			await main.show_message("ADDICTIVE POLLEN: SUPPORTER CARDS ARE LOCKED THIS TURN!")
+			if main._should_bail(): return
+			return
+		# EX1+: only 1 Supporter card per turn
+		if (is_opponent and opponent_played_supporter_this_turn) or (not is_opponent and player_played_supporter_this_turn):
+			await main.show_message("YOU CAN ONLY PLAY 1 SUPPORTER CARD EACH TURN!")
 			if main._should_bail(): return
 			return
 
@@ -923,6 +939,12 @@ func play_trainer_card(card: card_object, is_opponent: bool) -> void:
 		card.current_location = "discard"
 		discard.append(card)
 		main.update_discard_pile_display(is_opponent)
+		# EX1+: only 1 Supporter card per turn — mark it used now that it's committed to resolving
+		if "Supporter" in card.metadata.get("subtypes", []):
+			if is_opponent:
+				opponent_played_supporter_this_turn = true
+			else:
+				player_played_supporter_this_turn = true
 		await resolve_standard_trainer(card, is_opponent)
 	
 	main.update_discard_pile_display(is_opponent)
@@ -8799,3 +8821,151 @@ func effect_ecard3_underground_expedition(is_opponent: bool) -> void:
 	await main.show_message("UNDERGROUND EXPEDITION! ADDED " + str(chosen.size()) + " CARD(S) TO HAND!")
 	if main._should_bail(): return
 	print("TRAINER: Underground Expedition — took ", chosen.size())
+
+######################################################################################################################################################
+######################################################### EX1 (RUBY & SAPPHIRE) TRAINERS ###############################################################
+######################################################################################################################################################
+
+func _register_ex1_trainers() -> void:
+	_trainer_dispatch["ex1-80"] = func(c, opp): await effect_ecard1_energy_removal_2(opp)
+	_trainer_dispatch["ex1-81"] = func(c, opp): await effect_ecard1_energy_restore(opp)
+	_trainer_dispatch["ex1-82"] = func(c, opp): await effect_ecard2_energy_switch(opp)
+	_trainer_dispatch["ex1-83"] = func(c, opp): await effect_ex1_lady_outing(opp)
+	_trainer_dispatch["ex1-86"] = func(c, opp): await effect_poke_ball(opp)
+	_trainer_dispatch["ex1-87"] = func(c, opp): await effect_ecard1_pokemon_reversal(opp)
+	_trainer_dispatch["ex1-88"] = func(c, opp): await effect_ex1_pokenav(opp)
+	_trainer_dispatch["ex1-89"] = func(c, opp): await effect_ex1_professor_birch(opp)
+	_trainer_dispatch["ex1-90"] = func(c, opp): await effect_energy_search(opp)
+	_trainer_dispatch["ex1-91"] = func(c, opp): await effect_potion(opp)
+	_trainer_dispatch["ex1-92"] = func(c, opp): await effect_switch(opp)
+	# ex1-84 (Lum Berry) / ex1-85 (Oran Berry) are Pokemon Tools — the attach itself is already
+	# generic (is_attached_trainer() matches on the "Pokémon Tool" subtype). Their between-turns
+	# effects are ex1_lum_berry_check() / ex1_oran_berry_check() below, called from Main's
+	# inbetween_turn_checks alongside Healing Berry / Star Piece.
+
+# LADY OUTING (ex1-83, Supporter): search deck for up to 3 DIFFERENT TYPES of basic Energy to
+# hand. Enforced by pre-filtering the search pool to at most 1 card per Energy type, so any subset
+# the player/CPU picks automatically satisfies "different types."
+func effect_ex1_lady_outing(is_opponent: bool) -> void:
+	var deck = main.opponent_deck if is_opponent else main.player_deck
+	var seen_types: Array = []
+	var candidates: Array = []
+	for c in deck:
+		if c.metadata.get("supertype","") != "Energy" or "Basic" not in c.metadata.get("subtypes", []):
+			continue
+		var provided = main.get_energy_provided_by_card(c)
+		if provided.is_empty(): continue
+		var t = provided[0]
+		if t in seen_types: continue
+		seen_types.append(t)
+		candidates.append(c)
+	if candidates.is_empty():
+		await main.show_message("LADY OUTING: NO BASIC ENERGY IN DECK!")
+		if main._should_bail(): return
+		return
+	var filter_fn = func(c): return c in candidates
+	var found = await main.card_ops.search_deck_to_hand(is_opponent, filter_fn, "LADY OUTING: CHOOSE UP TO 3 DIFFERENT BASIC ENERGY TYPES", 3)
+	if main._should_bail(): return
+	await main.show_message("LADY OUTING! ADDED " + str(found.size()) + " ENERGY CARD(S) TO HAND!" if found.size() > 0 else "NO MATCHING ENERGY FOUND!")
+	if main._should_bail(): return
+	print("TRAINER: Lady Outing — found ", found.size())
+
+# POKENAV (ex1-88): look at the top 3 cards of the deck; choose a Basic Pokemon, Evolution card,
+# or Energy card (i.e. anything but a Trainer) to hand; put the other 2 back on top in any order.
+func effect_ex1_pokenav(is_opponent: bool) -> void:
+	var top3 = main.card_ops.peek_top_n(is_opponent, 3)
+	if top3.is_empty():
+		await main.show_message("POKENAV: NO CARDS LEFT IN DECK!")
+		if main._should_bail(): return
+		return
+	var deck = main.opponent_deck if is_opponent else main.player_deck
+	var hand = main.opponent_hand if is_opponent else main.player_hand
+	var candidates = top3.filter(func(c): return c.metadata.get("supertype","") != "Trainer")
+	var chosen: card_object = null
+	if not candidates.is_empty():
+		chosen = await main.card_ops.choose_card(candidates, is_opponent, "POKENAV", "Choose a Pokemon or Energy card from the top 3", "TAKE", false)
+		if main._should_bail(): return
+	var remaining = top3.duplicate()
+	if chosen != null:
+		remaining.erase(chosen)
+		deck.erase(chosen)
+		chosen.current_location = "hand"
+		hand.append(chosen)
+		main.refresh_hand_display(is_opponent)
+	# Put the other cards back on top, preserving their original relative order
+	for c in remaining:
+		deck.erase(c)
+	for i in range(remaining.size() - 1, -1, -1):
+		deck.insert(0, remaining[i])
+	main.update_deck_icon(is_opponent)
+	if chosen != null:
+		await main.show_message("POKENAV! ADDED " + chosen.metadata.get("name","").to_upper() + " TO HAND!")
+	else:
+		await main.show_message("POKENAV: NO MATCHING CARD FOUND!")
+	if main._should_bail(): return
+	print("TRAINER: PokeNav")
+
+# PROFESSOR BIRCH (ex1-89, Supporter): draw cards from your deck until you have 6 in hand.
+func effect_ex1_professor_birch(is_opponent: bool) -> void:
+	var hand = main.opponent_hand if is_opponent else main.player_hand
+	var need = 6 - hand.size()
+	if need <= 0:
+		await main.show_message("PROFESSOR BIRCH: ALREADY HAVE 6 OR MORE CARDS!")
+		if main._should_bail(): return
+		return
+	var deck = main.opponent_deck if is_opponent else main.player_deck
+	need = min(need, deck.size())
+	await main.card_ops.draw_n(is_opponent, need)
+	if main._should_bail(): return
+	await main.show_message("PROFESSOR BIRCH! DREW " + str(need) + " CARD(S)!")
+	if main._should_bail(): return
+	print("TRAINER: Professor Birch — drew ", need)
+
+# LUM BERRY (ex1-84, Pokemon Tool): at any time between turns, both sides, if the holder is
+# affected by any Special Condition, remove all of them and discard this Berry. Iterates
+# get_all_pokemon_in_play() (Active + Bench) for both sides, matching Healing Berry's timing.
+func ex1_lum_berry_check() -> void:
+	for side in [false, true]:
+		for p in main.card_ops.get_all_pokemon_in_play(side):
+			if p.current_hp <= 0: continue
+			var berry: card_object = null
+			for ac in p.attached_cards:
+				if ac.uid.to_lower() == "ex1-84":
+					berry = ac
+					break
+			if berry == null: continue
+			var has_condition = p.special_condition != "" or p.is_poisoned or p.is_burned
+			if not has_condition: continue
+			p.attached_cards.erase(berry)
+			var discard = main.opponent_discard_pile if side else main.player_discard_pile
+			berry.current_location = "discard"
+			discard.append(berry)
+			main.clear_all_statuses(p, side)
+			display_attached_trainer_cards(side)
+			main.update_discard_pile_display(side)
+			await main.show_message("LUM BERRY! " + p.metadata.get("name","").to_upper() + " CURED AND THE BERRY WAS DISCARDED!")
+			if main._should_bail(): return
+
+# ORAN BERRY (ex1-85, Pokemon Tool): at any time between turns, both sides, if the holder has at
+# least 2 damage counters, remove 2 and discard this Berry. Same iteration/timing as Lum Berry.
+func ex1_oran_berry_check() -> void:
+	for side in [false, true]:
+		for p in main.card_ops.get_all_pokemon_in_play(side):
+			if p.current_hp <= 0: continue
+			if p.get_damage_counters() < 2: continue
+			var berry: card_object = null
+			for ac in p.attached_cards:
+				if ac.uid.to_lower() == "ex1-85":
+					berry = ac
+					break
+			if berry == null: continue
+			p.attached_cards.erase(berry)
+			var discard = main.opponent_discard_pile if side else main.player_discard_pile
+			berry.current_location = "discard"
+			discard.append(berry)
+			p.current_hp = min(p.get_max_hp(), p.current_hp + 20)
+			main.display_hp_circles_above_align(p, side)
+			display_attached_trainer_cards(side)
+			main.update_discard_pile_display(side)
+			await main.show_message("ORAN BERRY! " + p.metadata.get("name","").to_upper() + " HEALED AND THE BERRY WAS DISCARDED!")
+			if main._should_bail(): return

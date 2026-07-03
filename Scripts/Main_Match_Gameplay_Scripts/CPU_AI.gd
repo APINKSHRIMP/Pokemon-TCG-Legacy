@@ -1427,6 +1427,10 @@ func cpu_phase_energy_attachment(cpu_eval: Dictionary) -> void:
 	main.powers_and_bodies.check_crystal_type_attach(target, energy, true)
 	# ECARD3 Self-healing (Flareon): Fire Energy attach from hand cures all Special Conditions
 	main.powers_and_bodies.check_ecard3_self_healing(target, energy, true)
+	# EX1 Natural Cure (Combusken/Grovyle/Marshtomp): matching-type Energy attach cures all Special Conditions
+	main.powers_and_bodies.check_ex1_natural_cure(target, energy, true)
+	# EX1 Natural Remedy (Swampert ex1-23): Water Energy attach from hand heals 1 damage counter
+	main.powers_and_bodies.check_ex1_natural_remedy(target, energy, true)
 
 	# MATCH EFFECTS: energy_attach_halve_hp / energy_attach_full_heal
 	await main.apply_energy_attach_match_effects(target, true)
@@ -2674,6 +2678,36 @@ func cpu_phase_attack(cpu_eval: Dictionary) -> void:
 		if attack_name_lower == "lock-on":
 			score += 30.0 if not main.opponent_active_pokemon.lock_on_active else -50.0  # only once
 
+		# ---- EX1 (RUBY & SAPPHIRE) ATTACK SCORING ----
+		if attack_name_lower == "mega throw":
+			if main.is_ex_pokemon(main.player_active_pokemon):
+				score += 80.0  # +40 damage bonus is huge against a 2-prize target
+		if attack_name_lower == "fire stream":
+			var ex1_has_fire = false
+			for e in main.opponent_active_pokemon.attached_energies:
+				if "Fire" in main.get_energy_provided_by_card(e):
+					ex1_has_fire = true
+					break
+			if ex1_has_fire and main.player_bench.size() > 0:
+				score += 10.0 * main.player_bench.size()  # bonus bench spread, worth the energy discard
+			else:
+				score -= 15.0  # no bench to hit or no Fire Energy to discard
+		if attack_name_lower == "water arrow" or attack_name_lower == "lava burn":
+			var ex1_lowest_bench_hp = 9999
+			for bp in main.player_bench:
+				if bp.current_hp < ex1_lowest_bench_hp:
+					ex1_lowest_bench_hp = bp.current_hp
+			if main.player_bench.size() > 0 and ex1_lowest_bench_hp <= 20:
+				score += 60.0  # can snipe a near-dead Benched Pokemon for a bonus KO
+		if attack_name_lower == "critical move" or attack_name_lower == "fire spin":
+			# Both disable the user's own next attack — only worth it if it KOs now
+			if not cpu_will_be_koed and damage_range.get("max", 0) < player_hp:
+				score -= 60.0  # locking out next turn isn't worth it unless this KOs
+		if attack_name_lower == "shakedown" or attack_name_lower == "knock off":
+			score += 20.0 if main.player_hand.size() > 3 else 5.0  # hand disruption worth more vs a full hand
+		if attack_name_lower == "repulsion":
+			score += 50.0 if main.player_bench.size() > 0 else -9999.0  # does nothing without opponent Bench
+
 		# ---- GENERAL EFFECT SCORING ----
 		var effect_score = score_parsed_effects(parsed_effects, main.player_active_pokemon)
 		score += effect_score
@@ -3004,7 +3038,13 @@ func cpu_phase_evolution() -> void:
 # R.1: Determines if there is a reason for the active to consider retreating
 func cpu_score_trainer_card(card: card_object) -> float:
 	var card_id = card.uid.to_lower()
-	
+
+	# EX1+ one-Supporter-per-turn rule: if the CPU has already played a Supporter this turn, a
+	# second one is unplayable — score it far below the play threshold so the CPU keeps evaluating
+	# its OTHER trainers instead of locking onto an unplayable Supporter and stopping.
+	if "Supporter" in card.metadata.get("subtypes", []) and main.trainer_effects.opponent_played_supporter_this_turn:
+		return -100.0
+
 	match card_id:
 		"base1-91": return 100.0 # Bill: always play
 		"base1-88": return _cpu_score_professor_oak(card)
@@ -3197,6 +3237,20 @@ func cpu_score_trainer_card(card: card_object) -> float:
 		"ecard3-139": return 35.0  # Star Piece (Tool): situational bench-evolve trigger
 		"ecard3-129", "ecard3-130", "ecard3-131", "ecard3-133", "ecard3-134", "ecard3-135", "ecard3-136":
 			return 30.0  # Miracle Sphere/Mystery Plate (Technical Machines): situational, energy-combo/prize-count gated
+		# ---- EX1 (RUBY & SAPPHIRE) TRAINER SCORING ----
+		"ex1-80": return _cpu_score_energy_removal()  # Energy Removal 2
+		"ex1-81": return 40.0  # Energy Restore: modest energy recovery
+		"ex1-82": return 30.0  # Energy Switch: situational energy redistribution
+		"ex1-83": return 55.0  # Lady Outing (Supporter): flexible multi-type Energy search
+		"ex1-84": return 40.0  # Lum Berry (Tool): passive Special Condition safety net
+		"ex1-85": return 45.0  # Oran Berry (Tool): passive healing safety net
+		"ex1-86": return _cpu_score_poke_ball()  # Poke Ball
+		"ex1-87": return 35.0  # Pokemon Reversal: coin-flip-dependent disruption
+		"ex1-88": return 50.0  # PokeNav: guaranteed card selection from top 3
+		"ex1-89": return 65.0  # Professor Birch (Supporter): strong hand refill, best early/when low on cards
+		"ex1-90": return 30.0  # Energy Search: reliable but low-impact
+		"ex1-91": return _cpu_score_potion()  # Potion
+		"ex1-92": return _cpu_score_switch()  # Switch
 	return 0.0
 
 func _cpu_score_neo1_energy_charge() -> float:

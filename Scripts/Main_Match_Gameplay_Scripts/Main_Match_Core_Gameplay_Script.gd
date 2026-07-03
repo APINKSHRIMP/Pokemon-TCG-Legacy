@@ -2301,6 +2301,10 @@ func perform_energy_attachment() -> void:
 	powers_and_bodies.check_crystal_type_attach(target_pokemon, energy_card, false)
 	# ECARD3 Self-healing (Flareon): Fire Energy attach from hand cures all Special Conditions
 	powers_and_bodies.check_ecard3_self_healing(target_pokemon, energy_card, false)
+	# EX1 Natural Cure (Combusken/Grovyle/Marshtomp): matching-type Energy attach cures all Special Conditions
+	powers_and_bodies.check_ex1_natural_cure(target_pokemon, energy_card, false)
+	# EX1 Natural Remedy (Swampert ex1-23): Water Energy attach from hand heals 1 damage counter
+	powers_and_bodies.check_ex1_natural_remedy(target_pokemon, energy_card, false)
 
 	# MATCH EFFECTS: energy_attach_halve_hp / energy_attach_full_heal
 	await apply_energy_attach_match_effects(target_pokemon, false)
@@ -2629,6 +2633,9 @@ func inbetween_turn_checks(player_turn_just_ended: bool = true) -> void:
 	opponent_retreated_this_turn = false
 	player_energy_attach_count = 0
 	opponent_energy_attach_count = 0
+	# EX1+: reset the "1 Supporter per turn" flags for both sides on every turn transition
+	trainer_effects.player_played_supporter_this_turn = false
+	trainer_effects.opponent_played_supporter_this_turn = false
 	xxxxx_used_this_turn = false
 	reset_field_pokemon_turn_flags(false)
 	reset_field_pokemon_turn_flags(true)
@@ -2789,6 +2796,12 @@ func inbetween_turn_checks(player_turn_just_ended: bool = true) -> void:
 	# ECARD3 Star Piece: between turns, if the holder is Benched with 2+ damage counters,
 	# may search deck for an Evolution card that Pokemon evolves into and auto-evolve it
 	await trainer_effects.ecard3_star_piece_check()
+	if _should_bail(): return
+
+	# EX1 Lum Berry / Oran Berry: between turns, both sides, cure Special Conditions / heal 2 counters
+	await trainer_effects.ex1_lum_berry_check()
+	if _should_bail(): return
+	await trainer_effects.ex1_oran_berry_check()
 	if _should_bail(): return
 
 	await check_all_knockouts()
@@ -3770,6 +3783,11 @@ func calculate_final_damage(base_damage: int, attacking_types: Array, defending_
 		if "Brock" in atk_name_pewter:
 			skip_resistance = true
 			modifiers_applied.append("PEWTER GYM (NO RESISTANCE)")
+	# EX1 Withering Dust (Beautifly): while Beautifly is in play on either side, do not apply
+	# Resistance for all Active Pokemon.
+	if not skip_resistance and powers_and_bodies.is_ex1_withering_dust_in_play():
+		skip_resistance = true
+		modifiers_applied.append("WITHERING DUST (NO RESISTANCE)")
 	# MATCH EFFECT: ignore_resistance — same side-awareness rules as ignore_weakness above
 	if not skip_resistance:
 		if attacker_pokemon != null:
