@@ -2708,6 +2708,44 @@ func cpu_phase_attack(cpu_eval: Dictionary) -> void:
 		if attack_name_lower == "repulsion":
 			score += 50.0 if main.player_bench.size() > 0 else -9999.0  # does nothing without opponent Bench
 
+		# ---- EX2 (SANDSTORM) ATTACK SCORING ----
+		var ex2_defender = main.player_active_pokemon
+		var ex2_def_has_condition = ex2_defender != null and (ex2_defender.special_condition != "" or ex2_defender.is_poisoned or ex2_defender.is_burned)
+		var ex2_def_evolved = ex2_defender != null and ex2_defender.attached_pre_evolutions.size() > 0
+		var ex2_opp_has_evolved = false
+		for _p in ([main.player_active_pokemon] if main.player_active_pokemon != null else []) + main.player_bench:
+			if _p.attached_pre_evolutions.size() > 0:
+				ex2_opp_has_evolved = true
+				break
+		if attack_name_lower == "extra poison" and ex2_defender != null and main.is_ex_pokemon(ex2_defender):
+			score += 40.0  # Asleep + Poisoned on a 2-prize target
+		if attack_name_lower == "target slash" and ex2_defender != null and ex2_defender.metadata.get("name","") == "Seviper":
+			score += 30.0
+		if attack_name_lower == "super slash" and ex2_def_evolved:
+			score += 30.0
+		if attack_name_lower == "pester" and ex2_def_has_condition:
+			score += 20.0
+		if attack_name_lower == "special blow" and ex2_defender != null:
+			for e in ex2_defender.attached_energies:
+				if "Special" in e.metadata.get("subtypes", []):
+					score += 40.0
+					break
+		if (attack_name_lower == "dark mind" or attack_name_lower == "thunder spear"):
+			var ex2_low_bench = 9999
+			for bp in main.player_bench:
+				if bp.current_hp < ex2_low_bench:
+					ex2_low_bench = bp.current_hp
+			if main.player_bench.size() > 0 and ex2_low_bench <= 20:
+				score += 40.0  # snipe a near-dead Benched Pokemon
+		if attack_name_lower in ["cosmic draw", "pull down", "time spiral"]:
+			score += 25.0 if ex2_opp_has_evolved else -20.0  # do nothing / little without opponent Evolved
+		if attack_name_lower == "feedback" and ex2_defender != null:
+			score += 5.0 * main.player_hand.size()  # scales with opponent's hand size
+		if attack_name_lower == "lazy punch":
+			score -= 40.0  # locks the user's own next turn for no immediate payoff
+		if attack_name_lower == "super deep dive" and main.opponent_bench.size() == 0:
+			score -= 9999.0  # does nothing without a Bench to switch to
+
 		# ---- GENERAL EFFECT SCORING ----
 		var effect_score = score_parsed_effects(parsed_effects, main.player_active_pokemon)
 		score += effect_score
@@ -3251,7 +3289,33 @@ func cpu_score_trainer_card(card: card_object) -> float:
 		"ex1-90": return 30.0  # Energy Search: reliable but low-impact
 		"ex1-91": return _cpu_score_potion()  # Potion
 		"ex1-92": return _cpu_score_switch()  # Switch
+		# ---- EX2 (SANDSTORM) TRAINER SCORING ----
+		"ex2-86": return _cpu_score_full_heal()  # Double Full Heal: same value as Full Heal
+		"ex2-87": return 55.0  # Lanette's Net Search (Supporter): flexible multi-type Basic search
+		"ex2-88": return _cpu_score_ex2_rare_candy()  # Rare Candy: only if a valid evolution jump exists
+		"ex2-89": return _cpu_score_ex2_wallys_training()  # Wally's Training (Supporter): only if Active can evolve
+		"ex2-90", "ex2-91", "ex2-92": return _cpu_score_clefairy_doll()  # Fossils: same as bench tokens
 	return 0.0
+
+# RARE CANDY (ex2-88): valuable only when the CPU has a Basic in play with a matching evolution in hand.
+func _cpu_score_ex2_rare_candy() -> float:
+	for p in main.card_ops.get_all_pokemon_in_play(true):
+		if not main.is_basic_pokemon(p) or p.placed_on_field_this_turn:
+			continue
+		for h in main.opponent_hand:
+			if h.metadata.get("supertype","") == "Pokémon" and main.can_evolve_from(h, p):
+				return 75.0
+	return -100.0
+
+# WALLY'S TRAINING (ex2-89): only useful if the Active can be evolved by a card in the deck.
+func _cpu_score_ex2_wallys_training() -> float:
+	var active = main.opponent_active_pokemon
+	if active == null or active.placed_on_field_this_turn:
+		return -100.0
+	for c in main.opponent_deck:
+		if c.metadata.get("supertype","") == "Pokémon" and main.can_evolve_from(c, active):
+			return 55.0
+	return -100.0
 
 func _cpu_score_neo1_energy_charge() -> float:
 	var energy_in_discard = 0

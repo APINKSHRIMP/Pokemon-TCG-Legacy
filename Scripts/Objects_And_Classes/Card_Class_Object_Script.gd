@@ -259,6 +259,23 @@ func get_effective_types() -> Array:
 			return ["Colorless"]
 	if has_effect("crystal_type_active"):
 		return [get_effect_data("crystal_type_active")]
+	# ex2 Lunar/Solar Eclipse (Lunatone/Solrock): temporary type override until end of turn.
+	if has_effect("ex2_type_override"):
+		return [get_effect_data("ex2_type_override")]
+	# ex2 Energy Variation (Kecleon): its type is every type of basic Energy card attached to it.
+	# Basic Energy cards carry no "types" field, so the type is read from the card name
+	# ("Fire Energy" -> "Fire"), which is how basic Energy provides its type in this data set.
+	if has_ability("Energy Variation"):
+		var ev_types: Array = []
+		for e in attached_energies:
+			if "Basic" not in e.metadata.get("subtypes", []):
+				continue
+			var t = e.metadata.get("name", "").replace(" Energy", "").strip_edges()
+			if t != "" and t not in ev_types:
+				ev_types.append(t)
+		if not ev_types.is_empty():
+			return ev_types
+		return ["Colorless"]
 	return metadata.get("types", ["Colorless"])
 
 # Constructor - initialize the card with a UID and load its metadata

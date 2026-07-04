@@ -4486,6 +4486,12 @@ func get_retreat_cost(pokemon: card_object) -> int:
 			if "Psychic" in get_energy_provided_by_card(e):
 				return 0
 
+	# EX2 Uplifting Glow (Volbeat): Retreat Cost is 0 as long as Illumise is in play on its side.
+	if pokemon.has_ability("Uplifting Glow") and not powers_and_bodies.is_power_blocked(pokemon):
+		var volbeat_is_opp = (pokemon == opponent_active_pokemon or pokemon in opponent_bench)
+		if powers_and_bodies._ex2_named_in_play(volbeat_is_opp, "Illumise"):
+			return 0
+
 	# ECARD3 Slippery Skin (Dunsparce): Retreat Cost is 0 as long as the Defending Pokemon is Evolved
 	if pokemon.has_ability("Slippery Skin") and not powers_and_bodies.is_power_blocked(pokemon):
 		var dunsparce_is_opp = (pokemon == opponent_active_pokemon or pokemon in opponent_bench)

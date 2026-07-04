@@ -69,6 +69,7 @@ func _register_all_powers() -> void:
 	_register_ecard2_powers()
 	_register_ecard3_powers()
 	_register_ex1_powers()
+	_register_ex2_powers()
 
 # ── On-damage and pre-KO event hooks ──────────────────────────────────────────
 # Each Callable is fired after active-pokemon damage resolves (on_damage) or
@@ -110,6 +111,8 @@ func _register_all_power_hooks() -> void:
 	_damage_modifier_hooks.append(func(dmg, atk, def, mods): return _hook_ecard3_thick_shell(dmg, atk, def, mods))
 	_damage_modifier_hooks.append(func(dmg, atk, def, mods): return _hook_ex1_intimidating_fang(dmg, atk, def, mods))
 	_damage_modifier_hooks.append(func(dmg, atk, def, mods): return _hook_ex1_hard_cocoon(dmg, atk, def, mods))
+	_damage_modifier_hooks.append(func(dmg, atk, def, mods): return _hook_ex2_glowing_screen(dmg, atk, def, mods))
+	_damage_modifier_hooks.append(func(dmg, atk, def, mods): return _hook_ex2_safeguard(dmg, atk, def, mods))
 	_on_damage_hooks.append(func(def, atk, dmg, is_def_opp): await check_strikes_back(def, atk, is_def_opp))
 	_on_damage_hooks.append(func(def, atk, dmg, is_def_opp): await check_restless_sleep(def, atk, is_def_opp))
 	_on_damage_hooks.append(func(def, atk, dmg, is_def_opp): await check_pollen_defense(def, atk, is_def_opp))
@@ -125,6 +128,9 @@ func _register_all_power_hooks() -> void:
 	_on_damage_hooks.append(func(def, atk, dmg, is_def_opp): await check_neo4_counters(def, atk, is_def_opp))
 	_on_damage_hooks.append(func(def, atk, dmg, is_def_opp): await check_ecard2_fluff(def, atk, dmg, is_def_opp))
 	_on_damage_hooks.append(func(def, atk, dmg, is_def_opp): await check_ex1_rough_skin(def, atk, is_def_opp))
+	_on_damage_hooks.append(func(def, atk, dmg, is_def_opp): await check_ex2_poison_payback(def, atk, is_def_opp))
+	_on_damage_hooks.append(func(def, atk, dmg, is_def_opp): await check_ex2_fire_veil(def, atk, is_def_opp))
+	_on_damage_hooks.append(func(def, atk, dmg, is_def_opp): await check_ex2_jagged_stone(def, atk, is_def_opp))
 	_pre_ko_hooks.append(func(poke, atk, is_poke_opp): await check_final_beam(poke, atk, is_poke_opp))
 	_pre_ko_hooks.append(func(poke, atk, is_poke_opp): await main.trainer_effects.check_time_shard(poke, atk, is_poke_opp))
 
@@ -1967,6 +1973,8 @@ func cpu_phase_activate_powers() -> void:
 	await cpu_phase_ecard3_powers()
 	if main._should_bail(): return
 	await cpu_phase_ex1_powers()
+	if main._should_bail(): return
+	await cpu_phase_ex2_powers()
 	if main._should_bail(): return
 
 
@@ -4055,11 +4063,13 @@ func check_guard_body(is_retreating_opp: bool) -> bool:
 	var blocking_active = main.player_active_pokemon if is_retreating_opp else main.opponent_active_pokemon
 	if blocking_active == null:
 		return false
-	if not blocking_active.has_ability("Guard"):
+	# Snorlax Guard (basep-49) and Cradily Super Suction Cups (ex2-3) both block the opposing
+	# Active from retreating while they are Active.
+	if not (blocking_active.has_ability("Guard") or blocking_active.has_ability("Super Suction Cups")):
 		return false
 	if is_power_blocked(blocking_active):
 		return false
-	print("GUARD: Retreat blocked by Snorlax Guard body")
+	print("GUARD: Retreat blocked by opposing Active body (", blocking_active.metadata.get("name",""), ")")
 	return true
 
 ######################################################################################################################################################
@@ -6498,6 +6508,9 @@ func check_pure_body_discard(energy_card: card_object, target_pokemon: card_obje
 
 # RAIN DISH / BURNING AURA: passive body effects between turns
 func apply_np_between_turn_bodies() -> void:
+	# EX2 Primal Lock (Aerodactyl ex): strip any Pokemon Tools from the opponent's Pokemon.
+	await apply_ex2_primal_lock_removal()
+	if main._should_bail(): return
 	# RAIN DISH (np-20 Ludicolo): remove 1 damage counter from Ludicolo between turns
 	for side in [false, true]:
 		var active = main.opponent_active_pokemon if side else main.player_active_pokemon
@@ -6510,12 +6523,12 @@ func apply_np_between_turn_bodies() -> void:
 			if is_toxic_gas_active() or main.goop_gas_active: continue
 			if is_power_blocked_by_status(p): continue
 			for ab in p.metadata.get("abilities", []):
-				if ab.get("name", "") == "Rain Dish":
+				if ab.get("name", "") in ["Rain Dish", "Spongy Stone"]:
 					var max_hp = p.get_max_hp()
 					if p.current_hp < max_hp:
 						p.current_hp = min(max_hp, p.current_hp + 10)
 						main.display_hp_circles_above_align(p, side)
-						await main.show_message("RAIN DISH! " + p.metadata.get("name","").to_upper() + " RECOVERED 10 HP!")
+						await main.show_message(ab.get("name","").to_upper() + "! " + p.metadata.get("name","").to_upper() + " RECOVERED 10 HP!")
 						if main._should_bail(): return
 
 	# BURNING AURA (np-34 Typhlosion): while Active, put 1 damage counter on EACH Active between turns
@@ -9559,3 +9572,334 @@ func cpu_phase_ex1_powers() -> void:
 	if swellow != null and main.opponent_active_pokemon == swellow and not swellow.power_used_this_turn and not is_power_blocked_by_status(swellow):
 		await cpu_ex1_drive_off(swellow)
 		if main._should_bail(): return
+
+######################################################################################################################################################
+##################################################### EX2 (SANDSTORM) POWERS & BODIES ################################################################
+######################################################################################################################################################
+# Auto-handled by existing name-based machinery (no ex2 code needed):
+#   Rain Dish (Ludicolo/Lombre/Lotad)    -> apply_np_between_turn_bodies() name loop (+ Spongy Stone added there)
+#   Exoskeleton (Kabuto)                 -> _FLAT_REDUCTION_BODY_NAMES flat -20 modifier hook
+#   Intimidating Fang (Arbok)            -> _hook_ex1_intimidating_fang (has_ability check, -10)
+#   Poison Resistance (Zangoose)         -> Card_Ops.apply_status name block
+
+func _register_ex2_powers() -> void:
+	_power_dispatch["Baby Evolution"] = func(p): await power_ex2_baby_evolution(p)
+	_power_dispatch["Lunar Eclipse"]  = func(p): await power_ex2_eclipse(p, "Solrock", "Darkness")
+	_power_dispatch["Solar Eclipse"]  = func(p): await power_ex2_eclipse(p, "Lunatone", "Fire")
+	_power_dispatch["Fan Away"]       = func(p): await power_ex2_fan_away(p)
+	_power_dispatch["Chaos Flash"]    = func(p): await power_ex2_chaos_flash(p)
+	_power_dispatch["Healing Wind"]   = func(p): await power_ex2_healing_wind(p)
+
+# True if a named Pokemon is in play (Active or Bench) on the given side.
+func _ex2_named_in_play(is_opponent: bool, poke_name: String) -> bool:
+	for p in main.card_ops.get_all_pokemon_in_play(is_opponent):
+		if p.metadata.get("name","") == poke_name:
+			return true
+	return false
+
+# BABY EVOLUTION (Pichu/Azurill/Elekid/Wynaut): once per turn, put the named Evolution from your
+# hand onto this baby (counts as evolving) and remove all damage counters from it.
+func power_ex2_baby_evolution(baby: card_object) -> void:
+	var is_opponent = baby.is_owner_opp(main)
+	if is_power_blocked_by_status(baby):
+		await main.show_message("BABY EVOLUTION IS BLOCKED BY STATUS!")
+		if main._should_bail(): return
+		return
+	if baby.power_used_this_turn:
+		await main.show_message("BABY EVOLUTION ALREADY USED THIS TURN!")
+		if main._should_bail(): return
+		return
+	# Parse the evolution's name from the ability text ("put Pikachu from your hand onto ...").
+	var ability = baby.get_ability("Baby Evolution")
+	var text = ability.get("text", "")
+	var evo_name = ""
+	var lo = text.to_lower()
+	var p1 = lo.find("put ")
+	var p2 = lo.find(" from your hand")
+	if p1 != -1 and p2 != -1 and p2 > p1:
+		evo_name = text.substr(p1 + 4, p2 - (p1 + 4)).strip_edges()
+	var hand = main.opponent_hand if is_opponent else main.player_hand
+	var matches = hand.filter(func(c): return c.metadata.get("name","") == evo_name)
+	if matches.is_empty():
+		await main.show_message("BABY EVOLUTION: NO " + evo_name.to_upper() + " IN HAND!")
+		if main._should_bail(): return
+		return
+	baby.power_used_this_turn = true
+	var evo_card = matches[0]
+	await main.trainer_effects._ex2_do_evolution(evo_card, baby, is_opponent, hand)
+	evo_card.current_hp = evo_card.get_max_hp()
+	main.display_pokemon(is_opponent)
+	main.display_hp_circles_above_align(evo_card, is_opponent)
+	await main.show_message("BABY EVOLUTION! EVOLVED INTO " + evo_name.to_upper() + " AND HEALED FULLY!")
+	if main._should_bail(): return
+
+# LUNAR / SOLAR ECLIPSE (Lunatone / Solrock): once per turn, if the partner is in play, change this
+# Pokemon's type until the end of your turn.
+func power_ex2_eclipse(pokemon: card_object, partner_name: String, new_type: String) -> void:
+	var is_opponent = pokemon.is_owner_opp(main)
+	if is_power_blocked_by_status(pokemon):
+		await main.show_message("ECLIPSE IS BLOCKED BY STATUS!")
+		if main._should_bail(): return
+		return
+	if pokemon.power_used_this_turn:
+		await main.show_message("ECLIPSE ALREADY USED THIS TURN!")
+		if main._should_bail(): return
+		return
+	if not _ex2_named_in_play(is_opponent, partner_name):
+		await main.show_message("ECLIPSE REQUIRES " + partner_name.to_upper() + " IN PLAY!")
+		if main._should_bail(): return
+		return
+	pokemon.power_used_this_turn = true
+	pokemon.set_effect("ex2_type_override", "end_of_own_turn", new_type)
+	main.display_pokemon(is_opponent)
+	await main.show_message(pokemon.metadata.get("name","").to_upper() + "'S TYPE IS NOW " + new_type.to_upper() + " UNTIL END OF TURN!")
+	if main._should_bail(): return
+
+# FAN AWAY (Shiftry): once per turn, flip a coin; if heads, return 1 Energy attached to the
+# Defending Pokemon to your opponent's hand.
+func power_ex2_fan_away(shiftry: card_object) -> void:
+	var is_opponent = shiftry.is_owner_opp(main)
+	if is_power_blocked_by_status(shiftry):
+		await main.show_message("FAN AWAY IS BLOCKED BY STATUS!")
+		if main._should_bail(): return
+		return
+	if shiftry.power_used_this_turn:
+		await main.show_message("FAN AWAY ALREADY USED THIS TURN!")
+		if main._should_bail(): return
+		return
+	shiftry.power_used_this_turn = true
+	var coin = await main.flip_coin(false, is_opponent)
+	if main._should_bail(): return
+	if not coin:
+		await main.show_message("TAILS! FAN AWAY HAD NO EFFECT!")
+		if main._should_bail(): return
+		return
+	var defending = main.player_active_pokemon if is_opponent else main.opponent_active_pokemon
+	if defending == null or defending.attached_energies.is_empty():
+		await main.show_message("HEADS! BUT THE DEFENDING POKEMON HAS NO ENERGY!")
+		if main._should_bail(): return
+		return
+	var target_is_opp = not is_opponent
+	var chosen = await main.card_ops.choose_card(defending.attached_energies, is_opponent, "FAN AWAY", "Choose an Energy to return to your opponent's hand", "RETURN", false)
+	if main._should_bail(): return
+	if chosen == null: return
+	defending.attached_energies.erase(chosen)
+	chosen.current_location = "hand"
+	var opp_hand = main.player_hand if is_opponent else main.opponent_hand
+	opp_hand.append(chosen)
+	main.display_active_pokemon_energies(target_is_opp)
+	main.refresh_hand_display(target_is_opp)
+	await main.show_message("HEADS! FAN AWAY RETURNED " + chosen.metadata.get("name","").to_upper() + " TO YOUR OPPONENT'S HAND!")
+	if main._should_bail(): return
+
+# CHAOS FLASH (Golduck): once per turn, if Golduck is your Active Pokemon, flip a coin; if heads,
+# the Defending Pokemon is now Confused.
+func power_ex2_chaos_flash(golduck: card_object) -> void:
+	var is_opponent = golduck.is_owner_opp(main)
+	var own_active = main.opponent_active_pokemon if is_opponent else main.player_active_pokemon
+	if golduck != own_active:
+		await main.show_message("CHAOS FLASH REQUIRES GOLDUCK TO BE ACTIVE!")
+		if main._should_bail(): return
+		return
+	if is_power_blocked_by_status(golduck):
+		await main.show_message("CHAOS FLASH IS BLOCKED BY STATUS!")
+		if main._should_bail(): return
+		return
+	if golduck.power_used_this_turn:
+		await main.show_message("CHAOS FLASH ALREADY USED THIS TURN!")
+		if main._should_bail(): return
+		return
+	golduck.power_used_this_turn = true
+	var coin = await main.flip_coin(false, is_opponent)
+	if main._should_bail(): return
+	if not coin:
+		await main.show_message("TAILS! CHAOS FLASH HAD NO EFFECT!")
+		if main._should_bail(): return
+		return
+	var defending = main.player_active_pokemon if is_opponent else main.opponent_active_pokemon
+	if defending != null:
+		main.card_ops.apply_status(defending, "Confused", not is_opponent)
+	await main.show_message("HEADS! THE DEFENDING POKEMON IS NOW CONFUSED!")
+	if main._should_bail(): return
+
+# HEALING WIND (Xatu): once per turn, remove 1 damage counter from each of your Active Pokemon.
+func power_ex2_healing_wind(xatu: card_object) -> void:
+	var is_opponent = xatu.is_owner_opp(main)
+	if is_power_blocked_by_status(xatu):
+		await main.show_message("HEALING WIND IS BLOCKED BY STATUS!")
+		if main._should_bail(): return
+		return
+	if xatu.power_used_this_turn:
+		await main.show_message("HEALING WIND ALREADY USED THIS TURN!")
+		if main._should_bail(): return
+		return
+	xatu.power_used_this_turn = true
+	for p in main.card_ops.get_active_pokemon(is_opponent):
+		if p.current_hp < p.get_max_hp():
+			p.current_hp = min(p.get_max_hp(), p.current_hp + 10)
+			main.display_hp_circles_above_align(p, is_opponent)
+	await main.show_message("HEALING WIND! REMOVED 1 DAMAGE COUNTER FROM EACH OF YOUR ACTIVE POKEMON!")
+	if main._should_bail(): return
+
+# ── EX2 passive bodies ─────────────────────────────────────────────────────────────────────────
+
+# POISON PAYBACK (Cacturne / Cacnea): if this Pokemon is Active and damaged by an opponent's attack
+# (even if KO'd), the Attacking Pokemon is now Poisoned.
+func check_ex2_poison_payback(damaged_pokemon: card_object, attacker: card_object, is_damaged_opponent: bool) -> void:
+	if damaged_pokemon == null or attacker == null:
+		return
+	if not damaged_pokemon.has_ability("Poison Payback"):
+		return
+	if is_power_blocked_by_status(damaged_pokemon):
+		return
+	main.card_ops.apply_status(attacker, "Poisoned", not is_damaged_opponent)
+	await main.show_message(damaged_pokemon.metadata.get("name","").to_upper() + "'S POISON PAYBACK POISONED " + attacker.metadata.get("name","").to_upper() + "!")
+	if main._should_bail(): return
+
+# FIRE VEIL (Arcanine / Growlithe): if this Pokemon is Active and damaged by an opponent's attack
+# (even if KO'd), the Attacking Pokemon is now Burned.
+func check_ex2_fire_veil(damaged_pokemon: card_object, attacker: card_object, is_damaged_opponent: bool) -> void:
+	if damaged_pokemon == null or attacker == null:
+		return
+	if not damaged_pokemon.has_ability("Fire Veil"):
+		return
+	if is_power_blocked_by_status(damaged_pokemon):
+		return
+	main.card_ops.apply_status(attacker, "Burned", not is_damaged_opponent)
+	await main.show_message(damaged_pokemon.metadata.get("name","").to_upper() + "'S FIRE VEIL BURNED " + attacker.metadata.get("name","").to_upper() + "!")
+	if main._should_bail(): return
+
+# JAGGED STONE (Claw Fossil): if this is your Active and damaged by an opponent's attack (even if
+# KO'd), put 1 damage counter on the Attacking Pokemon.
+func check_ex2_jagged_stone(damaged_pokemon: card_object, attacker: card_object, is_damaged_opponent: bool) -> void:
+	if damaged_pokemon == null or attacker == null:
+		return
+	if not damaged_pokemon.has_ability("Jagged Stone"):
+		return
+	attacker.current_hp = max(0, attacker.current_hp - 10)
+	var attacker_is_opp = not is_damaged_opponent
+	main.display_hp_circles_above_align(attacker, attacker_is_opp)
+	main.show_floating_label("-10", Vector2(1030, 300) if attacker_is_opp else Vector2(530, 300), Color.WHITE, true)
+	await main.show_message(damaged_pokemon.metadata.get("name","").to_upper() + "'S JAGGED STONE PUT 1 DAMAGE COUNTER ON " + attacker.metadata.get("name","").to_upper() + "!")
+	if main._should_bail(): return
+
+# GLOWING SCREEN (Illumise): while Volbeat is in play on Illumise's side, damage to Illumise from
+# Fighting and Darkness Pokemon is reduced by 30 (capped at 30 total). Synchronous modifier hook.
+func _hook_ex2_glowing_screen(damage: int, attacker: card_object, defender: card_object, modifiers: Array) -> int:
+	if damage <= 0 or defender == null or attacker == null:
+		return damage
+	if not defender.has_ability("Glowing Screen"):
+		return damage
+	if is_power_blocked_by_status(defender):
+		return damage
+	var defender_is_opp = defender.is_owner_opp(main)
+	if not _ex2_named_in_play(defender_is_opp, "Volbeat"):
+		return damage
+	var atypes = attacker.get_effective_types()
+	if "Fighting" not in atypes and "Darkness" not in atypes:
+		return damage
+	var r = min(damage, 30)
+	modifiers.append("GLOWING SCREEN -" + str(r))
+	return damage - r
+
+# SAFEGUARD (Wobbuffet): prevent all effects of attacks, including damage, done by the opponent's
+# Pokemon-ex. Implemented as damage prevention (set to 0) via a modifier hook; the "prevent all
+# effects" scope is simplified to damage here, consistent with other synchronous-hook bodies.
+func _hook_ex2_safeguard(damage: int, attacker: card_object, defender: card_object, modifiers: Array) -> int:
+	if damage <= 0 or defender == null or attacker == null:
+		return damage
+	if not defender.has_ability("Safeguard"):
+		return damage
+	if is_power_blocked_by_status(defender):
+		return damage
+	if not main.is_ex_pokemon(attacker):
+		return damage
+	modifiers.append("SAFEGUARD (NO EFFECT FROM EX)")
+	return 0
+
+# PRIMAL VEIL (Armaldo): true if either side has an Active Armaldo with this body (blocks Supporters
+# for BOTH players). Checked in the trainer play/validation gates.
+func is_ex2_primal_veil_active() -> bool:
+	for side in [false, true]:
+		var active = main.opponent_active_pokemon if side else main.player_active_pokemon
+		if active != null and active.has_ability("Primal Veil") and not is_power_blocked_by_status(active):
+			return true
+	return false
+
+# PRIMAL LOCK (Aerodactyl ex): true if the side OPPOSING `tool_player_is_opp` has Aerodactyl ex
+# (with this body) in play — that player can't play Pokemon Tool cards.
+func is_ex2_primal_lock_blocking(tool_player_is_opp: bool) -> bool:
+	var blocker_side = not tool_player_is_opp
+	for p in main.card_ops.get_all_pokemon_in_play(blocker_side):
+		if p.has_ability("Primal Lock") and not is_power_blocked_by_status(p):
+			return true
+	return false
+
+# Discards any Pokemon Tool cards attached to the opponent's Pokemon while Primal Lock is in play.
+# Called between turns (the "remove any Pokemon Tool cards" clause of Primal Lock).
+func apply_ex2_primal_lock_removal() -> void:
+	for side in [false, true]:
+		# `side` has Aerodactyl ex → strip tools from the OTHER side
+		var has_lock = false
+		for p in main.card_ops.get_all_pokemon_in_play(side):
+			if p.has_ability("Primal Lock") and not is_power_blocked_by_status(p):
+				has_lock = true
+				break
+		if not has_lock:
+			continue
+		var victim_side = not side
+		var discard = main.opponent_discard_pile if victim_side else main.player_discard_pile
+		for p in main.card_ops.get_all_pokemon_in_play(victim_side):
+			for ac in p.attached_cards.duplicate():
+				if "Pokémon Tool" in ac.metadata.get("subtypes", []):
+					p.attached_cards.erase(ac)
+					ac.current_location = "discard"
+					discard.append(ac)
+					display_attached_trainer_cards(victim_side)
+					main.update_discard_pile_display(victim_side)
+					await main.show_message("PRIMAL LOCK DISCARDED " + ac.metadata.get("name","").to_upper() + "!")
+					if main._should_bail(): return
+
+# ── CPU activation for ex2 active powers ─────────────────────────────────────────────────────────
+func cpu_phase_ex2_powers() -> void:
+	if is_toxic_gas_active() or main.goop_gas_active: return
+
+	# Baby Evolution: evolve whenever the CPU holds the evolution in hand.
+	for baby in main.card_ops.get_all_pokemon_in_play(true):
+		if baby.has_ability("Baby Evolution") and not baby.power_used_this_turn and not is_power_blocked_by_status(baby):
+			var ability = baby.get_ability("Baby Evolution")
+			var lo = ability.get("text","").to_lower()
+			var p1 = lo.find("put ")
+			var p2 = lo.find(" from your hand")
+			if p1 != -1 and p2 != -1 and p2 > p1:
+				var evo_name = ability.get("text","").substr(p1 + 4, p2 - (p1 + 4)).strip_edges()
+				var has_it = main.opponent_hand.any(func(c): return c.metadata.get("name","") == evo_name)
+				if has_it:
+					await power_ex2_baby_evolution(baby)
+					if main._should_bail(): return
+
+	# Fan Away: disrupt whenever the Defending Pokemon has Energy attached.
+	var shiftry = _find_cpu_pokemon_with_power("Fan Away")
+	if shiftry != null and not shiftry.power_used_this_turn and not is_power_blocked_by_status(shiftry):
+		if main.player_active_pokemon != null and not main.player_active_pokemon.attached_energies.is_empty():
+			await cpu_ex2_fan_away(shiftry)
+			if main._should_bail(): return
+
+	# Chaos Flash: use whenever Golduck is the CPU's Active.
+	var golduck = _find_cpu_pokemon_with_power("Chaos Flash")
+	if golduck != null and main.opponent_active_pokemon == golduck and not golduck.power_used_this_turn and not is_power_blocked_by_status(golduck):
+		await power_ex2_chaos_flash(golduck)
+		if main._should_bail(): return
+
+	# Healing Wind: use whenever an Active Pokemon is damaged.
+	var xatu = _find_cpu_pokemon_with_power("Healing Wind")
+	if xatu != null and not xatu.power_used_this_turn and not is_power_blocked_by_status(xatu):
+		for p in main.card_ops.get_active_pokemon(true):
+			if p.current_hp < p.get_max_hp():
+				await power_ex2_healing_wind(xatu)
+				break
+		if main._should_bail(): return
+
+# CPU Fan Away: pick the Defending Pokemon's most-plentiful Energy (choose_card with pool[0] default).
+func cpu_ex2_fan_away(shiftry: card_object) -> void:
+	await power_ex2_fan_away(shiftry)

@@ -33,6 +33,7 @@ func _ensure_trainer_dispatch_ready() -> void:
 	_register_ecard2_trainers()
 	_register_ecard3_trainers()
 	_register_ex1_trainers()
+	_register_ex2_trainers()
 
 func _register_base_trainers() -> void:
 	_trainer_dispatch["base1-88"] = func(c, opp): await effect_professor_oak(c, opp)
@@ -814,11 +815,18 @@ func validate_trainer_can_be_played(card: card_object, is_opponent: bool) -> Str
 			return "Addictive Pollen: Supporter cards are locked this turn!"
 		if not is_opponent and player_supporter_locked:
 			return "Addictive Pollen: Supporter cards are locked this turn!"
+		# ex2 Primal Veil (Armaldo): while an Armaldo is Active, NO player can play Supporters
+		if main.powers_and_bodies.is_ex2_primal_veil_active():
+			return "Primal Veil: no player can play Supporter cards!"
 		# EX1+: only 1 Supporter card per turn
 		if is_opponent and opponent_played_supporter_this_turn:
 			return "You can only play 1 Supporter card each turn!"
 		if not is_opponent and player_played_supporter_this_turn:
 			return "You can only play 1 Supporter card each turn!"
+
+	# ex2 Primal Lock (Aerodactyl ex): the opponent can't play Pokémon Tool cards
+	if "Pokémon Tool" in card.metadata.get("subtypes", []) and main.powers_and_bodies.is_ex2_primal_lock_blocking(is_opponent):
+		return "Primal Lock: you can't play Pokémon Tool cards!"
 
 	# MATCH EFFECT: trainer_discard_cost — must have enough OTHER cards in hand to pay
 	var rule_discard_cost = main.match_effects.trainer_discard_cost(is_opponent)
@@ -850,11 +858,22 @@ func play_trainer_card(card: card_object, is_opponent: bool) -> void:
 			await main.show_message("ADDICTIVE POLLEN: SUPPORTER CARDS ARE LOCKED THIS TURN!")
 			if main._should_bail(): return
 			return
+		# ex2 Primal Veil (Armaldo): while an Armaldo is Active, NO player can play Supporters
+		if main.powers_and_bodies.is_ex2_primal_veil_active():
+			await main.show_message("PRIMAL VEIL: NO PLAYER CAN PLAY SUPPORTER CARDS!")
+			if main._should_bail(): return
+			return
 		# EX1+: only 1 Supporter card per turn
 		if (is_opponent and opponent_played_supporter_this_turn) or (not is_opponent and player_played_supporter_this_turn):
 			await main.show_message("YOU CAN ONLY PLAY 1 SUPPORTER CARD EACH TURN!")
 			if main._should_bail(): return
 			return
+
+	# ex2 Primal Lock (Aerodactyl ex): the opponent can't play Pokémon Tool cards
+	if "Pokémon Tool" in card.metadata.get("subtypes", []) and main.powers_and_bodies.is_ex2_primal_lock_blocking(is_opponent):
+		await main.show_message("PRIMAL LOCK: YOU CAN'T PLAY POKÉMON TOOL CARDS!")
+		if main._should_bail(): return
+		return
 
 	var hand = main.opponent_hand if is_opponent else main.player_hand
 	var discard = main.opponent_discard_pile if is_opponent else main.player_discard_pile
@@ -8969,3 +8988,146 @@ func ex1_oran_berry_check() -> void:
 			main.update_discard_pile_display(side)
 			await main.show_message("ORAN BERRY! " + p.metadata.get("name","").to_upper() + " HEALED AND THE BERRY WAS DISCARDED!")
 			if main._should_bail(): return
+
+######################################################################################################################################################
+############################################################ EX2 (SANDSTORM) TRAINERS ################################################################
+######################################################################################################################################################
+# Claw Fossil (ex2-90) / Mysterious Fossil (ex2-91) / Root Fossil (ex2-92) need no dispatch entry —
+# they carry an HP field + "as if it were a Basic" rule, so is_bench_token_trainer() auto-detects
+# them and resolve_bench_token_trainer() places them on the Bench. Their Poké-Bodies live in
+# Powers_And_Bodies_Effects.gd.
+func _register_ex2_trainers() -> void:
+	_trainer_dispatch["ex2-86"] = func(c, opp): await effect_ex2_double_full_heal(opp)
+	_trainer_dispatch["ex2-87"] = func(c, opp): await effect_ex2_lanettes_net_search(opp)
+	_trainer_dispatch["ex2-88"] = func(c, opp): await effect_ex2_rare_candy(opp)
+	_trainer_dispatch["ex2-89"] = func(c, opp): await effect_ex2_wallys_training(opp)
+
+# DOUBLE FULL HEAL (ex2-86, Item): remove all Special Conditions from each of your Active Pokemon.
+func effect_ex2_double_full_heal(is_opponent: bool) -> void:
+	for p in main.card_ops.get_active_pokemon(is_opponent):
+		main.clear_all_statuses(p, is_opponent)
+	await main.show_message("DOUBLE FULL HEAL! ALL SPECIAL CONDITIONS REMOVED!")
+	if main._should_bail(): return
+	print("TRAINER: Double Full Heal")
+
+# LANETTE'S NET SEARCH (ex2-87, Supporter): search deck for up to 3 different types of Basic
+# Pokemon (excluding Baby Pokemon), to hand. Pre-filters the pool to 1 card per type so any subset
+# picked satisfies "different types" (same technique as Lady Outing).
+func effect_ex2_lanettes_net_search(is_opponent: bool) -> void:
+	var deck = main.opponent_deck if is_opponent else main.player_deck
+	var seen_types: Array = []
+	var candidates: Array = []
+	for c in deck:
+		if not main.is_basic_pokemon(c):
+			continue
+		if "Baby" in c.metadata.get("subtypes", []):
+			continue
+		var types = c.metadata.get("types", [])
+		if types.is_empty():
+			continue
+		var t = types[0]
+		if t in seen_types:
+			continue
+		seen_types.append(t)
+		candidates.append(c)
+	if candidates.is_empty():
+		await main.show_message("LANETTE'S NET SEARCH: NO BASIC POKEMON IN DECK!")
+		if main._should_bail(): return
+		return
+	var filter_fn = func(c): return c in candidates
+	var found = await main.card_ops.search_deck_to_hand(is_opponent, filter_fn, "LANETTE'S NET SEARCH: CHOOSE UP TO 3 DIFFERENT-TYPE BASICS", 3)
+	if main._should_bail(): return
+	await main.show_message("LANETTE'S NET SEARCH! ADDED " + str(found.size()) + " POKEMON TO HAND!" if found.size() > 0 else "NO MATCHING POKEMON FOUND!")
+	if main._should_bail(): return
+	print("TRAINER: Lanette's Net Search — found ", found.size())
+
+# Shared evolution: put evo_card (from source_array) onto target, carrying damage/energy/pre-evolution
+# chain. Mirrors Main.perform_evolution's core so it works from hand (Rare Candy) or deck (Wally's).
+func _ex2_do_evolution(evo_card: card_object, target: card_object, is_opponent: bool, source_array: Array) -> void:
+	var max_hp_old = int(target.metadata.get("hp", "0"))
+	var damage_taken = max_hp_old - target.current_hp
+	var max_hp_new = int(evo_card.metadata.get("hp", "0"))
+	evo_card.current_hp = max(1, max_hp_new - damage_taken)
+	evo_card.attached_energies = target.attached_energies.duplicate()
+	target.attached_energies.clear()
+	evo_card.attached_pre_evolutions = target.attached_pre_evolutions.duplicate()
+	target.attached_pre_evolutions.clear()
+	evo_card.attached_pre_evolutions.append(target)
+	evo_card.placed_on_field_this_turn = true
+	source_array.erase(evo_card)
+	evo_card.current_location = target.current_location
+	var active = main.opponent_active_pokemon if is_opponent else main.player_active_pokemon
+	var bench = main.opponent_bench if is_opponent else main.player_bench
+	if target == active:
+		if is_opponent:
+			main.opponent_active_pokemon = evo_card
+		else:
+			main.player_active_pokemon = evo_card
+	else:
+		var idx = bench.find(target)
+		if idx != -1:
+			bench[idx] = evo_card
+	main.clear_all_statuses(target, is_opponent)
+	main.display_pokemon(is_opponent)
+	main.display_active_pokemon_energies(is_opponent)
+	main.refresh_hand_display(is_opponent)
+
+# RARE CANDY (ex2-88, Item): choose 1 of your Basic Pokemon in play; if you have a card that
+# evolves from it in hand, evolve it (counts as evolving that Pokemon).
+func effect_ex2_rare_candy(is_opponent: bool) -> void:
+	var hand = main.opponent_hand if is_opponent else main.player_hand
+	var valid_basics: Array = []
+	for p in main.card_ops.get_all_pokemon_in_play(is_opponent):
+		if not main.is_basic_pokemon(p) or p.placed_on_field_this_turn:
+			continue
+		for h in hand:
+			if h.metadata.get("supertype","") == "Pokémon" and main.can_evolve_from(h, p):
+				valid_basics.append(p)
+				break
+	if valid_basics.is_empty():
+		await main.show_message("RARE CANDY: NO BASIC POKEMON HAS A MATCHING EVOLUTION IN HAND!")
+		if main._should_bail(): return
+		return
+	var target = await main.card_ops.choose_card(valid_basics, is_opponent, "RARE CANDY", "Choose a Basic Pokemon to evolve", "SELECT", false)
+	if main._should_bail(): return
+	if target == null:
+		return
+	var evos = hand.filter(func(h): return h.metadata.get("supertype","") == "Pokémon" and main.can_evolve_from(h, target))
+	if evos.is_empty():
+		return
+	var rank = func(c): return float(int(c.metadata.get("hp","0")))
+	var evo_card = await main.card_ops.choose_card(evos, is_opponent, "RARE CANDY", "Choose an Evolution card from your hand", "EVOLVE", false, rank)
+	if main._should_bail(): return
+	if evo_card == null:
+		return
+	await _ex2_do_evolution(evo_card, target, is_opponent, hand)
+	await main.show_message("RARE CANDY! " + target.metadata.get("name","").to_upper() + " EVOLVED INTO " + evo_card.metadata.get("name","").to_upper() + "!")
+	if main._should_bail(): return
+	print("TRAINER: Rare Candy")
+
+# WALLY'S TRAINING (ex2-89, Supporter): search your deck for a card that evolves from your Active
+# Pokemon and put it on your Active (counts as evolving that Pokemon).
+func effect_ex2_wallys_training(is_opponent: bool) -> void:
+	var actives = main.card_ops.get_active_pokemon(is_opponent)
+	if actives.is_empty():
+		await main.show_message("WALLY'S TRAINING: NO ACTIVE POKEMON!")
+		if main._should_bail(): return
+		return
+	var active = actives[0]
+	var deck = main.opponent_deck if is_opponent else main.player_deck
+	var evos = deck.filter(func(c): return c.metadata.get("supertype","") == "Pokémon" and main.can_evolve_from(c, active))
+	if evos.is_empty():
+		await main.show_message("WALLY'S TRAINING: NO EVOLUTION FOR " + active.metadata.get("name","").to_upper() + " IN DECK!")
+		if main._should_bail(): return
+		deck.shuffle()
+		return
+	var rank = func(c): return float(int(c.metadata.get("hp","0")))
+	var evo_card = await main.card_ops.choose_card(evos, is_opponent, "WALLY'S TRAINING", "Choose an Evolution for your Active Pokemon", "EVOLVE", false, rank, true)
+	if main._should_bail(): return
+	if evo_card != null:
+		await _ex2_do_evolution(evo_card, active, is_opponent, deck)
+		await main.show_message("WALLY'S TRAINING! " + active.metadata.get("name","").to_upper() + " EVOLVED INTO " + evo_card.metadata.get("name","").to_upper() + "!")
+		if main._should_bail(): return
+	deck.shuffle()
+	main.update_deck_icon(is_opponent)
+	print("TRAINER: Wally's Training")
