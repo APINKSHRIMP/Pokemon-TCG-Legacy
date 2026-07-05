@@ -288,6 +288,10 @@ func apply_status(pokemon: card_object, status: String, is_opponent: bool) -> vo
 	if pokemon != null and status != "" and not main.powers_and_bodies.is_power_blocked(pokemon):
 		if pokemon.has_ability("Protective Dust"):
 			return
+	# EX3 Thick Skin (Roselia ex3-9): can't be affected by any Special Conditions
+	if pokemon != null and status != "" and not main.powers_and_bodies.is_power_blocked(pokemon):
+		if pokemon.has_ability("Thick Skin"):
+			return
 	match status:
 		"Poisoned":
 			pokemon.is_poisoned = true
@@ -452,6 +456,13 @@ func apply_bench_damage(pokemon: card_object, damage: int, is_opponent: bool) ->
 	# Protective Flame / invincible flag on bench pokemon
 	if pokemon.is_invincible:
 		return
+	# EX3 Submerge (Whiscash ex3-48): while on the Bench, prevent all attack damage to Whiscash.
+	# (Guard on the ability TEXT, not just the name — neo3 Lanturn also has a "Submerge" ability
+	# with a completely different, type-changing effect.)
+	if pokemon.has_ability("Submerge") and not main.powers_and_bodies.is_power_blocked(pokemon):
+		var sub = pokemon.get_ability("Submerge")
+		if sub != null and "prevent all damage" in sub.get("text","").to_lower():
+			return
 	pokemon.current_hp = max(0, pokemon.current_hp - damage)
 	var loc = main.get_pokemon_screen_location(pokemon)
 	if not loc.is_empty():

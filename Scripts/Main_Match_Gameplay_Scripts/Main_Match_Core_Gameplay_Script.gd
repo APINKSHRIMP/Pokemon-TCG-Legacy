@@ -2784,9 +2784,14 @@ func inbetween_turn_checks(player_turn_just_ended: bool = true) -> void:
 	if _should_bail():
 		return
 
-	# Rocket's Hideout (neo3): safety-net refresh for Dark-named pokemon placed while it's active
-	if is_stadium_in_play(StadiumIds.ROCKETS_HIDEOUT):
+	# Rocket's Hideout (neo3) / Low Pressure System (ex3): safety-net HP-bonus refresh for pokemon
+	# placed while the stadium is active.
+	if is_stadium_in_play(StadiumIds.ROCKETS_HIDEOUT) or is_stadium_in_play(StadiumIds.LOW_PRESSURE_SYSTEM):
 		powers_and_bodies.refresh_rockets_hideout_hp()
+
+	# EX3 Buffer Piece (ex3-83): discard at the end of the opponent's turn following the turn it was played.
+	await trainer_effects.ex3_buffer_piece_check()
+	if _should_bail(): return
 
 	# ECARD2 Healing Berry: at the end of ANY turn (both sides, not just the owner's own), if the
 	# holder has 20 HP or less, remove 3 damage counters and discard the berry
@@ -3118,6 +3123,9 @@ func perform_evolution(is_opponent: bool) -> void:
 		await powers_and_bodies.trigger_ecard3_streaming_mantle(evo_card, is_opponent)
 	elif evo_card.has_ability("Attract Energy"):
 		await powers_and_bodies.trigger_ecard3_attract_energy(evo_card, is_opponent)
+	# EX3 Loose Shell (Ninjask ex3-18): when Ninjask evolves from hand, may search deck for Shedinja onto Bench
+	elif evo_card.has_ability("Loose Shell"):
+		await powers_and_bodies.trigger_ex3_loose_shell(evo_card, is_opponent)
 
 ########################################################### Retreat functions ##############################################################
 
@@ -4530,6 +4538,12 @@ func get_retreat_cost(pokemon: card_object) -> int:
 		for ab in pokemon.metadata.get("abilities", []):
 			if ab.get("name", "") == "Extreme Speed":
 				cost = max(0, cost - pokemon.attached_energies.size())
+			elif ab.get("name", "") == "Levitate":
+				# EX3 Vibrava (ex3-46): Retreat Cost is 0 while any basic Energy is attached
+				for e in pokemon.attached_energies:
+					if "Basic" in e.metadata.get("subtypes", []):
+						cost = 0
+						break
 			elif ab.get("name", "") == "Lightweight":
 				var grass_n = 0
 				for e in pokemon.attached_energies:
@@ -4573,6 +4587,11 @@ func get_retreat_cost(pokemon: card_object) -> int:
 	if is_stadium_in_play(StadiumIds.CERULEAN_CITY_GYM):
 		var pname = pokemon.metadata.get("name", "")
 		if "Misty" in pname:
+			cost = max(0, cost - 1)
+	# EX3-85 High Pressure System — each player pays 1 less to retreat Fire/Water Pokemon
+	if is_stadium_in_play(StadiumIds.HIGH_PRESSURE_SYSTEM):
+		var eff_types = pokemon.get_effective_types()
+		if "Fire" in eff_types or "Water" in eff_types:
 			cost = max(0, cost - 1)
 
 	# MATCH EFFECT: retreat_cost_modifier — flat adjustment to retreat cost (floor 0)

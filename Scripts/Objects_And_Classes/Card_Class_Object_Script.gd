@@ -128,6 +128,9 @@ var ditto_giant_growth: bool = false       # Koga's Ditto Giant Growth — max H
 var max_hp_override: int = 0               # If > 0, overrides the metadata HP value (Koga's Ditto Giant Growth)
 var gym2_mega_burn_locked: bool = false    # Sabrina's Alakazam Mega Burn — can't use this attack next turn
 
+# EX3 (EX Dragon) properties
+var ex3_buffer_piece_turns: int = 0        # ex3-83 Buffer Piece Tool: end-of-turn counter; discarded after the opponent's turn following play
+
 # Coin-flip attack block (Sand-attack, Smokescreen, Lightning Flash, Sandstorm, Mirage)
 # When set, the pokemon must flip before attacking: tails = attack fails
 var attack_flip_blocked: bool = false      # If true, this pokemon must flip before attacking next turn

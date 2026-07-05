@@ -34,6 +34,7 @@ func _ensure_trainer_dispatch_ready() -> void:
 	_register_ecard3_trainers()
 	_register_ex1_trainers()
 	_register_ex2_trainers()
+	_register_ex3_trainers()
 
 func _register_base_trainers() -> void:
 	_trainer_dispatch["base1-88"] = func(c, opp): await effect_professor_oak(c, opp)
@@ -6889,14 +6890,14 @@ func check_balloon_berry_retreat_free(pokemon: card_object) -> bool:
 	if pokemon == null:
 		return false
 	for ac in pokemon.attached_cards:
-		if ac.uid.to_lower() == "neo3-60":
+		if ac.uid.to_lower() == "neo3-60" or ac.uid.to_lower() == "ex3-82":
 			return true
 	return false
 
 # Discard Balloon Berry from the given pokemon after a free retreat is used.
 func consume_balloon_berry(pokemon: card_object, is_opponent: bool) -> void:
 	for ac in pokemon.attached_cards.duplicate():
-		if ac.uid.to_lower() == "neo3-60":
+		if ac.uid.to_lower() == "neo3-60" or ac.uid.to_lower() == "ex3-82":
 			pokemon.attached_cards.erase(ac)
 			var discard = main.opponent_discard_pile if is_opponent else main.player_discard_pile
 			ac.current_location = "discard"
@@ -9131,3 +9132,149 @@ func effect_ex2_wallys_training(is_opponent: bool) -> void:
 	deck.shuffle()
 	main.update_deck_icon(is_opponent)
 	print("TRAINER: Wally's Training")
+
+######################################################################################################################################################
+############################################################ EX3 (EX DRAGON) TRAINERS ################################################################
+######################################################################################################################################################
+# Balloon Berry (ex3-82) / Buffer Piece (ex3-83) are Pokémon Tools — the attach itself is generic
+# (is_attached_trainer() matches the "Pokémon Tool" subtype). Balloon Berry reuses the existing
+# neo3 Balloon Berry free-retreat machinery (check_balloon_berry_retreat_free / consume_balloon_berry,
+# both extended to ex3-82). Buffer Piece's -20 damage is a damage-modifier hook (_hook_ex3_buffer_piece)
+# and its expiry is ex3_buffer_piece_check() below. High/Low Pressure System (ex3-85/86) are Stadiums,
+# installed generically by resolve_stadium_trainer; their passive effects live in get_retreat_cost
+# (High Pressure) and the stadium HP refresh (Low Pressure). So only the two Supporters and the Item
+# need dispatch entries here.
+func _register_ex3_trainers() -> void:
+	_trainer_dispatch["ex3-84"] = func(c, opp): await effect_ex3_energy_recycle_system(opp)
+	_trainer_dispatch["ex3-87"] = func(c, opp): await effect_ex3_mr_brineys_compassion(opp)
+	_trainer_dispatch["ex3-88"] = func(c, opp): await effect_ex3_tv_reporter(opp)
+
+# ENERGY RECYCLE SYSTEM (ex3-84, Item): either take 1 basic Energy from your discard to your hand,
+# or shuffle 3 basic Energy from your discard into your deck.
+func effect_ex3_energy_recycle_system(is_opponent: bool) -> void:
+	var discard = main.opponent_discard_pile if is_opponent else main.player_discard_pile
+	var basics = discard.filter(func(c): return c.metadata.get("supertype","") == "Energy" and "Basic" in c.metadata.get("subtypes", []))
+	if basics.is_empty():
+		await main.show_message("ENERGY RECYCLE SYSTEM: NO BASIC ENERGY IN YOUR DISCARD PILE!")
+		if main._should_bail(): return
+		return
+	# CPU always takes the higher-value option (1 Energy to hand). Player may choose to shuffle 3 back.
+	var take_to_hand = true
+	if not is_opponent and basics.size() >= 3:
+		var anchor = main.player_active_pokemon
+		take_to_hand = await gym1_prompt_yes_no(anchor, "ENERGY RECYCLE SYSTEM", "Take 1 Energy to your hand? (No = shuffle 3 into your deck)", "TAKE 1", "SHUFFLE 3")
+		if main._should_bail(): return
+	if take_to_hand:
+		var chosen: card_object = null
+		if is_opponent:
+			chosen = basics[0]
+		else:
+			chosen = await main.card_ops.choose_card(basics, is_opponent, "ENERGY RECYCLE SYSTEM", "Choose a basic Energy to put into your hand", "TAKE", false)
+			if main._should_bail(): return
+			if chosen == null: chosen = basics[0]
+		await main.card_ops.recover_to_hand(chosen, is_opponent)
+		if main._should_bail(): return
+		await main.show_message("ENERGY RECYCLE SYSTEM! TOOK 1 BASIC ENERGY TO HAND!")
+		if main._should_bail(): return
+	else:
+		var deck = main.opponent_deck if is_opponent else main.player_deck
+		var moved = 0
+		for i in range(3):
+			var pool = discard.filter(func(c): return c.metadata.get("supertype","") == "Energy" and "Basic" in c.metadata.get("subtypes", []))
+			if pool.is_empty(): break
+			var chosen2: card_object = null
+			if is_opponent:
+				chosen2 = pool[0]
+			else:
+				chosen2 = await main.card_ops.choose_card(pool, is_opponent, "ENERGY RECYCLE SYSTEM", "Choose a basic Energy to shuffle into your deck (" + str(3 - moved) + " left)", "SHUFFLE", moved >= 1)
+				if main._should_bail(): return
+				if chosen2 == null: break
+			discard.erase(chosen2)
+			chosen2.current_location = "deck"
+			deck.append(chosen2)
+			moved += 1
+		deck.shuffle()
+		main.update_discard_pile_display(is_opponent)
+		main.update_deck_icon(is_opponent)
+		await main.show_message("ENERGY RECYCLE SYSTEM! SHUFFLED " + str(moved) + " BASIC ENERGY INTO YOUR DECK!")
+		if main._should_bail(): return
+	print("TRAINER: Energy Recycle System")
+
+# MR. BRINEY'S COMPASSION (ex3-87, Supporter): return 1 of your Pokemon in play (excluding
+# Pokemon-ex) and all cards attached to it to your hand.
+func effect_ex3_mr_brineys_compassion(is_opponent: bool) -> void:
+	var pool = main.card_ops.get_all_pokemon_in_play(is_opponent).filter(func(c): return not main.is_ex_pokemon(c))
+	if pool.is_empty():
+		await main.show_message("MR. BRINEY'S COMPASSION: NO ELIGIBLE POKEMON!")
+		if main._should_bail(): return
+		return
+	var chosen: card_object = null
+	if is_opponent:
+		# CPU: prefer returning a heavily-damaged non-ex Pokemon to save it (most damage counters).
+		chosen = pool[0]
+		for c in pool:
+			if c.get_damage_counters() > chosen.get_damage_counters():
+				chosen = c
+		# Don't bother if nothing is damaged and it's the lone Active with no bench.
+		if chosen.get_damage_counters() == 0:
+			var own_bench = main.opponent_bench if is_opponent else main.player_bench
+			if own_bench.is_empty():
+				await main.show_message("MR. BRINEY'S COMPASSION: NOTHING WORTH RETURNING!")
+				if main._should_bail(): return
+				return
+	else:
+		chosen = await main.card_ops.choose_card(pool, is_opponent, "MR. BRINEY'S COMPASSION", "Choose 1 of your Pokemon (not an ex) to return to your hand", "RETURN", true)
+		if main._should_bail(): return
+		if chosen == null:
+			return
+	var was_active = (chosen == (main.opponent_active_pokemon if is_opponent else main.player_active_pokemon))
+	await main.attack_effects.gym1_return_pokemon_to_hand(chosen, is_opponent)
+	if main._should_bail(): return
+	await main.show_message("MR. BRINEY'S COMPASSION! RETURNED " + chosen.metadata.get("name","").to_upper() + " AND ITS CARDS TO HAND!")
+	if main._should_bail(): return
+	# If we returned the Active Pokemon, promote a Benched Pokemon into the empty Active spot.
+	if was_active:
+		await main.handle_post_knockout(is_opponent)
+		if main._should_bail(): return
+	print("TRAINER: Mr. Briney's Compassion")
+
+# TV REPORTER (ex3-88, Supporter): draw 3 cards, then discard any 1 card from your hand.
+func effect_ex3_tv_reporter(is_opponent: bool) -> void:
+	await main.card_ops.draw_n(is_opponent, 3)
+	if main._should_bail(): return
+	await main.card_ops.discard_from_hand(is_opponent, 1)
+	if main._should_bail(): return
+	await main.show_message("TV REPORTER! DREW 3 CARDS AND DISCARDED 1!")
+	if main._should_bail(): return
+	print("TRAINER: TV Reporter")
+
+# LOW PRESSURE SYSTEM (ex3-86, Stadium): each Grass/Lightning Pokemon in play gets +10 HP. Applied
+# via max_hp_override in the shared stadium HP refresh (refresh_rockets_hideout_hp).
+func low_pressure_bonus_hp(pokemon: card_object) -> int:
+	if pokemon == null:
+		return 0
+	if not main.is_stadium_in_play(StadiumIds.LOW_PRESSURE_SYSTEM):
+		return 0
+	var eff_types = pokemon.get_effective_types()
+	if "Grass" in eff_types or "Lightning" in eff_types:
+		return 10
+	return 0
+
+# BUFFER PIECE (ex3-83) expiry: called at the end of every turn. The tool is played during your turn
+# (first end-of-turn tick = 1) and discarded at the end of your opponent's following turn (tick = 2).
+func ex3_buffer_piece_check() -> void:
+	for side in [false, true]:
+		for p in main.card_ops.get_all_pokemon_in_play(side):
+			for ac in p.attached_cards.duplicate():
+				if ac.uid.to_lower() != "ex3-83":
+					continue
+				ac.ex3_buffer_piece_turns += 1
+				if ac.ex3_buffer_piece_turns >= 2:
+					p.attached_cards.erase(ac)
+					var discard = main.opponent_discard_pile if side else main.player_discard_pile
+					ac.current_location = "discard"
+					discard.append(ac)
+					display_attached_trainer_cards(side)
+					main.update_discard_pile_display(side)
+					await main.show_message("BUFFER PIECE WAS DISCARDED!")
+					if main._should_bail(): return

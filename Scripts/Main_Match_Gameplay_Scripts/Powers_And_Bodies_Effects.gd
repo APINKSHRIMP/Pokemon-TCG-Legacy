@@ -70,6 +70,7 @@ func _register_all_powers() -> void:
 	_register_ecard3_powers()
 	_register_ex1_powers()
 	_register_ex2_powers()
+	_register_ex3_powers()
 
 # ── On-damage and pre-KO event hooks ──────────────────────────────────────────
 # Each Callable is fired after active-pokemon damage resolves (on_damage) or
@@ -113,6 +114,11 @@ func _register_all_power_hooks() -> void:
 	_damage_modifier_hooks.append(func(dmg, atk, def, mods): return _hook_ex1_hard_cocoon(dmg, atk, def, mods))
 	_damage_modifier_hooks.append(func(dmg, atk, def, mods): return _hook_ex2_glowing_screen(dmg, atk, def, mods))
 	_damage_modifier_hooks.append(func(dmg, atk, def, mods): return _hook_ex2_safeguard(dmg, atk, def, mods))
+	_damage_modifier_hooks.append(func(dmg, atk, def, mods): return _hook_ex3_buffer_piece(dmg, atk, def, mods))
+	_damage_modifier_hooks.append(func(dmg, atk, def, mods): return _hook_ex3_sand_guard(dmg, atk, def, mods))
+	_damage_modifier_hooks.append(func(dmg, atk, def, mods): return _hook_ex3_energy_guard(dmg, atk, def, mods))
+	_damage_modifier_hooks.append(func(dmg, atk, def, mods): return _hook_ex3_power_pinchers(dmg, atk, def, mods))
+	_damage_modifier_hooks.append(func(dmg, atk, def, mods): return _hook_ex3_wonder_guard(dmg, atk, def, mods))
 	_on_damage_hooks.append(func(def, atk, dmg, is_def_opp): await check_strikes_back(def, atk, is_def_opp))
 	_on_damage_hooks.append(func(def, atk, dmg, is_def_opp): await check_restless_sleep(def, atk, is_def_opp))
 	_on_damage_hooks.append(func(def, atk, dmg, is_def_opp): await check_pollen_defense(def, atk, is_def_opp))
@@ -1976,6 +1982,8 @@ func cpu_phase_activate_powers() -> void:
 	if main._should_bail(): return
 	await cpu_phase_ex2_powers()
 	if main._should_bail(): return
+	await cpu_phase_ex3_powers()
+	if main._should_bail(): return
 
 
 # Helper to find a CPU pokemon with a specific power name
@@ -3637,7 +3645,8 @@ func refresh_rockets_hideout_hp() -> void:
 		all_p.append(main.opponent_active_pokemon)
 	all_p.append_array(main.opponent_bench)
 	for p in all_p:
-		var bonus = main.trainer_effects.rockets_hideout_bonus_hp(p)
+		# Both are stadiums (mutually exclusive), so at most one bonus is ever non-zero.
+		var bonus = main.trainer_effects.rockets_hideout_bonus_hp(p) + main.trainer_effects.low_pressure_bonus_hp(p)
 		if bonus > 0:
 			var base = int(p.metadata.get("hp", "0"))
 			var new_max = base + bonus
@@ -3646,8 +3655,17 @@ func refresh_rockets_hideout_hp() -> void:
 			p.max_hp_override = new_max
 			p.current_hp = max(0, new_max - damage_taken)
 		else:
-			# Only clear an override that was actually set by Rocket's Hideout (Dark-named pokemon)
-			if "Dark" in p.metadata.get("name", "") and p.max_hp_override > 0:
+			# Only clear an override that could have been set by a stadium HP bonus (Dark-named for
+			# Rocket's Hideout, Grass/Lightning-typed for Low Pressure System). Never touch a
+			# Gaseous Form override (that system owns its own holders and refreshes separately).
+			var has_gaseous = false
+			for ab in p.metadata.get("abilities", []):
+				if ab.get("name", "") == "Gaseous Form":
+					has_gaseous = true
+					break
+			var eff_types = p.get_effective_types()
+			var stadium_eligible = "Dark" in p.metadata.get("name", "") or "Grass" in eff_types or "Lightning" in eff_types
+			if stadium_eligible and p.max_hp_override > 0 and not has_gaseous:
 				var base2 = int(p.metadata.get("hp", "0"))
 				var damage_taken2 = max(0, p.max_hp_override - p.current_hp)
 				p.max_hp_override = 0
@@ -7517,6 +7535,52 @@ func _hook_ecard3_thick_shell(damage: int, attacker: card_object, defender: card
 	modifiers.append("THICK SHELL -" + str(r))
 	return damage - r
 
+# EX3 Buffer Piece (ex3-83, Pokemon Tool): -20 damage after W/R while attached to the defender.
+func _hook_ex3_buffer_piece(damage: int, _attacker: card_object, defender: card_object, modifiers: Array) -> int:
+	if damage <= 0 or defender == null:
+		return damage
+	for ac in defender.attached_cards:
+		if ac.uid.to_lower() == "ex3-83":
+			var r = min(damage, 20)
+			modifiers.append("BUFFER PIECE -" + str(r))
+			return damage - r
+	return damage
+
+# EX3 Sand Guard (Flygon ex3-15, Poke-Body): flip a coin; heads reduces the damage by 20 (after W/R).
+# Damage-modifier hooks are synchronous, so use an inline coin flip (no animation) — same documented
+# simplification as ex1 Hard Cocoon.
+func _hook_ex3_sand_guard(damage: int, _attacker: card_object, defender: card_object, modifiers: Array) -> int:
+	if damage <= 0 or defender == null:
+		return damage
+	if is_power_blocked_by_status(defender):
+		return damage
+	if not defender.has_ability("Sand Guard"):
+		return damage
+	if randi() % 2 == 0:
+		return damage
+	var r = min(damage, 20)
+	modifiers.append("SAND GUARD -" + str(r))
+	return damage - r
+
+# EX3 Energy Guard (Shelgon ex3-41, Poke-Body): -10 after W/R while any basic Energy is attached.
+func _hook_ex3_energy_guard(damage: int, _attacker: card_object, defender: card_object, modifiers: Array) -> int:
+	if damage <= 0 or defender == null:
+		return damage
+	if is_power_blocked_by_status(defender):
+		return damage
+	if not defender.has_ability("Energy Guard"):
+		return damage
+	var has_basic = false
+	for e in defender.attached_energies:
+		if "Basic" in e.metadata.get("subtypes", []):
+			has_basic = true
+			break
+	if not has_basic:
+		return damage
+	var r = min(damage, 10)
+	modifiers.append("ENERGY GUARD -" + str(r))
+	return damage - r
+
 # ECARD1 Strength Charm (ecard1-150): +10 to attacker's damage once; flags itself for end-of-turn discard.
 func _hook_ecard1_strength_charm(damage: int, attacker: card_object, _defender: card_object, modifiers: Array) -> int:
 	if damage <= 0 or attacker == null:
@@ -9903,3 +9967,265 @@ func cpu_phase_ex2_powers() -> void:
 # CPU Fan Away: pick the Defending Pokemon's most-plentiful Energy (choose_card with pool[0] default).
 func cpu_ex2_fan_away(shiftry: card_object) -> void:
 	await power_ex2_fan_away(shiftry)
+
+######################################################################################################################################################
+##################################################### EX3 (EX DRAGON) POWERS & BODIES ################################################################
+######################################################################################################################################################
+# Auto-handled by existing name-based machinery (no ex3 code needed):
+#   Intimidating Fang (Salamence ex3-19) -> _hook_ex1_intimidating_fang (has_ability, -10)
+#   Exoskeleton (Pineco ex3-71)          -> _FLAT_REDUCTION_BODY_NAMES flat reduction (reads -10 from text)
+#   Conductivity (Ampharos ex ex3-89)    -> check_neo4_conductivity (has_ability, +1 counter on opponent attach)
+#   Toxic Gas (Muk ex ex3-96)            -> is_toxic_gas_active() (has_ability "Toxic Gas")
+#   Sand Guard / Energy Guard / Buffer Piece -> damage-modifier hooks (see _register_all_power_hooks)
+#   Thick Skin (Roselia ex3-9)           -> Card_Ops.apply_status name block
+#   Submerge (Whiscash ex3-48)           -> Card_Ops.apply_bench_damage guard
+#   Levitate (Vibrava ex3-46)            -> get_retreat_cost self-reduction
+#   Chain of Events (Minun/Plusle)       -> double-battle-only Poké-Body; structural no-op in single battles
+func _register_ex3_powers() -> void:
+	_power_dispatch["Dragon Wind"]    = func(p): await power_ex3_dragon_wind(p)
+	_power_dispatch["Magnetic Field"] = func(p): await power_ex3_magnetic_field(p)
+	_power_dispatch["Call for Power"] = func(p): await power_ex3_call_for_power(p)
+
+# POWER PINCHERS (Crawdaunt ex3-3, Poké-Body): while Crawdaunt is your Active Pokemon, your attacks
+# do +10 damage to the Defending Pokemon. (Applied after W/R here; the card says "before W/R" — a
+# minor, consistent simplification for the flat-modifier hook system.)
+func _hook_ex3_power_pinchers(damage: int, attacker: card_object, defender: card_object, modifiers: Array) -> int:
+	if damage <= 0 or attacker == null or defender == null:
+		return damage
+	var atk_is_opp = attacker.is_owner_opp(main)
+	var own_active = main.opponent_active_pokemon if atk_is_opp else main.player_active_pokemon
+	if own_active == null or not own_active.has_ability("Power Pinchers"):
+		return damage
+	if is_power_blocked_by_status(own_active):
+		return damage
+	modifiers.append("POWER PINCHERS +10")
+	return damage + 10
+
+# WONDER GUARD (Shedinja ex3-11, Poké-Body): prevent all damage done to Shedinja by the opponent's
+# Evolved Pokemon and Pokemon-ex. ("All effects" is simplified to damage, same depth as ex2 Safeguard.)
+func _hook_ex3_wonder_guard(damage: int, attacker: card_object, defender: card_object, modifiers: Array) -> int:
+	if damage <= 0 or defender == null or attacker == null:
+		return damage
+	if not defender.has_ability("Wonder Guard"):
+		return damage
+	if is_power_blocked_by_status(defender):
+		return damage
+	if (not main.is_basic_pokemon(attacker)) or main.is_ex_pokemon(attacker):
+		modifiers.append("WONDER GUARD")
+		return 0
+	return damage
+
+# DRAGON WIND (Salamence ex3-10, Poké-Power): once per turn, gust up 1 of your opponent's Benched
+# Pokemon into the Active spot (you choose which Benched Pokemon).
+func power_ex3_dragon_wind(salamence: card_object) -> void:
+	var is_opponent = salamence.is_owner_opp(main)
+	if is_power_blocked_by_status(salamence):
+		await main.show_message("DRAGON WIND IS BLOCKED BY STATUS!")
+		if main._should_bail(): return
+		return
+	if salamence.power_used_this_turn:
+		await main.show_message("DRAGON WIND ALREADY USED THIS TURN!")
+		if main._should_bail(): return
+		return
+	var own_active = main.opponent_active_pokemon if is_opponent else main.player_active_pokemon
+	if salamence != own_active:
+		await main.show_message("DRAGON WIND ONLY WORKS WHILE SALAMENCE IS ACTIVE!")
+		if main._should_bail(): return
+		return
+	var opp_bench = main.player_bench if is_opponent else main.opponent_bench
+	if opp_bench.is_empty():
+		await main.show_message("DRAGON WIND: OPPONENT HAS NO BENCHED POKEMON!")
+		if main._should_bail(): return
+		return
+	salamence.power_used_this_turn = true
+	var eff = {"type": "force_switch", "target": "defender", "chooser": "attacker", "flip": "none"}
+	await main.attack_effects.apply_force_switch(eff, is_opponent)
+	if main._should_bail(): return
+	print("POWER USED: Dragon Wind")
+
+func cpu_ex3_dragon_wind(salamence: card_object) -> void:
+	if main.player_bench.is_empty():
+		return
+	salamence.power_used_this_turn = true
+	var eff = {"type": "force_switch", "target": "defender", "chooser": "attacker", "flip": "none"}
+	await main.attack_effects.apply_force_switch(eff, true)
+	if main._should_bail(): return
+	print("CPU POWER: Dragon Wind")
+
+# MAGNETIC FIELD (Magneton ex3-17, Poké-Power): once per turn, if you have basic Energy in your
+# discard pile, discard 1 card from your hand, then take up to 2 basic Energy from your discard pile
+# into your hand (not the card you just discarded).
+func power_ex3_magnetic_field(magneton: card_object) -> void:
+	var is_opponent = magneton.is_owner_opp(main)
+	if is_power_blocked_by_status(magneton):
+		await main.show_message("MAGNETIC FIELD IS BLOCKED BY STATUS!")
+		if main._should_bail(): return
+		return
+	if magneton.power_used_this_turn:
+		await main.show_message("MAGNETIC FIELD ALREADY USED THIS TURN!")
+		if main._should_bail(): return
+		return
+	var hand = main.player_hand if not is_opponent else main.opponent_hand
+	var discard = main.opponent_discard_pile if is_opponent else main.player_discard_pile
+	var basics = discard.filter(func(c): return c.metadata.get("supertype","") == "Energy" and "Basic" in c.metadata.get("subtypes", []))
+	if basics.is_empty():
+		await main.show_message("MAGNETIC FIELD: NO BASIC ENERGY IN YOUR DISCARD PILE!")
+		if main._should_bail(): return
+		return
+	if hand.is_empty():
+		await main.show_message("MAGNETIC FIELD: NO CARDS IN HAND TO DISCARD!")
+		if main._should_bail(): return
+		return
+	var to_discard = await main.card_ops.prompt_select_card(hand, "MAGNETIC FIELD", "Choose a card from your hand to discard", "DISCARD", false)
+	if main._should_bail(): return
+	if to_discard == null: return
+	magneton.power_used_this_turn = true
+	await main.card_ops.send_to_discard(to_discard, is_opponent, true)
+	if main._should_bail(): return
+	var moved = 0
+	for i in range(2):
+		var pool = discard.filter(func(c): return c != to_discard and c.metadata.get("supertype","") == "Energy" and "Basic" in c.metadata.get("subtypes", []))
+		if pool.is_empty(): break
+		var chosen = await main.card_ops.prompt_select_card(pool, "MAGNETIC FIELD", "Choose a basic Energy from your discard (cancel to stop)", "TAKE", moved >= 1)
+		if main._should_bail(): return
+		if chosen == null: break
+		await main.card_ops.recover_to_hand(chosen, is_opponent)
+		if main._should_bail(): return
+		moved += 1
+	await main.show_message("MAGNETIC FIELD! RECOVERED " + str(moved) + " BASIC ENERGY TO HAND!")
+	if main._should_bail(): return
+	print("POWER USED: Magnetic Field")
+
+func cpu_ex3_magnetic_field(magneton: card_object) -> void:
+	var discard = main.opponent_discard_pile
+	var basics = discard.filter(func(c): return c.metadata.get("supertype","") == "Energy" and "Basic" in c.metadata.get("subtypes", []))
+	if basics.is_empty() or main.opponent_hand.is_empty():
+		return
+	# Discard the least-useful hand card (prefer a duplicate basic Energy; else the first card).
+	var to_discard = main.opponent_hand[0]
+	for c in main.opponent_hand:
+		if c.metadata.get("supertype","") == "Energy":
+			to_discard = c
+			break
+	magneton.power_used_this_turn = true
+	await main.card_ops.send_to_discard(to_discard, true, true)
+	if main._should_bail(): return
+	var moved = 0
+	for i in range(2):
+		var pool = discard.filter(func(c): return c != to_discard and c.metadata.get("supertype","") == "Energy" and "Basic" in c.metadata.get("subtypes", []))
+		if pool.is_empty(): break
+		await main.card_ops.recover_to_hand(pool[0], true)
+		if main._should_bail(): return
+		moved += 1
+	await main.show_message("OPPONENT USED MAGNETIC FIELD!")
+	if main._should_bail(): return
+	print("CPU POWER: Magnetic Field")
+
+# CALL FOR POWER (Dragonite ex ex3-90, Poké-Power): as often as you like, move an Energy attached to
+# 1 of your Pokemon to Dragonite ex.
+func power_ex3_call_for_power(dragonite: card_object) -> void:
+	var is_opponent = dragonite.is_owner_opp(main)
+	if is_power_blocked_by_status(dragonite):
+		await main.show_message("CALL FOR POWER IS BLOCKED BY STATUS!")
+		if main._should_bail(): return
+		return
+	while true:
+		var sources: Array = []
+		for p in main.card_ops.get_all_pokemon_in_play(is_opponent):
+			if p == dragonite:
+				continue
+			for e in p.attached_energies:
+				sources.append({"pokemon": p, "energy": e})
+		if sources.is_empty():
+			await main.show_message("CALL FOR POWER: NO ENERGY TO MOVE!")
+			if main._should_bail(): return
+			return
+		# Present the source Pokemon that still have Energy; move all of the chosen one's Energy is
+		# too coarse, so choose an individual Energy card from a flat pool.
+		var energy_pool: Array = []
+		for s in sources:
+			energy_pool.append(s["energy"])
+		var chosen = await main.card_ops.choose_card(energy_pool, is_opponent, "CALL FOR POWER", "Choose an Energy to move to Dragonite ex (cancel to stop)", "MOVE", true)
+		if main._should_bail(): return
+		if chosen == null:
+			break
+		# Find and detach it from its current holder, then attach to Dragonite ex.
+		for s in sources:
+			if s["energy"] == chosen:
+				s["pokemon"].attached_energies.erase(chosen)
+				break
+		chosen.current_location = "attached"
+		dragonite.attached_energies.append(chosen)
+		main.display_active_pokemon_energies(is_opponent)
+		main.display_pokemon(is_opponent)
+	await main.show_message("CALL FOR POWER! MOVED ENERGY TO DRAGONITE EX!")
+	if main._should_bail(): return
+	print("POWER USED: Call for Power")
+
+func cpu_ex3_call_for_power(dragonite: card_object) -> void:
+	# CPU: pull all Energy off its Benched Pokemon onto Dragonite ex to power it up.
+	var moved = 0
+	for p in main.card_ops.get_all_pokemon_in_play(true):
+		if p == dragonite:
+			continue
+		for e in p.attached_energies.duplicate():
+			p.attached_energies.erase(e)
+			e.current_location = "attached"
+			dragonite.attached_energies.append(e)
+			moved += 1
+	if moved > 0:
+		main.display_active_pokemon_energies(true)
+		main.display_pokemon(true)
+		await main.show_message("OPPONENT USED CALL FOR POWER!")
+		if main._should_bail(): return
+		print("CPU POWER: Call for Power")
+
+# LOOSE SHELL (Ninjask ex3-18, Poké-Power): when Ninjask evolves from hand, you may search your deck
+# for Shedinja and put it onto your Bench (treated as a Basic).
+func trigger_ex3_loose_shell(ninjask: card_object, is_opponent: bool) -> void:
+	if is_power_blocked_by_status(ninjask) or is_toxic_gas_active() or main.goop_gas_active:
+		return
+	var bench = main.opponent_bench if is_opponent else main.player_bench
+	if bench.size() >= 5:
+		return
+	var deck = main.opponent_deck if is_opponent else main.player_deck
+	var shedinjas = deck.filter(func(c): return c.metadata.get("name","") == "Shedinja")
+	if shedinjas.is_empty():
+		return
+	var do_it = true
+	if not is_opponent:
+		do_it = await main.trainer_effects.gym1_prompt_yes_no(ninjask, "LOOSE SHELL", "Search your deck for Shedinja and put it on your Bench?", "YES", "NO")
+		if main._should_bail(): return
+	if not do_it:
+		return
+	var shedinja = shedinjas[0]
+	deck.erase(shedinja)
+	shedinja.current_hp = shedinja.get_max_hp()
+	main.card_ops.place_on_bench(shedinja, is_opponent)
+	deck.shuffle()
+	main.update_deck_icon(is_opponent)
+	main.display_pokemon(is_opponent)
+	await main.show_message("LOOSE SHELL! PUT SHEDINJA ONTO THE BENCH!")
+	if main._should_bail(): return
+	print("POWER USED: Loose Shell")
+
+# CPU activation for the ex3 active Poké-Powers.
+func cpu_phase_ex3_powers() -> void:
+	if is_toxic_gas_active() or main.goop_gas_active: return
+
+	var salamence = _find_cpu_pokemon_with_power("Dragon Wind")
+	if salamence != null and main.opponent_active_pokemon == salamence and not salamence.power_used_this_turn and not is_power_blocked_by_status(salamence):
+		# Only gust if the player has a Benched Pokemon worth dragging up (low HP = KO target).
+		if not main.player_bench.is_empty():
+			await cpu_ex3_dragon_wind(salamence)
+			if main._should_bail(): return
+
+	var magneton = _find_cpu_pokemon_with_power("Magnetic Field")
+	if magneton != null and not magneton.power_used_this_turn and not is_power_blocked_by_status(magneton):
+		await cpu_ex3_magnetic_field(magneton)
+		if main._should_bail(): return
+
+	var dragonite = _find_cpu_pokemon_with_power("Call for Power")
+	if dragonite != null and not is_power_blocked_by_status(dragonite):
+		await cpu_ex3_call_for_power(dragonite)
+		if main._should_bail(): return

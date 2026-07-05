@@ -55,6 +55,10 @@ const POKEMON_PARK     = "ecard2-131" # Passive: energy attached from hand to a 
 const UNDERSEA_RUINS   = "ecard2-138" # Once per player's turn: flip to devolve one of your own Evolved Pokemon
 const POWER_PLANT      = "ecard2-139" # Once per player's turn: discard a basic Energy to swap for one from the discard pile
 
+# ── EX Dragon (ex3) ───────────────────────────────────────────────────────────
+const HIGH_PRESSURE_SYSTEM = "ex3-85" # Each player pays Colorless less to retreat Fire/Water Pokemon
+const LOW_PRESSURE_SYSTEM   = "ex3-86" # Each Grass/Lightning Pokemon in play gets +10 HP
+
 # ── Skyridge (ecard3) ─────────────────────────────────────────────────────────
 const ANCIENT_RUINS     = "ecard3-119" # Once per player's turn: if no Supporter played and none revealed in hand, draw a card
 const MIRAGE_STADIUM    = "ecard3-132" # Passive: any retreat attempt requires a coin flip — tails blocks the retreat

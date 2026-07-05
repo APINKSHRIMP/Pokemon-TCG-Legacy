@@ -3295,7 +3295,27 @@ func cpu_score_trainer_card(card: card_object) -> float:
 		"ex2-88": return _cpu_score_ex2_rare_candy()  # Rare Candy: only if a valid evolution jump exists
 		"ex2-89": return _cpu_score_ex2_wallys_training()  # Wally's Training (Supporter): only if Active can evolve
 		"ex2-90", "ex2-91", "ex2-92": return _cpu_score_clefairy_doll()  # Fossils: same as bench tokens
+		# ============================ EX3 (EX DRAGON) CPU SCORING =============================
+		"ex3-82": return 35.0  # Balloon Berry (Tool): free-retreat safety net
+		"ex3-83": return 45.0  # Buffer Piece (Tool): -20 damage for a turn cycle
+		"ex3-84": return 40.0  # Energy Recycle System (Item): basic Energy recovery
+		"ex3-87": return _cpu_score_ex3_mr_brineys_compassion()  # only worth it to save a damaged Pokemon
+		"ex3-88": return 60.0  # TV Reporter (Supporter): net +2 cards
 	return 0.0
+
+# MR. BRINEY'S COMPASSION (ex3-87): only valuable when the CPU has a damaged non-ex Pokemon worth
+# saving (returning it to hand heals it and rescues it from a knockout).
+func _cpu_score_ex3_mr_brineys_compassion() -> float:
+	var best = 0
+	for p in main.card_ops.get_all_pokemon_in_play(true):
+		if main.is_ex_pokemon(p):
+			continue
+		best = max(best, p.get_damage_counters())
+	if best >= 4:
+		return 55.0
+	if best >= 2:
+		return 25.0
+	return -100.0
 
 # RARE CANDY (ex2-88): valuable only when the CPU has a Basic in play with a matching evolution in hand.
 func _cpu_score_ex2_rare_candy() -> float:
