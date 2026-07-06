@@ -71,6 +71,7 @@ func _register_all_powers() -> void:
 	_register_ex1_powers()
 	_register_ex2_powers()
 	_register_ex3_powers()
+	_register_ex4_powers()
 
 # ── On-damage and pre-KO event hooks ──────────────────────────────────────────
 # Each Callable is fired after active-pokemon damage resolves (on_damage) or
@@ -119,6 +120,7 @@ func _register_all_power_hooks() -> void:
 	_damage_modifier_hooks.append(func(dmg, atk, def, mods): return _hook_ex3_energy_guard(dmg, atk, def, mods))
 	_damage_modifier_hooks.append(func(dmg, atk, def, mods): return _hook_ex3_power_pinchers(dmg, atk, def, mods))
 	_damage_modifier_hooks.append(func(dmg, atk, def, mods): return _hook_ex3_wonder_guard(dmg, atk, def, mods))
+	_damage_modifier_hooks.append(func(dmg, atk, def, mods): return _hook_ex4_shell_retreat(dmg, atk, def, mods))
 	_on_damage_hooks.append(func(def, atk, dmg, is_def_opp): await check_strikes_back(def, atk, is_def_opp))
 	_on_damage_hooks.append(func(def, atk, dmg, is_def_opp): await check_restless_sleep(def, atk, is_def_opp))
 	_on_damage_hooks.append(func(def, atk, dmg, is_def_opp): await check_pollen_defense(def, atk, is_def_opp))
@@ -1983,6 +1985,8 @@ func cpu_phase_activate_powers() -> void:
 	await cpu_phase_ex2_powers()
 	if main._should_bail(): return
 	await cpu_phase_ex3_powers()
+	if main._should_bail(): return
+	await cpu_phase_ex4_powers()
 	if main._should_bail(): return
 
 
@@ -7581,12 +7585,12 @@ func _hook_ex3_energy_guard(damage: int, _attacker: card_object, defender: card_
 	modifiers.append("ENERGY GUARD -" + str(r))
 	return damage - r
 
-# ECARD1 Strength Charm (ecard1-150): +10 to attacker's damage once; flags itself for end-of-turn discard.
+# Strength Charm (ecard1-150 / ex4-74): +10 to attacker's damage once; flags itself for end-of-turn discard.
 func _hook_ecard1_strength_charm(damage: int, attacker: card_object, _defender: card_object, modifiers: Array) -> int:
 	if damage <= 0 or attacker == null:
 		return damage
 	for ac in attacker.attached_cards:
-		if ac.uid.to_lower() == "ecard1-150":
+		if ac.uid.to_lower() in ["ecard1-150", "ex4-74"]:
 			modifiers.append("STRENGTH CHARM +10")
 			attacker.set_effect("ecard1_strength_charm_triggered", "end_of_own_turn")
 			return damage + 10
@@ -10228,4 +10232,248 @@ func cpu_phase_ex3_powers() -> void:
 	var dragonite = _find_cpu_pokemon_with_power("Call for Power")
 	if dragonite != null and not is_power_blocked_by_status(dragonite):
 		await cpu_ex3_call_for_power(dragonite)
+		if main._should_bail(): return
+
+######################################################################################################################################################
+################################### EX4 (TEAM MAGMA VS TEAM AQUA) POWERS & BODIES ####################################################################
+######################################################################################################################################################
+func _register_ex4_powers() -> void:
+	_power_dispatch["Power Shift"]     = func(p): await power_ex4_energy_move(p, "Team Aqua", -1)
+	_power_dispatch["Magma Switch"]    = func(p): await power_ex4_energy_move(p, "Team Magma", 1)
+	_power_dispatch["Overheat"]        = func(p): await power_ex4_overheat(p)
+	_power_dispatch["Auxiliary Light"] = func(p): await power_ex4_auxiliary_light(p)
+	_power_dispatch["Call for Help"]   = func(p): await power_ex4_call_for_help(p)
+
+# ── Passive bodies ──────────────────────────────────────────────────────────
+
+# POWER SAVER (Kyogre ex4-3 / Groudon ex4-9, Poké-Body): as long as the number of Pokemon in play
+# (both sides) with this Team's name is 3 or less, the holder can't attack. Checked in
+# Main.get_attacks_for_card (returns [] → no attacks selectable).
+func check_power_saver_blocks_attack(card: card_object) -> bool:
+	if card == null or not card.has_ability("Power Saver"):
+		return false
+	if is_power_blocked(card):
+		return false
+	var team = "Team Aqua" if "Team Aqua" in card.metadata.get("name","") else "Team Magma"
+	var count = 0
+	for p in main.card_ops.get_all_pokemon_in_play(false):
+		if team in p.metadata.get("name",""): count += 1
+	for p in main.card_ops.get_all_pokemon_in_play(true):
+		if team in p.metadata.get("name",""): count += 1
+	return count <= 3
+
+# SHELL RETREAT (Squirtle ex4-46, Poké-Body): while Squirtle has any Energy attached, damage done to
+# it by an opponent's attack is reduced by 10 (after Weakness/Resistance).
+func _hook_ex4_shell_retreat(damage: int, _attacker: card_object, defender: card_object, modifiers: Array) -> int:
+	if damage <= 0 or defender == null:
+		return damage
+	if not defender.has_ability("Shell Retreat"):
+		return damage
+	if is_power_blocked_by_status(defender):
+		return damage
+	if defender.attached_energies.is_empty():
+		return damage
+	modifiers.append("SHELL RETREAT -10")
+	return max(0, damage - 10)
+
+# ── Active powers ───────────────────────────────────────────────────────────
+
+func _ex4_energy_pool(p: card_object, basic_only: bool) -> Array:
+	if not basic_only:
+		return p.attached_energies.duplicate()
+	return p.attached_energies.filter(func(e): return "Basic" in e.metadata.get("subtypes", []))
+
+# POWER SHIFT (Manectric ex4-4) / MAGMA SWITCH (Claydol ex4-8): move Energy from one of your Team
+# Pokemon to another of your Pokemon. Power Shift moves any number of BASIC Energy (max_move -1);
+# Magma Switch moves 1 Energy of any kind (max_move 1). Player-interactive only — the CPU skips
+# energy redistribution (low value for the heuristic AI).
+func power_ex4_energy_move(pokemon: card_object, team: String, max_move: int) -> void:
+	var is_opponent = pokemon.is_owner_opp(main)
+	if is_power_blocked_by_status(pokemon):
+		await main.show_message("THIS POWER IS BLOCKED BY STATUS!")
+		if main._should_bail(): return
+		return
+	if pokemon.power_used_this_turn:
+		await main.show_message("THIS POWER WAS ALREADY USED THIS TURN!")
+		if main._should_bail(): return
+		return
+	if is_opponent:
+		return
+	var basic_only = (max_move == -1)
+	var mine = main.card_ops.get_all_pokemon_in_play(false)
+	var sources = mine.filter(func(p): return (team in p.metadata.get("name","")) and _ex4_energy_pool(p, basic_only).size() > 0)
+	if sources.is_empty():
+		await main.show_message("NO ENERGY AVAILABLE TO MOVE!")
+		if main._should_bail(): return
+		return
+	var source: card_object
+	if sources.size() == 1:
+		source = sources[0]
+	else:
+		source = await main.card_ops.choose_card(sources, false, "MOVE ENERGY", "Choose the Pokemon to move Energy FROM", "SELECT", false)
+		if main._should_bail(): return
+		if source == null: return
+	var dests = mine.filter(func(p): return p != source)
+	if dests.is_empty():
+		await main.show_message("NO OTHER POKEMON TO MOVE ENERGY TO!")
+		if main._should_bail(): return
+		return
+	var dest = await main.card_ops.choose_card(dests, false, "MOVE ENERGY", "Choose the Pokemon to move Energy TO", "SELECT", false)
+	if main._should_bail(): return
+	if dest == null: return
+	var pool = _ex4_energy_pool(source, basic_only)
+	var to_move: Array = []
+	if max_move == 1:
+		var e = pool[0] if pool.size() == 1 else await main.card_ops.choose_card(pool, false, "MOVE ENERGY", "Choose an Energy to move", "SELECT", false)
+		if main._should_bail(): return
+		if e == null: return
+		to_move = [e]
+	else:
+		to_move = pool  # move all basic Energy (all-or-nothing simplification of "any number")
+	pokemon.power_used_this_turn = true
+	for e in to_move:
+		source.attached_energies.erase(e)
+		dest.attached_energies.append(e)
+	main.display_pokemon(false)
+	main.display_active_pokemon_energies(false)
+	await main.show_message("MOVED " + str(to_move.size()) + " ENERGY TO " + dest.metadata.get("name","").to_upper() + "!")
+	if main._should_bail(): return
+	print("POWER USED: ", team, " energy move")
+
+# OVERHEAT (Camerupt ex4-19): once per turn, take a basic Energy from your discard and attach it to
+# Camerupt; put 2 damage counters on Camerupt.
+func power_ex4_overheat(camerupt: card_object) -> void:
+	var is_opponent = camerupt.is_owner_opp(main)
+	if is_power_blocked_by_status(camerupt):
+		await main.show_message("OVERHEAT IS BLOCKED BY STATUS!")
+		if main._should_bail(): return
+		return
+	if camerupt.power_used_this_turn:
+		await main.show_message("OVERHEAT ALREADY USED THIS TURN!")
+		if main._should_bail(): return
+		return
+	var discard = main.opponent_discard_pile if is_opponent else main.player_discard_pile
+	var basics = discard.filter(func(c): return c.metadata.get("supertype","") == "Energy" and "Basic" in c.metadata.get("subtypes", []))
+	if basics.is_empty():
+		await main.show_message("OVERHEAT: NO BASIC ENERGY IN YOUR DISCARD PILE!")
+		if main._should_bail(): return
+		return
+	var chosen: card_object
+	if is_opponent:
+		chosen = basics[0]
+	else:
+		chosen = await main.card_ops.choose_card(basics, false, "OVERHEAT", "Choose a basic Energy to attach to Camerupt", "ATTACH", false)
+		if main._should_bail(): return
+		if chosen == null: return
+	camerupt.power_used_this_turn = true
+	discard.erase(chosen)
+	chosen.current_location = "attached"
+	camerupt.attached_energies.append(chosen)
+	camerupt.current_hp = max(0, camerupt.current_hp - 20)
+	main.display_active_pokemon_energies(is_opponent)
+	main.display_pokemon(is_opponent)
+	main.display_hp_circles_above_align(camerupt, is_opponent)
+	main.update_discard_pile_display(is_opponent)
+	await main.show_message("OVERHEAT! ATTACHED AN ENERGY AND PUT 2 DAMAGE COUNTERS ON CAMERUPT!")
+	if main._should_bail(): return
+	await main.check_all_knockouts()
+	if main._should_bail(): return
+	print("POWER USED: Overheat")
+
+func cpu_ex4_overheat(camerupt: card_object) -> void:
+	var discard = main.opponent_discard_pile
+	var basics = discard.filter(func(c): return c.metadata.get("supertype","") == "Energy" and "Basic" in c.metadata.get("subtypes", []))
+	if basics.is_empty():
+		return
+	await power_ex4_overheat(camerupt)
+
+# AUXILIARY LIGHT (Lanturn ex4-28): once per turn, attach a basic Energy from your hand to Lanturn;
+# put 2 damage counters on Lanturn.
+func power_ex4_auxiliary_light(lanturn: card_object) -> void:
+	var is_opponent = lanturn.is_owner_opp(main)
+	if is_power_blocked_by_status(lanturn):
+		await main.show_message("AUXILIARY LIGHT IS BLOCKED BY STATUS!")
+		if main._should_bail(): return
+		return
+	if lanturn.power_used_this_turn:
+		await main.show_message("AUXILIARY LIGHT ALREADY USED THIS TURN!")
+		if main._should_bail(): return
+		return
+	var hand = main.opponent_hand if is_opponent else main.player_hand
+	var basics = hand.filter(func(c): return c.metadata.get("supertype","") == "Energy" and "Basic" in c.metadata.get("subtypes", []))
+	if basics.is_empty():
+		await main.show_message("AUXILIARY LIGHT: NO BASIC ENERGY IN YOUR HAND!")
+		if main._should_bail(): return
+		return
+	var chosen: card_object
+	if is_opponent:
+		chosen = basics[0]
+	else:
+		chosen = await main.card_ops.choose_card(basics, false, "AUXILIARY LIGHT", "Choose a basic Energy to attach to Lanturn", "ATTACH", false)
+		if main._should_bail(): return
+		if chosen == null: return
+	lanturn.power_used_this_turn = true
+	hand.erase(chosen)
+	chosen.current_location = "attached"
+	lanturn.attached_energies.append(chosen)
+	lanturn.current_hp = max(0, lanturn.current_hp - 20)
+	main.refresh_hand_display(is_opponent)
+	main.display_active_pokemon_energies(is_opponent)
+	main.display_pokemon(is_opponent)
+	main.display_hp_circles_above_align(lanturn, is_opponent)
+	await main.show_message("AUXILIARY LIGHT! ATTACHED AN ENERGY AND PUT 2 DAMAGE COUNTERS ON LANTURN!")
+	if main._should_bail(): return
+	await main.check_all_knockouts()
+	if main._should_bail(): return
+	print("POWER USED: Auxiliary Light")
+
+func cpu_ex4_auxiliary_light(lanturn: card_object) -> void:
+	var basics = main.opponent_hand.filter(func(c): return c.metadata.get("supertype","") == "Energy" and "Basic" in c.metadata.get("subtypes", []))
+	if basics.is_empty():
+		return
+	await power_ex4_auxiliary_light(lanturn)
+
+# CALL FOR HELP (Mightyena ex4-37): once per turn, if Mightyena is your Active Pokemon, search your
+# deck for a Team Magma Pokemon and put it into your hand.
+func power_ex4_call_for_help(mightyena: card_object) -> void:
+	var is_opponent = mightyena.is_owner_opp(main)
+	if is_power_blocked_by_status(mightyena):
+		await main.show_message("CALL FOR HELP IS BLOCKED BY STATUS!")
+		if main._should_bail(): return
+		return
+	if mightyena.power_used_this_turn:
+		await main.show_message("CALL FOR HELP ALREADY USED THIS TURN!")
+		if main._should_bail(): return
+		return
+	var own_active = main.opponent_active_pokemon if is_opponent else main.player_active_pokemon
+	if mightyena != own_active:
+		await main.show_message("CALL FOR HELP ONLY WORKS WHILE MIGHTYENA IS ACTIVE!")
+		if main._should_bail(): return
+		return
+	mightyena.power_used_this_turn = true
+	var found = await main.card_ops.search_deck_to_hand(is_opponent, func(c): return c.metadata.get("supertype","") == "Pokémon" and "Team Magma" in c.metadata.get("name",""), "CALL FOR HELP: CHOOSE A TEAM MAGMA POKEMON", 1)
+	if main._should_bail(): return
+	await main.show_message("CALL FOR HELP! ADDED " + str(found.size()) + " POKEMON TO HAND!")
+	if main._should_bail(): return
+	print("POWER USED: Call for Help")
+
+func cpu_ex4_call_for_help(mightyena: card_object) -> void:
+	await power_ex4_call_for_help(mightyena)
+
+func cpu_phase_ex4_powers() -> void:
+	if is_toxic_gas_active() or main.goop_gas_active: return
+
+	var camerupt = _find_cpu_pokemon_with_power("Overheat")
+	if camerupt != null and not camerupt.power_used_this_turn and not is_power_blocked_by_status(camerupt) and camerupt.current_hp > 20:
+		await cpu_ex4_overheat(camerupt)
+		if main._should_bail(): return
+
+	var lanturn = _find_cpu_pokemon_with_power("Auxiliary Light")
+	if lanturn != null and not lanturn.power_used_this_turn and not is_power_blocked_by_status(lanturn) and lanturn.current_hp > 20:
+		await cpu_ex4_auxiliary_light(lanturn)
+		if main._should_bail(): return
+
+	var mightyena = _find_cpu_pokemon_with_power("Call for Help")
+	if mightyena != null and main.opponent_active_pokemon == mightyena and not mightyena.power_used_this_turn and not is_power_blocked_by_status(mightyena):
+		await cpu_ex4_call_for_help(mightyena)
 		if main._should_bail(): return

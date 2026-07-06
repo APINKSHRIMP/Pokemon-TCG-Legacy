@@ -53,6 +53,12 @@ func get_energy_types_provided(card_name: String) -> Array:
 			return ["Metal"]
 		"Recycle Energy":
 			return ["Colorless"]
+		"Aqua Energy":
+			# Provides Water + Darkness (2 Energy at a time); attach only to Team Aqua Pokemon
+			return ["Water", "Darkness"]
+		"Magma Energy":
+			# Provides Fighting and/or Darkness (2 Energy at a time); attach only to Team Magma Pokemon
+			return ["Fighting", "Darkness"]
 		# --- FUTURE SETS: Add new special energies below ---
 		# "Boost Energy":
 		#	return ["Colorless", "Colorless", "Colorless"]
@@ -87,6 +93,19 @@ func can_attach_to(energy_card: card_object, target_pokemon: card_object) -> Dic
 	match card_name:
 		"Rainbow Energy", "Full Heal Energy", "Potion Energy", "Double Colorless Energy", \
 		"Darkness Energy", "Metal Energy", "Recycle Energy":
+			return {"allowed": true, "reason": ""}
+		"Aqua Energy":
+			if "Team Aqua" not in target_pokemon.metadata.get("name", ""):
+				return {"allowed": false, "reason": "AQUA ENERGY CAN ONLY BE ATTACHED TO A TEAM AQUA POKEMON!"}
+			return {"allowed": true, "reason": ""}
+		"Magma Energy":
+			if "Team Magma" not in target_pokemon.metadata.get("name", ""):
+				return {"allowed": false, "reason": "MAGMA ENERGY CAN ONLY BE ATTACHED TO A TEAM MAGMA POKEMON!"}
+			return {"allowed": true, "reason": ""}
+		"Double Rainbow Energy":
+			# Only on Evolved Pokemon, excluding Pokemon-ex
+			if main.is_basic_pokemon(target_pokemon) or main.is_ex_pokemon(target_pokemon):
+				return {"allowed": false, "reason": "DOUBLE RAINBOW ENERGY CAN ONLY BE ATTACHED TO AN EVOLVED POKEMON (NOT ex)!"}
 			return {"allowed": true, "reason": ""}
 		# --- FUTURE SETS: Add type-locked energies below ---
 		# "Boost Energy":
@@ -225,6 +244,9 @@ func get_outgoing_damage_modifier(pokemon: card_object) -> Dictionary:
 			"Darkness Energy":
 				# +10 outgoing damage to the opponent's Active per Darkness Energy attached
 				bonus += 10
+			"Double Rainbow Energy":
+				# Damage done to the opponent by the holder is reduced by 10 (after W/R)
+				bonus -= 10
 			_:
 				pass
 
@@ -315,6 +337,22 @@ func score_special_energy_attachment(energy_card: card_object, target_pokemon: c
 			score += 10.0
 			if is_active:
 				score += 5.0
+		"Aqua Energy", "Magma Energy":
+			# Provides 2 Energy at once (great burst) but is discarded at end of turn, so it is only
+			# worth attaching on the Active when it enables an attack this turn.
+			if not is_active:
+				return -50.0
+			score += 20.0
+			for attack in target_pokemon.metadata.get("attacks", []):
+				var unmet = main.cpu_ai.get_unmet_energy_count(attack, target_pokemon)
+				if unmet >= 1 and unmet <= 2:
+					score += 60.0
+					break
+		"Double Rainbow Energy":
+			# Provides 2 of any type but reduces the holder's damage by 10
+			score += 30.0
+			if is_active:
+				score += 10.0
 		# --- FUTURE SETS ---
 		# "Boost Energy": if is_active: score += 40.0 else: score -= 50.0
 

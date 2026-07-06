@@ -35,6 +35,7 @@ func _ensure_trainer_dispatch_ready() -> void:
 	_register_ex1_trainers()
 	_register_ex2_trainers()
 	_register_ex3_trainers()
+	_register_ex4_trainers()
 
 func _register_base_trainers() -> void:
 	_trainer_dispatch["base1-88"] = func(c, opp): await effect_professor_oak(c, opp)
@@ -1258,6 +1259,12 @@ func resolve_attached_trainer(card: card_object, is_opponent: bool) -> void:
 				break
 		if required_type != "":
 			targets = targets.filter(func(p): return required_type in p.metadata.get("types", []))
+		# EX4 Team Aqua/Magma Technical Machine 01: only attach to a Pokemon with the matching team name
+		var tm_name = card.metadata.get("name","")
+		if "Team Aqua" in tm_name:
+			targets = targets.filter(func(p): return "Team Aqua" in p.metadata.get("name",""))
+		elif "Team Magma" in tm_name:
+			targets = targets.filter(func(p): return "Team Magma" in p.metadata.get("name",""))
 		if targets.size() == 0:
 			var discard_tm = main.opponent_discard_pile if is_opponent else main.player_discard_pile
 			card.current_location = "discard"
@@ -3600,7 +3607,7 @@ func gym1_end_of_turn_cleanup(side_is_opponent: bool) -> void:
 		if pokemon.has_effect("ecard1_strength_charm_triggered"):
 			var charm_card: card_object = null
 			for ac in pokemon.attached_cards:
-				if ac.uid.to_lower() == "ecard1-150":
+				if ac.uid.to_lower() in ["ecard1-150", "ex4-74"]:
 					charm_card = ac
 					break
 			if charm_card != null:
@@ -3672,6 +3679,35 @@ func gym1_end_of_turn_cleanup(side_is_opponent: bool) -> void:
 				display_attached_trainer_cards(side_is_opponent)
 				main.update_discard_pile_display(side_is_opponent)
 				print("CRYSTAL SHARD: discarded from ", pokemon.metadata.get("name", ""))
+
+		# EX4 Aqua Energy / Magma Energy: "At the end of your turn, discard" — one-turn burst Energy,
+		# removed at the end of the owner's turn.
+		var ex4_temp_energy: Array = []
+		for e in pokemon.attached_energies:
+			if e.metadata.get("name","") in ["Aqua Energy", "Magma Energy"]:
+				ex4_temp_energy.append(e)
+		if not ex4_temp_energy.is_empty():
+			for e in ex4_temp_energy:
+				pokemon.attached_energies.erase(e)
+				e.current_location = "discard"
+				discard.append(e)
+			main.display_active_pokemon_energies(side_is_opponent)
+			main.update_discard_pile_display(side_is_opponent)
+			await main.show_message(str(ex4_temp_energy.size()) + " TEAM ENERGY WAS DISCARDED AT END OF TURN!")
+			if main._should_bail(): return
+
+		# EX4 delayed status (Aqua Trance / Slow-Acting Poison): resolves the first time the
+		# afflicted Pokemon's OWN side ends a turn — i.e. "the end of your opponent's next turn"
+		# from the attacker's perspective. Tagged until_leaves_play so the generic end-of-turn
+		# clears never fire it early; handled explicitly here.
+		if pokemon.has_effect("ex4_delayed_status"):
+			var ds = pokemon.get_effect_data("ex4_delayed_status")
+			pokemon.clear_effect("ex4_delayed_status")
+			if typeof(ds) == TYPE_DICTIONARY and pokemon.current_hp > 0:
+				var st = ds.get("status", "")
+				if st != "":
+					main.card_ops.apply_status(pokemon, st, side_is_opponent)
+					print("EX4 DELAYED STATUS applied: ", st, " to ", pokemon.metadata.get("name",""))
 
 		# Generic expiring-effects: clear everything tagged end_of_own_turn for this side.
 		# Must run LAST in this loop body — effects like Strength Charm's trigger flag are
@@ -9278,3 +9314,215 @@ func ex3_buffer_piece_check() -> void:
 					main.update_discard_pile_display(side)
 					await main.show_message("BUFFER PIECE WAS DISCARDED!")
 					if main._should_bail(): return
+
+######################################################################################################################################################
+###################################### EX4 (TEAM MAGMA VS TEAM AQUA) TRAINERS ########################################################################
+######################################################################################################################################################
+# Tools: Strength Charm (ex4-74) reuses the ecard1-150 damage hook + discard. Team Aqua/Magma Belt
+# (ex4-76 / ex4-81) attach generically ("Pokémon Tool" subtype); their between-turn auto-evolve is
+# ex4_belt_check(). TMs (ex4-79 / ex4-84) attach generically; their attacks are in Attack_Effects.gd.
+# Stadiums (ex4-78 / ex4-83) route via resolve_stadium_trainer; their effects are the get_retreat_cost
+# hook (Main) and ex4_team_magma_hideout_trigger() below.
+func _register_ex4_trainers() -> void:
+	_trainer_dispatch["ex4-69"] = func(c, opp): await effect_ex4_schemer(opp, "Team Aqua")
+	_trainer_dispatch["ex4-70"] = func(c, opp): await effect_ex4_schemer(opp, "Team Magma")
+	_trainer_dispatch["ex4-71"] = func(c, opp): await effect_ex4_archie(opp)
+	_trainer_dispatch["ex4-72"] = func(c, opp): await effect_ex4_dual_ball(opp)
+	_trainer_dispatch["ex4-73"] = func(c, opp): await effect_ex4_maxie(opp)
+	_trainer_dispatch["ex4-75"] = func(c, opp): await effect_ex4_team_ball(opp, "Team Aqua")
+	_trainer_dispatch["ex4-77"] = func(c, opp): await effect_ex4_conspirator(opp, "Team Aqua")
+	_trainer_dispatch["ex4-80"] = func(c, opp): await effect_ex4_team_ball(opp, "Team Magma")
+	_trainer_dispatch["ex4-82"] = func(c, opp): await effect_ex4_conspirator(opp, "Team Magma")
+	_trainer_dispatch["ex4-85"] = func(c, opp): await effect_ex4_warp_point(opp)
+
+# SCHEMER (ex4-69 Aqua / ex4-70 Magma, Supporter): discard 1 Pokemon from hand, then draw 3 (4 if
+# the discarded Pokemon has this Team's name).
+func effect_ex4_schemer(is_opponent: bool, team: String) -> void:
+	var hand = main.opponent_hand if is_opponent else main.player_hand
+	var pokes = hand.filter(func(c): return c.metadata.get("supertype","") == "Pokémon")
+	var bonus = false
+	if not pokes.is_empty():
+		var chosen: card_object = null
+		if is_opponent:
+			for c in pokes:
+				if team in c.metadata.get("name",""):
+					chosen = c
+					break
+			if chosen == null: chosen = pokes[0]
+		else:
+			chosen = await main.card_ops.choose_card(pokes, is_opponent, team.to_upper() + " SCHEMER", "Discard 1 Pokemon from your hand", "DISCARD", false)
+			if main._should_bail(): return
+			if chosen == null: chosen = pokes[0]
+		bonus = team in chosen.metadata.get("name","")
+		await main.card_ops.send_to_discard(chosen, is_opponent, true)
+		if main._should_bail(): return
+	var draw = 4 if bonus else 3
+	await main.card_ops.draw_n(is_opponent, draw)
+	if main._should_bail(): return
+	await main.show_message(team.to_upper() + " SCHEMER! DREW " + str(draw) + " CARDS!")
+	if main._should_bail(): return
+	print("TRAINER: ", team, " Schemer — drew ", draw)
+
+# Shared: place a chosen Team-named Pokemon from `candidates` onto the Bench, treating it as a Basic.
+# If it is a Stage 2 Pokemon, it comes in with 2 damage counters. Removes the card from whichever of
+# the side's deck/hand/discard it lives in.
+func _ex4_bench_team_pokemon(is_opponent: bool, candidates: Array, header: String) -> void:
+	var bench = main.opponent_bench if is_opponent else main.player_bench
+	if bench.size() >= main.get_max_bench_size():
+		await main.show_message("BENCH IS FULL!")
+		if main._should_bail(): return
+		return
+	if candidates.is_empty():
+		await main.show_message(header + ": NO MATCHING POKEMON FOUND!")
+		if main._should_bail(): return
+		return
+	var chosen: card_object = null
+	if is_opponent:
+		chosen = candidates[0]
+		for c in candidates:
+			if int(c.metadata.get("hp","0")) > int(chosen.metadata.get("hp","0")): chosen = c
+	else:
+		chosen = await main.card_ops.choose_card(candidates, is_opponent, header, "Choose a Pokemon to put on your Bench", "SELECT", true)
+		if main._should_bail(): return
+		if chosen == null: return
+	for arr in [main.opponent_deck if is_opponent else main.player_deck, main.opponent_hand if is_opponent else main.player_hand, main.opponent_discard_pile if is_opponent else main.player_discard_pile]:
+		if chosen in arr:
+			arr.erase(chosen)
+			break
+	chosen.current_hp = chosen.get_max_hp()
+	if "Stage 2" in chosen.metadata.get("subtypes", []):
+		chosen.current_hp = max(1, chosen.current_hp - 20)
+	main.card_ops.place_on_bench(chosen, is_opponent)
+	main.refresh_hand_display(is_opponent)
+	main.update_discard_pile_display(is_opponent)
+	await main.show_message(header + "! " + chosen.metadata.get("name","").to_upper() + " WAS PLACED ON THE BENCH!")
+	if main._should_bail(): return
+
+# ARCHIE (ex4-71, Supporter): search deck for a Team Aqua Pokemon, put it on the Bench (as a Basic).
+func effect_ex4_archie(is_opponent: bool) -> void:
+	var deck = main.opponent_deck if is_opponent else main.player_deck
+	var pool = deck.filter(func(c): return c.metadata.get("supertype","") == "Pokémon" and "Team Aqua" in c.metadata.get("name",""))
+	await _ex4_bench_team_pokemon(is_opponent, pool, "ARCHIE")
+	if main._should_bail(): return
+	deck.shuffle()
+	main.update_deck_icon(is_opponent)
+	print("TRAINER: Archie")
+
+# MAXIE (ex4-73, Supporter): search hand or discard for a Team Magma Pokemon, put it on the Bench.
+func effect_ex4_maxie(is_opponent: bool) -> void:
+	var hand = main.opponent_hand if is_opponent else main.player_hand
+	var discard = main.opponent_discard_pile if is_opponent else main.player_discard_pile
+	var pool: Array = []
+	for c in hand + discard:
+		if c.metadata.get("supertype","") == "Pokémon" and "Team Magma" in c.metadata.get("name",""):
+			pool.append(c)
+	await _ex4_bench_team_pokemon(is_opponent, pool, "MAXIE")
+	if main._should_bail(): return
+	print("TRAINER: Maxie")
+
+# DUAL BALL (ex4-72, Item): flip 2 coins; for each heads, search deck for a Basic Pokemon to hand.
+func effect_ex4_dual_ball(is_opponent: bool) -> void:
+	var heads = 0
+	for i in range(2):
+		if await main.flip_coin(true, is_opponent): heads += 1
+		if main._should_bail(): return
+	await main.show_message("DUAL BALL! GOT " + str(heads) + " HEADS!")
+	if main._should_bail(): return
+	if heads > 0:
+		var found = await main.card_ops.search_deck_to_hand(is_opponent, func(c): return c.metadata.get("supertype","") == "Pokémon" and "Basic" in c.metadata.get("subtypes",[]), "DUAL BALL: CHOOSE UP TO " + str(heads) + " BASIC POKEMON", heads)
+		if main._should_bail(): return
+		await main.show_message("DUAL BALL! ADDED " + str(found.size()) + " BASIC POKEMON TO HAND!")
+		if main._should_bail(): return
+	print("TRAINER: Dual Ball — heads ", heads)
+
+# TEAM AQUA/MAGMA BALL (ex4-75 / ex4-80, Item): flip a coin — heads search any Team X Pokemon,
+# tails search a Basic Team X Pokemon — put it into your hand.
+func effect_ex4_team_ball(is_opponent: bool, team: String) -> void:
+	var coin = await main.flip_coin(false, is_opponent)
+	if main._should_bail(): return
+	var basic_only = not coin
+	var filter_fn = func(c): return c.metadata.get("supertype","") == "Pokémon" and team in c.metadata.get("name","") and (not basic_only or "Basic" in c.metadata.get("subtypes",[]))
+	var label = "HEADS! SEARCH ANY " + team.to_upper() + " POKEMON" if coin else "TAILS! SEARCH A BASIC " + team.to_upper() + " POKEMON"
+	var found = await main.card_ops.search_deck_to_hand(is_opponent, filter_fn, team.to_upper() + " BALL: " + label, 1)
+	if main._should_bail(): return
+	await main.show_message(team.to_upper() + " BALL! ADDED " + str(found.size()) + " POKEMON TO HAND!")
+	if main._should_bail(): return
+	print("TRAINER: ", team, " Ball — heads=", coin)
+
+# TEAM AQUA/MAGMA CONSPIRATOR (ex4-77 / ex4-82, Supporter): search deck for up to 2 in any
+# combination of Basic Team X Pokemon and basic Energy, put them into your hand.
+func effect_ex4_conspirator(is_opponent: bool, team: String) -> void:
+	var filter_fn = func(c): return (c.metadata.get("supertype","") == "Pokémon" and "Basic" in c.metadata.get("subtypes",[]) and team in c.metadata.get("name","")) or (c.metadata.get("supertype","") == "Energy" and "Basic" in c.metadata.get("subtypes",[]))
+	var found = await main.card_ops.search_deck_to_hand(is_opponent, filter_fn, team.to_upper() + " CONSPIRATOR: CHOOSE UP TO 2", 2)
+	if main._should_bail(): return
+	await main.show_message(team.to_upper() + " CONSPIRATOR! ADDED " + str(found.size()) + " CARD(S) TO HAND!")
+	if main._should_bail(): return
+	print("TRAINER: ", team, " Conspirator — found ", found.size())
+
+# WARP POINT (ex4-85, Item): the opponent switches their Active with a Benched Pokemon (they choose);
+# then you switch your Active with a Benched Pokemon (you choose).
+func effect_ex4_warp_point(is_opponent: bool) -> void:
+	await main.attack_effects.apply_force_switch({"chooser": "defender"}, is_opponent)
+	if main._should_bail(): return
+	await effect_switch(is_opponent)
+	if main._should_bail(): return
+	print("TRAINER: Warp Point")
+
+# EX4-83 Team Magma Hideout: when a player plays a Basic (non-Team-Magma) Pokemon from hand, put 1
+# damage counter on it. Called from the bench-from-hand play sites (Main + CPU_AI), like Minefield Gym.
+func ex4_team_magma_hideout_trigger(pokemon: card_object, is_opponent: bool) -> void:
+	if not main.is_stadium_in_play(StadiumIds.TEAM_MAGMA_HIDEOUT):
+		return
+	if pokemon == null or not main.is_basic_pokemon(pokemon) or pokemon.is_bench_token:
+		return
+	if "Team Magma" in pokemon.metadata.get("name",""):
+		return
+	pokemon.current_hp = max(0, pokemon.current_hp - 10)
+	main.display_hp_circles_above_align(pokemon, is_opponent)
+	await main.show_message("TEAM MAGMA HIDEOUT! 1 DAMAGE COUNTER ON " + pokemon.metadata.get("name","").to_upper() + "!")
+	if main._should_bail(): return
+	await main.check_all_knockouts()
+	if main._should_bail(): return
+
+# TEAM AQUA/MAGMA BELT (ex4-76 / ex4-81, Pokemon Tool): between turns, if the Active holder can
+# evolve, search the deck for a card that evolves from it, evolve it (counts as evolving), then
+# discard the Belt. Modeled on ecard3_star_piece_check.
+func ex4_belt_check() -> void:
+	for side in [false, true]:
+		var active = main.opponent_active_pokemon if side else main.player_active_pokemon
+		if active == null or active.current_hp <= 0:
+			continue
+		var belt: card_object = null
+		for ac in active.attached_cards:
+			if ac.uid.to_lower() in ["ex4-76", "ex4-81"]:
+				belt = ac
+				break
+		if belt == null:
+			continue
+		var deck = main.opponent_deck if side else main.player_deck
+		var candidates = deck.filter(func(c): return c.metadata.get("supertype","") == "Pokémon" and main.can_evolve_from(c, active))
+		if candidates.is_empty():
+			continue
+		var do_it = side
+		if not side:
+			do_it = await gym1_prompt_yes_no(active, "POKEMON BELT", "Search your deck to evolve " + active.metadata.get("name","").to_upper() + "?", "EVOLVE", "SKIP")
+			if main._should_bail(): return
+		if not do_it:
+			continue
+		var evo_card: card_object = candidates[0]
+		if not side and candidates.size() > 1:
+			evo_card = await main.card_ops.prompt_select_card(candidates, "POKEMON BELT", "Choose an Evolution card", "EVOLVE", false)
+			if main._should_bail(): return
+			if evo_card == null: continue
+		await _ex2_do_evolution(evo_card, active, side, deck)
+		active.attached_cards.erase(belt)
+		var discard = main.opponent_discard_pile if side else main.player_discard_pile
+		belt.current_location = "discard"
+		discard.append(belt)
+		deck.shuffle()
+		main.update_deck_icon(side)
+		main.update_discard_pile_display(side)
+		display_attached_trainer_cards(side)
+		await main.show_message("POKEMON BELT! " + active.metadata.get("name","").to_upper() + " EVOLVED AND THE BELT WAS DISCARDED!")
+		if main._should_bail(): return
+		print("TOOL: Team Belt — evolved via deck search")

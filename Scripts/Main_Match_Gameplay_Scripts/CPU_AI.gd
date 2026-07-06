@@ -3010,6 +3010,9 @@ func cpu_phase_bench_play() -> void:
 		elif "[Increase]" in str(best_card.metadata.get("abilities",[])):
 			await main.powers_and_bodies.trigger_neo2_unown_increase(best_card, true)
 			if main._should_bail(): return
+		# EX4-83 Team Magma Hideout: playing a non-Team-Magma Basic from hand adds 1 damage counter
+		await main.trainer_effects.ex4_team_magma_hideout_trigger(best_card, true)
+		if main._should_bail(): return
 
 # R.5: Selects the best bench replacement and performs the retreat
 func cpu_phase_evolution() -> void:
@@ -3301,6 +3304,20 @@ func cpu_score_trainer_card(card: card_object) -> float:
 		"ex3-84": return 40.0  # Energy Recycle System (Item): basic Energy recovery
 		"ex3-87": return _cpu_score_ex3_mr_brineys_compassion()  # only worth it to save a damaged Pokemon
 		"ex3-88": return 60.0  # TV Reporter (Supporter): net +2 cards
+		# ── EX4 (Team Magma vs Team Aqua) ──
+		"ex4-69": return 55.0  # Team Aqua Schemer (Supporter): discard 1 Pokemon, draw 3-4
+		"ex4-70": return 55.0  # Team Magma Schemer (Supporter): discard 1 Pokemon, draw 3-4
+		"ex4-71": return 50.0  # Archie (Supporter): fetch a Team Aqua Pokemon to the Bench
+		"ex4-72": return 45.0  # Dual Ball (Item): coin-flip Basic search
+		"ex4-73": return 50.0  # Maxie (Supporter): fetch a Team Magma Pokemon to the Bench
+		"ex4-74": return 35.0  # Strength Charm (Tool): one-off +10 damage
+		"ex4-75": return 45.0  # Team Aqua Ball (Item): coin-flip Team Aqua search
+		"ex4-76": return 40.0  # Team Aqua Belt (Tool): between-turn free evolution
+		"ex4-77": return 55.0  # Team Aqua Conspirator (Supporter): up to 2 Basic/Energy search
+		"ex4-80": return 45.0  # Team Magma Ball (Item): coin-flip Team Magma search
+		"ex4-81": return 40.0  # Team Magma Belt (Tool): between-turn free evolution
+		"ex4-82": return 55.0  # Team Magma Conspirator (Supporter): up to 2 Basic/Energy search
+		"ex4-85": return 40.0  # Warp Point (Item): switch both Actives (disruption)
 	return 0.0
 
 # MR. BRINEY'S COMPASSION (ex3-87): only valuable when the CPU has a damaged non-ex Pokemon worth

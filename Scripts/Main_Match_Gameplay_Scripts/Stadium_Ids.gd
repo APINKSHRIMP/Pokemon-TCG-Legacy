@@ -59,6 +59,10 @@ const POWER_PLANT      = "ecard2-139" # Once per player's turn: discard a basic 
 const HIGH_PRESSURE_SYSTEM = "ex3-85" # Each player pays Colorless less to retreat Fire/Water Pokemon
 const LOW_PRESSURE_SYSTEM   = "ex3-86" # Each Grass/Lightning Pokemon in play gets +10 HP
 
+# ── EX Team Magma vs Team Aqua (ex4) ──────────────────────────────────────────
+const TEAM_AQUA_HIDEOUT  = "ex4-78" # Pokemon without "Team Aqua" in name pay Colorless more to retreat
+const TEAM_MAGMA_HIDEOUT = "ex4-83" # Playing a non-Team-Magma Basic from hand puts 1 damage counter on it
+
 # ── Skyridge (ecard3) ─────────────────────────────────────────────────────────
 const ANCIENT_RUINS     = "ecard3-119" # Once per player's turn: if no Supporter played and none revealed in hand, draw a card
 const MIRAGE_STADIUM    = "ecard3-132" # Passive: any retreat attempt requires a coin flip — tails blocks the retreat

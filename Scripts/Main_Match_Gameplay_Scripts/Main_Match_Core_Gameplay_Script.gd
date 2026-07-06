@@ -2101,6 +2101,8 @@ func add_pokemon_to_bench(pokemon: card_object) -> void:
 		# [Vanish] (Unown [V]): on play, may return another Unown to hand
 		if pokemon.has_ability("[Vanish]"):
 			await powers_and_bodies.trigger_neo4_vanish(pokemon, false)
+		# EX4-83 Team Magma Hideout: playing a non-Team-Magma Basic from hand adds 1 damage counter
+		await trainer_effects.ex4_team_magma_hideout_trigger(pokemon, false)
 
 # Function that get's the card position/location/object. Called from various functions when trying to find a specific card object
 func find_card_ui_for_object(card_obj: card_object) -> TextureRect:
@@ -2809,6 +2811,11 @@ func inbetween_turn_checks(player_turn_just_ended: bool = true) -> void:
 	await trainer_effects.ex1_oran_berry_check()
 	if _should_bail(): return
 
+	# EX4 Team Aqua Belt / Team Magma Belt: between turns, if the Active holder can evolve, search
+	# the deck for its evolution, evolve it, then discard the Belt
+	await trainer_effects.ex4_belt_check()
+	if _should_bail(): return
+
 	await check_all_knockouts()
 	if _should_bail():
 		return
@@ -2976,6 +2983,11 @@ func get_valid_evolution_targets(evolution_card: card_object, is_opponent: bool)
 	# evolve YOUR Active Pokemon (Benched evolutions are unaffected)
 	var opposing_active = opponent_active_pokemon if not is_opponent else player_active_pokemon
 	if opposing_active != null and opposing_active.has_ability("Primal Stare") and not powers_and_bodies.is_power_blocked_by_status(opposing_active):
+		valid_targets = valid_targets.filter(func(t): return t != active)
+
+	# EX4-90 Cradily ex Primal Vibes: while the opposing Active is Cradily ex, you can't play a
+	# Pokemon from hand to evolve YOUR Active (Benched evolutions are unaffected)
+	if opposing_active != null and opposing_active.has_ability("Primal Vibes") and not powers_and_bodies.is_power_blocked_by_status(opposing_active):
 		valid_targets = valid_targets.filter(func(t): return t != active)
 
 	return valid_targets
@@ -3224,6 +3236,10 @@ func get_attacks_for_card(card: card_object) -> Array:
 
 	# Guard against null being passed in (e.g. no active pokemon yet)
 	if card == null:
+		return []
+
+	# EX4 Power Saver (Kyogre ex4-3 / Groudon ex4-9): can't attack while few Team Pokemon are in play
+	if powers_and_bodies.check_power_saver_blocks_attack(card):
 		return []
 
 	# Get the attacks if they exist
@@ -4593,6 +4609,15 @@ func get_retreat_cost(pokemon: card_object) -> int:
 		var eff_types = pokemon.get_effective_types()
 		if "Fire" in eff_types or "Water" in eff_types:
 			cost = max(0, cost - 1)
+	# EX4-78 Team Aqua Hideout — Pokemon without "Team Aqua" in name pay 1 more to retreat
+	if is_stadium_in_play(StadiumIds.TEAM_AQUA_HIDEOUT):
+		if "Team Aqua" not in pokemon.metadata.get("name", ""):
+			cost += 1
+	# EX4-25 Team Aqua's Carvanha Dark Lift (Poké-Body): retreat 0 while it has Darkness Energy attached
+	if pokemon.has_ability("Dark Lift") and not powers_and_bodies.is_power_blocked(pokemon):
+		for e in pokemon.attached_energies:
+			if "Darkness" in get_energy_provided_by_card(e):
+				return 0
 
 	# MATCH EFFECT: retreat_cost_modifier — flat adjustment to retreat cost (floor 0)
 	cost = max(0, cost + match_effects.retreat_cost_modifier(pokemon_is_opponent))
