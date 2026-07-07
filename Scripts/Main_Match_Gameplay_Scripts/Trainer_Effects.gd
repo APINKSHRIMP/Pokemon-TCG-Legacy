@@ -36,6 +36,7 @@ func _ensure_trainer_dispatch_ready() -> void:
 	_register_ex2_trainers()
 	_register_ex3_trainers()
 	_register_ex4_trainers()
+	_register_ex5_trainers()
 
 func _register_base_trainers() -> void:
 	_trainer_dispatch["base1-88"] = func(c, opp): await effect_professor_oak(c, opp)
@@ -169,6 +170,7 @@ func _ensure_validator_dispatch_ready() -> void:
 	_register_base_validations()
 	_register_gym1_validations()
 	_register_gym2_validations()
+	_register_ex5_validations()
 	# When adding Neo1/Neo2/etc., append: _register_neo1_validations()
 
 func _register_base_validations() -> void:
@@ -830,6 +832,10 @@ func validate_trainer_can_be_played(card: card_object, is_opponent: bool) -> Str
 	if "Pokémon Tool" in card.metadata.get("subtypes", []) and main.powers_and_bodies.is_ex2_primal_lock_blocking(is_opponent):
 		return "Primal Lock: you can't play Pokémon Tool cards!"
 
+	# ex5 Block Dust (Vileplume ex ex5-100): opponent can't play non-Supporter Trainer cards
+	if "Supporter" not in card.metadata.get("subtypes", []) and main.powers_and_bodies.is_ex5_block_dust_blocking(is_opponent):
+		return "Block Dust: you can't play Trainer cards (except Supporters)!"
+
 	# MATCH EFFECT: trainer_discard_cost — must have enough OTHER cards in hand to pay
 	var rule_discard_cost = main.match_effects.trainer_discard_cost(is_opponent)
 	if rule_discard_cost > 0:
@@ -874,6 +880,12 @@ func play_trainer_card(card: card_object, is_opponent: bool) -> void:
 	# ex2 Primal Lock (Aerodactyl ex): the opponent can't play Pokémon Tool cards
 	if "Pokémon Tool" in card.metadata.get("subtypes", []) and main.powers_and_bodies.is_ex2_primal_lock_blocking(is_opponent):
 		await main.show_message("PRIMAL LOCK: YOU CAN'T PLAY POKÉMON TOOL CARDS!")
+		if main._should_bail(): return
+		return
+
+	# ex5 Block Dust (Vileplume ex ex5-100): opponent can't play non-Supporter Trainer cards
+	if "Supporter" not in card.metadata.get("subtypes", []) and main.powers_and_bodies.is_ex5_block_dust_blocking(is_opponent):
+		await main.show_message("BLOCK DUST: YOU CAN'T PLAY TRAINER CARDS (EXCEPT SUPPORTERS)!")
 		if main._should_bail(): return
 		return
 
@@ -3708,6 +3720,17 @@ func gym1_end_of_turn_cleanup(side_is_opponent: bool) -> void:
 				if st != "":
 					main.card_ops.apply_status(pokemon, st, side_is_opponent)
 					print("EX4 DELAYED STATUS applied: ", st, " to ", pokemon.metadata.get("name",""))
+
+		# EX5 Extra Comet Punch (Metagross ex ex5-95): the +50 boost only holds while the attack is
+		# used on consecutive own turns. The arm carries a "used_this_turn" marker set when the
+		# attack fires. At the end of the owner's turn, if it was NOT used this turn the arm expires;
+		# if it was, reset the marker so it survives into (only) the next turn.
+		if pokemon.has_effect("ex5_extra_comet"):
+			var ecd = pokemon.get_effect_data("ex5_extra_comet")
+			if typeof(ecd) == TYPE_DICTIONARY and ecd.get("used_this_turn", false):
+				pokemon.set_effect("ex5_extra_comet", "until_leaves_play", {"used_this_turn": false})
+			else:
+				pokemon.clear_effect("ex5_extra_comet")
 
 		# Generic expiring-effects: clear everything tagged end_of_own_turn for this side.
 		# Must run LAST in this loop body — effects like Strength Charm's trigger flag are
@@ -9526,3 +9549,74 @@ func ex4_belt_check() -> void:
 		await main.show_message("POKEMON BELT! " + active.metadata.get("name","").to_upper() + " EVOLVED AND THE BELT WAS DISCARDED!")
 		if main._should_bail(): return
 		print("TOOL: Team Belt — evolved via deck search")
+
+# ══════════════════════════════════════════════════════════════════════════════
+#  EX5 (EX Hidden Legends) — Trainers
+#  Stadiums (Ancient Tomb ex5-87 / Desert Ruins ex5-88 / Island Cave ex5-89 /
+#  Magnetic Storm ex5-91) resolve via the generic Stadium path; their passive effects are wired into
+#  StadiumIds + the relevant core hooks (weakness/resistance/between-turns/energy-attach). The three
+#  Ancient Technical Machines (ex5-84/85/86) attach via the generic Technical Machine subtype path;
+#  their attacks (Ice/Stone/Steel Generator) are dispatched in Attack_Effects.gd.
+# ══════════════════════════════════════════════════════════════════════════════
+func _register_ex5_trainers() -> void:
+	_trainer_dispatch["ex5-90"] = func(c, opp): await effect_ex5_life_herb(opp)
+	_trainer_dispatch["ex5-92"] = func(c, opp): await effect_ex5_stevens_advice(opp)
+
+func _register_ex5_validations() -> void:
+	# STEVEN'S ADVICE (ex5-92): can't be played if you have more than 7 cards in hand (including it).
+	_validator_dispatch["ex5-92"] = func(c, opp):
+		var hand = main.opponent_hand if opp else main.player_hand
+		return "You have too many cards in hand to play Steven's Advice!" if hand.size() > 7 else ""
+
+# LIFE HERB (ex5-90, Item): flip a coin. If heads, choose 1 of your Pokemon (excluding Pokemon-ex) and
+# remove all Special Conditions and up to 6 damage counters from it.
+func effect_ex5_life_herb(is_opponent: bool) -> void:
+	var coin = await main.flip_coin(false, is_opponent)
+	if main._should_bail(): return
+	if not coin:
+		await main.show_message("LIFE HERB — TAILS! NOTHING HAPPENS.")
+		if main._should_bail(): return
+		return
+	var pool = main.card_ops.get_all_pokemon_in_play(is_opponent).filter(func(p): return not main.is_ex_pokemon(p))
+	if pool.is_empty():
+		await main.show_message("LIFE HERB: NO ELIGIBLE POKEMON!")
+		if main._should_bail(): return
+		return
+	var target: card_object
+	if is_opponent:
+		target = pool[0]
+		for p in pool:
+			if (p.get_max_hp() - p.current_hp) > (target.get_max_hp() - target.current_hp): target = p
+	else:
+		target = await main.card_ops.choose_card(pool, false, "LIFE HERB", "Choose a Pokemon to heal and cure", "SELECT", false)
+		if main._should_bail(): return
+		if target == null: return
+	main.card_ops.clear_statuses(target, is_opponent)
+	await main.card_ops.heal_pokemon(target, 60, is_opponent)
+	if main._should_bail(): return
+	await main.show_message("LIFE HERB! REMOVED ALL SPECIAL CONDITIONS AND 6 DAMAGE COUNTERS!")
+	if main._should_bail(): return
+	print("TRAINER: Life Herb")
+
+# STEVEN'S ADVICE (ex5-92, Supporter): draw a number of cards up to the number of the opponent's
+# Pokemon in play.
+func effect_ex5_stevens_advice(is_opponent: bool) -> void:
+	var n = main.card_ops.get_all_pokemon_in_play(not is_opponent).size()
+	if n > 0:
+		await main.card_ops.draw_n(is_opponent, n)
+		if main._should_bail(): return
+	await main.show_message("STEVEN'S ADVICE! DREW " + str(n) + " CARDS!")
+	if main._should_bail(): return
+	print("TRAINER: Steven's Advice — drew ", n)
+
+# EX5 Island Cave (ex5-89 Stadium): whenever any player attaches an Energy card from hand to a Water,
+# Fighting, or Metal Pokemon, remove any Special Conditions from that Pokemon. Called from both energy
+# attach paths (Main player path + CPU_AI).
+func ex5_island_cave_on_attach(pokemon: card_object, is_opponent: bool) -> void:
+	if pokemon == null:
+		return
+	if not main.is_stadium_in_play(StadiumIds.ISLAND_CAVE):
+		return
+	var types = pokemon.metadata.get("types", [])
+	if "Water" in types or "Fighting" in types or "Metal" in types:
+		main.clear_all_statuses(pokemon, is_opponent)

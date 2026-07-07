@@ -292,6 +292,12 @@ func apply_status(pokemon: card_object, status: String, is_opponent: bool) -> vo
 	if pokemon != null and status != "" and not main.powers_and_bodies.is_power_blocked(pokemon):
 		if pokemon.has_ability("Thick Skin"):
 			return
+	# EX5 Crystal Body (Regice ex ex5-97): prevents all effects of attacks except damage. Handled at
+	# the same scope as the rest of this ability class (Immunity / Thick Skin / Protective Dust) —
+	# the engine models "prevent non-damage attack effects" as blocking Special Condition application,
+	# which is the only non-damage attack effect surfaced through this central gate.
+	if pokemon != null and status != "" and main.powers_and_bodies.has_ex5_crystal_body(pokemon):
+		return
 	match status:
 		"Poisoned":
 			pokemon.is_poisoned = true
@@ -455,6 +461,10 @@ func apply_bench_damage(pokemon: card_object, damage: int, is_opponent: bool) ->
 		return
 	# Protective Flame / invincible flag on bench pokemon
 	if pokemon.is_invincible:
+		return
+	# EX5 Power Diffusion (Rhydon ex5-46): while Rhydon is that side's Active, prevent all attack
+	# damage to that side's Benched Pokemon.
+	if main.powers_and_bodies.is_ex5_power_diffusion_active(is_opponent):
 		return
 	# EX3 Submerge (Whiscash ex3-48): while on the Bench, prevent all attack damage to Whiscash.
 	# (Guard on the ability TEXT, not just the name — neo3 Lanturn also has a "Submerge" ability

@@ -72,6 +72,7 @@ func _register_all_powers() -> void:
 	_register_ex2_powers()
 	_register_ex3_powers()
 	_register_ex4_powers()
+	_register_ex5_powers()
 
 # ── On-damage and pre-KO event hooks ──────────────────────────────────────────
 # Each Callable is fired after active-pokemon damage resolves (on_damage) or
@@ -121,6 +122,11 @@ func _register_all_power_hooks() -> void:
 	_damage_modifier_hooks.append(func(dmg, atk, def, mods): return _hook_ex3_power_pinchers(dmg, atk, def, mods))
 	_damage_modifier_hooks.append(func(dmg, atk, def, mods): return _hook_ex3_wonder_guard(dmg, atk, def, mods))
 	_damage_modifier_hooks.append(func(dmg, atk, def, mods): return _hook_ex4_shell_retreat(dmg, atk, def, mods))
+	_damage_modifier_hooks.append(func(dmg, atk, def, mods): return _hook_ex5_crust(dmg, atk, def, mods))
+	_damage_modifier_hooks.append(func(dmg, atk, def, mods): return _hook_ex5_ice_wall(dmg, atk, def, mods))
+	_damage_modifier_hooks.append(func(dmg, atk, def, mods): return _hook_ex5_core_guard(dmg, atk, def, mods))
+	_damage_modifier_hooks.append(func(dmg, atk, def, mods): return _hook_ex5_overzealous(dmg, atk, def, mods))
+	_damage_modifier_hooks.append(func(dmg, atk, def, mods): return _hook_ex5_silver_wind(dmg, atk, def, mods))
 	_on_damage_hooks.append(func(def, atk, dmg, is_def_opp): await check_strikes_back(def, atk, is_def_opp))
 	_on_damage_hooks.append(func(def, atk, dmg, is_def_opp): await check_restless_sleep(def, atk, is_def_opp))
 	_on_damage_hooks.append(func(def, atk, dmg, is_def_opp): await check_pollen_defense(def, atk, is_def_opp))
@@ -139,6 +145,7 @@ func _register_all_power_hooks() -> void:
 	_on_damage_hooks.append(func(def, atk, dmg, is_def_opp): await check_ex2_poison_payback(def, atk, is_def_opp))
 	_on_damage_hooks.append(func(def, atk, dmg, is_def_opp): await check_ex2_fire_veil(def, atk, is_def_opp))
 	_on_damage_hooks.append(func(def, atk, dmg, is_def_opp): await check_ex2_jagged_stone(def, atk, is_def_opp))
+	_pre_ko_hooks.append(func(poke, atk, is_poke_opp): await check_ex5_energy_grounding(poke, atk, is_poke_opp))
 	_pre_ko_hooks.append(func(poke, atk, is_poke_opp): await check_final_beam(poke, atk, is_poke_opp))
 	_pre_ko_hooks.append(func(poke, atk, is_poke_opp): await main.trainer_effects.check_time_shard(poke, atk, is_poke_opp))
 
@@ -1987,6 +1994,8 @@ func cpu_phase_activate_powers() -> void:
 	await cpu_phase_ex3_powers()
 	if main._should_bail(): return
 	await cpu_phase_ex4_powers()
+	if main._should_bail(): return
+	await cpu_phase_ex5_powers()
 	if main._should_bail(): return
 
 
@@ -6553,6 +6562,40 @@ func apply_np_between_turn_bodies() -> void:
 						await main.show_message(ab.get("name","").to_upper() + "! " + p.metadata.get("name","").to_upper() + " RECOVERED 10 HP!")
 						if main._should_bail(): return
 
+	# EX5 HEALING STONE (Regirock ex ex5-98): at any time between turns, remove 1 damage counter from
+	# Regirock ex (wherever it is in play).
+	for side in [false, true]:
+		var active_h = main.opponent_active_pokemon if side else main.player_active_pokemon
+		var bench_h = main.opponent_bench if side else main.player_bench
+		var all_h: Array = []
+		if active_h != null: all_h.append(active_h)
+		all_h.append_array(bench_h)
+		for p in all_h:
+			if p.current_hp <= 0: continue
+			if is_toxic_gas_active() or main.goop_gas_active: continue
+			if is_power_blocked_by_status(p): continue
+			if p.has_ability("Healing Stone"):
+				var max_hp = p.get_max_hp()
+				if p.current_hp < max_hp:
+					p.current_hp = min(max_hp, p.current_hp + 10)
+					main.display_hp_circles_above_align(p, side)
+					await main.show_message("HEALING STONE! " + p.metadata.get("name","").to_upper() + " REMOVED 1 DAMAGE COUNTER!")
+					if main._should_bail(): return
+
+	# EX5 DESERT RUINS (ex5-88 Stadium): between turns each player puts 1 damage counter on their own
+	# Pokemon-ex whose maximum HP is at least 100.
+	if main.is_stadium_in_play(StadiumIds.DESERT_RUINS):
+		for side in [false, true]:
+			for p in main.card_ops.get_all_pokemon_in_play(side):
+				if p.current_hp <= 0: continue
+				if main.is_ex_pokemon(p) and p.get_max_hp() >= 100:
+					p.current_hp = max(0, p.current_hp - 10)
+					main.display_hp_circles_above_align(p, side)
+			await main.check_all_knockouts()
+			if main._should_bail(): return
+		await main.show_message("DESERT RUINS! DAMAGE COUNTERS PLACED ON POKEMON-EX!")
+		if main._should_bail(): return
+
 	# BURNING AURA (np-34 Typhlosion): while Active, put 1 damage counter on EACH Active between turns
 	for side in [false, true]:
 		var active = main.opponent_active_pokemon if side else main.player_active_pokemon
@@ -10476,4 +10519,448 @@ func cpu_phase_ex4_powers() -> void:
 	var mightyena = _find_cpu_pokemon_with_power("Call for Help")
 	if mightyena != null and main.opponent_active_pokemon == mightyena and not mightyena.power_used_this_turn and not is_power_blocked_by_status(mightyena):
 		await cpu_ex4_call_for_help(mightyena)
+		if main._should_bail(): return
+
+# ══════════════════════════════════════════════════════════════════════════════
+#  EX5 (EX Hidden Legends) — Poké-Powers & Poké-Bodies
+#  Auto-working by existing name-based machinery (no ex5 code needed):
+#    Strikes Back (Machoke ex5-41)   -> check_strikes_back
+#    Safeguard (Ninetales ex5-22)    -> _hook_ex2_safeguard (damage from ex -> 0)
+#    Deep Sleep (Relicanth ex5-24)   -> is_deep_sleep_active() + process_status_between_turns
+#    Exoskeleton (Clamperl ex5-58 / Registeel ex ex5-99) -> _FLAT_REDUCTION_BODY_NAMES
+#    Levitate (Beldum ex5-28 / Metang ex5-44) -> get_retreat_cost
+#    Primal Pull (Claydol ex5-2) -> is_ex5_primal_pull_active() consulted in CPU_AI.get_unmet_energy_count
+# ══════════════════════════════════════════════════════════════════════════════
+func _register_ex5_powers() -> void:
+	_power_dispatch["Metal Juncture"]        = func(p): await power_ex5_metal_juncture(p)
+	_power_dispatch["Crush Draw"]            = func(p): await power_ex5_crush_draw(p)
+	_power_dispatch["Heal Dance"]            = func(p): await power_ex5_heal_dance(p)
+	_power_dispatch["Magnetic Call"]         = func(p): await power_ex5_magnetic_call(p)
+	_power_dispatch["Temperamental Weather"] = func(p): await power_ex5_temperamental_weather(p)
+
+# ── Passive damage-modifier bodies ────────────────────────────────────────────
+
+# CRUST (Pinsir ex5-13): damage from the opponent's Basic Pokemon is reduced by 30 (after W/R).
+func _hook_ex5_crust(damage: int, attacker: card_object, defender: card_object, modifiers: Array) -> int:
+	if damage <= 0 or defender == null or attacker == null:
+		return damage
+	if not defender.has_ability("Crust") or is_power_blocked_by_status(defender):
+		return damage
+	if "Basic" in attacker.metadata.get("subtypes", []):
+		modifiers.append("CRUST -30")
+		return max(0, damage - 30)
+	return damage
+
+# ICE WALL (Glalie ex5-34): damage from an attacker with any Special Energy attached is reduced by 40.
+func _hook_ex5_ice_wall(damage: int, attacker: card_object, defender: card_object, modifiers: Array) -> int:
+	if damage <= 0 or defender == null or attacker == null:
+		return damage
+	if not defender.has_ability("Ice Wall") or is_power_blocked_by_status(defender):
+		return damage
+	for e in attacker.attached_energies:
+		if "Special" in e.metadata.get("subtypes", []):
+			modifiers.append("ICE WALL -40")
+			return max(0, damage - 40)
+	return damage
+
+# CORE GUARD (Staryu ex5-75): while a Psychic Energy is attached to Staryu, damage is reduced by 10.
+func _hook_ex5_core_guard(damage: int, _attacker: card_object, defender: card_object, modifiers: Array) -> int:
+	if damage <= 0 or defender == null:
+		return damage
+	if not defender.has_ability("Core Guard") or is_power_blocked_by_status(defender):
+		return damage
+	for e in defender.attached_energies:
+		if "Psychic" in main.get_energy_provided_by_card(e):
+			modifiers.append("CORE GUARD -10")
+			return max(0, damage - 10)
+	return damage
+
+# OVERZEALOUS (Machamp ex5-9): while the opponent has any Pokemon-ex in play, Machamp's attacks do 30
+# more damage to the Defending Pokemon.
+func _hook_ex5_overzealous(damage: int, attacker: card_object, defender: card_object, modifiers: Array) -> int:
+	if damage <= 0 or attacker == null or defender == null:
+		return damage
+	if not attacker.has_ability("Overzealous") or is_power_blocked_by_status(attacker):
+		return damage
+	var attacker_is_opp = attacker.is_owner_opp(main)
+	for p in main.card_ops.get_all_pokemon_in_play(not attacker_is_opp):
+		if main.is_ex_pokemon(p):
+			modifiers.append("OVERZEALOUS +30")
+			return damage + 30
+	return damage
+
+# SILVER WIND (Masquerain ex5-20): the marked Defending Pokemon takes 30 more from attacks during the
+# marker's window (set by the Silver Wind attack; cleared at end of the opponent's turn).
+func _hook_ex5_silver_wind(damage: int, _attacker: card_object, defender: card_object, modifiers: Array) -> int:
+	if damage <= 0 or defender == null:
+		return damage
+	if defender.has_effect("ex5_silver_wind"):
+		modifiers.append("SILVER WIND +30")
+		return damage + 30
+	return damage
+
+# ── Passive body helpers wired into core hooks ────────────────────────────────
+
+# MARK OF ANTIQUITY (Groudon ex ex5-93 / Kyogre ex ex5-94): while this is a side's Active Pokemon,
+# each player's Kyogre ex / Groudon ex / Rayquaza ex can't attack (per the holder's ability text).
+# Called from Main.get_attacks_for_card.
+func check_ex5_mark_of_antiquity_blocks_attack(card: card_object) -> bool:
+	if card == null:
+		return false
+	var cname = card.metadata.get("name", "")
+	if cname not in ["Kyogre ex", "Groudon ex", "Rayquaza ex"]:
+		return false
+	for side in [false, true]:
+		var active = main.opponent_active_pokemon if side else main.player_active_pokemon
+		if active == null or active == card: continue
+		if active.has_ability("Mark of Antiquity") and not is_power_blocked_by_status(active):
+			var ab = active.get_ability("Mark of Antiquity")
+			if ab != null and cname.to_lower() in ab.get("text","").to_lower():
+				return true
+	return false
+
+# POWER DIFFUSION (Rhydon ex5-46): while Rhydon is a side's Active Pokemon, prevent all attack damage
+# to that side's Benched Pokemon. Called from Card_Ops.apply_bench_damage.
+func is_ex5_power_diffusion_active(bench_owner_is_opp: bool) -> bool:
+	var active = main.opponent_active_pokemon if bench_owner_is_opp else main.player_active_pokemon
+	if active == null: return false
+	return active.has_ability("Power Diffusion") and not is_power_blocked_by_status(active)
+
+# FREEFLOATING (Tentacool ex5-77): Retreat Cost is 0 while NO Energy is attached. Called from
+# Main.get_retreat_cost.
+func is_ex5_freefloating_free(pokemon: card_object) -> bool:
+	if pokemon == null: return false
+	if not pokemon.has_ability("Freefloating") or is_power_blocked_by_status(pokemon): return false
+	return pokemon.attached_energies.is_empty()
+
+# CRYSTAL BODY (Regice ex ex5-97): prevents all effects of attacks except damage. Checked in
+# Card_Ops.apply_status (blocks Special Conditions from attacks — same depth as ecard3 Immunity).
+func has_ex5_crystal_body(pokemon: card_object) -> bool:
+	if pokemon == null: return false
+	return pokemon.has_ability("Crystal Body") and not is_power_blocked_by_status(pokemon)
+
+# PRIMAL PULL (Claydol ex5-2): while a Claydol with this Poké-Body is a side's Active Pokemon, each
+# player's Evolved Pokemon pays Colorless more Energy to use its attacks. Consulted in
+# CPU_AI.get_unmet_energy_count (the shared player+CPU attack-cost gate).
+func is_ex5_primal_pull_active() -> bool:
+	for side in [false, true]:
+		var active = main.opponent_active_pokemon if side else main.player_active_pokemon
+		if active != null and active.has_ability("Primal Pull") and not is_power_blocked_by_status(active):
+			return true
+	return false
+
+# BLOCK DUST (Vileplume ex ex5-100): while Vileplume ex is a side's Active, that side's OPPONENT can't
+# play non-Supporter Trainer cards. Mirrors Primal Lock but requires the blocker to be Active.
+func is_ex5_block_dust_blocking(trainer_player_is_opp: bool) -> bool:
+	var blocker_active = main.opponent_active_pokemon if not trainer_player_is_opp else main.player_active_pokemon
+	if blocker_active == null: return false
+	return blocker_active.has_ability("Block Dust") and not is_power_blocked_by_status(blocker_active)
+
+# ── Reactive body: Energy Grounding (pre-KO hook) ─────────────────────────────
+
+# ENERGY GROUNDING (Lanturn ex5-38): once per turn, when one of your Pokemon is Knocked Out by the
+# opponent's attack, move a basic Energy that would be discarded from it onto Lanturn instead. Fires
+# from the pre-KO hook (the KO'd Pokemon still holds its Energy). Auto-resolves (grabs one basic Energy).
+func check_ex5_energy_grounding(pokemon: card_object, attacker: card_object, is_pokemon_opp: bool) -> void:
+	if pokemon == null or attacker == null:
+		return
+	# Only trigger when the KO is caused by the opponent (the attacker is on the other side).
+	if attacker.is_owner_opp(main) == is_pokemon_opp:
+		return
+	var lanturn: card_object = null
+	for p in main.card_ops.get_all_pokemon_in_play(is_pokemon_opp):
+		if p != pokemon and p.has_ability("Energy Grounding") and not p.power_used_this_turn and not is_power_blocked_by_status(p):
+			lanturn = p
+			break
+	if lanturn == null:
+		return
+	var basic_e: card_object = null
+	for e in pokemon.attached_energies:
+		if "Basic" in e.metadata.get("subtypes", []):
+			basic_e = e
+			break
+	if basic_e == null:
+		return
+	lanturn.power_used_this_turn = true
+	pokemon.attached_energies.erase(basic_e)
+	basic_e.current_location = "attached"
+	lanturn.attached_energies.append(basic_e)
+	main.display_active_pokemon_energies(is_pokemon_opp)
+	main.display_pokemon(is_pokemon_opp)
+	await main.show_message("ENERGY GROUNDING! A BASIC ENERGY WAS MOVED TO LANTURN!")
+	if main._should_bail(): return
+
+# ── Evolve-trigger power: Healing Shower ──────────────────────────────────────
+
+# HEALING SHOWER (Milotic ex5-12): when you play Milotic to evolve one of your Pokemon, you may remove
+# all damage counters from all Pokemon (both players', excluding Pokemon-ex). Called from
+# Main.perform_evolution's on-evolve trigger chain.
+func trigger_ex5_healing_shower(milotic: card_object, is_opponent: bool) -> void:
+	if is_power_blocked_by_status(milotic):
+		return
+	var do_it = true
+	if not is_opponent:
+		do_it = await main.trainer_effects.gym1_prompt_yes_no(milotic, "HEALING SHOWER", "Remove all damage counters from all Pokemon (excluding Pokemon-ex)?", "YES", "NO")
+		if main._should_bail(): return
+	if not do_it:
+		return
+	for side in [false, true]:
+		for p in main.card_ops.get_all_pokemon_in_play(side):
+			if main.is_ex_pokemon(p): continue
+			if p.current_hp < p.get_max_hp():
+				p.current_hp = p.get_max_hp()
+				main.display_hp_circles_above_align(p, side)
+	main.display_pokemon(false)
+	main.display_pokemon(true)
+	await main.show_message("HEALING SHOWER! ALL DAMAGE COUNTERS REMOVED (EXCEPT POKEMON-EX)!")
+	if main._should_bail(): return
+
+# ── Active powers ─────────────────────────────────────────────────────────────
+
+# METAL JUNCTURE (Metagross ex5-11): as often as you like, move a Metal Energy from one of your Benched
+# Pokemon to your Active. Player-interactive; CPU skips (low heuristic value, like ex4 energy moves).
+func power_ex5_metal_juncture(metagross: card_object) -> void:
+	var is_opponent = metagross.is_owner_opp(main)
+	if is_power_blocked_by_status(metagross):
+		await main.show_message("METAL JUNCTURE IS BLOCKED BY STATUS!")
+		if main._should_bail(): return
+		return
+	if is_opponent:
+		return
+	var active = main.player_active_pokemon
+	if active == null:
+		return
+	var bench = main.player_bench
+	var sources = bench.filter(func(p):
+		for e in p.attached_energies:
+			if "Metal" in main.get_energy_provided_by_card(e) and "Basic" in e.metadata.get("subtypes", []): return true
+		return false)
+	if sources.is_empty():
+		await main.show_message("NO METAL ENERGY ON YOUR BENCH TO MOVE!")
+		if main._should_bail(): return
+		return
+	var source = sources[0] if sources.size() == 1 else await main.card_ops.choose_card(sources, false, "METAL JUNCTURE", "Choose a Benched Pokemon to move Metal Energy FROM", "SELECT", true)
+	if main._should_bail(): return
+	if source == null: return
+	var metal: card_object = null
+	for e in source.attached_energies:
+		if "Metal" in main.get_energy_provided_by_card(e) and "Basic" in e.metadata.get("subtypes", []):
+			metal = e
+			break
+	if metal == null: return
+	source.attached_energies.erase(metal)
+	active.attached_energies.append(metal)
+	main.display_pokemon(false)
+	main.display_active_pokemon_energies(false)
+	await main.show_message("METAL JUNCTURE! MOVED A METAL ENERGY TO YOUR ACTIVE!")
+	if main._should_bail(): return
+
+# CRUSH DRAW (Walrein ex5-15): once per turn, reveal the top card of your deck; if it is a basic Energy,
+# attach it to 1 of your Pokemon; otherwise put it back.
+func power_ex5_crush_draw(walrein: card_object) -> void:
+	var is_opponent = walrein.is_owner_opp(main)
+	if is_power_blocked_by_status(walrein):
+		await main.show_message("CRUSH DRAW IS BLOCKED BY STATUS!")
+		if main._should_bail(): return
+		return
+	if walrein.power_used_this_turn:
+		await main.show_message("CRUSH DRAW ALREADY USED THIS TURN!")
+		if main._should_bail(): return
+		return
+	var deck = main.opponent_deck if is_opponent else main.player_deck
+	if deck.is_empty():
+		await main.show_message("CRUSH DRAW: YOUR DECK IS EMPTY!")
+		if main._should_bail(): return
+		return
+	walrein.power_used_this_turn = true
+	var top = deck[0]
+	var is_basic_energy = top.metadata.get("supertype","") == "Energy" and "Basic" in top.metadata.get("subtypes", [])
+	if not is_basic_energy:
+		await main.show_message("CRUSH DRAW REVEALED " + top.metadata.get("name","").to_upper() + " — PUT BACK ON TOP!")
+		if main._should_bail(): return
+		return
+	deck.erase(top)
+	var target := walrein
+	if not is_opponent:
+		var mine = main.card_ops.get_all_pokemon_in_play(false)
+		if mine.size() > 1:
+			target = await main.card_ops.choose_card(mine, false, "CRUSH DRAW", "Choose a Pokemon to attach the Energy to", "ATTACH", false)
+			if main._should_bail(): return
+			if target == null: target = walrein
+	top.current_location = "attached"
+	target.attached_energies.append(top)
+	main.display_pokemon(is_opponent)
+	main.display_active_pokemon_energies(is_opponent)
+	main.update_deck_icon(is_opponent)
+	await main.show_message("CRUSH DRAW! ATTACHED " + top.metadata.get("name","").to_upper() + "!")
+	if main._should_bail(): return
+
+# HEAL DANCE (Bellossom ex5-16): once per turn (at most 1 Heal Dance per turn across all copies),
+# remove 2 damage counters from 1 of your Pokemon.
+func power_ex5_heal_dance(bellossom: card_object) -> void:
+	var is_opponent = bellossom.is_owner_opp(main)
+	if is_power_blocked_by_status(bellossom):
+		await main.show_message("HEAL DANCE IS BLOCKED BY STATUS!")
+		if main._should_bail(): return
+		return
+	var flag_owner_used = main.opponent_ex5_heal_dance_used if is_opponent else main.player_ex5_heal_dance_used
+	if bellossom.power_used_this_turn or flag_owner_used:
+		await main.show_message("HEAL DANCE ALREADY USED THIS TURN!")
+		if main._should_bail(): return
+		return
+	var mine = main.card_ops.get_all_pokemon_in_play(is_opponent).filter(func(p): return p.current_hp < p.get_max_hp())
+	if mine.is_empty():
+		await main.show_message("NO DAMAGED POKEMON TO HEAL!")
+		if main._should_bail(): return
+		return
+	var target: card_object
+	if is_opponent:
+		target = mine[0]
+	else:
+		target = await main.card_ops.choose_card(mine, false, "HEAL DANCE", "Choose a Pokemon to remove 2 damage counters from", "HEAL", false)
+		if main._should_bail(): return
+		if target == null: return
+	bellossom.power_used_this_turn = true
+	if is_opponent: main.opponent_ex5_heal_dance_used = true
+	else: main.player_ex5_heal_dance_used = true
+	await main.card_ops.heal_pokemon(target, 20, is_opponent)
+	if main._should_bail(): return
+	await main.show_message("HEAL DANCE! REMOVED 2 DAMAGE COUNTERS!")
+
+# MAGNETIC CALL (Beldum ex5-29): once per turn, flip a coin; if heads, search deck for a Metal Basic
+# Pokemon and put it on your Bench.
+func power_ex5_magnetic_call(beldum: card_object) -> void:
+	var is_opponent = beldum.is_owner_opp(main)
+	if is_power_blocked_by_status(beldum):
+		await main.show_message("MAGNETIC CALL IS BLOCKED BY STATUS!")
+		if main._should_bail(): return
+		return
+	if beldum.power_used_this_turn:
+		await main.show_message("MAGNETIC CALL ALREADY USED THIS TURN!")
+		if main._should_bail(): return
+		return
+	var bench = main.opponent_bench if is_opponent else main.player_bench
+	if bench.size() >= main.get_max_bench_size():
+		await main.show_message("YOUR BENCH IS FULL!")
+		if main._should_bail(): return
+		return
+	beldum.power_used_this_turn = true
+	var coin = await main.flip_coin(false, is_opponent)
+	if main._should_bail(): return
+	if not coin:
+		await main.show_message("MAGNETIC CALL — TAILS!")
+		if main._should_bail(): return
+		return
+	var deck = main.opponent_deck if is_opponent else main.player_deck
+	var pool = deck.filter(func(c): return c.metadata.get("supertype","") == "Pokémon" and "Basic" in c.metadata.get("subtypes", []) and "Metal" in c.metadata.get("types", []))
+	if pool.is_empty():
+		await main.show_message("NO METAL BASIC POKEMON IN YOUR DECK!")
+		deck.shuffle()
+		if main._should_bail(): return
+		return
+	var chosen: card_object
+	if is_opponent:
+		chosen = pool[0]
+	else:
+		chosen = await main.card_ops.choose_card(pool, false, "MAGNETIC CALL", "Choose a Metal Basic Pokemon to put on your Bench", "SELECT", true)
+		if main._should_bail(): return
+		if chosen == null:
+			deck.shuffle()
+			return
+	deck.erase(chosen)
+	chosen.current_hp = chosen.get_max_hp()
+	main.card_ops.place_on_bench(chosen, is_opponent)
+	deck.shuffle()
+	main.update_deck_icon(is_opponent)
+	await main.show_message("MAGNETIC CALL! " + chosen.metadata.get("name","").to_upper() + " WAS PLACED ON THE BENCH!")
+	if main._should_bail(): return
+
+# TEMPERAMENTAL WEATHER (Castform line ex5-23/25/26/30): once per turn, search your deck for another
+# named Castform form and switch it in for this one, carrying over all attachments, damage counters
+# and Special Conditions; shuffle this Castform back into your deck.
+func power_ex5_temperamental_weather(castform: card_object) -> void:
+	var is_opponent = castform.is_owner_opp(main)
+	if is_power_blocked_by_status(castform):
+		await main.show_message("TEMPERAMENTAL WEATHER IS BLOCKED BY STATUS!")
+		if main._should_bail(): return
+		return
+	var flag_used = main.opponent_ex5_weather_used if is_opponent else main.player_ex5_weather_used
+	if castform.power_used_this_turn or flag_used:
+		await main.show_message("TEMPERAMENTAL WEATHER ALREADY USED THIS TURN!")
+		if main._should_bail(): return
+		return
+	var deck = main.opponent_deck if is_opponent else main.player_deck
+	var forms = ["Castform", "Rain Castform", "Sunny Castform", "Snow-cloud Castform"]
+	var pool = deck.filter(func(c): return c.metadata.get("supertype","") == "Pokémon" and c.metadata.get("name","") in forms and c.metadata.get("name","") != castform.metadata.get("name",""))
+	if pool.is_empty():
+		await main.show_message("NO OTHER CASTFORM IN YOUR DECK!")
+		if main._should_bail(): return
+		return
+	var chosen: card_object
+	if is_opponent:
+		chosen = pool[0]
+	else:
+		chosen = await main.card_ops.choose_card(pool, false, "TEMPERAMENTAL WEATHER", "Choose a Castform to switch in", "SELECT", true)
+		if main._should_bail(): return
+		if chosen == null: return
+	castform.power_used_this_turn = true
+	if is_opponent: main.opponent_ex5_weather_used = true
+	else: main.player_ex5_weather_used = true
+	# Carry over runtime state to the incoming Castform.
+	chosen.attached_energies = castform.attached_energies.duplicate()
+	chosen.attached_pre_evolutions = castform.attached_pre_evolutions.duplicate()
+	chosen.attached_cards = castform.attached_cards.duplicate()
+	var max_hp_new = chosen.get_max_hp()
+	var damage_taken = castform.get_max_hp() - castform.current_hp
+	chosen.current_hp = max(1, max_hp_new - damage_taken)
+	chosen.special_condition = castform.special_condition
+	chosen.is_poisoned = castform.is_poisoned
+	chosen.poison_damage = castform.poison_damage
+	chosen.is_burned = castform.is_burned
+	chosen.placed_on_field_this_turn = castform.placed_on_field_this_turn
+	# Swap positions.
+	var active = main.opponent_active_pokemon if is_opponent else main.player_active_pokemon
+	var bench = main.opponent_bench if is_opponent else main.player_bench
+	deck.erase(chosen)
+	if castform == active:
+		if is_opponent: main.opponent_active_pokemon = chosen
+		else: main.player_active_pokemon = chosen
+		chosen.current_location = "active"
+	else:
+		var idx = bench.find(castform)
+		if idx != -1:
+			bench[idx] = chosen
+			chosen.current_location = "bench"
+	castform.attached_energies.clear()
+	castform.attached_pre_evolutions.clear()
+	castform.attached_cards.clear()
+	castform.current_hp = castform.get_max_hp()
+	main.clear_all_statuses(castform, is_opponent)
+	castform.current_location = "deck"
+	deck.append(castform)
+	deck.shuffle()
+	main.display_pokemon(is_opponent)
+	main.display_active_pokemon_energies(is_opponent)
+	main.update_deck_icon(is_opponent)
+	await main.show_message("TEMPERAMENTAL WEATHER! SWITCHED TO " + chosen.metadata.get("name","").to_upper() + "!")
+	if main._should_bail(): return
+
+# ── CPU phase for ex5 active powers ───────────────────────────────────────────
+func cpu_phase_ex5_powers() -> void:
+	if is_toxic_gas_active() or main.goop_gas_active: return
+	var walrein = _find_cpu_pokemon_with_power("Crush Draw")
+	if walrein != null and not walrein.power_used_this_turn and not is_power_blocked_by_status(walrein):
+		await power_ex5_crush_draw(walrein)
+		if main._should_bail(): return
+	var beldum = _find_cpu_pokemon_with_power("Magnetic Call")
+	if beldum != null and not beldum.power_used_this_turn and not is_power_blocked_by_status(beldum):
+		await power_ex5_magnetic_call(beldum)
+		if main._should_bail(): return
+	var bellossom = _find_cpu_pokemon_with_power("Heal Dance")
+	if bellossom != null and not bellossom.power_used_this_turn and not main.opponent_ex5_heal_dance_used and not is_power_blocked_by_status(bellossom):
+		# Only bother if something is damaged.
+		for p in main.card_ops.get_all_pokemon_in_play(true):
+			if p.current_hp < p.get_max_hp():
+				await power_ex5_heal_dance(bellossom)
+				break
 		if main._should_bail(): return

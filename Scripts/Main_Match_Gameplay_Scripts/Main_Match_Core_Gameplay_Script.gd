@@ -102,6 +102,11 @@ var opponent_retreat_disabled: bool = false
 var player_retreated_this_turn: bool = false
 var opponent_retreated_this_turn: bool = false
 var xxxxx_used_this_turn: bool = false  # neo4-30 Unown [X] [XXXXX]: only one bonus per turn
+# EX5: "at most 1 per turn across all copies" gates for Bellossom Heal Dance and Castform Temperamental Weather
+var player_ex5_heal_dance_used: bool = false
+var opponent_ex5_heal_dance_used: bool = false
+var player_ex5_weather_used: bool = false
+var opponent_ex5_weather_used: bool = false
 
 # Mirror Move: stores the last attack result so Pidgeotto can copy it
 var last_attack_on_player: Dictionary = {}   # {"damage": int, "attack": Dictionary, "attacker_types": Array}
@@ -2250,9 +2255,21 @@ func perform_energy_attachment() -> void:
 		hide_selection_mode_display_main()
 		return
 
+	# EX5 Freeze Lock (Regice ex ex5-97): can't attach Energy from hand to a Freeze-Locked Pokemon
+	if target_pokemon.has_effect("ex5_energy_lock"):
+		await show_message("FREEZE LOCK! CAN'T ATTACH ENERGY TO " + target_pokemon.metadata.get("name","").to_upper() + " THIS TURN!")
+		energy_card_awaiting_target = null
+		selected_card_for_action = null
+		card_attach_mode_active = false
+		hide_selection_mode_display_main()
+		return
+
 	target_pokemon.attached_energies.append(energy_card)
 	print("Attached ", energy_card.metadata.get("name", "Unknown Energy"), " to ", target_pokemon.metadata.get("name", "Unknown Pokemon"))
 	player_hand.erase(energy_card)
+	# EX5 Island Cave (ex5-89 Stadium): attaching Energy from hand to a Water/Fighting/Metal Pokemon
+	# removes any Special Conditions from it.
+	trainer_effects.ex5_island_cave_on_attach(target_pokemon, false)
 	# MATCH EFFECT: extra_energy_per_turn — flag only set once the per-turn limit is reached
 	player_energy_attach_count += 1
 	player_energy_played_this_turn = player_energy_attach_count >= match_effects.energy_attach_limit(false)
@@ -2638,6 +2655,11 @@ func inbetween_turn_checks(player_turn_just_ended: bool = true) -> void:
 	# EX1+: reset the "1 Supporter per turn" flags for both sides on every turn transition
 	trainer_effects.player_played_supporter_this_turn = false
 	trainer_effects.opponent_played_supporter_this_turn = false
+	# EX5: reset the once-per-turn "1 per turn across all copies" power flags for both sides
+	player_ex5_heal_dance_used = false
+	opponent_ex5_heal_dance_used = false
+	player_ex5_weather_used = false
+	opponent_ex5_weather_used = false
 	xxxxx_used_this_turn = false
 	reset_field_pokemon_turn_flags(false)
 	reset_field_pokemon_turn_flags(true)
@@ -3138,6 +3160,9 @@ func perform_evolution(is_opponent: bool) -> void:
 	# EX3 Loose Shell (Ninjask ex3-18): when Ninjask evolves from hand, may search deck for Shedinja onto Bench
 	elif evo_card.has_ability("Loose Shell"):
 		await powers_and_bodies.trigger_ex3_loose_shell(evo_card, is_opponent)
+	# EX5 Healing Shower (Milotic ex5-12): on evolve, may remove all damage from all Pokemon (excl ex)
+	elif evo_card.has_ability("Healing Shower"):
+		await powers_and_bodies.trigger_ex5_healing_shower(evo_card, is_opponent)
 
 ########################################################### Retreat functions ##############################################################
 
@@ -3161,9 +3186,11 @@ func can_retreat(is_opponent: bool) -> Dictionary:
 		return {"can_retreat": false, "reason": "Cannot retreat with no Pokemon on your bench!"}
 	if is_disabled:
 		return {"can_retreat": false, "reason": "You have been prevented from retreating!"}
-	if active.special_condition == "Paralyzed":
+	# EX5 Fast Feet (Dodrio ex5-33): can retreat even when Asleep or Paralyzed
+	var fast_feet = active.has_ability("Fast Feet") and not powers_and_bodies.is_power_blocked(active)
+	if not fast_feet and active.special_condition == "Paralyzed":
 		return {"can_retreat": false, "reason": active.metadata.get("name", "") + " is Paralyzed and cannot retreat!"}
-	if active.special_condition == "Asleep":
+	if not fast_feet and active.special_condition == "Asleep":
 		return {"can_retreat": false, "reason": active.metadata.get("name", "") + " is Asleep and cannot retreat!"}
 	if active.attached_energies.size() < get_retreat_cost(active):
 		return {"can_retreat": false, "reason": "Not enough energy to retreat!"}
@@ -3240,6 +3267,11 @@ func get_attacks_for_card(card: card_object) -> Array:
 
 	# EX4 Power Saver (Kyogre ex4-3 / Groudon ex4-9): can't attack while few Team Pokemon are in play
 	if powers_and_bodies.check_power_saver_blocks_attack(card):
+		return []
+
+	# EX5 Mark of Antiquity (Groudon ex / Kyogre ex): each player's named Legendary ex can't attack
+	# while an opposing Mark of Antiquity holder is Active.
+	if powers_and_bodies.check_ex5_mark_of_antiquity_blocks_attack(card):
 		return []
 
 	# Get the attacks if they exist
@@ -3775,6 +3807,13 @@ func calculate_final_damage(base_damage: int, attacking_types: Array, defending_
 		if "Blaine" in def_name_cinnabar and "Water" in attacking_types:
 			skip_weakness = true
 			modifiers_applied.append("CINNABAR GYM (NO WEAKNESS)")
+	# EX5 Ancient Tomb (ex5-87 Stadium): don't apply Weakness for all Pokemon in play (excluding
+	# Pokemon-ex and Pokemon that has an owner in its name, e.g. "Brock's", "Rocket's").
+	if not skip_weakness and is_stadium_in_play(StadiumIds.ANCIENT_TOMB):
+		var def_name_tomb = defending_pokemon.metadata.get("name", "")
+		if not is_ex_pokemon(defending_pokemon) and "'s" not in def_name_tomb:
+			skip_weakness = true
+			modifiers_applied.append("ANCIENT TOMB (NO WEAKNESS)")
 	# MATCH EFFECT: ignore_weakness — side-aware for real attacks; for attacker-less calls
 	# (CPU planning) only a both-sides rule applies, so planning never sees a one-sided rule
 	if not skip_weakness:
@@ -3812,6 +3851,11 @@ func calculate_final_damage(base_damage: int, attacking_types: Array, defending_
 	if not skip_resistance and powers_and_bodies.is_ex1_withering_dust_in_play():
 		skip_resistance = true
 		modifiers_applied.append("WITHERING DUST (NO RESISTANCE)")
+	# EX5 Magnetic Storm (ex5-91 Stadium): Psychic/Fighting attacks are not affected by Resistance.
+	if not skip_resistance and is_stadium_in_play(StadiumIds.MAGNETIC_STORM):
+		if "Psychic" in attacking_types or "Fighting" in attacking_types:
+			skip_resistance = true
+			modifiers_applied.append("MAGNETIC STORM (NO RESISTANCE)")
 	# MATCH EFFECT: ignore_resistance — same side-awareness rules as ignore_weakness above
 	if not skip_resistance:
 		if attacker_pokemon != null:
@@ -4502,6 +4546,10 @@ func get_retreat_cost(pokemon: card_object) -> int:
 
 	# ECARD1 Tailwind (Dragonite): this Pokemon's Retreat Cost is 0 for the rest of the turn
 	if pokemon.has_effect("ecard1_tailwind"):
+		return 0
+
+	# EX5 Freefloating (Tentacool ex5-77): Retreat Cost is 0 while no Energy is attached
+	if powers_and_bodies.is_ex5_freefloating_free(pokemon):
 		return 0
 
 	# ECARD3 Psychoflow (Abra): Retreat Cost is 0 as long as a Psychic Energy is attached to it

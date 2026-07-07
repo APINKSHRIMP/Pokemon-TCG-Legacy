@@ -63,6 +63,12 @@ const LOW_PRESSURE_SYSTEM   = "ex3-86" # Each Grass/Lightning Pokemon in play ge
 const TEAM_AQUA_HIDEOUT  = "ex4-78" # Pokemon without "Team Aqua" in name pay Colorless more to retreat
 const TEAM_MAGMA_HIDEOUT = "ex4-83" # Playing a non-Team-Magma Basic from hand puts 1 damage counter on it
 
+# ── EX Hidden Legends (ex5) ────────────────────────────────────────────────────
+const ANCIENT_TOMB    = "ex5-87"  # Don't apply Weakness for all Pokemon (excl ex / owner-named)
+const DESERT_RUINS    = "ex5-88"  # Between turns, each player puts 1 counter on their ex with max HP >= 100
+const ISLAND_CAVE     = "ex5-89"  # Energy attached from hand to Water/Fighting/Metal Pokemon removes Special Conditions
+const MAGNETIC_STORM  = "ex5-91"  # Psychic/Fighting attacks are not affected by Resistance
+
 # ── Skyridge (ecard3) ─────────────────────────────────────────────────────────
 const ANCIENT_RUINS     = "ecard3-119" # Once per player's turn: if no Supporter played and none revealed in hand, draw a card
 const MIRAGE_STADIUM    = "ecard3-132" # Passive: any retreat attempt requires a coin flip — tails blocks the retreat

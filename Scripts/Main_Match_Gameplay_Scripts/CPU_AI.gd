@@ -346,7 +346,11 @@ func evaluate_ko_threats() -> Dictionary:
 
 # Returns how many energy cards a pokemon still needs to use a specific attack
 func get_unmet_energy_count(attack: Dictionary, pokemon: card_object) -> int:
-	var required_cost = attack.get("cost", [])
+	var required_cost = attack.get("cost", []).duplicate()
+	# EX5 Primal Pull (Claydol ex5-2): while a Primal Pull Claydol is Active, each player's Evolved
+	# Pokemon pays Colorless more Energy to use its attacks.
+	if not main.is_basic_pokemon(pokemon) and main.powers_and_bodies.is_ex5_primal_pull_active():
+		required_cost.append("Colorless")
 	if required_cost.size() == 0:
 		return 0
 
@@ -1373,9 +1377,16 @@ func cpu_phase_energy_attachment(cpu_eval: Dictionary) -> void:
 		print("CPU energy attachment blocked: type immunity")
 		return
 
+	# EX5 Freeze Lock (Regice ex ex5-97): can't attach Energy from hand to a Freeze-Locked Pokemon
+	if target.has_effect("ex5_energy_lock"):
+		print("CPU energy attachment blocked: Freeze Lock")
+		return
+
 	# Perform the attachment
 	main.opponent_hand.erase(energy)
 	target.attached_energies.append(energy)
+	# EX5 Island Cave (ex5-89): attaching to a Water/Fighting/Metal Pokemon clears Special Conditions
+	main.trainer_effects.ex5_island_cave_on_attach(target, true)
 	# MATCH EFFECT: extra_energy_per_turn — flag only set once the per-turn limit is reached
 	main.opponent_energy_attach_count += 1
 	main.opponent_energy_played_this_turn = main.opponent_energy_attach_count >= main.match_effects.energy_attach_limit(true)
