@@ -74,3 +74,5 @@ const ANCIENT_RUINS     = "ecard3-119" # Once per player's turn: if no Supporter
 const MIRAGE_STADIUM    = "ecard3-132" # Passive: any retreat attempt requires a coin flip — tails blocks the retreat
 const MYSTERY_ZONE      = "ecard3-137" # Once per player's turn: search a basic Energy to hand, must return an Evolution card from hand to deck
 const UNDERGROUND_LAKE  = "ecard3-141" # Once per player's turn: put an Omanyte or Kabuto from discard onto the Bench
+
+const MT_MOON           = "ex6-94"    # Passive: Pokemon (both players) with max HP < 70 can't use Poke-Powers

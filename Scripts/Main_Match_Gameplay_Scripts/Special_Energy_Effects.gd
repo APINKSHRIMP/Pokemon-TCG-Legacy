@@ -53,6 +53,11 @@ func get_energy_types_provided(card_name: String) -> Array:
 			return ["Metal"]
 		"Recycle Energy":
 			return ["Colorless"]
+		"Multi Energy":
+			# EX6 Multi Energy: provides every type of Energy but only 1 at a time (like Rainbow).
+			# The "provides Colorless when the Pokemon already has another Special Energy attached"
+			# anti-combo rule needs the holder's context (unavailable here) and is simplified out.
+			return ["Fire", "Water", "Grass", "Lightning", "Psychic", "Fighting", "Darkness", "Metal"]
 		"Aqua Energy":
 			# Provides Water + Darkness (2 Energy at a time); attach only to Team Aqua Pokemon
 			return ["Water", "Darkness"]
@@ -92,7 +97,7 @@ func can_attach_to(energy_card: card_object, target_pokemon: card_object) -> Dic
 
 	match card_name:
 		"Rainbow Energy", "Full Heal Energy", "Potion Energy", "Double Colorless Energy", \
-		"Darkness Energy", "Metal Energy", "Recycle Energy":
+		"Darkness Energy", "Metal Energy", "Recycle Energy", "Multi Energy":
 			return {"allowed": true, "reason": ""}
 		"Aqua Energy":
 			if "Team Aqua" not in target_pokemon.metadata.get("name", ""):
@@ -319,6 +324,16 @@ func score_special_energy_attachment(energy_card: card_object, target_pokemon: c
 				score += 15.0  # Heal is a nice bonus
 			score += 5.0  # Colorless baseline
 		
+		"Multi Energy":
+			# EX6 Multi Energy: matches any single type, no drawback. Best when it unlocks an attack.
+			score += 25.0
+			if is_active:
+				score += 10.0
+			for attack in target_pokemon.metadata.get("attacks", []):
+				if main.cpu_ai.get_unmet_energy_count(attack, target_pokemon) == 1:
+					score += 40.0
+					break
+
 		"Double Colorless Energy":
 			# Provides 2 colorless — always good
 			score += 25.0

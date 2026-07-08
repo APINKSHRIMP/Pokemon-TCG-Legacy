@@ -37,6 +37,7 @@ func _ensure_trainer_dispatch_ready() -> void:
 	_register_ex3_trainers()
 	_register_ex4_trainers()
 	_register_ex5_trainers()
+	_register_ex6_trainers()
 
 func _register_base_trainers() -> void:
 	_trainer_dispatch["base1-88"] = func(c, opp): await effect_professor_oak(c, opp)
@@ -9558,6 +9559,139 @@ func ex4_belt_check() -> void:
 #  Ancient Technical Machines (ex5-84/85/86) attach via the generic Technical Machine subtype path;
 #  their attacks (Ice/Stone/Steel Generator) are dispatched in Attack_Effects.gd.
 # ══════════════════════════════════════════════════════════════════════════════
+func _register_ex6_trainers() -> void:
+	# Reprints routed to existing effect functions
+	_trainer_dispatch["ex6-87"] = func(c, opp): await effect_ecard1_bills_maintenance(opp)          # Bill's Maintenance
+	_trainer_dispatch["ex6-89"] = func(c, opp): await effect_ecard1_energy_removal_2(opp)            # Energy Removal 2
+	_trainer_dispatch["ex6-90"] = func(c, opp): await effect_ecard2_energy_switch(opp)               # Energy Switch
+	_trainer_dispatch["ex6-93"] = func(c, opp): await effect_ex5_life_herb(opp)                       # Life Herb
+	_trainer_dispatch["ex6-95"] = func(c, opp): await effect_poke_ball(opp)                           # Poké Ball
+	_trainer_dispatch["ex6-97"] = func(c, opp): await effect_ecard1_pokemon_reversal(opp)             # Pokémon Reversal
+	_trainer_dispatch["ex6-98"] = func(c, opp): await effect_ecard1_professor_oaks_research(opp)      # Prof. Oak's Research
+	_trainer_dispatch["ex6-99"] = func(c, opp): await effect_neo1_super_scoop_up(opp)                 # Super Scoop Up
+	_trainer_dispatch["ex6-101"] = func(c, opp): await effect_potion(opp)                             # Potion
+	_trainer_dispatch["ex6-102"] = func(c, opp): await effect_switch(opp)                             # Switch
+	# New ex6 Trainers
+	_trainer_dispatch["ex6-88"] = func(c, opp): await effect_ex6_celios_network(opp)                  # Celio's Network
+	_trainer_dispatch["ex6-92"] = func(c, opp): await effect_ex6_great_ball(opp)                      # Great Ball
+	_trainer_dispatch["ex6-96"] = func(c, opp): await effect_ex6_handy909(opp)                        # PokéDex HANDY909
+	_trainer_dispatch["ex6-100"] = func(c, opp): await effect_ex6_vs_seeker(opp)                      # VS Seeker
+	# ex6-91 EXP.ALL (Pokémon Tool), ex6-94 Mt. Moon (Stadium), ex6-103 Multi Energy resolve via their
+	# own paths (attached-trainer / stadium / special-energy) — no _trainer_dispatch entry needed.
+
+# CELIO'S NETWORK (ex6-88, Supporter): search your deck for a Basic Pokemon or Evolution card
+# (excluding Pokemon-ex) and put it into your hand. Shuffle afterward.
+func effect_ex6_celios_network(is_opponent: bool) -> void:
+	var filter_fn = func(c):
+		if c.metadata.get("supertype","") != "Pokémon": return false
+		if main.is_ex_pokemon(c): return false
+		var st = c.metadata.get("subtypes", [])
+		return "Basic" in st or "Stage 1" in st or "Stage 2" in st
+	var found = await main.card_ops.search_deck_to_hand(is_opponent, filter_fn, "CELIO'S NETWORK: CHOOSE A POKEMON", 1)
+	if main._should_bail(): return
+	await main.show_message("CELIO'S NETWORK! ADDED " + str(found.size()) + " CARD TO HAND!" if found.size() > 0 else "NO ELIGIBLE POKEMON IN DECK!")
+	if main._should_bail(): return
+	print("TRAINER: Celio's Network")
+
+# GREAT BALL (ex6-92, Item): search your deck for a Basic Pokemon (excluding Pokemon-ex) and put it
+# onto your Bench. Shuffle afterward.
+func effect_ex6_great_ball(is_opponent: bool) -> void:
+	var bench = main.opponent_bench if is_opponent else main.player_bench
+	var deck = main.opponent_deck if is_opponent else main.player_deck
+	if bench.size() >= main.get_max_bench_size():
+		await main.show_message("GREAT BALL: BENCH IS FULL!")
+		if main._should_bail(): return
+		return
+	var pool = deck.filter(func(c): return c.metadata.get("supertype","") == "Pokémon" and "Basic" in c.metadata.get("subtypes", []) and not main.is_ex_pokemon(c))
+	if pool.is_empty():
+		await main.show_message("GREAT BALL: NO ELIGIBLE BASIC POKEMON!")
+		deck.shuffle()
+		if main._should_bail(): return
+		return
+	var chosen: card_object = null
+	if is_opponent:
+		var best = -1
+		for c in pool:
+			var hp = int(c.metadata.get("hp","0"))
+			if hp > best:
+				best = hp
+				chosen = c
+	else:
+		chosen = await main.card_ops.prompt_select_card(pool, "GREAT BALL: CHOOSE A POKEMON", "Select a Basic Pokemon to put on your Bench", "SELECT", true, true)
+		if main._should_bail(): return
+	if chosen != null and bench.size() < main.get_max_bench_size():
+		deck.erase(chosen)
+		chosen.current_hp = chosen.get_max_hp()
+		main.card_ops.place_on_bench(chosen, is_opponent)
+		await main.show_message("GREAT BALL! " + chosen.metadata.get("name","").to_upper() + " WAS PLACED ON THE BENCH!")
+		if main._should_bail(): return
+	deck.shuffle()
+	main.update_deck_icon(is_opponent)
+	print("TRAINER: Great Ball")
+
+# POKEDEX HANDY909 (ex6-96, Item): shuffle your deck, look at the top 6 cards, then put them back on
+# top of your deck in any order. Reuses the base Pokedex reorder UI mechanism.
+func effect_ex6_handy909(is_opponent: bool) -> void:
+	var deck = main.opponent_deck if is_opponent else main.player_deck
+	deck.shuffle()
+	main.update_deck_icon(is_opponent)
+	var look_count = min(6, deck.size())
+	if look_count == 0:
+		await main.show_message("HANDY909: DECK IS EMPTY!")
+		if main._should_bail(): return
+		return
+	var top_cards: Array = []
+	for i in range(look_count):
+		top_cards.append(deck[i])
+	if is_opponent:
+		# CPU: order best cards to the top for its next draws.
+		top_cards.sort_custom(func(a, b): return _cpu_pokedex_priority(a) > _cpu_pokedex_priority(b))
+		for i in range(top_cards.size()):
+			deck[i] = top_cards[i]
+		await main.show_message("HANDY909: OPPONENT REARRANGED THE TOP OF ITS DECK.")
+		if main._should_bail(): return
+	else:
+		main.pokedex_cards = top_cards.duplicate()
+		main.pokedex_reorder_result.clear()
+		main.trainer_reorder_active = true
+		main.show_enlarged_array_selection_mode(main.pokedex_cards)
+		main.header_label.text = "HANDY909 - CLICK CARDS IN ORDER"
+		main.hint_label.text = "Click cards in the order you want them (top of deck first)"
+		main.action_button.text = "0/" + str(look_count) + " SELECTED"
+		main.action_button.disabled = true
+		main.action_button.theme = main.theme_disabled
+		main.cancel_button.visible = false
+		await main.trainer_reorder_done
+		if main._should_bail(): return
+		main.trainer_reorder_active = false
+		main.hide_selection_mode_display_main()
+		for i in range(main.pokedex_reorder_result.size()):
+			deck[i] = main.pokedex_reorder_result[i]
+		main.pokedex_cards.clear()
+		main.pokedex_reorder_result.clear()
+	print("TRAINER: HANDY909")
+
+# VS SEEKER (ex6-100, Item): search your discard pile for a Supporter card and put it into your hand.
+func effect_ex6_vs_seeker(is_opponent: bool) -> void:
+	var discard = main.opponent_discard_pile if is_opponent else main.player_discard_pile
+	var pool = discard.filter(func(c): return c.metadata.get("supertype","") == "Trainer" and "Supporter" in c.metadata.get("subtypes", []))
+	if pool.is_empty():
+		await main.show_message("VS SEEKER: NO SUPPORTER IN THE DISCARD PILE!")
+		if main._should_bail(): return
+		return
+	var chosen: card_object = null
+	if is_opponent:
+		chosen = pool[0]
+	else:
+		chosen = await main.card_ops.prompt_select_card(pool, "VS SEEKER: CHOOSE A SUPPORTER", "Select a Supporter card to return to your hand", "TAKE", true, true)
+		if main._should_bail(): return
+	if chosen != null:
+		await main.card_ops.recover_to_hand(chosen, is_opponent)
+		if main._should_bail(): return
+		await main.show_message("VS SEEKER! RETURNED " + chosen.metadata.get("name","").to_upper() + " TO YOUR HAND!")
+		if main._should_bail(): return
+	print("TRAINER: VS Seeker")
+
 func _register_ex5_trainers() -> void:
 	_trainer_dispatch["ex5-90"] = func(c, opp): await effect_ex5_life_herb(opp)
 	_trainer_dispatch["ex5-92"] = func(c, opp): await effect_ex5_stevens_advice(opp)

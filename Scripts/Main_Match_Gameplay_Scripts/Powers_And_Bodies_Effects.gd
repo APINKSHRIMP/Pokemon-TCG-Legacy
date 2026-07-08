@@ -73,6 +73,7 @@ func _register_all_powers() -> void:
 	_register_ex3_powers()
 	_register_ex4_powers()
 	_register_ex5_powers()
+	_register_ex6_powers()
 
 # ── On-damage and pre-KO event hooks ──────────────────────────────────────────
 # Each Callable is fired after active-pokemon damage resolves (on_damage) or
@@ -127,6 +128,10 @@ func _register_all_power_hooks() -> void:
 	_damage_modifier_hooks.append(func(dmg, atk, def, mods): return _hook_ex5_core_guard(dmg, atk, def, mods))
 	_damage_modifier_hooks.append(func(dmg, atk, def, mods): return _hook_ex5_overzealous(dmg, atk, def, mods))
 	_damage_modifier_hooks.append(func(dmg, atk, def, mods): return _hook_ex5_silver_wind(dmg, atk, def, mods))
+	_damage_modifier_hooks.append(func(dmg, atk, def, mods): return _hook_ex6_power_gene(dmg, atk, def, mods))
+	_damage_modifier_hooks.append(func(dmg, atk, def, mods): return _hook_ex6_energy_protection(dmg, atk, def, mods))
+	_damage_modifier_hooks.append(func(dmg, atk, def, mods): return _hook_ex6_magic_odds(dmg, atk, def, mods))
+	_damage_modifier_hooks.append(func(dmg, atk, def, mods): return _hook_ex6_magic_evens(dmg, atk, def, mods))
 	_on_damage_hooks.append(func(def, atk, dmg, is_def_opp): await check_strikes_back(def, atk, is_def_opp))
 	_on_damage_hooks.append(func(def, atk, dmg, is_def_opp): await check_restless_sleep(def, atk, is_def_opp))
 	_on_damage_hooks.append(func(def, atk, dmg, is_def_opp): await check_pollen_defense(def, atk, is_def_opp))
@@ -182,6 +187,15 @@ func check_koga_poison(defender: card_object, attacker: card_object, is_def_opp:
 	main.card_ops.apply_status(defender, "Poisoned", is_def_opp)
 	print("GYM2 KOGA: Poisoned ", defender.metadata.get("name", ""))
 
+# EX6 Mt. Moon (ex6-94 Stadium): any Pokemon (both players) with maximum HP less than 70 can't use
+# any Poke-Powers. Bodies are unaffected. Gated in open_power_menu (player) and activate_power (both).
+func mt_moon_blocks_power(pokemon: card_object) -> bool:
+	if pokemon == null:
+		return false
+	if not main.is_stadium_in_play(StadiumIds.MT_MOON):
+		return false
+	return pokemon.get_max_hp() < 70
+
 func is_power_blocked_by_status(pokemon: card_object) -> bool:
 	if pokemon == null:
 		return true
@@ -236,6 +250,13 @@ func is_energy_burn_active(pokemon: card_object) -> bool:
 			return true
 	return false
 
+# EX6 Energy Flame (Charizard ex ex6-105): all Energy attached to Charizard ex is Fire Energy instead
+# of its usual type. Poke-Body — always on (not gated by status).
+func is_ex6_energy_flame_active(pokemon: card_object) -> bool:
+	if pokemon == null:
+		return false
+	return pokemon.has_ability("Energy Flame")
+
 # ECARD1 Burning Energy (Charizard ecard1-6): while active for a side, all basic Energy
 # attached to that side's Pokemon counts as Fire for the rest of the turn.
 func is_ecard1_burning_energy_active(pokemon: card_object) -> bool:
@@ -252,6 +273,24 @@ func is_ecard1_dark_aura_active(pokemon: card_object) -> bool:
 			if is_power_blocked_by_status(pokemon): return false
 			return true
 	return false
+
+# EX6 Fiery Aura (Rapidash ex6-13): true if a Rapidash with Fiery Aura is a side's Active Pokemon.
+func is_fiery_aura_active() -> bool:
+	for active in [main.player_active_pokemon, main.opponent_active_pokemon]:
+		if active != null and active.has_ability("Fiery Aura") and not is_power_blocked_by_status(active):
+			return true
+	return false
+
+# EX6 Spiral (Poliwrath ex6-11): true if a Poliwrath with Spiral is Active on the side OPPOSING the
+# given pokemon (so that pokemon's Confused status prevents its retreat).
+func is_ex6_spiral_blocking(pokemon: card_object) -> bool:
+	if pokemon == null:
+		return false
+	if pokemon.special_condition != "Confused":
+		return false
+	var pokemon_is_opp = (pokemon == main.opponent_active_pokemon or pokemon in main.opponent_bench)
+	var opposing_active = main.player_active_pokemon if pokemon_is_opp else main.opponent_active_pokemon
+	return opposing_active != null and opposing_active.has_ability("Spiral") and not is_power_blocked_by_status(opposing_active)
 
 # ECARD3 Rare Metal (Steelix): all basic Energy attached to Steelix provides Metal instead
 func is_ecard3_rare_metal_active(pokemon: card_object) -> bool:
@@ -323,6 +362,9 @@ func open_power_menu() -> void:
 				continue
 			# Check if usable
 			if ability_name != "Buzzap" and is_power_blocked_by_status(pokemon):
+				continue
+			# EX6 Mt. Moon: HP < 70 Pokemon can't use Poke-Powers
+			if mt_moon_blocks_power(pokemon):
 				continue
 			available_powers.append({"pokemon": pokemon, "ability": ability})
 	
@@ -443,6 +485,11 @@ func open_power_menu() -> void:
 func activate_power(pokemon: card_object, ability: Dictionary) -> void:
 	main.hide_attack_buttons()
 	_ensure_power_dispatch_ready()
+	# EX6 Mt. Moon: HP < 70 Pokemon can't use Poke-Powers (guards both player and CPU execution).
+	if mt_moon_blocks_power(pokemon):
+		if not main.opponents_turn_active:
+			await main.show_message("MT. MOON PREVENTS " + pokemon.metadata.get("name","").to_upper() + " FROM USING POKE-POWERS!")
+		return
 	var ability_name = ability.get("name", "")
 	if _power_dispatch.has(ability_name):
 		await _power_dispatch[ability_name].call(pokemon)
@@ -1996,6 +2043,8 @@ func cpu_phase_activate_powers() -> void:
 	await cpu_phase_ex4_powers()
 	if main._should_bail(): return
 	await cpu_phase_ex5_powers()
+	if main._should_bail(): return
+	await cpu_phase_ex6_powers()
 	if main._should_bail(): return
 
 
@@ -6616,6 +6665,76 @@ func apply_np_between_turn_bodies() -> void:
 				if main._should_bail(): return
 				break
 
+	# EX6 SOOTH DUST (Butterfree ex6-2): while Active, remove 1 damage counter from EACH of your Pokemon.
+	for side in [false, true]:
+		var sd_active = main.opponent_active_pokemon if side else main.player_active_pokemon
+		if sd_active == null: continue
+		if is_toxic_gas_active() or main.goop_gas_active: continue
+		if is_power_blocked_by_status(sd_active): continue
+		if sd_active.has_ability("Sooth Dust"):
+			var healed = false
+			for p in main.card_ops.get_all_pokemon_in_play(side):
+				if p.current_hp <= 0: continue
+				if p.current_hp < p.get_max_hp():
+					p.current_hp = min(p.get_max_hp(), p.current_hp + 10)
+					main.display_hp_circles_above_align(p, side)
+					healed = true
+			if healed:
+				await main.show_message("SOOTH DUST! REMOVED 1 DAMAGE COUNTER FROM EACH OF YOUR POKEMON!")
+				if main._should_bail(): return
+
+	# EX6 REST UP (Snorlax ex6-15): if Snorlax remains Asleep between turns, remove 2 damage counters
+	# (remove 1 if there is only 1).
+	for side in [false, true]:
+		for p in main.card_ops.get_all_pokemon_in_play(side):
+			if p.current_hp <= 0: continue
+			if p.has_ability("Rest Up") and p.special_condition == "Asleep":
+				var missing = p.get_max_hp() - p.current_hp
+				if missing > 0:
+					var heal = min(missing, 20)
+					p.current_hp += heal
+					main.display_hp_circles_above_align(p, side)
+					await main.show_message("REST UP! " + p.metadata.get("name","").to_upper() + " REMOVED DAMAGE COUNTERS WHILE ASLEEP!")
+					if main._should_bail(): return
+
+	# EX6 ACID SAMPLER (Victreebel ex6-17): while Active, put 1 damage counter on each Defending Pokemon.
+	for side in [false, true]:
+		var as_active = main.opponent_active_pokemon if side else main.player_active_pokemon
+		if as_active == null: continue
+		if is_toxic_gas_active() or main.goop_gas_active: continue
+		if is_power_blocked_by_status(as_active): continue
+		if as_active.has_ability("Acid Sampler"):
+			var opp_active = main.player_active_pokemon if side else main.opponent_active_pokemon
+			if opp_active != null and opp_active.current_hp > 0:
+				opp_active.current_hp = max(0, opp_active.current_hp - 10)
+				main.display_hp_circles_above_align(opp_active, not side)
+				await main.show_message("ACID SAMPLER! 1 DAMAGE COUNTER ON THE DEFENDING POKEMON!")
+				if main._should_bail(): return
+				await main.check_all_knockouts()
+				if main._should_bail(): return
+
+	# EX6 EERIE AURA (Hypno ex6-25): while Active, put 2 damage counters on each Pokemon that remains
+	# Asleep between turns (both sides).
+	for side in [false, true]:
+		var ea_active = main.opponent_active_pokemon if side else main.player_active_pokemon
+		if ea_active == null: continue
+		if is_toxic_gas_active() or main.goop_gas_active: continue
+		if is_power_blocked_by_status(ea_active): continue
+		if ea_active.has_ability("Eerie Aura"):
+			var hit = false
+			for s2 in [false, true]:
+				for p in main.card_ops.get_all_pokemon_in_play(s2):
+					if p.current_hp > 0 and p.special_condition == "Asleep":
+						p.current_hp = max(0, p.current_hp - 20)
+						main.display_hp_circles_above_align(p, s2)
+						hit = true
+			if hit:
+				await main.show_message("EERIE AURA! 2 DAMAGE COUNTERS ON EACH ASLEEP POKEMON!")
+				if main._should_bail(): return
+				await main.check_all_knockouts()
+				if main._should_bail(): return
+			break
+
 # SYNCHRONIZED LIFT (np-31/32/33 Moltres/Articuno/Zapdos ex): free retreat if specific partners in play
 func check_synchronized_lift(pokemon: card_object, is_opponent: bool) -> bool:
 	if pokemon == null: return false
@@ -9852,6 +9971,61 @@ func power_ex2_healing_wind(xatu: card_object) -> void:
 	await main.show_message("HEALING WIND! REMOVED 1 DAMAGE COUNTER FROM EACH OF YOUR ACTIVE POKEMON!")
 	if main._should_bail(): return
 
+# ── EX6 passive damage-modifier bodies ─────────────────────────────────────────────────────────
+
+# POWER GENE (Nidoking ex6-8): while a Nidoking is in play on the attacker's side, attacks by the
+# Nidoran family (excluding Nidoking) do 10 more damage to the Defending Pokemon.
+func _hook_ex6_power_gene(damage: int, attacker: card_object, defender: card_object, modifiers: Array) -> int:
+	if damage <= 0 or attacker == null or defender == null:
+		return damage
+	if attacker.metadata.get("name","") not in ["Nidoran ♀", "Nidorina", "Nidoqueen", "Nidoran ♂", "Nidorino"]:
+		return damage
+	if defender != main.player_active_pokemon and defender != main.opponent_active_pokemon:
+		return damage
+	var atk_is_opp = (attacker == main.opponent_active_pokemon or attacker in main.opponent_bench)
+	for p in main.card_ops.get_all_pokemon_in_play(atk_is_opp):
+		if p.metadata.get("name","") == "Nidoking" and not is_power_blocked_by_status(p):
+			modifiers.append("POWER GENE +10")
+			return damage + 10
+	return damage
+
+# ENERGY PROTECTION (Metapod ex6-39): damage to Metapod is reduced by 10 for each Energy attached to
+# Metapod (max 30).
+func _hook_ex6_energy_protection(damage: int, _attacker: card_object, defender: card_object, modifiers: Array) -> int:
+	if damage <= 0 or defender == null:
+		return damage
+	if not defender.has_ability("Energy Protection") or is_power_blocked_by_status(defender):
+		return damage
+	var r = min(30, 10 * defender.attached_energies.size())
+	r = min(r, damage)
+	if r > 0:
+		modifiers.append("ENERGY PROTECTION -" + str(r))
+	return damage - r
+
+# MAGIC ODDS (Mr. Mime ex ex6-110): prevent an attack's damage to Mr. Mime ex if that damage is one
+# of 10, 30, 50, 70, 90, 110, 130, 150, or 170.
+func _hook_ex6_magic_odds(damage: int, _attacker: card_object, defender: card_object, modifiers: Array) -> int:
+	if damage <= 0 or defender == null:
+		return damage
+	if not defender.has_ability("Magic Odds") or is_power_blocked_by_status(defender):
+		return damage
+	if damage in [10, 30, 50, 70, 90, 110, 130, 150, 170]:
+		modifiers.append("MAGIC ODDS - DAMAGE PREVENTED")
+		return 0
+	return damage
+
+# MAGIC EVENS (Mr. Mime ex ex6-111): prevent an attack's damage to Mr. Mime ex if that damage is one
+# of 20, 40, 60, 80, 100, 120, 140, 160, or 180.
+func _hook_ex6_magic_evens(damage: int, _attacker: card_object, defender: card_object, modifiers: Array) -> int:
+	if damage <= 0 or defender == null:
+		return damage
+	if not defender.has_ability("Magic Evens") or is_power_blocked_by_status(defender):
+		return damage
+	if damage in [20, 40, 60, 80, 100, 120, 140, 160, 180]:
+		modifiers.append("MAGIC EVENS - DAMAGE PREVENTED")
+		return 0
+	return damage
+
 # ── EX2 passive bodies ─────────────────────────────────────────────────────────────────────────
 
 # POISON PAYBACK (Cacturne / Cacnea): if this Pokemon is Active and damaged by an opponent's attack
@@ -10964,3 +11138,356 @@ func cpu_phase_ex5_powers() -> void:
 				await power_ex5_heal_dance(bellossom)
 				break
 		if main._should_bail(): return
+######################################################################################################################################################
+############################################################## EX6 ACTIVE POKE-POWERS ###############################################################
+######################################################################################################################################################
+# Energy Trans (Venusaur ex ex6-112) reuses the base-set "Energy Trans" dispatch entry (identical
+# effect). Legendary Ascent (ex6-114/115/116) is an on-bench-play trigger, wired separately.
+
+func _register_ex6_powers() -> void:
+	_power_dispatch["Form Variation"]    = func(p): await power_ex6_form_variation(p)
+	_power_dispatch["Quick Search"]      = func(p): await power_ex6_quick_search(p)
+	_power_dispatch["Strange Behavior"]  = func(p): await power_ex6_strange_behavior(p)
+	_power_dispatch["Head Trip"]         = func(p): await power_ex6_head_trip(p)
+	_power_dispatch["Assistance"]        = func(p): await power_ex6_assistance(p)
+	_power_dispatch["Energy Rain"]       = func(p): await power_ex6_energy_rain(p)
+	_power_dispatch["Extra Energy Bomb"] = func(p): await power_ex6_extra_energy_bomb(p)
+
+# FORM VARIATION (Ditto ex6-4): once per turn, search your discard pile for a Basic Pokemon (excluding
+# Pokemon-ex and Ditto) and switch it with Ditto, carrying over all attached cards, damage counters,
+# Special Conditions, and effects. Place Ditto in the discard pile.
+func power_ex6_form_variation(ditto: card_object) -> void:
+	var is_opponent = ditto.is_owner_opp(main)
+	if is_power_blocked_by_status(ditto):
+		await main.show_message("FORM VARIATION IS BLOCKED BY STATUS!")
+		if main._should_bail(): return
+		return
+	if ditto.power_used_this_turn:
+		await main.show_message("FORM VARIATION ALREADY USED THIS TURN!")
+		if main._should_bail(): return
+		return
+	var discard = main.opponent_discard_pile if is_opponent else main.player_discard_pile
+	var pool = discard.filter(func(c): return c.metadata.get("supertype","") == "Pokémon" and "Basic" in c.metadata.get("subtypes", []) and not main.is_ex_pokemon(c) and c.metadata.get("name","") != "Ditto")
+	if pool.is_empty():
+		await main.show_message("FORM VARIATION: NO ELIGIBLE BASIC POKEMON IN THE DISCARD PILE!")
+		if main._should_bail(): return
+		return
+	var new_basic: card_object = null
+	if is_opponent:
+		var best = -1
+		for c in pool:
+			var hp = int(c.metadata.get("hp","0"))
+			if hp > best:
+				best = hp
+				new_basic = c
+	else:
+		new_basic = await main.card_ops.choose_card(pool, false, "FORM VARIATION", "Choose a Basic Pokemon to become", "SELECT", true)
+		if main._should_bail(): return
+		if new_basic == null: return
+	ditto.power_used_this_turn = true
+	# Transfer all board state from Ditto onto the new Basic Pokemon.
+	var counters = ditto.get_damage_counters()
+	new_basic.attached_energies = ditto.attached_energies
+	new_basic.attached_cards = ditto.attached_cards
+	new_basic.special_condition = ditto.special_condition
+	new_basic.is_poisoned = ditto.is_poisoned
+	new_basic.poison_damage = ditto.poison_damage
+	new_basic.is_burned = ditto.is_burned
+	new_basic.current_hp = max(0, new_basic.get_max_hp() - counters * 10)
+	discard.erase(new_basic)
+	# Put the new Basic into Ditto's board slot.
+	var active = main.opponent_active_pokemon if is_opponent else main.player_active_pokemon
+	var bench = main.opponent_bench if is_opponent else main.player_bench
+	if ditto == active:
+		new_basic.current_location = "active"
+		if is_opponent: main.opponent_active_pokemon = new_basic
+		else: main.player_active_pokemon = new_basic
+	else:
+		var idx = bench.find(ditto)
+		new_basic.current_location = "bench"
+		if idx != -1: bench[idx] = new_basic
+	# Send Ditto (now stripped of its attachments) to the discard pile.
+	ditto.attached_energies = []
+	ditto.attached_cards = []
+	ditto.special_condition = ""
+	ditto.is_poisoned = false
+	ditto.is_burned = false
+	ditto.current_location = "discard"
+	discard.append(ditto)
+	main.display_pokemon(is_opponent)
+	main.display_active_pokemon_energies(is_opponent)
+	main.update_discard_pile_display(is_opponent)
+	await main.show_message("FORM VARIATION! DITTO BECAME " + new_basic.metadata.get("name","").to_upper() + "!")
+	if main._should_bail(): return
+	await main.check_all_knockouts()
+	if main._should_bail(): return
+	print("POWER USED: Form Variation")
+
+# QUICK SEARCH (Pidgeot ex6-10): once per turn, choose any 1 card from your deck and put it into your
+# hand, then shuffle your deck.
+func power_ex6_quick_search(pidgeot: card_object) -> void:
+	var is_opponent = pidgeot.is_owner_opp(main)
+	if is_power_blocked_by_status(pidgeot):
+		await main.show_message("QUICK SEARCH IS BLOCKED BY STATUS!")
+		if main._should_bail(): return
+		return
+	if pidgeot.power_used_this_turn:
+		await main.show_message("QUICK SEARCH ALREADY USED THIS TURN!")
+		if main._should_bail(): return
+		return
+	pidgeot.power_used_this_turn = true
+	var found = await main.card_ops.search_deck_to_hand(is_opponent, func(_c): return true, "QUICK SEARCH: CHOOSE ANY CARD", 1)
+	if main._should_bail(): return
+	await main.show_message("QUICK SEARCH! ADDED " + str(found.size()) + " CARD TO HAND!")
+	if main._should_bail(): return
+	print("POWER USED: Quick Search")
+
+# STRANGE BEHAVIOR (Slowbro ex6-14): as often as you like, move 1 damage counter from 1 of your Pokemon
+# to Slowbro, as long as you don't Knock Out Slowbro.
+func power_ex6_strange_behavior(slowbro: card_object) -> void:
+	var is_opponent = slowbro.is_owner_opp(main)
+	if is_power_blocked_by_status(slowbro):
+		await main.show_message("STRANGE BEHAVIOR IS BLOCKED BY STATUS!")
+		if main._should_bail(): return
+		return
+	if is_opponent:
+		return  # CPU does not use this drawback-heavy power
+	while true:
+		if slowbro.current_hp <= 10:
+			await main.show_message("STRANGE BEHAVIOR: SLOWBRO CAN'T TAKE ANY MORE DAMAGE!")
+			break
+		var sources = main.card_ops.get_all_pokemon_in_play(false).filter(func(p): return p != slowbro and p.get_damage_counters() > 0)
+		if sources.is_empty():
+			await main.show_message("STRANGE BEHAVIOR: NO DAMAGE COUNTERS TO MOVE!")
+			break
+		var src = await main.card_ops.choose_card(sources, false, "STRANGE BEHAVIOR", "Move a damage counter from which Pokemon? (Cancel to stop)", "SELECT", true)
+		if main._should_bail(): return
+		if src == null:
+			break
+		src.current_hp = min(src.get_max_hp(), src.current_hp + 10)
+		slowbro.current_hp -= 10
+		main.display_hp_circles_above_align(src, false)
+		main.display_hp_circles_above_align(slowbro, false)
+	main.display_pokemon(false)
+	print("POWER USED: Strange Behavior")
+
+# HEAD TRIP (Haunter ex6-34): once per turn, if Haunter is on your Bench, one of your Active Pokemon is
+# now Confused.
+func power_ex6_head_trip(haunter: card_object) -> void:
+	var is_opponent = haunter.is_owner_opp(main)
+	if is_power_blocked_by_status(haunter):
+		await main.show_message("HEAD TRIP IS BLOCKED BY STATUS!")
+		if main._should_bail(): return
+		return
+	if haunter.power_used_this_turn:
+		await main.show_message("HEAD TRIP ALREADY USED THIS TURN!")
+		if main._should_bail(): return
+		return
+	var bench = main.opponent_bench if is_opponent else main.player_bench
+	if haunter not in bench:
+		await main.show_message("HEAD TRIP ONLY WORKS WHILE HAUNTER IS ON YOUR BENCH!")
+		if main._should_bail(): return
+		return
+	var active = main.opponent_active_pokemon if is_opponent else main.player_active_pokemon
+	if active == null:
+		return
+	haunter.power_used_this_turn = true
+	main.card_ops.apply_status(active, "Confused", is_opponent)
+	await main.show_message("HEAD TRIP! " + active.metadata.get("name","").to_upper() + " IS NOW CONFUSED!")
+	if main._should_bail(): return
+	print("POWER USED: Head Trip")
+
+# ASSISTANCE (Wigglytuff ex6-52): once per turn, if Wigglytuff is on your Bench, remove 1 Special
+# Condition from 1 of your Active Pokemon.
+func power_ex6_assistance(wigglytuff: card_object) -> void:
+	var is_opponent = wigglytuff.is_owner_opp(main)
+	if is_power_blocked_by_status(wigglytuff):
+		await main.show_message("ASSISTANCE IS BLOCKED BY STATUS!")
+		if main._should_bail(): return
+		return
+	if wigglytuff.power_used_this_turn:
+		await main.show_message("ASSISTANCE ALREADY USED THIS TURN!")
+		if main._should_bail(): return
+		return
+	var bench = main.opponent_bench if is_opponent else main.player_bench
+	if wigglytuff not in bench:
+		await main.show_message("ASSISTANCE ONLY WORKS WHILE WIGGLYTUFF IS ON YOUR BENCH!")
+		if main._should_bail(): return
+		return
+	var active = main.opponent_active_pokemon if is_opponent else main.player_active_pokemon
+	if active == null or (active.special_condition == "" and not active.is_poisoned and not active.is_burned):
+		await main.show_message("ASSISTANCE: NO SPECIAL CONDITION TO REMOVE!")
+		if main._should_bail(): return
+		return
+	wigglytuff.power_used_this_turn = true
+	main.clear_all_statuses(active, is_opponent)
+	await main.show_message("ASSISTANCE! REMOVED A SPECIAL CONDITION FROM " + active.metadata.get("name","").to_upper() + "!")
+	if main._should_bail(): return
+	print("POWER USED: Assistance")
+
+# ENERGY RAIN (Blastoise ex ex6-104): as often as you like, attach a Water Energy from your hand to 1
+# of your Pokemon and put 1 damage counter on that Pokemon.
+func power_ex6_energy_rain(blastoise: card_object) -> void:
+	var is_opponent = blastoise.is_owner_opp(main)
+	if is_power_blocked_by_status(blastoise):
+		await main.show_message("ENERGY RAIN IS BLOCKED BY STATUS!")
+		if main._should_bail(): return
+		return
+	if is_opponent:
+		return  # CPU energy attachment is handled by its normal attach logic
+	while true:
+		var hand = main.player_hand
+		var waters = hand.filter(func(c): return c.metadata.get("supertype","") == "Energy" and "Basic" in c.metadata.get("subtypes", []) and "Water" in main.get_energy_provided_by_card(c))
+		if waters.is_empty():
+			await main.show_message("ENERGY RAIN: NO WATER ENERGY IN YOUR HAND!")
+			break
+		var e = await main.card_ops.choose_card(waters, false, "ENERGY RAIN", "Choose a Water Energy to attach (Cancel to stop)", "ATTACH", true)
+		if main._should_bail(): return
+		if e == null:
+			break
+		var targets = main.card_ops.get_all_pokemon_in_play(false)
+		var target = await main.card_ops.choose_card(targets, false, "ENERGY RAIN", "Attach the Water Energy to which Pokemon?", "SELECT", false)
+		if main._should_bail(): return
+		if target == null:
+			target = targets[0]
+		hand.erase(e)
+		e.current_location = "attached"
+		target.attached_energies.append(e)
+		target.current_hp = max(0, target.current_hp - 10)
+		main.refresh_hand_display(false)
+		main.display_active_pokemon_energies(false)
+		main.display_pokemon(false)
+		main.display_hp_circles_above_align(target, false)
+		await main.check_all_knockouts()
+		if main._should_bail(): return
+	print("POWER USED: Energy Rain")
+
+# EXTRA ENERGY BOMB (Electrode ex ex6-107): once during your turn, discard Electrode ex and all cards
+# attached to it (this counts as Knocking Out Electrode ex). Then search your discard pile for 5 Energy
+# cards and attach them to your Pokemon (excluding Pokemon-ex) in any way you like.
+func power_ex6_extra_energy_bomb(electrode: card_object) -> void:
+	var is_opponent = electrode.is_owner_opp(main)
+	if is_power_blocked_by_status(electrode):
+		await main.show_message("EXTRA ENERGY BOMB IS BLOCKED BY STATUS!")
+		if main._should_bail(): return
+		return
+	if electrode.power_used_this_turn:
+		return
+	electrode.power_used_this_turn = true
+	# Discard Electrode ex and everything attached to it (counts as a Knock Out).
+	electrode.current_hp = 0
+	await main.show_message("EXTRA ENERGY BOMB! ELECTRODE EX KNOCKS ITSELF OUT!")
+	if main._should_bail(): return
+	await main.check_all_knockouts()
+	if main._should_bail(): return
+	# Attach up to 5 Energy from the discard pile to your Pokemon (excluding Pokemon-ex).
+	var attached = 0
+	for i in range(5):
+		var discard = main.opponent_discard_pile if is_opponent else main.player_discard_pile
+		var pool = discard.filter(func(c): return c.metadata.get("supertype","") == "Energy")
+		var targets = main.card_ops.get_all_pokemon_in_play(is_opponent).filter(func(p): return not main.is_ex_pokemon(p))
+		if pool.is_empty() or targets.is_empty():
+			break
+		var e: card_object = null
+		var target: card_object = null
+		if is_opponent:
+			e = pool[0]
+			target = main.opponent_active_pokemon if (main.opponent_active_pokemon != null and not main.is_ex_pokemon(main.opponent_active_pokemon)) else targets[0]
+		else:
+			e = await main.card_ops.choose_card(pool, false, "EXTRA ENERGY BOMB", "Choose an Energy from your discard pile (" + str(attached) + "/5)", "SELECT", true)
+			if main._should_bail(): return
+			if e == null: break
+			target = await main.card_ops.choose_card(targets, false, "EXTRA ENERGY BOMB", "Attach the Energy to which Pokemon?", "ATTACH", false)
+			if main._should_bail(): return
+			if target == null: target = targets[0]
+		discard.erase(e)
+		e.current_location = "attached"
+		target.attached_energies.append(e)
+		attached += 1
+	main.display_active_pokemon_energies(is_opponent)
+	main.display_pokemon(is_opponent)
+	main.update_discard_pile_display(is_opponent)
+	await main.show_message("EXTRA ENERGY BOMB! ATTACHED " + str(attached) + " ENERGY FROM THE DISCARD PILE!")
+	if main._should_bail(): return
+	print("POWER USED: Extra Energy Bomb")
+
+func cpu_phase_ex6_powers() -> void:
+	if is_toxic_gas_active() or main.goop_gas_active: return
+	# Quick Search: grab a card from the deck.
+	var pidgeot = _find_cpu_pokemon_with_power("Quick Search")
+	if pidgeot != null and not pidgeot.power_used_this_turn and not is_power_blocked_by_status(pidgeot):
+		await power_ex6_quick_search(pidgeot)
+		if main._should_bail(): return
+	# Form Variation: only worth it if the discard has a strong Basic to become.
+	var ditto = _find_cpu_pokemon_with_power("Form Variation")
+	if ditto != null and not ditto.power_used_this_turn and not is_power_blocked_by_status(ditto):
+		var has_target = main.opponent_discard_pile.any(func(c): return c.metadata.get("supertype","") == "Pokémon" and "Basic" in c.metadata.get("subtypes", []) and not main.is_ex_pokemon(c) and c.metadata.get("name","") != "Ditto")
+		if has_target:
+			await power_ex6_form_variation(ditto)
+			if main._should_bail(): return
+	# Assistance: cure the CPU's Active if it has a Special Condition.
+	var wigglytuff = _find_cpu_pokemon_with_power("Assistance")
+	if wigglytuff != null and not wigglytuff.power_used_this_turn and not is_power_blocked_by_status(wigglytuff) and wigglytuff in main.opponent_bench:
+		var oa = main.opponent_active_pokemon
+		if oa != null and (oa.special_condition != "" or oa.is_poisoned or oa.is_burned):
+			await power_ex6_assistance(wigglytuff)
+			if main._should_bail(): return
+	# Extra Energy Bomb: fire it when the discard holds enough Energy to redeploy.
+	var electrode = _find_cpu_pokemon_with_power("Extra Energy Bomb")
+	if electrode != null and not electrode.power_used_this_turn and not is_power_blocked_by_status(electrode):
+		var energy_in_discard = 0
+		for c in main.opponent_discard_pile:
+			if c.metadata.get("supertype","") == "Energy": energy_in_discard += 1
+		if energy_in_discard >= 3:
+			await power_ex6_extra_energy_bomb(electrode)
+			if main._should_bail(): return
+
+# EX6 LEGENDARY ASCENT (Articuno ex6-114 / Moltres ex6-115 / Zapdos ex6-116): once during your turn,
+# when you put this Pokemon from your hand onto your Bench, you may switch 1 of your Active Pokemon
+# with it. If you do, you may also move any number of basic [type] Energy attached to your Pokemon to
+# it. The beneficial "you may" clauses are auto-performed. Triggered from add_pokemon_to_bench.
+func trigger_ex6_legendary_ascent(bird: card_object, is_opponent: bool) -> void:
+	if bird == null or not bird.has_ability("Legendary Ascent"):
+		return
+	if is_power_blocked_by_status(bird):
+		return
+	var bench = main.opponent_bench if is_opponent else main.player_bench
+	if bird not in bench:
+		return
+	var active = main.opponent_active_pokemon if is_opponent else main.player_active_pokemon
+	if active == null or active == bird:
+		return
+	# Determine which basic Energy type this bird rallies.
+	var etype = ""
+	match bird.metadata.get("name", ""):
+		"Articuno ex": etype = "Water"
+		"Moltres ex": etype = "Fire"
+		"Zapdos ex": etype = "Lightning"
+	# Switch the bird with the Active Pokemon.
+	var idx = bench.find(bird)
+	bench[idx] = active
+	active.current_location = "bench"
+	bird.current_location = "active"
+	if is_opponent:
+		main.opponent_active_pokemon = bird
+	else:
+		main.player_active_pokemon = bird
+	await main.show_message("LEGENDARY ASCENT! " + bird.metadata.get("name", "").to_upper() + " SWITCHED INTO THE ACTIVE SPOT!")
+	if main._should_bail(): return
+	# Move any number of basic Energy of the bird's type from your Pokemon to the bird.
+	if etype != "":
+		var moved = 0
+		for p in main.card_ops.get_all_pokemon_in_play(is_opponent):
+			if p == bird: continue
+			for e in p.attached_energies.duplicate():
+				if "Basic" in e.metadata.get("subtypes", []) and etype in main.get_energy_provided_by_card(e):
+					p.attached_energies.erase(e)
+					bird.attached_energies.append(e)
+					moved += 1
+		if moved > 0:
+			await main.show_message("LEGENDARY ASCENT! MOVED " + str(moved) + " " + etype.to_upper() + " ENERGY TO " + bird.metadata.get("name", "").to_upper() + "!")
+			if main._should_bail(): return
+	main.display_pokemon(is_opponent)
+	main.display_active_pokemon_energies(is_opponent)
+	main.display_pokemon(not is_opponent)
+	print("POWER USED: Legendary Ascent")

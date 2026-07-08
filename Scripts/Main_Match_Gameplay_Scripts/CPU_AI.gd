@@ -375,6 +375,13 @@ func get_unmet_energy_count(attack: Dictionary, pokemon: card_object) -> int:
 			if provided.size() > 1:
 				for _i in range(provided.size() - 1):
 					pool.append("Fire")
+		# EX6 Energy Flame (Charizard ex): all Energy attached to Charizard ex counts as Fire
+		elif main.powers_and_bodies.is_ex6_energy_flame_active(pokemon):
+			pool.append("Fire")
+			var provided_flame = main.get_energy_provided_by_card(attached)
+			if provided_flame.size() > 1:
+				for _i in range(provided_flame.size() - 1):
+					pool.append("Fire")
 		# ECARD1 Burning Energy (Charizard): basic Energy on this side counts as Fire this turn
 		elif main.powers_and_bodies.is_ecard1_burning_energy_active(pokemon) and "Special" not in attached.metadata.get("subtypes", []):
 			pool.append("Fire")

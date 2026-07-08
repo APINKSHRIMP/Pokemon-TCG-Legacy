@@ -2108,6 +2108,8 @@ func add_pokemon_to_bench(pokemon: card_object) -> void:
 			await powers_and_bodies.trigger_neo4_vanish(pokemon, false)
 		# EX4-83 Team Magma Hideout: playing a non-Team-Magma Basic from hand adds 1 damage counter
 		await trainer_effects.ex4_team_magma_hideout_trigger(pokemon, false)
+		# EX6 Legendary Ascent (Articuno/Moltres/Zapdos ex): switch with your Active + rally its Energy
+		await powers_and_bodies.trigger_ex6_legendary_ascent(pokemon, false)
 
 # Function that get's the card position/location/object. Called from various functions when trying to find a specific card object
 func find_card_ui_for_object(card_obj: card_object) -> TextureRect:
@@ -3198,6 +3200,10 @@ func can_retreat(is_opponent: bool) -> Dictionary:
 	# Snorlax Guard (basep-49): opposing active Snorlax blocks retreat
 	if powers_and_bodies.check_guard_body(is_opponent):
 		return {"can_retreat": false, "reason": "Guard! The opposing Pokemon prevents you from retreating!"}
+
+	# EX6 Spiral (Poliwrath ex6-11): while opposing Poliwrath is Active, a Confused Active can't retreat
+	if powers_and_bodies.is_ex6_spiral_blocking(active):
+		return {"can_retreat": false, "reason": "Spiral! Your Confused Pokemon can't retreat!"}
 
 	return {"can_retreat": true, "reason": ""}
 
@@ -4338,22 +4344,25 @@ func process_status_between_turns(pokemon: card_object, is_opponent: bool) -> vo
 		print("BETWEEN TURNS: ", pokemon_name, " took ", poison_tick, " poison damage. HP: ", pokemon.current_hp)
 
 	if pokemon.is_burned:
+		# EX6 Fiery Aura (Rapidash ex6-13): while a Rapidash with Fiery Aura is Active, Burned Pokemon
+		# take 4 damage counters instead of 2 between turns.
+		var burn_dmg = 40 if powers_and_bodies.is_fiery_aura_active() else 20
 		if burn_rules == "base_set_burn_rules":
 			await show_message(pokemon_name.to_upper() + " IS BURNED! FLIPPING COIN...")
 			var coin = await flip_coin(false, is_opponent)
 			if not coin:
-				pokemon.current_hp = max(0, pokemon.current_hp - 20)
-				await show_message(pokemon_name.to_upper() + " TAKES 20 BURN DAMAGE!")
-				show_floating_label("-20HP", Vector2(530 if !is_opponent else 1030, 300), Color.RED, is_opponent)
+				pokemon.current_hp = max(0, pokemon.current_hp - burn_dmg)
+				await show_message(pokemon_name.to_upper() + " TAKES " + str(burn_dmg) + " BURN DAMAGE!")
+				show_floating_label("-" + str(burn_dmg) + "HP", Vector2(530 if !is_opponent else 1030, 300), Color.RED, is_opponent)
 				display_hp_circles_above_align(pokemon, is_opponent)
-				print("BETWEEN TURNS: ", pokemon_name, " took 20 burn damage. HP: ", pokemon.current_hp)
+				print("BETWEEN TURNS: ", pokemon_name, " took ", burn_dmg, " burn damage. HP: ", pokemon.current_hp)
 			else:
 				await show_message(pokemon_name.to_upper() + " AVOIDED BURN DAMAGE!")
 				print("BETWEEN TURNS: ", pokemon_name, " avoided burn damage (heads)")
 		elif burn_rules == "modern_era_burn_rules":
-			pokemon.current_hp = max(0, pokemon.current_hp - 20)
-			await show_message(pokemon_name.to_upper() + " TAKES 20 BURN DAMAGE!")
-			show_floating_label("-20HP", Vector2(530 if !is_opponent else 1030, 300), Color.RED, is_opponent)
+			pokemon.current_hp = max(0, pokemon.current_hp - burn_dmg)
+			await show_message(pokemon_name.to_upper() + " TAKES " + str(burn_dmg) + " BURN DAMAGE!")
+			show_floating_label("-" + str(burn_dmg) + "HP", Vector2(530 if !is_opponent else 1030, 300), Color.RED, is_opponent)
 			display_hp_circles_above_align(pokemon, is_opponent)
 			print("BETWEEN TURNS: ", pokemon_name, " took 20 burn damage. HP: ", pokemon.current_hp)
 			await show_message("FLIPPING COIN TO CURE BURN...")
@@ -4613,6 +4622,26 @@ func get_retreat_cost(pokemon: card_object) -> int:
 				for e in pokemon.attached_energies:
 					if "Grass" in get_energy_provided_by_card(e): grass_n += 1
 				cost = max(0, cost - grass_n)
+			elif ab.get("name", "") == "Leaf Ride" or ab.get("name", "") == "Floating Electrons":
+				# EX6 Scyther (ex6-29) / Voltorb (ex6-85): Retreat Cost is 0 while any Energy is attached
+				if not pokemon.attached_energies.is_empty():
+					cost = 0
+			elif ab.get("name", "") == "Free Flight":
+				# EX6 Fearow (ex6-24): Retreat Cost is 0 while NO Energy is attached
+				if pokemon.attached_energies.is_empty():
+					cost = 0
+
+	# EX6 Family Bonds (Nidoqueen ex6-9): Retreat Cost is 0 for the Nidoran family and Nidoking while a
+	# Nidoqueen is in play on that side.
+	if pokemon.metadata.get("name", "") in ["Nidoran ♀", "Nidorina", "Nidoran ♂", "Nidorino", "Nidoking"]:
+		var side_all: Array = bench.duplicate()
+		var side_active = player_active_pokemon if (pokemon == player_active_pokemon or pokemon in player_bench) else opponent_active_pokemon
+		if side_active != null:
+			side_all.append(side_active)
+		for np in side_all:
+			if np.metadata.get("name", "") == "Nidoqueen" and not powers_and_bodies.is_power_blocked(np):
+				cost = 0
+				break
 
 	# ECARD2 Heavyweight (Muk): +2 while a Grass Energy is attached to Muk itself
 	if not powers_and_bodies.is_power_blocked(pokemon):
