@@ -38,6 +38,7 @@ func _ensure_trainer_dispatch_ready() -> void:
 	_register_ex4_trainers()
 	_register_ex5_trainers()
 	_register_ex6_trainers()
+	_register_ex7_trainers()
 
 func _register_base_trainers() -> void:
 	_trainer_dispatch["base1-88"] = func(c, opp): await effect_professor_oak(c, opp)
@@ -3722,6 +3723,18 @@ func gym1_end_of_turn_cleanup(side_is_opponent: bool) -> void:
 					main.card_ops.apply_status(pokemon, st, side_is_opponent)
 					print("EX4 DELAYED STATUS applied: ", st, " to ", pokemon.metadata.get("name",""))
 
+		# EX7 Dark Seed (Dark Raticate ex7-17): put 5 damage counters at the end of the afflicted
+		# Pokemon's OWN side turn — i.e. "the end of your opponent's next turn" from the attacker's view.
+		if pokemon.has_effect("ex7_dark_seed"):
+			pokemon.clear_effect("ex7_dark_seed")
+			if pokemon.current_hp > 0:
+				pokemon.current_hp = max(0, pokemon.current_hp - 50)
+				main.display_hp_circles_above_align(pokemon, side_is_opponent)
+				await main.show_message("DARK SEED! 5 DAMAGE COUNTERS ON " + pokemon.metadata.get("name","").to_upper() + "!")
+				if main._should_bail(): return
+				await main.check_all_knockouts()
+				if main._should_bail(): return
+
 		# EX5 Extra Comet Punch (Metagross ex ex5-95): the +50 boost only holds while the attack is
 		# used on consecutive own turns. The arm carries a "used_this_turn" marker set when the
 		# attack fires. At the end of the owner's turn, if it was NOT used this turn the arm expires;
@@ -7055,10 +7068,12 @@ func effect_neo3_pokemon_breeder_fields(card: card_object, is_opponent: bool) ->
 # This function applies the +20 HP override to all "Dark"-named pokemon in play if Rocket's Hideout enters.
 # Also called at start of check to see if a pokemon qualifies.
 func rockets_hideout_bonus_hp(pokemon: card_object) -> int:
-	if not main.is_stadium_in_play(StadiumIds.ROCKETS_HIDEOUT):
-		return 0
 	var pname = pokemon.metadata.get("name","")
-	if "Dark" in pname:
+	# neo3-63 Rocket's Hideout: "Dark"-named only.
+	if main.is_stadium_in_play(StadiumIds.ROCKETS_HIDEOUT) and "Dark" in pname:
+		return 20
+	# ex7-87 Rocket's Hideout: "Dark" OR "Rocket's" in name.
+	if main.is_stadium_in_play(StadiumIds.ROCKETS_HIDEOUT_EX7) and ("Dark" in pname or "Rocket's" in pname):
 		return 20
 	return 0
 
@@ -9754,3 +9769,381 @@ func ex5_island_cave_on_attach(pokemon: card_object, is_opponent: bool) -> void:
 	var types = pokemon.metadata.get("types", [])
 	if "Water" in types or "Fighting" in types or "Metal" in types:
 		main.clear_all_statuses(pokemon, is_opponent)
+
+# ════════════════════════════════════════════════════════════════════════════════
+# EX7 — EX TEAM ROCKET RETURNS  (Trainers)
+# ════════════════════════════════════════════════════════════════════════════════
+
+func _register_ex7_trainers() -> void:
+	_trainer_dispatch["ex7-83"]  = func(c, opp): await effect_ecard1_copycat(opp)               # Copycat (reprint)
+	_trainer_dispatch["ex7-84"]  = func(c, opp): await effect_ex7_pokemon_retriever(opp)        # Pokémon Retriever (RSM)
+	_trainer_dispatch["ex7-85"]  = func(c, opp): await effect_ex7_pow_hand_extension(opp)       # Pow! Hand Extension (RSM)
+	_trainer_dispatch["ex7-86"]  = func(c, opp): await effect_ex7_rockets_admin(opp)            # Rocket's Admin. (Supporter)
+	_trainer_dispatch["ex7-88"]  = func(c, opp): await effect_ex7_rockets_mission(opp)          # Rocket's Mission (Supporter)
+	_trainer_dispatch["ex7-89"]  = func(c, opp): await effect_ex7_rockets_poke_ball(opp)        # Rocket's Poké Ball (Item)
+	_trainer_dispatch["ex7-91"]  = func(c, opp): await effect_ex7_surprise_time_machine(opp)    # Surprise! Time Machine (RSM)
+	_trainer_dispatch["ex7-92"]  = func(c, opp): await effect_ex7_swoop_teleporter(opp)         # Swoop! Teleporter (RSM)
+	_trainer_dispatch["ex7-93"]  = func(c, opp): await effect_ex7_venture_bomb(opp)             # Venture Bomb (RSM)
+	_trainer_dispatch["ex7-111"] = func(c, opp): await effect_here_comes_team_rocket(opp)       # Here Comes Team Rocket! (reprint)
+	# ex7-87 Rocket's Hideout & ex7-90 Rocket's Tricky Gym are Stadiums (resolve via resolve_stadium_trainer;
+	# HP bonus / granted Feint Attack handled by rockets_hideout_bonus_hp and get_attacks_for_card).
+	# ex7-94 Dark Metal Energy & ex7-95 R Energy resolve via the special-energy path.
+
+# POKÉMON RETRIEVER (ex7-84, Rocket's Secret Machine): search your discard for Basic/Evolution cards;
+# either put 1 into your hand, or shuffle a combination of 3 back into your deck.
+func effect_ex7_pokemon_retriever(is_opponent: bool) -> void:
+	var discard = main.opponent_discard_pile if is_opponent else main.player_discard_pile
+	var deck = main.opponent_deck if is_opponent else main.player_deck
+	var pool = discard.filter(func(c): return c.metadata.get("supertype","") == "Pokémon")
+	if pool.is_empty():
+		await main.show_message("POKÉMON RETRIEVER: NO POKÉMON IN THE DISCARD PILE!")
+		if main._should_bail(): return
+		return
+	var take_to_hand = true
+	if not is_opponent and pool.size() >= 3:
+		take_to_hand = await gym1_prompt_yes_no(main.player_active_pokemon, "POKÉMON RETRIEVER", "Put 1 Pokémon into your hand? (No = shuffle 3 into your deck.)", "TAKE 1", "SHUFFLE 3")
+		if main._should_bail(): return
+	if take_to_hand:
+		var pick: card_object = null
+		if is_opponent:
+			pick = pool[0]
+		else:
+			pick = await main.card_ops.choose_card(pool, false, "POKÉMON RETRIEVER", "Take a Pokémon to your hand", "TAKE", false, Callable(), true)
+			if main._should_bail(): return
+			if pick == null: pick = pool[0]
+		discard.erase(pick)
+		await main.card_ops.recover_to_hand(pick, is_opponent)
+		if main._should_bail(): return
+	else:
+		var shuffled = 0
+		while shuffled < 3 and not pool.is_empty():
+			var pick2: card_object = null
+			if is_opponent:
+				pick2 = pool[0]
+			else:
+				pick2 = await main.card_ops.choose_card(pool, false, "POKÉMON RETRIEVER", "Shuffle into deck (" + str(shuffled + 1) + " of 3)", "SHUFFLE", false, Callable(), true)
+				if main._should_bail(): return
+				if pick2 == null: pick2 = pool[0]
+			discard.erase(pick2)
+			pool.erase(pick2)
+			pick2.current_location = "deck"
+			deck.append(pick2)
+			shuffled += 1
+		deck.shuffle()
+		main.update_deck_icon(is_opponent)
+	main.update_discard_pile_display(is_opponent)
+	await main.show_message("POKÉMON RETRIEVER RESOLVED!")
+	if main._should_bail(): return
+	print("TRAINER: Pokémon Retriever")
+
+# POW! HAND EXTENSION (ex7-85, Rocket's Secret Machine): usable only if you have more Prize cards left
+# than your opponent. Either move 1 Energy from the Defending Pokémon to another of the opponent's
+# Pokémon, or switch 1 of the opponent's Benched Pokémon with the Defending Pokémon (opponent chooses).
+func effect_ex7_pow_hand_extension(is_opponent: bool) -> void:
+	var my_prizes = main.opponent_prize_cards.size() if is_opponent else main.player_prize_cards.size()
+	var their_prizes = main.player_prize_cards.size() if is_opponent else main.opponent_prize_cards.size()
+	if my_prizes <= their_prizes:
+		await main.show_message("POW! HAND EXTENSION: YOU NEED MORE PRIZES LEFT THAN YOUR OPPONENT!")
+		if main._should_bail(): return
+		return
+	var defender = main.player_active_pokemon if is_opponent else main.opponent_active_pokemon
+	var opp_bench = main.player_bench if is_opponent else main.opponent_bench
+	# Decide which mode. CPU prefers the disruptive gust when the opponent has a bench.
+	var do_move_energy = true
+	var can_move = defender != null and not defender.attached_energies.is_empty() and not opp_bench.is_empty()
+	var can_gust = not opp_bench.is_empty()
+	if is_opponent:
+		do_move_energy = can_move and opp_bench.is_empty()
+	elif can_move and can_gust:
+		do_move_energy = await gym1_prompt_yes_no(main.player_active_pokemon, "POW! HAND EXTENSION", "Move an Energy on the Defender? (No = drag up a Benched Pokémon.)", "MOVE ENERGY", "SWITCH")
+		if main._should_bail(): return
+	elif can_move:
+		do_move_energy = true
+	else:
+		do_move_energy = false
+	if do_move_energy and can_move:
+		var energy: card_object = defender.attached_energies[0]
+		var dest: card_object = null
+		if is_opponent:
+			dest = opp_bench[0]
+		else:
+			dest = await main.card_ops.choose_card(opp_bench, is_opponent, "POW! HAND EXTENSION", "Move an Energy to which Benched Pokémon?", "SELECT", false, Callable(), true)
+			if main._should_bail(): return
+			if dest == null: dest = opp_bench[0]
+		defender.attached_energies.erase(energy)
+		dest.attached_energies.append(energy)
+		main.display_active_pokemon_energies(not is_opponent)
+		main.display_pokemon(not is_opponent)
+		await main.show_message("POW! HAND EXTENSION! MOVED AN ENERGY!")
+		if main._should_bail(): return
+	elif can_gust:
+		# The player using the card chooses which Benched Pokémon is dragged up (attacker chooser).
+		var eff = {"type": "force_switch", "target": "defender", "chooser": "attacker", "flip": "none"}
+		await main.attack_effects.apply_force_switch(eff, is_opponent)
+		if main._should_bail(): return
+	else:
+		await main.show_message("POW! HAND EXTENSION: NOTHING TO DO!")
+		if main._should_bail(): return
+	print("TRAINER: Pow! Hand Extension")
+
+# ROCKET'S ADMIN. (ex7-86, Supporter): each player shuffles his or her hand into the deck, then draws
+# up to the number of his or her remaining Prize cards. You draw first.
+func effect_ex7_rockets_admin(is_opponent: bool) -> void:
+	for who in [is_opponent, not is_opponent]:
+		var hand = main.opponent_hand if who else main.player_hand
+		var deck = main.opponent_deck if who else main.player_deck
+		for card in hand.duplicate():
+			hand.erase(card)
+			card.current_location = "deck"
+			deck.append(card)
+		deck.shuffle()
+		main.refresh_hand_display(who)
+		main.update_deck_icon(who)
+		var prizes = (main.opponent_prize_cards if who else main.player_prize_cards).size()
+		var to_draw = min(prizes, deck.size())
+		if to_draw > 0:
+			await main.card_ops.draw_n(who, to_draw)
+			if main._should_bail(): return
+	await main.show_message("ROCKET'S ADMIN.! BOTH PLAYERS REFRESHED THEIR HANDS!")
+	if main._should_bail(): return
+	print("TRAINER: Rocket's Admin.")
+
+# ROCKET'S MISSION (ex7-88, Supporter): discard a card from your hand, then draw 3 cards. If you
+# discarded a Pokémon that has "Dark" or "Rocket's" in its name, draw 4 cards instead.
+func effect_ex7_rockets_mission(is_opponent: bool) -> void:
+	var hand = main.opponent_hand if is_opponent else main.player_hand
+	if hand.is_empty():
+		await main.show_message("ROCKET'S MISSION: NO CARD TO DISCARD!")
+		if main._should_bail(): return
+		return
+	var pick: card_object = null
+	if is_opponent:
+		# CPU discards the least useful card (prefer a non-Dark/non-Rocket's Energy or duplicate); simplest:
+		# discard the first card, but prefer a Dark/Rocket's Pokémon if that yields the +1 bonus.
+		for c in hand:
+			if c.metadata.get("supertype","") == "Pokémon" and ("Dark" in c.metadata.get("name","") or "Rocket's" in c.metadata.get("name","")):
+				pick = c
+				break
+		if pick == null: pick = hand[0]
+	else:
+		pick = await main.card_ops.choose_card(hand, false, "ROCKET'S MISSION", "Discard a card (a Dark/Rocket's Pokémon draws 4)", "DISCARD", false, Callable(), true)
+		if main._should_bail(): return
+		if pick == null: pick = hand[0]
+	var is_bonus = pick.metadata.get("supertype","") == "Pokémon" and ("Dark" in pick.metadata.get("name","") or "Rocket's" in pick.metadata.get("name",""))
+	await main.card_ops.send_to_discard(pick, is_opponent, false)
+	if main._should_bail(): return
+	var n = 4 if is_bonus else 3
+	await main.card_ops.draw_n(is_opponent, n)
+	if main._should_bail(): return
+	await main.show_message("ROCKET'S MISSION! DREW " + str(n) + " CARDS!")
+	if main._should_bail(): return
+	print("TRAINER: Rocket's Mission")
+
+# ROCKET'S POKÉ BALL (ex7-89, Item): search your deck for a Pokémon that has "Dark" in its name and
+# put it into your hand. Shuffle.
+func effect_ex7_rockets_poke_ball(is_opponent: bool) -> void:
+	var filter_fn = func(c): return c.metadata.get("supertype","") == "Pokémon" and "Dark" in c.metadata.get("name","")
+	var found = await main.card_ops.search_deck_to_hand(is_opponent, filter_fn, "ROCKET'S POKÉ BALL: CHOOSE A 'DARK' POKÉMON", 1)
+	if main._should_bail(): return
+	await main.show_message("ROCKET'S POKÉ BALL! ADDED " + str(found.size()) + " CARD TO HAND!" if found.size() > 0 else "NO 'DARK' POKÉMON IN DECK!")
+	if main._should_bail(): return
+	print("TRAINER: Rocket's Poké Ball")
+
+# VENTURE BOMB (ex7-93, Rocket's Secret Machine): flip a coin. If heads, put 1 damage counter on 1 of
+# the opponent's Pokémon; if tails, put 1 damage counter on 1 of your Pokémon.
+func effect_ex7_venture_bomb(is_opponent: bool) -> void:
+	var coin = await main.flip_coin(false, is_opponent)
+	if main._should_bail(): return
+	var target_is_opp = (coin != is_opponent)  # heads → opponent's side; tails → your side
+	var pool = main.card_ops.get_all_pokemon_in_play(target_is_opp)
+	if pool.is_empty():
+		return
+	var target: card_object = null
+	# The player who used the card chooses their side's target; on the opponent's side the affected
+	# player chooses. Simplify: CPU auto-picks; player picks whenever the target is on the player side.
+	if target_is_opp:
+		# Heads for player use → target opponent; CPU (opp use) tails → target player. Chooser is the card user.
+		if is_opponent:
+			target = pool[0]
+			for c in pool:
+				if c.current_hp < target.current_hp: target = c
+		else:
+			target = await main.card_ops.choose_card(pool, is_opponent, "VENTURE BOMB", "Put 1 damage counter on which Pokémon?", "SELECT", false, Callable(), true)
+			if main._should_bail(): return
+			if target == null: target = pool[0]
+	else:
+		# Target is the card-user's own side.
+		if is_opponent:
+			target = pool[0]
+			for c in pool:
+				if c.current_hp > target.current_hp: target = c
+		else:
+			target = await main.card_ops.choose_card(pool, false, "VENTURE BOMB", "Put 1 damage counter on which of your Pokémon?", "SELECT", false, Callable(), true)
+			if main._should_bail(): return
+			if target == null: target = pool[0]
+	target.current_hp = max(0, target.current_hp - 10)
+	main.display_hp_circles_above_align(target, target_is_opp)
+	await main.show_message(("HEADS" if coin else "TAILS") + "! 1 DAMAGE COUNTER PLACED!")
+	if main._should_bail(): return
+	await main.check_all_knockouts()
+	if main._should_bail(): return
+	print("TRAINER: Venture Bomb")
+
+# SURPRISE! TIME MACHINE (ex7-91, Rocket's Secret Machine): choose 1 of your Evolved Pokémon, remove
+# its highest Stage Evolution card and shuffle it into your deck (devolve by 1 stage). If it remains in
+# play, search your deck for a card that evolves from it and evolve it. Shuffle.
+func effect_ex7_surprise_time_machine(is_opponent: bool) -> void:
+	var deck = main.opponent_deck if is_opponent else main.player_deck
+	var evolved = main.card_ops.get_all_pokemon_in_play(is_opponent).filter(func(c): return not c.attached_pre_evolutions.is_empty())
+	if evolved.is_empty():
+		await main.show_message("SURPRISE! TIME MACHINE: NO EVOLVED POKÉMON!")
+		if main._should_bail(): return
+		return
+	var target: card_object = null
+	if is_opponent:
+		target = evolved[0]
+	else:
+		target = await main.card_ops.choose_card(evolved, false, "SURPRISE! TIME MACHINE", "Choose an Evolved Pokémon to devolve by 1 stage", "SELECT", false, Callable(), true)
+		if main._should_bail(): return
+		if target == null: return
+	# Devolve one stage: the immediate pre-evolution becomes the field Pokémon; the removed top card is
+	# shuffled into the deck.
+	var devolve_to: card_object = target.attached_pre_evolutions.back()
+	target.attached_pre_evolutions.erase(devolve_to)
+	# Carry over attachments and remaining chain onto the pre-evolution.
+	devolve_to.attached_energies = target.attached_energies.duplicate()
+	devolve_to.attached_pre_evolutions = target.attached_pre_evolutions.duplicate()
+	devolve_to.attached_cards = target.attached_cards.duplicate()
+	var max_hp_old = int(target.metadata.get("hp", "0"))
+	var damage_taken = max_hp_old - target.current_hp
+	var new_max = int(devolve_to.metadata.get("hp", "0"))
+	devolve_to.current_hp = max(10, new_max - damage_taken)
+	devolve_to.current_location = target.current_location
+	# Clear the top card's carried state and shuffle it into the deck.
+	target.attached_energies.clear()
+	target.attached_pre_evolutions.clear()
+	target.attached_cards.clear()
+	target.current_location = "deck"
+	deck.append(target)
+	main.clear_all_statuses(devolve_to, is_opponent)
+	# Replace in the correct slot.
+	var active_ref = main.opponent_active_pokemon if is_opponent else main.player_active_pokemon
+	if target == active_ref:
+		if is_opponent: main.opponent_active_pokemon = devolve_to
+		else: main.player_active_pokemon = devolve_to
+	else:
+		var b = main.opponent_bench if is_opponent else main.player_bench
+		var idx = b.find(target)
+		if idx != -1: b[idx] = devolve_to
+	deck.shuffle()
+	main.display_pokemon(is_opponent)
+	main.display_active_pokemon_energies(is_opponent)
+	main.update_deck_icon(is_opponent)
+	await main.show_message("SURPRISE! TIME MACHINE! " + target.metadata.get("name","").to_upper() + " DEVOLVED!")
+	if main._should_bail(): return
+	# Re-evolve from the deck: find a card that evolves from the new form.
+	var evo_pool = deck.filter(func(c): return c.metadata.get("supertype","") == "Pokémon" and c.metadata.get("evolvesFrom","") == devolve_to.metadata.get("name",""))
+	if evo_pool.is_empty():
+		return
+	var evo_pick: card_object = null
+	if is_opponent:
+		evo_pick = evo_pool[0]
+	else:
+		evo_pick = await main.card_ops.choose_card(evo_pool, false, "SURPRISE! TIME MACHINE", "Choose an Evolution to put on " + devolve_to.metadata.get("name",""), "EVOLVE", true, Callable(), true)
+		if main._should_bail(): return
+	if evo_pick != null:
+		await _ex2_do_evolution(evo_pick, devolve_to, is_opponent, deck)
+		deck.shuffle()
+		main.update_deck_icon(is_opponent)
+		await main.show_message("EVOLVED INTO " + evo_pick.metadata.get("name","").to_upper() + "!")
+		if main._should_bail(): return
+	print("TRAINER: Surprise! Time Machine")
+
+# SWOOP! TELEPORTER (ex7-92, Rocket's Secret Machine): search your deck for a Basic Pokémon (excluding
+# ex) and switch it with 1 of your Basic Pokémon (excluding ex) in play, carrying over all attachments,
+# damage, Special Conditions, and effects. Discard the replaced Basic. Shuffle.
+func effect_ex7_swoop_teleporter(is_opponent: bool) -> void:
+	var deck = main.opponent_deck if is_opponent else main.player_deck
+	var discard = main.opponent_discard_pile if is_opponent else main.player_discard_pile
+	var in_play_basics = main.card_ops.get_all_pokemon_in_play(is_opponent).filter(func(c): return c.attached_pre_evolutions.is_empty() and "Basic" in c.metadata.get("subtypes", []) and not main.is_ex_pokemon(c))
+	if in_play_basics.is_empty():
+		await main.show_message("SWOOP! TELEPORTER: NO BASIC POKÉMON IN PLAY!")
+		if main._should_bail(): return
+		return
+	var deck_basics = deck.filter(func(c): return c.metadata.get("supertype","") == "Pokémon" and "Basic" in c.metadata.get("subtypes", []) and not main.is_ex_pokemon(c))
+	if deck_basics.is_empty():
+		await main.show_message("SWOOP! TELEPORTER: NO BASIC POKÉMON IN DECK!")
+		if main._should_bail(): return
+		return
+	var target: card_object = null
+	var new_basic: card_object = null
+	if is_opponent:
+		target = in_play_basics[0]
+		new_basic = deck_basics[0]
+	else:
+		target = await main.card_ops.choose_card(in_play_basics, false, "SWOOP! TELEPORTER", "Choose a Basic Pokémon in play to switch out", "SELECT", false, Callable(), true)
+		if main._should_bail(): return
+		if target == null: return
+		new_basic = await main.card_ops.choose_card(deck_basics, false, "SWOOP! TELEPORTER", "Choose a Basic Pokémon from your deck to switch in", "SELECT", false, Callable(), true)
+		if main._should_bail(): return
+		if new_basic == null: return
+	# Carry over state onto the new Basic.
+	new_basic.attached_energies = target.attached_energies.duplicate()
+	new_basic.attached_cards = target.attached_cards.duplicate()
+	var max_hp_old = int(target.metadata.get("hp", "0"))
+	var damage_taken = max_hp_old - target.current_hp
+	var new_max = int(new_basic.metadata.get("hp", "0"))
+	new_basic.current_hp = max(10, new_max - damage_taken)
+	new_basic.special_condition = target.special_condition
+	new_basic.is_poisoned = target.is_poisoned
+	new_basic.poison_damage = target.poison_damage
+	new_basic.is_burned = target.is_burned
+	new_basic.current_location = target.current_location
+	new_basic.placed_on_field_this_turn = target.placed_on_field_this_turn
+	# Replace in the slot.
+	var active_ref = main.opponent_active_pokemon if is_opponent else main.player_active_pokemon
+	if target == active_ref:
+		if is_opponent: main.opponent_active_pokemon = new_basic
+		else: main.player_active_pokemon = new_basic
+	else:
+		var b = main.opponent_bench if is_opponent else main.player_bench
+		var idx = b.find(target)
+		if idx != -1: b[idx] = new_basic
+	# The replaced Basic goes to the discard; the new one leaves the deck.
+	deck.erase(new_basic)
+	target.attached_energies.clear()
+	target.attached_cards.clear()
+	target.current_location = "discard"
+	discard.append(target)
+	deck.shuffle()
+	main.display_pokemon(is_opponent)
+	main.display_active_pokemon_energies(is_opponent)
+	main.update_deck_icon(is_opponent)
+	main.update_discard_pile_display(is_opponent)
+	main.update_status_icons(new_basic, is_opponent)
+	await main.show_message("SWOOP! TELEPORTER! SWITCHED IN " + new_basic.metadata.get("name","").to_upper() + "!")
+	if main._should_bail(): return
+	print("TRAINER: Swoop! Teleporter")
+
+# DETOUR (Magby ex7-24 attack support): re-resolve the effect of a Supporter you played this turn.
+func ex7_detour_reuse_supporter(is_opponent: bool) -> void:
+	var played = opponent_played_supporter_this_turn if is_opponent else player_played_supporter_this_turn
+	if not played:
+		await main.show_message("DETOUR: NO SUPPORTER IN PLAY!")
+		if main._should_bail(): return
+		return
+	var discard = main.opponent_discard_pile if is_opponent else main.player_discard_pile
+	var sup: card_object = null
+	for i in range(discard.size() - 1, -1, -1):
+		if "Supporter" in discard[i].metadata.get("subtypes", []):
+			sup = discard[i]
+			break
+	if sup == null:
+		await main.show_message("DETOUR: NO SUPPORTER IN PLAY!")
+		if main._should_bail(): return
+		return
+	await main.show_message("DETOUR! RE-USING " + sup.metadata.get("name","").to_upper() + "!")
+	if main._should_bail(): return
+	await resolve_standard_trainer(sup, is_opponent)
+	if main._should_bail(): return
+	print("TRAINER: Detour re-used " + sup.metadata.get("name",""))

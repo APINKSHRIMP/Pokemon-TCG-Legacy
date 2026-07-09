@@ -64,11 +64,15 @@ func get_energy_types_provided(card_name: String) -> Array:
 		"Magma Energy":
 			# Provides Fighting and/or Darkness (2 Energy at a time); attach only to Team Magma Pokemon
 			return ["Fighting", "Darkness"]
+		"Dark Metal Energy":
+			# EX7: provides Darkness and Metal, but only 1 Energy at a time (like Rainbow/Multi).
+			return ["Darkness", "Metal"]
+		"R Energy":
+			# EX7: provides 2 Darkness Energy. Attach only to a "Dark"/"Rocket's" Pokémon.
+			return ["Darkness", "Darkness"]
 		# --- FUTURE SETS: Add new special energies below ---
 		# "Boost Energy":
 		#	return ["Colorless", "Colorless", "Colorless"]
-		# "Dark Metal Energy":
-		#	return ["Darkness", "Metal"]
 		_:
 			return []
 
@@ -97,7 +101,12 @@ func can_attach_to(energy_card: card_object, target_pokemon: card_object) -> Dic
 
 	match card_name:
 		"Rainbow Energy", "Full Heal Energy", "Potion Energy", "Double Colorless Energy", \
-		"Darkness Energy", "Metal Energy", "Recycle Energy", "Multi Energy":
+		"Darkness Energy", "Metal Energy", "Recycle Energy", "Multi Energy", "Dark Metal Energy":
+			return {"allowed": true, "reason": ""}
+		"R Energy":
+			var rname = target_pokemon.metadata.get("name", "")
+			if "Dark" not in rname and "Rocket's" not in rname:
+				return {"allowed": false, "reason": "R ENERGY CAN ONLY BE ATTACHED TO A DARK OR ROCKET'S POKEMON!"}
 			return {"allowed": true, "reason": ""}
 		"Aqua Energy":
 			if "Team Aqua" not in target_pokemon.metadata.get("name", ""):
@@ -192,8 +201,9 @@ func apply_on_attach_effects(energy_card: card_object, target_pokemon: card_obje
 # Returns true if this energy must be discarded at the end of the turn it was attached.
 func must_discard_end_of_turn(card_name: String) -> bool:
 	match card_name:
-		# "Boost Energy":
-		#	return true
+		"R Energy":
+			# EX7: "When your turn ends, discard R Energy."
+			return true
 		_:
 			return false
 
@@ -248,6 +258,9 @@ func get_outgoing_damage_modifier(pokemon: card_object) -> Dictionary:
 		match energy_name:
 			"Darkness Energy":
 				# +10 outgoing damage to the opponent's Active per Darkness Energy attached
+				bonus += 10
+			"R Energy":
+				# EX7: +10 damage to the opponent's Active per R Energy attached (before W/R)
 				bonus += 10
 			"Double Rainbow Energy":
 				# Damage done to the opponent by the holder is reduced by 10 (after W/R)
@@ -368,6 +381,22 @@ func score_special_energy_attachment(energy_card: card_object, target_pokemon: c
 			score += 30.0
 			if is_active:
 				score += 10.0
+		"Dark Metal Energy":
+			# EX7: flexible Darkness/Metal (1 at a time), no drawback.
+			score += 20.0
+			if is_active:
+				score += 10.0
+		"R Energy":
+			# EX7: 2 Darkness + 10 more damage, but discarded at end of turn — only worth it on the
+			# Active when it enables an attack this turn.
+			if not is_active:
+				return -50.0
+			score += 25.0
+			for attack in target_pokemon.metadata.get("attacks", []):
+				var unmet = main.cpu_ai.get_unmet_energy_count(attack, target_pokemon)
+				if unmet >= 1 and unmet <= 2:
+					score += 60.0
+					break
 		# --- FUTURE SETS ---
 		# "Boost Energy": if is_active: score += 40.0 else: score -= 50.0
 

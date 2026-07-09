@@ -2326,6 +2326,8 @@ func perform_energy_attachment() -> void:
 	powers_and_bodies.check_ex1_natural_cure(target_pokemon, energy_card, false)
 	# EX1 Natural Remedy (Swampert ex1-23): Water Energy attach from hand heals 1 damage counter
 	powers_and_bodies.check_ex1_natural_remedy(target_pokemon, energy_card, false)
+	# EX7 Saturation (Quagsire ex7-26 / Wooper ex7-81): Water Energy attach clears conditions + heals
+	powers_and_bodies.check_ex7_saturation(target_pokemon, energy_card, false)
 
 	# MATCH EFFECTS: energy_attach_halve_hp / energy_attach_full_heal
 	await apply_energy_attach_match_effects(target_pokemon, false)
@@ -3124,13 +3126,14 @@ func perform_evolution(is_opponent: bool) -> void:
 			await show_message("SPECIAL MATCH RULE: " + evo_card.metadata.get("name", "").to_upper() + " WAS FULLY HEALED BY EVOLVING!")
 			if _should_bail(): return
 
-	# BASE5: When-played powers trigger when evolved from hand
+	# BASE5: When-played powers trigger when evolved from hand. Gate on the ability itself — the ex7
+	# reprints share these names (Dark Dragonite/Dark Golbat) but have different abilities.
 	var evo_name = evo_card.metadata.get("name", "")
-	if evo_name == "Dark Dragonite":
+	if evo_name == "Dark Dragonite" and evo_card.has_ability("Summon Minions"):
 		await powers_and_bodies.trigger_summon_minions(evo_card, is_opponent)
-	elif evo_name == "Dark Golbat":
+	elif evo_name == "Dark Golbat" and evo_card.has_ability("Sneak Attack"):
 		await powers_and_bodies.trigger_sneak_attack(evo_card, is_opponent)
-	elif evo_name == "Dark Slowbro":
+	elif evo_name == "Dark Slowbro" and evo_card.has_ability("Reel In"):
 		await powers_and_bodies.trigger_reel_in(evo_card, is_opponent)
 	# NEO1: on-play power triggers
 	elif evo_name in ["Feraligatr"] and evo_card.has_ability("Berserk"):
@@ -3165,6 +3168,13 @@ func perform_evolution(is_opponent: bool) -> void:
 	# EX5 Healing Shower (Milotic ex5-12): on evolve, may remove all damage from all Pokemon (excl ex)
 	elif evo_card.has_ability("Healing Shower"):
 		await powers_and_bodies.trigger_ex5_healing_shower(evo_card, is_opponent)
+	# EX7 Froth (Azumarill ex7-1): on evolving an Active, each Defending Pokemon is now Paralyzed
+	elif evo_card.has_ability("Froth"):
+		await powers_and_bodies.trigger_ex7_froth(evo_card, is_opponent)
+
+	# EX7 Darkest Impulse (Dark Ampharos ex7-2): whenever the opponent evolves a Pokemon, the opposing
+	# Dark Ampharos puts 2 damage counters on it. Fires for every evolution (both sides).
+	await powers_and_bodies.check_ex7_darkest_impulse(evo_card, is_opponent)
 
 ########################################################### Retreat functions ##############################################################
 
@@ -3408,6 +3418,23 @@ func get_attacks_for_card(card: card_object) -> Array:
 						mb_extra.append(atk)
 			if mb_extra.size() > 0:
 				return attacks + mb_extra
+
+	# EX7 Rocket's Tricky Gym (ex7-90): each Pokemon with "Dark" or "Rocket's" in its name may use the
+	# Stadium's Feint Attack in addition to its own.
+	if is_stadium_in_play(StadiumIds.ROCKETS_TRICKY_GYM) and current_stadium_card != null:
+		var tg_name = card.metadata.get("name","")
+		if "Dark" in tg_name or "Rocket's" in tg_name:
+			var stadium_atks = current_stadium_card.metadata.get("attacks", [])
+			if not stadium_atks.is_empty():
+				var seen_tg: Dictionary = {}
+				for atk in attacks:
+					seen_tg[atk.get("name","")] = true
+				var tg_extra: Array = []
+				for atk in stadium_atks:
+					if not seen_tg.has(atk.get("name","")):
+						tg_extra.append(atk)
+				if not tg_extra.is_empty():
+					return attacks + tg_extra
 
 	return attacks
 
@@ -3827,6 +3854,10 @@ func calculate_final_damage(base_damage: int, attacking_types: Array, defending_
 			skip_weakness = match_effects.ignore_weakness(match_effects.is_card_on_opponent_side(attacker_pokemon))
 		else:
 			skip_weakness = match_effects.ignore_weakness_global()
+	# EX7 Dragon Veil (Kingdra) / Dark Condition (Rocket's Entei ex): defender has no Weakness.
+	if not skip_weakness and powers_and_bodies.has_no_weakness_body(defending_pokemon):
+		skip_weakness = true
+		modifiers_applied.append("NO WEAKNESS (BODY)")
 	if not skip_weakness:
 		var weaknesses = defending_pokemon.metadata.get("weaknesses", [])
 		for weakness in weaknesses:
@@ -4048,6 +4079,10 @@ func check_and_handle_knockout(pokemon: card_object, is_opponent: bool) -> bool:
 
 	# NEO1 Focus Band (neo1-86 Tool): flip — heads survive with 10 HP
 	if await powers_and_bodies.check_focus_band(pokemon, is_opponent):
+		return false
+
+	# EX7 Buffer (Hoppip/Skiploom/Jumpluff): flip — heads survive with 10 HP
+	if await powers_and_bodies.check_ex7_buffer(pokemon, is_opponent):
 		return false
 
 	var ko_name = pokemon.metadata.get("name", "Unknown")
@@ -4695,6 +4730,9 @@ func get_retreat_cost(pokemon: card_object) -> int:
 		for e in pokemon.attached_energies:
 			if "Darkness" in get_energy_provided_by_card(e):
 				return 0
+	# EX7 Scramble (Rattata ex7-71): retreat 0 while the opponent's Active is a Pokémon-ex.
+	if powers_and_bodies.ex7_scramble_free_retreat(pokemon):
+		return 0
 
 	# MATCH EFFECT: retreat_cost_modifier — flat adjustment to retreat cost (floor 0)
 	cost = max(0, cost + match_effects.retreat_cost_modifier(pokemon_is_opponent))

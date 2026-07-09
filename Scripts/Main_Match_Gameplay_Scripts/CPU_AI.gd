@@ -1449,6 +1449,8 @@ func cpu_phase_energy_attachment(cpu_eval: Dictionary) -> void:
 	main.powers_and_bodies.check_ex1_natural_cure(target, energy, true)
 	# EX1 Natural Remedy (Swampert ex1-23): Water Energy attach from hand heals 1 damage counter
 	main.powers_and_bodies.check_ex1_natural_remedy(target, energy, true)
+	# EX7 Saturation (Quagsire ex7-26 / Wooper ex7-81): Water Energy attach clears conditions + heals
+	main.powers_and_bodies.check_ex7_saturation(target, energy, true)
 
 	# MATCH EFFECTS: energy_attach_halve_hp / energy_attach_full_heal
 	await main.apply_energy_attach_match_effects(target, true)

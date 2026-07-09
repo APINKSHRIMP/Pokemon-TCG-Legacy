@@ -74,6 +74,7 @@ func _register_all_powers() -> void:
 	_register_ex4_powers()
 	_register_ex5_powers()
 	_register_ex6_powers()
+	_register_ex7_powers()
 
 # ── On-damage and pre-KO event hooks ──────────────────────────────────────────
 # Each Callable is fired after active-pokemon damage resolves (on_damage) or
@@ -132,6 +133,10 @@ func _register_all_power_hooks() -> void:
 	_damage_modifier_hooks.append(func(dmg, atk, def, mods): return _hook_ex6_energy_protection(dmg, atk, def, mods))
 	_damage_modifier_hooks.append(func(dmg, atk, def, mods): return _hook_ex6_magic_odds(dmg, atk, def, mods))
 	_damage_modifier_hooks.append(func(dmg, atk, def, mods): return _hook_ex6_magic_evens(dmg, atk, def, mods))
+	_damage_modifier_hooks.append(func(dmg, atk, def, mods): return _hook_ex7_powder_protection(dmg, atk, def, mods))
+	_damage_modifier_hooks.append(func(dmg, atk, def, mods): return _hook_ex7_dense(dmg, atk, def, mods))
+	_damage_modifier_hooks.append(func(dmg, atk, def, mods): return _hook_ex7_darkness_guard(dmg, atk, def, mods))
+	_damage_modifier_hooks.append(func(dmg, atk, def, mods): return _hook_ex7_holy_shield(dmg, atk, def, mods))
 	_on_damage_hooks.append(func(def, atk, dmg, is_def_opp): await check_strikes_back(def, atk, is_def_opp))
 	_on_damage_hooks.append(func(def, atk, dmg, is_def_opp): await check_restless_sleep(def, atk, is_def_opp))
 	_on_damage_hooks.append(func(def, atk, dmg, is_def_opp): await check_pollen_defense(def, atk, is_def_opp))
@@ -150,6 +155,9 @@ func _register_all_power_hooks() -> void:
 	_on_damage_hooks.append(func(def, atk, dmg, is_def_opp): await check_ex2_poison_payback(def, atk, is_def_opp))
 	_on_damage_hooks.append(func(def, atk, dmg, is_def_opp): await check_ex2_fire_veil(def, atk, is_def_opp))
 	_on_damage_hooks.append(func(def, atk, dmg, is_def_opp): await check_ex2_jagged_stone(def, atk, is_def_opp))
+	_on_damage_hooks.append(func(def, atk, dmg, is_def_opp): await check_ex7_spiny(def, atk, is_def_opp))
+	_on_damage_hooks.append(func(def, atk, dmg, is_def_opp): await check_ex7_dark_scale(def, atk, is_def_opp))
+	_on_damage_hooks.append(func(def, atk, dmg, is_def_opp): await check_ex7_knockout_gas(def, atk, is_def_opp))
 	_pre_ko_hooks.append(func(poke, atk, is_poke_opp): await check_ex5_energy_grounding(poke, atk, is_poke_opp))
 	_pre_ko_hooks.append(func(poke, atk, is_poke_opp): await check_final_beam(poke, atk, is_poke_opp))
 	_pre_ko_hooks.append(func(poke, atk, is_poke_opp): await main.trainer_effects.check_time_shard(poke, atk, is_poke_opp))
@@ -2045,6 +2053,8 @@ func cpu_phase_activate_powers() -> void:
 	await cpu_phase_ex5_powers()
 	if main._should_bail(): return
 	await cpu_phase_ex6_powers()
+	if main._should_bail(): return
+	await cpu_phase_ex7_powers()
 	if main._should_bail(): return
 
 
@@ -5882,13 +5892,20 @@ func power_neo4_spatial_distortion(pokemon: card_object) -> void:
 func power_neo4_cunning(pokemon: card_object) -> void:
 	var is_opponent = pokemon.is_owner_opp(main)
 	if not await _neo4_power_ready(pokemon, "CUNNING"): return
-	var coin = await main.flip_coin(false, is_opponent)
-	if main._should_bail(): return
+	# neo4 Dark Slowking's Cunning gates on a coin flip; ex7 Dark Slowking's Cunning does not.
+	var cunning_text = ""
+	for ab in pokemon.metadata.get("abilities", []):
+		if ab.get("name","") == "Cunning":
+			cunning_text = ab.get("text","").to_lower()
+			break
 	pokemon.power_used_this_turn = true
-	if not coin:
-		await main.show_message("CUNNING: TAILS!")
+	if "flip a coin" in cunning_text:
+		var coin = await main.flip_coin(false, is_opponent)
 		if main._should_bail(): return
-		return
+		if not coin:
+			await main.show_message("CUNNING: TAILS!")
+			if main._should_bail(): return
+			return
 	var opp_deck = main.player_deck if is_opponent else main.opponent_deck
 	if opp_deck.is_empty():
 		await main.show_message("CUNNING: OPPONENT'S DECK IS EMPTY!")
@@ -6734,6 +6751,64 @@ func apply_np_between_turn_bodies() -> void:
 				await main.check_all_knockouts()
 				if main._should_bail(): return
 			break
+
+	# EX7 SAND DAMAGE (Dark Tyranitar ex7-20): while Active, put 1 damage counter on each of the
+	# opponent's Benched Basic Pokemon between turns. Only 1 Sand Damage fires between turns.
+	for side in [false, true]:
+		var st_active = main.opponent_active_pokemon if side else main.player_active_pokemon
+		if st_active == null: continue
+		if is_toxic_gas_active() or main.goop_gas_active: continue
+		if is_power_blocked_by_status(st_active): continue
+		if st_active.has_ability("Sand Damage"):
+			var opp_bench = main.player_bench if side else main.opponent_bench
+			var hit_sd = false
+			for p in opp_bench:
+				if p.current_hp > 0 and "Basic" in p.metadata.get("subtypes", []):
+					p.current_hp = max(0, p.current_hp - 10)
+					main.display_hp_circles_above_align(p, not side)
+					hit_sd = true
+			if hit_sd:
+				await main.show_message("SAND DAMAGE! 1 DAMAGE COUNTER ON EACH BENCHED BASIC POKEMON!")
+				if main._should_bail(): return
+				await main.check_all_knockouts()
+				if main._should_bail(): return
+			break
+
+	# EX7 METHANE LEAK (Dark Weezing ex7-42): while Active, put 1 damage counter on each Pokemon (both
+	# sides) that remains Poisoned between turns.
+	for side in [false, true]:
+		var ml_active = main.opponent_active_pokemon if side else main.player_active_pokemon
+		if ml_active == null: continue
+		if is_toxic_gas_active() or main.goop_gas_active: continue
+		if is_power_blocked_by_status(ml_active): continue
+		if ml_active.has_ability("Methane Leak"):
+			var hit_ml = false
+			for s2 in [false, true]:
+				for p in main.card_ops.get_all_pokemon_in_play(s2):
+					if p.current_hp > 0 and p.is_poisoned:
+						p.current_hp = max(0, p.current_hp - 10)
+						main.display_hp_circles_above_align(p, s2)
+						hit_ml = true
+			if hit_ml:
+				await main.show_message("METHANE LEAK! 1 DAMAGE COUNTER ON EACH POISONED POKEMON!")
+				if main._should_bail(): return
+				await main.check_all_knockouts()
+				if main._should_bail(): return
+			break
+
+	# EX7 DARK HEALER (Rocket's Snorlax ex ex7-104): while it has any Darkness Energy attached, remove
+	# 1 damage counter from Rocket's Snorlax ex between turns.
+	for side in [false, true]:
+		for p in main.card_ops.get_all_pokemon_in_play(side):
+			if p.current_hp <= 0: continue
+			if is_toxic_gas_active() or main.goop_gas_active: continue
+			if is_power_blocked_by_status(p): continue
+			if p.has_ability("Dark Healer") and _ex7_has_darkness_energy(p):
+				if p.current_hp < p.get_max_hp():
+					p.current_hp = min(p.get_max_hp(), p.current_hp + 10)
+					main.display_hp_circles_above_align(p, side)
+					await main.show_message("DARK HEALER! " + p.metadata.get("name","").to_upper() + " REMOVED 1 DAMAGE COUNTER!")
+					if main._should_bail(): return
 
 # SYNCHRONIZED LIFT (np-31/32/33 Moltres/Articuno/Zapdos ex): free retreat if specific partners in play
 func check_synchronized_lift(pokemon: card_object, is_opponent: bool) -> bool:
@@ -10721,8 +10796,15 @@ func _hook_ex5_crust(damage: int, attacker: card_object, defender: card_object, 
 	if not defender.has_ability("Crust") or is_power_blocked_by_status(defender):
 		return damage
 	if "Basic" in attacker.metadata.get("subtypes", []):
-		modifiers.append("CRUST -30")
-		return max(0, damage - 30)
+		# Read the reduction from the ability text (ex5 Regirock = 30, ex7 Heracross = 20).
+		var red = 30
+		for ab in defender.metadata.get("abilities", []):
+			if ab.get("name","") == "Crust":
+				var r = main.attack_effects.extract_number_before(ab.get("text","").to_lower(), "reduced by")
+				if r > 0: red = r
+				break
+		modifiers.append("CRUST -" + str(red))
+		return max(0, damage - red)
 	return damage
 
 # ICE WALL (Glalie ex5-34): damage from an attacker with any Special Energy attached is reduced by 40.
@@ -11491,3 +11573,542 @@ func trigger_ex6_legendary_ascent(bird: card_object, is_opponent: bool) -> void:
 	main.display_active_pokemon_energies(is_opponent)
 	main.display_pokemon(not is_opponent)
 	print("POWER USED: Legendary Ascent")
+
+# ════════════════════════════════════════════════════════════════════════════════
+# EX7 — EX TEAM ROCKET RETURNS  (Powers & Bodies)
+# ════════════════════════════════════════════════════════════════════════════════
+
+func _register_ex7_powers() -> void:
+	_power_dispatch["Black Beam"]           = func(p): await power_ex7_black_beam(p)
+	_power_dispatch["Darkness Navigation"]  = func(p): await power_ex7_darkness_navigation(p)
+	_power_dispatch["Dark Trance"]          = func(p): await power_ex7_dark_trance(p)
+	_power_dispatch["Gift Exchange"]        = func(p): await power_ex7_gift_exchange(p)
+	_power_dispatch["Fire Breath"]          = func(p): await power_ex7_fire_breath(p)
+	_power_dispatch["Dark Spell"]           = func(p): await power_ex7_dark_spell(p)
+	_power_dispatch["Ripples"]              = func(p): await power_ex7_ripples(p)
+
+# Returns true if the Pokémon has any Darkness Energy attached (basic or providing Darkness).
+func _ex7_has_darkness_energy(pokemon: card_object) -> bool:
+	if pokemon == null: return false
+	for e in pokemon.attached_energies:
+		if "Darkness" in main.get_energy_provided_by_card(e):
+			return true
+	return false
+
+# ── Active Powers ─────────────────────────────────────────────────────────────
+
+# BLACK BEAM (Dark Crobat ex7-3): once per turn, if Active, choose 1 Defending Pokémon — it is Poisoned.
+func power_ex7_black_beam(pokemon: card_object) -> void:
+	var is_opponent = pokemon.is_owner_opp(main)
+	if is_power_blocked_by_status(pokemon):
+		await main.show_message("BLACK BEAM IS BLOCKED BY STATUS!")
+		if main._should_bail(): return
+		return
+	if pokemon.power_used_this_turn:
+		await main.show_message("BLACK BEAM ALREADY USED THIS TURN!")
+		if main._should_bail(): return
+		return
+	var active = main.opponent_active_pokemon if is_opponent else main.player_active_pokemon
+	if pokemon != active:
+		await main.show_message("BLACK BEAM REQUIRES DARK CROBAT TO BE ACTIVE!")
+		if main._should_bail(): return
+		return
+	var pool = main.card_ops.get_defending_pokemon(is_opponent)
+	if pool.is_empty():
+		return
+	pokemon.power_used_this_turn = true
+	var target: card_object = pool[0]
+	if not is_opponent and pool.size() > 1:
+		target = await main.card_ops.choose_card(pool, is_opponent, "BLACK BEAM", "Choose a Defending Pokémon to Poison", "SELECT", false, Callable(), true)
+		if main._should_bail(): return
+		if target == null: target = pool[0]
+	main.card_ops.apply_status(target, "Poisoned", not is_opponent)
+	await main.show_message("BLACK BEAM! THE DEFENDING POKÉMON IS NOW POISONED!")
+	if main._should_bail(): return
+	print("POWER USED: Black Beam")
+
+# DARKNESS NAVIGATION (Dark Electrode ex7-4): once per turn, if it has no Energy attached, search deck
+# for a Darkness or Dark Metal Energy and attach it to Dark Electrode; shuffle.
+func power_ex7_darkness_navigation(pokemon: card_object) -> void:
+	var is_opponent = pokemon.is_owner_opp(main)
+	if is_power_blocked_by_status(pokemon):
+		await main.show_message("DARKNESS NAVIGATION IS BLOCKED BY STATUS!")
+		if main._should_bail(): return
+		return
+	if pokemon.power_used_this_turn:
+		await main.show_message("DARKNESS NAVIGATION ALREADY USED THIS TURN!")
+		if main._should_bail(): return
+		return
+	if not pokemon.attached_energies.is_empty():
+		await main.show_message("DARKNESS NAVIGATION NEEDS DARK ELECTRODE TO HAVE NO ENERGY!")
+		if main._should_bail(): return
+		return
+	var deck = main.opponent_deck if is_opponent else main.player_deck
+	var pool = deck.filter(func(c): return c.metadata.get("supertype","") == "Energy" and "Darkness" in main.get_energy_provided_by_card(c))
+	if pool.is_empty():
+		await main.show_message("NO DARKNESS ENERGY IN DECK!")
+		if main._should_bail(): return
+		return
+	pokemon.power_used_this_turn = true
+	var chosen: card_object = null
+	if is_opponent:
+		chosen = pool[0]
+	else:
+		chosen = await main.card_ops.choose_card(pool, is_opponent, "DARKNESS NAVIGATION", "Choose a Darkness/Dark Metal Energy", "ATTACH", false, Callable(), true)
+		if main._should_bail(): return
+		if chosen == null: chosen = pool[0]
+	deck.erase(chosen)
+	chosen.current_location = "attached"
+	pokemon.attached_energies.append(chosen)
+	deck.shuffle()
+	main.display_active_pokemon_energies(is_opponent)
+	main.display_pokemon(is_opponent)
+	main.update_deck_icon(is_opponent)
+	await main.show_message("DARKNESS NAVIGATION! ATTACHED " + chosen.metadata.get("name","").to_upper() + "!")
+	if main._should_bail(): return
+	print("POWER USED: Darkness Navigation")
+
+# DARK TRANCE (Dark Dragonite ex7-15): as often as you like, move a Darkness Energy from 1 of your
+# Pokémon to another. Repeatable in one activation; not consumed (does not set power_used_this_turn).
+func power_ex7_dark_trance(pokemon: card_object) -> void:
+	var is_opponent = pokemon.is_owner_opp(main)
+	if is_power_blocked_by_status(pokemon):
+		await main.show_message("DARK TRANCE IS BLOCKED BY STATUS!")
+		if main._should_bail(): return
+		return
+	if is_opponent:
+		return  # CPU does not use this repositioning power (low value, complex).
+	while true:
+		var mine = main.card_ops.get_all_pokemon_in_play(is_opponent)
+		var sources = mine.filter(func(c): return _ex7_has_darkness_energy(c))
+		if sources.is_empty():
+			await main.show_message("NO DARKNESS ENERGY TO MOVE!")
+			if main._should_bail(): return
+			return
+		var src = await main.card_ops.choose_card(sources, is_opponent, "DARK TRANCE", "Move Darkness Energy FROM which Pokémon? (Cancel to stop)", "SELECT", true, Callable(), true)
+		if main._should_bail(): return
+		if src == null:
+			return
+		var dests = mine.filter(func(c): return c != src)
+		if dests.is_empty():
+			return
+		var dst = await main.card_ops.choose_card(dests, is_opponent, "DARK TRANCE", "Move Darkness Energy TO which Pokémon?", "SELECT", true, Callable(), true)
+		if main._should_bail(): return
+		if dst == null:
+			continue
+		var dark_e: card_object = null
+		for e in src.attached_energies:
+			if "Darkness" in main.get_energy_provided_by_card(e):
+				dark_e = e
+				break
+		if dark_e == null:
+			continue
+		src.attached_energies.erase(dark_e)
+		dst.attached_energies.append(dark_e)
+		main.display_active_pokemon_energies(is_opponent)
+		main.display_pokemon(is_opponent)
+		await main.show_message("DARK TRANCE! MOVED A DARKNESS ENERGY!")
+		if main._should_bail(): return
+
+# GIFT EXCHANGE (Delibird ex7-21): once per turn, if Active, shuffle 1 card from your hand into your
+# deck, then draw a card.
+func power_ex7_gift_exchange(pokemon: card_object) -> void:
+	var is_opponent = pokemon.is_owner_opp(main)
+	if is_power_blocked_by_status(pokemon):
+		await main.show_message("GIFT EXCHANGE IS BLOCKED BY STATUS!")
+		if main._should_bail(): return
+		return
+	if pokemon.power_used_this_turn:
+		await main.show_message("GIFT EXCHANGE ALREADY USED THIS TURN!")
+		if main._should_bail(): return
+		return
+	var active = main.opponent_active_pokemon if is_opponent else main.player_active_pokemon
+	if pokemon != active:
+		await main.show_message("GIFT EXCHANGE REQUIRES DELIBIRD TO BE ACTIVE!")
+		if main._should_bail(): return
+		return
+	var hand = main.opponent_hand if is_opponent else main.player_hand
+	if hand.is_empty():
+		await main.show_message("NO CARDS IN HAND!")
+		if main._should_bail(): return
+		return
+	pokemon.power_used_this_turn = true
+	var deck = main.opponent_deck if is_opponent else main.player_deck
+	var pick: card_object = null
+	if is_opponent:
+		pick = hand[0]
+	else:
+		pick = await main.card_ops.choose_card(hand, is_opponent, "GIFT EXCHANGE", "Shuffle a card into your deck", "SELECT", false, Callable(), true)
+		if main._should_bail(): return
+		if pick == null: pick = hand[0]
+	hand.erase(pick)
+	pick.current_location = "deck"
+	deck.append(pick)
+	deck.shuffle()
+	main.refresh_hand_display(is_opponent)
+	main.update_deck_icon(is_opponent)
+	await main.card_ops.draw_n(is_opponent, 1)
+	if main._should_bail(): return
+	await main.show_message("GIFT EXCHANGE! SHUFFLED 1 CARD AND DREW 1!")
+	if main._should_bail(): return
+	print("POWER USED: Gift Exchange")
+
+# FIRE BREATH (Dark Houndoom ex7-37): once per turn, if Active, flip a coin — if heads, a chosen
+# Defending Pokémon is Burned.
+func power_ex7_fire_breath(pokemon: card_object) -> void:
+	var is_opponent = pokemon.is_owner_opp(main)
+	if is_power_blocked_by_status(pokemon):
+		await main.show_message("FIRE BREATH IS BLOCKED BY STATUS!")
+		if main._should_bail(): return
+		return
+	if pokemon.power_used_this_turn:
+		await main.show_message("FIRE BREATH ALREADY USED THIS TURN!")
+		if main._should_bail(): return
+		return
+	var active = main.opponent_active_pokemon if is_opponent else main.player_active_pokemon
+	if pokemon != active:
+		await main.show_message("FIRE BREATH REQUIRES DARK HOUNDOOM TO BE ACTIVE!")
+		if main._should_bail(): return
+		return
+	pokemon.power_used_this_turn = true
+	var coin = await main.flip_coin(false, is_opponent)
+	if main._should_bail(): return
+	if not coin:
+		await main.show_message("TAILS! FIRE BREATH FAILED!")
+		if main._should_bail(): return
+		return
+	var pool = main.card_ops.get_defending_pokemon(is_opponent)
+	if pool.is_empty():
+		return
+	var target: card_object = pool[0]
+	if not is_opponent and pool.size() > 1:
+		target = await main.card_ops.choose_card(pool, is_opponent, "FIRE BREATH", "Choose a Defending Pokémon to Burn", "SELECT", false, Callable(), true)
+		if main._should_bail(): return
+		if target == null: target = pool[0]
+	main.card_ops.apply_status(target, "Burned", not is_opponent)
+	await main.show_message("FIRE BREATH! THE DEFENDING POKÉMON IS NOW BURNED!")
+	if main._should_bail(): return
+	print("POWER USED: Fire Breath")
+
+# DARK SPELL (Misdreavus ex7-25): once per turn, if Active, flip a coin — if heads, put 1 damage
+# counter on 1 of the opponent's Pokémon.
+func power_ex7_dark_spell(pokemon: card_object) -> void:
+	var is_opponent = pokemon.is_owner_opp(main)
+	if is_power_blocked_by_status(pokemon):
+		await main.show_message("DARK SPELL IS BLOCKED BY STATUS!")
+		if main._should_bail(): return
+		return
+	if pokemon.power_used_this_turn:
+		await main.show_message("DARK SPELL ALREADY USED THIS TURN!")
+		if main._should_bail(): return
+		return
+	var active = main.opponent_active_pokemon if is_opponent else main.player_active_pokemon
+	if pokemon != active:
+		await main.show_message("DARK SPELL REQUIRES MISDREAVUS TO BE ACTIVE!")
+		if main._should_bail(): return
+		return
+	pokemon.power_used_this_turn = true
+	var coin = await main.flip_coin(false, is_opponent)
+	if main._should_bail(): return
+	if not coin:
+		await main.show_message("TAILS! DARK SPELL FAILED!")
+		if main._should_bail(): return
+		return
+	var pool = main.card_ops.get_all_pokemon_in_play(not is_opponent)
+	if pool.is_empty():
+		return
+	var target: card_object = null
+	if is_opponent:
+		target = pool[0]
+		for c in pool:
+			if c.current_hp < target.current_hp: target = c
+	else:
+		target = await main.card_ops.choose_card(pool, is_opponent, "DARK SPELL", "Put 1 damage counter on which Pokémon?", "SELECT", false, Callable(), true)
+		if main._should_bail(): return
+		if target == null: target = pool[0]
+	target.current_hp = max(0, target.current_hp - 10)
+	main.display_hp_circles_above_align(target, not is_opponent)
+	await main.show_message("DARK SPELL! 1 DAMAGE COUNTER PLACED!")
+	if main._should_bail(): return
+	await main.check_all_knockouts()
+	if main._should_bail(): return
+	print("POWER USED: Dark Spell")
+
+# RIPPLES (Mantine ex7-45): once per turn, remove 1 damage counter from 1 of your Pokémon (not Mantine).
+func power_ex7_ripples(pokemon: card_object) -> void:
+	var is_opponent = pokemon.is_owner_opp(main)
+	if is_power_blocked_by_status(pokemon):
+		await main.show_message("RIPPLES IS BLOCKED BY STATUS!")
+		if main._should_bail(): return
+		return
+	if pokemon.power_used_this_turn:
+		await main.show_message("RIPPLES ALREADY USED THIS TURN!")
+		if main._should_bail(): return
+		return
+	var pool = main.card_ops.get_all_pokemon_in_play(is_opponent).filter(func(c): return c != pokemon and c.current_hp < c.get_max_hp())
+	if pool.is_empty():
+		await main.show_message("NO DAMAGED POKÉMON TO HEAL!")
+		if main._should_bail(): return
+		return
+	pokemon.power_used_this_turn = true
+	var target: card_object = null
+	if is_opponent:
+		target = pool[0]
+		for c in pool:
+			if (c.get_max_hp() - c.current_hp) > (target.get_max_hp() - target.current_hp): target = c
+	else:
+		target = await main.card_ops.choose_card(pool, is_opponent, "RIPPLES", "Remove 1 damage counter from which Pokémon?", "SELECT", false, Callable(), true)
+		if main._should_bail(): return
+		if target == null: target = pool[0]
+	target.current_hp = min(target.get_max_hp(), target.current_hp + 10)
+	main.display_hp_circles_above_align(target, is_opponent)
+	await main.show_message("RIPPLES! REMOVED 1 DAMAGE COUNTER!")
+	if main._should_bail(): return
+	print("POWER USED: Ripples")
+
+# ── CPU active-power triggers ───────────────────────────────────────────────────
+func cpu_phase_ex7_powers() -> void:
+	if is_toxic_gas_active() or main.goop_gas_active: return
+	var oa = main.opponent_active_pokemon
+	# Black Beam: poison the player's Active.
+	var crobat = _find_cpu_pokemon_with_power("Black Beam")
+	if crobat != null and crobat == oa and not crobat.power_used_this_turn and not is_power_blocked_by_status(crobat):
+		var pa = main.player_active_pokemon
+		if pa != null and not pa.is_poisoned:
+			await power_ex7_black_beam(crobat)
+			if main._should_bail(): return
+	# Darkness Navigation: ramp Dark Electrode.
+	var electrode = _find_cpu_pokemon_with_power("Darkness Navigation")
+	if electrode != null and electrode.attached_energies.is_empty() and not electrode.power_used_this_turn and not is_power_blocked_by_status(electrode):
+		await power_ex7_darkness_navigation(electrode)
+		if main._should_bail(): return
+	# Gift Exchange: cycle a card.
+	var delibird = _find_cpu_pokemon_with_power("Gift Exchange")
+	if delibird != null and delibird == oa and not delibird.power_used_this_turn and not is_power_blocked_by_status(delibird) and not main.opponent_hand.is_empty():
+		await power_ex7_gift_exchange(delibird)
+		if main._should_bail(): return
+	# Fire Breath: try to Burn the player's Active.
+	var houndoom = _find_cpu_pokemon_with_power("Fire Breath")
+	if houndoom != null and houndoom == oa and not houndoom.power_used_this_turn and not is_power_blocked_by_status(houndoom):
+		var pa2 = main.player_active_pokemon
+		if pa2 != null and not pa2.is_burned:
+			await power_ex7_fire_breath(houndoom)
+			if main._should_bail(): return
+	# Dark Spell: chip the player.
+	var misdreavus = _find_cpu_pokemon_with_power("Dark Spell")
+	if misdreavus != null and misdreavus == oa and not misdreavus.power_used_this_turn and not is_power_blocked_by_status(misdreavus):
+		await power_ex7_dark_spell(misdreavus)
+		if main._should_bail(): return
+	# Ripples: heal a damaged CPU Pokémon.
+	var mantine = _find_cpu_pokemon_with_power("Ripples")
+	if mantine != null and not mantine.power_used_this_turn and not is_power_blocked_by_status(mantine):
+		var has_dmg = main.card_ops.get_all_pokemon_in_play(true).any(func(c): return c != mantine and c.current_hp < c.get_max_hp())
+		if has_dmg:
+			await power_ex7_ripples(mantine)
+			if main._should_bail(): return
+
+# ── Passive damage-modifier hooks ───────────────────────────────────────────────
+
+# POWDER PROTECTION (Ledian ex7-23): damage from an attacker that has an owner's name (contains "'s")
+# is reduced by 40.
+func _hook_ex7_powder_protection(damage: int, attacker: card_object, defender: card_object, modifiers: Array) -> int:
+	if damage <= 0 or defender == null or attacker == null:
+		return damage
+	if not defender.has_ability("Powder Protection") or is_power_blocked_by_status(defender):
+		return damage
+	if "'s" in attacker.metadata.get("name",""):
+		modifiers.append("POWDER PROTECTION -40")
+		return max(0, damage - 40)
+	return damage
+
+# DENSE (Slowpoke ex7-76): damage from an opponent's Evolved Pokémon is reduced by 10.
+func _hook_ex7_dense(damage: int, attacker: card_object, defender: card_object, modifiers: Array) -> int:
+	if damage <= 0 or defender == null or attacker == null:
+		return damage
+	if not defender.has_ability("Dense") or is_power_blocked_by_status(defender):
+		return damage
+	var st = attacker.metadata.get("subtypes", [])
+	if "Stage 1" in st or "Stage 2" in st:
+		modifiers.append("DENSE -10")
+		return max(0, damage - 10)
+	return damage
+
+# DARKNESS GUARD (Rocket's Zapdos ex ex7-106): while it has Darkness Energy attached, damage from an
+# opponent's attack is reduced by 10.
+func _hook_ex7_darkness_guard(damage: int, attacker: card_object, defender: card_object, modifiers: Array) -> int:
+	if damage <= 0 or defender == null or attacker == null:
+		return damage
+	if not defender.has_ability("Darkness Guard") or is_power_blocked_by_status(defender):
+		return damage
+	if _ex7_has_darkness_energy(defender):
+		modifiers.append("DARKNESS GUARD -10")
+		return max(0, damage - 10)
+	return damage
+
+# HOLY SHIELD (Togetic ex7-14): prevent all damage from an opponent's Pokémon that has "Dark" in its
+# name. (Non-damage effects are also blocked in apply_status; see ex7_blocks_status.)
+func _hook_ex7_holy_shield(damage: int, attacker: card_object, defender: card_object, modifiers: Array) -> int:
+	if damage <= 0 or defender == null or attacker == null:
+		return damage
+	if not defender.has_ability("Holy Shield") or is_power_blocked_by_status(defender):
+		return damage
+	if "Dark" in attacker.metadata.get("name",""):
+		modifiers.append("HOLY SHIELD (NO DAMAGE)")
+		return 0
+	return damage
+
+# ── On-damage bodies ────────────────────────────────────────────────────────────
+
+# SPINY (Qwilfish ex7-27): when damaged by an opponent's attack (even if KO'd), flip until tails; for
+# each heads, put 1 damage counter on the Attacking Pokémon.
+func check_ex7_spiny(defender: card_object, attacker: card_object, is_def_opp: bool) -> void:
+	if defender == null or attacker == null: return
+	if not defender.has_ability("Spiny") or is_power_blocked_by_status(defender): return
+	var def_active = main.opponent_active_pokemon if is_def_opp else main.player_active_pokemon
+	if defender != def_active: return
+	var heads = 0
+	while true:
+		var coin = await main.flip_coin(true, is_def_opp)
+		if main._should_bail(): return
+		if coin: heads += 1
+		else: break
+	if heads > 0:
+		attacker.current_hp = max(0, attacker.current_hp - heads * 10)
+		main.display_hp_circles_above_align(attacker, not is_def_opp)
+		await main.show_message("SPINY! " + str(heads) + " DAMAGE COUNTER(S) ON THE ATTACKER!")
+		if main._should_bail(): return
+
+# DARK SCALE (Dark Gyarados ex7-36): if KO'd by an opponent's attack, put 3 damage counters on the
+# Attacking Pokémon.
+func check_ex7_dark_scale(defender: card_object, attacker: card_object, is_def_opp: bool) -> void:
+	if defender == null or attacker == null: return
+	if not defender.has_ability("Dark Scale") or is_power_blocked_by_status(defender): return
+	var def_active = main.opponent_active_pokemon if is_def_opp else main.player_active_pokemon
+	if defender != def_active: return
+	if defender.current_hp > 0: return
+	attacker.current_hp = max(0, attacker.current_hp - 30)
+	main.display_hp_circles_above_align(attacker, not is_def_opp)
+	await main.show_message("DARK SCALE! 3 DAMAGE COUNTERS ON THE ATTACKER!")
+	if main._should_bail(): return
+
+# KNOCKOUT GAS (Koffing ex7-61): if KO'd by an opponent's attack, the Attacking Pokémon is now Confused
+# and Poisoned.
+func check_ex7_knockout_gas(defender: card_object, attacker: card_object, is_def_opp: bool) -> void:
+	if defender == null or attacker == null: return
+	if not defender.has_ability("Knockout Gas") or is_power_blocked_by_status(defender): return
+	var def_active = main.opponent_active_pokemon if is_def_opp else main.player_active_pokemon
+	if defender != def_active: return
+	if defender.current_hp > 0: return
+	main.card_ops.apply_status(attacker, "Confused", not is_def_opp)
+	main.card_ops.apply_status(attacker, "Poisoned", not is_def_opp)
+	await main.show_message("KNOCKOUT GAS! THE ATTACKING POKÉMON IS NOW CONFUSED AND POISONED!")
+	if main._should_bail(): return
+
+# ── Survive-KO body ─────────────────────────────────────────────────────────────
+
+# BUFFER (Hoppip/Skiploom/Jumpluff): if this would be KO'd by an opponent's attack, flip a coin; if
+# heads it survives with 10 HP. Returns true if it survived.
+func check_ex7_buffer(pokemon: card_object, is_opp: bool) -> bool:
+	if pokemon == null or pokemon.current_hp > 0: return false
+	if not pokemon.has_ability("Buffer") or is_power_blocked_by_status(pokemon): return false
+	var coin = await main.flip_coin(false, is_opp)
+	if main._should_bail(): return false
+	if coin:
+		pokemon.current_hp = 10
+		main.display_hp_circles_above_align(pokemon, is_opp)
+		await main.show_message("BUFFER! " + pokemon.metadata.get("name","").to_upper() + " SURVIVED WITH 10 HP!")
+		if main._should_bail(): return true
+		return true
+	return false
+
+# ── On-attach body ──────────────────────────────────────────────────────────────
+
+# SATURATION (Quagsire ex7-26 / Wooper ex7-81): when a Water Energy is attached from hand, remove all
+# Special Conditions and N damage counters (Quagsire = 2, Wooper = 1).
+func check_ex7_saturation(target_pokemon: card_object, energy_card: card_object, is_opponent: bool) -> void:
+	if target_pokemon == null: return
+	if is_power_blocked(target_pokemon): return
+	if not target_pokemon.has_ability("Saturation"): return
+	if "Water" not in main.get_energy_provided_by_card(energy_card): return
+	main.card_ops.clear_statuses(target_pokemon, is_opponent)
+	var heal = 20 if target_pokemon.metadata.get("name","") == "Quagsire" else 10
+	if target_pokemon.current_hp < target_pokemon.get_max_hp():
+		target_pokemon.current_hp = min(target_pokemon.get_max_hp(), target_pokemon.current_hp + heal)
+	main.display_hp_circles_above_align(target_pokemon, is_opponent)
+	print("BODY: Saturation — cleared conditions + healed ", heal, " on ", target_pokemon.metadata.get("name",""))
+
+# ── Weakness immunity ("no Weakness") ───────────────────────────────────────────
+
+# Consulted in Main.calculate_final_damage before applying Weakness.
+# DRAGON VEIL (Kingdra ex7-12): while a Kingdra is in play on the defender's side, each of that side's
+# Active Pokémon has no Weakness.
+# DARK CONDITION (Rocket's Entei ex ex7-97): while it has Darkness Energy attached, it has no Weakness.
+func has_no_weakness_body(defender: card_object) -> bool:
+	if defender == null: return false
+	if defender.has_ability("Dark Condition") and not is_power_blocked_by_status(defender) and _ex7_has_darkness_energy(defender):
+		return true
+	var side_opp = defender.is_owner_opp(main)
+	for p in main.card_ops.get_all_pokemon_in_play(side_opp):
+		if p.has_ability("Dragon Veil") and not is_power_blocked_by_status(p):
+			return true
+	return false
+
+# ── Special-condition immunity bodies (consulted in Card_Ops.apply_status) ──────
+
+# Returns true if a Special Condition must be blocked on this Pokémon by an ex7 immunity body:
+#  • INSOMNIA (Drowzee ex7-54): can't be Asleep.
+#  • DARK AND CLEAR (Rocket's Suicune ex ex7-105): can't be affected by any Special Condition while it
+#    has Darkness Energy attached.
+#  • DARKNESS VEIL (Rocket's Articuno ex ex7-96): prevents all effects (except damage) while it has
+#    Darkness Energy attached — modelled as blocking Special Conditions (codebase convention).
+#  • HOLY SHIELD (Togetic ex7-14): blocks effects from an attacker that has "Dark" in its name.
+func ex7_blocks_status(pokemon: card_object, status: String) -> bool:
+	if pokemon == null or status == "": return false
+	if pokemon.has_ability("Insomnia") and status == "Asleep" and not is_power_blocked_by_status(pokemon):
+		return true
+	if pokemon.has_ability("Dark and Clear") and not is_power_blocked_by_status(pokemon) and _ex7_has_darkness_energy(pokemon):
+		return true
+	if pokemon.has_ability("Darkness Veil") and not is_power_blocked_by_status(pokemon) and _ex7_has_darkness_energy(pokemon):
+		return true
+	if pokemon.has_ability("Holy Shield") and not is_power_blocked_by_status(pokemon):
+		var opp_active = main.player_active_pokemon if pokemon.is_owner_opp(main) else main.opponent_active_pokemon
+		if opp_active != null and "Dark" in opp_active.metadata.get("name",""):
+			return true
+	return false
+
+# ── Retreat body: SCRAMBLE (Rattata ex7-71) ─────────────────────────────────────
+# Consulted in Main.get_retreat_cost. Retreat is 0 while the opponent's Active is a Pokémon-ex.
+func ex7_scramble_free_retreat(pokemon: card_object) -> bool:
+	if pokemon == null: return false
+	if not pokemon.has_ability("Scramble") or is_power_blocked_by_status(pokemon): return false
+	var opp_active = main.player_active_pokemon if pokemon.is_owner_opp(main) else main.opponent_active_pokemon
+	return opp_active != null and main.is_ex_pokemon(opp_active)
+
+# ── On-evolve triggers ──────────────────────────────────────────────────────────
+
+# FROTH (Azumarill ex7-1): when played from hand to evolve one of your Active Pokémon, each Defending
+# Pokémon is now Paralyzed (a "you may" power — auto-performed as it is purely beneficial).
+func trigger_ex7_froth(azumarill: card_object, is_opponent: bool) -> void:
+	if is_power_blocked_by_status(azumarill): return
+	var active = main.opponent_active_pokemon if is_opponent else main.player_active_pokemon
+	if azumarill != active: return
+	for dp in main.card_ops.get_defending_pokemon(is_opponent):
+		if dp != null and dp.current_hp > 0:
+			main.card_ops.apply_status(dp, "Paralyzed", not is_opponent)
+	await main.show_message("FROTH! EACH DEFENDING POKÉMON IS NOW PARALYZED!")
+	if main._should_bail(): return
+
+# DARKEST IMPULSE (Dark Ampharos ex7-2): whenever your opponent plays an Evolution card to evolve one
+# of their Pokémon, put 2 damage counters on that Pokémon. Called from Main after an evolution.
+func check_ex7_darkest_impulse(evolved_card: card_object, evolver_is_opponent: bool) -> void:
+	if evolved_card == null: return
+	# The Ampharos owner is the OPPOSITE side of the player who just evolved.
+	var ampharos_side = not evolver_is_opponent
+	for p in main.card_ops.get_all_pokemon_in_play(ampharos_side):
+		if p.has_ability("Darkest Impulse") and not is_power_blocked_by_status(p):
+			evolved_card.current_hp = max(0, evolved_card.current_hp - 20)
+			main.display_hp_circles_above_align(evolved_card, evolver_is_opponent)
+			await main.show_message("DARKEST IMPULSE! 2 DAMAGE COUNTERS ON " + evolved_card.metadata.get("name","").to_upper() + "!")
+			if main._should_bail(): return
+			await main.check_all_knockouts()
+			return  # Only 1 Darkest Impulse may fire per evolution.

@@ -76,3 +76,7 @@ const MYSTERY_ZONE      = "ecard3-137" # Once per player's turn: search a basic 
 const UNDERGROUND_LAKE  = "ecard3-141" # Once per player's turn: put an Omanyte or Kabuto from discard onto the Bench
 
 const MT_MOON           = "ex6-94"    # Passive: Pokemon (both players) with max HP < 70 can't use Poke-Powers
+
+# ── EX Team Rocket Returns (ex7) ───────────────────────────────────────────────
+const ROCKETS_HIDEOUT_EX7   = "ex7-87" # Each Pokemon with "Dark" or "Rocket's" in its name gets +20 HP
+const ROCKETS_TRICKY_GYM    = "ex7-90" # Each "Dark"/"Rocket's" Pokemon may use the Stadium's Feint Attack

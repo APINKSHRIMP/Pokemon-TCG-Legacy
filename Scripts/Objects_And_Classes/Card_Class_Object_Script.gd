@@ -279,7 +279,29 @@ func get_effective_types() -> Array:
 		if not ev_types.is_empty():
 			return ev_types
 		return ["Colorless"]
+	# EX7 Dual Armor (Rocket's Scizor ex / Rocket's Scyther ex): adds a second type while a specific
+	# Energy is attached (Metal for Scizor, Grass for Scyther).
+	if has_ability("Dual Armor"):
+		var base_types = metadata.get("types", ["Colorless"]).duplicate()
+		for ab in metadata.get("abilities", []):
+			if ab.get("name","") == "Dual Armor":
+				var t = ab.get("text","")
+				if "Metal Energy" in t and _dual_armor_has_energy("Metal") and "Metal" not in base_types:
+					base_types.append("Metal")
+				if "Grass Energy" in t and _dual_armor_has_energy("Grass") and "Grass" not in base_types:
+					base_types.append("Grass")
+				break
+		return base_types
 	return metadata.get("types", ["Colorless"])
+
+# Local helper for Dual Armor: does an attached Energy card provide the given type? (Basic "<Type>
+# Energy" by name, or a Special Energy whose name contains the type, e.g. "Dark Metal Energy".)
+func _dual_armor_has_energy(type_name: String) -> bool:
+	for e in attached_energies:
+		var ename = e.metadata.get("name","")
+		if ename == type_name + " Energy" or type_name in ename:
+			return true
+	return false
 
 # Constructor - initialize the card with a UID and load its metadata
 func _init(card_uid: String, card_metadata: Dictionary) -> void:

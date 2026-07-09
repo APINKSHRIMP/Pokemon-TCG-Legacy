@@ -298,6 +298,10 @@ func apply_status(pokemon: card_object, status: String, is_opponent: bool) -> vo
 	# which is the only non-damage attack effect surfaced through this central gate.
 	if pokemon != null and status != "" and main.powers_and_bodies.has_ex5_crystal_body(pokemon):
 		return
+	# EX7 immunity bodies: Insomnia (no Asleep), Dark and Clear / Darkness Veil (all, while Darkness
+	# attached), Holy Shield (effects from a "Dark"-named attacker).
+	if pokemon != null and status != "" and main.powers_and_bodies.ex7_blocks_status(pokemon, status):
+		return
 	match status:
 		"Poisoned":
 			pokemon.is_poisoned = true
