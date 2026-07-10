@@ -1451,6 +1451,8 @@ func cpu_phase_energy_attachment(cpu_eval: Dictionary) -> void:
 	main.powers_and_bodies.check_ex1_natural_remedy(target, energy, true)
 	# EX7 Saturation (Quagsire ex7-26 / Wooper ex7-81): Water Energy attach clears conditions + heals
 	main.powers_and_bodies.check_ex7_saturation(target, energy, true)
+	# EX8 Lightning Burst (Rocket's Raikou ex ex8-108): Darkness Energy attach may switch a Defender
+	await main.powers_and_bodies.check_ex8_lightning_burst(target, energy, true)
 
 	# MATCH EFFECTS: energy_attach_halve_hp / energy_attach_full_heal
 	await main.apply_energy_attach_match_effects(target, true)
@@ -2849,12 +2851,14 @@ func cpu_phase_attack(cpu_eval: Dictionary) -> void:
 		await main.show_message("Heads! Opponent's " + main.opponent_active_pokemon.metadata.get("name", "").to_upper() + " CAN ATTACK!")
 		if main._should_bail(): return
 
-	# Swords Dance: boost Slash damage
+	# Swords Dance: boost Slash damage (base Scyther = 60, ex8 Ninjask = 80)
 	if main.opponent_active_pokemon.swords_dance_active and chosen_name.to_lower() == "slash":
+		var sd_dmg = main.opponent_active_pokemon.swords_dance_slash_damage if main.opponent_active_pokemon.swords_dance_slash_damage > 0 else 60
 		chosen_attack = chosen_attack.duplicate()
-		chosen_attack["damage"] = "60"
+		chosen_attack["damage"] = str(sd_dmg)
 		main.opponent_active_pokemon.swords_dance_active = false
-		await main.show_message("SWORDS DANCE BOOST! SLASH DOES 60 DAMAGE!")
+		main.opponent_active_pokemon.swords_dance_slash_damage = 0
+		await main.show_message("SWORDS DANCE BOOST! SLASH DOES " + str(sd_dmg) + " DAMAGE!")
 		if main._should_bail(): return
 
 	# GYM1 Focus Energy (Gnaw) / ECARD3 Focus Energy (Mega Punch): if active, double base damage
@@ -3032,6 +3036,9 @@ func cpu_phase_bench_play() -> void:
 			if main._should_bail(): return
 		# EX4-83 Team Magma Hideout: playing a non-Team-Magma Basic from hand adds 1 damage counter
 		await main.trainer_effects.ex4_team_magma_hideout_trigger(best_card, true)
+		if main._should_bail(): return
+		# EX8 Dragon Boost (Rayquaza ex ex8-102): move any number of basic Energy to Rayquaza ex
+		await main.powers_and_bodies.trigger_ex8_dragon_boost(best_card, true)
 		if main._should_bail(): return
 
 # R.5: Selects the best bench replacement and performs the retreat
@@ -3338,6 +3345,14 @@ func cpu_score_trainer_card(card: card_object) -> float:
 		"ex4-81": return 40.0  # Team Magma Belt (Tool): between-turn free evolution
 		"ex4-82": return 55.0  # Team Magma Conspirator (Supporter): up to 2 Basic/Energy search
 		"ex4-85": return 40.0  # Warp Point (Item): switch both Actives (disruption)
+		# ── EX8 (EX Deoxys) ──
+		"ex8-84": return 35.0  # Balloon Berry (Tool): free-retreat safety net
+		"ex8-85": return 30.0  # Crystal Shard (Tool): type-override utility
+		"ex8-86": return 30.0  # Energy Charge (Item): coin-flip Energy recovery to deck
+		"ex8-87": return 45.0  # Lady Outing (Supporter): up to 3 different basic Energy to hand
+		"ex8-88": return 55.0  # Master Ball (Item): dig 7 for any Pokemon
+		"ex8-90": return 55.0  # Professor Cozmo's Discovery (Supporter): draw 2-3
+		"ex8-92": return 35.0  # Strength Charm (Tool): one-off +10 damage
 	return 0.0
 
 # MR. BRINEY'S COMPASSION (ex3-87): only valuable when the CPU has a damaged non-ex Pokemon worth

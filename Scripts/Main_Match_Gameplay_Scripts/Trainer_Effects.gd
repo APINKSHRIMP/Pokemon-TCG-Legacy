@@ -39,6 +39,147 @@ func _ensure_trainer_dispatch_ready() -> void:
 	_register_ex5_trainers()
 	_register_ex6_trainers()
 	_register_ex7_trainers()
+	_register_ex8_trainers()
+
+func _register_ex8_trainers() -> void:
+	_trainer_dispatch["ex8-86"] = func(c, opp): await effect_ex8_energy_charge(opp)                  # Energy Charge (Item)
+	_trainer_dispatch["ex8-87"] = func(c, opp): await effect_ex8_lady_outing(opp)                    # Lady Outing (Supporter)
+	_trainer_dispatch["ex8-88"] = func(c, opp): await effect_ex8_master_ball(opp)                    # Master Ball (Item)
+	_trainer_dispatch["ex8-90"] = func(c, opp): await effect_ex8_professor_cozmos_discovery(opp)     # Professor Cozmo's Discovery (Supporter)
+	# ex8-84 Balloon Berry, ex8-85 Crystal Shard, ex8-92 Strength Charm are Pokémon Tools (generic
+	# attach path); ex8-89 Meteor Falls & ex8-91 Space Center are Stadiums (passive, resolved generically).
+
+# ENERGY CHARGE (ex8-86, Item): flip a coin. If heads, search your discard for 2 Energy cards (1 if only
+# 1), show them, and shuffle them into your deck.
+func effect_ex8_energy_charge(is_opponent: bool) -> void:
+	var coin = await main.flip_coin(false, is_opponent)
+	if main._should_bail(): return
+	if not coin:
+		await main.show_message("TAILS! ENERGY CHARGE FAILED!")
+		if main._should_bail(): return
+		return
+	var discard = main.opponent_discard_pile if is_opponent else main.player_discard_pile
+	var deck = main.opponent_deck if is_opponent else main.player_deck
+	var moved = 0
+	while moved < 2:
+		var pool = discard.filter(func(c): return c.metadata.get("supertype","") == "Energy")
+		if pool.is_empty(): break
+		var chosen: card_object
+		if is_opponent:
+			chosen = pool[0]
+		else:
+			chosen = await main.card_ops.choose_card(pool, false, "ENERGY CHARGE", "Choose an Energy to shuffle into your deck (" + str(moved + 1) + " of 2)", "SELECT", moved > 0, Callable(), true)
+			if main._should_bail(): return
+			if chosen == null: break
+		discard.erase(chosen)
+		chosen.current_location = "deck"
+		deck.append(chosen)
+		moved += 1
+	deck.shuffle()
+	main.update_deck_icon(is_opponent)
+	main.update_discard_pile_display(is_opponent)
+	await main.show_message("ENERGY CHARGE! SHUFFLED " + str(moved) + " ENERGY INTO YOUR DECK!")
+	if main._should_bail(): return
+
+# LADY OUTING (ex8-87, Supporter): search your deck for up to 3 different types of basic Energy cards
+# and put them into your hand.
+func effect_ex8_lady_outing(is_opponent: bool) -> void:
+	var chosen_types: Array = []
+	var found = 0
+	while found < 3:
+		var pool = _ex8_basic_energy_pool(is_opponent, chosen_types)
+		if pool.is_empty(): break
+		var chosen: card_object
+		if is_opponent:
+			chosen = pool[0]
+		else:
+			chosen = await main.card_ops.choose_card(pool, false, "LADY OUTING", "Choose a basic Energy of a NEW type (" + str(found + 1) + " of 3)", "SELECT", found > 0, Callable(), true)
+			if main._should_bail(): return
+			if chosen == null: break
+		var deck = main.opponent_deck if is_opponent else main.player_deck
+		var hand = main.opponent_hand if is_opponent else main.player_hand
+		deck.erase(chosen)
+		chosen.current_location = "hand"
+		hand.append(chosen)
+		for t in main.get_energy_provided_by_card(chosen):
+			if t not in chosen_types: chosen_types.append(t)
+		found += 1
+	var deck2 = main.opponent_deck if is_opponent else main.player_deck
+	deck2.shuffle()
+	main.refresh_hand_display(is_opponent)
+	main.update_deck_icon(is_opponent)
+	await main.show_message("LADY OUTING! ADDED " + str(found) + " BASIC ENERGY TO HAND!")
+	if main._should_bail(): return
+
+# Deck basic Energy cards whose provided type is not already among `exclude_types`.
+func _ex8_basic_energy_pool(is_opponent: bool, exclude_types: Array) -> Array:
+	var deck = main.opponent_deck if is_opponent else main.player_deck
+	return deck.filter(func(c):
+		if c.metadata.get("supertype","") != "Energy": return false
+		if "Basic" not in c.metadata.get("subtypes", []): return false
+		for t in main.get_energy_provided_by_card(c):
+			if t not in exclude_types: return true
+		return false)
+
+# MASTER BALL (ex8-88, Item): look at the top 7 cards of your deck, choose a Basic Pokemon or Evolution
+# card, put it into your hand, and put the other 6 back on top; shuffle your deck afterward.
+func effect_ex8_master_ball(is_opponent: bool) -> void:
+	var deck = main.opponent_deck if is_opponent else main.player_deck
+	if deck.is_empty():
+		await main.show_message("YOUR DECK IS EMPTY!")
+		if main._should_bail(): return
+		return
+	var top: Array = []
+	for i in range(min(7, deck.size())):
+		top.append(deck[i])
+	var pool = top.filter(func(c): return c.metadata.get("supertype","") == "Pokémon")
+	if pool.is_empty():
+		deck.shuffle()
+		main.update_deck_icon(is_opponent)
+		await main.show_message("MASTER BALL! NO POKEMON IN THE TOP 7.")
+		if main._should_bail(): return
+		return
+	var chosen: card_object
+	if is_opponent:
+		chosen = pool[0]
+	else:
+		chosen = await main.card_ops.choose_card(pool, false, "MASTER BALL", "Choose a Basic Pokemon or Evolution card to put into your hand", "TAKE", false, Callable(), true)
+		if main._should_bail(): return
+		if chosen == null: chosen = pool[0]
+	deck.erase(chosen)
+	chosen.current_location = "hand"
+	var hand = main.opponent_hand if is_opponent else main.player_hand
+	hand.append(chosen)
+	deck.shuffle()
+	main.refresh_hand_display(is_opponent)
+	main.update_deck_icon(is_opponent)
+	await main.show_message("MASTER BALL! ADDED " + chosen.metadata.get("name","").to_upper() + " TO HAND!")
+	if main._should_bail(): return
+
+# PROFESSOR COZMO'S DISCOVERY (ex8-90, Supporter): flip a coin. If heads, draw the bottom 3 cards of
+# your deck. If tails, draw the top 2 cards of your deck.
+func effect_ex8_professor_cozmos_discovery(is_opponent: bool) -> void:
+	var deck = main.opponent_deck if is_opponent else main.player_deck
+	var hand = main.opponent_hand if is_opponent else main.player_hand
+	var coin = await main.flip_coin(false, is_opponent)
+	if main._should_bail(): return
+	if coin:
+		await main.show_message("HEADS! DRAW THE BOTTOM 3 CARDS!")
+		if main._should_bail(): return
+		var n = min(3, deck.size())
+		for i in range(n):
+			var c = deck[deck.size() - 1]
+			deck.remove_at(deck.size() - 1)
+			c.current_location = "hand"
+			hand.append(c)
+	else:
+		await main.show_message("TAILS! DRAW THE TOP 2 CARDS!")
+		if main._should_bail(): return
+		await main.card_ops.draw_n(is_opponent, 2)
+		if main._should_bail(): return
+	main.refresh_hand_display(is_opponent)
+	main.update_deck_icon(is_opponent)
+	if main._should_bail(): return
 
 func _register_base_trainers() -> void:
 	_trainer_dispatch["base1-88"] = func(c, opp): await effect_professor_oak(c, opp)
@@ -477,6 +618,8 @@ var player_trainer_locked: bool = false
 var opponent_trainer_locked: bool = false
 var player_supporter_locked: bool = false   # ecard2 Addictive Pollen (Vileplume) — no Supporter cards this turn
 var opponent_supporter_locked: bool = false
+var player_trainer_except_supporter_locked: bool = false   # ex8 Disconnect (Manectric ex) — no non-Supporter Trainers this turn
+var opponent_trainer_except_supporter_locked: bool = false
 
 # EX1+: real TCG rule — only 1 Supporter card per turn. Retroactively covers every existing
 # Supporter (ecard1-3 onward); reset at the start of each side's own turn.
@@ -838,6 +981,15 @@ func validate_trainer_can_be_played(card: card_object, is_opponent: bool) -> Str
 	if "Supporter" not in card.metadata.get("subtypes", []) and main.powers_and_bodies.is_ex5_block_dust_blocking(is_opponent):
 		return "Block Dust: you can't play Trainer cards (except Supporters)!"
 
+	# ex8 Commanding Aura (Hariyama ex ex8-100): opponent can't play Stadium cards
+	if "Stadium" in card.metadata.get("subtypes", []) and main.powers_and_bodies.is_ex8_commanding_aura_active(is_opponent):
+		return "Commanding Aura: you can't play Stadium cards!"
+
+	# ex8 Disconnect (Manectric ex ex8-101): non-Supporter Trainer lock for one turn
+	if "Supporter" not in card.metadata.get("subtypes", []):
+		if (is_opponent and opponent_trainer_except_supporter_locked) or (not is_opponent and player_trainer_except_supporter_locked):
+			return "Disconnect: you can't play Trainer cards (except Supporters) this turn!"
+
 	# MATCH EFFECT: trainer_discard_cost — must have enough OTHER cards in hand to pay
 	var rule_discard_cost = main.match_effects.trainer_discard_cost(is_opponent)
 	if rule_discard_cost > 0:
@@ -888,6 +1040,18 @@ func play_trainer_card(card: card_object, is_opponent: bool) -> void:
 	# ex5 Block Dust (Vileplume ex ex5-100): opponent can't play non-Supporter Trainer cards
 	if "Supporter" not in card.metadata.get("subtypes", []) and main.powers_and_bodies.is_ex5_block_dust_blocking(is_opponent):
 		await main.show_message("BLOCK DUST: YOU CAN'T PLAY TRAINER CARDS (EXCEPT SUPPORTERS)!")
+		if main._should_bail(): return
+		return
+
+	# ex8 Commanding Aura (Hariyama ex ex8-100): opponent can't play Stadium cards
+	if "Stadium" in card.metadata.get("subtypes", []) and main.powers_and_bodies.is_ex8_commanding_aura_active(is_opponent):
+		await main.show_message("COMMANDING AURA: YOU CAN'T PLAY STADIUM CARDS!")
+		if main._should_bail(): return
+		return
+
+	# ex8 Disconnect (Manectric ex ex8-101): non-Supporter Trainer lock for one turn
+	if "Supporter" not in card.metadata.get("subtypes", []) and ((is_opponent and opponent_trainer_except_supporter_locked) or (not is_opponent and player_trainer_except_supporter_locked)):
+		await main.show_message("DISCONNECT: YOU CAN'T PLAY TRAINER CARDS (EXCEPT SUPPORTERS) THIS TURN!")
 		if main._should_bail(): return
 		return
 
@@ -3554,6 +3718,12 @@ func gym1_end_of_turn_cleanup(side_is_opponent: bool) -> void:
 	else:
 		player_supporter_locked = false
 
+	# EX8 Disconnect (Manectric ex): non-Supporter Trainer lock clears at the end of the locked side's turn
+	if side_is_opponent:
+		opponent_trainer_except_supporter_locked = false
+	else:
+		player_trainer_except_supporter_locked = false
+
 	# GYM2: clear per-turn match flags for the side whose turn just ended
 	if side_is_opponent:
 		main.opponent_blaine_double_attach_used = false
@@ -3621,7 +3791,7 @@ func gym1_end_of_turn_cleanup(side_is_opponent: bool) -> void:
 		if pokemon.has_effect("ecard1_strength_charm_triggered"):
 			var charm_card: card_object = null
 			for ac in pokemon.attached_cards:
-				if ac.uid.to_lower() in ["ecard1-150", "ex4-74"]:
+				if ac.uid.to_lower() in ["ecard1-150", "ex4-74", "ex8-92"]:
 					charm_card = ac
 					break
 			if charm_card != null:
@@ -3675,11 +3845,11 @@ func gym1_end_of_turn_cleanup(side_is_opponent: bool) -> void:
 				main.update_discard_pile_display(side_is_opponent)
 				print("MEMORY BERRY: discarded from ", pokemon.metadata.get("name", ""))
 
-		# ECARD3 Crystal Shard (ecard3-122): discarded at the end of any turn its holder attacked
+		# ECARD3 Crystal Shard (ecard3-122) / ex8-85: discarded at the end of any turn its holder attacked
 		if attacked_this_turn:
 			var cs_card: card_object = null
 			for ac in pokemon.attached_cards:
-				if ac.uid.to_lower() == "ecard3-122":
+				if ac.uid.to_lower() in ["ecard3-122", "ex8-85"]:
 					cs_card = ac
 					break
 			if cs_card != null:
@@ -6963,14 +7133,14 @@ func check_balloon_berry_retreat_free(pokemon: card_object) -> bool:
 	if pokemon == null:
 		return false
 	for ac in pokemon.attached_cards:
-		if ac.uid.to_lower() == "neo3-60" or ac.uid.to_lower() == "ex3-82":
+		if ac.uid.to_lower() == "neo3-60" or ac.uid.to_lower() == "ex3-82" or ac.uid.to_lower() == "ex8-84":
 			return true
 	return false
 
 # Discard Balloon Berry from the given pokemon after a free retreat is used.
 func consume_balloon_berry(pokemon: card_object, is_opponent: bool) -> void:
 	for ac in pokemon.attached_cards.duplicate():
-		if ac.uid.to_lower() == "neo3-60" or ac.uid.to_lower() == "ex3-82":
+		if ac.uid.to_lower() == "neo3-60" or ac.uid.to_lower() == "ex3-82" or ac.uid.to_lower() == "ex8-84":
 			pokemon.attached_cards.erase(ac)
 			var discard = main.opponent_discard_pile if is_opponent else main.player_discard_pile
 			ac.current_location = "discard"

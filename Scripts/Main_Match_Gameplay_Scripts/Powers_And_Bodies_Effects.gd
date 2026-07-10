@@ -75,6 +75,7 @@ func _register_all_powers() -> void:
 	_register_ex5_powers()
 	_register_ex6_powers()
 	_register_ex7_powers()
+	_register_ex8_powers()
 
 # ── On-damage and pre-KO event hooks ──────────────────────────────────────────
 # Each Callable is fired after active-pokemon damage resolves (on_damage) or
@@ -137,6 +138,17 @@ func _register_all_power_hooks() -> void:
 	_damage_modifier_hooks.append(func(dmg, atk, def, mods): return _hook_ex7_dense(dmg, atk, def, mods))
 	_damage_modifier_hooks.append(func(dmg, atk, def, mods): return _hook_ex7_darkness_guard(dmg, atk, def, mods))
 	_damage_modifier_hooks.append(func(dmg, atk, def, mods): return _hook_ex7_holy_shield(dmg, atk, def, mods))
+	_damage_modifier_hooks.append(func(dmg, atk, def, mods): return _hook_ex8_hunch(dmg, atk, def, mods))
+	_damage_modifier_hooks.append(func(dmg, atk, def, mods): return _hook_ex8_dark_protection(dmg, atk, def, mods))
+	_damage_modifier_hooks.append(func(dmg, atk, def, mods): return _hook_ex8_lazy_aura(dmg, atk, def, mods))
+	_damage_modifier_hooks.append(func(dmg, atk, def, mods): return _hook_ex8_fast_protection(dmg, atk, def, mods))
+	_damage_modifier_hooks.append(func(dmg, atk, def, mods): return _hook_ex8_intimidating_pattern(dmg, atk, def, mods))
+	_damage_modifier_hooks.append(func(dmg, atk, def, mods): return _hook_ex8_vigorous_aura(dmg, atk, def, mods))
+	_damage_modifier_hooks.append(func(dmg, atk, def, mods): return _hook_ex8_hard_protection(dmg, atk, def, mods))
+	_damage_modifier_hooks.append(func(dmg, atk, def, mods): return _hook_ex8_bay_dance(dmg, atk, def, mods))
+	_damage_modifier_hooks.append(func(dmg, atk, def, mods): return _hook_ex8_pivot_throw(dmg, atk, def, mods))
+	_damage_modifier_hooks.append(func(dmg, atk, def, mods): return _hook_ex8_psychic_shield(dmg, atk, def, mods))
+	_damage_modifier_hooks.append(func(dmg, atk, def, mods): return _hook_ex8_advanced_armor(dmg, atk, def, mods))
 	_on_damage_hooks.append(func(def, atk, dmg, is_def_opp): await check_strikes_back(def, atk, is_def_opp))
 	_on_damage_hooks.append(func(def, atk, dmg, is_def_opp): await check_restless_sleep(def, atk, is_def_opp))
 	_on_damage_hooks.append(func(def, atk, dmg, is_def_opp): await check_pollen_defense(def, atk, is_def_opp))
@@ -2055,6 +2067,8 @@ func cpu_phase_activate_powers() -> void:
 	await cpu_phase_ex6_powers()
 	if main._should_bail(): return
 	await cpu_phase_ex7_powers()
+	if main._should_bail(): return
+	await cpu_phase_ex8_powers()
 	if main._should_bail(): return
 
 
@@ -7752,6 +7766,8 @@ func _hook_ecard1_reduction_bodies(damage: int, _attacker: card_object, defender
 		return damage
 	if is_power_blocked_by_status(defender):
 		return damage
+	if ex8_space_center_ignores_body(defender):
+		return damage
 	for ability in defender.metadata.get("abilities", []):
 		var ab_name = ability.get("name", "")
 		if ab_name in _FLAT_REDUCTION_BODY_NAMES:
@@ -7827,7 +7843,7 @@ func _hook_ecard1_strength_charm(damage: int, attacker: card_object, _defender: 
 	if damage <= 0 or attacker == null:
 		return damage
 	for ac in attacker.attached_cards:
-		if ac.uid.to_lower() in ["ecard1-150", "ex4-74"]:
+		if ac.uid.to_lower() in ["ecard1-150", "ex4-74", "ex8-92"]:
 			modifiers.append("STRENGTH CHARM +10")
 			attacker.set_effect("ecard1_strength_charm_triggered", "end_of_own_turn")
 			return damage + 10
@@ -8643,6 +8659,7 @@ func check_ecard2_fluff(defender: card_object, attacker: card_object, damage: in
 	if defender == null: return
 	if not defender.has_ability("Fluff"): return
 	if is_power_blocked(defender): return
+	if ex8_space_center_ignores_body(defender): return
 	if defender != (main.opponent_active_pokemon if is_def_opp else main.player_active_pokemon): return
 	var pre_hit_damage_taken = (defender.get_max_hp() - defender.current_hp) - damage
 	if pre_hit_damage_taken < 10: return
@@ -11927,10 +11944,27 @@ func _hook_ex7_dense(damage: int, attacker: card_object, defender: card_object, 
 		return damage
 	if not defender.has_ability("Dense") or is_power_blocked_by_status(defender):
 		return damage
+	if ex8_space_center_ignores_body(defender):
+		return damage
 	var st = attacker.metadata.get("subtypes", [])
 	if "Stage 1" in st or "Stage 2" in st:
-		modifiers.append("DENSE -10")
-		return max(0, damage - 10)
+		# Read the reduction from the body text (ex7 = 10, ex8 Numel = 20).
+		var amt = 10
+		for ab in defender.metadata.get("abilities", []):
+			if ab.get("name","") == "Dense":
+				var n = main.attack_effects.extract_number_before(ab.get("text","").to_lower(), "(after applying")
+				if n <= 0:
+					var rb = ab.get("text","").to_lower().find("reduced by ")
+					if rb != -1:
+						var num = ""
+						for ch in ab.get("text","").to_lower().substr(rb + "reduced by ".length()):
+							if ch.is_valid_int(): num += ch
+							else: break
+						if num != "": n = int(num)
+				if n > 0: amt = n
+				break
+		modifiers.append("DENSE -" + str(amt))
+		return max(0, damage - amt)
 	return damage
 
 # DARKNESS GUARD (Rocket's Zapdos ex ex7-106): while it has Darkness Energy attached, damage from an
@@ -12112,3 +12146,636 @@ func check_ex7_darkest_impulse(evolved_card: card_object, evolver_is_opponent: b
 			if main._should_bail(): return
 			await main.check_all_knockouts()
 			return  # Only 1 Darkest Impulse may fire per evolution.
+
+# ══════════════════════════════════════════════════════════════════════════════
+#                        EX8 (EX DEOXYS) POWERS & BODIES
+# ══════════════════════════════════════════════════════════════════════════════
+func _register_ex8_powers() -> void:
+	_power_dispatch["Psychic Trace"]      = func(p): await power_ex8_psychic_trace(p)
+	_power_dispatch["Wishing Star"]       = func(p): await power_ex8_wishing_star(p)
+	_power_dispatch["Swing Dance"]        = func(p): await power_ex8_swing_dance(p)
+	_power_dispatch["Super Connectivity"] = func(p): await power_ex8_super_connectivity(p)
+	_power_dispatch["Form Change"]        = func(p): await power_ex8_form_change(p)
+	_power_dispatch["Happy Dance"]        = func(p): await power_ex8_happy_dance(p)
+	_power_dispatch["Smooth Over"]        = func(p): await power_ex8_smooth_over(p)
+	_power_dispatch["Night Vision"]       = func(p): await power_ex8_night_vision(p)
+	_power_dispatch["Fan Action"]         = func(p): await power_ex8_fan_action(p)
+	_power_dispatch["Magnetic Reversal"]  = func(p): await power_ex8_magnetic_reversal(p)
+	_power_dispatch["Distortion"]         = func(p): await power_ex8_distortion(p)
+
+# PSYCHIC TRACE (Claydol ex8-5): if Active, shuffle your hand into your deck and draw a number of
+# cards equal to the number of cards in your opponent's hand.
+func power_ex8_psychic_trace(claydol: card_object) -> void:
+	var is_opponent = claydol.is_owner_opp(main)
+	if is_power_blocked_by_status(claydol):
+		await main.show_message("PSYCHIC TRACE IS BLOCKED BY STATUS!")
+		if main._should_bail(): return
+		return
+	if claydol.power_used_this_turn:
+		await main.show_message("PSYCHIC TRACE ALREADY USED THIS TURN!")
+		if main._should_bail(): return
+		return
+	var active = main.opponent_active_pokemon if is_opponent else main.player_active_pokemon
+	if claydol != active:
+		await main.show_message("PSYCHIC TRACE REQUIRES CLAYDOL TO BE ACTIVE!")
+		if main._should_bail(): return
+		return
+	claydol.power_used_this_turn = true
+	var hand = main.opponent_hand if is_opponent else main.player_hand
+	var deck = main.opponent_deck if is_opponent else main.player_deck
+	var opp_hand = main.player_hand if is_opponent else main.opponent_hand
+	var draw_n = opp_hand.size()
+	for c in hand.duplicate():
+		c.current_location = "deck"
+		deck.append(c)
+	hand.clear()
+	deck.shuffle()
+	main.refresh_hand_display(is_opponent)
+	main.update_deck_icon(is_opponent)
+	await main.card_ops.draw_n(is_opponent, draw_n)
+	if main._should_bail(): return
+	await main.show_message("PSYCHIC TRACE! DREW " + str(draw_n) + " CARD(S)!")
+	if main._should_bail(): return
+
+# WISHING STAR (Jirachi ex8-9): if Active, look at the top 5 cards of your deck, put 1 into your hand,
+# shuffle. Jirachi and your other Active Pokemon are now Asleep.
+func power_ex8_wishing_star(jirachi: card_object) -> void:
+	var is_opponent = jirachi.is_owner_opp(main)
+	if is_power_blocked_by_status(jirachi):
+		await main.show_message("WISHING STAR IS BLOCKED BY STATUS!")
+		if main._should_bail(): return
+		return
+	if jirachi.power_used_this_turn:
+		await main.show_message("WISHING STAR ALREADY USED THIS TURN!")
+		if main._should_bail(): return
+		return
+	var active = main.opponent_active_pokemon if is_opponent else main.player_active_pokemon
+	if jirachi != active:
+		await main.show_message("WISHING STAR REQUIRES JIRACHI TO BE ACTIVE!")
+		if main._should_bail(): return
+		return
+	var deck = main.opponent_deck if is_opponent else main.player_deck
+	if deck.is_empty():
+		await main.show_message("YOUR DECK IS EMPTY!")
+		if main._should_bail(): return
+		return
+	jirachi.power_used_this_turn = true
+	var top: Array = []
+	for i in range(min(5, deck.size())):
+		top.append(deck[i])
+	var chosen: card_object
+	if is_opponent:
+		chosen = top[0]
+	else:
+		chosen = await main.card_ops.choose_card(top, false, "WISHING STAR", "Choose 1 of the top 5 cards to put into your hand", "TAKE", false, Callable(), true)
+		if main._should_bail(): return
+		if chosen == null: chosen = top[0]
+	deck.erase(chosen)
+	chosen.current_location = "hand"
+	var hand = main.opponent_hand if is_opponent else main.player_hand
+	hand.append(chosen)
+	deck.shuffle()
+	main.refresh_hand_display(is_opponent)
+	main.update_deck_icon(is_opponent)
+	main.card_ops.apply_status(jirachi, "Asleep", is_opponent)
+	await main.show_message("WISHING STAR! JIRACHI IS NOW ASLEEP.")
+	if main._should_bail(): return
+
+# SWING DANCE (Ludicolo ex8-10): once during your turn, draw a card.
+func power_ex8_swing_dance(ludicolo: card_object) -> void:
+	var is_opponent = ludicolo.is_owner_opp(main)
+	if is_power_blocked_by_status(ludicolo):
+		await main.show_message("SWING DANCE IS BLOCKED BY STATUS!")
+		if main._should_bail(): return
+		return
+	if ludicolo.power_used_this_turn:
+		await main.show_message("SWING DANCE ALREADY USED THIS TURN!")
+		if main._should_bail(): return
+		return
+	ludicolo.power_used_this_turn = true
+	await main.card_ops.draw_n(is_opponent, 1)
+	if main._should_bail(): return
+	await main.show_message("SWING DANCE! DREW A CARD!")
+	if main._should_bail(): return
+
+# SUPER CONNECTIVITY (Metagross ex8-11): search your discard for a Psychic or Metal Energy and attach
+# it to your Active Pokemon; then put 1 damage counter on that Pokemon.
+func power_ex8_super_connectivity(metagross: card_object) -> void:
+	var is_opponent = metagross.is_owner_opp(main)
+	if is_power_blocked_by_status(metagross):
+		await main.show_message("SUPER CONNECTIVITY IS BLOCKED BY STATUS!")
+		if main._should_bail(): return
+		return
+	if metagross.power_used_this_turn:
+		await main.show_message("SUPER CONNECTIVITY ALREADY USED THIS TURN!")
+		if main._should_bail(): return
+		return
+	var discard = main.opponent_discard_pile if is_opponent else main.player_discard_pile
+	var pool = discard.filter(func(c):
+		if c.metadata.get("supertype","") != "Energy": return false
+		var prov = main.get_energy_provided_by_card(c)
+		return "Psychic" in prov or "Metal" in prov)
+	if pool.is_empty():
+		await main.show_message("NO PSYCHIC OR METAL ENERGY IN YOUR DISCARD!")
+		if main._should_bail(): return
+		return
+	var active = main.opponent_active_pokemon if is_opponent else main.player_active_pokemon
+	if active == null: return
+	metagross.power_used_this_turn = true
+	var chosen: card_object
+	if is_opponent:
+		chosen = pool[0]
+	else:
+		chosen = await main.card_ops.choose_card(pool, false, "SUPER CONNECTIVITY", "Choose an Energy to attach to your Active", "ATTACH", false, Callable(), true)
+		if main._should_bail(): return
+		if chosen == null: chosen = pool[0]
+	discard.erase(chosen)
+	chosen.current_location = "attached"
+	active.attached_energies.append(chosen)
+	active.current_hp = max(0, active.current_hp - 10)
+	main.display_active_pokemon_energies(is_opponent)
+	main.display_pokemon(is_opponent)
+	main.display_hp_circles_above_align(active, is_opponent)
+	main.update_discard_pile_display(is_opponent)
+	await main.show_message("SUPER CONNECTIVITY! ATTACHED " + chosen.metadata.get("name","").to_upper() + " (1 DAMAGE COUNTER)!")
+	if main._should_bail(): return
+	await main.check_all_knockouts()
+
+# FORM CHANGE (Deoxys ex8-16/17/18 + Deoxys ex ex8-97/98/99): search your deck for another Deoxys of
+# the same name and switch it with this one, carrying over all state. Max 1 Form Change per turn.
+func power_ex8_form_change(deoxys: card_object) -> void:
+	var is_opponent = deoxys.is_owner_opp(main)
+	if is_power_blocked_by_status(deoxys):
+		await main.show_message("FORM CHANGE IS BLOCKED BY STATUS!")
+		if main._should_bail(): return
+		return
+	var flag_used = main.opponent_ex8_form_change_used if is_opponent else main.player_ex8_form_change_used
+	if flag_used:
+		await main.show_message("FORM CHANGE ALREADY USED THIS TURN!")
+		if main._should_bail(): return
+		return
+	var deck = main.opponent_deck if is_opponent else main.player_deck
+	var my_name = deoxys.metadata.get("name","")
+	var pool = deck.filter(func(c): return c.metadata.get("supertype","") == "Pokémon" and c.metadata.get("name","") == my_name and c.uid != deoxys.uid)
+	if pool.is_empty():
+		await main.show_message("NO OTHER " + my_name.to_upper() + " IN YOUR DECK!")
+		if main._should_bail(): return
+		return
+	var chosen: card_object
+	if is_opponent:
+		chosen = pool[0]
+	else:
+		chosen = await main.card_ops.choose_card(pool, false, "FORM CHANGE", "Choose a " + my_name + " to switch in", "SELECT", true, Callable(), true)
+		if main._should_bail(): return
+		if chosen == null: return
+	if is_opponent: main.opponent_ex8_form_change_used = true
+	else: main.player_ex8_form_change_used = true
+	chosen.attached_energies = deoxys.attached_energies.duplicate()
+	chosen.attached_pre_evolutions = deoxys.attached_pre_evolutions.duplicate()
+	chosen.attached_cards = deoxys.attached_cards.duplicate()
+	var max_hp_new = chosen.get_max_hp()
+	var damage_taken = deoxys.get_max_hp() - deoxys.current_hp
+	chosen.current_hp = max(1, max_hp_new - damage_taken)
+	chosen.special_condition = deoxys.special_condition
+	chosen.is_poisoned = deoxys.is_poisoned
+	chosen.poison_damage = deoxys.poison_damage
+	chosen.is_burned = deoxys.is_burned
+	chosen.placed_on_field_this_turn = deoxys.placed_on_field_this_turn
+	var active = main.opponent_active_pokemon if is_opponent else main.player_active_pokemon
+	var bench = main.opponent_bench if is_opponent else main.player_bench
+	deck.erase(chosen)
+	if deoxys == active:
+		if is_opponent: main.opponent_active_pokemon = chosen
+		else: main.player_active_pokemon = chosen
+		chosen.current_location = "active"
+	else:
+		var idx = bench.find(deoxys)
+		if idx != -1:
+			bench[idx] = chosen
+			chosen.current_location = "bench"
+	deoxys.attached_energies.clear()
+	deoxys.attached_pre_evolutions.clear()
+	deoxys.attached_cards.clear()
+	deoxys.current_hp = deoxys.get_max_hp()
+	main.clear_all_statuses(deoxys, is_opponent)
+	deoxys.current_location = "deck"
+	deck.append(deoxys)
+	deck.shuffle()
+	main.display_pokemon(is_opponent)
+	main.display_active_pokemon_energies(is_opponent)
+	main.update_deck_icon(is_opponent)
+	await main.show_message("FORM CHANGE! SWITCHED FORM!")
+	if main._should_bail(): return
+
+# HAPPY DANCE (Ludicolo ex8-19): remove 1 damage counter from each of your Pokemon. Max 1 per turn.
+func power_ex8_happy_dance(ludicolo: card_object) -> void:
+	var is_opponent = ludicolo.is_owner_opp(main)
+	if is_power_blocked_by_status(ludicolo):
+		await main.show_message("HAPPY DANCE IS BLOCKED BY STATUS!")
+		if main._should_bail(): return
+		return
+	var flag_used = main.opponent_ex8_happy_dance_used if is_opponent else main.player_ex8_happy_dance_used
+	if ludicolo.power_used_this_turn or flag_used:
+		await main.show_message("HAPPY DANCE ALREADY USED THIS TURN!")
+		if main._should_bail(): return
+		return
+	ludicolo.power_used_this_turn = true
+	if is_opponent: main.opponent_ex8_happy_dance_used = true
+	else: main.player_ex8_happy_dance_used = true
+	for p in main.card_ops.get_all_pokemon_in_play(is_opponent):
+		await main.card_ops.heal_pokemon(p, 10, is_opponent)
+		if main._should_bail(): return
+	await main.show_message("HAPPY DANCE! REMOVED 1 DAMAGE COUNTER FROM EACH OF YOUR POKEMON!")
+	if main._should_bail(): return
+
+# SMOOTH OVER (Magcargo ex8-20): search your deck for a card, then put it on top of your deck.
+func power_ex8_smooth_over(magcargo: card_object) -> void:
+	var is_opponent = magcargo.is_owner_opp(main)
+	if is_power_blocked_by_status(magcargo):
+		await main.show_message("SMOOTH OVER IS BLOCKED BY STATUS!")
+		if main._should_bail(): return
+		return
+	if magcargo.power_used_this_turn:
+		await main.show_message("SMOOTH OVER ALREADY USED THIS TURN!")
+		if main._should_bail(): return
+		return
+	var deck = main.opponent_deck if is_opponent else main.player_deck
+	if deck.is_empty():
+		await main.show_message("YOUR DECK IS EMPTY!")
+		if main._should_bail(): return
+		return
+	magcargo.power_used_this_turn = true
+	var chosen: card_object
+	if is_opponent:
+		chosen = deck[0]
+	else:
+		chosen = await main.card_ops.choose_card(deck.duplicate(), false, "SMOOTH OVER", "Choose a card to put on top of your deck", "SELECT", false, Callable(), true)
+		if main._should_bail(): return
+		if chosen == null: chosen = deck[0]
+	deck.erase(chosen)
+	deck.shuffle()
+	deck.push_front(chosen)
+	main.update_deck_icon(is_opponent)
+	await main.show_message("SMOOTH OVER! PLACED A CARD ON TOP OF YOUR DECK!")
+	if main._should_bail(): return
+
+# NIGHT VISION (Sableye ex8-23): if Active, look at your opponent's hand.
+func power_ex8_night_vision(sableye: card_object) -> void:
+	var is_opponent = sableye.is_owner_opp(main)
+	if is_power_blocked_by_status(sableye):
+		await main.show_message("NIGHT VISION IS BLOCKED BY STATUS!")
+		if main._should_bail(): return
+		return
+	if sableye.power_used_this_turn:
+		await main.show_message("NIGHT VISION ALREADY USED THIS TURN!")
+		if main._should_bail(): return
+		return
+	var active = main.opponent_active_pokemon if is_opponent else main.player_active_pokemon
+	if sableye != active:
+		await main.show_message("NIGHT VISION REQUIRES SABLEYE TO BE ACTIVE!")
+		if main._should_bail(): return
+		return
+	sableye.power_used_this_turn = true
+	if is_opponent:
+		await main.show_message("NIGHT VISION! THE OPPONENT LOOKED AT YOUR HAND.")
+		if main._should_bail(): return
+	else:
+		var opp_hand = main.opponent_hand
+		if opp_hand.is_empty():
+			await main.show_message("NIGHT VISION! YOUR OPPONENT HAS NO CARDS IN HAND.")
+			if main._should_bail(): return
+		else:
+			await main.card_ops.choose_card(opp_hand, false, "NIGHT VISION", "Your opponent's hand (close to continue)", "OK", true, Callable(), true)
+			if main._should_bail(): return
+
+# FAN ACTION (Shiftry ex8-25): switch 1 of the Defending Pokemon with 1 of your opponent's Benched
+# Pokemon (your opponent chooses which Benched Pokemon).
+func power_ex8_fan_action(shiftry: card_object) -> void:
+	var is_opponent = shiftry.is_owner_opp(main)
+	if is_power_blocked_by_status(shiftry):
+		await main.show_message("FAN ACTION IS BLOCKED BY STATUS!")
+		if main._should_bail(): return
+		return
+	if shiftry.power_used_this_turn:
+		await main.show_message("FAN ACTION ALREADY USED THIS TURN!")
+		if main._should_bail(): return
+		return
+	shiftry.power_used_this_turn = true
+	await main.attack_effects.execute_ex3_force_switch_defender(shiftry, is_opponent)
+	if main._should_bail(): return
+
+# MAGNETIC REVERSAL (Nosepass ex8-42): if Active, flip a coin. If heads, switch 1 of your opponent's
+# Benched Pokemon with the Defending Pokemon (your opponent chooses the Benched Pokemon).
+func power_ex8_magnetic_reversal(nosepass: card_object) -> void:
+	var is_opponent = nosepass.is_owner_opp(main)
+	if is_power_blocked_by_status(nosepass):
+		await main.show_message("MAGNETIC REVERSAL IS BLOCKED BY STATUS!")
+		if main._should_bail(): return
+		return
+	if nosepass.power_used_this_turn:
+		await main.show_message("MAGNETIC REVERSAL ALREADY USED THIS TURN!")
+		if main._should_bail(): return
+		return
+	var active = main.opponent_active_pokemon if is_opponent else main.player_active_pokemon
+	if nosepass != active:
+		await main.show_message("MAGNETIC REVERSAL REQUIRES NOSEPASS TO BE ACTIVE!")
+		if main._should_bail(): return
+		return
+	nosepass.power_used_this_turn = true
+	var coin = await main.flip_coin(false, is_opponent)
+	if main._should_bail(): return
+	if coin:
+		await main.attack_effects.execute_ex3_force_switch_defender(nosepass, is_opponent)
+		if main._should_bail(): return
+	else:
+		await main.show_message("TAILS! MAGNETIC REVERSAL FIZZLED!")
+		if main._should_bail(): return
+
+# DISTORTION (Crobat ex ex8-96): if Active, put 1 damage counter on 1 of your opponent's Pokemon.
+func power_ex8_distortion(crobat: card_object) -> void:
+	var is_opponent = crobat.is_owner_opp(main)
+	if is_power_blocked_by_status(crobat):
+		await main.show_message("DISTORTION IS BLOCKED BY STATUS!")
+		if main._should_bail(): return
+		return
+	if crobat.power_used_this_turn:
+		await main.show_message("DISTORTION ALREADY USED THIS TURN!")
+		if main._should_bail(): return
+		return
+	var active = main.opponent_active_pokemon if is_opponent else main.player_active_pokemon
+	if crobat != active:
+		await main.show_message("DISTORTION REQUIRES CROBAT EX TO BE ACTIVE!")
+		if main._should_bail(): return
+		return
+	var pool = main.card_ops.get_all_pokemon_in_play(not is_opponent)
+	if pool.is_empty(): return
+	crobat.power_used_this_turn = true
+	var target: card_object
+	if is_opponent:
+		target = pool[0]
+		for c in pool:
+			if c.current_hp < target.current_hp: target = c
+	else:
+		target = await main.card_ops.choose_card(pool, false, "DISTORTION", "Choose one of your opponent's Pokemon", "SELECT", false, func(c): return 100.0 - c.current_hp)
+		if main._should_bail(): return
+		if target == null: target = pool[0]
+	target.current_hp = max(0, target.current_hp - 10)
+	main.display_hp_circles_above_align(target, not is_opponent)
+	main.display_pokemon(not is_opponent)
+	await main.show_message("DISTORTION! PUT 1 DAMAGE COUNTER ON " + target.metadata.get("name","").to_upper() + "!")
+	if main._should_bail(): return
+	await main.check_all_knockouts()
+
+# ── CPU phase for ex8 active powers (safe, beneficial powers only) ─────────────
+func cpu_phase_ex8_powers() -> void:
+	if is_toxic_gas_active() or main.goop_gas_active: return
+	var oa = main.opponent_active_pokemon
+	var swing = _find_cpu_pokemon_with_power("Swing Dance")
+	if swing != null and not swing.power_used_this_turn and not is_power_blocked_by_status(swing):
+		await power_ex8_swing_dance(swing)
+		if main._should_bail(): return
+	var meta = _find_cpu_pokemon_with_power("Super Connectivity")
+	if meta != null and not meta.power_used_this_turn and not is_power_blocked_by_status(meta) and oa != null and oa.current_hp > 10:
+		var has_e = main.opponent_discard_pile.any(func(c):
+			if c.metadata.get("supertype","") != "Energy": return false
+			var prov = main.get_energy_provided_by_card(c)
+			return "Psychic" in prov or "Metal" in prov)
+		if has_e:
+			await power_ex8_super_connectivity(meta)
+			if main._should_bail(): return
+	var ludi = _find_cpu_pokemon_with_power("Happy Dance")
+	if ludi != null and not ludi.power_used_this_turn and not main.opponent_ex8_happy_dance_used and not is_power_blocked_by_status(ludi):
+		var dmgd = main.card_ops.get_all_pokemon_in_play(true).any(func(c): return c.current_hp < c.get_max_hp())
+		if dmgd:
+			await power_ex8_happy_dance(ludi)
+			if main._should_bail(): return
+	var claydol = _find_cpu_pokemon_with_power("Psychic Trace")
+	if claydol != null and claydol == oa and not claydol.power_used_this_turn and not is_power_blocked_by_status(claydol):
+		if main.player_hand.size() > main.opponent_hand.size():
+			await power_ex8_psychic_trace(claydol)
+			if main._should_bail(): return
+	var crobat = _find_cpu_pokemon_with_power("Distortion")
+	if crobat != null and crobat == oa and not crobat.power_used_this_turn and not is_power_blocked_by_status(crobat):
+		await power_ex8_distortion(crobat)
+		if main._should_bail(): return
+
+# ── ex8 damage-modifier hooks ─────────────────────────────────────────────────
+
+func _hook_ex8_hunch(damage: int, attacker: card_object, defender: card_object, modifiers: Array) -> int:
+	if damage <= 0 or attacker == null: return damage
+	if attacker.has_ability("Hunch") and not is_power_blocked_by_status(attacker) and attacker.current_hp <= 40:
+		modifiers.append("HUNCH +40")
+		return damage + 40
+	return damage
+
+func _hook_ex8_dark_protection(damage: int, _attacker: card_object, defender: card_object, modifiers: Array) -> int:
+	if damage <= 0 or defender == null: return damage
+	if not defender.has_ability("Dark Protection") or is_power_blocked_by_status(defender): return damage
+	var dark = 0
+	for e in defender.attached_energies:
+		if "Darkness" in main.get_energy_provided_by_card(e): dark += 1
+	var r = min(20, min(damage, dark * 10))
+	if r > 0:
+		modifiers.append("DARK PROTECTION -" + str(r))
+	return damage - r
+
+func _hook_ex8_lazy_aura(damage: int, attacker: card_object, defender: card_object, modifiers: Array) -> int:
+	if damage <= 0 or defender == null or attacker == null: return damage
+	if not defender.has_ability("Lazy Aura") or is_power_blocked_by_status(defender): return damage
+	var active = main.opponent_active_pokemon if defender.is_owner_opp(main) else main.player_active_pokemon
+	if defender != active: return damage
+	if main.is_ex_pokemon(attacker):
+		var r = min(damage, 30)
+		modifiers.append("LAZY AURA -" + str(r))
+		return damage - r
+	return damage
+
+func _hook_ex8_fast_protection(damage: int, attacker: card_object, defender: card_object, modifiers: Array) -> int:
+	if damage <= 0 or defender == null or attacker == null: return damage
+	if not defender.has_ability("Fast Protection") or is_power_blocked_by_status(defender): return damage
+	if main.is_basic_pokemon(attacker):
+		modifiers.append("FAST PROTECTION (NO DAMAGE)")
+		return 0
+	return damage
+
+func _hook_ex8_intimidating_pattern(damage: int, attacker: card_object, defender: card_object, modifiers: Array) -> int:
+	if damage <= 0 or defender == null: return damage
+	if not defender.has_ability("Intimidating Pattern") or is_power_blocked_by_status(defender): return damage
+	var active = main.opponent_active_pokemon if defender.is_owner_opp(main) else main.player_active_pokemon
+	if defender != active: return damage
+	var r = min(damage, 20)
+	modifiers.append("INTIMIDATING PATTERN -" + str(r))
+	return damage - r
+
+func _hook_ex8_vigorous_aura(damage: int, attacker: card_object, defender: card_object, modifiers: Array) -> int:
+	if damage <= 0 or attacker == null or defender == null: return damage
+	if attacker != main.player_active_pokemon and attacker != main.opponent_active_pokemon: return damage
+	if defender != main.player_active_pokemon and defender != main.opponent_active_pokemon: return damage
+	for a in [main.player_active_pokemon, main.opponent_active_pokemon]:
+		if a != null and a.has_ability("Vigorous Aura") and not is_power_blocked_by_status(a):
+			modifiers.append("VIGOROUS AURA +10")
+			return damage + 10
+	return damage
+
+func _hook_ex8_hard_protection(damage: int, attacker: card_object, defender: card_object, modifiers: Array) -> int:
+	if damage <= 0 or defender == null or attacker == null: return damage
+	if not defender.has_ability("Hard Protection") or is_power_blocked_by_status(defender): return damage
+	var atk_is_opp = (attacker == main.opponent_active_pokemon or attacker in main.opponent_bench)
+	var def_is_opp = (defender == main.opponent_active_pokemon or defender in main.opponent_bench)
+	if atk_is_opp == def_is_opp:
+		modifiers.append("HARD PROTECTION (NO DAMAGE)")
+		return 0
+	return damage
+
+func _hook_ex8_bay_dance(damage: int, attacker: card_object, defender: card_object, modifiers: Array) -> int:
+	if damage <= 0 or attacker == null: return damage
+	var atk_is_opp = (attacker == main.opponent_active_pokemon or attacker in main.opponent_bench)
+	var active = main.opponent_active_pokemon if atk_is_opp else main.player_active_pokemon
+	if attacker != active: return damage
+	var boosted = main.opponent_ex8_bay_dance_active if atk_is_opp else main.player_ex8_bay_dance_active
+	if boosted:
+		modifiers.append("BAY DANCE +30")
+		return damage + 30
+	return damage
+
+func _hook_ex8_pivot_throw(damage: int, _attacker: card_object, defender: card_object, modifiers: Array) -> int:
+	if damage <= 0 or defender == null: return damage
+	if defender.has_effect("ex8_pivot_throw"):
+		var amt = int(defender.get_effect_data("ex8_pivot_throw").get("amount", 10))
+		modifiers.append("PIVOT THROW +" + str(amt))
+		return damage + amt
+	return damage
+
+func _hook_ex8_psychic_shield(damage: int, attacker: card_object, defender: card_object, modifiers: Array) -> int:
+	if damage <= 0 or defender == null or attacker == null: return damage
+	if defender.has_effect("ex8_psychic_shield") and main.is_ex_pokemon(attacker):
+		modifiers.append("PSYCHIC SHIELD (NO DAMAGE FROM EX)")
+		return 0
+	return damage
+
+func _hook_ex8_advanced_armor(damage: int, attacker: card_object, defender: card_object, modifiers: Array) -> int:
+	if damage <= 0 or defender == null or attacker == null: return damage
+	if defender.has_effect("ex8_advanced_armor"):
+		var st = attacker.metadata.get("subtypes", [])
+		if "Stage 1" in st or "Stage 2" in st:
+			modifiers.append("ADVANCED ARMOR (NO DAMAGE)")
+			return 0
+	return damage
+
+# ── ex8 status-immunity, resistance, and on-attach / on-bench bodies ───────────
+
+func ex8_blocks_status(pokemon: card_object, status: String) -> bool:
+	if pokemon == null or status == "": return false
+	if ex8_space_center_ignores_body(pokemon): return false
+	if pokemon.has_ability("Self-control") and status == "Paralyzed" and not is_power_blocked_by_status(pokemon):
+		return true
+	if pokemon.has_ability("Carefree") and status == "Confused" and not is_power_blocked_by_status(pokemon):
+		return true
+	if pokemon.has_ability("Dragon Aura") and not is_power_blocked_by_status(pokemon):
+		var has_fire = false
+		var has_lightning = false
+		for e in pokemon.attached_energies:
+			if "Basic" not in e.metadata.get("subtypes", []): continue
+			var prov = main.get_energy_provided_by_card(e)
+			if "Fire" in prov: has_fire = true
+			if "Lightning" in prov: has_lightning = true
+		if has_fire and has_lightning:
+			return true
+	return false
+
+func is_ex8_tropical_motion_active(attacker: card_object) -> bool:
+	if attacker == null: return false
+	var atk_is_opp = (attacker == main.opponent_active_pokemon or attacker in main.opponent_bench)
+	var active = main.opponent_active_pokemon if atk_is_opp else main.player_active_pokemon
+	return active != null and active.has_ability("Tropical Motion") and not is_power_blocked_by_status(active)
+
+func is_ex8_commanding_aura_active(stadium_player_is_opp: bool) -> bool:
+	var blocker_active = main.player_active_pokemon if stadium_player_is_opp else main.opponent_active_pokemon
+	return blocker_active != null and blocker_active.has_ability("Commanding Aura") and not is_power_blocked_by_status(blocker_active)
+
+# SPACE CENTER (ex8-91 Stadium): ignore Poké-Bodies for all Basic Pokemon in play (both players),
+# excluding Pokemon-ex and Pokemon that have an owner in their name. Consulted by the Poké-Body gates.
+func ex8_space_center_ignores_body(pokemon: card_object) -> bool:
+	if pokemon == null: return false
+	if not main.is_stadium_in_play(StadiumIds.SPACE_CENTER): return false
+	if not main.is_basic_pokemon(pokemon): return false
+	if main.is_ex_pokemon(pokemon): return false
+	if "'s " in pokemon.metadata.get("name",""): return false
+	return true
+
+# NATURAL CURE (Lombre ex8-34) auto-works via check_ex1_natural_cure (generic type-matched clear).
+
+func check_ex8_lightning_burst(target_pokemon: card_object, energy_card: card_object, is_opponent: bool) -> void:
+	if target_pokemon == null or energy_card == null: return
+	if not target_pokemon.has_ability("Lightning Burst"): return
+	if is_power_blocked_by_status(target_pokemon): return
+	if "Darkness" not in main.get_energy_provided_by_card(energy_card): return
+	var opp_bench = main.player_bench if is_opponent else main.opponent_bench
+	if opp_bench.is_empty(): return
+	if not is_opponent:
+		var do_it = await main.trainer_effects.gym1_prompt_yes_no(target_pokemon, "LIGHTNING BURST", "Switch the Defending Pokemon with one of the opponent's Bench?", "YES", "NO")
+		if main._should_bail(): return
+		if not do_it: return
+	await main.attack_effects.execute_ex3_force_switch_defender(target_pokemon, is_opponent)
+	if main._should_bail(): return
+
+func trigger_ex8_dragon_boost(rayquaza: card_object, is_opponent: bool) -> void:
+	if rayquaza == null or not rayquaza.has_ability("Dragon Boost"): return
+	var sources = main.card_ops.get_all_pokemon_in_play(is_opponent).filter(func(p): return p != rayquaza)
+	while true:
+		var movable: Array = []
+		for p in sources:
+			for e in p.attached_energies:
+				if main.is_basic_energy_card(e):
+					movable.append({"energy": e, "from": p})
+		if movable.is_empty():
+			break
+		var chosen_entry
+		if is_opponent:
+			var bench_entry = null
+			for m in movable:
+				if m["from"] != main.opponent_active_pokemon:
+					bench_entry = m
+					break
+			if bench_entry == null or rayquaza.attached_energies.size() >= 3:
+				break
+			chosen_entry = bench_entry
+		else:
+			var options = movable.map(func(m): return m["energy"])
+			var pick = await main.card_ops.choose_card(options, false, "DRAGON BOOST", "Move a basic Energy to Rayquaza ex? (Cancel to stop)", "MOVE", true, Callable(), true)
+			if main._should_bail(): return
+			if pick == null: break
+			chosen_entry = null
+			for m in movable:
+				if m["energy"] == pick:
+					chosen_entry = m
+					break
+			if chosen_entry == null: break
+		var e = chosen_entry["energy"]
+		var from_p = chosen_entry["from"]
+		from_p.attached_energies.erase(e)
+		rayquaza.attached_energies.append(e)
+	main.display_pokemon(is_opponent)
+	main.display_active_pokemon_energies(is_opponent)
+	await main.show_message("DRAGON BOOST! MOVED ENERGY TO RAYQUAZA EX!")
+	if main._should_bail(): return
+
+func refresh_ex8_sunbeam_hp() -> void:
+	for side in [false, true]:
+		var has_solrock = false
+		for p in main.card_ops.get_all_pokemon_in_play(side):
+			if p.has_ability("Sunbeam") and not is_power_blocked_by_status(p) and not ex8_space_center_ignores_body(p):
+				has_solrock = true
+				break
+		for p in main.card_ops.get_all_pokemon_in_play(side):
+			if p.metadata.get("name","") != "Lunatone": continue
+			if has_solrock:
+				if p.max_hp_override != 80:
+					var dmg_taken = max(0, (p.max_hp_override if p.max_hp_override > 0 else int(p.metadata.get("hp","0"))) - p.current_hp)
+					p.max_hp_override = 80
+					p.current_hp = max(1, 80 - dmg_taken)
+			elif p.max_hp_override == 80:
+				var base = int(p.metadata.get("hp","0"))
+				var dmg_taken2 = max(0, p.max_hp_override - p.current_hp)
+				p.max_hp_override = 0
+				p.current_hp = max(1, base - dmg_taken2)

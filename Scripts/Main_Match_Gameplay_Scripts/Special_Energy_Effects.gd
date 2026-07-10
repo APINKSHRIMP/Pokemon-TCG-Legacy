@@ -70,6 +70,17 @@ func get_energy_types_provided(card_name: String) -> Array:
 		"R Energy":
 			# EX7: provides 2 Darkness Energy. Attach only to a "Dark"/"Rocket's" Pokémon.
 			return ["Darkness", "Darkness"]
+		"Boost Energy":
+			# EX8: provides 3 Colorless. Attach only to Evolved; discard at end of the turn attached.
+			return ["Colorless", "Colorless", "Colorless"]
+		"Heal Energy":
+			# EX8: provides 1 Colorless (on-attach heal handled in apply_on_attach_effects).
+			return ["Colorless"]
+		"Scramble Energy":
+			# EX8: baseline 1 Colorless; the prize-conditional "3 of any type" form is resolved with
+			# holder context in Main.get_energy_provided_by_card (this fallback is used when no holder
+			# is known, e.g. deck-building previews).
+			return ["Colorless"]
 		# --- FUTURE SETS: Add new special energies below ---
 		# "Boost Energy":
 		#	return ["Colorless", "Colorless", "Colorless"]
@@ -101,7 +112,17 @@ func can_attach_to(energy_card: card_object, target_pokemon: card_object) -> Dic
 
 	match card_name:
 		"Rainbow Energy", "Full Heal Energy", "Potion Energy", "Double Colorless Energy", \
-		"Darkness Energy", "Metal Energy", "Recycle Energy", "Multi Energy", "Dark Metal Energy":
+		"Darkness Energy", "Metal Energy", "Recycle Energy", "Multi Energy", "Dark Metal Energy", "Heal Energy":
+			return {"allowed": true, "reason": ""}
+		"Boost Energy":
+			# EX8: can be attached only to an Evolved Pokemon.
+			if main.is_basic_pokemon(target_pokemon):
+				return {"allowed": false, "reason": "BOOST ENERGY CAN ONLY BE ATTACHED TO AN EVOLVED POKEMON!"}
+			return {"allowed": true, "reason": ""}
+		"Scramble Energy":
+			# EX8: can be attached only to an Evolved Pokemon (excluding Pokemon-ex).
+			if main.is_basic_pokemon(target_pokemon) or main.is_ex_pokemon(target_pokemon):
+				return {"allowed": false, "reason": "SCRAMBLE ENERGY CAN ONLY BE ATTACHED TO AN EVOLVED POKEMON (NOT ex)!"}
 			return {"allowed": true, "reason": ""}
 		"R Energy":
 			var rname = target_pokemon.metadata.get("name", "")
@@ -181,6 +202,28 @@ func apply_on_attach_effects(energy_card: card_object, target_pokemon: card_obje
 				return true
 			return false
 		
+		"Heal Energy":
+			# EX8: when attached from hand, remove 1 damage counter and all Special Conditions.
+			# If attached to a Pokemon-ex, Heal Energy has no effect other than providing Energy.
+			if main.is_ex_pokemon(target_pokemon):
+				return false
+			var applied = false
+			var had_status = target_pokemon.special_condition != "" or target_pokemon.is_poisoned or target_pokemon.is_burned
+			if had_status:
+				main.clear_all_statuses(target_pokemon, is_opponent)
+				main.update_status_icons(target_pokemon, is_opponent)
+				applied = true
+			var heal_max_hp = target_pokemon.get_max_hp()
+			var rule_heal = main.match_effects.modify_heal_amount(10, is_opponent)
+			if rule_heal > 0 and target_pokemon.current_hp < heal_max_hp:
+				target_pokemon.current_hp = min(heal_max_hp, target_pokemon.current_hp + rule_heal)
+				main.display_hp_circles_above_align(target_pokemon, is_opponent)
+				applied = true
+			if applied:
+				await main.show_message("HEAL ENERGY! REMOVED 1 DAMAGE COUNTER AND ALL SPECIAL CONDITIONS FROM " + pokemon_name + "!")
+				if main._should_bail(): return true
+			return applied
+
 		# --- FUTURE SETS: Add on-attach effects below ---
 		# "Boost Energy":
 		#	# No on-attach effect, but must be discarded at end of turn
@@ -203,6 +246,9 @@ func must_discard_end_of_turn(card_name: String) -> bool:
 	match card_name:
 		"R Energy":
 			# EX7: "When your turn ends, discard R Energy."
+			return true
+		"Boost Energy":
+			# EX8: "Discard Boost Energy at the end of the turn it was attached."
 			return true
 		_:
 			return false
@@ -397,7 +443,33 @@ func score_special_energy_attachment(energy_card: card_object, target_pokemon: c
 				if unmet >= 1 and unmet <= 2:
 					score += 60.0
 					break
-		# --- FUTURE SETS ---
-		# "Boost Energy": if is_active: score += 40.0 else: score -= 50.0
+		"Boost Energy":
+			# EX8: 3 Colorless burst but discarded at end of turn and locks retreat — only worth it on
+			# the Active when it enables an attack this turn.
+			if not is_active:
+				return -50.0
+			score += 20.0
+			for attack in target_pokemon.metadata.get("attacks", []):
+				var unmet = main.cpu_ai.get_unmet_energy_count(attack, target_pokemon)
+				if unmet >= 1 and unmet <= 3:
+					score += 60.0
+					break
+		"Heal Energy":
+			# EX8: Colorless + heals 10 and cures status (no effect on ex).
+			if not main.is_ex_pokemon(target_pokemon):
+				if target_pokemon.special_condition != "" or target_pokemon.is_poisoned or target_pokemon.is_burned:
+					score += 40.0
+				if target_pokemon.current_hp < target_pokemon.get_max_hp():
+					score += 15.0
+			score += 5.0
+		"Scramble Energy":
+			# EX8: flexible 3-Energy while behind on Prizes; otherwise 1 Colorless.
+			score += 15.0
+			if is_active:
+				score += 10.0
+			for attack in target_pokemon.metadata.get("attacks", []):
+				if main.cpu_ai.get_unmet_energy_count(attack, target_pokemon) <= 3:
+					score += 30.0
+					break
 
 	return score

@@ -80,3 +80,7 @@ const MT_MOON           = "ex6-94"    # Passive: Pokemon (both players) with max
 # ── EX Team Rocket Returns (ex7) ───────────────────────────────────────────────
 const ROCKETS_HIDEOUT_EX7   = "ex7-87" # Each Pokemon with "Dark" or "Rocket's" in its name gets +20 HP
 const ROCKETS_TRICKY_GYM    = "ex7-90" # Each "Dark"/"Rocket's" Pokemon may use the Stadium's Feint Attack
+
+# ── EX Deoxys (ex8) ────────────────────────────────────────────────────────────
+const METEOR_FALLS  = "ex8-89" # Each Active Evolved Pokemon (excl ex) may use attacks from its Basic/Stage 1 cards
+const SPACE_CENTER  = "ex8-91" # Ignore Poke-Bodies for all Basic Pokemon in play (excl ex / owner-named)

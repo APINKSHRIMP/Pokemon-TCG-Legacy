@@ -107,6 +107,17 @@ var player_ex5_heal_dance_used: bool = false
 var opponent_ex5_heal_dance_used: bool = false
 var player_ex5_weather_used: bool = false
 var opponent_ex5_weather_used: bool = false
+# EX8: "at most 1 per turn across all copies" gates for Deoxys Form Change and Ludicolo Happy Dance
+var player_ex8_form_change_used: bool = false
+var opponent_ex8_form_change_used: bool = false
+var player_ex8_happy_dance_used: bool = false
+var opponent_ex8_happy_dance_used: bool = false
+# EX8 Pelipper Bay Dance: +30 to your Active Pokemon's attacks during your NEXT turn.
+# pending set the turn Bay Dance is used; promoted to active when that side's next turn begins.
+var player_ex8_bay_dance_pending: bool = false
+var opponent_ex8_bay_dance_pending: bool = false
+var player_ex8_bay_dance_active: bool = false
+var opponent_ex8_bay_dance_active: bool = false
 
 # Mirror Move: stores the last attack result so Pidgeotto can copy it
 var last_attack_on_player: Dictionary = {}   # {"damage": int, "attack": Dictionary, "attacker_types": Array}
@@ -2110,6 +2121,8 @@ func add_pokemon_to_bench(pokemon: card_object) -> void:
 		await trainer_effects.ex4_team_magma_hideout_trigger(pokemon, false)
 		# EX6 Legendary Ascent (Articuno/Moltres/Zapdos ex): switch with your Active + rally its Energy
 		await powers_and_bodies.trigger_ex6_legendary_ascent(pokemon, false)
+		# EX8 Dragon Boost (Rayquaza ex ex8-102): move any number of basic Energy to Rayquaza ex
+		await powers_and_bodies.trigger_ex8_dragon_boost(pokemon, false)
 
 # Function that get's the card position/location/object. Called from various functions when trying to find a specific card object
 func find_card_ui_for_object(card_obj: card_object) -> TextureRect:
@@ -2328,6 +2341,9 @@ func perform_energy_attachment() -> void:
 	powers_and_bodies.check_ex1_natural_remedy(target_pokemon, energy_card, false)
 	# EX7 Saturation (Quagsire ex7-26 / Wooper ex7-81): Water Energy attach clears conditions + heals
 	powers_and_bodies.check_ex7_saturation(target_pokemon, energy_card, false)
+	# EX8 Natural Cure (Lombre ex8-34) auto-works via check_ex1_natural_cure above (generic ability).
+	# EX8 Lightning Burst (Rocket's Raikou ex ex8-108): Darkness Energy attach may switch a Defender
+	await powers_and_bodies.check_ex8_lightning_burst(target_pokemon, energy_card, false)
 
 	# MATCH EFFECTS: energy_attach_halve_hp / energy_attach_full_heal
 	await apply_energy_attach_match_effects(target_pokemon, false)
@@ -2664,7 +2680,24 @@ func inbetween_turn_checks(player_turn_just_ended: bool = true) -> void:
 	opponent_ex5_heal_dance_used = false
 	player_ex5_weather_used = false
 	opponent_ex5_weather_used = false
+	player_ex8_form_change_used = false
+	opponent_ex8_form_change_used = false
+	player_ex8_happy_dance_used = false
+	opponent_ex8_happy_dance_used = false
+	# EX8 Bay Dance: promote the pending buff to active for the side whose turn is now beginning,
+	# and clear the buff for the side whose turn just ended (its boosted turn is over).
+	var beginning_is_opponent = player_turn_just_ended
+	if beginning_is_opponent:
+		player_ex8_bay_dance_active = false
+		opponent_ex8_bay_dance_active = opponent_ex8_bay_dance_pending
+		opponent_ex8_bay_dance_pending = false
+	else:
+		opponent_ex8_bay_dance_active = false
+		player_ex8_bay_dance_active = player_ex8_bay_dance_pending
+		player_ex8_bay_dance_pending = false
 	xxxxx_used_this_turn = false
+	# EX8 Sunbeam (Solrock): recompute Lunatone max-HP boost each turn transition.
+	powers_and_bodies.refresh_ex8_sunbeam_hp()
 	reset_field_pokemon_turn_flags(false)
 	reset_field_pokemon_turn_flags(true)
 
@@ -3215,6 +3248,11 @@ func can_retreat(is_opponent: bool) -> Dictionary:
 	if powers_and_bodies.is_ex6_spiral_blocking(active):
 		return {"can_retreat": false, "reason": "Spiral! Your Confused Pokemon can't retreat!"}
 
+	# EX8 Boost Energy (ex8-93): the Pokemon it's attached to can't retreat.
+	for e in active.attached_energies:
+		if e.metadata.get("name", "") == "Boost Energy":
+			return {"can_retreat": false, "reason": "Boost Energy! " + active.metadata.get("name", "") + " can't retreat!"}
+
 	return {"can_retreat": true, "reason": ""}
 
 # Initiates the retreat flow: validates, then shows attached energies for the player to select for discarding
@@ -3313,6 +3351,24 @@ func get_attacks_for_card(card: card_object) -> Array:
 					extra.append(atk)
 		if extra.size() > 0:
 			return attacks + extra
+
+	# EX8 Meteor Falls (ex8-89 Stadium): each player's Active Evolved Pokemon (excluding ex) may use
+	# any attack from its Basic Pokemon or Stage 1 Evolution card. Energy cost still applies.
+	if is_stadium_in_play(StadiumIds.METEOR_FALLS) and (card == player_active_pokemon or card == opponent_active_pokemon) and not is_ex_pokemon(card):
+		var subs_mf = card.metadata.get("subtypes", [])
+		if "Stage 1" in subs_mf or "Stage 2" in subs_mf:
+			var seen_mf = {}
+			for atk in attacks:
+				seen_mf[atk.get("name", "")] = true
+			var extra_mf: Array = []
+			for pre_card in card.attached_pre_evolutions:
+				for atk in pre_card.metadata.get("attacks", []):
+					var atk_name = atk.get("name", "")
+					if atk_name != "" and not seen_mf.has(atk_name):
+						seen_mf[atk_name] = true
+						extra_mf.append(atk)
+			if extra_mf.size() > 0:
+				return attacks + extra_mf
 
 	# GYM2 Sabrina's Alakazam Psylink — also gain attacks of every Psychic Pokemon you control
 	for ab in card.metadata.get("abilities", []):
@@ -3459,6 +3515,26 @@ func get_energy_provided_by_card(energy_card: card_object) -> Array:
 		var energy_type = card_name.replace(" Energy", "").strip_edges()
 		return [energy_type]
 	
+	# EX8 Scramble Energy (ex8-95): while in play, if its owner has more Prize cards left than the
+	# opponent, it provides every type of Energy but only 3 in any combination; otherwise 1 Colorless.
+	if card_name == "Scramble Energy":
+		var holder_is_opp := -1
+		for p in ([player_active_pokemon] if player_active_pokemon != null else []) + player_bench:
+			if energy_card in p.attached_energies:
+				holder_is_opp = 0
+				break
+		if holder_is_opp == -1:
+			for p in ([opponent_active_pokemon] if opponent_active_pokemon != null else []) + opponent_bench:
+				if energy_card in p.attached_energies:
+					holder_is_opp = 1
+					break
+		if holder_is_opp != -1:
+			var my_prizes = opponent_prize_cards.size() if holder_is_opp == 1 else player_prize_cards.size()
+			var their_prizes = player_prize_cards.size() if holder_is_opp == 1 else opponent_prize_cards.size()
+			if my_prizes > their_prizes:
+				return ["Any", "Any", "Any"]
+		return ["Colorless"]
+
 	# Special energy: route through Special_Energy_Effects system
 	if "Special" in subtypes:
 		var provided = special_energy_effects.get_energy_types_provided(card_name)
@@ -3727,12 +3803,14 @@ func perform_attack(attack_index: int) -> void:
 		await show_message("HEADS! " + player_active_pokemon.metadata["name"].to_upper() + " CAN ATTACK!")
 		if _should_bail(): return
 
-	# Swords Dance: If active, boost Slash base damage
+	# Swords Dance: If active, boost Slash base damage (base Scyther = 60, ex8 Ninjask = 80)
 	if player_active_pokemon.swords_dance_active and attack_name.to_lower() == "slash":
+		var sd_dmg = player_active_pokemon.swords_dance_slash_damage if player_active_pokemon.swords_dance_slash_damage > 0 else 60
 		attack = attack.duplicate()
-		attack["damage"] = "60"
+		attack["damage"] = str(sd_dmg)
 		player_active_pokemon.swords_dance_active = false
-		await show_message("SWORDS DANCE BOOST! SLASH DOES 60 DAMAGE!")
+		player_active_pokemon.swords_dance_slash_damage = 0
+		await show_message("SWORDS DANCE BOOST! SLASH DOES " + str(sd_dmg) + " DAMAGE!")
 
 	# GYM1 Focus Energy (Rattata's Gnaw) / ECARD3 Focus Energy (Machoke's Mega Punch): if active,
 	# double the boosted attack's base damage. Both share the gym1-style focus_energy_active flag
@@ -3893,6 +3971,10 @@ func calculate_final_damage(base_damage: int, attacking_types: Array, defending_
 		if "Psychic" in attacking_types or "Fighting" in attacking_types:
 			skip_resistance = true
 			modifiers_applied.append("MAGNETIC STORM (NO RESISTANCE)")
+	# EX8 Tropical Motion (Tropius): while Tropius is your Active, your opponent's Active has no Resistance.
+	if not skip_resistance and attacker_pokemon != null and powers_and_bodies.is_ex8_tropical_motion_active(attacker_pokemon):
+		skip_resistance = true
+		modifiers_applied.append("TROPICAL MOTION (NO RESISTANCE)")
 	# MATCH EFFECT: ignore_resistance — same side-awareness rules as ignore_weakness above
 	if not skip_resistance:
 		if attacker_pokemon != null:
@@ -4187,7 +4269,8 @@ func check_all_knockouts() -> Dictionary:
 	opponent_to_check.append_array(opponent_bench.duplicate())
 	
 	for pokemon in opponent_to_check:
-		var should_award_prize = not pokemon.no_prize_on_ko
+		# EX8 Empty Shell (Shedinja): when this Pokemon is Knocked Out, the opponent takes no Prizes.
+		var should_award_prize = not pokemon.no_prize_on_ko and not pokemon.has_ability("Empty Shell")
 		var prizes_for_this_ko = 2 if is_ex_pokemon(pokemon) else 1
 		if await check_and_handle_knockout(pokemon, true):
 			results["opponent_kos"] += 1
@@ -4195,7 +4278,8 @@ func check_all_knockouts() -> Dictionary:
 				opponent_prize_kos += prizes_for_this_ko
 
 	for pokemon in player_to_check:
-		var should_award_prize = not pokemon.no_prize_on_ko
+		# EX8 Empty Shell (Shedinja): when this Pokemon is Knocked Out, the opponent takes no Prizes.
+		var should_award_prize = not pokemon.no_prize_on_ko and not pokemon.has_ability("Empty Shell")
 		var prizes_for_this_ko = 2 if is_ex_pokemon(pokemon) else 1
 		if await check_and_handle_knockout(pokemon, false):
 			results["player_kos"] += 1
@@ -4665,6 +4749,18 @@ func get_retreat_cost(pokemon: card_object) -> int:
 				# EX6 Fearow (ex6-24): Retreat Cost is 0 while NO Energy is attached
 				if pokemon.attached_energies.is_empty():
 					cost = 0
+				# EX8 Metallic Lift (Skarmory ex8-26): Retreat Cost is 0 while any Metal Energy is attached
+			elif ab.get("name", "") == "Metallic Lift":
+				for e in pokemon.attached_energies:
+					if "Metal" in get_energy_provided_by_card(e):
+						cost = 0
+						break
+				# EX8 Aqua Lift (Lombre ex8-33): Retreat Cost is 0 while any Water Energy is attached
+			elif ab.get("name", "") == "Aqua Lift":
+				for e in pokemon.attached_energies:
+					if "Water" in get_energy_provided_by_card(e):
+						cost = 0
+						break
 
 	# EX6 Family Bonds (Nidoqueen ex6-9): Retreat Cost is 0 for the Nidoran family and Nidoking while a
 	# Nidoqueen is in play on that side.
@@ -4675,6 +4771,24 @@ func get_retreat_cost(pokemon: card_object) -> int:
 			side_all.append(side_active)
 		for np in side_all:
 			if np.metadata.get("name", "") == "Nidoqueen" and not powers_and_bodies.is_power_blocked(np):
+				cost = 0
+				break
+
+	# EX8 Moonglow (Lunatone ex8-36): the Retreat Cost for each Solrock you have in play is 0.
+	# EX8 Dragon Lift (Salamence ex ex8-103): Retreat Cost is 0 for each of your Pokemon (excluding
+	# Pokemon-ex and Baby Pokemon) while Salamence ex is in play on that side.
+	var lift_side_all: Array = bench.duplicate()
+	var lift_side_active = player_active_pokemon if (pokemon == player_active_pokemon or pokemon in player_bench) else opponent_active_pokemon
+	if lift_side_active != null:
+		lift_side_all.append(lift_side_active)
+	if pokemon.metadata.get("name", "") == "Solrock":
+		for lp in lift_side_all:
+			if lp.has_ability("Moonglow") and not powers_and_bodies.is_power_blocked(lp):
+				cost = 0
+				break
+	if not is_ex_pokemon(pokemon) and "Baby" not in pokemon.metadata.get("subtypes", []):
+		for lp in lift_side_all:
+			if lp.has_ability("Dragon Lift") and not powers_and_bodies.is_power_blocked(lp):
 				cost = 0
 				break
 

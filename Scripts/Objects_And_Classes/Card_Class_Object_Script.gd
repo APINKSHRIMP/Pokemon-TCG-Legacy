@@ -58,6 +58,9 @@ var electrode_energy_type: String = "" # The chosen energy type for Buzzap
 
 # Scyther Swords Dance: if true, Slash does 60 instead of 30 next turn
 var swords_dance_active: bool = false
+# Swords Dance boosted Slash base damage next turn (0 = use legacy default of 60).
+# ex8 Ninjask boosts Slash to 80; base Scyther to 60 — read from the card's own text.
+var swords_dance_slash_damage: int = 0
 
 # Minimize / Pounce / Snivel: reduce incoming damage by this amount next turn
 var damage_reduction_next_turn: int = 0
@@ -258,7 +261,7 @@ func get_max_hp() -> int:
 # triggering on THIS Pokemon as an attacker is handled centrally in Main's calculate_final_damage.
 func get_effective_types() -> Array:
 	for ac in attached_cards:
-		if ac.uid.to_lower() == "ecard3-122":
+		if ac.uid.to_lower() == "ecard3-122" or ac.uid.to_lower() == "ex8-85":
 			return ["Colorless"]
 	if has_effect("crystal_type_active"):
 		return [get_effect_data("crystal_type_active")]

@@ -302,6 +302,10 @@ func apply_status(pokemon: card_object, status: String, is_opponent: bool) -> vo
 	# attached), Holy Shield (effects from a "Dark"-named attacker).
 	if pokemon != null and status != "" and main.powers_and_bodies.ex7_blocks_status(pokemon, status):
 		return
+	# EX8 immunity bodies: Self-control (no Paralysis), Carefree (no Confusion), Dragon Aura (all
+	# non-damage effects while basic Fire + basic Lightning are attached).
+	if pokemon != null and status != "" and main.powers_and_bodies.ex8_blocks_status(pokemon, status):
+		return
 	match status:
 		"Poisoned":
 			pokemon.is_poisoned = true
@@ -320,7 +324,7 @@ func apply_status(pokemon: card_object, status: String, is_opponent: bool) -> vo
 	# status onto the opposing Active Pokemon (approximated as "the Defending Pokemon" since this
 	# function is only ever called with an attack/effect already in progress). Guarded against
 	# re-triggering if the opposing Pokemon already has the same status (prevents ping-pong).
-	if pokemon != null and (status == "Poisoned" or status == "Burned") and not main.powers_and_bodies.is_power_blocked(pokemon):
+	if pokemon != null and (status == "Poisoned" or status == "Burned") and not main.powers_and_bodies.is_power_blocked(pokemon) and not main.powers_and_bodies.ex8_space_center_ignores_body(pokemon):
 		if pokemon.has_ability("Mirror Coat"):
 			var opposing_active = main.player_active_pokemon if is_opponent else main.opponent_active_pokemon
 			if opposing_active != null and opposing_active != pokemon:
