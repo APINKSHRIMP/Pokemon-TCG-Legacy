@@ -306,6 +306,10 @@ func apply_status(pokemon: card_object, status: String, is_opponent: bool) -> vo
 	# non-damage effects while basic Fire + basic Lightning are attached).
 	if pokemon != null and status != "" and main.powers_and_bodies.ex8_blocks_status(pokemon, status):
 		return
+	# EX9 immunity bodies: Magma Armor (no Asleep/Paralysis), Green Essence (your Active with Grass
+	# Energy can't get any Special Condition while a Sceptile with Green Essence is in play).
+	if pokemon != null and status != "" and main.powers_and_bodies.ex9_blocks_status(pokemon, status):
+		return
 	match status:
 		"Poisoned":
 			pokemon.is_poisoned = true
@@ -474,13 +478,15 @@ func apply_bench_damage(pokemon: card_object, damage: int, is_opponent: bool) ->
 	# damage to that side's Benched Pokemon.
 	if main.powers_and_bodies.is_ex5_power_diffusion_active(is_opponent):
 		return
-	# EX3 Submerge (Whiscash ex3-48): while on the Bench, prevent all attack damage to Whiscash.
-	# (Guard on the ability TEXT, not just the name — neo3 Lanturn also has a "Submerge" ability
-	# with a completely different, type-changing effect.)
-	if pokemon.has_ability("Submerge") and not main.powers_and_bodies.is_power_blocked(pokemon):
-		var sub = pokemon.get_ability("Submerge")
-		if sub != null and "prevent all damage" in sub.get("text","").to_lower():
-			return
+	# On-Bench damage-prevention bodies (EX3 Submerge / ex9 Feebas Submerge / ex9 Swablu Feathery).
+	# Guard on the ability TEXT ("prevent all damage" + "bench"), not just the name — neo3 Lanturn also
+	# has a "Submerge" ability with a completely different, type-changing effect.
+	if not main.powers_and_bodies.is_power_blocked(pokemon):
+		for ab in pokemon.metadata.get("abilities", []):
+			if ab.get("type","") != "Poké-Body": continue
+			var abtext = ab.get("text","").to_lower()
+			if "prevent all damage" in abtext and "bench" in abtext:
+				return
 	pokemon.current_hp = max(0, pokemon.current_hp - damage)
 	var loc = main.get_pokemon_screen_location(pokemon)
 	if not loc.is_empty():

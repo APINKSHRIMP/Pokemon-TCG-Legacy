@@ -84,3 +84,6 @@ const ROCKETS_TRICKY_GYM    = "ex7-90" # Each "Dark"/"Rocket's" Pokemon may use 
 # ── EX Deoxys (ex8) ────────────────────────────────────────────────────────────
 const METEOR_FALLS  = "ex8-89" # Each Active Evolved Pokemon (excl ex) may use attacks from its Basic/Stage 1 cards
 const SPACE_CENTER  = "ex8-91" # Ignore Poke-Bodies for all Basic Pokemon in play (excl ex / owner-named)
+
+# ── EX Emerald (ex9) ───────────────────────────────────────────────────────────
+const BATTLE_FRONTIER = "ex9-75" # Colorless/Darkness/Metal Evolved Pokemon can't use Poke-Powers or Poke-Bodies

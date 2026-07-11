@@ -76,6 +76,7 @@ func _register_all_powers() -> void:
 	_register_ex6_powers()
 	_register_ex7_powers()
 	_register_ex8_powers()
+	_register_ex9_powers()
 
 # ── On-damage and pre-KO event hooks ──────────────────────────────────────────
 # Each Callable is fired after active-pokemon damage resolves (on_damage) or
@@ -146,6 +147,10 @@ func _register_all_power_hooks() -> void:
 	_damage_modifier_hooks.append(func(dmg, atk, def, mods): return _hook_ex8_vigorous_aura(dmg, atk, def, mods))
 	_damage_modifier_hooks.append(func(dmg, atk, def, mods): return _hook_ex8_hard_protection(dmg, atk, def, mods))
 	_damage_modifier_hooks.append(func(dmg, atk, def, mods): return _hook_ex8_bay_dance(dmg, atk, def, mods))
+	_damage_modifier_hooks.append(func(dmg, atk, def, mods): return _hook_dragon_dance(dmg, atk, def, mods))
+	_damage_modifier_hooks.append(func(dmg, atk, def, mods): return _hook_ex9_blaze(dmg, atk, def, mods))
+	_damage_modifier_hooks.append(func(dmg, atk, def, mods): return _hook_ex9_mist(dmg, atk, def, mods))
+	_damage_modifier_hooks.append(func(dmg, atk, def, mods): return _hook_ex9_rai_shield(dmg, atk, def, mods))
 	_damage_modifier_hooks.append(func(dmg, atk, def, mods): return _hook_ex8_pivot_throw(dmg, atk, def, mods))
 	_damage_modifier_hooks.append(func(dmg, atk, def, mods): return _hook_ex8_psychic_shield(dmg, atk, def, mods))
 	_damage_modifier_hooks.append(func(dmg, atk, def, mods): return _hook_ex8_advanced_armor(dmg, atk, def, mods))
@@ -250,6 +255,16 @@ func is_power_blocked(pokemon: card_object, works_through_status: bool = false) 
 	var opposing_active = main.player_active_pokemon if pokemon_is_opp else main.opponent_active_pokemon
 	if opposing_active != null and opposing_active.has_ability("Lazy") and not opposing_active.is_status_blocked():
 		return true
+	# EX9 Battle Frontier (ex9-75 Stadium): Colorless/Darkness/Metal Evolved Pokemon can't use Poké-Powers.
+	if battle_frontier_disables(pokemon):
+		return true
+	# EX9 Wise Aura (Medicham ex ex9-95): while a Medicham ex with Wise Aura is a side's Active, each
+	# Pokemon EXCLUDING Pokemon-ex (both sides) can't use Poké-Powers.
+	if not main.is_ex_pokemon(pokemon):
+		var pa2 = main.player_active_pokemon
+		var oa2 = main.opponent_active_pokemon
+		if (pa2 != null and pa2.has_ability("Wise Aura") and not pa2.is_status_blocked()) or (oa2 != null and oa2.has_ability("Wise Aura") and not oa2.is_status_blocked()):
+			return true
 	return false
 
 # Returns true if a card is a trainer card
@@ -2069,6 +2084,8 @@ func cpu_phase_activate_powers() -> void:
 	await cpu_phase_ex7_powers()
 	if main._should_bail(): return
 	await cpu_phase_ex8_powers()
+	if main._should_bail(): return
+	await cpu_phase_ex9_powers()
 	if main._should_bail(): return
 
 
@@ -12079,8 +12096,14 @@ func check_ex7_saturation(target_pokemon: card_object, energy_card: card_object,
 # DARK CONDITION (Rocket's Entei ex ex7-97): while it has Darkness Energy attached, it has no Weakness.
 func has_no_weakness_body(defender: card_object) -> bool:
 	if defender == null: return false
+	if battle_frontier_disables(defender): return false
 	if defender.has_ability("Dark Condition") and not is_power_blocked_by_status(defender) and _ex7_has_darkness_energy(defender):
 		return true
+	# EX9 Electro-guard (Minun ex9-37): no Weakness while any Lightning Energy is attached.
+	if defender.has_ability("Electro-guard") and not is_power_blocked_by_status(defender):
+		for e in defender.attached_energies:
+			if "Lightning" in main.get_energy_provided_by_card(e):
+				return true
 	var side_opp = defender.is_owner_opp(main)
 	for p in main.card_ops.get_all_pokemon_in_play(side_opp):
 		if p.has_ability("Dragon Veil") and not is_power_blocked_by_status(p):
@@ -12638,6 +12661,18 @@ func _hook_ex8_bay_dance(damage: int, attacker: card_object, defender: card_obje
 		return damage + 30
 	return damage
 
+# EX3/EX9 Dragon Dance: while a side's Dragon Dance buff is active, its Active Pokemon deal +N damage.
+func _hook_dragon_dance(damage: int, attacker: card_object, defender: card_object, modifiers: Array) -> int:
+	if damage <= 0 or attacker == null: return damage
+	var atk_is_opp = (attacker == main.opponent_active_pokemon or attacker in main.opponent_bench)
+	var active = main.opponent_active_pokemon if atk_is_opp else main.player_active_pokemon
+	if attacker != active: return damage
+	var bonus = main.opponent_dragon_dance_active if atk_is_opp else main.player_dragon_dance_active
+	if bonus > 0:
+		modifiers.append("DRAGON DANCE +" + str(bonus))
+		return damage + bonus
+	return damage
+
 func _hook_ex8_pivot_throw(damage: int, _attacker: card_object, defender: card_object, modifiers: Array) -> int:
 	if damage <= 0 or defender == null: return damage
 	if defender.has_effect("ex8_pivot_throw"):
@@ -12779,3 +12814,200 @@ func refresh_ex8_sunbeam_hp() -> void:
 				var dmg_taken2 = max(0, p.max_hp_override - p.current_hp)
 				p.max_hp_override = 0
 				p.current_hp = max(1, base - dmg_taken2)
+
+# ══════════════════════════════════════════════════════════════════════════════
+#                        EX9 (EX EMERALD) POWERS & BODIES
+# ══════════════════════════════════════════════════════════════════════════════
+func _register_ex9_powers() -> void:
+	# Form Change (Deoxys/Deoxys ex) and Baby Evolution (Pichu) already reuse existing name-generic
+	# handlers (power_ex8_form_change / power_ex2_baby_evolution) — no re-registration needed.
+	_power_dispatch["Heal Dance"]    = func(p): await power_ex9_heal_dance(p)
+	_power_dispatch["Water Cyclone"] = func(p): await power_ex9_water_cyclone(p)
+
+# HEAL DANCE (Gardevoir ex9-4): once during your turn, remove 2 damage counters from 1 of your Pokemon.
+# Can't be used if Gardevoir is affected by a Special Condition.
+func power_ex9_heal_dance(gardevoir: card_object) -> void:
+	var is_opponent = gardevoir.is_owner_opp(main)
+	if is_power_blocked_by_status(gardevoir):
+		await main.show_message("HEAL DANCE IS BLOCKED BY STATUS!")
+		if main._should_bail(): return
+		return
+	if gardevoir.power_used_this_turn:
+		await main.show_message("HEAL DANCE ALREADY USED THIS TURN!")
+		if main._should_bail(): return
+		return
+	var pool = main.card_ops.get_all_pokemon_in_play(is_opponent).filter(func(p): return p != null and p.get_damage_counters() > 0)
+	if pool.is_empty():
+		await main.show_message("NO DAMAGED POKEMON TO HEAL!")
+		if main._should_bail(): return
+		return
+	var target: card_object
+	if is_opponent:
+		target = pool[0]
+		for c in pool:
+			if c.get_damage_counters() > target.get_damage_counters(): target = c
+	elif pool.size() == 1:
+		target = pool[0]
+	else:
+		target = await main.card_ops.choose_card(pool, false, "HEAL DANCE", "Choose one of your Pokemon to remove 2 damage counters from", "HEAL", false, func(c): return float(c.get_damage_counters()))
+		if main._should_bail(): return
+		if target == null: return
+	gardevoir.power_used_this_turn = true
+	await main.card_ops.heal_pokemon(target, 20, is_opponent)
+	if main._should_bail(): return
+	await main.show_message("HEAL DANCE! REMOVED 2 DAMAGE COUNTERS FROM " + target.metadata.get("name","").to_upper() + "!")
+	if main._should_bail(): return
+
+# WATER CYCLONE (Swampert ex9-11): as often as you like, move a Water Energy attached to 1 of your
+# Active Pokemon to 1 of your Benched Pokemon. Can't be used if Swampert is affected by a Special Condition.
+func power_ex9_water_cyclone(swampert: card_object) -> void:
+	var is_opponent = swampert.is_owner_opp(main)
+	if is_power_blocked_by_status(swampert):
+		await main.show_message("WATER CYCLONE IS BLOCKED BY STATUS!")
+		if main._should_bail(): return
+		return
+	var bench = main.opponent_bench if is_opponent else main.player_bench
+	if bench.is_empty():
+		await main.show_message("NO BENCHED POKEMON TO MOVE ENERGY TO!")
+		if main._should_bail(): return
+		return
+	# CPU doesn't use Water Cyclone (situational energy shuffling).
+	if is_opponent:
+		return
+	while true:
+		# Gather the Water Energy currently on your Active Pokemon (single-battle: one Active).
+		var water_sources: Array = []
+		for ap in main.card_ops.get_active_pokemon(is_opponent):
+			if ap == null: continue
+			for e in ap.attached_energies:
+				if "Water" in main.get_energy_provided_by_card(e):
+					water_sources.append({"energy": e, "holder": ap})
+		if water_sources.is_empty():
+			await main.show_message("NO WATER ENERGY ON YOUR ACTIVE POKEMON!")
+			if main._should_bail(): return
+			return
+		var energy_cards = water_sources.map(func(d): return d["energy"])
+		var pick_energy = await main.card_ops.prompt_select_card(energy_cards, "WATER CYCLONE", "Choose a Water Energy to move (or cancel to stop)", "MOVE", true, true)
+		if main._should_bail(): return
+		if pick_energy == null: return
+		var pick_holder: card_object = null
+		for d in water_sources:
+			if d["energy"] == pick_energy: pick_holder = d["holder"]
+		var target = await main.card_ops.prompt_select_card(bench, "WATER CYCLONE", "Choose a Benched Pokemon to move it to", "ATTACH", true)
+		if main._should_bail(): return
+		if target == null: return
+		pick_holder.attached_energies.erase(pick_energy)
+		target.attached_energies.append(pick_energy)
+		main.display_active_pokemon_energies(is_opponent)
+		main.display_pokemon(is_opponent)
+		await main.show_message("WATER CYCLONE! MOVED WATER ENERGY TO " + target.metadata.get("name","").to_upper() + "!")
+		if main._should_bail(): return
+
+func cpu_phase_ex9_powers() -> void:
+	if is_toxic_gas_active() or main.goop_gas_active: return
+	# Heal Dance (Gardevoir): heal the CPU's most-damaged Pokemon if any is damaged.
+	var gard = _find_cpu_pokemon_with_power("Heal Dance")
+	if gard != null and not gard.power_used_this_turn and not is_power_blocked_by_status(gard):
+		var any_damaged = main.card_ops.get_all_pokemon_in_play(true).any(func(p): return p != null and p.get_damage_counters() > 0)
+		if any_damaged:
+			await power_ex9_heal_dance(gard)
+			if main._should_bail(): return
+
+# ── ex9 passive bodies ────────────────────────────────────────────────────────
+
+# EX9 Battle Frontier (ex9-75 Stadium): a Colorless/Darkness/Metal Evolved Pokemon can't use any
+# Poké-Powers or Poké-Bodies while this Stadium is in play. Consulted by is_power_blocked (powers)
+# and the ex9 body hooks/immunity helpers (bodies) — the same realistic-coverage approach as ex8
+# Space Center (ex8_space_center_ignores_body).
+func battle_frontier_disables(pokemon: card_object) -> bool:
+	if pokemon == null: return false
+	if not main.is_stadium_in_play(StadiumIds.BATTLE_FRONTIER): return false
+	var st = pokemon.metadata.get("subtypes", [])
+	if not ("Stage 1" in st or "Stage 2" in st): return false
+	var types = pokemon.get_effective_types()
+	return "Colorless" in types or "Darkness" in types or "Metal" in types
+
+# BLAZE (Blaziken ex9-1): while its own HP is 40 or less, +40 damage.
+func _hook_ex9_blaze(damage: int, attacker: card_object, defender: card_object, modifiers: Array) -> int:
+	if damage <= 0 or attacker == null: return damage
+	if battle_frontier_disables(attacker): return damage
+	if attacker.has_ability("Blaze") and not is_power_blocked_by_status(attacker) and attacker.current_hp <= 40:
+		modifiers.append("BLAZE +40")
+		return damage + 40
+	return damage
+
+# MIST (Altaria ex ex9-90): damage from Stage 2 Evolved attackers is reduced by 30 (after W/R).
+func _hook_ex9_mist(damage: int, attacker: card_object, defender: card_object, modifiers: Array) -> int:
+	if damage <= 0 or defender == null or attacker == null: return damage
+	if battle_frontier_disables(defender): return damage
+	if not defender.has_ability("Mist") or is_power_blocked_by_status(defender): return damage
+	if "Stage 2" in attacker.metadata.get("subtypes", []):
+		var r = min(damage, 30)
+		modifiers.append("MIST -" + str(r))
+		return damage - r
+	return damage
+
+# RAI-SHIELD (Raichu ex ex9-97): damage from the opponent's Pokemon-ex is reduced by 30 (after W/R).
+func _hook_ex9_rai_shield(damage: int, attacker: card_object, defender: card_object, modifiers: Array) -> int:
+	if damage <= 0 or defender == null or attacker == null: return damage
+	if not defender.has_ability("Rai-shield") or is_power_blocked_by_status(defender): return damage
+	if main.is_ex_pokemon(attacker):
+		var r = min(damage, 30)
+		modifiers.append("RAI-SHIELD -" + str(r))
+		return damage - r
+	return damage
+
+# EX9 status-immunity bodies (consulted in Card_Ops.apply_status).
+#  • MAGMA ARMOR (Camerupt ex ex9-92): can't be Asleep or Paralyzed.
+#  • GREEN ESSENCE (Sceptile ex9-10): your Active Pokemon that has Grass Energy attached can't be
+#    affected by any Special Conditions, as long as a Sceptile with Green Essence is in play.
+func ex9_blocks_status(pokemon: card_object, status: String) -> bool:
+	if pokemon == null or status == "": return false
+	if battle_frontier_disables(pokemon): return false
+	if pokemon.has_ability("Magma Armor") and status in ["Asleep", "Paralyzed"] and not is_power_blocked_by_status(pokemon):
+		return true
+	var side_opp = pokemon.is_owner_opp(main)
+	var active = main.opponent_active_pokemon if side_opp else main.player_active_pokemon
+	if pokemon == active:
+		var has_grass = false
+		for e in pokemon.attached_energies:
+			if "Grass" in main.get_energy_provided_by_card(e):
+				has_grass = true
+				break
+		if has_grass:
+			for p in main.card_ops.get_all_pokemon_in_play(side_opp):
+				if p.has_ability("Green Essence") and not is_power_blocked_by_status(p):
+					return true
+	return false
+
+# DARK HOLE (Dusclops ex ex9-94 on your Bench): don't apply Darkness Weakness for your Pokemon in play.
+func ex9_ignores_darkness_weakness(defender: card_object) -> bool:
+	if defender == null: return false
+	var side_opp = defender.is_owner_opp(main)
+	var bench = main.opponent_bench if side_opp else main.player_bench
+	for p in bench:
+		if p != null and p.has_ability("Dark Hole") and not is_power_blocked_by_status(p):
+			return true
+	return false
+
+# MYSTIC SCALE (Milotic ex ex9-96): true while a Milotic ex with Mystic Scale is anywhere in play.
+func is_ex9_mystic_scale_in_play() -> bool:
+	for side in [false, true]:
+		for p in main.card_ops.get_all_pokemon_in_play(side):
+			if p != null and p.has_ability("Mystic Scale") and not is_power_blocked_by_status(p):
+				return true
+	return false
+
+# MYSTIC SCALE second clause: discard all Technical Machine cards attached to any Pokemon in play.
+func ex9_enforce_mystic_scale() -> void:
+	if not is_ex9_mystic_scale_in_play(): return
+	for side in [false, true]:
+		var discard = main.opponent_discard_pile if side else main.player_discard_pile
+		for p in main.card_ops.get_all_pokemon_in_play(side):
+			if p == null: continue
+			for ac in p.attached_cards.duplicate():
+				if "Technical Machine" in ac.metadata.get("subtypes", []):
+					p.attached_cards.erase(ac)
+					ac.current_location = "discard"
+					discard.append(ac)
+			main.update_discard_pile_display(side)

@@ -40,8 +40,77 @@ func _ensure_trainer_dispatch_ready() -> void:
 	_register_ex6_trainers()
 	_register_ex7_trainers()
 	_register_ex8_trainers()
+	_register_ex9_trainers()
 
-func _register_ex8_trainers() -> void:
+# EX9 (EX EMERALD) trainers. Most are reprints of ex1/ex2 cards — reuse the existing effect functions
+# with the ex9 UID. Lum Berry (ex9-78) / Oran Berry (ex9-80) are Pokemon Tools whose attach is generic
+# and whose between-turns effect is ex1_lum_berry_check / ex1_oran_berry_check (ex9 UIDs added there).
+# Battle Frontier (ex9-75) is a Stadium that resolves generically; its passive effect lives in
+# is_power_blocked / battle_frontier_disables (Powers_And_Bodies_Effects).
+func _register_ex9_trainers() -> void:
+	_trainer_dispatch["ex9-76"] = func(c, opp): await effect_ex2_double_full_heal(opp)      # Double Full Heal (Item)
+	_trainer_dispatch["ex9-77"] = func(c, opp): await effect_ex2_lanettes_net_search(opp)   # Lanette's Net Search (Supporter)
+	_trainer_dispatch["ex9-79"] = func(c, opp): await effect_ex9_mr_stones_project(opp)     # Mr. Stone's Project (Supporter)
+	_trainer_dispatch["ex9-81"] = func(c, opp): await effect_ex1_pokenav(opp)               # PokéNav (Item)
+	_trainer_dispatch["ex9-82"] = func(c, opp): await effect_ex1_professor_birch(opp)       # Professor Birch (Supporter)
+	_trainer_dispatch["ex9-83"] = func(c, opp): await effect_ex2_rare_candy(opp)            # Rare Candy (Item)
+	_trainer_dispatch["ex9-84"] = func(c, opp): await effect_ex9_scott(opp)                 # Scott (Supporter)
+	_trainer_dispatch["ex9-85"] = func(c, opp): await effect_ex2_wallys_training(opp)       # Wally's Training (Supporter)
+
+# MR. STONE'S PROJECT (ex9-79, Supporter): search your deck for up to 2 basic Energy cards and put
+# them into your hand; OR search your discard pile for up to 2 basic Energy cards and put them into
+# your hand (deck version shuffles afterward).
+func effect_ex9_mr_stones_project(is_opponent: bool) -> void:
+	var from_discard := false
+	if is_opponent:
+		# CPU: prefer the deck (keeps the discard as a fallback resource).
+		from_discard = false
+	else:
+		from_discard = await gym1_prompt_yes_no(main.player_active_pokemon, "MR. STONE'S PROJECT", "Search your DECK or your DISCARD PILE for up to 2 basic Energy?", "DECK", "DISCARD") == false
+	var energy_filter = func(c): return c.metadata.get("supertype","") == "Energy" and "Basic" in c.metadata.get("subtypes", [])
+	if not from_discard:
+		var found = await main.card_ops.search_deck_to_hand(is_opponent, energy_filter, "MR. STONE'S PROJECT: CHOOSE UP TO 2 BASIC ENERGY", 2)
+		if main._should_bail(): return
+		await main.show_message("MR. STONE'S PROJECT! ADDED " + str(found.size()) + " ENERGY TO HAND!" if found.size() > 0 else "NO BASIC ENERGY IN DECK!")
+		if main._should_bail(): return
+	else:
+		var discard = main.opponent_discard_pile if is_opponent else main.player_discard_pile
+		var pool = discard.filter(energy_filter)
+		if pool.is_empty():
+			await main.show_message("MR. STONE'S PROJECT: NO BASIC ENERGY IN DISCARD PILE!")
+			if main._should_bail(): return
+			return
+		var taken := 0
+		for i in range(2):
+			pool = discard.filter(energy_filter)
+			if pool.is_empty(): break
+			var pick: card_object
+			if is_opponent:
+				pick = pool[0]
+			else:
+				pick = await main.card_ops.prompt_select_card(pool, "MR. STONE'S PROJECT", "Choose a basic Energy from your discard pile (or cancel to stop)", "TAKE", true, true)
+				if main._should_bail(): return
+				if pick == null: break
+			await main.card_ops.recover_to_hand(pick, is_opponent)
+			if main._should_bail(): return
+			taken += 1
+		await main.show_message("MR. STONE'S PROJECT! RECOVERED " + str(taken) + " ENERGY FROM THE DISCARD PILE!")
+		if main._should_bail(): return
+	print("TRAINER: Mr. Stone's Project")
+
+# SCOTT (ex9-84, Supporter): search your deck for up to 3 cards in any combination of Supporter and
+# Stadium cards and put them into your hand. Shuffle your deck afterward.
+func effect_ex9_scott(is_opponent: bool) -> void:
+	var filter_fn = func(c):
+		if c.metadata.get("supertype","") != "Trainer": return false
+		var st = c.metadata.get("subtypes", [])
+		return "Supporter" in st or "Stadium" in st
+	var found = await main.card_ops.search_deck_to_hand(is_opponent, filter_fn, "SCOTT: CHOOSE UP TO 3 SUPPORTER/STADIUM CARDS", 3)
+	if main._should_bail(): return
+	await main.show_message("SCOTT! ADDED " + str(found.size()) + " CARD(S) TO HAND!" if found.size() > 0 else "NO SUPPORTER/STADIUM CARDS IN DECK!")
+	if main._should_bail(): return
+	print("TRAINER: Scott — found ", found.size())
+
 	_trainer_dispatch["ex8-86"] = func(c, opp): await effect_ex8_energy_charge(opp)                  # Energy Charge (Item)
 	_trainer_dispatch["ex8-87"] = func(c, opp): await effect_ex8_lady_outing(opp)                    # Lady Outing (Supporter)
 	_trainer_dispatch["ex8-88"] = func(c, opp): await effect_ex8_master_ball(opp)                    # Master Ball (Item)
@@ -984,6 +1053,11 @@ func validate_trainer_can_be_played(card: card_object, is_opponent: bool) -> Str
 	# ex8 Commanding Aura (Hariyama ex ex8-100): opponent can't play Stadium cards
 	if "Stadium" in card.metadata.get("subtypes", []) and main.powers_and_bodies.is_ex8_commanding_aura_active(is_opponent):
 		return "Commanding Aura: you can't play Stadium cards!"
+
+	# ex9 Mystic Scale (Milotic ex ex9-96): while a Milotic ex is in play, no player can play a
+	# Technical Machine card.
+	if "Technical Machine" in card.metadata.get("subtypes", []) and main.powers_and_bodies.is_ex9_mystic_scale_in_play():
+		return "Mystic Scale: no player can play Technical Machine cards!"
 
 	# ex8 Disconnect (Manectric ex ex8-101): non-Supporter Trainer lock for one turn
 	if "Supporter" not in card.metadata.get("subtypes", []):
@@ -9195,7 +9269,7 @@ func ex1_lum_berry_check() -> void:
 			if p.current_hp <= 0: continue
 			var berry: card_object = null
 			for ac in p.attached_cards:
-				if ac.uid.to_lower() == "ex1-84":
+				if ac.uid.to_lower() in ["ex1-84", "ex9-78"]:
 					berry = ac
 					break
 			if berry == null: continue
@@ -9220,7 +9294,7 @@ func ex1_oran_berry_check() -> void:
 			if p.get_damage_counters() < 2: continue
 			var berry: card_object = null
 			for ac in p.attached_cards:
-				if ac.uid.to_lower() == "ex1-85":
+				if ac.uid.to_lower() in ["ex1-85", "ex9-80"]:
 					berry = ac
 					break
 			if berry == null: continue

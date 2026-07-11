@@ -3353,6 +3353,18 @@ func cpu_score_trainer_card(card: card_object) -> float:
 		"ex8-88": return 55.0  # Master Ball (Item): dig 7 for any Pokemon
 		"ex8-90": return 55.0  # Professor Cozmo's Discovery (Supporter): draw 2-3
 		"ex8-92": return 35.0  # Strength Charm (Tool): one-off +10 damage
+		# ── EX9 (EX Emerald) — mostly ex1/ex2 reprints, mirror those scores ──
+		"ex9-76": return _cpu_score_full_heal()          # Double Full Heal
+		"ex9-77": return 55.0                            # Lanette's Net Search (Supporter)
+		"ex9-78": return 30.0                            # Lum Berry (Tool): between-turn status cure
+		"ex9-79": return 55.0                            # Mr. Stone's Project (Supporter): up to 2 basic Energy
+		"ex9-80": return 30.0                            # Oran Berry (Tool): between-turn heal 20
+		"ex9-81": return 50.0                            # PokéNav
+		"ex9-82": return 65.0                            # Professor Birch (Supporter)
+		"ex9-83": return _cpu_score_ex2_rare_candy()     # Rare Candy
+		"ex9-84": return 50.0                            # Scott (Supporter): fetch Supporters/Stadiums
+		"ex9-85": return _cpu_score_ex2_wallys_training() # Wally's Training (Supporter)
+		# ex9-75 Battle Frontier (Stadium) uses the generic stadium-play heuristic.
 	return 0.0
 
 # MR. BRINEY'S COMPASSION (ex3-87): only valuable when the CPU has a damaged non-ex Pokemon worth

@@ -118,6 +118,12 @@ var player_ex8_bay_dance_pending: bool = false
 var opponent_ex8_bay_dance_pending: bool = false
 var player_ex8_bay_dance_active: bool = false
 var opponent_ex8_bay_dance_active: bool = false
+# EX3/EX9 Dragon Dance: side-wide "your Active Pokemon do +N damage next turn" buff. Stores the bonus
+# amount (0 = inactive); pending set the turn Dragon Dance is used, promoted to active next turn.
+var player_dragon_dance_pending: int = 0
+var opponent_dragon_dance_pending: int = 0
+var player_dragon_dance_active: int = 0
+var opponent_dragon_dance_active: int = 0
 
 # Mirror Move: stores the last attack result so Pidgeotto can copy it
 var last_attack_on_player: Dictionary = {}   # {"damage": int, "attack": Dictionary, "attacker_types": Array}
@@ -2695,9 +2701,20 @@ func inbetween_turn_checks(player_turn_just_ended: bool = true) -> void:
 		opponent_ex8_bay_dance_active = false
 		player_ex8_bay_dance_active = player_ex8_bay_dance_pending
 		player_ex8_bay_dance_pending = false
+	# EX3/EX9 Dragon Dance: same pending→active promotion as Bay Dance above.
+	if beginning_is_opponent:
+		player_dragon_dance_active = 0
+		opponent_dragon_dance_active = opponent_dragon_dance_pending
+		opponent_dragon_dance_pending = 0
+	else:
+		opponent_dragon_dance_active = 0
+		player_dragon_dance_active = player_dragon_dance_pending
+		player_dragon_dance_pending = 0
 	xxxxx_used_this_turn = false
 	# EX8 Sunbeam (Solrock): recompute Lunatone max-HP boost each turn transition.
 	powers_and_bodies.refresh_ex8_sunbeam_hp()
+	# EX9 Mystic Scale (Milotic ex): discard all Technical Machine cards in play while it's out.
+	powers_and_bodies.ex9_enforce_mystic_scale()
 	reset_field_pokemon_turn_flags(false)
 	reset_field_pokemon_turn_flags(true)
 
@@ -3943,6 +3960,10 @@ func calculate_final_damage(base_damage: int, attacking_types: Array, defending_
 			# If Conversion 1 changed this pokemon's weakness, use the override
 			if defending_pokemon.temporary_weakness != "":
 				weakness_type = defending_pokemon.temporary_weakness
+			# EX9 Dark Hole (Dusclops ex ex9-94 on your Bench): don't apply Darkness Weakness for your Pokemon.
+			if weakness_type == "Darkness" and powers_and_bodies.ex9_ignores_darkness_weakness(defending_pokemon):
+				modifiers_applied.append("DARK HOLE (NO DARKNESS WEAKNESS)")
+				continue
 			if weakness_type in attacking_types:
 				var value = weakness["value"]
 				if "×" in value:
@@ -4731,11 +4752,15 @@ func get_retreat_cost(pokemon: card_object) -> int:
 			if ab.get("name", "") == "Extreme Speed":
 				cost = max(0, cost - pokemon.attached_energies.size())
 			elif ab.get("name", "") == "Levitate":
-				# EX3 Vibrava (ex3-46): Retreat Cost is 0 while any basic Energy is attached
-				for e in pokemon.attached_energies:
-					if "Basic" in e.metadata.get("subtypes", []):
-						cost = 0
-						break
+				# EX3 Vibrava (ex3-46): 0 while any basic Energy attached. ex9 Claydol (ex9-24): 0 while
+				# ANY Energy attached — branch on the ability's own wording.
+				if "basic energy" in ab.get("text","").to_lower():
+					for e in pokemon.attached_energies:
+						if "Basic" in e.metadata.get("subtypes", []):
+							cost = 0
+							break
+				elif pokemon.attached_energies.size() > 0:
+					cost = 0
 			elif ab.get("name", "") == "Lightweight":
 				var grass_n = 0
 				for e in pokemon.attached_energies:

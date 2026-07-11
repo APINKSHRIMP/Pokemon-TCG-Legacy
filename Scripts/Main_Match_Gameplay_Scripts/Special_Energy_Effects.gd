@@ -100,6 +100,16 @@ func is_known_special_energy(card_name: String) -> bool:
 func can_attach_to(energy_card: card_object, target_pokemon: card_object) -> Dictionary:
 	var card_name = energy_card.metadata.get("name", "")
 
+	# EX9 Cursed Glare (Cacturne ex ex9-91): while it is a side's Active, the OTHER side can't attach any
+	# Special Energy (except Darkness and Metal) from hand to its Active Pokemon.
+	if "Special" in energy_card.metadata.get("subtypes", []) and card_name not in ["Darkness Energy", "Metal Energy"]:
+		var target_is_opp = target_pokemon.is_owner_opp(main)
+		var target_active = main.opponent_active_pokemon if target_is_opp else main.player_active_pokemon
+		if target_pokemon == target_active:
+			var opposing_active = main.player_active_pokemon if target_is_opp else main.opponent_active_pokemon
+			if opposing_active != null and opposing_active.has_ability("Cursed Glare") and not main.powers_and_bodies.is_power_blocked_by_status(opposing_active):
+				return {"allowed": false, "reason": "CURSED GLARE! CAN'T ATTACH SPECIAL ENERGY TO YOUR ACTIVE POKEMON!"}
+
 	# Pure Body (basep-53/np-30 Suicune): when attaching Water Energy to Suicune,
 	# Suicune must have at least 1 energy to discard — block if it has none.
 	if not main.powers_and_bodies.is_power_blocked(target_pokemon):

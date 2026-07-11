@@ -42,6 +42,7 @@ func _ensure_dispatch_ready() -> void:
 	_register_ex6_attacks()
 	_register_ex7_attacks()
 	_register_ex8_attacks()
+	_register_ex9_attacks()
 
 func _register_si1_attacks() -> void:
 	_attack_dispatch["rainbow wave"]    = func(atk, a, d, opp): await execute_rainbow_wave(a, opp);            await _attack_finish(false, 0,   atk, a.metadata.get("types",["Colorless"]), opp)
@@ -23990,3 +23991,287 @@ func execute_ex8_thunderous_blow(attacker: card_object, defender: card_object, i
 	if main._should_bail(): return dmg
 	await main.check_all_knockouts()
 	return dmg
+
+# ══════════════════════════════════════════════════════════════════════════════
+# EX9 (EX EMERALD) — mostly reprints; single-battle today but written against the
+# double-battle helpers (card_ops.get_active_pokemon / get_defending_pokemon).
+# ══════════════════════════════════════════════════════════════════════════════
+func _register_ex9_attacks() -> void:
+	# ── Collision overrides (registered last → win globally; branch to preserve other sets) ──
+	# Spinning Tail / Wide Laser / Hailstone: N damage to each of the opponent's Pokemon (W/R on Active,
+	# raw on Bench). Read N from the card (ex9 Swampert/Nosepass/Glalie = 10, ex2/ex7 = 20, Registeel ex = 20).
+	var hit_all = func(atk, a, d, opp):
+		var n = extract_number_before(atk.get("text","").to_lower(), "damage to each")
+		await execute_ex5_hit_all_opponent(a, opp, (n if n > 0 else 20), true)
+		await _attack_finish(false, 0, atk, a.metadata.get("types",["Colorless"]), opp)
+	_attack_dispatch["spinning tail"] = hit_all
+	_attack_dispatch["wide laser"]    = hit_all
+	_attack_dispatch["hailstone"]     = hit_all
+	# Super Slash: base + `more` if the Defending Pokemon is Evolved (ex9 Glalie = 40+20; ex2 Zangoose = 30+30).
+	_attack_dispatch["super slash"] = func(atk, a, d, opp):
+		var b = parse_attack_base_damage(atk)
+		var more = extract_number_before(atk.get("text","").to_lower(), "more damage")
+		if more <= 0: more = 30
+		var st = d.metadata.get("subtypes", [])
+		var dmg = b + (more if ("Stage 1" in st or "Stage 2" in st) else 0)
+		await gym1_hit_active(a, d, opp, dmg)
+		if main._should_bail(): return
+		await main.check_all_knockouts()
+		await _attack_finish(true, dmg, atk, a.metadata.get("types",["Colorless"]), opp)
+	# Skill Dive: snipe "N damage to that Pokemon" — read N (ex9 Swellow = 40, ex7 = 30).
+	_attack_dispatch["skill dive"] = func(atk, a, d, opp):
+		var n = extract_number_before(atk.get("text","").to_lower(), "damage to that")
+		await execute_ex3_choose_snipe(a, opp, (n if n > 0 else 30), false)
+		await _attack_finish(false, 0, atk, a.metadata.get("types",["Colorless"]), opp)
+	# Tail Shock: ex9 Manectric = base to Active + N to each opp Benched (no coin); neo3 Ampharos = coin-gated.
+	_attack_dispatch["tail shock"] = func(atk, a, d, opp):
+		if "flip a coin" in atk.get("text","").to_lower():
+			var b1 = parse_attack_base_damage(atk); await execute_neo3_tail_shock(a, d, opp, b1); await _attack_finish(true, b1, atk, a.metadata.get("types",["Colorless"]), opp)
+		else:
+			var b = parse_attack_base_damage(atk); var per = extract_number_before(atk.get("text","").to_lower(), "damage to each")
+			await execute_ex9_active_and_bench_each(a, d, opp, b, (per if per > 0 else 10)); await _attack_finish(true, b, atk, a.metadata.get("types",["Colorless"]), opp)
+	# Call for Friend: gym1 Misty/Brock = named Basic; ex9 Luvdisc = any Basic (put 1 on Bench).
+	_attack_dispatch["call for friend"] = func(atk, a, d, opp):
+		var tl = atk.get("text","").to_lower()
+		if "misty" in tl:   await execute_call_for_named_basic(a, opp, "Misty")
+		elif "brock" in tl: await execute_call_for_named_basic(a, opp, "Brock")
+		else:               await execute_call_for_pokemon(a, opp, [], "")
+		await _attack_finish(false, 0, atk, a.metadata.get("types",["Colorless"]), opp)
+	# Dragon Dance: side-wide "your Active Pokemon do +N damage next turn" buff (ex3 = 40, ex9 = 30). Read N.
+	_attack_dispatch["dragon dance"] = func(atk, a, d, opp):
+		if await handle_attack_confusion(a, opp): await _attack_finish(false, 0, atk, a.metadata.get("types",["Colorless"]), opp); return
+		if await handle_attack_blind(a, opp): await _attack_finish(false, 0, atk, a.metadata.get("types",["Colorless"]), opp); return
+		var n = extract_number_before(atk.get("text","").to_lower(), "more damage")
+		if n <= 0: n = 30
+		if opp: main.opponent_dragon_dance_pending = n
+		else: main.player_dragon_dance_pending = n
+		await main.show_message("DRAGON DANCE! YOUR ACTIVE POKEMON WILL DO " + str(n) + " MORE DAMAGE NEXT TURN!")
+		await _attack_finish(false, 0, atk, a.metadata.get("types",["Colorless"]), opp)
+
+	# ── Conditional-status attacks (must be dispatched — the generic parser would apply the status
+	#    unconditionally, ignoring the "if Evolved" gate) ──
+	# Warp Sounds (ex9-12 Chimecho) / Strange Scale (ex9-53 Luvdisc): base, Confuse only if Defender is Evolved.
+	_attack_dispatch["warp sounds"]   = func(atk, a, d, opp): var b=parse_attack_base_damage(atk); await execute_ex9_status_if_evolved(a, d, opp, b, "Confused"); await _attack_finish(b>0, b, atk, a.metadata.get("types",["Colorless"]), opp)
+	_attack_dispatch["strange scale"] = func(atk, a, d, opp): var b=parse_attack_base_damage(atk); await execute_ex9_status_if_evolved(a, d, opp, b, "Confused"); await _attack_finish(b>0, b, atk, a.metadata.get("types",["Colorless"]), opp)
+
+	# ── Conditional bonus damage (reuse execute_ex4_bonus_if with the card's own numbers) ──
+	_attack_dispatch["extra claws"] = func(atk, a, d, opp): var b=parse_attack_base_damage(atk); var dmg=await execute_ex4_bonus_if(a, d, opp, b, _ex4_more(atk), "is_ex"); await _attack_finish(true, dmg, atk, a.metadata.get("types",["Colorless"]), opp)
+	_attack_dispatch["extra flame"] = func(atk, a, d, opp): var b=parse_attack_base_damage(atk); var dmg=await execute_ex4_bonus_if(a, d, opp, b, _ex4_more(atk), "is_ex"); await _attack_finish(true, dmg, atk, a.metadata.get("types",["Colorless"]), opp)
+	_attack_dispatch["spike rend"]  = func(atk, a, d, opp): var b=parse_attack_base_damage(atk); var dmg=await execute_ex4_bonus_if(a, d, opp, b, _ex4_more(atk), "counters_ge_1"); await _attack_finish(true, dmg, atk, a.metadata.get("types",["Colorless"]), opp)
+	# Sky Kick (ex9-95 Medicham ex): base + `more` if the Defending Pokemon has Fighting Resistance.
+	_attack_dispatch["sky kick"]    = func(atk, a, d, opp): var b=parse_attack_base_damage(atk); var more=extract_number_before(atk.get("text","").to_lower(),"more damage"); var dmg=await execute_ex9_sky_kick(a, d, opp, b, (more if more>0 else 40)); await _attack_finish(true, dmg, atk, a.metadata.get("types",["Colorless"]), opp)
+
+	# ── Snipe / spread ──
+	# Snap Tail (ex9-30 Grumpig): choose 1 of opp's Pokemon, N damage (no W/R for Bench).
+	_attack_dispatch["snap tail"]   = func(atk, a, d, opp): var n=extract_number_before(atk.get("text","").to_lower(),"damage to that"); await execute_ex3_choose_snipe(a, opp, (n if n>0 else 10), false); await _attack_finish(false, 0, atk, a.metadata.get("types",["Colorless"]), opp)
+
+	# ── Novel ex9 attacks ──
+	# Eruption (ex9-14 Groudon 40, ex9-92 Camerupt ex 60): each player discards top card, +per per Energy discarded.
+	_attack_dispatch["eruption"]    = func(atk, a, d, opp): var b=parse_attack_base_damage(atk); var per=extract_number_before(atk.get("text","").to_lower(),"more damage for each"); var dmg=await execute_ex9_eruption(a, d, opp, b, (per if per>0 else 10)); await _attack_finish(true, dmg, atk, a.metadata.get("types",["Colorless"]), opp)
+	# Shadow Beam (ex9-94 Dusclops ex): put 2 damage counters on the Defender for each Energy on Dusclops ex.
+	_attack_dispatch["shadow beam"] = func(atk, a, d, opp): await execute_ex9_shadow_beam(a, d, opp); await _attack_finish(false, 0, atk, a.metadata.get("types",["Colorless"]), opp)
+	# Pure Power (ex9-95 Medicham ex): put 3 damage counters on the opponent's Pokemon in any way you like.
+	_attack_dispatch["pure power"]  = func(atk, a, d, opp): await execute_ex4_place_counters_guarded(a, opp, 3); await _attack_finish(false, 0, atk, a.metadata.get("types",["Colorless"]), opp)
+	# Power Short (ex9-97 Raichu ex): choose 1 opp Pokemon, 30 (+20 if it has a Poké-Power), no W/R.
+	_attack_dispatch["power short"] = func(atk, a, d, opp): await execute_ex9_power_short(a, opp); await _attack_finish(false, 0, atk, a.metadata.get("types",["Colorless"]), opp)
+	# Mend (ex9-99 Regirock ex): search discard for a Fighting Energy → attach to self, then heal 10.
+	_attack_dispatch["mend"]        = func(atk, a, d, opp): await execute_ex9_mend(a, opp); await _attack_finish(false, 0, atk, a.metadata.get("types",["Colorless"]), opp)
+	# Metal Crush (ex9-99 Regirock ex): base + `more` if Registeel ex is in play.
+	_attack_dispatch["metal crush"] = func(atk, a, d, opp):
+		var b=parse_attack_base_damage(atk); var more=extract_number_before(atk.get("text","").to_lower(),"more damage")
+		var dmg = b + ((more if more>0 else 20) if _ex9_named_in_play("Registeel ex") else 0)
+		await gym1_hit_active(a, d, opp, dmg); if main._should_bail(): return; await main.check_all_knockouts()
+		await _attack_finish(true, dmg, atk, a.metadata.get("types",["Colorless"]), opp)
+	# Iceberg Crush (ex9-98 Regice ex): base; if Regirock ex in play, flip → discard 1 Energy from Defender.
+	_attack_dispatch["iceberg crush"] = func(atk, a, d, opp): var b=parse_attack_base_damage(atk); await execute_ex9_iceberg_crush(a, d, opp, b); await _attack_finish(true, b, atk, a.metadata.get("types",["Colorless"]), opp)
+	# Block Signal (ex9-100 Registeel ex): base; if Regice ex in play, flip → Defender is Confused.
+	_attack_dispatch["block signal"]  = func(atk, a, d, opp): var b=parse_attack_base_damage(atk); await execute_ex9_block_signal(a, d, opp, b); await _attack_finish(true, b, atk, a.metadata.get("types",["Colorless"]), opp)
+	# Dragon Mist (ex9-90 Altaria ex) / Fastwave (ex9-93 Deoxys ex): damage isn't affected by Resistance,
+	# Poké-Powers, Poké-Bodies, or any other effects on the Defender — but Weakness STILL applies.
+	_attack_dispatch["dragon mist"] = func(atk, a, d, opp): var b=parse_attack_base_damage(atk); await execute_ex9_ignore_effects_keep_weakness(a, d, opp, b); await _attack_finish(true, b, atk, a.metadata.get("types",["Colorless"]), opp)
+	_attack_dispatch["fastwave"]    = func(atk, a, d, opp): var b=parse_attack_base_damage(atk); await execute_ex9_ignore_effects_keep_weakness(a, d, opp, b); await _attack_finish(true, b, atk, a.metadata.get("types",["Colorless"]), opp)
+
+# ── ex9 shared helpers ────────────────────────────────────────────────────────
+
+# True if a Pokemon with `name` is in play on either side.
+func _ex9_named_in_play(name: String) -> bool:
+	for p in main.card_ops.get_all_pokemon_in_play(false) + main.card_ops.get_all_pokemon_in_play(true):
+		if p != null and p.metadata.get("name","") == name:
+			return true
+	return false
+
+# Base damage, then apply `status` to the Defender only if it is an Evolved Pokemon (Warp Sounds, Strange Scale).
+func execute_ex9_status_if_evolved(attacker: card_object, defender: card_object, is_opponent: bool, base_damage: int, status: String) -> void:
+	if await handle_attack_confusion(attacker, is_opponent): return
+	if await handle_attack_blind(attacker, is_opponent): return
+	var st = defender.metadata.get("subtypes", []) if defender != null else []
+	var is_evolved = "Stage 1" in st or "Stage 2" in st
+	if base_damage > 0:
+		await gym1_hit_active(attacker, defender, is_opponent, base_damage)
+		if main._should_bail(): return
+	if is_evolved and defender != null and defender.current_hp > 0:
+		main.card_ops.apply_status(defender, status, not is_opponent)
+		await main.show_message("THE DEFENDING POKEMON IS NOW " + status.to_upper() + "!")
+		if main._should_bail(): return
+	await main.check_all_knockouts()
+
+# Tail Shock (ex9-7 Manectric): base to the Active, then `per` raw to each of the opponent's Benched Pokemon.
+func execute_ex9_active_and_bench_each(attacker: card_object, defender: card_object, is_opponent: bool, base_damage: int, per: int) -> void:
+	if await handle_attack_confusion(attacker, is_opponent): return
+	if await handle_attack_blind(attacker, is_opponent): return
+	await gym1_hit_active(attacker, defender, is_opponent, base_damage)
+	if main._should_bail(): return
+	var opp_bench = main.player_bench if is_opponent else main.opponent_bench
+	for p in opp_bench:
+		await main.card_ops.apply_bench_damage(p, per, not is_opponent)
+		if main._should_bail(): return
+	await main.check_all_knockouts()
+
+# Sky Kick (ex9-95 Medicham ex): base + `more` if the Defender has Fighting Resistance.
+func execute_ex9_sky_kick(attacker: card_object, defender: card_object, is_opponent: bool, base_damage: int, more: int) -> int:
+	if await handle_attack_confusion(attacker, is_opponent): return 0
+	if await handle_attack_blind(attacker, is_opponent): return 0
+	var has_fighting_res = false
+	if defender != null:
+		for r in defender.metadata.get("resistances", []):
+			if r.get("type","") == "Fighting":
+				has_fighting_res = true
+	var dmg = base_damage + (more if has_fighting_res else 0)
+	await gym1_hit_active(attacker, defender, is_opponent, dmg)
+	if main._should_bail(): return dmg
+	await main.check_all_knockouts()
+	return dmg
+
+# Eruption (ex9-14 Groudon / ex9-92 Camerupt ex): each player discards the top card of their deck; base + per
+# per Energy card discarded this way.
+func execute_ex9_eruption(attacker: card_object, defender: card_object, is_opponent: bool, base_damage: int, per: int) -> int:
+	if await handle_attack_confusion(attacker, is_opponent): return 0
+	if await handle_attack_blind(attacker, is_opponent): return 0
+	var energy_discarded = 0
+	for side in [is_opponent, not is_opponent]:
+		var deck = main.opponent_deck if side else main.player_deck
+		var discard = main.opponent_discard_pile if side else main.player_discard_pile
+		if not deck.is_empty():
+			var top = deck.pop_front()
+			top.current_location = "discard"
+			discard.append(top)
+			if top.metadata.get("supertype","") == "Energy":
+				energy_discarded += 1
+			main.update_deck_icon(side)
+			main.update_discard_pile_display(side)
+	if energy_discarded > 0:
+		await main.show_message("ERUPTION! " + str(energy_discarded) + " ENERGY DISCARDED!")
+		if main._should_bail(): return base_damage
+	var dmg = base_damage + per * energy_discarded
+	await gym1_hit_active(attacker, defender, is_opponent, dmg)
+	if main._should_bail(): return dmg
+	await main.check_all_knockouts()
+	return dmg
+
+# Shadow Beam (ex9-94 Dusclops ex): put 2 damage counters (20 HP, no W/R) on the Defender for each Energy on self.
+func execute_ex9_shadow_beam(attacker: card_object, defender: card_object, is_opponent: bool) -> void:
+	if await handle_attack_confusion(attacker, is_opponent): return
+	if await handle_attack_blind(attacker, is_opponent): return
+	var amount = 20 * attacker.attached_energies.size()
+	if defender != null and amount > 0 and not defender.is_invincible:
+		gym1_hit_raw(defender, amount, not is_opponent)
+		main.show_floating_label("-" + str(amount) + "HP", Vector2(530 if not is_opponent else 1030, 300), Color.RED, true)
+		await main.show_message("SHADOW BEAM! " + str(amount) + " DAMAGE!")
+		if main._should_bail(): return
+	await main.check_all_knockouts()
+
+# Power Short (ex9-97 Raichu ex): choose 1 of the opponent's Pokemon, 30 (no W/R for Bench); +20 if it has a Poké-Power.
+func execute_ex9_power_short(attacker: card_object, is_opponent: bool) -> void:
+	if await handle_attack_confusion(attacker, is_opponent): return
+	if await handle_attack_blind(attacker, is_opponent): return
+	var pool = _ex3_opp_snipe_pool(is_opponent, false)
+	if pool.is_empty():
+		await main.show_message("NO TARGET AVAILABLE!")
+		if main._should_bail(): return
+		return
+	var target: card_object
+	if is_opponent or pool.size() == 1:
+		# CPU: prefer a Poké-Power holder (more damage), else the lowest-HP target.
+		target = pool[0]
+		for c in pool:
+			var c_score = (100 if _ex8_has_ability_type(c, "Poké-Power") else 0) + (100 - c.current_hp)
+			var t_score = (100 if _ex8_has_ability_type(target, "Poké-Power") else 0) + (100 - target.current_hp)
+			if c_score > t_score: target = c
+	else:
+		target = await main.card_ops.choose_card(pool, is_opponent, "POWER SHORT", "Choose 1 of your opponent's Pokemon", "SELECT", false, func(c): return (100.0 if _ex8_has_ability_type(c, "Poké-Power") else 0.0) + (100.0 - c.current_hp))
+		if main._should_bail(): return
+		if target == null: target = pool[0]
+	var dmg = 30 + (20 if _ex8_has_ability_type(target, "Poké-Power") else 0)
+	await _ex3_hit_target(attacker, target, is_opponent, dmg)
+	if main._should_bail(): return
+	await main.check_all_knockouts()
+
+# Mend (ex9-99 Regirock ex): search discard for a Fighting Energy, attach to self; if attached, remove 1 counter.
+func execute_ex9_mend(attacker: card_object, is_opponent: bool) -> void:
+	if await handle_attack_confusion(attacker, is_opponent): return
+	if await handle_attack_blind(attacker, is_opponent): return
+	var before = attacker.attached_energies.size()
+	await execute_ex5_search_energy_to_self(attacker, is_opponent, "discard", "Fighting")
+	if main._should_bail(): return
+	if attacker.attached_energies.size() > before:
+		await main.card_ops.heal_pokemon(attacker, 10, is_opponent)
+		if main._should_bail(): return
+
+# Iceberg Crush (ex9-98 Regice ex): base; if Regirock ex is in play, flip → discard 1 Energy from the Defender.
+func execute_ex9_iceberg_crush(attacker: card_object, defender: card_object, is_opponent: bool, base_damage: int) -> void:
+	if await handle_attack_confusion(attacker, is_opponent): return
+	if await handle_attack_blind(attacker, is_opponent): return
+	await gym1_hit_active(attacker, defender, is_opponent, base_damage)
+	if main._should_bail(): return
+	if _ex9_named_in_play("Regirock ex") and defender != null and defender.current_hp > 0 and not defender.attached_energies.is_empty():
+		var coin = await main.flip_coin(false, is_opponent)
+		if main._should_bail(): return
+		if coin:
+			await main.card_ops.remove_one_energy(defender, not is_opponent, is_opponent)
+			if main._should_bail(): return
+	await main.check_all_knockouts()
+
+# Block Signal (ex9-100 Registeel ex): base; if Regice ex is in play, flip → the Defender is Confused.
+func execute_ex9_block_signal(attacker: card_object, defender: card_object, is_opponent: bool, base_damage: int) -> void:
+	if await handle_attack_confusion(attacker, is_opponent): return
+	if await handle_attack_blind(attacker, is_opponent): return
+	await gym1_hit_active(attacker, defender, is_opponent, base_damage)
+	if main._should_bail(): return
+	if _ex9_named_in_play("Regice ex") and defender != null and defender.current_hp > 0:
+		var coin = await main.flip_coin(false, is_opponent)
+		if main._should_bail(): return
+		if coin:
+			main.card_ops.apply_status(defender, "Confused", not is_opponent)
+			await main.show_message("THE DEFENDING POKEMON IS NOW CONFUSED!")
+			if main._should_bail(): return
+	await main.check_all_knockouts()
+
+# Dragon Mist / Fastwave: apply Weakness, but ignore Resistance and all Poké-Powers, Poké-Bodies and other
+# effects on the Defending Pokemon (dealt flat, bypassing the defender-side reductions in calculate_final_damage).
+func execute_ex9_ignore_effects_keep_weakness(attacker: card_object, defender: card_object, is_opponent: bool, base_damage: int) -> void:
+	if attacker == null or defender == null: return
+	if await handle_attack_confusion(attacker, is_opponent): return
+	if await handle_attack_blind(attacker, is_opponent): return
+	var damage = base_damage
+	# Apply Weakness only (respect Conversion 1 temporary override), using the attacker's effective types.
+	var attacking_types = attacker.get_effective_types()
+	for weakness in defender.metadata.get("weaknesses", []):
+		var wtype = weakness.get("type","")
+		if defender.temporary_weakness != "":
+			wtype = defender.temporary_weakness
+		if wtype in attacking_types:
+			var value = str(weakness.get("value",""))
+			if "×" in value:
+				damage = damage * int(value.replace("×","").strip_edges())
+			elif "+" in value:
+				damage = damage + int(value.replace("+","").strip_edges())
+	if main.check_defender_invincible(defender, !is_opponent):
+		return
+	damage = main.apply_defender_no_damage_shield(defender, damage, !is_opponent)
+	var defender_label_pos = Vector2(530, 300) if is_opponent else Vector2(1030, 300)
+	main.show_floating_label("-" + str(damage) + "HP", defender_label_pos, Color.WHITE, true)
+	defender.current_hp = max(0, defender.current_hp - damage)
+	main.display_hp_circles_above_align(defender, !is_opponent)
+	await main.show_message(str(damage) + " DAMAGE! (IGNORES DEFENDER EFFECTS)")
+	if main._should_bail(): return
+	await main.check_all_knockouts()
