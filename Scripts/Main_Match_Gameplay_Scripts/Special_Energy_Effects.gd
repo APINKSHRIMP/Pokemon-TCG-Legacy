@@ -81,6 +81,12 @@ func get_energy_types_provided(card_name: String) -> Array:
 			# holder context in Main.get_energy_provided_by_card (this fallback is used when no holder
 			# is known, e.g. deck-building previews).
 			return ["Colorless"]
+		"Cyclone Energy":
+			# ecard3/ex10/ex16: provides 1 Colorless (on-attach forced switch handled in apply_on_attach_effects).
+			return ["Colorless"]
+		"Warp Energy":
+			# ecard2/ex10/ex16: provides 1 Colorless (on-attach self-switch handled in apply_on_attach_effects).
+			return ["Colorless"]
 		# --- FUTURE SETS: Add new special energies below ---
 		# "Boost Energy":
 		#	return ["Colorless", "Colorless", "Colorless"]
@@ -233,6 +239,56 @@ func apply_on_attach_effects(energy_card: card_object, target_pokemon: card_obje
 				await main.show_message("HEAL ENERGY! REMOVED 1 DAMAGE COUNTER AND ALL SPECIAL CONDITIONS FROM " + pokemon_name + "!")
 				if main._should_bail(): return true
 			return applied
+
+		"Warp Energy":
+			# When attached from hand, you may switch the Pokemon it's attached to with 1 of your
+			# Benched Pokemon. (CPU skips this situational switch.)
+			if is_opponent: return false
+			var w_bench = main.player_bench
+			if w_bench.is_empty(): return false
+			var w_yes = await main.trainer_effects.gym1_prompt_yes_no(target_pokemon, "WARP ENERGY", "Switch " + pokemon_name + " with a Benched Pokemon?", "YES", "NO")
+			if main._should_bail(): return true
+			if not w_yes: return false
+			if target_pokemon == main.player_active_pokemon:
+				await main.attack_effects.apply_self_switch(target_pokemon, false)
+				if main._should_bail(): return true
+			else:
+				var old_active = main.player_active_pokemon
+				var idx = w_bench.find(target_pokemon)
+				main.player_active_pokemon = target_pokemon
+				target_pokemon.current_location = "active"
+				if old_active != null and idx != -1:
+					old_active.current_location = "bench"
+					w_bench[idx] = old_active
+				main.display_pokemon(false)
+			await main.show_message("WARP ENERGY! SWITCHED YOUR ACTIVE POKEMON!")
+			if main._should_bail(): return true
+			return true
+
+		"Cyclone Energy":
+			# When attached from hand to your Active Pokemon, you may switch 1 of your opponent's
+			# Benched Pokemon with their Active Pokemon (you choose). (CPU skips.)
+			if is_opponent: return false
+			if target_pokemon != main.player_active_pokemon: return false
+			var c_bench = main.opponent_bench
+			if c_bench.is_empty(): return false
+			var c_yes = await main.trainer_effects.gym1_prompt_yes_no(target_pokemon, "CYCLONE ENERGY", "Switch one of the opponent's Benched Pokemon into their Active spot?", "YES", "NO")
+			if main._should_bail(): return true
+			if not c_yes: return false
+			var chosen = await main.card_ops.choose_card(c_bench, false, "CYCLONE ENERGY", "Choose the opponent's Benched Pokemon to switch in", "SELECT", false)
+			if main._should_bail(): return true
+			if chosen == null: return false
+			var old_opp = main.opponent_active_pokemon
+			var c_idx = c_bench.find(chosen)
+			main.opponent_active_pokemon = chosen
+			chosen.current_location = "active"
+			if old_opp != null and c_idx != -1:
+				old_opp.current_location = "bench"
+				c_bench[c_idx] = old_opp
+			main.display_pokemon(true)
+			await main.show_message("CYCLONE ENERGY! THE OPPONENT'S " + chosen.metadata.get("name","").to_upper() + " IS NOW ACTIVE!")
+			if main._should_bail(): return true
+			return true
 
 		# --- FUTURE SETS: Add on-attach effects below ---
 		# "Boost Energy":

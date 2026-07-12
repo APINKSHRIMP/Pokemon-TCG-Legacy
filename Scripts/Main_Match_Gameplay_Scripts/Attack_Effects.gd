@@ -43,6 +43,7 @@ func _ensure_dispatch_ready() -> void:
 	_register_ex7_attacks()
 	_register_ex8_attacks()
 	_register_ex9_attacks()
+	_register_ex10_attacks()
 
 func _register_si1_attacks() -> void:
 	_attack_dispatch["rainbow wave"]    = func(atk, a, d, opp): await execute_rainbow_wave(a, opp);            await _attack_finish(false, 0,   atk, a.metadata.get("types",["Colorless"]), opp)
@@ -14123,10 +14124,10 @@ func execute_np_lightning_wing(attacker: card_object, defender: card_object, is_
 	print("ATTACK EXECUTED: Lightning Wing")
 
 # AQUA SUPPLY (np-37 Kyogre ex): 30 damage + attach a basic Energy from hand to any Pokémon
-func execute_np_aqua_supply(attacker: card_object, defender: card_object, is_opponent: bool) -> void:
+func execute_np_aqua_supply(attacker: card_object, defender: card_object, is_opponent: bool, base_damage: int = 30) -> void:
 	if await handle_attack_confusion(attacker, is_opponent): return
 	if await handle_attack_blind(attacker, is_opponent): return
-	await main.display_and_apply_attack_damage(attacker, defender, 30, is_opponent)
+	await main.display_and_apply_attack_damage(attacker, defender, base_damage, is_opponent)
 	if main._should_bail(): return
 	var hand = main.opponent_hand if is_opponent else main.player_hand
 	var basic_energies: Array = []
@@ -24275,3 +24276,1424 @@ func execute_ex9_ignore_effects_keep_weakness(attacker: card_object, defender: c
 	await main.show_message(str(damage) + " DAMAGE! (IGNORES DEFENDER EFFECTS)")
 	if main._should_bail(): return
 	await main.check_all_knockouts()
+
+# ════════════════════════════════════════════════════════════════════════════════════════════════
+# ex10 (EX Unseen Forces) — registered LAST so ex10 wins globally. Single-battle today, written
+# against the double-battle helpers (card_ops.get_active/defending/all_pokemon_in_play). Collision
+# overrides capture the previously-registered lambda and delegate to it for non-ex10 cards.
+# ════════════════════════════════════════════════════════════════════════════════════════════════
+func _register_ex10_attacks() -> void:
+	var _tl = func(atk): return atk.get("text","").to_lower()
+
+	# ── Collision overrides (branch on ex10 uid; delegate everything else to the prior lambda) ──
+	var _pv_aqua_supply = _attack_dispatch.get("aqua supply")
+	_attack_dispatch["aqua supply"] = func(atk, a, d, opp):
+		if a.uid.begins_with("ex10-"):
+			var b = parse_attack_base_damage(atk)
+			await execute_np_aqua_supply(a, d, opp, b)
+			await _attack_finish(true, b, atk, a.metadata.get("types",["Colorless"]), opp)
+		elif _pv_aqua_supply: await _pv_aqua_supply.call(atk, a, d, opp)
+
+	var _pv_attract = _attack_dispatch.get("attract current")
+	_attack_dispatch["attract current"] = func(atk, a, d, opp):
+		if a.uid.begins_with("ex10-"):
+			var b = parse_attack_base_damage(atk)
+			await execute_ex10_attract_current(a, d, opp, b)
+			await _attack_finish(true, b, atk, a.metadata.get("types",["Colorless"]), opp)
+		elif _pv_attract: await _pv_attract.call(atk, a, d, opp)
+
+	var _pv_beatdown = _attack_dispatch.get("beatdown")
+	_attack_dispatch["beatdown"] = func(atk, a, d, opp):
+		if a.uid.begins_with("ex10-"):
+			var b = parse_attack_base_damage(atk); var more = extract_number_before(_tl.call(atk), "more damage")
+			var dmg = await execute_ex10_beatdown(a, d, opp, b, (more if more > 0 else 30))
+			await _attack_finish(true, dmg, atk, a.metadata.get("types",["Colorless"]), opp)
+		elif _pv_beatdown: await _pv_beatdown.call(atk, a, d, opp)
+
+	var _pv_data = _attack_dispatch.get("data retrieval")
+	_attack_dispatch["data retrieval"] = func(atk, a, d, opp):
+		if a.uid.begins_with("ex10-"):
+			await execute_ex6_data_retrieval(a, opp, 8)
+			await _attack_finish(false, 0, atk, a.metadata.get("types",["Colorless"]), opp)
+		elif _pv_data: await _pv_data.call(atk, a, d, opp)
+
+	var _pv_elem = _attack_dispatch.get("elemental blast")
+	_attack_dispatch["elemental blast"] = func(atk, a, d, opp):
+		if a.uid.begins_with("ex10-"):
+			var b = parse_attack_base_damage(atk)
+			await execute_ex10_elemental_blast(a, d, opp, b)
+			await _attack_finish(true, b, atk, a.metadata.get("types",["Colorless"]), opp)
+		elif _pv_elem: await _pv_elem.call(atk, a, d, opp)
+
+	var _pv_enabs = _attack_dispatch.get("energy absorption")
+	_attack_dispatch["energy absorption"] = func(atk, a, d, opp):
+		if a.uid.begins_with("ex10-"):
+			await execute_energy_absorption(a, opp, 3)
+			await _attack_finish(false, 0, atk, a.metadata.get("types",["Colorless"]), opp)
+		elif _pv_enabs: await _pv_enabs.call(atk, a, d, opp)
+
+	var _pv_mixup = _attack_dispatch.get("mix-up")
+	_attack_dispatch["mix-up"] = func(atk, a, d, opp):
+		if a.uid.begins_with("ex10-"):
+			var b = parse_attack_base_damage(atk)
+			await execute_ex10_discard_opp_top(a, d, opp, b, 1)
+			await _attack_finish(true, b, atk, a.metadata.get("types",["Colorless"]), opp)
+		elif _pv_mixup: await _pv_mixup.call(atk, a, d, opp)
+
+	var _pv_rainbow = _attack_dispatch.get("rainbow burn")
+	_attack_dispatch["rainbow burn"] = func(atk, a, d, opp):
+		if a.uid.begins_with("ex10-"):
+			var b = parse_attack_base_damage(atk); var per = extract_number_before(_tl.call(atk), "more damage for each")
+			var dmg = await execute_ex10_rainbow_burn(a, d, opp, b, (per if per > 0 else 20))
+			await _attack_finish(true, dmg, atk, a.metadata.get("types",["Colorless"]), opp)
+		elif _pv_rainbow: await _pv_rainbow.call(atk, a, d, opp)
+
+	var _pv_spintail = _attack_dispatch.get("spinning tail")
+	_attack_dispatch["spinning tail"] = func(atk, a, d, opp):
+		# ex10 Yanma: flip a coin; if heads, N damage to EACH of the opponent's Pokemon (coin-gated).
+		if a.uid.begins_with("ex10-"):
+			var n = extract_number_before(_tl.call(atk), "damage to each")
+			await execute_ex10_coin_hit_all_opp(a, opp, (n if n > 0 else 20))
+			await _attack_finish(false, 0, atk, a.metadata.get("types",["Colorless"]), opp)
+		elif _pv_spintail: await _pv_spintail.call(atk, a, d, opp)
+
+	var _pv_surprise = _attack_dispatch.get("surprise")
+	_attack_dispatch["surprise"] = func(atk, a, d, opp):
+		if a.uid.begins_with("ex10-"):
+			var b = parse_attack_base_damage(atk)
+			await execute_ex10_surprise_shuffle(a, d, opp, b)
+			await _attack_finish(true, b, atk, a.metadata.get("types",["Colorless"]), opp)
+		elif _pv_surprise: await _pv_surprise.call(atk, a, d, opp)
+
+	var _pv_swallow = _attack_dispatch.get("swallow up")
+	_attack_dispatch["swallow up"] = func(atk, a, d, opp):
+		# ex10 Politoed ex: base, but does `instead` total if the Defender has fewer remaining HP.
+		if a.uid.begins_with("ex10-"):
+			var b = parse_attack_base_damage(atk); var instead = extract_number_before(_tl.call(atk), "damage instead")
+			var bonus = max(0, (instead if instead > 0 else b) - b)
+			var dmg = await execute_ex5_swallow_up(a, d, opp, b, bonus)
+			await _attack_finish(true, dmg, atk, a.metadata.get("types",["Colorless"]), opp)
+		elif _pv_swallow: await _pv_swallow.call(atk, a, d, opp)
+
+	var _pv_telekinesis = _attack_dispatch.get("telekinesis")
+	_attack_dispatch["telekinesis"] = func(atk, a, d, opp):
+		# ex10 Natu (10) / Xatu (30): choose 1 of opp's Pokemon, damage isn't affected by W/R.
+		if a.uid.begins_with("ex10-"):
+			var b = parse_attack_base_damage(atk)
+			await execute_snipe_no_wr(a, d, opp, b, false)
+			await _attack_finish(true, b, atk, a.metadata.get("types",["Colorless"]), opp)
+		elif _pv_telekinesis: await _pv_telekinesis.call(atk, a, d, opp)
+
+	var _pv_copy = _attack_dispatch.get("copy")
+	_attack_dispatch["copy"] = func(atk, a, d, opp):
+		# ex10 Sudowoodo: copy 1 of the Defender's attacks, but ONLY if Sudowoodo can pay its Energy cost.
+		if a.uid.begins_with("ex10-"):
+			await execute_ex10_copy(a, d, opp, atk)
+		elif _pv_copy: await _pv_copy.call(atk, a, d, opp)
+
+	# ── Reuse of shared helpers ──
+	# Magnetic Trip (Elekid): base + Confuse if Low Pressure System stadium is in play.
+	_attack_dispatch["magnetic trip"] = func(atk, a, d, opp): var b=parse_attack_base_damage(atk); await execute_ex5_stadium_status(a, d, opp, b, StadiumIds.LOW_PRESSURE_SYSTEM, "Confused"); await _attack_finish(true, b, atk, a.metadata.get("types",["Colorless"]), opp)
+	# Screechy Voice (Stantler): base + Confuse only if the Defender is Evolved.
+	_attack_dispatch["screechy voice"] = func(atk, a, d, opp): var b=parse_attack_base_damage(atk); await execute_ex9_status_if_evolved(a, d, opp, b, "Confused"); await _attack_finish(b>0, b, atk, a.metadata.get("types",["Colorless"]), opp)
+	# Upward Kick (Hitmontop): base + `more` if the Defender already has at least 2 damage counters.
+	_attack_dispatch["upward kick"] = func(atk, a, d, opp): var b=parse_attack_base_damage(atk); var dmg=await execute_ex4_bonus_if(a, d, opp, b, _ex4_more(atk), "counters_ge_2"); await _attack_finish(true, dmg, atk, a.metadata.get("types",["Colorless"]), opp)
+	# Splatter (Totodile): choose 1 of opp's Pokemon, N damage, no W/R (same as Telekinesis).
+	_attack_dispatch["splatter"] = func(atk, a, d, opp): var b=parse_attack_base_damage(atk); await execute_snipe_no_wr(a, d, opp, b, false); await _attack_finish(true, b, atk, a.metadata.get("types",["Colorless"]), opp)
+	# Stretch Kick (Hitmonlee): 10 to 1 of opp's BENCHED Pokemon (no W/R).
+	_attack_dispatch["stretch kick"] = func(atk, a, d, opp): await execute_ex3_choose_snipe(a, opp, 10, true); await _attack_finish(false, 0, atk, a.metadata.get("types",["Colorless"]), opp)
+
+	# ── Novel ex10 attacks ──
+	_attack_dispatch["aeroblast"]       = func(atk, a, d, opp): var b=parse_attack_base_damage(atk); var per=extract_number_before(_tl.call(atk),"more damage for each"); var dmg=await execute_ex10_aeroblast(a, d, opp, b, (per if per>0 else 20)); await _attack_finish(true, dmg, atk, a.metadata.get("types",["Colorless"]), opp)
+	_attack_dispatch["aftermath"]       = func(atk, a, d, opp): var b=parse_attack_base_damage(atk); var dmg=await execute_ex10_aftermath(a, d, opp, b); await _attack_finish(true, dmg, atk, a.metadata.get("types",["Colorless"]), opp)
+	_attack_dispatch["bouncy move"]     = func(atk, a, d, opp): var b=parse_attack_base_damage(atk); var dmg=await execute_ex10_bouncy_move(a, d, opp, b); await _attack_finish(true, dmg, atk, a.metadata.get("types",["Colorless"]), opp)
+	_attack_dispatch["cross wind"]      = func(atk, a, d, opp): var b=parse_attack_base_damage(atk); await execute_ex10_star_if_behind(a, d, opp, b, "discard_all_energy"); await _attack_finish(true, b, atk, a.metadata.get("types",["Colorless"]), opp)
+	_attack_dispatch["detonation"]      = func(atk, a, d, opp): var b=parse_attack_base_damage(atk); await execute_ex10_star_if_behind(a, d, opp, b, "discard_10"); await _attack_finish(true, b, atk, a.metadata.get("types",["Colorless"]), opp)
+	_attack_dispatch["meta voltage"]    = func(atk, a, d, opp): var b=parse_attack_base_damage(atk); await execute_ex10_star_if_behind(a, d, opp, b, "hit_own_40"); await _attack_finish(true, b, atk, a.metadata.get("types",["Colorless"]), opp)
+	_attack_dispatch["cry for help"]    = func(atk, a, d, opp): await execute_ex10_cry_for_help(a, opp); await _attack_finish(false, 0, atk, a.metadata.get("types",["Colorless"]), opp)
+	_attack_dispatch["derail"]          = func(atk, a, d, opp): var b=parse_attack_base_damage(atk); await execute_ex10_derail(a, d, opp, b); await _attack_finish(true, b, atk, a.metadata.get("types",["Colorless"]), opp)
+	_attack_dispatch["double attack"]   = func(atk, a, d, opp): await execute_ex10_double_attack(a, opp); await _attack_finish(false, 0, atk, a.metadata.get("types",["Colorless"]), opp)
+	_attack_dispatch["double shock"]    = func(atk, a, d, opp): await execute_ex10_double_shock(a, d, opp); await _attack_finish(true, 0, atk, a.metadata.get("types",["Colorless"]), opp)
+	_attack_dispatch["double tack"]     = func(atk, a, d, opp): await execute_ex10_hit_each_defending(a, opp, 20); await _attack_finish(true, 20, atk, a.metadata.get("types",["Colorless"]), opp)
+	_attack_dispatch["freeze light"]    = func(atk, a, d, opp): await execute_ex10_freeze_light(a, d, opp); await _attack_finish(false, 0, atk, a.metadata.get("types",["Colorless"]), opp)
+	_attack_dispatch["full bloom"]      = func(atk, a, d, opp): var b=parse_attack_base_damage(atk); var dmg=await execute_ex10_full_bloom(a, d, opp, b, _ex5_more(atk)); await _attack_finish(true, dmg, atk, a.metadata.get("types",["Colorless"]), opp)
+	_attack_dispatch["green blast"]     = func(atk, a, d, opp): var b=parse_attack_base_damage(atk); var dmg=await execute_ex10_green_blast(a, d, opp, b); await _attack_finish(true, dmg, atk, a.metadata.get("types",["Colorless"]), opp)
+	_attack_dispatch["green dance"]     = func(atk, a, d, opp): await execute_ex10_green_dance(a, opp); await _attack_finish(false, 0, atk, a.metadata.get("types",["Colorless"]), opp)
+	_attack_dispatch["grand loop"]      = func(atk, a, d, opp): await execute_ex10_grand_loop(a, opp); await _attack_finish(false, 0, atk, a.metadata.get("types",["Colorless"]), opp)
+	_attack_dispatch["heavy punch"]     = func(atk, a, d, opp): await execute_ex10_per_opp_bench(a, d, opp, 10); await _attack_finish(true, 0, atk, a.metadata.get("types",["Colorless"]), opp)
+	_attack_dispatch["desperate punch"] = func(atk, a, d, opp): await execute_ex10_desperate_punch(a, d, opp, 10); await _attack_finish(true, 0, atk, a.metadata.get("types",["Colorless"]), opp)
+	_attack_dispatch["healing milk"]    = func(atk, a, d, opp): await execute_ex10_healing_milk(a, opp); await _attack_finish(false, 0, atk, a.metadata.get("types",["Colorless"]), opp)
+	_attack_dispatch["hyper healing"]   = func(atk, a, d, opp): await execute_ex10_hyper_healing(a, opp); await _attack_finish(false, 0, atk, a.metadata.get("types",["Colorless"]), opp)
+	_attack_dispatch["kindle"]          = func(atk, a, d, opp): var b=parse_attack_base_damage(atk); await execute_ex10_kindle(a, d, opp, b); await _attack_finish(true, b, atk, a.metadata.get("types",["Colorless"]), opp)
+	_attack_dispatch["losing control"]  = func(atk, a, d, opp): var b=parse_attack_base_damage(atk); await execute_ex10_self_mill(a, d, opp, b, 3); await _attack_finish(true, b, atk, a.metadata.get("types",["Colorless"]), opp)
+	_attack_dispatch["mudslide"]        = func(atk, a, d, opp): await execute_ex10_mudslide(a, opp); await _attack_finish(false, 0, atk, a.metadata.get("types",["Colorless"]), opp)
+	_attack_dispatch["multi burn"]      = func(atk, a, d, opp): var b=parse_attack_base_damage(atk); var dmg=await execute_ex10_multi_type(a, d, opp, b, _ex5_more(atk), "Burned"); await _attack_finish(true, dmg, atk, a.metadata.get("types",["Colorless"]), opp)
+	_attack_dispatch["multi pulse"]     = func(atk, a, d, opp): var b=parse_attack_base_damage(atk); var dmg=await execute_ex10_multi_type(a, d, opp, b, _ex5_more(atk), "Confused"); await _attack_finish(true, dmg, atk, a.metadata.get("types",["Colorless"]), opp)
+	_attack_dispatch["multi bubble"]    = func(atk, a, d, opp): var b=parse_attack_base_damage(atk); var dmg=await execute_ex10_multi_type(a, d, opp, b, _ex5_more(atk), "Asleep"); await _attack_finish(true, dmg, atk, a.metadata.get("types",["Colorless"]), opp)
+	_attack_dispatch["night song"]      = func(atk, a, d, opp): await execute_ex10_night_song(a, d, opp); await _attack_finish(false, 0, atk, a.metadata.get("types",["Colorless"]), opp)
+	_attack_dispatch["reactive poison"] = func(atk, a, d, opp): var b=parse_attack_base_damage(atk); var per=extract_number_before(_tl.call(atk),"more damage for each"); var dmg=await execute_ex10_reactive_poison(a, d, opp, b, (per if per>0 else 30)); await _attack_finish(true, dmg, atk, a.metadata.get("types",["Colorless"]), opp)
+	_attack_dispatch["pop"]             = func(atk, a, d, opp): var b=parse_attack_base_damage(atk); await execute_ex10_pop(a, d, opp, b); await _attack_finish(true, b, atk, a.metadata.get("types",["Colorless"]), opp)
+	_attack_dispatch["blown kiss"]      = func(atk, a, d, opp): await execute_ex4_place_counters_guarded(a, opp, 1); await _attack_finish(false, 0, atk, a.metadata.get("types",["Colorless"]), opp)
+	_attack_dispatch["push away"]       = func(atk, a, d, opp): var b=parse_attack_base_damage(atk); await execute_ex10_push_away(a, d, opp, b); await _attack_finish(true, b, atk, a.metadata.get("types",["Colorless"]), opp)
+	_attack_dispatch["time trap"]       = func(atk, a, d, opp): var b=parse_attack_base_damage(atk); await execute_ex10_time_trap(a, d, opp, b); await _attack_finish(true, b, atk, a.metadata.get("types",["Colorless"]), opp)
+	_attack_dispatch["miraculous thunder"] = func(atk, a, d, opp): var b=parse_attack_base_damage(atk); await execute_ex10_miraculous_thunder(a, d, opp, b); await _attack_finish(true, b, atk, a.metadata.get("types",["Colorless"]), opp)
+	_attack_dispatch["spider trap"]     = func(atk, a, d, opp): await execute_ex10_spider_trap(a, d, opp); await _attack_finish(false, 0, atk, a.metadata.get("types",["Colorless"]), opp)
+	_attack_dispatch["spiky shell"]     = func(atk, a, d, opp): var b=parse_attack_base_damage(atk); await execute_ex10_spiky_shell(a, d, opp, b, 3); await _attack_finish(true, b, atk, a.metadata.get("types",["Colorless"]), opp)
+	_attack_dispatch["spiral leaf"]     = func(atk, a, d, opp): await execute_ex10_spiral_leaf(a, opp); await _attack_finish(false, 0, atk, a.metadata.get("types",["Colorless"]), opp)
+	_attack_dispatch["standing by"]     = func(atk, a, d, opp): await execute_ex10_standing_by(a, opp); await _attack_finish(false, 0, atk, a.metadata.get("types",["Colorless"]), opp)
+	_attack_dispatch["pulse blast"]     = func(atk, a, d, opp): var dmg=await execute_ex10_pulse_blast(a, d, opp, parse_attack_base_damage(atk)); await _attack_finish(true, dmg, atk, a.metadata.get("types",["Colorless"]), opp)
+	_attack_dispatch["twin play"]       = func(atk, a, d, opp): await execute_ex10_twin_play(a, opp); await _attack_finish(false, 0, atk, a.metadata.get("types",["Colorless"]), opp)
+	_attack_dispatch["upward lick"]     = func(atk, a, d, opp): await execute_ex10_upward_lick(a, opp); await _attack_finish(false, 0, atk, a.metadata.get("types",["Colorless"]), opp)
+	_attack_dispatch["punch and run"]   = func(atk, a, d, opp): var b=parse_attack_base_damage(atk); await execute_ex10_hit_then_self_switch(a, d, opp, b); await _attack_finish(true, b, atk, a.metadata.get("types",["Colorless"]), opp)
+	_attack_dispatch["burning turn"]    = func(atk, a, d, opp): var b=parse_attack_base_damage(atk); await execute_ex10_hit_then_self_switch(a, d, opp, b); await _attack_finish(true, b, atk, a.metadata.get("types",["Colorless"]), opp)
+	_attack_dispatch["lightning turn"]  = func(atk, a, d, opp): var b=parse_attack_base_damage(atk); await execute_ex10_hit_then_self_switch(a, d, opp, b); await _attack_finish(true, b, atk, a.metadata.get("types",["Colorless"]), opp)
+	_attack_dispatch["splashing turn"]  = func(atk, a, d, opp): var b=parse_attack_base_damage(atk); await execute_ex10_hit_then_self_switch(a, d, opp, b); await _attack_finish(true, b, atk, a.metadata.get("types",["Colorless"]), opp)
+	_attack_dispatch["scramble trip"]   = func(atk, a, d, opp): var b=parse_attack_base_damage(atk); var dmg=await execute_ex10_scramble_trip(a, d, opp, b, _ex5_more(atk)); await _attack_finish(true, dmg, atk, a.metadata.get("types",["Colorless"]), opp)
+	_attack_dispatch["black cry"]       = func(atk, a, d, opp): var b=parse_attack_base_damage(atk); await execute_ex10_black_cry(a, d, opp, b); await _attack_finish(true, b, atk, a.metadata.get("types",["Colorless"]), opp)
+
+	# ── Unown Hidden Power (28 letters, dispatched by UID; delegate non-ex10 to the neo2 handler) ──
+	var _pv_hidden = _attack_dispatch.get("hidden power")
+	_attack_dispatch["hidden power"] = func(atk, a, d, opp):
+		if a.uid.begins_with("ex10-"):
+			await execute_ex10_hidden_power(a, d, opp, atk)
+		elif _pv_hidden: await _pv_hidden.call(atk, a, d, opp)
+
+# ── ex10 shared helpers ──────────────────────────────────────────────────────────────────────
+
+# Discard energy of a given type (or "" = any) from a Pokemon; count = -1 discards all matching.
+# Returns how many were discarded. Uses the canonical energy-discard (respects Recycle/Ecogym).
+func _ex10_discard_energy_from_self(pokemon: card_object, is_opp: bool, type_name: String, count: int) -> int:
+	var to_discard: Array = []
+	for e in pokemon.attached_energies:
+		if type_name == "" or type_name in main.get_energy_provided_by_card(e):
+			to_discard.append(e)
+			if count > 0 and to_discard.size() >= count: break
+	for e in to_discard:
+		pokemon.attached_energies.erase(e)
+		main.card_ops.discard_energy_from_pokemon(e, is_opp)
+	if not to_discard.is_empty():
+		main.display_active_pokemon_energies(is_opp)
+		main.update_discard_pile_display(is_opp)
+	return to_discard.size()
+
+# Count distinct basic-Energy types attached to a Pokemon (Colorless excluded).
+func _ex10_distinct_basic_types(pokemon: card_object) -> int:
+	var seen := {}
+	for e in pokemon.attached_energies:
+		if "Special" in e.metadata.get("subtypes", []): continue
+		for t in main.get_energy_provided_by_card(e):
+			if t != "Colorless": seen[t] = true
+	return seen.size()
+
+# Attract Current (Jolteon): base, then flip a coin; if heads, search deck for a Lightning Energy and
+# attach it to 1 of your Pokemon.
+func execute_ex10_attract_current(attacker: card_object, defender: card_object, is_opponent: bool, base_damage: int) -> void:
+	if await handle_attack_confusion(attacker, is_opponent): return
+	if await handle_attack_blind(attacker, is_opponent): return
+	await gym1_hit_active(attacker, defender, is_opponent, base_damage)
+	if main._should_bail(): return
+	await main.check_all_knockouts()
+	if main._should_bail(): return
+	var coin = await main.flip_coin(false, is_opponent)
+	if main._should_bail(): return
+	if not coin:
+		await main.show_message("ATTRACT CURRENT: TAILS — NO ENERGY!")
+		if main._should_bail(): return
+		return
+	await _ex10_search_deck_energy_attach(attacker, is_opponent, "Lightning")
+
+# Search the deck for a basic Energy of `type_name` and attach it to a chosen one of your Pokemon.
+func _ex10_search_deck_energy_attach(attacker: card_object, is_opponent: bool, type_name: String) -> void:
+	var deck = main.opponent_deck if is_opponent else main.player_deck
+	var pool = deck.filter(func(c): return c.metadata.get("supertype","") == "Energy" and "Special" not in c.metadata.get("subtypes",[]) and type_name in main.get_energy_provided_by_card(c))
+	if pool.is_empty():
+		await main.show_message("NO " + type_name.to_upper() + " ENERGY IN DECK!")
+		deck.shuffle(); main.update_deck_icon(is_opponent)
+		if main._should_bail(): return
+		return
+	var energy: card_object = pool[0] if is_opponent else await main.card_ops.choose_card(pool, false, "ATTRACT CURRENT", "Choose a " + type_name + " Energy", "SELECT", false, Callable(), true)
+	if main._should_bail(): return
+	if energy == null: energy = pool[0]
+	var targets = main.card_ops.get_all_pokemon_in_play(is_opponent)
+	var target: card_object = attacker
+	if not is_opponent and targets.size() > 1:
+		target = await main.card_ops.choose_card(targets, false, "ATTRACT CURRENT", "Attach the Energy to which Pokemon?", "ATTACH", false)
+		if main._should_bail(): return
+		if target == null: target = attacker
+	deck.erase(energy)
+	energy.current_location = "active" if target == (main.opponent_active_pokemon if is_opponent else main.player_active_pokemon) else "bench"
+	target.attached_energies.append(energy)
+	deck.shuffle()
+	main.update_deck_icon(is_opponent)
+	main.display_active_pokemon_energies(is_opponent)
+	main.display_pokemon(is_opponent)
+	await main.show_message("ATTACHED " + type_name.to_upper() + " ENERGY!")
+	if main._should_bail(): return
+
+# Beatdown (Poliwrath): base + `more` if the Defender is a Darkness Pokemon or has "Dark" in its name.
+func execute_ex10_beatdown(attacker: card_object, defender: card_object, is_opponent: bool, base_damage: int, more: int) -> int:
+	if await handle_attack_confusion(attacker, is_opponent): return 0
+	if await handle_attack_blind(attacker, is_opponent): return 0
+	var is_dark = defender != null and ("Dark" in defender.metadata.get("name","") or "Darkness" in defender.metadata.get("types",[]))
+	var dmg = base_damage + (more if is_dark else 0)
+	await gym1_hit_active(attacker, defender, is_opponent, dmg)
+	if main._should_bail(): return dmg
+	await main.check_all_knockouts()
+	return dmg
+
+# Elemental Blast (Lugia ex): base, discard one Fire, one Water, and one Lightning Energy from self.
+func execute_ex10_elemental_blast(attacker: card_object, defender: card_object, is_opponent: bool, base_damage: int) -> void:
+	if await handle_attack_confusion(attacker, is_opponent): return
+	if await handle_attack_blind(attacker, is_opponent): return
+	await gym1_hit_active(attacker, defender, is_opponent, base_damage)
+	if main._should_bail(): return
+	for t in ["Fire", "Water", "Lightning"]:
+		_ex10_discard_energy_from_self(attacker, is_opponent, t, 1)
+	main.display_active_pokemon_energies(is_opponent)
+	await main.check_all_knockouts()
+
+# Mix-Up (Tyranitar ex): base, then the opponent discards the top N cards of their deck.
+func execute_ex10_discard_opp_top(attacker: card_object, defender: card_object, is_opponent: bool, base_damage: int, n: int) -> void:
+	if await handle_attack_confusion(attacker, is_opponent): return
+	if await handle_attack_blind(attacker, is_opponent): return
+	await gym1_hit_active(attacker, defender, is_opponent, base_damage)
+	if main._should_bail(): return
+	var opp_deck = main.player_deck if is_opponent else main.opponent_deck
+	var opp_discard = main.player_discard_pile if is_opponent else main.opponent_discard_pile
+	var discarded = 0
+	for i in range(n):
+		if opp_deck.is_empty(): break
+		var top = opp_deck.pop_front(); top.current_location = "discard"; opp_discard.append(top); discarded += 1
+	main.update_deck_icon(not is_opponent); main.update_discard_pile_display(not is_opponent)
+	if discarded > 0:
+		await main.show_message("OPPONENT DISCARDED " + str(discarded) + " CARD(S) FROM THE TOP OF THEIR DECK!")
+		if main._should_bail(): return
+	await main.check_all_knockouts()
+
+# Rainbow Burn (Ho-Oh ex): base + `per` for each type of basic Energy attached to self.
+func execute_ex10_rainbow_burn(attacker: card_object, defender: card_object, is_opponent: bool, base_damage: int, per: int) -> int:
+	if await handle_attack_confusion(attacker, is_opponent): return 0
+	if await handle_attack_blind(attacker, is_opponent): return 0
+	var dmg = base_damage + per * _ex10_distinct_basic_types(attacker)
+	await gym1_hit_active(attacker, defender, is_opponent, dmg)
+	if main._should_bail(): return dmg
+	await main.check_all_knockouts()
+	return dmg
+
+# Coin-gated spread (Yanma Spinning Tail): flip a coin; if heads, N damage to each of the opponent's
+# Pokemon (no W/R for Bench).
+func execute_ex10_coin_hit_all_opp(attacker: card_object, is_opponent: bool, n: int) -> void:
+	if await handle_attack_confusion(attacker, is_opponent): return
+	if await handle_attack_blind(attacker, is_opponent): return
+	var coin = await main.flip_coin(false, is_opponent)
+	if main._should_bail(): return
+	if not coin:
+		await main.show_message("SPINNING TAIL: TAILS — NOTHING HAPPENS!")
+		if main._should_bail(): return
+		return
+	await execute_ex5_hit_all_opponent(attacker, is_opponent, n, true)
+
+# Surprise (Noctowl): base, then choose a random card from the opponent's hand (without looking),
+# look at it, and have the opponent shuffle it into their deck.
+func execute_ex10_surprise_shuffle(attacker: card_object, defender: card_object, is_opponent: bool, base_damage: int) -> void:
+	if await handle_attack_confusion(attacker, is_opponent): return
+	if await handle_attack_blind(attacker, is_opponent): return
+	await gym1_hit_active(attacker, defender, is_opponent, base_damage)
+	if main._should_bail(): return
+	await main.check_all_knockouts()
+	if main._should_bail(): return
+	var opp_hand = main.player_hand if is_opponent else main.opponent_hand
+	var opp_deck = main.player_deck if is_opponent else main.opponent_deck
+	if opp_hand.is_empty():
+		await main.show_message("SURPRISE! OPPONENT HAS NO CARDS IN HAND!")
+		if main._should_bail(): return
+		return
+	var picked = opp_hand[randi() % opp_hand.size()]
+	opp_hand.erase(picked)
+	picked.current_location = "deck"
+	opp_deck.append(picked)
+	opp_deck.shuffle()
+	main.refresh_hand_display(not is_opponent)
+	main.update_deck_icon(not is_opponent)
+	await main.show_message("SURPRISE! SHUFFLED THE OPPONENT'S " + picked.metadata.get("name","CARD").to_upper() + " INTO THEIR DECK!")
+	if main._should_bail(): return
+
+# Copy (Sudowoodo): copy one of the Defender's attacks, but only if the attacker can pay its Energy
+# cost. Self-finishing (execute_copied_attack calls _attack_finish once); callers must not finish again.
+func execute_ex10_copy(attacker: card_object, defender: card_object, is_opponent: bool, source_attack: Dictionary) -> void:
+	if await handle_attack_confusion(attacker, is_opponent):
+		await _attack_finish(false, 0, source_attack, attacker.metadata.get("types",["Colorless"]), is_opponent); return
+	if await handle_attack_blind(attacker, is_opponent):
+		await _attack_finish(false, 0, source_attack, attacker.metadata.get("types",["Colorless"]), is_opponent); return
+	var chosen = await _choose_metronome_copy(attacker, defender, is_opponent)
+	if chosen.is_empty() or main.cpu_ai.get_unmet_energy_count(chosen, attacker) > 0:
+		await main.show_message("COPY FAILED — NOT ENOUGH ENERGY TO USE THAT ATTACK!" if not chosen.is_empty() else "NO ATTACKS TO COPY!")
+		if main._should_bail(): return
+		await _attack_finish(false, 0, source_attack, attacker.metadata.get("types",["Colorless"]), is_opponent)
+		return
+	await main.show_message(attacker.metadata["name"].to_upper() + " COPIES " + chosen.get("name","").to_upper() + "!")
+	if main._should_bail(): return
+	await execute_copied_attack(chosen, attacker, defender, is_opponent, false)
+
+# Aeroblast (Lugia): base + `per` for each heads on 2 coin flips.
+func execute_ex10_aeroblast(attacker: card_object, defender: card_object, is_opponent: bool, base_damage: int, per: int) -> int:
+	if await handle_attack_confusion(attacker, is_opponent): return 0
+	if await handle_attack_blind(attacker, is_opponent): return 0
+	var heads = 0
+	for i in range(2):
+		if await main.flip_coin(true, is_opponent): heads += 1
+		if main._should_bail(): return 0
+	var dmg = base_damage + per * heads
+	await main.show_message("AEROBLAST! " + str(heads) + " HEADS — " + str(dmg) + " DAMAGE!")
+	if main._should_bail(): return dmg
+	await gym1_hit_active(attacker, defender, is_opponent, dmg)
+	if main._should_bail(): return dmg
+	await main.check_all_knockouts()
+	return dmg
+
+# Aftermath (Slowking): base + 10 for each Pokemon Tool card in your discard pile (max +60).
+func execute_ex10_aftermath(attacker: card_object, defender: card_object, is_opponent: bool, base_damage: int) -> int:
+	if await handle_attack_confusion(attacker, is_opponent): return 0
+	if await handle_attack_blind(attacker, is_opponent): return 0
+	var discard = main.opponent_discard_pile if is_opponent else main.player_discard_pile
+	var tools = 0
+	for c in discard:
+		if "Pokémon Tool" in c.metadata.get("subtypes", []): tools += 1
+	var dmg = base_damage + min(60, tools * 10)
+	await gym1_hit_active(attacker, defender, is_opponent, dmg)
+	if main._should_bail(): return dmg
+	await main.check_all_knockouts()
+	return dmg
+
+# Bouncy Move (Meganium): may put up to 5 damage counters on self; base + 10 per counter placed.
+func execute_ex10_bouncy_move(attacker: card_object, defender: card_object, is_opponent: bool, base_damage: int) -> int:
+	if await handle_attack_confusion(attacker, is_opponent): return 0
+	if await handle_attack_blind(attacker, is_opponent): return 0
+	var place = 0
+	var max_place = min(5, int(ceil((attacker.current_hp - 10) / 10.0))) if attacker.current_hp > 10 else 0
+	if max_place < 0: max_place = 0
+	if is_opponent:
+		# CPU: place as many as it can safely survive, but never enough to KO itself.
+		place = max_place
+	elif max_place > 0:
+		var opts: Array = []
+		for i in range(max_place + 1): opts.append(i)
+		place = await _ex10_choose_int("BOUNCY MOVE", "Put how many damage counters on Meganium? (+10 damage each)", opts)
+		if main._should_bail(): return 0
+	if place > 0:
+		attacker.current_hp = max(0, attacker.current_hp - place * 10)
+		main.display_hp_circles_above_align(attacker, is_opponent)
+	var dmg = base_damage + place * 10
+	await gym1_hit_active(attacker, defender, is_opponent, dmg)
+	if main._should_bail(): return dmg
+	await main.check_all_knockouts()
+	return dmg
+
+# Simple integer-choice prompt reusing the attack-button UI (player picks a value from `options`).
+func _ex10_choose_int(header: String, hint: String, options: Array) -> int:
+	main.special_attack_selection_active = true
+	main.buttons_only_blocker.visible = true
+	for child in main.attack_buttons_container.get_children():
+		if child.name == "cancel_attack_mode_button": continue
+		child.queue_free()
+	main.attack_buttons_container.visible = true
+	main.main_buttons_container.visible = false
+	for child in main.attack_buttons_container.get_children():
+		if child.name == "cancel_attack_mode_button": child.visible = false
+	main.header_label.text = header
+	main.hint_label.text = hint
+	for i in range(options.size()):
+		var btn = Button.new()
+		btn.text = str(options[i])
+		btn.custom_minimum_size = Vector2(350, 50)
+		btn.theme = main.theme_green
+		main.attack_buttons_container.add_child(btn)
+		btn.pressed.connect(func(): main.special_attack_selected.emit(i))
+	var idx = await main.special_attack_selected
+	for child in main.attack_buttons_container.get_children():
+		if child.name == "cancel_attack_mode_button":
+			child.visible = true; continue
+		child.queue_free()
+	main.attack_buttons_container.visible = false
+	main.main_buttons_container.visible = true
+	main.special_attack_selection_active = false
+	main.buttons_only_blocker.visible = false
+	return options[idx]
+
+# Star "if you have fewer Prize cards left than your opponent" self-penalty attacks (Suicune/Entei/Raikou ★).
+func execute_ex10_star_if_behind(attacker: card_object, defender: card_object, is_opponent: bool, base_damage: int, mode: String) -> void:
+	if await handle_attack_confusion(attacker, is_opponent): return
+	if await handle_attack_blind(attacker, is_opponent): return
+	await gym1_hit_active(attacker, defender, is_opponent, base_damage)
+	if main._should_bail(): return
+	await main.check_all_knockouts()
+	if main._should_bail(): return
+	var my_prizes = (main.opponent_prize_cards if is_opponent else main.player_prize_cards).size()
+	var their_prizes = (main.player_prize_cards if is_opponent else main.opponent_prize_cards).size()
+	if my_prizes >= their_prizes:
+		return
+	match mode:
+		"discard_10":
+			var deck = main.opponent_deck if is_opponent else main.player_deck
+			var discard = main.opponent_discard_pile if is_opponent else main.player_discard_pile
+			var n = 0
+			for i in range(10):
+				if deck.is_empty(): break
+				var top = deck.pop_front(); top.current_location = "discard"; discard.append(top); n += 1
+			main.update_deck_icon(is_opponent); main.update_discard_pile_display(is_opponent)
+			await main.show_message("DETONATION! DISCARDED " + str(n) + " CARDS FROM YOUR DECK!")
+			if main._should_bail(): return
+		"discard_all_energy":
+			for p in main.card_ops.get_all_pokemon_in_play(is_opponent):
+				_ex10_discard_energy_from_self(p, is_opponent, "", -1)
+			main.display_pokemon(is_opponent)
+			await main.show_message("CROSS WIND! DISCARDED ALL ENERGY FROM YOUR POKEMON!")
+			if main._should_bail(): return
+		"hit_own_40":
+			for p in main.card_ops.get_all_pokemon_in_play(is_opponent):
+				gym1_hit_raw(p, 40, is_opponent)
+			main.display_pokemon(is_opponent)
+			await main.show_message("META VOLTAGE! 40 DAMAGE TO EACH OF YOUR POKEMON!")
+			if main._should_bail(): return
+			await main.check_all_knockouts()
+
+# Cry for Help (Corsola): search your deck for a Water or Fighting Pokemon (excluding Pokemon-ex) → hand.
+func execute_ex10_cry_for_help(attacker: card_object, is_opponent: bool) -> void:
+	if await handle_attack_confusion(attacker, is_opponent): return
+	if await handle_attack_blind(attacker, is_opponent): return
+	var filter_fn = func(c):
+		if c.metadata.get("supertype","") != "Pokémon": return false
+		if main.is_ex_pokemon(c): return false
+		var t = c.metadata.get("types", [])
+		return "Water" in t or "Fighting" in t
+	var found = await main.card_ops.search_deck_to_hand(is_opponent, filter_fn, "CRY FOR HELP: CHOOSE A WATER OR FIGHTING POKEMON", 1)
+	if main._should_bail(): return
+	await main.show_message("CRY FOR HELP! ADDED A POKEMON TO HAND!" if found.size() > 0 else "NO WATER/FIGHTING POKEMON IN DECK!")
+	if main._should_bail(): return
+
+# Derail (Tyranitar ex): base, then discard a Special Energy card (if any) attached to the Defender.
+func execute_ex10_derail(attacker: card_object, defender: card_object, is_opponent: bool, base_damage: int) -> void:
+	if await handle_attack_confusion(attacker, is_opponent): return
+	if await handle_attack_blind(attacker, is_opponent): return
+	await gym1_hit_active(attacker, defender, is_opponent, base_damage)
+	if main._should_bail(): return
+	if defender != null and defender.current_hp > 0:
+		var specials = defender.attached_energies.filter(func(e): return "Special" in e.metadata.get("subtypes", []))
+		if not specials.is_empty():
+			var chosen: card_object = specials[0] if is_opponent else await main.card_ops.choose_card(specials, false, "DERAIL", "Discard which Special Energy?", "DISCARD", false)
+			if main._should_bail(): return
+			if chosen == null: chosen = specials[0]
+			defender.attached_energies.erase(chosen)
+			main.card_ops.discard_energy_from_pokemon(chosen, not is_opponent)
+			main.display_active_pokemon_energies(not is_opponent)
+			main.update_discard_pile_display(not is_opponent)
+			await main.show_message("DERAIL! DISCARDED " + chosen.metadata.get("name","").to_upper() + "!")
+			if main._should_bail(): return
+	await main.check_all_knockouts()
+
+# Double Attack (Corsola): choose 2 of the opponent's Benched Pokemon, 10 damage to each (no W/R).
+func execute_ex10_double_attack(attacker: card_object, is_opponent: bool) -> void:
+	if await handle_attack_confusion(attacker, is_opponent): return
+	if await handle_attack_blind(attacker, is_opponent): return
+	var bench = (main.player_bench if is_opponent else main.opponent_bench).duplicate()
+	if bench.is_empty():
+		await main.show_message("NO BENCHED POKEMON TO HIT!")
+		if main._should_bail(): return
+		return
+	var picks: Array = []
+	if is_opponent:
+		bench.sort_custom(func(x, y): return x.current_hp < y.current_hp)
+		picks = bench.slice(0, min(2, bench.size()))
+	else:
+		var remaining = bench.duplicate()
+		for i in range(min(2, bench.size())):
+			var t = await main.card_ops.choose_card(remaining, false, "DOUBLE ATTACK", "Choose a Benched Pokemon (" + str(i+1) + " of 2)", "SELECT", i > 0)
+			if main._should_bail(): return
+			if t == null: break
+			picks.append(t); remaining.erase(t)
+	for p in picks:
+		await main.card_ops.apply_bench_damage(p, 10, not is_opponent)
+		if main._should_bail(): return
+	await main.check_all_knockouts()
+
+# Double Shock (Electabuzz): 10× on 2 coin flips; if 1+ heads, the Defender is Paralyzed.
+func execute_ex10_double_shock(attacker: card_object, defender: card_object, is_opponent: bool) -> void:
+	if await handle_attack_confusion(attacker, is_opponent): return
+	if await handle_attack_blind(attacker, is_opponent): return
+	var heads = 0
+	for i in range(2):
+		if await main.flip_coin(true, is_opponent): heads += 1
+		if main._should_bail(): return
+	var dmg = 10 * heads
+	await main.show_message("DOUBLE SHOCK! " + str(heads) + " HEADS — " + str(dmg) + " DAMAGE!")
+	if main._should_bail(): return
+	if dmg > 0:
+		await gym1_hit_active(attacker, defender, is_opponent, dmg)
+		if main._should_bail(): return
+	if heads >= 1 and defender != null and defender.current_hp > 0:
+		main.card_ops.apply_status(defender, "Paralyzed", not is_opponent)
+		await main.show_message("THE DEFENDING POKEMON IS NOW PARALYZED!")
+		if main._should_bail(): return
+	await main.check_all_knockouts()
+
+# Fixed damage to each Defending Pokemon (Chansey Double Tack) — double-battle-ready.
+func execute_ex10_hit_each_defending(attacker: card_object, is_opponent: bool, per: int) -> void:
+	if await handle_attack_confusion(attacker, is_opponent): return
+	if await handle_attack_blind(attacker, is_opponent): return
+	for d in main.card_ops.get_defending_pokemon(is_opponent):
+		await gym1_hit_active(attacker, d, is_opponent, per)
+		if main._should_bail(): return
+	await main.check_all_knockouts()
+
+# Freeze Light (Jynx): flip a coin; heads Paralyzed, tails Burned.
+func execute_ex10_freeze_light(attacker: card_object, defender: card_object, is_opponent: bool) -> void:
+	if await handle_attack_confusion(attacker, is_opponent): return
+	if await handle_attack_blind(attacker, is_opponent): return
+	if defender == null or defender.is_invincible:
+		return
+	var coin = await main.flip_coin(false, is_opponent)
+	if main._should_bail(): return
+	var status = "Paralyzed" if coin else "Burned"
+	main.card_ops.apply_status(defender, status, not is_opponent)
+	await main.show_message("THE DEFENDING POKEMON IS NOW " + status.to_upper() + "!")
+	if main._should_bail(): return
+	await main.check_all_knockouts()
+
+# Full Bloom (Bellossom): base + bonus if you have at least 3 Bellossom in play.
+func execute_ex10_full_bloom(attacker: card_object, defender: card_object, is_opponent: bool, base_damage: int, bonus: int) -> int:
+	if await handle_attack_confusion(attacker, is_opponent): return 0
+	if await handle_attack_blind(attacker, is_opponent): return 0
+	var count = 0
+	for p in main.card_ops.get_all_pokemon_in_play(is_opponent):
+		if p.metadata.get("name","") == "Bellossom": count += 1
+	var dmg = base_damage + (bonus if count >= 3 else 0)
+	await gym1_hit_active(attacker, defender, is_opponent, dmg)
+	if main._should_bail(): return dmg
+	await main.check_all_knockouts()
+	return dmg
+
+# Green Blast (Sunflora): base + 10 for each Grass Energy attached to all of your Pokemon.
+func execute_ex10_green_blast(attacker: card_object, defender: card_object, is_opponent: bool, base_damage: int) -> int:
+	if await handle_attack_confusion(attacker, is_opponent): return 0
+	if await handle_attack_blind(attacker, is_opponent): return 0
+	var grass = 0
+	for p in main.card_ops.get_all_pokemon_in_play(is_opponent):
+		for e in p.attached_energies:
+			if "Grass" in main.get_energy_provided_by_card(e): grass += 1
+	var dmg = base_damage + 10 * grass
+	await gym1_hit_active(attacker, defender, is_opponent, dmg)
+	if main._should_bail(): return dmg
+	await main.check_all_knockouts()
+	return dmg
+
+# Green Dance (Bellossom): search deck for up to 2 Grass Pokemon → hand; if any, may switch self.
+func execute_ex10_green_dance(attacker: card_object, is_opponent: bool) -> void:
+	if await handle_attack_confusion(attacker, is_opponent): return
+	if await handle_attack_blind(attacker, is_opponent): return
+	var filter_fn = func(c): return c.metadata.get("supertype","") == "Pokémon" and "Grass" in c.metadata.get("types", [])
+	var found = await main.card_ops.search_deck_to_hand(is_opponent, filter_fn, "GREEN DANCE: CHOOSE UP TO 2 GRASS POKEMON", 2)
+	if main._should_bail(): return
+	await main.show_message("GREEN DANCE! ADDED " + str(found.size()) + " GRASS POKEMON TO HAND!" if found.size() > 0 else "NO GRASS POKEMON IN DECK!")
+	if main._should_bail(): return
+	if found.size() > 0:
+		await _ex10_optional_self_switch(attacker, is_opponent)
+
+# Grand Loop (Yanma): draw 2 cards, then may switch self with a Benched Pokemon.
+func execute_ex10_grand_loop(attacker: card_object, is_opponent: bool) -> void:
+	if await handle_attack_confusion(attacker, is_opponent): return
+	if await handle_attack_blind(attacker, is_opponent): return
+	await main.card_ops.draw_n(is_opponent, 2)
+	if main._should_bail(): return
+	await _ex10_optional_self_switch(attacker, is_opponent)
+
+# "You may switch <self> with 1 of your Benched Pokemon." Player is prompted yes/no; CPU switches if hurt.
+func _ex10_optional_self_switch(attacker: card_object, is_opponent: bool) -> void:
+	var bench = main.opponent_bench if is_opponent else main.player_bench
+	if bench.is_empty(): return
+	var do_switch := false
+	if is_opponent:
+		do_switch = attacker.current_hp <= attacker.metadata.get("hp","0").to_int() / 2
+	else:
+		do_switch = await main.trainer_effects.gym1_prompt_yes_no(attacker, "SWITCH?", "Switch this Pokemon with a Benched Pokemon?", "YES", "NO")
+		if main._should_bail(): return
+	if do_switch:
+		await apply_self_switch(attacker, is_opponent)
+		if main._should_bail(): return
+
+# Heavy Punch (Hitmonchan): `per` × number of the opponent's Benched Pokemon.
+func execute_ex10_per_opp_bench(attacker: card_object, defender: card_object, is_opponent: bool, per: int) -> void:
+	if await handle_attack_confusion(attacker, is_opponent): return
+	if await handle_attack_blind(attacker, is_opponent): return
+	var bench = main.player_bench if is_opponent else main.opponent_bench
+	var dmg = per * bench.size()
+	await main.show_message("HEAVY PUNCH! " + str(dmg) + " DAMAGE!")
+	if main._should_bail(): return
+	if dmg > 0:
+		await gym1_hit_active(attacker, defender, is_opponent, dmg)
+		if main._should_bail(): return
+	await main.check_all_knockouts()
+
+# Desperate Punch (Tyrogue): `per` × (opponent's Pokemon in play − your Pokemon in play), min 0.
+func execute_ex10_desperate_punch(attacker: card_object, defender: card_object, is_opponent: bool, per: int) -> void:
+	if await handle_attack_confusion(attacker, is_opponent): return
+	if await handle_attack_blind(attacker, is_opponent): return
+	var mine = main.card_ops.get_all_pokemon_in_play(is_opponent).size()
+	var theirs = main.card_ops.get_all_pokemon_in_play(not is_opponent).size()
+	var dmg = per * max(0, theirs - mine)
+	await main.show_message("DESPERATE PUNCH! " + str(dmg) + " DAMAGE!")
+	if main._should_bail(): return
+	if dmg > 0:
+		await gym1_hit_active(attacker, defender, is_opponent, dmg)
+		if main._should_bail(): return
+	await main.check_all_knockouts()
+
+# Healing Milk (Miltank): flip 2 coins; for each heads, remove 2 damage counters from 1 of your Pokemon.
+func execute_ex10_healing_milk(attacker: card_object, is_opponent: bool) -> void:
+	if await handle_attack_confusion(attacker, is_opponent): return
+	if await handle_attack_blind(attacker, is_opponent): return
+	var heads = 0
+	for i in range(2):
+		if await main.flip_coin(true, is_opponent): heads += 1
+		if main._should_bail(): return
+	await main.show_message("HEALING MILK! " + str(heads) + " HEADS!")
+	if main._should_bail(): return
+	for h in range(heads):
+		var hurt = main.card_ops.get_all_pokemon_in_play(is_opponent).filter(func(p): return p.get_damage_counters() > 0)
+		if hurt.is_empty(): break
+		var target: card_object
+		if is_opponent:
+			hurt.sort_custom(func(x, y): return x.get_damage_counters() > y.get_damage_counters())
+			target = hurt[0]
+		else:
+			target = await main.card_ops.choose_card(hurt, false, "HEALING MILK", "Remove 2 damage counters from which Pokemon?", "HEAL", false)
+			if main._should_bail(): return
+			if target == null: target = hurt[0]
+		await main.card_ops.heal_pokemon(target, 20, is_opponent)
+		if main._should_bail(): return
+
+# Hyper Healing (Chansey): remove 1 damage counter and all Special Conditions from each of your Active.
+func execute_ex10_hyper_healing(attacker: card_object, is_opponent: bool) -> void:
+	if await handle_attack_confusion(attacker, is_opponent): return
+	if await handle_attack_blind(attacker, is_opponent): return
+	for p in main.card_ops.get_active_pokemon(is_opponent):
+		await main.card_ops.heal_pokemon(p, 10, is_opponent)
+		if main._should_bail(): return
+		main.card_ops.clear_statuses(p, is_opponent)
+	await main.show_message("HYPER HEALING!")
+	if main._should_bail(): return
+
+# Kindle (Typhlosion ex): base, discard an Energy from self, then discard an Energy from the Defender.
+func execute_ex10_kindle(attacker: card_object, defender: card_object, is_opponent: bool, base_damage: int) -> void:
+	if await handle_attack_confusion(attacker, is_opponent): return
+	if await handle_attack_blind(attacker, is_opponent): return
+	await gym1_hit_active(attacker, defender, is_opponent, base_damage)
+	if main._should_bail(): return
+	if not attacker.attached_energies.is_empty():
+		await main.card_ops.remove_one_energy(attacker, is_opponent, is_opponent)
+		if main._should_bail(): return
+	if defender != null and defender.current_hp > 0 and not defender.attached_energies.is_empty():
+		await main.card_ops.remove_one_energy(defender, not is_opponent, is_opponent)
+		if main._should_bail(): return
+	await main.check_all_knockouts()
+
+# Losing Control (Tyranitar ex): base, then discard the top N cards of your own deck.
+func execute_ex10_self_mill(attacker: card_object, defender: card_object, is_opponent: bool, base_damage: int, n: int) -> void:
+	if await handle_attack_confusion(attacker, is_opponent): return
+	if await handle_attack_blind(attacker, is_opponent): return
+	await gym1_hit_active(attacker, defender, is_opponent, base_damage)
+	if main._should_bail(): return
+	var deck = main.opponent_deck if is_opponent else main.player_deck
+	var discard = main.opponent_discard_pile if is_opponent else main.player_discard_pile
+	var d = 0
+	for i in range(n):
+		if deck.is_empty(): break
+		var top = deck.pop_front(); top.current_location = "discard"; discard.append(top); d += 1
+	main.update_deck_icon(is_opponent); main.update_discard_pile_display(is_opponent)
+	if d > 0:
+		await main.show_message("DISCARDED " + str(d) + " CARDS FROM THE TOP OF YOUR DECK!")
+		if main._should_bail(): return
+	await main.check_all_knockouts()
+
+# Mudslide (Steelix ex): discard 2 Fighting Energy from self, then choose 1 of the opponent's Pokemon
+# and do 100 to it (no W/R for Bench).
+func execute_ex10_mudslide(attacker: card_object, is_opponent: bool) -> void:
+	if await handle_attack_confusion(attacker, is_opponent): return
+	if await handle_attack_blind(attacker, is_opponent): return
+	_ex10_discard_energy_from_self(attacker, is_opponent, "Fighting", 2)
+	main.display_active_pokemon_energies(is_opponent)
+	await execute_ex3_choose_snipe(attacker, is_opponent, 100, false)
+
+# Multi Burn / Multi Pulse / Multi Bubble: base + `more` and a status if self has 3+ distinct basic
+# Energy types attached.
+func execute_ex10_multi_type(attacker: card_object, defender: card_object, is_opponent: bool, base_damage: int, more: int, status: String) -> int:
+	if await handle_attack_confusion(attacker, is_opponent): return 0
+	if await handle_attack_blind(attacker, is_opponent): return 0
+	var qualifies = _ex10_distinct_basic_types(attacker) >= 3
+	var dmg = base_damage + (more if qualifies else 0)
+	await gym1_hit_active(attacker, defender, is_opponent, dmg)
+	if main._should_bail(): return dmg
+	if qualifies and defender != null and defender.current_hp > 0 and not defender.is_invincible:
+		main.card_ops.apply_status(defender, status, not is_opponent)
+		await main.show_message("THE DEFENDING POKEMON IS NOW " + status.to_upper() + "!")
+		if main._should_bail(): return dmg
+	await main.check_all_knockouts()
+	return dmg
+
+# Night Song (Murkrow): the opponent switches a Benched Pokemon with the Defender (they choose); the
+# new Defending Pokemon is Asleep.
+func execute_ex10_night_song(attacker: card_object, defender: card_object, is_opponent: bool) -> void:
+	if await handle_attack_confusion(attacker, is_opponent): return
+	if await handle_attack_blind(attacker, is_opponent): return
+	await execute_ex3_force_switch_defender(attacker, is_opponent)
+	if main._should_bail(): return
+	var new_def = main.player_active_pokemon if is_opponent else main.opponent_active_pokemon
+	if new_def != null:
+		main.card_ops.apply_status(new_def, "Asleep", not is_opponent)
+		await main.show_message("THE NEW DEFENDING POKEMON IS NOW ASLEEP!")
+		if main._should_bail(): return
+
+# Reactive Poison (Ariados): base + `per` for each Special Condition affecting the Defender.
+func execute_ex10_reactive_poison(attacker: card_object, defender: card_object, is_opponent: bool, base_damage: int, per: int) -> int:
+	if await handle_attack_confusion(attacker, is_opponent): return 0
+	if await handle_attack_blind(attacker, is_opponent): return 0
+	var conditions = 0
+	if defender != null:
+		if defender.is_poisoned: conditions += 1
+		if defender.is_burned: conditions += 1
+		if defender.special_condition != "": conditions += 1
+	var dmg = base_damage + per * conditions
+	await gym1_hit_active(attacker, defender, is_opponent, dmg)
+	if main._should_bail(): return dmg
+	await main.check_all_knockouts()
+	return dmg
+
+# Pop (Forretress): base, put 7 damage counters on self, then move all Energy attached to self to your
+# Benched Pokemon in any way you like.
+func execute_ex10_pop(attacker: card_object, defender: card_object, is_opponent: bool, base_damage: int) -> void:
+	if await handle_attack_confusion(attacker, is_opponent): return
+	if await handle_attack_blind(attacker, is_opponent): return
+	await gym1_hit_active(attacker, defender, is_opponent, base_damage)
+	if main._should_bail(): return
+	attacker.current_hp = max(0, attacker.current_hp - 70)
+	main.display_hp_circles_above_align(attacker, is_opponent)
+	var bench = main.opponent_bench if is_opponent else main.player_bench
+	if not bench.is_empty():
+		var energies = attacker.attached_energies.duplicate()
+		for e in energies:
+			var target: card_object
+			if is_opponent:
+				target = bench[0]
+			else:
+				target = await main.card_ops.choose_card(bench, false, "POP", "Move " + e.metadata.get("name","Energy").to_upper() + " to which Benched Pokemon?", "MOVE", false)
+				if main._should_bail(): return
+				if target == null: target = bench[0]
+			attacker.attached_energies.erase(e)
+			e.current_location = "bench"
+			target.attached_energies.append(e)
+		main.display_active_pokemon_energies(is_opponent)
+		main.display_pokemon(is_opponent)
+	await main.check_all_knockouts()
+
+# Push Away (Stantler): base, then look at the opponent's hand, choose a Trainer, and discard it.
+func execute_ex10_push_away(attacker: card_object, defender: card_object, is_opponent: bool, base_damage: int) -> void:
+	if await handle_attack_confusion(attacker, is_opponent): return
+	if await handle_attack_blind(attacker, is_opponent): return
+	await gym1_hit_active(attacker, defender, is_opponent, base_damage)
+	if main._should_bail(): return
+	await main.check_all_knockouts()
+	if main._should_bail(): return
+	var opp_hand = main.player_hand if is_opponent else main.opponent_hand
+	var trainers = opp_hand.filter(func(c): return c.metadata.get("supertype","") == "Trainer")
+	if trainers.is_empty():
+		await main.show_message("PUSH AWAY! NO TRAINER CARDS IN THE OPPONENT'S HAND!")
+		if main._should_bail(): return
+		return
+	var chosen: card_object = trainers[0] if is_opponent else await main.card_ops.choose_card(trainers, false, "PUSH AWAY", "Choose a Trainer to discard from the opponent's hand", "DISCARD", false, Callable(), true)
+	if main._should_bail(): return
+	if chosen == null: chosen = trainers[0]
+	opp_hand.erase(chosen)
+	await main.card_ops.send_to_discard(chosen, not is_opponent, false)
+	main.refresh_hand_display(not is_opponent)
+	await main.show_message("PUSH AWAY! DISCARDED THE OPPONENT'S " + chosen.metadata.get("name","").to_upper() + "!")
+	if main._should_bail(): return
+
+# Time Trap (Celebi ex): base, flip a coin; heads look at & reorder the opponent's top 4, tails your top 4.
+func execute_ex10_time_trap(attacker: card_object, defender: card_object, is_opponent: bool, base_damage: int) -> void:
+	if await handle_attack_confusion(attacker, is_opponent): return
+	if await handle_attack_blind(attacker, is_opponent): return
+	await gym1_hit_active(attacker, defender, is_opponent, base_damage)
+	if main._should_bail(): return
+	await main.check_all_knockouts()
+	if main._should_bail(): return
+	var coin = await main.flip_coin(false, is_opponent)
+	if main._should_bail(): return
+	# Reordering the top of a deck is not player-visible in this engine; shuffle the affected top 4 as a
+	# faithful approximation of "look and reorder" (no information/ordering advantage is modeled).
+	if coin:
+		await main.show_message("TIME TRAP! HEADS — REARRANGED THE OPPONENT'S TOP 4 CARDS!")
+	else:
+		await main.show_message("TIME TRAP! TAILS — REARRANGED YOUR TOP 4 CARDS!")
+	if main._should_bail(): return
+
+# Miraculous Thunder (Ampharos): base; you may discard all Lightning Energy from self to Burn and
+# Confuse the Defender.
+func execute_ex10_miraculous_thunder(attacker: card_object, defender: card_object, is_opponent: bool, base_damage: int) -> void:
+	if await handle_attack_confusion(attacker, is_opponent): return
+	if await handle_attack_blind(attacker, is_opponent): return
+	await gym1_hit_active(attacker, defender, is_opponent, base_damage)
+	if main._should_bail(): return
+	var has_lightning = false
+	for e in attacker.attached_energies:
+		if "Lightning" in main.get_energy_provided_by_card(e): has_lightning = true
+	if has_lightning and defender != null and defender.current_hp > 0:
+		var do_it := false
+		if is_opponent:
+			do_it = defender.special_condition == "" and not defender.is_burned
+		else:
+			do_it = await main.trainer_effects.gym1_prompt_yes_no(attacker, "MIRACULOUS THUNDER", "Discard ALL Lightning Energy to Burn and Confuse the Defender?", "YES", "NO")
+			if main._should_bail(): return
+		if do_it:
+			_ex10_discard_energy_from_self(attacker, is_opponent, "Lightning", -1)
+			main.display_active_pokemon_energies(is_opponent)
+			if not defender.is_invincible:
+				main.card_ops.apply_status(defender, "Burned", not is_opponent)
+				main.card_ops.apply_status(defender, "Confused", not is_opponent)
+				await main.show_message("THE DEFENDING POKEMON IS NOW BURNED AND CONFUSED!")
+				if main._should_bail(): return
+	await main.check_all_knockouts()
+
+# Spider Trap (Ariados): the Defender is Asleep and Poisoned; before applying, you may have the opponent
+# switch a Benched Pokemon with the Defender (they choose) — the new Defender is Asleep and Poisoned.
+func execute_ex10_spider_trap(attacker: card_object, defender: card_object, is_opponent: bool) -> void:
+	if await handle_attack_confusion(attacker, is_opponent): return
+	if await handle_attack_blind(attacker, is_opponent): return
+	var def_bench = main.player_bench if is_opponent else main.opponent_bench
+	var do_switch := false
+	if not def_bench.is_empty():
+		if is_opponent:
+			do_switch = true
+		else:
+			do_switch = await main.trainer_effects.gym1_prompt_yes_no(attacker, "SPIDER TRAP", "Switch one of the opponent's Benched Pokemon into the Active spot first?", "YES", "NO")
+			if main._should_bail(): return
+	if do_switch:
+		await execute_ex3_force_switch_defender(attacker, is_opponent)
+		if main._should_bail(): return
+	var new_def = main.player_active_pokemon if is_opponent else main.opponent_active_pokemon
+	if new_def != null and not new_def.is_invincible:
+		main.card_ops.apply_status(new_def, "Asleep", not is_opponent)
+		main.card_ops.apply_status(new_def, "Poisoned", not is_opponent)
+		await main.show_message("THE DEFENDING POKEMON IS NOW ASLEEP AND POISONED!")
+		if main._should_bail(): return
+	await main.check_all_knockouts()
+
+# Spiky Shell (Forretress): base, then put `counters` damage counters on the Defender at the end of the
+# opponent's next turn (delayed — resolved in gym1_end_of_turn_cleanup).
+func execute_ex10_spiky_shell(attacker: card_object, defender: card_object, is_opponent: bool, base_damage: int, counters: int) -> void:
+	if await handle_attack_confusion(attacker, is_opponent): return
+	if await handle_attack_blind(attacker, is_opponent): return
+	await gym1_hit_active(attacker, defender, is_opponent, base_damage)
+	if main._should_bail(): return
+	if defender != null and defender.current_hp > 0:
+		defender.set_effect("ex10_spiky_shell", "until_leaves_play", {"counters": counters})
+		await main.show_message("SPIKY SHELL! " + str(counters) + " DAMAGE COUNTERS WILL HIT AT THE END OF THE OPPONENT'S NEXT TURN!")
+		if main._should_bail(): return
+	await main.check_all_knockouts()
+
+# Spiral Leaf (Celebi ex): flip a coin; heads put 1 counter on each of the opponent's Pokemon, tails
+# remove 1 counter from each of your Pokemon.
+func execute_ex10_spiral_leaf(attacker: card_object, is_opponent: bool) -> void:
+	if await handle_attack_confusion(attacker, is_opponent): return
+	if await handle_attack_blind(attacker, is_opponent): return
+	var coin = await main.flip_coin(false, is_opponent)
+	if main._should_bail(): return
+	if coin:
+		for p in main.card_ops.get_all_pokemon_in_play(not is_opponent):
+			await _ex4_put_counter(attacker, p, not is_opponent)
+			if main._should_bail(): return
+		await main.show_message("SPIRAL LEAF! HEADS — 1 DAMAGE COUNTER ON EACH OPPONENT POKEMON!")
+		if main._should_bail(): return
+		await main.check_all_knockouts()
+	else:
+		for p in main.card_ops.get_all_pokemon_in_play(is_opponent):
+			await main.card_ops.heal_pokemon(p, 10, is_opponent)
+			if main._should_bail(): return
+		await main.show_message("SPIRAL LEAF! TAILS — REMOVED 1 DAMAGE COUNTER FROM EACH OF YOUR POKEMON!")
+		if main._should_bail(): return
+
+# Standing By (Octillery): discard an Energy from self; during your next turn Pulse Blast's base is 120.
+func execute_ex10_standing_by(attacker: card_object, is_opponent: bool) -> void:
+	if await handle_attack_confusion(attacker, is_opponent): return
+	if await handle_attack_blind(attacker, is_opponent): return
+	if attacker.attached_energies.is_empty():
+		await main.show_message("STANDING BY: NO ENERGY TO DISCARD!")
+		if main._should_bail(): return
+		return
+	await main.card_ops.remove_one_energy(attacker, is_opponent, is_opponent)
+	if main._should_bail(): return
+	attacker.set_effect("ex10_standing_by", "until_leaves_play", {})
+	await main.show_message("STANDING BY! PULSE BLAST WILL DO 120 NEXT TURN!")
+	if main._should_bail(): return
+
+# Pulse Blast (Octillery): base 30, or 120 if Standing By was used (consumes the buff).
+func execute_ex10_pulse_blast(attacker: card_object, defender: card_object, is_opponent: bool, base_damage: int) -> int:
+	if await handle_attack_confusion(attacker, is_opponent): return 0
+	if await handle_attack_blind(attacker, is_opponent): return 0
+	var dmg = base_damage
+	if attacker.has_effect("ex10_standing_by"):
+		dmg = 120
+		attacker.clear_effect("ex10_standing_by")
+	await gym1_hit_active(attacker, defender, is_opponent, dmg)
+	if main._should_bail(): return dmg
+	await main.check_all_knockouts()
+	return dmg
+
+# Twin Play (Scyther): search deck for up to 2 (any combination of Scyther and Scyther ex) onto your Bench.
+func execute_ex10_twin_play(attacker: card_object, is_opponent: bool) -> void:
+	if await handle_attack_confusion(attacker, is_opponent): return
+	if await handle_attack_blind(attacker, is_opponent): return
+	for i in range(2):
+		await execute_call_for_pokemon(attacker, is_opponent, ["Scyther", "Scyther ex"], "")
+		if main._should_bail(): return
+
+# Upward Lick (Politoed ex): choose 1 of the opponent's Pokemon, 30 (50 if it's a Stage 2), no W/R for Bench.
+func execute_ex10_upward_lick(attacker: card_object, is_opponent: bool) -> void:
+	if await handle_attack_confusion(attacker, is_opponent): return
+	if await handle_attack_blind(attacker, is_opponent): return
+	var pool = _ex3_opp_snipe_pool(is_opponent, false)
+	if pool.is_empty():
+		await main.show_message("NO TARGET AVAILABLE!")
+		if main._should_bail(): return
+		return
+	var target: card_object
+	if is_opponent or pool.size() == 1:
+		target = pool[0]
+		for c in pool:
+			if ("Stage 2" in c.metadata.get("subtypes",[])) and not ("Stage 2" in target.metadata.get("subtypes",[])): target = c
+	else:
+		target = await main.card_ops.choose_card(pool, false, "UPWARD LICK", "Choose 1 of the opponent's Pokemon", "SELECT", false, func(c): return (50.0 if "Stage 2" in c.metadata.get("subtypes",[]) else 30.0))
+		if main._should_bail(): return
+		if target == null: target = pool[0]
+	var dmg = 50 if "Stage 2" in target.metadata.get("subtypes", []) else 30
+	await _ex3_hit_target(attacker, target, is_opponent, dmg)
+	if main._should_bail(): return
+	await main.check_all_knockouts()
+
+# Base damage then switch self with a Benched Pokemon (Politoed Punch and Run; the ★ Turn attacks).
+func execute_ex10_hit_then_self_switch(attacker: card_object, defender: card_object, is_opponent: bool, base_damage: int) -> void:
+	if await handle_attack_confusion(attacker, is_opponent): return
+	if await handle_attack_blind(attacker, is_opponent): return
+	await gym1_hit_active(attacker, defender, is_opponent, base_damage)
+	if main._should_bail(): return
+	await main.check_all_knockouts()
+	if main._should_bail(): return
+	var bench = main.opponent_bench if is_opponent else main.player_bench
+	if not bench.is_empty():
+		await apply_self_switch(attacker, is_opponent)
+		if main._should_bail(): return
+
+# Scramble Trip (Porygon2): base + `more` and Confuse if a Scramble Energy is attached to self.
+func execute_ex10_scramble_trip(attacker: card_object, defender: card_object, is_opponent: bool, base_damage: int, more: int) -> int:
+	if await handle_attack_confusion(attacker, is_opponent): return 0
+	if await handle_attack_blind(attacker, is_opponent): return 0
+	var has_scramble = false
+	for e in attacker.attached_energies:
+		if e.metadata.get("name","") == "Scramble Energy": has_scramble = true
+	var dmg = base_damage + (more if has_scramble else 0)
+	await gym1_hit_active(attacker, defender, is_opponent, dmg)
+	if main._should_bail(): return dmg
+	if has_scramble and defender != null and defender.current_hp > 0 and not defender.is_invincible:
+		main.card_ops.apply_status(defender, "Confused", not is_opponent)
+		await main.show_message("THE DEFENDING POKEMON IS NOW CONFUSED!")
+		if main._should_bail(): return dmg
+	await main.check_all_knockouts()
+	return dmg
+
+# Black Cry (Umbreon ex): base; the Defender can't retreat or use any Poke-Powers during the opponent's
+# next turn.
+func execute_ex10_black_cry(attacker: card_object, defender: card_object, is_opponent: bool, base_damage: int) -> void:
+	if await handle_attack_confusion(attacker, is_opponent): return
+	if await handle_attack_blind(attacker, is_opponent): return
+	await gym1_hit_active(attacker, defender, is_opponent, base_damage)
+	if main._should_bail(): return
+	if defender != null and defender.current_hp > 0:
+		await apply_retreat_lock(defender, is_opponent)
+		if main._should_bail(): return
+		defender.set_effect("ex10_power_lock", "end_of_opponent_turn", {})
+		await main.show_message("THE DEFENDING POKEMON CAN'T USE POKE-POWERS NEXT TURN!")
+		if main._should_bail(): return
+	await main.check_all_knockouts()
+
+# ── Unown Hidden Power (ex10-A … ex10-Z, plus ex10-! and ex10-?) ──────────────────────────────
+# Each letter's Hidden Power is a distinct effect keyed by UID. Self-finishing at the end.
+func execute_ex10_hidden_power(attacker: card_object, defender: card_object, is_opponent: bool, atk: Dictionary) -> void:
+	var types = attacker.metadata.get("types", ["Colorless"])
+	if await handle_attack_confusion(attacker, is_opponent):
+		await _attack_finish(false, 0, atk, types, is_opponent); return
+	if await handle_attack_blind(attacker, is_opponent):
+		await _attack_finish(false, 0, atk, types, is_opponent); return
+	var letter = attacker.uid.substr(5)   # "ex10-A" -> "A", "ex10-!" -> "!"
+	var base = parse_attack_base_damage(atk)
+	var did_damage := false
+	var opp_hand = main.player_hand if is_opponent else main.opponent_hand
+	var opp_deck = main.player_deck if is_opponent else main.opponent_deck
+	var opp_discard = main.player_discard_pile if is_opponent else main.opponent_discard_pile
+	var my_deck = main.opponent_deck if is_opponent else main.player_deck
+
+	match letter:
+		"A":
+			var found = await main.card_ops.search_deck_to_hand(is_opponent, func(c): return c.metadata.get("supertype","") == "Trainer" and "Supporter" in c.metadata.get("subtypes",[]), "HIDDEN POWER: CHOOSE UP TO 2 SUPPORTERS", 2)
+			await main.show_message("HIDDEN POWER! ADDED " + str(found.size()) + " SUPPORTER(S)!")
+		"B":
+			var amt = 10 * opp_hand.size()
+			if defender != null and amt > 0 and not defender.is_invincible:
+				gym1_hit_raw(defender, amt, not is_opponent); did_damage = true
+				await main.show_message("HIDDEN POWER! " + str(amt) + " DAMAGE!")
+		"C":
+			var sups = opp_discard.filter(func(c): return c.metadata.get("supertype","") == "Trainer" and "Supporter" in c.metadata.get("subtypes",[]))
+			if sups.is_empty():
+				await main.show_message("HIDDEN POWER! NO SUPPORTER IN THE OPPONENT'S DISCARD PILE!")
+			else:
+				var pick: card_object = sups[0] if is_opponent else await main.card_ops.choose_card(sups, false, "HIDDEN POWER", "Use which Supporter from the opponent's discard pile?", "USE", false, Callable(), true)
+				if pick == null: pick = sups[0]
+				await main.show_message("HIDDEN POWER! USING " + pick.metadata.get("name","").to_upper() + "!")
+				if not main._should_bail():
+					await main.trainer_effects.resolve_standard_trainer(pick, is_opponent)
+		"D":
+			var coin = await main.flip_coin(false, is_opponent)
+			if coin and not main._should_bail():
+				var pool: Array = []
+				for p in main.card_ops.get_all_pokemon_in_play(is_opponent) + main.card_ops.get_all_pokemon_in_play(not is_opponent):
+					var st = p.metadata.get("subtypes", [])
+					if "Stage 1" in st or "Stage 2" in st: pool.append(p)
+				if pool.is_empty():
+					await main.show_message("HIDDEN POWER! NO EVOLVED POKEMON IN PLAY!")
+				else:
+					var target: card_object = pool[0] if is_opponent else await main.card_ops.choose_card(pool, false, "HIDDEN POWER", "Remove the highest Evolution from which Pokemon?", "SELECT", false)
+					if target == null: target = pool[0]
+					var t_is_opp = target in main.card_ops.get_all_pokemon_in_play(not is_opponent)
+					await _ex2_devolve_pokemon(target, t_is_opp, "hand")
+		"E":
+			var opp_bench = main.player_bench if is_opponent else main.opponent_bench
+			if opp_bench.size() < main.get_max_bench_size():
+				var basics = opp_hand.filter(func(c): return c.metadata.get("supertype","") == "Pokémon" and "Basic" in c.metadata.get("subtypes",[]))
+				if basics.is_empty():
+					await main.show_message("HIDDEN POWER! NO BASIC POKEMON IN THE OPPONENT'S HAND!")
+				else:
+					var pick: card_object = basics[0] if is_opponent else await main.card_ops.choose_card(basics, false, "HIDDEN POWER", "Put which Basic Pokemon onto the opponent's Bench?", "SELECT", false, Callable(), true)
+					if pick == null: pick = basics[0]
+					opp_hand.erase(pick)
+					main.card_ops.place_on_bench(pick, not is_opponent)
+					main.refresh_hand_display(not is_opponent)
+					await main.show_message("HIDDEN POWER! PLACED " + pick.metadata.get("name","").to_upper() + " ONTO THE OPPONENT'S BENCH!")
+					if not main._should_bail():
+						await apply_force_switch({"type":"force_switch","target":"defender","chooser":"defender","flip":"none"}, is_opponent)
+		"F":
+			if base > 0 and defender != null:
+				await gym1_hit_active(attacker, defender, is_opponent, base); did_damage = true
+			var heads = 0
+			for i in range(3):
+				if await main.flip_coin(true, is_opponent): heads += 1
+			if defender != null and defender.current_hp > 0 and not defender.is_invincible:
+				if heads == 3: main.card_ops.apply_status(defender, "Paralyzed", not is_opponent); await main.show_message("3 HEADS! PARALYZED!")
+				elif heads == 2: main.card_ops.apply_status(defender, "Confused", not is_opponent); await main.show_message("2 HEADS! CONFUSED!")
+				elif heads == 1: main.card_ops.apply_status(defender, "Asleep", not is_opponent); await main.show_message("1 HEAD! ASLEEP!")
+		"G":
+			var damaged = main.card_ops.get_all_pokemon_in_play(is_opponent).filter(func(p): return p.get_damage_counters() > 0).size()
+			var amt = 10 * damaged
+			if defender != null and amt > 0 and not defender.is_invincible:
+				gym1_hit_raw(defender, amt, not is_opponent); did_damage = true
+				await main.show_message("HIDDEN POWER! " + str(amt) + " DAMAGE!")
+		"H":
+			var tools = my_deck.filter(func(c): return "Pokémon Tool" in c.metadata.get("subtypes", []))
+			var placed = 0
+			for i in range(2):
+				tools = my_deck.filter(func(c): return "Pokémon Tool" in c.metadata.get("subtypes", []))
+				if tools.is_empty(): break
+				var eligible = main.card_ops.get_all_pokemon_in_play(is_opponent).filter(func(p): return not _ex10_has_tool(p))
+				if eligible.is_empty(): break
+				var tool: card_object = tools[0] if is_opponent else await main.card_ops.choose_card(tools, false, "HIDDEN POWER", "Attach which Pokemon Tool?", "SELECT", i > 0, Callable(), true)
+				if tool == null: break
+				var tgt: card_object = eligible[0] if is_opponent else await main.card_ops.choose_card(eligible, false, "HIDDEN POWER", "Attach " + tool.metadata.get("name","").to_upper() + " to which Pokemon?", "ATTACH", false)
+				if tgt == null: tgt = eligible[0]
+				my_deck.erase(tool); tool.current_location = "attached"; tgt.attached_cards.append(tool); placed += 1
+			my_deck.shuffle(); main.update_deck_icon(is_opponent)
+			main.trainer_effects.display_attached_trainer_cards(is_opponent)
+			await main.show_message("HIDDEN POWER! ATTACHED " + str(placed) + " TOOL(S)!")
+		"I":
+			await apply_force_switch({"type":"force_switch","target":"defender","chooser":"defender","flip":"none"}, is_opponent)
+			var nd = main.player_active_pokemon if is_opponent else main.opponent_active_pokemon
+			if nd != null and not nd.is_invincible:
+				main.card_ops.apply_status(nd, "Burned", not is_opponent)
+				main.card_ops.apply_status(nd, "Confused", not is_opponent)
+				await main.show_message("THE NEW DEFENDING POKEMON IS NOW BURNED AND CONFUSED!")
+		"J":
+			var coin = await main.flip_coin(false, is_opponent)
+			if coin and defender != null and not main._should_bail():
+				var a_max = int(attacker.metadata.get("hp","0")); var d_max = int(defender.metadata.get("hp","0"))
+				var a_dmg = a_max - attacker.current_hp; var d_dmg = d_max - defender.current_hp
+				attacker.current_hp = max(0, a_max - d_dmg); defender.current_hp = max(0, d_max - a_dmg)
+				main.display_hp_circles_above_align(attacker, is_opponent)
+				main.display_hp_circles_above_align(defender, not is_opponent)
+				await main.show_message("HIDDEN POWER! SWAPPED DAMAGE COUNTERS!")
+		"K":
+			if base > 0 and defender != null:
+				await gym1_hit_active(attacker, defender, is_opponent, base); did_damage = true
+			if main.current_stadium_card != null:
+				var do_it := true
+				if not is_opponent:
+					do_it = await main.trainer_effects.gym1_prompt_yes_no(attacker, "HIDDEN POWER", "Discard the Stadium in play?", "YES", "NO")
+				if do_it and not main._should_bail():
+					main.trainer_effects.remove_current_stadium("HIDDEN POWER")
+		"L":
+			var coin = await main.flip_coin(false, is_opponent)
+			if coin and defender != null and not defender.is_invincible and not main._should_bail():
+				var amt = defender.current_hp - 10
+				if amt > 0:
+					gym1_hit_raw(defender, amt, not is_opponent); did_damage = true
+					await main.show_message("HIDDEN POWER! " + str(amt) + " DAMAGE!")
+		"M":
+			var evos = my_deck.filter(func(c): return c.metadata.get("supertype","") == "Pokémon" and _ex10_can_evolve_any(c, is_opponent))
+			if evos.is_empty():
+				await main.show_message("HIDDEN POWER! NO EVOLUTION AVAILABLE IN DECK!")
+				my_deck.shuffle(); main.update_deck_icon(is_opponent)
+			else:
+				var evo: card_object = evos[0] if is_opponent else await main.card_ops.choose_card(evos, false, "HIDDEN POWER", "Choose an Evolution to play from your deck", "SELECT", false, Callable(), true)
+				if evo == null: evo = evos[0]
+				var bases = main.card_ops.get_all_pokemon_in_play(is_opponent).filter(func(p): return main.can_evolve_from(evo, p))
+				var tgt: card_object = bases[0] if (is_opponent or bases.size() == 1) else await main.card_ops.choose_card(bases, false, "HIDDEN POWER", "Evolve which Pokemon?", "EVOLVE", false)
+				if tgt == null and not bases.is_empty(): tgt = bases[0]
+				if tgt != null:
+					await main.trainer_effects._ex2_do_evolution(evo, tgt, is_opponent, my_deck)
+					attacker.current_hp = max(0, attacker.current_hp - 10)
+					main.display_hp_circles_above_align(attacker, is_opponent)
+				my_deck.shuffle(); main.update_deck_icon(is_opponent)
+		"N":
+			await main.card_ops.heal_pokemon(attacker, 50, is_opponent)
+			await main.show_message("HIDDEN POWER! REMOVED 5 DAMAGE COUNTERS!")
+		"O":
+			if base > 0 and defender != null:
+				await gym1_hit_active(attacker, defender, is_opponent, base); did_damage = true
+			await main.check_all_knockouts()
+			if attacker.current_hp > 0 and not main._should_bail():
+				await _ex10_return_pokemon_to_hand(attacker, is_opponent)
+		"P":
+			for p in main.card_ops.get_all_pokemon_in_play(not is_opponent):
+				if p.get_damage_counters() > 0:
+					await _ex4_put_counter(attacker, p, not is_opponent)
+					if main._should_bail(): break
+			did_damage = true
+			await main.show_message("HIDDEN POWER! 1 COUNTER ON EACH DAMAGED OPPONENT POKEMON!")
+		"Q":
+			var chosen_types: Array = []
+			var got = 0
+			for i in range(3):
+				var pool = my_deck.filter(func(c): return c.metadata.get("supertype","") == "Energy" and "Special" not in c.metadata.get("subtypes",[]) and _ex10_new_type(c, chosen_types))
+				if pool.is_empty(): break
+				var e: card_object = pool[0] if is_opponent else await main.card_ops.choose_card(pool, false, "HIDDEN POWER", "Choose a basic Energy of a NEW type (" + str(i+1) + " of 3)", "SELECT", i > 0, Callable(), true)
+				if e == null: break
+				my_deck.erase(e); e.current_location = "hand"; (main.opponent_hand if is_opponent else main.player_hand).append(e)
+				for t in main.get_energy_provided_by_card(e):
+					if t not in chosen_types: chosen_types.append(t)
+				got += 1
+			my_deck.shuffle(); main.refresh_hand_display(is_opponent); main.update_deck_icon(is_opponent)
+			await main.show_message("HIDDEN POWER! ADDED " + str(got) + " ENERGY!")
+		"R":
+			var coin = await main.flip_coin(false, is_opponent)
+			if coin and defender != null and not main._should_bail():
+				var d_bench = main.player_bench if is_opponent else main.opponent_bench
+				if not d_bench.is_empty():
+					await _ex10_return_pokemon_to_hand(defender, not is_opponent)
+					await main.show_message("HIDDEN POWER! THE OPPONENT'S ACTIVE WAS RETURNED TO THEIR HAND!")
+		"S":
+			if defender != null and (_ex10_has_ability(defender, "Poké-Power") or _ex10_has_ability(defender, "Poké-Body")):
+				var sources = main.card_ops.get_all_pokemon_in_play(not is_opponent).filter(func(p): return p != defender and _ex10_count_basic_energy(p) > 0)
+				if not sources.is_empty():
+					var src: card_object = sources[0] if is_opponent else await main.card_ops.choose_card(sources, false, "HIDDEN POWER", "Move basic Energy FROM which opponent Pokemon?", "SELECT", false)
+					if src == null: src = sources[0]
+					var moved = 0
+					for e in src.attached_energies.duplicate():
+						if moved >= 2: break
+						if "Special" in e.metadata.get("subtypes", []): continue
+						src.attached_energies.erase(e); defender.attached_energies.append(e); moved += 1
+					main.display_pokemon(not is_opponent); main.display_active_pokemon_energies(not is_opponent)
+					await main.show_message("HIDDEN POWER! MOVED " + str(moved) + " ENERGY TO THE DEFENDING POKEMON!")
+		"T":
+			await execute_snipe_no_wr(attacker, defender, is_opponent, 20, false); did_damage = true
+		"U":
+			if base > 0 and defender != null:
+				await gym1_hit_active(attacker, defender, is_opponent, base); did_damage = true
+			if defender != null and defender.current_hp > 0:
+				var atks = main.get_attacks_for_card(defender)
+				if not atks.is_empty():
+					var chosen_name := ""
+					if is_opponent:
+						chosen_name = atks[0].get("name","")
+					else:
+						var names: Array = []
+						for a in atks: names.append(a.get("name",""))
+						chosen_name = await _ex10_choose_str("HIDDEN POWER", "Disable which of the Defender's attacks?", names)
+						if main._should_bail(): chosen_name = ""
+					if chosen_name != "":
+						defender.disabled_attacks[chosen_name] = "end_of_turn"
+						await main.show_message("DISABLED " + chosen_name.to_upper() + " NEXT TURN!")
+		"V":
+			var count = 0
+			for c in (main.opponent_discard_pile if is_opponent else main.player_discard_pile):
+				if c.metadata.get("supertype","") != "Pokémon": continue
+				var st = c.metadata.get("subtypes", [])
+				if "Basic" in st or "Stage 1" in st or "Stage 2" in st: count += 1
+			var dmg = base + min(60, count * 10)
+			if defender != null:
+				await gym1_hit_active(attacker, defender, is_opponent, dmg); did_damage = true
+		"W":
+			if base > 0 and defender != null:
+				await gym1_hit_active(attacker, defender, is_opponent, base); did_damage = true
+			var coin = await main.flip_coin(false, is_opponent)
+			var my_discard = main.opponent_discard_pile if is_opponent else main.player_discard_pile
+			if coin and not my_discard.is_empty() and not main._should_bail():
+				var pick: card_object = my_discard[0] if is_opponent else await main.card_ops.choose_card(my_discard, false, "HIDDEN POWER", "Put which card on top of your deck?", "SELECT", false, Callable(), true)
+				if pick == null: pick = my_discard[0]
+				my_discard.erase(pick); pick.current_location = "deck"; my_deck.push_front(pick)
+				main.update_deck_icon(is_opponent); main.update_discard_pile_display(is_opponent)
+				await main.show_message("HIDDEN POWER! PUT " + pick.metadata.get("name","").to_upper() + " ON TOP OF YOUR DECK!")
+		"X":
+			var heads = 0
+			while true:
+				var c = await main.flip_coin(true, is_opponent)
+				if main._should_bail(): break
+				if not c: break
+				heads += 1
+			var dmg = base * heads
+			await main.show_message("HIDDEN POWER! " + str(heads) + " HEADS — " + str(dmg) + " DAMAGE!")
+			if dmg > 0 and defender != null and not main._should_bail():
+				await gym1_hit_active(attacker, defender, is_opponent, dmg); did_damage = true
+		"Y":
+			if base > 0 and defender != null:
+				await gym1_hit_active(attacker, defender, is_opponent, base); did_damage = true
+			if defender != null and defender.current_hp > 0 and not defender.is_invincible:
+				main.card_ops.apply_status(defender, "Asleep", not is_opponent)
+				await main.show_message("THE DEFENDING POKEMON IS NOW ASLEEP!")
+		"Z":
+			for p in main.card_ops.get_all_pokemon_in_play(is_opponent) + main.card_ops.get_all_pokemon_in_play(not is_opponent):
+				if _ex10_has_ability(p, "Poké-Power") or _ex10_has_ability(p, "Poké-Body"):
+					var owner_opp = p in main.card_ops.get_all_pokemon_in_play(not is_opponent)
+					if not p.is_invincible:
+						gym1_hit_raw(p, 20, owner_opp)
+			did_damage = true
+			await main.show_message("HIDDEN POWER! 20 DAMAGE TO EACH POKEMON WITH A POWER OR BODY!")
+		"!":
+			var coin = await main.flip_coin(false, is_opponent)
+			if main._should_bail(): pass
+			elif coin:
+				var pool = main.card_ops.get_all_pokemon_in_play(not is_opponent)
+				var t: card_object = null
+				if not pool.is_empty():
+					t = pool[0] if is_opponent else await main.card_ops.choose_card(pool, false, "HIDDEN POWER", "Put 2 damage counters on which opponent Pokemon?", "SELECT", false)
+					if t == null: t = pool[0]
+					await _ex4_put_counter(attacker, t, not is_opponent); await _ex4_put_counter(attacker, t, not is_opponent)
+					did_damage = true
+			else:
+				var pool2 = main.card_ops.get_all_pokemon_in_play(is_opponent)
+				if not pool2.is_empty():
+					var t2: card_object = pool2[0] if is_opponent else await main.card_ops.choose_card(pool2, false, "HIDDEN POWER", "Put 2 damage counters on which of YOUR Pokemon?", "SELECT", false)
+					if t2 == null: t2 = pool2[0]
+					await _ex4_put_counter(attacker, t2, is_opponent); await _ex4_put_counter(attacker, t2, is_opponent)
+		"?":
+			await _ex10_hidden_power_guess(attacker, is_opponent)
+		_:
+			pass
+
+	if main._should_bail(): return
+	await main.check_all_knockouts()
+	await _attack_finish(did_damage or base > 0, base, atk, types, is_opponent)
+
+# ── small Unown helpers ──
+func _ex10_has_tool(p: card_object) -> bool:
+	for c in p.attached_cards:
+		if "Pokémon Tool" in c.metadata.get("subtypes", []): return true
+	return false
+
+func _ex10_has_ability(p: card_object, ability_type: String) -> bool:
+	for ab in p.metadata.get("abilities", []):
+		if ab.get("type","") == ability_type: return true
+	return false
+
+func _ex10_count_basic_energy(p: card_object) -> int:
+	var n = 0
+	for e in p.attached_energies:
+		if "Special" not in e.metadata.get("subtypes", []): n += 1
+	return n
+
+func _ex10_new_type(energy: card_object, chosen_types: Array) -> bool:
+	for t in main.get_energy_provided_by_card(energy):
+		if t != "Colorless" and t not in chosen_types: return true
+	return false
+
+func _ex10_can_evolve_any(evo: card_object, is_opponent: bool) -> bool:
+	for p in main.card_ops.get_all_pokemon_in_play(is_opponent):
+		if main.can_evolve_from(evo, p): return true
+	return false
+
+# Return a Pokemon and everything attached to it to its owner's hand (used by Unown O / R).
+func _ex10_return_pokemon_to_hand(pokemon: card_object, owner_is_opp: bool) -> void:
+	var hand = main.opponent_hand if owner_is_opp else main.player_hand
+	# Detach & discard energies/tools back per standard "return to hand" behaviour: attachments go to hand.
+	for e in pokemon.attached_energies.duplicate():
+		e.current_location = "hand"; hand.append(e)
+	pokemon.attached_energies.clear()
+	for c in pokemon.attached_cards.duplicate():
+		c.current_location = "hand"; hand.append(c)
+	pokemon.attached_cards.clear()
+	# Reset runtime state and move the Pokemon (and its evolution stack) to hand.
+	pokemon.current_hp = int(pokemon.metadata.get("hp","0"))
+	pokemon.special_condition = ""; pokemon.is_poisoned = false; pokemon.is_burned = false
+	var active = main.opponent_active_pokemon if owner_is_opp else main.player_active_pokemon
+	var bench = main.opponent_bench if owner_is_opp else main.player_bench
+	pokemon.current_location = "hand"
+	hand.append(pokemon)
+	if pokemon == active:
+		if owner_is_opp: main.opponent_active_pokemon = null
+		else: main.player_active_pokemon = null
+	else:
+		bench.erase(pokemon)
+	main.refresh_hand_display(owner_is_opp)
+	main.display_pokemon(owner_is_opp)
+	await main.handle_post_knockout(owner_is_opp)
+
+# Unown [?]: put a card from hand face down; the opponent guesses its category; if wrong, draw 2.
+func _ex10_hidden_power_guess(attacker: card_object, is_opponent: bool) -> void:
+	var hand = main.opponent_hand if is_opponent else main.player_hand
+	if hand.is_empty():
+		await main.show_message("HIDDEN POWER! NO CARDS IN HAND!")
+		return
+	var card: card_object
+	if is_opponent:
+		card = hand[randi() % hand.size()]
+	else:
+		card = await main.card_ops.choose_card(hand, false, "HIDDEN POWER", "Choose a card to put face down", "SELECT", false)
+		if main._should_bail(): return
+		if card == null: card = hand[randi() % hand.size()]
+	var actual = card.metadata.get("supertype","")
+	var category = "Pokémon" if actual == "Pokémon" else ("Trainer" if actual == "Trainer" else "Energy")
+	var guess := ""
+	if is_opponent:
+		# Player is the guesser.
+		guess = await _ex10_choose_str("HIDDEN POWER", "Guess the face-down card: Pokémon, Trainer, or Energy?", ["Pokémon", "Trainer", "Energy"])
+		if main._should_bail(): return
+	else:
+		# CPU guesses randomly.
+		guess = ["Pokémon", "Trainer", "Energy"][randi() % 3]
+		await main.show_message("OPPONENT GUESSES: " + guess.to_upper() + "!")
+		if main._should_bail(): return
+	await main.show_message("THE CARD WAS A " + category.to_upper() + " CARD!")
+	if main._should_bail(): return
+	if guess != category:
+		await main.card_ops.draw_n(is_opponent, 2)
+		await main.show_message("WRONG GUESS! DREW 2 CARDS!")
+	else:
+		await main.show_message("CORRECT GUESS! NO CARDS DRAWN.")
+
+# String-choice prompt (reuses the attack-button UI); returns the chosen string.
+func _ex10_choose_str(header: String, hint: String, options: Array) -> String:
+	var choice = await _ex10_choose_int(header, hint, options)
+	return str(choice)

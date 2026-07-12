@@ -3221,6 +3221,15 @@ func perform_evolution(is_opponent: bool) -> void:
 	# EX7 Froth (Azumarill ex7-1): on evolving an Active, each Defending Pokemon is now Paralyzed
 	elif evo_card.has_ability("Froth"):
 		await powers_and_bodies.trigger_ex7_froth(evo_card, is_opponent)
+	# EX10 on-play (evolve from hand) power triggers
+	elif evo_card.has_ability("Blissful Support"):
+		await powers_and_bodies.trigger_ex10_blissful_support(evo_card, is_opponent)
+	elif evo_card.has_ability("Devo Flash"):
+		await powers_and_bodies.trigger_ex10_devo_flash(evo_card, is_opponent)
+	elif evo_card.has_ability("Bursting Up"):
+		await powers_and_bodies.trigger_ex10_bursting_up(evo_card, is_opponent)
+	elif evo_card.has_ability("Darker Ring"):
+		await powers_and_bodies.trigger_ex10_darker_ring(evo_card, is_opponent)
 
 	# EX7 Darkest Impulse (Dark Ampharos ex7-2): whenever the opponent evolves a Pokemon, the opposing
 	# Dark Ampharos puts 2 damage counters on it. Fires for every evolution (both sides).
@@ -3343,6 +3352,10 @@ func get_attacks_for_card(card: card_object) -> Array:
 	# EX5 Mark of Antiquity (Groudon ex / Kyogre ex): each player's named Legendary ex can't attack
 	# while an opposing Mark of Antiquity holder is Active.
 	if powers_and_bodies.check_ex5_mark_of_antiquity_blocks_attack(card):
+		return []
+
+	# ex10 Intimidating Ring (Ursaring): while Ursaring is Active, the opponent's Basic Pokemon can't attack.
+	if powers_and_bodies.check_ex10_intimidating_ring_blocks_attack(card):
 		return []
 
 	# Get the attacks if they exist
@@ -4700,6 +4713,15 @@ func get_retreat_cost(pokemon: card_object) -> int:
 	# EX5 Freefloating (Tentacool ex5-77): Retreat Cost is 0 while no Energy is attached
 	if powers_and_bodies.is_ex5_freefloating_free(pokemon):
 		return 0
+
+	# ex10 Free Flight (Gligar): Retreat Cost is 0 while no Energy is attached
+	if pokemon.has_ability("Free Flight") and not powers_and_bodies.is_power_blocked(pokemon) and pokemon.attached_energies.is_empty():
+		return 0
+
+	# ex10 Fluffy Berry (Pokémon Tool ex10-85): Retreat Cost is 0 while attached
+	for ac in pokemon.attached_cards:
+		if ac.uid.to_lower() == "ex10-85":
+			return 0
 
 	# ECARD3 Psychoflow (Abra): Retreat Cost is 0 as long as a Psychic Energy is attached to it
 	if pokemon.has_ability("Psychoflow") and not powers_and_bodies.is_power_blocked(pokemon):

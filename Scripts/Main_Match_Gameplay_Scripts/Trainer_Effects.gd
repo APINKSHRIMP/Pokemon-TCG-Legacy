@@ -41,6 +41,7 @@ func _ensure_trainer_dispatch_ready() -> void:
 	_register_ex7_trainers()
 	_register_ex8_trainers()
 	_register_ex9_trainers()
+	_register_ex10_trainers()
 
 # EX9 (EX EMERALD) trainers. Most are reprints of ex1/ex2 cards — reuse the existing effect functions
 # with the ex9 UID. Lum Berry (ex9-78) / Oran Berry (ex9-80) are Pokemon Tools whose attach is generic
@@ -1049,6 +1050,11 @@ func validate_trainer_can_be_played(card: card_object, is_opponent: bool) -> Str
 	# ex5 Block Dust (Vileplume ex ex5-100): opponent can't play non-Supporter Trainer cards
 	if "Supporter" not in card.metadata.get("subtypes", []) and main.powers_and_bodies.is_ex5_block_dust_blocking(is_opponent):
 		return "Block Dust: you can't play Trainer cards (except Supporters)!"
+
+	# ex10 Lonesome (Houndoom): while the opponent has fewer Pokémon in play, you can't play Trainer
+	# cards except Supporters.
+	if "Supporter" not in card.metadata.get("subtypes", []) and main.powers_and_bodies.is_ex10_lonesome_active(is_opponent):
+		return "Lonesome: you can't play Trainer cards (except Supporters)!"
 
 	# ex8 Commanding Aura (Hariyama ex ex8-100): opponent can't play Stadium cards
 	if "Stadium" in card.metadata.get("subtypes", []) and main.powers_and_bodies.is_ex8_commanding_aura_active(is_opponent):
@@ -3975,6 +3981,20 @@ func gym1_end_of_turn_cleanup(side_is_opponent: bool) -> void:
 				pokemon.current_hp = max(0, pokemon.current_hp - 50)
 				main.display_hp_circles_above_align(pokemon, side_is_opponent)
 				await main.show_message("DARK SEED! 5 DAMAGE COUNTERS ON " + pokemon.metadata.get("name","").to_upper() + "!")
+				if main._should_bail(): return
+				await main.check_all_knockouts()
+				if main._should_bail(): return
+
+		# ex10 Spiky Shell (Forretress ex10-6): put N damage counters at the end of the afflicted
+		# Pokemon's OWN side turn — i.e. "the end of your opponent's next turn" from the attacker's view.
+		if pokemon.has_effect("ex10_spiky_shell"):
+			var ss = pokemon.get_effect_data("ex10_spiky_shell")
+			pokemon.clear_effect("ex10_spiky_shell")
+			if pokemon.current_hp > 0:
+				var n = (ss.get("counters", 3) if typeof(ss) == TYPE_DICTIONARY else 3)
+				pokemon.current_hp = max(0, pokemon.current_hp - n * 10)
+				main.display_hp_circles_above_align(pokemon, side_is_opponent)
+				await main.show_message("SPIKY SHELL! " + str(n) + " DAMAGE COUNTERS ON " + pokemon.metadata.get("name","").to_upper() + "!")
 				if main._should_bail(): return
 				await main.check_all_knockouts()
 				if main._should_bail(): return
@@ -10391,3 +10411,70 @@ func ex7_detour_reuse_supporter(is_opponent: bool) -> void:
 	await resolve_standard_trainer(sup, is_opponent)
 	if main._should_bail(): return
 	print("TRAINER: Detour re-used " + sup.metadata.get("name",""))
+
+# ════════════════════════════════════════════════════════════════════════════════════════════════
+# ex10 (EX Unseen Forces) trainers. Most are reprints — reuse existing effect functions with the ex10
+# UID. The 6 Pokémon Tools (Curse Powder/Energy Root/Fluffy Berry/Protective Orb/Sitrus Berry/Solid
+# Rage) attach generically; their passive effects live in Powers_And_Bodies (pre-KO / body hooks /
+# between-turns) and in get_max_hp / get_retreat_cost / has_no_weakness_body / is_power_blocked.
+# ════════════════════════════════════════════════════════════════════════════════════════════════
+func _register_ex10_trainers() -> void:
+	_trainer_dispatch["ex10-81"] = func(c, opp): await effect_ex10_energy_recycle_system(opp)   # Energy Recycle System (Item)
+	_trainer_dispatch["ex10-82"] = func(c, opp): await effect_ecard1_energy_removal_2(opp)       # Energy Removal 2 (Item)
+	_trainer_dispatch["ex10-84"] = func(c, opp): await effect_ecard2_energy_switch(opp)          # Energy Switch (Item)
+	_trainer_dispatch["ex10-86"] = func(c, opp): await effect_ex10_marys_request(opp)            # Mary's Request (Supporter)
+	_trainer_dispatch["ex10-87"] = func(c, opp): await effect_poke_ball(opp)                     # Poké Ball (Item)
+	_trainer_dispatch["ex10-88"] = func(c, opp): await effect_ecard1_pokemon_reversal(opp)       # Pokémon Reversal (Item)
+	_trainer_dispatch["ex10-89"] = func(c, opp): await effect_ecard1_professor_elms_training_method(opp)  # Professor Elm's Training Method (Supporter)
+	_trainer_dispatch["ex10-93"] = func(c, opp): await effect_ecard1_warp_point(opp)             # Warp Point (Item)
+	_trainer_dispatch["ex10-94"] = func(c, opp): await effect_energy_search(opp)                 # Energy Search (Item)
+	_trainer_dispatch["ex10-95"] = func(c, opp): await effect_potion(opp)                        # Potion (Item)
+
+# ENERGY RECYCLE SYSTEM (ex10-81, Item): search your discard pile for basic Energy cards. Either put 1
+# into your hand, OR shuffle 3 back into your deck.
+func effect_ex10_energy_recycle_system(is_opponent: bool) -> void:
+	var discard = main.opponent_discard_pile if is_opponent else main.player_discard_pile
+	var basics = discard.filter(func(c): return c.metadata.get("supertype","") == "Energy" and "Basic" in c.metadata.get("subtypes",[]))
+	if basics.is_empty():
+		await main.show_message("ENERGY RECYCLE SYSTEM: NO BASIC ENERGY IN DISCARD PILE!")
+		if main._should_bail(): return
+		return
+	# Choose the mode: 1 → hand, or 3 → shuffle into deck.
+	var take_to_hand := true
+	if is_opponent:
+		take_to_hand = true   # CPU keeps the Energy accessible.
+	elif basics.size() >= 3:
+		take_to_hand = await gym1_prompt_yes_no(main.player_active_pokemon, "ENERGY RECYCLE SYSTEM", "Put 1 basic Energy into your HAND, or shuffle 3 into your DECK?", "1 → HAND", "3 → DECK")
+		if main._should_bail(): return
+	if take_to_hand:
+		var pick: card_object = basics[0] if is_opponent else await main.card_ops.choose_card(basics, false, "ENERGY RECYCLE SYSTEM", "Put which basic Energy into your hand?", "TAKE", false, Callable(), true)
+		if main._should_bail(): return
+		if pick == null: pick = basics[0]
+		await main.card_ops.recover_to_hand(pick, is_opponent)
+		if main._should_bail(): return
+		await main.show_message("ENERGY RECYCLE SYSTEM! PUT A BASIC ENERGY INTO YOUR HAND!")
+		if main._should_bail(): return
+	else:
+		var deck = main.opponent_deck if is_opponent else main.player_deck
+		var moved = 0
+		for i in range(3):
+			var pool = discard.filter(func(c): return c.metadata.get("supertype","") == "Energy" and "Basic" in c.metadata.get("subtypes",[]))
+			if pool.is_empty(): break
+			var pick2: card_object = pool[0] if is_opponent else await main.card_ops.choose_card(pool, false, "ENERGY RECYCLE SYSTEM", "Shuffle which basic Energy into your deck? (" + str(i+1) + " of 3)", "SELECT", i > 0, Callable(), true)
+			if main._should_bail(): return
+			if pick2 == null: break
+			discard.erase(pick2); pick2.current_location = "deck"; deck.append(pick2); moved += 1
+		deck.shuffle()
+		main.update_deck_icon(is_opponent); main.update_discard_pile_display(is_opponent)
+		await main.show_message("ENERGY RECYCLE SYSTEM! SHUFFLED " + str(moved) + " BASIC ENERGY INTO YOUR DECK!")
+		if main._should_bail(): return
+
+# MARY'S REQUEST (ex10-86, Supporter): draw a card; if you have no Stage 2 Evolved Pokémon in play,
+# draw 2 more cards.
+func effect_ex10_marys_request(is_opponent: bool) -> void:
+	var has_stage2 = main.card_ops.get_all_pokemon_in_play(is_opponent).any(func(p): return "Stage 2" in p.metadata.get("subtypes", []))
+	var count = 1 if has_stage2 else 3
+	await main.card_ops.draw_n(is_opponent, count)
+	if main._should_bail(): return
+	await main.show_message("MARY'S REQUEST! DREW " + str(count) + " CARD(S)!")
+	if main._should_bail(): return

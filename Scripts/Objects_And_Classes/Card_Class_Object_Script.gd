@@ -250,7 +250,17 @@ func reset_power_used() -> void:
 func get_max_hp() -> int:
 	if max_hp_override > 0:
 		return max_hp_override
-	return int(metadata.get("hp", "0"))
+	var hp = int(metadata.get("hp", "0"))
+	# ex10 Hitmonchan "Stages of Evolution": +30 HP while it is an Evolved Pokemon (via Baby Evolution).
+	if metadata.get("name","") == "Hitmonchan":
+		for ab in metadata.get("abilities", []):
+			if ab.get("name","") == "Stages of Evolution" and not attached_pre_evolutions.is_empty():
+				hp += 30
+	# ex10 Energy Root (Pokémon Tool): +20 HP while attached.
+	for ac in attached_cards:
+		if ac.uid.to_lower() == "ex10-83":
+			hp += 20
+	return hp
 
 # Returns this Pokemon's current type(s), accounting for temporary overrides:
 # Crystal Shard (ecard3-122, permanent while attached) takes priority over Crystal Type
@@ -293,6 +303,10 @@ func get_effective_types() -> Array:
 					base_types.append("Metal")
 				if "Grass Energy" in t and _dual_armor_has_energy("Grass") and "Grass" not in base_types:
 					base_types.append("Grass")
+					if "Psychic Energy" in t and _dual_armor_has_energy("Psychic") and "Psychic" not in base_types:
+						base_types.append("Psychic")
+					if "Fighting Energy" in t and _dual_armor_has_energy("Fighting") and "Fighting" not in base_types:
+						base_types.append("Fighting")
 				break
 		return base_types
 	return metadata.get("types", ["Colorless"])

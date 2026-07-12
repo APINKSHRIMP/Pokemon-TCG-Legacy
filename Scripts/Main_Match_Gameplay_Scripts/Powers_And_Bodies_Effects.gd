@@ -77,6 +77,7 @@ func _register_all_powers() -> void:
 	_register_ex7_powers()
 	_register_ex8_powers()
 	_register_ex9_powers()
+	_register_ex10_powers()
 
 # ── On-damage and pre-KO event hooks ──────────────────────────────────────────
 # Each Callable is fired after active-pokemon damage resolves (on_damage) or
@@ -154,6 +155,17 @@ func _register_all_power_hooks() -> void:
 	_damage_modifier_hooks.append(func(dmg, atk, def, mods): return _hook_ex8_pivot_throw(dmg, atk, def, mods))
 	_damage_modifier_hooks.append(func(dmg, atk, def, mods): return _hook_ex8_psychic_shield(dmg, atk, def, mods))
 	_damage_modifier_hooks.append(func(dmg, atk, def, mods): return _hook_ex8_advanced_armor(dmg, atk, def, mods))
+	_damage_modifier_hooks.append(func(dmg, atk, def, mods): return _hook_ex10_thick_fat(dmg, atk, def, mods))
+	_damage_modifier_hooks.append(func(dmg, atk, def, mods): return _hook_ex10_extra_tight(dmg, atk, def, mods))
+	_damage_modifier_hooks.append(func(dmg, atk, def, mods): return _hook_ex10_stages_electabuzz(dmg, atk, def, mods))
+	_damage_modifier_hooks.append(func(dmg, atk, def, mods): return _hook_ex10_stages_hitmonlee(dmg, atk, def, mods))
+	_damage_modifier_hooks.append(func(dmg, atk, def, mods): return _hook_ex10_danger_perception(dmg, atk, def, mods))
+	_damage_modifier_hooks.append(func(dmg, atk, def, mods): return _hook_ex10_solid_rage(dmg, atk, def, mods))
+	_on_damage_hooks.append(func(def, atk, dmg, is_def_opp): await check_ex10_stages_hitmontop(def, atk, is_def_opp))
+	_on_damage_hooks.append(func(def, atk, dmg, is_def_opp): await check_ex10_silver_sparkle(def, atk, is_def_opp))
+	_pre_ko_hooks.append(func(poke, atk, is_poke_opp): await check_ex10_spiral_swirl(poke, atk, is_poke_opp))
+	_pre_ko_hooks.append(func(poke, atk, is_poke_opp): await check_ex10_golden_wing(poke, atk, is_poke_opp))
+	_pre_ko_hooks.append(func(poke, atk, is_poke_opp): await check_ex10_curse_powder(poke, atk, is_poke_opp))
 	_on_damage_hooks.append(func(def, atk, dmg, is_def_opp): await check_strikes_back(def, atk, is_def_opp))
 	_on_damage_hooks.append(func(def, atk, dmg, is_def_opp): await check_restless_sleep(def, atk, is_def_opp))
 	_on_damage_hooks.append(func(def, atk, dmg, is_def_opp): await check_pollen_defense(def, atk, is_def_opp))
@@ -258,6 +270,28 @@ func is_power_blocked(pokemon: card_object, works_through_status: bool = false) 
 	# EX9 Battle Frontier (ex9-75 Stadium): Colorless/Darkness/Metal Evolved Pokemon can't use Poké-Powers.
 	if battle_frontier_disables(pokemon):
 		return true
+	# ex10 Black Cry (Umbreon ex): the affected Defender can't use Poké-Powers during the opponent's next turn.
+	if pokemon.has_effect("ex10_power_lock"):
+		return true
+	# ex10 Energy Root (Pokémon Tool ex10-83): holder can't use Poké-Powers or Poké-Bodies.
+	for ac in pokemon.attached_cards:
+		if ac.uid.to_lower() == "ex10-83":
+			return true
+	# ex10 Overpowering Fang (Feraligatr ex): while a holder is a side's Active, each player's Pokemon
+	# (excluding Pokemon-ex) can't use Poké-Powers or Poké-Bodies.
+	if not main.is_ex_pokemon(pokemon):
+		var pa3 = main.player_active_pokemon
+		var oa3 = main.opponent_active_pokemon
+		if (pa3 != null and pa3.has_ability("Overpowering Fang") and not pa3.is_status_blocked()) or (oa3 != null and oa3.has_ability("Overpowering Fang") and not oa3.is_status_blocked()):
+			return true
+	# ex10 Intimidating Ring (Ursaring): while a holder is a side's Active, the OPPOSING side's Basic
+	# Pokemon can't use Poké-Powers.
+	var st_ir = pokemon.metadata.get("subtypes", [])
+	if "Basic" in st_ir:
+		var poke_is_opp_ir = pokemon.is_owner_opp(main)
+		var opp_active_ir = main.player_active_pokemon if poke_is_opp_ir else main.opponent_active_pokemon
+		if opp_active_ir != null and opp_active_ir.has_ability("Intimidating Ring") and not opp_active_ir.is_status_blocked():
+			return true
 	# EX9 Wise Aura (Medicham ex ex9-95): while a Medicham ex with Wise Aura is a side's Active, each
 	# Pokemon EXCLUDING Pokemon-ex (both sides) can't use Poké-Powers.
 	if not main.is_ex_pokemon(pokemon):
@@ -2086,6 +2120,8 @@ func cpu_phase_activate_powers() -> void:
 	await cpu_phase_ex8_powers()
 	if main._should_bail(): return
 	await cpu_phase_ex9_powers()
+	if main._should_bail(): return
+	await cpu_phase_ex10_powers()
 	if main._should_bail(): return
 
 
@@ -4881,12 +4917,23 @@ func check_energy_evolution(eevee: card_object, energy: card_object, is_opponent
 	if eevee.gaze_suppressed: return
 	var energy_types = main.get_energy_provided_by_card(energy)
 	if energy_types.is_empty(): return
-	var coin = await main.flip_coin(false, is_opponent)
-	if main._should_bail(): return
-	if not coin:
-		await main.show_message("ENERGY EVOLUTION: TAILS! NO EVOLUTION!")
+	# neo2 Eevee flips a coin (heads = evolve); ex10 Eevee has no coin and is "you may" (optional).
+	var ee_text := ""
+	for ab in eevee.metadata.get("abilities", []):
+		if ab.get("name","") == "Energy Evolution": ee_text = ab.get("text","").to_lower()
+	if "flip a coin" in ee_text:
+		var coin = await main.flip_coin(false, is_opponent)
 		if main._should_bail(): return
-		return
+		if not coin:
+			await main.show_message("ENERGY EVOLUTION: TAILS! NO EVOLUTION!")
+			if main._should_bail(): return
+			return
+	else:
+		# Optional: let the player decline; the CPU always evolves when a target exists.
+		if not is_opponent:
+			var do_it = await main.trainer_effects.gym1_prompt_yes_no(eevee, "ENERGY EVOLUTION", "Search your deck to evolve Eevee?", "YES", "NO")
+			if main._should_bail(): return
+			if not do_it: return
 	var energy_type = energy_types[0]
 	await main.show_message("ENERGY EVOLUTION! SEARCHING FOR " + energy_type.to_upper() + "-TYPE EVO...")
 	if main._should_bail(): return
@@ -6678,6 +6725,44 @@ func apply_np_between_turn_bodies() -> void:
 					main.display_hp_circles_above_align(p, side)
 					await main.show_message("HEALING STONE! " + p.metadata.get("name","").to_upper() + " REMOVED 1 DAMAGE COUNTER!")
 					if main._should_bail(): return
+
+	# ex10 HEALING AROMA (Meganium ex10-9): while Meganium is your Active, remove 1 damage counter from
+	# each Pokemon (excluding Pokemon-ex) on BOTH sides between turns.
+	for side in [false, true]:
+		var mega = main.opponent_active_pokemon if side else main.player_active_pokemon
+		if mega == null or mega.current_hp <= 0: continue
+		if is_toxic_gas_active() or main.goop_gas_active: continue
+		if is_power_blocked_by_status(mega): continue
+		if not mega.has_ability("Healing Aroma"): continue
+		for both in [false, true]:
+			for p in main.card_ops.get_all_pokemon_in_play(both):
+				if p == null or p.current_hp <= 0: continue
+				if main.is_ex_pokemon(p): continue
+				var mh = p.get_max_hp()
+				if p.current_hp < mh:
+					p.current_hp = min(mh, p.current_hp + 10)
+					main.display_hp_circles_above_align(p, both)
+		await main.show_message("HEALING AROMA! REMOVED 1 DAMAGE COUNTER FROM EACH POKEMON!")
+		if main._should_bail(): return
+
+	# ex10 SITRUS BERRY (Pokémon Tool ex10-91): between turns, if the holder has at least 3 damage
+	# counters, remove 3 and discard Sitrus Berry.
+	for side in [false, true]:
+		for p in main.card_ops.get_all_pokemon_in_play(side):
+			if p == null or p.current_hp <= 0: continue
+			var berry: card_object = null
+			for ac in p.attached_cards:
+				if ac.uid.to_lower() == "ex10-91": berry = ac
+			if berry == null: continue
+			if p.get_damage_counters() >= 3:
+				var mh2 = p.get_max_hp()
+				p.current_hp = min(mh2, p.current_hp + 30)
+				main.display_hp_circles_above_align(p, side)
+				p.attached_cards.erase(berry)
+				await main.card_ops.send_to_discard(berry, side, false)
+				main.trainer_effects.display_attached_trainer_cards(side)
+				await main.show_message("SITRUS BERRY! REMOVED 3 DAMAGE COUNTERS FROM " + p.metadata.get("name","").to_upper() + "!")
+				if main._should_bail(): return
 
 	# EX5 DESERT RUINS (ex5-88 Stadium): between turns each player puts 1 damage counter on their own
 	# Pokemon-ex whose maximum HP is at least 100.
@@ -12097,6 +12182,14 @@ func check_ex7_saturation(target_pokemon: card_object, energy_card: card_object,
 func has_no_weakness_body(defender: card_object) -> bool:
 	if defender == null: return false
 	if battle_frontier_disables(defender): return false
+	# ex10 Protective Orb (Pokémon Tool ex10-90): the holder has no Weakness.
+	for ac in defender.attached_cards:
+		if ac.uid.to_lower() == "ex10-90":
+			return true
+	# ex10 Jynx "Stages of Evolution": no Weakness while it is an Evolved Pokemon (via Baby Evolution).
+	if defender.metadata.get("name","") == "Jynx" and defender.has_ability("Stages of Evolution") and not is_power_blocked_by_status(defender):
+		if not defender.attached_pre_evolutions.is_empty():
+			return true
 	if defender.has_ability("Dark Condition") and not is_power_blocked_by_status(defender) and _ex7_has_darkness_energy(defender):
 		return true
 	# EX9 Electro-guard (Minun ex9-37): no Weakness while any Lightning Energy is attached.
@@ -13011,3 +13104,602 @@ func ex9_enforce_mystic_scale() -> void:
 					ac.current_location = "discard"
 					discard.append(ac)
 			main.update_discard_pile_display(side)
+
+# ════════════════════════════════════════════════════════════════════════════════════════════════
+# ex10 (EX Unseen Forces) — Poké-Powers & Poké-Bodies
+# ════════════════════════════════════════════════════════════════════════════════════════════════
+func _register_ex10_powers() -> void:
+	# Baby Evolution (Cleffa/Elekid/Smoochum/Tyrogue) reuses power_ex2_baby_evolution (name-generic).
+	# Energy Connect (Ampharos), Energy Evolution (Eevee), Super Suction Cups, Burning Aura, Dense,
+	# Intimidating Fang and Poison Resistance are all handled by existing name-generic code — no
+	# re-registration needed.
+	_power_dispatch["Item Search"]      = func(p): await power_ex10_item_search(p)
+	_power_dispatch["3-D Reset"]        = func(p): await power_ex10_3d_reset(p)
+	_power_dispatch["Snappy Move"]      = func(p): await power_ex10_snappy_move(p)
+	_power_dispatch["Makeover"]         = func(p): await power_ex10_makeover(p)
+	_power_dispatch["Nurture and Heal"] = func(p): await power_ex10_nurture_and_heal(p)
+	_power_dispatch["Night Cry"]        = func(p): await power_ex10_night_cry(p)
+	_power_dispatch["Shuffle"]          = func(p): await power_ex10_shuffle(p)
+
+# ITEM SEARCH (Slowking ex10-14): once per turn, search your deck for a Pokémon Tool card → hand.
+func power_ex10_item_search(slowking: card_object) -> void:
+	var is_opp = slowking.is_owner_opp(main)
+	if is_power_blocked_by_status(slowking):
+		await main.show_message("ITEM SEARCH IS BLOCKED BY A SPECIAL CONDITION!")
+		if main._should_bail(): return
+		return
+	if slowking.power_used_this_turn:
+		await main.show_message("ITEM SEARCH ALREADY USED THIS TURN!")
+		if main._should_bail(): return
+		return
+	slowking.power_used_this_turn = true
+	var found = await main.card_ops.search_deck_to_hand(is_opp, func(c): return "Pokémon Tool" in c.metadata.get("subtypes", []), "ITEM SEARCH: CHOOSE A POKÉMON TOOL", 1)
+	if main._should_bail(): return
+	await main.show_message("ITEM SEARCH! ADDED A POKÉMON TOOL TO HAND!" if found.size() > 0 else "NO POKÉMON TOOL IN DECK!")
+	if main._should_bail(): return
+
+# 3-D RESET (Porygon2 ex10-12): as often as you like, return a Pokémon Tool attached to 1 of your
+# Pokémon to your hand.
+func power_ex10_3d_reset(porygon2: card_object) -> void:
+	var is_opp = porygon2.is_owner_opp(main)
+	if is_power_blocked_by_status(porygon2):
+		await main.show_message("3-D RESET IS BLOCKED BY A SPECIAL CONDITION!")
+		if main._should_bail(): return
+		return
+	if is_opp:
+		return   # CPU doesn't use this situational tool-recycling power.
+	while true:
+		var holders: Array = []
+		for p in main.card_ops.get_all_pokemon_in_play(is_opp):
+			for ac in p.attached_cards:
+				if "Pokémon Tool" in ac.metadata.get("subtypes", []):
+					holders.append({"tool": ac, "holder": p})
+		if holders.is_empty():
+			await main.show_message("NO POKÉMON TOOLS ATTACHED TO YOUR POKÉMON!")
+			if main._should_bail(): return
+			return
+		var tool_cards = holders.map(func(h): return h["tool"])
+		var pick = await main.card_ops.prompt_select_card(tool_cards, "3-D RESET", "Return which Pokémon Tool to your hand? (cancel to stop)", "RETURN", true, true)
+		if main._should_bail(): return
+		if pick == null: return
+		var holder: card_object = null
+		for h in holders:
+			if h["tool"] == pick: holder = h["holder"]
+		holder.attached_cards.erase(pick)
+		pick.current_location = "hand"
+		main.player_hand.append(pick)
+		main.trainer_effects.display_attached_trainer_cards(is_opp)
+		main.refresh_hand_display(is_opp)
+		main.display_pokemon(is_opp)
+		await main.show_message("3-D RESET! RETURNED " + pick.metadata.get("name","").to_upper() + " TO YOUR HAND!")
+		if main._should_bail(): return
+
+# SNAPPY MOVE (Aipom ex10-34): once per turn, if Aipom is on your Bench, draw a card, then discard all
+# cards attached to Aipom and put Aipom on the bottom of your deck.
+func power_ex10_snappy_move(aipom: card_object) -> void:
+	var is_opp = aipom.is_owner_opp(main)
+	var bench = main.opponent_bench if is_opp else main.player_bench
+	if aipom not in bench:
+		await main.show_message("SNAPPY MOVE CAN ONLY BE USED FROM THE BENCH!")
+		if main._should_bail(): return
+		return
+	if aipom.power_used_this_turn:
+		if main._should_bail(): return
+		return
+	aipom.power_used_this_turn = true
+	await main.card_ops.draw_n(is_opp, 1)
+	if main._should_bail(): return
+	var discard = main.opponent_discard_pile if is_opp else main.player_discard_pile
+	for e in aipom.attached_energies.duplicate():
+		aipom.attached_energies.erase(e)
+		main.card_ops.discard_energy_from_pokemon(e, is_opp)
+	for c in aipom.attached_cards.duplicate():
+		aipom.attached_cards.erase(c)
+		c.current_location = "discard"
+		discard.append(c)
+	bench.erase(aipom)
+	aipom.current_hp = aipom.get_max_hp()
+	aipom.special_condition = ""; aipom.is_poisoned = false; aipom.is_burned = false
+	aipom.current_location = "deck"
+	var deck = main.opponent_deck if is_opp else main.player_deck
+	deck.append(aipom)
+	main.update_deck_icon(is_opp)
+	main.update_discard_pile_display(is_opp)
+	main.display_pokemon(is_opp)
+	await main.show_message("SNAPPY MOVE! AIPOM WAS PUT ON THE BOTTOM OF YOUR DECK!")
+	if main._should_bail(): return
+
+# MAKEOVER (Smeargle ex10-48): once per turn, discard a basic Energy attached to 1 of your Pokémon
+# (excluding Pokémon-ex); if you do, search your discard pile for a DIFFERENT basic Energy and attach
+# it to that Pokémon.
+func power_ex10_makeover(smeargle: card_object) -> void:
+	var is_opp = smeargle.is_owner_opp(main)
+	if is_power_blocked_by_status(smeargle):
+		await main.show_message("MAKEOVER IS BLOCKED BY A SPECIAL CONDITION!")
+		if main._should_bail(): return
+		return
+	if smeargle.power_used_this_turn:
+		await main.show_message("MAKEOVER ALREADY USED THIS TURN!")
+		if main._should_bail(): return
+		return
+	if is_opp:
+		return   # CPU skips this situational energy-swap power.
+	var holders: Array = []
+	for p in main.card_ops.get_all_pokemon_in_play(is_opp):
+		if main.is_ex_pokemon(p): continue
+		for e in p.attached_energies:
+			if "Basic" in e.metadata.get("subtypes", []):
+				holders.append({"energy": e, "holder": p})
+	if holders.is_empty():
+		await main.show_message("NO BASIC ENERGY TO DISCARD!")
+		if main._should_bail(): return
+		return
+	var energy_cards = holders.map(func(h): return h["energy"])
+	var pick = await main.card_ops.prompt_select_card(energy_cards, "MAKEOVER", "Discard which basic Energy?", "DISCARD", true, true)
+	if main._should_bail(): return
+	if pick == null: return
+	var holder: card_object = null
+	for h in holders:
+		if h["energy"] == pick: holder = h["holder"]
+	var discarded_name = pick.metadata.get("name","")
+	holder.attached_energies.erase(pick)
+	main.card_ops.discard_energy_from_pokemon(pick, is_opp)
+	main.display_active_pokemon_energies(is_opp)
+	smeargle.power_used_this_turn = true
+	var discard = main.opponent_discard_pile if is_opp else main.player_discard_pile
+	var pool = discard.filter(func(c): return c.metadata.get("supertype","") == "Energy" and "Basic" in c.metadata.get("subtypes",[]) and c.metadata.get("name","") != discarded_name)
+	if pool.is_empty():
+		await main.show_message("NO DIFFERENT BASIC ENERGY IN DISCARD PILE!")
+		if main._should_bail(): return
+		return
+	var new_e = await main.card_ops.choose_card(pool, false, "MAKEOVER", "Attach which basic Energy from your discard pile?", "ATTACH", false, Callable(), true)
+	if main._should_bail(): return
+	if new_e == null: new_e = pool[0]
+	discard.erase(new_e)
+	new_e.current_location = "attached"
+	holder.attached_energies.append(new_e)
+	main.display_active_pokemon_energies(is_opp)
+	main.display_pokemon(is_opp)
+	main.update_discard_pile_display(is_opp)
+	await main.show_message("MAKEOVER! ATTACHED " + new_e.metadata.get("name","").to_upper() + " TO " + holder.metadata.get("name","").to_upper() + "!")
+	if main._should_bail(): return
+
+# NURTURE AND HEAL (Meganium ex ex10-106): once per turn, attach a Grass Energy from your hand to 1 of
+# your Pokémon and remove 1 damage counter from that Pokémon.
+func power_ex10_nurture_and_heal(meganium: card_object) -> void:
+	var is_opp = meganium.is_owner_opp(main)
+	if is_power_blocked_by_status(meganium):
+		await main.show_message("NURTURE AND HEAL IS BLOCKED BY A SPECIAL CONDITION!")
+		if main._should_bail(): return
+		return
+	if meganium.power_used_this_turn:
+		await main.show_message("NURTURE AND HEAL ALREADY USED THIS TURN!")
+		if main._should_bail(): return
+		return
+	var hand = main.opponent_hand if is_opp else main.player_hand
+	var grass = hand.filter(func(c): return c.metadata.get("supertype","") == "Energy" and "Basic" in c.metadata.get("subtypes",[]) and "Grass" in main.get_energy_provided_by_card(c))
+	if grass.is_empty():
+		await main.show_message("NO GRASS ENERGY IN HAND!")
+		if main._should_bail(): return
+		return
+	var targets = main.card_ops.get_all_pokemon_in_play(is_opp)
+	var target: card_object
+	if is_opp:
+		target = targets[0]
+		for t in targets:
+			if t.get_damage_counters() > target.get_damage_counters(): target = t
+	else:
+		target = await main.card_ops.choose_card(targets, false, "NURTURE AND HEAL", "Attach Grass Energy to (and heal) which Pokémon?", "SELECT", false)
+		if main._should_bail(): return
+		if target == null: return
+	meganium.power_used_this_turn = true
+	var e = grass[0]
+	hand.erase(e)
+	e.current_location = "attached"
+	target.attached_energies.append(e)
+	await main.card_ops.heal_pokemon(target, 10, is_opp)
+	if main._should_bail(): return
+	main.refresh_hand_display(is_opp)
+	main.display_active_pokemon_energies(is_opp)
+	main.display_pokemon(is_opp)
+	await main.show_message("NURTURE AND HEAL! ATTACHED GRASS ENERGY AND REMOVED 1 DAMAGE COUNTER!")
+	if main._should_bail(): return
+
+# NIGHT CRY (Rocket's Persian ex ex10-116): once per turn, if Persian is on your Bench, search your deck
+# for a Pokémon with Dark or Rocket's in its name → hand.
+func power_ex10_night_cry(persian: card_object) -> void:
+	var is_opp = persian.is_owner_opp(main)
+	var bench = main.opponent_bench if is_opp else main.player_bench
+	if persian not in bench:
+		await main.show_message("NIGHT CRY CAN ONLY BE USED FROM THE BENCH!")
+		if main._should_bail(): return
+		return
+	if persian.power_used_this_turn:
+		await main.show_message("NIGHT CRY ALREADY USED THIS TURN!")
+		if main._should_bail(): return
+		return
+	persian.power_used_this_turn = true
+	var found = await main.card_ops.search_deck_to_hand(is_opp, func(c): return c.metadata.get("supertype","") == "Pokémon" and ("Dark" in c.metadata.get("name","") or "Rocket's" in c.metadata.get("name","")), "NIGHT CRY: CHOOSE A DARK/ROCKET'S POKÉMON", 1)
+	if main._should_bail(): return
+	await main.show_message("NIGHT CRY! ADDED A POKÉMON TO HAND!" if found.size() > 0 else "NO MATCHING POKÉMON IN DECK!")
+	if main._should_bail(): return
+
+# SHUFFLE (Unown ex10-A…): once per turn, search your deck for another Unown and switch it with this
+# Unown (all attachments, damage, conditions and effects transfer); put this Unown on top of your deck.
+func power_ex10_shuffle(unown: card_object) -> void:
+	var is_opp = unown.is_owner_opp(main)
+	if unown.power_used_this_turn:
+		await main.show_message("SHUFFLE ALREADY USED THIS TURN!")
+		if main._should_bail(): return
+		return
+	if is_opp:
+		return   # CPU skips this situational Unown-swap power.
+	var deck = main.player_deck
+	var pool = deck.filter(func(c): return "Unown" in c.metadata.get("name","") and c.uid != unown.uid)
+	if pool.is_empty():
+		await main.show_message("NO OTHER UNOWN IN DECK!")
+		deck.shuffle(); main.update_deck_icon(is_opp)
+		if main._should_bail(): return
+		return
+	var new_unown = await main.card_ops.choose_card(pool, false, "SHUFFLE", "Switch in which Unown?", "SELECT", true, Callable(), true)
+	if main._should_bail(): return
+	if new_unown == null:
+		deck.shuffle(); main.update_deck_icon(is_opp)
+		return
+	unown.power_used_this_turn = true
+	deck.erase(new_unown)
+	# Transfer runtime state to the incoming Unown.
+	new_unown.attached_energies = unown.attached_energies
+	new_unown.attached_cards = unown.attached_cards
+	new_unown.attached_pre_evolutions = unown.attached_pre_evolutions
+	new_unown.current_hp = unown.current_hp - (unown.get_max_hp() - new_unown.get_max_hp())
+	new_unown.current_hp = max(1, new_unown.current_hp)
+	new_unown.special_condition = unown.special_condition
+	new_unown.is_poisoned = unown.is_poisoned
+	new_unown.is_burned = unown.is_burned
+	# Put the swapped Unown into its play slot.
+	if unown == main.player_active_pokemon:
+		new_unown.current_location = "active"
+		main.player_active_pokemon = new_unown
+	else:
+		new_unown.current_location = "bench"
+		var b = main.player_bench
+		var idx = b.find(unown)
+		if idx != -1: b[idx] = new_unown
+	# Reset the swapped-out Unown and place it on top of the deck.
+	unown.attached_energies = []
+	unown.attached_cards = []
+	unown.attached_pre_evolutions = []
+	unown.current_hp = unown.get_max_hp()
+	unown.special_condition = ""; unown.is_poisoned = false; unown.is_burned = false
+	unown.current_location = "deck"
+	deck.push_front(unown)
+	deck.shuffle()
+	deck.erase(unown)
+	deck.push_front(unown)   # ensure it ends up on top after the shuffle
+	main.update_deck_icon(is_opp)
+	main.display_pokemon(is_opp)
+	main.display_active_pokemon_energies(is_opp)
+	await main.show_message("SHUFFLE! SWITCHED IN " + new_unown.metadata.get("name","").to_upper() + "!")
+	if main._should_bail(): return
+
+func cpu_phase_ex10_powers() -> void:
+	if is_toxic_gas_active() or main.goop_gas_active: return
+	# Item Search (Slowking): search a tool if the CPU still has one in its deck.
+	var slowking = _find_cpu_pokemon_with_power("Item Search")
+	if slowking != null and not slowking.power_used_this_turn and not is_power_blocked_by_status(slowking):
+		if main.opponent_deck.any(func(c): return "Pokémon Tool" in c.metadata.get("subtypes", [])):
+			await power_ex10_item_search(slowking)
+			if main._should_bail(): return
+	# Nurture and Heal (Meganium ex): attach Grass Energy + heal if beneficial.
+	var meg = _find_cpu_pokemon_with_power("Nurture and Heal")
+	if meg != null and not meg.power_used_this_turn and not is_power_blocked_by_status(meg):
+		var has_grass = main.opponent_hand.any(func(c): return c.metadata.get("supertype","") == "Energy" and "Basic" in c.metadata.get("subtypes",[]) and "Grass" in main.get_energy_provided_by_card(c))
+		if has_grass:
+			await power_ex10_nurture_and_heal(meg)
+			if main._should_bail(): return
+	# Night Cry (Rocket's Persian ex): fetch a Dark/Rocket's Pokémon from deck.
+	var persian = _find_cpu_pokemon_with_power("Night Cry")
+	if persian != null and not persian.power_used_this_turn and persian in main.opponent_bench:
+		if main.opponent_deck.any(func(c): return c.metadata.get("supertype","") == "Pokémon" and ("Dark" in c.metadata.get("name","") or "Rocket's" in c.metadata.get("name",""))):
+			await power_ex10_night_cry(persian)
+			if main._should_bail(): return
+
+# ── ex10 on-evolve (played-from-hand-to-evolve) power triggers ────────────────────────────────
+
+# BLISSFUL SUPPORT (Blissey ex ex10-101): on evolve, may discard all Energy from any number of your
+# Pokémon and remove all damage counters from those Pokémon.
+func trigger_ex10_blissful_support(blissey: card_object, is_opponent: bool) -> void:
+	var candidates = main.card_ops.get_all_pokemon_in_play(is_opponent).filter(func(p): return not p.attached_energies.is_empty() and p.get_damage_counters() > 0)
+	if candidates.is_empty(): return
+	var chosen: Array = []
+	if is_opponent:
+		# CPU: heal any Pokémon that is damaged and can spare its Energy (never the Active it needs to attack).
+		for p in candidates:
+			if p != main.opponent_active_pokemon and p.get_damage_counters() >= 3:
+				chosen.append(p)
+	else:
+		for p in candidates:
+			var yes = await main.trainer_effects.gym1_prompt_yes_no(p, "BLISSFUL SUPPORT", "Discard all Energy from " + p.metadata.get("name","").to_upper() + " to remove all its damage?", "YES", "NO")
+			if main._should_bail(): return
+			if yes: chosen.append(p)
+	for p in chosen:
+		for e in p.attached_energies.duplicate():
+			p.attached_energies.erase(e)
+			main.card_ops.discard_energy_from_pokemon(e, is_opponent)
+		p.current_hp = p.get_max_hp()
+		main.display_hp_circles_above_align(p, is_opponent)
+	if not chosen.is_empty():
+		main.display_pokemon(is_opponent)
+		main.display_active_pokemon_energies(is_opponent)
+		await main.show_message("BLISSFUL SUPPORT! REMOVED ALL DAMAGE FROM " + str(chosen.size()) + " POKÉMON!")
+		if main._should_bail(): return
+
+# DEVO FLASH (Espeon ex ex10-102): on evolve, choose an Evolved Pokémon on the opponent's Bench and
+# remove the highest Stage Evolution card from it (put it into the opponent's hand).
+func trigger_ex10_devo_flash(espeon: card_object, is_opponent: bool) -> void:
+	var opp_bench = main.player_bench if is_opponent else main.opponent_bench
+	var pool = opp_bench.filter(func(p): var st = p.metadata.get("subtypes", []); return "Stage 1" in st or "Stage 2" in st)
+	if pool.is_empty(): return
+	var target: card_object
+	if is_opponent:
+		target = pool[0]
+	else:
+		target = await main.card_ops.choose_card(pool, false, "DEVO FLASH", "Remove the highest Evolution from which Benched Pokémon?", "SELECT", true)
+		if main._should_bail(): return
+		if target == null: return
+	await main.attack_effects._ex2_devolve_pokemon(target, not is_opponent, "hand")
+	if main._should_bail(): return
+
+# BURSTING UP (Typhlosion ex ex10-110): on evolve, count the opponent's Benched Pokémon; search your
+# deck for up to that many Fire Energy and attach them to 1 of your Fire Pokémon.
+func trigger_ex10_bursting_up(typhlosion: card_object, is_opponent: bool) -> void:
+	var opp_bench = main.player_bench if is_opponent else main.opponent_bench
+	var n = opp_bench.size()
+	if n <= 0: return
+	var fire_pokemon = main.card_ops.get_all_pokemon_in_play(is_opponent).filter(func(p): return "Fire" in p.get_effective_types())
+	if fire_pokemon.is_empty(): return
+	var target: card_object
+	if is_opponent:
+		target = typhlosion if typhlosion in fire_pokemon else fire_pokemon[0]
+	else:
+		target = await main.card_ops.choose_card(fire_pokemon, false, "BURSTING UP", "Attach Fire Energy to which of your Fire Pokémon?", "SELECT", false)
+		if main._should_bail(): return
+		if target == null: target = fire_pokemon[0]
+	var deck = main.opponent_deck if is_opponent else main.player_deck
+	var attached = 0
+	for i in range(n):
+		var pool = deck.filter(func(c): return c.metadata.get("supertype","") == "Energy" and "Basic" in c.metadata.get("subtypes",[]) and "Fire" in main.get_energy_provided_by_card(c))
+		if pool.is_empty(): break
+		var e: card_object = pool[0]
+		if not is_opponent and pool.size() > 1:
+			e = await main.card_ops.choose_card(pool, false, "BURSTING UP", "Attach a Fire Energy (" + str(i+1) + " of " + str(n) + ")", "ATTACH", true, Callable(), true)
+			if main._should_bail(): return
+			if e == null: break
+		deck.erase(e)
+		e.current_location = "attached"
+		target.attached_energies.append(e)
+		attached += 1
+	deck.shuffle()
+	main.update_deck_icon(is_opponent)
+	main.display_active_pokemon_energies(is_opponent)
+	main.display_pokemon(is_opponent)
+	await main.show_message("BURSTING UP! ATTACHED " + str(attached) + " FIRE ENERGY!")
+	if main._should_bail(): return
+
+# DARKER RING (Umbreon ex ex10-112): on evolve, the opponent switches a Benched Pokémon with the
+# Defending Pokémon (they choose).
+func trigger_ex10_darker_ring(umbreon: card_object, is_opponent: bool) -> void:
+	var def_bench = main.player_bench if is_opponent else main.opponent_bench
+	if def_bench.is_empty(): return
+	await main.attack_effects.apply_force_switch({"type":"force_switch","target":"defender","chooser":"defender","flip":"none"}, is_opponent)
+	if main._should_bail(): return
+	await main.show_message("DARKER RING! THE OPPONENT SWITCHED THEIR ACTIVE POKÉMON!")
+	if main._should_bail(): return
+
+# ── ex10 damage-modifier hooks ────────────────────────────────────────────────────────────────
+
+# True if a body on `p` is currently suppressed (Battle Frontier, Energy Root tool, or Overpowering Fang).
+func ex10_body_suppressed(p: card_object) -> bool:
+	if p == null: return false
+	if battle_frontier_disables(p): return true
+	for ac in p.attached_cards:
+		if ac.uid.to_lower() == "ex10-83": return true
+	if not main.is_ex_pokemon(p):
+		var pa = main.player_active_pokemon
+		var oa = main.opponent_active_pokemon
+		if (pa != null and pa.has_ability("Overpowering Fang") and not pa.is_status_blocked()) or (oa != null and oa.has_ability("Overpowering Fang") and not oa.is_status_blocked()):
+			return true
+	return false
+
+func _ex10_is_evolved(p: card_object) -> bool:
+	if p == null: return false
+	var st = p.metadata.get("subtypes", [])
+	return "Stage 1" in st or "Stage 2" in st or not p.attached_pre_evolutions.is_empty()
+
+# THICK FAT (Miltank ex10-42): damage from Fire and Water Pokémon is reduced by 30 (after W/R).
+func _hook_ex10_thick_fat(damage: int, attacker: card_object, defender: card_object, modifiers: Array) -> int:
+	if damage <= 0 or defender == null or attacker == null: return damage
+	if not defender.has_ability("Thick Fat") or is_power_blocked_by_status(defender) or ex10_body_suppressed(defender): return damage
+	var at = attacker.get_effective_types()
+	if "Fire" in at or "Water" in at:
+		modifiers.append("THICK FAT -30")
+		return max(0, damage - 30)
+	return damage
+
+# EXTRA-TIGHT (Shuckle ex10-47): prevent all damage from the opponent's Pokémon-ex.
+func _hook_ex10_extra_tight(damage: int, attacker: card_object, defender: card_object, modifiers: Array) -> int:
+	if damage <= 0 or defender == null or attacker == null: return damage
+	if not defender.has_ability("Extra-tight") or is_power_blocked_by_status(defender) or ex10_body_suppressed(defender): return damage
+	if main.is_ex_pokemon(attacker):
+		modifiers.append("EXTRA-TIGHT (no damage)")
+		return 0
+	return damage
+
+# STAGES OF EVOLUTION — Electabuzz (ex10-22): while Evolved, damage from an opponent's Pokémon that has
+# any Special Energy attached is reduced by 40 (after W/R).
+func _hook_ex10_stages_electabuzz(damage: int, attacker: card_object, defender: card_object, modifiers: Array) -> int:
+	if damage <= 0 or defender == null or attacker == null: return damage
+	if defender.metadata.get("name","") != "Electabuzz" or not defender.has_ability("Stages of Evolution"): return damage
+	if is_power_blocked_by_status(defender) or ex10_body_suppressed(defender): return damage
+	if not _ex10_is_evolved(defender): return damage
+	var has_special = attacker.attached_energies.any(func(e): return "Special" in e.metadata.get("subtypes", []))
+	if has_special:
+		modifiers.append("STAGES OF EVOLUTION -40")
+		return max(0, damage - 40)
+	return damage
+
+# STAGES OF EVOLUTION — Hitmonlee (ex10-25): while Evolved, its attacks do 20 more damage (before W/R).
+func _hook_ex10_stages_hitmonlee(damage: int, attacker: card_object, defender: card_object, modifiers: Array) -> int:
+	if damage <= 0 or attacker == null: return damage
+	if attacker.metadata.get("name","") != "Hitmonlee" or not attacker.has_ability("Stages of Evolution"): return damage
+	if is_power_blocked_by_status(attacker) or ex10_body_suppressed(attacker): return damage
+	if not _ex10_is_evolved(attacker): return damage
+	modifiers.append("STAGES OF EVOLUTION +20")
+	return damage + 20
+
+# DANGER PERCEPTION (Scizor ex ex10-108): while its remaining HP is 60 or less, +40 damage (before W/R).
+func _hook_ex10_danger_perception(damage: int, attacker: card_object, defender: card_object, modifiers: Array) -> int:
+	if damage <= 0 or attacker == null: return damage
+	if not attacker.has_ability("Danger Perception") or is_power_blocked_by_status(attacker) or ex10_body_suppressed(attacker): return damage
+	if attacker.current_hp <= 60:
+		modifiers.append("DANGER PERCEPTION +40")
+		return damage + 40
+	return damage
+
+# SOLID RAGE (Pokémon Tool ex10-92): if the holder's side has more Prize cards left than the opponent,
+# +20 damage to the Active (before W/R).
+func _hook_ex10_solid_rage(damage: int, attacker: card_object, defender: card_object, modifiers: Array) -> int:
+	if damage <= 0 or attacker == null: return damage
+	var has_tool = false
+	for ac in attacker.attached_cards:
+		if ac.uid.to_lower() == "ex10-92": has_tool = true
+	if not has_tool: return damage
+	var atk_is_opp = attacker.is_owner_opp(main)
+	var my_prizes = (main.opponent_prize_cards if atk_is_opp else main.player_prize_cards).size()
+	var their_prizes = (main.player_prize_cards if atk_is_opp else main.opponent_prize_cards).size()
+	if my_prizes > their_prizes:
+		modifiers.append("SOLID RAGE +20")
+		return damage + 20
+	return damage
+
+# ── ex10 on-damage checks ───────────────────────────────────────────────────────────────────
+
+# STAGES OF EVOLUTION — Hitmontop (ex10-26): while Evolved, Active, and damaged by an opponent's attack
+# (even if KO'd), put 2 damage counters on the Attacking Pokémon.
+func check_ex10_stages_hitmontop(damaged: card_object, attacker: card_object, is_damaged_opp: bool) -> void:
+	if damaged == null or attacker == null: return
+	if damaged.metadata.get("name","") != "Hitmontop" or not damaged.has_ability("Stages of Evolution"): return
+	if is_power_blocked_by_status(damaged) or ex10_body_suppressed(damaged): return
+	if not _ex10_is_evolved(damaged): return
+	var active = main.opponent_active_pokemon if is_damaged_opp else main.player_active_pokemon
+	if damaged != active: return
+	attacker.current_hp = max(0, attacker.current_hp - 20)
+	main.display_hp_circles_above_align(attacker, not is_damaged_opp)
+	await main.show_message("STAGES OF EVOLUTION! 2 DAMAGE COUNTERS ON " + attacker.metadata.get("name","").to_upper() + "!")
+	if main._should_bail(): return
+
+# SILVER SPARKLE (Lugia ex ex10-105): if Active and damaged by an opponent's attack (even if KO'd), flip
+# a coin; if heads, return an Energy from the Attacking Pokémon to the opponent's hand.
+func check_ex10_silver_sparkle(damaged: card_object, attacker: card_object, is_damaged_opp: bool) -> void:
+	if damaged == null or attacker == null: return
+	if not damaged.has_ability("Silver Sparkle") or is_power_blocked_by_status(damaged) or ex10_body_suppressed(damaged): return
+	var active = main.opponent_active_pokemon if is_damaged_opp else main.player_active_pokemon
+	if damaged != active: return
+	if attacker.attached_energies.is_empty(): return
+	var coin = await main.flip_coin(false, is_damaged_opp)
+	if main._should_bail(): return
+	if not coin: return
+	var e = attacker.attached_energies[0]
+	attacker.attached_energies.erase(e)
+	var attacker_is_opp = not is_damaged_opp
+	var hand = main.opponent_hand if attacker_is_opp else main.player_hand
+	e.current_location = "hand"
+	hand.append(e)
+	main.display_active_pokemon_energies(attacker_is_opp)
+	main.refresh_hand_display(attacker_is_opp)
+	await main.show_message("SILVER SPARKLE! AN ENERGY WAS RETURNED TO THE OPPONENT'S HAND!")
+	if main._should_bail(): return
+
+# ── ex10 pre-KO checks ──────────────────────────────────────────────────────────────────────
+
+# SPIRAL SWIRL (Poliwrath ex10-11): if Active and Knocked Out by an opponent's attack, the Attacking
+# Pokémon is now Confused.
+func check_ex10_spiral_swirl(pokemon: card_object, attacker: card_object, is_pokemon_opp: bool) -> void:
+	if pokemon == null or attacker == null: return
+	if not pokemon.has_ability("Spiral Swirl") or is_power_blocked_by_status(pokemon) or ex10_body_suppressed(pokemon): return
+	var active = main.opponent_active_pokemon if is_pokemon_opp else main.player_active_pokemon
+	if pokemon != active: return
+	if attacker.is_owner_opp(main) == is_pokemon_opp: return   # only when the KO came from the opponent
+	main.card_ops.apply_status(attacker, "Confused", not is_pokemon_opp)
+	await main.show_message("SPIRAL SWIRL! " + attacker.metadata.get("name","").to_upper() + " IS NOW CONFUSED!")
+	if main._should_bail(): return
+
+# GOLDEN WING (Ho-Oh ex ex10-104): if Ho-Oh ex would be Knocked Out by an opponent's attack, you may
+# move up to 2 Energy attached to it to your Pokémon.
+func check_ex10_golden_wing(pokemon: card_object, attacker: card_object, is_pokemon_opp: bool) -> void:
+	if pokemon == null or attacker == null: return
+	if not pokemon.has_ability("Golden Wing") or is_power_blocked_by_status(pokemon) or ex10_body_suppressed(pokemon): return
+	if attacker.is_owner_opp(main) == is_pokemon_opp: return
+	if pokemon.attached_energies.is_empty(): return
+	var others = main.card_ops.get_all_pokemon_in_play(is_pokemon_opp).filter(func(p): return p != pokemon)
+	if others.is_empty(): return
+	var moved = 0
+	while moved < 2 and not pokemon.attached_energies.is_empty():
+		var target: card_object
+		if is_pokemon_opp:
+			target = others[0]
+		else:
+			target = await main.card_ops.choose_card(others, false, "GOLDEN WING", "Move an Energy to which Pokémon? (cancel to stop)", "MOVE", true)
+			if main._should_bail(): return
+			if target == null: break
+		var e = pokemon.attached_energies[0]
+		pokemon.attached_energies.erase(e)
+		target.attached_energies.append(e)
+		moved += 1
+	if moved > 0:
+		main.display_active_pokemon_energies(is_pokemon_opp)
+		main.display_pokemon(is_pokemon_opp)
+		await main.show_message("GOLDEN WING! MOVED " + str(moved) + " ENERGY OFF HO-OH EX!")
+		if main._should_bail(): return
+
+# CURSE POWDER (Pokémon Tool ex10-80): if the holder is Active and Knocked Out by an opponent's attack,
+# put 3 damage counters on the Attacking Pokémon.
+func check_ex10_curse_powder(pokemon: card_object, attacker: card_object, is_pokemon_opp: bool) -> void:
+	if pokemon == null or attacker == null: return
+	var has_tool = false
+	for ac in pokemon.attached_cards:
+		if ac.uid.to_lower() == "ex10-80": has_tool = true
+	if not has_tool: return
+	var active = main.opponent_active_pokemon if is_pokemon_opp else main.player_active_pokemon
+	if pokemon != active: return
+	if attacker.is_owner_opp(main) == is_pokemon_opp: return
+	attacker.current_hp = max(0, attacker.current_hp - 30)
+	main.display_hp_circles_above_align(attacker, not is_pokemon_opp)
+	await main.show_message("CURSE POWDER! 3 DAMAGE COUNTERS ON " + attacker.metadata.get("name","").to_upper() + "!")
+	if main._should_bail(): return
+
+# INTIMIDATING RING (Ursaring ex10-18): while Ursaring is a side's Active, the OPPOSING side's Basic
+# Pokémon can't attack. Consulted by get_attacks_for_card.
+func check_ex10_intimidating_ring_blocks_attack(card: card_object) -> bool:
+	if card == null: return false
+	if "Basic" not in card.metadata.get("subtypes", []): return false
+	var card_is_opp = card.is_owner_opp(main)
+	var opp_active = main.player_active_pokemon if card_is_opp else main.opponent_active_pokemon
+	if opp_active != null and opp_active.has_ability("Intimidating Ring") and not is_power_blocked_by_status(opp_active) and not ex10_body_suppressed(opp_active):
+		return true
+	return false
+
+# LONESOME (Houndoom ex10-7): while its side has fewer Pokémon in play than the opponent, the opponent
+# can't play Trainer cards (except Supporters). Consulted in validate_trainer_can_be_played.
+# `playing_is_opp` = the side attempting to play the Trainer.
+func is_ex10_lonesome_active(playing_is_opp: bool) -> bool:
+	# The player affected is `playing_is_opp`; the Houndoom belongs to the OTHER side.
+	var houndoom_is_opp = not playing_is_opp
+	for p in main.card_ops.get_all_pokemon_in_play(houndoom_is_opp):
+		if p.has_ability("Lonesome") and not is_power_blocked_by_status(p) and not ex10_body_suppressed(p):
+			var mine = main.card_ops.get_all_pokemon_in_play(houndoom_is_opp).size()
+			var theirs = main.card_ops.get_all_pokemon_in_play(playing_is_opp).size()
+			if mine < theirs:
+				return true
+	return false

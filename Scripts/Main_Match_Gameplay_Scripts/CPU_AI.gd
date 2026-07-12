@@ -3365,6 +3365,24 @@ func cpu_score_trainer_card(card: card_object) -> float:
 		"ex9-84": return 50.0                            # Scott (Supporter): fetch Supporters/Stadiums
 		"ex9-85": return _cpu_score_ex2_wallys_training() # Wally's Training (Supporter)
 		# ex9-75 Battle Frontier (Stadium) uses the generic stadium-play heuristic.
+		# ── EX10 (EX Unseen Forces) ──
+		"ex10-81": return 40.0                           # Energy Recycle System: recover basic Energy
+		"ex10-82": return _cpu_score_energy_removal()    # Energy Removal 2
+		"ex10-84": return 35.0                           # Energy Switch
+		"ex10-86": return 60.0                           # Mary's Request (Supporter): draw
+		"ex10-87": return 45.0                           # Poké Ball
+		"ex10-88": return 40.0                           # Pokémon Reversal
+		"ex10-89": return 55.0                           # Professor Elm's Training Method (Supporter)
+		"ex10-93": return 40.0                           # Warp Point
+		"ex10-94": return 20.0                           # Energy Search
+		"ex10-95": return _cpu_score_potion()            # Potion
+		# ex10 Pokémon Tools (Curse Powder/Energy Root/Fluffy Berry/Protective Orb/Sitrus Berry/Solid Rage)
+		"ex10-80": return 30.0                           # Curse Powder (Tool)
+		"ex10-83": return 25.0                           # Energy Root (Tool): +20 HP (blocks abilities)
+		"ex10-85": return 30.0                           # Fluffy Berry (Tool): free retreat
+		"ex10-90": return 30.0                           # Protective Orb (Tool): no Weakness
+		"ex10-91": return 35.0                           # Sitrus Berry (Tool): between-turn heal 30
+		"ex10-92": return 35.0                           # Solid Rage (Tool): +20 damage while ahead on prizes
 	return 0.0
 
 # MR. BRINEY'S COMPASSION (ex3-87): only valuable when the CPU has a damaged non-ex Pokemon worth
