@@ -43,6 +43,7 @@ func _ensure_trainer_dispatch_ready() -> void:
 	_register_ex9_trainers()
 	_register_ex10_trainers()
 	_register_ex11_trainers()
+	_register_ex12_trainers()
 
 # EX9 (EX EMERALD) trainers. Most are reprints of ex1/ex2 cards — reuse the existing effect functions
 # with the ex9 UID. Lum Berry (ex9-78) / Oran Berry (ex9-80) are Pokemon Tools whose attach is generic
@@ -4924,10 +4925,12 @@ func resolve_stadium_trainer(card: card_object, is_opponent: bool) -> void:
 	# Rocket's Hideout (neo3): +20 max HP for Dark-named pokemon while in play
 	main.powers_and_bodies.refresh_rockets_hideout_hp()
 
-	# Run on-play effect (only Narrow Gym needs one)
+	# Run on-play effect (only Narrow Gym and Giant Stump need one)
 	var uid = card.uid.to_lower()
 	if uid == "gym1-124":
 		await gym1_narrow_gym_on_play()
+	elif uid == "ex12-75":
+		await ex12_giant_stump_on_play(is_opponent)
 
 # Renders the current stadium card image inside the stadium_card_container node
 func display_stadium_card() -> void:
@@ -10727,4 +10730,133 @@ func holon_ruins_offer_draw(is_opponent: bool) -> void:
 		await main.card_ops.discard_from_hand(is_opponent, 1)
 		if main._should_bail(): return
 	await main.show_message("HOLON RUINS! DREW A CARD AND DISCARDED A CARD!")
+	if main._should_bail(): return
+
+######################################################################################################################################################
+######################################################## EX12 (EX LEGEND MAKER) TRAINERS ############################################################
+######################################################################################################################################################
+# Fieldworker (Supporter) is the only dispatched trainer. The 3 Fossils (Claw/Mysterious/Root) auto-work
+# as bench tokens (is_bench_token_trainer via their "as if it were a Basic" rule + HP), with Spongy Stone
+# (Root) in apply_np_between_turn_bodies and Jagged Stone (Claw) via check_ex2_jagged_stone. All 5
+# Stadiums auto-route through resolve_stadium_trainer; their passive effects live in get_max_bench_size
+# (Giant Stump), process_status_between_turns (Full Flame), apply_np_between_turn_bodies (Cursed Stone),
+# ex12_giant_stump_on_play, and the ex12_power_tree_offer / ex12_strange_cave_offer turn-start hooks.
+func _register_ex12_trainers() -> void:
+	_trainer_dispatch["ex12-73"] = func(c, opp): await effect_ex12_fieldworker(opp)   # Fieldworker (Supporter)
+
+# FIELDWORKER (ex12-73, Supporter): draw 3 cards; your opponent may also draw a card.
+func effect_ex12_fieldworker(is_opponent: bool) -> void:
+	await main.card_ops.draw_n(is_opponent, 3)
+	if main._should_bail(): return
+	await main.show_message("FIELDWORKER! DREW 3 CARDS!")
+	if main._should_bail(): return
+	var opp = not is_opponent
+	var opp_deck = main.opponent_deck if opp else main.player_deck
+	if opp_deck.is_empty():
+		return
+	var do_it = false
+	if opp:
+		# The opponent here is the CPU — it always takes the free card.
+		do_it = true
+	else:
+		# The opponent here is the human player — they may choose to draw.
+		var anchor = main.player_active_pokemon
+		if anchor != null:
+			do_it = await gym1_prompt_yes_no(anchor, "FIELDWORKER", "Your opponent played Fieldworker. Draw a card?", "YES", "NO")
+			if main._should_bail(): return
+	if do_it:
+		await main.card_ops.draw_n(opp, 1)
+		if main._should_bail(): return
+		await main.show_message("THE OPPONENT DREW A CARD!")
+		if main._should_bail(): return
+
+# GIANT STUMP (ex12-75, Stadium) on-play: each player discards Benched Pokemon (and attached cards)
+# until they have 3 Benched Pokemon. The player who played it discards first.
+func ex12_giant_stump_on_play(playing_is_opponent: bool) -> void:
+	await _ex12_stump_trim(playing_is_opponent)
+	if main._should_bail(): return
+	await _ex12_stump_trim(not playing_is_opponent)
+	if main._should_bail(): return
+
+func _ex12_stump_trim(side_is_opp: bool) -> void:
+	var bench = main.opponent_bench if side_is_opp else main.player_bench
+	while bench.size() > 3:
+		var victim: card_object = null
+		if side_is_opp:
+			victim = bench[0]
+			for b in bench:
+				if b.attached_energies.size() < victim.attached_energies.size():
+					victim = b
+		else:
+			victim = await main.card_ops.choose_card(bench, false, "GIANT STUMP", "Choose a Benched Pokemon to discard (down to 3)", "DISCARD", false)
+			if main._should_bail(): return
+			if victim == null: victim = bench[0]
+		bench.erase(victim)
+		main.card_ops.discard_all_attachments(victim, side_is_opp)
+		await main.card_ops.send_to_discard(victim, side_is_opp, false)
+		if main._should_bail(): return
+	main.display_pokemon(side_is_opp)
+
+# POWER TREE (ex12-76, Stadium): once during each player's turn, if that player has NO Special Energy
+# cards in their discard pile, they may search the discard for a basic Energy card and put it into hand.
+func ex12_power_tree_offer(is_opponent: bool) -> void:
+	if not main.is_stadium_in_play("ex12-76"):
+		return
+	var discard = main.opponent_discard_pile if is_opponent else main.player_discard_pile
+	for c in discard:
+		if c.metadata.get("supertype","") == "Energy" and "Special" in c.metadata.get("subtypes", []):
+			return
+	var pool = discard.filter(func(c): return c.metadata.get("supertype","") == "Energy" and "Basic" in c.metadata.get("subtypes", []))
+	if pool.is_empty():
+		return
+	var chosen: card_object = null
+	if is_opponent:
+		chosen = pool[0]
+	else:
+		var anchor = main.player_active_pokemon
+		if anchor == null: return
+		var do_it = await gym1_prompt_yes_no(anchor, "POWER TREE", "Take a basic Energy from your discard pile into your hand?", "YES", "NO")
+		if main._should_bail(): return
+		if not do_it: return
+		chosen = await main.card_ops.choose_card(pool, false, "POWER TREE", "Choose a basic Energy to put into your hand", "SELECT", false, Callable(), true)
+		if main._should_bail(): return
+		if chosen == null: return
+	await main.card_ops.recover_to_hand(chosen, is_opponent)
+	if main._should_bail(): return
+	await main.show_message("POWER TREE! PUT " + chosen.metadata.get("name","").to_upper() + " INTO HAND!")
+	if main._should_bail(): return
+
+# STRANGE CAVE (ex12-77, Stadium): once during each player's turn, that player may put an Omanyte, Kabuto,
+# Aerodactyl, Aerodactyl ex, Lileep, or Anorith onto their Bench from their hand (treated as a Basic).
+func ex12_strange_cave_offer(is_opponent: bool) -> void:
+	if not main.is_stadium_in_play("ex12-77"):
+		return
+	var bench = main.opponent_bench if is_opponent else main.player_bench
+	if bench.size() >= main.get_max_bench_size():
+		return
+	var hand = main.opponent_hand if is_opponent else main.player_hand
+	var names = ["Omanyte", "Kabuto", "Aerodactyl", "Aerodactyl ex", "Lileep", "Anorith"]
+	var pool = hand.filter(func(c): return c.metadata.get("name","") in names)
+	if pool.is_empty():
+		return
+	var chosen: card_object = null
+	if is_opponent:
+		chosen = pool[0]
+	else:
+		var anchor = main.player_active_pokemon
+		if anchor == null: return
+		var do_it = await gym1_prompt_yes_no(anchor, "STRANGE CAVE", "Put a fossil-line Pokemon from your hand onto your Bench?", "YES", "NO")
+		if main._should_bail(): return
+		if not do_it: return
+		chosen = await main.card_ops.choose_card(pool, false, "STRANGE CAVE", "Choose a Pokemon to put on your Bench", "SELECT", true)
+		if main._should_bail(): return
+		if chosen == null: return
+	hand.erase(chosen)
+	chosen.placed_on_field_this_turn = true
+	chosen.current_location = "bench"
+	chosen.current_hp = chosen.get_max_hp()
+	bench.append(chosen)
+	main.display_pokemon(is_opponent)
+	main.refresh_hand_display(is_opponent)
+	await main.show_message("STRANGE CAVE! " + chosen.metadata.get("name","").to_upper() + " WAS PLACED ON THE BENCH!")
 	if main._should_bail(): return

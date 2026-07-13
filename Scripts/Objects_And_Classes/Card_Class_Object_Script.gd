@@ -298,6 +298,24 @@ func get_effective_types() -> Array:
 		if not ev_types.is_empty():
 			return ev_types
 		return ["Colorless"]
+	# EX12 Reactive Colors (Kecleon ex12-37): while any React Energy is attached, it is Grass, Fire,
+	# Water, Lightning, Psychic, and Fighting type.
+	if has_ability("Reactive Colors") and react_energy_count() > 0:
+		return ["Grass", "Fire", "Water", "Lightning", "Psychic", "Fighting"]
+	# EX12 Dual Armor: name-collides with EX7's Dual Armor but changes to a DIFFERENT second type.
+	# Lanturn (ex12-19): Water + Lightning while any Water Energy attached. Armaldo ex (ex12-84):
+	# Grass + Fighting while any React Energy attached.
+	if has_ability("Dual Armor"):
+		var nm12 = metadata.get("name", "")
+		if nm12 == "Lanturn":
+			var lt = metadata.get("types", ["Colorless"]).duplicate()
+			if _dual_armor_has_energy("Water") and "Lightning" not in lt:
+				lt.append("Lightning")
+			return lt
+		if nm12 == "Armaldo ex":
+			if react_energy_count() > 0:
+				return ["Grass", "Fighting"]
+			return metadata.get("types", ["Colorless"]).duplicate()
 	# EX7 Dual Armor (Rocket's Scizor ex / Rocket's Scyther ex): adds a second type while a specific
 	# Energy is attached (Metal for Scizor, Grass for Scyther).
 	if has_ability("Dual Armor"):
@@ -337,6 +355,15 @@ func holon_energy_count() -> int:
 	var n := 0
 	for e in attached_energies:
 		if e.metadata.get("name", "").begins_with("Holon Energy"):
+			n += 1
+	return n
+
+# EX12 (EX Legend Maker): number of React Energy special-energy cards attached to this Pokemon.
+# React Energy provides Colorless, but many ex12 attacks/bodies scale off, gate on, or move it.
+func react_energy_count() -> int:
+	var n := 0
+	for e in attached_energies:
+		if e.metadata.get("name", "") == "React Energy":
 			n += 1
 	return n
 

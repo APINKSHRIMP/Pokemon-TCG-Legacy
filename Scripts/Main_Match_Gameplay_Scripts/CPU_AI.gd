@@ -64,6 +64,12 @@ func opponent_start_turn_checks() -> void:
 	await main.trainer_effects.holon_ruins_offer_draw(true)
 	if main._should_bail(): return
 
+	# EX12 Power Tree / Strange Cave (Stadiums): once-per-turn optional actions.
+	await main.trainer_effects.ex12_power_tree_offer(true)
+	if main._should_bail(): return
+	await main.trainer_effects.ex12_strange_cave_offer(true)
+	if main._should_bail(): return
+
 	await cpu_turn_orchestrator()
 	if main._should_bail(): return
 
@@ -387,6 +393,12 @@ func get_unmet_energy_count(attack: Dictionary, pokemon: card_object) -> int:
 			if provided_flame.size() > 1:
 				for _i in range(provided_flame.size() - 1):
 					pool.append("Fire")
+		# EX12 Stages of Evolution (Magmar ex12-21): while Magmar is an Evolved Pokemon, all Energy
+		# attached to it are Fire Energy instead of their usual types.
+		elif main.powers_and_bodies.is_ex12_stages_fire_active(pokemon):
+			var provided_sf = main.get_energy_provided_by_card(attached)
+			for _i in range(max(1, provided_sf.size())):
+				pool.append("Fire")
 		# ECARD1 Burning Energy (Charizard): basic Energy on this side counts as Fire this turn
 		elif main.powers_and_bodies.is_ecard1_burning_energy_active(pokemon) and "Special" not in attached.metadata.get("subtypes", []):
 			pool.append("Fire")
@@ -1457,6 +1469,9 @@ func cpu_phase_energy_attachment(cpu_eval: Dictionary) -> void:
 	main.powers_and_bodies.check_ex1_natural_cure(target, energy, true)
 	# EX1 Natural Remedy (Swampert ex1-23): Water Energy attach from hand heals 1 damage counter
 	main.powers_and_bodies.check_ex1_natural_remedy(target, energy, true)
+	# EX12 Reactive Healing (Tangela) / Fire Remedy (Arcanine ex): on-attach body triggers.
+	main.powers_and_bodies.check_ex12_reactive_healing(target, energy, true)
+	main.powers_and_bodies.check_ex12_fire_remedy(target, energy, true)
 	# EX7 Saturation (Quagsire ex7-26 / Wooper ex7-81): Water Energy attach clears conditions + heals
 	main.powers_and_bodies.check_ex7_saturation(target, energy, true)
 	# EX8 Lightning Burst (Rocket's Raikou ex ex8-108): Darkness Energy attach may switch a Defender
@@ -2812,6 +2827,12 @@ func cpu_phase_attack(cpu_eval: Dictionary) -> void:
 		main.opponent_attacked_this_turn = true
 		return
 
+	# EX12 Pattern Distraction (Spinda ex12-26): if the opposing Active Spinda has this Body and the CPU's
+	# attacker is a Basic Pokemon, flip a coin; tails cancels the attack.
+	if await main.powers_and_bodies.check_ex12_pattern_distraction(main.opponent_active_pokemon, true):
+		main.opponent_attacked_this_turn = true
+		return
+
 	# GYM1-120 Vermilion City Gym pre-attack flip (CPU side). Optional flip for Lt. Surge attacker.
 	await main.maybe_vermilion_lt_surge_flip(main.opponent_active_pokemon, true)
 	if main._should_bail(): return
@@ -3048,6 +3069,10 @@ func cpu_phase_bench_play() -> void:
 		# EX8 Dragon Boost (Rayquaza ex ex8-102): move any number of basic Energy to Rayquaza ex
 		await main.powers_and_bodies.trigger_ex8_dragon_boost(best_card, true)
 		if main._should_bail(): return
+		# EX12 Support Navigation (Lapras ex12-8): on benching from hand, search deck for a Supporter → hand.
+		if best_card.has_ability("Support Navigation"):
+			await main.powers_and_bodies.trigger_ex12_support_navigation(best_card, true)
+			if main._should_bail(): return
 
 # R.5: Selects the best bench replacement and performs the retreat
 func cpu_phase_evolution() -> void:

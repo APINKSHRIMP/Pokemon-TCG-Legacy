@@ -92,6 +92,12 @@ func get_energy_types_provided(card_name: String) -> Array:
 			# status immunity / free retreat / -10 from opp ex) are passive and gated on a matching
 			# basic Energy also being attached — see the ex11_holon_* helpers below.
 			return ["Colorless"]
+		"React Energy":
+			# EX12: provides 1 Colorless. Its whole identity is being a countable "React Energy" card
+			# (many ex12 cards search/count/move it). The Gorebyss "Reactive Booster" upgrade (React on a
+			# Huntail/Gorebyss provides 2 of every type) needs holder context and is resolved in
+			# Main.get_energy_provided_by_card.
+			return ["Colorless"]
 		# --- FUTURE SETS: Add new special energies below ---
 		# "Boost Energy":
 		#	return ["Colorless", "Colorless", "Colorless"]
@@ -133,7 +139,7 @@ func can_attach_to(energy_card: card_object, target_pokemon: card_object) -> Dic
 
 	match card_name:
 		"Rainbow Energy", "Full Heal Energy", "Potion Energy", "Double Colorless Energy", \
-		"Darkness Energy", "Metal Energy", "Recycle Energy", "Multi Energy", "Dark Metal Energy", "Heal Energy":
+		"Darkness Energy", "Metal Energy", "Recycle Energy", "Multi Energy", "Dark Metal Energy", "Heal Energy", "React Energy":
 			return {"allowed": true, "reason": ""}
 		"Boost Energy":
 			# EX8: can be attached only to an Evolved Pokemon.
@@ -541,6 +547,25 @@ func score_special_energy_attachment(energy_card: card_object, target_pokemon: c
 			for attack in target_pokemon.metadata.get("attacks", []):
 				if main.cpu_ai.get_unmet_energy_count(attack, target_pokemon) <= 3:
 					score += 30.0
+					break
+
+		"React Energy":
+			# EX12: 1 Colorless, but its value spikes on ex12 cards that scale off / gate on React Energy
+			# (Machamp Swift Blow, Flygon ex Reactive Blast, Aerodactyl Reactive Protection, etc.).
+			score += 10.0
+			if is_active:
+				score += 5.0
+			var rname = target_pokemon.metadata.get("name", "")
+			var rtext = ""
+			for ab in target_pokemon.metadata.get("abilities", []):
+				rtext += ab.get("text", "")
+			for atk in target_pokemon.metadata.get("attacks", []):
+				rtext += atk.get("text", "")
+			if "React Energy" in rtext:
+				score += 25.0
+			for attack in target_pokemon.metadata.get("attacks", []):
+				if main.cpu_ai.get_unmet_energy_count(attack, target_pokemon) == 1:
+					score += 20.0
 					break
 
 	return score

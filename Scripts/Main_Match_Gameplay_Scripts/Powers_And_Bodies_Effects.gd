@@ -79,6 +79,7 @@ func _register_all_powers() -> void:
 	_register_ex9_powers()
 	_register_ex10_powers()
 	_register_ex11_powers()
+	_register_ex12_powers()
 
 # ── On-damage and pre-KO event hooks ──────────────────────────────────────────
 # Each Callable is fired after active-pokemon damage resolves (on_damage) or
@@ -165,6 +166,12 @@ func _register_all_power_hooks() -> void:
 	_damage_modifier_hooks.append(func(dmg, atk, def, mods): return _hook_ex11_holon_gl(dmg, atk, def, mods))
 	_damage_modifier_hooks.append(func(dmg, atk, def, mods): return _hook_ex11_reversal_aura(dmg, atk, def, mods))
 	_damage_modifier_hooks.append(func(dmg, atk, def, mods): return _hook_ex11_protection(dmg, atk, def, mods))
+	_damage_modifier_hooks.append(func(dmg, atk, def, mods): return _hook_ex12_reactive_protection(dmg, atk, def, mods))
+	_damage_modifier_hooks.append(func(dmg, atk, def, mods): return _hook_ex12_ancient_shell(dmg, atk, def, mods))
+	_damage_modifier_hooks.append(func(dmg, atk, def, mods): return _hook_ex12_ancient_fang(dmg, atk, def, mods))
+	_damage_modifier_hooks.append(func(dmg, atk, def, mods): return _hook_ex12_paranoid(dmg, atk, def, mods))
+	_damage_modifier_hooks.append(func(dmg, atk, def, mods): return _hook_ex12_reactive_shield(dmg, atk, def, mods))
+	_damage_modifier_hooks.append(func(dmg, atk, def, mods): return _hook_ex12_ex_shield(dmg, atk, def, mods))
 	_on_damage_hooks.append(func(def, atk, dmg, is_def_opp): await check_ex10_stages_hitmontop(def, atk, is_def_opp))
 	_on_damage_hooks.append(func(def, atk, dmg, is_def_opp): await check_ex10_silver_sparkle(def, atk, is_def_opp))
 	_pre_ko_hooks.append(func(poke, atk, is_poke_opp): await check_ex10_spiral_swirl(poke, atk, is_poke_opp))
@@ -193,6 +200,8 @@ func _register_all_power_hooks() -> void:
 	_on_damage_hooks.append(func(def, atk, dmg, is_def_opp): await check_ex7_knockout_gas(def, atk, is_def_opp))
 	_pre_ko_hooks.append(func(poke, atk, is_poke_opp): await check_ex5_energy_grounding(poke, atk, is_poke_opp))
 	_pre_ko_hooks.append(func(poke, atk, is_poke_opp): await check_final_beam(poke, atk, is_poke_opp))
+	_pre_ko_hooks.append(func(poke, atk, is_poke_opp): await check_ex12_shadow_curse(poke, atk, is_poke_opp))
+	_pre_ko_hooks.append(func(poke, atk, is_poke_opp): await check_ex12_reactive_recharge(poke, atk, is_poke_opp))
 	_pre_ko_hooks.append(func(poke, atk, is_poke_opp): await main.trainer_effects.check_time_shard(poke, atk, is_poke_opp))
 
 # Fires all on-damage hooks in registration order. Called once from Main after active damage lands.
@@ -303,6 +312,35 @@ func is_power_blocked(pokemon: card_object, works_through_status: bool = false) 
 		var oa2 = main.opponent_active_pokemon
 		if (pa2 != null and pa2.has_ability("Wise Aura") and not pa2.is_status_blocked()) or (oa2 != null and oa2.has_ability("Wise Aura") and not oa2.is_status_blocked()):
 			return true
+	# EX12 Stench (Muk ex12-11): while a Muk with Stench is a side's Active, EACH player's Pokemon
+	# (both sides) can't use Poké-Powers.
+	var pa_st = main.player_active_pokemon
+	var oa_st = main.opponent_active_pokemon
+	if (pa_st != null and pa_st.has_ability("Stench") and not pa_st.is_status_blocked()) or (oa_st != null and oa_st.has_ability("Stench") and not oa_st.is_status_blocked()):
+		return true
+	# EX12 Rear Sensor (Girafarig ex12-16): while a Girafarig with Rear Sensor is in play (either side),
+	# each player's ACTIVE Basic Pokemon (excluding Pokemon-ex) can't use Poké-Powers.
+	if not main.is_ex_pokemon(pokemon) and "Basic" in pokemon.metadata.get("subtypes", []) and (pokemon == pa_st or pokemon == oa_st):
+		for side_rs in [false, true]:
+			for p in main.card_ops.get_all_pokemon_in_play(side_rs):
+				if p.has_ability("Rear Sensor") and not p.is_status_blocked():
+					return true
+	# EX12 Sol Shade (Lunatone ex12-20): while a Lunatone with Sol Shade whose owner also has a Solrock
+	# in play is in play, each player's Fire Pokemon (excluding Pokemon-ex) can't use Poké-Powers.
+	if not main.is_ex_pokemon(pokemon) and "Fire" in pokemon.get_effective_types():
+		for side_ss in [false, true]:
+			for p in main.card_ops.get_all_pokemon_in_play(side_ss):
+				if p.has_ability("Sol Shade") and not p.is_status_blocked():
+					if main.card_ops.get_all_pokemon_in_play(side_ss).any(func(q): return q.metadata.get("name","") == "Solrock"):
+						return true
+	# EX12 Luna Shade (Solrock ex12-25): while a Solrock with Luna Shade whose owner also has a Lunatone
+	# in play is in play, each player's Colorless Pokemon (excluding Pokemon-ex) can't use Poké-Powers.
+	if not main.is_ex_pokemon(pokemon) and "Colorless" in pokemon.get_effective_types():
+		for side_ls in [false, true]:
+			for p in main.card_ops.get_all_pokemon_in_play(side_ls):
+				if p.has_ability("Luna Shade") and not p.is_status_blocked():
+					if main.card_ops.get_all_pokemon_in_play(side_ls).any(func(q): return q.metadata.get("name","") == "Lunatone"):
+						return true
 	return false
 
 # Returns true if a card is a trainer card
@@ -2128,6 +2166,8 @@ func cpu_phase_activate_powers() -> void:
 	await cpu_phase_ex10_powers()
 	if main._should_bail(): return
 	await cpu_phase_ex11_powers()
+	if main._should_bail(): return
+	await cpu_phase_ex12_powers()
 	if main._should_bail(): return
 
 
@@ -6692,6 +6732,67 @@ func apply_np_between_turn_bodies() -> void:
 	# EX2 Primal Lock (Aerodactyl ex): strip any Pokemon Tools from the opponent's Pokemon.
 	await apply_ex2_primal_lock_removal()
 	if main._should_bail(): return
+
+	# EX12 Reactive Aroma (Roselia ex12-42): while a Roselia with React Energy attached is in play, remove
+	# 1 damage counter from each of your Pokemon (excluding ex) that has React Energy attached. Once per turn.
+	for side in [false, true]:
+		var has_active_aroma = false
+		for rp in main.card_ops.get_all_pokemon_in_play(side):
+			if rp.has_ability("Reactive Aroma") and rp.react_energy_count() > 0 and not is_power_blocked_by_status(rp) and not is_toxic_gas_active() and not main.goop_gas_active:
+				has_active_aroma = true
+				break
+		if not has_active_aroma:
+			continue
+		var healed_any = false
+		for p in main.card_ops.get_all_pokemon_in_play(side):
+			if p.current_hp <= 0 or main.is_ex_pokemon(p): continue
+			if p.react_energy_count() > 0 and p.current_hp < p.get_max_hp():
+				p.current_hp = min(p.get_max_hp(), p.current_hp + 10)
+				main.display_hp_circles_above_align(p, side)
+				healed_any = true
+		if healed_any:
+			await main.show_message("REACTIVE AROMA! REMOVED 1 DAMAGE COUNTER FROM EACH REACT-ENERGY POKEMON!")
+			if main._should_bail(): return
+
+	# EX12 Icy Aura (Walrein ex ex12-89): while Walrein ex is your Active, put 1 damage counter on each
+	# Active Pokemon (both yours and your opponent's) between turns, excluding Water Pokemon.
+	for side in [false, true]:
+		var w_active = main.opponent_active_pokemon if side else main.player_active_pokemon
+		if w_active == null or w_active.current_hp <= 0: continue
+		if not w_active.has_ability("Icy Aura") or is_power_blocked_by_status(w_active): continue
+		if is_toxic_gas_active() or main.goop_gas_active: continue
+		for both in [false, true]:
+			var act = main.opponent_active_pokemon if both else main.player_active_pokemon
+			if act == null or act.current_hp <= 0: continue
+			if "Water" in act.get_effective_types(): continue
+			act.current_hp = max(0, act.current_hp - 10)
+			main.display_hp_circles_above_align(act, both)
+		await main.show_message("ICY AURA! 1 DAMAGE COUNTER ON EACH NON-WATER ACTIVE POKEMON!")
+		if main._should_bail(): return
+		await main.check_all_knockouts()
+		if main._should_bail(): return
+
+	# EX12 Cursed Stone (ex12-72 Stadium): at any time between turns, each player puts 1 damage counter on
+	# his or her Pokemon that has a Poké-Power.
+	if main.is_stadium_in_play("ex12-72"):
+		var any_cursed = false
+		for side in [false, true]:
+			for p in main.card_ops.get_all_pokemon_in_play(side):
+				if p.current_hp <= 0: continue
+				var has_power = false
+				for ab in p.metadata.get("abilities", []):
+					var at = ab.get("type","")
+					if at in ["Poké-Power", "Poke-Power", "Pokémon Power", "Pokemon Power"]:
+						has_power = true; break
+				if has_power:
+					p.current_hp = max(0, p.current_hp - 10)
+					main.display_hp_circles_above_align(p, side)
+					any_cursed = true
+		if any_cursed:
+			await main.show_message("CURSED STONE! 1 DAMAGE COUNTER ON EACH POKEMON WITH A POKÉ-POWER!")
+			if main._should_bail(): return
+			await main.check_all_knockouts()
+			if main._should_bail(): return
 	# RAIN DISH (np-20 Ludicolo): remove 1 damage counter from Ludicolo between turns
 	for side in [false, true]:
 		var active = main.opponent_active_pokemon if side else main.player_active_pokemon
@@ -12250,6 +12351,13 @@ func has_no_weakness_body(defender: card_object) -> bool:
 	# EX11 Holon Energy FF + basic Fire attached: the holder has no Weakness (ignored if it's a Pokemon-ex).
 	if main.special_energy_effects.ex11_holon_ff_no_weakness(defender):
 		return true
+	# EX12 Ancient Protection (Kabuto ex12-36): each of your Omanyte, Omastar, Kabuto, Kabutops, and
+	# Kabutops ex has no Weakness while a Kabuto with this Body is in play on their side.
+	if defender.metadata.get("name","") in ["Omanyte", "Omastar", "Kabuto", "Kabutops", "Kabutops ex"]:
+		var ap_side = defender.is_owner_opp(main)
+		for p in main.card_ops.get_all_pokemon_in_play(ap_side):
+			if p.has_ability("Ancient Protection") and not is_power_blocked_by_status(p):
+				return true
 	var side_opp = defender.is_owner_opp(main)
 	for p in main.card_ops.get_all_pokemon_in_play(side_opp):
 		if p.has_ability("Dragon Veil") and not is_power_blocked_by_status(p):
@@ -14362,3 +14470,569 @@ func cpu_phase_ex11_powers() -> void:
 		if any_damaged:
 			await power_ex11_delta_heal(delta_heal)
 			if main._should_bail(): return
+
+######################################################################################################################################################
+######################################################## EX12 (EX LEGEND MAKER) POWERS & BODIES ####################################################
+######################################################################################################################################################
+# Active Poké-Powers go in _power_dispatch (offered in the power menu). Triggered powers (on-evolve
+# Evolutionary Fan/Emerge Charge, on-bench Support Navigation, pre-KO Shadow Curse/Reactive Recharge)
+# are wired at their event sites and are NOT in _power_dispatch. Baby Evolution (Magby/Wynaut) reuses
+# power_ex2_baby_evolution. Passive bodies: damage hooks (_hook_ex12_*), is_power_blocked branches
+# (Stench/Rear Sensor/Sol Shade/Luna Shade), get_effective_types (Dual Armor/Reactive Colors),
+# get_retreat_cost (Reactive Lift / Wobbuffet Stages), has_no_weakness_body (Ancient Protection),
+# calculate_final_damage (Ancient Tentacles), get_attacks_for_card (Versatile/Deadlock), between-turns
+# (Reactive Aroma/Icy Aura/Cursed Stone), on-attach (Reactive Healing/Fire Remedy). Auto-reused by name:
+# Shining Horn (ex11), Deep Sleep (is_deep_sleep_active), Exoskeleton (Graveler), Safeguard (Dustox ex →
+# _hook_ex2_safeguard), Poison Payback (Wurmple → check_ex2_poison_payback), Jagged Stone (Claw Fossil →
+# check_ex2_jagged_stone), Spongy Stone (Root Fossil → apply_np_between_turn_bodies).
+func _register_ex12_powers() -> void:
+	_power_dispatch["Reactive Shift"]     = func(p): await power_ex12_reactive_shift(p)
+	_power_dispatch["Type Change"]        = func(p): await power_ex12_type_change(p)
+	_power_dispatch["Nectar Pod"]         = func(p): await power_ex12_nectar_pod(p)
+	_power_dispatch["Reactive Generator"] = func(p): await power_ex12_reactive_generator(p)
+	_power_dispatch["Shady Move"]         = func(p): await power_ex12_shady_move(p)
+	_power_dispatch["Emerge"]             = func(p): await power_ex12_emerge(p)
+	_power_dispatch["Power Circulation"]  = func(p): await power_ex12_power_circulation(p)
+
+# ── Passive-body helpers ──────────────────────────────────────────────────────
+
+# REACTIVE BOOSTER (Gorebyss ex12-17): is a Gorebyss with this Body in play on `pokemon`'s side?
+# (Consulted in Main.get_energy_provided_by_card for React Energy on a Huntail/Gorebyss.)
+func is_ex12_reactive_booster_active(pokemon: card_object) -> bool:
+	if pokemon == null: return false
+	if is_toxic_gas_active() or main.goop_gas_active: return false
+	var side = pokemon.is_owner_opp(main)
+	for p in main.card_ops.get_all_pokemon_in_play(side):
+		if p.has_ability("Reactive Booster") and not is_power_blocked_by_status(p):
+			return true
+	return false
+
+# STAGES OF EVOLUTION (Magmar ex12-21): all Energy attached to Magmar is Fire while it is Evolved.
+func is_ex12_stages_fire_active(pokemon: card_object) -> bool:
+	if pokemon == null: return false
+	if pokemon.metadata.get("name","") != "Magmar": return false
+	if not pokemon.has_ability("Stages of Evolution"): return false
+	if pokemon.attached_pre_evolutions.is_empty(): return false
+	if is_toxic_gas_active() or main.goop_gas_active: return false
+	return true
+
+# ANCIENT TENTACLES (Omanyte ex12-60): attacks by your Omanyte/Omastar/Kabuto/Kabutops/Kabutops ex
+# ignore Resistance while an Omanyte with this Body is in play on that side.
+func is_ex12_ancient_tentacles_active(attacker: card_object) -> bool:
+	if attacker == null: return false
+	if attacker.metadata.get("name","") not in ["Omanyte", "Omastar", "Kabuto", "Kabutops", "Kabutops ex"]:
+		return false
+	var side = attacker.is_owner_opp(main)
+	for p in main.card_ops.get_all_pokemon_in_play(side):
+		if p.has_ability("Ancient Tentacles") and not is_power_blocked_by_status(p):
+			return true
+	return false
+
+# DEADLOCK (Dunsparce ex12-31): while a Dunsparce with this Body is the opposing Active, `card` (if it
+# is a Dunsparce) can't attack.
+func check_ex12_deadlock_blocks_attack(card: card_object) -> bool:
+	if card == null or card.metadata.get("name","") != "Dunsparce": return false
+	var card_is_opp = card.is_owner_opp(main)
+	var opp_active = main.player_active_pokemon if card_is_opp else main.opponent_active_pokemon
+	if opp_active != null and opp_active.metadata.get("name","") == "Dunsparce" and opp_active.has_ability("Deadlock") and not is_power_blocked_by_status(opp_active):
+		return true
+	return false
+
+# PATTERN DISTRACTION (Spinda ex12-26): while Spinda is the opposing Active, a Basic attacker must flip
+# a coin; tails cancels the attack. Returns true if the attack should be cancelled.
+func check_ex12_pattern_distraction(attacker: card_object, is_opponent: bool) -> bool:
+	if attacker == null: return false
+	if "Basic" not in attacker.metadata.get("subtypes", []): return false
+	var defender = main.player_active_pokemon if is_opponent else main.opponent_active_pokemon
+	if defender == null or defender.metadata.get("name","") != "Spinda" or not defender.has_ability("Pattern Distraction"):
+		return false
+	await main.show_message("PATTERN DISTRACTION! " + attacker.metadata.get("name","").to_upper() + " MUST FLIP TO ATTACK!")
+	if main._should_bail(): return false
+	var coin = await main.flip_coin(false, is_opponent)
+	if main._should_bail(): return false
+	if coin:
+		await main.show_message("HEADS! THE ATTACK CONTINUES!")
+		return false
+	await main.show_message("TAILS! THE ATTACK DOES NOTHING!")
+	return true
+
+# ── On-attach bodies (called from both energy-attach paths) ───────────────────
+
+# REACTIVE HEALING (Tangela ex12-44): attaching a React Energy from hand removes all damage counters.
+func check_ex12_reactive_healing(target_pokemon: card_object, energy_card: card_object, is_opponent: bool) -> void:
+	if target_pokemon == null or energy_card == null: return
+	if is_toxic_gas_active() or main.goop_gas_active: return
+	if not target_pokemon.has_ability("Reactive Healing"): return
+	if energy_card.metadata.get("name","") != "React Energy": return
+	if target_pokemon.current_hp >= target_pokemon.get_max_hp(): return
+	target_pokemon.current_hp = target_pokemon.get_max_hp()
+	main.display_hp_circles_above_align(target_pokemon, is_opponent)
+	print("BODY: Reactive Healing — removed all damage from ", target_pokemon.metadata.get("name",""))
+
+# FIRE REMEDY (Arcanine ex ex12-83): attaching a Fire Energy from hand removes 1 counter + all conditions.
+func check_ex12_fire_remedy(target_pokemon: card_object, energy_card: card_object, is_opponent: bool) -> void:
+	if target_pokemon == null or energy_card == null: return
+	if is_toxic_gas_active() or main.goop_gas_active: return
+	if not target_pokemon.has_ability("Fire Remedy"): return
+	if "Fire" not in main.get_energy_provided_by_card(energy_card): return
+	main.clear_all_statuses(target_pokemon, is_opponent)
+	main.update_status_icons(target_pokemon, is_opponent)
+	if target_pokemon.current_hp < target_pokemon.get_max_hp():
+		target_pokemon.current_hp = min(target_pokemon.get_max_hp(), target_pokemon.current_hp + 10)
+		main.display_hp_circles_above_align(target_pokemon, is_opponent)
+	print("BODY: Fire Remedy — cleared conditions + healed 10 on ", target_pokemon.metadata.get("name",""))
+
+# ── Passive damage-modifier hooks (registered in _register_all_power_hooks) ────
+
+func _hook_ex12_reactive_protection(damage: int, attacker: card_object, defender: card_object, modifiers: Array) -> int:
+	if damage <= 0 or defender == null: return damage
+	if not defender.has_ability("Reactive Protection"): return damage
+	var r = defender.react_energy_count()
+	if r <= 0: return damage
+	var reduced = max(0, damage - 10 * r)
+	if reduced != damage: modifiers.append("REACTIVE PROTECTION -" + str(10 * r))
+	return reduced
+
+func _hook_ex12_ancient_shell(damage: int, attacker: card_object, defender: card_object, modifiers: Array) -> int:
+	if damage <= 0 or defender == null: return damage
+	if not defender.has_ability("Ancient Shell"): return damage
+	var side = defender.is_owner_opp(main)
+	var has_helper = false
+	for p in main.card_ops.get_all_pokemon_in_play(side):
+		if p.metadata.get("name","") in ["Omanyte", "Omastar"]:
+			has_helper = true; break
+	if not has_helper: return damage
+	var reduced = max(0, damage - 20)
+	if reduced != damage: modifiers.append("ANCIENT SHELL -20")
+	return reduced
+
+func _hook_ex12_ancient_fang(damage: int, attacker: card_object, defender: card_object, modifiers: Array) -> int:
+	if damage <= 0 or attacker == null: return damage
+	if not attacker.has_ability("Ancient Fang") or is_power_blocked_by_status(attacker): return damage
+	var side = attacker.is_owner_opp(main)
+	for p in main.card_ops.get_all_pokemon_in_play(side):
+		if p.metadata.get("name","") in ["Kabuto", "Kabutops", "Kabutops ex"]:
+			modifiers.append("ANCIENT FANG +20")
+			return damage + 20
+	return damage
+
+func _hook_ex12_paranoid(damage: int, attacker: card_object, defender: card_object, modifiers: Array) -> int:
+	if damage <= 0 or attacker == null: return damage
+	if not attacker.has_ability("Paranoid"): return damage
+	if attacker.special_condition != "Confused": return damage
+	modifiers.append("PARANOID +50")
+	return damage + 50
+
+func _hook_ex12_reactive_shield(damage: int, attacker: card_object, defender: card_object, modifiers: Array) -> int:
+	if damage <= 0 or defender == null or attacker == null: return damage
+	if defender.metadata.get("name","") != "Tentacruel": return damage
+	if not main.is_ex_pokemon(attacker): return damage
+	var side = defender.is_owner_opp(main)
+	for p in main.card_ops.get_all_pokemon_in_play(side):
+		if p.metadata.get("name","") == "Tentacruel" and p.has_ability("Reactive Shield") and p.react_energy_count() > 0:
+			modifiers.append("REACTIVE SHIELD (NO EFFECT FROM EX)")
+			return 0
+	return damage
+
+func _hook_ex12_ex_shield(damage: int, attacker: card_object, defender: card_object, modifiers: Array) -> int:
+	if damage <= 0 or defender == null or attacker == null: return damage
+	if defender.has_effect("ex12_ex_shield") and main.is_ex_pokemon(attacker):
+		modifiers.append("PROTECTED FROM EX")
+		return 0
+	return damage
+
+# ── Active Poké-Powers ────────────────────────────────────────────────────────
+
+# REACTIVE SHIFT (Delcatty ex12-4): move a React Energy attached to 1 of your Pokemon to another.
+func power_ex12_reactive_shift(delcatty: card_object) -> void:
+	var is_opp = delcatty.is_owner_opp(main)
+	if is_opp:
+		return  # CPU skips this situational energy-shuffling power.
+	if not await _ex11_power_ready(delcatty, "Reactive Shift"):
+		if main._should_bail(): return
+		return
+	var mine = main.card_ops.get_all_pokemon_in_play(is_opp)
+	var sources = mine.filter(func(p): return p.react_energy_count() > 0)
+	if sources.is_empty():
+		await main.show_message("NO REACT ENERGY TO MOVE!")
+		if main._should_bail(): return
+		return
+	var src: card_object = sources[0] if sources.size() == 1 else await main.card_ops.choose_card(sources, false, "REACTIVE SHIFT", "Move a React Energy from which Pokemon?", "SELECT", true)
+	if main._should_bail(): return
+	if src == null: return
+	var targets = mine.filter(func(p): return p != src)
+	if targets.is_empty(): return
+	var dst: card_object = targets[0] if targets.size() == 1 else await main.card_ops.choose_card(targets, false, "REACTIVE SHIFT", "Move the React Energy to which Pokemon?", "ATTACH", true)
+	if main._should_bail(): return
+	if dst == null: return
+	var react: card_object = null
+	for e in src.attached_energies:
+		if e.metadata.get("name","") == "React Energy":
+			react = e; break
+	if react == null: return
+	delcatty.power_used_this_turn = true
+	src.attached_energies.erase(react)
+	react.current_location = "active" if dst == main.player_active_pokemon else "bench"
+	dst.attached_energies.append(react)
+	main.display_active_pokemon_energies(is_opp)
+	main.display_pokemon(is_opp)
+	await main.show_message("REACTIVE SHIFT! MOVED A REACT ENERGY!")
+	if main._should_bail(): return
+
+# TYPE CHANGE (Mew ex12-10): choose 1 Defending Pokemon; Mew becomes that type until end of turn.
+func power_ex12_type_change(mew: card_object) -> void:
+	var is_opp = mew.is_owner_opp(main)
+	if is_opp:
+		return  # CPU skips this situational type-matchup power.
+	if not await _ex11_power_ready(mew, "Type Change"):
+		if main._should_bail(): return
+		return
+	var defenders = main.card_ops.get_defending_pokemon(is_opp)
+	if defenders.is_empty():
+		await main.show_message("NO DEFENDING POKEMON!")
+		if main._should_bail(): return
+		return
+	var chosen: card_object = defenders[0] if defenders.size() == 1 else await main.card_ops.choose_card(defenders, false, "TYPE CHANGE", "Copy the type of which Defending Pokemon?", "SELECT", false)
+	if main._should_bail(): return
+	if chosen == null: chosen = defenders[0]
+	var t = chosen.get_effective_types()
+	if t.is_empty(): return
+	mew.power_used_this_turn = true
+	mew.set_effect("ex2_type_override", "end_of_own_turn", t[0])
+	await main.show_message("TYPE CHANGE! MEW IS NOW " + str(t[0]).to_upper() + " TYPE!")
+	if main._should_bail(): return
+
+# NECTAR POD (Victreebel ex12-13): switch 1 of your opponent's Benched Stage 2 Evolved Pokemon with the
+# Defending Pokemon (your opponent chooses the Defending — moot in single battle).
+func power_ex12_nectar_pod(victreebel: card_object) -> void:
+	var is_opp = victreebel.is_owner_opp(main)
+	if not await _ex11_power_ready(victreebel, "Nectar Pod"):
+		if main._should_bail(): return
+		return
+	var opp_bench = main.player_bench if is_opp else main.opponent_bench
+	var pool = opp_bench.filter(func(p): return "Stage 2" in p.metadata.get("subtypes", []))
+	if pool.is_empty():
+		await main.show_message("NO BENCHED STAGE 2 POKEMON TO SWITCH IN!")
+		if main._should_bail(): return
+		return
+	var selected: card_object = null
+	if is_opp:
+		selected = pool[0]
+		for c in pool:
+			if c.current_hp < selected.current_hp: selected = c
+	else:
+		selected = await main.card_ops.choose_card(pool, false, "NECTAR POD", "Switch in which of the opponent's Benched Stage 2 Pokemon?", "SELECT", true)
+		if main._should_bail(): return
+		if selected == null: return
+	victreebel.power_used_this_turn = true
+	main.attack_effects._force_bench_to_active(selected, is_opp)
+	await main.show_message("NECTAR POD! " + selected.metadata.get("name","").to_upper() + " WAS SWITCHED INTO THE ACTIVE SPOT!")
+	if main._should_bail(): return
+
+# REACTIVE GENERATOR (Huntail ex12-18): if Huntail has no React Energy attached, search your deck for a
+# React Energy card and attach it to Huntail.
+func power_ex12_reactive_generator(huntail: card_object) -> void:
+	var is_opp = huntail.is_owner_opp(main)
+	if not await _ex11_power_ready(huntail, "Reactive Generator"):
+		if main._should_bail(): return
+		return
+	if huntail.react_energy_count() > 0:
+		await main.show_message("HUNTAIL ALREADY HAS A REACT ENERGY!")
+		if main._should_bail(): return
+		return
+	var deck = main.opponent_deck if is_opp else main.player_deck
+	var pool = deck.filter(func(c): return c.metadata.get("name","") == "React Energy")
+	if pool.is_empty():
+		await main.show_message("NO REACT ENERGY IN YOUR DECK!")
+		deck.shuffle(); main.update_deck_icon(is_opp)
+		if main._should_bail(): return
+		return
+	huntail.power_used_this_turn = true
+	var e: card_object = pool[0] if is_opp else await main.card_ops.choose_card(pool, false, "REACTIVE GENERATOR", "Choose a React Energy", "ATTACH", false, Callable(), true)
+	if main._should_bail(): return
+	if e == null: e = pool[0]
+	deck.erase(e)
+	e.current_location = "active" if huntail == (main.opponent_active_pokemon if is_opp else main.player_active_pokemon) else "bench"
+	huntail.attached_energies.append(e)
+	deck.shuffle()
+	main.update_deck_icon(is_opp)
+	main.display_active_pokemon_energies(is_opp)
+	main.display_pokemon(is_opp)
+	await main.show_message("REACTIVE GENERATOR! ATTACHED A REACT ENERGY TO HUNTAIL!")
+	if main._should_bail(): return
+
+# SHADY MOVE (Banette ex ex12-85): if Banette ex is Active, move 1 damage counter from either player's
+# Pokemon to another Pokemon (yours or your opponent's).
+func power_ex12_shady_move(banette: card_object) -> void:
+	var is_opp = banette.is_owner_opp(main)
+	var my_active = main.opponent_active_pokemon if is_opp else main.player_active_pokemon
+	if banette != my_active:
+		if not is_opp:
+			await main.show_message("SHADY MOVE CAN ONLY BE USED WHILE BANETTE ex IS ACTIVE!")
+			if main._should_bail(): return
+		return
+	if not await _ex11_power_ready(banette, "Shady Move"):
+		if main._should_bail(): return
+		return
+	var all_poke: Array = []
+	for side in [false, true]:
+		all_poke.append_array(main.card_ops.get_all_pokemon_in_play(side))
+	var sources = all_poke.filter(func(p): return p.get_damage_counters() > 0)
+	if sources.is_empty():
+		await main.show_message("NO DAMAGE COUNTERS TO MOVE!")
+		if main._should_bail(): return
+		return
+	var src: card_object = null
+	var dst: card_object = null
+	if is_opp:
+		# CPU: move a counter from its own most-damaged Pokemon onto the opponent's Active.
+		var own = main.card_ops.get_all_pokemon_in_play(true).filter(func(p): return p.get_damage_counters() > 0)
+		if own.is_empty(): return
+		src = own[0]
+		for c in own:
+			if c.get_damage_counters() > src.get_damage_counters(): src = c
+		dst = main.player_active_pokemon
+		if dst == null or dst == src or dst.current_hp <= 0: return
+	else:
+		src = await main.card_ops.choose_card(sources, false, "SHADY MOVE", "Move a damage counter FROM which Pokemon?", "SELECT", true)
+		if main._should_bail(): return
+		if src == null: return
+		var dst_pool = all_poke.filter(func(p): return p != src and p.current_hp > 0)
+		if dst_pool.is_empty(): return
+		dst = await main.card_ops.choose_card(dst_pool, false, "SHADY MOVE", "Move the damage counter TO which Pokemon?", "PLACE", true)
+		if main._should_bail(): return
+		if dst == null: return
+	banette.power_used_this_turn = true
+	src.current_hp = min(src.get_max_hp(), src.current_hp + 10)
+	var dst_is_opp = dst.is_owner_opp(main)
+	var src_is_opp = src.is_owner_opp(main)
+	dst.current_hp = max(0, dst.current_hp - 10)
+	main.display_hp_circles_above_align(src, src_is_opp)
+	main.display_hp_circles_above_align(dst, dst_is_opp)
+	await main.show_message("SHADY MOVE! MOVED A DAMAGE COUNTER!")
+	if main._should_bail(): return
+	await main.check_all_knockouts()
+	if main._should_bail(): return
+
+# EMERGE (Cascoon ex12-30): if Cascoon is Active, flip a coin; if heads, search your deck for a card
+# that evolves from Cascoon and put it onto Cascoon (this counts as evolving).
+func power_ex12_emerge(cascoon: card_object) -> void:
+	var is_opp = cascoon.is_owner_opp(main)
+	var my_active = main.opponent_active_pokemon if is_opp else main.player_active_pokemon
+	if cascoon != my_active:
+		if not is_opp:
+			await main.show_message("EMERGE CAN ONLY BE USED WHILE CASCOON IS ACTIVE!")
+			if main._should_bail(): return
+		return
+	if not await _ex11_power_ready(cascoon, "Emerge"):
+		if main._should_bail(): return
+		return
+	cascoon.power_used_this_turn = true
+	await main.show_message("EMERGE! FLIPPING A COIN...")
+	if main._should_bail(): return
+	var coin = await main.flip_coin(false, is_opp)
+	if main._should_bail(): return
+	if not coin:
+		await main.show_message("TAILS! EMERGE FAILED!")
+		if main._should_bail(): return
+		return
+	await main.attack_effects.execute_ex5_search_and_evolve(cascoon, is_opp, "Cascoon")
+	if main._should_bail(): return
+
+# POWER CIRCULATION (Sealeo ex12-43): search your discard pile for a basic Energy card and put it on top
+# of your deck; if you do, put 1 damage counter on Sealeo.
+func power_ex12_power_circulation(sealeo: card_object) -> void:
+	var is_opp = sealeo.is_owner_opp(main)
+	if not await _ex11_power_ready(sealeo, "Power Circulation"):
+		if main._should_bail(): return
+		return
+	var discard = main.opponent_discard_pile if is_opp else main.player_discard_pile
+	var deck = main.opponent_deck if is_opp else main.player_deck
+	var pool = discard.filter(func(c): return c.metadata.get("supertype","") == "Energy" and "Basic" in c.metadata.get("subtypes", []))
+	if pool.is_empty():
+		await main.show_message("NO BASIC ENERGY IN YOUR DISCARD PILE!")
+		if main._should_bail(): return
+		return
+	sealeo.power_used_this_turn = true
+	var e: card_object = pool[0] if is_opp else await main.card_ops.choose_card(pool, false, "POWER CIRCULATION", "Put which basic Energy on top of your deck?", "SELECT", false, Callable(), true)
+	if main._should_bail(): return
+	if e == null: e = pool[0]
+	discard.erase(e)
+	e.current_location = "deck"
+	deck.push_front(e)
+	main.update_discard_pile_display(is_opp)
+	main.update_deck_icon(is_opp)
+	sealeo.current_hp = max(0, sealeo.current_hp - 10)
+	main.display_hp_circles_above_align(sealeo, is_opp)
+	await main.show_message("POWER CIRCULATION! PUT AN ENERGY ON TOP OF THE DECK (1 DAMAGE COUNTER ON SEALEO)!")
+	if main._should_bail(): return
+	await main.check_all_knockouts()
+	if main._should_bail(): return
+
+# ── Triggered powers ──────────────────────────────────────────────────────────
+
+# EVOLUTIONARY FAN (Shiftry ex12-12): when you evolve into Shiftry from hand, you may choose 1 of your
+# Evolved Pokemon in play (excluding Shiftry) and return it and all attached cards to your hand.
+func trigger_ex12_evolutionary_fan(shiftry: card_object, is_opponent: bool) -> void:
+	if is_toxic_gas_active() or main.goop_gas_active: return
+	var candidates = main.card_ops.get_all_pokemon_in_play(is_opponent).filter(func(p): return p != shiftry and not p.attached_pre_evolutions.is_empty() and p.metadata.get("name","") != "Shiftry")
+	if candidates.is_empty(): return
+	if is_opponent:
+		return  # CPU skips returning its own Pokemon (situational; usually a tempo loss).
+	var do_it = await main.trainer_effects.gym1_prompt_yes_no(shiftry, "EVOLUTIONARY FAN", "Return one of your Evolved Pokemon (and everything on it) to your hand?", "YES", "NO")
+	if main._should_bail(): return
+	if not do_it: return
+	var chosen = await main.card_ops.choose_card(candidates, false, "EVOLUTIONARY FAN", "Return which Evolved Pokemon to your hand?", "RETURN", true)
+	if main._should_bail(): return
+	if chosen == null: return
+	var chosen_is_opp = chosen.is_owner_opp(main)
+	await main.attack_effects.gym1_return_pokemon_to_hand(chosen, chosen_is_opp)
+	if main._should_bail(): return
+	await main.show_message("EVOLUTIONARY FAN! RETURNED " + chosen.metadata.get("name","").to_upper() + " TO YOUR HAND!")
+	if main._should_bail(): return
+
+# EMERGE CHARGE (Flygon ex ex12-87): when you evolve into Flygon ex from hand, search your discard pile
+# for up to 2 Energy cards and attach them to Flygon ex.
+func trigger_ex12_emerge_charge(flygon: card_object, is_opponent: bool) -> void:
+	if is_toxic_gas_active() or main.goop_gas_active: return
+	var discard = main.opponent_discard_pile if is_opponent else main.player_discard_pile
+	var attached = 0
+	while attached < 2:
+		var pool = discard.filter(func(c): return c.metadata.get("supertype","") == "Energy")
+		if pool.is_empty(): break
+		var e: card_object = null
+		if is_opponent:
+			e = pool[0]
+		else:
+			e = await main.card_ops.choose_card(pool, false, "EMERGE CHARGE", "Attach an Energy from your discard (" + str(attached+1) + " of up to 2)", "ATTACH", attached > 0, Callable(), true)
+			if main._should_bail(): return
+			if e == null: break
+		discard.erase(e)
+		e.current_location = "active" if flygon == (main.opponent_active_pokemon if is_opponent else main.player_active_pokemon) else "bench"
+		flygon.attached_energies.append(e)
+		attached += 1
+	if attached > 0:
+		main.update_discard_pile_display(is_opponent)
+		main.display_active_pokemon_energies(is_opponent)
+		main.display_pokemon(is_opponent)
+		await main.show_message("EMERGE CHARGE! ATTACHED " + str(attached) + " ENERGY FROM THE DISCARD PILE!")
+		if main._should_bail(): return
+
+# SUPPORT NAVIGATION (Lapras ex12-8): when you put Lapras onto your Bench from hand, search your deck for
+# a Supporter card and put it into your hand.
+func trigger_ex12_support_navigation(lapras: card_object, is_opponent: bool) -> void:
+	if is_toxic_gas_active() or main.goop_gas_active: return
+	var filter_fn = func(c): return c.metadata.get("supertype","") == "Trainer" and "Supporter" in c.metadata.get("subtypes", [])
+	var found = await main.card_ops.search_deck_to_hand(is_opponent, filter_fn, "SUPPORT NAVIGATION: CHOOSE A SUPPORTER", 1)
+	if main._should_bail(): return
+	if found.size() > 0:
+		await main.show_message("SUPPORT NAVIGATION! ADDED A SUPPORTER TO HAND!")
+		if main._should_bail(): return
+
+# ── Pre-KO powers ─────────────────────────────────────────────────────────────
+
+# SHADOW CURSE (Gengar ex12-5): if Gengar is Knocked Out by damage from an opponent's attack, you may put
+# 3 damage counters on 1 of your opponent's Pokemon.
+func check_ex12_shadow_curse(pokemon: card_object, attacker: card_object, is_pokemon_opp: bool) -> void:
+	if pokemon == null or pokemon.current_hp > 0: return
+	if not pokemon.has_ability("Shadow Curse"): return
+	if is_toxic_gas_active() or main.goop_gas_active: return
+	# The Gengar owner targets the OTHER side.
+	var target_side = not is_pokemon_opp
+	var pool = main.card_ops.get_all_pokemon_in_play(target_side).filter(func(p): return p.current_hp > 0)
+	if pool.is_empty(): return
+	var target: card_object = null
+	if is_pokemon_opp:
+		# CPU's Gengar: target the player's lowest-HP Pokemon.
+		target = pool[0]
+		for c in pool:
+			if c.current_hp < target.current_hp: target = c
+	else:
+		var do_it = await main.trainer_effects.gym1_prompt_yes_no(pokemon, "SHADOW CURSE", "Put 3 damage counters on 1 of your opponent's Pokemon?", "YES", "NO")
+		if main._should_bail(): return
+		if not do_it: return
+		target = await main.card_ops.choose_card(pool, false, "SHADOW CURSE", "Put 3 damage counters on which Pokemon?", "SELECT", false, func(c): return 100.0 - c.current_hp)
+		if main._should_bail(): return
+		if target == null: return
+	target.current_hp = max(0, target.current_hp - 30)
+	main.display_hp_circles_above_align(target, target_side)
+	await main.show_message("SHADOW CURSE! 3 DAMAGE COUNTERS ON " + target.metadata.get("name","").to_upper() + "!")
+	if main._should_bail(): return
+	await main.check_all_knockouts()
+	if main._should_bail(): return
+
+# REACTIVE RECHARGE (Magneton ex12-22): if Magneton is Knocked Out by damage from an opponent's attack,
+# you may move any number of React Energy cards from Magneton to your Pokemon.
+func check_ex12_reactive_recharge(pokemon: card_object, attacker: card_object, is_pokemon_opp: bool) -> void:
+	if pokemon == null or pokemon.current_hp > 0: return
+	if not pokemon.has_ability("Reactive Recharge"): return
+	if is_toxic_gas_active() or main.goop_gas_active: return
+	var react_cards = pokemon.attached_energies.filter(func(e): return e.metadata.get("name","") == "React Energy")
+	if react_cards.is_empty(): return
+	var targets = main.card_ops.get_all_pokemon_in_play(is_pokemon_opp).filter(func(p): return p != pokemon and p.current_hp > 0)
+	if targets.is_empty(): return
+	if not is_pokemon_opp:
+		var do_it = await main.trainer_effects.gym1_prompt_yes_no(pokemon, "REACTIVE RECHARGE", "Move Magneton's React Energy to your other Pokemon?", "YES", "NO")
+		if main._should_bail(): return
+		if not do_it: return
+	for react in react_cards:
+		var dst: card_object = null
+		if is_pokemon_opp:
+			dst = targets[0]
+			for c in targets:
+				if c.attached_energies.size() < dst.attached_energies.size(): dst = c
+		else:
+			dst = await main.card_ops.choose_card(targets, false, "REACTIVE RECHARGE", "Move a React Energy to which Pokemon?", "ATTACH", false)
+			if main._should_bail(): return
+			if dst == null: dst = targets[0]
+		pokemon.attached_energies.erase(react)
+		var dst_is_opp = dst.is_owner_opp(main)
+		react.current_location = "active" if dst == (main.opponent_active_pokemon if dst_is_opp else main.player_active_pokemon) else "bench"
+		dst.attached_energies.append(react)
+	main.display_active_pokemon_energies(is_pokemon_opp)
+	main.display_pokemon(is_pokemon_opp)
+	await main.show_message("REACTIVE RECHARGE! MOVED MAGNETON'S REACT ENERGY!")
+	if main._should_bail(): return
+
+# ── CPU active-power triggers ─────────────────────────────────────────────────
+
+func cpu_phase_ex12_powers() -> void:
+	if is_toxic_gas_active() or main.goop_gas_active: return
+
+	# Reactive Generator (Huntail): attach a React Energy from deck if it has none.
+	var huntail = _find_cpu_pokemon_with_power("Reactive Generator")
+	if huntail != null and not huntail.power_used_this_turn and not is_power_blocked_by_status(huntail) and huntail.react_energy_count() == 0:
+		await power_ex12_reactive_generator(huntail)
+		if main._should_bail(): return
+
+	# Power Circulation (Sealeo): recycle a basic Energy from discard onto the deck (self-damage cost).
+	var sealeo = _find_cpu_pokemon_with_power("Power Circulation")
+	if sealeo != null and not sealeo.power_used_this_turn and not is_power_blocked_by_status(sealeo) and sealeo.current_hp > 10:
+		await power_ex12_power_circulation(sealeo)
+		if main._should_bail(): return
+
+	# Shady Move (Banette ex): shuffle a damage counter from own Pokemon onto the opponent's Active.
+	var banette = main.opponent_active_pokemon
+	if banette != null and banette.has_ability("Shady Move") and not banette.power_used_this_turn and not is_power_blocked_by_status(banette):
+		await power_ex12_shady_move(banette)
+		if main._should_bail(): return
+
+	# Nectar Pod (Victreebel): drag one of the opponent's Benched Stage 2 Pokemon into the Active spot.
+	var victreebel = _find_cpu_pokemon_with_power("Nectar Pod")
+	if victreebel != null and not victreebel.power_used_this_turn and not is_power_blocked_by_status(victreebel):
+		var player_bench_s2 = main.player_bench.filter(func(p): return "Stage 2" in p.metadata.get("subtypes", []))
+		if not player_bench_s2.is_empty():
+			await power_ex12_nectar_pod(victreebel)
+			if main._should_bail(): return
+
+	# Emerge (Cascoon): flip to evolve into Dustox/Dustox ex from the deck.
+	var cascoon = main.opponent_active_pokemon
+	if cascoon != null and cascoon.has_ability("Emerge") and not cascoon.power_used_this_turn and not is_power_blocked_by_status(cascoon):
+		await power_ex12_emerge(cascoon)
+		if main._should_bail(): return
+
+	# Baby Evolution (Magby → Magmar, Wynaut → Wobbuffet): evolve from hand if the evolution is available.
+	var baby = _find_cpu_pokemon_with_power("Baby Evolution")
+	if baby != null and baby.metadata.get("name","") in ["Magby", "Wynaut"] and not baby.power_used_this_turn and not is_power_blocked_by_status(baby):
+		await power_ex2_baby_evolution(baby)
+		if main._should_bail(): return

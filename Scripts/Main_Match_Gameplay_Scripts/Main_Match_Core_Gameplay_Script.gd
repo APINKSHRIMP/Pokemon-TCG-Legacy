@@ -2132,6 +2132,9 @@ func add_pokemon_to_bench(pokemon: card_object) -> void:
 		# EX11 Delta Switch (Mewtwo δ): on benching from hand, move any number of basic Energy among
 		# your other Pokémon (excluding Mewtwo).
 		await powers_and_bodies.trigger_ex11_delta_switch(pokemon, false)
+		# EX12 Support Navigation (Lapras ex12-8): on benching from hand, search deck for a Supporter → hand.
+		if pokemon.has_ability("Support Navigation"):
+			await powers_and_bodies.trigger_ex12_support_navigation(pokemon, false)
 
 # Function that get's the card position/location/object. Called from various functions when trying to find a specific card object
 func find_card_ui_for_object(card_obj: card_object) -> TextureRect:
@@ -2358,6 +2361,10 @@ func perform_energy_attachment() -> void:
 	powers_and_bodies.check_ex1_natural_cure(target_pokemon, energy_card, false)
 	# EX1 Natural Remedy (Swampert ex1-23): Water Energy attach from hand heals 1 damage counter
 	powers_and_bodies.check_ex1_natural_remedy(target_pokemon, energy_card, false)
+	# EX12 Reactive Healing (Tangela ex12-44): attaching a React Energy from hand removes all counters.
+	powers_and_bodies.check_ex12_reactive_healing(target_pokemon, energy_card, false)
+	# EX12 Fire Remedy (Arcanine ex ex12-83): attaching a Fire Energy from hand removes 1 counter + status.
+	powers_and_bodies.check_ex12_fire_remedy(target_pokemon, energy_card, false)
 	# EX7 Saturation (Quagsire ex7-26 / Wooper ex7-81): Water Energy attach clears conditions + heals
 	powers_and_bodies.check_ex7_saturation(target_pokemon, energy_card, false)
 	# EX8 Natural Cure (Lombre ex8-34) auto-works via check_ex1_natural_cure above (generic ability).
@@ -2671,6 +2678,12 @@ func player_start_turn_checks() -> void:
 	# EX11 Holon Ruins (ex11-96 Stadium): once per turn, a player with a δ Pokemon in play may draw a
 	# card, then discard a card. Offered at the start of the turn.
 	await trainer_effects.holon_ruins_offer_draw(false)
+	if _should_bail(): return
+
+	# EX12 Power Tree / Strange Cave (Stadiums): once-per-turn optional actions, offered at turn start.
+	await trainer_effects.ex12_power_tree_offer(false)
+	if _should_bail(): return
+	await trainer_effects.ex12_strange_cave_offer(false)
 	if _should_bail(): return
 
 # Called when the player presses the end turn button to reset per-turn variables and begin next turn
@@ -3262,6 +3275,11 @@ func perform_evolution(is_opponent: bool) -> void:
 		await powers_and_bodies.trigger_ex11_evolutionary_thunder(evo_card, is_opponent)
 	elif evo_card.has_ability("Evolutionary Swirl"):
 		await powers_and_bodies.trigger_ex11_evolutionary_swirl(evo_card, is_opponent)
+	# EX12 on-play (evolve from hand) power triggers
+	elif evo_card.has_ability("Evolutionary Fan"):
+		await powers_and_bodies.trigger_ex12_evolutionary_fan(evo_card, is_opponent)
+	elif evo_card.has_ability("Emerge Charge"):
+		await powers_and_bodies.trigger_ex12_emerge_charge(evo_card, is_opponent)
 
 	# EX7 Darkest Impulse (Dark Ampharos ex7-2): whenever the opponent evolves a Pokemon, the opposing
 	# Dark Ampharos puts 2 damage counters on it. Fires for every evolution (both sides).
@@ -3394,7 +3412,29 @@ func get_attacks_for_card(card: card_object) -> Array:
 	if powers_and_bodies.check_ex11_shining_horn_blocks_attack(card):
 		return []
 
+	# EX12 Deadlock (Dunsparce ex12-31): while a Dunsparce with this Body is the opposing Active, this
+	# card (if it is a Dunsparce) can't attack.
+	if powers_and_bodies.check_ex12_deadlock_blocks_attack(card):
+		return []
+
 	var attacks = card.metadata.get("attacks", [])
+
+	# EX12 Versatile (Mew ex ex12-88): Mew ex can use the attacks of all Pokemon in play as its own.
+	if card.has_ability("Versatile") and not powers_and_bodies.is_power_blocked(card):
+		var seen_v: Dictionary = {}
+		for atk in attacks:
+			seen_v[atk.get("name","")] = true
+		var v_extra: Array = []
+		for side in [false, true]:
+			for p in card_ops.get_all_pokemon_in_play(side):
+				if p == card: continue
+				for atk in p.metadata.get("attacks", []):
+					var an = atk.get("name","")
+					if an != "" and not seen_v.has(an):
+						seen_v[an] = true
+						v_extra.append(atk)
+		if not v_extra.is_empty():
+			return attacks + v_extra
 
 	# EX11 Delta Aura (Latias/Latios δ): while its partner is in play, the paired attack costs less.
 	attacks = powers_and_bodies.ex11_delta_aura_adjust_attacks(card, attacks)
@@ -3622,6 +3662,14 @@ func get_energy_provided_by_card(energy_card: card_object) -> Array:
 				return ["Any", "Any", "Any"]
 		return ["Colorless"]
 
+	# EX12 Reactive Booster (Gorebyss ex12-17 Poké-Body): each React Energy attached to any of your
+	# Huntail and Gorebyss provides 2 Energy of every type. Needs holder context; resolved here.
+	if card_name == "React Energy":
+		var rb_holder = _find_energy_holder(energy_card)
+		if rb_holder != null and rb_holder.metadata.get("name","") in ["Huntail", "Gorebyss"]:
+			if powers_and_bodies.is_ex12_reactive_booster_active(rb_holder):
+				return ["Any", "Any"]
+
 	# Special energy: route through Special_Energy_Effects system
 	if "Special" in subtypes:
 		var provided = special_energy_effects.get_energy_types_provided(card_name)
@@ -3831,6 +3879,15 @@ func perform_attack(attack_index: int) -> void:
 
 	# GYM2 Misty's Gyarados Rebellion — flip 2; both tails shuffles Gyarados into deck and cancels the attack
 	if await powers_and_bodies.check_rebellion(player_active_pokemon, false):
+		player_attacked_this_turn = true
+		hide_attack_buttons()
+		await get_tree().create_timer(0.5).timeout
+		player_end_turn_checks()
+		return
+
+	# EX12 Pattern Distraction (Spinda ex12-26): if the opposing Active Spinda has this Body and the
+	# attacker is a Basic Pokemon, flip a coin; tails cancels the attack.
+	if await powers_and_bodies.check_ex12_pattern_distraction(player_active_pokemon, false):
 		player_attacked_this_turn = true
 		hide_attack_buttons()
 		await get_tree().create_timer(0.5).timeout
@@ -4061,6 +4118,11 @@ func calculate_final_damage(base_damage: int, attacking_types: Array, defending_
 	if not skip_resistance and attacker_pokemon != null and special_energy_effects.ex11_holon_ff_ignore_resistance(attacker_pokemon):
 		skip_resistance = true
 		modifiers_applied.append("HOLON ENERGY FF (NO RESISTANCE)")
+	# EX12 Ancient Tentacles (Omanyte ex12-60): damage done by your Omanyte, Omastar, Kabuto, Kabutops,
+	# or Kabutops ex isn't affected by Resistance while an Omanyte with this Body is in play on that side.
+	if not skip_resistance and attacker_pokemon != null and powers_and_bodies.is_ex12_ancient_tentacles_active(attacker_pokemon):
+		skip_resistance = true
+		modifiers_applied.append("ANCIENT TENTACLES (NO RESISTANCE)")
 	# EX5 Magnetic Storm (ex5-91 Stadium): Psychic/Fighting attacks are not affected by Resistance.
 	if not skip_resistance and is_stadium_in_play(StadiumIds.MAGNETIC_STORM):
 		if "Psychic" in attacking_types or "Fighting" in attacking_types:
@@ -4559,8 +4621,8 @@ func process_status_between_turns(pokemon: card_object, is_opponent: bool) -> vo
 
 	if pokemon.is_burned:
 		# EX6 Fiery Aura (Rapidash ex6-13): while a Rapidash with Fiery Aura is Active, Burned Pokemon
-		# take 4 damage counters instead of 2 between turns.
-		var burn_dmg = 40 if powers_and_bodies.is_fiery_aura_active() else 20
+		# take 4 damage counters instead of 2 between turns. EX12 Full Flame (ex12-74 Stadium) does the same.
+		var burn_dmg = 40 if (powers_and_bodies.is_fiery_aura_active() or is_stadium_in_play("ex12-74")) else 20
 		if burn_rules == "base_set_burn_rules":
 			await show_message(pokemon_name.to_upper() + " IS BURNED! FLIPPING COIN...")
 			var coin = await flip_coin(false, is_opponent)
@@ -4794,6 +4856,14 @@ func get_retreat_cost(pokemon: card_object) -> int:
 			if "Psychic" in get_energy_provided_by_card(e):
 				return 0
 
+	# EX12 Reactive Lift (Wailord ex12-14): while a Wailord on this side has any React Energy attached,
+	# this side's Water Pokemon (excluding Pokemon-ex) have Retreat Cost 0.
+	if not is_ex_pokemon(pokemon) and "Water" in pokemon.get_effective_types():
+		var rl_is_opp = (pokemon == opponent_active_pokemon or pokemon in opponent_bench)
+		for wp in card_ops.get_all_pokemon_in_play(rl_is_opp):
+			if wp.has_ability("Reactive Lift") and wp.react_energy_count() > 0 and not powers_and_bodies.is_power_blocked_by_status(wp):
+				return 0
+
 	# EX2 Uplifting Glow (Volbeat): Retreat Cost is 0 as long as Illumise is in play on its side.
 	if pokemon.has_ability("Uplifting Glow") and not powers_and_bodies.is_power_blocked(pokemon):
 		var volbeat_is_opp = (pokemon == opponent_active_pokemon or pokemon in opponent_bench)
@@ -4831,6 +4901,15 @@ func get_retreat_cost(pokemon: card_object) -> int:
 	# Dark Muk Sticky Goo: opponent pays 2 more to retreat
 	var is_player_pokemon = (pokemon == player_active_pokemon or pokemon in player_bench)
 	cost += powers_and_bodies.get_sticky_goo_cost(is_player_pokemon)
+
+	# EX12 Stages of Evolution (Wobbuffet ex12-28): while an Evolved Wobbuffet with this Body is in play,
+	# that player's OPPONENT pays 1 Colorless more to retreat their Active Pokemon.
+	if pokemon == player_active_pokemon or pokemon == opponent_active_pokemon:
+		var wob_side_opp = not (pokemon == opponent_active_pokemon or pokemon in opponent_bench)
+		for wob in card_ops.get_all_pokemon_in_play(wob_side_opp):
+			if wob.metadata.get("name","") == "Wobbuffet" and wob.has_ability("Stages of Evolution") and not wob.attached_pre_evolutions.is_empty() and not powers_and_bodies.is_power_blocked_by_status(wob):
+				cost += 1
+				break
 
 	# ECARD2 self-reduction Poké-Bodies: Extreme Speed (Arcanine, -1 per Energy attached),
 	# Lightweight (Skiploom/Hoppip, -1 per Grass Energy attached)
@@ -4998,6 +5077,9 @@ func get_max_bench_size() -> int:
 	var cap = 5
 	if is_stadium_in_play(StadiumIds.NARROW_GYM):
 		cap = 4
+	# EX12 Giant Stump (ex12-75 Stadium): each player can't have more than 3 Benched Pokemon.
+	if is_stadium_in_play("ex12-75"):
+		cap = min(cap, 3)
 	var rule_cap = match_effects.max_bench_size_override()
 	if rule_cap > 0:
 		cap = min(cap, rule_cap)
