@@ -46,6 +46,7 @@ func _ensure_dispatch_ready() -> void:
 	_register_ex10_attacks()
 	_register_ex11_attacks()
 	_register_ex12_attacks()
+	_register_ex13_attacks()
 
 func _register_si1_attacks() -> void:
 	_attack_dispatch["rainbow wave"]    = func(atk, a, d, opp): await execute_rainbow_wave(a, opp);            await _attack_finish(false, 0,   atk, a.metadata.get("types",["Colorless"]), opp)
@@ -27198,3 +27199,632 @@ func execute_ex12_final_blizzard(attacker: card_object, defender: card_object, i
 func execute_ex12_final_laser(attacker: card_object, is_opponent: bool) -> void:
 	var n = 6 if _ex12_final_condition(is_opponent) else 3
 	await execute_ex4_place_counters_guarded(attacker, is_opponent, n)
+
+# ═══════════════════════════════════════════════════════════════════════════════
+#  EX13 (EX HOLON PHANTOMS) ATTACKS — Delta (δ) set. Single-battle today, written
+#  against the double-battle helpers (card_ops.get_active/defending/all_pokemon_in_play).
+#  Registered LAST so ex13 overrides of colliding names win; each override delegates
+#  to the previous handler for non-ex13 cards. Many ex13 attacks fall through to the
+#  GENERIC parser (vanilla / coin-status / coin-bonus / ×heads / flip-until-tails /
+#  self-damage / self-energy-discard / per-energy-of-type / per-counter / draw /
+#  self-heal / retreat-lock / reduce-damage-next-turn) or reuse existing global keys
+#  (swift, disable, feint attack, rock hurl, water arrow, fury cutter, earthquake,
+#  zzzap, wide laser, thunderous blow, poltergeist, extra flame, delta search,
+#  spring back, split bomb, foresight, surprise, whirlwind, rotating claws,
+#  energy absorption). See [[project_add_new_set_workflow]].
+func _register_ex13_attacks() -> void:
+	# ── Collision overrides (branch on ex13 uid; else delegate to the prior handler) ──
+	var _pv_overrun13 = _attack_dispatch.get("overrun")
+	_attack_dispatch["overrun"] = func(atk, a, d, opp):
+		if a.uid.begins_with("ex13-"):
+			var b = parse_attack_base_damage(atk)
+			var per = extract_number_before(atk.get("text","").to_lower(), "damage to that")
+			await execute_bench_choose_spread(a, d, opp, b, 1, (per if per > 0 else 20), false)
+			await _attack_finish(true, b, atk, a.metadata.get("types",["Colorless"]), opp)
+		elif _pv_overrun13: await _pv_overrun13.call(atk, a, d, opp)
+
+	var _pv_rockslide13 = _attack_dispatch.get("rock slide")
+	_attack_dispatch["rock slide"] = func(atk, a, d, opp):
+		if a.uid.begins_with("ex13-"):
+			var b = parse_attack_base_damage(atk)
+			await execute_bench_choose_spread(a, d, opp, b, 2, 10, false)
+			await _attack_finish(true, b, atk, a.metadata.get("types",["Colorless"]), opp)
+		elif _pv_rockslide13: await _pv_rockslide13.call(atk, a, d, opp)
+
+	var _pv_energyloop13 = _attack_dispatch.get("energy loop")
+	_attack_dispatch["energy loop"] = func(atk, a, d, opp):
+		if a.uid.begins_with("ex13-"):
+			var b = parse_attack_base_damage(atk)
+			var dmg = await execute_ex13_energy_loop(a, d, opp, b, 2)
+			await _attack_finish(true, dmg, atk, a.metadata.get("types",["Colorless"]), opp)
+		elif _pv_energyloop13: await _pv_energyloop13.call(atk, a, d, opp)
+
+	var _pv_pebblethrow13 = _attack_dispatch.get("pebble throw")
+	_attack_dispatch["pebble throw"] = func(atk, a, d, opp):
+		if a.uid.begins_with("ex13-"):
+			await execute_ex3_choose_snipe(a, opp, 20, true)
+			await _attack_finish(false, 0, atk, a.metadata.get("types",["Colorless"]), opp)
+		elif _pv_pebblethrow13: await _pv_pebblethrow13.call(atk, a, d, opp)
+
+	var _pv_cff13 = _attack_dispatch.get("call for friends")
+	_attack_dispatch["call for friends"] = func(atk, a, d, opp):
+		if a.uid.begins_with("ex13-"):
+			await execute_ex13_call_two_basics(a, opp)
+			await _attack_finish(false, 0, atk, a.metadata.get("types",["Colorless"]), opp)
+		elif _pv_cff13: await _pv_cff13.call(atk, a, d, opp)
+
+	var _pv_outrage13 = _attack_dispatch.get("outrage")
+	_attack_dispatch["outrage"] = func(atk, a, d, opp):
+		if a.uid.begins_with("ex13-"):
+			var dmg = await execute_ex13_rayquaza_outrage(a, d, opp)
+			await _attack_finish(true, dmg, atk, a.metadata.get("types",["Colorless"]), opp)
+		elif _pv_outrage13: await _pv_outrage13.call(atk, a, d, opp)
+
+	var _pv_spiral13 = _attack_dispatch.get("spiral growth")
+	_attack_dispatch["spiral growth"] = func(atk, a, d, opp):
+		if a.uid.begins_with("ex13-"):
+			var b = parse_attack_base_damage(atk)
+			await execute_ex13_gyarados_spiral(a, d, opp, b)
+			await _attack_finish(true, b, atk, a.metadata.get("types",["Colorless"]), opp)
+		elif _pv_spiral13: await _pv_spiral13.call(atk, a, d, opp)
+
+	var _pv_ea13 = _attack_dispatch.get("energy absorption")
+	_attack_dispatch["energy absorption"] = func(atk, a, d, opp):
+		if a.uid.begins_with("ex13-"):
+			await execute_energy_absorption(a, opp, 1)
+			await _attack_finish(false, 0, atk, a.metadata.get("types",["Colorless"]), opp)
+		elif _pv_ea13: await _pv_ea13.call(atk, a, d, opp)
+
+	# ── Name-alias reuse (new dispatch key → existing executor) ──
+	_attack_dispatch["psychic erase"]  = func(atk, a, d, opp): await execute_ex11_disable(a, d, opp); await _attack_finish(false, 0, atk, a.metadata.get("types",["Colorless"]), opp)
+	_attack_dispatch["pebble hurl"]    = func(atk, a, d, opp): var b=parse_attack_base_damage(atk); await execute_ecard1_rock_hurl(a, d, opp, b); await _attack_finish(true, b, atk, a.metadata.get("types",["Colorless"]), opp)
+
+	# ── Novel ex13 attacks ──
+	_attack_dispatch["delta edge"]     = func(atk, a, d, opp): var dmg=await execute_ex13_delta_edge(a, d, opp); await _attack_finish(true, dmg, atk, a.metadata.get("types",["Colorless"]), opp)
+	_attack_dispatch["fossil charge"]  = func(atk, a, d, opp): var b=parse_attack_base_damage(atk); await execute_ex13_fossil_charge(a, d, opp, b); await _attack_finish(true, b, atk, a.metadata.get("types",["Colorless"]), opp)
+	_attack_dispatch["harsh fluid"]    = func(atk, a, d, opp): var b=parse_attack_base_damage(atk); await execute_ex13_harsh_fluid(a, d, opp, b); await _attack_finish(true, b, atk, a.metadata.get("types",["Colorless"]), opp)
+	_attack_dispatch["crystal laser"]  = func(atk, a, d, opp): var b=parse_attack_base_damage(atk); await execute_ex13_crystal_laser(a, d, opp, b); await _attack_finish(true, b, atk, a.metadata.get("types",["Colorless"]), opp)
+	_attack_dispatch["teleportation burst"] = func(atk, a, d, opp): var b=parse_attack_base_damage(atk); await execute_ex13_teleportation_burst(a, d, opp, b); await _attack_finish(true, b, atk, a.metadata.get("types",["Colorless"]), opp)
+	_attack_dispatch["vital drain"]    = func(atk, a, d, opp): var b=parse_attack_base_damage(atk); await execute_ex13_vital_drain(a, d, opp, b); await _attack_finish(true, b, atk, a.metadata.get("types",["Colorless"]), opp)
+	_attack_dispatch["metallic thunder"] = func(atk, a, d, opp): var dmg=await execute_ex13_metallic_thunder(a, d, opp); await _attack_finish(true, dmg, atk, a.metadata.get("types",["Colorless"]), opp)
+	_attack_dispatch["vengeful spikes"] = func(atk, a, d, opp): var dmg=await execute_ex13_vengeful_spikes(a, d, opp); await _attack_finish(true, dmg, atk, a.metadata.get("types",["Colorless"]), opp)
+	_attack_dispatch["delta circle"]   = func(atk, a, d, opp): var dmg=await execute_ex13_delta_circle(a, d, opp); await _attack_finish(true, dmg, atk, a.metadata.get("types",["Colorless"]), opp)
+	_attack_dispatch["mind play"]      = func(atk, a, d, opp): var dmg=await execute_ex13_mind_play(a, d, opp); await _attack_finish(true, dmg, atk, a.metadata.get("types",["Colorless"]), opp)
+	_attack_dispatch["delta draw"]     = func(atk, a, d, opp): await execute_ex13_delta_draw(a, opp); await _attack_finish(false, 0, atk, a.metadata.get("types",["Colorless"]), opp)
+	_attack_dispatch["scratch and draw"] = func(atk, a, d, opp): var b=parse_attack_base_damage(atk); await execute_ex13_scratch_and_draw(a, d, opp, b); await _attack_finish(true, b, atk, a.metadata.get("types",["Colorless"]), opp)
+	_attack_dispatch["deceive"]        = func(atk, a, d, opp): await execute_ex13_deceive(a, opp); await _attack_finish(false, 0, atk, a.metadata.get("types",["Colorless"]), opp)
+	_attack_dispatch["wreck"]          = func(atk, a, d, opp): var dmg=await execute_ex13_wreck(a, d, opp); await _attack_finish(true, dmg, atk, a.metadata.get("types",["Colorless"]), opp)
+	_attack_dispatch["brush aside"]    = func(atk, a, d, opp): var b=parse_attack_base_damage(atk); await execute_ex13_brush_aside(a, d, opp, b); await _attack_finish(true, b, atk, a.metadata.get("types",["Colorless"]), opp)
+	_attack_dispatch["swift turn"]     = func(atk, a, d, opp): var dmg=await execute_ex13_swift_turn(a, d, opp); await _attack_finish(true, dmg, atk, a.metadata.get("types",["Colorless"]), opp)
+	_attack_dispatch["hyper claws"]    = func(atk, a, d, opp): var dmg=await execute_ex13_hyper_claws(a, d, opp); await _attack_finish(true, dmg, atk, a.metadata.get("types",["Colorless"]), opp)
+	_attack_dispatch["all-out blast"]  = func(atk, a, d, opp): var dmg=await execute_ex13_all_out_blast(a, d, opp); await _attack_finish(true, dmg, atk, a.metadata.get("types",["Colorless"]), opp)
+	_attack_dispatch["psychic star"]   = func(atk, a, d, opp): var dmg=await execute_ex13_psychic_star(a, d, opp); await _attack_finish(true, dmg, atk, a.metadata.get("types",["Colorless"]), opp)
+	_attack_dispatch["devo crush"]     = func(atk, a, d, opp): var b=parse_attack_base_damage(atk); await execute_ex13_devo_crush(a, d, opp, b); await _attack_finish(true, b, atk, a.metadata.get("types",["Colorless"]), opp)
+	_attack_dispatch["aqua flower"]    = func(atk, a, d, opp): var b=parse_attack_base_damage(atk); await execute_ex13_aqua_flower(a, d, opp, b); await _attack_finish(true, b, atk, a.metadata.get("types",["Colorless"]), opp)
+	_attack_dispatch["delta call"]     = func(atk, a, d, opp): await execute_ex13_delta_call(a, opp); await _attack_finish(false, 0, atk, a.metadata.get("types",["Colorless"]), opp)
+	_attack_dispatch["paste"]          = func(atk, a, d, opp): await execute_ex13_paste(a, opp); await _attack_finish(false, 0, atk, a.metadata.get("types",["Colorless"]), opp)
+
+# ── ex13 executors ──
+
+# ENERGY LOOP (Deoxys δ ex13-3): base damage, then return N Energy attached to Deoxys to your hand.
+func execute_ex13_energy_loop(attacker: card_object, defender: card_object, is_opponent: bool, base_damage: int, count: int) -> int:
+	if await handle_attack_confusion(attacker, is_opponent): return 0
+	if await handle_attack_blind(attacker, is_opponent): return 0
+	await gym1_hit_active(attacker, defender, is_opponent, base_damage)
+	if main._should_bail(): return base_damage
+	await main.check_all_knockouts()
+	if main._should_bail(): return base_damage
+	var hand = main.opponent_hand if is_opponent else main.player_hand
+	for i in range(count):
+		if attacker.attached_energies.is_empty(): break
+		var e: card_object
+		if is_opponent:
+			e = attacker.attached_energies[attacker.attached_energies.size() - 1]
+		else:
+			e = await main.card_ops.choose_card(attacker.attached_energies, false, "ENERGY LOOP", "Return an Energy to your hand (" + str(count - i) + " remaining)", "RETURN", false, Callable(), true)
+			if main._should_bail(): return base_damage
+			if e == null: e = attacker.attached_energies[attacker.attached_energies.size() - 1]
+		attacker.attached_energies.erase(e)
+		e.current_location = "hand"
+		e.attached_as_energy = false
+		e.pokemon_energy_types = []
+		hand.append(e)
+	main.refresh_hand_display(is_opponent)
+	main.display_active_pokemon_energies(is_opponent)
+	await main.show_message("ENERGY LOOP! RETURNED ENERGY TO HAND!")
+	if main._should_bail(): return base_damage
+	return base_damage
+
+# CALL FOR FRIENDS (Wobbuffet ex13-56): search your deck for up to 2 Basic Pokemon → Bench.
+func execute_ex13_call_two_basics(attacker: card_object, is_opponent: bool) -> void:
+	for i in range(2):
+		var bench = main.opponent_bench if is_opponent else main.player_bench
+		if bench.size() >= main.get_max_bench_size(): break
+		await execute_call_for_pokemon(attacker, is_opponent, [], "")
+		if main._should_bail(): return
+
+# OUTRAGE (Rayquaza δ ex13-26): flip; tails does nothing; heads does 10 + 10 per damage counter on Rayquaza.
+func execute_ex13_rayquaza_outrage(attacker: card_object, defender: card_object, is_opponent: bool) -> int:
+	if await handle_attack_confusion(attacker, is_opponent): return 0
+	if await handle_attack_blind(attacker, is_opponent): return 0
+	var coin = await main.flip_coin(false, is_opponent)
+	if main._should_bail(): return 0
+	if not coin:
+		await main.show_message("OUTRAGE: TAILS — THE ATTACK DOES NOTHING!")
+		if main._should_bail(): return 0
+		return 0
+	var counters = attacker.get_damage_counters()
+	var dmg = 10 + counters * 10
+	await main.show_message("OUTRAGE! HEADS! " + str(counters) + " DAMAGE COUNTERS — " + str(dmg) + " DAMAGE!")
+	if main._should_bail(): return dmg
+	await gym1_hit_active(attacker, defender, is_opponent, dmg)
+	if main._should_bail(): return dmg
+	await main.check_all_knockouts()
+	return dmg
+
+# SPIRAL GROWTH (Gyarados Star δ ex13-102): base damage, then flip until tails and for each heads search
+# your discard pile for a basic Energy card and attach it to Gyarados Star.
+func execute_ex13_gyarados_spiral(attacker: card_object, defender: card_object, is_opponent: bool, base_damage: int) -> void:
+	if await handle_attack_confusion(attacker, is_opponent): return
+	if await handle_attack_blind(attacker, is_opponent): return
+	await gym1_hit_active(attacker, defender, is_opponent, base_damage)
+	if main._should_bail(): return
+	await main.check_all_knockouts()
+	if main._should_bail(): return
+	var heads = 0
+	while true:
+		var coin = await main.flip_coin(true, is_opponent)
+		if main._should_bail(): return
+		if coin: heads += 1
+		else: break
+	var discard = main.opponent_discard_pile if is_opponent else main.player_discard_pile
+	for i in range(heads):
+		var pool = discard.filter(func(c): return _ex2_is_basic_energy(c))
+		if pool.is_empty(): break
+		var chosen: card_object = pool[0] if is_opponent else await main.card_ops.choose_card(pool, false, "SPIRAL GROWTH", "Choose a basic Energy to attach (" + str(heads - i) + " remaining)", "ATTACH", false, Callable(), true)
+		if main._should_bail(): return
+		if chosen == null: chosen = pool[0]
+		discard.erase(chosen)
+		chosen.current_location = "attached"
+		attacker.attached_energies.append(chosen)
+	main.display_active_pokemon_energies(is_opponent)
+	main.update_discard_pile_display(is_opponent)
+	await main.show_message("SPIRAL GROWTH! " + str(heads) + " HEADS!")
+	if main._should_bail(): return
+
+# DELTA EDGE (Armaldo δ ex13-1): 70, but base 20 if you have any Supporter card in play.
+func execute_ex13_delta_edge(attacker: card_object, defender: card_object, is_opponent: bool) -> int:
+	if await handle_attack_confusion(attacker, is_opponent): return 0
+	if await handle_attack_blind(attacker, is_opponent): return 0
+	var played = main.trainer_effects.opponent_played_supporter_this_turn if is_opponent else main.trainer_effects.player_played_supporter_this_turn
+	var dmg = 20 if played else 70
+	if played:
+		await main.show_message("DELTA EDGE! A SUPPORTER IS IN PLAY — 20 DAMAGE!")
+		if main._should_bail(): return dmg
+	await gym1_hit_active(attacker, defender, is_opponent, dmg)
+	if main._should_bail(): return dmg
+	await main.check_all_knockouts()
+	return dmg
+
+# FOSSIL CHARGE (Armaldo δ ex13-1): base damage; you may discard a Claw/Mysterious/Root/Holon Fossil from
+# your hand. If you do, do 30 to 1 of your opponent's Benched Pokemon (no W/R).
+func execute_ex13_fossil_charge(attacker: card_object, defender: card_object, is_opponent: bool, base_damage: int) -> void:
+	if await handle_attack_confusion(attacker, is_opponent): return
+	if await handle_attack_blind(attacker, is_opponent): return
+	await gym1_hit_active(attacker, defender, is_opponent, base_damage)
+	if main._should_bail(): return
+	await main.check_all_knockouts()
+	if main._should_bail(): return
+	var hand = main.opponent_hand if is_opponent else main.player_hand
+	var fossil_names = ["Claw Fossil", "Mysterious Fossil", "Root Fossil", "Holon Fossil"]
+	var fossils = hand.filter(func(c): return c.metadata.get("name","") in fossil_names)
+	if fossils.is_empty(): return
+	var do_it = is_opponent
+	if not is_opponent:
+		do_it = await main.trainer_effects.gym1_prompt_yes_no(attacker, "FOSSIL CHARGE", "Discard a Fossil to do 30 to a Benched Pokemon?", "YES", "NO")
+		if main._should_bail(): return
+	if not do_it: return
+	var opp_bench = main.player_bench if is_opponent else main.opponent_bench
+	if opp_bench.is_empty(): return
+	var fossil: card_object = fossils[0] if is_opponent else await main.card_ops.choose_card(fossils, false, "FOSSIL CHARGE", "Discard which Fossil?", "DISCARD", false)
+	if main._should_bail(): return
+	if fossil == null: fossil = fossils[0]
+	_ex13_discard_specific(fossil, is_opponent)
+	var target: card_object = opp_bench[0] if is_opponent else await main.card_ops.choose_card(opp_bench, false, "FOSSIL CHARGE", "Do 30 damage to which Benched Pokemon?", "SELECT", false, func(c): return 100.0 - c.current_hp)
+	if main._should_bail(): return
+	if target == null: target = opp_bench[0]
+	gym1_hit_raw(target, 30, not is_opponent)
+	await main.show_message("FOSSIL CHARGE! 30 DAMAGE TO " + target.metadata.get("name","").to_upper() + "!")
+	if main._should_bail(): return
+	await main.check_all_knockouts()
+
+func _ex13_discard_specific(card: card_object, is_opponent: bool) -> void:
+	var hand = main.opponent_hand if is_opponent else main.player_hand
+	var discard = main.opponent_discard_pile if is_opponent else main.player_discard_pile
+	if card in hand:
+		hand.erase(card)
+		card.current_location = "discard"
+		discard.append(card)
+		main.refresh_hand_display(is_opponent)
+		main.update_discard_pile_display(is_opponent)
+
+# HARSH FLUID (Cradily δ ex13-2): base damage, then put 5 damage counters on the Defending Pokemon at the
+# end of your opponent's next turn (reuses the ex10 Spiky Shell delayed-counter mechanism).
+func execute_ex13_harsh_fluid(attacker: card_object, defender: card_object, is_opponent: bool, base_damage: int) -> void:
+	if await handle_attack_confusion(attacker, is_opponent): return
+	if await handle_attack_blind(attacker, is_opponent): return
+	await gym1_hit_active(attacker, defender, is_opponent, base_damage)
+	if main._should_bail(): return
+	if defender != null and defender.current_hp > 0:
+		defender.set_effect("ex10_spiky_shell", "until_leaves_play", {"counters": 5})
+		await main.show_message("HARSH FLUID! 5 DAMAGE COUNTERS WILL BE PLACED AT THE END OF YOUR OPPONENT'S NEXT TURN!")
+		if main._should_bail(): return
+	await main.check_all_knockouts()
+
+# CRYSTAL LASER (Deoxys δ ex13-5): base damage; during your next turn, Deoxys's attacks do 40 more damage
+# to the Defending Pokemon (reuses the Dragon Dance next-turn pending buff).
+func execute_ex13_crystal_laser(attacker: card_object, defender: card_object, is_opponent: bool, base_damage: int) -> void:
+	if await handle_attack_confusion(attacker, is_opponent): return
+	if await handle_attack_blind(attacker, is_opponent): return
+	await gym1_hit_active(attacker, defender, is_opponent, base_damage)
+	if main._should_bail(): return
+	await main.check_all_knockouts()
+	if main._should_bail(): return
+	if is_opponent: main.opponent_dragon_dance_pending = 40
+	else: main.player_dragon_dance_pending = 40
+	await main.show_message("CRYSTAL LASER! NEXT TURN THIS POKEMON DOES 40 MORE DAMAGE!")
+	if main._should_bail(): return
+
+# TELEPORTATION BURST (Deoxys δ ex13-6): base damage, then switch Deoxys with 1 of your Benched Pokemon.
+func execute_ex13_teleportation_burst(attacker: card_object, defender: card_object, is_opponent: bool, base_damage: int) -> void:
+	if await handle_attack_confusion(attacker, is_opponent): return
+	if await handle_attack_blind(attacker, is_opponent): return
+	await gym1_hit_active(attacker, defender, is_opponent, base_damage)
+	if main._should_bail(): return
+	await main.check_all_knockouts()
+	if main._should_bail(): return
+	var bench = main.opponent_bench if is_opponent else main.player_bench
+	if bench.is_empty(): return
+	await apply_self_switch(attacker, is_opponent)
+	if main._should_bail(): return
+
+# VITAL DRAIN (Kabutops δ ex13-9): base damage; if the Defending Pokemon is Knocked Out by this attack,
+# remove all Special Conditions and 7 damage counters from Kabutops.
+func execute_ex13_vital_drain(attacker: card_object, defender: card_object, is_opponent: bool, base_damage: int) -> void:
+	if await handle_attack_confusion(attacker, is_opponent): return
+	if await handle_attack_blind(attacker, is_opponent): return
+	await gym1_hit_active(attacker, defender, is_opponent, base_damage)
+	if main._should_bail(): return
+	var was_ko = defender != null and defender.current_hp <= 0
+	if was_ko:
+		main.clear_all_statuses(attacker, is_opponent)
+		main.update_status_icons(attacker, is_opponent)
+		var heal = 70
+		attacker.current_hp = min(attacker.get_max_hp(), attacker.current_hp + heal)
+		main.display_hp_circles_above_align(attacker, is_opponent)
+		await main.show_message("VITAL DRAIN! REMOVED ALL SPECIAL CONDITIONS AND 7 DAMAGE COUNTERS FROM " + attacker.metadata.get("name","").to_upper() + "!")
+		if main._should_bail(): return
+	await main.check_all_knockouts()
+
+# METALLIC THUNDER (Raichu δ ex13-15): 50, or 90 if you discard 2 Metal Energy attached to Raichu.
+func execute_ex13_metallic_thunder(attacker: card_object, defender: card_object, is_opponent: bool) -> int:
+	if await handle_attack_confusion(attacker, is_opponent): return 0
+	if await handle_attack_blind(attacker, is_opponent): return 0
+	var metals: Array = attacker.attached_energies.filter(func(e): return "Metal" in main.get_energy_provided_by_card(e))
+	var dmg = 50
+	if metals.size() >= 2:
+		var do_it = is_opponent
+		if not is_opponent:
+			do_it = await main.trainer_effects.gym1_prompt_yes_no(attacker, "METALLIC THUNDER", "Discard 2 Metal Energy to do 90 instead of 50?", "YES", "NO")
+			if main._should_bail(): return dmg
+		if do_it:
+			for i in range(2):
+				main.card_ops.discard_energy_from_pokemon(metals[i], is_opponent)
+			dmg = 90
+			main.display_active_pokemon_energies(is_opponent)
+			await main.show_message("METALLIC THUNDER! DISCARDED 2 METAL — 90 DAMAGE!")
+			if main._should_bail(): return dmg
+	await gym1_hit_active(attacker, defender, is_opponent, dmg)
+	if main._should_bail(): return dmg
+	await main.check_all_knockouts()
+	return dmg
+
+# VENGEFUL SPIKES (Omastar δ ex13-13): 30 + 10 more for each Omanyte, Omastar, Kabuto, Kabutops, and
+# Kabutops ex in your discard pile (max +60).
+func execute_ex13_vengeful_spikes(attacker: card_object, defender: card_object, is_opponent: bool) -> int:
+	if await handle_attack_confusion(attacker, is_opponent): return 0
+	if await handle_attack_blind(attacker, is_opponent): return 0
+	var discard = main.opponent_discard_pile if is_opponent else main.player_discard_pile
+	var names = ["Omanyte", "Omastar", "Kabuto", "Kabutops", "Kabutops ex"]
+	var n = 0
+	for c in discard:
+		if c.metadata.get("name","") in names: n += 1
+	var bonus = min(n * 10, 60)
+	var dmg = 30 + bonus
+	if bonus > 0:
+		await main.show_message("VENGEFUL SPIKES! +" + str(bonus) + " FROM THE DISCARD PILE!")
+		if main._should_bail(): return dmg
+	await gym1_hit_active(attacker, defender, is_opponent, dmg)
+	if main._should_bail(): return dmg
+	await main.check_all_knockouts()
+	return dmg
+
+# DELTA CIRCLE (Exeggutor δ ex13-41): 10 + 10 more for each Pokemon you have in play that has δ on its card.
+func execute_ex13_delta_circle(attacker: card_object, defender: card_object, is_opponent: bool) -> int:
+	if await handle_attack_confusion(attacker, is_opponent): return 0
+	if await handle_attack_blind(attacker, is_opponent): return 0
+	var n = 0
+	for p in main.card_ops.get_all_pokemon_in_play(is_opponent):
+		if p.is_delta(): n += 1
+	var dmg = 10 + n * 10
+	await main.show_message("DELTA CIRCLE! " + str(n) + " δ POKEMON — " + str(dmg) + " DAMAGE!")
+	if main._should_bail(): return dmg
+	await gym1_hit_active(attacker, defender, is_opponent, dmg)
+	if main._should_bail(): return dmg
+	await main.check_all_knockouts()
+	return dmg
+
+# MIND PLAY (Golduck δ ex13-43): choose 1 card from opp hand without looking. Look at it. If it is a Trainer
+# card, this attack does 30 + 30 more and you discard that card. Otherwise return it to your opponent's hand.
+func execute_ex13_mind_play(attacker: card_object, defender: card_object, is_opponent: bool) -> int:
+	if await handle_attack_confusion(attacker, is_opponent): return 0
+	if await handle_attack_blind(attacker, is_opponent): return 0
+	var opp_hand = main.player_hand if is_opponent else main.opponent_hand
+	var dmg = 30
+	if not opp_hand.is_empty():
+		var picked: card_object = opp_hand[randi() % opp_hand.size()]
+		var is_trainer = picked.metadata.get("supertype","") == "Trainer"
+		if not is_opponent:
+			await main.card_ops.choose_card([picked], false, "MIND PLAY", "You picked this card from your opponent's hand", "OK", true, Callable(), true)
+			if main._should_bail(): return dmg
+		if is_trainer:
+			dmg = 60
+			opp_hand.erase(picked)
+			picked.current_location = "discard"
+			var opp_discard = main.player_discard_pile if is_opponent else main.opponent_discard_pile
+			opp_discard.append(picked)
+			main.refresh_hand_display(not is_opponent)
+			main.update_discard_pile_display(not is_opponent)
+			await main.show_message("MIND PLAY! DISCARDED A TRAINER — 60 DAMAGE!")
+			if main._should_bail(): return dmg
+		else:
+			await main.show_message("MIND PLAY! IT WASN'T A TRAINER — RETURNED TO HAND.")
+			if main._should_bail(): return dmg
+	await gym1_hit_active(attacker, defender, is_opponent, dmg)
+	if main._should_bail(): return dmg
+	await main.check_all_knockouts()
+	return dmg
+
+# DELTA DRAW (Holon's Castform ex13-44): draw up to (number of Pokemon you have in play that has δ) cards.
+func execute_ex13_delta_draw(attacker: card_object, is_opponent: bool) -> void:
+	var n = 0
+	for p in main.card_ops.get_all_pokemon_in_play(is_opponent):
+		if p.is_delta(): n += 1
+	if n <= 0:
+		await main.show_message("DELTA DRAW! NO δ POKEMON IN PLAY.")
+		if main._should_bail(): return
+		return
+	await main.card_ops.draw_n(is_opponent, n)
+	if main._should_bail(): return
+	await main.show_message("DELTA DRAW! DREW UP TO " + str(n) + " CARDS!")
+	if main._should_bail(): return
+
+# SCRATCH AND DRAW (Persian δ ex13-48): base damage; if any Stadium with Holon in its name is in play, draw 3.
+func execute_ex13_scratch_and_draw(attacker: card_object, defender: card_object, is_opponent: bool, base_damage: int) -> void:
+	if await handle_attack_confusion(attacker, is_opponent): return
+	if await handle_attack_blind(attacker, is_opponent): return
+	await gym1_hit_active(attacker, defender, is_opponent, base_damage)
+	if main._should_bail(): return
+	await main.check_all_knockouts()
+	if main._should_bail(): return
+	if main.current_stadium_card != null and "Holon" in main.current_stadium_card.metadata.get("name",""):
+		await main.card_ops.draw_n(is_opponent, 3)
+		if main._should_bail(): return
+		await main.show_message("SCRATCH AND DRAW! A HOLON STADIUM IS IN PLAY — DREW 3 CARDS!")
+		if main._should_bail(): return
+
+# DECEIVE (Persian δ ex13-48): your opponent chooses 1 of his or her Pokemon; put 4 damage counters on it.
+func execute_ex13_deceive(attacker: card_object, is_opponent: bool) -> void:
+	if await handle_attack_confusion(attacker, is_opponent): return
+	if await handle_attack_blind(attacker, is_opponent): return
+	# The opponent (the defending side) chooses one of their own Pokemon.
+	var chooser_is_opp = not is_opponent
+	var pool = main.card_ops.get_all_pokemon_in_play(chooser_is_opp)
+	if pool.is_empty(): return
+	var target: card_object
+	if chooser_is_opp:
+		# CPU chooses its own Pokemon — pick the one with the most HP to spare.
+		target = pool[0]
+		for c in pool:
+			if c.current_hp > target.current_hp: target = c
+	else:
+		target = pool[0] if pool.size() == 1 else await main.card_ops.choose_card(pool, false, "DECEIVE", "Choose one of YOUR Pokemon to receive 4 damage counters", "SELECT", false)
+		if main._should_bail(): return
+		if target == null: target = pool[0]
+	target.current_hp = max(0, target.current_hp - 40)
+	main.display_hp_circles_above_align(target, chooser_is_opp)
+	main.display_pokemon(chooser_is_opp)
+	await main.show_message("DECEIVE! 4 DAMAGE COUNTERS ON " + target.metadata.get("name","").to_upper() + "!")
+	if main._should_bail(): return
+	await main.check_all_knockouts()
+
+# WRECK (Primeape δ ex13-50): 30, and if there is any Stadium card in play, 30 more and discard that Stadium.
+func execute_ex13_wreck(attacker: card_object, defender: card_object, is_opponent: bool) -> int:
+	if await handle_attack_confusion(attacker, is_opponent): return 0
+	if await handle_attack_blind(attacker, is_opponent): return 0
+	var dmg = 30
+	var had_stadium = main.current_stadium_card != null
+	if had_stadium: dmg = 60
+	await gym1_hit_active(attacker, defender, is_opponent, dmg)
+	if main._should_bail(): return dmg
+	await main.check_all_knockouts()
+	if main._should_bail(): return dmg
+	if had_stadium:
+		await main.trainer_effects.remove_current_stadium("WRECK")
+		if main._should_bail(): return dmg
+		await main.show_message("WRECK! DISCARDED THE STADIUM — 60 DAMAGE!")
+		if main._should_bail(): return dmg
+	return dmg
+
+# BRUSH ASIDE (Sharpedo δ ex13-53): base damage; if Sharpedo has any Holon Energy attached, choose 1 card
+# from your opponent's hand without looking and discard it.
+func execute_ex13_brush_aside(attacker: card_object, defender: card_object, is_opponent: bool, base_damage: int) -> void:
+	if await handle_attack_confusion(attacker, is_opponent): return
+	if await handle_attack_blind(attacker, is_opponent): return
+	await gym1_hit_active(attacker, defender, is_opponent, base_damage)
+	if main._should_bail(): return
+	await main.check_all_knockouts()
+	if main._should_bail(): return
+	if attacker.holon_energy_count() > 0:
+		await execute_ex1_random_hand_discard(attacker, defender, is_opponent, 0, false, "BRUSH ASIDE")
+		if main._should_bail(): return
+
+# SWIFT TURN (Sharpedo δ ex13-53): 50, +30 if the Defending Pokemon has Fighting Resistance.
+func execute_ex13_swift_turn(attacker: card_object, defender: card_object, is_opponent: bool) -> int:
+	if await handle_attack_confusion(attacker, is_opponent): return 0
+	if await handle_attack_blind(attacker, is_opponent): return 0
+	var dmg = 50
+	var has_fighting_res = false
+	for r in defender.metadata.get("resistances", []):
+		if r.get("type","") == "Fighting": has_fighting_res = true
+	if has_fighting_res:
+		dmg = 80
+		await main.show_message("SWIFT TURN! THE DEFENDER HAS FIGHTING RESISTANCE — 80 DAMAGE!")
+		if main._should_bail(): return dmg
+	await gym1_hit_active(attacker, defender, is_opponent, dmg)
+	if main._should_bail(): return dmg
+	await main.check_all_knockouts()
+	return dmg
+
+# HYPER CLAWS (Mightyena ex ex13-101): 50, +40 if the Defending Pokemon is a Stage 2 Evolved Pokemon.
+func execute_ex13_hyper_claws(attacker: card_object, defender: card_object, is_opponent: bool) -> int:
+	if await handle_attack_confusion(attacker, is_opponent): return 0
+	if await handle_attack_blind(attacker, is_opponent): return 0
+	var dmg = 50
+	if "Stage 2" in defender.metadata.get("subtypes", []):
+		dmg = 90
+		await main.show_message("HYPER CLAWS! THE DEFENDER IS A STAGE 2 — 90 DAMAGE!")
+		if main._should_bail(): return dmg
+	await gym1_hit_active(attacker, defender, is_opponent, dmg)
+	if main._should_bail(): return dmg
+	await main.check_all_knockouts()
+	return dmg
+
+# ALL-OUT BLAST (Gyarados Star δ ex13-102): discard cards from the top of your deck until 1 card is left;
+# 50 + 20 more for each Energy card discarded this way.
+func execute_ex13_all_out_blast(attacker: card_object, defender: card_object, is_opponent: bool) -> int:
+	if await handle_attack_confusion(attacker, is_opponent): return 0
+	if await handle_attack_blind(attacker, is_opponent): return 0
+	var deck = main.opponent_deck if is_opponent else main.player_deck
+	var discard = main.opponent_discard_pile if is_opponent else main.player_discard_pile
+	var energy_discarded = 0
+	while deck.size() > 1:
+		var c = deck.pop_front()
+		c.current_location = "discard"
+		if c.metadata.get("supertype","") == "Energy": energy_discarded += 1
+		discard.append(c)
+	main.update_deck_icon(is_opponent)
+	main.update_discard_pile_display(is_opponent)
+	var dmg = 50 + energy_discarded * 20
+	await main.show_message("ALL-OUT BLAST! DISCARDED " + str(energy_discarded) + " ENERGY — " + str(dmg) + " DAMAGE!")
+	if main._should_bail(): return dmg
+	await gym1_hit_active(attacker, defender, is_opponent, dmg)
+	if main._should_bail(): return dmg
+	await main.check_all_knockouts()
+	return dmg
+
+# PSYCHIC STAR (Mewtwo Star ex13-103): 50; if the Defending Pokemon is an Evolved Pokemon, discard all
+# Energy attached to Mewtwo Star and this attack does 50 + 50 more.
+func execute_ex13_psychic_star(attacker: card_object, defender: card_object, is_opponent: bool) -> int:
+	if await handle_attack_confusion(attacker, is_opponent): return 0
+	if await handle_attack_blind(attacker, is_opponent): return 0
+	var dmg = 50
+	var is_evolved = not main.is_basic_pokemon(defender)
+	if is_evolved:
+		dmg = 100
+		for e in attacker.attached_energies.duplicate():
+			main.card_ops.discard_energy_from_pokemon(e, is_opponent)
+		main.display_active_pokemon_energies(is_opponent)
+		await main.show_message("PSYCHIC STAR! DISCARDED ALL ENERGY — 100 DAMAGE!")
+		if main._should_bail(): return dmg
+	await gym1_hit_active(attacker, defender, is_opponent, dmg)
+	if main._should_bail(): return dmg
+	await main.check_all_knockouts()
+	return dmg
+
+# DEVO CRUSH (Mew ex ex13-100): base damage; you may discard 2 Energy attached to Mew ex to remove the
+# highest Stage Evolution card from the Defending Pokemon and shuffle it into your opponent's deck.
+func execute_ex13_devo_crush(attacker: card_object, defender: card_object, is_opponent: bool, base_damage: int) -> void:
+	if await handle_attack_confusion(attacker, is_opponent): return
+	if await handle_attack_blind(attacker, is_opponent): return
+	await gym1_hit_active(attacker, defender, is_opponent, base_damage)
+	if main._should_bail(): return
+	await main.check_all_knockouts()
+	if main._should_bail(): return
+	if defender == null or defender.current_hp <= 0: return
+	if defender.attached_pre_evolutions.is_empty(): return
+	if attacker.attached_energies.size() < 2: return
+	var do_it = is_opponent
+	if not is_opponent:
+		do_it = await main.trainer_effects.gym1_prompt_yes_no(attacker, "DEVO CRUSH", "Discard 2 Energy to devolve the Defending Pokemon?", "YES", "NO")
+		if main._should_bail(): return
+	if not do_it: return
+	for i in range(2):
+		if attacker.attached_energies.is_empty(): break
+		main.card_ops.discard_energy_from_pokemon(attacker.attached_energies[attacker.attached_energies.size() - 1], is_opponent)
+	main.display_active_pokemon_energies(is_opponent)
+	_ex2_devolve_pokemon(defender, not is_opponent, "deck")
+	var opp_deck = main.player_deck if is_opponent else main.opponent_deck
+	opp_deck.shuffle()
+	main.update_deck_icon(not is_opponent)
+	await main.show_message("DEVO CRUSH! DEVOLVED " + defender.metadata.get("name","").to_upper() + "!")
+	if main._should_bail(): return
+	await main.check_all_knockouts()
+
+# AQUA FLOWER (Bellossom ex13-19): base damage; during your opponent's next turn, Bellossom has no Weakness.
+func execute_ex13_aqua_flower(attacker: card_object, defender: card_object, is_opponent: bool, base_damage: int) -> void:
+	if await handle_attack_confusion(attacker, is_opponent): return
+	if await handle_attack_blind(attacker, is_opponent): return
+	await gym1_hit_active(attacker, defender, is_opponent, base_damage)
+	if main._should_bail(): return
+	attacker.set_effect("ex13_no_weakness", "end_of_opponent_turn")
+	await main.show_message("AQUA FLOWER! " + attacker.metadata.get("name","").to_upper() + " HAS NO WEAKNESS DURING YOUR OPPONENT'S NEXT TURN!")
+	if main._should_bail(): return
+	await main.check_all_knockouts()
+
+# DELTA CALL (Holon Lake ex13-87 Stadium attack, usable by δ Pokemon): search your deck for a Pokemon that
+# has δ on its card, show it to your opponent, and put it into your hand.
+func execute_ex13_delta_call(attacker: card_object, is_opponent: bool) -> void:
+	var found = await main.card_ops.search_deck_to_hand(is_opponent, func(c): return c.metadata.get("supertype","") == "Pokémon" and c.is_delta(), "DELTA CALL: CHOOSE A δ POKEMON", 1)
+	if main._should_bail(): return
+	await main.show_message("DELTA CALL! ADDED A δ POKEMON TO HAND!" if found.size() > 0 else "NO δ POKEMON IN YOUR DECK!")
+	if main._should_bail(): return
+
+# PASTE (Pichu δ ex13-76): search your discard pile for an Energy card and attach it to 1 of your Pokemon
+# that has δ on its card.
+func execute_ex13_paste(attacker: card_object, is_opponent: bool) -> void:
+	var discard = main.opponent_discard_pile if is_opponent else main.player_discard_pile
+	var energy_pool = discard.filter(func(c): return c.metadata.get("supertype","") == "Energy")
+	if energy_pool.is_empty():
+		await main.show_message("PASTE! NO ENERGY IN YOUR DISCARD PILE.")
+		if main._should_bail(): return
+		return
+	var targets = main.card_ops.get_all_pokemon_in_play(is_opponent).filter(func(p): return p.is_delta())
+	if targets.is_empty():
+		await main.show_message("PASTE! NO δ POKEMON TO ATTACH ENERGY TO.")
+		if main._should_bail(): return
+		return
+	var e: card_object = energy_pool[0] if is_opponent else await main.card_ops.choose_card(energy_pool, false, "PASTE", "Choose an Energy to attach", "SELECT", false, Callable(), true)
+	if main._should_bail(): return
+	if e == null: e = energy_pool[0]
+	var target: card_object = targets[0] if targets.size() == 1 else await main.card_ops.choose_card(targets, false, "PASTE", "Attach it to which δ Pokemon?", "ATTACH", false)
+	if main._should_bail(): return
+	if target == null: target = targets[0]
+	discard.erase(e)
+	e.current_location = "attached"
+	target.attached_energies.append(e)
+	main.update_discard_pile_display(is_opponent)
+	main.display_active_pokemon_energies(is_opponent)
+	main.display_pokemon(is_opponent)
+	await main.show_message("PASTE! ATTACHED " + e.metadata.get("name","").to_upper() + " TO " + target.metadata.get("name","").to_upper() + "!")
+	if main._should_bail(): return

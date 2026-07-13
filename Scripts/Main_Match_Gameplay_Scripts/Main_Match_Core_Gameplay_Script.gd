@@ -3600,6 +3600,41 @@ func get_attacks_for_card(card: card_object) -> Array:
 				if not tg_extra.is_empty():
 					return attacks + tg_extra
 
+	# EX13 Fellowship (Bellossom ex13-19): Bellossom may use the attacks of all Oddish, Gloom, Vileplume,
+	# Vileplume ex, or other Bellossom you have in play as its own (energy cost still applies).
+	if card.has_ability("Fellowship") and not powers_and_bodies.is_body_blocked(card):
+		var fw_side = card.is_owner_opp(self)
+		var fw_names = ["Oddish", "Gloom", "Vileplume", "Vileplume ex", "Bellossom"]
+		var seen_fw: Dictionary = {}
+		for atk in attacks:
+			seen_fw[atk.get("name","")] = true
+		var fw_extra: Array = []
+		for p in card_ops.get_all_pokemon_in_play(fw_side):
+			if p == card: continue
+			if p.metadata.get("name","") not in fw_names: continue
+			for atk in p.metadata.get("attacks", []):
+				var an = atk.get("name","")
+				if an != "" and not seen_fw.has(an):
+					seen_fw[an] = true
+					fw_extra.append(atk)
+		if not fw_extra.is_empty():
+			return attacks + fw_extra
+
+	# EX13 Holon Lake (ex13-87 Stadium): each player's Pokémon that has δ on its card may use the
+	# Stadium's Delta Call attack in addition to (in place of) its own.
+	if is_stadium_in_play("ex13-87") and current_stadium_card != null and card.is_delta():
+		var hl_atks = current_stadium_card.metadata.get("attacks", [])
+		if not hl_atks.is_empty():
+			var seen_hl: Dictionary = {}
+			for atk in attacks:
+				seen_hl[atk.get("name","")] = true
+			var hl_extra: Array = []
+			for atk in hl_atks:
+				if not seen_hl.has(atk.get("name","")):
+					hl_extra.append(atk)
+			if not hl_extra.is_empty():
+				return attacks + hl_extra
+
 	return attacks
 
 # Read an energy card passed to this function and return what energies this card actually provides.
@@ -3669,6 +3704,14 @@ func get_energy_provided_by_card(energy_card: card_object) -> Array:
 		if rb_holder != null and rb_holder.metadata.get("name","") in ["Huntail", "Gorebyss"]:
 			if powers_and_bodies.is_ex12_reactive_booster_active(rb_holder):
 				return ["Any", "Any"]
+
+	# EX13 δ Rainbow Energy (ex13-98): provides Colorless normally, but every type of Energy (1 at a
+	# time) while attached to a Pokémon that has δ on its card. Needs holder context; resolved here.
+	if card_name == "δ Rainbow Energy":
+		var dr_holder = _find_energy_holder(energy_card)
+		if dr_holder != null and dr_holder.is_delta():
+			return ["Any"]
+		return ["Colorless"]
 
 	# Special energy: route through Special_Energy_Effects system
 	if "Special" in subtypes:

@@ -3416,6 +3416,13 @@ func cpu_score_trainer_card(card: card_object) -> float:
 		"ex10-90": return 30.0                           # Protective Orb (Tool): no Weakness
 		"ex10-91": return 35.0                           # Sitrus Berry (Tool): between-turn heal 30
 		"ex10-92": return 35.0                           # Solid Rage (Tool): +20 damage while ahead on prizes
+		# ── EX13 (EX Holon Phantoms) ──
+		"ex13-85": return 55.0                           # Holon Adventurer (Supporter): discard 1, draw 3-4
+		"ex13-86": return 40.0                           # Holon Fossil (Item): coin-flip fossil Pokemon to Bench
+		"ex13-88": return 55.0                           # Mr. Stone's Project (Supporter): up to 2 basic Energy
+		"ex13-89": return 55.0                           # Professor Cozmo's Discovery (Supporter): draw 2-3
+		"ex13-90": return _cpu_score_ex2_rare_candy()    # Rare Candy
+		# Holon Lake (ex13-87 Stadium) uses the generic stadium-play heuristic.
 	return 0.0
 
 # MR. BRINEY'S COMPASSION (ex3-87): only valuable when the CPU has a damaged non-ex Pokemon worth

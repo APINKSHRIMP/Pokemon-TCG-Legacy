@@ -98,6 +98,11 @@ func get_energy_types_provided(card_name: String) -> Array:
 			# Huntail/Gorebyss provides 2 of every type) needs holder context and is resolved in
 			# Main.get_energy_provided_by_card.
 			return ["Colorless"]
+		"δ Rainbow Energy":
+			# EX13: provides 1 Colorless. While attached to a Pokémon that has δ on its card it provides
+			# every type of Energy (1 at a time) — that δ upgrade needs holder context and is resolved in
+			# Main.get_energy_provided_by_card. This fallback (no holder known) is the Colorless base.
+			return ["Colorless"]
 		# --- FUTURE SETS: Add new special energies below ---
 		# "Boost Energy":
 		#	return ["Colorless", "Colorless", "Colorless"]
@@ -139,7 +144,7 @@ func can_attach_to(energy_card: card_object, target_pokemon: card_object) -> Dic
 
 	match card_name:
 		"Rainbow Energy", "Full Heal Energy", "Potion Energy", "Double Colorless Energy", \
-		"Darkness Energy", "Metal Energy", "Recycle Energy", "Multi Energy", "Dark Metal Energy", "Heal Energy", "React Energy":
+		"Darkness Energy", "Metal Energy", "Recycle Energy", "Multi Energy", "Dark Metal Energy", "Heal Energy", "React Energy", "δ Rainbow Energy":
 			return {"allowed": true, "reason": ""}
 		"Boost Energy":
 			# EX8: can be attached only to an Evolved Pokemon.
@@ -567,6 +572,20 @@ func score_special_energy_attachment(energy_card: card_object, target_pokemon: c
 				if main.cpu_ai.get_unmet_energy_count(attack, target_pokemon) == 1:
 					score += 20.0
 					break
+
+		"δ Rainbow Energy":
+			# EX13: 1 Colorless normally, but every type (1 at a time) on a δ Pokémon — great flexible fuel
+			# on δ, mediocre otherwise.
+			if target_pokemon.is_delta():
+				score += 25.0
+				if is_active:
+					score += 10.0
+				for attack in target_pokemon.metadata.get("attacks", []):
+					if main.cpu_ai.get_unmet_energy_count(attack, target_pokemon) == 1:
+						score += 40.0
+						break
+			else:
+				score += 5.0
 
 	return score
 

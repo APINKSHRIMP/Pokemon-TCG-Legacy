@@ -80,6 +80,7 @@ func _register_all_powers() -> void:
 	_register_ex10_powers()
 	_register_ex11_powers()
 	_register_ex12_powers()
+	_register_ex13_powers()
 
 # ── On-damage and pre-KO event hooks ──────────────────────────────────────────
 # Each Callable is fired after active-pokemon damage resolves (on_damage) or
@@ -172,6 +173,7 @@ func _register_all_power_hooks() -> void:
 	_damage_modifier_hooks.append(func(dmg, atk, def, mods): return _hook_ex12_paranoid(dmg, atk, def, mods))
 	_damage_modifier_hooks.append(func(dmg, atk, def, mods): return _hook_ex12_reactive_shield(dmg, atk, def, mods))
 	_damage_modifier_hooks.append(func(dmg, atk, def, mods): return _hook_ex12_ex_shield(dmg, atk, def, mods))
+	_damage_modifier_hooks.append(func(dmg, atk, def, mods): return _hook_ex13_delta_reactor(dmg, atk, def, mods))
 	_on_damage_hooks.append(func(def, atk, dmg, is_def_opp): await check_ex10_stages_hitmontop(def, atk, is_def_opp))
 	_on_damage_hooks.append(func(def, atk, dmg, is_def_opp): await check_ex10_silver_sparkle(def, atk, is_def_opp))
 	_pre_ko_hooks.append(func(poke, atk, is_poke_opp): await check_ex10_spiral_swirl(poke, atk, is_poke_opp))
@@ -341,6 +343,37 @@ func is_power_blocked(pokemon: card_object, works_through_status: bool = false) 
 				if p.has_ability("Luna Shade") and not p.is_status_blocked():
 					if main.card_ops.get_all_pokemon_in_play(side_ls).any(func(q): return q.metadata.get("name","") == "Lunatone"):
 						return true
+	# EX13 Delta Reserve (Pidgeot ex13-14): while a Pidgeot with this Body has any Holon Energy card
+	# attached, each player's Pokemon that does NOT have δ on its card can't use Poké-Powers.
+	if not pokemon.is_delta():
+		for side_dr in [false, true]:
+			for p in main.card_ops.get_all_pokemon_in_play(side_dr):
+				if p.has_ability("Delta Reserve") and p.holon_energy_count() > 0 and not p.is_status_blocked():
+					return true
+	return false
+
+# EX13 Dual Aura (Latias/Latios ex13-11/12): while a player has both a Latias-line and a Latios-line
+# Pokemon in play (and one of them has the active Dual Aura Body), each player's Evolved Pokemon
+# (excluding Pokemon-ex) can't use any Poké-Bodies. This is a body-only lock, so ex13's own bodies
+# consult is_body_blocked() (= is_power_blocked plus this Dual Aura gate) rather than is_power_blocked.
+func _ex13_dual_aura_active() -> bool:
+	for side in [false, true]:
+		var mine = main.card_ops.get_all_pokemon_in_play(side)
+		var has_latias = mine.any(func(p): return "Latias" in p.metadata.get("name",""))
+		var has_latios = mine.any(func(p): return "Latios" in p.metadata.get("name",""))
+		if has_latias and has_latios and mine.any(func(p): return p.has_ability("Dual Aura") and not p.is_status_blocked()):
+			return true
+	return false
+
+# Returns true if this Pokemon can't use its Poké-Body right now: either the shared power/body gate
+# blocks it, or EX13 Dual Aura is suppressing Evolved non-ex bodies.
+func is_body_blocked(pokemon: card_object) -> bool:
+	if pokemon == null:
+		return true
+	if is_power_blocked(pokemon):
+		return true
+	if not main.is_basic_pokemon(pokemon) and not main.is_ex_pokemon(pokemon) and _ex13_dual_aura_active():
+		return true
 	return false
 
 # Returns true if a card is a trainer card
@@ -2168,6 +2201,8 @@ func cpu_phase_activate_powers() -> void:
 	await cpu_phase_ex11_powers()
 	if main._should_bail(): return
 	await cpu_phase_ex12_powers()
+	if main._should_bail(): return
+	await cpu_phase_ex13_powers()
 	if main._should_bail(): return
 
 
@@ -12332,6 +12367,9 @@ func check_ex7_saturation(target_pokemon: card_object, energy_card: card_object,
 # DARK CONDITION (Rocket's Entei ex ex7-97): while it has Darkness Energy attached, it has no Weakness.
 func has_no_weakness_body(defender: card_object) -> bool:
 	if defender == null: return false
+	# EX13 Aqua Flower (Bellossom ex13-19): attack-granted "no Weakness during your opponent's next turn".
+	if defender.has_effect("ex13_no_weakness"):
+		return true
 	if battle_frontier_disables(defender): return false
 	# ex10 Protective Orb (Pokémon Tool ex10-90): the holder has no Weakness.
 	for ac in defender.attached_cards:
@@ -12362,6 +12400,12 @@ func has_no_weakness_body(defender: card_object) -> bool:
 	for p in main.card_ops.get_all_pokemon_in_play(side_opp):
 		if p.has_ability("Dragon Veil") and not is_power_blocked_by_status(p):
 			return true
+	# EX13 Hydro Barrier (Rayquaza δ ex13-16): while a Rayquaza with this Body has any Holon Energy card
+	# attached, each of that side's Water Pokemon has no Weakness.
+	if "Water" in defender.get_effective_types():
+		for p in main.card_ops.get_all_pokemon_in_play(side_opp):
+			if p.has_ability("Hydro Barrier") and p.holon_energy_count() > 0 and not is_body_blocked(p):
+				return true
 	return false
 
 # ── Special-condition immunity bodies (consulted in Card_Ops.apply_status) ──────
@@ -12982,6 +13026,17 @@ func is_ex8_commanding_aura_active(stadium_player_is_opp: bool) -> bool:
 	var blocker_active = main.player_active_pokemon if stadium_player_is_opp else main.opponent_active_pokemon
 	return blocker_active != null and blocker_active.has_ability("Commanding Aura") and not is_power_blocked_by_status(blocker_active)
 
+# EX13 DELTA BLOCK (Golduck δ ex13-43): as long as any Stadium card with Holon in its name is in play,
+# the opponent of the Golduck's owner can't play Stadium cards from hand. `stadium_player_is_opp` is the
+# side trying to PLAY a Stadium; it is blocked if the OTHER side has a Golduck with an active Delta Block.
+func is_ex13_delta_block_active(stadium_player_is_opp: bool) -> bool:
+	if main.current_stadium_card == null or "Holon" not in main.current_stadium_card.metadata.get("name",""):
+		return false
+	for p in main.card_ops.get_all_pokemon_in_play(not stadium_player_is_opp):
+		if p.has_ability("Delta Block") and not is_body_blocked(p):
+			return true
+	return false
+
 # SPACE CENTER (ex8-91 Stadium): ignore Poké-Bodies for all Basic Pokemon in play (both players),
 # excluding Pokemon-ex and Pokemon that have an owner in their name. Consulted by the Poké-Body gates.
 func ex8_space_center_ignores_body(pokemon: card_object) -> bool:
@@ -13232,6 +13287,14 @@ func ex9_blocks_status(pokemon: card_object, status: String) -> bool:
 			for p in main.card_ops.get_all_pokemon_in_play(side_opp):
 				if p.has_ability("Green Essence") and not is_power_blocked_by_status(p):
 					return true
+	return false
+
+# EX13 CLEAR BODY (Regice ex13-27 / Regirock ex13-28 / Registeel ex13-29): the Pokemon can't be
+# affected by any Special Conditions. (Consulted in Card_Ops.apply_status.)
+func ex13_blocks_status(pokemon: card_object, status: String) -> bool:
+	if pokemon == null or status == "": return false
+	if pokemon.has_ability("Clear Body") and not is_power_blocked_by_status(pokemon):
+		return true
 	return false
 
 # DARK HOLE (Dusclops ex ex9-94 on your Bench): don't apply Darkness Weakness for your Pokemon in play.
@@ -15035,4 +15098,328 @@ func cpu_phase_ex12_powers() -> void:
 	var baby = _find_cpu_pokemon_with_power("Baby Evolution")
 	if baby != null and baby.metadata.get("name","") in ["Magby", "Wynaut"] and not baby.power_used_this_turn and not is_power_blocked_by_status(baby):
 		await power_ex2_baby_evolution(baby)
+		if main._should_bail(): return
+
+######################################################################################################################################################
+######################################################## EX13 (EX HOLON PHANTOMS) POWERS & BODIES ###################################################
+######################################################################################################################################################
+# Delta (δ) set. Reuse (no code): Form Change (Deoxys ×4 → power_ex8_form_change), Baby Evolution (Pichu →
+# power_ex2_baby_evolution), Aqua Lift (Relicanth → get_retreat_cost, name-based), Jagged Stone / Spongy
+# Stone (fossils, ability-name gated). Passive bodies wired elsewhere: Delta Reactor (_hook_ex13_delta_reactor),
+# Hydro Barrier (has_no_weakness_body), Clear Body (ex13_blocks_status), Delta Reserve (is_power_blocked),
+# Delta Block (is_ex13_delta_block_active + validate_trainer_can_be_played), Dual Aura (is_body_blocked +
+# _ex13_dual_aura_active), Fellowship (Main.get_attacks_for_card). Active powers below.
+func _register_ex13_powers() -> void:
+	_power_dispatch["Delta Supply"]   = func(p): await power_ex13_delta_supply(p)
+	_power_dispatch["Dragon Curse"]   = func(p): await power_ex13_dragon_curse(p)
+	_power_dispatch["Poison Pollen"]  = func(p): await power_ex13_poison_pollen(p)
+	_power_dispatch["Primal Light"]   = func(p): await power_ex13_primal_light(p)
+	_power_dispatch["Delta Support"]  = func(p): await power_ex13_delta_support(p)
+	_power_dispatch["Splash Back"]    = func(p): await power_ex13_splash_back(p)
+	_power_dispatch["Psychic Vision"] = func(p): await power_ex13_psychic_vision(p)
+	_power_dispatch["Driving Howl"]   = func(p): await power_ex13_driving_howl(p)
+
+# Filter for "a basic Energy card or a δ Rainbow Energy card" (Delta Supply / Delta Support / Pichu Paste).
+func _ex13_is_basic_or_delta_rainbow(c: card_object) -> bool:
+	if c.metadata.get("supertype","") != "Energy": return false
+	return "Basic" in c.metadata.get("subtypes", []) or c.metadata.get("name","") == "δ Rainbow Energy"
+
+# True if the given side has a Supporter with "Holon" in its name in play (played this turn — Supporters
+# stay next to the Active until end of turn). Modeled like ex7 Detour: the played-this-turn flag plus the
+# most-recent Supporter in the discard pile.
+func _ex13_holon_supporter_in_play(is_opponent: bool) -> bool:
+	var played = main.trainer_effects.opponent_played_supporter_this_turn if is_opponent else main.trainer_effects.player_played_supporter_this_turn
+	if not played: return false
+	var discard = main.opponent_discard_pile if is_opponent else main.player_discard_pile
+	for i in range(discard.size() - 1, -1, -1):
+		if "Supporter" in discard[i].metadata.get("subtypes", []):
+			return "Holon" in discard[i].metadata.get("name","")
+	return false
+
+# DELTA SUPPLY (Flygon δ ex13-7): attach a basic Energy or δ Rainbow Energy from your hand to 1 of your
+# Pokemon that has δ on its card. Can't be used if Flygon has a Special Condition.
+func power_ex13_delta_supply(flygon: card_object) -> void:
+	var is_opp = flygon.is_owner_opp(main)
+	if not await _ex11_power_ready(flygon, "Delta Supply"):
+		if main._should_bail(): return
+		return
+	var hand = main.opponent_hand if is_opp else main.player_hand
+	var energy_pool = hand.filter(func(c): return _ex13_is_basic_or_delta_rainbow(c))
+	if energy_pool.is_empty():
+		await main.show_message("NO BASIC ENERGY OR δ RAINBOW ENERGY IN HAND!")
+		if main._should_bail(): return
+		return
+	var targets = main.card_ops.get_all_pokemon_in_play(is_opp).filter(func(p): return p.is_delta())
+	if targets.is_empty():
+		await main.show_message("NO δ POKEMON TO ATTACH ENERGY TO!")
+		if main._should_bail(): return
+		return
+	var energy: card_object = null
+	var target: card_object = null
+	if is_opp:
+		# CPU: attach to the Active δ if it can use more energy, else the first δ; pick any valid energy.
+		energy = energy_pool[0]
+		var active = main.opponent_active_pokemon
+		target = active if (active != null and active.is_delta()) else targets[0]
+	else:
+		energy = energy_pool[0] if energy_pool.size() == 1 else await main.card_ops.choose_card(energy_pool, false, "DELTA SUPPLY", "Choose an Energy to attach", "SELECT", true)
+		if main._should_bail(): return
+		if energy == null: return
+		target = targets[0] if targets.size() == 1 else await main.card_ops.choose_card(targets, false, "DELTA SUPPLY", "Attach it to which δ Pokemon?", "ATTACH", true)
+		if main._should_bail(): return
+		if target == null: return
+	flygon.power_used_this_turn = true
+	hand.erase(energy)
+	energy.current_location = "active" if target == (main.opponent_active_pokemon if is_opp else main.player_active_pokemon) else "bench"
+	target.attached_energies.append(energy)
+	main.refresh_hand_display(is_opp)
+	main.display_active_pokemon_energies(is_opp)
+	main.display_pokemon(is_opp)
+	await main.show_message("DELTA SUPPLY! ATTACHED " + energy.metadata.get("name","").to_upper() + " TO " + target.metadata.get("name","").to_upper() + "!")
+	if main._should_bail(): return
+
+# DRAGON CURSE (Kingdra δ ex13-10): if Kingdra is your Active Pokemon, put 2 damage counters on 1 of your
+# opponent's Pokemon that has δ on its card. Can't be used if Kingdra has a Special Condition.
+func power_ex13_dragon_curse(kingdra: card_object) -> void:
+	var is_opp = kingdra.is_owner_opp(main)
+	var my_active = main.opponent_active_pokemon if is_opp else main.player_active_pokemon
+	if kingdra != my_active:
+		if not is_opp:
+			await main.show_message("DRAGON CURSE CAN ONLY BE USED WHILE KINGDRA IS ACTIVE!")
+			if main._should_bail(): return
+		return
+	if not await _ex11_power_ready(kingdra, "Dragon Curse"):
+		if main._should_bail(): return
+		return
+	var pool = main.card_ops.get_all_pokemon_in_play(not is_opp).filter(func(p): return p.is_delta())
+	if pool.is_empty():
+		await main.show_message("YOUR OPPONENT HAS NO δ POKEMON!")
+		if main._should_bail(): return
+		return
+	var target: card_object
+	if is_opp:
+		target = pool[0]
+		for c in pool:
+			if c.current_hp < target.current_hp: target = c
+	else:
+		target = pool[0] if pool.size() == 1 else await main.card_ops.choose_card(pool, false, "DRAGON CURSE", "Put 2 damage counters on which δ Pokemon?", "SELECT", false, func(c): return 100.0 - c.current_hp)
+		if main._should_bail(): return
+		if target == null: target = pool[0]
+	kingdra.power_used_this_turn = true
+	target.current_hp = max(0, target.current_hp - 20)
+	main.display_hp_circles_above_align(target, not is_opp)
+	main.display_pokemon(not is_opp)
+	await main.show_message("DRAGON CURSE! PUT 2 DAMAGE COUNTERS ON " + target.metadata.get("name","").to_upper() + "!")
+	if main._should_bail(): return
+	await main.check_all_knockouts()
+	if main._should_bail(): return
+
+# POISON POLLEN (Vileplume δ ex13-17): flip a coin. If heads, 1 of the Defending Pokemon is now Poisoned.
+# Can't be used if Vileplume has a Special Condition.
+func power_ex13_poison_pollen(vileplume: card_object) -> void:
+	var is_opp = vileplume.is_owner_opp(main)
+	if not await _ex11_power_ready(vileplume, "Poison Pollen"):
+		if main._should_bail(): return
+		return
+	var defenders = main.card_ops.get_defending_pokemon(is_opp)
+	if defenders.is_empty():
+		await main.show_message("NO DEFENDING POKEMON!")
+		if main._should_bail(): return
+		return
+	vileplume.power_used_this_turn = true
+	await main.show_message("POISON POLLEN! FLIPPING...")
+	if main._should_bail(): return
+	var heads = await main.flip_coin(false, is_opp)
+	if main._should_bail(): return
+	if not heads:
+		await main.show_message("TAILS! POISON POLLEN FIZZLED!")
+		if main._should_bail(): return
+		return
+	var target: card_object = defenders[0] if defenders.size() == 1 else await main.card_ops.choose_card(defenders, false, "POISON POLLEN", "Poison which Defending Pokemon?", "SELECT", false)
+	if main._should_bail(): return
+	if target == null: target = defenders[0]
+	main.card_ops.apply_status(target, "Poisoned", not is_opp)
+	main.update_status_icons(target, not is_opp)
+	await main.show_message("POISON POLLEN! " + target.metadata.get("name","").to_upper() + " IS NOW POISONED!")
+	if main._should_bail(): return
+
+# PRIMAL LIGHT (Aerodactyl δ ex13-35): search your deck for a basic Energy card, show it, and put it into
+# your hand. Can't be used if Aerodactyl has a Special Condition.
+func power_ex13_primal_light(aerodactyl: card_object) -> void:
+	var is_opp = aerodactyl.is_owner_opp(main)
+	if not await _ex11_power_ready(aerodactyl, "Primal Light"):
+		if main._should_bail(): return
+		return
+	aerodactyl.power_used_this_turn = true
+	var found = await main.card_ops.search_deck_to_hand(is_opp, func(c): return c.metadata.get("supertype","") == "Energy" and "Basic" in c.metadata.get("subtypes", []), "PRIMAL LIGHT: CHOOSE A BASIC ENERGY", 1)
+	if main._should_bail(): return
+	await main.show_message("PRIMAL LIGHT! ADDED A BASIC ENERGY TO HAND!" if found.size() > 0 else "NO BASIC ENERGY IN YOUR DECK!")
+	if main._should_bail(): return
+
+# DELTA SUPPORT (Chimecho δ ex13-37): if you have a Supporter card with Holon in its name in play, search
+# your discard pile for a basic Energy or δ Rainbow Energy card, show it, and put it into your hand.
+func power_ex13_delta_support(chimecho: card_object) -> void:
+	var is_opp = chimecho.is_owner_opp(main)
+	if not await _ex11_power_ready(chimecho, "Delta Support"):
+		if main._should_bail(): return
+		return
+	if not _ex13_holon_supporter_in_play(is_opp):
+		await main.show_message("DELTA SUPPORT NEEDS A HOLON SUPPORTER IN PLAY!")
+		if main._should_bail(): return
+		return
+	var discard = main.opponent_discard_pile if is_opp else main.player_discard_pile
+	var pool = discard.filter(func(c): return _ex13_is_basic_or_delta_rainbow(c))
+	if pool.is_empty():
+		await main.show_message("NO BASIC ENERGY OR δ RAINBOW ENERGY IN YOUR DISCARD PILE!")
+		if main._should_bail(): return
+		return
+	chimecho.power_used_this_turn = true
+	var pick: card_object = pool[0] if is_opp else await main.card_ops.choose_card(pool, false, "DELTA SUPPORT", "Choose an Energy to put into your hand", "TAKE", false, Callable(), true)
+	if main._should_bail(): return
+	if pick == null: pick = pool[0]
+	await main.card_ops.recover_to_hand(pick, is_opp)
+	if main._should_bail(): return
+	await main.show_message("DELTA SUPPORT! ADDED " + pick.metadata.get("name","").to_upper() + " TO YOUR HAND!")
+	if main._should_bail(): return
+
+# SPLASH BACK (Crawdaunt ex ex13-99): if your opponent has 4 or more Benched Pokemon, choose 1 and return
+# that Pokemon and all cards attached to it to his or her hand. Can't be used if Crawdaunt ex has a Special
+# Condition.
+func power_ex13_splash_back(crawdaunt: card_object) -> void:
+	var is_opp = crawdaunt.is_owner_opp(main)
+	if not await _ex11_power_ready(crawdaunt, "Splash Back"):
+		if main._should_bail(): return
+		return
+	var opp_bench = main.player_bench if is_opp else main.opponent_bench
+	if opp_bench.size() < 4:
+		await main.show_message("SPLASH BACK NEEDS YOUR OPPONENT TO HAVE 4+ BENCHED POKEMON!")
+		if main._should_bail(): return
+		return
+	var target: card_object
+	if is_opp:
+		target = opp_bench[0]
+		for c in opp_bench:
+			if c.attached_energies.size() > target.attached_energies.size(): target = c
+	else:
+		target = await main.card_ops.choose_card(opp_bench, false, "SPLASH BACK", "Return which of your opponent's Benched Pokemon to their hand?", "SELECT", true)
+		if main._should_bail(): return
+		if target == null: return
+	crawdaunt.power_used_this_turn = true
+	await main.attack_effects.gym1_return_pokemon_to_hand(target, not is_opp)
+	if main._should_bail(): return
+	await main.show_message("SPLASH BACK! RETURNED " + target.metadata.get("name","").to_upper() + " TO YOUR OPPONENT'S HAND!")
+	if main._should_bail(): return
+
+# PSYCHIC VISION (Mew ex ex13-100): if Mew ex is on your Bench, look at your opponent's hand.
+func power_ex13_psychic_vision(mew: card_object) -> void:
+	var is_opp = mew.is_owner_opp(main)
+	if is_power_blocked_by_status(mew):
+		await main.show_message("PSYCHIC VISION IS BLOCKED BY STATUS!")
+		if main._should_bail(): return
+		return
+	if mew.power_used_this_turn:
+		await main.show_message("PSYCHIC VISION ALREADY USED THIS TURN!")
+		if main._should_bail(): return
+		return
+	var bench = main.opponent_bench if is_opp else main.player_bench
+	if mew not in bench:
+		if not is_opp:
+			await main.show_message("PSYCHIC VISION REQUIRES MEW ex TO BE ON YOUR BENCH!")
+			if main._should_bail(): return
+		return
+	mew.power_used_this_turn = true
+	if is_opp:
+		await main.show_message("PSYCHIC VISION! THE OPPONENT LOOKED AT YOUR HAND.")
+		if main._should_bail(): return
+	else:
+		var opp_hand = main.opponent_hand
+		if opp_hand.is_empty():
+			await main.show_message("PSYCHIC VISION! YOUR OPPONENT HAS NO CARDS IN HAND.")
+			if main._should_bail(): return
+		else:
+			await main.card_ops.choose_card(opp_hand, false, "PSYCHIC VISION", "Your opponent's hand (close to continue)", "OK", true, Callable(), true)
+			if main._should_bail(): return
+
+# DRIVING HOWL (Mightyena ex ex13-101): choose 1 of the Defending Pokemon and switch it with 1 of your
+# opponent's Benched Pokemon (your opponent chooses the Benched). Can't be used if Mightyena ex has a
+# Special Condition.
+func power_ex13_driving_howl(mightyena: card_object) -> void:
+	var is_opp = mightyena.is_owner_opp(main)
+	if not await _ex11_power_ready(mightyena, "Driving Howl"):
+		if main._should_bail(): return
+		return
+	var opp_bench = main.player_bench if is_opp else main.opponent_bench
+	if opp_bench.is_empty():
+		await main.show_message("YOUR OPPONENT HAS NO BENCHED POKEMON TO SWITCH IN!")
+		if main._should_bail(): return
+		return
+	mightyena.power_used_this_turn = true
+	await main.attack_effects.execute_ex3_force_switch_defender(mightyena, is_opp)
+	if main._should_bail(): return
+
+# DELTA REACTOR (Gyarados δ ex13-8): as long as any Stadium card with Holon in its name is in play, each of
+# your Pokemon that has δ on its card does 10 more damage to the Defending Pokemon (before W/R). Additive
+# post-W/R via the damage-modifier hook (engine-wide "+N before W/R" convention, not multiplied by Weakness).
+func _hook_ex13_delta_reactor(damage: int, attacker: card_object, defender: card_object, modifiers: Array) -> int:
+	if damage <= 0 or attacker == null: return damage
+	if not attacker.is_delta(): return damage
+	if main.current_stadium_card == null or "Holon" not in main.current_stadium_card.metadata.get("name",""):
+		return damage
+	var side = attacker.is_owner_opp(main)
+	for p in main.card_ops.get_all_pokemon_in_play(side):
+		if p.has_ability("Delta Reactor") and not is_body_blocked(p):
+			modifiers.append("DELTA REACTOR +10")
+			return damage + 10
+	return damage
+
+# ── CPU phase for ex13 active powers (safe/beneficial powers + high-value disruption) ──
+func cpu_phase_ex13_powers() -> void:
+	if is_toxic_gas_active() or main.goop_gas_active: return
+
+	# Delta Supply (Flygon): attach a basic/δ Rainbow Energy from hand to a δ Pokemon.
+	var flygon = _find_cpu_pokemon_with_power("Delta Supply")
+	if flygon != null and not flygon.power_used_this_turn and not is_power_blocked_by_status(flygon):
+		var has_e = main.opponent_hand.any(func(c): return _ex13_is_basic_or_delta_rainbow(c))
+		var has_delta = main.card_ops.get_all_pokemon_in_play(true).any(func(p): return p.is_delta())
+		if has_e and has_delta:
+			await power_ex13_delta_supply(flygon)
+			if main._should_bail(): return
+
+	# Primal Light (Aerodactyl): fetch a basic Energy to hand.
+	var aerodactyl = _find_cpu_pokemon_with_power("Primal Light")
+	if aerodactyl != null and not aerodactyl.power_used_this_turn and not is_power_blocked_by_status(aerodactyl):
+		await power_ex13_primal_light(aerodactyl)
+		if main._should_bail(): return
+
+	# Delta Support (Chimecho): recover a basic/δ Rainbow Energy from discard if a Holon Supporter is in play.
+	var chimecho = _find_cpu_pokemon_with_power("Delta Support")
+	if chimecho != null and not chimecho.power_used_this_turn and not is_power_blocked_by_status(chimecho):
+		if _ex13_holon_supporter_in_play(true) and main.opponent_discard_pile.any(func(c): return _ex13_is_basic_or_delta_rainbow(c)):
+			await power_ex13_delta_support(chimecho)
+			if main._should_bail(): return
+
+	# Dragon Curse (Kingdra Active): put 2 counters on a player δ Pokemon.
+	var kingdra = main.opponent_active_pokemon
+	if kingdra != null and kingdra.has_ability("Dragon Curse") and not kingdra.power_used_this_turn and not is_power_blocked_by_status(kingdra):
+		if main.card_ops.get_all_pokemon_in_play(false).any(func(p): return p.is_delta()):
+			await power_ex13_dragon_curse(kingdra)
+			if main._should_bail(): return
+
+	# Poison Pollen (Vileplume): flip to poison the Defending Pokemon (if not already poisoned).
+	var vileplume = _find_cpu_pokemon_with_power("Poison Pollen")
+	if vileplume != null and not vileplume.power_used_this_turn and not is_power_blocked_by_status(vileplume):
+		if main.player_active_pokemon != null and not main.player_active_pokemon.is_poisoned:
+			await power_ex13_poison_pollen(vileplume)
+			if main._should_bail(): return
+
+	# Splash Back (Crawdaunt ex): bounce a player Benched Pokemon if they have 4+ benched.
+	var crawdaunt = _find_cpu_pokemon_with_power("Splash Back")
+	if crawdaunt != null and not crawdaunt.power_used_this_turn and not is_power_blocked_by_status(crawdaunt) and main.player_bench.size() >= 4:
+		await power_ex13_splash_back(crawdaunt)
+		if main._should_bail(): return
+
+	# Driving Howl (Mightyena ex): drag one of the player's Benched Pokemon into the Active spot.
+	var mightyena = _find_cpu_pokemon_with_power("Driving Howl")
+	if mightyena != null and not mightyena.power_used_this_turn and not is_power_blocked_by_status(mightyena) and not main.player_bench.is_empty():
+		await power_ex13_driving_howl(mightyena)
 		if main._should_bail(): return

@@ -44,6 +44,7 @@ func _ensure_trainer_dispatch_ready() -> void:
 	_register_ex10_trainers()
 	_register_ex11_trainers()
 	_register_ex12_trainers()
+	_register_ex13_trainers()
 
 # EX9 (EX EMERALD) trainers. Most are reprints of ex1/ex2 cards — reuse the existing effect functions
 # with the ex9 UID. Lum Berry (ex9-78) / Oran Berry (ex9-80) are Pokemon Tools whose attach is generic
@@ -387,6 +388,7 @@ func _ensure_validator_dispatch_ready() -> void:
 	_register_gym2_validations()
 	_register_ex5_validations()
 	_register_ex11_validations()
+	_register_ex13_validations()
 	# When adding Neo1/Neo2/etc., append: _register_neo1_validations()
 
 func _register_base_validations() -> void:
@@ -1062,6 +1064,11 @@ func validate_trainer_can_be_played(card: card_object, is_opponent: bool) -> Str
 	# ex8 Commanding Aura (Hariyama ex ex8-100): opponent can't play Stadium cards
 	if "Stadium" in card.metadata.get("subtypes", []) and main.powers_and_bodies.is_ex8_commanding_aura_active(is_opponent):
 		return "Commanding Aura: you can't play Stadium cards!"
+
+	# ex13 Delta Block (Golduck δ ex13-43): while a Holon Stadium is in play, the opponent of Golduck's
+	# owner can't play Stadium cards from hand.
+	if "Stadium" in card.metadata.get("subtypes", []) and main.powers_and_bodies.is_ex13_delta_block_active(is_opponent):
+		return "Delta Block: you can't play Stadium cards!"
 
 	# ex9 Mystic Scale (Milotic ex ex9-96): while a Milotic ex is in play, no player can play a
 	# Technical Machine card.
@@ -10769,6 +10776,107 @@ func effect_ex12_fieldworker(is_opponent: bool) -> void:
 		if main._should_bail(): return
 		await main.show_message("THE OPPONENT DREW A CARD!")
 		if main._should_bail(): return
+
+######################################################################################################################################################
+######################################################## EX13 (EX HOLON PHANTOMS) TRAINERS ##########################################################
+######################################################################################################################################################
+# Delta (δ) set. Reprints reuse existing effects: Mr. Stone's Project (ex13-88 → effect_ex9_mr_stones_project),
+# Professor Cozmo's Discovery (ex13-89 → effect_ex8_professor_cozmos_discovery), Rare Candy (ex13-90 →
+# effect_ex2_rare_candy). The 3 Fossils (Claw ex13-91 / Mysterious ex13-92 / Root ex13-93) auto-work as
+# bench tokens (is_bench_token_trainer via their "as if it were a Basic" rule + HP); Jagged Stone (Claw)
+# via check_ex2_jagged_stone (has_ability, uid-agnostic), Spongy Stone (Root) via apply_np_between_turn_bodies
+# (ability-name loop, uid-agnostic) — all three auto-work with no ex13-specific code.
+# Holon Lake (ex13-87, Stadium) auto-routes through resolve_stadium_trainer; its "Holon" name satisfies the
+# Holon-stadium bodies, and its Delta Call attack is granted to δ Pokémon in get_attacks_for_card +
+# dispatched as execute_ex13_delta_call. Only Holon Adventurer and Holon Fossil need dedicated code.
+func _register_ex13_trainers() -> void:
+	_trainer_dispatch["ex13-85"] = func(c, opp): await effect_ex13_holon_adventurer(opp)         # Holon Adventurer (Supporter)
+	_trainer_dispatch["ex13-86"] = func(c, opp): await effect_ex13_holon_fossil(opp)             # Holon Fossil (Item)
+	_trainer_dispatch["ex13-88"] = func(c, opp): await effect_ex9_mr_stones_project(opp)         # Mr. Stone's Project (Supporter)
+	_trainer_dispatch["ex13-89"] = func(c, opp): await effect_ex8_professor_cozmos_discovery(opp) # Professor Cozmo's Discovery (Supporter)
+	_trainer_dispatch["ex13-90"] = func(c, opp): await effect_ex2_rare_candy(opp)                # Rare Candy (Item)
+
+func _register_ex13_validations() -> void:
+	# Holon Adventurer costs "discard a card from your hand" — need at least 1 other card in hand.
+	_validator_dispatch["ex13-85"] = func(c, opp):
+		var hand = main.opponent_hand if opp else main.player_hand
+		return "" if hand.any(func(x): return x != c) else "You must discard a card to play this Supporter!"
+
+# HOLON ADVENTURER (ex13-85, Supporter): discard a card from your hand (cost). Draw 3 cards, or draw 4
+# cards instead if the discarded card was a Pokémon that has δ on its card.
+func effect_ex13_holon_adventurer(is_opponent: bool) -> void:
+	var hand = main.opponent_hand if is_opponent else main.player_hand
+	if hand.is_empty():
+		return
+	if not is_opponent:
+		await main.show_message("DISCARD A CARD FROM YOUR HAND TO PLAY HOLON ADVENTURER.")
+		if main._should_bail(): return
+	var discarded = await main.card_ops.discard_from_hand(is_opponent, 1)
+	if main._should_bail(): return
+	if discarded.is_empty():
+		return
+	var discarded_delta = discarded.any(func(c): return c.metadata.get("supertype","") == "Pokémon" and c.is_delta())
+	var draw_count = 4 if discarded_delta else 3
+	await main.card_ops.draw_n(is_opponent, draw_count)
+	if main._should_bail(): return
+	await main.show_message("HOLON ADVENTURER! DREW " + str(draw_count) + " CARDS!" + (" (δ POKÉMON DISCARDED!)" if discarded_delta else ""))
+	if main._should_bail(): return
+	print("TRAINER: Holon Adventurer — drew ", draw_count)
+
+# HOLON FOSSIL (ex13-86, Item): flip a coin. If heads, search your deck for an Omanyte, Kabuto, Aerodactyl,
+# Aerodactyl ex, Lileep, or Anorith and put it onto your Bench. If tails, put one of those from your hand
+# onto your Bench. Treat the new Benched Pokémon as a Basic Pokémon.
+func effect_ex13_holon_fossil(is_opponent: bool) -> void:
+	var bench = main.opponent_bench if is_opponent else main.player_bench
+	if bench.size() >= main.get_max_bench_size():
+		await main.show_message("YOUR BENCH IS FULL!")
+		if main._should_bail(): return
+		return
+	var names = ["Omanyte", "Kabuto", "Aerodactyl", "Lileep", "Anorith"]
+	var match_fn = func(c):
+		if c.metadata.get("supertype","") != "Pokémon": return false
+		var cn = c.metadata.get("name","")
+		for base in names:
+			if base in cn: return true
+		return false
+	var heads = await main.flip_coin(true, is_opponent)
+	if main._should_bail(): return
+	var deck = main.opponent_deck if is_opponent else main.player_deck
+	var chosen: card_object = null
+	if heads:
+		await main.show_message("HOLON FOSSIL! HEADS — SEARCH YOUR DECK!")
+		if main._should_bail(): return
+		var pool = deck.filter(match_fn)
+		if pool.is_empty():
+			await main.show_message("NO OMANYTE/KABUTO/AERODACTYL/LILEEP/ANORITH IN YOUR DECK!")
+			deck.shuffle(); main.update_deck_icon(is_opponent)
+			if main._should_bail(): return
+			return
+		chosen = pool[0] if is_opponent else await main.card_ops.choose_card(pool, false, "HOLON FOSSIL", "Choose a Pokémon to put on your Bench", "SELECT", false, Callable(), true)
+		if main._should_bail(): return
+		if chosen == null: chosen = pool[0]
+		deck.erase(chosen)
+		deck.shuffle()
+		main.update_deck_icon(is_opponent)
+	else:
+		await main.show_message("HOLON FOSSIL! TAILS — PUT ONE FROM YOUR HAND!")
+		if main._should_bail(): return
+		var hpool = (main.opponent_hand if is_opponent else main.player_hand).filter(match_fn)
+		if hpool.is_empty():
+			await main.show_message("NO MATCHING POKÉMON IN YOUR HAND!")
+			if main._should_bail(): return
+			return
+		chosen = hpool[0] if is_opponent else await main.card_ops.choose_card(hpool, false, "HOLON FOSSIL", "Choose a Pokémon from your hand to put on your Bench", "SELECT", false, Callable(), true)
+		if main._should_bail(): return
+		if chosen == null: chosen = hpool[0]
+		(main.opponent_hand if is_opponent else main.player_hand).erase(chosen)
+		main.refresh_hand_display(is_opponent)
+	# Treat the Pokémon as a Basic while in play (place it directly on the Bench).
+	main.card_ops.place_on_bench(chosen, is_opponent)
+	main.display_pokemon(is_opponent)
+	await main.show_message("HOLON FOSSIL! PUT " + chosen.metadata.get("name","").to_upper() + " ON YOUR BENCH!")
+	if main._should_bail(): return
+	print("TRAINER: Holon Fossil")
 
 # GIANT STUMP (ex12-75, Stadium) on-play: each player discards Benched Pokemon (and attached cards)
 # until they have 3 Benched Pokemon. The player who played it discards first.

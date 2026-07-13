@@ -315,6 +315,9 @@ func apply_status(pokemon: card_object, status: String, is_opponent: bool) -> vo
 	# your opponent" — modeled here as blocking Special Conditions, the same scope as Crystal Body above).
 	if pokemon != null and status != "" and main.special_energy_effects.ex11_holon_status_immune(pokemon):
 		return
+	# EX13 Clear Body (Regice/Regirock/Registeel): can't be affected by any Special Conditions.
+	if pokemon != null and status != "" and main.powers_and_bodies.ex13_blocks_status(pokemon, status):
+		return
 	match status:
 		"Poisoned":
 			pokemon.is_poisoned = true
