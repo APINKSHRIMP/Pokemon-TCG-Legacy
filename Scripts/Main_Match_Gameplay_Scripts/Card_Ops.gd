@@ -310,6 +310,11 @@ func apply_status(pokemon: card_object, status: String, is_opponent: bool) -> vo
 	# Energy can't get any Special Condition while a Sceptile with Green Essence is in play).
 	if pokemon != null and status != "" and main.powers_and_bodies.ex9_blocks_status(pokemon, status):
 		return
+	# EX11 Holon Energy immunity: Holon Energy GL + basic Grass ("can't be affected by any Special
+	# Conditions"), or Holon Energy WP + basic Water ("prevent all effects, excluding damage, done by
+	# your opponent" — modeled here as blocking Special Conditions, the same scope as Crystal Body above).
+	if pokemon != null and status != "" and main.special_energy_effects.ex11_holon_status_immune(pokemon):
+		return
 	match status:
 		"Poisoned":
 			pokemon.is_poisoned = true

@@ -56,6 +56,12 @@ var pluspower_count: int = 0           # Number of PlusPower cards attached (sta
 var is_electrode_energy: bool = false
 var electrode_energy_type: String = "" # The chosen energy type for Buzzap
 
+# EX11 Holon's Pokémon (Magnemite/Voltorb/Electrode/Magneton): these Pokémon cards may be attached
+# from hand as a Special Energy card. When attached_as_energy is true the card lives in a Pokémon's
+# attached_energies and provides pokemon_energy_types (e.g. ["Colorless"] or ["Any","Any"]).
+var attached_as_energy: bool = false
+var pokemon_energy_types: Array = []
+
 # Scyther Swords Dance: if true, Slash does 60 instead of 30 next turn
 var swords_dance_active: bool = false
 # Swords Dance boosted Slash base damage next turn (0 = use legacy default of 60).
@@ -319,6 +325,20 @@ func _dual_armor_has_energy(type_name: String) -> bool:
 		if ename == type_name + " Energy" or type_name in ename:
 			return true
 	return false
+
+# EX11 (EX Delta Species): a Pokemon "has δ on its card" if the δ symbol is part of its printed
+# name (e.g. "Beedrill δ", "Latios δ"). Used by Holon stadiums/supporters and the Delta powers.
+func is_delta() -> bool:
+	return "δ" in metadata.get("name", "")
+
+# EX11: number of "Holon Energy" special-energy cards (Holon Energy FF/GL/WP) attached to this
+# Pokemon. Several ex11 attacks/bodies scale off, or gate on, attached Holon Energy.
+func holon_energy_count() -> int:
+	var n := 0
+	for e in attached_energies:
+		if e.metadata.get("name", "").begins_with("Holon Energy"):
+			n += 1
+	return n
 
 # Constructor - initialize the card with a UID and load its metadata
 func _init(card_uid: String, card_metadata: Dictionary) -> void:

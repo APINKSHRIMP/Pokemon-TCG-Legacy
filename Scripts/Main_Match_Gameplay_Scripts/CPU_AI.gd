@@ -59,6 +59,11 @@ func opponent_start_turn_checks() -> void:
 	await main.powers_and_bodies.process_turn_start_tools_and_counters(true)
 	if main._should_bail(): return
 
+	# EX11 Holon Ruins (ex11-96 Stadium): once per turn, a player with a δ Pokemon in play may draw a
+	# card, then discard a card.
+	await main.trainer_effects.holon_ruins_offer_draw(true)
+	if main._should_bail(): return
+
 	await cpu_turn_orchestrator()
 	if main._should_bail(): return
 
@@ -1417,6 +1422,9 @@ func cpu_phase_energy_attachment(cpu_eval: Dictionary) -> void:
 	# Apply special energy on-attach effects (Rainbow self-damage, Full Heal cure, Potion heal, etc.)
 	if "Special" in subtypes:
 		await main.special_energy_effects.apply_on_attach_effects(energy, target, true)
+		if main._should_bail(): return
+		# EX11 Delta Moon (Umbreon δ): opponent attaching a Special Energy takes 1 counter on that Pokemon.
+		await main.powers_and_bodies.check_ex11_delta_moon(target, true)
 		if main._should_bail(): return
 
 	# GYM2 Blaine's Ninetales Healing Fire — heal 10 when Fire energy is attached from hand

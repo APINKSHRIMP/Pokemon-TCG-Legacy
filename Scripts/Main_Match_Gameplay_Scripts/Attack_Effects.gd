@@ -44,6 +44,7 @@ func _ensure_dispatch_ready() -> void:
 	_register_ex8_attacks()
 	_register_ex9_attacks()
 	_register_ex10_attacks()
+	_register_ex11_attacks()
 
 func _register_si1_attacks() -> void:
 	_attack_dispatch["rainbow wave"]    = func(atk, a, d, opp): await execute_rainbow_wave(a, opp);            await _attack_finish(false, 0,   atk, a.metadata.get("types",["Colorless"]), opp)
@@ -25697,3 +25698,779 @@ func _ex10_hidden_power_guess(attacker: card_object, is_opponent: bool) -> void:
 func _ex10_choose_str(header: String, hint: String, options: Array) -> String:
 	var choice = await _ex10_choose_int(header, hint, options)
 	return str(choice)
+
+######################################################################################################################################################
+############################################################## EX11 (EX DELTA SPECIES) ATTACKS #######################################################
+######################################################################################################################################################
+# Registered LAST. Collision overrides branch on the ex11 uid and delegate every other set's card
+# to the previously-registered lambda. Single-battle today, written against the double-battle
+# helpers (card_ops.get_active/defending/all_pokemon_in_play). See [[project_ex11_complete]].
+
+func _register_ex11_attacks() -> void:
+	# -- Collision overrides --
+	var _pv_recover = _attack_dispatch.get("recover")
+	_attack_dispatch["recover"] = func(atk, a, d, opp):
+		if a.uid.begins_with("ex11-"):
+			await execute_ex11_recover(a, opp)
+			await _attack_finish(false, 0, atk, a.metadata.get("types",["Colorless"]), opp)
+		elif _pv_recover: await _pv_recover.call(atk, a, d, opp)
+
+	var _pv_energy_loop = _attack_dispatch.get("energy loop")
+	_attack_dispatch["energy loop"] = func(atk, a, d, opp):
+		if a.uid.begins_with("ex11-"):
+			var b = parse_attack_base_damage(atk)
+			await execute_ex11_energy_loop(a, d, opp, b)
+			await _attack_finish(true, b, atk, a.metadata.get("types",["Colorless"]), opp)
+		elif _pv_energy_loop: await _pv_energy_loop.call(atk, a, d, opp)
+
+	var _pv_copy = _attack_dispatch.get("copy")
+	_attack_dispatch["copy"] = func(atk, a, d, opp):
+		# ex11 Ditto: copy 1 of the Defender's attacks, but only if Ditto can pay its Energy cost.
+		if a.uid.begins_with("ex11-"):
+			await execute_ex10_copy(a, d, opp, atk)
+		elif _pv_copy: await _pv_copy.call(atk, a, d, opp)
+
+	var _pv_cry = _attack_dispatch.get("cry for help")
+	_attack_dispatch["cry for help"] = func(atk, a, d, opp):
+		# ex11 Skarmory: search deck for a Metal Pokemon (excluding Pokemon-ex).
+		if a.uid.begins_with("ex11-"):
+			await execute_ex11_cry_for_help(a, opp)
+			await _attack_finish(false, 0, atk, a.metadata.get("types",["Colorless"]), opp)
+		elif _pv_cry: await _pv_cry.call(atk, a, d, opp)
+
+	# -- Reuse of shared helpers --
+	# Strange Rasping (Illumise): base + Confuse only if the Defender is Evolved.
+	_attack_dispatch["strange rasping"] = func(atk, a, d, opp): var b=parse_attack_base_damage(atk); await execute_ex9_status_if_evolved(a, d, opp, b, "Confused"); await _attack_finish(b>0, b, atk, a.metadata.get("types",["Colorless"]), opp)
+	# Radar Jam (Crobat d): base + the opponent can't play non-Supporter Trainers next turn (= ex8 Disconnect).
+	_attack_dispatch["radar jam"] = func(atk, a, d, opp): var b=parse_attack_base_damage(atk); await execute_ex8_disconnect(a, d, opp, b); await _attack_finish(true, b, atk, a.metadata.get("types",["Colorless"]), opp)
+
+	# Lightning Storm: ex11 Rayquaza d = base + 7 counters on self, unless Delta Guard (Holon attached);
+	# every other set delegates to the previously-registered (ecard2 coin-flip) handler.
+	var _pv_lstorm = _attack_dispatch.get("lightning storm")
+	_attack_dispatch["lightning storm"] = func(atk, a, d, opp):
+		if a.uid.begins_with("ex11-"):
+			var b = parse_attack_base_damage(atk)
+			await execute_ex11_lightning_storm(a, d, opp, b)
+			await _attack_finish(true, b, atk, a.metadata.get("types",["Colorless"]), opp)
+		elif _pv_lstorm: await _pv_lstorm.call(atk, a, d, opp)
+
+	# -- Novel ex11 attacks --
+	_attack_dispatch["target attack"]       = func(atk, a, d, opp): await execute_ex11_target_attack(a, opp); await _attack_finish(false, 0, atk, a.metadata.get("types",["Colorless"]), opp)
+	_attack_dispatch["delta search"]        = func(atk, a, d, opp): var b=parse_attack_base_damage(atk); await execute_ex11_delta_search(a, d, opp, b); await _attack_finish(true, b, atk, a.metadata.get("types",["Colorless"]), opp)
+	_attack_dispatch["psychic rage"]        = func(atk, a, d, opp): await execute_ex11_psychic_rage(a, opp); await _attack_finish(false, 0, atk, a.metadata.get("types",["Colorless"]), opp)
+	_attack_dispatch["extra crush"]         = func(atk, a, d, opp): var b=parse_attack_base_damage(atk); var dl=await execute_ex11_fail_unless(a, d, opp, b, "opp_has_ex"); await _attack_finish(dl>0, dl, atk, a.metadata.get("types",["Colorless"]), opp)
+	_attack_dispatch["psychic force"]       = func(atk, a, d, opp): var b=parse_attack_base_damage(atk); var dl=await execute_ex11_fail_unless(a, d, opp, b, "opp_has_stage2"); await _attack_finish(dl>0, dl, atk, a.metadata.get("types",["Colorless"]), opp)
+	_attack_dispatch["energy bone"]         = func(atk, a, d, opp): await execute_ex11_energy_bone(a, opp, 20); await _attack_finish(false, 0, atk, a.metadata.get("types",["Colorless"]), opp)
+	_attack_dispatch["metal crusher"]       = func(atk, a, d, opp): var b=parse_attack_base_damage(atk); var dmg=await execute_ex11_metal_crusher(a, d, opp, b, 90); await _attack_finish(true, dmg, atk, a.metadata.get("types",["Colorless"]), opp)
+	_attack_dispatch["delta crush"]         = func(atk, a, d, opp): var b=parse_attack_base_damage(atk); var dmg=await execute_ex11_delta_crush(a, d, opp, b, _ex5_more(atk)); await _attack_finish(true, dmg, atk, a.metadata.get("types",["Colorless"]), opp)
+	_attack_dispatch["return wave"]         = func(atk, a, d, opp): var b=parse_attack_base_damage(atk); await execute_ex11_return_energy_then(a, d, opp, b, "return_defender_energy"); await _attack_finish(true, b, atk, a.metadata.get("types",["Colorless"]), opp)
+	_attack_dispatch["return burn"]         = func(atk, a, d, opp): var b=parse_attack_base_damage(atk); await execute_ex11_return_energy_then(a, d, opp, b, "burn"); await _attack_finish(true, b, atk, a.metadata.get("types",["Colorless"]), opp)
+	_attack_dispatch["return spark"]        = func(atk, a, d, opp): var b=parse_attack_base_damage(atk); await execute_ex11_return_energy_then(a, d, opp, b, "bench_snipe_20"); await _attack_finish(true, b, atk, a.metadata.get("types",["Colorless"]), opp)
+	_attack_dispatch["type match"]          = func(atk, a, d, opp): await execute_ex11_type_match(a, opp); await _attack_finish(false, 0, atk, a.metadata.get("types",["Colorless"]), opp)
+	_attack_dispatch["delta fang"]          = func(atk, a, d, opp): var b=parse_attack_base_damage(atk); await execute_ex11_delta_fang(a, d, opp, b); await _attack_finish(true, b, atk, a.metadata.get("types",["Colorless"]), opp)
+	_attack_dispatch["gang up"]             = func(atk, a, d, opp): await execute_ex11_gang_up(a, d, opp); await _attack_finish(true, 0, atk, a.metadata.get("types",["Colorless"]), opp)
+	_attack_dispatch["machine burst"]       = func(atk, a, d, opp): var b=parse_attack_base_damage(atk); await execute_ex11_machine_burst(a, d, opp, b); await _attack_finish(true, b, atk, a.metadata.get("types",["Colorless"]), opp)
+	_attack_dispatch["holon splash"]        = func(atk, a, d, opp): var b=parse_attack_base_damage(atk); var dmg=await execute_ex11_holon_splash(a, d, opp, b); await _attack_finish(true, dmg, atk, a.metadata.get("types",["Colorless"]), opp)
+	_attack_dispatch["psychic option"]      = func(atk, a, d, opp): var b=parse_attack_base_damage(atk); var dmg=await execute_ex11_psychic_option(a, d, opp, b); await _attack_finish(true, dmg, atk, a.metadata.get("types",["Colorless"]), opp)
+	_attack_dispatch["holon blizzard"]      = func(atk, a, d, opp): var b=parse_attack_base_damage(atk); await execute_ex11_holon_blizzard(a, d, opp, b); await _attack_finish(true, b, atk, a.metadata.get("types",["Colorless"]), opp)
+	_attack_dispatch["holon search"]        = func(atk, a, d, opp): await execute_ex11_holon_search(a, opp); await _attack_finish(false, 0, atk, a.metadata.get("types",["Colorless"]), opp)
+	_attack_dispatch["steep dive"]          = func(atk, a, d, opp): await execute_ex11_steep_dive(a, opp); await _attack_finish(false, 0, atk, a.metadata.get("types",["Colorless"]), opp)
+	_attack_dispatch["glide"]               = func(atk, a, d, opp): var b=parse_attack_base_damage(atk); var dmg=await execute_ex11_glide(a, d, opp, b); await _attack_finish(true, dmg, atk, a.metadata.get("types",["Colorless"]), opp)
+	_attack_dispatch["mist attack"]         = func(atk, a, d, opp): await execute_ex11_hit_all_opp(a, opp, 10); await _attack_finish(true, 10, atk, a.metadata.get("types",["Colorless"]), opp)
+	_attack_dispatch["holon draw"]          = func(atk, a, d, opp): await execute_ex11_holon_draw(a, opp); await _attack_finish(false, 0, atk, a.metadata.get("types",["Colorless"]), opp)
+	_attack_dispatch["sonic signal"]        = func(atk, a, d, opp): await execute_ex11_multi_snipe(a, opp, 2, 10); await _attack_finish(false, 0, atk, a.metadata.get("types",["Colorless"]), opp)
+	_attack_dispatch["disable"]             = func(atk, a, d, opp): await execute_ex11_disable(a, d, opp); await _attack_finish(false, 0, atk, a.metadata.get("types",["Colorless"]), opp)
+	_attack_dispatch["metal scoop"]         = func(atk, a, d, opp): var b=parse_attack_base_damage(atk); await execute_ex11_metal_scoop(a, d, opp, b); await _attack_finish(true, b, atk, a.metadata.get("types",["Colorless"]), opp)
+	_attack_dispatch["pickup power"]        = func(atk, a, d, opp): await execute_ex11_pickup_power(a, opp); await _attack_finish(false, 0, atk, a.metadata.get("types",["Colorless"]), opp)
+	_attack_dispatch["smash turn"]          = func(atk, a, d, opp): var b=parse_attack_base_damage(atk); await execute_ex11_smash_turn(a, d, opp, b); await _attack_finish(true, b, atk, a.metadata.get("types",["Colorless"]), opp)
+	_attack_dispatch["critical collection"] = func(atk, a, d, opp): await execute_ex11_critical_collection(a, d, opp); await _attack_finish(true, 10, atk, a.metadata.get("types",["Colorless"]), opp)
+
+# -- ex11 shared helpers --------------------------------------------------------------------------
+
+# Search the deck for a "Holon Energy" special-energy card and attach it. If forced_target is null,
+# the player chooses which of their Pokemon receives it (CPU dumps on the attacker).
+func _ex11_search_deck_holon_attach(attacker: card_object, is_opponent: bool, forced_target = null) -> void:
+	var deck = main.opponent_deck if is_opponent else main.player_deck
+	var pool = deck.filter(func(c): return c.metadata.get("name","").begins_with("Holon Energy"))
+	if pool.is_empty():
+		await main.show_message("NO HOLON ENERGY IN DECK!")
+		deck.shuffle(); main.update_deck_icon(is_opponent)
+		if main._should_bail(): return
+		return
+	var energy: card_object = pool[0] if is_opponent else await main.card_ops.choose_card(pool, false, "HOLON ENERGY", "Choose a Holon Energy card", "SELECT", false, Callable(), true)
+	if main._should_bail(): return
+	if energy == null: energy = pool[0]
+	var target = forced_target
+	if target == null:
+		var targets = main.card_ops.get_all_pokemon_in_play(is_opponent)
+		target = attacker
+		if not is_opponent and targets.size() > 1:
+			target = await main.card_ops.choose_card(targets, false, "HOLON ENERGY", "Attach to which Pokemon?", "ATTACH", false)
+			if main._should_bail(): return
+			if target == null: target = attacker
+		elif is_opponent and not targets.is_empty():
+			target = targets[0]
+	deck.erase(energy)
+	energy.current_location = "active" if target == (main.opponent_active_pokemon if is_opponent else main.player_active_pokemon) else "bench"
+	target.attached_energies.append(energy)
+	deck.shuffle()
+	main.update_deck_icon(is_opponent)
+	main.display_active_pokemon_energies(is_opponent)
+	main.display_pokemon(is_opponent)
+	await main.show_message("ATTACHED " + energy.metadata.get("name","").to_upper() + "!")
+	if main._should_bail(): return
+
+# Choose up to `count` distinct opponent Pokemon and deal `per` to each (no W/R for Bench).
+func execute_ex11_multi_snipe(attacker: card_object, is_opponent: bool, count: int, per: int) -> void:
+	if await handle_attack_confusion(attacker, is_opponent): return
+	if await handle_attack_blind(attacker, is_opponent): return
+	var pool = _ex3_opp_snipe_pool(is_opponent, false)
+	if pool.is_empty():
+		await main.show_message("NO TARGET AVAILABLE!")
+		if main._should_bail(): return
+		return
+	var n = min(count, pool.size())
+	var picks: Array = []
+	var remaining = pool.duplicate()
+	if is_opponent:
+		remaining.sort_custom(func(x, y): return x.current_hp < y.current_hp)
+		picks = remaining.slice(0, n)
+	else:
+		for i in range(n):
+			var t = await main.card_ops.choose_card(remaining, false, "CHOOSE TARGETS", "Choose an opponent's Pokemon (" + str(i+1) + " of up to " + str(n) + ")", "SELECT", i > 0, func(c): return 100.0 - c.current_hp)
+			if main._should_bail(): return
+			if t == null: break
+			picks.append(t); remaining.erase(t)
+	for p in picks:
+		await _ex3_hit_target(attacker, p, is_opponent, per)
+		if main._should_bail(): return
+	await main.check_all_knockouts()
+
+# Recover (ex11 Staryu): discard a Water Energy from self, then remove 4 damage counters.
+func execute_ex11_recover(attacker: card_object, is_opponent: bool) -> void:
+	if await handle_attack_confusion(attacker, is_opponent): return
+	if await handle_attack_blind(attacker, is_opponent): return
+	var water_e: card_object = null
+	for e in attacker.attached_energies:
+		if "Water" in main.get_energy_provided_by_card(e):
+			water_e = e
+			break
+	if water_e == null:
+		await main.show_message("NO WATER ENERGY TO DISCARD! RECOVER FAILS!")
+		if main._should_bail(): return
+		return
+	attacker.attached_energies.erase(water_e)
+	main.card_ops.discard_energy_from_pokemon(water_e, is_opponent)
+	main.display_active_pokemon_energies(is_opponent)
+	await main.card_ops.heal_pokemon(attacker, 40, is_opponent)
+	if main._should_bail(): return
+
+# Energy Loop (ex11 Starmie): return an Energy attached to self to hand, then deal base damage.
+func execute_ex11_energy_loop(attacker: card_object, defender: card_object, is_opponent: bool, base_damage: int) -> void:
+	if await handle_attack_confusion(attacker, is_opponent): return
+	if await handle_attack_blind(attacker, is_opponent): return
+	if not attacker.attached_energies.is_empty():
+		var chosen: card_object = null
+		if is_opponent:
+			chosen = attacker.attached_energies[0]
+		else:
+			chosen = await main.card_ops.choose_card(attacker.attached_energies, false, "ENERGY LOOP", "Return an Energy to your hand", "RETURN", false)
+			if main._should_bail(): return
+			if chosen == null: chosen = attacker.attached_energies[0]
+		attacker.attached_energies.erase(chosen)
+		chosen.current_location = "hand"
+		var hand = main.opponent_hand if is_opponent else main.player_hand
+		hand.append(chosen)
+		main.display_active_pokemon_energies(is_opponent)
+		main.refresh_hand_display(is_opponent)
+		await main.show_message("RETURNED " + chosen.metadata.get("name","").to_upper() + " TO HAND!")
+		if main._should_bail(): return
+	await gym1_hit_active(attacker, defender, is_opponent, base_damage)
+	if main._should_bail(): return
+	await main.check_all_knockouts()
+
+# Cry for Help (ex11 Skarmory): search deck for a Metal Pokemon (excluding Pokemon-ex) -> hand.
+func execute_ex11_cry_for_help(attacker: card_object, is_opponent: bool) -> void:
+	if await handle_attack_confusion(attacker, is_opponent): return
+	if await handle_attack_blind(attacker, is_opponent): return
+	var filter_fn = func(c):
+		if c.metadata.get("supertype","") != "Pokémon": return false
+		if main.is_ex_pokemon(c): return false
+		return "Metal" in c.get_effective_types()
+	var found = await main.card_ops.search_deck_to_hand(is_opponent, filter_fn, "CRY FOR HELP: CHOOSE A METAL POKEMON", 1)
+	if main._should_bail(): return
+	await main.show_message("CRY FOR HELP! ADDED A POKEMON TO HAND!" if found.size() > 0 else "NO METAL POKEMON IN DECK!")
+	if main._should_bail(): return
+
+# Target Attack (ex11 Crobat d): choose 1 opp Pokemon, 40 (60 if it already has damage), no W/R for Bench.
+func execute_ex11_target_attack(attacker: card_object, is_opponent: bool) -> void:
+	if await handle_attack_confusion(attacker, is_opponent): return
+	if await handle_attack_blind(attacker, is_opponent): return
+	var pool = _ex3_opp_snipe_pool(is_opponent, false)
+	if pool.is_empty():
+		await main.show_message("NO TARGET AVAILABLE!")
+		if main._should_bail(): return
+		return
+	var target: card_object
+	if is_opponent or pool.size() == 1:
+		target = pool[0]
+		for c in pool:
+			if c.get_damage_counters() > 0 and target.get_damage_counters() == 0:
+				target = c
+	else:
+		target = await main.card_ops.choose_card(pool, false, "TARGET ATTACK", "Choose 1 of your opponent's Pokemon", "SELECT", false, func(c): return (200.0 if c.get_damage_counters() > 0 else 0.0) + (100.0 - c.current_hp))
+		if main._should_bail(): return
+		if target == null: target = pool[0]
+	var dmg = 60 if target.get_damage_counters() > 0 else 40
+	await _ex3_hit_target(attacker, target, is_opponent, dmg)
+	if main._should_bail(): return
+	await main.check_all_knockouts()
+
+# Delta Search (ex11 Flareon/Jolteon/Vaporeon d): base damage, then search deck for a Holon Energy -> self.
+func execute_ex11_delta_search(attacker: card_object, defender: card_object, is_opponent: bool, base_damage: int) -> void:
+	if await handle_attack_confusion(attacker, is_opponent): return
+	if await handle_attack_blind(attacker, is_opponent): return
+	await gym1_hit_active(attacker, defender, is_opponent, base_damage)
+	if main._should_bail(): return
+	await main.check_all_knockouts()
+	if main._should_bail(): return
+	await _ex11_search_deck_holon_attach(attacker, is_opponent, attacker)
+
+# Holon Search (ex11 Sunny Castform): search deck for a Holon Energy and attach to any of your Pokemon.
+func execute_ex11_holon_search(attacker: card_object, is_opponent: bool) -> void:
+	if await handle_attack_confusion(attacker, is_opponent): return
+	if await handle_attack_blind(attacker, is_opponent): return
+	await _ex11_search_deck_holon_attach(attacker, is_opponent, null)
+
+# Psychic Rage (ex11 Gardevoir d): 10 damage for each damage counter on Gardevoir, to a chosen opp Pokemon.
+func execute_ex11_psychic_rage(attacker: card_object, is_opponent: bool) -> void:
+	if await handle_attack_confusion(attacker, is_opponent): return
+	if await handle_attack_blind(attacker, is_opponent): return
+	var dmg = 10 * attacker.get_damage_counters()
+	var pool = _ex3_opp_snipe_pool(is_opponent, false)
+	if pool.is_empty() or dmg <= 0:
+		await main.show_message("PSYCHIC RAGE HAD NO EFFECT!")
+		if main._should_bail(): return
+		return
+	var target: card_object
+	if is_opponent or pool.size() == 1:
+		target = pool[0]
+		for c in pool:
+			if c.current_hp < target.current_hp: target = c
+	else:
+		target = await main.card_ops.choose_card(pool, false, "PSYCHIC RAGE", "Choose an opponent's Pokemon (" + str(dmg) + " damage)", "SELECT", false, func(c): return 100.0 - c.current_hp)
+		if main._should_bail(): return
+		if target == null: target = pool[0]
+	await _ex3_hit_target(attacker, target, is_opponent, dmg)
+	if main._should_bail(): return
+	await main.check_all_knockouts()
+
+# Extra Crush / Psychic Force (ex11 Latias/Latios d): the attack does nothing unless a condition
+# about the opponent's Pokemon is met. Returns damage dealt (0 if it fizzled).
+func execute_ex11_fail_unless(attacker: card_object, defender: card_object, is_opponent: bool, base_damage: int, condition: String) -> int:
+	if await handle_attack_confusion(attacker, is_opponent): return 0
+	if await handle_attack_blind(attacker, is_opponent): return 0
+	var ok = false
+	for p in main.card_ops.get_all_pokemon_in_play(not is_opponent):
+		if condition == "opp_has_ex" and main.is_ex_pokemon(p):
+			ok = true; break
+		if condition == "opp_has_stage2" and "Stage 2" in p.metadata.get("subtypes", []):
+			ok = true; break
+	if not ok:
+		await main.show_message("THIS ATTACK DOES NOTHING!")
+		if main._should_bail(): return 0
+		return 0
+	await gym1_hit_active(attacker, defender, is_opponent, base_damage)
+	if main._should_bail(): return base_damage
+	await main.check_all_knockouts()
+	return base_damage
+
+# Energy Bone (ex11 Marowak d): choose up to (Energy on Marowak) opp Pokemon, `per` to each.
+func execute_ex11_energy_bone(attacker: card_object, is_opponent: bool, per: int) -> void:
+	var max_targets = attacker.attached_energies.size()
+	if max_targets <= 0:
+		if await handle_attack_confusion(attacker, is_opponent): return
+		if await handle_attack_blind(attacker, is_opponent): return
+		await main.show_message("NO ENERGY ATTACHED — ENERGY BONE HAS NO EFFECT!")
+		if main._should_bail(): return
+		return
+	await execute_ex11_multi_snipe(attacker, is_opponent, max_targets, per)
+
+# Metal Crusher (ex11 Marowak d): base damage, or `metal_base` if the Defender is Metal.
+func execute_ex11_metal_crusher(attacker: card_object, defender: card_object, is_opponent: bool, base_damage: int, metal_base: int) -> int:
+	if await handle_attack_confusion(attacker, is_opponent): return 0
+	if await handle_attack_blind(attacker, is_opponent): return 0
+	var dmg = base_damage
+	if defender != null and "Metal" in defender.get_effective_types():
+		dmg = metal_base
+	await gym1_hit_active(attacker, defender, is_opponent, dmg)
+	if main._should_bail(): return dmg
+	await main.check_all_knockouts()
+	return dmg
+
+# Delta Crush (ex11 Tyranitar d): base, may discard an Energy from self for `bonus` more damage.
+func execute_ex11_delta_crush(attacker: card_object, defender: card_object, is_opponent: bool, base_damage: int, bonus: int) -> int:
+	if await handle_attack_confusion(attacker, is_opponent): return 0
+	if await handle_attack_blind(attacker, is_opponent): return 0
+	var dmg = base_damage
+	if not attacker.attached_energies.is_empty():
+		var do_it = false
+		if is_opponent:
+			do_it = attacker.attached_energies.size() > 3
+		else:
+			do_it = await main.trainer_effects.gym1_prompt_yes_no(attacker, "DELTA CRUSH", "Discard an Energy for +" + str(bonus) + " damage?", "YES", "NO")
+			if main._should_bail(): return 0
+		if do_it:
+			var e: card_object = null
+			if is_opponent:
+				e = attacker.attached_energies[0]
+			else:
+				e = await main.card_ops.choose_card(attacker.attached_energies, false, "DELTA CRUSH", "Discard which Energy?", "DISCARD", false)
+				if main._should_bail(): return 0
+				if e == null: e = attacker.attached_energies[0]
+			attacker.attached_energies.erase(e)
+			main.card_ops.discard_energy_from_pokemon(e, is_opponent)
+			main.display_active_pokemon_energies(is_opponent)
+			dmg += bonus
+	await gym1_hit_active(attacker, defender, is_opponent, dmg)
+	if main._should_bail(): return dmg
+	await main.check_all_knockouts()
+	return dmg
+
+# Return Burn / Return Spark / Return Wave (ex11 Flareon/Jolteon/Vaporeon d): base, then you MAY
+# return an Energy attached to self to hand; if you do, apply the triggered bonus effect.
+func execute_ex11_return_energy_then(attacker: card_object, defender: card_object, is_opponent: bool, base_damage: int, effect: String) -> void:
+	if await handle_attack_confusion(attacker, is_opponent): return
+	if await handle_attack_blind(attacker, is_opponent): return
+	await gym1_hit_active(attacker, defender, is_opponent, base_damage)
+	if main._should_bail(): return
+	await main.check_all_knockouts()
+	if main._should_bail(): return
+	if attacker.attached_energies.is_empty(): return
+	var do_it = false
+	if is_opponent:
+		do_it = attacker.attached_energies.size() > 3
+	else:
+		do_it = await main.trainer_effects.gym1_prompt_yes_no(attacker, "RETURN ENERGY", "Return an Energy to your hand to trigger the bonus effect?", "YES", "NO")
+		if main._should_bail(): return
+	if not do_it: return
+	var chosen: card_object = null
+	if is_opponent:
+		chosen = attacker.attached_energies[0]
+	else:
+		chosen = await main.card_ops.choose_card(attacker.attached_energies, false, "RETURN ENERGY", "Return which Energy to your hand?", "RETURN", false)
+		if main._should_bail(): return
+		if chosen == null: chosen = attacker.attached_energies[0]
+	attacker.attached_energies.erase(chosen)
+	chosen.current_location = "hand"
+	var hand = main.opponent_hand if is_opponent else main.player_hand
+	hand.append(chosen)
+	main.display_active_pokemon_energies(is_opponent)
+	main.refresh_hand_display(is_opponent)
+	await main.show_message("RETURNED " + chosen.metadata.get("name","").to_upper() + " TO HAND!")
+	if main._should_bail(): return
+	if effect == "burn":
+		if defender != null and defender.current_hp > 0 and not defender.is_invincible:
+			main.card_ops.apply_status(defender, "Burned", not is_opponent)
+			main.update_status_icons(defender, not is_opponent)
+			await main.show_message("THE DEFENDING POKEMON IS NOW BURNED!")
+			if main._should_bail(): return
+	elif effect == "bench_snipe_20":
+		var bench = main.player_bench if is_opponent else main.opponent_bench
+		if not bench.is_empty():
+			var t: card_object = null
+			if is_opponent:
+				t = bench[0]
+				for c in bench:
+					if c.current_hp < t.current_hp: t = c
+			else:
+				t = await main.card_ops.choose_card(bench, false, "RETURN SPARK", "Choose a Benched Pokemon", "SELECT", false, func(c): return 100.0 - c.current_hp)
+				if main._should_bail(): return
+				if t == null: t = bench[0]
+			main.card_ops.apply_bench_damage(t, 20, not is_opponent)
+			await main.check_all_knockouts()
+			if main._should_bail(): return
+	elif effect == "return_defender_energy":
+		if defender != null and not defender.attached_energies.is_empty():
+			var de: card_object = null
+			if is_opponent:
+				de = defender.attached_energies[0]
+			else:
+				de = await main.card_ops.choose_card(defender.attached_energies, false, "RETURN WAVE", "Return which Energy from the Defending Pokemon?", "RETURN", false)
+				if main._should_bail(): return
+				if de == null: de = defender.attached_energies[0]
+			defender.attached_energies.erase(de)
+			de.current_location = "hand"
+			var opp_hand = main.player_hand if is_opponent else main.opponent_hand
+			opp_hand.append(de)
+			main.display_active_pokemon_energies(not is_opponent)
+			main.refresh_hand_display(not is_opponent)
+			await main.show_message("RETURNED " + de.metadata.get("name","").to_upper() + " TO THE OPPONENT'S HAND!")
+			if main._should_bail(): return
+
+# Type Match (ex11 Azurill): reveal a basic Energy from hand, then search deck for a Pokemon of that type -> hand.
+func execute_ex11_type_match(attacker: card_object, is_opponent: bool) -> void:
+	if await handle_attack_confusion(attacker, is_opponent): return
+	if await handle_attack_blind(attacker, is_opponent): return
+	var hand = main.opponent_hand if is_opponent else main.player_hand
+	var basic_energies = hand.filter(func(c): return c.metadata.get("supertype","") == "Energy" and "Basic" in c.metadata.get("subtypes", []))
+	if basic_energies.is_empty():
+		await main.show_message("NO BASIC ENERGY IN HAND — TYPE MATCH HAS NO EFFECT!")
+		if main._should_bail(): return
+		return
+	var chosen_e: card_object = null
+	if is_opponent:
+		chosen_e = basic_energies[0]
+	else:
+		chosen_e = await main.card_ops.choose_card(basic_energies, false, "TYPE MATCH", "Choose a basic Energy to reveal", "SELECT", false)
+		if main._should_bail(): return
+		if chosen_e == null: chosen_e = basic_energies[0]
+	var etype = chosen_e.metadata.get("name","").replace(" Energy","").strip_edges()
+	await main.show_message("REVEALED " + etype.to_upper() + " ENERGY!")
+	if main._should_bail(): return
+	var filter_fn = func(c):
+		if c.metadata.get("supertype","") != "Pokémon": return false
+		return etype in c.get_effective_types()
+	var found = await main.card_ops.search_deck_to_hand(is_opponent, filter_fn, "TYPE MATCH: CHOOSE A " + etype.to_upper() + " POKEMON", 1)
+	if main._should_bail(): return
+	await main.show_message("TYPE MATCH! ADDED A POKEMON TO HAND!" if found.size() > 0 else "NO MATCHING POKEMON IN DECK!")
+	if main._should_bail(): return
+
+# Delta Fang (ex11 Mightyena d): base, if the Defender is Pokemon-ex it can't attack next turn.
+func execute_ex11_delta_fang(attacker: card_object, defender: card_object, is_opponent: bool, base_damage: int) -> void:
+	if await handle_attack_confusion(attacker, is_opponent): return
+	if await handle_attack_blind(attacker, is_opponent): return
+	await gym1_hit_active(attacker, defender, is_opponent, base_damage)
+	if main._should_bail(): return
+	if defender != null and defender.current_hp > 0 and main.is_ex_pokemon(defender):
+		defender.attack_blocked_next_turn = true
+		defender.attack_blocked_by_id = attacker.get_instance_id()
+		await main.show_message(defender.metadata.get("name","").to_upper() + " CAN'T ATTACK NEXT TURN!")
+		if main._should_bail(): return
+	await main.check_all_knockouts()
+
+# Gang Up (ex11 Mightyena d): 10 damage times (# Darkness Pokemon + # Metal Pokemon you have in play).
+func execute_ex11_gang_up(attacker: card_object, defender: card_object, is_opponent: bool) -> void:
+	if await handle_attack_confusion(attacker, is_opponent): return
+	if await handle_attack_blind(attacker, is_opponent): return
+	var count = 0
+	for p in main.card_ops.get_all_pokemon_in_play(is_opponent):
+		var t = p.get_effective_types()
+		if "Darkness" in t: count += 1
+		if "Metal" in t: count += 1
+	var dmg = 10 * count
+	await main.show_message("GANG UP! " + str(dmg) + " DAMAGE!")
+	if main._should_bail(): return
+	if dmg > 0:
+		await gym1_hit_active(attacker, defender, is_opponent, dmg)
+		if main._should_bail(): return
+	await main.check_all_knockouts()
+
+# Machine Burst (ex11 Porygon2): base, if a Technical Machine is attached the Defender is Asleep + Burned.
+func execute_ex11_machine_burst(attacker: card_object, defender: card_object, is_opponent: bool, base_damage: int) -> void:
+	if await handle_attack_confusion(attacker, is_opponent): return
+	if await handle_attack_blind(attacker, is_opponent): return
+	await gym1_hit_active(attacker, defender, is_opponent, base_damage)
+	if main._should_bail(): return
+	var has_tm = false
+	for c in attacker.attached_cards:
+		if "Technical Machine" in c.metadata.get("subtypes", []):
+			has_tm = true; break
+	if has_tm and defender != null and defender.current_hp > 0 and not defender.is_invincible:
+		main.card_ops.apply_status(defender, "Asleep", not is_opponent)
+		main.card_ops.apply_status(defender, "Burned", not is_opponent)
+		main.update_status_icons(defender, not is_opponent)
+		await main.show_message("THE DEFENDING POKEMON IS NOW ASLEEP AND BURNED!")
+		if main._should_bail(): return
+	await main.check_all_knockouts()
+
+# Holon Splash (ex11 Rain Castform): base + 10 per Holon Energy attached to Rain Castform.
+func execute_ex11_holon_splash(attacker: card_object, defender: card_object, is_opponent: bool, base_damage: int) -> int:
+	if await handle_attack_confusion(attacker, is_opponent): return 0
+	if await handle_attack_blind(attacker, is_opponent): return 0
+	var dmg = base_damage + 10 * attacker.holon_energy_count()
+	await gym1_hit_active(attacker, defender, is_opponent, dmg)
+	if main._should_bail(): return dmg
+	await main.check_all_knockouts()
+	return dmg
+
+# Psychic Option (ex11 Slowking): base +20 if Water Energy attached; if Psychic Energy attached,
+# discard a Special Energy from the Defender.
+func execute_ex11_psychic_option(attacker: card_object, defender: card_object, is_opponent: bool, base_damage: int) -> int:
+	if await handle_attack_confusion(attacker, is_opponent): return 0
+	if await handle_attack_blind(attacker, is_opponent): return 0
+	var has_water = false
+	var has_psychic = false
+	for e in attacker.attached_energies:
+		var prov = main.get_energy_provided_by_card(e)
+		if "Water" in prov: has_water = true
+		if "Psychic" in prov: has_psychic = true
+	var dmg = base_damage + (20 if has_water else 0)
+	await gym1_hit_active(attacker, defender, is_opponent, dmg)
+	if main._should_bail(): return dmg
+	if has_psychic and defender != null and defender.current_hp > 0:
+		var specials = defender.attached_energies.filter(func(e): return "Special" in e.metadata.get("subtypes", []))
+		if not specials.is_empty():
+			var chosen: card_object = specials[0] if is_opponent else await main.card_ops.choose_card(specials, false, "PSYCHIC OPTION", "Discard which Special Energy?", "DISCARD", false)
+			if main._should_bail(): return dmg
+			if chosen == null: chosen = specials[0]
+			defender.attached_energies.erase(chosen)
+			main.card_ops.discard_energy_from_pokemon(chosen, not is_opponent)
+			main.display_active_pokemon_energies(not is_opponent)
+			main.update_discard_pile_display(not is_opponent)
+			await main.show_message("DISCARDED " + chosen.metadata.get("name","").to_upper() + " FROM THE DEFENDING POKEMON!")
+			if main._should_bail(): return dmg
+	await main.check_all_knockouts()
+	return dmg
+
+# Holon Blizzard (ex11 Snow-cloud Castform): base, if a Holon Energy is attached deal 10 to each opp Bench.
+func execute_ex11_holon_blizzard(attacker: card_object, defender: card_object, is_opponent: bool, base_damage: int) -> void:
+	if await handle_attack_confusion(attacker, is_opponent): return
+	if await handle_attack_blind(attacker, is_opponent): return
+	await gym1_hit_active(attacker, defender, is_opponent, base_damage)
+	if main._should_bail(): return
+	if attacker.holon_energy_count() > 0:
+		var bench = main.player_bench if is_opponent else main.opponent_bench
+		for p in bench:
+			main.card_ops.apply_bench_damage(p, 10, not is_opponent)
+		if not bench.is_empty():
+			await main.show_message("HOLON BLIZZARD! 10 DAMAGE TO EACH BENCHED POKEMON!")
+			if main._should_bail(): return
+	await main.check_all_knockouts()
+
+# Steep Dive (ex11 Swellow): flip; heads prevent all effects next turn; tails Glide does 100 next turn.
+func execute_ex11_steep_dive(attacker: card_object, is_opponent: bool) -> void:
+	if await handle_attack_confusion(attacker, is_opponent): return
+	if await handle_attack_blind(attacker, is_opponent): return
+	var coin = await main.flip_coin(false, is_opponent)
+	if main._should_bail(): return
+	if coin:
+		apply_invincible_effect(attacker, is_opponent)
+		await main.show_message("HEADS! ALL EFFECTS OF ATTACKS WILL BE PREVENTED NEXT TURN!")
+	else:
+		attacker.set_effect("ex11_glide_boost", "until_leaves_play", {})
+		await main.show_message("TAILS! GLIDE WILL DO 100 DAMAGE NEXT TURN!")
+	if main._should_bail(): return
+
+# Glide (ex11 Swellow and any other set's Glide): base, or 100 if Steep Dive's tails buff is pending.
+func execute_ex11_glide(attacker: card_object, defender: card_object, is_opponent: bool, base_damage: int) -> int:
+	if await handle_attack_confusion(attacker, is_opponent): return 0
+	if await handle_attack_blind(attacker, is_opponent): return 0
+	var dmg = base_damage
+	if attacker.has_effect("ex11_glide_boost"):
+		dmg = 100
+		attacker.clear_effect("ex11_glide_boost")
+	await gym1_hit_active(attacker, defender, is_opponent, dmg)
+	if main._should_bail(): return dmg
+	await main.check_all_knockouts()
+	return dmg
+
+# Mist Attack (ex11 Weezing): `per` to each of the opponent's Pokemon (no W/R for Bench).
+func execute_ex11_hit_all_opp(attacker: card_object, is_opponent: bool, per: int) -> void:
+	if await handle_attack_confusion(attacker, is_opponent): return
+	if await handle_attack_blind(attacker, is_opponent): return
+	var opp_active = main.player_active_pokemon if is_opponent else main.opponent_active_pokemon
+	var opp_bench = main.player_bench if is_opponent else main.opponent_bench
+	if opp_active != null:
+		await gym1_hit_active(attacker, opp_active, is_opponent, per)
+		if main._should_bail(): return
+	for p in opp_bench:
+		main.card_ops.apply_bench_damage(p, per, not is_opponent)
+	await main.check_all_knockouts()
+
+# Holon Draw (ex11 Castform): draw 1 card; +2 more if a Holon Energy is attached.
+func execute_ex11_holon_draw(attacker: card_object, is_opponent: bool) -> void:
+	if await handle_attack_confusion(attacker, is_opponent): return
+	if await handle_attack_blind(attacker, is_opponent): return
+	var n = 1 + (2 if attacker.holon_energy_count() > 0 else 0)
+	await main.card_ops.draw_n(is_opponent, n)
+	await main.show_message("DREW " + str(n) + " CARD(S)!")
+	if main._should_bail(): return
+
+# Disable (ex11 Drowzee): choose 1 of the Defender's attacks; it can't use it next turn.
+func execute_ex11_disable(attacker: card_object, defender: card_object, is_opponent: bool) -> void:
+	if await handle_attack_confusion(attacker, is_opponent): return
+	if await handle_attack_blind(attacker, is_opponent): return
+	if defender == null: return
+	var atks = main.get_attacks_for_card(defender)
+	if atks.is_empty(): return
+	var cpu_rank = func(a2): return float(parse_attack_base_damage(a2))
+	var chosen = await choose_attack_from_pool(atks, is_opponent, cpu_rank)
+	if chosen == null or chosen.is_empty(): return
+	defender.disabled_attacks[chosen.get("name","")] = "skip_one_turn"
+	await main.show_message(defender.metadata.get("name","").to_upper() + "'S " + chosen.get("name","").to_upper() + " IS DISABLED NEXT TURN!")
+	if main._should_bail(): return
+
+# Metal Scoop (ex11 Eevee d): base, then search discard for a Metal Energy and attach to self.
+func execute_ex11_metal_scoop(attacker: card_object, defender: card_object, is_opponent: bool, base_damage: int) -> void:
+	if await handle_attack_confusion(attacker, is_opponent): return
+	if await handle_attack_blind(attacker, is_opponent): return
+	await gym1_hit_active(attacker, defender, is_opponent, base_damage)
+	if main._should_bail(): return
+	await main.check_all_knockouts()
+	if main._should_bail(): return
+	await _ex7_attach_energy_from_discard(attacker, is_opponent, "Metal", attacker)
+
+# Pickup Power (ex11 Meowth): search your discard pile for an Energy card and put it into your hand.
+func execute_ex11_pickup_power(attacker: card_object, is_opponent: bool) -> void:
+	if await handle_attack_confusion(attacker, is_opponent): return
+	if await handle_attack_blind(attacker, is_opponent): return
+	var discard = main.opponent_discard_pile if is_opponent else main.player_discard_pile
+	var pool = discard.filter(func(c): return c.metadata.get("supertype","") == "Energy")
+	if pool.is_empty():
+		await main.show_message("NO ENERGY IN THE DISCARD PILE!")
+		if main._should_bail(): return
+		return
+	var chosen: card_object = pool[0] if is_opponent else await main.card_ops.choose_card(pool, false, "PICKUP POWER", "Choose an Energy to put in your hand", "SELECT", false, Callable(), true)
+	if main._should_bail(): return
+	if chosen == null: chosen = pool[0]
+	await main.card_ops.recover_to_hand(chosen, is_opponent)
+	if main._should_bail(): return
+	await main.show_message("PUT " + chosen.metadata.get("name","").to_upper() + " INTO YOUR HAND!")
+	if main._should_bail(): return
+
+# Smash Turn (ex11 Ditto): base, then you MAY switch Ditto with 1 of your Benched Pokemon.
+func execute_ex11_smash_turn(attacker: card_object, defender: card_object, is_opponent: bool, base_damage: int) -> void:
+	if await handle_attack_confusion(attacker, is_opponent): return
+	if await handle_attack_blind(attacker, is_opponent): return
+	await gym1_hit_active(attacker, defender, is_opponent, base_damage)
+	if main._should_bail(): return
+	await main.check_all_knockouts()
+	if main._should_bail(): return
+	var bench = main.opponent_bench if is_opponent else main.player_bench
+	if bench.is_empty() or attacker.current_hp <= 0: return
+	var do_it = false
+	if not is_opponent:
+		do_it = await main.trainer_effects.gym1_prompt_yes_no(attacker, "SMASH TURN", "Switch Ditto with a Benched Pokemon?", "YES", "NO")
+		if main._should_bail(): return
+	if do_it:
+		await apply_self_switch(attacker, is_opponent)
+		if main._should_bail(): return
+
+# Critical Collection (ex11 Groudon/Kyogre/Metagross Star): 10 damage, then search discard for up to
+# (Prizes the opponent has taken) basic Energy of this Pokemon's type and attach them to self.
+func execute_ex11_critical_collection(attacker: card_object, defender: card_object, is_opponent: bool) -> void:
+	if await handle_attack_confusion(attacker, is_opponent): return
+	if await handle_attack_blind(attacker, is_opponent): return
+	await gym1_hit_active(attacker, defender, is_opponent, 10)
+	if main._should_bail(): return
+	await main.check_all_knockouts()
+	if main._should_bail(): return
+	var opp_prizes = main.player_prize_cards if is_opponent else main.opponent_prize_cards
+	var taken = max(0, 6 - opp_prizes.size())
+	if taken <= 0:
+		await main.show_message("YOUR OPPONENT HASN'T TAKEN ANY PRIZES YET!")
+		if main._should_bail(): return
+		return
+	var etype = attacker.get_effective_types()[0]
+	var discard = main.opponent_discard_pile if is_opponent else main.player_discard_pile
+	var pool = discard.filter(func(c): return c.metadata.get("supertype","") == "Energy" and "Basic" in c.metadata.get("subtypes", []) and etype in main.get_energy_provided_by_card(c))
+	var attached = 0
+	while attached < taken and not pool.is_empty():
+		var e: card_object = null
+		if is_opponent:
+			e = pool[0]
+		else:
+			e = await main.card_ops.choose_card(pool, false, "CRITICAL COLLECTION", "Attach a " + etype + " Energy (" + str(attached+1) + " of up to " + str(taken) + ")", "ATTACH", attached > 0, Callable(), true)
+			if main._should_bail(): return
+		if e == null: break
+		discard.erase(e); pool.erase(e)
+		e.current_location = "active" if attacker == (main.opponent_active_pokemon if is_opponent else main.player_active_pokemon) else "bench"
+		attacker.attached_energies.append(e)
+		attached += 1
+	main.display_active_pokemon_energies(is_opponent)
+	main.update_discard_pile_display(is_opponent)
+	if attached > 0:
+		await main.show_message("CRITICAL COLLECTION! ATTACHED " + str(attached) + " " + etype.to_upper() + " ENERGY!")
+		if main._should_bail(): return
+
+# EX11 Holon's Pokemon (Magnemite/Voltorb/Electrode/Magneton): does this Pokemon card have the
+# "you may attach this as an Energy card from your hand" rule?
+func card_can_attach_as_energy(card: card_object) -> bool:
+	if card == null: return false
+	if card.metadata.get("supertype","") != "Pokémon": return false
+	for r in card.metadata.get("rules", []):
+		if "attach this as an Energy card from your hand" in str(r):
+			return true
+	return false
+
+# EX11 Holon's Pokemon: offer to attach the selected Pokemon card as a Special Energy card. Returns
+# true if it was attached (consuming the turn's Energy attachment); false to fall through to the
+# normal Pokemon play. Player-only path (the CPU handles Holon's Pokemon in its own energy phase).
+func prompt_and_attach_holon_pokemon_energy(card: card_object, is_opponent: bool) -> bool:
+	if is_opponent: return false
+	if main.player_energy_played_this_turn:
+		return false
+	var yes = await main.trainer_effects.gym1_prompt_yes_no(card, "HOLON POKEMON", "Attach " + card.metadata.get("name","").to_upper() + " as an Energy card? (No = play as Pokemon)", "AS ENERGY", "AS POKEMON")
+	if main._should_bail(): return false
+	if not yes: return false
+	# Electrode/Magneton provide "every type but 2 Energy at a time" and require the target to already
+	# have an Energy attached (one of which is returned to hand). Magnemite/Voltorb provide Colorless.
+	var two_any = false
+	for r in card.metadata.get("rules", []):
+		if "2 Energy at a time" in str(r):
+			two_any = true
+	var require_existing = two_any
+	var pool = main.card_ops.get_all_pokemon_in_play(is_opponent)
+	if require_existing:
+		pool = pool.filter(func(p): return not p.attached_energies.is_empty())
+	if pool.is_empty():
+		await main.show_message("NO VALID POKEMON TO ATTACH " + card.metadata.get("name","").to_upper() + " TO!")
+		if main._should_bail(): return false
+		return false
+	var target: card_object = null
+	if pool.size() == 1:
+		target = pool[0]
+	else:
+		target = await main.card_ops.choose_card(pool, false, "ATTACH " + card.metadata.get("name","").to_upper(), "Choose a Pokemon to attach it to", "ATTACH", true)
+		if main._should_bail(): return false
+		if target == null: return false
+	main.player_hand.erase(card)
+	card.attached_as_energy = true
+	card.pokemon_energy_types = (["Any","Any"] if two_any else ["Colorless"])
+	card.current_location = "active" if target == main.player_active_pokemon else "bench"
+	target.attached_energies.append(card)
+	await main.show_message("ATTACHED " + card.metadata.get("name","").to_upper() + " AS AN ENERGY CARD!")
+	if main._should_bail(): return true
+	# Electrode/Magneton: return one Energy already attached to the target to your hand.
+	if require_existing:
+		var existing = target.attached_energies.filter(func(e): return e != card)
+		if not existing.is_empty():
+			var chosen: card_object = existing[0]
+			if existing.size() > 1:
+				chosen = await main.card_ops.choose_card(existing, false, "RETURN ENERGY", "Return which Energy to your hand?", "RETURN", false)
+				if main._should_bail(): return true
+				if chosen == null: chosen = existing[0]
+			target.attached_energies.erase(chosen)
+			chosen.current_location = "hand"
+			chosen.attached_as_energy = false
+			chosen.pokemon_energy_types = []
+			main.player_hand.append(chosen)
+			main.refresh_hand_display(false)
+			await main.show_message("RETURNED " + chosen.metadata.get("name","").to_upper() + " TO YOUR HAND!")
+			if main._should_bail(): return true
+	# Consume the turn's Energy attachment (same accounting as a normal Energy attach).
+	main.player_energy_attach_count += 1
+	main.player_energy_played_this_turn = main.player_energy_attach_count >= main.match_effects.energy_attach_limit(false)
+	main.refresh_hand_display(false)
+	main.display_pokemon(false)
+	main.display_active_pokemon_energies(false)
+	return true
+
+# Lightning Storm (ex11 Rayquaza δ): base damage, then put 7 damage counters on self — UNLESS Delta
+# Guard is active (Rayquaza has any Holon Energy attached), which ignores that self-damage.
+func execute_ex11_lightning_storm(attacker: card_object, defender: card_object, is_opponent: bool, base_damage: int) -> void:
+	if await handle_attack_confusion(attacker, is_opponent): return
+	if await handle_attack_blind(attacker, is_opponent): return
+	await gym1_hit_active(attacker, defender, is_opponent, base_damage)
+	if main._should_bail(): return
+	var delta_guard = attacker.has_ability("Delta Guard") and attacker.holon_energy_count() > 0
+	if not delta_guard:
+		gym1_hit_raw(attacker, 70, is_opponent)
+		await main.show_message("LIGHTNING STORM! " + attacker.metadata.get("name","").to_upper() + " TAKES 70 DAMAGE!")
+		if main._should_bail(): return
+	else:
+		await main.show_message("DELTA GUARD! " + attacker.metadata.get("name","").to_upper() + " IGNORES THE SELF-DAMAGE!")
+		if main._should_bail(): return
+	await main.check_all_knockouts()
+	if main._should_bail(): return

@@ -42,6 +42,7 @@ func _ensure_trainer_dispatch_ready() -> void:
 	_register_ex8_trainers()
 	_register_ex9_trainers()
 	_register_ex10_trainers()
+	_register_ex11_trainers()
 
 # EX9 (EX EMERALD) trainers. Most are reprints of ex1/ex2 cards — reuse the existing effect functions
 # with the ex9 UID. Lum Berry (ex9-78) / Oran Berry (ex9-80) are Pokemon Tools whose attach is generic
@@ -384,6 +385,7 @@ func _ensure_validator_dispatch_ready() -> void:
 	_register_gym1_validations()
 	_register_gym2_validations()
 	_register_ex5_validations()
+	_register_ex11_validations()
 	# When adding Neo1/Neo2/etc., append: _register_neo1_validations()
 
 func _register_base_validations() -> void:
@@ -10477,4 +10479,252 @@ func effect_ex10_marys_request(is_opponent: bool) -> void:
 	await main.card_ops.draw_n(is_opponent, count)
 	if main._should_bail(): return
 	await main.show_message("MARY'S REQUEST! DREW " + str(count) + " CARD(S)!")
+	if main._should_bail(): return
+
+# ════════════════════════════════════════════════════════════════════════════════════════════════
+# EX11 (EX Delta Species) trainers. Holon Research Tower (ex11-94) and Holon Ruins (ex11-96) are
+# Stadiums that auto-route to resolve_stadium_trainer; their passive effects live in
+# get_energy_provided_by_card / holon_ruins_offer_draw. Master Ball / Super Scoop Up / Potion /
+# Switch reuse existing reprint effects.
+# ════════════════════════════════════════════════════════════════════════════════════════════════
+func _register_ex11_trainers() -> void:
+	_trainer_dispatch["ex11-89"] = func(c, opp): await effect_ex11_dual_ball(opp)            # Dual Ball (Item)
+	_trainer_dispatch["ex11-90"] = func(c, opp): await effect_ex11_great_ball(opp)           # Great Ball (Item)
+	_trainer_dispatch["ex11-91"] = func(c, opp): await effect_ex11_holon_farmer(opp)         # Holon Farmer (Supporter)
+	_trainer_dispatch["ex11-92"] = func(c, opp): await effect_ex11_holon_lass(opp)           # Holon Lass (Supporter)
+	_trainer_dispatch["ex11-93"] = func(c, opp): await effect_ex11_holon_mentor(opp)         # Holon Mentor (Supporter)
+	_trainer_dispatch["ex11-95"] = func(c, opp): await effect_ex11_holon_researcher(opp)     # Holon Researcher (Supporter)
+	_trainer_dispatch["ex11-97"] = func(c, opp): await effect_ex11_holon_scientist(opp)      # Holon Scientist (Supporter)
+	_trainer_dispatch["ex11-98"] = func(c, opp): await effect_ex11_holon_transceiver(opp)    # Holon Transceiver (Item)
+	_trainer_dispatch["ex11-99"] = func(c, opp): await effect_ex8_master_ball(opp)           # Master Ball (Item)
+	_trainer_dispatch["ex11-100"] = func(c, opp): await effect_neo1_super_scoop_up(opp)      # Super Scoop Up (Item)
+	_trainer_dispatch["ex11-101"] = func(c, opp): await effect_potion(opp)                   # Potion (Item)
+	_trainer_dispatch["ex11-102"] = func(c, opp): await effect_switch(opp)                   # Switch (Item)
+
+func _register_ex11_validations() -> void:
+	# Holon supporters cost "discard a card from your hand" — need at least 1 other card in hand.
+	for uid in ["ex11-91", "ex11-92", "ex11-93", "ex11-95", "ex11-97"]:
+		_validator_dispatch[uid] = func(c, opp):
+			var hand = main.opponent_hand if opp else main.player_hand
+			return "" if hand.any(func(x): return x != c) else "You must discard a card to play this Supporter!"
+
+# Pay the Holon supporter cost: discard 1 card from hand (the Supporter itself is already discarded).
+func _ex11_pay_discard_cost(is_opponent: bool) -> bool:
+	var hand = main.opponent_hand if is_opponent else main.player_hand
+	if hand.is_empty():
+		return false
+	if not is_opponent:
+		await main.show_message("DISCARD A CARD FROM YOUR HAND TO PLAY THIS SUPPORTER.")
+		if main._should_bail(): return true
+	var paid = await main.card_ops.discard_from_hand(is_opponent, 1)
+	return paid.size() >= 1
+
+# DUAL BALL (ex11-89, Item): flip 2 coins. For each heads, search your deck for a Basic Pokemon → hand.
+func effect_ex11_dual_ball(is_opponent: bool) -> void:
+	var heads = 0
+	for i in range(2):
+		if await main.flip_coin(true, is_opponent): heads += 1
+		if main._should_bail(): return
+	await main.show_message("DUAL BALL! " + str(heads) + " HEADS!")
+	if main._should_bail(): return
+	if heads == 0:
+		return
+	var found = await main.card_ops.search_deck_to_hand(is_opponent, func(c): return main.is_basic_pokemon(c), "DUAL BALL: CHOOSE A BASIC POKEMON", heads)
+	if main._should_bail(): return
+	await main.show_message("DUAL BALL! ADDED " + str(found.size()) + " BASIC POKEMON TO HAND!")
+	if main._should_bail(): return
+
+# GREAT BALL (ex11-90, Item): search your deck for a Basic Pokemon (excluding Pokemon-ex) onto your Bench.
+func effect_ex11_great_ball(is_opponent: bool) -> void:
+	var bench = main.opponent_bench if is_opponent else main.player_bench
+	var deck = main.opponent_deck if is_opponent else main.player_deck
+	if bench.size() >= main.get_max_bench_size():
+		await main.show_message("YOUR BENCH IS FULL!")
+		if main._should_bail(): return
+		return
+	var pool = deck.filter(func(c): return main.is_basic_pokemon(c) and not main.is_ex_pokemon(c))
+	if pool.is_empty():
+		await main.show_message("NO BASIC POKEMON IN YOUR DECK!")
+		deck.shuffle(); main.update_deck_icon(is_opponent)
+		if main._should_bail(): return
+		return
+	var chosen: card_object = pool[0] if is_opponent else await main.card_ops.choose_card(pool, false, "GREAT BALL", "Choose a Basic Pokemon to put on your Bench", "SELECT", false, Callable(), true)
+	if main._should_bail(): return
+	if chosen == null: chosen = pool[0]
+	deck.erase(chosen)
+	main.card_ops.place_on_bench(chosen, is_opponent)
+	deck.shuffle()
+	main.update_deck_icon(is_opponent)
+	main.display_pokemon(is_opponent)
+	await main.show_message("GREAT BALL! PUT " + chosen.metadata.get("name","").to_upper() + " ON YOUR BENCH!")
+	if main._should_bail(): return
+
+# HOLON FARMER (ex11-91, Supporter): discard a card; then put up to 3 basic Energy and any combination
+# of up to 3 Basic Pokemon / Evolution cards from your discard pile on top of your deck, then shuffle.
+func effect_ex11_holon_farmer(is_opponent: bool) -> void:
+	if not await _ex11_pay_discard_cost(is_opponent):
+		if main._should_bail(): return
+		return
+	var discard = main.opponent_discard_pile if is_opponent else main.player_discard_pile
+	var deck = main.opponent_deck if is_opponent else main.player_deck
+	var moved = 0
+	# Up to 3 basic Energy.
+	for i in range(3):
+		var pool = discard.filter(func(c): return c.metadata.get("supertype","") == "Energy" and "Basic" in c.metadata.get("subtypes", []))
+		if pool.is_empty(): break
+		var pick: card_object = pool[0] if is_opponent else await main.card_ops.choose_card(pool, false, "HOLON FARMER", "Return a basic Energy to your deck (" + str(i+1) + " of up to 3, cancel to stop)", "SELECT", true, Callable(), true)
+		if main._should_bail(): return
+		if pick == null: break
+		discard.erase(pick); pick.current_location = "deck"; deck.append(pick); moved += 1
+	# Up to 3 Basic Pokemon or Evolution cards.
+	for i in range(3):
+		var pool2 = discard.filter(func(c): return c.metadata.get("supertype","") == "Pokémon")
+		if pool2.is_empty(): break
+		var pick2: card_object = pool2[0] if is_opponent else await main.card_ops.choose_card(pool2, false, "HOLON FARMER", "Return a Pokemon to your deck (" + str(i+1) + " of up to 3, cancel to stop)", "SELECT", true, Callable(), true)
+		if main._should_bail(): return
+		if pick2 == null: break
+		discard.erase(pick2); pick2.current_location = "deck"; deck.append(pick2); moved += 1
+	deck.shuffle()
+	main.update_deck_icon(is_opponent); main.update_discard_pile_display(is_opponent)
+	await main.show_message("HOLON FARMER! RETURNED " + str(moved) + " CARD(S) TO YOUR DECK!")
+	if main._should_bail(): return
+
+# HOLON LASS (ex11-92, Supporter): discard a card; count the total Prize cards left (both players), look
+# at that many cards from the top of your deck, put any number of Energy into your hand, the rest back on top.
+func effect_ex11_holon_lass(is_opponent: bool) -> void:
+	if not await _ex11_pay_discard_cost(is_opponent):
+		if main._should_bail(): return
+		return
+	var deck = main.opponent_deck if is_opponent else main.player_deck
+	var total_prizes = main.player_prize_cards.size() + main.opponent_prize_cards.size()
+	var look = min(total_prizes, deck.size())
+	if look <= 0:
+		await main.show_message("HOLON LASS: NO CARDS TO LOOK AT!")
+		if main._should_bail(): return
+		return
+	var top = main.card_ops.peek_top_n(is_opponent, look)
+	var energies = top.filter(func(c): return c.metadata.get("supertype","") == "Energy")
+	var hand = main.opponent_hand if is_opponent else main.player_hand
+	var taken = 0
+	if is_opponent:
+		for e in energies:
+			deck.erase(e); e.current_location = "hand"; hand.append(e); taken += 1
+	else:
+		if not energies.is_empty():
+			for e in energies:
+				var yes = await gym1_prompt_yes_no(main.player_active_pokemon, "HOLON LASS", "Put " + e.metadata.get("name","").to_upper() + " into your hand?", "YES", "NO")
+				if main._should_bail(): return
+				if yes:
+					deck.erase(e); e.current_location = "hand"; hand.append(e); taken += 1
+	deck.shuffle()
+	main.update_deck_icon(is_opponent); main.refresh_hand_display(is_opponent)
+	await main.show_message("HOLON LASS! PUT " + str(taken) + " ENERGY INTO YOUR HAND!")
+	if main._should_bail(): return
+
+# HOLON MENTOR (ex11-93, Supporter): discard a card; search your deck for up to 3 Basic Pokemon that each
+# have 100 HP or less → hand.
+func effect_ex11_holon_mentor(is_opponent: bool) -> void:
+	if not await _ex11_pay_discard_cost(is_opponent):
+		if main._should_bail(): return
+		return
+	var found = await main.card_ops.search_deck_to_hand(is_opponent, func(c): return main.is_basic_pokemon(c) and int(c.metadata.get("hp","0")) <= 100, "HOLON MENTOR: CHOOSE UP TO 3 BASIC POKEMON (100 HP OR LESS)", 3)
+	if main._should_bail(): return
+	await main.show_message("HOLON MENTOR! ADDED " + str(found.size()) + " BASIC POKEMON TO HAND!")
+	if main._should_bail(): return
+
+# HOLON RESEARCHER (ex11-95, Supporter): discard a card; search your deck for a Metal Energy OR a Basic
+# Pokemon / Evolution card that has δ on its card → hand.
+func effect_ex11_holon_researcher(is_opponent: bool) -> void:
+	if not await _ex11_pay_discard_cost(is_opponent):
+		if main._should_bail(): return
+		return
+	var filter_fn = func(c):
+		if c.metadata.get("supertype","") == "Energy" and "Metal" in main.get_energy_provided_by_card(c):
+			return true
+		return c.metadata.get("supertype","") == "Pokémon" and c.is_delta()
+	var found = await main.card_ops.search_deck_to_hand(is_opponent, filter_fn, "HOLON RESEARCHER: CHOOSE A METAL ENERGY OR δ POKEMON", 1)
+	if main._should_bail(): return
+	await main.show_message("HOLON RESEARCHER! ADDED A CARD TO HAND!" if found.size() > 0 else "NO MATCHING CARD IN DECK!")
+	if main._should_bail(): return
+
+# HOLON SCIENTIST (ex11-97, Supporter): discard a card; if you have fewer cards in hand than your
+# opponent, draw cards until you have the same number.
+func effect_ex11_holon_scientist(is_opponent: bool) -> void:
+	if not await _ex11_pay_discard_cost(is_opponent):
+		if main._should_bail(): return
+		return
+	var hand = main.opponent_hand if is_opponent else main.player_hand
+	var opp_hand = main.player_hand if is_opponent else main.opponent_hand
+	var diff = opp_hand.size() - hand.size()
+	if diff <= 0:
+		await main.show_message("HOLON SCIENTIST: YOU DON'T HAVE FEWER CARDS THAN YOUR OPPONENT.")
+		if main._should_bail(): return
+		return
+	await main.card_ops.draw_n(is_opponent, diff)
+	if main._should_bail(): return
+	await main.show_message("HOLON SCIENTIST! DREW " + str(diff) + " CARD(S)!")
+	if main._should_bail(): return
+
+# HOLON TRANSCEIVER (ex11-98, Item): search your deck OR discard pile for a Supporter card that has
+# "Holon" in its name → hand.
+func effect_ex11_holon_transceiver(is_opponent: bool) -> void:
+	var deck = main.opponent_deck if is_opponent else main.player_deck
+	var discard = main.opponent_discard_pile if is_opponent else main.player_discard_pile
+	var deck_pool = deck.filter(func(c): return "Supporter" in c.metadata.get("subtypes", []) and "Holon" in c.metadata.get("name",""))
+	var discard_pool = discard.filter(func(c): return "Supporter" in c.metadata.get("subtypes", []) and "Holon" in c.metadata.get("name",""))
+	if deck_pool.is_empty() and discard_pool.is_empty():
+		await main.show_message("NO HOLON SUPPORTER IN YOUR DECK OR DISCARD PILE!")
+		deck.shuffle(); main.update_deck_icon(is_opponent)
+		if main._should_bail(): return
+		return
+	# Choose source: prefer deck if available, else discard. Player picks if both exist.
+	var use_discard = deck_pool.is_empty()
+	if not is_opponent and not deck_pool.is_empty() and not discard_pool.is_empty():
+		use_discard = not await gym1_prompt_yes_no(main.player_active_pokemon, "HOLON TRANSCEIVER", "Search your DECK or your DISCARD PILE?", "DECK", "DISCARD")
+		if main._should_bail(): return
+	if use_discard:
+		var pick_d: card_object = discard_pool[0] if is_opponent else await main.card_ops.choose_card(discard_pool, false, "HOLON TRANSCEIVER", "Choose a Holon Supporter", "TAKE", false, Callable(), true)
+		if main._should_bail(): return
+		if pick_d == null: pick_d = discard_pool[0]
+		await main.card_ops.recover_to_hand(pick_d, is_opponent)
+		if main._should_bail(): return
+	else:
+		var pick: card_object = deck_pool[0] if is_opponent else await main.card_ops.choose_card(deck_pool, false, "HOLON TRANSCEIVER", "Choose a Holon Supporter", "TAKE", false, Callable(), true)
+		if main._should_bail(): return
+		if pick == null: pick = deck_pool[0]
+		deck.erase(pick); pick.current_location = "hand"
+		var hand = main.opponent_hand if is_opponent else main.player_hand
+		hand.append(pick)
+		deck.shuffle()
+		main.update_deck_icon(is_opponent); main.refresh_hand_display(is_opponent)
+	await main.show_message("HOLON TRANSCEIVER! ADDED A HOLON SUPPORTER TO YOUR HAND!")
+	if main._should_bail(): return
+
+# HOLON RUINS (ex11-96 Stadium): once during his or her turn, a player with any δ Pokemon in play may
+# draw a card; if the player does, he or she discards a card. Offered at the start of the turn.
+func holon_ruins_offer_draw(is_opponent: bool) -> void:
+	if not main.is_stadium_in_play("ex11-96"):
+		return
+	if not main.card_ops.get_all_pokemon_in_play(is_opponent).any(func(p): return p.is_delta()):
+		return
+	var deck = main.opponent_deck if is_opponent else main.player_deck
+	var hand = main.opponent_hand if is_opponent else main.player_hand
+	if deck.is_empty():
+		return
+	var do_it = false
+	if is_opponent:
+		do_it = true
+	else:
+		var anchor = main.player_active_pokemon
+		if anchor == null: return
+		do_it = await gym1_prompt_yes_no(anchor, "HOLON RUINS", "Draw a card, then discard a card?", "YES", "NO")
+		if main._should_bail(): return
+	if not do_it:
+		return
+	await main.card_ops.draw_n(is_opponent, 1)
+	if main._should_bail(): return
+	if not hand.is_empty():
+		await main.card_ops.discard_from_hand(is_opponent, 1)
+		if main._should_bail(): return
+	await main.show_message("HOLON RUINS! DREW A CARD AND DISCARDED A CARD!")
 	if main._should_bail(): return

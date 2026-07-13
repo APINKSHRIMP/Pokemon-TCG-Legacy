@@ -2129,6 +2129,9 @@ func add_pokemon_to_bench(pokemon: card_object) -> void:
 		await powers_and_bodies.trigger_ex6_legendary_ascent(pokemon, false)
 		# EX8 Dragon Boost (Rayquaza ex ex8-102): move any number of basic Energy to Rayquaza ex
 		await powers_and_bodies.trigger_ex8_dragon_boost(pokemon, false)
+		# EX11 Delta Switch (Mewtwo δ): on benching from hand, move any number of basic Energy among
+		# your other Pokémon (excluding Mewtwo).
+		await powers_and_bodies.trigger_ex11_delta_switch(pokemon, false)
 
 # Function that get's the card position/location/object. Called from various functions when trying to find a specific card object
 func find_card_ui_for_object(card_obj: card_object) -> TextureRect:
@@ -2276,6 +2279,14 @@ func perform_energy_attachment() -> void:
 		hide_selection_mode_display_main()
 		return
 
+	# EX11 Binding Aura (Hypno): the opponent can't attach Energy from hand to an Asleep Pokemon.
+	if powers_and_bodies.check_ex11_binding_aura_blocks_energy(target_pokemon):
+		await show_message("BINDING AURA! CAN'T ATTACH ENERGY TO AN ASLEEP POKEMON!")
+		energy_card_awaiting_target = null
+		selected_card_for_action = null
+		card_attach_mode_active = false
+		hide_selection_mode_display_main()
+		return
 	# EX5 Freeze Lock (Regice ex ex5-97): can't attach Energy from hand to a Freeze-Locked Pokemon
 	if target_pokemon.has_effect("ex5_energy_lock"):
 		await show_message("FREEZE LOCK! CAN'T ATTACH ENERGY TO " + target_pokemon.metadata.get("name","").to_upper() + " THIS TURN!")
@@ -2317,6 +2328,8 @@ func perform_energy_attachment() -> void:
 	# Apply special energy on-attach effects (Rainbow self-damage, Full Heal cure, Potion heal, etc.)
 	if "Special" in subtypes:
 		await special_energy_effects.apply_on_attach_effects(energy_card, target_pokemon, false)
+		# EX11 Delta Moon (Umbreon δ): opponent attaching a Special Energy takes 1 counter on that Pokemon.
+		await powers_and_bodies.check_ex11_delta_moon(target_pokemon, false)
 
 	# GYM2 Blaine's Ninetales Healing Fire — heal 10 when Fire energy is attached from hand
 	await powers_and_bodies.check_healing_fire(target_pokemon, energy_card, false)
@@ -2557,6 +2570,8 @@ func send_card_to_discard(card: card_object, is_opponent: bool) -> void:
 	card.power_used_this_turn = false
 	card.is_electrode_energy = false
 	card.electrode_energy_type = ""
+	card.attached_as_energy = false
+	card.pokemon_energy_types = []
 	# Clear while_in_play and end_of_turn disabled attacks (keep entire_game)
 	var keys_to_remove = []
 	for atk_name in card.disabled_attacks:
@@ -2651,6 +2666,11 @@ func player_start_turn_checks() -> void:
 
 	# NEO1: process turn-start tools (Gold Berry, Berry, Miracle Berry) and Char counters for player's side
 	await powers_and_bodies.process_turn_start_tools_and_counters(false)
+	if _should_bail(): return
+
+	# EX11 Holon Ruins (ex11-96 Stadium): once per turn, a player with a δ Pokemon in play may draw a
+	# card, then discard a card. Offered at the start of the turn.
+	await trainer_effects.holon_ruins_offer_draw(false)
 	if _should_bail(): return
 
 # Called when the player presses the end turn button to reset per-turn variables and begin next turn
@@ -3066,6 +3086,11 @@ func get_valid_evolution_targets(evolution_card: card_object, is_opponent: bool)
 	if opposing_active != null and opposing_active.has_ability("Primal Vibes") and not powers_and_bodies.is_power_blocked_by_status(opposing_active):
 		valid_targets = valid_targets.filter(func(t): return t != active)
 
+	# EX11 Binding Aura (Hypno): while the opposing Active is Hypno, you can't play a Basic/Evolution
+	# from hand to evolve YOUR Active Pokemon (Benched evolutions are unaffected).
+	if opposing_active != null and opposing_active.has_ability("Binding Aura") and not powers_and_bodies.is_power_blocked_by_status(opposing_active):
+		valid_targets = valid_targets.filter(func(t): return t != active)
+
 	return valid_targets
 
 # Stores the evolution card and enters target selection mode for the player to pick which Pokemon to evolve
@@ -3230,6 +3255,13 @@ func perform_evolution(is_opponent: bool) -> void:
 		await powers_and_bodies.trigger_ex10_bursting_up(evo_card, is_opponent)
 	elif evo_card.has_ability("Darker Ring"):
 		await powers_and_bodies.trigger_ex10_darker_ring(evo_card, is_opponent)
+	# EX11 on-play (evolve from hand) power triggers (Eeveelution ex)
+	elif evo_card.has_ability("Evolutionary Flame"):
+		await powers_and_bodies.trigger_ex11_evolutionary_flame(evo_card, is_opponent)
+	elif evo_card.has_ability("Evolutionary Thunder"):
+		await powers_and_bodies.trigger_ex11_evolutionary_thunder(evo_card, is_opponent)
+	elif evo_card.has_ability("Evolutionary Swirl"):
+		await powers_and_bodies.trigger_ex11_evolutionary_swirl(evo_card, is_opponent)
 
 	# EX7 Darkest Impulse (Dark Ampharos ex7-2): whenever the opponent evolves a Pokemon, the opposing
 	# Dark Ampharos puts 2 damage counters on it. Fires for every evolution (both sides).
@@ -3359,7 +3391,13 @@ func get_attacks_for_card(card: card_object) -> Array:
 		return []
 
 	# Get the attacks if they exist
+	if powers_and_bodies.check_ex11_shining_horn_blocks_attack(card):
+		return []
+
 	var attacks = card.metadata.get("attacks", [])
+
+	# EX11 Delta Aura (Latias/Latios δ): while its partner is in play, the paired attack costs less.
+	attacks = powers_and_bodies.ex11_delta_aura_adjust_attacks(card, attacks)
 
 	# Any Technical Machine card (ecard1-144, ecard2's 8 Cubes, etc.): holder may use its attack INSTEAD of its own
 	for ac in card.attached_cards:
@@ -3525,6 +3563,14 @@ func get_attacks_for_card(card: card_object) -> Array:
 	return attacks
 
 # Read an energy card passed to this function and return what energies this card actually provides.
+# Returns the Pokemon that currently has `energy_card` in its attached_energies, or null.
+func _find_energy_holder(energy_card: card_object) -> card_object:
+	for p in ([player_active_pokemon] if player_active_pokemon != null else []) + player_bench \
+			+ ([opponent_active_pokemon] if opponent_active_pokemon != null else []) + opponent_bench:
+		if energy_card in p.attached_energies:
+			return p
+	return null
+
 func get_energy_provided_by_card(energy_card: card_object) -> Array:
 	if energy_card == null:
 		return []
@@ -3532,6 +3578,11 @@ func get_energy_provided_by_card(energy_card: card_object) -> Array:
 	# Electrode Buzzap: this card is an Electrode acting as energy
 	if energy_card.is_electrode_energy:
 		return [energy_card.electrode_energy_type]
+
+	# EX11 Holon's Pokémon attached as a Special Energy card (Magnemite/Voltorb = Colorless;
+	# Electrode/Magneton = every type, 2 at a time, stored as ["Any","Any"]).
+	if energy_card.attached_as_energy:
+		return energy_card.pokemon_energy_types
 	
 	var supertype = energy_card.metadata.get("supertype", "").to_lower()
 	if supertype != "energy":
@@ -3543,6 +3594,12 @@ func get_energy_provided_by_card(energy_card: card_object) -> Array:
 	# Basic energy: strip " Energy" from name to get the type string
 	if "Basic" in subtypes:
 		var energy_type = card_name.replace(" Energy", "").strip_edges()
+		# EX11 Holon Research Tower (ex11-94 Stadium): each player's basic Energy attached to a Pokemon
+		# that has δ on its card is both its usual type AND Metal (still only 1 Energy at a time).
+		if is_stadium_in_play("ex11-94") and energy_type != "Metal":
+			var holder = _find_energy_holder(energy_card)
+			if holder != null and holder.is_delta():
+				return [energy_type, "Metal"]
 		return [energy_type]
 	
 	# EX8 Scramble Energy (ex8-95): while in play, if its owner has more Prize cards left than the
@@ -4000,6 +4057,10 @@ func calculate_final_damage(base_damage: int, attacking_types: Array, defending_
 	if not skip_resistance and powers_and_bodies.is_ex1_withering_dust_in_play():
 		skip_resistance = true
 		modifiers_applied.append("WITHERING DUST (NO RESISTANCE)")
+	# EX11 Holon Energy FF + basic Fighting attached: the holder's attacks aren't affected by Resistance.
+	if not skip_resistance and attacker_pokemon != null and special_energy_effects.ex11_holon_ff_ignore_resistance(attacker_pokemon):
+		skip_resistance = true
+		modifiers_applied.append("HOLON ENERGY FF (NO RESISTANCE)")
 	# EX5 Magnetic Storm (ex5-91 Stadium): Psychic/Fighting attacks are not affected by Resistance.
 	if not skip_resistance and is_stadium_in_play(StadiumIds.MAGNETIC_STORM):
 		if "Psychic" in attacking_types or "Fighting" in attacking_types:
@@ -4714,6 +4775,10 @@ func get_retreat_cost(pokemon: card_object) -> int:
 	if powers_and_bodies.is_ex5_freefloating_free(pokemon):
 		return 0
 
+	# EX11 Holon Energy WP + basic Psychic attached: this Pokemon's Retreat Cost is 0.
+	if special_energy_effects.ex11_holon_wp_free_retreat(pokemon):
+		return 0
+
 	# ex10 Free Flight (Gligar): Retreat Cost is 0 while no Energy is attached
 	if pokemon.has_ability("Free Flight") and not powers_and_bodies.is_power_blocked(pokemon) and pokemon.attached_energies.is_empty():
 		return 0
@@ -4848,13 +4913,14 @@ func get_retreat_cost(pokemon: card_object) -> int:
 						cost += 2
 						break
 
-	# ECARD2 Conductive Body (Magnemite): -1 per Magnemite on the SAME side's bench
+	# ECARD2 Conductive Body (Magnemite) / EX11 Conductive Body (Beldum): -1 per Pokemon of the SAME
+	# name on this side's bench ("for each <self> on your Bench").
 	if not powers_and_bodies.is_power_blocked(pokemon):
 		for ab in pokemon.metadata.get("abilities", []):
 			if ab.get("name", "") == "Conductive Body":
 				var mag_count = 0
 				for bp in bench:
-					if bp.metadata.get("name", "") == "Magnemite": mag_count += 1
+					if bp.metadata.get("name", "") == pokemon.metadata.get("name", ""): mag_count += 1
 				cost = max(0, cost - mag_count)
 
 	# ECARD2 Gluey Slime (Ariados): while ANY Ariados is in play, both sides pay +1 to retreat their
@@ -5384,10 +5450,21 @@ func handle_action_normal_card() -> void:
 		print("Error: Can only play cards from your own hand")
 		return
 		
+	# EX11 Holon's Pokémon (Magnemite/Voltorb/Electrode/Magneton) may be attached from hand as a
+	# Special Energy card. Outside the opening setup phases, offer that choice before the normal
+	# Pokémon action (place/evolve). If the player attaches it as Energy, we are done for this card.
+	if not match_just_started_basic_pokemon_required and not bench_setup_phase_active \
+			and attack_effects.card_can_attach_as_energy(selected_card_for_action):
+		var chose_energy = await attack_effects.prompt_and_attach_holon_pokemon_energy(selected_card_for_action, false)
+		if _should_bail(): return
+		if chose_energy:
+			hide_selection_mode_display_main()
+			return
+
 	# Get the action type
 	var action_info = get_card_action(selected_card_for_action)
 	var action_type = action_info["action"]
-	
+
 	# Perform the appropriate action based on card type
 	match action_type:
 		"SET_POKEMON":

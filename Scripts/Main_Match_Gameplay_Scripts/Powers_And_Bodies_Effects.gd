@@ -78,6 +78,7 @@ func _register_all_powers() -> void:
 	_register_ex8_powers()
 	_register_ex9_powers()
 	_register_ex10_powers()
+	_register_ex11_powers()
 
 # ── On-damage and pre-KO event hooks ──────────────────────────────────────────
 # Each Callable is fired after active-pokemon damage resolves (on_damage) or
@@ -161,6 +162,9 @@ func _register_all_power_hooks() -> void:
 	_damage_modifier_hooks.append(func(dmg, atk, def, mods): return _hook_ex10_stages_hitmonlee(dmg, atk, def, mods))
 	_damage_modifier_hooks.append(func(dmg, atk, def, mods): return _hook_ex10_danger_perception(dmg, atk, def, mods))
 	_damage_modifier_hooks.append(func(dmg, atk, def, mods): return _hook_ex10_solid_rage(dmg, atk, def, mods))
+	_damage_modifier_hooks.append(func(dmg, atk, def, mods): return _hook_ex11_holon_gl(dmg, atk, def, mods))
+	_damage_modifier_hooks.append(func(dmg, atk, def, mods): return _hook_ex11_reversal_aura(dmg, atk, def, mods))
+	_damage_modifier_hooks.append(func(dmg, atk, def, mods): return _hook_ex11_protection(dmg, atk, def, mods))
 	_on_damage_hooks.append(func(def, atk, dmg, is_def_opp): await check_ex10_stages_hitmontop(def, atk, is_def_opp))
 	_on_damage_hooks.append(func(def, atk, dmg, is_def_opp): await check_ex10_silver_sparkle(def, atk, is_def_opp))
 	_pre_ko_hooks.append(func(poke, atk, is_poke_opp): await check_ex10_spiral_swirl(poke, atk, is_poke_opp))
@@ -2122,6 +2126,8 @@ func cpu_phase_activate_powers() -> void:
 	await cpu_phase_ex9_powers()
 	if main._should_bail(): return
 	await cpu_phase_ex10_powers()
+	if main._should_bail(): return
+	await cpu_phase_ex11_powers()
 	if main._should_bail(): return
 
 
@@ -6797,6 +6803,50 @@ func apply_np_between_turn_bodies() -> void:
 				await main.check_all_knockouts()
 				if main._should_bail(): return
 				break
+
+	# EX11 DELTA STORM (Sandslash δ): while Active, put 1 damage counter on each of the opponent's
+	# Pokemon-ex between turns.
+	for side in [false, true]:
+		var ds_active = main.opponent_active_pokemon if side else main.player_active_pokemon
+		if ds_active == null or ds_active.current_hp <= 0: continue
+		if is_toxic_gas_active() or main.goop_gas_active: continue
+		if is_power_blocked_by_status(ds_active): continue
+		if ds_active.has_ability("Delta Storm"):
+			var ds_opp = not side
+			var ds_placed = false
+			for p in main.card_ops.get_all_pokemon_in_play(ds_opp):
+				if p.current_hp <= 0: continue
+				if main.is_ex_pokemon(p):
+					p.current_hp = max(0, p.current_hp - 10)
+					main.display_hp_circles_above_align(p, ds_opp)
+					ds_placed = true
+			if ds_placed:
+				await main.show_message("DELTA STORM! A DAMAGE COUNTER ON EACH OPPONENT POKÉMON-EX!")
+				if main._should_bail(): return
+				await main.check_all_knockouts()
+				if main._should_bail(): return
+
+	# EX11 BODY ODOR (Weezing): while Active, put 1 damage counter on each of the opponent's Pokemon
+	# that has any Poké-Bodies between turns.
+	for side in [false, true]:
+		var bo_active = main.opponent_active_pokemon if side else main.player_active_pokemon
+		if bo_active == null or bo_active.current_hp <= 0: continue
+		if is_toxic_gas_active() or main.goop_gas_active: continue
+		if is_power_blocked_by_status(bo_active): continue
+		if bo_active.has_ability("Body Odor"):
+			var bo_opp = not side
+			var bo_placed = false
+			for p in main.card_ops.get_all_pokemon_in_play(bo_opp):
+				if p.current_hp <= 0: continue
+				if _ex11_has_poke_body(p):
+					p.current_hp = max(0, p.current_hp - 10)
+					main.display_hp_circles_above_align(p, bo_opp)
+					bo_placed = true
+			if bo_placed:
+				await main.show_message("BODY ODOR! A DAMAGE COUNTER ON EACH OPPONENT POKÉMON WITH A POKÉ-BODY!")
+				if main._should_bail(): return
+				await main.check_all_knockouts()
+				if main._should_bail(): return
 
 	# EX6 SOOTH DUST (Butterfree ex6-2): while Active, remove 1 damage counter from EACH of your Pokemon.
 	for side in [false, true]:
@@ -12197,6 +12247,9 @@ func has_no_weakness_body(defender: card_object) -> bool:
 		for e in defender.attached_energies:
 			if "Lightning" in main.get_energy_provided_by_card(e):
 				return true
+	# EX11 Holon Energy FF + basic Fire attached: the holder has no Weakness (ignored if it's a Pokemon-ex).
+	if main.special_energy_effects.ex11_holon_ff_no_weakness(defender):
+		return true
 	var side_opp = defender.is_owner_opp(main)
 	for p in main.card_ops.get_all_pokemon_in_play(side_opp):
 		if p.has_ability("Dragon Veil") and not is_power_blocked_by_status(p):
@@ -13703,3 +13756,609 @@ func is_ex10_lonesome_active(playing_is_opp: bool) -> bool:
 			if mine < theirs:
 				return true
 	return false
+
+# ════════════════════════════════════════════════════════════════════════════════════════════════
+# ex11 (EX Delta Species) — Poké-Powers & Poké-Bodies
+# Registered LAST. Active powers go in _power_dispatch; passive bodies are wired via damage hooks,
+# between-turn processing, get_attacks_for_card, apply_status, and the attach/evolve gates in Main.
+# ════════════════════════════════════════════════════════════════════════════════════════════════
+func _register_ex11_powers() -> void:
+	# Baby Evolution (Azurill) reuses power_ex2_baby_evolution. Temperamental Weather (Castform forms)
+	# reuses power_ex5_temperamental_weather. Backup (Porygon2) reuses power_ecard2_backup. Exoskeleton
+	# (Shelgon) is a _FLAT_REDUCTION_BODY_NAMES body. Thick Fat (Azumarill) uses _hook_ex10_thick_fat.
+	# All name-generic — no re-registration needed.
+	_power_dispatch["Final Sting"]      = func(p): await power_ex11_final_sting(p)
+	_power_dispatch["Delta Charge"]     = func(p): await power_ex11_delta_charge(p)
+	_power_dispatch["Delta Heal"]       = func(p): await power_ex11_delta_heal(p)
+	_power_dispatch["Energy Jump"]      = func(p): await power_ex11_energy_jump(p)
+	_power_dispatch["Delta Control"]    = func(p): await power_ex11_delta_control(p)
+	_power_dispatch["Metal Navigation"] = func(p): await power_ex11_metal_navigation(p)
+	_power_dispatch["Crush Draw"]       = func(p): await power_ex11_crush_draw(p)
+	_power_dispatch["Duplicate"]        = func(p): await power_ex11_duplicate(p)
+	_power_dispatch["Prize Shift"]      = func(p): await power_ex11_prize_shift(p)
+
+# Shared: is this active power currently usable (not blocked by any Special Condition, not yet used)?
+func _ex11_power_ready(pokemon: card_object, power_name: String) -> bool:
+	if pokemon.special_condition != "" or pokemon.is_poisoned or pokemon.is_burned:
+		await main.show_message(power_name.to_upper() + " CAN'T BE USED — " + pokemon.metadata.get("name","").to_upper() + " HAS A SPECIAL CONDITION!")
+		return false
+	if pokemon.power_used_this_turn:
+		await main.show_message(power_name.to_upper() + " ALREADY USED THIS TURN!")
+		return false
+	return true
+
+# FINAL STING (Beedrill δ ex11-1): KO Beedrill; the Defending Pokemon is Paralyzed + Poisoned and
+# takes 2 damage counters instead of 1 between turns. Can't be used if Beedrill has a Special Condition.
+func power_ex11_final_sting(beedrill: card_object) -> void:
+	var is_opp = beedrill.is_owner_opp(main)
+	if not await _ex11_power_ready(beedrill, "Final Sting"):
+		if main._should_bail(): return
+		return
+	var target = main.player_active_pokemon if is_opp else main.opponent_active_pokemon
+	if target == null:
+		await main.show_message("NO DEFENDING POKEMON!")
+		if main._should_bail(): return
+		return
+	if not is_opp:
+		var yes = await main.trainer_effects.gym1_prompt_yes_no(beedrill, "FINAL STING", "Knock Out Beedrill to Paralyze + Poison the Defending Pokemon?", "YES", "NO")
+		if main._should_bail(): return
+		if not yes: return
+	beedrill.power_used_this_turn = true
+	main.card_ops.apply_status(target, "Paralyzed", not is_opp)
+	main.card_ops.apply_status(target, "Toxic", not is_opp)
+	main.update_status_icons(target, not is_opp)
+	await main.show_message("FINAL STING! THE DEFENDING POKEMON IS PARALYZED AND POISONED!")
+	if main._should_bail(): return
+	beedrill.current_hp = 0
+	main.display_hp_circles_above_align(beedrill, is_opp)
+	await main.show_message("BEEDRILL KNOCKED ITSELF OUT!")
+	if main._should_bail(): return
+	await main.check_all_knockouts()
+	if main._should_bail(): return
+
+# DELTA CHARGE (Dragonite δ ex11-3): attach a Lightning Energy from your discard pile to a Benched Pokemon.
+func power_ex11_delta_charge(dragonite: card_object) -> void:
+	var is_opp = dragonite.is_owner_opp(main)
+	if not await _ex11_power_ready(dragonite, "Delta Charge"):
+		if main._should_bail(): return
+		return
+	var discard = main.opponent_discard_pile if is_opp else main.player_discard_pile
+	var pool = discard.filter(func(c): return c.metadata.get("supertype","") == "Energy" and "Lightning" in main.get_energy_provided_by_card(c))
+	if pool.is_empty():
+		await main.show_message("NO LIGHTNING ENERGY IN YOUR DISCARD PILE!")
+		if main._should_bail(): return
+		return
+	var bench = main.opponent_bench if is_opp else main.player_bench
+	if bench.is_empty():
+		await main.show_message("NO BENCHED POKEMON TO ATTACH TO!")
+		if main._should_bail(): return
+		return
+	var energy: card_object = pool[0] if is_opp else await main.card_ops.choose_card(pool, false, "DELTA CHARGE", "Choose a Lightning Energy", "SELECT", false, Callable(), true)
+	if main._should_bail(): return
+	if energy == null: energy = pool[0]
+	var target: card_object = null
+	if is_opp:
+		target = bench[0]
+		for b in bench:
+			if b.attached_energies.size() < target.attached_energies.size(): target = b
+	else:
+		target = await main.card_ops.choose_card(bench, false, "DELTA CHARGE", "Attach to which Benched Pokemon?", "ATTACH", false)
+		if main._should_bail(): return
+		if target == null: return
+	dragonite.power_used_this_turn = true
+	discard.erase(energy)
+	energy.current_location = "bench"
+	target.attached_energies.append(energy)
+	main.update_discard_pile_display(is_opp)
+	main.display_pokemon(is_opp)
+	main.display_active_pokemon_energies(is_opp)
+	await main.show_message("DELTA CHARGE! ATTACHED A LIGHTNING ENERGY FROM THE DISCARD PILE!")
+	if main._should_bail(): return
+
+# DELTA HEAL (Espeon δ ex11-4): remove 1 damage counter from each of your Pokemon that has δ on its card.
+func power_ex11_delta_heal(espeon: card_object) -> void:
+	var is_opp = espeon.is_owner_opp(main)
+	if not await _ex11_power_ready(espeon, "Delta Heal"):
+		if main._should_bail(): return
+		return
+	espeon.power_used_this_turn = true
+	var healed = false
+	for p in main.card_ops.get_all_pokemon_in_play(is_opp):
+		if p.current_hp <= 0: continue
+		if p.is_delta() and p.current_hp < p.get_max_hp():
+			await main.card_ops.heal_pokemon(p, 10, is_opp)
+			if main._should_bail(): return
+			healed = true
+	await main.show_message("DELTA HEAL! REMOVED 1 DAMAGE COUNTER FROM EACH OF YOUR δ POKEMON!" if healed else "NO δ POKEMON TO HEAL!")
+	if main._should_bail(): return
+
+# ENERGY JUMP (Gardevoir δ ex11-6): move an Energy card attached to 1 of your Pokemon to another.
+func power_ex11_energy_jump(gardevoir: card_object) -> void:
+	var is_opp = gardevoir.is_owner_opp(main)
+	if is_opp:
+		return  # CPU skips this situational energy-shuffling power.
+	if not await _ex11_power_ready(gardevoir, "Energy Jump"):
+		if main._should_bail(): return
+		return
+	var mine = main.card_ops.get_all_pokemon_in_play(is_opp)
+	var sources = mine.filter(func(p): return not p.attached_energies.is_empty())
+	if sources.is_empty():
+		await main.show_message("NO ENERGY TO MOVE!")
+		if main._should_bail(): return
+		return
+	var src = await main.card_ops.choose_card(sources, false, "ENERGY JUMP", "Move an Energy FROM which Pokemon?", "SELECT", true)
+	if main._should_bail(): return
+	if src == null: return
+	var energy = await main.card_ops.choose_card(src.attached_energies, false, "ENERGY JUMP", "Move which Energy?", "SELECT", true)
+	if main._should_bail(): return
+	if energy == null: return
+	var dests = mine.filter(func(p): return p != src)
+	if dests.is_empty():
+		await main.show_message("NO OTHER POKEMON TO MOVE ENERGY TO!")
+		if main._should_bail(): return
+		return
+	var dst = await main.card_ops.choose_card(dests, false, "ENERGY JUMP", "Move the Energy TO which Pokemon?", "ATTACH", true)
+	if main._should_bail(): return
+	if dst == null: return
+	gardevoir.power_used_this_turn = true
+	src.attached_energies.erase(energy)
+	energy.current_location = "active" if dst == main.player_active_pokemon else "bench"
+	dst.attached_energies.append(energy)
+	main.display_pokemon(is_opp)
+	main.display_active_pokemon_energies(is_opp)
+	await main.show_message("ENERGY JUMP! MOVED AN ENERGY BETWEEN YOUR POKEMON!")
+	if main._should_bail(): return
+
+# DELTA CONTROL (Metagross δ ex11-11): look at the top 4 cards, choose 1 into your hand, put the other
+# 3 on the bottom of your deck.
+func power_ex11_delta_control(metagross: card_object) -> void:
+	var is_opp = metagross.is_owner_opp(main)
+	if not await _ex11_power_ready(metagross, "Delta Control"):
+		if main._should_bail(): return
+		return
+	var deck = main.opponent_deck if is_opp else main.player_deck
+	if deck.is_empty():
+		await main.show_message("YOUR DECK IS EMPTY!")
+		if main._should_bail(): return
+		return
+	var top = main.card_ops.peek_top_n(is_opp, 4)
+	metagross.power_used_this_turn = true
+	var chosen: card_object = null
+	if is_opp:
+		chosen = top[0]
+		for c in top:
+			if c.metadata.get("supertype","") == "Pokémon": chosen = c; break
+	else:
+		chosen = await main.card_ops.choose_card(top, false, "DELTA CONTROL", "Choose a card to put into your hand", "SELECT", false)
+		if main._should_bail(): return
+		if chosen == null: chosen = top[0]
+	for c in top:
+		deck.erase(c)
+	chosen.current_location = "hand"
+	var hand = main.opponent_hand if is_opp else main.player_hand
+	hand.append(chosen)
+	for c in top:
+		if c != chosen:
+			c.current_location = "deck"
+			deck.append(c)
+	main.update_deck_icon(is_opp)
+	main.refresh_hand_display(is_opp)
+	await main.show_message("DELTA CONTROL! PUT A CARD INTO YOUR HAND!")
+	if main._should_bail(): return
+
+# METAL NAVIGATION (Starmie δ ex11-15): search your deck for a Metal Energy and attach it to Starmie.
+func power_ex11_metal_navigation(starmie: card_object) -> void:
+	var is_opp = starmie.is_owner_opp(main)
+	if not await _ex11_power_ready(starmie, "Metal Navigation"):
+		if main._should_bail(): return
+		return
+	var deck = main.opponent_deck if is_opp else main.player_deck
+	var pool = deck.filter(func(c): return c.metadata.get("supertype","") == "Energy" and "Metal" in main.get_energy_provided_by_card(c))
+	if pool.is_empty():
+		await main.show_message("NO METAL ENERGY IN YOUR DECK!")
+		deck.shuffle(); main.update_deck_icon(is_opp)
+		if main._should_bail(): return
+		return
+	var energy: card_object = pool[0] if is_opp else await main.card_ops.choose_card(pool, false, "METAL NAVIGATION", "Choose a Metal Energy", "SELECT", false, Callable(), true)
+	if main._should_bail(): return
+	if energy == null: energy = pool[0]
+	starmie.power_used_this_turn = true
+	deck.erase(energy)
+	energy.current_location = "active" if starmie == main.player_active_pokemon or starmie == main.opponent_active_pokemon else "bench"
+	starmie.attached_energies.append(energy)
+	deck.shuffle()
+	main.update_deck_icon(is_opp)
+	main.display_pokemon(is_opp)
+	main.display_active_pokemon_energies(is_opp)
+	await main.show_message("METAL NAVIGATION! ATTACHED A METAL ENERGY TO STARMIE!")
+	if main._should_bail(): return
+
+# CRUSH DRAW (Tyranitar δ ex11-16): reveal the top card of your deck. If it's a basic Energy, attach it
+# to 1 of your Pokemon; otherwise put it back on top.
+func power_ex11_crush_draw(tyranitar: card_object) -> void:
+	var is_opp = tyranitar.is_owner_opp(main)
+	if not await _ex11_power_ready(tyranitar, "Crush Draw"):
+		if main._should_bail(): return
+		return
+	var deck = main.opponent_deck if is_opp else main.player_deck
+	if deck.is_empty():
+		await main.show_message("YOUR DECK IS EMPTY!")
+		if main._should_bail(): return
+		return
+	tyranitar.power_used_this_turn = true
+	var top = deck[0]
+	await main.show_message("CRUSH DRAW! REVEALED " + top.metadata.get("name","").to_upper() + "!")
+	if main._should_bail(): return
+	var is_basic_energy = top.metadata.get("supertype","") == "Energy" and "Basic" in top.metadata.get("subtypes", [])
+	if not is_basic_energy:
+		await main.show_message("NOT A BASIC ENERGY — PUT BACK ON TOP.")
+		if main._should_bail(): return
+		return
+	var mine = main.card_ops.get_all_pokemon_in_play(is_opp)
+	var target: card_object = null
+	if is_opp:
+		target = mine[0] if not mine.is_empty() else null
+		for p in mine:
+			if p.attached_energies.size() < target.attached_energies.size(): target = p
+	else:
+		target = await main.card_ops.choose_card(mine, false, "CRUSH DRAW", "Attach the Energy to which Pokemon?", "ATTACH", false)
+		if main._should_bail(): return
+		if target == null: target = mine[0] if not mine.is_empty() else null
+	if target == null: return
+	deck.erase(top)
+	top.current_location = "active" if target == main.player_active_pokemon or target == main.opponent_active_pokemon else "bench"
+	target.attached_energies.append(top)
+	main.update_deck_icon(is_opp)
+	main.display_pokemon(is_opp)
+	main.display_active_pokemon_energies(is_opp)
+	await main.show_message("CRUSH DRAW! ATTACHED " + top.metadata.get("name","").to_upper() + "!")
+	if main._should_bail(): return
+
+# DUPLICATE (Ditto ex11-35 etc.): search your deck for another Ditto and switch it with this Ditto
+# (carrying over all state); put this Ditto on top of your deck and shuffle.
+func power_ex11_duplicate(ditto: card_object) -> void:
+	var is_opp = ditto.is_owner_opp(main)
+	if not await _ex11_power_ready(ditto, "Duplicate"):
+		if main._should_bail(): return
+		return
+	var deck = main.opponent_deck if is_opp else main.player_deck
+	var pool = deck.filter(func(c): return c.metadata.get("name","") == "Ditto")
+	if pool.is_empty():
+		await main.show_message("NO OTHER DITTO IN YOUR DECK!")
+		if main._should_bail(): return
+		return
+	var chosen: card_object = pool[0] if is_opp else await main.card_ops.choose_card(pool, false, "DUPLICATE", "Choose a Ditto to switch in", "SELECT", true)
+	if main._should_bail(): return
+	if chosen == null: return
+	ditto.power_used_this_turn = true
+	# Carry runtime state to the incoming Ditto.
+	chosen.attached_energies = ditto.attached_energies.duplicate()
+	chosen.attached_pre_evolutions = ditto.attached_pre_evolutions.duplicate()
+	chosen.attached_cards = ditto.attached_cards.duplicate()
+	var new_max = chosen.get_max_hp()
+	var dmg_taken = ditto.get_max_hp() - ditto.current_hp
+	chosen.current_hp = max(1, new_max - dmg_taken)
+	chosen.special_condition = ditto.special_condition
+	chosen.is_poisoned = ditto.is_poisoned
+	chosen.poison_damage = ditto.poison_damage
+	chosen.is_burned = ditto.is_burned
+	chosen.placed_on_field_this_turn = ditto.placed_on_field_this_turn
+	var active = main.opponent_active_pokemon if is_opp else main.player_active_pokemon
+	var bench = main.opponent_bench if is_opp else main.player_bench
+	deck.erase(chosen)
+	if ditto == active:
+		if is_opp: main.opponent_active_pokemon = chosen
+		else: main.player_active_pokemon = chosen
+		chosen.current_location = "active"
+	else:
+		var idx = bench.find(ditto)
+		if idx != -1:
+			bench[idx] = chosen
+			chosen.current_location = "bench"
+	# Old Ditto goes on top of the deck, then the deck is shuffled.
+	ditto.attached_energies.clear()
+	ditto.attached_pre_evolutions.clear()
+	ditto.attached_cards.clear()
+	ditto.current_hp = ditto.get_max_hp()
+	ditto.special_condition = ""
+	ditto.is_poisoned = false
+	ditto.is_burned = false
+	ditto.current_location = "deck"
+	deck.push_front(ditto)
+	deck.shuffle()
+	main.update_deck_icon(is_opp)
+	main.display_pokemon(is_opp)
+	main.display_active_pokemon_energies(is_opp)
+	await main.show_message("DUPLICATE! SWITCHED DITTO WITH ANOTHER FROM THE DECK!")
+	if main._should_bail(): return
+
+# PRIZE SHIFT (Slowking ex11-28): put a card from your hand as a face-up Prize card; then take 1 of your
+# face-down Prize cards into your hand. (This engine tracks Prizes as a simple pile; the swap is faithful.)
+func power_ex11_prize_shift(slowking: card_object) -> void:
+	var is_opp = slowking.is_owner_opp(main)
+	if is_opp:
+		return  # CPU skips this situational Prize-manipulation power.
+	if not await _ex11_power_ready(slowking, "Prize Shift"):
+		if main._should_bail(): return
+		return
+	var hand = main.player_hand
+	var prizes = main.player_prize_cards
+	if hand.is_empty() or prizes.is_empty():
+		await main.show_message("CAN'T USE PRIZE SHIFT RIGHT NOW!")
+		if main._should_bail(): return
+		return
+	var give = await main.card_ops.choose_card(hand, false, "PRIZE SHIFT", "Choose a card from your hand to place as a Prize", "SELECT", true)
+	if main._should_bail(): return
+	if give == null: return
+	slowking.power_used_this_turn = true
+	hand.erase(give)
+	give.current_location = "prize"
+	# Take a random face-down Prize into hand, then put the given card into the Prize pile in its place.
+	var taken = prizes[randi() % prizes.size()]
+	prizes.erase(taken)
+	taken.current_location = "hand"
+	hand.append(taken)
+	prizes.append(give)
+	main.refresh_hand_display(false)
+	main.display_prize_cards(false)
+	await main.show_message("PRIZE SHIFT! SWAPPED A HAND CARD FOR A PRIZE CARD!")
+	if main._should_bail(): return
+
+# ── EX11 on-play / on-evolve triggers ──────────────────────────────────────────
+
+# DELTA SWITCH (Mewtwo δ ex11-12): on benching from hand, move any number of basic Energy among your
+# other Pokemon (excluding Mewtwo).
+func trigger_ex11_delta_switch(mewtwo: card_object, is_opponent: bool) -> void:
+	if is_opponent:
+		return  # CPU skips this optional energy-shuffling on-play power.
+	if mewtwo == null or not mewtwo.has_ability("Delta Switch"): return
+	while true:
+		var others = main.card_ops.get_all_pokemon_in_play(is_opponent).filter(func(p): return p != mewtwo)
+		var sources = others.filter(func(p): return _ex11_has_basic_energy(p))
+		if sources.size() == 0 or others.size() < 2:
+			return
+		var yes = await main.trainer_effects.gym1_prompt_yes_no(mewtwo, "DELTA SWITCH", "Move a basic Energy between your other Pokemon?", "YES", "NO")
+		if main._should_bail(): return
+		if not yes: return
+		var src = await main.card_ops.choose_card(sources, false, "DELTA SWITCH", "Move a basic Energy FROM which Pokemon?", "SELECT", true)
+		if main._should_bail(): return
+		if src == null: return
+		var basics = src.attached_energies.filter(func(e): return "Basic" in e.metadata.get("subtypes", []))
+		if basics.is_empty(): continue
+		var energy = await main.card_ops.choose_card(basics, false, "DELTA SWITCH", "Move which basic Energy?", "SELECT", true)
+		if main._should_bail(): return
+		if energy == null: continue
+		var dests = others.filter(func(p): return p != src)
+		if dests.is_empty(): return
+		var dst = await main.card_ops.choose_card(dests, false, "DELTA SWITCH", "Move the Energy TO which Pokemon?", "ATTACH", true)
+		if main._should_bail(): return
+		if dst == null: continue
+		src.attached_energies.erase(energy)
+		energy.current_location = "active" if dst == main.player_active_pokemon else "bench"
+		dst.attached_energies.append(energy)
+		main.display_pokemon(is_opponent)
+		main.display_active_pokemon_energies(is_opponent)
+
+# EVOLUTIONARY FLAME (Flareon ex ex11-108): on evolve, the Defending Pokemon is Burned and Confused.
+func trigger_ex11_evolutionary_flame(flareon: card_object, is_opponent: bool) -> void:
+	if flareon == null or not flareon.has_ability("Evolutionary Flame"): return
+	var target = main.player_active_pokemon if is_opponent else main.opponent_active_pokemon
+	if target == null: return
+	main.card_ops.apply_status(target, "Burned", not is_opponent)
+	main.card_ops.apply_status(target, "Confused", not is_opponent)
+	main.update_status_icons(target, not is_opponent)
+	await main.show_message("EVOLUTIONARY FLAME! THE DEFENDING POKEMON IS BURNED AND CONFUSED!")
+	if main._should_bail(): return
+
+# EVOLUTIONARY THUNDER (Jolteon ex ex11-109): on evolve, put 1 damage counter on each of the opponent's Pokemon.
+func trigger_ex11_evolutionary_thunder(jolteon: card_object, is_opponent: bool) -> void:
+	if jolteon == null or not jolteon.has_ability("Evolutionary Thunder"): return
+	var opp_side = not is_opponent
+	var placed = false
+	for p in main.card_ops.get_all_pokemon_in_play(opp_side):
+		if p.current_hp <= 0: continue
+		p.current_hp = max(0, p.current_hp - 10)
+		main.display_hp_circles_above_align(p, opp_side)
+		placed = true
+	if placed:
+		await main.show_message("EVOLUTIONARY THUNDER! A DAMAGE COUNTER ON EACH OPPONENT POKEMON!")
+		if main._should_bail(): return
+		await main.check_all_knockouts()
+		if main._should_bail(): return
+
+# EVOLUTIONARY SWIRL (Vaporeon ex ex11-110): on evolve, the opponent shuffles their hand into their deck
+# and draws up to 4 cards.
+func trigger_ex11_evolutionary_swirl(vaporeon: card_object, is_opponent: bool) -> void:
+	if vaporeon == null or not vaporeon.has_ability("Evolutionary Swirl"): return
+	var opp_is_opp = not is_opponent
+	var opp_hand = main.opponent_hand if opp_is_opp else main.player_hand
+	var opp_deck = main.opponent_deck if opp_is_opp else main.player_deck
+	for c in opp_hand:
+		c.current_location = "deck"
+		opp_deck.append(c)
+	opp_hand.clear()
+	opp_deck.shuffle()
+	var draw = min(4, opp_deck.size())
+	await main.card_ops.draw_n(opp_is_opp, draw)
+	main.update_deck_icon(opp_is_opp)
+	main.refresh_hand_display(opp_is_opp)
+	await main.show_message("EVOLUTIONARY SWIRL! THE OPPONENT SHUFFLED THEIR HAND AWAY AND DREW " + str(draw) + " CARDS!")
+	if main._should_bail(): return
+
+# ── EX11 passive bodies ─────────────────────────────────────────────────────────
+
+# DELTA MOON (Umbreon δ ex11-17): when your opponent attaches a Special Energy from hand to 1 of their
+# Pokemon, put 1 damage counter on that Pokemon. `attacher_is_opp` = the side that attached the energy.
+func check_ex11_delta_moon(target_pokemon: card_object, attacher_is_opp: bool) -> void:
+	if target_pokemon == null or target_pokemon.current_hp <= 0: return
+	# Umbreon belongs to the OTHER side (the opponent of whoever attached).
+	var umbreon_is_opp = not attacher_is_opp
+	var has_moon = false
+	for p in main.card_ops.get_all_pokemon_in_play(umbreon_is_opp):
+		if p.has_ability("Delta Moon") and not is_power_blocked_by_status(p):
+			has_moon = true; break
+	if not has_moon: return
+	target_pokemon.current_hp = max(0, target_pokemon.current_hp - 10)
+	main.display_hp_circles_above_align(target_pokemon, attacher_is_opp)
+	await main.show_message("DELTA MOON! A DAMAGE COUNTER WAS PLACED ON " + target_pokemon.metadata.get("name","").to_upper() + "!")
+	if main._should_bail(): return
+	await main.check_all_knockouts()
+	if main._should_bail(): return
+
+# SHINING HORN (Skarmory ex11-55): while Skarmory is its owner's ONLY Pokemon in play, the opponent's
+# Basic Pokemon can't attack. Consulted by get_attacks_for_card (returns true = `card` can't attack).
+func check_ex11_shining_horn_blocks_attack(card: card_object) -> bool:
+	if card == null: return false
+	if "Basic" not in card.metadata.get("subtypes", []): return false
+	var card_is_opp = card.is_owner_opp(main)
+	var horn_side = not card_is_opp
+	for p in main.card_ops.get_all_pokemon_in_play(horn_side):
+		if p.has_ability("Shining Horn") and not is_power_blocked_by_status(p):
+			if main.card_ops.get_all_pokemon_in_play(horn_side).size() == 1:
+				return true
+	return false
+
+# DELTA AURA (Latias/Latios δ ex11-8/9): while its partner is in play, the paired attack costs
+# Lightning + Metal + Colorless (2 fewer Colorless).
+func ex11_delta_aura_adjust_attacks(card: card_object, attacks: Array) -> Array:
+	if card == null or not card.has_ability("Delta Aura") or is_power_blocked_by_status(card):
+		return attacks
+	var side_opp = card.is_owner_opp(main)
+	var name = card.metadata.get("name","")
+	var partner = ""
+	var target_attack = ""
+	if "Latias" in name:
+		partner = "Latios"; target_attack = "Extra Crush"
+	elif "Latios" in name:
+		partner = "Latias"; target_attack = "Psychic Force"
+	else:
+		return attacks
+	var has_partner = false
+	for p in main.card_ops.get_all_pokemon_in_play(side_opp):
+		if partner in p.metadata.get("name",""):
+			has_partner = true; break
+	if not has_partner:
+		return attacks
+	var out: Array = []
+	for a in attacks:
+		if a.get("name","") == target_attack:
+			var a2 = a.duplicate(true)
+			a2["cost"] = ["Lightning", "Metal", "Colorless"]
+			out.append(a2)
+		else:
+			out.append(a)
+	return out
+
+# BINDING AURA (Hypno ex11-23): while Hypno is the opposing Active, the opponent can't attach Energy
+# from hand to an Asleep Pokemon. Consulted in perform_energy_attachment.
+func check_ex11_binding_aura_blocks_energy(target_pokemon: card_object) -> bool:
+	if target_pokemon == null or target_pokemon.special_condition != "Asleep": return false
+	var target_is_opp = target_pokemon.is_owner_opp(main)
+	var opposing_active = main.player_active_pokemon if target_is_opp else main.opponent_active_pokemon
+	if opposing_active != null and opposing_active.has_ability("Binding Aura") and not is_power_blocked_by_status(opposing_active):
+		return true
+	return false
+
+# GL Energy + basic Lightning: damage from the opponent's Pokemon-ex is reduced by 10.
+func _hook_ex11_holon_gl(damage: int, attacker: card_object, defender: card_object, modifiers: Array) -> int:
+	if damage <= 0 or defender == null or attacker == null: return damage
+	if not main.is_ex_pokemon(attacker): return damage
+	if main.special_energy_effects.ex11_holon_gl_reduce_ex(defender):
+		modifiers.append("HOLON ENERGY GL (-10)")
+		return max(0, damage - 10)
+	return damage
+
+# REVERSAL AURA (Hariyama ex11-44): while you have more Prize cards left than your opponent, Hariyama's
+# attacks do +20 to the Active (before W/R) and damage from the Active to Hariyama is reduced by 20.
+func _hook_ex11_reversal_aura(damage: int, attacker: card_object, defender: card_object, modifiers: Array) -> int:
+	if damage <= 0: return damage
+	if attacker != null and attacker.has_ability("Reversal Aura") and not is_power_blocked_by_status(attacker) and _ex11_more_prizes(attacker):
+		var opp_active = main.player_active_pokemon if attacker.is_owner_opp(main) else main.opponent_active_pokemon
+		if defender == opp_active:
+			modifiers.append("REVERSAL AURA (+20)")
+			damage += 20
+	if defender != null and defender.has_ability("Reversal Aura") and not is_power_blocked_by_status(defender) and _ex11_more_prizes(defender):
+		var atk_active = main.opponent_active_pokemon if defender.is_owner_opp(main) else main.player_active_pokemon
+		if attacker == atk_active:
+			modifiers.append("REVERSAL AURA (-20)")
+			damage = max(0, damage - 20)
+	return damage
+
+# BEACON PROTECTION (Illumise ex11-45) / EXTRA PROTECTION (Volbeat ex11-56): with the partner in play,
+# prevent all damage (and, at the engine's standard scope, effects) from the relevant attacker.
+func _hook_ex11_protection(damage: int, attacker: card_object, defender: card_object, modifiers: Array) -> int:
+	if damage <= 0 or defender == null or attacker == null: return damage
+	if defender.has_ability("Beacon Protection") and not is_power_blocked_by_status(defender):
+		if _ex11_partner_in_play(defender, "Volbeat") and "Dark" in attacker.metadata.get("name",""):
+			modifiers.append("BEACON PROTECTION (NO DAMAGE)")
+			return 0
+	if defender.has_ability("Extra Protection") and not is_power_blocked_by_status(defender):
+		if _ex11_partner_in_play(defender, "Illumise") and main.is_ex_pokemon(attacker):
+			modifiers.append("EXTRA PROTECTION (NO DAMAGE)")
+			return 0
+	return damage
+
+# ── EX11 helpers ─────────────────────────────────────────────────────────────────
+
+func _ex11_has_poke_body(pokemon: card_object) -> bool:
+	if pokemon == null: return false
+	for ab in pokemon.metadata.get("abilities", []):
+		if ab.get("type","") == "Poké-Body":
+			return true
+	return false
+
+func _ex11_has_basic_energy(pokemon: card_object) -> bool:
+	if pokemon == null: return false
+	for e in pokemon.attached_energies:
+		if "Basic" in e.metadata.get("subtypes", []):
+			return true
+	return false
+
+# Does this Pokemon's side have MORE Prize cards remaining than the opponent?
+func _ex11_more_prizes(pokemon: card_object) -> bool:
+	if pokemon == null: return false
+	var side_opp = pokemon.is_owner_opp(main)
+	var mine = main.opponent_prize_cards.size() if side_opp else main.player_prize_cards.size()
+	var theirs = main.player_prize_cards.size() if side_opp else main.opponent_prize_cards.size()
+	return mine > theirs
+
+# Is a Pokemon whose name contains `partner_name` in play on the same side as `pokemon`?
+func _ex11_partner_in_play(pokemon: card_object, partner_name: String) -> bool:
+	if pokemon == null: return false
+	var side_opp = pokemon.is_owner_opp(main)
+	for p in main.card_ops.get_all_pokemon_in_play(side_opp):
+		if partner_name in p.metadata.get("name",""):
+			return true
+	return false
+
+# ── EX11 CPU power usage ──────────────────────────────────────────────────────────
+func cpu_phase_ex11_powers() -> void:
+	if is_toxic_gas_active() or main.goop_gas_active:
+		return
+	# Beneficial, low-risk powers the CPU will use each turn when available.
+	var metal_nav = _find_cpu_pokemon_with_power("Metal Navigation")
+	if metal_nav != null and not is_power_blocked_by_status(metal_nav) and not metal_nav.power_used_this_turn:
+		await power_ex11_metal_navigation(metal_nav)
+		if main._should_bail(): return
+	var delta_ctrl = _find_cpu_pokemon_with_power("Delta Control")
+	if delta_ctrl != null and not is_power_blocked_by_status(delta_ctrl) and not delta_ctrl.power_used_this_turn:
+		await power_ex11_delta_control(delta_ctrl)
+		if main._should_bail(): return
+	var crush_draw = _find_cpu_pokemon_with_power("Crush Draw")
+	if crush_draw != null and not is_power_blocked_by_status(crush_draw) and not crush_draw.power_used_this_turn:
+		await power_ex11_crush_draw(crush_draw)
+		if main._should_bail(): return
+	var delta_charge = _find_cpu_pokemon_with_power("Delta Charge")
+	if delta_charge != null and not is_power_blocked_by_status(delta_charge) and not delta_charge.power_used_this_turn:
+		await power_ex11_delta_charge(delta_charge)
+		if main._should_bail(): return
+	var delta_heal = _find_cpu_pokemon_with_power("Delta Heal")
+	if delta_heal != null and not is_power_blocked_by_status(delta_heal) and not delta_heal.power_used_this_turn:
+		# Only bother if some δ Pokemon is damaged.
+		var any_damaged = false
+		for p in main.card_ops.get_all_pokemon_in_play(true):
+			if p.is_delta() and p.current_hp < p.get_max_hp() and p.current_hp > 0:
+				any_damaged = true; break
+		if any_damaged:
+			await power_ex11_delta_heal(delta_heal)
+			if main._should_bail(): return

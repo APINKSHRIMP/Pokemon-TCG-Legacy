@@ -87,6 +87,11 @@ func get_energy_types_provided(card_name: String) -> Array:
 		"Warp Energy":
 			# ecard2/ex10/ex16: provides 1 Colorless (on-attach self-switch handled in apply_on_attach_effects).
 			return ["Colorless"]
+		"Holon Energy FF", "Holon Energy GL", "Holon Energy WP":
+			# EX11: each provides 1 Colorless. The conditional bonuses (no Weakness / no Resistance /
+			# status immunity / free retreat / -10 from opp ex) are passive and gated on a matching
+			# basic Energy also being attached — see the ex11_holon_* helpers below.
+			return ["Colorless"]
 		# --- FUTURE SETS: Add new special energies below ---
 		# "Boost Energy":
 		#	return ["Colorless", "Colorless", "Colorless"]
@@ -539,3 +544,55 @@ func score_special_energy_attachment(energy_card: card_object, target_pokemon: c
 					break
 
 	return score
+
+
+######################################################################################################################################################
+############################################### EX11 (EX DELTA SPECIES) HOLON ENERGY HELPERS #########################################################
+######################################################################################################################################################
+# Holon Energy FF/GL/WP each provide 1 Colorless and grant a conditional passive bonus if a matching
+# basic Energy is ALSO attached. All bonuses are ignored while attached to a Pokemon-ex.
+
+func _has_holon_energy(pokemon: card_object, holon_name: String) -> bool:
+	if pokemon == null: return false
+	for e in pokemon.attached_energies:
+		if e.metadata.get("name","") == holon_name:
+			return true
+	return false
+
+func _has_basic_energy_type(pokemon: card_object, type_name: String) -> bool:
+	if pokemon == null: return false
+	for e in pokemon.attached_energies:
+		if "Basic" in e.metadata.get("subtypes", []) and type_name in main.get_energy_provided_by_card(e):
+			return true
+	return false
+
+# Holon Energy FF + basic Fire: the holder has no Weakness. (Consulted in has_no_weakness_body.)
+func ex11_holon_ff_no_weakness(pokemon: card_object) -> bool:
+	if pokemon == null or main.is_ex_pokemon(pokemon): return false
+	return _has_holon_energy(pokemon, "Holon Energy FF") and _has_basic_energy_type(pokemon, "Fire")
+
+# Holon Energy FF + basic Fighting: the holder's attack damage isn't affected by Resistance.
+func ex11_holon_ff_ignore_resistance(pokemon: card_object) -> bool:
+	if pokemon == null or main.is_ex_pokemon(pokemon): return false
+	return _has_holon_energy(pokemon, "Holon Energy FF") and _has_basic_energy_type(pokemon, "Fighting")
+
+# Holon Energy GL + basic Grass ("can't be affected by any Special Conditions") OR Holon Energy WP +
+# basic Water ("prevent all effects, excluding damage, done by your opponent"). Both modeled as
+# Special-Condition immunity (the engine's central scope for "prevent non-damage effects").
+func ex11_holon_status_immune(pokemon: card_object) -> bool:
+	if pokemon == null or main.is_ex_pokemon(pokemon): return false
+	if _has_holon_energy(pokemon, "Holon Energy GL") and _has_basic_energy_type(pokemon, "Grass"):
+		return true
+	if _has_holon_energy(pokemon, "Holon Energy WP") and _has_basic_energy_type(pokemon, "Water"):
+		return true
+	return false
+
+# Holon Energy GL + basic Lightning: damage done by the opponent's Pokemon-ex is reduced by 10.
+func ex11_holon_gl_reduce_ex(pokemon: card_object) -> bool:
+	if pokemon == null or main.is_ex_pokemon(pokemon): return false
+	return _has_holon_energy(pokemon, "Holon Energy GL") and _has_basic_energy_type(pokemon, "Lightning")
+
+# Holon Energy WP + basic Psychic: the holder's Retreat Cost is 0.
+func ex11_holon_wp_free_retreat(pokemon: card_object) -> bool:
+	if pokemon == null or main.is_ex_pokemon(pokemon): return false
+	return _has_holon_energy(pokemon, "Holon Energy WP") and _has_basic_energy_type(pokemon, "Psychic")
