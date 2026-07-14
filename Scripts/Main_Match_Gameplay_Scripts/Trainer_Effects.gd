@@ -47,6 +47,7 @@ func _ensure_trainer_dispatch_ready() -> void:
 	_register_ex13_trainers()
 	_register_ex14_trainers()
 	_register_ex15_trainers()
+	_register_ex16_trainers()
 
 # EX9 (EX EMERALD) trainers. Most are reprints of ex1/ex2 cards — reuse the existing effect functions
 # with the ex9 UID. Lum Berry (ex9-78) / Oran Berry (ex9-80) are Pokemon Tools whose attach is generic
@@ -392,6 +393,7 @@ func _ensure_validator_dispatch_ready() -> void:
 	_register_ex11_validations()
 	_register_ex13_validations()
 	_register_ex14_validations()
+	_register_ex16_validations()
 	# When adding Neo1/Neo2/etc., append: _register_neo1_validations()
 
 func _register_base_validations() -> void:
@@ -11222,3 +11224,24 @@ func effect_ex15_professor_elms_training_method(is_opponent: bool) -> void:
 	if main._should_bail(): return
 	await main.show_message("PROFESSOR ELM'S TRAINING METHOD!")
 	if main._should_bail(): return
+
+# EX16 (EX POWER KEEPERS) trainers — the final set. Every Item/Supporter is a reprint routed to an
+# existing effect by UID. The five Stadiums (Battle Frontier 71, Drake's 72, Glacia's 76, Phoebe's 79,
+# Sidney's 82) install generically via resolve_stadium_trainer and expose only passive effects (wired in
+# Powers_And_Bodies / Main). The three Fossils (Claw 84, Mysterious 85, Root 86) are bench-token trainers
+# detected by is_bench_token_trainer. So only the non-Stadium Items/Supporters need dispatch routing here.
+func _register_ex16_trainers() -> void:
+	_trainer_dispatch["ex16-73"] = func(c, opp): await effect_ex3_energy_recycle_system(opp)   # Energy Recycle System (Item)
+	_trainer_dispatch["ex16-74"] = func(c, opp): await effect_ecard1_energy_removal_2(opp)      # Energy Removal 2 (Item)
+	_trainer_dispatch["ex16-75"] = func(c, opp): await effect_ecard2_energy_switch(opp)         # Energy Switch (Item)
+	_trainer_dispatch["ex16-77"] = func(c, opp): await effect_ex6_great_ball(opp)               # Great Ball (Item)
+	_trainer_dispatch["ex16-78"] = func(c, opp): await effect_ex8_master_ball(opp)              # Master Ball (Item)
+	_trainer_dispatch["ex16-80"] = func(c, opp): await effect_ex1_professor_birch(opp)          # Professor Birch (Supporter)
+	_trainer_dispatch["ex16-81"] = func(c, opp): await effect_ex9_scott(opp)                    # Scott (Supporter)
+	_trainer_dispatch["ex16-83"] = func(c, opp): await effect_ex5_stevens_advice(opp)           # Steven's Advice (Supporter)
+
+func _register_ex16_validations() -> void:
+	# STEVEN'S ADVICE (ex16-83): can't be played if you have more than 7 cards in hand (including it).
+	_validator_dispatch["ex16-83"] = func(c, opp):
+		var hand = main.opponent_hand if opp else main.player_hand
+		return "You have too many cards in hand to play Steven's Advice!" if hand.size() > 7 else ""

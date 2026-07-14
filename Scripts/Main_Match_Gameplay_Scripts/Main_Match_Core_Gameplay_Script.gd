@@ -2144,6 +2144,8 @@ func add_pokemon_to_bench(pokemon: card_object) -> void:
 		# Imprison markers, and Shock-wave markers from your Pokémon.
 		if pokemon.has_ability("Tropical Heal"):
 			await powers_and_bodies.trigger_ex15_tropical_heal(pokemon, false)
+		# EX16 on-bench-from-hand powers: Cursed Eyes (Absol ex), Crimson/Yellow/Blue Ray (Star Eeveelutions).
+		await powers_and_bodies.trigger_ex16_on_bench(pokemon, false)
 
 # Function that get's the card position/location/object. Called from various functions when trying to find a specific card object
 func find_card_ui_for_object(card_obj: card_object) -> TextureRect:
@@ -3314,6 +3316,9 @@ func perform_evolution(is_opponent: bool) -> void:
 		await powers_and_bodies.trigger_ex15_prowl(evo_card, is_opponent)
 	elif evo_card.has_ability("Dig Up"):
 		await powers_and_bodies.trigger_ex15_dig_up(evo_card, is_opponent)
+	# EX16 on-play (evolve from hand) power trigger
+	elif evo_card.has_ability("Chilling Breath"):
+		await powers_and_bodies.trigger_ex16_chilling_breath(evo_card, is_opponent)
 
 	# EX7 Darkest Impulse (Dark Ampharos ex7-2): whenever the opponent evolves a Pokemon, the opposing
 	# Dark Ampharos puts 2 damage counters on it. Fires for every evolution (both sides).
@@ -3895,6 +3900,11 @@ func display_and_apply_attack_damage(attacker: card_object, defender: card_objec
 	# NEO1 Sprout Tower (neo1-97 Stadium): Colorless Pokemon attacks reduced by 30
 	if final_damage > 0 and attacker != null:
 		final_damage = powers_and_bodies.apply_sprout_tower_reduction(attacker, final_damage)
+
+	# EX16 Psychic Protector (Flygon ex ex16-94): when damaged by an opponent's attack, the defender's
+	# owner may discard up to 4 cards from hand to reduce this damage by 10 per card.
+	if defender != null and final_damage > 0:
+		final_damage = await powers_and_bodies.check_ex16_psychic_protector(defender, final_damage)
 
 	# GYM1 Charity (gym1-99): the attacker's owner may reduce their own outgoing damage to spare the defender.
 	# Player gets a YES/NO prompt only if the attack would KO; CPU never reduces.
@@ -5211,6 +5221,10 @@ func get_retreat_cost(pokemon: card_object) -> int:
 		var eff_types = pokemon.get_effective_types()
 		if "Fire" in eff_types or "Water" in eff_types:
 			cost = max(0, cost - 1)
+	# EX16-79 Phoebe's Stadium — each player pays 2 Colorless less to retreat their Psychic Pokemon
+	if is_stadium_in_play(StadiumIds.PHOEBES_STADIUM):
+		if "Psychic" in pokemon.get_effective_types():
+			cost = max(0, cost - 2)
 	# EX4-78 Team Aqua Hideout — Pokemon without "Team Aqua" in name pay 1 more to retreat
 	if is_stadium_in_play(StadiumIds.TEAM_AQUA_HIDEOUT):
 		if "Team Aqua" not in pokemon.metadata.get("name", ""):
@@ -5581,6 +5595,9 @@ func handle_action_retreat_bench() -> void:
 	if _should_bail(): return
 	# ECARD2 Suction Cups (Octillery): if opponent's Active is Octillery, discard our energy when we retreat
 	powers_and_bodies.check_suction_cups(player_active_pokemon, false)
+	# EX16 Metal Gravity (Skarmory ex ex16-98): opponent's Active reacts to our retreat with 3 counters.
+	await powers_and_bodies.check_ex16_metal_gravity(player_active_pokemon, false)
+	if _should_bail(): return
 
 	player_bench.erase(new_active)
 	player_bench.append(player_active_pokemon)

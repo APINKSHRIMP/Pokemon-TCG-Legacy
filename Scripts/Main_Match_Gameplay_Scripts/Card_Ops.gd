@@ -273,6 +273,10 @@ func apply_status(pokemon: card_object, status: String, is_opponent: bool) -> vo
 	# NEO4 Flash Touch (Light Ledian): immune to special conditions while Active
 	if pokemon != null and pokemon.neo4_immune_to_status and status != "":
 		return
+	# EX16 Sidney's Stadium (ex16-82): each player's Darkness Pokemon can't be Asleep, Confused, or Paralyzed.
+	if pokemon != null and status in ["Asleep", "Confused", "Paralyzed"] and main.is_stadium_in_play(StadiumIds.SIDNEYS_STADIUM):
+		if "Darkness" in pokemon.get_effective_types():
+			return
 	# ECARD2 Poison Resistance (Scizor): can't be Poisoned (Toxic counts as Poisoned here too)
 	if pokemon != null and (status == "Poisoned" or status == "Toxic") and not main.powers_and_bodies.is_power_blocked(pokemon):
 		if pokemon.has_ability("Poison Resistance"):

@@ -87,3 +87,10 @@ const SPACE_CENTER  = "ex8-91" # Ignore Poke-Bodies for all Basic Pokemon in pla
 
 # ── EX Emerald (ex9) ───────────────────────────────────────────────────────────
 const BATTLE_FRONTIER = "ex9-75" # Colorless/Darkness/Metal Evolved Pokemon can't use Poke-Powers or Poke-Bodies
+
+# ── EX Power Keepers (ex16), the final set ──────────────────────────────────────
+const BATTLE_FRONTIER_EX16 = "ex16-71" # Same text as ex9-75 (Colorless/Darkness/Metal Evolved lockout)
+const DRAKES_STADIUM   = "ex16-72" # Colorless Active Pokemon (both sides) take 10 less from opponent attacks
+const GLACIAS_STADIUM  = "ex16-76" # Each player's Water Pokemon (excluding ex) has no Weakness
+const PHOEBES_STADIUM  = "ex16-79" # Each player pays 2 Colorless less to retreat Psychic Pokemon
+const SIDNEYS_STADIUM  = "ex16-82" # Each player's Darkness Pokemon can't be Asleep, Confused, or Paralyzed

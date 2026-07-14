@@ -1217,6 +1217,9 @@ func execute_cpu_retreat(cpu_eval: Dictionary) -> void:
 	if main._should_bail(): return
 	# ECARD2 Suction Cups (Octillery): if player's Active is Octillery, discard CPU's energy when it retreats
 	main.powers_and_bodies.check_suction_cups(main.opponent_active_pokemon, true)
+	# EX16 Metal Gravity (Skarmory ex ex16-98): player's Active reacts to the CPU's retreat with 3 counters.
+	await main.powers_and_bodies.check_ex16_metal_gravity(main.opponent_active_pokemon, true)
+	if main._should_bail(): return
 
 	# Swap positions
 	var old_active = main.opponent_active_pokemon
@@ -3111,6 +3114,9 @@ func cpu_phase_bench_play() -> void:
 		if best_card.has_ability("Tropical Heal"):
 			await main.powers_and_bodies.trigger_ex15_tropical_heal(best_card, true)
 			if main._should_bail(): return
+		# EX16 on-bench-from-hand powers: Cursed Eyes (Absol ex), Crimson/Yellow/Blue Ray (Star Eeveelutions).
+		await main.powers_and_bodies.trigger_ex16_on_bench(best_card, true)
+		if main._should_bail(): return
 
 # R.5: Selects the best bench replacement and performs the retreat
 func cpu_phase_evolution() -> void:
@@ -3474,6 +3480,16 @@ func cpu_score_trainer_card(card: card_object) -> float:
 		"ex15-82": return 60.0  # TV Reporter (Supporter): net +2 cards
 		"ex15-83": return _cpu_score_switch()  # Switch (Item)
 		# Holon Legacy (ex15-74 Stadium) uses the generic stadium-play heuristic.
+		# ── EX16 (EX Power Keepers) — final set, all reprints ──
+		"ex16-73": return 40.0                           # Energy Recycle System: recover basic Energy
+		"ex16-74": return _cpu_score_energy_removal()    # Energy Removal 2
+		"ex16-75": return 35.0                           # Energy Switch
+		"ex16-77": return 45.0                           # Great Ball: fetch a Basic to the Bench
+		"ex16-78": return 50.0                           # Master Ball: dig 7 for a Pokemon
+		"ex16-80": return 55.0                           # Professor Birch (Supporter): draw to 6
+		"ex16-81": return 45.0                           # Scott (Supporter): fetch up to 3 Supporters/Stadiums
+		"ex16-83": return 55.0                           # Steven's Advice (Supporter): draw up to opp Pokemon count
+		# Battle Frontier / Drake's / Glacia's / Phoebe's / Sidney's Stadiums use the generic stadium heuristic.
 	return 0.0
 
 # MR. BRINEY'S COMPASSION (ex3-87): only valuable when the CPU has a damaged non-ex Pokemon worth

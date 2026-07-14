@@ -83,6 +83,7 @@ func _register_all_powers() -> void:
 	_register_ex13_powers()
 	_register_ex14_powers()
 	_register_ex15_powers()
+	_register_ex16_powers()
 
 # ── On-damage and pre-KO event hooks ──────────────────────────────────────────
 # Each Callable is fired after active-pokemon damage resolves (on_damage) or
@@ -168,6 +169,9 @@ func _register_all_power_hooks() -> void:
 	_damage_modifier_hooks.append(func(dmg, atk, def, mods): return _hook_ex15_extra_feather(dmg, atk, def, mods))
 	_damage_modifier_hooks.append(func(dmg, atk, def, mods): return _hook_ex15_armor(dmg, atk, def, mods))
 	_damage_modifier_hooks.append(func(dmg, atk, def, mods): return _hook_ex15_extra_smoke(dmg, atk, def, mods))
+	_damage_modifier_hooks.append(func(dmg, atk, def, mods): return _hook_ex16_drakes_stadium(dmg, atk, def, mods))
+	_damage_modifier_hooks.append(func(dmg, atk, def, mods): return _hook_ex16_glalie_synergy(dmg, atk, def, mods))
+	_damage_modifier_hooks.append(func(dmg, atk, def, mods): return _hook_ex16_sableye_synergy(dmg, atk, def, mods))
 	_on_damage_hooks.append(func(def, atk, dmg, is_def_opp): await check_ex14_fluffy_fur(def, atk, dmg, is_def_opp))
 	_damage_modifier_hooks.append(func(dmg, atk, def, mods): return _hook_ex8_advanced_armor(dmg, atk, def, mods))
 	_damage_modifier_hooks.append(func(dmg, atk, def, mods): return _hook_ex10_thick_fat(dmg, atk, def, mods))
@@ -2242,6 +2246,8 @@ func cpu_phase_activate_powers() -> void:
 	await cpu_phase_ex14_powers()
 	if main._should_bail(): return
 	await cpu_phase_ex15_powers()
+	if main._should_bail(): return
+	await cpu_phase_ex16_powers()
 	if main._should_bail(): return
 
 
@@ -6816,6 +6822,10 @@ func apply_np_between_turn_bodies() -> void:
 	await check_ex15_bedhead()
 	if main._should_bail(): return
 	await check_ex15_sand_damage()
+	if main._should_bail(): return
+
+	# EX16 Synergy Effect (Altaria ex16-2): if Drake's Stadium is in play, remove 1 counter from Altaria.
+	await check_ex16_altaria_synergy()
 	if main._should_bail(): return
 
 	# EX12 Reactive Aroma (Roselia ex12-42): while a Roselia with React Energy attached is in play, remove
@@ -12427,6 +12437,9 @@ func has_no_weakness_body(defender: card_object) -> bool:
 	# EX15 Holon Legacy (ex15-74 Stadium): each Pokémon with δ on its card (both sides) has no Weakness.
 	if is_ex15_holon_legacy_active() and defender.is_delta():
 		return true
+	# EX16 Glacia's Stadium (ex16-76): each player's Water Pokémon (excluding Pokémon-ex) has no Weakness.
+	if main.is_stadium_in_play(StadiumIds.GLACIAS_STADIUM) and not main.is_ex_pokemon(defender) and "Water" in defender.get_effective_types():
+		return true
 	if battle_frontier_disables(defender): return false
 	# ex10 Protective Orb (Pokémon Tool ex10-90): the holder has no Weakness.
 	for ac in defender.attached_cards:
@@ -13315,7 +13328,8 @@ func cpu_phase_ex9_powers() -> void:
 # Space Center (ex8_space_center_ignores_body).
 func battle_frontier_disables(pokemon: card_object) -> bool:
 	if pokemon == null: return false
-	if not main.is_stadium_in_play(StadiumIds.BATTLE_FRONTIER): return false
+	# ex9-75 and ex16-71 are the same card (identical text) reprinted in two sets.
+	if not (main.is_stadium_in_play(StadiumIds.BATTLE_FRONTIER) or main.is_stadium_in_play(StadiumIds.BATTLE_FRONTIER_EX16)): return false
 	var st = pokemon.metadata.get("subtypes", [])
 	if not ("Stage 1" in st or "Stage 2" in st): return false
 	var types = pokemon.get_effective_types()
@@ -16425,10 +16439,22 @@ func power_ex15_type_shift(salamence: card_object) -> void:
 	if not await _ex11_power_ready(salamence, "Type Shift"):
 		if main._should_bail(): return
 		return
+	# The target type is stated in the ability text ("...type is Fire until..." for ex15 Salamence ex;
+	# "...type is Fighting until..." for ex16 Claydol ex). Parse it so one handler covers both.
+	var target_type = "Fire"
+	var ab_text = ""
+	for ab in salamence.metadata.get("abilities", []):
+		if ab.get("name","") == "Type Shift":
+			ab_text = ab.get("text","").to_lower()
+			break
+	for t in ["Grass", "Fire", "Water", "Lightning", "Psychic", "Fighting", "Darkness", "Metal", "Colorless"]:
+		if ("type is " + t.to_lower()) in ab_text:
+			target_type = t
+			break
 	salamence.power_used_this_turn = true
-	salamence.set_effect("ex2_type_override", "end_of_own_turn", "Fire")
+	salamence.set_effect("ex2_type_override", "end_of_own_turn", target_type)
 	main.display_pokemon(is_opp)
-	await main.show_message("TYPE SHIFT! SALAMENCE ex IS NOW FIRE TYPE UNTIL THE END OF YOUR TURN!")
+	await main.show_message("TYPE SHIFT! " + salamence.metadata.get("name","").to_upper() + " IS NOW " + target_type.to_upper() + " TYPE UNTIL THE END OF YOUR TURN!")
 	if main._should_bail(): return
 
 # SHARING (Milotic δ ex15-5): once per turn, look at your opponent's hand; you may use the effect of a
@@ -16657,3 +16683,283 @@ func cpu_phase_ex15_powers() -> void:
 		if main.opponent_deck.any(func(c): return c.metadata.get("supertype","") == "Pokémon" and c.metadata.get("name","").begins_with("Ninetales") and main.is_ex_pokemon(c)):
 			await power_ex15_volunteer(ninetales)
 			if main._should_bail(): return
+
+######################################################################################################################################################
+############################################ EX16 (EX POWER KEEPERS) POWERS & BODIES ################################################################
+######################################################################################################################################################
+# Final ex-series set. Most abilities reuse existing name-based implementations (Terraforming,
+# Firestarter, Energy Draw, Psy Shadow, Magnetic Field, Baby Evolution, Evolutionary Call, Type Shift,
+# Vigorous Aura, Lazy, Safeguard, Thick Skin, Clear Body, Strikes Back, Rough Skin, Natural Cure,
+# Solid Shell, Overzealous, Primal Stare, Energy Grounding). Only the genuinely new ones are below.
+func _register_ex16_powers() -> void:
+	_power_dispatch["Magnetic Redraw"]  = func(p): await power_ex16_magnetic_redraw(p)
+	_power_dispatch["Poison Structure"] = func(p): await power_ex16_poison_structure(p)
+
+# MAGNETIC REDRAW (Metagross ex ex16-95): once during your turn (before your attack), if Metagross ex is
+# your Active, each player shuffles his or her hand into his or her deck, then each player draws 4 cards.
+# Can't be used if Metagross ex is affected by a Special Condition.
+func power_ex16_magnetic_redraw(metagross: card_object) -> void:
+	var is_opp = metagross.is_owner_opp(main)
+	var my_active = main.opponent_active_pokemon if is_opp else main.player_active_pokemon
+	if metagross != my_active:
+		await main.show_message("MAGNETIC REDRAW CAN ONLY BE USED WHILE METAGROSS ex IS ACTIVE!")
+		if main._should_bail(): return
+		return
+	if not await _ex11_power_ready(metagross, "Magnetic Redraw"):
+		if main._should_bail(): return
+		return
+	metagross.power_used_this_turn = true
+	for side in [is_opp, not is_opp]:
+		var hand = main.opponent_hand if side else main.player_hand
+		var deck = main.opponent_deck if side else main.player_deck
+		for c in hand.duplicate():
+			c.current_location = "deck"
+			deck.append(c)
+		hand.clear()
+		deck.shuffle()
+		await main.card_ops.draw_n(side, 4)
+		if main._should_bail(): return
+		main.update_deck_icon(side)
+		main.refresh_hand_display(side)
+	await main.show_message("MAGNETIC REDRAW! EACH PLAYER SHUFFLED THEIR HAND AND DREW 4 CARDS!")
+	if main._should_bail(): return
+
+# POISON STRUCTURE (Cacturne ex16-27): once during your turn (before your attack), if Sidney's Stadium is
+# in play, you may make 1 of the Defending Pokemon Poisoned. Can't be used with a Special Condition.
+func power_ex16_poison_structure(cacturne: card_object) -> void:
+	var is_opp = cacturne.is_owner_opp(main)
+	if not main.is_stadium_in_play(StadiumIds.SIDNEYS_STADIUM):
+		await main.show_message("POISON STRUCTURE NEEDS SIDNEY'S STADIUM IN PLAY!")
+		if main._should_bail(): return
+		return
+	if not await _ex11_power_ready(cacturne, "Poison Structure"):
+		if main._should_bail(): return
+		return
+	var defenders = main.card_ops.get_defending_pokemon(is_opp)
+	if defenders.is_empty() or defenders[0] == null:
+		await main.show_message("POISON STRUCTURE! NO DEFENDING POKEMON!")
+		if main._should_bail(): return
+		return
+	cacturne.power_used_this_turn = true
+	var target = defenders[0]
+	main.card_ops.apply_status(target, "Poisoned", not is_opp)
+	await main.show_message("POISON STRUCTURE! " + target.metadata.get("name","").to_upper() + " IS NOW POISONED!")
+	if main._should_bail(): return
+
+# CPU activation of the ex16 active powers.
+func cpu_phase_ex16_powers() -> void:
+	# Magnetic Redraw (Metagross ex): refresh a small/clogged hand.
+	var metagross = _find_cpu_pokemon_with_power("Magnetic Redraw")
+	if metagross != null and metagross == main.opponent_active_pokemon and not metagross.power_used_this_turn and not is_power_blocked_by_status(metagross):
+		if main.opponent_hand.size() <= 2:
+			await power_ex16_magnetic_redraw(metagross)
+			if main._should_bail(): return
+	# Poison Structure (Cacturne): poison the Defending Pokemon when Sidney's Stadium is up.
+	var cacturne = _find_cpu_pokemon_with_power("Poison Structure")
+	if cacturne != null and not cacturne.power_used_this_turn and not is_power_blocked_by_status(cacturne) and main.is_stadium_in_play(StadiumIds.SIDNEYS_STADIUM):
+		var defenders = main.card_ops.get_defending_pokemon(true)
+		if not defenders.is_empty() and defenders[0] != null and not defenders[0].is_poisoned:
+			await power_ex16_poison_structure(cacturne)
+			if main._should_bail(): return
+
+# CURSED EYES (Absol ex ex16-92): when you put Absol ex from your hand onto your Bench, you may move 3
+# damage counters from 1 of your opponent's Pokemon to another of his or her Pokemon.
+func trigger_ex16_cursed_eyes(absol: card_object, is_opponent: bool) -> void:
+	if absol == null or not absol.has_ability("Cursed Eyes"): return
+	if is_power_blocked(absol): return
+	var opp_pokemon = main.card_ops.get_all_pokemon_in_play(not is_opponent).filter(func(p): return p.current_hp > 0)
+	var sources = opp_pokemon.filter(func(p): return p.get_damage_counters() > 0)
+	if sources.is_empty() or opp_pokemon.size() < 2:
+		return
+	var source: card_object = null
+	if is_opponent:
+		# CPU: move counters off the opponent's most-damaged Pokemon onto the healthiest one.
+		for p in sources:
+			if source == null or p.get_damage_counters() > source.get_damage_counters(): source = p
+	else:
+		source = await main.card_ops.choose_card(sources, false, "CURSED EYES: MOVE FROM", "Choose an opponent's Pokemon to move damage FROM", "SELECT", true, func(c): return float(c.get_damage_counters()))
+		if main._should_bail(): return
+		if source == null: return
+	var dest_pool = opp_pokemon.filter(func(p): return p != source)
+	if dest_pool.is_empty(): return
+	var dest: card_object = null
+	if is_opponent:
+		# Put the counters on a low-HP target to try to set up or secure a KO.
+		for p in dest_pool:
+			if dest == null or p.current_hp < dest.current_hp: dest = p
+	else:
+		dest = await main.card_ops.choose_card(dest_pool, false, "CURSED EYES: MOVE TO", "Choose an opponent's Pokemon to move damage ONTO", "SELECT", true, func(c): return 100.0 - c.current_hp)
+		if main._should_bail(): return
+		if dest == null: return
+	var move_n = min(3, source.get_damage_counters())
+	source.current_hp = min(source.get_max_hp(), source.current_hp + move_n * 10)
+	main.display_hp_circles_above_align(source, not is_opponent)
+	dest.current_hp = max(0, dest.current_hp - move_n * 10)
+	main.display_hp_circles_above_align(dest, not is_opponent)
+	await main.show_message("CURSED EYES! MOVED " + str(move_n) + " DAMAGE COUNTERS TO " + dest.metadata.get("name","").to_upper() + "!")
+	if main._should_bail(): return
+	await main.check_all_knockouts()
+	if main._should_bail(): return
+
+# CRIMSON RAY (Flareon Star ex16-100): when you put Flareon Star onto your Bench, each Active Pokemon
+# (both players') is now Burned.
+func trigger_ex16_crimson_ray(flareon: card_object, is_opponent: bool) -> void:
+	if flareon == null or not flareon.has_ability("Crimson Ray"): return
+	if is_power_blocked(flareon): return
+	for side in [false, true]:
+		var act = main.opponent_active_pokemon if side else main.player_active_pokemon
+		if act != null and act.current_hp > 0:
+			main.card_ops.apply_status(act, "Burned", side)
+	await main.show_message("CRIMSON RAY! EACH ACTIVE POKEMON IS NOW BURNED!")
+	if main._should_bail(): return
+
+# YELLOW RAY (Jolteon Star ex16-101): when you put Jolteon Star onto your Bench, put 1 damage counter on
+# each Active Pokemon (both players').
+func trigger_ex16_yellow_ray(jolteon: card_object, is_opponent: bool) -> void:
+	if jolteon == null or not jolteon.has_ability("Yellow Ray"): return
+	if is_power_blocked(jolteon): return
+	for side in [false, true]:
+		var act = main.opponent_active_pokemon if side else main.player_active_pokemon
+		if act != null and act.current_hp > 0:
+			act.current_hp = max(0, act.current_hp - 10)
+			main.display_hp_circles_above_align(act, side)
+	await main.show_message("YELLOW RAY! 1 DAMAGE COUNTER ON EACH ACTIVE POKEMON!")
+	if main._should_bail(): return
+	await main.check_all_knockouts()
+	if main._should_bail(): return
+
+# BLUE RAY (Vaporeon Star ex16-102): when you put Vaporeon Star onto your Bench, remove all Special
+# Conditions and 3 damage counters from each Active Pokemon (both players').
+func trigger_ex16_blue_ray(vaporeon: card_object, is_opponent: bool) -> void:
+	if vaporeon == null or not vaporeon.has_ability("Blue Ray"): return
+	if is_power_blocked(vaporeon): return
+	for side in [false, true]:
+		var act = main.opponent_active_pokemon if side else main.player_active_pokemon
+		if act != null and act.current_hp > 0:
+			main.clear_all_statuses(act, side)
+			act.current_hp = min(act.get_max_hp(), act.current_hp + 30)
+			main.display_hp_circles_above_align(act, side)
+	await main.show_message("BLUE RAY! REMOVED ALL SPECIAL CONDITIONS AND 3 DAMAGE COUNTERS FROM EACH ACTIVE!")
+	if main._should_bail(): return
+
+# Dispatches all ex16 "when put onto your Bench from hand" powers. Called from Main + CPU bench-from-hand.
+func trigger_ex16_on_bench(pokemon: card_object, is_opponent: bool) -> void:
+	if pokemon == null: return
+	if pokemon.has_ability("Cursed Eyes"):
+		await trigger_ex16_cursed_eyes(pokemon, is_opponent)
+	elif pokemon.has_ability("Crimson Ray"):
+		await trigger_ex16_crimson_ray(pokemon, is_opponent)
+	elif pokemon.has_ability("Yellow Ray"):
+		await trigger_ex16_yellow_ray(pokemon, is_opponent)
+	elif pokemon.has_ability("Blue Ray"):
+		await trigger_ex16_blue_ray(pokemon, is_opponent)
+
+# CHILLING BREATH (Walrein ex ex16-99): when you play Walrein ex from your hand to evolve one of your
+# Pokemon, your opponent can't play any Trainer cards from his or her hand during his or her next turn.
+func trigger_ex16_chilling_breath(walrein: card_object, is_opponent: bool) -> void:
+	if walrein == null or not walrein.has_ability("Chilling Breath"): return
+	if is_power_blocked(walrein): return
+	# apply_trainer_lock(is_opponent_attacking) locks the OTHER side's Trainer play next turn.
+	await main.attack_effects.apply_trainer_lock(is_opponent)
+	await main.show_message("CHILLING BREATH! YOUR OPPONENT CAN'T PLAY TRAINER CARDS NEXT TURN!")
+	if main._should_bail(): return
+
+# METAL GRAVITY (Skarmory ex ex16-98): if your opponent's Active Pokemon retreats and has 40 or more
+# remaining HP, put 3 damage counters on that Pokemon. Once per turn. Called when a Pokemon retreats.
+func check_ex16_metal_gravity(retreating: card_object, is_retreater_opp: bool) -> void:
+	if retreating == null or retreating.current_hp < 40: return
+	# The reacting Skarmory ex is the OTHER side's Active.
+	var skarmory = main.player_active_pokemon if is_retreater_opp else main.opponent_active_pokemon
+	if skarmory == null or not skarmory.has_ability("Metal Gravity"): return
+	if is_power_blocked(skarmory): return
+	if skarmory.has_effect("ex16_metal_gravity_used"): return
+	skarmory.set_effect("ex16_metal_gravity_used", "end_of_opponent_turn")
+	retreating.current_hp = max(0, retreating.current_hp - 30)
+	main.display_hp_circles_above_align(retreating, is_retreater_opp)
+	await main.show_message("METAL GRAVITY! 3 DAMAGE COUNTERS ON " + retreating.metadata.get("name","").to_upper() + "!")
+	if main._should_bail(): return
+	await main.check_all_knockouts()
+	if main._should_bail(): return
+
+# PSYCHIC PROTECTOR (Flygon ex ex16-94): if Flygon ex is damaged by an opponent's attack, you may discard
+# up to 4 cards from your hand; any damage done to Flygon ex is reduced by 10 for each card discarded.
+# Called from Main's damage-application flow; returns the (possibly reduced) damage.
+func check_ex16_psychic_protector(defender: card_object, damage: int) -> int:
+	if defender == null or damage <= 0: return damage
+	if not defender.has_ability("Psychic Protector") or is_power_blocked_by_status(defender): return damage
+	var def_is_opp = defender.is_owner_opp(main)
+	var hand = main.opponent_hand if def_is_opp else main.player_hand
+	if hand.is_empty(): return damage
+	var max_n = min(4, hand.size())
+	var discard_n = 0
+	if def_is_opp:
+		# CPU: discard only enough to survive a lethal hit (never more than needed, never waste hand).
+		if damage >= defender.current_hp:
+			var needed = int(ceil(float(damage - defender.current_hp + 10) / 10.0))
+			discard_n = clamp(needed, 0, max_n)
+	else:
+		var options: Array = ["0"]
+		for i in range(1, max_n + 1):
+			options.append(str(i))
+		discard_n = await main.attack_effects._ex16_choose_count(options, "PSYCHIC PROTECTOR: DISCARD HOW MANY CARDS TO REDUCE DAMAGE?")
+		if main._should_bail(): return damage
+	if discard_n <= 0:
+		return damage
+	await main.card_ops.discard_from_hand(def_is_opp, discard_n)
+	if main._should_bail(): return damage
+	var reduction = discard_n * 10
+	await main.show_message("PSYCHIC PROTECTOR! DISCARDED " + str(discard_n) + " CARDS — DAMAGE REDUCED BY " + str(reduction) + "!")
+	if main._should_bail(): return max(0, damage - reduction)
+	return max(0, damage - reduction)
+
+# ALTARIA SYNERGY EFFECT (Altaria ex16-2): if Drake's Stadium is in play, remove 1 damage counter from
+# Altaria between turns. Called from apply_np_between_turn_bodies.
+func check_ex16_altaria_synergy() -> void:
+	if not main.is_stadium_in_play(StadiumIds.DRAKES_STADIUM): return
+	for side in [false, true]:
+		for p in main.card_ops.get_all_pokemon_in_play(side):
+			if p.current_hp <= 0: continue
+			if p.metadata.get("name","") != "Altaria": continue
+			if not p.has_ability("Synergy Effect") or is_power_blocked(p): continue
+			if p.current_hp < p.get_max_hp():
+				p.current_hp = min(p.get_max_hp(), p.current_hp + 10)
+				main.display_hp_circles_above_align(p, side)
+				await main.show_message("SYNERGY EFFECT! REMOVED 1 DAMAGE COUNTER FROM ALTARIA!")
+				if main._should_bail(): return
+
+# ── ex16 damage-modifier bodies (registered in _register_all_power_hooks) ──
+
+# DRAKE'S STADIUM (ex16-72): any damage done to a Colorless ACTIVE Pokemon (both sides) by an opponent's
+# attack is reduced by 10 (after applying Weakness and Resistance).
+func _hook_ex16_drakes_stadium(damage: int, attacker: card_object, defender: card_object, modifiers: Array) -> int:
+	if damage <= 0 or defender == null: return damage
+	if not main.is_stadium_in_play(StadiumIds.DRAKES_STADIUM): return damage
+	if defender != main.player_active_pokemon and defender != main.opponent_active_pokemon: return damage
+	if "Colorless" in defender.get_effective_types():
+		var r = min(damage, 10)
+		modifiers.append("DRAKE'S STADIUM -" + str(r))
+		return damage - r
+	return damage
+
+# SYNERGY EFFECT (Glalie ex16-30): if Glacia's Stadium is in play, any damage done to Glalie by the
+# opponent's Pokemon is reduced by 30 (after applying Weakness and Resistance).
+func _hook_ex16_glalie_synergy(damage: int, attacker: card_object, defender: card_object, modifiers: Array) -> int:
+	if damage <= 0 or defender == null: return damage
+	if defender.metadata.get("name","") != "Glalie": return damage
+	if not defender.has_ability("Synergy Effect") or is_power_blocked_by_status(defender): return damage
+	if not main.is_stadium_in_play(StadiumIds.GLACIAS_STADIUM): return damage
+	var r = min(damage, 30)
+	modifiers.append("SYNERGY EFFECT -" + str(r))
+	return damage - r
+
+# SYNERGY EFFECT (Sableye ex16-22): if Phoebe's Stadium is in play, prevent all damage done to Sableye by
+# attacks from the opponent's Pokemon-ex.
+func _hook_ex16_sableye_synergy(damage: int, attacker: card_object, defender: card_object, modifiers: Array) -> int:
+	if damage <= 0 or defender == null or attacker == null: return damage
+	if defender.metadata.get("name","") != "Sableye": return damage
+	if not defender.has_ability("Synergy Effect") or is_power_blocked_by_status(defender): return damage
+	if not main.is_stadium_in_play(StadiumIds.PHOEBES_STADIUM): return damage
+	if main.is_ex_pokemon(attacker):
+		modifiers.append("SYNERGY EFFECT NO DAMAGE")
+		return 0
+	return damage

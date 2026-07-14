@@ -49,6 +49,7 @@ func _ensure_dispatch_ready() -> void:
 	_register_ex13_attacks()
 	_register_ex14_attacks()
 	_register_ex15_attacks()
+	_register_ex16_attacks()
 
 func _register_si1_attacks() -> void:
 	_attack_dispatch["rainbow wave"]    = func(atk, a, d, opp): await execute_rainbow_wave(a, opp);            await _attack_finish(false, 0,   atk, a.metadata.get("types",["Colorless"]), opp)
@@ -28977,3 +28978,343 @@ func execute_ex15_dark_swirl(attacker: card_object, defender: card_object, is_op
 	main.update_discard_pile_display(not is_opponent)
 	await main.show_message("DARK SWIRL! DISCARDED ALL ENERGY AND MILLED " + str(milled) + " OF YOUR OPPONENT'S CARDS!")
 	if main._should_bail(): return
+
+######################################################################################################################################################
+############################################## EX16 (EX POWER KEEPERS) ATTACK EFFECTS ###############################################################
+######################################################################################################################################################
+# Final ex-series set. Reprint-heavy: the vast majority of attacks resolve via the GENERIC parser
+# (status / coin bonus / times-heads / self-damage / energy discard / bench spread / retreat lock /
+# toxic / smokescreen / heal / extra-energy-with-cap) or via existing dispatch handlers that read
+# their numbers from the card. Registered LAST so ex16 collision overrides win. Written single-battle
+# today but through card_ops.get_active/defending/all_pokemon_in_play so a future Double Battle mode
+# only changes those helpers.
+func _register_ex16_attacks() -> void:
+	# -- Collision overrides (branch on ex16 uid; else delegate to the prior handler) --
+	var _pv_mixup16 = _attack_dispatch.get("mix-up")
+	_attack_dispatch["mix-up"] = func(atk, a, d, opp):
+		if a.uid.begins_with("ex16-"):   # ex16 Aggron = 70 + opponent always discards top of deck (no coin)
+			var b = parse_attack_base_damage(atk)
+			await execute_ex16_mix_up(a, d, opp, b)
+			await _attack_finish(true, b, atk, a.metadata.get("types",["Colorless"]), opp)
+		elif _pv_mixup16: await _pv_mixup16.call(atk, a, d, opp)
+
+	var _pv_darkmind16 = _attack_dispatch.get("dark mind")
+	_attack_dispatch["dark mind"] = func(atk, a, d, opp):
+		if a.uid.begins_with("ex16-"):   # ex16 Dusclops = base to Active + 20 to a chosen benched (no W/R)
+			var b = parse_attack_base_damage(atk)
+			await execute_ex16_dark_mind(a, d, opp, b)
+			await _attack_finish(true, b, atk, a.metadata.get("types",["Colorless"]), opp)
+		elif _pv_darkmind16: await _pv_darkmind16.call(atk, a, d, opp)
+
+	var _pv_wreck16 = _attack_dispatch.get("wreck")
+	_attack_dispatch["wreck"] = func(atk, a, d, opp):
+		if a.uid.begins_with("ex16-"):   # ex16 Walrein ex = 70 (+20 if any Stadium in play, then discard it)
+			var dmg = await execute_ex16_wreck(a, d, opp)
+			await _attack_finish(true, dmg, atk, a.metadata.get("types",["Colorless"]), opp)
+		elif _pv_wreck16: await _pv_wreck16.call(atk, a, d, opp)
+
+	# -- Novel ex16 attacks --
+	_attack_dispatch["dark burst"]       = func(atk, a, d, opp): var dmg=await execute_ex16_dark_burst(a, d, opp); await _attack_finish(true, dmg, atk, a.metadata.get("types",["Colorless"]), opp)
+	_attack_dispatch["dirge"]            = func(atk, a, d, opp): var b=parse_attack_base_damage(atk); await execute_ex16_same_name_blast(a, d, opp, b); await _attack_finish(true, b, atk, a.metadata.get("types",["Colorless"]), opp)
+	_attack_dispatch["scanblast"]        = func(atk, a, d, opp): var b=parse_attack_base_damage(atk); await execute_ex16_same_name_blast(a, d, opp, b); await _attack_finish(true, b, atk, a.metadata.get("types",["Colorless"]), opp)
+	_attack_dispatch["grudge"]           = func(atk, a, d, opp): var dmg=await execute_ex16_grudge(a, d, opp); await _attack_finish(true, dmg, atk, a.metadata.get("types",["Colorless"]), opp)
+	_attack_dispatch["hydro wave"]       = func(atk, a, d, opp): await execute_ex16_hydro_wave(a, d, opp); await _attack_finish(false, 0, atk, a.metadata.get("types",["Colorless"]), opp)
+	# "Mysterious Light" also exists on a gym1 card (coin → Asleep, no damage); only ex16 Dusclops uses the
+	# Phoebe's Stadium confuse variant. Non-ex16 cards fall through to the GENERIC effect resolver.
+	_attack_dispatch["mysterious light"] = func(atk, a, d, opp):
+		if a.uid.begins_with("ex16-"):
+			var b=parse_attack_base_damage(atk); await execute_ex16_mysterious_light(a, d, opp, b); await _attack_finish(true, b, atk, a.metadata.get("types",["Colorless"]), opp)
+		else:
+			await execute_generic_copied_attack(atk, a, d, opp, true)
+	_attack_dispatch["rock blast"]       = func(atk, a, d, opp): await execute_ex16_rock_blast(a, d, opp); await _attack_finish(false, 0, atk, a.metadata.get("types",["Colorless"]), opp)
+	_attack_dispatch["volcanic flame"]   = func(atk, a, d, opp): var b=parse_attack_base_damage(atk); await execute_ex16_volcanic_flame(a, d, opp, b); await _attack_finish(true, b, atk, a.metadata.get("types",["Colorless"]), opp)
+	_attack_dispatch["skill hack"]       = func(atk, a, d, opp): await execute_ex16_skill_hack(a, d, opp, atk)
+	# Mach Claw (Armaldo ex16-3): base damage that isn't affected by Resistance (Weakness still applies).
+	_attack_dispatch["mach claw"]        = func(atk, a, d, opp): var b=parse_attack_base_damage(atk); await execute_ex16_mach_claw(a, d, opp, b); await _attack_finish(true, b, atk, a.metadata.get("types",["Colorless"]), opp)
+
+# -- ex16 executors --
+
+# MACH CLAW (Armaldo ex16-3): base damage; this attack's damage isn't affected by Resistance (Weakness
+# and everything else still applies). Implemented by temporarily clearing the defender's Resistance.
+func execute_ex16_mach_claw(attacker: card_object, defender: card_object, is_opponent: bool, base_damage: int) -> void:
+	if await handle_attack_confusion(attacker, is_opponent): return
+	if await handle_attack_blind(attacker, is_opponent): return
+	var saved_res = null
+	if defender != null:
+		saved_res = defender.metadata.get("resistances", null)
+		if saved_res != null:
+			defender.metadata["resistances"] = []
+	await gym1_hit_active(attacker, defender, is_opponent, base_damage)
+	if defender != null and saved_res != null:
+		defender.metadata["resistances"] = saved_res
+	if main._should_bail(): return
+	await main.check_all_knockouts()
+	if main._should_bail(): return
+
+# MIX-UP (Aggron ex16-1): base damage; your opponent discards the top card of his or her deck.
+func execute_ex16_mix_up(attacker: card_object, defender: card_object, is_opponent: bool, base_damage: int) -> void:
+	if await handle_attack_confusion(attacker, is_opponent): return
+	if await handle_attack_blind(attacker, is_opponent): return
+	await gym1_hit_active(attacker, defender, is_opponent, base_damage)
+	if main._should_bail(): return
+	await main.check_all_knockouts()
+	if main._should_bail(): return
+	var opp_deck = main.player_deck if is_opponent else main.opponent_deck
+	var opp_discard = main.player_discard_pile if is_opponent else main.opponent_discard_pile
+	if not opp_deck.is_empty():
+		var top = opp_deck.pop_front()
+		top.current_location = "discard"
+		opp_discard.append(top)
+		main.update_deck_icon(is_opponent)
+		main.update_discard_pile_display(not is_opponent)
+		await main.show_message("MIX-UP! OPPONENT DISCARDED THE TOP CARD OF THEIR DECK!")
+	else:
+		await main.show_message("MIX-UP! OPPONENT'S DECK IS EMPTY!")
+	if main._should_bail(): return
+
+# DARK MIND (Dusclops ex16-14): base damage to the Active, then 20 damage to 1 of the opponent's
+# Benched Pokemon (no Weakness/Resistance for the Bench).
+func execute_ex16_dark_mind(attacker: card_object, defender: card_object, is_opponent: bool, base_damage: int) -> void:
+	if await handle_attack_confusion(attacker, is_opponent): return
+	if await handle_attack_blind(attacker, is_opponent): return
+	await gym1_hit_active(attacker, defender, is_opponent, base_damage)
+	if main._should_bail(): return
+	await main.check_all_knockouts()
+	if main._should_bail(): return
+	var target_is_opp = not is_opponent
+	var bench = main.opponent_bench if target_is_opp else main.player_bench
+	if bench.is_empty():
+		await main.show_message("DARK MIND! NO BENCHED POKEMON!")
+		if main._should_bail(): return
+		return
+	var targets = await gym1_choose_bench_targets(bench, 1, target_is_opp, is_opponent, "DARK MIND: CHOOSE A BENCHED POKEMON")
+	if main._should_bail(): return
+	if targets.size() > 0:
+		main.card_ops.apply_bench_damage(targets[0], 20, target_is_opp)
+		await main.show_message("DARK MIND! 20 DAMAGE TO " + targets[0].metadata.get("name","").to_upper() + "!")
+		if main._should_bail(): return
+	await main.check_all_knockouts()
+	if main._should_bail(): return
+
+# WRECK (Walrein ex ex16-99): 70; if any Stadium card is in play, 90 and discard that Stadium.
+func execute_ex16_wreck(attacker: card_object, defender: card_object, is_opponent: bool) -> int:
+	if await handle_attack_confusion(attacker, is_opponent): return 0
+	if await handle_attack_blind(attacker, is_opponent): return 0
+	var dmg = 70
+	var had_stadium = main.current_stadium_card != null
+	if had_stadium: dmg = 90
+	await gym1_hit_active(attacker, defender, is_opponent, dmg)
+	if main._should_bail(): return dmg
+	await main.check_all_knockouts()
+	if main._should_bail(): return dmg
+	if had_stadium:
+		await main.trainer_effects.remove_current_stadium("WRECK")
+		if main._should_bail(): return dmg
+		await main.show_message("WRECK! DISCARDED THE STADIUM -- 90 DAMAGE!")
+		if main._should_bail(): return dmg
+	return dmg
+
+# DARK BURST (Mightyena ex16-18): 50; if Sidney's Stadium is in play, 50 + 20 more damage.
+func execute_ex16_dark_burst(attacker: card_object, defender: card_object, is_opponent: bool) -> int:
+	if await handle_attack_confusion(attacker, is_opponent): return 0
+	if await handle_attack_blind(attacker, is_opponent): return 0
+	var dmg = 50
+	if main.is_stadium_in_play("ex16-82"):
+		dmg += 20
+		await main.show_message("DARK BURST! SIDNEY'S STADIUM -- " + str(dmg) + " DAMAGE!")
+		if main._should_bail(): return dmg
+	await gym1_hit_active(attacker, defender, is_opponent, dmg)
+	if main._should_bail(): return dmg
+	await main.check_all_knockouts()
+	return dmg
+
+# DIRGE (Shiftry ex ex16-97) / SCANBLAST (Metagross ex ex16-95): base damage to the Active, then the
+# same base damage to each of the opponent's Benched Pokemon that has the SAME NAME as the Defending
+# Pokemon (no Weakness/Resistance for the Bench).
+func execute_ex16_same_name_blast(attacker: card_object, defender: card_object, is_opponent: bool, base_damage: int) -> void:
+	if await handle_attack_confusion(attacker, is_opponent): return
+	if await handle_attack_blind(attacker, is_opponent): return
+	await gym1_hit_active(attacker, defender, is_opponent, base_damage)
+	if main._should_bail(): return
+	await main.check_all_knockouts()
+	if main._should_bail(): return
+	if defender == null: return
+	var def_name = defender.metadata.get("name","")
+	var target_is_opp = not is_opponent
+	var bench = main.opponent_bench if target_is_opp else main.player_bench
+	var hit_any = false
+	for p in bench:
+		if p != null and p.current_hp > 0 and p.metadata.get("name","") == def_name:
+			main.card_ops.apply_bench_damage(p, base_damage, target_is_opp)
+			hit_any = true
+	if hit_any:
+		await main.show_message(str(base_damage) + " DAMAGE TO EACH BENCHED " + def_name.to_upper() + "!")
+		if main._should_bail(): return
+	await main.check_all_knockouts()
+	if main._should_bail(): return
+
+# GRUDGE (Banette ex16-4): 20 + 10 more damage for each Prize card your opponent has taken.
+func execute_ex16_grudge(attacker: card_object, defender: card_object, is_opponent: bool) -> int:
+	if await handle_attack_confusion(attacker, is_opponent): return 0
+	if await handle_attack_blind(attacker, is_opponent): return 0
+	# "Your opponent" (from the attacker's perspective) is the OTHER side; count how many of their
+	# Prizes they have already taken (started at the configured amount, usually 6).
+	var opp_prizes = main.player_prize_cards if is_opponent else main.opponent_prize_cards
+	var taken = max(0, main.amount_of_prize_cards - opp_prizes.size())
+	var dmg = 20 + 10 * taken
+	if taken > 0:
+		await main.show_message("GRUDGE! OPPONENT HAS TAKEN " + str(taken) + " PRIZES -- " + str(dmg) + " DAMAGE!")
+		if main._should_bail(): return dmg
+	await gym1_hit_active(attacker, defender, is_opponent, dmg)
+	if main._should_bail(): return dmg
+	await main.check_all_knockouts()
+	return dmg
+
+# HYDRO WAVE (Salamence ex ex16-96): discard all Water Energy attached to Salamence ex; this attack
+# does 30 damage to each of your opponent's Benched Pokemon (no Weakness/Resistance). No Active damage.
+func execute_ex16_hydro_wave(attacker: card_object, defender: card_object, is_opponent: bool) -> void:
+	if await handle_attack_confusion(attacker, is_opponent): return
+	if await handle_attack_blind(attacker, is_opponent): return
+	var to_discard: Array = []
+	for e in attacker.attached_energies:
+		if "Water" in main.get_energy_provided_by_card(e):
+			to_discard.append(e)
+	for e in to_discard:
+		await main.card_ops.send_to_discard(e, is_opponent, true)
+		if main._should_bail(): return
+	main.display_active_pokemon_energies(is_opponent)
+	await main.show_message("HYDRO WAVE! DISCARDED " + str(to_discard.size()) + " WATER ENERGY!")
+	if main._should_bail(): return
+	var target_is_opp = not is_opponent
+	var bench = main.opponent_bench if target_is_opp else main.player_bench
+	for p in bench:
+		if p != null and p.current_hp > 0:
+			main.card_ops.apply_bench_damage(p, 30, target_is_opp)
+	await main.check_all_knockouts()
+	if main._should_bail(): return
+
+# MYSTERIOUS LIGHT (Dusclops ex16-14): base damage; if Phoebe's Stadium is in play, the Defending
+# Pokemon is now Confused.
+func execute_ex16_mysterious_light(attacker: card_object, defender: card_object, is_opponent: bool, base_damage: int) -> void:
+	if await handle_attack_confusion(attacker, is_opponent): return
+	if await handle_attack_blind(attacker, is_opponent): return
+	await gym1_hit_active(attacker, defender, is_opponent, base_damage)
+	if main._should_bail(): return
+	if main.is_stadium_in_play("ex16-79") and defender != null and defender.current_hp > 0:
+		main.card_ops.apply_status(defender, "Confused", not is_opponent)
+		await main.show_message("MYSTERIOUS LIGHT! PHOEBE'S STADIUM -- " + defender.metadata.get("name","").to_upper() + " IS CONFUSED!")
+		if main._should_bail(): return
+	await main.check_all_knockouts()
+	if main._should_bail(): return
+
+# ROCK BLAST (Armaldo ex16-3): discard up to 5 Fighting Energy attached to Armaldo. For each Energy
+# discarded, choose an opponent's Pokemon in play (you may choose the same one more than once) and do
+# 20 damage to it. This damage isn't affected by Weakness or Resistance.
+func execute_ex16_rock_blast(attacker: card_object, defender: card_object, is_opponent: bool) -> void:
+	if await handle_attack_confusion(attacker, is_opponent): return
+	if await handle_attack_blind(attacker, is_opponent): return
+	var fighting: Array = []
+	for e in attacker.attached_energies:
+		if "Fighting" in main.get_energy_provided_by_card(e):
+			fighting.append(e)
+	if fighting.is_empty():
+		await main.show_message("ROCK BLAST! NO FIGHTING ENERGY TO DISCARD!")
+		if main._should_bail(): return
+		return
+	# Choose how many to discard (up to 5). CPU discards as many as it can (up to 5); the player picks.
+	var max_n = min(5, fighting.size())
+	var discard_n = max_n
+	if not is_opponent:
+		var options: Array = []
+		for i in range(1, max_n + 1):
+			options.append(str(i))
+		discard_n = await _ex16_choose_count(options, "ROCK BLAST: HOW MANY FIGHTING ENERGY TO DISCARD?")
+		if main._should_bail(): return
+	for i in range(discard_n):
+		await main.card_ops.send_to_discard(fighting[i], is_opponent, true)
+		if main._should_bail(): return
+	main.display_active_pokemon_energies(is_opponent)
+	await main.show_message("ROCK BLAST! DISCARDED " + str(discard_n) + " FIGHTING ENERGY!")
+	if main._should_bail(): return
+	var pool = _ex3_opp_snipe_pool(is_opponent, false)
+	if pool.is_empty():
+		await main.check_all_knockouts()
+		return
+	for i in range(discard_n):
+		if pool.is_empty(): break
+		var target: card_object = null
+		if is_opponent:
+			var sorted = pool.duplicate()
+			sorted.sort_custom(func(x, y): return x.current_hp < y.current_hp)
+			target = sorted[0]
+		else:
+			target = await main.card_ops.choose_card(pool, false, "ROCK BLAST: TARGET " + str(i + 1) + " OF " + str(discard_n), "Choose an opponent's Pokemon (repeats allowed)", "SELECT", false, func(c): return 100.0 - c.current_hp)
+			if main._should_bail(): return
+			if target == null: target = pool[0]
+		gym1_hit_raw(target, 20, not is_opponent)
+		await main.check_all_knockouts()
+		if main._should_bail(): return
+		pool = _ex3_opp_snipe_pool(is_opponent, false)
+	if main._should_bail(): return
+
+# VOLCANIC FLAME (Salamence ex ex16-96): base damage; then discard the top 5 cards from YOUR deck.
+func execute_ex16_volcanic_flame(attacker: card_object, defender: card_object, is_opponent: bool, base_damage: int) -> void:
+	if await handle_attack_confusion(attacker, is_opponent): return
+	if await handle_attack_blind(attacker, is_opponent): return
+	await gym1_hit_active(attacker, defender, is_opponent, base_damage)
+	if main._should_bail(): return
+	await main.check_all_knockouts()
+	if main._should_bail(): return
+	var deck = main.opponent_deck if is_opponent else main.player_deck
+	var discard = main.opponent_discard_pile if is_opponent else main.player_discard_pile
+	var milled = 0
+	for i in range(5):
+		if deck.is_empty(): break
+		var c: card_object = deck.pop_front()
+		c.current_location = "discard"
+		discard.append(c)
+		milled += 1
+	main.update_deck_icon(is_opponent)
+	main.update_discard_pile_display(is_opponent)
+	await main.show_message("VOLCANIC FLAME! DISCARDED THE TOP " + str(milled) + " CARDS OF YOUR DECK!")
+	if main._should_bail(): return
+
+# SKILL HACK (Shiftry ex ex16-97): look at your opponent's hand, choose a Basic Pokemon or Evolution
+# card there, choose 1 of that Pokemon's attacks, and perform it (ignoring its Energy cost). Shiftry ex
+# stays Darkness type. Self-finishing (execute_copied_attack fires _attack_finish once internally).
+func execute_ex16_skill_hack(attacker: card_object, defender: card_object, is_opponent: bool, source_attack: Dictionary) -> void:
+	if await handle_attack_confusion(attacker, is_opponent):
+		await _attack_finish(false, 0, source_attack, attacker.metadata.get("types",["Colorless"]), is_opponent); return
+	if await handle_attack_blind(attacker, is_opponent):
+		await _attack_finish(false, 0, source_attack, attacker.metadata.get("types",["Colorless"]), is_opponent); return
+	var opp_hand = main.player_hand if is_opponent else main.opponent_hand
+	var pool: Array = []
+	for c in opp_hand:
+		if c.metadata.get("supertype","") != "Pokemon" and c.metadata.get("supertype","") != "Pokémon": continue
+		var subs = c.metadata.get("subtypes", [])
+		var is_basic_or_evo = ("Basic" in subs) or ("Stage 1" in subs) or ("Stage 2" in subs)
+		if not is_basic_or_evo: continue
+		for atk in c.metadata.get("attacks", []):
+			pool.append(atk)
+	if pool.is_empty():
+		await main.show_message("SKILL HACK! NO BASIC OR EVOLUTION CARD TO COPY!")
+		if main._should_bail(): return
+		await _attack_finish(false, 0, source_attack, attacker.metadata.get("types",["Colorless"]), is_opponent)
+		return
+	var chosen = await choose_attack_from_pool(pool, is_opponent)
+	if main._should_bail(): return
+	if chosen.is_empty():
+		await _attack_finish(false, 0, source_attack, attacker.metadata.get("types",["Colorless"]), is_opponent)
+		return
+	await main.show_message(attacker.metadata.get("name","").to_upper() + " USES SKILL HACK -- " + chosen.get("name","").to_upper() + "!")
+	if main._should_bail(): return
+	await execute_copied_attack(chosen, attacker, defender, is_opponent, false)
+
+# Small helper: present a numeric-count chooser as attack-pool style buttons; returns the chosen int.
+func _ex16_choose_count(options: Array, _header: String) -> int:
+	var fake_pool: Array = []
+	for o in options:
+		fake_pool.append({"name": o, "cost": [], "damage": "", "text": ""})
+	var picked = await choose_attack_from_pool(fake_pool, false)
+	if picked.is_empty(): return int(options[options.size() - 1])
+	return int(picked.get("name", options[0]))
