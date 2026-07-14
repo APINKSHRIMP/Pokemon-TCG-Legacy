@@ -2105,6 +2105,8 @@ func add_pokemon_to_bench(pokemon: card_object) -> void:
 	# Add the pokemon to the bench array
 	player_bench.append(pokemon)
 	print("Pokemon added to bench. Bench size: ", player_bench.size())
+	powers_and_bodies.refresh_holon_veil()   # EX15 Holon Veil
+
 	# GYM2 Giovanni's Persian Call the Boss — search deck for a Giovanni trainer when Persian comes into play from hand
 	if original_location == "hand":
 		await powers_and_bodies.trigger_call_the_boss(pokemon, false)
@@ -2138,6 +2140,10 @@ func add_pokemon_to_bench(pokemon: card_object) -> void:
 		# EX14 Crush Chance (Tauros ex14-12): on benching from hand, may discard a Stadium card in play.
 		if pokemon.has_ability("Crush Chance"):
 			await powers_and_bodies.trigger_ex14_crush_chance(pokemon, false)
+		# EX15 Tropical Heal (Tropius δ ex15-23): on benching from hand, remove all Special Conditions,
+		# Imprison markers, and Shock-wave markers from your Pokémon.
+		if pokemon.has_ability("Tropical Heal"):
+			await powers_and_bodies.trigger_ex15_tropical_heal(pokemon, false)
 
 # Function that get's the card position/location/object. Called from various functions when trying to find a specific card object
 func find_card_ui_for_object(card_obj: card_object) -> TextureRect:
@@ -2592,6 +2598,10 @@ func send_card_to_discard(card: card_object, is_opponent: bool) -> void:
 	card.electrode_energy_type = ""
 	card.attached_as_energy = false
 	card.pokemon_energy_types = []
+	# EX15: markers and Holon Veil grant are cleared when a Pokémon leaves play.
+	card.imprison_markers = 0
+	card.shockwave_markers = 0
+	card.granted_delta = false
 	# Clear while_in_play and end_of_turn disabled attacks (keep entire_game)
 	var keys_to_remove = []
 	for atk_name in card.disabled_attacks:
@@ -2679,7 +2689,8 @@ func player_start_turn_checks() -> void:
 
 	refresh_hand_display(false)
 	update_deck_icon(false)
-	
+	powers_and_bodies.refresh_holon_veil()   # EX15 Holon Veil: recompute board-wide δ grant
+
 	# Update Ditto Transform state (may need to re-transform after opponent turn changes)
 	powers_and_bodies.update_ditto_transform(false)
 	powers_and_bodies.update_ditto_transform(true)
@@ -3296,10 +3307,20 @@ func perform_evolution(is_opponent: bool) -> void:
 	# EX14 Peal of Thunder (Charizard δ ex14-4): on evolving, look at the top 5 cards and attach Energy.
 	elif evo_card.has_ability("Peal of Thunder"):
 		await powers_and_bodies.trigger_ex14_peal_of_thunder(evo_card, is_opponent)
+	# EX15 on-play (evolve from hand) power triggers
+	elif evo_card.has_ability("Evolutionary Call"):
+		await powers_and_bodies.trigger_ex15_evolutionary_call(evo_card, is_opponent)
+	elif evo_card.has_ability("Prowl"):
+		await powers_and_bodies.trigger_ex15_prowl(evo_card, is_opponent)
+	elif evo_card.has_ability("Dig Up"):
+		await powers_and_bodies.trigger_ex15_dig_up(evo_card, is_opponent)
 
 	# EX7 Darkest Impulse (Dark Ampharos ex7-2): whenever the opponent evolves a Pokemon, the opposing
 	# Dark Ampharos puts 2 damage counters on it. Fires for every evolution (both sides).
 	await powers_and_bodies.check_ex7_darkest_impulse(evo_card, is_opponent)
+
+	# EX15 Holon Veil (Ampharos δ): evolving may bring Ampharos into play or add a Pokémon to the δ set.
+	powers_and_bodies.refresh_holon_veil()
 
 ########################################################### Retreat functions ##############################################################
 
@@ -4501,7 +4522,10 @@ func check_and_handle_knockout(pokemon: card_object, is_opponent: bool) -> bool:
 	
 	# Now do the actual array manipulation
 	send_card_to_discard(pokemon, is_opponent)
-	
+
+	# EX15 Holon Veil: a KO (e.g. Ampharos δ leaving play) may collapse the board-wide δ grant.
+	powers_and_bodies.refresh_holon_veil()
+
 	# Fix 2: Invalidate CPU evaluation cache after board state change
 	cpu_ai.invalidate_cpu_evaluation()
 	
@@ -4961,6 +4985,29 @@ func get_retreat_cost(pokemon: card_object) -> int:
 	if pokemon.has_ability("Flotation") and not powers_and_bodies.is_power_blocked(pokemon) and pokemon.attached_energies.size() <= 1:
 		return 0
 
+	# EX15 Psychic Wing (Vibrava δ ex15-24): Retreat Cost is 0 while any Psychic Energy is attached.
+	if pokemon.has_ability("Psychic Wing") and not powers_and_bodies.is_power_blocked(pokemon):
+		for e in pokemon.attached_energies:
+			if "Psychic" in get_energy_provided_by_card(e):
+				return 0
+
+	# EX15 Link Wing (Latios ex δ ex15-96): the Retreat Cost for each of your Latias/Latias ex/Latios/
+	# Latios ex is 0 while a Latios with this Body is in play on that side.
+	var lw_name = pokemon.metadata.get("name","")
+	if "Latias" in lw_name or "Latios" in lw_name:
+		var lw_is_opp = (pokemon == opponent_active_pokemon or pokemon in opponent_bench)
+		for lp in card_ops.get_all_pokemon_in_play(lw_is_opp):
+			if lp.has_ability("Link Wing") and not powers_and_bodies.is_power_blocked(lp):
+				return 0
+
+	# EX15 Extra Wing (Swellow δ ex15-40): the Retreat Cost for each of your Stage 2 Pokémon-ex is 0 while
+	# a Swellow with this Body is in play on that side.
+	if "Stage 2" in pokemon.metadata.get("subtypes", []) and is_ex_pokemon(pokemon):
+		var ew_is_opp = (pokemon == opponent_active_pokemon or pokemon in opponent_bench)
+		for ep in card_ops.get_all_pokemon_in_play(ew_is_opp):
+			if ep.has_ability("Extra Wing") and not powers_and_bodies.is_power_blocked(ep):
+				return 0
+
 	# ex10 Fluffy Berry (Pokémon Tool ex10-85): Retreat Cost is 0 while attached
 	for ac in pokemon.attached_cards:
 		if ac.uid.to_lower() == "ex10-85":
@@ -5013,6 +5060,15 @@ func get_retreat_cost(pokemon: card_object) -> int:
 				if bp.special_condition not in ["Paralyzed", "Asleep", "Confused"] and not bp.is_poisoned:
 					cost = max(0, cost - 1)
 					break
+
+	# EX15 Stages of Evolution (Jynx δ ex15-17): while an Evolved Jynx with this Body is in play, you pay
+	# Colorless less (1 per such Jynx) to retreat your Fire and Psychic Pokémon.
+	var soe_types = pokemon.get_effective_types()
+	if "Fire" in soe_types or "Psychic" in soe_types:
+		var soe_is_opp = (pokemon == opponent_active_pokemon or pokemon in opponent_bench)
+		for jp in card_ops.get_all_pokemon_in_play(soe_is_opp):
+			if jp.metadata.get("name","") == "Jynx δ" and jp.has_ability("Stages of Evolution") and not jp.attached_pre_evolutions.is_empty() and not powers_and_bodies.is_power_blocked(jp):
+				cost = max(0, cost - 1)
 
 	# Dark Muk Sticky Goo: opponent pays 2 more to retreat
 	var is_player_pokemon = (pokemon == player_active_pokemon or pokemon in player_bench)

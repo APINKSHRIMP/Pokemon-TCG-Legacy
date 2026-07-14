@@ -48,6 +48,7 @@ func _ensure_dispatch_ready() -> void:
 	_register_ex12_attacks()
 	_register_ex13_attacks()
 	_register_ex14_attacks()
+	_register_ex15_attacks()
 
 func _register_si1_attacks() -> void:
 	_attack_dispatch["rainbow wave"]    = func(atk, a, d, opp): await execute_rainbow_wave(a, opp);            await _attack_finish(false, 0,   atk, a.metadata.get("types",["Colorless"]), opp)
@@ -509,8 +510,8 @@ func estimate_attack_damage_range(attack: Dictionary, attacker: card_object = nu
 	var base_damage = parse_attack_base_damage(attack)
 	var damage_str = str(attack.get("damage", "0"))
 	var text = attack.get("text", "").to_lower()
-	var attacker_name = attacker.metadata.get("name", "").to_lower() if attacker else ""
-	
+	var attacker_name = (attacker.metadata.get("name", "").to_lower().replace(" δ", "").replace("δ", "").strip_edges()) if attacker else ""
+
 	# --- COIN FLIP MULTIPLICATIVE (×) ---
 	if "×" in damage_str or "x" in damage_str:
 		if "times the number of damage counters" in text:
@@ -752,7 +753,8 @@ func resolve_attack_variable_damage(attack: Dictionary, attacker: card_object, d
 	var base_damage = parse_attack_base_damage(attack)
 	var damage_str = str(attack.get("damage", ""))
 	var text = attack.get("text", "").to_lower()
-	var attacker_name = attacker.metadata.get("name", "").to_lower()
+	# Strip the δ suffix so "…for each damage counter on Nidorino" matches a "Nidorino δ" attacker.
+	var attacker_name = attacker.metadata.get("name", "").to_lower().replace(" δ", "").replace("δ", "").strip_edges()
 	var resolved_damage = base_damage
 	var messages: Array = []
 	var flip_result: String = ""
@@ -1287,7 +1289,10 @@ func parse_card_text_effects(attack_text: String, attacker_name: String) -> Arra
 
 	var effects: Array = []
 	var text = attack_text.to_lower()
-	var lower_name = attacker_name.to_lower()
+	# δ (Delta) Pokémon carry "δ" in their NAME (e.g. "Horsea δ") but their attack text refers to the base
+	# species name ("Switch Horsea with…", "Remove 2 damage counters from Ralts"). Strip the δ so the
+	# self-referential name matches below (self_switch / self_heal / per-counter / destiny_bond) resolve.
+	var lower_name = attacker_name.to_lower().replace(" δ", "").replace("δ", "").strip_edges()
 	var has_defender_prefix = "the defending pokémon is now" in text
 
 	# --- STATUS: Defender status conditions ---
@@ -28357,3 +28362,618 @@ func execute_ex14_skill_copy(attacker: card_object, defender: card_object, is_op
 	await main.show_message(attacker.metadata["name"].to_upper() + " COPIES " + chosen_atk.get("name","").to_upper() + "!")
 	if main._should_bail(): return
 	await execute_copied_attack(chosen_atk, attacker, defender, is_opponent, true)
+
+# ══════════════════════════════════════════════════════════════════════════════════════════════
+# EX15 (EX Dragon Frontiers) — attacks. Registered LAST so ex15-uid collision overrides win.
+# ══════════════════════════════════════════════════════════════════════════════════════════════
+
+func _register_ex15_attacks() -> void:
+	# ── Collision overrides (branch on ex15 uid; else delegate to the prior handler) ──
+	var _pv_dc15 = _attack_dispatch.get("delta circle")
+	_attack_dispatch["delta circle"] = func(atk, a, d, opp):
+		if a.uid.begins_with("ex15-"):   # ex15 Ampharos = 20 + 10/δ (ex13 Feraligatr = 10 + 10/δ)
+			var dmg = await execute_ex15_delta_circle(a, d, opp)
+			await _attack_finish(true, dmg, atk, a.metadata.get("types",["Colorless"]), opp)
+		elif _pv_dc15: await _pv_dc15.call(atk, a, d, opp)
+
+	var _pv_grind15 = _attack_dispatch.get("grind")
+	_attack_dispatch["grind"] = func(atk, a, d, opp):
+		# ex15 Cloyster = 10 + 10 per Energy ("plus"); ex15 Tropius = 10 × Energy (falls to ex3's handler).
+		if a.uid.begins_with("ex15-") and "plus" in atk.get("text","").to_lower():
+			var dmg = await execute_ex15_grind_plus(a, d, opp)
+			await _attack_finish(true, dmg, atk, a.metadata.get("types",["Colorless"]), opp)
+		elif _pv_grind15: await _pv_grind15.call(atk, a, d, opp)
+
+	var _pv_sc15 = _attack_dispatch.get("special circuit")
+	_attack_dispatch["special circuit"] = func(atk, a, d, opp):
+		if a.uid.begins_with("ex15-"):   # ex15 Rayquaza ex = 30/50 (ex3 was 20/40)
+			await execute_ex3_circuit_snipe(a, opp, 30, 50, "ability")
+			await _attack_finish(false, 0, atk, a.metadata.get("types",["Colorless"]), opp)
+		elif _pv_sc15: await _pv_sc15.call(atk, a, d, opp)
+
+	var _pv_hc15 = _attack_dispatch.get("hyper claws")
+	_attack_dispatch["hyper claws"] = func(atk, a, d, opp):
+		if a.uid.begins_with("ex15-"):   # ex15 Tyranitar ex = 70/90 (ex13 was 50/90)
+			var dmg = await execute_ex15_hyper_claws(a, d, opp)
+			await _attack_finish(true, dmg, atk, a.metadata.get("types",["Colorless"]), opp)
+		elif _pv_hc15: await _pv_hc15.call(atk, a, d, opp)
+
+	var _pv_la15 = _attack_dispatch.get("linear attack")
+	_attack_dispatch["linear attack"] = func(atk, a, d, opp):
+		if a.uid.begins_with("ex15-"):   # ex15 Nidoking = 30 to a chosen Pokémon (base handler hardcodes 20)
+			var n = parse_attack_base_damage(atk)
+			await execute_ex3_choose_snipe(a, opp, (n if n > 0 else 30), false)
+			await _attack_finish(false, 0, atk, a.metadata.get("types",["Colorless"]), opp)
+		elif _pv_la15: await _pv_la15.call(atk, a, d, opp)
+
+	# ── Name-alias reuse (existing executors with the card's own numbers) ──
+	# Deafen (Dragonite ex ex15-91): base + opponent can't play non-Supporter Trainers next turn (= ex8 Disconnect).
+	_attack_dispatch["deafen"] = func(atk, a, d, opp): var b=parse_attack_base_damage(atk); await execute_ex8_disconnect(a, d, opp, b); await _attack_finish(true, b, atk, a.metadata.get("types",["Colorless"]), opp)
+	# Pump Out (Quagsire δ ex15-21): base + more if a Pokémon Tool is attached to Quagsire.
+	_attack_dispatch["pump out"] = func(atk, a, d, opp): var b=parse_attack_base_damage(atk); var dmg=await execute_ex4_bonus_if(a, d, opp, b, _ex4_more(atk), "attacker_has_tool"); await _attack_finish(true, dmg, atk, a.metadata.get("types",["Colorless"]), opp)
+	# Quick Bind (Trapinch δ ex15-69): 10 to a chosen Pokémon, not affected by W/R or any effects.
+	_attack_dispatch["quick bind"] = func(atk, a, d, opp): await execute_snipe_no_wr(a, d, opp, 10, false); await _attack_finish(false, 0, atk, a.metadata.get("types",["Colorless"]), opp)
+
+	# ── Novel ex15 attacks ──
+	_attack_dispatch["dig deep"]         = func(atk, a, d, opp): await execute_ex15_dig_deep(a, opp); await _attack_finish(false, 0, atk, a.metadata.get("types",["Colorless"]), opp)
+	_attack_dispatch["dark horn"]        = func(atk, a, d, opp): var b=parse_attack_base_damage(atk); await execute_ex15_dark_horn(a, d, opp, b); await _attack_finish(true, b, atk, a.metadata.get("types",["Colorless"]), opp)
+	_attack_dispatch["trick tail"]       = func(atk, a, d, opp): var b=parse_attack_base_damage(atk); await execute_ex15_trick_tail(a, d, opp, b); await _attack_finish(true, b, atk, a.metadata.get("types",["Colorless"]), opp)
+	_attack_dispatch["delta copy"]       = func(atk, a, d, opp): await execute_ex15_delta_copy(a, d, opp, atk)
+	_attack_dispatch["strangle"]         = func(atk, a, d, opp): var dmg=await execute_ex15_strangle(a, d, opp); await _attack_finish(true, dmg, atk, a.metadata.get("types",["Colorless"]), opp)
+	_attack_dispatch["surge"]            = func(atk, a, d, opp): var dmg=await execute_ex15_surge(a, d, opp); await _attack_finish(true, dmg, atk, a.metadata.get("types",["Colorless"]), opp)
+	_attack_dispatch["sting turn"]       = func(atk, a, d, opp): await execute_ex15_sting_turn(a, d, opp); await _attack_finish(false, 0, atk, a.metadata.get("types",["Colorless"]), opp)
+	_attack_dispatch["tail sting"]       = func(atk, a, d, opp): var dmg=await execute_ex15_tail_sting(a, d, opp); await _attack_finish(true, dmg, atk, a.metadata.get("types",["Colorless"]), opp)
+	_attack_dispatch["metal star"]       = func(atk, a, d, opp): var b=parse_attack_base_damage(atk); await execute_ex15_metal_star(a, d, opp, b); await _attack_finish(true, b, atk, a.metadata.get("types",["Colorless"]), opp)
+	_attack_dispatch["delta mind"]       = func(atk, a, d, opp): await execute_ex15_delta_mind(a, opp); await _attack_finish(false, 0, atk, a.metadata.get("types",["Colorless"]), opp)
+	_attack_dispatch["flickering tail"]  = func(atk, a, d, opp): var dmg=await execute_ex15_flickering_tail(a, d, opp); await _attack_finish(true, dmg, atk, a.metadata.get("types",["Colorless"]), opp)
+	_attack_dispatch["sonic noise"]      = func(atk, a, d, opp): var b=parse_attack_base_damage(atk); await execute_ex15_sonic_noise(a, d, opp, b); await _attack_finish(true, b, atk, a.metadata.get("types",["Colorless"]), opp)
+	_attack_dispatch["burning venom"]    = func(atk, a, d, opp): await execute_ex15_burning_venom(a, d, opp); await _attack_finish(false, 0, atk, a.metadata.get("types",["Colorless"]), opp)
+	_attack_dispatch["alluring kiss"]    = func(atk, a, d, opp): await execute_ex15_alluring_kiss(a, opp); await _attack_finish(false, 0, atk, a.metadata.get("types",["Colorless"]), opp)
+	_attack_dispatch["dragon roar"]      = func(atk, a, d, opp): await execute_ex15_dragon_roar(a, d, opp); await _attack_finish(false, 0, atk, a.metadata.get("types",["Colorless"]), opp)
+	_attack_dispatch["psychic pulse"]    = func(atk, a, d, opp): var b=parse_attack_base_damage(atk); await execute_ex15_psychic_pulse(a, d, opp, b); await _attack_finish(true, b, atk, a.metadata.get("types",["Colorless"]), opp)
+	_attack_dispatch["protective swirl"] = func(atk, a, d, opp): var b=parse_attack_base_damage(atk); await execute_ex15_protective_swirl(a, d, opp, b); await _attack_finish(true, b, atk, a.metadata.get("types",["Colorless"]), opp)
+	_attack_dispatch["power crush"]      = func(atk, a, d, opp): var b=parse_attack_base_damage(atk); await execute_ex15_power_crush(a, d, opp, b); await _attack_finish(true, b, atk, a.metadata.get("types",["Colorless"]), opp)
+	_attack_dispatch["dual stream"]      = func(atk, a, d, opp): await execute_ex15_dual_stream(a, d, opp); await _attack_finish(false, 0, atk, a.metadata.get("types",["Colorless"]), opp)
+	_attack_dispatch["electromark"]      = func(atk, a, d, opp): await execute_ex15_electromark(a, opp); await _attack_finish(false, 0, atk, a.metadata.get("types",["Colorless"]), opp)
+	_attack_dispatch["shock-wave"]       = func(atk, a, d, opp): await execute_ex15_shockwave_ko(a, opp); await _attack_finish(false, 0, atk, a.metadata.get("types",["Colorless"]), opp)
+	_attack_dispatch["dark swirl"]       = func(atk, a, d, opp): await execute_ex15_dark_swirl(a, d, opp); await _attack_finish(true, 150, atk, a.metadata.get("types",["Colorless"]), opp)
+	_attack_dispatch["mimicry"]          = func(atk, a, d, opp): await execute_ex15_mimicry(a, d, opp, atk)
+
+# ── ex15 executors ──
+
+# DELTA CIRCLE (Ampharos δ ex15-1): 20 + 10 for each Pokémon you have in play that has δ on its card.
+func execute_ex15_delta_circle(attacker: card_object, defender: card_object, is_opponent: bool) -> int:
+	if await handle_attack_confusion(attacker, is_opponent): return 0
+	if await handle_attack_blind(attacker, is_opponent): return 0
+	var n = 0
+	for p in main.card_ops.get_all_pokemon_in_play(is_opponent):
+		if p.is_delta(): n += 1
+	var dmg = 20 + n * 10
+	await main.show_message("DELTA CIRCLE! " + str(n) + " δ POKÉMON — " + str(dmg) + " DAMAGE!")
+	if main._should_bail(): return dmg
+	await gym1_hit_active(attacker, defender, is_opponent, dmg)
+	if main._should_bail(): return dmg
+	await main.check_all_knockouts()
+	return dmg
+
+# GRIND (Cloyster δ ex15-14): 10 + 10 for each Energy attached to Cloyster.
+func execute_ex15_grind_plus(attacker: card_object, defender: card_object, is_opponent: bool) -> int:
+	if await handle_attack_confusion(attacker, is_opponent): return 0
+	if await handle_attack_blind(attacker, is_opponent): return 0
+	var dmg = 10 + 10 * attacker.attached_energies.size()
+	await gym1_hit_active(attacker, defender, is_opponent, dmg)
+	if main._should_bail(): return dmg
+	await main.check_all_knockouts()
+	return dmg
+
+# HYPER CLAWS (Tyranitar ex δ ex15-99): base + 20 if the Defending Pokémon is a Stage 2 Evolved Pokémon.
+func execute_ex15_hyper_claws(attacker: card_object, defender: card_object, is_opponent: bool) -> int:
+	if await handle_attack_confusion(attacker, is_opponent): return 0
+	if await handle_attack_blind(attacker, is_opponent): return 0
+	var dmg = 70
+	if defender != null and "Stage 2" in defender.metadata.get("subtypes", []):
+		dmg += 20
+		await main.show_message("HYPER CLAWS! THE DEFENDER IS A STAGE 2 — " + str(dmg) + " DAMAGE!")
+		if main._should_bail(): return dmg
+	await gym1_hit_active(attacker, defender, is_opponent, dmg)
+	if main._should_bail(): return dmg
+	await main.check_all_knockouts()
+	return dmg
+
+# DIG DEEP (Heracross δ ex15-3): search your discard pile for an Energy card and put it into your hand.
+func execute_ex15_dig_deep(attacker: card_object, is_opponent: bool) -> void:
+	if await handle_attack_confusion(attacker, is_opponent): return
+	if await handle_attack_blind(attacker, is_opponent): return
+	var discard = main.opponent_discard_pile if is_opponent else main.player_discard_pile
+	var pool = discard.filter(func(c): return c.metadata.get("supertype","") == "Energy")
+	if pool.is_empty():
+		await main.show_message("NO ENERGY IN YOUR DISCARD PILE!")
+		if main._should_bail(): return
+		return
+	var chosen: card_object = null
+	if is_opponent:
+		chosen = pool[0]
+	else:
+		chosen = pool[0] if pool.size() == 1 else await main.card_ops.choose_card(pool, false, "DIG DEEP", "Choose an Energy to put into your hand", "TAKE", false, Callable(), true)
+		if main._should_bail(): return
+		if chosen == null: chosen = pool[0]
+	await main.card_ops.recover_to_hand(chosen, is_opponent)
+	if main._should_bail(): return
+	await main.show_message("DIG DEEP! PUT " + chosen.metadata.get("name","").to_upper() + " INTO YOUR HAND!")
+	if main._should_bail(): return
+
+# DARK HORN (Nidoking δ ex15-6): base damage; you may discard a Basic Pokémon or Evolution card from your
+# hand — if you do, do 20 damage to 1 of your opponent's Benched Pokémon.
+func execute_ex15_dark_horn(attacker: card_object, defender: card_object, is_opponent: bool, base_damage: int) -> void:
+	if await handle_attack_confusion(attacker, is_opponent): return
+	if await handle_attack_blind(attacker, is_opponent): return
+	await gym1_hit_active(attacker, defender, is_opponent, base_damage)
+	if main._should_bail(): return
+	await main.check_all_knockouts()
+	if main._should_bail(): return
+	var hand = main.opponent_hand if is_opponent else main.player_hand
+	var pokemon_cards = hand.filter(func(c): return c.metadata.get("supertype","") == "Pokémon")
+	var opp_bench = main.player_bench if is_opponent else main.opponent_bench
+	if pokemon_cards.is_empty() or opp_bench.is_empty(): return
+	var to_discard: card_object = null
+	if is_opponent:
+		to_discard = pokemon_cards[0]
+	else:
+		var yes = await main.trainer_effects.gym1_prompt_yes_no(attacker, "DARK HORN", "Discard a Basic/Evolution card to do 20 to a Benched Pokémon?", "YES", "NO")
+		if main._should_bail(): return
+		if not yes: return
+		to_discard = pokemon_cards[0] if pokemon_cards.size() == 1 else await main.card_ops.choose_card(pokemon_cards, false, "DARK HORN", "Discard which card?", "DISCARD", true)
+		if main._should_bail(): return
+		if to_discard == null: return
+	hand.erase(to_discard)
+	await main.card_ops.send_to_discard(to_discard, is_opponent, true)
+	if main._should_bail(): return
+	await execute_ex3_choose_snipe(attacker, is_opponent, 20, true)
+	if main._should_bail(): return
+
+# TRICK TAIL (Ninetales δ ex15-8): base damage; search your discard pile for an Energy card and attach it
+# to 1 of your Pokémon.
+func execute_ex15_trick_tail(attacker: card_object, defender: card_object, is_opponent: bool, base_damage: int) -> void:
+	if await handle_attack_confusion(attacker, is_opponent): return
+	if await handle_attack_blind(attacker, is_opponent): return
+	await gym1_hit_active(attacker, defender, is_opponent, base_damage)
+	if main._should_bail(): return
+	await main.check_all_knockouts()
+	if main._should_bail(): return
+	var discard = main.opponent_discard_pile if is_opponent else main.player_discard_pile
+	var pool = discard.filter(func(c): return c.metadata.get("supertype","") == "Energy")
+	var targets = main.card_ops.get_all_pokemon_in_play(is_opponent)
+	if pool.is_empty() or targets.is_empty(): return
+	var energy: card_object = null
+	var target: card_object = null
+	if is_opponent:
+		energy = pool[0]
+		target = main.opponent_active_pokemon if main.opponent_active_pokemon != null else targets[0]
+	else:
+		energy = pool[0] if pool.size() == 1 else await main.card_ops.choose_card(pool, false, "TRICK TAIL", "Choose an Energy from your discard pile", "SELECT", false, Callable(), true)
+		if main._should_bail(): return
+		if energy == null: return
+		target = targets[0] if targets.size() == 1 else await main.card_ops.choose_card(targets, false, "TRICK TAIL", "Attach it to which Pokémon?", "ATTACH", false)
+		if main._should_bail(): return
+		if target == null: return
+	discard.erase(energy)
+	energy.current_location = "active" if target == (main.opponent_active_pokemon if is_opponent else main.player_active_pokemon) else "bench"
+	target.attached_energies.append(energy)
+	main.update_discard_pile_display(is_opponent)
+	main.display_active_pokemon_energies(is_opponent)
+	main.display_pokemon(is_opponent)
+	await main.show_message("TRICK TAIL! ATTACHED " + energy.metadata.get("name","").to_upper() + " TO " + target.metadata.get("name","").to_upper() + "!")
+	if main._should_bail(): return
+
+# DELTA COPY (Togetic δ ex15-11): copy an attack (ignoring its Energy cost) from 1 of your opponent's
+# Pokémon in play that has δ on its card, and perform it. Owns its own _attack_finish (copy semantics).
+func execute_ex15_delta_copy(attacker: card_object, defender: card_object, is_opponent: bool, source_attack: Dictionary) -> void:
+	if await handle_attack_confusion(attacker, is_opponent):
+		await _attack_finish(false, 0, source_attack, attacker.metadata.get("types",["Colorless"]), is_opponent); return
+	if await handle_attack_blind(attacker, is_opponent):
+		await _attack_finish(false, 0, source_attack, attacker.metadata.get("types",["Colorless"]), is_opponent); return
+	var pool: Array = []
+	for p in main.card_ops.get_all_pokemon_in_play(not is_opponent):
+		if p.is_delta():
+			for atk in p.metadata.get("attacks", []):
+				pool.append(atk)
+	if pool.is_empty():
+		await main.show_message("NO δ POKÉMON ATTACK TO COPY!")
+		if main._should_bail(): return
+		await _attack_finish(false, 0, source_attack, attacker.metadata.get("types",["Colorless"]), is_opponent)
+		return
+	var chosen = await choose_attack_from_pool(pool, is_opponent)
+	if main._should_bail(): return
+	if chosen.is_empty():
+		await _attack_finish(false, 0, source_attack, attacker.metadata.get("types",["Colorless"]), is_opponent)
+		return
+	await main.show_message(attacker.metadata.get("name","").to_upper() + " COPIES " + chosen.get("name","").to_upper() + "!")
+	if main._should_bail(): return
+	await execute_copied_attack(chosen, attacker, defender, is_opponent, false)
+
+# MIMICRY (Mew Star δ ex15-101): copy an attack from 1 of your opponent's Pokémon in play; does nothing if
+# Mew Star doesn't have the Energy for it. Owns its own _attack_finish.
+func execute_ex15_mimicry(attacker: card_object, defender: card_object, is_opponent: bool, source_attack: Dictionary) -> void:
+	if await handle_attack_confusion(attacker, is_opponent):
+		await _attack_finish(false, 0, source_attack, attacker.metadata.get("types",["Colorless"]), is_opponent); return
+	if await handle_attack_blind(attacker, is_opponent):
+		await _attack_finish(false, 0, source_attack, attacker.metadata.get("types",["Colorless"]), is_opponent); return
+	var pool: Array = []
+	for p in main.card_ops.get_all_pokemon_in_play(not is_opponent):
+		for atk in p.metadata.get("attacks", []):
+			pool.append(atk)
+	if pool.is_empty():
+		await main.show_message("NO ATTACK TO COPY!")
+		if main._should_bail(): return
+		await _attack_finish(false, 0, source_attack, attacker.metadata.get("types",["Colorless"]), is_opponent)
+		return
+	var chosen = await choose_attack_from_pool(pool, is_opponent)
+	if main._should_bail(): return
+	if chosen.is_empty():
+		await _attack_finish(false, 0, source_attack, attacker.metadata.get("types",["Colorless"]), is_opponent)
+		return
+	if main.cpu_ai.get_unmet_energy_count(chosen, attacker) > 0:
+		await main.show_message("MIMICRY DOES NOTHING — NOT ENOUGH ENERGY FOR " + chosen.get("name","").to_upper() + "!")
+		if main._should_bail(): return
+		await _attack_finish(false, 0, source_attack, attacker.metadata.get("types",["Colorless"]), is_opponent)
+		return
+	await main.show_message(attacker.metadata.get("name","").to_upper() + " MIMICS " + chosen.get("name","").to_upper() + "!")
+	if main._should_bail(): return
+	await execute_copied_attack(chosen, attacker, defender, is_opponent, false)
+
+# STRANGLE (Arbok δ ex15-13): 50 + 30 if the Defending Pokémon has δ on its card.
+func execute_ex15_strangle(attacker: card_object, defender: card_object, is_opponent: bool) -> int:
+	if await handle_attack_confusion(attacker, is_opponent): return 0
+	if await handle_attack_blind(attacker, is_opponent): return 0
+	var dmg = 50
+	if defender != null and defender.is_delta():
+		dmg = 80
+		await main.show_message("STRANGLE! THE DEFENDER HAS δ — 80 DAMAGE!")
+		if main._should_bail(): return dmg
+	await gym1_hit_active(attacker, defender, is_opponent, dmg)
+	if main._should_bail(): return dmg
+	await main.check_all_knockouts()
+	return dmg
+
+# SURGE (Dewgong δ ex15-15): 40 + 20 if Dewgong has at least 2 Water Energy attached.
+func execute_ex15_surge(attacker: card_object, defender: card_object, is_opponent: bool) -> int:
+	if await handle_attack_confusion(attacker, is_opponent): return 0
+	if await handle_attack_blind(attacker, is_opponent): return 0
+	var water = 0
+	for e in attacker.attached_energies:
+		if "Water" in main.get_energy_provided_by_card(e): water += 1
+	var dmg = 40 + (20 if water >= 2 else 0)
+	await gym1_hit_active(attacker, defender, is_opponent, dmg)
+	if main._should_bail(): return dmg
+	await main.check_all_knockouts()
+	return dmg
+
+# STING TURN (Gligar δ ex15-16): flip a coin. If heads, the Defending Pokémon is Paralyzed and switch
+# Gligar with 1 of your Benched Pokémon.
+func execute_ex15_sting_turn(attacker: card_object, defender: card_object, is_opponent: bool) -> void:
+	if await handle_attack_confusion(attacker, is_opponent): return
+	if await handle_attack_blind(attacker, is_opponent): return
+	var coin = await main.flip_coin(false, is_opponent)
+	if main._should_bail(): return
+	if coin:
+		if defender != null:
+			main.card_ops.apply_status(defender, "Paralyzed", not is_opponent)
+			main.update_status_icons(defender, not is_opponent)
+			await main.show_message("STING TURN! HEADS! THE DEFENDING POKÉMON IS PARALYZED!")
+			if main._should_bail(): return
+		await apply_self_switch(attacker, is_opponent)
+		if main._should_bail(): return
+	else:
+		await main.show_message("TAILS! NO EFFECT!")
+		if main._should_bail(): return
+
+# TAIL STING (Gligar δ ex15-16): 10 + 10 more and the Defending Pokémon is Poisoned if it is a Pokémon-ex.
+func execute_ex15_tail_sting(attacker: card_object, defender: card_object, is_opponent: bool) -> int:
+	if await handle_attack_confusion(attacker, is_opponent): return 0
+	if await handle_attack_blind(attacker, is_opponent): return 0
+	var dmg = 10
+	var is_ex_def = defender != null and main.is_ex_pokemon(defender)
+	if is_ex_def: dmg = 20
+	await gym1_hit_active(attacker, defender, is_opponent, dmg)
+	if main._should_bail(): return dmg
+	await main.check_all_knockouts()
+	if main._should_bail(): return dmg
+	if is_ex_def and defender != null and defender.current_hp > 0:
+		main.card_ops.apply_status(defender, "Poisoned", not is_opponent)
+		main.update_status_icons(defender, not is_opponent)
+		await main.show_message("TAIL STING! THE DEFENDING POKÉMON-ex IS NOW POISONED!")
+		if main._should_bail(): return dmg
+	return dmg
+
+# FLICKERING TAIL (Smeargle δ ex15-39): 10 + 10 more and the Defending Pokémon is Asleep if it is a Pokémon-ex.
+func execute_ex15_flickering_tail(attacker: card_object, defender: card_object, is_opponent: bool) -> int:
+	if await handle_attack_confusion(attacker, is_opponent): return 0
+	if await handle_attack_blind(attacker, is_opponent): return 0
+	var dmg = 10
+	var is_ex_def = defender != null and main.is_ex_pokemon(defender)
+	if is_ex_def: dmg = 20
+	await gym1_hit_active(attacker, defender, is_opponent, dmg)
+	if main._should_bail(): return dmg
+	await main.check_all_knockouts()
+	if main._should_bail(): return dmg
+	if is_ex_def and defender != null and defender.current_hp > 0:
+		main.card_ops.apply_status(defender, "Asleep", not is_opponent)
+		main.update_status_icons(defender, not is_opponent)
+		await main.show_message("FLICKERING TAIL! THE DEFENDING POKÉMON-ex IS NOW ASLEEP!")
+		if main._should_bail(): return dmg
+	return dmg
+
+# SONIC NOISE (Vibrava δ ex15-42): base damage; if the Defending Pokémon is a Pokémon-ex it is now Confused.
+func execute_ex15_sonic_noise(attacker: card_object, defender: card_object, is_opponent: bool, base_damage: int) -> void:
+	if await handle_attack_confusion(attacker, is_opponent): return
+	if await handle_attack_blind(attacker, is_opponent): return
+	await gym1_hit_active(attacker, defender, is_opponent, base_damage)
+	if main._should_bail(): return
+	await main.check_all_knockouts()
+	if main._should_bail(): return
+	if defender != null and defender.current_hp > 0 and main.is_ex_pokemon(defender):
+		main.card_ops.apply_status(defender, "Confused", not is_opponent)
+		main.update_status_icons(defender, not is_opponent)
+		await main.show_message("SONIC NOISE! THE DEFENDING POKÉMON-ex IS NOW CONFUSED!")
+		if main._should_bail(): return
+
+# BURNING VENOM (Arbok δ ex15-13): the Defending Pokémon is now Burned and Poisoned.
+func execute_ex15_burning_venom(attacker: card_object, defender: card_object, is_opponent: bool) -> void:
+	if await handle_attack_confusion(attacker, is_opponent): return
+	if await handle_attack_blind(attacker, is_opponent): return
+	if defender == null: return
+	main.card_ops.apply_status(defender, "Burned", not is_opponent)
+	main.card_ops.apply_status(defender, "Poisoned", not is_opponent)
+	main.update_status_icons(defender, not is_opponent)
+	await main.show_message("BURNING VENOM! THE DEFENDING POKÉMON IS NOW BURNED AND POISONED!")
+	if main._should_bail(): return
+
+# METAL STAR (Ledian δ ex15-18): base damage; if Ledian has a Pokémon Tool card attached, draw 3 cards.
+func execute_ex15_metal_star(attacker: card_object, defender: card_object, is_opponent: bool, base_damage: int) -> void:
+	if await handle_attack_confusion(attacker, is_opponent): return
+	if await handle_attack_blind(attacker, is_opponent): return
+	await gym1_hit_active(attacker, defender, is_opponent, base_damage)
+	if main._should_bail(): return
+	await main.check_all_knockouts()
+	if main._should_bail(): return
+	var has_tool = false
+	for ac in attacker.attached_cards:
+		if "Pokémon Tool" in ac.metadata.get("subtypes", []): has_tool = true; break
+	if has_tool:
+		await main.card_ops.draw_n(is_opponent, 3)
+		if main._should_bail(): return
+		await main.show_message("METAL STAR! DREW 3 CARDS!")
+		if main._should_bail(): return
+
+# DELTA MIND (Lickitung δ ex15-19): put 1 damage counter on 1 of your opponent's Pokémon; if that Pokémon
+# has δ on its card, put 3 damage counters instead.
+func execute_ex15_delta_mind(attacker: card_object, is_opponent: bool) -> void:
+	if await handle_attack_confusion(attacker, is_opponent): return
+	if await handle_attack_blind(attacker, is_opponent): return
+	var pool = main.card_ops.get_all_pokemon_in_play(not is_opponent)
+	if pool.is_empty():
+		await main.show_message("NO OPPONENT POKÉMON!")
+		if main._should_bail(): return
+		return
+	var target: card_object = null
+	if is_opponent:
+		# CPU: prefer a δ target (3 counters) with the least HP.
+		var delta_targets = pool.filter(func(p): return p.is_delta())
+		var src = delta_targets if not delta_targets.is_empty() else pool
+		target = src[0]
+		for c in src:
+			if c.current_hp < target.current_hp: target = c
+	else:
+		target = await main.card_ops.choose_card(pool, false, "DELTA MIND", "Put damage counters on which opponent's Pokémon?", "SELECT", false)
+		if main._should_bail(): return
+		if target == null: target = pool[0]
+	var counters = 30 if target.is_delta() else 10
+	target.current_hp = max(0, target.current_hp - counters)
+	main.display_hp_circles_above_align(target, not is_opponent)
+	main.display_pokemon(not is_opponent)
+	await main.show_message("DELTA MIND! " + str(counters / 10) + " DAMAGE COUNTER(S) ON " + target.metadata.get("name","").to_upper() + "!")
+	if main._should_bail(): return
+	await main.check_all_knockouts()
+	if main._should_bail(): return
+
+# ALLURING KISS (Smoochum δ ex15-64): search your deck for a Basic Pokémon and a basic Energy card and put
+# them into your hand.
+func execute_ex15_alluring_kiss(attacker: card_object, is_opponent: bool) -> void:
+	if await handle_attack_confusion(attacker, is_opponent): return
+	if await handle_attack_blind(attacker, is_opponent): return
+	await main.card_ops.search_deck_to_hand(is_opponent, func(c): return main.is_basic_pokemon(c), "ALLURING KISS: CHOOSE A BASIC POKÉMON", 1)
+	if main._should_bail(): return
+	await main.card_ops.search_deck_to_hand(is_opponent, func(c): return _ex15_is_basic_energy_atk(c), "ALLURING KISS: CHOOSE A BASIC ENERGY", 1)
+	if main._should_bail(): return
+	await main.show_message("ALLURING KISS!")
+	if main._should_bail(): return
+
+func _ex15_is_basic_energy_atk(c: card_object) -> bool:
+	return c.metadata.get("supertype","") == "Energy" and "Basic" in c.metadata.get("subtypes", [])
+
+# DRAGON ROAR (Dragonite ex δ ex15-91): put 8 damage counters (80) on the Defending Pokémon; if it would be
+# Knocked Out, put the excess counters on your opponent's Benched Pokémon in any way you like. (Counters, so
+# no Weakness/Resistance.)
+func execute_ex15_dragon_roar(attacker: card_object, defender: card_object, is_opponent: bool) -> void:
+	if await handle_attack_confusion(attacker, is_opponent): return
+	if await handle_attack_blind(attacker, is_opponent): return
+	if defender == null: return
+	var to_defender = min(80, defender.current_hp)
+	var excess = 80 - to_defender
+	defender.current_hp = max(0, defender.current_hp - 80)
+	main.display_hp_circles_above_align(defender, not is_opponent)
+	main.display_pokemon(not is_opponent)
+	await main.show_message("DRAGON ROAR! 8 DAMAGE COUNTERS ON " + defender.metadata.get("name","").to_upper() + "!")
+	if main._should_bail(): return
+	# Distribute any excess counters (10 each) to the opponent's Benched Pokémon.
+	var opp_bench = main.player_bench if is_opponent else main.opponent_bench
+	var target_is_opp = not is_opponent
+	while excess >= 10 and not opp_bench.filter(func(p): return p.current_hp > 0).is_empty():
+		var live = opp_bench.filter(func(p): return p.current_hp > 0)
+		var t: card_object = null
+		if is_opponent:
+			t = live[0]
+			for c in live:
+				if c.current_hp < t.current_hp: t = c
+		else:
+			t = live[0] if live.size() == 1 else await main.card_ops.choose_card(live, false, "DRAGON ROAR", "Put a damage counter on which Benched Pokémon? (" + str(excess / 10) + " left)", "PLACE", false)
+			if main._should_bail(): return
+			if t == null: t = live[0]
+		main.card_ops.apply_bench_damage(t, 10, target_is_opp)
+		excess -= 10
+	await main.check_all_knockouts()
+	if main._should_bail(): return
+
+# PSYCHIC PULSE (Flygon ex δ ex15-92): base damage; 10 damage to each of your opponent's Benched Pokémon
+# that already has any damage counters on it.
+func execute_ex15_psychic_pulse(attacker: card_object, defender: card_object, is_opponent: bool, base_damage: int) -> void:
+	if await handle_attack_confusion(attacker, is_opponent): return
+	if await handle_attack_blind(attacker, is_opponent): return
+	await gym1_hit_active(attacker, defender, is_opponent, base_damage)
+	if main._should_bail(): return
+	await main.check_all_knockouts()
+	if main._should_bail(): return
+	var opp_bench = main.player_bench if is_opponent else main.opponent_bench
+	var target_is_opp = not is_opponent
+	for p in opp_bench:
+		if p.current_hp > 0 and p.get_damage_counters() > 0:
+			main.card_ops.apply_bench_damage(p, 10, target_is_opp)
+	await main.check_all_knockouts()
+	if main._should_bail(): return
+
+# PROTECTIVE SWIRL (Kingdra ex δ ex15-94): base damage; Kingdra ex has no Weakness during your opponent's
+# next turn.
+func execute_ex15_protective_swirl(attacker: card_object, defender: card_object, is_opponent: bool, base_damage: int) -> void:
+	if await handle_attack_confusion(attacker, is_opponent): return
+	if await handle_attack_blind(attacker, is_opponent): return
+	await gym1_hit_active(attacker, defender, is_opponent, base_damage)
+	if main._should_bail(): return
+	await main.check_all_knockouts()
+	if main._should_bail(): return
+	attacker.set_effect("ex13_no_weakness", "end_of_opponent_turn")
+	await main.show_message("PROTECTIVE SWIRL! " + attacker.metadata.get("name","").to_upper() + " HAS NO WEAKNESS NEXT TURN!")
+	if main._should_bail(): return
+
+# POWER CRUSH (Latias ex δ ex15-95): 90 damage; if the Defending Pokémon is Knocked Out, discard 2 Fire
+# Energy attached to Latias ex.
+func execute_ex15_power_crush(attacker: card_object, defender: card_object, is_opponent: bool, base_damage: int) -> void:
+	if await handle_attack_confusion(attacker, is_opponent): return
+	if await handle_attack_blind(attacker, is_opponent): return
+	await gym1_hit_active(attacker, defender, is_opponent, base_damage)
+	if main._should_bail(): return
+	var ko = defender != null and defender.current_hp <= 0
+	await main.check_all_knockouts()
+	if main._should_bail(): return
+	if ko:
+		var discarded = 0
+		for e in attacker.attached_energies.duplicate():
+			if discarded >= 2: break
+			if "Fire" in main.get_energy_provided_by_card(e):
+				main.card_ops.discard_energy_from_pokemon(e, is_opponent, false)
+				discarded += 1
+		if discarded > 0:
+			main.display_active_pokemon_energies(is_opponent)
+			main.display_pokemon(is_opponent)
+			await main.show_message("POWER CRUSH! DISCARDED " + str(discarded) + " FIRE ENERGY FROM " + attacker.metadata.get("name","").to_upper() + "!")
+			if main._should_bail(): return
+
+# DUAL STREAM (Salamence ex δ ex15-98): 80 damage, or you may do 40 to the Defending Pokémon instead and 40
+# to 1 of your opponent's Benched Pokémon.
+func execute_ex15_dual_stream(attacker: card_object, defender: card_object, is_opponent: bool) -> void:
+	if await handle_attack_confusion(attacker, is_opponent): return
+	if await handle_attack_blind(attacker, is_opponent): return
+	var opp_bench = main.player_bench if is_opponent else main.opponent_bench
+	var split = false
+	if is_opponent:
+		split = not opp_bench.filter(func(p): return p.current_hp > 0).is_empty()
+	elif not opp_bench.filter(func(p): return p.current_hp > 0).is_empty():
+		split = await main.trainer_effects.gym1_prompt_yes_no(attacker, "DUAL STREAM", "Do 40 to the Defending Pokémon and 40 to a Benched Pokémon (instead of 80)?", "SPLIT", "80 TO ACTIVE")
+		if main._should_bail(): return
+	if split:
+		await gym1_hit_active(attacker, defender, is_opponent, 40)
+		if main._should_bail(): return
+		await main.check_all_knockouts()
+		if main._should_bail(): return
+		await execute_ex3_choose_snipe(attacker, is_opponent, 40, true)
+		if main._should_bail(): return
+	else:
+		await gym1_hit_active(attacker, defender, is_opponent, 80)
+		if main._should_bail(): return
+		await main.check_all_knockouts()
+		if main._should_bail(): return
+
+# ELECTROMARK (Tyranitar ex δ ex15-99): put a Shock-wave marker on 1 of your opponent's Pokémon.
+func execute_ex15_electromark(attacker: card_object, is_opponent: bool) -> void:
+	if await handle_attack_confusion(attacker, is_opponent): return
+	if await handle_attack_blind(attacker, is_opponent): return
+	var pool = main.card_ops.get_all_pokemon_in_play(not is_opponent)
+	if pool.is_empty():
+		await main.show_message("NO OPPONENT POKÉMON!")
+		if main._should_bail(): return
+		return
+	var target: card_object = null
+	if is_opponent:
+		# CPU: mark the player's Active (most likely to still be there for a follow-up Shock-wave).
+		target = main.player_active_pokemon if main.player_active_pokemon != null else pool[0]
+	else:
+		target = await main.card_ops.choose_card(pool, false, "ELECTROMARK", "Put a Shock-wave marker on which opponent's Pokémon?", "SELECT", false)
+		if main._should_bail(): return
+		if target == null: target = pool[0]
+	target.shockwave_markers += 1
+	main.display_pokemon(not is_opponent)
+	await main.show_message("ELECTROMARK! A SHOCK-WAVE MARKER IS ON " + target.metadata.get("name","").to_upper() + "!")
+	if main._should_bail(): return
+
+# SHOCK-WAVE (Tyranitar ex δ ex15-99): choose 1 of your opponent's Pokémon that has any Shock-wave markers
+# on it; that Pokémon is Knocked Out.
+func execute_ex15_shockwave_ko(attacker: card_object, is_opponent: bool) -> void:
+	if await handle_attack_confusion(attacker, is_opponent): return
+	if await handle_attack_blind(attacker, is_opponent): return
+	var pool = main.card_ops.get_all_pokemon_in_play(not is_opponent).filter(func(p): return p.shockwave_markers > 0)
+	if pool.is_empty():
+		await main.show_message("SHOCK-WAVE: NO OPPONENT POKÉMON HAS A SHOCK-WAVE MARKER!")
+		if main._should_bail(): return
+		return
+	var target: card_object = null
+	if is_opponent:
+		target = pool[0]
+		for c in pool:
+			if c == main.player_active_pokemon: target = c; break
+	else:
+		target = pool[0] if pool.size() == 1 else await main.card_ops.choose_card(pool, false, "SHOCK-WAVE", "Knock Out which marked Pokémon?", "KO", false)
+		if main._should_bail(): return
+		if target == null: target = pool[0]
+	target.current_hp = 0
+	main.display_hp_circles_above_align(target, not is_opponent)
+	await main.show_message("SHOCK-WAVE! " + target.metadata.get("name","").to_upper() + " IS KNOCKED OUT!")
+	if main._should_bail(): return
+	await main.check_all_knockouts()
+	if main._should_bail(): return
+
+# DARK SWIRL (Charizard Star δ ex15-100): 150 damage; discard all Energy attached to Charizard Star and
+# discard the top 3 cards of your opponent's deck.
+func execute_ex15_dark_swirl(attacker: card_object, defender: card_object, is_opponent: bool) -> void:
+	if await handle_attack_confusion(attacker, is_opponent): return
+	if await handle_attack_blind(attacker, is_opponent): return
+	await gym1_hit_active(attacker, defender, is_opponent, 150)
+	if main._should_bail(): return
+	await main.check_all_knockouts()
+	if main._should_bail(): return
+	for e in attacker.attached_energies.duplicate():
+		main.card_ops.discard_energy_from_pokemon(e, is_opponent, false)
+	main.display_active_pokemon_energies(is_opponent)
+	main.display_pokemon(is_opponent)
+	# Discard the top 3 cards of the opponent's deck.
+	var opp_deck = main.player_deck if is_opponent else main.opponent_deck
+	var opp_discard = main.player_discard_pile if is_opponent else main.opponent_discard_pile
+	var milled = 0
+	for i in range(3):
+		if opp_deck.is_empty(): break
+		var c: card_object = opp_deck.pop_back()
+		c.current_location = "discard"
+		opp_discard.append(c)
+		milled += 1
+	main.update_deck_icon(not is_opponent)
+	main.update_discard_pile_display(not is_opponent)
+	await main.show_message("DARK SWIRL! DISCARDED ALL ENERGY AND MILLED " + str(milled) + " OF YOUR OPPONENT'S CARDS!")
+	if main._should_bail(): return

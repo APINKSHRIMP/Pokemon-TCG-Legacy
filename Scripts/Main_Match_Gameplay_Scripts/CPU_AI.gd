@@ -50,6 +50,7 @@ func opponent_start_turn_checks() -> void:
 
 	main.refresh_hand_display(true)
 	main.update_deck_icon(true)
+	main.powers_and_bodies.refresh_holon_veil()   # EX15 Holon Veil: recompute board-wide δ grant
 
 	# Update Ditto Transform state
 	main.powers_and_bodies.update_ditto_transform(true)
@@ -373,6 +374,10 @@ func get_unmet_energy_count(attack: Dictionary, pokemon: card_object) -> int:
 		var ci = required_cost.find("Colorless")
 		if ci != -1:
 			required_cost.remove_at(ci)
+	# EX15 Rage Aura (Rayquaza ex δ ex15-97): if you have more Prize cards left than your opponent, ignore
+	# all Colorless Energy needed for Special Circuit and Sky-high Claws.
+	if main.powers_and_bodies.ex15_rage_aura_ignores_colorless(pokemon, attack.get("name","")):
+		required_cost = required_cost.filter(func(c): return c != "Colorless")
 	if required_cost.size() == 0:
 		return 0
 
@@ -3101,6 +3106,11 @@ func cpu_phase_bench_play() -> void:
 		if best_card.has_ability("Crush Chance"):
 			await main.powers_and_bodies.trigger_ex14_crush_chance(best_card, true)
 			if main._should_bail(): return
+		# EX15 Tropical Heal (Tropius δ ex15-23): on benching from hand, remove all Special Conditions and
+		# Imprison/Shock-wave markers from your Pokémon.
+		if best_card.has_ability("Tropical Heal"):
+			await main.powers_and_bodies.trigger_ex15_tropical_heal(best_card, true)
+			if main._should_bail(): return
 
 # R.5: Selects the best bench replacement and performs the retreat
 func cpu_phase_evolution() -> void:
@@ -3451,6 +3461,19 @@ func cpu_score_trainer_card(card: card_object) -> float:
 		"ex13-89": return 55.0                           # Professor Cozmo's Discovery (Supporter): draw 2-3
 		"ex13-90": return _cpu_score_ex2_rare_candy()    # Rare Candy
 		# Holon Lake (ex13-87 Stadium) uses the generic stadium-play heuristic.
+		# ── EX15 (EX Dragon Frontiers) ──
+		"ex15-72": return 45.0  # Buffer Piece (Tool): -20 damage for a turn cycle
+		"ex15-73": return 40.0  # Copycat (Supporter): draw up to opponent's hand size
+		"ex15-75": return 50.0  # Holon Mentor (Supporter): fetch up to 3 Basics
+		"ex15-76": return 35.0  # Island Hermit (Supporter): draw 2 (reveal up to 2 Prizes)
+		"ex15-77": return 55.0  # Mr. Stone's Project (Supporter): up to 2 basic Energy
+		"ex15-78": return 30.0  # Old Rod (Item): coin-flip discard recovery
+		"ex15-79": return 45.0  # Professor Elm's Training Method (Supporter): fetch an Evolution card
+		"ex15-80": return 55.0  # Professor Oak's Research (Supporter): shuffle hand, draw 5
+		"ex15-81": return 35.0  # Strength Charm (Tool): one-off +10 damage
+		"ex15-82": return 60.0  # TV Reporter (Supporter): net +2 cards
+		"ex15-83": return _cpu_score_switch()  # Switch (Item)
+		# Holon Legacy (ex15-74 Stadium) uses the generic stadium-play heuristic.
 	return 0.0
 
 # MR. BRINEY'S COMPASSION (ex3-87): only valuable when the CPU has a damaged non-ex Pokemon worth

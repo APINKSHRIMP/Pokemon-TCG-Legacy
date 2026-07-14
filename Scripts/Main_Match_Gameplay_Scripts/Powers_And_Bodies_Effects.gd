@@ -82,6 +82,7 @@ func _register_all_powers() -> void:
 	_register_ex12_powers()
 	_register_ex13_powers()
 	_register_ex14_powers()
+	_register_ex15_powers()
 
 # ── On-damage and pre-KO event hooks ──────────────────────────────────────────
 # Each Callable is fired after active-pokemon damage resolves (on_damage) or
@@ -163,6 +164,10 @@ func _register_all_power_hooks() -> void:
 	_damage_modifier_hooks.append(func(dmg, atk, def, mods): return _hook_ex14_water_pressure(dmg, atk, def, mods))
 	_damage_modifier_hooks.append(func(dmg, atk, def, mods): return _hook_ex14_hard_rock(dmg, atk, def, mods))
 	_damage_modifier_hooks.append(func(dmg, atk, def, mods): return _hook_ex14_overzealous(dmg, atk, def, mods))
+	_damage_modifier_hooks.append(func(dmg, atk, def, mods): return _hook_ex15_battle_aura(dmg, atk, def, mods))
+	_damage_modifier_hooks.append(func(dmg, atk, def, mods): return _hook_ex15_extra_feather(dmg, atk, def, mods))
+	_damage_modifier_hooks.append(func(dmg, atk, def, mods): return _hook_ex15_armor(dmg, atk, def, mods))
+	_damage_modifier_hooks.append(func(dmg, atk, def, mods): return _hook_ex15_extra_smoke(dmg, atk, def, mods))
 	_on_damage_hooks.append(func(def, atk, dmg, is_def_opp): await check_ex14_fluffy_fur(def, atk, dmg, is_def_opp))
 	_damage_modifier_hooks.append(func(dmg, atk, def, mods): return _hook_ex8_advanced_armor(dmg, atk, def, mods))
 	_damage_modifier_hooks.append(func(dmg, atk, def, mods): return _hook_ex10_thick_fat(dmg, atk, def, mods))
@@ -275,6 +280,14 @@ func is_power_blocked(pokemon: card_object, works_through_status: bool = false) 
 	if main.goop_gas_active:
 		return true
 	if pokemon.power_disabled_until_end_of_next_turn:
+		return true
+	# EX15 Imprison (Gardevoir ex δ ex15-93): a Pokémon with any Imprison marker can't use Powers/Bodies.
+	if pokemon.imprison_markers > 0:
+		return true
+	# EX15 Holon Legacy (ex15-74 Stadium): each Pokémon that has δ on its card (both sides) can't use any
+	# Poké-Powers. (Poké-Bodies still work — is_power_blocked is also consulted by body checks, so those
+	# ex15 bodies which key on is_delta gate themselves separately; see is_body_blocked note below.)
+	if is_ex15_holon_legacy_active() and pokemon.is_delta():
 		return true
 	# ECARD3 Dark Gaze (Umbreon): while Umbreon is Active on either side, Benched Pokemon
 	# (both sides) can't use Poké-Powers. Umbreon itself is unaffected while Active.
@@ -2227,6 +2240,8 @@ func cpu_phase_activate_powers() -> void:
 	await cpu_phase_ex13_powers()
 	if main._should_bail(): return
 	await cpu_phase_ex14_powers()
+	if main._should_bail(): return
+	await cpu_phase_ex15_powers()
 	if main._should_bail(): return
 
 
@@ -6797,6 +6812,12 @@ func apply_np_between_turn_bodies() -> void:
 	await check_ex14_extra_noise()
 	if main._should_bail(): return
 
+	# EX15 Bedhead (Snorlax δ ex15-10) + Sand Damage (Flygon ex δ ex15-92): between-turns bodies.
+	await check_ex15_bedhead()
+	if main._should_bail(): return
+	await check_ex15_sand_damage()
+	if main._should_bail(): return
+
 	# EX12 Reactive Aroma (Roselia ex12-42): while a Roselia with React Energy attached is in play, remove
 	# 1 damage counter from each of your Pokemon (excluding ex) that has React Energy attached. Once per turn.
 	for side in [false, true]:
@@ -8088,6 +8109,10 @@ func _hook_ecard1_reduction_bodies(damage: int, _attacker: card_object, defender
 	for ability in defender.metadata.get("abilities", []):
 		var ab_name = ability.get("name", "")
 		if ab_name in _FLAT_REDUCTION_BODY_NAMES:
+			# EX15 Cloyster δ also has a "Solid Shell" Body but it PREVENTS bench damage (not a flat
+			# reduction) — its text has no "reduced by", so skip it here (handled in apply_bench_damage).
+			if "reduced by" not in ability.get("text","").to_lower():
+				continue
 			var amount = main.attack_effects.extract_number_before(ability.get("text","").to_lower(), "(after applying")
 			if amount <= 0: amount = 20
 			var r = min(damage, amount)
@@ -8114,7 +8139,7 @@ func _hook_ex3_buffer_piece(damage: int, _attacker: card_object, defender: card_
 	if damage <= 0 or defender == null:
 		return damage
 	for ac in defender.attached_cards:
-		if ac.uid.to_lower() == "ex3-83":
+		if ac.uid.to_lower() in ["ex3-83", "ex15-72"]:   # ex15-72 = reprinted Buffer Piece
 			var r = min(damage, 20)
 			modifiers.append("BUFFER PIECE -" + str(r))
 			return damage - r
@@ -8160,7 +8185,7 @@ func _hook_ecard1_strength_charm(damage: int, attacker: card_object, _defender: 
 	if damage <= 0 or attacker == null:
 		return damage
 	for ac in attacker.attached_cards:
-		if ac.uid.to_lower() in ["ecard1-150", "ex4-74", "ex8-92"]:
+		if ac.uid.to_lower() in ["ecard1-150", "ex4-74", "ex8-92", "ex15-81"]:
 			modifiers.append("STRENGTH CHARM +10")
 			attacker.set_effect("ecard1_strength_charm_triggered", "end_of_own_turn")
 			return damage + 10
@@ -12399,6 +12424,9 @@ func has_no_weakness_body(defender: card_object) -> bool:
 	# EX13 Aqua Flower (Bellossom ex13-19): attack-granted "no Weakness during your opponent's next turn".
 	if defender.has_effect("ex13_no_weakness"):
 		return true
+	# EX15 Holon Legacy (ex15-74 Stadium): each Pokémon with δ on its card (both sides) has no Weakness.
+	if is_ex15_holon_legacy_active() and defender.is_delta():
+		return true
 	if battle_frontier_disables(defender): return false
 	# ex10 Protective Orb (Pokémon Tool ex10-90): the holder has no Weakness.
 	for ac in defender.attached_cards:
@@ -16002,4 +16030,630 @@ func cpu_phase_ex14_powers() -> void:
 	if delcatty != null and not delcatty.power_used_this_turn and not is_power_blocked_by_status(delcatty):
 		if main.player_hand.size() > 6 and main.player_hand.size() - 6 >= main.opponent_hand.size() - 6:
 			await power_ex14_constrain(delcatty)
+			if main._should_bail(): return
+
+# ══════════════════════════════════════════════════════════════════════════════════════════════
+# EX15 (EX Dragon Frontiers) — Poké-Powers, Poké-Bodies, and their hooks
+# ══════════════════════════════════════════════════════════════════════════════════════════════
+
+func _register_ex15_powers() -> void:
+	_power_dispatch["Invitation"]         = func(p): await power_ex15_invitation(p)
+	_power_dispatch["Volunteer"]          = func(p): await power_ex15_volunteer(p)
+	_power_dispatch["Dozing"]             = func(p): await power_ex15_dozing(p)
+	_power_dispatch["Power Circulation"]  = func(p): await power_ex15_power_circulation(p)
+	_power_dispatch["Power of Evolution"] = func(p): await power_ex15_power_of_evolution(p)
+	_power_dispatch["Extra Boost"]        = func(p): await power_ex15_extra_boost(p)
+	_power_dispatch["Imprison"]           = func(p): await power_ex15_imprison(p)
+	_power_dispatch["Fellow Boost"]       = func(p): await power_ex15_fellow_boost(p)
+	_power_dispatch["Type Shift"]         = func(p): await power_ex15_type_shift(p)
+	_power_dispatch["Sharing"]            = func(p): await power_ex15_sharing(p)
+
+func _ex15_is_basic_energy(c: card_object) -> bool:
+	return c.metadata.get("supertype","") == "Energy" and "Basic" in c.metadata.get("subtypes", [])
+
+# ── Holon Legacy / Holon Veil / Rage Aura helpers ─────────────────────────────────
+
+# EX15 Holon Legacy (ex15-74 Stadium): each Pokémon that has δ on its card (both sides) has no Weakness
+# and can't use any Poké-Powers.
+func is_ex15_holon_legacy_active() -> bool:
+	return main.current_stadium_card != null and main.current_stadium_card.uid.to_lower() == "ex15-74"
+
+# EX15 Holon Veil (Ampharos δ ex15-1): while an Ampharos with this Body is in play on a side, treat every
+# Basic Pokémon and Evolution card in that side's deck, hand, discard pile, and play as a Pokémon that has
+# δ on its card. The result is cached on card.granted_delta (read by card_object.is_delta) and recomputed
+# by refresh_holon_veil() whenever the board changes.
+func _ex15_holon_veil_active(is_opp: bool) -> bool:
+	if is_toxic_gas_active() or main.goop_gas_active or is_cessation_crystal_active():
+		return false
+	for p in main.card_ops.get_all_pokemon_in_play(is_opp):
+		if p.has_ability("Holon Veil"):
+			return true
+	return false
+
+func refresh_holon_veil() -> void:
+	for is_opp in [false, true]:
+		var active_veil = _ex15_holon_veil_active(is_opp)
+		var zones: Array = []
+		if is_opp:
+			zones = [main.opponent_deck, main.opponent_hand, main.opponent_discard_pile, main.opponent_bench]
+		else:
+			zones = [main.player_deck, main.player_hand, main.player_discard_pile, main.player_bench]
+		for zone in zones:
+			for c in zone:
+				if c.metadata.get("supertype","") == "Pokémon":
+					c.granted_delta = active_veil
+		var act = main.opponent_active_pokemon if is_opp else main.player_active_pokemon
+		if act != null and act.metadata.get("supertype","") == "Pokémon":
+			act.granted_delta = active_veil
+
+# EX15 Rage Aura (Rayquaza ex δ ex15-97): if you have more Prize cards left than your opponent, ignore all
+# Colorless Energy needed to use Rayquaza ex's Special Circuit and Sky-high Claws attacks.
+func ex15_rage_aura_ignores_colorless(pokemon: card_object, attack_name: String) -> bool:
+	if pokemon == null or not pokemon.has_ability("Rage Aura") or is_power_blocked_by_status(pokemon):
+		return false
+	if attack_name not in ["Special Circuit", "Sky-high Claws"]:
+		return false
+	var is_opp = pokemon.is_owner_opp(main)
+	var my_prizes = (main.opponent_prize_cards if is_opp else main.player_prize_cards).size()
+	var opp_prizes = (main.player_prize_cards if is_opp else main.opponent_prize_cards).size()
+	return my_prizes > opp_prizes
+
+# ── Passive Poké-Body damage hooks ────────────────────────────────────────────────
+
+# BATTLE AURA (Feraligatr δ ex15-2): each of your Pokémon that has δ on its card does 10 more damage to
+# the Defending Pokémon (before W/R). Stacks per Feraligatr with this Body.
+func _hook_ex15_battle_aura(damage: int, attacker: card_object, defender: card_object, modifiers: Array) -> int:
+	if damage <= 0 or attacker == null: return damage
+	if not attacker.is_delta(): return damage
+	var bonus = 0
+	for p in main.card_ops.get_all_pokemon_in_play(attacker.is_owner_opp(main)):
+		if p.has_ability("Battle Aura") and not is_power_blocked_by_status(p):
+			bonus += 10
+	if bonus > 0:
+		modifiers.append("BATTLE AURA +" + str(bonus))
+		return damage + bonus
+	return damage
+
+# EXTRA FEATHER (Xatu δ ex15-25): each of your Stage 2 Pokémon-ex does 10 more damage to the Defending
+# Pokémon (before W/R). Stacks per Xatu with this Body.
+func _hook_ex15_extra_feather(damage: int, attacker: card_object, defender: card_object, modifiers: Array) -> int:
+	if damage <= 0 or attacker == null: return damage
+	if not ("Stage 2" in attacker.metadata.get("subtypes", []) and main.is_ex_pokemon(attacker)): return damage
+	var bonus = 0
+	for p in main.card_ops.get_all_pokemon_in_play(attacker.is_owner_opp(main)):
+		if p.has_ability("Extra Feather") and not is_power_blocked_by_status(p):
+			bonus += 10
+	if bonus > 0:
+		modifiers.append("EXTRA FEATHER +" + str(bonus))
+		return damage + bonus
+	return damage
+
+# ARMOR (Pinsir δ ex15-9): if your opponent has 5 or more cards in hand, damage to Pinsir is reduced by
+# 30 (after W/R).
+func _hook_ex15_armor(damage: int, attacker: card_object, defender: card_object, modifiers: Array) -> int:
+	if damage <= 0 or defender == null: return damage
+	if not defender.has_ability("Armor") or is_power_blocked_by_status(defender): return damage
+	var def_is_opp = defender.is_owner_opp(main)
+	var opp_hand = main.player_hand if def_is_opp else main.opponent_hand
+	if opp_hand.size() >= 5:
+		var r = min(damage, 30)
+		modifiers.append("ARMOR -" + str(r))
+		return damage - r
+	return damage
+
+# EXTRA SMOKE (Kingdra ex δ ex15-94): any damage done to your Stage 2 Pokémon-ex by your opponent's
+# attacks is reduced by 10 (before W/R).
+func _hook_ex15_extra_smoke(damage: int, attacker: card_object, defender: card_object, modifiers: Array) -> int:
+	if damage <= 0 or defender == null: return damage
+	if not ("Stage 2" in defender.metadata.get("subtypes", []) and main.is_ex_pokemon(defender)): return damage
+	for p in main.card_ops.get_all_pokemon_in_play(defender.is_owner_opp(main)):
+		if p.has_ability("Extra Smoke") and not is_power_blocked_by_status(p):
+			var r = min(damage, 10)
+			modifiers.append("EXTRA SMOKE -" + str(r))
+			return damage - r
+	return damage
+
+# ── Between-turns Poké-Bodies ─────────────────────────────────────────────────────
+
+# BEDHEAD (Snorlax δ ex15-10): as long as Snorlax remains Asleep between turns, put 2 damage counters on
+# 1 of the Defending Pokémon.
+func check_ex15_bedhead() -> void:
+	if is_toxic_gas_active() or main.goop_gas_active: return
+	for side in [false, true]:
+		for snorlax in main.card_ops.get_all_pokemon_in_play(side):
+			if not snorlax.has_ability("Bedhead"): continue
+			if snorlax.special_condition != "Asleep": continue
+			var targets = main.card_ops.get_defending_pokemon(side)
+			if targets.is_empty(): continue
+			var t = targets[0]
+			if t == null or t.current_hp <= 0: continue
+			t.current_hp = max(0, t.current_hp - 20)
+			main.display_hp_circles_above_align(t, not side)
+			main.display_pokemon(not side)
+			await main.show_message("BEDHEAD! 2 DAMAGE COUNTERS ON " + t.metadata.get("name","").to_upper() + "!")
+			if main._should_bail(): return
+			await main.check_all_knockouts()
+			if main._should_bail(): return
+
+# SAND DAMAGE (Flygon ex δ ex15-92): while Flygon ex is your Active Pokémon, put 1 damage counter on each
+# of your opponent's Benched Basic Pokémon between turns. No more than 1 Sand Damage applies.
+func check_ex15_sand_damage() -> void:
+	if is_toxic_gas_active() or main.goop_gas_active: return
+	for side in [false, true]:
+		var active = main.opponent_active_pokemon if side else main.player_active_pokemon
+		if active == null or not active.has_ability("Sand Damage") or is_power_blocked_by_status(active): continue
+		var opp_is = not side
+		var opp_bench = main.opponent_bench if opp_is else main.player_bench
+		var hit_any = false
+		for p in opp_bench:
+			# A Poké-Body placing damage counters bypasses attack-damage prevention (like Extra Noise).
+			if "Basic" in p.metadata.get("subtypes", []) and p.current_hp > 0:
+				p.current_hp = max(0, p.current_hp - 10)
+				main.display_hp_circles_above_align(p, opp_is)
+				hit_any = true
+		if hit_any:
+			main.display_pokemon(opp_is)
+			await main.show_message("SAND DAMAGE! 1 DAMAGE COUNTER ON EACH OPPONENT'S BENCHED BASIC POKEMON!")
+			if main._should_bail(): return
+			await main.check_all_knockouts()
+			if main._should_bail(): return
+
+# ── Active Poké-Powers ────────────────────────────────────────────────────────────
+
+# INVITATION (Nidoqueen δ ex15-7): once per turn, search your deck for a Basic Pokémon or Evolution card
+# and put it into your hand. Can't be used if Nidoqueen has a Special Condition.
+func power_ex15_invitation(nidoqueen: card_object) -> void:
+	var is_opp = nidoqueen.is_owner_opp(main)
+	if not await _ex11_power_ready(nidoqueen, "Invitation"):
+		if main._should_bail(): return
+		return
+	var deck = main.opponent_deck if is_opp else main.player_deck
+	if not deck.any(func(c): return c.metadata.get("supertype","") == "Pokémon"):
+		await main.show_message("NO POKÉMON IN YOUR DECK!")
+		if main._should_bail(): return
+		return
+	nidoqueen.power_used_this_turn = true
+	await main.card_ops.search_deck_to_hand(is_opp, func(c): return c.metadata.get("supertype","") == "Pokémon", "INVITATION: CHOOSE A BASIC POKÉMON OR EVOLUTION CARD", 1)
+	if main._should_bail(): return
+	await main.show_message("INVITATION!")
+	if main._should_bail(): return
+
+# DOZING (Snorlax δ ex15-10): once per turn, if Snorlax is your Active, remove 2 damage counters from it
+# and it is now Asleep. Can't be used if Snorlax is affected by a Special Condition.
+func power_ex15_dozing(snorlax: card_object) -> void:
+	var is_opp = snorlax.is_owner_opp(main)
+	var my_active = main.opponent_active_pokemon if is_opp else main.player_active_pokemon
+	if snorlax != my_active:
+		if not is_opp:
+			await main.show_message("DOZING CAN ONLY BE USED WHILE SNORLAX IS ACTIVE!")
+			if main._should_bail(): return
+		return
+	if not await _ex11_power_ready(snorlax, "Dozing"):
+		if main._should_bail(): return
+		return
+	snorlax.power_used_this_turn = true
+	await main.card_ops.heal_pokemon(snorlax, 20, is_opp)
+	if main._should_bail(): return
+	main.card_ops.apply_status(snorlax, "Asleep", is_opp)
+	main.update_status_icons(snorlax, is_opp)
+	await main.show_message("DOZING! SNORLAX HEALED 20 AND IS NOW ASLEEP!")
+	if main._should_bail(): return
+
+# POWER CIRCULATION (Mantine δ ex15-20): once per turn, search your discard pile for a basic Energy card
+# and put it on top of your deck; if you do, put 1 damage counter on Mantine. Can't be used with a Special
+# Condition.
+func power_ex15_power_circulation(mantine: card_object) -> void:
+	var is_opp = mantine.is_owner_opp(main)
+	if not await _ex11_power_ready(mantine, "Power Circulation"):
+		if main._should_bail(): return
+		return
+	var discard = main.opponent_discard_pile if is_opp else main.player_discard_pile
+	var deck = main.opponent_deck if is_opp else main.player_deck
+	var pool = discard.filter(func(c): return _ex15_is_basic_energy(c))
+	if pool.is_empty():
+		await main.show_message("NO BASIC ENERGY IN YOUR DISCARD PILE!")
+		if main._should_bail(): return
+		return
+	mantine.power_used_this_turn = true
+	var e: card_object = pool[0] if is_opp else await main.card_ops.choose_card(pool, false, "POWER CIRCULATION", "Choose a basic Energy to put on top of your deck", "SELECT", false, Callable(), true)
+	if main._should_bail(): return
+	if e == null: e = pool[0]
+	discard.erase(e)
+	e.current_location = "deck"
+	deck.append(e)   # top of deck = end of the array
+	mantine.current_hp = max(0, mantine.current_hp - 10)
+	main.update_discard_pile_display(is_opp)
+	main.update_deck_icon(is_opp)
+	main.display_hp_circles_above_align(mantine, is_opp)
+	main.display_pokemon(is_opp)
+	await main.show_message("POWER CIRCULATION! PUT " + e.metadata.get("name","").to_upper() + " ON TOP OF YOUR DECK!")
+	if main._should_bail(): return
+	await main.check_all_knockouts()
+	if main._should_bail(): return
+
+# POWER OF EVOLUTION (Electabuzz δ ex15-29): once per turn, if Electabuzz is an Evolved Pokémon, draw a
+# card from the bottom of your deck. Can't be used with a Special Condition.
+func power_ex15_power_of_evolution(electabuzz: card_object) -> void:
+	var is_opp = electabuzz.is_owner_opp(main)
+	if electabuzz.attached_pre_evolutions.is_empty():
+		if not is_opp:
+			await main.show_message("POWER OF EVOLUTION CAN ONLY BE USED WHILE ELECTABUZZ IS EVOLVED!")
+			if main._should_bail(): return
+		return
+	if not await _ex11_power_ready(electabuzz, "Power of Evolution"):
+		if main._should_bail(): return
+		return
+	var deck = main.opponent_deck if is_opp else main.player_deck
+	var hand = main.opponent_hand if is_opp else main.player_hand
+	if deck.is_empty():
+		await main.show_message("YOUR DECK IS EMPTY!")
+		if main._should_bail(): return
+		return
+	electabuzz.power_used_this_turn = true
+	var c: card_object = deck.pop_front()   # bottom of deck = front of the array
+	c.current_location = "hand"
+	hand.append(c)
+	main.refresh_hand_display(is_opp)
+	main.update_deck_icon(is_opp)
+	await main.show_message("POWER OF EVOLUTION! DREW A CARD FROM THE BOTTOM OF YOUR DECK!")
+	if main._should_bail(): return
+
+# EXTRA BOOST (Altaria ex δ ex15-90): once per turn, attach a basic Energy card from your hand to 1 of your
+# Stage 2 Pokémon-ex. Can't be used with a Special Condition.
+func power_ex15_extra_boost(altaria: card_object) -> void:
+	var is_opp = altaria.is_owner_opp(main)
+	if not await _ex11_power_ready(altaria, "Extra Boost"):
+		if main._should_bail(): return
+		return
+	var hand = main.opponent_hand if is_opp else main.player_hand
+	var energy_pool = hand.filter(func(c): return _ex15_is_basic_energy(c))
+	var targets = main.card_ops.get_all_pokemon_in_play(is_opp).filter(func(p): return "Stage 2" in p.metadata.get("subtypes", []) and main.is_ex_pokemon(p))
+	if energy_pool.is_empty():
+		await main.show_message("NO BASIC ENERGY IN YOUR HAND!")
+		if main._should_bail(): return
+		return
+	if targets.is_empty():
+		await main.show_message("NO STAGE 2 POKÉMON-ex TO ATTACH ENERGY TO!")
+		if main._should_bail(): return
+		return
+	var energy: card_object = null
+	var target: card_object = null
+	if is_opp:
+		energy = energy_pool[0]
+		target = targets[0]
+	else:
+		energy = energy_pool[0] if energy_pool.size() == 1 else await main.card_ops.choose_card(energy_pool, false, "EXTRA BOOST", "Choose a basic Energy to attach", "SELECT", true)
+		if main._should_bail(): return
+		if energy == null: return
+		target = targets[0] if targets.size() == 1 else await main.card_ops.choose_card(targets, false, "EXTRA BOOST", "Attach it to which Stage 2 Pokémon-ex?", "ATTACH", true)
+		if main._should_bail(): return
+		if target == null: return
+	altaria.power_used_this_turn = true
+	hand.erase(energy)
+	energy.current_location = "active" if target == (main.opponent_active_pokemon if is_opp else main.player_active_pokemon) else "bench"
+	target.attached_energies.append(energy)
+	main.refresh_hand_display(is_opp)
+	main.display_active_pokemon_energies(is_opp)
+	main.display_pokemon(is_opp)
+	await main.show_message("EXTRA BOOST! ATTACHED " + energy.metadata.get("name","").to_upper() + " TO " + target.metadata.get("name","").to_upper() + "!")
+	if main._should_bail(): return
+
+# IMPRISON (Gardevoir ex δ ex15-93): once per turn, if Gardevoir ex is your Active, put an Imprison marker
+# on 1 of your opponent's Pokémon. Any Pokémon with an Imprison marker can't use Poké-Powers or Poké-Bodies.
+# Can't be used with a Special Condition.
+func power_ex15_imprison(gardevoir: card_object) -> void:
+	var is_opp = gardevoir.is_owner_opp(main)
+	var my_active = main.opponent_active_pokemon if is_opp else main.player_active_pokemon
+	if gardevoir != my_active:
+		if not is_opp:
+			await main.show_message("IMPRISON CAN ONLY BE USED WHILE GARDEVOIR ex IS ACTIVE!")
+			if main._should_bail(): return
+		return
+	if not await _ex11_power_ready(gardevoir, "Imprison"):
+		if main._should_bail(): return
+		return
+	var pool = main.card_ops.get_all_pokemon_in_play(not is_opp)
+	if pool.is_empty():
+		await main.show_message("NO OPPONENT POKÉMON!")
+		if main._should_bail(): return
+		return
+	gardevoir.power_used_this_turn = true
+	var target: card_object = null
+	if is_opp:
+		# CPU: prefer a Pokémon that actually has a Power/Body (worth locking); else the Active.
+		for p in pool:
+			if not p.metadata.get("abilities", []).is_empty():
+				target = p
+				break
+		if target == null: target = main.player_active_pokemon if main.player_active_pokemon != null else pool[0]
+	else:
+		target = await main.card_ops.choose_card(pool, false, "IMPRISON", "Put an Imprison marker on which opponent's Pokémon?", "SELECT", false)
+		if main._should_bail(): return
+		if target == null: target = pool[0]
+	target.imprison_markers += 1
+	main.display_pokemon(not is_opp)
+	await main.show_message("IMPRISON! " + target.metadata.get("name","").to_upper() + " CAN'T USE POKÉ-POWERS OR POKÉ-BODIES!")
+	if main._should_bail(): return
+
+# FELLOW BOOST (Latias ex δ ex15-95): once per turn, attach a basic Energy card from your hand to your
+# Latias, Latias ex, Latios, or Latios ex; if you do, your turn ends. Can't be used with a Special Condition.
+func power_ex15_fellow_boost(latias: card_object) -> void:
+	var is_opp = latias.is_owner_opp(main)
+	if not await _ex11_power_ready(latias, "Fellow Boost"):
+		if main._should_bail(): return
+		return
+	var hand = main.opponent_hand if is_opp else main.player_hand
+	var energy_pool = hand.filter(func(c): return _ex15_is_basic_energy(c))
+	var targets = main.card_ops.get_all_pokemon_in_play(is_opp).filter(func(p): return "Latias" in p.metadata.get("name","") or "Latios" in p.metadata.get("name",""))
+	if energy_pool.is_empty():
+		await main.show_message("NO BASIC ENERGY IN YOUR HAND!")
+		if main._should_bail(): return
+		return
+	if targets.is_empty():
+		await main.show_message("NO LATIAS OR LATIOS TO ATTACH ENERGY TO!")
+		if main._should_bail(): return
+		return
+	var energy: card_object = null
+	var target: card_object = null
+	if is_opp:
+		energy = energy_pool[0]
+		target = targets[0]
+	else:
+		energy = energy_pool[0] if energy_pool.size() == 1 else await main.card_ops.choose_card(energy_pool, false, "FELLOW BOOST", "Choose a basic Energy to attach (your turn will end)", "SELECT", true)
+		if main._should_bail(): return
+		if energy == null: return
+		target = targets[0] if targets.size() == 1 else await main.card_ops.choose_card(targets, false, "FELLOW BOOST", "Attach it to which Latias/Latios?", "ATTACH", true)
+		if main._should_bail(): return
+		if target == null: return
+	latias.power_used_this_turn = true
+	hand.erase(energy)
+	energy.current_location = "active" if target == (main.opponent_active_pokemon if is_opp else main.player_active_pokemon) else "bench"
+	target.attached_energies.append(energy)
+	main.refresh_hand_display(is_opp)
+	main.display_active_pokemon_energies(is_opp)
+	main.display_pokemon(is_opp)
+	await main.show_message("FELLOW BOOST! ATTACHED " + energy.metadata.get("name","").to_upper() + " — YOUR TURN ENDS!")
+	if main._should_bail(): return
+	if not is_opp:
+		await main.get_tree().create_timer(0.4).timeout
+		main.player_end_turn_checks()
+
+# TYPE SHIFT (Salamence ex δ ex15-98): once per turn, Salamence ex's type is Fire until the end of your
+# turn. Can't be used with a Special Condition.
+func power_ex15_type_shift(salamence: card_object) -> void:
+	var is_opp = salamence.is_owner_opp(main)
+	if not await _ex11_power_ready(salamence, "Type Shift"):
+		if main._should_bail(): return
+		return
+	salamence.power_used_this_turn = true
+	salamence.set_effect("ex2_type_override", "end_of_own_turn", "Fire")
+	main.display_pokemon(is_opp)
+	await main.show_message("TYPE SHIFT! SALAMENCE ex IS NOW FIRE TYPE UNTIL THE END OF YOUR TURN!")
+	if main._should_bail(): return
+
+# SHARING (Milotic δ ex15-5): once per turn, look at your opponent's hand; you may use the effect of a
+# Supporter card you find there (it stays in your opponent's hand). No more than 1 Sharing per turn. Can't
+# be used with a Special Condition.
+func power_ex15_sharing(milotic: card_object) -> void:
+	var is_opp = milotic.is_owner_opp(main)
+	for p in main.card_ops.get_all_pokemon_in_play(is_opp):
+		if p != milotic and p.has_ability("Sharing") and p.power_used_this_turn:
+			if not is_opp:
+				await main.show_message("YOU'VE ALREADY USED SHARING THIS TURN!")
+				if main._should_bail(): return
+			return
+	if not await _ex11_power_ready(milotic, "Sharing"):
+		if main._should_bail(): return
+		return
+	var opp_hand = main.player_hand if is_opp else main.opponent_hand
+	var supporters = opp_hand.filter(func(c): return c.metadata.get("supertype","") == "Trainer" and "Supporter" in c.metadata.get("subtypes", []))
+	if supporters.is_empty():
+		await main.show_message("SHARING: YOUR OPPONENT HAS NO SUPPORTER CARDS IN HAND!")
+		if main._should_bail(): return
+		return
+	milotic.power_used_this_turn = true
+	var chosen: card_object = null
+	if is_opp:
+		chosen = supporters[0]
+	else:
+		chosen = supporters[0] if supporters.size() == 1 else await main.card_ops.choose_card(supporters, false, "SHARING", "Use which Supporter's effect? (it stays in your opponent's hand)", "USE", true, Callable(), true)
+		if main._should_bail(): return
+		if chosen == null: return
+	await main.show_message("SHARING! USING THE EFFECT OF " + chosen.metadata.get("name","").to_upper() + "!")
+	if main._should_bail(): return
+	await main.trainer_effects.resolve_standard_trainer(chosen, is_opp)
+	if main._should_bail(): return
+
+# VOLUNTEER (Ninetales δ ex15-8): once per turn, remove 4 damage counters from Ninetales and discard
+# Ninetales from Vulpix; then search your deck for Ninetales or Ninetales ex and put it onto Vulpix (this
+# counts as evolving Vulpix).
+func power_ex15_volunteer(ninetales: card_object) -> void:
+	var is_opp = ninetales.is_owner_opp(main)
+	if not await _ex11_power_ready(ninetales, "Volunteer"):
+		if main._should_bail(): return
+		return
+	if ninetales.attached_pre_evolutions.is_empty():
+		await main.show_message("VOLUNTEER NEEDS A VULPIX UNDER NINETALES!")
+		if main._should_bail(): return
+		return
+	var deck = main.opponent_deck if is_opp else main.player_deck
+	var pool = deck.filter(func(c): return c.metadata.get("supertype","") == "Pokémon" and c.metadata.get("name","").begins_with("Ninetales") and c != ninetales)
+	if pool.is_empty():
+		await main.show_message("NO NINETALES IN YOUR DECK!")
+		if main._should_bail(): return
+		return
+	if not is_opp:
+		var yes = await main.trainer_effects.gym1_prompt_yes_no(ninetales, "VOLUNTEER", "Discard Ninetales and put a Ninetales from your deck onto Vulpix?", "YES", "NO")
+		if main._should_bail(): return
+		if not yes: return
+	ninetales.power_used_this_turn = true
+	# Choose the replacement (CPU prefers Ninetales ex).
+	var new_top: card_object = null
+	if is_opp:
+		for c in pool:
+			if main.is_ex_pokemon(c): new_top = c; break
+		if new_top == null: new_top = pool[0]
+	else:
+		new_top = pool[0] if pool.size() == 1 else await main.card_ops.choose_card(pool, false, "VOLUNTEER", "Put which Pokémon onto Vulpix?", "EVOLVE", false, Callable(), true)
+		if main._should_bail(): return
+		if new_top == null: new_top = pool[0]
+	# Remove 4 damage counters first.
+	await main.card_ops.heal_pokemon(ninetales, 40, is_opp)
+	if main._should_bail(): return
+	# Carry damage and all attachments from the old Ninetales onto the new one; discard the old top card.
+	var damage_taken = max(0, ninetales.get_max_hp() - ninetales.current_hp)
+	new_top.attached_energies = ninetales.attached_energies.duplicate()
+	new_top.attached_cards = ninetales.attached_cards.duplicate()
+	new_top.attached_pre_evolutions = ninetales.attached_pre_evolutions.duplicate()
+	new_top.special_condition = ninetales.special_condition
+	new_top.is_poisoned = ninetales.is_poisoned
+	new_top.is_burned = ninetales.is_burned
+	new_top.placed_on_field_this_turn = true
+	ninetales.attached_energies = []
+	ninetales.attached_cards = []
+	ninetales.attached_pre_evolutions = []
+	# Swap the object in play.
+	var active = main.opponent_active_pokemon if is_opp else main.player_active_pokemon
+	var bench = main.opponent_bench if is_opp else main.player_bench
+	if ninetales == active:
+		if is_opp: main.opponent_active_pokemon = new_top
+		else: main.player_active_pokemon = new_top
+		new_top.current_location = "active"
+	else:
+		var idx = bench.find(ninetales)
+		if idx != -1:
+			bench[idx] = new_top
+		new_top.current_location = "bench"
+	deck.erase(new_top)
+	# Old Ninetales top card goes to discard (its attachments already moved to new_top).
+	ninetales.current_location = "discard"
+	var discard = main.opponent_discard_pile if is_opp else main.player_discard_pile
+	discard.append(ninetales)
+	new_top.current_hp = max(0, new_top.get_max_hp() - damage_taken)
+	deck.shuffle()
+	main.update_deck_icon(is_opp)
+	main.update_discard_pile_display(is_opp)
+	main.display_pokemon(is_opp)
+	main.display_active_pokemon_energies(is_opp)
+	main.display_hp_circles_above_align(new_top, is_opp)
+	refresh_holon_veil()
+	await main.show_message("VOLUNTEER! PUT " + new_top.metadata.get("name","").to_upper() + " ONTO VULPIX!")
+	if main._should_bail(): return
+
+# ── On-evolve (evolve-from-hand) Poké-Powers ──────────────────────────────────────
+
+# EVOLUTIONARY CALL (Meganium δ ex15-4): when you play Meganium to evolve, you may search your deck for up
+# to 3 Basic Pokémon and/or Evolution cards and put them into your hand.
+func trigger_ex15_evolutionary_call(meganium: card_object, is_opponent: bool) -> void:
+	if is_power_blocked_by_status(meganium): return
+	var deck = main.opponent_deck if is_opponent else main.player_deck
+	if not deck.any(func(c): return c.metadata.get("supertype","") == "Pokémon"): return
+	if not is_opponent:
+		var yes = await main.trainer_effects.gym1_prompt_yes_no(meganium, "EVOLUTIONARY CALL", "Search your deck for up to 3 Basic Pokémon or Evolution cards?", "SEARCH", "NO")
+		if main._should_bail(): return
+		if not yes: return
+	await main.card_ops.search_deck_to_hand(is_opponent, func(c): return c.metadata.get("supertype","") == "Pokémon", "EVOLUTIONARY CALL: CHOOSE UP TO 3 BASIC POKÉMON OR EVOLUTION CARDS", 3)
+	if main._should_bail(): return
+	await main.show_message("EVOLUTIONARY CALL!")
+	if main._should_bail(): return
+
+# PROWL (Ledian δ ex15-18): when you play Ledian to evolve, you may search your deck for any 1 card and put
+# it into your hand.
+func trigger_ex15_prowl(ledian: card_object, is_opponent: bool) -> void:
+	if is_power_blocked_by_status(ledian): return
+	var deck = main.opponent_deck if is_opponent else main.player_deck
+	if deck.is_empty(): return
+	if not is_opponent:
+		var yes = await main.trainer_effects.gym1_prompt_yes_no(ledian, "PROWL", "Search your deck for any 1 card?", "SEARCH", "NO")
+		if main._should_bail(): return
+		if not yes: return
+	await main.card_ops.search_deck_to_hand(is_opponent, func(c): return true, "PROWL: CHOOSE ANY 1 CARD", 1)
+	if main._should_bail(): return
+	await main.show_message("PROWL!")
+	if main._should_bail(): return
+
+# DIG UP (Quagsire δ ex15-21): when you play Quagsire to evolve, you may search your discard pile for up to
+# 2 Pokémon Tool cards and put them into your hand.
+func trigger_ex15_dig_up(quagsire: card_object, is_opponent: bool) -> void:
+	if is_power_blocked_by_status(quagsire): return
+	var discard = main.opponent_discard_pile if is_opponent else main.player_discard_pile
+	if not discard.any(func(c): return "Pokémon Tool" in c.metadata.get("subtypes", [])): return
+	if not is_opponent:
+		var yes = await main.trainer_effects.gym1_prompt_yes_no(quagsire, "DIG UP", "Search your discard pile for up to 2 Pokémon Tool cards?", "SEARCH", "NO")
+		if main._should_bail(): return
+		if not yes: return
+	for i in range(2):
+		var tools = discard.filter(func(c): return "Pokémon Tool" in c.metadata.get("subtypes", []))
+		if tools.is_empty(): break
+		var chosen: card_object = null
+		if is_opponent:
+			chosen = tools[0]
+		else:
+			var cancelable = i > 0
+			chosen = await main.card_ops.choose_card(tools, false, "DIG UP", "Choose a Pokémon Tool to take (" + str(2 - i) + " left)", "TAKE", cancelable, Callable(), true)
+			if main._should_bail(): return
+			if chosen == null: break
+		await main.card_ops.recover_to_hand(chosen, is_opponent)
+		if main._should_bail(): return
+	await main.show_message("DIG UP!")
+	if main._should_bail(): return
+
+# ── On-bench (put-from-hand) Poké-Power ───────────────────────────────────────────
+
+# TROPICAL HEAL (Tropius δ ex15-23): when you put Tropius onto your Bench from your hand, you may remove all
+# Special Conditions, Imprison markers, and Shock-wave markers from your Pokémon.
+func trigger_ex15_tropical_heal(tropius: card_object, is_opponent: bool) -> void:
+	if is_power_blocked_by_status(tropius): return
+	if not is_opponent:
+		var yes = await main.trainer_effects.gym1_prompt_yes_no(tropius, "TROPICAL HEAL", "Remove all Special Conditions and Imprison/Shock-wave markers from your Pokémon?", "YES", "NO")
+		if main._should_bail(): return
+		if not yes: return
+	for p in main.card_ops.get_all_pokemon_in_play(is_opponent):
+		main.card_ops.clear_statuses(p, is_opponent)
+		p.imprison_markers = 0
+		p.shockwave_markers = 0
+		main.update_status_icons(p, is_opponent)
+	main.display_pokemon(is_opponent)
+	await main.show_message("TROPICAL HEAL! REMOVED ALL SPECIAL CONDITIONS AND MARKERS FROM YOUR POKÉMON!")
+	if main._should_bail(): return
+
+# ── CPU activation of the beneficial ex15 active powers ───────────────────────────
+
+func cpu_phase_ex15_powers() -> void:
+	# Invitation (Nidoqueen δ): fetch a Pokémon if the deck has one.
+	var nidoqueen = _find_cpu_pokemon_with_power("Invitation")
+	if nidoqueen != null and not nidoqueen.power_used_this_turn and not is_power_blocked_by_status(nidoqueen):
+		if main.opponent_deck.any(func(c): return c.metadata.get("supertype","") == "Pokémon"):
+			await power_ex15_invitation(nidoqueen)
+			if main._should_bail(): return
+	# Power of Evolution (Electabuzz δ): draw if Evolved.
+	var electabuzz = _find_cpu_pokemon_with_power("Power of Evolution")
+	if electabuzz != null and not electabuzz.attached_pre_evolutions.is_empty() and not electabuzz.power_used_this_turn and not is_power_blocked_by_status(electabuzz):
+		await power_ex15_power_of_evolution(electabuzz)
+		if main._should_bail(): return
+	# Power Circulation (Mantine δ): recycle a basic Energy back onto the deck (only if healthy enough).
+	var mantine = _find_cpu_pokemon_with_power("Power Circulation")
+	if mantine != null and mantine.current_hp > 10 and not mantine.power_used_this_turn and not is_power_blocked_by_status(mantine):
+		if main.opponent_discard_pile.any(func(c): return _ex15_is_basic_energy(c)):
+			await power_ex15_power_circulation(mantine)
+			if main._should_bail(): return
+	# Extra Boost (Altaria ex δ): attach a basic Energy to a Stage 2 Pokémon-ex.
+	var altaria = _find_cpu_pokemon_with_power("Extra Boost")
+	if altaria != null and not altaria.power_used_this_turn and not is_power_blocked_by_status(altaria):
+		var has_energy = main.opponent_hand.any(func(c): return _ex15_is_basic_energy(c))
+		var has_target = main.card_ops.get_all_pokemon_in_play(true).any(func(p): return "Stage 2" in p.metadata.get("subtypes", []) and main.is_ex_pokemon(p))
+		if has_energy and has_target:
+			await power_ex15_extra_boost(altaria)
+			if main._should_bail(): return
+	# Imprison (Gardevoir ex δ): lock down a player Pokémon that has a Power/Body.
+	var gardevoir = _find_cpu_pokemon_with_power("Imprison")
+	if gardevoir != null and gardevoir == main.opponent_active_pokemon and not gardevoir.power_used_this_turn and not is_power_blocked_by_status(gardevoir):
+		if main.card_ops.get_all_pokemon_in_play(false).any(func(p): return not p.metadata.get("abilities", []).is_empty() and p.imprison_markers == 0):
+			await power_ex15_imprison(gardevoir)
+			if main._should_bail(): return
+	# Volunteer (Ninetales δ): upgrade to Ninetales ex if it is in the deck.
+	var ninetales = _find_cpu_pokemon_with_power("Volunteer")
+	if ninetales != null and not ninetales.attached_pre_evolutions.is_empty() and not ninetales.power_used_this_turn and not is_power_blocked_by_status(ninetales):
+		if main.opponent_deck.any(func(c): return c.metadata.get("supertype","") == "Pokémon" and c.metadata.get("name","").begins_with("Ninetales") and main.is_ex_pokemon(c)):
+			await power_ex15_volunteer(ninetales)
 			if main._should_bail(): return

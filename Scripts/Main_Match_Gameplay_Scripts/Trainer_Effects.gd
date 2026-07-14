@@ -46,6 +46,7 @@ func _ensure_trainer_dispatch_ready() -> void:
 	_register_ex12_trainers()
 	_register_ex13_trainers()
 	_register_ex14_trainers()
+	_register_ex15_trainers()
 
 # EX9 (EX EMERALD) trainers. Most are reprints of ex1/ex2 cards — reuse the existing effect functions
 # with the ex9 UID. Lum Berry (ex9-78) / Oran Berry (ex9-80) are Pokemon Tools whose attach is generic
@@ -3889,7 +3890,7 @@ func gym1_end_of_turn_cleanup(side_is_opponent: bool) -> void:
 		if pokemon.has_effect("ecard1_strength_charm_triggered"):
 			var charm_card: card_object = null
 			for ac in pokemon.attached_cards:
-				if ac.uid.to_lower() in ["ecard1-150", "ex4-74", "ex8-92"]:
+				if ac.uid.to_lower() in ["ecard1-150", "ex4-74", "ex8-92", "ex15-81"]:
 					charm_card = ac
 					break
 			if charm_card != null:
@@ -9659,7 +9660,7 @@ func ex3_buffer_piece_check() -> void:
 	for side in [false, true]:
 		for p in main.card_ops.get_all_pokemon_in_play(side):
 			for ac in p.attached_cards.duplicate():
-				if ac.uid.to_lower() != "ex3-83":
+				if ac.uid.to_lower() not in ["ex3-83", "ex15-72"]:
 					continue
 				ac.ex3_buffer_piece_turns += 1
 				if ac.ex3_buffer_piece_turns >= 2:
@@ -11168,3 +11169,56 @@ func _ex14_card_owner_is_opp(c: card_object, tool_entries: Array) -> bool:
 		if e["card"] == c:
 			return e["owner_is_opp"]
 	return false
+
+######################################################################################################################################################
+######################################################### EX15 (EX DRAGON FRONTIERS) TRAINERS ########################################################
+######################################################################################################################################################
+# Reprints reuse existing effect functions by UID. Buffer Piece (ex15-72) & Strength Charm (ex15-81) are
+# Pokémon Tools — their attach is generic and their bonuses reuse the ex3/ecard1 hooks (their UIDs were
+# added to those hooks' UID lists). Holon Legacy (ex15-74) is a Stadium installed generically by
+# resolve_stadium_trainer; its passive δ effects live in is_ex15_holon_legacy_active() checks inside
+# is_power_blocked and has_no_weakness_body. Only the Items/Supporters need dispatch entries.
+func _register_ex15_trainers() -> void:
+	_trainer_dispatch["ex15-73"] = func(c, opp): await effect_ecard1_copycat(opp)                    # Copycat (Supporter)
+	_trainer_dispatch["ex15-75"] = func(c, opp): await effect_ex15_holon_mentor(opp)                 # Holon Mentor (Supporter)
+	_trainer_dispatch["ex15-76"] = func(c, opp): await effect_ex15_island_hermit(opp)                # Island Hermit (Supporter)
+	_trainer_dispatch["ex15-77"] = func(c, opp): await effect_ex9_mr_stones_project(opp)             # Mr. Stone's Project (Supporter)
+	_trainer_dispatch["ex15-78"] = func(c, opp): await effect_neo3_old_rod(c, opp)                   # Old Rod (Item)
+	_trainer_dispatch["ex15-79"] = func(c, opp): await effect_ex15_professor_elms_training_method(opp)  # Professor Elm's Training Method (Supporter)
+	_trainer_dispatch["ex15-80"] = func(c, opp): await effect_ecard1_professor_oaks_research(opp)    # Professor Oak's Research (Supporter)
+	_trainer_dispatch["ex15-82"] = func(c, opp): await effect_ex3_tv_reporter(opp)                   # TV Reporter (Supporter)
+	_trainer_dispatch["ex15-83"] = func(c, opp): await effect_switch(opp)                            # Switch (Item)
+
+# HOLON MENTOR (ex15-75, Supporter): search your deck for up to 3 Basic Pokémon that each have 100 HP or
+# less and put them into your hand. (No discard cost — unlike the ex11 Holon Supporters.)
+func effect_ex15_holon_mentor(is_opponent: bool) -> void:
+	var found = await main.card_ops.search_deck_to_hand(is_opponent, func(c): return main.is_basic_pokemon(c) and int(c.metadata.get("hp","0")) <= 100, "HOLON MENTOR: CHOOSE UP TO 3 BASIC POKÉMON (100 HP OR LESS)", 3)
+	if main._should_bail(): return
+	await main.show_message("HOLON MENTOR! ADDED " + str(found.size()) + " BASIC POKÉMON TO YOUR HAND!")
+	if main._should_bail(): return
+
+# ISLAND HERMIT (ex15-76, Supporter): choose up to 2 of your Prize cards and put them face up, then draw 2
+# cards. (Per-prize face-up state isn't modelled by this engine — it has only a single all-prizes flag — so
+# the mechanically meaningful "draw 2" is applied; see the same documented limitation on ex11 Prize Shift.)
+func effect_ex15_island_hermit(is_opponent: bool) -> void:
+	await main.card_ops.draw_n(is_opponent, 2)
+	if main._should_bail(): return
+	await main.show_message("ISLAND HERMIT! REVEALED UP TO 2 PRIZE CARDS AND DREW 2 CARDS!")
+	if main._should_bail(): return
+
+# PROFESSOR ELM'S TRAINING METHOD (ex15-79, Supporter): search your deck for an Evolution card, show it to
+# your opponent, and put it into your hand.
+func effect_ex15_professor_elms_training_method(is_opponent: bool) -> void:
+	var is_evolution = func(c):
+		if c.metadata.get("supertype","") != "Pokémon": return false
+		var st = c.metadata.get("subtypes", [])
+		return "Stage 1" in st or "Stage 2" in st
+	var deck = main.opponent_deck if is_opponent else main.player_deck
+	if not deck.any(is_evolution):
+		await main.show_message("NO EVOLUTION CARD IN YOUR DECK!")
+		if main._should_bail(): return
+		return
+	await main.card_ops.search_deck_to_hand(is_opponent, is_evolution, "PROFESSOR ELM'S TRAINING METHOD: CHOOSE AN EVOLUTION CARD", 1)
+	if main._should_bail(): return
+	await main.show_message("PROFESSOR ELM'S TRAINING METHOD!")
+	if main._should_bail(): return

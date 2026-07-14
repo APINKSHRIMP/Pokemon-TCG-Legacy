@@ -409,6 +409,7 @@ func place_on_bench(pokemon: card_object, is_opponent: bool) -> bool:
 	pokemon.placed_on_field_this_turn = true
 	bench.append(pokemon)
 	main.display_pokemon(is_opponent)
+	main.powers_and_bodies.refresh_holon_veil()   # EX15 Holon Veil: a new bench Pokémon may gain/lose δ
 	return true
 
 # ── Selection UI ──────────────────────────────────────────────────────────────────────────
@@ -500,6 +501,12 @@ func apply_bench_damage(pokemon: card_object, damage: int, is_opponent: bool) ->
 	for sv in main.card_ops.get_all_pokemon_in_play(is_opponent):
 		if sv.has_ability("Sand Veil") and not main.powers_and_bodies.is_power_blocked(sv):
 			return
+	# EX15 Solid Shell (Cloyster δ ex15-14): prevent all effects of attacks (including damage) to that
+	# side's Benched Pokémon that have δ on their card, while a Cloyster with this Body is in play.
+	if pokemon.is_delta():
+		for cs in main.card_ops.get_all_pokemon_in_play(is_opponent):
+			if cs.has_ability("Solid Shell") and not main.powers_and_bodies.is_power_blocked(cs):
+				return
 	pokemon.current_hp = max(0, pokemon.current_hp - damage)
 	var loc = main.get_pokemon_screen_location(pokemon)
 	if not loc.is_empty():

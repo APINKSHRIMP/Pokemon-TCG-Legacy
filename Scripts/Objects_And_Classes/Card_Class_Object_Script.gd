@@ -140,6 +140,18 @@ var gym2_mega_burn_locked: bool = false    # Sabrina's Alakazam Mega Burn — ca
 # EX3 (EX Dragon) properties
 var ex3_buffer_piece_turns: int = 0        # ex3-83 Buffer Piece Tool: end-of-turn counter; discarded after the opponent's turn following play
 
+# EX15 (EX Dragon Frontiers) properties
+# Holon Veil (Ampharos δ ex15-1) treats every Basic Pokémon and Evolution card on your side as a
+# Pokémon that has δ on its card. refresh_holon_veil() (Powers_And_Bodies_Effects.gd) recomputes this
+# flag for every Pokémon in each side's deck/hand/discard/play; is_delta() then reads it.
+var granted_delta: bool = false
+# Imprison markers (Gardevoir ex δ ex15-93): a Pokémon with any Imprison marker can't use Poké-Powers
+# or Poké-Bodies. Shock-wave markers (Tyranitar ex δ ex15-99): a Pokémon with a Shock-wave marker can
+# be Knocked Out by Tyranitar ex's Shock-wave attack. Both persist until removed (Tropical Heal) or the
+# Pokémon leaves play; stored as until_leaves_play effects so send_card_to_discard clears them.
+var imprison_markers: int = 0
+var shockwave_markers: int = 0
+
 # Coin-flip attack block (Sand-attack, Smokescreen, Lightning Flash, Sandstorm, Mirage)
 # When set, the pokemon must flip before attacking: tails = attack fails
 var attack_flip_blocked: bool = false      # If true, this pokemon must flip before attacking next turn
@@ -352,7 +364,8 @@ func _dual_armor_has_energy(type_name: String) -> bool:
 # EX11 (EX Delta Species): a Pokemon "has δ on its card" if the δ symbol is part of its printed
 # name (e.g. "Beedrill δ", "Latios δ"). Used by Holon stadiums/supporters and the Delta powers.
 func is_delta() -> bool:
-	return "δ" in metadata.get("name", "")
+	# EX15 Holon Veil (Ampharos δ) sets granted_delta on every Basic/Evolution card on that side.
+	return "δ" in metadata.get("name", "") or granted_delta
 
 # EX11: number of "Holon Energy" special-energy cards (Holon Energy FF/GL/WP) attached to this
 # Pokemon. Several ex11 attacks/bodies scale off, or gate on, attached Holon Energy.
