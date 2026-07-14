@@ -45,6 +45,7 @@ func _ensure_trainer_dispatch_ready() -> void:
 	_register_ex11_trainers()
 	_register_ex12_trainers()
 	_register_ex13_trainers()
+	_register_ex14_trainers()
 
 # EX9 (EX EMERALD) trainers. Most are reprints of ex1/ex2 cards — reuse the existing effect functions
 # with the ex9 UID. Lum Berry (ex9-78) / Oran Berry (ex9-80) are Pokemon Tools whose attach is generic
@@ -389,6 +390,7 @@ func _ensure_validator_dispatch_ready() -> void:
 	_register_ex5_validations()
 	_register_ex11_validations()
 	_register_ex13_validations()
+	_register_ex14_validations()
 	# When adding Neo1/Neo2/etc., append: _register_neo1_validations()
 
 func _register_base_validations() -> void:
@@ -1507,6 +1509,12 @@ func resolve_attached_trainer(card: card_object, is_opponent: bool) -> void:
 		await main.show_message("WEAKNESS GUARD ATTACHED TO " + wg_target.metadata.get("name","").to_upper() + "!")
 		if main._should_bail(): return
 		print("TRAINER: Weakness Guard attached to ", wg_target.metadata.get("name",""))
+		return
+
+	# EX14 Cessation Crystal (ex14-74) / Mysterious Shard (ex14-81): Pokémon Tools that may only be
+	# attached to a Pokémon that is NOT a Pokémon-ex.
+	elif card.uid.to_lower() in ["ex14-74", "ex14-81"]:
+		await neo1_attach_tool(card, is_opponent, func(p): return not main.is_ex_pokemon(p))
 		return
 
 	# Any Pokémon Tool card not otherwise handled above (ecard2 Healing Berry/Memory Berry/Time
@@ -3920,7 +3928,7 @@ func gym1_end_of_turn_cleanup(side_is_opponent: bool) -> void:
 		if attacked_this_turn:
 			var mb_card: card_object = null
 			for ac in pokemon.attached_cards:
-				if ac.uid.to_lower() == "ecard2-128":
+				if ac.uid.to_lower() in ["ecard2-128", "ex14-80"]:
 					mb_card = ac
 					break
 			if mb_card != null:
@@ -3939,7 +3947,7 @@ func gym1_end_of_turn_cleanup(side_is_opponent: bool) -> void:
 		if attacked_this_turn:
 			var cs_card: card_object = null
 			for ac in pokemon.attached_cards:
-				if ac.uid.to_lower() in ["ecard3-122", "ex8-85"]:
+				if ac.uid.to_lower() in ["ecard3-122", "ex8-85", "ex14-76"]:
 					cs_card = ac
 					break
 			if cs_card != null:
@@ -4024,6 +4032,38 @@ func gym1_end_of_turn_cleanup(side_is_opponent: bool) -> void:
 		# Must run LAST in this loop body — effects like Strength Charm's trigger flag are
 		# read above (to decide whether to discard the tool) before being cleared here.
 		pokemon.clear_effects_with_duration("end_of_own_turn")
+
+	# EX14 Mysterious Shard (ex14-81 Pokémon Tool): "Discard this card at the end of your opponent's next
+	# turn." Armed at the end of the turn it was played (its holder's own turn) and discarded at the
+	# following turn-end (the opponent's turn) — so we scan BOTH sides every turn-end.
+	for ms_is_opp in [false, true]:
+		var ms_active = main.opponent_active_pokemon if ms_is_opp else main.player_active_pokemon
+		var ms_field: Array = []
+		if ms_active != null: ms_field.append(ms_active)
+		ms_field.append_array(main.opponent_bench if ms_is_opp else main.player_bench)
+		var ms_discard = main.opponent_discard_pile if ms_is_opp else main.player_discard_pile
+		for p in ms_field:
+			var shard: card_object = null
+			for ac in p.attached_cards:
+				if ac.uid.to_lower() == "ex14-81":
+					shard = ac
+					break
+			if shard == null:
+				continue
+			if shard.has_effect("ex14_shard_armed"):
+				p.attached_cards.erase(shard)
+				shard.clear_effect("ex14_shard_armed")
+				shard.current_location = "discard"
+				ms_discard.append(shard)
+				var ms_attached_node = main.opponent_attached_cards_container if ms_is_opp else main.player_attached_cards_container
+				var ms_discard_node = main.opponent_discard_icon if ms_is_opp else main.player_discard_icon
+				var ms_tex = main.get_card_texture(shard)
+				main.animate_card_a_to_b(ms_attached_node, ms_discard_node, 0.25, ms_tex, main.card_scales[10])
+				display_attached_trainer_cards(ms_is_opp)
+				main.update_discard_pile_display(ms_is_opp)
+				print("MYSTERIOUS SHARD: discarded from ", p.metadata.get("name", ""))
+			else:
+				shard.set_effect("ex14_shard_armed", "until_leaves_play")
 
 	# Generic expiring-effects: effects on the OTHER side tagged to expire when THIS side's turn ends
 	var other_active = main.player_active_pokemon if side_is_opponent else main.opponent_active_pokemon
@@ -6307,11 +6347,13 @@ func check_pokemon_tower_blocks_recovery() -> bool:
 ######################################################################################################################################################
 
 # HELPER: Attach a Pokemon Tool to a chosen Pokemon (checks for existing tool)
-func neo1_attach_tool(card: card_object, is_opponent: bool) -> void:
+func neo1_attach_tool(card: card_object, is_opponent: bool, eligibility_filter: Callable = Callable()) -> void:
 	var targets = build_field_pokemon_array(is_opponent)
 	# Filter out pokemon that already have a tool attached
 	var valid_targets: Array = []
 	for p in targets:
+		if eligibility_filter.is_valid() and not eligibility_filter.call(p):
+			continue
 		var has_tool = false
 		for ac in p.attached_cards:
 			if is_attached_trainer(ac) and (ac.uid.to_lower() in ["neo1-86","neo1-93","neo1-94","neo1-99","neo3-60","neo4-93","neo4-97","neo4-101","gym1-99","gym1-117","gym2-101","gym2-115","ecard1-150"] or "Pokémon Tool" in ac.metadata.get("subtypes", [])):
@@ -10968,3 +11010,161 @@ func ex12_strange_cave_offer(is_opponent: bool) -> void:
 	main.refresh_hand_display(is_opponent)
 	await main.show_message("STRANGE CAVE! " + chosen.metadata.get("name","").to_upper() + " WAS PLACED ON THE BENCH!")
 	if main._should_bail(): return
+
+######################################################################################################################################################
+##################################################### EX14 (CRYSTAL GUARDIANS) TRAINER EFFECTS #######################################################
+######################################################################################################################################################
+# Reprints reuse existing effect functions. Pokémon Tools (Cessation Crystal, Crystal Shard, Memory Berry,
+# Mysterious Shard) and Stadiums (Crystal Beach, Holon Circle) route through resolve_attached_trainer /
+# resolve_stadium_trainer respectively — their passive effects are wired at their check sites.
+
+func _register_ex14_trainers() -> void:
+	_trainer_dispatch["ex14-71"] = func(c, opp): await effect_ecard1_bills_maintenance(opp)   # Bill's Maintenance (Supporter)
+	_trainer_dispatch["ex14-72"] = func(c, opp): await effect_ex14_castaway(opp)               # Castaway (Supporter)
+	_trainer_dispatch["ex14-73"] = func(c, opp): await effect_ex6_celios_network(opp)          # Celio's Network (Supporter)
+	_trainer_dispatch["ex14-77"] = func(c, opp): await effect_ex2_double_full_heal(opp)        # Double Full Heal (Item)
+	_trainer_dispatch["ex14-78"] = func(c, opp): await effect_ecard1_dual_ball(opp)            # Dual Ball (Item)
+	_trainer_dispatch["ex14-82"] = func(c, opp): await effect_poke_ball(opp)                   # Poké Ball (Item)
+	_trainer_dispatch["ex14-83"] = func(c, opp): await effect_ex14_pokenav(opp)                # PokéNav (Item)
+	_trainer_dispatch["ex14-84"] = func(c, opp): await effect_ecard1_warp_point(opp)           # Warp Point (Item)
+	_trainer_dispatch["ex14-85"] = func(c, opp): await effect_ex14_windstorm(opp)              # Windstorm (Item)
+	_trainer_dispatch["ex14-86"] = func(c, opp): await effect_energy_search(opp)               # Energy Search (Item)
+	_trainer_dispatch["ex14-87"] = func(c, opp): await effect_potion(opp)                      # Potion (Item)
+
+func _register_ex14_validations() -> void:
+	# Cessation Crystal (ex14-74) / Mysterious Shard (ex14-81): attach only to a Pokémon that is NOT a
+	# Pokémon-ex and does not already have a Tool.
+	var non_ex_tool_target = func(c, opp):
+		var field = build_field_pokemon_array(opp)
+		for p in field:
+			if main.is_ex_pokemon(p):
+				continue
+			var has_tool = false
+			for ac in p.attached_cards:
+				if "Pokémon Tool" in ac.metadata.get("subtypes", []):
+					has_tool = true
+					break
+			if not has_tool:
+				return ""
+		return "No eligible Pokémon (must be a non-ex Pokémon without a Tool)!"
+	_validator_dispatch["ex14-74"] = non_ex_tool_target
+	_validator_dispatch["ex14-81"] = non_ex_tool_target
+
+# CASTAWAY (ex14-72, Supporter): search your deck for a Supporter card, a Pokémon Tool card, and a basic
+# Energy card, and put them into your hand.
+func effect_ex14_castaway(is_opponent: bool) -> void:
+	await main.card_ops.search_deck_to_hand(is_opponent, func(c): return c.metadata.get("supertype","") == "Trainer" and "Supporter" in c.metadata.get("subtypes", []), "CASTAWAY: CHOOSE A SUPPORTER", 1)
+	if main._should_bail(): return
+	await main.card_ops.search_deck_to_hand(is_opponent, func(c): return c.metadata.get("supertype","") == "Trainer" and "Pokémon Tool" in c.metadata.get("subtypes", []), "CASTAWAY: CHOOSE A POKÉMON TOOL", 1)
+	if main._should_bail(): return
+	await main.card_ops.search_deck_to_hand(is_opponent, func(c): return c.metadata.get("supertype","") == "Energy" and "Basic" in c.metadata.get("subtypes", []), "CASTAWAY: CHOOSE A BASIC ENERGY", 1)
+	if main._should_bail(): return
+	await main.show_message("CASTAWAY!")
+	if main._should_bail(): return
+
+# POKÉNAV (ex14-83, Item): look at the top 3 cards of your deck; choose a Basic Pokémon, Evolution card,
+# or Energy card and put it into your hand. Put the other 2 back on top of your deck in any order.
+func effect_ex14_pokenav(is_opponent: bool) -> void:
+	var deck = main.opponent_deck if is_opponent else main.player_deck
+	var hand = main.opponent_hand if is_opponent else main.player_hand
+	if deck.is_empty():
+		await main.show_message("YOUR DECK IS EMPTY!")
+		if main._should_bail(): return
+		return
+	var top: Array = []
+	for i in range(min(3, deck.size())):
+		top.append(deck[deck.size() - 1 - i])
+	var is_eligible = func(c):
+		var st = c.metadata.get("supertype","")
+		if st == "Energy": return true
+		if st == "Pokémon":
+			var subs = c.metadata.get("subtypes", [])
+			return "Basic" in subs or "Stage 1" in subs or "Stage 2" in subs
+		return false
+	var eligible = top.filter(is_eligible)
+	var chosen: card_object = null
+	if eligible.is_empty():
+		await main.show_message("POKÉNAV: NO BASIC POKÉMON, EVOLUTION, OR ENERGY IN THE TOP 3!")
+		if main._should_bail(): return
+	else:
+		chosen = eligible[0] if is_opponent else await main.card_ops.choose_card(eligible, false, "POKÉNAV", "Choose a card to put into your hand", "TAKE", false)
+		if main._should_bail(): return
+		if chosen == null: chosen = eligible[0]
+		deck.erase(chosen)
+		chosen.current_location = "hand"
+		hand.append(chosen)
+		main.refresh_hand_display(is_opponent)
+		main.update_deck_icon(is_opponent)
+		await main.show_message("POKÉNAV! PUT " + chosen.metadata.get("name","").to_upper() + " INTO YOUR HAND!")
+		if main._should_bail(): return
+	# The other 2 stay on top of the deck (already there); order is irrelevant vs. no reshuffle.
+
+# WINDSTORM (ex14-85, Item): choose up to 2 Pokémon Tool cards and/or Stadium cards in play (both players)
+# and discard them.
+func effect_ex14_windstorm(is_opponent: bool) -> void:
+	# Gather all discardable targets: every attached Pokémon Tool (both sides) + the Stadium in play.
+	var tool_entries: Array = []   # [{pokemon, card, owner_is_opp}]
+	for owner_is_opp in [false, true]:
+		for p in build_field_pokemon_array(owner_is_opp):
+			for ac in p.attached_cards:
+				if "Pokémon Tool" in ac.metadata.get("subtypes", []):
+					tool_entries.append({"pokemon": p, "card": ac, "owner_is_opp": owner_is_opp})
+	var has_stadium = main.current_stadium_card != null
+	if tool_entries.is_empty() and not has_stadium:
+		await main.show_message("WINDSTORM: NO POKÉMON TOOLS OR STADIUMS IN PLAY!")
+		if main._should_bail(): return
+		return
+	# Build a selectable pool of card_objects (tools + stadium), pick up to 2.
+	var pool: Array = []
+	for e in tool_entries:
+		pool.append(e["card"])
+	if has_stadium:
+		pool.append(main.current_stadium_card)
+	var picks: Array = []
+	var max_picks = min(2, pool.size())
+	for i in range(max_picks):
+		if pool.is_empty(): break
+		var pick: card_object = null
+		if is_opponent:
+			# CPU: prefer discarding the opponent's (player's) tools/stadium first.
+			pick = pool[0]
+			for c in pool:
+				var owner_opp = _ex14_card_owner_is_opp(c, tool_entries)
+				if not owner_opp:
+					pick = c
+					break
+		else:
+			var cancelable = i > 0
+			pick = await main.card_ops.choose_card(pool, false, "WINDSTORM", "Choose a Tool or Stadium to discard (" + str(max_picks - i) + " left)", "DISCARD", cancelable)
+			if main._should_bail(): return
+			if pick == null: break
+		pool.erase(pick)
+		picks.append(pick)
+	for pick in picks:
+		if pick == main.current_stadium_card:
+			await remove_current_stadium("Windstorm")
+			if main._should_bail(): return
+		else:
+			for e in tool_entries:
+				if e["card"] == pick:
+					var owner_opp = e["owner_is_opp"]
+					e["pokemon"].attached_cards.erase(pick)
+					pick.current_location = "discard"
+					var disc = main.opponent_discard_pile if owner_opp else main.player_discard_pile
+					disc.append(pick)
+					display_attached_trainer_cards(owner_opp)
+					main.update_discard_pile_display(owner_opp)
+					main.display_pokemon(owner_opp)
+					break
+	await main.show_message("WINDSTORM! DISCARDED " + str(picks.size()) + " CARD(S)!")
+	if main._should_bail(): return
+
+# Helper: given a card and the tool-entry list, return whether its owner is the opponent (stadium uses
+# its own owner flag).
+func _ex14_card_owner_is_opp(c: card_object, tool_entries: Array) -> bool:
+	if c == main.current_stadium_card:
+		return main.current_stadium_owner_is_opponent
+	for e in tool_entries:
+		if e["card"] == c:
+			return e["owner_is_opp"]
+	return false

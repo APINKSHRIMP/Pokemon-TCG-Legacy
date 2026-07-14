@@ -81,6 +81,7 @@ func _register_all_powers() -> void:
 	_register_ex11_powers()
 	_register_ex12_powers()
 	_register_ex13_powers()
+	_register_ex14_powers()
 
 # ── On-damage and pre-KO event hooks ──────────────────────────────────────────
 # Each Callable is fired after active-pokemon damage resolves (on_damage) or
@@ -157,6 +158,12 @@ func _register_all_power_hooks() -> void:
 	_damage_modifier_hooks.append(func(dmg, atk, def, mods): return _hook_ex9_rai_shield(dmg, atk, def, mods))
 	_damage_modifier_hooks.append(func(dmg, atk, def, mods): return _hook_ex8_pivot_throw(dmg, atk, def, mods))
 	_damage_modifier_hooks.append(func(dmg, atk, def, mods): return _hook_ex8_psychic_shield(dmg, atk, def, mods))
+	_damage_modifier_hooks.append(func(dmg, atk, def, mods): return _hook_ex14_mysterious_shard(dmg, atk, def, mods))
+	_damage_modifier_hooks.append(func(dmg, atk, def, mods): return _hook_ex14_delta_protection(dmg, atk, def, mods))
+	_damage_modifier_hooks.append(func(dmg, atk, def, mods): return _hook_ex14_water_pressure(dmg, atk, def, mods))
+	_damage_modifier_hooks.append(func(dmg, atk, def, mods): return _hook_ex14_hard_rock(dmg, atk, def, mods))
+	_damage_modifier_hooks.append(func(dmg, atk, def, mods): return _hook_ex14_overzealous(dmg, atk, def, mods))
+	_on_damage_hooks.append(func(def, atk, dmg, is_def_opp): await check_ex14_fluffy_fur(def, atk, dmg, is_def_opp))
 	_damage_modifier_hooks.append(func(dmg, atk, def, mods): return _hook_ex8_advanced_armor(dmg, atk, def, mods))
 	_damage_modifier_hooks.append(func(dmg, atk, def, mods): return _hook_ex10_thick_fat(dmg, atk, def, mods))
 	_damage_modifier_hooks.append(func(dmg, atk, def, mods): return _hook_ex10_extra_tight(dmg, atk, def, mods))
@@ -292,6 +299,10 @@ func is_power_blocked(pokemon: card_object, works_through_status: bool = false) 
 	for ac in pokemon.attached_cards:
 		if ac.uid.to_lower() == "ex10-83":
 			return true
+	# EX14 Cessation Crystal (ex14-74 Pokémon Tool): while attached to an Active Pokémon (either side),
+	# no Pokémon (both players) can use Poké-Powers or Poké-Bodies.
+	if is_cessation_crystal_active():
+		return true
 	# ex10 Overpowering Fang (Feraligatr ex): while a holder is a side's Active, each player's Pokemon
 	# (excluding Pokemon-ex) can't use Poké-Powers or Poké-Bodies.
 	if not main.is_ex_pokemon(pokemon):
@@ -307,6 +318,10 @@ func is_power_blocked(pokemon: card_object, works_through_status: bool = false) 
 		var opp_active_ir = main.player_active_pokemon if poke_is_opp_ir else main.opponent_active_pokemon
 		if opp_active_ir != null and opp_active_ir.has_ability("Intimidating Ring") and not opp_active_ir.is_status_blocked():
 			return true
+		# EX14 Intimidating Armor (Aggron ex ex14-89): while Aggron ex is a side's Active, the OPPOSING
+		# side's Basic Pokemon can't use Poké-Powers or Poké-Bodies (attack lock handled in get_attacks_for_card).
+		if opp_active_ir != null and opp_active_ir.has_ability("Intimidating Armor") and not opp_active_ir.is_status_blocked():
+			return true
 	# EX9 Wise Aura (Medicham ex ex9-95): while a Medicham ex with Wise Aura is a side's Active, each
 	# Pokemon EXCLUDING Pokemon-ex (both sides) can't use Poké-Powers.
 	if not main.is_ex_pokemon(pokemon):
@@ -314,6 +329,10 @@ func is_power_blocked(pokemon: card_object, works_through_status: bool = false) 
 		var oa2 = main.opponent_active_pokemon
 		if (pa2 != null and pa2.has_ability("Wise Aura") and not pa2.is_status_blocked()) or (oa2 != null and oa2.has_ability("Wise Aura") and not oa2.is_status_blocked()):
 			return true
+	# EX14 Extra Liquid (Sceptile ex δ ex14-96): each player's Pokemon-ex can't use any Poké-Powers while a
+	# Sceptile ex with Extra Liquid is in play (either side).
+	if main.is_ex_pokemon(pokemon) and is_ex14_extra_liquid_active():
+		return true
 	# EX12 Stench (Muk ex12-11): while a Muk with Stench is a side's Active, EACH player's Pokemon
 	# (both sides) can't use Poké-Powers.
 	var pa_st = main.player_active_pokemon
@@ -637,6 +656,9 @@ func activate_power(pokemon: card_object, ability: Dictionary) -> void:
 	var ability_name = ability.get("name", "")
 	if _power_dispatch.has(ability_name):
 		await _power_dispatch[ability_name].call(pokemon)
+		# EX14 Dark Eyes (Shiftry ex ex14-97): after the opponent's Pokemon uses a Poké-Power, the opposing
+		# Shiftry ex puts 2 damage counters on it.
+		await check_ex14_dark_eyes(pokemon)
 		return
 	await main.show_message("Power not implemented: " + ability_name)
 
@@ -2203,6 +2225,8 @@ func cpu_phase_activate_powers() -> void:
 	await cpu_phase_ex12_powers()
 	if main._should_bail(): return
 	await cpu_phase_ex13_powers()
+	if main._should_bail(): return
+	await cpu_phase_ex14_powers()
 	if main._should_bail(): return
 
 
@@ -6768,6 +6792,11 @@ func apply_np_between_turn_bodies() -> void:
 	await apply_ex2_primal_lock_removal()
 	if main._should_bail(): return
 
+	# EX14 Extra Noise (Exploud ex ex14-92): while it is Active, put 1 damage counter on each of the
+	# opponent's Pokemon-ex between turns.
+	await check_ex14_extra_noise()
+	if main._should_bail(): return
+
 	# EX12 Reactive Aroma (Roselia ex12-42): while a Roselia with React Energy attached is in play, remove
 	# 1 damage counter from each of your Pokemon (excluding ex) that has React Energy attached. Once per turn.
 	for side in [false, true]:
@@ -8048,7 +8077,7 @@ func cpu_phase_ecard1_powers() -> void:
 # W/R. The reduction amount is parsed from each card's own ability text ("reduced by N") rather
 # than hardcoded, since the same ability name reprints with different amounts across sets
 # (Metapod's Exoskeleton is -20, Forretress's ecard3 reprint is -10).
-const _FLAT_REDUCTION_BODY_NAMES := ["Exoskeleton", "Rock Body", "Vase Body"]
+const _FLAT_REDUCTION_BODY_NAMES := ["Exoskeleton", "Rock Body", "Vase Body", "Solid Shell"]
 func _hook_ecard1_reduction_bodies(damage: int, _attacker: card_object, defender: card_object, modifiers: Array) -> int:
 	if damage <= 0 or defender == null:
 		return damage
@@ -12400,6 +12429,13 @@ func has_no_weakness_body(defender: card_object) -> bool:
 	for p in main.card_ops.get_all_pokemon_in_play(side_opp):
 		if p.has_ability("Dragon Veil") and not is_power_blocked_by_status(p):
 			return true
+	# EX14 Shield Veil (Blastoise δ ex14-2): each of that side's Active Pokemon has no Weakness while a
+	# Blastoise with this Body is in play on that side.
+	var sv_active = main.opponent_active_pokemon if side_opp else main.player_active_pokemon
+	if defender == sv_active:
+		for p in main.card_ops.get_all_pokemon_in_play(side_opp):
+			if p.has_ability("Shield Veil") and not is_power_blocked_by_status(p):
+				return true
 	# EX13 Hydro Barrier (Rayquaza δ ex13-16): while a Rayquaza with this Body has any Holon Energy card
 	# attached, each of that side's Water Pokemon has no Weakness.
 	if "Water" in defender.get_effective_types():
@@ -12985,6 +13021,27 @@ func _hook_ex8_psychic_shield(damage: int, attacker: card_object, defender: card
 		modifiers.append("PSYCHIC SHIELD (NO DAMAGE FROM EX)")
 		return 0
 	return damage
+
+# EX14 Mysterious Shard (ex14-81 Pokémon Tool): prevent all effects of attacks, including damage, done to
+# the holder by the opponent's Pokémon-ex. (Damage-depth, same as ex2 Safeguard / ex8 Psychic Shield.)
+func _hook_ex14_mysterious_shard(damage: int, attacker: card_object, defender: card_object, modifiers: Array) -> int:
+	if damage <= 0 or defender == null or attacker == null: return damage
+	if not main.is_ex_pokemon(attacker): return damage
+	for ac in defender.attached_cards:
+		if ac.uid.to_lower() == "ex14-81":
+			modifiers.append("MYSTERIOUS SHARD (NO DAMAGE FROM EX)")
+			return 0
+	return damage
+
+# EX14 Cessation Crystal (ex14-74 Pokémon Tool): true while it is attached to either side's Active Pokémon.
+func is_cessation_crystal_active() -> bool:
+	for act in [main.player_active_pokemon, main.opponent_active_pokemon]:
+		if act == null:
+			continue
+		for ac in act.attached_cards:
+			if ac.uid.to_lower() == "ex14-74":
+				return true
+	return false
 
 func _hook_ex8_advanced_armor(damage: int, attacker: card_object, defender: card_object, modifiers: Array) -> int:
 	if damage <= 0 or defender == null or attacker == null: return damage
@@ -15423,3 +15480,526 @@ func cpu_phase_ex13_powers() -> void:
 	if mightyena != null and not mightyena.power_used_this_turn and not is_power_blocked_by_status(mightyena) and not main.player_bench.is_empty():
 		await power_ex13_driving_howl(mightyena)
 		if main._should_bail(): return
+
+######################################################################################################################################################
+######################################################## EX14 (CRYSTAL GUARDIANS) POWERS & BODIES ###################################################
+######################################################################################################################################################
+# δ set. Auto-working bodies (no code): Safeguard (Banette → _hook_ex2_safeguard), Thick Fat (Grumpig →
+# _hook_ex10_thick_fat), Aqua Lift (Lotad → get_retreat_cost name-based), Submerge (Mudkip →
+# apply_bench_damage text guard), Baby Evolution (Igglybuff → global power_ex2_baby_evolution dispatch).
+# Wired at check sites (see edits): Solid Shell (_FLAT_REDUCTION_BODY_NAMES), Shield Veil
+# (has_no_weakness_body), Sand Veil (apply_bench_damage), Hover Lift/Flotation (get_retreat_cost), Dual
+# Armor (get_effective_types), Chlorophyll (_get_energy_provided_raw), Cursed Glare
+# (perform_energy_attachment / CPU), Intimidating Armor (is_power_blocked + get_attacks_for_card), Star
+# Light/Extra Liquid (get_unmet_energy_count), Extra Liquid power-lock (is_power_blocked), Peal of Thunder
+# (evolve chain), Crush Chance (on-bench), Time Travel (pre-KO), Fluffy Fur (on-damage hook), Extra Noise
+# (between-turns). Damage hooks registered in _register_all_power_hooks: Delta Protection, Water Pressure,
+# Hard Rock, Overzealous.
+
+func _register_ex14_powers() -> void:
+	_power_dispatch["Excavate"]        = func(p): await power_ex14_excavate(p)
+	_power_dispatch["Spike Storm"]     = func(p): await power_ex14_spike_storm(p)
+	_power_dispatch["Delta Sign"]      = func(p): await power_ex14_delta_sign(p)
+	_power_dispatch["Delta Transport"] = func(p): await power_ex14_delta_transport(p)
+	_power_dispatch["Echo Draw"]       = func(p): await power_ex14_echo_draw(p)
+	_power_dispatch["Constrain"]       = func(p): await power_ex14_constrain(p)
+	_power_dispatch["Energy Recycle"]  = func(p): await power_ex14_energy_recycle(p)
+
+# EXCAVATE (Sableye ex14-10): once per turn, look at the top card of your deck; put it back on top or discard it.
+func power_ex14_excavate(sableye: card_object) -> void:
+	var is_opp = sableye.is_owner_opp(main)
+	if not await _ex11_power_ready(sableye, "Excavate"):
+		if main._should_bail(): return
+		return
+	var deck = main.opponent_deck if is_opp else main.player_deck
+	if deck.is_empty():
+		await main.show_message("YOUR DECK IS EMPTY!")
+		if main._should_bail(): return
+		return
+	sableye.power_used_this_turn = true
+	var top: card_object = deck[deck.size() - 1]
+	var do_discard := false
+	if is_opp:
+		# CPU: discard Energy/Trainer it can't immediately use is hard to judge; keep Pokémon, discard others.
+		do_discard = top.metadata.get("supertype","") != "Pokémon"
+	else:
+		do_discard = await main.trainer_effects.gym1_prompt_yes_no(sableye, "EXCAVATE", "Top card is " + top.metadata.get("name","") + ". Discard it?", "DISCARD", "KEEP ON TOP")
+		if main._should_bail(): return
+	if do_discard:
+		deck.erase(top)
+		await main.card_ops.send_to_discard(top, is_opp, false)
+		main.update_deck_icon(is_opp)
+		await main.show_message("EXCAVATE! DISCARDED " + top.metadata.get("name","").to_upper() + "!")
+	else:
+		await main.show_message("EXCAVATE! KEPT THE TOP CARD.")
+	if main._should_bail(): return
+
+# SPIKE STORM (Cacturne δ ex14-15): once per turn, if Active, put 1 damage counter on 1 of your opponent's
+# Pokemon that already has any damage counters on it.
+func power_ex14_spike_storm(cacturne: card_object) -> void:
+	var is_opp = cacturne.is_owner_opp(main)
+	var my_active = main.opponent_active_pokemon if is_opp else main.player_active_pokemon
+	if cacturne != my_active:
+		if not is_opp:
+			await main.show_message("SPIKE STORM CAN ONLY BE USED WHILE CACTURNE IS ACTIVE!")
+			if main._should_bail(): return
+		return
+	if not await _ex11_power_ready(cacturne, "Spike Storm"):
+		if main._should_bail(): return
+		return
+	var pool = main.card_ops.get_all_pokemon_in_play(not is_opp).filter(func(p): return p.get_damage_counters() > 0)
+	if pool.is_empty():
+		await main.show_message("NO DAMAGED OPPONENT POKEMON!")
+		if main._should_bail(): return
+		return
+	var target: card_object
+	if is_opp:
+		target = pool[0]
+		for c in pool:
+			if c.current_hp < target.current_hp: target = c
+	else:
+		target = pool[0] if pool.size() == 1 else await main.card_ops.choose_card(pool, false, "SPIKE STORM", "Put 1 damage counter on which Pokemon?", "SELECT", false, func(c): return 100.0 - c.current_hp)
+		if main._should_bail(): return
+		if target == null: target = pool[0]
+	cacturne.power_used_this_turn = true
+	target.current_hp = max(0, target.current_hp - 10)
+	main.display_hp_circles_above_align(target, not is_opp)
+	main.display_pokemon(not is_opp)
+	await main.show_message("SPIKE STORM! 1 DAMAGE COUNTER ON " + target.metadata.get("name","").to_upper() + "!")
+	if main._should_bail(): return
+	await main.check_all_knockouts()
+	if main._should_bail(): return
+
+# DELTA SIGN (Fearow δ ex14-18): once per turn, search your deck for a Pokemon that has δ on its card and
+# put it into your hand. No more than 1 Delta Sign may be used each turn.
+func power_ex14_delta_sign(fearow: card_object) -> void:
+	var is_opp = fearow.is_owner_opp(main)
+	# "You can't use more than 1 Delta Sign Poké-Power each turn" — block if another Fearow already used it.
+	for p in main.card_ops.get_all_pokemon_in_play(is_opp):
+		if p != fearow and p.has_ability("Delta Sign") and p.power_used_this_turn:
+			if not is_opp:
+				await main.show_message("YOU'VE ALREADY USED DELTA SIGN THIS TURN!")
+				if main._should_bail(): return
+			return
+	if not await _ex11_power_ready(fearow, "Delta Sign"):
+		if main._should_bail(): return
+		return
+	var deck = main.opponent_deck if is_opp else main.player_deck
+	var pool = deck.filter(func(c): return c.metadata.get("supertype","") == "Pokémon" and c.is_delta())
+	if pool.is_empty():
+		await main.show_message("NO δ POKEMON IN YOUR DECK!")
+		deck.shuffle()
+		if main._should_bail(): return
+		return
+	fearow.power_used_this_turn = true
+	await main.card_ops.search_deck_to_hand(is_opp, func(c): return c.metadata.get("supertype","") == "Pokémon" and c.is_delta(), "DELTA SIGN: CHOOSE A δ POKÉMON", 1)
+	if main._should_bail(): return
+	await main.show_message("DELTA SIGN!")
+	if main._should_bail(): return
+
+# DELTA TRANSPORT (Pelipper δ ex14-26): once per turn, if Pelipper is on your Bench, switch 1 of your
+# Active Pokemon that has δ on its card with 1 of your Benched Pokemon.
+func power_ex14_delta_transport(pelipper: card_object) -> void:
+	var is_opp = pelipper.is_owner_opp(main)
+	var my_active = main.opponent_active_pokemon if is_opp else main.player_active_pokemon
+	if pelipper == my_active:
+		if not is_opp:
+			await main.show_message("DELTA TRANSPORT CAN ONLY BE USED WHILE PELIPPER IS ON THE BENCH!")
+			if main._should_bail(): return
+		return
+	if my_active == null or not my_active.is_delta():
+		if not is_opp:
+			await main.show_message("YOUR ACTIVE POKEMON MUST HAVE δ TO USE DELTA TRANSPORT!")
+			if main._should_bail(): return
+		return
+	if not await _ex11_power_ready(pelipper, "Delta Transport"):
+		if main._should_bail(): return
+		return
+	var bench = main.opponent_bench if is_opp else main.player_bench
+	if bench.is_empty():
+		await main.show_message("NO BENCHED POKEMON TO SWITCH TO!")
+		if main._should_bail(): return
+		return
+	pelipper.power_used_this_turn = true
+	await main.attack_effects.apply_self_switch(my_active, is_opp)
+	if main._should_bail(): return
+
+# ECHO DRAW (Swampert ex14-27): once per turn, draw a card. Can't be used if Swampert has a Special Condition.
+func power_ex14_echo_draw(swampert: card_object) -> void:
+	var is_opp = swampert.is_owner_opp(main)
+	if not await _ex11_power_ready(swampert, "Echo Draw"):
+		if main._should_bail(): return
+		return
+	var deck = main.opponent_deck if is_opp else main.player_deck
+	if deck.is_empty():
+		await main.show_message("YOUR DECK IS EMPTY!")
+		if main._should_bail(): return
+		return
+	swampert.power_used_this_turn = true
+	await main.card_ops.draw_n(is_opp, 1)
+	if main._should_bail(): return
+	await main.show_message("ECHO DRAW! DREW A CARD!")
+	if main._should_bail(): return
+
+# CONSTRAIN (Delcatty ex ex14-91): once per turn, each player discards cards until they have 6 in hand
+# (the Delcatty player discards first). Can't be used if Delcatty ex has a Special Condition.
+func power_ex14_constrain(delcatty: card_object) -> void:
+	var is_opp = delcatty.is_owner_opp(main)
+	if not await _ex11_power_ready(delcatty, "Constrain"):
+		if main._should_bail(): return
+		return
+	delcatty.power_used_this_turn = true
+	await main.show_message("CONSTRAIN! EACH PLAYER DISCARDS DOWN TO 6 CARDS!")
+	if main._should_bail(): return
+	# The Delcatty player discards first, then the opponent.
+	for side_opp in [is_opp, not is_opp]:
+		var hand = main.opponent_hand if side_opp else main.player_hand
+		var excess = hand.size() - 6
+		if excess > 0:
+			await main.card_ops.discard_from_hand(side_opp, excess)
+			if main._should_bail(): return
+
+# ENERGY RECYCLE (Swampert ex ex14-98): once per turn, search your discard pile for 3 Energy cards and
+# attach them to your Pokemon in any way you like. If you do, your turn ends.
+func power_ex14_energy_recycle(swampert: card_object) -> void:
+	var is_opp = swampert.is_owner_opp(main)
+	if not await _ex11_power_ready(swampert, "Energy Recycle"):
+		if main._should_bail(): return
+		return
+	var discard = main.opponent_discard_pile if is_opp else main.player_discard_pile
+	var energies = discard.filter(func(c): return c.metadata.get("supertype","") == "Energy")
+	if energies.is_empty():
+		await main.show_message("NO ENERGY IN YOUR DISCARD PILE!")
+		if main._should_bail(): return
+		return
+	swampert.power_used_this_turn = true
+	var attached = 0
+	for i in range(3):
+		energies = discard.filter(func(c): return c.metadata.get("supertype","") == "Energy")
+		if energies.is_empty(): break
+		var targets = main.card_ops.get_all_pokemon_in_play(is_opp)
+		if targets.is_empty(): break
+		var e: card_object = energies[0] if is_opp else await main.card_ops.choose_card(energies, false, "ENERGY RECYCLE", "Choose an Energy to attach (" + str(3 - i) + " left)", "SELECT", i > 0, Callable(), true)
+		if main._should_bail(): return
+		if e == null: break
+		var target: card_object
+		if is_opp:
+			target = main.opponent_active_pokemon if main.opponent_active_pokemon != null else targets[0]
+		else:
+			target = targets[0] if targets.size() == 1 else await main.card_ops.choose_card(targets, false, "ENERGY RECYCLE", "Attach " + e.metadata.get("name","") + " to which Pokemon?", "ATTACH", false)
+			if main._should_bail(): return
+			if target == null: target = targets[0]
+		discard.erase(e)
+		e.current_location = "attached"
+		target.attached_energies.append(e)
+		attached += 1
+	main.update_discard_pile_display(is_opp)
+	main.display_active_pokemon_energies(is_opp)
+	main.display_pokemon(is_opp)
+	await main.show_message("ENERGY RECYCLE! ATTACHED " + str(attached) + " ENERGY — YOUR TURN ENDS!")
+	if main._should_bail(): return
+	# "If you do, your turn ends." — end the player's turn now (CPU never activates this; see cpu phase).
+	if not is_opp:
+		await main.get_tree().create_timer(0.4).timeout
+		main.player_end_turn_checks()
+
+# PEAL OF THUNDER (Charizard δ ex14-4): when you play Charizard from your hand to evolve 1 of your Pokemon,
+# you may look at the top 5 cards of your deck, choose any number of Energy, and attach them to 1 of your
+# Pokemon. Discard the other looked-at cards.
+func trigger_ex14_peal_of_thunder(charizard: card_object, is_opponent: bool) -> void:
+	if is_power_blocked_by_status(charizard):
+		return
+	var deck = main.opponent_deck if is_opponent else main.player_deck
+	if deck.is_empty():
+		return
+	var do_it := true
+	if not is_opponent:
+		do_it = await main.trainer_effects.gym1_prompt_yes_no(charizard, "PEAL OF THUNDER", "Look at the top 5 cards and attach Energy from them?", "YES", "NO")
+		if main._should_bail(): return
+	if not do_it:
+		return
+	charizard.power_used_this_turn = true
+	var look: Array = []
+	for i in range(min(5, deck.size())):
+		look.append(deck[deck.size() - 1 - i])
+	var energies = look.filter(func(c): return c.metadata.get("supertype","") == "Energy")
+	var targets = main.card_ops.get_all_pokemon_in_play(is_opponent)
+	var attach_target: card_object = null
+	if not energies.is_empty() and not targets.is_empty():
+		if is_opponent:
+			attach_target = main.opponent_active_pokemon if main.opponent_active_pokemon != null else targets[0]
+		else:
+			attach_target = targets[0] if targets.size() == 1 else await main.card_ops.choose_card(targets, false, "PEAL OF THUNDER", "Attach the Energy to which Pokemon?", "ATTACH", false)
+			if main._should_bail(): return
+			if attach_target == null: attach_target = targets[0]
+		var chosen_energies: Array = []
+		if is_opponent:
+			chosen_energies = energies
+		else:
+			for e in energies:
+				var take = await main.trainer_effects.gym1_prompt_yes_no(charizard, "PEAL OF THUNDER", "Attach " + e.metadata.get("name","") + "?", "ATTACH", "SKIP")
+				if main._should_bail(): return
+				if take: chosen_energies.append(e)
+		for e in chosen_energies:
+			deck.erase(e)
+			look.erase(e)
+			e.current_location = "attached"
+			attach_target.attached_energies.append(e)
+	# Discard the rest of the looked-at cards.
+	for c in look:
+		deck.erase(c)
+		await main.card_ops.send_to_discard(c, is_opponent, false)
+	deck.shuffle()
+	main.update_deck_icon(is_opponent)
+	main.display_active_pokemon_energies(is_opponent)
+	main.display_pokemon(is_opponent)
+	main.update_discard_pile_display(is_opponent)
+	await main.show_message("PEAL OF THUNDER!")
+	if main._should_bail(): return
+
+# CRUSH CHANCE (Tauros ex14-12): when you put Tauros from your hand onto your Bench, you may discard a
+# Stadium card in play.
+func trigger_ex14_crush_chance(tauros: card_object, is_opponent: bool) -> void:
+	if main.current_stadium_card == null:
+		return
+	if is_power_blocked_by_status(tauros):
+		return
+	var do_it := true
+	if not is_opponent:
+		do_it = await main.trainer_effects.gym1_prompt_yes_no(tauros, "CRUSH CHANCE", "Discard " + main.current_stadium_card.metadata.get("name","") + " (the Stadium in play)?", "DISCARD", "NO")
+		if main._should_bail(): return
+	if not do_it:
+		return
+	await main.trainer_effects.remove_current_stadium("Crush Chance")
+	if main._should_bail(): return
+	await main.show_message("CRUSH CHANCE! THE STADIUM WAS DISCARDED!")
+	if main._should_bail(): return
+
+# TIME TRAVEL (Celebi Star ex14-100): if Celebi Star would be Knocked Out by damage from an opponent's
+# attack, you may flip a coin. If heads, Celebi Star is not Knocked Out; discard all cards attached to it
+# and put Celebi Star on the bottom of your deck. Returns true if the KO was averted (caller cleans up board).
+func check_ex14_time_travel(pokemon: card_object, attacker: card_object, is_opp: bool) -> bool:
+	if pokemon == null or attacker == null:
+		return false
+	if not pokemon.has_ability("Time Travel"):
+		return false
+	# Only when Knocked Out by damage from an OPPONENT's attack.
+	if attacker.is_owner_opp(main) == is_opp:
+		return false
+	var do_it := true
+	if not is_opp:
+		do_it = await main.trainer_effects.gym1_prompt_yes_no(pokemon, "TIME TRAVEL", "Flip a coin to try to save " + pokemon.metadata.get("name","") + " from the Knock Out?", "FLIP", "NO")
+		if main._should_bail(): return false
+	if not do_it:
+		return false
+	var heads = await main.flip_coin(false, is_opp)
+	if main._should_bail(): return false
+	if not heads:
+		await main.show_message("TIME TRAVEL! TAILS — " + pokemon.metadata.get("name","").to_upper() + " IS STILL KNOCKED OUT!")
+		if main._should_bail(): return false
+		return false
+	# Heads: discard everything attached, then put Celebi Star on the bottom of the deck.
+	var discard_pile = main.opponent_discard_pile if is_opp else main.player_discard_pile
+	var deck = main.opponent_deck if is_opp else main.player_deck
+	for e in pokemon.attached_energies:
+		e.current_location = "discard"
+		discard_pile.append(e)
+	pokemon.attached_energies.clear()
+	for pre in pokemon.attached_pre_evolutions:
+		pre.current_location = "discard"
+		discard_pile.append(pre)
+	pokemon.attached_pre_evolutions.clear()
+	for ac in pokemon.attached_cards:
+		ac.current_location = "discard"
+		discard_pile.append(ac)
+	pokemon.attached_cards.clear()
+	main.clear_all_statuses(pokemon, is_opp)
+	pokemon.current_hp = pokemon.get_max_hp()
+	pokemon.current_location = "deck"
+	deck.push_front(pokemon)   # bottom of the deck (deck top is the array's back)
+	main.update_discard_pile_display(is_opp)
+	main.update_deck_icon(is_opp)
+	await main.show_message("TIME TRAVEL! HEADS — " + pokemon.metadata.get("name","").to_upper() + " RETURNS TO THE BOTTOM OF THE DECK!")
+	if main._should_bail(): return true
+	return true
+
+# ── ex14 passive-body helpers & damage hooks ──
+
+# CURSED GLARE (Dusclops ex14-17): while Dusclops is a side's Active, the OPPOSING player can't attach any
+# Special Energy (except Darkness and Metal Energy) from hand to their Active Pokemon.
+func check_ex14_cursed_glare_blocks_energy(energy_card: card_object, target_pokemon: card_object) -> bool:
+	if energy_card == null or target_pokemon == null:
+		return false
+	if "Special" not in energy_card.metadata.get("subtypes", []):
+		return false
+	if energy_card.metadata.get("name","") in ["Darkness Energy", "Metal Energy"]:
+		return false
+	var target_is_opp = target_pokemon.is_owner_opp(main)
+	var target_active = main.opponent_active_pokemon if target_is_opp else main.player_active_pokemon
+	if target_pokemon != target_active:
+		return false
+	var opp_active = main.player_active_pokemon if target_is_opp else main.opponent_active_pokemon
+	return opp_active != null and opp_active.has_ability("Cursed Glare") and not is_power_blocked_by_status(opp_active)
+
+# True while a Sceptile ex with Extra Liquid (ex14-96) is in play and usable (either side).
+func is_ex14_extra_liquid_active() -> bool:
+	for side in [false, true]:
+		for p in main.card_ops.get_all_pokemon_in_play(side):
+			if p.has_ability("Extra Liquid") and not is_power_blocked_by_status(p):
+				return true
+	return false
+
+# True while the side OPPOSING `against_is_opp` has an Active Aggron ex with Intimidating Armor.
+func is_ex14_intimidating_armor_active(against_is_opp: bool) -> bool:
+	var opp_active = main.opponent_active_pokemon if not against_is_opp else main.player_active_pokemon
+	return opp_active != null and opp_active.has_ability("Intimidating Armor") and not is_power_blocked_by_status(opp_active)
+
+# INTIMIDATING ARMOR (Aggron ex ex14-89): the opposing Active Aggron ex prevents `card` (a Basic Pokemon)
+# from attacking.
+func check_ex14_intimidating_armor_blocks_attack(card: card_object) -> bool:
+	if card == null:
+		return false
+	if "Basic" not in card.metadata.get("subtypes", []):
+		return false
+	var card_is_opp = card.is_owner_opp(main)
+	var opp_active = main.player_active_pokemon if card_is_opp else main.opponent_active_pokemon
+	return opp_active != null and opp_active.has_ability("Intimidating Armor") and not is_power_blocked_by_status(opp_active)
+
+# STAR LIGHT (Jirachi ex ex14-94): while the opponent has any Pokemon-ex or Stage 2 Evolved Pokemon in
+# play, Jirachi ex pays Colorless less to use Shield Beam or Super Psy Bolt. Returns the reduction (0/1).
+func ex14_star_light_discount(pokemon: card_object, attack_name: String) -> int:
+	if pokemon == null or not pokemon.has_ability("Star Light") or is_power_blocked_by_status(pokemon):
+		return 0
+	if attack_name.to_lower() not in ["shield beam", "super psy bolt"]:
+		return 0
+	var opp_is = not pokemon.is_owner_opp(main)
+	for p in main.card_ops.get_all_pokemon_in_play(opp_is):
+		if main.is_ex_pokemon(p) or "Stage 2" in p.metadata.get("subtypes", []):
+			return 1
+	return 0
+
+# DELTA PROTECTION (Camerupt ex14-3): damage from opponent's δ Pokemon reduced by 40 (after W/R).
+func _hook_ex14_delta_protection(damage: int, attacker: card_object, defender: card_object, modifiers: Array) -> int:
+	if damage <= 0 or defender == null or attacker == null: return damage
+	if not defender.has_ability("Delta Protection") or is_power_blocked_by_status(defender): return damage
+	if attacker.is_delta():
+		var r = min(damage, 40)
+		modifiers.append("DELTA PROTECTION -" + str(r))
+		return damage - r
+	return damage
+
+# WATER PRESSURE (Blastoise ex14-14): while Blastoise's remaining HP is 40 or less, it does 40 more damage
+# to the Defending Pokemon (before W/R). Modeled as +40 outgoing here (after-W/R depth, engine-wide).
+func _hook_ex14_water_pressure(damage: int, attacker: card_object, defender: card_object, modifiers: Array) -> int:
+	if damage <= 0 or attacker == null: return damage
+	if not attacker.has_ability("Water Pressure") or is_power_blocked_by_status(attacker): return damage
+	if attacker.current_hp <= 40:
+		modifiers.append("WATER PRESSURE +40")
+		return damage + 40
+	return damage
+
+# HARD ROCK (Groudon ex ex14-93): while it has 1 Energy or less attached, damage to it is reduced by 20
+# (after W/R). Only 1 Hard Rock Body applies per turn — modeled per-hit (single Active in single battle).
+func _hook_ex14_hard_rock(damage: int, attacker: card_object, defender: card_object, modifiers: Array) -> int:
+	if damage <= 0 or defender == null: return damage
+	if not defender.has_ability("Hard Rock") or is_power_blocked_by_status(defender): return damage
+	if defender.attached_energies.size() <= 1:
+		var r = min(damage, 20)
+		modifiers.append("HARD ROCK -" + str(r))
+		return damage - r
+	return damage
+
+# OVERZEALOUS (Ludicolo δ ex14-6): if the opponent has any Pokemon-ex in play, each of Ludicolo's attacks
+# does 30 more damage to the Defending Pokemon.
+func _hook_ex14_overzealous(damage: int, attacker: card_object, defender: card_object, modifiers: Array) -> int:
+	if damage <= 0 or attacker == null: return damage
+	if not attacker.has_ability("Overzealous") or is_power_blocked_by_status(attacker): return damage
+	var opp_is = not attacker.is_owner_opp(main)
+	for p in main.card_ops.get_all_pokemon_in_play(opp_is):
+		if main.is_ex_pokemon(p):
+			modifiers.append("OVERZEALOUS +30")
+			return damage + 30
+	return damage
+
+# FLUFFY FUR (Wigglytuff ex14-13): if Wigglytuff is Active and is damaged by an opponent's attack (even if
+# Knocked Out), the Attacking Pokemon is now Asleep. On-damage hook.
+func check_ex14_fluffy_fur(defender: card_object, attacker: card_object, damage: int, is_def_opp: bool) -> void:
+	if defender == null or attacker == null or damage <= 0: return
+	if not defender.has_ability("Fluffy Fur") or is_power_blocked_by_status(defender): return
+	var def_active = main.opponent_active_pokemon if is_def_opp else main.player_active_pokemon
+	if defender != def_active: return
+	if attacker.is_owner_opp(main) == is_def_opp: return   # only from an opponent's attack
+	main.card_ops.apply_status(attacker, "Asleep", not is_def_opp)
+	await main.show_message("FLUFFY FUR! " + attacker.metadata.get("name","").to_upper() + " IS NOW ASLEEP!")
+	if main._should_bail(): return
+
+# EXTRA NOISE (Exploud ex ex14-92): while Exploud ex is Active, put 1 damage counter on each of your
+# opponent's Pokemon-ex between turns. Called from apply_np_between_turn_bodies.
+func check_ex14_extra_noise() -> void:
+	for side in [false, true]:
+		var active = main.opponent_active_pokemon if side else main.player_active_pokemon
+		if active == null or not active.has_ability("Extra Noise") or is_power_blocked_by_status(active):
+			continue
+		var opp_is = not side
+		for p in main.card_ops.get_all_pokemon_in_play(opp_is):
+			if main.is_ex_pokemon(p):
+				p.current_hp = max(0, p.current_hp - 10)
+				main.display_hp_circles_above_align(p, opp_is)
+		main.display_pokemon(opp_is)
+		await main.show_message("EXTRA NOISE! 1 DAMAGE COUNTER ON EACH OPPONENT'S POKEMON-EX!")
+		if main._should_bail(): return
+		await main.check_all_knockouts()
+		if main._should_bail(): return
+
+# DARK EYES (Shiftry ex ex14-97): after your opponent's Pokemon uses a Poke-Power, put 2 damage counters
+# on that Pokemon. Called from activate_power after a power resolves.
+func check_ex14_dark_eyes(power_user: card_object) -> void:
+	if power_user == null: return
+	var user_is_opp = power_user.is_owner_opp(main)
+	# A Shiftry ex with Dark Eyes on the OPPOSING side reacts to this power use.
+	for p in main.card_ops.get_all_pokemon_in_play(not user_is_opp):
+		if p.has_ability("Dark Eyes") and not is_power_blocked_by_status(p):
+			power_user.current_hp = max(0, power_user.current_hp - 20)
+			main.display_hp_circles_above_align(power_user, user_is_opp)
+			main.display_pokemon(user_is_opp)
+			await main.show_message("DARK EYES! 2 DAMAGE COUNTERS ON " + power_user.metadata.get("name","").to_upper() + "!")
+			if main._should_bail(): return
+			await main.check_all_knockouts()
+			return
+
+func cpu_phase_ex14_powers() -> void:
+	# Echo Draw (Swampert): always draw.
+	var swampert = _find_cpu_pokemon_with_power("Echo Draw")
+	if swampert != null and not swampert.power_used_this_turn and not is_power_blocked_by_status(swampert):
+		await power_ex14_echo_draw(swampert)
+		if main._should_bail(): return
+	# Excavate (Sableye): dig for a better top card.
+	var sableye = _find_cpu_pokemon_with_power("Excavate")
+	if sableye != null and not sableye.power_used_this_turn and not is_power_blocked_by_status(sableye):
+		await power_ex14_excavate(sableye)
+		if main._should_bail(): return
+	# Delta Sign (Fearow): fetch a δ Pokémon if the deck has one.
+	var fearow = _find_cpu_pokemon_with_power("Delta Sign")
+	if fearow != null and not fearow.power_used_this_turn and not is_power_blocked_by_status(fearow):
+		if main.opponent_deck.any(func(c): return c.metadata.get("supertype","") == "Pokémon" and c.is_delta()):
+			await power_ex14_delta_sign(fearow)
+			if main._should_bail(): return
+	# Spike Storm (Cacturne δ): snipe a damaged Pokémon if Active.
+	var cacturne = _find_cpu_pokemon_with_power("Spike Storm")
+	if cacturne != null and cacturne == main.opponent_active_pokemon and not cacturne.power_used_this_turn and not is_power_blocked_by_status(cacturne):
+		if main.card_ops.get_all_pokemon_in_play(false).any(func(c): return c.get_damage_counters() > 0):
+			await power_ex14_spike_storm(cacturne)
+			if main._should_bail(): return
+	# Delta Transport (Pelipper δ): only if the Active is a δ that would benefit from retreating for free.
+	var pelipper = _find_cpu_pokemon_with_power("Delta Transport")
+	if pelipper != null and pelipper != main.opponent_active_pokemon and not pelipper.power_used_this_turn and not is_power_blocked_by_status(pelipper):
+		var oa = main.opponent_active_pokemon
+		if oa != null and oa.is_delta() and oa.get_damage_counters() >= 3 and not main.opponent_bench.is_empty():
+			await power_ex14_delta_transport(pelipper)
+			if main._should_bail(): return
+	# Constrain (Delcatty ex): use it when the player is holding a large hand.
+	var delcatty = _find_cpu_pokemon_with_power("Constrain")
+	if delcatty != null and not delcatty.power_used_this_turn and not is_power_blocked_by_status(delcatty):
+		if main.player_hand.size() > 6 and main.player_hand.size() - 6 >= main.opponent_hand.size() - 6:
+			await power_ex14_constrain(delcatty)
+			if main._should_bail(): return

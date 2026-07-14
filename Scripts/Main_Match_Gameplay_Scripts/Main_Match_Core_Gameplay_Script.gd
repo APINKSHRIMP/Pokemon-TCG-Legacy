@@ -2135,6 +2135,9 @@ func add_pokemon_to_bench(pokemon: card_object) -> void:
 		# EX12 Support Navigation (Lapras ex12-8): on benching from hand, search deck for a Supporter → hand.
 		if pokemon.has_ability("Support Navigation"):
 			await powers_and_bodies.trigger_ex12_support_navigation(pokemon, false)
+		# EX14 Crush Chance (Tauros ex14-12): on benching from hand, may discard a Stadium card in play.
+		if pokemon.has_ability("Crush Chance"):
+			await powers_and_bodies.trigger_ex14_crush_chance(pokemon, false)
 
 # Function that get's the card position/location/object. Called from various functions when trying to find a specific card object
 func find_card_ui_for_object(card_obj: card_object) -> TextureRect:
@@ -2276,6 +2279,16 @@ func perform_energy_attachment() -> void:
 	# ECARD3 Water Immunity (Articuno) / Fire Immunity (Moltres): can't attach that type of Energy
 	if powers_and_bodies.check_ecard3_type_immunity_block(energy_card, target_pokemon):
 		await show_message("CAN'T ATTACH THAT ENERGY TYPE TO " + target_pokemon.metadata.get("name","").to_upper() + "!")
+		energy_card_awaiting_target = null
+		selected_card_for_action = null
+		card_attach_mode_active = false
+		hide_selection_mode_display_main()
+		return
+
+	# EX14 Cursed Glare (Dusclops ex14-17): opponent can't attach Special Energy (except Darkness/Metal)
+	# from hand to their Active Pokemon.
+	if powers_and_bodies.check_ex14_cursed_glare_blocks_energy(energy_card, target_pokemon):
+		await show_message("CURSED GLARE! CAN'T ATTACH THAT SPECIAL ENERGY TO YOUR ACTIVE POKEMON!")
 		energy_card_awaiting_target = null
 		selected_card_for_action = null
 		card_attach_mode_active = false
@@ -3280,6 +3293,9 @@ func perform_evolution(is_opponent: bool) -> void:
 		await powers_and_bodies.trigger_ex12_evolutionary_fan(evo_card, is_opponent)
 	elif evo_card.has_ability("Emerge Charge"):
 		await powers_and_bodies.trigger_ex12_emerge_charge(evo_card, is_opponent)
+	# EX14 Peal of Thunder (Charizard δ ex14-4): on evolving, look at the top 5 cards and attach Energy.
+	elif evo_card.has_ability("Peal of Thunder"):
+		await powers_and_bodies.trigger_ex14_peal_of_thunder(evo_card, is_opponent)
 
 	# EX7 Darkest Impulse (Dark Ampharos ex7-2): whenever the opponent evolves a Pokemon, the opposing
 	# Dark Ampharos puts 2 damage counters on it. Fires for every evolution (both sides).
@@ -3406,6 +3422,10 @@ func get_attacks_for_card(card: card_object) -> Array:
 
 	# ex10 Intimidating Ring (Ursaring): while Ursaring is Active, the opponent's Basic Pokemon can't attack.
 	if powers_and_bodies.check_ex10_intimidating_ring_blocks_attack(card):
+		return []
+
+	# EX14 Intimidating Armor (Aggron ex ex14-89): while Aggron ex is Active, the opponent's Basic Pokemon can't attack.
+	if powers_and_bodies.check_ex14_intimidating_armor_blocks_attack(card):
 		return []
 
 	# Get the attacks if they exist
@@ -3566,7 +3586,7 @@ func get_attacks_for_card(card: card_object) -> Array:
 	if card.attached_pre_evolutions.size() > 0:
 		var has_memory_berry = false
 		for ac in card.attached_cards:
-			if ac.uid.to_lower() == "ecard2-128":
+			if ac.uid.to_lower() in ["ecard2-128", "ex14-80"]:
 				has_memory_berry = true
 				break
 		if has_memory_berry:
@@ -3647,9 +3667,30 @@ func _find_energy_holder(energy_card: card_object) -> card_object:
 	return null
 
 func get_energy_provided_by_card(energy_card: card_object) -> Array:
+	var provided = _get_energy_provided_raw(energy_card)
+	# EX14 Crystal Beach (ex14-75 Stadium): each Special Energy card that provides 2 or more Energy (both
+	# players) now provides only 1 Colorless Energy. Not affected by any Poké-Powers or Poké-Bodies.
+	# (Pokémon-as-Energy and Electrode-as-Energy are not "Special Energy cards", so they are excluded.)
+	if provided.size() >= 2 and energy_card != null and not energy_card.attached_as_energy and not energy_card.is_electrode_energy:
+		if "Special" in energy_card.metadata.get("subtypes", []) and is_stadium_in_play("ex14-75"):
+			provided = ["Colorless"]
+	# EX14 Chlorophyll (Venusaur ex14-28): all Energy cards that provide ONLY Colorless attached to your
+	# Grass Pokemon provide Grass Energy instead, while a Venusaur with this Body is in play on that side.
+	if energy_card != null and not energy_card.attached_as_energy and not energy_card.is_electrode_energy \
+			and energy_card.metadata.get("supertype","").to_lower() == "energy" \
+			and not provided.is_empty() and provided.all(func(t): return t == "Colorless"):
+		var holder = _find_energy_holder(energy_card)
+		if holder != null and "Grass" in holder.get_effective_types():
+			var chl_side = holder.is_owner_opp(self)
+			for p in card_ops.get_all_pokemon_in_play(chl_side):
+				if p.has_ability("Chlorophyll") and not powers_and_bodies.is_power_blocked(p):
+					return provided.map(func(_t): return "Grass")
+	return provided
+
+func _get_energy_provided_raw(energy_card: card_object) -> Array:
 	if energy_card == null:
 		return []
-	
+
 	# Electrode Buzzap: this card is an Electrode acting as energy
 	if energy_card.is_electrode_energy:
 		return [energy_card.electrode_energy_type]
@@ -3904,6 +3945,17 @@ func perform_attack(attack_index: int) -> void:
 	
 	SoundManagerScript.play_sfx(SoundManagerScript.SFX_attack_sound)
 	await show_message((player_active_pokemon.metadata["name"] + " USED " + attack_name).to_upper())
+
+	# EX14 Holon Circle (ex14-79 Stadium): prevent all effects, including damage, done by either player's
+	# Active Pokémon. The moment an Active uses an attack, that attack ends and Holon Circle is discarded.
+	if is_stadium_in_play("ex14-79"):
+		await show_message("HOLON CIRCLE! THE ATTACK HAD NO EFFECT!")
+		await trainer_effects.remove_current_stadium("Holon Circle")
+		player_attacked_this_turn = true
+		hide_attack_buttons()
+		await get_tree().create_timer(0.5).timeout
+		player_end_turn_checks()
+		return
 
 	# Baby Pokemon rule: player must flip before attacking a Baby Pokemon (tails = turn ends)
 	if await attack_effects.check_baby_rule(opponent_active_pokemon, false):
@@ -4382,6 +4434,23 @@ func check_and_handle_knockout(pokemon: card_object, is_opponent: bool) -> bool:
 	# Pre-KO event hooks (Final Beam and any future on-KO powers registered in Powers)
 	var ko_attacker = player_active_pokemon if is_opponent else opponent_active_pokemon
 	await powers_and_bodies.dispatch_pre_ko(pokemon, ko_attacker, is_opponent)
+
+	# EX14 Time Travel (Celebi Star ex14-100): if it would be KO'd by an opponent's attack, flip; on heads
+	# it is not KO'd — discard everything attached and put it on the bottom of the deck (no prize taken).
+	if await powers_and_bodies.check_ex14_time_travel(pokemon, ko_attacker, is_opponent):
+		if pokemon == active:
+			if is_opponent:
+				opponent_active_pokemon = null
+			else:
+				player_active_pokemon = null
+		elif pokemon in bench:
+			bench.erase(pokemon)
+		var status_container_tt = opponent_status_container if is_opponent else player_status_container
+		for child in status_container_tt.get_children():
+			child.queue_free()
+		display_pokemon(is_opponent)
+		cpu_ai.invalidate_cpu_evaluation()
+		return true
 
 	# GYM1 Rocket's Moltres Rebirth — return to hand instead of discarding
 	# Must trigger AFTER Final Beam (so Final Beam still resolves) but BEFORE the discard animation.
@@ -4888,6 +4957,10 @@ func get_retreat_cost(pokemon: card_object) -> int:
 	if pokemon.has_ability("Free Flight") and not powers_and_bodies.is_power_blocked(pokemon) and pokemon.attached_energies.is_empty():
 		return 0
 
+	# EX14 Flotation (Kyogre ex ex14-95): Retreat Cost is 0 while it has 1 Energy or less attached.
+	if pokemon.has_ability("Flotation") and not powers_and_bodies.is_power_blocked(pokemon) and pokemon.attached_energies.size() <= 1:
+		return 0
+
 	# ex10 Fluffy Berry (Pokémon Tool ex10-85): Retreat Cost is 0 while attached
 	for ac in pokemon.attached_cards:
 		if ac.uid.to_lower() == "ex10-85":
@@ -5006,6 +5079,18 @@ func get_retreat_cost(pokemon: card_object) -> int:
 		for np in side_all:
 			if np.metadata.get("name", "") == "Nidoqueen" and not powers_and_bodies.is_power_blocked(np):
 				cost = 0
+				break
+
+	# EX14 Hover Lift (Igglybuff ex14-21): you pay Colorless less to retreat your Jigglypuff, Wigglytuff,
+	# Wigglytuff ex, and Igglybuff while an Igglybuff with this Body is in play on that side.
+	if pokemon.metadata.get("name", "") in ["Jigglypuff", "Wigglytuff", "Wigglytuff ex", "Igglybuff"]:
+		var hl_side_all: Array = bench.duplicate()
+		var hl_side_active = player_active_pokemon if (pokemon == player_active_pokemon or pokemon in player_bench) else opponent_active_pokemon
+		if hl_side_active != null:
+			hl_side_all.append(hl_side_active)
+		for hp in hl_side_all:
+			if hp.has_ability("Hover Lift") and not powers_and_bodies.is_power_blocked(hp):
+				cost = max(0, cost - 1)
 				break
 
 	# EX8 Moonglow (Lunatone ex8-36): the Retreat Cost for each Solrock you have in play is 0.

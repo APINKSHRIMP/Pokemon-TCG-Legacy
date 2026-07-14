@@ -495,6 +495,11 @@ func apply_bench_damage(pokemon: card_object, damage: int, is_opponent: bool) ->
 			var abtext = ab.get("text","").to_lower()
 			if "prevent all damage" in abtext and "bench" in abtext:
 				return
+	# EX14 Sand Veil (Dugtrio ex14-5): prevent all attack damage to that side's Benched Pokemon while a
+	# Dugtrio with this Body is in play on that side.
+	for sv in main.card_ops.get_all_pokemon_in_play(is_opponent):
+		if sv.has_ability("Sand Veil") and not main.powers_and_bodies.is_power_blocked(sv):
+			return
 	pokemon.current_hp = max(0, pokemon.current_hp - damage)
 	var loc = main.get_pokemon_screen_location(pokemon)
 	if not loc.is_empty():

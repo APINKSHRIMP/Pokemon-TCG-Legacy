@@ -277,7 +277,7 @@ func get_max_hp() -> int:
 # triggering on THIS Pokemon as an attacker is handled centrally in Main's calculate_final_damage.
 func get_effective_types() -> Array:
 	for ac in attached_cards:
-		if ac.uid.to_lower() == "ecard3-122" or ac.uid.to_lower() == "ex8-85":
+		if ac.uid.to_lower() == "ecard3-122" or ac.uid.to_lower() == "ex8-85" or ac.uid.to_lower() == "ex14-76":
 			return ["Colorless"]
 	if has_effect("crystal_type_active"):
 		return [get_effect_data("crystal_type_active")]
@@ -315,6 +315,11 @@ func get_effective_types() -> Array:
 		if nm12 == "Armaldo ex":
 			if react_energy_count() > 0:
 				return ["Grass", "Fighting"]
+			return metadata.get("types", ["Colorless"]).duplicate()
+		# EX14 Medicham (ex14-25): Psychic + Fighting while any Psychic Energy is attached.
+		if nm12 == "Medicham":
+			if _dual_armor_has_energy("Psychic"):
+				return ["Psychic", "Fighting"]
 			return metadata.get("types", ["Colorless"]).duplicate()
 	# EX7 Dual Armor (Rocket's Scizor ex / Rocket's Scyther ex): adds a second type while a specific
 	# Energy is attached (Metal for Scizor, Grass for Scyther).

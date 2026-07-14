@@ -362,6 +362,17 @@ func get_unmet_energy_count(attack: Dictionary, pokemon: card_object) -> int:
 	# Pokemon pays Colorless more Energy to use its attacks.
 	if not main.is_basic_pokemon(pokemon) and main.powers_and_bodies.is_ex5_primal_pull_active():
 		required_cost.append("Colorless")
+	# EX14 Extra Liquid (Sceptile ex δ ex14-96): each player's Pokemon-ex pays Colorless more to attack
+	# (at most 1 Extra Liquid affects any Pokemon).
+	if main.is_ex_pokemon(pokemon) and main.powers_and_bodies.is_ex14_extra_liquid_active():
+		required_cost.append("Colorless")
+	# EX14 Star Light (Jirachi ex ex14-94): pays Colorless less for Shield Beam / Super Psy Bolt while the
+	# opponent has any Pokemon-ex or Stage 2 Evolved Pokemon in play.
+	var star_discount = main.powers_and_bodies.ex14_star_light_discount(pokemon, attack.get("name",""))
+	for _i in range(star_discount):
+		var ci = required_cost.find("Colorless")
+		if ci != -1:
+			required_cost.remove_at(ci)
 	if required_cost.size() == 0:
 		return 0
 
@@ -1358,6 +1369,10 @@ func cpu_phase_energy_attachment(cpu_eval: Dictionary) -> void:
 		var key = pokemon.get_instance_id()
 		var pokemon_data = cpu_eval["pokemon_data"].get(key, {})
 		for energy_card in energy_cards_in_hand:
+			# EX14 Cursed Glare (Dusclops ex14-17): can't attach a Special Energy (except Darkness/Metal)
+			# from hand to the CPU's Active while the player's Active Dusclops has this Body.
+			if main.powers_and_bodies.check_ex14_cursed_glare_blocks_energy(energy_card, pokemon):
+				continue
 			var score = score_energy_pair(pokemon, energy_card, cpu_eval, pokemon_data)
 			scored_pairs.append({
 				"pokemon": pokemon,
@@ -2837,6 +2852,15 @@ func cpu_phase_attack(cpu_eval: Dictionary) -> void:
 	await main.maybe_vermilion_lt_surge_flip(main.opponent_active_pokemon, true)
 	if main._should_bail(): return
 
+	# EX14 Holon Circle (ex14-79 Stadium): the moment an Active uses an attack, that attack ends (all
+	# effects, including damage, prevented) and Holon Circle is discarded.
+	if main.is_stadium_in_play("ex14-79"):
+		await main.show_message("HOLON CIRCLE! THE ATTACK HAD NO EFFECT!")
+		if main._should_bail(): return
+		await main.trainer_effects.remove_current_stadium("Holon Circle")
+		main.opponent_attacked_this_turn = true
+		return
+
 
 	# GYM2 pre-processing: attack-dict modifications before dispatch
 	if main.opponent_active_pokemon.uid.begins_with("gym2-"):
@@ -3072,6 +3096,10 @@ func cpu_phase_bench_play() -> void:
 		# EX12 Support Navigation (Lapras ex12-8): on benching from hand, search deck for a Supporter → hand.
 		if best_card.has_ability("Support Navigation"):
 			await main.powers_and_bodies.trigger_ex12_support_navigation(best_card, true)
+			if main._should_bail(): return
+		# EX14 Crush Chance (Tauros ex14-12): on benching from hand, may discard a Stadium card in play.
+		if best_card.has_ability("Crush Chance"):
+			await main.powers_and_bodies.trigger_ex14_crush_chance(best_card, true)
 			if main._should_bail(): return
 
 # R.5: Selects the best bench replacement and performs the retreat
