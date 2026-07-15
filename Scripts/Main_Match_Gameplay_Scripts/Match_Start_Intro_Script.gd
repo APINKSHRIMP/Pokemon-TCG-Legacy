@@ -80,6 +80,12 @@ func _input(event: InputEvent) -> void:
 # ============================================================
 
 func load_opponent_data(trainer_name: String) -> void:
+	# TEMP TESTING: T-key TEST match synthesizes opponent data instead of reading NPC JSON.
+	if GameState.test_match_mode:
+		opponent_data = GameState.build_test_opponent_data()
+		GameDataManager.opponent_data = opponent_data
+		return
+
 	var file = FileAccess.open(GameState.current_opponent_json_path, FileAccess.READ)
 	if file == null:
 		print("Error loading opponent file")

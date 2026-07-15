@@ -5,11 +5,34 @@ extends Node
 # ============================================================
 
 var current_opponent_name: String = ""
+
+# TEMP TESTING: synthetic opponent metadata used by the T-key TEST match so no
+# NPC JSON needs to exist. Sprite is left blank (intro skips a missing sprite).
+func build_test_opponent_data() -> Dictionary:
+	return {
+		"name": "TEST OPPONENT",
+		"deck": "TEST",
+		"sprite": "",
+		"music": "fast_battle (TCG GB Ronalds Theme)",
+		"prize_cards": 6,
+		"coin_reward": "",
+		"sleeve": "",
+		"match_effects": [],
+		"restrictions": {},
+	}
+
 var current_opponent_json_path: String = ""
 var returning_from_battle: bool = false
 var battle_result: String = ""  # "win" or "loss"
 var player_position: Vector2 = Vector2.ZERO
 var current_opponent_deck: String = ""
+
+# TEMP TESTING: when true, both the player AND the opponent draw from the
+# "TEST" deck in user://Player_Decks/, and opponent metadata is synthesized
+# (no NPC JSON is read). Set by the overworld T-key debug launcher; cleared
+# whenever a normal battle starts.
+var test_match_mode: bool = false
+
 var return_to_scene: String = ""
 var interior_entry_position: Vector2 = Vector2.ZERO
 var spawn_position: Vector2 = Vector2.ZERO

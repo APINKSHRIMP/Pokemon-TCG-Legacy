@@ -1,7 +1,7 @@
 extends BaseMapScene
 
 const SCENE_PATH = "res://Scenes/Map_Scenes/Celeste_Harbour.tscn"
-const BGM_PATH = "res://Audio/BGM/Celeste_Harbour_BGM.ogg"
+const BGM_PATH = "res://Audio/BGM/Celeste_Harbour_BGM (HGSS National Park).ogg"
 
 const TILESET_MORNING   = preload("res://Image_Assets/Map_Sheets/Tile_Sets/Celeste_Harbour_Morning.tres")
 const TILESET_AFTERNOON = preload("res://Image_Assets/Map_Sheets/Tile_Sets/Celeste_Harbour_Afternoon.tres")

@@ -20,6 +20,12 @@ const COLUMNS       := 9
 const MAX_COPIES    := 4
 const DECK_SIZE     := 60
 
+# ─── TEMP TESTING FLAG ──────────────────────────────────────────────────────
+# When true, the deck builder drops the "exactly 60 cards" and "max 4 per name
+# group" (and per-card ownership) save restrictions, so any deck can hold any
+# number of any card. Set back to false to restore normal deck-building rules.
+const TESTING_UNLIMITED_DECKS := true
+
 # ─── Energy style data ──────────────────────────────────────────────────────
 # Each style maps to 6 card IDs in a fixed order: grass, fire, water,
 # lightning, psychic, fighting.  The order matters because each set has
@@ -176,7 +182,7 @@ var set_breakdown_label : RichTextLabel = null
 
 func _ready() -> void:
 	# Start background music — loops until scene changes
-	SoundManagerScript.play_bgm("res://Audio/BGM/coin_mode.ogg", true)
+	SoundManagerScript.play_bgm("res://Audio/BGM/coin_mode (TCG GB Water Club).ogg", true)
 	
 	# Load data sources
 	_load_set_dictionary()
@@ -474,6 +480,9 @@ func _get_name_group(card_id: String) -> String:
 ## be added to the deck, considering the name-based group limits.
 ## Returns -1 for unlimited (won't happen for non-energy cards).
 func _get_max_for_card(card_id: String, owned: int) -> int:
+	# TEMP TESTING: ignore group/ownership limits so any number of any card is allowed.
+	if TESTING_UNLIMITED_DECKS:
+		return DECK_SIZE
 	var meta = _get_card_meta(card_id)
 	if meta == null:
 		return mini(owned, MAX_COPIES)
@@ -2104,7 +2113,9 @@ func _refresh_save_button() -> void:
 	# 1) The deck has exactly 60 cards
 	# 2) A deck name has been entered
 	# 3) Something has actually changed since the last save/load
-	if total_deck_count == DECK_SIZE and name_ok and is_dirty:
+	# TEMP TESTING: allow saving decks of any size (still needs at least 1 card).
+	var size_ok := (total_deck_count == DECK_SIZE) or (TESTING_UNLIMITED_DECKS and total_deck_count > 0)
+	if size_ok and name_ok and is_dirty:
 		save_btn.disabled = false
 		var green_theme = load("res://UI_Themes/kenneyUI-green.tres")
 		if green_theme:

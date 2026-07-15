@@ -5009,7 +5009,7 @@ func cpu_rank_keep_value(card: card_object) -> float:
 	if card == null:
 		return -INF
 	var score := 40.0
-	var supertype := card.metadata.get("supertype", "").to_lower()
+	var supertype: String = card.metadata.get("supertype", "").to_lower()
 	if supertype == "energy":
 		# Energy the current attacker actually needs beats surplus energy.
 		score = 45.0 + _cpu_energy_need_score(card)
@@ -5082,7 +5082,7 @@ func cpu_rank_benefit_recipient(pokemon: card_object, benefit: String, context_e
 	var score := 10.0
 	match benefit:
 		"energy":
-			var is_active := (pokemon == main.opponent_active_pokemon)
+			var is_active: bool = (pokemon == main.opponent_active_pokemon)
 			score += 20.0 if is_active else 0.0                   # the Active can use it THIS turn
 			var best_unmet := 0
 			for atk in pokemon.metadata.get("attacks", []):

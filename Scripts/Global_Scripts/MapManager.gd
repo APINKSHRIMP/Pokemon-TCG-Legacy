@@ -560,6 +560,8 @@ func _on_yes_pressed():
 
 	# Opponent battle
 	if current_opponent != null:
+		# A normal battle is never a TEST match — clear any leftover debug flag.
+		GameState.test_match_mode = false
 		# Deck-restriction gate. If the opponent declares restrictions and the
 		# player's current deck fails validation, surface the appropriate popup
 		# / message and abort the battle. The check is deliberately placed
@@ -1598,6 +1600,13 @@ func _unhandled_input(event: InputEvent) -> void:
 		_debug_flash_cash(-200)
 		return
 
+	# T — jump straight into a TEST match: both player and opponent use the
+	# "TEST" deck in user://Player_Decks/. No NPC data needed.
+	if event.keycode == KEY_T:
+		get_viewport().set_input_as_handled()
+		_start_test_match(current)
+		return
+
 	var new_date: int = -1
 	var new_time: String = ""
 
@@ -1634,6 +1643,50 @@ func _unhandled_input(event: InputEvent) -> void:
 
 	get_viewport().set_input_as_handled()
 	_debug_reload_map_in_place(current)
+
+# Launches an instant TEST match from the overworld. Both the player and the
+# opponent draw from user://Player_Decks/TEST.json, and the opponent's metadata
+# is synthesized (no NPC JSON is consulted). Goes through the normal intro so
+# all GameState transition fields are populated the same way a real battle sets
+# them up.
+func _start_test_match(current: Node) -> void:
+	var deck_path := "user://Player_Decks/TEST.json"
+	if not FileAccess.file_exists(deck_path):
+		print("DEBUG: TEST match aborted — no deck at ", deck_path, " (create one in the deck builder named 'TEST')")
+		_debug_flash_defeated_label_text("No TEST deck found!")
+		return
+
+	# Capture the player's current spot so returning from the match lands here.
+	var pos: Vector2 = _player.position if _player != null else Vector2.ZERO
+	var player := current.get_node_or_null("Player")
+	if player is Node2D:
+		pos = player.position
+
+	GameState.test_match_mode            = true
+	GameState.current_opponent_name      = "TEST OPPONENT"
+	GameState.current_opponent_deck      = "TEST"
+	GameState.current_opponent_json_path = ""
+	GameState.player_position            = pos
+	GameState.returning_from_battle      = false
+	GameState.return_map_scene_path      = _map_scene_path
+	GameState.last_battled_opponent_entry = GameState.build_test_opponent_data()
+	GameState.clear_match_series()
+
+	print("DEBUG: launching TEST match (player + opponent both use 'TEST' deck)")
+
+	_hide_message()
+	SoundManagerScript.stop_bgm()
+
+	var overlay = ColorRect.new()
+	overlay.color   = Color(0, 0, 0, 0)
+	overlay.size    = Vector2(1920, 1080)
+	overlay.z_index = 100
+	current.add_child(overlay)
+
+	var tween = current.create_tween()
+	tween.tween_property(overlay, "color:a", 1.0, 0.5)
+	await tween.finished
+	SceneCache.change_scene("res://Scenes/Main_Match_Gameplay_Scenes/Match_Start_Intro_Scene.tscn")
 
 # Reloads the supplied map scene, restoring the player to their current
 # spot/direction via the same menu-return path every map scene honours
@@ -1676,7 +1729,19 @@ func _debug_flash_defeated_count() -> void:
 		_ui_layer.add_child(_debug_defeated_label)
 
 	_debug_defeated_label.text = "Opponents defeated: " + str(GameState.get_current_defeated())
+	_debug_flash_defeated_label_finish()
 
+# Flashes arbitrary text using the same big centred label as the defeated counter.
+func _debug_flash_defeated_label_text(text: String) -> void:
+	if _ui_layer == null or not is_instance_valid(_ui_layer):
+		return
+	if _debug_defeated_label == null or not is_instance_valid(_debug_defeated_label):
+		_debug_flash_defeated_count()
+	_debug_defeated_label.text = text
+	_debug_flash_defeated_label_finish()
+
+# Shared 2-second teardown timer (token pattern) for the defeated label.
+func _debug_flash_defeated_label_finish() -> void:
 	_debug_label_token += 1
 	var my_token: int = _debug_label_token
 	await get_tree().create_timer(2.0).timeout

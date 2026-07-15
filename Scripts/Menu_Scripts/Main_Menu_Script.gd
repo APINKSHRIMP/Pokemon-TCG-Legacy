@@ -54,11 +54,12 @@ func _close_overlay() -> void:
 
 func _ready() -> void:
 	add_child(audio_player)
-	var audio_stream = load("res://Audio/BGM/main_menu_music.ogg")
+	var audio_stream = load("res://Audio/BGM/main_menu_music (TCG GB Menu Theme).ogg")
 	audio_player.stream = audio_stream
 	audio_player.bus = "Master"
-	audio_player.stream.loop = true
-	audio_player.play()
+	if audio_stream != null:
+		audio_stream.loop = true
+		audio_player.play()
 
 	var starter_collected = GameState.progress.get("player_collected_starter_box", false)
 	var locked_modes := {}

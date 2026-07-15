@@ -6,7 +6,7 @@ const NPC_JSON_PATH = "res://NPC_and_Opponent_Data/Card_Mart_NPCs.json"
 const SPAWN_FROM_CELESTE_HARBOUR = Vector2(208, 172)
 
 func get_scene_path() -> String:      return SCENE_PATH
-func get_bgm_path() -> String:        return "res://Audio/BGM/Shop1.ogg"
+func get_bgm_path() -> String:        return "res://Audio/BGM/Shop1 (Spindas Cafe).ogg"
 func get_default_spawn() -> Vector2:  return SPAWN_FROM_CELESTE_HARBOUR
 func get_entry_positions() -> Dictionary:
 	return {"Celeste_Harbour": SPAWN_FROM_CELESTE_HARBOUR}

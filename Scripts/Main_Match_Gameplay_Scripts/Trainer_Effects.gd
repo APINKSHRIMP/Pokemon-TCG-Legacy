@@ -119,6 +119,7 @@ func effect_ex9_scott(is_opponent: bool) -> void:
 	if main._should_bail(): return
 	print("TRAINER: Scott — found ", found.size())
 
+func _register_ex8_trainers() -> void:
 	_trainer_dispatch["ex8-86"] = func(c, opp): await effect_ex8_energy_charge(opp)                  # Energy Charge (Item)
 	_trainer_dispatch["ex8-87"] = func(c, opp): await effect_ex8_lady_outing(opp)                    # Lady Outing (Supporter)
 	_trainer_dispatch["ex8-88"] = func(c, opp): await effect_ex8_master_ball(opp)                    # Master Ball (Item)
@@ -8238,7 +8239,6 @@ func effect_ecard1_warp_point(is_opponent: bool) -> void:
 			main.display_pokemon(is_opponent)
 			main.display_active_pokemon_energies(is_opponent)
 	print("TRAINER: Warp Point")
-	print("STADIUM: Championship Arena — ", is_opponent_side, " discarded ", excess, " card(s)")
 
 ######################################################################################################################################################
 ######################################################### ECARD2 (AQUAPOLIS) STADIUMS ################################################################
@@ -8267,7 +8267,7 @@ func apricorn_forest_activate(is_opponent: bool) -> void:
 		if main._should_bail(): return
 		return
 	var hand = main.opponent_hand if is_opponent else main.player_hand
-	var basics = hand.filter(func(c): return gym1_is_basic_energy(c))
+	var basics = hand.filter(func(c): return main.attack_effects.gym1_is_basic_energy(c))
 	if basics.is_empty():
 		await main.show_message("APRICORN FOREST! HEADS — BUT NO BASIC ENERGY IN HAND!")
 		if main._should_bail(): return
@@ -8386,7 +8386,7 @@ func power_plant_active(is_opponent: bool) -> bool:
 	if is_opponent and main.opponent_power_plant_used_this_turn: return false
 	if not is_opponent and main.player_power_plant_used_this_turn: return false
 	var hand = main.opponent_hand if is_opponent else main.player_hand
-	return hand.any(func(c): return gym1_is_basic_energy(c))
+	return hand.any(func(c): return main.attack_effects.gym1_is_basic_energy(c))
 
 func power_plant_activate(is_opponent: bool) -> void:
 	if is_opponent:
@@ -8395,7 +8395,7 @@ func power_plant_activate(is_opponent: bool) -> void:
 		main.player_power_plant_used_this_turn = true
 	var hand = main.opponent_hand if is_opponent else main.player_hand
 	var discard = main.opponent_discard_pile if is_opponent else main.player_discard_pile
-	var hand_basics = hand.filter(func(c): return gym1_is_basic_energy(c))
+	var hand_basics = hand.filter(func(c): return main.attack_effects.gym1_is_basic_energy(c))
 	if hand_basics.is_empty(): return
 	var to_discard: card_object = hand_basics[0]
 	if not is_opponent and hand_basics.size() > 1:
@@ -8405,7 +8405,7 @@ func power_plant_activate(is_opponent: bool) -> void:
 	hand.erase(to_discard)
 	to_discard.current_location = "discard"
 	discard.append(to_discard)
-	var discard_basics = discard.filter(func(c): return gym1_is_basic_energy(c) and c != to_discard)
+	var discard_basics = discard.filter(func(c): return main.attack_effects.gym1_is_basic_energy(c) and c != to_discard)
 	if discard_basics.is_empty():
 		main.refresh_hand_display(is_opponent)
 		main.update_discard_pile_display(is_opponent)
@@ -8481,13 +8481,13 @@ func check_time_shard(pokemon: card_object, attacker: card_object, is_pokemon_op
 			shard = ac
 			break
 	if shard == null: return
-	var basics = pokemon.attached_energies.filter(func(c): return gym1_is_basic_energy(c))
+	var basics = pokemon.attached_energies.filter(func(c): return main.attack_effects.gym1_is_basic_energy(c))
 	if basics.is_empty(): return
 	var hand = main.opponent_hand if is_pokemon_opp else main.player_hand
 	var want = min(2, basics.size())
 	var moved = 0
 	for i in range(want):
-		var pool = pokemon.attached_energies.filter(func(c): return gym1_is_basic_energy(c))
+		var pool = pokemon.attached_energies.filter(func(c): return main.attack_effects.gym1_is_basic_energy(c))
 		if pool.is_empty(): break
 		var chosen: card_object = null
 		if is_pokemon_opp:
@@ -8527,7 +8527,7 @@ func _register_ecard2_trainers() -> void:
 # ENERGY SWITCH (ecard2-120): move a basic Energy card from 1 of your Pokemon to another
 func effect_ecard2_energy_switch(is_opponent: bool) -> void:
 	var all_p = build_field_pokemon_array(is_opponent)
-	var sources = all_p.filter(func(p): return p.attached_energies.filter(func(e): return gym1_is_basic_energy(e)).size() > 0)
+	var sources = all_p.filter(func(p): return p.attached_energies.filter(func(e): return main.attack_effects.gym1_is_basic_energy(e)).size() > 0)
 	if sources.is_empty():
 		await main.show_message("NO BASIC ENERGY TO MOVE!")
 		if main._should_bail(): return
@@ -8540,12 +8540,12 @@ func effect_ecard2_energy_switch(is_opponent: bool) -> void:
 		for s in sources:
 			if main.cpu_ai.cpu_rank_benefit_recipient(s, "energy") < main.cpu_ai.cpu_rank_benefit_recipient(source, "energy"):
 				source = s
-		energy = source.attached_energies.filter(func(e): return gym1_is_basic_energy(e))[0]
+		energy = source.attached_energies.filter(func(e): return main.attack_effects.gym1_is_basic_energy(e))[0]
 	else:
 		source = await main.card_ops.prompt_select_card(sources, "ENERGY SWITCH", "Select a Pokemon to move Energy from", "SELECT", false)
 		if main._should_bail(): return
 		if source == null: return
-		var basics = source.attached_energies.filter(func(e): return gym1_is_basic_energy(e))
+		var basics = source.attached_energies.filter(func(e): return main.attack_effects.gym1_is_basic_energy(e))
 		energy = await main.card_ops.prompt_select_card(basics, "ENERGY SWITCH", "Select the Energy card to move", "SELECT", false)
 		if main._should_bail(): return
 	if energy == null: return
@@ -8640,7 +8640,7 @@ func effect_ecard2_forest_guardian(is_opponent: bool) -> void:
 # JUGGLER (ecard2-126): discard up to 2 basic Energy from hand; 1 discarded=draw 3, 2 discarded=draw 5
 func effect_ecard2_juggler(is_opponent: bool) -> void:
 	var hand = main.opponent_hand if is_opponent else main.player_hand
-	var basics = hand.filter(func(c): return gym1_is_basic_energy(c))
+	var basics = hand.filter(func(c): return main.attack_effects.gym1_is_basic_energy(c))
 	if basics.is_empty():
 		await main.show_message("NO BASIC ENERGY IN HAND!")
 		if main._should_bail(): return
@@ -8656,7 +8656,7 @@ func effect_ecard2_juggler(is_opponent: bool) -> void:
 			if main._should_bail(): return
 		var pick_count = 2 if confirm_2 else 1
 		for i in range(min(pick_count, basics.size())):
-			var pool = hand.filter(func(c): return gym1_is_basic_energy(c) and c not in discarded)
+			var pool = hand.filter(func(c): return main.attack_effects.gym1_is_basic_energy(c) and c not in discarded)
 			if pool.is_empty(): break
 			var chosen = await main.card_ops.prompt_select_card(pool, "JUGGLER", "Select a basic Energy to discard", "DISCARD", false)
 			if main._should_bail(): return
@@ -8711,7 +8711,7 @@ func effect_ecard2_seer(is_opponent: bool) -> void:
 		return
 	var deck = main.opponent_deck if is_opponent else main.player_deck
 	var hand = main.opponent_hand if is_opponent else main.player_hand
-	var found = top_cards.filter(func(c): return gym1_is_basic_energy(c))
+	var found = top_cards.filter(func(c): return main.attack_effects.gym1_is_basic_energy(c))
 	await main.show_message("SEER: LOOKING AT TOP " + str(top_cards.size()) + " CARDS!")
 	if main._should_bail(): return
 	for c in found:
@@ -8732,7 +8732,7 @@ func effect_ecard2_town_volunteers(is_opponent: bool) -> void:
 	var candidates = discard.filter(func(c):
 		var st = c.metadata.get("supertype","")
 		if st == "Pokémon": return true
-		if st == "Energy" and gym1_is_basic_energy(c): return true
+		if st == "Energy" and main.attack_effects.gym1_is_basic_energy(c): return true
 		return false)
 	if candidates.is_empty():
 		await main.show_message("NOTHING IN DISCARD PILE TO RECOVER!")
@@ -8748,7 +8748,7 @@ func effect_ecard2_town_volunteers(is_opponent: bool) -> void:
 				var st = c.metadata.get("supertype","")
 				if c in chosen: return false
 				if st == "Pokémon": return true
-				if st == "Energy" and gym1_is_basic_energy(c): return true
+				if st == "Energy" and main.attack_effects.gym1_is_basic_energy(c): return true
 				return false)
 			if pool.is_empty(): break
 			var pick = await main.card_ops.prompt_select_card(pool, "TOWN VOLUNTEERS", "Choose a card to shuffle into your deck (" + str(want - chosen.size()) + " remaining, cancel to stop)", "SELECT", true)
@@ -8848,7 +8848,7 @@ func mystery_zone_activate(is_opponent: bool) -> void:
 	var evolutions = hand.filter(func(c): return c.metadata.get("supertype","") == "Pokémon" and not main.is_basic_pokemon(c))
 	if evolutions.is_empty():
 		return
-	var filter_fn = func(c): return gym1_is_basic_energy(c)
+	var filter_fn = func(c): return main.attack_effects.gym1_is_basic_energy(c)
 	var found = await main.card_ops.search_deck_to_hand(is_opponent, filter_fn, "MYSTERY ZONE: CHOOSE A BASIC ENERGY (OPTIONAL)", 1)
 	if main._should_bail(): return
 	if found.size() > 0:
@@ -9037,7 +9037,7 @@ func effect_ecard3_fast_ball(is_opponent: bool) -> void:
 func effect_ecard3_fisherman(is_opponent: bool) -> void:
 	var discard = main.opponent_discard_pile if is_opponent else main.player_discard_pile
 	var hand = main.opponent_hand if is_opponent else main.player_hand
-	var candidates = discard.filter(func(c): return gym1_is_basic_energy(c))
+	var candidates = discard.filter(func(c): return main.attack_effects.gym1_is_basic_energy(c))
 	if candidates.is_empty():
 		await main.show_message("NO BASIC ENERGY IN YOUR DISCARD PILE!")
 		if main._should_bail(): return
@@ -9102,7 +9102,7 @@ func effect_ecard3_friend_ball(is_opponent: bool) -> void:
 # 1 discarded heals up to 3 counters, 2 discarded heals up to 5 counters
 func effect_ecard3_hyper_potion(is_opponent: bool) -> void:
 	var all_own = build_field_pokemon_array(is_opponent)
-	var candidates = all_own.filter(func(p): return p.attached_energies.filter(func(e): return gym1_is_basic_energy(e)).size() > 0)
+	var candidates = all_own.filter(func(p): return p.attached_energies.filter(func(e): return main.attack_effects.gym1_is_basic_energy(e)).size() > 0)
 	if candidates.is_empty():
 		await main.show_message("NO POKEMON WITH BASIC ENERGY ATTACHED!")
 		if main._should_bail(): return
@@ -9113,7 +9113,7 @@ func effect_ecard3_hyper_potion(is_opponent: bool) -> void:
 		target = await main.card_ops.prompt_select_card(candidates, "HYPER POTION", "Select a Pokemon to heal", "SELECT", false)
 		if main._should_bail(): return
 		if target == null: return
-	var basics = target.attached_energies.filter(func(e): return gym1_is_basic_energy(e))
+	var basics = target.attached_energies.filter(func(e): return main.attack_effects.gym1_is_basic_energy(e))
 	var want = min(2, basics.size())
 	if not is_opponent and want >= 2:
 		var confirm_2 = await gym1_prompt_yes_no(target, "HYPER POTION", "Discard 2 basic Energy to heal up to 5? (No = discard 1 to heal up to 3)", "DISCARD 2", "DISCARD 1")
@@ -9121,7 +9121,7 @@ func effect_ecard3_hyper_potion(is_opponent: bool) -> void:
 		want = 2 if confirm_2 else 1
 	var discarded: Array = []
 	for i in range(want):
-		var pool = target.attached_energies.filter(func(e): return gym1_is_basic_energy(e) and e not in discarded)
+		var pool = target.attached_energies.filter(func(e): return main.attack_effects.gym1_is_basic_energy(e) and e not in discarded)
 		if pool.is_empty(): break
 		var chosen: card_object = pool[0]
 		if is_opponent:

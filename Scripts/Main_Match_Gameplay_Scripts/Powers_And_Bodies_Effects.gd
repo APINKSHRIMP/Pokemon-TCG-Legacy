@@ -10612,7 +10612,7 @@ func apply_ex2_primal_lock_removal() -> void:
 					p.attached_cards.erase(ac)
 					ac.current_location = "discard"
 					discard.append(ac)
-					display_attached_trainer_cards(victim_side)
+					main.trainer_effects.display_attached_trainer_cards(victim_side)
 					main.update_discard_pile_display(victim_side)
 					await main.show_message("PRIMAL LOCK DISCARDED " + ac.metadata.get("name","").to_upper() + "!")
 					if main._should_bail(): return

@@ -1763,6 +1763,9 @@ func setup_opponent(opponent_id: String):
 	
 	# We will need to eventually pass a number of different decks depending on the NPC opponent so load the correct one from file
 	var opponent_deck_path = "res://NPC_and_Opponent_Data/Opponent_Deck_Data/"+opponent_id+".json"
+	# TEMP TESTING: T-key TEST match — opponent draws from the player's user:// "TEST" deck.
+	if GameState.test_match_mode:
+		opponent_deck_path = "user://Player_Decks/TEST.json"
 	
 	# Load the deck from the opponent data folder file
 	opponent_deck = load_deck_from_file(opponent_deck_path)
@@ -5443,6 +5446,11 @@ func _derive_sleeve_border_color(tex: Texture2D) -> Color:
 	return sampled.darkened(0.5)
 
 func load_opponent_data_by_name(opp_name: String):
+	# TEMP TESTING: T-key TEST match synthesizes opponent data instead of reading NPC JSON.
+	if GameState.test_match_mode:
+		opponent_data = GameState.build_test_opponent_data()
+		return
+
 	var file = FileAccess.open(GameState.current_opponent_json_path, FileAccess.READ)
 	if file == null:
 		print("Error loading file")
@@ -6310,6 +6318,11 @@ func _ready() -> void:
 	var pdata = JSON.parse_string(pfile.get_as_text())
 	pfile.close()
 	player_deck_name = pdata["deck"]
+	# TEMP TESTING: T-key TEST match — player draws from the "TEST" deck, and the
+	# opponent's hand + prize cards are shown face-up for inspection.
+	if GameState.test_match_mode:
+		player_deck_name = "TEST"
+		hide_hidden_cards = false
 
 	# Load sleeve textures for player and opponent
 	player_sleeve_small = _resolve_sleeve_path(pdata.get("sleeve", "default"), true)

@@ -1149,7 +1149,7 @@ func execute_metronome_copy_no_finish(attacker: card_object, defender: card_obje
 		if effect["type"] != "energy_discard_self":
 			filtered_effects.append(effect)
 	if filtered_effects.size() > 0:
-		await apply_card_text_effects(filtered_effects, attacker, defender, is_opponent, flip_result)
+		await apply_card_text_effects(filtered_effects, attacker, defender, is_opponent)
 		if main._should_bail(): return
 
 # MIRROR MOVE (Pidgeotto): Replay the last attack received
@@ -9263,7 +9263,7 @@ func execute_neo1_sweet_scent(attacker: card_object, is_opponent: bool) -> void:
 	target.current_hp = min(target.get_max_hp(), target.current_hp + heal)
 	main.display_hp_circles_above_align(target, heal_side_is_opp)
 	var result_str = "HEADS — " if coin else "TAILS — "
-	await main.show_message("SWEET SCENT! " + result_str + "REMOVED " + str(heal // 10) + " DAMAGE COUNTER(S) FROM " + target.metadata.get("name","").to_upper() + "!")
+	await main.show_message("SWEET SCENT! " + result_str + "REMOVED " + str(heal / 10) + " DAMAGE COUNTER(S) FROM " + target.metadata.get("name","").to_upper() + "!")
 	if main._should_bail(): return
 	print("ATTACK EXECUTED: Sweet Scent — healed ", heal, " HP from ", target.metadata.get("name",""))
 
@@ -14466,7 +14466,7 @@ func _register_ecard1_attacks() -> void:
 	_attack_dispatch["reflect energy"] = func(atk, a, d, opp): var b = parse_attack_base_damage(atk); await execute_ecard1_reflect_energy(a, d, opp, b); await _attack_finish(true, b, atk, a.metadata.get("types",["Colorless"]), opp)
 	_attack_dispatch["rending jaws"]   = func(atk, a, d, opp): await execute_ecard1_rending_jaws(a, d, opp);                                   await _attack_finish(true, 70, atk, a.metadata.get("types",["Colorless"]), opp)
 	_attack_dispatch["rock hurl"]      = func(atk, a, d, opp): var b = parse_attack_base_damage(atk); await execute_ecard1_rock_hurl(a, d, opp, b); await _attack_finish(true, b, atk, a.metadata.get("types",["Colorless"]), opp)
-	_attack_dispatch["super psywave"]  = func(atk, a, d, opp): await execute_ecard1_super_psywave(a, d, opp);                                  await _attack_finish(true, 0, atk, a.metadata.get("types",["Colorless"]), opp)
+	_attack_dispatch["super psywave"]  = func(atk, a, d, opp): await execute_ecard1_super_psywave(a, opp);                                  await _attack_finish(true, 0, atk, a.metadata.get("types",["Colorless"]), opp)
 	_attack_dispatch["syncroblast"]    = func(atk, a, d, opp):
 		var sb_full = parse_attack_base_damage(atk)
 		var sb_mismatch = extract_number_before(atk.get("text","").to_lower(), "instead of")
@@ -16383,7 +16383,6 @@ func execute_ecard3_retro_cave(attacker: card_object, is_opponent: bool) -> void
 			if main._should_bail(): return
 			if target == null: return
 		var opp_deck = main.player_deck if is_opponent else main.opponent_deck
-		var discard = main.player_discard_pile if is_opponent else main.opponent_discard_pile
 		var pre_evo = target.attached_pre_evolutions.pop_back()
 		pre_evo.current_hp = target.current_hp
 		pre_evo.attached_energies = target.attached_energies.duplicate()
@@ -16406,7 +16405,6 @@ func execute_ecard3_retro_cave(attacker: card_object, is_opponent: bool) -> void
 		main.display_active_pokemon_energies(not is_opponent)
 		await main.show_message("RETRO CAVE! " + target.metadata.get("name","").to_upper() + " DEVOLVED INTO " + pre_evo.metadata.get("name","").to_upper() + "!")
 		if main._should_bail(): return
-		_ = discard
 	else:
 		await main.show_message("RETRO CAVE HAD NO EFFECT!")
 		if main._should_bail(): return

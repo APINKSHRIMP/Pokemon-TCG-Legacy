@@ -34,7 +34,7 @@ func _ready() -> void:
 func _play_bgm() -> void:
 	_bgm_player = AudioStreamPlayer.new()
 	add_child(_bgm_player)
-	var stream = load("res://Audio/BGM/coin_mode.ogg")
+	var stream = load("res://Audio/BGM/coin_mode (TCG GB Water Club).ogg")
 	if stream:
 		_bgm_player.stream = stream
 		_bgm_player.bus = "Master"
