@@ -2767,8 +2767,10 @@ func cpu_phase_attack(cpu_eval: Dictionary) -> void:
 					ex1_lowest_bench_hp = bp.current_hp
 			if main.player_bench.size() > 0 and ex1_lowest_bench_hp <= 20:
 				score += 60.0  # can snipe a near-dead Benched Pokemon for a bonus KO
-		if attack_name_lower == "critical move" or attack_name_lower == "fire spin":
-			# Both disable the user's own next attack — only worth it if it KOs now
+		if attack_name_lower == "critical move":
+			# Critical Move disables the user's own next attack — only worth it if it KOs now.
+			# (Fire Spin was previously grouped here by mistake: it discards Energy, it does NOT
+			# self-lock, so the generic energy-discard penalty already covers it — in base1/ex1/pop.)
 			if not cpu_will_be_koed and damage_range.get("max", 0) < player_hp:
 				score -= 60.0  # locking out next turn isn't worth it unless this KOs
 		if attack_name_lower == "shakedown" or attack_name_lower == "knock off":
@@ -2813,6 +2815,788 @@ func cpu_phase_attack(cpu_eval: Dictionary) -> void:
 			score -= 40.0  # locks the user's own next turn for no immediate payoff
 		if attack_name_lower == "super deep dive" and main.opponent_bench.size() == 0:
 			score -= 9999.0  # does nothing without a Bench to switch to
+
+		# ---- POP SERIES (pop1–pop6) ATTACK SCORING ----
+		# Only attacks the generic scorer mis-values need a nudge (same approach as ex1/ex2 above).
+		if main.opponent_active_pokemon.uid.begins_with("pop"):
+			# Twin-blade (Armaldo ex): empty damage field → generic sees 0; it does 30 to the Active.
+			if attack_name_lower == "twin-blade":
+				if 30 >= player_hp:
+					score += 500.0 - (30 - player_hp) * 0.5  # guaranteed KO the generic missed
+				else:
+					score += 60.0  # ~30 damage worth (matches the generic damage×2 contribution)
+			# Assurance (Rampardos): base is 60 (not the 30 damage field) when the Defender has ≤60 HP.
+			if attack_name_lower == "assurance" and player_hp <= 60:
+				score += 460.0 if 60 >= player_hp else 60.0
+			# Wide Solarbeam (Venusaur): the "20" is BENCH damage, NOT Active — undo the generic
+			# active-damage/KO scoring and value it purely as a 2-target Bench snipe.
+			if attack_name_lower == "wide solarbeam":
+				score = 0.0
+				var wsb_kos = 0
+				for bp in main.player_bench:
+					if bp.current_hp <= 20:
+						wsb_kos += 1
+				score += 40.0 * wsb_kos + (10.0 if main.player_bench.size() > 0 else -50.0)
+			# Power Bolt / Body Bolt (Minun/Plusle): 30 to an opp Pokemon with a Power/Body — nothing if none exist.
+			if attack_name_lower == "power bolt" or attack_name_lower == "body bolt":
+				var pb_kind = "Power" if attack_name_lower == "power bolt" else "Body"
+				var pb_pool = main.card_ops.get_all_pokemon_in_play(false).filter(func(p): return p.current_hp > 0 and main.attack_effects._pop_has_ability_kind(p, pb_kind))
+				if pb_pool.is_empty():
+					score = -9999.0  # does nothing
+				else:
+					var pb_low = 9999
+					for p in pb_pool:
+						pb_low = min(pb_low, p.current_hp)
+					score = 60.0 if pb_low <= 30 else 30.0  # bonus if it can snipe a near-dead target
+			# Paralyzing Kiss (Luvdisc): no effect with only 1 Defending Pokemon (always, single battle).
+			if attack_name_lower == "paralyzing kiss":
+				score = -9999.0
+			# Aura Sphere (Lucario): small bonus for the 20 Bench snipe on top of the 40 Active damage.
+			if attack_name_lower == "aura sphere" and main.player_bench.size() > 0:
+				score += 15.0
+			# Anger Revenge (Bastiodon): +40 Bench snipe only if it was damaged during the player's last turn.
+			if attack_name_lower == "anger revenge":
+				var ar_last = main.last_attack_on_opponent
+				if not ar_last.is_empty() and ar_last.get("damage", 0) > 0 and main.player_bench.size() > 0:
+					score += 20.0
+			# Blowing Wind (Drifloon): needs your own Bench to do anything.
+			if attack_name_lower == "blowing wind" and main.opponent_bench.size() == 0:
+				score -= 60.0
+
+		# ---- EX3 (EX DRAGON) ATTACK SCORING ----
+		# ex3 is the first of the ~30 sets that previously had no dedicated block (audit finding: only
+		# gym1/gym2/si1+basep/neo1/neo2/ex1/ex2/pop had one). All the attacks below are correctly
+		# DISPATCHED (real game behavior is right) but have an EMPTY printed damage field and no
+		# "flip a coin...if heads...more damage" text pattern, so the generic pre-attack scorer
+		# (estimate_attack_damage_range) sees 0 potential damage and never picks them for a real
+		# threat — these nudges restore the real damage value for attack SELECTION purposes only.
+		if main.opponent_active_pokemon.uid.begins_with("ex3"):
+			# Special Circuit (Minun) / Extra Circuit (Plusle): 20 to a chosen opp Pokemon, 40 if it has
+			# a Power/Body (Special Circuit) or is a Pokemon-ex (Extra Circuit).
+			if attack_name_lower == "special circuit" or attack_name_lower == "extra circuit":
+				var sc_bonus_pool = main.card_ops.get_all_pokemon_in_play(false).filter(func(p):
+					if attack_name_lower == "special circuit": return not p.metadata.get("abilities", []).is_empty()
+					return main.is_ex_pokemon(p))
+				var sc_dmg = 40 if not sc_bonus_pool.is_empty() else 20
+				score += float(sc_dmg) * 2.0
+				if sc_dmg >= player_hp: score += 500.0
+			# Water Arrow (Seadra): 30 to a chosen opponent Pokemon.
+			if attack_name_lower == "water arrow":
+				score += 60.0
+				if 30 >= player_hp: score += 500.0
+			# Quick Dive (Swellow): coin — heads, 50 to a chosen opponent Pokemon (no W/R).
+			if attack_name_lower == "quick dive":
+				score += 50.0  # ~half of the 100-damage max, matching the generic coin-flip weighting
+				if 50 >= player_hp: score += 250.0
+			# Random Spark (Magnemite) / Pebble Throw (Geodude): small 10-damage snipe.
+			if attack_name_lower == "random spark" or attack_name_lower == "pebble throw":
+				score += 20.0
+			# Double Metal Ball (Forretress): puts 2 damage counters (20 damage) on the Defending Pokemon.
+			if attack_name_lower == "double metal ball":
+				score += 40.0
+				if 20 >= player_hp: score += 500.0
+			# Breaking Impact (Girafarig): 10 damage for each Colorless in the Defender's retreat cost —
+			# estimate using the player's actual retreat cost (the real target in single-battle).
+			if attack_name_lower == "breaking impact":
+				var bi_dmg = main.get_retreat_cost(main.player_active_pokemon) * 10
+				score += float(bi_dmg) * 2.0
+				if bi_dmg >= player_hp and bi_dmg > 0: score += 500.0
+			# Prize Count (Absol): 20, or 40 if the CPU has MORE Prize cards left than the opponent
+			# (no coin flip — the generic "+X if heads" pattern doesn't catch this condition at all).
+			if attack_name_lower == "prize count":
+				var pc_dmg = 40 if main.opponent_prize_cards.size() > main.player_prize_cards.size() else 20
+				score += float(pc_dmg) * 2.0 - 40.0  # the base 20 was already double-counted by damage×2 above
+				if pc_dmg >= player_hp: score += 500.0
+			# Big Explosion (Graveler): 80 damage to EACH Active Pokemon, including its own — a huge,
+			# genuinely risky attack the generic scorer completely misses (empty damage field, no
+			# per-count/coin pattern). Only worth it if it KOs the opponent and doesn't KO the CPU too,
+			# or if the CPU is going to lose its Active anyway this turn.
+			if attack_name_lower == "big explosion":
+				var be_self_survives = main.opponent_active_pokemon.current_hp > 80
+				var be_kos_opp = 80 >= player_hp
+				if be_kos_opp and be_self_survives:
+					score += 400.0
+				elif be_kos_opp and cpu_will_be_koed:
+					score += 150.0  # trade is fine if the Active was dying anyway
+				else:
+					score -= 200.0  # avoid needlessly KO'ing our own Active
+
+		# ---- EX4 (TEAM MAGMA VS TEAM AQUA) ATTACK SCORING ----
+		# Same shape as ex3: these are correctly DISPATCHED but have an empty printed damage field
+		# (or a field the generic scorer can't parse), so estimate_attack_damage_range never sees
+		# their real damage for attack SELECTION purposes.
+		if main.opponent_active_pokemon.uid.begins_with("ex4"):
+			# Linear Attack (Groudon) / Night Attack (Poochyena/Zubat): choose 1 of opponent's
+			# Pokemon, flat damage (no W/R for Bench). Random Spark already covered by the ex3 block.
+			if attack_name_lower == "linear attack":
+				score += 40.0
+				if 20 >= player_hp: score += 500.0
+			if attack_name_lower == "night attack":
+				score += 20.0
+				if 10 >= player_hp: score += 500.0
+			# Dig Under (Aron): 10 to a chosen opponent Pokemon, not affected by W/R.
+			if attack_name_lower == "dig under":
+				score += 20.0
+				if 10 >= player_hp: score += 500.0
+			# Feint Attack (Sneasel/Mightyena-line reuse, ex4 = 30, ignores W/R/Powers/Bodies entirely).
+			if attack_name_lower == "feint attack":
+				score += 60.0
+				if 30 >= player_hp: score += 500.0
+			# Clay Curse (Claydol): 2 guaranteed damage counters (20 damage), ignoring W/R.
+			if attack_name_lower == "clay curse":
+				score += 40.0
+				if 20 >= player_hp: score += 500.0
+			# Psymist (Baltoy): flip 2 coins, 1 damage counter (10) per heads on a chosen opponent
+			# Pokemon — expected value ~10 (1 head on average).
+			if attack_name_lower == "psymist":
+				score += 20.0
+			# Crushing Wave (Swampert ex): 40 to a chosen opponent Pokemon, then a coin-flip Energy
+			# discard bonus.
+			if attack_name_lower == "crushing wave":
+				score += 80.0
+				if 40 >= player_hp: score += 500.0
+			# Volcanic Ash (Blaziken ex): huge 100-damage snipe, but costs 2 attached Fire Energy —
+			# only realistic when the attacker actually has 2 Fire Energy attached.
+			if attack_name_lower == "volcanic ash":
+				var va_fire = main.opponent_active_pokemon.attached_energies.filter(func(e): return "Fire" in main.get_energy_provided_by_card(e))
+				if va_fire.size() < 2:
+					score = -9999.0  # does nothing without 2 Fire Energy attached
+				else:
+					score += 200.0
+					if 100 >= player_hp: score += 500.0
+			# Energy Flip (Manectric): 10 damage to a chosen Benched opponent Pokemon — only
+			# meaningful if the opponent actually has a Bench to hit.
+			if attack_name_lower == "energy flip":
+				if main.player_bench.size() == 0:
+					score = -9999.0
+				else:
+					score += 15.0
+			# Team Play (Zangoose): 10 x Pokemon in play (both sides) with "Team Magma" in the name.
+			if attack_name_lower == "team play":
+				var tp_count = 0
+				for p in main.card_ops.get_all_pokemon_in_play(true) + main.card_ops.get_all_pokemon_in_play(false):
+					if p != null and "Team Magma" in p.metadata.get("name", ""):
+						tp_count += 1
+				var tp_dmg = 10 * tp_count
+				score += float(tp_dmg) * 2.0
+				if tp_dmg >= player_hp and tp_dmg > 0: score += 500.0
+			# Pain Amplifier (Baltoy-line): 10 damage to each opponent Pokemon that already has any
+			# damage counters — worthless if nothing is already damaged.
+			if attack_name_lower == "pain amplifier":
+				var pa_count = 0
+				for p in main.card_ops.get_all_pokemon_in_play(false):
+					if p != null and p.get_damage_counters() > 0:
+						pa_count += 1
+				if pa_count == 0:
+					score = -9999.0
+				else:
+					score += 20.0 * pa_count
+
+		# ---- EX5 (EX HIDDEN LEGENDS) ATTACK SCORING ----
+		if main.opponent_active_pokemon.uid.begins_with("ex5"):
+			# Darkness Chant (Sneasel): up to 6 guaranteed damage counters (max 60) based on the
+			# CPU's own discard pile — count Pokemon cards discarded so far, capped at 6.
+			if attack_name_lower == "darkness chant":
+				var dc_n = 0
+				for c in main.opponent_discard_pile:
+					if c.metadata.get("supertype","") == "Pokémon": dc_n += 1
+				dc_n = min(6, dc_n)
+				var dc_dmg = dc_n * 10
+				score += float(dc_dmg) * 2.0
+				if dc_dmg >= player_hp and dc_dmg > 0: score += 500.0
+			# Mass Destruction (Electrode): mutual KO unless Electrode has Special Energy attached —
+			# only worth it as a trade when the CPU's Active would otherwise be lost or is behind.
+			if attack_name_lower == "mass destruction":
+				var md_has_special = false
+				for e in main.opponent_active_pokemon.attached_energies:
+					if "Special" in e.metadata.get("subtypes", []): md_has_special = true
+				if md_has_special:
+					score = -9999.0  # does nothing
+				elif cpu_will_be_koed:
+					score += 300.0  # trading an Active that's dying anyway is good value
+				else:
+					score -= 150.0  # avoid needlessly sacrificing a healthy Active
+			# Breaking Sound (Girafarig): 10 to every opponent Pokemon (Active + Bench, no W/R).
+			if attack_name_lower == "breaking sound":
+				var bs_count = 1 + main.player_bench.size()
+				score += 20.0 * bs_count
+				if 10 >= player_hp: score += 500.0
+			# Bass Control (Girafarig): 30 to a chosen opponent Pokemon.
+			if attack_name_lower == "bass control":
+				score += 60.0
+				if 30 >= player_hp: score += 500.0
+			# Super Icy Wind (Regice): 10 to every opponent Pokemon, unaffected by W/R.
+			if attack_name_lower == "super icy wind":
+				var siw_count = 1 + main.player_bench.size()
+				score += 20.0 * siw_count
+				if 10 >= player_hp: score += 500.0
+			# Water Arrow (Kyogre ex): 20 to a chosen opponent Pokemon.
+			if attack_name_lower == "water arrow":
+				score += 40.0
+				if 20 >= player_hp: score += 500.0
+			# Feint Attack (ex5 = 40, ignores W/R/Powers/Bodies entirely).
+			if attack_name_lower == "feint attack":
+				score += 80.0
+				if 40 >= player_hp: score += 500.0
+			# Metal Ball: Skarmory line = 5 counters (50 dmg); Beldum = 1 counter (10 dmg). Both
+			# guaranteed, ignoring W/R — read the count straight from the card text.
+			if attack_name_lower == "metal ball":
+				var mb_n = 5 if "5 damage counters" in attack.get("text","").to_lower() else 1
+				var mb_dmg = mb_n * 10
+				score += float(mb_dmg) * 2.0
+				if mb_dmg >= player_hp: score += 500.0
+			# Sweet Temptation (Cradily): pulls a Benched Pokemon into the Active slot and does 10 to
+			# it — strong disruption when the opponent has a weak/low-HP Benched Pokemon to drag out.
+			if attack_name_lower == "sweet temptation":
+				if main.player_bench.size() == 0:
+					score = -9999.0
+				else:
+					score += 30.0  # disruption value on top of the small guaranteed 10 damage
+
+		# ---- EX6 (EX FIRERED & LEAFGREEN) ATTACK SCORING ----
+		if main.opponent_active_pokemon.uid.begins_with("ex6"):
+			if attack_name_lower == "linear attack":
+				score += 60.0
+				if 30 >= player_hp: score += 500.0
+			if attack_name_lower == "bound crush":
+				score += 100.0  # self-lock next turn tempers the raw ×2 a little
+				if 60 >= player_hp: score += 500.0
+			if attack_name_lower == "speed shot":
+				score += 80.0
+				if 40 >= player_hp: score += 500.0
+			if attack_name_lower == "tongue whip":
+				score += 40.0
+				if 20 >= player_hp: score += 500.0
+			if attack_name_lower == "dig under":
+				score += 20.0
+				if 10 >= player_hp: score += 500.0
+			if attack_name_lower == "tunneling":
+				var tn_targets = min(2, main.player_bench.size())
+				score += 20.0 * tn_targets
+			if attack_name_lower == "breakdown":
+				var bd_dmg = main.player_hand.size() * 10
+				score += float(bd_dmg) * 2.0
+				if bd_dmg >= player_hp and bd_dmg > 0: score += 500.0
+
+		# ---- EX7 (EX TEAM ROCKET RETURNS) ATTACK SCORING ----
+		if main.opponent_active_pokemon.uid.begins_with("ex7"):
+			if attack_name_lower == "linear attack":
+				score += 80.0
+				if 40 >= player_hp: score += 500.0
+			if attack_name_lower == "skill dive":
+				score += 60.0
+				if 30 >= player_hp: score += 500.0
+			if attack_name_lower == "feint attack":
+				score += 40.0
+				if 20 >= player_hp: score += 500.0
+			if attack_name_lower == "dark drain" or attack_name_lower == "spinning tail":
+				var dr_count = 1 + main.player_bench.size()
+				score += 20.0 * dr_count
+				if 10 >= player_hp: score += 500.0
+			if attack_name_lower == "black suction cups" or attack_name_lower == "double tackle":
+				score += 20.0
+				if 10 >= player_hp: score += 500.0
+			if attack_name_lower == "double wing attack":
+				score += 60.0
+				if 30 >= player_hp: score += 500.0
+			if attack_name_lower == "breaking impact":
+				var bi_dmg7 = main.get_retreat_cost(main.player_active_pokemon) * 20
+				score += float(bi_dmg7) * 2.0
+				if bi_dmg7 >= player_hp and bi_dmg7 > 0: score += 500.0
+			if attack_name_lower == "night ambush":
+				score += 60.0  # self-lock next turn tempers the raw ×2 a little
+				if 30 >= player_hp: score += 500.0
+			if attack_name_lower == "explosive evolution":
+				var ee_count = 1 + main.player_bench.size()
+				score += 10.0 * ee_count  # ~half value: coin-gated spread damage
+			if attack_name_lower == "volcanic ash":
+				if main.opponent_active_pokemon.attached_energies.size() < 2:
+					score = -9999.0
+				else:
+					score += 120.0
+					if 60 >= player_hp: score += 500.0
+
+		# ---- EX8 (EX DEOXYS) ATTACK SCORING ----
+		if main.opponent_active_pokemon.uid.begins_with("ex8"):
+			if attack_name_lower == "double wing attack":
+				score += 40.0
+				if 20 >= player_hp: score += 500.0
+			if attack_name_lower == "split bomb" or attack_name_lower == "triple breach":
+				var sb_targets = min(2 if attack_name_lower == "split bomb" else 3, 1 + main.player_bench.size())
+				var sb_per = 30 if attack_name_lower == "split bomb" else 10
+				score += float(sb_per) * 2.0 * sb_targets
+			if attack_name_lower == "powerful hand":
+				var ph_dmg = min(7, main.opponent_hand.size()) * 10
+				score += float(ph_dmg) * 2.0
+				if ph_dmg >= player_hp and ph_dmg > 0: score += 500.0
+			if attack_name_lower == "dragon spark" or attack_name_lower == "spinning horn":
+				var ds_count = 1 + main.player_bench.size()
+				score += 20.0 * ds_count
+				if 10 >= player_hp: score += 500.0
+			if attack_name_lower == "extra curse":
+				var ec_dmg = 40 if main.is_ex_pokemon(main.player_active_pokemon) else 20
+				score += float(ec_dmg) * 2.0
+				if ec_dmg >= player_hp: score += 500.0
+			if attack_name_lower == "raging tremble":
+				var rt_dmg = main.opponent_active_pokemon.get_damage_counters() * 10
+				score += float(rt_dmg) * 2.0
+				if rt_dmg >= player_hp and rt_dmg > 0: score += 500.0
+			if attack_name_lower == "thunder spear":
+				score += 40.0
+				if 20 >= player_hp: score += 500.0
+			if attack_name_lower == "negative spark":
+				var ns_pool = main.card_ops.get_all_pokemon_in_play(false).filter(func(p): return not p.metadata.get("abilities", []).is_empty())
+				score += 40.0 * ns_pool.size()
+			if attack_name_lower == "positive spark":
+				var ps_pool = main.card_ops.get_all_pokemon_in_play(false).filter(func(p): return not p.metadata.get("abilities", []).is_empty())
+				score += 40.0 * ps_pool.size()
+			if attack_name_lower == "reflected beam":
+				var rb_count = main.card_ops.get_all_pokemon_in_play(true).filter(func(p): return "Lunatone" in p.metadata.get("name", "")).size()
+				if rb_count == 0 or main.player_bench.size() == 0:
+					score = -9999.0
+				else:
+					score += 20.0 * rb_count
+			if attack_name_lower == "energy flip":
+				if main.player_bench.size() == 0:
+					score = -9999.0
+				else:
+					score += 15.0
+			if attack_name_lower == "mid-air crush":
+				score += 40.0
+				if 20 >= player_hp: score += 500.0
+			if attack_name_lower == "mega shot":
+				var ms_pool = main.opponent_active_pokemon.attached_energies.filter(func(e): return "Lightning" in main.get_energy_provided_by_card(e))
+				if ms_pool.is_empty():
+					score = -9999.0
+				else:
+					score += 160.0
+					if 80 >= player_hp: score += 500.0
+			if attack_name_lower == "flame jet":
+				score += 80.0
+				if 40 >= player_hp: score += 500.0
+			if attack_name_lower == "holy star":
+				var hs_pool = main.card_ops.get_all_pokemon_in_play(false).filter(func(p): return main.is_ex_pokemon(p))
+				if main.opponent_active_pokemon.attached_energies.is_empty() or hs_pool.is_empty():
+					score = -9999.0
+				else:
+					score += 200.0 * hs_pool.size()
+
+		# ---- EX9 (EX EMERALD) ATTACK SCORING ----
+		if main.opponent_active_pokemon.uid.begins_with("ex9"):
+			if attack_name_lower == "spinning tail" or attack_name_lower == "hailstone" or attack_name_lower == "wide laser":
+				var e9_count = 1 + main.player_bench.size()
+				score += 20.0 * e9_count
+				if 10 >= player_hp: score += 500.0
+			if attack_name_lower == "snap tail":
+				score += 20.0
+				if 10 >= player_hp: score += 500.0
+			if attack_name_lower == "skill dive":
+				score += 80.0
+				if 40 >= player_hp: score += 500.0
+			if attack_name_lower == "water arrow":
+				score += 20.0
+				if 10 >= player_hp: score += 500.0
+			if attack_name_lower == "dig under":
+				score += 40.0
+				if 20 >= player_hp: score += 500.0
+			if attack_name_lower == "shadow beam":
+				var sb9_dmg = main.opponent_active_pokemon.attached_energies.size() * 20
+				score += float(sb9_dmg) * 2.0
+				if sb9_dmg >= player_hp and sb9_dmg > 0: score += 500.0
+			if attack_name_lower == "pure power":
+				score += 60.0
+				if 30 >= player_hp: score += 500.0
+			if attack_name_lower == "power short":
+				var pshort_dmg = 50 if not main.player_active_pokemon.metadata.get("abilities", []).is_empty() else 30
+				score += float(pshort_dmg) * 2.0
+				if pshort_dmg >= player_hp: score += 500.0
+
+		# ---- EX10 (EX UNSEEN FORCES) ATTACK SCORING ----
+		if main.opponent_active_pokemon.uid.begins_with("ex10"):
+			if attack_name_lower == "double tack" or attack_name_lower == "telekinesis":
+				score += 40.0
+				if 20 >= player_hp: score += 500.0
+			if attack_name_lower == "splatter" or attack_name_lower == "snap tail":
+				score += 20.0
+				if 10 >= player_hp: score += 500.0
+			if attack_name_lower == "stretch kick" or attack_name_lower == "blown kiss":
+				if main.player_bench.size() == 0 and attack_name_lower == "stretch kick":
+					score = -9999.0
+				else:
+					score += 20.0
+			if attack_name_lower == "sacred fire":
+				score += 60.0  # coin-gated; nudge to roughly half the ×2 weighting
+				if 60 >= player_hp: score += 250.0
+			if attack_name_lower == "pure power":
+				score += 80.0
+				if 40 >= player_hp: score += 500.0
+			if attack_name_lower == "double attack":
+				var da_targets = min(2, main.player_bench.size())
+				score += 20.0 * da_targets
+			if attack_name_lower == "spinning tail":
+				var st_count = 1 + main.player_bench.size()
+				score += 10.0 * st_count  # coin-gated, ~half value
+			if attack_name_lower == "upward lick":
+				var ul_stage2 = "Stage 2" in main.player_active_pokemon.metadata.get("subtypes", [])
+				var ul_dmg = 50 if ul_stage2 else 30
+				score += float(ul_dmg) * 2.0
+				if ul_dmg >= player_hp: score += 500.0
+			if attack_name_lower == "mudslide":
+				var md_pool = main.opponent_active_pokemon.attached_energies.filter(func(e): return "Fighting" in main.get_energy_provided_by_card(e))
+				if md_pool.size() < 2:
+					score = -9999.0
+				else:
+					score += 200.0
+					if 100 >= player_hp: score += 500.0
+
+		# ---- EX11 (EX DELTA SPECIES) ATTACK SCORING ----
+		if main.opponent_active_pokemon.uid.begins_with("ex11"):
+			if attack_name_lower == "target attack":
+				var ta11_dmg = 60 if main.player_active_pokemon.get_damage_counters() > 0 else 40
+				score += float(ta11_dmg) * 2.0
+				if ta11_dmg >= player_hp: score += 500.0
+			if attack_name_lower == "psychic rage":
+				var pr_dmg = main.opponent_active_pokemon.get_damage_counters() * 10
+				score += float(pr_dmg) * 2.0
+				if pr_dmg >= player_hp and pr_dmg > 0: score += 500.0
+			if attack_name_lower == "energy bone":
+				var eb_targets = min(main.opponent_active_pokemon.attached_energies.size(), 1 + main.player_bench.size())
+				score += 20.0 * eb_targets
+			if attack_name_lower == "feint attack":
+				score += 60.0
+				if 30 >= player_hp: score += 500.0
+			if attack_name_lower == "mist attack":
+				var ma_count = 1 + main.player_bench.size()
+				score += 20.0 * ma_count
+				if 10 >= player_hp: score += 500.0
+			if attack_name_lower == "sonic signal":
+				var ss_targets = min(2, 1 + main.player_bench.size())
+				score += 20.0 * ss_targets
+			if attack_name_lower == "snap tail":
+				score += 60.0
+				if 30 >= player_hp: score += 500.0
+			if attack_name_lower == "linear attack":
+				score += 40.0
+				if 20 >= player_hp: score += 500.0
+			if attack_name_lower == "dig under" or attack_name_lower == "skill dive":
+				score += 20.0
+				if 10 >= player_hp: score += 500.0
+
+		# ---- EX12 (EX LEGEND MAKER) ATTACK SCORING ----
+		if main.opponent_active_pokemon.uid.begins_with("ex12"):
+			if attack_name_lower == "bound crush":
+				score += 100.0
+				if 60 >= player_hp: score += 500.0
+			if attack_name_lower == "linear attack":
+				score += 60.0
+				if 30 >= player_hp: score += 500.0
+			if attack_name_lower == "cursed reaction":
+				var cr_dmg = 40 if main.opponent_active_pokemon.react_energy_count() > 0 else 20
+				score += float(cr_dmg) * 2.0
+				if cr_dmg >= player_hp: score += 500.0
+			if attack_name_lower == "enraged linear attack":
+				var ela_dmg = main.opponent_active_pokemon.get_damage_counters() * 10
+				score += float(ela_dmg) * 2.0
+				if ela_dmg >= player_hp and ela_dmg > 0: score += 500.0
+			if attack_name_lower == "feint attack":
+				score += 40.0
+				if 20 >= player_hp: score += 500.0
+			if attack_name_lower == "haunt":
+				score += 40.0
+				if 20 >= player_hp: score += 500.0
+			if attack_name_lower == "tongue whip":
+				score += 20.0
+				if 10 >= player_hp: score += 500.0
+			if attack_name_lower == "split kick" or attack_name_lower == "double tackle":
+				score += 40.0
+				if 20 >= player_hp: score += 500.0
+			if attack_name_lower == "water arrow":
+				score += 40.0
+				if 20 >= player_hp: score += 500.0
+			if attack_name_lower == "shadow tag":
+				score += 100.0  # guaranteed but delayed to end of opponent's next turn
+				if 70 >= player_hp: score += 300.0
+			if attack_name_lower == "final laser":
+				var fl_hard = main.player_prize_cards.size() == 1 and main.card_ops.get_all_pokemon_in_play(false).size() == 1
+				var fl_dmg = 60 if fl_hard else 30
+				score += float(fl_dmg) * 2.0
+				if fl_dmg >= player_hp: score += 500.0
+
+		# ---- EX13 (EX HOLON PHANTOMS) ATTACK SCORING ----
+		if main.opponent_active_pokemon.uid.begins_with("ex13"):
+			if attack_name_lower == "feint attack":
+				score += 20.0
+				if 10 >= player_hp: score += 500.0
+			if attack_name_lower == "wide laser":
+				var wl_count = 1 + main.player_bench.size()
+				score += 20.0 * wl_count
+				if 10 >= player_hp: score += 500.0
+			if attack_name_lower == "split bomb":
+				var sb13_targets = min(2, 1 + main.player_bench.size())
+				score += 60.0 * sb13_targets
+			if attack_name_lower == "pebble throw":
+				if main.player_bench.size() == 0:
+					score = -9999.0
+				else:
+					score += 40.0
+			if attack_name_lower == "water arrow":
+				score += 40.0
+				if 20 >= player_hp: score += 500.0
+			if attack_name_lower == "zzzap":
+				var zz_pool = main.card_ops.get_all_pokemon_in_play(true).filter(func(p): return not p.metadata.get("abilities", []).is_empty()) + main.card_ops.get_all_pokemon_in_play(false).filter(func(p): return not p.metadata.get("abilities", []).is_empty())
+				score += 40.0 * zz_pool.size()
+			if attack_name_lower == "super psywave":
+				var spw_dmg = main.player_active_pokemon.attached_energies.size() * 10
+				score += float(spw_dmg) * 2.0
+				if spw_dmg >= player_hp and spw_dmg > 0: score += 500.0
+
+		# ---- EX14 (EX CRYSTAL GUARDIANS) ATTACK SCORING ----
+		if main.opponent_active_pokemon.uid.begins_with("ex14"):
+			if attack_name_lower == "enraged linear attack":
+				var ela14_dmg = main.opponent_active_pokemon.get_damage_counters() * 10
+				score += float(ela14_dmg) * 2.0
+				if ela14_dmg >= player_hp and ela14_dmg > 0: score += 500.0
+			if attack_name_lower == "linear attack":
+				score += 60.0
+				if 30 >= player_hp: score += 500.0
+			if attack_name_lower == "dig under":
+				score += 60.0
+				if 30 >= player_hp: score += 500.0
+			if attack_name_lower == "triple needle":
+				var tn14_targets = min(3, 1 + main.player_bench.size())
+				score += 20.0 * tn14_targets
+			if attack_name_lower == "bass control":
+				score += 80.0
+				if 40 >= player_hp: score += 500.0
+			if attack_name_lower == "stretch vine":
+				if main.player_bench.size() == 0:
+					score = -9999.0
+				else:
+					score += 60.0
+			if attack_name_lower == "feint attack":
+				score += 40.0
+				if 20 >= player_hp: score += 500.0
+			if attack_name_lower == "split bomb":
+				var sb14_targets = min(2, 1 + main.player_bench.size())
+				score += 60.0 * sb14_targets
+			if attack_name_lower == "hydro shot":
+				var hs14_pool = main.opponent_active_pokemon.attached_energies
+				if hs14_pool.size() < 2:
+					score = -9999.0
+				else:
+					score += 140.0
+					if 70 >= player_hp: score += 500.0
+			if attack_name_lower == "target attack":
+				var ta14_dmg = 50 if main.player_active_pokemon.get_damage_counters() > 0 else 30
+				score += float(ta14_dmg) * 2.0
+				if ta14_dmg >= player_hp: score += 500.0
+			if attack_name_lower == "pure power":
+				score += 40.0
+				if 20 >= player_hp: score += 500.0
+			if attack_name_lower == "leaf shade":
+				var ls_dmg = main.opponent_active_pokemon.attached_energies.size() * 10
+				score += float(ls_dmg) * 2.0
+				if ls_dmg >= player_hp and ls_dmg > 0: score += 500.0
+
+		# ---- EX15 (EX DRAGON FRONTIERS) ATTACK SCORING ----
+		if main.opponent_active_pokemon.uid.begins_with("ex15"):
+			if attack_name_lower == "linear attack":
+				score += 60.0
+				if 30 >= player_hp: score += 500.0
+			if attack_name_lower == "delta mind":
+				var dm_dmg = 30 if main.player_active_pokemon.is_delta() else 10
+				score += float(dm_dmg) * 2.0
+				if dm_dmg >= player_hp: score += 500.0
+			if attack_name_lower == "thunder spear" or attack_name_lower == "quick bind":
+				score += 20.0
+				if 10 >= player_hp: score += 500.0
+			if attack_name_lower == "dragon roar":
+				score += 160.0
+				if 80 >= player_hp: score += 500.0
+			if attack_name_lower == "special circuit":
+				var sc15_pool = not main.player_active_pokemon.metadata.get("abilities", []).is_empty()
+				var sc15_dmg = 50 if sc15_pool else 30
+				score += float(sc15_dmg) * 2.0
+				if sc15_dmg >= player_hp: score += 500.0
+			if attack_name_lower == "shock-wave":
+				var sw_pool = main.card_ops.get_all_pokemon_in_play(false).filter(func(p): return p.shockwave_markers > 0)
+				if sw_pool.is_empty():
+					score = -9999.0
+				else:
+					score += 500.0  # a guaranteed KO on a marked Pokemon
+
+		# ---- NEO3 (NEO REVELATION) ATTACK SCORING ----
+		if main.opponent_active_pokemon.uid.begins_with("neo3"):
+			if attack_name_lower == "psychic damage":
+				score += 30.0  # 3-coin EV ≈ 1.5 heads × 10
+			if attack_name_lower == "present":
+				score += 60.0  # rough EV across the 4 coin-triple outcomes (mostly the 40/60 damage cases)
+				if 60 >= player_hp: score += 300.0
+			if attack_name_lower == "sacred fire":
+				score += 40.0  # coin-gated 40, ~half of the ×2 weighting
+				if 40 >= player_hp: score += 250.0
+			if attack_name_lower == "sharpshooting":
+				score += 20.0  # coin-gated 20
+				if 20 >= player_hp: score += 250.0
+			if attack_name_lower == "core stream":
+				var cs_pool = main.card_ops.get_all_pokemon_in_play(false).filter(func(p): return not p.attached_energies.is_empty())
+				score += 20.0 * cs_pool.size()
+
+		# ---- NEO4 (NEO DESTINY) ATTACK SCORING ----
+		if main.opponent_active_pokemon.uid.begins_with("neo4"):
+			if attack_name_lower == "dark drain":
+				var dd_count = 1 + main.player_bench.size()
+				score += 10.0 * dd_count  # coin-per-target, ~half value plus self-heal upside
+			if attack_name_lower == "psysplash":
+				var ps_dmg = 0
+				for p in main.card_ops.get_all_pokemon_in_play(false):
+					if p != null: ps_dmg += p.attached_energies.size() * 10
+				score += float(ps_dmg) * 1.5
+			if attack_name_lower == "battle frenzy":
+				var bf_targets = 1 + main.player_bench.size()
+				score += 15.0 * bf_targets  # coin-per-target, both sides at risk so tempered
+			if attack_name_lower == "water cannon":
+				var wc_water = main.opponent_active_pokemon.attached_energies.filter(func(e): return "Water" in main.get_energy_provided_by_card(e)).size()
+				var wc_dmg = min(30, wc_water * 10)
+				score += float(wc_dmg) * 2.0
+				if wc_dmg >= player_hp and wc_dmg > 0: score += 500.0
+			if attack_name_lower == "explosive evolution":
+				var ee4_count = 1 + main.player_bench.size()
+				score += 10.0 * ee4_count  # coin-gated spread damage, ~half value
+
+		# ---- ECARD1 (EXPEDITION) ATTACK SCORING ----
+		if main.opponent_active_pokemon.uid.begins_with("ecard1"):
+			if attack_name_lower == "super psywave":
+				var spw1_dmg = main.player_active_pokemon.attached_energies.size() * 10
+				score += float(spw1_dmg) * 2.0
+				if spw1_dmg >= player_hp and spw1_dmg > 0: score += 500.0
+			if attack_name_lower == "ethereal flame":
+				var ef_fire = main.opponent_active_pokemon.attached_energies.filter(func(e): return "Fire" in main.get_energy_provided_by_card(e))
+				if ef_fire.is_empty():
+					score = -9999.0
+				else:
+					var ef_dmg = 30 + 20 * ef_fire.size()
+					score += float(ef_dmg) * 2.0
+					if ef_dmg >= player_hp: score += 500.0
+			if attack_name_lower == "stretch kick":
+				if main.player_bench.size() == 0:
+					score = -9999.0
+				else:
+					score += 60.0
+
+		# ---- ECARD2 (AQUAPOLIS) ATTACK SCORING ----
+		if main.opponent_active_pokemon.uid.begins_with("ecard2"):
+			if attack_name_lower == "called shot":
+				var cs2_grass = main.opponent_active_pokemon.attached_energies.filter(func(e): return "Grass" in main.get_energy_provided_by_card(e)).size()
+				if cs2_grass == 0 or main.player_bench.size() == 0:
+					score = -9999.0
+				else:
+					score += float(cs2_grass * 10) * 2.0
+			if attack_name_lower == "triple bone":
+				if main.player_bench.size() == 0:
+					score = -9999.0
+				else:
+					score += 45.0  # 3-coin EV ≈ 1.5 heads × 10, doubled for weighting
+			if attack_name_lower == "peck attack":
+				score += 35.0  # 2-coin EV across the 20/50/confuse outcomes
+				if 50 >= player_hp: score += 200.0
+			if attack_name_lower == "stretch tail":
+				if main.player_bench.size() == 0:
+					score = -9999.0
+				else:
+					score += 10.0  # coin-gated 10, ~half value
+			if attack_name_lower == "feint attack":
+				score += 40.0
+				if 20 >= player_hp: score += 500.0
+			if attack_name_lower == "long tongue" or attack_name_lower == "splatter":
+				score += 20.0
+				if 10 >= player_hp: score += 500.0
+
+		# ---- ECARD3 (SKYRIDGE) ATTACK SCORING ----
+		if main.opponent_active_pokemon.uid.begins_with("ecard3"):
+			if attack_name_lower == "zzzap":
+				var zz3_pool = main.card_ops.get_all_pokemon_in_play(true).filter(func(p): return not p.metadata.get("abilities", []).is_empty()) + main.card_ops.get_all_pokemon_in_play(false).filter(func(p): return not p.metadata.get("abilities", []).is_empty())
+				score += 40.0 * zz3_pool.size()
+			if attack_name_lower == "dig under":
+				score += 60.0
+				if 30 >= player_hp: score += 500.0
+			if attack_name_lower == "shell rupture":
+				if main.player_bench.size() == 0:
+					score = -9999.0
+				else:
+					score += 20.0 * main.player_bench.size()
+			if attack_name_lower == "blindside":
+				if main.player_active_pokemon.get_damage_counters() == 0:
+					score = -9999.0
+				else:
+					score += 40.0
+					if 20 >= player_hp: score += 500.0
+			if attack_name_lower == "flitter":
+				score += 20.0
+				if 10 >= player_hp: score += 500.0
+			if attack_name_lower == "gift of spite":
+				var gs_count = main.card_ops.get_all_pokemon_in_play(true).filter(func(p): return p.get_damage_counters() > 0).size()
+				var gs_dmg = gs_count * 10
+				score += float(gs_dmg) * 2.0
+				if gs_dmg >= player_hp and gs_dmg > 0: score += 500.0
+			if attack_name_lower == "antler swipe":
+				score += 20.0  # coin-gated 20, either to Active or Bench
+				if 20 >= player_hp: score += 250.0
+			if attack_name_lower == "haunt" or attack_name_lower == "evil eye":
+				score += 20.0
+				if 10 >= player_hp: score += 500.0
+
+		# ---- EX16 (EX POWER KEEPERS) ATTACK SCORING ----
+		if main.opponent_active_pokemon.uid.begins_with("ex16"):
+			if attack_name_lower == "feint attack":
+				score += 40.0
+				if 20 >= player_hp: score += 500.0
+			if attack_name_lower == "pebble throw":
+				if main.player_bench.size() == 0:
+					score = -9999.0
+				else:
+					score += 20.0
+			if attack_name_lower == "rock blast":
+				var rb_fight = main.opponent_active_pokemon.attached_energies.filter(func(e): return "Fighting" in main.get_energy_provided_by_card(e))
+				if rb_fight.is_empty():
+					score = -9999.0
+				else:
+					var rb_dmg = min(5, rb_fight.size()) * 20
+					score += float(rb_dmg) * 2.0
+					if rb_dmg >= player_hp: score += 500.0
+			if attack_name_lower == "hydro wave":
+				var hw_water = main.opponent_active_pokemon.attached_energies.filter(func(e): return "Water" in main.get_energy_provided_by_card(e))
+				if hw_water.is_empty() or main.player_bench.size() == 0:
+					score = -9999.0
+				else:
+					score += 60.0 * main.player_bench.size()
+
+		# ---- BASE1 (BASE SET) ATTACK SCORING ----
+		if main.opponent_active_pokemon.uid.begins_with("base1"):
+			if attack_name_lower == "super fang":
+				var sf_dmg = int(ceil(main.player_active_pokemon.current_hp / 2.0 / 10.0)) * 10
+				score += float(sf_dmg) * 2.0
+				if sf_dmg >= player_hp and sf_dmg > 0: score += 500.0
+
+		# ---- BASE3 (FOSSIL) ATTACK SCORING ----
+		if main.opponent_active_pokemon.uid.begins_with("base3"):
+			if attack_name_lower == "stretch kick":
+				if main.player_bench.size() == 0:
+					score = -9999.0
+				else:
+					score += 40.0
+
+		# ---- BASE5 (TEAM ROCKET) ATTACK SCORING ----
+		if main.opponent_active_pokemon.uid.begins_with("base5"):
+			if attack_name_lower == "flitter":
+				score += 40.0
+				if 20 >= player_hp: score += 500.0
+			if attack_name_lower == "coin hurl":
+				score += 20.0  # coin-gated 20
+				if 20 >= player_hp: score += 250.0
+			if attack_name_lower == "dig under":
+				score += 20.0
+				if 10 >= player_hp: score += 500.0
 
 		# ---- GENERAL EFFECT SCORING ----
 		var effect_score = score_parsed_effects(parsed_effects, main.player_active_pokemon)
@@ -3116,6 +3900,9 @@ func cpu_phase_bench_play() -> void:
 			if main._should_bail(): return
 		# EX16 on-bench-from-hand powers: Cursed Eyes (Absol ex), Crimson/Yellow/Blue Ray (Star Eeveelutions).
 		await main.powers_and_bodies.trigger_ex16_on_bench(best_card, true)
+		if main._should_bail(): return
+		# POP on-bench-from-hand powers: Time Reversal (Celebi ex), Purple Ray (Espeon Star), Dark Ray (Umbreon Star).
+		await main.powers_and_bodies.trigger_pop_on_bench(best_card, true)
 		if main._should_bail(): return
 
 # R.5: Selects the best bench replacement and performs the retreat
@@ -3490,6 +4277,107 @@ func cpu_score_trainer_card(card: card_object) -> float:
 		"ex16-81": return 45.0                           # Scott (Supporter): fetch up to 3 Supporters/Stadiums
 		"ex16-83": return 55.0                           # Steven's Advice (Supporter): draw up to opp Pokemon count
 		# Battle Frontier / Drake's / Glacia's / Phoebe's / Sidney's Stadiums use the generic stadium heuristic.
+		# ── POP SERIES (pop1–pop6) — all reprints; Stadiums use the generic stadium heuristic ──
+		"pop2-8": return _cpu_score_ex3_mr_brineys_compassion()  # Mr. Briney's Compassion (Supporter)
+		"pop2-11": return 60.0                           # TV Reporter (Supporter): net +2 cards
+		"pop4-9": return 70.0                            # Pokémon Fan Club: free bench development
+		"pop5-6": return _cpu_score_maintenance()        # Bill's Maintenance: shuffle-1/draw-3
+		"pop5-7": return _cpu_score_ex2_rare_candy()     # Rare Candy: only if a valid evolution jump exists
+		# ── BASE SET PROMOS (basep) — Stadiums use the generic stadium heuristic ──
+		"basep-16": return 15.0  # Computer Error (Rocket's Secret Machine): ends the turn — only worth it for a big card-count swing
+		"basep-40": return _cpu_score_pokemon_center()  # Pokémon Center: same effect as base1-85
+		# ── NEO3 (NEO REVELATION) ──
+		"neo3-60": return 35.0  # Balloon Berry (Tool): free-retreat safety net
+		"neo3-62": return _cpu_score_neo3_pokemon_breeder_fields()  # only worth it if something can actually evolve
+		"neo3-64": return 30.0  # Old Rod: coin-flip discard recovery
+		# Healing Field / Rocket's Hideout (Stadiums) use the generic stadium heuristic.
+		# ── NEO4 (NEO DESTINY) ──
+		"neo4-93": return 30.0  # EXP.ALL (Tool): passive energy-save-on-KO safety net
+		"neo4-94": return _cpu_score_neo4_impostor_oaks_invention()  # prize-count disruption, situational
+		"neo4-96": return 25.0  # Thought Wave Machine (Rocket's Secret Machine): ends the turn — strips opponent Energy
+		"neo4-97": return 30.0  # Counterattack Claws (Tool): coin-flip retaliation, one-shot
+		"neo4-98": return 45.0  # Energy Amplifier: coin-flip up to 3 basic Energy to hand
+		"neo4-101": return 20.0  # Magnifier (Tool): one-turn Resistance-ignore, single use
+		"neo4-102": return 20.0  # Pokémon Personality Test: 50/50 draw 3, low reliability
+		"neo4-103": return _cpu_score_neo4_team_rockets_evil_deeds()  # hand disruption
+		"neo4-104": return _cpu_score_neo4_heal_powder()  # coin-flip full cure + heal
+		"neo4-105": return _cpu_score_neo4_mail_from_bill()  # only playable with < 5 cards in hand
+		# Broken Ground Gym / Radio Tower / Energy Stadium / Lucky Stadium (Stadiums) use the generic heuristic.
+		# ── NEO GENESIS PROMOS (np) ──
+		"np-26": return _cpu_score_np_tropical_wind()  # coin-flip: heals both Actives OR sleeps both — risky
+		"np-27", "np-36": return _cpu_score_np_tropical_tidal_wave()  # coin-flip Trainer wipe, favors whichever side has more in play
+		# Championship Arena (Stadium) uses the generic stadium heuristic.
+		# ── EX5 (EX HIDDEN LEGENDS) ──
+		"ex5-84", "ex5-85", "ex5-86": return 35.0  # Ancient Technical Machine [Ice/Rock/Steel]: extra attack option
+		"ex5-90": return _cpu_score_life_herb()  # Life Herb: coin-flip full cure + heal 60 (excludes ex)
+		"ex5-92": return 55.0  # Steven's Advice (Supporter): draw = opponent's Pokemon in play
+		# Ancient Tomb / Desert Ruins / Island Cave / Magnetic Storm (Stadiums) use the generic heuristic.
+		# ── EX6 (EX FIRERED & LEAFGREEN) ──
+		"ex6-87": return _cpu_score_maintenance()  # Bill's Maintenance: shuffle-1/draw-3
+		"ex6-88": return 55.0  # Celio's Network (Supporter): guaranteed Basic/Evolution search
+		"ex6-89": return _cpu_score_energy_removal()  # Energy Removal 2
+		"ex6-90": return 30.0  # Energy Switch
+		"ex6-91": return 30.0  # EXP.ALL (Tool)
+		"ex6-92": return 45.0  # Great Ball
+		"ex6-93": return _cpu_score_life_herb()  # Life Herb
+		"ex6-95": return _cpu_score_poke_ball()  # Poké Ball
+		"ex6-96": return 20.0  # PokéDex HANDY909: deck reorder, no card advantage
+		"ex6-97": return 40.0  # Pokémon Reversal
+		"ex6-98": return 55.0  # Prof. Oak's Research (Supporter): shuffle hand, draw 5
+		"ex6-99": return _cpu_score_super_scoop_up()  # Super Scoop Up
+		"ex6-100": return 45.0  # VS Seeker: recover a used Supporter
+		"ex6-101": return _cpu_score_potion()  # Potion
+		"ex6-102": return _cpu_score_switch()  # Switch
+		# Mt. Moon (Stadium) uses the generic heuristic.
+		# ── EX7 (EX TEAM ROCKET RETURNS) ──
+		"ex7-83": return 40.0  # Copycat (Supporter): draw = opponent's hand size
+		"ex7-84": return 50.0  # Pokémon Retriever (Rocket's Secret Machine): flexible discard-pile recovery
+		"ex7-85": return _cpu_score_ex7_pow_hand_extension()  # only usable while ahead on Prizes
+		"ex7-86": return 35.0  # Rocket's Admin. (Supporter): both players redraw to their Prize count
+		"ex7-88": return 45.0  # Rocket's Mission (Supporter): discard 1, draw 3-4
+		"ex7-89": return 40.0  # Rocket's Poké Ball: guaranteed Dark-named search
+		"ex7-91": return 15.0  # Surprise! Time Machine (Rocket's Secret Machine): niche devolve/re-evolve utility
+		"ex7-92": return 25.0  # Swoop! Teleporter (Rocket's Secret Machine): situational Basic swap
+		"ex7-93": return 15.0  # Venture Bomb (Rocket's Secret Machine): coin-flip 1 damage counter, minor
+		"ex7-111": return 80.0  # Here Comes Team Rocket!: same effect as base5-15/71
+		# Rocket's Hideout / Rocket's Tricky Gym (Stadiums) use the generic heuristic.
+		# ── EX11 (EX DELTA SPECIES) ──
+		"ex11-89": return 45.0  # Dual Ball: 2-coin Basic search
+		"ex11-90": return 45.0  # Great Ball
+		"ex11-91": return 20.0  # Holon Farmer (Supporter): discard-cost, puts cards on TOP of deck (not hand)
+		"ex11-92": return 40.0  # Holon Lass (Supporter): discard-cost Energy dig scaled by total Prizes left
+		"ex11-93": return 50.0  # Holon Mentor (Supporter): discard-cost, up to 3 low-HP Basics to hand
+		"ex11-95": return 35.0  # Holon Researcher (Supporter): discard-cost, 1 Metal Energy or δ Basic to hand
+		"ex11-97": return _cpu_score_ex11_holon_scientist()  # discard-cost, draw up to opponent's hand size
+		"ex11-98": return 40.0  # Holon Transceiver: fetch a Holon Supporter from deck or discard
+		"ex11-99": return 55.0  # Master Ball: dig 7 for any Basic/Evolution, guaranteed
+		"ex11-100": return _cpu_score_super_scoop_up()  # Super Scoop Up
+		"ex11-101": return _cpu_score_potion()  # Potion
+		"ex11-102": return _cpu_score_switch()  # Switch
+		# Holon Research Tower / Holon Ruins (Stadiums) use the generic heuristic.
+		# ── EX12 (EX LEGEND MAKER) ──
+		"ex12-73": return 55.0  # Fieldworker (Supporter): draw 3 (opponent may draw 1)
+		"ex12-78", "ex12-79", "ex12-80": return _cpu_score_clefairy_doll()  # Fossils: same as bench tokens
+		# Cursed Stone / Full Flame / Giant Stump / Power Tree / Strange Cave (Stadiums) use the generic heuristic.
+		# ── EX14 (EX CRYSTAL GUARDIANS) ──
+		"ex14-71": return _cpu_score_maintenance()  # Bill's Maintenance
+		"ex14-72": return 55.0  # Castaway (Supporter): Supporter + Tool + basic Energy in one
+		"ex14-73": return 55.0  # Celio's Network (Supporter)
+		"ex14-74": return _cpu_score_ex14_cessation_crystal()  # global Power/Body lock — good if opponent leans on abilities
+		"ex14-76": return 20.0  # Crystal Shard (Tool): forces Colorless typing, situational
+		"ex14-77": return _cpu_score_full_heal()  # Double Full Heal
+		"ex14-78": return 45.0  # Dual Ball
+		"ex14-80": return 25.0  # Memory Berry (Tool): borrow a lower-stage attack, niche
+		"ex14-81": return 25.0  # Mysterious Shard (Tool): ex-immunity, situational
+		"ex14-82": return _cpu_score_poke_ball()  # Poké Ball
+		"ex14-83": return 50.0  # PokéNav
+		"ex14-84": return 40.0  # Warp Point
+		"ex14-85": return _cpu_score_ex14_windstorm()  # discard opponent's Tools/Stadiums, situational
+		"ex14-86": return 20.0  # Energy Search
+		"ex14-87": return _cpu_score_potion()  # Potion
+		# Crystal Beach / Holon Circle (Stadiums) use the generic heuristic.
+		# pop1 and pop6 have no Trainer cards. pop3's only Trainers are High/Low Pressure System
+		# (Stadiums), which use the generic stadium heuristic — nothing to add for either.
 	return 0.0
 
 # MR. BRINEY'S COMPASSION (ex3-87): only valuable when the CPU has a damaged non-ex Pokemon worth
@@ -3525,6 +4413,104 @@ func _cpu_score_ex2_wallys_training() -> float:
 		if c.metadata.get("supertype","") == "Pokémon" and main.can_evolve_from(c, active):
 			return 55.0
 	return -100.0
+
+func _cpu_score_neo3_pokemon_breeder_fields() -> float:
+	# Only worth it if at least one non-Baby Pokemon in play can actually evolve further.
+	var candidates: Array = []
+	if main.opponent_active_pokemon != null: candidates.append(main.opponent_active_pokemon)
+	candidates.append_array(main.opponent_bench)
+	for p in candidates:
+		if "Baby" in p.metadata.get("subtypes", []): continue
+		for c in main.opponent_deck:
+			if c.metadata.get("supertype","") == "Pokémon" and main.can_evolve_from(c, p):
+				return 50.0
+	return -100.0
+
+func _cpu_score_neo4_impostor_oaks_invention() -> float:
+	# Disrupts the opponent's Prize count — most valuable when the CPU is ahead and wants to
+	# lock in that lead, or when the opponent is close to winning off their current Prizes.
+	if main.player_prize_cards.size() <= 2: return 60.0
+	return 20.0
+
+func _cpu_score_neo4_team_rockets_evil_deeds() -> float:
+	if main.player_hand.is_empty(): return -100.0
+	return 40.0  # hand disruption; opponent may draw up to 2 back, so only moderate value
+
+func _cpu_score_neo4_heal_powder() -> float:
+	var active = main.opponent_active_pokemon
+	if active == null: return 0.0
+	if active.special_condition != "" or active.get_damage_counters() > 0: return 45.0
+	return 0.0
+
+func _cpu_score_neo4_mail_from_bill() -> float:
+	if main.opponent_hand.size() >= 5: return -100.0  # unplayable
+	if main.opponent_hand.size() >= 4: return 0.0  # no benefit, draws to the same count
+	return 35.0
+
+func _cpu_score_np_tropical_wind() -> float:
+	# Coin-gated: heads heals both Actives (good if the CPU's Active is more damaged), tails puts
+	# both Actives to sleep (a wash defensively, bad if the CPU wants to attack this turn).
+	var own = main.opponent_active_pokemon
+	if own == null: return 0.0
+	if own.get_damage_counters() > 0: return 35.0
+	return 5.0
+
+func _cpu_score_np_tropical_tidal_wave() -> float:
+	# Coin-gated: heads wipes the OPPONENT's Trainers in play, tails wipes the CPU's own
+	# (excluding Supporters) — only worth it if the opponent actually has Trainer cards in play.
+	var opp_trainer_count = 0
+	for p in ([main.player_active_pokemon] if main.player_active_pokemon != null else []) + main.player_bench:
+		for c in p.attached_cards:
+			if c.metadata.get("supertype","") == "Trainer": opp_trainer_count += 1
+	if main.current_stadium_card != null: opp_trainer_count += 1
+	if opp_trainer_count == 0: return -50.0
+	return 30.0
+
+func _cpu_score_life_herb() -> float:
+	# Coin-gated: cure Special Conditions + heal up to 60, but can't target Pokemon-ex.
+	var candidates: Array = []
+	if main.opponent_active_pokemon != null and not main.is_ex_pokemon(main.opponent_active_pokemon):
+		candidates.append(main.opponent_active_pokemon)
+	for p in main.opponent_bench:
+		if not main.is_ex_pokemon(p): candidates.append(p)
+	for p in candidates:
+		if p.special_condition != "" or p.get_damage_counters() > 0: return 45.0
+	return 0.0
+
+func _cpu_score_super_scoop_up() -> float:
+	# Coin-gated rescue: most valuable when the Active is about to be Knocked Out (saves the
+	# attached cards) or is burdened by a bad Special Condition.
+	var active = main.opponent_active_pokemon
+	if active == null: return 0.0
+	if active.special_condition != "": return 40.0
+	if active.current_hp <= 30 and active.get_damage_counters() > 0: return 35.0
+	return 0.0
+
+func _cpu_score_ex7_pow_hand_extension() -> float:
+	if main.opponent_prize_cards.size() <= main.player_prize_cards.size(): return -100.0  # unplayable
+	return 35.0
+
+func _cpu_score_ex11_holon_scientist() -> float:
+	if main.opponent_hand.size() >= main.player_hand.size(): return 5.0  # discard-cost with no draw benefit
+	return 20.0 + float(main.player_hand.size() - main.opponent_hand.size()) * 10.0
+
+func _cpu_score_ex14_cessation_crystal() -> float:
+	# Locks out Poke-Powers/Poke-Bodies for BOTH players — good when the opponent leans on
+	# abilities more than the CPU does, bad the other way around.
+	var opp_has_ability = main.player_active_pokemon != null and not main.player_active_pokemon.metadata.get("abilities", []).is_empty()
+	var own_has_ability = main.opponent_active_pokemon != null and not main.opponent_active_pokemon.metadata.get("abilities", []).is_empty()
+	if opp_has_ability and not own_has_ability: return 50.0
+	if own_has_ability and not opp_has_ability: return -50.0
+	return 10.0
+
+func _cpu_score_ex14_windstorm() -> float:
+	var count = 0
+	for p in ([main.player_active_pokemon] if main.player_active_pokemon != null else []) + main.player_bench:
+		for c in p.attached_cards:
+			if "Tool" in c.metadata.get("subtypes", []): count += 1
+	if main.current_stadium_card != null: count += 1
+	if count == 0: return -100.0
+	return 20.0 * min(2, count)
 
 func _cpu_score_neo1_energy_charge() -> float:
 	var energy_in_discard = 0
@@ -3999,6 +4985,194 @@ func cpu_search_deck_for_best_pokemon(pokemon_list: Array) -> card_object:
 			best_score = score
 			best = card
 	return best
+
+######################################################################################################################################################
+############################################ SHARED CPU DECISION LIBRARY (Workstream A) ##############################################################
+######################################################################################################################################################
+# Canonical, human-like ranking helpers reused by ALL card effects so the opponent never "just picks the
+# first option." Effect code should call these via main.cpu_ai.* instead of taking pool[0] / bench[0] / a
+# trivial lambda. Convention: HIGHER score = more valuable to the CPU (except cpu_get_discard_priority, which
+# returns the cards it is most willing to GIVE UP first). Per-card synergy tuning goes in
+# cpu_decision_override() — filled in incrementally during manual playtesting.
+
+# Additive per-card nudge for specific synergies discovered during playtesting. Default 0.0.
+# Positive = value this card MORE in the given context; negative = less. `context` is a short tag such as
+# "keep", "discard", "snipe". Add `match card.uid:` entries here as perfect-combo cases are found in testing.
+func cpu_decision_override(_card: card_object, _context: String) -> float:
+	# match _card.uid:
+	#     "neo1-1": return 20.0 if _context == "keep" else 0.0
+	return 0.0
+
+# KEEP VALUE — how much the CPU wants to ADD this card to hand / keep it / fetch it from deck or discard.
+# Used for deck search, recover-to-hand, "take a card", and keep-vs-discard framing. Higher = better.
+func cpu_rank_keep_value(card: card_object) -> float:
+	if card == null:
+		return -INF
+	var score := 40.0
+	var supertype := card.metadata.get("supertype", "").to_lower()
+	if supertype == "energy":
+		# Energy the current attacker actually needs beats surplus energy.
+		score = 45.0 + _cpu_energy_need_score(card)
+	elif supertype == "trainer":
+		score = 30.0 + clampf(cpu_score_trainer_card(card), -20.0, 60.0)
+	elif supertype == "pokémon" or supertype == "pokemon":
+		if main.is_basic_pokemon(card):
+			score = 55.0 if main.opponent_bench.size() < 5 else 25.0
+			if _cpu_hand_has_evolution_of(card):
+				score += 25.0  # completes an evolution line the CPU is holding
+		else:
+			# An Evolution card is only useful if its base is already in play or in hand — else it's dead weight.
+			if _cpu_has_evolution_base(card):
+				score = 85.0 if "Stage 2" in card.metadata.get("subtypes", []) else 75.0
+			else:
+				score = 20.0
+	return score + cpu_decision_override(card, "keep")
+
+# Pick the single best card to fetch/keep/take from a pool (deck search, recover, "put a card into your hand").
+func cpu_pick_best_keep(pool: Array) -> card_object:
+	var best: card_object = null
+	var best_s := -INF
+	for c in pool:
+		var s := cpu_rank_keep_value(c)
+		if s > best_s:
+			best_s = s
+			best = c
+	return best
+
+# SNIPE / DAMAGE TARGET — rank a Pokemon as a target for `damage`. Prefers a guaranteed KO (especially a
+# 2-prize ex), then weakening the biggest threat, with lowest-HP as the final tiebreak.
+func cpu_rank_snipe_target(pokemon: card_object, damage: int) -> float:
+	if pokemon == null:
+		return -INF
+	var score := 0.0
+	if damage >= pokemon.current_hp:
+		score += 1000.0                                            # guaranteed KO — best outcome
+		if main.is_ex_pokemon(pokemon):
+			score += 150.0                                        # KO a 2-prize card if possible
+	else:
+		score += float(damage)                                    # progress toward a future KO
+		score += _cpu_threat_score(pokemon)                       # prefer softening a real threat
+		if main.is_ex_pokemon(pokemon):
+			score += 60.0
+	score -= float(pokemon.current_hp) * 0.1                      # lowest-HP tiebreak among equals
+	return score + cpu_decision_override(pokemon, "snipe")
+
+# Pick the best Pokemon in `pool` to hit for `damage` (skips already-KO'd). Returns null if pool empty.
+func cpu_pick_snipe_target(pool: Array, damage: int) -> card_object:
+	var best: card_object = null
+	var best_s := -INF
+	for p in pool:
+		if p == null or p.current_hp <= 0:
+			continue
+		var s := cpu_rank_snipe_target(p, damage)
+		if s > best_s:
+			best_s = s
+			best = p
+	return best
+
+# OWN-POKEMON BENEFIT RECIPIENT — rank one of the CPU's own Pokemon (active or bench) as the target for
+# a beneficial effect: attaching/moving Energy onto it, healing it, evolving it, or switching it in.
+# `benefit` selects the weighting: "energy" (which Pokemon most needs this Energy to attack), "heal"
+# (most damaged, but not if healing would be wasted on an already-healthy Pokemon), "evolve" (prefers
+# the Active, since evolving the Active is immediately useful), "switch_in" (delegates to the existing
+# bench-replacement scorer, which already weighs type matchup/HP/retreat cost).
+func cpu_rank_benefit_recipient(pokemon: card_object, benefit: String, context_energy: card_object = null) -> float:
+	if pokemon == null or pokemon.current_hp <= 0:
+		return -INF
+	var score := 10.0
+	match benefit:
+		"energy":
+			var is_active := (pokemon == main.opponent_active_pokemon)
+			score += 20.0 if is_active else 0.0                   # the Active can use it THIS turn
+			var best_unmet := 0
+			for atk in pokemon.metadata.get("attacks", []):
+				var unmet = get_unmet_energy_count(atk, pokemon)
+				if unmet > 0:
+					best_unmet = max(best_unmet, unmet)
+					if context_energy != null:
+						var provided = main.get_energy_provided_by_card(context_energy)
+						for c in atk.get("cost", []):
+							if c in provided: score += 15.0
+							elif c == "Colorless": score += 5.0
+			score += float(best_unmet) * 8.0                      # prefer the Pokemon furthest from attacking
+		"heal":
+			var missing = pokemon.get_max_hp() - pokemon.current_hp
+			if missing <= 0:
+				return -INF                                       # never waste healing on full HP
+			score += float(missing)
+			if pokemon == main.opponent_active_pokemon:
+				score += 15.0                                     # the Active is under immediate threat
+		"evolve":
+			score += 25.0 if pokemon == main.opponent_active_pokemon else 0.0
+		_:
+			pass
+	return score + cpu_decision_override(pokemon, "benefit_" + benefit)
+
+# Pick the best of the CPU's own Pokemon to receive a benefit (see cpu_rank_benefit_recipient).
+func cpu_pick_benefit_recipient(pool: Array, benefit: String, context_energy: card_object = null) -> card_object:
+	var best: card_object = null
+	var best_s := -INF
+	for p in pool:
+		var s := cpu_rank_benefit_recipient(p, benefit, context_energy)
+		if s > best_s:
+			best_s = s
+			best = p
+	return best
+
+# ── Internal scoring helpers ──────────────────────────────────────────────────────────────────────
+
+# Rough measure of how much damage a Pokemon threatens (its best attack's max estimate). Used to prefer
+# weakening genuine attackers over inert Pokemon.
+func _cpu_threat_score(pokemon: card_object) -> float:
+	if pokemon == null:
+		return 0.0
+	var best := 0
+	for atk in pokemon.metadata.get("attacks", []):
+		var r = main.attack_effects.estimate_attack_damage_range(atk, pokemon, null)
+		best = max(best, int(r.get("max", 0)))
+	return float(best) * 0.5
+
+# How much a given energy card advances the CPU's Active attacker toward an attack it can't yet afford.
+func _cpu_energy_need_score(energy_card: card_object) -> float:
+	var attacker = main.opponent_active_pokemon
+	if attacker == null or energy_card == null:
+		return 0.0
+	var provided = main.get_energy_provided_by_card(energy_card)
+	if provided.is_empty():
+		return 0.0
+	var need := 0.0
+	for atk in attacker.metadata.get("attacks", []):
+		if get_unmet_energy_count(atk, attacker) <= 0:
+			continue                                              # already affordable — this energy doesn't unlock it
+		for c in atk.get("cost", []):
+			if c in provided:
+				need += 12.0                                      # fills a typed requirement
+			elif c == "Colorless":
+				need += 4.0                                       # fills a Colorless slot
+	return min(need, 45.0)
+
+# True if the CPU is holding an Evolution card that evolves from this Basic (so keeping the Basic completes a line).
+func _cpu_hand_has_evolution_of(basic: card_object) -> bool:
+	var nm := str(basic.metadata.get("name", ""))
+	for c in main.opponent_hand:
+		if c.metadata.get("evolvesFrom", "") == nm:
+			return true
+	return false
+
+# True if this Evolution card's pre-evolution is already in play or in the CPU's hand (so it isn't a dead card).
+func _cpu_has_evolution_base(evo: card_object) -> bool:
+	var base := str(evo.metadata.get("evolvesFrom", ""))
+	if base == "":
+		return false
+	if main.opponent_active_pokemon != null and main.opponent_active_pokemon.metadata.get("name", "") == base:
+		return true
+	for bp in main.opponent_bench:
+		if bp.metadata.get("name", "") == base:
+			return true
+	for c in main.opponent_hand:
+		if c.metadata.get("name", "") == base:
+			return true
+	return false
 
 ############################################### Section G: POKEMON POWER SYSTEM ######################################################################
 

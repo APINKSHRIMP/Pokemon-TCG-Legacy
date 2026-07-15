@@ -322,6 +322,10 @@ func apply_status(pokemon: card_object, status: String, is_opponent: bool) -> vo
 	# EX13 Clear Body (Regice/Regirock/Registeel): can't be affected by any Special Conditions.
 	if pokemon != null and status != "" and main.powers_and_bodies.ex13_blocks_status(pokemon, status):
 		return
+	# POP Reactive Barrier (Mew pop4-4): while React Energy is attached, prevent Special Conditions
+	# from opponent attacks — the "prevent all effects, excluding damage" class (same scope as Crystal Body).
+	if pokemon != null and status != "" and main.powers_and_bodies.pop_blocks_status(pokemon):
+		return
 	match status:
 		"Poisoned":
 			pokemon.is_poisoned = true

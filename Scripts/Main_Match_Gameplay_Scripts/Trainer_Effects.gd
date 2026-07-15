@@ -48,6 +48,7 @@ func _ensure_trainer_dispatch_ready() -> void:
 	_register_ex14_trainers()
 	_register_ex15_trainers()
 	_register_ex16_trainers()
+	_register_pop_trainers()
 
 # EX9 (EX EMERALD) trainers. Most are reprints of ex1/ex2 cards — reuse the existing effect functions
 # with the ex9 UID. Lum Berry (ex9-78) / Oran Berry (ex9-80) are Pokemon Tools whose attach is generic
@@ -93,7 +94,7 @@ func effect_ex9_mr_stones_project(is_opponent: bool) -> void:
 			if pool.is_empty(): break
 			var pick: card_object
 			if is_opponent:
-				pick = pool[0]
+				pick = main.cpu_ai.cpu_pick_best_keep(pool)  # recover the Energy type the attacker needs
 			else:
 				pick = await main.card_ops.prompt_select_card(pool, "MR. STONE'S PROJECT", "Choose a basic Energy from your discard pile (or cancel to stop)", "TAKE", true, true)
 				if main._should_bail(): return
@@ -142,7 +143,7 @@ func effect_ex8_energy_charge(is_opponent: bool) -> void:
 		if pool.is_empty(): break
 		var chosen: card_object
 		if is_opponent:
-			chosen = pool[0]
+			chosen = main.cpu_ai.cpu_pick_best_keep(pool)  # recycle the most useful Energy back into the deck
 		else:
 			chosen = await main.card_ops.choose_card(pool, false, "ENERGY CHARGE", "Choose an Energy to shuffle into your deck (" + str(moved + 1) + " of 2)", "SELECT", moved > 0, Callable(), true)
 			if main._should_bail(): return
@@ -167,7 +168,7 @@ func effect_ex8_lady_outing(is_opponent: bool) -> void:
 		if pool.is_empty(): break
 		var chosen: card_object
 		if is_opponent:
-			chosen = pool[0]
+			chosen = main.cpu_ai.cpu_pick_best_keep(pool)  # fetch a basic Energy type the attacker actually needs
 		else:
 			chosen = await main.card_ops.choose_card(pool, false, "LADY OUTING", "Choose a basic Energy of a NEW type (" + str(found + 1) + " of 3)", "SELECT", found > 0, Callable(), true)
 			if main._should_bail(): return
@@ -217,7 +218,7 @@ func effect_ex8_master_ball(is_opponent: bool) -> void:
 		return
 	var chosen: card_object
 	if is_opponent:
-		chosen = pool[0]
+		chosen = main.cpu_ai.cpu_pick_best_keep(pool)  # fetch the Pokemon that completes a line / is playable now
 	else:
 		chosen = await main.card_ops.choose_card(pool, false, "MASTER BALL", "Choose a Basic Pokemon or Evolution card to put into your hand", "TAKE", false, Callable(), true)
 		if main._should_bail(): return
@@ -884,7 +885,8 @@ func cpu_get_discard_priority(hand: Array, count: int, exclude_card: card_object
 	for card in hand:
 		if card == exclude_card:
 			continue
-		var priority = _score_card_for_discard(card)
+		# Higher priority = keep (discarded last). The per-card override lets playtesting protect combo pieces.
+		var priority = _score_card_for_discard(card) + main.cpu_ai.cpu_decision_override(card, "discard")
 		candidates.append({"card": card, "priority": priority})
 	
 	# Sort by priority ascending (lowest priority = discard first)
@@ -5552,7 +5554,7 @@ func gym2_effect_lt_surges_secret_plan(is_opponent: bool) -> void:
 				basics.append(c)
 		if basics.size() == 0:
 			return
-		var pick = basics[0]
+		var pick = main.cpu_ai.cpu_pick_best_keep(basics)
 		hand.erase(pick)
 		pick.current_hp = pick.get_max_hp()
 		pick.current_location = "bench"
@@ -6164,6 +6166,10 @@ func gym2_fuchsia_activate(is_opponent: bool) -> void:
 	# If chosen was active, promote a bench pokemon to active first
 	if chosen == active:
 		var promoted: card_object = bench[0]
+		if is_opponent:
+			var cpu_eval = main.cpu_ai.get_cpu_evaluation()
+			var best_promote = main.cpu_ai.pick_best_bench_replacement(bench, main.player_active_pokemon, cpu_eval)
+			if best_promote != null: promoted = best_promote
 		bench.erase(promoted)
 		promoted.current_location = "active"
 		if is_opponent:
@@ -6546,7 +6552,7 @@ func effect_neo1_pokegear(is_opponent: bool) -> void:
 		return
 	var pick: card_object = null
 	if is_opponent:
-		pick = trainers[0]
+		pick = main.cpu_ai.cpu_pick_best_keep(trainers)
 	else:
 		if trainers.size() == 1:
 			pick = trainers[0]
@@ -7017,7 +7023,7 @@ func effect_neo1_super_rod(is_opponent: bool) -> void:
 			return
 		var pick: card_object = null
 		if is_opponent:
-			pick = evolutions[0]
+			pick = main.cpu_ai.cpu_pick_best_keep(evolutions)
 		else:
 			if evolutions.size() == 1: pick = evolutions[0]
 			else:
@@ -7039,7 +7045,7 @@ func effect_neo1_super_rod(is_opponent: bool) -> void:
 			return
 		var pick: card_object = null
 		if is_opponent:
-			pick = basics[0]
+			pick = main.cpu_ai.cpu_pick_best_keep(basics)
 		else:
 			if basics.size() == 1: pick = basics[0]
 			else:
@@ -7702,7 +7708,7 @@ func neo4_energy_stadium_activate(is_opponent: bool) -> void:
 		await main.show_message("ENERGY STADIUM! HEADS — BUT NO BASIC ENERGY IN DISCARD!")
 		if main._should_bail(): return
 		return
-	var chosen: card_object = basics[0]
+	var chosen: card_object = main.cpu_ai.cpu_pick_best_keep(basics) if is_opponent else basics[0]
 	if not is_opponent:
 		chosen = await main.card_ops.prompt_select_card(basics, "ENERGY STADIUM!", "Choose a basic Energy from your discard to put in your hand", "SELECT", false)
 		if main._should_bail(): return
@@ -8131,7 +8137,7 @@ func effect_ecard1_power_charge(is_opponent: bool) -> void:
 		if pool.is_empty(): break
 		var chosen: card_object = null
 		if is_opponent:
-			chosen = pool[0]
+			chosen = main.cpu_ai.cpu_pick_best_keep(pool)  # recycle the most useful Energy back into the deck
 		else:
 			chosen = await main.card_ops.prompt_select_card(pool, "POWER CHARGE", "Select an Energy to shuffle into your deck (" + str(want - moved.size()) + " remaining)", "SELECT", false, true)
 			if main._should_bail(): return
@@ -8279,7 +8285,7 @@ func apricorn_forest_activate(is_opponent: bool) -> void:
 		if main._should_bail(): return
 		deck.shuffle()
 		return
-	var chosen: card_object = candidates[0]
+	var chosen: card_object = main.cpu_ai.cpu_pick_best_keep(candidates) if is_opponent else candidates[0]
 	if not is_opponent and candidates.size() > 1:
 		chosen = await main.card_ops.prompt_select_card(candidates, "APRICORN FOREST", "Choose a Basic Pokemon to place on your bench", "BENCH", false)
 		if main._should_bail(): return
@@ -8333,7 +8339,15 @@ func undersea_ruins_activate(is_opponent: bool) -> void:
 		await main.show_message("HEADS! BUT NO EVOLVED POKEMON TO DEVOLVE!")
 		if main._should_bail(): return
 		return
+	# Devolving costs US power — prefer a Bench candidate (keeps the Active's full strength) and, among
+	# Bench candidates, the lowest-HP one (least invested).
 	var target: card_object = candidates[0]
+	if is_opponent:
+		var bench_candidates = candidates.filter(func(c): return c != active)
+		var pool_to_pick = bench_candidates if not bench_candidates.is_empty() else candidates
+		target = pool_to_pick[0]
+		for c in pool_to_pick:
+			if c.current_hp < target.current_hp: target = c
 	if not is_opponent and candidates.size() > 1:
 		target = await main.card_ops.prompt_select_card(candidates, "UNDERSEA RUINS", "Choose a Pokemon to devolve", "DEVOLVE", false)
 		if main._should_bail(): return
@@ -8416,8 +8430,7 @@ func power_plant_activate(is_opponent: bool) -> void:
 # hand to one of their OWN Benched Pokemon, remove 1 damage counter from it. Called from the
 # energy-attach code paths (Main + CPU_AI) right after a successful hand-to-bench attach.
 func pokemon_park_on_bench_energy_attach(pokemon: card_object, is_opponent: bool) -> void:
-	if main.current_stadium_card == null: return
-	if main.current_stadium_card.uid.to_lower() != StadiumIds.POKEMON_PARK: return
+	if not main.is_stadium_in_play(StadiumIds.POKEMON_PARK): return
 	if pokemon.current_hp >= pokemon.get_max_hp(): return
 	pokemon.current_hp = min(pokemon.get_max_hp(), pokemon.current_hp + 10)
 	main.display_hp_circles_above_align(pokemon, is_opponent)
@@ -8522,7 +8535,11 @@ func effect_ecard2_energy_switch(is_opponent: bool) -> void:
 	var source: card_object = null
 	var energy: card_object = null
 	if is_opponent:
+		# Take from whichever source needs the Energy LEAST (safest to drain).
 		source = sources[0]
+		for s in sources:
+			if main.cpu_ai.cpu_rank_benefit_recipient(s, "energy") < main.cpu_ai.cpu_rank_benefit_recipient(source, "energy"):
+				source = s
 		energy = source.attached_energies.filter(func(e): return gym1_is_basic_energy(e))[0]
 	else:
 		source = await main.card_ops.prompt_select_card(sources, "ENERGY SWITCH", "Select a Pokemon to move Energy from", "SELECT", false)
@@ -8536,7 +8553,7 @@ func effect_ecard2_energy_switch(is_opponent: bool) -> void:
 	if targets.is_empty(): return
 	var target: card_object = null
 	if is_opponent:
-		target = targets[0]
+		target = main.cpu_ai.cpu_pick_benefit_recipient(targets, "energy", energy)
 	else:
 		target = await main.card_ops.prompt_select_card(targets, "ENERGY SWITCH", "Select a Pokemon to move the Energy to", "ATTACH", false)
 		if main._should_bail(): return
@@ -8877,7 +8894,7 @@ func underground_lake_activate(is_opponent: bool) -> void:
 	var discard = main.opponent_discard_pile if is_opponent else main.player_discard_pile
 	var candidates = discard.filter(func(c): return c.metadata.get("name","") in ["Omanyte","Kabuto"])
 	if candidates.is_empty(): return
-	var chosen: card_object = candidates[0]
+	var chosen: card_object = main.cpu_ai.cpu_pick_best_keep(candidates) if is_opponent else candidates[0]
 	if not is_opponent and candidates.size() > 1:
 		chosen = await main.card_ops.prompt_select_card(candidates, "UNDERGROUND LAKE", "Choose Omanyte or Kabuto to put onto your Bench", "BENCH", false)
 		if main._should_bail(): return
@@ -8920,7 +8937,7 @@ func ecard3_star_piece_check() -> void:
 				do_it = await gym1_prompt_yes_no(p, "STAR PIECE", "Search your deck for an Evolution card and evolve " + p_name.to_upper() + "?", "EVOLVE", "SKIP")
 				if main._should_bail(): return
 			if not do_it: continue
-			var evo_card: card_object = candidates[0]
+			var evo_card: card_object = main.cpu_ai.cpu_pick_best_keep(candidates) if side else candidates[0]
 			if not side and candidates.size() > 1:
 				evo_card = await main.card_ops.prompt_select_card(candidates, "STAR PIECE", "Choose an Evolution card", "EVOLVE", false)
 				if main._should_bail(): return
@@ -9090,7 +9107,8 @@ func effect_ecard3_hyper_potion(is_opponent: bool) -> void:
 		await main.show_message("NO POKEMON WITH BASIC ENERGY ATTACHED!")
 		if main._should_bail(): return
 		return
-	var target: card_object = candidates[0]
+	var target: card_object = main.cpu_ai.cpu_pick_benefit_recipient(candidates, "heal")
+	if target == null: target = candidates[0]
 	if not is_opponent and candidates.size() > 1:
 		target = await main.card_ops.prompt_select_card(candidates, "HYPER POTION", "Select a Pokemon to heal", "SELECT", false)
 		if main._should_bail(): return
@@ -9106,7 +9124,10 @@ func effect_ecard3_hyper_potion(is_opponent: bool) -> void:
 		var pool = target.attached_energies.filter(func(e): return gym1_is_basic_energy(e) and e not in discarded)
 		if pool.is_empty(): break
 		var chosen: card_object = pool[0]
-		if not is_opponent and pool.size() > 1:
+		if is_opponent:
+			for e in pool:
+				if main.cpu_ai.cpu_rank_keep_value(e) < main.cpu_ai.cpu_rank_keep_value(chosen): chosen = e
+		elif pool.size() > 1:
 			chosen = await main.card_ops.prompt_select_card(pool, "HYPER POTION", "Select a basic Energy to discard", "DISCARD", false)
 			if main._should_bail(): return
 			if chosen == null: break
@@ -9138,7 +9159,7 @@ func effect_ecard3_lure_ball(is_opponent: bool) -> void:
 	for i in range(heads):
 		var candidates = discard.filter(func(c): return c.metadata.get("supertype","") == "Pokémon" and not main.is_basic_pokemon(c))
 		if candidates.is_empty(): break
-		var chosen: card_object = candidates[0]
+		var chosen: card_object = main.cpu_ai.cpu_pick_best_keep(candidates) if is_opponent else candidates[0]
 		if not is_opponent and candidates.size() > 1:
 			chosen = await main.card_ops.prompt_select_card(candidates, "LURE BALL", "Choose an Evolution card to recover (" + str(heads - recovered) + " remaining)", "RECOVER", false)
 			if main._should_bail(): return
@@ -9563,7 +9584,7 @@ func effect_ex3_energy_recycle_system(is_opponent: bool) -> void:
 	if take_to_hand:
 		var chosen: card_object = null
 		if is_opponent:
-			chosen = basics[0]
+			chosen = main.cpu_ai.cpu_pick_best_keep(basics)
 		else:
 			chosen = await main.card_ops.choose_card(basics, is_opponent, "ENERGY RECYCLE SYSTEM", "Choose a basic Energy to put into your hand", "TAKE", false)
 			if main._should_bail(): return
@@ -9581,6 +9602,8 @@ func effect_ex3_energy_recycle_system(is_opponent: bool) -> void:
 			var chosen2: card_object = null
 			if is_opponent:
 				chosen2 = pool[0]
+				for e in pool:
+					if main.cpu_ai.cpu_rank_keep_value(e) < main.cpu_ai.cpu_rank_keep_value(chosen2): chosen2 = e
 			else:
 				chosen2 = await main.card_ops.choose_card(pool, is_opponent, "ENERGY RECYCLE SYSTEM", "Choose a basic Energy to shuffle into your deck (" + str(3 - moved) + " left)", "SHUFFLE", moved >= 1)
 				if main._should_bail(): return
@@ -9708,7 +9731,10 @@ func effect_ex4_schemer(is_opponent: bool, team: String) -> void:
 				if team in c.metadata.get("name",""):
 					chosen = c
 					break
-			if chosen == null: chosen = pokes[0]
+			if chosen == null:
+				# No bonus-team Pokemon in hand — discard the least valuable Pokemon, not just the first.
+				var priority = cpu_get_discard_priority(pokes, 1)
+				chosen = priority[0] if not priority.is_empty() else pokes[0]
 		else:
 			chosen = await main.card_ops.choose_card(pokes, is_opponent, team.to_upper() + " SCHEMER", "Discard 1 Pokemon from your hand", "DISCARD", false)
 			if main._should_bail(): return
@@ -9869,7 +9895,7 @@ func ex4_belt_check() -> void:
 			if main._should_bail(): return
 		if not do_it:
 			continue
-		var evo_card: card_object = candidates[0]
+		var evo_card: card_object = main.cpu_ai.cpu_pick_best_keep(candidates) if side else candidates[0]
 		if not side and candidates.size() > 1:
 			evo_card = await main.card_ops.prompt_select_card(candidates, "POKEMON BELT", "Choose an Evolution card", "EVOLVE", false)
 			if main._should_bail(): return
@@ -10017,7 +10043,7 @@ func effect_ex6_vs_seeker(is_opponent: bool) -> void:
 		return
 	var chosen: card_object = null
 	if is_opponent:
-		chosen = pool[0]
+		chosen = main.cpu_ai.cpu_pick_best_keep(pool)
 	else:
 		chosen = await main.card_ops.prompt_select_card(pool, "VS SEEKER: CHOOSE A SUPPORTER", "Select a Supporter card to return to your hand", "TAKE", true, true)
 		if main._should_bail(): return
@@ -10127,7 +10153,7 @@ func effect_ex7_pokemon_retriever(is_opponent: bool) -> void:
 	if take_to_hand:
 		var pick: card_object = null
 		if is_opponent:
-			pick = pool[0]
+			pick = main.cpu_ai.cpu_pick_best_keep(pool)
 		else:
 			pick = await main.card_ops.choose_card(pool, false, "POKÉMON RETRIEVER", "Take a Pokémon to your hand", "TAKE", false, Callable(), true)
 			if main._should_bail(): return
@@ -10504,7 +10530,7 @@ func effect_ex10_energy_recycle_system(is_opponent: bool) -> void:
 		take_to_hand = await gym1_prompt_yes_no(main.player_active_pokemon, "ENERGY RECYCLE SYSTEM", "Put 1 basic Energy into your HAND, or shuffle 3 into your DECK?", "1 → HAND", "3 → DECK")
 		if main._should_bail(): return
 	if take_to_hand:
-		var pick: card_object = basics[0] if is_opponent else await main.card_ops.choose_card(basics, false, "ENERGY RECYCLE SYSTEM", "Put which basic Energy into your hand?", "TAKE", false, Callable(), true)
+		var pick: card_object = main.cpu_ai.cpu_pick_best_keep(basics) if is_opponent else await main.card_ops.choose_card(basics, false, "ENERGY RECYCLE SYSTEM", "Put which basic Energy into your hand?", "TAKE", false, Callable(), true)
 		if main._should_bail(): return
 		if pick == null: pick = basics[0]
 		await main.card_ops.recover_to_hand(pick, is_opponent)
@@ -10517,7 +10543,13 @@ func effect_ex10_energy_recycle_system(is_opponent: bool) -> void:
 		for i in range(3):
 			var pool = discard.filter(func(c): return c.metadata.get("supertype","") == "Energy" and "Basic" in c.metadata.get("subtypes",[]))
 			if pool.is_empty(): break
-			var pick2: card_object = pool[0] if is_opponent else await main.card_ops.choose_card(pool, false, "ENERGY RECYCLE SYSTEM", "Shuffle which basic Energy into your deck? (" + str(i+1) + " of 3)", "SELECT", i > 0, Callable(), true)
+			var pick2: card_object
+			if is_opponent:
+				pick2 = pool[0]
+				for e in pool:
+					if main.cpu_ai.cpu_rank_keep_value(e) < main.cpu_ai.cpu_rank_keep_value(pick2): pick2 = e
+			else:
+				pick2 = await main.card_ops.choose_card(pool, false, "ENERGY RECYCLE SYSTEM", "Shuffle which basic Energy into your deck? (" + str(i+1) + " of 3)", "SELECT", i > 0, Callable(), true)
 			if main._should_bail(): return
 			if pick2 == null: break
 			discard.erase(pick2); pick2.current_location = "deck"; deck.append(pick2); moved += 1
@@ -10603,7 +10635,7 @@ func effect_ex11_great_ball(is_opponent: bool) -> void:
 		deck.shuffle(); main.update_deck_icon(is_opponent)
 		if main._should_bail(): return
 		return
-	var chosen: card_object = pool[0] if is_opponent else await main.card_ops.choose_card(pool, false, "GREAT BALL", "Choose a Basic Pokemon to put on your Bench", "SELECT", false, Callable(), true)
+	var chosen: card_object = main.cpu_ai.cpu_pick_best_keep(pool) if is_opponent else await main.card_ops.choose_card(pool, false, "GREAT BALL", "Choose a Basic Pokemon to put on your Bench", "SELECT", false, Callable(), true)
 	if main._should_bail(): return
 	if chosen == null: chosen = pool[0]
 	deck.erase(chosen)
@@ -10627,7 +10659,7 @@ func effect_ex11_holon_farmer(is_opponent: bool) -> void:
 	for i in range(3):
 		var pool = discard.filter(func(c): return c.metadata.get("supertype","") == "Energy" and "Basic" in c.metadata.get("subtypes", []))
 		if pool.is_empty(): break
-		var pick: card_object = pool[0] if is_opponent else await main.card_ops.choose_card(pool, false, "HOLON FARMER", "Return a basic Energy to your deck (" + str(i+1) + " of up to 3, cancel to stop)", "SELECT", true, Callable(), true)
+		var pick: card_object = main.cpu_ai.cpu_pick_best_keep(pool) if is_opponent else await main.card_ops.choose_card(pool, false, "HOLON FARMER", "Return a basic Energy to your deck (" + str(i+1) + " of up to 3, cancel to stop)", "SELECT", true, Callable(), true)
 		if main._should_bail(): return
 		if pick == null: break
 		discard.erase(pick); pick.current_location = "deck"; deck.append(pick); moved += 1
@@ -10635,7 +10667,7 @@ func effect_ex11_holon_farmer(is_opponent: bool) -> void:
 	for i in range(3):
 		var pool2 = discard.filter(func(c): return c.metadata.get("supertype","") == "Pokémon")
 		if pool2.is_empty(): break
-		var pick2: card_object = pool2[0] if is_opponent else await main.card_ops.choose_card(pool2, false, "HOLON FARMER", "Return a Pokemon to your deck (" + str(i+1) + " of up to 3, cancel to stop)", "SELECT", true, Callable(), true)
+		var pick2: card_object = main.cpu_ai.cpu_pick_best_keep(pool2) if is_opponent else await main.card_ops.choose_card(pool2, false, "HOLON FARMER", "Return a Pokemon to your deck (" + str(i+1) + " of up to 3, cancel to stop)", "SELECT", true, Callable(), true)
 		if main._should_bail(): return
 		if pick2 == null: break
 		discard.erase(pick2); pick2.current_location = "deck"; deck.append(pick2); moved += 1
@@ -10897,7 +10929,7 @@ func effect_ex13_holon_fossil(is_opponent: bool) -> void:
 			deck.shuffle(); main.update_deck_icon(is_opponent)
 			if main._should_bail(): return
 			return
-		chosen = pool[0] if is_opponent else await main.card_ops.choose_card(pool, false, "HOLON FOSSIL", "Choose a Pokémon to put on your Bench", "SELECT", false, Callable(), true)
+		chosen = main.cpu_ai.cpu_pick_best_keep(pool) if is_opponent else await main.card_ops.choose_card(pool, false, "HOLON FOSSIL", "Choose a Pokémon to put on your Bench", "SELECT", false, Callable(), true)
 		if main._should_bail(): return
 		if chosen == null: chosen = pool[0]
 		deck.erase(chosen)
@@ -10964,7 +10996,7 @@ func ex12_power_tree_offer(is_opponent: bool) -> void:
 		return
 	var chosen: card_object = null
 	if is_opponent:
-		chosen = pool[0]
+		chosen = main.cpu_ai.cpu_pick_best_keep(pool)
 	else:
 		var anchor = main.player_active_pokemon
 		if anchor == null: return
@@ -10994,7 +11026,7 @@ func ex12_strange_cave_offer(is_opponent: bool) -> void:
 		return
 	var chosen: card_object = null
 	if is_opponent:
-		chosen = pool[0]
+		chosen = main.cpu_ai.cpu_pick_best_keep(pool)
 	else:
 		var anchor = main.player_active_pokemon
 		if anchor == null: return
@@ -11239,6 +11271,17 @@ func _register_ex16_trainers() -> void:
 	_trainer_dispatch["ex16-80"] = func(c, opp): await effect_ex1_professor_birch(opp)          # Professor Birch (Supporter)
 	_trainer_dispatch["ex16-81"] = func(c, opp): await effect_ex9_scott(opp)                    # Scott (Supporter)
 	_trainer_dispatch["ex16-83"] = func(c, opp): await effect_ex5_stevens_advice(opp)           # Steven's Advice (Supporter)
+
+# POP SERIES (pop1–pop6) trainers. Every one is a reprint of an existing card — reuse the existing
+# effect functions with the pop UID. Stadiums (Pokémon Park pop2-10, High/Low Pressure System
+# pop3-10/11) route through resolve_stadium_trainer and are recognized via STADIUM_UID_ALIASES.
+# Multi Technical Machine 01 (pop2-9) auto-routes via is_attached_trainer() (Technical Machine subtype).
+func _register_pop_trainers() -> void:
+	_trainer_dispatch["pop2-8"]  = func(c, opp): await effect_ex3_mr_brineys_compassion(opp)  # Mr. Briney's Compassion (Supporter)
+	_trainer_dispatch["pop2-11"] = func(c, opp): await effect_ex3_tv_reporter(opp)            # TV Reporter (Supporter)
+	_trainer_dispatch["pop4-9"]  = func(c, opp): await effect_ecard2_pokemon_fan_club(opp)    # Pokémon Fan Club (Supporter)
+	_trainer_dispatch["pop5-6"]  = func(c, opp): await effect_ecard1_bills_maintenance(opp)   # Bill's Maintenance (Supporter)
+	_trainer_dispatch["pop5-7"]  = func(c, opp): await effect_ex2_rare_candy(opp)             # Rare Candy (Item)
 
 func _register_ex16_validations() -> void:
 	# STEVEN'S ADVICE (ex16-83): can't be played if you have more than 7 cards in hand (including it).

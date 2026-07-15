@@ -2146,6 +2146,8 @@ func add_pokemon_to_bench(pokemon: card_object) -> void:
 			await powers_and_bodies.trigger_ex15_tropical_heal(pokemon, false)
 		# EX16 on-bench-from-hand powers: Cursed Eyes (Absol ex), Crimson/Yellow/Blue Ray (Star Eeveelutions).
 		await powers_and_bodies.trigger_ex16_on_bench(pokemon, false)
+		# POP on-bench-from-hand powers: Time Reversal (Celebi ex), Purple Ray (Espeon Star), Dark Ray (Umbreon Star).
+		await powers_and_bodies.trigger_pop_on_bench(pokemon, false)
 
 # Function that get's the card position/location/object. Called from various functions when trying to find a specific card object
 func find_card_ui_for_object(card_obj: card_object) -> TextureRect:
@@ -5264,10 +5266,21 @@ func get_retreat_cost(pokemon: card_object) -> int:
 	return cost
 
 # Returns true if the named stadium (uid) is the currently active stadium card
+# POP-series Stadium reprints share the exact rules of an existing Stadium but carry a new UID.
+# Normalize the in-play card's UID to its canonical StadiumIds constant so every existing
+# is_stadium_in_play(StadiumIds.X) check recognizes the reprint without further changes.
+const STADIUM_UID_ALIASES := {
+	"pop2-10": StadiumIds.POKEMON_PARK,          # Pokémon Park (= ecard2-131)
+	"pop3-10": StadiumIds.HIGH_PRESSURE_SYSTEM,  # High Pressure System (= ex3-85)
+	"pop3-11": StadiumIds.LOW_PRESSURE_SYSTEM,   # Low Pressure System (= ex3-86)
+}
+
 func is_stadium_in_play(uid: String) -> bool:
 	if current_stadium_card == null:
 		return false
-	return current_stadium_card.uid.to_lower() == uid.to_lower()
+	var cur = current_stadium_card.uid.to_lower()
+	cur = STADIUM_UID_ALIASES.get(cur, cur)
+	return cur == uid.to_lower()
 
 # Returns the bench cap. Reduced to 4 while gym1-124 Narrow Gym is in play.
 # May be reduced further by the bench_size_limit match effect.
