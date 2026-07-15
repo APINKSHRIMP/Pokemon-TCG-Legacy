@@ -1389,6 +1389,7 @@ func cpu_phase_energy_attachment(cpu_eval: Dictionary) -> void:
 			})
 
 	if scored_pairs.is_empty():
+		print("CPU: Not attaching Energy — holding energy cards but every attachment is blocked (e.g. Cursed Glare)")
 		return
 
 	# Phase 3.1: Sort by score descending
@@ -2197,8 +2198,9 @@ func cpu_phase_attack(cpu_eval: Dictionary) -> void:
 		return
 	
 	if main.turn_number <= 1:
+		print("CPU: Not attacking — it's turn " + str(main.turn_number) + " (the first player cannot attack on their first turn of the game)")
 		return
-	
+
 	if main.opponent_active_pokemon.special_condition == "Paralyzed":
 		print("CPU cannot attack: active is Paralyzed")
 		return
@@ -2229,15 +2231,18 @@ func cpu_phase_attack(cpu_eval: Dictionary) -> void:
 	# Score each usable attack
 	var best_attack_index = -1
 	var best_attack_score = -999.0
+	var attack_score_log = []  # {name, score} for every attack actually considered this turn
 
 	for i in range(attacks.size()):
 		var attack = attacks[i]
 		var attack_name_lower = attack.get("name", "").to_lower()
 		var attack_text = attack.get("text", "").to_lower()
-		
+
 		if get_unmet_energy_count(attack, main.opponent_active_pokemon) > 0:
+			print("CPU: Cannot use " + attack.get("name", "") + " — not enough energy attached")
 			continue
 		if main.is_attack_disabled(main.opponent_active_pokemon, attack.get("name", "")):
+			print("CPU: Cannot use " + attack.get("name", "") + " — disabled this turn")
 			continue
 
 		var score = 0.0
@@ -3602,6 +3607,7 @@ func cpu_phase_attack(cpu_eval: Dictionary) -> void:
 		var effect_score = score_parsed_effects(parsed_effects, main.player_active_pokemon)
 		score += effect_score
 
+		attack_score_log.append({"name": attack.get("name", ""), "score": score})
 		if score > best_attack_score:
 			best_attack_score = score
 			best_attack_index = i
@@ -3614,6 +3620,12 @@ func cpu_phase_attack(cpu_eval: Dictionary) -> void:
 	var chosen_attack = attacks[best_attack_index]
 	var chosen_name = chosen_attack.get("name", "")
 	var chosen_text = chosen_attack.get("text", "").to_lower()
+
+	if attack_score_log.size() > 1:
+		print("CPU choosing attack for " + main.opponent_active_pokemon.metadata.get("name", "") + ": " + chosen_name + " (Score: " + str(int(best_attack_score)) + ") wins over:")
+		for entry in attack_score_log:
+			if entry["name"] != chosen_name:
+				print("  - " + entry["name"] + " (Score: " + str(int(entry["score"])) + ")")
 
 	SoundManagerScript.play_sfx(SoundManagerScript.SFX_attack_sound)
 	await main.show_message("Opponent's " + main.opponent_active_pokemon.metadata["name"].to_upper() + " used " + chosen_name.to_upper() + "!")
@@ -3846,7 +3858,18 @@ func cpu_phase_bench_play() -> void:
 				best_card = card
 
 		# Stop if no basic pokemon in hand or best doesn't meet threshold
-		if best_card == null or best_score <= score_threshold:
+		if best_card == null:
+			var has_any_basic = false
+			for card in main.opponent_hand:
+				if main.is_basic_pokemon(card):
+					has_any_basic = true
+					break
+			if has_any_basic:
+				print("CPU: Not benching a Pokémon — bench is at " + str(current_bench_count) + "/5, but every Basic in hand scored below the threshold (" + str(score_threshold) + ")")
+			# else: no Basics in hand at all, nothing to say
+			break
+		if best_score <= score_threshold:
+			print("CPU: Not benching " + best_card.metadata["name"] + " (Score: " + str(int(best_score)) + ") — below the threshold (" + str(score_threshold) + ") needed to justify a " + str(current_bench_count) + "-Pokémon bench")
 			break
 
 		# Play the pokemon onto the bench
@@ -3908,23 +3931,37 @@ func cpu_phase_bench_play() -> void:
 # R.5: Selects the best bench replacement and performs the retreat
 func cpu_phase_evolution() -> void:
 	if main.turn_number <= 2:
+		print("CPU: Not evolving — it's turn " + str(main.turn_number) + " (neither player may evolve on their first turn of the game)")
 		return
-	
+
 	# Check Aerodactyl's Prehistoric Power
 	if main.powers_and_bodies.is_prehistoric_power_active():
 		print("CPU: Evolution blocked by Prehistoric Power")
 		return
 
+	var evolution_pass = 0
 	while true:
+		evolution_pass += 1
 		# Build list of all valid (evo_card, target) pairs and score them
 		var scored_pairs = []
+		var evo_cards_in_hand = []
 		for card in main.opponent_hand:
+			if card.metadata.get("supertype", "") == "Pokémon" and card.metadata.get("evolvesFrom", "") != "":
+				evo_cards_in_hand.append(card)
 			var valid_targets = main.get_valid_evolution_targets(card, true)
 			for target in valid_targets:
 				var result = evaluate_evolution_pair(card, target)
 				scored_pairs.append(result)
 
 		if scored_pairs.is_empty():
+			if evolution_pass == 1:
+				if evo_cards_in_hand.is_empty():
+					print("CPU: Not evolving — no evolution cards in hand")
+				else:
+					var names = []
+					for c in evo_cards_in_hand:
+						names.append(c.metadata.get("name", "?"))
+					print("CPU: Not evolving — holding " + str(names) + " but no Pokémon in play is a valid target (wrong pre-evolution, or the target was placed/evolved this turn)")
 			break
 
 		# Sort by score descending and pick the best pair
@@ -3932,6 +3969,9 @@ func cpu_phase_evolution() -> void:
 		var best = scored_pairs[0]
 
 		print("CPU evolving " + best["target"].metadata["name"] + " into " + best["evo_card"].metadata["name"] + " (Score: " + str(int(best["score"])) + ")")
+		if scored_pairs.size() > 1:
+			for alt in scored_pairs.slice(1):
+				print("  (passed on evolving " + alt["target"].metadata["name"] + " into " + alt["evo_card"].metadata["name"] + " this pass — lower score: " + str(int(alt["score"])) + ")")
 		for reason in best["reasons"]:
 			print("  - " + reason)
 
@@ -4896,9 +4936,11 @@ func cpu_phase_play_trainer_cards_priority() -> void:
 		# MATCH EFFECT: trainer_discard_cost — demand more value when each trainer costs cards
 		best_score += 10.0 * main.match_effects.trainer_discard_cost(true)
 
+		var trainer_scores = {}
 		for card in main.opponent_hand:
 			if not main.trainer_effects.is_trainer_card(card): continue
 			var score = cpu_score_trainer_card(card)
+			trainer_scores[card] = score
 			if score > best_score:
 				best_score = score
 				best_card = card
@@ -4907,16 +4949,21 @@ func cpu_phase_play_trainer_cards_priority() -> void:
 			# Validate the card can actually be played before committing
 			var validation_error = main.trainer_effects.validate_trainer_can_be_played(best_card, true)
 			if validation_error != "":
+				print("CPU: Would play " + best_card.metadata["name"] + " (Score: " + str(int(trainer_scores[best_card])) + ") but cannot — " + validation_error)
 				# Skip this card and continue looking
 				# Mark it so we don't try it again this loop
 				main.opponent_hand.erase(best_card)
 				main.opponent_hand.append(best_card)  # Move to end
 				break
+			print("CPU playing trainer card " + best_card.metadata["name"] + " (Score: " + str(int(trainer_scores[best_card])) + ")")
 			await main.trainer_effects.play_trainer_card(best_card, true)
 			if main._should_bail(): return
 			if main.opponent_turn_force_end:
 				return  # turn was force-ended by a trainer card; let the orchestrator wrap up
 			played = true
+		elif not trainer_scores.is_empty():
+			for card in trainer_scores:
+				print("CPU: Not playing " + card.metadata["name"] + " (Score: " + str(int(trainer_scores[card])) + ") — below the threshold (" + str(int(best_score)) + ") to be worth using this turn")
 
 # CPU re-evaluates and plays remaining trainer cards
 func cpu_phase_play_trainer_cards_remaining() -> void:
@@ -4942,7 +4989,9 @@ func cpu_phase_play_trainer_cards_remaining() -> void:
 			# Validate the card can actually be played before committing
 			var validation_error = main.trainer_effects.validate_trainer_can_be_played(best_card, true)
 			if validation_error != "":
+				print("CPU: Would play " + best_card.metadata["name"] + " (Score: " + str(int(best_score)) + ") but cannot — " + validation_error)
 				break
+			print("CPU playing trainer card " + best_card.metadata["name"] + " (Score: " + str(int(best_score)) + ") [post-energy/retreat re-check]")
 			await main.trainer_effects.play_trainer_card(best_card, true)
 			if main._should_bail(): return
 			if main.opponent_turn_force_end:

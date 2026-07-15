@@ -6167,6 +6167,16 @@ func _input(event: InputEvent) -> void:
 			game_end_logic(false)   # player wins
 		elif event.keycode == KEY_0:
 			game_end_logic(true)    # player loses
+		elif event.keycode == KEY_D:
+			debug_key_both_draw()
+		elif event.keycode == KEY_S:
+			debug_key_both_shuffle_hand()
+		elif event.keycode == KEY_E:
+			debug_key_both_attach_energy()
+		elif event.keycode == KEY_H:
+			debug_key_heal_actives()
+		elif event.keycode == KEY_B:
+			debug_key_heal_bench()
 			
 	if event is InputEventMouseButton and event.pressed:
 		
@@ -6217,6 +6227,81 @@ func _input(event: InputEvent) -> void:
 			selected_card_for_action = null
 			update_action_button()
 
+
+# ── Dev debug cheat keys (in-match) ──────────────────────────────────────────────────────
+# D: both players draw 1 card.
+func debug_key_both_draw() -> void:
+	await show_message("BOTH DRAW 1 CARD")
+	if _should_bail(): return
+	await card_ops.draw_n(false, 1)
+	if _should_bail(): return
+	await card_ops.draw_n(true, 1)
+	if _should_bail(): return
+
+# S: both players shuffle their hand into their deck and draw back the same number of cards.
+func debug_key_both_shuffle_hand() -> void:
+	await show_message("BOTH SHUFFLE HAND BACK INTO DECK")
+	if _should_bail(): return
+	for is_opponent in [false, true]:
+		var hand = opponent_hand if is_opponent else player_hand
+		var deck = opponent_deck if is_opponent else player_deck
+		var n = hand.size()
+		for c in hand.duplicate():
+			c.current_location = "deck"
+			deck.append(c)
+		hand.clear()
+		deck.shuffle()
+		await card_ops.draw_n(is_opponent, n)
+		if _should_bail(): return
+
+# E: attach an energy card of each active Pokemon's own type to that Pokemon (searched from its owner's deck).
+func debug_key_both_attach_energy() -> void:
+	await show_message("ATTACHING AN ENERGY TO BOTH ACTIVE POKEMON")
+	if _should_bail(): return
+	for is_opponent in [false, true]:
+		var active = opponent_active_pokemon if is_opponent else player_active_pokemon
+		if active == null:
+			continue
+		var types = active.metadata.get("types", [])
+		if types.is_empty():
+			continue
+		var energy_type = types[0]
+		var deck = opponent_deck if is_opponent else player_deck
+		var pool = deck.filter(func(c): return c.metadata.get("supertype", "") == "Energy" and energy_type in get_energy_provided_by_card(c))
+		if pool.is_empty():
+			deck.shuffle()
+			continue
+		var e = pool[0]
+		deck.erase(e)
+		e.current_location = "attached"
+		active.attached_energies.append(e)
+		deck.shuffle()
+		display_active_pokemon_energies(is_opponent)
+		update_deck_icon(is_opponent)
+		await play_energy_attached_effect(active, e)
+		if _should_bail(): return
+
+# H: fully heal both active Pokemon.
+func debug_key_heal_actives() -> void:
+	await show_message("HEALING ALL ACTIVE POKEMON")
+	if _should_bail(): return
+	if player_active_pokemon != null:
+		await card_ops.heal_pokemon(player_active_pokemon, player_active_pokemon.get_max_hp(), false)
+		if _should_bail(): return
+	if opponent_active_pokemon != null:
+		await card_ops.heal_pokemon(opponent_active_pokemon, opponent_active_pokemon.get_max_hp(), true)
+		if _should_bail(): return
+
+# B: fully heal all benched Pokemon on both sides.
+func debug_key_heal_bench() -> void:
+	await show_message("HEALING ALL BENCH POKEMON")
+	if _should_bail(): return
+	for p in player_bench:
+		await card_ops.heal_pokemon(p, p.get_max_hp(), false)
+		if _should_bail(): return
+	for p in opponent_bench:
+		await card_ops.heal_pokemon(p, p.get_max_hp(), true)
+		if _should_bail(): return
 
 # Called when the node enters the scene tree for the first time.
 func _ready() -> void:
