@@ -629,7 +629,7 @@ func estimate_attack_damage_range(attack: Dictionary, attacker: card_object = nu
 						cost_count += 1
 				var extra = max(0, total - cost_count)
 				var cap = 99
-				if "after the" in text and "don't count" in text:
+				if "after the" in text and ("don't count" in text or "doesn't count" in text):
 					var after_pos = text.find("after the")
 					var after_text = text.substr(after_pos + 10, 10)
 					var cap_num = ""
@@ -639,7 +639,8 @@ func estimate_attack_damage_range(attack: Dictionary, attacker: card_object = nu
 						else:
 							break
 					if cap_num != "":
-						cap = max(0, int(cap_num) - cost_count)
+						cap = int(cap_num)
+						print("ISSUE base1-2 FIX ACTIVE (extra-energy damage cap): parsed cap=", cap, " from '", after_text, "' extra=", extra)
 				elif "can't add more than" in text and "damage in this way" in text:
 					var cap_dmg = extract_number_before(text, "damage in this way")
 					if cap_dmg > 0:
@@ -971,7 +972,7 @@ func resolve_attack_variable_damage(attack: Dictionary, attacker: card_object, d
 			# Parse the cap: "Extra Water Energy after the 2nd don't count"
 			# OR: "You can't add more than 20 damage in this way" (Lapras, Omanyte, Seadra, Omastar)
 			var cap = 99
-			if "after the" in text and "don't count" in text:
+			if "after the" in text and ("don't count" in text or "doesn't count" in text):
 				var after_pos = text.find("after the")
 				var after_text = text.substr(after_pos + 10, 10)
 				var cap_num = ""
@@ -981,8 +982,10 @@ func resolve_attack_variable_damage(attack: Dictionary, attacker: card_object, d
 					else:
 						break
 				if cap_num != "":
-					# Cap is the max total bonus-type that count, minus those used for cost
-					cap = max(0, int(cap_num) - used_for_cost)
+					# "after the 2nd" counts EXTRA energy (energy already excluded from the cost),
+					# so the parsed number IS the cap - do not subtract used_for_cost.
+					cap = int(cap_num)
+					print("ISSUE base1-2 FIX ACTIVE (resolver cap): cap=", cap, " extra=", extra_count, " used_for_cost=", used_for_cost)
 			elif "can't add more than" in text and "damage in this way" in text:
 				var cap_dmg = extract_number_before(text, "damage in this way")
 				if cap_dmg > 0:
@@ -1092,12 +1095,26 @@ func _choose_metronome_copy(attacker: card_object, defender: card_object, is_opp
 	if defender_attacks.is_empty():
 		return {}
 	var cpu_types = attacker.metadata.get("types", ["Colorless"])
+	# ISSUE #9 FIX ACTIVE: Metronome ignores Energy costs entirely (per its card text), so every
+	# one of the defender's attacks is always a legal copy — the pool is deliberately unfiltered.
+	# What was wrong was the ranking. score_parsed_effects is calibrated for picking among a
+	# Pokemon's OWN attacks turn after turn, where board control (force_switch, retreat_lock...)
+	# pays off later. A copy is a one-off the CPU can't build on, so raw damage is worth more here
+	# than a situational rider: Butterfree's Whirlwind (20 + a 25pt force_switch bonus = 45) was
+	# beating Mega Drain (40) despite doing half the damage. Weighting damage and crediting KOs
+	# the same way cpu_phase_attack does fixes the ordering.
 	var cpu_rank = func(atk: Dictionary) -> float:
 		var dmg_range = estimate_attack_damage_range(atk, attacker, defender)
-		var result = main.calculate_final_damage(dmg_range["max"], cpu_types, defender)
-		var score = float(result["damage"])
+		var min_result = main.calculate_final_damage(dmg_range["min"], cpu_types, defender)
+		var max_result = main.calculate_final_damage(dmg_range["max"], cpu_types, defender)
+		var score = float(max_result["damage"]) * 1.5
+		if int(min_result["damage"]) >= defender.current_hp:
+			score += 500.0
+		elif int(max_result["damage"]) >= defender.current_hp:
+			score += 200.0
 		var parsed = parse_card_text_effects(atk.get("text", ""), attacker.metadata.get("name", ""))
 		score += main.cpu_ai.score_parsed_effects(parsed, defender)
+		print("ISSUE #9 FIX ACTIVE (_choose_metronome_copy): ", atk.get("name", ""), " scores ", score)
 		return score
 	return await choose_attack_from_pool(defender_attacks, is_opponent, cpu_rank)
 
@@ -2090,6 +2107,11 @@ func apply_force_switch(effect: Dictionary, is_opponent_attacking: bool) -> void
 		# Target is the opponent (CPU)
 		if chooser == "attacker":
 			# Lure: PLAYER picks from opponent's bench
+			# ISSUE base2-33 FIX ACTIVE: let the damage label finish floating up before covering
+			# the screen with the selection array.
+			print("ISSUE base2-33 FIX ACTIVE (apply_force_switch/Lure): waiting 1s before showing bench array")
+			await main.get_tree().create_timer(1.0).timeout
+			if main._should_bail(): return
 			main.opponent_blocker.visible = false
 			main.forced_switch_selection_active = true
 			main.show_enlarged_array_selection_mode(main.opponent_bench)
@@ -2118,7 +2140,7 @@ func apply_force_switch(effect: Dictionary, is_opponent_attacking: bool) -> void
 			if main._should_bail(): return
 			
 			# Animate the swap
-			await main.animate_retreat(old_active, new_active, [], true)
+			await main.animate_retreat(old_active, new_active, [], true, true)
 			if main._should_bail(): return
 			
 			# Perform the swap
@@ -2149,6 +2171,11 @@ func apply_force_switch(effect: Dictionary, is_opponent_attacking: bool) -> void
 			new_active = worst_pokemon if worst_pokemon else main.player_bench[0]
 		else:
 			# Whirlwind: Player picks their own bench replacement
+			# ISSUE base2-33 FIX ACTIVE: let the damage label finish floating up before covering
+			# the screen with the selection array.
+			print("ISSUE base2-33 FIX ACTIVE (apply_force_switch/Whirlwind): waiting 1s before showing bench array")
+			await main.get_tree().create_timer(1.0).timeout
+			if main._should_bail(): return
 			main.opponent_blocker.visible = false
 			main.forced_switch_selection_active = true
 			main.show_enlarged_array_selection_mode(main.player_bench)
@@ -2170,7 +2197,7 @@ func apply_force_switch(effect: Dictionary, is_opponent_attacking: bool) -> void
 			await main.show_message("FORCED TO SWITCH TO " + new_active.metadata["name"].to_upper() + "!")
 			if main._should_bail(): return
 			
-			await main.animate_retreat(old_active, new_active, [], false)
+			await main.animate_retreat(old_active, new_active, [], false, true)
 			if main._should_bail(): return
 			
 			main.player_bench.erase(new_active)
@@ -2244,7 +2271,7 @@ func apply_self_switch(attacker: card_object, is_opponent_attacking: bool) -> vo
 	var old_active = attacker
 	await main.show_message(old_active.metadata["name"].to_upper() + " SWITCHED WITH " + new_active.metadata["name"].to_upper() + "!")
 	if main._should_bail(): return
-	await main.animate_retreat(old_active, new_active, [], is_opponent_attacking)
+	await main.animate_retreat(old_active, new_active, [], is_opponent_attacking, true)
 	if main._should_bail(): return
 	
 	bench.erase(new_active)
@@ -9308,7 +9335,7 @@ func _register_neo2_attacks() -> void:
 	_attack_dispatch["energy cycle"]    = func(atk, a, d, opp): await execute_neo2_energy_cycle(a, d, opp);                                     await _attack_finish(false, 0,  atk, a.metadata.get("types",["Colorless"]), opp)
 	_attack_dispatch["work together"]   = func(atk, a, d, opp): await execute_neo2_work_together(a, d, opp);                                    await _attack_finish(true,  10, atk, a.metadata.get("types",["Colorless"]), opp)
 	_attack_dispatch["burst"]           = func(atk, a, d, opp): await execute_neo2_burst(a, d, opp);                                            await _attack_finish(false, 0,  atk, a.metadata.get("types",["Colorless"]), opp)
-	_attack_dispatch["recover"]         = func(atk, a, d, opp): await execute_neo2_recover(a, opp);                                             await _attack_finish(false, 0,  atk, a.metadata.get("types",["Colorless"]), opp)
+	_attack_dispatch["recover"]         = func(atk, a, d, opp): await execute_neo2_recover(a, opp, atk);                                        await _attack_finish(false, 0,  atk, a.metadata.get("types",["Colorless"]), opp)
 	_attack_dispatch["plunder"]         = func(atk, a, d, opp): var b=parse_attack_base_damage(atk); await execute_neo2_plunder(a, d, opp, b);  await _attack_finish(true,  b,  atk, a.metadata.get("types",["Colorless"]), opp)
 	_attack_dispatch["headpress"]       = func(atk, a, d, opp): await execute_neo2_headpress(a, d, opp);                                        await _attack_finish(true,  30, atk, a.metadata.get("types",["Colorless"]), opp)
 	_attack_dispatch["pursuit"]         = func(atk, a, d, opp): var b=parse_attack_base_damage(atk); await execute_neo2_pursuit(a, d, opp, b);  await _attack_finish(true,  b,  atk, a.metadata.get("types",["Colorless"]), opp)
@@ -10027,21 +10054,30 @@ func execute_neo2_burst(attacker: card_object, defender: card_object, is_opponen
 	if main._should_bail(): return
 	print("ATTACK EXECUTED: Burst")
 
-# RECOVER (neo2-37 Corsola): discard 1 Water energy from self (or attack fails), then heal all damage
-func execute_neo2_recover(attacker: card_object, is_opponent: bool) -> void:
+# RECOVER (generic — neo2-37 Corsola, ecard2 Tentacool, base1 Starmie/Kadabra, etc.): discard 1
+# Energy of the type this attack actually costs (Corsola/Starmie/Tentacool need Water, but Kadabra
+# needs Psychic) from self (or attack fails), then heal all damage. Every "Recover"-named attack
+# shares this one dispatch entry keyed by lowercase attack name, so the discard type MUST come from
+# the attack's own cost — hardcoding Water here broke Kadabra's Recover (it has no Water Energy).
+func execute_neo2_recover(attacker: card_object, is_opponent: bool, atk: Dictionary = {}) -> void:
 	if await handle_attack_confusion(attacker, is_opponent): return
 	if await handle_attack_blind(attacker, is_opponent): return
-	var water_e: card_object = null
-	for e in attacker.attached_energies:
-		if "Water" in main.get_energy_provided_by_card(e):
-			water_e = e
+	var discard_type = "Water"
+	for c in atk.get("cost", []):
+		if c != "Colorless":
+			discard_type = c
 			break
-	if water_e == null:
-		await main.show_message("NO WATER ENERGY TO DISCARD! RECOVER FAILS!")
+	var energy_to_discard: card_object = null
+	for e in attacker.attached_energies:
+		if discard_type in main.get_energy_provided_by_card(e):
+			energy_to_discard = e
+			break
+	if energy_to_discard == null:
+		await main.show_message("NO " + discard_type.to_upper() + " ENERGY TO DISCARD! RECOVER FAILS!")
 		if main._should_bail(): return
 		return
-	attacker.attached_energies.erase(water_e)
-	main.card_ops.discard_energy_from_pokemon(water_e, is_opponent)
+	attacker.attached_energies.erase(energy_to_discard)
+	main.card_ops.discard_energy_from_pokemon(energy_to_discard, is_opponent)
 	main.display_active_pokemon_energies(is_opponent)
 	var max_hp = int(attacker.metadata.get("hp","0"))
 	attacker.current_hp = max_hp
@@ -14280,7 +14316,30 @@ func execute_copied_attack(attack: Dictionary, attacker: card_object, defender: 
 # the same mechanism the normal attack menu uses — so it looks and behaves consistently.
 # cpu_rank_fn(attack: Dictionary) -> float, higher = better; defaults to highest printed damage.
 # Returns {} if the pool is empty.
-func choose_attack_from_pool(pool: Array, is_opponent: bool, cpu_rank_fn: Callable = Callable()) -> Dictionary:
+# ISSUE #14 FIX ACTIVE: attacks that themselves copy another attack must never appear in a copy
+# pool. Clefairy's Metronome copying a mirror-match Clefairy's Metronome would recurse straight
+# back into this selection, so they are filtered out of the pool entirely rather than being shown
+# and then failing. Disable-style effects pass exclude_copy_attacks = false, since disabling an
+# opponent's Metronome is a legitimate (and often good) choice.
+const COPY_ATTACK_NAMES := [
+	"metronome", "super metronome", "mini-metronome", "copy", "mirror move", "esp", "random esp",
+	"skill copy", "delta copy", "mimicry", "skill hack", "genetic memory", "prehistoric memory",
+	"dark link", "rainbow moves", "psymimic", "mimic"
+]
+
+func is_copy_attack(attack: Dictionary) -> bool:
+	return attack.get("name", "").to_lower().strip_edges() in COPY_ATTACK_NAMES
+
+func choose_attack_from_pool(pool: Array, is_opponent: bool, cpu_rank_fn: Callable = Callable(), exclude_copy_attacks: bool = true) -> Dictionary:
+	if exclude_copy_attacks:
+		var filtered: Array = []
+		for atk in pool:
+			if is_copy_attack(atk):
+				print("ISSUE #14 FIX ACTIVE (choose_attack_from_pool): excluding copy attack '", atk.get("name", ""), "' from the pool")
+				continue
+			filtered.append(atk)
+		pool = filtered
+
 	if pool.is_empty():
 		return {}
 
@@ -14297,6 +14356,15 @@ func choose_attack_from_pool(pool: Array, is_opponent: bool, cpu_rank_fn: Callab
 	# Player: show the pool as a temporary button list in the attack-button container
 	main.special_attack_selection_active = true
 	main.buttons_only_blocker.visible = true
+	# ISSUE #3 FIX (Metronome regression) ACTIVE: opponent_blocker is a full-screen ColorRect with
+	# no cutout (unlike buttons_only_blocker, which excludes the button row). perform_attack() sets
+	# opponent_blocker.visible = true the moment the player's attack is chosen, so by the time an
+	# attack-copy effect (Metronome, Mirror Move, etc.) opens this button list, opponent_blocker is
+	# already covering the whole screen — including the very buttons buttons_only_blocker was meant
+	# to leave clickable. Hide it for the duration of the selection and restore it after.
+	var restore_opponent_blocker_pool = main.opponent_blocker.visible
+	main.opponent_blocker.visible = false
+	print("ISSUE #3 FIX ACTIVE (choose_attack_from_pool): opponent_blocker hidden for attack-copy button list, will restore to ", restore_opponent_blocker_pool)
 	for child in main.attack_buttons_container.get_children():
 		if child.name == "cancel_attack_mode_button":
 			continue
@@ -14328,6 +14396,8 @@ func choose_attack_from_pool(pool: Array, is_opponent: bool, cpu_rank_fn: Callab
 	main.main_buttons_container.visible = true
 	main.special_attack_selection_active = false
 	main.buttons_only_blocker.visible = false
+	main.opponent_blocker.visible = restore_opponent_blocker_pool
+	print("ISSUE #3 FIX ACTIVE (choose_attack_from_pool): opponent_blocker restored to ", restore_opponent_blocker_pool)
 	return chosen
 
 # Generic path for a copied attack with no dispatch entry: variable-damage resolution
@@ -15421,7 +15491,7 @@ func execute_ecard2_snatch(attacker: card_object, defender: card_object, is_oppo
 				main.player_active_pokemon = chosen
 			else:
 				main.opponent_active_pokemon = chosen
-			await main.animate_retreat(old_active, chosen, [], not is_opponent)
+			await main.animate_retreat(old_active, chosen, [], not is_opponent, true)
 			if main._should_bail(): return
 			main.clear_all_statuses(old_active, not is_opponent)
 			main.display_pokemon(not is_opponent)
@@ -15469,7 +15539,7 @@ func execute_ecard2_spiral_aura(attacker: card_object, defender: card_object, is
 		main.player_active_pokemon = chosen
 	else:
 		main.opponent_active_pokemon = chosen
-	await main.animate_retreat(old_active, chosen, [], not is_opponent)
+	await main.animate_retreat(old_active, chosen, [], not is_opponent, true)
 	if main._should_bail(): return
 	main.clear_all_statuses(old_active, not is_opponent)
 	main.display_pokemon(not is_opponent)
@@ -15500,7 +15570,7 @@ func execute_ecard2_sleep_inducer(attacker: card_object, is_opponent: bool) -> v
 		main.player_active_pokemon = chosen
 	else:
 		main.opponent_active_pokemon = chosen
-	await main.animate_retreat(old_active, chosen, [], not is_opponent)
+	await main.animate_retreat(old_active, chosen, [], not is_opponent, true)
 	if main._should_bail(): return
 	main.clear_all_statuses(old_active, not is_opponent)
 	main.card_ops.apply_status(chosen, "Asleep", not is_opponent)
@@ -15543,7 +15613,7 @@ func execute_ecard2_paint_trick(attacker: card_object, defender: card_object, is
 		main.opponent_active_pokemon = chosen
 	else:
 		main.player_active_pokemon = chosen
-	await main.animate_retreat(attacker, chosen, [], is_opponent)
+	await main.animate_retreat(attacker, chosen, [], is_opponent, true)
 	if main._should_bail(): return
 	main.clear_all_statuses(attacker, is_opponent)
 	main.display_pokemon(is_opponent)
@@ -15585,7 +15655,7 @@ func execute_ecard2_triple_spin(attacker: card_object, defender: card_object, is
 					main.opponent_active_pokemon = chosen
 				else:
 					main.player_active_pokemon = chosen
-				await main.animate_retreat(attacker, chosen, [], is_opponent)
+				await main.animate_retreat(attacker, chosen, [], is_opponent, true)
 				if main._should_bail(): return
 				main.clear_all_statuses(attacker, is_opponent)
 				main.display_pokemon(is_opponent)
@@ -20168,7 +20238,7 @@ func _ex4_swap_to_active(new_active: card_object, def_is_opp: bool) -> void:
 	if new_active == null or old_active == null: return
 	await main.show_message("SWITCHED IN " + new_active.metadata.get("name","").to_upper() + "!")
 	if main._should_bail(): return
-	await main.animate_retreat(old_active, new_active, [], def_is_opp)
+	await main.animate_retreat(old_active, new_active, [], def_is_opp, true)
 	if main._should_bail(): return
 	bench.erase(new_active)
 	bench.append(old_active)
@@ -26362,7 +26432,8 @@ func execute_ex11_disable(attacker: card_object, defender: card_object, is_oppon
 	var atks = main.get_attacks_for_card(defender)
 	if atks.is_empty(): return
 	var cpu_rank = func(a2): return float(parse_attack_base_damage(a2))
-	var chosen = await choose_attack_from_pool(atks, is_opponent, cpu_rank)
+	# Disable isn't a copy — every attack stays selectable, including copy attacks (see ISSUE #14).
+	var chosen = await choose_attack_from_pool(atks, is_opponent, cpu_rank, false)
 	if chosen == null or chosen.is_empty(): return
 	defender.disabled_attacks[chosen.get("name","")] = "skip_one_turn"
 	await main.show_message(defender.metadata.get("name","").to_upper() + "'S " + chosen.get("name","").to_upper() + " IS DISABLED NEXT TURN!")

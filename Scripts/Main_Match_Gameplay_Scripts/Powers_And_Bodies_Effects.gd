@@ -1215,7 +1215,7 @@ func power_step_in(dragonite: card_object) -> void:
 	await main.show_message("STEP IN: DRAGONITE SWITCHES IN!")
 	if main._should_bail(): return
 	
-	await main.animate_retreat(old_active, dragonite, [], false)
+	await main.animate_retreat(old_active, dragonite, [], false, true)
 	if main._should_bail(): return
 	
 	main.player_bench.erase(dragonite)
@@ -1629,7 +1629,7 @@ func cpu_phase_activate_powers() -> void:
 		if main._should_bail(): return
 
 	# neo3-61 Healing Field: CPU uses if its Active pokemon has damage
-	if main.trainer_effects.neo3_healing_field_active():
+	if main.trainer_effects.neo3_healing_field_active(true):
 		if main.opponent_active_pokemon != null and main.opponent_active_pokemon.current_hp < main.opponent_active_pokemon.get_max_hp():
 			await main.trainer_effects.neo3_healing_field_activate(true)
 			if main._should_bail(): return
@@ -1801,7 +1801,40 @@ func cpu_phase_activate_powers() -> void:
 			main.refresh_hand_display(true)
 			main.display_active_pokemon_energies(true)
 			keep_going = true
-	
+
+		# Second pass: Rain Dance can attach unlimited Water Energy per turn, but the loop above
+		# only fills genuine unmet attack costs and then stops. Attacks like Blastoise's Hydro Pump
+		# ("10 more damage for each Water Energy attached... after the 2 needed to attack") keep
+		# scaling with extra Water Energy — without this, Rain Dance rarely used more than 1-2 of
+		# its Water Energy a turn even with plenty left in hand.
+		keep_going = true
+		while keep_going:
+			keep_going = false
+			var water_energy2: card_object = null
+			for card in main.opponent_hand:
+				if card.metadata.get("supertype", "").to_lower() == "energy" and "Water" in card.metadata.get("name", ""):
+					water_energy2 = card
+					break
+			if water_energy2 == null:
+				break
+			var stack_target: card_object = null
+			var all_pokemon2 = main.cpu_ai.get_all_cpu_field_pokemon()
+			for p in all_pokemon2:
+				if "Water" not in p.metadata.get("types", []):
+					continue
+				if _water_pokemon_has_stacking_room(p):
+					stack_target = p
+					break
+			if stack_target == null:
+				break
+			main.opponent_hand.erase(water_energy2)
+			stack_target.attached_energies.append(water_energy2)
+			await main.show_message("Rain Dance: Attached extra Water Energy to " + stack_target.metadata.get("name", "") + "!")
+			if main._should_bail(): return
+			main.refresh_hand_display(true)
+			main.display_active_pokemon_energies(true)
+			keep_going = true
+
 	# Energy Trans: consolidate Grass Energy to the pokemon that needs it most
 	var venusaur = _find_cpu_pokemon_with_power("Energy Trans")
 	if venusaur != null and not is_power_blocked_by_status(venusaur) and not toxic_gas:
@@ -1871,27 +1904,17 @@ func cpu_phase_activate_powers() -> void:
 				if main._should_bail(): return
 	
 	
-	# Damage Swap: move damage off active to bench with most buffer
+	# Damage Swap (Alakazam): shuffle damage counters to dodge incoming knockouts.
 	var alakazam = _find_cpu_pokemon_with_power("Damage Swap")
-	if alakazam != null and not is_power_blocked_by_status(alakazam) and not toxic_gas:
-		var active = main.opponent_active_pokemon
-		if active != null:
-			var active_damage = int(active.metadata.get("hp", "0")) - active.current_hp
-			while active_damage >= 10:
-				# Find bench pokemon with most HP buffer
-				var best_buffer: card_object = null
-				var best_hp = 0
-				for bp in main.opponent_bench:
-					var buffer = bp.current_hp - 10
-					if buffer > best_hp:
-						best_hp = buffer
-						best_buffer = bp
-				if best_buffer == null or best_hp <= 0:
-					break
-				active.current_hp += 10
-				best_buffer.current_hp -= 10
-				active_damage -= 10
-			main.display_hp_circles_above_align(main.opponent_active_pokemon, true)
+	if alakazam == null:
+		pass
+	elif toxic_gas:
+		print("ISSUE base1-1 FIX ACTIVE: Damage Swap skipped — all powers are blocked this match/turn")
+	elif is_power_blocked_by_status(alakazam):
+		print("ISSUE base1-1 FIX ACTIVE: Damage Swap skipped — Alakazam is ", alakazam.special_condition)
+	else:
+		await cpu_damage_swap(alakazam)
+		if main._should_bail(): return
 	
 	# Buzzap (Electrode): KO Electrode to become 2 energy of chosen type on another pokemon
 	# CPU uses Buzzap when: another pokemon is 2+ energy short of attacking, Electrode is on bench,
@@ -2264,6 +2287,91 @@ func cpu_phase_activate_powers() -> void:
 	if main._should_bail(): return
 
 
+# ── CPU DAMAGE SWAP (base1-1 Alakazam) ───────────────────────────────────────
+# Moves damage counters off whichever CPU Pokemon is about to be Knocked Out and onto the one with
+# the most HP to spare. A counter may never Knock Out the Pokemon receiving it, so a destination
+# needs more than 10 HP left. The Active is protected first (that's what the player is attacking),
+# then any benched Pokemon a bench-damaging attack could finish off.
+func cpu_damage_swap(alakazam: card_object) -> void:
+	var moved := 0
+	var active = main.opponent_active_pokemon
+
+	if active != null:
+		var incoming = _estimate_incoming_damage_to_cpu_active()
+		print("ISSUE base1-1 FIX ACTIVE: Damage Swap — active ", active.metadata.get("name", ""),
+			" hp=", active.current_hp, "/", active.get_max_hp(), " incoming=", incoming)
+		# Move counters until the Active survives the player's best attack (or we run out of room)
+		while active.current_hp <= incoming and active.current_hp < active.get_max_hp():
+			var dest = _damage_swap_best_destination(active)
+			if dest == null:
+				print("ISSUE base1-1 FIX ACTIVE: Damage Swap — no benched Pokemon can take another counter")
+				break
+			active.current_hp += 10
+			dest.current_hp -= 10
+			moved += 1
+
+	# A benched Pokemon 2 counters from death is worth protecting if the player can hit the bench
+	if _player_can_damage_cpu_bench():
+		for bp in main.opponent_bench:
+			while bp.current_hp <= 20 and bp.current_hp < bp.get_max_hp():
+				var bench_dest = _damage_swap_best_destination(bp)
+				if bench_dest == null:
+					break
+				bp.current_hp += 10
+				bench_dest.current_hp -= 10
+				moved += 1
+
+	if moved > 0:
+		main.display_hp_circles_above_align(main.opponent_active_pokemon, true)
+		main.display_pokemon(true)
+		var counters = "1 DAMAGE COUNTER" if moved == 1 else str(moved) + " DAMAGE COUNTERS"
+		await main.show_message("ALAKAZAM'S DAMAGE SWAP: MOVED " + counters + "!")
+		if main._should_bail(): return
+	else:
+		print("ISSUE base1-1 FIX ACTIVE: Damage Swap — nothing worth moving this turn")
+
+# The biggest hit the player's Active could land on the CPU's Active right now, counting attacks
+# that are 1 Energy short (the player attaches one Energy per turn, so those are live next turn).
+func _estimate_incoming_damage_to_cpu_active() -> int:
+	var attacker = main.player_active_pokemon
+	var target = main.opponent_active_pokemon
+	if attacker == null or target == null:
+		return 0
+	var attacker_types = attacker.metadata.get("types", ["Colorless"])
+	var worst := 0
+	for attack in attacker.metadata.get("attacks", []):
+		if main.cpu_ai.get_unmet_energy_count(attack, attacker) > 1:
+			continue
+		var damage_range = main.attack_effects.estimate_attack_damage_range(attack, attacker, target)
+		var result = main.calculate_final_damage(damage_range["max"], attacker_types, target)
+		worst = max(worst, int(result["damage"]))
+	return worst
+
+# True if any player attack that's ready (or 1 Energy away) reaches the CPU's Bench.
+func _player_can_damage_cpu_bench() -> bool:
+	var attacker = main.player_active_pokemon
+	if attacker == null:
+		return false
+	for attack in attacker.metadata.get("attacks", []):
+		if main.cpu_ai.get_unmet_energy_count(attack, attacker) > 1:
+			continue
+		var text = attack.get("text", "").to_lower()
+		if "benched" in text and "damage to" in text:
+			return true
+	return false
+
+# The CPU Pokemon best able to absorb one more damage counter without being Knocked Out.
+func _damage_swap_best_destination(exclude: card_object) -> card_object:
+	var best: card_object = null
+	for p in main.cpu_ai.get_all_cpu_field_pokemon():
+		if p == exclude or p == main.opponent_active_pokemon:
+			continue
+		if p.current_hp <= 10:
+			continue
+		if best == null or p.current_hp > best.current_hp:
+			best = p
+	return best
+
 # Helper to find a CPU pokemon with a specific power name
 
 func _find_cpu_pokemon_with_power(power_name: String) -> card_object:
@@ -2273,6 +2381,44 @@ func _find_cpu_pokemon_with_power(power_name: String) -> card_object:
 			if ability.get("name", "") == power_name:
 				return p
 	return null
+
+# True if this Pokemon has an attack that keeps scaling with extra Water Energy beyond its cost
+# (e.g. Blastoise's Hydro Pump: "10 more damage for each Water Energy attached to Blastoise after
+# the 2 Water Energy needed to attack. You can't add more than 3 Water Energy in this way."),
+# and hasn't hit that attack's stated cap yet. Used by the CPU's Rain Dance power to keep spending
+# Water Energy after every attack's bare minimum cost is already met.
+func _water_pokemon_has_stacking_room(p: card_object) -> bool:
+	for attack in p.metadata.get("attacks", []):
+		var atk_text = attack.get("text", "").to_lower()
+		if "more damage for each" not in atk_text or "not used to pay" not in atk_text:
+			continue
+		if "water energy attached" not in atk_text:
+			continue
+		var needed_for_cost = 0
+		for c in attack.get("cost", []):
+			if c == "Water":
+				needed_for_cost += 1
+		var current_of_type = 0
+		for e in p.attached_energies:
+			if "Water" in main.get_energy_provided_by_card(e):
+				current_of_type += 1
+		var extra = max(0, current_of_type - needed_for_cost)
+		var cap = 99
+		if "after the" in atk_text and ("don't count" in atk_text or "doesn't count" in atk_text):
+			var after_pos = atk_text.find("after the")
+			var after_text = atk_text.substr(after_pos + 10, 10)
+			var cap_num = ""
+			for ch in after_text:
+				if ch.is_valid_int():
+					cap_num += ch
+				else:
+					break
+			if cap_num != "":
+				cap = int(cap_num)
+				print("ISSUE base1-2 FIX ACTIVE (_water_pokemon_has_stacking_room): ", p.metadata.get("name", ""), " cap=", cap, " extra=", extra)
+		if extra < cap:
+			return true
+	return false
 
 # Helper to find a CPU bench pokemon with a specific power name
 func _find_cpu_bench_pokemon_with_power(power_name: String) -> card_object:
@@ -7603,7 +7749,7 @@ func power_ecard1_major_tsunami(feraligatr: card_object) -> void:
 				main.opponent_active_pokemon = new_opp_active
 			else:
 				main.player_active_pokemon = new_opp_active
-			await main.animate_retreat(opp_active, new_opp_active, [], opp_target_is_opp)
+			await main.animate_retreat(opp_active, new_opp_active, [], opp_target_is_opp, true)
 			if main._should_bail(): return
 			main.clear_all_statuses(opp_active, opp_target_is_opp)
 			main.display_pokemon(opp_target_is_opp)
@@ -7627,7 +7773,7 @@ func power_ecard1_major_tsunami(feraligatr: card_object) -> void:
 				main.opponent_active_pokemon = new_own_active
 			else:
 				main.player_active_pokemon = new_own_active
-			await main.animate_retreat(feraligatr, new_own_active, [], is_opponent)
+			await main.animate_retreat(feraligatr, new_own_active, [], is_opponent, true)
 			if main._should_bail(): return
 			main.clear_all_statuses(feraligatr, is_opponent)
 			main.display_pokemon(is_opponent)
@@ -7743,7 +7889,7 @@ func power_ecard1_plunge(poliwrath: card_object) -> void:
 		main.opponent_active_pokemon = poliwrath
 	else:
 		main.player_active_pokemon = poliwrath
-	await main.animate_retreat(active, poliwrath, [], is_opponent)
+	await main.animate_retreat(active, poliwrath, [], is_opponent, true)
 	if main._should_bail(): return
 	main.clear_all_statuses(active, is_opponent)
 	main.display_pokemon(is_opponent)
@@ -8888,7 +9034,7 @@ func power_ecard2_fragrance_trap(victreebel: card_object) -> void:
 		main.player_active_pokemon = chosen
 	else:
 		main.opponent_active_pokemon = chosen
-	await main.animate_retreat(opp_active, chosen, [], not is_opponent)
+	await main.animate_retreat(opp_active, chosen, [], not is_opponent, true)
 	if main._should_bail(): return
 	main.clear_all_statuses(opp_active, not is_opponent)
 	main.display_pokemon(not is_opponent)

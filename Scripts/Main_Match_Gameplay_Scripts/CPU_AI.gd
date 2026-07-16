@@ -114,6 +114,23 @@ func cpu_turn_orchestrator() -> void:
 	await cpu_phase_bench_play()
 	if main._should_bail(): return
 
+	# Phase 3b: Re-check Pokemon Powers now that evolutions and bench plays have resolved.
+	# ISSUE base1-2 FIX ACTIVE: Phase 0 runs before Phase 2/3, so a Pokemon that only reached the
+	# field this turn (e.g. Wartortle evolving into Blastoise) had its power skipped entirely until
+	# the following turn. Every power that is once-per-turn guards itself with power_used_this_turn
+	# (and the stadiums with their own *_used_this_turn flags), so re-running the phase only picks
+	# up powers that genuinely became available after the new Pokemon hit the board.
+	print("ISSUE base1-2 FIX ACTIVE: re-checking CPU powers after evolution/bench plays")
+	await main.powers_and_bodies.cpu_phase_activate_powers()
+	if main._should_bail(): return
+	if main.opponent_turn_force_end:
+		main.opponent_turn_force_end = false
+		await get_tree().create_timer(0.5).timeout
+		await main.show_message("Your opponent ends their turn")
+		if main._should_bail(): return
+		await main.inbetween_turn_checks(false)
+		return
+
 	if main._should_bail():
 		return
 	# Phase 4: Build evaluation AFTER all board-altering plays have resolved
@@ -166,6 +183,21 @@ func cpu_turn_orchestrator() -> void:
 		if main._should_bail(): return
 		await main.inbetween_turn_checks(false)
 		return
+
+	# Phase 7c: Final power re-check. Trainers (Rare Candy, Pokemon Breeder) and energy attachment
+	# can each unlock a power that wasn't usable earlier in the turn — see ISSUE base1-2.
+	print("ISSUE base1-2 FIX ACTIVE: final CPU power re-check before attack")
+	await main.powers_and_bodies.cpu_phase_activate_powers()
+	if main._should_bail(): return
+	if main.opponent_turn_force_end:
+		main.opponent_turn_force_end = false
+		await get_tree().create_timer(0.5).timeout
+		await main.show_message("Your opponent ends their turn")
+		if main._should_bail(): return
+		await main.inbetween_turn_checks(false)
+		return
+	invalidate_cpu_evaluation()
+	cpu_eval = get_cpu_evaluation()
 
 	if main._should_bail():
 		return
@@ -592,7 +624,11 @@ func evaluate_opponents_start_setup_pokemon_choices(basic_pokemon: card_object, 
 	var criterion_5 = criterion_5_attack_damage(basic_pokemon)
 	total_score += criterion_5.get("score_change", 0)
 	score_breakdown.append(criterion_5.get("reason", ""))
-	
+
+	var criterion_6 = criterion_6_bench_duplicate(basic_pokemon, hand)
+	total_score += criterion_6.get("score_change", 0)
+	score_breakdown.append(criterion_6.get("reason", ""))
+
 	return {
 		"pokemon_name": basic_pokemon.metadata.get("name", "Unknown"),
 		"total_score": total_score,
@@ -824,11 +860,77 @@ func criterion_5_attack_damage(basic_pokemon: card_object) -> Dictionary:
 			reason_parts.append("highest damage efficiency " + str(max_damage) + "/" + str(max_cost) + " energy (+" + str(efficiency_bonus) + " points)")
 	
 	var reason = "Damage: " + ", ".join(reason_parts)
-	
+
 	return {
 		"score_change": score_bonus,
 		"reason": reason
-	}	
+	}
+
+# PRIORITY CRITERION #6: Penalise benching a Pokémon that already has copies on the Bench
+# (dead weight — duplicate Pokémon can't all attack), unless a synergy effect on the field
+# benefits from stacking that species (e.g. Nidoqueen's "20 more damage for each Nidoking
+# you have in play", Magnemite-line Bench-count attacks, delta-species-count attacks).
+# -75 per existing copy on the Bench, flipped to +75 per copy if synergy is detected.
+func criterion_6_bench_duplicate(basic_pokemon: card_object, hand: Array) -> Dictionary:
+	var name = basic_pokemon.metadata.get("name", "")
+	var duplicate_count = 0
+	for card in main.opponent_bench:
+		if card.metadata.get("name", "") == name:
+			duplicate_count += 1
+
+	if duplicate_count == 0:
+		return {"score_change": 0, "reason": "No duplicates of " + name + " already on Bench (+0)"}
+
+	var magnitude = 75.0 * duplicate_count
+
+	if has_species_stacking_synergy(basic_pokemon, hand):
+		return {
+			"score_change": magnitude,
+			"reason": "Already have " + str(duplicate_count) + " " + name + " on Bench, and a field effect benefits from the stack (+" + str(magnitude) + " points)"
+		}
+
+	return {
+		"score_change": -magnitude,
+		"reason": "Already have " + str(duplicate_count) + " " + name + " on Bench (-" + str(magnitude) + " points)"
+	}
+
+# Checks hand + bench + active for any attack/ability text that scales off how many
+# copies of this Pokémon's species (by name), or of delta-species Pokémon in general,
+# are in play — e.g. "for each Nidoking you have in play", "for each Magnemite ... on
+# your Bench", "for each Pokémon you have in play that has δ on its card".
+func has_species_stacking_synergy(basic_pokemon: card_object, hand: Array) -> bool:
+	var raw_name = basic_pokemon.metadata.get("name", "")
+	var is_delta = "δ" in raw_name
+	var name = raw_name.replace(" δ", "").replace("δ", "").strip_edges()
+
+	var cards_to_check = []
+	cards_to_check.append_array(hand)
+	cards_to_check.append_array(main.opponent_bench)
+	if main.opponent_active_pokemon != null:
+		cards_to_check.append(main.opponent_active_pokemon)
+
+	for card in cards_to_check:
+		var texts = []
+		for attack in card.metadata.get("attacks", []):
+			texts.append(str(attack.get("text", "")))
+		for ability in card.metadata.get("abilities", []):
+			texts.append(str(ability.get("text", "")))
+
+		for text in texts:
+			if text == "":
+				continue
+			var lower_text = text.to_lower()
+
+			if is_delta and "has δ on its card" in text:
+				return true
+
+			if name != "" and name in text:
+				var counts_stack = "for each" in lower_text or "you have in play" in lower_text or "on your bench" in lower_text
+				var scales_effect = "more damage" in lower_text or "less damage" in lower_text or "less to retreat" in lower_text
+				if counts_stack and scales_effect:
+					return true
+
+	return false
 
 # Helper function to check attack text for negative self-inflicted effects
 # Only penalizes exact patterns where energy is discarded from the attacking pokemon
@@ -1272,16 +1374,41 @@ func execute_cpu_retreat(cpu_eval: Dictionary) -> void:
 
 # CPU automatically picks a random prize card and moves it to hand
 func pick_best_bench_replacement(bench: Array, against_pokemon: card_object, cpu_eval: Dictionary) -> card_object:
+	# ISSUE #8 FIX ACTIVE: don't retreat into another guaranteed KO when a survivable bench
+	# option exists. score_bench_as_replacement() only ever gave a soft +100 survivability bonus,
+	# so a guaranteed-KO'd attacker could still outscore a survivable one and get picked, wasting
+	# the retreat cost. If at least one bench Pokemon would NOT be guaranteed KO'd by the
+	# opposing active's best usable attack, guaranteed-KO candidates are excluded outright.
+	var candidates = bench
+	if against_pokemon != null:
+		var survivors = bench.filter(func(p): return not _is_guaranteed_ko_by(p, against_pokemon))
+		if not survivors.is_empty() and survivors.size() < bench.size():
+			print("ISSUE #8 FIX ACTIVE (pick_best_bench_replacement): excluding ", bench.size() - survivors.size(), " guaranteed-KO bench candidate(s) from replacement consideration")
+			candidates = survivors
+
 	var best_replacement: card_object = null
 	var best_score: float = -999.0
 
-	for bench_pokemon in bench:
+	for bench_pokemon in candidates:
 		var score = score_bench_as_replacement(bench_pokemon, against_pokemon, cpu_eval)
 		if score > best_score:
 			best_score = score
 			best_replacement = bench_pokemon
 
 	return best_replacement
+
+# True if against_pokemon has a currently-usable attack whose MINIMUM damage would knock out
+# target_pokemon outright (i.e. the KO is guaranteed, not just possible on a good roll).
+func _is_guaranteed_ko_by(target_pokemon: card_object, against_pokemon: card_object) -> bool:
+	var enemy_types = against_pokemon.metadata.get("types", ["Colorless"])
+	for attack in against_pokemon.metadata.get("attacks", []):
+		if get_unmet_energy_count(attack, against_pokemon) > 0:
+			continue
+		var damage_range = main.attack_effects.estimate_attack_damage_range(attack, against_pokemon, target_pokemon)
+		var result = main.calculate_final_damage(damage_range["min"], enemy_types, target_pokemon)
+		if result["damage"] >= target_pokemon.current_hp:
+			return true
+	return false
 
 # Scores a single bench pokemon as a potential active replacement considering attacks, survivability, and type matchups
 func score_bench_as_replacement(bench_pokemon: card_object, against_pokemon: card_object, cpu_eval: Dictionary) -> float:
@@ -1439,7 +1566,11 @@ func cpu_phase_energy_attachment(cpu_eval: Dictionary) -> void:
 	main.opponent_energy_attach_count += 1
 	main.opponent_energy_played_this_turn = main.opponent_energy_attach_count >= main.match_effects.energy_attach_limit(true)
 
-	await main.show_message("Opponent attached " + energy.metadata["name"].to_upper() + " to " + target.metadata["name"].to_upper() + "!")
+	# ISSUE #6 FIX ACTIVE: every CPU action follows the same three beats — announce what the
+	# opponent is ABOUT to do, play the animation, then snap the board to the new state. This
+	# matches how evolving already reads, so the whole turn narrates consistently.
+	print("ISSUE #6 FIX ACTIVE (cpu energy attach): message, then animation, then board update")
+	await main.show_message("Opponent attached " + energy.metadata["name"].to_upper() + " to their " + target.metadata["name"].to_upper() + "!")
 	if main._should_bail(): return
 
 	var energy_target_node = main.opponent_energy_container if target == main.opponent_active_pokemon else main.opponent_bench_container
@@ -1589,7 +1720,7 @@ func score_energy_pair(pokemon: card_object, energy_card: card_object, cpu_eval:
 					var extra = max(0, current_of_type - needed_for_cost)
 					# Parse cap
 					var cap = 99
-					if "after the" in atk_text and "don't count" in atk_text:
+					if "after the" in atk_text and ("don't count" in atk_text or "doesn't count" in atk_text):
 						var after_pos = atk_text.find("after the")
 						var after_text = atk_text.substr(after_pos + 10, 10)
 						var cap_num = ""
@@ -2023,6 +2154,15 @@ func resolve_energy_tiebreak(scored_pairs: Array, cpu_eval: Dictionary) -> Dicti
 	return tied[0]
 
 # Scores the value of parsed attack effects for CPU attack selection
+# True if the defender's own abilities/body text grants outright poison immunity
+# (e.g. "can't be Poisoned"). Used by the ISSUE #11 guaranteed-poison damage credit.
+func _defender_prevents_poison(defender: card_object) -> bool:
+	for ability in defender.metadata.get("abilities", []):
+		var t = ability.get("text", "").to_lower()
+		if "can't be poisoned" in t or "cannot be poisoned" in t or "prevented from being poisoned" in t:
+			return true
+	return false
+
 func score_parsed_effects(effects: Array, defender: card_object) -> float:
 	var score = 0.0
 
@@ -2245,22 +2385,54 @@ func cpu_phase_attack(cpu_eval: Dictionary) -> void:
 			print("CPU: Cannot use " + attack.get("name", "") + " — disabled this turn")
 			continue
 
+		# ISSUE #9 FIX ACTIVE: Metronome (and Super Metronome) print with no damage/effect text of
+		# their own, so every score contribution below that reads attack_text/damage_range always
+		# came out near-zero regardless of how good the copyable attack actually was — the CPU
+		# effectively never valued using it. Score it instead using whichever of the defending
+		# Pokemon's attacks it would actually copy (same selection the real copy effect uses).
+		var damage_source_attack = attack
+		if attack_name_lower in ["metronome", "super metronome"]:
+			var defender_attacks_for_copy = main.get_attacks_for_card(main.player_active_pokemon)
+			if not defender_attacks_for_copy.is_empty():
+				var copied_attack = await main.attack_effects._choose_metronome_copy(main.opponent_active_pokemon, main.player_active_pokemon, true)
+				if main._should_bail(): return
+				if not copied_attack.is_empty():
+					damage_source_attack = copied_attack
+					attack_text = copied_attack.get("text", "").to_lower()
+					print("ISSUE #9 FIX ACTIVE (cpu_phase_attack): scoring ", attack.get("name", ""), " using copyable attack ", copied_attack.get("name", ""))
+
 		var score = 0.0
-		var damage_range = main.attack_effects.estimate_attack_damage_range(attack, main.opponent_active_pokemon, main.player_active_pokemon)
+		var damage_range = main.attack_effects.estimate_attack_damage_range(damage_source_attack, main.opponent_active_pokemon, main.player_active_pokemon)
 		var min_result = main.calculate_final_damage(damage_range["min"], cpu_types, main.player_active_pokemon)
 		var max_result = main.calculate_final_damage(damage_range["max"], cpu_types, main.player_active_pokemon)
-		var parsed_effects = main.attack_effects.parse_card_text_effects(attack.get("text", ""), pokemon_name)
+		var parsed_effects = main.attack_effects.parse_card_text_effects(damage_source_attack.get("text", ""), pokemon_name)
+
+		# ISSUE #11 FIX ACTIVE: a guaranteed (no coin-flip) Poison inflict is realistically worth
+		# an extra +10 damage once poison ticks between turns, but that was never factored into
+		# the KO / base-damage scoring below — an attack like "0 damage, always Poisons" scored as
+		# if it did zero damage at all. Credit it only when the defender isn't already poisoned and
+		# has no textual poison immunity.
+		var guaranteed_poison_bonus = 0
+		for effect in parsed_effects:
+			if effect["type"] == "status" and effect["target"] == "defender" and effect.get("status", "") == "Poisoned" and effect.get("flip", "none") == "none":
+				if not main.player_active_pokemon.is_poisoned and not _defender_prevents_poison(main.player_active_pokemon):
+					guaranteed_poison_bonus = 10
+				break
+		if guaranteed_poison_bonus > 0:
+			print("ISSUE #11 FIX ACTIVE (cpu_phase_attack): crediting +", guaranteed_poison_bonus, " guaranteed poison damage for ", attack.get("name", ""))
+		var effective_min_damage = min_result["damage"] + guaranteed_poison_bonus
+		var effective_max_damage = max_result["damage"] + guaranteed_poison_bonus
 
 		# ---- GUARANTEED KO: Strongly prefer ----
-		if min_result["damage"] >= player_hp:
+		if effective_min_damage >= player_hp:
 			score += 500.0
-			score -= (min_result["damage"] - player_hp) * 0.5
+			score -= (effective_min_damage - player_hp) * 0.5
 		# ---- POTENTIAL KO: Variable damage might KO ----
-		elif max_result["damage"] >= player_hp:
+		elif effective_max_damage >= player_hp:
 			score += 200.0
-		
+
 		# ---- BASE DAMAGE CONTRIBUTION ----
-		score += min_result["damage"] * 2.0
+		score += effective_min_damage * 2.0
 
 		# ---- STATUS CONDITION SCORING (items 6-7) ----
 		var has_status_effect_only = false

@@ -18,8 +18,13 @@ var main: Node
 
 # Draw N cards from deck to hand one at a time, updating the hand display after each card.
 func draw_n(is_opponent: bool, count: int) -> void:
+	# ISSUE #10 FIX ACTIVE: scale each card's draw animation speed by how many are being drawn
+	# in this batch, so redrawing a full hand doesn't take as long as drawing that many cards
+	# individually would.
+	var speed_multiplier = main.draw_animation_speed_multiplier(count)
+	print("ISSUE #10 FIX ACTIVE (draw_n): count=", count, " speed_multiplier=", speed_multiplier)
 	for i in range(count):
-		await main.draw_card_from_deck(is_opponent)
+		await main.draw_card_from_deck(is_opponent, speed_multiplier)
 		if main._should_bail(): return
 		main.refresh_hand_display(is_opponent)
 	main.update_deck_icon(is_opponent)
@@ -426,13 +431,33 @@ func place_on_bench(pokemon: card_object, is_opponent: bool) -> bool:
 # Returns the chosen card_object (or null if cancelled). Pass search_mode=true when searching
 # a deck (sets trainer_deck_search_active instead of trainer_pokemon_selection_active).
 func prompt_select_card(pool: Array, header: String, hint: String, btn_text: String, cancelable: bool, search_mode: bool = false) -> card_object:
+	# opponent_blocker is only meant to be visible during the opponent's turn (see
+	# player_start_turn_checks/player_end_turn_checks). Remember its state instead of forcing it
+	# back on when the selection closes, otherwise using a power like Rain Dance or Metronome on
+	# the player's own turn leaves the blocker up afterward and the player can't click anything.
+	var restore_opponent_blocker = main.opponent_blocker.visible
 	main.opponent_blocker.visible = false
+	print("ISSUE #3 FIX ACTIVE (prompt_select_card): opponent_blocker hidden, will restore to ", restore_opponent_blocker)
 	if search_mode:
 		main.trainer_deck_search_active = true
 	else:
 		main.trainer_pokemon_selection_active = true
 	main.show_enlarged_array_selection_mode(pool)
 	main.cancel_button.visible = cancelable
+	# show_enlarged_array_selection_mode() always hides the cancel button for
+	# trainer_pokemon_selection_active/trainer_deck_search_active (it doesn't know this call
+	# wants an optional cancel), so it lays out action_button centered as if there were no
+	# cancel button. Re-run that layout now that cancel_button.visible reflects `cancelable`,
+	# otherwise the two buttons end up overlapping/misaligned (base1-2 Rain Dance bug).
+	if main.action_button.visible:
+		if main.cancel_button.visible:
+			main.action_button.offset_left = main.action_button_paired_offset_left
+			main.action_button.offset_right = main.action_button_paired_offset_right
+			main.cancel_button.offset_left = 35.0
+			main.cancel_button.offset_right = 473.0
+		else:
+			main.action_button.offset_left = main.action_button_default_offset_left
+			main.action_button.offset_right = main.action_button_default_offset_right
 	main.header_label.text = header
 	main.hint_label.text = hint
 	main.action_button.text = btn_text
@@ -445,7 +470,8 @@ func prompt_select_card(pool: Array, header: String, hint: String, btn_text: Str
 	else:
 		main.trainer_pokemon_selection_active = false
 	main.hide_selection_mode_display_main()
-	main.opponent_blocker.visible = true
+	main.opponent_blocker.visible = restore_opponent_blocker
+	print("ISSUE #3 FIX ACTIVE (prompt_select_card): opponent_blocker restored to ", restore_opponent_blocker)
 	return sel
 
 # ── Unified chooser ─────────────────────────────────────────────────────────────

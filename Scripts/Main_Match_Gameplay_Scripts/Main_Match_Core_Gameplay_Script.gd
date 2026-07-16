@@ -180,6 +180,12 @@ var player_underground_lake_used_this_turn: bool = false    # ecard3-141 Undergr
 var opponent_underground_lake_used_this_turn: bool = false
 var player_fuchsia_used_this_turn: bool = false      # gym2-114 Fuchsia City Gym — once-per-turn-per-player Koga shuffle
 var opponent_fuchsia_used_this_turn: bool = false
+var player_lucky_stadium_used_this_turn: bool = false     # basep-41 Lucky Stadium
+var opponent_lucky_stadium_used_this_turn: bool = false
+var player_saffron_used_this_turn: bool = false           # gym2-113 Saffron City Gym
+var opponent_saffron_used_this_turn: bool = false
+var player_healing_field_used_this_turn: bool = false     # neo3-61 Healing Field
+var opponent_healing_field_used_this_turn: bool = false
 
 # Stadium one-shot attack modifiers — gym1-120 Vermilion City Gym (Lt. Surge attacker coin flip)
 var vermilion_lt_surge_bonus_damage: int = 0          # +10 added by calculate_final_damage when set, cleared after read
@@ -1446,24 +1452,44 @@ func animate_energies_to_discard(energy_cards: Array, pokemon: card_object, is_o
 	# Update the discard pile visual to show the new top card
 	update_discard_pile_display(is_opponent)
 				
-# Animates the retreat sequence: energies to discard, message, then swap pokemon positions
-func animate_retreat(old_active: card_object, new_active: card_object, discarded_energies: Array, is_opponent: bool) -> void:
+# Animates a retreat or switch. Every path narrates in the same order: say what is about to
+# happen, play the animation, then let the caller snap the board to its new state.
+#
+# Voluntary retreats read as two beats — "X RETREATED TO THE BENCH!" up front, then
+# "...SET Y AS THEIR ACTIVE POKEMON!" once Y has physically arrived.
+#
+# Forced switches (Whirlwind, Warp Point, Switch, Gust of Wind, etc.) pass is_forced_switch and
+# get a single up-front line instead, because the swap is one involuntary event rather than a
+# retreat followed by a choice. Callers keep their own flavour messages ("HEADS! X SWITCHED IN!").
+func animate_retreat(old_active: card_object, new_active: card_object, discarded_energies: Array, is_opponent: bool, is_forced_switch: bool = false) -> void:
 	var active_container = opponent_active_container if is_opponent else player_active_container
 	var bench_container = opponent_bench_container if is_opponent else player_bench_container
-	
+	var switcher_label = "OPPONENT" if is_opponent else "PLAYER"
+
+	# ISSUE #6/#7 FIX ACTIVE: message BEFORE the animation, never after.
+	print("ISSUE #6/#7 FIX ACTIVE (animate_retreat): forced=", is_forced_switch, " is_opponent=", is_opponent)
+	if is_forced_switch:
+		await show_message(switcher_label + " WAS FORCED TO SWITCH OUT " + old_active.metadata["name"].to_upper() + "!")
+	else:
+		await show_message(old_active.metadata["name"].to_upper() + " RETREATED TO THE BENCH!")
+
 	if discarded_energies.size() > 0:
 		await animate_energies_to_discard(discarded_energies, old_active, is_opponent)
 		update_discard_pile_display(is_opponent)
-	
-	display_active_pokemon_energies(is_opponent)
-	
-	await show_message(old_active.metadata["name"].to_upper() + " RETREATED TO THE BENCH!")
-	
+		display_active_pokemon_energies(is_opponent)
+		await get_tree().create_timer(0.5).timeout
+	else:
+		display_active_pokemon_energies(is_opponent)
+
 	var old_texture = get_card_texture(old_active)
 	var new_texture = get_card_texture(new_active)
-	
+
+	# Both cards move at once so the swap reads as a single motion
 	animate_card_a_to_b(active_container, bench_container, 0.3, old_texture, card_scales[10])
 	await animate_card_a_to_b(bench_container, active_container, 0.3, new_texture, card_scales[10])
+
+	if not is_forced_switch:
+		await show_message(switcher_label + " SET " + new_active.metadata["name"].to_upper() + " AS THEIR ACTIVE POKEMON!")
 
 # Creates continuous sparkle particles around a given node, returns the node for manual cleanup
 func start_sparkle_effect(target_node: Control) -> CPUParticles2D:
@@ -2462,7 +2488,7 @@ func game_end_logic(loser_is_player: bool) -> void:
 	)
 
 # Draws one card from the top of the deck and adds it to the hand
-func draw_card_from_deck(is_opponent: bool) -> card_object:
+func draw_card_from_deck(is_opponent: bool, speed_multiplier: float = 1.0) -> card_object:
 	var deck = opponent_deck if is_opponent else player_deck
 	var hand = opponent_hand if is_opponent else player_hand
 	if deck.size() == 0:
@@ -2474,11 +2500,24 @@ func draw_card_from_deck(is_opponent: bool) -> card_object:
 	hand.append(drawn_card)
 
 	if is_opponent:
-		await animate_card_a_to_b(opponent_deck_icon, opponent_hand_container, 0.2, opponent_card_back_texture)
+		await animate_card_a_to_b(opponent_deck_icon, opponent_hand_container, 0.2 * speed_multiplier, opponent_card_back_texture)
 	else:
-		await animate_card_a_to_b(player_deck_icon, player_hand_container, 0.3, card_back_texture)
+		await animate_card_a_to_b(player_deck_icon, player_hand_container, 0.3 * speed_multiplier, card_back_texture)
 
 	return drawn_card
+
+# ISSUE #10 FIX ACTIVE: when several cards are drawn back-to-back (e.g. shuffling a hand back
+# into the deck and redrawing), each individual draw animation should get quicker so the whole
+# batch doesn't take forever — while a single draw still plays at full, normal speed.
+func draw_animation_speed_multiplier(total_cards: int) -> float:
+	match total_cards:
+		0, 1: return 1.0
+		2: return 0.8
+		3: return 0.6
+		4: return 0.5
+		5: return 0.44
+		6: return 0.4
+		_: return 0.3
 
 # Flips a coin with animation, blocks input, shows result message, returns true for heads.
 # flipper_is_opponent: when true, uses the opponent's coin texture for the heads face
@@ -2793,6 +2832,9 @@ func inbetween_turn_checks(player_turn_just_ended: bool = true) -> void:
 		player_ancient_ruins_used_this_turn = false
 		player_mystery_zone_used_this_turn = false
 		player_underground_lake_used_this_turn = false
+		player_lucky_stadium_used_this_turn = false
+		player_saffron_used_this_turn = false
+		player_healing_field_used_this_turn = false
 	else:
 		opponent_celadon_used_this_turn = false
 		opponent_fuchsia_used_this_turn = false
@@ -2802,6 +2844,9 @@ func inbetween_turn_checks(player_turn_just_ended: bool = true) -> void:
 		opponent_ancient_ruins_used_this_turn = false
 		opponent_mystery_zone_used_this_turn = false
 		opponent_underground_lake_used_this_turn = false
+		opponent_lucky_stadium_used_this_turn = false
+		opponent_saffron_used_this_turn = false
+		opponent_healing_field_used_this_turn = false
 	
 	# Mirror move tracking: clear if the side that just ended their turn didn't attack
 	if player_turn_just_ended:
@@ -6408,6 +6453,15 @@ func _ready() -> void:
 	if GameState.test_match_mode:
 		player_deck_name = "TEST"
 		hide_hidden_cards = false
+		# ISSUE #5 FIX ACTIVE: tint the input blockers a pale red during TEST matches so gaps in
+		# their coverage (e.g. areas that should be unclickable but aren't) are visible for
+		# debugging. Normal matches keep them fully transparent. Kept at 20% alpha on a pale
+		# (not saturated) red so a blocker appearing mid-match doesn't flash the whole screen.
+		var debug_blocker_color = Color(1.0, 0.55, 0.55, 0.2)
+		opponent_blocker.color = debug_blocker_color
+		animation_blocker.color = debug_blocker_color
+		buttons_only_blocker.color = debug_blocker_color
+		print("ISSUE #5 FIX ACTIVE: input blockers tinted pale red (20% alpha) for TEST match debugging")
 
 	# Load sleeve textures for player and opponent
 	player_sleeve_small = _resolve_sleeve_path(pdata.get("sleeve", "default"), true)

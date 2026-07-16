@@ -134,12 +134,15 @@ var _loading_set_id  : String = ""
 var zoom_overlay : CanvasLayer = null
 # Whether we're currently in zoom mode
 var is_zoomed : bool = false
-# The last card that was zoomed — used so the player can re-press spacebar
-# without moving the mouse.  When the zoom overlay is freed, Godot's
-# gui_get_hovered_control() returns null until the mouse physically moves,
-# because hover tracking hasn't recalculated.  Storing the reference lets
-# us skip the hover lookup and zoom straight back in.
-var last_zoomed_card : TextureRect = null
+# ISSUE #13: the preview tracks the mouse live for as long as Space is held. While space_held is
+# true, _process re-reads the hovered card every frame and re-renders the overlay whenever it
+# changes, so the player can hold Space and slide the mouse across the grid to flick through cards
+# — and hovering empty space correctly shows nothing. The old design snapshotted the card on
+# key-down and cached it in last_zoomed_card, which meant a later Space press over nothing
+# re-showed a stale card (possibly from a different set or menu entirely).
+var space_held : bool = false
+# The card the overlay is currently showing, so _process only rebuilds it when the hover changes
+var zoomed_card : TextureRect = null
 
 # RichTextLabel showing the per-set deck breakdown (created in _ready).
 var set_breakdown_label : RichTextLabel = null
@@ -1827,6 +1830,8 @@ func _input(event: InputEvent) -> void:
 	if event.pressed and event.keycode == KEY_ESCAPE:
 		# If zoomed in, close the zoom instead of leaving the scene
 		if is_zoomed:
+			# Drop the hold too, or _process would immediately re-open the preview (ISSUE #13)
+			space_held = false
 			_hide_zoom()
 			return
 		# If the deck viewer is open, close it
@@ -1839,11 +1844,11 @@ func _input(event: InputEvent) -> void:
 			return
 		_on_cancel_pressed()
 
-	# ── Spacebar hold-to-zoom ──
+	# ── Spacebar hold-to-preview ──
 	if event.keycode == KEY_SPACE:
 		if event.pressed and not event.is_echo():
-			# Key just went down (not a held-key repeat) — try to zoom
-			# Don't zoom if a popup or picker is open, or the deck name field has focus
+			# Key just went down (not a held-key repeat) — start following the mouse
+			# Don't preview if a popup or picker is open, or the deck name field has focus
 			if load_popup != null:
 				return
 			if energy_picker_active:
@@ -1852,18 +1857,37 @@ func _input(event: InputEvent) -> void:
 				return
 			if deck_name_edit.has_focus():
 				return
-			var card = _get_hovered_card()
-			# If hover returns null (common right after releasing zoom because
-			# Godot hasn't recalculated hover until the mouse moves), fall
-			# back to the last card we zoomed — lets the player re-press
-			# spacebar immediately without moving the mouse
-			if card == null and last_zoomed_card != null and is_instance_valid(last_zoomed_card):
-				card = last_zoomed_card
-			if card != null:
-				_show_zoom(card)
+			# Space is also the default "ui_accept" action, so an unhandled key here would
+			# fall through to whichever button last had focus (e.g. "Empty Deck") and press
+			# it too. Consume the event so hovering a card to preview it never re-triggers
+			# the last-focused button.
+			get_viewport().set_input_as_handled()
+			print("ISSUE #4 FIX ACTIVE (deck view spacebar): consumed KEY_SPACE press so it can't fall through to a focused button")
+			space_held = true
+			print("ISSUE #13 FIX ACTIVE (deck view spacebar): preview now follows the mouse while Space is held")
+			_refresh_hover_preview()
 		elif not event.pressed:
-			# Key released — close zoom
+			# Key released — stop following and close the preview
+			get_viewport().set_input_as_handled()
+			space_held = false
 			_hide_zoom()
+
+
+## ISSUE #13: while Space is held, keep the preview locked to whatever card the mouse is over.
+func _process(_delta: float) -> void:
+	if space_held:
+		_refresh_hover_preview()
+
+
+## Shows the hovered card (swapping the overlay if the hover moved to a different card), or hides
+## the preview entirely when the mouse isn't over a card.
+func _refresh_hover_preview() -> void:
+	var card := _get_hovered_card()
+	if card == zoomed_card:
+		return
+	_hide_zoom()
+	if card != null:
+		_show_zoom(card)
 
 
 # ─── Card zoom ──────────────────────────────────────────────────────────────
@@ -1908,7 +1932,7 @@ func _show_zoom(card_rect: TextureRect) -> void:
 		return
 
 	is_zoomed = true
-	last_zoomed_card = card_rect
+	zoomed_card = card_rect
 
 	# Build the overlay — CanvasLayer renders above everything at layer 150
 	zoom_overlay = CanvasLayer.new()
@@ -1920,6 +1944,9 @@ func _show_zoom(card_rect: TextureRect) -> void:
 	backdrop.color = Color(0, 0, 0, 0.95)
 	backdrop.anchor_right  = 1.0
 	backdrop.anchor_bottom = 1.0
+	# ISSUE #13: the overlay must never absorb hover, or gui_get_hovered_control() would report
+	# the backdrop instead of the card grid underneath and the live preview would flicker off.
+	backdrop.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	zoom_overlay.add_child(backdrop)
 
 	# The large card image, sized to fill most of vertical space (~50px margin top/bottom)
@@ -1934,6 +1961,7 @@ func _show_zoom(card_rect: TextureRect) -> void:
 	zoom_card.stretch_mode = TextureRect.STRETCH_SCALE
 	zoom_card.size         = disp_size
 	zoom_card.position     = Vector2((1920.0 - disp_size.x) / 2.0, (1080.0 - disp_size.y) / 2.0)
+	zoom_card.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	zoom_overlay.add_child(zoom_card)
 
 
@@ -1943,6 +1971,7 @@ func _hide_zoom() -> void:
 		return
 
 	is_zoomed = false
+	zoomed_card = null
 
 	if zoom_overlay != null:
 		zoom_overlay.queue_free()

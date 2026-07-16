@@ -2923,7 +2923,7 @@ func effect_gust_of_wind(is_opponent: bool) -> void:
 		else:
 			main.opponent_active_pokemon = new_active
 		
-		await main.animate_retreat(old_active, new_active, [], target_is_opp)
+		await main.animate_retreat(old_active, new_active, [], target_is_opp, true)
 		if main._should_bail(): return
 		main.clear_all_statuses(old_active, target_is_opp)
 		main.display_pokemon(target_is_opp)
@@ -2979,7 +2979,7 @@ func effect_switch(is_opponent: bool) -> void:
 		active.current_location = "bench"
 		replacement.current_location = "active"
 		main.opponent_active_pokemon = replacement
-		await main.animate_retreat(active, replacement, [], true)
+		await main.animate_retreat(active, replacement, [], true, true)
 		if main._should_bail(): return
 		main.clear_all_statuses(active, true)
 		main.display_pokemon(true)
@@ -2996,7 +2996,7 @@ func effect_switch(is_opponent: bool) -> void:
 			active.current_location = "bench"
 			replacement.current_location = "active"
 			main.player_active_pokemon = replacement
-			await main.animate_retreat(active, replacement, [], false)
+			await main.animate_retreat(active, replacement, [], false, true)
 			if main._should_bail(): return
 			main.clear_all_statuses(active, false)
 			main.display_pokemon(false)
@@ -6198,6 +6198,8 @@ func gym2_fuchsia_activate(is_opponent: bool) -> void:
 func gym2_saffron_has_target(is_opponent: bool) -> bool:
 	if not main.is_stadium_in_play(StadiumIds.SAFFRON_CITY_GYM):
 		return false
+	if is_opponent and main.opponent_saffron_used_this_turn: return false
+	if not is_opponent and main.player_saffron_used_this_turn: return false
 	var active = main.opponent_active_pokemon if is_opponent else main.player_active_pokemon
 	var bench = main.opponent_bench if is_opponent else main.player_bench
 	var all_p: Array = []
@@ -6213,6 +6215,10 @@ func gym2_saffron_has_target(is_opponent: bool) -> bool:
 	return false
 
 func gym2_saffron_activate(is_opponent: bool) -> void:
+	if is_opponent:
+		main.opponent_saffron_used_this_turn = true
+	else:
+		main.player_saffron_used_this_turn = true
 	var active = main.opponent_active_pokemon if is_opponent else main.player_active_pokemon
 	var bench = main.opponent_bench if is_opponent else main.player_bench
 	var hand = main.opponent_hand if is_opponent else main.player_hand
@@ -6331,9 +6337,15 @@ func effect_computer_error(is_opponent: bool) -> void:
 func basep_lucky_stadium_has_target(is_opponent: bool) -> bool:
 	if main.current_stadium_card == null:
 		return false
+	if is_opponent and main.opponent_lucky_stadium_used_this_turn: return false
+	if not is_opponent and main.player_lucky_stadium_used_this_turn: return false
 	return main.current_stadium_card.uid.to_lower() == StadiumIds.LUCKY_STADIUM
 
 func basep_lucky_stadium_activate(is_opponent: bool) -> void:
+	if is_opponent:
+		main.opponent_lucky_stadium_used_this_turn = true
+	else:
+		main.player_lucky_stadium_used_this_turn = true
 	var coin = await main.flip_coin(false, is_opponent)
 	if main._should_bail(): return
 	if coin:
@@ -7310,12 +7322,18 @@ func consume_balloon_berry(pokemon: card_object, is_opponent: bool) -> void:
 
 # ── HEALING FIELD (neo3-61) ───────────────────────────────────────────────────
 
-func neo3_healing_field_active() -> bool:
+func neo3_healing_field_active(is_opponent: bool = false) -> bool:
 	if main.current_stadium_card == null:
 		return false
+	if is_opponent and main.opponent_healing_field_used_this_turn: return false
+	if not is_opponent and main.player_healing_field_used_this_turn: return false
 	return main.current_stadium_card.uid.to_lower() == StadiumIds.HEALING_FIELD
 
 func neo3_healing_field_activate(is_opponent: bool) -> void:
+	if is_opponent:
+		main.opponent_healing_field_used_this_turn = true
+	else:
+		main.player_healing_field_used_this_turn = true
 	var coin = await main.flip_coin(false, is_opponent)
 	if main._should_bail(): return
 	if coin:
@@ -8105,7 +8123,7 @@ func effect_ecard1_pokemon_reversal(is_opponent: bool) -> void:
 		main.player_active_pokemon = chosen
 	else:
 		main.opponent_active_pokemon = chosen
-	await main.animate_retreat(old_active, chosen, [], target_is_opp)
+	await main.animate_retreat(old_active, chosen, [], target_is_opp, true)
 	if main._should_bail(): return
 	main.clear_all_statuses(old_active, target_is_opp)
 	main.display_pokemon(target_is_opp)
@@ -8206,7 +8224,7 @@ func effect_ecard1_warp_point(is_opponent: bool) -> void:
 				main.opponent_active_pokemon = new_opp_active
 			else:
 				main.player_active_pokemon = new_opp_active
-			await main.animate_retreat(opp_active, new_opp_active, [], opp_target_is_opp)
+			await main.animate_retreat(opp_active, new_opp_active, [], opp_target_is_opp, true)
 			if main._should_bail(): return
 			main.clear_all_statuses(opp_active, opp_target_is_opp)
 			main.display_pokemon(opp_target_is_opp)
@@ -8233,7 +8251,7 @@ func effect_ecard1_warp_point(is_opponent: bool) -> void:
 				main.opponent_active_pokemon = new_own_active
 			else:
 				main.player_active_pokemon = new_own_active
-			await main.animate_retreat(own_active, new_own_active, [], is_opponent)
+			await main.animate_retreat(own_active, new_own_active, [], is_opponent, true)
 			if main._should_bail(): return
 			main.clear_all_statuses(own_active, is_opponent)
 			main.display_pokemon(is_opponent)

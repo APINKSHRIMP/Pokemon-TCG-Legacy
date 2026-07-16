@@ -127,10 +127,14 @@ func _input(event: InputEvent) -> void:
 		# Check if the click is actually on this card
 		if get_global_rect().has_point(event.position):
 			
-			# NEW: Check if this card's parent container is visible
-			var parent_container = get_parent()
-			if parent_container and not parent_container.visible:
-				return  # Don't process if parent container is hidden
+			# Check the whole ancestor chain, not just the immediate parent — a hidden
+			# container further up the tree (e.g. show_enlarged_array_selection_mode hiding
+			# the prize-card containers) still leaves this card's own get_global_rect() at its
+			# last on-screen position, so a stale card here would otherwise silently eat clicks
+			# meant for whatever new array is now drawn over that same screen area.
+			if not is_visible_in_tree():
+				print("ISSUE #12 FIX ACTIVE (Card_Image_Loader): ignored click on a card hidden via an ancestor, card_ref=", card_ref.metadata.get("name", "") if card_ref else "null")
+				return
 			
 			card_clicked.emit(card_ref)
 			
