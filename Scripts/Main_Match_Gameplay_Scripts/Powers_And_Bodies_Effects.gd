@@ -747,6 +747,30 @@ func power_damage_swap(alakazam: card_object) -> void:
 		await main.show_message("Moved 1 damage counter from " + source.metadata.get("name", "") + " to " + dest.metadata.get("name", "") + "!")
 		if main._should_bail(): return
 
+# ISSUE #12 FIX ACTIVE: shared CPU Rain Dance attach step. Mirrors the standard CPU energy-attach
+# flow so every attach is visible: announce → fly the Energy to the ACTUAL target Pokémon → refresh
+# the WHOLE board (display_pokemon, not just the active's energies, so bench attachments show) →
+# particle effect → yield a frame so each attach renders before the next message pops up.
+func _cpu_rain_dance_attach(target: card_object, energy: card_object) -> void:
+	print("ISSUE #12 FIX ACTIVE (rain dance attach): ", target.metadata.get("name",""))
+	await main.show_message("RAIN DANCE: OPPONENT ATTACHED WATER ENERGY TO " + target.metadata.get("name","").to_upper() + "!")
+	if main._should_bail(): return
+	main.opponent_hand.erase(energy)
+	target.attached_energies.append(energy)
+	main.refresh_hand_display(true)
+	var energy_target_node = main.opponent_energy_container if target == main.opponent_active_pokemon else main.opponent_bench_container
+	var energy_texture = main.get_card_texture(energy)
+	var pos_override = Vector2(-99999, -99999)
+	if target != main.opponent_active_pokemon:
+		pos_override = main.get_pokemon_screen_location(target).get("position", pos_override)
+	await main.animate_card_a_to_b(main.opponent_hand_container, energy_target_node, 0.2, energy_texture, main.card_scales[12], Vector2.ZERO, pos_override)
+	if main._should_bail(): return
+	main.display_pokemon(true)
+	main.display_active_pokemon_energies(true)
+	await main.play_energy_attached_effect(target, energy)
+	if main._should_bail(): return
+	await main.get_tree().process_frame
+
 # Rain Dance (Blastoise): Attach Water Energy from hand to Water Pokemon
 
 func power_rain_dance(blastoise: card_object) -> void:
@@ -1214,19 +1238,10 @@ func power_step_in(dragonite: card_object) -> void:
 	
 	await main.show_message("STEP IN: DRAGONITE SWITCHES IN!")
 	if main._should_bail(): return
-	
+
+	# ISSUE #7: animate_retreat owns the sequenced swap animation, data swap and board refresh.
 	await main.animate_retreat(old_active, dragonite, [], false, true)
 	if main._should_bail(): return
-	
-	main.player_bench.erase(dragonite)
-	main.player_bench.append(old_active)
-	old_active.current_location = "bench"
-	dragonite.current_location = "active"
-	main.player_active_pokemon = dragonite
-	main.clear_all_statuses(old_active, false)
-	
-	main.display_pokemon(false)
-	main.display_active_pokemon_energies(false)
 	print("STEP IN: Dragonite switched in, ", old_active.metadata.get("name", ""), " moved to bench")
 
 # CURSE (Gengar): Move 1 damage counter from one opponent pokemon to another. Once per turn.
@@ -1794,12 +1809,10 @@ func cpu_phase_activate_powers() -> void:
 						best_target = p
 			if best_target == null:
 				break
-			main.opponent_hand.erase(water_energy)
-			best_target.attached_energies.append(water_energy)
-			await main.show_message("Rain Dance: Attached Water Energy to " + best_target.metadata.get("name", "") + "!")
+			# ISSUE #12: best_target is recomputed every iteration above, so priorities are
+			# rechecked after each attach; the helper makes each attach visible on the board.
+			await _cpu_rain_dance_attach(best_target, water_energy)
 			if main._should_bail(): return
-			main.refresh_hand_display(true)
-			main.display_active_pokemon_energies(true)
 			keep_going = true
 
 		# Second pass: Rain Dance can attach unlimited Water Energy per turn, but the loop above
@@ -1827,12 +1840,9 @@ func cpu_phase_activate_powers() -> void:
 					break
 			if stack_target == null:
 				break
-			main.opponent_hand.erase(water_energy2)
-			stack_target.attached_energies.append(water_energy2)
-			await main.show_message("Rain Dance: Attached extra Water Energy to " + stack_target.metadata.get("name", "") + "!")
+			# ISSUE #12: stack_target is recomputed every iteration, rechecking priorities after each attach
+			await _cpu_rain_dance_attach(stack_target, water_energy2)
 			if main._should_bail(): return
-			main.refresh_hand_display(true)
-			main.display_active_pokemon_energies(true)
 			keep_going = true
 
 	# Energy Trans: consolidate Grass Energy to the pokemon that needs it most

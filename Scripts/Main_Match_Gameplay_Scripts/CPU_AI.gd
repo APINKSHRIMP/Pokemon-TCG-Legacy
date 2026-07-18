@@ -359,9 +359,14 @@ func evaluate_ko_threats() -> Dictionary:
 			elif max_result["damage"] >= cpu_active_hp:
 				result["cpu_active_potential_ko"] = true
 		else:
-			# Attack is 1 energy away — treat as potential since player will likely attach
-			if min_result["damage"] >= cpu_active_hp:
+			# ISSUE #23b FIX ACTIVE: attack is 1 Energy away. Only treat it as an imminent potential
+			# KO if the player's Active already has SOME Energy attached — a Pokémon starting from
+			# ZERO Energy is not a credible one-turn KO threat (the CPU was fleeing a healthy,
+			# 5-Energy Poliwrath from a 0-Energy Starmie that couldn't attack at all).
+			if main.player_active_pokemon.attached_energies.size() >= 1 and min_result["damage"] >= cpu_active_hp:
 				result["cpu_active_potential_ko"] = true
+			elif main.player_active_pokemon.attached_energies.size() < 1:
+				print("ISSUE #23b FIX ACTIVE: ignoring 1-energy-away KO threat from 0-energy ", main.player_active_pokemon.metadata.get("name",""))
 
 	# 1.3: Check if player could retreat into a bench KO threat
 	var retreat_cost = main.get_retreat_cost(main.player_active_pokemon)
@@ -881,14 +886,18 @@ func criterion_6_bench_duplicate(basic_pokemon: card_object, hand: Array) -> Dic
 	if duplicate_count == 0:
 		return {"score_change": 0, "reason": "No duplicates of " + name + " already on Bench (+0)"}
 
-	var magnitude = 75.0 * duplicate_count
-
+	# ISSUE #2: if any synergy effect on the field benefits from stacking this species,
+	# apply a FLAT +300 (not a per-copy amount) so a stack-payoff Pokémon comfortably
+	# clears the bench-play thresholds (e.g. 350 for a 3-Pokémon bench). Otherwise keep
+	# the per-copy dead-weight penalty (duplicates that can't all attack).
 	if has_species_stacking_synergy(basic_pokemon, hand):
+		print("ISSUE #2 FIX ACTIVE: species-stacking synergy detected for " + name + " (" + str(duplicate_count) + " already on Bench) → flat +300")
 		return {
-			"score_change": magnitude,
-			"reason": "Already have " + str(duplicate_count) + " " + name + " on Bench, and a field effect benefits from the stack (+" + str(magnitude) + " points)"
+			"score_change": 300.0,
+			"reason": "Already have " + str(duplicate_count) + " " + name + " on Bench, and a field effect benefits from the stack (flat +300 points)"
 		}
 
+	var magnitude = 75.0 * duplicate_count
 	return {
 		"score_change": -magnitude,
 		"reason": "Already have " + str(duplicate_count) + " " + name + " on Bench (-" + str(magnitude) + " points)"
@@ -903,7 +912,11 @@ func has_species_stacking_synergy(basic_pokemon: card_object, hand: Array) -> bo
 	var is_delta = "δ" in raw_name
 	var name = raw_name.replace(" δ", "").replace("δ", "").strip_edges()
 
+	# ISSUE #2: scan the candidate itself, the whole hand, the entire Bench AND the Active
+	# Pokémon's own attack/ability text — a stacking payoff can live on any of them
+	# (e.g. Magnemite's own Bench-count attack, or a separate Nidoqueen already Active).
 	var cards_to_check = []
+	cards_to_check.append(basic_pokemon)
 	cards_to_check.append_array(hand)
 	cards_to_check.append_array(main.opponent_bench)
 	if main.opponent_active_pokemon != null:
@@ -1062,6 +1075,18 @@ func get_attack_text_penalty(attack_text: String, pokemon_name: String) -> int:
 
 # Criterion 2 is used simply just to check which cards have an evolution available at all. However,
 # This scores each pairing (evolution_card, target_pokemon) for CPU evolution decisions, not just to check if there is one at all.
+# ISSUE #23b: does the CPU's Active have a usable attack (unmet == 0) whose minimum damage would
+# guarantee-KO the player's current Active this turn? Used to avoid retreating when we can just win
+# the exchange by attacking.
+func _cpu_active_can_ko_player_active(active_data: Dictionary) -> bool:
+	if main.player_active_pokemon == null:
+		return false
+	var player_hp = main.player_active_pokemon.current_hp
+	for attack in active_data.get("attack_data", []):
+		if attack.get("unmet", 999) == 0 and attack.get("damage_min", 0) >= player_hp:
+			return true
+	return false
+
 func evaluate_retreat_reasons(cpu_eval: Dictionary) -> bool:
 	var active_key = main.opponent_active_pokemon.get_instance_id()
 	var active_data = cpu_eval["pokemon_data"].get(active_key, {})
@@ -1112,6 +1137,13 @@ func evaluate_retreat_reasons(cpu_eval: Dictionary) -> bool:
 
 	# Reason 2: Active is at risk of KO (potential or bench threat)
 	if cpu_eval.get("cpu_active_potential_ko", false) or cpu_eval.get("player_bench_ko_threat", false):
+		# ISSUE #23b FIX ACTIVE: if our Active can KO the player's Active THIS turn, remove the
+		# threat by attacking instead of fleeing a healthy, energised attacker (mirrors Reason 1's
+		# mutual-KO logic). This stops the CPU retreating a strong Poliwrath when it could just KO
+		# the low-HP Pokémon threatening it.
+		if can_attack and _cpu_active_can_ko_player_active(active_data):
+			print("ISSUE #23b FIX ACTIVE: CPU NOT retreating — our active can KO the player's active this turn")
+			return false
 		# Before retreating, check if any bench pokemon would survive
 		if not _any_bench_survives_player_attack():
 			print("CPU NOT retreating: all bench pokemon also face KO from potential threat")
@@ -1575,7 +1607,11 @@ func cpu_phase_energy_attachment(cpu_eval: Dictionary) -> void:
 
 	var energy_target_node = main.opponent_energy_container if target == main.opponent_active_pokemon else main.opponent_bench_container
 	var energy_texture = main.get_card_texture(energy)
-	await main.animate_card_a_to_b(main.opponent_hand_container, energy_target_node, 0.2, energy_texture, main.card_scales[12])
+	# ISSUE #20: fly the Energy to the ACTUAL benched Pokémon it is attaching to (not the Bench-row centre)
+	var energy_pos_override = Vector2(-99999, -99999)
+	if target != main.opponent_active_pokemon:
+		energy_pos_override = main.get_pokemon_screen_location(target).get("position", energy_pos_override)
+	await main.animate_card_a_to_b(main.opponent_hand_container, energy_target_node, 0.2, energy_texture, main.card_scales[12], Vector2.ZERO, energy_pos_override)
 	if main._should_bail(): return
 
 	main.refresh_hand_display(true)
@@ -4055,7 +4091,9 @@ func cpu_phase_bench_play() -> void:
 		await main.show_message("Opponent placed " + best_card.metadata["name"].to_upper() + " on the bench!")
 		if main._should_bail(): return
 		var card_texture = main.get_card_texture(best_card)
-		await main.animate_card_a_to_b(main.opponent_hand_container, main.opponent_bench_container, 0.3, card_texture, main.card_scales[11])
+		# ISSUE #20: land on the actual next bench slot
+		var bench_loc = main.get_pokemon_screen_location(best_card)
+		await main.animate_card_a_to_b(main.opponent_hand_container, main.opponent_bench_container, 0.3, card_texture, main.card_scales[11], bench_loc.get("size", main.card_scales[11]), bench_loc.get("position", Vector2(-99999, -99999)))
 		if main._should_bail(): return
 		main.display_pokemon(true)
 		main.refresh_hand_display(true)
@@ -4159,7 +4197,9 @@ func cpu_phase_evolution() -> void:
 		var evo_target_node = main.opponent_active_container if best["evo_card"].current_location == "active" else main.opponent_bench_container
 		var evo_scale = main.card_scales[8] if best["evo_card"].current_location == "active" else main.card_scales[11]
 		var evo_texture = main.get_card_texture(best["evo_card"])
-		await main.animate_card_a_to_b(main.opponent_hand_container, evo_target_node, 0.3, evo_texture, evo_scale)
+		# ISSUE #20: land on the evolving Pokémon's actual slot at its real size
+		var evo_loc = main.get_pokemon_screen_location(best["evo_card"])
+		await main.animate_card_a_to_b(main.opponent_hand_container, evo_target_node, 0.3, evo_texture, evo_scale, evo_loc.get("size", evo_scale), evo_loc.get("position", Vector2(-99999, -99999)))
 		if main._should_bail(): return
 
 		main.display_pokemon(true)

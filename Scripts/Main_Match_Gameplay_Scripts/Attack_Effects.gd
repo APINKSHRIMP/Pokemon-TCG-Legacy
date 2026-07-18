@@ -2047,28 +2047,26 @@ func apply_draw_effect(effect: Dictionary, is_opponent_attacking: bool) -> void:
 # Heals damage from the attacker
 func apply_self_heal(effect: Dictionary, attacker: card_object, is_opponent_attacking: bool) -> void:
 	var name = attacker.metadata.get("name", "Unknown")
-	var max_hp = int(attacker.metadata.get("hp", "0"))
 	var amount = effect.get("amount", -1)
-	var healed = 0
 
-	# MATCH EFFECTS: no_healing / healing_multiplier gate
-	if amount == -1:
-		healed = main.match_effects.modify_heal_amount(max_hp - attacker.current_hp, is_opponent_attacking)
-		healed = min(healed, max_hp - attacker.current_hp)
-		attacker.current_hp = attacker.current_hp + healed
-	else:
-		var heal_hp = main.match_effects.modify_heal_amount(amount * 10, is_opponent_attacking)
-		healed = min(heal_hp, max_hp - attacker.current_hp)
-		attacker.current_hp = min(max_hp, attacker.current_hp + heal_hp)
-
+	# ISSUE #23a FIX ACTIVE: route EVERY generic self-heal (full "remove all damage" and partial
+	# "remove N counters" alike) through card_ops.heal_pokemon so the healing animation always
+	# plays — the floating "+N HP" label and the HP circles restored one at a time — instead of
+	# snapping current_hp silently. heal_pokemon also applies the match-effect heal modifiers, so
+	# we pass the RAW requested amount here and let it do the clamping/gating.
+	var heal_request = (attacker.get_max_hp() - attacker.current_hp) if amount == -1 else amount * 10
+	if heal_request <= 0:
+		print("EFFECT SKIPPED: ", name, " already at full HP")
+		return
+	print("ISSUE #23a FIX ACTIVE (apply_self_heal): ", name, " requesting heal of ", heal_request, " HP")
+	var before_hp = attacker.current_hp
+	await main.card_ops.heal_pokemon(attacker, heal_request, is_opponent_attacking)
+	if main._should_bail(): return
+	var healed = attacker.current_hp - before_hp
 	if healed > 0:
-		SoundManagerScript.play_sfx(SoundManagerScript.SFX_heal_sound)
-		main.display_hp_circles_above_align(attacker, is_opponent_attacking)
 		await main.show_message(name.to_upper() + " HEALED " + str(healed) + " HP!")
 		if main._should_bail(): return
 		print("EFFECT APPLIED: ", name, " healed ", healed, " HP. Now at: ", attacker.current_hp)
-	else:
-		print("EFFECT SKIPPED: ", name, " already at full HP")
 
 # Applies the toxic upgrade setting poison damage to 20
 func apply_toxic(defender: card_object, is_opponent_attacking: bool) -> void:
@@ -2136,23 +2134,10 @@ func apply_force_switch(effect: Dictionary, is_opponent_attacking: bool) -> void
 		
 		if new_active != null:
 			var old_active = main.opponent_active_pokemon
-			await main.show_message("OPPONENT WAS FORCED TO SWITCH TO " + new_active.metadata["name"].to_upper() + "!")
-			if main._should_bail(): return
-			
-			# Animate the swap
+			# ISSUE #7: animate_retreat now owns the single message, the sequenced swap animation,
+			# the data swap and the board refresh — so we no longer pre-announce or swap here.
 			await main.animate_retreat(old_active, new_active, [], true, true)
 			if main._should_bail(): return
-			
-			# Perform the swap
-			main.opponent_bench.erase(new_active)
-			main.opponent_bench.append(old_active)
-			old_active.current_location = "bench"
-			new_active.current_location = "active"
-			main.opponent_active_pokemon = new_active
-			main.clear_all_statuses(old_active, true)
-
-			main.display_pokemon(true)
-			main.display_active_pokemon_energies(true)
 			# NEO2 Spikes (Forretress): 10 damage when opponent's bench→active via forced switch
 			await main.powers_and_bodies.check_spikes(new_active, true)
 			if main._should_bail(): return
@@ -2194,21 +2179,9 @@ func apply_force_switch(effect: Dictionary, is_opponent_attacking: bool) -> void
 		
 		if new_active != null:
 			var old_active = main.player_active_pokemon
-			await main.show_message("FORCED TO SWITCH TO " + new_active.metadata["name"].to_upper() + "!")
-			if main._should_bail(): return
-			
+			# ISSUE #7: animate_retreat owns the message, sequenced swap animation, data swap and refresh.
 			await main.animate_retreat(old_active, new_active, [], false, true)
 			if main._should_bail(): return
-			
-			main.player_bench.erase(new_active)
-			main.player_bench.append(old_active)
-			old_active.current_location = "bench"
-			new_active.current_location = "active"
-			main.player_active_pokemon = new_active
-			main.clear_all_statuses(old_active, false)
-
-			main.display_pokemon(false)
-			main.display_active_pokemon_energies(false)
 			# NEO2 Spikes (Forretress): 10 damage when player's bench→active via forced switch
 			await main.powers_and_bodies.check_spikes(new_active, false)
 			if main._should_bail(): return
@@ -2269,22 +2242,9 @@ func apply_self_switch(attacker: card_object, is_opponent_attacking: bool) -> vo
 		return
 	
 	var old_active = attacker
-	await main.show_message(old_active.metadata["name"].to_upper() + " SWITCHED WITH " + new_active.metadata["name"].to_upper() + "!")
-	if main._should_bail(): return
+	# ISSUE #7: animate_retreat owns the single message, sequenced swap animation, data swap and refresh.
 	await main.animate_retreat(old_active, new_active, [], is_opponent_attacking, true)
 	if main._should_bail(): return
-	
-	bench.erase(new_active)
-	bench.append(old_active)
-	old_active.current_location = "bench"
-	new_active.current_location = "active"
-	if is_opponent_attacking:
-		main.opponent_active_pokemon = new_active
-	else:
-		main.player_active_pokemon = new_active
-	main.clear_all_statuses(old_active, is_opponent_attacking)
-	main.display_pokemon(is_opponent_attacking)
-	main.display_active_pokemon_energies(is_opponent_attacking)
 
 # Bench damage to a single chosen target (Pikachu Spark)
 func apply_bench_damage_single(effect: Dictionary, is_opponent_attacking: bool) -> void:
@@ -8750,9 +8710,9 @@ func execute_neo1_sweet_nectar(attacker: card_object, is_opponent: bool) -> void
 			if main._should_bail(): return
 	if target == null:
 		return
-	target.current_hp = target.get_max_hp()
-	SoundManagerScript.play_sfx(SoundManagerScript.SFX_heal_sound)
-	main.display_hp_circles_above_align(target, is_opponent)
+	# ISSUE #23a: play the healing animation (floating +HP + circles one at a time)
+	await main.card_ops.heal_pokemon(target, target.get_max_hp() - target.current_hp, is_opponent)
+	if main._should_bail(): return
 	await main.show_message("HEADS! " + target.metadata.get("name","").to_upper() + " WAS FULLY HEALED!")
 	if main._should_bail(): return
 	print("ATTACK EXECUTED: Sweet Nectar - fully healed ", target.metadata.get("name",""))
@@ -9788,9 +9748,9 @@ func execute_neo2_hatch(attacker: card_object, is_opponent: bool) -> void:
 		await main.show_message("TAILS! HATCH FAILED!")
 		if main._should_bail(): return
 		return
-	var max_hp = int(attacker.metadata.get("hp","0"))
-	attacker.current_hp = max_hp
-	main.display_hp_circles_above_align(attacker, is_opponent)
+	# ISSUE #23a: animate the full heal before hatching into Butterfree
+	await main.card_ops.heal_pokemon(attacker, attacker.get_max_hp() - attacker.current_hp, is_opponent)
+	if main._should_bail(): return
 	await main.show_message("HATCH! SEARCHING FOR BUTTERFREE...")
 	if main._should_bail(): return
 	var found = await main.card_ops.search_deck_to_hand(is_opponent, func(c): return "Butterfree" in c.metadata.get("name",""), "HATCH: CHOOSE BUTTERFREE TO EVOLVE INTO", 1)
@@ -10067,24 +10027,59 @@ func execute_neo2_recover(attacker: card_object, is_opponent: bool, atk: Diction
 		if c != "Colorless":
 			discard_type = c
 			break
-	var energy_to_discard: card_object = null
+	# Every attached Energy that CAN pay the discard cost (a plain Water, a Rainbow that provides
+	# Water, an Energy whose type was changed by a Power, etc.)
+	var candidates: Array = []
 	for e in attacker.attached_energies:
 		if discard_type in main.get_energy_provided_by_card(e):
-			energy_to_discard = e
-			break
-	if energy_to_discard == null:
+			candidates.append(e)
+	if candidates.is_empty():
 		await main.show_message("NO " + discard_type.to_upper() + " ENERGY TO DISCARD! RECOVER FAILS!")
 		if main._should_bail(): return
 		return
+	# ISSUE #22 FIX ACTIVE: don't auto-detach. When more than one attached Energy could pay the
+	# cost (e.g. a Water AND a Rainbow), let the PLAYER choose which to discard; the CPU keeps its
+	# most flexible Energy and discards a plain matching basic first.
+	var energy_to_discard: card_object = null
+	if candidates.size() == 1:
+		energy_to_discard = candidates[0]
+	elif is_opponent:
+		energy_to_discard = _recover_cpu_pick_energy_to_discard(candidates, discard_type)
+	else:
+		print("ISSUE #22 FIX ACTIVE (recover): prompting player to choose which energy to discard")
+		energy_to_discard = await main.card_ops.prompt_select_card(candidates, "RECOVER — DISCARD ENERGY", "Choose which Energy to discard to use Recover", "DISCARD", false)
+		if main._should_bail(): return
+		if energy_to_discard == null:
+			energy_to_discard = candidates[0]
 	attacker.attached_energies.erase(energy_to_discard)
 	main.card_ops.discard_energy_from_pokemon(energy_to_discard, is_opponent)
 	main.display_active_pokemon_energies(is_opponent)
-	var max_hp = int(attacker.metadata.get("hp","0"))
-	attacker.current_hp = max_hp
-	main.display_hp_circles_above_align(attacker, is_opponent)
+	# ISSUE #23a FIX ACTIVE: a full heal must play the healing animation (floating "+N HP" label +
+	# HP circles restored one at a time) rather than snapping current_hp to max silently.
+	var heal_amount = attacker.get_max_hp() - attacker.current_hp
+	print("ISSUE #23a FIX ACTIVE (recover): animating full heal of ", heal_amount, " HP")
+	await main.card_ops.heal_pokemon(attacker, heal_amount, is_opponent)
+	if main._should_bail(): return
 	await main.show_message("RECOVER! ALL DAMAGE REMOVED FROM " + attacker.metadata.get("name","").to_upper() + "!")
 	if main._should_bail(): return
 	print("ATTACK EXECUTED: Recover — full heal")
+
+# ISSUE #22: CPU keeps its most flexible Energy — discard a plain basic that only pays this cost
+# before spending a special/multi-type Energy (Rainbow, etc.) that could also power other attacks.
+func _recover_cpu_pick_energy_to_discard(candidates: Array, discard_type: String) -> card_object:
+	for e in candidates:
+		var provided = main.get_energy_provided_by_card(e)
+		if provided.size() == 1 and provided[0] == discard_type \
+				and "Basic" in e.metadata.get("subtypes", []):
+			return e
+	var best = candidates[0]
+	var best_flex = 999
+	for e in candidates:
+		var flex = main.get_energy_provided_by_card(e).size()
+		if flex < best_flex:
+			best_flex = flex
+			best = e
+	return best
 
 # PLUNDER (neo2-39 Houndour): 20 damage + discard all trainer cards attached to defender
 func execute_neo2_plunder(attacker: card_object, defender: card_object, is_opponent: bool, base_damage: int) -> void:
@@ -13281,7 +13276,9 @@ func execute_neo4_wash_away(attacker: card_object, is_opponent: bool) -> void:
 		target = await main.card_ops.prompt_select_card(own_bench, "WASH AWAY!", "Choose a Benched Pokemon to fully heal (discards its Energy)", "SELECT", false)
 		if main._should_bail(): return
 		if target == null: target = own_bench[0]
-	target.current_hp = target.get_max_hp()
+	# ISSUE #23a: animate the full heal before discarding the target's Energy
+	await main.card_ops.heal_pokemon(target, target.get_max_hp() - target.current_hp, is_opponent)
+	if main._should_bail(): return
 	for e in target.attached_energies.duplicate():
 		main.card_ops.discard_energy_from_pokemon(e, is_opponent)
 	main.update_discard_pile_display(is_opponent)
@@ -13482,8 +13479,9 @@ func execute_neo4_sunbathe(attacker: card_object, is_opponent: bool) -> void:
 		await main.show_message("SUNBATHE: TAILS!")
 		if main._should_bail(): return
 		return
-	attacker.current_hp = attacker.get_max_hp()
-	main.display_hp_circles_above_align(attacker, is_opponent)
+	# ISSUE #23a: animate the full heal before evolving
+	await main.card_ops.heal_pokemon(attacker, attacker.get_max_hp() - attacker.current_hp, is_opponent)
+	if main._should_bail(): return
 	var own_deck = main.opponent_deck if is_opponent else main.player_deck
 	var evo: card_object = null
 	for c in own_deck:
@@ -20236,21 +20234,9 @@ func _ex4_swap_to_active(new_active: card_object, def_is_opp: bool) -> void:
 	var old_active = main.opponent_active_pokemon if def_is_opp else main.player_active_pokemon
 	var bench = main.opponent_bench if def_is_opp else main.player_bench
 	if new_active == null or old_active == null: return
-	await main.show_message("SWITCHED IN " + new_active.metadata.get("name","").to_upper() + "!")
-	if main._should_bail(): return
+	# ISSUE #7: animate_retreat owns the single message, sequenced swap animation, data swap and refresh.
 	await main.animate_retreat(old_active, new_active, [], def_is_opp, true)
 	if main._should_bail(): return
-	bench.erase(new_active)
-	bench.append(old_active)
-	old_active.current_location = "bench"
-	new_active.current_location = "active"
-	if def_is_opp:
-		main.opponent_active_pokemon = new_active
-	else:
-		main.player_active_pokemon = new_active
-	main.clear_all_statuses(old_active, def_is_opp)
-	main.display_pokemon(def_is_opp)
-	main.display_active_pokemon_energies(def_is_opp)
 	await main.powers_and_bodies.check_spikes(new_active, def_is_opp)
 
 # ══════════════════════════════════════════════════════════════════════════════

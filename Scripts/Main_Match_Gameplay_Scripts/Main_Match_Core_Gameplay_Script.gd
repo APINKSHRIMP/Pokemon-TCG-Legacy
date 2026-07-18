@@ -1405,9 +1405,23 @@ func show_floating_label(message: String, spawn_position: Vector2, label_color: 
 	label.queue_free()
 
 # Animates a card back image sliding from one node's position to another
-func animate_card_a_to_b(from_node: Control, to_node: Control, animation_speed: float = 0.8, custom_texture: Texture2D = null, custom_size: Vector2 = Vector2(83, 113)) -> void:
+# ISSUE #20 FIX ACTIVE: the moving card now glides to the ACTUAL destination slot and
+# morphs to that slot's size along the way, instead of shooting to the parent container's
+# centre and then popping to a new size when the board refreshes.
+#   • target_size (optional)  — the size the card should end at; when given, the ghost tweens
+#                               its size from custom_size → target_size in parallel with its
+#                               position, so there is no size "jump" on the board refresh.
+#   • target_pos_override (optional) — the exact top-left the card should arrive at (e.g. a
+#                               specific bench slot). When supplied we use it verbatim rather
+#                               than centring on the container. Callers that know the real
+#                               destination (bench/active/evolve placements) pass this via
+#                               get_pokemon_screen_location().
+# Tween duration is also lengthened by 50% for a smoother glide (0.3s → 0.45s etc).
+const _ANIM_POS_SENTINEL := Vector2(-99999, -99999)
+func animate_card_a_to_b(from_node: Control, to_node: Control, animation_speed: float = 0.8, custom_texture: Texture2D = null, custom_size: Vector2 = Vector2(83, 113), target_size: Vector2 = Vector2.ZERO, target_pos_override: Vector2 = _ANIM_POS_SENTINEL) -> void:
 	SoundManagerScript.play_sfx(SoundManagerScript.SFX_card_draw_sound)
 	animation_blocker.visible = true
+	var final_size: Vector2 = target_size if target_size != Vector2.ZERO else custom_size
 	var card_image = TextureRect.new()
 	card_image.texture = custom_texture if custom_texture else card_back_texture
 	card_image.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
@@ -1415,12 +1429,24 @@ func animate_card_a_to_b(from_node: Control, to_node: Control, animation_speed: 
 	card_image.size = custom_size
 	card_image.z_index = 100
 	add_child(card_image)
-	
+
 	card_image.global_position = from_node.global_position
-	var target_pos = to_node.global_position + Vector2(to_node.size.x / 2, 0,)
-	
+	var target_pos: Vector2
+	if target_pos_override != _ANIM_POS_SENTINEL:
+		target_pos = target_pos_override
+	else:
+		# Centre the card horizontally on the destination node. (The old code left-aligned the
+		# card at the node's mid-x, so it landed half a card-width to the right of centre.)
+		target_pos = to_node.global_position + Vector2(to_node.size.x / 2 - final_size.x / 2, 0)
+
+	var duration = animation_speed * 1.5
 	var tween = create_tween()
-	tween.tween_property(card_image, "global_position", target_pos, animation_speed).set_ease(Tween.EASE_IN_OUT)
+	tween.set_parallel(true)
+	tween.tween_property(card_image, "global_position", target_pos, duration).set_ease(Tween.EASE_IN_OUT)
+	if final_size != custom_size:
+		tween.tween_property(card_image, "size", final_size, duration).set_ease(Tween.EASE_IN_OUT)
+		tween.tween_property(card_image, "custom_minimum_size", final_size, duration).set_ease(Tween.EASE_IN_OUT)
+	tween.set_parallel(false)
 	tween.tween_callback(card_image.queue_free)
 	await tween.finished
 	animation_blocker.visible = false
@@ -1464,14 +1490,54 @@ func animate_energies_to_discard(energy_cards: Array, pokemon: card_object, is_o
 func animate_retreat(old_active: card_object, new_active: card_object, discarded_energies: Array, is_opponent: bool, is_forced_switch: bool = false) -> void:
 	var active_container = opponent_active_container if is_opponent else player_active_container
 	var bench_container = opponent_bench_container if is_opponent else player_bench_container
+	var side_bench = opponent_bench if is_opponent else player_bench
 	var switcher_label = "OPPONENT" if is_opponent else "PLAYER"
 
-	# ISSUE #6/#7 FIX ACTIVE: message BEFORE the animation, never after.
-	print("ISSUE #6/#7 FIX ACTIVE (animate_retreat): forced=", is_forced_switch, " is_opponent=", is_opponent)
+	# ── ISSUE #7 FIX ACTIVE: forced switches (Whirlwind, Gust, Warp Point, Switch, Poké-Powers,
+	# etc.) read as ONE event: a single message, then the outgoing Pokémon glides down to the
+	# Bench, the board updates, then the incoming Pokémon glides up into the Active slot. The two
+	# cards no longer fly simultaneously and there is no second "forced to switch in" message.
 	if is_forced_switch:
-		await show_message(switcher_label + " WAS FORCED TO SWITCH OUT " + old_active.metadata["name"].to_upper() + "!")
-	else:
-		await show_message(old_active.metadata["name"].to_upper() + " RETREATED TO THE BENCH!")
+		print("ISSUE #7 FIX ACTIVE (animate_retreat forced): ", old_active.metadata.get("name",""), " <-> ", new_active.metadata.get("name",""), " is_opponent=", is_opponent)
+		var possessive = "OPPONENT'S" if is_opponent else "YOUR"
+		await show_message(possessive + " " + old_active.metadata["name"].to_upper() + " SWITCHED WITH " + new_active.metadata["name"].to_upper() + "!")
+
+		var old_tex = get_card_texture(old_active)
+		var new_tex = get_card_texture(new_active)
+
+		# 1) Hide the Active card and glide the outgoing Pokémon down to the Bench (shrinking to Bench size)
+		active_container.visible = false
+		await animate_card_a_to_b(active_container, bench_container, 0.3, old_tex, card_scales[3.5], card_scales[11])
+
+		# 2) Apply the swap in data — but only if the caller hasn't already done it (most callers
+		#    swap before calling; the few that swap afterwards have had that block removed).
+		if new_active.current_location != "active":
+			side_bench.erase(new_active)
+			side_bench.append(old_active)
+			old_active.current_location = "bench"
+			new_active.current_location = "active"
+			if is_opponent:
+				opponent_active_pokemon = new_active
+			else:
+				player_active_pokemon = new_active
+			clear_all_statuses(old_active, is_opponent)
+
+		# 3) Refresh the board so it reflects the swap (Active kept hidden so the incoming card can fly in)
+		display_pokemon(is_opponent)
+		display_active_pokemon_energies(is_opponent)
+		active_container.visible = false
+
+		# 4) Glide the incoming Pokémon up into the Active slot, growing to Active size
+		await animate_card_a_to_b(bench_container, active_container, 0.3, new_tex, card_scales[11], card_scales[3.5])
+
+		# 5) Reveal the new Active
+		active_container.visible = true
+		display_active_pokemon_energies(is_opponent)
+		return
+
+	# ── Voluntary retreat (ISSUE #6): two-beat narration — announce, discard energy, swap, confirm ──
+	print("ISSUE #6 FIX ACTIVE (animate_retreat voluntary): is_opponent=", is_opponent)
+	await show_message(old_active.metadata["name"].to_upper() + " RETREATED TO THE BENCH!")
 
 	if discarded_energies.size() > 0:
 		await animate_energies_to_discard(discarded_energies, old_active, is_opponent)
@@ -1488,8 +1554,7 @@ func animate_retreat(old_active: card_object, new_active: card_object, discarded
 	animate_card_a_to_b(active_container, bench_container, 0.3, old_texture, card_scales[10])
 	await animate_card_a_to_b(bench_container, active_container, 0.3, new_texture, card_scales[10])
 
-	if not is_forced_switch:
-		await show_message(switcher_label + " SET " + new_active.metadata["name"].to_upper() + " AS THEIR ACTIVE POKEMON!")
+	await show_message(switcher_label + " SET " + new_active.metadata["name"].to_upper() + " AS THEIR ACTIVE POKEMON!")
 
 # Creates continuous sparkle particles around a given node, returns the node for manual cleanup
 func start_sparkle_effect(target_node: Control) -> CPUParticles2D:
@@ -2372,7 +2437,11 @@ func perform_energy_attachment() -> void:
 	# Animate energy flying from hand to the target pokemon
 	var target_node = player_energy_container if target_pokemon == player_active_pokemon else player_bench_container
 	var energy_texture = get_card_texture(energy_card)
-	await animate_card_a_to_b(player_hand_container, target_node, 0.2, energy_texture, card_scales[12])
+	# ISSUE #20: fly the Energy to the ACTUAL benched Pokémon it is attaching to (not the Bench-row centre)
+	var energy_pos_override = Vector2(-99999, -99999)
+	if target_pokemon != player_active_pokemon:
+		energy_pos_override = get_pokemon_screen_location(target_pokemon).get("position", energy_pos_override)
+	await animate_card_a_to_b(player_hand_container, target_node, 0.2, energy_texture, card_scales[12], Vector2.ZERO, energy_pos_override)
 		
 	display_pokemon(false)	
 	display_active_pokemon_energies(false)
@@ -4698,9 +4767,10 @@ func handle_post_knockout(is_opponent: bool) -> void:
 
 		bench.erase(new_active)
 		var new_texture = get_card_texture(new_active)
-		
-		await animate_card_a_to_b(bench_container, active_container, 0.3, new_texture, card_scales[9])
-		
+
+		# ISSUE #20: grow to active size while gliding to the active slot (no post-refresh pop)
+		await animate_card_a_to_b(bench_container, active_container, 0.3, new_texture, card_scales[9], card_scales[3.5])
+
 		new_active.current_location = "active"
 		opponent_active_pokemon = new_active
 		display_pokemon(true)
@@ -5731,7 +5801,9 @@ func handle_action_knockout_bench() -> void:
 	hide_selection_mode_display_main()
 
 	var new_texture = get_card_texture(new_active)
-	await animate_card_a_to_b(player_bench_container, player_active_container, 0.3, new_texture, card_scales[9])
+	# ISSUE #20: glide to the real active slot and grow to active size (no post-refresh pop)
+	var active_loc = get_pokemon_screen_location(new_active)
+	await animate_card_a_to_b(player_bench_container, player_active_container, 0.3, new_texture, card_scales[9], active_loc.get("size", card_scales[3.5]), active_loc.get("position", _ANIM_POS_SENTINEL))
 
 	display_pokemon(false)
 	display_active_pokemon_energies(false)
@@ -5770,8 +5842,10 @@ func handle_action_evolution() -> void:
 		card_scale_to_animate = card_scales[11]
 		
 	var evo_texture = get_card_texture(evo_card)
-	await animate_card_a_to_b(player_hand_container, target_node, 0.3, evo_texture, card_scale_to_animate)
-	
+	# ISSUE #20: land on the evolving Pokémon's actual slot at its real size
+	var evo_loc = get_pokemon_screen_location(evo_card)
+	await animate_card_a_to_b(player_hand_container, target_node, 0.3, evo_texture, card_scale_to_animate, evo_loc.get("size", card_scale_to_animate), evo_loc.get("position", _ANIM_POS_SENTINEL))
+
 	display_pokemon(false)
 	await get_tree().process_frame
 	await play_evolution_effect(evo_card)
@@ -5840,7 +5914,9 @@ func handle_action_normal_card() -> void:
 					await get_tree().process_frame
 					await get_tree().process_frame
 					var bench_texture = get_card_texture(bench_card)
-					await animate_card_a_to_b(player_hand_container, player_bench_container, 0.3, bench_texture, card_scales[11])
+					# ISSUE #20: land on the actual next bench slot (bench cards are same size, so no morph)
+					var bench_loc = get_pokemon_screen_location(bench_card)
+					await animate_card_a_to_b(player_hand_container, player_bench_container, 0.3, bench_texture, card_scales[11], bench_loc.get("size", card_scales[11]), bench_loc.get("position", _ANIM_POS_SENTINEL))
 					display_pokemon(false)
 					# GYM2-119 Rocket's Minefield Gym — coin flip per benched Basic from hand; tails = 20 damage
 					await trainer_effects.gym2_minefield_gym_trigger(bench_card, false)
@@ -6276,8 +6352,7 @@ func _input(event: InputEvent) -> void:
 # ── Dev debug cheat keys (in-match) ──────────────────────────────────────────────────────
 # D: both players draw 1 card.
 func debug_key_both_draw() -> void:
-	await show_message("BOTH DRAW 1 CARD")
-	if _should_bail(): return
+	print("ISSUE #19 FIX ACTIVE: debug draw — no message box")
 	await card_ops.draw_n(false, 1)
 	if _should_bail(): return
 	await card_ops.draw_n(true, 1)
@@ -6285,8 +6360,7 @@ func debug_key_both_draw() -> void:
 
 # S: both players shuffle their hand into their deck and draw back the same number of cards.
 func debug_key_both_shuffle_hand() -> void:
-	await show_message("BOTH SHUFFLE HAND BACK INTO DECK")
-	if _should_bail(): return
+	print("ISSUE #19 FIX ACTIVE: debug shuffle hand — no message box")
 	for is_opponent in [false, true]:
 		var hand = opponent_hand if is_opponent else player_hand
 		var deck = opponent_deck if is_opponent else player_deck
@@ -6301,8 +6375,7 @@ func debug_key_both_shuffle_hand() -> void:
 
 # E: attach an energy card of each active Pokemon's own type to that Pokemon (searched from its owner's deck).
 func debug_key_both_attach_energy() -> void:
-	await show_message("ATTACHING AN ENERGY TO BOTH ACTIVE POKEMON")
-	if _should_bail(): return
+	print("ISSUE #19 FIX ACTIVE: debug attach energy — no message box")
 	for is_opponent in [false, true]:
 		var active = opponent_active_pokemon if is_opponent else player_active_pokemon
 		if active == null:
@@ -6328,8 +6401,7 @@ func debug_key_both_attach_energy() -> void:
 
 # H: fully heal both active Pokemon.
 func debug_key_heal_actives() -> void:
-	await show_message("HEALING ALL ACTIVE POKEMON")
-	if _should_bail(): return
+	print("ISSUE #19 FIX ACTIVE: debug heal actives — no message box")
 	if player_active_pokemon != null:
 		await card_ops.heal_pokemon(player_active_pokemon, player_active_pokemon.get_max_hp(), false)
 		if _should_bail(): return
@@ -6339,8 +6411,7 @@ func debug_key_heal_actives() -> void:
 
 # B: fully heal all benched Pokemon on both sides.
 func debug_key_heal_bench() -> void:
-	await show_message("HEALING ALL BENCH POKEMON")
-	if _should_bail(): return
+	print("ISSUE #19 FIX ACTIVE: debug heal bench — no message box")
 	for p in player_bench:
 		await card_ops.heal_pokemon(p, p.get_max_hp(), false)
 		if _should_bail(): return

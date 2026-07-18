@@ -181,6 +181,13 @@ func search_deck_to_hand(is_opponent: bool, filter_fn: Callable, prompt: String,
 		for i in range(min(count, candidates.size())):
 			chosen.append(candidates[i])
 	else:
+		# ISSUE #21 FIX ACTIVE: a deck search triggered by an ATTACK (e.g. Oddish's Sprout) runs while
+		# perform_attack() has the full-screen opponent_blocker up, which would sit on top of this
+		# selection UI and eat the click on the confirm button. Save/hide it here and restore it after,
+		# exactly like prompt_select_card does (issue #3), so the confirm button is clickable.
+		var restore_opponent_blocker = main.opponent_blocker.visible
+		main.opponent_blocker.visible = false
+		print("ISSUE #21 FIX ACTIVE (search_deck_to_hand): opponent_blocker hidden, will restore to ", restore_opponent_blocker)
 		# Player multi-select using discard-selection machinery
 		main.trainer_discard_selected.clear()
 		main.trainer_discard_cards_needed = count
@@ -197,6 +204,8 @@ func search_deck_to_hand(is_opponent: bool, filter_fn: Callable, prompt: String,
 		await main.trainer_discard_selection_done
 		main.trainer_discard_selection_active = false
 		main.hide_selection_mode_display_main()
+		main.opponent_blocker.visible = restore_opponent_blocker
+		print("ISSUE #21 FIX ACTIVE (search_deck_to_hand): opponent_blocker restored to ", restore_opponent_blocker)
 		if main._should_bail(): return []
 
 		chosen = main.trainer_discard_selected.duplicate()
