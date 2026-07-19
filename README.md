@@ -1,12 +1,38 @@
 # Pokémon TCG Legacy
+
 ![Trainer icons](Image_Assets/Screenshots/banner.gif)
 
+# Update as of 19/07/2026
+
+Every single card set is now technically implemented. That's all 40 sets and nearly 2,000 cards playable covering Promos, e-card series, neo, the entire EX era and POP series 1-6.
+
+Other significant changes:
+
+1) Added 4th times slot. Morning - Afternoon - Evening - Night with variation in map colours opponents and NPC across each
+2) Added 300+ card sleeve designs each opponent get their own sleeves and most will gift theirs
+3) Completely redesigned the main menu and added a player info screen for stats
+4) Verdant Forest redesigned with new layout and features
+
+Main focus is now bug fixing. As slyly wrote, all cards are "technically implemented". Large chunk of errors across the board so I've set up a proper issue log and debug tools to help.
+
+![](Image_Assets/Screenshots/forest.gif)
+
+
+
+![](Image_Assets/Screenshots/Sleeves.gif)
+
+
+
+![](Image_Assets/Screenshots/times.gif)
+
 # Update as of 23/06/2026
+
 Work is still going well, fully implemented all sets from Base set to end of Neo cards with bugs that need fixing. Progress is still being made daily, multiple map areas have been made and currently around 100 opponents with unique decks implemented, and each gives a unique coin as a win reward, so currently over 100+ coins to collect and use. 
 
 Starting system has been added to game so there is a natural intro and instead of a "tutorial", the game is learnt to be played naturally through regular gameplay progression. 
 
 Key things **already implemented** to look forward to: 
+
 1) All cards from Base set Gym Hero/Challenge can be used, earned and purchased from in shops
 2) Pack opening experience with higher hit rates than regular tcg. God packs?
 3) 100+ Opponents to find in the overworld ready to be battled each with a unique decks and a unqiue coin reward 
@@ -15,21 +41,34 @@ Key things **already implemented** to look forward to:
 6) Challenge battles with bonus gameplay modifiers such as damage mutipliers, weakness and resistance changes, double energy attachment and card restrictions.
 7) Kanto era ends with Gym Hero Challenge, a best of 3 with every kanto gym leader in order to progress to the Neo set game area.
 
+
+
+![](Image_Assets/Screenshots/taxi.gif)
+
+
+
+![](Image_Assets/Screenshots/gymhall.gif)
+
+
+
 # Planned features and gameplay progression plan before considering done
 
 1) Most immediate requirements are now just fixing all the bugs within the battle system and main game.
+
 2) More NPCs need adding to flesh out the world and add flavour text, guidance or gifts.
+
 3) All decks needs battling against fully and adjusting to make them as good as possible. A lot of decks will require tweaking.
-4) Add card sleeves/backs to be available to purchase and customise.
-6) Add Pokemon to the overworld to flesh out the world along with the additional NPCs.
-7) Add Challenge decks with bonus modifiers after Gym Challenge.
-8) Add "End" of Kanto area (planned but not implemented so no spoilers).
 
-9) (Potentially add 4th time slot. Currently just Day-Evening-Night but may add Morning-Afternoon-Evening-Night for more overworld variation each day)
+4) Add Pokemon to the overworld to flesh out the world along with the additional NPCs.
 
----- Consider this phase 1 finished and a 'finished' game that's playable with a story and rich enough features to be a dozen or so hours gameplay ----
+5) Add Challenge decks with bonus modifiers after Gym Challenge.
+
+6) Add "End" of Kanto area (planned but not implemented so no spoilers).
+
+-- Consider this phase 1 finished and a 'finished' game that's playable with a story and rich enough features to be a dozen or so hours gameplay --
 
 # Future features considered as phase 2 definitely coming
+
 1) Add Neo set era cards available to use and purchase
 2) Create another 100+ decks from Neo era with 100+ Opponents to match
 3) Allow pokemon to be followers by giving each pokemon a unique item acquired as gifts or puchased from shops
@@ -43,7 +82,8 @@ Key things **already implemented** to look forward to:
 
 ---- Consider this end of phase 2 and next large update to game ====
 
-# Final features planned 
+# Final features planned
+
 1) Implement all EX generation card sets from Ruby Sapphire to end of Delta species
 2) Implement EX era overworlds and opponents
 3) Add double battle matches as per EX era rulesets
@@ -51,6 +91,7 @@ Key things **already implemented** to look forward to:
 ---- Consider this finished game as intended and planned ----
 
 # Unplanned features as of 06/2026
+
 1) Diamond/Pearl onwards currently not planned to be implemented
 2) Release will be windows exe only, no android/controller support
 
@@ -65,46 +106,55 @@ The game has been created entirely from the ground up in Godot with custom GD sc
 ## Core Features
 
 ### Rich open world
+
 Explore a vibrant open world with plenty of unique and vast areas to visit and explore. Potentially find secrets and rewards for eaxploring as each area is filled with dozens of entirely unique NPCs and opponents to play against. Unlock more areas, NPCs, sets and opponents naturally as you progress through the game.
 
 ![battle](Image_Assets/Screenshots/overworld.gif)
 
 ### Battle Simulation Built From Scratch
+
 Fight against hundreds of unqiue CPU opponent decks in a battle engine built from the ground up. You won't be battling against random weak opponents, a lot of decks will be genuinely challenging as opponents play competently and make your victories feel earned. Battles are quick and fun but meaningful enough to matter and you're rewarded greatly for every new win.
 
 ![battle](Image_Assets/Screenshots/battle.gif)
 
 ### Day - Night cycles change the landscape
+
 Days naturally progress as you battle, moving through the day into the night time. NPCs and Opponents have different habits, offering gifts, battles or varying speech depending on the time of day they are interacted with. Map layouts change as you progress making the world feel truly lived in.
 
 ![battle](Image_Assets/Screenshots/cycles.gif)
 
 ### Complete Card Collection (Base Set → EX Era)
+
 Collect every single card from **Base Set** all the way through to **EX Power Keepers** - spanning nearly 2,000 collectible cards across nearly 30 individual sets. Whether you're hunting down a complete playset of classic cards or chasing the elusic rare Gold Star cards, everything is waiting to be earned. Build custom decks and experiment freely within the standardised rules of the Pokemon TCG.
 
 ![Cards](Image_Assets/Screenshots/Cards.gif)
 
 ### Familiar NPCs and gifts
+
 You can interact with familiar and legendary NPCs in the overworld - GYM leaders from Kanto will make an appearance allowing you to speak to your old friends. Some NPCs will provide you with a gift when spoken to, allowing you to build up your collection not just by battling but by interacting with everyone in the overworld.
 
 ![Cards](Image_Assets/Screenshots/gift.gif)
 
 ### Pack purchasing
+
 Earn Poke dollars by battling your opponents and spend your well earned cash in the Card Mart to buy packs and unlock new cards for you to use in your decks. There is also a slim chance you will get an extra bonus rare in some packs and potentially... even an elusive god pack?
 
 ![Cards](Image_Assets/Screenshots/packopening.gif)
 
 ### Trainer Customization
+
 Unlock **100+ unique trainer sprites** as you progress through the game. Choose your favorite trainer class sprite for both overworld and in battle. Speak to and battle every NPC and opponent to unlock them all.
 
 ![Trainer icons](Image_Assets/Screenshots/trainers.gif)
 
 ### 100+ Collectable Coins
+
 Win coins as rewards by battling opponents or find some as gifts to use them in your matches. Earn your favorites and add flair to your gameplay.
 
 ![Coins](Image_Assets/Screenshots/coins.gif)
 
 ### Living Overworld
+
 Hundreds of unique decks and opponents to battle so you never have to battle the same opponent twice! (Unless you want to)
 
 ![Coins](Image_Assets/Screenshots/intro.gif)
@@ -138,22 +188,7 @@ Built in **Godot 4.6** using GDScript. The battle engine handles complex card in
 
 ![Godot](Image_Assets/Screenshots/godot.gif)
 
-## Cheat Codes
-
-Enter any of the codes below as your player name on the Trainer Card screen and hit Save to activate the cheat. A confirmation message will appear on screen.
-
-| Code | Effect |
-|---|---|
-| `CHT.All_Cards_1` | Set all Base Set → Gym Challenge cards to ×99 |
-| `CHT.All_Cards_2` | Set all Neo Genesis → e-Card Skyridge cards to ×99 |
-| `CHT.All_Cards_3` | Set all EX Ruby & Sapphire → EX Team Rocket Returns cards to ×99 |
-| `CHT.All_Cards_4` | Set all EX Deoxys → EX Power Keepers cards to ×99 |
-| `CHT.Gimme_Cash` | Set cash to ₽99,999 |
-| `CHT.Add_Starter_Set` | Add the house starter deck cards to your collection |
-| `CHT.Add_Shop_Set` | Add the shop starter set cards to your collection |
-| `CHT.Remove_All_Cards` | Set all owned cards to 0 |
-
-## Inspiration
+# Inspiration
 
 This project exists because the TCG GB games filled a niche that modern Pokémon TCG games have abandoned. I hate constantly battling the same 2 meta decks match after match and needing to pay real money to progress in game, that's not what the original games were about. They were all for the satisfaction of building something fun and experimenting with the cards you like.
 
