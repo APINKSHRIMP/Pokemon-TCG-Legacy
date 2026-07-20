@@ -156,7 +156,7 @@ position = Vector2(129, 60)
 position = Vector2(-37, 1468)
 
 [node name="DoorArea_Downstairs" type="CollisionShape2D" parent="Door Areas" unique_id=2119147692]
-position = Vector2(46, -1441)
+position = Vector2(49, -1440)
 shape = SubResource("RectangleShape2D_377ug")
 metadata/target_scene = "res://Scenes/Map_Scenes/Player_House_Downstairs.tscn"
 metadata/door_type = "stairs_down"
