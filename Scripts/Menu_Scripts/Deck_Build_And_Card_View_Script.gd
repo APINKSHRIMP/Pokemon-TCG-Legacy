@@ -95,6 +95,7 @@ var deck_name_counts : Dictionary = {}
 
 # Reference to the load-deck popup so we can free it later
 var load_popup       : CanvasLayer = null
+var empty_confirm_popup : CanvasLayer = null
 
 # Snapshot of deck_cards taken after a save or load — used to detect
 # whether the player has made any changes.  If the current deck_cards
@@ -1676,8 +1677,90 @@ func _reset_scroll_position() -> void:
 
 # ─── Empty deck ──────────────────────────────────────────────────────────────
 
-## Clears the entire deck — resets all in-deck counts to 0.
+## Asks the player to confirm before wiping the entire deck.
+## Emptying a full 60-card deck by an accidental click is painful, so we gate
+## the destructive action behind a Yes/No popup (styled like the load popup).
 func _on_empty_deck_pressed() -> void:
+	# Nothing to clear, and don't stack popups
+	if total_deck_count == 0 or empty_confirm_popup != null:
+		return
+
+	var kenney_theme = load("res://UI_Themes/kenneyUI.tres")
+
+	# CanvasLayer ensures the popup renders above everything else.
+	empty_confirm_popup = CanvasLayer.new()
+	empty_confirm_popup.layer = 100
+	add_child(empty_confirm_popup)
+
+	# Dim the screen behind the popup
+	var overlay := ColorRect.new()
+	overlay.color = Color(0, 0, 0, 0.6)
+	overlay.anchor_right  = 1.0
+	overlay.anchor_bottom = 1.0
+	empty_confirm_popup.add_child(overlay)
+
+	# Centered panel
+	var panel := PanelContainer.new()
+	if kenney_theme:
+		panel.theme = kenney_theme
+	panel.custom_minimum_size = Vector2(460, 220)
+	panel.anchor_left   = 0.5
+	panel.anchor_top    = 0.5
+	panel.anchor_right  = 0.5
+	panel.anchor_bottom = 0.5
+	panel.offset_left   = -230
+	panel.offset_top    = -110
+	panel.offset_right  = 230
+	panel.offset_bottom = 110
+	empty_confirm_popup.add_child(panel)
+
+	var vbox := VBoxContainer.new()
+	vbox.add_theme_constant_override("separation", 18)
+	vbox.alignment = BoxContainer.ALIGNMENT_CENTER
+	panel.add_child(vbox)
+
+	var msg := Label.new()
+	msg.text = "Empty the entire deck?\nThis cannot be undone."
+	msg.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	msg.add_theme_font_size_override("font_size", 24)
+	vbox.add_child(msg)
+
+	var btn_row := HBoxContainer.new()
+	btn_row.alignment = BoxContainer.ALIGNMENT_CENTER
+	btn_row.add_theme_constant_override("separation", 20)
+	vbox.add_child(btn_row)
+
+	var yes_btn := Button.new()
+	yes_btn.text = "Empty"
+	yes_btn.custom_minimum_size = Vector2(130, 45)
+	var red_theme = load("res://UI_Themes/kenneyUI-red.tres")
+	if red_theme:
+		yes_btn.theme = red_theme
+	yes_btn.pressed.connect(
+		func():
+			_close_empty_confirm_popup()
+			_do_empty_deck()
+	)
+	btn_row.add_child(yes_btn)
+
+	var no_btn := Button.new()
+	no_btn.text = "Cancel"
+	no_btn.custom_minimum_size = Vector2(130, 45)
+	var green_theme = load("res://UI_Themes/kenneyUI-green.tres")
+	if green_theme:
+		no_btn.theme = green_theme
+	no_btn.pressed.connect(_close_empty_confirm_popup)
+	btn_row.add_child(no_btn)
+
+
+func _close_empty_confirm_popup() -> void:
+	if empty_confirm_popup != null:
+		empty_confirm_popup.queue_free()
+		empty_confirm_popup = null
+
+
+## Clears the entire deck — resets all in-deck counts to 0.
+func _do_empty_deck() -> void:
 	deck_cards.clear()
 	deck_name_counts.clear()
 	total_deck_count = 0
