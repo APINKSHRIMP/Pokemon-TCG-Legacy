@@ -27,7 +27,7 @@ const OVERLAY_ICONS = [
 ]
 
 var tweens: Dictionary = {}
-var quit_dialog: ConfirmationDialog = null
+var quit_dialog: CanvasLayer = null
 var is_overlay: bool = false
 var close_overlay_callback: Callable = Callable()
 
@@ -66,6 +66,9 @@ func _ready() -> void:
 	if not starter_collected:
 		locked_modes["deck/deck_mode_background"]      = "deck/deck_mode_label"
 		locked_modes["coin/coin_case_mode_background"] = "coin/coin_case_label"
+		# ISSUE #29 FIX: sleeves is also unavailable until the starter box is collected.
+		locked_modes["sleeves/sleeves_mode_background"] = "sleeves/sleeves_label"
+		print("ISSUE #29 FIX ACTIVE: sleeves menu locked pre-starter-box")
 
 	await get_tree().process_frame
 
@@ -163,18 +166,74 @@ func _on_exit_clicked(event: InputEvent) -> void:
 		_show_quit_dialog()
 
 
+# ISSUE #30 FIX: build the quit confirmation with the same styled popup as the deck builder's
+# "Empty deck?" confirm (kenney-themed centred panel, red confirm + green cancel) instead of the
+# default engine ConfirmationDialog.
 func _show_quit_dialog() -> void:
 	if quit_dialog != null and is_instance_valid(quit_dialog):
 		return
-	quit_dialog = ConfirmationDialog.new()
-	quit_dialog.title = "Quit Game"
-	quit_dialog.dialog_text = "Are you sure you want to quit?"
-	quit_dialog.ok_button_text = "Yes"
-	quit_dialog.cancel_button_text = "No"
+	print("ISSUE #30 FIX ACTIVE: styled quit confirmation")
+	var kenney_theme = load("res://UI_Themes/kenneyUI.tres")
+
+	quit_dialog = CanvasLayer.new()
+	quit_dialog.layer = 100
 	add_child(quit_dialog)
-	quit_dialog.confirmed.connect(func(): get_tree().quit())
-	quit_dialog.canceled.connect(_on_quit_cancelled)
-	quit_dialog.popup_centered()
+
+	# Dim the screen behind the popup
+	var overlay := ColorRect.new()
+	overlay.color = Color(0, 0, 0, 0.6)
+	overlay.anchor_right  = 1.0
+	overlay.anchor_bottom = 1.0
+	quit_dialog.add_child(overlay)
+
+	# Centered panel
+	var panel := PanelContainer.new()
+	if kenney_theme:
+		panel.theme = kenney_theme
+	panel.custom_minimum_size = Vector2(460, 220)
+	panel.anchor_left   = 0.5
+	panel.anchor_top    = 0.5
+	panel.anchor_right  = 0.5
+	panel.anchor_bottom = 0.5
+	panel.offset_left   = -230
+	panel.offset_top    = -110
+	panel.offset_right  = 230
+	panel.offset_bottom = 110
+	quit_dialog.add_child(panel)
+
+	var vbox := VBoxContainer.new()
+	vbox.add_theme_constant_override("separation", 18)
+	vbox.alignment = BoxContainer.ALIGNMENT_CENTER
+	panel.add_child(vbox)
+
+	var msg := Label.new()
+	msg.text = "Quit the game?"
+	msg.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	msg.add_theme_font_size_override("font_size", 24)
+	vbox.add_child(msg)
+
+	var btn_row := HBoxContainer.new()
+	btn_row.alignment = BoxContainer.ALIGNMENT_CENTER
+	btn_row.add_theme_constant_override("separation", 20)
+	vbox.add_child(btn_row)
+
+	var yes_btn := Button.new()
+	yes_btn.text = "Quit"
+	yes_btn.custom_minimum_size = Vector2(130, 45)
+	var red_theme = load("res://UI_Themes/kenneyUI-red.tres")
+	if red_theme:
+		yes_btn.theme = red_theme
+	yes_btn.pressed.connect(func(): get_tree().quit())
+	btn_row.add_child(yes_btn)
+
+	var no_btn := Button.new()
+	no_btn.text = "Cancel"
+	no_btn.custom_minimum_size = Vector2(130, 45)
+	var green_theme = load("res://UI_Themes/kenneyUI-green.tres")
+	if green_theme:
+		no_btn.theme = green_theme
+	no_btn.pressed.connect(_on_quit_cancelled)
+	btn_row.add_child(no_btn)
 
 
 func _on_quit_cancelled() -> void:

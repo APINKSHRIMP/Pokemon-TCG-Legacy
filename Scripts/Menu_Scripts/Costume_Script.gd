@@ -165,6 +165,9 @@ func _load_characters() -> void:
 	files.sort()
 
 	for fname in files:
+		# ISSUE #32 FIX: bail if the scene was cancelled/freed mid-load (get_tree() would be null).
+		if not is_inside_tree():
+			return
 		_add_character_to_grid(fname)
 		await get_tree().process_frame
 

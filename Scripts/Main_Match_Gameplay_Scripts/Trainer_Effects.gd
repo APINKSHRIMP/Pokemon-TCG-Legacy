@@ -262,7 +262,7 @@ func effect_ex8_professor_cozmos_discovery(is_opponent: bool) -> void:
 func _register_base_trainers() -> void:
 	_trainer_dispatch["base1-88"] = func(c, opp): await effect_professor_oak(c, opp)
 	_trainer_dispatch["base1-89"] = func(c, opp): await effect_revive(opp)
-	_trainer_dispatch["base1-90"] = func(c, opp): await effect_super_potion(opp)
+	_trainer_dispatch["base1-90"] = func(c, opp): await effect_super_potion(c, opp)
 	_trainer_dispatch["base1-91"] = func(c, opp): await effect_bill(opp)
 	_trainer_dispatch["base1-92"] = func(c, opp): await effect_energy_removal(opp)
 	_trainer_dispatch["base1-93"] = func(c, opp): await effect_gust_of_wind(opp)
@@ -2140,23 +2140,43 @@ func effect_pokemon_trader(played_card: card_object, is_opponent: bool) -> void:
 		return
 	
 	if is_opponent:
-		# CPU: trade a duplicate or unneeded pokemon for a needed one
+		# ISSUE #44 FIX: Pokémon Trader says "show them to your opponent", so the player must SEE both
+		# the Pokémon shuffled in and the one taken out, with a message + animation for each step:
+		#   1) message "shuffled X into their deck" 2) fly X (face-up) hand->deck 3) shuffle animation
+		#   4) message "added Y to their hand"      5) fly Y (face-up) deck->hand.
+		print("ISSUE #44 FIX ACTIVE: Pokemon Trader shows both cards with animated hand<->deck flow")
 		var trade_away = cpu_get_discard_priority(pokemon_in_hand, 1, played_card)
 		if trade_away.size() == 0:
 			return
 		var card_to_trade = trade_away[0]
 		var search_card = main.cpu_ai.cpu_search_deck_for_best_pokemon(pokemon_in_deck)
-		if search_card != null:
-			hand.erase(card_to_trade)
-			card_to_trade.current_location = "deck"
-			deck.append(card_to_trade)
-			deck.erase(search_card)
-			search_card.current_location = "hand"
-			hand.append(search_card)
-			deck.shuffle()
-			await main.show_message("Opponent traded " + card_to_trade.metadata.get("name", "") + " for " + search_card.metadata.get("name", "") + "!")
-			if main._should_bail(): return
-			main.refresh_hand_display(true)
+		if search_card == null:
+			return
+		# Step 1-3: shuffle the hand Pokémon into the deck (shown face-up to the player).
+		await main.show_message("Opponent shuffled " + card_to_trade.metadata.get("name", "") + " into their deck!")
+		if main._should_bail(): return
+		hand.erase(card_to_trade)
+		card_to_trade.current_location = "deck"
+		deck.append(card_to_trade)
+		var trade_texture = main.get_card_texture(card_to_trade)
+		await main.animate_card_a_to_b(main.opponent_hand_container, main.opponent_deck_icon, 0.3, trade_texture, main.card_scales[12])
+		if main._should_bail(): return
+		main.refresh_hand_display(true)
+		main.update_deck_icon(true)
+		deck.shuffle()
+		await main.animate_deck_shuffle(true)
+		if main._should_bail(): return
+		# Step 4-5: take the searched Pokémon out of the deck into the hand (shown face-up).
+		await main.show_message("Opponent added " + search_card.metadata.get("name", "") + " to their hand!")
+		if main._should_bail(): return
+		deck.erase(search_card)
+		search_card.current_location = "hand"
+		hand.append(search_card)
+		var search_texture = main.get_card_texture(search_card)
+		await main.animate_card_a_to_b(main.opponent_deck_icon, main.opponent_hand_container, 0.3, search_texture, main.card_scales[12])
+		if main._should_bail(): return
+		main.refresh_hand_display(true)
+		main.update_deck_icon(true)
 	else:
 		var card_to_trade = await main.card_ops.prompt_select_card(pokemon_in_hand, "POKEMON TRADER", "Select a Pokemon from your hand to trade", "TRADE", false)
 		if main._should_bail(): return
@@ -2545,15 +2565,25 @@ func effect_maintenance(played_card: card_object, is_opponent: bool) -> void:
 		return
 	
 	if is_opponent:
+		# ISSUE #41 FIX: announce first, then fly each hidden card (card back) from hand to the deck
+		# ONE AT A TIME, play the shuffle animation, then the draw animates in — instead of the two
+		# cards vanishing instantly and the message appearing after the draw.
+		print("ISSUE #41 FIX ACTIVE: Maintenance animates cards to deck one at a time")
 		var to_shuffle = cpu_get_discard_priority(hand, 2, played_card)
+		await main.show_message("Opponent shuffled 2 cards into their deck!")
+		if main._should_bail(): return
 		for card in to_shuffle:
 			hand.erase(card)
 			card.current_location = "deck"
 			deck.append(card)
+			await main.animate_card_a_to_b(main.opponent_hand_container, main.opponent_deck_icon, 0.3, main.opponent_card_back_texture, main.card_scales[12])
+			if main._should_bail(): return
+			main.refresh_hand_display(true)
+			main.update_deck_icon(true)
 		deck.shuffle()
-		await main.card_ops.draw_n(true, 1)
+		await main.animate_deck_shuffle(true)
 		if main._should_bail(): return
-		await main.show_message("Opponent shuffled 2 cards into deck and drew 1!")
+		await main.card_ops.draw_n(true, 1)
 		if main._should_bail(): return
 	else:
 		await player_select_cards_to_discard(hand, 2, "MAINTENANCE", "Select 2 cards to shuffle into your deck")
@@ -2762,23 +2792,21 @@ func effect_revive(is_opponent: bool) -> void:
 			if main._should_bail(): return
 
 # base1-90 — Super Potion: Discard 1 energy from pokemon, remove up to 4 damage counters
-func effect_super_potion(is_opponent: bool) -> void:
-	var active = main.opponent_active_pokemon if is_opponent else main.player_active_pokemon
-	var bench = main.opponent_bench if is_opponent else main.player_bench
+func effect_super_potion(card: card_object, is_opponent: bool) -> void:
 	var discard = main.opponent_discard_pile if is_opponent else main.player_discard_pile
-	
+
 	# Find pokemon with both damage and energy
 	var valid_targets = []
 	var all_pokemon = build_field_pokemon_array(is_opponent)
 	for p in all_pokemon:
 		if p.current_hp < int(p.metadata.get("hp", "0")) and p.attached_energies.size() > 0:
 			valid_targets.append(p)
-	
+
 	if valid_targets.size() == 0:
 		await main.show_message("No Pokemon with both damage and energy!")
 		if main._should_bail(): return
 		return
-	
+
 	if is_opponent:
 		var best_target: card_object = null
 		var most_damage = 0
@@ -2796,24 +2824,37 @@ func effect_super_potion(is_opponent: bool) -> void:
 			if main._should_bail(): return
 			main.update_discard_pile_display(true)
 	else:
-		var target = await main.card_ops.prompt_select_card(valid_targets, "SUPER POTION", "Select a Pokemon to heal (will discard 1 energy)", "HEAL", false)
+		# ISSUE #25 FIX: let the player pick the target AND which energy to discard, and allow them
+		# to cancel out at either step (the card is refunded to hand, mirroring the tax-refund path).
+		print("ISSUE #25 FIX ACTIVE: Super Potion now prompts for energy choice + allows cancel")
+		var target = await main.card_ops.prompt_select_card(valid_targets, "SUPER POTION", "Select a Pokemon to heal (will discard 1 energy)", "HEAL", true)
 		if main._should_bail(): return
-		
-		if target != null:
-			# Animate energy discard
-			var energy = target.attached_energies.pop_back()
-			energy.current_location = "discard"
-			discard.append(energy)
-			var from_node = main.find_card_ui_for_object(target)
-			if from_node == null:
-				from_node = main.player_active_container if target == main.player_active_pokemon else main.player_bench_container
-			var energy_texture = main.get_card_texture(energy)
-			await main.animate_card_a_to_b(from_node, main.player_discard_icon, 0.2, energy_texture, main.card_scales[10])
-			if main._should_bail(): return
-			main.display_active_pokemon_energies(false)
-			main.update_discard_pile_display(false)
-			await main.card_ops.heal_pokemon(target, 40, false)
-			if main._should_bail(): return
+		if target == null:
+			_refund_trainer_to_hand(card, is_opponent)
+			return
+		# Choose which energy to discard (cancelable). remove_one_energy handles the pick UI,
+		# the fly-to-discard animation and Recycle Energy, returning null if the player cancels.
+		var removed = await main.card_ops.remove_one_energy(target, false, false, null, true)
+		if main._should_bail(): return
+		if removed == null:
+			_refund_trainer_to_hand(card, is_opponent)
+			return
+		main.update_discard_pile_display(false)
+		await main.card_ops.heal_pokemon(target, 40, false)
+		if main._should_bail(): return
+
+# Refund a standard trainer card that the player cancelled mid-effect back to their hand.
+# (play_trainer_card has already moved it to the discard pile before resolving the effect.)
+func _refund_trainer_to_hand(card: card_object, is_opponent: bool) -> void:
+	var discard = main.opponent_discard_pile if is_opponent else main.player_discard_pile
+	var hand = main.opponent_hand if is_opponent else main.player_hand
+	if card in discard:
+		discard.erase(card)
+	card.current_location = "hand"
+	if card not in hand:
+		hand.append(card)
+	main.refresh_hand_display(is_opponent)
+	main.update_discard_pile_display(is_opponent)
 
 # base1-92 — Energy Removal: Discard 1 energy from opponent's pokemon
 func effect_energy_removal(is_opponent: bool) -> void:

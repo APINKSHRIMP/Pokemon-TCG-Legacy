@@ -978,6 +978,40 @@ func evaluate_evolution_pair(evo_card: card_object, target: card_object) -> Dict
 		score += 150.0
 		reasons.append("Can attack immediately after evolving (+150 pts)")
 
+	# ISSUE #36 FIX: penalise a POINTLESS, tempo-losing evolution. If ALL of these hold there's no
+	# benefit to evolving this turn (e.g. a healthy Charmeleon with 2 Fire that can already attack,
+	# facing a Rattata that can't threaten it, evolving into a Charizard that needs 4 Energy):
+	#   1) Energy attachment is already used up this turn (can't pay a bigger cost now)
+	#   2) The pre-evolution can already attack right now
+	#   3) The evolved form CAN'T attack after evolving AND costs more Energy (higher requirement)
+	#   4) The pre-evolution is not guaranteed OR potentially KO'd next turn (so its HP is fine)
+	# EVOLUTION_WASTE_PENALTY is tweakable — large enough to overcome the HP/damage-gain bonuses.
+	const EVOLUTION_WASTE_PENALTY := -250.0
+	var energy_done_36: bool = main.opponent_energy_played_this_turn
+	var target_can_attack_now := false
+	for attack in target.metadata.get("attacks", []):
+		if main.check_attack_requirements(attack, target):
+			target_can_attack_now = true
+			break
+	# Cheapest attack cost of each form (higher evolved cost = higher Energy requirement)
+	var target_min_cost := 9999
+	for a in target.metadata.get("attacks", []):
+		target_min_cost = min(target_min_cost, int(a.get("convertedEnergyCost", 0)))
+	var evo_min_cost := 9999
+	for a in evo_card.metadata.get("attacks", []):
+		evo_min_cost = min(evo_min_cost, int(a.get("convertedEnergyCost", 0)))
+	var evolved_higher_cost := evo_min_cost > target_min_cost
+	# Not under KO threat next turn (only well-defined for the Active; a benched target is treated
+	# as safe since it isn't the one being attacked).
+	var under_threat_36 := false
+	if target.current_location == "active":
+		var threats_36 = evaluate_ko_threats()
+		under_threat_36 = threats_36["cpu_active_guaranteed_ko"] or threats_36["cpu_active_potential_ko"]
+	if energy_done_36 and target_can_attack_now and (not has_usable_attack_after) and evolved_higher_cost and (not under_threat_36):
+		score += EVOLUTION_WASTE_PENALTY
+		reasons.append("Pointless evolution — can attack now, can't after, energy spent, not under threat (" + str(EVOLUTION_WASTE_PENALTY) + " pts)")
+		print("ISSUE #36 FIX ACTIVE: ", EVOLUTION_WASTE_PENALTY, " waste penalty for evolving ", target.metadata.get("name", "?"), " into ", evo_card.metadata.get("name", "?"))
+
 	# Active pokemon bonus: evolving the active is more urgent
 	if target.current_location == "active":
 		score += 75.0
@@ -1331,14 +1365,19 @@ func execute_cpu_retreat(cpu_eval: Dictionary) -> void:
 		main.display_pokemon(true)
 		return
 		
-	# Discard energy for retreat cost
+	# ISSUE #43 FIX: pick the retreat-cost Energy but DON'T discard it here. Previously the CPU popped
+	# each Energy and called send_card_to_discard, then animate_retreat -> animate_energies_to_discard
+	# discarded them AGAIN (it also erases-from-attached + appends-to-discard), so the discard pile
+	# jumped by 2× the retreat cost. The player flow never pre-discards; the CPU now matches it —
+	# animate_energies_to_discard (inside animate_retreat) performs the single discard + animation.
 	var retreat_cost = main.get_retreat_cost(main.opponent_active_pokemon)
 	var discarded_energies = []
+	var _attached_for_retreat = main.opponent_active_pokemon.attached_energies
 	for i in range(retreat_cost):
-		if main.opponent_active_pokemon.attached_energies.size() > 0:
-			var energy = main.opponent_active_pokemon.attached_energies.pop_back()
-			main.send_card_to_discard(energy, true)
-			discarded_energies.append(energy)
+		var idx = _attached_for_retreat.size() - 1 - i   # take from the top, mirroring the old pop_back order
+		if idx >= 0:
+			discarded_energies.append(_attached_for_retreat[idx])
+	print("ISSUE #43 FIX ACTIVE: CPU retreat discards ", discarded_energies.size(), " energy once (no pre-discard)")
 
 	var post_check = await main.check_confused_retreat(main.opponent_active_pokemon, true, "post_energy")
 	if not post_check:
@@ -1607,10 +1646,10 @@ func cpu_phase_energy_attachment(cpu_eval: Dictionary) -> void:
 
 	var energy_target_node = main.opponent_energy_container if target == main.opponent_active_pokemon else main.opponent_bench_container
 	var energy_texture = main.get_card_texture(energy)
-	# ISSUE #20: fly the Energy to the ACTUAL benched Pokémon it is attaching to (not the Bench-row centre)
-	var energy_pos_override = Vector2(-99999, -99999)
-	if target != main.opponent_active_pokemon:
-		energy_pos_override = main.get_pokemon_screen_location(target).get("position", energy_pos_override)
+	# ISSUE #20 FIX: fly the Energy to the ACTUAL Pokémon slot (active as well as bench) — the Active
+	# case previously fell back to the container centre.
+	print("ISSUE #20 FIX ACTIVE (cpu): energy flies to real slot for active+bench")
+	var energy_pos_override = main.get_pokemon_screen_location(target).get("position", Vector2(-99999, -99999))
 	await main.animate_card_a_to_b(main.opponent_hand_container, energy_target_node, 0.2, energy_texture, main.card_scales[12], Vector2.ZERO, energy_pos_override)
 	if main._should_bail(): return
 
@@ -1695,11 +1734,24 @@ func score_energy_pair(pokemon: card_object, energy_card: card_object, cpu_eval:
 		if not has_2_colorless_attack:
 			return -500.0  # Hard disqualification: this pokemon can't effectively use DCE
 	
-	# Flat active/bench modifier: active pokemon almost always takes priority
+	# Flat active/bench modifier: active pokemon almost always takes priority.
+	# ISSUE #35 FIX: bumped the Active bonus by +50 (40 -> 90) to put more weight on keeping the
+	# Active powered up rather than feeding the bench.
 	if is_active:
-		score += 40.0
+		score += 90.0
 	else:
 		score -= 20.0
+
+	# ISSUE #35 FIX: penalise attaching Energy to a DAMAGED Pokemon — it may be knocked out before
+	# it can use the Energy, wasting the attach. Penalty scales with damage taken: (100 - HP%).
+	# A full-HP Pokemon = 0 penalty; a 20/40 HP Magnemite (50%) = -50.
+	var max_hp_35 = int(pokemon.metadata.get("hp", "0"))
+	if max_hp_35 > 0:
+		var hp_percent_35 = float(pokemon.current_hp) / float(max_hp_35) * 100.0
+		var hp_penalty_35 = 100.0 - hp_percent_35
+		if hp_penalty_35 > 0.0:
+			score -= hp_penalty_35
+			print("ISSUE #35 FIX ACTIVE: -", int(hp_penalty_35), " energy-attach HP penalty on ", pokemon.metadata.get("name", "?"), " (", pokemon.current_hp, "/", max_hp_35, ")")
 	
 	# 2.1, 2.2, 2.3: Energy type matching (can disqualify a pair)
 	score += score_energy_type_match(pokemon, energy_types, pokemon_data, is_active)
@@ -5298,6 +5350,34 @@ func cpu_pick_best_keep(pool: Array) -> card_object:
 		if s > best_s:
 			best_s = s
 			best = c
+	return best
+
+# ENERGY DISCARD TARGETING — when the CPU is the ATTACKER and an effect lets the attacker choose one
+# Energy to discard from a Pokemon (Whirlpool, Hyper Beam, etc.), pick the player's MOST valuable
+# Energy to strip. Special Energy (Double Colorless, Rainbow, …) is the biggest disruption because it
+# is flexible and hard to replace; otherwise favour a basic Energy whose type the target's attacks
+# actually need. Returns null only if the target has no Energy attached.
+func cpu_pick_energy_to_discard_from(target: card_object) -> card_object:
+	if target == null or target.attached_energies.size() == 0:
+		return null
+	# Collect the Energy types this Pokemon's attacks require (Colorless ignored — any Energy pays it).
+	var needed_types: Array = []
+	for atk in target.metadata.get("attacks", []):
+		for cost_type in atk.get("cost", []):
+			if cost_type != "Colorless" and cost_type not in needed_types:
+				needed_types.append(cost_type)
+	var best: card_object = null
+	var best_s := -INF
+	for e in target.attached_energies:
+		var s := 5.0                                                  # base value of any Energy
+		if "Special" in e.metadata.get("subtypes", []):
+			s += 100.0                                                # special Energy = biggest loss
+		for provided in main.get_energy_provided_by_card(e):
+			if provided in needed_types:
+				s += 20.0                                             # matches an attack cost they rely on
+		if s > best_s:
+			best_s = s
+			best = e
 	return best
 
 # SNIPE / DAMAGE TARGET — rank a Pokemon as a target for `damage`. Prefers a guaranteed KO (especially a

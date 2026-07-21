@@ -44,6 +44,26 @@ var last_battled_opponent_entry: Dictionary = {}
 var last_interior_scene: String = ""
 var current_shop_id: String = "card_mart"
 
+# ISSUE #34: global game-speed multipliers, to be exposed in the Options submenu later. 1.0 = the
+# current "standard" (medium) speed. Higher = faster. Read these wherever an animation/movement
+# duration is computed so the whole game honours the player's speed preference.
+#   card_match_animation_speed  — regular card-match animations (place/attach/retreat/discard).
+#                                 Options: slow 0.5, standard 1.0, fast 2.0.
+#   overworld_walking_speed     — the player's default overworld walk/run speed multiplier.
+#                                 Options: slow 0.8, standard 1.0, fast 1.2.
+#   overworld_animation_speed   — overworld reward/gift animations (coin/card spins, fades, etc.).
+#                                 Options: slow 0.5, standard 1.0, fast 2.0.
+var card_match_animation_speed: float = 1.0
+var overworld_walking_speed: float = 1.0
+var overworld_animation_speed: float = 1.0
+
+# Scales an animation DURATION by a speed multiplier (duration / multiplier), clamped so a zero or
+# negative multiplier can never divide by zero or invert the animation.
+func scaled_duration(base_seconds: float, multiplier: float) -> float:
+	if multiplier <= 0.05:
+		multiplier = 0.05
+	return base_seconds / multiplier
+
 var sleep_wakeup_fade: bool = false
 
 # ============================================================

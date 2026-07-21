@@ -1826,22 +1826,11 @@ func apply_energy_discard_defender(effect: Dictionary, defender: card_object, is
 		main.hide_selection_mode_display_main()
 		main.opponent_blocker.visible = true
 	elif is_defender_player:
-		# Opponent is attacking — player chooses which of their own energies to discard
-		main.opponent_blocker.visible = false
-		main.defender_energy_discard_active = true
-		main.show_enlarged_array_selection_mode(defender.attached_energies)
-		main.cancel_button.visible = false
-		main.header_label.text = "DISCARD AN ENERGY FROM " + name.to_upper()
-		main.hint_label.text = "Your opponent forces you to discard an energy card"
-		main.action_button.text = "DISCARD"
-		main.action_button.disabled = true
-		main.action_button.theme = main.theme_disabled
-		await main.defender_energy_chosen
-		if main._should_bail(): return
-		energy_to_discard = main.selected_card_for_action
-		main.defender_energy_discard_active = false
-		main.hide_selection_mode_display_main()
-		main.opponent_blocker.visible = true
+		# Opponent (CPU) is attacking — the ATTACKER chooses which Energy to discard (per card text,
+		# e.g. Whirlpool: "choose 1 of them and discard it"). ISSUE #24 FIX: the CPU picks the player's
+		# most valuable Energy instead of the player being prompted to discard their own.
+		energy_to_discard = main.cpu_ai.cpu_pick_energy_to_discard_from(defender)
+		print("ISSUE #24 FIX ACTIVE: CPU chose to discard ", (energy_to_discard.metadata.get("name", "?") if energy_to_discard else "nothing"), " from player's ", name)
 	
 	if energy_to_discard != null:
 		var energy_texture = main.get_card_texture(energy_to_discard)
@@ -1913,8 +1902,10 @@ func apply_bench_damage(effect: Dictionary, is_opponent_attacking: bool) -> void
 				main.show_floating_label("-" + str(effective_damage), label_pos, Color.WHITE, true,)
 				
 
-			# Stagger labels by 0.1 seconds for visual sequence
-			await get_tree().create_timer(0.1).timeout
+			# ISSUE #38 FIX: stagger bench-damage labels by 0.2s (scaled by the card-match animation
+			# speed) so a multi-target hit like Earthquake reads as a "Mexican wave" the player can
+			# follow, instead of all labels flashing almost at once.
+			await get_tree().create_timer(GameState.scaled_duration(0.2, GameState.card_match_animation_speed)).timeout
 			if main._should_bail(): return
 
 # Sets the blind flag on the defending pokemon and updates icons

@@ -377,7 +377,7 @@ func clear_statuses(pokemon: card_object, is_opponent: bool) -> void:
 # Pass `forced_card` to skip the selection UI and discard a specific energy directly.
 # Returns the removed card, or null if none were available.
 func remove_one_energy(target: card_object, target_owner_is_opponent: bool,
-		picker_is_opponent: bool, forced_card: card_object = null) -> card_object:
+		picker_is_opponent: bool, forced_card: card_object = null, cancelable: bool = false) -> card_object:
 	if target.attached_energies.is_empty():
 		return null
 
@@ -389,7 +389,8 @@ func remove_one_energy(target: card_object, target_owner_is_opponent: bool,
 		# CPU picks first energy (caller can sort by preference before calling)
 		chosen = target.attached_energies[0]
 	else:
-		# Player chooses which energy to discard
+		# Player chooses which energy to discard. When cancelable, the Cancel button aborts the
+		# whole effect (returns null so the caller can refund) — ISSUE #25.
 		main.defender_energy_discard_active = true
 		main.show_enlarged_array_selection_mode(target.attached_energies)
 		main.header_label.text = "DISCARD AN ENERGY"
@@ -397,7 +398,8 @@ func remove_one_energy(target: card_object, target_owner_is_opponent: bool,
 		main.action_button.text = "DISCARD"
 		main.action_button.disabled = true
 		main.action_button.theme = main.theme_red
-		main.cancel_button.visible = false
+		main.cancel_button.visible = cancelable
+		main.selected_card_for_action = null
 		await main.defender_energy_chosen
 		main.defender_energy_discard_active = false
 		main.hide_selection_mode_display_main()

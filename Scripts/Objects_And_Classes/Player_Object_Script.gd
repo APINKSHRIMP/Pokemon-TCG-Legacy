@@ -102,12 +102,15 @@ func _physics_process(_delta):
 	# Hold Shift to run: doubles movement speed and the walk animation cycle
 	var is_running: bool = Input.is_key_pressed(KEY_SHIFT)
 	var speed_scale: float = run_multiplier if is_running else 1.0
+	# ISSUE #34: the global overworld walking-speed multiplier scales both walk and run (Options: slow
+	# 0.8, standard 1.0, fast 1.2).
+	var walk_mult: float = GameState.overworld_walking_speed
 
 	if input_direction != Vector2.ZERO:
-		velocity = input_direction * move_speed * speed_scale
+		velocity = input_direction * move_speed * speed_scale * walk_mult
 		is_moving = true
 		_update_direction(input_direction)
-		animated_sprite.speed_scale = speed_scale
+		animated_sprite.speed_scale = speed_scale * walk_mult
 		animated_sprite.play("walk_" + current_direction)
 	else:
 		velocity = Vector2.ZERO

@@ -296,6 +296,12 @@ func get_effective_types() -> Array:
 	# ex2 Lunar/Solar Eclipse (Lunatone/Solrock): temporary type override until end of turn.
 	if has_effect("ex2_type_override"):
 		return [get_effect_data("ex2_type_override")]
+	# ISSUE #45 FIX: Venomoth's Shift (and similar temporary_type overrides like Texture Magic) fully
+	# change this Pokémon's type until it changes again or leaves play. Routing it through the
+	# effective-types path means Weakness/Resistance now actually respect the shifted type (previously
+	# the shift changed nothing about damage).
+	if temporary_type != "":
+		return [temporary_type]
 	# ex2 Energy Variation (Kecleon): its type is every type of basic Energy card attached to it.
 	# Basic Energy cards carry no "types" field, so the type is read from the card name
 	# ("Fire Energy" -> "Fire"), which is how basic Energy provides its type in this data set.

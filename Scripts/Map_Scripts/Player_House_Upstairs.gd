@@ -31,7 +31,7 @@ func get_entry_positions() -> Dictionary:
 	return {"Player_House_Downstairs": SPAWN_FROM_PLAYER_HOUSE_DOWNSTAIRS}
 
 func _scene_setup():
-	_apply_moving_in_visibility($UPSTAIRS)
+	_apply_moving_in_state()
 	if GameState.progress.get("player_collected_starter_box", false):
 		$Interactables/Starter_Box.visible = false
 	else:
@@ -49,6 +49,35 @@ func _scene_setup():
 	interactables.body_entered.connect(_on_bed_body_entered)
 	interactables.body_exited.connect(_on_bed_body_exited)
 	_init_bed_overlap_state()
+
+# ISSUE #26 FIX: drive both the visual layers AND the collision bodies from moving_in_completed.
+# Before move-in: "Moving In" visible + its box collisions active, "Post Move In" hidden + removed.
+# After move-in:  the reverse. Collision bodies are REMOVED (not just hidden) because hiding a
+# StaticBody2D via a parent Control does NOT stop it colliding. SceneCache re-instantiates the
+# scene fresh on every visit, so queue_free() here is safe.
+func _apply_moving_in_state() -> void:
+	var completed: bool = GameState.progress.get("moving_in_completed", false)
+	print("ISSUE #26 FIX ACTIVE: moving_in_completed=", completed)
+
+	# --- Visual tile layers under UPSTAIRS ---
+	var moving_in_layer := $UPSTAIRS.get_node_or_null("Moving In")
+	if moving_in_layer != null:
+		moving_in_layer.visible = not completed
+	var post_move_in_visual := $UPSTAIRS.get_node_or_null("Post Move In")
+	if post_move_in_visual != null:
+		post_move_in_visual.visible = completed
+
+	# --- Collision bodies under "Collision Objects" (remove the inactive set) ---
+	var col := get_node_or_null("Collision Objects")
+	if col != null:
+		var col_moving := col.get_node_or_null("Moving In")
+		var col_post := col.get_node_or_null("Post Move In")
+		if completed:
+			if col_moving != null:
+				col_moving.queue_free()
+		else:
+			if col_post != null:
+				col_post.queue_free()
 
 func _init_bed_overlap_state() -> void:
 	# Wait a few physics frames for overlap detection to settle, then check
@@ -113,7 +142,7 @@ func _on_box_body_entered(body: Node2D) -> void:
 		return
 	_box_triggered = true
 	MapManager.show_message_then(
-		"Huh? A box of Pokemon Cards have been left here? I definitely didn't bring these with me...... Oh There's a note on top....",
+		"Huh? A box of Pokemon cards with a note on top",
 		_on_box_step2
 	)
 
@@ -184,4 +213,5 @@ func _on_box_step3() -> void:
 		GameState.progress["packs_unlocked"].append("base1")
 	GameState.save_progress()
 	GameState.give_cards(STARTER_BOX_CARDS)
-	MapManager._show_message_with_ok("Pokemon Starter Deck Acquired!")
+	# ISSUE #28 FIX: large centred kenney-font message, matching the match's big messagebox style.
+	MapManager._show_large_message_with_ok("Pokemon Starter Deck Acquired!")

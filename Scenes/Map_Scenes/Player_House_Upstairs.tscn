@@ -121,6 +121,7 @@ tile_map_data = PackedByteArray("AAAGAAsAAQAAAA4AAAAHAA0AAQAAAA4AAAAIAAsAAQABAA4
 tile_set = ExtResource("2_g1bce")
 
 [node name="Post Move In" type="Control" parent="UPSTAIRS" unique_id=976481650]
+visible = false
 layout_mode = 3
 anchors_preset = 0
 offset_right = 40.0

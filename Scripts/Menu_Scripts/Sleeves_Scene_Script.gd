@@ -30,6 +30,12 @@ var zoom_overlay       : CanvasLayer = null
 var is_zoomed          : bool = false
 var last_zoomed_sleeve : Control = null
 
+# ─── Loading state (ISSUE #32) ────────────────────────────────────────────────
+var _loading_overlay   : CanvasLayer = null
+var _is_loading        : bool = false
+var _load_cancelled    : bool = false
+var _spinner_tween     : Tween = null
+
 # ─── Node references ─────────────────────────────────────────────────────────
 
 @onready var grid        : GridContainer = $"sleeves_grid_container"
@@ -55,11 +61,83 @@ func _ready() -> void:
 	cancel_btn.pressed.connect(_on_cancel_pressed)
 
 	_wrap_grid_in_scroll_container()
+	# ISSUE #32: block input behind a loading overlay while the (potentially large) sleeve grid builds.
+	_show_loading_overlay()
 	await get_tree().process_frame
 	await _load_sleeves()
+	_hide_loading_overlay()
+	if not is_inside_tree():
+		return
 
 	if saved_sleeve_name != "":
 		_auto_select_saved_sleeve()
+
+
+# ─── Loading overlay (ISSUE #32) ──────────────────────────────────────────────
+
+# Semi-transparent black box with a spinning square, shown while the grid loads. Blocks mouse input
+# (the dim ColorRect uses MOUSE_FILTER_STOP); Escape still cancels via _input.
+func _show_loading_overlay() -> void:
+	_is_loading = true
+	_load_cancelled = false
+	print("ISSUE #32 FIX ACTIVE: loading overlay shown")
+	_loading_overlay = CanvasLayer.new()
+	_loading_overlay.layer = 200
+	add_child(_loading_overlay)
+
+	var dim := ColorRect.new()
+	dim.color = Color(0, 0, 0, 0.55)
+	dim.anchor_right = 1.0
+	dim.anchor_bottom = 1.0
+	dim.mouse_filter = Control.MOUSE_FILTER_STOP   # eat all clicks while loading
+	_loading_overlay.add_child(dim)
+
+	var box := PanelContainer.new()
+	var kenney_theme = load("res://UI_Themes/kenneyUI.tres")
+	if kenney_theme:
+		box.theme = kenney_theme
+	box.custom_minimum_size = Vector2(280, 160)
+	box.anchor_left = 0.5
+	box.anchor_top = 0.5
+	box.anchor_right = 0.5
+	box.anchor_bottom = 0.5
+	box.offset_left = -140
+	box.offset_top = -80
+	box.offset_right = 140
+	box.offset_bottom = 80
+	_loading_overlay.add_child(box)
+
+	var vbox := VBoxContainer.new()
+	vbox.alignment = BoxContainer.ALIGNMENT_CENTER
+	vbox.add_theme_constant_override("separation", 16)
+	box.add_child(vbox)
+
+	# Spinning square acts as the loading indicator.
+	var spinner := ColorRect.new()
+	spinner.color = Color(1, 1, 1, 0.9)
+	spinner.custom_minimum_size = Vector2(48, 48)
+	spinner.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	spinner.pivot_offset = Vector2(24, 24)
+	vbox.add_child(spinner)
+
+	var lbl := Label.new()
+	lbl.text = "Loading…"
+	lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	lbl.add_theme_font_size_override("font_size", 22)
+	vbox.add_child(lbl)
+
+	# Continuous rotation.
+	_spinner_tween = create_tween().set_loops()
+	_spinner_tween.tween_property(spinner, "rotation_degrees", 360.0, 1.0).from(0.0)
+
+func _hide_loading_overlay() -> void:
+	_is_loading = false
+	if _spinner_tween != null and _spinner_tween.is_valid():
+		_spinner_tween.kill()
+	_spinner_tween = null
+	if _loading_overlay != null and is_instance_valid(_loading_overlay):
+		_loading_overlay.queue_free()
+	_loading_overlay = null
 
 
 # ─── Data loading ────────────────────────────────────────────────────────────
@@ -141,6 +219,10 @@ func _load_sleeves() -> void:
 	files.sort()
 
 	for fname in files:
+		# ISSUE #32 FIX: bail out cleanly if the player cancelled/escaped (the scene is being freed) —
+		# calling get_tree() on a node that has left the tree is what crashed the game before.
+		if _load_cancelled or not is_inside_tree():
+			return
 		_add_sleeve_to_grid(fname)
 		await get_tree().process_frame
 
@@ -288,6 +370,7 @@ func _on_save_pressed() -> void:
 
 
 func _on_cancel_pressed() -> void:
+	_load_cancelled = true   # ISSUE #32: stop the load loop before the scene is freed
 	SceneCache.change_scene("res://Scenes/Main_Menu_Scenes/Main_Menu_Scene.tscn")
 
 
@@ -299,6 +382,7 @@ func _input(event: InputEvent) -> void:
 			if is_zoomed:
 				_hide_zoom()
 				return
+			_load_cancelled = true   # ISSUE #32: stop the load loop before the scene is freed
 			SceneCache.change_scene("res://Scenes/Main_Menu_Scenes/Main_Menu_Scene.tscn")
 			return
 

@@ -714,10 +714,18 @@ func display_hand_cards_array(hand: Array, hand_container, card_size: Vector2, f
 		var is_active_slot = is_pokemon_selection_mode and index == hand.size() - 1 and this_card_in_hand.current_location == "active"
 		
 		if is_displayed_pokemon:
-			# Active pokemon shown 1.05x (halved from 1.1x as per requirement).
-			var display_size = Vector2(card_size.x * 1.05, card_size.y * 1.05) if is_active_slot else card_size
+			# ISSUE #46: on the player retreat screen the Active's attached energies are already shown
+			# as selectable cards in this same array, so don't ALSO stack them above the card. Hide
+			# those stacked energies (HP stays), and blow the Active card up 50% so it clearly stands
+			# out from the energy cards beside it.
+			var is_retreat_active = retreat_mode_active and is_active_slot
+			var scale_factor = 1.5 if is_retreat_active else (1.05 if is_active_slot else 1.0)
+			var display_size = Vector2(card_size.x * scale_factor, card_size.y * scale_factor)
 			var show_hp_and_energies = card_is_in_play
-			var slot = build_pokemon_slot_with_energies_and_hp(this_card_in_hand, display_size, 33, is_active_slot, show_hp_and_energies)
+			var show_energies = card_is_in_play and not is_retreat_active
+			if is_retreat_active:
+				print("ISSUE #46 FIX ACTIVE: retreat active card enlarged 50%, stacked energies hidden")
+			var slot = build_pokemon_slot_with_energies_and_hp(this_card_in_hand, display_size, 33, is_active_slot, show_hp_and_energies, show_energies)
 			slot.size_flags_vertical = Control.SIZE_SHRINK_END
 			
 			if is_active_slot:
@@ -1022,12 +1030,14 @@ func _calculate_max_energy_stack_height(card_array: Array, card_size: Vector2, p
 # ALIGNMENT: card_area Control has a fixed custom_minimum_size = card_size.
 # Energy cards use NEGATIVE y positions to extend upward outside card_area without
 # affecting the VBoxContainer's layout height, so the pokemon card and HP label never shift.
-func build_pokemon_slot_with_energies_and_hp(card_obj: card_object, card_size: Vector2, label_font_size: int, _is_active: bool = false, show_hp_and_energies: bool = true) -> VBoxContainer:
-	
+func build_pokemon_slot_with_energies_and_hp(card_obj: card_object, card_size: Vector2, label_font_size: int, _is_active: bool = false, show_hp_and_energies: bool = true, show_energies: bool = true) -> VBoxContainer:
+
 	var slot = VBoxContainer.new()
 	slot.alignment = BoxContainer.ALIGNMENT_CENTER
-	
-	var energy_count = card_obj.attached_energies.size() if show_hp_and_energies else 0
+
+	# ISSUE #46: show_energies can suppress the stacked-energy display independently of the HP label
+	# (used by the player retreat screen, where energies are already listed as selectable cards).
+	var energy_count = card_obj.attached_energies.size() if (show_hp_and_energies and show_energies) else 0
 	
 	# Per-energy visible strip: starts at 12% of card height, shrinks by 1% per extra energy
 	# attached (beyond the first), floored at a hard minimum of 10px so it never disappears.
@@ -1214,6 +1224,9 @@ func show_message(message_text: String) -> void:
 	msgbox_label.visible = false
 	msgbox_texture.visible = false
 	msgbox_container.visible = false
+	# ISSUE #37: after the player dismisses a message, pause briefly before the next thing happens so
+	# a burst of opponent actions is readable. Gap = 0.5s / card-match speed (fast 0.25s, slow 1.0s).
+	await get_tree().create_timer(GameState.scaled_duration(0.5, GameState.card_match_animation_speed)).timeout
 
 # Changes the deck icon to show how many cards remain.
 # Draws ceil(count/5) stacked sleeve images, each offset -2px on x, to suggest depth.
@@ -1268,7 +1281,55 @@ func update_deck_icon(is_opponent: bool) -> void:
 
 	# Keep count label rendered on top of all stacked cards
 	widget.move_child(count_label, -1)
-	
+
+# ISSUE #42: a little riffle-shuffle animation on a deck icon. The deck is drawn as a stack of
+# card-back "sleeve_stack" borders (see update_deck_icon), each 2px to the right of the one below.
+# Per cycle: every 2nd card lifts up 100px + shifts 2px left (z+1) while the rest shift 2px right
+# (z-1), then the lifted cards drop back down — repeated 4× so it reads as a riffle. The whole thing
+# runs in ~1s, scaled by the card-match animation speed. Rebuilds the icon at the end to reset state.
+func animate_deck_shuffle(is_opponent: bool) -> void:
+	var widget = opponent_deck_icon if is_opponent else player_deck_icon
+	var stack: Array = []
+	for child in widget.get_children():
+		if child.get_meta("sleeve_stack", false):
+			stack.append(child)
+	print("ISSUE #42 FIX ACTIVE: shuffle animation on ", "opponent" if is_opponent else "player", " deck (", stack.size(), " layers)")
+	if stack.is_empty():
+		# Nothing to riffle (empty/near-empty deck) — still pause so callers can await a beat.
+		await get_tree().create_timer(GameState.scaled_duration(0.3, GameState.card_match_animation_speed)).timeout
+		return
+	SoundManagerScript.play_sfx(SoundManagerScript.SFX_card_draw_sound)
+	var cycles := 4
+	var step := GameState.scaled_duration(1.0, GameState.card_match_animation_speed) / float(cycles * 2)
+	for _c in range(cycles):
+		var up_tween := create_tween().set_parallel(true)
+		for i in stack.size():
+			var node = stack[i]
+			if not is_instance_valid(node):
+				continue
+			if i % 2 == 1:
+				node.z_index += 1
+				up_tween.tween_property(node, "offset_top",    node.offset_top - 100.0, step)
+				up_tween.tween_property(node, "offset_bottom", node.offset_bottom - 100.0, step)
+				up_tween.tween_property(node, "offset_left",   node.offset_left - 2.0, step)
+				up_tween.tween_property(node, "offset_right",  node.offset_right - 2.0, step)
+			else:
+				node.z_index -= 1
+				up_tween.tween_property(node, "offset_left",  node.offset_left + 2.0, step)
+				up_tween.tween_property(node, "offset_right", node.offset_right + 2.0, step)
+		await up_tween.finished
+		var down_tween := create_tween().set_parallel(true)
+		for i in stack.size():
+			var node = stack[i]
+			if not is_instance_valid(node):
+				continue
+			if i % 2 == 1:
+				down_tween.tween_property(node, "offset_top",    node.offset_top + 100.0, step)
+				down_tween.tween_property(node, "offset_bottom", node.offset_bottom + 100.0, step)
+		await down_tween.finished
+	# Rebuild the icon so positions and z-order snap back to a clean stack.
+	update_deck_icon(is_opponent)
+
 # Enables or disables all main screen buttons based on current game state
 func update_main_screen_buttons() -> void:
 	var should_disable = (
@@ -1439,7 +1500,8 @@ func animate_card_a_to_b(from_node: Control, to_node: Control, animation_speed: 
 		# card at the node's mid-x, so it landed half a card-width to the right of centre.)
 		target_pos = to_node.global_position + Vector2(to_node.size.x / 2 - final_size.x / 2, 0)
 
-	var duration = animation_speed * 1.5
+	# ISSUE #34: scale every card-move animation by the global card-match animation-speed multiplier.
+	var duration = GameState.scaled_duration(animation_speed * 1.5, GameState.card_match_animation_speed)
 	var tween = create_tween()
 	tween.set_parallel(true)
 	tween.tween_property(card_image, "global_position", target_pos, duration).set_ease(Tween.EASE_IN_OUT)
@@ -1535,8 +1597,11 @@ func animate_retreat(old_active: card_object, new_active: card_object, discarded
 		display_active_pokemon_energies(is_opponent)
 		return
 
-	# ── Voluntary retreat (ISSUE #6): two-beat narration — announce, discard energy, swap, confirm ──
-	print("ISSUE #6 FIX ACTIVE (animate_retreat voluntary): is_opponent=", is_opponent)
+	# ── Voluntary retreat (ISSUE #7): the ONE exception to "message first". Announce the retreat,
+	# discard the retreat-cost Energy, then play the SAME sequential glide as a forced switch
+	# (outgoing card down to the Bench, board updates, incoming card up into the Active slot), and
+	# ONLY THEN confirm the new Active with a closing message. The two cards no longer fly at once.
+	print("ISSUE #7 FIX ACTIVE (animate_retreat voluntary sequential): is_opponent=", is_opponent)
 	await show_message(old_active.metadata["name"].to_upper() + " RETREATED TO THE BENCH!")
 
 	if discarded_energies.size() > 0:
@@ -1550,10 +1615,28 @@ func animate_retreat(old_active: card_object, new_active: card_object, discarded
 	var old_texture = get_card_texture(old_active)
 	var new_texture = get_card_texture(new_active)
 
-	# Both cards move at once so the swap reads as a single motion
-	animate_card_a_to_b(active_container, bench_container, 0.3, old_texture, card_scales[10])
-	await animate_card_a_to_b(bench_container, active_container, 0.3, new_texture, card_scales[10])
+	# 1) Hide the Active card and glide the outgoing Pokémon down to the Bench (shrinking to Bench size)
+	active_container.visible = false
+	await animate_card_a_to_b(active_container, bench_container, 0.3, old_texture, card_scales[3.5], card_scales[11])
 
+	# 2) The callers have already swapped the data arrays + current_location; ensure the Active
+	#    pointer matches too (the player retreat caller only reassigns it AFTER this returns).
+	if is_opponent:
+		opponent_active_pokemon = new_active
+	else:
+		player_active_pokemon = new_active
+
+	# 3) Refresh the board so it reflects the swap (Active kept hidden so the incoming card can fly in)
+	display_pokemon(is_opponent)
+	display_active_pokemon_energies(is_opponent)
+	active_container.visible = false
+
+	# 4) Glide the incoming Pokémon up into the Active slot, growing to Active size
+	await animate_card_a_to_b(bench_container, active_container, 0.3, new_texture, card_scales[11], card_scales[3.5])
+
+	# 5) Reveal the new Active, then the closing message (animation plays fully first)
+	active_container.visible = true
+	display_active_pokemon_energies(is_opponent)
 	await show_message(switcher_label + " SET " + new_active.metadata["name"].to_upper() + " AS THEIR ACTIVE POKEMON!")
 
 # Creates continuous sparkle particles around a given node, returns the node for manual cleanup
@@ -2437,10 +2520,10 @@ func perform_energy_attachment() -> void:
 	# Animate energy flying from hand to the target pokemon
 	var target_node = player_energy_container if target_pokemon == player_active_pokemon else player_bench_container
 	var energy_texture = get_card_texture(energy_card)
-	# ISSUE #20: fly the Energy to the ACTUAL benched Pokémon it is attaching to (not the Bench-row centre)
-	var energy_pos_override = Vector2(-99999, -99999)
-	if target_pokemon != player_active_pokemon:
-		energy_pos_override = get_pokemon_screen_location(target_pokemon).get("position", energy_pos_override)
+	# ISSUE #20 FIX: fly the Energy to the ACTUAL Pokémon it is attaching to (its real slot position),
+	# for the ACTIVE as well as the bench — previously the Active case fell back to the container centre.
+	print("ISSUE #20 FIX ACTIVE: energy flies to real slot for active+bench")
+	var energy_pos_override = get_pokemon_screen_location(target_pokemon).get("position", Vector2(-99999, -99999))
 	await animate_card_a_to_b(player_hand_container, target_node, 0.2, energy_texture, card_scales[12], Vector2.ZERO, energy_pos_override)
 		
 	display_pokemon(false)	
@@ -2827,6 +2910,12 @@ func player_start_turn_checks() -> void:
 
 # Called when the player presses the end turn button to reset per-turn variables and begin next turn
 func player_end_turn_checks() -> void:
+	# ISSUE #47 FIX: if the game already ended (e.g. the attack that ends this turn took the last
+	# prize card), don't run end-turn processing or flash the "End turn" label over the "You won!"
+	# message — the match is already over.
+	if game_is_over:
+		print("ISSUE #47 FIX ACTIVE: game already over — suppressing End turn label/processing")
+		return
 	opponent_blocker.visible = true
 	opponents_turn_active = true
 	update_main_screen_buttons()
@@ -4722,6 +4811,21 @@ func check_all_knockouts() -> Dictionary:
 		if opponent_prize_cards.size() > 0:
 			await cpu_ai.opponent_take_prize_card()
 	
+	# ISSUE #47 FIX: check the last-prize win condition BEFORE promoting a new Active. If the KO that
+	# just happened took the final prize card the game is already over, so there's no point switching
+	# in a new Active Pokémon (and showing "X set Y as their active") only to immediately declare the
+	# winner. Win-by-last-prize is resolved here and returns straight away.
+	if player_prize_cards.size() == 0 and opponent_prize_kos > 0:
+		print("ISSUE #47 FIX ACTIVE: last prize taken — skipping new-active promotion, ending game")
+		await show_message("YOU TOOK YOUR LAST PRIZE CARD!")
+		game_end_logic(false)  # false = opponent loses
+		return results
+	if opponent_prize_cards.size() == 0 and player_prize_kos > 0:
+		print("ISSUE #47 FIX ACTIVE: last prize taken — skipping new-active promotion, ending game")
+		await show_message("OPPONENT TOOK THEIR LAST PRIZE CARD!")
+		game_end_logic(true)  # true = player loses
+		return results
+
 	if results["opponent_kos"] > 0:
 		await handle_post_knockout(true)
 	if _should_bail():
@@ -5748,11 +5852,13 @@ func handle_action_retreat_bench() -> void:
 	var retreating_pokemon = player_active_pokemon  # Save ref before reassignment
 
 	hide_selection_mode_display_main()
-	await animate_retreat(player_active_pokemon, new_active, retreat_energies_selected, false)
+	await animate_retreat(retreating_pokemon, new_active, retreat_energies_selected, false)
 
-	# NEO3 Balloon Berry (neo3-60): if the retreating pokemon used Balloon Berry for free retreat, discard it
-	trainer_effects.consume_balloon_berry(player_active_pokemon, false)
-	clear_all_statuses(player_active_pokemon, false)
+	# NEO3 Balloon Berry (neo3-60): if the retreating pokemon used Balloon Berry for free retreat, discard it.
+	# ISSUE #7: animate_retreat now reassigns player_active_pokemon to the new Active, so operate on the
+	# saved `retreating_pokemon` (the OLD Active) here rather than the pointer.
+	trainer_effects.consume_balloon_berry(retreating_pokemon, false)
+	clear_all_statuses(retreating_pokemon, false)
 	player_active_pokemon = new_active
 	retreat_energies_selected.clear()
 
@@ -5984,6 +6090,16 @@ func cancel_button_pressed_hide_selection_mode() -> void:
 		hide_selection_mode_display_main()
 		return
 	
+	# Defender/energy-discard selection cancel (ISSUE #25): emit with null so the awaiting
+	# remove_one_energy returns null and the caller can refund the effect.
+	elif defender_energy_discard_active:
+		print("ISSUE #25 FIX ACTIVE: energy discard selection cancelled")
+		selected_card_for_action = null
+		defender_energy_discard_active = false
+		hide_selection_mode_display_main()
+		defender_energy_chosen.emit(null)
+		return
+
 	# Trainer/Power selection cancel: emit signal with null so awaiting functions can continue
 	elif trainer_pokemon_selection_active:
 		print("Trainer pokemon selection cancelled")

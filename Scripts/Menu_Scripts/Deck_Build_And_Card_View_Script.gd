@@ -874,6 +874,8 @@ func _on_change_energy_style_pressed() -> void:
 			cards_in_row.append(card_rect)
 
 			# Yield one frame so the card appears on screen before the next loads
+			if not is_inside_tree():   # ISSUE #32 FIX: bail if freed mid-load
+				return
 			await get_tree().process_frame
 
 		row_cards[style_name] = cards_in_row
@@ -1330,6 +1332,8 @@ func _on_view_deck_pressed() -> void:
 			card_rect.size_flags_vertical       = Control.SIZE_SHRINK_BEGIN
 			card_rect.mouse_filter              = Control.MOUSE_FILTER_IGNORE
 			viewer_grid.add_child(card_rect)
+			if not is_inside_tree():   # ISSUE #32 FIX: bail if freed mid-load
+				return
 			await get_tree().process_frame
 
 
@@ -1431,10 +1435,12 @@ func _display_current_set() -> void:
 		# If the player switched sets while we were still loading, stop
 		if _loading_set_id != set_id:
 			return
+		# ISSUE #32 FIX: if the player pressed Escape and the scene is being freed, stop before
+		# touching get_tree() (which is null once this node has left the tree) — this was the crash.
+		if not is_inside_tree():
+			return
 
 		_add_card_to_grid(card_data)
-		
-		##### ERROR: TO FIX, WHEN YOU PRESS ESCAPE TO QUICK AS THE CARDS ARE LOADING THE GAME WILL ERROR ON THE BELOW ACTION 
 		await get_tree().process_frame
 	
 
@@ -1449,7 +1455,9 @@ func _clear_grid() -> void:
 		child.queue_free()
 
 	# queue_free is deferred, so wait a frame before adding new children
-	##### ERROR: TO FIX, WHEN YOU PRESS ESCAPE TO QUICK AS THE CARDS ARE LOADING THE GAME WILL ERROR ON THE BELOW ACTION 
+	# ISSUE #32 FIX: guard against the scene having been freed (Escape mid-load) before get_tree().
+	if not is_inside_tree():
+		return
 	await get_tree().process_frame
 	
 ## Creates a single card entry in the grid.

@@ -35,6 +35,7 @@ var _validation_popup_node: Control = null
 
 var message_panel: Control
 var message_label: RichTextLabel
+var _msg_default_font: Font = null  # default label font, restored after a large message (ISSUE #28)
 var yes_button: Button
 var no_button: Button
 var ok_button: Button
@@ -90,6 +91,12 @@ var _gift_display_container: Control = null
 
 # Full-screen dim overlay shown behind the gift display
 var _gift_dim_overlay: ColorRect = null
+
+# ISSUE #33: click-to-skip state for the gift reveal animation.
+var _gift_reveal_active: bool = false            # true while the coin/card/costume reveal plays
+var _gift_reveal_skip: bool = false              # set when the player clicks to skip
+var _gift_reveal_tweens: Array = []              # running reveal tweens (killed on skip)
+var _gift_reveal_finals: Array = []              # [{rect, texture, modulate}] final states to snap to
 
 # ── Card / set name lookup caches (populated lazily) ─────────────
 var _set_name_cache: Dictionary = {}
@@ -440,6 +447,9 @@ func _build_message_box():
 	no_button.pressed.connect(_on_no_pressed)
 	ok_button.pressed.connect(_on_ok_pressed)
 
+	# Remember the box's default label font so the large-message variant (ISSUE #28) can restore it.
+	_msg_default_font = message_label.get_theme_font("normal_font")
+
 	_ui_layer.add_child(message_panel)
 
 func _show_message_with_choices(text: String):
@@ -460,8 +470,44 @@ func _show_message_with_ok(text: String, font_size: int = 24):
 	message_panel.visible = true
 	_player.can_move = false
 
+# ISSUE #28 FIX: shows an OK dialog styled like the match's LARGE message — kenney (kenvector) font,
+# large size, centred horizontally AND vertically. Defaults are restored in _hide_message so normal
+# overworld messages are unaffected.
+const LARGE_MSG_FONT := "res://UI_Themes/kenvector_future.ttf"
+func _show_large_message_with_ok(text: String) -> void:
+	var kenney_font: FontFile = load(LARGE_MSG_FONT)
+	message_label.add_theme_font_override("normal_font", kenney_font)
+	message_label.add_theme_font_override("bold_font",   kenney_font)
+	message_label.add_theme_font_size_override("normal_font_size", 40)
+	message_label.add_theme_font_size_override("bold_font_size",   40)
+	# Vertical centring: the label lives in a VBoxContainer — centre its children.
+	var vbox := message_label.get_parent()
+	if vbox is BoxContainer:
+		vbox.alignment = BoxContainer.ALIGNMENT_CENTER
+	# Horizontal centring via bbcode (RichTextLabel has no horizontal_alignment).
+	message_label.text = "[center]" + text + "[/center]"
+	yes_button.visible = false
+	no_button.visible  = false
+	ok_button.visible  = true
+	message_panel.visible = true
+	_player.can_move = false
+
+# Restores the message label to its default (non-large) styling.
+func _restore_default_message_style() -> void:
+	if message_label == null:
+		return
+	if _msg_default_font != null:
+		message_label.add_theme_font_override("normal_font", _msg_default_font)
+		message_label.add_theme_font_override("bold_font",   _msg_default_font)
+	message_label.add_theme_font_size_override("normal_font_size", 24)
+	message_label.add_theme_font_size_override("bold_font_size",   24)
+	var vbox := message_label.get_parent()
+	if vbox is BoxContainer:
+		vbox.alignment = BoxContainer.ALIGNMENT_BEGIN
+
 func _hide_message():
 	message_panel.visible = false
+	_restore_default_message_style()
 	_clear_gift_display()
 	_hide_cash_overlay()
 	_pending_confirm_yes = Callable()
@@ -1005,6 +1051,16 @@ func _show_gift_display(text: String, image_paths: Array, kind: String) -> void:
 	ok_button.visible = false
 
 	# ── PASS 4: Kick off reveal animations (parallel) ──
+	# ISSUE #33: allow a click to skip the reveal. Reset skip state and let the dim overlay catch clicks.
+	_gift_reveal_active = true
+	_gift_reveal_skip = false
+	_gift_reveal_tweens.clear()
+	_gift_reveal_finals.clear()
+	if _gift_dim_overlay != null and is_instance_valid(_gift_dim_overlay):
+		_gift_dim_overlay.mouse_filter = Control.MOUSE_FILTER_STOP
+		if not _gift_dim_overlay.gui_input.is_connected(_on_gift_reveal_input):
+			_gift_dim_overlay.gui_input.connect(_on_gift_reveal_input)
+
 	for sr in spawned_rects:
 		var rect_ref: TextureRect = sr["rect"]
 		var uid: String = sr["card_uid"]
@@ -1016,21 +1072,56 @@ func _show_gift_display(text: String, image_paths: Array, kind: String) -> void:
 			"costume":
 				_play_costume_fadein(rect_ref)
 
-	# Wait for the longest animation to complete, then re-enable OK
+	# Wait for the longest animation to complete (scaled by overworld animation speed) OR a skip click.
 	var total_duration: float = 0.0
 	if kind == "costume":
 		total_duration = GIFT_COSTUME_TOTAL_DURATION
 	elif kind == "card" or kind == "coin":
 		total_duration = GIFT_FLIP_TOTAL_DURATION
+	total_duration = GameState.scaled_duration(total_duration, GameState.overworld_animation_speed)  # ISSUE #34
 	if total_duration > 0.0:
-		await get_tree().create_timer(total_duration).timeout
+		var elapsed: float = 0.0
+		while elapsed < total_duration and not _gift_reveal_skip:
+			await get_tree().process_frame
+			elapsed += get_process_delta_time()
+	if _gift_reveal_skip:
+		_finalize_gift_reveal()
+	_gift_reveal_active = false
 	# After awaiting, the player may have already dismissed (e.g. via cleanup).
 	# Only reveal OK if the message is still on screen.
 	if message_panel.visible and ok_button != null:
 		ok_button.visible = true
 
+# ISSUE #33: a click anywhere on the dim overlay during the reveal skips the animation.
+func _on_gift_reveal_input(event: InputEvent) -> void:
+	if not _gift_reveal_active:
+		return
+	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
+		print("ISSUE #33 FIX ACTIVE: gift reveal skipped by click")
+		_gift_reveal_skip = true
+
+# Kills any running reveal tweens and snaps every rect to its finished state.
+func _finalize_gift_reveal() -> void:
+	for t in _gift_reveal_tweens:
+		if t != null and t.is_valid():
+			t.kill()
+	_gift_reveal_tweens.clear()
+	for f in _gift_reveal_finals:
+		var rect = f["rect"]
+		if rect != null and is_instance_valid(rect):
+			if f["texture"] != null:
+				rect.texture = f["texture"]
+			rect.scale = Vector2(1.0, 1.0)
+			rect.modulate = f["modulate"]
+	_gift_reveal_finals.clear()
+
 # Removes the gift display container and dim overlay if they exist.
 func _clear_gift_display() -> void:
+	# ISSUE #33: tear down any in-flight reveal-skip state.
+	_gift_reveal_active = false
+	_gift_reveal_skip = false
+	_gift_reveal_tweens.clear()
+	_gift_reveal_finals.clear()
 	if _gift_display_container != null and is_instance_valid(_gift_display_container):
 		_gift_display_container.queue_free()
 	_gift_display_container = null
@@ -1059,13 +1150,19 @@ func _play_flip_animation(rect: TextureRect, back_tex: Texture2D, target_tex: Te
 	rect.pivot_offset = rect.size / 2.0
 	rect.scale = Vector2(1.0, 1.0)
 
+	# ISSUE #33: register the final state so a skip can snap straight to the revealed face.
+	_gift_reveal_finals.append({"rect": rect, "texture": target_tex, "modulate": Color(1, 1, 1, 1)})
+
 	var shrink_durations := [0.01, 0.02, 0.04, 0.06, 0.08, 0.1, 0.11, 0.12, 0.2]
 	# After each shrink, swap to the alternating texture
 	var swaps := [target_tex, back_tex, target_tex, back_tex, target_tex, back_tex, target_tex, back_tex, target_tex]
 
+	# ISSUE #34: scale each flip step by the overworld animation-speed multiplier.
+	var spd: float = GameState.overworld_animation_speed
 	var tween := create_tween()
+	_gift_reveal_tweens.append(tween)   # ISSUE #33: killable on skip
 	for i in shrink_durations.size():
-		var d: float = shrink_durations[i]
+		var d: float = GameState.scaled_duration(shrink_durations[i], spd)
 		tween.tween_property(rect, "scale:x", 0.0, d)
 		tween.tween_callback(rect.set.bind("texture", swaps[i]))
 		tween.tween_property(rect, "scale:x", 1.0, d)
@@ -1088,12 +1185,16 @@ func _play_card_flip_with_holo(rect: TextureRect, back_tex: Texture2D, card_tex:
 func _play_costume_fadein(rect: TextureRect) -> void:
 	if rect == null or not is_instance_valid(rect):
 		return
+	# ISSUE #33: register final state for skip.
+	_gift_reveal_finals.append({"rect": rect, "texture": rect.texture, "modulate": Color(1, 1, 1, 1)})
+	var spd: float = GameState.overworld_animation_speed   # ISSUE #34: scale by overworld animation speed
 	rect.modulate = Color(0, 0, 0, 1)  # fully black, opaque
-	await get_tree().create_timer(0.5).timeout
+	await get_tree().create_timer(GameState.scaled_duration(0.5, spd)).timeout
 	if rect == null or not is_instance_valid(rect):
 		return
 	var tween := create_tween()
-	tween.tween_property(rect, "modulate", Color(1, 1, 1, 1), 1.0)
+	_gift_reveal_tweens.append(tween)   # ISSUE #33: killable on skip
+	tween.tween_property(rect, "modulate", Color(1, 1, 1, 1), GameState.scaled_duration(1.0, spd))
 
 # Spawns a continuous sparkle particle system over a card rect. Adapted from
 # Pack_Purchase_Script._start_holo_sparkle (line 731). Parented to the gift

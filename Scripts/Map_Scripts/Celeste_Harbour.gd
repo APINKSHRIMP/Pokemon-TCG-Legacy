@@ -87,9 +87,11 @@ func _process(delta: float) -> void:
 
 func _run_taxi_intro() -> void:
 	_cutscene_active = true
-	# Clear the flag immediately so a crash-restart doesn't replay the intro
-	GameState.progress["taxi_intro_pending"] = false
-	GameState.save_progress()
+	# ISSUE #31 FIX: do NOT clear taxi_intro_pending here. If the player quits partway through the
+	# cutscene the flag must stay set so the taxi animation replays in full on the next load (name/
+	# sprite entry is already skipped via first_launch_complete). The flag is cleared only once the
+	# cutscene finishes and the player is sent into their house (see below).
+	print("ISSUE #31 FIX ACTIVE: taxi_intro_pending kept until house entry")
 
 	$Taxi.visible = true
 	_taxi_base_pos = TAXI_START_POS
@@ -144,6 +146,9 @@ func _run_taxi_intro() -> void:
 
 	# Fade to black and enter the player house
 	_player.lock_movement()
+	# ISSUE #31 FIX: the cutscene has fully played and the player is now being forced into their
+	# house — this is the point at which the taxi intro is genuinely "done", so clear the flag here.
+	GameState.progress["taxi_intro_pending"] = false
 	GameState.progress["show_intro_house_message"] = true
 	GameState.save_progress()
 	GameState.entering_from = "Celeste_Harbour"

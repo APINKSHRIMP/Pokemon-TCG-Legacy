@@ -1006,6 +1006,43 @@ func get_retreat_cost_reduction(is_opponent: bool) -> int:
 					print("RETREAT AID: Dodrio reduces retreat cost by 1")
 	return reduction
 
+# ISSUE #45: all non-Colorless types currently present on Pokémon in play (both sides). Venomoth's
+# Shift can only copy the type of ANOTHER Pokémon in play, so the CPU picks from this set.
+func _collect_types_in_play() -> Array:
+	var types: Array = []
+	var all_pokemon: Array = []
+	if main.player_active_pokemon != null:
+		all_pokemon.append(main.player_active_pokemon)
+	all_pokemon.append_array(main.player_bench)
+	if main.opponent_active_pokemon != null:
+		all_pokemon.append(main.opponent_active_pokemon)
+	all_pokemon.append_array(main.opponent_bench)
+	for p in all_pokemon:
+		for t in p.metadata.get("types", []):
+			if t != "Colorless" and t not in types:
+				types.append(t)
+	return types
+
+# ISSUE #45: is there an effect in play that scales with how many of a given TYPE are in play/benched
+# (e.g. "does 10 more damage for each Fire Pokémon in play")? Only then is shifting a BENCHED Venomoth
+# worthwhile. Scans every in-play Pokémon's attack/ability text on the CPU's side.
+func _shift_type_count_synergy_in_play() -> bool:
+	var cpu_pokemon: Array = []
+	if main.opponent_active_pokemon != null:
+		cpu_pokemon.append(main.opponent_active_pokemon)
+	cpu_pokemon.append_array(main.opponent_bench)
+	for p in cpu_pokemon:
+		var texts: Array = []
+		for atk in p.metadata.get("attacks", []):
+			texts.append(atk.get("text", ""))
+		for ab in p.metadata.get("abilities", []):
+			texts.append(ab.get("text", ""))
+		for t in texts:
+			var low = str(t).to_lower()
+			if "for each" in low and "type" in low and ("in play" in low or "bench" in low):
+				return true
+	return false
+
 # Shift (Venomoth): Change Venomoth's type to match another Pokemon in play
 func power_shift(venomoth: card_object) -> void:
 	if is_power_blocked_by_status(venomoth):
@@ -1903,14 +1940,28 @@ func cpu_phase_activate_powers() -> void:
 	# Venomoth Shift: CPU shifts to the type that gives best coverage
 	var venomoth = _find_cpu_pokemon_with_power("Shift")
 	if venomoth != null and not is_power_blocked_by_status(venomoth) and not toxic_gas and not venomoth.power_used_this_turn:
-		# Shift to the type that the player's active is weak to
-		var player_weaknesses = main.player_active_pokemon.metadata.get("weaknesses", []) if main.player_active_pokemon != null else []
-		if player_weaknesses.size() > 0:
-			var weak_type = player_weaknesses[0].get("type", "")
-			if weak_type != "" and weak_type != "Colorless":
-				venomoth.temporary_type = weak_type
+		# ISSUE #45 FIX: only bother shifting if it can actually matter — i.e. Venomoth is the ACTIVE
+		# (so its shifted type can exploit the player's Weakness when it attacks), OR some effect in
+		# play scales with "for each <type> ... in play/on the Bench". A benched Venomoth changing
+		# type otherwise does nothing.
+		var venomoth_is_active = (venomoth == main.opponent_active_pokemon)
+		if venomoth_is_active or _shift_type_count_synergy_in_play():
+			# ISSUE #45 FIX: Shift can only copy the type of ANOTHER Pokémon in play, so restrict the
+			# CPU's choice to types actually present in play (previously it blindly copied the player's
+			# Weakness type even when no Pokémon of that type existed).
+			var types_in_play := _collect_types_in_play()
+			var player_weaknesses = main.player_active_pokemon.metadata.get("weaknesses", []) if main.player_active_pokemon != null else []
+			var target_type := ""
+			for w in player_weaknesses:
+				var wt = w.get("type", "")
+				if wt != "" and wt != "Colorless" and wt in types_in_play:
+					target_type = wt
+					break
+			if target_type != "":
+				venomoth.temporary_type = target_type
 				venomoth.power_used_this_turn = true
-				await main.show_message("Venomoth Shift: Changed to " + weak_type + " type!")
+				print("ISSUE #45 FIX ACTIVE: Venomoth Shift -> ", target_type, " (in play, active=", venomoth_is_active, ")")
+				await main.show_message("Venomoth Shift: Changed to " + target_type + " type!")
 				if main._should_bail(): return
 	
 	

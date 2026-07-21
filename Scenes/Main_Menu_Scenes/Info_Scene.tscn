@@ -1,6 +1,6 @@
 [gd_scene format=3 uid="uid://dd8m4dsyj377s"]
 
-[ext_resource type="Script" path="res://Scripts/Menu_Scripts/Info_Script.gd" id="1_7a6hn"]
+[ext_resource type="Script" uid="uid://b3nfop8kw1xy0" path="res://Scripts/Menu_Scripts/Info_Script.gd" id="1_7a6hn"]
 [ext_resource type="Shader" uid="uid://ccm481fk14lc8" path="res://Scripts/Shaders/Background_Scroll_Right_Top_Border.gdshader" id="2_1ktwe"]
 [ext_resource type="Texture2D" uid="uid://dieqv60p12hlk" path="res://Image_Assets/Backgrounds_And_Borders/Borders/horizontal_border.png" id="3_xfvrr"]
 [ext_resource type="Shader" uid="uid://d3gofmygrsrkm" path="res://Scripts/Shaders/Background_Scroll_Left.gdshader" id="4_tp5en"]
@@ -99,10 +99,10 @@ alignment = 1
 [node name="player_dob_label" type="LineEdit" parent="." unique_id=387429105]
 z_index = 300
 layout_mode = 0
-offset_left = 1019.0
-offset_top = 270.0
-offset_right = 1209.0
-offset_bottom = 338.0
+offset_left = 1277.0
+offset_top = 257.0
+offset_right = 1529.0
+offset_bottom = 325.0
 theme = ExtResource("6_a35wf")
 theme_override_colors/font_color = Color(0, 0, 0, 1)
 theme_override_colors/font_uneditable_color = Color(0, 0, 0, 1)

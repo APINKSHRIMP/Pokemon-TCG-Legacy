@@ -236,7 +236,7 @@ offset_left = 1475.0
 offset_top = 174.0
 offset_right = 1888.0
 offset_bottom = 275.0
-grow_horizontal = 0
+grow_horizontal = 1
 theme_override_constants/separation = 50
 
 [node name="opponent_bench_container" type="HBoxContainer" parent="CARD_COLLECTIONS/OPPONENT" unique_id=1469352686]
