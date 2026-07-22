@@ -19,7 +19,7 @@ signal all_packs_opened
 
 const CARD_DISPLAY_SIZE  := Vector2(563, 788)
 const PACK_IMAGES_FOLDER := "res://Image_Assets/Packs/"
-const CARDBACK_PATH      := "res://Image_Assets/Sleeves/cardback.png"
+const CARDBACK_PATH      := "res://Image_Assets/Sleeves/1_Default_English.png"  # ISSUE #50: was cardback.png which doesn't exist -> null texture crash
 const CARD_SET_DATA_PATH := "res://Card_Set_Data/"
 
 # God-pack tuning — see _generate_pack_cards() for full behaviour.
@@ -256,7 +256,15 @@ func _start_pack_opening() -> void:
 	_current_card_index = 0
 
 	# ── Spawn cardback behind pack body ──
-	var cardback_tex     : Texture2D = _load_texture(CARDBACK_PATH)
+	# ISSUE #50 FIX: use the player's equipped sleeve as the cardback (matching the
+	# match board), falling back to the default sleeve. Previously loaded a
+	# hardcoded cardback.png that doesn't exist -> null texture -> get_width() crash.
+	var cardback_path    : String    = _resolve_player_cardback_path()
+	var cardback_tex     : Texture2D = _load_texture(cardback_path)
+	if cardback_tex == null:
+		push_error("ISSUE #50 FIX: cardback texture failed to load at '" + cardback_path + "', falling back to default")
+		cardback_tex = _load_texture(CARDBACK_PATH)
+	print("ISSUE #50 FIX ACTIVE: pack cardback resolved to ", cardback_path)
 	var cb_aspect        : float     = float(cardback_tex.get_width()) / float(cardback_tex.get_height())
 	var actual_card_size : Vector2
 	if cb_aspect >= CARD_DISPLAY_SIZE.x / CARD_DISPLAY_SIZE.y:
@@ -639,6 +647,27 @@ func _load_texture(path: String) -> Texture2D:
 	if not ResourceLoader.exists(path):
 		return null
 	return load(path)
+
+
+# ISSUE #50 FIX: resolve the player's equipped sleeve to a loadable texture path,
+# mirroring Main_Match_Core_Gameplay_Script._resolve_sleeve_path. Sleeves are stored
+# by name (no extension) and live as .jpg; the default sleeve is a .png.
+func _resolve_player_cardback_path() -> String:
+	var default_path := "res://Image_Assets/Sleeves/1_Default_English.png"
+	var file := FileAccess.open(GameState.PLAYER_CURRENT_DATA_PATH, FileAccess.READ)
+	if file == null:
+		return default_path
+	var data = JSON.parse_string(file.get_as_text())
+	file.close()
+	if not (data is Dictionary):
+		return default_path
+	var sleeve_name : String = String(data.get("sleeve", ""))
+	if sleeve_name == "" or sleeve_name == "default":
+		return default_path
+	var path := "res://Image_Assets/Sleeves/" + sleeve_name + ".jpg"
+	if ResourceLoader.exists(path) and load(path) != null:
+		return path
+	return default_path
 
 
 # ── Holo sparkle ──────────────────────────────────────────

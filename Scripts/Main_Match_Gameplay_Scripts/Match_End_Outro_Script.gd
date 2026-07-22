@@ -89,6 +89,13 @@ const GIFT_FLIP_DURATIONS = [0.01, 0.02, 0.04, 0.06, 0.08, 0.1, 0.11, 0.12, 0.2]
 var click_enabled: bool  = false
 var transitioning: bool  = false
 
+# ISSUE #33 FIX: skip support for the match-end reward animations. While _in_skippable_anim is true
+# (reward fly-in, coin/card flip, costume fade), a mouse click sets _skip_anim to fast-forward that
+# animation to its finished state, instead of the click being ignored (the previous fix only covered
+# the overworld MapManager gift reveal, so match-end rewards couldn't be skipped at all).
+var _in_skippable_anim: bool = false
+var _skip_anim: bool = false
+
 # ============================================================
 # INITIALIZATION
 # ============================================================
@@ -191,9 +198,43 @@ func _input(event: InputEvent) -> void:
 	if event is InputEventKey and event.pressed and event.keycode == KEY_ESCAPE:
 		get_tree().quit()
 
-	if event is InputEventMouseButton and event.pressed and click_enabled and not transitioning:
-		player_clicked.emit()
-		get_viewport().set_input_as_handled()
+	if event is InputEventMouseButton and event.pressed:
+		# ISSUE #33 FIX: a click during a skippable animation (reward fly-in, coin/card flip, costume
+		# fade) fast-forwards it to its finished state. This is checked BEFORE the normal click gate so
+		# it works even during the fly-in, when click_enabled is still false.
+		if _in_skippable_anim and not transitioning:
+			_skip_anim = true
+			print("ISSUE #33 FIX ACTIVE: skip requested for current reward animation")
+			get_viewport().set_input_as_handled()
+			return
+		if click_enabled and not transitioning:
+			player_clicked.emit()
+			get_viewport().set_input_as_handled()
+
+# ISSUE #33 FIX: awaits a tween, but returns early (killing the tween) if the player clicks to skip.
+# Uses the finished signal for natural completion and polls _skip_anim each frame for the skip.
+func _await_tween_or_skip(tw: Tween) -> void:
+	if tw == null or not tw.is_valid():
+		return
+	var done := {"v": false}
+	tw.finished.connect(func(): done["v"] = true)
+	while not done["v"] and not _skip_anim:
+		await get_tree().process_frame
+	if not done["v"] and tw.is_valid():
+		tw.kill()
+
+# ISSUE #33 FIX: instantly places the "Rewards:" header and every reward row at its final resting
+# position (the stacked layout the fly-in animation builds up). Called when the fly-in finishes OR is
+# skipped, so a skipped fly-in shows all rewards at once exactly where they would have ended up.
+func _snap_rewards_to_final() -> void:
+	var n := reward_rows.size()
+	if _header_label != null:
+		_header_label.position = Vector2(HEADER_LOCAL_X, REWARD_ANCHOR_Y - n * REWARD_ROW_SPACING)
+	for j in range(n):
+		var row = reward_rows[j]
+		var up := (n - 1 - j) * REWARD_ROW_SPACING
+		row["label"].position = Vector2(row["label_final_x"], REWARD_ANCHOR_Y - up)
+		row["icon"].position  = Vector2(row["icon_final_x"], REWARD_ANCHOR_Y + 5 - up)
 
 # ============================================================
 # DATA LOADING
@@ -408,20 +449,27 @@ func _create_reward_row(label_text: String, icon_texture: Texture2D, _row_index:
 # ============================================================
 
 func animate_rewards() -> void:
+	# ISSUE #33 FIX: the whole fly-in is now click-skippable. On a click, remaining tweens are killed
+	# and every reward snaps to its final stacked position at once (see _snap_rewards_to_final).
+	_in_skippable_anim = true
+	_skip_anim = false
 	await get_tree().create_timer(0.3).timeout
 
 	# Step 1 — fly the "Rewards:" header in horizontally to the anchor row.
-	if _header_label != null:
+	if _header_label != null and not _skip_anim:
 		var hdr_tween = create_tween()
 		hdr_tween.set_trans(Tween.TRANS_CUBIC)
 		hdr_tween.set_ease(Tween.EASE_OUT)
 		hdr_tween.tween_property(_header_label, "position:x", HEADER_LOCAL_X, 0.6)
-		await hdr_tween.finished
-		await get_tree().create_timer(0.3).timeout
+		await _await_tween_or_skip(hdr_tween)
+		if not _skip_anim:
+			await get_tree().create_timer(0.3).timeout
 
 	# Step 2 — for each reward: shift the header (and any previously-shown
 	# rewards) up by ROW_SPACING, then fly the new reward in to the anchor row.
 	for i in range(reward_rows.size()):
+		if _skip_anim:
+			break
 		var row          = reward_rows[i]
 		var label: Label    = row["label"]
 		var icon: Sprite2D  = row["icon"]
@@ -450,10 +498,14 @@ func animate_rewards() -> void:
 		tween.tween_property(label, "position:x", row["label_final_x"], 0.6)
 		tween.tween_property(icon,  "position:x", row["icon_final_x"],  0.6)
 
-		await tween.finished
+		await _await_tween_or_skip(tween)
 
-		if i < reward_rows.size() - 1:
+		if not _skip_anim and i < reward_rows.size() - 1:
 			await get_tree().create_timer(0.3).timeout
+
+	# Finished naturally or skipped — pin everything to its final resting position.
+	_snap_rewards_to_final()
+	_in_skippable_anim = false
 
 # ============================================================
 # MESSAGE PANELS
@@ -603,25 +655,42 @@ func _play_flip_anim(rect: TextureRect, back_tex: Texture2D, front_tex: Texture2
 	rect.pivot_offset = rect.size / 2.0
 	var swaps = [front_tex, back_tex, front_tex, back_tex, front_tex,
 				 back_tex, front_tex, back_tex, front_tex]
+	# ISSUE #33 FIX: the coin/card flip is click-skippable — a click snaps it to its finished
+	# face-up state (front texture, full scale) instead of the click being ignored.
+	_in_skippable_anim = true
+	_skip_anim = false
 	var tw = create_tween()
 	for i in GIFT_FLIP_DURATIONS.size():
 		var d: float = GIFT_FLIP_DURATIONS[i]
 		tw.tween_property(rect, "scale:x", 0.0, d)
 		tw.tween_callback(rect.set.bind("texture", swaps[i]))
 		tw.tween_property(rect, "scale:x", 1.0, d)
-	await tw.finished
+	await _await_tween_or_skip(tw)
+	# Snap to the finished face-up state whether it completed or was skipped.
+	if is_instance_valid(rect):
+		rect.texture = front_tex
+		rect.scale.x = 1.0
+	_in_skippable_anim = false
 
 
 func _play_costume_fadein_anim(rect: TextureRect) -> void:
 	if rect == null or not is_instance_valid(rect):
 		return
 	rect.modulate = Color(0, 0, 0, 1)
+	# ISSUE #33 FIX: the costume fade-in is click-skippable — a click snaps it to fully visible.
+	_in_skippable_anim = true
+	_skip_anim = false
 	await get_tree().create_timer(0.5).timeout
 	if rect == null or not is_instance_valid(rect):
+		_in_skippable_anim = false
 		return
 	var tw = create_tween()
 	tw.tween_property(rect, "modulate", Color(1, 1, 1, 1), 1.0)
-	await tw.finished
+	await _await_tween_or_skip(tw)
+	# Snap to fully visible whether the fade completed or was skipped.
+	if is_instance_valid(rect):
+		rect.modulate = Color(1, 1, 1, 1)
+	_in_skippable_anim = false
 
 # ============================================================
 # NAME FORMATTING HELPERS

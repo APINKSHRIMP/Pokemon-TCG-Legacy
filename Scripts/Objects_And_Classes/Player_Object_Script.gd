@@ -134,10 +134,17 @@ func _unhandled_input(event):
 	if event.is_action_pressed("ui_accept"):
 		# If message panel is open, spacebar forwards to MapManager
 		if MapManager.message_panel != null and MapManager.message_panel.visible:
+			# ISSUE #51 FIX: consume the input BEFORE handling. Answering "yes"
+			# (e.g. opening the shop) triggers a scene change that frees this
+			# player node, after which get_viewport() returns null and
+			# set_input_as_handled() crashes. Grab the viewport first and guard.
+			var vp = get_viewport()
+			if vp != null:
+				# Consume so dismissing a dialog can't re-trigger an interactable
+				# the player happens to be standing on this same frame.
+				vp.set_input_as_handled()
+				print("ISSUE #51 FIX ACTIVE: consumed spacebar before message handler")
 			MapManager.handle_message_spacebar()
-			# Consume so dismissing a dialog can't re-trigger an interactable
-			# the player happens to be standing on this same frame.
-			get_viewport().set_input_as_handled()
 			return
 
 		if _active_candidate != null and is_instance_valid(_active_candidate):

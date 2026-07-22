@@ -31,6 +31,9 @@ var _active_particles    : CPUParticles2D = null
 # Tracks which rect received the most recent click — reset each frame in _input
 var _last_clicked_rect   : TextureRect = null
 
+# ISSUE #32: input-blocking loading overlay shown while the coin grid builds.
+var _loading_overlay     : MenuLoadingOverlay = MenuLoadingOverlay.new()
+
 # Flat set of owned coin filenames e.g. {"Pikachu Gold 1.png": true}
 # Using a Dictionary as a set gives O(1) lookups vs iterating an Array
 var _owned_coins         : Dictionary = {}
@@ -65,8 +68,13 @@ func _ready() -> void:
 	cancel_btn.pressed.connect(_on_cancel_pressed)
 
 	_wrap_grid_in_scroll_container()
+	# ISSUE #32: block input behind a loading overlay while the (potentially large) coin grid builds.
+	_loading_overlay.show(self)
 	await get_tree().process_frame
 	await _load_coins()
+	_loading_overlay.hide()
+	if not is_inside_tree():
+		return
 
 	# After all coins are in the grid, auto-select the player's saved coin
 	if saved_coin_name != "":

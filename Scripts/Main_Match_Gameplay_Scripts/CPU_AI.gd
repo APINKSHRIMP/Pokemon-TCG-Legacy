@@ -153,6 +153,17 @@ func cpu_turn_orchestrator() -> void:
 	var retreat_deferred = await cpu_phase_retreat_first_pass(cpu_eval)
 
 	# Phase 6: Energy attachment
+	# ISSUE #35 FIX (retest): rebuild the evaluation immediately before energy attachment. cpu_eval
+	# was built back in Phase 4 (line ~137), but Phase 5's retreat (and any Phase-4b trainer) can
+	# swap the Active / change the bench afterwards. The old code carried that stale snapshot into
+	# Phase 6, so energy was scored against the pre-retreat board — e.g. the CPU retreated Magnemite
+	# for Raichu and then attached to the just-benched Magnemite, and bench Pokemon that existed only
+	# in the fresh board had empty attack_data (→ the -200 "someone else needs this type" penalty)
+	# so a fully-powered Active kept winning. Refresh so the scoring sees the real current board.
+	invalidate_cpu_evaluation()
+	cpu_eval = get_cpu_evaluation()
+	print("ISSUE #35 FIX ACTIVE: rebuilt CPU evaluation before energy attachment (post-retreat board)")
+
 	# MATCH EFFECT: extra_energy_per_turn — loop until the per-turn limit is reached
 	# (the phase early-returns once opponent_energy_played_this_turn flips or hand is empty)
 	for _attach_round in range(main.match_effects.energy_attach_limit(true)):
@@ -1245,6 +1256,23 @@ func is_retreat_cost_worthwhile(cpu_eval: Dictionary) -> bool:
 	var high_investment = active.attached_energies.size() >= 3 or has_evo
 	var high_hp = active.current_hp > int(active.metadata.get("hp", "0")) * 0.5
 
+	# ISSUE #49 FIX: if the Active is DOOMED where it stands, retreating SAVES it and denies the player
+	# a prize — worth the energy loss even if the incoming Active can't attack, and critical on the last
+	# prize where the KO loses the game. Two doomed cases:
+	#   • Poisoned and the between-turns poison tick alone will KO it — retreating leaves the Active spot,
+	#     which CLEARS the poison (and all Special Conditions), so the Pokemon survives outright. Always
+	#     worth it (moving any bench Pokemon up rescues the poisoned one).
+	#   • Player has a guaranteed lethal attack — retreating is worth it as long as a bench Pokemon would
+	#     actually survive coming up (otherwise it just delays the loss). This overrides the R.4 high-HP /
+	#     high-investment requirement, which wrongly excluded low-HP doomed Pokemon like a 10-HP Sandshrew.
+	var poison_will_ko = active.is_poisoned and active.current_hp <= active.poison_damage
+	if poison_will_ko:
+		print("ISSUE #49 FIX ACTIVE: retreat worthwhile — Active is poisoned and will be KO'd; retreating clears poison and saves it")
+		return true
+	if guaranteed_ko and _any_bench_survives_player_attack():
+		print("ISSUE #49 FIX ACTIVE: retreat worthwhile — Active faces guaranteed KO and a bench Pokemon survives; save it and deny the prize")
+		return true
+
 	if guaranteed_ko and high_investment and high_hp:
 		print("CPU retreat worthwhile: preserving high-investment pokemon")
 		return true
@@ -1646,11 +1674,20 @@ func cpu_phase_energy_attachment(cpu_eval: Dictionary) -> void:
 
 	var energy_target_node = main.opponent_energy_container if target == main.opponent_active_pokemon else main.opponent_bench_container
 	var energy_texture = main.get_card_texture(energy)
-	# ISSUE #20 FIX: fly the Energy to the ACTUAL Pokémon slot (active as well as bench) — the Active
-	# case previously fell back to the container centre.
-	print("ISSUE #20 FIX ACTIVE (cpu): energy flies to real slot for active+bench")
-	var energy_pos_override = main.get_pokemon_screen_location(target).get("position", Vector2(-99999, -99999))
-	await main.animate_card_a_to_b(main.opponent_hand_container, energy_target_node, 0.2, energy_texture, main.card_scales[12], Vector2.ZERO, energy_pos_override)
+	if target == main.opponent_active_pokemon:
+		# ISSUE #40 FIX: fly the Energy to its EXACT final slot in the opponent Active energy stack
+		# (position AND size), read off the freshly-built stack. Previously it flew to the Active card's
+		# position (which for the opponent sat ~300px left of the energy stack) and then snapped over.
+		print("ISSUE #40 FIX ACTIVE (cpu): energy flies to exact final stack slot")
+		var slot_rect = main.measure_and_hide_new_active_energy_slot(true)
+		var slot_pos = slot_rect.get("position", Vector2(-99999, -99999))
+		var slot_size = slot_rect.get("size", main.card_scales[11])
+		await main.animate_card_a_to_b(main.opponent_hand_container, energy_target_node, 0.2, energy_texture, main.card_scales[12], slot_size, slot_pos)
+	else:
+		# ISSUE #20 FIX: fly the Energy to the ACTUAL benched Pokémon slot.
+		print("ISSUE #20 FIX ACTIVE (cpu): energy flies to real bench slot")
+		var energy_pos_override = main.get_pokemon_screen_location(target).get("position", Vector2(-99999, -99999))
+		await main.animate_card_a_to_b(main.opponent_hand_container, energy_target_node, 0.2, energy_texture, main.card_scales[12], Vector2.ZERO, energy_pos_override)
 	if main._should_bail(): return
 
 	main.refresh_hand_display(true)
@@ -1715,11 +1752,89 @@ func cpu_phase_energy_attachment(cpu_eval: Dictionary) -> void:
 	invalidate_cpu_evaluation()
 	
 # Chooses and executes an attack to end the CPU turn (Phase 8)
+# ISSUE #35 FIX (retest) helpers -------------------------------------------------------------------
+
+# True if this Pokemon is certain to be KO'd before it can act on the CPU's next turn: either the
+# player has a guaranteed lethal attack (cpu_active_guaranteed_ko) or it's poisoned/damaged enough
+# that the between-turns poison tick alone will finish it.
+func _active_is_doomed(pokemon: card_object, cpu_eval: Dictionary) -> bool:
+	if cpu_eval.get("cpu_active_guaranteed_ko", false):
+		return true
+	if pokemon.is_poisoned and pokemon.current_hp <= pokemon.poison_damage:
+		return true
+	return false
+
+# True if attaching an energy of one of `energy_types` would let this Pokemon KO the player's Active
+# THIS turn (an attack that is exactly 1 energy short, unlocked by this type, that reaches lethal).
+# Extracted from the original score_active_ko_threat logic so the guards above can reuse it.
+func energy_enables_ko_this_turn(pokemon: card_object, energy_types: Array, pokemon_data: Dictionary) -> bool:
+	if main.player_active_pokemon == null:
+		return false
+	var cpu_types = pokemon.metadata.get("types", ["Colorless"])
+	var player_hp = main.player_active_pokemon.current_hp
+	for attack in pokemon_data.get("attack_data", []):
+		if attack["unmet"] != 1:
+			continue
+		var remaining = get_remaining_requirement(attack, pokemon)
+		if remaining == "":
+			continue
+		var type_matches = remaining == "Colorless"
+		if not type_matches:
+			for provided in energy_types:
+				if provided == remaining or provided == "Any":
+					type_matches = true
+					break
+		if not type_matches:
+			continue
+		var result = main.calculate_final_damage(attack["damage_min"], cpu_types, main.player_active_pokemon)
+		if result["damage"] >= player_hp:
+			return true
+	return false
+
+# True if the Active has every attack's energy requirement already met AND gains nothing from more
+# energy — i.e. it can't evolve into an energy-hungry form and has no "does more damage for each extra
+# Energy" scaling attack still under its cap. Used to deprioritise banking surplus energy on it.
+func _active_fully_powered_no_benefit(pokemon: card_object, pokemon_data: Dictionary) -> bool:
+	for attack in pokemon_data.get("attack_data", []):
+		if attack["unmet"] > 0:
+			return false
+	# Evolution that would want more energy — keep powering.
+	if pokemon_data.get("can_evolve_further", false) and pokemon_data.get("evolved_form_needs_energy", false):
+		return false
+	# Extra-energy scaling attack (Poliwag/Blastoise "does more damage for each ... Energy attached"):
+	# more energy still helps, so don't treat as over-powered. Conservative text check.
+	for attack in pokemon.metadata.get("attacks", []):
+		var atk_text = attack.get("text", "").to_lower()
+		if "more damage for each" in atk_text and "not used to pay" in atk_text:
+			return false
+	return true
+
 func score_energy_pair(pokemon: card_object, energy_card: card_object, cpu_eval: Dictionary, pokemon_data: Dictionary) -> float:
 	var score = 0.0
 	var is_active = (pokemon == main.opponent_active_pokemon)
 	var energy_types = main.get_energy_provided_by_card(energy_card)
-	
+
+	# ISSUE #35 FIX (retest): dominant guards that run BEFORE the additive bonuses (+90 Active, type
+	# match, "needs energy", etc.) so those can't out-weigh them. These stop the CPU pouring surplus
+	# Energy into the Active when a bench Pokemon could actually use it. A needy bench scores ~+90..+110,
+	# so a dominant negative here guarantees the bench wins.
+	if is_active:
+		var _can_atk: bool = pokemon_data.get("can_attack", false)
+		var _doomed: bool = _active_is_doomed(pokemon, cpu_eval)
+		var _enables_ko: bool = energy_enables_ko_this_turn(pokemon, energy_types, pokemon_data)
+		# (a) Active can already attack this turn but is GUARANTEED to be KO'd before its next turn
+		#     (lethal player attack OR poison/lethal existing damage). Extra Energy is wasted unless it
+		#     secures a KO right now — the flying poisoned 10-HP Pikachu with 3 Energy + 4 empty bench.
+		if _can_atk and _doomed and not _enables_ko:
+			print("ISSUE #35 FIX ACTIVE: doomed Active ", pokemon.metadata.get("name", "?"), " can already attack — surplus energy deprioritised (-400)")
+			return -400.0
+		# (b) Active is fully powered (every attack's Energy met) with no evolution or extra-Energy
+		#     scaling benefit. Banking more on it beats nothing — let a needy bench win. The Sandshrew
+		#     with 2 Energy already + empty bench Sandshrew/Diglett case.
+		if not _enables_ko and _active_fully_powered_no_benefit(pokemon, pokemon_data):
+			print("ISSUE #35 FIX ACTIVE: over-powered Active ", pokemon.metadata.get("name", "?"), " — surplus energy deprioritised (-300)")
+			return -300.0
+
 	# DCE restriction: only attach to pokemon with an attack requiring 2+ Colorless
 	if main.trainer_effects.is_double_colorless_energy(energy_card):
 		var has_2_colorless_attack = false

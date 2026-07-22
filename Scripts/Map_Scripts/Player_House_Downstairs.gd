@@ -26,7 +26,38 @@ func _ready() -> void:
 
 
 func _scene_setup():
-	_apply_moving_in_visibility($DOWNSTAIRS)
+	_apply_moving_in_state()
+
+# ISSUE #26 FIX (downstairs): mirrors Player_House_Upstairs._apply_moving_in_state.
+# The old _apply_moving_in_visibility() did nothing pre-move-in (early return) and never
+# touched collisions, so on game start the post-move-in furniture showed and its collision
+# bodies stayed active while the "Moving In" boxes were hidden. Now BOTH the visual tile
+# layers AND the collision bodies are driven from moving_in_completed, and the inactive
+# collision set is REMOVED (hiding a StaticBody2D doesn't stop it colliding). SceneCache
+# re-instantiates the scene fresh on every visit, so queue_free() here is safe.
+func _apply_moving_in_state() -> void:
+	var completed: bool = GameState.progress.get("moving_in_completed", false)
+	print("ISSUE #26 FIX ACTIVE (downstairs): moving_in_completed=", completed)
+
+	# --- Visual tile layers under DOWNSTAIRS ---
+	var moving_in_layer := $DOWNSTAIRS.get_node_or_null("Moving In")
+	if moving_in_layer != null:
+		moving_in_layer.visible = not completed
+	var post_move_in_visual := $DOWNSTAIRS.get_node_or_null("Post Move In")
+	if post_move_in_visual != null:
+		post_move_in_visual.visible = completed
+
+	# --- Collision bodies under "Collision Objects" (remove the inactive set) ---
+	var col := get_node_or_null("Collision Objects")
+	if col != null:
+		var col_moving := col.get_node_or_null("Moving In")
+		var col_post := col.get_node_or_null("Post Move In")
+		if completed:
+			if col_moving != null:
+				col_moving.queue_free()
+		else:
+			if col_post != null:
+				col_post.queue_free()
 
 func _on_before_door_transition(body: Node2D, target: String) -> bool:
 	if not target.contains("Upstairs") \

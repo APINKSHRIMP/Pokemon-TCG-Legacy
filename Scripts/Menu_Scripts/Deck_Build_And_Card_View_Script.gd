@@ -129,6 +129,11 @@ var energy_tweens  : Dictionary = {}
 # load if the player switches sets before the previous one finishes
 var _loading_set_id  : String = ""
 
+# ISSUE #32: input-blocking loading overlay shown while a set's card grid builds (every set load,
+# including switching sets). show() auto-replaces any existing overlay, so rapid set switches never
+# stack two overlays.
+var _loading_overlay : MenuLoadingOverlay = MenuLoadingOverlay.new()
+
 # ─── Zoom state ──────────────────────────────────────────────────────────────
 
 # Reference to the zoom overlay (CanvasLayer) so we can remove it on release
@@ -1416,6 +1421,11 @@ func _display_current_set() -> void:
 	# Update the set name label
 	set_label.text = set_name
 
+	# ISSUE #32: block input behind a loading overlay while this set's grid builds (shown every set
+	# load / set switch). Hidden once the grid finishes below; a set switch mid-load triggers a fresh
+	# _display_current_set whose show() replaces this overlay, so aborted loads don't leak it.
+	_loading_overlay.show(self)
+
 	# Clear existing cards — kill any active tweens first
 	_clear_grid()
 
@@ -1442,7 +1452,10 @@ func _display_current_set() -> void:
 
 		_add_card_to_grid(card_data)
 		await get_tree().process_frame
-	
+
+	# ISSUE #32: grid finished building for the current set — allow player input again.
+	_loading_overlay.hide()
+
 
 ## Removes all card entries from the grid, killing tweens to avoid
 ## errors from animating freed nodes.

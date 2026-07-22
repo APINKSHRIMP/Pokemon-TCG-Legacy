@@ -94,6 +94,10 @@ var evolution_mode_active: bool = false
 var opponents_turn_active: bool = false
 
 var retreat_mode_active: bool = false
+# ISSUE #46 (retest): during the player retreat energy-selection screen, raise the small energy
+# cards this many pixels so their vertical centre lines up with the enlarged Active card's centre,
+# instead of their bottoms sitting on the Active's HP-label line. TWEAKABLE.
+const RETREAT_ENERGY_RAISE_PX: float = 300.0
 var retreat_bench_selection_active: bool = false
 var retreat_energies_selected: Array = []
 var retreat_cost_remaining: int = 0
@@ -740,7 +744,24 @@ func display_hand_cards_array(hand: Array, hand_container, card_size: Vector2, f
 		else:
 			var hand_card_to_display = TextureRect.new()
 			hand_card_to_display.set_script(card_display_script)
-			hand_container.add_child(hand_card_to_display)
+			# ISSUE #46 FIX (retest): during the player retreat energy-selection screen, the small
+			# energy cards sat with their bottoms on the Active's HP-label line. Raise them so their
+			# centre lines up with the enlarged Active card's centre by bottom-aligning them in a
+			# VBox with a RETREAT_ENERGY_RAISE_PX spacer beneath. Only these energy cards (the else
+			# branch, in retreat pokemon-selection mode) are affected — not normal hand cards.
+			if retreat_mode_active and is_pokemon_selection_mode:
+				var raise_wrap = VBoxContainer.new()
+				raise_wrap.size_flags_vertical = Control.SIZE_SHRINK_END
+				raise_wrap.mouse_filter = MOUSE_FILTER_IGNORE
+				raise_wrap.add_child(hand_card_to_display)
+				var raise_pad = Control.new()
+				raise_pad.custom_minimum_size = Vector2(0, RETREAT_ENERGY_RAISE_PX)
+				raise_pad.mouse_filter = MOUSE_FILTER_IGNORE
+				raise_wrap.add_child(raise_pad)
+				hand_container.add_child(raise_wrap)
+				print("ISSUE #46 FIX ACTIVE: raised retreat energy card ", RETREAT_ENERGY_RAISE_PX, "px")
+			else:
+				hand_container.add_child(hand_card_to_display)
 			hand_card_to_display.load_card_image(this_card_in_hand.uid, card_size, this_card_in_hand, face_down, sleeve_path)
 			hand_card_to_display.card_clicked.connect(this_card_clicked)
 						
@@ -1224,9 +1245,9 @@ func show_message(message_text: String) -> void:
 	msgbox_label.visible = false
 	msgbox_texture.visible = false
 	msgbox_container.visible = false
-	# ISSUE #37: after the player dismisses a message, pause briefly before the next thing happens so
-	# a burst of opponent actions is readable. Gap = 0.5s / card-match speed (fast 0.25s, slow 1.0s).
-	await get_tree().create_timer(GameState.scaled_duration(0.5, GameState.card_match_animation_speed)).timeout
+	# ISSUE #37 REVERTED (2026-07-22): the post-message pause added here was a bad change
+	# (user feedback) — it inserted a delay after EVERY message box. Removed entirely so
+	# messages dismiss instantly again.
 
 # Changes the deck icon to show how many cards remain.
 # Draws ceil(count/5) stacked sleeve images, each offset -2px on x, to suggest depth.
@@ -1748,6 +1769,24 @@ func get_pokemon_screen_location(pokemon: card_object) -> Dictionary:
 		var separation = player_bench_container.get_theme_constant("separation")
 		return {"position": player_bench_container.global_position + Vector2(index * (size.x + separation), 0), "size": size, "is_active": false}
 	return {}
+
+# ISSUE #40 FIX: build the real Active energy stack (so the just-appended energy occupies its true
+# final slot), then return that slot's exact on-screen rect {position, size} AND hide the slot so an
+# attaching-energy animation can fly a card INTO that exact spot without the final card also showing
+# underneath it (which read as the energy snapping ~300px sideways / to the middle of the stack).
+# Reveal happens via the normal display_active_pokemon_energies refresh once the animation lands.
+# Returns {} if there is no Active energy to measure. Assumes the energy was already appended to the
+# Active's attached_energies (the last child is therefore the newly-attached one).
+func measure_and_hide_new_active_energy_slot(is_opponent: bool) -> Dictionary:
+	display_active_pokemon_energies(is_opponent)
+	var energy_container = opponent_energy_container if is_opponent else player_energy_container
+	var count = energy_container.get_child_count()
+	if count == 0:
+		return {}
+	var slot = energy_container.get_child(count - 1)
+	var rect = {"position": slot.global_position, "size": slot.size}
+	slot.visible = false
+	return rect
 
 func play_evolution_effect(pokemon: card_object) -> void:
 	SoundManagerScript.play_sfx(SoundManagerScript.SFX_evolve_sound)
@@ -2520,13 +2559,22 @@ func perform_energy_attachment() -> void:
 	# Animate energy flying from hand to the target pokemon
 	var target_node = player_energy_container if target_pokemon == player_active_pokemon else player_bench_container
 	var energy_texture = get_card_texture(energy_card)
-	# ISSUE #20 FIX: fly the Energy to the ACTUAL Pokémon it is attaching to (its real slot position),
-	# for the ACTIVE as well as the bench — previously the Active case fell back to the container centre.
-	print("ISSUE #20 FIX ACTIVE: energy flies to real slot for active+bench")
-	var energy_pos_override = get_pokemon_screen_location(target_pokemon).get("position", Vector2(-99999, -99999))
-	await animate_card_a_to_b(player_hand_container, target_node, 0.2, energy_texture, card_scales[12], Vector2.ZERO, energy_pos_override)
-		
-	display_pokemon(false)	
+	if target_pokemon == player_active_pokemon:
+		# ISSUE #40 FIX: fly the Energy to its EXACT final slot in the Active energy stack (position AND
+		# size), read straight off the freshly-built stack — no guessing. Previously it flew to the
+		# Active card's position/size and then snapped into the stack (looked ~300px off / mid-array).
+		print("ISSUE #40 FIX ACTIVE (player): energy flies to exact final stack slot")
+		var slot_rect = measure_and_hide_new_active_energy_slot(false)
+		var slot_pos = slot_rect.get("position", _ANIM_POS_SENTINEL)
+		var slot_size = slot_rect.get("size", card_scales[11])
+		await animate_card_a_to_b(player_hand_container, target_node, 0.2, energy_texture, card_scales[12], slot_size, slot_pos)
+	else:
+		# ISSUE #20 FIX: fly the Energy to the ACTUAL benched Pokémon's slot position.
+		print("ISSUE #20 FIX ACTIVE: energy flies to real bench slot")
+		var energy_pos_override = get_pokemon_screen_location(target_pokemon).get("position", Vector2(-99999, -99999))
+		await animate_card_a_to_b(player_hand_container, target_node, 0.2, energy_texture, card_scales[12], Vector2.ZERO, energy_pos_override)
+
+	display_pokemon(false)
 	display_active_pokemon_energies(false)
 
 	await get_tree().process_frame

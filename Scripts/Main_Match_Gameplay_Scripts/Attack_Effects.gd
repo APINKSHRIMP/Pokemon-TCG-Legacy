@@ -1454,8 +1454,17 @@ func parse_card_text_effects(attack_text: String, attacker_name: String) -> Arra
 			print("EFFECT PARSED: Bench Damage -> ", bench_target, " for ", damage, " | Flip: ", flip)
 
 	# --- BLIND / SMOKESCREEN: Defender must flip to attack next turn ---
+	# ISSUE #48 FIX: the `blind` (is_blind) system and the `flip_attack_block`
+	# (attack_flip_blocked) system below are the SAME mechanic and are BOTH checked
+	# in the generic attack path (Main_Match_Core ~4272 & ~4309, CPU ~3961 & ~3994),
+	# so Sand-Attack/Smokescreen text matched both and armed two flags -> two "must
+	# flip" messages AND two coin flips. is_blind has the broadest coverage (it's
+	# also checked inside dispatched attacks), so we keep ONLY it here and make
+	# flip_attack_block yield when blind already matched (see _blind_parsed below).
+	var _blind_parsed := false
 	if "tries to attack" in text and "if tails" in text and "does nothing" in text:
 		effects.append({"type": "blind", "target": "defender", "flip": "none"})
+		_blind_parsed = true
 		print("EFFECT PARSED: Blind / Smokescreen -> Defender")
 
 	# --- INVINCIBLE: Prevent all effects including damage next turn ---
@@ -1572,9 +1581,11 @@ func parse_card_text_effects(attack_text: String, attacker_name: String) -> Arra
 	# --- COIN-FLIP ATTACK BLOCK (Sand-attack, Smokescreen, Lightning Flash, Mirage) ---
 	# "If the Defending Pokémon tries to attack during your opponent's next turn,
 	#  your opponent flips a coin. If tails, that attack does nothing."
-	if "tries to attack" in text and ("flips a coin" in text or "flip a coin" in text) and "does nothing" in text:
+	# ISSUE #48 FIX: only arm this if the blind (is_blind) system above didn't already
+	# arm for the same text — otherwise Sand-Attack/Smokescreen flips twice & double-messages.
+	if not _blind_parsed and "tries to attack" in text and ("flips a coin" in text or "flip a coin" in text) and "does nothing" in text:
 		effects.append({"type": "flip_attack_block", "target": "defender", "flip": "none"})
-		print("EFFECT PARSED: Coin-flip Attack Block -> Defender")
+		print("EFFECT PARSED: Coin-flip Attack Block -> Defender (ISSUE #48: blind not already parsed)")
 
 	# --- TRAINER LOCK (Psyduck Headache) ---
 	if "can't play trainer" in text and "next turn" in text:
@@ -1834,22 +1845,32 @@ func apply_energy_discard_defender(effect: Dictionary, defender: card_object, is
 	
 	if energy_to_discard != null:
 		var energy_texture = main.get_card_texture(energy_to_discard)
-		var from_node = main.find_card_ui_for_object(defender)
 		var defender_is_opp = is_defender_opponent
+		var from_node = main.find_card_ui_for_object(defender)
 		if from_node == null:
 			from_node = main.opponent_active_container if defender_is_opp else main.player_active_container
 		var discard_node = main.opponent_discard_icon if defender_is_opp else main.player_discard_icon
-		
-		defender.attached_energies.erase(energy_to_discard)
-		main.card_ops.discard_energy_from_pokemon(energy_to_discard, defender_is_opp)
 
-		await main.animate_card_a_to_b(from_node, discard_node, 0.2, energy_texture, main.card_scales[10])
-		if main._should_bail(): return
-		main.update_discard_pile_display(defender_is_opp)
-		
+		# ISSUE #24 FIX (retest): a discarded card must only ever be visible in ONE place. Announce the
+		# discard first, then remove the energy from the Pokemon and REFRESH the board so it vanishes
+		# from the Pokemon BEFORE the fly-to-discard animation starts (previously the energy stayed
+		# stacked on the Pokemon while a copy flew to the discard, showing it in two places). After the
+		# card lands in the discard pile, refresh the discard pile and the Pokemon's energies again.
+		print("ISSUE #24 FIX ACTIVE: refresh board before + after energy discard animation")
 		await main.show_message("AN ENERGY WAS DISCARDED FROM " + name.to_upper() + "!")
 		if main._should_bail(): return
-		# Refresh the defender's energy display (not the attacker's)
+
+		# 1) Remove from the Pokemon and refresh — energy disappears from the Pokemon's stack
+		defender.attached_energies.erase(energy_to_discard)
+		main.display_active_pokemon_energies(defender_is_opp)
+
+		# 2) Fly the energy from the Pokemon to the discard pile
+		await main.animate_card_a_to_b(from_node, discard_node, 0.2, energy_texture, main.card_scales[10])
+		if main._should_bail(): return
+
+		# 3) Land it in the discard pile, then refresh the discard pile and the Pokemon's energies
+		main.card_ops.discard_energy_from_pokemon(energy_to_discard, defender_is_opp)
+		main.update_discard_pile_display(defender_is_opp)
 		main.display_active_pokemon_energies(defender_is_opp)
 		print("EFFECT APPLIED: Discarded energy from ", name)
 
@@ -1902,10 +1923,10 @@ func apply_bench_damage(effect: Dictionary, is_opponent_attacking: bool) -> void
 				main.show_floating_label("-" + str(effective_damage), label_pos, Color.WHITE, true,)
 				
 
-			# ISSUE #38 FIX: stagger bench-damage labels by 0.2s (scaled by the card-match animation
+			# ISSUE #38 FIX: stagger bench-damage labels by 0.3s (scaled by the card-match animation
 			# speed) so a multi-target hit like Earthquake reads as a "Mexican wave" the player can
-			# follow, instead of all labels flashing almost at once.
-			await get_tree().create_timer(GameState.scaled_duration(0.2, GameState.card_match_animation_speed)).timeout
+			# follow, instead of all labels flashing almost at once. (Bumped 0.2s -> 0.3s per retest.)
+			await get_tree().create_timer(GameState.scaled_duration(0.3, GameState.card_match_animation_speed)).timeout
 			if main._should_bail(): return
 
 # Sets the blind flag on the defending pokemon and updates icons

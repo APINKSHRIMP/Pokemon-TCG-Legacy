@@ -9,7 +9,7 @@ const CARD_SIZE       := Vector2(265, 364)
 const CARD_SEPARATION := 3
 const REVEAL_SIZE     := Vector2(318, 437)
 const CELESTE_HARBOUR := "res://Scenes/Map_Scenes/Celeste_Harbour.tscn"
-const CARD_BACK_PATH  := "res://Image_Assets/Sleeves/cardback.png"
+const CARD_BACK_PATH  := "res://Image_Assets/Sleeves/1_Default_English.png"  # ISSUE #50 sibling: cardback.png doesn't exist -> null texture
 
 # ─── State ───────────────────────────────────────────────────────────────────
 
