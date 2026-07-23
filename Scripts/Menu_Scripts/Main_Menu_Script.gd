@@ -53,6 +53,15 @@ func _close_overlay() -> void:
 
 
 func _ready() -> void:
+	# ISSUE #52 FIX: a standalone Main Menu (entered by closing a sub-menu) has no world map behind its
+	# transparent background, so it renders black. Redirect to the saved map scene and reopen the menu
+	# as an overlay on top of it — this also reloads the map so any world-changing options take effect.
+	if not is_overlay and GameState.has_menu_return_state:
+		print("ISSUE #52 FIX ACTIVE: reloading world map behind the main menu")
+		GameState.reopen_menu_overlay = true
+		SceneCache.change_scene(GameState.menu_return_scene_path)
+		return
+
 	add_child(audio_player)
 	var audio_stream = load("res://Audio/BGM/main_menu_music (TCG GB Menu Theme).ogg")
 	audio_player.stream = audio_stream

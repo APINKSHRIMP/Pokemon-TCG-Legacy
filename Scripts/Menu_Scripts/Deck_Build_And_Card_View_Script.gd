@@ -1424,7 +1424,10 @@ func _display_current_set() -> void:
 	# ISSUE #32: block input behind a loading overlay while this set's grid builds (shown every set
 	# load / set switch). Hidden once the grid finishes below; a set switch mid-load triggers a fresh
 	# _display_current_set whose show() replaces this overlay, so aborted loads don't leak it.
-	_loading_overlay.show(self)
+	# ISSUE #32 (retest): the deck screen has a ~300px right-hand banner, so nudge the loading icon
+	# 150px left to keep it centred over the visible card area. Shrink the input blocker 142px from the
+	# top / 134px from the bottom so the banner's Cancel button and set-switch controls stay clickable.
+	_loading_overlay.show(self, -150.0, 142.0, 134.0)
 
 	# Clear existing cards — kill any active tweens first
 	_clear_grid()

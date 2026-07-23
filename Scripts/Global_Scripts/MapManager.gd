@@ -104,6 +104,13 @@ var _set_name_cache: Dictionary = {}
 var _card_data_cache: Dictionary = {}
 var _loaded_card_sets: Dictionary = {}
 
+# ISSUE #56: overworld actor position tracker. Every NPC/opponent's live position is captured when
+# the map unloads (battle, sub-menu, door), keyed by "<source_json_path>::<actor_name>". On the next
+# spawn from that same day file we restore the captured position instead of the data-file default, so
+# actors don't visibly teleport back to their spawn when the map reloads. Keying on the source json
+# path means a different time-of-day (a different day file) naturally falls back to fresh positions.
+var _actor_positions: Dictionary = {}
+
 # Preloaded back textures used during the gift reveal animation
 const _CARDBACK_PATH := "res://Image_Assets/Sleeves/1_Default_English.png"
 const _COINBACK_PATH := "res://Image_Assets/Coins/Back Basic.png"
@@ -208,6 +215,34 @@ func _get_shop_config(shop_id: String) -> Dictionary:
 # OPPONENT SPAWNING
 # ============================================================
 
+# ISSUE #56: assign a freshly-spawned actor its position — the captured live position from a previous
+# visit to this same day file if one exists, otherwise the data-file default — and tag it with the
+# key so capture_actor_positions() can find it again when the map unloads.
+func _assign_actor_position(actor: Node2D, source_json: String, actor_name: String, default_pos: Vector2) -> void:
+	var key := source_json + "::" + actor_name
+	actor.position = _actor_positions.get(key, default_pos)
+	actor.set_meta("pos_key", key)
+
+# ISSUE #56: snapshot every tagged actor's current position. Called from BaseMapScene._exit_tree(),
+# which fires for every overworld unload (battle start, sub-menu, door transition).
+func capture_actor_positions() -> void:
+	if _opponents_container == null or not is_instance_valid(_opponents_container):
+		return
+	for child in _opponents_container.get_children():
+		if child.has_meta("pos_key"):
+			_actor_positions[child.get_meta("pos_key")] = child.position
+
+# ISSUE #55: hard-stop every overworld actor (opponents + NPCs live in the opponents container) plus
+# the player so nothing keeps wandering during the fade-out between accepting a battle and the intro.
+func _freeze_overworld_actors() -> void:
+	if _opponents_container != null and is_instance_valid(_opponents_container):
+		for child in _opponents_container.get_children():
+			if child.has_method("freeze"):
+				child.freeze()
+	if _player != null and is_instance_valid(_player):
+		_player.lock_movement()
+	print("ISSUE #55 FIX ACTIVE: overworld actors frozen on battle accept")
+
 func _load_and_spawn_opponents(json_path: String):
 	if json_path == "":
 		return
@@ -242,7 +277,7 @@ func _load_and_spawn_opponents(json_path: String):
 		opp.loss_text        = entry["loss_text"]
 		opp.coin_reward      = entry["coin_reward"]
 		opp.cash_reward      = entry["cash_reward"]
-		opp.position         = Vector2(entry["position"]["x"], entry["position"]["y"])
+		_assign_actor_position(opp, json_path, entry["name"], Vector2(entry["position"]["x"], entry["position"]["y"]))
 		opp.movement_pattern = entry.get("pattern", "idle_random")
 		opp.patrol_distance  = entry.get("patrol_distance", 100.0)
 		opp.patrol_speed     = entry.get("patrol_speed", 60.0)
@@ -275,7 +310,7 @@ func _load_and_spawn_opponents(json_path: String):
 			opp.loss_text        = lbe["loss_text"]
 			opp.coin_reward      = lbe["coin_reward"]
 			opp.cash_reward      = lbe["cash_reward"]
-			opp.position         = lbe["position"]
+			_assign_actor_position(opp, _json_path, lbe["name"], lbe["position"])
 			opp.movement_pattern = lbe.get("pattern", "idle_random")
 			opp.patrol_distance  = lbe.get("patrol_distance", 100.0)
 			opp.patrol_speed     = lbe.get("patrol_speed", 60.0)
@@ -331,7 +366,7 @@ func _load_and_spawn_npcs(json_path: String):
 		if not is_shop:
 			npc.required_costume   = entry.get("required_costume", "")
 			npc.costume_match_text = entry.get("costume_match_text", "")
-		npc.position         = Vector2(entry["position"]["x"], entry["position"]["y"])
+		_assign_actor_position(npc, json_path, entry["name"], Vector2(entry["position"]["x"], entry["position"]["y"]))
 		npc.movement_pattern = entry.get("pattern", "idle_down")
 		npc.patrol_distance  = entry.get("patrol_distance", 100.0)
 		npc.patrol_speed     = entry.get("patrol_speed", 60.0)
@@ -565,6 +600,8 @@ func _on_player_interact(opponent: Node):
 		return
 	current_opponent = opponent
 	opponent.pause_and_face(_player.position)
+	# ISSUE #57: the player also turns to face the opponent, not just the opponent facing the player.
+	_player.face_toward(opponent.position)
 	# Keep bubble visible during messagebox; refresh in case state changed
 	opponent.refresh_bubble()
 	_show_message_with_choices(opponent.get_greeting_text())
@@ -661,6 +698,10 @@ func _on_yes_pressed():
 		_hide_message()
 		SoundManagerScript.stop_bgm()
 
+		# ISSUE #55: freeze the overworld the instant the battle is accepted, so NPCs/opponents can't
+		# keep wandering (and drift away from the player) during the 0.5s fade before the intro loads.
+		_freeze_overworld_actors()
+
 		var overlay = ColorRect.new()
 		overlay.color   = Color(0, 0, 0, 0)
 		overlay.size    = Vector2(1920, 1080)
@@ -735,6 +776,8 @@ func _on_player_npc_interact(npc: Node):
 	current_npc = npc
 
 	npc.pause_and_face(_player.position)
+	# ISSUE #57: the player also turns to face the NPC being talked to.
+	_player.face_toward(npc.position)
 
 	# Shop NPC: delegate entirely to its own state machine
 	if npc.npc_type == "shop" and npc.has_method("on_interact"):

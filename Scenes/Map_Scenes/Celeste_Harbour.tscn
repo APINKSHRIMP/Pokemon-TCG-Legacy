@@ -5392,6 +5392,14 @@ shape = SubResource("RectangleShape2D_gvynm")
 position = Vector2(2390.25, 671)
 shape = SubResource("RectangleShape2D_33wix")
 
+[node name="Small Sea Box5" type="CollisionShape2D" parent="Collision Objects/Terrain and Sea" unique_id=663900621]
+position = Vector2(1589.25, 671)
+shape = SubResource("RectangleShape2D_33wix")
+
+[node name="Small Sea Box6" type="CollisionShape2D" parent="Collision Objects/Terrain and Sea" unique_id=1492561246]
+position = Vector2(659.25, 671)
+shape = SubResource("RectangleShape2D_33wix")
+
 [node name="Small Sea Box4" type="CollisionShape2D" parent="Collision Objects/Terrain and Sea" unique_id=85970712]
 position = Vector2(3316, 674)
 shape = SubResource("RectangleShape2D_33wix")

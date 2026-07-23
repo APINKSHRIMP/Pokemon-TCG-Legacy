@@ -148,7 +148,17 @@ func _ready():
 		var tween := create_tween()
 		tween.tween_property(get_tree().root, "modulate", Color.WHITE, 1.0)
 
+	# ISSUE #52 FIX: reopen the main-menu overlay on top of the freshly-reloaded map when returning
+	# from a sub-menu, so the transparent menu shows the world map behind it instead of black.
+	if GameState.reopen_menu_overlay:
+		GameState.reopen_menu_overlay = false
+		print("ISSUE #52 FIX ACTIVE: reopening main-menu overlay over reloaded map")
+		_open_menu_overlay()
+
 func _exit_tree():
+	# ISSUE #56: snapshot NPC/opponent positions before this map unloads (battle, sub-menu, door) so
+	# they resume from where they were instead of teleporting back to their data-file spawn on reload.
+	MapManager.capture_actor_positions()
 	_remove_cash_label()
 
 # ============================================================

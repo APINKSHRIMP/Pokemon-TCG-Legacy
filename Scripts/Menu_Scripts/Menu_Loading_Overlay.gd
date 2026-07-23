@@ -22,11 +22,15 @@ var _spinner_tween: Tween = null
 func is_showing() -> bool:
 	return _overlay != null and is_instance_valid(_overlay)
 
-func show(host: Node) -> void:
+# ISSUE #32 (retest): `icon_offset_x` shifts the loading box horizontally (deck screen passes -150 to
+# offset the ~300px right-hand banner). `blocker_top_inset` / `blocker_bottom_inset` leave that many
+# pixels UNBLOCKED at the top/bottom of the screen so banner buttons (Cancel, set switch) stay
+# clickable while the grid loads — the dim only covers the middle band.
+func show(host: Node, icon_offset_x: float = 0.0, blocker_top_inset: float = 0.0, blocker_bottom_inset: float = 0.0) -> void:
 	if host == null or not host.is_inside_tree():
 		return
 	hide()  # never stack two overlays
-	print("ISSUE #32 FIX ACTIVE: loading overlay shown (", host.name, ")")
+	print("ISSUE #32 FIX ACTIVE: loading overlay shown (", host.name, ") icon_x=", icon_offset_x, " insets=", blocker_top_inset, "/", blocker_bottom_inset)
 	_overlay = CanvasLayer.new()
 	_overlay.layer = 200
 	host.add_child(_overlay)
@@ -35,7 +39,9 @@ func show(host: Node) -> void:
 	dim.color = Color(0, 0, 0, 0.55)
 	dim.anchor_right = 1.0
 	dim.anchor_bottom = 1.0
-	dim.mouse_filter = Control.MOUSE_FILTER_STOP   # eat all clicks while loading
+	dim.offset_top = blocker_top_inset          # leave the top banner clickable
+	dim.offset_bottom = -blocker_bottom_inset   # leave the bottom banner clickable
+	dim.mouse_filter = Control.MOUSE_FILTER_STOP   # eat clicks only within the dimmed band
 	_overlay.add_child(dim)
 
 	var box := PanelContainer.new()
@@ -47,9 +53,9 @@ func show(host: Node) -> void:
 	box.anchor_top = 0.5
 	box.anchor_right = 0.5
 	box.anchor_bottom = 0.5
-	box.offset_left = -140
+	box.offset_left = -140 + icon_offset_x
 	box.offset_top = -80
-	box.offset_right = 140
+	box.offset_right = 140 + icon_offset_x
 	box.offset_bottom = 80
 	_overlay.add_child(box)
 

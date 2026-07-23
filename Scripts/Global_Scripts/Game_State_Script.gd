@@ -53,9 +53,12 @@ var current_shop_id: String = "card_mart"
 #                                 Options: slow 0.8, standard 1.0, fast 1.2.
 #   overworld_animation_speed   — overworld reward/gift animations (coin/card spins, fades, etc.).
 #                                 Options: slow 0.5, standard 1.0, fast 2.0.
-var card_match_animation_speed: float = 1.0
+# ISSUE #34 (TEMPORARY TEST VALUE): the animation multipliers are set to the "fast" 2.0 so every
+# card-match / overworld animation can be checked for a missing multiplier. Revert these two to 1.0
+# once the Options submenu is wired up (walking speed left at standard 1.0).
+var card_match_animation_speed: float = 2.0
 var overworld_walking_speed: float = 1.0
-var overworld_animation_speed: float = 1.0
+var overworld_animation_speed: float = 2.0
 
 # Scales an animation DURATION by a speed multiplier (duration / multiplier), clamped so a zero or
 # negative multiplier can never divide by zero or invert the animation.
@@ -65,6 +68,11 @@ func scaled_duration(base_seconds: float, multiplier: float) -> float:
 	return base_seconds / multiplier
 
 var sleep_wakeup_fade: bool = false
+
+# ISSUE #52: when a sub-menu (deck/costume/coin/sleeves/options/info) closes back to the standalone
+# Main Menu, the menu redirects to the saved map scene with this flag set so the map is reloaded and
+# the main menu is reopened as a transparent overlay on top of it (rather than showing black behind).
+var reopen_menu_overlay: bool = false
 
 # ============================================================
 # MATCH SERIES (best-of-N support)

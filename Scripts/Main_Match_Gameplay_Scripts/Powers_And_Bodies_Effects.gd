@@ -72,7 +72,9 @@ func _register_all_powers() -> void:
 	_power_dispatch["[Join]"]               = func(p): await power_join_unown(p)
 	_power_dispatch["Lucky Stadium"]        = func(p): await main.trainer_effects.basep_lucky_stadium_activate(false)
 	_power_dispatch["Healing Field"]        = func(p): await main.trainer_effects.neo3_healing_field_activate(false)
-	_power_dispatch["Chain Reaction"]      = func(p): await power_chain_reaction(p)
+	# ISSUE #71: Chain Reaction (basep-11 Eevee) is a TRIGGERED power — "can only be used when a
+	# Pokémon evolves". It is fired from perform_evolution via trigger_chain_reaction_after_evolution,
+	# NOT offered in the manual power menu, so it is intentionally NOT registered in _power_dispatch.
 	_register_neo1_powers()
 	_register_neo2_powers()
 	_register_neo3_powers()
@@ -1739,18 +1741,9 @@ func cpu_phase_activate_powers() -> void:
 				await power_special_delivery(dragonite)
 				if main._should_bail(): return
 
-	# basep-11 Chain Reaction (Eevee): CPU evolves all Eevees if it has evolution cards in hand
-	if not toxic_gas:
-		var cr_eevee = _find_cpu_pokemon_with_power("Chain Reaction")
-		if cr_eevee != null and not is_power_blocked_by_status(cr_eevee) and not cr_eevee.power_used_this_turn:
-			var has_eevee_evo: bool = false
-			for c in main.opponent_hand:
-				if c.metadata.get("evolvesFrom", "") == "Eevee":
-					has_eevee_evo = true
-					break
-			if has_eevee_evo:
-				await power_chain_reaction(cr_eevee)
-				if main._should_bail(): return
+	# basep-11 Chain Reaction (Eevee): NOT triggered here. Per card text it may only be used "when a
+	# Pokémon evolves", so it fires from perform_evolution -> trigger_chain_reaction_after_evolution.
+	# (Removed the old proactive trigger that fired it "out of nowhere" — ISSUE #71.)
 
 	# basep-13 Solar Power (Venusaur): CPU clears status if own active or opponent's active has status
 	if not toxic_gas:
@@ -4464,94 +4457,100 @@ func check_aurora_veil(bench_owner_is_opp: bool) -> bool:
 	return true
 
 # CHAIN REACTION (basep-11 Eevee): evolve all Eevees in play using Evolution cards from hand
+# ISSUE #71: Chain Reaction (basep-11 Eevee). Correct card text: "This power can only be used when a
+# Pokémon evolves. Search your DECK for a card that evolves from Eevee and attach it to Eevee. This
+# counts as evolving Eevee. Shuffle your deck afterward." It is fired ONLY from the evolution hook
+# below (never proactively / never from the manual menu). Evolves the single power-holding Eevee from
+# the DECK (not the whole board, not the hand — those were the old bugs that fired it "out of nowhere").
 func power_chain_reaction(eevee: card_object) -> void:
-	if is_power_blocked_by_status(eevee):
-		await main.show_message("CHAIN REACTION BLOCKED BY STATUS!")
-		if main._should_bail(): return
+	if eevee == null or eevee.metadata.get("name", "") != "Eevee":
 		return
-	if eevee.power_used_this_turn:
-		await main.show_message("CHAIN REACTION ALREADY USED THIS TURN!")
-		if main._should_bail(): return
+	if is_power_blocked_by_status(eevee) or eevee.power_used_this_turn:
 		return
 	var is_opp: bool = (eevee == main.opponent_active_pokemon or eevee in main.opponent_bench)
-	var hand = main.opponent_hand if is_opp else main.player_hand
-	var active = main.opponent_active_pokemon if is_opp else main.player_active_pokemon
+	var deck = main.opponent_deck if is_opp else main.player_deck
 	var bench = main.opponent_bench if is_opp else main.player_bench
-	# Collect all Eevees in play
-	var eevees: Array = []
-	if active != null and active.metadata.get("name", "") == "Eevee":
-		eevees.append(active)
-	for bp in bench:
-		if bp.metadata.get("name", "") == "Eevee":
-			eevees.append(bp)
-	if eevees.size() == 0:
-		await main.show_message("NO EEVEES IN PLAY!")
-		if main._should_bail(): return
-		return
-	# Check for evolution cards in hand
-	var has_evo: bool = false
-	for c in hand:
+	# Search the DECK for a card that evolves from Eevee
+	var available_evo: Array = []
+	for c in deck:
 		if c.metadata.get("evolvesFrom", "") == "Eevee":
-			has_evo = true
-			break
-	if not has_evo:
-		await main.show_message("NO EEVEE EVOLUTION CARDS IN HAND!")
-		if main._should_bail(): return
+			available_evo.append(c)
+	if available_evo.size() == 0:
 		return
-	eevee.power_used_this_turn = true
-	await main.show_message("CHAIN REACTION! EVOLVING ALL EEVEES!")
-	if main._should_bail(): return
-	for target_eevee in eevees:
-		var available_evo: Array = []
-		for c in hand:
-			if c.metadata.get("evolvesFrom", "") == "Eevee":
-				available_evo.append(c)
-		if available_evo.size() == 0:
-			break
-		var chosen_evo: card_object = null
-		if is_opp:
-			chosen_evo = available_evo[0]
-			for c in available_evo:
-				if int(c.metadata.get("hp", "0")) > int(chosen_evo.metadata.get("hp", "0")):
-					chosen_evo = c
-		else:
-			if available_evo.size() == 1:
-				chosen_evo = available_evo[0]
-			else:
-				chosen_evo = await main.card_ops.prompt_select_card(available_evo, "CHAIN REACTION: EVOLVE " + target_eevee.metadata.get("name", "").to_upper(), "Choose an Evolution for this Eevee (cancel to skip)", "EVOLVE", true)
-				if main._should_bail(): return
-			if chosen_evo == null:
-				continue
-		# Perform evolution (mirrors perform_evolution in Main)
-		var max_hp_old = int(target_eevee.metadata.get("hp", "0"))
-		var damage_taken = max_hp_old - target_eevee.current_hp
-		var max_hp_new = int(chosen_evo.metadata.get("hp", "0"))
-		chosen_evo.current_hp = max(1, max_hp_new - damage_taken)
-		chosen_evo.attached_energies = target_eevee.attached_energies.duplicate()
-		target_eevee.attached_energies.clear()
-		chosen_evo.attached_pre_evolutions = target_eevee.attached_pre_evolutions.duplicate()
-		target_eevee.attached_pre_evolutions.clear()
-		chosen_evo.attached_pre_evolutions.append(target_eevee)
-		chosen_evo.placed_on_field_this_turn = true
-		hand.erase(chosen_evo)
-		chosen_evo.current_location = target_eevee.current_location
-		var is_active_slot = (target_eevee == (main.opponent_active_pokemon if is_opp else main.player_active_pokemon))
-		if is_active_slot:
-			if is_opp:
-				main.opponent_active_pokemon = chosen_evo
-			else:
-				main.player_active_pokemon = chosen_evo
-		else:
-			var bench_idx = bench.find(target_eevee)
-			if bench_idx >= 0:
-				bench[bench_idx] = chosen_evo
-		main.clear_all_statuses(target_eevee, is_opp)
-		main.display_pokemon(is_opp)
-		main.display_active_pokemon_energies(is_opp)
-		main.refresh_hand_display(is_opp)
-		await main.show_message("CHAIN REACTION: " + target_eevee.metadata.get("name", "").to_upper() + " EVOLVED INTO " + chosen_evo.metadata.get("name", "").to_upper() + "!")
+	# Player may decline; CPU auto-uses (picks the highest-HP evolution)
+	var chosen_evo: card_object = null
+	if is_opp:
+		chosen_evo = available_evo[0]
+		for c in available_evo:
+			if int(c.metadata.get("hp", "0")) > int(chosen_evo.metadata.get("hp", "0")):
+				chosen_evo = c
+	else:
+		chosen_evo = await main.card_ops.prompt_select_card(available_evo, "CHAIN REACTION: EVOLVE EEVEE", "Search your deck for an Eevee evolution (cancel to skip)", "EVOLVE", true)
 		if main._should_bail(): return
+		if chosen_evo == null:
+			return
+	eevee.power_used_this_turn = true
+	print("ISSUE #71 FIX ACTIVE: Chain Reaction evolving one Eevee from deck into ", chosen_evo.metadata.get("name", ""))
+	# Perform evolution (mirrors perform_evolution in Main, incl. ISSUE #58 attached-card carry-over)
+	var max_hp_old = int(eevee.metadata.get("hp", "0"))
+	var damage_taken = max_hp_old - eevee.current_hp
+	var max_hp_new = int(chosen_evo.metadata.get("hp", "0"))
+	chosen_evo.current_hp = max(1, max_hp_new - damage_taken)
+	chosen_evo.attached_energies = eevee.attached_energies.duplicate()
+	eevee.attached_energies.clear()
+	chosen_evo.attached_cards = eevee.attached_cards.duplicate()
+	eevee.attached_cards.clear()
+	chosen_evo.defender_turns_remaining = eevee.defender_turns_remaining
+	chosen_evo.defender_count = eevee.defender_count
+	chosen_evo.pluspower_count = eevee.pluspower_count
+	chosen_evo.attached_pre_evolutions = eevee.attached_pre_evolutions.duplicate()
+	eevee.attached_pre_evolutions.clear()
+	chosen_evo.attached_pre_evolutions.append(eevee)
+	chosen_evo.placed_on_field_this_turn = true
+	deck.erase(chosen_evo)
+	chosen_evo.current_location = eevee.current_location
+	var is_active_slot = (eevee == (main.opponent_active_pokemon if is_opp else main.player_active_pokemon))
+	if is_active_slot:
+		if is_opp:
+			main.opponent_active_pokemon = chosen_evo
+		else:
+			main.player_active_pokemon = chosen_evo
+	else:
+		var bench_idx = bench.find(eevee)
+		if bench_idx >= 0:
+			bench[bench_idx] = chosen_evo
+	main.clear_all_statuses(eevee, is_opp)
+	deck.shuffle()
+	main.display_pokemon(is_opp)
+	main.display_active_pokemon_energies(is_opp)
+	main.refresh_hand_display(is_opp)
+	await main.show_message("CHAIN REACTION: EEVEE EVOLVED INTO " + chosen_evo.metadata.get("name", "").to_upper() + "!")
+	if main._should_bail(): return
 	print("POWER USED: Chain Reaction")
+
+# ISSUE #71: fired at the end of perform_evolution. "When a Pokémon evolves" any in-play Eevee with
+# Chain Reaction (either side) may use its power. Checks each side; skips Toxic-Gas-blocked powers.
+func trigger_chain_reaction_after_evolution() -> void:
+	if is_toxic_gas_active():
+		return
+	# Snapshot the in-play Eevees up front (the list mutates as they evolve).
+	var candidates: Array = []
+	for side_is_opp in [false, true]:
+		var active = main.opponent_active_pokemon if side_is_opp else main.player_active_pokemon
+		var bench = main.opponent_bench if side_is_opp else main.player_bench
+		if active != null and active.metadata.get("name", "") == "Eevee" and active.has_ability("Chain Reaction"):
+			candidates.append(active)
+		for bp in bench:
+			if bp.metadata.get("name", "") == "Eevee" and bp.has_ability("Chain Reaction"):
+				candidates.append(bp)
+	for eevee in candidates:
+		# Re-validate: still in play, unused, not status-blocked
+		if eevee.power_used_this_turn or is_power_blocked_by_status(eevee):
+			continue
+		if eevee.current_location != "active" and eevee.current_location != "bench":
+			continue
+		await power_chain_reaction(eevee)
+		if main._should_bail(): return
 
 # PURE BODY (basep-53/np-30 Suicune): attaching a Water Energy to Suicune forces it to discard one
 # of its own attached energies; if Suicune has none attached, Water Energy can't be attached at all.

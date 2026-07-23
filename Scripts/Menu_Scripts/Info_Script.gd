@@ -270,29 +270,49 @@ func _count_owned_cards() -> Array:
 # ─── Cheat notification ──────────────────────────────────────────────────────
 
 func _flash_cheat_message(message: String) -> void:
-	if _cheat_label == null or not is_instance_valid(_cheat_label):
-		var layer := CanvasLayer.new()
-		layer.name = "CheatCanvasLayer"
-		layer.layer = 128
-		get_tree().root.add_child(layer)
-
-		_cheat_label = Label.new()
-		_cheat_label.name = "CheatNotificationLabel"
-		_cheat_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		_cheat_label.vertical_alignment   = VERTICAL_ALIGNMENT_CENTER
-		_cheat_label.add_theme_font_size_override("font_size", 64)
-		_cheat_label.add_theme_color_override("font_color", Color(1.0, 0.85, 0.0))
-		_cheat_label.add_theme_color_override("font_outline_color", Color.BLACK)
-		_cheat_label.add_theme_constant_override("outline_size", 10)
-		_cheat_label.set_anchors_preset(Control.PRESET_FULL_RECT)
-		_cheat_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		layer.add_child(_cheat_label)
-
-	_cheat_label.text = message
-
+	# ISSUE #53 FIX: drive the cheat popup as a self-contained "float up + fade out" like the in-match
+	# floating labels, animated by a Tween OWNED BY the CanvasLayer (a root child). Previously the
+	# cleanup awaited a timer bound to THIS script; escaping the Info sub-menu freed the script and
+	# cancelled the await, leaving the label stuck on screen forever. Now it always fades within ~2s.
+	print("ISSUE #53 FIX ACTIVE: cheat popup floats up and auto-fades independent of the menu scene")
 	_cheat_label_token += 1
 	var my_token := _cheat_label_token
-	await get_tree().create_timer(2.5).timeout
-	if my_token == _cheat_label_token and _cheat_label != null and is_instance_valid(_cheat_label):
+
+	# Remove any existing popup so rapid re-triggers don't stack.
+	if _cheat_label != null and is_instance_valid(_cheat_label) and _cheat_label.get_parent() != null:
 		_cheat_label.get_parent().queue_free()
-		_cheat_label = null
+	_cheat_label = null
+
+	var layer := CanvasLayer.new()
+	layer.name = "CheatCanvasLayer"
+	layer.layer = 128
+	get_tree().root.add_child(layer)
+
+	var label := Label.new()
+	label.name = "CheatNotificationLabel"
+	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	label.vertical_alignment   = VERTICAL_ALIGNMENT_CENTER
+	label.add_theme_font_size_override("font_size", 64)
+	label.add_theme_color_override("font_color", Color(1.0, 0.85, 0.0))
+	label.add_theme_color_override("font_outline_color", Color.BLACK)
+	label.add_theme_constant_override("outline_size", 10)
+	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	label.text = message
+	var vp_size := get_viewport().get_visible_rect().size
+	label.size = Vector2(vp_size.x, 80)
+	label.position = Vector2(0, vp_size.y * 0.5 - 40)
+	layer.add_child(label)
+	_cheat_label = label
+
+	# Float up ~120px while fading out over 2s, then free the layer. The tween is owned by `layer`
+	# (a root child), so it completes even after this Info scene is freed.
+	var tween := layer.create_tween()
+	tween.set_parallel(true)
+	tween.tween_property(label, "position:y", label.position.y - 120.0, 2.0).set_ease(Tween.EASE_OUT)
+	tween.tween_property(label, "modulate:a", 0.0, 2.0).set_ease(Tween.EASE_IN)
+	tween.chain().tween_callback(func():
+		if is_instance_valid(layer):
+			layer.queue_free()
+		if my_token == _cheat_label_token:
+			_cheat_label = null
+	)

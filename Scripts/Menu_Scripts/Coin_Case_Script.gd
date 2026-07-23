@@ -69,7 +69,8 @@ func _ready() -> void:
 
 	_wrap_grid_in_scroll_container()
 	# ISSUE #32: block input behind a loading overlay while the (potentially large) coin grid builds.
-	_loading_overlay.show(self)
+	# Retest: shrink the blocker 142px top / 134px bottom so the banner buttons (Cancel) stay clickable.
+	_loading_overlay.show(self, 0.0, 142.0, 134.0)
 	await get_tree().process_frame
 	await _load_coins()
 	_loading_overlay.hide()

@@ -89,7 +89,11 @@ func _show_loading_overlay() -> void:
 	dim.color = Color(0, 0, 0, 0.55)
 	dim.anchor_right = 1.0
 	dim.anchor_bottom = 1.0
-	dim.mouse_filter = Control.MOUSE_FILTER_STOP   # eat all clicks while loading
+	# ISSUE #32 (retest): leave the top 142px / bottom 134px unblocked so the banner buttons (Cancel)
+	# stay clickable while the sleeve grid builds — only the middle band eats input.
+	dim.offset_top = 142.0
+	dim.offset_bottom = -134.0
+	dim.mouse_filter = Control.MOUSE_FILTER_STOP   # eat clicks only within the dimmed band
 	_loading_overlay.add_child(dim)
 
 	var box := PanelContainer.new()

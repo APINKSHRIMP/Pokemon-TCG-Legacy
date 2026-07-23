@@ -615,6 +615,81 @@ func _any_bench_survives_player_attack() -> bool:
 			return true
 	return false
 
+# ISSUE #69: the best damage `pokemon` can deal to `target` THIS turn with a currently-affordable
+# attack (0 unmet energy). Uses the conservative minimum roll. Returns 0 if it cannot attack.
+func _best_usable_damage_against(pokemon: card_object, target: card_object) -> int:
+	if pokemon == null or target == null:
+		return 0
+	var types = pokemon.metadata.get("types", ["Colorless"])
+	var best = 0
+	for attack in pokemon.metadata.get("attacks", []):
+		if get_unmet_energy_count(attack, pokemon) > 0:
+			continue
+		var rng = main.attack_effects.estimate_attack_damage_range(attack, pokemon, target)
+		var result = main.calculate_final_damage(rng["min"], types, target)
+		best = max(best, result["damage"])
+	return best
+
+# ISSUE #63/#65: the player Active's effective damage against `target` with any currently-usable
+# attack, respecting `target`'s current Defender count. use_max picks the max roll (worst case for
+# the CPU) vs the min roll (the guaranteed floor).
+func _player_effective_damage_against(target: card_object, use_max: bool) -> int:
+	if main.player_active_pokemon == null or target == null:
+		return 0
+	var ptypes = main.player_active_pokemon.metadata.get("types", ["Colorless"])
+	var best = 0
+	for attack in main.player_active_pokemon.metadata.get("attacks", []):
+		if get_unmet_energy_count(attack, main.player_active_pokemon) > 0:
+			continue
+		var rng = main.attack_effects.estimate_attack_damage_range(attack, main.player_active_pokemon, target)
+		var roll = rng["max"] if use_max else rng["min"]
+		var result = main.calculate_final_damage(roll, ptypes, target)
+		best = max(best, result["damage"])
+	return best
+
+# ISSUE #63: the player Active's maximum damage against `target` with any currently-usable attack.
+func _player_max_damage_against(target: card_object) -> int:
+	return _player_effective_damage_against(target, true)
+
+# ISSUE #69: a benched Pokemon that is a clear OFFENSIVE upgrade over the current Active against the
+# player's Active — it survives coming in and deals meaningfully more damage (≥+20 and ≥1.5×). Null if none.
+func _offensive_retreat_target() -> card_object:
+	if main.opponent_active_pokemon == null or main.player_active_pokemon == null:
+		return null
+	var active_damage = _best_usable_damage_against(main.opponent_active_pokemon, main.player_active_pokemon)
+	var best: card_object = null
+	var best_damage = active_damage
+	for bench_pokemon in main.opponent_bench:
+		if _is_guaranteed_ko_by(bench_pokemon, main.player_active_pokemon):
+			continue
+		var bench_damage = _best_usable_damage_against(bench_pokemon, main.player_active_pokemon)
+		if bench_damage >= active_damage + 20 and bench_damage >= int(active_damage * 1.5) + 1 and bench_damage > best_damage:
+			best = bench_pokemon
+			best_damage = bench_damage
+	return best
+
+# ISSUE #63: true if a benched Pokemon would survive the player's attack meaningfully better than the
+# current Active (higher HP-after-hit margin). Retreating into an equally/worse-doomed Pokemon is pointless.
+func _retreat_improves_survival() -> bool:
+	if main.opponent_active_pokemon == null:
+		return false
+	var active_margin = main.opponent_active_pokemon.current_hp - _player_max_damage_against(main.opponent_active_pokemon)
+	for bench_pokemon in main.opponent_bench:
+		var bench_margin = bench_pokemon.current_hp - _player_max_damage_against(bench_pokemon)
+		if bench_margin > active_margin:
+			return true
+	return false
+
+# ISSUE #63: true if any non-doomed benched Pokemon can already attack the player's Active — used to
+# justify swapping an idle (can't-attack) Active out.
+func _bench_attacker_available() -> bool:
+	for bench_pokemon in main.opponent_bench:
+		if main.player_active_pokemon != null and _is_guaranteed_ko_by(bench_pokemon, main.player_active_pokemon):
+			continue
+		if _best_usable_damage_against(bench_pokemon, main.player_active_pokemon) > 0:
+			return true
+	return false
+
 # Scores all (pokemon, energy_card) pairs and attaches the best one (Phase 0, 2, 3)
 func evaluate_opponents_start_setup_pokemon_choices(basic_pokemon: card_object, hand: Array) -> Dictionary:
 	var total_score = 0.0
@@ -1216,8 +1291,21 @@ func evaluate_retreat_reasons(cpu_eval: Dictionary) -> bool:
 						break
 
 		if nearest_attack > matching_energy_in_hand + 1:
+			# ISSUE #63: don't retreat an idle Active into a replacement that is just as doomed and can't
+			# attack either. Only worthwhile if some bench Pokemon can attack, would survive, or is an
+			# offensive upgrade — otherwise we just feed another Pokemon to the same KO for no gain.
+			if not _bench_attacker_available() and not _retreat_improves_survival() and _offensive_retreat_target() == null:
+				print("ISSUE #63 FIX ACTIVE: CPU NOT retreating — replacement is as stuck/doomed as the Active")
+				return false
 			print("CPU considering retreat: active has no viable attack path")
 			return true
+
+	# Reason 4 — ISSUE #69: Offensive retreat. Even with a healthy, attacking Active, if a benched
+	# Pokemon that would survive coming in can deal meaningfully MORE damage to the player's Active
+	# (e.g. a powered-up Pinsir behind a Weedle only doing 10), swap it in to hit harder.
+	if _offensive_retreat_target() != null:
+		print("ISSUE #69 FIX ACTIVE: CPU considering offensive retreat to a stronger bench attacker")
+		return true
 
 	return false
 
@@ -1230,6 +1318,12 @@ func is_retreat_cost_worthwhile(cpu_eval: Dictionary) -> bool:
 
 	# Free retreat is always worthwhile
 	if retreat_cost == 0:
+		return true
+
+	# ISSUE #69: an offensive-upgrade retreat is worthwhile regardless of the energy lost by the
+	# retreating Pokemon — the whole point is to bring the stronger bench attacker into the Active spot.
+	if _offensive_retreat_target() != null:
+		print("ISSUE #69 FIX ACTIVE: retreat worthwhile — swapping in a stronger bench attacker")
 		return true
 
 	# Check what state the active ends up in after losing retreat cost energy
@@ -1276,6 +1370,15 @@ func is_retreat_cost_worthwhile(cpu_eval: Dictionary) -> bool:
 	if guaranteed_ko and high_investment and high_hp:
 		print("CPU retreat worthwhile: preserving high-investment pokemon")
 		return true
+
+	# ISSUE #63: don't waste a retreat swapping into an equally- or worse-doomed Pokemon. If the swap
+	# neither improves our survival odds, nor upgrades our attacker, nor moves an idle (can't-attack)
+	# Active out for a bench Pokemon that CAN attack, there is nothing to gain — stay put.
+	var active_can_attack = active_data.get("can_attack", false)
+	var swap_has_value = _retreat_improves_survival() or _offensive_retreat_target() != null or (not active_can_attack and _bench_attacker_available())
+	if not swap_has_value:
+		print("ISSUE #63 FIX ACTIVE: CPU NOT retreating — no survival/offensive/attack gain from the swap")
+		return false
 
 	# Losing more than half the energy for primary attack is generally bad
 	if energy_lost_ratio > 0.5 and not can_attack_after:
@@ -5178,11 +5281,50 @@ func _cpu_score_super_energy_removal() -> float:
 	if p_energy >= 2: return 60.0
 	return 0.0
 
+# ISSUE #65: only play Defender(s) when the maths says it actually prevents a knockout. Do NOT use it
+# on a hit that wouldn't KO anyway, and do NOT waste it when the KO is guaranteed even with every
+# Defender stacked. Handles stacking (each Defender is -20) — the trainer loop re-scores after each
+# attach, so returning a high score keeps attaching until the KO is prevented (or nothing left).
 func _cpu_score_defender() -> float:
-	if main.opponent_active_pokemon == null or main.player_active_pokemon == null: return 0.0
-	var ko_threats = evaluate_ko_threats()
-	if ko_threats.get("cpu_active_guaranteed_ko", false): return 60.0
-	return 0.0
+	var active = main.opponent_active_pokemon
+	if active == null or main.player_active_pokemon == null: return 0.0
+
+	# Damage the player can do to us right now (respecting Defenders already attached).
+	var incoming_max_now = _player_effective_damage_against(active, true)
+	# ISSUE #65: if the incoming attack can't KO us even on its best roll, don't waste a Defender.
+	if incoming_max_now < active.current_hp:
+		return 0.0
+
+	# Count Defenders we could still attach this turn.
+	var defenders_in_hand = 0
+	for c in main.opponent_hand:
+		if c.metadata.get("name", "").to_lower() == "defender":
+			defenders_in_hand += 1
+	if defenders_in_hand <= 0:
+		return 0.0
+
+	# Simulate stacking ALL remaining Defenders and see how the KO maths changes.
+	var saved_count = active.defender_count
+	var saved_turns = active.defender_turns_remaining
+	active.defender_count = saved_count + defenders_in_hand
+	if active.defender_turns_remaining < 0:
+		active.defender_turns_remaining = 0
+	var incoming_max_full = _player_effective_damage_against(active, true)
+	var incoming_min_full = _player_effective_damage_against(active, false)
+	active.defender_count = saved_count
+	active.defender_turns_remaining = saved_turns
+
+	# Full stack guarantees survival (even the worst roll is survived) — clearly worth it.
+	if incoming_max_full < active.current_hp:
+		print("ISSUE #65 FIX ACTIVE: CPU playing Defender — stack guarantees surviving the incoming hit")
+		return 95.0
+	# Even the guaranteed (min-roll) damage still KOs through every Defender — nothing can be saved, don't waste.
+	if incoming_min_full >= active.current_hp:
+		print("ISSUE #65 FIX ACTIVE: CPU holding Defender — KO is guaranteed even with all Defenders")
+		return 0.0
+	# In-between (a coin-flip attack): the stack converts a certain KO into a survivable chance — play it.
+	print("ISSUE #65 FIX ACTIVE: CPU playing Defender — stack improves the odds of surviving the incoming hit")
+	return 80.0
 
 func _cpu_score_energy_retrieval() -> float:
 	var energy_in_hand = 0
@@ -5209,19 +5351,37 @@ func _cpu_score_maintenance() -> float:
 	if main.opponent_hand.size() < 4: return 0.0
 	return 30.0
 
+# ISSUE #70: PlusPower only helps if we actually attack for damage this turn. Don't play it when the
+# CPU can't attack (first turn of the game, Paralyzed/Asleep) or its only usable attack does 0 damage.
 func _cpu_score_pluspower() -> float:
-	if main.opponent_active_pokemon == null or main.player_active_pokemon == null: return 0.0
-	var pp_bonus = (main.opponent_active_pokemon.pluspower_count + 1) * 10
-	# Check if this KOs
-	for attack in main.opponent_active_pokemon.metadata.get("attacks", []):
-		if get_unmet_energy_count(attack, main.opponent_active_pokemon) > 0: continue
-		var dmg_range = main.attack_effects.estimate_attack_damage_range(attack, main.opponent_active_pokemon, main.player_active_pokemon)
-		var types = main.opponent_active_pokemon.metadata.get("types", ["Colorless"])
+	var active = main.opponent_active_pokemon
+	if active == null or main.player_active_pokemon == null: return 0.0
+	# First player can't attack on turn 1 — PlusPower would just expire unused.
+	if main.turn_number <= 1:
+		print("ISSUE #70 FIX ACTIVE: CPU holding PlusPower — cannot attack on the first turn")
+		return 0.0
+	# Paralyzed/Asleep Active can't attack this turn.
+	if active.special_condition in ["Paralyzed", "Asleep"]:
+		print("ISSUE #70 FIX ACTIVE: CPU holding PlusPower — Active is ", active.special_condition, " and can't attack")
+		return 0.0
+	var pp_bonus = (active.pluspower_count + 1) * 10
+	var types = active.metadata.get("types", ["Colorless"])
+	var has_damaging_attack = false
+	var enables_ko = false
+	for attack in active.metadata.get("attacks", []):
+		if get_unmet_energy_count(attack, active) > 0: continue
+		var dmg_range = main.attack_effects.estimate_attack_damage_range(attack, active, main.player_active_pokemon)
 		var result_without = main.calculate_final_damage(dmg_range["min"], types, main.player_active_pokemon)
-		if result_without["damage"] < main.player_active_pokemon.current_hp:
-			var result_with = result_without["damage"] + pp_bonus
-			if result_with >= main.player_active_pokemon.current_hp:
-				return 90.0
+		if result_without["damage"] <= 0:
+			continue  # a 0-damage attack gains nothing from PlusPower
+		has_damaging_attack = true
+		if result_without["damage"] < main.player_active_pokemon.current_hp and result_without["damage"] + pp_bonus >= main.player_active_pokemon.current_hp:
+			enables_ko = true
+	if not has_damaging_attack:
+		print("ISSUE #70 FIX ACTIVE: CPU holding PlusPower — no usable damaging attack this turn")
+		return 0.0
+	if enables_ko:
+		return 90.0
 	return 30.0
 
 func _cpu_score_pokemon_center() -> float:

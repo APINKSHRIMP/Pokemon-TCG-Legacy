@@ -30,7 +30,7 @@ script = ExtResource("1_mfee1")
 layout_mode = 0
 offset_right = 1921.0
 offset_bottom = 1080.0
-color = Color(0, 0, 0, 0.8392157)
+color = Color(0, 0, 0, 0.7)
 
 [node name="deck" type="Control" parent="." unique_id=944124811]
 anchors_preset = 0

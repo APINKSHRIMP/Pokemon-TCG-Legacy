@@ -45,6 +45,16 @@ func set_direction(direction: String):
 	current_direction = direction
 	animated_sprite.play("idle_" + current_direction)
 
+# ISSUE #57: turn the player to face a target position (an NPC/opponent) when interacting, mirroring
+# the way the NPC turns to face the player. Uses the dominant axis of the offset.
+func face_toward(target_position: Vector2):
+	var diff = target_position - position
+	if abs(diff.x) > abs(diff.y):
+		set_direction("right" if diff.x > 0 else "left")
+	else:
+		set_direction("down" if diff.y > 0 else "up")
+	print("ISSUE #57 FIX ACTIVE: player turned to face interaction target (", current_direction, ")")
+
 func _ready():
 	add_to_group("player")
 

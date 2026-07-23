@@ -370,6 +370,24 @@ func pause_and_face(target_position: Vector2):
 		current_facing = "down" if diff.y > 0 else "up"
 	animated_sprite.play("idle_" + current_facing)
 
+# ISSUE #55: hard-stop this actor in place (no re-facing) so it can't keep wandering during the
+# fade-out after a battle is accepted. Mirrors pause_and_face's freezing without turning the sprite.
+func freeze():
+	velocity = Vector2.ZERO
+	set_physics_process(false)
+	_is_wandering = false
+	if direction_timer != null and is_instance_valid(direction_timer):
+		direction_timer.stop()
+	if _restore_timer != null and is_instance_valid(_restore_timer) \
+			and _restore_timer.timeout.is_connected(_on_restore_facing):
+		_restore_timer.timeout.disconnect(_on_restore_facing)
+		_restore_timer = null
+	if _glance_timer != null and is_instance_valid(_glance_timer) \
+			and _glance_timer.timeout.is_connected(_on_glance_end):
+		_glance_timer.timeout.disconnect(_on_glance_end)
+		_glance_timer = null
+	animated_sprite.play("idle_" + current_facing)
+
 func resume_movement():
 	set_physics_process(true)
 	match movement_pattern:

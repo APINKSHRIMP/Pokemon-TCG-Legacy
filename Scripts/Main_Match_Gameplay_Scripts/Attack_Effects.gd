@@ -752,6 +752,8 @@ func handle_attack_confusion(attacker: card_object, is_opponent: bool) -> bool:
 		self_damage = result["damage"]
 	# Dark Primeape Frenzy: +30 damage when confused (even to self)
 	self_damage += main.powers_and_bodies.check_frenzy_bonus(attacker)
+	# ISSUE #60: Defender prevents confusion self-damage too (-20 per Defender)
+	self_damage = max(0, self_damage - main.get_defender_reduction(attacker, self_damage))
 	attacker.current_hp = max(0, attacker.current_hp - self_damage)
 	await main.show_message("THE ATTACK FAILED! " + attacker.metadata["name"].to_upper() + " HURT ITSELF FOR " + str(self_damage) + " DAMAGE!")
 	if main._should_bail(): return false
@@ -1487,14 +1489,18 @@ func parse_card_text_effects(attack_text: String, attacker_name: String) -> Arra
 		print("EFFECT PARSED: Retreat Lock -> Defender | Flip: ", flip)
 
 	# --- DRAW CARDS ---
+	# ISSUE #64 FIX: honour a "Flip a coin. If heads/tails, draw ..." gate (e.g. Meowth's Pay Day)
+	# instead of always drawing. get_flip_context reads any if-heads/if-tails clause before the draw.
 	if "draw a card" in text and "your opponent" not in text:
-		effects.append({"type": "draw", "target": "self", "count": 1, "flip": "none"})
-		print("EFFECT PARSED: Draw 1 card")
+		var draw_flip = get_flip_context(text, text.find("draw a card"))
+		effects.append({"type": "draw", "target": "self", "count": 1, "flip": draw_flip})
+		print("EFFECT PARSED: Draw 1 card | Flip: ", draw_flip)
 	elif "draw " in text and "cards" in text and "your opponent" not in text:
 		var count = extract_number_before(text, "cards")
 		if count > 0:
-			effects.append({"type": "draw", "target": "self", "count": count, "flip": "none"})
-			print("EFFECT PARSED: Draw ", count, " cards")
+			var draw_flip2 = get_flip_context(text, text.find("draw "))
+			effects.append({"type": "draw", "target": "self", "count": count, "flip": draw_flip2})
+			print("EFFECT PARSED: Draw ", count, " cards | Flip: ", draw_flip2)
 
 	# --- SELF HEAL ALL: Remove all damage from attacker ---
 	if "remove all damage counters from " + lower_name in text:
@@ -1748,6 +1754,8 @@ func apply_card_text_effects(effects: Array, attacker: card_object, defender: ca
 # Function to get all basic pokemon from a given array of cards
 func apply_self_damage(effect: Dictionary, attacker: card_object, is_opponent_attacking: bool) -> void:
 	var damage = effect.get("damage", 0)
+	# ISSUE #60: Defender prevents self-damage from attacks too (-20 per Defender)
+	damage = max(0, damage - main.get_defender_reduction(attacker, damage))
 	attacker.current_hp = max(0, attacker.current_hp - damage)
 	var name = attacker.metadata.get("name", "Unknown")
 	var label_x = 1030 if is_opponent_attacking else 530
@@ -1911,22 +1919,29 @@ func apply_bench_damage(effect: Dictionary, is_opponent_attacking: bool) -> void
 			var pokemon = bench_info["bench"][i]
 			# GYM1 Brock's Rhydon Bench Guard — owner may redirect 10 to Rhydon
 			var effective_damage = await main.powers_and_bodies.check_bench_guard(pokemon, damage, bench_owner_is_opp)
+			# ISSUE #60: Defender prevents bench damage too (-20 per Defender)
+			effective_damage = max(0, effective_damage - main.get_defender_reduction(pokemon, effective_damage))
 			pokemon.current_hp = max(0, pokemon.current_hp - effective_damage)
 			print("BENCH DAMAGE: ", pokemon.metadata.get("name", ""), " took ", effective_damage, " damage. HP: ", pokemon.current_hp)
 
-			# Show floating label at this bench pokemon's approximate position
+			# ISSUE #38 FIX: refresh the board FIRST so the bench Pokémon's HP label updates
+			# (e.g. 40/40 -> 20/40) at the same moment its -XX floating label appears above it.
+			main.display_pokemon(bench_owner_is_opp)
+
+			# Show floating label at this bench pokemon's position. ISSUE #38: nudge it ~100px left so it
+			# sits directly above the card instead of too far to the right.
 			var bench_card_ui = null
 			if i < bench_container.get_child_count():
 				bench_card_ui = bench_container.get_child(i)
 			if bench_card_ui != null and is_instance_valid(bench_card_ui):
-				var label_pos = bench_card_ui.global_position + Vector2(0, -20)
+				var label_pos = bench_card_ui.global_position + Vector2(-100, -20)
 				main.show_floating_label("-" + str(effective_damage), label_pos, Color.WHITE, true,)
-				
 
-			# ISSUE #38 FIX: stagger bench-damage labels by 0.3s (scaled by the card-match animation
+
+			# ISSUE #38 FIX: stagger bench-damage labels by 0.4s (scaled by the card-match animation
 			# speed) so a multi-target hit like Earthquake reads as a "Mexican wave" the player can
-			# follow, instead of all labels flashing almost at once. (Bumped 0.2s -> 0.3s per retest.)
-			await get_tree().create_timer(GameState.scaled_duration(0.3, GameState.card_match_animation_speed)).timeout
+			# follow, instead of all labels flashing almost at once. (0.2 -> 0.3 -> 0.4 per retests.)
+			await get_tree().create_timer(GameState.scaled_duration(0.4, GameState.card_match_animation_speed)).timeout
 			if main._should_bail(): return
 
 # Sets the blind flag on the defending pokemon and updates icons
@@ -2298,6 +2313,8 @@ func apply_bench_damage_single(effect: Dictionary, is_opponent_attacking: bool) 
 			return
 		# GYM1 Brock's Rhydon Bench Guard — owner may redirect 10 to Rhydon
 		var effective_damage = await main.powers_and_bodies.check_bench_guard(target, damage, is_target_opponent)
+		# ISSUE #60: Defender prevents bench damage too (-20 per Defender)
+		effective_damage = max(0, effective_damage - main.get_defender_reduction(target, effective_damage))
 		target.current_hp = max(0, target.current_hp - effective_damage)
 		await main.show_message(target.metadata.get("name", "").to_upper() + " TOOK " + str(effective_damage) + " BENCH DAMAGE!")
 		if main._should_bail(): return

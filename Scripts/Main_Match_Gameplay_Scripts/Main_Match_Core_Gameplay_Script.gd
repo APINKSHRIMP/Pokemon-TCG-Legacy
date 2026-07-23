@@ -97,7 +97,7 @@ var retreat_mode_active: bool = false
 # ISSUE #46 (retest): during the player retreat energy-selection screen, raise the small energy
 # cards this many pixels so their vertical centre lines up with the enlarged Active card's centre,
 # instead of their bottoms sitting on the Active's HP-label line. TWEAKABLE.
-const RETREAT_ENERGY_RAISE_PX: float = 300.0
+const RETREAT_ENERGY_RAISE_PX: float = 120.0
 var retreat_bench_selection_active: bool = false
 var retreat_energies_selected: Array = []
 var retreat_cost_remaining: int = 0
@@ -1091,7 +1091,22 @@ func build_pokemon_slot_with_energies_and_hp(card_obj: card_object, card_size: V
 			energy_display.load_card_image(energy_obj.uid, card_size, energy_obj)
 			energy_display.position = Vector2(0, -(i + 1) * energy_offset)
 			energy_display.mouse_filter = MOUSE_FILTER_IGNORE
-	
+
+	# ISSUE #59 FIX: show attached tool/trainer cards (Defender, PlusPower, etc.) stacked ABOVE the
+	# energy cards for bench Pokémon so they read as attached too. The Active Pokémon shows its tools
+	# via display_attached_trainer_cards, so only render them here for bench slots.
+	if show_hp_and_energies and card_obj.current_location == "bench" and card_obj.attached_cards.size() > 0:
+		var tool_offset = energy_offset if energy_offset > 0 else max(min_px, card_size.y * base_fraction)
+		var stack_top = energy_count * energy_offset  # top edge of the energy stack (upward)
+		for j in range(card_obj.attached_cards.size()):
+			var tool_obj = card_obj.attached_cards[j]
+			var tool_display = TextureRect.new()
+			tool_display.set_script(card_display_script)
+			card_area.add_child(tool_display)
+			tool_display.load_card_image(tool_obj.uid, card_size, tool_obj)
+			tool_display.position = Vector2(0, -(stack_top + (j + 1) * tool_offset))
+			tool_display.mouse_filter = MOUSE_FILTER_IGNORE
+
 	# Pokemon card at (0, 0) — on top of all energies.
 	var card_display = TextureRect.new()
 	card_display.set_script(card_display_script)
@@ -1788,6 +1803,21 @@ func measure_and_hide_new_active_energy_slot(is_opponent: bool) -> Dictionary:
 	slot.visible = false
 	return rect
 
+# ISSUE #54: mirror of measure_and_hide_new_active_energy_slot for attached TOOL/trainer cards
+# (PlusPower, Defender, …). Builds the real attached-trainer stack for the Active, returns the exact
+# {position, size} of the just-appended (last) slot, and hides it so the incoming card can fly to its
+# precise final spot instead of guessing the container's origin (which sat ~150-200px too low).
+func measure_and_hide_new_active_tool_slot(is_opponent: bool) -> Dictionary:
+	trainer_effects.display_attached_trainer_cards(is_opponent)
+	var container = opponent_attached_cards_container if is_opponent else player_attached_cards_container
+	var count = container.get_child_count()
+	if count == 0:
+		return {}
+	var slot = container.get_child(count - 1)
+	var rect = {"position": slot.global_position, "size": slot.size}
+	slot.visible = false
+	return rect
+
 func play_evolution_effect(pokemon: card_object) -> void:
 	SoundManagerScript.play_sfx(SoundManagerScript.SFX_evolve_sound)
 	var loc = get_pokemon_screen_location(pokemon)
@@ -2394,6 +2424,12 @@ func find_card_ui_for_object(card_obj: card_object) -> TextureRect:
 			# This is the structure created by build_pokemon_slot_with_energies_and_hp.
 			if child is VBoxContainer:
 				for slot_child in child.get_children():
+					# ISSUE #46 FIX: the retreat energy-raise wrapper puts the card TextureRect as a DIRECT
+					# child of the VBox (alongside the spacer Control). Check that case too, or the retreat
+					# energy cards can't be found and their click selection animation never plays.
+					if slot_child is TextureRect and "card_ref" in slot_child:
+						if slot_child.card_ref == card_obj:
+							return slot_child
 					if slot_child is Control and not (slot_child is Label):
 						for card_ui in slot_child.get_children():
 							if card_ui is TextureRect and "card_ref" in card_ui:
@@ -2650,11 +2686,17 @@ func apply_energy_attach_match_effects(target_pokemon: card_object, is_opponent:
 			await card_ops.heal_pokemon(target_pokemon, missing_hp, is_opponent)
 
 # Called when any win/loss condition is met to end the match
-func game_end_logic(loser_is_player: bool) -> void:
+func game_end_logic(loser_is_player: bool, is_draw: bool = false) -> void:
 	# Set the flag immediately so no other async functions continue processing
 	game_is_over = true
-	
-	if loser_is_player:
+
+	# ISSUE #61: "My game, my rules" — any draw (both players out simultaneously) is a LOSS for the
+	# player, matching the Pokémon TCG GB game logic. Never awards a win on a tie.
+	if is_draw:
+		print("ISSUE #61 FIX ACTIVE: GAME OVER — DRAW, treated as a loss for the player")
+		await show_message("IT'S A DRAW — WHICH COUNTS AS A LOSS!")
+		GameState.battle_result = "loss"
+	elif loser_is_player:
 		print("GAME OVER: Player has lost the game!")
 		await show_message("GAME OVER: YOU LOST!!!!!")
 		GameState.battle_result = "loss"
@@ -2836,6 +2878,7 @@ func send_card_to_discard(card: card_object, is_opponent: bool) -> void:
 	card.has_destiny_bond = false
 	card.pluspower_count = 0
 	card.defender_turns_remaining = -1
+	card.defender_count = 0
 	card.clear_all_expiring_effects()
 	card.no_prize_on_ko = false
 	card.is_bench_token = false
@@ -3440,6 +3483,20 @@ func perform_evolution(is_opponent: bool) -> void:
 	# Transfer all attached energies from old card to new card
 	evo_card.attached_energies = target_card.attached_energies.duplicate()
 	target_card.attached_energies.clear()
+
+	# ISSUE #58 FIX: transfer attached cards (Pokémon Tools like Defender/PlusPower and any other
+	# attached trainers) onto the evolution — previously these were silently dropped on evolving.
+	# Carry the associated counters/timers so the tools keep working on the new top card.
+	evo_card.attached_cards = target_card.attached_cards.duplicate()
+	target_card.attached_cards.clear()
+	evo_card.defender_turns_remaining = target_card.defender_turns_remaining
+	evo_card.defender_count = target_card.defender_count
+	evo_card.pluspower_count = target_card.pluspower_count
+	target_card.defender_turns_remaining = -1
+	target_card.defender_count = 0
+	target_card.pluspower_count = 0
+	if target_card.attached_cards.size() > 0 or evo_card.attached_cards.size() > 0:
+		print("ISSUE #58 FIX ACTIVE: carried ", evo_card.attached_cards.size(), " attached card(s) onto ", evo_card.metadata.get("name", ""))
 	
 	# Transfer existing pre-evolutions then add the old card itself to the chain
 	evo_card.attached_pre_evolutions = target_card.attached_pre_evolutions.duplicate()
@@ -3582,6 +3639,14 @@ func perform_evolution(is_opponent: bool) -> void:
 
 	# EX15 Holon Veil (Ampharos δ): evolving may bring Ampharos into play or add a Pokémon to the δ set.
 	powers_and_bodies.refresh_holon_veil()
+
+	# ISSUE #58: refresh the attached-tool display so any Defender/PlusPower carried onto the evolution
+	# is shown on the new Active card.
+	trainer_effects.display_attached_trainer_cards(is_opponent)
+
+	# ISSUE #71: Chain Reaction (basep-11 Eevee) triggers "when a Pokémon evolves" — offer it now to any
+	# in-play Eevee with the power on either side (CPU auto-uses, player is prompted).
+	await powers_and_bodies.trigger_chain_reaction_after_evolution()
 
 ########################################################### Retreat functions ##############################################################
 
@@ -4614,11 +4679,13 @@ func calculate_final_damage(base_damage: int, attacking_types: Array, defending_
 		modifiers_applied.append("VERMILION +" + str(vermilion_lt_surge_bonus_damage))
 		vermilion_lt_surge_bonus_damage = 0
 	
-	# Apply Defender reduction (-20 damage if Defender is attached to the defending pokemon)
-	if damage > 0 and defending_pokemon.defender_turns_remaining >= 0:
-		var reduction = min(damage, 20)
-		damage -= reduction
-		modifiers_applied.append("DEFENDER -" + str(reduction))
+	# Apply Defender reduction (-20 damage per Defender attached to the defending pokemon)
+	if damage > 0:
+		var reduction = get_defender_reduction(defending_pokemon, damage)
+		if reduction > 0:
+			damage -= reduction
+			modifiers_applied.append("DEFENDER -" + str(reduction))
+			print("ISSUE #60 FIX ACTIVE: Defender reduced attack damage by ", reduction, " on ", defending_pokemon.metadata.get("name", ""))
 
 	# Apply Kabuto Armor (halve damage, rounded down to nearest 10)
 	if damage > 0:
@@ -4673,6 +4740,18 @@ func calculate_final_damage(base_damage: int, attacking_types: Array, defending_
 		damage = powers_and_bodies.apply_hard_shell(defending_pokemon, damage, modifiers_applied)
 
 	return {"damage": damage, "modifiers": modifiers_applied}
+
+# ISSUE #60: Defender prevents ALL damage to the Pokemon it is attached to — direct attacks,
+# attack effects (bench damage, snipes), confusion self-damage and self-damaging attacks alike —
+# reducing each hit by 20 per Defender attached. It does NOT prevent poison damage or the damage
+# from attaching a Rainbow/special energy (those callers simply don't route through here).
+# Returns the total reduction (capped at `damage`) for a Pokemon carrying one or more Defenders.
+func get_defender_reduction(pokemon: card_object, damage: int) -> int:
+	if pokemon == null or damage <= 0:
+		return 0
+	if pokemon.defender_count <= 0 or pokemon.defender_turns_remaining < 0:
+		return 0
+	return min(damage, 20 * pokemon.defender_count)
 
 ############################################################# Knockout functions ##################################################################
 													
@@ -4859,6 +4938,13 @@ func check_all_knockouts() -> Dictionary:
 		if opponent_prize_cards.size() > 0:
 			await cpu_ai.opponent_take_prize_card()
 	
+	# ISSUE #61: if BOTH players took their last prize card from this same KO exchange, it's a draw —
+	# and by house rules a draw is a loss for the player. Checked before the single-side prize checks.
+	if player_prize_cards.size() == 0 and opponent_prize_cards.size() == 0 and (player_prize_kos > 0 or opponent_prize_kos > 0):
+		print("ISSUE #61 FIX ACTIVE: both players took their last prize simultaneously — draw")
+		game_end_logic(true, true)
+		return results
+
 	# ISSUE #47 FIX: check the last-prize win condition BEFORE promoting a new Active. If the KO that
 	# just happened took the final prize card the game is already over, so there's no point switching
 	# in a new Active Pokémon (and showing "X set Y as their active") only to immediately declare the
@@ -4874,11 +4960,19 @@ func check_all_knockouts() -> Dictionary:
 		game_end_logic(true)  # true = player loses
 		return results
 
+	# ISSUE #61: if both Active Pokémon were KO'd this exchange and NEITHER side can promote a new
+	# Active (both benches empty), it's a draw — a loss for the player under house rules. Checked
+	# before promotion so it isn't mis-resolved as a one-sided loss by handle_post_knockout.
+	if player_active_pokemon == null and opponent_active_pokemon == null and player_bench.size() == 0 and opponent_bench.size() == 0:
+		print("ISSUE #61 FIX ACTIVE: both Actives KO'd, neither can promote — draw")
+		game_end_logic(true, true)
+		return results
+
 	if results["opponent_kos"] > 0:
 		await handle_post_knockout(true)
 	if _should_bail():
 		return results
-	
+
 	if results["player_kos"] > 0:
 		await handle_post_knockout(false)
 	if _should_bail():

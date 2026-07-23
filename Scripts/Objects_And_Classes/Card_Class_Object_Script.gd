@@ -50,6 +50,7 @@ var power_used_this_turn: bool = false # For once-per-turn power restrictions
 
 # Attached Trainer card tracking (PlusPower, Defender)
 var defender_turns_remaining: int = -1 # Countdown for Defender discard (-1 = not active)
+var defender_count: int = 0            # Number of Defender cards attached (stacking, -20 damage each)
 var pluspower_count: int = 0           # Number of PlusPower cards attached (stacking)
 
 # Electrode Buzzap: track if this card is an Electrode-as-Energy token

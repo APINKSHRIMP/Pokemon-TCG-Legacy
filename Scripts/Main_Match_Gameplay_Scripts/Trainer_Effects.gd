@@ -854,6 +854,7 @@ func tick_defender_counters(is_opponent: bool) -> void:
 				await main.animate_card_a_to_b(attached_node, discard_node, 0.2, card_texture, main.card_scales[10])
 			main.update_discard_pile_display(is_opponent)
 			display_attached_trainer_cards(is_opponent)
+			pokemon.defender_count = 0
 			print("DEFENDER EXPIRED on ", pokemon.metadata.get("name", ""))
 
 # Displays attached trainer cards (PlusPower, Defender) next to active pokemon
@@ -1355,11 +1356,17 @@ func resolve_attached_trainer(card: card_object, is_opponent: bool) -> void:
 			return
 		active.attached_cards.append(card)
 		active.pluspower_count += 1
-		# Animate PlusPower to attached cards container
+		# ISSUE #54 FIX: fly PlusPower to its EXACT final tool slot (position AND size), read off the
+		# freshly-built attached-trainer stack — same fix as ISSUE #40 for energy. Previously it flew to
+		# the container origin and landed ~150-200px below the energy cards.
 		var hand_node = main.opponent_hand_container if is_opponent else main.player_hand_container
 		var attached_node = main.opponent_attached_cards_container if is_opponent else main.player_attached_cards_container
 		var card_texture = main.get_card_texture(card)
-		await main.animate_card_a_to_b(hand_node, attached_node, 0.3, card_texture, main.card_scales[10])
+		print("ISSUE #54 FIX ACTIVE (PlusPower): flies to exact final tool slot")
+		var pp_rect = main.measure_and_hide_new_active_tool_slot(is_opponent)
+		var pp_pos = pp_rect.get("position", main._ANIM_POS_SENTINEL)
+		var pp_size = pp_rect.get("size", main.card_scales[11])
+		await main.animate_card_a_to_b(hand_node, attached_node, 0.3, card_texture, main.card_scales[10], pp_size, pp_pos)
 		display_attached_trainer_cards(is_opponent)
 		await main.show_message("PlusPower attached to " + active.metadata.get("name", "").to_upper() + "!")
 		print("PLUSPOWER: Attached to ", active.metadata.get("name", ""), " (total: ", active.pluspower_count, ")")
@@ -1372,11 +1379,16 @@ func resolve_attached_trainer(card: card_object, is_opponent: bool) -> void:
 				return
 			active.attached_cards.append(card)
 			active.defender_turns_remaining = 0
-			# Animate to active
+			active.defender_count += 1
+			# ISSUE #54 FIX: fly Defender to its exact final tool slot (see PlusPower above).
 			var hand_node = main.opponent_hand_container
 			var attached_node = main.opponent_attached_cards_container
 			var card_texture = main.get_card_texture(card)
-			await main.animate_card_a_to_b(hand_node, attached_node, 0.3, card_texture, main.card_scales[10])
+			print("ISSUE #54 FIX ACTIVE (Defender CPU): flies to exact final tool slot")
+			var def_rect = main.measure_and_hide_new_active_tool_slot(true)
+			var def_pos = def_rect.get("position", main._ANIM_POS_SENTINEL)
+			var def_size = def_rect.get("size", main.card_scales[11])
+			await main.animate_card_a_to_b(hand_node, attached_node, 0.3, card_texture, main.card_scales[10], def_size, def_pos)
 			display_attached_trainer_cards(true)
 			await main.show_message("Defender attached to " + active.metadata.get("name", "") + "! (-20 damage)")
 		else:
@@ -1391,11 +1403,21 @@ func resolve_attached_trainer(card: card_object, is_opponent: bool) -> void:
 			if target != null:
 				target.attached_cards.append(card)
 				target.defender_turns_remaining = 0
-				# Animate to the target pokemon's location
+				target.defender_count += 1
+				# ISSUE #54 FIX: fly Defender to its exact final spot. For the Active that's the tool slot
+				# (as PlusPower); for a Bench target it's that Pokémon's real bench slot position.
 				var hand_node = main.player_hand_container
-				var target_node = main.player_active_container if target == main.player_active_pokemon else main.player_bench_container
 				var card_texture = main.get_card_texture(card)
-				await main.animate_card_a_to_b(hand_node, target_node, 0.3, card_texture, main.card_scales[10])
+				if target == main.player_active_pokemon:
+					print("ISSUE #54 FIX ACTIVE (Defender player, Active): flies to exact final tool slot")
+					var dt_rect = main.measure_and_hide_new_active_tool_slot(false)
+					var dt_pos = dt_rect.get("position", main._ANIM_POS_SENTINEL)
+					var dt_size = dt_rect.get("size", main.card_scales[11])
+					await main.animate_card_a_to_b(hand_node, main.player_attached_cards_container, 0.3, card_texture, main.card_scales[10], dt_size, dt_pos)
+				else:
+					print("ISSUE #54 FIX ACTIVE (Defender player, Bench): flies to real bench slot")
+					var bench_pos = main.get_pokemon_screen_location(target).get("position", main._ANIM_POS_SENTINEL)
+					await main.animate_card_a_to_b(hand_node, main.player_bench_container, 0.3, card_texture, main.card_scales[10], Vector2.ZERO, bench_pos)
 				display_attached_trainer_cards(false)
 				await main.show_message("Defender attached to " + target.metadata.get("name", "") + "!")
 
@@ -2119,6 +2141,30 @@ func effect_pokemon_breeder(is_opponent: bool) -> void:
 			main.selected_card_for_action = null
 
 # Helper: checks if a Basic pokemon is the correct base for a Stage 2 (via intermediate Stage 1)
+# ISSUE #44: pop a single card up FULL-SCREEN (reusing the trainer-card-view overlay) WHILE its
+# message is shown, then hide it — used for "show this card to your opponent" moments so the player
+# actually sees the card on screen (like a played trainer) before it animates to its destination.
+func show_card_with_message(card: card_object, message: String) -> void:
+	main.player_hand_container.visible = false
+	main.player_deck_icon.visible = false
+	main.opponent_deck_icon.visible = false
+	main.player_discard_icon.visible = false
+	main.opponent_discard_icon.visible = false
+	main.trainer_block_container.visible = true
+	var card_display = TextureRect.new()
+	card_display.set_script(main.card_display_script)
+	main.played_trainer_container.add_child(card_display)
+	card_display.load_card_image(card.uid, main.card_scales[1], card)
+	await main.show_message(message)
+	main.trainer_block_container.visible = false
+	for child in main.played_trainer_container.get_children():
+		child.queue_free()
+	main.player_hand_container.visible = true
+	main.player_deck_icon.visible = true
+	main.opponent_deck_icon.visible = true
+	main.player_discard_icon.visible = true
+	main.opponent_discard_icon.visible = true
+
 func effect_pokemon_trader(played_card: card_object, is_opponent: bool) -> void:
 	var hand = main.opponent_hand if is_opponent else main.player_hand
 	var deck = main.opponent_deck if is_opponent else main.player_deck
@@ -2152,8 +2198,9 @@ func effect_pokemon_trader(played_card: card_object, is_opponent: bool) -> void:
 		var search_card = main.cpu_ai.cpu_search_deck_for_best_pokemon(pokemon_in_deck)
 		if search_card == null:
 			return
-		# Step 1-3: shuffle the hand Pokémon into the deck (shown face-up to the player).
-		await main.show_message("Opponent shuffled " + card_to_trade.metadata.get("name", "") + " into their deck!")
+		# Step 1-3: shuffle the hand Pokémon into the deck. ISSUE #44: pop the card up full-screen WITH
+		# the message first (like a played trainer), hide it, THEN animate it moving to the deck.
+		await show_card_with_message(card_to_trade, "Opponent shuffled " + card_to_trade.metadata.get("name", "") + " into their deck!")
 		if main._should_bail(): return
 		hand.erase(card_to_trade)
 		card_to_trade.current_location = "deck"
@@ -2166,8 +2213,9 @@ func effect_pokemon_trader(played_card: card_object, is_opponent: bool) -> void:
 		deck.shuffle()
 		await main.animate_deck_shuffle(true)
 		if main._should_bail(): return
-		# Step 4-5: take the searched Pokémon out of the deck into the hand (shown face-up).
-		await main.show_message("Opponent added " + search_card.metadata.get("name", "") + " to their hand!")
+		# Step 4-5: take the searched Pokémon out of the deck into the hand. ISSUE #44: pop it up
+		# full-screen WITH the message first, hide it, THEN animate it moving to the hand.
+		await show_card_with_message(search_card, "Opponent added " + search_card.metadata.get("name", "") + " to their hand!")
 		if main._should_bail(): return
 		deck.erase(search_card)
 		search_card.current_location = "hand"
