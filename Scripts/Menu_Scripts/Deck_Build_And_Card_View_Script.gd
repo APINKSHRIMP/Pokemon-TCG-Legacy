@@ -1483,33 +1483,39 @@ func _add_card_to_grid(card_data: Dictionary) -> void:
 	var owned     : int    = int(card_data["owned"])
 	var in_deck   : int    = deck_cards.get(card_id, 0)
 
-	# ── Card image ──
-	# TextureRect is added directly to the grid — no wrapper Control needed.
-	# The key to preventing overlap is EXPAND_IGNORE_SIZE which tells the
-	# TextureRect to report custom_minimum_size to the GridContainer for
-	# layout purposes rather than the texture's native pixel dimensions.
-	# Without this, a 245x342 texture would make the grid cell 245x342
-	# even though we want 150x207.
-	var card_rect := TextureRect.new()
-	var card_set := card_id.split("-")[0]
-	var image_path := "res://Image_Assets/Card_Image_Library/" + card_set + "/Large/" + card_id + ".png"
-	var card_texture = load(image_path)
-
-	if card_texture != null:
-		card_rect.texture = card_texture
+	# ── Card visual ──
+	# Owned cards show their Small image; unowned cards load no image at all —
+	# they render as a plain black rectangle the same size as a card (the
+	# count label is still overlaid below). This avoids loading textures the
+	# player can't use just to darken them to near-black.
+	#
+	# For the TextureRect, EXPAND_IGNORE_SIZE tells it to report
+	# custom_minimum_size (150x207) to the GridContainer for layout rather than
+	# the texture's native pixel dimensions — without this a larger texture
+	# would make the grid cell match the texture and cards would overlap.
+	var card_rect : Control
+	if owned == 0:
+		# No image — just a black placeholder rectangle the exact card size.
+		var placeholder := ColorRect.new()
+		placeholder.color = Color(0.08, 0.08, 0.08, 1.0)
+		card_rect = placeholder
 	else:
-		push_error("DeckBuild: missing card image " + image_path)
+		var tex_rect := TextureRect.new()
+		var card_set := card_id.split("-")[0]
+		var image_path := "res://Image_Assets/Card_Image_Library/" + card_set + "/Small/" + card_id + ".png"
+		var card_texture = load(image_path)
+		if card_texture != null:
+			tex_rect.texture = card_texture
+		else:
+			push_error("DeckBuild: missing card image " + image_path)
+		tex_rect.expand_mode  = TextureRect.EXPAND_IGNORE_SIZE
+		# STRETCH_KEEP_ASPECT_CENTERED: scales the texture to fit within the
+		# rect while preserving aspect ratio, so it scales DOWN to fit the cell.
+		tex_rect.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		card_rect = tex_rect
 
 	card_rect.custom_minimum_size = CARD_SIZE
 	card_rect.size                = CARD_SIZE
-	# EXPAND_IGNORE_SIZE: the TextureRect ignores its texture's native size
-	# for layout. The GridContainer sees custom_minimum_size (150x207) instead
-	# of the texture's actual pixel dimensions. This is what prevents overlap.
-	card_rect.expand_mode         = TextureRect.EXPAND_IGNORE_SIZE
-	# STRETCH_KEEP_ASPECT_CENTERED: scales the texture to fit within the rect
-	# while preserving aspect ratio. Combined with EXPAND_IGNORE_SIZE, the
-	# texture scales DOWN to fit 150x207 rather than dictating the cell size.
-	card_rect.stretch_mode        = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	# Prevent the card from growing if the grid offers more space
 	card_rect.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
 	card_rect.size_flags_vertical   = Control.SIZE_SHRINK_BEGIN
@@ -1549,7 +1555,7 @@ func _add_card_to_grid(card_data: Dictionary) -> void:
 
 	# ── Visual styling based on ownership ──
 	if owned == 0:
-		card_rect.modulate     = Color(0.08, 0.08, 0.08, 1.0)
+		# The placeholder ColorRect is already black — just make it inert.
 		card_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	else:
 		card_rect.modulate     = Color.WHITE
@@ -1557,7 +1563,7 @@ func _add_card_to_grid(card_data: Dictionary) -> void:
 		card_rect.gui_input.connect(_on_card_gui_input.bind(card_rect))
 
 		if in_deck > 0:
-			_apply_selected_animation(card_rect)
+			_apply_selected_animation(card_rect as TextureRect)
 
 	# ── Assemble and add to grid ──
 	label_bg.add_child(count_label)
