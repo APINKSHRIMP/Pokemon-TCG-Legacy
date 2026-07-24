@@ -2,7 +2,8 @@ extends Node
 
 # ─── Constants ───────────────────────────────────────────────────────────────
 
-const SLEEVE_FOLDER  := "res://Image_Assets/Sleeves"
+const SLEEVE_FOLDER  := "res://Image_Assets/Sleeves"          # full-size originals (.jpg or .png)
+const SLEEVE_SMALL_FOLDER := "res://Image_Assets/Sleeves/small" # 412px-tall .jpg copies used for the grid
 const COLUMNS        := 8
 const CELL_SIZE      := Vector2(234, 327)
 const H_SEP          := 2
@@ -205,9 +206,11 @@ func _wrap_grid_in_scroll_container() -> void:
 # ─── Sleeve loading ───────────────────────────────────────────────────────────
 
 func _load_sleeves() -> void:
-	var dir := DirAccess.open(SLEEVE_FOLDER)
+	# Grid is built from the small/ copies — 593 full-size sleeves is ~440 MB of texture,
+	# the shrunken set is ~17 MB. The full-size original is only loaded on spacebar zoom.
+	var dir := DirAccess.open(SLEEVE_SMALL_FOLDER)
 	if dir == null:
-		push_error("Sleeves: cannot open folder " + SLEEVE_FOLDER)
+		push_error("Sleeves: cannot open folder " + SLEEVE_SMALL_FOLDER)
 		return
 
 	var files : Array = []
@@ -235,7 +238,7 @@ func _add_sleeve_to_grid(file_name: String) -> void:
 	var base_name : String = file_name.get_basename()
 	var is_owned  : bool   = _owned_sleeves.has(base_name)
 
-	var texture := load(SLEEVE_FOLDER + "/" + file_name) as Texture2D
+	var texture := load(SLEEVE_SMALL_FOLDER + "/" + file_name) as Texture2D
 	if texture == null:
 		return
 
@@ -428,6 +431,18 @@ func _get_hovered_sleeve() -> Control:
 	return null
 
 
+# Resolves a sleeve's full-size original. The grid images all live in small/ as .jpg, but the
+# originals are a mix of .jpg and .png, so try both.
+func _large_sleeve_texture(base_name: String) -> Texture2D:
+	for ext: String in [".jpg", ".png"]:
+		var path := SLEEVE_FOLDER + "/" + base_name + ext
+		if ResourceLoader.exists(path):
+			var tex := load(path) as Texture2D
+			if tex != null:
+				return tex
+	return null
+
+
 func _show_zoom(wrapper: Control) -> void:
 	if is_zoomed:
 		return
@@ -438,6 +453,11 @@ func _show_zoom(wrapper: Control) -> void:
 			break
 	if rect == null or rect.texture == null:
 		return
+
+	# Zoom shows the full-size original, not the shrunken grid thumbnail.
+	var zoom_texture := _large_sleeve_texture(String(wrapper.get_meta("sleeve_name", "")))
+	if zoom_texture == null:
+		zoom_texture = rect.texture
 
 	is_zoomed = true
 	last_zoomed_sleeve = wrapper
@@ -453,13 +473,13 @@ func _show_zoom(wrapper: Control) -> void:
 	zoom_overlay.add_child(backdrop)
 
 	# Fit within 980px tall (50px margin top+bottom), up to 1000px wide
-	var tex_size  := rect.texture.get_size()
+	var tex_size  := zoom_texture.get_size()
 	var target    := Vector2(1000.0, 980.0)
 	var s         := minf(target.x / tex_size.x, target.y / tex_size.y)
 	var disp_size := Vector2(tex_size.x * s, tex_size.y * s)
 
 	var zoom_rect := TextureRect.new()
-	zoom_rect.texture             = rect.texture
+	zoom_rect.texture             = zoom_texture
 	zoom_rect.expand_mode         = TextureRect.EXPAND_IGNORE_SIZE
 	zoom_rect.stretch_mode        = TextureRect.STRETCH_SCALE
 	zoom_rect.size                = disp_size

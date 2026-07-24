@@ -88,7 +88,13 @@ func _load_player_data() -> void:
 	var sleeve_name: String = data.get("sleeve", "default")
 	var sleeve_tex: Texture2D = null
 	if sleeve_name != "" and sleeve_name != "default":
-		sleeve_tex = load(SLEEVE_FOLDER + "/" + sleeve_name + ".jpg") as Texture2D
+		# Originals are a mix of .jpg and .png, so try both before falling back to the default.
+		for ext: String in [".jpg", ".png"]:
+			var sleeve_path := SLEEVE_FOLDER + "/" + sleeve_name + ext
+			if ResourceLoader.exists(sleeve_path):
+				sleeve_tex = load(sleeve_path) as Texture2D
+				if sleeve_tex != null:
+					break
 	if sleeve_tex == null:
 		sleeve_tex = load(SLEEVE_DEFAULT) as Texture2D
 	if sleeve_tex:

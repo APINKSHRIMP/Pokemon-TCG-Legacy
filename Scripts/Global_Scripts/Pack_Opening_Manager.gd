@@ -651,7 +651,7 @@ func _load_texture(path: String) -> Texture2D:
 
 # ISSUE #50 FIX: resolve the player's equipped sleeve to a loadable texture path,
 # mirroring Main_Match_Core_Gameplay_Script._resolve_sleeve_path. Sleeves are stored
-# by name (no extension) and live as .jpg; the default sleeve is a .png.
+# by name (no extension); the originals are a mix of .jpg and .png, so try both.
 func _resolve_player_cardback_path() -> String:
 	var default_path := "res://Image_Assets/Sleeves/1_Default_English.png"
 	var file := FileAccess.open(GameState.PLAYER_CURRENT_DATA_PATH, FileAccess.READ)
@@ -664,9 +664,10 @@ func _resolve_player_cardback_path() -> String:
 	var sleeve_name : String = String(data.get("sleeve", ""))
 	if sleeve_name == "" or sleeve_name == "default":
 		return default_path
-	var path := "res://Image_Assets/Sleeves/" + sleeve_name + ".jpg"
-	if ResourceLoader.exists(path) and load(path) != null:
-		return path
+	for ext: String in [".jpg", ".png"]:
+		var path := "res://Image_Assets/Sleeves/" + sleeve_name + ext
+		if ResourceLoader.exists(path) and load(path) != null:
+			return path
 	return default_path
 
 

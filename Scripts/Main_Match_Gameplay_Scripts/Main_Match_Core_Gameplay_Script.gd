@@ -5787,10 +5787,13 @@ func _resolve_sleeve_path(sleeve_name: String, small: bool) -> String:
 	var default_path = "res://Image_Assets/Sleeves/1_Default_English.png"
 	if sleeve_name == "" or sleeve_name == "default":
 		return default_path
-	var path = "res://Image_Assets/Sleeves/" + sleeve_name + ".jpg"
-	# Verify the asset is actually loadable — .jpg files may not be imported yet
-	if load(path) != null:
-		return path
+	# Sleeves are stored by name with no extension; the originals are a mix of .jpg and .png,
+	# so try both. Matches always use the full-size original, never the small/ grid thumbnails.
+	for ext in [".jpg", ".png"]:
+		var path = "res://Image_Assets/Sleeves/" + sleeve_name + ext
+		# Verify the asset is actually loadable — files may not be imported yet
+		if ResourceLoader.exists(path) and load(path) != null:
+			return path
 	return default_path
 
 # Samples the right-center edge pixel of a sleeve texture and returns it darkened 50%.
