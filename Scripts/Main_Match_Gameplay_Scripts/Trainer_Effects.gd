@@ -854,8 +854,12 @@ func tick_defender_counters(is_opponent: bool) -> void:
 				await main.animate_card_a_to_b(attached_node, discard_node, 0.2, card_texture, main.card_scales[10])
 			main.update_discard_pile_display(is_opponent)
 			display_attached_trainer_cards(is_opponent)
-			pokemon.defender_count = 0
-			print("DEFENDER EXPIRED on ", pokemon.metadata.get("name", ""))
+			# ISSUE #59 (retest sub-issue 2): display_attached_trainer_cards only refreshes the ACTIVE
+			# Pokémon's tool container. A Defender expiring on a BENCH Pokémon (whose tools are drawn by
+			# build_pokemon_slot via display_pokemon) otherwise stayed on screen until the next full board
+			# refresh — i.e. it "only vanished when the next defender was attached". Refresh the board too.
+			main.display_pokemon(is_opponent)
+			print("ISSUE #59 FIX ACTIVE: Defender discarded + board refreshed on ", pokemon.metadata.get("name", ""))
 
 # Displays attached trainer cards (PlusPower, Defender) next to active pokemon
 func display_attached_trainer_cards(is_opponent: bool) -> void:
@@ -2003,6 +2007,10 @@ func effect_lass(is_opponent: bool) -> void:
 	
 	# Show opponent's hand face-up to the player
 	if main.opponent_hand.size() > 0:
+		# ISSUE #75 FIX: when the CPU plays Lass this reveal happens during the opponent's turn, so the
+		# full-screen opponent_blocker is up and swallows every click — the player could neither scroll
+		# the revealed hand nor press DONE. Suspend it for the duration of the reveal.
+		var restore_blocker_lass = main.suspend_opponent_blocker("effect_lass reveal")
 		# Use trainer_pokemon_selection mode so the cancel/Done button triggers main.trainer_target_selected
 		main.trainer_pokemon_selection_active = true
 		main.show_enlarged_array_selection_mode(main.opponent_hand)
@@ -2019,12 +2027,15 @@ func effect_lass(is_opponent: bool) -> void:
 		main.cancel_button.offset_left = -219.0
 		main.cancel_button.offset_right = 219.0
 		await main.trainer_target_selected
-		if main._should_bail(): return
+		if main._should_bail():
+			main.restore_opponent_blocker(restore_blocker_lass, "effect_lass reveal")
+			return
 		main.trainer_pokemon_selection_active = false
 		main.cancel_button.text = "Cancel"
 		main.cancel_button.theme = main.theme_red
 		main.hide_selection_mode_display_main()
-	
+		main.restore_opponent_blocker(restore_blocker_lass, "effect_lass reveal")
+
 	# Animate player trainers going to deck
 	for card in p_trainers:
 		main.player_hand.erase(card)
@@ -3811,6 +3822,10 @@ func gym1_reveal_hand(reveal_to_opponent: bool, header_text: String, hint_text: 
 	var opp_hand = main.opponent_hand
 	if opp_hand.size() == 0:
 		return
+	# ISSUE #75 FIX: same blocker problem as Lass — this reveal can run while the full-screen
+	# opponent_blocker is up (CPU turn / after the player commits to an attack), which eats the
+	# clicks on the revealed hand and the DONE button.
+	var restore_blocker_reveal = main.suspend_opponent_blocker("gym1_reveal_hand")
 	main.trainer_pokemon_selection_active = true
 	main.show_enlarged_array_selection_mode(opp_hand)
 	var display_container = main.large_selection_container if opp_hand.size() > 7 else main.small_selection_container
@@ -3830,6 +3845,7 @@ func gym1_reveal_hand(reveal_to_opponent: bool, header_text: String, hint_text: 
 	main.cancel_button.text = "Cancel"
 	main.cancel_button.theme = main.theme_red
 	main.hide_selection_mode_display_main()
+	main.restore_opponent_blocker(restore_blocker_reveal, "gym1_reveal_hand")
 
 # Called by Main_Match_Core_Gameplay_Script.display_and_apply_attack_damage when the attacker has Charity attached.
 # Returns the reduced damage. CPU never reduces. Player gets a YES/NO prompt to spare the defender at 10 HP.

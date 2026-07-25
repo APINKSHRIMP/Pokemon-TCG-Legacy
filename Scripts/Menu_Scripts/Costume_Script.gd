@@ -64,7 +64,7 @@ func _ready() -> void:
 	_wrap_grid_in_scroll_container()
 	# ISSUE #32: block input behind a loading overlay while the (potentially large) costume grid builds.
 	# Retest: shrink the blocker 142px top / 134px bottom so the banner buttons (Cancel) stay clickable.
-	_loading_overlay.show(self, 0.0, 142.0, 134.0)
+	_loading_overlay.show_for_library(self)
 	await get_tree().process_frame
 	await _load_characters()
 	_loading_overlay.hide()
@@ -327,6 +327,7 @@ func _on_save_pressed() -> void:
 
 
 func _on_cancel_pressed() -> void:
+	if GameState.close_sub_menu(): return   # ISSUE #52: map is still loaded behind us — just pop this overlay
 	SceneCache.change_scene("res://Scenes/Main_Menu_Scenes/Main_Menu_Scene.tscn")
 
 
@@ -338,6 +339,7 @@ func _input(event: InputEvent) -> void:
 			if is_zoomed:
 				_hide_zoom()
 				return
+			if GameState.close_sub_menu(): return   # ISSUE #52: map is still loaded behind us — just pop this overlay
 			SceneCache.change_scene("res://Scenes/Main_Menu_Scenes/Main_Menu_Scene.tscn")
 			return
 

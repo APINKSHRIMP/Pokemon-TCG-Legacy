@@ -160,6 +160,9 @@ func _exit_tree():
 	# they resume from where they were instead of teleporting back to their data-file spawn on reload.
 	MapManager.capture_actor_positions()
 	_remove_cash_label()
+	# ISSUE #52: never leave a freed map registered as the menu overlay host.
+	if GameState.menu_overlay_host == self:
+		GameState.menu_overlay_host = null
 
 # ============================================================
 # DOORS
@@ -222,6 +225,7 @@ func _on_door_entered(body: Node2D):
 # ============================================================
 
 var _menu_canvas_layer: CanvasLayer = null
+var _menu_instance: Node = null
 
 func _input(event: InputEvent) -> void:
 	if not (event is InputEventKey and event.pressed and not event.is_echo()):
@@ -258,15 +262,82 @@ func _open_menu_overlay() -> void:
 	menu_instance.is_overlay = true
 	menu_instance.close_overlay_callback = _close_menu_overlay
 	_menu_canvas_layer.add_child(menu_instance)
+	_menu_instance = menu_instance
+
+	# ISSUE #52 FIX (retest): register as the overlay host so the main menu can open sub-menus as
+	# further overlays on top of this still-loaded map, instead of swapping the whole scene out.
+	GameState.menu_overlay_host = self
 
 func _close_menu_overlay() -> void:
+	close_submenu_overlay(false)
 	if _menu_canvas_layer != null and is_instance_valid(_menu_canvas_layer):
 		_menu_canvas_layer.queue_free()
 		_menu_canvas_layer = null
+	_menu_instance = null
+	if GameState.menu_overlay_host == self:
+		GameState.menu_overlay_host = null
 	_player.unlock_movement()
 	var bgm := get_bgm_path()
 	if bgm != "":
 		SoundManagerScript.play_bgm(bgm, false)
+
+# ============================================================
+# SUB-MENU OVERLAYS (ISSUE #52)
+# ============================================================
+# The map scene used to be unloaded whenever a sub-menu (deck/costume/coin/sleeves/options/info) was
+# opened, so coming back to the main menu meant reloading the whole world from scratch — a long black
+# screen. The only thing a sub-menu can actually change about the overworld is the player's sprite,
+# so the map now stays loaded underneath: sub-menus are pushed as another CanvasLayer over it and the
+# main menu layer is merely hidden. Closing a sub-menu is then instant, and the player sprite is
+# refreshed in case the Costume menu changed it.
+
+var _submenu_canvas_layer: CanvasLayer = null
+
+func open_submenu_overlay(scene_path: String) -> void:
+	if scene_path == "":
+		return
+	close_submenu_overlay(false)
+	if _menu_canvas_layer != null and is_instance_valid(_menu_canvas_layer):
+		_menu_canvas_layer.visible = false   # keep the main menu loaded, just out of sight
+	# The hidden main menu must also stop listening for Escape/Enter, or its handler would close the
+	# whole menu at the same time as the sub-menu's own back handler.
+	if _menu_instance != null and is_instance_valid(_menu_instance):
+		_menu_instance.set_process_input(false)
+
+	_submenu_canvas_layer = CanvasLayer.new()
+	_submenu_canvas_layer.layer = 11
+	add_child(_submenu_canvas_layer)
+
+	var packed: PackedScene = SceneCache.get_packed_scene(scene_path)
+	if packed == null:
+		packed = load(scene_path)
+	if packed == null:
+		push_error("BaseMapScene: could not load sub-menu scene " + scene_path)
+		close_submenu_overlay(true)
+		return
+	var instance: Node = packed.instantiate()
+	if instance is Control:
+		instance.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_submenu_canvas_layer.add_child(instance)
+	print("ISSUE #52 FIX ACTIVE: opened sub-menu as an overlay (map stays loaded) — ", scene_path)
+
+# restore_menu: true when returning to the main menu (the normal "back" path), false when the whole
+# menu stack is being torn down.
+func close_submenu_overlay(restore_menu: bool = true) -> void:
+	if _submenu_canvas_layer != null and is_instance_valid(_submenu_canvas_layer):
+		_submenu_canvas_layer.queue_free()
+	_submenu_canvas_layer = null
+	if not restore_menu:
+		return
+	if _menu_canvas_layer != null and is_instance_valid(_menu_canvas_layer):
+		_menu_canvas_layer.visible = true
+	if _menu_instance != null and is_instance_valid(_menu_instance):
+		_menu_instance.set_process_input(true)
+	# The Costume sub-menu can change the player's sprite; push it onto the live player node since
+	# the map is no longer reloaded.
+	if _player != null and is_instance_valid(_player) and _player.has_method("refresh_sprite"):
+		_player.refresh_sprite()
+	print("ISSUE #52 FIX ACTIVE: closed sub-menu overlay, main menu restored instantly")
 
 # ============================================================
 # CASH LABEL — opt-in

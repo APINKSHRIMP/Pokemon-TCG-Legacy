@@ -618,6 +618,20 @@ func _show_gift(tex: Texture2D, kind: String) -> void:
 		"costume": sz = Vector2(432, 594)
 		_:         sz = Vector2(300, 300)
 
+	# ISSUE #77 FIX: these boxes were used as fixed sizes with STRETCH_SCALE, so any texture whose
+	# aspect ratio didn't match got squashed — the in-battle costume sprites are square (e.g.
+	# 539x539) but were forced into a 432x594 portrait box, which is why a won costume appeared
+	# stretched thin. Treat the box as a MAXIMUM and aspect-fit the texture inside it, the same
+	# pattern MapManager._show_gift_display already uses for the overworld gift reveal. Coins keep
+	# the fixed box so every coin renders at an identical size regardless of its source image.
+	if kind != "coin" and tex != null:
+		var orig_w := float(tex.get_width())
+		var orig_h := float(tex.get_height())
+		if orig_w > 0.0 and orig_h > 0.0:
+			var fit_scale: float = min(sz.x / orig_w, sz.y / orig_h)
+			sz = Vector2(orig_w * fit_scale, orig_h * fit_scale)
+			print("ISSUE #77 FIX ACTIVE: gift '", kind, "' aspect-fit to ", sz, " from source ", Vector2(orig_w, orig_h))
+
 	# Centre the item on screen using explicit offsets (anchor stays at 0)
 	var cx := 960.0
 	var cy := 540.0

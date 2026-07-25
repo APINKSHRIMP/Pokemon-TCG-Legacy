@@ -1427,7 +1427,7 @@ func _display_current_set() -> void:
 	# ISSUE #32 (retest): the deck screen has a ~300px right-hand banner, so nudge the loading icon
 	# 150px left to keep it centred over the visible card area. Shrink the input blocker 142px from the
 	# top / 134px from the bottom so the banner's Cancel button and set-switch controls stay clickable.
-	_loading_overlay.show(self, -150.0, 142.0, 134.0)
+	_loading_overlay.show_for_deck(self)
 
 	# Clear existing cards — kill any active tweens first
 	_clear_grid()
@@ -1903,6 +1903,7 @@ func _save_player_data(deck_file_name: String) -> void:
 func _on_cancel_pressed() -> void:
 	_save_last_set_loaded()
 	SoundManagerScript.stop_bgm()
+	if GameState.close_sub_menu(): return   # ISSUE #52: map is still loaded behind us — just pop this overlay
 	SceneCache.change_scene("res://Scenes/Main_Menu_Scenes/Main_Menu_Scene.tscn")
 
 

@@ -1,0 +1,100 @@
+================================================================================
+ROW 8 | #7 | Status: Improve Further
+Category: UI | Sub Cat: Messages
+ISSUE: When using Whirlwind or related effects like retreating, swapping out pokemon with the bench etc, there is no swap in message so you get "Clefairy Retreated to bench" but not "Opponent set X as their active Pokemon"
+FIX NOTES: animate_retreat() (the single shared function used by every retreat/Whirlwind/Teleport/forced-switch effect in the game) only ever showed 'X RETREATED TO THE BENCH!' and never announced the replacement. Added a second message after the swap animation: 'OPPONENT/PLAYER SET <name> AS THEIR ACTIVE POKEMON!'. Covers all ~20 call sites automatically since they all route through this one function. Watch console for 'ISSUE #7 FIX ACTIVE'.
+FOLLOW-UP: reworked the ordering rather than adding another message. animate_retreat() now takes an is_forced_switch flag (default false). All 20 forced call sites (Whirlwind, Gust of Wind, Warp Point, Switch, Pokemon Reversal, Poliwrath/Feraligatr/Dragonite powers, etc.) pass true; only the two genuine voluntary retreats (CPU_AI.gd:1336 and the player's retreat button) leave it false. Forced switch now = ONE message up front, 'OPPONENT/PLAYER WAS FORCED TO SWITCH OUT <name>!', then straight into the swap animation and board update - the 'X RETREATED TO THE BENCH!' and '...SET X AS THEIR ACTIVE POKEMON!' pair are both suppressed. Voluntary retreats keep the two-beat narration (retreat message -> energy discard -> 0.5s -> swap animation -> set-active message). Callers keep their own flavour lines (e.g. 'HEADS! X SWITCHED IN!'). Watch console for 'ISSUE #6/#7 FIX ACTIVE'.
+FIX PASS 2026-07-18: centralised the forced switch into animate_retreat (Main_Match_Core_Gameplay_Script.gd). It now shows ONE message ('<OPPONENT'S/YOUR> <old> SWITCHED WITH <new>!') then plays the requested sequence: hide the Active card -> glide the outgoing Pokemon down to the Bench -> apply the swap + refresh the board -> glide the incoming Pokemon up into the Active slot (growing to Active size) -> reveal. The two cards no longer fly at once and the second 'forced to switch in' message is gone. Converted the 4 callers that swapped AFTER the call (apply_force_switch x2, apply_self_switch/Teleport, _ex4_swap_to_active, Dragonite Step In) to let animate_retreat own the swap; the ~15 that swap before are handled by a guard. Same flow runs whether the CPU switches the player or itself. Debug: 'ISSUE #7 FIX ACTIVE'.
+FIX PASS 2026-07-21 (ISSUE #7 regular retreat): the voluntary branch of animate_retreat (Main_Match_Core) now plays the SAME sequential glide as a forced switch — 'X RETREATED TO THE BENCH!' first, then hide Active, glide outgoing card down to Bench, apply swap + refresh board (Active pointer set here since the player caller only reassigns it after the call — its post-retreat cleanup switched to the saved old-active ref), glide incoming card up into Active, reveal, then the closing 'SET X AS THEIR ACTIVE POKEMON!' at the end. Cards no longer fly simultaneously. Debug: 'ISSUE #7 FIX ACTIVE (voluntary sequential)'.
+FIX FAILURE NOTES: If the player is the one forced to switch out by the opponent, no animation plays. Otherwise everything is perfect, just play the animate card a to b the same way that it does for the opponent switching after the player chooses the replacement from the bench and the main UI is shown. (Hide active pokemon, update board, animate it to bench, hide the bench pokemon moving to active, update board, move it to active, make the active visible, update board. Manually retreating to the bench works fine
+Logged: 16/07/2026 | Fixed: None
+================================================================================
+ROW 34 | #32 | Status: Improve Further
+Category: UI | Sub Cat: Input
+ISSUE: When loading the large libraries such as Sleeves, deck / card view, coin case or costumes, there is a few seconds where everything is loading (longest for sleeves, shortest for coins/cards). The player is still able to click around and even cancel out of that menu to varying results. Instead, block all input and have a small semi transparent black box the same format as we use for the exit game button confirmation, with a spinning loading icon that pops up as soon as the menu option is entered for each of these (coin, costume, deck, sleeves). Hide the loading box when all data is loading and allow player input from then. Allow the player to still hit escape to cancel loading and return to the main menu However this currently has a game breaking bug causing the game to crash if you try to press cancel or escape while the data is still loading in.
+
+ (E 0:04:15:296   Sleeves_Scene_Script.gd:145 @ _load_sleeves(): Parameter "data.tree" is null.
+  <C++ Source>  scene/main/node.h:549 @ get_tree()
+  <Stack Trace> Sleeves_Scene_Script.gd:145 @ _load_sleeves(), 
+E 0:04:15:296   _load_sleeves: Invalid access to property or key 'process_frame' on a base object of type 'null instance'.
+  <GDScript Source>Sleeves_Scene_Script.gd:145 @ _load_sleeves()
+  <Stack Trace> Sleeves_Scene_Script.gd:145 @ _load_sleeves()
+
+Is there any way that all of the data can be preloaded at the game start and cached the same as all the maps are at game loaded to prevent the excessive loading every time the sub menu screen is entered? Or is it purely the displaying loop taking up all the time to actually draw them on screen. If it can't be stopped, I plan on redesigning the coin, sleeve and costume screens to only show the owned items and then have a tickbox for "show all hidden" ones that can be ticked on and at that point load all the ones the player doesn't have instead of doing that by default. However, deck mode may be kept as is and show all cards that the player doesn't own for the loaded set, but end-game players who have genuinely collected 300+ sleeves would still have to spend all their time waiting for them to be drawn on screen. Don't code this bit but: Alternatively, a git user did reccomend converting all the images into webp to make them more efficient, and there are only large versions of the images, so it still might be worth considering cloning all the sleeves like we have the card images to have a large and small, compress the small images, make them a smaller size and then only display the large sleeve on preview. Convert everything to webp for further efficiency. Thoughts?
+
+FIX NOTES: FIX 2026-07-21 (ISSUE #32 loading crash + overlay): the async grid-load loops called get_tree().process_frame after the scene was freed by Escape/Cancel -> null get_tree() crash. Added 'if not is_inside_tree(): return' guards to the load loops in Sleeves, Costume, Coin Case and Deck builder (incl. the two spots the user flagged with ##### ERROR comments). Sleeves also gains a loading overlay (input-blocking dim CanvasLayer + spinning square + 'Loading...'; Escape still cancels via _load_cancelled). NOTE: the loading overlay is currently only wired into Sleeves (worst case); the crash guard covers all four. The preload-at-startup / WebP redesign was intentionally NOT coded (user said so). Debug: 'ISSUE #32 FIX ACTIVE'.
+
+FIX 2026-07-22 (ISSUE #32 retest — spinner on all libraries): extracted the Sleeves loading overlay into a shared MenuLoadingOverlay (Scripts/Menu_Scripts/Menu_Loading_Overlay.gd) and wired it into Costume, Coin Case AND the Deck/Card builder. Deck builder shows it in _display_current_set every set load/switch (show() auto-replaces so rapid switches never stack). Debug: 'ISSUE #32 FIX ACTIVE'. Preload/WebP redesign still intentionally NOT done.
+
+FIX 23/07/2026 (ISSUE #32 retest): MenuLoadingOverlay.show() now takes icon_offset_x + blocker top/bottom insets. Deck screen passes (-150, 142, 134) so the loading icon shifts 150px left of the ~300px right banner and the top 142px/bottom 134px stay clickable (Cancel + set-switch). Costume/Coin pass (0,142,134); Sleeves inline overlay dim inset the same 142/134. Debug: ISSUE #32 FIX ACTIVE.
+
+FIX 24/07/2026 (ISSUE #32 retest — blocker geometry + opacity): all loading-overlay tuning now lives in named constants at the top of Scripts/Menu_Scripts/Menu_Loading_Overlay.gd. DIM_ALPHA 0.55 -> 0.275 (halved, per '50% more transparent'). Added a new blocker_right_inset parameter plus two presets: show_for_deck() = icon_x -150, top inset 96 (46px taller above), bottom inset -45 (179px longer below, i.e. now runs to/past the screen bottom), right inset 315 (stops 315px short of the right edge); show_for_library() = icon_x 0, top inset 97 (45px taller above), bottom inset 92 (42px lower). Deck builder / Coin Case / Costume switched to the presets. ALSO: the Sleeves screen still had its own INLINE copy of the overlay (which is why it kept missing these tweaks) — it now uses the shared MenuLoadingOverlay too, so there is only one place left to tune. Debug: 'ISSUE #32 FIX ACTIVE'.
+FIX FAILURE NOTES: In deck builder mode make the width of the input blocker 78 pixels wider so it extends to the left 78 pixels more. Move the box 11 pixels downwards.
+Logged: 21/07/2026 | Fixed: None
+================================================================================
+ROW 40 | #38 | Status: Improve Further
+Category: Animation | Sub Cat: Aesthetic
+ISSUE: we need something like x5 the time between labels appearing showing bench damage for attacks like earthquake where all bench is damaged, currently whole thing seems to be 0.05s delay almost instant but instead should be like 0.2s delay between them all so it looks more like a Mexican wave and the player can keep up better ( of course with the animation multiplier)
+FIX NOTES: FIX 2026-07-21 (ISSUE #38 bench-damage label pacing): apply_bench_damage (Attack_Effects.gd) staggered floating labels by only 0.1s. Now 0.2s scaled by the card-match animation speed (GameState.scaled_duration) so a multi-target hit like Earthquake reads as a Mexican wave. Debug: 'ISSUE #38 FIX ACTIVE'.
+
+FIX 2026-07-22 (ISSUE #38 retest): bench-damage label stagger bumped 0.2s -> 0.3s in apply_bench_damage (Attack_Effects.gd), still scaled by the card-match animation speed. Debug: 'ISSUE #38 FIX ACTIVE'.
+
+FIX 23/07/2026 (ISSUE #38 retest): bench-damage stagger bumped 0.3->0.4s; floating label nudged 100px LEFT (Vector2(-100,-20)); board refreshed (display_pokemon) BEFORE each label so the bench HP updates (40/40->20/40) as the -XX label floats. Attack_Effects.apply_bench_damage. Debug: ISSUE #38 FIX ACTIVE.
+FIX FAILURE NOTES: Works fine now for when ALL bench pokemon are damaged, but not for earthquake where it's just one bench being damaged. Simply duplicate most of the code for an attack like selfdestruct for any attack that damages more than one bench pokemon
+Logged: 21/07/2026 | Fixed: None
+================================================================================
+ROW 58 | #56 | Status: Improve Further
+Category: Overworld | Sub Cat: Aesthetic
+ISSUE: Similar but different issue to above, when you go to a battle or a sub menu so the overworld map is reloaded, all NPC and opponent objects return to their initial global position read from the data file and imported with map manager. Some NPCs/Opps have a massive range they can move and walk about in. This could result in the NPC/Opponent seemingly completely missing or at least very far away from the player when the menu is returned from/match is ended. We need a global NPC/Opponent tracker script that at every point the overworld map is going to be unloaded (sub menus, main match), capture all the npc and opponent current positions in the overworld at that moment. Then when the map is reloaded next time, instead of checking their original position in the data file, read it from the captured positions so NPCs and Opps don't appear to move when the map is reloaded.
+FIX NOTES: FIX 23/07/2026 (ISSUE #56): MapManager now stores live actor positions keyed by source_json::name. BaseMapScene._exit_tree() captures them on every unload (battle/sub-menu/door); _assign_actor_position restores them on the next spawn from the same day file, so NPCs/opponents resume where they were instead of teleporting to their data-file spawn. A different time-of-day (different day file) falls back to fresh positions.
+FIX FAILURE NOTES: This mostly works, however, the NPC may return to the direction they were facing before being interacted with. Ensure everything remains exactly as it was at the point of clicking yes to start the match, prevent the NPC from turning to another direction again.
+Logged: 23/07/2026 | Fixed: None
+================================================================================
+ROW 61 | #59 | Status: Improve Further
+Category: UI | Sub Cat: Aesthetic
+ISSUE: Show tool cards above energy cards for bench pokemon so that they are also shown "attached"
+FIX NOTES: FIX 23/07/2026 (ISSUE #59): build_pokemon_slot_with_energies_and_hp now renders attached tool/trainer cards stacked ABOVE the energy cards for BENCH Pokemon (Active shows them via display_attached_trainer_cards). Debug: ISSUE #59 FIX ACTIVE.
+FIX FAILURE NOTES: A few issues. 1) The tool card z index is reveresed so each tool card is placed in front instead of behind 2) the tools don't get refreshed when the screen refreshes at the end of the turn. The defenders did not appear to be discarded and instead only vanished when the next defender was attached to the active pokemon. 3) Tool position is different for player's active pokemon compared to opponent's active pokemon. Ensure the on screen position Y positioning is the same for both player and opponent (use the opponent's Y position for the tools)
+Logged: 23/07/2026 | Fixed: None
+================================================================================
+ROW 78 | #75 | Status: Improve Further
+Category: Player input | Sub Cat: Trainer Effect
+ISSUE: When opponent uses lass and the player gets to see their hand, input is blocked so the player cannot click anything or scroll right/left to see the cards in their hand
+FIX NOTES: FIX 24/07/2026 (ISSUE #75 Lass hand reveal input blocked): same root cause as issues #3 and #21 — when the CPU plays Lass the reveal happens during the opponent's turn, so the FULL-SCREEN opponent_blocker is up and ate every click, meaning the player could neither scroll the revealed hand (>7 cards use the selection scroller) nor press DONE. Added shared helpers main.suspend_opponent_blocker() / restore_opponent_blocker() in Main_Match_Core_Gameplay_Script.gd and used them around the reveal in effect_lass (including the _should_bail early exit). Also applied to the sibling reveal function gym1_reveal_hand — the shared helper behind Erika's Perfume (gym1-110) and Secret Mission (gym1-118) — which had the identical bug. Debug: 'ISSUE #75 FIX ACTIVE'.
+FIX FAILURE NOTES: For some reason, one of the cards (Chansey) was out of position so it was about 10 pixels lower than the other cards. It was the only Basic Pokemon card in the opponents hand so most likely an issue with that.
+Logged: 24/07/2026 | Fixed: None
+================================================================================
+ROW 80 | #77 | Status: New Issue
+Category: Player input | Sub Cat: Input
+ISSUE: Clicking anywhere on screen when you are playing a card effect or retreating in which multiple cards need to be clicked and selected, clicking a blank space while a card is selected breaks the game UI/Logic/Confirm button. The button goes back to "Select a card" because the last click input there was no card selected even though there is a card selected still (animation plays and message reads 0 cards to be selected). Keep the mouse click clearing functionality for selected cards when selecting a SINGLE card like normal gameplay selecting a card from the hand, or once you have discarded energy to retreat and need to select ONE card from the bench functionality and apply it for all multiple card selections, clear all cards when a blank space is clicked or the right mouse button is clicked. End goal is at any point when a card is selected for an action, if you click a blank space, clear all selected cards (including stopping selection animations, clearing cached variables, updating the OK button to be the select a card etc etc
+FIX NOTES: None
+FIX FAILURE NOTES: None
+Logged: None | Fixed: None
+================================================================================
+ROW 81 | #78 | Status: New Functionality
+Category: Player input | Sub Cat: Input
+ISSUE: Add functionality so that during a match, right clicking is the same as clicking a blank space. When a card is selected and a blank space is clicked, the selected card is cleared. I want the same function so that whenever the right click is pressed it is always treated as clicking a blank space. I don't think anywhere in the game a right click is distinguished from a left click so this shouldn't replace any functionality at all.
+FIX NOTES: None
+FIX FAILURE NOTES: None
+Logged: None | Fixed: None
+================================================================================
+ROW 82 | #79 | Status: New Issue
+Category: UI | Sub Cat: Aesthetic
+ISSUE: When knocking out or retreating a pokemon and there are multiple energies being discarded, update the board (or at least the discard pile) view so that the discarded energy is shown in the discard pile after every discard
+FIX NOTES: None
+FIX FAILURE NOTES: None
+Logged: None | Fixed: None
+================================================================================
+ROW 83 | #81 | Status: New Issue
+Category: Player input | Sub Cat: Input
+ISSUE: When scrolling in the card/deck view mode, it passes the scroll through to the map scene underneath so if you scroll up/down to navigate the card menus (most likely happens with coin case and sleeves too then), when you return to the map the game view zooms in/out. Simply block all input being passed to the map scene when the main menu has been opened until the main menu is closed. Correctly using the movement keys doesn't move the player but scrolling zooms
+FIX NOTES: None
+FIX FAILURE NOTES: None
+Logged: None | Fixed: None
+================================================================================
+ROW 84 | #80 | Status: New Functionality
+Category: Player input | Sub Cat: Input
+ISSUE: When viewing the player's bench, cards can be selected and the action button updates to "Place card on bench" which is obviously wrong. This is legacy code from when originally I was going to allow pokemon to be set as active directly by clicking on bench instead of clicking retreat. We now dont' have ANY functionality and no requirement to click a card on the bench to select it at all. Therefore, Add new functionality for BOTH the player and opponents BENCH cards (only bench) so that when any of the bench cards are clicked, open the card in a new view that only shows that card and all cards attached to it, with only the single centred cancel button. Remove the action button for viewing the player's bench and in this new preview mode. Reuse the same view when retreating your active pokemon so that all the energy cards are shown to the left of the pokemon, the HP is shown in a label underneath, but also of course show any tool cards attached to that pokemon with the energy cards.
+FIX NOTES: None
+FIX FAILURE NOTES: None
+Logged: None | Fixed: None

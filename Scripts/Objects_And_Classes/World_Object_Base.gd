@@ -67,6 +67,16 @@ func _ready():
 	animated_sprite.play("idle_down")
 	_setup_bubble()
 	_init_movement()
+	# ISSUE #56 (retest): if MapManager captured a facing from before a battle/menu, restore it now
+	# (after _init_movement's pattern default) so the actor resumes facing the same way — e.g. an
+	# opponent that turned to face the player stays facing the player instead of snapping back.
+	if has_meta("restore_facing"):
+		var rf := str(get_meta("restore_facing"))
+		remove_meta("restore_facing")
+		if rf != "" and animated_sprite.sprite_frames != null and animated_sprite.sprite_frames.has_animation("idle_" + rf):
+			current_facing = rf
+			animated_sprite.play("idle_" + rf)
+			print("ISSUE #56 FIX ACTIVE: restored facing '", rf, "' on ", name)
 
 # ============================================================
 # MOVEMENT HELPERS

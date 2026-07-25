@@ -8288,13 +8288,10 @@ func execute_neo1_flame_wheel(attacker: card_object, defender: card_object, is_o
 	await gym1_hit_active(attacker, defender, is_opponent, 80)
 	if main._should_bail(): return
 	# 20 to each bench on both sides
-	var player_bench_targets = main.player_bench.duplicate()
-	var opp_bench_targets = main.opponent_bench.duplicate()
-	for bp in player_bench_targets:
-		main.card_ops.apply_bench_damage(bp, 20, false)
-	for bp in opp_bench_targets:
-		main.card_ops.apply_bench_damage(bp, 20, true)
 	await main.show_message("FLAME WHEEL! 20 DAMAGE TO EACH BENCHED POKEMON!")
+	if main._should_bail(): return
+	# ISSUE #38: staggered "Mexican wave" across both benches.
+	await main.card_ops.apply_bench_damage_wave(main.player_bench.duplicate() + main.opponent_bench.duplicate(), 20)
 	if main._should_bail(): return
 	await main.check_all_knockouts()
 	if main._should_bail(): return
@@ -8345,10 +8342,11 @@ func execute_neo1_earthquake(attacker: card_object, defender: card_object, is_op
 	await gym1_hit_active(attacker, defender, is_opponent, base_damage)
 	if main._should_bail(): return
 	var own_bench = main.opponent_bench if is_opponent else main.player_bench
-	for bp in own_bench.duplicate():
-		main.card_ops.apply_bench_damage(bp, 10, is_opponent)
 	if own_bench.size() > 0:
 		await main.show_message("EARTHQUAKE! 10 DAMAGE TO EACH OF YOUR OWN BENCHED POKEMON!")
+		if main._should_bail(): return
+		# ISSUE #38: staggered "Mexican wave" of labels even though it's a single side's bench.
+		await main.card_ops.apply_bench_damage_wave(own_bench.duplicate(), 10)
 		if main._should_bail(): return
 	await main.check_all_knockouts()
 	if main._should_bail(): return
@@ -13971,11 +13969,11 @@ func execute_np_major_earthquake(attacker: card_object, defender: card_object, i
 	await main.display_and_apply_attack_damage(attacker, defender, 80, is_opponent)
 	if main._should_bail(): return
 	var own_bench = main.opponent_bench if is_opponent else main.player_bench
-	for bp in own_bench:
-		main.card_ops.apply_bench_damage(bp, 10, is_opponent)
-	main.display_pokemon(is_opponent)
 	if not own_bench.is_empty():
 		await main.show_message("MAJOR EARTHQUAKE! 10 DAMAGE TO YOUR BENCHED POKÉMON!")
+		if main._should_bail(): return
+		# ISSUE #38: staggered "Mexican wave" of bench-damage labels (sibling of Earthquake).
+		await main.card_ops.apply_bench_damage_wave(own_bench.duplicate(), 10)
 		if main._should_bail(): return
 	await main.check_all_knockouts()
 	if main._should_bail(): return
@@ -16768,11 +16766,10 @@ func execute_ecard3_earth_bomb(attacker: card_object, defender: card_object, is_
 	if main._should_bail(): return
 	await gym1_hit_active(attacker, defender, is_opponent, 50)
 	if main._should_bail(): return
-	for bp in main.player_bench:
-		main.card_ops.apply_bench_damage(bp, 10, false)
-	for bp in main.opponent_bench:
-		main.card_ops.apply_bench_damage(bp, 10, true)
 	await main.show_message("EARTH BOMB! 10 DAMAGE TO EVERY BENCHED POKEMON!")
+	if main._should_bail(): return
+	# ISSUE #38: staggered "Mexican wave" across both benches.
+	await main.card_ops.apply_bench_damage_wave(main.player_bench.duplicate() + main.opponent_bench.duplicate(), 10)
 	if main._should_bail(): return
 	await main.check_all_knockouts()
 	if main._should_bail(): return

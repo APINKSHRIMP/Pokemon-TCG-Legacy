@@ -10,6 +10,11 @@ extends Node
 
 var main: Node
 
+# ISSUE #74: Lass (base1-75, the only card with this name) is deliberately held back until every
+# other CPU action has resolved, so it is skipped by the normal trainer phases and played by
+# cpu_phase_play_lass_last() immediately before the attack phase.
+const LASS_UID := "base1-75"
+
 # Fix 2: CPU evaluation cache
 var _cached_cpu_eval: Dictionary = {}
 var _cpu_eval_dirty: bool = true
@@ -207,6 +212,18 @@ func cpu_turn_orchestrator() -> void:
 		if main._should_bail(): return
 		await main.inbetween_turn_checks(false)
 		return
+	# Phase 7d: Lass is always the very last card played before attacking (ISSUE #74) — by now every
+	# other Trainer the CPU wanted has been spent, so the shuffle only costs the player.
+	await cpu_phase_play_lass_last()
+	if main._should_bail(): return
+	if main.opponent_turn_force_end:
+		main.opponent_turn_force_end = false
+		await get_tree().create_timer(0.5).timeout
+		await main.show_message("Your opponent ends their turn")
+		if main._should_bail(): return
+		await main.inbetween_turn_checks(false)
+		return
+
 	invalidate_cpu_evaluation()
 	cpu_eval = get_cpu_evaluation()
 
@@ -4489,8 +4506,23 @@ func cpu_phase_evolution() -> void:
 		main.evolution_card_awaiting_target = null
 		main.selected_card_for_action = null
 
+# Re-entrancy guard for cpu_score_trainer_card. Some scorers (Item Finder, Lass, Sabrina's
+# Psychic Control) score OTHER trainers in a hand/discard pile, and those piles can contain the
+# card being scored — or another copy of it — which recurses forever and overflows the stack.
+# A card already on the stack scores 0.0, and nesting is capped so different copies terminate too.
+var _trainer_score_stack: Array = []
+const TRAINER_SCORE_MAX_DEPTH := 2
+
 # R.1: Determines if there is a reason for the active to consider retreating
 func cpu_score_trainer_card(card: card_object) -> float:
+	if _trainer_score_stack.has(card) or _trainer_score_stack.size() >= TRAINER_SCORE_MAX_DEPTH:
+		return 0.0
+	_trainer_score_stack.append(card)
+	var nested_score = _cpu_score_trainer_card_inner(card)
+	_trainer_score_stack.erase(card)
+	return nested_score
+
+func _cpu_score_trainer_card_inner(card: card_object) -> float:
 	var card_id = card.uid.to_lower()
 
 	# EX1+ one-Supporter-per-turn rule: if the CPU has already played a Supporter this turn, a
@@ -5215,22 +5247,37 @@ func _cpu_score_item_finder() -> float:
 		best = max(best, cpu_score_trainer_card(t))
 	return best if best >= 50.0 else 0.0
 
+# ISSUE #74 FIX: Lass shuffles BOTH players' Trainer cards into their decks, so it is only worth
+# playing when the player has a hand worth gutting and the CPU has little of its own to lose.
+# Profitability formula (as specified): P = (own hand size - 2 * own Trainers) * player hand size,
+# played only when P > 50. Other copies of Lass in our own hand are NOT counted as Trainers — they
+# would be shuffled away anyway and losing a duplicate Lass costs nothing.
 func _cpu_score_lass() -> float:
-	var score = 0.0
-	# Add 30 if CPU has no playable trainers
-	var has_playable = false
+	var own_hand = main.opponent_hand.size()
+	var own_trainers = 0
 	for c in main.opponent_hand:
-		if main.trainer_effects.is_trainer_card(c) and cpu_score_trainer_card(c) > 30:
-			has_playable = true
-	if not has_playable: score += 30.0
-	# Add based on player hand size
-	if main.player_hand.size() > 4:
-		score += 5.0 * (main.player_hand.size() - 4)
-	# Subtract for own playable trainers lost
-	for c in main.opponent_hand:
-		if main.trainer_effects.is_trainer_card(c) and cpu_score_trainer_card(c) > 30:
-			score -= 15.0
-	return score
+		if c.uid == LASS_UID:
+			continue  # ignore Lass itself and any duplicates
+		if main.trainer_effects.is_trainer_card(c):
+			own_trainers += 1
+	var player_hand = main.player_hand.size()
+
+	# Gate 1: a hand that is more than a fifth Trainers costs us more than it costs the player.
+	if own_hand > 0 and float(own_trainers) / float(own_hand) > 0.2:
+		print("ISSUE #74 FIX ACTIVE (Lass): not playing — ", own_trainers, " of our ", own_hand, " cards are Trainers (more than 1/5)")
+		return -100.0
+
+	# Gate 2: nothing meaningful to strip from a tiny player hand.
+	if player_hand < 3:
+		print("ISSUE #74 FIX ACTIVE (Lass): not playing — player only holds ", player_hand, " card(s)")
+		return -100.0
+
+	var p = float(own_hand - (own_trainers * 2)) * float(player_hand)
+	print("ISSUE #74 FIX ACTIVE (Lass): P = (", own_hand, " - 2*", own_trainers, ") * ", player_hand, " = ", p, " (needs > 50)")
+	if p <= 50.0:
+		return -100.0
+	# Above the bar: scale the score with how far past it we are (35 at P=51, capped at 65).
+	return 35.0 + min(p - 50.0, 60.0) / 2.0
 
 func _cpu_score_pokemon_breeder() -> float:
 	for card in main.opponent_hand:
@@ -5478,6 +5525,7 @@ func cpu_phase_play_trainer_cards_priority() -> void:
 		var trainer_scores = {}
 		for card in main.opponent_hand:
 			if not main.trainer_effects.is_trainer_card(card): continue
+			if card.uid == LASS_UID: continue  # ISSUE #74: Lass is held back until cpu_phase_play_lass_last()
 			var score = cpu_score_trainer_card(card)
 			trainer_scores[card] = score
 			if score > best_score:
@@ -5519,6 +5567,7 @@ func cpu_phase_play_trainer_cards_remaining() -> void:
 
 		for card in main.opponent_hand:
 			if not main.trainer_effects.is_trainer_card(card): continue
+			if card.uid == LASS_UID: continue  # ISSUE #74: Lass is held back until cpu_phase_play_lass_last()
 			var score = cpu_score_trainer_card(card)
 			if score > best_score:
 				best_score = score
@@ -5536,6 +5585,38 @@ func cpu_phase_play_trainer_cards_remaining() -> void:
 			if main.opponent_turn_force_end:
 				return  # turn was force-ended by a trainer card; let the orchestrator wrap up
 			played = true
+
+# ISSUE #74 FIX: Lass is played LAST, after every other action of the turn has resolved (powers,
+# evolutions, bench plays, every other trainer, energy attachment, retreats) and immediately before
+# the attack. Playing it earlier throws away the CPU's own Trainers before it has had the chance to
+# use them — e.g. holding Energy Search, Pokemon Trader and Bill, it should spend all three first
+# and only then force the shuffle.
+func cpu_phase_play_lass_last() -> void:
+	if main.trainer_effects.opponent_trainer_locked:
+		return
+	var lass_card: card_object = null
+	for card in main.opponent_hand:
+		if card.uid == LASS_UID:
+			lass_card = card
+			break
+	if lass_card == null:
+		return
+
+	var threshold = 29.9
+	# MATCH EFFECT: trainer_discard_cost — demand more value when each trainer costs cards
+	threshold += 10.0 * main.match_effects.trainer_discard_cost(true)
+	var score = cpu_score_trainer_card(lass_card)
+	if score <= threshold:
+		print("ISSUE #74 FIX ACTIVE: CPU holding Lass (Score: " + str(int(score)) + ") — below the threshold (" + str(int(threshold)) + ")")
+		return
+
+	var validation_error = main.trainer_effects.validate_trainer_can_be_played(lass_card, true)
+	if validation_error != "":
+		print("ISSUE #74 FIX ACTIVE: CPU would play Lass (Score: " + str(int(score)) + ") but cannot — " + validation_error)
+		return
+
+	print("ISSUE #74 FIX ACTIVE: CPU playing Lass LAST, just before attacking (Score: " + str(int(score)) + ")")
+	await main.trainer_effects.play_trainer_card(lass_card, true)
 
 # CPU search deck helpers
 func cpu_search_deck_for_best_card(deck: Array) -> card_object:

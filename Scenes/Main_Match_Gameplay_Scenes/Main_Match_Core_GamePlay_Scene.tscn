@@ -473,9 +473,9 @@ offset_bottom = 289.0
 [node name="player_active_pokemon_attached_cards" type="Control" parent="ACTIVE_POKEMON/PLAYER" unique_id=1530753657]
 anchors_preset = 0
 offset_left = 407.0
-offset_top = 413.0
+offset_top = 366.0
 offset_right = 450.0
-offset_bottom = 441.0
+offset_bottom = 394.0
 
 [node name="player_active_pokemon_hp_container" type="GridContainer" parent="ACTIVE_POKEMON/PLAYER" unique_id=1296570423]
 layout_mode = 0

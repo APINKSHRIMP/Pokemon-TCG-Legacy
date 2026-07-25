@@ -19,28 +19,62 @@ extends RefCounted
 var _overlay: CanvasLayer = null
 var _spinner_tween: Tween = null
 
+# ══════════════════════════════════════════════════════════════════════════════
+# TWEAKABLE VALUES (ISSUE #32 retest) — all overlay geometry lives here
+# ══════════════════════════════════════════════════════════════════════════════
+# Dim opacity of the input blocker. 0.0 = invisible, 1.0 = solid black.
+# (Was 0.55; halved to 0.275 so it's easier to see through and flashes less when switching sets.)
+const DIM_ALPHA: float = 0.275
+
+# Deck / Card builder layout — the banner runs down the RIGHT-HAND side, so the blocker
+# stops short of it and the loading box is nudged left of centre.
+const DECK_ICON_OFFSET_X: float = -150.0
+const DECK_ICON_OFFSET_Y: float = 11.0    # ISSUE #32 retest: box nudged 11px DOWN
+const DECK_TOP_INSET:     float = 96.0    # unblocked strip at the top    (was 142)
+const DECK_BOTTOM_INSET:  float = -45.0   # negative = runs past the screen bottom (was 134)
+const DECK_RIGHT_INSET:   float = 315.0   # unblocked strip on the right  (was 0)
+const DECK_LEFT_INSET:    float = -78.0   # ISSUE #32 retest: negative = blocker extends 78px further LEFT (78px wider)
+
+# Coin Case / Costume / Sleeves layout — full width, smaller top/bottom banners.
+const LIBRARY_ICON_OFFSET_X: float = 0.0
+const LIBRARY_ICON_OFFSET_Y: float = 0.0
+const LIBRARY_TOP_INSET:     float = 97.0   # was 142
+const LIBRARY_BOTTOM_INSET:  float = 92.0   # was 134
+const LIBRARY_RIGHT_INSET:   float = 0.0
+const LIBRARY_LEFT_INSET:    float = 0.0
+
 func is_showing() -> bool:
 	return _overlay != null and is_instance_valid(_overlay)
 
+# Convenience wrappers so every menu uses the tuned geometry above rather than its own magic numbers.
+func show_for_deck(host: Node) -> void:
+	show(host, DECK_ICON_OFFSET_X, DECK_TOP_INSET, DECK_BOTTOM_INSET, DECK_RIGHT_INSET, DECK_LEFT_INSET, DECK_ICON_OFFSET_Y)
+
+func show_for_library(host: Node) -> void:
+	show(host, LIBRARY_ICON_OFFSET_X, LIBRARY_TOP_INSET, LIBRARY_BOTTOM_INSET, LIBRARY_RIGHT_INSET, LIBRARY_LEFT_INSET, LIBRARY_ICON_OFFSET_Y)
+
 # ISSUE #32 (retest): `icon_offset_x` shifts the loading box horizontally (deck screen passes -150 to
-# offset the ~300px right-hand banner). `blocker_top_inset` / `blocker_bottom_inset` leave that many
-# pixels UNBLOCKED at the top/bottom of the screen so banner buttons (Cancel, set switch) stay
-# clickable while the grid loads — the dim only covers the middle band.
-func show(host: Node, icon_offset_x: float = 0.0, blocker_top_inset: float = 0.0, blocker_bottom_inset: float = 0.0) -> void:
+# offset the ~300px right-hand banner). `blocker_top_inset` / `blocker_bottom_inset` /
+# `blocker_right_inset` leave that many pixels UNBLOCKED at the top/bottom/right of the screen so
+# banner buttons (Cancel, set switch) stay clickable while the grid loads — the dim only covers the
+# middle band. A negative inset simply extends the blocker past that screen edge.
+func show(host: Node, icon_offset_x: float = 0.0, blocker_top_inset: float = 0.0, blocker_bottom_inset: float = 0.0, blocker_right_inset: float = 0.0, blocker_left_inset: float = 0.0, icon_offset_y: float = 0.0) -> void:
 	if host == null or not host.is_inside_tree():
 		return
 	hide()  # never stack two overlays
-	print("ISSUE #32 FIX ACTIVE: loading overlay shown (", host.name, ") icon_x=", icon_offset_x, " insets=", blocker_top_inset, "/", blocker_bottom_inset)
+	print("ISSUE #32 FIX ACTIVE: loading overlay shown (", host.name, ") icon_x/y=", icon_offset_x, "/", icon_offset_y, " insets top/bottom/right/left=", blocker_top_inset, "/", blocker_bottom_inset, "/", blocker_right_inset, "/", blocker_left_inset)
 	_overlay = CanvasLayer.new()
 	_overlay.layer = 200
 	host.add_child(_overlay)
 
 	var dim := ColorRect.new()
-	dim.color = Color(0, 0, 0, 0.55)
+	dim.color = Color(0, 0, 0, DIM_ALPHA)
 	dim.anchor_right = 1.0
 	dim.anchor_bottom = 1.0
+	dim.offset_left = blocker_left_inset        # negative extends the blocker past the left screen edge (wider)
 	dim.offset_top = blocker_top_inset          # leave the top banner clickable
 	dim.offset_bottom = -blocker_bottom_inset   # leave the bottom banner clickable
+	dim.offset_right = -blocker_right_inset     # leave the right-hand banner clickable
 	dim.mouse_filter = Control.MOUSE_FILTER_STOP   # eat clicks only within the dimmed band
 	_overlay.add_child(dim)
 
@@ -54,9 +88,9 @@ func show(host: Node, icon_offset_x: float = 0.0, blocker_top_inset: float = 0.0
 	box.anchor_right = 0.5
 	box.anchor_bottom = 0.5
 	box.offset_left = -140 + icon_offset_x
-	box.offset_top = -80
+	box.offset_top = -80 + icon_offset_y
 	box.offset_right = 140 + icon_offset_x
-	box.offset_bottom = 80
+	box.offset_bottom = 80 + icon_offset_y
 	_overlay.add_child(box)
 
 	var vbox := VBoxContainer.new()

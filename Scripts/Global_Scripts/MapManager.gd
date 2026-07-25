@@ -111,6 +111,11 @@ var _loaded_card_sets: Dictionary = {}
 # path means a different time-of-day (a different day file) naturally falls back to fresh positions.
 var _actor_positions: Dictionary = {}
 
+# ISSUE #56 (retest): captured facing direction ("up"/"down"/"left"/"right") per actor, keyed the
+# same way as _actor_positions. Restored on the next spawn so an NPC/opponent that turned to face the
+# player before a battle/menu resumes facing that way instead of snapping back to its pattern default.
+var _actor_facings: Dictionary = {}
+
 # Preloaded back textures used during the gift reveal animation
 const _CARDBACK_PATH := "res://Image_Assets/Sleeves/1_Default_English.png"
 const _COINBACK_PATH := "res://Image_Assets/Coins/Back Basic.png"
@@ -222,6 +227,10 @@ func _assign_actor_position(actor: Node2D, source_json: String, actor_name: Stri
 	var key := source_json + "::" + actor_name
 	actor.position = _actor_positions.get(key, default_pos)
 	actor.set_meta("pos_key", key)
+	# ISSUE #56 (retest): stash the captured facing as a meta the actor applies at the END of its own
+	# _ready() (after _init_movement sets a pattern default), so the restored direction wins.
+	if _actor_facings.has(key):
+		actor.set_meta("restore_facing", _actor_facings[key])
 
 # ISSUE #56: snapshot every tagged actor's current position. Called from BaseMapScene._exit_tree(),
 # which fires for every overworld unload (battle start, sub-menu, door transition).
@@ -231,6 +240,10 @@ func capture_actor_positions() -> void:
 	for child in _opponents_container.get_children():
 		if child.has_meta("pos_key"):
 			_actor_positions[child.get_meta("pos_key")] = child.position
+			# ISSUE #56 (retest): capture the facing at the same instant as the position so the actor
+			# resumes exactly as it was at the moment the map unloaded (e.g. still facing the player).
+			if "current_facing" in child:
+				_actor_facings[child.get_meta("pos_key")] = child.current_facing
 
 # ISSUE #55: hard-stop every overworld actor (opponents + NPCs live in the opponents container) plus
 # the player so nothing keeps wandering during the fade-out between accepting a battle and the intro.

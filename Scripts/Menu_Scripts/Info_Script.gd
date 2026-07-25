@@ -182,6 +182,7 @@ func _on_save_pressed() -> void:
 
 
 func _on_cancel_pressed() -> void:
+	if GameState.close_sub_menu(): return   # ISSUE #52: map is still loaded behind us — just pop this overlay
 	SceneCache.change_scene("res://Scenes/Main_Menu_Scenes/Main_Menu_Scene.tscn")
 
 
@@ -189,6 +190,7 @@ func _on_cancel_pressed() -> void:
 
 func _input(event: InputEvent) -> void:
 	if event is InputEventKey and event.pressed and event.keycode == KEY_ESCAPE:
+		if GameState.close_sub_menu(): return   # ISSUE #52: map is still loaded behind us — just pop this overlay
 		SceneCache.change_scene("res://Scenes/Main_Menu_Scenes/Main_Menu_Scene.tscn")
 
 

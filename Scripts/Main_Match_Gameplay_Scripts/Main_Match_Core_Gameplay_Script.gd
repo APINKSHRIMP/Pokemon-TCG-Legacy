@@ -26,7 +26,8 @@ func is_pokemon_selection_mode_active() -> bool:
 		or trainer_pokemon_selection_active or forced_switch_selection_active
 		or knockout_bench_selection_active or damage_swap_mode_active
 		or rain_dance_mode_active or energy_trans_mode_active
-		or buzzap_mode_active or trainer_bench_token_discard_active)
+		or buzzap_mode_active or trainer_bench_token_discard_active
+		or pokemon_preview_active)  # ISSUE #80: single-card preview lays the focus Pokémon out like the retreat active
 
 
 # Fix 1: Returns cached card array for a set prefix
@@ -103,6 +104,14 @@ var retreat_energies_selected: Array = []
 var retreat_cost_remaining: int = 0
 var player_retreat_disabled: bool = false
 var opponent_retreat_disabled: bool = false
+
+# ISSUE #80: bench viewing / single-card preview. `bench_view_active` = the enlarged all-bench VIEW is
+# up (view-only, no action button); clicking a card there opens the single-card preview.
+# `pokemon_preview_active` = the single-card preview is up (that Pokémon + its attached energies/tools
+# laid out to the left, HP underneath, only a centred Close button). Both are view-only.
+var bench_view_active: bool = false
+var pokemon_preview_active: bool = false
+var pokemon_preview_target: card_object = null
 var player_retreated_this_turn: bool = false
 var opponent_retreated_this_turn: bool = false
 var xxxxx_used_this_turn: bool = false  # neo4-30 Unown [X] [XXXXX]: only one bonus per turn
@@ -459,7 +468,12 @@ func show_enlarged_array_selection_mode(card_array: Array) -> void:
 	
 	if trainer_pokemon_selection_active or trainer_deck_search_active or trainer_discard_selection_active or trainer_reorder_active:
 		action_button.visible = true
-		
+
+	# ISSUE #80: bench viewing and the single-card preview are view-only — never show an action button
+	# (this removes the legacy "PLACE ON BENCH" that used to appear when viewing the player's bench).
+	if bench_view_active or pokemon_preview_active:
+		action_button.visible = false
+
 	if not action_button_positions_stored:
 		action_button_default_offset_left = action_button.offset_left
 		action_button_default_offset_right = action_button.offset_right
@@ -612,8 +626,12 @@ func hide_selection_mode_display_main() -> void:
 	
 	# End card selection mode and clear any selected card to prevent errors
 	card_selection_mode_enabled = false
-	selected_card_for_action = null  
-	update_action_button()  
+	selected_card_for_action = null
+	# ISSUE #80: defensively clear the view-only preview/bench-view flags whenever the selection UI is torn down.
+	bench_view_active = false
+	pokemon_preview_active = false
+	pokemon_preview_target = null
+	update_action_button()
 	
 	# Hide the enlarged selection mode cards
 	small_selection_container.visible = false
@@ -714,25 +732,33 @@ func display_hand_cards_array(hand: Array, hand_container, card_size: Vector2, f
 		
 		var loc = this_card_in_hand.current_location
 		var card_is_in_play = (loc == "bench" or loc == "active")
-		var is_displayed_pokemon = is_pokemon_selection_mode and not face_down and this_card_in_hand.metadata.has("hp")
+		# ISSUE #75 (retest): only give the taller pokemon-SLOT layout (VBox with HP/energy) to Pokémon
+		# actually IN PLAY. A Pokémon sitting in a revealed HAND (e.g. the lone Basic in a Lass reveal,
+		# which turns on trainer_pokemon_selection to drive its Done button) has no HP/energy to show and
+		# must render as a plain card like every other hand card — otherwise it sat ~10px out of line.
+		var is_displayed_pokemon = is_pokemon_selection_mode and not face_down and this_card_in_hand.metadata.has("hp") and card_is_in_play
 		var is_active_slot = is_pokemon_selection_mode and index == hand.size() - 1 and this_card_in_hand.current_location == "active"
-		
+		# ISSUE #80: the single-card preview's focus Pokémon is the LAST entry and may be a BENCH Pokémon
+		# (not just the active), so treat it as the focus slot too.
+		var is_preview_focus = pokemon_preview_active and index == hand.size() - 1 and card_is_in_play
+		var is_focus_slot = is_active_slot or is_preview_focus
+
 		if is_displayed_pokemon:
-			# ISSUE #46: on the player retreat screen the Active's attached energies are already shown
-			# as selectable cards in this same array, so don't ALSO stack them above the card. Hide
-			# those stacked energies (HP stays), and blow the Active card up 50% so it clearly stands
-			# out from the energy cards beside it.
-			var is_retreat_active = retreat_mode_active and is_active_slot
-			var scale_factor = 1.5 if is_retreat_active else (1.05 if is_active_slot else 1.0)
+			# ISSUE #46/#80: on the retreat screen AND the single-card preview the focus Pokémon's
+			# attached energies (and, for the preview, tools) are already shown as separate cards to its
+			# left, so don't ALSO stack them above the card. Hide the stacked energies (HP stays) and
+			# blow the focus card up 50% so it clearly stands out from the cards beside it.
+			var is_expanded_focus = (retreat_mode_active and is_active_slot) or is_preview_focus
+			var scale_factor = 1.5 if is_expanded_focus else (1.05 if is_active_slot else 1.0)
 			var display_size = Vector2(card_size.x * scale_factor, card_size.y * scale_factor)
 			var show_hp_and_energies = card_is_in_play
-			var show_energies = card_is_in_play and not is_retreat_active
-			if is_retreat_active:
-				print("ISSUE #46 FIX ACTIVE: retreat active card enlarged 50%, stacked energies hidden")
-			var slot = build_pokemon_slot_with_energies_and_hp(this_card_in_hand, display_size, 33, is_active_slot, show_hp_and_energies, show_energies)
+			var show_energies = card_is_in_play and not is_expanded_focus
+			if is_expanded_focus:
+				print("ISSUE #46/#80 FIX ACTIVE: focus card enlarged 50%, stacked energies/tools hidden")
+			var slot = build_pokemon_slot_with_energies_and_hp(this_card_in_hand, display_size, 33, is_focus_slot, show_hp_and_energies, show_energies)
 			slot.size_flags_vertical = Control.SIZE_SHRINK_END
-			
-			if is_active_slot:
+
+			if is_focus_slot:
 				var spacer = Control.new()
 				spacer.custom_minimum_size = Vector2(25, 0)
 				spacer.mouse_filter = MOUSE_FILTER_IGNORE
@@ -749,7 +775,9 @@ func display_hand_cards_array(hand: Array, hand_container, card_size: Vector2, f
 			# centre lines up with the enlarged Active card's centre by bottom-aligning them in a
 			# VBox with a RETREAT_ENERGY_RAISE_PX spacer beneath. Only these energy cards (the else
 			# branch, in retreat pokemon-selection mode) are affected — not normal hand cards.
-			if retreat_mode_active and is_pokemon_selection_mode:
+			# ISSUE #80: the single-card preview raises its energy/tool cards the same way as retreat so
+			# they line up with the enlarged focus Pokémon beside them.
+			if (retreat_mode_active or pokemon_preview_active) and is_pokemon_selection_mode:
 				var raise_wrap = VBoxContainer.new()
 				raise_wrap.size_flags_vertical = Control.SIZE_SHRINK_END
 				raise_wrap.mouse_filter = MOUSE_FILTER_IGNORE
@@ -759,7 +787,7 @@ func display_hand_cards_array(hand: Array, hand_container, card_size: Vector2, f
 				raise_pad.mouse_filter = MOUSE_FILTER_IGNORE
 				raise_wrap.add_child(raise_pad)
 				hand_container.add_child(raise_wrap)
-				print("ISSUE #46 FIX ACTIVE: raised retreat energy card ", RETREAT_ENERGY_RAISE_PX, "px")
+				print("ISSUE #46/#80 FIX ACTIVE: raised retreat/preview card ", RETREAT_ENERGY_RAISE_PX, "px")
 			else:
 				hand_container.add_child(hand_card_to_display)
 			hand_card_to_display.load_card_image(this_card_in_hand.uid, card_size, this_card_in_hand, face_down, sleeve_path)
@@ -1095,10 +1123,17 @@ func build_pokemon_slot_with_energies_and_hp(card_obj: card_object, card_size: V
 	# ISSUE #59 FIX: show attached tool/trainer cards (Defender, PlusPower, etc.) stacked ABOVE the
 	# energy cards for bench Pokémon so they read as attached too. The Active Pokémon shows its tools
 	# via display_attached_trainer_cards, so only render them here for bench slots.
-	if show_hp_and_energies and card_obj.current_location == "bench" and card_obj.attached_cards.size() > 0:
+	# ISSUE #80: gate the stacked tools on `show_energies` too. Normal bench slots (show_energies=true)
+	# keep stacking their tools; the retreat/preview FOCUS Pokémon (show_energies=false) renders its
+	# tools as separate cards beside it instead, so it must not ALSO stack them here (double image).
+	if show_hp_and_energies and show_energies and card_obj.current_location == "bench" and card_obj.attached_cards.size() > 0:
 		var tool_offset = energy_offset if energy_offset > 0 else max(min_px, card_size.y * base_fraction)
 		var stack_top = energy_count * energy_offset  # top edge of the energy stack (upward)
-		for j in range(card_obj.attached_cards.size()):
+		# ISSUE #59 (retest sub-issue 1): iterate tools in REVERSE draw order (highest first) — like the
+		# energy loop above — so the tool CLOSEST to the card renders on TOP and each higher tool sits
+		# BEHIND the one below it. Previously they were drawn forward, putting the highest tool in front.
+		var tool_count = card_obj.attached_cards.size()
+		for j in range(tool_count - 1, -1, -1):
 			var tool_obj = card_obj.attached_cards[j]
 			var tool_display = TextureRect.new()
 			tool_display.set_script(card_display_script)
@@ -1571,6 +1606,10 @@ func animate_energies_to_discard(energy_cards: Array, pokemon: card_object, is_o
 		discard_pile.append(energy)
 
 		display_active_pokemon_energies(is_opponent)
+		# ISSUE #79: refresh the discard pile visual after EVERY energy (not just at the end) so the
+		# player sees each discarded energy land on the pile as it is discarded during retreat/KO.
+		update_discard_pile_display(is_opponent)
+		print("ISSUE #79 FIX ACTIVE: discard pile refreshed after discarding ", energy.metadata.get("name", ""))
 		await get_tree().create_timer(0.2).timeout
 
 	# Update the discard pile visual to show the new top card
@@ -1597,6 +1636,9 @@ func animate_retreat(old_active: card_object, new_active: card_object, discarded
 	# cards no longer fly simultaneously and there is no second "forced to switch in" message.
 	if is_forced_switch:
 		print("ISSUE #7 FIX ACTIVE (animate_retreat forced): ", old_active.metadata.get("name",""), " <-> ", new_active.metadata.get("name",""), " is_opponent=", is_opponent)
+		# ISSUE #7 diagnostic: if the player-forced switch STILL shows no animation, these positions
+		# reveal whether the container globals are sane at this moment (a bad/zero pos = the culprit).
+		print("ISSUE #7 diag: active_container.global_position=", active_container.global_position, " bench_container.global_position=", bench_container.global_position, " active_visible=", active_container.visible)
 		var possessive = "OPPONENT'S" if is_opponent else "YOUR"
 		await show_message(possessive + " " + old_active.metadata["name"].to_upper() + " SWITCHED WITH " + new_active.metadata["name"].to_upper() + "!")
 
@@ -1625,8 +1667,14 @@ func animate_retreat(old_active: card_object, new_active: card_object, discarded
 		display_active_pokemon_energies(is_opponent)
 		active_container.visible = false
 
-		# 4) Glide the incoming Pokémon up into the Active slot, growing to Active size
-		await animate_card_a_to_b(bench_container, active_container, 0.3, new_tex, card_scales[11], card_scales[3.5])
+		# 4) Glide the incoming Pokémon up into the Active slot, growing to Active size.
+		# ISSUE #7 (player-forced retest): the container's global_position can resolve to the wrong
+		# place for the PLAYER side at this moment (during the OPPONENT'S turn the layout differs),
+		# so the incoming card flew off-slot and read as "no animation". Mirror the proven
+		# knockout-replacement animation (handle_action_knockout_bench) by passing the EXPLICIT active
+		# slot position + size from get_pokemon_screen_location, which works on BOTH sides.
+		var active_loc = get_pokemon_screen_location(new_active)
+		await animate_card_a_to_b(bench_container, active_container, 0.3, new_tex, card_scales[11], active_loc.get("size", card_scales[3.5]), active_loc.get("position", _ANIM_POS_SENTINEL))
 
 		# 5) Reveal the new Active
 		active_container.visible = true
@@ -2952,6 +3000,21 @@ func reset_field_pokemon_turn_flags(is_opponent: bool) -> void:
 	for bench_pokemon in bench:
 		bench_pokemon.reset_placed_this_turn()
 
+# ISSUE #75 FIX: opponent_blocker is a FULL-SCREEN input blocker that is up for the whole of the
+# opponent's turn (and from the moment the player commits to an attack). Any UI that still needs the
+# player to click, scroll or dismiss something while it is up — a card selection, a revealed hand, an
+# attack-copy button list — must suspend it first and restore it afterwards, otherwise every click is
+# eaten by the blocker. Same root cause as issues #3 and #21; these helpers are the shared version.
+func suspend_opponent_blocker(context: String = "") -> bool:
+	var was_visible = opponent_blocker.visible
+	opponent_blocker.visible = false
+	print("ISSUE #75 FIX ACTIVE (", context, "): opponent_blocker suspended, will restore to ", was_visible)
+	return was_visible
+
+func restore_opponent_blocker(was_visible: bool, context: String = "") -> void:
+	opponent_blocker.visible = was_visible
+	print("ISSUE #75 FIX ACTIVE (", context, "): opponent_blocker restored to ", was_visible)
+
 # Called at the start of the player's turn to perform mandatory actions
 func player_start_turn_checks() -> void:
 	if _should_bail():
@@ -3713,10 +3776,13 @@ func start_retreat() -> void:
 	retreat_cost_remaining = cost
 	
 	var display_array = player_active_pokemon.attached_energies.duplicate()
+	# ISSUE #80: also show any attached tool cards beside the energies (they're not selectable for the
+	# retreat cost — the click handler ignores them — but they read as attached, matching the preview).
+	display_array.append_array(player_active_pokemon.attached_cards)
 	display_array.append(player_active_pokemon)
-	
+
 	show_enlarged_array_selection_mode(display_array)
-	
+
 	header_label.text = "RETREAT - SELECT ENERGY TO DISCARD"
 	hint_label.text = "Select " + str(retreat_cost_remaining) + " energy card(s) to discard"
 	action_button.text = str(retreat_cost_remaining) + " ENERGY REMAINING"
@@ -4490,6 +4556,16 @@ func calculate_final_damage(base_damage: int, attacking_types: Array, defending_
 
 	if defending_pokemon == null:
 		return {"damage": damage, "modifiers": modifiers_applied}
+
+	# ISSUE #73 FIX: an attack with no damage number at all (Snivel, Sing, Tail Wag, Whirlwind…) does
+	# no damage, so Weakness and Resistance never apply to it — and their labels ("WEAKNESS ×2",
+	# "RESISTANCE -30") must not pop up over the defender. This matches the TCG rule that
+	# Weakness/Resistance are only applied when the attack actually does damage to the Defending
+	# Pokemon. Every damage modifier further down this function is already gated on damage > 0, so
+	# returning here changes nothing except suppressing the misleading labels.
+	if base_damage <= 0:
+		print("ISSUE #73 FIX ACTIVE: attack does no damage — skipping Weakness/Resistance (and their labels)")
+		return {"damage": 0, "modifiers": modifiers_applied}
 
 	# ECARD2/ECARD3 Crystal Type + Crystal Shard: if the attacker's own type is currently
 	# overridden (temporary Crystal Type energy-attach, or permanent Crystal Shard Tool), use the
@@ -6197,7 +6273,22 @@ func handle_action_normal_card() -> void:
 
 # When the cancel button is clicked, hide everthing in card selection mode and show main screen again
 func cancel_button_pressed_hide_selection_mode() -> void:
-	
+
+	# ISSUE #80: close the single-card preview (view-only) back to the board.
+	if pokemon_preview_active:
+		print("ISSUE #80 FIX ACTIVE: closing single-card preview")
+		pokemon_preview_active = false
+		pokemon_preview_target = null
+		hide_selection_mode_display_main()
+		return
+
+	# ISSUE #80: close the bench VIEW back to the board.
+	if bench_view_active:
+		print("ISSUE #80 FIX ACTIVE: closing bench view")
+		bench_view_active = false
+		hide_selection_mode_display_main()
+		return
+
 		# If we're in attach mode, cancel the energy attachment
 	if card_attach_mode_active:
 		print("Energy attachment cancelled")
@@ -6303,14 +6394,52 @@ func array_container_clicked(event: InputEvent, card_array: Array) -> void:
 	if event is InputEventMouseButton and event.pressed:
 		if msgbox_container.visible or coin_container.visible: return
 		if card_array.size() > 0:
+			# ISSUE #80: viewing either bench is a VIEW (no "place on bench" action); clicking a card
+			# in it opens a single-card preview. Only flag it when we aren't already mid-action so it
+			# never hijacks a genuine bench selection (retreat/knockout/forced-switch set their own modes).
+			if (card_array == player_bench or card_array == opponent_bench) and not is_pokemon_selection_mode_active():
+				bench_view_active = true
 			show_enlarged_array_selection_mode(card_array)
+
+# ISSUE #80: single-card preview — show one Pokémon plus its attached energies and tools laid out as
+# separate cards to its left (raised to line up), the focus card enlarged with its HP label beneath,
+# and only a centred Close button. Reached by clicking a card while viewing a bench.
+func show_pokemon_preview(pokemon: card_object) -> void:
+	if pokemon == null:
+		return
+	print("ISSUE #80 FIX ACTIVE: opening single-card preview for ", pokemon.metadata.get("name", ""))
+	bench_view_active = false
+	pokemon_preview_active = true
+	pokemon_preview_target = pokemon
+	# Energies + tools first (rendered as cards to the left), focus Pokémon last.
+	var display_array: Array = pokemon.attached_energies.duplicate()
+	display_array.append_array(pokemon.attached_cards)
+	display_array.append(pokemon)
+	show_enlarged_array_selection_mode(display_array)
+	header_label.text = pokemon.metadata.get("name", "").to_upper()
+	var extras := pokemon.attached_energies.size() + pokemon.attached_cards.size()
+	hint_label.text = (str(extras) + " attached card(s)") if extras > 0 else "No attached cards"
+	action_button.visible = false
+	cancel_button.visible = true
+	cancel_button.text = "CLOSE"
+	cancel_button.theme = theme_green
+	cancel_button.offset_left = -219.0
+	cancel_button.offset_right = 219.0
 
 # Called when a card in selection mode is clicked
 func this_card_clicked(clicked_card: card_object) -> void:
 	# Don't allow card selection if action button is hidden (view-only mode) or messagebox is being displayed
 	if msgbox_container.visible or coin_container.visible: return
+	# ISSUE #80: the single-card preview is view-only — ignore clicks on the previewed/attached cards.
+	if pokemon_preview_active:
+		return
+	# ISSUE #80: clicking a card while viewing a bench opens the single-card preview of it, instead of
+	# the old behaviour of "selecting" it and showing a bogus PLACE ON BENCH button.
+	if bench_view_active:
+		show_pokemon_preview(clicked_card)
+		return
 	if not action_button.visible: return
-	
+
 	if card_selection_mode_enabled == true:
 		
 		# ATTACHMENT MODE ATTACHMENT MODE ATTACHMENT MODE ATTACHMENT MODE ATTACHMENT MODE ATTACHMENT MODE ATTACHMENT MODE
@@ -6341,7 +6470,11 @@ func this_card_clicked(clicked_card: card_object) -> void:
 		elif retreat_mode_active:
 			if clicked_card == player_active_pokemon:
 				return
-			
+			# ISSUE #80: attached tool cards are shown on the retreat screen but are NOT part of the
+			# retreat cost — only energies can be selected for discard, so ignore tool clicks.
+			if clicked_card in player_active_pokemon.attached_cards:
+				return
+
 			if clicked_card in retreat_energies_selected:
 				retreat_energies_selected.erase(clicked_card)
 				var card_display = find_card_ui_for_object(clicked_card)
@@ -6537,8 +6670,71 @@ func this_card_clicked(clicked_card: card_object) -> void:
 ######################################################################################################################################################
 ####################################################### START OF MAIN GAME RUNNING FUNCTIONS #########################################################
 	
+# ISSUE #77/#78: clear ALL currently-selected cards for the in-progress action — a single-select
+# (a hand/bench card) OR a multi-select mode (retreat energy discard, trainer discard, Pokédex
+# reorder). Stops each card's selection animation (set_selected(false) / un-dim / strip number
+# labels), empties the cached selection arrays, and resets the action button + hint back to the
+# "nothing selected yet" state of the CURRENT mode — WITHOUT cancelling the mode, so the player can
+# immediately start re-selecting. Triggered by clicking a blank space OR right-clicking (#78).
+func clear_current_action_selection() -> void:
+	# ISSUE #80: the bench view and single-card preview are view-only — nothing is "selected", so a
+	# blank-space / right-click has nothing to clear (and must not disturb the view).
+	if pokemon_preview_active or bench_view_active:
+		return
+	print("ISSUE #77 FIX ACTIVE: clearing all selected cards for the current action")
+
+	# ── Multi-select: retreat energy discard (choose N energy to pay the retreat cost) ──
+	if retreat_mode_active:
+		for c in retreat_energies_selected:
+			var ui = find_card_ui_for_object(c)
+			if ui: ui.set_selected(false)
+		retreat_energies_selected.clear()
+		var cost = get_retreat_cost(player_active_pokemon)
+		retreat_cost_remaining = cost
+		hint_label.text = "Select " + str(cost) + " energy card(s) to discard"
+		action_button.text = str(cost) + " ENERGY REMAINING"
+		action_button.disabled = true
+		action_button.theme = theme_disabled
+		return
+
+	# ── Multi-select: trainer discard (choose N cards to discard) ──
+	if trainer_discard_selection_active:
+		for c in trainer_discard_selected:
+			var ui = find_card_ui_for_object(c)
+			if ui: ui.set_selected(false)
+		trainer_discard_selected.clear()
+		hint_label.text = "0/" + str(trainer_discard_cards_needed) + " selected"
+		action_button.text = str(trainer_discard_cards_needed) + " MORE"
+		action_button.disabled = true
+		action_button.theme = theme_disabled
+		return
+
+	# ── Multi-select: Pokédex reorder (assign an order number to each card) ──
+	if trainer_reorder_active:
+		for card in pokedex_cards:
+			var c_ui = find_card_ui_for_object(card)
+			if c_ui:
+				for child in c_ui.get_children():
+					if child is Label:
+						child.queue_free()
+				c_ui.modulate = Color(1.0, 1.0, 1.0, 1.0)
+		pokedex_reorder_result.clear()
+		hint_label.text = "0/" + str(pokedex_cards.size()) + " cards ordered"
+		action_button.text = "0/" + str(pokedex_cards.size()) + " SELECTED"
+		action_button.disabled = true
+		action_button.theme = theme_disabled
+		return
+
+	# ── Single-select modes (hand card, attach/evolve target, bench/forced-switch pick, etc.) ──
+	if selected_card_for_action != null:
+		var card_ui = find_card_ui_for_object(selected_card_for_action)
+		if card_ui:
+			card_ui.set_selected(false)
+	selected_card_for_action = null
+	update_action_button()
+
 func _input(event: InputEvent) -> void:
-	
+
 	# Press the escape key to quit the game
 	if event is InputEventKey and event.pressed and event.keycode == KEY_ESCAPE:
 			end_game()
@@ -6566,18 +6762,27 @@ func _input(event: InputEvent) -> void:
 			message_acknowledged.emit()
 			get_viewport().set_input_as_handled()
 			return
-		
+
+		# ISSUE #78: a right-click is ALWAYS treated as clicking a blank space — it clears every
+		# currently-selected card for the in-progress action. Nothing in the match uses right-click
+		# for anything else, so this is handled up-front regardless of what is under the cursor.
+		if event.button_index == MOUSE_BUTTON_RIGHT:
+			print("ISSUE #78 FIX ACTIVE: right-click treated as blank-space click")
+			clear_current_action_selection()
+			get_viewport().set_input_as_handled()
+			return
+
 		var mouse_pos = get_global_mouse_position()
-		
+
 		# Check if click is on the cancel or action button - if so, ignore
 		if cancel_button.visible and cancel_button.get_global_rect().has_point(mouse_pos):
 			return
 		if action_button.visible and action_button.get_global_rect().has_point(mouse_pos):
 			return
-		
+
 		# Check if mouse is over any card in the visible containers
 		var clicked_on_card = false
-		
+
 		# NEW: Only check small selection container if it's visible
 		if small_selection_container.visible:
 			for card_ui in small_selection_container.get_children():
@@ -6592,22 +6797,13 @@ func _input(event: InputEvent) -> void:
 				if card_ui.get_global_rect().has_point(mouse_pos) and card_selection_mode_enabled == true:
 					clicked_on_card = true
 					break
-		
-		# If no card was clicked, clear selection
-		if not clicked_on_card:
-			
-			# During multi-card selection modes (trainer discard, pokedex reorder), 
-			# do NOT clear the selection or reset the action button
-			if trainer_discard_selection_active or trainer_reorder_active:
-				return
 
-			if selected_card_for_action != null:
-				var card_ui = find_card_ui_for_object(selected_card_for_action)
-				if card_ui:
-					card_ui.set_selected(false)
-			
-			selected_card_for_action = null
-			update_action_button()
+		# ISSUE #77: clicking a blank space clears ALL selected cards for the current action (single
+		# OR multi-select), resetting to the "nothing selected" state without cancelling the mode.
+		# Previously multi-select modes either did a partial single-card clear (leaving cards visually
+		# selected while the button wrongly reset to "Select A Card") or bailed without clearing.
+		if not clicked_on_card:
+			clear_current_action_selection()
 
 
 # ── Dev debug cheat keys (in-match) ──────────────────────────────────────────────────────

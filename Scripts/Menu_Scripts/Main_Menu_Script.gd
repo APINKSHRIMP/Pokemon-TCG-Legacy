@@ -166,6 +166,10 @@ func _on_mode_clicked(event: InputEvent, node_path: String) -> void:
 			else:
 				_return_to_world_map()
 			return
+		# ISSUE #52 FIX (retest): when the menu is an overlay over a live map, open the sub-menu as a
+		# further overlay so the map is never unloaded — coming back is then instant.
+		if is_overlay and GameState.open_sub_menu(SCENE_MAP[node_path]):
+			return
 		SceneCache.change_scene(SCENE_MAP[node_path])
 
 

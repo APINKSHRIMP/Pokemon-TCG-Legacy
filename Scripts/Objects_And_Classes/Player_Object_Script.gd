@@ -67,6 +67,23 @@ func _ready():
 	animated_sprite.play("idle_down")
 	animated_sprite.scale = Vector2(0.5, 0.5)
 
+# ISSUE #52: the overworld map is no longer reloaded when a sub-menu closes, so a costume change made
+# in the Costume menu has to be pushed onto the live player node instead of arriving via _ready().
+func refresh_sprite() -> void:
+	var file := FileAccess.open("user://Player_Current_Data.json", FileAccess.READ)
+	if file == null:
+		return
+	var player_data = JSON.parse_string(file.get_as_text())
+	file.close()
+	if typeof(player_data) != TYPE_DICTIONARY or not player_data.has("sprite"):
+		return
+	var new_frames = SpriteSheetLoader.load_sprite_frames(player_data["sprite"])
+	if new_frames == null:
+		return
+	animated_sprite.sprite_frames = new_frames
+	animated_sprite.play("idle_" + current_direction)
+	print("ISSUE #52 FIX ACTIVE: player sprite refreshed to ", player_data["sprite"])
+
 	interaction_area.body_entered.connect(_on_interaction_area_body_entered)
 	interaction_area.body_exited.connect(_on_interaction_area_body_exited)
 
@@ -167,6 +184,14 @@ func _unhandled_input(event):
 		if event.pressed:
 			if MapManager.message_panel != null and MapManager.message_panel.visible:
 				MapManager.handle_message_spacebar()
+				return
+			# ISSUE #81: don't let the mouse wheel zoom the overworld camera while the player is locked
+			# — i.e. while a menu/sub-menu overlay (deck/card/coin/sleeves) is open on top of the still-
+			# loaded map. Scroll events fall THROUGH those sub-menu Controls to this _unhandled_input, so
+			# without this guard scrolling a card/deck list zoomed the map underneath, only visible on
+			# return. Movement keys were already gated on can_move; the zoom was not.
+			if not can_move:
+				print("ISSUE #81 FIX ACTIVE: ignoring mouse-wheel zoom while overworld input is locked")
 				return
 			if event.button_index == MOUSE_BUTTON_WHEEL_UP:
 				camera.zoom = (camera.zoom + Vector2(0.05, 0.05)).clamp(Vector2(0.5, 0.5), Vector2(10, 10))

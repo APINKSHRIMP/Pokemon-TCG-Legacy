@@ -74,6 +74,25 @@ var sleep_wakeup_fade: bool = false
 # the main menu is reopened as a transparent overlay on top of it (rather than showing black behind).
 var reopen_menu_overlay: bool = false
 
+# ISSUE #52 (retest): the live map scene registers itself here while its main-menu overlay is open.
+# Sub-menus are then opened/closed as overlays on top of the still-loaded map, so returning to the
+# main menu is instant instead of triggering a full world reload (the long black screen). Both
+# helpers return false when there is no host (e.g. the menu was reached from a non-map scene), so
+# every caller can fall back to the old change_scene behaviour.
+var menu_overlay_host: Node = null
+
+func open_sub_menu(scene_path: String) -> bool:
+	if menu_overlay_host != null and is_instance_valid(menu_overlay_host) and menu_overlay_host.has_method("open_submenu_overlay"):
+		menu_overlay_host.open_submenu_overlay(scene_path)
+		return true
+	return false
+
+func close_sub_menu() -> bool:
+	if menu_overlay_host != null and is_instance_valid(menu_overlay_host) and menu_overlay_host.has_method("close_submenu_overlay"):
+		menu_overlay_host.close_submenu_overlay(true)
+		return true
+	return false
+
 # ============================================================
 # MATCH SERIES (best-of-N support)
 # ============================================================

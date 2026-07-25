@@ -559,6 +559,26 @@ func apply_bench_damage(pokemon: card_object, damage: int, is_opponent: bool) ->
 		main.show_floating_label("-" + str(damage), label_pos, Color.RED, true)
 	main.display_pokemon(is_opponent)
 
+# ISSUE #38: staggered multi-target bench damage. Applies `damage` to every valid Pokémon in
+# `targets` with a ~0.4s "Mexican wave" gap between each floating label — the same pacing
+# Attack_Effects.apply_bench_damage uses for both-bench attacks — so earthquake-family attacks that
+# hit a whole (single-side or both-side) bench read clearly instead of flashing every label at once.
+# The bench-owner side is derived per-Pokémon so a mixed player+opponent array works in one wave.
+func apply_bench_damage_wave(targets: Array, damage: int) -> void:
+	var live: Array = []
+	for bp in targets:
+		if bp != null and is_instance_valid(bp) and bp.current_hp > 0:
+			live.append(bp)
+	print("ISSUE #38 FIX ACTIVE: staggered bench-damage wave over ", live.size(), " target(s), ", damage, " each")
+	for idx in range(live.size()):
+		var bp = live[idx]
+		var owner_is_opp = bp in main.opponent_bench
+		apply_bench_damage(bp, damage, owner_is_opp)
+		# Stagger between labels (not after the final one) so the wave stays snappy.
+		if idx < live.size() - 1:
+			await get_tree().create_timer(GameState.scaled_duration(0.4, GameState.card_match_animation_speed)).timeout
+			if main._should_bail(): return
+
 # ── Double-Battle-Ready Accessors ─────────────────────────────────────────────────────────
 #
 # Single battles have exactly one Active Pokemon per side. The ex-series (and later sets)
