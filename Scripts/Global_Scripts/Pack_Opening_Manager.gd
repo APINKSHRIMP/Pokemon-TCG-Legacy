@@ -262,9 +262,7 @@ func _start_pack_opening() -> void:
 	var cardback_path    : String    = _resolve_player_cardback_path()
 	var cardback_tex     : Texture2D = _load_texture(cardback_path)
 	if cardback_tex == null:
-		push_error("ISSUE #50 FIX: cardback texture failed to load at '" + cardback_path + "', falling back to default")
 		cardback_tex = _load_texture(CARDBACK_PATH)
-	print("ISSUE #50 FIX ACTIVE: pack cardback resolved to ", cardback_path)
 	var cb_aspect        : float     = float(cardback_tex.get_width()) / float(cardback_tex.get_height())
 	var actual_card_size : Vector2
 	if cb_aspect >= CARD_DISPLAY_SIZE.x / CARD_DISPLAY_SIZE.y:

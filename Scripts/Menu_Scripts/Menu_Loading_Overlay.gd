@@ -32,8 +32,10 @@ const DECK_ICON_OFFSET_X: float = -150.0
 const DECK_ICON_OFFSET_Y: float = 11.0    # ISSUE #32 retest: box nudged 11px DOWN
 const DECK_TOP_INSET:     float = 96.0    # unblocked strip at the top    (was 142)
 const DECK_BOTTOM_INSET:  float = -45.0   # negative = runs past the screen bottom (was 134)
-const DECK_RIGHT_INSET:   float = 315.0   # unblocked strip on the right  (was 0)
-const DECK_LEFT_INSET:    float = -78.0   # ISSUE #32 retest: negative = blocker extends 78px further LEFT (78px wider)
+# ISSUE #32 retest (26/07): the 78px widening belongs on the RIGHT, not the left. The right inset
+# drops 315 -> 237, so the blocker now reaches 78px further right; the left inset goes back to 0.
+const DECK_RIGHT_INSET:   float = 237.0   # unblocked strip on the right  (was 315, before that 0)
+const DECK_LEFT_INSET:    float = 0.0     # back to the screen edge (was -78, which widened LEFT by mistake)
 
 # Coin Case / Costume / Sleeves layout — full width, smaller top/bottom banners.
 const LIBRARY_ICON_OFFSET_X: float = 0.0

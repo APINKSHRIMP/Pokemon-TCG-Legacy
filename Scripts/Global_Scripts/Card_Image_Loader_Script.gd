@@ -124,6 +124,12 @@ func set_selected(selected: bool) -> void:
 # This function script is used to determine when a card is clicked			
 func _input(event: InputEvent) -> void:
 	if event is InputEventMouseButton and event.pressed:
+		# ISSUE #89 FIX: the mouse wheel is delivered as an InputEventMouseButton with pressed == true,
+		# so scrolling with the cursor over a card counted as clicking that card and emitted
+		# card_clicked — scrolling a hand of 8+ cards kept selecting whichever card was under the
+		# cursor. Scrolling is not a click.
+		if event.button_index in [MOUSE_BUTTON_WHEEL_UP, MOUSE_BUTTON_WHEEL_DOWN, MOUSE_BUTTON_WHEEL_LEFT, MOUSE_BUTTON_WHEEL_RIGHT]:
+			return
 		# Check if the click is actually on this card
 		if get_global_rect().has_point(event.position):
 			

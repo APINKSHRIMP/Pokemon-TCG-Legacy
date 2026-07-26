@@ -57,7 +57,6 @@ func _ready() -> void:
 	# transparent background, so it renders black. Redirect to the saved map scene and reopen the menu
 	# as an overlay on top of it — this also reloads the map so any world-changing options take effect.
 	if not is_overlay and GameState.has_menu_return_state:
-		print("ISSUE #52 FIX ACTIVE: reloading world map behind the main menu")
 		GameState.reopen_menu_overlay = true
 		SceneCache.change_scene(GameState.menu_return_scene_path)
 		return
@@ -77,7 +76,6 @@ func _ready() -> void:
 		locked_modes["coin/coin_case_mode_background"] = "coin/coin_case_label"
 		# ISSUE #29 FIX: sleeves is also unavailable until the starter box is collected.
 		locked_modes["sleeves/sleeves_mode_background"] = "sleeves/sleeves_label"
-		print("ISSUE #29 FIX ACTIVE: sleeves menu locked pre-starter-box")
 
 	await get_tree().process_frame
 
@@ -185,7 +183,6 @@ func _on_exit_clicked(event: InputEvent) -> void:
 func _show_quit_dialog() -> void:
 	if quit_dialog != null and is_instance_valid(quit_dialog):
 		return
-	print("ISSUE #30 FIX ACTIVE: styled quit confirmation")
 	var kenney_theme = load("res://UI_Themes/kenneyUI.tres")
 
 	quit_dialog = CanvasLayer.new()

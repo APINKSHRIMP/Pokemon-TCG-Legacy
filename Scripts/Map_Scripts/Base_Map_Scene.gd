@@ -152,7 +152,6 @@ func _ready():
 	# from a sub-menu, so the transparent menu shows the world map behind it instead of black.
 	if GameState.reopen_menu_overlay:
 		GameState.reopen_menu_overlay = false
-		print("ISSUE #52 FIX ACTIVE: reopening main-menu overlay over reloaded map")
 		_open_menu_overlay()
 
 func _exit_tree():
@@ -319,7 +318,6 @@ func open_submenu_overlay(scene_path: String) -> void:
 	if instance is Control:
 		instance.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	_submenu_canvas_layer.add_child(instance)
-	print("ISSUE #52 FIX ACTIVE: opened sub-menu as an overlay (map stays loaded) — ", scene_path)
 
 # restore_menu: true when returning to the main menu (the normal "back" path), false when the whole
 # menu stack is being torn down.
@@ -337,7 +335,6 @@ func close_submenu_overlay(restore_menu: bool = true) -> void:
 	# the map is no longer reloaded.
 	if _player != null and is_instance_valid(_player) and _player.has_method("refresh_sprite"):
 		_player.refresh_sprite()
-	print("ISSUE #52 FIX ACTIVE: closed sub-menu overlay, main menu restored instantly")
 
 # ============================================================
 # CASH LABEL — opt-in

@@ -22,7 +22,6 @@ func draw_n(is_opponent: bool, count: int) -> void:
 	# in this batch, so redrawing a full hand doesn't take as long as drawing that many cards
 	# individually would.
 	var speed_multiplier = main.draw_animation_speed_multiplier(count)
-	print("ISSUE #10 FIX ACTIVE (draw_n): count=", count, " speed_multiplier=", speed_multiplier)
 	for i in range(count):
 		await main.draw_card_from_deck(is_opponent, speed_multiplier)
 		if main._should_bail(): return
@@ -94,6 +93,45 @@ func discard_all_attachments(pokemon: card_object, is_opponent: bool) -> void:
 		card.current_location = "discard"
 		discard.append(card)
 	pokemon.attached_cards.clear()
+	main.update_discard_pile_display(is_opponent)
+	main.display_active_pokemon_energies(is_opponent)
+
+# ISSUE #91: the animated twin of discard_all_attachments. Every attachment flies to the discard pile
+# ONE AT A TIME, with the whole board refreshed after each one, so the Pokemon is visibly stripped
+# before it leaves play. Use this instead of discard_all_attachments in any player-visible effect that
+# empties a Pokemon (Scoop Up and friends); the synchronous version stays for internal cleanup where
+# no animation is wanted.
+#
+# Energies reuse main.animate_energies_to_discard (the shared retreat/KO path, one at a time since
+# ISSUE #79) but that only refreshes the ACTIVE's energy strip, so the board refresh is added here for
+# the benched case. Tools/attached Trainers and pre-evolution cards are then animated the same way.
+func discard_all_attachments_animated(pokemon: card_object, is_opponent: bool) -> void:
+	var discard = main.opponent_discard_pile if is_opponent else main.player_discard_pile
+	var discard_node = main.opponent_discard_icon if is_opponent else main.player_discard_icon
+
+	if pokemon.attached_energies.size() > 0:
+		await main.animate_energies_to_discard(pokemon.attached_energies.duplicate(), pokemon, is_opponent)
+		if main._should_bail(): return
+		pokemon.attached_energies.clear()
+		main.display_pokemon(is_opponent)
+
+	# Tools/attached Trainers first (they sit on top of the stack), then the pre-evolution cards.
+	for group in [pokemon.attached_cards, pokemon.attached_pre_evolutions]:
+		for card in group.duplicate():
+			# Re-resolve the source node each time — the board is rebuilt between cards.
+			var from_node = main.find_card_ui_for_object(pokemon)
+			group.erase(card)
+			card.current_location = "discard"
+			discard.append(card)
+			if from_node != null:
+				await main.animate_card_a_to_b(from_node, discard_node, 0.2, main.get_card_texture(card), main.card_scales[10])
+				if main._should_bail(): return
+			main.update_discard_pile_display(is_opponent)
+			main.display_pokemon(is_opponent)
+			main.display_active_pokemon_energies(is_opponent)
+			print("ISSUE #91 FIX ACTIVE: animated ", card.metadata.get("name", ""), " from ", pokemon.metadata.get("name", ""), " to the discard pile")
+			await main.get_tree().create_timer(0.2).timeout
+
 	main.update_discard_pile_display(is_opponent)
 	main.display_active_pokemon_energies(is_opponent)
 
@@ -448,7 +486,6 @@ func prompt_select_card(pool: Array, header: String, hint: String, btn_text: Str
 	# the player's own turn leaves the blocker up afterward and the player can't click anything.
 	var restore_opponent_blocker = main.opponent_blocker.visible
 	main.opponent_blocker.visible = false
-	print("ISSUE #3 FIX ACTIVE (prompt_select_card): opponent_blocker hidden, will restore to ", restore_opponent_blocker)
 	if search_mode:
 		main.trainer_deck_search_active = true
 	else:
@@ -482,7 +519,6 @@ func prompt_select_card(pool: Array, header: String, hint: String, btn_text: Str
 		main.trainer_pokemon_selection_active = false
 	main.hide_selection_mode_display_main()
 	main.opponent_blocker.visible = restore_opponent_blocker
-	print("ISSUE #3 FIX ACTIVE (prompt_select_card): opponent_blocker restored to ", restore_opponent_blocker)
 	return sel
 
 # ── Unified chooser ─────────────────────────────────────────────────────────────

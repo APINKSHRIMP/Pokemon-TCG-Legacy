@@ -282,7 +282,6 @@ func _flash_cheat_message(message: String) -> void:
 	# floating labels, animated by a Tween OWNED BY the CanvasLayer (a root child). Previously the
 	# cleanup awaited a timer bound to THIS script; escaping the Info sub-menu freed the script and
 	# cancelled the await, leaving the label stuck on screen forever. Now it always fades within ~2s.
-	print("ISSUE #53 FIX ACTIVE: cheat popup floats up and auto-fades independent of the menu scene")
 	_cheat_label_token += 1
 	var my_token := _cheat_label_token
 

@@ -60,6 +60,9 @@ const DIRECTIONS   = ["up", "down", "left", "right"]
 const DIR_VECTORS  = {"up": Vector2.UP, "down": Vector2.DOWN, "left": Vector2.LEFT, "right": Vector2.RIGHT}
 const SQUARE_ORDER = ["down", "right", "up", "left"]
 const WANDER_PROXIMITY_BUFFER: float = 30.0
+# ISSUE #81: patterns whose facing is dictated by the pattern itself, so a captured facing must never
+# override them on respawn.
+const FIXED_FACING_PATTERNS = ["idle_cycle", "idle_left", "idle_right", "idle_up", "idle_down"]
 
 func _ready():
 	animated_sprite.sprite_frames = SpriteSheetLoader.load_sprite_frames(sprite)
@@ -73,10 +76,14 @@ func _ready():
 	if has_meta("restore_facing"):
 		var rf := str(get_meta("restore_facing"))
 		remove_meta("restore_facing")
-		if rf != "" and animated_sprite.sprite_frames != null and animated_sprite.sprite_frames.has_animation("idle_" + rf):
+		# ISSUE #81 FIX: never let a captured facing override a pattern that fixes the facing by design.
+		# The locked idle_* patterns exist precisely to pin a direction, and idle_cycle must keep playing
+		# its walk animation (an idle_ animation would freeze it, since _physics_process never replays it).
+		if movement_pattern in FIXED_FACING_PATTERNS:
+			print("ISSUE #81 FIX ACTIVE: kept pattern facing '", current_facing, "' on ", name, " (pattern ", movement_pattern, " ignores restore_facing)")
+		elif rf != "" and animated_sprite.sprite_frames != null and animated_sprite.sprite_frames.has_animation("idle_" + rf):
 			current_facing = rf
 			animated_sprite.play("idle_" + rf)
-			print("ISSUE #56 FIX ACTIVE: restored facing '", rf, "' on ", name)
 
 # ============================================================
 # MOVEMENT HELPERS
@@ -131,11 +138,16 @@ func _init_movement():
 			direction_timer.timeout.connect(_on_direction_timer_timeout)
 			direction_timer.start()
 		"idle_cycle":
+			current_facing = "down"
 			animated_sprite.play("walk_down")
-		"idle_left":   animated_sprite.play("idle_left")
-		"idle_right":  animated_sprite.play("idle_right")
-		"idle_up":     animated_sprite.play("idle_up")
-		"idle_down":   animated_sprite.play("idle_down")
+		# ISSUE #81 FIX: these four locked patterns played the right animation but never updated
+		# current_facing, so it stayed at its "down" default. MapManager.capture_actor_positions()
+		# then snapshotted "down" and restore_facing (ISSUE #56) forced them to face down on the next
+		# spawn — which is why NPCs that should face left/right/up were looking downwards.
+		"idle_left":   current_facing = "left";  animated_sprite.play("idle_left")
+		"idle_right":  current_facing = "right"; animated_sprite.play("idle_right")
+		"idle_up":     current_facing = "up";    animated_sprite.play("idle_up")
+		"idle_down":   current_facing = "down";  animated_sprite.play("idle_down")
 		"idle_down_random", "idle_up_random", "idle_left_random", "idle_right_random":
 			var primary := _primary_dir_for_pattern()
 			current_facing = primary

@@ -57,7 +57,6 @@ func _scene_setup():
 # scene fresh on every visit, so queue_free() here is safe.
 func _apply_moving_in_state() -> void:
 	var completed: bool = GameState.progress.get("moving_in_completed", false)
-	print("ISSUE #26 FIX ACTIVE: moving_in_completed=", completed)
 
 	# --- Visual tile layers under UPSTAIRS ---
 	var moving_in_layer := $UPSTAIRS.get_node_or_null("Moving In")

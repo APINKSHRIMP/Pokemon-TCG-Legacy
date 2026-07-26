@@ -3336,6 +3336,9 @@ func check_rebirth(pokemon: card_object, is_opp: bool) -> bool:
 	pokemon.is_poisoned = false
 	pokemon.is_burned = false
 	pokemon.pluspower_count = 0
+	# ISSUE #90: clear defender_count alongside the turn counter — a stale count made the NEXT
+	# Defender attached to this card stack on a phantom one.
+	pokemon.defender_count = 0
 	pokemon.defender_turns_remaining = -1
 	pokemon.current_location = "hand"
 	var hand = main.opponent_hand if is_opp else main.player_hand
@@ -3720,6 +3723,8 @@ func check_rebellion(attacker: card_object, is_opp: bool) -> bool:
 	attacker.is_poisoned = false
 	attacker.is_burned = false
 	attacker.pluspower_count = 0
+	# ISSUE #90: clear defender_count alongside the turn counter (see the Defender stacking bug).
+	attacker.defender_count = 0
 	attacker.defender_turns_remaining = -1
 	attacker.current_location = "deck"
 	if attacker == main.opponent_active_pokemon:

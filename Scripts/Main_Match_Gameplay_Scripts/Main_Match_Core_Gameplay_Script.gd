@@ -753,8 +753,6 @@ func display_hand_cards_array(hand: Array, hand_container, card_size: Vector2, f
 			var display_size = Vector2(card_size.x * scale_factor, card_size.y * scale_factor)
 			var show_hp_and_energies = card_is_in_play
 			var show_energies = card_is_in_play and not is_expanded_focus
-			if is_expanded_focus:
-				print("ISSUE #46/#80 FIX ACTIVE: focus card enlarged 50%, stacked energies/tools hidden")
 			var slot = build_pokemon_slot_with_energies_and_hp(this_card_in_hand, display_size, 33, is_focus_slot, show_hp_and_energies, show_energies)
 			slot.size_flags_vertical = Control.SIZE_SHRINK_END
 
@@ -787,7 +785,6 @@ func display_hand_cards_array(hand: Array, hand_container, card_size: Vector2, f
 				raise_pad.mouse_filter = MOUSE_FILTER_IGNORE
 				raise_wrap.add_child(raise_pad)
 				hand_container.add_child(raise_wrap)
-				print("ISSUE #46/#80 FIX ACTIVE: raised retreat/preview card ", RETREAT_ENERGY_RAISE_PX, "px")
 			else:
 				hand_container.add_child(hand_card_to_display)
 			hand_card_to_display.load_card_image(this_card_in_hand.uid, card_size, this_card_in_hand, face_down, sleeve_path)
@@ -1079,6 +1076,7 @@ func _calculate_max_energy_stack_height(card_array: Array, card_size: Vector2, p
 # ALIGNMENT: card_area Control has a fixed custom_minimum_size = card_size.
 # Energy cards use NEGATIVE y positions to extend upward outside card_area without
 # affecting the VBoxContainer's layout height, so the pokemon card and HP label never shift.
+var _issue59_zorder_logged: bool = false
 func build_pokemon_slot_with_energies_and_hp(card_obj: card_object, card_size: Vector2, label_font_size: int, _is_active: bool = false, show_hp_and_energies: bool = true, show_energies: bool = true) -> VBoxContainer:
 
 	var slot = VBoxContainer.new()
@@ -1105,6 +1103,37 @@ func build_pokemon_slot_with_energies_and_hp(card_obj: card_object, card_size: V
 	card_area.mouse_filter = MOUSE_FILTER_PASS
 	slot.add_child(card_area)
 	
+	# ISSUE #59 FIX: show attached tool/trainer cards (Defender, PlusPower, etc.) stacked ABOVE the
+	# energy cards for bench Pokémon so they read as attached too. The Active Pokémon shows its tools
+	# via display_attached_trainer_cards, so only render them here for bench slots.
+	# ISSUE #80: gate the stacked tools on `show_energies` too. Normal bench slots (show_energies=true)
+	# keep stacking their tools; the retreat/preview FOCUS Pokémon (show_energies=false) renders its
+	# tools as separate cards beside it instead, so it must not ALSO stack them here (double image).
+	#
+	# ISSUE #59 FIX (retest sub-issue 1 — the real z-order cause): Godot draws siblings in child order,
+	# so whatever is added LAST is in FRONT. The whole stack must therefore be built strictly
+	# back-to-front: highest tool → lowest tool → highest energy → lowest energy → Pokémon card. The
+	# tools used to be added AFTER the energies, which put every tool in front of the topmost energy
+	# card even though it sits further up the stack. Reversing the two blocks is the fix; the
+	# highest-first iteration inside each block orders the cards within it.
+	if show_hp_and_energies and show_energies and card_obj.current_location == "bench" and card_obj.attached_cards.size() > 0:
+		var tool_offset = energy_offset if energy_offset > 0 else max(min_px, card_size.y * base_fraction)
+		var stack_top = energy_count * energy_offset  # top edge of the energy stack (upward)
+		var tool_count = card_obj.attached_cards.size()
+		for j in range(tool_count - 1, -1, -1):
+			var tool_obj = card_obj.attached_cards[j]
+			var tool_display = TextureRect.new()
+			tool_display.set_script(card_display_script)
+			card_area.add_child(tool_display)
+			tool_display.load_card_image(tool_obj.uid, card_size, tool_obj)
+			tool_display.position = Vector2(0, -(stack_top + (j + 1) * tool_offset))
+			tool_display.mouse_filter = MOUSE_FILTER_IGNORE
+		# One-shot: this runs inside the per-slot draw path, called on every board refresh, so an
+		# unconditional print would produce dozens of identical lines per attack.
+		if not _issue59_zorder_logged:
+			_issue59_zorder_logged = true
+			print("ISSUE #59 FIX ACTIVE: bench tools now drawn BEFORE energies, so they render behind them")
+
 	if show_hp_and_energies and energy_count > 0:
 		# Add energies in REVERSE draw order so energy[0] (first attached) renders on top.
 		# i goes from energy_count-1 down to 0.
@@ -1119,28 +1148,6 @@ func build_pokemon_slot_with_energies_and_hp(card_obj: card_object, card_size: V
 			energy_display.load_card_image(energy_obj.uid, card_size, energy_obj)
 			energy_display.position = Vector2(0, -(i + 1) * energy_offset)
 			energy_display.mouse_filter = MOUSE_FILTER_IGNORE
-
-	# ISSUE #59 FIX: show attached tool/trainer cards (Defender, PlusPower, etc.) stacked ABOVE the
-	# energy cards for bench Pokémon so they read as attached too. The Active Pokémon shows its tools
-	# via display_attached_trainer_cards, so only render them here for bench slots.
-	# ISSUE #80: gate the stacked tools on `show_energies` too. Normal bench slots (show_energies=true)
-	# keep stacking their tools; the retreat/preview FOCUS Pokémon (show_energies=false) renders its
-	# tools as separate cards beside it instead, so it must not ALSO stack them here (double image).
-	if show_hp_and_energies and show_energies and card_obj.current_location == "bench" and card_obj.attached_cards.size() > 0:
-		var tool_offset = energy_offset if energy_offset > 0 else max(min_px, card_size.y * base_fraction)
-		var stack_top = energy_count * energy_offset  # top edge of the energy stack (upward)
-		# ISSUE #59 (retest sub-issue 1): iterate tools in REVERSE draw order (highest first) — like the
-		# energy loop above — so the tool CLOSEST to the card renders on TOP and each higher tool sits
-		# BEHIND the one below it. Previously they were drawn forward, putting the highest tool in front.
-		var tool_count = card_obj.attached_cards.size()
-		for j in range(tool_count - 1, -1, -1):
-			var tool_obj = card_obj.attached_cards[j]
-			var tool_display = TextureRect.new()
-			tool_display.set_script(card_display_script)
-			card_area.add_child(tool_display)
-			tool_display.load_card_image(tool_obj.uid, card_size, tool_obj)
-			tool_display.position = Vector2(0, -(stack_top + (j + 1) * tool_offset))
-			tool_display.mouse_filter = MOUSE_FILTER_IGNORE
 
 	# Pokemon card at (0, 0) — on top of all energies.
 	var card_display = TextureRect.new()
@@ -1163,18 +1170,35 @@ func build_pokemon_slot_with_energies_and_hp(card_obj: card_object, card_size: V
 	
 	return slot
 
+# ISSUE #87: the HP squares belong to the Active Pokemon, so they must only be on screen while that
+# Pokemon's card is actually on screen. Any time the Active card is hidden to fly it somewhere (retreat,
+# forced switch, knockout, bench replacement) the squares have to go with it, or they hang in an empty
+# slot — sometimes still showing the old Pokemon's HP.
+#
+# THE ONE PLACE the Active slot's visibility is toggled. Always use this instead of setting
+# `active_container.visible` directly, so the two can never get out of step.
+func set_active_slot_visible(is_opponent: bool, is_slot_visible: bool) -> void:
+	var active_container = opponent_active_container if is_opponent else player_active_container
+	var hp_container = opponent_hp_container if is_opponent else player_hp_container
+	active_container.visible = is_slot_visible
+	hp_container.visible = is_slot_visible
+
 # Displays HP circles above the active pokemon, colouring red from damage taken
 func display_hp_circles_above_align(active_pokemon: card_object, is_opponent: bool) -> void:
 	var hp_grid_container = opponent_hp_container if is_opponent else player_hp_container
-	
+
 	for child in hp_grid_container.get_children():
 		child.queue_free()
-	
+
 	hp_grid_container.columns = 12
-	
+
+	# ISSUE #87: no Active Pokemon (knocked out, or mid-swap) → no HP squares at all. This also
+	# re-reveals them on the next refresh once a replacement Pokemon has arrived in the slot.
 	if active_pokemon == null or not active_pokemon.metadata.has("hp"):
+		hp_grid_container.visible = false
 		return
-	
+	hp_grid_container.visible = true
+
 	var max_hp = int(active_pokemon.metadata["hp"])
 	var total_circles = max_hp / 10
 	var red_circles = (max_hp - active_pokemon.current_hp) / 10
@@ -1364,7 +1388,6 @@ func animate_deck_shuffle(is_opponent: bool) -> void:
 	for child in widget.get_children():
 		if child.get_meta("sleeve_stack", false):
 			stack.append(child)
-	print("ISSUE #42 FIX ACTIVE: shuffle animation on ", "opponent" if is_opponent else "player", " deck (", stack.size(), " layers)")
 	if stack.is_empty():
 		# Nothing to riffle (empty/near-empty deck) — still pause so callers can await a beat.
 		await get_tree().create_timer(GameState.scaled_duration(0.3, GameState.card_match_animation_speed)).timeout
@@ -1609,7 +1632,6 @@ func animate_energies_to_discard(energy_cards: Array, pokemon: card_object, is_o
 		# ISSUE #79: refresh the discard pile visual after EVERY energy (not just at the end) so the
 		# player sees each discarded energy land on the pile as it is discarded during retreat/KO.
 		update_discard_pile_display(is_opponent)
-		print("ISSUE #79 FIX ACTIVE: discard pile refreshed after discarding ", energy.metadata.get("name", ""))
 		await get_tree().create_timer(0.2).timeout
 
 	# Update the discard pile visual to show the new top card
@@ -1646,7 +1668,8 @@ func animate_retreat(old_active: card_object, new_active: card_object, discarded
 		var new_tex = get_card_texture(new_active)
 
 		# 1) Hide the Active card and glide the outgoing Pokémon down to the Bench (shrinking to Bench size)
-		active_container.visible = false
+		# ISSUE #87: hides the HP squares along with the card.
+		set_active_slot_visible(is_opponent, false)
 		await animate_card_a_to_b(active_container, bench_container, 0.3, old_tex, card_scales[3.5], card_scales[11])
 
 		# 2) Apply the swap in data — but only if the caller hasn't already done it (most callers
@@ -1665,7 +1688,9 @@ func animate_retreat(old_active: card_object, new_active: card_object, discarded
 		# 3) Refresh the board so it reflects the swap (Active kept hidden so the incoming card can fly in)
 		display_pokemon(is_opponent)
 		display_active_pokemon_energies(is_opponent)
-		active_container.visible = false
+		# ISSUE #87: display_pokemon re-shows the squares for the new Active, so re-hide the whole slot
+		# until the incoming card has finished flying in.
+		set_active_slot_visible(is_opponent, false)
 
 		# 4) Glide the incoming Pokémon up into the Active slot, growing to Active size.
 		# ISSUE #7 (player-forced retest): the container's global_position can resolve to the wrong
@@ -1677,7 +1702,7 @@ func animate_retreat(old_active: card_object, new_active: card_object, discarded
 		await animate_card_a_to_b(bench_container, active_container, 0.3, new_tex, card_scales[11], active_loc.get("size", card_scales[3.5]), active_loc.get("position", _ANIM_POS_SENTINEL))
 
 		# 5) Reveal the new Active
-		active_container.visible = true
+		set_active_slot_visible(is_opponent, true)
 		display_active_pokemon_energies(is_opponent)
 		return
 
@@ -1700,7 +1725,8 @@ func animate_retreat(old_active: card_object, new_active: card_object, discarded
 	var new_texture = get_card_texture(new_active)
 
 	# 1) Hide the Active card and glide the outgoing Pokémon down to the Bench (shrinking to Bench size)
-	active_container.visible = false
+	# ISSUE #87: hides the HP squares along with the card.
+	set_active_slot_visible(is_opponent, false)
 	await animate_card_a_to_b(active_container, bench_container, 0.3, old_texture, card_scales[3.5], card_scales[11])
 
 	# 2) The callers have already swapped the data arrays + current_location; ensure the Active
@@ -1713,13 +1739,14 @@ func animate_retreat(old_active: card_object, new_active: card_object, discarded
 	# 3) Refresh the board so it reflects the swap (Active kept hidden so the incoming card can fly in)
 	display_pokemon(is_opponent)
 	display_active_pokemon_energies(is_opponent)
-	active_container.visible = false
+	# ISSUE #87: re-hide the slot (display_pokemon just re-showed the squares) until the card lands.
+	set_active_slot_visible(is_opponent, false)
 
 	# 4) Glide the incoming Pokémon up into the Active slot, growing to Active size
 	await animate_card_a_to_b(bench_container, active_container, 0.3, new_texture, card_scales[11], card_scales[3.5])
 
 	# 5) Reveal the new Active, then the closing message (animation plays fully first)
-	active_container.visible = true
+	set_active_slot_visible(is_opponent, true)
 	display_active_pokemon_energies(is_opponent)
 	await show_message(switcher_label + " SET " + new_active.metadata["name"].to_upper() + " AS THEIR ACTIVE POKEMON!")
 
@@ -2647,14 +2674,12 @@ func perform_energy_attachment() -> void:
 		# ISSUE #40 FIX: fly the Energy to its EXACT final slot in the Active energy stack (position AND
 		# size), read straight off the freshly-built stack — no guessing. Previously it flew to the
 		# Active card's position/size and then snapped into the stack (looked ~300px off / mid-array).
-		print("ISSUE #40 FIX ACTIVE (player): energy flies to exact final stack slot")
 		var slot_rect = measure_and_hide_new_active_energy_slot(false)
 		var slot_pos = slot_rect.get("position", _ANIM_POS_SENTINEL)
 		var slot_size = slot_rect.get("size", card_scales[11])
 		await animate_card_a_to_b(player_hand_container, target_node, 0.2, energy_texture, card_scales[12], slot_size, slot_pos)
 	else:
 		# ISSUE #20 FIX: fly the Energy to the ACTUAL benched Pokémon's slot position.
-		print("ISSUE #20 FIX ACTIVE: energy flies to real bench slot")
 		var energy_pos_override = get_pokemon_screen_location(target_pokemon).get("position", Vector2(-99999, -99999))
 		await animate_card_a_to_b(player_hand_container, target_node, 0.2, energy_texture, card_scales[12], Vector2.ZERO, energy_pos_override)
 
@@ -3068,7 +3093,6 @@ func player_end_turn_checks() -> void:
 	# prize card), don't run end-turn processing or flash the "End turn" label over the "You won!"
 	# message — the match is already over.
 	if game_is_over:
-		print("ISSUE #47 FIX ACTIVE: game already over — suppressing End turn label/processing")
 		return
 	opponent_blocker.visible = true
 	opponents_turn_active = true
@@ -3558,8 +3582,6 @@ func perform_evolution(is_opponent: bool) -> void:
 	target_card.defender_turns_remaining = -1
 	target_card.defender_count = 0
 	target_card.pluspower_count = 0
-	if target_card.attached_cards.size() > 0 or evo_card.attached_cards.size() > 0:
-		print("ISSUE #58 FIX ACTIVE: carried ", evo_card.attached_cards.size(), " attached card(s) onto ", evo_card.metadata.get("name", ""))
 	
 	# Transfer existing pre-evolutions then add the old card itself to the chain
 	evo_card.attached_pre_evolutions = target_card.attached_pre_evolutions.duplicate()
@@ -4331,13 +4353,15 @@ func display_and_apply_attack_damage(attacker: card_object, defender: card_objec
 
 	# GYM1-120 Vermilion City Gym: queued self-damage from Lt. Surge tails — apply to attacker after damage resolves
 	if vermilion_lt_surge_self_damage_pending > 0 and attacker != null:
-		var v_self_dmg = vermilion_lt_surge_self_damage_pending
+		# ISSUE #82 / ISSUE #60: PlusPower +10 each, Defender -20 each on this queued self-damage.
+		var v_self_dmg = apply_self_damage_modifiers(attacker, vermilion_lt_surge_self_damage_pending)
 		vermilion_lt_surge_self_damage_pending = 0
-		var attacker_pos = Vector2(1030, 300) if is_opponent else Vector2(530, 300)
-		show_floating_label("VERMILION -" + str(v_self_dmg) + "HP", attacker_pos, Color.RED, true)
-		attacker.current_hp = max(0, attacker.current_hp - v_self_dmg)
-		display_hp_circles_above_align(attacker, is_opponent)
-		print("VERMILION GYM TAILS: ", attacker.metadata.get("name", ""), " took ", v_self_dmg, " self-damage")
+		if v_self_dmg > 0:
+			var attacker_pos = Vector2(1030, 300) if is_opponent else Vector2(530, 300)
+			show_floating_label("VERMILION -" + str(v_self_dmg) + "HP", attacker_pos, Color.RED, true)
+			attacker.current_hp = max(0, attacker.current_hp - v_self_dmg)
+			display_hp_circles_above_align(attacker, is_opponent)
+			print("VERMILION GYM TAILS: ", attacker.metadata.get("name", ""), " took ", v_self_dmg, " self-damage")
 
 # Parses the attack text for card effects and applies them
 # pre_flip_result: if a coin was already flipped during damage resolution, pass "heads" or "tails" to skip re-flipping
@@ -4550,7 +4574,12 @@ func perform_attack(attack_index: int) -> void:
 	player_end_turn_checks()
 	
 # Returns final damage and a list of modifiers applied, for display purposes
-func calculate_final_damage(base_damage: int, attacking_types: Array, defending_pokemon: card_object, attacker_pokemon: card_object = null) -> Dictionary:
+# is_self_damage: set by callers that are resolving damage a Pokemon deals to ITSELF (confusion under
+# base-set rules runs the self-hit through Weakness/Resistance). Those callers finish with
+# apply_self_damage_modifiers(), so the PlusPower and Defender blocks below must be skipped here or the
+# same hit would be modified twice — with defending_pokemon == the attacker, Defender was silently
+# applied in both places (ISSUE #82 / ISSUE #90).
+func calculate_final_damage(base_damage: int, attacking_types: Array, defending_pokemon: card_object, attacker_pokemon: card_object = null, is_self_damage: bool = false) -> Dictionary:
 	var damage = base_damage
 	var modifiers_applied = []
 
@@ -4564,7 +4593,6 @@ func calculate_final_damage(base_damage: int, attacking_types: Array, defending_
 	# Pokemon. Every damage modifier further down this function is already gated on damage > 0, so
 	# returning here changes nothing except suppressing the misleading labels.
 	if base_damage <= 0:
-		print("ISSUE #73 FIX ACTIVE: attack does no damage — skipping Weakness/Resistance (and their labels)")
 		return {"damage": 0, "modifiers": modifiers_applied}
 
 	# ECARD2/ECARD3 Crystal Type + Crystal Shard: if the attacker's own type is currently
@@ -4727,7 +4755,7 @@ func calculate_final_damage(base_damage: int, attacking_types: Array, defending_
 	
 	# Apply PlusPower bonus (+10 per PlusPower attached to the attacker)
 	# PlusPower is applied AFTER weakness/resistance per original TCG rules
-	if damage > 0 and attacker_pokemon != null and attacker_pokemon.pluspower_count > 0:
+	if damage > 0 and not is_self_damage and attacker_pokemon != null and attacker_pokemon.pluspower_count > 0:
 		var pp_bonus = attacker_pokemon.pluspower_count * 10
 		damage += pp_bonus
 		modifiers_applied.append("PLUSPOWER +" + str(pp_bonus))
@@ -4756,7 +4784,7 @@ func calculate_final_damage(base_damage: int, attacking_types: Array, defending_
 		vermilion_lt_surge_bonus_damage = 0
 	
 	# Apply Defender reduction (-20 damage per Defender attached to the defending pokemon)
-	if damage > 0:
+	if damage > 0 and not is_self_damage:
 		var reduction = get_defender_reduction(defending_pokemon, damage)
 		if reduction > 0:
 			damage -= reduction
@@ -4828,6 +4856,28 @@ func get_defender_reduction(pokemon: card_object, damage: int) -> int:
 	if pokemon.defender_count <= 0 or pokemon.defender_turns_remaining < 0:
 		return 0
 	return min(damage, 20 * pokemon.defender_count)
+
+# ISSUE #82: PlusPower now behaves as the mirror image of Defender — where Defender reduces EVERY hit
+# a Pokemon takes (including damage it does to itself), PlusPower raises every amount of damage the
+# Pokemon it is attached to deals, self-damage included: +10 per PlusPower attached.
+#
+# THE ONE PLACE self-damage modifiers are applied. Every self-damage path (confusion coin-flip,
+# generic "does N damage to itself" attack text, gym2_self_damage — the shared helper behind dozens of
+# recoil attacks — raw recoil loops, and the confused-retreat penalty) routes through here so
+# PlusPower and Defender can never drift apart or be applied twice on the same hit.
+# Order matches the attack path: bonuses first, then Defender reduction, floored at 0.
+func apply_self_damage_modifiers(pokemon: card_object, damage: int) -> int:
+	if pokemon == null or damage <= 0:
+		return max(0, damage)
+	var original = damage
+	if pokemon.pluspower_count > 0:
+		damage += pokemon.pluspower_count * 10
+	var reduction = get_defender_reduction(pokemon, damage)
+	damage = max(0, damage - reduction)
+	if damage != original:
+		print("ISSUE #82 FIX ACTIVE: self-damage on ", pokemon.metadata.get("name", ""), " ", original, " -> ", damage,
+			" (PlusPower x", pokemon.pluspower_count, " +", pokemon.pluspower_count * 10, ", Defender -", reduction, ")")
+	return damage
 
 ############################################################# Knockout functions ##################################################################
 													
@@ -4924,8 +4974,16 @@ func check_and_handle_knockout(pokemon: card_object, is_opponent: bool) -> bool:
 	# Use the container as fallback if pokemon_ui was freed
 	var from_node = pokemon_ui if is_instance_valid(pokemon_ui) else active_container
 
+	# ISSUE #87: when it is the ACTIVE being knocked out, hide its slot (card + HP squares) before the
+	# card flies to the discard, so the squares don't sit above an empty Active spot for the whole
+	# animation. They come back with the replacement Pokemon via display_hp_circles_above_align.
+	if pokemon == active:
+		set_active_slot_visible(is_opponent, false)
+		print("ISSUE #87 FIX ACTIVE: hid the Active slot + HP squares for the knockout animation")
+
 	await animate_card_a_to_b(from_node, discard_node, 0.3, pokemon_texture, card_scales[10])
-	
+
+
 	if pokemon == active:
 		if is_opponent:
 			opponent_active_pokemon = null
@@ -5026,12 +5084,10 @@ func check_all_knockouts() -> Dictionary:
 	# in a new Active Pokémon (and showing "X set Y as their active") only to immediately declare the
 	# winner. Win-by-last-prize is resolved here and returns straight away.
 	if player_prize_cards.size() == 0 and opponent_prize_kos > 0:
-		print("ISSUE #47 FIX ACTIVE: last prize taken — skipping new-active promotion, ending game")
 		await show_message("YOU TOOK YOUR LAST PRIZE CARD!")
 		game_end_logic(false)  # false = opponent loses
 		return results
 	if opponent_prize_cards.size() == 0 and player_prize_kos > 0:
-		print("ISSUE #47 FIX ACTIVE: last prize taken — skipping new-active promotion, ending game")
 		await show_message("OPPONENT TOOK THEIR LAST PRIZE CARD!")
 		game_end_logic(true)  # true = player loses
 		return results
@@ -5096,6 +5152,9 @@ func handle_post_knockout(is_opponent: bool) -> void:
 		new_active.current_location = "active"
 		opponent_active_pokemon = new_active
 		display_pokemon(true)
+		# ISSUE #87: the slot was hidden for the knockout animation — reveal it now the replacement has
+		# landed, so the new card AND its HP squares appear together.
+		set_active_slot_visible(true, true)
 		display_active_pokemon_energies(true)
 		display_active_pokemon_energies(false)
 		await show_message("OPPONENT SET " + new_active.metadata["name"].to_upper() + " AS THEIR ACTIVE POKEMON!")
@@ -5278,10 +5337,12 @@ func check_confused_retreat(pokemon: card_object, is_opponent: bool, phase: Stri
 		await show_message(pokemon_name.to_upper() + " IS CONFUSED! FLIPPING COIN TO RETREAT...")
 		var coin = await flip_coin(false, is_opponent)
 		if not coin:
-			pokemon.current_hp = max(0, pokemon.current_hp - 20)
-			await show_message("RETREAT FAILED! " + pokemon_name.to_upper() + " HURT ITSELF FOR 20 DAMAGE!")
+			# ISSUE #82 / ISSUE #60: PlusPower +10 each, Defender -20 each on the failed-retreat penalty.
+			var retreat_self_dmg = apply_self_damage_modifiers(pokemon, 20)
+			pokemon.current_hp = max(0, pokemon.current_hp - retreat_self_dmg)
+			await show_message("RETREAT FAILED! " + pokemon_name.to_upper() + " HURT ITSELF FOR " + str(retreat_self_dmg) + " DAMAGE!")
 			var label_x = 1030 if is_opponent else 530
-			show_floating_label("-20HP", Vector2(label_x, 300), Color.YELLOW, is_opponent)
+			show_floating_label("-" + str(retreat_self_dmg) + "HP", Vector2(label_x, 300), Color.YELLOW, is_opponent)
 			display_hp_circles_above_align(pokemon, is_opponent)
 			if is_opponent:
 				opponent_retreated_this_turn = true
@@ -6133,6 +6194,9 @@ func handle_action_knockout_bench() -> void:
 	await animate_card_a_to_b(player_bench_container, player_active_container, 0.3, new_texture, card_scales[9], active_loc.get("size", card_scales[3.5]), active_loc.get("position", _ANIM_POS_SENTINEL))
 
 	display_pokemon(false)
+	# ISSUE #87: the slot was hidden for the knockout animation — reveal it now the replacement has
+	# landed, so the new card AND its HP squares appear together.
+	set_active_slot_visible(false, true)
 	display_active_pokemon_energies(false)
 	display_hp_circles_above_align(player_active_pokemon, false)
 
@@ -6276,7 +6340,6 @@ func cancel_button_pressed_hide_selection_mode() -> void:
 
 	# ISSUE #80: close the single-card preview (view-only) back to the board.
 	if pokemon_preview_active:
-		print("ISSUE #80 FIX ACTIVE: closing single-card preview")
 		pokemon_preview_active = false
 		pokemon_preview_target = null
 		hide_selection_mode_display_main()
@@ -6284,7 +6347,6 @@ func cancel_button_pressed_hide_selection_mode() -> void:
 
 	# ISSUE #80: close the bench VIEW back to the board.
 	if bench_view_active:
-		print("ISSUE #80 FIX ACTIVE: closing bench view")
 		bench_view_active = false
 		hide_selection_mode_display_main()
 		return
@@ -6392,6 +6454,10 @@ func cancel_button_pressed_hide_selection_mode() -> void:
 # Opens any card array in enlarged selection mode when its container is clicked
 func array_container_clicked(event: InputEvent, card_array: Array) -> void:
 	if event is InputEventMouseButton and event.pressed:
+		# ISSUE #89 FIX: mouse-wheel notches arrive as pressed mouse buttons, so scrolling over a
+		# container used to open its enlarged selection view. Scrolling is not a click.
+		if event.button_index in [MOUSE_BUTTON_WHEEL_UP, MOUSE_BUTTON_WHEEL_DOWN, MOUSE_BUTTON_WHEEL_LEFT, MOUSE_BUTTON_WHEEL_RIGHT]:
+			return
 		if msgbox_container.visible or coin_container.visible: return
 		if card_array.size() > 0:
 			# ISSUE #80: viewing either bench is a VIEW (no "place on bench" action); clicking a card
@@ -6407,7 +6473,6 @@ func array_container_clicked(event: InputEvent, card_array: Array) -> void:
 func show_pokemon_preview(pokemon: card_object) -> void:
 	if pokemon == null:
 		return
-	print("ISSUE #80 FIX ACTIVE: opening single-card preview for ", pokemon.metadata.get("name", ""))
 	bench_view_active = false
 	pokemon_preview_active = true
 	pokemon_preview_target = pokemon
@@ -6681,7 +6746,6 @@ func clear_current_action_selection() -> void:
 	# blank-space / right-click has nothing to clear (and must not disturb the view).
 	if pokemon_preview_active or bench_view_active:
 		return
-	print("ISSUE #77 FIX ACTIVE: clearing all selected cards for the current action")
 
 	# ── Multi-select: retreat energy discard (choose N energy to pay the retreat cost) ──
 	if retreat_mode_active:
@@ -6757,18 +6821,35 @@ func _input(event: InputEvent) -> void:
 			debug_key_heal_bench()
 			
 	if event is InputEventMouseButton and event.pressed:
-		
+
+		# ISSUE #89 FIX: the mouse wheel arrives as an InputEventMouseButton with pressed == true, so
+		# every notch of scrolling was being treated as a click — it acknowledged message boxes and,
+		# whenever the cursor wasn't over a card, cleared the player's in-progress selection. That made
+		# a hand of 8+ cards (which goes into a scroll box) impossible to scroll through without losing
+		# the selected card. Scrolling is not a click: drop wheel events here and let the ScrollContainer
+		# under the cursor do its job.
+		if event.button_index in [MOUSE_BUTTON_WHEEL_UP, MOUSE_BUTTON_WHEEL_DOWN, MOUSE_BUTTON_WHEEL_LEFT, MOUSE_BUTTON_WHEEL_RIGHT]:
+			print("ISSUE #89 FIX ACTIVE: mouse-wheel event ignored (scrolling is not a click)")
+			return
+
 		if msgbox_container.visible:
 			message_acknowledged.emit()
 			get_viewport().set_input_as_handled()
 			return
 
-		# ISSUE #78: a right-click is ALWAYS treated as clicking a blank space — it clears every
-		# currently-selected card for the in-progress action. Nothing in the match uses right-click
-		# for anything else, so this is handled up-front regardless of what is under the cursor.
+		# ISSUE #88 FIX: right-click is the "back/cancel" button (it will map to controller B/O later).
+		# When a Cancel button is on screen, right-clicking anywhere presses it — the same as clicking
+		# the button itself, whatever its current label ("Cancel", "Done", "CLOSE"). With no Cancel
+		# button up there is nothing to back out of, so it falls back to ISSUE #78's behaviour: treat it
+		# as a blank-space click, clearing every selected card for the in-progress action without
+		# cancelling the mode.
 		if event.button_index == MOUSE_BUTTON_RIGHT:
-			print("ISSUE #78 FIX ACTIVE: right-click treated as blank-space click")
-			clear_current_action_selection()
+			if cancel_button.visible and not cancel_button.disabled:
+				print("ISSUE #88 FIX ACTIVE: right-click pressed the on-screen Cancel button ('", cancel_button.text, "')")
+				cancel_button.pressed.emit()
+			else:
+				print("ISSUE #88 FIX ACTIVE: right-click treated as blank-space click (no Cancel button on screen)")
+				clear_current_action_selection()
 			get_viewport().set_input_as_handled()
 			return
 
@@ -6809,7 +6890,6 @@ func _input(event: InputEvent) -> void:
 # ── Dev debug cheat keys (in-match) ──────────────────────────────────────────────────────
 # D: both players draw 1 card.
 func debug_key_both_draw() -> void:
-	print("ISSUE #19 FIX ACTIVE: debug draw — no message box")
 	await card_ops.draw_n(false, 1)
 	if _should_bail(): return
 	await card_ops.draw_n(true, 1)
@@ -6817,7 +6897,6 @@ func debug_key_both_draw() -> void:
 
 # S: both players shuffle their hand into their deck and draw back the same number of cards.
 func debug_key_both_shuffle_hand() -> void:
-	print("ISSUE #19 FIX ACTIVE: debug shuffle hand — no message box")
 	for is_opponent in [false, true]:
 		var hand = opponent_hand if is_opponent else player_hand
 		var deck = opponent_deck if is_opponent else player_deck
@@ -6832,7 +6911,6 @@ func debug_key_both_shuffle_hand() -> void:
 
 # E: attach an energy card of each active Pokemon's own type to that Pokemon (searched from its owner's deck).
 func debug_key_both_attach_energy() -> void:
-	print("ISSUE #19 FIX ACTIVE: debug attach energy — no message box")
 	for is_opponent in [false, true]:
 		var active = opponent_active_pokemon if is_opponent else player_active_pokemon
 		if active == null:
@@ -6858,7 +6936,6 @@ func debug_key_both_attach_energy() -> void:
 
 # H: fully heal both active Pokemon.
 func debug_key_heal_actives() -> void:
-	print("ISSUE #19 FIX ACTIVE: debug heal actives — no message box")
 	if player_active_pokemon != null:
 		await card_ops.heal_pokemon(player_active_pokemon, player_active_pokemon.get_max_hp(), false)
 		if _should_bail(): return
@@ -6868,7 +6945,6 @@ func debug_key_heal_actives() -> void:
 
 # B: fully heal all benched Pokemon on both sides.
 func debug_key_heal_bench() -> void:
-	print("ISSUE #19 FIX ACTIVE: debug heal bench — no message box")
 	for p in player_bench:
 		await card_ops.heal_pokemon(p, p.get_max_hp(), false)
 		if _should_bail(): return
@@ -6989,7 +7065,6 @@ func _ready() -> void:
 		opponent_blocker.color = debug_blocker_color
 		animation_blocker.color = debug_blocker_color
 		buttons_only_blocker.color = debug_blocker_color
-		print("ISSUE #5 FIX ACTIVE: input blockers tinted pale red (20% alpha) for TEST match debugging")
 
 	# Load sleeve textures for player and opponent
 	player_sleeve_small = _resolve_sleeve_path(pdata.get("sleeve", "default"), true)

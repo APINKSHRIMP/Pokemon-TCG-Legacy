@@ -1822,13 +1822,21 @@ func _do_empty_deck() -> void:
 
 ## Saves the current deck to a JSON file and updates player_data.json.
 func _on_save_pressed() -> void:
-	if total_deck_count != DECK_SIZE:
+	# ISSUE #84 FIX: every reason a save can be refused now produces a visible floating message instead
+	# of the button silently doing nothing. The size checks used to be duplicated here (and hardcoded to
+	# != DECK_SIZE, ignoring TESTING_UNLIMITED_DECKS) — they all live in _deck_save_blocker() now.
+	var blocker := _deck_save_blocker()
+	if blocker != "":
+		print("ISSUE #84 FIX ACTIVE: save refused — ", blocker)
+		_show_deck_message(blocker)
 		return
 
-	# Build the deck name from the text field
-	var display_name := deck_name_edit.text.strip_edges()
-	if display_name == "":
+	if not _is_deck_dirty():
+		print("ISSUE #84 FIX ACTIVE: save refused — no changes since the last save")
+		_show_deck_message("No changes to save")
 		return
+
+	var display_name := deck_name_edit.text.strip_edges()
 
 	SoundManagerScript.play_sfx(SoundManagerScript.SFX_gamemode_select)
 
@@ -1976,7 +1984,6 @@ func _input(event: InputEvent) -> void:
 			# it too. Consume the event so hovering a card to preview it never re-triggers
 			# the last-focused button.
 			get_viewport().set_input_as_handled()
-			print("ISSUE #4 FIX ACTIVE (deck view spacebar): consumed KEY_SPACE press so it can't fall through to a focused button")
 			space_held = true
 			print("ISSUE #13 FIX ACTIVE (deck view spacebar): preview now follows the mouse while Space is held")
 			_refresh_hover_preview()
@@ -2246,25 +2253,121 @@ func _on_deck_name_changed(_new_text: String) -> void:
 	_refresh_save_button()
 
 
-## Enables the save button only when the deck has exactly 60 cards
-## and a deck name has been entered.
-func _refresh_save_button() -> void:
-	var name_ok := deck_name_edit.text.strip_edges() != ""
-	var is_dirty := _is_deck_dirty()
+# ─── Floating message (ISSUE #84) ────────────────────────────────────────────
+# TWEAKABLE VALUES for the floating message shown when a save is refused.
+const MSG_ANCHOR_Y       := 0.82    # vertical screen position, as a fraction of screen height
+const MSG_HEIGHT         := 60.0    # strip height the text is centred in
+const MSG_FONT_SIZE      := 34
+const MSG_RISE_PIXELS    := 120.0   # how far it drifts upward
+const MSG_RISE_SECONDS   := 2.0     # drift duration
+const MSG_FADE_SECONDS   := 1.6     # fade duration (starts with the drift)
+const MSG_COLOUR         := Color(1.0, 0.45, 0.45)
 
-	# Enable the save button only when:
-	# 1) The deck has exactly 60 cards
-	# 2) A deck name has been entered
-	# 3) Something has actually changed since the last save/load
-	# TEMP TESTING: allow saving decks of any size (still needs at least 1 card).
-	var size_ok := (total_deck_count == DECK_SIZE) or (TESTING_UNLIMITED_DECKS and total_deck_count > 0)
-	if size_ok and name_ok and is_dirty:
-		save_btn.disabled = false
+var _deck_message_label: Label = null
+
+## Shows a short message that rises and fades near the bottom of the screen, in the same style as the
+## in-match floating labels. Calling it again replaces any message still on screen so rapid clicks
+## never stack labels on top of each other.
+func _show_deck_message(text: String) -> void:
+	if _deck_message_label != null and is_instance_valid(_deck_message_label):
+		_deck_message_label.queue_free()
+	_deck_message_label = null
+
+	var lbl := Label.new()
+	lbl.text = text
+	lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	lbl.z_index = 100
+	var kenney_theme = load("res://UI_Themes/kenneyUI.tres")
+	if kenney_theme:
+		lbl.theme = kenney_theme
+	lbl.add_theme_font_size_override("font_size", MSG_FONT_SIZE)
+	lbl.add_theme_color_override("font_color", MSG_COLOUR)
+	lbl.add_theme_color_override("font_outline_color", Color.BLACK)
+	lbl.add_theme_constant_override("outline_size", 10)
+	# Full-width strip so the text is centred horizontally whatever its length. Both vertical offsets
+	# are tweened together (the label is anchored, so tweening `position` would fight the layout).
+	lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	lbl.anchor_left = 0.0
+	lbl.anchor_right = 1.0
+	lbl.anchor_top = MSG_ANCHOR_Y
+	lbl.anchor_bottom = MSG_ANCHOR_Y
+	lbl.offset_top = 0.0
+	lbl.offset_bottom = MSG_HEIGHT
+	add_child(lbl)
+	_deck_message_label = lbl
+
+	var tween := create_tween()
+	tween.set_parallel(true)
+	tween.tween_property(lbl, "offset_top", -MSG_RISE_PIXELS, MSG_RISE_SECONDS)
+	tween.tween_property(lbl, "offset_bottom", MSG_HEIGHT - MSG_RISE_PIXELS, MSG_RISE_SECONDS)
+	tween.tween_property(lbl, "modulate:a", 0.0, MSG_FADE_SECONDS)
+	await tween.finished
+	if is_instance_valid(lbl):
+		lbl.queue_free()
+	if _deck_message_label == lbl:
+		_deck_message_label = null
+
+
+## ISSUE #84: the single source of truth for "can this deck be saved?".
+## Returns "" when the deck is saveable, otherwise the reason to show the player.
+## The save button's colour and _on_save_pressed()'s floating message both read this, so the button's
+## appearance and the explanation can never disagree.
+##
+## Checks, in the order they are reported:
+##   1) card count — must be exactly 60 (relaxed to "at least 1" while TESTING_UNLIMITED_DECKS is on)
+##   2) at least one Basic Pokemon — enforced even in testing mode, because a deck with no Basic
+##      cannot be set up at the start of a match at all, so saving one is never useful
+##   3) a deck name has been entered
+func _deck_save_blocker() -> String:
+	if TESTING_UNLIMITED_DECKS:
+		if total_deck_count < 1:
+			return "Deck is empty"
+	elif total_deck_count < DECK_SIZE:
+		return "Deck does not have enough cards. 60 cards required"
+	elif total_deck_count > DECK_SIZE:
+		return "Deck has too many cards. 60 cards required"
+
+	if not _deck_has_basic_pokemon():
+		return "Deck needs at least 1 Basic Pokemon"
+
+	if deck_name_edit.text.strip_edges() == "":
+		return "No Deck name entered"
+
+	return ""
+
+
+## ISSUE #84: true when the deck contains at least one Basic Pokemon.
+## A card counts as Basic when its metadata supertype is Pokemon and "Basic" is among its subtypes —
+## this deliberately excludes Basic ENERGY, whose supertype is "Energy".
+func _deck_has_basic_pokemon() -> bool:
+	for card_id in deck_cards:
+		if deck_cards[card_id] <= 0:
+			continue
+		var meta = _get_card_meta(card_id)
+		if meta == null:
+			continue
+		if meta["supertype"] != "Pokémon":
+			continue
+		for st in meta["subtypes"]:
+			if str(st).to_lower() == "basic":
+				return true
+	return false
+
+
+## Colours the save button green when the deck is saveable and something has changed.
+## ISSUE #84: the button is never actually `disabled` any more — a disabled Button emits no `pressed`
+## signal, so the player got no feedback at all when they clicked it. It now always accepts the click
+## and _on_save_pressed() explains why nothing was saved; the theme still shows at a glance whether
+## saving will work.
+func _refresh_save_button() -> void:
+	var can_save := _deck_save_blocker() == "" and _is_deck_dirty()
+	save_btn.disabled = false
+	if can_save:
 		var green_theme = load("res://UI_Themes/kenneyUI-green.tres")
 		if green_theme:
 			save_btn.theme = green_theme
 	else:
-		save_btn.disabled = true
 		save_btn.theme = load("res://UI_Themes/kenneyUI.tres")
 
 

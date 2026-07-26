@@ -1602,7 +1602,6 @@ func pick_best_bench_replacement(bench: Array, against_pokemon: card_object, cpu
 	if against_pokemon != null:
 		var survivors = bench.filter(func(p): return not _is_guaranteed_ko_by(p, against_pokemon))
 		if not survivors.is_empty() and survivors.size() < bench.size():
-			print("ISSUE #8 FIX ACTIVE (pick_best_bench_replacement): excluding ", bench.size() - survivors.size(), " guaranteed-KO bench candidate(s) from replacement consideration")
 			candidates = survivors
 
 	var best_replacement: card_object = null
@@ -1788,7 +1787,6 @@ func cpu_phase_energy_attachment(cpu_eval: Dictionary) -> void:
 	# ISSUE #6 FIX ACTIVE: every CPU action follows the same three beats — announce what the
 	# opponent is ABOUT to do, play the animation, then snap the board to the new state. This
 	# matches how evolving already reads, so the whole turn narrates consistently.
-	print("ISSUE #6 FIX ACTIVE (cpu energy attach): message, then animation, then board update")
 	await main.show_message("Opponent attached " + energy.metadata["name"].to_upper() + " to their " + target.metadata["name"].to_upper() + "!")
 	if main._should_bail(): return
 
@@ -1798,14 +1796,12 @@ func cpu_phase_energy_attachment(cpu_eval: Dictionary) -> void:
 		# ISSUE #40 FIX: fly the Energy to its EXACT final slot in the opponent Active energy stack
 		# (position AND size), read off the freshly-built stack. Previously it flew to the Active card's
 		# position (which for the opponent sat ~300px left of the energy stack) and then snapped over.
-		print("ISSUE #40 FIX ACTIVE (cpu): energy flies to exact final stack slot")
 		var slot_rect = main.measure_and_hide_new_active_energy_slot(true)
 		var slot_pos = slot_rect.get("position", Vector2(-99999, -99999))
 		var slot_size = slot_rect.get("size", main.card_scales[11])
 		await main.animate_card_a_to_b(main.opponent_hand_container, energy_target_node, 0.2, energy_texture, main.card_scales[12], slot_size, slot_pos)
 	else:
 		# ISSUE #20 FIX: fly the Energy to the ACTUAL benched Pokémon slot.
-		print("ISSUE #20 FIX ACTIVE (cpu): energy flies to real bench slot")
 		var energy_pos_override = main.get_pokemon_screen_location(target).get("position", Vector2(-99999, -99999))
 		await main.animate_card_a_to_b(main.opponent_hand_container, energy_target_node, 0.2, energy_texture, main.card_scales[12], Vector2.ZERO, energy_pos_override)
 	if main._should_bail(): return
@@ -2722,7 +2718,6 @@ func cpu_phase_attack(cpu_eval: Dictionary) -> void:
 				if not copied_attack.is_empty():
 					damage_source_attack = copied_attack
 					attack_text = copied_attack.get("text", "").to_lower()
-					print("ISSUE #9 FIX ACTIVE (cpu_phase_attack): scoring ", attack.get("name", ""), " using copyable attack ", copied_attack.get("name", ""))
 
 		var score = 0.0
 		var damage_range = main.attack_effects.estimate_attack_damage_range(damage_source_attack, main.opponent_active_pokemon, main.player_active_pokemon)
@@ -5249,9 +5244,22 @@ func _cpu_score_item_finder() -> float:
 
 # ISSUE #74 FIX: Lass shuffles BOTH players' Trainer cards into their decks, so it is only worth
 # playing when the player has a hand worth gutting and the CPU has little of its own to lose.
-# Profitability formula (as specified): P = (own hand size - 2 * own Trainers) * player hand size,
-# played only when P > 50. Other copies of Lass in our own hand are NOT counted as Trainers — they
-# would be shuffled away anyway and losing a duplicate Lass costs nothing.
+#
+# FIX 2 (retest): the first formula multiplied by our OWN hand size, so the ideal case — a hand of
+# nothing but Lass against a full player hand — scored 7 and never fired. Own hand size is irrelevant;
+# what matters is how many cards the player loses versus how many of our own Trainers get shuffled
+# away with them. The formula the user specified:
+#
+#     value = player hand size - 2.5 * (our own Trainers, EXCLUDING copies of Lass)
+#     play Lass when value >= LASS_MIN_VALUE (3)
+#
+# Duplicate Lasses are excluded because they would be shuffled away by this one anyway, so they cost
+# nothing. Worked examples: player 7 / our Trainers 0 -> 7.0 play (the user's case); 7 / 1 -> 4.5 play;
+# 7 / 2 -> 2.0 hold; 3 / 0 -> 3.0 play; 2 / 0 -> 2.0 hold. Note the threshold also subsumes the old
+# "never against a player holding fewer than 3 cards" gate, since value can never reach 3 in that case.
+const LASS_TRAINER_PENALTY := 2.5   # cards of value lost per own non-Lass Trainer shuffled away
+const LASS_MIN_VALUE := 3.0         # play Lass only when the net value reaches this
+const LASS_MAX_TRAINER_FRACTION := 0.2  # hard rule from the original issue: never with a Trainer-heavy hand
 func _cpu_score_lass() -> float:
 	var own_hand = main.opponent_hand.size()
 	var own_trainers = 0
@@ -5262,22 +5270,21 @@ func _cpu_score_lass() -> float:
 			own_trainers += 1
 	var player_hand = main.player_hand.size()
 
-	# Gate 1: a hand that is more than a fifth Trainers costs us more than it costs the player.
-	if own_hand > 0 and float(own_trainers) / float(own_hand) > 0.2:
-		print("ISSUE #74 FIX ACTIVE (Lass): not playing — ", own_trainers, " of our ", own_hand, " cards are Trainers (more than 1/5)")
+	# Hard rule from the original issue text: a hand that is more than a fifth Trainers costs us more
+	# than it costs the player. Uses the same non-Lass count, so a hand of only Lasses always passes.
+	# The ratio is measured against the hand as it will be AFTER Lass is played — this Lass goes to the
+	# discard, so counting it in the denominator understated the fraction by one card.
+	var hand_after_lass = own_hand - 1
+	if hand_after_lass > 0 and float(own_trainers) / float(hand_after_lass) > LASS_MAX_TRAINER_FRACTION:
+		print("ISSUE #74 FIX ACTIVE (Lass): not playing — ", own_trainers, " of the ", hand_after_lass, " cards left after playing Lass are Trainers (more than 1/5)")
 		return -100.0
 
-	# Gate 2: nothing meaningful to strip from a tiny player hand.
-	if player_hand < 3:
-		print("ISSUE #74 FIX ACTIVE (Lass): not playing — player only holds ", player_hand, " card(s)")
+	var value = float(player_hand) - (float(own_trainers) * LASS_TRAINER_PENALTY)
+	print("ISSUE #74 FIX ACTIVE (Lass): value = ", player_hand, " - ", LASS_TRAINER_PENALTY, "*", own_trainers, " = ", value, " (needs >= ", LASS_MIN_VALUE, ")")
+	if value < LASS_MIN_VALUE:
 		return -100.0
-
-	var p = float(own_hand - (own_trainers * 2)) * float(player_hand)
-	print("ISSUE #74 FIX ACTIVE (Lass): P = (", own_hand, " - 2*", own_trainers, ") * ", player_hand, " = ", p, " (needs > 50)")
-	if p <= 50.0:
-		return -100.0
-	# Above the bar: scale the score with how far past it we are (35 at P=51, capped at 65).
-	return 35.0 + min(p - 50.0, 60.0) / 2.0
+	# Above the bar: scale the score with how far past it we are (35 at the threshold, capped at 65).
+	return 35.0 + min(value - LASS_MIN_VALUE, 60.0) / 2.0
 
 func _cpu_score_pokemon_breeder() -> float:
 	for card in main.opponent_hand:
@@ -5363,14 +5370,11 @@ func _cpu_score_defender() -> float:
 
 	# Full stack guarantees survival (even the worst roll is survived) — clearly worth it.
 	if incoming_max_full < active.current_hp:
-		print("ISSUE #65 FIX ACTIVE: CPU playing Defender — stack guarantees surviving the incoming hit")
 		return 95.0
 	# Even the guaranteed (min-roll) damage still KOs through every Defender — nothing can be saved, don't waste.
 	if incoming_min_full >= active.current_hp:
-		print("ISSUE #65 FIX ACTIVE: CPU holding Defender — KO is guaranteed even with all Defenders")
 		return 0.0
 	# In-between (a coin-flip attack): the stack converts a certain KO into a survivable chance — play it.
-	print("ISSUE #65 FIX ACTIVE: CPU playing Defender — stack improves the odds of surviving the incoming hit")
 	return 80.0
 
 func _cpu_score_energy_retrieval() -> float:
@@ -5405,11 +5409,9 @@ func _cpu_score_pluspower() -> float:
 	if active == null or main.player_active_pokemon == null: return 0.0
 	# First player can't attack on turn 1 — PlusPower would just expire unused.
 	if main.turn_number <= 1:
-		print("ISSUE #70 FIX ACTIVE: CPU holding PlusPower — cannot attack on the first turn")
 		return 0.0
 	# Paralyzed/Asleep Active can't attack this turn.
 	if active.special_condition in ["Paralyzed", "Asleep"]:
-		print("ISSUE #70 FIX ACTIVE: CPU holding PlusPower — Active is ", active.special_condition, " and can't attack")
 		return 0.0
 	var pp_bonus = (active.pluspower_count + 1) * 10
 	var types = active.metadata.get("types", ["Colorless"])
@@ -5425,7 +5427,6 @@ func _cpu_score_pluspower() -> float:
 		if result_without["damage"] < main.player_active_pokemon.current_hp and result_without["damage"] + pp_bonus >= main.player_active_pokemon.current_hp:
 			enables_ko = true
 	if not has_damaging_attack:
-		print("ISSUE #70 FIX ACTIVE: CPU holding PlusPower — no usable damaging attack this turn")
 		return 0.0
 	if enables_ko:
 		return 90.0

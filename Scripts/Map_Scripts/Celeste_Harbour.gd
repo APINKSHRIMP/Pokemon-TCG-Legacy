@@ -91,7 +91,6 @@ func _run_taxi_intro() -> void:
 	# cutscene the flag must stay set so the taxi animation replays in full on the next load (name/
 	# sprite entry is already skipped via first_launch_complete). The flag is cleared only once the
 	# cutscene finishes and the player is sent into their house (see below).
-	print("ISSUE #31 FIX ACTIVE: taxi_intro_pending kept until house entry")
 
 	$Taxi.visible = true
 	_taxi_base_pos = TAXI_START_POS

@@ -254,7 +254,6 @@ func _freeze_overworld_actors() -> void:
 				child.freeze()
 	if _player != null and is_instance_valid(_player):
 		_player.lock_movement()
-	print("ISSUE #55 FIX ACTIVE: overworld actors frozen on battle accept")
 
 func _load_and_spawn_opponents(json_path: String):
 	if json_path == "":
@@ -278,19 +277,21 @@ func _load_and_spawn_opponents(json_path: String):
 			push_error("MapManager: Opponent missing position: " + entry.get("name", "unknown"))
 			continue
 		var opp = opponent_scene.instantiate()
-		opp.opponent_name    = entry["name"]
-		opp.sprite           = entry["sprite"]
-		opp.music            = entry["music"]
-		opp.deck             = entry["deck"]
+		# ISSUE #83 FIX: defaults on every optional field — one missing dialogue key in a day file used to
+		# abort the whole map load with "Invalid access to key".
+		opp.opponent_name    = entry.get("name", "")
+		opp.sprite           = entry.get("sprite", "")
+		opp.music            = entry.get("music", "")
+		opp.deck             = entry.get("deck", "")
 		opp.prize_cards      = entry.get("prize_cards", 6)
-		opp.meet_text        = entry["meet_text"]
-		opp.repeat_text      = entry["repeat_text"]
-		opp.first_win_text   = entry["first_win_text"]
-		opp.rematch_win_text = entry["rematch_win_text"]
-		opp.loss_text        = entry["loss_text"]
-		opp.coin_reward      = entry["coin_reward"]
-		opp.cash_reward      = entry["cash_reward"]
-		_assign_actor_position(opp, json_path, entry["name"], Vector2(entry["position"]["x"], entry["position"]["y"]))
+		opp.meet_text        = entry.get("meet_text", "")
+		opp.repeat_text      = entry.get("repeat_text", "")
+		opp.first_win_text   = entry.get("first_win_text", "")
+		opp.rematch_win_text = entry.get("rematch_win_text", "")
+		opp.loss_text        = entry.get("loss_text", "")
+		opp.coin_reward      = entry.get("coin_reward", "")
+		opp.cash_reward      = entry.get("cash_reward", 0)
+		_assign_actor_position(opp, json_path, entry.get("name", ""), Vector2(entry["position"]["x"], entry["position"]["y"]))
 		opp.movement_pattern = entry.get("pattern", "idle_random")
 		opp.patrol_distance  = entry.get("patrol_distance", 100.0)
 		opp.patrol_speed     = entry.get("patrol_speed", 60.0)
@@ -302,28 +303,36 @@ func _load_and_spawn_opponents(json_path: String):
 		opp.sleeve           = entry.get("sleeve", "")
 		_opponents_container.add_child(opp)
 
-	if GameState.returning_from_battle and not GameState.last_battled_opponent_entry.is_empty():
+	# ISSUE #83 FIX: the T-key TEST match has no opponent in the world at all — its entry is synthesized
+	# by GameState.build_test_opponent_data(), which deliberately carries only the handful of fields the
+	# match itself needs. Re-spawning it here crashed on the very first missing key ("meet_text"), and
+	# would have gone on to fail on position/sprite too. Skip the respawn entirely for a TEST match.
+	if GameState.returning_from_battle and GameState.test_match_mode:
+		print("ISSUE #83 FIX ACTIVE: skipping last-battled-opponent respawn after a TEST match")
+	elif GameState.returning_from_battle and not GameState.last_battled_opponent_entry.is_empty():
 		var lbe = GameState.last_battled_opponent_entry
 		var already_spawned = false
 		for child in _opponents_container.get_children():
-			if child.is_in_group("opponents") and child.opponent_name == lbe["name"]:
+			if child.is_in_group("opponents") and child.opponent_name == lbe.get("name", ""):
 				already_spawned = true
 				break
-		if not already_spawned:
+		# ISSUE #83 FIX: every field below now has a default. A partial entry must never hard-crash the
+		# whole map load — a missing dialogue line should just mean an empty string.
+		if not already_spawned and lbe.has("position"):
 			var opp = opponent_scene.instantiate()
-			opp.opponent_name    = lbe["name"]
-			opp.sprite           = lbe["sprite"]
-			opp.music            = lbe["music"]
-			opp.deck             = lbe["deck"]
+			opp.opponent_name    = lbe.get("name", "")
+			opp.sprite           = lbe.get("sprite", "")
+			opp.music            = lbe.get("music", "")
+			opp.deck             = lbe.get("deck", "")
 			opp.prize_cards      = lbe.get("prize_cards", 6)
-			opp.meet_text        = lbe["meet_text"]
-			opp.repeat_text      = lbe["repeat_text"]
-			opp.first_win_text   = lbe["first_win_text"]
-			opp.rematch_win_text = lbe["rematch_win_text"]
-			opp.loss_text        = lbe["loss_text"]
-			opp.coin_reward      = lbe["coin_reward"]
-			opp.cash_reward      = lbe["cash_reward"]
-			_assign_actor_position(opp, _json_path, lbe["name"], lbe["position"])
+			opp.meet_text        = lbe.get("meet_text", "")
+			opp.repeat_text      = lbe.get("repeat_text", "")
+			opp.first_win_text   = lbe.get("first_win_text", "")
+			opp.rematch_win_text = lbe.get("rematch_win_text", "")
+			opp.loss_text        = lbe.get("loss_text", "")
+			opp.coin_reward      = lbe.get("coin_reward", "")
+			opp.cash_reward      = lbe.get("cash_reward", 0)
+			_assign_actor_position(opp, _json_path, lbe.get("name", ""), lbe["position"])
 			opp.movement_pattern = lbe.get("pattern", "idle_random")
 			opp.patrol_distance  = lbe.get("patrol_distance", 100.0)
 			opp.patrol_speed     = lbe.get("patrol_speed", 60.0)
@@ -1153,7 +1162,6 @@ func _on_gift_reveal_input(event: InputEvent) -> void:
 	if not _gift_reveal_active:
 		return
 	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
-		print("ISSUE #33 FIX ACTIVE: gift reveal skipped by click")
 		_gift_reveal_skip = true
 
 # Kills any running reveal tweens and snaps every rect to its finished state.

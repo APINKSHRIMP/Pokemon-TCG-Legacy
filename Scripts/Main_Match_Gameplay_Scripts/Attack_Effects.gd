@@ -748,12 +748,15 @@ func handle_attack_confusion(attacker: card_object, is_opponent: bool) -> bool:
 		self_damage = 30
 	if main.confusion_rules == "base_set_confusion_rules":
 		var self_types = attacker.metadata.get("types", ["Colorless"])
-		var result = main.calculate_final_damage(self_damage, self_types, attacker)
+		# is_self_damage=true: Weakness/Resistance only. PlusPower (ISSUE #82) and Defender (ISSUE #60)
+		# are applied once below — passing the attacker as the defender used to apply Defender here AND
+		# again on the next line, double-reducing confusion self-damage.
+		var result = main.calculate_final_damage(self_damage, self_types, attacker, null, true)
 		self_damage = result["damage"]
 	# Dark Primeape Frenzy: +30 damage when confused (even to self)
 	self_damage += main.powers_and_bodies.check_frenzy_bonus(attacker)
-	# ISSUE #60: Defender prevents confusion self-damage too (-20 per Defender)
-	self_damage = max(0, self_damage - main.get_defender_reduction(attacker, self_damage))
+	# ISSUE #82 / ISSUE #60: PlusPower (+10 each) then Defender (-20 each) on confusion self-damage.
+	self_damage = main.apply_self_damage_modifiers(attacker, self_damage)
 	attacker.current_hp = max(0, attacker.current_hp - self_damage)
 	await main.show_message("THE ATTACK FAILED! " + attacker.metadata["name"].to_upper() + " HURT ITSELF FOR " + str(self_damage) + " DAMAGE!")
 	if main._should_bail(): return false
@@ -1116,7 +1119,6 @@ func _choose_metronome_copy(attacker: card_object, defender: card_object, is_opp
 			score += 200.0
 		var parsed = parse_card_text_effects(atk.get("text", ""), attacker.metadata.get("name", ""))
 		score += main.cpu_ai.score_parsed_effects(parsed, defender)
-		print("ISSUE #9 FIX ACTIVE (_choose_metronome_copy): ", atk.get("name", ""), " scores ", score)
 		return score
 	return await choose_attack_from_pool(defender_attacks, is_opponent, cpu_rank)
 
@@ -1591,7 +1593,6 @@ func parse_card_text_effects(attack_text: String, attacker_name: String) -> Arra
 	# arm for the same text — otherwise Sand-Attack/Smokescreen flips twice & double-messages.
 	if not _blind_parsed and "tries to attack" in text and ("flips a coin" in text or "flip a coin" in text) and "does nothing" in text:
 		effects.append({"type": "flip_attack_block", "target": "defender", "flip": "none"})
-		print("EFFECT PARSED: Coin-flip Attack Block -> Defender (ISSUE #48: blind not already parsed)")
 
 	# --- TRAINER LOCK (Psyduck Headache) ---
 	if "can't play trainer" in text and "next turn" in text:
@@ -1754,8 +1755,8 @@ func apply_card_text_effects(effects: Array, attacker: card_object, defender: ca
 # Function to get all basic pokemon from a given array of cards
 func apply_self_damage(effect: Dictionary, attacker: card_object, is_opponent_attacking: bool) -> void:
 	var damage = effect.get("damage", 0)
-	# ISSUE #60: Defender prevents self-damage from attacks too (-20 per Defender)
-	damage = max(0, damage - main.get_defender_reduction(attacker, damage))
+	# ISSUE #82 / ISSUE #60: PlusPower (+10 each) then Defender (-20 each) on attack self-damage.
+	damage = main.apply_self_damage_modifiers(attacker, damage)
 	attacker.current_hp = max(0, attacker.current_hp - damage)
 	var name = attacker.metadata.get("name", "Unknown")
 	var label_x = 1030 if is_opponent_attacking else 530
@@ -2935,7 +2936,8 @@ func execute_thunderstorm(attacker: card_object, defender: card_object, is_oppon
 	
 	# Self-damage: 10 × number of tails
 	if tails_count > 0:
-		var self_damage = tails_count * 10
+		# ISSUE #82 / ISSUE #60: PlusPower +10 each, Defender -20 each (shared self-damage helper).
+		var self_damage = main.apply_self_damage_modifiers(attacker, tails_count * 10)
 		attacker.current_hp = max(0, attacker.current_hp - self_damage)
 		var label_x = 1030 if is_opponent else 530
 		main.show_floating_label("-" + str(self_damage) + "HP", Vector2(label_x, 300), Color.RED)
@@ -3123,9 +3125,11 @@ func execute_energy_conversion(attacker: card_object, is_opponent: bool) -> void
 				if main._should_bail(): return
 	
 	# Self damage: 10 to Gastly
-	attacker.current_hp = max(0, attacker.current_hp - 10)
+	# ISSUE #82 / ISSUE #60: PlusPower +10 each, Defender -20 each (shared self-damage helper).
+	var gastly_self = main.apply_self_damage_modifiers(attacker, 10)
+	attacker.current_hp = max(0, attacker.current_hp - gastly_self)
 	var label_x = 1030 if is_opponent else 530
-	main.show_floating_label("-10HP", Vector2(label_x, 300), Color.RED)
+	main.show_floating_label("-" + str(gastly_self) + "HP", Vector2(label_x, 300), Color.RED)
 	main.display_hp_circles_above_align(attacker, is_opponent)
 	await main.show_message(attacker.metadata.get("name", "").to_upper() + " TOOK 10 RECOIL DAMAGE!")
 	if main._should_bail(): return
@@ -4256,6 +4260,9 @@ func check_mirror_shell(damaged_pokemon: card_object, attacker: card_object, dam
 		return
 	
 	# Counter equal damage to attacker (no W/R, just raw)
+	# ISSUE #60: reflected damage is still damage TO the attacker, so a Defender on it reduces the hit.
+	# PlusPower deliberately does NOT apply — the DEFENDER is dealing this damage, not the attacker.
+	damage_dealt = max(0, damage_dealt - main.get_defender_reduction(attacker, damage_dealt))
 	attacker.current_hp = max(0, attacker.current_hp - damage_dealt)
 	main.display_hp_circles_above_align(attacker, !is_damaged_opponent)
 	await main.show_message("MIRROR SHELL! " + str(damage_dealt) + " DAMAGE REFLECTED!")
@@ -4410,7 +4417,10 @@ func gym1_check_counters(damaged: card_object, attacker: card_object, damage_dea
 				await main.show_message("CROSSCOUNTER BLOCKED!")
 				if main._should_bail(): return
 			else:
+				# ISSUE #60: Defender on the attacker reduces this counter hit (no PlusPower — the
+				# defending Pokemon is dealing it).
 				var counter_dmg = damage_dealt * 2
+				counter_dmg = max(0, counter_dmg - main.get_defender_reduction(attacker, counter_dmg))
 				attacker.current_hp = max(0, attacker.current_hp - counter_dmg)
 				main.display_hp_circles_above_align(attacker, !is_damaged_opponent)
 				SoundManagerScript.play_sfx(SoundManagerScript.SFX_damage_sound)
@@ -4800,6 +4810,8 @@ func execute_full_speed_charge(attacker: card_object, defender: card_object, is_
 		await gym1_hit_active(attacker, defender, is_opponent, dmg)
 		if main._should_bail(): return
 	if self_dmg > 0:
+		# ISSUE #82 / ISSUE #60: PlusPower +10 each, Defender -20 each (shared self-damage helper).
+		self_dmg = main.apply_self_damage_modifiers(attacker, self_dmg)
 		attacker.current_hp = max(0, attacker.current_hp - self_dmg)
 		var label_x = 1030 if is_opponent else 530
 		main.show_floating_label("-" + str(self_dmg) + "HP", Vector2(label_x, 300), Color.YELLOW, true)
@@ -5370,6 +5382,13 @@ func execute_flip2_any_heads_status(attacker: card_object, defender: card_object
 # Helper: raw self-damage with a floating label
 func gym2_self_damage(attacker: card_object, is_opponent: bool, amount: int) -> void:
 	if amount <= 0 or attacker == null:
+		return
+	# ISSUE #82 / ISSUE #60: this is the shared helper behind every recoil/self-damage attack in the
+	# engine, so applying the modifiers here covers the whole family in one place (PlusPower +10 each,
+	# Defender -20 each). Previously it applied neither.
+	amount = main.apply_self_damage_modifiers(attacker, amount)
+	if amount <= 0:
+		await main.show_message(attacker.metadata.get("name", "").to_upper() + " TOOK NO DAMAGE!")
 		return
 	attacker.current_hp = max(0, attacker.current_hp - amount)
 	var pos = Vector2(1030, 300) if is_opponent else Vector2(530, 300)
@@ -9867,7 +9886,9 @@ func execute_neo2_spike_barrage(attacker: card_object, defender: card_object, is
 func execute_neo2_belly_drum(attacker: card_object, is_opponent: bool) -> void:
 	if await handle_attack_confusion(attacker, is_opponent): return
 	if await handle_attack_blind(attacker, is_opponent): return
-	attacker.current_hp = max(0, attacker.current_hp - 30)
+	# ISSUE #82 / ISSUE #60: PlusPower +10 each, Defender -20 each (shared self-damage helper).
+	var belly_self = main.apply_self_damage_modifiers(attacker, 30)
+	attacker.current_hp = max(0, attacker.current_hp - belly_self)
 	main.display_hp_circles_above_align(attacker, is_opponent)
 	var label_x = 1030 if is_opponent else 530
 	main.show_floating_label("-30HP", Vector2(label_x, 300), Color.RED, true)
@@ -10028,9 +10049,11 @@ func execute_neo2_burst(attacker: card_object, defender: card_object, is_opponen
 		var fd = main.apply_defender_no_damage_shield(defender, result["damage"], not is_opponent)
 		await main.display_and_apply_attack_damage(attacker, defender, fd, result["modifiers"], is_opponent, 40)
 		if main._should_bail(): return
-	attacker.current_hp = max(0, attacker.current_hp - 40)
+	# ISSUE #82 / ISSUE #60: PlusPower +10 each, Defender -20 each (shared self-damage helper).
+	var recoil40 = main.apply_self_damage_modifiers(attacker, 40)
+	attacker.current_hp = max(0, attacker.current_hp - recoil40)
 	main.display_hp_circles_above_align(attacker, is_opponent)
-	main.show_floating_label("-40HP", Vector2(1030 if is_opponent else 530, 300), Color.RED, true)
+	main.show_floating_label("-" + str(recoil40) + "HP", Vector2(1030 if is_opponent else 530, 300), Color.RED, true)
 	var all_bench: Array = []
 	all_bench.append_array(main.player_bench)
 	all_bench.append_array(main.opponent_bench)
@@ -14049,7 +14072,8 @@ func execute_np_metal_charge(attacker: card_object, defender: card_object, is_op
 	if await handle_attack_blind(attacker, is_opponent): return
 	await main.display_and_apply_attack_damage(attacker, defender, 30, is_opponent)
 	if main._should_bail(): return
-	attacker.current_hp = max(0, attacker.current_hp - 10)
+	# ISSUE #82 / ISSUE #60: PlusPower +10 each, Defender -20 each (shared self-damage helper).
+	attacker.current_hp = max(0, attacker.current_hp - main.apply_self_damage_modifiers(attacker, 10))
 	main.display_hp_circles_above_align(attacker, is_opponent)
 	await main.show_message("METAL CHARGE! BELDUM TAKES 1 DAMAGE COUNTER!")
 	if main._should_bail(): return
@@ -14360,7 +14384,6 @@ func choose_attack_from_pool(pool: Array, is_opponent: bool, cpu_rank_fn: Callab
 		var filtered: Array = []
 		for atk in pool:
 			if is_copy_attack(atk):
-				print("ISSUE #14 FIX ACTIVE (choose_attack_from_pool): excluding copy attack '", atk.get("name", ""), "' from the pool")
 				continue
 			filtered.append(atk)
 		pool = filtered
@@ -14389,7 +14412,6 @@ func choose_attack_from_pool(pool: Array, is_opponent: bool, cpu_rank_fn: Callab
 	# to leave clickable. Hide it for the duration of the selection and restore it after.
 	var restore_opponent_blocker_pool = main.opponent_blocker.visible
 	main.opponent_blocker.visible = false
-	print("ISSUE #3 FIX ACTIVE (choose_attack_from_pool): opponent_blocker hidden for attack-copy button list, will restore to ", restore_opponent_blocker_pool)
 	for child in main.attack_buttons_container.get_children():
 		if child.name == "cancel_attack_mode_button":
 			continue
@@ -14422,7 +14444,6 @@ func choose_attack_from_pool(pool: Array, is_opponent: bool, cpu_rank_fn: Callab
 	main.special_attack_selection_active = false
 	main.buttons_only_blocker.visible = false
 	main.opponent_blocker.visible = restore_opponent_blocker_pool
-	print("ISSUE #3 FIX ACTIVE (choose_attack_from_pool): opponent_blocker restored to ", restore_opponent_blocker_pool)
 	return chosen
 
 # Generic path for a copied attack with no dispatch entry: variable-damage resolution
@@ -20613,7 +20634,8 @@ func execute_ex5_make_a_wish(attacker: card_object, is_opponent: bool) -> void:
 	if await handle_attack_blind(attacker, is_opponent): return
 	var did = await execute_ex5_search_and_evolve(attacker, is_opponent, "")
 	if did:
-		attacker.current_hp = max(0, attacker.current_hp - 10)
+		# ISSUE #82 / ISSUE #60: PlusPower +10 each, Defender -20 each (shared self-damage helper).
+		attacker.current_hp = max(0, attacker.current_hp - main.apply_self_damage_modifiers(attacker, 10))
 		main.display_hp_circles_above_align(attacker, is_opponent)
 		await main.show_message("MAKE A WISH! PUT 1 DAMAGE COUNTER ON JIRACHI!")
 		if main._should_bail(): return
@@ -21217,7 +21239,8 @@ func execute_ex5_damage_self_counter(attacker: card_object, defender: card_objec
 	if await handle_attack_blind(attacker, is_opponent): return
 	await gym1_hit_active(attacker, defender, is_opponent, base_damage)
 	if main._should_bail(): return
-	attacker.current_hp = max(0, attacker.current_hp - n * 10)
+	# ISSUE #82 / ISSUE #60: PlusPower +10 each, Defender -20 each (shared self-damage helper).
+	attacker.current_hp = max(0, attacker.current_hp - main.apply_self_damage_modifiers(attacker, n * 10))
 	main.display_hp_circles_above_align(attacker, is_opponent)
 	await main.check_all_knockouts()
 
@@ -21352,7 +21375,8 @@ func execute_ex5_tonnage(attacker: card_object, defender: card_object, is_oppone
 	await gym1_hit_active(attacker, defender, is_opponent, dmg)
 	if main._should_bail(): return dmg
 	if boost:
-		attacker.current_hp = max(0, attacker.current_hp - 30)
+		# ISSUE #82 / ISSUE #60: PlusPower +10 each, Defender -20 each (shared self-damage helper).
+		attacker.current_hp = max(0, attacker.current_hp - main.apply_self_damage_modifiers(attacker, 30))
 		main.display_hp_circles_above_align(attacker, is_opponent)
 	await main.check_all_knockouts()
 	return dmg
@@ -23017,7 +23041,8 @@ func execute_ex7_self_counter_damage(attacker: card_object, defender: card_objec
 	if await handle_attack_blind(attacker, is_opponent): return
 	await gym1_hit_active(attacker, defender, is_opponent, base_damage)
 	if main._should_bail(): return
-	attacker.current_hp = max(0, attacker.current_hp - counters * 10)
+	# ISSUE #82 / ISSUE #60: PlusPower +10 each, Defender -20 each (shared self-damage helper).
+	attacker.current_hp = max(0, attacker.current_hp - main.apply_self_damage_modifiers(attacker, counters * 10))
 	main.display_hp_circles_above_align(attacker, is_opponent)
 	await main.check_all_knockouts()
 
@@ -23900,9 +23925,11 @@ func execute_ex8_liability(attacker: card_object, defender: card_object, is_oppo
 		main.display_hp_circles_above_align(defender, not is_opponent)
 		await main.show_message("LIABILITY! THE DEFENDING POKEMON IS NOW 10 HP FROM BEING KNOCKED OUT!")
 		if main._should_bail(): return
-	gym1_hit_raw(attacker, 70, is_opponent)
+	# ISSUE #82 / ISSUE #60: PlusPower +10 each, Defender -20 each on this 70 self-damage.
+	var liability_self = main.apply_self_damage_modifiers(attacker, 70)
+	gym1_hit_raw(attacker, liability_self, is_opponent)
 	main.display_pokemon(is_opponent)
-	await main.show_message("WEEZING DID 70 DAMAGE TO ITSELF!")
+	await main.show_message("WEEZING DID " + str(liability_self) + " DAMAGE TO ITSELF!")
 	if main._should_bail(): return
 	await main.check_all_knockouts()
 
@@ -24831,7 +24858,8 @@ func execute_ex10_bouncy_move(attacker: card_object, defender: card_object, is_o
 		place = await _ex10_choose_int("BOUNCY MOVE", "Put how many damage counters on Meganium? (+10 damage each)", opts)
 		if main._should_bail(): return 0
 	if place > 0:
-		attacker.current_hp = max(0, attacker.current_hp - place * 10)
+		# ISSUE #82 / ISSUE #60: PlusPower +10 each, Defender -20 each (shared self-damage helper).
+		attacker.current_hp = max(0, attacker.current_hp - main.apply_self_damage_modifiers(attacker, place * 10))
 		main.display_hp_circles_above_align(attacker, is_opponent)
 	var dmg = base_damage + place * 10
 	await gym1_hit_active(attacker, defender, is_opponent, dmg)
@@ -25224,7 +25252,8 @@ func execute_ex10_pop(attacker: card_object, defender: card_object, is_opponent:
 	if await handle_attack_blind(attacker, is_opponent): return
 	await gym1_hit_active(attacker, defender, is_opponent, base_damage)
 	if main._should_bail(): return
-	attacker.current_hp = max(0, attacker.current_hp - 70)
+	# ISSUE #82 / ISSUE #60: PlusPower +10 each, Defender -20 each (shared self-damage helper).
+	attacker.current_hp = max(0, attacker.current_hp - main.apply_self_damage_modifiers(attacker, 70))
 	main.display_hp_circles_above_align(attacker, is_opponent)
 	var bench = main.opponent_bench if is_opponent else main.player_bench
 	if not bench.is_empty():
@@ -25614,7 +25643,8 @@ func execute_ex10_hidden_power(attacker: card_object, defender: card_object, is_
 				if tgt == null and not bases.is_empty(): tgt = bases[0]
 				if tgt != null:
 					await main.trainer_effects._ex2_do_evolution(evo, tgt, is_opponent, my_deck)
-					attacker.current_hp = max(0, attacker.current_hp - 10)
+					# ISSUE #82 / ISSUE #60: shared self-damage helper (PlusPower +10, Defender -20 each).
+					attacker.current_hp = max(0, attacker.current_hp - main.apply_self_damage_modifiers(attacker, 10))
 					main.display_hp_circles_above_align(attacker, is_opponent)
 				my_deck.shuffle(); main.update_deck_icon(is_opponent)
 		"N":
@@ -28370,6 +28400,8 @@ func execute_ex14_burn_away(attacker: card_object, defender: card_object, is_opp
 	if defender.current_hp <= 0:
 		var recoil = max(0, 100 - remaining)
 		if recoil > 0:
+			# ISSUE #82 / ISSUE #60: PlusPower +10 each, Defender -20 each (shared self-damage helper).
+			recoil = main.apply_self_damage_modifiers(attacker, recoil)
 			attacker.current_hp = max(0, attacker.current_hp - recoil)
 			main.show_floating_label("-" + str(recoil) + "HP", Vector2(1030 if is_opponent else 530, 300), Color.RED, true)
 			main.display_hp_circles_above_align(attacker, is_opponent)
@@ -29626,9 +29658,11 @@ func execute_pop_hasty_headbutt(attacker: card_object, defender: card_object, is
 		main.display_hp_circles_above_align(defender, not is_opponent)
 		await main.show_message("HASTY HEADBUTT: " + str(base) + " DAMAGE! (IGNORES ALL DEFENDER EFFECTS)")
 		if main._should_bail(): return
-	attacker.current_hp = max(0, attacker.current_hp - 20)
+	# ISSUE #82 / ISSUE #60: PlusPower +10 each, Defender -20 each on this 20 self-damage.
+	var hasty_self = main.apply_self_damage_modifiers(attacker, 20)
+	attacker.current_hp = max(0, attacker.current_hp - hasty_self)
 	main.display_hp_circles_above_align(attacker, is_opponent)
-	await main.show_message(attacker.metadata.get("name","").to_upper() + " DID 20 DAMAGE TO ITSELF!")
+	await main.show_message(attacker.metadata.get("name","").to_upper() + " DID " + str(hasty_self) + " DAMAGE TO ITSELF!")
 	if main._should_bail(): return
 	await main.check_all_knockouts()
 

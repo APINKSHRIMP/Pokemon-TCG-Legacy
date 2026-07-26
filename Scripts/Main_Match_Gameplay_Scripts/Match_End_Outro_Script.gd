@@ -204,7 +204,6 @@ func _input(event: InputEvent) -> void:
 		# it works even during the fly-in, when click_enabled is still false.
 		if _in_skippable_anim and not transitioning:
 			_skip_anim = true
-			print("ISSUE #33 FIX ACTIVE: skip requested for current reward animation")
 			get_viewport().set_input_as_handled()
 			return
 		if click_enabled and not transitioning:
@@ -630,7 +629,6 @@ func _show_gift(tex: Texture2D, kind: String) -> void:
 		if orig_w > 0.0 and orig_h > 0.0:
 			var fit_scale: float = min(sz.x / orig_w, sz.y / orig_h)
 			sz = Vector2(orig_w * fit_scale, orig_h * fit_scale)
-			print("ISSUE #77 FIX ACTIVE: gift '", kind, "' aspect-fit to ", sz, " from source ", Vector2(orig_w, orig_h))
 
 	# Centre the item on screen using explicit offsets (anchor stays at 0)
 	var cx := 960.0

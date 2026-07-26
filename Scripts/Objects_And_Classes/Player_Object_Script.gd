@@ -53,7 +53,6 @@ func face_toward(target_position: Vector2):
 		set_direction("right" if diff.x > 0 else "left")
 	else:
 		set_direction("down" if diff.y > 0 else "up")
-	print("ISSUE #57 FIX ACTIVE: player turned to face interaction target (", current_direction, ")")
 
 func _ready():
 	add_to_group("player")
@@ -66,6 +65,19 @@ func _ready():
 	animated_sprite.sprite_frames = SpriteSheetLoader.load_sprite_frames(sprite_name)
 	animated_sprite.play("idle_down")
 	animated_sprite.scale = Vector2(0.5, 0.5)
+
+	# ISSUE #81 FIX: these four steps used to be orphaned INSIDE refresh_sprite() (that function was
+	# accidentally inserted mid-_ready(), so everything below it silently became part of it). With the
+	# signals never connected, no interaction bubble appeared and spacebar did nothing.
+	interaction_area.body_entered.connect(_on_interaction_area_body_entered)
+	interaction_area.body_exited.connect(_on_interaction_area_body_exited)
+
+	if GameState.returning_from_battle:
+		position = GameState.player_position
+
+	# Seed candidates from bodies already overlapping on spawn (battle return case)
+	call_deferred("_seed_existing_overlaps")
+	print("ISSUE #81 FIX ACTIVE: player interaction signals connected in _ready()")
 
 # ISSUE #52: the overworld map is no longer reloaded when a sub-menu closes, so a costume change made
 # in the Costume menu has to be pushed onto the live player node instead of arriving via _ready().
@@ -82,16 +94,6 @@ func refresh_sprite() -> void:
 		return
 	animated_sprite.sprite_frames = new_frames
 	animated_sprite.play("idle_" + current_direction)
-	print("ISSUE #52 FIX ACTIVE: player sprite refreshed to ", player_data["sprite"])
-
-	interaction_area.body_entered.connect(_on_interaction_area_body_entered)
-	interaction_area.body_exited.connect(_on_interaction_area_body_exited)
-
-	if GameState.returning_from_battle:
-		position = GameState.player_position
-
-	# Seed candidates from bodies already overlapping on spawn (battle return case)
-	call_deferred("_seed_existing_overlaps")
 
 func _seed_existing_overlaps():
 	if not is_instance_valid(interaction_area):
@@ -170,8 +172,16 @@ func _unhandled_input(event):
 				# Consume so dismissing a dialog can't re-trigger an interactable
 				# the player happens to be standing on this same frame.
 				vp.set_input_as_handled()
-				print("ISSUE #51 FIX ACTIVE: consumed spacebar before message handler")
 			MapManager.handle_message_spacebar()
+			return
+
+		# ISSUE #81 FIX: gate the interact emit on can_move, for the same reason the mouse-wheel zoom
+		# below is gated. Since ISSUE #52 the map stays loaded underneath menu/sub-menu overlays and the
+		# player is merely lock_movement()'d, so an unconsumed Space/Enter inside the deck builder fell
+		# through to here and could start a battle with whoever the player happened to be standing next
+		# to. The message-panel branch above stays ungated — dialogue is handled while frozen by design.
+		if not can_move:
+			print("ISSUE #81 FIX ACTIVE: ignoring interact key while overworld input is locked")
 			return
 
 		if _active_candidate != null and is_instance_valid(_active_candidate):

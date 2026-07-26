@@ -852,6 +852,12 @@ func tick_defender_counters(is_opponent: bool) -> void:
 				# Animate Defender from attached cards container to discard pile
 				var card_texture = main.get_card_texture(card)
 				await main.animate_card_a_to_b(attached_node, discard_node, 0.2, card_texture, main.card_scales[10])
+			# ISSUE #90 FIX: the expiring Defenders were discarded but defender_count was left at its old
+			# value (the PlusPower equivalent above always zeroed pluspower_count). defender_turns_remaining
+			# going to -1 masked it — until the NEXT Defender was attached, which set turns back to 0 and did
+			# defender_count += 1 on top of the phantom count. One physical Defender then blocked 40+ damage.
+			pokemon.defender_count = 0
+			print("ISSUE #90 FIX ACTIVE: cleared defender_count on ", pokemon.metadata.get("name", ""), " when its Defender(s) expired (", to_remove.size(), " discarded)")
 			main.update_discard_pile_display(is_opponent)
 			display_attached_trainer_cards(is_opponent)
 			# ISSUE #59 (retest sub-issue 2): display_attached_trainer_cards only refreshes the ACTIVE
@@ -1366,12 +1372,14 @@ func resolve_attached_trainer(card: card_object, is_opponent: bool) -> void:
 		var hand_node = main.opponent_hand_container if is_opponent else main.player_hand_container
 		var attached_node = main.opponent_attached_cards_container if is_opponent else main.player_attached_cards_container
 		var card_texture = main.get_card_texture(card)
-		print("ISSUE #54 FIX ACTIVE (PlusPower): flies to exact final tool slot")
 		var pp_rect = main.measure_and_hide_new_active_tool_slot(is_opponent)
 		var pp_pos = pp_rect.get("position", main._ANIM_POS_SENTINEL)
 		var pp_size = pp_rect.get("size", main.card_scales[11])
 		await main.animate_card_a_to_b(hand_node, attached_node, 0.3, card_texture, main.card_scales[10], pp_size, pp_pos)
+		# ISSUE #59 FIX (retest sub-issue 2): board refresh BEFORE the message so the tool is visibly
+		# attached while the message is up.
 		display_attached_trainer_cards(is_opponent)
+		main.display_pokemon(is_opponent)
 		await main.show_message("PlusPower attached to " + active.metadata.get("name", "").to_upper() + "!")
 		print("PLUSPOWER: Attached to ", active.metadata.get("name", ""), " (total: ", active.pluspower_count, ")")
 	
@@ -1388,13 +1396,17 @@ func resolve_attached_trainer(card: card_object, is_opponent: bool) -> void:
 			var hand_node = main.opponent_hand_container
 			var attached_node = main.opponent_attached_cards_container
 			var card_texture = main.get_card_texture(card)
-			print("ISSUE #54 FIX ACTIVE (Defender CPU): flies to exact final tool slot")
 			var def_rect = main.measure_and_hide_new_active_tool_slot(true)
 			var def_pos = def_rect.get("position", main._ANIM_POS_SENTINEL)
 			var def_size = def_rect.get("size", main.card_scales[11])
 			await main.animate_card_a_to_b(hand_node, attached_node, 0.3, card_texture, main.card_scales[10], def_size, def_pos)
+			# ISSUE #85 FIX: drop the "(-20 damage)" suffix — the message just states the attachment.
+			# ISSUE #59 FIX (retest sub-issue 2): refresh the board BEFORE the message so the tool is
+			# visibly attached while the message is on screen, rather than appearing after it closes.
 			display_attached_trainer_cards(true)
-			await main.show_message("Defender attached to " + active.metadata.get("name", "") + "! (-20 damage)")
+			main.display_pokemon(true)
+			print("ISSUE #85 FIX ACTIVE: Defender attach message without the -20 suffix (board refreshed first)")
+			await main.show_message("Defender attached to " + active.metadata.get("name", "") + "!")
 		else:
 			# Player chooses target
 			var targets = build_field_pokemon_array(false)
@@ -1413,16 +1425,19 @@ func resolve_attached_trainer(card: card_object, is_opponent: bool) -> void:
 				var hand_node = main.player_hand_container
 				var card_texture = main.get_card_texture(card)
 				if target == main.player_active_pokemon:
-					print("ISSUE #54 FIX ACTIVE (Defender player, Active): flies to exact final tool slot")
 					var dt_rect = main.measure_and_hide_new_active_tool_slot(false)
 					var dt_pos = dt_rect.get("position", main._ANIM_POS_SENTINEL)
 					var dt_size = dt_rect.get("size", main.card_scales[11])
 					await main.animate_card_a_to_b(hand_node, main.player_attached_cards_container, 0.3, card_texture, main.card_scales[10], dt_size, dt_pos)
 				else:
-					print("ISSUE #54 FIX ACTIVE (Defender player, Bench): flies to real bench slot")
 					var bench_pos = main.get_pokemon_screen_location(target).get("position", main._ANIM_POS_SENTINEL)
 					await main.animate_card_a_to_b(hand_node, main.player_bench_container, 0.3, card_texture, main.card_scales[10], Vector2.ZERO, bench_pos)
+				# ISSUE #59 FIX (retest sub-issue 2): a BENCH target's tools are drawn by display_pokemon,
+				# not display_attached_trainer_cards (which only rebuilds the Active's tool stack), so the
+				# Defender wasn't visible on the bench until some later refresh. Refresh the board first.
 				display_attached_trainer_cards(false)
+				main.display_pokemon(false)
+				print("ISSUE #59 FIX ACTIVE: board refreshed before the Defender attach message")
 				await main.show_message("Defender attached to " + target.metadata.get("name", "") + "!")
 
 	# GYM1 Charity (gym1-99) — attach to your own Active Pokemon
@@ -2300,15 +2315,28 @@ func effect_scoop_up(is_opponent: bool) -> void:
 	if target.attached_pre_evolutions.size() > 0:
 		basic_card = target.attached_pre_evolutions[0]
 		target.attached_pre_evolutions.erase(basic_card)
-	
-	# Discard all attachments (energies, evolutions, attached cards)
-	main.card_ops.discard_all_attachments(target, is_opponent)
-	
+
+	# ISSUE #91 FIX: Scoop Up used to resolve entirely off-screen — every attachment vanished at once
+	# and the Pokemon was simply gone by the time the message appeared. It is now narrated in the order
+	# it happens: announce the play, strip the attachments one at a time (board refreshed after each),
+	# then fly the Basic card up into the hand.
+	var scooper = "OPPONENT" if is_opponent else "PLAYER"
+	print("ISSUE #91 FIX ACTIVE: animating Scoop Up on ", target.metadata.get("name", ""))
+	await main.show_message(scooper + " USED SCOOP UP ON " + target.metadata.get("name", "").to_upper() + "!")
+	if main._should_bail(): return
+
+	# Grab the on-board node BEFORE anything is removed, so the card can fly from where it sat.
+	var target_node = main.find_card_ui_for_object(target)
+
+	# Discard all attachments (energies, evolutions, attached cards) — one at a time, animated.
+	await main.card_ops.discard_all_attachments_animated(target, is_opponent)
+	if main._should_bail(): return
+
 	# If the target itself is NOT the basic (it's an evolution), discard it too
 	if target != basic_card:
 		target.current_location = "discard"
 		discard.append(target)
-	
+
 	# Remove from play
 	if target == (main.opponent_active_pokemon if is_opponent else main.player_active_pokemon):
 		if is_opponent:
@@ -2317,23 +2345,29 @@ func effect_scoop_up(is_opponent: bool) -> void:
 			main.player_active_pokemon = null
 	elif target in bench:
 		bench.erase(target)
-	
+
 	# Return basic card to hand with fresh state
 	basic_card.current_location = "hand"
 	basic_card.current_hp = basic_card.get_max_hp()
 	basic_card.pluspower_count = 0
+	basic_card.defender_count = 0
 	basic_card.defender_turns_remaining = -1
 	main.clear_all_statuses(basic_card, is_opponent)
 	hand.append(basic_card)
-	
-	main.update_discard_pile_display(is_opponent)
-	main.refresh_hand_display(is_opponent)
+
+	# ISSUE #91: fly the Basic card from its board slot to the hand. The board is cleared first so the
+	# slot is empty while the card travels, then the hand is refreshed once it lands.
 	main.display_pokemon(is_opponent)
 	main.display_active_pokemon_energies(is_opponent)
-	
-	await main.show_message(basic_card.metadata.get("name", "") + " was scooped up and returned to hand!")
+	var hand_node = main.opponent_hand_container if is_opponent else main.player_hand_container
+	var scoop_from = target_node if (target_node != null and is_instance_valid(target_node)) else hand_node
+	var basic_texture = main.opponent_card_back_texture if is_opponent else main.get_card_texture(basic_card)
+	await main.animate_card_a_to_b(scoop_from, hand_node, 0.3, basic_texture, main.card_scales[10])
 	if main._should_bail(): return
-	
+
+	main.update_discard_pile_display(is_opponent)
+	main.refresh_hand_display(is_opponent)
+
 	# If the active was scooped, need bench replacement (no prize)
 	var current_active = main.opponent_active_pokemon if is_opponent else main.player_active_pokemon
 	if current_active == null:
@@ -2627,7 +2661,6 @@ func effect_maintenance(played_card: card_object, is_opponent: bool) -> void:
 		# ISSUE #41 FIX: announce first, then fly each hidden card (card back) from hand to the deck
 		# ONE AT A TIME, play the shuffle animation, then the draw animates in — instead of the two
 		# cards vanishing instantly and the message appearing after the draw.
-		print("ISSUE #41 FIX ACTIVE: Maintenance animates cards to deck one at a time")
 		var to_shuffle = cpu_get_discard_priority(hand, 2, played_card)
 		await main.show_message("Opponent shuffled 2 cards into their deck!")
 		if main._should_bail(): return
@@ -3325,11 +3358,20 @@ func effect_energy_search(is_opponent: bool) -> void:
 		deck.erase(chosen)
 		chosen.current_location = "hand"
 		hand.append(chosen)
-		main.refresh_hand_display(is_opponent)
-		await main.show_message("ENERGY SEARCH: ADDED " + chosen.metadata.get("name", "").to_upper() + " TO HAND!")
+		# ISSUE #86 FIX: Energy Search has no "Show this card to your opponent" clause, so naming the
+		# card the CPU took leaked hidden information. The "ADDED <NAME> TO HAND" message is gone; a card
+		# gliding from the deck to the hand conveys the same thing without revealing anything. The
+		# opponent's card flies FACE DOWN (its sleeve); the player already chose theirs, so it flies
+		# face up.
+		var search_texture = main.opponent_card_back_texture if is_opponent else main.get_card_texture(chosen)
+		var deck_icon = main.opponent_deck_icon if is_opponent else main.player_deck_icon
+		var hand_container = main.opponent_hand_container if is_opponent else main.player_hand_container
+		print("ISSUE #86 FIX ACTIVE: Energy Search animates deck->hand with no reveal message")
+		await main.animate_card_a_to_b(deck_icon, hand_container, 0.3, search_texture, main.card_scales[12])
 		if main._should_bail(): return
-		print("ENERGY SEARCH: Retrieved ", chosen.metadata.get("name", ""))
-	
+		main.refresh_hand_display(is_opponent)
+		main.update_deck_icon(is_opponent)
+
 	deck.shuffle()
 
 # base3-60 — Gambler: Shuffle hand into deck, flip coin, heads=draw 8, tails=draw 1
@@ -5180,6 +5222,9 @@ func gym1_narrow_gym_force_return_to_hand(side_is_opponent: bool) -> void:
 	chosen.current_hp = chosen.get_max_hp()
 	main.clear_all_statuses(chosen, side_is_opponent)
 	chosen.pluspower_count = 0
+	# ISSUE #90: clear defender_count alongside the turn counter — a stale count made the NEXT
+	# Defender attached to this card stack on a phantom one.
+	chosen.defender_count = 0
 	chosen.defender_turns_remaining = -1
 
 	bench.erase(chosen)
@@ -6267,6 +6312,9 @@ func gym2_fuchsia_activate(is_opponent: bool) -> void:
 	chosen.current_hp = chosen.get_max_hp()
 	main.clear_all_statuses(chosen, is_opponent)
 	chosen.pluspower_count = 0
+	# ISSUE #90: clear defender_count alongside the turn counter — a stale count made the NEXT
+	# Defender attached to this card stack on a phantom one.
+	chosen.defender_count = 0
 	chosen.defender_turns_remaining = -1
 
 	# If chosen was active, promote a bench pokemon to active first
