@@ -111,6 +111,7 @@ metadata/door_type = "exit_to_outside"
 position = Vector2(121, 59)
 
 [node name="Collision" type="StaticBody2D" parent="." unique_id=647435137]
+visible = false
 
 [node name="Desk" type="CollisionShape2D" parent="Collision" unique_id=1935165429]
 position = Vector2(208, 32)
