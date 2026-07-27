@@ -8,6 +8,21 @@
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_377ug"]
 size = Vector2(23, 10)
 
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_onott"]
+size = Vector2(128, 45)
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_c761d"]
+size = Vector2(4, 224)
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_xfu8l"]
+size = Vector2(254, 20)
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_4btxk"]
+size = Vector2(16, 14)
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_ln1ai"]
+size = Vector2(32, 25)
+
 [node name="CARD MART" type="Node2D" unique_id=1007463427]
 position = Vector2(2, 55)
 script = ExtResource("1_jgrli")
@@ -36,14 +51,26 @@ position = Vector2(-13, -5)
 tile_map_data = PackedByteArray("AAAKAP//AQA5AAAAAAAKAAAAAQA5AAEAAAAJAP//AQA4AAAAAAAJAAAAAQA4AAEAAAAQAP//AQA4AAAAAAAQAAAAAQA4AAEAAAARAP//AQA5AAAAAAARAAAAAQA5AAEAAAA=")
 tile_set = ExtResource("2_jgrli")
 
-[node name="Furniture" type="TileMapLayer" parent="MART" unique_id=1658052145]
+[node name="Furniture Bottom" type="TileMapLayer" parent="MART" unique_id=1658052145]
 position = Vector2(6, 0)
-tile_map_data = PackedByteArray("AAAFAP//AQAtAA4AAAAFAAAAAQAtAA8AAAAFAAEAAQAtABAAAAAGAP//AQAuAA4AAAAGAAAAAQAuAA8AAAAGAAEAAQAuABAAAAAFAAIAAQAqABQAAAAFAAMAAQAqABUAAAAFAAQAAQAqABYAAAAFAAUAAQAqABQAAAAFAAYAAQAqABUAAAAFAAcAAQAqABYAAAAFAAgAAQAqABQAAAAFAAkAAQAqABUAAAAFAAoAAQAqABYAAAAFAAsAAQAqABQAAAA=")
+tile_map_data = PackedByteArray("AAAFAAEAAQAtABAAAAAGAAEAAQAuABAAAAAFAAQAAQAqABYAAAAFAAcAAQAqABYAAAAFAAoAAQAqABYAAAAFAAsAAQAqABQAAAA=")
 tile_set = ExtResource("2_jgrli")
 
-[node name="Furniture 2" type="TileMapLayer" parent="MART" unique_id=171845890]
+[node name="Furniture Bottom 2" type="TileMapLayer" parent="MART" unique_id=171845890]
 position = Vector2(10, 1)
-tile_map_data = PackedByteArray("AAATAAIAAQAqABQAABATAAMAAQAqABUAABATAAQAAQAqABYAABATAAUAAQAqABQAABATAAYAAQAqABUAABATAAcAAQAqABYAABATAAgAAQAqABQAABATAAkAAQAqABUAABATAAoAAQAqABYAABASAP//AQAtAA4AAAASAAAAAQAtAA8AAAASAAEAAQAtABAAAAATAP//AQAuAA4AAAATAAAAAQAuAA8AAAATAAEAAQAuABAAAAA=")
+tile_map_data = PackedByteArray("AAASAAEAAQAtABAAAAATAAEAAQAuABAAAAATAAQAAQAqABYAABATAAcAAQAqABYAABATAAoAAQAqABYAABA=")
+tile_set = ExtResource("2_jgrli")
+
+[node name="Furniture Top" type="TileMapLayer" parent="MART" unique_id=2009846859]
+z_index = 10
+position = Vector2(6, 0)
+tile_map_data = PackedByteArray("AAAFAP//AQAtAA4AAAAGAP//AQAuAA4AAAAFAAIAAQAqABQAAAAFAAMAAQAqABUAAAAFAAUAAQAqABQAAAAFAAYAAQAqABUAAAAFAAgAAQAqABQAAAAFAAkAAQAqABUAAAAFAAsAAQAqABQAAAAGAAAAAQAuAA8AAAAFAAAAAQAtAA8AAAA=")
+tile_set = ExtResource("2_jgrli")
+
+[node name="Furniture Top 2" type="TileMapLayer" parent="MART" unique_id=716351416]
+z_index = 10
+position = Vector2(10, 1)
+tile_map_data = PackedByteArray("AAASAP//AQAtAA4AAAASAAAAAQAtAA8AAAATAP//AQAuAA4AAAATAAAAAQAuAA8AAAATAAIAAQAqABQAABATAAMAAQAqABUAABATAAUAAQAqABQAABATAAYAAQAqABUAABATAAgAAQAqABQAABATAAkAAQAqABUAABA=")
 tile_set = ExtResource("2_jgrli")
 
 [node name="Counter" type="TileMapLayer" parent="MART" unique_id=2000455421]
@@ -82,3 +109,57 @@ metadata/door_type = "exit_to_outside"
 
 [node name="NPCS" type="Node2D" parent="." unique_id=427928302]
 position = Vector2(121, 59)
+
+[node name="Collision" type="StaticBody2D" parent="." unique_id=647435137]
+
+[node name="Desk" type="CollisionShape2D" parent="Collision" unique_id=1935165429]
+position = Vector2(208, 32)
+shape = SubResource("RectangleShape2D_onott")
+
+[node name="Wall V" type="CollisionShape2D" parent="Collision" unique_id=2075642488]
+position = Vector2(85, 80)
+shape = SubResource("RectangleShape2D_c761d")
+
+[node name="Wall V2" type="CollisionShape2D" parent="Collision" unique_id=729832089]
+position = Vector2(332, 80)
+shape = SubResource("RectangleShape2D_c761d")
+
+[node name="Wall H" type="CollisionShape2D" parent="Collision" unique_id=934169245]
+position = Vector2(208, -12)
+shape = SubResource("RectangleShape2D_xfu8l")
+
+[node name="Wall H2" type="CollisionShape2D" parent="Collision" unique_id=549659546]
+position = Vector2(208, 202)
+shape = SubResource("RectangleShape2D_xfu8l")
+
+[node name="Stand" type="CollisionShape2D" parent="Collision" unique_id=26264197]
+position = Vector2(94, 62)
+shape = SubResource("RectangleShape2D_4btxk")
+
+[node name="Stand2" type="CollisionShape2D" parent="Collision" unique_id=1998222042]
+position = Vector2(94, 110)
+shape = SubResource("RectangleShape2D_4btxk")
+
+[node name="Stand3" type="CollisionShape2D" parent="Collision" unique_id=2044246749]
+position = Vector2(94, 158)
+shape = SubResource("RectangleShape2D_4btxk")
+
+[node name="Stand4" type="CollisionShape2D" parent="Collision" unique_id=1509403652]
+position = Vector2(322, 63)
+shape = SubResource("RectangleShape2D_4btxk")
+
+[node name="Stand5" type="CollisionShape2D" parent="Collision" unique_id=54243851]
+position = Vector2(322, 110.5)
+shape = SubResource("RectangleShape2D_4btxk")
+
+[node name="Stand6" type="CollisionShape2D" parent="Collision" unique_id=1494884268]
+position = Vector2(322, 158.5)
+shape = SubResource("RectangleShape2D_4btxk")
+
+[node name="Cupboard" type="CollisionShape2D" parent="Collision" unique_id=871195712]
+position = Vector2(101, 2.5)
+shape = SubResource("RectangleShape2D_ln1ai")
+
+[node name="Cupboard2" type="CollisionShape2D" parent="Collision" unique_id=1162818022]
+position = Vector2(315, 6)
+shape = SubResource("RectangleShape2D_ln1ai")
