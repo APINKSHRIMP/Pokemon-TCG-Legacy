@@ -5,8 +5,8 @@
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_xe548"]
 size = Vector2(16, 23)
 
-[sub_resource type="RectangleShape2D" id="RectangleShape2D_50vay"]
-size = Vector2(56, 56)
+[sub_resource type="CircleShape2D" id="CircleShape2D_spatu"]
+radius = 26.0
 
 [node name="Player" type="CharacterBody2D" unique_id=510514557]
 collision_layer = 2
@@ -26,7 +26,7 @@ monitorable = false
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="InteractionArea" unique_id=1644762253]
 position = Vector2(-1, 1)
-shape = SubResource("RectangleShape2D_50vay")
+shape = SubResource("CircleShape2D_spatu")
 
 [node name="Camera2D" type="Camera2D" parent="." unique_id=1358489532]
 physics_interpolation_mode = 1

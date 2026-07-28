@@ -36,6 +36,13 @@ var _glance_timer: SceneTreeTimer = null
 
 var lock_facing: bool = false
 
+# Optional per-actor override for the direction the PLAYER turns to when interacting with this actor
+# ("up"/"down"/"left"/"right"). Set from the `interact_facing` field in the NPC/opponent data entry.
+# Empty (the default) means the direction is derived from the geometry, which is what almost every
+# actor wants. Needed for shop counters, where the counter forces the player into a spot that is not
+# square-on to the shopkeeper, so the geometry would point them sideways along the counter.
+var interact_facing: String = ""
+
 var _wander_origin: Vector2 = Vector2.ZERO
 var _wander_target: Vector2 = Vector2.ZERO
 var _is_wandering: bool = false
@@ -107,7 +114,7 @@ func _is_player_blocking() -> bool:
 	var players = get_tree().get_nodes_in_group("player")
 	if players.is_empty():
 		return false
-	return position.distance_to(players[0].position) < player_block_distance
+	return global_position.distance_to(players[0].global_position) < player_block_distance
 
 # Returns the cardinal direction AWAY from the nearest entity within the
 # proximity buffer, or Vector2.ZERO when there is nothing to avoid.
@@ -371,6 +378,8 @@ func _on_glance_end():
 	direction_timer.wait_time = randf_range(2.0, 15.0)
 	direction_timer.start()
 
+# `target_position` must be a GLOBAL position — this actor lives under the map's NPCS/OPPONENTS
+# container, which is offset from the origin in some scenes, so local positions are not comparable.
 func pause_and_face(target_position: Vector2):
 	velocity = Vector2.ZERO
 	set_physics_process(false)
@@ -385,7 +394,7 @@ func pause_and_face(target_position: Vector2):
 		_glance_timer = null
 	if lock_facing:
 		return
-	var diff = target_position - position
+	var diff = target_position - global_position
 	if abs(diff.x) > abs(diff.y):
 		current_facing = "right" if diff.x > 0 else "left"
 	else:

@@ -8,9 +8,10 @@
 			"meet_text": "Interested in buying some special packs?",
 			"position": {
 				"x": 88,
-				"y": -30
+				"y": -29
 			},
-			"pattern": "idle_down"
+			"pattern": "idle_down",
+			"interact_facing": "up"
 		}
 	],
 	"opponents": []

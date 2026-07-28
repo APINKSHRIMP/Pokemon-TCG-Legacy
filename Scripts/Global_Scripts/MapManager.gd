@@ -293,6 +293,7 @@ func _load_and_spawn_opponents(json_path: String):
 		opp.cash_reward      = entry.get("cash_reward", 0)
 		_assign_actor_position(opp, json_path, entry.get("name", ""), Vector2(entry["position"]["x"], entry["position"]["y"]))
 		opp.movement_pattern = entry.get("pattern", "idle_random")
+		opp.interact_facing  = entry.get("interact_facing", "")
 		opp.patrol_distance  = entry.get("patrol_distance", 100.0)
 		opp.patrol_speed     = entry.get("patrol_speed", 60.0)
 		opp.patrol_axis      = entry.get("patrol_axis", "horizontal")
@@ -334,6 +335,7 @@ func _load_and_spawn_opponents(json_path: String):
 			opp.cash_reward      = lbe.get("cash_reward", 0)
 			_assign_actor_position(opp, _json_path, lbe.get("name", ""), lbe["position"])
 			opp.movement_pattern = lbe.get("pattern", "idle_random")
+			opp.interact_facing  = lbe.get("interact_facing", "")
 			opp.patrol_distance  = lbe.get("patrol_distance", 100.0)
 			opp.patrol_speed     = lbe.get("patrol_speed", 60.0)
 			opp.patrol_axis      = lbe.get("patrol_axis", "horizontal")
@@ -394,6 +396,7 @@ func _load_and_spawn_npcs(json_path: String):
 		npc.patrol_speed     = entry.get("patrol_speed", 60.0)
 		npc.patrol_axis      = entry.get("patrol_axis", "horizontal")
 		npc.wander_radius    = entry.get("wander_radius", 200.0)
+		npc.interact_facing  = entry.get("interact_facing", "")
 
 		# Shop-specific fields
 		if is_shop and npc.has_method("on_interact"):
@@ -424,6 +427,7 @@ func spawn_npc_entry(entry: Dictionary) -> void:
 	npc.patrol_speed     = entry.get("patrol_speed", 60.0)
 	npc.patrol_axis      = entry.get("patrol_axis", "horizontal")
 	npc.wander_radius    = entry.get("wander_radius", 200.0)
+	npc.interact_facing  = entry.get("interact_facing", "")
 	_opponents_container.add_child(npc)
 
 # ============================================================
@@ -617,13 +621,28 @@ func handle_message_spacebar():
 # INTERACTION — OPPONENTS
 # ============================================================
 
+# ISSUE #57: turn the player toward whoever they just interacted with. Normally the direction is
+# derived from the geometry, but an actor can pin it with an `interact_facing` field in its data
+# entry. The three shopkeepers need that: a counter stops the player short of the shopkeeper and off
+# to one side, so the dominant-axis rule would have them talking sideways along the counter rather
+# than across it. Only actors that declare the field are affected — everyone else still turns to
+# face the actor they are talking to.
+func _face_player_toward_actor(actor: Node) -> void:
+	if _player == null or not is_instance_valid(_player):
+		return
+	var forced: String = actor.interact_facing if "interact_facing" in actor else ""
+	if forced != "":
+		_player.set_direction(forced)
+	else:
+		_player.face_toward(actor.global_position)
+
 func _on_player_interact(opponent: Node):
 	if message_panel.visible or _validation_popup_active:
 		return
 	current_opponent = opponent
-	opponent.pause_and_face(_player.position)
+	opponent.pause_and_face(_player.global_position)
 	# ISSUE #57: the player also turns to face the opponent, not just the opponent facing the player.
-	_player.face_toward(opponent.position)
+	_face_player_toward_actor(opponent)
 	# Keep bubble visible during messagebox; refresh in case state changed
 	opponent.refresh_bubble()
 	_show_message_with_choices(opponent.get_greeting_text())
@@ -797,9 +816,9 @@ func _on_player_npc_interact(npc: Node):
 		return
 	current_npc = npc
 
-	npc.pause_and_face(_player.position)
+	npc.pause_and_face(_player.global_position)
 	# ISSUE #57: the player also turns to face the NPC being talked to.
-	_player.face_toward(npc.position)
+	_face_player_toward_actor(npc)
 
 	# Shop NPC: delegate entirely to its own state machine
 	if npc.npc_type == "shop" and npc.has_method("on_interact"):

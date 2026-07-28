@@ -560,7 +560,8 @@
 	"GH 9 Gym Shopkeeper": {
 	  "sprite": "Gym_Shopkeeper",
 	  "npc_type": "shop",
-	  "shop_id": "gym_mart"
+	  "shop_id": "gym_mart",
+	  "interact_facing": "left"
 	},
 	"CH 1 N Badman 1": {
 	  "sprite": "Roughneck"

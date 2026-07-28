@@ -47,8 +47,11 @@ func set_direction(direction: String):
 
 # ISSUE #57: turn the player to face a target position (an NPC/opponent) when interacting, mirroring
 # the way the NPC turns to face the player. Uses the dominant axis of the offset.
+# The target must be a GLOBAL position: actors are children of the map's NPCS/OPPONENTS container,
+# which is not always at the origin (the two marts offset theirs by 121,59), so their local positions
+# are not comparable with the player's.
 func face_toward(target_position: Vector2):
-	var diff = target_position - position
+	var diff = target_position - global_position
 	if abs(diff.x) > abs(diff.y):
 		set_direction("right" if diff.x > 0 else "left")
 	else:
@@ -236,7 +239,7 @@ func _update_active_candidate():
 	var closest: Node = null
 	var closest_dist_sq: float = INF
 	for n in _nearby_candidates:
-		var d_sq: float = position.distance_squared_to(n.position)
+		var d_sq: float = global_position.distance_squared_to(n.global_position)
 		if d_sq < closest_dist_sq:
 			closest_dist_sq = d_sq
 			closest = n

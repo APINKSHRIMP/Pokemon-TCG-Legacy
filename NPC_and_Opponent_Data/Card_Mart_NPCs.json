@@ -8,9 +8,10 @@
 			"meet_text": "Welcome! Would you like to browse the shop?",
 			"position": {
 				"x": 88,
-				"y": -32
+				"y": -26
 			},
-			"pattern": "idle_down"
+			"pattern": "idle_down",
+			"interact_facing": "up"
 		}
 	],
 	"opponents": []
