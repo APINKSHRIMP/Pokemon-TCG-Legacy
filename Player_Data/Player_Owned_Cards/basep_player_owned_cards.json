@@ -208,6 +208,10 @@
 		{
 			"card_id": "basep-53",
 			"owned": 4
+		},
+		{
+			"card_id": "basep-99",
+			"owned": 99
 		}
 	]
 }

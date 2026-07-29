@@ -2915,5 +2915,49 @@
       "small": "https://images.pokemontcg.io/basep/53.png",
       "large": "https://images.pokemontcg.io/basep/53_hires.png"
     }
+  },
+  {
+    "id": "basep-99",
+    "name": "Ancient Mew",
+    "supertype": "Pokémon",
+    "subtypes": [
+      "Basic"
+    ],
+    "hp": "30",
+    "types": [
+      "Psychic"
+    ],
+    "attacks": [
+      {
+        "name": "Psyche",
+        "cost": [
+          "Psychic",
+          "Psychic"
+        ],
+        "convertedEnergyCost": 2,
+        "damage": "40",
+        "text": ""
+      }
+    ],
+    "weaknesses": [
+      {
+        "type": "Psychic",
+        "value": "×2"
+      }
+    ],
+    "retreatCost": [
+      "Colorless",
+      "Colorless"
+    ],
+    "convertedRetreatCost": 2,
+    "number": "99",
+    "rarity": "Promo",
+    "flavorText": "The New Species Pokémon. Little God, or Evil? Its story is told in the ancient script of Birth, Enthronement, Right of Succession and Death.",
+    "nationalPokedexNumbers": [
+      151
+    ],
+    "legalities": {
+      "unlimited": "Legal"
+    }
   }
 ]
