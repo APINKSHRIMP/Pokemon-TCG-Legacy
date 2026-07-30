@@ -2,6 +2,10 @@
 
 ![Trainer icons](Image_Assets/Screenshots/banner.gif)
 
+# Update as of 30/07/2026
+
+Debugging going well, issue log being updated and a few bugs being found and fixed every day. 
+
 # Update as of 19/07/2026
 
 Every single card set is now technically implemented. That's all 40 sets and nearly 2,000 cards playable covering Promos, e-card series, neo, the entire EX era and POP series 1-6.
@@ -40,8 +44,8 @@ Key things **already implemented** to look forward to:
 5) "Boss" battles with meta decks and gym leaders resulting in story progression and big rewards
 6) Challenge battles with bonus gameplay modifiers such as damage mutipliers, weakness and resistance changes, double energy attachment and card restrictions.
 7) Kanto era ends with Gym Hero Challenge, a best of 3 with every kanto gym leader in order to progress to the Neo set game area.
-
-
+   
+   
 
 ![](Image_Assets/Screenshots/taxi.gif)
 
