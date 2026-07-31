@@ -7,6 +7,10 @@ const DEFAULT_SPAWN_POSITION    = Vector2(1770, 1850)
 const SPAWN_FROM_CELESTE_HARBOUR = Vector2(1775, 1909)
 const SPAWN_FROM_GYM_PLAZA       = Vector2(1773, -280)
 const SPAWN_FROM_ROCKET_MART     = Vector2(278, 1064)
+# PLACEHOLDER — set this to the tile just outside the windmill door once the
+# windmill entrance collision zone is placed in Verdant_Forest.tscn. Until then
+# leaving the windmill drops the player at the Rocket Mart doorstep.
+const SPAWN_FROM_WINDMILL        = Vector2(278, 1064)
 
 const TILESET_MORNING   = preload("res://Image_Assets/Map_Sheets/Tile_Sets/Verdant_Forest_Morning.tres")
 const TILESET_AFTERNOON = preload("res://Image_Assets/Map_Sheets/Tile_Sets/Verdant_Forest_Afternoon.tres")
@@ -38,6 +42,7 @@ func get_entry_positions() -> Dictionary:
 		"Celeste_Harbour": SPAWN_FROM_CELESTE_HARBOUR,
 		"Rocket_Mart":     SPAWN_FROM_ROCKET_MART,
 		"Gym_Plaza":       SPAWN_FROM_GYM_PLAZA,
+		"Windmill":        SPAWN_FROM_WINDMILL,
 	}
 func get_opponent_json_path() -> String: return _npc_json_path
 func get_npc_json_path() -> String:      return _npc_json_path

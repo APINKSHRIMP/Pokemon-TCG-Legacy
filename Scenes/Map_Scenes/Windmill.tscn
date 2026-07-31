@@ -1,6 +1,6 @@
 [gd_scene format=4 uid="uid://c5yoe3r2elpp8"]
 
-[ext_resource type="Script" uid="uid://dtop8ffd5om7q" path="res://Scripts/Map_Scripts/Rocket_Mart.gd" id="1_u04si"]
+[ext_resource type="Script" uid="uid://whm3sqvrpohw" path="res://Scripts/Map_Scripts/Windmill.gd" id="1_u04si"]
 [ext_resource type="TileSet" uid="uid://yus3igcnpw1m" path="res://Image_Assets/Map_Sheets/Tile_Sets/Player_Home_Tileset.tres" id="2_witqj"]
 [ext_resource type="Texture2D" uid="uid://bx3bwk33dets8" path="res://Image_Assets/Misc/starter_box.png" id="3_20k4s"]
 [ext_resource type="PackedScene" uid="uid://bprufyh8mxqom" path="res://Scenes/Objects/Player_Object_Scene.tscn" id="4_0nrty"]
@@ -24,7 +24,7 @@ size = Vector2(16, 14)
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_6kwge"]
 size = Vector2(32, 25)
 
-[node name="CARD MART" type="Node2D" unique_id=1007463427]
+[node name="WINDMILL" type="Node2D" unique_id=1007463427]
 position = Vector2(2, 55)
 script = ExtResource("1_u04si")
 

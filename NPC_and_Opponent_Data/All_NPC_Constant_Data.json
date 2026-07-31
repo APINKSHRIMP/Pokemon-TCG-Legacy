@@ -1511,6 +1511,15 @@
 	  "coin_reward": "Energy Darkness Black 2",
 	  "pack_reward": "Gym2-d",
 	  "card_reward": "Gym1-1"
+	},
+	"Mewtwo": {
+	  "sprite": "Mewtwo",
+	  "deck": "Ancient Mew",
+	  "music": "snaky_battle (TCG GB Grand Master Battle)",
+	  "prize_cards": 6,
+	  "cash_reward": "500",
+	  "coin_reward": "Mewtwo Gold",
+	  "card_reward": "basep-99"
 	}
   }
 }

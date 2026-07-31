@@ -26,6 +26,7 @@ const SCENES_TO_PRELOAD: Array = [
 	"res://Scenes/Map_Scenes/Rocket_Mart.tscn",
 	"res://Scenes/Map_Scenes/Player_House_Downstairs.tscn",
 	"res://Scenes/Map_Scenes/Player_House_Upstairs.tscn",
+	"res://Scenes/Map_Scenes/Windmill.tscn",
 	# Menu scenes
 	"res://Scenes/Main_Menu_Scenes/Main_Menu_Scene.tscn",
 	"res://Scenes/Main_Menu_Scenes/Deck_Build_And_Card_View_Scene.tscn",
