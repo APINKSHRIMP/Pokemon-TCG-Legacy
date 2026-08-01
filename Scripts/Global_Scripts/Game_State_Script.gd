@@ -44,21 +44,77 @@ var last_battled_opponent_entry: Dictionary = {}
 var last_interior_scene: String = ""
 var current_shop_id: String = "card_mart"
 
-# ISSUE #34: global game-speed multipliers, to be exposed in the Options submenu later. 1.0 = the
-# current "standard" (medium) speed. Higher = faster. Read these wherever an animation/movement
-# duration is computed so the whole game honours the player's speed preference.
+# ISSUE #34: global game-speed multipliers, driven by the Options submenu. 1.0 = the "standard"
+# (medium) speed. Higher = faster. Read these wherever an animation/movement duration is computed
+# so the whole game honours the player's speed preference.
 #   card_match_animation_speed  — regular card-match animations (place/attach/retreat/discard).
-#                                 Options: slow 0.5, standard 1.0, fast 2.0.
 #   overworld_walking_speed     — the player's default overworld walk/run speed multiplier.
-#                                 Options: slow 0.8, standard 1.0, fast 1.2.
+#                                 Options: slow 0.8, standard 1.0, fast 1.2. (No UI yet.)
 #   overworld_animation_speed   — overworld reward/gift animations (coin/card spins, fades, etc.).
-#                                 Options: slow 0.5, standard 1.0, fast 2.0.
-# ISSUE #34 (TEMPORARY TEST VALUE): the animation multipliers are set to the "fast" 2.0 so every
-# card-match / overworld animation can be checked for a missing multiplier. Revert these two to 1.0
-# once the Options submenu is wired up (walking speed left at standard 1.0).
+# The two animation multipliers are set together by the Options "Animation speed" buttons; the
+# walking multiplier has no button in the current Options layout and stays at standard.
 var card_match_animation_speed: float = 2.0
 var overworld_walking_speed: float = 1.0
 var overworld_animation_speed: float = 2.0
+
+# ISSUE #34: the animation-speed presets offered by the Options screen, keyed by the value stored in
+# Player_Current_Data.json under "animation_speed". TWEAKABLE — raising a number speeds that preset
+# up. "skip" is a deliberately huge multiplier so scaled_duration() collapses every animation to
+# ~1 frame rather than skipping the await chains outright (which would desync the match engine).
+const ANIMATION_SPEED_PRESETS := {
+	"slow": 0.5,
+	"fast": 2.0,
+	"skip": 100.0,
+}
+const DEFAULT_ANIMATION_SPEED := "fast"
+
+# The player's currently selected preset key. Persisted in Player_Current_Data.json.
+var animation_speed_setting: String = DEFAULT_ANIMATION_SPEED
+
+# Applies a preset key to the live multipliers. Pass save = true to also persist it.
+func set_animation_speed(preset: String, save: bool = true) -> void:
+	if not ANIMATION_SPEED_PRESETS.has(preset):
+		push_warning("GameState: unknown animation speed preset '" + preset + "'")
+		return
+	animation_speed_setting = preset
+	var mult: float = ANIMATION_SPEED_PRESETS[preset]
+	card_match_animation_speed = mult
+	overworld_animation_speed = mult
+	if save:
+		_save_animation_speed()
+
+# Reads the saved preset out of Player_Current_Data.json and applies it. Called once on boot.
+func _load_animation_speed() -> void:
+	var data := _read_current_data()
+	var preset: String = str(data.get("animation_speed", DEFAULT_ANIMATION_SPEED))
+	if not ANIMATION_SPEED_PRESETS.has(preset):
+		preset = DEFAULT_ANIMATION_SPEED
+	set_animation_speed(preset, false)
+
+func _save_animation_speed() -> void:
+	var data := _read_current_data()
+	if data.is_empty():
+		return
+	data["animation_speed"] = animation_speed_setting
+	var write_file := FileAccess.open(PLAYER_CURRENT_DATA_PATH, FileAccess.WRITE)
+	if write_file == null:
+		push_error("GameState: cannot write " + PLAYER_CURRENT_DATA_PATH)
+		return
+	write_file.store_string(JSON.stringify(data, "\t"))
+	write_file.close()
+
+func _read_current_data() -> Dictionary:
+	if not FileAccess.file_exists(PLAYER_CURRENT_DATA_PATH):
+		return {}
+	var file := FileAccess.open(PLAYER_CURRENT_DATA_PATH, FileAccess.READ)
+	if file == null:
+		return {}
+	var text := file.get_as_text()
+	file.close()
+	var parsed = JSON.parse_string(text)
+	if parsed is Dictionary:
+		return parsed
+	return {}
 
 # Scales an animation DURATION by a speed multiplier (duration / multiplier), clamped so a zero or
 # negative multiplier can never divide by zero or invert the animation.
@@ -254,6 +310,7 @@ func get_last_interior_scene() -> String:
 func _ready():
 	_ensure_user_data_exists()
 	load_progress()
+	_load_animation_speed()   # ISSUE #34: apply the saved Options animation-speed preset
 
 # ============================================================
 # FIRST-RUN DATA MIGRATION (res:// → user://)
