@@ -92,10 +92,61 @@ func _load_animation_speed() -> void:
 	set_animation_speed(preset, false)
 
 func _save_animation_speed() -> void:
+	_save_current_data_field("animation_speed", animation_speed_setting)
+
+# ISSUE #34: the two match-rule variants offered by the Options screen. Each entry is the string
+# stored in Player_Current_Data.json, and is copied into the match core's own burn_rules /
+# confusion_rules at the start of every match.
+#   Confusion — base_set:   retreat flip AFTER paying the energy; tails = energy still discarded
+#                           and the Pokemon stays put.
+#               fairer:     retreat flip BEFORE paying the energy; tails = 20 self-damage and the
+#                           retreat is cancelled, but the energy is kept. (House rule.)
+#               modern_era: confusion doesn't affect retreat at all (ex-era rules).
+#   Burn      — base_set:   flip between turns; tails = 20 burn damage, and burn never self-cures.
+#               modern_era: 20 burn damage every turn, then flip — heads cures the burn.
+const CONFUSION_RULE_OPTIONS := ["base_set_confusion_rules", "fairer_confusion_rules", "modern_era_confusion_rules"]
+const BURN_RULE_OPTIONS      := ["base_set_burn_rules", "modern_era_burn_rules"]
+const DEFAULT_CONFUSION_RULE := "base_set_confusion_rules"
+const DEFAULT_BURN_RULE      := "base_set_burn_rules"
+
+var confusion_rule_setting: String = DEFAULT_CONFUSION_RULE
+var burn_rule_setting: String = DEFAULT_BURN_RULE
+
+# Applies a rule choice. Pass save = false to set it without touching the save file (used on boot).
+func set_confusion_rule(rule: String, save: bool = true) -> void:
+	if not rule in CONFUSION_RULE_OPTIONS:
+		push_warning("GameState: unknown confusion rule '" + rule + "'")
+		return
+	confusion_rule_setting = rule
+	if save:
+		_save_current_data_field("confusion_rules", rule)
+
+func set_burn_rule(rule: String, save: bool = true) -> void:
+	if not rule in BURN_RULE_OPTIONS:
+		push_warning("GameState: unknown burn rule '" + rule + "'")
+		return
+	burn_rule_setting = rule
+	if save:
+		_save_current_data_field("burn_rules", rule)
+
+# Reads both saved rule choices out of Player_Current_Data.json. Called once on boot.
+func _load_rule_settings() -> void:
+	var data := _read_current_data()
+	var confusion: String = str(data.get("confusion_rules", DEFAULT_CONFUSION_RULE))
+	if not confusion in CONFUSION_RULE_OPTIONS:
+		confusion = DEFAULT_CONFUSION_RULE
+	set_confusion_rule(confusion, false)
+	var burn: String = str(data.get("burn_rules", DEFAULT_BURN_RULE))
+	if not burn in BURN_RULE_OPTIONS:
+		burn = DEFAULT_BURN_RULE
+	set_burn_rule(burn, false)
+
+# Writes a single key back into Player_Current_Data.json, leaving every other key untouched.
+func _save_current_data_field(key: String, value) -> void:
 	var data := _read_current_data()
 	if data.is_empty():
 		return
-	data["animation_speed"] = animation_speed_setting
+	data[key] = value
 	var write_file := FileAccess.open(PLAYER_CURRENT_DATA_PATH, FileAccess.WRITE)
 	if write_file == null:
 		push_error("GameState: cannot write " + PLAYER_CURRENT_DATA_PATH)
@@ -311,6 +362,7 @@ func _ready():
 	_ensure_user_data_exists()
 	load_progress()
 	_load_animation_speed()   # ISSUE #34: apply the saved Options animation-speed preset
+	_load_rule_settings()     # ISSUE #34: apply the saved Options confusion / burn rule choices
 
 # ============================================================
 # FIRST-RUN DATA MIGRATION (res:// → user://)

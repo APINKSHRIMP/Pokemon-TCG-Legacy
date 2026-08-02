@@ -1,6 +1,8 @@
 {
 	"animation_speed": "fast",
+	"burn_rules": "base_set_burn_rules",
 	"coin": "Pikachu Silver",
+	"confusion_rules": "base_set_confusion_rules",
 	"date_of_birth": "",
 	"deck": "Your First Deck",
 	"energy_style": "Base1",

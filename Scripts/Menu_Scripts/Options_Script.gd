@@ -1,8 +1,8 @@
 extends Control
 
-# ISSUE #34: the Options screen. Only the "Animation speed" section is wired up so far — the
-# Confusion Rules / Burn Rules / Message box style sections are laid out in the scene but have no
-# backing setting yet, so their buttons are left inert on purpose.
+# ISSUE #34: the Options screen. Three sections are wired up — "Animation speed", "Confusion Rules"
+# and "Burn Rules". The "Message box style" section is laid out in the scene but has no backing
+# setting yet, so its area is left inert on purpose.
 
 # ─── Constants ───────────────────────────────────────────────────────────────
 
@@ -12,9 +12,14 @@ const THEME_SAVE_READY := "res://UI_Themes/kenneyUI-green.tres"  # save button w
 
 # ─── State ───────────────────────────────────────────────────────────────────
 
-# The preset the player has clicked but not yet saved, and the one currently persisted.
-var pending_speed : String = ""
-var saved_speed   : String = ""
+# What the player has clicked but not yet saved, and what is currently persisted. One entry per
+# section, keyed by section name.
+var pending : Dictionary = {}
+var saved   : Dictionary = {}
+
+# section name -> { option value : Button }. Built in _ready() so every section refreshes and saves
+# through the same code.
+var section_buttons : Dictionary = {}
 
 # ─── Node references ─────────────────────────────────────────────────────────
 
@@ -24,22 +29,49 @@ var saved_speed   : String = ""
 @onready var slow_btn   : Button = $"SPEED/slow_button"
 @onready var fast_btn   : Button = $"SPEED/skip_button"
 @onready var skip_btn   : Button = $"SPEED/fast_button"
+
+@onready var confusion_base_btn   : Button = $"CONFUSION/confusion_base_button"
+@onready var confusion_fairer_btn : Button = $"CONFUSION/confusion_allowretreat_button"
+@onready var confusion_ex_btn     : Button = $"CONFUSION/confusion_ex_button"
+
+@onready var burn_base_btn : Button = $"BURN/burn_base_button"
+@onready var burn_ex_btn   : Button = $"BURN/burn_ex_button"
+
 @onready var save_btn   : Button = $"MAIN/options_save_button"
 @onready var cancel_btn : Button = $"MAIN/options_cancel_button"
 
 # ─── Lifecycle ───────────────────────────────────────────────────────────────
 
 func _ready() -> void:
-	saved_speed   = GameState.animation_speed_setting
-	pending_speed = saved_speed
+	section_buttons = {
+		"speed": {
+			"slow": slow_btn,
+			"fast": fast_btn,
+			"skip": skip_btn,
+		},
+		"confusion": {
+			"base_set_confusion_rules":   confusion_base_btn,
+			"fairer_confusion_rules":     confusion_fairer_btn,
+			"modern_era_confusion_rules": confusion_ex_btn,
+		},
+		"burn": {
+			"base_set_burn_rules":   burn_base_btn,
+			"modern_era_burn_rules": burn_ex_btn,
+		},
+	}
 
-	slow_btn.pressed.connect(_on_speed_pressed.bind("slow"))
-	fast_btn.pressed.connect(_on_speed_pressed.bind("fast"))
-	skip_btn.pressed.connect(_on_speed_pressed.bind("skip"))
+	saved["speed"]     = GameState.animation_speed_setting
+	saved["confusion"] = GameState.confusion_rule_setting
+	saved["burn"]      = GameState.burn_rule_setting
+	pending = saved.duplicate()
+
+	for section in section_buttons:
+		for option in section_buttons[section]:
+			section_buttons[section][option].pressed.connect(_on_option_pressed.bind(section, option))
+		_refresh_section(section)
+
 	save_btn.pressed.connect(_on_save_pressed)
 	cancel_btn.pressed.connect(_on_cancel_pressed)
-
-	_refresh_speed_buttons()
 	_refresh_save_button()
 
 
@@ -47,40 +79,54 @@ func _input(event: InputEvent) -> void:
 	if event is InputEventKey and event.pressed and event.keycode == KEY_ESCAPE:
 		_leave()
 
-# ─── Animation speed ─────────────────────────────────────────────────────────
+# ─── Option selection ────────────────────────────────────────────────────────
 
-func _on_speed_pressed(preset: String) -> void:
-	if preset == pending_speed:
+func _on_option_pressed(section: String, option: String) -> void:
+	if option == pending[section]:
 		return
-	pending_speed = preset
+	pending[section] = option
 	SoundManagerScript.play_sfx(SoundManagerScript.SFX_gamemode_select)
-	_refresh_speed_buttons()
+	_refresh_section(section)
 	_refresh_save_button()
 
 
-# Highlights whichever of the three buttons matches the pending selection.
-func _refresh_speed_buttons() -> void:
+# Highlights whichever button in a section matches the pending selection.
+func _refresh_section(section: String) -> void:
 	var selected   := load(THEME_SELECTED)
 	var unselected := load(THEME_UNSELECTED)
-	slow_btn.theme = selected if pending_speed == "slow" else unselected
-	fast_btn.theme = selected if pending_speed == "fast" else unselected
-	skip_btn.theme = selected if pending_speed == "skip" else unselected
+	for option in section_buttons[section]:
+		section_buttons[section][option].theme = selected if pending[section] == option else unselected
 
 
-# The save button only lights up (green, enabled) while there is an unsaved change.
+# The save button only lights up (green, enabled) while there is an unsaved change in any section.
 func _refresh_save_button() -> void:
-	var has_change := pending_speed != saved_speed
+	var has_change := false
+	for section in pending:
+		if pending[section] != saved[section]:
+			has_change = true
+			break
 	save_btn.disabled = not has_change
 	save_btn.theme = load(THEME_SAVE_READY) if has_change else load(THEME_SELECTED)
 
 # ─── Save / Cancel ───────────────────────────────────────────────────────────
 
 func _on_save_pressed() -> void:
-	if pending_speed == saved_speed:
+	var saved_anything := false
+
+	# GameState owns both the live values and the writes to Player_Current_Data.json.
+	if pending["speed"] != saved["speed"]:
+		GameState.set_animation_speed(pending["speed"])
+		saved_anything = true
+	if pending["confusion"] != saved["confusion"]:
+		GameState.set_confusion_rule(pending["confusion"])
+		saved_anything = true
+	if pending["burn"] != saved["burn"]:
+		GameState.set_burn_rule(pending["burn"])
+		saved_anything = true
+
+	if not saved_anything:
 		return
-	# GameState owns both the live multipliers and the write to Player_Current_Data.json.
-	GameState.set_animation_speed(pending_speed)
-	saved_speed = pending_speed
+	saved = pending.duplicate()
 	SoundManagerScript.play_sfx(SoundManagerScript.SFX_gamemode_select)
 	_refresh_save_button()
 

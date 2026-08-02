@@ -39,8 +39,10 @@ func get_set_cards(set_prefix: String) -> Array:
 func _should_bail() -> bool:
 	return game_is_over or not is_inside_tree()
 
-# TESTING - There are different rulesets for burn and confusion depending on what generation/set is being played.
+# There are different rulesets for burn and confusion depending on what generation/set is being played.
 # Additionally I personally felt base set confusion retreat rule is horrendous, so I have created a personal rule that doesn't give free retreat but doesn't force discard then coin flip
+# ISSUE #34: both are chosen by the player in Options; _ready() copies the saved choice out of
+# GameState. The values below are only the fallback if a match somehow runs before GameState loads.
 var burn_rules: String = "base_set_burn_rules" # "base_set_burn_rules" or "modern_era_burn_rules"
 var confusion_rules: String = "base_set_confusion_rules" # "base_set_confusion_rules" or "fairer_confusion_rules" or "modern_era_confusion_rules"
 
@@ -6954,6 +6956,10 @@ func debug_key_heal_bench() -> void:
 
 # Called when the node enters the scene tree for the first time.
 func _ready() -> void:
+	# ISSUE #34: pick up the player's Options rule choices for this match.
+	burn_rules = GameState.burn_rule_setting
+	confusion_rules = GameState.confusion_rule_setting
+
 	# Instantiate helper scripts
 	attack_effects = Node.new()
 	attack_effects.set_script(preload("res://Scripts/Main_Match_Gameplay_Scripts/Attack_Effects.gd"))
