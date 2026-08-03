@@ -8,7 +8,6 @@
 [ext_resource type="Theme" uid="uid://6shp5ck1tnja" path="res://UI_Themes/kenneyUI.tres" id="6_5samb"]
 [ext_resource type="Theme" uid="uid://mbsg4xqnedxi" path="res://UI_Themes/kenneyUI-red.tres" id="7_yfc7x"]
 [ext_resource type="Theme" uid="uid://bb6vwl0h1flws" path="res://UI_Themes/kenneyUI-blue.tres" id="8_1e4m1"]
-[ext_resource type="Texture2D" uid="uid://c5cap0mto25ue" path="res://Image_Assets/Messageboxes/example.png" id="9_i7mvm"]
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_ui6o0"]
 shader = ExtResource("2_1e4m1")
@@ -63,219 +62,448 @@ scale = Vector2(0.29, 0.29)
 texture = ExtResource("5_if2wb")
 stretch_mode = 1
 
-[node name="CONFUSION" type="Control" parent="." unique_id=1903279321]
+[node name="CONFUSION" type="Control" parent="." unique_id=1620044601]
 anchors_preset = 0
-offset_left = 55.0
-offset_top = 6.0
-offset_right = 95.0
-offset_bottom = 46.0
+offset_right = 40.0
+offset_bottom = 40.0
 
-[node name="confusion_rule_label" type="Label" parent="CONFUSION" unique_id=900271729]
+[node name="confusion_header" type="Label" parent="CONFUSION" unique_id=1620044602]
 z_index = 999
 layout_mode = 0
-offset_left = -1.0
-offset_top = 112.0
-offset_right = 522.0
-offset_bottom = 184.0
+offset_left = 160.0
+offset_top = 110.0
+offset_right = 1760.0
+offset_bottom = 148.0
 theme = ExtResource("8_1e4m1")
 theme_override_colors/font_color = Color(0, 0, 0, 1)
 theme_override_colors/font_shadow_color = Color(1.0187511, 1.0187511, 1.0187511, 1)
 theme_override_constants/line_spacing = 3
 theme_override_constants/shadow_offset_x = 0
 theme_override_constants/shadow_offset_y = 0
-theme_override_constants/shadow_outline_size = 20
-theme_override_font_sizes/font_size = 35
+theme_override_constants/shadow_outline_size = 16
+theme_override_font_sizes/font_size = 26
 text = "Confusion Rules"
 horizontal_alignment = 1
 vertical_alignment = 1
 
-[node name="confusion_base_button" type="Button" parent="CONFUSION" unique_id=1744390882]
+[node name="confusion_base_button" type="Button" parent="CONFUSION" unique_id=1620044603]
 z_index = 300
 layout_mode = 0
-offset_left = 91.0
-offset_top = 201.0
-offset_right = 421.0
-offset_bottom = 264.0
+offset_left = 538.0
+offset_top = 153.0
+offset_right = 806.0
+offset_bottom = 205.0
 theme = ExtResource("6_5samb")
+theme_override_font_sizes/font_size = 19
 text = "base set rules"
 
-[node name="confusion_allowretreat_button" type="Button" parent="CONFUSION" unique_id=986998442]
+[node name="confusion_allowretreat_button" type="Button" parent="CONFUSION" unique_id=1620044604]
 z_index = 300
 layout_mode = 0
-offset_left = 92.0
-offset_top = 290.0
-offset_right = 422.0
-offset_bottom = 353.0
+offset_left = 826.0
+offset_top = 153.0
+offset_right = 1094.0
+offset_bottom = 205.0
 theme = ExtResource("8_1e4m1")
+theme_override_font_sizes/font_size = 19
 text = "fairer retreat rules"
 
-[node name="confusion_ex_button" type="Button" parent="CONFUSION" unique_id=2129538420]
+[node name="confusion_ex_button" type="Button" parent="CONFUSION" unique_id=1620044605]
 z_index = 300
 layout_mode = 0
-offset_left = 94.0
-offset_top = 384.0
-offset_right = 424.0
-offset_bottom = 447.0
+offset_left = 1114.0
+offset_top = 153.0
+offset_right = 1382.0
+offset_bottom = 205.0
 theme = ExtResource("8_1e4m1")
+theme_override_font_sizes/font_size = 19
 text = "ex era rules"
 
-[node name="BURN" type="Control" parent="." unique_id=102905619]
+[node name="BURN" type="Control" parent="." unique_id=1620044606]
 anchors_preset = 0
-offset_left = 213.0
-offset_top = 8.0
-offset_right = 253.0
-offset_bottom = 48.0
+offset_right = 40.0
+offset_bottom = 40.0
 
-[node name="burn_rule_label" type="Label" parent="BURN" unique_id=1843037262]
+[node name="burn_header" type="Label" parent="BURN" unique_id=1620044607]
 z_index = 999
 layout_mode = 0
-offset_left = 467.0
-offset_top = 111.0
-offset_right = 1015.0
-offset_bottom = 183.0
+offset_left = 160.0
+offset_top = 224.0
+offset_right = 1760.0
+offset_bottom = 262.0
 theme = ExtResource("8_1e4m1")
 theme_override_colors/font_color = Color(0, 0, 0, 1)
 theme_override_colors/font_shadow_color = Color(1.0187511, 1.0187511, 1.0187511, 1)
 theme_override_constants/line_spacing = 3
 theme_override_constants/shadow_offset_x = 0
 theme_override_constants/shadow_offset_y = 0
-theme_override_constants/shadow_outline_size = 20
-theme_override_font_sizes/font_size = 35
+theme_override_constants/shadow_outline_size = 16
+theme_override_font_sizes/font_size = 26
 text = "Burn Rules"
 horizontal_alignment = 1
 vertical_alignment = 1
 
-[node name="burn_base_button" type="Button" parent="BURN" unique_id=951717342]
+[node name="burn_base_button" type="Button" parent="BURN" unique_id=1620044608]
 z_index = 300
 layout_mode = 0
-offset_left = 576.0
-offset_top = 199.0
-offset_right = 906.0
-offset_bottom = 262.0
+offset_left = 682.0
+offset_top = 267.0
+offset_right = 950.0
+offset_bottom = 319.0
 theme = ExtResource("6_5samb")
+theme_override_font_sizes/font_size = 19
 text = "base set rules"
 
-[node name="burn_ex_button" type="Button" parent="BURN" unique_id=998275954]
+[node name="burn_ex_button" type="Button" parent="BURN" unique_id=1620044609]
 z_index = 300
 layout_mode = 0
-offset_left = 578.0
-offset_top = 292.0
-offset_right = 908.0
-offset_bottom = 355.0
+offset_left = 970.0
+offset_top = 267.0
+offset_right = 1238.0
+offset_bottom = 319.0
 theme = ExtResource("8_1e4m1")
+theme_override_font_sizes/font_size = 19
 text = "ex era rules"
 
-[node name="SPEED" type="Control" parent="." unique_id=1334539566]
+[node name="WALKING" type="Control" parent="." unique_id=1620044610]
 anchors_preset = 0
-offset_left = 1560.0
-offset_top = 145.0
-offset_right = 1600.0
-offset_bottom = 185.0
+offset_right = 40.0
+offset_bottom = 40.0
 
-[node name="animation_speed_label" type="Label" parent="SPEED" unique_id=1725187665]
+[node name="walking_header" type="Label" parent="WALKING" unique_id=1620044611]
 z_index = 999
 layout_mode = 0
-offset_left = -225.0
-offset_top = -30.0
-offset_right = 323.0
-offset_bottom = 42.0
+offset_left = 160.0
+offset_top = 359.0
+offset_right = 1760.0
+offset_bottom = 397.0
 theme = ExtResource("8_1e4m1")
 theme_override_colors/font_color = Color(0, 0, 0, 1)
 theme_override_colors/font_shadow_color = Color(1.0187511, 1.0187511, 1.0187511, 1)
 theme_override_constants/line_spacing = 3
 theme_override_constants/shadow_offset_x = 0
 theme_override_constants/shadow_offset_y = 0
-theme_override_constants/shadow_outline_size = 20
-theme_override_font_sizes/font_size = 35
-text = "Animation speed"
+theme_override_constants/shadow_outline_size = 16
+theme_override_font_sizes/font_size = 26
+text = "Walking Speed"
 horizontal_alignment = 1
 vertical_alignment = 1
 
-[node name="slow_button" type="Button" parent="SPEED" unique_id=1427068666]
+[node name="walking_very_slow_button" type="Button" parent="WALKING" unique_id=1620044612]
 z_index = 300
 layout_mode = 0
-offset_left = -127.0
-offset_top = 60.0
-offset_right = 203.0
-offset_bottom = 123.0
-theme = ExtResource("6_5samb")
-text = "SLOW"
+offset_left = 394.0
+offset_top = 402.0
+offset_right = 662.0
+offset_bottom = 454.0
+theme = ExtResource("8_1e4m1")
+theme_override_font_sizes/font_size = 19
+text = "very slow"
 
-[node name="fast_button" type="Button" parent="SPEED" unique_id=1926891035]
+[node name="walking_slow_button" type="Button" parent="WALKING" unique_id=1620044613]
 z_index = 300
 layout_mode = 0
-offset_left = -125.0
-offset_top = 255.0
-offset_right = 205.0
-offset_bottom = 318.0
+offset_left = 682.0
+offset_top = 402.0
+offset_right = 950.0
+offset_bottom = 454.0
 theme = ExtResource("8_1e4m1")
-text = "skip animations"
-
-[node name="skip_button" type="Button" parent="SPEED" unique_id=1543562065]
-z_index = 300
-layout_mode = 0
-offset_left = -126.0
-offset_top = 160.0
-offset_right = 204.0
-offset_bottom = 223.0
-theme = ExtResource("8_1e4m1")
-text = "fast"
-
-[node name="WALKING" type="Control" parent="." unique_id=1620044501]
-anchors_preset = 0
-offset_left = 1130.0
-offset_top = 145.0
-offset_right = 1170.0
-offset_bottom = 185.0
-
-[node name="walking_speed_label" type="Label" parent="WALKING" unique_id=1620044502]
-z_index = 999
-layout_mode = 0
-offset_left = -140.0
-offset_top = -30.0
-offset_right = 210.0
-offset_bottom = 42.0
-theme = ExtResource("8_1e4m1")
-theme_override_colors/font_color = Color(0, 0, 0, 1)
-theme_override_colors/font_shadow_color = Color(1.0187511, 1.0187511, 1.0187511, 1)
-theme_override_constants/line_spacing = 3
-theme_override_constants/shadow_offset_x = 0
-theme_override_constants/shadow_offset_y = 0
-theme_override_constants/shadow_outline_size = 20
-theme_override_font_sizes/font_size = 35
-text = "Walking speed"
-horizontal_alignment = 1
-vertical_alignment = 1
-
-[node name="walking_slow_button" type="Button" parent="WALKING" unique_id=1620044503]
-z_index = 300
-layout_mode = 0
-offset_left = -127.0
-offset_top = 60.0
-offset_right = 203.0
-offset_bottom = 123.0
-theme = ExtResource("8_1e4m1")
+theme_override_font_sizes/font_size = 19
 text = "slow"
 
-[node name="walking_standard_button" type="Button" parent="WALKING" unique_id=1620044504]
+[node name="walking_normal_button" type="Button" parent="WALKING" unique_id=1620044614]
 z_index = 300
 layout_mode = 0
-offset_left = -127.0
-offset_top = 160.0
-offset_right = 203.0
-offset_bottom = 223.0
+offset_left = 970.0
+offset_top = 402.0
+offset_right = 1238.0
+offset_bottom = 454.0
 theme = ExtResource("6_5samb")
-text = "standard"
+theme_override_font_sizes/font_size = 19
+text = "normal"
 
-[node name="walking_fast_button" type="Button" parent="WALKING" unique_id=1620044505]
+[node name="walking_fast_button" type="Button" parent="WALKING" unique_id=1620044615]
 z_index = 300
 layout_mode = 0
-offset_left = -127.0
-offset_top = 255.0
-offset_right = 203.0
-offset_bottom = 318.0
+offset_left = 1258.0
+offset_top = 402.0
+offset_right = 1526.0
+offset_bottom = 454.0
 theme = ExtResource("8_1e4m1")
+theme_override_font_sizes/font_size = 19
 text = "fast"
+
+[node name="SPEED" type="Control" parent="." unique_id=1620044616]
+anchors_preset = 0
+offset_right = 40.0
+offset_bottom = 40.0
+
+[node name="speed_header" type="Label" parent="SPEED" unique_id=1620044617]
+z_index = 999
+layout_mode = 0
+offset_left = 160.0
+offset_top = 494.0
+offset_right = 1760.0
+offset_bottom = 532.0
+theme = ExtResource("8_1e4m1")
+theme_override_colors/font_color = Color(0, 0, 0, 1)
+theme_override_colors/font_shadow_color = Color(1.0187511, 1.0187511, 1.0187511, 1)
+theme_override_constants/line_spacing = 3
+theme_override_constants/shadow_offset_x = 0
+theme_override_constants/shadow_offset_y = 0
+theme_override_constants/shadow_outline_size = 16
+theme_override_font_sizes/font_size = 26
+text = "Match Animation Speed"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="very_slow_button" type="Button" parent="SPEED" unique_id=1620044618]
+z_index = 300
+layout_mode = 0
+offset_left = 250.0
+offset_top = 537.0
+offset_right = 518.0
+offset_bottom = 589.0
+theme = ExtResource("8_1e4m1")
+theme_override_font_sizes/font_size = 19
+text = "very slow"
+
+[node name="slow_button" type="Button" parent="SPEED" unique_id=1620044619]
+z_index = 300
+layout_mode = 0
+offset_left = 538.0
+offset_top = 537.0
+offset_right = 806.0
+offset_bottom = 589.0
+theme = ExtResource("8_1e4m1")
+theme_override_font_sizes/font_size = 19
+text = "slow"
+
+[node name="normal_button" type="Button" parent="SPEED" unique_id=1620044620]
+z_index = 300
+layout_mode = 0
+offset_left = 826.0
+offset_top = 537.0
+offset_right = 1094.0
+offset_bottom = 589.0
+theme = ExtResource("6_5samb")
+theme_override_font_sizes/font_size = 19
+text = "normal"
+
+[node name="fast_button" type="Button" parent="SPEED" unique_id=1620044621]
+z_index = 300
+layout_mode = 0
+offset_left = 1114.0
+offset_top = 537.0
+offset_right = 1382.0
+offset_bottom = 589.0
+theme = ExtResource("8_1e4m1")
+theme_override_font_sizes/font_size = 19
+text = "fast"
+
+[node name="skip_button" type="Button" parent="SPEED" unique_id=1620044622]
+z_index = 300
+layout_mode = 0
+offset_left = 1402.0
+offset_top = 537.0
+offset_right = 1670.0
+offset_bottom = 589.0
+theme = ExtResource("8_1e4m1")
+theme_override_font_sizes/font_size = 19
+text = "skip animations"
+
+[node name="ITEM" type="Control" parent="." unique_id=1620044623]
+anchors_preset = 0
+offset_right = 40.0
+offset_bottom = 40.0
+
+[node name="item_header" type="Label" parent="ITEM" unique_id=1620044624]
+z_index = 999
+layout_mode = 0
+offset_left = 160.0
+offset_top = 608.0
+offset_right = 1760.0
+offset_bottom = 646.0
+theme = ExtResource("8_1e4m1")
+theme_override_colors/font_color = Color(0, 0, 0, 1)
+theme_override_colors/font_shadow_color = Color(1.0187511, 1.0187511, 1.0187511, 1)
+theme_override_constants/line_spacing = 3
+theme_override_constants/shadow_offset_x = 0
+theme_override_constants/shadow_offset_y = 0
+theme_override_constants/shadow_outline_size = 16
+theme_override_font_sizes/font_size = 26
+text = "Coin, Costume and Rewards Receiving Animation Speed"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="item_very_slow_button" type="Button" parent="ITEM" unique_id=1620044625]
+z_index = 300
+layout_mode = 0
+offset_left = 394.0
+offset_top = 651.0
+offset_right = 662.0
+offset_bottom = 703.0
+theme = ExtResource("8_1e4m1")
+theme_override_font_sizes/font_size = 19
+text = "very slow"
+
+[node name="item_slow_button" type="Button" parent="ITEM" unique_id=1620044626]
+z_index = 300
+layout_mode = 0
+offset_left = 682.0
+offset_top = 651.0
+offset_right = 950.0
+offset_bottom = 703.0
+theme = ExtResource("8_1e4m1")
+theme_override_font_sizes/font_size = 19
+text = "slow"
+
+[node name="item_normal_button" type="Button" parent="ITEM" unique_id=1620044627]
+z_index = 300
+layout_mode = 0
+offset_left = 970.0
+offset_top = 651.0
+offset_right = 1238.0
+offset_bottom = 703.0
+theme = ExtResource("6_5samb")
+theme_override_font_sizes/font_size = 19
+text = "normal"
+
+[node name="item_fast_button" type="Button" parent="ITEM" unique_id=1620044628]
+z_index = 300
+layout_mode = 0
+offset_left = 1258.0
+offset_top = 651.0
+offset_right = 1526.0
+offset_bottom = 703.0
+theme = ExtResource("8_1e4m1")
+theme_override_font_sizes/font_size = 19
+text = "fast"
+
+[node name="PACK" type="Control" parent="." unique_id=1620044629]
+anchors_preset = 0
+offset_right = 40.0
+offset_bottom = 40.0
+
+[node name="pack_header" type="Label" parent="PACK" unique_id=1620044630]
+z_index = 999
+layout_mode = 0
+offset_left = 160.0
+offset_top = 722.0
+offset_right = 1760.0
+offset_bottom = 760.0
+theme = ExtResource("8_1e4m1")
+theme_override_colors/font_color = Color(0, 0, 0, 1)
+theme_override_colors/font_shadow_color = Color(1.0187511, 1.0187511, 1.0187511, 1)
+theme_override_constants/line_spacing = 3
+theme_override_constants/shadow_offset_x = 0
+theme_override_constants/shadow_offset_y = 0
+theme_override_constants/shadow_outline_size = 16
+theme_override_font_sizes/font_size = 26
+text = "Pack Opening Animation Speed"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="pack_very_slow_button" type="Button" parent="PACK" unique_id=1620044631]
+z_index = 300
+layout_mode = 0
+offset_left = 250.0
+offset_top = 765.0
+offset_right = 518.0
+offset_bottom = 817.0
+theme = ExtResource("8_1e4m1")
+theme_override_font_sizes/font_size = 19
+text = "very slow"
+
+[node name="pack_slow_button" type="Button" parent="PACK" unique_id=1620044632]
+z_index = 300
+layout_mode = 0
+offset_left = 538.0
+offset_top = 765.0
+offset_right = 806.0
+offset_bottom = 817.0
+theme = ExtResource("8_1e4m1")
+theme_override_font_sizes/font_size = 19
+text = "slow"
+
+[node name="pack_normal_button" type="Button" parent="PACK" unique_id=1620044633]
+z_index = 300
+layout_mode = 0
+offset_left = 826.0
+offset_top = 765.0
+offset_right = 1094.0
+offset_bottom = 817.0
+theme = ExtResource("6_5samb")
+theme_override_font_sizes/font_size = 19
+text = "normal"
+
+[node name="pack_fast_button" type="Button" parent="PACK" unique_id=1620044634]
+z_index = 300
+layout_mode = 0
+offset_left = 1114.0
+offset_top = 765.0
+offset_right = 1382.0
+offset_bottom = 817.0
+theme = ExtResource("8_1e4m1")
+theme_override_font_sizes/font_size = 19
+text = "fast"
+
+[node name="pack_skip_button" type="Button" parent="PACK" unique_id=1620044635]
+z_index = 300
+layout_mode = 0
+offset_left = 1402.0
+offset_top = 765.0
+offset_right = 1670.0
+offset_bottom = 817.0
+theme = ExtResource("8_1e4m1")
+theme_override_font_sizes/font_size = 19
+text = "skip animations"
+
+[node name="INTROOUTRO" type="Control" parent="." unique_id=1620044636]
+anchors_preset = 0
+offset_right = 40.0
+offset_bottom = 40.0
+
+[node name="introoutro_header" type="Label" parent="INTROOUTRO" unique_id=1620044637]
+z_index = 999
+layout_mode = 0
+offset_left = 160.0
+offset_top = 836.0
+offset_right = 1760.0
+offset_bottom = 874.0
+theme = ExtResource("8_1e4m1")
+theme_override_colors/font_color = Color(0, 0, 0, 1)
+theme_override_colors/font_shadow_color = Color(1.0187511, 1.0187511, 1.0187511, 1)
+theme_override_constants/line_spacing = 3
+theme_override_constants/shadow_offset_x = 0
+theme_override_constants/shadow_offset_y = 0
+theme_override_constants/shadow_outline_size = 16
+theme_override_font_sizes/font_size = 26
+text = "Play Match Intro / Outro Animation?"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="intro_play_button" type="Button" parent="INTROOUTRO" unique_id=1620044638]
+z_index = 300
+layout_mode = 0
+offset_left = 682.0
+offset_top = 879.0
+offset_right = 950.0
+offset_bottom = 931.0
+theme = ExtResource("6_5samb")
+theme_override_font_sizes/font_size = 19
+text = "play animations"
+
+[node name="intro_skip_button" type="Button" parent="INTROOUTRO" unique_id=1620044639]
+z_index = 300
+layout_mode = 0
+offset_left = 970.0
+offset_top = 879.0
+offset_right = 1238.0
+offset_bottom = 931.0
+theme = ExtResource("8_1e4m1")
+theme_override_font_sizes/font_size = 19
+text = "skip animations"
 
 [node name="MAIN" type="Control" parent="." unique_id=630256141]
 anchors_preset = 0
@@ -286,9 +514,9 @@ offset_bottom = 40.0
 z_index = 300
 layout_mode = 0
 offset_left = 568.0
-offset_top = 998.0
+offset_top = 1000.0
 offset_right = 912.0
-offset_bottom = 1061.0
+offset_bottom = 1058.0
 theme = ExtResource("6_5samb")
 text = "save"
 
@@ -296,9 +524,9 @@ text = "save"
 z_index = 300
 layout_mode = 0
 offset_left = 935.0
-offset_top = 998.0
+offset_top = 1000.0
 offset_right = 1279.0
-offset_bottom = 1061.0
+offset_bottom = 1058.0
 theme = ExtResource("7_yfc7x")
 text = "cancel"
 
@@ -306,9 +534,9 @@ text = "cancel"
 z_index = 999
 layout_mode = 0
 offset_left = 1.0
-offset_top = 17.0
+offset_top = 14.0
 offset_right = 1917.0
-offset_bottom = 89.0
+offset_bottom = 76.0
 theme = ExtResource("8_1e4m1")
 theme_override_colors/font_color = Color(0, 0, 0, 1)
 theme_override_colors/font_shadow_color = Color(1.0187511, 1.0187511, 1.0187511, 1)
@@ -316,40 +544,7 @@ theme_override_constants/line_spacing = 3
 theme_override_constants/shadow_offset_x = 0
 theme_override_constants/shadow_offset_y = 0
 theme_override_constants/shadow_outline_size = 20
-theme_override_font_sizes/font_size = 61
-text = "OPTIONS	"
+theme_override_font_sizes/font_size = 52
+text = "OPTIONS"
 horizontal_alignment = 1
 vertical_alignment = 1
-
-[node name="MESSAGEBOX" type="Control" parent="." unique_id=1960958239]
-anchors_preset = 0
-offset_right = 40.0
-offset_bottom = 40.0
-
-[node name="messagebox_label" type="Label" parent="MESSAGEBOX" unique_id=2133064889]
-z_index = 999
-layout_mode = 0
-offset_left = 678.0
-offset_top = 543.0
-offset_right = 1226.0
-offset_bottom = 615.0
-theme = ExtResource("8_1e4m1")
-theme_override_colors/font_color = Color(0, 0, 0, 1)
-theme_override_colors/font_shadow_color = Color(1.0187511, 1.0187511, 1.0187511, 1)
-theme_override_constants/line_spacing = 3
-theme_override_constants/shadow_offset_x = 0
-theme_override_constants/shadow_offset_y = 0
-theme_override_constants/shadow_outline_size = 20
-theme_override_font_sizes/font_size = 35
-text = "Message box style"
-horizontal_alignment = 1
-vertical_alignment = 1
-
-[node name="messagebox_example" type="TextureRect" parent="MESSAGEBOX" unique_id=1287061654]
-layout_mode = 0
-offset_left = 24.0
-offset_top = 634.0
-offset_right = 1893.0
-offset_bottom = 979.0
-texture = ExtResource("9_i7mvm")
-stretch_mode = 4

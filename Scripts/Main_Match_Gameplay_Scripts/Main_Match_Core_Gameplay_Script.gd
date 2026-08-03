@@ -1392,11 +1392,11 @@ func animate_deck_shuffle(is_opponent: bool) -> void:
 			stack.append(child)
 	if stack.is_empty():
 		# Nothing to riffle (empty/near-empty deck) — still pause so callers can await a beat.
-		await get_tree().create_timer(GameState.scaled_duration(0.3, GameState.card_match_animation_speed)).timeout
+		await get_tree().create_timer(GameState.match_time(0.3)).timeout
 		return
 	SoundManagerScript.play_sfx(SoundManagerScript.SFX_card_draw_sound)
 	var cycles := 4
-	var step := GameState.scaled_duration(1.0, GameState.card_match_animation_speed) / float(cycles * 2)
+	var step := GameState.match_time(1.0) / float(cycles * 2)
 	for _c in range(cycles):
 		var up_tween := create_tween().set_parallel(true)
 		for i in stack.size():
@@ -1552,11 +1552,14 @@ func show_floating_label(message: String, spawn_position: Vector2, label_color: 
 	
 	var tween = create_tween()
 	tween.set_parallel(true)
+	# ISSUE #34: the drift and the fade run in parallel, so both scale together with the speed preset.
+	var drift_time := GameState.match_time(2.5)
+	var fade_time  := GameState.match_time(1.5)
 	if upwards:
-		tween.tween_property(label, "position:y", spawn_position.y - 250, 2.5)
+		tween.tween_property(label, "position:y", spawn_position.y - 250, drift_time)
 	else:
-		tween.tween_property(label, "position:y", spawn_position.y + 250, 2.5)		
-	tween.tween_property(label, "modulate:a", 0.0, 1.5)
+		tween.tween_property(label, "position:y", spawn_position.y + 250, drift_time)
+	tween.tween_property(label, "modulate:a", 0.0, fade_time)
 	
 	await tween.finished
 	label.queue_free()
@@ -1634,7 +1637,7 @@ func animate_energies_to_discard(energy_cards: Array, pokemon: card_object, is_o
 		# ISSUE #79: refresh the discard pile visual after EVERY energy (not just at the end) so the
 		# player sees each discarded energy land on the pile as it is discarded during retreat/KO.
 		update_discard_pile_display(is_opponent)
-		await get_tree().create_timer(0.2).timeout
+		await get_tree().create_timer(GameState.match_time(0.2)).timeout
 
 	# Update the discard pile visual to show the new top card
 	update_discard_pile_display(is_opponent)
@@ -1719,7 +1722,7 @@ func animate_retreat(old_active: card_object, new_active: card_object, discarded
 		await animate_energies_to_discard(discarded_energies, old_active, is_opponent)
 		update_discard_pile_display(is_opponent)
 		display_active_pokemon_energies(is_opponent)
-		await get_tree().create_timer(0.5).timeout
+		await get_tree().create_timer(GameState.match_time(0.5)).timeout
 	else:
 		display_active_pokemon_energies(is_opponent)
 
@@ -1942,7 +1945,7 @@ func play_evolution_effect(pokemon: card_object) -> void:
 	# Set emitting AFTER all particle properties are configured
 	particles.emitting = true
 
-	await get_tree().create_timer(1).timeout
+	await get_tree().create_timer(GameState.match_time(1)).timeout
 	particles.queue_free()
 	
 # Plays a one-shot upward particle burst when energy is attached to a pokemon
@@ -1992,7 +1995,7 @@ func play_energy_attached_effect(pokemon: card_object, energy_card: card_object)
 	particles.color_ramp = gradient
 
 	particles.emitting = true
-	await get_tree().create_timer(1).timeout
+	await get_tree().create_timer(GameState.match_time(1)).timeout
 	particles.queue_free()
 
 ############################################################## END ANIMATION FUNCTIONS ###############################################################
@@ -2863,7 +2866,9 @@ func flip_coin(silent: bool = false, flipper_is_opponent: bool = false) -> bool:
 	coin.pivot_offset = coin.size / 2
 	var start_y = coin.position.y
 	var flip_count = 12
-	var half_flip_time = 0.04
+	# ISSUE #34: the whole flip (arc + squish cycle) derives from half_flip_time, so scaling this one
+	# value scales the coin animation with the Options speed preset.
+	var half_flip_time = GameState.match_time(0.04)
 	var total_time = flip_count * half_flip_time * 1.5
 
 	# Position tween: arc up then back down
@@ -2906,7 +2911,7 @@ func flip_coin(silent: bool = false, flipper_is_opponent: bool = false) -> bool:
 
 	if silent:
 		# In silent mode, just wait briefly and clean up without showing a message
-		await get_tree().create_timer(0.2).timeout
+		await get_tree().create_timer(GameState.match_time(0.2)).timeout
 	else:
 		# Show result message using existing message system
 		var result_text = "HEADS" if result else "TAILS"
@@ -4334,7 +4339,7 @@ func display_and_apply_attack_damage(attacker: card_object, defender: card_objec
 			color_to_pass = Color.WHITE
 			
 		show_floating_label(modifier, defender_label_pos, color_to_pass, true)
-		await get_tree().create_timer(0.5).timeout
+		await get_tree().create_timer(GameState.match_time(0.5)).timeout
 	# Only show damage label if there is actual damage, or if the attack originally had damage
 	# but it was reduced to 0 by resistance/other modifiers (not shields)
 	var has_shield_modifier = "NO DAMAGE" in modifiers
@@ -4397,14 +4402,14 @@ func perform_attack(attack_index: int) -> void:
 		await trainer_effects.remove_current_stadium("Holon Circle")
 		player_attacked_this_turn = true
 		hide_attack_buttons()
-		await get_tree().create_timer(0.5).timeout
+		await get_tree().create_timer(GameState.match_time(0.5)).timeout
 		player_end_turn_checks()
 		return
 
 	# Baby Pokemon rule: player must flip before attacking a Baby Pokemon (tails = turn ends)
 	if await attack_effects.check_baby_rule(opponent_active_pokemon, false):
 		hide_attack_buttons()
-		await get_tree().create_timer(0.5).timeout
+		await get_tree().create_timer(GameState.match_time(0.5)).timeout
 		player_end_turn_checks()
 		return
 
@@ -4412,7 +4417,7 @@ func perform_attack(attack_index: int) -> void:
 	if "Baby" in player_active_pokemon.metadata.get("subtypes", []) and powers_and_bodies.is_scare_active(false):
 		await show_message("SCARE! DARK FERALIGATR PREVENTS BABY POKÉMON FROM ATTACKING!")
 		hide_attack_buttons()
-		await get_tree().create_timer(0.5).timeout
+		await get_tree().create_timer(GameState.match_time(0.5)).timeout
 		player_end_turn_checks()
 		return
 
@@ -4420,7 +4425,7 @@ func perform_attack(attack_index: int) -> void:
 	if await powers_and_bodies.check_rebellion(player_active_pokemon, false):
 		player_attacked_this_turn = true
 		hide_attack_buttons()
-		await get_tree().create_timer(0.5).timeout
+		await get_tree().create_timer(GameState.match_time(0.5)).timeout
 		player_end_turn_checks()
 		return
 
@@ -4429,7 +4434,7 @@ func perform_attack(attack_index: int) -> void:
 	if await powers_and_bodies.check_ex12_pattern_distraction(player_active_pokemon, false):
 		player_attacked_this_turn = true
 		hide_attack_buttons()
-		await get_tree().create_timer(0.5).timeout
+		await get_tree().create_timer(GameState.match_time(0.5)).timeout
 		player_end_turn_checks()
 		return
 
@@ -4465,7 +4470,7 @@ func perform_attack(attack_index: int) -> void:
 			hide_attack_buttons()
 			player_active_pokemon.attack_blocked_next_turn = false
 			player_active_pokemon.attack_blocked_by_id = -1
-			await get_tree().create_timer(0.5).timeout
+			await get_tree().create_timer(GameState.match_time(0.5)).timeout
 			player_end_turn_checks()
 			return
 		else:
@@ -4480,7 +4485,7 @@ func perform_attack(attack_index: int) -> void:
 		if not coin:
 			await show_message(player_active_pokemon.metadata["name"].to_upper() + " CAN'T ATTACK! (SAND-ATTACK / SMOKESCREEN)")
 			hide_attack_buttons()
-			await get_tree().create_timer(0.5).timeout
+			await get_tree().create_timer(GameState.match_time(0.5)).timeout
 			player_end_turn_checks()
 			return
 		await show_message("HEADS! " + player_active_pokemon.metadata["name"].to_upper() + " CAN ATTACK!")
@@ -4507,13 +4512,13 @@ func perform_attack(attack_index: int) -> void:
 
 	if await attack_effects.handle_attack_confusion(player_active_pokemon, false):
 		hide_attack_buttons()
-		await get_tree().create_timer(0.5).timeout
+		await get_tree().create_timer(GameState.match_time(0.5)).timeout
 		player_end_turn_checks()
 		return
 	
 	if await attack_effects.handle_attack_blind(player_active_pokemon, false):
 		hide_attack_buttons()
-		await get_tree().create_timer(0.5).timeout
+		await get_tree().create_timer(GameState.match_time(0.5)).timeout
 		player_end_turn_checks()
 		return
 	
@@ -4535,7 +4540,7 @@ func perform_attack(attack_index: int) -> void:
 		var _pae_effects_failed = attack_effects.parse_card_text_effects(attack.get("text", ""), player_active_pokemon.metadata.get("name", ""))
 		if _pae_effects_failed.size() > 0:
 			await attack_effects.apply_card_text_effects(_pae_effects_failed, player_active_pokemon, opponent_active_pokemon, false, flip_result)
-		await get_tree().create_timer(0.5).timeout
+		await get_tree().create_timer(GameState.match_time(0.5)).timeout
 		player_end_turn_checks()
 		return
 	
@@ -4549,7 +4554,7 @@ func perform_attack(attack_index: int) -> void:
 	
 	if check_defender_invincible(opponent_active_pokemon, true):
 		hide_attack_buttons()
-		await get_tree().create_timer(0.5).timeout
+		await get_tree().create_timer(GameState.match_time(0.5)).timeout
 		player_end_turn_checks()
 		return
 
@@ -4572,7 +4577,7 @@ func perform_attack(attack_index: int) -> void:
 	
 	await check_all_knockouts()
 	
-	await get_tree().create_timer(0.5).timeout
+	await get_tree().create_timer(GameState.match_time(0.5)).timeout
 	player_end_turn_checks()
 	
 # Returns final damage and a list of modifiers applied, for display purposes
@@ -5010,7 +5015,7 @@ func check_and_handle_knockout(pokemon: card_object, is_opponent: bool) -> bool:
 	# Fix 2: Invalidate CPU evaluation cache after board state change
 	cpu_ai.invalidate_cpu_evaluation()
 	
-	await get_tree().create_timer(0.3).timeout
+	await get_tree().create_timer(GameState.match_time(0.3)).timeout
 	display_hp_circles_above_align(active if pokemon != active else null, is_opponent)
 	
 	# DESTINY BOND: If the KO'd pokemon had destiny bond active, knock out the opposing active

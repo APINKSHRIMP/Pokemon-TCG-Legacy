@@ -15984,7 +15984,7 @@ func power_ex14_energy_recycle(swampert: card_object) -> void:
 	if main._should_bail(): return
 	# "If you do, your turn ends." — end the player's turn now (CPU never activates this; see cpu phase).
 	if not is_opp:
-		await main.get_tree().create_timer(0.4).timeout
+		await main.get_tree().create_timer(GameState.match_time(0.4)).timeout
 		main.player_end_turn_checks()
 
 # PEAL OF THUNDER (Charizard δ ex14-4): when you play Charizard from your hand to evolve 1 of your Pokemon,
@@ -16673,7 +16673,7 @@ func power_ex15_fellow_boost(latias: card_object) -> void:
 	await main.show_message("FELLOW BOOST! ATTACHED " + energy.metadata.get("name","").to_upper() + " — YOUR TURN ENDS!")
 	if main._should_bail(): return
 	if not is_opp:
-		await main.get_tree().create_timer(0.4).timeout
+		await main.get_tree().create_timer(GameState.match_time(0.4)).timeout
 		main.player_end_turn_checks()
 
 # TYPE SHIFT (Salamence ex δ ex15-98): once per turn, Salamence ex's type is Fire until the end of your

@@ -175,6 +175,22 @@ func _start_pack_opening() -> void:
 		_open_next_pack()
 		return
 
+	# ── Generate and grant the cards up front ──
+	# Hoisted above the animation so the skipped path below grants exactly the same cards as the
+	# animated one. Nothing between here and the reveal depends on the animation having played.
+	var pack_id_for_set : String = _current_pack_art.rsplit("_", true, 1)[0]
+	_pack_cards   = _generate_pack_cards(pack_id_for_set)
+	_new_card_ids = _save_cards_to_player(pack_id_for_set, _pack_cards)
+	_current_card_index = 0
+
+	# ISSUE #34: Options "Pack Opening Animation Speed" = skip. Go straight from the buy press to the
+	# finished row of cards — no fade-in, no tear, no cardback flip, no clicking through one card at
+	# a time. The overlay is already up (the buy button hid the shop as normal) and a click on the
+	# row dismisses it exactly as it does after the full animation.
+	if GameState.is_pack_skipped():
+		_show_card_summary()
+		return
+
 	var pack_aspect : float   = float(pack_tex.get_width()) / float(pack_tex.get_height())
 	var pack_h      : float   = viewport_size.y * 0.65
 	var pack_w      : float   = pack_h * pack_aspect
@@ -194,7 +210,7 @@ func _start_pack_opening() -> void:
 	if _intro_fade_duration > 0.0:
 		anim_pack.modulate.a = 0.0
 		var fade_tw := create_tween()
-		fade_tw.tween_property(anim_pack, "modulate:a", 1.0, _intro_fade_duration)
+		fade_tw.tween_property(anim_pack, "modulate:a", 1.0, GameState.pack_time(_intro_fade_duration))
 		await fade_tw.finished
 
 	# ── Split pack into top / body ──
@@ -237,23 +253,19 @@ func _start_pack_opening() -> void:
 	SoundManagerScript.play_sfx_from_path("res://Audio/SFX/pack_tear_sfx.ogg")
 	var split_tw := create_tween()
 	split_tw.set_parallel(true)
-	split_tw.tween_property(_pack_top_rect,  "position:y", center_pos.y - 20.0, 0.25).set_ease(Tween.EASE_OUT)
-	split_tw.tween_property(_pack_body_rect, "position:y", center_pos.y + top_height + 20.0, 0.25).set_ease(Tween.EASE_OUT)
+	split_tw.tween_property(_pack_top_rect,  "position:y", center_pos.y - 20.0, GameState.pack_time(0.25)).set_ease(Tween.EASE_OUT)
+	split_tw.tween_property(_pack_body_rect, "position:y", center_pos.y + top_height + 20.0, GameState.pack_time(0.25)).set_ease(Tween.EASE_OUT)
 	await split_tw.finished
 
 	var fly_tw := create_tween()
 	fly_tw.set_parallel(true)
-	fly_tw.tween_property(_pack_top_rect, "rotation_degrees", 10.0, 0.25)
-	fly_tw.tween_property(_pack_top_rect, "position:y", -200.0, 0.25).set_ease(Tween.EASE_IN)
+	fly_tw.tween_property(_pack_top_rect, "rotation_degrees", 10.0, GameState.pack_time(0.25))
+	fly_tw.tween_property(_pack_top_rect, "position:y", -200.0, GameState.pack_time(0.25)).set_ease(Tween.EASE_IN)
 	await fly_tw.finished
 	_pack_top_rect.queue_free()
 	_pack_top_rect = null
 
-	# ── Generate cards (before creating cardback so z_index is correct) ──
-	var pack_id_for_set : String = _current_pack_art.rsplit("_", true, 1)[0]
-	_pack_cards   = _generate_pack_cards(pack_id_for_set)
-	_new_card_ids = _save_cards_to_player(pack_id_for_set, _pack_cards)
-	_current_card_index = 0
+	# (Cards were generated at the top of this function, before the animation started.)
 
 	# ── Spawn cardback behind pack body ──
 	# ISSUE #50 FIX: use the player's equipped sleeve as the cardback (matching the
@@ -288,7 +300,7 @@ func _start_pack_opening() -> void:
 
 	# ── Slide body off downward, revealing cardback ──
 	var slide_tw := create_tween()
-	slide_tw.tween_property(_pack_body_rect, "position:y", viewport_size.y + 50.0, 0.25).set_ease(Tween.EASE_IN)
+	slide_tw.tween_property(_pack_body_rect, "position:y", viewport_size.y + 50.0, GameState.pack_time(0.25)).set_ease(Tween.EASE_IN)
 	await slide_tw.finished
 	_pack_body_rect.queue_free()
 	_pack_body_rect = null
@@ -312,7 +324,7 @@ func _start_pack_opening() -> void:
 	# ── Flip cardback out ──
 	SoundManagerScript.play_sfx(SoundManagerScript.SFX_card_draw_sound)
 	var flip_out := create_tween()
-	flip_out.tween_property(_cardback_rect, "scale:x", 0.0, 0.25).set_ease(Tween.EASE_IN)
+	flip_out.tween_property(_cardback_rect, "scale:x", 0.0, GameState.pack_time(0.25)).set_ease(Tween.EASE_IN)
 	await flip_out.finished
 	_cardback_rect.queue_free()
 	_cardback_rect = null
@@ -320,7 +332,7 @@ func _start_pack_opening() -> void:
 	# ── Flip first card in ──
 	_face_card_rect = first_rect
 	var flip_in := create_tween()
-	flip_in.tween_property(_face_card_rect, "scale:x", 1.0, 0.25).set_ease(Tween.EASE_OUT)
+	flip_in.tween_property(_face_card_rect, "scale:x", 1.0, GameState.pack_time(0.25)).set_ease(Tween.EASE_OUT)
 	await flip_in.finished
 
 	# ── Spawn remaining cards as a stack behind the face card ──
@@ -376,7 +388,7 @@ func _advance_card_reveal() -> void:
 	var flying_card : TextureRect = _face_card_rect
 	_flying_card_rects.append(flying_card)
 	var fly_tw := create_tween()
-	fly_tw.tween_property(flying_card, "position:y", -viewport_size.y, 0.5).set_ease(Tween.EASE_IN)
+	fly_tw.tween_property(flying_card, "position:y", -viewport_size.y, GameState.pack_time(0.5)).set_ease(Tween.EASE_IN)
 	fly_tw.tween_callback(Callable(self, "_on_flying_card_finished").bind(flying_card))
 
 	_face_card_rect = null
@@ -458,7 +470,7 @@ func _show_card_summary() -> void:
 	var fade_tw := create_tween()
 	fade_tw.set_parallel(true)
 	for rect in summary_rects:
-		fade_tw.tween_property(rect, "modulate:a", 1.0, 0.35)
+		fade_tw.tween_property(rect, "modulate:a", 1.0, GameState.pack_time(0.35))
 	await fade_tw.finished
 
 	# Sparkle on any holo rares in the summary row
@@ -766,6 +778,6 @@ func _show_new_label(card_rect: TextureRect) -> void:
 
 	var tw := label.create_tween()
 	tw.set_parallel(true)
-	tw.tween_property(label, "position:y", spawn_y - 220.0, 2.5)
-	tw.tween_property(label, "modulate:a", 0.0, 1.8)
+	tw.tween_property(label, "position:y", spawn_y - 220.0, GameState.pack_time(2.5))
+	tw.tween_property(label, "modulate:a", 0.0, GameState.pack_time(1.8))
 	tw.finished.connect(label.queue_free)

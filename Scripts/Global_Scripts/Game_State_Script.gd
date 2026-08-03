@@ -44,65 +44,142 @@ var last_battled_opponent_entry: Dictionary = {}
 var last_interior_scene: String = ""
 var current_shop_id: String = "card_mart"
 
-# ISSUE #34: global game-speed multipliers, driven by the Options submenu. 1.0 = the "standard"
-# (medium) speed. Higher = faster. Read these wherever an animation/movement duration is computed
-# so the whole game honours the player's speed preference.
-#   card_match_animation_speed  — regular card-match animations (place/attach/retreat/discard).
+# ISSUE #34: global game-speed multipliers, driven by the Options submenu. 1.0 plays an animation at
+# exactly its authored duration (the "slow" preset); higher = faster. Read these wherever an
+# animation/movement duration is computed so the whole game honours the player's preference. Each
+# has its own Options section and its own saved key:
+#   card_match_animation_speed  — in-match animations: card placement, energy, retreat, damage
+#                                 labels, coin flips, KOs, CPU thinking pauses.  ("Match")
+#   item_animation_speed        — reward reveals: gift coin/card flips and costume fade-ins.
+#                                 Deliberately has no "skip" — these ARE the payoff, and every one
+#                                 of them is already click-skippable.
+#   pack_animation_speed        — the pack opening sequence only. Has its own "skip", which jumps
+#                                 from the buy press straight to the finished row of cards.
 #   overworld_walking_speed     — the player's default overworld walk/run speed multiplier.
-#   overworld_animation_speed   — overworld reward/gift animations (coin/card spins, fades, etc.).
-# The two animation multipliers are set together by the Options "Animation speed" buttons; the
-# walking multiplier is set on its own by the Options "Walking speed" buttons.
-var card_match_animation_speed: float = 2.0
-var overworld_walking_speed: float = 1.0
-var overworld_animation_speed: float = 2.0
+#
+# The match intro/outro has NO multiplier — see INTRO_OUTRO_OPTIONS below.
+var card_match_animation_speed: float = 1.25
+var item_animation_speed: float = 1.25
+var pack_animation_speed: float = 1.25
+var overworld_walking_speed: float = 1.1
 
-# ISSUE #34: the animation-speed presets offered by the Options screen, keyed by the value stored in
-# Player_Current_Data.json under "animation_speed". TWEAKABLE — raising a number speeds that preset
-# up. "skip" is a deliberately huge multiplier so scaled_duration() collapses every animation to
-# ~1 frame rather than skipping the await chains outright (which would desync the match engine).
+# TWEAKABLE — raising a number speeds that preset up. Note that "normal" is 1.25, NOT 1.0: playing
+# every animation at exactly its authored duration reads as sluggish, so the baseline is a touch
+# quicker and "slow" is the 1.0 passthrough. "skip" is a deliberately huge multiplier so
+# scaled_duration() collapses every animation to ~1 frame rather than skipping the await chains
+# outright (which would desync the match engine); only the two presets that offer it can ever return
+# true from is_transition_skipped().
 const ANIMATION_SPEED_PRESETS := {
-	"slow": 0.5,
-	"fast": 2.0,
+	"very_slow": 0.7,
+	"slow": 1.0,
+	"normal": 1.25,
+	"fast": 2.2,
 	"skip": 100.0,
 }
-const DEFAULT_ANIMATION_SPEED := "fast"
+const ITEM_SPEED_PRESETS := {
+	"very_slow": 0.7,
+	"slow": 1.0,
+	"normal": 1.25,
+	"fast": 2.2,
+}
+const PACK_SPEED_PRESETS := {
+	"very_slow": 0.7,
+	"slow": 1.0,
+	"normal": 1.25,
+	"fast": 2.2,
+	"skip": 100.0,
+}
 
-# The player's currently selected preset key. Persisted in Player_Current_Data.json.
-var animation_speed_setting: String = DEFAULT_ANIMATION_SPEED
+# The match intro/outro is a plain on/off, not a speed. Everything in those scenes is already
+# click-to-skip and the only thing a multiplier changed was how long the screen sat there — so the
+# choice that actually matters is "play it" or "don't".
+const INTRO_OUTRO_OPTIONS := ["play", "skip"]
 
-# Applies a preset key to the live multipliers. Pass save = true to also persist it.
+const DEFAULT_ANIMATION_SPEED  := "normal"
+const DEFAULT_ITEM_SPEED       := "normal"
+const DEFAULT_PACK_SPEED       := "normal"
+const DEFAULT_INTRO_OUTRO      := "play"
+
+# The player's currently selected preset keys. Persisted in Player_Current_Data.json.
+var animation_speed_setting: String   = DEFAULT_ANIMATION_SPEED
+var item_speed_setting: String        = DEFAULT_ITEM_SPEED
+var pack_speed_setting: String        = DEFAULT_PACK_SPEED
+var intro_outro_setting: String       = DEFAULT_INTRO_OUTRO
+
+# Applies a preset key to the live multiplier. Pass save = false to set it without touching the
+# save file (used on boot).
 func set_animation_speed(preset: String, save: bool = true) -> void:
 	if not ANIMATION_SPEED_PRESETS.has(preset):
-		push_warning("GameState: unknown animation speed preset '" + preset + "'")
+		push_warning("GameState: unknown match animation speed preset '" + preset + "'")
 		return
 	animation_speed_setting = preset
-	var mult: float = ANIMATION_SPEED_PRESETS[preset]
-	card_match_animation_speed = mult
-	overworld_animation_speed = mult
+	card_match_animation_speed = ANIMATION_SPEED_PRESETS[preset]
 	if save:
-		_save_animation_speed()
+		_save_current_data_field("animation_speed", animation_speed_setting)
 
-# Reads the saved preset out of Player_Current_Data.json and applies it. Called once on boot.
+func set_item_speed(preset: String, save: bool = true) -> void:
+	if not ITEM_SPEED_PRESETS.has(preset):
+		push_warning("GameState: unknown item animation speed preset '" + preset + "'")
+		return
+	item_speed_setting = preset
+	item_animation_speed = ITEM_SPEED_PRESETS[preset]
+	if save:
+		_save_current_data_field("item_animation_speed", item_speed_setting)
+
+func set_pack_speed(preset: String, save: bool = true) -> void:
+	if not PACK_SPEED_PRESETS.has(preset):
+		push_warning("GameState: unknown pack animation speed preset '" + preset + "'")
+		return
+	pack_speed_setting = preset
+	pack_animation_speed = PACK_SPEED_PRESETS[preset]
+	if save:
+		_save_current_data_field("pack_animation_speed", pack_speed_setting)
+
+func set_intro_outro(choice: String, save: bool = true) -> void:
+	if not choice in INTRO_OUTRO_OPTIONS:
+		push_warning("GameState: unknown intro/outro choice '" + choice + "'")
+		return
+	intro_outro_setting = choice
+	if save:
+		_save_current_data_field("intro_outro_animation", intro_outro_setting)
+
+# Reads every saved animation preset out of Player_Current_Data.json and applies it. Called once on
+# boot. An unknown value falls back to the default rather than erroring, so a wiped or hand-edited
+# save still boots cleanly.
 func _load_animation_speed() -> void:
 	var data := _read_current_data()
+
 	var preset: String = str(data.get("animation_speed", DEFAULT_ANIMATION_SPEED))
 	if not ANIMATION_SPEED_PRESETS.has(preset):
 		preset = DEFAULT_ANIMATION_SPEED
 	set_animation_speed(preset, false)
 
-func _save_animation_speed() -> void:
-	_save_current_data_field("animation_speed", animation_speed_setting)
+	var item: String = str(data.get("item_animation_speed", DEFAULT_ITEM_SPEED))
+	if not ITEM_SPEED_PRESETS.has(item):
+		item = DEFAULT_ITEM_SPEED
+	set_item_speed(item, false)
+
+	var pack: String = str(data.get("pack_animation_speed", DEFAULT_PACK_SPEED))
+	if not PACK_SPEED_PRESETS.has(pack):
+		pack = DEFAULT_PACK_SPEED
+	set_pack_speed(pack, false)
+
+	var intro: String = str(data.get("intro_outro_animation", DEFAULT_INTRO_OUTRO))
+	if not intro in INTRO_OUTRO_OPTIONS:
+		intro = DEFAULT_INTRO_OUTRO
+	set_intro_outro(intro, false)
 
 # ISSUE #34: the overworld walking-speed presets offered by the Options screen, keyed by the value
 # stored in Player_Current_Data.json under "walking_speed". TWEAKABLE — raising a number speeds that
 # preset up. Shift-to-run stacks on top of this (run_multiplier in Player_Object_Script.gd), so the
 # gap between slow and fast reads more clearly while walking than while sprinting.
 const WALKING_SPEED_PRESETS := {
+	"very_slow": 0.4,
 	"slow": 0.6,
-	"standard": 1.0,
-	"fast": 1.5,
+	"normal": 1.1,
+	"fast": 1.6,
 }
-const DEFAULT_WALKING_SPEED := "standard"
+const DEFAULT_WALKING_SPEED := "normal"
 
 # The player's currently selected preset key. Persisted in Player_Current_Data.json.
 var walking_speed_setting: String = DEFAULT_WALKING_SPEED
@@ -207,6 +284,37 @@ func scaled_duration(base_seconds: float, multiplier: float) -> float:
 	if multiplier <= 0.05:
 		multiplier = 0.05
 	return base_seconds / multiplier
+
+# ISSUE #34: shorthands for the three animation multipliers. Prefer these over calling
+# scaled_duration() with an explicit multiplier — they keep call sites short enough that wrapping a
+# hardcoded duration stays a drop-in edit:
+#     await get_tree().create_timer(0.5).timeout
+#     await get_tree().create_timer(GameState.match_time(0.5)).timeout
+#   match_time() — anything inside a card match
+#   item_time()  — gift coin/card flips and costume fade-ins
+#   pack_time()  — the pack opening sequence
+# The match intro/outro scenes use plain literal durations; they are governed by an on/off choice,
+# not a multiplier. Do NOT use any of these for loading throttles or asset-streaming waits — at a
+# "skip" preset they collapse to ~0 and would spin those loops.
+func match_time(base_seconds: float) -> float:
+	return scaled_duration(base_seconds, card_match_animation_speed)
+
+func item_time(base_seconds: float) -> float:
+	return scaled_duration(base_seconds, item_animation_speed)
+
+func pack_time(base_seconds: float) -> float:
+	return scaled_duration(base_seconds, pack_animation_speed)
+
+# True when the player has turned the match intro/outro ceremony off. Callers bypass whole sequences
+# (and their sound) rather than playing them fast — see Match_Start_Intro_Script.gd and
+# Match_End_Outro_Script.gd. Note this never suppresses a REWARD reveal: those follow item speed.
+func is_transition_skipped() -> bool:
+	return intro_outro_setting == "skip"
+
+# True when the pack opening animation should be bypassed entirely — the buy press jumps straight to
+# the finished row of cards. See Pack_Opening_Manager._start_pack_opening().
+func is_pack_skipped() -> bool:
+	return pack_speed_setting == "skip"
 
 var sleep_wakeup_fade: bool = false
 

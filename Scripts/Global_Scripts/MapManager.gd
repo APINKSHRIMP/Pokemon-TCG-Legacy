@@ -1156,13 +1156,13 @@ func _show_gift_display(text: String, image_paths: Array, kind: String) -> void:
 			"costume":
 				_play_costume_fadein(rect_ref)
 
-	# Wait for the longest animation to complete (scaled by overworld animation speed) OR a skip click.
+	# Wait for the longest animation to complete (scaled by item animation speed) OR a skip click.
 	var total_duration: float = 0.0
 	if kind == "costume":
 		total_duration = GIFT_COSTUME_TOTAL_DURATION
 	elif kind == "card" or kind == "coin":
 		total_duration = GIFT_FLIP_TOTAL_DURATION
-	total_duration = GameState.scaled_duration(total_duration, GameState.overworld_animation_speed)  # ISSUE #34
+	total_duration = GameState.item_time(total_duration)  # ISSUE #34
 	if total_duration > 0.0:
 		var elapsed: float = 0.0
 		while elapsed < total_duration and not _gift_reveal_skip:
@@ -1241,11 +1241,10 @@ func _play_flip_animation(rect: TextureRect, back_tex: Texture2D, target_tex: Te
 	var swaps := [target_tex, back_tex, target_tex, back_tex, target_tex, back_tex, target_tex, back_tex, target_tex]
 
 	# ISSUE #34: scale each flip step by the overworld animation-speed multiplier.
-	var spd: float = GameState.overworld_animation_speed
 	var tween := create_tween()
 	_gift_reveal_tweens.append(tween)   # ISSUE #33: killable on skip
 	for i in shrink_durations.size():
-		var d: float = GameState.scaled_duration(shrink_durations[i], spd)
+		var d: float = GameState.item_time(shrink_durations[i])
 		tween.tween_property(rect, "scale:x", 0.0, d)
 		tween.tween_callback(rect.set.bind("texture", swaps[i]))
 		tween.tween_property(rect, "scale:x", 1.0, d)
@@ -1270,14 +1269,13 @@ func _play_costume_fadein(rect: TextureRect) -> void:
 		return
 	# ISSUE #33: register final state for skip.
 	_gift_reveal_finals.append({"rect": rect, "texture": rect.texture, "modulate": Color(1, 1, 1, 1)})
-	var spd: float = GameState.overworld_animation_speed   # ISSUE #34: scale by overworld animation speed
 	rect.modulate = Color(0, 0, 0, 1)  # fully black, opaque
-	await get_tree().create_timer(GameState.scaled_duration(0.5, spd)).timeout
+	await get_tree().create_timer(GameState.item_time(0.5)).timeout
 	if rect == null or not is_instance_valid(rect):
 		return
 	var tween := create_tween()
 	_gift_reveal_tweens.append(tween)   # ISSUE #33: killable on skip
-	tween.tween_property(rect, "modulate", Color(1, 1, 1, 1), GameState.scaled_duration(1.0, spd))
+	tween.tween_property(rect, "modulate", Color(1, 1, 1, 1), GameState.item_time(1.0))
 
 # Spawns a continuous sparkle particle system over a card rect. Adapted from
 # Pack_Purchase_Script._start_holo_sparkle (line 731). Parented to the gift

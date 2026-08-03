@@ -1729,13 +1729,13 @@ func effect_professor_oak(played_card: card_object, is_opponent: bool) -> void:
 		discard.append(card)
 		var card_texture = main.get_card_texture(card)
 		main.animate_card_a_to_b(hand_container_node, discard_node, 0.15, card_texture, main.card_scales[12])
-		await get_tree().create_timer(0.1).timeout
+		await get_tree().create_timer(GameState.match_time(0.1)).timeout
 		if main._should_bail(): return
 	hand.clear()
 	main.refresh_hand_display(is_opponent)
 	main.update_discard_pile_display(is_opponent)
 	
-	await get_tree().create_timer(0.3).timeout
+	await get_tree().create_timer(GameState.match_time(0.3)).timeout
 	if main._should_bail(): return
 	
 	# Draw 7 new cards with animation per card
@@ -1920,14 +1920,14 @@ func effect_impostor_professor_oak(is_opponent: bool) -> void:
 		target_deck.append(card)
 		var card_texture = main.get_card_texture(card)
 		main.animate_card_a_to_b(target_hand_container, target_deck_node, 0.15, card_texture, main.card_scales[12])
-		await get_tree().create_timer(0.1).timeout
+		await get_tree().create_timer(GameState.match_time(0.1)).timeout
 		if main._should_bail(): return
 	target_hand.clear()
 	target_deck.shuffle()
 	main.refresh_hand_display(target_is_opponent)
 	main.update_deck_icon(target_is_opponent)
 	
-	await get_tree().create_timer(0.3).timeout
+	await get_tree().create_timer(GameState.match_time(0.3)).timeout
 	if main._should_bail(): return
 	
 	# Draw 7 cards with per-card animation
@@ -2058,7 +2058,7 @@ func effect_lass(is_opponent: bool) -> void:
 		main.player_deck.append(card)
 		var card_texture = main.get_card_texture(card)
 		main.animate_card_a_to_b(main.player_hand_container, main.player_deck_icon, 0.15, card_texture, main.card_scales[12])
-		await get_tree().create_timer(0.1).timeout
+		await get_tree().create_timer(GameState.match_time(0.1)).timeout
 		if main._should_bail(): return
 		main.update_deck_icon(false)
 	
@@ -2069,7 +2069,7 @@ func effect_lass(is_opponent: bool) -> void:
 		main.opponent_deck.append(card)
 		var card_texture = main.get_card_texture(card)
 		main.animate_card_a_to_b(main.opponent_hand_container, main.opponent_deck_icon, 0.15, card_texture, main.card_scales[12])
-		await get_tree().create_timer(0.1).timeout
+		await get_tree().create_timer(GameState.match_time(0.1)).timeout
 		if main._should_bail(): return
 		main.update_deck_icon(true)
 	
@@ -2272,7 +2272,7 @@ func effect_pokemon_trader(played_card: card_object, is_opponent: bool) -> void:
 			# Animate traded card to deck and searched card to hand
 			var trade_texture = main.get_card_texture(card_to_trade)
 			main.animate_card_a_to_b(main.player_hand_container, main.player_deck_icon, 0.2, trade_texture, main.card_scales[10])
-			await get_tree().create_timer(0.2).timeout
+			await get_tree().create_timer(GameState.match_time(0.2)).timeout
 			if main._should_bail(): return
 			var search_texture = main.get_card_texture(search_card)
 			await main.animate_card_a_to_b(main.player_deck_icon, main.player_hand_container, 0.3, search_texture, main.card_scales[10])
@@ -2725,7 +2725,7 @@ func effect_pokemon_center(is_opponent: bool) -> void:
 			main.animate_card_a_to_b(from_node, discard_node, 0.15, energy_texture, main.card_scales[12])
 		pokemon.attached_energies.clear()
 		
-		await get_tree().create_timer(0.3).timeout
+		await get_tree().create_timer(GameState.match_time(0.3)).timeout
 		if main._should_bail(): return
 	
 	if not healed_any:

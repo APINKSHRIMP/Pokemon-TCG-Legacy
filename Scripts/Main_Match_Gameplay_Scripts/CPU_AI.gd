@@ -35,7 +35,7 @@ func opponent_start_turn_checks() -> void:
 	main.trainer_effects.reset_trainer_lock(true)
 	main.turn_number += 1
 	print("OPPONENT'S TURN START. TURN NUMBER IS ", main.turn_number)
-	await get_tree().create_timer(0.5).timeout
+	await get_tree().create_timer(GameState.match_time(0.5)).timeout
 	if main._should_bail(): return
 	main.opponents_turn_active = true
 	main.reset_field_pokemon_turn_flags(true)
@@ -88,7 +88,7 @@ func cpu_turn_orchestrator() -> void:
 	if main._should_bail(): return
 	if main.opponent_turn_force_end:
 		main.opponent_turn_force_end = false
-		await get_tree().create_timer(0.5).timeout
+		await get_tree().create_timer(GameState.match_time(0.5)).timeout
 		await main.show_message("Your opponent ends their turn")
 		if main._should_bail(): return
 		await main.inbetween_turn_checks(false)
@@ -101,7 +101,7 @@ func cpu_turn_orchestrator() -> void:
 	if main._should_bail(): return
 	if main.opponent_turn_force_end:
 		main.opponent_turn_force_end = false
-		await get_tree().create_timer(0.5).timeout
+		await get_tree().create_timer(GameState.match_time(0.5)).timeout
 		await main.show_message("Your opponent ends their turn")
 		if main._should_bail(): return
 		await main.inbetween_turn_checks(false)
@@ -130,7 +130,7 @@ func cpu_turn_orchestrator() -> void:
 	if main._should_bail(): return
 	if main.opponent_turn_force_end:
 		main.opponent_turn_force_end = false
-		await get_tree().create_timer(0.5).timeout
+		await get_tree().create_timer(GameState.match_time(0.5)).timeout
 		await main.show_message("Your opponent ends their turn")
 		if main._should_bail(): return
 		await main.inbetween_turn_checks(false)
@@ -146,7 +146,7 @@ func cpu_turn_orchestrator() -> void:
 	if main._should_bail(): return
 	if main.opponent_turn_force_end:
 		main.opponent_turn_force_end = false
-		await get_tree().create_timer(0.5).timeout
+		await get_tree().create_timer(GameState.match_time(0.5)).timeout
 		await main.show_message("Your opponent ends their turn")
 		if main._should_bail(): return
 		await main.inbetween_turn_checks(false)
@@ -194,7 +194,7 @@ func cpu_turn_orchestrator() -> void:
 	if main._should_bail(): return
 	if main.opponent_turn_force_end:
 		main.opponent_turn_force_end = false
-		await get_tree().create_timer(0.5).timeout
+		await get_tree().create_timer(GameState.match_time(0.5)).timeout
 		await main.show_message("Your opponent ends their turn")
 		if main._should_bail(): return
 		await main.inbetween_turn_checks(false)
@@ -207,7 +207,7 @@ func cpu_turn_orchestrator() -> void:
 	if main._should_bail(): return
 	if main.opponent_turn_force_end:
 		main.opponent_turn_force_end = false
-		await get_tree().create_timer(0.5).timeout
+		await get_tree().create_timer(GameState.match_time(0.5)).timeout
 		await main.show_message("Your opponent ends their turn")
 		if main._should_bail(): return
 		await main.inbetween_turn_checks(false)
@@ -218,7 +218,7 @@ func cpu_turn_orchestrator() -> void:
 	if main._should_bail(): return
 	if main.opponent_turn_force_end:
 		main.opponent_turn_force_end = false
-		await get_tree().create_timer(0.5).timeout
+		await get_tree().create_timer(GameState.match_time(0.5)).timeout
 		await main.show_message("Your opponent ends their turn")
 		if main._should_bail(): return
 		await main.inbetween_turn_checks(false)
@@ -235,7 +235,7 @@ func cpu_turn_orchestrator() -> void:
 
 	if main._should_bail():
 		return
-	await get_tree().create_timer(0.5).timeout
+	await get_tree().create_timer(GameState.match_time(0.5)).timeout
 	if main._should_bail(): return
 	await main.show_message("Your opponent ends their turn")
 	if main._should_bail(): return

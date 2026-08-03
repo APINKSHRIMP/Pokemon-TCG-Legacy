@@ -130,7 +130,7 @@ func discard_all_attachments_animated(pokemon: card_object, is_opponent: bool) -
 			main.display_pokemon(is_opponent)
 			main.display_active_pokemon_energies(is_opponent)
 			print("ISSUE #91 FIX ACTIVE: animated ", card.metadata.get("name", ""), " from ", pokemon.metadata.get("name", ""), " to the discard pile")
-			await main.get_tree().create_timer(0.2).timeout
+			await main.get_tree().create_timer(GameState.match_time(0.2)).timeout
 
 	main.update_discard_pile_display(is_opponent)
 	main.display_active_pokemon_energies(is_opponent)
@@ -309,7 +309,7 @@ func heal_pokemon(pokemon: card_object, amount: int, is_opponent: bool) -> void:
 		var partial_hp = hp_before + ((i + 1) * 10)
 		pokemon.current_hp = min(partial_hp, hp_before + actual_heal)
 		main.display_hp_circles_above_align(active if active != null else pokemon, is_opponent)
-		await main.get_tree().create_timer(0.15).timeout
+		await main.get_tree().create_timer(GameState.match_time(0.15)).timeout
 		if main._should_bail(): return
 	pokemon.current_hp = min(hp_before + actual_heal, max_hp)
 	main.display_hp_circles_above_align(active if active != null else pokemon, is_opponent)
@@ -612,7 +612,7 @@ func apply_bench_damage_wave(targets: Array, damage: int) -> void:
 		apply_bench_damage(bp, damage, owner_is_opp)
 		# Stagger between labels (not after the final one) so the wave stays snappy.
 		if idx < live.size() - 1:
-			await get_tree().create_timer(GameState.scaled_duration(0.4, GameState.card_match_animation_speed)).timeout
+			await get_tree().create_timer(GameState.match_time(0.4)).timeout
 			if main._should_bail(): return
 
 # ── Double-Battle-Ready Accessors ─────────────────────────────────────────────────────────

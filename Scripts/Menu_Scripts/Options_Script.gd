@@ -1,8 +1,16 @@
 extends Control
 
-# ISSUE #34: the Options screen. Four sections are wired up — "Animation speed", "Walking speed",
-# "Confusion Rules" and "Burn Rules". The "Message box style" section is laid out in the scene but
-# has no backing setting yet, so its area is left inert on purpose.
+# ISSUE #34: the Options screen. Seven sections, laid out as vertically stacked rows — each is a
+# centred header with its options in a horizontal button row beneath it. A wider gap after Burn
+# Rules and after Walking Speed splits them into three visual groups without needing sub-headers:
+#   Confusion Rules / Burn Rules   — match rule variants
+#   Walking Speed                  — overworld movement
+#   Match Animation Speed          — in-match animations
+#   Coin, Costume and Rewards …    — gift reveals only (no "skip": they ARE the payoff, and every
+#                                    one is already click-skippable)
+#   Pack Opening Animation Speed   — the pack sequence, with its own skip
+#   Play Match Intro / Outro …     — a plain on/off, not a speed. The intro/outro is click-to-skip
+#                                    already, so the only meaningful choice is whether it plays.
 
 # ─── Constants ───────────────────────────────────────────────────────────────
 
@@ -21,18 +29,11 @@ var saved   : Dictionary = {}
 # through the same code.
 var section_buttons : Dictionary = {}
 
+# section name -> the GameState setter that applies and persists it. Adding a section means adding
+# one entry here, one to section_buttons, and one to _current_values() — nothing else.
+var section_setters : Dictionary = {}
+
 # ─── Node references ─────────────────────────────────────────────────────────
-
-# NOTE: in the scene the bottom two SPEED buttons are named the opposite way round to their labels
-# — "skip_button" reads "fast" and "fast_button" reads "skip animations". Wired to match the
-# on-screen text, which is what the player actually sees.
-@onready var slow_btn   : Button = $"SPEED/slow_button"
-@onready var fast_btn   : Button = $"SPEED/skip_button"
-@onready var skip_btn   : Button = $"SPEED/fast_button"
-
-@onready var walk_slow_btn     : Button = $"WALKING/walking_slow_button"
-@onready var walk_standard_btn : Button = $"WALKING/walking_standard_button"
-@onready var walk_fast_btn     : Button = $"WALKING/walking_fast_button"
 
 @onready var confusion_base_btn   : Button = $"CONFUSION/confusion_base_button"
 @onready var confusion_fairer_btn : Button = $"CONFUSION/confusion_allowretreat_button"
@@ -41,6 +42,31 @@ var section_buttons : Dictionary = {}
 @onready var burn_base_btn : Button = $"BURN/burn_base_button"
 @onready var burn_ex_btn   : Button = $"BURN/burn_ex_button"
 
+@onready var walk_very_slow_btn : Button = $"WALKING/walking_very_slow_button"
+@onready var walk_slow_btn      : Button = $"WALKING/walking_slow_button"
+@onready var walk_normal_btn    : Button = $"WALKING/walking_normal_button"
+@onready var walk_fast_btn      : Button = $"WALKING/walking_fast_button"
+
+@onready var very_slow_btn : Button = $"SPEED/very_slow_button"
+@onready var slow_btn      : Button = $"SPEED/slow_button"
+@onready var normal_btn    : Button = $"SPEED/normal_button"
+@onready var fast_btn      : Button = $"SPEED/fast_button"
+@onready var skip_btn      : Button = $"SPEED/skip_button"
+
+@onready var item_very_slow_btn : Button = $"ITEM/item_very_slow_button"
+@onready var item_slow_btn      : Button = $"ITEM/item_slow_button"
+@onready var item_normal_btn    : Button = $"ITEM/item_normal_button"
+@onready var item_fast_btn      : Button = $"ITEM/item_fast_button"
+
+@onready var pack_very_slow_btn : Button = $"PACK/pack_very_slow_button"
+@onready var pack_slow_btn      : Button = $"PACK/pack_slow_button"
+@onready var pack_normal_btn    : Button = $"PACK/pack_normal_button"
+@onready var pack_fast_btn      : Button = $"PACK/pack_fast_button"
+@onready var pack_skip_btn      : Button = $"PACK/pack_skip_button"
+
+@onready var intro_play_btn : Button = $"INTROOUTRO/intro_play_button"
+@onready var intro_skip_btn : Button = $"INTROOUTRO/intro_skip_button"
+
 @onready var save_btn   : Button = $"MAIN/options_save_button"
 @onready var cancel_btn : Button = $"MAIN/options_cancel_button"
 
@@ -48,16 +74,6 @@ var section_buttons : Dictionary = {}
 
 func _ready() -> void:
 	section_buttons = {
-		"speed": {
-			"slow": slow_btn,
-			"fast": fast_btn,
-			"skip": skip_btn,
-		},
-		"walking": {
-			"slow":     walk_slow_btn,
-			"standard": walk_standard_btn,
-			"fast":     walk_fast_btn,
-		},
 		"confusion": {
 			"base_set_confusion_rules":   confusion_base_btn,
 			"fairer_confusion_rules":     confusion_fairer_btn,
@@ -67,12 +83,50 @@ func _ready() -> void:
 			"base_set_burn_rules":   burn_base_btn,
 			"modern_era_burn_rules": burn_ex_btn,
 		},
+		"walking": {
+			"very_slow": walk_very_slow_btn,
+			"slow":      walk_slow_btn,
+			"normal":    walk_normal_btn,
+			"fast":      walk_fast_btn,
+		},
+		"speed": {
+			"very_slow": very_slow_btn,
+			"slow":      slow_btn,
+			"normal":    normal_btn,
+			"fast":      fast_btn,
+			"skip":      skip_btn,
+		},
+		"item": {
+			"very_slow": item_very_slow_btn,
+			"slow":      item_slow_btn,
+			"normal":    item_normal_btn,
+			"fast":      item_fast_btn,
+		},
+		"pack": {
+			"very_slow": pack_very_slow_btn,
+			"slow":      pack_slow_btn,
+			"normal":    pack_normal_btn,
+			"fast":      pack_fast_btn,
+			"skip":      pack_skip_btn,
+		},
+		"intro_outro": {
+			"play": intro_play_btn,
+			"skip": intro_skip_btn,
+		},
 	}
 
-	saved["speed"]     = GameState.animation_speed_setting
-	saved["walking"]   = GameState.walking_speed_setting
-	saved["confusion"] = GameState.confusion_rule_setting
-	saved["burn"]      = GameState.burn_rule_setting
+	# GameState owns both the live values and the writes to Player_Current_Data.json.
+	section_setters = {
+		"confusion":   GameState.set_confusion_rule,
+		"burn":        GameState.set_burn_rule,
+		"walking":     GameState.set_walking_speed,
+		"speed":       GameState.set_animation_speed,
+		"item":        GameState.set_item_speed,
+		"pack":        GameState.set_pack_speed,
+		"intro_outro": GameState.set_intro_outro,
+	}
+
+	saved = _current_values()
 	pending = saved.duplicate()
 
 	for section in section_buttons:
@@ -83,6 +137,19 @@ func _ready() -> void:
 	save_btn.pressed.connect(_on_save_pressed)
 	cancel_btn.pressed.connect(_on_cancel_pressed)
 	_refresh_save_button()
+
+
+# The persisted value of every section, read straight off GameState.
+func _current_values() -> Dictionary:
+	return {
+		"confusion":   GameState.confusion_rule_setting,
+		"burn":        GameState.burn_rule_setting,
+		"walking":     GameState.walking_speed_setting,
+		"speed":       GameState.animation_speed_setting,
+		"item":        GameState.item_speed_setting,
+		"pack":        GameState.pack_speed_setting,
+		"intro_outro": GameState.intro_outro_setting,
+	}
 
 
 func _input(event: InputEvent) -> void:
@@ -123,19 +190,10 @@ func _refresh_save_button() -> void:
 func _on_save_pressed() -> void:
 	var saved_anything := false
 
-	# GameState owns both the live values and the writes to Player_Current_Data.json.
-	if pending["speed"] != saved["speed"]:
-		GameState.set_animation_speed(pending["speed"])
-		saved_anything = true
-	if pending["walking"] != saved["walking"]:
-		GameState.set_walking_speed(pending["walking"])
-		saved_anything = true
-	if pending["confusion"] != saved["confusion"]:
-		GameState.set_confusion_rule(pending["confusion"])
-		saved_anything = true
-	if pending["burn"] != saved["burn"]:
-		GameState.set_burn_rule(pending["burn"])
-		saved_anything = true
+	for section in section_setters:
+		if pending[section] != saved[section]:
+			section_setters[section].call(pending[section])
+			saved_anything = true
 
 	if not saved_anything:
 		return

@@ -49,13 +49,24 @@ func _ready() -> void:
 	
 	# Step 3: Update UI with loaded data
 	update_ui_with_data()
-	
+
+	# Step 5 (early): stop any existing BGM (map music) before the intro plays
+	SoundManagerScript.stop_bgm()
+
+	# ISSUE #34: Options "Play Match Intro / Outro Animation?" = skip animations. Hand straight to the match
+	# without ever showing (or sounding) the intro. The scene still has to run this far because it
+	# owns main_match_instance, but nothing here is seen or heard: no battle-start SFX, no fade in,
+	# no drift, no fade out. The player clicks "yes" and is in the match.
+	if GameState.is_transition_skipped():
+		# Yield one frame first: transition_to_main_match() reparents main_match_instance onto the
+		# tree root and frees this scene, which must not happen while _ready() is still running.
+		await get_tree().process_frame
+		transition_to_main_match()
+		return
+
 	# Step 4: Play battle start SFX through SoundManager
 	SoundManagerScript.play_sfx(SoundManagerScript.SFX_battle_start)
-	
-	# Step 5: Stop any existing BGM (map music) before the intro plays
-	SoundManagerScript.stop_bgm()
-	
+
 	# Step 6: Fade in from black then run animations
 	var fade_in = create_tween()
 	fade_in.tween_property(self, "modulate:a", 1.0, 0.5)
@@ -182,14 +193,17 @@ func animate_intro() -> void:
 	var tween = create_tween()
 	tween.set_trans(Tween.TRANS_LINEAR)
 	tween.set_parallel(true)
-	
-	tween.tween_property(player_sprite, "position:x", player_sprite.position.x - 100, animation_duration)
-	tween.tween_property(opponent_sprite, "position:x", opponent_sprite.position.x + 100, animation_duration)
-	tween.tween_property(player_name_label, "position:y", player_name_label.position.y - 50, animation_duration)
-	tween.tween_property(player_deck_label, "position:y", player_deck_label.position.y - 50, animation_duration)
-	tween.tween_property(opponent_name_label, "position:y", opponent_name_label.position.y + 50, animation_duration)
-	tween.tween_property(opponent_deck_label, "position:y", opponent_deck_label.position.y + 50, animation_duration)
-	tween.tween_property(background, "scale", Vector2(1.15, 1.15), animation_duration)
+
+	# The intro is click-to-skip. There is no speed multiplier: Options offers only play-or-skip,
+	# and skip never reaches here (see _ready).
+	var dur := animation_duration
+	tween.tween_property(player_sprite, "position:x", player_sprite.position.x - 100, dur)
+	tween.tween_property(opponent_sprite, "position:x", opponent_sprite.position.x + 100, dur)
+	tween.tween_property(player_name_label, "position:y", player_name_label.position.y - 50, dur)
+	tween.tween_property(player_deck_label, "position:y", player_deck_label.position.y - 50, dur)
+	tween.tween_property(opponent_name_label, "position:y", opponent_name_label.position.y + 50, dur)
+	tween.tween_property(opponent_deck_label, "position:y", opponent_deck_label.position.y + 50, dur)
+	tween.tween_property(background, "scale", Vector2(1.15, 1.15), dur)
 	
 	# If the animation finishes naturally (not skipped), transition automatically
 	await tween.finished
@@ -200,18 +214,21 @@ func transition_to_main_match() -> void:
 	# Prevent multiple triggers
 	transitioning = true
 	click_enabled = false
-	
+
 	# Stop any battle start SFX that may still be playing
 	for child in SoundManagerScript.get_children():
 		if child is AudioStreamPlayer:
 			child.stop()
 			child.queue_free()
-	
-	# Fade out to black
-	var tween = create_tween()
-	tween.tween_property(self, "modulate:a", 0.0, 0.5)
-	await tween.finished
-	
+
+	# ISSUE #34: on "skip" the scene was never made visible (modulate.a is still 0), so there is
+	# nothing to fade out — go straight to the match rather than awaiting a tween on an invisible node.
+	if not GameState.is_transition_skipped():
+		# Fade out to black
+		var tween = create_tween()
+		tween.tween_property(self, "modulate:a", 0.0, 0.5)
+		await tween.finished
+
 	get_tree().root.add_child(main_match_instance)
 	get_tree().set_current_scene(main_match_instance)
 	queue_free()

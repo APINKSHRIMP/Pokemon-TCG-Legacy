@@ -95,6 +95,10 @@ var transitioning: bool  = false
 # the overworld MapManager gift reveal, so match-end rewards couldn't be skipped at all).
 var _in_skippable_anim: bool = false
 var _skip_anim: bool = false
+# ISSUE #34: set once in _ready() when the player has turned the intro/outro animation off. Only the
+# reward-row FLY-IN honours it — the gift reveals (coin/card flip, costume fade) deliberately ignore
+# it and keep playing at Item speed, since those are the rewards themselves, not ceremony.
+var _force_skip_anim: bool = false
 
 # ============================================================
 # INITIALIZATION
@@ -140,11 +144,6 @@ func _ready() -> void:
 	update_sprites()
 	SoundManagerScript.stop_bgm()
 
-	if battle_won:
-		SoundManagerScript.play_sfx(SoundManagerScript.SFX_battle_win)
-	else:
-		SoundManagerScript.play_sfx(SoundManagerScript.SFX_battle_loss)
-
 	# Compute is_first_win once so both the dialogue and build_rewards share it
 	var is_first_win = not GameState.has_beaten_opponent(GameState.current_opponent_name)
 
@@ -160,6 +159,29 @@ func _ready() -> void:
 	# Build reward rows (win only), passing is_first_win to avoid recomputing it
 	if battle_won:
 		build_rewards(is_first_win)
+
+	# ISSUE #34: Options "Play Match Intro / Outro Animation?" = skip animations.
+	# build_rewards() above has already GRANTED everything (cash, coin, cards, costumes) and marked
+	# the opponent beaten — the arrays below only drive the optional full-screen reveal animations.
+	# So when there is nothing to reveal, the whole outro is ceremony over rewards the player already
+	# has, and we bail straight back to the map. transition_back_to_map() still runs the time-of-day
+	# advancement, so no progression is lost.
+	var has_gifts: bool = not (_coin_rewards_for_anim.is_empty()
+			and _card_rewards_for_anim.is_empty()
+			and _costume_rewards_for_anim.is_empty())
+	if GameState.is_transition_skipped() and not has_gifts:
+		# No win/loss jingle either — it would be cut off mid-note by the scene change below.
+		transition_back_to_map()
+		return
+
+	if battle_won:
+		SoundManagerScript.play_sfx(SoundManagerScript.SFX_battle_win)
+	else:
+		SoundManagerScript.play_sfx(SoundManagerScript.SFX_battle_loss)
+
+	# There ARE gifts to reveal, so the scene stays — but on "skip" every animation in it snaps
+	# straight to its finished state. The player still sees each reward and clicks through them.
+	_force_skip_anim = GameState.is_transition_skipped()
 
 	# Create both message panels before they're needed
 	_create_msg_panels()
@@ -451,7 +473,7 @@ func animate_rewards() -> void:
 	# ISSUE #33 FIX: the whole fly-in is now click-skippable. On a click, remaining tweens are killed
 	# and every reward snaps to its final stacked position at once (see _snap_rewards_to_final).
 	_in_skippable_anim = true
-	_skip_anim = false
+	_skip_anim = _force_skip_anim
 	await get_tree().create_timer(0.3).timeout
 
 	# Step 1 — fly the "Rewards:" header in horizontally to the anchor row.
@@ -669,11 +691,13 @@ func _play_flip_anim(rect: TextureRect, back_tex: Texture2D, front_tex: Texture2
 				 back_tex, front_tex, back_tex, front_tex]
 	# ISSUE #33 FIX: the coin/card flip is click-skippable — a click snaps it to its finished
 	# face-up state (front texture, full scale) instead of the click being ignored.
+	# NOTE: deliberately NOT _force_skip_anim. This is a reward reveal, not intro/outro ceremony, so
+	# it plays at Item speed even when the player has the intro/outro animation turned off.
 	_in_skippable_anim = true
 	_skip_anim = false
 	var tw = create_tween()
 	for i in GIFT_FLIP_DURATIONS.size():
-		var d: float = GIFT_FLIP_DURATIONS[i]
+		var d: float = GameState.item_time(GIFT_FLIP_DURATIONS[i])
 		tw.tween_property(rect, "scale:x", 0.0, d)
 		tw.tween_callback(rect.set.bind("texture", swaps[i]))
 		tw.tween_property(rect, "scale:x", 1.0, d)
@@ -690,14 +714,15 @@ func _play_costume_fadein_anim(rect: TextureRect) -> void:
 		return
 	rect.modulate = Color(0, 0, 0, 1)
 	# ISSUE #33 FIX: the costume fade-in is click-skippable — a click snaps it to fully visible.
+	# As with the flip above, a reward reveal ignores _force_skip_anim and runs at Item speed.
 	_in_skippable_anim = true
 	_skip_anim = false
-	await get_tree().create_timer(0.5).timeout
+	await get_tree().create_timer(GameState.item_time(0.5)).timeout
 	if rect == null or not is_instance_valid(rect):
 		_in_skippable_anim = false
 		return
 	var tw = create_tween()
-	tw.tween_property(rect, "modulate", Color(1, 1, 1, 1), 1.0)
+	tw.tween_property(rect, "modulate", Color(1, 1, 1, 1), GameState.item_time(1.0))
 	await _await_tween_or_skip(tw)
 	# Snap to fully visible whether the fade completed or was skipped.
 	if is_instance_valid(rect):

@@ -482,7 +482,7 @@ func _attack_finish(is_damage: bool, base_dmg: int, attack: Dictionary, types: A
 	if main._should_bail(): return
 	main.display_active_pokemon_energies(is_opponent)
 	if not is_opponent:
-		await main.get_tree().create_timer(0.5).timeout
+		await main.get_tree().create_timer(GameState.match_time(0.5)).timeout
 		main.player_end_turn_checks()
 
 
@@ -1942,7 +1942,7 @@ func apply_bench_damage(effect: Dictionary, is_opponent_attacking: bool) -> void
 			# ISSUE #38 FIX: stagger bench-damage labels by 0.4s (scaled by the card-match animation
 			# speed) so a multi-target hit like Earthquake reads as a "Mexican wave" the player can
 			# follow, instead of all labels flashing almost at once. (0.2 -> 0.3 -> 0.4 per retests.)
-			await get_tree().create_timer(GameState.scaled_duration(0.4, GameState.card_match_animation_speed)).timeout
+			await get_tree().create_timer(GameState.match_time(0.4)).timeout
 			if main._should_bail(): return
 
 # Sets the blind flag on the defending pokemon and updates icons
@@ -2136,7 +2136,7 @@ func apply_force_switch(effect: Dictionary, is_opponent_attacking: bool) -> void
 			# ISSUE base2-33 FIX ACTIVE: let the damage label finish floating up before covering
 			# the screen with the selection array.
 			print("ISSUE base2-33 FIX ACTIVE (apply_force_switch/Lure): waiting 1s before showing bench array")
-			await main.get_tree().create_timer(1.0).timeout
+			await main.get_tree().create_timer(GameState.match_time(1.0)).timeout
 			if main._should_bail(): return
 			main.opponent_blocker.visible = false
 			main.forced_switch_selection_active = true
@@ -2187,7 +2187,7 @@ func apply_force_switch(effect: Dictionary, is_opponent_attacking: bool) -> void
 			# ISSUE base2-33 FIX ACTIVE: let the damage label finish floating up before covering
 			# the screen with the selection array.
 			print("ISSUE base2-33 FIX ACTIVE (apply_force_switch/Whirlwind): waiting 1s before showing bench array")
-			await main.get_tree().create_timer(1.0).timeout
+			await main.get_tree().create_timer(GameState.match_time(1.0)).timeout
 			if main._should_bail(): return
 			main.opponent_blocker.visible = false
 			main.forced_switch_selection_active = true

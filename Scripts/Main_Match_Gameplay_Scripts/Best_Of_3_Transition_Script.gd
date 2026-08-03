@@ -62,6 +62,13 @@ func _ready() -> void:
 	_update_sprites()
 
 	SoundManagerScript.stop_bgm()
+
+	# ISSUE #34: Options "Play Match Intro / Outro Animation?" = skip animations. The round-counter ceremony is the
+	# same family as the intro/outro, so it is bypassed outright — no jingle, no fade, no spin.
+	if GameState.is_transition_skipped():
+		_do_transition()
+		return
+
 	SoundManagerScript.play_sfx(SoundManagerScript.SFX_battle_start)
 
 	var fade_in := create_tween()
@@ -78,12 +85,13 @@ func _ready() -> void:
 	var active_label: Label = round_win_label if battle_won else round_loss_label
 
 	# All animations fire simultaneously
+	var anim_dur := ANIMATION_DURATION
 	var main_tween := create_tween()
 	main_tween.set_parallel(true)
 	main_tween.set_trans(Tween.TRANS_LINEAR)
-	main_tween.tween_property(player_sprite, "position:x", player_sprite.position.x - 100, ANIMATION_DURATION)
-	main_tween.tween_property(opponent_sprite, "position:x", opponent_sprite.position.x + 100, ANIMATION_DURATION)
-	main_tween.tween_property(active_label, "position:y", active_label.position.y - 50, ANIMATION_DURATION)
+	main_tween.tween_property(player_sprite, "position:x", player_sprite.position.x - 100, anim_dur)
+	main_tween.tween_property(opponent_sprite, "position:x", opponent_sprite.position.x + 100, anim_dur)
+	main_tween.tween_property(active_label, "position:y", active_label.position.y - 50, anim_dur)
 
 	# Spin tween runs its own sequential squish cycles (same feel as gift coin flip)
 	var spin_tween := create_tween()
