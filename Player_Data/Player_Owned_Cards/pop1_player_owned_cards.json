@@ -3,71 +3,71 @@
 	"owned_cards": [
 		{
 			"card_id": "pop1-1",
-			"owned": 3
+			"owned": 0
 		},
 		{
 			"card_id": "pop1-2",
-			"owned": 4
+			"owned": 0
 		},
 		{
 			"card_id": "pop1-3",
-			"owned": 4
+			"owned": 0
 		},
 		{
 			"card_id": "pop1-4",
-			"owned": 1
+			"owned": 0
 		},
 		{
 			"card_id": "pop1-5",
-			"owned": 1
+			"owned": 0
 		},
 		{
 			"card_id": "pop1-6",
-			"owned": 4
+			"owned": 0
 		},
 		{
 			"card_id": "pop1-7",
-			"owned": 4
+			"owned": 0
 		},
 		{
 			"card_id": "pop1-8",
-			"owned": 4
+			"owned": 0
 		},
 		{
 			"card_id": "pop1-9",
-			"owned": 4
+			"owned": 0
 		},
 		{
 			"card_id": "pop1-10",
-			"owned": 4
+			"owned": 0
 		},
 		{
 			"card_id": "pop1-11",
-			"owned": 2
+			"owned": 0
 		},
 		{
 			"card_id": "pop1-12",
-			"owned": 3
+			"owned": 0
 		},
 		{
 			"card_id": "pop1-13",
-			"owned": 4
+			"owned": 0
 		},
 		{
 			"card_id": "pop1-14",
-			"owned": 4
+			"owned": 0
 		},
 		{
 			"card_id": "pop1-15",
-			"owned": 2
+			"owned": 0
 		},
 		{
 			"card_id": "pop1-16",
-			"owned": 3
+			"owned": 0
 		},
 		{
 			"card_id": "pop1-17",
-			"owned": 3
+			"owned": 0
 		}
 	]
 }

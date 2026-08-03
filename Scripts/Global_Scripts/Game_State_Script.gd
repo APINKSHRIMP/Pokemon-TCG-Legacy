@@ -63,12 +63,12 @@ var item_animation_speed: float = 1.25
 var pack_animation_speed: float = 1.25
 var overworld_walking_speed: float = 1.1
 
-# TWEAKABLE — raising a number speeds that preset up. Note that "normal" is 1.25, NOT 1.0: playing
-# every animation at exactly its authored duration reads as sluggish, so the baseline is a touch
-# quicker and "slow" is the 1.0 passthrough. "skip" is a deliberately huge multiplier so
-# scaled_duration() collapses every animation to ~1 frame rather than skipping the await chains
-# outright (which would desync the match engine); only the two presets that offer it can ever return
-# true from is_transition_skipped().
+# TWEAKABLE — raising a number speeds that preset up. These three dictionaries are deliberately
+# separate: "normal" does NOT have to mean the same multiplier for a match, an item reveal and a
+# pack opening, because those sequences are authored at different tempos. Tune each on its own.
+# "skip" is a deliberately huge multiplier so scaled_duration() collapses every animation to ~1
+# frame rather than skipping the await chains outright (which would desync the match engine); only
+# the two presets that offer it can ever return true from is_transition_skipped().
 const ANIMATION_SPEED_PRESETS := {
 	"very_slow": 0.7,
 	"slow": 1.0,
@@ -82,11 +82,14 @@ const ITEM_SPEED_PRESETS := {
 	"normal": 1.25,
 	"fast": 2.2,
 }
+# Pack opening runs slower than the match/item presets on purpose — the tear is a set-piece, not a
+# beat to get through. "normal" is a straight 1.0 passthrough, so the base durations written into
+# Pack_Opening_Manager.gd are exactly what plays at the default setting.
 const PACK_SPEED_PRESETS := {
-	"very_slow": 0.7,
-	"slow": 1.0,
-	"normal": 1.25,
-	"fast": 2.2,
+	"very_slow": 0.5,
+	"slow": 0.75,
+	"normal": 1.0,
+	"fast": 2.0,
 	"skip": 100.0,
 }
 

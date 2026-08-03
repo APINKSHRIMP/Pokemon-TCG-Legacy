@@ -359,6 +359,21 @@ func _get_ui_nodes_to_toggle() -> Array:
 	return nodes
 
 
+## Global rect of the art a shop pack rect actually paints, not of its control rect. The pack rects
+## are STRETCH_KEEP_ASPECT_CENTERED inside HBox cells that are taller than the art, so the two differ
+## by a letterbox margin — animating from the control rect makes the pack jump.
+func _get_drawn_texture_rect(rect: TextureRect) -> Rect2:
+	var control_rect : Rect2 = rect.get_global_rect()
+	if rect.texture == null:
+		return control_rect
+	var tex_size : Vector2 = rect.texture.get_size()
+	if tex_size.x <= 0.0 or tex_size.y <= 0.0:
+		return control_rect
+	var fit   : float   = minf(control_rect.size.x / tex_size.x, control_rect.size.y / tex_size.y)
+	var drawn : Vector2 = tex_size * fit
+	return Rect2(control_rect.position + (control_rect.size - drawn) / 2.0, drawn)
+
+
 ## Fades out UI, animates the chosen pack to screen centre, then hands off
 ## to PackOpeningManager for the full rip/flip/summary sequence.
 func _begin_opening_sequence() -> void:
@@ -372,12 +387,13 @@ func _begin_opening_sequence() -> void:
 	next_btn.disabled      = true
 	prev_btn.disabled      = true
 
-	# Fade out other UI elements
+	# Fade out other UI elements. Scaled like the rest of the sequence, so "skip" collapses it to a
+	# frame instead of leaving a half-second wait in front of an otherwise instant pack.
 	var fade_tw := create_tween()
 	fade_tw.set_parallel(true)
 	for node in ui_nodes:
 		if node != null and is_instance_valid(node):
-			fade_tw.tween_property(node, "modulate:a", 0.0, 0.5)
+			fade_tw.tween_property(node, "modulate:a", 0.0, GameState.pack_time(0.2))
 	await fade_tw.finished
 
 	for node in ui_nodes:
@@ -385,34 +401,42 @@ func _begin_opening_sequence() -> void:
 			node.visible   = false
 			node.modulate.a = 1.0
 
-	# Move selected pack to screen centre via a temporary canvas layer
-	var viewport_size   : Vector2   = get_viewport_rect().size
-	var target_global_x : float     = viewport_size.x / 2.0
-	var target_global_y : float     = viewport_size.y / 2.0
-
+	# Move selected pack to screen centre via a temporary canvas layer.
+	#
+	# Two snaps used to bracket this move. On the way in, the shop rects draw their art
+	# KEEP_ASPECT_CENTERED inside a taller HBox cell, but the flying copy was built at the *cell*
+	# rect with KEEP_ASPECT (top-left aligned) — so the pack jumped up by the letterbox margin
+	# before it started moving. On the way out, PackOpeningManager re-created the pack at its own
+	# size, so it popped again at the handoff.
+	#
+	# Fix: start from the art's real on-screen rect, and tween position AND size straight into the
+	# rect PackOpeningManager will open from. STRETCH_SCALE so the rect is what's drawn, exactly.
 	var temp_overlay := CanvasLayer.new()
 	temp_overlay.layer = 10
 	add_child(temp_overlay)
 
-	var pack_global_pos : Vector2   = selected_pack_rect.get_global_rect().position
-	var pack_size       : Vector2   = selected_pack_rect.get_global_rect().size
-	var pack_tex        : Texture2D = selected_pack_rect.texture
+	var source_rect : Rect2     = _get_drawn_texture_rect(selected_pack_rect)
+	var target_rect : Rect2     = PackOpeningManager.get_pack_target_rect()
+	var pack_tex    : Texture2D = selected_pack_rect.texture
 
 	var anim_pack := TextureRect.new()
 	anim_pack.texture      = pack_tex
 	anim_pack.expand_mode  = TextureRect.EXPAND_IGNORE_SIZE
-	anim_pack.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT
-	anim_pack.size         = pack_size
-	anim_pack.position     = pack_global_pos
+	anim_pack.stretch_mode = TextureRect.STRETCH_SCALE
+	anim_pack.size         = source_rect.size
+	anim_pack.position     = source_rect.position
 	anim_pack.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	temp_overlay.add_child(anim_pack)
 
 	selected_pack_rect.visible = false
 
-	var target_pos := Vector2(target_global_x - pack_size.x / 2.0, target_global_y - pack_size.y / 2.0)
-
+	var move_time : float = GameState.pack_time(0.35)
 	var move_tw := create_tween()
-	move_tw.tween_property(anim_pack, "position", target_pos, 0.75).set_ease(Tween.EASE_IN_OUT).set_trans(Tween.TRANS_QUAD)
+	move_tw.set_parallel(true)
+	move_tw.tween_property(anim_pack, "position", target_rect.position, move_time) \
+			.set_ease(Tween.EASE_IN_OUT).set_trans(Tween.TRANS_QUAD)
+	move_tw.tween_property(anim_pack, "size", target_rect.size, move_time) \
+			.set_ease(Tween.EASE_IN_OUT).set_trans(Tween.TRANS_QUAD)
 	await move_tw.finished
 
 	# Hand off to PackOpeningManager — pack is now at centre, no intro fade needed

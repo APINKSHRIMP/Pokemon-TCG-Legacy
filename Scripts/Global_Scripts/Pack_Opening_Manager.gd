@@ -22,6 +22,28 @@ const PACK_IMAGES_FOLDER := "res://Image_Assets/Packs/"
 const CARDBACK_PATH      := "res://Image_Assets/Sleeves/1_Default_English.png"  # ISSUE #50: was cardback.png which doesn't exist -> null texture crash
 const CARD_SET_DATA_PATH := "res://Card_Set_Data/"
 
+# The pack sits exactly this many pixels proud of the revealed card on every side, so it fully
+# covers the cards underneath and slides away to reveal them rather than being drawn over.
+const PACK_CARD_MARGIN : float = 5.0
+# Pack halves always draw above every card/cardback in the overlay (card z tops out at ~11).
+const PACK_Z_INDEX     : int   = 500
+
+# ── Sequence timing (TWEAKABLE) ────────────────────────────
+# Base seconds; every one of these is divided by the pack speed multiplier at the call site.
+const PAUSE_BEFORE_TEAR      : float = 0.1   # Beat after the pack lands, before it splits
+const PACK_TEAR_TIME         : float = 0.25  # Halves parting, and the top tilting as they part
+const PACK_TEAR_ROTATION_DEG : float = 10.0  # How far the torn top tilts while parting
+const PAUSE_AFTER_TEAR       : float = 0.1   # Beat on the opened pack before the halves leave
+const PACK_FLY_OFF_TIME      : float = 0.2   # Top flying up / body sliding down, each
+
+# ── Card fly-off (TWEAKABLE) ───────────────────────────────
+# Each revealed card leaves on its own random heading and spin, so no two reveals look alike.
+const CARD_FLY_OFF_TIME      : float = 0.2   # Base seconds for a card to leave the screen
+const CARD_FLY_ANGLE_MAX_DEG : float = 65.0  # Heading is randf_range(-this, +this); 0 = straight up
+const CARD_SPIN_MIN_RPS      : float = 0.01  # Slowest spin, full rotations per second
+const CARD_SPIN_MAX_RPS      : float = 4.0   # Fastest spin, full rotations per second
+const CARD_FLY_CLEARANCE     : float = 40.0  # Safety margin past the point the card is provably gone
+
 # God-pack tuning — see _generate_pack_cards() for full behaviour.
 const GOD_PACK_UNLOCK_AT : int   = 20      # No god packs until pack > this
 const GOD_PACK_CHANCE    : float = 0.005   # 0.5% per pack once unlocked
@@ -55,6 +77,9 @@ var _card_pos            : Vector2         = Vector2.ZERO
 var _active_particles    : CPUParticles2D  = null
 var _stack_rects         : Array           = []
 var _new_card_ids        : Dictionary      = {}
+# Indices into _pack_cards that earned the "Bonus!" flourish: the extra rare slot on a standard
+# pack, or every card of a god pack. Populated by _generate_pack_cards().
+var _bonus_indices       : Dictionary      = {}
 
 
 # ── Public API ─────────────────────────────────────────────
@@ -74,6 +99,46 @@ func open_packs(pack_arts: Array, intro_fade_duration: float = 0.4) -> void:
 
 func is_active() -> bool:
 	return _is_active
+
+
+## Screen rect the pack occupies for the whole opening: the revealed card rect grown by
+## PACK_CARD_MARGIN on every side (so PACK_CARD_MARGIN * 2 larger in each dimension, positioned
+## PACK_CARD_MARGIN up and left of the card).
+##
+## Public because Pack_Purchase_Script tweens its bought pack into exactly this rect before handing
+## over — matching the start rect here to the shop's end rect is what keeps the handoff snap-free.
+func get_pack_target_rect() -> Rect2:
+	var card_rect : Rect2   = _compute_card_layout()
+	var margin    : Vector2 = Vector2(PACK_CARD_MARGIN, PACK_CARD_MARGIN)
+	return Rect2(card_rect.position - margin, card_rect.size + margin * 2.0)
+
+
+## Cardback texture for the reveal: the player's equipped sleeve, falling back to the default.
+## ISSUE #50 FIX: use the equipped sleeve (matching the match board) instead of a hardcoded
+## cardback.png that doesn't exist -> null texture -> get_width() crash.
+func _get_cardback_texture() -> Texture2D:
+	var tex : Texture2D = _load_texture(_resolve_player_cardback_path())
+	if tex == null:
+		tex = _load_texture(CARDBACK_PATH)
+	return tex
+
+
+## Centred rect the revealed cards occupy — the cardback aspect fitted inside CARD_DISPLAY_SIZE.
+## Also caches into _actual_card_size / _card_pos for the reveal itself.
+func _compute_card_layout() -> Rect2:
+	var viewport_size : Vector2   = get_viewport().get_visible_rect().size
+	var cardback_tex  : Texture2D = _get_cardback_texture()
+	var cb_aspect     : float     = CARD_DISPLAY_SIZE.x / CARD_DISPLAY_SIZE.y
+	if cardback_tex != null and cardback_tex.get_height() > 0:
+		cb_aspect = float(cardback_tex.get_width()) / float(cardback_tex.get_height())
+
+	if cb_aspect >= CARD_DISPLAY_SIZE.x / CARD_DISPLAY_SIZE.y:
+		_actual_card_size = Vector2(CARD_DISPLAY_SIZE.x, CARD_DISPLAY_SIZE.x / cb_aspect)
+	else:
+		_actual_card_size = Vector2(CARD_DISPLAY_SIZE.y * cb_aspect, CARD_DISPLAY_SIZE.y)
+
+	_card_pos = (viewport_size - _actual_card_size) / 2.0
+	return Rect2(_card_pos, _actual_card_size)
 
 
 # ── Input ──────────────────────────────────────────────────
@@ -129,6 +194,7 @@ func _clear_pack_visuals() -> void:
 	_active_particles    = null
 	_stack_rects.clear()
 	_new_card_ids.clear()
+	_bonus_indices.clear()
 	_current_card_index  = 0
 
 
@@ -163,11 +229,8 @@ func _on_summary_dismissed() -> void:
 # ── Opening animation ──────────────────────────────────────
 
 func _start_pack_opening() -> void:
-	var viewport_size   : Vector2 = get_viewport().get_visible_rect().size
-	var center_x        : float   = viewport_size.x / 2.0
-	var center_y        : float   = viewport_size.y / 2.0
+	var viewport_size : Vector2 = get_viewport().get_visible_rect().size
 
-	# Load pack texture and compute display size at 65% of viewport height
 	var pack_path : String    = PACK_IMAGES_FOLDER + _current_pack_art + ".png"
 	var pack_tex  : Texture2D = _load_texture(pack_path)
 	if pack_tex == null:
@@ -191,19 +254,24 @@ func _start_pack_opening() -> void:
 		_show_card_summary()
 		return
 
-	var pack_aspect : float   = float(pack_tex.get_width()) / float(pack_tex.get_height())
-	var pack_h      : float   = viewport_size.y * 0.65
-	var pack_w      : float   = pack_h * pack_aspect
-	var pack_size   : Vector2 = Vector2(pack_w, pack_h)
-	var center_pos  : Vector2 = Vector2(center_x - pack_size.x / 2.0, center_y - pack_size.y / 2.0)
+	# ── Pack geometry ──
+	# The pack is sized to the cards it is about to reveal (+PACK_CARD_MARGIN a side) rather than to
+	# the viewport, so it covers them completely. That means stretching the art off its native aspect
+	# — STRETCH_SCALE, not KEEP_ASPECT, or it would letterbox inside the rect and expose the cards.
+	var pack_rect        : Rect2   = get_pack_target_rect()
+	var pack_size        : Vector2 = pack_rect.size
+	var center_pos       : Vector2 = pack_rect.position
+	var actual_card_size : Vector2 = _actual_card_size   # set by get_pack_target_rect()
+	var card_pos         : Vector2 = _card_pos
 
 	# ── Create pack image at centre ──
 	var anim_pack := TextureRect.new()
 	anim_pack.texture      = pack_tex
 	anim_pack.expand_mode  = TextureRect.EXPAND_IGNORE_SIZE
-	anim_pack.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT
+	anim_pack.stretch_mode = TextureRect.STRETCH_SCALE
 	anim_pack.size         = pack_size
 	anim_pack.position     = center_pos
+	anim_pack.z_index      = PACK_Z_INDEX
 	anim_pack.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_overlay.add_child(anim_pack)
 
@@ -231,60 +299,10 @@ func _start_pack_opening() -> void:
 
 	anim_pack.queue_free()
 
-	_pack_top_rect             = TextureRect.new()
-	_pack_top_rect.texture     = top_atlas
-	_pack_top_rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	_pack_top_rect.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT
-	_pack_top_rect.size        = Vector2(pack_size.x, top_height)
-	_pack_top_rect.position    = center_pos
-	_pack_top_rect.pivot_offset = Vector2(pack_size.x / 2.0, top_height / 2.0)
-	_pack_top_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_overlay.add_child(_pack_top_rect)
-
-	_pack_body_rect             = TextureRect.new()
-	_pack_body_rect.texture     = body_atlas
-	_pack_body_rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	_pack_body_rect.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT
-	_pack_body_rect.size        = Vector2(pack_size.x, body_height)
-	_pack_body_rect.position    = center_pos + Vector2(0, top_height)
-	_pack_body_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_overlay.add_child(_pack_body_rect)
-
-	SoundManagerScript.play_sfx_from_path("res://Audio/SFX/pack_tear_sfx.ogg")
-	var split_tw := create_tween()
-	split_tw.set_parallel(true)
-	split_tw.tween_property(_pack_top_rect,  "position:y", center_pos.y - 20.0, GameState.pack_time(0.25)).set_ease(Tween.EASE_OUT)
-	split_tw.tween_property(_pack_body_rect, "position:y", center_pos.y + top_height + 20.0, GameState.pack_time(0.25)).set_ease(Tween.EASE_OUT)
-	await split_tw.finished
-
-	var fly_tw := create_tween()
-	fly_tw.set_parallel(true)
-	fly_tw.tween_property(_pack_top_rect, "rotation_degrees", 10.0, GameState.pack_time(0.25))
-	fly_tw.tween_property(_pack_top_rect, "position:y", -200.0, GameState.pack_time(0.25)).set_ease(Tween.EASE_IN)
-	await fly_tw.finished
-	_pack_top_rect.queue_free()
-	_pack_top_rect = null
-
-	# (Cards were generated at the top of this function, before the animation started.)
-
-	# ── Spawn cardback behind pack body ──
-	# ISSUE #50 FIX: use the player's equipped sleeve as the cardback (matching the
-	# match board), falling back to the default sleeve. Previously loaded a
-	# hardcoded cardback.png that doesn't exist -> null texture -> get_width() crash.
-	var cardback_path    : String    = _resolve_player_cardback_path()
-	var cardback_tex     : Texture2D = _load_texture(cardback_path)
-	if cardback_tex == null:
-		cardback_tex = _load_texture(CARDBACK_PATH)
-	var cb_aspect        : float     = float(cardback_tex.get_width()) / float(cardback_tex.get_height())
-	var actual_card_size : Vector2
-	if cb_aspect >= CARD_DISPLAY_SIZE.x / CARD_DISPLAY_SIZE.y:
-		actual_card_size = Vector2(CARD_DISPLAY_SIZE.x, CARD_DISPLAY_SIZE.x / cb_aspect)
-	else:
-		actual_card_size = Vector2(CARD_DISPLAY_SIZE.y * cb_aspect, CARD_DISPLAY_SIZE.y)
-	_actual_card_size = actual_card_size
-
-	var card_pos : Vector2 = Vector2(center_x - actual_card_size.x / 2.0, center_y - actual_card_size.y / 2.0)
-	_card_pos = card_pos
+	# ── Spawn the cardback underneath the still-intact pack ──
+	# It is created here, before the tear, so the top flying off and the body sliding down uncover it
+	# progressively. (It used to be spawned after the tear, which made it pop in on top of the pack.)
+	var cardback_tex : Texture2D = _get_cardback_texture()
 
 	_cardback_rect                    = TextureRect.new()
 	_cardback_rect.texture            = cardback_tex
@@ -298,9 +316,57 @@ func _start_pack_opening() -> void:
 	_cardback_rect.mouse_filter       = Control.MOUSE_FILTER_IGNORE
 	_overlay.add_child(_cardback_rect)
 
+	_pack_top_rect             = TextureRect.new()
+	_pack_top_rect.texture     = top_atlas
+	_pack_top_rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	_pack_top_rect.stretch_mode = TextureRect.STRETCH_SCALE
+	_pack_top_rect.size        = Vector2(pack_size.x, top_height)
+	_pack_top_rect.position    = center_pos
+	_pack_top_rect.pivot_offset = Vector2(pack_size.x / 2.0, top_height / 2.0)
+	_pack_top_rect.z_index     = PACK_Z_INDEX
+	_pack_top_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_overlay.add_child(_pack_top_rect)
+
+	_pack_body_rect             = TextureRect.new()
+	_pack_body_rect.texture     = body_atlas
+	_pack_body_rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	_pack_body_rect.stretch_mode = TextureRect.STRETCH_SCALE
+	_pack_body_rect.size        = Vector2(pack_size.x, body_height)
+	_pack_body_rect.position    = center_pos + Vector2(0, top_height)
+	_pack_body_rect.z_index     = PACK_Z_INDEX
+	_pack_body_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_overlay.add_child(_pack_body_rect)
+
+	# ── Beat on the intact pack before it tears ──
+	await get_tree().create_timer(GameState.pack_time(PAUSE_BEFORE_TEAR)).timeout
+
+	# ── Tear: the halves part and the top tilts as it comes away ──
+	# The tilt runs with the tear rather than with the fly-off, so the lid reads as being peeled
+	# open rather than snapping straight then rotating on its way out.
+	var tear_time : float = GameState.pack_time(PACK_TEAR_TIME)
+	SoundManagerScript.play_sfx_from_path("res://Audio/SFX/pack_tear_sfx.ogg")
+	var split_tw := create_tween()
+	split_tw.set_parallel(true)
+	split_tw.tween_property(_pack_top_rect,  "position:y", center_pos.y - 20.0, tear_time).set_ease(Tween.EASE_OUT)
+	split_tw.tween_property(_pack_top_rect,  "rotation_degrees", PACK_TEAR_ROTATION_DEG, tear_time).set_ease(Tween.EASE_OUT)
+	split_tw.tween_property(_pack_body_rect, "position:y", center_pos.y + top_height + 20.0, tear_time).set_ease(Tween.EASE_OUT)
+	await split_tw.finished
+
+	# ── Beat on the opened pack before the halves leave ──
+	await get_tree().create_timer(GameState.pack_time(PAUSE_AFTER_TEAR)).timeout
+
+	var fly_tw := create_tween()
+	fly_tw.tween_property(_pack_top_rect, "position:y", -200.0, GameState.pack_time(PACK_FLY_OFF_TIME)).set_ease(Tween.EASE_IN)
+	await fly_tw.finished
+	_pack_top_rect.queue_free()
+	_pack_top_rect = null
+
+	# (Cards were generated at the top of this function, and the cardback is already sitting
+	#  underneath the pack body — see the tear section above.)
+
 	# ── Slide body off downward, revealing cardback ──
 	var slide_tw := create_tween()
-	slide_tw.tween_property(_pack_body_rect, "position:y", viewport_size.y + 50.0, GameState.pack_time(0.25)).set_ease(Tween.EASE_IN)
+	slide_tw.tween_property(_pack_body_rect, "position:y", viewport_size.y + 50.0, GameState.pack_time(PACK_FLY_OFF_TIME)).set_ease(Tween.EASE_IN)
 	await slide_tw.finished
 	_pack_body_rect.queue_free()
 	_pack_body_rect = null
@@ -362,14 +428,16 @@ func _start_pack_opening() -> void:
 	if _new_card_ids.has(first_id):
 		_show_new_label(_face_card_rect)
 
+	# Bonus label — only reachable on card 0 for a god pack, where every card is a bonus
+	if _bonus_indices.has(0):
+		_show_bonus_label(_face_card_rect)
+
 	_waiting_for_advance = true
 
 
 func _advance_card_reveal() -> void:
 	if _face_card_rect == null or not is_instance_valid(_face_card_rect):
 		return
-
-	var viewport_size : Vector2 = get_viewport().get_visible_rect().size
 
 	# Kill current holo particles
 	if _active_particles != null and is_instance_valid(_active_particles):
@@ -383,13 +451,40 @@ func _advance_card_reveal() -> void:
 		if _pack_cards[next_index].get("rarity", "") == "Rare Holo":
 			new_particles = _start_holo_sparkle(_stack_rects[next_index], _pack_cards[next_index])
 
-	# Fly current card off screen upward (non-blocking)
+	# Fly current card off screen (non-blocking) on a random upward heading with a random spin, so
+	# no two cards leave the same way. The heading is measured from straight up, and the travel
+	# distance is derived from it so the card always clears the top edge regardless of the angle.
 	SoundManagerScript.play_sfx(SoundManagerScript.SFX_card_draw_sound)
 	var flying_card : TextureRect = _face_card_rect
 	_flying_card_rects.append(flying_card)
+
+	var fly_time : float = GameState.pack_time(CARD_FLY_OFF_TIME)
+	var heading  : float = deg_to_rad(randf_range(-CARD_FLY_ANGLE_MAX_DEG, CARD_FLY_ANGLE_MAX_DEG))
+
+	# Travel only as far as it takes to leave by whichever edge the heading actually reaches first.
+	# Solving for the top edge alone would send a steeply-angled card down a far longer path in the
+	# same time, so the steeper the throw the faster it would appear to move. Measured from the
+	# card's centre, using its half-diagonal as its reach so a spinning corner can never clip back in.
+	var viewport_size : Vector2 = get_viewport().get_visible_rect().size
+	var centre : Vector2 = flying_card.position + _actual_card_size / 2.0
+	var reach  : float   = (_actual_card_size.length() / 2.0) + CARD_FLY_CLEARANCE
+	var travel : float   = (centre.y + reach) / cos(heading)
+	if absf(sin(heading)) > 0.001:
+		var to_side : float = (viewport_size.x + reach - centre.x) if heading > 0.0 else (centre.x + reach)
+		travel = minf(travel, to_side / absf(sin(heading)))
+	var fly_to : Vector2 = flying_card.position + Vector2(sin(heading), -cos(heading)) * travel
+
+	# Spin is expressed in rotations per second, so the tumble stays consistent when the player
+	# changes the pack speed — a faster setting means less total rotation, not a faster spin.
+	var spin_deg : float = randf_range(CARD_SPIN_MIN_RPS, CARD_SPIN_MAX_RPS) * 360.0 * fly_time
+	if randf() < 0.5:
+		spin_deg = -spin_deg
+
 	var fly_tw := create_tween()
-	fly_tw.tween_property(flying_card, "position:y", -viewport_size.y, GameState.pack_time(0.5)).set_ease(Tween.EASE_IN)
-	fly_tw.tween_callback(Callable(self, "_on_flying_card_finished").bind(flying_card))
+	fly_tw.set_parallel(true)
+	fly_tw.tween_property(flying_card, "position", fly_to, fly_time).set_ease(Tween.EASE_IN)
+	fly_tw.tween_property(flying_card, "rotation_degrees", spin_deg, fly_time)
+	fly_tw.chain().tween_callback(Callable(self, "_on_flying_card_finished").bind(flying_card))
 
 	_face_card_rect = null
 	_current_card_index += 1
@@ -408,6 +503,9 @@ func _advance_card_reveal() -> void:
 	var next_id : String = _pack_cards[_current_card_index].get("id", "")
 	if _new_card_ids.has(next_id):
 		_show_new_label(_face_card_rect)
+
+	if _bonus_indices.has(_current_card_index):
+		_show_bonus_label(_face_card_rect)
 
 	_active_particles    = new_particles
 	_waiting_for_advance = true
@@ -484,6 +582,7 @@ func _show_card_summary() -> void:
 # ── Card generation ────────────────────────────────────────
 
 func _generate_pack_cards(set_id: String) -> Array:
+	_bonus_indices.clear()
 	var json_path := CARD_SET_DATA_PATH + set_id + ".json"
 	var file := FileAccess.open(json_path, FileAccess.READ)
 	if file == null:
@@ -542,6 +641,8 @@ func _generate_pack_cards(set_id: String) -> Array:
 			var pick := _pick_unique(holo_rares, god_used)
 			if not pick.is_empty():
 				god_result.append(pick)
+				# Every card of a god pack is a bonus, so all of them get the flourish.
+				_bonus_indices[god_result.size() - 1] = true
 		return god_result
 
 	# ── Standard pack ───────────────────────────────────────────
@@ -568,6 +669,8 @@ func _generate_pack_cards(set_id: String) -> Array:
 		var pick := _pick_unique(rare_pool, used_ids)
 		if not pick.is_empty():
 			result.append(pick)
+			# The extra rare always lands last, so it is the final card revealed.
+			_bonus_indices[result.size() - 1] = true
 
 	return result
 
@@ -754,30 +857,116 @@ func _get_type_colour(type_name: String) -> Color:
 		_:           return Color(1.0, 1.0, 1.0)
 
 
+# ── Floating labels (NEW! / Bonus!) ───────────────────────
+# The theme font (kenvector_future.ttf) ships in a single weight with no bold face, so "bold" has to
+# be synthesised: a FontVariation emboldens the strokes without changing glyph advances, so the text
+# thickens in place and the measured width is unchanged. Built once and reused by both labels.
+const LABEL_EMBOLDEN : float = 0.6   # TWEAKABLE — 0.0 is the plain face, ~0.6 reads as bold
+
+var _bold_font_cache : FontVariation = null
+
+func _get_bold_font() -> FontVariation:
+	if _bold_font_cache != null:
+		return _bold_font_cache
+	var base : Font = _theme_kenney.default_font
+	if base == null:
+		return null
+	var variation := FontVariation.new()
+	variation.base_font          = base
+	variation.variation_embolden = LABEL_EMBOLDEN
+	_bold_font_cache = variation
+	return _bold_font_cache
+
+
 # ── NEW label ─────────────────────────────────────────────
+# TWEAKABLE. Rise distance and rise time set the drift SPEED between them (88 / 1.25 = 70 px/sec).
+# To change how long the label lives without changing how fast it drifts, scale RISE_PX and
+# RISE_TIME by the same factor — that ratio is the speed.
+const NEW_LABEL_RISE_PX   : float   = 88.0
+const NEW_LABEL_RISE_TIME : float   = 1.25
+const NEW_LABEL_FADE_TIME : float   = 0.9
+const NEW_LABEL_FONT_SIZE : int     = 78
+const NEW_LABEL_OUTLINE   : int     = 8
+const NEW_LABEL_SIZE      : Vector2 = Vector2(320, 110)  # "NEW!" at 78 measures 260 x 89
+const NEW_LABEL_TOP_INSET : float   = 20.0               # How far below the card's top edge it starts
 
 func _show_new_label(card_rect: TextureRect) -> void:
 	var label := Label.new()
 	label.text                 = "NEW!"
 	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	label.vertical_alignment   = VERTICAL_ALIGNMENT_TOP
-	label.custom_minimum_size  = Vector2(200, 60)
-	label.size                 = Vector2(200, 60)
+	label.custom_minimum_size  = NEW_LABEL_SIZE
+	label.size                 = NEW_LABEL_SIZE
 	label.add_theme_color_override("font_color",         Color.WHITE)
 	label.add_theme_color_override("font_outline_color", Color.BLACK)
-	label.add_theme_constant_override("outline_size", 8)
-	label.add_theme_font_size_override("font_size", 52)
+	label.add_theme_constant_override("outline_size", NEW_LABEL_OUTLINE)
+	label.add_theme_font_size_override("font_size", NEW_LABEL_FONT_SIZE)
+	var bold : FontVariation = _get_bold_font()
+	if bold != null:
+		label.add_theme_font_override("font", bold)
 	label.theme    = _theme_kenney
 	label.z_index  = 100
 	label.modulate = Color.WHITE
 
-	var spawn_x : float = card_rect.position.x + (card_rect.size.x / 2.0) - 100.0
-	var spawn_y : float = card_rect.position.y + 20.0
+	var spawn_x : float = card_rect.position.x + (card_rect.size.x / 2.0) - (NEW_LABEL_SIZE.x / 2.0)
+	var spawn_y : float = card_rect.position.y + NEW_LABEL_TOP_INSET
 	label.position = Vector2(spawn_x, spawn_y)
 	_overlay.add_child(label)
 
 	var tw := label.create_tween()
 	tw.set_parallel(true)
-	tw.tween_property(label, "position:y", spawn_y - 220.0, GameState.pack_time(2.5))
-	tw.tween_property(label, "modulate:a", 0.0, GameState.pack_time(1.8))
+	tw.tween_property(label, "position:y", spawn_y - NEW_LABEL_RISE_PX, GameState.pack_time(NEW_LABEL_RISE_TIME))
+	tw.tween_property(label, "modulate:a", 0.0, GameState.pack_time(NEW_LABEL_FADE_TIME))
+	tw.finished.connect(label.queue_free)
+
+
+# ── Bonus label ───────────────────────────────────────────
+# Shown on the extra rare a standard pack sometimes rolls (always the last card revealed) and on
+# every card of a god pack. Same drift and fade as the NEW! label, half again the font size, and a
+# rainbow that travels through the word while it rises.
+# TWEAKABLE — RISE_PX / RISE_TIME is the drift speed, as with the NEW! label above.
+const BONUS_LABEL_RISE_PX   : float   = 88.0
+const BONUS_LABEL_RISE_TIME : float   = 1.25
+const BONUS_LABEL_FADE_TIME : float   = 0.9
+const BONUS_LABEL_FONT_SIZE : int     = 117               # NEW_LABEL_FONT_SIZE + 50%
+const BONUS_LABEL_OUTLINE   : int     = 10
+# "Bonus!" at 117 measures 555 x 133. RichTextLabel clips to its own rect, unlike Label — at the
+# old 520 width the "!" fell outside the box and was cut off entirely, so keep real headroom here.
+const BONUS_LABEL_SIZE      : Vector2 = Vector2(620, 170)
+const BONUS_LABEL_TOP_INSET : float   = 130.0             # Sits below NEW!, so both can show at once
+const BONUS_RAINBOW_FREQ    : float   = 1.0               # Colour cycles per second
+const BONUS_RAINBOW_SAT     : float   = 0.9               # 0 = white, 1 = fully saturated hues
+const BONUS_RAINBOW_VAL     : float   = 1.0               # Brightness
+
+func _show_bonus_label(card_rect: TextureRect) -> void:
+	# RichTextLabel rather than Label purely for BBCode's built-in [rainbow], which offsets the hue
+	# per character and advances it every frame — that is the colour wave running through the word.
+	var label := RichTextLabel.new()
+	label.bbcode_enabled      = true
+	label.scroll_active       = false
+	label.autowrap_mode       = TextServer.AUTOWRAP_OFF   # One word on one line, never rewrapped
+	label.custom_minimum_size = BONUS_LABEL_SIZE
+	label.size                = BONUS_LABEL_SIZE
+	label.add_theme_font_size_override("normal_font_size", BONUS_LABEL_FONT_SIZE)
+	label.add_theme_color_override("font_outline_color", Color.BLACK)
+	label.add_theme_constant_override("outline_size", BONUS_LABEL_OUTLINE)
+	var bold : FontVariation = _get_bold_font()
+	if bold != null:
+		label.add_theme_font_override("normal_font", bold)
+	label.theme        = _theme_kenney
+	label.z_index      = 100
+	label.modulate     = Color.WHITE
+	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	label.text = "[center][rainbow freq=%s sat=%s val=%s]Bonus![/rainbow][/center]" % [
+			BONUS_RAINBOW_FREQ, BONUS_RAINBOW_SAT, BONUS_RAINBOW_VAL]
+
+	var spawn_x : float = card_rect.position.x + (card_rect.size.x / 2.0) - (BONUS_LABEL_SIZE.x / 2.0)
+	var spawn_y : float = card_rect.position.y + BONUS_LABEL_TOP_INSET
+	label.position = Vector2(spawn_x, spawn_y)
+	_overlay.add_child(label)
+
+	var tw := label.create_tween()
+	tw.set_parallel(true)
+	tw.tween_property(label, "position:y", spawn_y - BONUS_LABEL_RISE_PX, GameState.pack_time(BONUS_LABEL_RISE_TIME))
+	tw.tween_property(label, "modulate:a", 0.0, GameState.pack_time(BONUS_LABEL_FADE_TIME))
 	tw.finished.connect(label.queue_free)
