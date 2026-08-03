@@ -49,10 +49,9 @@ var current_shop_id: String = "card_mart"
 # so the whole game honours the player's speed preference.
 #   card_match_animation_speed  — regular card-match animations (place/attach/retreat/discard).
 #   overworld_walking_speed     — the player's default overworld walk/run speed multiplier.
-#                                 Options: slow 0.8, standard 1.0, fast 1.2. (No UI yet.)
 #   overworld_animation_speed   — overworld reward/gift animations (coin/card spins, fades, etc.).
 # The two animation multipliers are set together by the Options "Animation speed" buttons; the
-# walking multiplier has no button in the current Options layout and stays at standard.
+# walking multiplier is set on its own by the Options "Walking speed" buttons.
 var card_match_animation_speed: float = 2.0
 var overworld_walking_speed: float = 1.0
 var overworld_animation_speed: float = 2.0
@@ -93,6 +92,41 @@ func _load_animation_speed() -> void:
 
 func _save_animation_speed() -> void:
 	_save_current_data_field("animation_speed", animation_speed_setting)
+
+# ISSUE #34: the overworld walking-speed presets offered by the Options screen, keyed by the value
+# stored in Player_Current_Data.json under "walking_speed". TWEAKABLE — raising a number speeds that
+# preset up. Shift-to-run stacks on top of this (run_multiplier in Player_Object_Script.gd), so the
+# gap between slow and fast reads more clearly while walking than while sprinting.
+const WALKING_SPEED_PRESETS := {
+	"slow": 0.6,
+	"standard": 1.0,
+	"fast": 1.5,
+}
+const DEFAULT_WALKING_SPEED := "standard"
+
+# The player's currently selected preset key. Persisted in Player_Current_Data.json.
+var walking_speed_setting: String = DEFAULT_WALKING_SPEED
+
+# Applies a preset key to the live walking multiplier. Pass save = true to also persist it.
+func set_walking_speed(preset: String, save: bool = true) -> void:
+	if not WALKING_SPEED_PRESETS.has(preset):
+		push_warning("GameState: unknown walking speed preset '" + preset + "'")
+		return
+	walking_speed_setting = preset
+	overworld_walking_speed = WALKING_SPEED_PRESETS[preset]
+	if save:
+		_save_walking_speed()
+
+# Reads the saved preset out of Player_Current_Data.json and applies it. Called once on boot.
+func _load_walking_speed() -> void:
+	var data := _read_current_data()
+	var preset: String = str(data.get("walking_speed", DEFAULT_WALKING_SPEED))
+	if not WALKING_SPEED_PRESETS.has(preset):
+		preset = DEFAULT_WALKING_SPEED
+	set_walking_speed(preset, false)
+
+func _save_walking_speed() -> void:
+	_save_current_data_field("walking_speed", walking_speed_setting)
 
 # ISSUE #34: the two match-rule variants offered by the Options screen. Each entry is the string
 # stored in Player_Current_Data.json, and is copied into the match core's own burn_rules /
@@ -362,6 +396,7 @@ func _ready():
 	_ensure_user_data_exists()
 	load_progress()
 	_load_animation_speed()   # ISSUE #34: apply the saved Options animation-speed preset
+	_load_walking_speed()     # ISSUE #34: apply the saved Options overworld walking-speed preset
 	_load_rule_settings()     # ISSUE #34: apply the saved Options confusion / burn rule choices
 
 # ============================================================

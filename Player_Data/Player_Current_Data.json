@@ -10,5 +10,6 @@
 	"last_set_loaded": "basep",
 	"name": "",
 	"sleeve": "default",
-	"sprite": ""
+	"sprite": "",
+	"walking_speed": "standard"
 }

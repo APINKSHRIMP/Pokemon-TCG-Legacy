@@ -221,6 +221,62 @@ offset_bottom = 223.0
 theme = ExtResource("8_1e4m1")
 text = "fast"
 
+[node name="WALKING" type="Control" parent="." unique_id=1620044501]
+anchors_preset = 0
+offset_left = 1130.0
+offset_top = 145.0
+offset_right = 1170.0
+offset_bottom = 185.0
+
+[node name="walking_speed_label" type="Label" parent="WALKING" unique_id=1620044502]
+z_index = 999
+layout_mode = 0
+offset_left = -140.0
+offset_top = -30.0
+offset_right = 210.0
+offset_bottom = 42.0
+theme = ExtResource("8_1e4m1")
+theme_override_colors/font_color = Color(0, 0, 0, 1)
+theme_override_colors/font_shadow_color = Color(1.0187511, 1.0187511, 1.0187511, 1)
+theme_override_constants/line_spacing = 3
+theme_override_constants/shadow_offset_x = 0
+theme_override_constants/shadow_offset_y = 0
+theme_override_constants/shadow_outline_size = 20
+theme_override_font_sizes/font_size = 35
+text = "Walking speed"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="walking_slow_button" type="Button" parent="WALKING" unique_id=1620044503]
+z_index = 300
+layout_mode = 0
+offset_left = -127.0
+offset_top = 60.0
+offset_right = 203.0
+offset_bottom = 123.0
+theme = ExtResource("8_1e4m1")
+text = "slow"
+
+[node name="walking_standard_button" type="Button" parent="WALKING" unique_id=1620044504]
+z_index = 300
+layout_mode = 0
+offset_left = -127.0
+offset_top = 160.0
+offset_right = 203.0
+offset_bottom = 223.0
+theme = ExtResource("6_5samb")
+text = "standard"
+
+[node name="walking_fast_button" type="Button" parent="WALKING" unique_id=1620044505]
+z_index = 300
+layout_mode = 0
+offset_left = -127.0
+offset_top = 255.0
+offset_right = 203.0
+offset_bottom = 318.0
+theme = ExtResource("8_1e4m1")
+text = "fast"
+
 [node name="MAIN" type="Control" parent="." unique_id=630256141]
 anchors_preset = 0
 offset_right = 40.0

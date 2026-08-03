@@ -1,8 +1,8 @@
 extends Control
 
-# ISSUE #34: the Options screen. Three sections are wired up — "Animation speed", "Confusion Rules"
-# and "Burn Rules". The "Message box style" section is laid out in the scene but has no backing
-# setting yet, so its area is left inert on purpose.
+# ISSUE #34: the Options screen. Four sections are wired up — "Animation speed", "Walking speed",
+# "Confusion Rules" and "Burn Rules". The "Message box style" section is laid out in the scene but
+# has no backing setting yet, so its area is left inert on purpose.
 
 # ─── Constants ───────────────────────────────────────────────────────────────
 
@@ -30,6 +30,10 @@ var section_buttons : Dictionary = {}
 @onready var fast_btn   : Button = $"SPEED/skip_button"
 @onready var skip_btn   : Button = $"SPEED/fast_button"
 
+@onready var walk_slow_btn     : Button = $"WALKING/walking_slow_button"
+@onready var walk_standard_btn : Button = $"WALKING/walking_standard_button"
+@onready var walk_fast_btn     : Button = $"WALKING/walking_fast_button"
+
 @onready var confusion_base_btn   : Button = $"CONFUSION/confusion_base_button"
 @onready var confusion_fairer_btn : Button = $"CONFUSION/confusion_allowretreat_button"
 @onready var confusion_ex_btn     : Button = $"CONFUSION/confusion_ex_button"
@@ -49,6 +53,11 @@ func _ready() -> void:
 			"fast": fast_btn,
 			"skip": skip_btn,
 		},
+		"walking": {
+			"slow":     walk_slow_btn,
+			"standard": walk_standard_btn,
+			"fast":     walk_fast_btn,
+		},
 		"confusion": {
 			"base_set_confusion_rules":   confusion_base_btn,
 			"fairer_confusion_rules":     confusion_fairer_btn,
@@ -61,6 +70,7 @@ func _ready() -> void:
 	}
 
 	saved["speed"]     = GameState.animation_speed_setting
+	saved["walking"]   = GameState.walking_speed_setting
 	saved["confusion"] = GameState.confusion_rule_setting
 	saved["burn"]      = GameState.burn_rule_setting
 	pending = saved.duplicate()
@@ -116,6 +126,9 @@ func _on_save_pressed() -> void:
 	# GameState owns both the live values and the writes to Player_Current_Data.json.
 	if pending["speed"] != saved["speed"]:
 		GameState.set_animation_speed(pending["speed"])
+		saved_anything = true
+	if pending["walking"] != saved["walking"]:
+		GameState.set_walking_speed(pending["walking"])
 		saved_anything = true
 	if pending["confusion"] != saved["confusion"]:
 		GameState.set_confusion_rule(pending["confusion"])
