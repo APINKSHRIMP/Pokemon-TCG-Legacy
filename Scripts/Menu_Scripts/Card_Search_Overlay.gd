@@ -32,19 +32,27 @@ signal search_cancelled()
 # Header / footer bands and the vertical strip the filter rows flow down
 const HEADER_H      := 96.0
 const CONTENT_TOP   := 112.0
-const FOOTER_TOP    := 980.0
+const FOOTER_TOP    := 992.0
 
-# Backdrop dim. 1.0 = solid black; the deck background shows faintly through at 0.88.
+# Backdrop dim behind the header / footer bands. 1.0 = solid black; the deck background shows
+# faintly through at 0.88.
 const BACKDROP_ALPHA := 0.88
 
+# The filter rows sit on a light panel (HEADER_H..FOOTER_TOP) so the row labels can be black and the
+# greyed-out "icon_" art reads properly, matching the screen mock-up. Set this to
+# Color(0, 0, 0, 0) to go back to labels floating on the dark backdrop — LABEL_COLOR then needs
+# to go back to white or nothing will be readable.
+const PANEL_COLOR := Color(0.93, 0.93, 0.94, 1.0)
+
 # Left-hand label column, and the x the controls start at
-const LABEL_X    := 52.0
-const LABEL_W    := 250.0
-const LABEL_FONT := 26
-const CTRL_X     := 312.0
+const LABEL_X     := 52.0
+const LABEL_W     := 250.0
+const LABEL_FONT  := 24
+const LABEL_COLOR := Color(0.05, 0.05, 0.05, 1.0)
+const CTRL_X      := 312.0
 
 # Vertical gap left between one filter row and the next
-const ROW_GAP := 22.0
+const ROW_GAP := 16.0
 
 # Pokemon type icon row (single line, 9 icons)
 const TYPE_ICON  := 54.0
@@ -58,9 +66,14 @@ const SET_LINE_GAP  := 8.0
 # Up to this many unlocked sets renders as ONE line; more than this splits over two balanced lines.
 const SET_SINGLE_LINE_MAX := 12
 
-# Pokemon sub type icons (ex / shining-star / delta) — bigger, they read as glyphs not badges
+# Pokemon sub type icons (ex / shining-star / delta / dual type) — bigger, they read as glyphs
+# rather than badges
 const SUB_ICON  := 62.0
 const SUB_PITCH := 104.0
+
+# Rarity symbol icons
+const RARITY_ICON  := 54.0
+const RARITY_PITCH := 90.0
 
 # Effect icon rows (reserved — see EFFECT_FILTERS)
 const EFFECT_ICON     := 54.0
@@ -108,6 +121,7 @@ const BLOCKED_ICON_ALPHA := 0.30
 const ENERGY_ICON_PATH  := "res://Image_Assets/Icons/Energy_Icons/"
 const SET_ICON_PATH     := "res://Image_Assets/Icons/Set_Icons/"
 const SUBTYPE_ICON_PATH := "res://Image_Assets/Icons/Subtype_Icons/"
+const RARITY_ICON_PATH  := "res://Image_Assets/Icons/Rarity_Icons/"
 const EFFECT_ICON_PATH  := "res://Image_Assets/Icons/Effect_Icons/"
 
 # Pokemon types, in the order they appear on screen. The value is the icon file stem, so the
@@ -152,13 +166,27 @@ const TRAINER_SUBS : Array = [
 
 # Pokemon sub types. These are NOT plain subtype lookups — see Deck_Build_And_Card_View_Script's
 # _card_matches_search for how each one is actually tested.
-#   ex      -> "ex" in subtypes
-#   shining -> name starts with "Shining ", or "Star" in subtypes (the gold star cards)
-#   delta   -> name ends with the delta symbol, matching card_object.is_delta()
+#   ex       -> "ex" in subtypes
+#   shining  -> name starts with "Shining ", or "Star" in subtypes (the gold star cards)
+#   delta    -> name ends with the delta symbol, matching card_object.is_delta()
+#   dualtype -> more than one entry in the card's "types" array (e.g. Psychic/Metal Metagross).
+#               First appears in ex4 (Team Aqua's Cacturne, Grass/Darkness).
 const POKEMON_SUBS : Array = [
-	{"key": "ex",      "icon": "ex",      "tip": "Pokemon ex",             "gate": "ex1"},
-	{"key": "shining", "icon": "shining", "tip": "Shining / Star",         "gate": "neo1"},
-	{"key": "delta",   "icon": "delta",   "tip": "Delta Species",          "gate": "ex11"},
+	{"key": "ex",       "icon": "ex",       "tip": "Pokemon ex",      "gate": "ex1"},
+	{"key": "shining",  "icon": "shining",  "tip": "Shining / Star",  "gate": "neo1"},
+	{"key": "delta",    "icon": "delta",    "tip": "Delta Species",   "gate": "ex11"},
+	{"key": "dualtype", "icon": "dualtype", "tip": "Dual Type",       "gate": "ex4"},
+]
+
+# Card rarity, in the order the player asked for: common -> uncommon -> rare -> holo rare.
+# "holorare" deliberately swallows every other Rare variant in the data — Rare Holo, Rare Holo EX,
+# Rare Holo Star, Rare Shining and Rare Secret (the secret rares are all holofoil cards).
+# No unlock gates: all four rarities exist from Base Set onwards.
+const RARITIES : Array = [
+	{"key": "common",   "icon": "common",   "tip": "Common"},
+	{"key": "uncommon", "icon": "uncommon", "tip": "Uncommon"},
+	{"key": "rare",     "icon": "rare",     "tip": "Rare"},
+	{"key": "holorare", "icon": "holorare", "tip": "Holo Rare"},
 ]
 
 # RESERVED: the card-effect filter row. Populate this and the row builds itself — icons, tooltips,
@@ -188,6 +216,7 @@ var _sel_card_types   : Dictionary = {}
 var _sel_stages       : Dictionary = {}
 var _sel_trainer_subs : Dictionary = {}
 var _sel_pokemon_subs : Dictionary = {}
+var _sel_rarities     : Dictionary = {}
 var _sel_effects      : Dictionary = {}
 var _sort_mode        : String     = "set"
 
@@ -199,6 +228,7 @@ var _manual_card_types : Dictionary = {}
 var _type_icons    : Dictionary = {}
 var _set_icons     : Dictionary = {}
 var _sub_icons     : Dictionary = {}
+var _rarity_icons  : Dictionary = {}
 var _effect_icons  : Dictionary = {}
 var _card_type_btn : Dictionary = {}
 var _stage_btn     : Dictionary = {}
@@ -251,6 +281,16 @@ func _build_backdrop() -> void:
 	# STOP so nothing behind the search screen can be clicked through it
 	backdrop.mouse_filter = Control.MOUSE_FILTER_STOP
 	add_child(backdrop)
+
+	# Light panel behind the filter rows only — the header and footer bands keep the dark backdrop,
+	# so the white title and the coloured action buttons still read against them.
+	var panel := ColorRect.new()
+	panel.color = PANEL_COLOR
+	panel.position = Vector2(0.0, HEADER_H)
+	panel.size     = Vector2(1920.0, FOOTER_TOP - HEADER_H)
+	panel.z_index  = 51
+	panel.mouse_filter = Control.MOUSE_FILTER_STOP
+	add_child(panel)
 
 
 func _build_header() -> void:
@@ -315,6 +355,7 @@ func _build_rows() -> void:
 	y = _build_stage_row(y)
 	y = _build_trainer_sub_row(y)
 	y = _build_pokemon_sub_row(y)
+	y = _build_rarity_row(y)
 	y = _build_effect_row(y)
 	y = _build_sort_row(y)
 
@@ -461,6 +502,22 @@ func _build_pokemon_sub_row(y: float) -> float:
 	return y + SUB_ICON + ROW_GAP
 
 
+## Rarity is a whole-card property (Pokemon, Trainer and Energy all carry one), so unlike the stage
+## and sub type rows it takes no part in the Pokemon/Trainer supertype lock.
+func _build_rarity_row(y: float) -> float:
+	_add_row_label("RARITY", y, RARITY_ICON)
+
+	var x := CTRL_X
+	for entry in RARITIES:
+		var key : String = entry["key"]
+		var icon := _make_icon(RARITY_ICON_PATH, entry["icon"], RARITY_ICON, Vector2(x, y), entry["tip"])
+		icon.gui_input.connect(_on_icon_input.bind(icon, "rarity", key))
+		_rarity_icons[key] = icon
+		x += RARITY_PITCH
+
+	return y + RARITY_ICON + ROW_GAP
+
+
 ## RESERVED row — draws nothing while EFFECT_FILTERS is empty, and lays itself out exactly like the
 ## SET row (two balanced lines of icons with hover tooltips) the moment entries are added.
 func _build_effect_row(y: float) -> float:
@@ -525,7 +582,7 @@ func _add_row_label(text: String, y: float, h: float) -> void:
 	lbl.theme = _theme_white
 	lbl.text  = text
 	lbl.add_theme_font_size_override("font_size", LABEL_FONT)
-	lbl.add_theme_color_override("font_color", Color.WHITE)
+	lbl.add_theme_color_override("font_color", LABEL_COLOR)
 	lbl.position = Vector2(LABEL_X, y)
 	lbl.size     = Vector2(LABEL_W, h)
 	lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
@@ -775,6 +832,9 @@ func _on_reset_pressed() -> void:
 	for key in _sub_icons:
 		_sel_pokemon_subs.erase(key)
 		_set_icon_selected(_sub_icons[key], false)
+	for key in _rarity_icons:
+		_sel_rarities.erase(key)
+		_set_icon_selected(_rarity_icons[key], false)
 	for key in _effect_icons:
 		_sel_effects.erase(key)
 		_set_icon_selected(_effect_icons[key], false)
@@ -822,6 +882,7 @@ func _selection_store(category: String) -> Dictionary:
 		"stage":       return _sel_stages
 		"trainer_sub": return _sel_trainer_subs
 		"pokemon_sub": return _sel_pokemon_subs
+		"rarity":      return _sel_rarities
 		"effect":      return _sel_effects
 	return {}
 
@@ -918,7 +979,8 @@ func _has_any_filter() -> bool:
 		return true
 	return not (_sel_types.is_empty() and _sel_sets.is_empty() and _sel_card_types.is_empty()
 		and _sel_stages.is_empty() and _sel_trainer_subs.is_empty()
-		and _sel_pokemon_subs.is_empty() and _sel_effects.is_empty())
+		and _sel_pokemon_subs.is_empty() and _sel_rarities.is_empty()
+		and _sel_effects.is_empty())
 
 
 func _refresh_confirm_button() -> void:
@@ -947,6 +1009,7 @@ func build_criteria() -> Dictionary:
 		"stages":       _sel_stages.keys(),
 		"trainer_subs": _sel_trainer_subs.keys(),
 		"pokemon_subs": _sel_pokemon_subs.keys(),
+		"rarities":     _sel_rarities.keys(),
 		"effects":      _sel_effects.keys(),
 		"sort":         _sort_mode,
 	}
