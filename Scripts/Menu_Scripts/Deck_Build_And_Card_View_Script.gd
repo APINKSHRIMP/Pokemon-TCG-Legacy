@@ -153,6 +153,28 @@ var zoomed_card : TextureRect = null
 # RichTextLabel showing the per-set deck breakdown (created in _ready).
 var set_breakdown_label : RichTextLabel = null
 
+# ─── Card search state ───────────────────────────────────────────────────────
+
+# The search / filter screen, while it is open (freed on confirm or cancel)
+var search_overlay : CardSearchOverlay = null
+
+# True once a search has been run and the grid is showing results instead of a single set.
+# While true the set name and the < > set-switch buttons stay hidden and the search button
+# reads "CLEAR SEARCH".
+var search_active : bool = false
+
+# The matched cards, as the same {card_id, owned} dictionaries the per-set grid is built from
+var search_results : Array = []
+
+# Which set's cards are currently being progressively added to the grid in search mode — the
+# same abort guard _display_current_set uses, so clearing a search mid-load stops the old build
+var _search_load_token : int = 0
+
+# How many result cards are added to the grid per frame. A full-collection search can return
+# ~2,800 cards, and one-per-frame (what the single-set view uses) would take almost a minute;
+# a whole row per frame keeps it progressive but finishes in a few seconds.
+const SEARCH_LOAD_BATCH := 9
+
 # ─── Node references ─────────────────────────────────────────────────────────
 
 @onready var grid             : GridContainer = $deck_grid_container
@@ -186,6 +208,8 @@ var set_breakdown_label : RichTextLabel = null
 @onready var change_energy_btn : Button = $"ENERGY SECTION"/change_energy_style_button
 # The button that opens the deck viewer overlay
 @onready var view_deck_btn     : Button = $view_deck_button
+# Opens the card search screen — doubles as "CLEAR SEARCH" while results are showing
+@onready var search_btn        : Button = $search_button
 
 # ─── Lifecycle ───────────────────────────────────────────────────────────────
 
@@ -208,6 +232,7 @@ func _ready() -> void:
 	prev_btn.pressed.connect(_on_prev_set)
 	change_energy_btn.pressed.connect(_on_change_energy_style_pressed)
 	view_deck_btn.pressed.connect(_on_view_deck_pressed)
+	search_btn.pressed.connect(_on_search_pressed)
 
 	# Limit deck name to 20 characters — LineEdit.max_length natively
 	# blocks further typing once the limit is reached
@@ -1681,6 +1706,10 @@ func _remove_selected_animation(card_rect: TextureRect) -> void:
 func _on_next_set() -> void:
 	if unlocked_indices.is_empty():
 		return
+	# The arrows are hidden in search-results mode, but a stray keyboard "press" on a focused
+	# button would still fire this and blow the results away — ignore it while a search is up.
+	if search_active:
+		return
 	current_unlock_pos = (current_unlock_pos + 1) % unlocked_indices.size()
 	_display_current_set()
 	# Scroll back to top when switching sets
@@ -1690,6 +1719,8 @@ func _on_next_set() -> void:
 ## Move to the previous unlocked set (wraps around to the end).
 func _on_prev_set() -> void:
 	if unlocked_indices.is_empty():
+		return
+	if search_active:
 		return
 	current_unlock_pos -= 1
 	if current_unlock_pos < 0:
@@ -1703,6 +1734,329 @@ func _reset_scroll_position() -> void:
 	var scroll = grid.get_parent()
 	if scroll is ScrollContainer:
 		scroll.scroll_vertical = 0
+
+
+# ─── Card search ─────────────────────────────────────────────────────────────
+#
+# The search button has two jobs depending on what the grid is showing:
+#   normal set view  -> "SEARCH"       opens the filter screen
+#   search results   -> "CLEAR SEARCH" throws the results away and goes back to set browsing
+#
+# Filter semantics: OR within a category, AND between categories, with the name box always ANDed
+# on top as a case-insensitive substring. Only cards the player actually owns are ever returned —
+# the blacked-out unowned placeholders that appear in the per-set view are skipped entirely.
+
+func _on_search_pressed() -> void:
+	if search_active:
+		_clear_search()
+		return
+	_open_search_overlay()
+
+
+func _open_search_overlay() -> void:
+	if search_overlay != null:
+		return
+	if energy_picker_active or deck_viewer_active or load_popup != null:
+		return
+
+	# Hide the deck UI behind the search screen, the same way the energy picker does
+	_set_ui_visibility(false)
+
+	# Build the list of unlocked set_ids in release order — this drives both which set icons the
+	# screen shows and which gated filter options (Baby, Stadium, ex, delta...) are available.
+	var unlocked_set_ids : Array = []
+	for idx in unlocked_indices:
+		unlocked_set_ids.append(set_list[idx]["set_id"])
+
+	search_overlay = CardSearchOverlay.new()
+	add_child(search_overlay)
+	search_overlay.setup(unlocked_set_ids, set_list)
+	search_overlay.search_confirmed.connect(_on_search_confirmed)
+	search_overlay.search_cancelled.connect(_on_search_cancelled)
+
+
+## CANCEL / Escape on the search screen — throw the filters away and go back to whatever the deck
+## builder was showing before (a normal set, or the previous results if a search was already active).
+func _on_search_cancelled() -> void:
+	_close_search_overlay()
+	_set_ui_visibility(true)
+
+
+## SEARCH pressed with at least one filter set. Runs the filter, and only switches the grid over to
+## results mode if something actually matched — a search that finds nothing keeps the player on the
+## filter screen with their selections intact so they can adjust them.
+func _on_search_confirmed(criteria: Dictionary) -> void:
+	var results := await _run_search(criteria)
+
+	if results.is_empty():
+		# The overlay may have been cancelled while the search was running
+		if search_overlay != null:
+			_show_deck_message("No cards found")
+		return
+
+	search_results = results
+	search_active  = true
+	search_btn.text = "CLEAR SEARCH"
+
+	_close_search_overlay()
+	_set_ui_visibility(true)
+	await _display_search_results()
+
+
+## Drops out of results mode and goes back to browsing the set the player was last on.
+func _clear_search() -> void:
+	if not search_active:
+		return
+	search_active = false
+	search_results.clear()
+	_search_load_token += 1        # abort any results build still in flight
+	search_btn.text = "SEARCH"
+
+	set_label.visible = true
+	next_btn.visible  = true
+	prev_btn.visible  = true
+
+	_display_current_set()
+	_reset_scroll_position()
+
+
+func _close_search_overlay() -> void:
+	if search_overlay == null:
+		return
+	search_overlay.queue_free()
+	search_overlay = null
+
+
+## Rebuilds whatever the grid is currently meant to be showing. Anything that needs to redraw the
+## cards from scratch (loading a different deck, for instance) must go through here rather than
+## calling _display_current_set directly, or it would silently drop the player out of their search
+## results while the UI still claimed a search was active.
+func _refresh_card_grid() -> void:
+	if search_active:
+		_display_search_results()
+	else:
+		_display_current_set()
+
+
+## Walks every unlocked set and returns the {card_id, owned} entries that match the criteria,
+## already sorted into the requested order. Unowned cards are never included.
+func _run_search(criteria: Dictionary) -> Array:
+	# Parsing up to 38 set JSONs plus their owned-card files can take a moment, so block input
+	# behind the shared loading overlay exactly like a set load does.
+	_loading_overlay.show_for_deck(self)
+	await get_tree().process_frame
+
+	var wanted_sets : Array = criteria.get("sets", [])
+	var results : Array = []
+
+	for idx in unlocked_indices:
+		var set_id : String = set_list[idx]["set_id"]
+
+		# A set filter is an OR within its own category, so a set that isn't listed can be skipped
+		# wholesale rather than tested card by card.
+		if not wanted_sets.is_empty() and not (set_id in wanted_sets):
+			continue
+
+		_ensure_set_metadata_loaded(set_id)
+		for card_data in _load_owned_cards_for_set(set_id):
+			if int(card_data.get("owned", 0)) <= 0:
+				continue
+			if _card_matches_search(card_data["card_id"], criteria):
+				results.append(card_data)
+
+		if not is_inside_tree():
+			_loading_overlay.hide()
+			return []
+		await get_tree().process_frame
+
+	_sort_search_results(results, criteria.get("sort", "set"))
+	_loading_overlay.hide()
+	return results
+
+
+## Tests one card against every category. Each category is skipped when the player selected nothing
+## in it; when they did select something, the card must match ONE of their choices (OR within the
+## category). Every category that is in play must pass (AND between categories).
+func _card_matches_search(card_id: String, criteria: Dictionary) -> bool:
+	var meta = _get_card_meta(card_id)
+	if meta == null:
+		return false
+
+	var card_name : String = meta["name"]
+	var supertype : String = meta["supertype"]
+	var subtypes  : Array  = meta["subtypes"]
+	var types     : Array  = meta.get("types", [])
+
+	# Subtype spelling isn't perfectly consistent across the card data — the 8 ex promos in np.json
+	# are tagged "EX" rather than "ex", for instance. The rest of the engine already compares these
+	# case-insensitively (see is_ex_pokemon / _get_name_group), so the search does too rather than
+	# quietly dropping those cards out of every result.
+	var subtypes_lower : Array = []
+	for st in subtypes:
+		subtypes_lower.append(str(st).to_lower())
+
+	# ── Name (always AND, case-insensitive substring) ──
+	var wanted_name : String = criteria.get("name", "")
+	if wanted_name != "" and not (wanted_name in card_name.to_lower()):
+		return false
+
+	# ── Set ── (already filtered per-set in _run_search, kept here so this stays a complete test)
+	var wanted_sets : Array = criteria.get("sets", [])
+	if not wanted_sets.is_empty() and not (card_id.split("-")[0] in wanted_sets):
+		return false
+
+	# ── Card type (supertype) ──
+	var wanted_card_types : Array = criteria.get("card_types", [])
+	if not wanted_card_types.is_empty() and not (supertype in wanted_card_types):
+		return false
+
+	# ── Pokemon type ── only Pokemon carry a "types" array, so this is inherently Pokemon-only
+	var wanted_types : Array = criteria.get("types", [])
+	if not wanted_types.is_empty():
+		var type_hit := false
+		for t in types:
+			if t in wanted_types:
+				type_hit = true
+				break
+		if not type_hit:
+			return false
+
+	# ── Pokemon stage ── Baby cards carry only "Baby", never "Basic", so the four are exclusive
+	var wanted_stages : Array = criteria.get("stages", [])
+	if not wanted_stages.is_empty() and not _any_subtype_matches(subtypes_lower, wanted_stages):
+		return false
+
+	# ── Trainer sub type ──
+	var wanted_trainer_subs : Array = criteria.get("trainer_subs", [])
+	if not wanted_trainer_subs.is_empty() and not _any_subtype_matches(subtypes_lower, wanted_trainer_subs):
+		return false
+
+	# ── Pokemon sub type ──
+	var wanted_pokemon_subs : Array = criteria.get("pokemon_subs", [])
+	if not wanted_pokemon_subs.is_empty():
+		if not _card_matches_pokemon_sub(card_name, subtypes_lower, wanted_pokemon_subs):
+			return false
+
+	# ── Effect ── reserved; matches everything until CardSearchOverlay.EFFECT_FILTERS is populated
+	var wanted_effects : Array = criteria.get("effects", [])
+	if not wanted_effects.is_empty():
+		if not _card_matches_effect(card_id, wanted_effects):
+			return false
+
+	return true
+
+
+## True when any of the wanted subtype names is on the card. `subtypes_lower` is the card's subtype
+## list already lowercased; the wanted names come from the search screen's option tables in their
+## display casing, so they're lowered here to meet it.
+func _any_subtype_matches(subtypes_lower: Array, wanted: Array) -> bool:
+	for want in wanted:
+		if str(want).to_lower() in subtypes_lower:
+			return true
+	return false
+
+
+## The three Pokemon sub types aren't all plain subtype lookups:
+##   ex      — a real "ex" subtype
+##   shining — the Neo "Shining <name>" cards AND the later gold Star cards, which the search
+##             screen deliberately groups under one icon
+##   delta   — the delta symbol in the printed name, matching card_object.is_delta()
+func _card_matches_pokemon_sub(card_name: String, subtypes_lower: Array, wanted: Array) -> bool:
+	for key in wanted:
+		match key:
+			"ex":
+				if "ex" in subtypes_lower:
+					return true
+			"shining":
+				if card_name.begins_with("Shining ") or "star" in subtypes_lower:
+					return true
+			"delta":
+				if "δ" in card_name:
+					return true
+	return false
+
+
+## RESERVED: card-effect matching for the effect filter row. Returns true for now so a criteria
+## dictionary carrying effect keys can't silently filter everything out. Implement alongside
+## CardSearchOverlay.EFFECT_FILTERS — the keys here are the same "key" values from that table.
+func _card_matches_effect(_card_id: String, _wanted_effects: Array) -> bool:
+	return true
+
+
+## "set"  — release order, then card number within each set (what browsing a set already looks like)
+## "name" — grouped by card name, then release order and card number within each name
+func _sort_search_results(results: Array, sort_mode: String) -> void:
+	# Position of each set in the dictionary's release order, so sorting never has to search the list
+	var set_order : Dictionary = {}
+	for i in range(set_list.size()):
+		set_order[set_list[i]["set_id"]] = i
+
+	if sort_mode == "name":
+		results.sort_custom(func(a, b):
+			var name_a : String = _search_card_name(a["card_id"])
+			var name_b : String = _search_card_name(b["card_id"])
+			if name_a != name_b:
+				return name_a.naturalnocasecmp_to(name_b) < 0
+			return _search_sort_key(a["card_id"], set_order) < _search_sort_key(b["card_id"], set_order)
+		)
+	else:
+		results.sort_custom(func(a, b):
+			return _search_sort_key(a["card_id"], set_order) < _search_sort_key(b["card_id"], set_order)
+		)
+
+
+## Packs a card's set position and card number into one comparable integer so both sorts can share
+## the same "release order, then card number" tiebreak.
+func _search_sort_key(card_id: String, set_order: Dictionary) -> int:
+	var parts := card_id.split("-")
+	var set_idx : int = set_order.get(parts[0], 9999)
+	# Card numbers aren't always plain integers (e.g. "H12" in the e-Card sets), so strip to digits
+	# and fall back to 0 — same-numbered oddities then just keep their file order.
+	var num_text := "" if parts.size() < 2 else parts[1]
+	var digits := ""
+	for c in num_text:
+		if c >= "0" and c <= "9":
+			digits += c
+	var num : int = 0 if digits == "" else int(digits)
+	return set_idx * 100000 + num
+
+
+func _search_card_name(card_id: String) -> String:
+	var meta = _get_card_meta(card_id)
+	return "" if meta == null else meta["name"]
+
+
+## Fills the grid with the search results. Mirrors _display_current_set, but batches whole rows per
+## frame because a broad search can return the player's entire collection.
+func _display_search_results() -> void:
+	_loading_overlay.show_for_deck(self)
+
+	_search_load_token += 1
+	var token := _search_load_token
+
+	# The loading overlay deliberately leaves the top strip of the screen clickable, and the search
+	# button lives up there — so a set grid can still be building one-card-per-frame when we get
+	# here. Blanking _loading_set_id makes that loop bail on its next iteration instead of dribbling
+	# its remaining cards into the results grid we're about to fill.
+	_loading_set_id = ""
+
+	_clear_grid()
+	_reset_scroll_position()
+
+	var added := 0
+	for card_data in search_results:
+		# The player cleared the search (or started another) while this build was still running
+		if token != _search_load_token:
+			return
+		if not is_inside_tree():
+			return
+
+		_add_card_to_grid(card_data)
+		added += 1
+		if added % SEARCH_LOAD_BATCH == 0:
+			await get_tree().process_frame
+
+	_loading_overlay.hide()
 
 
 # ─── Empty deck ──────────────────────────────────────────────────────────────
@@ -1964,6 +2318,15 @@ func _input(event: InputEvent) -> void:
 		if energy_picker_active:
 			_on_energy_picker_cancel()
 			return
+		# If the search screen is open, close it without searching
+		if search_overlay != null:
+			_on_search_cancelled()
+			return
+		# Showing search results — the first Escape drops back to normal set browsing,
+		# a second one then leaves the deck builder as usual
+		if search_active:
+			_clear_search()
+			return
 		_on_cancel_pressed()
 
 	# ── Spacebar hold-to-preview ──
@@ -1977,6 +2340,8 @@ func _input(event: InputEvent) -> void:
 				return
 			if deck_viewer_active:
 				return
+			if search_overlay != null:
+				return          # typing in the search name box must not trigger the preview
 			if deck_name_edit.has_focus():
 				return
 			# Space is also the default "ui_accept" action, so an unhandled key here would
@@ -2157,6 +2522,7 @@ func _set_ui_visibility(visible_flag: bool) -> void:
 		deck_count_label,
 		change_energy_btn,
 		view_deck_btn,
+		search_btn,
 	]
 
 	for energy_type in ENERGY_TYPES:
@@ -2169,6 +2535,13 @@ func _set_ui_visibility(visible_flag: bool) -> void:
 	for node in nodes_to_toggle:
 		if node != null and is_instance_valid(node):
 			node.visible = visible_flag
+
+	# In search-results mode the grid isn't showing a single set, so the set name and the < >
+	# switch buttons must stay hidden even when the rest of the UI is being restored.
+	if visible_flag and search_active:
+		set_label.visible = false
+		next_btn.visible  = false
+		prev_btn.visible  = false
 
 
 ## Rebuilds the per-set type breakdown from deck_cards.
@@ -2515,7 +2888,7 @@ func _on_load_deck_pressed() -> void:
 					_update_energy_icons()
 
 				_refresh_energy_icons_from_deck()
-				_display_current_set()
+				_refresh_card_grid()
 
 				# Treat the loaded deck as already saved and active —
 				# write it as the player's active deck in player_data.json
