@@ -7,8 +7,8 @@
 			"shop_id": "card_mart",
 			"meet_text": "Welcome! Would you like to browse the shop?",
 			"position": {
-				"x": 88,
-				"y": -26
+				"x": 82,
+				"y": -29
 			},
 			"pattern": "idle_down",
 			"interact_facing": "up"

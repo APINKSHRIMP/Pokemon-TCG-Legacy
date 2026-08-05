@@ -380,6 +380,7 @@ func build_rewards(is_first_win: bool) -> void:
 	var cash_amount = int(opponent_data.get("cash_reward", "0"))
 	if is_first_win:
 		cash_amount *= 3
+	print("ISSUE #92 CASH REWARD: base=", opponent_data.get("cash_reward", "0"), " first_win=", is_first_win, " paid=", cash_amount)
 	GameState.add_cash(cash_amount)
 
 	var cash_text = str(cash_amount)

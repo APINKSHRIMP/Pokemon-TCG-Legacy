@@ -7,6 +7,7 @@
 [ext_resource type="Theme" uid="uid://6shp5ck1tnja" path="res://UI_Themes/kenneyUI.tres" id="4_ui6o0"]
 [ext_resource type="Texture2D" uid="uid://he803mdt247f" path="res://Image_Assets/Backgrounds_And_Borders/Backgrounds/background5.png" id="5_4246g"]
 [ext_resource type="Theme" uid="uid://mbsg4xqnedxi" path="res://UI_Themes/kenneyUI-red.tres" id="5_krh4r"]
+[ext_resource type="Theme" uid="uid://h1f7iqhh7ycb" path="res://UI_Themes/kenneyUI-yellow.tres" id="7_0fdu0"]
 [ext_resource type="Theme" uid="uid://bb6vwl0h1flws" path="res://UI_Themes/kenneyUI-blue.tres" id="8_4246g"]
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_ui6o0"]
@@ -78,6 +79,17 @@ offset_right = 912.0
 offset_bottom = 1061.0
 theme = ExtResource("4_ui6o0")
 text = "save"
+
+[node name="hide_button" type="Button" parent="." unique_id=1211228865]
+z_index = 300
+layout_mode = 0
+offset_left = 1528.0
+offset_top = 13.0
+offset_right = 1899.0
+offset_bottom = 88.0
+theme = ExtResource("8_4246g")
+theme_override_font_sizes/font_size = 25
+text = "Show Unowned Coins"
 
 [node name="coin_cancel_button" type="Button" parent="." unique_id=118328617]
 z_index = 300

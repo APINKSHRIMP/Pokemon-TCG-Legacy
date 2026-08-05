@@ -128,13 +128,14 @@ text = "Load deck"
 [node name="search_button" type="Button" parent="." unique_id=2070858092]
 z_index = 300
 layout_mode = 0
-offset_left = 1711.0
-offset_top = 19.0
-offset_right = 1887.0
-offset_bottom = 89.0
+offset_left = 1690.0
+offset_top = 11.0
+offset_right = 1911.0
+offset_bottom = 107.0
 theme = ExtResource("9_c438k")
-theme_override_font_sizes/font_size = 18
-text = "SEARCH"
+theme_override_font_sizes/font_size = 24
+text = "SEARCH &
+filter"
 
 [node name="view_deck_button" type="Button" parent="." unique_id=1217613715]
 z_index = 300

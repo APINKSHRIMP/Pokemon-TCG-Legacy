@@ -90,6 +90,7 @@ func _load_pack_prices() -> void:
 	if data is Array:
 		for entry in data:
 			pack_prices[entry["pack"]] = int(entry["cost"])
+	print("ISSUE #92 PACK PRICES LOADED: ", pack_prices)
 
 
 func _load_player_data() -> void:

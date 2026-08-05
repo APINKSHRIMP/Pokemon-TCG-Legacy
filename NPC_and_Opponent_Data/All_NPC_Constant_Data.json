@@ -639,7 +639,7 @@
 	  "deck": "Basic Pokemon Barrage",
 	  "music": "REPLACEMUSIC",
 	  "prize_cards": 2,
-	  "cash_reward": "50",
+	  "cash_reward": "45",
 	  "coin_reward": "Rattata Silver",
 	  "card_reward": "base1-82, base1-82"
 	},
@@ -648,7 +648,7 @@
 	  "deck": "You Win Some N Lose Some",
 	  "music": "REPLACEMUSIC",
 	  "prize_cards": 2,
-	  "cash_reward": "50",
+	  "cash_reward": "45",
 	  "coin_reward": "Farfetchd Silver",
 	  "card_reward": "base1-27, base1-27"
 	},
@@ -657,7 +657,7 @@
 	  "deck": "Status Infliction",
 	  "music": "REPLACEMUSIC",
 	  "prize_cards": 2,
-	  "cash_reward": "50",
+	  "cash_reward": "45",
 	  "coin_reward": "Drowzee Gold"
 	},
 	"Fisherman Dave": {
@@ -665,7 +665,7 @@
 	  "deck": "Fishy Fish",
 	  "music": "REPLACEMUSIC",
 	  "prize_cards": 4,
-	  "cash_reward": "50",
+	  "cash_reward": "45",
 	  "coin_reward": "Magikarp Gold"
 	},
 	"Gardener Callum": {
@@ -673,7 +673,7 @@
 	  "deck": "Pollen Power",
 	  "music": "REPLACEMUSIC",
 	  "prize_cards": 2,
-	  "cash_reward": "75",
+	  "cash_reward": "65",
 	  "coin_reward": "Bulbasaur Green"
 	},
 	"Engineer Allan": {
@@ -681,7 +681,7 @@
 	  "deck": "Zzzap",
 	  "music": "REPLACEMUSIC",
 	  "prize_cards": 3,
-	  "cash_reward": "75",
+	  "cash_reward": "65",
 	  "coin_reward": "Voltorb Gold"
 	},
 	"Painter Jericho": {
@@ -689,7 +689,7 @@
 	  "deck": "Art Assistants",
 	  "music": "REPLACEMUSIC",
 	  "prize_cards": 2,
-	  "cash_reward": "50",
+	  "cash_reward": "45",
 	  "coin_reward": "Eevee Silver",
 	  "card_reward": "base1-27, base1-27"
 	},
@@ -698,7 +698,7 @@
 	  "deck": "Seavolutions",
 	  "music": "REPLACEMUSIC",
 	  "prize_cards": 4,
-	  "cash_reward": "75",
+	  "cash_reward": "65",
 	  "coin_reward": "Squirtle Blue"
 	},
 	"Swimmer Jordan": {
@@ -706,7 +706,7 @@
 	  "deck": "Whirlgong",
 	  "music": "REPLACEMUSIC",
 	  "prize_cards": 4,
-	  "cash_reward": "100",
+	  "cash_reward": "90",
 	  "coin_reward": "Poliwag Blue"
 	},
 	"Beach Kid Timothy": {
@@ -714,7 +714,7 @@
 	  "deck": "I Love Sand And Sea",
 	  "music": "REPLACEMUSIC",
 	  "prize_cards": 2,
-	  "cash_reward": "90",
+	  "cash_reward": "80",
 	  "coin_reward": "Diglett Brown"
 	},
 	"Beach Kid Evie": {
@@ -722,7 +722,7 @@
 	  "deck": "Pika And Friends",
 	  "music": "REPLACEMUSIC",
 	  "prize_cards": 2,
-	  "cash_reward": "75",
+	  "cash_reward": "65",
 	  "coin_reward": "Pikachu Gold"
 	},
 	"Birdspotter Tamsin": {
@@ -730,7 +730,7 @@
 	  "deck": "Lil Birbs",
 	  "music": "REPLACEMUSIC",
 	  "prize_cards": 4,
-	  "cash_reward": "100",
+	  "cash_reward": "90",
 	  "coin_reward": "Dodou Brown"
 	},
 	"Bug Catcher Alex": {
@@ -738,7 +738,7 @@
 	  "deck": "I Love Bugs!",
 	  "music": "REPLACEMUSIC",
 	  "prize_cards": 4,
-	  "cash_reward": "100",
+	  "cash_reward": "90",
 	  "coin_reward": "Caterpie Green",
 	  "costume_reward": "BUGCATCHER"
 	},
@@ -747,7 +747,7 @@
 	  "deck": "I See Sea",
 	  "music": "REPLACEMUSIC",
 	  "prize_cards": 4,
-	  "cash_reward": "100",
+	  "cash_reward": "90",
 	  "coin_reward": "Tentacool Blue"
 	},
 	"Aromagirl Penelope": {
@@ -755,7 +755,7 @@
 	  "deck": "Strange Plants",
 	  "music": "REPLACEMUSIC",
 	  "prize_cards": 4,
-	  "cash_reward": "100",
+	  "cash_reward": "90",
 	  "coin_reward": "Bellsprout Green"
 	},
 	"Battlegirl Sofia": {
@@ -763,7 +763,7 @@
 	  "deck": "Brickbreaker",
 	  "music": "REPLACEMUSIC",
 	  "prize_cards": 6,
-	  "cash_reward": "150",
+	  "cash_reward": "135",
 	  "coin_reward": "Mankey Gold"
 	},
 	"Swimmer Melissa": {
@@ -771,7 +771,7 @@
 	  "deck": "Poligong's Wrath",
 	  "music": "REPLACEMUSIC",
 	  "prize_cards": 6,
-	  "cash_reward": "150",
+	  "cash_reward": "135",
 	  "coin_reward": "Dewgong Blue"
 	},
 	"Birdspotter Gregg": {
@@ -779,7 +779,7 @@
 	  "deck": "Big Ol Birbs",
 	  "music": "REPLACEMUSIC",
 	  "prize_cards": 6,
-	  "cash_reward": "150",
+	  "cash_reward": "135",
 	  "coin_reward": "Pidgeotto Silver"
 	},
 	"Bug Catcher Frankie": {
@@ -787,7 +787,7 @@
 	  "deck": "Big Bad Bugs!",
 	  "music": "REPLACEMUSIC",
 	  "prize_cards": 4,
-	  "cash_reward": "100",
+	  "cash_reward": "90",
 	  "coin_reward": "Pinsir Brown",
 	  "costume_reward": "BUGCATCHER2"
 	},
@@ -796,7 +796,7 @@
 	  "deck": "Big Catch",
 	  "music": "REPLACEMUSIC",
 	  "prize_cards": 6,
-	  "cash_reward": "150",
+	  "cash_reward": "135",
 	  "coin_reward": "Gyarados Blue"
 	},
 	"Firebreather Darryl": {
@@ -804,7 +804,7 @@
 	  "deck": "Hot Air",
 	  "music": "REPLACEMUSIC",
 	  "prize_cards": 4,
-	  "cash_reward": "100",
+	  "cash_reward": "90",
 	  "coin_reward": "Magmar Red"
 	},
 	"Firebreather Kenneth": {
@@ -812,7 +812,7 @@
 	  "deck": "Quadrapedal Firestarters",
 	  "music": "REPLACEMUSIC",
 	  "prize_cards": 4,
-	  "cash_reward": "100",
+	  "cash_reward": "90",
 	  "coin_reward": "Ponyta Red"
 	},
 	"Tourist Edmund": {
@@ -820,7 +820,7 @@
 	  "deck": "Elegance",
 	  "music": "REPLACEMUSIC",
 	  "prize_cards": 6,
-	  "cash_reward": "200",
+	  "cash_reward": "180",
 	  "coin_reward": "Dratini Blue"
 	},
 	"Tourist Alissa": {
@@ -828,7 +828,7 @@
 	  "deck": "Girl Power",
 	  "music": "REPLACEMUSIC",
 	  "prize_cards": 6,
-	  "cash_reward": "200",
+	  "cash_reward": "180",
 	  "coin_reward": "Clefairy Pink"
 	},
 	"Young Twin Anna": {
@@ -836,7 +836,7 @@
 	  "deck": "Pretty Plants N Butterfly",
 	  "music": "REPLACEMUSIC",
 	  "prize_cards": 2,
-	  "cash_reward": "80",
+	  "cash_reward": "70",
 	  "coin_reward": "Butterfree Purple"
 	},
 	"Young Twin Nella": {
@@ -844,7 +844,7 @@
 	  "deck": "Scary Plants N Bees",
 	  "music": "REPLACEMUSIC",
 	  "prize_cards": 2,
-	  "cash_reward": "80",
+	  "cash_reward": "70",
 	  "coin_reward": "Beedrill Green"
 	},
 	"Hiker Matthew": {
@@ -852,7 +852,7 @@
 	  "deck": "Rocks N Stones",
 	  "music": "normal_battle",
 	  "prize_cards": 4,
-	  "cash_reward": "100",
+	  "cash_reward": "90",
 	  "coin_reward": "Geodude Gold"
 	},
 	"Guitarist Jonesy": {
@@ -860,7 +860,7 @@
 	  "deck": "Heavy Metal",
 	  "music": "REPLACEMUSIC",
 	  "prize_cards": 4,
-	  "cash_reward": "140",
+	  "cash_reward": "125",
 	  "coin_reward": "Magnemite Silver"
 	},
 	"Guitarist Howard": {
@@ -868,7 +868,7 @@
 	  "deck": "Rock N Shock",
 	  "music": "REPLACEMUSIC",
 	  "prize_cards": 4,
-	  "cash_reward": "140",
+	  "cash_reward": "125",
 	  "coin_reward": "Raichu Gold 2"
 	},
 	"Jogger Daniel": {
@@ -876,7 +876,7 @@
 	  "deck": "Nido Nido Meow",
 	  "music": "REPLACEMUSIC",
 	  "prize_cards": 4,
-	  "cash_reward": "100",
+	  "cash_reward": "90",
 	  "coin_reward": "Nidoking Purple"
 	},
 	"Garden Manager Louis": {
@@ -884,7 +884,7 @@
 	  "deck": "Solar Power",
 	  "music": "REPLACEMUSIC",
 	  "prize_cards": 6,
-	  "cash_reward": "75",
+	  "cash_reward": "65",
 	  "coin_reward": "Venusaur Green"
 	},
 	"Sailor Bob": {
@@ -892,7 +892,7 @@
 	  "deck": "Hoist The Anchor",
 	  "music": "REPLACEMUSIC",
 	  "prize_cards": 6,
-	  "cash_reward": "150",
+	  "cash_reward": "135",
 	  "coin_reward": "Wartortle Blue"
 	},
 	"Card Elder Rayne": {
@@ -900,7 +900,7 @@
 	  "deck": "Rain Dance",
 	  "music": "REPLACEMUSIC",
 	  "prize_cards": 6,
-	  "cash_reward": "200",
+	  "cash_reward": "180",
 	  "coin_reward": "Blastoise Blue",
 	  "match_format": "best_of_3"
 	},
@@ -909,7 +909,7 @@
 	  "deck": "Haymaker",
 	  "music": "REPLACEMUSIC",
 	  "prize_cards": 6,
-	  "cash_reward": "200",
+	  "cash_reward": "180",
 	  "coin_reward": "Hitmonchan Silver",
 	  "match_format": "best_of_3"
 	},
@@ -918,7 +918,7 @@
 	  "deck": "Do The Wave",
 	  "music": "REPLACEMUSIC",
 	  "prize_cards": 6,
-	  "cash_reward": "200",
+	  "cash_reward": "180",
 	  "coin_reward": "Wigglytuff Pink",
 	  "match_format": "best_of_3"
 	},
@@ -927,7 +927,7 @@
 	  "deck": "Solid Ground",
 	  "music": "REPLACEMUSIC",
 	  "prize_cards": 4,
-	  "cash_reward": "100",
+	  "cash_reward": "90",
 	  "coin_reward": "Dugtrio Brown"
 	},
 	"Psychic Brienne": {
@@ -935,7 +935,7 @@
 	  "deck": "Meditation Meditation",
 	  "music": "REPLACEMUSIC",
 	  "prize_cards": 6,
-	  "cash_reward": "150",
+	  "cash_reward": "135",
 	  "coin_reward": "Mewtwo Purple",
 	  "card_reward": "basep-3, basep-14"
 	},
@@ -944,7 +944,7 @@
 	  "deck": "Work Hard Play Hard",
 	  "music": "REPLACEMUSIC",
 	  "prize_cards": 6,
-	  "cash_reward": "150",
+	  "cash_reward": "135",
 	  "coin_reward": "Tauros Silver",
 	  "costume_reward": "WORKER"
 	},
@@ -953,7 +953,7 @@
 	  "deck": "Bad Guys",
 	  "music": "REPLACEMUSIC",
 	  "prize_cards": 4,
-	  "cash_reward": "100",
+	  "cash_reward": "90",
 	  "coin_reward": "Muk Purple",
 	  "costume_reward": "ROUGHNECK"
 	},
@@ -962,7 +962,7 @@
 	  "deck": "Dark Poison",
 	  "music": "REPLACEMUSIC",
 	  "prize_cards": 6,
-	  "cash_reward": "150",
+	  "cash_reward": "135",
 	  "coin_reward": "Weezing Purple",
 	  "card_reward": "basep-17"
 	},
@@ -971,7 +971,7 @@
 	  "deck": "Rocket Underlings",
 	  "music": "REPLACEMUSIC",
 	  "prize_cards": 4,
-	  "cash_reward": "125",
+	  "cash_reward": "110",
 	  "coin_reward": "Team Rocket Red"
 	},
 	"Rocket Grunt Penny": {
@@ -979,7 +979,7 @@
 	  "deck": "Rocket Blast Off",
 	  "music": "REPLACEMUSIC",
 	  "prize_cards": 4,
-	  "cash_reward": "125",
+	  "cash_reward": "110",
 	  "coin_reward": "Team Rocket Blue"
 	},
 	"Pikachu Fan Marina": {
@@ -987,7 +987,7 @@
 	  "deck": "Wave Surfing",
 	  "music": "REPLACEMUSIC",
 	  "prize_cards": 1,
-	  "cash_reward": "50",
+	  "cash_reward": "45",
 	  "coin_reward": "Pikachu Gold 2",
 	  "card_reward": "basep-28"
 	},
@@ -996,7 +996,7 @@
 	  "deck": "Fly Away",
 	  "music": "REPLACEMUSIC",
 	  "prize_cards": 1,
-	  "cash_reward": "50",
+	  "cash_reward": "45",
 	  "coin_reward": "Pikachu Gold 3",
 	  "card_reward": "basep-25"
 	},
@@ -1005,7 +1005,7 @@
 	  "deck": "Snap!",
 	  "music": "REPLACEMUSIC",
 	  "prize_cards": 1,
-	  "cash_reward": "50",
+	  "cash_reward": "45",
 	  "coin_reward": "Pikachu Gold 4",
 	  "card_reward": "basep-26"
 	},
@@ -1014,7 +1014,7 @@
 	  "deck": "Forest Mouse",
 	  "music": "REPLACEMUSIC",
 	  "prize_cards": 1,
-	  "cash_reward": "50",
+	  "cash_reward": "45",
 	  "coin_reward": "Pikachu Gold 5",
 	  "card_reward": "basep-27"
 	},
@@ -1023,7 +1023,7 @@
 	  "deck": "Thunderbolt!",
 	  "music": "REPLACEMUSIC",
 	  "prize_cards": 1,
-	  "cash_reward": "50",
+	  "cash_reward": "45",
 	  "coin_reward": "Pikachu Gold 6",
 	  "card_reward": "basep-4"
 	},
@@ -1032,7 +1032,7 @@
 	  "deck": "Leafychu",
 	  "music": "REPLACEMUSIC",
 	  "prize_cards": 1,
-	  "cash_reward": "50",
+	  "cash_reward": "45",
 	  "coin_reward": "Pikachu Gold 7",
 	  "card_reward": "basep-1"
 	},
@@ -1041,7 +1041,7 @@
 	  "deck": "All the Pikachu!",
 	  "music": "REPLACEMUSIC",
 	  "prize_cards": 1,
-	  "cash_reward": "75",
+	  "cash_reward": "65",
 	  "coin_reward": "Zz Pikachu Gold",
 	  "card_reward": "basep-24",
 	  "costume_reward": "PokeKid"
@@ -1051,7 +1051,7 @@
 	  "deck": "Earth Sea Sky",
 	  "music": "REPLACEMUSIC",
 	  "prize_cards": 6,
-	  "cash_reward": "150",
+	  "cash_reward": "135",
 	  "coin_reward": "Aerodactyl Brown"
 	},
 	"Gentleman Benedict": {
@@ -1059,7 +1059,7 @@
 	  "deck": "Colorless Crusher",
 	  "music": "REPLACEMUSIC",
 	  "prize_cards": 6,
-	  "cash_reward": "150",
+	  "cash_reward": "135",
 	  "coin_reward": "Kangaskhan Silver"
 	},
 	"Ninjaboy Sasuke": {
@@ -1067,7 +1067,7 @@
 	  "deck": "Ssssssnakes",
 	  "music": "REPLACEMUSIC",
 	  "prize_cards": 4,
-	  "cash_reward": "125",
+	  "cash_reward": "110",
 	  "coin_reward": "Ekans Purple"
 	},
 	"Youngster Milo": {
@@ -1075,7 +1075,7 @@
 	  "deck": "Creepy Crawlies",
 	  "music": "REPLACEMUSIC",
 	  "prize_cards": 4,
-	  "cash_reward": "125",
+	  "cash_reward": "110",
 	  "coin_reward": "Paras Green"
 	},
 	"Card Expert Nathan": {
@@ -1083,7 +1083,7 @@
 	  "deck": "Energy Burn",
 	  "music": "REPLACEMUSIC",
 	  "prize_cards": 6,
-	  "cash_reward": "150",
+	  "cash_reward": "135",
 	  "coin_reward": "Charizard Red"
 	},
 	"Card Expert Ruby": {
@@ -1091,7 +1091,7 @@
 	  "deck": "Burnt Up",
 	  "music": "REPLACEMUSIC",
 	  "prize_cards": 6,
-	  "cash_reward": "150",
+	  "cash_reward": "135",
 	  "coin_reward": "Charmeleon Red"
 	},
 	"Swimmer Bibi": {
@@ -1099,7 +1099,7 @@
 	  "deck": "Dark Rainstorm",
 	  "music": "REPLACEMUSIC",
 	  "prize_cards": 6,
-	  "cash_reward": "150",
+	  "cash_reward": "135",
 	  "coin_reward": "Blastoise Blue 2"
 	},
 	"Forest Ranger Tucker": {
@@ -1107,7 +1107,7 @@
 	  "deck": "Poisonous Stingers",
 	  "music": "REPLACEMUSIC",
 	  "prize_cards": 6,
-	  "cash_reward": "150",
+	  "cash_reward": "135",
 	  "coin_reward": "Kakuna Gold"
 	},
 	"Lady Fiona": {
@@ -1115,7 +1115,7 @@
 	  "deck": "Foul Toxins",
 	  "music": "REPLACEMUSIC",
 	  "prize_cards": 4,
-	  "cash_reward": "125",
+	  "cash_reward": "110",
 	  "coin_reward": "Grimer Purple"
 	},
 	"Doctor Mortimor": {
@@ -1123,7 +1123,7 @@
 	  "deck": "Self Affliction",
 	  "music": "REPLACEMUSIC",
 	  "prize_cards": 6,
-	  "cash_reward": "150",
+	  "cash_reward": "135",
 	  "coin_reward": "Gloom Green"
 	},
 	"Psychic Nova": {
@@ -1131,7 +1131,7 @@
 	  "deck": "Telekinesis",
 	  "music": "REPLACEMUSIC",
 	  "prize_cards": 4,
-	  "cash_reward": "125",
+	  "cash_reward": "110",
 	  "coin_reward": "Alakazam Purple"
 	},
 	"Nature Lover Erin": {
@@ -1139,7 +1139,7 @@
 	  "deck": "Forest Guardians",
 	  "music": "REPLACEMUSIC",
 	  "prize_cards": 6,
-	  "cash_reward": "150",
+	  "cash_reward": "135",
 	  "coin_reward": "Ivysaur Green"
 	},
 	"Young Sage Kai": {
@@ -1147,7 +1147,7 @@
 	  "deck": "Thunder Ball",
 	  "music": "REPLACEMUSIC",
 	  "prize_cards": 4,
-	  "cash_reward": "125",
+	  "cash_reward": "110",
 	  "coin_reward": "Electrode Gold"
 	},
 	"Youngster Cooper": {
@@ -1155,7 +1155,7 @@
 	  "deck": "Solid Dynamite",
 	  "music": "REPLACEMUSIC",
 	  "prize_cards": 4,
-	  "cash_reward": "125",
+	  "cash_reward": "110",
 	  "coin_reward": "Magneton Gold"
 	},
 	"Gambler Victor": {
@@ -1163,7 +1163,7 @@
 	  "deck": "Risky Flips",
 	  "music": "REPLACEMUSIC",
 	  "prize_cards": 4,
-	  "cash_reward": "125",
+	  "cash_reward": "110",
 	  "coin_reward": "Primeape Brown"
 	},
 	"Old Traveller Harold": {
@@ -1171,7 +1171,7 @@
 	  "deck": "Solid Invertebrates",
 	  "music": "REPLACEMUSIC",
 	  "prize_cards": 4,
-	  "cash_reward": "125",
+	  "cash_reward": "110",
 	  "coin_reward": "Kingler Blue",
 	  "costume_reward": "gentleman2"
 	},
@@ -1180,7 +1180,7 @@
 	  "deck": "Hard Hitters",
 	  "music": "REPLACEMUSIC",
 	  "prize_cards": 4,
-	  "cash_reward": "125",
+	  "cash_reward": "110",
 	  "coin_reward": "Cubone Brown",
 	  "costume_reward": "gentleman3"
 	},
@@ -1189,7 +1189,7 @@
 	  "deck": "Scary Phobias",
 	  "music": "REPLACEMUSIC",
 	  "prize_cards": 4,
-	  "cash_reward": "125",
+	  "cash_reward": "110",
 	  "coin_reward": "Venomoth Purple"
 	},
 	"Clown Glenn": {
@@ -1197,7 +1197,7 @@
 	  "deck": "Strange Damage Counters",
 	  "music": "REPLACEMUSIC",
 	  "prize_cards": 6,
-	  "cash_reward": "150",
+	  "cash_reward": "135",
 	  "coin_reward": "Slowbro Pink"
 	},
 	"Rocket Exec Petrel": {
@@ -1205,7 +1205,7 @@
 	  "deck": "Relentless Poison",
 	  "music": "REPLACEMUSIC",
 	  "prize_cards": 6,
-	  "cash_reward": "200",
+	  "cash_reward": "180",
 	  "coin_reward": "Arbok Purple"
 	},
 	"Rocket Exec Proton": {
@@ -1213,7 +1213,7 @@
 	  "deck": "Under The Shadow Of Wings",
 	  "music": "REPLACEMUSIC",
 	  "prize_cards": 6,
-	  "cash_reward": "200",
+	  "cash_reward": "180",
 	  "coin_reward": "Dragonite Gold"
 	},
 	"Rocket Exec Archer": {
@@ -1221,7 +1221,7 @@
 	  "deck": "Jet Shell",
 	  "music": "REPLACEMUSIC",
 	  "prize_cards": 6,
-	  "cash_reward": "200",
+	  "cash_reward": "180",
 	  "coin_reward": "Blastoise Silver"
 	},
 	"Rocket Exec Ariana": {
@@ -1229,7 +1229,7 @@
 	  "deck": "Forced Evolution",
 	  "music": "REPLACEMUSIC",
 	  "prize_cards": 6,
-	  "cash_reward": "200",
+	  "cash_reward": "180",
 	  "coin_reward": "Eevee Gold",
 	  "pack_reward": "base5_c"
 	},
@@ -1238,7 +1238,7 @@
 	  "deck": "Rocket Psychic Supremacy",
 	  "music": "REPLACEMUSIC",
 	  "prize_cards": 6,
-	  "cash_reward": "250",
+	  "cash_reward": "225",
 	  "coin_reward": "Zz Mewtwo Purple 3",
 	  "card_reward": "basep-12"
 	},
@@ -1247,7 +1247,7 @@
 	  "deck": "Land N Sea",
 	  "music": "REPLACEMUSIC",
 	  "prize_cards": 4,
-	  "cash_reward": "125",
+	  "cash_reward": "110",
 	  "coin_reward": "Omanyte Blue"
 	},
 	"Card Expert Aurora": {
@@ -1255,7 +1255,7 @@
 	  "deck": "Hailstorm",
 	  "music": "REPLACEMUSIC",
 	  "prize_cards": 6,
-	  "cash_reward": "150",
+	  "cash_reward": "135",
 	  "coin_reward": "Lapras Blue"
 	},
 	"Mad Scientist Leonard": {
@@ -1263,7 +1263,7 @@
 	  "deck": "Headache",
 	  "music": "REPLACEMUSIC",
 	  "prize_cards": 6,
-	  "cash_reward": "150",
+	  "cash_reward": "135",
 	  "coin_reward": "Golduck Blue",
 	  "costume_reward": "Scientist_M,Scientist_F"
 	},
@@ -1272,7 +1272,7 @@
 	  "deck": "Solid Workers",
 	  "music": "REPLACEMUSIC",
 	  "prize_cards": 6,
-	  "cash_reward": "150",
+	  "cash_reward": "135",
 	  "coin_reward": "Machop Brown"
 	},
 	"Veteran Sylvester": {
@@ -1280,7 +1280,7 @@
 	  "deck": "Lost At Sea",
 	  "music": "REPLACEMUSIC",
 	  "prize_cards": 6,
-	  "cash_reward": "125",
+	  "cash_reward": "110",
 	  "coin_reward": "Slowpoke Purple",
 	  "costume_reward": "Veteran_F, VeteranM_2"
 	},
@@ -1289,7 +1289,7 @@
 	  "deck": "Mind Control",
 	  "music": "REPLACEMUSIC",
 	  "prize_cards": 6,
-	  "cash_reward": "125",
+	  "cash_reward": "110",
 	  "coin_reward": "Hypno Gold",
 	  "costume_reward": "Psychic_F, Psychic_F2, Psychic_M, Psychic_M2"
 	},
@@ -1298,7 +1298,7 @@
 	  "deck": "Shock And Awe",
 	  "music": "REPLACEMUSIC",
 	  "prize_cards": 6,
-	  "cash_reward": "125",
+	  "cash_reward": "110",
 	  "coin_reward": "Electrode Silver",
 	  "card_reward": "basep-5"
 	},
@@ -1307,7 +1307,7 @@
 	  "deck": "Thunder Rush",
 	  "music": "REPLACEMUSIC",
 	  "prize_cards": 6,
-	  "cash_reward": "175",
+	  "cash_reward": "155",
 	  "coin_reward": "Jolteon Silver",
 	  "costume_reward": "roughneck2"
 	},
@@ -1316,7 +1316,7 @@
 	  "deck": "Neverending Flames",
 	  "music": "REPLACEMUSIC",
 	  "prize_cards": 6,
-	  "cash_reward": "200",
+	  "cash_reward": "180",
 	  "coin_reward": "Charizard Red 2"
 	},
 	"Ghost Whisperer Vera": {
@@ -1324,7 +1324,7 @@
 	  "deck": "Terrible Nightmares",
 	  "music": "REPLACEMUSIC",
 	  "prize_cards": 6,
-	  "cash_reward": "220",
+	  "cash_reward": "200",
 	  "coin_reward": "Gengar Purple"
 	},
 	"Police Constable Floyd": {
@@ -1332,7 +1332,7 @@
 	  "deck": "Energy Beams",
 	  "music": "REPLACEMUSIC",
 	  "prize_cards": 6,
-	  "cash_reward": "225",
+	  "cash_reward": "200",
 	  "coin_reward": "Gyarados Red"
 	},
 	"Police Sergeant Douglas": {
@@ -1340,7 +1340,7 @@
 	  "deck": "Peace Keepers",
 	  "music": "REPLACEMUSIC",
 	  "prize_cards": 6,
-	  "cash_reward": "225",
+	  "cash_reward": "200",
 	  "coin_reward": "Machamp Brown"
 	},
 	"Rocket Grunt Margot": {
@@ -1348,7 +1348,7 @@
 	  "deck": "Scavenge and Retreat",
 	  "music": "REPLACEMUSIC",
 	  "prize_cards": 6,
-	  "cash_reward": "200",
+	  "cash_reward": "180",
 	  "coin_reward": "Golbat Gold",
 	  "costume_reward": "TeamRocket_F, TeamRocket_M"
 	},
@@ -1357,7 +1357,7 @@
 	  "deck": "Pewter Compassion",
 	  "music": "REPLACEMUSIC",
 	  "prize_cards": 6,
-	  "cash_reward": "200",
+	  "cash_reward": "180",
 	  "coin_reward": "Energy Fighting Brown",
 	  "pack_reward": "Gym1_a",
 	  "card_reward": "Gym1-2"
@@ -1367,7 +1367,7 @@
 	  "deck": "Cold Water Warmup",
 	  "music": "REPLACEMUSIC",
 	  "prize_cards": 6,
-	  "cash_reward": "200",
+	  "cash_reward": "180",
 	  "coin_reward": "Energy Water Blue",
 	  "pack_reward": "Gym1_b",
 	  "card_reward": "Gym2-12"
@@ -1377,7 +1377,7 @@
 	  "deck": "Static Charge",
 	  "music": "REPLACEMUSIC",
 	  "prize_cards": 6,
-	  "cash_reward": "200",
+	  "cash_reward": "180",
 	  "coin_reward": "Energy Lightning Gold",
 	  "pack_reward": "Gym1_c",
 	  "card_reward": "Gym1-8"
@@ -1387,7 +1387,7 @@
 	  "deck": "Sunbathing",
 	  "music": "REPLACEMUSIC",
 	  "prize_cards": 6,
-	  "cash_reward": "200",
+	  "cash_reward": "180",
 	  "coin_reward": "Energy Grass Green",
 	  "pack_reward": "Gym1_d",
 	  "card_reward": "Gym2-4"
@@ -1397,7 +1397,7 @@
 	  "deck": "Ninja Ambush",
 	  "music": "REPLACEMUSIC",
 	  "prize_cards": 6,
-	  "cash_reward": "200",
+	  "cash_reward": "180",
 	  "coin_reward": "Energy Colorless Silver",
 	  "pack_reward": "Gym2_a",
 	  "card_reward": "Gym2-10"
@@ -1407,7 +1407,7 @@
 	  "deck": "Psychic Uplink",
 	  "music": "REPLACEMUSIC",
 	  "prize_cards": 6,
-	  "cash_reward": "200",
+	  "cash_reward": "180",
 	  "coin_reward": "Energy Psychic Purple",
 	  "pack_reward": "Gym2_b",
 	  "card_reward": "Gym2-16"
@@ -1417,7 +1417,7 @@
 	  "deck": "Burning Slot Machine",
 	  "music": "REPLACEMUSIC",
 	  "prize_cards": 6,
-	  "cash_reward": "200",
+	  "cash_reward": "180",
 	  "coin_reward": "Energy Fire Red",
 	  "pack_reward": "Gym2_c",
 	  "card_reward": "Gym2-1"
@@ -1427,7 +1427,7 @@
 	  "deck": "Kings And Queens",
 	  "music": "REPLACEMUSIC",
 	  "prize_cards": 6,
-	  "cash_reward": "200",
+	  "cash_reward": "180",
 	  "coin_reward": "Energy Darkness Black",
 	  "pack_reward": "Gym2_d",
 	  "card_reward": "Gym2-7"
@@ -1437,7 +1437,7 @@
 	  "deck": "Pewter Crusher",
 	  "music": "gym_battle",
 	  "prize_cards": 6,
-	  "cash_reward": "200",
+	  "cash_reward": "180",
 	  "coin_reward": "Energy Fighting Brown 2",
 	  "pack_reward": "Gym1-a",
 	  "card_reward": "Gym1-1"
@@ -1447,7 +1447,7 @@
 	  "deck": "Misty's Wrath",
 	  "music": "gym_battle",
 	  "prize_cards": 6,
-	  "cash_reward": "200",
+	  "cash_reward": "180",
 	  "coin_reward": "Energy Water Blue 2",
 	  "pack_reward": "Gym1-b",
 	  "card_reward": "Gym1-1"
@@ -1457,7 +1457,7 @@
 	  "deck": "Power Surge",
 	  "music": "gym_battle",
 	  "prize_cards": 6,
-	  "cash_reward": "200",
+	  "cash_reward": "180",
 	  "coin_reward": "Energy Lightning Gold 2",
 	  "pack_reward": "Gym1-c",
 	  "card_reward": "Gym1-1"
@@ -1467,7 +1467,7 @@
 	  "deck": "Life Draining Pollen",
 	  "music": "gym_battle",
 	  "prize_cards": 6,
-	  "cash_reward": "200",
+	  "cash_reward": "180",
 	  "coin_reward": "Energy Grass Green 2",
 	  "pack_reward": "Gym1-d",
 	  "card_reward": "Gym1-1"
@@ -1477,7 +1477,7 @@
 	  "deck": "Koga's Ninja Poison",
 	  "music": "gym_battle",
 	  "prize_cards": 6,
-	  "cash_reward": "200",
+	  "cash_reward": "180",
 	  "coin_reward": "Energy Colorless Silver 2",
 	  "pack_reward": "Gym2-a",
 	  "card_reward": "Gym1-1"
@@ -1487,7 +1487,7 @@
 	  "deck": "Mixed Aura",
 	  "music": "gym_battle",
 	  "prize_cards": 6,
-	  "cash_reward": "200",
+	  "cash_reward": "180",
 	  "coin_reward": "Energy Psychic Purple 2",
 	  "pack_reward": "Gym2-b",
 	  "card_reward": "Gym1-1"
@@ -1497,7 +1497,7 @@
 	  "deck": "Stoke The Flames",
 	  "music": "gym_battle",
 	  "prize_cards": 6,
-	  "cash_reward": "200",
+	  "cash_reward": "180",
 	  "coin_reward": "Energy Fire Red 2",
 	  "pack_reward": "Gym2-c",
 	  "card_reward": "Gym1-1"
@@ -1507,7 +1507,7 @@
 	  "deck": "The Might Of The Boss",
 	  "music": "gym_battle",
 	  "prize_cards": 6,
-	  "cash_reward": "200",
+	  "cash_reward": "180",
 	  "coin_reward": "Energy Darkness Black 2",
 	  "pack_reward": "Gym2-d",
 	  "card_reward": "Gym1-1"
@@ -1517,7 +1517,7 @@
 	  "deck": "Ancient Mew",
 	  "music": "snaky_battle (TCG GB Grand Master Battle)",
 	  "prize_cards": 6,
-	  "cash_reward": "500",
+	  "cash_reward": "450",
 	  "coin_reward": "Mewtwo Gold",
 	  "card_reward": "basep-99"
 	}

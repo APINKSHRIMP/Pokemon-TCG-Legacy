@@ -60,7 +60,7 @@ var current_shop_id: String = "card_mart"
 # The match intro/outro has NO multiplier — see INTRO_OUTRO_OPTIONS below.
 var card_match_animation_speed: float = 1.25
 var item_animation_speed: float = 1.25
-var pack_animation_speed: float = 1.25
+var pack_animation_speed: float = 0.75   # ISSUE #94: matches the new DEFAULT_PACK_SPEED ("normal")
 var overworld_walking_speed: float = 1.1
 
 # TWEAKABLE — raising a number speeds that preset up. These three dictionaries are deliberately
@@ -83,13 +83,19 @@ const ITEM_SPEED_PRESETS := {
 	"fast": 2.2,
 }
 # Pack opening runs slower than the match/item presets on purpose — the tear is a set-piece, not a
-# beat to get through. "normal" is a straight 1.0 passthrough, so the base durations written into
-# Pack_Opening_Manager.gd are exactly what plays at the default setting.
+# beat to get through.
+#
+# ISSUE #94: every preset here was relabelled one step FASTER while keeping its multiplier — what the
+# player used to pick as "very slow" is now offered as "slow", the old "slow" is now "normal", and so
+# on up to "very fast". Nothing about the tempo of the sequence changed; only the names did, because
+# the old ladder read a notch too slow against the rest of the game. The keys below are the labels,
+# so "fast" (not "normal") is now the straight 1.0 passthrough where the base durations written into
+# Pack_Opening_Manager.gd play exactly as authored — the default sits one notch under that.
 const PACK_SPEED_PRESETS := {
-	"very_slow": 0.5,
-	"slow": 0.75,
-	"normal": 1.0,
-	"fast": 2.0,
+	"slow": 0.5,
+	"normal": 0.75,
+	"fast": 1.0,
+	"very_fast": 2.0,
 	"skip": 100.0,
 }
 
@@ -100,6 +106,8 @@ const INTRO_OUTRO_OPTIONS := ["play", "skip"]
 
 const DEFAULT_ANIMATION_SPEED  := "normal"
 const DEFAULT_ITEM_SPEED       := "normal"
+# ISSUE #94: still the key "normal", but after the relabel that key is the 0.75 multiplier — i.e. a
+# fresh save now boots on what used to be called "slow", which is the intent of the relabel.
 const DEFAULT_PACK_SPEED       := "normal"
 const DEFAULT_INTRO_OUTRO      := "play"
 
@@ -135,6 +143,7 @@ func set_pack_speed(preset: String, save: bool = true) -> void:
 		return
 	pack_speed_setting = preset
 	pack_animation_speed = PACK_SPEED_PRESETS[preset]
+	print("ISSUE #94 PACK SPEED SET: preset='", preset, "' multiplier=", pack_animation_speed)
 	if save:
 		_save_current_data_field("pack_animation_speed", pack_speed_setting)
 

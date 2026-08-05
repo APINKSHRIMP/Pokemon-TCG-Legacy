@@ -7,6 +7,8 @@
 [ext_resource type="Theme" uid="uid://6shp5ck1tnja" path="res://UI_Themes/kenneyUI.tres" id="4_t1d7u"]
 [ext_resource type="Texture2D" uid="uid://he803mdt247f" path="res://Image_Assets/Backgrounds_And_Borders/Backgrounds/background5.png" id="5_2qd32"]
 [ext_resource type="Theme" uid="uid://mbsg4xqnedxi" path="res://UI_Themes/kenneyUI-red.tres" id="5_bgxs0"]
+[ext_resource type="Theme" uid="uid://h1f7iqhh7ycb" path="res://UI_Themes/kenneyUI-yellow.tres" id="8_6j51b"]
+[ext_resource type="Theme" uid="uid://bb6vwl0h1flws" path="res://UI_Themes/kenneyUI-blue.tres" id="8_et0ej"]
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_ui6o0"]
 shader = ExtResource("2_kftsc")
@@ -88,3 +90,32 @@ offset_bottom = 1061.0
 theme = ExtResource("5_bgxs0")
 text = "cancel"
 
+[node name="hide_button" type="Button" parent="." unique_id=1230836931]
+z_index = 300
+layout_mode = 0
+offset_left = 1473.0
+offset_top = 13.0
+offset_right = 1902.3241
+offset_bottom = 88.0
+theme = ExtResource("8_et0ej")
+theme_override_font_sizes/font_size = 25
+text = "Show Unowned Costumes"
+
+[node name="large_header_text_label" type="Label" parent="." unique_id=656405017]
+z_index = 999
+layout_mode = 0
+offset_left = -56.0
+offset_top = 17.0
+offset_right = 1944.0
+offset_bottom = 89.0
+theme = ExtResource("8_et0ej")
+theme_override_colors/font_color = Color(0, 0, 0, 1)
+theme_override_colors/font_shadow_color = Color(1.0187511, 1.0187511, 1.0187511, 1)
+theme_override_constants/line_spacing = 3
+theme_override_constants/shadow_offset_x = 0
+theme_override_constants/shadow_offset_y = 0
+theme_override_constants/shadow_outline_size = 20
+theme_override_font_sizes/font_size = 61
+text = "costumes"
+horizontal_alignment = 1
+vertical_alignment = 1

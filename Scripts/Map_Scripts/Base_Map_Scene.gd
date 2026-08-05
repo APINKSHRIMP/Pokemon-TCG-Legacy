@@ -175,11 +175,24 @@ func _setup_doors():
 	door_areas.monitorable     = true
 	door_areas.body_entered.connect(_on_door_entered)
 
+# ISSUE #93: the OPPONENTS/NPCS container is the parent every NPC and opponent is spawned into, so
+# their data-file positions are relative to it. This used to look only at the scene root, which meant
+# dragging the container under another node in the editor silently fell through to the runtime
+# fallback below — a fresh container at (0,0) — and every actor in that map spawned offset by the
+# container's position (this is exactly how the Card Mart shopkeeper ended up off in the corner
+# instead of behind his counter). The lookup is now recursive and warns when it finds the container
+# somewhere other than the root, so the next accidental reparent is visible instead of silent.
 func _get_opponents_container() -> Node2D:
-	if has_node("OPPONENTS"):
-		return get_node("OPPONENTS") as Node2D
-	if has_node("NPCS"):
-		return get_node("NPCS") as Node2D
+	for container_name in ["OPPONENTS", "NPCS"]:
+		if has_node(container_name):
+			return get_node(container_name) as Node2D
+		var nested := find_child(container_name, true, false)
+		if nested is Node2D:
+			push_warning("BaseMapScene: '%s' container in %s is not a direct child of the scene root "
+				% [container_name, name] + "(found at '%s') — actor positions are relative to it, so "
+				% get_path_to(nested) + "check the shop/NPC placements in that scene.")
+			print("ISSUE #93: found '", container_name, "' nested at '", get_path_to(nested), "' in ", name)
+			return nested as Node2D
 	# Interior scenes (Gym Reception/Hall) have no container in the .tscn — create at runtime
 	var c := Node2D.new()
 	c.name = "OPPONENTS"

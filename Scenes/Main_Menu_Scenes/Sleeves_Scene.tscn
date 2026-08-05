@@ -8,6 +8,7 @@
 [ext_resource type="Theme" uid="uid://6shp5ck1tnja" path="res://UI_Themes/kenneyUI.tres" id="6_q0djy"]
 [ext_resource type="Theme" uid="uid://mbsg4xqnedxi" path="res://UI_Themes/kenneyUI-red.tres" id="7_4mpb6"]
 [ext_resource type="Theme" uid="uid://bb6vwl0h1flws" path="res://UI_Themes/kenneyUI-blue.tres" id="8_bw06a"]
+[ext_resource type="Theme" uid="uid://h1f7iqhh7ycb" path="res://UI_Themes/kenneyUI-yellow.tres" id="9_ru3d7"]
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_ui6o0"]
 shader = ExtResource("2_ru3d7")
@@ -107,3 +108,14 @@ theme_override_font_sizes/font_size = 61
 text = "Sleeves"
 horizontal_alignment = 1
 vertical_alignment = 1
+
+[node name="hide_button" type="Button" parent="." unique_id=598117739]
+z_index = 300
+layout_mode = 0
+offset_left = 1488.0
+offset_top = 13.0
+offset_right = 1900.0
+offset_bottom = 88.0
+theme = ExtResource("8_bw06a")
+theme_override_font_sizes/font_size = 25
+text = "Show Unowned Sleeves"

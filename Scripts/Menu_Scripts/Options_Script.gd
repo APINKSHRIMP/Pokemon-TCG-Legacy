@@ -58,10 +58,14 @@ var section_setters : Dictionary = {}
 @onready var item_normal_btn    : Button = $"ITEM/item_normal_button"
 @onready var item_fast_btn      : Button = $"ITEM/item_fast_button"
 
-@onready var pack_very_slow_btn : Button = $"PACK/pack_very_slow_button"
+# ISSUE #94: the pack row is deliberately one label out of step with the Match/Item rows above it —
+# every preset was renamed one notch faster (the old "very slow" is this row's "slow", and so on), so
+# there is no pack_very_slow_button and there IS a pack_very_fast_button. The multipliers behind them
+# did not move; see PACK_SPEED_PRESETS in Game_State_Script.gd.
 @onready var pack_slow_btn      : Button = $"PACK/pack_slow_button"
 @onready var pack_normal_btn    : Button = $"PACK/pack_normal_button"
 @onready var pack_fast_btn      : Button = $"PACK/pack_fast_button"
+@onready var pack_very_fast_btn : Button = $"PACK/pack_very_fast_button"
 @onready var pack_skip_btn      : Button = $"PACK/pack_skip_button"
 
 @onready var intro_play_btn : Button = $"INTROOUTRO/intro_play_button"
@@ -103,10 +107,10 @@ func _ready() -> void:
 			"fast":      item_fast_btn,
 		},
 		"pack": {
-			"very_slow": pack_very_slow_btn,
 			"slow":      pack_slow_btn,
 			"normal":    pack_normal_btn,
 			"fast":      pack_fast_btn,
+			"very_fast": pack_very_fast_btn,
 			"skip":      pack_skip_btn,
 		},
 		"intro_outro": {

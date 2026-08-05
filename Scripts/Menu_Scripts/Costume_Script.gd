@@ -31,6 +31,14 @@ var _loading_overlay        : MenuLoadingOverlay = MenuLoadingOverlay.new()
 # Using a Dictionary as a set gives O(1) lookups vs iterating an Array
 var _owned_costumes         : Dictionary = {}
 
+# ─── Owned-only filter ───────────────────────────────────────────────────────
+# The scene always opens with unowned costumes hidden so the grid only builds the handful
+# the player actually owns rather than hundreds of black silhouettes. Deliberately NOT
+# persisted or cached — every visit starts hidden and the player presses Show if they
+# want the full wardrobe.
+var _hide_unowned           : bool = true
+var _is_rebuilding          : bool = false
+
 # ─── Zoom state ──────────────────────────────────────────────────────────────
 var zoom_overlay        : CanvasLayer = null
 var is_zoomed           : bool = false
@@ -41,6 +49,7 @@ var last_zoomed_costume : TextureRect = null
 @onready var grid        : GridContainer = $"trainer_grid_container"
 @onready var save_btn    : Button        = $"trainer_save_button"
 @onready var cancel_btn  : Button        = $"trainer_cancel_button"
+@onready var hide_btn    : Button        = $"hide_button"
 @onready var audio_player = AudioStreamPlayer.new()
 
 # ─── Lifecycle ───────────────────────────────────────────────────────────────
@@ -60,19 +69,24 @@ func _ready() -> void:
 	save_btn.disabled = true
 	save_btn.pressed.connect(_on_save_pressed)
 	cancel_btn.pressed.connect(_on_cancel_pressed)
+	hide_btn.pressed.connect(_on_hide_pressed)
+	_refresh_hide_button()
 
 	_wrap_grid_in_scroll_container()
 	# ISSUE #32: block input behind a loading overlay while the (potentially large) costume grid builds.
 	# Retest: shrink the blocker 142px top / 134px bottom so the banner buttons (Cancel) stay clickable.
+	# The hide button sits in that unblocked top strip, so disable it outright while a build runs.
+	hide_btn.disabled = true
 	_loading_overlay.show_for_library(self)
 	await get_tree().process_frame
 	await _load_characters()
 	_loading_overlay.hide()
 	if not is_inside_tree():
 		return
+	hide_btn.disabled = false
 
 	if saved_sprite_name != "":
-		_auto_select_saved_character()
+		_select_character_by_name(saved_sprite_name)
 
 
 # No _process needed — sparkle effect removed, no per-frame updates required
@@ -177,6 +191,10 @@ func _load_characters() -> void:
 		# ISSUE #32 FIX: bail if the scene was cancelled/freed mid-load (get_tree() would be null).
 		if not is_inside_tree():
 			return
+		# Owned-only mode skips unowned costumes before the per-item frame yield below. That yield is
+		# what makes a full build take seconds, so never queuing them is the entire speed-up.
+		if _hide_unowned and not _owned_costumes.has(String(fname).to_lower()):
+			continue
 		_add_character_to_grid(fname)
 		await get_tree().process_frame
 
@@ -215,11 +233,76 @@ func _add_character_to_grid(file_name: String) -> void:
 	grid.add_child(rect)
 
 
-func _auto_select_saved_character() -> void:
+func _select_character_by_name(sprite_name: String) -> void:
 	for child in grid.get_children():
-		if child is TextureRect and String(child.get_meta("sprite_name", "")).to_lower() == saved_sprite_name.to_lower():
+		if child is TextureRect and String(child.get_meta("sprite_name", "")).to_lower() == sprite_name.to_lower():
 			_select_character(child)
 			return
+
+
+# ─── Owned-only filter ───────────────────────────────────────────────────────
+
+# Blue "Show" while the unowned silhouettes are filtered out, yellow "Hide" while everything is on show.
+func _refresh_hide_button() -> void:
+	if _hide_unowned:
+		hide_btn.text  = "Show Unowned Costumes"
+		hide_btn.theme = load("res://UI_Themes/kenneyUI-blue.tres")
+	else:
+		hide_btn.text  = "Hide Unowned Costumes"
+		hide_btn.theme = load("res://UI_Themes/kenneyUI-yellow.tres")
+
+
+func _on_hide_pressed() -> void:
+	if _is_rebuilding:
+		return
+	SoundManagerScript.play_sfx(SoundManagerScript.SFX_plus_select)
+	_hide_unowned = not _hide_unowned
+	_refresh_hide_button()
+	await _rebuild_grid()
+
+
+# Tears the grid down and rebuilds it under the current filter. The player's pending pick
+# survives: only owned costumes are selectable and hiding never removes an owned costume, so
+# we just re-select it by name once the new rects exist.
+func _rebuild_grid() -> void:
+	_is_rebuilding    = true
+	hide_btn.disabled = true
+
+	var pending_name : String = ""
+	if selected_character_rect != null and is_instance_valid(selected_character_rect):
+		pending_name = String(selected_character_rect.get_meta("sprite_name", ""))
+
+	# The looping tween references a rect that is about to be freed.
+	if _active_tween:
+		_active_tween.kill()
+		_active_tween = null
+	selected_character_rect = null
+	selected_character_path = ""
+	_last_clicked_rect      = null
+
+	for child in grid.get_children():
+		grid.remove_child(child)
+		child.queue_free()
+
+	var scroll := grid.get_parent() as ScrollContainer
+	if scroll != null:
+		scroll.scroll_vertical = 0
+
+	_loading_overlay.show_for_library(self)
+	await get_tree().process_frame
+	await _load_characters()
+	_loading_overlay.hide()
+	if not is_inside_tree():
+		return
+
+	if pending_name == "":
+		pending_name = saved_sprite_name
+	if pending_name != "":
+		_select_character_by_name(pending_name)
+	_refresh_save_button_state()
+
+	hide_btn.disabled = false
+	_is_rebuilding    = false
 
 
 # ─── Click / selection ───────────────────────────────────────────────────────

@@ -404,7 +404,7 @@ text = "Pack Opening Animation Speed"
 horizontal_alignment = 1
 vertical_alignment = 1
 
-[node name="pack_very_slow_button" type="Button" parent="PACK" unique_id=1620044631]
+[node name="pack_slow_button" type="Button" parent="PACK" unique_id=1620044631]
 z_index = 300
 layout_mode = 0
 offset_left = 250.0
@@ -413,31 +413,31 @@ offset_right = 518.0
 offset_bottom = 817.0
 theme = ExtResource("8_1e4m1")
 theme_override_font_sizes/font_size = 19
-text = "very slow"
+text = "slow"
 
-[node name="pack_slow_button" type="Button" parent="PACK" unique_id=1620044632]
+[node name="pack_normal_button" type="Button" parent="PACK" unique_id=1620044632]
 z_index = 300
 layout_mode = 0
 offset_left = 538.0
 offset_top = 765.0
 offset_right = 806.0
 offset_bottom = 817.0
-theme = ExtResource("8_1e4m1")
+theme = ExtResource("6_5samb")
 theme_override_font_sizes/font_size = 19
-text = "slow"
+text = "normal"
 
-[node name="pack_normal_button" type="Button" parent="PACK" unique_id=1620044633]
+[node name="pack_fast_button" type="Button" parent="PACK" unique_id=1620044633]
 z_index = 300
 layout_mode = 0
 offset_left = 826.0
 offset_top = 765.0
 offset_right = 1094.0
 offset_bottom = 817.0
-theme = ExtResource("6_5samb")
+theme = ExtResource("8_1e4m1")
 theme_override_font_sizes/font_size = 19
-text = "normal"
+text = "fast"
 
-[node name="pack_fast_button" type="Button" parent="PACK" unique_id=1620044634]
+[node name="pack_very_fast_button" type="Button" parent="PACK" unique_id=1620044634]
 z_index = 300
 layout_mode = 0
 offset_left = 1114.0
@@ -446,7 +446,7 @@ offset_right = 1382.0
 offset_bottom = 817.0
 theme = ExtResource("8_1e4m1")
 theme_override_font_sizes/font_size = 19
-text = "fast"
+text = "very fast"
 
 [node name="pack_skip_button" type="Button" parent="PACK" unique_id=1620044635]
 z_index = 300

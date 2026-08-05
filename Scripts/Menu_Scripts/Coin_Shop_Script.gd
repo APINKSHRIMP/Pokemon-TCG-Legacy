@@ -12,6 +12,11 @@ const COLUMNS          := 5
 const GIFT_COIN_SIZE   := Vector2(250, 250)
 const GIFT_FLIP_TOTAL  := 1.5
 
+# ISSUE #92: fallback price for an inventory entry with no "cost" field. TWEAKABLE, but the real
+# prices live in coin_shop_inventory.json — keep this in step with them so a malformed entry can't
+# quietly sell a coin at an out-of-date price.
+const DEFAULT_COIN_COST := 500
+
 # ─── State ───────────────────────────────────────────────────────────────────
 
 var inventory        : Array = []
@@ -50,7 +55,7 @@ func _ready() -> void:
 
 	your_money_amount.text = str(player_cash)
 	if inventory.size() > 0:
-		coin_cost_amount.text = str(int(inventory[0].get("cost", 300)))
+		coin_cost_amount.text = str(int(inventory[0].get("cost", DEFAULT_COIN_COST)))
 
 	buy_btn.disabled = true
 	buy_btn.pressed.connect(_on_buy_pressed)
@@ -76,6 +81,7 @@ func _load_inventory() -> void:
 	file.close()
 	if data is Dictionary and data.has("coins"):
 		inventory = data["coins"]
+	print("ISSUE #92 COIN SHOP PRICES LOADED: ", inventory.map(func(e): return e.get("cost", DEFAULT_COIN_COST)))
 
 
 func _load_player_data() -> void:
@@ -89,7 +95,7 @@ func _load_player_data() -> void:
 func _build_coin_grid() -> void:
 	for entry in inventory:
 		var filename : String = entry.get("filename", "")
-		var cost     : int    = entry.get("cost", 300)
+		var cost     : int    = entry.get("cost", DEFAULT_COIN_COST)
 		if filename == "":
 			continue
 
@@ -197,7 +203,7 @@ func _update_buy_button() -> void:
 	var can_buy := false
 	if selected_coin_rect != null and is_instance_valid(selected_coin_rect):
 		var is_owned : bool = selected_coin_rect.get_meta("is_owned", true)
-		var cost     : int  = selected_coin_rect.get_meta("coin_cost", 300)
+		var cost     : int  = selected_coin_rect.get_meta("coin_cost", DEFAULT_COIN_COST)
 		can_buy = not is_owned and player_cash >= cost
 	buy_btn.disabled = not can_buy
 	buy_btn.theme    = theme_kenney_green if can_buy else theme_kenney
@@ -209,7 +215,7 @@ func _on_buy_pressed() -> void:
 	if selected_coin_rect == null or not is_instance_valid(selected_coin_rect):
 		return
 	var filename : String = selected_coin_rect.get_meta("coin_filename", "")
-	var cost     : int    = selected_coin_rect.get_meta("coin_cost", 300)
+	var cost     : int    = selected_coin_rect.get_meta("coin_cost", DEFAULT_COIN_COST)
 	if filename == "" or player_cash < cost:
 		return
 

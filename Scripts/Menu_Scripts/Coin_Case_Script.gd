@@ -38,6 +38,14 @@ var _loading_overlay     : MenuLoadingOverlay = MenuLoadingOverlay.new()
 # Using a Dictionary as a set gives O(1) lookups vs iterating an Array
 var _owned_coins         : Dictionary = {}
 
+# ─── Owned-only filter ───────────────────────────────────────────────────────
+# The scene always opens with unowned coins hidden so the grid only builds the handful
+# the player actually owns rather than hundreds of placeholder backs. Deliberately NOT
+# persisted or cached — every visit starts hidden and the player presses Show if they
+# want the full case.
+var _hide_unowned        : bool = true
+var _is_rebuilding       : bool = false
+
 # ─── Zoom state ──────────────────────────────────────────────────────────────
 var zoom_overlay     : CanvasLayer = null
 var is_zoomed        : bool = false
@@ -48,6 +56,7 @@ var last_zoomed_coin : TextureRect = null
 @onready var grid        : GridContainer = $"coin_grid_container"
 @onready var save_btn    : Button        = $"coin_save_button"
 @onready var cancel_btn  : Button        = $"coin_cancel_button"
+@onready var hide_btn    : Button        = $"hide_button"
 @onready var audio_player = AudioStreamPlayer.new()
 
 # ─── Lifecycle ───────────────────────────────────────────────────────────────
@@ -66,20 +75,25 @@ func _ready() -> void:
 	save_btn.disabled = true
 	save_btn.pressed.connect(_on_save_pressed)
 	cancel_btn.pressed.connect(_on_cancel_pressed)
+	hide_btn.pressed.connect(_on_hide_pressed)
+	_refresh_hide_button()
 
 	_wrap_grid_in_scroll_container()
 	# ISSUE #32: block input behind a loading overlay while the (potentially large) coin grid builds.
 	# Retest: shrink the blocker 142px top / 134px bottom so the banner buttons (Cancel) stay clickable.
+	# The hide button sits in that unblocked top strip, so disable it outright while a build runs.
+	hide_btn.disabled = true
 	_loading_overlay.show_for_library(self)
 	await get_tree().process_frame
 	await _load_coins()
 	_loading_overlay.hide()
 	if not is_inside_tree():
 		return
+	hide_btn.disabled = false
 
 	# After all coins are in the grid, auto-select the player's saved coin
 	if saved_coin_name != "":
-		_auto_select_saved_coin()
+		_select_coin_by_name(saved_coin_name)
 
 
 func _process(_delta: float) -> void:
@@ -190,6 +204,10 @@ func _load_coins() -> void:
 		# ISSUE #32 FIX: bail if the scene was cancelled/freed mid-load (get_tree() would be null).
 		if not is_inside_tree():
 			return
+		# Owned-only mode skips unowned coins before the per-item frame yield below. That yield is
+		# what makes a full build take seconds, so never queuing them is the entire speed-up.
+		if _hide_unowned and not _owned_coins.has(fname):
+			continue
 		_add_coin_to_grid(fname)
 		await get_tree().process_frame
 
@@ -231,13 +249,81 @@ func _add_coin_to_grid(file_name: String) -> void:
 	grid.add_child(rect)
 
 
-# After the grid is fully populated, find the rect whose coin_name matches the
-# saved coin and trigger the selection animation on it automatically
-func _auto_select_saved_coin() -> void:
+# After the grid is fully populated, find the rect whose coin_name matches and
+# trigger the selection animation on it automatically
+func _select_coin_by_name(coin_name: String) -> void:
 	for child in grid.get_children():
-		if child is TextureRect and child.get_meta("coin_name", "") == saved_coin_name:
+		if child is TextureRect and child.get_meta("coin_name", "") == coin_name:
 			_select_coin(child)
 			return
+
+
+# ─── Owned-only filter ───────────────────────────────────────────────────────
+
+# Blue "Show" while the unowned backs are filtered out, yellow "Hide" while everything is on show.
+func _refresh_hide_button() -> void:
+	if _hide_unowned:
+		hide_btn.text  = "Show Unowned Coins"
+		hide_btn.theme = load("res://UI_Themes/kenneyUI-blue.tres")
+	else:
+		hide_btn.text  = "Hide Unowned Coins"
+		hide_btn.theme = load("res://UI_Themes/kenneyUI-yellow.tres")
+
+
+func _on_hide_pressed() -> void:
+	if _is_rebuilding:
+		return
+	SoundManagerScript.play_sfx(SoundManagerScript.SFX_plus_select)
+	_hide_unowned = not _hide_unowned
+	_refresh_hide_button()
+	await _rebuild_grid()
+
+
+# Tears the grid down and rebuilds it under the current filter. The player's pending pick
+# survives: only owned coins are selectable and hiding never removes an owned coin, so we
+# just re-select it by name once the new rects exist.
+func _rebuild_grid() -> void:
+	_is_rebuilding   = true
+	hide_btn.disabled = true
+
+	var pending_name : String = ""
+	if selected_coin_rect != null and is_instance_valid(selected_coin_rect):
+		pending_name = String(selected_coin_rect.get_meta("coin_name", ""))
+
+	# The tween and particles both reference rects that are about to be freed.
+	if _active_tween:
+		_active_tween.kill()
+		_active_tween = null
+	if _active_particles:
+		_active_particles.queue_free()
+		_active_particles = null
+	selected_coin_rect = null
+	selected_coin_path = ""
+	_last_clicked_rect = null
+
+	for child in grid.get_children():
+		grid.remove_child(child)
+		child.queue_free()
+
+	var scroll := grid.get_parent() as ScrollContainer
+	if scroll != null:
+		scroll.scroll_vertical = 0
+
+	_loading_overlay.show_for_library(self)
+	await get_tree().process_frame
+	await _load_coins()
+	_loading_overlay.hide()
+	if not is_inside_tree():
+		return
+
+	if pending_name == "":
+		pending_name = saved_coin_name
+	if pending_name != "":
+		_select_coin_by_name(pending_name)
+	_refresh_save_button_state()
+
+	hide_btn.disabled = false
+	_is_rebuilding    = false
 
 
 # ─── Click / selection ───────────────────────────────────────────────────────
@@ -255,16 +341,22 @@ func _on_coin_clicked(event: InputEvent, rect: TextureRect) -> void:
 		_deselect_coin(selected_coin_rect)
 		
 	_select_coin(rect)
-	
-	# Enable save only when the chosen coin differs from what is already saved
-	var chosen_name : String = rect.get_meta("coin_name", "")
-	if chosen_name != saved_coin_name:
+	_refresh_save_button_state()
+
+
+# Enable save only when the chosen coin differs from what is already saved.
+func _refresh_save_button_state() -> void:
+	var chosen_name : String = ""
+	if selected_coin_rect != null and is_instance_valid(selected_coin_rect):
+		chosen_name = String(selected_coin_rect.get_meta("coin_name", ""))
+
+	if chosen_name != "" and chosen_name != saved_coin_name:
 		save_btn.disabled = false
 		var green_theme = load("res://UI_Themes/kenneyUI-green.tres")
 		if green_theme:
 			save_btn.theme = green_theme
 	else:
-		# Player re-clicked the already-saved coin — no changes to save
+		# Nothing picked, or the player re-clicked the already-saved coin — no changes to save
 		save_btn.disabled = true
 		save_btn.theme = load("res://UI_Themes/kenneyUI.tres")
 

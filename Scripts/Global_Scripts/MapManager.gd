@@ -404,6 +404,9 @@ func _load_and_spawn_npcs(json_path: String):
 
 		_opponents_container.add_child(npc)
 		print("Spawned NPC: ", npc.npc_name, " at ", npc.position)
+		# ISSUE #93: local position is meaningless on its own — the container's own offset is what
+		# went wrong, so print the global position that actually lands on screen.
+		print("ISSUE #93 NPC PLACED: ", npc.npc_name, " local=", npc.position, " global=", npc.global_position, " container=", _opponents_container.get_path())
 
 ## Instantiate a single NPC entry dict into the current opponents container.
 ## Skips condition evaluation — intended for programmatically built entries

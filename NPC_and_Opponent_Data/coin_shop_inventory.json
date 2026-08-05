@@ -1,14 +1,14 @@
 {
 	"coins": [
-		{"filename": "Arceus Silver.png", "cost": 300},
-		{"filename": "Gardevoir Silver 2.png", "cost": 300},
-		{"filename": "Hydreigon Silver.png", "cost": 300},
-		{"filename": "Pikachu Charizard Mewtwo Silver.png", "cost": 300},
-		{"filename": "Terapagos Blue.png", "cost": 300},
-		{"filename": "Urshifu Blue.png", "cost": 300},
-		{"filename": "Urshifu Red.png", "cost": 300},
-		{"filename": "Wooloo Silver.png", "cost": 300},
-		{"filename": "Xerneas Silver.png", "cost": 300},
-		{"filename": "Yveltal Silver.png", "cost": 300}
+		{"filename": "Arceus Silver.png", "cost": 500},
+		{"filename": "Gardevoir Silver 2.png", "cost": 500},
+		{"filename": "Hydreigon Silver.png", "cost": 500},
+		{"filename": "Pikachu Charizard Mewtwo Silver.png", "cost": 500},
+		{"filename": "Terapagos Blue.png", "cost": 500},
+		{"filename": "Urshifu Blue.png", "cost": 500},
+		{"filename": "Urshifu Red.png", "cost": 500},
+		{"filename": "Wooloo Silver.png", "cost": 500},
+		{"filename": "Xerneas Silver.png", "cost": 500},
+		{"filename": "Yveltal Silver.png", "cost": 500}
 	]
 }

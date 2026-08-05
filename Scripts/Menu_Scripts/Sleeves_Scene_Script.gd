@@ -26,6 +26,13 @@ var _last_clicked     : Control = null
 # Flat set of owned sleeve base names (no extension), e.g. {"Ditto": true}
 var _owned_sleeves    : Dictionary = {}
 
+# ─── Owned-only filter ───────────────────────────────────────────────────────
+# The scene always opens with unowned sleeves hidden so the grid only builds the handful
+# the player actually owns rather than ~593 black placeholders. Deliberately NOT persisted
+# or cached — every visit starts hidden and the player presses Show if they want the lot.
+var _hide_unowned     : bool = true
+var _is_rebuilding    : bool = false
+
 # ─── Zoom state ──────────────────────────────────────────────────────────────
 var zoom_overlay       : CanvasLayer = null
 var is_zoomed          : bool = false
@@ -41,6 +48,7 @@ var _load_cancelled    : bool = false
 @onready var grid        : GridContainer = $"sleeves_grid_container"
 @onready var save_btn    : Button        = $"sleeves_save_button"
 @onready var cancel_btn  : Button        = $"sleeves_cancel_button"
+@onready var hide_btn    : Button        = $"hide_button"
 @onready var audio_player = AudioStreamPlayer.new()
 
 # ─── Lifecycle ───────────────────────────────────────────────────────────────
@@ -59,18 +67,23 @@ func _ready() -> void:
 	save_btn.disabled = true
 	save_btn.pressed.connect(_on_save_pressed)
 	cancel_btn.pressed.connect(_on_cancel_pressed)
+	hide_btn.pressed.connect(_on_hide_pressed)
+	_refresh_hide_button()
 
 	_wrap_grid_in_scroll_container()
 	# ISSUE #32: block input behind a loading overlay while the (potentially large) sleeve grid builds.
+	# The hide button sits in the overlay's unblocked top strip, so disable it while a build runs.
+	hide_btn.disabled = true
 	_show_loading_overlay()
 	await get_tree().process_frame
 	await _load_sleeves()
 	_hide_loading_overlay()
 	if not is_inside_tree():
 		return
+	hide_btn.disabled = false
 
 	if saved_sleeve_name != "":
-		_auto_select_saved_sleeve()
+		_select_sleeve_by_name(saved_sleeve_name)
 
 
 # ─── Loading overlay (ISSUE #32) ──────────────────────────────────────────────
@@ -175,6 +188,10 @@ func _load_sleeves() -> void:
 		# calling get_tree() on a node that has left the tree is what crashed the game before.
 		if _load_cancelled or not is_inside_tree():
 			return
+		# Owned-only mode skips unowned sleeves before the per-item frame yield below. That yield is
+		# what makes a full build take seconds, so never queuing them is the entire speed-up.
+		if _hide_unowned and not _owned_sleeves.has(String(fname).get_basename()):
+			continue
 		_add_sleeve_to_grid(fname)
 		await get_tree().process_frame
 
@@ -219,11 +236,75 @@ func _add_sleeve_to_grid(file_name: String) -> void:
 	grid.add_child(wrapper)
 
 
-func _auto_select_saved_sleeve() -> void:
+func _select_sleeve_by_name(sleeve_name: String) -> void:
 	for child in grid.get_children():
-		if child is Control and child.get_meta("sleeve_name", "") == saved_sleeve_name:
+		if child is Control and child.get_meta("sleeve_name", "") == sleeve_name:
 			_select_sleeve(child)
 			return
+
+
+# ─── Owned-only filter ───────────────────────────────────────────────────────
+
+# Blue "Show" while the unowned placeholders are filtered out, yellow "Hide" while all are on show.
+func _refresh_hide_button() -> void:
+	if _hide_unowned:
+		hide_btn.text  = "Show Unowned Sleeves"
+		hide_btn.theme = load("res://UI_Themes/kenneyUI-blue.tres")
+	else:
+		hide_btn.text  = "Hide Unowned Sleeves"
+		hide_btn.theme = load("res://UI_Themes/kenneyUI-yellow.tres")
+
+
+func _on_hide_pressed() -> void:
+	if _is_rebuilding:
+		return
+	SoundManagerScript.play_sfx(SoundManagerScript.SFX_plus_select)
+	_hide_unowned = not _hide_unowned
+	_refresh_hide_button()
+	await _rebuild_grid()
+
+
+# Tears the grid down and rebuilds it under the current filter. The player's pending pick
+# survives: only owned sleeves are selectable and hiding never removes an owned sleeve, so
+# we just re-select it by name once the new wrappers exist.
+func _rebuild_grid() -> void:
+	_is_rebuilding    = true
+	hide_btn.disabled = true
+
+	var pending_name : String = ""
+	if selected_sleeve != null and is_instance_valid(selected_sleeve):
+		pending_name = String(selected_sleeve.get_meta("sleeve_name", ""))
+
+	# The looping tween references a wrapper that is about to be freed.
+	if _active_tween:
+		_active_tween.kill()
+		_active_tween = null
+	selected_sleeve = null
+	_last_clicked   = null
+
+	for child in grid.get_children():
+		grid.remove_child(child)
+		child.queue_free()
+
+	var scroll := grid.get_parent() as ScrollContainer
+	if scroll != null:
+		scroll.scroll_vertical = 0
+
+	_show_loading_overlay()
+	await get_tree().process_frame
+	await _load_sleeves()
+	_hide_loading_overlay()
+	if not is_inside_tree():
+		return
+
+	if pending_name == "":
+		pending_name = saved_sleeve_name
+	if pending_name != "":
+		_select_sleeve_by_name(pending_name)
+	_refresh_save_button_state()
+
+	hide_btn.disabled = false
+	_is_rebuilding    = false
 
 
 # ─── Click / selection ───────────────────────────────────────────────────────
@@ -240,9 +321,16 @@ func _on_sleeve_clicked(event: InputEvent, wrapper: Control) -> void:
 		_deselect_sleeve(selected_sleeve)
 
 	_select_sleeve(wrapper)
+	_refresh_save_button_state()
 
-	var chosen_name : String = wrapper.get_meta("sleeve_name", "")
-	if chosen_name != saved_sleeve_name:
+
+# Enable save only when the chosen sleeve differs from what is already saved.
+func _refresh_save_button_state() -> void:
+	var chosen_name : String = ""
+	if selected_sleeve != null and is_instance_valid(selected_sleeve):
+		chosen_name = String(selected_sleeve.get_meta("sleeve_name", ""))
+
+	if chosen_name != "" and chosen_name != saved_sleeve_name:
 		save_btn.disabled = false
 		var green_theme = load("res://UI_Themes/kenneyUI-green.tres")
 		if green_theme:
