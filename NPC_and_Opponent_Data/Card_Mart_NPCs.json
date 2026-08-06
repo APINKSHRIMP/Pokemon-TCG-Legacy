@@ -2,6 +2,7 @@
 	"npcs": [
 		{
 			"name": "Shopkeeper",
+			"friendly_name": "Shopkeeper",
 			"sprite": "Shopkeeper",
 			"npc_type": "shop",
 			"shop_id": "card_mart",

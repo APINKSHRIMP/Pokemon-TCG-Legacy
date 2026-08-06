@@ -19,6 +19,9 @@ extends WorldObjectBase
 # ============================================================
 
 var npc_name: String = ""
+# Display name for message boxes — see NPC_Object_Script for why this is separate
+# from npc_name (which is the unique tracking key).
+var friendly_name: String = ""
 var npc_type: String = "shop"
 var meet_text: String = ""
 var repeat_text: String = ""

@@ -378,6 +378,9 @@ func _load_and_spawn_npcs(json_path: String):
 
 		print("Attempting to load NPC: ", entry.get("name", "UNKNOWN"))
 		npc.npc_name         = entry["name"]
+		# Message-box display name. Falls back to the tracking key so a data entry that
+		# has not been given one still shows something rather than an empty header.
+		npc.friendly_name    = entry.get("friendly_name", entry["name"])
 		npc.sprite           = entry["sprite"]
 		npc.npc_type         = entry.get("npc_type", "text_only")
 		npc.meet_text        = entry.get("meet_text", "")
