@@ -51,6 +51,9 @@ position = Vector2(-13, -5)
 tile_map_data = PackedByteArray("AAAKAP//AQA5AAAAAAAKAAAAAQA5AAEAAAAJAP//AQA4AAAAAAAJAAAAAQA4AAEAAAAQAP//AQA4AAAAAAAQAAAAAQA4AAEAAAARAP//AQA5AAAAAAARAAAAAQA5AAEAAAA=")
 tile_set = ExtResource("2_jgrli")
 
+[node name="NPCS" type="Node2D" parent="MART" unique_id=427928302]
+position = Vector2(121, 59)
+
 [node name="Furniture Bottom" type="TileMapLayer" parent="MART" unique_id=1658052145]
 position = Vector2(6, 0)
 tile_map_data = PackedByteArray("AAAFAAEAAQAtABAAAAAGAAEAAQAuABAAAAAFAAQAAQAqABYAAAAFAAcAAQAqABYAAAAFAAoAAQAqABYAAAAFAAsAAQAqABQAAAA=")
@@ -106,9 +109,6 @@ metadata/target_scene = "res://Scenes/Map_Scenes/Celeste_Harbour.tscn"
 metadata/door_type = "exit_to_outside"
 
 [node name="UILAYER" type="CanvasLayer" parent="." unique_id=1060825490]
-
-[node name="NPCS" type="Node2D" parent="." unique_id=427928302]
-position = Vector2(121, 59)
 
 [node name="Collision" type="StaticBody2D" parent="." unique_id=647435137]
 visible = false
