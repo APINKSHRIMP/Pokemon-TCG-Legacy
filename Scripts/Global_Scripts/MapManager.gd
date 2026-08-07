@@ -33,9 +33,8 @@ var current_npc: Node = null
 var _validation_popup_active: bool = false
 var _validation_popup_node: Control = null
 
-var message_panel: Control
+var message_panel: DynamicMessageBox
 var message_label: RichTextLabel
-var _msg_default_font: Font = null  # default label font, restored after a large message (ISSUE #28)
 var yes_button: Button
 var no_button: Button
 var ok_button: Button
@@ -503,7 +502,7 @@ func _build_message_box():
 	if message_panel != null and is_instance_valid(message_panel):
 		message_panel.queue_free()
 
-	var box     = MessageBoxHelper.build(220.0, 28, true, 35.0, 5.0, 10.0)
+	var box     = MessageBoxHelper.build(138.0, 28, true)
 	message_panel = box["root"]
 	message_label = box["label"]
 	yes_button    = box["yes_btn"]
@@ -514,67 +513,99 @@ func _build_message_box():
 	no_button.pressed.connect(_on_no_pressed)
 	ok_button.pressed.connect(_on_ok_pressed)
 
-	# Remember the box's default label font so the large-message variant (ISSUE #28) can restore it.
-	_msg_default_font = message_label.get_theme_font("normal_font")
-
 	_ui_layer.add_child(message_panel)
 
+# ------------------------------------------------------------
+# INFO CHIPS
+# ------------------------------------------------------------
+# The little coloured boxes that sit on top of the message box. Built fresh
+# for whoever the player is currently talking to, and cleared when nobody is
+# (signs, the bed, the TV — those get a plain box).
+#
+# ADDING A NEW CHIP: append another dictionary to the array below. The box
+# auto-sizes it, colours it from the next notch of the theme ramp and butts it
+# up against the chip on its left — no layout work needed here. Icons live in
+# Image_Assets/Icons/Message_Icons/. Two examples ready to drop in:
+#
+#   if current_opponent.match_format == "best_of_3":
+#       chips.append({ "text": "x3", "icon_path": MSG_ICON_DIR + "trophy.png" })
+#   if not current_opponent.match_effects.is_empty():
+#       chips.append({ "text": str(current_opponent.match_effects.size()),
+#                      "icon_path": MSG_ICON_DIR + "conditions.png" })
+const MSG_ICON_DIR := "res://Image_Assets/Icons/Message_Icons/"
+
+func _apply_actor_chips() -> void:
+	if message_panel == null:
+		return
+	# Re-read the colour theme first: the Options screen opens as an overlay
+	# over a still-loaded map, so the box has to pick up a colour change
+	# without being rebuilt.
+	message_panel.apply_theme()
+
+	if current_opponent != null:
+		message_panel.set_chips([
+			{ "text": current_opponent.opponent_name.to_upper(),
+			  "sprite": current_opponent.sprite },
+			{ "text": String(current_opponent.deck).to_upper(),
+			  "icon_path": MSG_ICON_DIR + "deck.png" },
+			{ "text": str(current_opponent.prize_cards),
+			  "icon_path": MSG_ICON_DIR + "prizes.png" },
+		])
+		return
+
+	# NPCs get their name and nothing else — no deck, no prizes. friendly_name
+	# is the display name; npc_name is the unique tracking key and is never
+	# shown (it encodes the days/times that NPC appears).
+	if current_npc != null:
+		var shown: String = current_npc.friendly_name if "friendly_name" in current_npc else ""
+		if shown == "":
+			shown = current_npc.npc_name
+		message_panel.set_chips([
+			{ "text": shown.to_upper(), "sprite": current_npc.sprite },
+		])
+		return
+
+	message_panel.clear_chips()
+
+
 func _show_message_with_choices(text: String):
-	message_label.text = text
+	_apply_actor_chips()
+	message_panel.set_body_text(text)
 	yes_button.visible = true
 	no_button.visible  = true
 	ok_button.visible  = false
 	message_panel.visible = true
 	_player.can_move = false
 
-func _show_message_with_ok(text: String, font_size: int = 24):
-	message_label.text = text
-	message_label.add_theme_font_size_override("normal_font_size", font_size)
-	message_label.add_theme_font_size_override("bold_font_size",   font_size)
+# font_size is a CEILING, not a fixed size — the box shrinks past it if the
+# text would not otherwise fit the panel.
+func _show_message_with_ok(text: String, font_size: int = 28):
+	_apply_actor_chips()
+	message_panel.set_body_text(text, font_size)
 	yes_button.visible = false
 	no_button.visible  = false
 	ok_button.visible  = true
 	message_panel.visible = true
 	_player.can_move = false
 
-# ISSUE #28 FIX: shows an OK dialog styled like the match's LARGE message — kenney (kenvector) font,
-# large size, centred horizontally AND vertically. Defaults are restored in _hide_message so normal
-# overworld messages are unaffected.
-const LARGE_MSG_FONT := "res://UI_Themes/kenvector_future.ttf"
+# ISSUE #28 FIX: shows an OK dialog styled like the match's LARGE message — large size, centred
+# horizontally AND vertically. Nothing needs restoring afterwards: set_body_text() re-derives the
+# size on every show, and the box's font is the kenney one this used to swap in by hand.
 func _show_large_message_with_ok(text: String) -> void:
-	var kenney_font: FontFile = load(LARGE_MSG_FONT)
-	message_label.add_theme_font_override("normal_font", kenney_font)
-	message_label.add_theme_font_override("bold_font",   kenney_font)
-	message_label.add_theme_font_size_override("normal_font_size", 40)
-	message_label.add_theme_font_size_override("bold_font_size",   40)
-	# Vertical centring: the label lives in a VBoxContainer — centre its children.
-	var vbox := message_label.get_parent()
-	if vbox is BoxContainer:
-		vbox.alignment = BoxContainer.ALIGNMENT_CENTER
-	# Horizontal centring via bbcode (RichTextLabel has no horizontal_alignment).
-	message_label.text = "[center]" + text + "[/center]"
+	_apply_actor_chips()
+	# The box already uses this font — only the size sets a large message apart
+	# now. Horizontal centring via bbcode (RichTextLabel has no
+	# horizontal_alignment); vertical centring is the box's default.
+	message_panel.set_body_text("[center]" + text + "[/center]", 40)
 	yes_button.visible = false
 	no_button.visible  = false
 	ok_button.visible  = true
 	message_panel.visible = true
 	_player.can_move = false
-
-# Restores the message label to its default (non-large) styling.
-func _restore_default_message_style() -> void:
-	if message_label == null:
-		return
-	if _msg_default_font != null:
-		message_label.add_theme_font_override("normal_font", _msg_default_font)
-		message_label.add_theme_font_override("bold_font",   _msg_default_font)
-	message_label.add_theme_font_size_override("normal_font_size", 24)
-	message_label.add_theme_font_size_override("bold_font_size",   24)
-	var vbox := message_label.get_parent()
-	if vbox is BoxContainer:
-		vbox.alignment = BoxContainer.ALIGNMENT_BEGIN
 
 func _hide_message():
 	message_panel.visible = false
-	_restore_default_message_style()
+	message_panel.clear_chips()
 	_clear_gift_display()
 	_hide_cash_overlay()
 	_pending_confirm_yes = Callable()

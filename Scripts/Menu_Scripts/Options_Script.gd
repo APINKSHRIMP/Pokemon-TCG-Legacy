@@ -1,6 +1,6 @@
 extends Control
 
-# ISSUE #34: the Options screen. Seven sections, laid out as vertically stacked rows — each is a
+# ISSUE #34: the Options screen. Eight sections, laid out as vertically stacked rows — each is a
 # centred header with its options in a horizontal button row beneath it. A wider gap after Burn
 # Rules and after Walking Speed splits them into three visual groups without needing sub-headers:
 #   Confusion Rules / Burn Rules   — match rule variants
@@ -11,6 +11,9 @@ extends Control
 #   Pack Opening Animation Speed   — the pack sequence, with its own skip
 #   Play Match Intro / Outro …     — a plain on/off, not a speed. The intro/outro is click-to-skip
 #                                    already, so the only meaningful choice is whether it plays.
+#   Message Box Colour             — recolours every dynamic message box. Its buttons are looked up
+#                                    in the scene by name from MessageBoxTheme.THEME_ORDER, so a new
+#                                    theme needs a scene button and nothing else in this script.
 
 # ─── Constants ───────────────────────────────────────────────────────────────
 
@@ -71,6 +74,11 @@ var section_setters : Dictionary = {}
 @onready var intro_play_btn : Button = $"INTROOUTRO/intro_play_button"
 @onready var intro_skip_btn : Button = $"INTROOUTRO/intro_skip_button"
 
+# Message box colour. One button per MessageBoxTheme entry, looked up by name
+# rather than declared individually — adding a theme to MessageBoxTheme.THEMES
+# and a matching button to the scene is all it takes to offer a new colour.
+@onready var msgcolour_row : Control = $"MSGCOLOUR"
+
 @onready var save_btn   : Button = $"MAIN/options_save_button"
 @onready var cancel_btn : Button = $"MAIN/options_cancel_button"
 
@@ -117,6 +125,7 @@ func _ready() -> void:
 			"play": intro_play_btn,
 			"skip": intro_skip_btn,
 		},
+		"msg_colour": _collect_msgcolour_buttons(),
 	}
 
 	# GameState owns both the live values and the writes to Player_Current_Data.json.
@@ -128,6 +137,7 @@ func _ready() -> void:
 		"item":        GameState.set_item_speed,
 		"pack":        GameState.set_pack_speed,
 		"intro_outro": GameState.set_intro_outro,
+		"msg_colour":  GameState.set_message_box_colour,
 	}
 
 	saved = _current_values()
@@ -153,7 +163,21 @@ func _current_values() -> Dictionary:
 		"item":        GameState.item_speed_setting,
 		"pack":        GameState.pack_speed_setting,
 		"intro_outro": GameState.intro_outro_setting,
+		"msg_colour":  GameState.message_box_colour_setting,
 	}
+
+
+# theme key -> its button, for every theme that actually has one in the scene.
+# A theme with no button is skipped rather than crashing the screen.
+func _collect_msgcolour_buttons() -> Dictionary:
+	var out : Dictionary = {}
+	for key in MessageBoxTheme.THEME_ORDER:
+		var btn := msgcolour_row.get_node_or_null("msg_colour_%s_button" % key)
+		if btn is Button:
+			out[key] = btn
+		else:
+			push_warning("Options: no button for message box colour '%s'" % key)
+	return out
 
 
 func _input(event: InputEvent) -> void:

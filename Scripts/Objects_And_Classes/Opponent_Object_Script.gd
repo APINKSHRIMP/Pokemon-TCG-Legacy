@@ -41,17 +41,14 @@ func _get_bubble_texture() -> Texture2D:
 	else:
 		return load("res://image_assets/misc/new_battle.png")
 
+# Body text only. The name, deck and prize count used to be baked into this
+# string; they are now info chips above the message box (see
+# MapManager._actor_chips), so the label carries nothing but what the
+# opponent actually says.
 func get_greeting_text() -> String:
-	var body := repeat_text if GameState.has_beaten_opponent(opponent_name) else meet_text
-	# Pre-battle prompt includes a deck/prize-cards footer so the player knows
-	# what they're up against. The post-battle result text (get_result_text)
-	# intentionally omits this — by then the match is over.
-	return "[font_size=27][b]%s:[/b][/font_size]\n%s\n[font_size=8] [/font_size]\n[font_size=17][b](%s | %d prize cards)[/b][/font_size]" % [opponent_name, body, deck, prize_cards]
+	return repeat_text if GameState.has_beaten_opponent(opponent_name) else meet_text
 
 func get_result_text(player_won: bool) -> String:
-	var raw: String
 	if player_won:
-		raw = first_win_text if not GameState.has_beaten_opponent(opponent_name) else rematch_win_text
-	else:
-		raw = loss_text
-	return "[b]%s:[/b] %s" % [opponent_name, raw]
+		return first_win_text if not GameState.has_beaten_opponent(opponent_name) else rematch_win_text
+	return loss_text

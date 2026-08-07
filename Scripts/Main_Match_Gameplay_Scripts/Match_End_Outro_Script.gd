@@ -76,9 +76,9 @@ var _gift_container: Control   = null
 # Two separate message panels used at different points in the outro:
 #   _dialogue_panel — opponent win/loss text (small font, extra padding)
 #   _gift_panel     — "You received…" notices (larger font, default padding)
-var _dialogue_panel: Control = null
+var _dialogue_panel: DynamicMessageBox = null
 var _dialogue_label: RichTextLabel = null
-var _gift_panel:     Control = null
+var _gift_panel:     DynamicMessageBox = null
 var _gift_label:     RichTextLabel = null
 
 const CARDBACK_PATH = "res://Image_Assets/Sleeves/1_Default_English.png"
@@ -558,7 +558,9 @@ func _create_msg_panels() -> void:
 func _show_dialogue_message(text: String) -> void:
 	if _dialogue_panel == null:
 		return
-	_dialogue_label.text    = text
+	# set_body_text rather than label.text: it shrinks the font if a long line
+	# of opponent flavour would otherwise spill out of the panel.
+	_dialogue_panel.set_body_text(text)
 	_dialogue_panel.visible = true
 	move_child(_dialogue_panel, get_child_count() - 1)
 
@@ -569,7 +571,7 @@ func _hide_dialogue_message() -> void:
 func _show_gift_message(text: String) -> void:
 	if _gift_panel == null:
 		return
-	_gift_label.text    = "[center]" + text + "[/center]"
+	_gift_panel.set_body_text("[center]" + text + "[/center]")
 	_gift_panel.visible = true
 	move_child(_gift_panel, get_child_count() - 1)
 
