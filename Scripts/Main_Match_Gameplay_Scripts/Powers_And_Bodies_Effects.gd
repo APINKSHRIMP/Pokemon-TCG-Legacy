@@ -1738,6 +1738,8 @@ func cpu_phase_activate_powers() -> void:
 		var dragonite = _find_cpu_pokemon_with_power("Special Delivery")
 		if dragonite != null and not is_power_blocked_by_status(dragonite) and not dragonite.power_used_this_turn:
 			if main.opponent_deck.size() > 0:
+				await announce_cpu_power(dragonite, "Special Delivery")   # ISSUE #102
+				if main._should_bail(): return
 				await power_special_delivery(dragonite)
 				if main._should_bail(): return
 
@@ -1752,6 +1754,8 @@ func cpu_phase_activate_powers() -> void:
 			var own_afflicted = main.opponent_active_pokemon != null and (main.opponent_active_pokemon.special_condition != "" or main.opponent_active_pokemon.is_poisoned)
 			var opp_afflicted = main.player_active_pokemon != null and (main.player_active_pokemon.special_condition != "" or main.player_active_pokemon.is_poisoned)
 			if own_afflicted or opp_afflicted:
+				await announce_cpu_power(venusaur, "Solar Power")   # ISSUE #102
+				if main._should_bail(): return
 				await power_solar_power(venusaur)
 				if main._should_bail(): return
 
@@ -1815,6 +1819,7 @@ func cpu_phase_activate_powers() -> void:
 	# Rain Dance: attach all Water Energy to Water Pokemon
 	var blastoise = _find_cpu_pokemon_with_power("Rain Dance")
 	if blastoise != null and not is_power_blocked_by_status(blastoise) and not toxic_gas:
+		var rain_dance_announced = false   # ISSUE #102: announce the power once per turn, not per attach
 		var keep_going = true
 		while keep_going:
 			keep_going = false
@@ -1839,6 +1844,13 @@ func cpu_phase_activate_powers() -> void:
 						best_target = p
 			if best_target == null:
 				break
+			# ISSUE #102: announce once, on the first attach. Tracked with a local flag rather than
+			# power_used_this_turn — Rain Dance may be used any number of times per turn, so that flag
+			# must stay clear.
+			if not rain_dance_announced:
+				rain_dance_announced = true
+				await announce_cpu_power(blastoise, "Rain Dance")
+				if main._should_bail(): return
 			# ISSUE #12: best_target is recomputed every iteration above, so priorities are
 			# rechecked after each attach; the helper makes each attach visible on the board.
 			await _cpu_rain_dance_attach(best_target, water_energy)
@@ -1870,6 +1882,10 @@ func cpu_phase_activate_powers() -> void:
 					break
 			if stack_target == null:
 				break
+			if not rain_dance_announced:   # ISSUE #102
+				rain_dance_announced = true
+				await announce_cpu_power(blastoise, "Rain Dance")
+				if main._should_bail(): return
 			# ISSUE #12: stack_target is recomputed every iteration, rechecking priorities after each attach
 			await _cpu_rain_dance_attach(stack_target, water_energy2)
 			if main._should_bail(): return
@@ -1898,17 +1914,19 @@ func cpu_phase_activate_powers() -> void:
 					continue
 				for e in p.attached_energies.duplicate():
 					if "Grass" in main.get_energy_provided_by_card(e):
+						# ISSUE #102: announce -> explain -> animate.
+						await announce_cpu_power(venusaur, "Energy Trans")
+						if main._should_bail(): return
+						await main.show_message("GRASS ENERGY MOVES TO " + best_target.metadata.get("name", "").to_upper() + "!")
+						if main._should_bail(): return
 						p.attached_energies.erase(e)
 						best_target.attached_energies.append(e)
-						await main.show_message("Energy Trans: Moved Grass Energy to " + best_target.metadata.get("name", "") + "!")
-						if main._should_bail(): return
 						main.display_active_pokemon_energies(true)
 						break
 	
 	# Vileplume Heal: CPU tries to heal damaged pokemon
 	var vileplume = _find_cpu_pokemon_with_power("Heal")
 	if vileplume != null and not is_power_blocked_by_status(vileplume) and not toxic_gas and not vileplume.power_used_this_turn:
-		vileplume.power_used_this_turn = true
 		# Only use if there's damage to heal
 		var all_cpu = main.cpu_ai.get_all_cpu_field_pokemon()
 		var most_damaged: card_object = null
@@ -1919,15 +1937,24 @@ func cpu_phase_activate_powers() -> void:
 				most_damage = dmg
 				most_damaged = p
 		if most_damaged != null and most_damage > 0:
-			# CPU Vileplume Heal — opponent flips.
-			var coin = await main.flip_coin(false, true)
+			vileplume.power_used_this_turn = true
+			# ISSUE #102 FIX ACTIVE: the four-beat flow. Previously a coin appeared with no warning and
+			# the only message was the combined "Vileplume Heal: Tails! Failed!" — the player never saw
+			# that a power had been used at all. Announce -> flip -> explain -> animate.
+			# (power_used_this_turn is also now only set once the CPU commits, so a turn where there was
+			# nothing to heal no longer burns the power for that turn.)
+			await announce_cpu_power(vileplume, "Heal")            # 1. announce
+			if main._should_bail(): return
+			var coin = await main.flip_coin(false, true)           # 2. resolve
+			if main._should_bail(): return
 			if coin:
-				most_damaged.current_hp = min(int(most_damaged.metadata.get("hp", "0")), most_damaged.current_hp + 10)
-				main.display_hp_circles_above_align(most_damaged, true)
-				await main.show_message("Vileplume Heal: Healed 10 HP from " + most_damaged.metadata.get("name", "") + "!")
+				await main.show_message("HEADS! " + most_damaged.metadata.get("name", "").to_upper() + " RECOVERS 10 HP!")   # 3. explain
 				if main._should_bail(): return
+				most_damaged.current_hp = min(int(most_damaged.metadata.get("hp", "0")), most_damaged.current_hp + 10)      # 4. animate
+				SoundManagerScript.play_sfx(SoundManagerScript.SFX_heal_sound)
+				main.display_hp_circles_above_align(most_damaged, true)
 			else:
-				await main.show_message("Vileplume Heal: Tails! Failed!")
+				await main.show_message("TAILS! HEAL FAILED!")
 				if main._should_bail(): return
 	
 	# Venomoth Shift: CPU shifts to the type that gives best coverage
@@ -1951,11 +1978,14 @@ func cpu_phase_activate_powers() -> void:
 					target_type = wt
 					break
 			if target_type != "":
-				venomoth.temporary_type = target_type
 				venomoth.power_used_this_turn = true
 				print("ISSUE #45 FIX ACTIVE: Venomoth Shift -> ", target_type, " (in play, active=", venomoth_is_active, ")")
-				await main.show_message("Venomoth Shift: Changed to " + target_type + " type!")
+				# ISSUE #102: announce -> explain -> apply.
+				await announce_cpu_power(venomoth, "Shift")
 				if main._should_bail(): return
+				await main.show_message("VENOMOTH CHANGED TO " + target_type.to_upper() + " TYPE!")
+				if main._should_bail(): return
+				venomoth.temporary_type = target_type
 	
 	
 	# Damage Swap (Alakazam): shuffle damage counters to dodge incoming knockouts.
@@ -2012,6 +2042,11 @@ func cpu_phase_activate_powers() -> void:
 								best_unmet = unmet
 				
 				if best_target != null and best_type != "":
+					# ISSUE #102: announce -> explain -> execute + animate.
+					await announce_cpu_power(electrode_buzzap, "Buzzap")
+					if main._should_bail(): return
+					await main.show_message("ELECTRODE BECOMES " + best_type.to_upper() + " ENERGY FOR " + best_target.metadata.get("name", "").to_upper() + "!")
+					if main._should_bail(): return
 					# Execute Buzzap
 					electrode_buzzap.current_hp = 0
 					var electrode_energy = card_object.new(electrode_buzzap.uid, electrode_buzzap.metadata)
@@ -2019,8 +2054,6 @@ func cpu_phase_activate_powers() -> void:
 					electrode_energy.electrode_energy_type = best_type
 					best_target.attached_energies.append(electrode_energy)
 					main.display_active_pokemon_energies(true)
-					await main.show_message("Buzzap: Electrode became " + best_type + " Energy for " + best_target.metadata.get("name", "") + "!")
-					if main._should_bail(): return
 					await main.check_all_knockouts()
 					if main._should_bail(): return
 	
@@ -2040,8 +2073,13 @@ func cpu_phase_activate_powers() -> void:
 						break
 				var active_hp_pct = float(active.current_hp) / float(int(active.metadata.get("hp", "1")))
 				if dragonite_ready and active_hp_pct < 0.4:
-					# Active is low, Dragonite is ready — switch
+					# Active is low, Dragonite is ready — switch.
+					# ISSUE #102: announce -> explain -> switch + animate.
 					dragonite.power_used_this_turn = true
+					await announce_cpu_power(dragonite, "Step In")
+					if main._should_bail(): return
+					await main.show_message("DRAGONITE SWITCHES IN!")
+					if main._should_bail(): return
 					var old_active = main.opponent_active_pokemon
 					main.opponent_bench.erase(dragonite)
 					main.opponent_bench.append(old_active)
@@ -2051,8 +2089,6 @@ func cpu_phase_activate_powers() -> void:
 					main.clear_all_statuses(old_active, true)
 					main.display_pokemon(true)
 					main.display_active_pokemon_energies(true)
-					await main.show_message("Step In: Dragonite switches in!")
-					if main._should_bail(): return
 	
 	# Curse (Gengar): Move damage to opponent's active for KO potential
 	var gengar = _find_cpu_pokemon_with_power("Curse")
@@ -2080,13 +2116,16 @@ func cpu_phase_activate_powers() -> void:
 						break
 			
 			if best_source != null and best_dest != null:
+				# ISSUE #102: announce -> explain -> move counters + animate.
 				gengar.power_used_this_turn = true
+				await announce_cpu_power(gengar, "Curse")
+				if main._should_bail(): return
+				await main.show_message("A DAMAGE COUNTER MOVES TO " + best_dest.metadata.get("name", "").to_upper() + "!")
+				if main._should_bail(): return
 				best_source.current_hp = min(int(best_source.metadata.get("hp", "0")), best_source.current_hp + 10)
 				best_dest.current_hp = max(0, best_dest.current_hp - 10)
 				main.display_hp_circles_above_align(best_source, false)
 				main.display_hp_circles_above_align(best_dest, false)
-				await main.show_message("Curse: Moved damage to " + best_dest.metadata.get("name", "") + "!")
-				if main._should_bail(): return
 				if best_dest.current_hp <= 0:
 					await main.check_all_knockouts()
 					if main._should_bail(): return
@@ -2097,13 +2136,19 @@ func cpu_phase_activate_powers() -> void:
 		var active = main.opponent_active_pokemon
 		if active != null and active != slowbro:
 			var active_damage = int(active.metadata.get("hp", "0")) - active.current_hp
-			while active_damage >= 10 and slowbro.current_hp > 10:
-				active.current_hp += 10
-				slowbro.current_hp -= 10
-				active_damage -= 10
-			main.display_hp_circles_above_align(active, true)
-			var slowbro_is_active = (slowbro == main.opponent_active_pokemon)
-			main.display_hp_circles_above_align(slowbro, true)
+			# ISSUE #102: this used to move damage counters around in total silence — no message at
+			# all. Announce -> explain -> move + animate, and only when there is something to move.
+			if active_damage >= 10 and slowbro.current_hp > 10:
+				await announce_cpu_power(slowbro, "Strange Behavior")
+				if main._should_bail(): return
+				await main.show_message("DAMAGE MOVES FROM " + active.metadata.get("name", "").to_upper() + " ONTO SLOWBRO!")
+				if main._should_bail(): return
+				while active_damage >= 10 and slowbro.current_hp > 10:
+					active.current_hp += 10
+					slowbro.current_hp -= 10
+					active_damage -= 10
+				main.display_hp_circles_above_align(active, true)
+				main.display_hp_circles_above_align(slowbro, true)
 	
 	# Cowardice (Tentacool): CPU returns Tentacool if badly damaged
 	var tentacool = _find_cpu_pokemon_with_power("Cowardice")
@@ -2111,6 +2156,11 @@ func cpu_phase_activate_powers() -> void:
 		if not tentacool.placed_on_field_this_turn:
 			var max_hp = int(tentacool.metadata.get("hp", "0"))
 			if tentacool.current_hp <= max_hp / 2:
+				# ISSUE #102: announce -> explain -> return + animate.
+				await announce_cpu_power(tentacool, "Cowardice")
+				if main._should_bail(): return
+				await main.show_message("TENTACOOL RETURNS TO ITS OWNER'S HAND!")
+				if main._should_bail(): return
 				# Return to hand
 				var discard = main.opponent_discard_pile
 				for e in tentacool.attached_energies:
@@ -2138,8 +2188,6 @@ func cpu_phase_activate_powers() -> void:
 				main.update_discard_pile_display(true)
 				main.display_pokemon(true)
 				main.refresh_hand_display(true)
-				await main.show_message("Cowardice: Tentacool returned to hand!")
-				if main._should_bail(): return
 				if is_active:
 					await main.handle_post_knockout(true)
 					if main._should_bail(): return
@@ -2170,14 +2218,17 @@ func cpu_phase_activate_powers() -> void:
 						break
 				if best == null:
 					best = evolutions[0]
+				# ISSUE #102: announce -> explain -> search + animate.
+				dragonair.power_used_this_turn = true
+				await announce_cpu_power(dragonair, "Evolutionary Light")
+				if main._should_bail(): return
+				await main.show_message("SEARCHED THE DECK AND FOUND " + best.metadata.get("name", "").to_upper() + "!")
+				if main._should_bail(): return
 				cpu_deck.erase(best)
 				best.current_location = "hand"
 				main.opponent_hand.append(best)
 				cpu_deck.shuffle()
-				dragonair.power_used_this_turn = true
 				main.refresh_hand_display(true)
-				await main.show_message("Evolutionary Light: Found " + best.metadata.get("name", "") + "!")
-				if main._should_bail(): return
 	
 	# Matter Exchange (Dark Kadabra): Discard 1, draw 1
 	var kadabra = _find_cpu_pokemon_with_power("Matter Exchange")
@@ -2186,14 +2237,17 @@ func cpu_phase_activate_powers() -> void:
 			if main.opponent_hand.size() >= 2 and main.opponent_deck.size() > 0:
 				var to_discard = main.trainer_effects.cpu_get_discard_priority(main.opponent_hand, 1)
 				if to_discard.size() > 0:
+					# ISSUE #102: announce -> explain -> discard/draw + animate.
+					kadabra.power_used_this_turn = true
+					await announce_cpu_power(kadabra, "Matter Exchange")
+					if main._should_bail(): return
+					await main.show_message("A CARD IS DISCARDED AND ANOTHER IS DRAWN!")
+					if main._should_bail(): return
 					var card = to_discard[0]
 					main.opponent_hand.erase(card)
 					card.current_location = "discard"
 					main.opponent_discard_pile.append(card)
 					await main.card_ops.draw_n(true, 1)
-					if main._should_bail(): return
-					kadabra.power_used_this_turn = true
-					await main.show_message("Matter Exchange: Swapped a card!")
 					if main._should_bail(): return
 	
 	# Pollen Stench (Dark Gloom): Flip for confusion
@@ -2202,20 +2256,24 @@ func cpu_phase_activate_powers() -> void:
 		if not is_power_blocked_by_status(gloom) and not toxic_gas:
 			# Only use if player active isn't already confused
 			if main.player_active_pokemon != null and main.player_active_pokemon.special_condition != "Confused":
+				# ISSUE #102: announce -> flip -> explain -> apply.
+				gloom.power_used_this_turn = true
+				await announce_cpu_power(gloom, "Pollen Stench")
+				if main._should_bail(): return
 				# CPU's Gloom — opponent flips.
 				var coin = await main.flip_coin(false, true)
-				gloom.power_used_this_turn = true
+				if main._should_bail(): return
 				if coin:
-					main.card_ops.apply_status(main.player_active_pokemon, "Confused", false)
-					await main.show_message("Pollen Stench: Defending Pokemon is Confused!")
+					await main.show_message("HEADS! THE DEFENDING POKEMON IS NOW CONFUSED!")
 					if main._should_bail(): return
+					main.card_ops.apply_status(main.player_active_pokemon, "Confused", false)
 				else:
 					# Tails: own active confused
 					var cpu_active = main.opponent_active_pokemon
 					if cpu_active != null:
-						main.card_ops.apply_status(cpu_active, "Confused", true)
-						await main.show_message("Pollen Stench: Tails! Own active is Confused!")
+						await main.show_message("TAILS! " + cpu_active.metadata.get("name", "").to_upper() + " IS NOW CONFUSED!")
 						if main._should_bail(): return
+						main.card_ops.apply_status(cpu_active, "Confused", true)
 	
 	# Gather Fire (Charmander): Move Fire Energy from another Pokemon
 	var charmander = _find_cpu_pokemon_with_power("Gather Fire")
@@ -2238,31 +2296,38 @@ func cpu_phase_activate_powers() -> void:
 				if best_energy != null:
 					break
 			if best_source != null and best_energy != null:
+				# ISSUE #102: announce -> explain -> move + animate.
+				charmander.power_used_this_turn = true
+				await announce_cpu_power(charmander, "Gather Fire")
+				if main._should_bail(): return
+				await main.show_message("FIRE ENERGY MOVES TO CHARMANDER!")
+				if main._should_bail(): return
 				best_source.attached_energies.erase(best_energy)
 				charmander.attached_energies.append(best_energy)
-				charmander.power_used_this_turn = true
 				main.display_active_pokemon_energies(true)
-				await main.show_message("Gather Fire: Moved Fire Energy to Charmander!")
-				if main._should_bail(): return
 	
 	# Long-Distance Hypnosis (Drowzee): Flip for sleep
 	var drowzee = _find_cpu_pokemon_with_power("Long-Distance Hypnosis")
 	if drowzee != null and not drowzee.power_used_this_turn and not drowzee.power_disabled_until_end_of_next_turn:
 		if not is_power_blocked_by_status(drowzee) and not toxic_gas:
 			if main.player_active_pokemon != null and main.player_active_pokemon.special_condition == "":
+				# ISSUE #102: announce -> flip -> explain -> apply.
+				drowzee.power_used_this_turn = true
+				await announce_cpu_power(drowzee, "Long-Distance Hypnosis")
+				if main._should_bail(): return
 				# CPU's Drowzee — opponent flips.
 				var coin = await main.flip_coin(false, true)
-				drowzee.power_used_this_turn = true
+				if main._should_bail(): return
 				if coin:
-					main.card_ops.apply_status(main.player_active_pokemon, "Asleep", false)
-					await main.show_message("Long-Distance Hypnosis: Defending Pokemon is Asleep!")
+					await main.show_message("HEADS! THE DEFENDING POKEMON FALLS ASLEEP!")
 					if main._should_bail(): return
+					main.card_ops.apply_status(main.player_active_pokemon, "Asleep", false)
 				else:
 					var cpu_active = main.opponent_active_pokemon
 					if cpu_active != null:
-						main.card_ops.apply_status(cpu_active, "Asleep", true)
-						await main.show_message("Long-Distance Hypnosis: Tails! Own active is Asleep!")
+						await main.show_message("TAILS! " + cpu_active.metadata.get("name", "").to_upper() + " FALLS ASLEEP!")
 						if main._should_bail(): return
+						main.card_ops.apply_status(cpu_active, "Asleep", true)
 	
 	# Trickery (Rattata): Switch prize with top of deck — CPU uses if deck top might be better
 	var rattata = _find_cpu_pokemon_with_power("Trickery")
@@ -2271,15 +2336,18 @@ func cpu_phase_activate_powers() -> void:
 			if main.opponent_prize_cards.size() > 0 and main.opponent_deck.size() > 0:
 				# Simple heuristic: use if prizes > 3 remaining (more chances to improve)
 				if main.opponent_prize_cards.size() >= 3:
+					# ISSUE #102: announce -> explain -> swap.
+					rattata.power_used_this_turn = true
+					await announce_cpu_power(rattata, "Trickery")
+					if main._should_bail(): return
+					await main.show_message("A PRIZE CARD IS SWAPPED WITH THE TOP CARD OF THE DECK!")
+					if main._should_bail(): return
 					var top_card = main.opponent_deck[0]
 					var prize_idx = 0
 					main.opponent_deck.erase(top_card)
 					var prize_card = main.opponent_prize_cards[prize_idx]
 					main.opponent_prize_cards[prize_idx] = top_card
 					main.opponent_deck.insert(0, prize_card)
-					rattata.power_used_this_turn = true
-					await main.show_message("Trickery: Swapped a prize with top of deck!")
-					if main._should_bail(): return
 
 	# --- GYM1 + GYM2 POWERS ---
 	await cpu_phase_gym_powers()
@@ -2376,11 +2444,16 @@ func cpu_damage_swap(alakazam: card_object) -> void:
 				moved += 1
 
 	if moved > 0:
+		# ISSUE #102: announce the power, explain the effect, THEN show the result on the board. The
+		# counters are already moved in the model above; the board only repaints after the messages so
+		# the player sees the explanation before the HP changes.
+		await announce_cpu_power(alakazam, "Damage Swap")
+		if main._should_bail(): return
+		var counters = "1 DAMAGE COUNTER" if moved == 1 else str(moved) + " DAMAGE COUNTERS"
+		await main.show_message(counters + " ARE MOVED AROUND!")
+		if main._should_bail(): return
 		main.display_hp_circles_above_align(main.opponent_active_pokemon, true)
 		main.display_pokemon(true)
-		var counters = "1 DAMAGE COUNTER" if moved == 1 else str(moved) + " DAMAGE COUNTERS"
-		await main.show_message("ALAKAZAM'S DAMAGE SWAP: MOVED " + counters + "!")
-		if main._should_bail(): return
 	else:
 		print("ISSUE base1-1 FIX ACTIVE: Damage Swap — nothing worth moving this turn")
 
@@ -2427,6 +2500,23 @@ func _damage_swap_best_destination(exclude: card_object) -> card_object:
 	return best
 
 # Helper to find a CPU pokemon with a specific power name
+
+# ISSUE #102: standard opening beat for any CPU Poké-Power activation.
+#
+# The player had no idea what was happening: the CPU's Vileplume Heal just flipped a coin out of
+# nowhere and then said "Vileplume Heal: Tails! Failed!". Every activated CPU power should read as:
+#   1. announce   — "Opponent used VILEPLUME's HEAL Power!"   (this helper, click to clear)
+#   2. resolve    — coin flips / choices happen
+#   3. explain    — a message saying what the power is about to do (click to clear)
+#   4. animate    — heal/damage/draw/energy-move visuals
+#
+# Call this FIRST, before any flip or state change, in every CPU power branch.
+func announce_cpu_power(pokemon: card_object, power_name: String) -> void:
+	if pokemon == null:
+		return
+	var pokemon_name: String = pokemon.metadata.get("name", "POKEMON")
+	print("ISSUE #102 FIX ACTIVE: announcing CPU power ", power_name, " on ", pokemon_name)
+	await main.show_message("OPPONENT USED " + pokemon_name.to_upper() + "'S " + power_name.to_upper() + " POWER!")
 
 func _find_cpu_pokemon_with_power(power_name: String) -> card_object:
 	var all_pokemon = main.cpu_ai.get_all_cpu_field_pokemon()

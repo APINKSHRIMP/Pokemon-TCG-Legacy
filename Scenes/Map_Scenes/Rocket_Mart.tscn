@@ -2,7 +2,7 @@
 
 [ext_resource type="Script" uid="uid://dtop8ffd5om7q" path="res://Scripts/Map_Scripts/Rocket_Mart.gd" id="1_bosx8"]
 [ext_resource type="TileSet" uid="uid://yus3igcnpw1m" path="res://Image_Assets/Map_Sheets/Tile_Sets/Player_Home_Tileset.tres" id="2_p15o0"]
-[ext_resource type="Texture2D" uid="uid://bx3bwk33dets8" path="res://Image_Assets/Misc/starter_box.png" id="3_annoh"]
+[ext_resource type="Texture2D" uid="uid://bx3bwk33dets8" path="res://Image_Assets/Map_Objects/starter_box.png" id="3_annoh"]
 [ext_resource type="PackedScene" uid="uid://bprufyh8mxqom" path="res://Scenes/Objects/Player_Object_Scene.tscn" id="4_j34lu"]
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_377ug"]

@@ -1405,7 +1405,6 @@ func resolve_attached_trainer(card: card_object, is_opponent: bool) -> void:
 			# visibly attached while the message is on screen, rather than appearing after it closes.
 			display_attached_trainer_cards(true)
 			main.display_pokemon(true)
-			print("ISSUE #85 FIX ACTIVE: Defender attach message without the -20 suffix (board refreshed first)")
 			await main.show_message("Defender attached to " + active.metadata.get("name", "") + "!")
 		else:
 			# Player chooses target

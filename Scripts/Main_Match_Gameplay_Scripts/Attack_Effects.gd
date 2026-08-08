@@ -539,7 +539,65 @@ func parse_attack_base_damage(attack: Dictionary) -> int:
 
 # Handles the confusion coin flip when an attacker is confused
 # Returns true if the attack FAILS (attacker hurt itself), false if the attack can proceed
+# ISSUE #95: number of coins an attack flips, parsed from "flip N coins" for ANY N. The old code
+# only understood 2 and 3 by hardcoded string match, so Kangaskhan's "flip 4 coins" (and every other
+# 4+/5-coin attack: Fury Attack, Barrage, Pin Missile, Spike Cannon…) silently fell through to a
+# generic ×2 guess. Returns 0 when the text doesn't flip a fixed number of coins.
+func parse_coin_flip_count(text: String) -> int:
+	var lower := text.to_lower()
+	var idx := lower.find("flip ")
+	while idx != -1:
+		var rest := lower.substr(idx + 5)
+		var digits := ""
+		for ch in rest:
+			if ch.is_valid_int():
+				digits += ch
+			else:
+				break
+		if digits != "" and rest.substr(digits.length()).begins_with(" coin"):
+			return int(digits)
+		idx = lower.find("flip ", idx + 5)
+	return 0
+
+# ISSUE #95: public entry point. Wraps the raw min/max estimator and adds an "expected" key — the
+# average damage the attack actually deals, accounting for coin flips.
+#
+# WHY: the CPU's attack scorer credits base damage from `min`, and `min` is 0 for every coin-flip
+# attack. So a Kangaskhan holding 4 Energy scored Comet Punch ("flip 4 coins, 20× heads", average 40)
+# at ZERO and used Fetch (draw 1 card, score 15) instead. `min`/`max` are still the right numbers for
+# "guaranteed KO" / "could KO" tests, so they are untouched; scoring now reads `expected`.
 func estimate_attack_damage_range(attack: Dictionary, attacker: card_object = null, defender: card_object = null) -> Dictionary:
+	var result := _estimate_attack_damage_range_raw(attack, attacker, defender)
+	result["expected"] = _expected_damage_for(attack, result)
+	return result
+
+# Average damage for scoring purposes. Coin-flip attacks are worth their mean roll, not their floor.
+func _expected_damage_for(attack: Dictionary, range_result: Dictionary) -> int:
+	var dmg_min: int = range_result["min"]
+	var dmg_max: int = range_result["max"]
+	if dmg_min == dmg_max:
+		return dmg_min
+
+	var text: String = attack.get("text", "").to_lower()
+	var damage_str := str(attack.get("damage", "0"))
+	var base_damage := parse_attack_base_damage(attack)
+
+	# "damage × number of heads": each of N coins contributes base/2 on average.
+	if ("×" in damage_str or "x" in damage_str) and "number of heads" in text:
+		var coins := parse_coin_flip_count(text)
+		if coins > 0:
+			return int(round(base_damage * coins / 2.0))
+		if "flip a coin until" in text:
+			return base_damage   # expected heads before the first tails is exactly 1
+
+	# Single coin gating the whole attack.
+	if "if tails, this attack does nothing" in text:
+		return int(round(base_damage / 2.0))
+
+	# Everything else variable (heads bonuses, per-energy scaling with unknowns): midpoint.
+	return int(round((dmg_min + dmg_max) / 2.0))
+
+func _estimate_attack_damage_range_raw(attack: Dictionary, attacker: card_object = null, defender: card_object = null) -> Dictionary:
 	var base_damage = parse_attack_base_damage(attack)
 	var damage_str = str(attack.get("damage", "0"))
 	var text = attack.get("text", "").to_lower()
@@ -555,12 +613,12 @@ func estimate_attack_damage_range(attack: Dictionary, attacker: card_object = nu
 			return {"min": 0, "max": base_damage * 10}
 		if "flip a coin until" in text:
 			return {"min": 0, "max": base_damage * 5}
-		elif "flip 3 coins" in text:
-			return {"min": 0, "max": base_damage * 3}
-		elif "flip 2 coins" in text:
-			return {"min": 0, "max": base_damage * 2}
+		# ISSUE #95: any "flip N coins", not just the hardcoded 2 and 3.
+		var coin_count := parse_coin_flip_count(text)
+		if coin_count > 0:
+			return {"min": 0, "max": base_damage * coin_count}
 		return {"min": 0, "max": base_damage * 2}
-	
+
 	# --- "IF TAILS, DOES NOTHING" ---
 	if "if tails, this attack does nothing" in text:
 		return {"min": 0, "max": base_damage}

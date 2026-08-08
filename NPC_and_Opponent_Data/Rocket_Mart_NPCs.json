@@ -1,19 +1,19 @@
 {
-	"npcs": [
-		{
-			"name": "Rocket_Shopkeeper",
-			"friendly_name": "Rocket Shopkeeper",
-			"sprite": "Rocket_Shopkeeper",
-			"npc_type": "shop",
-			"shop_id": "rocket_mart",
-			"meet_text": "Interested in buying some special packs?",
-			"position": {
-				"x": 88,
-				"y": -29
-			},
-			"pattern": "idle_down",
-			"interact_facing": "up"
-		}
-	],
-	"opponents": []
+  "npcs": [
+    {
+      "name": "Rocket_Shopkeeper",
+      "friendly_name": "Rocket Shopkeeper",
+      "sprite": "Rocket_Shopkeeper",
+      "npc_type": "shop",
+      "shop_id": "rocket_mart",
+      "meet_text": "Interested in buying some special packs?",
+      "position": {
+        "x": 87,
+        "y": -27
+      },
+      "pattern": "idle_down",
+      "interact_facing": "up"
+    }
+  ],
+  "opponents": []
 }

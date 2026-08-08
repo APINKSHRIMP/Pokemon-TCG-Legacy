@@ -80,7 +80,6 @@ func _ready():
 
 	# Seed candidates from bodies already overlapping on spawn (battle return case)
 	call_deferred("_seed_existing_overlaps")
-	print("ISSUE #81 FIX ACTIVE: player interaction signals connected in _ready()")
 
 # ISSUE #52: the overworld map is no longer reloaded when a sub-menu closes, so a costume change made
 # in the Costume menu has to be pushed onto the live player node instead of arriving via _ready().
@@ -184,7 +183,6 @@ func _unhandled_input(event):
 		# through to here and could start a battle with whoever the player happened to be standing next
 		# to. The message-panel branch above stays ungated — dialogue is handled while frozen by design.
 		if not can_move:
-			print("ISSUE #81 FIX ACTIVE: ignoring interact key while overworld input is locked")
 			return
 
 		if _active_candidate != null and is_instance_valid(_active_candidate):
@@ -204,7 +202,6 @@ func _unhandled_input(event):
 			# without this guard scrolling a card/deck list zoomed the map underneath, only visible on
 			# return. Movement keys were already gated on can_move; the zoom was not.
 			if not can_move:
-				print("ISSUE #81 FIX ACTIVE: ignoring mouse-wheel zoom while overworld input is locked")
 				return
 			if event.button_index == MOUSE_BUTTON_WHEEL_UP:
 				camera.zoom = (camera.zoom + Vector2(0.05, 0.05)).clamp(Vector2(0.5, 0.5), Vector2(10, 10))

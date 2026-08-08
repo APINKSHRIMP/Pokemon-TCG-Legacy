@@ -7,21 +7,25 @@ const _STARTER_BOX_CARDS := "base1-47,base1-47,base1-47,base1-47, base1-27,base1
 const _SHOP_STARTER_CARDS  := "base1-49, base1-49, base1-48, base1-48, base1-96, base1-95, base1-95, base1-93, base1-93, base1-91, base1-83, base1-83, base1-77, base1-65, base1-65, base1-63, base1-63, base1-59, base1-59, base1-58, base1-58, base1-69, base1-69, base1-54, base1-53, base1-53, base1-46, base1-46, base1-45, base1-45, base1-44, base1-44, base1-43, base1-43, base1-42, base1-36, base1-33, base1-34, base1-32, base1-30, base1-28, base1-28, base1-24, base1-19"
 
 const _CHEAT_LABELS := {
-	"CHT.All_Cards_1":      "All Base/Gym cards cheat activated",
+	"CHT.All_Cards_1":      "All Base/Gym/Promo cards cheat activated",
 	"CHT.All_Cards_2":      "All Neo/e-Card cards cheat activated",
 	"CHT.All_Cards_3":      "All EX Series 1 cards cheat activated",
-	"CHT.All_Cards_4":      "All EX Series 2 cards cheat activated",
+	"CHT.All_Cards_4":      "All EX Series 2/POP cards cheat activated",
 	"CHT.Gimme_Cash":       "Max cash cheat activated",
 	"CHT.Add_Starter_Set":  "Starter set added",
 	"CHT.Add_Shop_Set":     "Shop set added",
 	"CHT.Remove_All_Cards": "Remove all cards cheat activated",
 }
 
+# ISSUE #99: the four groups between them must cover EVERY set in Card_Set_Data/ — the promo sets
+# (basep, si1, np) and the six POP sets were missing entirely, so no cheat could ever unlock them.
+# Each promo set is grouped with the era it belongs to.
 const _SET_GROUPS := {
-	"CHT.All_Cards_1": ["base1", "base2", "base3", "base5", "gym1", "gym2"],
-	"CHT.All_Cards_2": ["neo1", "neo2", "neo3", "neo4", "ecard1", "ecard2", "ecard3"],
+	"CHT.All_Cards_1": ["base1", "base2", "base3", "base5", "gym1", "gym2", "basep", "si1"],
+	"CHT.All_Cards_2": ["neo1", "neo2", "neo3", "neo4", "ecard1", "ecard2", "ecard3", "np"],
 	"CHT.All_Cards_3": ["ex1", "ex2", "ex3", "ex4", "ex5", "ex6", "ex7", "ex8"],
-	"CHT.All_Cards_4": ["ex9", "ex10", "ex11", "ex12", "ex13", "ex14", "ex15", "ex16"],
+	"CHT.All_Cards_4": ["ex9", "ex10", "ex11", "ex12", "ex13", "ex14", "ex15", "ex16",
+						"pop1", "pop2", "pop3", "pop4", "pop5", "pop6"],
 }
 
 # Returns the display message if `name` is a recognised cheat code and the
@@ -39,6 +43,7 @@ static func _apply(code: String) -> void:
 		"CHT.All_Cards_1", "CHT.All_Cards_2", "CHT.All_Cards_3", "CHT.All_Cards_4":
 			for set_id in _SET_GROUPS[code]:
 				_set_cards_in_set(set_id, 99)
+			print("ISSUE #99 FIX ACTIVE: ", code, " unlocked sets ", _SET_GROUPS[code])
 		"CHT.Gimme_Cash":
 			var current := GameState.get_cash()
 			GameState.add_cash(99999 - current)

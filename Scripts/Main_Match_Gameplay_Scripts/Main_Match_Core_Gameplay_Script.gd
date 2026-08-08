@@ -4986,7 +4986,6 @@ func check_and_handle_knockout(pokemon: card_object, is_opponent: bool) -> bool:
 	# animation. They come back with the replacement Pokemon via display_hp_circles_above_align.
 	if pokemon == active:
 		set_active_slot_visible(is_opponent, false)
-		print("ISSUE #87 FIX ACTIVE: hid the Active slot + HP squares for the knockout animation")
 
 	await animate_card_a_to_b(from_node, discard_node, 0.3, pokemon_texture, card_scales[10])
 
@@ -6836,7 +6835,6 @@ func _input(event: InputEvent) -> void:
 		# the selected card. Scrolling is not a click: drop wheel events here and let the ScrollContainer
 		# under the cursor do its job.
 		if event.button_index in [MOUSE_BUTTON_WHEEL_UP, MOUSE_BUTTON_WHEEL_DOWN, MOUSE_BUTTON_WHEEL_LEFT, MOUSE_BUTTON_WHEEL_RIGHT]:
-			print("ISSUE #89 FIX ACTIVE: mouse-wheel event ignored (scrolling is not a click)")
 			return
 
 		if msgbox_container.visible:
@@ -6852,10 +6850,8 @@ func _input(event: InputEvent) -> void:
 		# cancelling the mode.
 		if event.button_index == MOUSE_BUTTON_RIGHT:
 			if cancel_button.visible and not cancel_button.disabled:
-				print("ISSUE #88 FIX ACTIVE: right-click pressed the on-screen Cancel button ('", cancel_button.text, "')")
 				cancel_button.pressed.emit()
 			else:
-				print("ISSUE #88 FIX ACTIVE: right-click treated as blank-space click (no Cancel button on screen)")
 				clear_current_action_selection()
 			get_viewport().set_input_as_handled()
 			return

@@ -11,6 +11,11 @@ var shopkeeper_scene = preload("res://Scenes/Objects/Shopkeeper_Object_Scene.tsc
 const CONSTANT_DATA_PATH := "res://NPC_and_Opponent_Data/All_NPC_Constant_Data.json"
 const SHOP_CONFIG_PATH   := "res://NPC_and_Opponent_Data/Shop_Config/shops.json"
 
+# TWEAKABLE — body-text size for the "big announcement" messagebox style (the starter box upstairs,
+# and since ISSUE #104 every "You received the X" gift/purchase notice). Normal dialogue is 28.
+# This is a CEILING: set_body_text() shrinks past it if the text wouldn't otherwise fit the panel.
+const LARGE_MESSAGE_FONT_SIZE := 40
+
 var _shop_configs: Dictionary = {}
 var _shop_configs_loaded: bool = false
 
@@ -596,12 +601,18 @@ func _show_large_message_with_ok(text: String) -> void:
 	# The box already uses this font — only the size sets a large message apart
 	# now. Horizontal centring via bbcode (RichTextLabel has no
 	# horizontal_alignment); vertical centring is the box's default.
-	message_panel.set_body_text("[center]" + text + "[/center]", 40)
+	message_panel.set_body_text("[center]" + text + "[/center]", LARGE_MESSAGE_FONT_SIZE)
 	yes_button.visible = false
 	no_button.visible  = false
 	ok_button.visible  = true
 	message_panel.visible = true
 	_player.can_move = false
+
+# ISSUE #104: as _show_large_message_with_ok, but fires `on_ok` once the player dismisses it. Used to
+# chain a big "You received the X" notice into the follow-up dialogue.
+func _show_large_message_then(text: String, on_ok: Callable) -> void:
+	_pending_ok_action = on_ok
+	_show_large_message_with_ok(text)
 
 func _hide_message():
 	message_panel.visible = false
@@ -1120,7 +1131,8 @@ func _show_gift_display(text: String, image_paths: Array, kind: String) -> void:
 		entries.append({"texture": tex, "size": actual_size, "card_uid": card_uid})
 
 	if entries.is_empty():
-		_show_message_with_ok(text)
+		# ISSUE #104: gift notices use the big centred style, matching the starter box upstairs.
+		_show_large_message_with_ok(text)
 		return
 
 	# ── PASS 2: Compute total layout width and start_x for centring ──
@@ -1167,8 +1179,11 @@ func _show_gift_display(text: String, image_paths: Array, kind: String) -> void:
 	if message_panel.get_parent() == _ui_layer:
 		_ui_layer.move_child(message_panel, _ui_layer.get_child_count() - 1)
 
-	# Show the message panel WITHOUT the OK button — animation must complete first
-	_show_message_with_ok(text)
+	# Show the message panel WITHOUT the OK button — animation must complete first.
+	# ISSUE #104 FIX ACTIVE: "You received the X" now uses the same large centred style as the
+	# starter box upstairs (_show_large_message_with_ok) instead of ordinary 28pt dialogue.
+	print("ISSUE #104 FIX ACTIVE: gift notice shown at large size — ", text)
+	_show_large_message_with_ok(text)
 	ok_button.visible = false
 
 	# ── PASS 4: Kick off reveal animations (parallel) ──

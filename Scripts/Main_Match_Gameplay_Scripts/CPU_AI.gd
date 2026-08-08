@@ -356,18 +356,62 @@ func evaluate_single_pokemon(pokemon: card_object) -> Dictionary:
 
 	return data
 
+# ISSUE #103: damage a Pokemon is GUARANTEED to take from its own Special Conditions between now and
+# the opponent's next attack. process_status_between_turns() runs for both Actives at the end of every
+# turn, so exactly one tick lands in that window.
+#
+# Only certainties are counted. Poison always ticks (scaled by the poison_damage_multiplier match
+# effect, and 20 not 10 for Toxic). Burn counts only under modern rules, where it is unconditional —
+# under base-set rules burn is a coin flip, so it is not guaranteed and must not inflate a "this WILL
+# die" judgement.
+func status_damage_before_next_attack(pokemon: card_object, is_opponent: bool) -> int:
+	if pokemon == null:
+		return 0
+	var total = 0
+	if pokemon.is_poisoned:
+		total += main.match_effects.poison_tick_damage(pokemon.poison_damage, is_opponent)
+	if pokemon.is_burned and main.burn_rules == "modern_era_burn_rules":
+		total += 40 if (main.powers_and_bodies.is_fiery_aura_active() or main.is_stadium_in_play("ex12-74")) else 20
+	return total
+
+# ISSUE #103: true when the CPU's Active dies to its own status alone, whatever the player does.
+# Nothing the CPU spends on it (Defender, Energy, PlusPower) can change that outcome.
+func cpu_active_dies_to_status() -> bool:
+	var active = main.opponent_active_pokemon
+	if active == null:
+		return false
+	return status_damage_before_next_attack(active, true) >= active.current_hp
+
 # Parses an attack's damage string and returns min/max estimate (placeholder until full effect parsing)
 func evaluate_ko_threats() -> Dictionary:
 	var result = {
 		"cpu_active_guaranteed_ko": false,
 		"cpu_active_potential_ko": false,
-		"player_bench_ko_threat": false
+		"player_bench_ko_threat": false,
+		"cpu_active_dies_to_status": false,
 	}
 
 	if main.opponent_active_pokemon == null or main.player_active_pokemon == null:
 		return result
 
-	var cpu_active_hp = main.opponent_active_pokemon.current_hp
+	# ISSUE #103 FIX ACTIVE: the CPU's Active takes its poison/burn tick BEFORE the player's next
+	# attack lands, so the HP that attack actually has to chew through is what's left after the tick.
+	# Scoring against raw current_hp is why the CPU spent a Defender saving a poisoned 10-HP Pokemon
+	# from a knockout that poison was going to deliver anyway.
+	var status_tick = status_damage_before_next_attack(main.opponent_active_pokemon, true)
+	var cpu_active_hp = max(0, main.opponent_active_pokemon.current_hp - status_tick)
+	if status_tick > 0:
+		print("ISSUE #103 FIX ACTIVE: CPU Active takes ", status_tick, " status damage before the player's next attack — effective HP ",
+			main.opponent_active_pokemon.current_hp, " -> ", cpu_active_hp)
+	if cpu_active_hp <= 0:
+		# Status alone finishes it. Flag it up front (the loops below only reach the same conclusion
+		# if the player's Active happens to have a usable attack) so every "is it worth investing in
+		# this Pokemon?" check downstream says no. Deliberately NOT an early return —
+		# player_bench_ko_threat still has to be evaluated for the rest of the CPU's decisions.
+		result["cpu_active_guaranteed_ko"] = true
+		result["cpu_active_dies_to_status"] = true
+		print("ISSUE #103 FIX ACTIVE: CPU Active is a guaranteed status KO — no card can save it")
+
 	var player_types = main.player_active_pokemon.metadata.get("types", ["Colorless"])
 
 	# 1.1 and 1.2: Check each attack on the player's active pokemon
@@ -1876,7 +1920,10 @@ func cpu_phase_energy_attachment(cpu_eval: Dictionary) -> void:
 func _active_is_doomed(pokemon: card_object, cpu_eval: Dictionary) -> bool:
 	if cpu_eval.get("cpu_active_guaranteed_ko", false):
 		return true
-	if pokemon.is_poisoned and pokemon.current_hp <= pokemon.poison_damage:
+	# ISSUE #103: was a raw `current_hp <= poison_damage` test, which missed the poison_damage_multiplier
+	# match effect and ignored burn entirely. Route through the shared helper so every status that is
+	# guaranteed to tick counts.
+	if status_damage_before_next_attack(pokemon, true) >= pokemon.current_hp:
 		return true
 	return false
 
@@ -1943,6 +1990,13 @@ func score_energy_pair(pokemon: card_object, energy_card: card_object, cpu_eval:
 		#     secures a KO right now — the flying poisoned 10-HP Pikachu with 3 Energy + 4 empty bench.
 		if _can_atk and _doomed and not _enables_ko:
 			print("ISSUE #35 FIX ACTIVE: doomed Active ", pokemon.metadata.get("name", "?"), " can already attack — surplus energy deprioritised (-400)")
+			return -400.0
+		# ISSUE #103 FIX ACTIVE: (a) only fired when the Active could ALREADY attack, so the CPU happily
+		# poured Energy into a Pokemon that its own poison was certain to knock out before it ever got
+		# to use it. Energy sunk into a Pokemon dying to status is gone whether or not it can attack —
+		# only an attach that wins the KO *this* turn is worth making.
+		if cpu_eval.get("cpu_active_dies_to_status", false) and not _enables_ko:
+			print("ISSUE #103 FIX ACTIVE: ", pokemon.metadata.get("name", "?"), " dies to its own status this turn — energy attach deprioritised (-400)")
 			return -400.0
 		# (b) Active is fully powered (every attack's Energy met) with no evolution or extra-Energy
 		#     scaling benefit. Banking more on it beats nothing — let a needy bench win. The Sandshrew
@@ -2723,6 +2777,10 @@ func cpu_phase_attack(cpu_eval: Dictionary) -> void:
 		var damage_range = main.attack_effects.estimate_attack_damage_range(damage_source_attack, main.opponent_active_pokemon, main.player_active_pokemon)
 		var min_result = main.calculate_final_damage(damage_range["min"], cpu_types, main.player_active_pokemon)
 		var max_result = main.calculate_final_damage(damage_range["max"], cpu_types, main.player_active_pokemon)
+		# ISSUE #95: coin-flip attacks have a min of 0, so scoring base damage off min valued every one
+		# of them at nothing (Comet Punch with 4 Energy scored 0 and lost to Fetch). Score off the
+		# AVERAGE roll instead; min/max still drive the guaranteed/potential KO tests below.
+		var exp_result = main.calculate_final_damage(damage_range["expected"], cpu_types, main.player_active_pokemon)
 		var parsed_effects = main.attack_effects.parse_card_text_effects(damage_source_attack.get("text", ""), pokemon_name)
 
 		# ISSUE #11 FIX ACTIVE: a guaranteed (no coin-flip) Poison inflict is realistically worth
@@ -2740,6 +2798,7 @@ func cpu_phase_attack(cpu_eval: Dictionary) -> void:
 			print("ISSUE #11 FIX ACTIVE (cpu_phase_attack): crediting +", guaranteed_poison_bonus, " guaranteed poison damage for ", attack.get("name", ""))
 		var effective_min_damage = min_result["damage"] + guaranteed_poison_bonus
 		var effective_max_damage = max_result["damage"] + guaranteed_poison_bonus
+		var effective_exp_damage = exp_result["damage"] + guaranteed_poison_bonus
 
 		# ---- GUARANTEED KO: Strongly prefer ----
 		if effective_min_damage >= player_hp:
@@ -2748,9 +2807,17 @@ func cpu_phase_attack(cpu_eval: Dictionary) -> void:
 		# ---- POTENTIAL KO: Variable damage might KO ----
 		elif effective_max_damage >= player_hp:
 			score += 200.0
+			# ISSUE #95: a coin attack whose AVERAGE roll already kills is a far better bet than one
+			# that only kills on an all-heads miracle — separate the two instead of scoring both +200.
+			if effective_exp_damage >= player_hp:
+				score += 100.0
 
 		# ---- BASE DAMAGE CONTRIBUTION ----
-		score += effective_min_damage * 2.0
+		# ISSUE #95 FIX ACTIVE: average roll, not the guaranteed floor (see exp_result above).
+		score += effective_exp_damage * 2.0
+		if effective_exp_damage != effective_min_damage:
+			print("ISSUE #95 FIX ACTIVE: ", attack.get("name", ""), " scored on expected damage ",
+				effective_exp_damage, " (min ", effective_min_damage, " / max ", effective_max_damage, ")")
 
 		# ---- STATUS CONDITION SCORING (items 6-7) ----
 		var has_status_effect_only = false
@@ -5343,10 +5410,21 @@ func _cpu_score_defender() -> float:
 	var active = main.opponent_active_pokemon
 	if active == null or main.player_active_pokemon == null: return 0.0
 
+	# ISSUE #103 FIX ACTIVE: a Defender only blunts the player's ATTACK — it does nothing about poison
+	# or burn. The HP that has to survive the attack is what's left after this turn's status tick, and
+	# if the tick alone is lethal the Defender is thrown away entirely. This is the reported case: a
+	# poisoned Active on 10 HP got a Defender to "save" it from an attack, then died to the poison.
+	var status_tick = status_damage_before_next_attack(active, true)
+	var effective_hp = active.current_hp - status_tick
+	if effective_hp <= 0:
+		print("ISSUE #103 FIX ACTIVE: Defender scored 0 — ", active.metadata.get("name", "?"),
+			" dies to ", status_tick, " status damage regardless (HP ", active.current_hp, ")")
+		return 0.0
+
 	# Damage the player can do to us right now (respecting Defenders already attached).
 	var incoming_max_now = _player_effective_damage_against(active, true)
 	# ISSUE #65: if the incoming attack can't KO us even on its best roll, don't waste a Defender.
-	if incoming_max_now < active.current_hp:
+	if incoming_max_now < effective_hp:
 		return 0.0
 
 	# Count Defenders we could still attach this turn.
@@ -5369,10 +5447,10 @@ func _cpu_score_defender() -> float:
 	active.defender_turns_remaining = saved_turns
 
 	# Full stack guarantees survival (even the worst roll is survived) — clearly worth it.
-	if incoming_max_full < active.current_hp:
+	if incoming_max_full < effective_hp:
 		return 95.0
 	# Even the guaranteed (min-roll) damage still KOs through every Defender — nothing can be saved, don't waste.
-	if incoming_min_full >= active.current_hp:
+	if incoming_min_full >= effective_hp:
 		return 0.0
 	# In-between (a coin-flip attack): the stack converts a certain KO into a survivable chance — play it.
 	return 80.0

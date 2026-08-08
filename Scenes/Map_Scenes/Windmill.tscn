@@ -2,7 +2,7 @@
 
 [ext_resource type="Script" uid="uid://whm3sqvrpohw" path="res://Scripts/Map_Scripts/Windmill.gd" id="1_u04si"]
 [ext_resource type="TileSet" uid="uid://yus3igcnpw1m" path="res://Image_Assets/Map_Sheets/Tile_Sets/Player_Home_Tileset.tres" id="2_witqj"]
-[ext_resource type="Texture2D" uid="uid://bx3bwk33dets8" path="res://Image_Assets/Misc/starter_box.png" id="3_20k4s"]
+[ext_resource type="Texture2D" uid="uid://bx3bwk33dets8" path="res://Image_Assets/Map_Objects/starter_box.png" id="3_20k4s"]
 [ext_resource type="PackedScene" uid="uid://bprufyh8mxqom" path="res://Scenes/Objects/Player_Object_Scene.tscn" id="4_0nrty"]
 [ext_resource type="Texture2D" uid="uid://dvox0sjxpc2hs" path="res://Image_Assets/Character_Sprites/Mewtwo.png" id="5_witqj"]
 

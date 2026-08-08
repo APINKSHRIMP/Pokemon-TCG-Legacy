@@ -37,6 +37,12 @@ var _is_rebuilding    : bool = false
 var zoom_overlay       : CanvasLayer = null
 var is_zoomed          : bool = false
 var last_zoomed_sleeve : Control = null
+# ISSUE #98: hold-to-preview, matching the deck builder. While Space is held _process re-reads the
+# hovered sleeve every frame; the preview is sticky over the gaps between sleeves so sliding across
+# the grid never flashes the UI back on. Only releasing Space closes it.
+var space_held         : bool = false
+var zoomed_sleeve      : Control = null
+var zoom_image         : TextureRect = null
 
 # ─── Loading state (ISSUE #32) ────────────────────────────────────────────────
 var _loading_overlay   : MenuLoadingOverlay = MenuLoadingOverlay.new()
@@ -421,6 +427,7 @@ func _input(event: InputEvent) -> void:
 	if event is InputEventKey:
 		if event.pressed and event.keycode == KEY_ESCAPE:
 			if is_zoomed:
+				space_held = false   # ISSUE #98: drop the hold too, or _process re-opens the preview
 				_hide_zoom()
 				return
 			_load_cancelled = true   # ISSUE #32: stop the load loop before the scene is freed
@@ -429,19 +436,35 @@ func _input(event: InputEvent) -> void:
 			return
 
 		if event.keycode == KEY_SPACE:
+			# ISSUE #97 FIX ACTIVE: Space doubles as "ui_accept", so an unhandled event re-presses
+			# whichever Button still has focus. Consume both edges.
+			get_viewport().set_input_as_handled()
 			if event.pressed and not event.is_echo():
-				var wrapper = _get_hovered_sleeve()
-				if wrapper == null and last_zoomed_sleeve != null and is_instance_valid(last_zoomed_sleeve):
-					wrapper = last_zoomed_sleeve
-				if wrapper != null:
-					_show_zoom(wrapper)
+				space_held = true
+				_refresh_hover_preview()
 			elif not event.pressed:
+				space_held = false
 				_hide_zoom()
 
 	if event is InputEventMouseButton \
 			and event.button_index == MOUSE_BUTTON_LEFT \
 			and event.pressed:
 		call_deferred("_check_click_miss")
+
+
+# ISSUE #98: while Space is held, keep the preview locked to whatever sleeve the mouse is over.
+func _process(_delta: float) -> void:
+	if space_held:
+		_refresh_hover_preview()
+
+
+func _refresh_hover_preview() -> void:
+	var wrapper := _get_hovered_sleeve()
+	if wrapper == zoomed_sleeve:
+		return
+	if wrapper == null:
+		return   # gap between sleeves — hold the current preview rather than flashing it off
+	_show_zoom(wrapper)
 
 
 func _check_click_miss() -> void:
@@ -479,8 +502,6 @@ func _large_sleeve_texture(base_name: String) -> Texture2D:
 
 
 func _show_zoom(wrapper: Control) -> void:
-	if is_zoomed:
-		return
 	var rect : TextureRect = null
 	for child in wrapper.get_children():
 		if child is TextureRect:
@@ -494,8 +515,16 @@ func _show_zoom(wrapper: Control) -> void:
 	if zoom_texture == null:
 		zoom_texture = rect.texture
 
-	is_zoomed = true
 	last_zoomed_sleeve = wrapper
+	zoomed_sleeve      = wrapper
+
+	# ISSUE #98: overlay already up — swap the image in place rather than rebuilding the CanvasLayer,
+	# which flashed the bright sleeve grid through for a frame on every hover change.
+	if is_zoomed and zoom_image != null and is_instance_valid(zoom_image):
+		_apply_zoom_texture(zoom_texture)
+		return
+
+	is_zoomed = true
 
 	zoom_overlay = CanvasLayer.new()
 	zoom_overlay.layer = 150
@@ -505,27 +534,36 @@ func _show_zoom(wrapper: Control) -> void:
 	backdrop.color         = Color(0, 0, 0, 0.95)
 	backdrop.anchor_right  = 1.0
 	backdrop.anchor_bottom = 1.0
+	# Must not absorb hover or gui_get_hovered_control() would report the backdrop, not the grid.
+	backdrop.mouse_filter  = Control.MOUSE_FILTER_IGNORE
 	zoom_overlay.add_child(backdrop)
 
-	# Fit within 980px tall (50px margin top+bottom), up to 1000px wide
+	zoom_image = TextureRect.new()
+	zoom_image.expand_mode  = TextureRect.EXPAND_IGNORE_SIZE
+	zoom_image.stretch_mode = TextureRect.STRETCH_SCALE
+	zoom_image.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	zoom_overlay.add_child(zoom_image)
+	_apply_zoom_texture(zoom_texture)
+
+
+# Fit within 980px tall (50px margin top+bottom), up to 1000px wide
+func _apply_zoom_texture(zoom_texture: Texture2D) -> void:
 	var tex_size  := zoom_texture.get_size()
 	var target    := Vector2(1000.0, 980.0)
 	var s         := minf(target.x / tex_size.x, target.y / tex_size.y)
 	var disp_size := Vector2(tex_size.x * s, tex_size.y * s)
 
-	var zoom_rect := TextureRect.new()
-	zoom_rect.texture             = zoom_texture
-	zoom_rect.expand_mode         = TextureRect.EXPAND_IGNORE_SIZE
-	zoom_rect.stretch_mode        = TextureRect.STRETCH_SCALE
-	zoom_rect.size                = disp_size
-	zoom_rect.position            = Vector2((1920.0 - disp_size.x) / 2.0, (1080.0 - disp_size.y) / 2.0)
-	zoom_overlay.add_child(zoom_rect)
+	zoom_image.texture  = zoom_texture
+	zoom_image.size     = disp_size
+	zoom_image.position = Vector2((1920.0 - disp_size.x) / 2.0, (1080.0 - disp_size.y) / 2.0)
 
 
 func _hide_zoom() -> void:
 	if not is_zoomed:
 		return
-	is_zoomed = false
+	is_zoomed      = false
+	zoomed_sleeve  = null
+	zoom_image     = null
 	if zoom_overlay != null:
 		zoom_overlay.queue_free()
 		zoom_overlay = null

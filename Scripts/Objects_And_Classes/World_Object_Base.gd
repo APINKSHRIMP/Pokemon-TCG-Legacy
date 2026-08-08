@@ -73,6 +73,11 @@ const FIXED_FACING_PATTERNS = ["idle_cycle", "idle_left", "idle_right", "idle_up
 
 func _ready():
 	animated_sprite.sprite_frames = SpriteSheetLoader.load_sprite_frames(sprite)
+	# ISSUE #100: a sprite name that doesn't match a file in Overworld_Sprites/ returns null here, and
+	# the actor then spawns completely invisible with no other symptom — name it in the console so a
+	# renamed/missing sheet is obvious rather than looking like a spawn-condition bug.
+	if animated_sprite.sprite_frames == null:
+		push_error("ISSUE #100: '" + name + "' has no sprite sheet for '" + sprite + "' — it will be INVISIBLE")
 	animated_sprite.scale = Vector2(0.5, 0.5)
 	animated_sprite.play("idle_down")
 	_setup_bubble()
@@ -87,7 +92,7 @@ func _ready():
 		# The locked idle_* patterns exist precisely to pin a direction, and idle_cycle must keep playing
 		# its walk animation (an idle_ animation would freeze it, since _physics_process never replays it).
 		if movement_pattern in FIXED_FACING_PATTERNS:
-			print("ISSUE #81 FIX ACTIVE: kept pattern facing '", current_facing, "' on ", name, " (pattern ", movement_pattern, " ignores restore_facing)")
+			pass   # keep the pattern's own facing
 		elif rf != "" and animated_sprite.sprite_frames != null and animated_sprite.sprite_frames.has_animation("idle_" + rf):
 			current_facing = rf
 			animated_sprite.play("idle_" + rf)
@@ -193,7 +198,7 @@ func _setup_bubble():
 	add_child(_bubble_sprite)
 
 func _get_bubble_texture() -> Texture2D:
-	return load("res://image_assets/misc/new_talk.png")
+	return load("res://Image_Assets/Icons/Message_Icons/new_talk.png")
 
 func show_bubble():
 	if _bubble_sprite == null:

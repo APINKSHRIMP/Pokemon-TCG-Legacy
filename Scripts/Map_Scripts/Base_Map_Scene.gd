@@ -106,25 +106,47 @@ func _ready():
 	var scene_path := get_scene_path()
 	var entry_positions := get_entry_positions()
 
+	# ISSUE #96 FIX: every branch below is fed by a ONE-SHOT flag, but each used to clear only its own
+	# flag — so whenever a higher-priority branch won, the loser's flag survived into the next map load
+	# and hijacked that spawn instead ("spawns are whack all over"). The worst offender was
+	# entering_from: a door key with no matching entry in the destination fell through to the default
+	# spawn and left the key set, so the NEXT map that happened to define that key teleported the
+	# player to it. Resolve first, then consume ALL of them unconditionally.
+	var resolved_spawn: Vector2
+	var resolved_dir: String = GameState.get_player_direction()
+	var spawn_source: String
 	if GameState.has_menu_return_state and GameState.menu_return_scene_path == scene_path:
-		_player.position = GameState.menu_return_position
-		_player.set_direction(GameState.menu_return_direction)
-		GameState.clear_menu_return_state()
+		resolved_spawn = GameState.menu_return_position
+		resolved_dir   = GameState.menu_return_direction
+		spawn_source   = "menu_return"
 	elif GameState.use_spawn_position:
-		_player.position = GameState.spawn_position
-		_player.set_direction(GameState.get_player_direction())
-		GameState.use_spawn_position = false
+		resolved_spawn = GameState.spawn_position
+		spawn_source   = "shop_return"
 	elif GameState.returning_from_battle:
-		_player.position = GameState.player_position
-		_player.set_direction(GameState.get_player_direction())
-		GameState.returning_from_battle = false
+		resolved_spawn = GameState.player_position
+		spawn_source   = "battle_return"
 	elif entry_positions.has(GameState.entering_from):
-		_player.position = entry_positions[GameState.entering_from]
-		_player.set_direction(GameState.get_player_direction())
-		GameState.entering_from = ""
+		resolved_spawn = entry_positions[GameState.entering_from]
+		spawn_source   = "door:" + GameState.entering_from
 	else:
-		_player.position = get_default_spawn()
-		_player.set_direction(GameState.get_player_direction())
+		resolved_spawn = get_default_spawn()
+		spawn_source   = "default"
+
+	_player.position = resolved_spawn
+	_player.set_direction(resolved_dir)
+
+	# Menu-return state is only ever consumed by the scene it names, so clear it only on a match —
+	# a different map must not eat a pending return into another one.
+	if GameState.menu_return_scene_path == scene_path:
+		GameState.clear_menu_return_state()
+	GameState.use_spawn_position = false
+	GameState.entering_from      = ""
+	# returning_from_battle is deliberately NOT cleared here: MapManager.initialise() below still needs
+	# it to respawn the opponent that was just fought, to resolve opponent_defeated spawn conditions,
+	# and to show the post-battle dialogue. It clears the flag itself in _handle_battle_return().
+	# (The old code cleared it in the battle branch — i.e. BEFORE initialise — so whenever that branch
+	# actually won, all three of those behaviours silently no-op'd.)
+	print("ISSUE #96 FIX ACTIVE: spawned in ", scene_path.get_file(), " at ", resolved_spawn, " via ", spawn_source)
 
 	GameState.save_current_location(scene_path, _player.position)
 
@@ -288,6 +310,16 @@ func _close_menu_overlay() -> void:
 	_menu_instance = null
 	if GameState.menu_overlay_host == self:
 		GameState.menu_overlay_host = null
+	# ISSUE #96 FIX: _open_menu_overlay() saves a menu-return position so a full scene change back into
+	# this map lands the player where they opened the menu. Since ISSUE #52 the overlay closes WITHOUT
+	# a scene change, so nothing ever consumed that state — it sat in GameState forever and won the
+	# spawn-resolution race in _ready() (it is checked first). Every later load of this same scene —
+	# returning from a battle, walking back in through a door — then teleported the player to that stale
+	# spot instead of the spot in front of the trainer / the doorway. The state has served its purpose
+	# the moment the overlay closes in place, so drop it here.
+	if GameState.has_menu_return_state and GameState.menu_return_scene_path == get_scene_path():
+		print("ISSUE #96 FIX ACTIVE: cleared stale menu-return state on overlay close for ", get_scene_path())
+		GameState.clear_menu_return_state()
 	_player.unlock_movement()
 	var bgm := get_bgm_path()
 	if bgm != "":

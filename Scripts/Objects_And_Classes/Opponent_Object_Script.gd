@@ -37,9 +37,9 @@ func _ready():
 
 func _get_bubble_texture() -> Texture2D:
 	if GameState.has_beaten_opponent(opponent_name):
-		return load("res://image_assets/misc/old_battle.png")
+		return load("res://Image_Assets/Icons/Message_Icons/old_battle.png")
 	else:
-		return load("res://image_assets/misc/new_battle.png")
+		return load("res://Image_Assets/Icons/Message_Icons/new_battle.png")
 
 # Body text only. The name, deck and prize count used to be baked into this
 # string; they are now info chips above the message box (see

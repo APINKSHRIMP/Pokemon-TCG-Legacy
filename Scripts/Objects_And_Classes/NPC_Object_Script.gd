@@ -42,12 +42,12 @@ func _ready():
 
 func _get_bubble_texture() -> Texture2D:
 	if npc_type == "shop":
-		return load("res://image_assets/misc/shop_talk.png")
+		return load("res://Image_Assets/Icons/Message_Icons/shop_talk.png")
 	var already_interacted = has_gift_been_given() if is_gift_npc() else has_been_met()
 	if already_interacted:
-		return load("res://image_assets/misc/old_talk.png")
+		return load("res://Image_Assets/Icons/Message_Icons/old_talk.png")
 	else:
-		return load("res://image_assets/misc/new_talk.png")
+		return load("res://Image_Assets/Icons/Message_Icons/new_talk.png")
 
 # ============================================================
 # TRACKING

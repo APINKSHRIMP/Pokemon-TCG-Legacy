@@ -241,11 +241,16 @@ func _show_card_reveal(card: Dictionary) -> void:
 	reveal_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	overlay_layer.add_child(reveal_rect)
 
+	# ISSUE #101 FIX ACTIVE: the sparkle used to start here, before the flip — so the card was still
+	# spinning through its card-back frames while already glittering, which gave the reveal away and
+	# looked wrong. Start it only once the flip has fully settled on the card face.
 	var cd : Dictionary = {"id": card["id"], "supertype": card["supertype"], "types": card["types"]}
-	_start_holo_sparkle_on_layer(reveal_rect, cd, overlay_layer)
 
 	var back_tex : Texture2D = load(CARD_BACK_PATH)
 	await _play_flip_animation(reveal_rect, back_tex, face_tex)
+
+	print("ISSUE #101 FIX ACTIVE: flip finished — starting holo sparkle for ", card["id"])
+	_start_holo_sparkle_on_layer(reveal_rect, cd, overlay_layer)
 
 	var got_label := Label.new()
 	got_label.text                 = "You got " + card["name"] + "!"

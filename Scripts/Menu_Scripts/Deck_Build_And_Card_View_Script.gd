@@ -149,6 +149,9 @@ var is_zoomed : bool = false
 var space_held : bool = false
 # The card the overlay is currently showing, so _process only rebuilds it when the hover changes
 var zoomed_card : TextureRect = null
+# ISSUE #98: the TextureRect inside the overlay. Kept so a hover change can swap the image in place
+# rather than freeing and rebuilding the whole CanvasLayer (which flashed the bright UI underneath).
+var zoom_image : TextureRect = null
 
 # RichTextLabel showing the per-set deck breakdown (created in _ready).
 var set_breakdown_label : RichTextLabel = null
@@ -2432,15 +2435,20 @@ func _process(_delta: float) -> void:
 		_refresh_hover_preview()
 
 
-## Shows the hovered card (swapping the overlay if the hover moved to a different card), or hides
-## the preview entirely when the mouse isn't over a card.
+## Shows the hovered card, swapping the image when the hover moves to a different card.
+##
+## ISSUE #98: this used to hide the preview the instant the mouse was over nothing. Sliding between
+## two adjacent cards crosses the few pixels of grid separation, so the overlay was torn down and
+## rebuilt on every crossing — one frame of the bright deck-builder UI showing through, read as a
+## white flash. While Space is held the preview is now STICKY: it only ever changes to another card,
+## never back to nothing. Releasing Space is the only thing that closes it.
 func _refresh_hover_preview() -> void:
 	var card := _get_hovered_card()
 	if card == zoomed_card:
 		return
-	_hide_zoom()
-	if card != null:
-		_show_zoom(card)
+	if card == null:
+		return   # mouse is in the gap between cards (or off the grid) — hold the current preview
+	_show_zoom(card)
 
 
 # ─── Card zoom ──────────────────────────────────────────────────────────────
@@ -2472,9 +2480,6 @@ func _get_hovered_card() -> TextureRect:
 ## displayed at 600×825. Also hides all UI elements except the borders and
 ## background scroller so the card is the sole focus.
 func _show_zoom(card_rect: TextureRect) -> void:
-	if is_zoomed:
-		return
-
 	var card_id : String = card_rect.get_meta("card_id")
 	var card_set := card_id.split("-")[0]
 	# Build path to the LARGE version of the card image
@@ -2482,6 +2487,14 @@ func _show_zoom(card_rect: TextureRect) -> void:
 	var large_texture : Texture2D = load(large_path)
 	if large_texture == null:
 		push_error("DeckBuild: missing large card image " + large_path)
+		return
+
+	# ISSUE #98 FIX ACTIVE: an overlay is already up (the player slid onto another card while holding
+	# Space) — swap the texture in place. Freeing and rebuilding the CanvasLayer let the bright UI
+	# underneath show through for a frame, which is the white flash between cards.
+	if is_zoomed and zoom_image != null and is_instance_valid(zoom_image):
+		zoomed_card = card_rect
+		_apply_zoom_texture(large_texture)
 		return
 
 	is_zoomed = true
@@ -2503,19 +2516,25 @@ func _show_zoom(card_rect: TextureRect) -> void:
 	zoom_overlay.add_child(backdrop)
 
 	# The large card image, sized to fill most of vertical space (~50px margin top/bottom)
+	zoom_image = TextureRect.new()
+	zoom_image.expand_mode  = TextureRect.EXPAND_IGNORE_SIZE
+	zoom_image.stretch_mode = TextureRect.STRETCH_SCALE
+	zoom_image.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	zoom_overlay.add_child(zoom_image)
+	_apply_zoom_texture(large_texture)
+
+
+## ISSUE #98: sets the preview image and re-centres it for that texture's aspect ratio. Split out of
+## _show_zoom so a hover change can reuse the live overlay instead of rebuilding it.
+func _apply_zoom_texture(large_texture: Texture2D) -> void:
 	var tex_size  := large_texture.get_size()
 	var target    := Vector2(1000.0, 980.0)
 	var s         := minf(target.x / tex_size.x, target.y / tex_size.y)
 	var disp_size := Vector2(tex_size.x * s, tex_size.y * s)
 
-	var zoom_card := TextureRect.new()
-	zoom_card.texture      = large_texture
-	zoom_card.expand_mode  = TextureRect.EXPAND_IGNORE_SIZE
-	zoom_card.stretch_mode = TextureRect.STRETCH_SCALE
-	zoom_card.size         = disp_size
-	zoom_card.position     = Vector2((1920.0 - disp_size.x) / 2.0, (1080.0 - disp_size.y) / 2.0)
-	zoom_card.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	zoom_overlay.add_child(zoom_card)
+	zoom_image.texture  = large_texture
+	zoom_image.size     = disp_size
+	zoom_image.position = Vector2((1920.0 - disp_size.x) / 2.0, (1080.0 - disp_size.y) / 2.0)
 
 
 ## Removes the zoom overlay and restores all UI elements.
@@ -2525,6 +2544,7 @@ func _hide_zoom() -> void:
 
 	is_zoomed = false
 	zoomed_card = null
+	zoom_image = null
 
 	if zoom_overlay != null:
 		zoom_overlay.queue_free()

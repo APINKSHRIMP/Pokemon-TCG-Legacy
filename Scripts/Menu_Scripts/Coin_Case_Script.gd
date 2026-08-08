@@ -50,6 +50,13 @@ var _is_rebuilding       : bool = false
 var zoom_overlay     : CanvasLayer = null
 var is_zoomed        : bool = false
 var last_zoomed_coin : TextureRect = null
+# ISSUE #98: same hold-to-preview model as the deck builder — while Space is held, _process re-reads
+# the hovered coin every frame so the player can slide across the grid and flick through previews.
+# The preview is sticky: hovering the gap between coins keeps the current one rather than closing it
+# (closing and reopening flashed the bright UI underneath). Only releasing Space closes it.
+var space_held       : bool = false
+var zoomed_coin      : TextureRect = null
+var zoom_image       : TextureRect = null
 
 # ─── Node references ─────────────────────────────────────────────────────────
 
@@ -102,6 +109,10 @@ func _process(_delta: float) -> void:
 	# so we must update this manually rather than relying on a fixed position.
 	if _active_particles and selected_coin_rect:
 		_active_particles.global_position = selected_coin_rect.global_position + selected_coin_rect.size / 2.0
+
+	# ISSUE #98: while Space is held, keep the preview locked to whatever coin the mouse is over.
+	if space_held:
+		_refresh_hover_preview()
 
 
 # ─── Data loading ────────────────────────────────────────────────────────────
@@ -449,6 +460,7 @@ func _input(event: InputEvent) -> void:
 	if event is InputEventKey:
 		if event.pressed and event.keycode == KEY_ESCAPE:
 			if is_zoomed:
+				space_held = false   # ISSUE #98: drop the hold too, or _process re-opens the preview
 				_hide_zoom()
 				return
 			if GameState.close_sub_menu(): return   # ISSUE #52: map is still loaded behind us — just pop this overlay
@@ -456,19 +468,31 @@ func _input(event: InputEvent) -> void:
 			return
 
 		if event.keycode == KEY_SPACE:
+			# ISSUE #97 FIX ACTIVE: Space is also the "ui_accept" action, so leaving the event
+			# unhandled made it fall through to whichever Button still had focus — pressing "Show
+			# Unowned Coins" a second time just by previewing a coin. Consume it on BOTH the press
+			# and the release so neither edge ever reaches a button.
+			get_viewport().set_input_as_handled()
 			if event.pressed and not event.is_echo():
-				var rect = _get_hovered_coin()
-				if rect == null and last_zoomed_coin != null and is_instance_valid(last_zoomed_coin):
-					rect = last_zoomed_coin
-				if rect != null:
-					_show_zoom(rect)
+				space_held = true
+				_refresh_hover_preview()
 			elif not event.pressed:
+				space_held = false
 				_hide_zoom()
 
 	if event is InputEventMouseButton \
 			and event.button_index == MOUSE_BUTTON_LEFT \
 			and event.pressed:
 		call_deferred("_check_click_miss")
+
+
+func _refresh_hover_preview() -> void:
+	var rect := _get_hovered_coin()
+	if rect == zoomed_coin:
+		return
+	if rect == null:
+		return   # gap between coins — hold the current preview rather than flashing it off
+	_show_zoom(rect)
 
 
 func _check_click_miss() -> void:
@@ -494,13 +518,19 @@ func _get_hovered_coin() -> TextureRect:
 
 
 func _show_zoom(rect: TextureRect) -> void:
-	if is_zoomed:
-		return
 	if rect.texture == null:
 		return
 
-	is_zoomed = true
 	last_zoomed_coin = rect
+	zoomed_coin      = rect
+
+	# ISSUE #98: overlay already up — swap the image in place. Rebuilding the CanvasLayer showed the
+	# bright coin grid through for a frame every time the hover moved to another coin.
+	if is_zoomed and zoom_image != null and is_instance_valid(zoom_image):
+		_apply_zoom_texture(rect.texture)
+		return
+
+	is_zoomed = true
 
 	zoom_overlay = CanvasLayer.new()
 	zoom_overlay.layer = 150
@@ -510,27 +540,37 @@ func _show_zoom(rect: TextureRect) -> void:
 	backdrop.color         = Color(0, 0, 0, 0.95)
 	backdrop.anchor_right  = 1.0
 	backdrop.anchor_bottom = 1.0
+	# The backdrop must never absorb hover, or gui_get_hovered_control() would report it instead of
+	# the coin grid underneath and the live preview could never follow the mouse.
+	backdrop.mouse_filter  = Control.MOUSE_FILTER_IGNORE
 	zoom_overlay.add_child(backdrop)
 
-	# Scale to 5× the grid cell size (100×100), capped so it fits on screen
-	var tex_size  := rect.texture.get_size()
+	zoom_image = TextureRect.new()
+	zoom_image.expand_mode  = TextureRect.EXPAND_IGNORE_SIZE
+	zoom_image.stretch_mode = TextureRect.STRETCH_SCALE
+	zoom_image.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	zoom_overlay.add_child(zoom_image)
+	_apply_zoom_texture(rect.texture)
+
+
+# Scale to 5× the grid cell size (100×100), capped so it fits on screen
+func _apply_zoom_texture(tex: Texture2D) -> void:
+	var tex_size  := tex.get_size()
 	var target    := Vector2(500.0, 500.0)
 	var s         := minf(target.x / tex_size.x, target.y / tex_size.y)
 	var disp_size := Vector2(tex_size.x * s, tex_size.y * s)
 
-	var zoom_rect := TextureRect.new()
-	zoom_rect.texture      = rect.texture
-	zoom_rect.expand_mode  = TextureRect.EXPAND_IGNORE_SIZE
-	zoom_rect.stretch_mode = TextureRect.STRETCH_SCALE
-	zoom_rect.size         = disp_size
-	zoom_rect.position     = Vector2((1920.0 - disp_size.x) / 2.0, (1080.0 - disp_size.y) / 2.0)
-	zoom_overlay.add_child(zoom_rect)
+	zoom_image.texture  = tex
+	zoom_image.size     = disp_size
+	zoom_image.position = Vector2((1920.0 - disp_size.x) / 2.0, (1080.0 - disp_size.y) / 2.0)
 
 
 func _hide_zoom() -> void:
 	if not is_zoomed:
 		return
-	is_zoomed = false
+	is_zoomed   = false
+	zoomed_coin = null
+	zoom_image  = null
 	if zoom_overlay != null:
 		zoom_overlay.queue_free()
 		zoom_overlay = null

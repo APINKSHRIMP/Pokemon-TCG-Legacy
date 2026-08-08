@@ -143,7 +143,6 @@ func set_pack_speed(preset: String, save: bool = true) -> void:
 		return
 	pack_speed_setting = preset
 	pack_animation_speed = PACK_SPEED_PRESETS[preset]
-	print("ISSUE #94 PACK SPEED SET: preset='", preset, "' multiplier=", pack_animation_speed)
 	if save:
 		_save_current_data_field("pack_animation_speed", pack_speed_setting)
 

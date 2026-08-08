@@ -81,7 +81,6 @@ func _load_inventory() -> void:
 	file.close()
 	if data is Dictionary and data.has("coins"):
 		inventory = data["coins"]
-	print("ISSUE #92 COIN SHOP PRICES LOADED: ", inventory.map(func(e): return e.get("cost", DEFAULT_COIN_COST)))
 
 
 func _load_player_data() -> void:

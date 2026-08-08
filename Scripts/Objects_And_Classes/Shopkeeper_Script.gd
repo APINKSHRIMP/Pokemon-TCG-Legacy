@@ -65,7 +65,7 @@ func _load_shop_config():
 		push_error("[Shopkeeper] No config found for shop_id: " + shop_id)
 
 func _get_bubble_texture() -> Texture2D:
-	return load("res://image_assets/misc/shop_talk.png")
+	return load("res://Image_Assets/Icons/Message_Icons/shop_talk.png")
 
 # ============================================================
 # SHOP STATE MACHINE
@@ -165,4 +165,10 @@ func _finish_starter_purchase():
 	if scene.has_method("_update_cash_label"):
 		scene._update_cash_label()
 	print("[Shopkeeper] Starter set purchased. Transitioned to restocking state")
-	MapManager._show_message_with_ok("Thanks for your purchase! I'll get the order in right away for my usual shipment now so they'll be here for tomorrow morning. I'll throw you a couple packs in for free as a thank you when you come back! ")
+	# ISSUE #104 FIX ACTIVE: lead with a big centred "You received the Starter Set!" — the same
+	# announcement style as the starter box upstairs — then fall through to the shopkeeper's line.
+	print("ISSUE #104 FIX ACTIVE: large Starter Set receipt notice shown")
+	MapManager._show_large_message_then(
+		"You received the Starter Set!",
+		func(): MapManager._show_message_with_ok("Thanks for your purchase! I'll get the order in right away for my usual shipment now so they'll be here for tomorrow morning. I'll throw you a couple packs in for free as a thank you when you come back! ")
+	)
