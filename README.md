@@ -2,6 +2,12 @@
 
 ![Trainer icons](Image_Assets/Screenshots/banner.gif)
 
+# Update as of 12/08/2026
+
+So - despite my absolute best effots to have a daily update every single day without fail all year, working on holiday, late nights, early mornings to make progress each day; I've had a nasty accident and smashed my foot to pieces. Due to being in hospital I've lost two days of updates now and the only update today is that of this readme.
+
+Development may slow over the next few weeks while I recover but development WILL continue. I will ensure to post regular updates soon :)
+
 # Update as of 30/07/2026
 
 Debugging going well, issue log being updated and a few bugs being found and fixed every day. 
