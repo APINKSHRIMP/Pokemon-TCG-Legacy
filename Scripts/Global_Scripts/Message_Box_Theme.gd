@@ -32,38 +32,58 @@ const VAL_APPROACH := 0.55
 
 # Theme key -> base colour + hue drift per chip, in degrees.
 # The key is what gets written into Player_Current_Data.json.
+#
+# The greys (white / grey / black) all sit on hue 240 with a sliver of
+# saturation left in, so they read as neutral but still tint the same way every
+# other theme does. "white" is a light grey rather than pure white — the panel's
+# fill is already white, so a true-white base would leave no visible edge glow.
 const THEMES := {
-	"blue":       { "base": "#7598fb", "hue_step": -21.0 },
+	"dark_blue":  { "base": "#5b80ee", "hue_step": -21.0 },
 	"light_blue": { "base": "#6fc0f7", "hue_step": -18.0 },
 	"aqua":       { "base": "#5fd5d8", "hue_step": -14.0 },
+	"lime":       { "base": "#b6f13c", "hue_step": -10.0 },
 	"green":      { "base": "#7fd873", "hue_step": -16.0 },
 	"dark_green": { "base": "#41a76d", "hue_step": -18.0 },
-	"pink":       { "base": "#f887c2", "hue_step":  12.0 },
-	"red":        { "base": "#f87a6e", "hue_step":  11.0 },
+	"light_pink": { "base": "#fba7d4", "hue_step":  12.0 },
+	"dark_pink":  { "base": "#e05fa4", "hue_step":  12.0 },
+	"light_red":  { "base": "#fb9b91", "hue_step":  11.0 },
+	"dark_red":   { "base": "#e05348", "hue_step":  11.0 },
 	"orange":     { "base": "#fba55a", "hue_step":   9.0 },
-	"purple":     { "base": "#a98bf5", "hue_step": -14.0 },
-	"black":      { "base": "#4c4c57", "hue_step":  -8.0 },
+	"yellow":     { "base": "#f9de54", "hue_step":   5.0 },
+	"purple":     { "base": "#8b63ec", "hue_step": -14.0 },
+	"lilac":      { "base": "#c4a5f5", "hue_step": -12.0 },
+	"white":      { "base": "#d2d2dc", "hue_step":  -8.0 },
+	"grey":       { "base": "#666672", "hue_step":  -8.0 },
+	"black":      { "base": "#2e2e36", "hue_step":  -8.0 },
 }
 
 # Display order for the Options screen. Keep in sync with THEMES.
 const THEME_ORDER := [
-	"blue", "light_blue", "aqua", "green", "dark_green",
-	"pink", "red", "orange", "purple", "black",
+	"dark_blue", "light_blue", "aqua", "lime", "green", "dark_green",
+	"light_pink", "dark_pink", "light_red", "dark_red", "orange", "yellow",
+	"purple", "lilac", "white", "grey", "black",
 ]
 
-const DEFAULT_THEME := "blue"
+const DEFAULT_THEME := "dark_blue"
 
 # Human-readable labels for the Options buttons.
 const THEME_LABELS := {
-	"blue":       "blue",
+	"dark_blue":  "dark blue",
 	"light_blue": "light blue",
 	"aqua":       "aqua",
+	"lime":       "lime",
 	"green":      "green",
 	"dark_green": "dark green",
-	"pink":       "pink",
-	"red":        "red",
+	"light_pink": "light pink",
+	"dark_pink":  "dark pink",
+	"light_red":  "light red",
+	"dark_red":   "dark red",
 	"orange":     "orange",
+	"yellow":     "yellow",
 	"purple":     "purple",
+	"lilac":      "lilac",
+	"white":      "white",
+	"grey":       "grey",
 	"black":      "black",
 }
 

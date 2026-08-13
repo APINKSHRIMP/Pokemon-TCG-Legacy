@@ -529,115 +529,209 @@ text = "Message Box Colour"
 horizontal_alignment = 1
 vertical_alignment = 1
 
-[node name="msg_colour_blue_button" type="Button" parent="MSGCOLOUR" unique_id=1620044652]
+[node name="msg_colour_dark_blue_button" type="Button" parent="MSGCOLOUR" unique_id=1620044652]
 z_index = 300
 layout_mode = 0
 offset_left = 157.0
 offset_top = 927.0
-offset_right = 305.0
+offset_right = 249.0
 offset_bottom = 973.0
 theme = ExtResource("8_1e4m1")
-theme_override_font_sizes/font_size = 16
-text = "blue"
+theme_override_font_sizes/font_size = 11
+text = "dark blue"
+clip_text = true
 
 [node name="msg_colour_light_blue_button" type="Button" parent="MSGCOLOUR" unique_id=1620044653]
 z_index = 300
 layout_mode = 0
-offset_left = 319.0
+offset_left = 251.5
 offset_top = 927.0
-offset_right = 467.0
+offset_right = 343.5
 offset_bottom = 973.0
 theme = ExtResource("8_1e4m1")
-theme_override_font_sizes/font_size = 16
+theme_override_font_sizes/font_size = 11
 text = "light blue"
+clip_text = true
 
 [node name="msg_colour_aqua_button" type="Button" parent="MSGCOLOUR" unique_id=1620044654]
 z_index = 300
 layout_mode = 0
-offset_left = 481.0
+offset_left = 346.0
 offset_top = 927.0
-offset_right = 629.0
+offset_right = 438.0
 offset_bottom = 973.0
 theme = ExtResource("8_1e4m1")
-theme_override_font_sizes/font_size = 16
+theme_override_font_sizes/font_size = 11
 text = "aqua"
+clip_text = true
+
+[node name="msg_colour_lime_button" type="Button" parent="MSGCOLOUR" unique_id=1620044662]
+z_index = 300
+layout_mode = 0
+offset_left = 440.5
+offset_top = 927.0
+offset_right = 532.5
+offset_bottom = 973.0
+theme = ExtResource("8_1e4m1")
+theme_override_font_sizes/font_size = 11
+text = "lime"
+clip_text = true
 
 [node name="msg_colour_green_button" type="Button" parent="MSGCOLOUR" unique_id=1620044655]
 z_index = 300
 layout_mode = 0
-offset_left = 643.0
+offset_left = 535.0
 offset_top = 927.0
-offset_right = 791.0
+offset_right = 627.0
 offset_bottom = 973.0
 theme = ExtResource("8_1e4m1")
-theme_override_font_sizes/font_size = 16
+theme_override_font_sizes/font_size = 11
 text = "green"
+clip_text = true
 
 [node name="msg_colour_dark_green_button" type="Button" parent="MSGCOLOUR" unique_id=1620044656]
 z_index = 300
 layout_mode = 0
-offset_left = 805.0
+offset_left = 629.5
 offset_top = 927.0
-offset_right = 953.0
+offset_right = 721.5
 offset_bottom = 973.0
 theme = ExtResource("8_1e4m1")
-theme_override_font_sizes/font_size = 16
+theme_override_font_sizes/font_size = 11
 text = "dark green"
+clip_text = true
 
-[node name="msg_colour_pink_button" type="Button" parent="MSGCOLOUR" unique_id=1620044657]
+[node name="msg_colour_light_pink_button" type="Button" parent="MSGCOLOUR" unique_id=1620044657]
 z_index = 300
 layout_mode = 0
-offset_left = 967.0
+offset_left = 724.0
 offset_top = 927.0
-offset_right = 1115.0
+offset_right = 816.0
 offset_bottom = 973.0
 theme = ExtResource("8_1e4m1")
-theme_override_font_sizes/font_size = 16
-text = "pink"
+theme_override_font_sizes/font_size = 11
+text = "light pink"
+clip_text = true
 
-[node name="msg_colour_red_button" type="Button" parent="MSGCOLOUR" unique_id=1620044658]
+[node name="msg_colour_dark_pink_button" type="Button" parent="MSGCOLOUR" unique_id=1620044663]
 z_index = 300
 layout_mode = 0
-offset_left = 1129.0
+offset_left = 818.5
 offset_top = 927.0
-offset_right = 1277.0
+offset_right = 910.5
 offset_bottom = 973.0
 theme = ExtResource("8_1e4m1")
-theme_override_font_sizes/font_size = 16
-text = "red"
+theme_override_font_sizes/font_size = 11
+text = "dark pink"
+clip_text = true
+
+[node name="msg_colour_light_red_button" type="Button" parent="MSGCOLOUR" unique_id=1620044658]
+z_index = 300
+layout_mode = 0
+offset_left = 913.0
+offset_top = 927.0
+offset_right = 1005.0
+offset_bottom = 973.0
+theme = ExtResource("8_1e4m1")
+theme_override_font_sizes/font_size = 11
+text = "light red"
+clip_text = true
+
+[node name="msg_colour_dark_red_button" type="Button" parent="MSGCOLOUR" unique_id=1620044664]
+z_index = 300
+layout_mode = 0
+offset_left = 1007.5
+offset_top = 927.0
+offset_right = 1099.5
+offset_bottom = 973.0
+theme = ExtResource("8_1e4m1")
+theme_override_font_sizes/font_size = 11
+text = "dark red"
+clip_text = true
 
 [node name="msg_colour_orange_button" type="Button" parent="MSGCOLOUR" unique_id=1620044659]
 z_index = 300
 layout_mode = 0
-offset_left = 1291.0
+offset_left = 1102.0
 offset_top = 927.0
-offset_right = 1439.0
+offset_right = 1194.0
 offset_bottom = 973.0
 theme = ExtResource("8_1e4m1")
-theme_override_font_sizes/font_size = 16
+theme_override_font_sizes/font_size = 11
 text = "orange"
+clip_text = true
+
+[node name="msg_colour_yellow_button" type="Button" parent="MSGCOLOUR" unique_id=1620044665]
+z_index = 300
+layout_mode = 0
+offset_left = 1196.5
+offset_top = 927.0
+offset_right = 1288.5
+offset_bottom = 973.0
+theme = ExtResource("8_1e4m1")
+theme_override_font_sizes/font_size = 11
+text = "yellow"
+clip_text = true
 
 [node name="msg_colour_purple_button" type="Button" parent="MSGCOLOUR" unique_id=1620044660]
 z_index = 300
 layout_mode = 0
-offset_left = 1453.0
+offset_left = 1291.0
 offset_top = 927.0
-offset_right = 1601.0
+offset_right = 1383.0
 offset_bottom = 973.0
 theme = ExtResource("8_1e4m1")
-theme_override_font_sizes/font_size = 16
+theme_override_font_sizes/font_size = 11
 text = "purple"
+clip_text = true
+
+[node name="msg_colour_lilac_button" type="Button" parent="MSGCOLOUR" unique_id=1620044666]
+z_index = 300
+layout_mode = 0
+offset_left = 1385.5
+offset_top = 927.0
+offset_right = 1477.5
+offset_bottom = 973.0
+theme = ExtResource("8_1e4m1")
+theme_override_font_sizes/font_size = 11
+text = "lilac"
+clip_text = true
+
+[node name="msg_colour_white_button" type="Button" parent="MSGCOLOUR" unique_id=1620044667]
+z_index = 300
+layout_mode = 0
+offset_left = 1480.0
+offset_top = 927.0
+offset_right = 1572.0
+offset_bottom = 973.0
+theme = ExtResource("8_1e4m1")
+theme_override_font_sizes/font_size = 11
+text = "white"
+clip_text = true
+
+[node name="msg_colour_grey_button" type="Button" parent="MSGCOLOUR" unique_id=1620044668]
+z_index = 300
+layout_mode = 0
+offset_left = 1574.5
+offset_top = 927.0
+offset_right = 1666.5
+offset_bottom = 973.0
+theme = ExtResource("8_1e4m1")
+theme_override_font_sizes/font_size = 11
+text = "grey"
+clip_text = true
 
 [node name="msg_colour_black_button" type="Button" parent="MSGCOLOUR" unique_id=1620044661]
 z_index = 300
 layout_mode = 0
-offset_left = 1615.0
+offset_left = 1669.0
 offset_top = 927.0
-offset_right = 1763.0
+offset_right = 1761.0
 offset_bottom = 973.0
 theme = ExtResource("8_1e4m1")
-theme_override_font_sizes/font_size = 16
+theme_override_font_sizes/font_size = 11
 text = "black"
+clip_text = true
 
 [node name="MAIN" type="Control" parent="." unique_id=630256141]
 anchors_preset = 0
