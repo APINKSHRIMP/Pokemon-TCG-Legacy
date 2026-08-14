@@ -16,6 +16,10 @@ var loss_text: String = ""
 var coin_reward: String = ""
 var cash_reward: String = ""
 
+# Message box colour theme for this opponent — a key from MessageBoxTheme.THEMES, set on their
+# entry in All_NPC_Constant_Data.json. Empty falls back to MessageBoxTheme.DEFAULT_THEME.
+var message_colour: String = ""
+
 # Deck restrictions block (optional). Schema documented in
 # Deck_Validation_Helper.gd. Empty dict = no restrictions.
 var restrictions: Dictionary = {}

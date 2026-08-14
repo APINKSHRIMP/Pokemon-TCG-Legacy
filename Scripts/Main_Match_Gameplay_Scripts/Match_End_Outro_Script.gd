@@ -554,6 +554,14 @@ func _create_msg_panels() -> void:
 	_gift_label.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	add_child(_gift_panel)
 
+	# Both panels take the beaten opponent's colour, so the whole outro reads as one screen in
+	# their theme rather than the dialogue and the reward notices disagreeing. The key comes off
+	# opponent_data, which load_opponent_data() has already merged with All_NPC_Constant_Data.json
+	# by this point; an unset or unknown key falls back to the default theme inside apply_theme().
+	var opp_colour := str(opponent_data.get("message_colour", ""))
+	_dialogue_panel.apply_theme(opp_colour)
+	_gift_panel.apply_theme(opp_colour)
+
 func _show_dialogue_message(text: String) -> void:
 	if _dialogue_panel == null:
 		return

@@ -831,7 +831,65 @@ Enter the code **exactly** as shown as your player name on the name-entry screen
 
 ---
 
-## 15. Quick-Reference Cheat Sheet
+## 15. Message Box Colour
+
+Every dynamic message box (overworld dialogue, the match outro's dialogue and
+"You received…" panels) takes its colour from **whoever is speaking**. It is not
+a player setting — there is nothing to configure in Options.
+
+**Field:** `message_colour` on the NPC's / opponent's entry in
+`NPC_and_Opponent_Data/All_NPC_Constant_Data.json`.
+**Palette:** `Scripts/Global_Scripts/Message_Box_Theme.gd` (`THEMES`).
+**Readers:** `MapManager._apply_actor_chips` (overworld),
+`Match_End_Outro_Script._create_msg_panels` (post-match).
+
+A theme is one base colour; the panel's edge glow and every info chip above it
+are derived from it, so a single key recolours the whole box.
+
+### 15.1 Allowed values
+
+| | | | |
+|---|---|---|---|
+| `dark_blue` | `light_blue` | `aqua` | `lime` |
+| `green` | `dark_green` | `light_pink` | `dark_pink` |
+| `light_red` | `dark_red` | `orange` | `yellow` |
+| `purple` | `lilac` | `white`¹ | `grey` |
+| `black` | | | |
+
+¹ **`white` is reserved for the rival** (not implemented yet) and is deliberately
+used by no NPC or opponent in the data. Don't hand it out.
+
+An omitted, empty or misspelled value falls back to `MessageBoxTheme.DEFAULT_THEME`
+(`grey`) rather than erroring. Grey is also what every **interactable** uses —
+signs, the TV, the bed — since those boxes are the world talking, not a person.
+A misspelled value additionally logs a `push_warning`, so a typo shows up in the
+editor output rather than silently rendering grey.
+
+### 15.2 Example
+
+```jsonc
+"Firebreather Darryl": {
+  "sprite": "Firebreather",
+  "message_colour": "dark_red",
+  "deck": "Hot Air",
+  "prize_cards": 4
+}
+```
+
+A **day-file placement may override it** the same way it overrides any other
+constant-file field — the constant-file value only fills in where the placement
+does not set one:
+
+```jsonc
+{ "name": "Firebreather Darryl", "message_colour": "orange", "position": { … } }
+```
+
+> The in-match message box (`messagebox_container` in the main gameplay scene)
+> is a separate, older PNG-based box and is **not** themed by this system.
+
+---
+
+## 16. Quick-Reference Cheat Sheet
 
 | I want to… | Edit this |
 |---|---|
@@ -847,9 +905,10 @@ Enter the code **exactly** as shown as your player name on the name-entry screen
 | Add a new card to a set | Append to `Card_Set_Data/<set>.json` (§9.1) |
 | Change a pack's price | Edit `Card_Set_Data/pack_prices.json` (§10) |
 | Add a coin to the Coin Shop | Append to `coin_shop_inventory.json` (§11) |
+| Change an NPC's / opponent's message box colour | `message_colour` on their constant-file entry (§15) |
 | Change a sign's flavour text | Edit `Map_Data/Interactables_Data.json` (§13.1) |
 | Add a new sign / object interaction | New `CollisionShape2D` under `Interactables` (§13.4) |
 
 ---
 
-*Last updated: 2026-06-29*
+*Last updated: 2026-08-14*

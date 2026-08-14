@@ -256,12 +256,16 @@ func _make_shader_rect() -> ColorRect:
 # ============================================================
 # THEMING
 # ============================================================
-# Re-read on every show(), so changing the colour in the Options overlay takes
-# effect the next time a message appears without rebuilding the box.
+# Called on every show() with the CURRENT speaker's colour, so one box can be
+# recoloured for each actor in turn without being rebuilt. Pass the actor's
+# `message_colour`; "" (nobody is speaking — an interactable) falls back to the
+# default theme rather than leaving the last speaker's colour on screen.
 func apply_theme(theme_key: String = "") -> void:
-	if theme_key == "":
-		theme_key = GameState.message_box_colour_setting
 	if not MessageBoxTheme.has_theme(theme_key):
+		# "" is the legitimate no-speaker case. Anything else is a typo in the
+		# data — same visual fallback, but say so rather than swallowing it.
+		if theme_key != "":
+			push_warning("DynamicMessageBox: unknown message_colour '%s'" % theme_key)
 		theme_key = MessageBoxTheme.DEFAULT_THEME
 	_theme_key = theme_key
 
@@ -528,8 +532,8 @@ func _fitted_body_size(text: String, ceiling: int) -> int:
 # SHOWING
 # ============================================================
 
-func show_choices(text: String) -> void:
-	apply_theme()
+func show_choices(text: String, theme_key: String = "") -> void:
+	apply_theme(theme_key)
 	set_body_text(text)
 	if yes_button != null: yes_button.visible = true
 	if no_button  != null: no_button.visible  = true
@@ -537,8 +541,8 @@ func show_choices(text: String) -> void:
 	visible = true
 
 
-func show_ok(text: String) -> void:
-	apply_theme()
+func show_ok(text: String, theme_key: String = "") -> void:
+	apply_theme(theme_key)
 	set_body_text(text)
 	if yes_button != null: yes_button.visible = false
 	if no_button  != null: no_button.visible  = false

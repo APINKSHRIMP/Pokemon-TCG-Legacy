@@ -23,6 +23,9 @@ var npc_name: String = ""
 # the days/times this NPC appears, so gifts and met-flags stay per-instance) and is
 # never shown to the player. friendly_name is what the message box header reads.
 var friendly_name: String = ""
+# Message box colour theme for this NPC — a key from MessageBoxTheme.THEMES, set on their entry
+# in All_NPC_Constant_Data.json. Empty falls back to MessageBoxTheme.DEFAULT_THEME.
+var message_colour: String = ""
 var npc_type: String = "text_only"   # kept for bubble icon: "text_only" | "shop"
 var meet_text: String = ""
 var repeat_text: String = ""

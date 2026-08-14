@@ -263,26 +263,9 @@ func _load_rule_settings() -> void:
 		burn = DEFAULT_BURN_RULE
 	set_burn_rule(burn, false)
 
-# The colour theme applied to every dynamic message box (overworld dialogue, outro panels). The
-# value is a key from MessageBoxTheme.THEMES — one base colour that the whole box, including every
-# info chip, derives its palette from. Persisted in Player_Current_Data.json.
-var message_box_colour_setting: String = MessageBoxTheme.DEFAULT_THEME
-
-func set_message_box_colour(theme_key: String, save: bool = true) -> void:
-	if not MessageBoxTheme.has_theme(theme_key):
-		push_warning("GameState: unknown message box colour '" + theme_key + "'")
-		return
-	message_box_colour_setting = theme_key
-	if save:
-		_save_current_data_field("message_box_colour", theme_key)
-
-# Reads the saved theme out of Player_Current_Data.json. Called once on boot.
-func _load_message_box_colour() -> void:
-	var data := _read_current_data()
-	var key: String = str(data.get("message_box_colour", MessageBoxTheme.DEFAULT_THEME))
-	if not MessageBoxTheme.has_theme(key):
-		key = MessageBoxTheme.DEFAULT_THEME
-	set_message_box_colour(key, false)
+# NOTE: message box colour is deliberately NOT a setting here. Each NPC/opponent carries its own
+# `message_colour` in All_NPC_Constant_Data.json and the box is themed per speaker — see
+# MessageBoxTheme.
 
 # Writes a single key back into Player_Current_Data.json, leaving every other key untouched.
 func _save_current_data_field(key: String, value) -> void:
@@ -538,7 +521,6 @@ func _ready():
 	_load_animation_speed()   # ISSUE #34: apply the saved Options animation-speed preset
 	_load_walking_speed()     # ISSUE #34: apply the saved Options overworld walking-speed preset
 	_load_rule_settings()     # ISSUE #34: apply the saved Options confusion / burn rule choices
-	_load_message_box_colour()  # apply the saved Options message box colour theme
 
 # ============================================================
 # FIRST-RUN DATA MIGRATION (res:// → user://)

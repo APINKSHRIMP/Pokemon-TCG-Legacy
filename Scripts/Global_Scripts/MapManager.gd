@@ -295,6 +295,7 @@ func _load_and_spawn_opponents(json_path: String):
 		opp.loss_text        = entry.get("loss_text", "")
 		opp.coin_reward      = entry.get("coin_reward", "")
 		opp.cash_reward      = entry.get("cash_reward", 0)
+		opp.message_colour   = entry.get("message_colour", "")
 		_assign_actor_position(opp, json_path, entry.get("name", ""), Vector2(entry["position"]["x"], entry["position"]["y"]))
 		opp.movement_pattern = entry.get("pattern", "idle_random")
 		opp.interact_facing  = entry.get("interact_facing", "")
@@ -337,6 +338,7 @@ func _load_and_spawn_opponents(json_path: String):
 			opp.loss_text        = lbe.get("loss_text", "")
 			opp.coin_reward      = lbe.get("coin_reward", "")
 			opp.cash_reward      = lbe.get("cash_reward", 0)
+			opp.message_colour   = lbe.get("message_colour", "")
 			_assign_actor_position(opp, _json_path, lbe.get("name", ""), lbe["position"])
 			opp.movement_pattern = lbe.get("pattern", "idle_random")
 			opp.interact_facing  = lbe.get("interact_facing", "")
@@ -385,6 +387,8 @@ func _load_and_spawn_npcs(json_path: String):
 		# Message-box display name. Falls back to the tracking key so a data entry that
 		# has not been given one still shows something rather than an empty header.
 		npc.friendly_name    = entry.get("friendly_name", entry["name"])
+		# Message box colour theme. Empty is fine — the box falls back to the default.
+		npc.message_colour   = entry.get("message_colour", "")
 		npc.sprite           = entry["sprite"]
 		npc.npc_type         = entry.get("npc_type", "text_only")
 		npc.meet_text        = entry.get("meet_text", "")
@@ -423,6 +427,8 @@ func spawn_npc_entry(entry: Dictionary) -> void:
 		return
 	var npc = npc_scene.instantiate()
 	npc.npc_name         = entry.get("name", "")
+	npc.friendly_name    = entry.get("friendly_name", "")
+	npc.message_colour   = entry.get("message_colour", "")
 	npc.sprite           = entry.get("sprite", "")
 	npc.npc_type         = entry.get("npc_type", "text_only")
 	npc.meet_text        = entry.get("meet_text", "")
@@ -542,12 +548,13 @@ const MSG_ICON_DIR := "res://Image_Assets/Icons/Message_Icons/"
 func _apply_actor_chips() -> void:
 	if message_panel == null:
 		return
-	# Re-read the colour theme first: the Options screen opens as an overlay
-	# over a still-loaded map, so the box has to pick up a colour change
-	# without being rebuilt.
-	message_panel.apply_theme()
+	# Recolour first, THEN build the chips — the chip ramp is derived from the
+	# theme, so setting them the other way round would leave the previous
+	# speaker's colours on the row. The box is shared by everyone the player
+	# talks to, so this runs on every show, not just when the box is built.
 
 	if current_opponent != null:
+		message_panel.apply_theme(current_opponent.message_colour)
 		message_panel.set_chips([
 			{ "text": current_opponent.opponent_name.to_upper(),
 			  "sprite": current_opponent.sprite },
@@ -565,11 +572,16 @@ func _apply_actor_chips() -> void:
 		var shown: String = current_npc.friendly_name if "friendly_name" in current_npc else ""
 		if shown == "":
 			shown = current_npc.npc_name
+		# Guarded like friendly_name above — current_npc is typed Node, so a
+		# future actor script without the field must not hard-crash dialogue.
+		message_panel.apply_theme(current_npc.message_colour if "message_colour" in current_npc else "")
 		message_panel.set_chips([
 			{ "text": shown.to_upper(), "sprite": current_npc.sprite },
 		])
 		return
 
+	# Nobody is speaking (a sign, the TV, the bed) — back to the interactables grey.
+	message_panel.apply_theme()
 	message_panel.clear_chips()
 
 

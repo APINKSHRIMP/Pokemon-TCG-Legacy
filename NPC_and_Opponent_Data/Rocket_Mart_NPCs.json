@@ -4,6 +4,7 @@
       "name": "Rocket_Shopkeeper",
       "friendly_name": "Rocket Shopkeeper",
       "sprite": "Rocket_Shopkeeper",
+      "message_colour": "black",
       "npc_type": "shop",
       "shop_id": "rocket_mart",
       "meet_text": "Interested in buying some special packs?",

@@ -4,6 +4,7 @@
       "name": "Shopkeeper",
       "friendly_name": "Shopkeeper",
       "sprite": "Shopkeeper",
+      "message_colour": "aqua",
       "npc_type": "shop",
       "shop_id": "card_mart",
       "meet_text": "Welcome! Would you like to browse the shop?",
