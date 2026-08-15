@@ -260,6 +260,9 @@ var opponent_sleeve_small: String = ""
 var player_sleeve_border_color: Color = Color(0.15, 0.15, 0.15, 1.0)
 var opponent_sleeve_border_color: Color = Color(0.15, 0.15, 0.15, 1.0)
 
+# The ESC forfeit confirmation popup, or null when it isn't up. See _show_forfeit_dialog().
+var forfeit_dialog: CanvasLayer = null
+
 #signals
 signal message_acknowledged
 signal prize_card_taken
@@ -2207,10 +2210,101 @@ func start_bench_setup_phase() -> void:
 ######################################################################################################################################################
 ############################################################ CORE FUNCTIONALITY FUNCTIONS ############################################################
 
-# Quit the game when called
+# Forfeit the match. Reached only after the player confirms in _show_forfeit_dialog().
+#
+# Fix 6: Escape key = forfeit, not quit application.
+#
+# A forfeit abandons a best-of-N series OUTRIGHT rather than counting as a single round
+# loss. Match_End_Outro_Script only routes into the Best_Of_3 round-counter transition when
+# GameState.series_active is still set (Match_End_Outro_Script.gd:122), so clearing the
+# series here makes the outro treat this as a plain single-match loss and return the player
+# to the map — instead of scoring round 1 and dropping them straight into round 2 of a
+# series they just tried to leave.
 func end_game() -> void:
-	# Fix 6: Escape key = forfeit, not quit application
+	if GameState.series_active:
+		GameState.clear_match_series()
 	game_end_logic(true)
+
+# ─── Forfeit confirmation ────────────────────────────────────────────────────────────────
+# Same shape as the main menu's "Quit the game?" popup (Main_Menu_Script._show_quit_dialog):
+# a layer-100 CanvasLayer, a 60% black dim over the whole screen, a centred PanelContainer,
+# and a red confirm / green cancel button row. Built in code rather than in the scene so the
+# match scene doesn't carry a permanently-hidden dialog node.
+
+func _show_forfeit_dialog() -> void:
+	if forfeit_dialog != null and is_instance_valid(forfeit_dialog):
+		return
+
+	forfeit_dialog = CanvasLayer.new()
+	forfeit_dialog.layer = 100
+	add_child(forfeit_dialog)
+
+	# Dim the board behind the popup
+	var overlay := ColorRect.new()
+	overlay.color = Color(0, 0, 0, 0.6)
+	overlay.anchor_right  = 1.0
+	overlay.anchor_bottom = 1.0
+	forfeit_dialog.add_child(overlay)
+
+	# Centred panel — wider than the quit dialog's 460 because the question is a longer line
+	var panel := PanelContainer.new()
+	panel.theme = theme_disabled
+	panel.custom_minimum_size = Vector2(600, 220)
+	panel.anchor_left   = 0.5
+	panel.anchor_top    = 0.5
+	panel.anchor_right  = 0.5
+	panel.anchor_bottom = 0.5
+	panel.offset_left   = -300
+	panel.offset_top    = -110
+	panel.offset_right  = 300
+	panel.offset_bottom = 110
+	forfeit_dialog.add_child(panel)
+
+	var vbox := VBoxContainer.new()
+	vbox.add_theme_constant_override("separation", 18)
+	vbox.alignment = BoxContainer.ALIGNMENT_CENTER
+	panel.add_child(vbox)
+
+	var msg := Label.new()
+	msg.text = "Would you like to forfeit this match?"
+	msg.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	msg.add_theme_font_size_override("font_size", 24)
+	# Wrap rather than widen the panel if the theme's font renders this wider than expected.
+	msg.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	msg.custom_minimum_size = Vector2(540, 0)
+	vbox.add_child(msg)
+
+	var btn_row := HBoxContainer.new()
+	btn_row.alignment = BoxContainer.ALIGNMENT_CENTER
+	btn_row.add_theme_constant_override("separation", 20)
+	vbox.add_child(btn_row)
+
+	var yes_btn := Button.new()
+	yes_btn.text = "Forfeit"
+	yes_btn.custom_minimum_size = Vector2(130, 45)
+	yes_btn.theme = theme_red
+	yes_btn.pressed.connect(_on_forfeit_confirmed)
+	btn_row.add_child(yes_btn)
+
+	var no_btn := Button.new()
+	no_btn.text = "Cancel"
+	no_btn.custom_minimum_size = Vector2(130, 45)
+	no_btn.theme = theme_green
+	no_btn.pressed.connect(_close_forfeit_dialog)
+	btn_row.add_child(no_btn)
+
+
+func _close_forfeit_dialog() -> void:
+	if forfeit_dialog != null and is_instance_valid(forfeit_dialog):
+		forfeit_dialog.queue_free()
+	# Cleared immediately rather than waiting for queue_free to land at end of frame, so the
+	# _input() guard above stops swallowing gameplay input on this very frame.
+	forfeit_dialog = null
+
+
+func _on_forfeit_confirmed() -> void:
+	_close_forfeit_dialog()
+	end_game()
 	
 # Main function to get metadata of any card passed to it. Goes off UID to lookup JSON data in game file
 func get_card_metadata(card_uid: String):
@@ -6805,9 +6899,31 @@ func clear_current_action_selection() -> void:
 
 func _input(event: InputEvent) -> void:
 
-	# Press the escape key to quit the game
+	# While the forfeit confirmation is up it owns the screen: swallow all gameplay input so
+	# a click can't acknowledge a message box, cancel a mode or move a card underneath it.
+	# The dialog's own buttons are Controls, and GUI input is processed AFTER _input(), so
+	# returning here still lets Forfeit/Cancel receive their clicks. ESC closes it, matching
+	# the "escape backs out" behaviour used everywhere else in the game.
+	if forfeit_dialog != null and is_instance_valid(forfeit_dialog):
+		if event is InputEventKey and event.pressed and event.keycode == KEY_ESCAPE:
+			_close_forfeit_dialog()
+			get_viewport().set_input_as_handled()
+		return
+
+	# ESC = forfeit the match, behind a confirmation. This used to call end_game() directly,
+	# so one stray press of the key that backs out of every menu in the game instantly threw
+	# the match. Three guards beyond the prompt itself:
+	#   - game_is_over: the result is already decided, there is nothing left to forfeit.
+	#   - msgbox visible: game_end_logic() awaits its own show_message(), and the pending
+	#     await belonging to whatever is on screen right now would never be resolved.
+	#   - coin flip visible: the flip is an input-blocking overlay driven by a tween, so the
+	#     forfeit's message box would have to fight it for the screen and the click.
+	# The msgbox/coin pair is the same "input is blocked right now" test the mouse handlers
+	# below already use.
 	if event is InputEventKey and event.pressed and event.keycode == KEY_ESCAPE:
-			end_game()
+		if not game_is_over and not msgbox_container.visible and not coin_container.visible:
+			_show_forfeit_dialog()
+		return
 
 	# Dev cheat keys — 9 = instant win, 0 = instant lose
 	if event is InputEventKey and event.pressed and not game_is_over:
