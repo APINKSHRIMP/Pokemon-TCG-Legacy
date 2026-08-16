@@ -20,11 +20,17 @@ const COLUMNS       := 9
 const MAX_COPIES    := 4
 const DECK_SIZE     := 60
 
-# ─── TEMP TESTING FLAG ──────────────────────────────────────────────────────
-# When true, the deck builder drops the "exactly 60 cards" and "max 4 per name
-# group" (and per-card ownership) save restrictions, so any deck can hold any
-# number of any card. Set back to false to restore normal deck-building rules.
-const TESTING_UNLIMITED_DECKS := true
+# ─── DEBUG-ONLY DECK RULES ──────────────────────────────────────────────────
+# While debug mode is on (DebugMode.is_enabled(), see Debug_Mode.gd) the deck
+# builder drops the "exactly 60 cards" and "max 4 per name group" (and per-card
+# ownership) save restrictions, so any deck can hold any number of any card —
+# invaluable for building a one-card test deck to exercise a single attack.
+# In a release build the normal rules always apply.
+#
+# This used to be a hardcoded `const TESTING_UNLIMITED_DECKS := true`, which
+# meant a shipped build had no deck rules at all. The two places that read it
+# now call DebugMode.is_enabled() directly: _get_max_for_card() and
+# _deck_save_blocker().
 
 # ─── Energy style data ──────────────────────────────────────────────────────
 # Each style maps to 6 card IDs in a fixed order: grass, fire, water,
@@ -520,8 +526,8 @@ func _get_name_group(card_id: String) -> String:
 ## be added to the deck, considering the name-based group limits.
 ## Returns -1 for unlimited (won't happen for non-energy cards).
 func _get_max_for_card(card_id: String, owned: int) -> int:
-	# TEMP TESTING: ignore group/ownership limits so any number of any card is allowed.
-	if TESTING_UNLIMITED_DECKS:
+	# DEBUG ONLY: ignore group/ownership limits so any number of any card is allowed.
+	if DebugMode.is_enabled():
 		return DECK_SIZE
 	var meta = _get_card_meta(card_id)
 	if meta == null:
@@ -2248,7 +2254,7 @@ func _do_empty_deck() -> void:
 func _on_save_pressed() -> void:
 	# ISSUE #84 FIX: every reason a save can be refused now produces a visible floating message instead
 	# of the button silently doing nothing. The size checks used to be duplicated here (and hardcoded to
-	# != DECK_SIZE, ignoring TESTING_UNLIMITED_DECKS) — they all live in _deck_save_blocker() now.
+	# != DECK_SIZE, ignoring the debug-mode relaxation) — they all live in _deck_save_blocker() now.
 	var blocker := _deck_save_blocker()
 	if blocker != "":
 		print("ISSUE #84 FIX ACTIVE: save refused — ", blocker)
@@ -2775,12 +2781,12 @@ func _show_deck_message(text: String) -> void:
 ## appearance and the explanation can never disagree.
 ##
 ## Checks, in the order they are reported:
-##   1) card count — must be exactly 60 (relaxed to "at least 1" while TESTING_UNLIMITED_DECKS is on)
-##   2) at least one Basic Pokemon — enforced even in testing mode, because a deck with no Basic
+##   1) card count — must be exactly 60 (relaxed to "at least 1" while debug mode is on)
+##   2) at least one Basic Pokemon — enforced even in debug mode, because a deck with no Basic
 ##      cannot be set up at the start of a match at all, so saving one is never useful
 ##   3) a deck name has been entered
 func _deck_save_blocker() -> String:
-	if TESTING_UNLIMITED_DECKS:
+	if DebugMode.is_enabled():
 		if total_deck_count < 1:
 			return "Deck is empty"
 	elif total_deck_count < DECK_SIZE:

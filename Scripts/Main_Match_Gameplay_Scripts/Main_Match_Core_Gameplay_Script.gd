@@ -6925,8 +6925,11 @@ func _input(event: InputEvent) -> void:
 			_show_forfeit_dialog()
 		return
 
-	# Dev cheat keys — 9 = instant win, 0 = instant lose
-	if event is InputEventKey and event.pressed and not game_is_over:
+	# Dev cheat keys — 9 = instant win, 0 = instant lose, D = both draw, S = both shuffle,
+	# E = both attach energy, H = heal actives, B = heal bench.
+	# Gated on DebugMode (Debug_Mode.gd) so a release build can't throw or steal a match with
+	# a single keypress. In the editor debug mode is always on, so this changes nothing day to day.
+	if DebugMode.is_enabled() and event is InputEventKey and event.pressed and not game_is_over:
 		if event.keycode == KEY_9:
 			game_end_logic(false)   # player wins
 		elif event.keycode == KEY_0:
@@ -7007,6 +7010,7 @@ func _input(event: InputEvent) -> void:
 
 
 # ── Dev debug cheat keys (in-match) ──────────────────────────────────────────────────────
+# Only reachable while DebugMode.is_enabled() — see the key handling in _input() above.
 # D: both players draw 1 card.
 func debug_key_both_draw() -> void:
 	await card_ops.draw_n(false, 1)

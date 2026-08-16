@@ -1802,8 +1802,10 @@ func _on_validation_popup_closed() -> void:
 # winning a real battle (→3) exercises the genuine time-advance path.
 #
 # Lives here in the MapManager autoload so it applies to every map
-# scene without per-scene duplication. Guarded to fire ONLY in
-# overworld map scenes, so it never interferes with battles/menus.
+# scene without per-scene duplication. Guarded twice: it fires ONLY in
+# overworld map scenes, so it never interferes with battles/menus, and
+# ONLY while DebugMode.is_enabled() (Debug_Mode.gd), so a release build
+# has no cheat keys at all.
 # ============================================================
 
 const _MAP_SCENES_PREFIX := "res://Scenes/Map_Scenes/"
@@ -1814,6 +1816,13 @@ var _debug_cash_label: Label = null
 var _debug_cash_token: int = 0
 
 func _unhandled_input(event: InputEvent) -> void:
+	# Developer-only. Without this gate an exported build lets anyone press C to
+	# advance the time-of-day loop, P/O to mint cash, T to launch a test match and
+	# the number/letter rows to set the date and time. See Debug_Mode.gd for how
+	# debug mode is switched on and off — in the editor it is always on.
+	if not DebugMode.is_enabled():
+		return
+
 	if not (event is InputEventKey and event.pressed and not event.is_echo()):
 		return
 

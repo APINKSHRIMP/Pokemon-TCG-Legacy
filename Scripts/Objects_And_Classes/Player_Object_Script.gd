@@ -8,7 +8,11 @@ signal interact_pressed(opponent)
 signal npc_interact_pressed(npc)
 
 @export var move_speed: float = 160.0
-@export var run_multiplier: float = 10.0  # Speed/animation multiplier while Shift is held
+# Speed/animation multiplier while Shift is held. The debug value is used instead while
+# debug mode is on (Debug_Mode.gd) — 10x is a testing convenience for crossing the map
+# quickly, not a play speed, so a release build gets the 2x the code has always described.
+@export var run_multiplier: float = 2.0
+@export var debug_run_multiplier: float = 10.0
 
 var current_direction: String = "down"
 var is_moving: bool = false
@@ -130,9 +134,10 @@ func _physics_process(_delta):
 
 	input_direction = input_direction.normalized()
 
-	# Hold Shift to run: doubles movement speed and the walk animation cycle
+	# Hold Shift to run: doubles movement speed and the walk animation cycle (10x in debug mode)
 	var is_running: bool = Input.is_key_pressed(KEY_SHIFT)
-	var speed_scale: float = run_multiplier if is_running else 1.0
+	var active_run_multiplier: float = debug_run_multiplier if DebugMode.is_enabled() else run_multiplier
+	var speed_scale: float = active_run_multiplier if is_running else 1.0
 	# ISSUE #34: the global overworld walking-speed multiplier scales both walk and run (Options: slow
 	# 0.8, standard 1.0, fast 1.2).
 	var walk_mult: float = GameState.overworld_walking_speed
