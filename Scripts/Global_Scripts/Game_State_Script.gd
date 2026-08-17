@@ -267,6 +267,48 @@ func _load_rule_settings() -> void:
 # `message_colour` in All_NPC_Constant_Data.json and the box is themed per speaker — see
 # MessageBoxTheme.
 
+# ─── Audio volume ────────────────────────────────────────────────────────────
+# Two independent 0.0 - 1.0 levels, one per audio bus. Unlike every other Options row these are
+# continuous rather than a preset key, because they are driven by sliders. The actual decibel
+# conversion and the bus wiring live in Sound_Manager_Script.gd; GameState only owns the value and
+# its persistence in Player_Current_Data.json ("music_volume" / "sfx_volume").
+#
+# TWEAKABLE — the level a fresh save boots on. 0.8 rather than 1.0 so there is headroom to turn the
+# game UP, which is the more useful direction when the default mix already sits near the ceiling.
+const DEFAULT_MUSIC_VOLUME := 0.8
+const DEFAULT_SFX_VOLUME   := 0.8
+
+var music_volume_setting: float = DEFAULT_MUSIC_VOLUME
+var sfx_volume_setting: float   = DEFAULT_SFX_VOLUME
+
+# Applies a level to the Music bus. Pass save = false while a slider is being dragged so the player
+# hears the change immediately without a disk write per pixel of travel — the Options screen commits
+# it once, on Save.
+func set_music_volume(value: float, save: bool = true) -> void:
+	music_volume_setting = clampf(value, 0.0, 1.0)
+	SoundManagerScript.set_bus_volume(SoundManagerScript.MUSIC_BUS, music_volume_setting)
+	if save:
+		_save_current_data_field("music_volume", music_volume_setting)
+
+func set_sfx_volume(value: float, save: bool = true) -> void:
+	sfx_volume_setting = clampf(value, 0.0, 1.0)
+	SoundManagerScript.set_bus_volume(SoundManagerScript.SFX_BUS, sfx_volume_setting)
+	if save:
+		_save_current_data_field("sfx_volume", sfx_volume_setting)
+
+# Reads both saved levels out of Player_Current_Data.json and applies them. Called once on boot. A
+# missing or non-numeric value falls back to the default rather than erroring.
+func _load_audio_volumes() -> void:
+	var data := _read_current_data()
+	set_music_volume(_read_volume(data, "music_volume", DEFAULT_MUSIC_VOLUME), false)
+	set_sfx_volume(_read_volume(data, "sfx_volume", DEFAULT_SFX_VOLUME), false)
+
+func _read_volume(data: Dictionary, key: String, fallback: float) -> float:
+	var value = data.get(key, fallback)
+	if value is float or value is int:
+		return clampf(float(value), 0.0, 1.0)
+	return fallback
+
 # Writes a single key back into Player_Current_Data.json, leaving every other key untouched.
 func _save_current_data_field(key: String, value) -> void:
 	var data := _read_current_data()
@@ -521,6 +563,7 @@ func _ready():
 	_load_animation_speed()   # ISSUE #34: apply the saved Options animation-speed preset
 	_load_walking_speed()     # ISSUE #34: apply the saved Options overworld walking-speed preset
 	_load_rule_settings()     # ISSUE #34: apply the saved Options confusion / burn rule choices
+	_load_audio_volumes()     # apply the saved Options music / SFX volume levels to the audio buses
 
 # ============================================================
 # FIRST-RUN DATA MIGRATION (res:// → user://)

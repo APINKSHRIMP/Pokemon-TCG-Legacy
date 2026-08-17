@@ -63,7 +63,7 @@ func _ready() -> void:
 	add_child(audio_player)
 	var audio_stream = load("res://Audio/BGM/coin_mode (TCG GB Water Club).ogg")
 	audio_player.stream = audio_stream
-	audio_player.bus = "Master"
+	audio_player.bus = SoundManagerScript.MUSIC_BUS
 	audio_player.stream.loop = true
 	audio_player.play()
 

@@ -33,6 +33,7 @@ func _ready() -> void:
 	var audio_stream = load(audio_path)
 	if audio_stream:
 		audio_player.stream = audio_stream
+		audio_player.bus = SoundManagerScript.SFX_BUS
 		add_child(audio_player)
 		audio_player.play()
 	else:

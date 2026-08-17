@@ -11,6 +11,18 @@ extends Control
 #   Pack Opening Animation Speed   — the pack sequence, with its own skip
 #   Play Match Intro / Outro …     — a plain on/off, not a speed. The intro/outro is click-to-skip
 #                                    already, so the only meaningful choice is whether it plays.
+#   Music / Sound Effects Volume   — the two sliders at the bottom. See the SLIDER SECTIONS note.
+#
+# SLIDER SECTIONS. The two volume rows are the only controls here that are not a row of preset
+# buttons, and they behave differently on purpose:
+#   * They apply LIVE while you drag, so you can hear what you are choosing. Every other row on this
+#     screen does nothing until Save.
+#   * Save still owns persistence — dragging never touches Player_Current_Data.json.
+#   * Because they apply live, Cancel and Escape have to put the volume back to the saved level on
+#     the way out (_revert_live_volume). A button row needs no such undo.
+# They share the pending/saved dictionaries and the Save button with everything else; only the
+# refresh (move the grabber, rewrite the percentage) differs. Values are held here as whole percents
+# 0-100 so the change detection stays an exact integer comparison — GameState stores 0.0-1.0.
 #
 # Message box colour used to be an eighth section here. It is no longer a player setting: each NPC
 # and opponent carries its own `message_colour` in All_NPC_Constant_Data.json and the box is themed
@@ -33,8 +45,13 @@ var saved   : Dictionary = {}
 # through the same code.
 var section_buttons : Dictionary = {}
 
+# section name -> { "slider": HSlider, "value_label": Label }. Kept apart from section_buttons
+# because a slider row has no set of buttons to re-theme.
+var section_sliders : Dictionary = {}
+
 # section name -> the GameState setter that applies and persists it. Adding a section means adding
-# one entry here, one to section_buttons, and one to _current_values() — nothing else.
+# one entry here, one to section_buttons (or section_sliders), and one to _current_values() —
+# nothing else.
 var section_setters : Dictionary = {}
 
 # ─── Node references ─────────────────────────────────────────────────────────
@@ -74,6 +91,11 @@ var section_setters : Dictionary = {}
 
 @onready var intro_play_btn : Button = $"INTROOUTRO/intro_play_button"
 @onready var intro_skip_btn : Button = $"INTROOUTRO/intro_skip_button"
+
+@onready var music_slider     : HSlider = $"VOLUME/music_volume_slider"
+@onready var music_value_lbl  : Label   = $"VOLUME/music_volume_value"
+@onready var sfx_slider       : HSlider = $"VOLUME/sfx_volume_slider"
+@onready var sfx_value_lbl    : Label   = $"VOLUME/sfx_volume_value"
 
 @onready var save_btn   : Button = $"MAIN/options_save_button"
 @onready var cancel_btn : Button = $"MAIN/options_cancel_button"
@@ -123,15 +145,24 @@ func _ready() -> void:
 		},
 	}
 
-	# GameState owns both the live values and the writes to Player_Current_Data.json.
+	section_sliders = {
+		"music_volume": { "slider": music_slider, "value_label": music_value_lbl },
+		"sfx_volume":   { "slider": sfx_slider,   "value_label": sfx_value_lbl },
+	}
+
+	# GameState owns both the live values and the writes to Player_Current_Data.json. The two volume
+	# entries wrap their setter because this screen counts in whole percents while GameState (and the
+	# audio bus behind it) works in 0.0 - 1.0.
 	section_setters = {
-		"confusion":   GameState.set_confusion_rule,
-		"burn":        GameState.set_burn_rule,
-		"walking":     GameState.set_walking_speed,
-		"speed":       GameState.set_animation_speed,
-		"item":        GameState.set_item_speed,
-		"pack":        GameState.set_pack_speed,
-		"intro_outro": GameState.set_intro_outro,
+		"confusion":    GameState.set_confusion_rule,
+		"burn":         GameState.set_burn_rule,
+		"walking":      GameState.set_walking_speed,
+		"speed":        GameState.set_animation_speed,
+		"item":         GameState.set_item_speed,
+		"pack":         GameState.set_pack_speed,
+		"intro_outro":  GameState.set_intro_outro,
+		"music_volume": func(percent: int) -> void: GameState.set_music_volume(percent / 100.0),
+		"sfx_volume":   func(percent: int) -> void: GameState.set_sfx_volume(percent / 100.0),
 	}
 
 	saved = _current_values()
@@ -142,6 +173,13 @@ func _ready() -> void:
 			section_buttons[section][option].pressed.connect(_on_option_pressed.bind(section, option))
 		_refresh_section(section)
 
+	for section in section_sliders:
+		var slider: HSlider = section_sliders[section]["slider"]
+		slider.value = pending[section]
+		slider.value_changed.connect(_on_slider_changed.bind(section))
+		slider.drag_ended.connect(_on_slider_drag_ended.bind(section))
+		_refresh_slider(section)
+
 	save_btn.pressed.connect(_on_save_pressed)
 	cancel_btn.pressed.connect(_on_cancel_pressed)
 	_refresh_save_button()
@@ -150,14 +188,26 @@ func _ready() -> void:
 # The persisted value of every section, read straight off GameState.
 func _current_values() -> Dictionary:
 	return {
-		"confusion":   GameState.confusion_rule_setting,
-		"burn":        GameState.burn_rule_setting,
-		"walking":     GameState.walking_speed_setting,
-		"speed":       GameState.animation_speed_setting,
-		"item":        GameState.item_speed_setting,
-		"pack":        GameState.pack_speed_setting,
-		"intro_outro": GameState.intro_outro_setting,
+		"confusion":    GameState.confusion_rule_setting,
+		"burn":         GameState.burn_rule_setting,
+		"walking":      GameState.walking_speed_setting,
+		"speed":        GameState.animation_speed_setting,
+		"item":         GameState.item_speed_setting,
+		"pack":         GameState.pack_speed_setting,
+		"intro_outro":  GameState.intro_outro_setting,
+		"music_volume": _to_percent(GameState.music_volume_setting),
+		"sfx_volume":   _to_percent(GameState.sfx_volume_setting),
 	}
+
+
+# GameState's 0.0 - 1.0 level as a whole percent, snapped to the notch size the sliders use. Without
+# the snap an off-step saved value (only reachable by hand-editing the save) would be nudged onto the
+# nearest notch the moment the slider loaded it, and the screen would open already claiming a change.
+# Keep this in step with `step` on both HSliders in Options_Scene.tscn.
+const VOLUME_STEP := 5
+
+func _to_percent(linear: float) -> int:
+	return int(round(linear * 100.0 / VOLUME_STEP)) * VOLUME_STEP
 
 
 func _input(event: InputEvent) -> void:
@@ -181,6 +231,46 @@ func _refresh_section(section: String) -> void:
 	var unselected := load(THEME_UNSELECTED)
 	for option in section_buttons[section]:
 		section_buttons[section][option].theme = selected if pending[section] == option else unselected
+
+# ─── Volume sliders ──────────────────────────────────────────────────────────
+
+# Dragging applies straight away so the change is audible — but only to the live audio bus, never to
+# the save file. Save commits it; Cancel and Escape roll it back.
+func _on_slider_changed(value: float, section: String) -> void:
+	var percent := int(round(value))
+	if percent == pending[section]:
+		return
+	pending[section] = percent
+	_apply_live_volume(section, percent)
+	_refresh_slider(section)
+	_refresh_save_button()
+
+
+# A confirmation blip once the grabber is released, so the SFX row can be judged at its new level.
+# The music row needs none — whatever BGM is playing behind this screen already changed as you moved.
+func _on_slider_drag_ended(value_changed: bool, section: String) -> void:
+	if value_changed and section == "sfx_volume":
+		SoundManagerScript.play_sfx(SoundManagerScript.SFX_select_button)
+
+
+func _apply_live_volume(section: String, percent: int) -> void:
+	if section == "music_volume":
+		GameState.set_music_volume(percent / 100.0, false)
+	else:
+		GameState.set_sfx_volume(percent / 100.0, false)
+
+
+func _refresh_slider(section: String) -> void:
+	var percent: int = pending[section]
+	section_sliders[section]["slider"].value = percent
+	section_sliders[section]["value_label"].text = "%d%%" % percent
+
+
+# Puts the audio buses back to the last saved levels. Called when leaving without saving — without
+# this, a cancelled drag would keep its volume until the next boot re-read the save file.
+func _revert_live_volume() -> void:
+	for section in section_sliders:
+		_apply_live_volume(section, saved[section])
 
 
 # The save button only lights up (green, enabled) while there is an unsaved change in any section.
@@ -215,5 +305,6 @@ func _on_cancel_pressed() -> void:
 
 
 func _leave() -> void:
+	_revert_live_volume()
 	if GameState.close_sub_menu(): return   # ISSUE #52: map is still loaded behind us — just pop this overlay
 	SceneCache.change_scene("res://Scenes/Main_Menu_Scenes/Main_Menu_Scene.tscn")

@@ -37,7 +37,7 @@ func _play_bgm() -> void:
 	var stream = load("res://Audio/BGM/coin_mode (TCG GB Water Club).ogg")
 	if stream:
 		_bgm_player.stream = stream
-		_bgm_player.bus = "Master"
+		_bgm_player.bus = SoundManagerScript.MUSIC_BUS
 		stream.loop = true
 		_bgm_player.play()
 

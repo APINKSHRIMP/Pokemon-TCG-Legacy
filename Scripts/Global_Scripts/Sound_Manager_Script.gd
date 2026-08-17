@@ -5,7 +5,52 @@ extends Node
 # ============================================================
 # Handles all audio playback: SFX (one-shot) and BGM (looping).
 # Register this as an Autoload named "SoundManagerScript".
+#
+# Every sound in the game is routed through one of two audio buses created at boot by
+# _ensure_buses() — MUSIC_BUS for anything looping in the background, SFX_BUS for one-shots. The
+# Options screen drives their levels via GameState.set_music_volume / set_sfx_volume, so the two
+# sliders there cover the overworld, the menus AND a match without any per-scene plumbing.
+#
+# The buses are built in code rather than in a default_bus_layout.tres so there is no resource file
+# to keep in sync with this script. If you add a NEW AudioStreamPlayer anywhere outside this
+# singleton, set its .bus to MUSIC_BUS or SFX_BUS or it will land on "Master" and ignore the
+# sliders entirely.
 # ============================================================
+
+# ─── Audio buses ─────────────────────────────────────────────────────────────
+
+const MUSIC_BUS := "Music"
+const SFX_BUS   := "SFX"
+
+# The player-facing volume, 0.0 - 1.0, is converted to decibels with linear_to_db(): 1.0 = 0 dB
+# (untouched), 0.5 = -6 dB, 0.1 = -20 dB. A slider sitting at exactly 0 mutes its bus outright
+# rather than trying to express silence in decibels.
+func _ready() -> void:
+	_ensure_buses()
+
+# Creates the Music and SFX buses if they don't exist yet. Idempotent, so it is safe to call from
+# set_bus_volume() as well — GameState applies the saved volumes during its own _ready() and the
+# autoload order that puts this singleton first is not something to depend on silently.
+func _ensure_buses() -> void:
+	for bus_name in [MUSIC_BUS, SFX_BUS]:
+		if AudioServer.get_bus_index(bus_name) != -1:
+			continue
+		AudioServer.add_bus()
+		var idx := AudioServer.bus_count - 1
+		AudioServer.set_bus_name(idx, bus_name)
+		AudioServer.set_bus_send(idx, "Master")
+
+# Sets one bus to a 0.0 - 1.0 level. Callers should go through GameState so the choice is persisted.
+func set_bus_volume(bus_name: String, linear: float) -> void:
+	_ensure_buses()
+	var idx := AudioServer.get_bus_index(bus_name)
+	if idx == -1:
+		push_warning("SoundManager: unknown audio bus '" + bus_name + "'")
+		return
+	linear = clampf(linear, 0.0, 1.0)
+	AudioServer.set_bus_mute(idx, linear <= 0.0)
+	if linear > 0.0:
+		AudioServer.set_bus_volume_db(idx, linear_to_db(linear))
 
 # --- Preloaded SFX constants ---
 const SFX_attack_sound = preload("res://Audio/SFX/attack_sound.ogg")
@@ -41,6 +86,7 @@ func play_sfx(sound: AudioStream) -> void:
 	var player := AudioStreamPlayer.new()
 	add_child(player)
 	player.stream = sound
+	player.bus = SFX_BUS
 	player.play()
 	player.finished.connect(player.queue_free)
 
@@ -68,7 +114,7 @@ func play_bgm(path: String, loop: bool = true) -> void:
 	bgm_player = AudioStreamPlayer.new()
 	add_child(bgm_player)
 	bgm_player.stream = stream
-	bgm_player.bus = "Master"
+	bgm_player.bus = MUSIC_BUS
 	
 	if loop:
 		bgm_player.stream.loop = true

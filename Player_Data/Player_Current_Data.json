@@ -10,8 +10,10 @@
 	"item_animation_speed": "normal",
 	"last_pack_loaded": "base1",
 	"last_set_loaded": "basep",
+	"music_volume": 0.8,
 	"name": "",
 	"pack_animation_speed": "normal",
+	"sfx_volume": 0.8,
 	"sleeve": "default",
 	"sprite": "",
 	"walking_speed": "normal"
