@@ -166,6 +166,11 @@ var trainer_discard_cards_needed: int = 0
 var trainer_discard_selected: Array = []
 var trainer_deck_search_active: bool = false
 var trainer_pokemon_selection_active: bool = false
+# True only while a genuine Yes/No question is on screen (Trainer_Effects.gym1_prompt_yes_no).
+# Set by that helper and read by _input(), which is what lets Space/Enter answer YES and
+# Escape answer NO. Kept separate from the selection flags above because those modes are
+# card pickers, not questions — binding the keys to them would confirm partial selections.
+var yes_no_prompt_active: bool = false
 var trainer_energy_selection_active: bool = false
 var trainer_reorder_active: bool = false
 var trainer_bench_token_discard_active: bool = false
@@ -6905,10 +6910,47 @@ func _input(event: InputEvent) -> void:
 	# returning here still lets Forfeit/Cancel receive their clicks. ESC closes it, matching
 	# the "escape backs out" behaviour used everywhere else in the game.
 	if forfeit_dialog != null and is_instance_valid(forfeit_dialog):
-		if event is InputEventKey and event.pressed and event.keycode == KEY_ESCAPE:
+		# Same yes/no key rule as every other prompt in the game: accept confirms,
+		# cancel backs out. Note the dialog is OPENED by Escape, so Escape-then-
+		# Space forfeits the match — see the comment on the yes/no branch below.
+		if UIInput.is_cancel(event):
 			_close_forfeit_dialog()
 			get_viewport().set_input_as_handled()
+		elif UIInput.is_accept(event):
+			get_viewport().set_input_as_handled()
+			_on_forfeit_confirmed()
 		return
+
+	# ── Message box: Space / Enter / Escape all advance it ──────────────────────
+	# Mirrors the mouse handler further down (any click acknowledges), so a message
+	# can be read through without touching the mouse. This sits ABOVE the Escape
+	# branch below because that one returns unconditionally — Escape would
+	# otherwise be swallowed while a message is up.
+	# The event is consumed so Space/Enter can't also fire "ui_accept" on whatever
+	# button happens to hold focus behind the box.
+	if msgbox_container.visible and UIInput.is_advance(event):
+		message_acknowledged.emit()
+		get_viewport().set_input_as_handled()
+		return
+
+	# ── In-match Yes/No questions ───────────────────────────────────────────────
+	# These are drawn as the selection-mode action/cancel buttons rather than a
+	# message box (see Trainer_Effects.gym1_prompt_yes_no, ~100 call sites), so they
+	# need their own branch: accept presses the YES button, cancel presses the NO
+	# button. Deliberately gated on yes_no_prompt_active alone — ordinary selection
+	# modes keep their existing mouse-only handling, so Space can't confirm a
+	# half-made card selection and Escape still opens the forfeit prompt there.
+	if yes_no_prompt_active:
+		if UIInput.is_accept(event):
+			if action_button.visible and not action_button.disabled:
+				get_viewport().set_input_as_handled()
+				action_button.pressed.emit()
+			return
+		if UIInput.is_cancel(event):
+			if cancel_button.visible and not cancel_button.disabled:
+				get_viewport().set_input_as_handled()
+				cancel_button.pressed.emit()
+			return
 
 	# ESC = forfeit the match, behind a confirmation. This used to call end_game() directly,
 	# so one stray press of the key that backs out of every menu in the game instantly threw

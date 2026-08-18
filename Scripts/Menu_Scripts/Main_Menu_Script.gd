@@ -33,6 +33,18 @@ var close_overlay_callback: Callable = Callable()
 
 
 func _input(event: InputEvent) -> void:
+	# The quit confirmation owns the keys while it is up: accept says Quit, cancel
+	# backs out. Without this, Escape/Enter closed the whole menu out from under the
+	# dialog instead of answering it.
+	if quit_dialog != null and is_instance_valid(quit_dialog):
+		if UIInput.is_cancel(event):
+			get_viewport().set_input_as_handled()
+			_on_quit_cancelled()
+		elif UIInput.is_accept(event):
+			get_viewport().set_input_as_handled()
+			get_tree().quit()
+		return
+
 	if event is InputEventKey and event.pressed and not event.is_echo():
 		if event.keycode == KEY_ESCAPE or event.keycode == KEY_ENTER or event.keycode == KEY_KP_ENTER:
 			get_viewport().set_input_as_handled()

@@ -104,8 +104,12 @@ func _ready() -> void:
 	_do_transition()
 
 func _input(event: InputEvent) -> void:
-	if event is InputEventKey and event.pressed and event.keycode == KEY_ESCAPE:
-		get_tree().quit()
+	# Space / Enter / Escape advance the between-games screen, the same as a click.
+	# Escape used to call get_tree().quit() — mid-series, that lost the whole match.
+	if UIInput.is_advance(event) and _click_enabled and not _transitioning:
+		get_viewport().set_input_as_handled()
+		_do_transition()
+		return
 	if event is InputEventMouseButton and event.pressed and _click_enabled and not _transitioning:
 		_do_transition()
 

@@ -262,13 +262,24 @@ var _menu_canvas_layer: CanvasLayer = null
 var _menu_instance: Node = null
 
 func _input(event: InputEvent) -> void:
+	# A dialog on screen owns Escape: it answers NO on a Yes/No question and
+	# dismisses a plain message, rather than opening the main menu behind it.
+	# Space/Enter reach the same box through the player's ui_accept path, which
+	# runs later (_unhandled_input) — they only have to be kept out of the menu
+	# shortcut below. Handled here rather than in the player script because the
+	# menu shortcut lives here and would otherwise win the press.
+	if UIInput.is_cancel(event) and MapManager.wants_message_input():
+		get_viewport().set_input_as_handled()
+		MapManager.handle_message_cancel()
+		return
+
 	if not (event is InputEventKey and event.pressed and not event.is_echo()):
 		return
 	var is_enter: bool = event.keycode == KEY_ENTER or event.keycode == KEY_KP_ENTER
 	var is_escape: bool = event.keycode == KEY_ESCAPE
 	if not (is_enter or is_escape):
 		return
-	if is_enter and MapManager.message_panel != null and MapManager.message_panel.visible:
+	if is_enter and MapManager.wants_message_input():
 		return
 	if not _allow_menu_open(is_enter):
 		return

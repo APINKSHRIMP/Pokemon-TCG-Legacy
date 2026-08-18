@@ -3923,6 +3923,11 @@ func gym1_charity_choose_reduction(attacker: card_object, defender: card_object,
 # Returns true if the player confirmed (action_button), false if cancelled (cancel_button).
 func gym1_prompt_yes_no(anchor_card: card_object, header_text: String, hint_text: String, yes_text: String, no_text: String) -> bool:
 	main.trainer_pokemon_selection_active = true
+	# Lets Space/Enter answer YES and Escape answer NO while this is on screen.
+	# Cleared the moment the await below resumes, which covers both answers (the
+	# cancel path emits the same signal) — the flag must not outlive the question
+	# or it would keep those keys bound for the rest of the match.
+	main.yes_no_prompt_active = true
 	main.show_enlarged_array_selection_mode([anchor_card])
 	main.header_label.text = header_text
 	main.hint_label.text = hint_text
@@ -3934,6 +3939,7 @@ func gym1_prompt_yes_no(anchor_card: card_object, header_text: String, hint_text
 	main.cancel_button.theme = main.theme_red
 	main.selected_card_for_action = anchor_card  # pre-arm action_button so YES is clickable without selecting
 	await main.trainer_target_selected
+	main.yes_no_prompt_active = false
 	var pressed_yes = (main.selected_card_for_action == anchor_card)
 	main.trainer_pokemon_selection_active = false
 	main.hide_selection_mode_display_main()

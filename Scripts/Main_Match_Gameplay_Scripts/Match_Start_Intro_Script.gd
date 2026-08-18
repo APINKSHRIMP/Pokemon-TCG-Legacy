@@ -79,9 +79,13 @@ func _ready() -> void:
 	animate_intro()
 
 func _input(event: InputEvent) -> void:
-	if event is InputEventKey and event.pressed and event.keycode == KEY_ESCAPE:
-		get_tree().quit()
-	
+	# Space / Enter / Escape skip the intro, the same as a click. Escape used to call
+	# get_tree().quit() here, so one stray press on the way into a match closed the game.
+	if UIInput.is_advance(event) and click_enabled and not transitioning:
+		get_viewport().set_input_as_handled()
+		transition_to_main_match()
+		return
+
 	# Any mouse click while the scene is showing skips to the match
 	if event is InputEventMouseButton and event.pressed and click_enabled and not transitioning:
 		transition_to_main_match()

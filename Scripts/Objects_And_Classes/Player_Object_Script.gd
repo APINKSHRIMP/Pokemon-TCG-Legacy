@@ -168,8 +168,10 @@ func _update_direction(direction: Vector2):
 
 func _unhandled_input(event):
 	if event.is_action_pressed("ui_accept"):
-		# If message panel is open, spacebar forwards to MapManager
-		if MapManager.message_panel != null and MapManager.message_panel.visible:
+		# Space/Enter forward to MapManager whenever a dialog owns the screen —
+		# the message box itself, the deck-validation popup, or a gift reveal
+		# still animating. Accept answers YES on a Yes/No question.
+		if MapManager.wants_message_input():
 			# ISSUE #51 FIX: consume the input BEFORE handling. Answering "yes"
 			# (e.g. opening the shop) triggers a scene change that frees this
 			# player node, after which get_viewport() returns null and
@@ -179,7 +181,7 @@ func _unhandled_input(event):
 				# Consume so dismissing a dialog can't re-trigger an interactable
 				# the player happens to be standing on this same frame.
 				vp.set_input_as_handled()
-			MapManager.handle_message_spacebar()
+			MapManager.handle_message_accept()
 			return
 
 		# ISSUE #81 FIX: gate the interact emit on can_move, for the same reason the mouse-wheel zoom
@@ -199,7 +201,7 @@ func _unhandled_input(event):
 	if event is InputEventMouseButton:
 		if event.pressed:
 			if MapManager.message_panel != null and MapManager.message_panel.visible:
-				MapManager.handle_message_spacebar()
+				MapManager.handle_message_accept()
 				return
 			# ISSUE #81: don't let the mouse wheel zoom the overworld camera while the player is locked
 			# — i.e. while a menu/sub-menu overlay (deck/card/coin/sleeves) is open on top of the still-

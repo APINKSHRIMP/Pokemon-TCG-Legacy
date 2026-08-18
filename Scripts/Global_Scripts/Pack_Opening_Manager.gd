@@ -147,19 +147,21 @@ func _input(event: InputEvent) -> void:
 	if not _is_active:
 		return
 
+	# Space/Enter/Escape (and pad A/B) all advance, same as a click — the same keys
+	# that step through every other message in the game. Was Space-only.
 	if _showing_summary:
-		var is_space : bool = event is InputEventKey and event.pressed and event.keycode == KEY_SPACE
+		var is_key   : bool = UIInput.is_advance(event)
 		var is_click : bool = event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT
-		if is_space or is_click:
+		if is_key or is_click:
 			_showing_summary = false
 			get_viewport().set_input_as_handled()
 			_on_summary_dismissed()
 		return
 
 	if _waiting_for_advance:
-		var is_space : bool = event is InputEventKey and event.pressed and event.keycode == KEY_SPACE
+		var is_key   : bool = UIInput.is_advance(event)
 		var is_click : bool = event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT
-		if is_space or is_click:
+		if is_key or is_click:
 			get_viewport().set_input_as_handled()
 			_advance_card_reveal()
 

@@ -217,8 +217,18 @@ func _ready() -> void:
 
 
 func _input(event: InputEvent) -> void:
-	if event is InputEventKey and event.pressed and event.keycode == KEY_ESCAPE:
-		get_tree().quit()
+	# Space / Enter / Escape do whatever a click would do here — skip a reward
+	# animation, or advance the dialogue and the gift reveal. Escape used to call
+	# get_tree().quit(), which closed the game mid-reward-screen.
+	if UIInput.is_advance(event):
+		if _in_skippable_anim and not transitioning:
+			_skip_anim = true
+			get_viewport().set_input_as_handled()
+			return
+		if click_enabled and not transitioning:
+			player_clicked.emit()
+			get_viewport().set_input_as_handled()
+		return
 
 	if event is InputEventMouseButton and event.pressed:
 		# ISSUE #33 FIX: a click during a skippable animation (reward fly-in, coin/card flip, costume

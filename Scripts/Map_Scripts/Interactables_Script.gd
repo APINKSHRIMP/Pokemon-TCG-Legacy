@@ -93,8 +93,9 @@ func _load_flavour_text(scene_key: String) -> void:
 func _unhandled_input(event: InputEvent) -> void:
 	if not event.is_action_pressed("ui_accept"):
 		return
-	# A dialog is already open — let the player / MapManager handle it.
-	if MapManager.message_panel != null and MapManager.message_panel.visible:
+	# A dialog is already open — let the player / MapManager handle it. Also covers
+	# the validation popup and an in-flight gift reveal, which own the press too.
+	if MapManager.wants_message_input():
 		return
 	if _player == null or not is_instance_valid(_player) or not _player.can_move:
 		return

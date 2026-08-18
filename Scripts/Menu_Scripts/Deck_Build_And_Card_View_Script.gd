@@ -2368,18 +2368,47 @@ func _save_last_set_loaded() -> void:
 # ─── Input handling (Escape + Spacebar zoom) ────────────────────────────────
 
 ## Handles global keyboard input for the deck build screen.
-## - Escape: closes zoom if active, otherwise returns to main menu
+## - Escape: backs out one layer — closes whichever popup/overlay is on top
+##   (load-deck, zoom, deck viewer, energy picker, search screen, search results)
+##   and returns to normal deck-building mode; only an Escape with nothing open
+##   leaves for the menu
 ## - Spacebar press: zooms into the hovered card's large image
 ## - Spacebar release: closes the zoom overlay and restores UI
 func _input(event: InputEvent) -> void:
 	if event is InputEventMouseButton and event.pressed:
 		_update_set_breakdown_label()
 
-	if not event is InputEventKey:
+	# The "Empty the entire deck?" confirm owns the keys while it is up: accept
+	# empties the deck, cancel backs out. Without this, Escape fell straight through
+	# to _on_cancel_pressed() and left the deck builder with the popup still open,
+	# and Space started a card preview behind it.
+	if empty_confirm_popup != null and is_instance_valid(empty_confirm_popup):
+		if UIInput.is_accept(event):
+			get_viewport().set_input_as_handled()
+			_close_empty_confirm_popup()
+			_do_empty_deck()
+		elif UIInput.is_cancel(event):
+			get_viewport().set_input_as_handled()
+			_close_empty_confirm_popup()
 		return
 
-	# ── Escape key ──
-	if event.pressed and event.keycode == KEY_ESCAPE:
+	# ── Cancel / Escape ──
+	# Backs out exactly ONE layer per press: whichever popup or overlay is on top
+	# closes and drops the player back into normal deck-building mode, and only an
+	# Escape with nothing open leaves for the menu. Ordered topmost-first, so the
+	# load popup — a modal CanvasLayer sitting above everything else — takes the
+	# press before the overlays underneath it.
+	# UIInput rather than a keycode test, so pad B backs out too (see UI_Input.gd).
+	if UIInput.is_cancel(event):
+		# Consumed up front: _on_cancel_pressed() at the bottom tears this screen
+		# down, after which get_viewport() is no longer safe to call (ISSUE #51).
+		get_viewport().set_input_as_handled()
+		# Load-deck popup — same as pressing its Cancel button. Without this the
+		# press fell straight through to _on_cancel_pressed() and left the deck
+		# builder entirely, with the popup still open on the way out.
+		if load_popup != null and is_instance_valid(load_popup):
+			_close_load_popup()
+			return
 		# If zoomed in, close the zoom instead of leaving the scene
 		if is_zoomed:
 			# Drop the hold too, or _process would immediately re-open the preview (ISSUE #13)
@@ -2404,6 +2433,10 @@ func _input(event: InputEvent) -> void:
 			_clear_search()
 			return
 		_on_cancel_pressed()
+		return
+
+	if not event is InputEventKey:
+		return
 
 	# ── Spacebar hold-to-preview ──
 	if event.keycode == KEY_SPACE:

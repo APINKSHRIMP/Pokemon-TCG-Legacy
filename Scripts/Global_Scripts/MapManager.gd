@@ -667,8 +667,29 @@ func show_interactable_confirm(text: String, on_yes: Callable) -> void:
 	_pending_confirm_yes = on_yes
 	_show_message_with_choices(text)
 
-func handle_message_spacebar():
+# ------------------------------------------------------------
+# KEYBOARD / PAD HANDLING FOR THE MESSAGE BOX
+# ------------------------------------------------------------
+# Accept (Space / Enter / pad A) and cancel (Escape / pad B) both advance a
+# plain OK message. On a Yes/No question accept answers YES and cancel answers
+# NO — the same rule everywhere in the game, so the keys stay predictable and
+# map cleanly onto a controller later. Keys are classified by UIInput
+# (Scripts/Global_Scripts/UI_Input.gd), never by keycode tests out here.
+#
+# Callers ask wants_message_input() first: while a dialog, the deck-validation
+# popup or a gift reveal owns the screen the press belongs to that, not to the
+# world underneath it.
+
+func wants_message_input() -> bool:
+	return _gift_reveal_active \
+		or _validation_popup_active \
+		or (message_panel != null and message_panel.visible)
+
+func handle_message_accept() -> void:
+	if _skip_gift_reveal_if_playing():
+		return
 	if _validation_popup_active:
+		_close_validation_popup()
 		return
 	if not message_panel.visible:
 		return
@@ -676,6 +697,33 @@ func handle_message_spacebar():
 		_on_ok_pressed()
 	elif yes_button.visible:
 		_on_yes_pressed()
+
+func handle_message_cancel() -> void:
+	if _skip_gift_reveal_if_playing():
+		return
+	if _validation_popup_active:
+		_close_validation_popup()
+		return
+	if not message_panel.visible:
+		return
+	# A plain OK box has nothing to say no to, so cancel just dismisses it.
+	if ok_button.visible:
+		_on_ok_pressed()
+	elif no_button.visible:
+		_on_no_pressed()
+
+# While the card/coin/costume reveal animates, the OK button is deliberately
+# hidden — so a keypress has nothing to press. Mirror the click behaviour and
+# let it fast-forward the animation instead of being swallowed.
+func _skip_gift_reveal_if_playing() -> bool:
+	if _gift_reveal_active:
+		_gift_reveal_skip = true
+		return true
+	return false
+
+func _close_validation_popup() -> void:
+	if _validation_popup_node != null and is_instance_valid(_validation_popup_node):
+		DeckValidationPopup.dismiss(_validation_popup_node)
 
 # ============================================================
 # INTERACTION — OPPONENTS

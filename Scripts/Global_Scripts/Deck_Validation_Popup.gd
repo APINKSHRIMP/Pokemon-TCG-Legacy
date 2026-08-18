@@ -148,5 +148,18 @@ static func show_popup(parent: Node,
 			on_closed.call()
 	)
 	overlay.add_child(close_btn)
+	# Stashed so dismiss() below can close the popup from a keypress without
+	# having to guess which child is the button.
+	overlay.set_meta("close_button", close_btn)
 
 	return overlay
+
+# Closes a popup returned by show_popup() exactly as clicking "close" does —
+# same queue_free, same on_closed callback. Used by the Escape/Space/Enter
+# handling in MapManager.
+static func dismiss(overlay: Control) -> void:
+	if overlay == null or not is_instance_valid(overlay):
+		return
+	var close_btn = overlay.get_meta("close_button", null)
+	if close_btn != null and is_instance_valid(close_btn):
+		close_btn.pressed.emit()
