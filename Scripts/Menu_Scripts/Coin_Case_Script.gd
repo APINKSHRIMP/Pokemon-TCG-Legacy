@@ -50,11 +50,11 @@ var _is_rebuilding       : bool = false
 var zoom_overlay     : CanvasLayer = null
 var is_zoomed        : bool = false
 var last_zoomed_coin : TextureRect = null
-# ISSUE #98: same hold-to-preview model as the deck builder — while Space is held, _process re-reads
+# ISSUE #98: same hold-to-preview model as the deck builder — while Shift is held, _process re-reads
 # the hovered coin every frame so the player can slide across the grid and flick through previews.
 # The preview is sticky: hovering the gap between coins keeps the current one rather than closing it
 # (closing and reopening flashed the bright UI underneath). Only releasing Space closes it.
-var space_held       : bool = false
+var zoom_held       : bool = false
 var zoomed_coin      : TextureRect = null
 var zoom_image       : TextureRect = null
 
@@ -110,9 +110,15 @@ func _process(_delta: float) -> void:
 	if _active_particles and selected_coin_rect:
 		_active_particles.global_position = selected_coin_rect.global_position + selected_coin_rect.size / 2.0
 
-	# ISSUE #98: while Space is held, keep the preview locked to whatever coin the mouse is over.
-	if space_held:
-		_refresh_hover_preview()
+	# ISSUE #98: while the zoom key is held, keep the preview locked to whatever coin the mouse is
+	# over. The is_zoom_held() re-check catches an alt-tab that swallowed the key release, which
+	# would otherwise leave the preview stuck open.
+	if zoom_held:
+		if UIInput.is_zoom_held():
+			_refresh_hover_preview()
+		else:
+			zoom_held = false
+			_hide_zoom()
 
 
 # ─── Data loading ────────────────────────────────────────────────────────────
@@ -454,31 +460,32 @@ func _on_cancel_pressed() -> void:
 	SceneCache.change_scene("res://Scenes/Main_Menu_Scenes/Main_Menu_Scene.tscn")
 
 
-# ─── Escape / Spacebar input ─────────────────────────────────────────────────
+# ─── Escape / zoom-key input ─────────────────────────────────────────────────
 
 func _input(event: InputEvent) -> void:
+	# ── Hold-to-preview ──
+	# Shift, not Space. Space is the accept key (ISSUE #97: an unhandled press fell through to
+	# "ui_accept" and re-pressed whichever button still had focus, so previewing a coin also
+	# re-toggled "Show Unowned Coins"). Shift has no other job here, so nothing needs consuming.
+	# Tested before the InputEventKey branch so the pad shoulder button reaches it too.
+	if UIInput.is_zoom_start(event):
+		zoom_held = true
+		_refresh_hover_preview()
+		return
+	if UIInput.is_zoom_end(event):
+		zoom_held = false
+		_hide_zoom()
+		return
+
 	if event is InputEventKey:
 		if event.pressed and event.keycode == KEY_ESCAPE:
 			if is_zoomed:
-				space_held = false   # ISSUE #98: drop the hold too, or _process re-opens the preview
+				zoom_held = false   # ISSUE #98: drop the hold too, or _process re-opens the preview
 				_hide_zoom()
 				return
 			if GameState.close_sub_menu(): return   # ISSUE #52: map is still loaded behind us — just pop this overlay
 			SceneCache.change_scene("res://Scenes/Main_Menu_Scenes/Main_Menu_Scene.tscn")
 			return
-
-		if event.keycode == KEY_SPACE:
-			# ISSUE #97 FIX ACTIVE: Space is also the "ui_accept" action, so leaving the event
-			# unhandled made it fall through to whichever Button still had focus — pressing "Show
-			# Unowned Coins" a second time just by previewing a coin. Consume it on BOTH the press
-			# and the release so neither edge ever reaches a button.
-			get_viewport().set_input_as_handled()
-			if event.pressed and not event.is_echo():
-				space_held = true
-				_refresh_hover_preview()
-			elif not event.pressed:
-				space_held = false
-				_hide_zoom()
 
 	if event is InputEventMouseButton \
 			and event.button_index == MOUSE_BUTTON_LEFT \

@@ -43,10 +43,10 @@ var _is_rebuilding          : bool = false
 var zoom_overlay        : CanvasLayer = null
 var is_zoomed           : bool = false
 var last_zoomed_costume : TextureRect = null
-# ISSUE #98: hold-to-preview, matching the deck builder. While Space is held _process re-reads the
+# ISSUE #98: hold-to-preview, matching the deck builder. While Shift is held _process re-reads the
 # hovered costume every frame; the preview is sticky over the gaps between cells so sliding across
 # the grid never flashes the UI back on. Only releasing Space closes it.
-var space_held          : bool = false
+var zoom_held          : bool = false
 var zoomed_costume      : TextureRect = null
 var zoom_image          : TextureRect = null
 
@@ -420,29 +420,31 @@ func _on_cancel_pressed() -> void:
 	SceneCache.change_scene("res://Scenes/Main_Menu_Scenes/Main_Menu_Scene.tscn")
 
 
-# ─── Escape / Spacebar input ─────────────────────────────────────────────────
+# ─── Escape / zoom-key input ─────────────────────────────────────────────────
 
 func _input(event: InputEvent) -> void:
+	# ── Hold-to-preview ──
+	# Shift, not Space. Space is the accept key (ISSUE #97: an unhandled press fell through to
+	# "ui_accept" and re-pressed whichever button still had focus). Shift has no other job here,
+	# so nothing needs consuming. Tested before the InputEventKey branch so a pad reaches it too.
+	if UIInput.is_zoom_start(event):
+		zoom_held = true
+		_refresh_hover_preview()
+		return
+	if UIInput.is_zoom_end(event):
+		zoom_held = false
+		_hide_zoom()
+		return
+
 	if event is InputEventKey:
 		if event.pressed and event.keycode == KEY_ESCAPE:
 			if is_zoomed:
-				space_held = false   # ISSUE #98: drop the hold too, or _process re-opens the preview
+				zoom_held = false   # ISSUE #98: drop the hold too, or _process re-opens the preview
 				_hide_zoom()
 				return
 			if GameState.close_sub_menu(): return   # ISSUE #52: map is still loaded behind us — just pop this overlay
 			SceneCache.change_scene("res://Scenes/Main_Menu_Scenes/Main_Menu_Scene.tscn")
 			return
-
-		if event.keycode == KEY_SPACE:
-			# ISSUE #97 FIX ACTIVE: Space doubles as "ui_accept", so an unhandled event re-presses
-			# whichever Button still has focus. Consume both edges.
-			get_viewport().set_input_as_handled()
-			if event.pressed and not event.is_echo():
-				space_held = true
-				_refresh_hover_preview()
-			elif not event.pressed:
-				space_held = false
-				_hide_zoom()
 
 	if event is InputEventMouseButton \
 			and event.button_index == MOUSE_BUTTON_LEFT \
@@ -450,10 +452,17 @@ func _input(event: InputEvent) -> void:
 		call_deferred("_check_click_miss")
 
 
-# ISSUE #98: while Space is held, keep the preview locked to whatever costume the mouse is over.
+# ISSUE #98: while the zoom key is held, keep the preview locked to whatever costume the mouse is
+# over. The is_zoom_held() re-check catches an alt-tab that swallowed the key release, which would
+# otherwise leave the preview stuck open.
 func _process(_delta: float) -> void:
-	if space_held:
-		_refresh_hover_preview()
+	if not zoom_held:
+		return
+	if not UIInput.is_zoom_held():
+		zoom_held = false
+		_hide_zoom()
+		return
+	_refresh_hover_preview()
 
 
 func _refresh_hover_preview() -> void:

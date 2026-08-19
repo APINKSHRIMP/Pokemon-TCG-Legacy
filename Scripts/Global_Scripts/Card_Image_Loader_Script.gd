@@ -1,3 +1,4 @@
+class_name CardDisplay
 extends TextureRect
 
 # Create a custom signal that will be emitted when this card is clicked to set this card as the "selected" card
@@ -6,6 +7,18 @@ signal card_clicked(clicked_card: card_object)
 # Declare the card ID as a variable
 var card_uid
 var card_ref: card_object
+
+# True while this card is showing a sleeve rather than its face — the opponent's hand,
+# both players' prize cards, anything dealt face down. The hold-to-enlarge preview asks
+# this before showing a card: a face-down card must stay unreadable, and an effect that
+# reveals one re-renders it face up, which flips this back to false on its own.
+var is_face_down: bool = false
+
+# Set by whichever screen currently has a card preview open on top of the board.
+# Static because it is a property of the game, not of any one card: card nodes sit deeper
+# in the tree than the screen script, so their _input runs FIRST and the screen's "swallow
+# everything while a preview is up" guard cannot reach them. This is that guard's other half.
+static var zoom_active: bool = false
 
 # Animation and selection variables
 var tween: Tween
@@ -16,6 +29,9 @@ var original_modulate: Color
 func load_card_image(card_passed_uid: String, card_target_size, card_object_ref: card_object = null, face_down: bool = false, sleeve_path: String = ""):
 	# Store reference to the card object so we can emit it when clicked
 	self.card_ref = card_object_ref
+
+	# Remembered so the preview can refuse to enlarge a card the player isn't allowed to see
+	self.is_face_down = face_down
 
 	# Store the card UID so we can access it later when clicked
 	self.card_uid = card_passed_uid
@@ -123,6 +139,12 @@ func set_selected(selected: bool) -> void:
 		
 # This function script is used to determine when a card is clicked			
 func _input(event: InputEvent) -> void:
+	# A card preview is open over the top of everything — clicking to close it must not
+	# also pick this card up underneath. See the zoom_active declaration above for why the
+	# screen script cannot block this on its own.
+	if zoom_active:
+		return
+
 	if event is InputEventMouseButton and event.pressed:
 		# ISSUE #89 FIX: the mouse wheel is delivered as an InputEventMouseButton with pressed == true,
 		# so scrolling with the cursor over a card counted as clicking that card and emitted

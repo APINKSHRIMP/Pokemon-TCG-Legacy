@@ -146,13 +146,15 @@ var _loading_overlay : MenuLoadingOverlay = MenuLoadingOverlay.new()
 var zoom_overlay : CanvasLayer = null
 # Whether we're currently in zoom mode
 var is_zoomed : bool = false
-# ISSUE #13: the preview tracks the mouse live for as long as Space is held. While space_held is
-# true, _process re-reads the hovered card every frame and re-renders the overlay whenever it
-# changes, so the player can hold Space and slide the mouse across the grid to flick through cards
+# ISSUE #13: the preview tracks the mouse live for as long as the zoom key is held. While zoom_held
+# is true, _process re-reads the hovered card every frame and re-renders the overlay whenever it
+# changes, so the player can hold the key and slide the mouse across the grid to flick through cards
 # — and hovering empty space correctly shows nothing. The old design snapshotted the card on
-# key-down and cached it in last_zoomed_card, which meant a later Space press over nothing
-# re-showed a stale card (possibly from a different set or menu entirely).
-var space_held : bool = false
+# key-down and cached it in last_zoomed_card, which meant a later press over nothing re-showed a
+# stale card (possibly from a different set or menu entirely).
+# The key is Shift (UIInput.is_zoom_start / is_zoom_end), not Space — Space is the accept key, and
+# the same hold now works in a match, where it has to coexist with Space advancing the message box.
+var zoom_held : bool = false
 # The card the overlay is currently showing, so _process only rebuilds it when the hover changes
 var zoomed_card : TextureRect = null
 # ISSUE #98: the TextureRect inside the overlay. Kept so a hover change can swap the image in place
@@ -2365,15 +2367,15 @@ func _save_last_set_loaded() -> void:
 	write_file.close()
 
 
-# ─── Input handling (Escape + Spacebar zoom) ────────────────────────────────
+# ─── Input handling (Escape + Shift zoom) ───────────────────────────────────
 
 ## Handles global keyboard input for the deck build screen.
 ## - Escape: backs out one layer — closes whichever popup/overlay is on top
 ##   (load-deck, zoom, deck viewer, energy picker, search screen, search results)
 ##   and returns to normal deck-building mode; only an Escape with nothing open
 ##   leaves for the menu
-## - Spacebar press: zooms into the hovered card's large image
-## - Spacebar release: closes the zoom overlay and restores UI
+## - Shift press: zooms into the hovered card's large image
+## - Shift release: closes the zoom overlay and restores UI
 func _input(event: InputEvent) -> void:
 	if event is InputEventMouseButton and event.pressed:
 		_update_set_breakdown_label()
@@ -2412,7 +2414,7 @@ func _input(event: InputEvent) -> void:
 		# If zoomed in, close the zoom instead of leaving the scene
 		if is_zoomed:
 			# Drop the hold too, or _process would immediately re-open the preview (ISSUE #13)
-			space_held = false
+			zoom_held = false
 			_hide_zoom()
 			return
 		# If the deck viewer is open, close it
@@ -2435,43 +2437,45 @@ func _input(event: InputEvent) -> void:
 		_on_cancel_pressed()
 		return
 
-	if not event is InputEventKey:
+	# ── Hold-to-preview ──
+	# Shift, not Space. Space is the accept key, so the old binding fought with it: an
+	# unhandled press fell through to "ui_accept" and re-pressed whichever button last had
+	# focus, and it had to be consumed to stop that. Shift has no other job on this screen,
+	# so nothing needs consuming and typing in the name box is unaffected.
+	# Above the InputEventKey guard below so the pad shoulder button reaches it too.
+	if UIInput.is_zoom_start(event):
+		# Don't preview if a popup or picker is open, or the deck name field has focus
+		if load_popup != null:
+			return
+		if energy_picker_active:
+			return
+		if deck_viewer_active:
+			return
+		if _search_screen_open():
+			return          # typing in the search name box must not trigger the preview
+		if deck_name_edit.has_focus():
+			return
+		zoom_held = true
+		print("ISSUE #13 FIX ACTIVE (deck view zoom key): preview now follows the mouse while Shift is held")
+		_refresh_hover_preview()
+		return
+	if UIInput.is_zoom_end(event):
+		zoom_held = false
+		_hide_zoom()
 		return
 
-	# ── Spacebar hold-to-preview ──
-	if event.keycode == KEY_SPACE:
-		if event.pressed and not event.is_echo():
-			# Key just went down (not a held-key repeat) — start following the mouse
-			# Don't preview if a popup or picker is open, or the deck name field has focus
-			if load_popup != null:
-				return
-			if energy_picker_active:
-				return
-			if deck_viewer_active:
-				return
-			if _search_screen_open():
-				return          # typing in the search name box must not trigger the preview
-			if deck_name_edit.has_focus():
-				return
-			# Space is also the default "ui_accept" action, so an unhandled key here would
-			# fall through to whichever button last had focus (e.g. "Empty Deck") and press
-			# it too. Consume the event so hovering a card to preview it never re-triggers
-			# the last-focused button.
-			get_viewport().set_input_as_handled()
-			space_held = true
-			print("ISSUE #13 FIX ACTIVE (deck view spacebar): preview now follows the mouse while Space is held")
-			_refresh_hover_preview()
-		elif not event.pressed:
-			# Key released — stop following and close the preview
-			get_viewport().set_input_as_handled()
-			space_held = false
-			_hide_zoom()
 
-
-## ISSUE #13: while Space is held, keep the preview locked to whatever card the mouse is over.
+## ISSUE #13: while the zoom key is held, keep the preview locked to whatever card the mouse is over.
+## The is_zoom_held() re-check is for the one case the key events miss — alt-tabbing away with the
+## key down eats the release, which would otherwise leave the preview stuck open.
 func _process(_delta: float) -> void:
-	if space_held:
-		_refresh_hover_preview()
+	if not zoom_held:
+		return
+	if not UIInput.is_zoom_held():
+		zoom_held = false
+		_hide_zoom()
+		return
+	_refresh_hover_preview()
 
 
 ## Shows the hovered card, swapping the image when the hover moves to a different card.
@@ -2479,8 +2483,8 @@ func _process(_delta: float) -> void:
 ## ISSUE #98: this used to hide the preview the instant the mouse was over nothing. Sliding between
 ## two adjacent cards crosses the few pixels of grid separation, so the overlay was torn down and
 ## rebuilt on every crossing — one frame of the bright deck-builder UI showing through, read as a
-## white flash. While Space is held the preview is now STICKY: it only ever changes to another card,
-## never back to nothing. Releasing Space is the only thing that closes it.
+## white flash. While the key is held the preview is now STICKY: it only ever changes to another
+## card, never back to nothing. Releasing the key is the only thing that closes it.
 func _refresh_hover_preview() -> void:
 	var card := _get_hovered_card()
 	if card == zoomed_card:

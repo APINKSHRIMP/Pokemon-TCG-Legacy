@@ -268,6 +268,22 @@ var opponent_sleeve_border_color: Color = Color(0.15, 0.15, 0.15, 1.0)
 # The ESC forfeit confirmation popup, or null when it isn't up. See _show_forfeit_dialog().
 var forfeit_dialog: CanvasLayer = null
 
+# --- Card zoom (hold Shift to enlarge whatever the mouse is over) ------------
+# The same hold-to-preview the deck builder, coin case, sleeve and costume screens use,
+# brought onto the match board: hold the key and slide the mouse and the enlarged image
+# follows from card to card, so a whole row can be read one after another without ever
+# letting go. Works on anything face up - your hand, either Active, either bench, the
+# energies and tools attached to them, the top of a discard pile, and the cards laid out
+# by a selection screen. Face-down cards (the opponent's hand, both sets of prize cards)
+# are refused, and stay refused until some effect turns one face up.
+const ZOOM_BACKDROP_ALPHA: float = 0.95        # how much of the board the preview hides behind it
+const ZOOM_TARGET_SIZE: Vector2 = Vector2(1000.0, 980.0)   # box the enlarged card is fitted into
+var zoom_overlay: CanvasLayer = null
+var is_zoomed: bool = false
+var zoom_held: bool = false                    # the key is down, so the preview tracks the mouse
+var zoomed_card_node: CardDisplay = null       # the card currently on show, so _process only redraws on a change
+var zoom_image: TextureRect = null             # the enlarged image itself, swapped in place as the hover moves
+
 #signals
 signal message_acknowledged
 signal prize_card_taken
@@ -6902,7 +6918,202 @@ func clear_current_action_selection() -> void:
 	selected_card_for_action = null
 	update_action_button()
 
+# ==============================================================================
+# CARD ZOOM - hold Shift to enlarge whatever the mouse is over
+# ==============================================================================
+
+# Follows the mouse for as long as the key is held.
+func _process(_delta: float) -> void:
+	if not zoom_held:
+		return
+	# Safety net: alt-tabbing with the key down swallows the release event, which would
+	# otherwise strand a full-screen black overlay over the match with no way to shift it.
+	if not UIInput.is_zoom_held():
+		zoom_held = false
+		_hide_card_zoom()
+		return
+	_refresh_card_zoom()
+
+
+# Swaps the preview to whatever card the mouse has moved onto.
+# Deliberately sticky, matching the deck builder: it only ever changes to ANOTHER card,
+# never back to nothing. Sliding between two cards crosses a few pixels of empty table,
+# and tearing the overlay down and rebuilding it on every crossing flashes the board
+# through for a frame. Releasing the key is the only thing that closes the preview.
+func _refresh_card_zoom() -> void:
+	var card_node := _get_hovered_card_node()
+	if card_node == zoomed_card_node:
+		return
+	if card_node == null:
+		return
+	_show_card_zoom(card_node)
+
+
+# Returns the card display under the mouse, or null if there isn't one the player may see.
+func _get_hovered_card_node() -> CardDisplay:
+	# The precise answer, for when the mouse is genuinely over a card Control. It may be over a
+	# wrapper or a label sitting on the card rather than the card itself, so walk up a few levels.
+	var node: Node = get_viewport().gui_get_hovered_control()
+	for i in range(6):
+		if node == null:
+			break
+		if node is CardDisplay:
+			var card := node as CardDisplay
+			return card if _card_is_previewable(card) else null
+		node = node.get_parent()
+	# Nothing found, which on this screen is the normal case rather than the exception: the match
+	# lays full-screen transparent ColorRects over the whole board — the message box, the
+	# opponent-turn blocker, the animation blocker, the played-trainer overlay — and each of them
+	# swallows GUI hover for every pixel behind it. Reading a card WHILE a message is up is the
+	# entire point of the feature, so fall back to hit-testing the card rects directly. This is the
+	# same test Card_Image_Loader already uses to decide whether a click landed on a card
+	# (is_visible_in_tree + get_global_rect), so anything clickable is also enlargeable — including
+	# cards that ignore the mouse entirely, like the energies and tools stacked behind a bench
+	# Pokemon and the top card of a discard pile.
+	return _find_card_under_mouse(self)
+
+
+# Deepest-last search for the card the cursor is over.
+func _find_card_under_mouse(root_node: Node) -> CardDisplay:
+	var mouse_pos := get_global_mouse_position()
+	var topmost: CardDisplay = null
+	for node in _collect_card_displays(root_node, []):
+		var card := node as CardDisplay
+		if not card.is_visible_in_tree():
+			continue                      # hidden, or inside a container that is
+		if not card.get_global_rect().has_point(mouse_pos):
+			continue
+		# Keep the LAST match rather than returning the first: siblings draw in child order and
+		# later branches of the tree draw over earlier ones, so the last hit is the one on top.
+		topmost = card
+	# Face-down cards are counted in that search and only rejected here, at the end. They are
+	# still what the mouse is on — so whatever is lying behind one stays hidden rather than
+	# being previewed straight through it.
+	return topmost if _card_is_previewable(topmost) else null
+
+
+func _collect_card_displays(node: Node, out: Array) -> Array:
+	for child in node.get_children():
+		if child is CardDisplay:
+			out.append(child)
+		_collect_card_displays(child, out)
+	return out
+
+
+# A card can be enlarged only if it is on screen and face up. Face-down covers the
+# opponent's hand and both players' prize cards; an effect that reveals one redraws it
+# face up, so it becomes previewable at that point with no special casing here.
+func _card_is_previewable(node: CardDisplay) -> bool:
+	if node == null or not is_instance_valid(node):
+		return false
+	if not node.is_visible_in_tree():
+		return false
+	if node.is_face_down:
+		return false
+	return node.card_uid != null and str(node.card_uid) != ""
+
+
+# Builds the preview overlay, or swaps the image if one is already up.
+func _show_card_zoom(card_node: CardDisplay) -> void:
+	# Claimed before anything can fail below. _process re-runs this every frame while the key is
+	# held, so a card whose large image is missing would otherwise re-fail — and re-log — forever.
+	zoomed_card_node = card_node
+
+	var uid := str(card_node.card_uid)
+	var parts := uid.split("-")
+	if parts.size() != 2:
+		return
+	var large_path := "res://Image_Assets/Card_Image_Library/" + parts[0] + "/Large/" + uid + ".png"
+	var large_texture: Texture2D = load(large_path)
+	if large_texture == null:
+		push_error("Match zoom: missing large card image " + large_path)
+		return
+
+	# An overlay is already up and the mouse has slid onto another card - swap the texture in
+	# place. Freeing and rebuilding the CanvasLayer lets the board flash through for a frame.
+	if is_zoomed and zoom_image != null and is_instance_valid(zoom_image):
+		_apply_card_zoom_texture(large_texture)
+		return
+
+	is_zoomed = true
+	CardDisplay.zoom_active = true   # stops the card nodes themselves reacting to clicks
+
+	# Layer 150 clears everything the match draws, including the forfeit dialog.
+	zoom_overlay = CanvasLayer.new()
+	zoom_overlay.layer = 150
+	add_child(zoom_overlay)
+
+	var backdrop := ColorRect.new()
+	backdrop.color = Color(0, 0, 0, ZOOM_BACKDROP_ALPHA)
+	backdrop.anchor_right = 1.0
+	backdrop.anchor_bottom = 1.0
+	# Must never absorb hover, or gui_get_hovered_control() would report the backdrop
+	# instead of the board underneath and the preview would freeze on its first card.
+	backdrop.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	zoom_overlay.add_child(backdrop)
+
+	zoom_image = TextureRect.new()
+	zoom_image.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	zoom_image.stretch_mode = TextureRect.STRETCH_SCALE
+	zoom_image.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	zoom_overlay.add_child(zoom_image)
+	_apply_card_zoom_texture(large_texture)
+
+
+# Sets the image and re-centres it for that texture's aspect ratio.
+func _apply_card_zoom_texture(large_texture: Texture2D) -> void:
+	var tex_size := large_texture.get_size()
+	var fit := minf(ZOOM_TARGET_SIZE.x / tex_size.x, ZOOM_TARGET_SIZE.y / tex_size.y)
+	var disp_size := Vector2(tex_size.x * fit, tex_size.y * fit)
+
+	zoom_image.texture = large_texture
+	zoom_image.size = disp_size
+	zoom_image.position = Vector2((1920.0 - disp_size.x) / 2.0, (1080.0 - disp_size.y) / 2.0)
+
+
+func _hide_card_zoom() -> void:
+	CardDisplay.zoom_active = false
+	if not is_zoomed:
+		return
+	is_zoomed = false
+	zoomed_card_node = null
+	zoom_image = null
+	if zoom_overlay != null:
+		zoom_overlay.queue_free()
+		zoom_overlay = null
+
+
+# The flag is static, so a match left while the key was still held would carry a
+# permanent "clicks are blocked" state into the next one.
+func _exit_tree() -> void:
+	CardDisplay.zoom_active = false
+
+
 func _input(event: InputEvent) -> void:
+
+	# -- Hold Shift to enlarge the card under the mouse -------------------------
+	# First branch in the function on purpose, so a card can be read at ANY moment -
+	# including with a message box up, which is exactly when you want to look at the
+	# card the opponent just played. Shift is not the accept key, so opening a preview
+	# never competes with the Space/Enter that dismisses the message afterwards.
+	if UIInput.is_zoom_start(event):
+		zoom_held = true
+		_refresh_card_zoom()
+		return
+	if UIInput.is_zoom_end(event):
+		zoom_held = false
+		_hide_card_zoom()
+		return
+
+	# While a card is enlarged the preview owns the screen: every other input is
+	# swallowed, so a click aimed at closing it cannot acknowledge the message box,
+	# select a card or open the forfeit prompt behind the player's back and carry the
+	# match on underneath something they are still reading. Releasing Shift is the only
+	# way out. Card nodes are deeper in the tree, so their own _input runs before this
+	# one and is blocked separately - see CardDisplay.zoom_active.
+	if is_zoomed:
+		get_viewport().set_input_as_handled()
+		return
 
 	# While the forfeit confirmation is up it owns the screen: swallow all gameplay input so
 	# a click can't acknowledge a message box, cancel a mode or move a card underneath it.
