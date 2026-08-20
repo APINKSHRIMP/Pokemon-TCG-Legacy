@@ -8,6 +8,21 @@ const SLEEVE_DEFAULT     := "res://Image_Assets/Sleeves/1_Default_English.png"
 const COIN_FOLDER        := "res://Image_Assets/Coins"
 const MAX_NAME_LENGTH    := 21
 const OWNED_CARDS_FOLDER := "user://Player_Owned_Cards"
+const OWNED_CARDS_SUFFIX := "_player_owned_cards.json"
+
+# Cosmetic-collection folders, matched to the screens that display them so the X / Y counters
+# on this card can never disagree with what those grids actually show.
+# Costumes live in SPRITE_FOLDER above — Costume_Script lists that same folder.
+const SLEEVE_SMALL_FOLDER   := "res://Image_Assets/Sleeves/small"  # what Sleeves_Scene_Script lists
+const COIN_BACK_IMAGE       := "Back Basic.png"  # placeholder art for unowned coins, not a collectible
+const DEFAULT_SLEEVE_PREFIX := "1_Default"       # the four starter sleeves the sleeve grid hides
+
+# Statistics panel sizing. `statistics` is 787x510 at y=367 and the "View MEDALS" button overlaps
+# it from y=836, so the 12 rows have to fit in ~469px of clear height. Measured in Godot: a row is
+# 31px at font 22, so 12 rows come to 438px at separation 6 (the old separation of 10 would have
+# reached 482px and run under the button). Shrink the font or the gap here if more rows are added.
+const STAT_FONT_SIZE  := 22
+const STAT_SEPARATION := 6
 
 # Target display sizes — uniform regardless of source image dimensions
 const SPRITE_SIZE  := Vector2(280, 360)  # fit (whole sprite visible, letterboxed)
@@ -199,7 +214,7 @@ func _input(event: InputEvent) -> void:
 func _populate_stats() -> void:
 	var vbox := VBoxContainer.new()
 	vbox.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	vbox.add_theme_constant_override("separation", 10)
+	vbox.add_theme_constant_override("separation", STAT_SEPARATION)
 	stats_control.add_child(vbox)
 
 	var prog := GameState.progress
@@ -207,21 +222,46 @@ func _populate_stats() -> void:
 	var unique_defeated : int = prog.get("opponents_beaten", []).size()
 	var total_defeated  : int = int(prog.get("opponents_beaten_count_total", 0))
 	var packs_opened    : int = int(prog.get("packs_opened_total", 0))
-	var sleeves_owned   : int = prog.get("sleeves", []).size()
+	var matches_won     : int = int(prog.get("matches_won", 0))
+	var matches_played  : int = int(prog.get("matches_played", 0))
 
-	var card_totals := _count_owned_cards()
+	var cards := _scan_card_collection()
+	var sets_total : int = int(cards["sets_total"])
+
+	# "Unlocked" means the set's pack is buyable — progress["packs_unlocked"] holds set ids.
+	# Intersected with the sets that actually exist so a stray entry can never push the
+	# numerator past the denominator.
+	var sets_unlocked := 0
+	for set_id in prog.get("packs_unlocked", []):
+		if cards["set_ids"].has(String(set_id)):
+			sets_unlocked += 1
+
+	var sleeve_universe  := _sleeve_universe()
+	var coin_universe    := _coin_universe()
+	var costume_universe := _costume_universe()
 
 	var rows := [
 		["Unique Opponents Defeated", str(unique_defeated)],
 		["Total Opponents Defeated",  str(total_defeated)],
+		["Matches Won",               str(matches_won)],
+		["Matches Played",            str(matches_played)],
 		["Packs Opened",              str(packs_opened)],
-		["Sleeves Collected",         str(sleeves_owned)],
-		["Total Cards Owned",         str(card_totals[0])],
-		["Unique Cards Collected",    str(card_totals[1])],
+		["Card Sets Unlocked",        _fraction(sets_unlocked, sets_total)],
+		["Sets Completed",            _fraction(int(cards["sets_completed"]), sets_total)],
+		["Total Cards Owned",         str(cards["total"])],
+		["Unique Cards Collected",    str(cards["unique"])],
+		["Sleeves Owned",             _fraction(_count_owned(sleeve_universe, GameState.get_sleeves()), sleeve_universe.size())],
+		["Coins Owned",               _fraction(_count_owned(coin_universe, GameState.get_coins()), coin_universe.size())],
+		["Costumes Owned",            _fraction(_count_owned(costume_universe, GameState.get_costumes()), costume_universe.size())],
 	]
 
 	for row in rows:
 		vbox.add_child(_make_stat_row(row[0], row[1]))
+
+
+# "12 / 38" — used by every X / Y counter so they all format identically.
+func _fraction(owned: int, total: int) -> String:
+	return str(owned) + " / " + str(total)
 
 
 func _make_stat_row(label_text: String, value_text: String) -> HBoxContainer:
@@ -230,13 +270,13 @@ func _make_stat_row(label_text: String, value_text: String) -> HBoxContainer:
 
 	var lbl := Label.new()
 	lbl.text = label_text
-	lbl.add_theme_font_size_override("font_size", 22)
+	lbl.add_theme_font_size_override("font_size", STAT_FONT_SIZE)
 	lbl.add_theme_color_override("font_color", Color.BLACK)
 	lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 
 	var val := Label.new()
 	val.text = value_text
-	val.add_theme_font_size_override("font_size", 22)
+	val.add_theme_font_size_override("font_size", STAT_FONT_SIZE)
 	val.add_theme_color_override("font_color", Color.BLACK)
 	val.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 
@@ -245,34 +285,122 @@ func _make_stat_row(label_text: String, value_text: String) -> HBoxContainer:
 	return hbox
 
 
-func _count_owned_cards() -> Array:
-	var total_count  : int = 0
-	var unique_count : int = 0
+# One pass over user://Player_Owned_Cards/ answers every card statistic on this screen:
+#   total / unique  — copies owned, and distinct cards owned
+#   sets_total      — the denominator for both set counters (one file per set, 38 of them)
+#   sets_completed  — a set counts as complete once at least one copy of EVERY card in it is
+#                     owned. The owned-cards files leave basic Energy out (base1 lists 96 of its
+#                     102 cards), so those unlimited cards can't block completion.
+#   set_ids         — {"base1": true, ...}, used to sanity-check progress["packs_unlocked"]
+# The folder also holds a Set_ID_Names_Dictionary and hand-made backups ("base1_player_owned_cards
+# ALL.json"); the OWNED_CARDS_SUFFIX test is what keeps those out of the counts.
+func _scan_card_collection() -> Dictionary:
+	var result := {
+		"total": 0,
+		"unique": 0,
+		"sets_total": 0,
+		"sets_completed": 0,
+		"set_ids": {},
+	}
 
 	var dir := DirAccess.open(OWNED_CARDS_FOLDER)
 	if dir == null:
-		return [0, 0]
+		return result
 
 	dir.list_dir_begin()
 	var fname := dir.get_next()
 	while fname != "":
-		if fname.ends_with("_player_owned_cards.json"):
+		if fname.ends_with(OWNED_CARDS_SUFFIX):
 			var path := OWNED_CARDS_FOLDER + "/" + fname
 			var f := FileAccess.open(path, FileAccess.READ)
 			if f != null:
 				var parsed = JSON.parse_string(f.get_as_text())
 				f.close()
 				if parsed is Dictionary and parsed.has("owned_cards"):
+					result["sets_total"] += 1
+					result["set_ids"][fname.trim_suffix(OWNED_CARDS_SUFFIX)] = true
+					var cards_in_set := 0
+					var owned_in_set := 0
 					for entry in parsed["owned_cards"]:
 						if entry is Dictionary:
+							cards_in_set += 1
 							var owned := int(entry.get("owned", 0))
 							if owned > 0:
-								total_count  += owned
-								unique_count += 1
+								owned_in_set    += 1
+								result["total"] += owned
+								result["unique"] += 1
+					if cards_in_set > 0 and owned_in_set == cards_in_set:
+						result["sets_completed"] += 1
 		fname = dir.get_next()
 	dir.list_dir_end()
 
-	return [total_count, unique_count]
+	return result
+
+
+# ─── Cosmetic collection counting ────────────────────────────────────────────
+
+# Lists the real asset files in a res:// folder. The editor shows "Ditto.jpg" next to its
+# "Ditto.jpg.import" sidecar, and an exported build can list "Ditto.jpg.remap" instead, so both
+# suffixes are stripped and the result de-duplicated through a Dictionary.
+func _list_asset_files(folder: String) -> Dictionary:
+	var out : Dictionary = {}
+	var dir := DirAccess.open(folder)
+	if dir == null:
+		push_error("Info: cannot open folder " + folder)
+		return out
+
+	dir.list_dir_begin()
+	var fname := dir.get_next()
+	while fname != "":
+		if not dir.current_is_dir():
+			var clean := fname
+			if clean.ends_with(".import"):
+				clean = clean.trim_suffix(".import")
+			elif clean.ends_with(".remap"):
+				clean = clean.trim_suffix(".remap")
+			out[clean] = true
+		fname = dir.get_next()
+	dir.list_dir_end()
+	return out
+
+
+# Each universe below is keyed EXACTLY the way that collection is stored in progress, so
+# ownership is a straight lookup and no per-collection name-munging is needed here.
+
+# progress["coins"] holds filenames: "Pikachu Gold.png"
+func _coin_universe() -> Dictionary:
+	var out : Dictionary = {}
+	for fname in _list_asset_files(COIN_FOLDER):
+		if fname != COIN_BACK_IMAGE:
+			out[fname] = true
+	return out
+
+
+# progress["sleeves"] holds bare basenames: "Ditto". The four "1_Default*" card backs are
+# excluded to match the sleeve grid, which also hides them — that is what stops the starter
+# "default" entry every save begins with from counting as a collected sleeve.
+func _sleeve_universe() -> Dictionary:
+	var out : Dictionary = {}
+	for fname in _list_asset_files(SLEEVE_SMALL_FOLDER):
+		if not String(fname).begins_with(DEFAULT_SLEEVE_PREFIX):
+			out[String(fname).get_basename()] = true
+	return out
+
+
+# progress["costumes"] holds lowercased filenames: "1ash.png" (GameState lowercases on save)
+func _costume_universe() -> Dictionary:
+	var out : Dictionary = {}
+	for fname in _list_asset_files(SPRITE_FOLDER):
+		out[String(fname).to_lower()] = true
+	return out
+
+
+func _count_owned(universe: Dictionary, owned: Array) -> int:
+	var count := 0
+	for entry in owned:
+		if universe.has(String(entry)):
+			count += 1
+	return count
 
 
 # ─── Cheat notification ──────────────────────────────────────────────────────

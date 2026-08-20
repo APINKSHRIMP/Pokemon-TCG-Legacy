@@ -773,6 +773,23 @@ func mark_opponent_beaten(opponent_name: String):
 		save_progress()
 
 # ============================================================
+# MATCH RECORD
+# ============================================================
+
+# Lifetime tally of individual MATCHES — a different number from the opponent counters above,
+# which only move the first time each opponent falls. Every finished match counts here: each
+# round of a best-of-3 separately, a rematch against an already-beaten opponent again, and a
+# forfeit as a played loss. Losses are matches_played - matches_won, so they aren't stored.
+# Called from Main_Match_Core_Gameplay_Script.game_end_logic(), the one place a result is set.
+func record_match_result(won: bool) -> void:
+	if test_match_mode:
+		return  # the T-key debug match isn't a real match — keep it out of the trainer card
+	progress["matches_played"] = int(progress.get("matches_played", 0)) + 1
+	if won:
+		progress["matches_won"] = int(progress.get("matches_won", 0)) + 1
+	save_progress()
+
+# ============================================================
 # TIME / DATE SYSTEM
 # ============================================================
 

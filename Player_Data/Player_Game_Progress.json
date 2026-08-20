@@ -22,6 +22,8 @@
 		"Base1"
 	],
 	"gifts_received": [],
+	"matches_played": 0,
+	"matches_won": 0,
 	"moving_in_completed": false,
 	"npc_interactions": [],
 	"opponents_beaten": [],

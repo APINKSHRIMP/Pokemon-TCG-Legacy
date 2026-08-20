@@ -2897,6 +2897,10 @@ func game_end_logic(loser_is_player: bool, is_draw: bool = false) -> void:
 		print("GAME OVER: Opponent has lost the game!")
 		await show_message("CONGRATULATIONS: YOU WON!!!!!")
 		GameState.battle_result = "win"
+
+	# Trainer-card statistics: every finished match counts, win or loss, including each round of
+	# a best-of-3 and a forfeit. Test matches are ignored inside record_match_result().
+	GameState.record_match_result(GameState.battle_result == "win")
 	
 	GameState.returning_from_battle = true
 	
