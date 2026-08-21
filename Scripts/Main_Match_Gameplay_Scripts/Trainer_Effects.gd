@@ -11448,7 +11448,7 @@ func _register_ex16_trainers() -> void:
 	_trainer_dispatch["ex16-81"] = func(c, opp): await effect_ex9_scott(opp)                    # Scott (Supporter)
 	_trainer_dispatch["ex16-83"] = func(c, opp): await effect_ex5_stevens_advice(opp)           # Steven's Advice (Supporter)
 
-# POP SERIES (pop1–pop6) trainers. Every one is a reprint of an existing card — reuse the existing
+# POP SERIES (pop1–pop5) trainers. Every one is a reprint of an existing card — reuse the existing
 # effect functions with the pop UID. Stadiums (Pokémon Park pop2-10, High/Low Pressure System
 # pop3-10/11) route through resolve_stadium_trainer and are recognized via STADIUM_UID_ALIASES.
 # Multi Technical Machine 01 (pop2-9) auto-routes via is_attached_trainer() (Technical Machine subtype).

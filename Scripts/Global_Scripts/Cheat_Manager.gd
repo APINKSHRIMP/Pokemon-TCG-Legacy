@@ -18,14 +18,14 @@ const _CHEAT_LABELS := {
 }
 
 # ISSUE #99: the four groups between them must cover EVERY set in Card_Set_Data/ — the promo sets
-# (basep, si1, np) and the six POP sets were missing entirely, so no cheat could ever unlock them.
+# (basep, si1, np) and the five POP sets were missing entirely, so no cheat could ever unlock them.
 # Each promo set is grouped with the era it belongs to.
 const _SET_GROUPS := {
 	"CHT.All_Cards_1": ["base1", "base2", "base3", "base5", "gym1", "gym2", "basep", "si1"],
 	"CHT.All_Cards_2": ["neo1", "neo2", "neo3", "neo4", "ecard1", "ecard2", "ecard3", "np"],
 	"CHT.All_Cards_3": ["ex1", "ex2", "ex3", "ex4", "ex5", "ex6", "ex7", "ex8"],
 	"CHT.All_Cards_4": ["ex9", "ex10", "ex11", "ex12", "ex13", "ex14", "ex15", "ex16",
-						"pop1", "pop2", "pop3", "pop4", "pop5", "pop6"],
+						"pop1", "pop2", "pop3", "pop4", "pop5"],
 }
 
 # Returns the display message if `name` is a recognised cheat code and the

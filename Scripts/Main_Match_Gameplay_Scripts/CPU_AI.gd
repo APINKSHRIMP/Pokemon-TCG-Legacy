@@ -3378,7 +3378,7 @@ func cpu_phase_attack(cpu_eval: Dictionary) -> void:
 		if attack_name_lower == "super deep dive" and main.opponent_bench.size() == 0:
 			score -= 9999.0  # does nothing without a Bench to switch to
 
-		# ---- POP SERIES (pop1–pop6) ATTACK SCORING ----
+		# ---- POP SERIES (pop1–pop5) ATTACK SCORING ----
 		# Only attacks the generic scorer mis-values need a nudge (same approach as ex1/ex2 above).
 		if main.opponent_active_pokemon.uid.begins_with("pop"):
 			# Twin-blade (Armaldo ex): empty damage field → generic sees 0; it does 30 to the Active.
@@ -3387,9 +3387,6 @@ func cpu_phase_attack(cpu_eval: Dictionary) -> void:
 					score += 500.0 - (30 - player_hp) * 0.5  # guaranteed KO the generic missed
 				else:
 					score += 60.0  # ~30 damage worth (matches the generic damage×2 contribution)
-			# Assurance (Rampardos): base is 60 (not the 30 damage field) when the Defender has ≤60 HP.
-			if attack_name_lower == "assurance" and player_hp <= 60:
-				score += 460.0 if 60 >= player_hp else 60.0
 			# Wide Solarbeam (Venusaur): the "20" is BENCH damage, NOT Active — undo the generic
 			# active-damage/KO scoring and value it purely as a 2-target Bench snipe.
 			if attack_name_lower == "wide solarbeam":
@@ -3413,17 +3410,6 @@ func cpu_phase_attack(cpu_eval: Dictionary) -> void:
 			# Paralyzing Kiss (Luvdisc): no effect with only 1 Defending Pokemon (always, single battle).
 			if attack_name_lower == "paralyzing kiss":
 				score = -9999.0
-			# Aura Sphere (Lucario): small bonus for the 20 Bench snipe on top of the 40 Active damage.
-			if attack_name_lower == "aura sphere" and main.player_bench.size() > 0:
-				score += 15.0
-			# Anger Revenge (Bastiodon): +40 Bench snipe only if it was damaged during the player's last turn.
-			if attack_name_lower == "anger revenge":
-				var ar_last = main.last_attack_on_opponent
-				if not ar_last.is_empty() and ar_last.get("damage", 0) > 0 and main.player_bench.size() > 0:
-					score += 20.0
-			# Blowing Wind (Drifloon): needs your own Bench to do anything.
-			if attack_name_lower == "blowing wind" and main.opponent_bench.size() == 0:
-				score -= 60.0
 
 		# ---- EX3 (EX DRAGON) ATTACK SCORING ----
 		# ex3 is the first of the ~30 sets that previously had no dedicated block (audit finding: only
@@ -4893,7 +4879,7 @@ func _cpu_score_trainer_card_inner(card: card_object) -> float:
 		"ex16-81": return 45.0                           # Scott (Supporter): fetch up to 3 Supporters/Stadiums
 		"ex16-83": return 55.0                           # Steven's Advice (Supporter): draw up to opp Pokemon count
 		# Battle Frontier / Drake's / Glacia's / Phoebe's / Sidney's Stadiums use the generic stadium heuristic.
-		# ── POP SERIES (pop1–pop6) — all reprints; Stadiums use the generic stadium heuristic ──
+		# ── POP SERIES (pop1–pop5) — all reprints; Stadiums use the generic stadium heuristic ──
 		"pop2-8": return _cpu_score_ex3_mr_brineys_compassion()  # Mr. Briney's Compassion (Supporter)
 		"pop2-11": return 60.0                           # TV Reporter (Supporter): net +2 cards
 		"pop4-9": return 70.0                            # Pokémon Fan Club: free bench development
@@ -4992,7 +4978,7 @@ func _cpu_score_trainer_card_inner(card: card_object) -> float:
 		"ex14-86": return 20.0  # Energy Search
 		"ex14-87": return _cpu_score_potion()  # Potion
 		# Crystal Beach / Holon Circle (Stadiums) use the generic heuristic.
-		# pop1 and pop6 have no Trainer cards. pop3's only Trainers are High/Low Pressure System
+		# pop1 has no Trainer cards. pop3's only Trainers are High/Low Pressure System
 		# (Stadiums), which use the generic stadium heuristic — nothing to add for either.
 	return 0.0
 

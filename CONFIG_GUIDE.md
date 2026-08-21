@@ -116,7 +116,7 @@ popup is shown so the player sees everything at once.
 | `ecard1`–`ecard3` | Expedition / Aquapolis / Skyridge |
 | `ex1`–`ex16` | EX era |
 | `np` | Nintendo Promo |
-| `pop1`–`pop6` | POP series |
+| `pop1`–`pop5` | POP series |
 | `si1` | Southern Islands |
 
 ---

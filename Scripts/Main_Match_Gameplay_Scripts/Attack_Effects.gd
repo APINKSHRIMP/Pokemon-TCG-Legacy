@@ -1969,10 +1969,6 @@ func apply_bench_damage(effect: Dictionary, is_opponent_attacking: bool) -> void
 		if walls_on:
 			print("GYM2 TRANSPARENT WALLS: bench damage prevented")
 			continue
-		# POP Protective Wall (Bastiodon pop6-1): a protected side's Bench takes no attack damage.
-		if main.powers_and_bodies.pop_protective_wall_active(bench_owner_is_opp):
-			print("POP PROTECTIVE WALL: bench damage prevented")
-			continue
 		var bench_container = main.opponent_bench_container if bench_info["is_opponent"] else main.player_bench_container
 		for i in range(bench_info["bench"].size()):
 			var pokemon = bench_info["bench"][i]
@@ -2365,10 +2361,6 @@ func apply_bench_damage_single(effect: Dictionary, is_opponent_attacking: bool) 
 		if walls_on:
 			await main.show_message("TRANSPARENT WALLS — BENCH DAMAGE PREVENTED!")
 			print("GYM2 TRANSPARENT WALLS: bench damage prevented (single)")
-			return
-		# POP Protective Wall (Bastiodon pop6-1): a protected side's Bench takes no attack damage.
-		if main.powers_and_bodies.pop_protective_wall_active(is_target_opponent):
-			await main.show_message("PROTECTIVE WALL — BENCH DAMAGE PREVENTED!")
 			return
 		# GYM1 Brock's Rhydon Bench Guard — owner may redirect 10 to Rhydon
 		var effective_damage = await main.powers_and_bodies.check_bench_guard(target, damage, is_target_opponent)
@@ -4376,10 +4368,6 @@ func gym1_hit_active(attacker: card_object, defender: card_object, is_opponent: 
 # Helper: deal raw damage (no W/R) to a single Pokemon, showing a floating label and refreshing HP
 func gym1_hit_raw(pokemon: card_object, amount: int, is_pokemon_opponent: bool) -> void:
 	if pokemon == null or amount <= 0:
-		return
-	# POP Protective Wall (Bastiodon pop6-1): a protected side's Benched Pokemon take no attack damage.
-	var raw_active = main.opponent_active_pokemon if is_pokemon_opponent else main.player_active_pokemon
-	if pokemon != raw_active and main.powers_and_bodies.pop_protective_wall_active(is_pokemon_opponent):
 		return
 	pokemon.current_hp = max(0, pokemon.current_hp - amount)
 	main.display_hp_circles_above_align(pokemon, is_pokemon_opponent)
@@ -29549,36 +29537,25 @@ func _ex16_choose_count(options: Array, _header: String) -> int:
 	return int(picked.get("name", options[0]))
 
 # ════════════════════════════════════════════════════════════════════════════════════════════════
-# POP SERIES (pop1–pop6) ATTACKS — registered LAST so pop collision-overrides win. Single-battle today,
+# POP SERIES (pop1–pop5) ATTACKS — registered LAST so pop collision-overrides win. Single-battle today,
 # written through card_ops.get_active/defending/all_pokemon_in_play so a future Double Battle mode scales.
 # Almost the whole series resolves via the GENERIC parser or existing dispatch (Whirlwind/Roar/Spark/
 # Feint Attack/Amnesia/Sonicboom/Smash Turn/Crystal Laser/Negative Ion/Sniff Out/Heavy Metal/Copy/
-# Psychic Boom/Psychic Shield/Minor Errand-Running/Call for Family/Wide Solarbeam/Leech Seed/Extra Draw…).
+# Psychic Boom/Psychic Shield/Wide Solarbeam/Extra Draw…).
 # Only the entries below are pop-specific new code or reprint-collision overrides.
 # ════════════════════════════════════════════════════════════════════════════════════════════════
 func _register_pop_attacks() -> void:
 	# pop1-16 Armaldo ex Twin-blade: 30 damage to each Defending Pokemon (1 in single battles).
 	_attack_dispatch["twin-blade"]       = func(atk, a, d, opp): await execute_pop_twin_blade(a, d, opp); await _attack_finish(true, 30, atk, a.metadata.get("types",["Colorless"]), opp)
-	# pop1-16 Supersonic Claws (80) / pop6-2 Feint (30): base damage not affected by Resistance.
+	# pop1-16 Supersonic Claws (80): base damage not affected by Resistance.
 	_attack_dispatch["supersonic claws"] = func(atk, a, d, opp): var b=parse_attack_base_damage(atk); await execute_ecard2_aqua_sonic(a, d, opp, b); await _attack_finish(true, b, atk, a.metadata.get("types",["Colorless"]), opp)
-	_attack_dispatch["feint"]            = func(atk, a, d, opp): var b=parse_attack_base_damage(atk); await execute_ecard2_aqua_sonic(a, d, opp, b); await _attack_finish(true, b, atk, a.metadata.get("types",["Colorless"]), opp)
 	# pop1-17 Tyranitar ex Critical Crush: discard 2 Basic Energy attached or this attack does nothing.
 	_attack_dispatch["critical crush"]   = func(atk, a, d, opp): var b=parse_attack_base_damage(atk); await execute_pop_discard2_basic(a, d, opp, b); await _attack_finish(true, b, atk, a.metadata.get("types",["Colorless"]), opp)
-	# pop6-2 Lucario Aura Sphere: base to Active + 20 to 1 opponent Benched Pokemon.
-	_attack_dispatch["aura sphere"]      = func(atk, a, d, opp): var b=parse_attack_base_damage(atk); await execute_bench_choose_spread(a, d, opp, b, 1, 20, false); await _attack_finish(true, b, atk, a.metadata.get("types",["Colorless"]), opp)
-	# pop6-5 Rampardos Hasty Headbutt: base (ignores ALL Defender effects incl. W/R), then 20 self-damage.
-	_attack_dispatch["hasty headbutt"]   = func(atk, a, d, opp): var b=parse_attack_base_damage(atk); await execute_pop_hasty_headbutt(a, d, opp, b); await _attack_finish(true, b, atk, a.metadata.get("types",["Colorless"]), opp)
-	# pop6-5 Rampardos Assurance: base 60 if Defender has 60 or less remaining HP, else 30.
-	_attack_dispatch["assurance"]        = func(atk, a, d, opp): var dmg=await execute_pop_assurance(a, d, opp); await _attack_finish(true, dmg, atk, a.metadata.get("types",["Colorless"]), opp)
-	# pop6-1 Bastiodon Anger Revenge: base to Active + 40 to 1 opp Bench if damaged last opponent turn.
-	_attack_dispatch["anger revenge"]    = func(atk, a, d, opp): var b=parse_attack_base_damage(atk); await execute_pop_anger_revenge(a, d, opp, b); await _attack_finish(true, b, atk, a.metadata.get("types",["Colorless"]), opp)
 	# pop3-4 Minun Power Bolt / pop3-5 Plusle Body Bolt: 30 (no W/R) to an opp Pokemon that has a Power/Body.
 	_attack_dispatch["power bolt"]       = func(atk, a, d, opp): await execute_pop_bolt(a, opp, "Power"); await _attack_finish(false, 0, atk, a.metadata.get("types",["Colorless"]), opp)
 	_attack_dispatch["body bolt"]        = func(atk, a, d, opp): await execute_pop_bolt(a, opp, "Body"); await _attack_finish(false, 0, atk, a.metadata.get("types",["Colorless"]), opp)
 	# pop2-6 Venusaur Hard Plant: base; Venusaur can't use Hard Plant during your next turn.
 	_attack_dispatch["hard plant"]       = func(atk, a, d, opp): var b=parse_attack_base_damage(atk); await execute_pop_hard_plant(a, d, opp, b); await _attack_finish(true, b, atk, a.metadata.get("types",["Colorless"]), opp)
-	# pop6-6 Drifloon Blowing Wind: coin; heads, put 1 of your Benched Pokemon (+ attached) on top of your deck.
-	_attack_dispatch["blowing wind"]     = func(atk, a, d, opp): await execute_pop_blowing_wind(a, opp); await _attack_finish(false, 0, atk, a.metadata.get("types",["Colorless"]), opp)
 	# pop3-4/pop3-5 Cheer Up: draw 1 (2 if the named partner Minun/Plusle is in play).
 	_attack_dispatch["cheer up"]         = func(atk, a, d, opp): await execute_pop_cheer_up(a, opp, atk); await _attack_finish(false, 0, atk, a.metadata.get("types",["Colorless"]), opp)
 	# pop3-16 Pichu Bros. Bustle: 20x (flip 2); if either coin is heads, the Defending Pokemon is Confused.
@@ -29631,14 +29608,6 @@ func _register_pop_attacks() -> void:
 			await _attack_finish(false, 0, atk, a.metadata.get("types",["Colorless"]), opp)
 		elif _pv_pop_wide: await _pv_pop_wide.call(atk, a, d, opp)
 
-	# pop6-11 Bidoof Scavenge: search discard for a Trainer card (base "scavenge" needs Psychic Energy).
-	var _pv_pop_scav = _attack_dispatch.get("scavenge")
-	_attack_dispatch["scavenge"] = func(atk, a, d, opp):
-		if a.uid.begins_with("pop"):
-			await execute_pop_scavenge(a, opp)
-			await _attack_finish(false, 0, atk, a.metadata.get("types",["Colorless"]), opp)
-		elif _pv_pop_scav: await _pv_pop_scav.call(atk, a, d, opp)
-
 	# pop2-14 Luvdisc Fast Stream: structural no-op in single battle (ex1 hardcodes 30; read pop base 20).
 	var _pv_pop_fast = _attack_dispatch.get("fast stream")
 	_attack_dispatch["fast stream"] = func(atk, a, d, opp):
@@ -29647,14 +29616,6 @@ func _register_pop_attacks() -> void:
 			await execute_pop_single_target_damage(a, d, opp, b)
 			await _attack_finish(true, b, atk, a.metadata.get("types",["Colorless"]), opp)
 		elif _pv_pop_fast: await _pv_pop_fast.call(atk, a, d, opp)
-
-	# pop6-3 Manaphy Call for Family: search deck for ANY Basic Pokemon and put it on your Bench.
-	var _pv_pop_cff = _attack_dispatch.get("call for family")
-	_attack_dispatch["call for family"] = func(atk, a, d, opp):
-		if a.uid.begins_with("pop"):
-			await execute_call_for_pokemon(a, opp, [], "")
-			await _attack_finish(false, 0, atk, a.metadata.get("types",["Colorless"]), opp)
-		elif _pv_pop_cff: await _pv_pop_cff.call(atk, a, d, opp)
 
 	# pop5-2 Lugia Aerowing (30/60): you may flip — heads = big, tails = nothing, decline = base (neo3 Lugia = 40/80).
 	var _pv_pop_aero = _attack_dispatch.get("aerowing")
@@ -29705,55 +29666,6 @@ func execute_pop_discard2_basic(attacker: card_object, defender: card_object, is
 	if main._should_bail(): return
 	await main.check_all_knockouts()
 
-# pop6-5 Rampardos Hasty Headbutt: damage ignores W/R and every effect on the Defender, then 20 self-damage.
-func execute_pop_hasty_headbutt(attacker: card_object, defender: card_object, is_opponent: bool, base: int) -> void:
-	if await handle_attack_confusion(attacker, is_opponent): return
-	if await handle_attack_blind(attacker, is_opponent): return
-	if defender != null:
-		var lbl = Vector2(530, 300) if is_opponent else Vector2(1030, 300)
-		main.show_floating_label("-" + str(base) + "HP", lbl, Color.WHITE, true)
-		defender.current_hp = max(0, defender.current_hp - base)
-		main.display_hp_circles_above_align(defender, not is_opponent)
-		await main.show_message("HASTY HEADBUTT: " + str(base) + " DAMAGE! (IGNORES ALL DEFENDER EFFECTS)")
-		if main._should_bail(): return
-	# ISSUE #82 / ISSUE #60: PlusPower +10 each, Defender -20 each on this 20 self-damage.
-	var hasty_self = main.apply_self_damage_modifiers(attacker, 20)
-	attacker.current_hp = max(0, attacker.current_hp - hasty_self)
-	main.display_hp_circles_above_align(attacker, is_opponent)
-	await main.show_message(attacker.metadata.get("name","").to_upper() + " DID " + str(hasty_self) + " DAMAGE TO ITSELF!")
-	if main._should_bail(): return
-	await main.check_all_knockouts()
-
-# pop6-5 Rampardos Assurance: base 60 when the Defender has 60 or less remaining HP, otherwise 30.
-func execute_pop_assurance(attacker: card_object, defender: card_object, is_opponent: bool) -> int:
-	if await handle_attack_confusion(attacker, is_opponent): return 0
-	if await handle_attack_blind(attacker, is_opponent): return 0
-	var dmg = 60 if (defender != null and defender.current_hp <= 60) else 30
-	await gym1_hit_active(attacker, defender, is_opponent, dmg)
-	if main._should_bail(): return dmg
-	await main.check_all_knockouts()
-	return dmg
-
-# pop6-1 Bastiodon Anger Revenge: base to Active; if Bastiodon was damaged during the opponent's last
-# turn, also 40 (no W/R) to 1 chosen opponent Benched Pokemon.
-func execute_pop_anger_revenge(attacker: card_object, defender: card_object, is_opponent: bool, base: int) -> void:
-	if await handle_attack_confusion(attacker, is_opponent): return
-	if await handle_attack_blind(attacker, is_opponent): return
-	await gym1_hit_active(attacker, defender, is_opponent, base)
-	if main._should_bail(): return
-	var last_hit = main.last_attack_on_player if not is_opponent else main.last_attack_on_opponent
-	var was_damaged = not last_hit.is_empty() and last_hit.get("damage", 0) > 0
-	if was_damaged:
-		var opp_bench = main.player_bench if is_opponent else main.opponent_bench
-		if opp_bench.size() > 0:
-			var targets = await gym1_choose_bench_targets(opp_bench, 1, not is_opponent, is_opponent, "ANGER REVENGE: CHOOSE A BENCHED POKEMON", 40)
-			if main._should_bail(): return
-			if targets.size() > 0:
-				gym1_hit_raw(targets[0], 40, not is_opponent)
-				await main.show_message("ANGER REVENGE! 40 DAMAGE TO " + targets[0].metadata.get("name","").to_upper() + "!")
-				if main._should_bail(): return
-	await main.check_all_knockouts()
-
 # pop3-4 Power Bolt / pop3-5 Body Bolt: 30 to a chosen opponent Pokemon that has any Poke-Power/Poke-Body.
 func execute_pop_bolt(attacker: card_object, is_opponent: bool, kind: String) -> void:
 	if await handle_attack_confusion(attacker, is_opponent): return
@@ -29791,33 +29703,6 @@ func execute_pop_hard_plant(attacker: card_object, defender: card_object, is_opp
 	await main.show_message(attacker.metadata.get("name","").to_upper() + " CAN'T USE HARD PLANT NEXT TURN!")
 	if main._should_bail(): return
 	await main.check_all_knockouts()
-
-# pop6-6 Drifloon Blowing Wind: coin — heads, put 1 of your Benched Pokemon (and attached) on top of your deck.
-func execute_pop_blowing_wind(attacker: card_object, is_opponent: bool) -> void:
-	if await handle_attack_confusion(attacker, is_opponent): return
-	if await handle_attack_blind(attacker, is_opponent): return
-	var coin = await main.flip_coin(false, is_opponent)
-	if not coin:
-		await main.show_message("TAILS! NOTHING HAPPENS!")
-		if main._should_bail(): return
-		return
-	var own_bench = main.opponent_bench if is_opponent else main.player_bench
-	if own_bench.is_empty():
-		await main.show_message("NO BENCHED POKEMON TO MOVE!")
-		if main._should_bail(): return
-		return
-	var target: card_object = own_bench[0]
-	if own_bench.size() > 1:
-		if is_opponent:
-			for p in own_bench:
-				if p.get_damage_counters() > target.get_damage_counters(): target = p
-		else:
-			target = await main.card_ops.choose_card(own_bench, false, "BLOWING WIND", "Put 1 of your Benched Pokemon on top of your deck", "SELECT", true)
-			if main._should_bail(): return
-			if target == null: return
-	_pop_bounce_to_top_of_deck(target, is_opponent)
-	await main.show_message(target.metadata.get("name","").to_upper() + " WAS PUT ON TOP OF THE DECK!")
-	if main._should_bail(): return
 
 # pop3-4/pop3-5 Cheer Up: draw 1 card, or 2 if the named partner (Minun/Plusle) is also in play.
 func execute_pop_cheer_up(attacker: card_object, is_opponent: bool, atk: Dictionary) -> void:
@@ -29927,29 +29812,6 @@ func execute_pop_extra_draw(attacker: card_object, is_opponent: bool) -> void:
 	await main.show_message("EXTRA DRAW! ATTACHED " + str(picks.size()) + " BASIC ENERGY!")
 	if main._should_bail(): return
 
-# pop6-11 Bidoof Scavenge: search your discard pile for a Trainer card and put it into your hand.
-func execute_pop_scavenge(attacker: card_object, is_opponent: bool) -> void:
-	if await handle_attack_confusion(attacker, is_opponent): return
-	if await handle_attack_blind(attacker, is_opponent): return
-	if main.trainer_effects.check_pokemon_tower_blocks_recovery():
-		await main.show_message("POKEMON TOWER! CANNOT RECOVER CARDS FROM DISCARD!")
-		if main._should_bail(): return
-		return
-	var discard = main.opponent_discard_pile if is_opponent else main.player_discard_pile
-	var pool = discard.filter(func(c): return main.trainer_effects.is_trainer_card(c))
-	if pool.is_empty():
-		await main.show_message("NO TRAINER CARD IN DISCARD PILE!")
-		if main._should_bail(): return
-		return
-	var chosen: card_object = null
-	if is_opponent:
-		chosen = pool[0]
-	else:
-		chosen = await main.card_ops.choose_card(pool, false, "SCAVENGE", "Choose a Trainer card from your discard pile", "TAKE", false, Callable(), true)
-		if main._should_bail(): return
-	if chosen == null: return
-	await main.card_ops.recover_to_hand(chosen, is_opponent)
-
 # pop1-15 Swellow: boosted Agility (base 70) after Focus Energy — still coin→invincible next turn.
 func execute_pop_boosted_agility(attacker: card_object, defender: card_object, is_opponent: bool) -> void:
 	if await handle_attack_confusion(attacker, is_opponent): return
@@ -30005,33 +29867,6 @@ func execute_pop_aerowing(attacker: card_object, defender: card_object, is_oppon
 		if main._should_bail(): return dmg
 	await main.check_all_knockouts()
 	return dmg
-
-# Move a Benched Pokemon and everything attached to it onto TOP of its owner's deck (no shuffle).
-func _pop_bounce_to_top_of_deck(pokemon: card_object, is_pokemon_opponent: bool) -> void:
-	var deck = main.opponent_deck if is_pokemon_opponent else main.player_deck
-	var moved: Array = []
-	for e in pokemon.attached_energies:
-		e.current_location = "deck"; moved.append(e)
-	pokemon.attached_energies.clear()
-	for pre in pokemon.attached_pre_evolutions:
-		pre.current_location = "deck"; moved.append(pre)
-	pokemon.attached_pre_evolutions.clear()
-	for ac in pokemon.attached_cards:
-		ac.current_location = "deck"; moved.append(ac)
-	pokemon.attached_cards.clear()
-	main.clear_all_statuses(pokemon, is_pokemon_opponent)
-	pokemon.current_hp = pokemon.get_max_hp()
-	pokemon.current_location = "deck"
-	if is_pokemon_opponent:
-		main.opponent_bench.erase(pokemon)
-	else:
-		main.player_bench.erase(pokemon)
-	deck.push_front(pokemon)
-	for m in moved:
-		deck.push_front(m)
-	main.display_pokemon(is_pokemon_opponent)
-	main.display_active_pokemon_energies(is_pokemon_opponent)
-	main.update_deck_icon(is_pokemon_opponent)
 
 # True if this Pokemon has a printed ability of the given kind ("Power" or "Body").
 func _pop_has_ability_kind(p: card_object, kind: String) -> bool:

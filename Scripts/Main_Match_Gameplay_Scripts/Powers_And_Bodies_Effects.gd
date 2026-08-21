@@ -17302,13 +17302,13 @@ func _hook_ex16_sableye_synergy(damage: int, attacker: card_object, defender: ca
 	return damage
 
 # ════════════════════════════════════════════════════════════════════════════════════════════════
-# POP SERIES (pop1–pop6) POWERS & BODIES
+# POP SERIES (pop1–pop5) POWERS & BODIES
 # Reuse-by-name (no code here): Energy Trans (Sceptile pop4-5), Levitate (Flygon pop4-3),
 # Mist (Pelipper pop5-14 → _hook_ex9_mist), Shell Retreat (Squirtle pop4-14), Insomnia (Murkrow pop1-8),
 # Form Change (Deoxys pop4-2/17 → power_ex8_form_change), Golden Wing (Ho-Oh ex pop3-17 → ex10 pre-KO),
 # Duplicate (Ditto pop3-12 → power_ex11_duplicate), Beating Wings (Pidgeot pop2-2 → power_ecard1_beating_wings),
 # Mirror Coat (Suicune pop2-4 → Card_Ops.apply_status hook), Reactive Barrier (Mew pop4-4 → pop_blocks_status).
-# New below: 3 on-bench powers + Protective Wall body.
+# New below: 3 on-bench powers.
 # ════════════════════════════════════════════════════════════════════════════════════════════════
 
 # REACTIVE BARRIER (Mew pop4-4): true while Mew has any React Energy attached (consulted in Card_Ops.apply_status
@@ -17318,14 +17318,6 @@ func pop_blocks_status(pokemon: card_object) -> bool:
 	if not pokemon.has_ability("Reactive Barrier"): return false
 	for e in pokemon.attached_energies:
 		if e.metadata.get("name","") == "React Energy":
-			return true
-	return false
-
-# PROTECTIVE WALL (Bastiodon pop6-1): true if the given side has a Bastiodon with an active Protective Wall
-# body in play. Consulted by the bench-damage code paths to prevent all damage to that side's Bench.
-func pop_protective_wall_active(side_is_opponent: bool) -> bool:
-	for p in main.card_ops.get_all_pokemon_in_play(side_is_opponent):
-		if p != null and p.has_ability("Protective Wall") and not is_power_blocked(p):
 			return true
 	return false
 

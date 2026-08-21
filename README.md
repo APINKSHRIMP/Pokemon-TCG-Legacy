@@ -14,7 +14,7 @@ Debugging going well, issue log being updated and a few bugs being found and fix
 
 # Update as of 19/07/2026
 
-Every single card set is now technically implemented. That's all 40 sets and nearly 2,000 cards playable covering Promos, e-card series, neo, the entire EX era and POP series 1-6.
+Every single card set is now technically implemented. That's all 39 sets and nearly 2,000 cards playable covering Promos, e-card series, neo, the entire EX era and POP series 1-5.
 
 Other significant changes:
 
