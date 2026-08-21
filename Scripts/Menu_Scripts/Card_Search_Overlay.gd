@@ -23,6 +23,9 @@ extends Control
 
 signal search_confirmed(criteria: Dictionary)
 signal search_cancelled()
+## RESET was pressed. The screen has already blanked its own selections; the listener is expected to
+## drop any search currently applied to the grid behind, so the two can't disagree.
+signal search_reset()
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -38,10 +41,13 @@ const FOOTER_TOP    := 992.0
 # faintly through at 0.88.
 const BACKDROP_ALPHA := 0.88
 
-# The filter rows sit on a light panel (HEADER_H..FOOTER_TOP) so the row labels can be black and the
-# greyed-out "icon_" art reads properly, matching the screen mock-up. Set this to
-# Color(0, 0, 0, 0) to go back to labels floating on the dark backdrop — LABEL_COLOR then needs
-# to go back to white or nothing will be readable.
+# The filter rows can sit on a light panel spanning HEADER_H..FOOTER_TOP, which is what the original
+# mock-up had: black row labels and greyed-out "icon_" art both read properly against it.
+#
+# SHOW_FILTER_PANEL turns that panel on and off, and it is OFF at the moment. Note the row labels
+# stay BLACK either way (LABEL_COLOR) — that was a deliberate call after seeing both on screen, so
+# don't "fix" it to a light colour when the panel is hidden.
+const SHOW_FILTER_PANEL := false
 const PANEL_COLOR := Color(0.93, 0.93, 0.94, 1.0)
 
 # Left-hand label column, and the x the controls start at
@@ -283,9 +289,11 @@ func _build_backdrop() -> void:
 	add_child(backdrop)
 
 	# Light panel behind the filter rows only — the header and footer bands keep the dark backdrop,
-	# so the white title and the coloured action buttons still read against them.
+	# so the white title and the coloured action buttons still read against them. Currently switched
+	# off (SHOW_FILTER_PANEL), which makes it TRANSPARENT rather than hidden: a hidden Control is
+	# dropped from input picking entirely, so it would stop swallowing clicks over the filter rows.
 	var panel := ColorRect.new()
-	panel.color = PANEL_COLOR
+	panel.color = PANEL_COLOR if SHOW_FILTER_PANEL else Color(0.0, 0.0, 0.0, 0.0)
 	panel.position = Vector2(0.0, HEADER_H)
 	panel.size     = Vector2(1920.0, FOOTER_TOP - HEADER_H)
 	panel.z_index  = 51
@@ -860,6 +868,11 @@ func _on_reset_pressed() -> void:
 
 	_apply_lock()
 	_refresh_confirm_button()
+
+	# RESET means "no filter anywhere", so the search applied to the grid behind goes too. Without
+	# this the screen would show nothing selected while the grid stayed filtered, and because an
+	# empty filter also disables SEARCH, that left the player with no button back out.
+	search_reset.emit()
 
 
 func _on_confirm_pressed() -> void:

@@ -5188,7 +5188,10 @@
     "types": [
       "Colorless"
     ],
-    "evolvesFrom": "Chansey ex",
+    "evolvesFrom": "Chansey",
+    "evolvesFromAlso": [
+      "Chansey ex"
+    ],
     "rules": [
       "When Pokémon-ex has been Knocked Out, your opponent takes 2 Prize cards."
     ],
@@ -5683,7 +5686,10 @@
     "types": [
       "Metal"
     ],
-    "evolvesFrom": "Scyther ex",
+    "evolvesFrom": "Scyther",
+    "evolvesFromAlso": [
+      "Scyther ex"
+    ],
     "rules": [
       "When Pokémon-ex has been Knocked Out, your opponent takes 2 Prize cards."
     ],

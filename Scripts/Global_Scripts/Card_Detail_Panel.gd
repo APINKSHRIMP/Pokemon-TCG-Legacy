@@ -228,6 +228,12 @@ const BOILERPLATE_PREFIXES : Array = [
 # header already say it, and the sentence is pure noise next to them.
 const DUAL_TYPE_PREFIX := "This Pokémon is both "
 
+# The card data spells the Pokemon Star symbol out as the word "Star" in its
+# deck-limit rule, while the card's NAME already carries the real glyph
+# ("Flareon ★"). Swapped here so the rule matches the name it refers to.
+const STAR_RULE_WORD   := "Pokémon Star"
+const STAR_RULE_SYMBOL := "Pokémon ★"
+
 # System fonts tried, in order, for the glyphs Kenney simply does not have:
 # delta, star, the Nidoran genders and the e-card Greek letters. Segoe UI
 # Symbol is the only one of the three that carries all of them.
@@ -414,10 +420,10 @@ func _describe(card: Dictionary) -> Array:
 	for entry in _string_array(card.get("rules", [])):
 		if entry.begins_with(DUAL_TYPE_PREFIX):
 			continue                                   # said by the header icons
-		if _is_boilerplate(entry):
-			out.append({ "kind": "rule", "text": entry })
-		else:
-			out.append({ "kind": "effect", "text": entry })
+		# Classify on the RAW text — BOILERPLATE_PREFIXES matches the wording in
+		# the data — then swap the star word in for display only.
+		var kind := "rule" if _is_boilerplate(entry) else "effect"
+		out.append({ "kind": kind, "text": entry.replace(STAR_RULE_WORD, STAR_RULE_SYMBOL) })
 
 	for ability in _dict_array(card.get("abilities", [])):
 		out.append({ "kind": "ability", "ability": ability, "card": card })
@@ -560,15 +566,14 @@ func _measure(section: Dictionary, shrink: int) -> Dictionary:
 			m["height"] = BOX_PAD_Y + _line_height("X", cap) + WRR_LABEL_GAP + WRR_ICON + BOX_PAD_Y
 
 		"meta":
+			# Three icon+text rows: the set, the rarity, then the illustrator.
 			var meta := maxi(FONT_META - shrink, 14)
 			var card2: Dictionary = section["card"]
-			var rows := 2.0                                    # set, then rarity
 			var row_h := maxf(SET_ICON, _line_height("X", meta))
 			var rarity_row_h := maxf(RARITY_ICON, _line_height("X", meta))
 			var h3 := BOX_PAD_Y + row_h + META_ROW_GAP + rarity_row_h
 			if String(card2.get("artist", "")) != "":
-				h3 += META_ROW_GAP + _line_height("X", meta)
-				rows += 1.0
+				h3 += META_ROW_GAP + rarity_row_h
 			m["meta_size"]     = meta
 			m["row_h"]         = row_h
 			m["rarity_row_h"]  = rarity_row_h
@@ -761,8 +766,17 @@ func _render_meta(m: Dictionary, box: ColorRect) -> void:
 
 	var artist := String(card.get("artist", ""))
 	if artist != "":
-		_add_label(box, "Illus. " + artist, Vector2(text_x, y),
-				   Vector2(box.size.x - text_x - BOX_PAD_X, _line_height("X", size)), size,
+		var artist_row_h := maxf(RARITY_ICON, _line_height("X", size))
+		# The icon says "illustrator", so the word doesn't need to as well.
+		var illus_icon := _load_texture(SUBTYPE_ICON_DIR + "icon_illus.png")
+		if illus_icon != null:
+			var fitted_illus := _fit(illus_icon.get_size(), Vector2(RARITY_ICON, RARITY_ICON))
+			_add_icon(box, illus_icon,
+					  Vector2(BOX_PAD_X + (SET_ICON - fitted_illus.x) * 0.5,
+							  y + (artist_row_h - fitted_illus.y) * 0.5),
+					  fitted_illus)
+		_add_label(box, artist, Vector2(text_x, y),
+				   Vector2(box.size.x - text_x - BOX_PAD_X, artist_row_h), size,
 				   HORIZONTAL_ALIGNMENT_LEFT)
 
 
@@ -796,9 +810,21 @@ func _subtype_line(card: Dictionary) -> String:
 				break
 		if stage == "":
 			stage = "Basic"
+
+		# A Baby card prints what it grows INTO rather than what it came from,
+		# and Tyrogue grows into three different Pokemon.
+		if stage == "Baby":
+			var into := _string_array(card.get("evolvesTo", []))
+			if not into.is_empty():
+				return stage + " — Evolves into " + _join_or(into)
+			return stage
+
 		var evolves := String(card.get("evolvesFrom", ""))
 		if evolves != "" and (stage == "Stage 1" or stage == "Stage 2"):
-			return stage + " — Evolves from " + evolves
+			# Blissey ex and Scizor ex each print two legal pre-evolutions.
+			var from_names := [evolves]
+			from_names.append_array(_string_array(card.get("evolvesFromAlso", [])))
+			return stage + " — Evolves from " + _join_or(from_names)
 		return stage
 
 	if supertype == "Energy":
@@ -810,6 +836,16 @@ func _subtype_line(card: Dictionary) -> String:
 	if subtypes.is_empty():
 		return "Trainer"
 	return ", ".join(subtypes)
+
+
+## "A", "A or B", "A, B or C" — the way an evolution line reads on a card.
+static func _join_or(names: Array) -> String:
+	if names.is_empty():
+		return ""
+	if names.size() == 1:
+		return String(names[0])
+	var head: Array = names.slice(0, names.size() - 1)
+	return ", ".join(head) + " or " + String(names[names.size() - 1])
 
 
 ## The energy icons shown top right. Pokemon only — a Trainer with HP (the

@@ -5559,9 +5559,21 @@ func get_all_basic_pokemon(card_array: Array) -> Array:
 	return basic_pokemon
 
 # Function mainly just for readability in the code to check if a pokemon can evolve from another pokemon by checking the evolving pokemon's "evolvesFrom" metadata
+#
+# A handful of cards print TWO legal pre-evolutions - Blissey ex reads "Evolves from Chansey or
+# Chansey ex", Scizor ex reads "Evolves from Scyther or Scyther ex". The card data holds the
+# ordinary form in "evolvesFrom" and the extra ones in "evolvesFromAlso", so every other place that
+# compares "evolvesFrom" by name keeps finding the common line, and only this check - the one every
+# hand evolution, CPU evolution and deck-search trainer goes through - knows about the alternates.
+# NOTE this is deliberately NOT given to Rocket's Scizor ex, which only ever evolves from Rocket's
+# Scyther ex.
 func can_evolve_from(evolving_pokemon: card_object, base_pokemon: card_object) -> bool:
-	if evolving_pokemon.metadata.has("evolvesFrom"):
-		return evolving_pokemon.metadata["evolvesFrom"] == base_pokemon.metadata.get("name", "")
+	var base_name = base_pokemon.metadata.get("name", "")
+	if evolving_pokemon.metadata.get("evolvesFrom", "") == base_name:
+		return true
+	for alt in evolving_pokemon.metadata.get("evolvesFromAlso", []):
+		if str(alt) == base_name:
+			return true
 	return false
 
 # Function to check if a card is a basic energy card (not special energy like Double Colorless)

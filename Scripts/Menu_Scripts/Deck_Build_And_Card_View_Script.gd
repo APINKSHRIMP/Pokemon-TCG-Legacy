@@ -173,6 +173,11 @@ var set_breakdown_label : RichTextLabel = null
 # _search_screen_open() rather than a null check to ask whether it is actually on screen.
 var search_overlay : CardSearchOverlay = null
 
+# RESET on the filter screen drops the active search immediately, but defers the grid redraw until
+# the screen closes — rebuilding underneath it would flash the shared loading overlay over the top.
+# This marks that debt. See _on_search_reset().
+var _search_grid_stale : bool = false
+
 # True once a search has been run and the grid is showing results instead of a single set.
 # While true the set name and the < > set-switch buttons stay hidden.
 var search_active : bool = false
@@ -1806,13 +1811,27 @@ func _open_search_overlay() -> void:
 	search_overlay.setup(unlocked_set_ids, set_list)
 	search_overlay.search_confirmed.connect(_on_search_confirmed)
 	search_overlay.search_cancelled.connect(_on_search_cancelled)
+	search_overlay.search_reset.connect(_on_search_reset)
 
 
-## CANCEL / Escape on the search screen — throw the filters away, drop any results that were showing
-## behind it, and go back to normal set browsing.
+## CANCEL / Escape on the search screen — back out to whatever the grid was already showing and KEEP
+## the filters. The overlay is hidden rather than freed, so pressing SEARCH again brings back exactly
+## the selections the player just backed out of, and a search that is already running stays on screen
+## behind it. Escape a second time is what actually clears a search — see the Escape handler.
+##
+## If RESET was pressed while the screen was up, the search is already gone and the grid still owes a
+## redraw; that is done here rather than at the moment of the reset, so its loading overlay doesn't
+## flash over the search screen.
 func _on_search_cancelled() -> void:
-	_clear_search()
+	if search_overlay != null:
+		search_overlay.visible = false
 	_set_ui_visibility(true)
+
+	if _search_grid_stale:
+		_search_grid_stale = false
+		_restore_set_browsing_chrome()
+		_display_current_set()
+		_reset_scroll_position()
 
 
 ## SEARCH pressed with at least one filter set. Runs the filter, and only switches the grid over to
@@ -1829,6 +1848,8 @@ func _on_search_confirmed(criteria: Dictionary) -> void:
 
 	search_results = results
 	search_active  = true
+	# A fresh set of results replaces the grid outright, so any redraw a RESET left owing is moot.
+	_search_grid_stale = false
 
 	# Hidden rather than freed, so pressing SEARCH again restores these exact filters
 	if search_overlay != null:
@@ -1842,19 +1863,43 @@ func _on_search_confirmed(criteria: Dictionary) -> void:
 ## filter screen — a cleared search keeps no filters, so the next SEARCH press opens blank.
 func _clear_search() -> void:
 	_close_search_overlay()
-
-	if not search_active:
+	var had_results := _drop_search_results()
+	if not (had_results or _search_grid_stale):
 		return
+	_search_grid_stale = false
+	_restore_set_browsing_chrome()
+	_display_current_set()
+	_reset_scroll_position()
+
+
+## RESET on the filter screen. The screen has blanked its own selections, so the search applied to
+## the grid has to go with them or the two would disagree — an empty filter screen sitting in front
+## of filtered results, with SEARCH disabled and no button back out.
+##
+## The overlay deliberately stays OPEN (the player may be about to build a new filter), and the grid
+## is NOT rebuilt yet: the rebuild puts up the shared loading overlay, which would flash over the top
+## of the search screen. _on_search_cancelled() does it on the way out instead.
+func _on_search_reset() -> void:
+	if _drop_search_results():
+		_search_grid_stale = true
+
+
+## Forgets the active search without touching the overlay or the grid. Returns false when there was
+## no search to forget, so callers can skip the redraw.
+func _drop_search_results() -> bool:
+	if not search_active:
+		return false
 	search_active = false
 	search_results.clear()
 	_search_load_token += 1        # abort any results build still in flight
+	return true
 
+
+## The set name and the < > switch buttons are hidden while results are showing; bring them back.
+func _restore_set_browsing_chrome() -> void:
 	set_label.visible = true
 	next_btn.visible  = true
 	prev_btn.visible  = true
-
-	_display_current_set()
-	_reset_scroll_position()
 
 
 func _close_search_overlay() -> void:
