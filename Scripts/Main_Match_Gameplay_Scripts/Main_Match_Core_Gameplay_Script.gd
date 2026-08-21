@@ -277,12 +277,13 @@ var forfeit_dialog: CanvasLayer = null
 # by a selection screen. Face-down cards (the opponent's hand, both sets of prize cards)
 # are refused, and stay refused until some effect turns one face up.
 const ZOOM_BACKDROP_ALPHA: float = 0.95        # how much of the board the preview hides behind it
-const ZOOM_TARGET_SIZE: Vector2 = Vector2(1000.0, 980.0)   # box the enlarged card is fitted into
 var zoom_overlay: CanvasLayer = null
 var is_zoomed: bool = false
 var zoom_held: bool = false                    # the key is down, so the preview tracks the mouse
 var zoomed_card_node: CardDisplay = null       # the card currently on show, so _process only redraws on a change
-var zoom_image: TextureRect = null             # the enlarged image itself, swapped in place as the hover moves
+# The panel that draws the enlarged card AND every box of its data. Kept so a hover change can
+# re-point the live panel instead of rebuilding the overlay. See Scripts/Global_Scripts/Card_Detail_Panel.gd.
+var detail_panel: CardDetailPanel = null
 
 #signals
 signal message_acknowledged
@@ -7017,26 +7018,20 @@ func _card_is_previewable(node: CardDisplay) -> bool:
 	return node.card_uid != null and str(node.card_uid) != ""
 
 
-# Builds the preview overlay, or swaps the image if one is already up.
+# Builds the preview overlay, or re-points it at another card if one is already up.
 func _show_card_zoom(card_node: CardDisplay) -> void:
 	# Claimed before anything can fail below. _process re-runs this every frame while the key is
-	# held, so a card whose large image is missing would otherwise re-fail — and re-log — forever.
+	# held, so a card whose data is missing would otherwise re-fail — and re-log — forever.
 	zoomed_card_node = card_node
 
 	var uid := str(card_node.card_uid)
-	var parts := uid.split("-")
-	if parts.size() != 2:
-		return
-	var large_path := "res://Image_Assets/Card_Image_Library/" + parts[0] + "/Large/" + uid + ".png"
-	var large_texture: Texture2D = load(large_path)
-	if large_texture == null:
-		push_error("Match zoom: missing large card image " + large_path)
+	if uid.split("-").size() != 2:
 		return
 
-	# An overlay is already up and the mouse has slid onto another card - swap the texture in
-	# place. Freeing and rebuilding the CanvasLayer lets the board flash through for a frame.
-	if is_zoomed and zoom_image != null and is_instance_valid(zoom_image):
-		_apply_card_zoom_texture(large_texture)
+	# An overlay is already up and the mouse has slid onto another card - hand the new card to
+	# the live panel. Freeing and rebuilding the CanvasLayer lets the board flash through for a frame.
+	if is_zoomed and detail_panel != null and is_instance_valid(detail_panel):
+		detail_panel.show_card(uid)
 		return
 
 	is_zoomed = true
@@ -7056,23 +7051,9 @@ func _show_card_zoom(card_node: CardDisplay) -> void:
 	backdrop.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	zoom_overlay.add_child(backdrop)
 
-	zoom_image = TextureRect.new()
-	zoom_image.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	zoom_image.stretch_mode = TextureRect.STRETCH_SCALE
-	zoom_image.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	zoom_overlay.add_child(zoom_image)
-	_apply_card_zoom_texture(large_texture)
-
-
-# Sets the image and re-centres it for that texture's aspect ratio.
-func _apply_card_zoom_texture(large_texture: Texture2D) -> void:
-	var tex_size := large_texture.get_size()
-	var fit := minf(ZOOM_TARGET_SIZE.x / tex_size.x, ZOOM_TARGET_SIZE.y / tex_size.y)
-	var disp_size := Vector2(tex_size.x * fit, tex_size.y * fit)
-
-	zoom_image.texture = large_texture
-	zoom_image.size = disp_size
-	zoom_image.position = Vector2((1920.0 - disp_size.x) / 2.0, (1080.0 - disp_size.y) / 2.0)
+	detail_panel = CardDetailPanel.new()
+	zoom_overlay.add_child(detail_panel)
+	detail_panel.show_card(uid)
 
 
 func _hide_card_zoom() -> void:
@@ -7081,7 +7062,7 @@ func _hide_card_zoom() -> void:
 		return
 	is_zoomed = false
 	zoomed_card_node = null
-	zoom_image = null
+	detail_panel = null
 	if zoom_overlay != null:
 		zoom_overlay.queue_free()
 		zoom_overlay = null
