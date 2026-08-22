@@ -3,8 +3,6 @@ extends Node
 # ─── Constants ───────────────────────────────────────────────────────────────
 
 const SPRITE_FOLDER      := "res://Image_Assets/Character_Sprites/In_Battle_Sprites"
-const SLEEVE_FOLDER      := "res://Image_Assets/Sleeves"
-const SLEEVE_DEFAULT     := "res://Image_Assets/Sleeves/1_Default_English.png"
 const COIN_FOLDER        := "res://Image_Assets/Coins"
 const MAX_NAME_LENGTH    := 21
 const OWNED_CARDS_FOLDER := "user://Player_Owned_Cards"
@@ -17,17 +15,33 @@ const SLEEVE_SMALL_FOLDER   := "res://Image_Assets/Sleeves/small"  # what Sleeve
 const COIN_BACK_IMAGE       := "Back Basic.png"  # placeholder art for unowned coins, not a collectible
 const DEFAULT_SLEEVE_PREFIX := "1_Default"       # the four starter sleeves the sleeve grid hides
 
-# Statistics panel sizing. `statistics` is 787x510 at y=367 and the "View MEDALS" button overlaps
-# it from y=836, so the 12 rows have to fit in ~469px of clear height. Measured in Godot: a row is
-# 31px at font 22, so 12 rows come to 438px at separation 6 (the old separation of 10 would have
-# reached 482px and run under the button). Shrink the font or the gap here if more rows are added.
-const STAT_FONT_SIZE  := 22
-const STAT_SEPARATION := 6
+# ─── Trainer-card row geometry ───────────────────────────────
+# The stat rows sit on bars painted into Trainer_card.png, so the art dictates their spacing, not
+# a container. Measured off the 4102x1911 source: nine bars, each 76px tall on a 149.25px pitch,
+# first bar top at y=185 and last bar bottom at y=1455 — a 1270px block. The `statistics` Control
+# is set to exactly that block in screen space, so expressing the bar height as a ratio of its
+# height keeps the text glued to the bars if the card is ever moved or rescaled.
+# Nine rows is fixed by the artwork: a tenth row needs a tenth bar painted first.
+const STAT_ROWS       := 9
+const STAT_BAR_RATIO  := 76.0 / 1270.0   # bar height as a fraction of the block height
+const STAT_TEXT_INSET := 22.0            # left/right padding inside a bar, screen px
+
+# Godot centres a Label on the full ascent+descent box, but kenvector_future is caps-only, so
+# the empty descent space parks the visible ink below the middle of the bar. Measured off a
+# render: 10px of bar above the caps and 5px below, so lift the row by half that difference.
+const STAT_TEXT_Y_NUDGE := -2.5          # screen px, negative is up
+
+# Largest size whose line height still clears the 33px bar (measured in Godot with the theme font:
+# 32px at 28, but 35px at 30). kenvector_future is caps-only, so labels render uppercase whatever
+# case the string is in.
+const STAT_FONT_SIZE  := 28
+
+# DOB / cash block under the name box — two centred lines in the one 614x115 Label.
+const DOB_CASH_FONT_SIZE    := 32
+const DOB_CASH_LINE_SPACING := 14
 
 # Target display sizes — uniform regardless of source image dimensions
 const SPRITE_SIZE  := Vector2(280, 360)  # fit (whole sprite visible, letterboxed)
-const SLEEVE_SIZE  := Vector2(150, 210)  # fit (whole card back visible)
-const COIN_SIZE    := Vector2(80, 80)    # fit (coins are roughly square)
 
 var PLAYER_DATA_PATH: String:
 	get: return GameState.PLAYER_CURRENT_DATA_PATH
@@ -42,19 +56,16 @@ var _cheat_label_token : int   = 0
 # ─── Node references ─────────────────────────────────────────────────────────
 
 @onready var name_box      : LineEdit    = $"player_name"
-@onready var dob_label     : LineEdit    = $"player_dob_label"
+@onready var dob_cash_lbl  : Label       = $"dobandcash"
 @onready var save_btn      : Button      = $"info_save_button"
 @onready var cancel_btn    : Button      = $"info_cancel_button"
 @onready var player_sprite : TextureRect = $"PlayerSprite"
-@onready var sleeve_rect   : TextureRect = $"Sleeve"
-@onready var coin_rect     : TextureRect = $"Coin"
-@onready var deck_name_lbl : Label       = $"DeckName"
 @onready var stats_control : Control     = $"statistics"
 
 # ─── Lifecycle ───────────────────────────────────────────────────────────────
 
 func _ready() -> void:
-	deck_name_lbl.add_theme_color_override("font_color", Color.BLACK)
+	_style_dob_cash_label()
 
 	_load_player_data()
 
@@ -86,9 +97,9 @@ func _load_player_data() -> void:
 	saved_player_name = data.get("name", "")
 	name_box.text = saved_player_name
 
-	# DOB
+	# DOB and cash share one centred Label under the name box - see _style_dob_cash_label().
 	var dob: String = data.get("date_of_birth", "")
-	dob_label.text = "DOB: " + (dob if dob != "" else "--/--")
+	dob_cash_lbl.text = "DOB: " + (dob if dob != "" else "--/--") + "\n$" + str(GameState.get_cash())
 
 	# Battle sprite — fit inside SPRITE_SIZE so different-shaped sprites all appear the same size
 	var sprite_name: String = data.get("sprite", "")
@@ -99,33 +110,17 @@ func _load_player_data() -> void:
 		if tex:
 			_apply_fit_size(player_sprite, tex, SPRITE_SIZE)
 
-	# Sleeve — fit inside SLEEVE_SIZE (150×210) for a uniform card-back preview
-	var sleeve_name: String = data.get("sleeve", "default")
-	var sleeve_tex: Texture2D = null
-	if sleeve_name != "" and sleeve_name != "default":
-		# Originals are a mix of .jpg and .png, so try both before falling back to the default.
-		for ext: String in [".jpg", ".png"]:
-			var sleeve_path := SLEEVE_FOLDER + "/" + sleeve_name + ext
-			if ResourceLoader.exists(sleeve_path):
-				sleeve_tex = load(sleeve_path) as Texture2D
-				if sleeve_tex != null:
-					break
-	if sleeve_tex == null:
-		sleeve_tex = load(SLEEVE_DEFAULT) as Texture2D
-	if sleeve_tex:
-		_apply_fit_size(sleeve_rect, sleeve_tex, SLEEVE_SIZE)
 
-	# Coin — fit inside COIN_SIZE; coins are roughly square
-	var coin_name: String = data.get("coin", "")
-	if coin_name != "":
-		if not coin_name.ends_with(".png"):
-			coin_name += ".png"
-		var coin_tex := load(COIN_FOLDER + "/" + coin_name) as Texture2D
-		if coin_tex:
-			_apply_fit_size(coin_rect, coin_tex, COIN_SIZE)
+# ─── DOB / cash label ─────────────────────────────────────
 
-	# Deck name
-	deck_name_lbl.text = data.get("deck", "")
+# One Label carries both lines — "DOB: 21/12" over the cash total — centred in its box. The text is
+# filled in by _load_player_data(); this only sets the look, so the order of the two does not matter.
+func _style_dob_cash_label() -> void:
+	dob_cash_lbl.add_theme_font_size_override("font_size", DOB_CASH_FONT_SIZE)
+	dob_cash_lbl.add_theme_color_override("font_color", Color.BLACK)
+	dob_cash_lbl.add_theme_constant_override("line_spacing", DOB_CASH_LINE_SPACING)
+	dob_cash_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	dob_cash_lbl.vertical_alignment   = VERTICAL_ALIGNMENT_CENTER
 
 
 # ─── Uniform image sizing ────────────────────────────────────────────────────
@@ -212,18 +207,15 @@ func _input(event: InputEvent) -> void:
 # ─── Statistics ──────────────────────────────────────────────────────────────
 
 func _populate_stats() -> void:
-	var vbox := VBoxContainer.new()
-	vbox.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	vbox.add_theme_constant_override("separation", STAT_SEPARATION)
-	stats_control.add_child(vbox)
 
 	var prog := GameState.progress
 
-	var unique_defeated : int = prog.get("opponents_beaten", []).size()
-	var total_defeated  : int = int(prog.get("opponents_beaten_count_total", 0))
-	var packs_opened    : int = int(prog.get("packs_opened_total", 0))
-	var matches_won     : int = int(prog.get("matches_won", 0))
-	var matches_played  : int = int(prog.get("matches_played", 0))
+	# Only the stats the trainer card actually shows are read here. The opponent counters
+	# (opponents_beaten / opponents_beaten_count_total) and matches_played are still recorded
+	# by Game_State, just not surfaced: a visible loss tally punishes a player who forfeits or
+	# grinds, and "unique opponents" is near-redundant with Matches Won.
+	var packs_opened : int = int(prog.get("packs_opened_total", 0))
+	var matches_won  : int = int(prog.get("matches_won", 0))
 
 	var cards := _scan_card_collection()
 	var sets_total : int = int(cards["sets_total"])
@@ -241,37 +233,44 @@ func _populate_stats() -> void:
 	var costume_universe := _costume_universe()
 
 	var rows := [
-		["Unique Opponents Defeated", str(unique_defeated)],
-		["Total Opponents Defeated",  str(total_defeated)],
-		["Matches Won",               str(matches_won)],
-		["Matches Played",            str(matches_played)],
-		["Packs Opened",              str(packs_opened)],
-		["Card Sets Unlocked",        _fraction(sets_unlocked, sets_total)],
-		["Sets Completed",            _fraction(int(cards["sets_completed"]), sets_total)],
-		["Total Cards Owned",         str(cards["total"])],
-		["Unique Cards Collected",    str(cards["unique"])],
-		["Sleeves Owned",             _fraction(_count_owned(sleeve_universe, GameState.get_sleeves()), sleeve_universe.size())],
-		["Coins Owned",               _fraction(_count_owned(coin_universe, GameState.get_coins()), coin_universe.size())],
-		["Costumes Owned",            _fraction(_count_owned(costume_universe, GameState.get_costumes()), costume_universe.size())],
+		["Matches Won",            str(matches_won)],
+		["Packs Opened",           str(packs_opened)],
+		["Total Cards Owned",      str(cards["total"])],
+		["Unique Cards Collected", _fraction(int(cards["unique"]), int(cards["collectible"]))],
+		["Card Sets Unlocked",     _fraction(sets_unlocked, sets_total)],
+		["Sets Completed",         _fraction(int(cards["sets_completed"]), sets_total)],
+		["Coins Owned",            _fraction(_count_owned(coin_universe, GameState.get_coins()), coin_universe.size())],
+		["Costumes Owned",         _fraction(_count_owned(costume_universe, GameState.get_costumes()), costume_universe.size())],
+		["Sleeves Owned",          _fraction(_count_owned(sleeve_universe, GameState.get_sleeves()), sleeve_universe.size())],
 	]
 
-	for row in rows:
-		vbox.add_child(_make_stat_row(row[0], row[1]))
+	if rows.size() != STAT_ROWS:
+		push_warning("Info: %d stat rows but the trainer card art has %d bars" % [rows.size(), STAT_ROWS])
+
+	# Rows are placed on the bars painted into the card rather than stacked in a container:
+	# a VBoxContainer separation cannot be made to land on the artwork at every font size.
+	var bar_h := stats_control.size.y * STAT_BAR_RATIO
+	var pitch := (stats_control.size.y - bar_h) / float(STAT_ROWS - 1)
+	for i in rows.size():
+		var row := _make_stat_row(rows[i][0], rows[i][1])
+		row.position = Vector2(STAT_TEXT_INSET, i * pitch + STAT_TEXT_Y_NUDGE)
+		row.size     = Vector2(stats_control.size.x - STAT_TEXT_INSET * 2.0, bar_h)
+		stats_control.add_child(row)
 
 
-# "12 / 38" — used by every X / Y counter so they all format identically.
+# "12 / 37" — used by every X / Y counter so they all format identically.
 func _fraction(owned: int, total: int) -> String:
 	return str(owned) + " / " + str(total)
 
 
 func _make_stat_row(label_text: String, value_text: String) -> HBoxContainer:
 	var hbox := HBoxContainer.new()
-	hbox.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 
 	var lbl := Label.new()
 	lbl.text = label_text
 	lbl.add_theme_font_size_override("font_size", STAT_FONT_SIZE)
 	lbl.add_theme_color_override("font_color", Color.BLACK)
+	lbl.vertical_alignment    = VERTICAL_ALIGNMENT_CENTER
 	lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 
 	var val := Label.new()
@@ -279,6 +278,7 @@ func _make_stat_row(label_text: String, value_text: String) -> HBoxContainer:
 	val.add_theme_font_size_override("font_size", STAT_FONT_SIZE)
 	val.add_theme_color_override("font_color", Color.BLACK)
 	val.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	val.vertical_alignment   = VERTICAL_ALIGNMENT_CENTER
 
 	hbox.add_child(lbl)
 	hbox.add_child(val)
@@ -287,7 +287,10 @@ func _make_stat_row(label_text: String, value_text: String) -> HBoxContainer:
 
 # One pass over user://Player_Owned_Cards/ answers every card statistic on this screen:
 #   total / unique  — copies owned, and distinct cards owned
-#   sets_total      — the denominator for both set counters (one file per set, 38 of them)
+#   collectible     — the denominator for Unique Cards Collected: every card the owned-cards
+#                     files track between them. Basic Energy is left out of those files, so
+#                     it can't inflate the target with cards the player is handed for free.
+#   sets_total      — the denominator for both set counters (one file per set, 37 of them)
 #   sets_completed  — a set counts as complete once at least one copy of EVERY card in it is
 #                     owned. The owned-cards files leave basic Energy out (base1 lists 96 of its
 #                     102 cards), so those unlimited cards can't block completion.
@@ -298,6 +301,7 @@ func _scan_card_collection() -> Dictionary:
 	var result := {
 		"total": 0,
 		"unique": 0,
+		"collectible": 0,
 		"sets_total": 0,
 		"sets_completed": 0,
 		"set_ids": {},
@@ -329,6 +333,7 @@ func _scan_card_collection() -> Dictionary:
 								owned_in_set    += 1
 								result["total"] += owned
 								result["unique"] += 1
+					result["collectible"] += cards_in_set
 					if cards_in_set > 0 and owned_in_set == cards_in_set:
 						result["sets_completed"] += 1
 		fname = dir.get_next()

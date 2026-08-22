@@ -111,9 +111,9 @@ alignment = 1
 [node name="statistics" type="Control" parent="." unique_id=1867820725]
 anchors_preset = 0
 offset_left = 897.5
-offset_top = 277.0
+offset_top = 273.0
 offset_right = 1804.7
-offset_bottom = 831.6
+offset_bottom = 827.6
 
 [node name="medals_button" type="Button" parent="." unique_id=971801696]
 z_index = 300
