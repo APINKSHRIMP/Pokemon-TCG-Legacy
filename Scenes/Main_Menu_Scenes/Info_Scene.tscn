@@ -6,7 +6,7 @@
 [ext_resource type="Shader" uid="uid://d3gofmygrsrkm" path="res://Scripts/Shaders/Background_Scroll_Left.gdshader" id="4_tp5en"]
 [ext_resource type="Texture2D" uid="uid://he803mdt247f" path="res://Image_Assets/Backgrounds_And_Borders/Backgrounds/background5.png" id="5_68nwl"]
 [ext_resource type="Theme" uid="uid://6shp5ck1tnja" path="res://UI_Themes/kenneyUI.tres" id="6_a35wf"]
-[ext_resource type="Texture2D" uid="uid://c2eh8w751b88e" path="res://Image_Assets/Main_Menu_Images/Trainer_card.png" id="6_xfvrr"]
+[ext_resource type="Texture2D" uid="uid://cs6t038gcjh3q" path="res://Image_Assets/Main_Menu_Images/Trainer_card_blue.png" id="6_xfvrr"]
 [ext_resource type="Theme" uid="uid://mbsg4xqnedxi" path="res://UI_Themes/kenneyUI-red.tres" id="7_4qkhj"]
 [ext_resource type="Theme" uid="uid://bb6vwl0h1flws" path="res://UI_Themes/kenneyUI-blue.tres" id="9_xfvrr"]
 
@@ -64,7 +64,7 @@ scale = Vector2(0.29, 0.29)
 texture = ExtResource("5_68nwl")
 stretch_mode = 1
 
-[node name="TextureRect" type="TextureRect" parent="BACKGROUND" unique_id=856736991]
+[node name="id_background" type="TextureRect" parent="BACKGROUND" unique_id=856736991]
 layout_mode = 0
 offset_left = 64.0
 offset_top = 66.0
@@ -92,7 +92,7 @@ offset_top = 998.0
 offset_right = 1279.0
 offset_bottom = 1061.0
 theme = ExtResource("7_4qkhj")
-text = "cancel"
+text = "Close"
 
 [node name="player_name" type="LineEdit" parent="." unique_id=622026657]
 z_index = 300

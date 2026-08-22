@@ -16,5 +16,6 @@
 	"sfx_volume": 0.8,
 	"sleeve": "default",
 	"sprite": "",
+	"trainer_card_colour": "blue",
 	"walking_speed": "normal"
 }

@@ -40,6 +40,38 @@ const STAT_FONT_SIZE  := 28
 const DOB_CASH_FONT_SIZE    := 32
 const DOB_CASH_LINE_SPACING := 14
 
+
+# ─── Trainer-card colour ───────────────────────────────────
+# The cycle order lives in GameState.TRAINER_CARD_COLOURS; these two tables just say what each
+# colour looks like. medals_button follows the card — white uses the plain Kenney theme, the rest
+# use the matching named variant.
+const CARD_TEXTURE_PREFIX := "res://Image_Assets/Main_Menu_Images/Trainer_card_"
+const CARD_THEMES := {
+	"blue":   "res://UI_Themes/kenneyUI-blue.tres",
+	"green":  "res://UI_Themes/kenneyUI-green.tres",
+	"yellow": "res://UI_Themes/kenneyUI-yellow.tres",
+	"red":    "res://UI_Themes/kenneyUI-red.tres",
+	"white":  "res://UI_Themes/kenneyUI.tres",
+}
+
+# Colour-change burst. Same particle recipe as Coin_Shop_Script._start_sparkle — same scale range,
+# same four-stop gradient, same palette — with three changes: one_shot so it never re-emits, a
+# lifetime 40% shorter than the coin sparkle’s 0.9s so the burst is over quickly, and explosiveness
+# just under 1.0. At exactly 1.0 every pixel spawns on the same frame, which reads as a single flat
+# flash; 0.9 spreads the spawns over lifetime x (1 - explosiveness) — about 54ms — so the glitter
+# stutters in. The count dwarfs the coin sparkle’s 20 because the emission rectangle is the whole
+# card rather than an 80px coin.
+const SPARKLE_AMOUNT        := 450
+const SPARKLE_LIFETIME      := 0.54
+const SPARKLE_EXPLOSIVENESS := 0.9
+const SPARKLE_COLOURS       := {
+	"blue":   Color(0.3,  0.5,  1.0),
+	"green":  Color(0.2,  0.9,  0.3),
+	"yellow": Color(1.0,  0.85, 0.2),
+	"red":    Color(1.0,  0.2,  0.2),
+	"white":  Color(1.0,  1.0,  1.0),
+}
+
 # Target display sizes — uniform regardless of source image dimensions
 const SPRITE_SIZE  := Vector2(280, 360)  # fit (whole sprite visible, letterboxed)
 
@@ -53,12 +85,16 @@ var saved_player_name : String = ""
 var _cheat_label       : Label = null
 var _cheat_label_token : int   = 0
 
+var _sparkle : CPUParticles2D = null
+
 # ─── Node references ─────────────────────────────────────────────────────────
 
 @onready var name_box      : LineEdit    = $"player_name"
 @onready var dob_cash_lbl  : Label       = $"dobandcash"
 @onready var save_btn      : Button      = $"info_save_button"
 @onready var cancel_btn    : Button      = $"info_cancel_button"
+@onready var card_rect     : TextureRect = $"BACKGROUND/id_background"
+@onready var medals_btn    : Button      = $"medals_button"
 @onready var player_sprite : TextureRect = $"PlayerSprite"
 @onready var stats_control : Control     = $"statistics"
 
@@ -66,6 +102,7 @@ var _cheat_label_token : int   = 0
 
 func _ready() -> void:
 	_style_dob_cash_label()
+	_setup_card_colour_cycling()
 
 	_load_player_data()
 
@@ -121,6 +158,115 @@ func _style_dob_cash_label() -> void:
 	dob_cash_lbl.add_theme_constant_override("line_spacing", DOB_CASH_LINE_SPACING)
 	dob_cash_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	dob_cash_lbl.vertical_alignment   = VERTICAL_ALIGNMENT_CENTER
+
+
+# ─── Trainer-card colour cycling ───────────────────────────
+
+# Two things guard this, because the scene’s mouse picking is awkward: BACKGROUND holds a
+# full-screen background_scroller and the card itself, both of which sit under every button.
+#  1. The card keeps MOUSE_FILTER_PASS — the TextureRect default, set explicitly here so nobody
+#     "fixes" it to STOP later. STOP does make gui_input fire reliably, but it also CONSUMES the
+#     click, which stops Save, Cancel, View MEDALS and the name box from ever seeing it.
+#  2. _click_lands_on_a_control() rejects clicks inside any interactive rect, so even if the card
+#     does win the pick over a button, pressing that button cannot also flip the colour.
+func _setup_card_colour_cycling() -> void:
+	card_rect.mouse_filter = Control.MOUSE_FILTER_PASS
+	card_rect.gui_input.connect(_on_card_gui_input)
+	# The stats block and its rows are pure text lying over the card — leaving them
+	# click-transparent lets that whole area cycle the colour too.
+	stats_control.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	# Same for the battle sprite: decoration sitting on the card, not a control.
+	player_sprite.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_apply_card_colour(GameState.get_trainer_card_colour(), false)
+
+
+# Clicking the card steps blue > green > yellow > red > white > blue and writes the choice to
+# Player_Current_Data.json there and then — no Save button involved.
+func _on_card_gui_input(event: InputEvent) -> void:
+	if not (event is InputEventMouseButton):
+		return
+	# A mouse WHEEL also arrives as InputEventMouseButton, so the button test is doing real work.
+	var mb := event as InputEventMouseButton
+	if mb.button_index != MOUSE_BUTTON_LEFT or not mb.pressed:
+		return
+	# Inside gui_input the event has been transformed into card_rect's own space, so
+	# mb.global_position is NOT viewport-global here — rebuild the screen point by hand.
+	var screen_pos := card_rect.global_position + mb.position
+	if _click_lands_on_a_control(screen_pos):
+		return
+	_apply_card_colour(GameState.cycle_trainer_card_colour(), true)
+
+
+# True when the click belongs to something the player can actually operate. Add to this list if a
+# new control is ever laid on top of the card.
+func _click_lands_on_a_control(pos: Vector2) -> bool:
+	for c : Control in [name_box, save_btn, cancel_btn, medals_btn]:
+		if c.visible and c.get_global_rect().has_point(pos):
+			return true
+	return false
+
+
+# Repaints the card and the medals button. `with_sparkle` is false for the initial load so the
+# screen does not burst on open, and true for a click.
+func _apply_card_colour(colour: String, with_sparkle: bool) -> void:
+	var tex := load(CARD_TEXTURE_PREFIX + colour + ".png") as Texture2D
+	if tex:
+		card_rect.texture = tex
+
+	var theme_path : String = CARD_THEMES.get(colour, CARD_THEMES["white"])
+	var btn_theme := load(theme_path) as Theme
+	if btn_theme:
+		medals_btn.theme = btn_theme
+
+	if with_sparkle:
+		_burst_sparkle(colour)
+
+
+# One-shot glitter across the whole card. Lifted from Coin_Shop_Script._start_sparkle; see the
+# SPARKLE_* constants for what was changed and why.
+func _burst_sparkle(colour: String) -> void:
+	if _sparkle != null and is_instance_valid(_sparkle):
+		_sparkle.queue_free()
+
+	var particles := CPUParticles2D.new()
+	add_child(particles)
+	_sparkle = particles
+
+	particles.global_position       = card_rect.global_position + card_rect.size / 2.0
+	particles.z_index               = 50
+	particles.amount                = SPARKLE_AMOUNT
+	particles.lifetime              = SPARKLE_LIFETIME
+	particles.one_shot              = true
+	particles.explosiveness         = SPARKLE_EXPLOSIVENESS
+	particles.emitting              = true
+	particles.emission_shape        = CPUParticles2D.EMISSION_SHAPE_RECTANGLE
+	particles.emission_rect_extents = card_rect.size / 2.0
+	particles.direction             = Vector2(0, 0)
+	particles.initial_velocity_min  = 0.0
+	particles.initial_velocity_max  = 0.0
+	particles.gravity               = Vector2(0, 0)
+	particles.scale_amount_min      = 3.0
+	particles.scale_amount_max      = 6.0
+
+	var sparkle_colour : Color = SPARKLE_COLOURS.get(colour, Color(1.0, 1.0, 1.0))
+	var bright         : Color = sparkle_colour.lightened(1.0)
+
+	var gradient := Gradient.new()
+	gradient.set_color(0, Color(bright.r, bright.g, bright.b, 0.0))
+	gradient.add_point(0.3, sparkle_colour)
+	gradient.add_point(0.5, bright)
+	gradient.set_color(3, Color(sparkle_colour.r, sparkle_colour.g, sparkle_colour.b, 0.0))
+	particles.color_ramp = gradient
+
+	# The last particle spawns at lifetime x (1 - explosiveness) and then lives a full lifetime,
+	# so the node has to outlast lifetime x (2 - explosiveness) before it is safe to free.
+	# ISSUE #53 pattern: the timer is owned by the tree, not this script, so leaving the screen
+	# mid-burst can never strand the node.
+	var burst_duration := SPARKLE_LIFETIME * (2.0 - SPARKLE_EXPLOSIVENESS)
+	get_tree().create_timer(burst_duration + 0.2).timeout.connect(
+		func() -> void:
+			if is_instance_valid(particles):
+				particles.queue_free())
 
 
 # ─── Uniform image sizing ────────────────────────────────────────────────────
@@ -265,6 +411,7 @@ func _fraction(owned: int, total: int) -> String:
 
 func _make_stat_row(label_text: String, value_text: String) -> HBoxContainer:
 	var hbox := HBoxContainer.new()
+	hbox.mouse_filter = Control.MOUSE_FILTER_IGNORE
 
 	var lbl := Label.new()
 	lbl.text = label_text
