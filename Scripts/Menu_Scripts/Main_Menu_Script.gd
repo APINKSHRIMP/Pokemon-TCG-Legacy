@@ -64,6 +64,24 @@ func _close_overlay() -> void:
 		close_overlay_callback.call()
 
 
+# ============================================================
+# MUSIC (ISSUE #128)
+# ============================================================
+# Since sub-menus became overlays (ISSUE #52) the main menu is merely HIDDEN behind one, not
+# unloaded -- so its AudioStreamPlayer carried on playing underneath the sub-menu's own track
+# and the two overlapped. BaseMapScene pauses us on the way into a sub-menu and resumes on the
+# way back. Paused rather than stopped so the theme picks up where it left off.
+func pause_music() -> void:
+	if audio_player != null and is_instance_valid(audio_player) and audio_player.playing:
+		print("ISSUE #128 FIX ACTIVE: pausing main menu music for a sub-menu")
+		audio_player.stream_paused = true
+
+
+func resume_music() -> void:
+	if audio_player != null and is_instance_valid(audio_player):
+		audio_player.stream_paused = false
+
+
 func _ready() -> void:
 	# ISSUE #52 FIX: a standalone Main Menu (entered by closing a sub-menu) has no world map behind its
 	# transparent background, so it renders black. Redirect to the saved map scene and reopen the menu

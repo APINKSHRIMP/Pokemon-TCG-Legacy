@@ -51,6 +51,9 @@ position = Vector2(-17, -10)
 tile_map_data = PackedByteArray("AAAKAP//AQA0ABUAAAAKAAAAAQA0ABYAAAAJAP//AQAzABUAAAAJAAAAAQAzABYAAAAQAP//AQAzABUAAAAQAAAAAQAzABYAAAARAP//AQA0ABUAAAARAAAAAQA0ABYAAAASAP//AQA1ABUAAAASAAAAAQA1ABYAAAALAP//AQA1ABUAAAALAAAAAQA1ABYAAAA=")
 tile_set = ExtResource("2_p15o0")
 
+[node name="NPCS" type="Node2D" parent="MART" unique_id=427928302]
+position = Vector2(121, 59)
+
 [node name="Counter" type="TileMapLayer" parent="MART" unique_id=2000455421]
 tile_map_data = PackedByteArray("AAAJAAAAAQAiAA8AAAAJAAEAAQAiABAAAAAJAAIAAQAiABAAAAANAAIAAQAmAA8AAAANAAMAAQAmABAAAAAOAAIAAQAmAA8AAAAOAAMAAQAmABAAAAAMAAIAAQAmAA8AAAAMAAMAAQAmABAAAAALAAIAAQAmAA8AAAALAAMAAQAmABAAAAAKAAIAAQAmAA8AAAAKAAMAAQAmABAAAAAJAAMAAQAiABAAAAAQAAAAAQAkAA8AAAAQAAEAAQAkABAAAAAQAAIAAQAkABAAAAAQAAMAAQAkABAAAAAPAAIAAQAmAA8AAAAPAAMAAQAmABAAAAA=")
 tile_set = ExtResource("2_p15o0")
@@ -107,9 +110,6 @@ metadata/target_scene = "res://Scenes/Map_Scenes/Verdant_Forest.tscn"
 metadata/door_type = "exit_to_outside"
 
 [node name="UILAYER" type="CanvasLayer" parent="." unique_id=1060825490]
-
-[node name="NPCS" type="Node2D" parent="." unique_id=427928302]
-position = Vector2(121, 59)
 
 [node name="Collision" type="StaticBody2D" parent="." unique_id=1628633344]
 visible = false

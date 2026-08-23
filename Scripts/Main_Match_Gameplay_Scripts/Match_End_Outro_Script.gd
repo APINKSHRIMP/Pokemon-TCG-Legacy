@@ -53,7 +53,13 @@ const SCREEN_CENTER_X: float = 960.0
 # and any previously-shown rewards shift up by REWARD_ROW_SPACING so the
 # header always remains the topmost element of the stack.
 const REWARD_ANCHOR_Y: float   = -324.0   # container local → screen y 360
-const REWARD_ROW_SPACING: float =   35.0
+# ISSUE #123: reward text and icons are 50% bigger. The row pitch had to grow with them --
+# at the old 35px a 32pt line would have overlapped the row above it.
+const REWARD_ROW_SPACING: float =   52.5   # was 35.0
+const REWARD_FONT_SIZE: int     =     32   # was 21
+const REWARD_ICON_PX: float     =   30.0   # was 20.0
+const REWARD_ICON_GAP: float    =   45.0   # icon width + gap; was 30.0
+const REWARD_ICON_DROP: float   =    7.5   # icon sits this far below the label top; was 5.0
 const HEADER_LOCAL_X: float    = -200.0   # final x for the centred header
 const HEADER_WIDTH: float      =  800.0
 const OFFSCREEN_RIGHT_X: float = 1200.0
@@ -80,6 +86,10 @@ var _dialogue_panel: DynamicMessageBox = null
 var _dialogue_label: RichTextLabel = null
 var _gift_panel:     DynamicMessageBox = null
 var _gift_label:     RichTextLabel = null
+
+# ISSUE #122: match the overworld message box exactly -- same panel height, same body size.
+const DIALOGUE_BOX_HEIGHT: float = 138.0
+const DIALOGUE_FONT_SIZE:  int   = 28
 
 const CARDBACK_PATH = "res://Image_Assets/Sleeves/1_Default_English.png"
 const COINBACK_PATH = "res://Image_Assets/Coins/Back Basic.png"
@@ -147,14 +157,16 @@ func _ready() -> void:
 	# Compute is_first_win once so both the dialogue and build_rewards share it
 	var is_first_win = not GameState.has_beaten_opponent(GameState.current_opponent_name)
 
-	# Determine result dialogue text, prefixed with the opponent's name
-	var _raw_dialogue: String
+	# ISSUE #122 FIX ACTIVE: the opponent's name used to be glued onto the FRONT of their own
+	# dialogue as plain text ("MISTY:\nnice match!"), which is exactly what the message box's
+	# name chip is for. The name now goes on a sprite chip above the box like every overworld
+	# NPC, and the body holds only what the opponent actually says.
 	if battle_won:
-		_raw_dialogue = opponent_data.get("first_win_text" if is_first_win else "rematch_win_text", "")
+		_result_dialogue = opponent_data.get("first_win_text" if is_first_win else "rematch_win_text", "")
 	else:
-		_raw_dialogue = opponent_data.get("loss_text", "")
-	var _opp_name: String = opponent_data.get("name", "")
-	_result_dialogue = ("%s:\n%s" % [_opp_name, _raw_dialogue]) if (_opp_name != "" and _raw_dialogue != "") else _raw_dialogue
+		_result_dialogue = opponent_data.get("loss_text", "")
+	print("ISSUE #122 FIX ACTIVE: outro dialogue shown on a name-chipped box for ",
+		  opponent_data.get("name", "?"))
 
 	# Build reward rows (win only), passing is_first_win to avoid recomputing it
 	if battle_won:
@@ -265,7 +277,7 @@ func _snap_rewards_to_final() -> void:
 		var row = reward_rows[j]
 		var up := (n - 1 - j) * REWARD_ROW_SPACING
 		row["label"].position = Vector2(row["label_final_x"], REWARD_ANCHOR_Y - up)
-		row["icon"].position  = Vector2(row["icon_final_x"], REWARD_ANCHOR_Y + 5 - up)
+		row["icon"].position  = Vector2(row["icon_final_x"], REWARD_ANCHOR_Y + REWARD_ICON_DROP - up)
 
 # ============================================================
 # DATA LOADING
@@ -376,11 +388,11 @@ func build_rewards(is_first_win: bool) -> void:
 	var header = Label.new()
 	header.text = "Rewards:"
 	header.theme = kenney_theme
-	header.add_theme_font_size_override("font_size", 21)
+	header.add_theme_font_size_override("font_size", REWARD_FONT_SIZE)   # ISSUE #123
 	header.add_theme_color_override("font_color", Color(0, 0, 0, 1))
 	header.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	header.position = Vector2(OFFSCREEN_RIGHT_X, REWARD_ANCHOR_Y)
-	header.size = Vector2(HEADER_WIDTH, 60)
+	header.size = Vector2(HEADER_WIDTH, 90)   # ISSUE #123: taller to hold the bigger face
 	win_labels_container.add_child(header)
 	_header_label = header
 
@@ -440,12 +452,12 @@ func build_rewards(is_first_win: bool) -> void:
 func _create_reward_row(label_text: String, icon_texture: Texture2D, _row_index: int) -> Dictionary:
 	# WIN LABELS is at x=762 in screen space. Screen centre in local coords = 960 - 762 = 198.
 	var local_centre_x: float = 198.0
-	var icon_gap: float = 30.0   # icon width (20) + 10px gap
+	var icon_gap: float = REWARD_ICON_GAP   # ISSUE #123: icon width (30) + 15px gap
 
 	var label = Label.new()
 	label.text = label_text
 	label.theme = kenney_theme
-	label.add_theme_font_size_override("font_size", 21)
+	label.add_theme_font_size_override("font_size", REWARD_FONT_SIZE)   # ISSUE #123
 	label.add_theme_color_override("font_color", Color(0, 0, 0, 1))
 	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
 	label.vertical_alignment   = VERTICAL_ALIGNMENT_CENTER
@@ -464,8 +476,8 @@ func _create_reward_row(label_text: String, icon_texture: Texture2D, _row_index:
 	icon.texture  = icon_texture
 	icon.centered = false
 	var tex_size  = icon_texture.get_size()
-	icon.scale    = Vector2(20.0 / tex_size.x, 20.0 / tex_size.y)
-	icon.position = Vector2(OFFSCREEN_LEFT_X, REWARD_ANCHOR_Y + 5)
+	icon.scale    = Vector2(REWARD_ICON_PX / tex_size.x, REWARD_ICON_PX / tex_size.y)   # ISSUE #123
+	icon.position = Vector2(OFFSCREEN_LEFT_X, REWARD_ANCHOR_Y + REWARD_ICON_DROP)
 	win_labels_container.add_child(icon)
 
 	return {
@@ -547,21 +559,20 @@ func animate_rewards() -> void:
 # Both use MOUSE_FILTER_IGNORE so clicks reach _input().
 
 func _create_msg_panels() -> void:
-	# Dialogue: tall box, font reverted from 54 → 36 (no longer needs the
-	# pre-battle size). Horizontal padding 60 = 50 px further right, vertical
-	# padding 15 = 5 px further down than the previous 10/10.
-	var d = MessageBoxHelper.build(220.0, 36, false, 60.0, 15.0)
+	# ISSUE #122: the dialogue box is now exactly an overworld message box -- same 138px panel,
+	# same 28pt body, no extra padding -- instead of the outsized 220px/36pt one-off it was.
+	var d = MessageBoxHelper.build(DIALOGUE_BOX_HEIGHT, DIALOGUE_FONT_SIZE, false)
 	_dialogue_panel = d["root"]
 	_dialogue_label = d["label"]
 	add_child(_dialogue_panel)
 
-	# Gift: compact main-match-style box with centred text
+	# Gift: compact main-match-style box with centred text.
+	# ISSUE #124: the fit_content/expand-fill pair that used to live here made the label fill
+	# the whole panel, so "You received X" rendered hard against its top edge. Vertical centring
+	# is the box's own job now (DynamicMessageBox._place_body_label) -- don't reintroduce them.
 	var g = MessageBoxHelper.build(156.0, 45, false, 0.0)
 	_gift_panel = g["root"]
 	_gift_label = g["label"]
-	# RichTextLabel: horizontal centre via BBCode; vertical via expand-fill + fit_content off
-	_gift_label.fit_content         = false
-	_gift_label.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	add_child(_gift_panel)
 
 	# Both panels take the beaten opponent's colour, so the whole outro reads as one screen in
@@ -571,6 +582,16 @@ func _create_msg_panels() -> void:
 	var opp_colour := str(opponent_data.get("message_colour", ""))
 	_dialogue_panel.apply_theme(opp_colour)
 	_gift_panel.apply_theme(opp_colour)
+
+	# ISSUE #122: the opponent's name and overworld sprite, on the same chip the overworld box
+	# gives them. set_chips AFTER apply_theme -- the chip ramp is derived from the theme.
+	# `sprite` names a file in both the in-battle and overworld sprite folders, so the same
+	# key that picks the battle portrait picks the little walking sprite for the chip.
+	var opp_name := str(opponent_data.get("name", ""))
+	if opp_name != "":
+		_dialogue_panel.set_chips([
+			{ "text": opp_name.to_upper(), "sprite": str(opponent_data.get("sprite", "")) },
+		])
 
 func _show_dialogue_message(text: String) -> void:
 	if _dialogue_panel == null:

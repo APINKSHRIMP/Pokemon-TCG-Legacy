@@ -91,6 +91,7 @@ var _sparkle : CPUParticles2D = null
 
 @onready var name_box      : LineEdit    = $"player_name"
 @onready var dob_cash_lbl  : Label       = $"dobandcash"
+@onready var audio_player = AudioStreamPlayer.new()
 @onready var save_btn      : Button      = $"info_save_button"
 @onready var cancel_btn    : Button      = $"info_cancel_button"
 @onready var card_rect     : TextureRect = $"BACKGROUND/id_background"
@@ -101,6 +102,17 @@ var _sparkle : CPUParticles2D = null
 # ─── Lifecycle ───────────────────────────────────────────────────────────────
 
 func _ready() -> void:
+	# ISSUE #128: every sub-menu plays the same track. This screen had none, so it ran on
+	# whatever the main menu was still playing behind it -- and once that overlap was fixed
+	# (Main_Menu_Script.pause_music) it would have been left silent instead.
+	add_child(audio_player)
+	var audio_stream = load("res://Audio/BGM/coin_mode (TCG GB Water Club).ogg")
+	audio_player.stream = audio_stream
+	audio_player.bus = SoundManagerScript.MUSIC_BUS
+	if audio_stream != null:
+		audio_stream.loop = true
+		audio_player.play()
+
 	_style_dob_cash_label()
 	_setup_card_colour_cycling()
 

@@ -15,8 +15,8 @@ func get_npc_json_path() -> String:   return NPC_JSON_PATH
 func _scene_setup():
 	if GameState.progress.get("player_collected_shop_starter_set", false):
 		_remove_starter_set()
-	_create_cash_label()
-	_update_cash_label()
+	# ISSUE #127: the permanent "Cash: $N" label is gone. Cash now appears as a chip on the
+	# message box while you are actually talking to the shopkeeper -- see MapManager.
 
 # ============================================================
 # STARTER SET VISUAL

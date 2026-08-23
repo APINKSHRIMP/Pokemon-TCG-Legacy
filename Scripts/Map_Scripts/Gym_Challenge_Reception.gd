@@ -31,8 +31,7 @@ func _scene_setup():
 	var date: int = GameState.get_date()
 	var path := "res://NPC_and_Opponent_Data/Gym_Challenge_Reception_" + str(date) + "_" + time_of_day + ".json"
 	_npc_json_path = path if ResourceLoader.exists(path) else ""
-	_create_cash_label()
-	_update_cash_label()
+	# ISSUE #127: cash is shown on the message box chip row while talking to the shopkeeper.
 	# If arriving from the plaza (not from the hall), flag the audience for partial regen
 	if GameState.entering_from != "Gym_Challenge_Hall":
 		GameState.progress["gym_challenge_audience_from_plaza"] = true

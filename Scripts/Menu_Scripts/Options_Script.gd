@@ -56,6 +56,8 @@ var section_setters : Dictionary = {}
 
 # ─── Node references ─────────────────────────────────────────────────────────
 
+@onready var audio_player = AudioStreamPlayer.new()
+
 @onready var confusion_base_btn   : Button = $"CONFUSION/confusion_base_button"
 @onready var confusion_fairer_btn : Button = $"CONFUSION/confusion_allowretreat_button"
 @onready var confusion_ex_btn     : Button = $"CONFUSION/confusion_ex_button"
@@ -103,6 +105,17 @@ var section_setters : Dictionary = {}
 # ─── Lifecycle ───────────────────────────────────────────────────────────────
 
 func _ready() -> void:
+	# ISSUE #128: every sub-menu plays the same track. This screen had none, so it ran on
+	# whatever the main menu was still playing behind it -- and once that overlap was fixed
+	# (Main_Menu_Script.pause_music) it would have been left silent instead.
+	add_child(audio_player)
+	var audio_stream = load("res://Audio/BGM/coin_mode (TCG GB Water Club).ogg")
+	audio_player.stream = audio_stream
+	audio_player.bus = SoundManagerScript.MUSIC_BUS
+	if audio_stream != null:
+		audio_stream.loop = true
+		audio_player.play()
+
 	section_buttons = {
 		"confusion": {
 			"base_set_confusion_rules":   confusion_base_btn,

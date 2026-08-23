@@ -337,8 +337,17 @@ var action_button_positions_stored: bool = false
 @onready var attack_buttons_container = $BUTTONS/main_screen_attack_buttons_container
 @onready var main_buttons_container = $BUTTONS/main_screen_buttons_container
 @onready var msgbox_container = $messagebox_container
+# ISSUE #121: retired. Both are hidden for good by _ensure_match_msgbox() -- kept only so the
+# scene's node paths stay valid. The box itself is now a DynamicMessageBox, see show_message().
 @onready var msgbox_texture = $messagebox_container/messagebox_texture
 @onready var msgbox_label = $messagebox_container/messagebox_text_label
+
+# ISSUE #121: the in-match message box, built in code like every other box in the game.
+var _match_msgbox: DynamicMessageBox = null
+# Same panel height as an overworld sign/interactable box. The font is the match's own 40pt
+# ceiling rather than the overworld's 28 -- set_body_text() steps it down if a long line needs it.
+const MATCH_MSGBOX_HEIGHT: float = 138.0
+const MATCH_MSGBOX_FONT_SIZE: int = 40
 @onready var coin_container = $coin_flip_container
 @onready var coin_texture = $coin_flip_container/coin_flip_texture
 @onready var opponent_blocker = $opponent_turn_input_blocker
@@ -1336,15 +1345,35 @@ func hide_attack_buttons() -> void:
 	attack_buttons_container.visible = false
 	main_buttons_container.visible = true
 
+# ISSUE #121 FIX: the in-match box was still the old stretched PNG (bluesquaremessagebox.png).
+# That art has since been re-cut as a render of the NEW dynamic box -- chip row and all -- so
+# stretching it across the bottom of the board drew a huge panel with two dead "header" chips
+# baked into its top-left corner. The match now builds a real DynamicMessageBox in its plainest
+# form: default grey, no chips, no buttons, no speaker -- exactly the box a sign or other
+# interactable gets in the overworld.
+#
+# Built on first use rather than in _ready() so it cannot race the @onready node lookups above.
+func _ensure_match_msgbox() -> DynamicMessageBox:
+	if _match_msgbox != null and is_instance_valid(_match_msgbox):
+		return _match_msgbox
+	print("ISSUE #121 FIX ACTIVE: building the plain in-match dynamic message box")
+	_match_msgbox = DynamicMessageBox.new()
+	_match_msgbox.configure(MATCH_MSGBOX_HEIGHT, MATCH_MSGBOX_FONT_SIZE, false)
+	_match_msgbox.show_as_plain()
+	_match_msgbox.visible = true   # msgbox_container's visibility is what gates the box
+	msgbox_container.add_child(_match_msgbox)
+	msgbox_texture.visible = false
+	msgbox_label.visible   = false
+	return _match_msgbox
+
 # Displays the message box with given text and pauses execution until the player clicks
 func show_message(message_text: String) -> void:
+	var box := _ensure_match_msgbox()
+	# Match messages have always been centred in their box; the dynamic box is left-aligned by
+	# default, so centre it the same way _show_large_message_with_ok does in the overworld.
+	box.set_body_text("[center]" + message_text + "[/center]", MATCH_MSGBOX_FONT_SIZE)
 	msgbox_container.visible = true
-	msgbox_texture.visible = true
-	msgbox_label.visible = true
-	msgbox_label.text = message_text
 	await message_acknowledged
-	msgbox_label.visible = false
-	msgbox_texture.visible = false
 	msgbox_container.visible = false
 	# ISSUE #37 REVERTED (2026-07-22): the post-message pause added here was a bad change
 	# (user feedback) — it inserted a delay after EVERY message box. Removed entirely so

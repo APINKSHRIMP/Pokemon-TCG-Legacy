@@ -27,6 +27,8 @@ var selected_coin_rect : TextureRect = null
 var _active_tween      : Tween       = null
 var _active_particles  : CPUParticles2D = null
 var _in_purchase_seq   : bool        = false
+# ISSUE #116 sibling: the reveal's OK button, held so _input() can press it from the keyboard.
+var _reveal_ok_btn     : Button      = null
 
 # ─── Theme references ─────────────────────────────────────────────────────────
 
@@ -287,9 +289,11 @@ func _show_purchase_display(coin_filename: String) -> void:
 	# Play flip animation, then reveal OK
 	await _play_flip_animation(coin_rect, back_tex, coin_tex)
 	ok_btn.visible = true
+	_reveal_ok_btn = ok_btn   # ISSUE #116 sibling: _input() presses this from the keyboard
 
 	# Wait for player to dismiss
 	await ok_btn.pressed
+	_reveal_ok_btn = null
 	overlay_layer.queue_free()
 
 	# Mark the purchased coin as owned in the grid
@@ -335,9 +339,19 @@ func _on_cancel_pressed() -> void:
 
 
 func _input(event: InputEvent) -> void:
+	# ISSUE #116 FIX ACTIVE (sibling of the holo shop): the coin shop's purchase reveal has the
+	# identical overlay + OK button, so it takes the identical keyboard handling -- Space / Enter
+	# / Escape press OK. Consumed so the press can't also fire ui_accept on a focused button.
+	if _reveal_ok_btn != null and is_instance_valid(_reveal_ok_btn):
+		if UIInput.is_advance(event):
+			print("ISSUE #116 FIX ACTIVE: coin shop reveal dismissed from the keyboard")
+			get_viewport().set_input_as_handled()
+			_reveal_ok_btn.pressed.emit()
+		return
 	if _in_purchase_seq:
 		return
-	if event is InputEventKey and event.pressed and event.keycode == KEY_ESCAPE:
+	# Was a raw KEY_ESCAPE test; routed through UIInput like every other dialog.
+	if UIInput.is_cancel(event):
 		_on_cancel_pressed()
 
 

@@ -36,7 +36,9 @@
 	],
 	"player_collected_shop_starter_set": false,
 	"sleeves": [
-		"default"
+		"1_Default_English",
+		"1_Default_Japanese_New",
+		"1_Default_Japanese_Old"
 	],
 	"shop_state": "initial",
 	"shop_free_packs_given": false,

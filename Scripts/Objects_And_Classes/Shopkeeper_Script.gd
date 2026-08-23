@@ -164,8 +164,8 @@ func _finish_starter_purchase():
 	var scene = get_tree().current_scene
 	if scene.has_method("_remove_starter_set"):
 		scene._remove_starter_set()
-	if scene.has_method("_update_cash_label"):
-		scene._update_cash_label()
+	# ISSUE #120: the message box's own cash chip is what shows the balance now.
+	MapManager._apply_cash_chip()
 	print("[Shopkeeper] Starter set purchased. Transitioned to restocking state")
 	# ISSUE #104 FIX ACTIVE: lead with a big centred "You received the Starter Set!" — the same
 	# announcement style as the starter box upstairs — then fall through to the shopkeeper's line.

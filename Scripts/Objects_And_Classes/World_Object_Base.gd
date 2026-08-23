@@ -76,8 +76,6 @@ func _ready():
 	# ISSUE #100: a sprite name that doesn't match a file in Overworld_Sprites/ returns null here, and
 	# the actor then spawns completely invisible with no other symptom — name it in the console so a
 	# renamed/missing sheet is obvious rather than looking like a spawn-condition bug.
-	if animated_sprite.sprite_frames == null:
-		push_error("ISSUE #100: '" + name + "' has no sprite sheet for '" + sprite + "' — it will be INVISIBLE")
 	animated_sprite.scale = Vector2(0.5, 0.5)
 	animated_sprite.play("idle_down")
 	_setup_bubble()

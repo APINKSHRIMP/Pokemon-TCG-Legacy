@@ -69,9 +69,10 @@ var _pending_pack_opening: Array = []
 # Keys: {text, reward_coin}
 var _pending_juice_result: Dictionary = {}
 
-# Temporary cash overlay (label) shown while talking to the juice vendor.
-# Mirrors Card_Mart's _create_cash_label position/style.
-var _cash_overlay: Label = null
+# ISSUE #120 / ISSUE #127: the loose "Cash: $N" Label that used to float under the message
+# box (and sit permanently in the marts) is gone. The player's cash is now a chip on the
+# right-hand end of the message box's own chip row, shown only while talking to a vendor.
+# See _apply_actor_chips() and _npc_is_vendor().
 
 # Per-tier roll chances (%) and pity thresholds — the tier each cup falls into
 # is determined by which coins the player has already won.
@@ -314,7 +315,7 @@ func _load_and_spawn_opponents(json_path: String):
 	# match itself needs. Re-spawning it here crashed on the very first missing key ("meet_text"), and
 	# would have gone on to fail on position/sprite too. Skip the respawn entirely for a TEST match.
 	if GameState.returning_from_battle and GameState.test_match_mode:
-		print("ISSUE #83 FIX ACTIVE: skipping last-battled-opponent respawn after a TEST match")
+		pass
 	elif GameState.returning_from_battle and not GameState.last_battled_opponent_entry.is_empty():
 		var lbe = GameState.last_battled_opponent_entry
 		var already_spawned = false
@@ -417,7 +418,6 @@ func _load_and_spawn_npcs(json_path: String):
 		print("Spawned NPC: ", npc.npc_name, " at ", npc.position)
 		# ISSUE #93: local position is meaningless on its own — the container's own offset is what
 		# went wrong, so print the global position that actually lands on screen.
-		print("ISSUE #93 NPC PLACED: ", npc.npc_name, " local=", npc.position, " global=", npc.global_position, " container=", _opponents_container.get_path())
 
 ## Instantiate a single NPC entry dict into the current opponents container.
 ## Skips condition evaluation — intended for programmatically built entries
@@ -544,6 +544,31 @@ func _build_message_box():
 #       chips.append({ "text": str(current_opponent.match_effects.size()),
 #                      "icon_path": MSG_ICON_DIR + "conditions.png" })
 const MSG_ICON_DIR := "res://Image_Assets/Icons/Message_Icons/"
+# ISSUE #120: reuses the outro's reward icon rather than adding a near-identical asset.
+const CASH_CHIP_ICON := "res://Image_Assets/Icons/Reward_Icons/pokedollar_icon.png"
+
+# ISSUE #120: the NPCs that trade in cash -- the three marts and the coin/holo shops all run
+# through the "shop" state machine, the juice bar through its own path. Only these show the
+# cash chip; everyone else gets a plain name chip as before.
+func _npc_is_vendor(npc: Node) -> bool:
+	if npc == null:
+		return false
+	var t: String = npc.npc_type if "npc_type" in npc else ""
+	return t == "shop" or t == "juice_vendor"
+
+
+# ISSUE #120: rebuilds the right-hand cash chip from the live balance. Called whenever the
+# box is (re)shown and after any purchase, so the figure on screen is never stale.
+func _apply_cash_chip() -> void:
+	if message_panel == null:
+		return
+	if current_npc != null and _npc_is_vendor(current_npc):
+		message_panel.set_right_chips([
+			{ "text": "$" + str(GameState.get_cash()), "icon_path": CASH_CHIP_ICON },
+		])
+	else:
+		message_panel.set_right_chips([])
+
 
 func _apply_actor_chips() -> void:
 	if message_panel == null:
@@ -555,6 +580,7 @@ func _apply_actor_chips() -> void:
 
 	if current_opponent != null:
 		message_panel.apply_theme(current_opponent.message_colour)
+		message_panel.set_right_chips([])   # ISSUE #120: opponents never show cash
 		message_panel.set_chips([
 			{ "text": current_opponent.opponent_name.to_upper(),
 			  "sprite": current_opponent.sprite },
@@ -578,6 +604,7 @@ func _apply_actor_chips() -> void:
 		message_panel.set_chips([
 			{ "text": shown.to_upper(), "sprite": current_npc.sprite },
 		])
+		_apply_cash_chip()   # ISSUE #120 -- vendors only, no-op for everyone else
 		return
 
 	# Nobody is speaking (a sign, the TV, the bed) — back to the interactables grey.
@@ -587,21 +614,21 @@ func _apply_actor_chips() -> void:
 
 func _show_message_with_choices(text: String):
 	_apply_actor_chips()
+	# set_mode() BEFORE set_body_text(): it can move the panel (a Yes/No box sits higher to
+	# leave room for the buttons), and the text is centred against wherever the panel ends up.
+	message_panel.set_mode("choices")
 	message_panel.set_body_text(text)
-	yes_button.visible = true
-	no_button.visible  = true
-	ok_button.visible  = false
 	message_panel.visible = true
 	_player.can_move = false
 
 # font_size is a CEILING, not a fixed size — the box shrinks past it if the
 # text would not otherwise fit the panel.
+# ISSUE #126: "OK" boxes no longer draw an OK button -- a click anywhere, Space, Enter or
+# Escape all dismiss them -- and the panel drops into the space the button row used to take.
 func _show_message_with_ok(text: String, font_size: int = 28):
 	_apply_actor_chips()
+	message_panel.set_mode("ok")
 	message_panel.set_body_text(text, font_size)
-	yes_button.visible = false
-	no_button.visible  = false
-	ok_button.visible  = true
 	message_panel.visible = true
 	_player.can_move = false
 
@@ -613,10 +640,8 @@ func _show_large_message_with_ok(text: String) -> void:
 	# The box already uses this font — only the size sets a large message apart
 	# now. Horizontal centring via bbcode (RichTextLabel has no
 	# horizontal_alignment); vertical centring is the box's default.
+	message_panel.set_mode("ok")
 	message_panel.set_body_text("[center]" + text + "[/center]", LARGE_MESSAGE_FONT_SIZE)
-	yes_button.visible = false
-	no_button.visible  = false
-	ok_button.visible  = true
 	message_panel.visible = true
 	_player.can_move = false
 
@@ -630,7 +655,6 @@ func _hide_message():
 	message_panel.visible = false
 	message_panel.clear_chips()
 	_clear_gift_display()
-	_hide_cash_overlay()
 	_pending_confirm_yes = Callable()
 	_player.can_move = true
 	if current_opponent != null:
@@ -693,9 +717,12 @@ func handle_message_accept() -> void:
 		return
 	if not message_panel.visible:
 		return
-	if ok_button.visible:
-		_on_ok_pressed()
-	elif yes_button.visible:
+	# ISSUE #126: there is no OK button to test any more -- the box itself reports which kind
+	# it is. ok_armed is false while a gift reveal is still animating.
+	if message_panel.is_ok_mode():
+		if message_panel.ok_armed:
+			_on_ok_pressed()
+	elif message_panel.is_choice_mode():
 		_on_yes_pressed()
 
 func handle_message_cancel() -> void:
@@ -707,9 +734,10 @@ func handle_message_cancel() -> void:
 	if not message_panel.visible:
 		return
 	# A plain OK box has nothing to say no to, so cancel just dismisses it.
-	if ok_button.visible:
-		_on_ok_pressed()
-	elif no_button.visible:
+	if message_panel.is_ok_mode():
+		if message_panel.ok_armed:
+			_on_ok_pressed()
+	elif message_panel.is_choice_mode():
 		_on_no_pressed()
 
 # While the card/coin/costume reveal animates, the OK button is deliberately
@@ -941,8 +969,7 @@ func _on_player_npc_interact(npc: Node):
 	# Juice vendor: tiered coin lottery, $50/cup ($25 after all 3 coins won)
 	if npc.npc_type == "juice_vendor":
 		npc.refresh_bubble()
-		_show_cash_overlay()
-		_show_message_with_choices(_juice_greeting_text())
+		_show_message_with_choices(_juice_greeting_text())   # ISSUE #120: cash chip comes with it
 		return
 
 	# Costume-gated NPC: special greeting + gift only while the player wears
@@ -1239,12 +1266,15 @@ func _show_gift_display(text: String, image_paths: Array, kind: String) -> void:
 	if message_panel.get_parent() == _ui_layer:
 		_ui_layer.move_child(message_panel, _ui_layer.get_child_count() - 1)
 
-	# Show the message panel WITHOUT the OK button — animation must complete first.
-	# ISSUE #104 FIX ACTIVE: "You received the X" now uses the same large centred style as the
-	# starter box upstairs (_show_large_message_with_ok) instead of ordinary 28pt dialogue.
-	print("ISSUE #104 FIX ACTIVE: gift notice shown at large size — ", text)
+	# Show the message panel, but NOT dismissable yet — the reveal animation must finish first.
+	# ISSUE #104: "You received the X" uses the same large centred style as the starter box
+	# upstairs (_show_large_message_with_ok) instead of ordinary 28pt dialogue.
+	# ISSUE #118 FIX ACTIVE: the gift notice is the GAME talking, not the NPC who handed it
+	# over, so it drops the speaker's name chip and colour and shows the plain grey box.
+	print("ISSUE #118 FIX ACTIVE: gift notice shown on the plain grey box — ", text)
 	_show_large_message_with_ok(text)
-	ok_button.visible = false
+	message_panel.show_as_plain()
+	message_panel.ok_armed = false
 
 	# ── PASS 4: Kick off reveal animations (parallel) ──
 	# ISSUE #33: allow a click to skip the reveal. Reset skip state and let the dim overlay catch clicks.
@@ -1284,9 +1314,9 @@ func _show_gift_display(text: String, image_paths: Array, kind: String) -> void:
 		_finalize_gift_reveal()
 	_gift_reveal_active = false
 	# After awaiting, the player may have already dismissed (e.g. via cleanup).
-	# Only reveal OK if the message is still on screen.
-	if message_panel.visible and ok_button != null:
-		ok_button.visible = true
+	# Only re-arm the dismiss if the message is still on screen.
+	if message_panel.visible:
+		message_panel.ok_armed = true
 
 # ISSUE #33: a click anywhere on the dim overlay during the reveal skips the animation.
 func _on_gift_reveal_input(event: InputEvent) -> void:
@@ -1716,50 +1746,11 @@ func _handle_juice_purchase() -> void:
 	else:
 		_pending_juice_result = {"text": JUICE_NORMAL_MSG, "reward_coin": ""}
 
-	_update_cash_overlay()
+	_apply_cash_chip()   # ISSUE #120: refresh the cash chip after the cup is paid for
 	GameState.save_progress()
 
 	# Chain to the result message via the existing OK pipeline
 	_on_ok_pressed()
-
-# ============================================================
-# CASH OVERLAY
-# Mirrors Card_Mart._create_cash_label position/style. Created on demand when
-# talking to the juice vendor; removed in _hide_message().
-# ============================================================
-
-func _show_cash_overlay() -> void:
-	if _cash_overlay != null and is_instance_valid(_cash_overlay):
-		_update_cash_overlay()
-		return
-	_cash_overlay = Label.new()
-	_cash_overlay.name = "JuiceCashOverlay"
-	_cash_overlay.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-	_cash_overlay.vertical_alignment   = VERTICAL_ALIGNMENT_BOTTOM
-	_cash_overlay.add_theme_font_size_override("font_size", 18)
-	_cash_overlay.add_theme_color_override("font_color", Color.WHITE)
-	_cash_overlay.add_theme_color_override("font_shadow_color", Color.BLACK)
-	_cash_overlay.add_theme_constant_override("shadow_offset_x", 1)
-	_cash_overlay.add_theme_constant_override("shadow_offset_y", 1)
-	_cash_overlay.anchor_left   = 1.0
-	_cash_overlay.anchor_top    = 1.0
-	_cash_overlay.anchor_right  = 1.0
-	_cash_overlay.anchor_bottom = 1.0
-	_cash_overlay.offset_left   = -160
-	_cash_overlay.offset_top    = -40
-	_cash_overlay.offset_right  = -10
-	_cash_overlay.offset_bottom = -10
-	_ui_layer.add_child(_cash_overlay)
-	_update_cash_overlay()
-
-func _update_cash_overlay() -> void:
-	if _cash_overlay != null and is_instance_valid(_cash_overlay):
-		_cash_overlay.text = "Cash: $" + str(GameState.get_cash())
-
-func _hide_cash_overlay() -> void:
-	if _cash_overlay != null and is_instance_valid(_cash_overlay):
-		_cash_overlay.queue_free()
-	_cash_overlay = null
 
 # ============================================================
 # DECK VALIDATION (opponent restrictions)

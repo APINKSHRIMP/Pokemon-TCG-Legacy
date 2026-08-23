@@ -182,8 +182,12 @@ func _load_sleeves() -> void:
 	var file_name := dir.get_next()
 	while file_name != "":
 		if not dir.current_is_dir() and not file_name.ends_with(".import"):
-			if not file_name.begins_with("1_Default"):
-				files.append(file_name)
+			# ISSUE #129: the "1_Default*" card backs used to be filtered out here, because the
+			# only starter entry was the fake name "default" that matched no file. The player is
+			# now granted three real ones on a new save, so they have to be listed or they could
+			# never be equipped. They are still excluded from the trainer card's collection
+			# counter (Info_Script._sleeve_universe) -- freebies shouldn't count as collected.
+			files.append(file_name)
 		file_name = dir.get_next()
 	dir.list_dir_end()
 

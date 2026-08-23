@@ -7,7 +7,10 @@ const TARGET_TYPES    := ["Fire", "Water", "Grass", "Lightning", "Psychic", "Fig
 const CARD_COST       := 400
 const CARD_SIZE       := Vector2(265, 364)
 const CARD_SEPARATION := 3
-const REVEAL_SIZE     := Vector2(318, 437)
+# ISSUE #115: the bought card was too small on screen. Up 50% (318x437 -> 477x655.5), which
+# lands it in the same ballpark as the 430x600 a single card gets when handed over as a gift
+# (MapManager.GIFT_CARD_SIZES). Aspect ratio is unchanged.
+const REVEAL_SIZE     := Vector2(477, 655.5)
 const CELESTE_HARBOUR := "res://Scenes/Map_Scenes/Celeste_Harbour.tscn"
 const CARD_BACK_PATH  := "res://Image_Assets/Sleeves/1_Default_English.png"  # ISSUE #50 sibling: cardback.png doesn't exist -> null texture
 
@@ -21,6 +24,8 @@ var _selected_idx    : int        = -1
 var _active_tween    : Tween      = null
 var player_cash      : int        = 0
 var _in_purchase_seq : bool       = false
+# ISSUE #116: the reveal's OK button, held so _input() can press it from the keyboard.
+var _reveal_ok_btn   : Button     = null
 
 # ─── Theme references ────────────────────────────────────────────────────────
 
@@ -249,7 +254,6 @@ func _show_card_reveal(card: Dictionary) -> void:
 	var back_tex : Texture2D = load(CARD_BACK_PATH)
 	await _play_flip_animation(reveal_rect, back_tex, face_tex)
 
-	print("ISSUE #101 FIX ACTIVE: flip finished — starting holo sparkle for ", card["id"])
 	_start_holo_sparkle_on_layer(reveal_rect, cd, overlay_layer)
 
 	var got_label := Label.new()
@@ -268,9 +272,11 @@ func _show_card_reveal(card: Dictionary) -> void:
 	ok_btn.position = Vector2(vp_size.x / 2.0 - 200.0, got_label.position.y + 90.0)
 	ok_btn.theme    = theme_kenney_green
 	overlay_layer.add_child(ok_btn)
+	_reveal_ok_btn = ok_btn   # ISSUE #116: _input() presses this from the keyboard
 
 	await ok_btn.pressed
 
+	_reveal_ok_btn = null
 	overlay_layer.queue_free()
 	cancel_btn.disabled = false
 	_in_purchase_seq    = false
@@ -375,8 +381,17 @@ func _on_cancel_pressed() -> void:
 
 
 func _input(event: InputEvent) -> void:
+	# ISSUE #116 FIX ACTIVE: Space / Enter / Escape press the reveal's OK button, the same as
+	# every other dialog in the game. Keys are classified by UIInput, never by keycode, and the
+	# event is consumed so it cannot ALSO fire ui_accept on whichever button holds focus.
+	if _reveal_ok_btn != null and is_instance_valid(_reveal_ok_btn):
+		if UIInput.is_advance(event):
+			print("ISSUE #116 FIX ACTIVE: holo reveal dismissed from the keyboard")
+			get_viewport().set_input_as_handled()
+			_reveal_ok_btn.pressed.emit()
+		return
 	if _in_purchase_seq:
 		return
-	if event is InputEventKey and event.pressed and not event.echo:
-		if event.keycode == KEY_ESCAPE:
-			_on_cancel_pressed()
+	# ISSUE #116 sibling: was a raw KEY_ESCAPE test; routed through UIInput like the rest.
+	if UIInput.is_cancel(event):
+		_on_cancel_pressed()

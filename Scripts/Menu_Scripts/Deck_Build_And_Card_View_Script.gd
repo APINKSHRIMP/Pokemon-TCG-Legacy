@@ -2306,12 +2306,10 @@ func _on_save_pressed() -> void:
 	# != DECK_SIZE, ignoring the debug-mode relaxation) — they all live in _deck_save_blocker() now.
 	var blocker := _deck_save_blocker()
 	if blocker != "":
-		print("ISSUE #84 FIX ACTIVE: save refused — ", blocker)
 		_show_deck_message(blocker)
 		return
 
 	if not _is_deck_dirty():
-		print("ISSUE #84 FIX ACTIVE: save refused — no changes since the last save")
 		_show_deck_message("No changes to save")
 		return
 

@@ -6,6 +6,15 @@ extends Node
 
 var current_opponent_name: String = ""
 
+# ISSUE #129: granted on game initialisation; 1_Default_English is also the equipped sleeve a
+# new save starts with (see the "sleeve" key in Player_Data/Player_Current_Data.json). Names are
+# bare basenames, matching everything else in progress["sleeves"].
+const STARTER_SLEEVES: Array = [
+	"1_Default_English",
+	"1_Default_Japanese_New",
+	"1_Default_Japanese_Old",
+]
+
 # TEMP TESTING: synthetic opponent metadata used by the T-key TEST match so no
 # NPC JSON needs to exist. Sprite is left blank (intro skips a missing sprite).
 func build_test_opponent_data() -> Dictionary:
@@ -683,8 +692,13 @@ func load_progress():
 		progress["npc_interactions"] = old.keys()
 		progress.erase("met_npcs")
 
+	# ISSUE #129: the three starter card backs the player owns from the very first launch.
+	# Kept in step with the "sleeves" array in Player_Data/Player_Game_Progress.json, which is
+	# what a brand-new save actually copies -- this branch only catches a save made before the
+	# key existed. "default" used to stand in here and matched no file on disk, so the sleeve
+	# grid had nothing to show and _resolve_sleeve_path() fell through to its hardcoded default.
 	if not progress.has("sleeves"):
-		progress["sleeves"] = ["default"]
+		progress["sleeves"] = STARTER_SLEEVES.duplicate()
 
 	# Migrate old coin filenames from "coin_pikachu_gold.png" to "Pikachu Gold.png"
 	var coins_arr : Array = progress.get("coins", [])

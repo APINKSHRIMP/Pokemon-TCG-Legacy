@@ -15,8 +15,7 @@ func get_npc_json_path() -> String:   return NPC_JSON_PATH
 func _scene_setup():
 	if GameState.progress.get("player_collected_shop_starter_set", false):
 		_remove_starter_set()
-	_create_cash_label()
-	_update_cash_label()
+	# ISSUE #127: cash is shown on the message box chip row while talking to the shopkeeper.
 
 func _remove_starter_set():
 	var starter = $MART.get_node_or_null("Starter_Set")

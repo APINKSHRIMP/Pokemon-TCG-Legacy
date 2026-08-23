@@ -16,7 +16,6 @@ extends Node2D
 #   - MapManager.initialise() call
 #   - _input() main-menu exit shortcut
 #   - _on_door_entered() fade-black scene transition
-#   - Cash label (opt-in: call _create_cash_label / _update_cash_label)
 #   - Moving-in visibility helper
 #   - Tileset recursive helper
 # ============================================================
@@ -180,7 +179,6 @@ func _exit_tree():
 	# ISSUE #56: snapshot NPC/opponent positions before this map unloads (battle, sub-menu, door) so
 	# they resume from where they were instead of teleporting back to their data-file spawn on reload.
 	MapManager.capture_actor_positions()
-	_remove_cash_label()
 	# ISSUE #52: never leave a freed map registered as the menu overlay host.
 	if GameState.menu_overlay_host == self:
 		GameState.menu_overlay_host = null
@@ -213,7 +211,6 @@ func _get_opponents_container() -> Node2D:
 			push_warning("BaseMapScene: '%s' container in %s is not a direct child of the scene root "
 				% [container_name, name] + "(found at '%s') — actor positions are relative to it, so "
 				% get_path_to(nested) + "check the shop/NPC placements in that scene.")
-			print("ISSUE #93: found '", container_name, "' nested at '", get_path_to(nested), "' in ", name)
 			return nested as Node2D
 	# Interior scenes (Gym Reception/Hall) have no container in the .tscn — create at runtime
 	var c := Node2D.new()
@@ -358,6 +355,9 @@ func open_submenu_overlay(scene_path: String) -> void:
 	# whole menu at the same time as the sub-menu's own back handler.
 	if _menu_instance != null and is_instance_valid(_menu_instance):
 		_menu_instance.set_process_input(false)
+		# ISSUE #128: and it must stop PLAYING, or its theme runs under the sub-menu's own track.
+		if _menu_instance.has_method("pause_music"):
+			_menu_instance.pause_music()
 
 	_submenu_canvas_layer = CanvasLayer.new()
 	_submenu_canvas_layer.layer = 11
@@ -387,46 +387,12 @@ func close_submenu_overlay(restore_menu: bool = true) -> void:
 		_menu_canvas_layer.visible = true
 	if _menu_instance != null and is_instance_valid(_menu_instance):
 		_menu_instance.set_process_input(true)
+		if _menu_instance.has_method("resume_music"):   # ISSUE #128
+			_menu_instance.resume_music()
 	# The Costume sub-menu can change the player's sprite; push it onto the live player node since
 	# the map is no longer reloaded.
 	if _player != null and is_instance_valid(_player) and _player.has_method("refresh_sprite"):
 		_player.refresh_sprite()
-
-# ============================================================
-# CASH LABEL — opt-in
-# ============================================================
-
-var _cash_label: Label = null
-
-func _create_cash_label():
-	_cash_label = Label.new()
-	_cash_label.name = "CashLabel"
-	_cash_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-	_cash_label.vertical_alignment   = VERTICAL_ALIGNMENT_BOTTOM
-	_cash_label.add_theme_font_size_override("font_size", 18)
-	_cash_label.add_theme_color_override("font_color", Color.WHITE)
-	_cash_label.add_theme_color_override("font_shadow_color", Color.BLACK)
-	_cash_label.add_theme_constant_override("shadow_offset_x", 1)
-	_cash_label.add_theme_constant_override("shadow_offset_y", 1)
-	_cash_label.anchor_left   = 1.0
-	_cash_label.anchor_top    = 1.0
-	_cash_label.anchor_right  = 1.0
-	_cash_label.anchor_bottom = 1.0
-	_cash_label.offset_left   = -160
-	_cash_label.offset_top    = -40
-	_cash_label.offset_right  = -10
-	_cash_label.offset_bottom = -10
-	_ui_layer.add_child(_cash_label)
-
-func _update_cash_label():
-	if _cash_label == null:
-		return
-	_cash_label.text = "Cash: $" + str(GameState.get_cash())
-
-func _remove_cash_label():
-	if _cash_label != null and is_instance_valid(_cash_label):
-		_cash_label.queue_free()
-		_cash_label = null
 
 # ============================================================
 # MOVING-IN VISIBILITY — opt-in
