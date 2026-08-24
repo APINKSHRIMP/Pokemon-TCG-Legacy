@@ -73,7 +73,6 @@ func _close_overlay() -> void:
 # way back. Paused rather than stopped so the theme picks up where it left off.
 func pause_music() -> void:
 	if audio_player != null and is_instance_valid(audio_player) and audio_player.playing:
-		print("ISSUE #128 FIX ACTIVE: pausing main menu music for a sub-menu")
 		audio_player.stream_paused = true
 
 

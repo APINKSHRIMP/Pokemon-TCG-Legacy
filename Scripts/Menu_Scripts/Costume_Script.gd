@@ -171,6 +171,9 @@ func _wrap_grid_in_scroll_container() -> void:
 	grid.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	grid.columns = COLUMNS
 	grid.add_theme_constant_override("h_separation", SPRITE_SEPARATION)
+	# ISSUE #144 FIX: the scroll container spans the full 1920 and the columns share the leftover
+	# width (see the EXPAND_FILL in _add_character_to_grid), so the last costume in a row finishes
+	# against the scrollbar instead of ~120px short of it.
 	grid.add_theme_constant_override("v_separation", SPRITE_SEPARATION)
 
 
@@ -217,6 +220,12 @@ func _add_character_to_grid(file_name: String) -> void:
 	rect.size                = SPRITE_SIZE
 	rect.stretch_mode        = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	rect.expand_mode         = TextureRect.EXPAND_FIT_WIDTH_PROPORTIONAL
+	# ISSUE #144 FIX: without SIZE_EXPAND a GridContainer sizes each column to its widest child's
+	# MINIMUM width and simply leaves the leftover width unused at the right-hand end -- which is
+	# what put a ~120px dead band between the last costume and the scrollbar. EXPAND_FILL makes the
+	# nine columns share that leftover evenly instead, so the row ends where the scrollbar begins.
+	# (The scene's grid also now spans the full 0..1920 rather than -11..1893.)
+	rect.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 
 	var is_owned : bool = _owned_costumes.has(file_name.to_lower())
 	print("DEBUG TrainerCard: grid file=", file_name, " is_owned=", is_owned)

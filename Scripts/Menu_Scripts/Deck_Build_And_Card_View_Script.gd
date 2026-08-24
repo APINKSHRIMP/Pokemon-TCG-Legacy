@@ -10,9 +10,6 @@ var OWNED_CARDS_FOLDER: String:
 var PLAYER_DECKS_FOLDER: String:
 	get: return GameState.PLAYER_DECKS_FOLDER
 
-var PLAYER_PROGRESS_PATH: String:
-	get: return GameState.PROGRESS_PATH
-
 const CARD_SIZE     := Vector2(183, 254)
 const CARD_H_SEP    := 2
 const CARD_V_SEP    := 2
@@ -39,14 +36,9 @@ const DECK_SIZE     := 60
 
 const ENERGY_TYPES := ["grass", "fire", "water", "lightning", "psychic", "fighting"]
 
-const ENERGY_STYLES : Dictionary = {
-	"Base1":  ["base1-99",  "base1-98",  "base1-102", "base1-100", "base1-101", "base1-97"],
-	"Ecard1": ["ecard1-162","ecard1-161","ecard1-165","ecard1-163","ecard1-164","ecard1-160"],
-	"ex1":    ["ex1-104",   "ex1-108",   "ex1-106",   "ex1-109",   "ex1-107",   "ex1-105"],
-	"ex9":    ["ex9-101",   "ex9-102",   "ex9-103",   "ex9-104",   "ex9-105",   "ex9-106"],
-	"ex13":   ["ex13-105",  "ex13-106",  "ex13-107",  "ex13-108",  "ex13-109",  "ex13-110"],
-	"ex16":   ["ex16-103",  "ex16-104",  "ex16-105",  "ex16-106",  "ex16-107",  "ex16-108"],
-}
+# ISSUE #155: the style table lives in Game_State_Script now (GameState.ENERGY_STYLES) so the
+# CHT.All_Energy_Styles cheat grants exactly the styles this screen offers. Referenced through the
+# autoload rather than copied — two copies would drift the moment a style is added.
 
 # BBCode hex colours for the per-set deck breakdown label.
 # "__trainer__" is the combined Trainer + Special Energy bucket.
@@ -101,7 +93,13 @@ var deck_name_counts : Dictionary = {}
 
 # Reference to the load-deck popup so we can free it later
 var load_popup       : CanvasLayer = null
-var empty_confirm_popup : CanvasLayer = null
+# ISSUE #154: ONE styled Yes/No confirm, shared by every destructive action on this screen —
+# "Empty the entire deck?" and now "Delete <deck>?". It was a single-purpose popup for the empty
+# button; a second hand-rolled copy for delete would have been the third in the codebase (the main
+# menu's quit dialog is the same panel again), so it is a helper now. Layer 110 so it stacks ABOVE
+# the load popup at 100 — the delete confirm is opened from inside that popup.
+var confirm_popup   : CanvasLayer = null
+var _confirm_action : Callable    = Callable()
 
 # Snapshot of deck_cards taken after a save or load — used to detect
 # whether the player has made any changes.  If the current deck_cards
@@ -230,6 +228,23 @@ const SEARCH_LOAD_BATCH := 9
 # Opens the card search screen — always reads "SEARCH", and reopens with the previous filters
 # still set when pressed while results are on display
 @onready var search_btn        : Button = $search_button
+
+# ISSUE #148: what the set-name label reads while a search is on screen. The label used to be
+# hidden outright alongside the < > set-switch buttons; it now stays up carrying this banner, so
+# the player can see at a glance why the grid is not showing a single set. The BUTTONS stay hidden
+# — there is no set to step through in results mode.
+const SEARCH_MODE_LABEL := "SEARCH MODE ACTIVE"
+
+# ISSUE #141: the deck screen and the search screen use DIFFERENT backdrops.
+#   browsing  -> background_scroller + top_and_right_border   (the ~300px right-hand card banner)
+#   filtering -> filter_background   + filter_border          (full width, no right banner)
+# The filter pair is authored hidden in the scene; _set_filter_chrome() is the ONLY thing that
+# swaps between them, so the two can never both be up. Losing the right banner is what frees the
+# ~460px the filter rows now spread into — see CardSearchOverlay's geometry block (ISSUE #142).
+@onready var background_scroller  : TextureRect = $BACKGROUND/background_scroller
+@onready var top_and_right_border : TextureRect = $BACKGROUND/top_and_right_border
+@onready var filter_background    : TextureRect = $BACKGROUND/filter_background
+@onready var filter_border        : TextureRect = $BACKGROUND/filter_border
 
 # ─── Lifecycle ───────────────────────────────────────────────────────────────
 
@@ -594,8 +609,8 @@ func _rebuild_deck_name_counts() -> void:
 ## of the deck's card IDs match a known energy style's card IDs.
 ## Returns the style name (e.g. "Base1", "ex13") or "" if none found.
 func _detect_energy_style_from_deck() -> String:
-	for style_name in ENERGY_STYLES.keys():
-		var card_ids : Array = ENERGY_STYLES[style_name]
+	for style_name in GameState.ENERGY_STYLES.keys():
+		var card_ids : Array = GameState.ENERGY_STYLES[style_name]
 		for cid in card_ids:
 			if deck_cards.has(cid):
 				return style_name
@@ -646,10 +661,10 @@ func _load_energy_style() -> void:
 ## currently selected energy style.  Each icon loads the "Small" version
 ## of its card image from the Image_Assets/Card_Image_Library folder.
 func _update_energy_icons() -> void:
-	if not ENERGY_STYLES.has(current_energy_style):
+	if not GameState.ENERGY_STYLES.has(current_energy_style):
 		current_energy_style = "Base1"
 
-	var card_ids : Array = ENERGY_STYLES[current_energy_style]
+	var card_ids : Array = GameState.ENERGY_STYLES[current_energy_style]
 	# card_ids is ordered: grass, fire, water, lightning, psychic, fighting
 	# ENERGY_TYPES is in the same order, so index i lines up
 	for i in range(ENERGY_TYPES.size()):
@@ -666,10 +681,10 @@ func _update_energy_icons() -> void:
 ## based on the current deck contents.  Called at startup and whenever the
 ## deck changes (load, empty, etc.).
 func _refresh_energy_icons_from_deck() -> void:
-	if not ENERGY_STYLES.has(current_energy_style):
+	if not GameState.ENERGY_STYLES.has(current_energy_style):
 		return
 
-	var card_ids : Array = ENERGY_STYLES[current_energy_style]
+	var card_ids : Array = GameState.ENERGY_STYLES[current_energy_style]
 	for i in range(ENERGY_TYPES.size()):
 		var energy_type : String = ENERGY_TYPES[i]
 		var card_id     : String = card_ids[i]
@@ -727,7 +742,7 @@ func _on_energy_icon_gui_input(event: InputEvent, energy_type: String) -> void:
 	var type_index := ENERGY_TYPES.find(energy_type)
 	if type_index == -1:
 		return
-	var card_id : String = ENERGY_STYLES[current_energy_style][type_index]
+	var card_id : String = GameState.ENERGY_STYLES[current_energy_style][type_index]
 	var in_deck : int    = deck_cards.get(card_id, 0)
 	var icon    : TextureRect = energy_icons[energy_type]
 	var label   : Label  = energy_labels[energy_type]
@@ -795,12 +810,19 @@ func _on_change_energy_style_pressed() -> void:
 	energy_picker_overlay.set_anchors_preset(Control.PRESET_FULL_RECT)
 	add_child(energy_picker_overlay)
 
-	# ── Semi-transparent backdrop ──
+	# ── Click blocker ──
+	# Was a 55%-black ColorRect at z 55 — ABOVE the card grid at z 0 — so it dimmed the energy
+	# cards themselves rather than the screen behind them, exactly the same bug the deck viewer had.
+	# Fully transparent now and dropped below the grid; it keeps the default MOUSE_FILTER_STOP, so
+	# it still swallows clicks on everything that isn't a card or one of the two buttons.
+	# NOTE: the row dimming you SHOULD still see is dimmed_modulate further down (0.8 grey on
+	# unlocked-but-unselected rows) and locked_modulate (near-black on styles you don't own yet).
+	# Those are the picker telling you what is selected and what is locked — leave them alone.
 	var backdrop := ColorRect.new()
-	backdrop.color = Color(0, 0, 0, 0.55)
+	backdrop.color = Color(0, 0, 0, 0.0)
 	backdrop.anchor_right  = 1.0
 	backdrop.anchor_bottom = 1.0
-	backdrop.z_index = 55   # above the border so the dimming covers everything
+	backdrop.z_index = 0
 	energy_picker_overlay.add_child(backdrop)
 
 	# ── Title label ──
@@ -838,7 +860,7 @@ func _on_change_energy_style_pressed() -> void:
 	picker_scroll.size = Vector2(1605, 905)
 	picker_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	picker_scroll.vertical_scroll_mode   = ScrollContainer.SCROLL_MODE_AUTO
-	picker_scroll.z_index = 0
+	picker_scroll.z_index = 5   # above the transparent click blocker
 	picker_scroll.clip_contents = true
 	energy_picker_overlay.add_child(picker_scroll)
 
@@ -901,9 +923,9 @@ func _on_change_energy_style_pressed() -> void:
 	# Each card image is loaded and added to the grid one at a time, with
 	# an await between each so the player sees them appear rather than
 	# experiencing a freeze while all 36 images load at once.
-	for style_name in ENERGY_STYLES.keys():
+	for style_name in GameState.ENERGY_STYLES.keys():
 		var is_unlocked : bool = style_name in available_styles
-		var card_ids : Array = ENERGY_STYLES[style_name]
+		var card_ids : Array = GameState.ENERGY_STYLES[style_name]
 
 		var cards_in_row : Array = []
 		for col in range(6):
@@ -954,17 +976,12 @@ func _on_change_energy_style_pressed() -> void:
 			_animate_picker_row(style_name, row_cards, row_tweens)
 
 
-## Reads player_progress.json and returns the array of unlocked energy style
-## names.  This determines which rows appear in the picker.
+## The unlocked energy style names — this is what decides which rows appear in the picker.
+## ISSUE #155: reads GameState rather than re-opening player_progress.json. The old version parsed
+## the file every time it was called, so a style granted in-session (by the cheat, or by an NPC
+## gift) was invisible until the file happened to be rewritten. GameState.progress is the live copy.
 func _get_unlocked_energy_styles() -> Array:
-	var file := FileAccess.open(PLAYER_PROGRESS_PATH, FileAccess.READ)
-	if file == null:
-		return ["Base1"]
-	var data = JSON.parse_string(file.get_as_text())
-	file.close()
-	if data is Dictionary and data.has("energy_styles"):
-		return data["energy_styles"]
-	return ["Base1"]
+	return GameState.get_energy_styles()
 
 
 ## Called when any card in the picker grid is clicked.
@@ -1040,9 +1057,9 @@ func _on_energy_picker_save(new_style: String) -> void:
 	# ── Swap energy cards in the deck from old style → new style ──
 	# If the player had e.g. 10 × base1-99 (Base1 grass) in their deck,
 	# and they switch to ex13, we need to replace those with ex13-105.
-	if old_style != new_style and ENERGY_STYLES.has(old_style) and ENERGY_STYLES.has(new_style):
-		var old_ids : Array = ENERGY_STYLES[old_style]
-		var new_ids : Array = ENERGY_STYLES[new_style]
+	if old_style != new_style and GameState.ENERGY_STYLES.has(old_style) and GameState.ENERGY_STYLES.has(new_style):
+		var old_ids : Array = GameState.ENERGY_STYLES[old_style]
+		var new_ids : Array = GameState.ENERGY_STYLES[new_style]
 		for i in range(6):
 			var old_id : String = old_ids[i]
 			var new_id : String = new_ids[i]
@@ -1313,12 +1330,22 @@ func _on_view_deck_pressed() -> void:
 	deck_viewer_overlay.set_anchors_preset(Control.PRESET_FULL_RECT)
 	add_child(deck_viewer_overlay)
 
+	# ISSUE #151 FIX: this used to be 55% black and sat at z 55 — ABOVE the card grid — which is
+	# what darkened the cards themselves rather than the screen behind them. It is fully transparent
+	# now and drops BELOW them, but it stays a real Control with the default MOUSE_FILTER_STOP so it
+	# still swallows clicks on everything that isn't the Close button.
+	# z_index only decides DRAW order here. Godot picks GUI input by walking the tree in reverse
+	# child order and ignores z_index entirely, so the backdrop — added before the grid — is picked
+	# last whatever its z. That is why the cards were always clickable through it, and why what
+	# actually blocked the hold-Shift preview was the cards' own MOUSE_FILTER_IGNORE and missing
+	# card_id metadata (fixed below), not this rect.
 	var backdrop := ColorRect.new()
-	backdrop.color          = Color(0, 0, 0, 0.55)
+	backdrop.color          = Color(0, 0, 0, 0.0)
 	backdrop.anchor_right   = 1.0
 	backdrop.anchor_bottom  = 1.0
-	backdrop.z_index        = 55
+	backdrop.z_index        = 0
 	deck_viewer_overlay.add_child(backdrop)
+	print("ISSUE #151 FIX ACTIVE: deck viewer backdrop is transparent, click-blocking only")
 
 	var kenney_theme = load("res://UI_Themes/kenneyUI.tres")
 
@@ -1340,7 +1367,7 @@ func _on_view_deck_pressed() -> void:
 	viewer_scroll.size                  = Vector2(1676, 969)
 	viewer_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	viewer_scroll.vertical_scroll_mode  = ScrollContainer.SCROLL_MODE_AUTO
-	viewer_scroll.z_index               = 0
+	viewer_scroll.z_index               = 5   # ISSUE #151: above the transparent click blocker
 	viewer_scroll.clip_contents         = true
 	deck_viewer_overlay.add_child(viewer_scroll)
 
@@ -1371,9 +1398,10 @@ func _on_view_deck_pressed() -> void:
 	close_btn.pressed.connect(_close_deck_viewer)
 	deck_viewer_overlay.add_child(close_btn)
 
-	await get_tree().process_frame
-
 	var sorted_ids : Array = _sort_deck_for_viewer()
+	_build_viewer_card_list(sorted_ids)   # ISSUE #152
+
+	await get_tree().process_frame
 
 	# Add one TextureRect per copy of each card — no count label
 	for card_id in sorted_ids:
@@ -1397,11 +1425,133 @@ func _on_view_deck_pressed() -> void:
 			card_rect.stretch_mode              = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 			card_rect.size_flags_horizontal     = Control.SIZE_SHRINK_BEGIN
 			card_rect.size_flags_vertical       = Control.SIZE_SHRINK_BEGIN
-			card_rect.mouse_filter              = Control.MOUSE_FILTER_IGNORE
+			# ISSUE #151 FIX: hold-Shift preview works in here now. _get_hovered_card() finds a card
+			# by walking up from gui_get_hovered_control() looking for "card_id" metadata, so the
+			# rects need both the metadata and a mouse_filter that registers hover — exactly what
+			# the main deck grid's owned cards use (see _add_card_to_grid).
+			card_rect.set_meta("card_id", cid)
+			card_rect.mouse_filter              = Control.MOUSE_FILTER_STOP
 			viewer_grid.add_child(card_rect)
 			if not is_inside_tree():   # ISSUE #32 FIX: bail if freed mid-load
 				return
 			await get_tree().process_frame
+
+
+# ─── Deck viewer card list (ISSUE #152) ──────────────────────────────────────
+# TWEAKABLE. A text list of the deck's unique cards down the right-hand bar of the deck viewer —
+# the strip beside the card grid that is otherwise empty. One line per card: "<id> <name> (xN)".
+#
+# GEOMETRY: the bar runs from the right edge of the viewer's card grid (x 1681) to the screen edge,
+# and the list starts level with the top of the grid rather than at the top of the screen. It stops
+# above the Close button at y 1003.
+#
+# FONT SIZING — read this before changing the width or putting the card id back. The bar is only
+# ~226px wide, which is the whole constraint. Lines are "<name> (xN)" and nothing else: dropping the
+# id was worth a lot here, because "ecard1-148 Professor Elm's Training Method (x4)" needed ~34px of
+# width per point of font (font 6 to fit on one line, i.e. unreadable) while the name alone needs
+# ~26px. Measured across all 1,308 distinct card names: 99.3% fit on one line at font 10 and 97.8%
+# at font 11, and the 13-line starter deck comes out at font 15.
+# The list still copes with the rest by:
+#   1. picking the largest font in [MIN, MAX] at which THIS deck's longest line and its line count
+#      both fit — so a short deck gets big text and a 60-card one shrinks to suit,
+#   2. word-wrapping anything still too long rather than clipping it (only ~9 of 1,308 names are
+#      long enough to wrap at font 10),
+#   3. sitting in a ScrollContainer, so even 60 unique long-named cards remain reachable.
+# Widening the bar would need the card grid narrowed to 8 columns; that is a deliberate trade the
+# user has not asked for.
+const VIEWER_LIST_X          := 1689.0
+const VIEWER_LIST_W          := 226.0
+const VIEWER_LIST_TOP        := 110.0    # level with the card grid, just under the top border
+const VIEWER_LIST_BOTTOM     := 990.0    # clear of the Close button at y 1003
+const VIEWER_LIST_PAD        := 6.0      # inner padding, both sides
+const VIEWER_LIST_FONT_MAX   := 18
+const VIEWER_LIST_FONT_MIN   := 10
+const VIEWER_LIST_LINE_RATIO := 1.30     # line height as a multiple of font size, for the fit test
+
+
+## Builds the right-hand card list for the deck viewer. `sorted_ids` is the same unique-card order
+## the grid is drawn in, so the list and the cards read down the screen together.
+func _build_viewer_card_list(sorted_ids: Array) -> void:
+	if deck_viewer_overlay == null or sorted_ids.is_empty():
+		return
+
+	var lines : Array = []
+	for card_id in sorted_ids:
+		var count : int = deck_cards.get(card_id, 0)
+		if count <= 0:
+			continue
+		var meta = _get_card_meta(card_id)
+		var card_name : String = str(meta["name"]) if meta != null else card_id
+		# Name and count only — no card id on any line. One entry per card ENTRY, not per name, so a
+		# deck holding two printings of the same card (legal: the 4-copy cap is per name group, not
+		# per id) shows two lines with the same name and their own counts.
+		lines.append("%s (x%d)" % [card_name, count])
+
+	if lines.is_empty():
+		return
+
+	var font_size := _fit_viewer_list_font(lines)
+
+	var list_scroll := ScrollContainer.new()
+	list_scroll.position = Vector2(VIEWER_LIST_X, VIEWER_LIST_TOP)
+	list_scroll.size     = Vector2(VIEWER_LIST_W, VIEWER_LIST_BOTTOM - VIEWER_LIST_TOP)
+	list_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	list_scroll.vertical_scroll_mode   = ScrollContainer.SCROLL_MODE_AUTO
+	list_scroll.z_index = 55
+	deck_viewer_overlay.add_child(list_scroll)
+
+	# RichTextLabel rather than Label: fit_content reports the WRAPPED height to the ScrollContainer,
+	# which is what lets a too-long list scroll instead of being silently cut off. Same pattern as
+	# the set-breakdown label on the main screen.
+	var list_label := RichTextLabel.new()
+	list_label.bbcode_enabled = false
+	list_label.scroll_active  = false
+	list_label.fit_content    = true
+	list_label.autowrap_mode  = TextServer.AUTOWRAP_WORD_SMART
+	list_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	list_label.mouse_filter   = Control.MOUSE_FILTER_IGNORE
+	var kenney_theme = load("res://UI_Themes/kenneyUI.tres")
+	if kenney_theme:
+		list_label.theme = kenney_theme
+	list_label.add_theme_font_size_override("normal_font_size", font_size)
+	list_label.add_theme_color_override("default_color", Color.WHITE)
+	# A thin, FULLY OPAQUE outline so the white text stays readable over the patterned border art.
+	# It was 4px at 90% alpha, which at font 10-11 is nearly as thick as the glyph strokes themselves
+	# — the haze bled into the letters and read as off-grey rather than white. 2px opaque gives a
+	# crisp edge without touching the stroke colour. Raise it only if the font size goes up a lot.
+	list_label.add_theme_constant_override("outline_size", 2)
+	list_label.add_theme_color_override("font_outline_color", Color.BLACK)
+	list_label.text = "\n".join(lines)
+	list_scroll.add_child(list_label)
+
+	print("ISSUE #152 FIX ACTIVE: deck list built, ", lines.size(), " unique cards at font ",
+		font_size, " in a ", VIEWER_LIST_W, "x", VIEWER_LIST_BOTTOM - VIEWER_LIST_TOP, " bar")
+
+
+## Largest font size in [VIEWER_LIST_FONT_MIN, VIEWER_LIST_FONT_MAX] at which every line fits the
+## bar's width AND the whole list fits its height. Measured with the real font rather than
+## estimated, so it cannot drift from what actually renders. Returns the MIN when nothing fits —
+## the label word-wraps and the ScrollContainer scrolls from there.
+func _fit_viewer_list_font(lines: Array) -> int:
+	var theme_res = load("res://UI_Themes/kenneyUI.tres")
+	var font : Font = theme_res.default_font if theme_res != null else null
+	if font == null:
+		return VIEWER_LIST_FONT_MIN
+
+	var avail_w := VIEWER_LIST_W - VIEWER_LIST_PAD * 2.0
+	var avail_h := VIEWER_LIST_BOTTOM - VIEWER_LIST_TOP
+
+	var size := VIEWER_LIST_FONT_MAX
+	while size > VIEWER_LIST_FONT_MIN:
+		var widest := 0.0
+		for line in lines:
+			widest = maxf(widest, font.get_string_size(
+				String(line), HORIZONTAL_ALIGNMENT_LEFT, -1, size).x)
+		var total_h : float = lines.size() * size * VIEWER_LIST_LINE_RATIO
+		if widest <= avail_w and total_h <= avail_h:
+			break
+		size -= 1
+	return size
 
 
 ## Closes and frees the deck viewer overlay, restoring normal UI.
@@ -1797,6 +1947,20 @@ func _search_screen_open() -> bool:
 	return search_overlay != null and search_overlay.visible
 
 
+## ISSUE #141 FIX: swaps the scene's background layers between browsing and filtering.
+## filtering = true  -> filter_background + filter_border, scroller and right banner hidden
+## filtering = false -> back to the browsing pair
+## Called from every entry to and exit from the search screen (open / cancel / confirm / clear),
+## so a hidden-but-alive overlay (search results showing) correctly counts as NOT filtering.
+func _set_filter_chrome(filtering: bool) -> void:
+	for node in [background_scroller, top_and_right_border]:
+		if node != null and is_instance_valid(node):
+			node.visible = not filtering
+	for node in [filter_background, filter_border]:
+		if node != null and is_instance_valid(node):
+			node.visible = filtering
+
+
 func _on_search_pressed() -> void:
 	_open_search_overlay()
 
@@ -1809,6 +1973,7 @@ func _open_search_overlay() -> void:
 
 	# Hide the deck UI behind the search screen, the same way the energy picker does
 	_set_ui_visibility(false)
+	_set_filter_chrome(true)   # ISSUE #141
 
 	# Reopening after a search: the overlay was only hidden, so showing it again brings back exactly
 	# the filters that produced the results currently on screen.
@@ -1841,6 +2006,7 @@ func _open_search_overlay() -> void:
 func _on_search_cancelled() -> void:
 	if search_overlay != null:
 		search_overlay.visible = false
+	_set_filter_chrome(false)   # ISSUE #141
 	_set_ui_visibility(true)
 
 	if _search_grid_stale:
@@ -1871,6 +2037,7 @@ func _on_search_confirmed(criteria: Dictionary) -> void:
 	if search_overlay != null:
 		search_overlay.visible = false
 
+	_set_filter_chrome(false)   # ISSUE #141: results are browsing, not filtering
 	_set_ui_visibility(true)
 	await _display_search_results()
 
@@ -1879,6 +2046,7 @@ func _on_search_confirmed(criteria: Dictionary) -> void:
 ## filter screen — a cleared search keeps no filters, so the next SEARCH press opens blank.
 func _clear_search() -> void:
 	_close_search_overlay()
+	_set_filter_chrome(false)   # ISSUE #141
 	var had_results := _drop_search_results()
 	if not (had_results or _search_grid_stale):
 		return
@@ -1972,6 +2140,19 @@ func _run_search(criteria: Dictionary) -> Array:
 	return results
 
 
+## ISSUE #149: true when `haystack` contains ANY of the (already lower-cased) comma-separated
+## terms, and also true when there are no terms — an empty list means the player left that box
+## blank, which is not a filter. Shared by the name and illustrator boxes so they cannot drift.
+func _matches_any_term(haystack: String, terms: Array) -> bool:
+	if terms.is_empty():
+		return true
+	var lower := haystack.to_lower()
+	for term in terms:
+		if String(term) in lower:
+			return true
+	return false
+
+
 ## Tests one card against every category. Each category is skipped when the player selected nothing
 ## in it; when they did select something, the card must match ONE of their choices (OR within the
 ## category). Every category that is in play must pass (AND between categories).
@@ -1993,9 +2174,11 @@ func _card_matches_search(card_id: String, criteria: Dictionary) -> bool:
 	for st in subtypes:
 		subtypes_lower.append(str(st).to_lower())
 
-	# ── Name (always AND, case-insensitive substring) ──
-	var wanted_name : String = criteria.get("name", "")
-	if wanted_name != "" and not (wanted_name in card_name.to_lower()):
+	# ── Name ── ISSUE #149: one or more COMMA-separated terms, parsed out of the box by
+	# CardSearchOverlay.parse_search_terms(). The terms OR together and the result still ANDs with
+	# every other category, exactly as the single substring used to. An empty term list means the
+	# box was blank (or held only commas), i.e. no name filter at all.
+	if not _matches_any_term(card_name, criteria.get("name_terms", [])):
 		return false
 
 	# ── Set ── (already filtered per-set in _run_search, kept here so this stays a complete test)
@@ -2048,11 +2231,9 @@ func _card_matches_search(card_id: String, criteria: Dictionary) -> bool:
 		if not _card_matches_power(meta, wanted_powers):
 			return false
 
-	# ── Illustrator ── ISSUE #143. Always AND, case-insensitive substring, exactly like the name box
-	var wanted_illustrator : String = criteria.get("illustrator", "")
-	if wanted_illustrator != "":
-		if not (wanted_illustrator in str(meta.get("artist", "")).to_lower()):
-			return false
+	# ── Illustrator ── ISSUE #143, and ISSUE #149's comma terms, exactly like the name box above.
+	if not _matches_any_term(str(meta.get("artist", "")), criteria.get("illus_terms", [])):
+		return false
 
 	# ── Effect ── reserved; matches everything until CardSearchOverlay.EFFECT_FILTERS is populated
 	var wanted_effects : Array = criteria.get("effects", [])
@@ -2230,44 +2411,47 @@ func _display_search_results() -> void:
 	_loading_overlay.hide()
 
 
-# ─── Empty deck ──────────────────────────────────────────────────────────────
+# ─── Shared confirm popup ────────────────────────────────────────────────────
 
-## Asks the player to confirm before wiping the entire deck.
-## Emptying a full 60-card deck by an accidental click is painful, so we gate
-## the destructive action behind a Yes/No popup (styled like the load popup).
-func _on_empty_deck_pressed() -> void:
-	# Nothing to clear, and don't stack popups
-	if total_deck_count == 0 or empty_confirm_popup != null:
+## The one styled Yes/No confirm on this screen. `confirm_label` names the destructive button
+## ("Empty", "Delete"); `on_confirm` runs after the popup closes, so the callback never has to
+## think about tearing it down. Cancel is green and confirm is red, matching the main menu's quit
+## dialog — the whole game asks destructive questions the same way.
+##
+## Keyboard is handled in _input(): accept runs the action, cancel backs out. Layer 110 puts it
+## above the load popup (100), which is where the Delete confirm is raised from.
+func _show_confirm_popup(message: String, confirm_label: String, on_confirm: Callable) -> void:
+	if confirm_popup != null and is_instance_valid(confirm_popup):
 		return
 
 	var kenney_theme = load("res://UI_Themes/kenneyUI.tres")
+	_confirm_action = on_confirm
 
-	# CanvasLayer ensures the popup renders above everything else.
-	empty_confirm_popup = CanvasLayer.new()
-	empty_confirm_popup.layer = 100
-	add_child(empty_confirm_popup)
+	confirm_popup = CanvasLayer.new()
+	confirm_popup.layer = 110
+	add_child(confirm_popup)
 
 	# Dim the screen behind the popup
 	var overlay := ColorRect.new()
 	overlay.color = Color(0, 0, 0, 0.6)
 	overlay.anchor_right  = 1.0
 	overlay.anchor_bottom = 1.0
-	empty_confirm_popup.add_child(overlay)
+	confirm_popup.add_child(overlay)
 
 	# Centered panel
 	var panel := PanelContainer.new()
 	if kenney_theme:
 		panel.theme = kenney_theme
-	panel.custom_minimum_size = Vector2(460, 220)
+	panel.custom_minimum_size = Vector2(560, 240)
 	panel.anchor_left   = 0.5
 	panel.anchor_top    = 0.5
 	panel.anchor_right  = 0.5
 	panel.anchor_bottom = 0.5
-	panel.offset_left   = -230
-	panel.offset_top    = -110
-	panel.offset_right  = 230
-	panel.offset_bottom = 110
-	empty_confirm_popup.add_child(panel)
+	panel.offset_left   = -280
+	panel.offset_top    = -120
+	panel.offset_right  = 280
+	panel.offset_bottom = 120
+	confirm_popup.add_child(panel)
 
 	var vbox := VBoxContainer.new()
 	vbox.add_theme_constant_override("separation", 18)
@@ -2275,8 +2459,10 @@ func _on_empty_deck_pressed() -> void:
 	panel.add_child(vbox)
 
 	var msg := Label.new()
-	msg.text = "Empty the entire deck?\nThis cannot be undone."
+	msg.text = message
 	msg.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	msg.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	msg.custom_minimum_size = Vector2(500, 0)
 	msg.add_theme_font_size_override("font_size", 24)
 	vbox.add_child(msg)
 
@@ -2286,32 +2472,52 @@ func _on_empty_deck_pressed() -> void:
 	vbox.add_child(btn_row)
 
 	var yes_btn := Button.new()
-	yes_btn.text = "Empty"
-	yes_btn.custom_minimum_size = Vector2(130, 45)
+	yes_btn.text = confirm_label
+	yes_btn.custom_minimum_size = Vector2(150, 48)
+	yes_btn.add_theme_font_size_override("font_size", 22)
 	var red_theme = load("res://UI_Themes/kenneyUI-red.tres")
 	if red_theme:
 		yes_btn.theme = red_theme
-	yes_btn.pressed.connect(
-		func():
-			_close_empty_confirm_popup()
-			_do_empty_deck()
-	)
+	yes_btn.pressed.connect(_run_confirm_action)
 	btn_row.add_child(yes_btn)
 
 	var no_btn := Button.new()
 	no_btn.text = "Cancel"
-	no_btn.custom_minimum_size = Vector2(130, 45)
+	no_btn.custom_minimum_size = Vector2(150, 48)
+	no_btn.add_theme_font_size_override("font_size", 22)
 	var green_theme = load("res://UI_Themes/kenneyUI-green.tres")
 	if green_theme:
 		no_btn.theme = green_theme
-	no_btn.pressed.connect(_close_empty_confirm_popup)
+	no_btn.pressed.connect(_close_confirm_popup)
 	btn_row.add_child(no_btn)
 
 
-func _close_empty_confirm_popup() -> void:
-	if empty_confirm_popup != null:
-		empty_confirm_popup.queue_free()
-		empty_confirm_popup = null
+## Closes the popup FIRST, then runs the action — so a callback that opens another popup (delete
+## re-opening the refreshed load list) can't collide with the one being torn down.
+func _run_confirm_action() -> void:
+	var cb := _confirm_action
+	_close_confirm_popup()
+	if cb.is_valid():
+		cb.call()
+
+
+func _close_confirm_popup() -> void:
+	_confirm_action = Callable()
+	if confirm_popup != null:
+		confirm_popup.queue_free()
+		confirm_popup = null
+
+
+# ─── Empty deck ──────────────────────────────────────────────────────────────
+
+## Asks the player to confirm before wiping the entire deck.
+## Emptying a full 60-card deck by an accidental click is painful, so we gate
+## the destructive action behind a Yes/No popup.
+func _on_empty_deck_pressed() -> void:
+	# Nothing to clear, and don't stack popups
+	if total_deck_count == 0 or confirm_popup != null:
+		return
+	_show_confirm_popup("Empty the entire deck?\nThis cannot be undone.", "Empty", _do_empty_deck)
 
 
 ## Clears the entire deck — resets all in-deck counts to 0.
@@ -2475,14 +2681,13 @@ func _input(event: InputEvent) -> void:
 	# empties the deck, cancel backs out. Without this, Escape fell straight through
 	# to _on_cancel_pressed() and left the deck builder with the popup still open,
 	# and Space started a card preview behind it.
-	if empty_confirm_popup != null and is_instance_valid(empty_confirm_popup):
+	if confirm_popup != null and is_instance_valid(confirm_popup):
 		if UIInput.is_accept(event):
 			get_viewport().set_input_as_handled()
-			_close_empty_confirm_popup()
-			_do_empty_deck()
+			_run_confirm_action()
 		elif UIInput.is_cancel(event):
 			get_viewport().set_input_as_handled()
-			_close_empty_confirm_popup()
+			_close_confirm_popup()
 		return
 
 	# ── Cancel / Escape ──
@@ -2540,8 +2745,10 @@ func _input(event: InputEvent) -> void:
 			return
 		if energy_picker_active:
 			return
-		if deck_viewer_active:
-			return
+		# ISSUE #151: the deck viewer used to block the preview outright. It is allowed now — the
+		# viewer's cards carry card_id metadata and are hoverable, so the same hold-Shift preview
+		# the main grid uses works over them. Escape still closes the preview before the viewer
+		# (see the cancel chain above), so the two back out one layer at a time.
 		if _search_screen_open():
 			return          # typing in the search name box must not trigger the preview
 		if deck_name_edit.has_focus():
@@ -2732,10 +2939,14 @@ func _set_ui_visibility(visible_flag: bool) -> void:
 		if node != null and is_instance_valid(node):
 			node.visible = visible_flag
 
-	# In search-results mode the grid isn't showing a single set, so the set name and the < >
-	# switch buttons must stay hidden even when the rest of the UI is being restored.
+	# In search-results mode the grid isn't showing a single set, so the < > switch buttons stay
+	# hidden even when the rest of the UI is being restored.
+	# ISSUE #148 FIX: the set NAME label no longer hides with them — it stays up and reads
+	# SEARCH_MODE_LABEL instead, so the screen says why it isn't showing a set. _display_current_set()
+	# writes the real set name back over it the moment browsing resumes.
 	if visible_flag and search_active:
-		set_label.visible = false
+		set_label.visible = true
+		set_label.text    = SEARCH_MODE_LABEL
 		next_btn.visible  = false
 		prev_btn.visible  = false
 
@@ -2823,16 +3034,45 @@ func _on_deck_name_changed(_new_text: String) -> void:
 
 
 # ─── Floating message (ISSUE #84) ────────────────────────────────────────────
-# TWEAKABLE VALUES for the floating message shown when a save is refused.
+# TWEAKABLE VALUES for the floating message shown when a save is refused, or when a search matches
+# nothing ("No cards found").
 const MSG_ANCHOR_Y       := 0.82    # vertical screen position, as a fraction of screen height
-const MSG_HEIGHT         := 60.0    # strip height the text is centred in
-const MSG_FONT_SIZE      := 34
+const MSG_HEIGHT         := 90.0    # strip height the text is centred in
+const MSG_FONT_SIZE      := 51      # +50%: this label reports a refusal, so it has to be read
 const MSG_RISE_PIXELS    := 120.0   # how far it drifts upward
 const MSG_RISE_SECONDS   := 2.0     # drift duration
 const MSG_FADE_SECONDS   := 1.6     # fade duration (starts with the drift)
 const MSG_COLOUR         := Color(1.0, 0.45, 0.45)
 
+# The message has to sit above EVERYTHING, including the search screen — "No cards found" is shown
+# while that screen is still up, and it was being painted over by the filter rows.
+# The label is a direct child of this Control, so its z_index is its effective z. The search overlay
+# is z 10 and puts its own controls on CardSearchOverlay.CONTENT_Z (250), i.e. an effective 260, so
+# this must beat 260. Keep it ahead of CONTENT_Z if either number is ever changed.
+const MSG_Z_INDEX        := 300
+
+# kenvector_future.ttf ships in a single weight with no bold face, so "bold" is synthesised with a
+# FontVariation — it thickens the strokes without changing glyph advances, so the text bolds in
+# place and its measured width is unchanged. Same approach and same strength as the NEW! / Bonus!
+# floating labels in Pack_Opening_Manager.
+const MSG_EMBOLDEN       := 0.6     # 0.0 is the plain face, ~0.6 reads as bold
+
 var _deck_message_label: Label = null
+var _msg_bold_font: FontVariation = null
+
+
+## The emboldened theme font, built once and reused. Returns null if the theme has no default font,
+## in which case the caller just leaves the label on the plain face.
+func _get_msg_bold_font() -> FontVariation:
+	if _msg_bold_font != null:
+		return _msg_bold_font
+	var theme_res = load("res://UI_Themes/kenneyUI.tres")
+	if theme_res == null or theme_res.default_font == null:
+		return null
+	_msg_bold_font = FontVariation.new()
+	_msg_bold_font.base_font          = theme_res.default_font
+	_msg_bold_font.variation_embolden = MSG_EMBOLDEN
+	return _msg_bold_font
 
 ## Shows a short message that rises and fades near the bottom of the screen, in the same style as the
 ## in-match floating labels. Calling it again replaces any message still on screen so rapid clicks
@@ -2846,10 +3086,13 @@ func _show_deck_message(text: String) -> void:
 	lbl.text = text
 	lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	lbl.z_index = 100
+	lbl.z_index = MSG_Z_INDEX
 	var kenney_theme = load("res://UI_Themes/kenneyUI.tres")
 	if kenney_theme:
 		lbl.theme = kenney_theme
+	var bold := _get_msg_bold_font()
+	if bold != null:
+		lbl.add_theme_font_override("font", bold)
 	lbl.add_theme_font_size_override("font_size", MSG_FONT_SIZE)
 	lbl.add_theme_color_override("font_color", MSG_COLOUR)
 	lbl.add_theme_color_override("font_outline_color", Color.BLACK)
@@ -2941,6 +3184,99 @@ func _refresh_save_button() -> void:
 
 
 # ─── Load deck popup ────────────────────────────────────────────────────────
+# TWEAKABLE VALUES for the load-deck popup (ISSUE #154).
+# The panel is wider and a little taller than it was, the title has real space above it, and the
+# dead band that used to sit under Load/Cancel is gone — the deck list carries SIZE_EXPAND_FILL now,
+# so leftover height goes into the list rather than pooling at the bottom of the panel.
+const LOAD_PANEL_W      := 700.0
+const LOAD_PANEL_H      := 680.0
+const LOAD_MARGIN_SIDE  := 40     # black space either side of every button
+const LOAD_MARGIN_TOP   := 34     # black space above "Load a Deck"
+const LOAD_MARGIN_BOTTOM := 22    # deliberately small — see the note above
+const LOAD_TITLE_FONT   := 32     # was 28
+const LOAD_ROW_H        := 48.0   # height of one deck row, and the side of its square delete button
+const LOAD_ROW_FONT     := 20
+const LOAD_ACTION_W     := 160.0
+const LOAD_ACTION_H     := 52.0
+const LOAD_ACTION_FONT  := 22
+
+# The trash glyph is drawn in code — there is no bin icon anywhere in Image_Assets, and a
+# hand-drawn one scales with LOAD_ROW_H for free. All values are fractions of the button, so
+# changing LOAD_ROW_H rescales the icon with it.
+const TRASH_COLOUR := Color(1, 1, 1, 0.95)
+
+
+## A square delete button for one deck row. Red, so it reads as destructive next to the neutral
+## deck name button, and it asks before it does anything.
+func _make_delete_deck_button(deck_name: String) -> Button:
+	var btn := Button.new()
+	btn.custom_minimum_size = Vector2(LOAD_ROW_H, LOAD_ROW_H)
+	btn.size_flags_horizontal = Control.SIZE_SHRINK_END
+	btn.tooltip_text = "Delete this deck"
+	var red_theme = load("res://UI_Themes/kenneyUI-red.tres")
+	if red_theme:
+		btn.theme = red_theme
+
+	# MOUSE_FILTER_IGNORE so the glyph never eats the click meant for the button under it.
+	var glyph := Control.new()
+	glyph.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	glyph.set_anchors_preset(Control.PRESET_FULL_RECT)
+	glyph.draw.connect(_draw_trash_icon.bind(glyph))
+	btn.add_child(glyph)
+
+	btn.pressed.connect(func(): _on_delete_deck_pressed(deck_name))
+	return btn
+
+
+## Draws the little trash bin: lid handle, lid, tapered body outline and two slots.
+func _draw_trash_icon(c: Control) -> void:
+	var w := c.size.x
+	var h := c.size.y
+	if w <= 0.0 or h <= 0.0:
+		return
+	var cx := w * 0.5
+	var body_w := w * 0.44
+	var body_h := h * 0.42
+	var body_top := h * 0.34
+	var thick := maxf(1.0, h * 0.055)
+
+	# handle, then the lid just under it
+	c.draw_rect(Rect2(cx - body_w * 0.20, body_top - h * 0.20, body_w * 0.40, h * 0.055), TRASH_COLOUR)
+	c.draw_rect(Rect2(cx - body_w * 0.62, body_top - h * 0.13, body_w * 1.24, h * 0.065), TRASH_COLOUR)
+	# body outline
+	c.draw_rect(Rect2(cx - body_w * 0.5, body_top, body_w, body_h), TRASH_COLOUR, false, thick)
+	# two slots down the body
+	var slot_top := body_top + body_h * 0.20
+	var slot_h := body_h * 0.60
+	c.draw_rect(Rect2(cx - body_w * 0.20 - thick * 0.5, slot_top, thick, slot_h), TRASH_COLOUR)
+	c.draw_rect(Rect2(cx + body_w * 0.20 - thick * 0.5, slot_top, thick, slot_h), TRASH_COLOUR)
+
+
+## Trash pressed — confirm first, in the same styled Yes/No box the game uses to ask before
+## quitting or emptying a deck.
+func _on_delete_deck_pressed(deck_name: String) -> void:
+	var shown := deck_name.replace("_", " ")
+	_show_confirm_popup("Are you sure you want to delete\n\"%s\"?\nThis cannot be undone." % shown,
+		"Delete", func(): _delete_deck(deck_name))
+
+
+## Deletes a deck file and reopens the load popup over the refreshed list.
+## Deleting the deck that is currently loaded is deliberately allowed — the cards stay in memory and
+## the player can save them again under the same or a new name. _load_deck() already survives a
+## missing file, so a stale name left in player_data.json cannot break the next visit either.
+func _delete_deck(deck_name: String) -> void:
+	var path := PLAYER_DECKS_FOLDER + deck_name + ".json"
+	var err := DirAccess.remove_absolute(path)
+	if err != OK:
+		push_error("DeckBuild: could not delete " + path + " (error " + str(err) + ")")
+		_show_deck_message("Could not delete that deck")
+		return
+	print("ISSUE #154 FIX ACTIVE: deleted deck file ", path)
+
+	# Rebuild the popup so the list reflects the deletion. If that was the last deck,
+	# _on_load_deck_pressed() finds nothing to show and simply leaves the screen clear.
+	_close_load_popup()
+	_on_load_deck_pressed()
 
 ## Opens a popup showing all saved decks in the playerdecks folder.
 ## The player picks one from the list and clicks Load, or clicks Cancel.
@@ -2980,44 +3316,58 @@ func _on_load_deck_pressed() -> void:
 	overlay.anchor_bottom = 1.0
 	load_popup.add_child(overlay)
 
-	# Main panel — centered on screen
+	# Main panel — centered on screen. ISSUE #154: wider (500 -> LOAD_PANEL_W) and slightly taller
+	# (600 -> LOAD_PANEL_H).
 	var panel := PanelContainer.new()
 	var kenney_theme = load("res://UI_Themes/kenneyUI.tres")
 	if kenney_theme:
 		panel.theme = kenney_theme
-	panel.custom_minimum_size = Vector2(500, 600)
+	panel.custom_minimum_size = Vector2(LOAD_PANEL_W, LOAD_PANEL_H)
 	panel.anchor_left   = 0.5
 	panel.anchor_top    = 0.5
 	panel.anchor_right  = 0.5
 	panel.anchor_bottom = 0.5
-	panel.offset_left   = -250
-	panel.offset_top    = -300
-	panel.offset_right  = 250
-	panel.offset_bottom = 300
+	panel.offset_left   = -LOAD_PANEL_W * 0.5
+	panel.offset_top    = -LOAD_PANEL_H * 0.5
+	panel.offset_right  = LOAD_PANEL_W * 0.5
+	panel.offset_bottom = LOAD_PANEL_H * 0.5
 	load_popup.add_child(panel)
+
+	# ISSUE #154: the breathing room. Left/right margins are the black space either side of the
+	# buttons, the top margin is the space above the title, and the bottom margin is deliberately
+	# small — the old layout left a big dead band under Load/Cancel because nothing in the VBox
+	# expanded, so all the slack piled up at the bottom.
+	var margins := MarginContainer.new()
+	margins.add_theme_constant_override("margin_left",   LOAD_MARGIN_SIDE)
+	margins.add_theme_constant_override("margin_right",  LOAD_MARGIN_SIDE)
+	margins.add_theme_constant_override("margin_top",    LOAD_MARGIN_TOP)
+	margins.add_theme_constant_override("margin_bottom", LOAD_MARGIN_BOTTOM)
+	panel.add_child(margins)
 
 	# Vertical layout inside the panel
 	var vbox := VBoxContainer.new()
-	vbox.add_theme_constant_override("separation", 10)
-	panel.add_child(vbox)
+	vbox.add_theme_constant_override("separation", 14)
+	margins.add_child(vbox)
 
 	# Title
 	var title_label := Label.new()
 	title_label.text = "Load a Deck"
 	title_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	title_label.add_theme_font_size_override("font_size", 28)
+	title_label.add_theme_font_size_override("font_size", LOAD_TITLE_FONT)
 	vbox.add_child(title_label)
 
-	# Scrollable list of decks
+	# Scrollable list of decks. ISSUE #154: EXPAND_FILL is what removes the dead space under the
+	# Load/Cancel row — the list soaks up whatever height is left over instead of the panel doing it.
 	var scroll := ScrollContainer.new()
-	scroll.custom_minimum_size = Vector2(460, 420)
+	scroll.size_flags_vertical    = Control.SIZE_EXPAND_FILL
+	scroll.size_flags_horizontal  = Control.SIZE_EXPAND_FILL
 	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	scroll.vertical_scroll_mode   = ScrollContainer.SCROLL_MODE_AUTO
 	vbox.add_child(scroll)
 
 	var list_vbox := VBoxContainer.new()
 	list_vbox.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	list_vbox.add_theme_constant_override("separation", 5)
+	list_vbox.add_theme_constant_override("separation", 8)
 	scroll.add_child(list_vbox)
 
 	# Track which deck is currently highlighted.
@@ -3027,14 +3377,21 @@ func _on_load_deck_pressed() -> void:
 	# mutable container that both lambdas can read and write.
 	var selection := {"deck_name": "", "button": null}
 
-	# Create a button for each deck file
+	# One row per deck: the name button, then a square delete button (ISSUE #154).
 	for deck_name in deck_files:
+		var row := HBoxContainer.new()
+		row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		row.add_theme_constant_override("separation", 8)
+		list_vbox.add_child(row)
+
 		var btn := Button.new()
 		btn.text = deck_name.replace("_", " ")
 		btn.alignment = HORIZONTAL_ALIGNMENT_LEFT
 		if kenney_theme:
 			btn.theme = kenney_theme
-		btn.custom_minimum_size = Vector2(440, 40)
+		btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		btn.custom_minimum_size = Vector2(0, LOAD_ROW_H)
+		btn.add_theme_font_size_override("font_size", LOAD_ROW_FONT)
 		# When clicked, highlight this button and store the deck name
 		btn.pressed.connect(
 			func():
@@ -3048,17 +3405,19 @@ func _on_load_deck_pressed() -> void:
 				selection["button"] = btn
 				selection["deck_name"] = deck_name
 		)
-		list_vbox.add_child(btn)
+		row.add_child(btn)
+		row.add_child(_make_delete_deck_button(deck_name))
 
 	# Bottom row: Load + Cancel buttons
 	var btn_row := HBoxContainer.new()
 	btn_row.alignment = BoxContainer.ALIGNMENT_CENTER
-	btn_row.add_theme_constant_override("separation", 20)
+	btn_row.add_theme_constant_override("separation", 24)
 	vbox.add_child(btn_row)
 
 	var load_confirm_btn := Button.new()
 	load_confirm_btn.text = "Load"
-	load_confirm_btn.custom_minimum_size = Vector2(120, 45)
+	load_confirm_btn.custom_minimum_size = Vector2(LOAD_ACTION_W, LOAD_ACTION_H)
+	load_confirm_btn.add_theme_font_size_override("font_size", LOAD_ACTION_FONT)
 	var green_theme = load("res://UI_Themes/kenneyUI-green.tres")
 	if green_theme:
 		load_confirm_btn.theme = green_theme
@@ -3099,7 +3458,8 @@ func _on_load_deck_pressed() -> void:
 
 	var cancel_popup_btn := Button.new()
 	cancel_popup_btn.text = "Cancel"
-	cancel_popup_btn.custom_minimum_size = Vector2(120, 45)
+	cancel_popup_btn.custom_minimum_size = Vector2(LOAD_ACTION_W, LOAD_ACTION_H)
+	cancel_popup_btn.add_theme_font_size_override("font_size", LOAD_ACTION_FONT)
 	var red_theme = load("res://UI_Themes/kenneyUI-red.tres")
 	if red_theme:
 		cancel_popup_btn.theme = red_theme

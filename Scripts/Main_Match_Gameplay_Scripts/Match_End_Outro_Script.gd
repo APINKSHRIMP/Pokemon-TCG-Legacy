@@ -165,8 +165,6 @@ func _ready() -> void:
 		_result_dialogue = opponent_data.get("first_win_text" if is_first_win else "rematch_win_text", "")
 	else:
 		_result_dialogue = opponent_data.get("loss_text", "")
-	print("ISSUE #122 FIX ACTIVE: outro dialogue shown on a name-chipped box for ",
-		  opponent_data.get("name", "?"))
 
 	# Build reward rows (win only), passing is_first_win to avoid recomputing it
 	if battle_won:
@@ -242,7 +240,10 @@ func _input(event: InputEvent) -> void:
 			get_viewport().set_input_as_handled()
 		return
 
-	if event is InputEventMouseButton and event.pressed:
+	# ISSUE #135 FIX: UIInput.is_click() is "a real mouse button went down" -- it filters out the
+	# wheel, which Godot also reports as a pressed mouse button. Scrolling used to advance the outro
+	# dialogue and fast-forward the reward animations.
+	if UIInput.is_click(event):
 		# ISSUE #33 FIX: a click during a skippable animation (reward fly-in, coin/card flip, costume
 		# fade) fast-forwards it to its finished state. This is checked BEFORE the normal click gate so
 		# it works even during the fly-in, when click_enabled is still false.

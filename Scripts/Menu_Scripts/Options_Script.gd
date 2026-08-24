@@ -3,7 +3,9 @@ extends Control
 # ISSUE #34: the Options screen. Seven sections, laid out as vertically stacked rows — each is a
 # centred header with its options in a horizontal button row beneath it. A wider gap after Burn
 # Rules and after Walking Speed splits them into three visual groups without needing sub-headers:
-#   Confusion Rules / Burn Rules   — match rule variants
+#   Confusion Rules + Burn Rules   — match rule variants. ISSUE #150: these SHARE ONE LINE now,
+#                                    five buttons across, with a 100px group gap between the
+#                                    third and fourth so the two settings still read as separate.
 #   Walking Speed                  — overworld movement
 #   Match Animation Speed          — in-match animations
 #   Coin, Costume and Rewards …    — gift reveals only (no "skip": they ARE the payoff, and every
@@ -11,7 +13,9 @@ extends Control
 #   Pack Opening Animation Speed   — the pack sequence, with its own skip
 #   Play Match Intro / Outro …     — a plain on/off, not a speed. The intro/outro is click-to-skip
 #                                    already, so the only meaningful choice is whether it plays.
-#   Music / Sound Effects Volume   — the two sliders at the bottom. See the SLIDER SECTIONS note.
+#   Music / Sound Effects Volume   — ISSUE #150: also ONE line now, both sliders halved in width
+#                                    (880 -> 350) with a 140px gap between the music percentage
+#                                    and the "Sound Effects Volume" label. See SLIDER SECTIONS.
 #
 # SLIDER SECTIONS. The two volume rows are the only controls here that are not a row of preset
 # buttons, and they behave differently on purpose:
@@ -197,6 +201,16 @@ func _ready() -> void:
 	cancel_btn.pressed.connect(_on_cancel_pressed)
 	_refresh_save_button()
 
+
+# ISSUE #138: a Button's real width is max(offset width, minimum size), so text that does not fit
+# grows the Control past its right offset. "fairer retreat rules" needs ~306px (text + Kenney
+# stylebox margin), which is how it ended up sliding under "ex era rules" in a 268px slot. Every
+# button on the confusion/burn line is 320px wide now — check the text fits before narrowing them.
+#
+# ISSUE #150: Confusion+Burn share one line and Music+SFX share another, which freed two rows;
+# that space went into the gaps, so every row has 44px of clear air below it instead of ~18.
+# The content has to stay between the top border (ends y=107) and the bottom border (starts y=977).
+# Row tops are 116 / 249 / 382 / 515 / 648 / 781 with the volume line at 914..956.
 
 # The persisted value of every section, read straight off GameState.
 func _current_values() -> Dictionary:

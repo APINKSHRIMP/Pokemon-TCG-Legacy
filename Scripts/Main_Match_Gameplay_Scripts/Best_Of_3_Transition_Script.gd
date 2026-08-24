@@ -110,7 +110,8 @@ func _input(event: InputEvent) -> void:
 		get_viewport().set_input_as_handled()
 		_do_transition()
 		return
-	if event is InputEventMouseButton and event.pressed and _click_enabled and not _transitioning:
+	# ISSUE #135 FIX: the wheel is not a click -- scrolling must not skip the between-games screen.
+	if UIInput.is_click(event) and _click_enabled and not _transitioning:
 		_do_transition()
 
 func _do_transition() -> void:

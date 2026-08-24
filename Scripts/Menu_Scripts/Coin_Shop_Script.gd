@@ -344,7 +344,6 @@ func _input(event: InputEvent) -> void:
 	# / Escape press OK. Consumed so the press can't also fire ui_accept on a focused button.
 	if _reveal_ok_btn != null and is_instance_valid(_reveal_ok_btn):
 		if UIInput.is_advance(event):
-			print("ISSUE #116 FIX ACTIVE: coin shop reveal dismissed from the keyboard")
 			get_viewport().set_input_as_handled()
 			_reveal_ok_btn.pressed.emit()
 		return

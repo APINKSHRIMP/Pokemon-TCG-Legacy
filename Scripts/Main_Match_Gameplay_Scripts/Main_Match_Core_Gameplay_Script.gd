@@ -1349,26 +1349,40 @@ func hide_attack_buttons() -> void:
 # That art has since been re-cut as a render of the NEW dynamic box -- chip row and all -- so
 # stretching it across the bottom of the board drew a huge panel with two dead "header" chips
 # baked into its top-left corner. The match now builds a real DynamicMessageBox in its plainest
-# form: default grey, no chips, no buttons, no speaker -- exactly the box a sign or other
-# interactable gets in the overworld.
+# form: no chips, no buttons, no speaker -- exactly the box a sign or other interactable gets in
+# the overworld -- but wearing the CURRENT OPPONENT'S colour rather than the neutral grey.
 #
 # Built on first use rather than in _ready() so it cannot race the @onready node lookups above.
 func _ensure_match_msgbox() -> DynamicMessageBox:
 	if _match_msgbox != null and is_instance_valid(_match_msgbox):
 		return _match_msgbox
-	print("ISSUE #121 FIX ACTIVE: building the plain in-match dynamic message box")
 	_match_msgbox = DynamicMessageBox.new()
 	_match_msgbox.configure(MATCH_MSGBOX_HEIGHT, MATCH_MSGBOX_FONT_SIZE, false)
+	# show_as_plain() first: it drops both chip rows, which is what keeps the box chipless.
+	# apply_theme() after it, because show_as_plain() resets the colour to the default grey.
 	_match_msgbox.show_as_plain()
+	_match_msgbox.apply_theme(_match_msgbox_theme_key())
 	_match_msgbox.visible = true   # msgbox_container's visibility is what gates the box
 	msgbox_container.add_child(_match_msgbox)
 	msgbox_texture.visible = false
 	msgbox_label.visible   = false
 	return _match_msgbox
 
+# ISSUE #121 (improve further): the box wears the beaten-in-battle opponent's `message_colour`, the
+# same key the outro screen themes its dialogue and reward panels with (Match_End_Outro_Script), so
+# the whole match reads as one screen in that trainer's colour. load_opponent_data_by_name() has
+# already merged All_NPC_Constant_Data.json into opponent_data by the time any message shows; an
+# unset or unknown key falls back to the default grey inside apply_theme().
+func _match_msgbox_theme_key() -> String:
+	return str(opponent_data.get("message_colour", ""))
+
 # Displays the message box with given text and pauses execution until the player clicks
 func show_message(message_text: String) -> void:
 	var box := _ensure_match_msgbox()
+	# ISSUE #121: re-asserted on every show, exactly like the overworld box does in
+	# MapManager._apply_actor_chips() -- the box may have been built before the opponent data
+	# finished loading, and a best-of-3 series can swap opponents under a live box.
+	box.apply_theme(_match_msgbox_theme_key())
 	# Match messages have always been centred in their box; the dynamic box is left-aligned by
 	# default, so centre it the same way _show_large_message_with_ok does in the overworld.
 	box.set_body_text("[center]" + message_text + "[/center]", MATCH_MSGBOX_FONT_SIZE)

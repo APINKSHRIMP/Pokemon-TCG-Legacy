@@ -45,6 +45,7 @@ offset_right = 40.0
 offset_bottom = 99.0
 
 [node name="filter_background" type="TextureRect" parent="BACKGROUND" unique_id=221473067]
+visible = false
 z_index = -10
 material = SubResource("ShaderMaterial_2qd32")
 layout_mode = 0
@@ -57,6 +58,7 @@ texture = ExtResource("5_t8qen")
 stretch_mode = 1
 
 [node name="filter_border" type="TextureRect" parent="BACKGROUND" unique_id=1109345388]
+visible = false
 z_index = 200
 material = SubResource("ShaderMaterial_r4yq8")
 layout_mode = 0

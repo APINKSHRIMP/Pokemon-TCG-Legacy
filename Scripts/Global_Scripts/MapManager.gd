@@ -430,6 +430,10 @@ func spawn_npc_entry(entry: Dictionary) -> void:
 	npc.friendly_name    = entry.get("friendly_name", "")
 	npc.message_colour   = entry.get("message_colour", "")
 	npc.sprite           = entry.get("sprite", "")
+	# ISSUE #137: the Day-1 pair by the sea had each other's sprites in
+	# All_NPC_Constant_Data.json -- the man (who gifts $250) wore Youngcouple2_2, the dress
+	# sprite, and the woman wore Youngcouple2, the trousers one. Fixed in the data, not here:
+	#   Local Man -> Youngcouple2   /   Local Woman -> Youngcouple2_2
 	npc.npc_type         = entry.get("npc_type", "text_only")
 	npc.meet_text        = entry.get("meet_text", "")
 	npc.repeat_text      = entry.get("repeat_text", "")
@@ -682,6 +686,17 @@ func show_interactable_message(text: String, font_size: int = 24) -> void:
 func show_message_then(text: String, on_ok: Callable) -> void:
 	_pending_ok_action = on_ok
 	_show_message_with_ok(text)
+
+# ISSUE #136: an OK dialog spoken BY a named NPC, for use after the speaker has already been
+# cleared. _on_yes_pressed() calls _hide_message() before it runs the pending confirm callback,
+# and _hide_message() nulls current_npc -- so anything a shop/NPC says as the *result* of a Yes
+# (the shopkeeper's thank-you after buying the starter set) came out as a chipless grey
+# interactables box instead of that NPC's own coloured, name-chipped box. Re-seating the speaker
+# is all that is needed: _apply_actor_chips() then finds them again and themes the box normally.
+func show_npc_message_with_ok(npc: Node, text: String, font_size: int = 28) -> void:
+	if npc != null and is_instance_valid(npc):
+		current_npc = npc
+	_show_message_with_ok(text, font_size)
 
 # Shows a Yes/No dialog. on_yes is called (after the dialog closes)
 # only if the player chooses Yes. Ignored if a dialog is already open.
@@ -1271,7 +1286,6 @@ func _show_gift_display(text: String, image_paths: Array, kind: String) -> void:
 	# upstairs (_show_large_message_with_ok) instead of ordinary 28pt dialogue.
 	# ISSUE #118 FIX ACTIVE: the gift notice is the GAME talking, not the NPC who handed it
 	# over, so it drops the speaker's name chip and colour and shows the plain grey box.
-	print("ISSUE #118 FIX ACTIVE: gift notice shown on the plain grey box — ", text)
 	_show_large_message_with_ok(text)
 	message_panel.show_as_plain()
 	message_panel.ok_armed = false

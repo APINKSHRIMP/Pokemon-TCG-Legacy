@@ -116,14 +116,14 @@
     },
     "CH 1 D Man Staring Out To Sea": {
       "friendly_name": "Local Man",
-      "sprite": "Youngcouple2_2",
+      "sprite": "Youngcouple2",
       "message_colour": "dark_blue",
       "gift_type": "cash",
       "gift_value": "250"
     },
     "CH 1 D Woman Staring Out To Sea": {
       "friendly_name": "Local Woman",
-      "sprite": "Youngcouple2",
+      "sprite": "Youngcouple2_2",
       "message_colour": "light_blue"
     },
     "CH 1 D Maintenance Guy Watering Sunflowers": {

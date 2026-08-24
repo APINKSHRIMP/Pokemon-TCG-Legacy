@@ -169,8 +169,12 @@ func _finish_starter_purchase():
 	print("[Shopkeeper] Starter set purchased. Transitioned to restocking state")
 	# ISSUE #104 FIX ACTIVE: lead with a big centred "You received the Starter Set!" — the same
 	# announcement style as the starter box upstairs — then fall through to the shopkeeper's line.
-	print("ISSUE #104 FIX ACTIVE: large Starter Set receipt notice shown")
+	# ISSUE #136 FIX: the follow-up is the SHOPKEEPER talking, so it must be his box — his colour,
+	# his name chip and the cash chip — not another copy of the big chipless "You received..."
+	# announcement. The Yes that got us here already ran _hide_message(), which nulls
+	# MapManager.current_npc, so the speaker has to be re-seated: show_npc_message_with_ok() does
+	# exactly that. The big notice above deliberately stays chipless, matching the starter box.
 	MapManager._show_large_message_then(
 		"You received the Starter Set!",
-		func(): MapManager._show_message_with_ok("Thanks for your purchase! I'll get the order in right away for my usual shipment now so they'll be here for tomorrow morning. I'll throw you a couple packs in for free as a thank you when you come back! ")
+		func(): MapManager.show_npc_message_with_ok(self, "Thanks for your purchase! I'll get the order in right away for my usual shipment now so they'll be here for tomorrow morning. I'll throw you a couple packs in for free as a thank you when you come back! ")
 	)

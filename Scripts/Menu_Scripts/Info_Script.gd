@@ -343,6 +343,13 @@ func _on_save_pressed() -> void:
 	var cheat_msg := CheatManager.check_and_apply(new_name)
 	if cheat_msg != "":
 		_flash_cheat_message(cheat_msg)
+		# ISSUE #133 FIX: the cheats that just ran can move almost every counter on this card —
+		# cards owned, sets unlocked, sets completed, coins, costumes, sleeves — but the stat rows
+		# were built once in _ready() and never touched again, so the player had to leave and
+		# re-enter the trainer card to see any of it. Rebuild them in place instead.
+		# Deliberately gated on cheat_msg: a plain name change moves nothing, so a normal Save
+		# does not pay for a full collection rescan.
+		_populate_stats()
 
 
 func _on_cancel_pressed() -> void:
@@ -361,6 +368,13 @@ func _input(event: InputEvent) -> void:
 # ─── Statistics ──────────────────────────────────────────────────────────────
 
 func _populate_stats() -> void:
+	# ISSUE #133: callable more than once — the Save button rebuilds these rows after a cheat has
+	# changed the underlying numbers. Every row is a child added below, so clearing them first is
+	# all that is needed. free() rather than queue_free(): the rows are re-added in this same
+	# frame, and deferred deletion would leave the old set overlapping the new one until idle.
+	for old_row in stats_control.get_children():
+		stats_control.remove_child(old_row)
+		old_row.free()
 
 	var prog := GameState.progress
 
@@ -382,7 +396,13 @@ func _populate_stats() -> void:
 		if cards["set_ids"].has(String(set_id)):
 			sets_unlocked += 1
 
-	var sleeve_universe  := GameState.get_sleeve_universe()
+	# ISSUE #139 FIX: include_defaults = true. The three "1_Default*" card backs the player owns
+	# from first launch used to be excluded from the sleeve UNIVERSE while still sitting in
+	# progress["sleeves"], so _count_owned() could not see them -- a brand-new save read "0 / N"
+	# despite owning three, and every later count was three short of the grid the player is
+	# actually looking at. They now count on both sides of the fraction, matching the sleeve
+	# screen (which always showed them) and the CHT.All_Sleeves cheat (which already granted them).
+	var sleeve_universe  := GameState.get_sleeve_universe(true)
 	var coin_universe    := GameState.get_coin_universe()
 	var costume_universe := GameState.get_costume_universe()
 
@@ -591,8 +611,6 @@ func _flash_cheat_message(message: String) -> void:
 	layer.add_child(label)
 	_cheat_label = label
 
-	print("ISSUE #132 FIX ACTIVE: rainbow cheat popup '", message, "' holding ", CHEAT_HOLD_TIME,
-			"s then rising ", CHEAT_RISE_PX, "px over ", CHEAT_RISE_TIME, "s")
 
 	# Hold at full opacity (set_delay), then float up while fading. The tween is owned by `layer`
 	# (a root child), so it completes even after this Info scene is freed.

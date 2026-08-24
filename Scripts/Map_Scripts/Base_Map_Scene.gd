@@ -145,7 +145,6 @@ func _ready():
 	# and to show the post-battle dialogue. It clears the flag itself in _handle_battle_return().
 	# (The old code cleared it in the battle branch — i.e. BEFORE initialise — so whenever that branch
 	# actually won, all three of those behaviours silently no-op'd.)
-	print("ISSUE #96 FIX ACTIVE: spawned in ", scene_path.get_file(), " at ", resolved_spawn, " via ", spawn_source)
 
 	GameState.save_current_location(scene_path, _player.position)
 
@@ -326,7 +325,6 @@ func _close_menu_overlay() -> void:
 	# spot instead of the spot in front of the trainer / the doorway. The state has served its purpose
 	# the moment the overlay closes in place, so drop it here.
 	if GameState.has_menu_return_state and GameState.menu_return_scene_path == get_scene_path():
-		print("ISSUE #96 FIX ACTIVE: cleared stale menu-return state on overlay close for ", get_scene_path())
 		GameState.clear_menu_return_state()
 	_player.unlock_movement()
 	var bgm := get_bgm_path()

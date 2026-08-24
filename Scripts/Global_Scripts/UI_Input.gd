@@ -55,6 +55,32 @@ static func is_cancel(event: InputEvent) -> bool:
 static func is_advance(event: InputEvent) -> bool:
 	return is_accept(event) or is_cancel(event)
 
+# ── Mouse ────────────────────────────────────────────────────────────────────
+# ISSUE #135: Godot delivers every mouse-wheel notch as an InputEventMouseButton with
+# pressed == true, so the natural-looking test
+#
+#     if event is InputEventMouseButton and event.pressed:
+#
+# treats SCROLLING as a click. Anywhere a click dismisses a message box that meant a
+# single flick of the wheel silently ate the message the player was still reading.
+#
+# is_click() is that test done properly and is the only form that should appear anywhere
+# in the game: a real button went down, and it was not the wheel.
+static func is_scroll(event: InputEvent) -> bool:
+	if not (event is InputEventMouseButton):
+		return false
+	return (event as InputEventMouseButton).button_index in [
+		MOUSE_BUTTON_WHEEL_UP, MOUSE_BUTTON_WHEEL_DOWN,
+		MOUSE_BUTTON_WHEEL_LEFT, MOUSE_BUTTON_WHEEL_RIGHT,
+	]
+
+static func is_click(event: InputEvent) -> bool:
+	if not (event is InputEventMouseButton):
+		return false
+	if not (event as InputEventMouseButton).pressed:
+		return false
+	return not is_scroll(event)
+
 # ── Hold-to-zoom ─────────────────────────────────────────────────────────────
 # Every enlarge-a-card/coin/sleeve preview in the game is held on Shift, not Space.
 # Space is the accept key above, so the two used to fight over the same press: holding

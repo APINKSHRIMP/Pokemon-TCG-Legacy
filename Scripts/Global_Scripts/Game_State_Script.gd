@@ -15,8 +15,11 @@ const STARTER_SLEEVES: Array = [
 	"1_Default_Japanese_Old",
 ]
 
-# The four "1_Default*" card backs are the freebies — the sleeve grid still shows them, but they
-# do not count towards the trainer card's "collected" total. See get_sleeve_universe().
+# The "1_Default*" card backs are the freebies the player owns from first launch (STARTER_SLEEVES
+# above). ISSUE #139: they DO count towards the trainer card's "collected" total now — the Info
+# screen asks for the universe with include_defaults = true, so they appear on both sides of the
+# fraction. The flag is kept because get_sleeve_universe() still needs to be able to answer
+# "which sleeves had to be earned". See get_sleeve_universe().
 const DEFAULT_SLEEVE_PREFIX := "1_Default"
 
 # TEMP TESTING: synthetic opponent metadata used by the T-key TEST match so no
@@ -938,6 +941,59 @@ func get_sleeve_universe(include_defaults: bool = false) -> Dictionary:
 			continue
 		out[String(fname).get_basename()] = true
 	return out
+
+
+# ============================================================
+# ENERGY STYLE COLLECTION
+# ============================================================
+# Which printing of the six basic Energy a deck uses. ISSUE #155 moved this table here from
+# Deck_Build_And_Card_View_Script so the CHT.All_Energy_Styles cheat and the deck builder's picker
+# read the SAME list — the ISSUE #134 rule: a cheat that grants "all" of something must be driven
+# by the same universe the screen displays, or the two drift.
+#
+# Key   = the style name, exactly as it is stored in progress["energy_styles"].
+# Value = that style's six basic Energy card ids, in the order
+#         Grass, Fire, Water, Lightning, Psychic, Fighting.
+# Adding a style is one entry here and nothing else.
+const ENERGY_STYLES : Dictionary = {
+	"Base1":  ["base1-99",  "base1-98",  "base1-102", "base1-100", "base1-101", "base1-97"],
+	"Ecard1": ["ecard1-162","ecard1-161","ecard1-165","ecard1-163","ecard1-164","ecard1-160"],
+	"ex1":    ["ex1-104",   "ex1-108",   "ex1-106",   "ex1-109",   "ex1-107",   "ex1-105"],
+	"ex9":    ["ex9-101",   "ex9-102",   "ex9-103",   "ex9-104",   "ex9-105",   "ex9-106"],
+	"ex13":   ["ex13-105",  "ex13-106",  "ex13-107",  "ex13-108",  "ex13-109",  "ex13-110"],
+	"ex16":   ["ex16-103",  "ex16-104",  "ex16-105",  "ex16-106",  "ex16-107",  "ex16-108"],
+}
+
+
+## Every style that exists, whether or not the player has it. Named to match
+## get_coin_universe() / get_costume_universe() / get_sleeve_universe().
+func get_energy_style_universe() -> Array:
+	return ENERGY_STYLES.keys()
+
+
+## The styles the player has unlocked. "Base1" is the floor — a save with nothing recorded still has
+## the Base Set printing, because the deck builder has to render SOME energy.
+func get_energy_styles() -> Array:
+	var styles : Array = progress.get("energy_styles", [])
+	if styles.is_empty():
+		return ["Base1"]
+	return styles
+
+
+# ISSUE #155: bulk grant used by the CHT.All_Energy_Styles cheat. One save at the end, the same
+# reasoning as add_coins_to_collection(). Returns how many were newly added.
+func add_energy_styles_to_collection(style_names: Array) -> int:
+	var styles : Array = progress.get("energy_styles", [])
+	var added := 0
+	for raw in style_names:
+		var style_name := String(raw)
+		if style_name not in styles:
+			styles.append(style_name)
+			added += 1
+	if added > 0:
+		progress["energy_styles"] = styles
+		save_progress()
+	return added
 
 
 # ============================================================

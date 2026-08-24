@@ -1831,12 +1831,11 @@ tile_map_data = PackedByteArray("AABFADYAAAA3AEMAAABFADcAAAA3AEQAAABFAEUAAAA3AEM
 tile_set = ExtResource("2_bf13f")
 
 [node name="SSANNE" type="TextureRect" parent="TILE_MAPS/JETTY2" unique_id=387986581]
-visible = false
 z_index = 11
-offset_left = 610.0
-offset_top = 1642.0
-offset_right = 863.0
-offset_bottom = 1739.0
+offset_left = 652.0
+offset_top = 1643.0
+offset_right = 905.0
+offset_bottom = 1740.0
 scale = Vector2(3.105, 3.105)
 texture = ExtResource("3_bf13f")
 

@@ -19,7 +19,9 @@ extends Control
 #   - OR *within* a category, AND *between* categories.
 #   - The name box is always an AND, matched as a case-insensitive substring.
 #   - Pokemon-only rows (type / stage / Pokemon sub type) and the Trainer-only row (trainer sub
-#     type) auto-select their implied Card Type and lock out the opposite supertype. See _apply_lock.
+#     type) auto-select their implied Card Type and lock out the opposite supertype. It also works
+#     the other way now: picking a Card Type greys out the rows that supertype can never have.
+#     See _apply_lock.
 
 signal search_confirmed(criteria: Dictionary)
 signal search_cancelled()
@@ -32,10 +34,49 @@ signal search_reset()
 # TWEAKABLE VALUES — all screen geometry lives here
 # ══════════════════════════════════════════════════════════════════════════════
 
+# ══════════════════════════════════════════════════════════════════════════════
+# LAYOUT, rebuilt 2026-08-24 for ISSUES #142 / #145 / #146 / #147. Read this before tuning
+# anything below it.
+#
+# #141 hides the deck screen's ~300px right-hand card banner while this screen is up, so the
+# rows own the FULL 1920 rather than stopping short of it (#142). Every row is laid out
+# left-aligned from CTRL_X; icon rows spread across CTRL_W via _row_pitch(), button rows step by a
+# fixed BTN_W + BTN_GAP.
+#
+# RETEST PASS 2026-08-24 (#145 / #146 follow-ups). Two icon rows are sized by HEIGHT now, not by a
+# square cell: icon_power/icon_body are ~4.15:1 strips, so drawing them KEEP_ASPECT_CENTERED in a
+# 124x124 box rendered them 124x30 with ~47px of dead air above AND below — "almost an entire row
+# of space". _make_icon_h() fixes the rendered HEIGHT and derives the width from the art's aspect,
+# so the row box is exactly as tall as what is drawn in it. The same helper gives the POKEMON SUB
+# TYPE row a uniform icon height (the four glyphs range from 0.96:1 to 1.42:1, so in a square cell
+# they came out visibly different heights). Reclaiming the power row's dead 94px is what let
+# ROW_GAP go back up from 8 to 16.
+#
+# #146 then shrank almost everything to buy back the vertical space #147's five set rows need:
+#   name / illustrator boxes   -25% (height and font)
+#   card type / stage / trainer sub / sort buttons  -25% (height and font; the width was later
+#                              unified at BTN_W = 250 for all four rows, see #146's retest)
+#   pokemon type icons         -10%
+#   set icons                  -10%
+#   pokemon sub type icons     -10%
+#   rarity icons               -40%
+# ...against #145, which DOUBLED the Has Power / Has Body icons. With every set unlocked the rows
+# finish at y = 984 against a FOOTER_TOP of 996, so there is about 12px of slack and no more.
+#
+# CONSEQUENCE WORTH KNOWING: the ~180px of headroom that used to be reserved for the EFFECT row
+# (see EFFECT_FILTERS) is gone. Populating that row now needs vertical space found elsewhere. The
+# SET block is far and away the biggest thing on the screen at 269px with all five generation
+# lines showing, so an EFFECT row most likely means shrinking SET_ICON or reclaiming ROW_GAP.
+# ══════════════════════════════════════════════════════════════════════════════
+
 # Header / footer bands and the vertical strip the filter rows flow down
 const HEADER_H      := 96.0
-const CONTENT_TOP   := 112.0
-const FOOTER_TOP    := 992.0
+# ISSUE #146 (retest): +4px so the NAME box does not sit hard against the bottom of the top border.
+const CONTENT_TOP   := 108.0
+const FOOTER_TOP    := 996.0
+
+# ISSUE #142: how much clear space is left at the right-hand edge of the screen.
+const RIGHT_MARGIN := 40.0
 
 # Backdrop dim behind the header / footer bands. 1.0 = solid black; the deck background shows
 # faintly through at 0.88.
@@ -50,62 +91,90 @@ const BACKDROP_ALPHA := 0.88
 const SHOW_FILTER_PANEL := false
 const PANEL_COLOR := Color(0.93, 0.93, 0.94, 1.0)
 
-# Left-hand label column, and the x the controls start at
-const LABEL_X     := 52.0
-const LABEL_W     := 250.0
+# Left-hand label column, and the x the controls start at.
+# ISSUE #142: every row label is ONE line now (they used to break "POKEMON\nSUB TYPE" and friends
+# over two). LABEL_W is sized off the longest of them — "HAS POWER OR BODY", ~304px in the Kenney
+# font at 24pt — so none of them wrap or clip. Widening this pushes CTRL_X right; keep the two in
+# step or the labels will run under the controls.
+const LABEL_X     := 24.0
+const LABEL_W     := 312.0
 const LABEL_FONT  := 24
 const LABEL_COLOR := Color(0.05, 0.05, 0.05, 1.0)
-const CTRL_X      := 312.0
+const CTRL_X      := 350.0
 
-# Vertical gap left between one filter row and the next
+# ISSUE #142: the width every row has to play with — CTRL_X across to the right margin. 1530px.
+const CTRL_W := 1920.0 - RIGHT_MARGIN - CTRL_X
+
+# Vertical gap left between one filter row and the next.
+# ISSUE #145 (retest): back up to 16 (it had been cut to 8) — killing the power row's dead 94px
+# paid for it. This is the value to raise first if more breathing room is ever wanted; every 1px
+# here costs 11px of screen.
 const ROW_GAP := 16.0
 
-# Pokemon type icon row (single line, 9 icons)
-const TYPE_ICON  := 54.0
-const TYPE_PITCH := 66.0
+# ISSUE #142 spreading, for the ICON rows only — the button rows use the fixed BTN_W/BTN_GAP pair
+# below (ISSUE #146 retest asked for consistent button sizing and spacing, which a fill-the-width
+# spread cannot give). An icon row fills CTRL_W when it has enough cells to, and otherwise falls
+# back to "cell + this much gap": a two-icon row flung to opposite ends of a 1530px strip is not
+# using the width, it is just broken. Raise this to spread the sparse icon rows further apart.
+const MAX_ICON_GAP := 56.0
+
+# Pokemon type icon row (single line, 9 icons). ISSUE #146: -10%.
+const TYPE_ICON  := 49.0
 
 # Set icon rows. Icons are drawn into a square cell with the aspect preserved, because the source
 # art ranges from 41x21 (Base) to 128x128 (Southern Islands).
-const SET_ICON      := 54.0
-const SET_PITCH     := 74.0
-const SET_LINE_GAP  := 8.0
-# Up to this many unlocked sets renders as ONE line; more than this splits over two balanced lines.
-const SET_SINGLE_LINE_MAX := 12
+# ISSUE #146: -10%. ISSUE #147: the rows are the fixed generation groups in SET_ROW_GROUPS now,
+# not an automatic one-or-two-line split, so SET_SINGLE_LINE_MAX is gone.
+const SET_ICON      := 49.0
+const SET_LINE_GAP  := 6.0
 
 # Pokemon sub type icons (ex / shining-star / delta / dual type) — bigger, they read as glyphs
-# rather than badges
-const SUB_ICON  := 62.0
-const SUB_PITCH := 104.0
+# rather than badges. ISSUE #146: -10%.
+# ISSUE #146 (retest): this is now a RENDERED HEIGHT, not a square cell. The four source images
+# run from 0.96:1 (delta) to 1.42:1 (ex), so a square cell drew them at four different heights and
+# dual type looked taller than the rest. _make_icon_h() pins the height and lets the width follow
+# the art, so the row reads as one set of glyphs.
+const SUB_ICON  := 56.0
 
-# Has Power / Has Body icons (ISSUE #140). Same size and pitch as the sub type row above them so
-# the two icon rows line up; separated out so either can be tuned on its own.
-const POWER_ICON  := 62.0
-const POWER_PITCH := 104.0
+# Has Power / Has Body icons (ISSUE #140).
+# ISSUE #145: DOUBLED — the two ability glyphs are the hardest icons on the screen to read at a
+# glance, and unlike the sub type row above them there are only two, so the width is free.
+# ISSUE #145 (retest): expressed as a RENDERED HEIGHT now. icon_power is 288x70 and icon_body
+# 302x72 — ~4.15:1 strips — so 30px tall works out at ~124px wide, exactly the doubled size, but
+# the row box is 30px instead of 124px. That removed ~94px of dead air above and below the icons.
+# Raising this grows the icons in BOTH directions; the width follows the art.
+const POWER_ICON  := 30.0
 
 # Illustrator free-text row (ISSUE #143). Height matches the NAME box so the screen's two text
-# fields read as a pair.
-const ILLUS_H := 72.0
-const ILLUS_W := 1110.0
+# fields read as a pair. ISSUE #146: height and font -25%. ISSUE #142: full width.
+const ILLUS_H    := 54.0
+const ILLUS_W    := CTRL_W
+const ILLUS_FONT := 22
 
-# Rarity symbol icons
-const RARITY_ICON  := 54.0
-const RARITY_PITCH := 90.0
+# Name free-text row. ISSUE #146: height and font -25%. ISSUE #142: full width.
+const NAME_H    := 54.0
+const NAME_W    := CTRL_W
+const NAME_FONT := 22
+
+# Rarity symbol icons. ISSUE #146: -40%, the biggest cut on the screen — they are pure symbols
+# with no fine detail to lose.
+const RARITY_ICON  := 32.0
 
 # Effect icon rows (reserved — see EFFECT_FILTERS)
-const EFFECT_ICON     := 54.0
-const EFFECT_PITCH    := 74.0
-const EFFECT_LINE_GAP := 8.0
+const EFFECT_ICON     := 49.0
+const EFFECT_LINE_GAP := 6.0
 const EFFECT_SINGLE_LINE_MAX := 12
 
-# Kenney text buttons
-const BTN_H            := 52.0
-const BTN_GAP          := 22.0
-const CARD_TYPE_BTN_W  := 220.0
-const STAGE_BTN_W      := 190.0
-const TRAINER_BTN_W    := 230.0
-const SORT_BTN_W       := 190.0
-const BTN_FONT         := 22
-const BTN_FONT_SMALL   := 15    # "TECHNICAL MACHINE" only
+# Kenney text buttons. ISSUE #146: height and font -25%.
+# ISSUE #146 (retest): ONE width and ONE gap for all four button rows (card type / pokemon stage /
+# trainer sub type / sort by) rather than four different widths. 250 is set by the longest label,
+# "TECHNICAL MACHINE" (~205px at 16pt plus ~21px of Kenney stylebox margin), which also means it
+# fits on one line at the same font size as everything else — the old BTN_FONT_SMALL special case
+# is gone. The busiest row is 4 buttons: 4*250 + 3*80 = 1240 of the 1530 available.
+const BTN_H     := 39.0
+const BTN_W     := 250.0
+const BTN_GAP   := 80.0
+const BTN_FONT  := 16
 
 # Header controls
 const TITLE_FONT  := 46
@@ -120,6 +189,15 @@ const FOOT_BTN_W := 320.0
 const FOOT_BTN_H := 56.0
 const SEARCH_X   := 600.0
 const CANCEL_X   := 1100.0
+
+# ISSUE #141 (retest): z for everything the player interacts with. The deck scene's
+# `filter_border` — the patterned strip this screen now shows across the top — is an OPAQUE
+# TextureRect at z_index 200, and z accumulates down the tree, so the header's RESET button and
+# the "CARD SEARCH" title (overlay z 10 + their old z 55 = 60) were being painted over by it.
+# 250 puts them at an effective 260, safely in front. The backdrop and panel deliberately stay
+# BELOW 200 so the border still draws over them and remains visible — that was the whole point of
+# showing it.
+const CONTENT_Z := 250
 
 # Selected-icon pulse (matches the card / energy icon animation used elsewhere)
 const PULSE_SCALE   := 1.12
@@ -228,6 +306,24 @@ const RARITIES : Array = [
 # with art at EFFECT_ICON_PATH + "icon_<icon>.png" / "color_icon_<icon>.png".
 # The matching side lives in Deck_Build_And_Card_View_Script._card_matches_effect().
 const EFFECT_FILTERS : Array = []
+
+# ISSUE #147: which line of the SET row each set sits on, one entry per line, in the order the
+# player asked for. Only sets the player has UNLOCKED are drawn, and a line whose sets are all
+# still locked is skipped entirely — so a new save shows one short line and the rows below it
+# close the gap, exactly like a fully gated-off filter row.
+#
+# Order WITHIN a line comes from _set_list (release order), not from this table, so listing a set
+# in the wrong place here changes its line but never its position among its neighbours. "np" is
+# EX Promos, hence its place at the end of the EX line. Any set missing from this table is drawn
+# on a trailing line of its own with a warning rather than silently disappearing.
+const SET_ROW_GROUPS : Array = [
+	["base1", "base2", "base3", "base5", "basep", "gym1", "gym2"],
+	["neo1", "neo2", "neo3", "neo4", "si1"],
+	["ecard1", "ecard2", "ecard3"],
+	["ex1", "ex2", "ex3", "ex4", "ex5", "ex6", "ex7", "ex8", "ex9", "ex10",
+	 "ex11", "ex12", "ex13", "ex14", "ex15", "ex16", "np"],
+	["pop1", "pop2", "pop3", "pop4", "pop5"],
+]
 
 const SORT_MODES : Array = [
 	{"key": "set",  "label": "SET"},
@@ -341,7 +437,7 @@ func _build_header() -> void:
 	title.vertical_alignment   = VERTICAL_ALIGNMENT_CENTER
 	title.position = Vector2(360.0, 0.0)
 	title.size     = Vector2(1200.0, HEADER_H)
-	title.z_index  = 55
+	title.z_index  = CONTENT_Z
 	title.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(title)
 
@@ -352,7 +448,7 @@ func _build_header() -> void:
 	reset.position = Vector2(RESET_X, RESET_Y)
 	reset.size     = Vector2(RESET_W, RESET_H)
 	reset.custom_minimum_size = Vector2(RESET_W, RESET_H)
-	reset.z_index  = 55
+	reset.z_index  = CONTENT_Z
 	reset.pressed.connect(_on_reset_pressed)
 	add_child(reset)
 
@@ -365,7 +461,7 @@ func _build_footer() -> void:
 	_confirm_btn.position = Vector2(SEARCH_X, FOOT_BTN_Y)
 	_confirm_btn.size     = Vector2(FOOT_BTN_W, FOOT_BTN_H)
 	_confirm_btn.custom_minimum_size = Vector2(FOOT_BTN_W, FOOT_BTN_H)
-	_confirm_btn.z_index  = 55
+	_confirm_btn.z_index  = CONTENT_Z
 	_confirm_btn.pressed.connect(_on_confirm_pressed)
 	add_child(_confirm_btn)
 
@@ -376,7 +472,7 @@ func _build_footer() -> void:
 	cancel.position = Vector2(CANCEL_X, FOOT_BTN_Y)
 	cancel.size     = Vector2(FOOT_BTN_W, FOOT_BTN_H)
 	cancel.custom_minimum_size = Vector2(FOOT_BTN_W, FOOT_BTN_H)
-	cancel.z_index  = 55
+	cancel.z_index  = CONTENT_Z
 	cancel.pressed.connect(_on_cancel_pressed)
 	add_child(cancel)
 
@@ -399,26 +495,29 @@ func _build_rows() -> void:
 	y = _build_illustrator_row(y)    # ISSUE #143 — last filter before the sort buttons
 	y = _build_sort_row(y)
 
-	# With every set unlocked (the tallest the screen ever gets) the rows finish around y=972
-	# against a FOOTER_TOP of 992. If this print reports a y past FOOTER_TOP the rows have
-	# outgrown the screen — shrink ROW_GAP, POWER_ICON or ILLUS_H rather than letting it overlap.
-	print("ISSUE #140/#143 FIX ACTIVE: search rows built, bottom y=", y, " (FOOTER_TOP=", FOOTER_TOP, ")")
+	# ISSUE #147 asked for the layout to be re-checked once the five set rows went in. With every
+	# set unlocked (the tallest the screen ever gets) the rows finish at y=984 against a FOOTER_TOP
+	# of 996 — about 12px of slack, so this screen is close to full. The guard below is the standing
+	# tripwire: if it ever fires, shrink ROW_GAP, SET_ICON or the SET block rather than letting the
+	# rows overlap the footer buttons.
+	if y > FOOTER_TOP:
+		push_warning("CardSearch: filter rows overflow the footer by %d px" % int(y - FOOTER_TOP))
 
 
 func _build_name_row(y: float) -> float:
-	var h := 72.0
+	var h := NAME_H
 	_add_row_label("NAME", y, h)
 
 	_name_edit = LineEdit.new()
 	_name_edit.theme = _theme_white
 	_name_edit.position = Vector2(CTRL_X, y)
-	_name_edit.size     = Vector2(1110.0, h)
-	_name_edit.custom_minimum_size = Vector2(1110.0, h)
-	_name_edit.add_theme_font_size_override("font_size", 30)
+	_name_edit.size     = Vector2(NAME_W, h)
+	_name_edit.custom_minimum_size = Vector2(NAME_W, h)
+	_name_edit.add_theme_font_size_override("font_size", NAME_FONT)
 	_name_edit.add_theme_color_override("font_color", Color.BLACK)
-	_name_edit.placeholder_text = "Card name....."
-	_name_edit.max_length = 30
-	_name_edit.z_index = 55
+	_name_edit.placeholder_text = "Card name..... (comma-separate for several)"
+	# ISSUE #149: no length cap — a comma-separated list of card names runs well past 30 characters.
+	_name_edit.z_index = CONTENT_Z
 	_name_edit.text_changed.connect(_on_name_changed)
 	# Enter in the name box runs the search, as long as something is actually filled in
 	_name_edit.text_submitted.connect(func(_t: String): _on_confirm_pressed())
@@ -428,62 +527,91 @@ func _build_name_row(y: float) -> float:
 
 
 func _build_type_row(y: float) -> float:
-	_add_row_label("POKEMON\nTYPE", y, TYPE_ICON)
+	_add_row_label("POKEMON TYPE", y, TYPE_ICON)
 
+	var pitch := _row_pitch(POKEMON_TYPES.size(), TYPE_ICON, MAX_ICON_GAP)
 	var x := CTRL_X
 	for entry in POKEMON_TYPES:
 		var key : String = entry["key"]
 		var icon := _make_icon(ENERGY_ICON_PATH, entry["icon"], TYPE_ICON, Vector2(x, y), key)
 		icon.gui_input.connect(_on_icon_input.bind(icon, "type", key))
 		_type_icons[key] = icon
-		x += TYPE_PITCH
+		x += pitch
 
 	return y + TYPE_ICON + ROW_GAP
 
 
+## ISSUE #147: one line per card-set generation instead of the old "split everything over one or
+## two balanced lines". Only unlocked sets are drawn and a line with nothing unlocked on it is not
+## drawn at all, so the block grows with the player's collection: one short line on a new save,
+## five once everything is open. See SET_ROW_GROUPS for the grouping and its ordering rules.
 func _build_set_row(y: float) -> float:
-	# Only sets the player has unlocked get an icon, in release order.
-	var shown : Array = []
-	for entry in _set_list:
-		var sid : String = entry["set_id"]
-		if sid in _unlocked:
-			shown.append(entry)
+	# Bucket the unlocked sets into their generation lines. Iterating _set_list (release order)
+	# inside each group is what keeps the icons in release order along a line.
+	var rows   : Array      = []
+	var placed : Dictionary = {}
+	for group in SET_ROW_GROUPS:
+		var line : Array = []
+		for entry in _set_list:
+			var sid : String = entry["set_id"]
+			if sid in _unlocked and sid in group:
+				line.append(entry)
+				placed[sid] = true
+		if not line.is_empty():
+			rows.append(line)
 
-	if shown.is_empty():
+	# A set that SET_ROW_GROUPS doesn't name (a new set added later) gets a trailing line of its
+	# own rather than quietly vanishing from the filter.
+	var orphans : Array = []
+	for entry2 in _set_list:
+		var sid2 : String = entry2["set_id"]
+		if sid2 in _unlocked and not placed.has(sid2):
+			orphans.append(entry2)
+	if not orphans.is_empty():
+		var names : Array = []
+		for o in orphans:
+			names.append(o["set_id"])
+		push_warning("CardSearch: sets missing from SET_ROW_GROUPS: " + str(names))
+		rows.append(orphans)
+
+	if rows.is_empty():
 		return y
 
-	var lines := 1 if shown.size() <= SET_SINGLE_LINE_MAX else 2
-	var per_line : int = int(ceil(float(shown.size()) / float(lines)))
-	var block_h := lines * SET_ICON + (lines - 1) * SET_LINE_GAP
+	# ISSUE #142: ONE pitch shared by every line, taken from the busiest one (17 icons on the EX
+	# line with everything unlocked), so the icons sit in tidy columns and the busiest line is the
+	# one that fills the full width.
+	var widest := 0
+	for line2 in rows:
+		widest = maxi(widest, (line2 as Array).size())
+	var pitch := _row_pitch(widest, SET_ICON, MAX_ICON_GAP)
 
+	var block_h : float = rows.size() * SET_ICON + (rows.size() - 1) * SET_LINE_GAP
 	_add_row_label("SET", y, block_h)
 
-	for i in range(shown.size()):
-		var entry : Dictionary = shown[i]
-		var sid   : String     = entry["set_id"]
-		var line  : int        = i / per_line
-		var col   : int        = i % per_line
-		var pos := Vector2(
-			CTRL_X + col * SET_PITCH,
-			y + line * (SET_ICON + SET_LINE_GAP)
-		)
-		var icon := _make_icon(SET_ICON_PATH, sid, SET_ICON, pos, entry["set_name"])
-		icon.gui_input.connect(_on_icon_input.bind(icon, "set", sid))
-		_set_icons[sid] = icon
+	for r in range(rows.size()):
+		var line3 : Array = rows[r]
+		var line_y : float = y + r * (SET_ICON + SET_LINE_GAP)
+		for c in range(line3.size()):
+			var entry3 : Dictionary = line3[c]
+			var sid3   : String     = entry3["set_id"]
+			var icon := _make_icon(SET_ICON_PATH, sid3, SET_ICON,
+				Vector2(CTRL_X + c * pitch, line_y), entry3["set_name"])
+			icon.gui_input.connect(_on_icon_input.bind(icon, "set", sid3))
+			_set_icons[sid3] = icon
 
 	return y + block_h + ROW_GAP
 
 
 func _build_card_type_row(y: float) -> float:
-	_add_row_label("CARD\nTYPE", y, BTN_H)
+	_add_row_label("CARD TYPE", y, BTN_H)
 
 	var x := CTRL_X
 	for entry in CARD_TYPES:
 		var key : String = entry["key"]
-		var btn := _make_button(entry["label"], x, y, CARD_TYPE_BTN_W, BTN_FONT)
+		var btn := _make_button(entry["label"], x, y, BTN_W, BTN_FONT)
 		btn.pressed.connect(_on_card_type_pressed.bind(key))
 		_card_type_btn[key] = btn
-		x += CARD_TYPE_BTN_W + BTN_GAP
+		x += BTN_W + BTN_GAP
 
 	return y + BTN_H + ROW_GAP
 
@@ -493,15 +621,15 @@ func _build_stage_row(y: float) -> float:
 	if shown.is_empty():
 		return y
 
-	_add_row_label("POKEMON\nSTAGE", y, BTN_H)
+	_add_row_label("POKEMON STAGE", y, BTN_H)
 
 	var x := CTRL_X
 	for entry in shown:
 		var key : String = entry["key"]
-		var btn := _make_button(entry["label"], x, y, STAGE_BTN_W, BTN_FONT)
+		var btn := _make_button(entry["label"], x, y, BTN_W, BTN_FONT)
 		btn.pressed.connect(_on_simple_toggle.bind("stage", key))
 		_stage_btn[key] = btn
-		x += STAGE_BTN_W + BTN_GAP
+		x += BTN_W + BTN_GAP
 
 	return y + BTN_H + ROW_GAP
 
@@ -511,20 +639,17 @@ func _build_trainer_sub_row(y: float) -> float:
 	if shown.is_empty():
 		return y
 
-	_add_row_label("TRAINER\nSUB TYPE", y, BTN_H)
+	_add_row_label("TRAINER SUB TYPE", y, BTN_H)
 
+	# ISSUE #142: "TECHNICAL MACHINE" is ONE line. ISSUE #146 (retest): BTN_W is sized off it, so it
+	# now fits at the same font as every other button and needs no special case at all.
 	var x := CTRL_X
 	for entry in shown:
-		var key   : String = entry["key"]
-		var label : String = entry["label"]
-		# "TECHNICAL MACHINE" is far longer than the others — drop it to two lines at a smaller size
-		# rather than widening every button in the row.
-		var font  : int    = BTN_FONT_SMALL if key == "Technical Machine" else BTN_FONT
-		var text  : String = "TECHNICAL\nMACHINE" if key == "Technical Machine" else label
-		var btn := _make_button(text, x, y, TRAINER_BTN_W, font)
+		var key : String = entry["key"]
+		var btn := _make_button(entry["label"], x, y, BTN_W, BTN_FONT)
 		btn.pressed.connect(_on_simple_toggle.bind("trainer_sub", key))
 		_trainer_btn[key] = btn
-		x += TRAINER_BTN_W + BTN_GAP
+		x += BTN_W + BTN_GAP
 
 	return y + BTN_H + ROW_GAP
 
@@ -534,15 +659,18 @@ func _build_pokemon_sub_row(y: float) -> float:
 	if shown.is_empty():
 		return y
 
-	_add_row_label("POKEMON\nSUB TYPE", y, SUB_ICON)
+	_add_row_label("POKEMON SUB TYPE", y, SUB_ICON)
 
+	# ISSUE #146 (retest): uniform HEIGHT, width from each icon's own aspect — see _make_icon_h().
+	# The pitch is taken from the widest of them so the row never overlaps itself.
+	var pitch := _row_pitch(shown.size(), _widest_icon(SUBTYPE_ICON_PATH, shown, SUB_ICON), MAX_ICON_GAP)
 	var x := CTRL_X
 	for entry in shown:
 		var key : String = entry["key"]
-		var icon := _make_icon(SUBTYPE_ICON_PATH, entry["icon"], SUB_ICON, Vector2(x, y), entry["tip"])
+		var icon := _make_icon_h(SUBTYPE_ICON_PATH, entry["icon"], SUB_ICON, Vector2(x, y), entry["tip"])
 		icon.gui_input.connect(_on_icon_input.bind(icon, "pokemon_sub", key))
 		_sub_icons[key] = icon
-		x += SUB_PITCH
+		x += pitch
 
 	return y + SUB_ICON + ROW_GAP
 
@@ -556,15 +684,18 @@ func _build_power_row(y: float) -> float:
 	if shown.is_empty():
 		return y
 
-	_add_row_label("HAS POWER\nOR BODY", y, POWER_ICON)
+	_add_row_label("HAS POWER OR BODY", y, POWER_ICON)
 
+	# ISSUE #145 (retest): sized by rendered HEIGHT — see _make_icon_h() and POWER_ICON.
+	var widest := _widest_icon(SUBTYPE_ICON_PATH, shown, POWER_ICON)
+	var pitch := _row_pitch(shown.size(), widest, MAX_ICON_GAP)
 	var x := CTRL_X
 	for entry in shown:
 		var key : String = entry["key"]
-		var icon := _make_icon(SUBTYPE_ICON_PATH, entry["icon"], POWER_ICON, Vector2(x, y), entry["tip"])
+		var icon := _make_icon_h(SUBTYPE_ICON_PATH, entry["icon"], POWER_ICON, Vector2(x, y), entry["tip"])
 		icon.gui_input.connect(_on_icon_input.bind(icon, "power", key))
 		_power_icons[key] = icon
-		x += POWER_PITCH
+		x += pitch
 
 	return y + POWER_ICON + ROW_GAP
 
@@ -581,11 +712,11 @@ func _build_illustrator_row(y: float) -> float:
 	_illus_edit.position = Vector2(CTRL_X, y)
 	_illus_edit.size     = Vector2(ILLUS_W, ILLUS_H)
 	_illus_edit.custom_minimum_size = Vector2(ILLUS_W, ILLUS_H)
-	_illus_edit.add_theme_font_size_override("font_size", 30)
+	_illus_edit.add_theme_font_size_override("font_size", ILLUS_FONT)
 	_illus_edit.add_theme_color_override("font_color", Color.BLACK)
-	_illus_edit.placeholder_text = "Illustrator name....."
-	_illus_edit.max_length = 30
-	_illus_edit.z_index = 55
+	_illus_edit.placeholder_text = "Illustrator name..... (comma-separate for several)"
+	# ISSUE #149: no length cap, same as the name box.
+	_illus_edit.z_index = CONTENT_Z
 	_illus_edit.text_changed.connect(_on_name_changed)
 	_illus_edit.text_submitted.connect(func(_t: String): _on_confirm_pressed())
 	add_child(_illus_edit)
@@ -598,13 +729,14 @@ func _build_illustrator_row(y: float) -> float:
 func _build_rarity_row(y: float) -> float:
 	_add_row_label("RARITY", y, RARITY_ICON)
 
+	var pitch := _row_pitch(RARITIES.size(), RARITY_ICON, MAX_ICON_GAP)
 	var x := CTRL_X
 	for entry in RARITIES:
 		var key : String = entry["key"]
 		var icon := _make_icon(RARITY_ICON_PATH, entry["icon"], RARITY_ICON, Vector2(x, y), entry["tip"])
 		icon.gui_input.connect(_on_icon_input.bind(icon, "rarity", key))
 		_rarity_icons[key] = icon
-		x += RARITY_PITCH
+		x += pitch
 
 	return y + RARITY_ICON + ROW_GAP
 
@@ -619,6 +751,7 @@ func _build_effect_row(y: float) -> float:
 	var lines := 1 if shown.size() <= EFFECT_SINGLE_LINE_MAX else 2
 	var per_line : int = int(ceil(float(shown.size()) / float(lines)))
 	var block_h := lines * EFFECT_ICON + (lines - 1) * EFFECT_LINE_GAP
+	var pitch := _row_pitch(per_line, EFFECT_ICON, MAX_ICON_GAP)
 
 	_add_row_label("EFFECT", y, block_h)
 
@@ -628,7 +761,7 @@ func _build_effect_row(y: float) -> float:
 		var line  : int        = i / per_line
 		var col   : int        = i % per_line
 		var pos := Vector2(
-			CTRL_X + col * EFFECT_PITCH,
+			CTRL_X + col * pitch,
 			y + line * (EFFECT_ICON + EFFECT_LINE_GAP)
 		)
 		var icon := _make_icon(EFFECT_ICON_PATH, entry["icon"], EFFECT_ICON, pos, entry.get("tip", key))
@@ -644,10 +777,10 @@ func _build_sort_row(y: float) -> float:
 	var x := CTRL_X
 	for entry in SORT_MODES:
 		var key : String = entry["key"]
-		var btn := _make_button(entry["label"], x, y, SORT_BTN_W, BTN_FONT)
+		var btn := _make_button(entry["label"], x, y, BTN_W, BTN_FONT)
 		btn.pressed.connect(_on_sort_pressed.bind(key))
 		_sort_btn[key] = btn
-		x += SORT_BTN_W + BTN_GAP
+		x += BTN_W + BTN_GAP
 
 	_refresh_sort_buttons()
 	return y + BTN_H + ROW_GAP
@@ -656,6 +789,23 @@ func _build_sort_row(y: float) -> float:
 # ══════════════════════════════════════════════════════════════════════════════
 # Build helpers
 # ══════════════════════════════════════════════════════════════════════════════
+
+## ISSUE #142: pitch (cell-to-cell step) for a row of `count` equally sized cells laid out from
+## CTRL_X. Fills the full CTRL_W when the row has enough cells to; otherwise falls back to
+## "cell + max_gap" so a two- or three-cell row isn't flung across the whole screen.
+func _row_pitch(count: int, cell: float, max_gap: float) -> float:
+	if count <= 1:
+		return cell
+	return minf(CTRL_W / float(count), cell + max_gap)
+
+
+## Widest rendered icon in a row drawn by _make_icon_h(), used to pick a pitch that cannot overlap.
+func _widest_icon(folder: String, entries: Array, height: float) -> float:
+	var widest := height
+	for entry in entries:
+		widest = maxf(widest, height * _icon_aspect(folder, entry["icon"]))
+	return widest
+
 
 ## Filters an option table down to the entries whose unlock gate has been met.
 ## An entry with no "gate" (or an empty one) is always shown.
@@ -677,7 +827,7 @@ func _add_row_label(text: String, y: float, h: float) -> void:
 	lbl.position = Vector2(LABEL_X, y)
 	lbl.size     = Vector2(LABEL_W, h)
 	lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	lbl.z_index  = 55
+	lbl.z_index  = CONTENT_Z
 	lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(lbl)
 
@@ -700,7 +850,7 @@ func _make_icon(folder: String, stem: String, cell: float, pos: Vector2, tip: St
 	icon.custom_minimum_size = Vector2(cell, cell)
 	# Centre pivot so the selected pulse grows from the middle rather than the top-left
 	icon.pivot_offset = Vector2(cell, cell) / 2.0
-	icon.z_index = 55
+	icon.z_index = CONTENT_Z
 	icon.mouse_filter = Control.MOUSE_FILTER_STOP
 	icon.tooltip_text = tip
 	# Remembered so _set_icon_selected can swap between icon_ / color_icon_ art later
@@ -712,6 +862,33 @@ func _make_icon(folder: String, stem: String, cell: float, pos: Vector2, tip: St
 	return icon
 
 
+## ISSUE #145/#146 (retest): an icon sized by its RENDERED HEIGHT, with the width taken from the
+## art's own aspect ratio. _make_icon() above draws into a SQUARE cell, which is right for rows of
+## same-shaped badges (types, sets, rarities) but wrong for two cases here:
+##   * icon_power / icon_body are ~4.15:1 strips, so a square cell reserved 4x the height they
+##     actually drew in and left a band of dead air above and below the row;
+##   * the four POKEMON SUB TYPE glyphs range from 0.96:1 to 1.42:1, so a square cell drew them at
+##     four different heights and dual type looked taller than its neighbours.
+## Pinning the height makes a row of mismatched art read as one set. Use it for any future row
+## whose icons are not all the same shape.
+func _make_icon_h(folder: String, stem: String, height: float, pos: Vector2, tip: String) -> TextureRect:
+	var icon := _make_icon(folder, stem, height, pos, tip)
+	var w := height * _icon_aspect(folder, stem)
+	icon.size     = Vector2(w, height)
+	icon.custom_minimum_size = Vector2(w, height)
+	icon.pivot_offset = Vector2(w, height) / 2.0
+	return icon
+
+
+## Width-to-height ratio of an icon's art, or 1.0 if it cannot be loaded. Godot caches the load, so
+## calling this next to _make_icon_h() does not read the file twice.
+func _icon_aspect(folder: String, stem: String) -> float:
+	var tex = load(folder + "icon_" + stem + ".png")
+	if tex == null or tex.get_height() <= 0:
+		return 1.0
+	return float(tex.get_width()) / float(tex.get_height())
+
+
 func _make_button(text: String, x: float, y: float, w: float, font_size: int) -> Button:
 	var btn := Button.new()
 	btn.theme = _theme_white
@@ -720,7 +897,7 @@ func _make_button(text: String, x: float, y: float, w: float, font_size: int) ->
 	btn.position = Vector2(x, y)
 	btn.size     = Vector2(w, BTN_H)
 	btn.custom_minimum_size = Vector2(w, BTN_H)
-	btn.z_index  = 55
+	btn.z_index  = CONTENT_Z
 	add_child(btn)
 	return btn
 
@@ -996,6 +1173,22 @@ func _selection_store(category: String) -> Dictionary:
 # Rows that can only ever describe a Pokemon, and rows that can only ever describe a Trainer.
 # Selecting anything in either group locks the Card Type row to that supertype and blocks the
 # opposite group, because the combination could never match a card.
+#
+# CHANGED 2026-08-24 — this now works in BOTH directions. It used to be deliberately one-way (a sub
+# type implied a card type, but never the reverse), which left "Trainer" selectable alongside a live
+# POKEMON SUB TYPE row: a combination that can match nothing, offered as though it were valid.
+# Picking a Card Type by hand now greys out the rows that supertype can never have — Trainer or
+# Energy greys the three Pokemon-only rows, Pokemon or Energy greys TRAINER SUB TYPE.
+#
+# The two directions stay distinct in the UI, and the difference is deliberate:
+#   * a FORCED card type (implied by a sub-row) goes green-and-DISABLED — the player cannot undo it
+#     without first clearing the row that implied it;
+#   * a HAND-PICKED card type stays green and clickable, so it can always be toggled back off. Only
+#     the rows it excludes go grey.
+# Selecting BOTH Pokemon and Trainer blocks nothing: OR-within-a-category means a card may be either.
+#
+# Still NOT part of the lock, on purpose: RARITY (a whole-card property) and HAS POWER OR BODY
+# (eight Trainers carry a real Poke-Body, so forcing Pokemon there would hide real matches).
 
 func _pokemon_rows_selected() -> bool:
 	return not _sel_types.is_empty() or not _sel_stages.is_empty() or not _sel_pokemon_subs.is_empty()
@@ -1003,6 +1196,18 @@ func _pokemon_rows_selected() -> bool:
 
 func _trainer_rows_selected() -> bool:
 	return not _sel_trainer_subs.is_empty()
+
+
+# Last [lock, block_pokemon, block_trainer] reported by _apply_lock(), so the console line below
+# only fires when the lock state actually moves rather than on every click.
+var _last_lock_state : Array = []
+
+
+## Can a card of this supertype still be in the results? True when the player has picked no card
+## type at all (no restriction yet) or has picked this one among their choices. Drives which rows
+## are greyed out; see the note above for why both directions matter.
+func _supertype_possible(key: String) -> bool:
+	return _sel_card_types.is_empty() or _sel_card_types.has(key)
 
 
 ## "" when nothing is locked, otherwise the supertype that is being forced.
@@ -1028,8 +1233,10 @@ func _apply_lock() -> void:
 
 		if lock == "":
 			# Nothing is forcing a card type. Drop any type that was only auto-selected; a type the
-			# player picked by hand survives (this is the one-way rule — a sub type implies a card
-			# type, but a card type never implies or clears a sub type).
+			# player picked by hand survives. SELECTION still flows one way only — a sub type
+			# implies a card type, but a card type never implies or clears a sub type. What changed
+			# in 2026-08-24 is BLOCKING, which now flows both ways: a hand-picked card type greys
+			# out the rows it excludes without ever touching what is selected in them.
 			if _sel_card_types.has(key) and not _manual_card_types.has(key):
 				_sel_card_types.erase(key)
 			_set_button_selected(btn, _sel_card_types.has(key), _theme_green)
@@ -1041,8 +1248,16 @@ func _apply_lock() -> void:
 			_manual_card_types.erase(key)
 			_set_button_blocked(btn)
 
-	# ── Pokemon-only rows: blocked while a Trainer sub type is selected ──
-	var block_pokemon := lock == "Trainer"
+	# Read AFTER the Card Type loop above, which is what settles _sel_card_types for this pass —
+	# it force-selects a locked type and erases the ones a lock blocks out.
+	#
+	# The `lock` terms are strictly redundant (a Trainer lock has already forced _sel_card_types to
+	# {"Trainer"}, so _supertype_possible("Pokémon") is false anyway) and are kept only so the
+	# original one-way rule still reads plainly in the code.
+	var block_pokemon := lock == "Trainer" or not _supertype_possible("Pokémon")
+	var block_trainer := lock == "Pokémon" or not _supertype_possible("Trainer")
+
+	# ── Pokemon-only rows: blocked by a Trainer sub type, or by picking Trainer/Energy by hand ──
 	for key in _type_icons:
 		_set_icon_blocked(_type_icons[key], block_pokemon, _sel_types.has(key))
 	for key in _sub_icons:
@@ -1055,8 +1270,7 @@ func _apply_lock() -> void:
 		else:
 			_set_button_selected(sbtn, _sel_stages.has(key), _theme_green)
 
-	# ── Trainer-only row: blocked while any Pokemon-only row is selected ──
-	var block_trainer := lock == "Pokémon"
+	# ── Trainer-only row: blocked by any Pokemon-only row, or by picking Pokemon/Energy by hand ──
 	for key in _trainer_btn:
 		var tbtn : Button = _trainer_btn[key]
 		_clear_button_overrides(tbtn)
@@ -1064,6 +1278,14 @@ func _apply_lock() -> void:
 			_set_button_blocked(tbtn)
 		else:
 			_set_button_selected(tbtn, _sel_trainer_subs.has(key), _theme_green)
+
+	# Only on a CHANGE. _apply_lock() runs on every single click anywhere on this screen, so an
+	# unconditional print would bury the console in identical lines.
+	var state := [lock, block_pokemon, block_trainer]
+	if state != _last_lock_state:
+		_last_lock_state = state
+		print("SUPERTYPE LOCK: card types ", _sel_card_types.keys(), " forced=\"", lock,
+			"\" -> pokemon rows blocked=", block_pokemon, ", trainer sub type blocked=", block_trainer)
 
 
 func _refresh_sort_buttons() -> void:
@@ -1105,8 +1327,11 @@ func _refresh_confirm_button() -> void:
 
 ## Snapshots the current selections into the criteria Dictionary the deck builder filters with.
 func build_criteria() -> Dictionary:
+	var name_terms  := parse_search_terms(_name_edit.text if _name_edit != null else "")
+	var illus_terms := parse_search_terms(_illus_edit.text if _illus_edit != null else "")
 	return {
-		"name":         _name_edit.text.strip_edges().to_lower() if _name_edit != null else "",
+		"name_terms":   name_terms,
+		"illus_terms":  illus_terms,
 		"types":        _sel_types.keys(),
 		"sets":         _sel_sets.keys(),
 		"card_types":   _sel_card_types.keys(),
@@ -1115,7 +1340,36 @@ func build_criteria() -> Dictionary:
 		"pokemon_subs": _sel_pokemon_subs.keys(),
 		"rarities":     _sel_rarities.keys(),
 		"powers":       _sel_powers.keys(),
-		"illustrator":  _illus_edit.text.strip_edges().to_lower() if _illus_edit != null else "",
 		"effects":      _sel_effects.keys(),
 		"sort":         _sort_mode,
 	}
+
+
+## ISSUE #149: splits one free-text box into OR terms on a COMMA.
+##
+## The separator was " OR " originally, which needed a pile of failsafes: "or" is a substring of
+## real card names (Voltorb, Porygon, Electrode), so the parser had to distinguish a separator from
+## a search term and had to define what a box holding nothing but separators meant. A comma has
+## none of that ambiguity — **not one of the ~2,000 cards in any of the 37 sets has a comma in its
+## name** — so a comma is only ever a separator and every one of those failsafes is gone with it.
+##
+## Returns a plain Array of lower-cased, non-empty terms. The caller ORs them together and ANDs the
+## result with every other filter, exactly as a single substring used to behave. An empty array
+## means no filter on this box, which now also covers the degenerate ",,," case: nothing to search
+## for, so nothing is excluded.
+##
+## Spacing around the comma is free — terms are stripped — so "Dratini,Dragonite" and
+## "Dratini, Dragonite" are the same search, and a trailing "Dratini," just drops the empty tail.
+##
+## ONE KNOWN WRINKLE, in the illustrator box only: 24 cards in neo1-neo4 carry a collaborator
+## credit of the form "K. Hoshiba, CR CG gangs", so their artist string does contain a comma.
+## Searching "Hoshiba" or "CR CG gangs" still works (each is one term, matched as a substring);
+## only pasting the full comma-containing string verbatim widens the search, and even then the
+## result is a superset of what was wanted. Card names are unaffected.
+static func parse_search_terms(raw: String) -> Array:
+	var terms : Array = []
+	for part in raw.to_lower().split(","):
+		var t := String(part).strip_edges()
+		if t != "":
+			terms.append(t)
+	return terms

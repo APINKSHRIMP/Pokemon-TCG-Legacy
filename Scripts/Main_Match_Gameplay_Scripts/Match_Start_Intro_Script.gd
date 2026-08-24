@@ -86,8 +86,9 @@ func _input(event: InputEvent) -> void:
 		transition_to_main_match()
 		return
 
-	# Any mouse click while the scene is showing skips to the match
-	if event is InputEventMouseButton and event.pressed and click_enabled and not transitioning:
+	# Any mouse click while the scene is showing skips to the match.
+	# ISSUE #135 FIX: the wheel is not a click -- scrolling used to skip the intro.
+	if UIInput.is_click(event) and click_enabled and not transitioning:
 		transition_to_main_match()
 
 # ============================================================

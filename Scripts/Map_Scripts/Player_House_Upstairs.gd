@@ -5,7 +5,16 @@ const BGM_PATH   = "res://Audio/BGM/Player Home (003 File Select PMD Blue Rescue
 
 const SPAWN_FROM_PLAYER_HOUSE_DOWNSTAIRS = Vector2(50, 20)
 
-const STARTER_BOX_CARDS = "base1-47,base1-47,base1-47,base1-47, base1-27,base1-27, base1-52,base1-52,base1-52,base1-52, base1-61,base1-61,base1-61,base1-61, base1-65,base1-65,base1-65,base1-65, base1-67,base1-67,base1-67,base1-67, base1-94,base1-94, base1-90,base1-90"
+# ISSUE #130 FIX: the box gift and Player_Data/Player_Decks/"Your First Deck".json had drifted --
+# the deck ran 4 Doduo and 2 Poliwag the player was never given, and 2 Bill it did not contain,
+# while the gift handed over 4 Voltorb against the deck's 2. Both are now the SAME 60-card list:
+#   2 Farfetch'd, 4 Diglett, 4 Doduo, 4 Machop, 2 Poliwag, 4 Rattata, 4 Staryu, 2 Voltorb,
+#   2 Potion, 2 Super Potion, 2 Bill, 16 Fighting Energy, 12 Water Energy   (all Base Set)
+# The 28 basic Energy are deliberately NOT in this string: no set's *_player_owned_cards.json
+# tracks basic Energy (it is unlimited and comes from the deck builder's energy section), so
+# gifting them would append entries no other set has and put Energy cards in the base1 grid.
+# CheatManager._STARTER_BOX_CARDS mirrors this constant -- change both together.
+const STARTER_BOX_CARDS = "base1-27, base1-27, base1-47, base1-47, base1-47, base1-47, base1-48, base1-48, base1-48, base1-48, base1-52, base1-52, base1-52, base1-52, base1-59, base1-59, base1-61, base1-61, base1-61, base1-61, base1-65, base1-65, base1-65, base1-65, base1-67, base1-67, base1-90, base1-90, base1-91, base1-91, base1-94, base1-94"
 
 const NOTE_TEXT = "\"Hi Sweetie, we found these tucked away in a cupboard when we were packing our things up. They must have been your's from when you were just a kid! Oh my - how time flies. Everyone in the harbour seems to play the game too but me and your father never got the hang of it so you might as well keep hold of them to see if you're still any good. Don't forget to catch the train and come visit us at our new place as soon as you can. Love you lots, See you soon x\""
 

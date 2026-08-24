@@ -201,6 +201,12 @@ func _unhandled_input(event):
 	if event is InputEventMouseButton:
 		if event.pressed:
 			if MapManager.message_panel != null and MapManager.message_panel.visible:
+				# ISSUE #135 FIX: a wheel notch is an InputEventMouseButton with pressed == true, so
+				# scrolling anywhere on the map used to dismiss the message the player was reading.
+				# Swallow the scroll instead (it must not fall through to the camera zoom below either,
+				# which would silently zoom the map behind the box).
+				if UIInput.is_scroll(event):
+					return
 				MapManager.handle_message_accept()
 				return
 			# ISSUE #81: don't let the mouse wheel zoom the overworld camera while the player is locked

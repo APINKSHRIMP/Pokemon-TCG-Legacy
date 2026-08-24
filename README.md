@@ -14,11 +14,11 @@ The story isn't a continuation from the original Pokemon TCG GB and GB2, but ins
 
 A vibrant never before seen open world with unique locations across the map to explore. Each area is filled with dozens of unique NPCs and opponents to play against. As you progress you will naturally unlock more areas, NPCs, sets and opponents throughout the game.
 
-![](/C:\Pokemon TCG Legacy/Image_Assets/Screenshots/taxi.gif)
+![loading-ag-292](Image_Assets/Screenshots/taxi.gif)
 
 ![battle](Image_Assets/Screenshots/overworld.gif)
 
-![](/C:\Pokemon TCG Legacy/Image_Assets/Screenshots/forest.gif)
+![loading-ag-293](Image_Assets/Screenshots/forest.gif)
 
 ### Battle Simulation Built From Scratch
 
@@ -32,7 +32,7 @@ Natural tutorial and game opening has been added so instead of a hard forced "tu
 
 Time naturally progresses throughout the day as you battle. NPCs have different habits, offering gifts, battles or varying speech depending on the time of day you interact with them. The world map changes and develops as time progresses, making the world feel actually lived in.
 
-![battle](Image_Assets/Screenshots/cycles.gif)![](/C:\Pokemon TCG Legacy/Image_Assets/Screenshots/times.gif)
+![battle](Image_Assets/Screenshots/cycles.gif)![loading-ag-294](Image_Assets/Screenshots/times.gif)
 
 ![](Image_Assets/Screenshots/gymhall.gif)
 
@@ -40,11 +40,9 @@ Time naturally progresses throughout the day as you battle. NPCs have different 
 
 Collect every single card from **Base Set** all the way through to **EX Power Keepers**. 3285 collectible cards across 37 individual sets. Build custom decks and experiment freely within the rules of the official Pokemon TCG. All card information is displayed in full making it the ultimate card database to view all of your favourite cards in full detail.
 
-![Cards](Image_Assets/Screenshots/Cards.gif)
+![Cards](Image_Assets/Screenshots/Cards.gif)![loading-ag-295](Image_Assets/Screenshots/Previews.gif)
 
-![](/C:\Pokemon TCG Legacy/Image_Assets/Screenshots/Previews.gif)
-
-![Coins](/C:\Pokemon TCG Legacy/Image_Assets/Screenshots/packs.gif)
+![loading-ag-296](Image_Assets/Screenshots/packs.gif)
 
 ### Familiar NPCs and gifts
 
@@ -64,13 +62,13 @@ Unlock **200+ unique sprites** as you progress through the game. Freely set your
 
 ![Trainer icons](Image_Assets/Screenshots/trainers.gif)
 
-![](/C:\Pokemon TCG Legacy/Image_Assets/Screenshots/Trainercard.gif)
+![loading-ag-297](Image_Assets/Screenshots/Trainercard.gif)
 
 ### 400+ Collectable Coins and Card Sleeves
 
 Win coins and sleeves as rewards for every battle and find some as gifts to use them in your matches. 
 
-![](/C:\Pokemon TCG Legacy/Image_Assets/Screenshots/Sleeves.gif)
+![loading-ag-298](Image_Assets/Screenshots/Sleeves.gif)
 
 ![Coins](Image_Assets/Screenshots/coins.gif)
 
@@ -78,7 +76,7 @@ Win coins and sleeves as rewards for every battle and find some as gifts to use 
 
 Hundreds of unique decks and opponents to battle so you never have to battle the same opponent twice! (Unless you want to)
 
-![loadingag392](/C:\Pokemon TCG Legacy/Image_Assets/Screenshots/Messages.gif)![Coins](/C:\Pokemon TCG Legacy/Image_Assets/Screenshots/intro.gif)
+![](Image_Assets/Screenshots/Messages.gif)![loading-ag-300](Image_Assets/Screenshots/intro.gif)
 
 ## Technical
 
