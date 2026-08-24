@@ -686,7 +686,7 @@ tile_map_data = PackedByteArray("AAD+/wIAAAAjAG0AAAD+/wMAAAAjAG4AAAD+/wQAAAAbAGY
 tile_set = ExtResource("2_bf13f")
 
 [node name="NEIGHBOUR 2 (TOP LEFT)" type="TileMap" parent="TILE_MAPS" unique_id=881994499]
-position = Vector2(-80, -447)
+position = Vector2(-80, -451)
 format = 2
 
 [node name="Walls2" type="TileMapLayer" parent="TILE_MAPS/NEIGHBOUR 2 (TOP LEFT)" unique_id=6114087]

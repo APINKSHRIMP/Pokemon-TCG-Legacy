@@ -4,6 +4,8 @@
 [ext_resource type="Shader" uid="uid://wbryi6fdcofj" path="res://Scripts/Shaders/Background_Scroll_Right_Side_Border.gdshader" id="2_c438k"]
 [ext_resource type="Texture2D" uid="uid://gcwevp2g0xyv" path="res://Image_Assets/Backgrounds_And_Borders/Borders/full_screen_border.png" id="3_w5stl"]
 [ext_resource type="Shader" uid="uid://d3gofmygrsrkm" path="res://Scripts/Shaders/Background_Scroll_Left.gdshader" id="4_1jy02"]
+[ext_resource type="Shader" uid="uid://ccm481fk14lc8" path="res://Scripts/Shaders/Background_Scroll_Right_Top_Border.gdshader" id="4_t8qen"]
+[ext_resource type="Texture2D" uid="uid://dieqv60p12hlk" path="res://Image_Assets/Backgrounds_And_Borders/Borders/horizontal_border.png" id="5_3fpct"]
 [ext_resource type="Texture2D" uid="uid://he803mdt247f" path="res://Image_Assets/Backgrounds_And_Borders/Backgrounds/background5.png" id="5_t8qen"]
 [ext_resource type="Theme" uid="uid://6shp5ck1tnja" path="res://UI_Themes/kenneyUI.tres" id="6_3fpct"]
 [ext_resource type="Theme" uid="uid://mbsg4xqnedxi" path="res://UI_Themes/kenneyUI-red.tres" id="7_r4yq8"]
@@ -16,14 +18,18 @@
 [ext_resource type="Texture2D" uid="uid://bxde4dsu018d7" path="res://Image_Assets/Card_Image_Library/base1/Small/base1-101.png" id="13_u6eey"]
 [ext_resource type="Texture2D" uid="uid://4jq4itcs7pxr" path="res://Image_Assets/Card_Image_Library/base1/Small/base1-102.png" id="14_ongeh"]
 
-[sub_resource type="ShaderMaterial" id="ShaderMaterial_tpt08"]
-shader = ExtResource("2_c438k")
-shader_parameter/scroll_speed = -0.01
-
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_2qd32"]
 shader = ExtResource("4_1jy02")
 shader_parameter/scroll_speed = 0.002
 shader_parameter/tint = Vector4(1, 1, 1, 1)
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_r4yq8"]
+shader = ExtResource("4_t8qen")
+shader_parameter/scroll_speed = -0.009
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_tpt08"]
+shader = ExtResource("2_c438k")
+shader_parameter/scroll_speed = -0.01
 
 [node name="DECK MODE" type="Control" unique_id=2098914800]
 layout_mode = 3
@@ -37,6 +43,28 @@ anchors_preset = 0
 offset_top = 59.0
 offset_right = 40.0
 offset_bottom = 99.0
+
+[node name="filter_background" type="TextureRect" parent="BACKGROUND" unique_id=221473067]
+z_index = -10
+material = SubResource("ShaderMaterial_2qd32")
+layout_mode = 0
+offset_left = -0.9999802
+offset_top = 48.0
+offset_right = 6623.0
+offset_bottom = 4465.0
+scale = Vector2(0.29, 0.29)
+texture = ExtResource("5_t8qen")
+stretch_mode = 1
+
+[node name="filter_border" type="TextureRect" parent="BACKGROUND" unique_id=1109345388]
+z_index = 200
+material = SubResource("ShaderMaterial_r4yq8")
+layout_mode = 0
+offset_top = -59.0
+offset_right = 1921.0
+offset_bottom = 48.0
+texture = ExtResource("5_3fpct")
+stretch_mode = 1
 
 [node name="top_and_right_border" type="TextureRect" parent="BACKGROUND" unique_id=800970225]
 z_index = -10

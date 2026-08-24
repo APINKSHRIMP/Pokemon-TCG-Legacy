@@ -97,9 +97,9 @@ text = "Close"
 [node name="player_name" type="LineEdit" parent="." unique_id=622026657]
 z_index = 300
 layout_mode = 0
-offset_left = 195.0
+offset_left = 127.0
 offset_top = 208.0
-offset_right = 817.0
+offset_right = 876.0
 offset_bottom = 276.43433
 theme = ExtResource("6_a35wf")
 theme_override_colors/font_color = Color(0, 0, 0, 1)
