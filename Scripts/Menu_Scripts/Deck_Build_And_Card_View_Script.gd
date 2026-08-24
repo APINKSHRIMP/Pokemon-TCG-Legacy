@@ -461,6 +461,19 @@ func _ensure_set_metadata_loaded(set_id: String) -> void:
 		for card in data:
 			var cid : String = card.get("id", "")
 			if cid != "":
+				# ISSUE #140: the ability list is boiled down to two booleans here rather than
+				# cached whole — the search only ever asks "does it have one", and keeping 3,340
+				# full ability arrays in memory for that would be wasteful. Matched on a lowercased
+				# SUBSTRING because the type strings carry an accent ("Poké-Body") and the older
+				# Base-through-Neo wording is "Pokémon Power", which belongs with Power not Body.
+				var has_power := false
+				var has_body  := false
+				for ability in card.get("abilities", []):
+					var atype := str(ability.get("type", "")).to_lower()
+					if "body" in atype:
+						has_body = true
+					elif "power" in atype:
+						has_power = true
 				_card_metadata_cache[cid] = {
 					"name": card.get("name", ""),
 					"supertype": card.get("supertype", ""),
@@ -468,6 +481,9 @@ func _ensure_set_metadata_loaded(set_id: String) -> void:
 					"types": card.get("types", []),
 					"evolvesFrom": card.get("evolvesFrom", ""),
 					"rarity": card.get("rarity", ""),
+					"artist": card.get("artist", ""),   # ISSUE #143
+					"has_power": has_power,             # ISSUE #140
+					"has_body": has_body,               # ISSUE #140
 				}
 
 	_card_metadata_cache[set_id + "-loaded"] = true
@@ -2025,6 +2041,19 @@ func _card_matches_search(card_id: String, criteria: Dictionary) -> bool:
 		if not _card_matches_rarity(str(meta.get("rarity", "")), wanted_rarities):
 			return false
 
+	# ── Has Power / Body ── ISSUE #140. A whole-card property like rarity, so it is NOT restricted
+	# to Pokemon: the Claw Fossil / Root Fossil Trainers carry a real Poké-Body and must match.
+	var wanted_powers : Array = criteria.get("powers", [])
+	if not wanted_powers.is_empty():
+		if not _card_matches_power(meta, wanted_powers):
+			return false
+
+	# ── Illustrator ── ISSUE #143. Always AND, case-insensitive substring, exactly like the name box
+	var wanted_illustrator : String = criteria.get("illustrator", "")
+	if wanted_illustrator != "":
+		if not (wanted_illustrator in str(meta.get("artist", "")).to_lower()):
+			return false
+
 	# ── Effect ── reserved; matches everything until CardSearchOverlay.EFFECT_FILTERS is populated
 	var wanted_effects : Array = criteria.get("effects", [])
 	if not wanted_effects.is_empty():
@@ -2065,6 +2094,23 @@ func _card_matches_pokemon_sub(card_name: String, subtypes_lower: Array, types: 
 					return true
 			"dualtype":
 				if types.size() > 1:
+					return true
+	return false
+
+
+## ISSUE #140: does the card carry the kind of ability the player asked for? Both flags are
+## precomputed in _ensure_set_metadata_loaded, so this is two dictionary reads.
+##
+## OR within the row, matching every other filter category on the screen — ticking both POWER and
+## BODY finds cards with either, not only the handful that have both.
+func _card_matches_power(meta: Dictionary, wanted: Array) -> bool:
+	for key in wanted:
+		match key:
+			"power":
+				if bool(meta.get("has_power", false)):
+					return true
+			"body":
+				if bool(meta.get("has_body", false)):
 					return true
 	return false
 

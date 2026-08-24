@@ -77,6 +77,16 @@ const SET_SINGLE_LINE_MAX := 12
 const SUB_ICON  := 62.0
 const SUB_PITCH := 104.0
 
+# Has Power / Has Body icons (ISSUE #140). Same size and pitch as the sub type row above them so
+# the two icon rows line up; separated out so either can be tuned on its own.
+const POWER_ICON  := 62.0
+const POWER_PITCH := 104.0
+
+# Illustrator free-text row (ISSUE #143). Height matches the NAME box so the screen's two text
+# fields read as a pair.
+const ILLUS_H := 72.0
+const ILLUS_W := 1110.0
+
 # Rarity symbol icons
 const RARITY_ICON  := 54.0
 const RARITY_PITCH := 90.0
@@ -184,6 +194,23 @@ const POKEMON_SUBS : Array = [
 	{"key": "dualtype", "icon": "dualtype", "tip": "Dual Type",       "gate": "ex4"},
 ]
 
+# ISSUE #140: "does this card have an ability, and of which kind".
+#   power -> a "Poké-Power" OR the older "Pokémon Power". Base Set through Neo printed every
+#            ability as "Pokémon Power"; e-Card split it into the activated Poké-Power and the
+#            passive Poké-Body, so the old name belongs with Power, not Body. 463 cards.
+#   body  -> a "Poké-Body". 385 cards. First printed in ecard1, hence the gate — basep has one
+#            promo with a Body, but promos are handed out at scripted story points and so are
+#            deliberately ignored for gating (same rule as TRAINER_SUBS above).
+#
+# NOT part of the Pokemon/Trainer supertype lock, unlike the rows above it. Eight Trainers
+# (Claw Fossil and Root Fossil in ex2/ex12/ex13/ex16) carry a real Poké-Body, so forcing
+# Card Type = Pokemon here would hide cards that genuinely match. It behaves like RARITY: a
+# whole-card property that simply ANDs with whatever else is selected.
+const POWER_FILTERS : Array = [
+	{"key": "power", "icon": "power", "tip": "Has a Pokemon Power / Poke-Power", "gate": ""},
+	{"key": "body",  "icon": "body",  "tip": "Has a Poke-Body",                  "gate": "ecard1"},
+]
+
 # Card rarity, in the order the player asked for: common -> uncommon -> rare -> holo rare.
 # "holorare" deliberately swallows every other Rare variant in the data — Rare Holo, Rare Holo EX,
 # Rare Holo Star, Rare Shining and Rare Secret (the secret rares are all holofoil cards).
@@ -223,6 +250,7 @@ var _sel_stages       : Dictionary = {}
 var _sel_trainer_subs : Dictionary = {}
 var _sel_pokemon_subs : Dictionary = {}
 var _sel_rarities     : Dictionary = {}
+var _sel_powers       : Dictionary = {}   # ISSUE #140
 var _sel_effects      : Dictionary = {}
 var _sort_mode        : String     = "set"
 
@@ -235,6 +263,7 @@ var _type_icons    : Dictionary = {}
 var _set_icons     : Dictionary = {}
 var _sub_icons     : Dictionary = {}
 var _rarity_icons  : Dictionary = {}
+var _power_icons   : Dictionary = {}   # ISSUE #140
 var _effect_icons  : Dictionary = {}
 var _card_type_btn : Dictionary = {}
 var _stage_btn     : Dictionary = {}
@@ -242,6 +271,7 @@ var _trainer_btn   : Dictionary = {}
 var _sort_btn      : Dictionary = {}
 
 var _name_edit    : LineEdit = null
+var _illus_edit   : LineEdit = null   # ISSUE #143
 var _confirm_btn  : Button   = null
 
 var _theme_white : Theme = null
@@ -363,9 +393,16 @@ func _build_rows() -> void:
 	y = _build_stage_row(y)
 	y = _build_trainer_sub_row(y)
 	y = _build_pokemon_sub_row(y)
+	y = _build_power_row(y)          # ISSUE #140 — sits directly under the sub type row
 	y = _build_rarity_row(y)
 	y = _build_effect_row(y)
+	y = _build_illustrator_row(y)    # ISSUE #143 — last filter before the sort buttons
 	y = _build_sort_row(y)
+
+	# With every set unlocked (the tallest the screen ever gets) the rows finish around y=972
+	# against a FOOTER_TOP of 992. If this print reports a y past FOOTER_TOP the rows have
+	# outgrown the screen — shrink ROW_GAP, POWER_ICON or ILLUS_H rather than letting it overlap.
+	print("ISSUE #140/#143 FIX ACTIVE: search rows built, bottom y=", y, " (FOOTER_TOP=", FOOTER_TOP, ")")
 
 
 func _build_name_row(y: float) -> float:
@@ -508,6 +545,52 @@ func _build_pokemon_sub_row(y: float) -> float:
 		x += SUB_PITCH
 
 	return y + SUB_ICON + ROW_GAP
+
+
+## ISSUE #140: "HAS POWER / BODY". Built exactly like the sub type row above it — same _make_icon
+## call, so the greyed icon_ art, the color_icon_ swap and the grow-and-glow pulse all come for free.
+## Like RARITY (and unlike the sub type row it sits under) it takes no part in the supertype lock;
+## see POWER_FILTERS for why.
+func _build_power_row(y: float) -> float:
+	var shown := _visible_options(POWER_FILTERS)
+	if shown.is_empty():
+		return y
+
+	_add_row_label("HAS POWER\nOR BODY", y, POWER_ICON)
+
+	var x := CTRL_X
+	for entry in shown:
+		var key : String = entry["key"]
+		var icon := _make_icon(SUBTYPE_ICON_PATH, entry["icon"], POWER_ICON, Vector2(x, y), entry["tip"])
+		icon.gui_input.connect(_on_icon_input.bind(icon, "power", key))
+		_power_icons[key] = icon
+		x += POWER_PITCH
+
+	return y + POWER_ICON + ROW_GAP
+
+
+## ISSUE #143: free-text illustrator box. Always an AND against every other filter, matched as a
+## case-insensitive substring, so "sugimori" finds every Ken Sugimori card and "ken" finds his plus
+## Ken Ikuji-Hirayama. Deliberately free text rather than a picker: there are 89 distinct artists in
+## the card data, far too many for an icon or button row.
+func _build_illustrator_row(y: float) -> float:
+	_add_row_label("ILLUSTRATOR", y, ILLUS_H)
+
+	_illus_edit = LineEdit.new()
+	_illus_edit.theme = _theme_white
+	_illus_edit.position = Vector2(CTRL_X, y)
+	_illus_edit.size     = Vector2(ILLUS_W, ILLUS_H)
+	_illus_edit.custom_minimum_size = Vector2(ILLUS_W, ILLUS_H)
+	_illus_edit.add_theme_font_size_override("font_size", 30)
+	_illus_edit.add_theme_color_override("font_color", Color.BLACK)
+	_illus_edit.placeholder_text = "Illustrator name....."
+	_illus_edit.max_length = 30
+	_illus_edit.z_index = 55
+	_illus_edit.text_changed.connect(_on_name_changed)
+	_illus_edit.text_submitted.connect(func(_t: String): _on_confirm_pressed())
+	add_child(_illus_edit)
+
+	return y + ILLUS_H + ROW_GAP
 
 
 ## Rarity is a whole-card property (Pokemon, Trainer and Energy all carry one), so unlike the stage
@@ -830,6 +913,8 @@ func _on_reset_pressed() -> void:
 	SoundManagerScript.play_sfx(SoundManagerScript.SFX_minus_select)
 
 	_name_edit.text = ""
+	if _illus_edit != null:
+		_illus_edit.text = ""
 
 	for key in _type_icons:
 		_sel_types.erase(key)
@@ -843,6 +928,9 @@ func _on_reset_pressed() -> void:
 	for key in _rarity_icons:
 		_sel_rarities.erase(key)
 		_set_icon_selected(_rarity_icons[key], false)
+	for key in _power_icons:
+		_sel_powers.erase(key)
+		_set_icon_selected(_power_icons[key], false)
 	for key in _effect_icons:
 		_sel_effects.erase(key)
 		_set_icon_selected(_effect_icons[key], false)
@@ -896,6 +984,7 @@ func _selection_store(category: String) -> Dictionary:
 		"trainer_sub": return _sel_trainer_subs
 		"pokemon_sub": return _sel_pokemon_subs
 		"rarity":      return _sel_rarities
+		"power":       return _sel_powers
 		"effect":      return _sel_effects
 	return {}
 
@@ -990,10 +1079,12 @@ func _refresh_sort_buttons() -> void:
 func _has_any_filter() -> bool:
 	if _name_edit != null and _name_edit.text.strip_edges() != "":
 		return true
+	if _illus_edit != null and _illus_edit.text.strip_edges() != "":
+		return true
 	return not (_sel_types.is_empty() and _sel_sets.is_empty() and _sel_card_types.is_empty()
 		and _sel_stages.is_empty() and _sel_trainer_subs.is_empty()
 		and _sel_pokemon_subs.is_empty() and _sel_rarities.is_empty()
-		and _sel_effects.is_empty())
+		and _sel_powers.is_empty() and _sel_effects.is_empty())
 
 
 func _refresh_confirm_button() -> void:
@@ -1023,6 +1114,8 @@ func build_criteria() -> Dictionary:
 		"trainer_subs": _sel_trainer_subs.keys(),
 		"pokemon_subs": _sel_pokemon_subs.keys(),
 		"rarities":     _sel_rarities.keys(),
+		"powers":       _sel_powers.keys(),
+		"illustrator":  _illus_edit.text.strip_edges().to_lower() if _illus_edit != null else "",
 		"effects":      _sel_effects.keys(),
 		"sort":         _sort_mode,
 	}

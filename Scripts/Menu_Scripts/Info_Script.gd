@@ -598,8 +598,8 @@ func _flash_cheat_message(message: String) -> void:
 	# (a root child), so it completes even after this Info scene is freed.
 	var tween := layer.create_tween()
 	tween.set_parallel(true)
-	tween.tween_property(label, "position:y", label.position.y - CHEAT_RISE_PX, CHEAT_RISE_TIME) 			.set_ease(Tween.EASE_OUT).set_delay(CHEAT_HOLD_TIME)
-	tween.tween_property(label, "modulate:a", 0.0, CHEAT_FADE_TIME) 			.set_ease(Tween.EASE_IN).set_delay(CHEAT_HOLD_TIME)
+	tween.tween_property(label, "position:y", label.position.y - CHEAT_RISE_PX, CHEAT_RISE_TIME).set_ease(Tween.EASE_OUT).set_delay(CHEAT_HOLD_TIME)
+	tween.tween_property(label, "modulate:a", 0.0, CHEAT_FADE_TIME).set_ease(Tween.EASE_IN).set_delay(CHEAT_HOLD_TIME)
 	tween.chain().tween_callback(func():
 		if is_instance_valid(layer):
 			layer.queue_free()
