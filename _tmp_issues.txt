@@ -1,0 +1,23 @@
+['#', 'Category', 'Sub Cat', 'Issue', 'Fix Notes', 'Fix Failure Notes', 'Status', 'Logged', 'Fixed', 'Debug']
+ROW 135
+  # = 132
+  Category = 'Cheats'
+  Sub Cat = 'New Functionality'
+  Issue = 'For the fun of it make the activated cheat codes rainbow coloured font like the "BONUS!" in the card packs. Also make the font Bold for this floating label making it easier to read and have it last 1 second longer before fading,'
+  Fix Notes = None
+  Fix Failure Notes = None
+  Status = 'New Functionality'
+  Logged = None
+  Fixed = None
+  Debug = None
+ROW 137
+  # = 134
+  Category = 'Cheats'
+  Sub Cat = 'New Functionality'
+  Issue = 'Add New Cheats "CHT.All_Coins", "CHT.All_Costumes", "CHT.All_Sleeves" to grant all coins costumes and sleeves respectively.'
+  Fix Notes = None
+  Fix Failure Notes = None
+  Status = 'New Functionality'
+  Logged = None
+  Fixed = None
+  Debug = None

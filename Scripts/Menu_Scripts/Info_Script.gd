@@ -3,17 +3,13 @@ extends Node
 # ─── Constants ───────────────────────────────────────────────────────────────
 
 const SPRITE_FOLDER      := "res://Image_Assets/Character_Sprites/In_Battle_Sprites"
-const COIN_FOLDER        := "res://Image_Assets/Coins"
 const MAX_NAME_LENGTH    := 21
 const OWNED_CARDS_FOLDER := "user://Player_Owned_Cards"
 const OWNED_CARDS_SUFFIX := "_player_owned_cards.json"
 
-# Cosmetic-collection folders, matched to the screens that display them so the X / Y counters
-# on this card can never disagree with what those grids actually show.
-# Costumes live in SPRITE_FOLDER above — Costume_Script lists that same folder.
-const SLEEVE_SMALL_FOLDER   := "res://Image_Assets/Sleeves/small"  # what Sleeves_Scene_Script lists
-const COIN_BACK_IMAGE       := "Back Basic.png"  # placeholder art for unowned coins, not a collectible
-const DEFAULT_SLEEVE_PREFIX := "1_Default"       # the four starter sleeves the sleeve grid hides
+# ISSUE #134: the cosmetic-collection folder constants that used to sit here now live in
+# GameState (COIN_ASSET_FOLDER / COSTUME_ASSET_FOLDER / SLEEVE_SMALL_FOLDER / COIN_BACK_IMAGE /
+# DEFAULT_SLEEVE_PREFIX), so the X / Y counters below and the CHT.All_* cheats read one list.
 
 # ─── Trainer-card row geometry ───────────────────────────────
 # The stat rows sit on bars painted into Trainer_card.png, so the art dictates their spacing, not
@@ -82,7 +78,7 @@ var PLAYER_DATA_PATH: String:
 
 var saved_player_name : String = ""
 
-var _cheat_label       : Label = null
+var _cheat_label       : RichTextLabel = null   # ISSUE #132: RichTextLabel, for the [rainbow] BBCode
 var _cheat_label_token : int   = 0
 
 var _sparkle : CPUParticles2D = null
@@ -386,9 +382,9 @@ func _populate_stats() -> void:
 		if cards["set_ids"].has(String(set_id)):
 			sets_unlocked += 1
 
-	var sleeve_universe  := _sleeve_universe()
-	var coin_universe    := _coin_universe()
-	var costume_universe := _costume_universe()
+	var sleeve_universe  := GameState.get_sleeve_universe()
+	var coin_universe    := GameState.get_coin_universe()
+	var costume_universe := GameState.get_costume_universe()
 
 	var rows := [
 		["Matches Won",            str(matches_won)],
@@ -503,60 +499,11 @@ func _scan_card_collection() -> Dictionary:
 
 # ─── Cosmetic collection counting ────────────────────────────────────────────
 
-# Lists the real asset files in a res:// folder. The editor shows "Ditto.jpg" next to its
-# "Ditto.jpg.import" sidecar, and an exported build can list "Ditto.jpg.remap" instead, so both
-# suffixes are stripped and the result de-duplicated through a Dictionary.
-func _list_asset_files(folder: String) -> Dictionary:
-	var out : Dictionary = {}
-	var dir := DirAccess.open(folder)
-	if dir == null:
-		push_error("Info: cannot open folder " + folder)
-		return out
-
-	dir.list_dir_begin()
-	var fname := dir.get_next()
-	while fname != "":
-		if not dir.current_is_dir():
-			var clean := fname
-			if clean.ends_with(".import"):
-				clean = clean.trim_suffix(".import")
-			elif clean.ends_with(".remap"):
-				clean = clean.trim_suffix(".remap")
-			out[clean] = true
-		fname = dir.get_next()
-	dir.list_dir_end()
-	return out
-
-
-# Each universe below is keyed EXACTLY the way that collection is stored in progress, so
-# ownership is a straight lookup and no per-collection name-munging is needed here.
-
-# progress["coins"] holds filenames: "Pikachu Gold.png"
-func _coin_universe() -> Dictionary:
-	var out : Dictionary = {}
-	for fname in _list_asset_files(COIN_FOLDER):
-		if fname != COIN_BACK_IMAGE:
-			out[fname] = true
-	return out
-
-
-# progress["sleeves"] holds bare basenames: "Ditto". The four "1_Default*" card backs are
-# excluded to match the sleeve grid, which also hides them — that is what stops the starter
-# "default" entry every save begins with from counting as a collected sleeve.
-func _sleeve_universe() -> Dictionary:
-	var out : Dictionary = {}
-	for fname in _list_asset_files(SLEEVE_SMALL_FOLDER):
-		if not String(fname).begins_with(DEFAULT_SLEEVE_PREFIX):
-			out[String(fname).get_basename()] = true
-	return out
-
-
-# progress["costumes"] holds lowercased filenames: "1ash.png" (GameState lowercases on save)
-func _costume_universe() -> Dictionary:
-	var out : Dictionary = {}
-	for fname in _list_asset_files(SPRITE_FOLDER):
-		out[String(fname).to_lower()] = true
-	return out
+# ISSUE #134: the three universes below moved to GameState (get_coin_universe /
+# get_costume_universe / get_sleeve_universe) so the CHT.All_* cheats grant exactly the set of
+# cosmetics these counters measure. Two copies of the folder-listing rules would have drifted.
+# Each universe is keyed EXACTLY the way that collection is stored in progress, so ownership is
+# a straight lookup: coins "Pikachu Gold.png", costumes "1ash.png", sleeves bare "Ditto".
 
 
 func _count_owned(universe: Dictionary, owned: Array) -> int:
@@ -569,11 +516,38 @@ func _count_owned(universe: Dictionary, owned: Array) -> int:
 
 # ─── Cheat notification ──────────────────────────────────────────────────────
 
+# ISSUE #132 TWEAKABLES — the cheat popup's look and timing.
+# HOLD_TIME is dead air at full opacity before the rise/fade starts; it is the "1 second longer"
+# the popup now lives for (total on-screen time = HOLD_TIME + RISE_TIME).
+# RISE_PX / RISE_TIME set the drift SPEED between them, exactly as in Pack_Opening_Manager's
+# NEW! and Bonus! labels — scale both by the same factor to change duration without changing speed.
+const CHEAT_HOLD_TIME    : float = 1.0
+const CHEAT_RISE_PX      : float = 120.0
+const CHEAT_RISE_TIME    : float = 2.0
+const CHEAT_FADE_TIME    : float = 2.0
+const CHEAT_FONT_SIZE    : int   = 64
+const CHEAT_OUTLINE_SIZE : int   = 10
+# kenvector_future.ttf ships in one weight with no bold face, so "bold" is synthesised: a
+# FontVariation thickens the strokes without changing glyph advances, so the measured width is
+# unchanged. Same value and same reasoning as Pack_Opening_Manager.LABEL_EMBOLDEN.
+const CHEAT_EMBOLDEN     : float = 0.6
+# Rainbow settings copied from the pack "Bonus!" label so the two read as the same effect.
+const CHEAT_RAINBOW_FREQ : float = 1.0   # colour cycles per second
+const CHEAT_RAINBOW_SAT  : float = 0.9   # 0 = white, 1 = fully saturated hues
+const CHEAT_RAINBOW_VAL  : float = 1.0   # brightness
+# RichTextLabel clips to its own rect (unlike Label), so the box needs real headroom or the
+# outline and any descender get sliced off. Y_OFFSET re-centres the top-aligned text on screen.
+const CHEAT_BOX_HEIGHT   : float = 120.0
+const CHEAT_BOX_Y_OFFSET : float = -42.0
+
+const CHEAT_THEME_PATH := "res://UI_Themes/kenneyUI.tres"
+
 func _flash_cheat_message(message: String) -> void:
 	# ISSUE #53 FIX: drive the cheat popup as a self-contained "float up + fade out" like the in-match
 	# floating labels, animated by a Tween OWNED BY the CanvasLayer (a root child). Previously the
 	# cleanup awaited a timer bound to THIS script; escaping the Info sub-menu freed the script and
-	# cancelled the await, leaving the label stuck on screen forever. Now it always fades within ~2s.
+	# cancelled the await, leaving the label stuck on screen forever. Now it always fades.
+	# ISSUE #132: same mechanism, restyled — bold, rainbow-cycled text that holds before it fades.
 	_cheat_label_token += 1
 	var my_token := _cheat_label_token
 
@@ -587,28 +561,45 @@ func _flash_cheat_message(message: String) -> void:
 	layer.layer = 128
 	get_tree().root.add_child(layer)
 
-	var label := Label.new()
-	label.name = "CheatNotificationLabel"
-	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	label.vertical_alignment   = VERTICAL_ALIGNMENT_CENTER
-	label.add_theme_font_size_override("font_size", 64)
-	label.add_theme_color_override("font_color", Color(1.0, 0.85, 0.0))
+	# ISSUE #132: RichTextLabel rather than Label purely for BBCode's built-in [rainbow], which
+	# offsets the hue per character and advances it every frame — the same colour wave the "Bonus!"
+	# label uses in Pack_Opening_Manager._show_bonus_label().
+	var theme_kenney : Theme = load(CHEAT_THEME_PATH)
+	var label := RichTextLabel.new()
+	label.name                = "CheatNotificationLabel"
+	label.bbcode_enabled      = true
+	label.scroll_active       = false
+	label.autowrap_mode       = TextServer.AUTOWRAP_OFF   # one line, never rewrapped
+	label.add_theme_font_size_override("normal_font_size", CHEAT_FONT_SIZE)
 	label.add_theme_color_override("font_outline_color", Color.BLACK)
-	label.add_theme_constant_override("outline_size", 10)
+	label.add_theme_constant_override("outline_size", CHEAT_OUTLINE_SIZE)
+	if theme_kenney != null:
+		label.theme = theme_kenney
+		var base_font : Font = theme_kenney.default_font
+		if base_font != null:
+			var bold := FontVariation.new()
+			bold.base_font          = base_font
+			bold.variation_embolden = CHEAT_EMBOLDEN
+			label.add_theme_font_override("normal_font", bold)
 	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	label.text = message
+	label.text = "[center][rainbow freq=%s sat=%s val=%s]%s[/rainbow][/center]" % [
+			CHEAT_RAINBOW_FREQ, CHEAT_RAINBOW_SAT, CHEAT_RAINBOW_VAL, message]
+
 	var vp_size := get_viewport().get_visible_rect().size
-	label.size = Vector2(vp_size.x, 80)
-	label.position = Vector2(0, vp_size.y * 0.5 - 40)
+	label.size     = Vector2(vp_size.x, CHEAT_BOX_HEIGHT)
+	label.position = Vector2(0, vp_size.y * 0.5 + CHEAT_BOX_Y_OFFSET)
 	layer.add_child(label)
 	_cheat_label = label
 
-	# Float up ~120px while fading out over 2s, then free the layer. The tween is owned by `layer`
+	print("ISSUE #132 FIX ACTIVE: rainbow cheat popup '", message, "' holding ", CHEAT_HOLD_TIME,
+			"s then rising ", CHEAT_RISE_PX, "px over ", CHEAT_RISE_TIME, "s")
+
+	# Hold at full opacity (set_delay), then float up while fading. The tween is owned by `layer`
 	# (a root child), so it completes even after this Info scene is freed.
 	var tween := layer.create_tween()
 	tween.set_parallel(true)
-	tween.tween_property(label, "position:y", label.position.y - 120.0, 2.0).set_ease(Tween.EASE_OUT)
-	tween.tween_property(label, "modulate:a", 0.0, 2.0).set_ease(Tween.EASE_IN)
+	tween.tween_property(label, "position:y", label.position.y - CHEAT_RISE_PX, CHEAT_RISE_TIME) 			.set_ease(Tween.EASE_OUT).set_delay(CHEAT_HOLD_TIME)
+	tween.tween_property(label, "modulate:a", 0.0, CHEAT_FADE_TIME) 			.set_ease(Tween.EASE_IN).set_delay(CHEAT_HOLD_TIME)
 	tween.chain().tween_callback(func():
 		if is_instance_valid(layer):
 			layer.queue_free()

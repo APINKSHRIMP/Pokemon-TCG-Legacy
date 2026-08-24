@@ -15,6 +15,11 @@ const _CHEAT_LABELS := {
 	"CHT.Add_Starter_Set":  "Starter set added",
 	"CHT.Add_Shop_Set":     "Shop set added",
 	"CHT.Remove_All_Cards": "Remove all cards cheat activated",
+	# ISSUE #134: cosmetic collections. "All" means every file the matching grid screen lists —
+	# the universes come from GameState so these can never disagree with the trainer card counters.
+	"CHT.All_Coins":        "All coins cheat activated",
+	"CHT.All_Costumes":     "All costumes cheat activated",
+	"CHT.All_Sleeves":      "All sleeves cheat activated",
 }
 
 # ISSUE #99: the four groups between them must cover EVERY set in Card_Set_Data/ — the promo sets
@@ -53,6 +58,21 @@ static func _apply(code: String) -> void:
 			GameState.give_cards(_SHOP_STARTER_CARDS)
 		"CHT.Remove_All_Cards":
 			_zero_all_cards()
+		"CHT.All_Coins":
+			# Every coin in Image_Assets/Coins except the "Back Basic" placeholder.
+			var coins := GameState.get_coin_universe().keys()
+			var new_coins := GameState.add_coins_to_collection(coins)
+			print("ISSUE #134 FIX ACTIVE: CHT.All_Coins granted ", new_coins, " new coins of ", coins.size(), " total")
+		"CHT.All_Costumes":
+			# Every in-battle trainer sprite — the same folder the costume grid lists.
+			var costumes := GameState.get_costume_universe().keys()
+			var new_costumes := GameState.add_costumes_to_collection(costumes)
+			print("ISSUE #134 FIX ACTIVE: CHT.All_Costumes granted ", new_costumes, " new costumes of ", costumes.size(), " total")
+		"CHT.All_Sleeves":
+			# include_defaults = true: the sleeve grid shows the "1_Default*" backs, so "all" owns them.
+			var sleeves := GameState.get_sleeve_universe(true).keys()
+			var new_sleeves := GameState.add_sleeves_to_collection(sleeves)
+			print("ISSUE #134 FIX ACTIVE: CHT.All_Sleeves granted ", new_sleeves, " new sleeves of ", sleeves.size(), " total")
 
 
 static func _set_cards_in_set(set_id: String, count: int) -> void:

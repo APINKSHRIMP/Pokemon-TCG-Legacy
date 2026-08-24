@@ -15,6 +15,10 @@ const STARTER_SLEEVES: Array = [
 	"1_Default_Japanese_Old",
 ]
 
+# The four "1_Default*" card backs are the freebies — the sleeve grid still shows them, but they
+# do not count towards the trainer card's "collected" total. See get_sleeve_universe().
+const DEFAULT_SLEEVE_PREFIX := "1_Default"
+
 # TEMP TESTING: synthetic opponent metadata used by the T-key TEST match so no
 # NPC JSON needs to exist. Sprite is left blank (intro skips a missing sprite).
 func build_test_opponent_data() -> Dictionary:
@@ -872,6 +876,71 @@ func mark_gift_received(npc_name: String):
 		save_progress()
 
 # ============================================================
+# COSMETIC ASSET UNIVERSES
+# ============================================================
+# ISSUE #134: "what could I possibly own" for each cosmetic collection. These used to live as
+# private helpers in Info_Script (they drive the X / Y counters on the trainer card); the
+# CHT.All_* cheats need exactly the same lists, so they moved here rather than being copied.
+# Each universe is keyed EXACTLY the way that collection is stored in `progress`, so ownership
+# is a straight lookup and no per-collection name-munging is needed at the call site.
+
+const COIN_ASSET_FOLDER    := "res://Image_Assets/Coins"
+const COIN_BACK_IMAGE      := "Back Basic.png"   # placeholder art for unowned coins, not a collectible
+const COSTUME_ASSET_FOLDER := "res://Image_Assets/Character_Sprites/In_Battle_Sprites"
+const SLEEVE_SMALL_FOLDER  := "res://Image_Assets/Sleeves/small"  # what the sleeve grid lists
+
+# Lists the real asset files in a res:// folder. The editor shows "Ditto.jpg" next to its
+# "Ditto.jpg.import" sidecar, and an exported build can list "Ditto.jpg.remap" instead, so both
+# suffixes are stripped and the result de-duplicated through a Dictionary.
+func list_asset_files(folder: String) -> Dictionary:
+	var out: Dictionary = {}
+	var dir := DirAccess.open(folder)
+	if dir == null:
+		push_error("GameState: cannot open folder " + folder)
+		return out
+	dir.list_dir_begin()
+	var fname := dir.get_next()
+	while fname != "":
+		if not dir.current_is_dir():
+			var clean := fname
+			if clean.ends_with(".import"):
+				clean = clean.trim_suffix(".import")
+			elif clean.ends_with(".remap"):
+				clean = clean.trim_suffix(".remap")
+			out[clean] = true
+		fname = dir.get_next()
+	dir.list_dir_end()
+	return out
+
+# progress["coins"] holds filenames: "Pikachu Gold.png"
+func get_coin_universe() -> Dictionary:
+	var out: Dictionary = {}
+	for fname in list_asset_files(COIN_ASSET_FOLDER):
+		if fname != COIN_BACK_IMAGE:
+			out[fname] = true
+	return out
+
+# progress["costumes"] holds lowercased filenames: "1ash.png"
+func get_costume_universe() -> Dictionary:
+	var out: Dictionary = {}
+	for fname in list_asset_files(COSTUME_ASSET_FOLDER):
+		out[String(fname).to_lower()] = true
+	return out
+
+# progress["sleeves"] holds bare basenames: "Ditto". `include_defaults` controls the four
+# "1_Default*" card backs: the sleeve GRID shows them (so the CHT.All_Sleeves cheat grants them),
+# but the trainer card's collected counter excludes them — freebies every save starts with are
+# not "collected".
+func get_sleeve_universe(include_defaults: bool = false) -> Dictionary:
+	var out: Dictionary = {}
+	for fname in list_asset_files(SLEEVE_SMALL_FOLDER):
+		if not include_defaults and String(fname).begins_with(DEFAULT_SLEEVE_PREFIX):
+			continue
+		out[String(fname).get_basename()] = true
+	return out
+
+
+# ============================================================
 # COIN COLLECTION
 # ============================================================
 
@@ -890,6 +959,25 @@ func has_coin(coin_name: String) -> bool:
 
 func get_coins() -> Array:
 	return progress.get("coins", [])
+
+# ISSUE #134: bulk grant used by the CHT.All_Coins cheat. Saves ONCE at the end rather than once
+# per coin — add_coin_to_collection() writes the whole progress file every call, which over 400+
+# coins would be 400+ disk writes. Names are canonicalised the same way as the singular version,
+# so it accepts either "Pikachu Gold" or "Pikachu Gold.png". Returns how many were newly added.
+func add_coins_to_collection(coin_names: Array) -> int:
+	var coins: Array = progress.get("coins", [])
+	var added := 0
+	for raw in coin_names:
+		var coin_filename := String(raw)
+		if not coin_filename.ends_with(".png"):
+			coin_filename += ".png"
+		if coin_filename not in coins:
+			coins.append(coin_filename)
+			added += 1
+	if added > 0:
+		progress["coins"] = coins
+		save_progress()
+	return added
 
 # ============================================================
 # COSTUME COLLECTION
@@ -911,6 +999,23 @@ func add_costume_to_collection(battle_sprite: String) -> void:
 func get_costumes() -> Array:
 	return progress.get("costumes", [])
 
+# ISSUE #134: bulk grant used by the CHT.All_Costumes cheat. One save at the end, same reasoning
+# as add_coins_to_collection(). Accepts either a bare sprite name or a stored "1ash.png" filename.
+func add_costumes_to_collection(battle_sprites: Array) -> int:
+	var costumes: Array = progress.get("costumes", [])
+	var added := 0
+	for raw in battle_sprites:
+		var costume_filename := String(raw).to_lower()
+		if not costume_filename.ends_with(".png"):
+			costume_filename += ".png"
+		if costume_filename not in costumes:
+			costumes.append(costume_filename)
+			added += 1
+	if added > 0:
+		progress["costumes"] = costumes
+		save_progress()
+	return added
+
 # ============================================================
 # SLEEVE COLLECTION
 # ============================================================
@@ -927,6 +1032,21 @@ func add_sleeve_to_collection(sleeve_name: String) -> void:
 
 func get_sleeves() -> Array:
 	return progress.get("sleeves", [])
+
+# ISSUE #134: bulk grant used by the CHT.All_Sleeves cheat. One save at the end, same reasoning as
+# add_coins_to_collection(). Sleeves are stored as bare basenames, so any extension is stripped.
+func add_sleeves_to_collection(sleeve_names: Array) -> int:
+	var sleeves: Array = progress.get("sleeves", [])
+	var added := 0
+	for raw in sleeve_names:
+		var sleeve_name := String(raw).get_basename()
+		if sleeve_name not in sleeves:
+			sleeves.append(sleeve_name)
+			added += 1
+	if added > 0:
+		progress["sleeves"] = sleeves
+		save_progress()
+	return added
 
 
 # ============================================================
