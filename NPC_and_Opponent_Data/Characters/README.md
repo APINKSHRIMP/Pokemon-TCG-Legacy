@@ -143,16 +143,39 @@ The first rule sets nothing — it just means *"also here, exactly as described 
 }
 ```
 
-### Kind switching
+### Branching on progress, and switching kind
 
-A character who is scenery before a quest and battleable after:
+A rule can gate on `requires` as well as days/times, and the resolver picks the
+first rule whose **days, times _and_ condition** all pass. That lets one character
+hold several states at once. The Pikachu Fans use four — where they stand follows
+whether you have beaten them, whether they can be battled follows the time of day:
 
 ```jsonc
-"when": [
-  { "days": "5-8", "times": "M,A", "kind": "npc" },
-  { "days": "5-8", "times": "E" }
-]
+"Pikachu Fan Marina": {
+  "at": [3272, 1427],
+  "move": "idle_random",
+  "requires": "not beaten: Pikachu Fan Marina",
+  "says": { "meet": "Have you ever seen a Pikachu Surf...", ... },
+  "when": [
+    { "days": "5-12", "times": "M,A" },
+    { "days": "5-12", "times": "E", "kind": "npc", "says": { ...quieter lines... } },
+    { "days": "5-12", "times": "M,A", "at": [0, 100], "move": { "pattern": "random_wander", ... },
+      "requires": "beaten: Pikachu Fan Marina" },
+    { "days": "5-12", "times": "E", "kind": "npc", "at": [0, 100], "move": { ... },
+      "says": { ... }, "requires": "beaten: Pikachu Fan Marina" }
+  ]
+}
 ```
+
+Two things to know:
+
+- **A rule with no `requires` inherits the character's.** The first two rules above
+  are gated on `not beaten` without repeating it, the same way they inherit `at`.
+- **They are a group, and the evening state exists for a reason.** None of the six
+  can be battled after dark, so when time rolls over to night they all vanish
+  together. Without it, beating one child at the moment time advanced would respawn
+  that child alone in the forest with no parent — see `Pikachu Mum`, who is
+  likewise never battleable in the evening and is present on every day they are.
 
 ### Clearing an inherited field
 
@@ -203,18 +226,27 @@ stop existing afterwards.
 
 ## Dressing
 
-Rotating scenery, on its own cycle so it drifts against the cast cycle — 4 vs 5
-means every day is a different combination, which hides the loop.
+Rotating scenery, on its own cycle, independent of the cast cycle.
 
 ```jsonc
 "dressing": {
-  "cycle": { "from": 1, "period": 5 },
+  "cycle": { "from": 2, "period": 4 },
   "days": {
     "1": ["TILE_MAPS/JETTY/DAY 1 Boats"],
     "2": ["TILE_MAPS/JETTY/DAY 2 Boats", "TILE_MAPS/OBJECTS/CAR PARK CARS/CARS DAY 2"]
   }
 }
 ```
+
+The cycle starts at **2**, not 1: day 1 is the intro day and has boats but no cars,
+so a cycle including it emptied the car park every fifth day. Day 1 now resolves
+only to itself and days 2–5 rotate forever.
+
+> **Watch the period against the map's cast cycle.** Celeste Harbour's cast also
+> runs period 4, so the two are currently in lockstep — day 9 looks exactly like
+> day 5, scenery and people both. Giving dressing a period that shares no factor
+> with the cast's (5 against 4) makes every day a different combination and hides
+> the loop, which needs a fifth entry in `days`.
 
 Nodes listed for the resolved day are shown; everything named anywhere in the
 block and not listed for today is hidden. Permanent unlocks (the forest gate, the
@@ -245,12 +277,27 @@ maintenance worker out on the water fixing a light is scenery for that time slot
 not somebody you are meant to reach. The one catch: you can close the tool while
 standing inside geometry, so walk clear first (or press `F` again to walk out).
 
-The write goes back to **the exact rule that produced that actor today**. If you
-move someone while the game is on a Tuesday evening and they only stand there on
-Tuesday evenings, only that rule's `at` changes. The HUD names the scope
-(`always` or `when-rule #n`) so you can see where the edit will land before you
-save. Combine it with the date and time debug keys (`1`–`0`, `H`/`J`/`K`/`L`) to
-reach the slot you want to edit.
+### What a save actually rewrites
+
+The write goes back to **the rule that produced that actor today, edited in place.**
+It does *not* split the current day out into a new rule.
+
+So if a character has one rule reading `"days": "8,12"` and you move them on day 8,
+they move on **day 12 as well** — the whole rule changed. That is normally what you
+want when repositioning someone, but it is worth being deliberate about, so the HUD
+spells the blast radius out before you press Enter:
+
+```
+edit applies to: when-rule #3 — days 8,12, M,A,E
+```
+
+Matching the character's top-level `at` instead (`the character's defaults`) is
+broader still — it feeds every rule that doesn't set its own position.
+
+If you want a position that applies to one day only, add a rule for that day in the
+JSON first, then reload and move the actor — the tool will match the new narrower
+rule and edit that. Combine with the date and time debug keys (`1`–`0`,
+`H`/`J`/`K`/`L`) to reach the slot you want.
 
 ---
 

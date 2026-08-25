@@ -81,6 +81,10 @@ func _refresh_actors() -> void:
 		return
 	for child in _container.get_children():
 		if child.has_meta("source"):
+			# Remember what pattern it spawned with, so a save can tell whether R
+			# actually changed it.
+			if not child.has_meta("original_pattern") and "movement_pattern" in child:
+				child.set_meta("original_pattern", child.movement_pattern)
 			_actors.append(child)
 	if _player != null and is_instance_valid(_player):
 		var origin: Vector2 = _player.global_position
@@ -299,9 +303,17 @@ func _cycle_pattern() -> void:
 
 func _record(actor: Node2D) -> void:
 	var key := _key_for(actor)
+	var src: Dictionary = actor.get_meta("source", {})
 	var entry: Dictionary = _pending.get(key, {})
 	entry["at"] = actor.position
-	if "movement_pattern" in actor:
+	entry["at_owner"] = int(src.get("at_owner", -1))
+	entry["move_owner"] = int(src.get("move_owner", -1))
+	# Only record the pattern if R actually changed it. Writing it unconditionally
+	# replaced a structured move ({pattern, radius, speed}) with a bare pattern
+	# string, silently dropping the radius and speed the character was tuned with.
+	var was: String = str(actor.get_meta("original_pattern", ""))
+	var changed: bool = ("movement_pattern" in actor) and was != ""
+	if changed and actor.movement_pattern != was:
 		entry["pattern"] = actor.movement_pattern
 	_pending[key] = entry
 
@@ -309,6 +321,10 @@ func _record(actor: Node2D) -> void:
 func _close() -> void:
 	if _grabbed:
 		_drop()
+	# F is the deliberate discard path (Escape refuses instead), but say what went
+	# in the bin -- losing a move silently is how you lose it twice.
+	if not _pending.is_empty():
+		print("PlacementTool: closed, DISCARDING %d unsaved change(s)" % _pending.size())
 	queue_free()
 
 
@@ -317,8 +333,15 @@ func _close() -> void:
 # ============================================================
 
 func _save() -> void:
+	# Enter means "save what I am looking at". A grab in flight has moved the actor
+	# but not recorded it -- only _drop() does that -- so saving mid-grab used to
+	# report nothing to save and quietly throw the move away.
+	if _grabbed:
+		_drop()
+		_update_hud()
 	if _pending.is_empty():
-		_flash("nothing to save")
+		_flash("[color=orange]nothing to save — move an actor first[/color]")
+		print("PlacementTool: save requested with no pending changes")
 		return
 	var path := CharacterSchedule.DIR + _map_data + ".json"
 	var file := FileAccess.open(path, FileAccess.READ)
@@ -343,22 +366,21 @@ func _save() -> void:
 		if not (character is Dictionary):
 			push_warning("PlacementTool: %s/%s vanished from %s" % [section, name, path])
 			continue
-		# rule -1 means the character's own fields matched; anything else is the
-		# index of the `when` rule that did, so the edit lands only on those days.
-		var target: Dictionary = character
-		if rule_index >= 0:
-			var rules = character.get("when")
-			if rules is Array and rule_index < rules.size():
-				target = rules[rule_index]
 		var change: Dictionary = _pending[key]
 		var at: Vector2 = change["at"]
-		target["at"] = [roundi(at.x), roundi(at.y)]
+		# Write each field where it currently lives. A character whose rules only
+		# say WHEN they appear keeps one shared position, so moving them moves them
+		# everywhere; a rule that genuinely overrides the position keeps its override
+		# scoped to those days.
+		var at_target := _owner_of(character, int(change.get("at_owner", rule_index)))
+		at_target["at"] = [roundi(at.x), roundi(at.y)]
 		if change.has("pattern"):
+			var move_target := _owner_of(character, int(change.get("move_owner", rule_index)))
 			# Keep the object form's extra numbers if the character already had them.
-			if target.get("move") is Dictionary:
-				target["move"]["pattern"] = change["pattern"]
+			if move_target.get("move") is Dictionary:
+				move_target["move"]["pattern"] = change["pattern"]
 			else:
-				target["move"] = change["pattern"]
+				move_target["move"] = change["pattern"]
 		written += 1
 
 	var text := JSON.stringify(doc, "  ", false)
@@ -373,6 +395,16 @@ func _save() -> void:
 	CharacterSchedule.invalidate(_map_data)
 	_flash("[color=lime]saved %d change(s) to %s.json[/color]" % [written, _map_data])
 	print("PlacementTool: wrote %d change(s) to %s" % [written, path])
+
+
+## The rule that owns a field, or the character itself when the value is inherited.
+func _owner_of(character: Dictionary, owner_index: int) -> Dictionary:
+	if owner_index < 0:
+		return character
+	var rules = character.get("when")
+	if rules is Array and owner_index < rules.size() and rules[owner_index] is Dictionary:
+		return rules[owner_index]
+	return character
 
 
 ## Put coordinate pairs back on one line. JSON.stringify would otherwise spread
@@ -413,6 +445,35 @@ func _build_hud() -> void:
 	add_child(_panel)
 
 
+## Which days and times a save would rewrite for this actor.
+##
+## The save edits the matched rule in place, so the blast radius is that rule's
+## whole schedule -- not just the day you happen to be standing on. A rule reading
+## `days: "8,12"` moves the actor on day 12 as well. This is usually what you want
+## when repositioning someone, but it has to be visible before you press Enter.
+func _scope_text(actor: Node) -> String:
+	var src: Dictionary = actor.get_meta("source", {})
+	var doc := CharacterSchedule.load_map(_map_data)
+	var character = doc.get(str(src.get("section", "")), {}).get(str(src.get("name", "")))
+	if not (character is Dictionary):
+		return "this character"
+	# The position is edited where it LIVES, which is not always the rule that
+	# matched: a character whose rules only say when they appear keeps one shared
+	# position, so the edit lands on the defaults and moves them everywhere.
+	var owner := int(src.get("at_owner", -1))
+	if owner < 0:
+		var rules = character.get("when")
+		if rules is Array and not rules.is_empty():
+			return "this character on every day (one shared position)"
+		return "days %s, %s" % [str(character.get("days", "*")), str(character.get("times", "*"))]
+	var rules_any = character.get("when")
+	if rules_any is Array and owner < rules_any.size():
+		var scope: Dictionary = rules_any[owner]
+		return "when-rule #%d only — days %s, %s" % [
+			owner, str(scope.get("days", "*")), str(scope.get("times", "*"))]
+	return "this character"
+
+
 ## Tint whoever is selected so it is obvious which actor the keys are driving.
 func _apply_selection_tint() -> void:
 	if _tinted != null and is_instance_valid(_tinted):
@@ -434,13 +495,16 @@ func _update_hud() -> void:
 		lines.append("[color=gray]no actor selected -- Tab to cycle[/color]")
 	else:
 		var src: Dictionary = actor.get_meta("source", {})
-		var scope := "always" if int(src.get("rule", -1)) < 0 else "when-rule #%d" % int(src.get("rule", -1))
 		var away := 0.0
 		if _player != null and is_instance_valid(_player):
 			away = actor.global_position.distance_to(_player.global_position)
-		lines.append("[%d/%d] [b]%s[/b]   [color=gray](%s, %s, %dpx away)[/color]"
+		lines.append("[%d/%d] [b]%s[/b]   [color=gray](%s, %dpx away)[/color]"
 			% [_index + 1, _actors.size(), _name_of(actor),
-			   src.get("section", "?"), scope, roundi(away)])
+			   src.get("section", "?"), roundi(away)])
+		# Saving rewrites the rule that matched TODAY, in place -- it does not split
+		# the day out. So a rule covering days 8,12 moves the actor on both. Spell
+		# that out before the save rather than after.
+		lines.append("[color=aqua]edit applies to: %s[/color]" % _scope_text(actor))
 		lines.append("at [%d, %d]   pattern: %s%s"
 			% [roundi(actor.position.x), roundi(actor.position.y),
 			   actor.movement_pattern if "movement_pattern" in actor else "-",

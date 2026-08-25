@@ -189,7 +189,11 @@ func initialise(
 	_build_message_box()
 	if not GameState.returning_from_battle:
 		GameState.last_battled_opponent_entry = {}
-	var cast: Dictionary = CharacterSchedule.cast_for(map_data, GameState.get_date(), GameState.get_time())
+	# The evaluator lets rule selection see progress, so a character can have one
+	# rule for "not beaten yet" and another for "already beaten" covering the same
+	# day and time -- the Pikachu Fans move across the forest once you beat them.
+	var cast: Dictionary = CharacterSchedule.cast_for(
+		map_data, GameState.get_date(), GameState.get_time(), evaluate_condition)
 	_load_and_spawn_opponents(cast.get("opponents", []))
 	_load_and_spawn_npcs(cast.get("npcs", []))
 
@@ -473,6 +477,12 @@ func spawn_npc_entry(entry: Dictionary) -> void:
 # ============================================================
 # CONDITION EVALUATION
 # ============================================================
+
+## Public wrapper so CharacterSchedule can be handed this as a Callable without
+## reaching into a private method.
+func evaluate_condition(condition: Dictionary) -> bool:
+	return _evaluate_condition(condition)
+
 
 func _evaluate_condition(condition: Dictionary) -> bool:
 	if condition.is_empty():

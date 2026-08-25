@@ -6138,7 +6138,8 @@ func load_opponent_data_by_name(opp_name: String):
 		return
 
 	opponent_data = CharacterSchedule.find_opponent(
-		GameState.current_opponent_map, opp_name, GameState.get_date(), GameState.get_time())
+		GameState.current_opponent_map, opp_name,
+		GameState.get_date(), GameState.get_time(), MapManager.evaluate_condition)
 	if opponent_data.is_empty():
 		print("Opponent with name ", opp_name, " not found on map ",
 			GameState.current_opponent_map)

@@ -48,14 +48,14 @@
       "days": "5,7-8",
       "times": "M,A,E",
       "move": "idle_left",
-      "requires": "not met: VF 5,7,8 D,E Rocket Pack Gift",
+      "requires": "not met: Rocket Pack Gift",
       "says": {
         "meet": "I'm glad we can finally get our hands on these packs. You look like you haven't opened many of these so have one on me. Spread the word you can buy them here.",
         "repeat": "Hope you pulled something good from that."
       }
     },
     "Veteran Iris": {
-      "at": [1989.0, 129.0],
+      "at": [1992.0, 103.0],
       "days": "6",
       "times": "N",
       "move": "idle_left",
@@ -65,11 +65,11 @@
       }
     },
     "Wishing Well Coin Thrower": {
-      "at": [3278.0, 1052.0],
+      "at": [3278.0, 1050.0],
       "days": "5-8",
       "times": "M,A",
       "move": "idle_down",
-      "requires": "not met: VF 5-8 D Wishing Well Coin Thrower",
+      "requires": "not met: Wishing Well Coin Thrower",
       "says": {
         "meet": "I always come here to throw a coin in the well and make a wish but they never come true. Maybe if I give this to you instead it'll work better.",
         "repeat": "You could always try making a wish by throwing a coin in yourself."
@@ -78,7 +78,7 @@
   },
   "opponents": {
     "Backpacker Patrick": {
-      "at": [-270.0, 1650.0],
+      "at": [2.0, 1566.0],
       "move": {
         "pattern": "random_wander",
         "radius": 65.0,
@@ -132,8 +132,8 @@
       ]
     },
     "Card Expert Nathan": {
-      "at": [3320.0, 170.0],
-      "move": "idle_right",
+      "at": [3417.0, 1381.0],
+      "move": "idle_down",
       "says": {
         "meet": "Fire Pokemon are my favourite. They're so strong.",
         "repeat": "Looking for another solid match?",
@@ -148,14 +148,12 @@
         },
         {
           "days": "7,11",
-          "times": "A,E",
-          "at": [3019, 336],
-          "move": "idle_right"
+          "times": "A,E"
         }
       ]
     },
     "Card Expert Ruby": {
-      "at": [3320.0, 430.0],
+      "at": [3018.0, 222.0],
       "move": "idle_right",
       "says": {
         "meet": "You have to be careful with fire in the forest!!! They're only cards though so it's completely fine!",
@@ -180,7 +178,7 @@
       ]
     },
     "Clown Glenn": {
-      "at": [290.0, 350.0],
+      "at": [491, 542],
       "move": {
         "distance": 100.0,
         "pattern": "patrol_square",
@@ -209,7 +207,7 @@
       ]
     },
     "Clown Hubert": {
-      "at": [340.0, 400.0],
+      "at": [645.0, 523.0],
       "move": "idle_cycle",
       "says": {
         "meet": "Can you believe that some people are actually scared of us clowns!!!",
@@ -234,7 +232,7 @@
       ]
     },
     "Doctor Mortimor": {
-      "at": [-50.0, -50.0],
+      "at": [-8.0, 1658.0],
       "move": {
         "axis": "horizontal",
         "distance": 3100.0,
@@ -266,7 +264,7 @@
     "Ex Gym Leader Blaine": {
       "at": [455.0, 500.0],
       "move": "idle_up",
-      "requires": "met: CH 3-6 E Blaine",
+      "requires": "met: Blaine",
       "says": {
         "meet": "Hah! I'm Blaine! I was the Leader of Cinnabar Gym before it burned down in the volcanic eruption. I retired but I'm here to help run this challenge. You won't be able to use certain trainers in your deck if you're taking part.",
         "repeat": "I'll never give up until I win.",
@@ -313,7 +311,7 @@
       "days": "6-7",
       "times": "M,A,E,N",
       "move": "idle_left",
-      "requires": "met: CH 3-6 E Brock",
+      "requires": "met: Brock",
       "says": {
         "meet": "I'm Brock, the Ex Gym Leader of Pewter City and expert on Rock-type Pokemon. I'm practicing hard before the challenge begins. Did you know about the ruleset? Some trainer cards are banned for the challenge so you can't use them in your deck. Show me your best.",
         "repeat": "I really enjoyed our last match. Want to give it another shot?",
@@ -350,7 +348,7 @@
       "days": "7-8",
       "times": "M,A",
       "move": "idle_right",
-      "requires": "met: CH 3-6 D Erika",
+      "requires": "met: Erika",
       "says": {
         "meet": "Hello, such pleasant weather here, I'm afraid I may doze off... My name is Erika. I was the leader of Celadon Gym. If you want a match with me you'll need to make sure you don't use any banned trainer cards.",
         "repeat": "Plants are such delicate things. The amount of water, the condition of the soil, the temperature differences, the changing weather can have such a huge effect. Sorry.. you want another match?",
@@ -387,7 +385,7 @@
       "days": "8",
       "times": "E,N",
       "move": "idle_up",
-      "requires": "met: CH 3-6 N Giovanni",
+      "requires": "met: Giovanni",
       "says": {
         "meet": "I shall spare you a moment of my time. I am the ex Gym Leader Giovanni. I believe Team Rocket has arrived but I know nothing of their plans. I am merely here for the Gym Hero Challenge.",
         "repeat": "Two things are inevitable: my success and your failure.",
@@ -424,7 +422,7 @@
       "days": "6,8",
       "times": "E,N",
       "move": "idle_up",
-      "requires": "met: CH 3-6 N Koga",
+      "requires": "met: Koga",
       "says": {
         "meet": "Fwahaha! I am Koga. I was part of the Elite Four but most importantly an Ex Gym Leader. My style will confound and destroy you! Confusion, sleep, poison... Prepare to be the victim of my sinister technique!",
         "repeat": "I, too, must pursue further discipline.",
@@ -461,7 +459,7 @@
       "days": "7-8",
       "times": "E,N",
       "move": "idle_left",
-      "requires": "met: CH 3-6 D Lt Surge",
+      "requires": "met: Lt Surge",
       "says": {
         "meet": "Hey Kid, you're in for a shock if you think you can beat me at the Gym Challenge. You'll need to hold your nerve against me. I'm using the Gym Challenge rules, so don't think about using any banned trainer cards.",
         "repeat": "Still slugging and chugging away?",
@@ -496,7 +494,7 @@
     "Ex Gym Leader Misty": {
       "at": [3325.0, 325.0],
       "move": "idle_right",
-      "requires": "met: CH 3-6 D Misty",
+      "requires": "met: Misty",
       "says": {
         "meet": "This bridge really reminds me of home. I'm Misty, the Ex Gym Leader of Cerulean. I'm known for my all out Water-type offensive. This is only a practice but I won't hold back and we'll still play by the banned trainer cards rules.",
         "repeat": "I haven't got time to go swimming today so do you want another match?",
@@ -543,7 +541,7 @@
       "days": "7-8",
       "times": "E,N",
       "move": "idle_down",
-      "requires": "met: CH 3-6 N Sabrina",
+      "requires": "met: Sabrina",
       "says": {
         "meet": "I had a vision of your arrival! My name is Sabrina. I have had psychic powers since I was a child. You're here to play against me. I will grant you a match.",
         "repeat": "I knew you would return and this too shall not be the last time we meet.",
@@ -576,7 +574,7 @@
       }
     },
     "Forest Ranger Tucker": {
-      "at": [2640.0, 610.0],
+      "at": [2666.0, 1377.0],
       "move": {
         "pattern": "random_wander",
         "radius": 65.0,
@@ -605,8 +603,8 @@
       ]
     },
     "Fossil Expert Jonathan": {
-      "at": [465.0, 1585.0],
-      "move": "idle_up",
+      "at": [2716.0, 1331.0],
+      "move": "idle_down",
       "says": {
         "meet": "There's a lot of history in this forest, it's been around for thousands of years.",
         "repeat": "You haven't found any mysterious artifacts around here have you?",
@@ -630,7 +628,7 @@
       ]
     },
     "Gambler Victor": {
-      "at": [3300.0, -40.0],
+      "at": [3498.0, -1.0],
       "move": "idle_random",
       "says": {
         "meet": "You need a lot of luck in life, some things are entirely up to chance.",
@@ -651,7 +649,7 @@
       ]
     },
     "Gentleman Benedict": {
-      "at": [3710.0, 1095.0],
+      "at": [3711.0, 1101.0],
       "move": "idle_left",
       "says": {
         "meet": "Good day. I'm not the most youthful but I love a good match.",
@@ -672,10 +670,10 @@
       ]
     },
     "Ghost Whisperer Vera": {
-      "at": [3277.0, 1062.0],
+      "at": [3390.0, 1501.0],
       "days": "7-8,10-12",
       "times": "N",
-      "move": "idle_down",
+      "move": "idle_up",
       "says": {
         "meet": "This forest is haunted. I am here to speak with those from the past.",
         "repeat": "Hope you haven't joined any gangs.",
@@ -685,7 +683,7 @@
       }
     },
     "Hiker Walter": {
-      "at": [400.0, 350.0],
+      "at": [1001.0, 84.0],
       "days": "7-11/2",
       "times": "A,E,N",
       "move": {
@@ -702,8 +700,8 @@
       }
     },
     "Lady Fiona": {
-      "at": [2054.0, 928.0],
-      "move": "idle_down",
+      "at": [1565.0, 103.0],
+      "move": "idle_right",
       "says": {
         "meet": "There's always beauty to be found in even the most seemingly ugly things.",
         "repeat": "Life and everything in it is beauty.",
@@ -723,7 +721,7 @@
       ]
     },
     "Light Engineer Chase": {
-      "at": [3270.0, 300.0],
+      "at": [2966.0, 347.0],
       "days": "7-11/2",
       "times": "E,N",
       "move": "idle_left",
@@ -765,7 +763,7 @@
       ]
     },
     "Nature Lover Erin": {
-      "at": [1777.0, 1050.0],
+      "at": [1780.0, -61.0],
       "move": {
         "pattern": "random_wander",
         "radius": 65.0,
@@ -794,7 +792,7 @@
       ]
     },
     "Ninjaboy Sasuke": {
-      "at": [850.0, 650.0],
+      "at": [2682.0, 8.0],
       "move": {
         "axis": "horizontal",
         "distance": 240.0,
@@ -824,7 +822,7 @@
       ]
     },
     "Old Traveller Cliff": {
-      "at": [70.0, 1590.0],
+      "at": [-113.0, 1557.0],
       "move": "idle_right",
       "says": {
         "meet": "Me and my dear friend arrived on the SS Anne. We've travelled on it a few years in the past.",
@@ -845,7 +843,7 @@
       ]
     },
     "Old Traveller Harold": {
-      "at": [100.0, 1590.0],
+      "at": [-85.0, 1557.0],
       "move": "idle_left",
       "says": {
         "meet": "I'm travelling the world with my old friend. We've been to many places in our time.",
@@ -866,14 +864,13 @@
       ]
     },
     "Pikachu Fan Cami": {
-      "at": [0.0, 250.0],
-      "days": "5-12",
-      "times": "M,A",
+      "at": [3600.0, 50.0],
       "move": {
         "pattern": "random_wander",
         "radius": 65.0,
         "speed": 20.0
       },
+      "requires": "not beaten: Pikachu Fan Cami",
       "says": {
         "meet": "I love taking pictures of Pokemon, especially Pikachu!",
         "repeat": "I'm really good with a Camera!",
@@ -881,6 +878,48 @@
         "rematch_win": "Do you want to see more pictures of Pikachu?",
         "loss": "I'll have to take a photo to remember this moment"
       },
+      "when": [
+        {
+          "days": "5-12",
+          "times": "M,A"
+        },
+        {
+          "days": "5-12",
+          "times": "E",
+          "kind": "npc",
+          "says": {
+            "meet": "I've been taking some good pictures on my camera recently.",
+            "repeat": "I'm still working on my Pikachu picture collection. I currently don't have many."
+          }
+        },
+        {
+          "days": "5-12",
+          "times": "M,A",
+          "at": [0.0, 250.0],
+          "move": {
+            "pattern": "random_wander",
+            "radius": 65.0,
+            "speed": 20.0
+          },
+          "requires": "beaten: Pikachu Fan Cami"
+        },
+        {
+          "days": "5-12",
+          "times": "E",
+          "kind": "npc",
+          "at": [0.0, 250.0],
+          "move": {
+            "pattern": "random_wander",
+            "radius": 65.0,
+            "speed": 20.0
+          },
+          "says": {
+            "meet": "I've been taking some good pictures on my camera recently.",
+            "repeat": "I'm still working on my Pikachu picture collection. I currently don't have many."
+          },
+          "requires": "beaten: Pikachu Fan Cami"
+        }
+      ],
       "match_effects": [
         {
           "type": "ignore_weakness_and_resistance"
@@ -891,10 +930,9 @@
       ]
     },
     "Pikachu Fan Juniper": {
-      "at": [125.0, 300.0],
-      "days": "5-12",
-      "times": "M,A",
+      "at": [-307.0, 1680.0],
       "move": "idle_random",
+      "requires": "not beaten: Pikachu Fan Juniper",
       "says": {
         "meet": "Did you know Pikachu live in the forest?",
         "repeat": "I've not seen any Pikachu around here yet.",
@@ -902,6 +940,48 @@
         "rematch_win": "Have you found a Pikachu around here yet?",
         "loss": "If I'm lucky enough to win then I should be lucky enough to see a Pikachu!"
       },
+      "when": [
+        {
+          "days": "5-12",
+          "times": "M,A"
+        },
+        {
+          "days": "5-12",
+          "times": "E",
+          "kind": "npc",
+          "says": {
+            "meet": "I've still got my eyes open trying to find a Pikachu here!",
+            "repeat": "Please tell me if you find a Pikachu running around here!!"
+          }
+        },
+        {
+          "days": "5-12",
+          "times": "M,A",
+          "at": [125.0, 300.0],
+          "move": {
+            "pattern": "random_wander",
+            "radius": 65.0,
+            "speed": 20.0
+          },
+          "requires": "beaten: Pikachu Fan Juniper"
+        },
+        {
+          "days": "5-12",
+          "times": "E",
+          "kind": "npc",
+          "at": [125.0, 300.0],
+          "move": {
+            "pattern": "random_wander",
+            "radius": 65.0,
+            "speed": 20.0
+          },
+          "says": {
+            "meet": "I've still got my eyes open trying to find a Pikachu here!",
+            "repeat": "Please tell me if you find a Pikachu running around here!!"
+          },
+          "requires": "beaten: Pikachu Fan Juniper"
+        }
+      ],
       "match_effects": [
         {
           "type": "ignore_weakness_and_resistance"
@@ -913,9 +993,7 @@
       ]
     },
     "Pikachu Fan Leaf": {
-      "at": [275.0, 100.0],
-      "days": "5-12",
-      "times": "M,A",
+      "at": [-248.0, 655.0],
       "move": {
         "axis": "vertical",
         "distance": 350.0,
@@ -923,6 +1001,7 @@
         "radius": 65.0,
         "speed": 50.0
       },
+      "requires": "not beaten: Pikachu Fan Leaf",
       "says": {
         "meet": "Pikachu is just so cute, he's the cutest Pokemon ever!",
         "repeat": "I love every Pikachu.",
@@ -930,6 +1009,48 @@
         "rematch_win": "I will win with my Pikachu one day!",
         "loss": "That's why I love Pikachu so much!"
       },
+      "when": [
+        {
+          "days": "5-12",
+          "times": "M,A"
+        },
+        {
+          "days": "5-12",
+          "times": "E",
+          "kind": "npc",
+          "says": {
+            "meet": "Do you love Pikachu too?",
+            "repeat": "I love Pikachu the most out of all of us!"
+          }
+        },
+        {
+          "days": "5-12",
+          "times": "M,A",
+          "at": [275.0, 100.0],
+          "move": {
+            "pattern": "random_wander",
+            "radius": 65.0,
+            "speed": 20.0
+          },
+          "requires": "beaten: Pikachu Fan Leaf"
+        },
+        {
+          "days": "5-12",
+          "times": "E",
+          "kind": "npc",
+          "at": [275.0, 100.0],
+          "move": {
+            "pattern": "random_wander",
+            "radius": 65.0,
+            "speed": 20.0
+          },
+          "says": {
+            "meet": "Do you love Pikachu too?",
+            "repeat": "I love Pikachu the most out of all of us!"
+          },
+          "requires": "beaten: Pikachu Fan Leaf"
+        }
+      ],
       "match_effects": [
         {
           "type": "ignore_weakness_and_resistance"
@@ -942,10 +1063,9 @@
       ]
     },
     "Pikachu Fan Marina": {
-      "at": [0.0, 100.0],
-      "days": "5-12",
-      "times": "M,A",
+      "at": [3272.0, 1427.0],
       "move": "idle_random",
+      "requires": "not beaten: Pikachu Fan Marina",
       "says": {
         "meet": "Have you ever seen a Pikachu Surf, Some are really really good on a surfboard!!",
         "repeat": "Have you seen a Pikachu on a surfboard yet?",
@@ -953,6 +1073,48 @@
         "rematch_win": "I wish I could surf like a Pikachu",
         "loss": "Pikachu can do everything, it's the best!!!"
       },
+      "when": [
+        {
+          "days": "5-12",
+          "times": "M,A"
+        },
+        {
+          "days": "5-12",
+          "times": "E",
+          "kind": "npc",
+          "says": {
+            "meet": "I've never even been on a surfboard before.",
+            "repeat": "I wish I could surf like a Pikachu!"
+          }
+        },
+        {
+          "days": "5-12",
+          "times": "M,A",
+          "at": [0.0, 100.0],
+          "move": {
+            "pattern": "random_wander",
+            "radius": 65.0,
+            "speed": 20.0
+          },
+          "requires": "beaten: Pikachu Fan Marina"
+        },
+        {
+          "days": "5-12",
+          "times": "E",
+          "kind": "npc",
+          "at": [0.0, 100.0],
+          "move": {
+            "pattern": "random_wander",
+            "radius": 65.0,
+            "speed": 20.0
+          },
+          "says": {
+            "meet": "I've never even been on a surfboard before.",
+            "repeat": "I wish I could surf like a Pikachu!"
+          },
+          "requires": "beaten: Pikachu Fan Marina"
+        }
+      ],
       "match_effects": [
         {
           "type": "ignore_weakness_and_resistance"
@@ -963,14 +1125,13 @@
       ]
     },
     "Pikachu Fan Raye": {
-      "at": [275.0, 250.0],
-      "days": "5-12",
-      "times": "M,A",
+      "at": [2025.0, 1025.0],
       "move": {
         "pattern": "random_wander",
         "radius": 65.0,
         "speed": 20.0
       },
+      "requires": "not beaten: Pikachu Fan Raye",
       "says": {
         "meet": "Go Pikachu, use Thunderbolt!!!.... I don't really have a Pikachu.",
         "repeat": "I wish I could have a Pikachu for real",
@@ -978,6 +1139,48 @@
         "rematch_win": "I still don't have a Pikachu at all",
         "loss": "My Pikachu would be really strong too!"
       },
+      "when": [
+        {
+          "days": "5-12",
+          "times": "M,A"
+        },
+        {
+          "days": "5-12",
+          "times": "E",
+          "kind": "npc",
+          "says": {
+            "meet": "Thunderbolt is such a super duper powerful attack.",
+            "repeat": "I would never want to be shocked by a real Thunderbolt!!"
+          }
+        },
+        {
+          "days": "5-12",
+          "times": "M,A",
+          "at": [275.0, 250.0],
+          "move": {
+            "pattern": "random_wander",
+            "radius": 65.0,
+            "speed": 20.0
+          },
+          "requires": "beaten: Pikachu Fan Raye"
+        },
+        {
+          "days": "5-12",
+          "times": "E",
+          "kind": "npc",
+          "at": [275.0, 250.0],
+          "move": {
+            "pattern": "random_wander",
+            "radius": 65.0,
+            "speed": 20.0
+          },
+          "says": {
+            "meet": "Thunderbolt is such a super duper powerful attack.",
+            "repeat": "I would never want to be shocked by a real Thunderbolt!!"
+          },
+          "requires": "beaten: Pikachu Fan Raye"
+        }
+      ],
       "match_effects": [
         {
           "type": "ignore_weakness_and_resistance"
@@ -989,14 +1192,13 @@
       ]
     },
     "Pikachu Fan Skye": {
-      "at": [275.0, 100.0],
-      "days": "5-12",
-      "times": "M,A",
+      "at": [900.0, 1470.0],
       "move": {
         "pattern": "random_wander",
         "radius": 65.0,
         "speed": 20.0
       },
+      "requires": "not beaten: Pikachu Fan Skye",
       "says": {
         "meet": "Some Pokemon can use fly to take you somewhere you want to go. Turns out so can Pikachu!",
         "repeat": "I want to take a ride on a flying Pikachu",
@@ -1004,6 +1206,48 @@
         "rematch_win": "I've never see a flying Pikachu",
         "loss": "You'll never catch a Pikachu that's flying away!"
       },
+      "when": [
+        {
+          "days": "5-12",
+          "times": "M,A"
+        },
+        {
+          "days": "5-12",
+          "times": "E",
+          "kind": "npc",
+          "says": {
+            "meet": "I've still not seen a Pikachu fly!",
+            "repeat": "I wish I could go flying toooo."
+          }
+        },
+        {
+          "days": "5-12",
+          "times": "M,A",
+          "at": [275.0, 100.0],
+          "move": {
+            "pattern": "random_wander",
+            "radius": 65.0,
+            "speed": 20.0
+          },
+          "requires": "beaten: Pikachu Fan Skye"
+        },
+        {
+          "days": "5-12",
+          "times": "E",
+          "kind": "npc",
+          "at": [275.0, 100.0],
+          "move": {
+            "pattern": "random_wander",
+            "radius": 65.0,
+            "speed": 20.0
+          },
+          "says": {
+            "meet": "I've still not seen a Pikachu fly!",
+            "repeat": "I wish I could go flying toooo."
+          },
+          "requires": "beaten: Pikachu Fan Skye"
+        }
+      ],
       "match_effects": [
         {
           "type": "ignore_weakness_and_resistance"
@@ -1036,40 +1280,30 @@
       },
       "when": [
         {
-          "days": "5",
-          "times": "E"
-        },
-        {
-          "days": "6-12",
+          "days": "5-12",
           "times": "M,A"
         },
         {
+          "days": "5-12",
+          "times": "E",
           "kind": "npc",
           "at": [198.0, 164.0],
-          "days": "6-8",
-          "times": "E",
           "move": "idle_right",
-          "requires": {
-            "not_all_beaten": [
-              "Pikachu Fan Marina",
-              "Pikachu Fan Skye",
-              "Pikachu Fan Cami",
-              "Pikachu Fan Juniper",
-              "Pikachu Fan Raye",
-              "Pikachu Fan Leaf"
-            ]
-          },
           "says": {
             "meet": "It's nearly time to go home now so I better round up my kids!",
             "repeat": "We come back here every day because they're all so obsessed with Pikachu!!"
           }
         },
         {
+          "days": "5-12",
+          "times": "M,A",
           "kind": "npc",
           "at": [198.0, 164.0],
-          "days": "5",
-          "times": "M,A",
           "move": "idle_right",
+          "says": {
+            "meet": "It's nearly time to go home now so I better round up my kids!",
+            "repeat": "We come back here every day because they're all so obsessed with Pikachu!!"
+          },
           "requires": {
             "not_all_beaten": [
               "Pikachu Fan Marina",
@@ -1079,10 +1313,27 @@
               "Pikachu Fan Raye",
               "Pikachu Fan Leaf"
             ]
-          },
+          }
+        },
+        {
+          "days": "5-12",
+          "times": "E",
+          "kind": "npc",
+          "at": [198.0, 164.0],
+          "move": "idle_right",
           "says": {
-            "meet": "All my kids always wander off and don't come back for a while. They love looking for Pikachu around here but have never found one. If you see any of them could you tell them to come back here please?",
-            "repeat": "All my kids are dressed up as Pikachu, from a distance you might mistake them for an actual Pikachu!! If you can get them all to come back here I'd appreciate it."
+            "meet": "It's nearly time to go home now so I better round up my kids!",
+            "repeat": "We come back here every day because they're all so obsessed with Pikachu!!"
+          },
+          "requires": {
+            "not_all_beaten": [
+              "Pikachu Fan Marina",
+              "Pikachu Fan Skye",
+              "Pikachu Fan Cami",
+              "Pikachu Fan Juniper",
+              "Pikachu Fan Raye",
+              "Pikachu Fan Leaf"
+            ]
           }
         }
       ]
@@ -1114,7 +1365,7 @@
       ]
     },
     "Police Sergeant Douglas": {
-      "at": [-300.0, 1650.0],
+      "at": [1108.0, 1673.0],
       "move": {
         "axis": "horizontal",
         "distance": 2800.0,
@@ -1140,7 +1391,7 @@
       ]
     },
     "Psychic Eli": {
-      "at": [295.0, 1190.0],
+      "at": [294.0, 1190.0],
       "days": "6-12/2",
       "times": "N",
       "move": "idle_down",
@@ -1153,7 +1404,7 @@
       }
     },
     "Psychic Nova": {
-      "at": [277.0, 1190.0],
+      "at": [270.0, 1190.0],
       "move": "idle_down",
       "says": {
         "meet": "If you relax your thoughts and focus your mind entirely, some people can move objects with natural telekinetic powers.",
@@ -1198,7 +1449,7 @@
       "placeholder": true
     },
     "Rocket Boss Giovanni": {
-      "at": [1790.0, 500.0],
+      "at": [1783.0, 523.0],
       "days": "5-11/2",
       "times": "N",
       "move": "idle_left",
@@ -1211,7 +1462,7 @@
       }
     },
     "Rocket Exec Archer": {
-      "at": [3277.0, 1060.0],
+      "at": [3277.0, 1051.0],
       "move": "idle_down",
       "says": {
         "meet": "Hello. I'm Archer one of the 4 execs of Team Rocket. We're not here to do anything illicit. Not yet anyway. We're just getting started.",
@@ -1232,7 +1483,7 @@
       ]
     },
     "Rocket Exec Ariana": {
-      "at": [1760.0, 500.0],
+      "at": [1760.0, 524.0],
       "days": "5-11/2",
       "times": "N",
       "move": "idle_right",
@@ -1245,7 +1496,7 @@
       }
     },
     "Rocket Exec Petrel": {
-      "at": [3300.0, 1130.0],
+      "at": [3300.0, 1113.0],
       "move": "idle_up",
       "says": {
         "meet": "Heh, you've found us at the right time. We've been hiding from the police... Not that we've done anything illegal, we're just here to play this card game.",
@@ -1266,7 +1517,7 @@
       ]
     },
     "Rocket Exec Proton": {
-      "at": [3250.0, 1130.0],
+      "at": [3254.0, 1113.0],
       "move": "idle_up",
       "says": {
         "meet": "This well is bringing back a lot of memories... I can't imagine you've heard of Team Rocket before but you'll hear about us soon.",
@@ -1287,7 +1538,7 @@
       ]
     },
     "Rocket Grunt Margot": {
-      "at": [1770.0, 200.0],
+      "at": [1607.0, 36.0],
       "move": {
         "pattern": "random_wander",
         "radius": 65.0,
@@ -1379,7 +1630,7 @@
       ]
     },
     "Veteran Sylvester": {
-      "at": [1989.0, 110.0],
+      "at": [1992.0, 103.0],
       "days": "8-12/2",
       "times": "A,E,N",
       "move": "idle_left",
@@ -1392,7 +1643,7 @@
       }
     },
     "Young Sage Kai": {
-      "at": [3708.0, 1092.0],
+      "at": [3709.0, 1102.0],
       "move": "idle_left",
       "says": {
         "meet": "Have you ever tried meditating in the forest? The atmosphere is perfect for it.",
@@ -1417,8 +1668,8 @@
       ]
     },
     "Youngster Cooper": {
-      "at": [210.0, 290.0],
-      "move": "idle_random",
+      "at": [1010.0, 1482.0],
+      "move": "idle_left",
       "says": {
         "meet": "Have you ever seen a pokemon EXPLODE before? It's CRAZY!",
         "repeat": "I PROMISE I haven't blown anything up!!",
@@ -1442,9 +1693,9 @@
       ]
     },
     "Youngster Milo": {
-      "at": [400.0, 400.0],
+      "at": [-19.0, 1497.0],
       "move": {
-        "pattern": "random_wander",
+        "pattern": "idle_down",
         "radius": 65.0,
         "speed": 50.0
       },

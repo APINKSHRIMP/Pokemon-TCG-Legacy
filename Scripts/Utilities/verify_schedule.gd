@@ -25,6 +25,10 @@ const TIMES := ["Morning", "Afternoon", "Evening", "Night"]
 
 var _exit_code := 0
 
+## Schedule gaps found while checking condition branching. Reported, not failed
+## -- they are missing content rather than a broken resolver.
+var _gaps: Array = []
+
 
 ## SceneTree keeps spinning after _initialize() returns, so the run has to end from
 ## _process -- returning true tears the loop down after a single frame.
@@ -66,6 +70,7 @@ func _initialize() -> void:
 		print("%-26s %2d-%-6d %5d %6d %10d" % [map_name, lo, hi, map_slots, npc_total, opp_total])
 
 	print("")
+	failures += _check_condition_variants()
 	failures += _check_constants()
 	failures += _check_loop_identity()
 	failures += _check_story_characters()
@@ -96,6 +101,92 @@ func _check_entries(map_name: String, day: int, time: String, cast: Dictionary) 
 				printerr("  %s d%d %s: %s has no position" % [map_name, day, time, name])
 				bad += 1
 	return bad
+
+
+## A character with rules gated on opposite sides of a condition must resolve to a
+## DIFFERENT entry depending on that condition, and must be present either way.
+##
+## Rule selection originally looked only at days/times, so the first rule covering
+## a slot always won and its condition then filtered the character out entirely --
+## the Pikachu Fans vanished on defeat instead of relocating, and the three
+## gym-leader phases could never have worked. This drives the resolver with a
+## stubbed evaluator forced true and forced false, and checks both.
+func _check_condition_variants() -> int:
+	var bad := 0
+	var checked := 0
+	# A stub that answers false to both a condition and its negation is not a world
+	# state that can exist. These two model coherent ones -- nothing done yet, and
+	# everything done -- by answering each condition according to its polarity.
+	var nothing_done := func(c: Dictionary) -> bool: return _world_says(c, false)
+	var all_done := func(c: Dictionary) -> bool: return _world_says(c, true)
+
+	for map_name in MAPS:
+		var doc := CharacterSchedule.load_map(map_name)
+		var calendar: Dictionary = doc.get("calendar", {})
+		for section in ["npcs", "opponents"]:
+			for name in doc.get(section, {}):
+				var character: Dictionary = doc[section][name]
+				var rules = character.get("when")
+				if not (rules is Array):
+					continue
+				# Only characters that actually branch on a condition.
+				var gated := 0
+				for rule in rules:
+					if rule is Dictionary and rule.has("requires"):
+						gated += 1
+				if gated == 0 or gated == rules.size():
+					continue
+				checked += 1
+				var day: int = int(calendar.get("loop", {}).get("from", 1))
+				for time in TIMES:
+					var yes := _entry_for(map_name, name, day, time, all_done)
+					var no := _entry_for(map_name, name, day, time, nothing_done)
+					if yes.is_empty() and no.is_empty():
+						continue
+					if yes.is_empty() or no.is_empty():
+						# One side has no rule covering this slot at all -- a gap in the
+						# authored schedule rather than the resolver choosing wrongly.
+						# Surfaced as a note, because filling it is a content call.
+						_gaps.append("%s / %s, day %d %s: only present %s the gate"
+							% [map_name, name, day, time,
+							   "after" if no.is_empty() else "before"])
+					elif yes == no and (yes.has("condition") or no.has("condition")):
+						# Same GATED entry either side of the gate means one of the two rules
+						# is unreachable. An ungated rule matching both times is correct --
+						# a character may branch on some days and not others.
+						printerr("  %s/%s d%d %s: gate changes nothing; a rule is unreachable"
+							% [map_name, name, day, time])
+						bad += 1
+	print("condition branching: %d character(s) resolve differently either side of their gate"
+		% checked)
+	for gap in _gaps:
+		print("  note: %s" % gap)
+	return bad
+
+
+## Answer one condition as a consistent world would: `done` is whether the player
+## has finished everything, and each condition type resolves with or against it.
+static func _world_says(condition: Dictionary, done: bool) -> bool:
+	var positive := ["opponent_defeated", "all_opponents_defeated",
+		"any_opponent_defeated", "npc_met", "flag_set", "all", "any"]
+	var negative := ["opponent_not_defeated", "not_all_opponents_defeated",
+		"npc_not_met", "flag_not_set"]
+	var kind: String = str(condition.get("type", ""))
+	if kind in positive:
+		return done
+	if kind in negative:
+		return not done
+	return true
+
+
+func _entry_for(map_name: String, name: String, day: int, time: String,
+		evaluator: Callable) -> Dictionary:
+	var cast := CharacterSchedule.cast_for(map_name, day, time, evaluator)
+	for section in ["npcs", "opponents"]:
+		for entry in cast[section]:
+			if entry.get("name", "") == name:
+				return entry
+	return {}
 
 
 ## Every character must still resolve against All_NPC_Constant_Data.json, which is

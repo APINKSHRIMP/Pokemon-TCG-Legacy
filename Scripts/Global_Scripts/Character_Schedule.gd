@@ -106,8 +106,32 @@ static func times_match(spec: Variant, time_of_day: String) -> bool:
 	return false
 
 
-static func _rule_matches(rule: Dictionary, day: int, time_of_day: String) -> bool:
-	return days_match(rule.get("days"), day) and times_match(rule.get("times"), time_of_day)
+## `condition_eval` is an optional Callable(Dictionary) -> bool, supplied by
+## MapManager so rule selection can take progress into account.
+##
+## Without it a rule is chosen on days/times alone, and two rules covering the same
+## slot but gated on opposite states -- "spread across the forest until you beat
+## me" / "clustered by the gate once you have" -- could never both work: the first
+## would always win and the second would never be reachable. The same applies to
+## the three gym-leader phases, which are gated on progress rather than the date.
+## `inherited_requires` is the character's own gate. A rule that states no
+## `requires` of its own inherits it, exactly as it inherits `at`, `move` and
+## `says` -- otherwise a character whose default is gated would have every rule
+## match unconditionally, and the first would swallow the rest.
+static func _rule_matches(rule: Dictionary, day: int, time_of_day: String,
+		condition_eval: Callable = Callable(), inherited_requires: Variant = null) -> bool:
+	if not days_match(rule.get("days"), day):
+		return false
+	if not times_match(rule.get("times"), time_of_day):
+		return false
+	var req = rule.get("requires")
+	if req == null:
+		req = inherited_requires
+	if req != null and condition_eval.is_valid():
+		var cond := to_condition(req)
+		if not cond.is_empty() and not condition_eval.call(cond):
+			return false
+	return true
 
 
 ## Turn the readable `requires` shorthand back into the condition dictionary
@@ -146,6 +170,17 @@ static func to_condition(req: Variant) -> Dictionary:
 			return {"type": "flag_not_set" if negated else "flag_set", "flag": arg}
 	push_warning("CharacterSchedule: unknown requires head: " + head)
 	return {}
+
+
+## Did the rule at `rule_index` state `field` itself, rather than inheriting it?
+static func _rule_sets(character: Dictionary, rule_index: int, field: String) -> bool:
+	if rule_index < 0:
+		return false
+	var rules = character.get("when")
+	if not (rules is Array) or rule_index >= rules.size():
+		return false
+	var rule = rules[rule_index]
+	return rule is Dictionary and rule.get(field) != null
 
 
 ## Expand one character body into the legacy entry shape the spawner consumes.
@@ -192,7 +227,8 @@ static func _to_entry(name: String, body: Dictionary) -> Dictionary:
 
 
 ## The cast for one slot: { "npcs": [entry, ...], "opponents": [entry, ...] }.
-static func cast_for(map_name: String, day: int, time_of_day: String) -> Dictionary:
+static func cast_for(map_name: String, day: int, time_of_day: String,
+		condition_eval: Callable = Callable()) -> Dictionary:
 	var doc := load_map(map_name)
 	var out := {"npcs": [], "opponents": []}
 	if doc.is_empty():
@@ -225,7 +261,8 @@ static func cast_for(map_name: String, day: int, time_of_day: String) -> Diction
 				var matched := false
 				for i in rules.size():
 					var rule = rules[i]
-					if rule is Dictionary and _rule_matches(rule, day_for_match, time_of_day):
+					if rule is Dictionary and _rule_matches(rule, day_for_match, time_of_day,
+							condition_eval, character.get("requires")):
 						hit = rule
 						rule_index = i
 						matched = true
@@ -242,7 +279,7 @@ static func cast_for(map_name: String, day: int, time_of_day: String) -> Diction
 						body[key] = hit[key]
 				if hit.has("kind"):
 					body["kind"] = hit["kind"]
-			elif not _rule_matches(character, day_for_match, time_of_day):
+			elif not _rule_matches(character, day_for_match, time_of_day, condition_eval):
 				continue
 
 			var target: String = section
@@ -250,7 +287,16 @@ static func cast_for(map_name: String, day: int, time_of_day: String) -> Diction
 				"npc":      target = "npcs"
 				"opponent": target = "opponents"
 			var built := _to_entry(name, body)
-			built["_source"] = {"section": section, "name": name, "rule": rule_index}
+			# `at_owner` / `move_owner` record where the value actually came from: the
+			# rule index if that rule overrode it, or -1 for the character's defaults.
+			# The placement tool edits the field where it LIVES, so moving a character
+			# whose rules only describe *when* they appear moves them everywhere,
+			# instead of fragmenting one shared position into a per-rule copy.
+			built["_source"] = {
+				"section": section, "name": name, "rule": rule_index,
+				"at_owner": rule_index if _rule_sets(character, rule_index, "at") else -1,
+				"move_owner": rule_index if _rule_sets(character, rule_index, "move") else -1,
+			}
 			out[target].append(built)
 	return out
 
@@ -262,8 +308,8 @@ static func cast_for(map_name: String, day: int, time_of_day: String) -> Diction
 ## stays a pure function of its data -- which is what lets verify_schedule.gd
 ## exercise it headlessly, with no autoloads and no save file.
 static func find_opponent(map_name: String, opponent_name: String,
-		day: int, time_of_day: String) -> Dictionary:
-	var cast := cast_for(map_name, day, time_of_day)
+		day: int, time_of_day: String, condition_eval: Callable = Callable()) -> Dictionary:
+	var cast := cast_for(map_name, day, time_of_day, condition_eval)
 	var wanted := opponent_name.strip_edges().to_lower()
 	for entry in cast.get("opponents", []):
 		if str(entry.get("name", "")).strip_edges().to_lower() == wanted:

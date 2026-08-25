@@ -21,8 +21,8 @@
   },
   "dressing": {
     "cycle": {
-      "from": 1,
-      "period": 5
+      "from": 2,
+      "period": 4
     },
     "days": {
       "1": [
@@ -291,7 +291,7 @@
       "days": "3-8",
       "times": "E",
       "move": "idle_left",
-      "requires": "not met: CH 3-6 E Blaine",
+      "requires": "not met: Blaine",
       "says": {
         "meet": "The name's Blaine. I was the gym leader on Cinnabar years ago before the volcano erupted. We moved to the Seafoam islands for a while but it was just never the same. I was the strongest Gym leader back then so take my strongest card.",
         "repeat": "The Cinnabar eruption wasn't the largest shock, we knew we were on a volcano but it was still devastating. Thankfully nobody was hurt but the island was lost almost entirely."
@@ -312,7 +312,7 @@
       "days": "3-8",
       "times": "E",
       "move": "idle_up",
-      "requires": "not met: CH 3-6 E Brock",
+      "requires": "not met: Brock",
       "says": {
         "meet": "Hey I'm Brock. I used to be a Gym Leader a long time ago. Battling wasn't for me so I gave it up to become a Pokemon Breeder and travel the world. Have this card of my favourite Pokemon.",
         "repeat": "I much prefer to play the TCG than battling so I'm looking forward to the challenge."
@@ -426,7 +426,7 @@
       "days": "3-8",
       "times": "M,A",
       "move": "idle_down",
-      "requires": "not met: CH 3-6 D Erika",
+      "requires": "not met: Erika",
       "says": {
         "meet": "Hello, I'm Erika. I used to be a Gym Leader over in Kanto but I've sinced moved on. I'm still a Pokemon Trainer but it looks like there aren't a lot of trainers around here and every plays the TCG more. I've got a lot of cards too so you can have this.",
         "repeat": "The flowers here are beautiful and the weather is so nice. I hope I have some time to enjoy myself outside of the Gym Hero Challenge."
@@ -479,7 +479,7 @@
       "days": "3-8",
       "times": "N",
       "move": "idle_up",
-      "requires": "not met: CH 3-6 N Giovanni",
+      "requires": "not met: Giovanni",
       "says": {
         "meet": "You shouldn't be out here so late, there's not always nice people wandering around at this hour. I promised not to cause trouble while I'm here but why not a little mischief? As proof I'm not evil, take this.",
         "repeat": "I am Giovanni. I was once the leader of Team Rocket and the gym leader in Viridian. Now I'm not formally either, but Team Rocket will always live on."
@@ -602,7 +602,7 @@
     "Kid Opening Packs": {
       "at": [290, 1600],
       "move": "idle_random",
-      "requires": "not met: CH 3,5 D Kid Opening Packs",
+      "requires": "not met: Kid Opening Packs",
       "says": {
         "meet": "Wow! The nice shopkeeper man just got some cool new packs in. I'm spending all of my pocket money on them and I keep getting bonus rares! You can have this one too!",
         "repeat": "I hope every pack in the future gives you bonus rares!"
@@ -616,7 +616,6 @@
           "at": [585, 1520],
           "days": "2",
           "times": "M,A",
-          "requires": "not met: CH 2 D Kid Opening Packs",
           "says": {
             "meet": "I'm opening a LOT of packs, sometimes when you open them you'll get a free bonus rare card at the end!!! My mum said we should always share, I've bought a lot of packs and gotten a lot of free rares so you can have this!",
             "repeat": "I'm soooo lucky, I keep getting bonus rares in these packs! Did you get one in yours?"
@@ -638,7 +637,7 @@
         "pattern": "patrol_line",
         "speed": 150.0
       },
-      "requires": "not met: CH 3-6 N Koga",
+      "requires": "not met: Koga",
       "says": {
         "meet": "Out here in the cover of darkness too? I'm Koga. I was once the Gym Leader of Fuschia and then made it as an Indigo League Elite 4 member. I've been asked here to help in the Gym Hero challenge. As you're out here at this hour you might appreciate this.",
         "repeat": "I won't take it easy on you if you come to take the challenge so be prepared."
@@ -663,7 +662,7 @@
       "days": "3-8",
       "times": "M,A",
       "move": "idle_up",
-      "requires": "not met: CH 3-6 D Lt Surge",
+      "requires": "not met: Lt Surge",
       "says": {
         "meet": "The lighthouse here reminds me of the one in Olivine City. Sorry, I didn't introduce myself there first - I'm LT Surge, I'm one of the ex Kanto Gym Leaders. Take this card as an apology.",
         "repeat": "Looks like you play the TCG too huh? If you earn entry into the challenge and can beat all 8 of us you'll get a lot of good stuff."
@@ -816,7 +815,7 @@
       "days": "3-8",
       "times": "M,A",
       "move": "idle_down",
-      "requires": "not met: CH 3-6 D Misty",
+      "requires": "not met: Misty",
       "says": {
         "meet": "Hey! I'm misty one of the ex Kanto Gym Leaders. A few of us have travelled here on the SS Anne to run the Gym Hero Challenge. If you're into the Pokemon TCG then you should try challenge us. Take this card as a good luck gift, it's my favourite Pokemon!",
         "repeat": "If you're good enough and beat us you can even buy our cards. But you need the medals of your local elders first before you can even challenge us!"
@@ -1225,7 +1224,7 @@
       "days": "3-8",
       "times": "N",
       "move": "idle_down",
-      "requires": "not met: CH 3-6 N Sabrina",
+      "requires": "not met: Sabrina",
       "says": {
         "meet": "Your town is much quieter than Saffron. I'm Sabrina, I knew you would be coming. You'll be challenging me soon I can see that, but this might help you win against me.",
         "repeat": "Good luck with the Gym Hero Challenge. I know you're going to do well."
@@ -1494,24 +1493,24 @@
         },
         {
           "days": "2",
+          "times": "E",
+          "says": {
+            "meet": "zzzzzzzzzzzzzzzzzz.",
+            "repeat": "zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz."
+          },
+          "message_colour": "orange",
+          "sprite": "NPC 15"
+        },
+        {
+          "days": "2",
           "times": "N",
-          "requires": "not met: CH 2 N Sunbathing Dude 1",
+          "requires": "not met: Sunbathing Dude 1",
           "says": {
             "meet": "ugh.. oooo.. hello? Good morning? oops it seems I fell asleep on the beach again... I shouldn't be out this late, thanks for waking me up. Take this as a thank you.",
             "repeat": "I better head home soon, I accidentally do this all the time so my wife can probably guess what happened but she'll still be worried."
           },
           "gift_type": "coin",
           "gift_value": "REPLACECOIN",
-          "message_colour": "orange",
-          "sprite": "NPC 15"
-        },
-        {
-          "days": "2",
-          "times": "E",
-          "says": {
-            "meet": "zzzzzzzzzzzzzzzzzz.",
-            "repeat": "zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz."
-          },
           "message_colour": "orange",
           "sprite": "NPC 15"
         }

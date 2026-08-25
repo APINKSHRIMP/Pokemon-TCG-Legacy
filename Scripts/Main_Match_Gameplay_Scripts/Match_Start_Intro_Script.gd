@@ -106,7 +106,8 @@ func load_opponent_data(trainer_name: String) -> void:
 	# layers All_NPC_Constant_Data.json underneath, which is what the day-file
 	# search plus manual constants merge used to do by hand here.
 	opponent_data = CharacterSchedule.find_opponent(
-		GameState.current_opponent_map, trainer_name, GameState.get_date(), GameState.get_time())
+		GameState.current_opponent_map, trainer_name,
+		GameState.get_date(), GameState.get_time(), MapManager.evaluate_condition)
 	if opponent_data.is_empty():
 		print("Opponent with name ", trainer_name, " not found on map ",
 			GameState.current_opponent_map)

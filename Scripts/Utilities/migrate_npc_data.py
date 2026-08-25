@@ -34,7 +34,7 @@ CALENDARS = {
 # deliberate, it keeps every day a different combination.
 DRESSING = {
     'Celeste_Harbour': {
-        'cycle': {'from': 1, 'period': 5},
+        'cycle': {'from': 2, 'period': 4},
         'days': {
             '1': ['TILE_MAPS/JETTY/DAY 1 Boats'],
             '2': ['TILE_MAPS/JETTY/DAY 2 Boats', 'TILE_MAPS/OBJECTS/CAR PARK CARS/CARS DAY 2'],
@@ -135,9 +135,27 @@ def to_says(e):
     return {k: got[k] for k in SAYS_ORDER if k in got}
 
 
+def rewrite_targets(c):
+    """Conditions name other characters, so renaming characters has to rename the
+    things that point at them too. Missing this left all eight Ex Gym Leaders gated
+    on `npc_met: CH 3-6 E Brock`, a name that no longer exists -- they would simply
+    never have appeared."""
+    if not isinstance(c, dict):
+        return c
+    out = dict(c)
+    if 'target' in out:
+        out['target'] = clean_name(out['target'])
+    if 'targets' in out and isinstance(out['targets'], list):
+        out['targets'] = [clean_name(t) for t in out['targets']]
+    if 'conditions' in out and isinstance(out['conditions'], list):
+        out['conditions'] = [rewrite_targets(sub) for sub in out['conditions']]
+    return out
+
+
 def to_requires(c):
     if not c:
         return None
+    c = rewrite_targets(c)
     t = c.get('type', '')
     simple = {'opponent_defeated': 'beaten: %s', 'opponent_not_defeated': 'not beaten: %s',
               'npc_met': 'met: %s', 'npc_not_met': 'not met: %s'}
@@ -278,23 +296,50 @@ def apply_fixed_edits(recs):
     log = []
     # 1. Pikachu Fans: drop the NPC variant, move the opponent to the NPC position,
     #    and remove the self-gating so they stay rebattleable through the loop.
+    # The fans are battleable in both states: spread across the forest until you
+    # beat them, then clustered up by the gate, still rebattleable. The old data
+    # expressed that as an opponent entry plus a separate NPC entry; it is now one
+    # character with two rules gated on opposite sides of its own defeat.
     npc_pos = {}
+    npc_slots = collections.defaultdict(set)
     for (mp, kind, raw), apps in list(recs.items()):
         base = base_name(clean_name(raw))
         if kind == 'npcs' and base in PIKACHU_FANS:
             npc_pos.setdefault(base, apps[0][2]['position'])
+            npc_slots[base].update((d, t) for d, t, _e in apps)
             del recs[(mp, kind, raw)]
-            log.append('dropped NPC variant of %s' % clean_name(raw))
-    for (mp, kind, raw), apps in recs.items():
+    for (mp, kind, raw), apps in list(recs.items()):
         cn = base_name(clean_name(raw))
-        if kind == 'opponents' and cn in PIKACHU_FANS:
-            for _d, _t, e in apps:
-                if cn in npc_pos:
-                    e['position'] = dict(npc_pos[cn])
-                cond = e.get('condition') or {}
-                if cond.get('type') == 'opponent_not_defeated' and cond.get('target') == cn:
-                    e.pop('condition', None)
-            log.append('%s -> opponent at NPC position, rebattleable' % cn)
+        if kind != 'opponents' or cn not in PIKACHU_FANS:
+            continue
+        template = apps[0][2]
+        have = {(d, t) for d, t, _e in apps}
+        # The NPC entries covered evenings the opponent entry did not. Folding them
+        # in without carrying those slots would empty the forest at dusk, so the
+        # fan is present for the union of both -- battleable now, in both states.
+        extra = sorted(npc_slots.get(cn, set()) - have)
+        for day, tod in extra:
+            apps.append((day, tod, json.loads(json.dumps(template))))
+
+        both = []
+        for day, tod, e in apps:
+            # Pre-defeat: exactly where and how they always were, out in the forest.
+            e['condition'] = {'type': 'opponent_not_defeated', 'target': cn}
+            both.append((day, tod, e))
+            # Post-defeat: gathered at the old NPC spot, wandering, still battleable.
+            after = json.loads(json.dumps(e))
+            if cn in npc_pos:
+                after['position'] = dict(npc_pos[cn])
+            after['pattern'] = 'random_wander'
+            after['patrol_speed'] = 20.0
+            after['wander_radius'] = 65
+            for stale in ('patrol_distance', 'patrol_axis'):
+                after.pop(stale, None)
+            after['condition'] = {'type': 'opponent_defeated', 'target': cn}
+            both.append((day, tod, after))
+        recs[(mp, kind, raw)] = both
+        log.append('%s: forest spot until beaten, then wanders at (%s, %s); +%d evening slot(s)'
+                   % (cn, npc_pos.get(cn, {}).get('x'), npc_pos.get(cn, {}).get('y'), len(extra)))
     # 2. Old Guy Neighbour leaves Celeste Harbour when the forest opens on day 5.
     for (mp, kind, raw), apps in list(recs.items()):
         if mp == 'Celeste_Harbour' and clean_name(raw) == OLD_GUY:
@@ -411,7 +456,20 @@ def build_characters(recs, consts, collapsed, varying):
                 body['kind'] = 'npc' if kind == 'npcs' else 'opponent'
             variants[json.dumps(body, sort_keys=True, ensure_ascii=False)].append((day, tod))
 
-        ordered = sorted(variants.items(), key=lambda kv: (-len(kv[1]), kv[0]))
+        # Whichever variant becomes the character's defaults should read as its
+        # normal state: ungated first, then the "not yet" gate, then the "already
+        # done" one. Otherwise a character defaults to its post-quest self with its
+        # original position demoted to an override, which is backwards.
+        def variant_rank(sig):
+            req = json.loads(sig).get('requires')
+            if req is None:
+                return 0
+            if isinstance(req, str) and req.startswith('not '):
+                return 1
+            return 2
+
+        ordered = sorted(variants.items(),
+                         key=lambda kv: (-len(kv[1]), variant_rank(kv[0]), kv[0]))
         base = json.loads(ordered[0][0])
         entry = dict(base)
 
@@ -678,6 +736,10 @@ def merged(entry, consts, section, name):
     # in the old files, `placeholder` is the new flag replacing it.
     m.pop('_MISSING_ENTRY', None)
     m.pop('placeholder', None)
+    # Conditions point at characters by name, so the old side has to be read
+    # through the same rename as the new side for the comparison to mean anything.
+    if isinstance(m.get('condition'), dict):
+        m['condition'] = rewrite_targets(m['condition'])
     return m
 
 
