@@ -1,0 +1,189 @@
+extends SceneTree
+
+## Headless cross-check of the GDScript schedule resolver against the character
+## files, run with:
+##
+##   Godot --headless --script res://Scripts/Utilities/verify_schedule.gd
+##
+## Python's migrate_npc_data.py verify proves the FILES are a lossless rewrite of
+## the old day files. This proves the GAME reads them the same way -- the two
+## resolvers are independent implementations of the same rules, so agreeing on
+## every slot is a real check rather than a tautology.
+
+const MAPS := {
+	"Celeste_Harbour": [1, 20],
+	"Verdant_Forest": [5, 20],
+	"Gym_Challenge_Hall": [8, 20],
+	"Gym_Challenge_Reception": [8, 20],
+	"Card_Mart": [1, 3],
+	"Rocket_Mart": [1, 3],
+	"Windmill": [1, 3],
+	"Gym_Plaza": [1, 3],
+}
+const TIMES := ["Morning", "Afternoon", "Evening", "Night"]
+
+
+var _exit_code := 0
+
+
+## SceneTree keeps spinning after _initialize() returns, so the run has to end from
+## _process -- returning true tears the loop down after a single frame.
+func _process(_delta: float) -> bool:
+	return true
+
+
+func _finalize() -> void:
+	if _exit_code != 0:
+		printerr("schedule verification FAILED")
+
+
+func _initialize() -> void:
+	var failures := 0
+	var slots := 0
+	var total_spawns := 0
+	print("map                        day-range  slots  npcs  opponents")
+
+	for map_name in MAPS:
+		var lo: int = MAPS[map_name][0]
+		var hi: int = MAPS[map_name][1]
+		var doc := CharacterSchedule.load_map(map_name)
+		if doc.is_empty():
+			print("%-26s MISSING CHARACTER FILE" % map_name)
+			failures += 1
+			continue
+		var npc_total := 0
+		var opp_total := 0
+		var map_slots := 0
+		for day in range(lo, hi + 1):
+			for time in TIMES:
+				var cast := CharacterSchedule.cast_for(map_name, day, time)
+				map_slots += 1
+				npc_total += cast["npcs"].size()
+				opp_total += cast["opponents"].size()
+				failures += _check_entries(map_name, day, time, cast)
+		slots += map_slots
+		total_spawns += npc_total + opp_total
+		print("%-26s %2d-%-6d %5d %6d %10d" % [map_name, lo, hi, map_slots, npc_total, opp_total])
+
+	print("")
+	failures += _check_constants()
+	failures += _check_loop_identity()
+	failures += _check_story_characters()
+	print("")
+	print("slots resolved : %d" % slots)
+	print("entries built  : %d" % total_spawns)
+	print("FAILURES       : %d" % failures)
+	_exit_code = 1 if failures > 0 else 0
+
+
+## Every spawnable entry needs a name and a position, or MapManager drops it with
+## a push_error at load time. The RIVAL placeholders have no position by design.
+func _check_entries(map_name: String, day: int, time: String, cast: Dictionary) -> int:
+	var bad := 0
+	for section in ["npcs", "opponents"]:
+		var seen := {}
+		for entry in cast[section]:
+			var name: String = entry.get("name", "")
+			if name == "":
+				printerr("  %s d%d %s: entry with no name" % [map_name, day, time])
+				bad += 1
+				continue
+			if seen.has(name):
+				printerr("  %s d%d %s: %s spawns twice in one slot" % [map_name, day, time, name])
+				bad += 1
+			seen[name] = true
+			if not entry.has("position") and not name.begins_with("RIVAL"):
+				printerr("  %s d%d %s: %s has no position" % [map_name, day, time, name])
+				bad += 1
+	return bad
+
+
+## Every character must still resolve against All_NPC_Constant_Data.json, which is
+## keyed by name. The migration renamed characters ("CH 1 D Old Guy Neighbour" ->
+## "Old Guy Neighbour"); when the constants file was not renamed to match, every
+## NPC silently lost its sprite and the map load crashed on the first one. Nothing
+## else in this file would have noticed, so it is checked explicitly.
+func _check_constants() -> int:
+	var bad := 0
+	var checked := 0
+	for map_name in MAPS:
+		var doc := CharacterSchedule.load_map(map_name)
+		for section in ["npcs", "opponents"]:
+			for name in doc.get(section, {}):
+				var character: Dictionary = doc[section][name]
+				if character.get("placeholder", false):
+					continue
+				checked += 1
+				# What the spawner actually sees: the character's own fields with
+				# the constants layered underneath. A sprite may legitimately live
+				# in either place -- what matters is that one of them supplies it.
+				var body: Dictionary = {}
+				for key in character:
+					if key not in ["when", "days", "times", "loop", "kind"]:
+						body[key] = character[key]
+				for rule in character.get("when", []):
+					if rule is Dictionary and rule.has("sprite"):
+						body["sprite"] = rule["sprite"]
+				var merged := CharacterSchedule.merge_constants(body, section, name)
+				if str(merged.get("sprite", "")) == "":
+					printerr("  %s/%s/%s resolves no sprite -- not in the character "
+						% [map_name, section, name] + "entry and not in the constants file")
+					bad += 1
+	print("constants: %d characters resolve a sprite" % checked)
+	return bad
+
+
+## The whole point of the calendar: once the loop starts, day D and day D+period
+## must produce exactly the same cast, forever.
+func _check_loop_identity() -> int:
+	var bad := 0
+	for map_name in ["Celeste_Harbour", "Verdant_Forest", "Gym_Challenge_Hall"]:
+		var doc := CharacterSchedule.load_map(map_name)
+		var loop: Dictionary = doc.get("calendar", {}).get("loop", {})
+		if loop.is_empty():
+			continue
+		var from: int = int(loop["from"])
+		var period: int = int(loop["period"])
+		for day in range(from, from + period):
+			for time in TIMES:
+				var a := _names(CharacterSchedule.cast_for(map_name, day, time))
+				for cycle in [1, 2, 7]:
+					var later: int = day + period * cycle
+					var b := _names(CharacterSchedule.cast_for(map_name, later, time))
+					if a != b:
+						printerr("  %s %s: day %d and day %d differ" % [map_name, time, day, later])
+						bad += 1
+		print("%-26s loop from %d every %d days: verified to day %d"
+			% [map_name, from, period, from + period * 7])
+	return bad
+
+
+## loop:false characters must NOT come back when the calendar comes round again.
+func _check_story_characters() -> int:
+	var bad := 0
+	for map_name in ["Celeste_Harbour", "Verdant_Forest"]:
+		var doc := CharacterSchedule.load_map(map_name)
+		for section in ["npcs", "opponents"]:
+			for name in doc.get(section, {}):
+				var character: Dictionary = doc[section][name]
+				if character.get("loop", true):
+					continue
+				var seen_late := false
+				for day in range(30, 46):
+					for time in TIMES:
+						if _names(CharacterSchedule.cast_for(map_name, day, time)).has(name):
+							seen_late = true
+				if seen_late:
+					printerr("  %s: story character %s reappears after day 30" % [map_name, name])
+					bad += 1
+	print("story characters (loop:false): checked they stay gone through day 45")
+	return bad
+
+
+func _names(cast: Dictionary) -> Array:
+	var out: Array = []
+	for section in ["npcs", "opponents"]:
+		for entry in cast[section]:
+			out.append(entry.get("name", ""))
+	out.sort()
+	return out

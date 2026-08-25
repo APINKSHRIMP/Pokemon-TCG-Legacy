@@ -3,7 +3,7 @@ extends Node
 # ═══════════════════════════════════════════════════════════════════════════════════════════
 # MATCH EFFECTS — opponent-defined, match-wide rule modifiers.
 #
-# Opponent entries in NPC_and_Opponent_Data/*.json may carry a "match_effects" array,
+# Opponent entries in NPC_and_Opponent_Data/Characters/*.json may carry a "match_effects" array,
 # sibling of "restrictions":
 #
 #   "match_effects": [

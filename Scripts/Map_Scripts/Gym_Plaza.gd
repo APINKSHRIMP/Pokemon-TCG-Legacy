@@ -30,8 +30,6 @@ const TREE_VERT_AFTERNOON = preload("res://Image_Assets/Map_Objects/Forest/TreeL
 const TREE_VERT_EVENING   = preload("res://Image_Assets/Map_Objects/Forest/TreeLineVerticalEvening.png")
 const TREE_VERT_NIGHT     = preload("res://Image_Assets/Map_Objects/Forest/TreeLineVerticalNight.png")
 
-var _npc_json_path: String = ""
-
 func get_scene_path() -> String:     return SCENE_PATH
 func get_bgm_path() -> String:       return BGM_PATH
 func get_default_spawn() -> Vector2: return DEFAULT_SPAWN_POSITION
@@ -40,15 +38,10 @@ func get_entry_positions() -> Dictionary:
 		"Verdant_Forest":          SPAWN_FROM_VERDANT_FOREST,
 		"Gym_Challenge_Reception": SPAWN_FROM_GYM_CHALLENGE_RECEPTION,
 	}
-func get_opponent_json_path() -> String: return _npc_json_path
-func get_npc_json_path() -> String:      return _npc_json_path
+func get_map_data_name() -> String: return "Gym_Plaza"
 
 func _scene_setup():
 	var time_of_day: String = GameState.get_time()
-	var date: int = GameState.get_date()
-	_npc_json_path = "res://NPC_and_Opponent_Data/Gym_Plaza_" + str(date) + "_" + time_of_day + ".json"
-	if not ResourceLoader.exists(_npc_json_path):
-		_npc_json_path = ""
 	set_time_of_day(time_of_day)
 
 func set_time_of_day(time: String) -> void:

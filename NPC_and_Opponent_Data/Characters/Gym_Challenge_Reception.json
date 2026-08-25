@@ -1,0 +1,95 @@
+{
+  "_help": [
+    "days    : '3-6' range | '1,3,5' list | '2-8/2' every other | '4' one day",
+    "times   : M=Morning A=Afternoon E=Evening N=Night. Combine: 'M,A' or 'M,A,E,N'",
+    "move    : bare pattern name, or {pattern, speed, distance, axis, radius}",
+    "requires: 'beaten: NAME' | 'met: NAME' | 'flag: NAME', any prefixed with 'not '.",
+    "          Compound gates use the longhand object form.",
+    "when    : optional rule list, evaluated TOP TO BOTTOM, FIRST MATCH WINS.",
+    "          A rule states when the character is present plus ONLY what differs.",
+    "          Anything a rule omits falls back to the character's own value above.",
+    "loop    : set false for story characters who must never repeat when the",
+    "          calendar loops -- they are matched against the real day instead."
+  ],
+  "map": "Gym_Challenge_Reception",
+  "calendar": {
+    "authored_through": 8,
+    "loop": {
+      "from": 8,
+      "period": 4
+    }
+  },
+  "npcs": {
+    "Gym Receptionist 1": {
+      "at": [298, 161],
+      "days": "8",
+      "times": "M,A",
+      "move": "idle_left",
+      "says": {
+        "meet": "Welcome! Are you here to enter the Gym Hero Challenge? The entrance fee is $500 which must be paid in full up front and the challenge begins tomorrow. Winning will grant you a large cash prize, free travel on any Bakushin transport service and a unique coin! Are you entering?",
+        "repeat": "Thank you for registering early. You need only pay once for full access to the challenge and you are welcome to enter and leave as often as you like while the challenge is ongoing from tomorrow morning. Good luck!!"
+      }
+    },
+    "Gym Receptionist 2": {
+      "at": [331, 198],
+      "days": "8",
+      "times": "M,A",
+      "move": "idle_down",
+      "says": {
+        "meet": "Each Gym Hero Challenge match is in best of 3 format. You must win at least 2 matches to progress to the next game. There is also a banned trainer list. You cannot use any of the following cards: Lass, Super Energy Removal, Energy Removal, Rocket's Sneak Attack, Imposter Oak's Revenge, The Rocket's Trap, No Removal Gym or Chaos Gym",
+        "repeat": "Each Gym Hero Challenge match is in best of 3 format. You must win at least 2 matches to progress to the next game. There is also a banned trainer list. You cannot use any of the following cards: Lass, Super Energy Removal, Energy Removal, Rocket's Sneak Attack, Imposter Oak's Revenge, The Rocket's Trap, No Removal Gym or Chaos Gym"
+      }
+    },
+    "Gym Receptionist 3": {
+      "at": [414, 161],
+      "days": "8",
+      "times": "M,A",
+      "move": "idle_right",
+      "says": {
+        "meet": "Welcome! Sorry - If you're looking to register to enter the challenge, please speak with my colleague on the other side of the desk. She will be able to take your entrance fee and register you into the challenge. This side is spectator entrance only.",
+        "repeat": "Welcome! Sorry - If you're looking to register to enter the challenge, please speak with my colleague on the other side of the desk. She will be able to take your entrance fee and register you into the challenge. This side is spectator entrance only."
+      }
+    },
+    "Gym Receptionist 4": {
+      "at": [387, 198],
+      "days": "8",
+      "times": "M,A",
+      "move": "idle_down",
+      "says": {
+        "meet": "Each Gym Hero Challenge match is in best of 3 format. You must win at least 2 matches to progress to the next game. There is also a banned trainer list. You cannot use any of the following cards: Lass, Super Energy Removal, Energy Removal, Rocket's Sneak Attack, Imposter Oak's Revenge, The Rocket's Trap, No Removal Gym or Chaos Gym",
+        "repeat": "Each Gym Hero Challenge match is in best of 3 format. You must win at least 2 matches to progress to the next game. There is also a banned trainer list. You cannot use any of the following cards: Lass, Super Energy Removal, Energy Removal, Rocket's Sneak Attack, Imposter Oak's Revenge, The Rocket's Trap, No Removal Gym or Chaos Gym"
+      }
+    },
+    "Gym Security 1": {
+      "at": [220, 40],
+      "days": "8",
+      "times": "M,A",
+      "move": "idle_down",
+      "says": {
+        "meet": "The Gym Hero Challenge does not start until tomorrow morning. We are still making final preperations but you can register for the challenge at the reception desk to your right.",
+        "repeat": "Once you have registered for the challenge you can enter the hall from tomorrow morning."
+      }
+    },
+    "Gym Security 2": {
+      "at": [492, 40],
+      "days": "8",
+      "times": "M,A",
+      "move": "idle_down",
+      "says": {
+        "meet": "The Gym Hero Challenge doesn't start until tomorrow morning so no spectators are allowed in until then. Please purchase a spectator entry ticket at the desk, or you can register to enter into the competition yourself.",
+        "repeat": "Only spectators will be allowed to enter through here from tomorrow onwards. All entrants into the competition need to use the other door"
+      }
+    },
+    "Gym Shopkeeper": {
+      "at": [80, 355],
+      "days": "8",
+      "times": "M,A",
+      "move": "idle_right",
+      "says": {
+        "meet": "Welcome! The challenge start tomorrow but you can purchase your gym hero and gym challenge packs here today!",
+        "repeat": "Welcome! The challenge start tomorrow but you can purchase your gym hero and gym challenge packs here today!"
+      }
+    }
+  },
+  "opponents": {}
+}

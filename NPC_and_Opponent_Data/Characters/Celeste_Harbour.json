@@ -1,0 +1,3615 @@
+{
+  "_help": [
+    "days    : '3-6' range | '1,3,5' list | '2-8/2' every other | '4' one day",
+    "times   : M=Morning A=Afternoon E=Evening N=Night. Combine: 'M,A' or 'M,A,E,N'",
+    "move    : bare pattern name, or {pattern, speed, distance, axis, radius}",
+    "requires: 'beaten: NAME' | 'met: NAME' | 'flag: NAME', any prefixed with 'not '.",
+    "          Compound gates use the longhand object form.",
+    "when    : optional rule list, evaluated TOP TO BOTTOM, FIRST MATCH WINS.",
+    "          A rule states when the character is present plus ONLY what differs.",
+    "          Anything a rule omits falls back to the character's own value above.",
+    "loop    : set false for story characters who must never repeat when the",
+    "          calendar loops -- they are matched against the real day instead."
+  ],
+  "map": "Celeste_Harbour",
+  "calendar": {
+    "authored_through": 8,
+    "loop": {
+      "from": 5,
+      "period": 4
+    }
+  },
+  "dressing": {
+    "cycle": {
+      "from": 1,
+      "period": 5
+    },
+    "days": {
+      "1": [
+        "TILE_MAPS/JETTY/DAY 1 Boats"
+      ],
+      "2": [
+        "TILE_MAPS/JETTY/DAY 2 Boats",
+        "TILE_MAPS/OBJECTS/CAR PARK CARS/CARS DAY 2"
+      ],
+      "3": [
+        "TILE_MAPS/JETTY/DAY 3 Boats",
+        "TILE_MAPS/OBJECTS/CAR PARK CARS/CARS DAY 3"
+      ],
+      "4": [
+        "TILE_MAPS/JETTY/DAY 4 Boats",
+        "TILE_MAPS/OBJECTS/CAR PARK CARS/CARS DAY 4"
+      ],
+      "5": [
+        "TILE_MAPS/JETTY/DAY 5 Boats",
+        "TILE_MAPS/OBJECTS/CAR PARK CARS/CARS DAY 5"
+      ]
+    }
+  },
+  "npcs": {
+    "2nd Woman Drinking Juice": {
+      "at": [855, 2315],
+      "move": "idle_right",
+      "says": {
+        "meet": "I managed to get a coin in my cup today, hooray!",
+        "repeat": "It's got a cute little picture of Munchlax on it."
+      },
+      "when": [
+        {
+          "days": "3-8",
+          "times": "M,A"
+        },
+        {
+          "at": [858, 2399],
+          "days": "2",
+          "times": "M,A",
+          "says": {
+            "meet": "I get the juice from here pretty much every day.",
+            "repeat": "I would be devastated if this place closed."
+          }
+        }
+      ]
+    },
+    "3rd Woman Drinking Juice": {
+      "at": [1208, 2384],
+      "move": "idle_left",
+      "says": {
+        "meet": "I just saw the girl over there get a bonus coin in her cup.",
+        "repeat": "I also got a munchlax coin once just like that but mine was a different colour!"
+      },
+      "when": [
+        {
+          "days": "3-8",
+          "times": "M,A"
+        },
+        {
+          "at": [904, 2233],
+          "days": "2",
+          "times": "M,A",
+          "says": {
+            "meet": "Sometimes you get a bonus coin as a little prize in the bottom of your cup.",
+            "repeat": "I normally find a prize coin after 2 or 3 cups."
+          }
+        }
+      ]
+    },
+    "Badman 1": {
+      "at": [680, 1695],
+      "move": "idle_down",
+      "says": {
+        "meet": "Heh, scram kid. We're having our biker gang meetup here so get lost.",
+        "repeat": "Didn't you hear me? Get lost kid."
+      },
+      "when": [
+        {
+          "days": "1",
+          "times": "M,A,E"
+        },
+        {
+          "days": "1",
+          "times": "N",
+          "says": {
+            "meet": "Heh, scram kid. We're having our biker gang meetup here so get lost.",
+            "repeat": "Isn't it a little late for a loser like you to be wandering about?"
+          }
+        }
+      ]
+    },
+    "Badman 2": {
+      "at": [680, 1735],
+      "move": "idle_up",
+      "says": {
+        "meet": "We're called the Cool Guy Biker Gang. We're the coolest in the world..... What are you giggling at loser?",
+        "repeat": "Do you think something's funny??"
+      },
+      "when": [
+        {
+          "days": "1",
+          "times": "M,A,E"
+        },
+        {
+          "days": "1",
+          "times": "N",
+          "says": {
+            "meet": "We're called the Cool Guy Biker Gang. We're the coolest in the world..... What are you giggling at loser?",
+            "repeat": "Why don't you go home before something bad happens?"
+          }
+        }
+      ]
+    },
+    "Bakery Lover": {
+      "at": [2530, 1740],
+      "move": "idle_random",
+      "says": {
+        "meet": "I LOVE FRESH BREAD! It's always so warm and crispy if you get it here early enough. If you're here that must mean you love it as much as I do!! We should be best friends!!",
+        "repeat": "I could eat bread with every meal. Bread for breakfast. Bread for lunch. Bread for dinner. Bread for supper. A midnight snack of bread. Hmmm. I'm hungry again now."
+      },
+      "when": [
+        {
+          "days": "3-8",
+          "times": "M,A"
+        },
+        {
+          "at": [2380, 1700],
+          "days": "3-8",
+          "times": "E",
+          "says": {
+            "meet": "I LOVE FRESH BREAD! It's always so warm and crispy if you get it here early enough. If you're here that must mean you love it as much as I do!! We should be best friends!!",
+            "repeat": "I got so hungry from before that I just had to come back and get some more bread. It's soooo good."
+          },
+          "gift_value": "Lass2"
+        }
+      ],
+      "gift_value": "LASS2"
+    },
+    "Bakery Shopkeeper": {
+      "at": [2570, 1650],
+      "move": "idle_down",
+      "says": {
+        "meet": "Get your freshly baked pastries, cakes and bread all here.",
+        "repeat": "Everything is freshly baked this morning and some of the bread is still warm!"
+      },
+      "when": [
+        {
+          "days": "3-8",
+          "times": "M,A"
+        },
+        {
+          "days": "3-8",
+          "times": "E",
+          "says": {
+            "meet": "Get your freshly baked pastries, cakes and bread all here.",
+            "repeat": "Plenty of items still fresh to enjoy!"
+          }
+        }
+      ]
+    },
+    "Biker1": {
+      "at": [390, 920],
+      "days": "1",
+      "times": "M,A,E,N",
+      "move": {
+        "axis": "horizontal",
+        "distance": 210,
+        "pattern": "patrol_square",
+        "speed": 120.0
+      },
+      "says": {
+        "meet": "how the hell did you manage to speak to me??",
+        "repeat": "You're a hacker >:("
+      }
+    },
+    "Biker2": {
+      "at": [400, 1050],
+      "days": "1",
+      "times": "M,A,E,N",
+      "move": {
+        "axis": "horizontal",
+        "distance": 210,
+        "pattern": "patrol_line",
+        "speed": 120.0
+      },
+      "says": {
+        "meet": "cheating isn't cool.",
+        "repeat": "Unless you're just reading this in the npc data."
+      }
+    },
+    "Biker3": {
+      "at": [240, 1020],
+      "days": "1",
+      "times": "M,A,E,N",
+      "move": "idle_down",
+      "says": {
+        "meet": "I guess this is an easter egg.",
+        "repeat": "sadly it's not that exciting."
+      }
+    },
+    "Biker4": {
+      "at": [240, 1070],
+      "move": "idle_up",
+      "says": {
+        "meet": "Does this make it more exciting if I add an agg.",
+        "repeat": "🥚"
+      },
+      "when": [
+        {
+          "days": "1",
+          "times": "E,N"
+        },
+        {
+          "days": "1",
+          "times": "M,A",
+          "says": {
+            "meet": "Does this make it more exciting if I add an egg.",
+            "repeat": "🥚"
+          }
+        }
+      ]
+    },
+    "Biker5": {
+      "at": [750, 1060],
+      "days": "1",
+      "times": "M,A,E,N",
+      "move": "idle_random",
+      "says": {
+        "meet": "🥚🥚",
+        "repeat": "🥚🥚🥚"
+      }
+    },
+    "Biker6": {
+      "at": [300, 960],
+      "days": "1",
+      "times": "M,A,E,N",
+      "move": "idle_random",
+      "says": {
+        "meet": "🥚🥚",
+        "repeat": "🥚🥚🥚"
+      }
+    },
+    "Biker7": {
+      "at": [310, 1050],
+      "days": "1",
+      "times": "M,A,E,N",
+      "move": "idle_random",
+      "says": {
+        "meet": "🥚🥚",
+        "repeat": "🥚🥚🥚"
+      }
+    },
+    "Biker8": {
+      "at": [480, 1090],
+      "days": "1",
+      "times": "M,A,E,N",
+      "move": "idle_random",
+      "says": {
+        "meet": "🥚🥚",
+        "repeat": "🥚🥚🥚"
+      }
+    },
+    "Blaine": {
+      "at": [1209, 2399],
+      "days": "3-8",
+      "times": "E",
+      "move": "idle_left",
+      "requires": "not met: CH 3-6 E Blaine",
+      "says": {
+        "meet": "The name's Blaine. I was the gym leader on Cinnabar years ago before the volcano erupted. We moved to the Seafoam islands for a while but it was just never the same. I was the strongest Gym leader back then so take my strongest card.",
+        "repeat": "The Cinnabar eruption wasn't the largest shock, we knew we were on a volcano but it was still devastating. Thankfully nobody was hurt but the island was lost almost entirely."
+      }
+    },
+    "Boss Maintenance Guy": {
+      "at": [-830, 2210],
+      "days": "3-7/2",
+      "times": "M,A",
+      "move": "idle_random",
+      "says": {
+        "meet": "I'm Callum's boss. My boss told me to come here to check everything was being done correctly but of course it's all fine.",
+        "repeat": "I trust my employees fully, but I don't think my boss trusts me!! "
+      }
+    },
+    "Brock": {
+      "at": [2705, 2195],
+      "days": "3-8",
+      "times": "E",
+      "move": "idle_up",
+      "requires": "not met: CH 3-6 E Brock",
+      "says": {
+        "meet": "Hey I'm Brock. I used to be a Gym Leader a long time ago. Battling wasn't for me so I gave it up to become a Pokemon Breeder and travel the world. Have this card of my favourite Pokemon.",
+        "repeat": "I much prefer to play the TCG than battling so I'm looking forward to the challenge."
+      }
+    },
+    "Captain 1": {
+      "at": [1055, 3085],
+      "days": "2",
+      "times": "M,A,E",
+      "move": "idle_up",
+      "says": {
+        "meet": "My ship be the Black Pearl, fastest vessel in these ere waters, it's big and sturdy enough to be out to sea for over a year without needing to return.",
+        "repeat": "I'm making all my final preparations and then I'll be out at sea for a long time from tomorrow, I won't be seeing dry land for at least a few months. Shame I'll be missing seeing the SS Anne dock here, but the sea calls my name."
+      }
+    },
+    "Car Park Guy": {
+      "at": [628, 1190],
+      "move": "idle_down",
+      "says": {
+        "meet": "Sorry, I can't let you into the car park unless you have car!",
+        "repeat": "It's too dangerous to be wondering around on the road you know, I can't let any accidents happen under my watch."
+      },
+      "when": [
+        {
+          "days": "3-8",
+          "times": "M,A,E"
+        },
+        {
+          "days": "1",
+          "times": "M,A",
+          "says": {
+            "meet": "I'm the parking warden for the Celeste Harbour car park but all these bikers have decided to take it over. I can't get rid of them by myself but the police are protecting the beach so I'm on my own.",
+            "repeat": "I hope these bikers leave soon, they're causing a right ruckus for the harbour and it's not good for anyone else."
+          }
+        },
+        {
+          "days": "2",
+          "times": "M,A",
+          "says": {
+            "meet": "I'm the parking warden for the Celeste Harbour car park. Yesterday we had a massive issue with a biker gang meeting here in the car park, it was incredibly stressful!!",
+            "repeat": "I'm glad the bikers finally left, everything is back to normal and my job is a lot easier now. The car park shuts at night so if you play the Pokemon TCG I'll be around for a game."
+          }
+        },
+        {
+          "days": "1",
+          "times": "N",
+          "says": {
+            "meet": "I'm the parking warden for the Celeste Harbour car park but all these bikers have decided to take it over. I can't get rid of them by myself but the police are protecting the beach so I'm on my own.",
+            "repeat": "I should have finished my shift and should be in bed by now but I can't go home until these bikers leave. You should head home too you know?"
+          }
+        },
+        {
+          "days": "1",
+          "times": "E",
+          "says": {
+            "meet": "I'm the parking warden for the Celeste Harbour car park but all these bikers have decided to take it over. I can't get rid of them by myself but the police are protecting the beach so I'm on my own.",
+            "repeat": "It's already so late and the Bikers aren't showing any sign of leaving. I can't go home until they leave they might cause some serious damage."
+          }
+        },
+        {
+          "days": "2",
+          "times": "E",
+          "says": {
+            "meet": "It's nearly clocking off time, the car park shuts at night as most people are gone by evening.",
+            "repeat": "It's been a slow day today, nobody really visits when it's bank holiday but I think the harbour will be overflowing tomorrow!"
+          }
+        }
+      ]
+    },
+    "Child": {
+      "at": [-338, 2338],
+      "days": "2",
+      "times": "M,A",
+      "move": "idle_left",
+      "says": {
+        "meet": "GOO GOO GA GA.",
+        "repeat": "GOO GOO GA GAAAA."
+      }
+    },
+    "Child At Bakery": {
+      "at": [2335, 1715],
+      "days": "3-8",
+      "times": "M,A",
+      "move": "idle_right",
+      "says": {
+        "meet": "Mummy said I'm too small but I'm not!!!!",
+        "repeat": "That's okay though because Donuts are my favouritest food ever."
+      }
+    },
+    "Coin Shopkeeper": {
+      "at": [2095, 1650],
+      "days": "3-8",
+      "times": "M,A,E",
+      "move": "idle_down",
+      "says": {
+        "meet": "Welcome! I sell rare limited edition coins that you won't be able to buy anywhere else! They're not cheap at $300 each but I promise you they're top quality, completely unique and won't find anything like them around!"
+      }
+    },
+    "Employee F Drinking Juice": {
+      "at": [1112, 2233],
+      "days": "3-8",
+      "times": "M,A",
+      "move": "idle_left",
+      "says": {
+        "meet": "I'm an employee on the SS Anne. It's hard work sometimes but it definitely has it's perks.",
+        "repeat": "I'm on a rest day today so I can enjoy this beautiful harbour."
+      }
+    },
+    "Erika": {
+      "at": [-715, 2195],
+      "days": "3-8",
+      "times": "M,A",
+      "move": "idle_down",
+      "requires": "not met: CH 3-6 D Erika",
+      "says": {
+        "meet": "Hello, I'm Erika. I used to be a Gym Leader over in Kanto but I've sinced moved on. I'm still a Pokemon Trainer but it looks like there aren't a lot of trainers around here and every plays the TCG more. I've got a lot of cards too so you can have this.",
+        "repeat": "The flowers here are beautiful and the weather is so nice. I hope I have some time to enjoy myself outside of the Gym Hero Challenge."
+      }
+    },
+    "Fisherman 2 Drinking Juice": {
+      "at": [950, 2314],
+      "days": "2",
+      "times": "M,A",
+      "move": "idle_right",
+      "says": {
+        "meet": "Aint no fish biting today, sharpedo must have scared them all off so we're relaxing today.",
+        "repeat": "Can't wait to get back to fishin'!"
+      }
+    },
+    "Fisherman Drinking Juice": {
+      "at": [999, 2314],
+      "days": "2",
+      "times": "M,A",
+      "move": "idle_left",
+      "says": {
+        "meet": "Some days if we can't catch any fish we'll come here for a juice instead.",
+        "repeat": "You know what they say, you can take a fish to water but you can't make it drink!..... I think that's what they say?"
+      }
+    },
+    "Fruit And Veg Shopkeeper": {
+      "at": [2460, 1650],
+      "move": "idle_down",
+      "says": {
+        "meet": "Hello - fresh fruit and veg for sale here. We've got everything you could ask for.",
+        "repeat": "It's all grown locally here so it'll be the freshest food you can find in the harbour!"
+      },
+      "when": [
+        {
+          "days": "3-8",
+          "times": "M,A"
+        },
+        {
+          "days": "3-8",
+          "times": "E",
+          "says": {
+            "meet": "Hello - fresh fruit and veg for sale here. We've got everything you could ask for.",
+            "repeat": "I've got some discounted fruit on offer if you're interested."
+          }
+        }
+      ]
+    },
+    "Giovanni": {
+      "at": [920, 890],
+      "days": "3-8",
+      "times": "N",
+      "move": "idle_up",
+      "requires": "not met: CH 3-6 N Giovanni",
+      "says": {
+        "meet": "You shouldn't be out here so late, there's not always nice people wandering around at this hour. I promised not to cause trouble while I'm here but why not a little mischief? As proof I'm not evil, take this.",
+        "repeat": "I am Giovanni. I was once the leader of Team Rocket and the gym leader in Viridian. Now I'm not formally either, but Team Rocket will always live on."
+      }
+    },
+    "Holo Rare Shopkeeper": {
+      "at": [1975, 1650],
+      "move": "idle_down",
+      "says": {
+        "meet": "Welcome! I deal in mystery Holo Rares. Seven types, one pick — pay $400 and find out what fate has in store for you!"
+      },
+      "when": [
+        {
+          "days": "3-8",
+          "times": "E"
+        },
+        {
+          "days": "3-7/2",
+          "times": "M,A",
+          "says": {
+            "meet": "Welcome! I run a Holo Rare card gacha shop. For $400 you can choose one of 7 mystery cards. You'll receive a random Holo Rare from either the Base, Jungle or Fossil set. You'll know what energy type the card is but won't know what card you're going to get until after you buy it!"
+          }
+        },
+        {
+          "days": "4-8/2",
+          "times": "M,A",
+          "says": {
+            "meet": "Welcome! I run a Holo Rare card gacha shop. For $400 you can choose one of 7 mystery cards. You'll receive a random Holo Rare from either the Base, Jungle or Fossil set. You'll know what type the card is but won't know what card you're going to get until after you buy it!"
+          }
+        }
+      ]
+    },
+    "Jogger": {
+      "at": [-500, 2020],
+      "move": {
+        "axis": "horizontal",
+        "distance": 2700,
+        "pattern": "patrol_line",
+        "speed": 130.0
+      },
+      "says": {
+        "meet": "*huff* *huff* I'm trying to beat my personal best again today so I can't stop and talk!!",
+        "repeat": "*huff* Are you looking to get into running too or something?"
+      },
+      "when": [
+        {
+          "days": "4-8/2",
+          "times": "M,A"
+        },
+        {
+          "days": "2",
+          "times": "M,A",
+          "says": {
+            "meet": "*huff* *huff* I'm training for a marathon so all I do is run all day every day, I can't stop now!!",
+            "repeat": "*huff* I can't stop, I'm aiming for a personal best!!!"
+          }
+        }
+      ]
+    },
+    "Juice Drinking Jogger": {
+      "at": [905, 2234],
+      "days": "3-8",
+      "times": "M,A",
+      "move": "idle_left",
+      "says": {
+        "meet": "Have you seen the dude running non stop all day on the Promenade? I mean I can run well but nothing like that. You look like you could motivate me to run faster, maybe we should run together some time.",
+        "repeat": "Come run with me sometime."
+      }
+    },
+    "Juice Drinking Sailor 1": {
+      "at": [1065, 2321],
+      "days": "3-8",
+      "times": "M,A",
+      "move": "idle_right",
+      "says": {
+        "meet": "We haven't got juice this fresh onboard the Anne.",
+        "repeat": "This makes a real nice change."
+      }
+    },
+    "Juice Drinking Sailor 2": {
+      "at": [1112, 2321],
+      "days": "3-8",
+      "times": "M,A",
+      "move": "idle_left",
+      "says": {
+        "meet": "We see a lot of beach bars but never one as nice as this.",
+        "repeat": "I wonder how much we can take back onboard with us."
+      }
+    },
+    "Juicebar Woman": {
+      "at": [1030, 2190],
+      "move": "idle_down",
+      "says": {
+        "meet": "Hello! Can I interest you in any juice today?",
+        "repeat": "Did you get lucky and find a coin this time?"
+      },
+      "when": [
+        {
+          "days": "3-8",
+          "times": "M,A,E"
+        },
+        {
+          "days": "2",
+          "times": "M,A",
+          "says": {
+            "meet": "Oh hey! I help run the juicebar a couple days a week, it's an easy job and at least I get to spend my day at the beach.",
+            "repeat": "Juice is good."
+          }
+        },
+        {
+          "days": "2",
+          "times": "E",
+          "says": {
+            "meet": "Last chance to get some juice before we close!",
+            "repeat": "Sadly there's no discount!"
+          }
+        }
+      ]
+    },
+    "Kid Opening Packs": {
+      "at": [290, 1600],
+      "move": "idle_random",
+      "requires": "not met: CH 3,5 D Kid Opening Packs",
+      "says": {
+        "meet": "Wow! The nice shopkeeper man just got some cool new packs in. I'm spending all of my pocket money on them and I keep getting bonus rares! You can have this one too!",
+        "repeat": "I hope every pack in the future gives you bonus rares!"
+      },
+      "when": [
+        {
+          "days": "3-7/2",
+          "times": "M,A"
+        },
+        {
+          "at": [585, 1520],
+          "days": "2",
+          "times": "M,A",
+          "requires": "not met: CH 2 D Kid Opening Packs",
+          "says": {
+            "meet": "I'm opening a LOT of packs, sometimes when you open them you'll get a free bonus rare card at the end!!! My mum said we should always share, I've bought a lot of packs and gotten a lot of free rares so you can have this!",
+            "repeat": "I'm soooo lucky, I keep getting bonus rares in these packs! Did you get one in yours?"
+          },
+          "gift_type": "pack",
+          "gift_value": "base1_a"
+        }
+      ],
+      "gift_type": "card",
+      "gift_value": "base2-5"
+    },
+    "Koga": {
+      "at": [1950, 2250],
+      "days": "3-8",
+      "times": "N",
+      "move": {
+        "axis": "horizontal",
+        "distance": 100,
+        "pattern": "patrol_line",
+        "speed": 150.0
+      },
+      "requires": "not met: CH 3-6 N Koga",
+      "says": {
+        "meet": "Out here in the cover of darkness too? I'm Koga. I was once the Gym Leader of Fuschia and then made it as an Indigo League Elite 4 member. I've been asked here to help in the Gym Hero challenge. As you're out here at this hour you might appreciate this.",
+        "repeat": "I won't take it easy on you if you come to take the challenge so be prepared."
+      }
+    },
+    "Lapras": {
+      "at": [-250, 2950],
+      "days": "2",
+      "times": "M,A",
+      "move": {
+        "pattern": "random_wander",
+        "radius": 120,
+        "speed": 30.0
+      },
+      "says": {
+        "meet": "lapras.",
+        "repeat": "lapras."
+      }
+    },
+    "Lt Surge": {
+      "at": [-715, 2680],
+      "days": "3-8",
+      "times": "M,A",
+      "move": "idle_up",
+      "requires": "not met: CH 3-6 D Lt Surge",
+      "says": {
+        "meet": "The lighthouse here reminds me of the one in Olivine City. Sorry, I didn't introduce myself there first - I'm LT Surge, I'm one of the ex Kanto Gym Leaders. Take this card as an apology.",
+        "repeat": "Looks like you play the TCG too huh? If you earn entry into the challenge and can beat all 8 of us you'll get a lot of good stuff."
+      }
+    },
+    "Maintenance Guy Blocking Forest": {
+      "at": [920, 900],
+      "move": "idle_down",
+      "says": {
+        "meet": "Sorry, the forest is still closed off, we haven't been able to clear the area entirely yet. We were hoping to have all the work done before today so all the passengers of the SS Anne could go out and explore.",
+        "repeat": "We're nearly done with it so it'll definitely be open tomorrow, my boss would kill me if we don't have it reopened before the SS Anne leaves again."
+      },
+      "when": [
+        {
+          "days": "3",
+          "times": "M,A,E"
+        },
+        {
+          "days": "4-8",
+          "times": "E"
+        },
+        {
+          "days": "2",
+          "times": "M,A,E",
+          "says": {
+            "meet": "Sorry, the forest is closed off while we do some essential maintenance. We had even more wind than usual last night resulting in a lot of falling branches causing a safety hazard.",
+            "repeat": "Sorry but it's going to take a least a day or maybe two. Once we've cleared all the loose branches and removed the fallen trees it'll be safe for people to enter again."
+          }
+        }
+      ]
+    },
+    "Maintenance Guy Fixing Lighthouse": {
+      "at": [-800, 2620],
+      "move": "idle_right",
+      "says": {
+        "meet": "I'm just about to replace the lighthouse bulb with a new one. It's a loooooonnnnng way to the top, probably about 10,000 steps! I'm getting too old to be doing this but it's an important job.",
+        "repeat": "Weellll... it's not really 10,000 steps but it feels like that many. Can't let the lightbulb get worn out - If it does it'll mean a lot of trouble for the harbour so the responsibility is larger than the climb up!"
+      },
+      "when": [
+        {
+          "days": "1",
+          "times": "M,A"
+        },
+        {
+          "days": "3",
+          "times": "M,A",
+          "says": {
+            "meet": "The lighthouse electrics have been a bit iffy since I replaced the bulb the other day so I've gotta go back up and take a look.",
+            "repeat": "This is the only excercise I do and even that is too much..."
+          }
+        }
+      ]
+    },
+    "Maintenance Guy Watering Sunflowers": {
+      "at": [-630, 2270],
+      "move": "idle_left",
+      "says": {
+        "meet": "I feel like I'm just a lean mean flower watering machine....",
+        "repeat": "Thankfully the boss is letting me finish early today so I'll be around the pier to play cards this evening."
+      },
+      "when": [
+        {
+          "days": "3-7/2",
+          "times": "M,A"
+        },
+        {
+          "at": [-690, 2190],
+          "days": "1",
+          "times": "M,A",
+          "move": "idle_down",
+          "says": {
+            "meet": "As much as I would love to have a game, I can't right now... My boss will get mad if I do while I'm on the clock. I've gotta water all of the flowers on this pier and it's gonna take me ages. I'm due to finish this evening.",
+            "repeat": "I should be finished with this shortly, hopefully by this evening. As soon as I'm done with work I'll be up for a match. Come find me later when I've finished."
+          }
+        },
+        {
+          "at": [-790, 2270],
+          "days": "2",
+          "times": "M,A",
+          "move": "idle_right",
+          "says": {
+            "meet": "Another day, another dollar am I right?... I won't have time to play today, I have to head home early this evening.",
+            "repeat": "Plant the flowers, trim the flowers, water the flowers, pull the weeds.... It's a never ending job!"
+          }
+        }
+      ]
+    },
+    "Man Staring Out To Sea": {
+      "at": [-366, 2405],
+      "move": "idle_down",
+      "says": {
+        "meet": "My girlfriend is working again today but I have nothing to do, so I'm just going to lay on the beach for a while.",
+        "repeat": "Did you get chance to try a juice at the bar yet?"
+      },
+      "when": [
+        {
+          "days": "3-8",
+          "times": "M,A"
+        },
+        {
+          "at": [950, 2235],
+          "days": "3-8",
+          "times": "E",
+          "move": "idle_right",
+          "says": {
+            "meet": "It's nearly time for my girlfriend to finish her shift.",
+            "repeat": "I've got the slow cooker on so dinner will be all ready when we get home."
+          }
+        },
+        {
+          "at": [-690, 1270],
+          "days": "2",
+          "times": "M,A",
+          "move": {
+            "pattern": "random_wander",
+            "radius": 65,
+            "speed": 60.0
+          },
+          "says": {
+            "meet": "My girlfriend is out working at the juice bar today so I'm spending the morning running errands.",
+            "repeat": "If you go to buy some juice today say hello to my girlfriend for me."
+          }
+        },
+        {
+          "at": [-835, 1257],
+          "days": "1",
+          "times": "M,A",
+          "move": "idle_left",
+          "says": {
+            "meet": "Hello and welcome to the neighbourhood. Celeste Harbour is so serene. It's such a great place to live and got everything we need. Here take this as a welcome gift to help you get settled here.",
+            "repeat": "Me and my girlfriend moved here recently too, It's always so quiet and the water is always warm. I don't think we'll ever leave."
+          },
+          "gift_type": "cash",
+          "gift_value": "250"
+        },
+        {
+          "at": [950, 2235],
+          "days": "2",
+          "times": "E",
+          "move": "idle_right",
+          "says": {
+            "meet": "I'm waiting for my girlfriend to finish work so we can head home for the night.",
+            "repeat": "I always get a drink before she finishes."
+          }
+        }
+      ]
+    },
+    "Misty": {
+      "at": [98, 2338],
+      "days": "3-8",
+      "times": "M,A",
+      "move": "idle_down",
+      "requires": "not met: CH 3-6 D Misty",
+      "says": {
+        "meet": "Hey! I'm misty one of the ex Kanto Gym Leaders. A few of us have travelled here on the SS Anne to run the Gym Hero Challenge. If you're into the Pokemon TCG then you should try challenge us. Take this card as a good luck gift, it's my favourite Pokemon!",
+        "repeat": "If you're good enough and beat us you can even buy our cards. But you need the medals of your local elders first before you can even challenge us!"
+      }
+    },
+    "Mother": {
+      "at": [-366, 2338],
+      "days": "2",
+      "times": "M,A",
+      "move": "idle_down",
+      "says": {
+        "meet": "I always bring my little dude here, the harbour is such a great place for him to grow up.",
+        "repeat": "Don't worry about him, I always make sure he's got suncream on and he doesn't move out from under this shade!"
+      }
+    },
+    "Mother 2": {
+      "at": [242, 2338],
+      "move": "idle_down",
+      "says": {
+        "meet": "My kids love to build sandcastles every day and play that pokemon card game everyone is crazy for.",
+        "repeat": "I don't like to build sandcastles or play pokemon, but I love lying on the beach so I'm not complaining!"
+      },
+      "when": [
+        {
+          "days": "2",
+          "times": "M,A"
+        },
+        {
+          "days": "2",
+          "times": "E",
+          "says": {
+            "meet": "It's getting late now so it's definitely nearly home time! I have to go and make dinner!",
+            "repeat": "Just 5 more minutes and then it's home time!"
+          }
+        }
+      ]
+    },
+    "Mother At Bakery": {
+      "at": [2355, 1715],
+      "days": "3-8",
+      "times": "M,A",
+      "move": "idle_left",
+      "says": {
+        "meet": "I tried to take a picture of Timmy here in the Croagunk board outside the station but he's too small.",
+        "repeat": "I brought him here for a fresh donut to cheer him up."
+      }
+    },
+    "Mother Of Beach Kids": {
+      "at": [242, 2338],
+      "days": "3-8",
+      "times": "M,A",
+      "move": "idle_down",
+      "says": {
+        "meet": "My children just love playing at the beach all the time. If it was up to them I think they'd live on the beach!",
+        "repeat": "Letting them play is a good chance for me to catch up on reading. I'm currently reading 'The History of Hisui'. I never knew Sinnoh used to be called something else, it's fascinating."
+      }
+    },
+    "Mother Of Twins": {
+      "at": [954, 2396],
+      "days": "3",
+      "times": "M,A",
+      "move": "idle_right",
+      "says": {
+        "meet": "We're only visiting the harbour but my kids wanted some Pokemon cards so I bought them a few to play with.",
+        "repeat": "Please take it easy on them!"
+      }
+    },
+    "Old Guy Neighbour": {
+      "at": [-150, 1710],
+      "move": {
+        "pattern": "random_wander",
+        "radius": 65,
+        "speed": 30.0
+      },
+      "loop": false,
+      "says": {
+        "meet": "Oh hello there neighbour! Have you just recently moved in next door? I believe the beach is closed today but you can still go and see the lighthouse. If you get your hands on a starter deck, everyone in this town loves playing the Pokemon Card game!",
+        "repeat": "I'm just tidying up here, sadly I'm no good at cards, but there's always folk around the lighthouse to have a game with! If you've got some spare change, you can buy new cards from the Card Mart a few doors down from here."
+      },
+      "when": [
+        {
+          "days": "1",
+          "times": "M,A"
+        },
+        {
+          "at": [-375, 1625],
+          "days": "3-4",
+          "times": "E",
+          "move": "idle_down",
+          "says": {
+            "meet": "It's been a long day for sure. While I was doing my shopping earlier I tried my luck at the Holo Rare Stand. Of course I don't actually collect any cards or play it so you can have the card I won.",
+            "repeat": "I only decided to try my luck for the fun of it, it was such a thrill!"
+          }
+        },
+        {
+          "at": [-575, 1962],
+          "days": "2",
+          "times": "M,A",
+          "move": "idle_down",
+          "says": {
+            "meet": "Good morning! I'm going to spend my day here I think. The sun is warm, the wind is calm and I have nothing else to do!",
+            "repeat": "I'm glad the beach has reopened today, the great Sharpedo migration is an amazing sight to behold, if not a scary one. It'll be a long time before they're back."
+          }
+        },
+        {
+          "at": [2640, 1703],
+          "days": "3",
+          "times": "M,A",
+          "move": "idle_left",
+          "says": {
+            "meet": "Hello again. I just about made it to the market but my old legs are very tired so I need a rest now. I've got a lot of shopping to be doing!",
+            "repeat": "The card and coin stall might be of interest to you over in the other corner. They don't sell packs of cards like the card mart so it's worth having a browse."
+          }
+        },
+        {
+          "at": [-375, 1625],
+          "days": "1",
+          "times": "E",
+          "move": {
+            "pattern": "idle_down",
+            "radius": 65
+          },
+          "says": {
+            "meet": "I found this card on the floor while I was tidying up. I've been here all day and nobody has claimed it so you might as well take it!",
+            "repeat": "Did you get chance to visit the Card Mart yet? I normally visit the pier in the evening but I'm all worn out from cleaning up today. So I think I will just go to bed early tonight."
+          },
+          "gift_type": "card",
+          "gift_value": "basep-11"
+        },
+        {
+          "at": [857, 2313],
+          "days": "2",
+          "times": "E",
+          "move": "idle_right",
+          "says": {
+            "meet": "Good Evening Neighbour! Just thought I'd pop by and get a drink before heading back home for the night. Hope you've had a good day.",
+            "repeat": "I'm hoping to do some shopping at the market tomorrow when it reopens, it's a long walk for my old legs but it'll help keep me fit and healthy."
+          }
+        }
+      ]
+    },
+    "Old Lady On Bench": {
+      "at": [-827, 1962],
+      "move": "idle_down",
+      "says": {
+        "meet": "Hello! I'm not very good at the Pokemon card game so I gave my cards to my Grandson. He always says 'Weaknesses' and 'Resistances' are key Grandma, but I never understood it myself!.",
+        "repeat": "If you always pay attention to a Pokemon's Weaknesses and Resistances then you'll always have a good chance of winning I believe. You can always buy new cards from the Card Mart and hope you get some good ones!"
+      },
+      "when": [
+        {
+          "days": "1",
+          "times": "M,A"
+        },
+        {
+          "days": "1",
+          "times": "E",
+          "says": {
+            "meet": "It's getting late already, oh my how the days fly when you're at my age. After a long day, make sure you always go to bed and get a good nights rest!",
+            "repeat": "Nothing beats going to bed early and having a good nights sleep. I'm getting tired just thinking about going to bed."
+          }
+        }
+      ]
+    },
+    "Plaza Challenger 1": {
+      "at": [2230, 1290],
+      "days": "3-7/2",
+      "times": "M,A",
+      "move": "idle_up",
+      "says": {
+        "meet": "I'm in the middle of an impornt match here don't disturb me!",
+        "repeat": "Hey can you let me concentrate I'm losing here!"
+      }
+    },
+    "Plaza Challenger 2": {
+      "at": [2278, 1290],
+      "days": "3-7/2",
+      "times": "M,A",
+      "move": "idle_up",
+      "says": {
+        "meet": "I'm definitely going to lose here this is so tough.",
+        "repeat": "I've never battled a deck as hard as this before."
+      }
+    },
+    "Plaza Challenger 3": {
+      "at": [2326, 1290],
+      "days": "3-7/2",
+      "times": "M,A",
+      "move": "idle_up",
+      "says": {
+        "meet": "I only came here to see the beach but thought I'd try my luck with this challenge.",
+        "repeat": "I maybe should have just gone sunbathing instead."
+      }
+    },
+    "Plaza Challenger 4": {
+      "at": [2215, 1310],
+      "days": "3-7/2",
+      "times": "M,A",
+      "move": "idle_up",
+      "says": {
+        "meet": "Wow this is an intense match!",
+        "repeat": "I've never seen plays like this before."
+      }
+    },
+    "Plaza Challenger 5": {
+      "at": [2200, 1302],
+      "move": "idle_up",
+      "says": {
+        "meet": "I enjoy watching the elders play, they're so highly skilled",
+        "repeat": "Have you beaten them yourself yet?"
+      },
+      "when": [
+        {
+          "days": "4-8/2",
+          "times": "M,A"
+        },
+        {
+          "days": "3-8",
+          "times": "E",
+          "says": {
+            "meet": "I've been watching everyone play all day.",
+            "repeat": "if you're going to try it then good luck!!!"
+          }
+        },
+        {
+          "at": [2205, 1275],
+          "days": "3-7/2",
+          "times": "M,A",
+          "move": "idle_right",
+          "says": {
+            "meet": "I'm no good at playing myself but I love to watch.",
+            "repeat": "It's a really good match to watch!"
+          }
+        }
+      ]
+    },
+    "Plaza Challenger 6": {
+      "at": [2350, 1285],
+      "move": "idle_left",
+      "says": {
+        "meet": "I thought I was too old to be good at this, but the elders are amazing.",
+        "repeat": "Maybe you CAN teach an old dog new tricks ho ho."
+      },
+      "when": [
+        {
+          "days": "3-8",
+          "times": "M,A"
+        },
+        {
+          "at": [2355, 1302],
+          "days": "3-8",
+          "times": "E",
+          "move": "idle_up",
+          "says": {
+            "meet": "I thought I was too old to be good at this, but the elders are amazing and have been playing all day long.",
+            "repeat": "If you win then maybe you can teach me how to play."
+          }
+        }
+      ]
+    },
+    "Plaza Challenger 7": {
+      "at": [2345, 1310],
+      "days": "3-7/2",
+      "times": "M,A",
+      "move": "idle_up",
+      "says": {
+        "meet": "Hey get in line!! There's a queue of us here.",
+        "repeat": "Ya gotta wait ya turn."
+      }
+    },
+    "Plaza Challenger 7b": {
+      "at": [2315, 1315],
+      "days": "3-7/2",
+      "times": "M,A",
+      "move": "idle_up",
+      "says": {
+        "meet": "Wow! I wish I could play as good as these.",
+        "repeat": "I'm pretty new to this whole card thing."
+      }
+    },
+    "Plaza Challenger 8": {
+      "at": [2250, 1315],
+      "days": "3-8",
+      "times": "M,A",
+      "move": "idle_up",
+      "says": {
+        "meet": "I've been collecting for a LONG time but I'll never be as good at battling as these folk are. You might be able to make more use of this than I can.",
+        "repeat": "I've got well over 10,000 cards, I've been collecting them for years."
+      }
+    },
+    "Plaza Challenger 9": {
+      "at": [2280, 1320],
+      "days": "3-7/2",
+      "times": "M,A",
+      "move": "idle_up",
+      "says": {
+        "meet": "WOW! Such cool cards!!!",
+        "repeat": "I wish I had cards as cool as these!"
+      }
+    },
+    "Policeman Blocking Beach": {
+      "at": [-545, 2010],
+      "move": "idle_left",
+      "says": {
+        "meet": "There's still some Sharpedo reported in the water so we can't let anyone through yet.",
+        "repeat": "Can't let you through yet until the Sharpedo are gone. It should be safe in the morning, why don't you have an early night!"
+      },
+      "when": [
+        {
+          "days": "1",
+          "times": "E,N"
+        },
+        {
+          "days": "1",
+          "times": "M,A",
+          "says": {
+            "meet": "We've currently got a large migration of Sharpedo passing through the harbour so it's not safe for anyone to be on the beach at the moment, it's going to be shut for the rest of the day but we'll reopen tomorrow.",
+            "repeat": "Sorry if you came here to see the beach but we'll reopen it once all of the Sharpedo have passed through. They migrate this way once a year but they tend to go through pretty quick so should be gone by the morning."
+          }
+        },
+        {
+          "at": [-710, 2020],
+          "days": "2",
+          "times": "M,A",
+          "move": {
+            "pattern": "random_wander",
+            "radius": 65,
+            "speed": 60.0
+          },
+          "says": {
+            "meet": "All the Sharpedo are gone so it's safe to go to the beach again. I'm patrolling the area just to make sure.",
+            "repeat": "I've been doing this job for long enough to know it's safe now but it's always good to show face for reassurance."
+          }
+        },
+        {
+          "at": [701, 1965],
+          "days": "2",
+          "times": "E",
+          "move": "idle_down",
+          "says": {
+            "meet": "I'll be heading home soon, we've had no reports of Sharpedo today and it's getting late so most people will be off the beach in the next hour.",
+            "repeat": "Tomorrow will be another busy day, the SS Anne should arrive in the morning so there'll be a lot of tourists in the harbour."
+          }
+        }
+      ]
+    },
+    "Psychic Brienne": {
+      "at": [-830, 1270],
+      "move": "idle_left",
+      "says": {
+        "meet": "The SS Anne has ruined my daily meditation so I've had to try a new spot today.",
+        "repeat": "It's not quite as good of a spot as the dock is but here but it's still peaceful enough."
+      },
+      "when": [
+        {
+          "days": "3-5,7",
+          "times": "M,A,E"
+        },
+        {
+          "kind": "opponent",
+          "at": [2880, 3110],
+          "days": "2-8/2",
+          "times": "N",
+          "move": "idle_right",
+          "says": {
+            "meet": "I love the peace of the harbour at night, the sound of the waves in the dark are really relaxing.",
+            "repeat": "It's easier to meditate at night.",
+            "first_win": "I have to focus more. Take these cards to help you focus more too.",
+            "rematch_win": "I'll focus harder.",
+            "loss": "I manifested the win."
+          }
+        },
+        {
+          "at": [2880, 3110],
+          "days": "2",
+          "times": "M,A,E",
+          "move": "idle_right",
+          "says": {
+            "meet": "This dock is always so quiet, it's a great spot to meditate and to play the pokemon TCG.",
+            "repeat": "I'll be here meditating all day until tonight, Please don't disturb me until then."
+          }
+        }
+      ]
+    },
+    "SS Anne Waiter": {
+      "at": [2800, 3150],
+      "days": "3-8",
+      "times": "M,A,E",
+      "move": "idle_left",
+      "says": {
+        "meet": "I've only been a waiter around a week, they were short staffed so offered me a high pay.",
+        "repeat": "I highly reccomend it as a career, but I don't know what I'll do after the ship returns back to Vermillion."
+      }
+    },
+    "SS Anne Waitress": {
+      "at": [2760, 3150],
+      "days": "3-8",
+      "times": "M,A,E",
+      "move": "idle_right",
+      "says": {
+        "meet": "The SS Anne is always hiring if you fancy travelling the world.",
+        "repeat": "We always have a lot of spare uniforms on hand as some staff land at a nice port and decide they don't want to go back to work again!"
+      }
+    },
+    "Sabrina": {
+      "at": [-220, 2490],
+      "days": "3-8",
+      "times": "N",
+      "move": "idle_down",
+      "requires": "not met: CH 3-6 N Sabrina",
+      "says": {
+        "meet": "Your town is much quieter than Saffron. I'm Sabrina, I knew you would be coming. You'll be challenging me soon I can see that, but this might help you win against me.",
+        "repeat": "Good luck with the Gym Hero Challenge. I know you're going to do well."
+      }
+    },
+    "Sailor 2 Pier 1": {
+      "at": [350, 3125],
+      "move": "idle_random",
+      "says": {
+        "meet": "With the arrival of the SS Anne we're even busier than usual. We've never had this many tourists in the harbour at once.",
+        "repeat": "Sigh.. I wish I could just on the SS Anne and sail away on it forever."
+      },
+      "when": [
+        {
+          "days": "3-7/2",
+          "times": "M,A,E"
+        },
+        {
+          "days": "4-8/2",
+          "times": "E"
+        },
+        {
+          "at": [300, 3125],
+          "days": "3-8",
+          "times": "N",
+          "move": "idle_left",
+          "says": {
+            "meet": "Oh boy I am pooped. Some guys dressed in black headed past this way earlier as if they were going to go to the forest.",
+            "repeat": "The forest is still closed until morning though so not sure where they were going."
+          }
+        },
+        {
+          "days": "4-8/2",
+          "times": "M,A",
+          "says": {
+            "meet": "Yesterday was super busy with the SS Anne. We've never had this many tourists in the harbour at once.",
+            "repeat": "At least it's not as busy today but I still wish I could just on the SS Anne and sail away on it forever."
+          }
+        },
+        {
+          "at": [700, 2820],
+          "days": "2",
+          "times": "M,A,E",
+          "says": {
+            "meet": "I'm a deckhand round these parts so I've always got a lot of work to do.",
+            "repeat": "I wish I could just sail the seas without the work... that's my dream for sure."
+          }
+        },
+        {
+          "at": [700, 2820],
+          "days": "2",
+          "times": "N",
+          "says": {
+            "meet": "It's always a long hard day's work on these docks, I never get an early night.",
+            "repeat": "Even though the harbour is a really safe place, it's still no reason to go wandering around at night if you don't have to."
+          }
+        }
+      ]
+    },
+    "Sailor Working On Dock": {
+      "at": [690, 2680],
+      "move": {
+        "axis": "vertical",
+        "distance": 200,
+        "pattern": "patrol_line",
+        "speed": 80.0
+      },
+      "says": {
+        "meet": "*huff* I knew I'd be busy with the SS Anne arriving but *huff* I didn't think I'd be THIS busy....",
+        "repeat": "*huff* *huff* The SS Anne only arrives once a year and it's always the harbour's busiest days."
+      },
+      "when": [
+        {
+          "days": "3-8",
+          "times": "M,A,E"
+        },
+        {
+          "days": "3-8",
+          "times": "N",
+          "move": "idle_left",
+          "says": {
+            "meet": "I can't wait for the SS Anne to leave now, I've never been busier.",
+            "repeat": "Us sailors are hard workers as it is but this is too much for us!"
+          }
+        },
+        {
+          "at": [400, 3110],
+          "days": "2",
+          "times": "M,A,E",
+          "move": {
+            "axis": "horizontal",
+            "distance": 500,
+            "pattern": "patrol_line",
+            "speed": 80.0
+          },
+          "says": {
+            "meet": "*huff* *huff* it's a hard graft looking after this dock. We don't have enough hard workers... Here, take this uniform. I have a lot spare because nobody wants to help out around here.",
+            "repeat": "We get a lot of ships come through, it's a really busy harbour."
+          }
+        },
+        {
+          "at": [400, 3110],
+          "days": "2",
+          "times": "N",
+          "move": {
+            "axis": "horizontal",
+            "distance": 500,
+            "pattern": "patrol_line",
+            "speed": 40.0
+          },
+          "says": {
+            "meet": "I'm normally finished by now, but with the SS Anne arriving tomorrow there's still too much work to do.",
+            "repeat": "It's going to be even busier than a usual day tomorrow. It'll definitely be a long day."
+          },
+          "gift_type": null,
+          "gift_value": null
+        }
+      ],
+      "gift_type": "costume",
+      "gift_value": "Sailor"
+    },
+    "Sailor Working On SS Anne": {
+      "at": [2150, 3150],
+      "move": {
+        "axis": "horizontal",
+        "distance": 40,
+        "pattern": "patrol_line",
+        "speed": 60.0
+      },
+      "says": {
+        "meet": "The SS Anne will be sailing for a long time. ",
+        "repeat": "It only makes it's trip once a year so there's a lot of work to be done when it sails."
+      },
+      "when": [
+        {
+          "days": "3-8",
+          "times": "M,A"
+        },
+        {
+          "days": "3-8",
+          "times": "E",
+          "move": {
+            "axis": "horizontal",
+            "distance": 40,
+            "pattern": "patrol_line",
+            "speed": 40.0
+          }
+        },
+        {
+          "at": [2880, 3110],
+          "days": "3-8",
+          "times": "N",
+          "move": "idle_right",
+          "says": {
+            "meet": "I've been working all day I'm absolutely shattered.",
+            "repeat": "Most passengers went back to the ship earlier but I saw some shady characters actually getting off."
+          }
+        }
+      ]
+    },
+    "Smoking Sailor": {
+      "at": [2495, 2940],
+      "days": "3-8",
+      "times": "M,A",
+      "move": "idle_right",
+      "says": {
+        "meet": "I'm just having a cig break.",
+        "repeat": "Yeah I know I know, smoking is bad."
+      }
+    },
+    "Station Manager": {
+      "at": [2020, 1020],
+      "move": {
+        "pattern": "random_wander",
+        "radius": 60,
+        "speed": 50.0
+      },
+      "says": {
+        "meet": "Good day. Trains run all day from here, but they're normally fully booked way in advance so you won't be able to just hop on any train and be on your way.",
+        "repeat": "Do you require any further assistance?"
+      },
+      "when": [
+        {
+          "days": "3-7/2",
+          "times": "M,A"
+        },
+        {
+          "days": "4-8/2",
+          "times": "M,A",
+          "says": {
+            "meet": "Good day. Trains run all day from here, but they're normally fully booked way in advance so you won't be able to just hop on any train and be on your way.",
+            "repeat": "Have you got any questions about the train departures?"
+          }
+        },
+        {
+          "days": "3-8",
+          "times": "E",
+          "says": {
+            "meet": "Good evening. The last train of the day will be departing shortly so please head through to the gate if you intend to catch it.",
+            "repeat": "The trains here are always very punctual, they're never late."
+          }
+        },
+        {
+          "at": [2275, 1440],
+          "days": "2",
+          "times": "M,A,E",
+          "move": null,
+          "says": {
+            "meet": "I'm sorry but if you've come to take a train then I'm afraid you've missed the last one. With no more services running we've shut the station to do essential maintenance before tomorrow.",
+            "repeat": "Trains will be running again following normal schedule from tomorrow morning so all train tickets will be valid from tomorrow onwards."
+          }
+        }
+      ]
+    },
+    "Sunbathing Coin Giver": {
+      "at": [98, 2338],
+      "days": "2",
+      "times": "M,A,E",
+      "move": "idle_down",
+      "says": {
+        "meet": "There's always a lot of shells on this beach that have washed up from the water, but I also found this coin. I don't play the Pokemon TCG so you can have it.",
+        "repeat": "One time I saw a shellder washed up so I helped it back into the ocean."
+      }
+    },
+    "Sunbathing Couple F": {
+      "at": [-45, 2406],
+      "days": "2",
+      "times": "M,A",
+      "move": "idle_down",
+      "says": {
+        "meet": "Me and my boyfriend used to be professional swimmers but it was far too much hard work.",
+        "repeat": "I love that we can just relax on the beach without a lot of pressure from a hardcore lifestyle."
+      }
+    },
+    "Sunbathing Couple M": {
+      "at": [-77, 2406],
+      "days": "2",
+      "times": "M,A",
+      "move": "idle_down",
+      "says": {
+        "meet": "Me and my girlfriend love coming to the beach. Especially when it's as warm as this.",
+        "repeat": "I'm not a massive fan of sand but these sunbeds keep you from getting covered in it."
+      }
+    },
+    "Sunbathing Dude 1": {
+      "at": [-222, 2273],
+      "move": "idle_down",
+      "says": {
+        "meet": "We've been at sea for a few days now and finally docked here so it's nice to be back on Land.",
+        "repeat": "I've come all the way from Saffron city, I'm one of the managers working at Silph Co."
+      },
+      "when": [
+        {
+          "days": "3-8",
+          "times": "M,A"
+        },
+        {
+          "days": "2",
+          "times": "M,A",
+          "says": {
+            "meet": "It's a beautiful day today, nothing like coming to the beach and having a nap!",
+            "repeat": "I can barely stay awake... zzz..."
+          },
+          "message_colour": "orange",
+          "sprite": "NPC 15"
+        },
+        {
+          "days": "2",
+          "times": "N",
+          "requires": "not met: CH 2 N Sunbathing Dude 1",
+          "says": {
+            "meet": "ugh.. oooo.. hello? Good morning? oops it seems I fell asleep on the beach again... I shouldn't be out this late, thanks for waking me up. Take this as a thank you.",
+            "repeat": "I better head home soon, I accidentally do this all the time so my wife can probably guess what happened but she'll still be worried."
+          },
+          "gift_type": "coin",
+          "gift_value": "REPLACECOIN",
+          "message_colour": "orange",
+          "sprite": "NPC 15"
+        },
+        {
+          "days": "2",
+          "times": "E",
+          "says": {
+            "meet": "zzzzzzzzzzzzzzzzzz.",
+            "repeat": "zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz."
+          },
+          "message_colour": "orange",
+          "sprite": "NPC 15"
+        }
+      ],
+      "message_colour": "lilac",
+      "sprite": "NPC 07"
+    },
+    "Sunbathing Sailor 1": {
+      "at": [-79, 2405],
+      "days": "3-8",
+      "times": "M,A,E",
+      "move": "idle_down",
+      "says": {
+        "meet": "I got nothing to do until tonight so I'm taking it easy.",
+        "repeat": "I aint doing work if I aint being paid for it."
+      }
+    },
+    "Sunbathing Sailor 2": {
+      "at": [-46, 2273],
+      "move": "idle_down",
+      "says": {
+        "meet": "I actually battled Misty years ago, back when she was Cerulean's gym leader.",
+        "repeat": "I lost and I'm too shy to say hello. Not like she'd remember me anyway."
+      },
+      "when": [
+        {
+          "days": "3-8",
+          "times": "M,A"
+        },
+        {
+          "days": "3-8",
+          "times": "E",
+          "says": {
+            "meet": "Misty left and I didn't say hello. I have to head back to the Anne so I won't have chance now.",
+            "repeat": "Weird how life works. You never know who you're going to run into years down the line."
+          }
+        }
+      ]
+    },
+    "Super Elder": {
+      "at": [2500, 1520],
+      "days": "2",
+      "times": "E",
+      "move": {
+        "pattern": "random_wander",
+        "radius": 60,
+        "speed": 30.0
+      },
+      "says": {
+        "meet": "The 3 of us will be giving out winner medals tomorrow so if you think you're good enough now come back tomorrow and try and beat us!",
+        "repeat": "If you can beat all 3 of us tomorrow you can enter the gym leader challenge!"
+      }
+    },
+    "Super Elder Hamish": {
+      "at": [2500, 1520],
+      "days": "2",
+      "times": "M,A",
+      "move": {
+        "pattern": "random_wander",
+        "radius": 60,
+        "speed": 30.0
+      },
+      "says": {
+        "meet": "Hoh Hoh, I imagine you're new in town ey? I'm Hamish one of the the 3 Card Elders in town. If you beat all 3 of us in a match we will grant you access to the Gym Hero Challenge. However... Because it's the bank holiday weekend we're having the day off!",
+        "repeat": "Thanks to the Bank Holiday, there are no more trains to this station for the rest of the day. The market is also shut so the plazas will be quite quiet until tomorrow."
+      }
+    },
+    "Train Employee 1": {
+      "at": [2562, 1145],
+      "days": "3-8",
+      "times": "M,A",
+      "move": "idle_right",
+      "says": {
+        "meet": "I work at the station but I'm just on my break.",
+        "repeat": "I'm not a big card player otherwise I'd be watching the Elders."
+      }
+    },
+    "Train Employee 2": {
+      "at": [2550, 1270],
+      "move": {
+        "pattern": "random_wander",
+        "radius": 65,
+        "speed": 40.0
+      },
+      "says": {
+        "meet": "I'm been tasked with litter picking with the influx of tourist.",
+        "repeat": "There's plenty of bins around so I don't why people don't use them."
+      },
+      "when": [
+        {
+          "days": "3-7/2",
+          "times": "M,A,E"
+        },
+        {
+          "days": "4-8/2",
+          "times": "E"
+        }
+      ]
+    },
+    "Woman Drinking Juice": {
+      "at": [1112, 2233],
+      "days": "2",
+      "times": "M,A",
+      "move": "idle_left",
+      "says": {
+        "meet": "Mmmmmmmmmm............ Have you tried the juice here? Freshly squeezed, straight from the fruit and chilled to perfection.",
+        "repeat": "...... Nothing beats an ice cold delicious juice on the beach!"
+      }
+    },
+    "Woman Staring Out To Sea": {
+      "at": [-835, 1287],
+      "days": "1",
+      "times": "M,A",
+      "move": "idle_left",
+      "says": {
+        "meet": "I'm so glad we moved here. It smells like freshly cut grass and warm sea air every day here.",
+        "repeat": "My husband is so kind and generous, we've already made a lot of great friends here."
+      }
+    },
+    "Woman Trying To Shop": {
+      "at": [2090, 1720],
+      "move": {
+        "pattern": "random_wander",
+        "radius": 60,
+        "speed": 50.0
+      },
+      "says": {
+        "meet": "I managed pick up a new coin from the shopkeeper over there. It was super expensive but I absolutely love visiting Galar so I had to have a little wooloo.",
+        "repeat": "Can you believe that over in Galar Wooloo just wander around in the open? I think I wish we had those over here but I guess the weather is too warm for them."
+      },
+      "when": [
+        {
+          "days": "3-8",
+          "times": "M,A"
+        },
+        {
+          "days": "2",
+          "times": "M,A",
+          "says": {
+            "meet": "I'm so stupid! I came to Market Plaza to pick up a new coin, but I forgot it's a bank holiday so of course it's shut!!",
+            "repeat": "I'll have to come back tomorrow, I've been using the same coin for so long I'm desperate for a new one!"
+          }
+        }
+      ]
+    },
+    "Woman Walking Neighbourhood": {
+      "at": [1500, 2510],
+      "move": {
+        "axis": "horizontal",
+        "distance": 280,
+        "pattern": "patrol_line",
+        "speed": 30.0
+      },
+      "says": {
+        "meet": "Hello! I'm getting my daily steps in like I do every day, but I decided to do it on the beach instead today.",
+        "repeat": "The sand is much harder to walk on but it's nice being next to the ocean."
+      },
+      "when": [
+        {
+          "days": "3-7/2",
+          "times": "M,A"
+        },
+        {
+          "at": [855, 2313],
+          "days": "3-8",
+          "times": "E",
+          "move": "idle_right",
+          "says": {
+            "meet": "Do you ever end up walking more than you thought you were going to?",
+            "repeat": "I always end up walking further than I should."
+          }
+        },
+        {
+          "at": [-800, 1720],
+          "days": "2",
+          "times": "M,A",
+          "move": {
+            "axis": "horizontal",
+            "distance": 2600,
+            "pattern": "patrol_line",
+            "speed": 50.0
+          },
+          "says": {
+            "meet": "Hello! Nice to meet you, I live in the neighbourhood at number 11. I've just going for my morning walk to get my daily steps in!",
+            "repeat": "How is the harbour treating you? My parents have lived here since before I was born so I'm sure we'll bump into each other again!"
+          }
+        },
+        {
+          "at": [1208, 2398],
+          "days": "2",
+          "times": "E",
+          "move": "idle_left",
+          "says": {
+            "meet": "I managed to walk 20,000 steps today I'm absolutely worn out.",
+            "repeat": "I think I walked a bit too far today."
+          }
+        }
+      ]
+    },
+    "Worker On Dock": {
+      "at": [900, 3155],
+      "move": "idle_down",
+      "says": {
+        "meet": "Hey watch yourself there, I'm doing some work on this ship here and I don't want you to get electrocuted or anything.",
+        "repeat": "Please be careful around the docks, don't get too close to the edge."
+      },
+      "when": [
+        {
+          "days": "3-7/2",
+          "times": "M,A"
+        },
+        {
+          "days": "3-7/2",
+          "times": "E",
+          "says": {
+            "meet": "I'll be done with this work very soon, I'm just finishing the last bit of welding on the hull.",
+            "repeat": "Watch yourself around these ships, it can be dangerous if you're not careful."
+          }
+        }
+      ]
+    }
+  },
+  "opponents": {
+    "Aromagirl Penelope": {
+      "at": [2167, 2305],
+      "move": "idle_up",
+      "says": {
+        "meet": "Plants can grow in all weird shapes and sizes, they're not just flowers and trees, there's a lot of different kinds out there.",
+        "repeat": "I've catalogued a lot of crazy plants recently.",
+        "first_win": "I wish I could photosynthesize.",
+        "rematch_win": "I could do with some water",
+        "loss": "Grass Pokemon are great!"
+      },
+      "when": [
+        {
+          "days": "6",
+          "times": "A"
+        },
+        {
+          "days": "3-4,7-8",
+          "times": "M,A,E"
+        }
+      ]
+    },
+    "Bad Dude Paul": {
+      "at": [-810, 2550],
+      "days": "2,4-5,8",
+      "times": "N",
+      "move": "idle_random",
+      "says": {
+        "meet": "Heh you want to try and beat me kid??",
+        "repeat": "Damn... they're gonna kick me out of the cool guy biker gang for this.",
+        "first_win": "Heh you're pretty tough, you wanna join our gang?",
+        "rematch_win": "Now they're DEFINITELY going to kick me out of the cool guy biker gang...",
+        "loss": "Heh heh heh, too easy."
+      }
+    },
+    "Bad Dude Wayne": {
+      "at": [420, 1270],
+      "days": "3-4,6-8",
+      "times": "N",
+      "move": {
+        "pattern": "random_wander",
+        "radius": 65,
+        "speed": 40.0
+      },
+      "says": {
+        "meet": "I caught these bad looking dudes heading to the forest and they gave me some interesting cards and went on their way.",
+        "repeat": "I won't lost this time.",
+        "first_win": "You even seen a Dark Pokemon before?",
+        "rematch_win": "I need some more of these Dark cards.",
+        "loss": "You didn't stand a chance."
+      }
+    },
+    "Battlegirl Sofia": {
+      "at": [2645, 2395],
+      "move": "idle_cycle",
+      "says": {
+        "meet": "This beach is a great spot to train both my martial arts and my card skills.",
+        "repeat": "Want to join in with my training?",
+        "first_win": "A loss is always a good chance to improve.",
+        "rematch_win": "I'm going to keep on training.",
+        "loss": "I rarely lose when I've trained properly."
+      },
+      "when": [
+        {
+          "days": "5",
+          "times": "E"
+        },
+        {
+          "days": "4,8",
+          "times": "E,N"
+        }
+      ]
+    },
+    "Beach Kid Evie": {
+      "at": [480, 2380],
+      "move": "idle_left",
+      "says": {
+        "meet": "I heard there's a scary Pokemon called Sandyghast. They sound scary and I don't like scary Pokemon, I only like cute pokemon!!",
+        "repeat": "Yes let's play again!",
+        "first_win": "You haven't seen a Sandyghast have you?",
+        "rematch_win": "If you see a Sandyghast please let me know!!",
+        "loss": "Yaaaaaay! I won!!"
+      },
+      "when": [
+        {
+          "days": "2-3,5-7",
+          "times": "M,A"
+        },
+        {
+          "kind": "npc",
+          "days": "2",
+          "times": "E",
+          "says": {
+            "meet": "I hope mummy brings us back to the beach to play again tomorrow.",
+            "repeat": "We normally come to the beach every day to play!"
+          }
+        }
+      ]
+    },
+    "Beach Kid Timothy": {
+      "at": [450, 2380],
+      "move": "idle_right",
+      "says": {
+        "meet": "I love the beach! I love the sand! I love building sandcastles! I love playing the Pokemon TCG!",
+        "repeat": "I could build sandcastles and play Pokemon all day!",
+        "first_win": "Please don't destroy my sandcastles!!!",
+        "rematch_win": "You can help me build a sandcastle if you want!",
+        "loss": "Yaaaaaay! I love winning!"
+      },
+      "when": [
+        {
+          "days": "2-3,5-7",
+          "times": "M,A"
+        },
+        {
+          "kind": "npc",
+          "days": "2",
+          "times": "E",
+          "says": {
+            "meet": "Mum said it's nearly bedtime so we have to go home soon.",
+            "repeat": "I wish we could stay and play all day."
+          }
+        }
+      ]
+    },
+    "Birdspotter Gregg": {
+      "at": [1640, 2340],
+      "move": "idle_random",
+      "says": {
+        "meet": "My friend said this is a great spot to find them but also a great spot to battle.",
+        "repeat": "This really is a great spot for birds and cards!",
+        "first_win": "Do you hate birds or something?.",
+        "rematch_win": "Well at least I can watch the birds from around here.",
+        "loss": "Looking after birds really isn't easy!"
+      },
+      "when": [
+        {
+          "days": "6",
+          "times": "M"
+        },
+        {
+          "days": "3-4,7-8",
+          "times": "E,N"
+        }
+      ]
+    },
+    "Birdspotter Tamsin": {
+      "at": [1886, 2360],
+      "move": "idle_random",
+      "says": {
+        "meet": "These Palms attract a lot of Bird Pokemon so its a good spot to watch them.",
+        "repeat": "Looking for more Birds round here?",
+        "first_win": "I wish I could just fly away.",
+        "rematch_win": "You can't fly away from all your troubles.",
+        "loss": "You should try bird watching with me!"
+      },
+      "when": [
+        {
+          "days": "2",
+          "times": "M,A,E"
+        },
+        {
+          "days": "5",
+          "times": "M,A"
+        },
+        {
+          "days": "6",
+          "times": "A,E,N"
+        },
+        {
+          "days": "3,7",
+          "times": "M"
+        }
+      ]
+    },
+    "Bug Catcher Alex": {
+      "at": [1625, 2180],
+      "move": {
+        "axis": "vertical",
+        "distance": 140,
+        "pattern": "patrol_line",
+        "speed": 20.0
+      },
+      "says": {
+        "meet": "Some people hate bugs but I love them! Do you love bugs too?",
+        "repeat": "You just love bugs as much as I do then?",
+        "first_win": "Maybe bugs aren't as good as I thought...",
+        "rematch_win": "Me and my bugs will win one of these days!",
+        "loss": "I knew bugs were the best!!"
+      },
+      "when": [
+        {
+          "days": "2,5",
+          "times": "A,E"
+        },
+        {
+          "days": "4,8",
+          "times": "M"
+        }
+      ]
+    },
+    "Bug Catcher Frankie": {
+      "at": [2295, 2160],
+      "move": "idle_random",
+      "says": {
+        "meet": "Wow!!! The bugs here are so much cooler than what we have over in Viridian Forest!!",
+        "repeat": "Seen any cool bug Pokemon around here since our last match?",
+        "first_win": "My bugs clearly aren't as strong as the ones around here.",
+        "rematch_win": "Hmm I wish I could get my hands on some of these bugs instead.",
+        "loss": "Bug pokemon really aren't as weak as people think."
+      },
+      "when": [
+        {
+          "days": "5",
+          "times": "A,E"
+        },
+        {
+          "days": "3-4,7-8",
+          "times": "M,A,E"
+        }
+      ]
+    },
+    "Card Elder Hamish": {
+      "at": [2326, 1252],
+      "move": "idle_down",
+      "says": {
+        "meet": "Back for the challenge then hey? Remember you'll need to defeat all 3 of us if you want to progress.",
+        "repeat": "Very well, I always enjoy a good challenge!",
+        "first_win": "Well done, that was quite the battle. Take my medal and continue forth.",
+        "rematch_win": "Battling like this makes me feel young again.",
+        "loss": "Don't be disheartened, the rain will always stop."
+      },
+      "when": [
+        {
+          "days": "4-6,8",
+          "times": "M,A,E"
+        },
+        {
+          "kind": "npc",
+          "days": "3",
+          "times": "M,A,E",
+          "says": {
+            "meet": "We're not as young as we used to be but we're still the best in the harbour. If you're looking to take on the Gym Hero Challenge you're better off coming back tomorrow when there are less people waiting, otherwise you'll be stood around all day. This card might help your chances.",
+            "repeat": "You might need to buy a few more packs from the Card Mart first too. A lot of people are generous to give cards away so make sure you speak to everyone around too."
+          }
+        }
+      ]
+    },
+    "Card Elder Rayne": {
+      "at": [2230, 1252],
+      "move": "idle_down",
+      "says": {
+        "meet": "Hoh Hoh, are you ready to feel the torrent? If you win I'll give you a medal to prove your triumph.",
+        "repeat": "Hoh Hoh! I enjoyed the battle that much I'd also like another!",
+        "first_win": "Congratulations on your win. You've earned this medal and my respect.",
+        "rematch_win": "Come back any time and battle us old folk.",
+        "loss": "Don't be disheartened, the rain will always stop."
+      },
+      "when": [
+        {
+          "days": "4-6,8",
+          "times": "M,A,E"
+        },
+        {
+          "kind": "npc",
+          "at": [2278, 1252],
+          "days": "3",
+          "times": "M,A,E",
+          "says": {
+            "meet": "Hoh Hoh, are you looking to enter the Gym Hero Challenge? If you beat all 3 of us Elders we will grant you permission! .....However I'm already flat out with all these tourists. Take this card for now and come back tomorrow instead when it's quieter",
+            "repeat": "You might need some better cards if you have a hope of beating us, make sure you've visited the card mart today and also check out card vendor at the market if you haven't already."
+          }
+        }
+      ]
+    },
+    "Card Elder Waverly": {
+      "at": [2278, 1252],
+      "move": "idle_down",
+      "says": {
+        "meet": "Are you ready to take me on then? If you win then you'll do well in the Gym Hero Challenge.",
+        "repeat": "Up for another round then? Happy to oblige.",
+        "first_win": "Well well well, what a jolly good play! You've earned this.",
+        "rematch_win": "We've been winning and losing for so long it's always fun either way.",
+        "loss": "When you fail, get up and try again."
+      },
+      "when": [
+        {
+          "days": "4-6,8",
+          "times": "M,A,E"
+        },
+        {
+          "kind": "npc",
+          "at": [2230, 1252],
+          "days": "3",
+          "times": "M,A,E",
+          "says": {
+            "meet": "Hold on there sonny boy, with the SS Anne, you've arrived a bit too late! There's a lot of people already in the queue, by the looks of things it'll take us all day to get through this lot but it should be quieter tomorrow so take this card to help with your patience.",
+            "repeat": "Make sure you've earned as many cards as you can around here, you'll need them to defeat us 3."
+          }
+        }
+      ]
+    },
+    "Engineer Allan": {
+      "at": [-800, 2620],
+      "move": {
+        "pattern": "idle_left",
+        "radius": 65
+      },
+      "says": {
+        "meet": "As you can see, the new bulb installation went perrrrfectly today. I'm worn out from all the steps but always game for a match.",
+        "repeat": "I won't be needing to replace the bulb any time soon so I've got time to kill.",
+        "first_win": "That was clearly toooooo many steps today.",
+        "rematch_win": "At least I'm reaaallly good at replacing bulbs.",
+        "loss": "I hope your loss didn't come as a shock to you."
+      },
+      "when": [
+        {
+          "days": "1,6",
+          "times": "E,N"
+        },
+        {
+          "days": "3,7",
+          "times": "A,E"
+        }
+      ]
+    },
+    "Engineer Brad": {
+      "at": [900, 3155],
+      "move": "idle_up",
+      "says": {
+        "meet": "Hey, I've been working hard all day so I'm ready to play",
+        "repeat": "It's rare I have to work at night so I'm free for another match.",
+        "first_win": "I simply cannot fix that at all.",
+        "rematch_win": "I'm going to weld my cards at this rate.",
+        "loss": "You just need to work harder"
+      },
+      "when": [
+        {
+          "days": "5",
+          "times": "N"
+        },
+        {
+          "days": "3,7",
+          "times": "E,N"
+        }
+      ]
+    },
+    "Firebreather Darryl": {
+      "at": [1050, 2475],
+      "move": "idle_cycle",
+      "says": {
+        "meet": "I've been breathing that much fire that I needed an ice cold bev to cool my mouth down, but I'm ready for a match if you want.",
+        "repeat": "I'm fired up and ready for another match if you want.",
+        "first_win": "I burned out too quick.",
+        "rematch_win": "I could teach you how to firebreath... but maybe you should teach me how to play cards better!",
+        "loss": "That juice was just what I needed!"
+      },
+      "when": [
+        {
+          "days": "2,6",
+          "times": "E,N"
+        },
+        {
+          "days": "3-4,7-8",
+          "times": "M"
+        },
+        {
+          "kind": "npc",
+          "at": [1161, 2384],
+          "days": "2,6,8",
+          "times": "M,A",
+          "move": "idle_right",
+          "says": {
+            "meet": "I've been breathing that much fire that I needed an ice cold bev to cool my mouth down.",
+            "repeat": "My mouth has been royally singed so I can't even taste the juice."
+          }
+        },
+        {
+          "kind": "npc",
+          "days": "3-5,7",
+          "times": "E",
+          "says": {
+            "meet": "mMMMmm mMmMm MmmmMM MmMMmM mMMMmMmMm mMmMmMMm MMMmM mm mmMM MmmMMmM.",
+            "repeat": "Sorry you caught me at a bad time I had a mouthful of fire fluid there."
+          }
+        }
+      ]
+    },
+    "Firebreather Kenneth": {
+      "at": [1000, 2475],
+      "move": "idle_cycle",
+      "says": {
+        "meet": "I'm so used to hot drinks that it's weird to drink something nice and cold.",
+        "repeat": "If you want another match then let's goooooo.",
+        "first_win": "I have too many burns to battle well.",
+        "rematch_win": "I'll just stick to the firebreathing from now on, I'm good at that.",
+        "loss": "Can't burn me out!"
+      },
+      "when": [
+        {
+          "days": "2,6",
+          "times": "E,N"
+        },
+        {
+          "days": "3-4,7-8",
+          "times": "M"
+        },
+        {
+          "kind": "npc",
+          "at": [1208, 2384],
+          "days": "2,6,8",
+          "times": "M,A",
+          "move": "idle_left",
+          "says": {
+            "meet": "I'm so used to hot drinks that it's weird to drink something nice and cold.",
+            "repeat": "Have you tried the juice yet?"
+          }
+        },
+        {
+          "kind": "npc",
+          "days": "3-5,7",
+          "times": "E",
+          "says": {
+            "meet": "We're good at what we do and we make it look easy but it's not.",
+            "repeat": "It's very hard work this!"
+          }
+        }
+      ]
+    },
+    "Fisherman Dave": {
+      "at": [-600, 2735],
+      "move": "idle_down",
+      "says": {
+        "meet": "I love the lighthouse here, it seems to attract all kinds of fish so I always catch a lot in this spot. I'm catching so many I need a break.",
+        "repeat": "I've caught a lot since last time.",
+        "first_win": "Even if they don't help me win, I still love my fish.",
+        "rematch_win": "Fishing and Pokemon cards are both a lot of fun, I could do both all day.",
+        "loss": "Maybe you should try picking up a rod and give fishing a go instead!"
+      },
+      "when": [
+        {
+          "days": "1",
+          "times": "M,A,E"
+        },
+        {
+          "days": "3,7",
+          "times": "M"
+        },
+        {
+          "days": "5-6",
+          "times": "M,A"
+        }
+      ]
+    },
+    "Fisherman Gary": {
+      "at": [-840, 2735],
+      "move": "idle_down",
+      "says": {
+        "meet": "I joined my buddies here to fish today but we were actually catching sooo much that they ended up leaving!",
+        "repeat": "Fishing by yourslef can get lonely when nothing bites.",
+        "first_win": "Dang, I never lose against my buddies.",
+        "rematch_win": "You're probably a really good fisherman too.",
+        "loss": "I'm the only fisherman and best card player on this pier!"
+      },
+      "when": [
+        {
+          "days": "6",
+          "times": "M,A,E"
+        },
+        {
+          "days": "4,8",
+          "times": "A,E"
+        }
+      ]
+    },
+    "Fisherman John": {
+      "at": [-840, 2735],
+      "move": "idle_down",
+      "says": {
+        "meet": "Me and my buddy Dave fish here all the time. The lighthouse is like a giant lure in the evening so we catch even more. I've got time for a break.",
+        "repeat": "The evening is still young if you want another match.",
+        "first_win": "I'm a much better fisherman than I am a card player.",
+        "rematch_win": "Always happy to put my fishing aside for a rematch.",
+        "loss": "I'm not just the best round here at fishing!"
+      },
+      "when": [
+        {
+          "days": "1",
+          "times": "A,E,N"
+        },
+        {
+          "days": "6",
+          "times": "M,A"
+        },
+        {
+          "days": "3-4,7-8",
+          "times": "M"
+        }
+      ]
+    },
+    "Gambler Mick": {
+      "at": [-620, 2510],
+      "move": "idle_random",
+      "says": {
+        "meet": "All I need is a bit of luck, I let that decide my fate. If I battle enough then I'm bound to win some of them at least.",
+        "repeat": "I'll be a lot luckier this time round.",
+        "first_win": "Luck really wasn't on my side today...",
+        "rematch_win": "I just need a little bit of luck that's all.",
+        "loss": "Looks like luck wasn't on your side today."
+      },
+      "when": [
+        {
+          "days": "1",
+          "times": "M,A,E"
+        },
+        {
+          "days": "2",
+          "times": "E"
+        },
+        {
+          "days": "5",
+          "times": "A,E"
+        },
+        {
+          "days": "4,8",
+          "times": "M"
+        }
+      ]
+    },
+    "Garden Manager Louis": {
+      "at": [-710, 2020],
+      "days": "3-7/2",
+      "times": "E,N",
+      "move": {
+        "pattern": "random_wander",
+        "radius": 65,
+        "speed": 40.0
+      },
+      "says": {
+        "meet": "I might be the garden manager but I do know how to have fun.",
+        "repeat": "Look at how great the gardens look.",
+        "first_win": "Even with all this sun I couldn't win.",
+        "rematch_win": "Ever fancied being a gardener yourself?",
+        "loss": "Plants aren't just pretty."
+      }
+    },
+    "Gardener Callum": {
+      "at": [-690, 2180],
+      "move": {
+        "pattern": "idle_up",
+        "radius": 65
+      },
+      "says": {
+        "meet": "Wowee, it was a long day gardening today. I'm down for a match to let off some steam now.",
+        "repeat": "I've got time for a rematch before my next shift.",
+        "first_win": "I'm clearly too worn out from such a long shift.",
+        "rematch_win": "I'll win when I'm fully rested.",
+        "loss": "Even after a hard days work I can still win!"
+      },
+      "when": [
+        {
+          "days": "3,7",
+          "times": "A,E"
+        },
+        {
+          "days": "1,4-5,8",
+          "times": "E,N"
+        }
+      ]
+    },
+    "Guitarist Howard": {
+      "at": [2515, 1210],
+      "move": "idle_left",
+      "says": {
+        "meet": "We're the Toxtricity Rockers, we're a duo that's pretty big in Johto.",
+        "repeat": "You here to hear a song or a rematch?",
+        "first_win": "I missed a chord.",
+        "rematch_win": "Fancy being a roadie?",
+        "loss": "If it's any consolation I'll give you a discount on our album."
+      },
+      "when": [
+        {
+          "days": "5",
+          "times": "M,A"
+        },
+        {
+          "days": "3,7",
+          "times": "A,E,N"
+        }
+      ]
+    },
+    "Guitarist Jonesy": {
+      "at": [2480, 1210],
+      "move": "idle_right",
+      "says": {
+        "meet": "We're in a band and we're currently touring. We're just passing through to our next gig so having a quick jam here.",
+        "repeat": "Hey dude, let's rock.",
+        "first_win": "Damn I snapped a string while we were jamming.",
+        "rematch_win": "You should come to one of our gigs!",
+        "loss": "Let's goooooooooooo."
+      },
+      "when": [
+        {
+          "days": "5",
+          "times": "M,A"
+        },
+        {
+          "days": "3,7",
+          "times": "A,E,N"
+        }
+      ]
+    },
+    "Hiker Ben": {
+      "at": [950, 1270],
+      "move": {
+        "pattern": "random_wander",
+        "radius": 60,
+        "speed": 40.0
+      },
+      "says": {
+        "meet": "Well that's incredibly disappointing. I was hoping to have a trek through the forest but they've told me it's shut so I have nowhere to go now.",
+        "repeat": "The forest has to be open soon surely.",
+        "first_win": "Well that's another disappointment to my day.",
+        "rematch_win": "The disappointment just doesn't end.",
+        "loss": "At least that's given me a nice little boost after the bad news."
+      },
+      "when": [
+        {
+          "days": "5",
+          "times": "A,E,N"
+        },
+        {
+          "days": "3,7",
+          "times": "E,N"
+        }
+      ]
+    },
+    "Hiker Matthew": {
+      "at": [2650, 2020],
+      "move": {
+        "pattern": "random_wander",
+        "radius": 60,
+        "speed": 40.0
+      },
+      "says": {
+        "meet": "I've been hiking for hours and only just managed to reach the harbour and found everything is closed so now I have nothing to do for the evening.",
+        "repeat": "I'll be hiking back again tomorrow, I hike all day every day!",
+        "first_win": "I should have just called it a night...",
+        "rematch_win": "I could do with a long hike to get over this loss.",
+        "loss": "I'm as solid as stone!"
+      },
+      "when": [
+        {
+          "days": "2,5",
+          "times": "A,E,N"
+        },
+        {
+          "days": "3-4,6-8",
+          "times": "M"
+        }
+      ]
+    },
+    "Jogger Daniel": {
+      "at": [-131, 1965],
+      "move": "idle_down",
+      "says": {
+        "meet": "I've been training for my marathon all day so I'm worn out, I've ran over 30km today alone.",
+        "repeat": "I'm still taking a break before heading home.",
+        "first_win": "I've ran far too much today I should have just rested.",
+        "rematch_win": "I'm just going to focus on my running from now on.",
+        "loss": "I'm glad I decided to take a break, that's given me an extra push to carry on."
+      },
+      "when": [
+        {
+          "days": "2",
+          "times": "E,N"
+        },
+        {
+          "days": "5",
+          "times": "M"
+        },
+        {
+          "days": "4,8",
+          "times": "A,E"
+        }
+      ]
+    },
+    "Painter Jericho": {
+      "at": [-565, 2375],
+      "move": "idle_right",
+      "says": {
+        "meet": "The evening sun is the most perfect time to come here and paint... or play cards!",
+        "repeat": "I've been painting a lot of great pieces from this spot.",
+        "first_win": "A win or a loss, both are equal pieces of art.",
+        "rematch_win": "A win or a loss, both are equal pieces of art.",
+        "loss": "To win is a beautiful piece of art."
+      },
+      "when": [
+        {
+          "days": "1",
+          "times": "A,E,N"
+        },
+        {
+          "days": "2",
+          "times": "E"
+        },
+        {
+          "days": "4-8/2",
+          "times": "E,N"
+        }
+      ]
+    },
+    "RIVAL 1": {
+      "days": "1",
+      "times": "M,A,E",
+      "loop": false,
+      "placeholder": true
+    },
+    "RIVAL 2": {
+      "days": "2",
+      "times": "M",
+      "loop": false,
+      "placeholder": true
+    },
+    "RIVAL 3": {
+      "days": "3",
+      "times": "M,A,E,N",
+      "loop": false,
+      "placeholder": true
+    },
+    "RIVAL 4": {
+      "days": "4",
+      "times": "M",
+      "loop": false,
+      "placeholder": true
+    },
+    "Rocket Grunt Damien": {
+      "at": [940, 1050],
+      "days": "3-7/2",
+      "times": "N",
+      "move": "idle_left",
+      "says": {
+        "meet": "I'm here on bosses orders but we're not starting until tomorrow so you'll be good practice.",
+        "repeat": "I'm not really a bad guy but I can't let people know that.",
+        "first_win": "Oh no, don't tell the boss.",
+        "rematch_win": "I'm gonna be toast.",
+        "loss": "Ha ha, you didn't put up much of a fight."
+      }
+    },
+    "Rocket Grunt Penny": {
+      "at": [900, 1050],
+      "days": "3-7/2",
+      "times": "N",
+      "move": "idle_right",
+      "says": {
+        "meet": "Team Rocket used to be the most feared group in the world. Maybe we will be again.",
+        "repeat": "Have you ever heard of us before?",
+        "first_win": "Weren't you even a little bit scared?",
+        "rematch_win": "I really gotta act more scary.",
+        "loss": "If you didn't already you should definitely fear us now."
+      }
+    },
+    "Sailor Bob": {
+      "at": [2040, 3110],
+      "move": "idle_random",
+      "says": {
+        "meet": "I'm all done preparing for the arrival of the SS Anne so there's not much to do now until morning.",
+        "repeat": "There's still time before the SS Anne arrives.",
+        "first_win": "I should at least pretend to do some work on the dock.",
+        "rematch_win": "I won't have a lot of time to play when the ship docks.",
+        "loss": "All this spare time has given me a chance to practice."
+      },
+      "when": [
+        {
+          "days": "6",
+          "times": "M"
+        },
+        {
+          "days": "2,5",
+          "times": "E,N"
+        },
+        {
+          "days": "3,7",
+          "times": "A,E,N"
+        },
+        {
+          "kind": "npc",
+          "days": "3",
+          "times": "M",
+          "says": {
+            "meet": "I'm going to busy until this evening now the SS Anne has docked. There were even more passengers than I initially thought there would be.",
+            "repeat": "I wonder what Vermillion city is like? It's crazy to see so many Pokemon trainers in one place, barely anyone is a Pokemon trainer around here."
+          }
+        },
+        {
+          "kind": "npc",
+          "days": "4-5,7",
+          "times": "M,A",
+          "says": {
+            "meet": "I'm going to busy until this evening now the SS Anne has docked. There were even more passengers than I initially thought there would be.",
+            "repeat": "I wonder what Vermillion city is like? It's crazy to see so many Pokemon trainers in one place, barely anyone is a Pokemon trainer around here."
+          }
+        },
+        {
+          "kind": "npc",
+          "days": "2",
+          "times": "M,A",
+          "says": {
+            "meet": "I'm just finishing the final preparations for the arrival of the SS Anne tomorrow, there isn't much to do so I'll be done by tonight free.",
+            "repeat": "The arrival of the SS Anne has been a big deal around here, It's coming straight from Vermillion city so should be packed full of Pokemon trainers."
+          }
+        }
+      ]
+    },
+    "Schoolboy Adam": {
+      "at": [-850, 2250],
+      "move": {
+        "axis": "vertical",
+        "distance": 200,
+        "pattern": "patrol_line",
+        "speed": 60.0
+      },
+      "says": {
+        "meet": "I'm trying out some new techniques using statuses. If we battle I'll show you how good they are.",
+        "repeat": "I'll definitely win this time round.",
+        "first_win": "Oh man I really thought my statuses were going to cause you some trouble.",
+        "rematch_win": "Maybe I need a better tactic...",
+        "loss": "I knew my status infliction technique would work!"
+      },
+      "when": [
+        {
+          "days": "1",
+          "times": "M,A,E"
+        },
+        {
+          "days": "2,6",
+          "times": "M,A"
+        },
+        {
+          "days": "4,8",
+          "times": "M"
+        }
+      ]
+    },
+    "Swimmer Jordan": {
+      "at": [450, 2590],
+      "move": "idle_cycle",
+      "says": {
+        "meet": "I love the water, it's so calm and warm but my cards always get wet! I need to dry them off.",
+        "repeat": "My friend has just arrived from Kanto and we're spending the day swimming together, but I can take a break for a rematch.",
+        "first_win": "I'll stick with my swimming...",
+        "rematch_win": "Nothing like a good match and a long swim.",
+        "loss": "Maybe you should work on your swimming..."
+      },
+      "when": [
+        {
+          "days": "2,5",
+          "times": "A,E"
+        },
+        {
+          "days": "4,8",
+          "times": "A"
+        }
+      ]
+    },
+    "Swimmer Melissa": {
+      "at": [490, 2590],
+      "move": "idle_cycle",
+      "says": {
+        "meet": "The sea is so much calmer and warmer here than it is back home in Kanto.",
+        "repeat": "I could stay in the water here all day.",
+        "first_win": "I wish they made cards waterproof...",
+        "rematch_win": "I really need to dry off my cards.",
+        "loss": "I'm glad I came here today!"
+      },
+      "when": [
+        {
+          "days": "6",
+          "times": "A"
+        },
+        {
+          "days": "4,8",
+          "times": "M,A"
+        }
+      ]
+    },
+    "Swimmer Todd": {
+      "at": [-300, 2580],
+      "move": {
+        "axis": "horizontal",
+        "distance": 250,
+        "pattern": "patrol_line",
+        "speed": 50.0
+      },
+      "says": {
+        "meet": "I'm training for a Quadrathlon. It's a 1000m Swim, Bike, Run and then 100 TCG matches!",
+        "repeat": "I'm still training super hard.",
+        "first_win": "I can swim really well, maybe I should train using my deck more than swimming.",
+        "rematch_win": "At least my swimming is going really well.",
+        "loss": "I am so ready for this event."
+      },
+      "when": [
+        {
+          "days": "2",
+          "times": "M,A,E"
+        },
+        {
+          "days": "6",
+          "times": "A,E"
+        },
+        {
+          "days": "4,8",
+          "times": "M"
+        }
+      ]
+    },
+    "Test All Heads": {
+      "at": [-359.0, 2409.0],
+      "days": "0",
+      "times": "M,A",
+      "move": "idle_down",
+      "says": {
+        "meet": "EVERY COIN FLIP LANDS ON HEADS",
+        "repeat": "EVERY COIN FLIP LANDS ON HEADS",
+        "first_win": "EVERY COIN FLIP LANDS ON HEADS",
+        "rematch_win": "EVERY COIN FLIP LANDS ON HEADS",
+        "loss": "EVERY COIN FLIP LANDS ON HEADS"
+      },
+      "cash_reward": "0",
+      "coin_reward": "TEST",
+      "deck": "Match Effect Test",
+      "match_effects": [
+        {
+          "result": "heads",
+          "type": "coin_flip_override"
+        }
+      ],
+      "music": "TEST",
+      "prize_cards": 2,
+      "sprite": "Gambler"
+    },
+    "Test All Tails": {
+      "at": [-299.0, 2409.0],
+      "days": "0",
+      "times": "M,A",
+      "move": "idle_down",
+      "says": {
+        "meet": "EVERY COIN FLIP LANDS ON TAILS",
+        "repeat": "EVERY COIN FLIP LANDS ON TAILS",
+        "first_win": "EVERY COIN FLIP LANDS ON TAILS",
+        "rematch_win": "EVERY COIN FLIP LANDS ON TAILS",
+        "loss": "EVERY COIN FLIP LANDS ON TAILS"
+      },
+      "cash_reward": "0",
+      "coin_reward": "TEST",
+      "deck": "Match Effect Test",
+      "match_effects": [
+        {
+          "result": "tails",
+          "type": "coin_flip_override"
+        }
+      ],
+      "music": "TEST",
+      "prize_cards": 2,
+      "sprite": "Biker"
+    },
+    "Test Bench Limit": {
+      "at": [-359.0, 2479.0],
+      "days": "0",
+      "times": "M,A",
+      "move": "idle_down",
+      "says": {
+        "meet": "BENCH IS LIMITED TO 3 POKEMON",
+        "repeat": "BENCH IS LIMITED TO 3 POKEMON",
+        "first_win": "BENCH IS LIMITED TO 3 POKEMON",
+        "rematch_win": "BENCH IS LIMITED TO 3 POKEMON",
+        "loss": "BENCH IS LIMITED TO 3 POKEMON"
+      },
+      "cash_reward": "0",
+      "coin_reward": "TEST",
+      "deck": "Match Effect Test",
+      "match_effects": [
+        {
+          "size": 3,
+          "type": "bench_size_limit"
+        }
+      ],
+      "music": "TEST",
+      "prize_cards": 2,
+      "sprite": "Tuber_M"
+    },
+    "Test Combo Best Of Three": {
+      "at": [-119.0, 2479.0],
+      "days": "0",
+      "times": "M,A",
+      "move": "idle_down",
+      "says": {
+        "meet": "BEST OF 3 - DRAW 2, NO PLAYER RETREAT, FIRE +10, ALL HEADS, BILL BANNED",
+        "repeat": "BEST OF 3 - DRAW 2, NO PLAYER RETREAT, FIRE +10, ALL HEADS, BILL BANNED",
+        "first_win": "BEST OF 3 - DRAW 2, NO PLAYER RETREAT, FIRE +10, ALL HEADS, BILL BANNED",
+        "rematch_win": "BEST OF 3 - DRAW 2, NO PLAYER RETREAT, FIRE +10, ALL HEADS, BILL BANNED",
+        "loss": "BEST OF 3 - DRAW 2, NO PLAYER RETREAT, FIRE +10, ALL HEADS, BILL BANNED"
+      },
+      "cash_reward": "0",
+      "coin_reward": "TEST",
+      "deck": "Match Effect Test",
+      "match_effects": [
+        {
+          "count": 2,
+          "type": "draw_count"
+        },
+        {
+          "applies_to": "player",
+          "type": "no_retreat"
+        },
+        {
+          "amount": 10,
+          "pokemon_type": "Fire",
+          "type": "type_damage_bonus"
+        },
+        {
+          "result": "heads",
+          "type": "coin_flip_override"
+        }
+      ],
+      "match_format": "best_of_3",
+      "music": "TEST",
+      "prize_cards": 2,
+      "restrictions": {
+        "banned_card_names": [
+          "Bill"
+        ]
+      },
+      "sprite": "Elder"
+    },
+    "Test Double Healing": {
+      "at": [-359.0, 2339.0],
+      "days": "0",
+      "times": "M,A",
+      "move": "idle_down",
+      "says": {
+        "meet": "ALL HEALING IS DOUBLED",
+        "repeat": "ALL HEALING IS DOUBLED",
+        "first_win": "ALL HEALING IS DOUBLED",
+        "rematch_win": "ALL HEALING IS DOUBLED",
+        "loss": "ALL HEALING IS DOUBLED"
+      },
+      "cash_reward": "0",
+      "coin_reward": "TEST",
+      "deck": "Match Effect Test",
+      "match_effects": [
+        {
+          "multiplier": 2,
+          "type": "healing_multiplier"
+        }
+      ],
+      "music": "TEST",
+      "prize_cards": 2,
+      "sprite": "Aromalady"
+    },
+    "Test Double Poison": {
+      "at": [-419.0, 2479.0],
+      "days": "0",
+      "times": "M,A",
+      "move": "idle_down",
+      "says": {
+        "meet": "POISON DAMAGE IS DOUBLED",
+        "repeat": "POISON DAMAGE IS DOUBLED",
+        "first_win": "POISON DAMAGE IS DOUBLED",
+        "rematch_win": "POISON DAMAGE IS DOUBLED",
+        "loss": "POISON DAMAGE IS DOUBLED"
+      },
+      "cash_reward": "0",
+      "coin_reward": "TEST",
+      "deck": "Match Effect Test",
+      "match_effects": [
+        {
+          "multiplier": 2,
+          "type": "poison_damage_multiplier"
+        }
+      ],
+      "music": "TEST",
+      "prize_cards": 2,
+      "sprite": "Ninjaboy"
+    },
+    "Test Double Prizes": {
+      "at": [-239.0, 2339.0],
+      "days": "0",
+      "times": "M,A",
+      "move": "idle_down",
+      "says": {
+        "meet": "EVERY KNOCKOUT GIVES 2 PRIZE CARDS",
+        "repeat": "EVERY KNOCKOUT GIVES 2 PRIZE CARDS",
+        "first_win": "EVERY KNOCKOUT GIVES 2 PRIZE CARDS",
+        "rematch_win": "EVERY KNOCKOUT GIVES 2 PRIZE CARDS",
+        "loss": "EVERY KNOCKOUT GIVES 2 PRIZE CARDS"
+      },
+      "cash_reward": "0",
+      "coin_reward": "TEST",
+      "deck": "Match Effect Test",
+      "match_effects": [
+        {
+          "type": "double_prizes"
+        }
+      ],
+      "music": "TEST",
+      "prize_cards": 4,
+      "sprite": "Richboy"
+    },
+    "Test Draw Two": {
+      "at": [1.0, 2269.0],
+      "days": "0",
+      "times": "M,A",
+      "move": "idle_down",
+      "says": {
+        "meet": "DRAW 2 CARDS AT THE START OF EACH TURN",
+        "repeat": "DRAW 2 CARDS AT THE START OF EACH TURN",
+        "first_win": "DRAW 2 CARDS AT THE START OF EACH TURN",
+        "rematch_win": "DRAW 2 CARDS AT THE START OF EACH TURN",
+        "loss": "DRAW 2 CARDS AT THE START OF EACH TURN"
+      },
+      "cash_reward": "0",
+      "coin_reward": "TEST",
+      "deck": "Match Effect Test",
+      "match_effects": [
+        {
+          "count": 2,
+          "type": "draw_count"
+        }
+      ],
+      "music": "TEST",
+      "prize_cards": 2,
+      "sprite": "Artist"
+    },
+    "Test End Of Turn Heal": {
+      "at": [61.0, 2339.0],
+      "days": "0",
+      "times": "M,A",
+      "move": "idle_down",
+      "says": {
+        "meet": "EVERY POKEMON HEALS 10 HP AT THE END OF EACH TURN",
+        "repeat": "EVERY POKEMON HEALS 10 HP AT THE END OF EACH TURN",
+        "first_win": "EVERY POKEMON HEALS 10 HP AT THE END OF EACH TURN",
+        "rematch_win": "EVERY POKEMON HEALS 10 HP AT THE END OF EACH TURN",
+        "loss": "EVERY POKEMON HEALS 10 HP AT THE END OF EACH TURN"
+      },
+      "cash_reward": "0",
+      "coin_reward": "TEST",
+      "deck": "Match Effect Test",
+      "match_effects": [
+        {
+          "amount": 10,
+          "type": "end_of_turn_heal"
+        }
+      ],
+      "music": "TEST",
+      "prize_cards": 2,
+      "sprite": "Lady"
+    },
+    "Test Energy Full Heal": {
+      "at": [-239.0, 2409.0],
+      "days": "0",
+      "times": "M,A",
+      "move": "idle_down",
+      "says": {
+        "meet": "ATTACHING AN ENERGY CARD FULLY HEALS A POKEMON",
+        "repeat": "ATTACHING AN ENERGY CARD FULLY HEALS A POKEMON",
+        "first_win": "ATTACHING AN ENERGY CARD FULLY HEALS A POKEMON",
+        "rematch_win": "ATTACHING AN ENERGY CARD FULLY HEALS A POKEMON",
+        "loss": "ATTACHING AN ENERGY CARD FULLY HEALS A POKEMON"
+      },
+      "cash_reward": "0",
+      "coin_reward": "TEST",
+      "deck": "Match Effect Test",
+      "match_effects": [
+        {
+          "type": "energy_attach_full_heal"
+        }
+      ],
+      "music": "TEST",
+      "prize_cards": 2,
+      "sprite": "Swimmer_M"
+    },
+    "Test Energy Halve HP": {
+      "at": [-179.0, 2409.0],
+      "days": "0",
+      "times": "M,A",
+      "move": "idle_down",
+      "says": {
+        "meet": "ATTACHING AN ENERGY CARD HALVES A POKEMON'S HP",
+        "repeat": "ATTACHING AN ENERGY CARD HALVES A POKEMON'S HP",
+        "first_win": "ATTACHING AN ENERGY CARD HALVES A POKEMON'S HP",
+        "rematch_win": "ATTACHING AN ENERGY CARD HALVES A POKEMON'S HP",
+        "loss": "ATTACHING AN ENERGY CARD HALVES A POKEMON'S HP"
+      },
+      "cash_reward": "0",
+      "coin_reward": "TEST",
+      "deck": "Match Effect Test",
+      "match_effects": [
+        {
+          "type": "energy_attach_halve_hp"
+        }
+      ],
+      "music": "TEST",
+      "prize_cards": 2,
+      "sprite": "Burglar"
+    },
+    "Test Evolve Full Heal": {
+      "at": [-119.0, 2409.0],
+      "days": "0",
+      "times": "M,A",
+      "move": "idle_down",
+      "says": {
+        "meet": "EVOLVING FULLY HEALS A POKEMON",
+        "repeat": "EVOLVING FULLY HEALS A POKEMON",
+        "first_win": "EVOLVING FULLY HEALS A POKEMON",
+        "rematch_win": "EVOLVING FULLY HEALS A POKEMON",
+        "loss": "EVOLVING FULLY HEALS A POKEMON"
+      },
+      "cash_reward": "0",
+      "coin_reward": "TEST",
+      "deck": "Match Effect Test",
+      "match_effects": [
+        {
+          "type": "evolve_full_heal"
+        }
+      ],
+      "music": "TEST",
+      "prize_cards": 2,
+      "sprite": "Twin1"
+    },
+    "Test Evolved Bonus": {
+      "at": [-119.0, 2269.0],
+      "days": "0",
+      "times": "M,A",
+      "move": "idle_down",
+      "says": {
+        "meet": "EVOLVED POKEMON +10 DAMAGE",
+        "repeat": "EVOLVED POKEMON +10 DAMAGE",
+        "first_win": "EVOLVED POKEMON +10 DAMAGE",
+        "rematch_win": "EVOLVED POKEMON +10 DAMAGE",
+        "loss": "EVOLVED POKEMON +10 DAMAGE"
+      },
+      "cash_reward": "0",
+      "coin_reward": "TEST",
+      "deck": "Match Effect Test",
+      "match_effects": [
+        {
+          "amount": 10,
+          "type": "evolved_damage_bonus"
+        }
+      ],
+      "music": "TEST",
+      "prize_cards": 2,
+      "sprite": "Gardener"
+    },
+    "Test Fire Bonus": {
+      "at": [-419.0, 2269.0],
+      "days": "0",
+      "times": "M,A",
+      "move": "idle_down",
+      "says": {
+        "meet": "ALL FIRE POKEMON +20 DAMAGE",
+        "repeat": "ALL FIRE POKEMON +20 DAMAGE",
+        "first_win": "ALL FIRE POKEMON +20 DAMAGE",
+        "rematch_win": "ALL FIRE POKEMON +20 DAMAGE",
+        "loss": "ALL FIRE POKEMON +20 DAMAGE"
+      },
+      "cash_reward": "0",
+      "coin_reward": "TEST",
+      "deck": "Match Effect Test",
+      "match_effects": [
+        {
+          "amount": 20,
+          "pokemon_type": "Fire",
+          "type": "type_damage_bonus"
+        }
+      ],
+      "music": "TEST",
+      "prize_cards": 2,
+      "sprite": "Firebreather"
+    },
+    "Test Free Retreat": {
+      "at": [-179.0, 2479.0],
+      "days": "0",
+      "times": "M,A",
+      "move": "idle_down",
+      "says": {
+        "meet": "ALL RETREATS ARE FREE",
+        "repeat": "ALL RETREATS ARE FREE",
+        "first_win": "ALL RETREATS ARE FREE",
+        "rematch_win": "ALL RETREATS ARE FREE",
+        "loss": "ALL RETREATS ARE FREE"
+      },
+      "cash_reward": "0",
+      "coin_reward": "TEST",
+      "deck": "Match Effect Test",
+      "match_effects": [
+        {
+          "type": "free_retreat"
+        }
+      ],
+      "music": "TEST",
+      "prize_cards": 2,
+      "sprite": "Swimmer_F"
+    },
+    "Test Grass Defense": {
+      "at": [-299.0, 2339.0],
+      "days": "0",
+      "times": "M,A",
+      "move": "idle_down",
+      "says": {
+        "meet": "GRASS POKEMON TAKE 20 LESS DAMAGE",
+        "repeat": "GRASS POKEMON TAKE 20 LESS DAMAGE",
+        "first_win": "GRASS POKEMON TAKE 20 LESS DAMAGE",
+        "rematch_win": "GRASS POKEMON TAKE 20 LESS DAMAGE",
+        "loss": "GRASS POKEMON TAKE 20 LESS DAMAGE"
+      },
+      "cash_reward": "0",
+      "coin_reward": "TEST",
+      "deck": "Match Effect Test",
+      "match_effects": [
+        {
+          "amount": 20,
+          "pokemon_type": "Grass",
+          "type": "type_damage_reduction"
+        }
+      ],
+      "music": "TEST",
+      "prize_cards": 2,
+      "sprite": "Bugcatcher"
+    },
+    "Test Heavy Retreat": {
+      "at": [-239.0, 2479.0],
+      "days": "0",
+      "times": "M,A",
+      "move": "idle_down",
+      "says": {
+        "meet": "RETREATING COSTS 1 MORE ENERGY",
+        "repeat": "RETREATING COSTS 1 MORE ENERGY",
+        "first_win": "RETREATING COSTS 1 MORE ENERGY",
+        "rematch_win": "RETREATING COSTS 1 MORE ENERGY",
+        "loss": "RETREATING COSTS 1 MORE ENERGY"
+      },
+      "cash_reward": "0",
+      "coin_reward": "TEST",
+      "deck": "Match Effect Test",
+      "match_effects": [
+        {
+          "amount": 1,
+          "type": "retreat_cost_modifier"
+        }
+      ],
+      "music": "TEST",
+      "prize_cards": 2,
+      "sprite": "Hiker2"
+    },
+    "Test Ignore Resistance": {
+      "at": [-299.0, 2269.0],
+      "days": "0",
+      "times": "M,A",
+      "move": "idle_down",
+      "says": {
+        "meet": "ALL RESISTANCES ARE IGNORED",
+        "repeat": "ALL RESISTANCES ARE IGNORED",
+        "first_win": "ALL RESISTANCES ARE IGNORED",
+        "rematch_win": "ALL RESISTANCES ARE IGNORED",
+        "loss": "ALL RESISTANCES ARE IGNORED"
+      },
+      "cash_reward": "0",
+      "coin_reward": "TEST",
+      "deck": "Match Effect Test",
+      "match_effects": [
+        {
+          "type": "ignore_resistance"
+        }
+      ],
+      "music": "TEST",
+      "prize_cards": 2,
+      "sprite": "Youngster3"
+    },
+    "Test Ignore Weakness": {
+      "at": [-359.0, 2269.0],
+      "days": "0",
+      "times": "M,A",
+      "move": "idle_down",
+      "says": {
+        "meet": "ALL WEAKNESSES ARE IGNORED",
+        "repeat": "ALL WEAKNESSES ARE IGNORED",
+        "first_win": "ALL WEAKNESSES ARE IGNORED",
+        "rematch_win": "ALL WEAKNESSES ARE IGNORED",
+        "loss": "ALL WEAKNESSES ARE IGNORED"
+      },
+      "cash_reward": "0",
+      "coin_reward": "TEST",
+      "deck": "Match Effect Test",
+      "match_effects": [
+        {
+          "type": "ignore_weakness"
+        }
+      ],
+      "music": "TEST",
+      "prize_cards": 2,
+      "sprite": "Youngster2"
+    },
+    "Test Ignore Weakness And Resistance": {
+      "at": [-239.0, 2269.0],
+      "days": "0",
+      "times": "M,A",
+      "move": "idle_down",
+      "says": {
+        "meet": "WEAKNESS AND RESISTANCE ARE IGNORED",
+        "repeat": "WEAKNESS AND RESISTANCE ARE IGNORED",
+        "first_win": "WEAKNESS AND RESISTANCE ARE IGNORED",
+        "rematch_win": "WEAKNESS AND RESISTANCE ARE IGNORED",
+        "loss": "WEAKNESS AND RESISTANCE ARE IGNORED"
+      },
+      "cash_reward": "0",
+      "coin_reward": "TEST",
+      "deck": "Match Effect Test",
+      "match_effects": [
+        {
+          "type": "ignore_weakness_and_resistance"
+        }
+      ],
+      "music": "TEST",
+      "prize_cards": 2,
+      "sprite": "Gambler"
+    },
+    "Test Max HP Minus": {
+      "at": [61.0, 2409.0],
+      "days": "0",
+      "times": "M,A",
+      "move": "idle_down",
+      "says": {
+        "meet": "ALL POKEMON HAVE -20 MAX HP",
+        "repeat": "ALL POKEMON HAVE -20 MAX HP",
+        "first_win": "ALL POKEMON HAVE -20 MAX HP",
+        "rematch_win": "ALL POKEMON HAVE -20 MAX HP",
+        "loss": "ALL POKEMON HAVE -20 MAX HP"
+      },
+      "cash_reward": "0",
+      "coin_reward": "TEST",
+      "deck": "Match Effect Test",
+      "match_effects": [
+        {
+          "amount": -20,
+          "type": "max_hp_modifier"
+        }
+      ],
+      "music": "TEST",
+      "prize_cards": 2,
+      "sprite": "Jogger"
+    },
+    "Test Max HP Plus": {
+      "at": [1.0, 2409.0],
+      "days": "0",
+      "times": "M,A",
+      "move": "idle_down",
+      "says": {
+        "meet": "ALL POKEMON HAVE +20 MAX HP",
+        "repeat": "ALL POKEMON HAVE +20 MAX HP",
+        "first_win": "ALL POKEMON HAVE +20 MAX HP",
+        "rematch_win": "ALL POKEMON HAVE +20 MAX HP",
+        "loss": "ALL POKEMON HAVE +20 MAX HP"
+      },
+      "cash_reward": "0",
+      "coin_reward": "TEST",
+      "deck": "Match Effect Test",
+      "match_effects": [
+        {
+          "amount": 20,
+          "type": "max_hp_modifier"
+        }
+      ],
+      "music": "TEST",
+      "prize_cards": 2,
+      "sprite": "Battlegirl"
+    },
+    "Test No Healing": {
+      "at": [-419.0, 2339.0],
+      "days": "0",
+      "times": "M,A",
+      "move": "idle_down",
+      "says": {
+        "meet": "HEALING IS BLOCKED ENTIRELY",
+        "repeat": "HEALING IS BLOCKED ENTIRELY",
+        "first_win": "HEALING IS BLOCKED ENTIRELY",
+        "rematch_win": "HEALING IS BLOCKED ENTIRELY",
+        "loss": "HEALING IS BLOCKED ENTIRELY"
+      },
+      "cash_reward": "0",
+      "coin_reward": "TEST",
+      "deck": "Match Effect Test",
+      "match_effects": [
+        {
+          "type": "no_healing"
+        }
+      ],
+      "music": "TEST",
+      "prize_cards": 2,
+      "sprite": "Doctor"
+    },
+    "Test No Retreat": {
+      "at": [-179.0, 2269.0],
+      "days": "0",
+      "times": "M,A",
+      "move": "idle_down",
+      "says": {
+        "meet": "NO RETREATING ALLOWED",
+        "repeat": "NO RETREATING ALLOWED",
+        "first_win": "NO RETREATING ALLOWED",
+        "rematch_win": "NO RETREATING ALLOWED",
+        "loss": "NO RETREATING ALLOWED"
+      },
+      "cash_reward": "0",
+      "coin_reward": "TEST",
+      "deck": "Match Effect Test",
+      "match_effects": [
+        {
+          "type": "no_retreat"
+        }
+      ],
+      "music": "TEST",
+      "prize_cards": 2,
+      "sprite": "Hiker"
+    },
+    "Test No Status": {
+      "at": [-419.0, 2409.0],
+      "days": "0",
+      "times": "M,A",
+      "move": "idle_down",
+      "says": {
+        "meet": "STATUS EFFECTS DO NOT WORK",
+        "repeat": "STATUS EFFECTS DO NOT WORK",
+        "first_win": "STATUS EFFECTS DO NOT WORK",
+        "rematch_win": "STATUS EFFECTS DO NOT WORK",
+        "loss": "STATUS EFFECTS DO NOT WORK"
+      },
+      "cash_reward": "0",
+      "coin_reward": "TEST",
+      "deck": "Match Effect Test",
+      "match_effects": [
+        {
+          "type": "no_status_effects"
+        }
+      ],
+      "music": "TEST",
+      "prize_cards": 2,
+      "sprite": "Sailor"
+    },
+    "Test Powers Blocked": {
+      "at": [-179.0, 2339.0],
+      "days": "0",
+      "times": "M,A",
+      "move": "idle_down",
+      "says": {
+        "meet": "ALL POKEMON POWERS STOP WORKING",
+        "repeat": "ALL POKEMON POWERS STOP WORKING",
+        "first_win": "ALL POKEMON POWERS STOP WORKING",
+        "rematch_win": "ALL POKEMON POWERS STOP WORKING",
+        "loss": "ALL POKEMON POWERS STOP WORKING"
+      },
+      "cash_reward": "0",
+      "coin_reward": "TEST",
+      "deck": "Match Effect Test",
+      "match_effects": [
+        {
+          "type": "powers_blocked"
+        }
+      ],
+      "music": "TEST",
+      "prize_cards": 2,
+      "sprite": "Psychic_F"
+    },
+    "Test Rainbow Energy": {
+      "at": [-59.0, 2339.0],
+      "days": "0",
+      "times": "M,A",
+      "move": "idle_down",
+      "says": {
+        "meet": "ANY ENERGY TYPE ACTS AS EVERY ENERGY TYPE",
+        "repeat": "ANY ENERGY TYPE ACTS AS EVERY ENERGY TYPE",
+        "first_win": "ANY ENERGY TYPE ACTS AS EVERY ENERGY TYPE",
+        "rematch_win": "ANY ENERGY TYPE ACTS AS EVERY ENERGY TYPE",
+        "loss": "ANY ENERGY TYPE ACTS AS EVERY ENERGY TYPE"
+      },
+      "cash_reward": "0",
+      "coin_reward": "TEST",
+      "deck": "Match Effect Test",
+      "match_effects": [
+        {
+          "type": "rainbow_energy"
+        }
+      ],
+      "music": "TEST",
+      "prize_cards": 2,
+      "sprite": "Guitarist"
+    },
+    "Test Raw Damage Only": {
+      "at": [-119.0, 2339.0],
+      "days": "0",
+      "times": "M,A",
+      "move": "idle_down",
+      "says": {
+        "meet": "ATTACKS LOSE THEIR EFFECTS AND ONLY DO RAW DAMAGE",
+        "repeat": "ATTACKS LOSE THEIR EFFECTS AND ONLY DO RAW DAMAGE",
+        "first_win": "ATTACKS LOSE THEIR EFFECTS AND ONLY DO RAW DAMAGE",
+        "rematch_win": "ATTACKS LOSE THEIR EFFECTS AND ONLY DO RAW DAMAGE",
+        "loss": "ATTACKS LOSE THEIR EFFECTS AND ONLY DO RAW DAMAGE"
+      },
+      "cash_reward": "0",
+      "coin_reward": "TEST",
+      "deck": "Match Effect Test",
+      "match_effects": [
+        {
+          "type": "raw_damage_only"
+        }
+      ],
+      "music": "TEST",
+      "prize_cards": 2,
+      "sprite": "Blackbelt"
+    },
+    "Test Sleeve": {
+      "at": [-59.0, 2479.0],
+      "days": "0",
+      "times": "M,A",
+      "move": "idle_down",
+      "says": {
+        "meet": "OPPONENT USES GUARDEVOIR SLEEVE",
+        "repeat": "OPPONENT USES GUARDEVOIR SLEEVE",
+        "first_win": "OPPONENT USES GUARDEVOIR SLEEVE",
+        "rematch_win": "OPPONENT USES GUARDEVOIR SLEEVE",
+        "loss": "OPPONENT USES GUARDEVOIR SLEEVE"
+      },
+      "cash_reward": "0",
+      "coin_reward": "TEST",
+      "deck": "Match Effect Test",
+      "music": "TEST",
+      "prize_cards": 2,
+      "sleeve": "Gardevoir",
+      "sprite": "Lass"
+    },
+    "Test Small Hands": {
+      "at": [-299.0, 2479.0],
+      "days": "0",
+      "times": "M,A",
+      "move": "idle_down",
+      "says": {
+        "meet": "OPENING HANDS ARE 5 CARDS",
+        "repeat": "OPENING HANDS ARE 5 CARDS",
+        "first_win": "OPENING HANDS ARE 5 CARDS",
+        "rematch_win": "OPENING HANDS ARE 5 CARDS",
+        "loss": "OPENING HANDS ARE 5 CARDS"
+      },
+      "cash_reward": "0",
+      "coin_reward": "TEST",
+      "deck": "Match Effect Test",
+      "match_effects": [
+        {
+          "count": 5,
+          "type": "opening_hand_size"
+        }
+      ],
+      "music": "TEST",
+      "prize_cards": 2,
+      "sprite": "Tuber_F"
+    },
+    "Test Stage Bonus": {
+      "at": [-59.0, 2269.0],
+      "days": "0",
+      "times": "M,A",
+      "move": "idle_down",
+      "says": {
+        "meet": "STAGE 1 +10 DAMAGE, STAGE 2 +20 DAMAGE",
+        "repeat": "STAGE 1 +10 DAMAGE, STAGE 2 +20 DAMAGE",
+        "first_win": "STAGE 1 +10 DAMAGE, STAGE 2 +20 DAMAGE",
+        "rematch_win": "STAGE 1 +10 DAMAGE, STAGE 2 +20 DAMAGE",
+        "loss": "STAGE 1 +10 DAMAGE, STAGE 2 +20 DAMAGE"
+      },
+      "cash_reward": "0",
+      "coin_reward": "TEST",
+      "deck": "Match Effect Test",
+      "match_effects": [
+        {
+          "stage1": 10,
+          "stage2": 20,
+          "type": "stage_damage_bonus"
+        }
+      ],
+      "music": "TEST",
+      "prize_cards": 2,
+      "sprite": "Worker"
+    },
+    "Test Trainer Tax": {
+      "at": [1.0, 2339.0],
+      "days": "0",
+      "times": "M,A",
+      "move": "idle_down",
+      "says": {
+        "meet": "DISCARD 1 CARD FROM HAND TO PLAY A TRAINER",
+        "repeat": "DISCARD 1 CARD FROM HAND TO PLAY A TRAINER",
+        "first_win": "DISCARD 1 CARD FROM HAND TO PLAY A TRAINER",
+        "rematch_win": "DISCARD 1 CARD FROM HAND TO PLAY A TRAINER",
+        "loss": "DISCARD 1 CARD FROM HAND TO PLAY A TRAINER"
+      },
+      "cash_reward": "0",
+      "coin_reward": "TEST",
+      "deck": "Match Effect Test",
+      "match_effects": [
+        {
+          "count": 1,
+          "type": "trainer_discard_cost"
+        }
+      ],
+      "music": "TEST",
+      "prize_cards": 2,
+      "sprite": "Gentleman"
+    },
+    "Test Two Energy": {
+      "at": [-59.0, 2409.0],
+      "days": "0",
+      "times": "M,A",
+      "move": "idle_down",
+      "says": {
+        "meet": "ATTACH 2 ENERGY CARDS PER TURN",
+        "repeat": "ATTACH 2 ENERGY CARDS PER TURN",
+        "first_win": "ATTACH 2 ENERGY CARDS PER TURN",
+        "rematch_win": "ATTACH 2 ENERGY CARDS PER TURN",
+        "loss": "ATTACH 2 ENERGY CARDS PER TURN"
+      },
+      "cash_reward": "0",
+      "coin_reward": "TEST",
+      "deck": "Match Effect Test",
+      "match_effects": [
+        {
+          "count": 2,
+          "type": "extra_energy_per_turn"
+        }
+      ],
+      "music": "TEST",
+      "prize_cards": 2,
+      "sprite": "Guitarist2"
+    },
+    "Test Zero Damage": {
+      "at": [61.0, 2269.0],
+      "days": "0",
+      "times": "M,A",
+      "move": "idle_down",
+      "says": {
+        "meet": "ALL ATTACK DAMAGE IS REDUCED TO 0",
+        "repeat": "ALL ATTACK DAMAGE IS REDUCED TO 0",
+        "first_win": "ALL ATTACK DAMAGE IS REDUCED TO 0",
+        "rematch_win": "ALL ATTACK DAMAGE IS REDUCED TO 0",
+        "loss": "ALL ATTACK DAMAGE IS REDUCED TO 0"
+      },
+      "cash_reward": "0",
+      "coin_reward": "TEST",
+      "deck": "Match Effect Test",
+      "match_effects": [
+        {
+          "type": "zero_attack_damage"
+        }
+      ],
+      "music": "TEST",
+      "prize_cards": 2,
+      "sprite": "Roughneck"
+    },
+    "Tourist Alissa": {
+      "at": [-366, 2270],
+      "move": "idle_down",
+      "says": {
+        "meet": "Nothing feels better than the sand beneath your toes after being stuck in your cabin for days on end.",
+        "repeat": "I'm so relaxed I could stay here all day.",
+        "first_win": "Have you ever been on a cruise before?",
+        "rematch_win": "I'll have to practice more when I'm back on board.",
+        "loss": "Oh wonderful! I do love it when I win!"
+      },
+      "when": [
+        {
+          "days": "4,8",
+          "times": "A,E"
+        },
+        {
+          "days": "5-6",
+          "times": "M,A"
+        }
+      ]
+    },
+    "Tourist Edmund": {
+      "at": [765, 1960],
+      "move": "idle_down",
+      "says": {
+        "meet": "I live in Celadon City so it's rare I get to the beach. I'm here to make the most of it.",
+        "repeat": "It won't feel like that long before we have to head onwards.",
+        "first_win": "I'm not here to win, only here for a good time.",
+        "rematch_win": "You're the best player I've battled around here.",
+        "loss": "I didn't even mean to win so that's a nice surprise."
+      },
+      "when": [
+        {
+          "days": "4,8",
+          "times": "A,E"
+        },
+        {
+          "days": "5-6",
+          "times": "M,A"
+        }
+      ]
+    },
+    "Young Twin Anna": {
+      "at": [1001, 2383],
+      "move": "idle_left",
+      "says": {
+        "meet": "I've always wanted to play with Pokemon Cards and mummy finally got us some!",
+        "repeat": "Yay we get to play again?",
+        "first_win": "Oh nooooo, I really wanted to win.",
+        "rematch_win": "Please let me win!!",
+        "loss": "Yay!! mummy must have got us the best cards ever."
+      },
+      "when": [
+        {
+          "days": "5",
+          "times": "M,A"
+        },
+        {
+          "days": "3,7",
+          "times": "M"
+        }
+      ]
+    },
+    "Young Twin Nella": {
+      "at": [1001, 2403],
+      "move": "idle_left",
+      "says": {
+        "meet": "I've always wanted to play with Pokemon Cards and mummy finally got us some!",
+        "repeat": "Yay we get to play again?",
+        "first_win": "Oh nooooo, I really wanted to win.",
+        "rematch_win": "Please let me win!!",
+        "loss": "Yay!! mummy must have got us the best cards ever."
+      },
+      "when": [
+        {
+          "days": "5",
+          "times": "M,A"
+        },
+        {
+          "days": "3,7",
+          "times": "M"
+        }
+      ]
+    },
+    "Youngster Joey": {
+      "at": [-800, 2020],
+      "move": {
+        "pattern": "random_wander",
+        "radius": 65,
+        "speed": 60.0
+      },
+      "says": {
+        "meet": "I just got given some cards off my grandma, she's so cool. I'm not really good at battling yet but it's a lot of fun!",
+        "repeat": "I'm getting better at playing!'",
+        "first_win": "Take these full heal cards, you can use them to heal any status conditions your pokemon get. They're really useful.",
+        "rematch_win": "I'm going to win one day!",
+        "loss": "I didn't expect to win at all! These cards must be really good."
+      },
+      "when": [
+        {
+          "days": "1",
+          "times": "M,A,E"
+        },
+        {
+          "days": "2,6",
+          "times": "M,A"
+        }
+      ]
+    }
+  }
+}

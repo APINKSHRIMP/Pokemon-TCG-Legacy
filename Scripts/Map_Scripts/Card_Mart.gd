@@ -1,7 +1,6 @@
 extends BaseMapScene
 
 const SCENE_PATH    = "res://Scenes/Map_Scenes/Card_Mart.tscn"
-const NPC_JSON_PATH = "res://NPC_and_Opponent_Data/Card_Mart_NPCs.json"
 
 const SPAWN_FROM_CELESTE_HARBOUR = Vector2(208, 172)
 
@@ -10,7 +9,7 @@ func get_bgm_path() -> String:        return "res://Audio/BGM/Shop1 (Spindas Caf
 func get_default_spawn() -> Vector2:  return SPAWN_FROM_CELESTE_HARBOUR
 func get_entry_positions() -> Dictionary:
 	return {"Celeste_Harbour": SPAWN_FROM_CELESTE_HARBOUR}
-func get_npc_json_path() -> String:   return NPC_JSON_PATH
+func get_map_data_name() -> String: return "Card_Mart"
 
 func _scene_setup():
 	if GameState.progress.get("player_collected_shop_starter_set", false):

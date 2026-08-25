@@ -13,14 +13,22 @@ class_name GymChallengeAudienceManager
 # TWEAKABLE: AUDIENCE COUNTS  [left_count, top_count, right_count]
 # Left and right stands hold 36 max; top stand holds 40 max.
 # ============================================================
-const AUDIENCE_COUNTS: Dictionary = {
-	9:  { "Morning": [32, 36, 32], "Afternoon": [28, 32, 28], "Evening": [20, 24, 20], "Night": [8,  12,  8] },
-	10: { "Morning": [28, 32, 28], "Afternoon": [22, 26, 22], "Evening": [14, 16, 14], "Night": [5,   7,  5] },
-	11: { "Morning": [22, 24, 22], "Afternoon": [16, 18, 16], "Evening": [8,  12,  8], "Night": [3,   5,  3] },
-	12: { "Morning": [10, 10, 10], "Afternoon": [9,  10,  9], "Evening": [8,  12,  8], "Night": [3,   5,  3] },
-	13: { "Morning": [6,   6,  6], "Afternoon": [5,   5,  5], "Evening": [4,   4,  4], "Night": [2,   1,  1] },
-	14: { "Morning": [6,   6,  6], "Afternoon": [4,   4,  4], "Evening": [2,   2,  2], "Night": [1,   0,  2] },
+# ============================================================
+# TWEAKABLE: ATTENDANCE
+# Fraction of each stand's seats filled, by time of day, on the day the challenge
+# opens. Interest then decays by DAILY_DECAY per day: afternoon runs 100%, 90%,
+# 81%, 73%, 66% ... so the stands thin out as the tournament drags on.
+#
+# This replaced a hardcoded table that only covered days 9-14, which left the
+# stands completely empty on day 8 (the day the challenge opens) and again from
+# day 15 on. The challenge has no end date any more -- it runs until all eight
+# leaders are beaten -- so the curve has to hold for any day.
+# ============================================================
+const CHALLENGE_START_DAY := 8
+const BASE_ATTENDANCE: Dictionary = {
+	"Morning": 0.80, "Afternoon": 1.00, "Evening": 0.50, "Night": 0.20,
 }
+const DAILY_DECAY := 0.9
 
 # ============================================================
 # TWEAKABLE: REGENERATION PERCENTAGES
@@ -205,9 +213,16 @@ static func get_audience_npc_entries() -> Array:
 # ============================================================
 
 static func _get_counts(date: int, time: String) -> Array:
-	if AUDIENCE_COUNTS.has(date) and AUDIENCE_COUNTS[date].has(time):
-		return AUDIENCE_COUNTS[date][time]
-	return [0, 0, 0]
+	var base: float = BASE_ATTENDANCE.get(time, 0.0)
+	if base <= 0.0:
+		return [0, 0, 0]
+	var elapsed: int = maxi(0, date - CHALLENGE_START_DAY)
+	var fill: float = base * pow(DAILY_DECAY, elapsed)
+	return [
+		int(round(LEFT_SEATS.size() * fill)),
+		int(round(TOP_SEATS.size() * fill)),
+		int(round(RIGHT_SEATS.size() * fill)),
+	]
 
 
 static func _generate_fresh(left_count: int, top_count: int, right_count: int) -> Dictionary:

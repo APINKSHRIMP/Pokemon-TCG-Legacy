@@ -48,12 +48,11 @@ func get_default_spawn() -> Vector2:
 func get_bgm_path() -> String:
 	return ""
 
-# Opponent JSON path (first argument to MapManager.initialise).
-func get_opponent_json_path() -> String:
-	return ""
-
-# NPC JSON path (seventh argument to MapManager.initialise).
-func get_npc_json_path() -> String:
+# Which character file in NPC_and_Opponent_Data/Characters/ describes this map's
+# cast -- the file's basename, e.g. "Celeste_Harbour". Return "" for a map with no
+# NPCs or opponents at all. The day and time-of-day are resolved by
+# CharacterSchedule, so a map never builds a data path itself any more.
+func get_map_data_name() -> String:
 	return ""
 
 # Called after spawn resolution and before MapManager.initialise.
@@ -152,10 +151,9 @@ func _ready():
 		_player,
 		_get_opponents_container(),
 		_ui_layer,
-		get_opponent_json_path(),
+		get_map_data_name(),
 		[],
 		scene_path,
-		get_npc_json_path(),
 		[]
 	)
 
@@ -258,6 +256,13 @@ var _menu_canvas_layer: CanvasLayer = null
 var _menu_instance: Node = null
 
 func _input(event: InputEvent) -> void:
+	# The debug placement editor owns every key while it is open -- Escape closes
+	# the tool rather than opening the menu behind it, and Enter saves rather than
+	# opening the menu. Both handlers are _input(), so this defers explicitly
+	# instead of depending on which node the viewport happens to reach first.
+	if MapManager.is_placement_tool_open():
+		return
+
 	# A dialog on screen owns Escape: it answers NO on a Yes/No question and
 	# dismisses a plain message, rather than opening the main menu behind it.
 	# Space/Enter reach the same box through the player's ui_accept path, which

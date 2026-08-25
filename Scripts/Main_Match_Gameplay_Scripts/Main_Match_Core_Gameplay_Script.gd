@@ -2152,8 +2152,12 @@ func setup_player():
 # Main function to set up the opponents's deck and hand at match start. Looks up the NPC name and finds the corresponding deck file
 func setup_opponent(opponent_id: String):
 	
-	# We will need to eventually pass a number of different decks depending on the NPC opponent so load the correct one from file
-	var opponent_deck_path = "res://NPC_and_Opponent_Data/Opponent_Deck_Data/"+opponent_id+".json"
+	# Deck names are typed by hand in All_NPC_Constant_Data.json, so the lookup
+	# ignores capitalisation -- a slip used to load nothing at all, and only stayed
+	# invisible because NTFS is case-insensitive.
+	var opponent_deck_path = AssetLookup.deck_path(opponent_id)
+	if opponent_deck_path == "":
+		push_error("No deck file matching '%s' in Opponent_Deck_Data/" % opponent_id)
 	# TEMP TESTING: T-key TEST match — opponent draws from the player's user:// "TEST" deck.
 	if GameState.test_match_mode:
 		opponent_deck_path = "user://Player_Decks/TEST.json"
@@ -6133,36 +6137,11 @@ func load_opponent_data_by_name(opp_name: String):
 		opponent_data = GameState.build_test_opponent_data()
 		return
 
-	var file = FileAccess.open(GameState.current_opponent_json_path, FileAccess.READ)
-	if file == null:
-		print("Error loading file")
-		return
-
-	var json = JSON.new()
-	var error = json.parse(file.get_as_text())
-	if error != OK:
-		print("JSON parse error")
-		return
-
-	var opponents = json.data["opponents"]
-	for opponent in opponents:
-		if opponent.get("name") == opp_name:
-			opponent_data = opponent
-			break
-
+	opponent_data = CharacterSchedule.find_opponent(
+		GameState.current_opponent_map, opp_name, GameState.get_date(), GameState.get_time())
 	if opponent_data.is_empty():
-		print("Opponent with name ", opp_name, " not found")
-		return
-
-	var const_file = FileAccess.open("res://NPC_and_Opponent_Data/All_NPC_Constant_Data.json", FileAccess.READ)
-	if const_file != null:
-		var const_data = JSON.parse_string(const_file.get_as_text())
-		const_file.close()
-		if const_data is Dictionary:
-			var consts: Dictionary = const_data.get("opponents", {}).get(opp_name, {})
-			for key in consts:
-				if not opponent_data.has(key):
-					opponent_data[key] = consts[key]
+		print("Opponent with name ", opp_name, " not found on map ",
+			GameState.current_opponent_map)
 
 # Play the correct music via the global SoundManager
 func play_opponent_music():

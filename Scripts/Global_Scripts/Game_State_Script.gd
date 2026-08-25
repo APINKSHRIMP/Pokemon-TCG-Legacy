@@ -37,7 +37,7 @@ func build_test_opponent_data() -> Dictionary:
 		"restrictions": {},
 	}
 
-var current_opponent_json_path: String = ""
+var current_opponent_map: String = ""   # character-file basename for the map the battle started on
 var returning_from_battle: bool = false
 var battle_result: String = ""  # "win" or "loss"
 var player_position: Vector2 = Vector2.ZERO

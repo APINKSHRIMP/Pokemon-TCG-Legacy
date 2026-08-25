@@ -1,0 +1,1474 @@
+{
+  "_help": [
+    "days    : '3-6' range | '1,3,5' list | '2-8/2' every other | '4' one day",
+    "times   : M=Morning A=Afternoon E=Evening N=Night. Combine: 'M,A' or 'M,A,E,N'",
+    "move    : bare pattern name, or {pattern, speed, distance, axis, radius}",
+    "requires: 'beaten: NAME' | 'met: NAME' | 'flag: NAME', any prefixed with 'not '.",
+    "          Compound gates use the longhand object form.",
+    "when    : optional rule list, evaluated TOP TO BOTTOM, FIRST MATCH WINS.",
+    "          A rule states when the character is present plus ONLY what differs.",
+    "          Anything a rule omits falls back to the character's own value above.",
+    "loop    : set false for story characters who must never repeat when the",
+    "          calendar loops -- they are matched against the real day instead."
+  ],
+  "map": "Verdant_Forest",
+  "calendar": {
+    "authored_through": 12.0,
+    "loop": {
+      "from": 9.0,
+      "period": 4.0
+    }
+  },
+  "npcs": {
+    "Old Guy Neighbour": {
+      "at": [1502.0, 985.0],
+      "move": "idle_down",
+      "loop": false,
+      "says": {
+        "meet": "Out in the forest too hey? I'm glad they managed to reopen it today, the storm we had last week was really bad.",
+        "repeat": "If I was younger I'd do a daily run in here. It's always cool with the shade of the trees and there's a lot of water with all the ponds."
+      },
+      "when": [
+        {
+          "days": "7-8",
+          "times": "M,A"
+        },
+        {
+          "days": "5",
+          "times": "M,A",
+          "says": {
+            "meet": "Hello there, out in the forest too hey? I'm glad they managed to reopen it today, the storm we had last week was really bad and I was worried half of the forest would be flooded or gone!",
+            "repeat": "If I was younger I'd do my daily run in here. It's always cool with the shade of the trees so it's never as hot as out in the harbour."
+          }
+        }
+      ]
+    },
+    "Rocket Pack Gift": {
+      "at": [329.0, 1136.0],
+      "days": "5,7-8",
+      "times": "M,A,E",
+      "move": "idle_left",
+      "requires": "not met: VF 5,7,8 D,E Rocket Pack Gift",
+      "says": {
+        "meet": "I'm glad we can finally get our hands on these packs. You look like you haven't opened many of these so have one on me. Spread the word you can buy them here.",
+        "repeat": "Hope you pulled something good from that."
+      }
+    },
+    "Veteran Iris": {
+      "at": [1989.0, 129.0],
+      "days": "6",
+      "times": "N",
+      "move": "idle_left",
+      "says": {
+        "meet": "Me and my husband used to go everywhere, all over the world, but we've slowed down since moving here. It's peaceful here and it makes you appreciate the smaller things",
+        "repeat": "The world is large and there's a lot in it, but even this forest itself is a world of it's own, full of life entirely self contained that will never leave it's boundaries."
+      }
+    },
+    "Wishing Well Coin Thrower": {
+      "at": [3278.0, 1052.0],
+      "days": "5-8",
+      "times": "M,A",
+      "move": "idle_down",
+      "requires": "not met: VF 5-8 D Wishing Well Coin Thrower",
+      "says": {
+        "meet": "I always come here to throw a coin in the well and make a wish but they never come true. Maybe if I give this to you instead it'll work better.",
+        "repeat": "You could always try making a wish by throwing a coin in yourself."
+      }
+    }
+  },
+  "opponents": {
+    "Backpacker Patrick": {
+      "at": [-270.0, 1650.0],
+      "move": {
+        "pattern": "random_wander",
+        "radius": 65.0,
+        "speed": 50.0
+      },
+      "says": {
+        "meet": "I've been all over the world and seen a lot of different places.",
+        "repeat": "Nothing like putting on a backpack and going exploring",
+        "first_win": "It's all about the experience.",
+        "rematch_win": "I should get going...",
+        "loss": "Carrying all this weight makes me stronger in every sense"
+      },
+      "when": [
+        {
+          "days": "9",
+          "times": "A"
+        },
+        {
+          "days": "10",
+          "times": "E"
+        },
+        {
+          "days": "7,11",
+          "times": "A,E"
+        },
+        {
+          "days": "8,12",
+          "times": "M,A,E"
+        }
+      ]
+    },
+    "Card Expert Aurora": {
+      "at": [2980.0, 1125.0],
+      "move": "idle_down",
+      "says": {
+        "meet": "The weather here is always good but I love a good storm.",
+        "repeat": "I might take a trip to somewhere colder.",
+        "first_win": "You won't need an umbrella then.",
+        "rematch_win": "Maybe I need an umbrella...",
+        "loss": "You'll never be ready for a true storm."
+      },
+      "when": [
+        {
+          "days": "10",
+          "times": "M,A,E"
+        },
+        {
+          "days": "8,12",
+          "times": "A,E,N"
+        }
+      ]
+    },
+    "Card Expert Nathan": {
+      "at": [3320.0, 170.0],
+      "move": "idle_right",
+      "says": {
+        "meet": "Fire Pokemon are my favourite. They're so strong.",
+        "repeat": "Looking for another solid match?",
+        "first_win": "Fire Pokemon are strong but they still have their weaknesses",
+        "rematch_win": "It's not just about having strong Pokemon",
+        "loss": "Nothing can beat the strongest Pokemon"
+      },
+      "when": [
+        {
+          "days": "10",
+          "times": "M,A"
+        },
+        {
+          "days": "7,11",
+          "times": "A,E",
+          "at": [3019, 336],
+          "move": "idle_right"
+        }
+      ]
+    },
+    "Card Expert Ruby": {
+      "at": [3320.0, 430.0],
+      "move": "idle_right",
+      "says": {
+        "meet": "You have to be careful with fire in the forest!!! They're only cards though so it's completely fine!",
+        "repeat": "I've been practicing safety since we last met.",
+        "first_win": "I was far too safe.",
+        "rematch_win": "I might try using water instead of fire, I might have better luck with that.",
+        "loss": "Don't play with fire if you don't know what you're doing."
+      },
+      "when": [
+        {
+          "days": "9",
+          "times": "M"
+        },
+        {
+          "days": "10",
+          "times": "N"
+        },
+        {
+          "days": "8,12",
+          "times": "M,A"
+        }
+      ]
+    },
+    "Clown Glenn": {
+      "at": [290.0, 350.0],
+      "move": {
+        "distance": 100.0,
+        "pattern": "patrol_square",
+        "speed": 80.0
+      },
+      "says": {
+        "meet": "Why do clowns often have stiff necks?....",
+        "repeat": "I told my wife I was going to clown college....",
+        "first_win": ".....Because they sleep funny!",
+        "rematch_win": "..... She said you can't be serious!!!",
+        "loss": "*honk* *honk* Nevermind, that's a better punchline!"
+      },
+      "when": [
+        {
+          "days": "6",
+          "times": "A,E,N"
+        },
+        {
+          "days": "9",
+          "times": "M,A,E"
+        },
+        {
+          "days": "10",
+          "times": "M,A"
+        }
+      ]
+    },
+    "Clown Hubert": {
+      "at": [340.0, 400.0],
+      "move": "idle_cycle",
+      "says": {
+        "meet": "Can you believe that some people are actually scared of us clowns!!!",
+        "repeat": "I'm glad you don't find me scary!",
+        "first_win": "I ran away from the circus for this?",
+        "rematch_win": "I wonder if the circus will take me back....",
+        "loss": "*honk* *honk* I can teach you how to ride a unicycle"
+      },
+      "when": [
+        {
+          "days": "6",
+          "times": "A,E,N"
+        },
+        {
+          "days": "9",
+          "times": "M,A,E"
+        },
+        {
+          "days": "10",
+          "times": "M,A"
+        }
+      ]
+    },
+    "Doctor Mortimor": {
+      "at": [-50.0, -50.0],
+      "move": {
+        "axis": "horizontal",
+        "distance": 3100.0,
+        "pattern": "patrol_line",
+        "speed": 30.0
+      },
+      "says": {
+        "meet": "I'm a pretty good Doctor but the work is stressful so I like to take a walk in the forest to clear my head in the evening.",
+        "repeat": "I'm still enjoying the fresh air after my long shift.",
+        "first_win": "Medical school is long and hard, I didn't have a lot of time to practice cards.",
+        "rematch_win": "I'm always too tired!",
+        "loss": "I can treat you for any bad ailment other than a loss!"
+      },
+      "when": [
+        {
+          "days": "5",
+          "times": "A,E"
+        },
+        {
+          "days": "6",
+          "times": "M,A"
+        },
+        {
+          "days": "9",
+          "times": "E,N"
+        }
+      ]
+    },
+    "Ex Gym Leader Blaine": {
+      "at": [455.0, 500.0],
+      "move": "idle_up",
+      "requires": "met: CH 3-6 E Blaine",
+      "says": {
+        "meet": "Hah! I'm Blaine! I was the Leader of Cinnabar Gym before it burned down in the volcanic eruption. I retired but I'm here to help run this challenge. You won't be able to use certain trainers in your deck if you're taking part.",
+        "repeat": "I'll never give up until I win.",
+        "first_win": "Awesome. I've burned out...",
+        "rematch_win": "I have burned down to nothing! Not even ashes remain!",
+        "loss": "My fiery Pokémon will incinerate all challengers!"
+      },
+      "when": [
+        {
+          "days": "6",
+          "times": "M,A"
+        },
+        {
+          "days": "8",
+          "times": "A,E,N"
+        }
+      ],
+      "restrictions": {
+        "banned_card_ids": [
+          "base1-75",
+          "base1-79",
+          "base1-92",
+          "base5-16",
+          "base5-72",
+          "base5-76",
+          "gym1-19",
+          "gym1-103",
+          "gym2-102"
+        ],
+        "banned_card_names": [
+          "Lass",
+          "Super Energy Removal",
+          "Energy Removal",
+          "Rocket's Sneak Attack",
+          "Imposter Oak's Revenge",
+          "The Rocket's Trap",
+          "No Removal Gym",
+          "Chaos Gym"
+        ]
+      }
+    },
+    "Ex Gym Leader Brock": {
+      "at": [1540.0, 1595.0],
+      "days": "6-7",
+      "times": "M,A,E,N",
+      "move": "idle_left",
+      "requires": "met: CH 3-6 E Brock",
+      "says": {
+        "meet": "I'm Brock, the Ex Gym Leader of Pewter City and expert on Rock-type Pokemon. I'm practicing hard before the challenge begins. Did you know about the ruleset? Some trainer cards are banned for the challenge so you can't use them in your deck. Show me your best.",
+        "repeat": "I really enjoyed our last match. Want to give it another shot?",
+        "first_win": "You overcame my rock hard defence!",
+        "rematch_win": "Looks like you're the stronger one.",
+        "loss": "The best offense is a good defense! That's my way of doing things!"
+      },
+      "restrictions": {
+        "banned_card_ids": [
+          "base1-75",
+          "base1-79",
+          "base1-92",
+          "base5-16",
+          "base5-72",
+          "base5-76",
+          "gym1-19",
+          "gym1-103",
+          "gym2-102"
+        ],
+        "banned_card_names": [
+          "Lass",
+          "Super Energy Removal",
+          "Energy Removal",
+          "Rocket's Sneak Attack",
+          "Imposter Oak's Revenge",
+          "The Rocket's Trap",
+          "No Removal Gym",
+          "Chaos Gym"
+        ]
+      }
+    },
+    "Ex Gym Leader Erika": {
+      "at": [1560.0, 270.0],
+      "days": "7-8",
+      "times": "M,A",
+      "move": "idle_right",
+      "requires": "met: CH 3-6 D Erika",
+      "says": {
+        "meet": "Hello, such pleasant weather here, I'm afraid I may doze off... My name is Erika. I was the leader of Celadon Gym. If you want a match with me you'll need to make sure you don't use any banned trainer cards.",
+        "repeat": "Plants are such delicate things. The amount of water, the condition of the soil, the temperature differences, the changing weather can have such a huge effect. Sorry.. you want another match?",
+        "first_win": "That was a delightful match. I felt inspired",
+        "rematch_win": "Losing leaves a bitter aftertaste... But knowing that there are strong players spurs me to do better...",
+        "loss": "Oh... Is that all?"
+      },
+      "restrictions": {
+        "banned_card_ids": [
+          "base1-75",
+          "base1-79",
+          "base1-92",
+          "base5-16",
+          "base5-72",
+          "base5-76",
+          "gym1-19",
+          "gym1-103",
+          "gym2-102"
+        ],
+        "banned_card_names": [
+          "Lass",
+          "Super Energy Removal",
+          "Energy Removal",
+          "Rocket's Sneak Attack",
+          "Imposter Oak's Revenge",
+          "The Rocket's Trap",
+          "No Removal Gym",
+          "Chaos Gym"
+        ]
+      }
+    },
+    "Ex Gym Leader Giovanni": {
+      "at": [275.0, 1200.0],
+      "days": "8",
+      "times": "E,N",
+      "move": "idle_up",
+      "requires": "met: CH 3-6 N Giovanni",
+      "says": {
+        "meet": "I shall spare you a moment of my time. I am the ex Gym Leader Giovanni. I believe Team Rocket has arrived but I know nothing of their plans. I am merely here for the Gym Hero Challenge.",
+        "repeat": "Two things are inevitable: my success and your failure.",
+        "first_win": "What? Me, lose?!",
+        "rematch_win": "I hope we meet again...",
+        "loss": "Mark my words. Not being able to measure your own strength shows that you are still but a child."
+      },
+      "restrictions": {
+        "banned_card_ids": [
+          "base1-75",
+          "base1-79",
+          "base1-92",
+          "base5-16",
+          "base5-72",
+          "base5-76",
+          "gym1-19",
+          "gym1-103",
+          "gym2-102"
+        ],
+        "banned_card_names": [
+          "Lass",
+          "Super Energy Removal",
+          "Energy Removal",
+          "Rocket's Sneak Attack",
+          "Imposter Oak's Revenge",
+          "The Rocket's Trap",
+          "No Removal Gym",
+          "Chaos Gym"
+        ]
+      }
+    },
+    "Ex Gym Leader Koga": {
+      "at": [65.0, 1565.0],
+      "days": "6,8",
+      "times": "E,N",
+      "move": "idle_up",
+      "requires": "met: CH 3-6 N Koga",
+      "says": {
+        "meet": "Fwahaha! I am Koga. I was part of the Elite Four but most importantly an Ex Gym Leader. My style will confound and destroy you! Confusion, sleep, poison... Prepare to be the victim of my sinister technique!",
+        "repeat": "I, too, must pursue further discipline.",
+        "first_win": "Humph! You have proven your worth!",
+        "rematch_win": "I subjected you to everything I could muster. But my efforts failed. I must hone my skills",
+        "loss": "Have you learned to fear the techniques of the ninja?"
+      },
+      "restrictions": {
+        "banned_card_ids": [
+          "base1-75",
+          "base1-79",
+          "base1-92",
+          "base5-16",
+          "base5-72",
+          "base5-76",
+          "gym1-19",
+          "gym1-103",
+          "gym2-102"
+        ],
+        "banned_card_names": [
+          "Lass",
+          "Super Energy Removal",
+          "Energy Removal",
+          "Rocket's Sneak Attack",
+          "Imposter Oak's Revenge",
+          "The Rocket's Trap",
+          "No Removal Gym",
+          "Chaos Gym"
+        ]
+      }
+    },
+    "Ex Gym Leader Lt. Surge": {
+      "at": [240.0, 480.0],
+      "days": "7-8",
+      "times": "E,N",
+      "move": "idle_left",
+      "requires": "met: CH 3-6 D Lt Surge",
+      "says": {
+        "meet": "Hey Kid, you're in for a shock if you think you can beat me at the Gym Challenge. You'll need to hold your nerve against me. I'm using the Gym Challenge rules, so don't think about using any banned trainer cards.",
+        "repeat": "Still slugging and chugging away?",
+        "first_win": "Even my electric tricks lost. You're good at this.",
+        "rematch_win": "When it comes to Electric type Pokemon, I'm number one. Card games? Clearly not so much hahaha.",
+        "loss": "Ha, you shorted out?"
+      },
+      "restrictions": {
+        "banned_card_ids": [
+          "base1-75",
+          "base1-79",
+          "base1-92",
+          "base5-16",
+          "base5-72",
+          "base5-76",
+          "gym1-19",
+          "gym1-103",
+          "gym2-102"
+        ],
+        "banned_card_names": [
+          "Lass",
+          "Super Energy Removal",
+          "Energy Removal",
+          "Rocket's Sneak Attack",
+          "Imposter Oak's Revenge",
+          "The Rocket's Trap",
+          "No Removal Gym",
+          "Chaos Gym"
+        ]
+      }
+    },
+    "Ex Gym Leader Misty": {
+      "at": [3325.0, 325.0],
+      "move": "idle_right",
+      "requires": "met: CH 3-6 D Misty",
+      "says": {
+        "meet": "This bridge really reminds me of home. I'm Misty, the Ex Gym Leader of Cerulean. I'm known for my all out Water-type offensive. This is only a practice but I won't hold back and we'll still play by the banned trainer cards rules.",
+        "repeat": "I haven't got time to go swimming today so do you want another match?",
+        "first_win": "You really are strong and skilled!",
+        "rematch_win": "Glad to see you're really learning a thing or two!",
+        "loss": "Yaaaay! That feels great!"
+      },
+      "when": [
+        {
+          "days": "6",
+          "times": "E,N"
+        },
+        {
+          "days": "8",
+          "times": "M,A"
+        }
+      ],
+      "restrictions": {
+        "banned_card_ids": [
+          "base1-75",
+          "base1-79",
+          "base1-92",
+          "base5-16",
+          "base5-72",
+          "base5-76",
+          "gym1-19",
+          "gym1-103",
+          "gym2-102"
+        ],
+        "banned_card_names": [
+          "Lass",
+          "Super Energy Removal",
+          "Energy Removal",
+          "Rocket's Sneak Attack",
+          "Imposter Oak's Revenge",
+          "The Rocket's Trap",
+          "No Removal Gym",
+          "Chaos Gym"
+        ]
+      }
+    },
+    "Ex Gym Leader Sabrina": {
+      "at": [2060.0, 1180.0],
+      "days": "7-8",
+      "times": "E,N",
+      "move": "idle_down",
+      "requires": "met: CH 3-6 N Sabrina",
+      "says": {
+        "meet": "I had a vision of your arrival! My name is Sabrina. I have had psychic powers since I was a child. You're here to play against me. I will grant you a match.",
+        "repeat": "I knew you would return and this too shall not be the last time we meet.",
+        "first_win": "This loss shocks me! But a loss is a loss. I admit I didn't work hard enough to win.",
+        "rematch_win": "Your power... It far exceeds what I foresaw... Maybe it isn't possible to fully predict what the future holds...",
+        "loss": "This turned out exactly as I had predicted."
+      },
+      "restrictions": {
+        "banned_card_ids": [
+          "base1-75",
+          "base1-79",
+          "base1-92",
+          "base5-16",
+          "base5-72",
+          "base5-76",
+          "gym1-19",
+          "gym1-103",
+          "gym2-102"
+        ],
+        "banned_card_names": [
+          "Lass",
+          "Super Energy Removal",
+          "Energy Removal",
+          "Rocket's Sneak Attack",
+          "Imposter Oak's Revenge",
+          "The Rocket's Trap",
+          "No Removal Gym",
+          "Chaos Gym"
+        ]
+      }
+    },
+    "Forest Ranger Tucker": {
+      "at": [2640.0, 610.0],
+      "move": {
+        "pattern": "random_wander",
+        "radius": 65.0,
+        "speed": 50.0
+      },
+      "says": {
+        "meet": "There's a lot of poisonous Pokemon out here in the trees so you have to be careful when you're wandering off the paths.",
+        "repeat": "Hope you've not been stung!",
+        "first_win": "You can clearly handle yourself so you should be fine.",
+        "rematch_win": "Don't let your guard down!",
+        "loss": "You might need to report to first aid..."
+      },
+      "when": [
+        {
+          "days": "6",
+          "times": "M,A,E"
+        },
+        {
+          "days": "9",
+          "times": "M,A"
+        },
+        {
+          "days": "10",
+          "times": "A,E"
+        }
+      ]
+    },
+    "Fossil Expert Jonathan": {
+      "at": [465.0, 1585.0],
+      "move": "idle_up",
+      "says": {
+        "meet": "There's a lot of history in this forest, it's been around for thousands of years.",
+        "repeat": "You haven't found any mysterious artifacts around here have you?",
+        "first_win": "We can learn a lot of things from the past.",
+        "rematch_win": "Even losses are a great way to learn.",
+        "loss": "You're a thing of the past!"
+      },
+      "when": [
+        {
+          "days": "10",
+          "times": "A"
+        },
+        {
+          "days": "8,12",
+          "times": "M,A"
+        },
+        {
+          "days": "7-11/2",
+          "times": "E,N"
+        }
+      ]
+    },
+    "Gambler Victor": {
+      "at": [3300.0, -40.0],
+      "move": "idle_random",
+      "says": {
+        "meet": "You need a lot of luck in life, some things are entirely up to chance.",
+        "repeat": "You can't let things get you down if you get unlucky.",
+        "first_win": "Heh, next time I might win, next time I might not. It's all a gamble",
+        "rematch_win": "If I flip a coin 10,000 times, there's still a chance I never get heads.",
+        "loss": "Was that luck or was it skill?"
+      },
+      "when": [
+        {
+          "days": "10",
+          "times": "M,A,E"
+        },
+        {
+          "days": "8,12",
+          "times": "A,E"
+        }
+      ]
+    },
+    "Gentleman Benedict": {
+      "at": [3710.0, 1095.0],
+      "move": "idle_left",
+      "says": {
+        "meet": "Good day. I'm not the most youthful but I love a good match.",
+        "repeat": "Hello again, up for another match ey?",
+        "first_win": "Hoh, hoh, very well played there.",
+        "rematch_win": "Another jolly good show old chum.",
+        "loss": "At least with age comes experience!"
+      },
+      "when": [
+        {
+          "days": "9",
+          "times": "M"
+        },
+        {
+          "days": "8-12/2",
+          "times": "M,A"
+        }
+      ]
+    },
+    "Ghost Whisperer Vera": {
+      "at": [3277.0, 1062.0],
+      "days": "7-8,10-12",
+      "times": "N",
+      "move": "idle_down",
+      "says": {
+        "meet": "This forest is haunted. I am here to speak with those from the past.",
+        "repeat": "Hope you haven't joined any gangs.",
+        "first_win": "Someone is looking over your shoulder.",
+        "rematch_win": "The spirits must be guiding you.",
+        "loss": "I was getting help from the other side."
+      }
+    },
+    "Hiker Walter": {
+      "at": [400.0, 350.0],
+      "days": "7-11/2",
+      "times": "A,E,N",
+      "move": {
+        "pattern": "random_wander",
+        "radius": 65.0,
+        "speed": 60.0
+      },
+      "says": {
+        "meet": "I've been travelling for hours, for days on end. I hike everywhere. It's a lot of hard work but I see a lot.",
+        "repeat": "My legs are still aching, need a rest.",
+        "first_win": "I should have taken my hiking backpack off, I couldn't concentrate.",
+        "rematch_win": "I'm still too focused on the hike and not the game.",
+        "loss": "If you hike everywhere like me you learn how to do a lot."
+      }
+    },
+    "Lady Fiona": {
+      "at": [2054.0, 928.0],
+      "move": "idle_down",
+      "says": {
+        "meet": "There's always beauty to be found in even the most seemingly ugly things.",
+        "repeat": "Life and everything in it is beauty.",
+        "first_win": "Wouldn't you agree that ugliness can still be beautiful?",
+        "rematch_win": "I always love to see the beauty in things.",
+        "loss": "I'm not just a pretty face either."
+      },
+      "when": [
+        {
+          "days": "7,11",
+          "times": "M,A,E"
+        },
+        {
+          "days": "8,12",
+          "times": "A,E"
+        }
+      ]
+    },
+    "Light Engineer Chase": {
+      "at": [3270.0, 300.0],
+      "days": "7-11/2",
+      "times": "E,N",
+      "move": "idle_left",
+      "says": {
+        "meet": "My boss called me out to fix these lights but I arrived and they're all working? What a waste of my time but at least I'm being paid so fancy a match?",
+        "repeat": "I can't leave this early or I won't be paid",
+        "first_win": "Being paid to be beaten, well I'm not complaining.",
+        "rematch_win": "I'd rather be working...",
+        "loss": "Well I'm glad I didn't have to do any work now!"
+      }
+    },
+    "Mad Scientist Leonard": {
+      "at": [3660.0, 1100.0],
+      "move": {
+        "pattern": "random_wander",
+        "radius": 65.0,
+        "speed": 40.0
+      },
+      "says": {
+        "meet": "I'm right on the edge of finishing my best invention, it's going to change the world.",
+        "repeat": "I still haven't figure out the right formulas yet.",
+        "first_win": "I just can't seem to get the right formula. I need more assistants",
+        "rematch_win": "You could defintely help me with this.",
+        "loss": "Remember my name, I'll be all over every scientific news outlet soon!"
+      },
+      "when": [
+        {
+          "days": "6",
+          "times": "E,N"
+        },
+        {
+          "days": "7,11",
+          "times": "A,E"
+        },
+        {
+          "days": "9-10",
+          "times": "N"
+        }
+      ]
+    },
+    "Nature Lover Erin": {
+      "at": [1777.0, 1050.0],
+      "move": {
+        "pattern": "random_wander",
+        "radius": 65.0,
+        "speed": 20.0
+      },
+      "says": {
+        "meet": "I absolutely love the forest in the day, it's my favourite spot to hang out.",
+        "repeat": "Nothing like being out in the open air hey?",
+        "first_win": "Nothing can bring me down when I'm in such a good mood.",
+        "rematch_win": "You don't always have to go so hard, sometimes you can just relax.",
+        "loss": "Take a moment to breathe and try again!"
+      },
+      "when": [
+        {
+          "days": "9",
+          "times": "M,A,E"
+        },
+        {
+          "days": "10",
+          "times": "M"
+        },
+        {
+          "days": "8,12",
+          "times": "M,A"
+        }
+      ]
+    },
+    "Ninjaboy Sasuke": {
+      "at": [850.0, 650.0],
+      "move": {
+        "axis": "horizontal",
+        "distance": 240.0,
+        "pattern": "patrol_line",
+        "speed": 90.0
+      },
+      "says": {
+        "meet": "I love climbing the trees around here, it's good practice for my ninja skills.",
+        "repeat": "I'm still training hard!",
+        "first_win": "I should have been more sneaky.",
+        "rematch_win": "It's hard to focus when you always lose!",
+        "loss": "At least with age comes experience!"
+      },
+      "when": [
+        {
+          "days": "6",
+          "times": "M,A,E"
+        },
+        {
+          "days": "9",
+          "times": "E,N"
+        },
+        {
+          "days": "5,10",
+          "times": "A,E"
+        }
+      ]
+    },
+    "Old Traveller Cliff": {
+      "at": [70.0, 1590.0],
+      "move": "idle_right",
+      "says": {
+        "meet": "Me and my dear friend arrived on the SS Anne. We've travelled on it a few years in the past.",
+        "repeat": "I've lived in many places in my time so I always appreciate being in the now.",
+        "first_win": "That's the way to do it, good effort!",
+        "rematch_win": "Another fantastic play, good show.",
+        "loss": "You'll never grow and mature if you win every time."
+      },
+      "when": [
+        {
+          "days": "6",
+          "times": "M,A"
+        },
+        {
+          "days": "7-11/2",
+          "times": "M"
+        }
+      ]
+    },
+    "Old Traveller Harold": {
+      "at": [100.0, 1590.0],
+      "move": "idle_left",
+      "says": {
+        "meet": "I'm travelling the world with my old friend. We've been to many places in our time.",
+        "repeat": "Won't be long until we move onto the next place",
+        "first_win": "Well done. You could travel with us if you were older too ho ho ho.",
+        "rematch_win": "Have you been aboard the SS Anne at all?",
+        "loss": "Don't you worry, life isn't all about winning and losing."
+      },
+      "when": [
+        {
+          "days": "6",
+          "times": "M,A"
+        },
+        {
+          "days": "7-11/2",
+          "times": "M"
+        }
+      ]
+    },
+    "Pikachu Fan Cami": {
+      "at": [0.0, 250.0],
+      "days": "5-12",
+      "times": "M,A",
+      "move": {
+        "pattern": "random_wander",
+        "radius": 65.0,
+        "speed": 20.0
+      },
+      "says": {
+        "meet": "I love taking pictures of Pokemon, especially Pikachu!",
+        "repeat": "I'm really good with a Camera!",
+        "first_win": "I took a really good picture of Pikachu and put it on this card",
+        "rematch_win": "Do you want to see more pictures of Pikachu?",
+        "loss": "I'll have to take a photo to remember this moment"
+      },
+      "match_effects": [
+        {
+          "type": "ignore_weakness_and_resistance"
+        },
+        {
+          "type": "raw_damage_only"
+        }
+      ]
+    },
+    "Pikachu Fan Juniper": {
+      "at": [125.0, 300.0],
+      "days": "5-12",
+      "times": "M,A",
+      "move": "idle_random",
+      "says": {
+        "meet": "Did you know Pikachu live in the forest?",
+        "repeat": "I've not seen any Pikachu around here yet.",
+        "first_win": "I wish I could find a Pikachu around here but this is all I can find.",
+        "rematch_win": "Have you found a Pikachu around here yet?",
+        "loss": "If I'm lucky enough to win then I should be lucky enough to see a Pikachu!"
+      },
+      "match_effects": [
+        {
+          "type": "ignore_weakness_and_resistance"
+        },
+        {
+          "amount": 50.0,
+          "type": "max_hp_modifier"
+        }
+      ]
+    },
+    "Pikachu Fan Leaf": {
+      "at": [275.0, 100.0],
+      "days": "5-12",
+      "times": "M,A",
+      "move": {
+        "axis": "vertical",
+        "distance": 350.0,
+        "pattern": "patrol_line",
+        "radius": 65.0,
+        "speed": 50.0
+      },
+      "says": {
+        "meet": "Pikachu is just so cute, he's the cutest Pokemon ever!",
+        "repeat": "I love every Pikachu.",
+        "first_win": "Even though I don't have a lot of Pikachu, you can have this one.",
+        "rematch_win": "I will win with my Pikachu one day!",
+        "loss": "That's why I love Pikachu so much!"
+      },
+      "match_effects": [
+        {
+          "type": "ignore_weakness_and_resistance"
+        },
+        {
+          "amount": 20.0,
+          "pokemon_type": "Lightning",
+          "type": "type_damage_bonus"
+        }
+      ]
+    },
+    "Pikachu Fan Marina": {
+      "at": [0.0, 100.0],
+      "days": "5-12",
+      "times": "M,A",
+      "move": "idle_random",
+      "says": {
+        "meet": "Have you ever seen a Pikachu Surf, Some are really really good on a surfboard!!",
+        "repeat": "Have you seen a Pikachu on a surfboard yet?",
+        "first_win": "If you haven't seen a Pikachu use surf you can have this then!",
+        "rematch_win": "I wish I could surf like a Pikachu",
+        "loss": "Pikachu can do everything, it's the best!!!"
+      },
+      "match_effects": [
+        {
+          "type": "ignore_weakness_and_resistance"
+        },
+        {
+          "type": "energy_attach_full_heal"
+        }
+      ]
+    },
+    "Pikachu Fan Raye": {
+      "at": [275.0, 250.0],
+      "days": "5-12",
+      "times": "M,A",
+      "move": {
+        "pattern": "random_wander",
+        "radius": 65.0,
+        "speed": 20.0
+      },
+      "says": {
+        "meet": "Go Pikachu, use Thunderbolt!!!.... I don't really have a Pikachu.",
+        "repeat": "I wish I could have a Pikachu for real",
+        "first_win": "Have this Pikachu card and if you get a real Pikachu can you let me have it?",
+        "rematch_win": "I still don't have a Pikachu at all",
+        "loss": "My Pikachu would be really strong too!"
+      },
+      "match_effects": [
+        {
+          "type": "ignore_weakness_and_resistance"
+        },
+        {
+          "count": 2.0,
+          "type": "extra_energy_per_turn"
+        }
+      ]
+    },
+    "Pikachu Fan Skye": {
+      "at": [275.0, 100.0],
+      "days": "5-12",
+      "times": "M,A",
+      "move": {
+        "pattern": "random_wander",
+        "radius": 65.0,
+        "speed": 20.0
+      },
+      "says": {
+        "meet": "Some Pokemon can use fly to take you somewhere you want to go. Turns out so can Pikachu!",
+        "repeat": "I want to take a ride on a flying Pikachu",
+        "first_win": "Hold onto this and try not to float away!",
+        "rematch_win": "I've never see a flying Pikachu",
+        "loss": "You'll never catch a Pikachu that's flying away!"
+      },
+      "match_effects": [
+        {
+          "type": "ignore_weakness_and_resistance"
+        },
+        {
+          "result": "heads",
+          "type": "coin_flip_override"
+        }
+      ]
+    },
+    "Pikachu Mum": {
+      "at": [1509.0, 928.0],
+      "move": "idle_down",
+      "requires": {
+        "all_beaten": [
+          "Pikachu Fan Marina",
+          "Pikachu Fan Skye",
+          "Pikachu Fan Cami",
+          "Pikachu Fan Juniper",
+          "Pikachu Fan Raye",
+          "Pikachu Fan Leaf"
+        ]
+      },
+      "says": {
+        "meet": "Thank you for getting them all to come back and stay here, I don't know the rules very well of this game but I'll play you as a thanks!",
+        "repeat": "Want to see all of my Pikachu again?",
+        "first_win": "As a thank you again, take these!",
+        "rematch_win": "My kids could learn a lot from you",
+        "loss": "I didn't know Pikachu could be so strong!"
+      },
+      "when": [
+        {
+          "days": "5",
+          "times": "E"
+        },
+        {
+          "days": "6-12",
+          "times": "M,A"
+        },
+        {
+          "kind": "npc",
+          "at": [198.0, 164.0],
+          "days": "6-8",
+          "times": "E",
+          "move": "idle_right",
+          "requires": {
+            "not_all_beaten": [
+              "Pikachu Fan Marina",
+              "Pikachu Fan Skye",
+              "Pikachu Fan Cami",
+              "Pikachu Fan Juniper",
+              "Pikachu Fan Raye",
+              "Pikachu Fan Leaf"
+            ]
+          },
+          "says": {
+            "meet": "It's nearly time to go home now so I better round up my kids!",
+            "repeat": "We come back here every day because they're all so obsessed with Pikachu!!"
+          }
+        },
+        {
+          "kind": "npc",
+          "at": [198.0, 164.0],
+          "days": "5",
+          "times": "M,A",
+          "move": "idle_right",
+          "requires": {
+            "not_all_beaten": [
+              "Pikachu Fan Marina",
+              "Pikachu Fan Skye",
+              "Pikachu Fan Cami",
+              "Pikachu Fan Juniper",
+              "Pikachu Fan Raye",
+              "Pikachu Fan Leaf"
+            ]
+          },
+          "says": {
+            "meet": "All my kids always wander off and don't come back for a while. They love looking for Pikachu around here but have never found one. If you see any of them could you tell them to come back here please?",
+            "repeat": "All my kids are dressed up as Pikachu, from a distance you might mistake them for an actual Pikachu!! If you can get them all to come back here I'd appreciate it."
+          }
+        }
+      ]
+    },
+    "Police Constable Floyd": {
+      "at": [1000.0, 1050.0],
+      "move": {
+        "axis": "horizontal",
+        "distance": 1520.0,
+        "pattern": "patrol_line",
+        "speed": 60.0
+      },
+      "says": {
+        "meet": "Because we've just reopened the forest, my boss wants us to keep a patrol to keep an eye out for any trouble.",
+        "repeat": "Have you seen anything suspicious recently?",
+        "first_win": "It's a good thing this area is so safe.",
+        "rematch_win": "I need more training.",
+        "loss": "I should be promoted to detective!"
+      },
+      "when": [
+        {
+          "days": "6",
+          "times": "N"
+        },
+        {
+          "days": "8-12/2",
+          "times": "E,N"
+        }
+      ]
+    },
+    "Police Sergeant Douglas": {
+      "at": [-300.0, 1650.0],
+      "move": {
+        "axis": "horizontal",
+        "distance": 2800.0,
+        "pattern": "patrol_line",
+        "speed": 40.0
+      },
+      "says": {
+        "meet": "You better not be up to anything. I'm the searge round ere. I'm keeping my eyes out for anything that aint right.",
+        "repeat": "We're lucky nothing ever really happens round these parts.",
+        "first_win": "Report back to me if you see anything dodgy immediately.",
+        "rematch_win": "Don't tell anyone I'm rubbish at this.",
+        "loss": "There'll be no crime around here on my watch."
+      },
+      "when": [
+        {
+          "days": "6",
+          "times": "N"
+        },
+        {
+          "days": "8-12/2",
+          "times": "E,N"
+        }
+      ]
+    },
+    "Psychic Eli": {
+      "at": [295.0, 1190.0],
+      "days": "6-12/2",
+      "times": "N",
+      "move": "idle_down",
+      "says": {
+        "meet": "I can teach you to unleash your hidden potential. You have to be ready to empty your mind, focus and concentrate.",
+        "repeat": "I am now able speak to you through your mind without the need to talk.",
+        "first_win": "You have the power. Focus. Direct. Start small and train hard.",
+        "rematch_win": "You have great potential. I think you have what it takes.",
+        "loss": "I was wrong. You lack the discipline it takes."
+      }
+    },
+    "Psychic Nova": {
+      "at": [277.0, 1190.0],
+      "move": "idle_down",
+      "says": {
+        "meet": "If you relax your thoughts and focus your mind entirely, some people can move objects with natural telekinetic powers.",
+        "repeat": "I hope you've been focusing",
+        "first_win": "I have a friend who can bring out your hidden powers.",
+        "rematch_win": "You have great potential. I think you have what it takes.",
+        "loss": "You'll never be a master of your mind if you don't focus."
+      },
+      "when": [
+        {
+          "days": "6",
+          "times": "E,N"
+        },
+        {
+          "days": "10",
+          "times": "N"
+        }
+      ]
+    },
+    "RIVAL 5": {
+      "days": "5",
+      "times": "M",
+      "loop": false,
+      "placeholder": true
+    },
+    "RIVAL 6": {
+      "days": "6",
+      "times": "M,A,E,N",
+      "loop": false,
+      "placeholder": true
+    },
+    "RIVAL 7": {
+      "days": "7",
+      "times": "M,A,E,N",
+      "loop": false,
+      "placeholder": true
+    },
+    "RIVAL 8": {
+      "days": "8",
+      "times": "M,A,E,N",
+      "loop": false,
+      "placeholder": true
+    },
+    "Rocket Boss Giovanni": {
+      "at": [1790.0, 500.0],
+      "days": "5-11/2",
+      "times": "N",
+      "move": "idle_left",
+      "says": {
+        "meet": "Good evening. I believe we may have already met? I've been working tirelessly since I arrived. There seems to be a lot of money to be made in this card game.",
+        "repeat": "Nice to see you again. I'm willing to play again.",
+        "first_win": "Interesting. You've got a great technique.",
+        "rematch_win": "You could teach me a thing or two about this.",
+        "loss": "Hmm. I won't let you beat me."
+      }
+    },
+    "Rocket Exec Archer": {
+      "at": [3277.0, 1060.0],
+      "move": "idle_down",
+      "says": {
+        "meet": "Hello. I'm Archer one of the 4 execs of Team Rocket. We're not here to do anything illicit. Not yet anyway. We're just getting started.",
+        "repeat": "If you're really that interested you should join us.",
+        "first_win": "Enjoy the wins while they last.",
+        "rematch_win": "Don't hang about too late.",
+        "loss": "Don't take it personally."
+      },
+      "when": [
+        {
+          "days": "5",
+          "times": "E,N"
+        },
+        {
+          "days": "7-11/2",
+          "times": "A,E,N"
+        }
+      ]
+    },
+    "Rocket Exec Ariana": {
+      "at": [1760.0, 500.0],
+      "days": "5-11/2",
+      "times": "N",
+      "move": "idle_right",
+      "says": {
+        "meet": "Have you bought any of our card packs yet? Boss wants us to make as much money as possible as soon as we can.",
+        "repeat": "You got one pack free but I won't be giving you another.",
+        "first_win": "Here's a free one on me. Don't expect any more though.",
+        "rematch_win": "Don't ask for anything from us.",
+        "loss": "You need to try harder."
+      }
+    },
+    "Rocket Exec Petrel": {
+      "at": [3300.0, 1130.0],
+      "move": "idle_up",
+      "says": {
+        "meet": "Heh, you've found us at the right time. We've been hiding from the police... Not that we've done anything illegal, we're just here to play this card game.",
+        "repeat": "You're back for another round?",
+        "first_win": "You better watch this space.",
+        "rematch_win": "You should join us, we've got big things coming.",
+        "loss": "Of course you didn't stand a chance against us."
+      },
+      "when": [
+        {
+          "days": "5",
+          "times": "E,N"
+        },
+        {
+          "days": "7-11/2",
+          "times": "A,E,N"
+        }
+      ]
+    },
+    "Rocket Exec Proton": {
+      "at": [3250.0, 1130.0],
+      "move": "idle_up",
+      "says": {
+        "meet": "This well is bringing back a lot of memories... I can't imagine you've heard of Team Rocket before but you'll hear about us soon.",
+        "repeat": "Giving me another chance huh?",
+        "first_win": "Heh we're in your shadow then huh.",
+        "rematch_win": "It won't always be like this.",
+        "loss": "We will be feared again."
+      },
+      "when": [
+        {
+          "days": "5",
+          "times": "E,N"
+        },
+        {
+          "days": "7-11/2",
+          "times": "A,E,N"
+        }
+      ]
+    },
+    "Rocket Grunt Margot": {
+      "at": [1770.0, 200.0],
+      "move": {
+        "pattern": "random_wander",
+        "radius": 65.0,
+        "speed": 60.0
+      },
+      "says": {
+        "meet": "Did you know Team Rocket almost ruled the world? Anybody can be a Rocket member if they want.",
+        "repeat": "Have you thought about joining us yet?",
+        "first_win": "I'm supposed to be recruiting so take one of our uniforms if you want to join!",
+        "rematch_win": "You've got everything it takes to join us.",
+        "loss": "Maybe you're not cut out to be a Rocket grunt like me."
+      },
+      "when": [
+        {
+          "days": "5",
+          "times": "A,E,N"
+        },
+        {
+          "days": "7-11/2",
+          "times": "N"
+        }
+      ]
+    },
+    "Shady Character Bernard": {
+      "at": [265.0, 1180.0],
+      "move": "idle_right",
+      "says": {
+        "meet": "We might be shady but we're not bad guys.",
+        "repeat": "Hope you haven't joined any gangs.",
+        "first_win": "Just coz you're strong, don't go joining any gangs to show off.",
+        "rematch_win": "You're enough to bring down an entire gang by yourself.",
+        "loss": "Of course you weren't going to win against me."
+      },
+      "when": [
+        {
+          "days": "7,11",
+          "times": "N"
+        },
+        {
+          "days": "9-10",
+          "times": "E,N"
+        }
+      ]
+    },
+    "Shady Character Owen": {
+      "at": [295.0, 1180.0],
+      "move": "idle_left",
+      "says": {
+        "meet": "Me and my pal here are from different gangs but we can still hang out.",
+        "repeat": "You not joined our crew yet?",
+        "first_win": "Heh you could be cool enough to be one of us too.",
+        "rematch_win": "You should really think about signing up.",
+        "loss": "You're too weak to join a cool crew like us"
+      },
+      "when": [
+        {
+          "days": "7,11",
+          "times": "N"
+        },
+        {
+          "days": "9-10",
+          "times": "E,N"
+        }
+      ]
+    },
+    "Swimmer Bibi": {
+      "at": [2970.0, 998.0],
+      "move": {
+        "distance": 68.0,
+        "pattern": "patrol_square",
+        "speed": 40.0
+      },
+      "says": {
+        "meet": "I much prefer cold fresh water swimming rather than the beach.",
+        "repeat": "Fresh water is so much better than seawater!.",
+        "first_win": "Sea water is far too salty!!",
+        "rematch_win": "I'm going to be a wrinkly prune if I don't get out soon.",
+        "loss": "Freshen up and take a dip!"
+      },
+      "when": [
+        {
+          "days": "8,12",
+          "times": "A"
+        },
+        {
+          "days": "7,10-11",
+          "times": "M,A"
+        }
+      ]
+    },
+    "Veteran Sylvester": {
+      "at": [1989.0, 110.0],
+      "days": "8-12/2",
+      "times": "A,E,N",
+      "move": "idle_left",
+      "says": {
+        "meet": "We've travelled the world together and settled here recently. We've been aboard the SS Anne before and it looks like it hasn't changed in years.",
+        "repeat": "Good evening, hope you're keeping well.",
+        "first_win": "You already appear well travelled. Maybe you could join us on our next adventure.",
+        "rematch_win": "A great match as always.",
+        "loss": "Don't let this get you down."
+      }
+    },
+    "Young Sage Kai": {
+      "at": [3708.0, 1092.0],
+      "move": "idle_left",
+      "says": {
+        "meet": "Have you ever tried meditating in the forest? The atmosphere is perfect for it.",
+        "repeat": "Hope you're taking it easy out here.",
+        "first_win": "I'm going to try and reconnect with nature.",
+        "rematch_win": "Join me in a meditation?",
+        "loss": "Focus on your breath more."
+      },
+      "when": [
+        {
+          "days": "9",
+          "times": "A,E"
+        },
+        {
+          "days": "10",
+          "times": "E"
+        },
+        {
+          "days": "7,11",
+          "times": "M,A"
+        }
+      ]
+    },
+    "Youngster Cooper": {
+      "at": [210.0, 290.0],
+      "move": "idle_random",
+      "says": {
+        "meet": "Have you ever seen a pokemon EXPLODE before? It's CRAZY!",
+        "repeat": "I PROMISE I haven't blown anything up!!",
+        "first_win": "Nothing worse than a dud",
+        "rematch_win": "I feel like I'm going to explode",
+        "loss": "BOOOOOOOOOOM!!!"
+      },
+      "when": [
+        {
+          "days": "6",
+          "times": "A,E"
+        },
+        {
+          "days": "9",
+          "times": "A"
+        },
+        {
+          "days": "8,12",
+          "times": "M"
+        }
+      ]
+    },
+    "Youngster Milo": {
+      "at": [400.0, 400.0],
+      "move": {
+        "pattern": "random_wander",
+        "radius": 65.0,
+        "speed": 50.0
+      },
+      "says": {
+        "meet": "I've not been playing the TCG for long but I think I'm really good already.",
+        "repeat": "I'm getting better all the time.",
+        "first_win": "I'm not as good as I thought.",
+        "rematch_win": "I can only get better!",
+        "loss": "I told you I was really good!"
+      },
+      "when": [
+        {
+          "days": "5",
+          "times": "M,A,E"
+        },
+        {
+          "days": "6",
+          "times": "A,E"
+        },
+        {
+          "days": "9",
+          "times": "M,A"
+        }
+      ]
+    }
+  }
+}

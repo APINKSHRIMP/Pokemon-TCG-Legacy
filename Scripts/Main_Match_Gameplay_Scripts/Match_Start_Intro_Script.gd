@@ -33,7 +33,7 @@ var transitioning: bool = false
 # Called when the scene enters the scene tree
 func _ready() -> void:
 	print("DEBUG INTRO opponent name from GameState: ", GameState.current_opponent_name)
-	print("DEBUG INTRO json path from GameState: ", GameState.current_opponent_json_path)
+	print("DEBUG INTRO json path from GameState: ", GameState.current_opponent_map)
 	# Start fully black so we can fade in
 	modulate.a = 0.0
 	
@@ -102,36 +102,15 @@ func load_opponent_data(trainer_name: String) -> void:
 		GameDataManager.opponent_data = opponent_data
 		return
 
-	var file = FileAccess.open(GameState.current_opponent_json_path, FileAccess.READ)
-	if file == null:
-		print("Error loading opponent file")
-		return
-
-	var json = JSON.new()
-	var error = json.parse(file.get_as_text())
-	if error != OK:
-		print("JSON parse error")
-		return
-
-	var opponents = json.data["opponents"]
-	for opponent in opponents:
-		if opponent.get("name") == trainer_name:
-			opponent_data = opponent
-			break
-
+	# CharacterSchedule resolves today's cast from the map's character file and
+	# layers All_NPC_Constant_Data.json underneath, which is what the day-file
+	# search plus manual constants merge used to do by hand here.
+	opponent_data = CharacterSchedule.find_opponent(
+		GameState.current_opponent_map, trainer_name, GameState.get_date(), GameState.get_time())
 	if opponent_data.is_empty():
-		print("Opponent with name ", trainer_name, " not found")
+		print("Opponent with name ", trainer_name, " not found on map ",
+			GameState.current_opponent_map)
 		return
-
-	var const_file = FileAccess.open("res://NPC_and_Opponent_Data/All_NPC_Constant_Data.json", FileAccess.READ)
-	if const_file != null:
-		var const_data = JSON.parse_string(const_file.get_as_text())
-		const_file.close()
-		if const_data is Dictionary:
-			var consts: Dictionary = const_data.get("opponents", {}).get(trainer_name, {})
-			for key in consts:
-				if not opponent_data.has(key):
-					opponent_data[key] = consts[key]
 
 	GameDataManager.opponent_data = opponent_data
 

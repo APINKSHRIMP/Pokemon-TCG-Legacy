@@ -80,6 +80,14 @@ func _ready():
 	animated_sprite.play("idle_down")
 	_setup_bubble()
 	_init_movement()
+	# _init_movement resets the patrol leg to zero and re-anchors a wanderer's home
+	# to wherever it happens to be standing. On its own that made an actor restored
+	# mid-leg walk a full patrol_distance from the restored spot instead of
+	# finishing the leg -- so it marched further across the map after every battle,
+	# and wander homes drifted. Reapply the captured state on top.
+	if has_meta("restore_movement"):
+		apply_movement_state(get_meta("restore_movement"))
+		remove_meta("restore_movement")
 	# ISSUE #56 (retest): if MapManager captured a facing from before a battle/menu, restore it now
 	# (after _init_movement's pattern default) so the actor resumes facing the same way — e.g. an
 	# opponent that turned to face the player stays facing the player instead of snapping back.
@@ -89,7 +97,13 @@ func _ready():
 		# ISSUE #81 FIX: never let a captured facing override a pattern that fixes the facing by design.
 		# The locked idle_* patterns exist precisely to pin a direction, and idle_cycle must keep playing
 		# its walk animation (an idle_ animation would freeze it, since _physics_process never replays it).
-		if movement_pattern in FIXED_FACING_PATTERNS:
+		# The one exception is walking back out of a battle: the actor was talking to
+		# the player a moment ago, so turning its back on them reads as a glitch. A
+		# battle return outranks the pattern's pinned direction.
+		var from_battle: bool = has_meta("face_player_on_spawn")
+		if from_battle:
+			remove_meta("face_player_on_spawn")
+		if movement_pattern in FIXED_FACING_PATTERNS and not from_battle:
 			pass   # keep the pattern's own facing
 		elif rf != "" and animated_sprite.sprite_frames != null and animated_sprite.sprite_frames.has_animation("idle_" + rf):
 			current_facing = rf
@@ -140,6 +154,26 @@ func _wander_proximity_escape() -> Vector2:
 	if abs(away.x) > abs(away.y):
 		return Vector2(sign(away.x), 0.0)
 	return Vector2(0.0, sign(away.y))
+
+## How far through its patrol leg this actor is, and where its wander home sits.
+## MapManager snapshots this next to the position so a restored actor carries on
+## from where it stopped instead of restarting the leg from its new spot.
+func capture_movement_state() -> Dictionary:
+	return {
+		"distance_walked": distance_walked,
+		"patrol_step": patrol_step,
+		"patrol_direction_vec": patrol_direction_vec,
+		"wander_origin": _wander_origin,
+	}
+
+
+func apply_movement_state(state: Dictionary) -> void:
+	distance_walked = state.get("distance_walked", distance_walked)
+	patrol_step = state.get("patrol_step", patrol_step)
+	patrol_direction_vec = state.get("patrol_direction_vec", patrol_direction_vec)
+	if state.has("wander_origin"):
+		_wander_origin = state["wander_origin"]
+
 
 func _init_movement():
 	match movement_pattern:

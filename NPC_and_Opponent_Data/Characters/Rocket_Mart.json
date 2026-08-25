@@ -1,0 +1,32 @@
+{
+  "_help": [
+    "days    : '3-6' range | '1,3,5' list | '2-8/2' every other | '4' one day",
+    "times   : M=Morning A=Afternoon E=Evening N=Night. Combine: 'M,A' or 'M,A,E,N'",
+    "move    : bare pattern name, or {pattern, speed, distance, axis, radius}",
+    "requires: 'beaten: NAME' | 'met: NAME' | 'flag: NAME', any prefixed with 'not '.",
+    "          Compound gates use the longhand object form.",
+    "when    : optional rule list, evaluated TOP TO BOTTOM, FIRST MATCH WINS.",
+    "          A rule states when the character is present plus ONLY what differs.",
+    "          Anything a rule omits falls back to the character's own value above.",
+    "loop    : set false for story characters who must never repeat when the",
+    "          calendar loops -- they are matched against the real day instead."
+  ],
+  "map": "Rocket_Mart",
+  "calendar": {},
+  "npcs": {
+    "Rocket_Shopkeeper": {
+      "at": [87, -27],
+      "move": "idle_down",
+      "says": {
+        "meet": "Interested in buying some special packs?"
+      },
+      "friendly_name": "Rocket Shopkeeper",
+      "interact_facing": "up",
+      "message_colour": "black",
+      "npc_type": "shop",
+      "shop_id": "rocket_mart",
+      "sprite": "Rocket_Shopkeeper"
+    }
+  },
+  "opponents": {}
+}

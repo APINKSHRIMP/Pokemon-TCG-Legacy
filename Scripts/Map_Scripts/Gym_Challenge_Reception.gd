@@ -13,8 +13,6 @@ const BGM_PATH   = "res://Audio/BGM/Gym Leader Challenge Hall (Pokmon Card GB2 -
 const SPAWN_FROM_GYM_PLAZA          = Vector2(350, 450)
 const SPAWN_FROM_GYM_CHALLENGE_HALL = Vector2(220, 45)
 
-var _npc_json_path: String = ""
-
 func get_scene_path() -> String:      return SCENE_PATH
 func get_bgm_path() -> String:        return BGM_PATH
 func get_default_spawn() -> Vector2:  return SPAWN_FROM_GYM_PLAZA
@@ -23,14 +21,10 @@ func get_entry_positions() -> Dictionary:
 		"Gym_Plaza":          SPAWN_FROM_GYM_PLAZA,
 		"Gym_Challenge_Hall": SPAWN_FROM_GYM_CHALLENGE_HALL,
 	}
-func get_opponent_json_path() -> String: return _npc_json_path
-func get_npc_json_path() -> String:      return _npc_json_path
+func get_map_data_name() -> String: return "Gym_Challenge_Reception"
 
 func _scene_setup():
 	var time_of_day: String = GameState.get_time()
-	var date: int = GameState.get_date()
-	var path := "res://NPC_and_Opponent_Data/Gym_Challenge_Reception_" + str(date) + "_" + time_of_day + ".json"
-	_npc_json_path = path if ResourceLoader.exists(path) else ""
 	# ISSUE #127: cash is shown on the message box chip row while talking to the shopkeeper.
 	# If arriving from the plaza (not from the hall), flag the audience for partial regen
 	if GameState.entering_from != "Gym_Challenge_Hall":

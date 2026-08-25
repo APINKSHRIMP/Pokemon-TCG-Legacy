@@ -23,7 +23,7 @@ var _player: CharacterBody2D
 var _opponents_container: Node2D
 var _ui_layer: CanvasLayer
 var _map_scene_path: String
-var _json_path: String
+var _map_data: String
 
 var _npc_constants: Dictionary = {}
 var _opponent_constants: Dictionary = {}
@@ -120,6 +120,13 @@ var _actor_positions: Dictionary = {}
 # same way as _actor_positions. Restored on the next spawn so an NPC/opponent that turned to face the
 # player before a battle/menu resumes facing that way instead of snapping back to its pattern default.
 var _actor_facings: Dictionary = {}
+# Patrol progress and wander anchor, captured alongside the position. Without this
+# a restored actor resets to the start of its patrol leg and walks away from where
+# it was left. Keyed the same way as _actor_positions.
+var _actor_movement: Dictionary = {}
+# Debug-only placement editor, built on demand by the F key. Never constructed in
+# a release build -- see DebugMode.is_enabled().
+var _placement_tool: PlacementTool = null
 
 # Preloaded back textures used during the gift reveal animation
 const _CARDBACK_PATH := "res://Image_Assets/Sleeves/1_Default_English.png"
@@ -168,23 +175,23 @@ func initialise(
 	player: CharacterBody2D,
 	opponents_container: Node2D,
 	ui_layer: CanvasLayer,
-	json_path: String,
+	map_data: String,
 	placements: Array,
 	map_scene_path: String,
-	npc_json_path: String = "",
 	npc_placements: Array = []
 ):
 	_player = player
 	_opponents_container = opponents_container
 	_ui_layer = ui_layer
 	_map_scene_path = map_scene_path
-	_json_path = json_path
+	_map_data = map_data
 
 	_build_message_box()
 	if not GameState.returning_from_battle:
 		GameState.last_battled_opponent_entry = {}
-	_load_and_spawn_opponents(json_path)
-	_load_and_spawn_npcs(npc_json_path)
+	var cast: Dictionary = CharacterSchedule.cast_for(map_data, GameState.get_date(), GameState.get_time())
+	_load_and_spawn_opponents(cast.get("opponents", []))
+	_load_and_spawn_npcs(cast.get("npcs", []))
 
 	_player.interact_pressed.connect(_on_player_interact)
 	_player.npc_interact_pressed.connect(_on_player_npc_interact)
@@ -228,14 +235,30 @@ func _get_shop_config(shop_id: String) -> Dictionary:
 # ISSUE #56: assign a freshly-spawned actor its position — the captured live position from a previous
 # visit to this same day file if one exists, otherwise the data-file default — and tag it with the
 # key so capture_actor_positions() can find it again when the map unloads.
-func _assign_actor_position(actor: Node2D, source_json: String, actor_name: String, default_pos: Vector2) -> void:
-	var key := source_json + "::" + actor_name
+func _actor_key(actor_name: String) -> String:
+	# Scoped to map + day + time-of-day: an actor resumes where it stood when you
+	# come back from a battle or a sub-menu, but a new day rebuilds the world from
+	# its authored positions rather than resurrecting yesterday's wandering.
+	return "%s|%d|%s|%s" % [_map_data, GameState.get_date(), GameState.get_time(), actor_name]
+
+
+func _assign_actor_position(actor: Node2D, actor_name: String, default_pos: Vector2) -> void:
+	var key := _actor_key(actor_name)
 	actor.position = _actor_positions.get(key, default_pos)
 	actor.set_meta("pos_key", key)
 	# ISSUE #56 (retest): stash the captured facing as a meta the actor applies at the END of its own
 	# _ready() (after _init_movement sets a pattern default), so the restored direction wins.
 	if _actor_facings.has(key):
 		actor.set_meta("restore_facing", _actor_facings[key])
+	# Restoring the position alone was not enough: a patrolling actor came back
+	# believing it stood at the start of its leg and walked the full distance again
+	# from wherever it had stopped, creeping across the map after every battle.
+	if _actor_movement.has(key):
+		actor.set_meta("restore_movement", _actor_movement[key])
+	# Coming out of a battle the actor should still be looking at the player, even
+	# when its pattern normally pins a direction.
+	if GameState.returning_from_battle:
+		actor.set_meta("face_player_on_spawn", true)
 
 # ISSUE #56: snapshot every tagged actor's current position. Called from BaseMapScene._exit_tree(),
 # which fires for every overworld unload (battle start, sub-menu, door transition).
@@ -249,6 +272,10 @@ func capture_actor_positions() -> void:
 			# resumes exactly as it was at the moment the map unloaded (e.g. still facing the player).
 			if "current_facing" in child:
 				_actor_facings[child.get_meta("pos_key")] = child.current_facing
+			# Capture how far through its patrol leg / which way it was heading too,
+			# otherwise the restored position is undone by a reset movement state.
+			if child.has_method("capture_movement_state"):
+				_actor_movement[child.get_meta("pos_key")] = child.capture_movement_state()
 
 # ISSUE #55: hard-stop every overworld actor (opponents + NPCs live in the opponents container) plus
 # the player so nothing keeps wandering during the fade-out between accepting a battle and the intro.
@@ -260,23 +287,19 @@ func _freeze_overworld_actors() -> void:
 	if _player != null and is_instance_valid(_player):
 		_player.lock_movement()
 
-func _load_and_spawn_opponents(json_path: String):
-	if json_path == "":
-		return
-	var file = FileAccess.open(json_path, FileAccess.READ)
-	if file == null:
-		push_error("MapManager: Cannot open JSON: " + json_path)
-		return
-	var data = JSON.parse_string(file.get_as_text())
-	file.close()
-
+func _load_and_spawn_opponents(entries: Array):
 	_load_constant_data()
-	for entry in data["opponents"]:
+	for entry in entries:
 		var consts: Dictionary = _opponent_constants.get(entry.get("name", ""), {})
 		for key in consts:
 			if not entry.has(key):
 				entry[key] = consts[key]
 		if not _evaluate_condition(entry.get("condition", {})):
+			continue
+		# `placeholder` marks an entry that deliberately has no position -- the
+		# RIVALs, which become cutscene-triggered forced battles. Their dialogue and
+		# schedule are kept in the data, but there is nothing to spawn here.
+		if entry.get("placeholder", false):
 			continue
 		if not entry.has("position"):
 			push_error("MapManager: Opponent missing position: " + entry.get("name", "unknown"))
@@ -297,7 +320,9 @@ func _load_and_spawn_opponents(json_path: String):
 		opp.coin_reward      = entry.get("coin_reward", "")
 		opp.cash_reward      = entry.get("cash_reward", 0)
 		opp.message_colour   = entry.get("message_colour", "")
-		_assign_actor_position(opp, json_path, entry.get("name", ""), Vector2(entry["position"]["x"], entry["position"]["y"]))
+		_assign_actor_position(opp, entry.get("name", ""), Vector2(entry["position"]["x"], entry["position"]["y"]))
+		if entry.has("_source"):
+			opp.set_meta("source", entry["_source"])
 		opp.movement_pattern = entry.get("pattern", "idle_random")
 		opp.interact_facing  = entry.get("interact_facing", "")
 		opp.patrol_distance  = entry.get("patrol_distance", 100.0)
@@ -340,7 +365,7 @@ func _load_and_spawn_opponents(json_path: String):
 			opp.coin_reward      = lbe.get("coin_reward", "")
 			opp.cash_reward      = lbe.get("cash_reward", 0)
 			opp.message_colour   = lbe.get("message_colour", "")
-			_assign_actor_position(opp, _json_path, lbe.get("name", ""), lbe["position"])
+			_assign_actor_position(opp, lbe.get("name", ""), lbe["position"])
 			opp.movement_pattern = lbe.get("pattern", "idle_random")
 			opp.interact_facing  = lbe.get("interact_facing", "")
 			opp.patrol_distance  = lbe.get("patrol_distance", 100.0)
@@ -357,23 +382,16 @@ func _load_and_spawn_opponents(json_path: String):
 # NPC SPAWNING
 # ============================================================
 
-func _load_and_spawn_npcs(json_path: String):
-	if json_path == "":
-		return
-	var file = FileAccess.open(json_path, FileAccess.READ)
-	if file == null:
-		push_error("MapManager: Cannot open NPC JSON: " + json_path)
-		return
-	var data = JSON.parse_string(file.get_as_text())
-	file.close()
-
+func _load_and_spawn_npcs(entries: Array):
 	_load_constant_data()
-	for entry in data["npcs"]:
+	for entry in entries:
 		var consts: Dictionary = _npc_constants.get(entry.get("name", ""), {})
 		for key in consts:
 			if not entry.has(key):
 				entry[key] = consts[key]
 		if not _evaluate_condition(entry.get("condition", {})):
+			continue
+		if entry.get("placeholder", false):
 			continue
 		if not entry.has("position"):
 			push_error("MapManager: NPC missing position: " + entry.get("name", "unknown"))
@@ -384,13 +402,13 @@ func _load_and_spawn_npcs(json_path: String):
 		var npc = shopkeeper_scene.instantiate() if is_shop else npc_scene.instantiate()
 
 		print("Attempting to load NPC: ", entry.get("name", "UNKNOWN"))
-		npc.npc_name         = entry["name"]
+		npc.npc_name         = entry.get("name", "")
 		# Message-box display name. Falls back to the tracking key so a data entry that
 		# has not been given one still shows something rather than an empty header.
-		npc.friendly_name    = entry.get("friendly_name", entry["name"])
+		npc.friendly_name    = entry.get("friendly_name", entry.get("name", ""))
 		# Message box colour theme. Empty is fine — the box falls back to the default.
 		npc.message_colour   = entry.get("message_colour", "")
-		npc.sprite           = entry["sprite"]
+		npc.sprite           = entry.get("sprite", "")
 		npc.npc_type         = entry.get("npc_type", "text_only")
 		npc.meet_text        = entry.get("meet_text", "")
 		npc.repeat_text      = entry.get("repeat_text", "")
@@ -402,7 +420,9 @@ func _load_and_spawn_npcs(json_path: String):
 		if not is_shop:
 			npc.required_costume   = entry.get("required_costume", "")
 			npc.costume_match_text = entry.get("costume_match_text", "")
-		_assign_actor_position(npc, json_path, entry["name"], Vector2(entry["position"]["x"], entry["position"]["y"]))
+		_assign_actor_position(npc, entry["name"], Vector2(entry["position"]["x"], entry["position"]["y"]))
+		if entry.has("_source"):
+			npc.set_meta("source", entry["_source"])
 		npc.movement_pattern = entry.get("pattern", "idle_down")
 		npc.patrol_distance  = entry.get("patrol_distance", 100.0)
 		npc.patrol_speed     = entry.get("patrol_speed", 60.0)
@@ -851,7 +871,7 @@ func _on_yes_pressed():
 
 		GameState.current_opponent_name      = current_opponent.opponent_name
 		GameState.current_opponent_deck      = current_opponent.deck
-		GameState.current_opponent_json_path = _json_path
+		GameState.current_opponent_map = _map_data
 		GameState.player_position            = _player.position
 		GameState.returning_from_battle      = false
 		GameState.return_map_scene_path      = _map_scene_path
@@ -1868,6 +1888,27 @@ var _debug_label_token: int = 0
 var _debug_cash_label: Label = null
 var _debug_cash_token: int = 0
 
+## True while the debug placement editor is on screen. BaseMapScene checks this so
+## its Escape/Enter menu handling stands down -- both live in _input(), and relying
+## on propagation order to decide which one wins would be a coin toss.
+func is_placement_tool_open() -> bool:
+	return _placement_tool != null and is_instance_valid(_placement_tool)
+
+
+## Open the debug placement editor. It closes itself (F or Escape) and restores the
+## camera, the player's movement and any grabbed actor's collision on the way out.
+func _open_placement_tool() -> void:
+	if _placement_tool != null and is_instance_valid(_placement_tool):
+		return   # already open; the tool owns F from here
+	if _opponents_container == null or not is_instance_valid(_opponents_container):
+		print("PlacementTool: no actor container on this map")
+		return
+	_placement_tool = PlacementTool.new()
+	get_tree().current_scene.add_child(_placement_tool)
+	_placement_tool.setup(_map_data, _opponents_container, _player)
+	print("PlacementTool: open on %s — Tab select, G grab, Enter save" % _map_data)
+
+
 func _unhandled_input(event: InputEvent) -> void:
 	# Developer-only. Without this gate an exported build lets anyone press C to
 	# advance the time-of-day loop, P/O to mint cash, T to launch a test match and
@@ -1883,6 +1924,14 @@ func _unhandled_input(event: InputEvent) -> void:
 	if current == null:
 		return
 	if not String(current.scene_file_path).begins_with(_MAP_SCENES_PREFIX):
+		return
+
+	# F — open the NPC/opponent placement editor. Once open the tool handles its own
+	# keys from _input(), which runs ahead of this, so nothing here (or in
+	# BaseMapScene's Escape/Enter menu handling) can steal them back.
+	if event.keycode == KEY_F and not event.ctrl_pressed:
+		get_viewport().set_input_as_handled()
+		_open_placement_tool()
 		return
 
 	# C — bump the defeated count and flash the label. No reset, no reload.
@@ -1931,7 +1980,7 @@ func _unhandled_input(event: InputEvent) -> void:
 		KEY_0, KEY_KP_0: new_date = 10
 		KEY_MINUS:       new_date = 11
 		KEY_EQUAL:       new_date = 12
-		KEY_BRACKETLEFT: new_date = 0  # Date 0 = match-effects test day (Celeste_Harbour_0_Morning.json)
+		KEY_BRACKETLEFT: new_date = 0  # Date 0 = match-effects test day (Characters/Celeste_Harbour.json, days "0")
 		KEY_H: new_time = "Morning"
 		KEY_J: new_time = "Afternoon"
 		KEY_K: new_time = "Evening"
@@ -1973,7 +2022,7 @@ func _start_test_match(current: Node) -> void:
 	GameState.test_match_mode            = true
 	GameState.current_opponent_name      = "TEST OPPONENT"
 	GameState.current_opponent_deck      = "TEST"
-	GameState.current_opponent_json_path = ""
+	GameState.current_opponent_map = ""
 	GameState.player_position            = pos
 	GameState.returning_from_battle      = false
 	GameState.return_map_scene_path      = _map_scene_path
