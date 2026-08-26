@@ -267,6 +267,8 @@ Guessing coordinates in a text file is the slow way. Run the game (debug build �
 | `G` | grab or drop — a grabbed actor follows you, tinted orange, with its collision off |
 | `Ctrl` + arrows | nudge 1px (hold `Shift` for 10px). Holding `Ctrl` also freezes the player, since arrows are movement |
 | `R` | cycle movement pattern |
+| `N` | **create** a new NPC or opponent — see *Authoring characters in-game* below |
+| `M` | **edit** the selected character in the same form |
 | `Enter` | save every pending change to this map's character file |
 | `Esc` | close — refuses while changes are unsaved |
 
@@ -298,6 +300,65 @@ If you want a position that applies to one day only, add a rule for that day in 
 JSON first, then reload and move the actor — the tool will match the new narrower
 rule and edit that. Combine with the date and time debug keys (`1`–`0`,
 `H`/`J`/`K`/`L`) to reach the slot you want.
+
+---
+
+## Authoring characters in-game
+
+`N` inside the placement tool opens a form covering everything a character needs.
+`M` opens the same form on whoever is selected, filled in with their current values.
+
+Everything a character can be is asked for with a picker over the real assets, so a
+sprite that does not exist or a coin somebody else already grants cannot be chosen:
+
+- **sprite** — a grid of all 431 overworld sheets. Making an opponent, any sprite
+  with no matching in-battle portrait is flagged amber, because the match intro
+  builds that path from the same string, lower-cased.
+- **coin reward** — every coin, with the ones already granted by another character
+  (or sold in the coin shop) greyed out and unclickable. No two characters give the
+  same coin.
+- **sleeve**, **costume**, **gift asset** — the same treatment.
+- **music** — the 29 real tracks in `Audio/BGM/`, with a PLAY button to audition.
+  Worth knowing: 93 of the 103 existing opponents say `REPLACEMUSIC`, which is not a
+  file and plays nothing.
+- **deck** — free text plus a dropdown of the decks that already exist, so an
+  opponent can name a deck you have not built yet.
+
+**The unique key is derived from the name you type** and shown live underneath it.
+It follows the convention already in the data — a second "Biker" becomes
+`Biker 2`. Uniqueness is checked against the constants file, every character file,
+**and the drafts you have not saved yet**.
+
+Renaming in edit mode is deliberately not offered. A name is the key in the map
+file, the key in the constants file, the target of every `beaten:` / `met:` gate,
+and what `opponents_beaten` / `gifts_received` record progress under.
+
+### What Confirm and Enter each do
+
+**Confirm writes nothing.** It puts a new character in your hands in grab mode so
+you can walk them to where they belong, exactly as if you had grabbed an existing
+one. An edited character stays where they are instead — you came to fix a line of
+dialogue, not to move them.
+
+`Enter` then writes the whole thing, across **both** files:
+
+| goes to `All_NPC_Constant_Data.json` | goes to this map's character file |
+|---|---|
+| sprite, message_colour, friendly_name | at, days, times, loop, move |
+| gift_type, gift_value | says (every line) |
+| deck, music, prize_cards, match_format | sleeve, sleeve_reward |
+| cash_reward, coin_reward, card_reward, pack_reward, costume_reward | |
+
+`F` still discards everything, drafts included, and says how much went in the bin.
+
+In edit mode a field is rewritten **where it already lives**: in the matched `when`
+rule if that rule states it, on the character's defaults if it inherits it, and in
+the constants file if that is where it came from and the map file does not override
+it. Clearing an optional field genuinely clears it, from all three.
+
+Two things the form does not cover, on purpose: `requires` gates and the deck
+itself. Gates are rare enough to be worth writing by hand, and a deck is built in
+the deck builder and the file moved into `Opponent_Deck_Data/`.
 
 ---
 

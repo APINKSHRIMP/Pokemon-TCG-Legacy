@@ -309,34 +309,10 @@ func _load_and_spawn_opponents(entries: Array):
 			push_error("MapManager: Opponent missing position: " + entry.get("name", "unknown"))
 			continue
 		var opp = opponent_scene.instantiate()
-		# ISSUE #83 FIX: defaults on every optional field — one missing dialogue key in a day file used to
-		# abort the whole map load with "Invalid access to key".
-		opp.opponent_name    = entry.get("name", "")
-		opp.sprite           = entry.get("sprite", "")
-		opp.music            = entry.get("music", "")
-		opp.deck             = entry.get("deck", "")
-		opp.prize_cards      = entry.get("prize_cards", 6)
-		opp.meet_text        = entry.get("meet_text", "")
-		opp.repeat_text      = entry.get("repeat_text", "")
-		opp.first_win_text   = entry.get("first_win_text", "")
-		opp.rematch_win_text = entry.get("rematch_win_text", "")
-		opp.loss_text        = entry.get("loss_text", "")
-		opp.coin_reward      = entry.get("coin_reward", "")
-		opp.cash_reward      = entry.get("cash_reward", 0)
-		opp.message_colour   = entry.get("message_colour", "")
+		_configure_opponent_node(opp, entry)
 		_assign_actor_position(opp, entry.get("name", ""), Vector2(entry["position"]["x"], entry["position"]["y"]))
 		if entry.has("_source"):
 			opp.set_meta("source", entry["_source"])
-		opp.movement_pattern = entry.get("pattern", "idle_random")
-		opp.interact_facing  = entry.get("interact_facing", "")
-		opp.patrol_distance  = entry.get("patrol_distance", 100.0)
-		opp.patrol_speed     = entry.get("patrol_speed", 60.0)
-		opp.patrol_axis      = entry.get("patrol_axis", "horizontal")
-		opp.wander_radius    = entry.get("wander_radius", 200.0)
-		opp.restrictions     = entry.get("restrictions", {})
-		opp.match_effects    = entry.get("match_effects", [])
-		opp.match_format     = entry.get("match_format", "")
-		opp.sleeve           = entry.get("sleeve", "")
 		_opponents_container.add_child(opp)
 
 	# ISSUE #83 FIX: the T-key TEST match has no opponent in the world at all — its entry is synthesized
@@ -352,35 +328,47 @@ func _load_and_spawn_opponents(entries: Array):
 			if child.is_in_group("opponents") and child.opponent_name == lbe.get("name", ""):
 				already_spawned = true
 				break
-		# ISSUE #83 FIX: every field below now has a default. A partial entry must never hard-crash the
-		# whole map load — a missing dialogue line should just mean an empty string.
 		if not already_spawned and lbe.has("position"):
 			var opp = opponent_scene.instantiate()
-			opp.opponent_name    = lbe.get("name", "")
-			opp.sprite           = lbe.get("sprite", "")
-			opp.music            = lbe.get("music", "")
-			opp.deck             = lbe.get("deck", "")
-			opp.prize_cards      = lbe.get("prize_cards", 6)
-			opp.meet_text        = lbe.get("meet_text", "")
-			opp.repeat_text      = lbe.get("repeat_text", "")
-			opp.first_win_text   = lbe.get("first_win_text", "")
-			opp.rematch_win_text = lbe.get("rematch_win_text", "")
-			opp.loss_text        = lbe.get("loss_text", "")
-			opp.coin_reward      = lbe.get("coin_reward", "")
-			opp.cash_reward      = lbe.get("cash_reward", 0)
-			opp.message_colour   = lbe.get("message_colour", "")
+			_configure_opponent_node(opp, lbe)
+			# Unlike the spawn path above, this position is already a Vector2 — it was
+			# captured off the live node when the battle started, not read from JSON.
 			_assign_actor_position(opp, lbe.get("name", ""), lbe["position"])
-			opp.movement_pattern = lbe.get("pattern", "idle_random")
-			opp.interact_facing  = lbe.get("interact_facing", "")
-			opp.patrol_distance  = lbe.get("patrol_distance", 100.0)
-			opp.patrol_speed     = lbe.get("patrol_speed", 60.0)
-			opp.patrol_axis      = lbe.get("patrol_axis", "horizontal")
-			opp.wander_radius    = lbe.get("wander_radius", 200.0)
-			opp.restrictions     = lbe.get("restrictions", {})
-			opp.match_effects    = lbe.get("match_effects", [])
-			opp.match_format     = lbe.get("match_format", "")
-			opp.sleeve           = lbe.get("sleeve", "")
 			_opponents_container.add_child(opp)
+
+
+## Copy one opponent entry's fields onto a freshly instantiated node.
+##
+## ISSUE #83 FIX: defaults on every optional field — one missing dialogue key in a
+## day file used to abort the whole map load with "Invalid access to key".
+##
+## Position, the `source` meta and add_child() are the caller's job: the three call
+## sites disagree on all three (a JSON entry carries {x, y}, the returning-from-battle
+## entry carries a Vector2, and only the scheduled spawn has provenance to stamp).
+func _configure_opponent_node(opp: Node, entry: Dictionary) -> void:
+	opp.opponent_name    = entry.get("name", "")
+	opp.sprite           = entry.get("sprite", "")
+	opp.music            = entry.get("music", "")
+	opp.deck             = entry.get("deck", "")
+	opp.prize_cards      = entry.get("prize_cards", 6)
+	opp.meet_text        = entry.get("meet_text", "")
+	opp.repeat_text      = entry.get("repeat_text", "")
+	opp.first_win_text   = entry.get("first_win_text", "")
+	opp.rematch_win_text = entry.get("rematch_win_text", "")
+	opp.loss_text        = entry.get("loss_text", "")
+	opp.coin_reward      = entry.get("coin_reward", "")
+	opp.cash_reward      = entry.get("cash_reward", 0)
+	opp.message_colour   = entry.get("message_colour", "")
+	opp.movement_pattern = entry.get("pattern", "idle_random")
+	opp.interact_facing  = entry.get("interact_facing", "")
+	opp.patrol_distance  = entry.get("patrol_distance", 100.0)
+	opp.patrol_speed     = entry.get("patrol_speed", 60.0)
+	opp.patrol_axis      = entry.get("patrol_axis", "horizontal")
+	opp.wander_radius    = entry.get("wander_radius", 200.0)
+	opp.restrictions     = entry.get("restrictions", {})
+	opp.match_effects    = entry.get("match_effects", [])
+	opp.match_format     = entry.get("match_format", "")
+	opp.sleeve           = entry.get("sleeve", "")
 
 # ============================================================
 # NPC SPAWNING
@@ -406,42 +394,50 @@ func _load_and_spawn_npcs(entries: Array):
 		var npc = shopkeeper_scene.instantiate() if is_shop else npc_scene.instantiate()
 
 		print("Attempting to load NPC: ", entry.get("name", "UNKNOWN"))
-		npc.npc_name         = entry.get("name", "")
-		# Message-box display name. Falls back to the tracking key so a data entry that
-		# has not been given one still shows something rather than an empty header.
-		npc.friendly_name    = entry.get("friendly_name", entry.get("name", ""))
-		# Message box colour theme. Empty is fine — the box falls back to the default.
-		npc.message_colour   = entry.get("message_colour", "")
-		npc.sprite           = entry.get("sprite", "")
-		npc.npc_type         = entry.get("npc_type", "text_only")
-		npc.meet_text        = entry.get("meet_text", "")
-		npc.repeat_text      = entry.get("repeat_text", "")
-		npc.gift_type        = entry.get("gift_type", "")
-		npc.gift_value       = entry.get("gift_value", "")
-
-		# Costume-gating fields live only on NPC_Object_Script, not the
-		# shopkeeper script — assign them to non-shop NPCs only.
-		if not is_shop:
-			npc.required_costume   = entry.get("required_costume", "")
-			npc.costume_match_text = entry.get("costume_match_text", "")
+		_configure_npc_node(npc, entry, is_shop)
 		_assign_actor_position(npc, entry["name"], Vector2(entry["position"]["x"], entry["position"]["y"]))
 		if entry.has("_source"):
 			npc.set_meta("source", entry["_source"])
-		npc.movement_pattern = entry.get("pattern", "idle_down")
-		npc.patrol_distance  = entry.get("patrol_distance", 100.0)
-		npc.patrol_speed     = entry.get("patrol_speed", 60.0)
-		npc.patrol_axis      = entry.get("patrol_axis", "horizontal")
-		npc.wander_radius    = entry.get("wander_radius", 200.0)
-		npc.interact_facing  = entry.get("interact_facing", "")
-
-		# Shop-specific fields
-		if is_shop and npc.has_method("on_interact"):
-			npc.shop_id = entry.get("shop_id", npc.npc_name.to_lower().replace(" ", "_"))
-
 		_opponents_container.add_child(npc)
 		print("Spawned NPC: ", npc.npc_name, " at ", npc.position)
 		# ISSUE #93: local position is meaningless on its own — the container's own offset is what
 		# went wrong, so print the global position that actually lands on screen.
+
+
+## Copy one NPC entry's fields onto a freshly instantiated node. Position, the
+## `source` meta and add_child() are the caller's job, as with opponents.
+##
+## ISSUE #137: the Day-1 pair by the sea had each other's sprites in
+## All_NPC_Constant_Data.json -- the man (who gifts $250) wore Youngcouple2_2, the dress
+## sprite, and the woman wore Youngcouple2, the trousers one. Fixed in the data, not here:
+##   Local Man -> Youngcouple2   /   Local Woman -> Youngcouple2_2
+func _configure_npc_node(npc: Node, entry: Dictionary, is_shop: bool) -> void:
+	npc.npc_name         = entry.get("name", "")
+	# Message-box display name. Falls back to the tracking key so a data entry that
+	# has not been given one still shows something rather than an empty header.
+	npc.friendly_name    = entry.get("friendly_name", entry.get("name", ""))
+	# Message box colour theme. Empty is fine — the box falls back to the default.
+	npc.message_colour   = entry.get("message_colour", "")
+	npc.sprite           = entry.get("sprite", "")
+	npc.npc_type         = entry.get("npc_type", "text_only")
+	npc.meet_text        = entry.get("meet_text", "")
+	npc.repeat_text      = entry.get("repeat_text", "")
+	npc.gift_type        = entry.get("gift_type", "")
+	npc.gift_value       = entry.get("gift_value", "")
+	npc.movement_pattern = entry.get("pattern", "idle_down")
+	npc.patrol_distance  = entry.get("patrol_distance", 100.0)
+	npc.patrol_speed     = entry.get("patrol_speed", 60.0)
+	npc.patrol_axis      = entry.get("patrol_axis", "horizontal")
+	npc.wander_radius    = entry.get("wander_radius", 200.0)
+	npc.interact_facing  = entry.get("interact_facing", "")
+
+	# Costume-gating fields live only on NPC_Object_Script, not the
+	# shopkeeper script — assign them to non-shop NPCs only.
+	if not is_shop:
+		npc.required_costume   = entry.get("required_costume", "")
+		npc.costume_match_text = entry.get("costume_match_text", "")
+	elif npc.has_method("on_interact"):
+		npc.shop_id = entry.get("shop_id", npc.npc_name.to_lower().replace(" ", "_"))
 
 ## Instantiate a single NPC entry dict into the current opponents container.
 ## Skips condition evaluation — intended for programmatically built entries
@@ -450,29 +446,33 @@ func spawn_npc_entry(entry: Dictionary) -> void:
 	if not entry.has("position"):
 		return
 	var npc = npc_scene.instantiate()
-	npc.npc_name         = entry.get("name", "")
-	npc.friendly_name    = entry.get("friendly_name", "")
-	npc.message_colour   = entry.get("message_colour", "")
-	npc.sprite           = entry.get("sprite", "")
-	# ISSUE #137: the Day-1 pair by the sea had each other's sprites in
-	# All_NPC_Constant_Data.json -- the man (who gifts $250) wore Youngcouple2_2, the dress
-	# sprite, and the woman wore Youngcouple2, the trousers one. Fixed in the data, not here:
-	#   Local Man -> Youngcouple2   /   Local Woman -> Youngcouple2_2
-	npc.npc_type         = entry.get("npc_type", "text_only")
-	npc.meet_text        = entry.get("meet_text", "")
-	npc.repeat_text      = entry.get("repeat_text", "")
-	npc.gift_type        = entry.get("gift_type", "")
-	npc.gift_value       = entry.get("gift_value", "")
-	npc.required_costume   = entry.get("required_costume", "")
-	npc.costume_match_text = entry.get("costume_match_text", "")
-	npc.position         = Vector2(entry["position"]["x"], entry["position"]["y"])
-	npc.movement_pattern = entry.get("pattern", "idle_down")
-	npc.patrol_distance  = entry.get("patrol_distance", 100.0)
-	npc.patrol_speed     = entry.get("patrol_speed", 60.0)
-	npc.patrol_axis      = entry.get("patrol_axis", "horizontal")
-	npc.wander_radius    = entry.get("wander_radius", 200.0)
-	npc.interact_facing  = entry.get("interact_facing", "")
+	_configure_npc_node(npc, entry, false)
+	npc.position = Vector2(entry["position"]["x"], entry["position"]["y"])
 	_opponents_container.add_child(npc)
+
+
+## Spawn one entry built by the in-game character editor and hand the node back, so
+## the placement tool can select and grab a character that does not exist in any
+## file yet. Skips condition evaluation and the position cache: a draft has no
+## history to restore, and the caller places it by hand.
+##
+## Debug tooling. PlacementTool is the only caller and is gated behind
+## DebugMode.is_enabled().
+func spawn_editor_actor(entry: Dictionary, section: String, at: Vector2) -> Node2D:
+	if _opponents_container == null or not is_instance_valid(_opponents_container):
+		return null
+	var actor: Node2D
+	if section == "opponents":
+		actor = opponent_scene.instantiate()
+		_configure_opponent_node(actor, entry)
+	else:
+		actor = npc_scene.instantiate()
+		_configure_npc_node(actor, entry, false)
+	actor.position = at
+	if entry.has("_source"):
+		actor.set_meta("source", entry["_source"])
+	_opponents_container.add_child(actor)
+	return actor
 
 # ============================================================
 # CONDITION EVALUATION
@@ -1112,6 +1112,8 @@ func _give_gift(npc: Node):
 			GameState.save_progress()
 		"costume":
 			GameState.add_costume_to_collection(npc.gift_value)
+		"sleeve":
+			GameState.add_sleeve_to_collection(npc.gift_value)
 		"available_pack":
 			if not GameState.progress.has("packs_unlocked"):
 				GameState.progress["packs_unlocked"] = []
@@ -1160,6 +1162,16 @@ func _prepare_gift_display(gift_type: String, gift_value: String) -> void:
 				"text": "You received the " + _format_costume_name(gift_value) + " costume",
 				"image_paths": ["res://Image_Assets/Character_Sprites/In_Battle_Sprites/" + gift_value + ".png"],
 				"kind": "costume",
+			}
+		"sleeve":
+			# Sleeves are always single-value. The grid-sized copy in small/ is what
+			# is shown — the full-size originals are ~440 MB of texture and this is a
+			# 432x594 reveal either way. The originals are a mix of .jpg and .png so
+			# the small copy (always .jpg) is also the simpler path to resolve.
+			_pending_gift_display = {
+				"text": "You received the " + _format_sleeve_name(gift_value) + " card sleeve",
+				"image_paths": ["res://Image_Assets/Sleeves/small/" + gift_value + ".jpg"],
+				"kind": "sleeve",
 			}
 		"card":
 			# gift_value may be "base1-1" or "base1-1, base2-5, base3-1, base1-3"
@@ -1217,7 +1229,9 @@ func _show_gift_display(text: String, image_paths: Array, kind: String) -> void:
 	if kind == "coin":
 		target_box = GIFT_COIN_SIZE
 		center_y = GIFT_DISPLAY_CENTER_Y_COIN
-	elif kind == "costume":
+	elif kind == "costume" or kind == "sleeve":
+		# A sleeve is a card back, so it shares the costume box: 432x594 is a 0.727
+		# aspect and a card is 0.72, so the aspect-fit below barely has to move it.
 		target_box = GIFT_COSTUME_SIZE
 		center_y = GIFT_DISPLAY_CENTER_Y_COSTUME
 	else:
@@ -1339,12 +1353,12 @@ func _show_gift_display(text: String, image_paths: Array, kind: String) -> void:
 				_play_flip_animation(rect_ref, _coinback_texture, rect_ref.texture)
 			"card":
 				_play_card_flip_with_holo(rect_ref, _cardback_texture, rect_ref.texture, uid)
-			"costume":
+			"costume", "sleeve":
 				_play_costume_fadein(rect_ref)
 
 	# Wait for the longest animation to complete (scaled by item animation speed) OR a skip click.
 	var total_duration: float = 0.0
-	if kind == "costume":
+	if kind == "costume" or kind == "sleeve":
 		total_duration = GIFT_COSTUME_TOTAL_DURATION
 	elif kind == "card" or kind == "coin":
 		total_duration = GIFT_FLIP_TOTAL_DURATION
@@ -1598,6 +1612,13 @@ func _format_costume_name(raw: String) -> String:
 		if p.length() > 0:
 			result_parts.append(p.substr(0, 1).to_upper() + p.substr(1))
 	return " ".join(result_parts)
+
+
+## Sleeve basename -> readable name. Same underscore-to-space shape as costumes,
+## but sleeves keep their own capitalisation ("Apex_Charizard", "1_Default_English")
+## rather than being title-cased, so the name reads as it does in the sleeve menu.
+func _format_sleeve_name(raw: String) -> String:
+	return raw.get_basename().replace("_", " ").strip_edges()
 
 # ============================================================
 # CARD NAME / IMAGE LOOKUP
@@ -1934,6 +1955,14 @@ func _unhandled_input(event: InputEvent) -> void:
 	if current == null:
 		return
 	if not String(current.scene_file_path).begins_with(_MAP_SCENES_PREFIX):
+		return
+
+	# The placement tool owns the keyboard while it is open, and its character editor
+	# is full of text boxes. A focused LineEdit consumes printable keys before
+	# _unhandled_input, so most of these never fire anyway -- but typing "2" into a
+	# cash-reward box that has just lost focus would otherwise jump the date to day 2
+	# and reload the map out from under an unsaved draft.
+	if is_placement_tool_open() and event.keycode != KEY_F:
 		return
 
 	# F — open the NPC/opponent placement editor. Once open the tool handles its own

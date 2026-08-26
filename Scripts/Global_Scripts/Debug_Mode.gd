@@ -8,6 +8,12 @@ extends RefCounted
 #
 #   * MapManager._unhandled_input()          — overworld cheat keys
 #                                              (C, P, O, T, 1-0/-/=, H/J/K/L, [)
+#   * PlacementTool (opened with F)          — the NPC/opponent placement editor,
+#                                              and the N/M character creation and
+#                                              editing form inside it. Constructed
+#                                              only from MapManager, behind the gate
+#                                              above; the tool and its form contain
+#                                              no check of their own.
 #   * Main_Match_Core_Gameplay_Script._input() — in-match cheat keys
 #                                              (9, 0, D, S, E, H, B)
 #   * Deck_Build_And_Card_View_Script        — unlimited-deck building

@@ -15,6 +15,8 @@ extends CanvasLayer
 ##   G              grab or drop the selected actor
 ##   Ctrl+arrows    nudge 1px (add Shift for 10px) -- Ctrl also holds the player still
 ##   R              cycle movement pattern
+##   N              create a new NPC or opponent (opens the character editor)
+##   M              edit the selected character in the character editor
 ##   Enter          save every pending change to the character file
 ##   Escape         close (refuses while changes are unsaved)
 ##
@@ -41,8 +43,17 @@ var _index: int = -1
 var _grabbed: bool = false
 var _ctrl_held: bool = false
 
+const CONSTANTS_PATH := "res://NPC_and_Opponent_Data/All_NPC_Constant_Data.json"
+
 ## "section|name|rule" -> { "at": Vector2, "pattern": String }
 var _pending: Dictionary = {}
+
+## "section|name" -> the draft dictionary the character editor built. Held here
+## rather than written on Confirm so F still discards a mistake cleanly, and so a
+## new character is placed before it is committed to a file.
+var _drafts: Dictionary = {}
+
+var _editor: CharacterEditor = null
 
 var _panel: PanelContainer = null
 var _label: RichTextLabel = null
@@ -171,11 +182,20 @@ func _clear_camera() -> void:
 func _input(event: InputEvent) -> void:
 	if not (event is InputEventKey and event.pressed and not event.is_echo()):
 		return
+	# The character editor is full of text boxes and takes its own keys. This runs
+	# first, so without standing down entirely, typing a G into a dialogue line would
+	# also grab whoever is selected out in the world.
+	if _editor != null and is_instance_valid(_editor):
+		return
 
 	var handled := true
 	match event.keycode:
 		KEY_F:
 			_close()
+		KEY_N:
+			_open_editor(CharacterEditor.Mode.NEW)
+		KEY_M:
+			_open_editor(CharacterEditor.Mode.EDIT)
 		KEY_ESCAPE:
 			if has_unsaved_changes():
 				_flash("[color=orange]unsaved changes — Enter to save, F to discard and close[/color]")
@@ -217,6 +237,10 @@ func _input(event: InputEvent) -> void:
 
 
 func _process(_delta: float) -> void:
+	# Ctrl is polled, not event-driven, so it would still register through the form --
+	# a Ctrl+C in a dialogue box would lock and unlock the player behind it.
+	if _editor != null and is_instance_valid(_editor):
+		return
 	# Arrow keys are the player's movement and are polled, not event-driven, so
 	# consuming the key event is not enough -- the player has to be held still for
 	# the duration of a nudge. Ctrl is the modifier that does it.
@@ -323,9 +347,121 @@ func _close() -> void:
 		_drop()
 	# F is the deliberate discard path (Escape refuses instead), but say what went
 	# in the bin -- losing a move silently is how you lose it twice.
-	if not _pending.is_empty():
-		print("PlacementTool: closed, DISCARDING %d unsaved change(s)" % _pending.size())
+	if not _pending.is_empty() or not _drafts.is_empty():
+		print("PlacementTool: closed, DISCARDING %d move(s) and %d character draft(s)"
+			% [_pending.size(), _drafts.size()])
 	queue_free()
+
+
+# ============================================================
+# CHARACTER EDITOR
+# ============================================================
+
+## Open the creation / edit form. Nothing it produces reaches disk on its own --
+## Confirm hands back a draft, which is placed in the world and held until Enter.
+func _open_editor(mode: int) -> void:
+	if _editor != null and is_instance_valid(_editor):
+		return
+	var actor: Node2D = null
+	if mode == CharacterEditor.Mode.EDIT:
+		actor = _selected()
+		if actor == null:
+			_flash("[color=orange]nothing selected — Tab to pick a character, then M[/color]")
+			return
+		if not actor.has_meta("source"):
+			# Dynamically generated actors (the gym crowd) are spawned without
+			# provenance, so there is no file entry to edit.
+			_flash("[color=orange]%s was generated at runtime — it has no file entry to edit[/color]"
+				% _name_of(actor))
+			return
+	if _grabbed:
+		_drop()
+		_update_hud()
+	_editor = CharacterEditor.new()
+	get_tree().current_scene.add_child(_editor)
+	_editor.confirmed.connect(_on_editor_confirmed)
+	_editor.cancelled.connect(_on_editor_cancelled)
+	_editor.setup(_map_data, mode, actor, _draft_names(), _draft_coins())
+
+
+## Names and coins the drafts have already claimed. The editor reads the files on
+## disk for uniqueness, and a draft is not on disk yet.
+func _draft_names() -> Array:
+	var out: Array = []
+	for key in _drafts:
+		out.append(_drafts[key].get("name", ""))
+	return out
+
+
+func _draft_coins() -> Array:
+	var out: Array = []
+	for key in _drafts:
+		var draft: Dictionary = _drafts[key]
+		for source in [draft.get("constants", {}), draft.get("character", {}), draft.get("rule", {})]:
+			if source.has("coin_reward"):
+				out.append(source["coin_reward"])
+			if str(source.get("gift_type", "")) == "coin":
+				out.append(source.get("gift_value", ""))
+	return out
+
+
+func _on_editor_cancelled() -> void:
+	_editor = null
+	_update_hud()
+
+
+func _on_editor_confirmed(draft: Dictionary) -> void:
+	_editor = null
+	var section: String = str(draft.get("section", "npcs"))
+	var name: String = str(draft.get("name", ""))
+	var entry: Dictionary = draft.get("entry", {}).duplicate(true)
+
+	# Where the actor goes, and the provenance a save needs. An edited character
+	# keeps its original provenance so a positional write still lands on the rule it
+	# came from; a new one owns its defaults outright.
+	var at: Vector2
+	var existing := _selected()
+	if not bool(draft.get("is_new", true)) and existing != null and is_instance_valid(existing):
+		at = existing.position
+		entry["_source"] = existing.get_meta("source", {}).duplicate(true)
+		# Respawned rather than reconfigured: WorldObjectBase loads its sprite sheet
+		# in _ready(), so assigning a new sprite to a live node changes nothing.
+		if _tinted == existing:
+			_tinted = null
+		# remove_child before queue_free: a queued node stays a child until the end
+		# of the frame, so _refresh_actors() below would pick the old one back up and
+		# leave the list holding a corpse.
+		_container.remove_child(existing)
+		existing.queue_free()
+	else:
+		if _player == null or not is_instance_valid(_player):
+			_flash("[color=red]no player to place %s at[/color]" % name)
+			return
+		at = _container.to_local(_player.global_position)
+		entry["_source"] = {
+			"section": section, "name": name, "rule": -1,
+			"at_owner": -1, "move_owner": -1,
+		}
+
+	var actor := MapManager.spawn_editor_actor(entry, section, at)
+	if actor == null:
+		_flash("[color=red]could not spawn %s[/color]" % name)
+		return
+
+	_drafts["%s|%s" % [section, name]] = draft
+	_refresh_actors()
+	if _actors.has(actor):
+		_index = _actors.find(actor)
+	# A new character is handed straight to you to place. An edited one is already
+	# where it belongs, so it stays put -- forcing you to re-place someone whose
+	# dialogue you only came to fix would be a good way to move them by accident.
+	if bool(draft.get("is_new", true)):
+		_record(actor)
+		_grab()
+	else:
+		_look_at_selection()
+	_update_hud()
+	_flash("[color=lime]%s ready — Enter to write it to %s.json[/color]" % [name, _map_data])
 
 
 # ============================================================
@@ -339,7 +475,7 @@ func _save() -> void:
 	if _grabbed:
 		_drop()
 		_update_hud()
-	if _pending.is_empty():
+	if _pending.is_empty() and _drafts.is_empty():
 		_flash("[color=orange]nothing to save — move an actor first[/color]")
 		print("PlacementTool: save requested with no pending changes")
 		return
@@ -353,6 +489,25 @@ func _save() -> void:
 	if not (doc is Dictionary):
 		_flash("[color=red]%s is not valid JSON[/color]" % path)
 		return
+
+	# Characters first: a new character's entry has to exist in `doc` before the
+	# positional pass below goes looking for it by name.
+	var constants: Dictionary = {}
+	var characters_written := 0
+	if not _drafts.is_empty():
+		var cfile := FileAccess.open(CONSTANTS_PATH, FileAccess.READ)
+		if cfile == null:
+			_flash("[color=red]cannot open %s[/color]" % CONSTANTS_PATH)
+			return
+		var parsed = JSON.parse_string(cfile.get_as_text())
+		cfile.close()
+		if not (parsed is Dictionary):
+			_flash("[color=red]All_NPC_Constant_Data.json is not valid JSON[/color]")
+			return
+		constants = parsed
+		for key in _drafts:
+			_apply_draft(doc, constants, _drafts[key])
+			characters_written += 1
 
 	var written := 0
 	for key in _pending:
@@ -383,18 +538,96 @@ func _save() -> void:
 				move_target["move"] = change["pattern"]
 		written += 1
 
-	var text := JSON.stringify(doc, "  ", false)
+	if not _write_json(path, doc):
+		return
+	if not _drafts.is_empty() and not _write_json(CONSTANTS_PATH, constants):
+		return
+
+	_pending.clear()
+	_drafts.clear()
+	CharacterSchedule.invalidate(_map_data)
+	var summary := "saved %d move(s)" % written
+	if characters_written > 0:
+		summary += " and %d character(s), incl. All_NPC_Constant_Data.json" % characters_written
+	_flash("[color=lime]%s to %s.json[/color]" % [summary, _map_data])
+	print("PlacementTool: %s -> %s" % [summary, path])
+
+
+## Merge one editor draft into the two documents.
+##
+## Fields land wherever the draft said they should: the character's defaults, the
+## `when` rule that produced the actor today, or the constants file. A new key is
+## APPENDED to its section rather than inserted alphabetically -- the `opponents`
+## section is sorted but `npcs` is not, so re-sorting would rewrite the whole file
+## and bury the one real change in the diff.
+func _apply_draft(doc: Dictionary, constants: Dictionary, draft: Dictionary) -> void:
+	var section: String = str(draft.get("section", "npcs"))
+	var name: String = str(draft.get("name", ""))
+	if name == "":
+		return
+
+	if not (doc.get(section) is Dictionary):
+		doc[section] = {}
+	if not (doc[section].get(name) is Dictionary):
+		doc[section][name] = {}
+	var character: Dictionary = doc[section][name]
+
+	for field in draft.get("character", {}):
+		character[field] = draft["character"][field]
+
+	var rule_fields: Dictionary = draft.get("rule", {})
+	if not rule_fields.is_empty():
+		var rule_index: int = int(draft.get("rule_index", -1))
+		var rules = character.get("when")
+		if rules is Array and rule_index >= 0 and rule_index < rules.size() \
+				and rules[rule_index] is Dictionary:
+			for field in rule_fields:
+				rules[rule_index][field] = rule_fields[field]
+		else:
+			# The rule the actor came from is gone -- the file was edited by hand
+			# since the map loaded. Put the values on the defaults rather than
+			# dropping the edit on the floor.
+			push_warning("PlacementTool: when-rule #%d missing on %s/%s, writing to defaults"
+				% [int(draft.get("rule_index", -1)), section, name])
+			for field in rule_fields:
+				character[field] = rule_fields[field]
+
+	var constant_fields: Dictionary = draft.get("constants", {})
+	var removals: Array = draft.get("remove", [])
+	if constant_fields.is_empty() and removals.is_empty():
+		return
+	if not (constants.get(section) is Dictionary):
+		constants[section] = {}
+	if not (constants[section].get(name) is Dictionary):
+		constants[section][name] = {}
+	var body: Dictionary = constants[section][name]
+	for field in constant_fields:
+		body[field] = constant_fields[field]
+
+	# A cleared field is erased from all three homes. Which one it actually lived in
+	# depends on whether the map file overrode the constant, and the answer has to be
+	# "gone" either way -- leaving a copy behind in the file the editor did not think
+	# it was writing is exactly the silent-failure this tool exists to stop.
+	for field in removals:
+		body.erase(field)
+		character.erase(field)
+		var rule_list = character.get("when")
+		var index: int = int(draft.get("rule_index", -1))
+		if rule_list is Array and index >= 0 and index < rule_list.size() \
+				and rule_list[index] is Dictionary:
+			rule_list[index].erase(field)
+
+
+func _write_json(path: String, doc: Dictionary) -> bool:
+	var text := JSON.stringify(_normalise_numbers(doc), "  ", false)
 	text = _compact_pairs(text)
 	var out := FileAccess.open(path, FileAccess.WRITE)
 	if out == null:
 		_flash("[color=red]cannot write %s[/color]" % path)
-		return
+		return false
 	out.store_string(text + "\n")
 	out.close()
-	_pending.clear()
-	CharacterSchedule.invalidate(_map_data)
-	_flash("[color=lime]saved %d change(s) to %s.json[/color]" % [written, _map_data])
-	print("PlacementTool: wrote %d change(s) to %s" % [written, path])
+	return true
 
 
 ## The rule that owns a field, or the character itself when the value is inherited.
@@ -405,6 +638,38 @@ func _owner_of(character: Dictionary, owner_index: int) -> Dictionary:
 	if rules is Array and owner_index < rules.size() and rules[owner_index] is Dictionary:
 		return rules[owner_index]
 	return character
+
+
+## Turn whole-number floats back into ints, everywhere in the document.
+##
+## Godot's JSON parser reads EVERY number as a float -- `"radius": 65` comes back
+## as 65.0 and JSON.stringify writes it out that way. Saving therefore rewrote
+## numbers the tool never touched: the last placement pass turned 65 radius and
+## speed values in Verdant_Forest.json into floats, burying the positions that
+## actually changed. Writing All_NPC_Constant_Data.json without this would do the
+## same to all 103 `prize_cards`, which the schema documents as an int.
+##
+## Nothing reads these as ints, so collapsing a genuine 20.0 to 20 changes no
+## behaviour -- JSON has one number type and the parser floats them again on the
+## way back in. What it buys is a writer that round-trips, so the next save's diff
+## is only what moved.
+func _normalise_numbers(value: Variant) -> Variant:
+	if value is Dictionary:
+		var out_dict: Dictionary = {}
+		for key in value:
+			out_dict[key] = _normalise_numbers(value[key])
+		return out_dict
+	if value is Array:
+		var out_array: Array = []
+		for item in value:
+			out_array.append(_normalise_numbers(item))
+		return out_array
+	if value is float:
+		var number: float = value
+		# 2^53 is where a float stops being able to hold every integer exactly.
+		if number == floor(number) and absf(number) < 9007199254740992.0:
+			return int(number)
+	return value
 
 
 ## Put coordinate pairs back on one line. JSON.stringify would otherwise spread
@@ -510,10 +775,15 @@ func _update_hud() -> void:
 			   actor.movement_pattern if "movement_pattern" in actor else "-",
 			   "   [color=yellow]<< GRABBED[/color]" if _grabbed else ""])
 	var dirty := _pending.size()
-	lines.append("[color=%s]%d unsaved change(s)[/color]%s"
-		% ["orange" if dirty > 0 else "gray", dirty,
+	var drafted := _drafts.size()
+	var dirty_text := "%d unsaved move(s)" % dirty
+	if drafted > 0:
+		dirty_text += ", %d new/edited character(s)" % drafted
+	lines.append("[color=%s]%s[/color]%s"
+		% ["orange" if dirty > 0 or drafted > 0 else "gray", dirty_text,
 		   "   [color=aqua]CTRL: player held still, arrows nudge[/color]" if _ctrl_held else ""])
-	lines.append("[color=gray]Tab select  G grab  Ctrl+arrows nudge  R pattern  Enter save  Esc/F close[/color]")
+	lines.append("[color=gray]Tab select  G grab  Ctrl+arrows nudge  R pattern[/color]")
+	lines.append("[color=gray]N new character  M edit selected  Enter save  Esc/F close[/color]")
 	_label.text = "\n".join(lines)
 
 
@@ -524,10 +794,15 @@ func _flash(message: String) -> void:
 
 
 func has_unsaved_changes() -> bool:
-	return not _pending.is_empty()
+	return not _pending.is_empty() or not _drafts.is_empty()
 
 
 func _exit_tree() -> void:
+	# The editor is parented to the map scene, not to the tool, so it would outlive
+	# a close and keep swallowing every key with nothing left to hand a draft back to.
+	if _editor != null and is_instance_valid(_editor):
+		_editor.queue_free()
+		_editor = null
 	# Never leave the world in a tool-only state: restore the tint, the camera, the
 	# grabbed actor's collision, and the player's ability to move.
 	if _tinted != null and is_instance_valid(_tinted):

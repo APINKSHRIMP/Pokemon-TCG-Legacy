@@ -72,6 +72,7 @@ signal player_clicked   # emitted on every valid mouse click
 var _coin_rewards_for_anim:    Array = []   # coin filename strings
 var _card_rewards_for_anim:    Array = []   # card UID strings
 var _costume_rewards_for_anim: Array = []   # costume key strings
+var _sleeve_rewards_for_anim:  Array = []   # sleeve basename strings
 
 var _result_dialogue: String = ""   # opponent win/loss text shown after fly-in
 
@@ -178,7 +179,8 @@ func _ready() -> void:
 	# advancement, so no progression is lost.
 	var has_gifts: bool = not (_coin_rewards_for_anim.is_empty()
 			and _card_rewards_for_anim.is_empty()
-			and _costume_rewards_for_anim.is_empty())
+			and _costume_rewards_for_anim.is_empty()
+			and _sleeve_rewards_for_anim.is_empty())
 	if GameState.is_transition_skipped() and not has_gifts:
 		# No win/loss jingle either — it would be cut off mid-note by the scene change below.
 		transition_back_to_map()
@@ -217,7 +219,7 @@ func _ready() -> void:
 
 	# Cash-only (no gift rewards) → exit immediately on the single click above
 	if _coin_rewards_for_anim.is_empty() and _card_rewards_for_anim.is_empty() \
-			and _costume_rewards_for_anim.is_empty():
+			and _costume_rewards_for_anim.is_empty() and _sleeve_rewards_for_anim.is_empty():
 		transition_back_to_map()
 		return
 
@@ -422,6 +424,19 @@ func build_rewards(is_first_win: bool) -> void:
 					reward_rows.append(_create_reward_row(display, costume_icon_tex, row_index))
 					row_index += 1
 					_costume_rewards_for_anim.append(ck)
+
+		# --- 5. Sleeve reward (the opponent's own card back, when they grant it) ---
+		# Set by the "Grant sleeve?" tickbox in the in-game character editor, which
+		# writes `sleeve_reward` alongside the opponent's `sleeve`. There is no sleeve
+		# icon in Reward_Icons/ yet, so this borrows the card icon — a sleeve is a card
+		# back, and it reads better than the costume icon would.
+		var sleeve_reward = opponent_data.get("sleeve_reward", "")
+		if sleeve_reward != "" and not GameState.has_sleeve(sleeve_reward):
+			GameState.add_sleeve_to_collection(sleeve_reward)
+			reward_rows.append(_create_reward_row(
+					_format_sleeve_name(sleeve_reward) + " Sleeve", card_icon_tex, row_index))
+			row_index += 1
+			_sleeve_rewards_for_anim.append(sleeve_reward)
 
 	GameState.mark_opponent_beaten(GameState.current_opponent_name)
 
@@ -632,6 +647,39 @@ func _play_gift_sequence() -> void:
 		await player_clicked
 		_hide_gift_message()
 		_clear_gift()
+
+	for sleeve_name in _sleeve_rewards_for_anim:
+		# The full-size original, not the small/ thumbnail: this is a 430x600 reveal
+		# and a 412px-tall thumbnail would visibly soften. Originals are a mix of
+		# .jpg and .png, so both are tried.
+		var img: Texture2D = _load_sleeve_texture(sleeve_name)
+		if img == null:
+			continue
+		# A card-back flip to reveal a card back -- the same animation the card and
+		# coin rewards use, and the one that suits a sleeve best.
+		_show_gift(img, "card")
+		var rect = _gift_container.get_child(0) as TextureRect
+		await _play_flip_anim(rect, load(CARDBACK_PATH), img)
+		_show_gift_message("You received the " + _format_sleeve_name(sleeve_name) + " card sleeve!")
+		await player_clicked
+		_hide_gift_message()
+		_clear_gift()
+
+
+## Sleeve basename -> readable name. Sleeves keep their own capitalisation
+## ("Apex_Charizard", "1_Default_English") rather than being title-cased, so the
+## name reads the same way it does in the sleeve menu.
+func _format_sleeve_name(raw: String) -> String:
+	return raw.get_basename().replace("_", " ").strip_edges()
+
+
+func _load_sleeve_texture(sleeve_name: String) -> Texture2D:
+	for ext in [".jpg", ".png"]:
+		var path: String = "res://Image_Assets/Sleeves/" + sleeve_name + ext
+		if ResourceLoader.exists(path):
+			return load(path)
+	push_warning("Match outro: sleeve reward image not found: " + sleeve_name)
+	return null
 
 
 func _show_gift(tex: Texture2D, kind: String) -> void:
