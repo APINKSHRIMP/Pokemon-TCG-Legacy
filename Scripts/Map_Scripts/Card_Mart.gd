@@ -5,7 +5,7 @@ const SCENE_PATH    = "res://Scenes/Map_Scenes/Card_Mart.tscn"
 const SPAWN_FROM_CELESTE_HARBOUR = Vector2(208, 172)
 
 func get_scene_path() -> String:      return SCENE_PATH
-func get_bgm_path() -> String:        return "res://Audio/BGM/Shop1 (Spindas Cafe).ogg"
+func get_bgm_path() -> String:        return SoundManagerScript.BGM_SHOP_1
 func get_default_spawn() -> Vector2:  return SPAWN_FROM_CELESTE_HARBOUR
 func get_entry_positions() -> Dictionary:
 	return {"Celeste_Harbour": SPAWN_FROM_CELESTE_HARBOUR}

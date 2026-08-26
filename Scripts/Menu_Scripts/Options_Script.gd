@@ -113,7 +113,7 @@ func _ready() -> void:
 	# whatever the main menu was still playing behind it -- and once that overlap was fixed
 	# (Main_Menu_Script.pause_music) it would have been left silent instead.
 	add_child(audio_player)
-	var audio_stream = load("res://Audio/BGM/coin_mode (TCG GB Water Club).ogg")
+	var audio_stream = load(SoundManagerScript.BGM_COIN_MODE)
 	audio_player.stream = audio_stream
 	audio_player.bus = SoundManagerScript.MUSIC_BUS
 	if audio_stream != null:

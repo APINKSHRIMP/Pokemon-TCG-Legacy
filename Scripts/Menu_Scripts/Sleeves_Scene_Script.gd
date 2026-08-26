@@ -61,7 +61,7 @@ var _load_cancelled    : bool = false
 
 func _ready() -> void:
 	add_child(audio_player)
-	var audio_stream = load("res://Audio/BGM/coin_mode (TCG GB Water Club).ogg")
+	var audio_stream = load(SoundManagerScript.BGM_COIN_MODE)
 	audio_player.stream = audio_stream
 	audio_player.bus = SoundManagerScript.MUSIC_BUS
 	audio_player.stream.loop = true

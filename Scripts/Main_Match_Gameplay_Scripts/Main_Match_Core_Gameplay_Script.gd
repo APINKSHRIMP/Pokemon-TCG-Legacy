@@ -6145,14 +6145,16 @@ func load_opponent_data_by_name(opp_name: String):
 			GameState.current_opponent_map)
 
 # Play the correct music via the global SoundManager
+# The JSON holds a bare track name (no folder, no extension) picked in the character editor;
+# the Sound Manager turns that into a path. Opponents still carrying the "REPLACEMUSIC" /
+# "TEST" placeholders name no real file, so they fall through to play_bgm()'s own warning.
 func play_opponent_music():
 	var music_file = opponent_data.get("music")
 	if music_file == null:
 		print("No music file specified")
 		return
-	
-	var music_path = "res://Audio/BGM/" + music_file + ".ogg"
-	SoundManagerScript.play_bgm(music_path, true)
+
+	SoundManagerScript.play_bgm_named(str(music_file), true)
 
 # Function to set up opponent's active and bench pokemon using the priority condition criteria scoring selection
 func action_button_pressed_perform_action() -> void:

@@ -250,7 +250,7 @@ const SEARCH_MODE_LABEL := "SEARCH MODE ACTIVE"
 
 func _ready() -> void:
 	# Start background music — loops until scene changes
-	SoundManagerScript.play_bgm("res://Audio/BGM/coin_mode (TCG GB Water Club).ogg", true)
+	SoundManagerScript.play_bgm(SoundManagerScript.BGM_COIN_MODE, true)
 	
 	# Load data sources
 	_load_set_dictionary()

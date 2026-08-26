@@ -1,7 +1,6 @@
 extends BaseMapScene
 
 const SCENE_PATH = "res://Scenes/Map_Scenes/Player_House_Upstairs.tscn"
-const BGM_PATH   = "res://Audio/BGM/Player Home (003 File Select PMD Blue Rescue Team OST).ogg"
 
 const SPAWN_FROM_PLAYER_HOUSE_DOWNSTAIRS = Vector2(50, 20)
 
@@ -34,7 +33,7 @@ const BED_SLEEP_PROMPT_NIGHT_EXTRAS: Dictionary = {
 const NEXT_MORNING_FONT := "res://UI_Themes/kenvector_future.ttf"
 
 func get_scene_path() -> String:      return SCENE_PATH
-func get_bgm_path() -> String:        return BGM_PATH
+func get_bgm_path() -> String:        return SoundManagerScript.BGM_PLAYER_HOME
 func get_default_spawn() -> Vector2:  return SPAWN_FROM_PLAYER_HOUSE_DOWNSTAIRS
 func get_entry_positions() -> Dictionary:
 	return {"Player_House_Downstairs": SPAWN_FROM_PLAYER_HOUSE_DOWNSTAIRS}

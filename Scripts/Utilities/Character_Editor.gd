@@ -27,9 +27,10 @@ enum Mode { NEW, EDIT }
 # ---- tweakables -------------------------------------------------------------
 ## Sprite a brand new character starts on. Any name in Overworld_Sprites/ works.
 const DEFAULT_SPRITE := "Roughneck"
-## Preselected battle track for a new opponent. 93 of the 103 existing opponents
-## say "REPLACEMUSIC", which resolves to no file at all and plays nothing.
-const DEFAULT_MUSIC := "normal_battle (TCG GB)"
+## Preselected battle track for a new opponent. Most existing opponents still say
+## "REPLACEMUSIC" or "TEST", neither of which resolves to a file, so they play nothing.
+## Must be a name the picker offers -- i.e. a file in Audio/BGM with "battle" in it.
+const DEFAULT_MUSIC := "normal_battle (PTCG)"
 const DEFAULT_PRIZE_CARDS := 6
 const DEFAULT_MESSAGE_COLOUR := "grey"
 const DEFAULT_CASH_REWARD := "100"
@@ -60,7 +61,6 @@ const FOOTER_TOP := 1024
 const FOOTER_HEIGHT := 48
 # -----------------------------------------------------------------------------
 
-const BGM_DIR := "res://Audio/BGM/"
 const DECK_DIR := "res://NPC_and_Opponent_Data/Opponent_Deck_Data/"
 const CONSTANTS_PATH := "res://NPC_and_Opponent_Data/All_NPC_Constant_Data.json"
 const COIN_SHOP_PATH := "res://NPC_and_Opponent_Data/coin_shop_inventory.json"
@@ -534,8 +534,10 @@ func _build_opponent_battle(col: VBoxContainer) -> void:
 	var music := OptionButton.new()
 	music.add_theme_font_size_override("font_size", FORM_FONT_SIZE)
 	music.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	for name in _list_basenames(BGM_DIR, ".ogg"):
-		music.add_item(str(name))
+	# Battle tracks only. Audio/BGM also holds the map, menu and shop music, and none of
+	# that belongs on an opponent -- the Sound Manager tells the two apart by filename.
+	for name in SoundManagerScript.list_battle_bgm():
+		music.add_item(name)
 	# Track names run to eighty characters and the box is half that wide, so the
 	# whole name lives in the tooltip.
 	music.item_selected.connect(func(idx: int): music.tooltip_text = music.get_item_text(idx))
@@ -644,8 +646,8 @@ func _build_dialogue(col: VBoxContainer) -> void:
 ##
 ## This is what pushed the opponent form's right-hand column off the screen: an
 ## OptionButton defaults to fit_to_longest_item, so the music picker -- whose longest
-## entry is "003_-_Welcome_to_the_World_of_Pokmon__-_Pokmon_Mystery_Dungeon_-_Explorers_of_Sky"
-## -- claimed a ~1350px minimum width, and with horizontal scrolling disabled
+## entry is "Gym Leader Challenge Battle (Pokemon Card GB2 - Duel Vs Fortress Leader)"
+## -- claimed a minimum width far past the column, and with horizontal scrolling disabled
 ## everything to its right went past 1920 and was clipped away. A Button or Label
 ## sized to its own text does the same thing more quietly.
 ##
@@ -913,7 +915,7 @@ func _toggle_audition(button: Button) -> void:
 	_bgm_before_audition = SoundManagerScript._current_bgm_path
 	_auditioning = true
 	button.text = "STOP"
-	SoundManagerScript.play_bgm(BGM_DIR + music.get_item_text(music.selected) + ".ogg", true)
+	SoundManagerScript.play_bgm_named(music.get_item_text(music.selected), true)
 
 
 func _stop_audition() -> void:
@@ -937,7 +939,7 @@ func _apply_new_defaults() -> void:
 	for letter in ["M", "A", "E", "N"]:
 		_time_boxes[letter].button_pressed = true
 	if _is_opponent():
-		_select_option(_w["music"], DEFAULT_MUSIC)
+		_select_music(DEFAULT_MUSIC)
 		_w["cash_reward"].text = DEFAULT_CASH_REWARD
 
 
@@ -1004,7 +1006,7 @@ func _load_values_into_form() -> void:
 
 	if _is_opponent():
 		_w["deck"].text = str(body.get("deck", ""))
-		_select_option(_w["music"], str(body.get("music", "")))
+		_select_music(str(body.get("music", "")))
 		_w["prize_cards"].value = int(body.get("prize_cards", DEFAULT_PRIZE_CARDS))
 		_w["match_format"].button_pressed = str(body.get("match_format", "")) == "best_of_3"
 		_set_asset(_w["sleeve"], str(body.get("sleeve", "")))
@@ -1042,6 +1044,30 @@ func _option_value(option: OptionButton, fallback: String) -> String:
 	if option == null or option.selected < 0 or option.selected >= option.item_count:
 		return fallback
 	return option.get_item_text(option.selected)
+
+
+## Point the music picker at a stored value.
+##
+## The list only offers battle tracks, so anything else a character is already carrying --
+## a location track, or one of the "REPLACEMUSIC" / "TEST" placeholders still scattered
+## through the data -- is appended as a one-off entry first. Without that _select_option
+## would quietly fall back to item 0 and CONFIRM would rewrite the character's track to
+## whatever happens to sort first.
+func _select_music(value: String) -> void:
+	var music: OptionButton = _w.get("music")
+	if music == null:
+		return
+	value = value.strip_edges()
+	if value != "" and not _has_option(music, value):
+		music.add_item(value)
+	_select_option(music, value)
+
+
+func _has_option(option: OptionButton, value: String) -> bool:
+	for i in option.item_count:
+		if option.get_item_text(i) == value:
+			return true
+	return false
 
 
 func _select_option(option: OptionButton, value: String) -> void:

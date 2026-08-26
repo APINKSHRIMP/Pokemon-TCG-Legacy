@@ -1,7 +1,6 @@
 extends BaseMapScene
 
 const SCENE_PATH = "res://Scenes/Map_Scenes/Celeste_Harbour.tscn"
-const BGM_PATH = "res://Audio/BGM/Celeste_Harbour_BGM (HGSS National Park).ogg"
 
 const TILESET_MORNING   = preload("res://Image_Assets/Map_Sheets/Tile_Sets/Celeste_Harbour_Morning.tres")
 const TILESET_AFTERNOON = preload("res://Image_Assets/Map_Sheets/Tile_Sets/Celeste_Harbour_Afternoon.tres")
@@ -28,7 +27,7 @@ func _allow_menu_open(_is_enter: bool) -> bool:
 	return not _cutscene_active
 
 func get_scene_path() -> String:    return SCENE_PATH
-func get_bgm_path() -> String:      return BGM_PATH
+func get_bgm_path() -> String:      return SoundManagerScript.BGM_CELESTE_HARBOUR
 func get_default_spawn() -> Vector2: return DEFAULT_SPAWN_POSITION
 func get_entry_positions() -> Dictionary:
 	return {

@@ -29,7 +29,7 @@ func build_test_opponent_data() -> Dictionary:
 		"name": "TEST OPPONENT",
 		"deck": "TEST",
 		"sprite": "",
-		"music": "fast_battle (TCG GB Ronalds Theme)",
+		"music": "fast_battle (PTCG Ronalds Theme)",
 		"prize_cards": 6,
 		"coin_reward": "",
 		"sleeve": "",

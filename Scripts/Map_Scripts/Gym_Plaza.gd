@@ -8,7 +8,6 @@ extends BaseMapScene
 # ============================================================
 
 const SCENE_PATH = "res://Scenes/Map_Scenes/Gym_Plaza.tscn"
-const BGM_PATH = "res://Audio/BGM/Gym Leader Challenge Hall (Pokmon Card GB2 - GRs Challenge Cup).ogg"
 
 const DEFAULT_SPAWN_POSITION             = Vector2(1763, 1810)
 const SPAWN_FROM_VERDANT_FOREST          = Vector2(1760, 2130)
@@ -31,7 +30,7 @@ const TREE_VERT_EVENING   = preload("res://Image_Assets/Map_Objects/Forest/TreeL
 const TREE_VERT_NIGHT     = preload("res://Image_Assets/Map_Objects/Forest/TreeLineVerticalNight.png")
 
 func get_scene_path() -> String:     return SCENE_PATH
-func get_bgm_path() -> String:       return BGM_PATH
+func get_bgm_path() -> String:       return SoundManagerScript.BGM_GYM_PLAZA
 func get_default_spawn() -> Vector2: return DEFAULT_SPAWN_POSITION
 func get_entry_positions() -> Dictionary:
 	return {

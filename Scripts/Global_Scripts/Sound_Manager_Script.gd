@@ -77,6 +77,77 @@ const SFX_battle_loss = preload("res://Audio/SFX/battle_loss_sound.ogg")
 const SFX_taxi_intro = preload("res://Audio/SFX/Taxi_intro.ogg")
 const SFX_taxi_out   = preload("res://Audio/SFX/Taxi_out.ogg")
 
+
+# ─── BGM registry ────────────────────────────────────────────────────────────
+#
+# Every track in Audio/BGM/ has a constant below, so no caller spells a filename out by
+# hand — rename a track on disk, fix the one line here, and every scene follows it. The
+# tracks are deliberately NOT preloaded the way the SFX above are: the folder is ~84 MB,
+# so play_bgm() load()s one on demand and lets go of it again in stop_bgm().
+#
+# The battle half doubles as the pool the opponent music picker offers (N/M in the debug
+# character editor). Membership is decided by the FILENAME, not by this list —
+# is_battle_bgm() just looks for "battle" in it — so a newly added battle track shows up
+# in the picker on its own as long as it is named like the rest: mood word + "battle",
+# then the source in brackets. A track without "battle" in its name is treated as
+# location/menu music and stays out of the picker.
+
+const BGM_DIR := "res://Audio/BGM/"
+const BGM_EXT := ".ogg"
+## Substring that marks a filename as selectable opponent battle music.
+const BATTLE_BGM_MARKER := "battle"
+
+# --- Battle tracks (these are what the opponent music picker offers) ---
+const BGM_BOSS_BATTLE                    := BGM_DIR + "Boss_battle (PTCG2 The Final Duel GRs King Biruri)" + BGM_EXT
+const BGM_CALM_BATTLE                    := BGM_DIR + "Calm Battle (PMD Surrounded Sea)" + BGM_EXT
+const BGM_CALM_BATTLE_2                  := BGM_DIR + "Calm Battle 2 (PMD Crystal_Cave)" + BGM_EXT
+const BGM_DARK_BATTLE                    := BGM_DIR + "Dark_battle (PTCG2 Duel Vs Team GR)" + BGM_EXT
+const BGM_DARK_BATTLE_2                  := BGM_DIR + "Dark_battle_2 (PTCG2 Colorless Altar A Dark Dwelling)" + BGM_EXT
+const BGM_EASY_BATTLE                    := BGM_DIR + "Easy_battle (PMD beach cave)" + BGM_EXT
+const BGM_EASY_TENSE_BATTLE              := BGM_DIR + "Easy tense Battle (Pinball Catchem Evolution in Blue Field)" + BGM_EXT
+const BGM_FUN_BATTLE_PMD                 := BGM_DIR + "Fun_battle (PMD Makuhita_Dojo)" + BGM_EXT
+const BGM_FUN_BATTLE_PINBALL             := BGM_DIR + "Fun_battle (Pinball Red Field)" + BGM_EXT
+const BGM_GYM_LEADER_CHALLENGE_BATTLE    := BGM_DIR + "Gym Leader Challenge Battle (Pokemon Card GB2 - Duel Vs Fortress Leader)" + BGM_EXT
+const BGM_IMPORTANT_BATTLE               := BGM_DIR + "Important_battle (Pokmon Card GB2 - GRs Challenge Cup)" + BGM_EXT
+const BGM_IMPORTANT_BATTLE_2             := BGM_DIR + "Important_battle_2 (Pokemon Card GB2 - Duel Vs Fortress Leader)" + BGM_EXT
+const BGM_JOLLY_BATTLE                   := BGM_DIR + "Jolly_battle (Pinball Hi Score Screen)" + BGM_EXT
+const BGM_JOLLY_BATTLE_2                 := BGM_DIR + "Jolly_battle 2 (Pinball Catchem Evolution in Red Field)" + BGM_EXT
+const BGM_LAID_BACK_BATTLE               := BGM_DIR + "Laid Back Battle (Pinball Blue Field)" + BGM_EXT
+const BGM_MEDIUM_BATTLE                  := BGM_DIR + "Medium Battle (PMD Mt Freeze)" + BGM_EXT
+const BGM_MEDIUM_BATTLE_2                := BGM_DIR + "Medium_battle 2 (PMD Amp_Plains)" + BGM_EXT
+const BGM_MEDIUM_BATTLE_3                := BGM_DIR + "Medium_Battle 3 (PMD Thunderwave_Cave)" + BGM_EXT
+const BGM_NICE_BATTLE                    := BGM_DIR + "Nice_battle (PTCG2 - GRs Grass Water Forts)" + BGM_EXT
+const BGM_OUTLAW_BATTLE                  := BGM_DIR + "Outlaw_battle (PMD Outlaw)" + BGM_EXT
+const BGM_SERIOUS_BATTLE                 := BGM_DIR + "Serious Battle (PTCG2 GR Rises to Power)" + BGM_EXT
+const BGM_SIMPLE_BATTLE                  := BGM_DIR + "Simple_battle (PTCG2 Mr Ishiharas Villa)" + BGM_EXT
+const BGM_TENSE_BATTLE                   := BGM_DIR + "Tense_battle (PTCG2 GRs Lightning Psychic Forts)" + BGM_EXT
+const BGM_WORRYING_BATTLE                := BGM_DIR + "Worrying_Battle (PTCG2 GRs Fire Fighting Forts)" + BGM_EXT
+const BGM_CHILLED_BATTLE                 := BGM_DIR + "chilled_battle (PTCG Masons Lab)" + BGM_EXT
+const BGM_FAST_BATTLE                    := BGM_DIR + "fast_battle (PTCG Ronalds Theme)" + BGM_EXT
+const BGM_HARD_BATTLE                    := BGM_DIR + "hard_battle (PTCG Club Master)" + BGM_EXT
+const BGM_HARD_BATTLE_2                  := BGM_DIR + "hard_battle_2 (PTCG Grand Master Battle)" + BGM_EXT
+const BGM_JAZZY_BATTLE                   := BGM_DIR + "jazzy_battle (PTCG Grass Lightning Club)" + BGM_EXT
+const BGM_NORMAL_BATTLE                  := BGM_DIR + "normal_battle (PTCG)" + BGM_EXT
+const BGM_WEIRD_BATTLE                   := BGM_DIR + "weird_battle (PTCG Imakuma)" + BGM_EXT
+
+# --- Location, menu and cutscene tracks ---
+const BGM_CELESTE_HARBOUR                := BGM_DIR + "Celeste_Harbour_BGM (HGSS National Park)" + BGM_EXT
+const BGM_GYM_CHALLENGE_HALL             := BGM_DIR + "Gym Leader Challenge Hall (Pokmon Card GB2 - GRs Challenge Cup)" + BGM_EXT
+const BGM_MYSTERY                        := BGM_DIR + "Mystery (PMD Personality_Test)" + BGM_EXT
+const BGM_MYSTERY_2                      := BGM_DIR + "Mystery 2 (PMD Welcome_to_the_World_of_Pokmon)" + BGM_EXT
+const BGM_PLAYER_HOME                    := BGM_DIR + "Player Home (003 File Select PMD Blue Rescue Team OST)" + BGM_EXT
+const BGM_PLAYER_HOME_ALT                := BGM_DIR + "Player Home (PMD File Select)" + BGM_EXT
+const BGM_SEA_SOUNDS                     := BGM_DIR + "SEA SOUNDS_bgm" + BGM_EXT
+const BGM_SHOP_1                         := BGM_DIR + "Shop1 (PMD Spindas Cafe)" + BGM_EXT
+const BGM_SHOP_2                         := BGM_DIR + "Shop2 (PMD Kecleon Shop)" + BGM_EXT
+const BGM_SHOP_3                         := BGM_DIR + "Shop3 (Undertale Sans Theme)" + BGM_EXT
+const BGM_VERDANT_FOREST                 := BGM_DIR + "Verdant Forest (DPPT Eterna Forest)" + BGM_EXT
+const BGM_BEACH                          := BGM_DIR + "beach_bgm (PMD Beach at dusk)" + BGM_EXT
+const BGM_COIN_MODE                      := BGM_DIR + "coin_mode (PTCG Water Club)" + BGM_EXT
+const BGM_GYM_PLAZA                      := BGM_DIR + "gym_plaza (PTCG Main Menu)" + BGM_EXT
+const BGM_MAIN_MENU                      := BGM_DIR + "main_menu_music (PTCG Menu Theme)" + BGM_EXT
+const BGM_WORLD_MAP                      := BGM_DIR + "world_map_music (PMD Square)" + BGM_EXT
+
 # --- BGM player (persists until stopped or replaced) ---
 var bgm_player: AudioStreamPlayer = null
 var _current_bgm_path: String = ""
@@ -121,6 +192,62 @@ func play_bgm(path: String, loop: bool = true) -> void:
 	
 	_current_bgm_path = path
 	bgm_player.play()
+
+
+# --- BGM: play by bare track name ---
+# The form opponent JSON stores in its "music" field, and what the pickers hand back:
+# a filename with no folder and no extension. An empty name is a silent no-op, so an
+# opponent that has never had music chosen simply keeps whatever is already playing.
+func play_bgm_named(track_name: String, loop: bool = true) -> void:
+	if track_name.strip_edges().is_empty():
+		return
+	play_bgm(bgm_path(track_name), loop)
+
+# --- Bare track name -> full res:// path ---
+func bgm_path(track_name: String) -> String:
+	return BGM_DIR + track_name + BGM_EXT
+
+# --- Is this track selectable as opponent battle music? ---
+# Filename-driven on purpose: see the note above the registry.
+static func is_battle_bgm(track_name: String) -> bool:
+	return track_name.to_lower().contains(BATTLE_BGM_MARKER)
+
+# --- Every track in Audio/BGM/, bare names, natural sort ---
+# Reads the folder rather than the constants above so a track dropped in without a
+# constant is still reachable. In an export the sources are replaced by .import/.remap
+# stubs, hence the trimming.
+func list_bgm() -> Array[String]:
+	var names: Dictionary = {}
+	var dir := DirAccess.open(BGM_DIR)
+	if dir == null:
+		push_warning("SoundManager: could not open " + BGM_DIR)
+		return []
+	dir.list_dir_begin()
+	var fname := dir.get_next()
+	while fname != "":
+		if not dir.current_is_dir():
+			var clean := fname
+			if clean.ends_with(".import"):
+				clean = clean.trim_suffix(".import")
+			elif clean.ends_with(".remap"):
+				clean = clean.trim_suffix(".remap")
+			if clean.ends_with(BGM_EXT):
+				names[clean.trim_suffix(BGM_EXT)] = true
+		fname = dir.get_next()
+	dir.list_dir_end()
+	var out: Array[String] = []
+	for n in names.keys():
+		out.append(str(n))
+	out.sort_custom(func(a: String, b: String): return a.naturalnocasecmp_to(b) < 0)
+	return out
+
+# --- Just the battle tracks, for the opponent music picker ---
+func list_battle_bgm() -> Array[String]:
+	var out: Array[String] = []
+	for n in list_bgm():
+		if is_battle_bgm(n):
+			out.append(n)
+	return out
 
 # --- BGM: stop and free the current BGM player ---
 func stop_bgm() -> void:

@@ -8,13 +8,12 @@ extends BaseMapScene
 # ============================================================
 
 const SCENE_PATH = "res://Scenes/Map_Scenes/Gym_Challenge_Reception.tscn"
-const BGM_PATH   = "res://Audio/BGM/Gym Leader Challenge Hall (Pokmon Card GB2 - GRs Challenge Cup).ogg"
 
 const SPAWN_FROM_GYM_PLAZA          = Vector2(350, 450)
 const SPAWN_FROM_GYM_CHALLENGE_HALL = Vector2(220, 45)
 
 func get_scene_path() -> String:      return SCENE_PATH
-func get_bgm_path() -> String:        return BGM_PATH
+func get_bgm_path() -> String:        return SoundManagerScript.BGM_GYM_CHALLENGE_HALL
 func get_default_spawn() -> Vector2:  return SPAWN_FROM_GYM_PLAZA
 func get_entry_positions() -> Dictionary:
 	return {

@@ -91,7 +91,7 @@ func _ready() -> void:
 		return
 
 	add_child(audio_player)
-	var audio_stream = load("res://Audio/BGM/main_menu_music (TCG GB Menu Theme).ogg")
+	var audio_stream = load(SoundManagerScript.BGM_MAIN_MENU)
 	audio_player.stream = audio_stream
 	audio_player.bus = SoundManagerScript.MUSIC_BUS
 	if audio_stream != null:

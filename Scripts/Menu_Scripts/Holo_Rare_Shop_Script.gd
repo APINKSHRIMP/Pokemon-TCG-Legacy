@@ -43,7 +43,7 @@ var theme_kenney_green : Theme = preload("res://UI_Themes/kenneyUI-green.tres")
 # ─── Lifecycle ───────────────────────────────────────────────────────────────
 
 func _ready() -> void:
-	SoundManagerScript.play_bgm("res://Audio/BGM/Shop2.ogg", true)
+	SoundManagerScript.play_bgm(SoundManagerScript.BGM_SHOP_2, true)
 
 	_load_holo_rares()
 

@@ -15,13 +15,12 @@ extends BaseMapScene
 # ============================================================
 
 const SCENE_PATH = "res://Scenes/Map_Scenes/Windmill.tscn"
-const BGM_PATH   = "res://Audio/BGM/043_-_Crystal_Cave_-_Pokmon_Mystery_Dungeon_-_Explorers_of_Sky.ogg"
 
 
 const SPAWN_FROM_VERDANT_FOREST = Vector2(208, 172)
 
 func get_scene_path() -> String:      return SCENE_PATH
-func get_bgm_path() -> String:        return BGM_PATH
+func get_bgm_path() -> String:        return SoundManagerScript.BGM_CALM_BATTLE_2
 func get_default_spawn() -> Vector2:  return SPAWN_FROM_VERDANT_FOREST
 func get_entry_positions() -> Dictionary:
 	return {"Verdant_Forest": SPAWN_FROM_VERDANT_FOREST}
