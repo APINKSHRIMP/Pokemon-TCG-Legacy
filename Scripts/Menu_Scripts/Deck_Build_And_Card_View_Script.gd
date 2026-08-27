@@ -1463,10 +1463,57 @@ const VIEWER_LIST_X          := 1689.0
 const VIEWER_LIST_W          := 226.0
 const VIEWER_LIST_TOP        := 110.0    # level with the card grid, just under the top border
 const VIEWER_LIST_BOTTOM     := 990.0    # clear of the Close button at y 1003
-const VIEWER_LIST_PAD        := 6.0      # inner padding, both sides
-const VIEWER_LIST_FONT_MAX   := 18
-const VIEWER_LIST_FONT_MIN   := 10
-const VIEWER_LIST_LINE_RATIO := 1.30     # line height as a multiple of font size, for the fit test
+const VIEWER_LIST_PAD        := 6.0      # breathing room so text never touches the scrollbar
+# MEASURED, not guessed: the list label sits directly in the ScrollContainer with no
+# margin container, so the only thing between VIEWER_LIST_W and the text is the
+# vertical scrollbar. Built the real node arrangement headless to check — the label
+# comes back 218px wide inside a 226px scroller, and the RichTextLabel's own
+# stylebox contributes no margin at all.
+const VIEWER_LIST_SCROLLBAR  := 8.0
+
+# ── Type sizing ──────────────────────────────────────────────────────────────
+# The individual list runs at roughly DOUBLE the old 10-18, and the fit rule
+# changed with it. It used to demand that a WHOLE LINE fit the bar's width, which
+# is what held the text down to 10-15pt. Wrapping is now accepted, so the only
+# hard requirement is that the longest WORD fits — a wrapped name is fine, a word
+# running off the bar is not.
+#
+# Measured over all 1,308 distinct card names: the longest single word in the
+# game is "Counterattack" (Counterattack Claws) at 217px for a 214px bar, so it
+# alone needs 19pt. It is one name in 1,308 and the fit is per-DECK, so only a
+# deck actually holding that card is affected — and AUTOWRAP_WORD_SMART breaks an
+# over-long word rather than letting it overflow, so even that case is safe at
+# the minimum. At 24pt, 1,303 of 1,308 names fit unbroken; at 20pt, 1,307.
+#
+# The HEIGHT is deliberately not part of the fit any more. Keeping it would drag
+# a 20-unique-card deck straight back to the minimum and undo the whole change;
+# the list sits in a ScrollContainer, so length costs a scroll rather than
+# legibility.
+const VIEWER_LIST_FONT_MAX   := 20
+# 19, not 20, for exactly one reason: "Counterattack" measures 217px at 20 against a
+# ~212px bar but 206px at 19. One point buys the only word in the game that would
+# otherwise have to be broken mid-word.
+const VIEWER_LIST_FONT_MIN   := 19
+# The category rows must NEVER wrap — "Sp. Energy 4" split over two lines reads as
+# two separate facts — so these fit on whole-line width. The MAX matches the list's
+# so the two sections read at the same size; the worst possible row,
+# "Sp. Energy  60", measures 189px at 20 and still fits.
+const VIEWER_CAT_FONT_MAX    := 20
+const VIEWER_CAT_FONT_MIN    := 11
+# Header CEILING, not the header size — the header is fitted down from
+# (list size + this) until it fits the bar. It used to be applied blind, which is
+# what let "CATEGORIES" wrap to "CATEGORI / ES": the list could reach 32, taking the
+# header to 34 and the word to ~265px in a 212px bar. "CATEGORIES" is the wider of
+# the two headers despite being the same length as "INDIVIDUAL" (188px vs 164px at
+# 24), so it is the one that decides the size.
+#
+# It is 4 rather than 2 because the headers are pinned at 24 while the body text
+# came down to 20 — the gap absorbed the body's last reduction. If the body size
+# changes again and the headers should follow it rather than stay put, this is the
+# number to move.
+const VIEWER_HEADER_EXTRA    := 4
+const VIEWER_LINE_SPACING    := 2        # extra px between lines, per the brief
+const VIEWER_HEADER_COLOUR   := "#ffd86b"  # pale gold; reads over the patterned border art
 
 
 ## Builds the right-hand card list for the deck viewer. `sorted_ids` is the same unique-card order
@@ -1491,6 +1538,9 @@ func _build_viewer_card_list(sorted_ids: Array) -> void:
 		return
 
 	var font_size := _fit_viewer_list_font(lines)
+	var cat_rows := _deck_category_rows()
+	var cat_size := _fit_viewer_cat_font(cat_rows)
+	var header_size := _fit_viewer_header_font(font_size + VIEWER_HEADER_EXTRA)
 
 	var list_scroll := ScrollContainer.new()
 	list_scroll.position = Vector2(VIEWER_LIST_X, VIEWER_LIST_TOP)
@@ -1504,7 +1554,11 @@ func _build_viewer_card_list(sorted_ids: Array) -> void:
 	# which is what lets a too-long list scroll instead of being silently cut off. Same pattern as
 	# the set-breakdown label on the main screen.
 	var list_label := RichTextLabel.new()
-	list_label.bbcode_enabled = false
+	# bbcode is ON now, for the two section headers and the per-section font sizes.
+	# That makes card NAMES dangerous: "Ancient Technical Machine [Ice]" carries
+	# square brackets, and anything that happened to read as a tag would vanish
+	# from the list. _bb_escape() below neutralises every bracket in a name.
+	list_label.bbcode_enabled = true
 	list_label.scroll_active  = false
 	list_label.fit_content    = true
 	list_label.autowrap_mode  = TextServer.AUTOWRAP_WORD_SMART
@@ -1521,34 +1575,194 @@ func _build_viewer_card_list(sorted_ids: Array) -> void:
 	# crisp edge without touching the stroke colour. Raise it only if the font size goes up a lot.
 	list_label.add_theme_constant_override("outline_size", 2)
 	list_label.add_theme_color_override("font_outline_color", Color.BLACK)
-	list_label.text = "\n".join(lines)
+	list_label.add_theme_constant_override("line_separation", VIEWER_LINE_SPACING)
+
+	# ── Assemble the two sections ──
+	var body: Array = []
+	body.append(_viewer_header("INDIVIDUAL", header_size))
+	body.append("[font_size=%d]" % font_size)
+	for line in lines:
+		body.append(_bb_escape(String(line)))
+	body.append("[/font_size]")
+
+	if not cat_rows.is_empty():
+		body.append("")   # a clear line between the two sections
+		body.append(_viewer_header("CATEGORIES", header_size))
+		body.append("[font_size=%d]" % cat_size)
+		for row in cat_rows:
+			body.append("%s  %d" % [row["label"], row["count"]])
+		body.append("[/font_size]")
+
+	list_label.text = "\n".join(body)
 	list_scroll.add_child(list_label)
 
 	print("ISSUE #152 FIX ACTIVE: deck list built, ", lines.size(), " unique cards at font ",
-		font_size, " in a ", VIEWER_LIST_W, "x", VIEWER_LIST_BOTTOM - VIEWER_LIST_TOP, " bar")
+		font_size, " (categories at ", cat_size, ") in a ", VIEWER_LIST_W, "x",
+		VIEWER_LIST_BOTTOM - VIEWER_LIST_TOP, " bar")
 
 
-## Largest font size in [VIEWER_LIST_FONT_MIN, VIEWER_LIST_FONT_MAX] at which every line fits the
-## bar's width AND the whole list fits its height. Measured with the real font rather than
-## estimated, so it cannot drift from what actually renders. Returns the MIN when nothing fits —
-## the label word-wraps and the ScrollContainer scrolls from there.
+## One section header, coloured and a couple of points up on the body text.
+func _viewer_header(text: String, size: int) -> String:
+	return "[font_size=%d][color=%s]%s[/color][/font_size]" % [size, VIEWER_HEADER_COLOUR, text]
+
+
+## The two section header strings. Kept in one place so the header fit below and the
+## text actually rendered can never disagree about what is being measured.
+const VIEWER_HEADERS := ["INDIVIDUAL", "CATEGORIES"]
+
+
+## Largest size at or below `ceiling` at which BOTH headers fit the bar on one line.
+## A wrapped header reads as a broken word ("CATEGORI / ES"), which is worse than a
+## slightly smaller one.
+func _fit_viewer_header_font(ceiling: int) -> int:
+	var theme_res = load("res://UI_Themes/kenneyUI.tres")
+	var font: Font = theme_res.default_font if theme_res != null else null
+	if font == null:
+		return VIEWER_LIST_FONT_MIN
+
+	var avail := _viewer_text_width()
+	var size := ceiling
+	while size > VIEWER_CAT_FONT_MIN:
+		var widest := 0.0
+		for text in VIEWER_HEADERS:
+			widest = maxf(widest, font.get_string_size(
+				String(text), HORIZONTAL_ALIGNMENT_LEFT, -1, size).x)
+		if widest <= avail:
+			break
+		size -= 1
+	return size
+
+
+## Width the list text actually has: the bar, less the vertical scrollbar the
+## ScrollContainer draws over its right edge, less a little breathing room. Shared
+## by all three fits so they cannot drift apart.
+func _viewer_text_width() -> float:
+	return VIEWER_LIST_W - VIEWER_LIST_SCROLLBAR - VIEWER_LIST_PAD
+
+
+## Neutralises bbcode in text that came from card data. Card names really do
+## contain brackets — every Ancient Technical Machine is "[Ice]" / "[Rock]" /
+## "[Steel]", and the ecard Cubes and Mystery Plates are similar — so without this
+## the list would silently swallow part of a name the moment bbcode was enabled.
+func _bb_escape(text: String) -> String:
+	return text.replace("[", "[lb]")
+
+
+## Per-copy counts for the CATEGORIES section, in display order.
+##
+## Counts COPIES, not unique cards, so the six numbers add up to the deck total.
+##
+## Two classification notes, both taken from the card data rather than assumed:
+##   - Energy splits cleanly on the "Basic" subtype: every one of the 124 Energy
+##     cards in the game is subtyped either "Basic" (54) or "Special" (70).
+##   - 19 Baby Pokemon carry ONLY the "Baby" subtype — no "Basic", no Stage. They
+##     are Basic Pokemon by the rules (played straight from hand), so the Pokemon
+##     branch falls through to Basic rather than testing for "Basic" explicitly,
+##     which would have dropped all 19 out of every total.
+func _deck_category_rows() -> Array:
+	var basic := 0
+	var stage1 := 0
+	var stage2 := 0
+	var trainer := 0
+	var sp_energy := 0
+	var basic_energy := 0
+
+	for card_id in deck_cards.keys():
+		var count: int = deck_cards[card_id]
+		if count <= 0:
+			continue
+		var meta = _get_card_meta(card_id)
+		if meta == null:
+			continue
+		var supertype := str(meta.get("supertype", ""))
+		var subtypes: Array = meta.get("subtypes", [])
+
+		if supertype == "Energy":
+			if "Basic" in subtypes:
+				basic_energy += count
+			else:
+				sp_energy += count
+		elif supertype == "Trainer":
+			trainer += count
+		# Everything else is a Pokemon. Matched by elimination rather than on the
+		# supertype string, which is the accented "Pokémon" in the data and is one
+		# encoding slip away from silently counting nothing.
+		elif "Stage 2" in subtypes:
+			stage2 += count
+		elif "Stage 1" in subtypes:
+			stage1 += count
+		else:
+			basic += count
+
+	# Labels are kept short on purpose: the bar is ~214px and a category row must
+	# fit on ONE line (see VIEWER_CAT_FONT_*).
+	return [
+		{ "label": "Basic",      "count": basic },
+		{ "label": "Stage 1",    "count": stage1 },
+		{ "label": "Stage 2",    "count": stage2 },
+		{ "label": "Trainer",    "count": trainer },
+		{ "label": "Sp. Energy", "count": sp_energy },
+		{ "label": "Energy",     "count": basic_energy },
+	]
+
+
+## Largest size in [VIEWER_CAT_FONT_MIN, VIEWER_CAT_FONT_MAX] at which every
+## category row fits the bar on one line. Whole-line fit, unlike the card list —
+## these must not wrap.
+func _fit_viewer_cat_font(rows: Array) -> int:
+	var theme_res = load("res://UI_Themes/kenneyUI.tres")
+	var font: Font = theme_res.default_font if theme_res != null else null
+	if font == null or rows.is_empty():
+		return VIEWER_CAT_FONT_MIN
+
+	var avail_w := _viewer_text_width()
+	var size := VIEWER_CAT_FONT_MAX
+	while size > VIEWER_CAT_FONT_MIN:
+		var widest := 0.0
+		for row in rows:
+			var text: String = "%s  %d" % [row["label"], row["count"]]
+			widest = maxf(widest, font.get_string_size(
+				text, HORIZONTAL_ALIGNMENT_LEFT, -1, size).x)
+		if widest <= avail_w:
+			break
+		size -= 1
+	return size
+
+
+## Largest font size in [VIEWER_LIST_FONT_MIN, VIEWER_LIST_FONT_MAX] at which the longest WORD in
+## this deck still fits the bar's width. Measured with the real font rather than estimated, so it
+## cannot drift from what actually renders.
+##
+## The test is per-WORD, not per-line: lines are expected to wrap now ("Ancient Technical Machine
+## (x2)" over two or three lines is fine), and a whole-line test is what used to hold the size down
+## to 10-15pt. Height is not tested at all — the list scrolls.
+##
+## Returns the MIN when even that is too wide. That is safe rather than broken: AUTOWRAP_WORD_SMART
+## breaks a word that cannot fit instead of letting it run past the edge, which matters for exactly
+## one card in the game ("Counterattack" needs 19pt in a 214px bar).
 func _fit_viewer_list_font(lines: Array) -> int:
 	var theme_res = load("res://UI_Themes/kenneyUI.tres")
 	var font : Font = theme_res.default_font if theme_res != null else null
 	if font == null:
 		return VIEWER_LIST_FONT_MIN
 
-	var avail_w := VIEWER_LIST_W - VIEWER_LIST_PAD * 2.0
-	var avail_h := VIEWER_LIST_BOTTOM - VIEWER_LIST_TOP
+	var avail_w := _viewer_text_width()
+
+	# Split once, up front — this loop runs up to 13 times over every word otherwise.
+	var words : Array = []
+	for line in lines:
+		for w in String(line).split(" ", false):
+			words.append(String(w))
+	if words.is_empty():
+		return VIEWER_LIST_FONT_MIN
 
 	var size := VIEWER_LIST_FONT_MAX
 	while size > VIEWER_LIST_FONT_MIN:
 		var widest := 0.0
-		for line in lines:
+		for w in words:
 			widest = maxf(widest, font.get_string_size(
-				String(line), HORIZONTAL_ALIGNMENT_LEFT, -1, size).x)
-		var total_h : float = lines.size() * size * VIEWER_LIST_LINE_RATIO
-		if widest <= avail_w and total_h <= avail_h:
+				w, HORIZONTAL_ALIGNMENT_LEFT, -1, size).x)
+		if widest <= avail_w:
 			break
 		size -= 1
 	return size
