@@ -101,6 +101,11 @@ var load_popup       : CanvasLayer = null
 var confirm_popup   : CanvasLayer = null
 var _confirm_action : Callable    = Callable()
 
+# ISSUE #154 follow-up: the rename box. NOT the confirm popup above — that one is a Yes/No panel
+# with no text field, and renaming needs typing. Also layer 110, opened from inside the load popup.
+var rename_popup    : CanvasLayer = null
+var _rename_edit    : LineEdit    = null
+
 # Snapshot of deck_cards taken after a save or load — used to detect
 # whether the player has made any changes.  If the current deck_cards
 # matches this snapshot exactly, the save button stays disabled.
@@ -2891,6 +2896,22 @@ func _input(event: InputEvent) -> void:
 	if event is InputEventMouseButton and event.pressed:
 		_update_set_breakdown_label()
 
+	# The rename box owns the keys while it is up, but it owns them by GETTING OUT OF THE WAY:
+	# only Escape is consumed (to close it), and every other key returns unhandled so the LineEdit
+	# still receives it. Two things break if this branch is written the usual way —
+	#   - consuming everything would stop the player typing at all, since _input runs before GUI
+	#     input and set_input_as_handled() would starve the LineEdit;
+	#   - treating accept as "confirm" would make the SPACE BAR rename the deck, because
+	#     UIInput.is_accept() counts Space and deck names contain spaces. Enter is handled by the
+	#     LineEdit's own text_submitted signal instead.
+	# Shift is the card-preview key further down this function, and it is also how you type a
+	# capital letter — the early return is what stops a preview opening behind the box.
+	if rename_popup != null and is_instance_valid(rename_popup):
+		if UIInput.is_cancel(event):
+			get_viewport().set_input_as_handled()
+			_close_rename_popup()
+		return
+
 	# The "Empty the entire deck?" confirm owns the keys while it is up: accept
 	# empties the deck, cancel backs out. Without this, Escape fell straight through
 	# to _on_cancel_pressed() and left the deck builder with the popup still open,
@@ -3418,6 +3439,18 @@ const LOAD_ACTION_FONT  := 22
 # hand-drawn one scales with LOAD_ROW_H for free. All values are fractions of the button, so
 # changing LOAD_ROW_H rescales the icon with it.
 const TRASH_COLOUR := Color(1, 1, 1, 0.95)
+const RENAME_COLOUR := Color(1, 1, 1, 0.95)
+
+# ── Rename box ──
+const RENAME_PANEL_W    := 640.0
+const RENAME_PANEL_H    := 260.0
+const RENAME_TITLE_FONT := 24
+const RENAME_EDIT_H     := 54.0
+const RENAME_EDIT_FONT  := 24
+const RENAME_MAX_LENGTH := 40
+# Characters Windows will not accept in a filename. A deck name becomes one verbatim, so these have
+# to be refused at the box rather than discovered as a failed write.
+const RENAME_ILLEGAL_CHARS := ["\\", "/", ":", "*", "?", "\"", "<", ">", "|"]
 
 
 ## A square delete button for one deck row. Red, so it reads as destructive next to the neutral
@@ -3464,6 +3497,236 @@ func _draw_trash_icon(c: Control) -> void:
 	var slot_h := body_h * 0.60
 	c.draw_rect(Rect2(cx - body_w * 0.20 - thick * 0.5, slot_top, thick, slot_h), TRASH_COLOUR)
 	c.draw_rect(Rect2(cx + body_w * 0.20 - thick * 0.5, slot_top, thick, slot_h), TRASH_COLOUR)
+
+
+## A square rename button for one deck row. Blue rather than the delete button's red — renaming is
+## reversible, and the destructive action should be the only red thing on the row.
+##
+## Sits to the LEFT of the bin so the destructive button stays on the outside edge, where a
+## mis-aimed click is least likely to land on it.
+func _make_rename_deck_button(deck_name: String) -> Button:
+	var btn := Button.new()
+	btn.custom_minimum_size = Vector2(LOAD_ROW_H, LOAD_ROW_H)
+	btn.size_flags_horizontal = Control.SIZE_SHRINK_END
+	btn.tooltip_text = "Rename this deck"
+	var blue_theme = load("res://UI_Themes/kenneyUI-blue.tres")
+	if blue_theme:
+		btn.theme = blue_theme
+
+	# MOUSE_FILTER_IGNORE so the glyph never eats the click meant for the button under it.
+	var glyph := Control.new()
+	glyph.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	glyph.set_anchors_preset(Control.PRESET_FULL_RECT)
+	glyph.draw.connect(_draw_rename_icon.bind(glyph))
+	btn.add_child(glyph)
+
+	btn.pressed.connect(func(): _on_rename_deck_pressed(deck_name))
+	return btn
+
+
+## Draws the edit glyph: a sheet of paper with two ruled lines, and a pencil laid across its
+## bottom-right corner with the tip pointing down at the page.
+##
+## Hand-drawn for the same reason the bin is — there is no edit icon anywhere in Image_Assets, and
+## every value here is a fraction of the button, so changing LOAD_ROW_H rescales it for free.
+##
+## The pencil is built from the axis vector rather than hardcoded points: a triangle for the tip
+## and a quad for the shaft, both derived from the same direction and a perpendicular. Retuning the
+## angle is then a matter of moving PENCIL_TIP / PENCIL_TOP and everything else follows.
+func _draw_rename_icon(c: Control) -> void:
+	var w := c.size.x
+	var h := c.size.y
+	if w <= 0.0 or h <= 0.0:
+		return
+	var thick := maxf(1.0, h * 0.055)
+
+	# ── The page: outline plus two ruled lines ──
+	var page := Rect2(w * 0.16, h * 0.16, w * 0.46, h * 0.62)
+	c.draw_rect(page, RENAME_COLOUR, false, thick)
+	var line_x := page.position.x + page.size.x * 0.18
+	var line_w := page.size.x * 0.54
+	for i in range(2):
+		var ly := page.position.y + page.size.y * (0.28 + 0.24 * float(i))
+		c.draw_rect(Rect2(line_x, ly, line_w, thick), RENAME_COLOUR)
+
+	# ── The pencil, crossing the page's bottom-right corner ──
+	var tip := Vector2(w * 0.46, h * 0.86)
+	var top := Vector2(w * 0.90, h * 0.24)
+	var axis := (top - tip).normalized()
+	var perp := Vector2(-axis.y, axis.x)
+	var half := maxf(1.0, h * 0.090)
+	var neck := tip + axis * (h * 0.22)
+
+	# Tip triangle, then the shaft as a quad running up to the eraser end.
+	c.draw_colored_polygon(PackedVector2Array([
+		tip, neck + perp * half, neck - perp * half]), RENAME_COLOUR)
+	c.draw_colored_polygon(PackedVector2Array([
+		neck + perp * half, top + perp * half,
+		top - perp * half, neck - perp * half]), RENAME_COLOUR)
+
+
+## Rename pressed — opens the text box. No confirm step: the box IS the confirmation, and the
+## action is reversible by renaming back.
+func _on_rename_deck_pressed(deck_name: String) -> void:
+	if rename_popup != null and is_instance_valid(rename_popup):
+		return
+
+	var kenney_theme = load("res://UI_Themes/kenneyUI.tres")
+
+	rename_popup = CanvasLayer.new()
+	rename_popup.layer = 110   # above the load popup at 100, same as the delete confirm
+	add_child(rename_popup)
+
+	var overlay := ColorRect.new()
+	overlay.color = Color(0, 0, 0, 0.6)
+	overlay.anchor_right  = 1.0
+	overlay.anchor_bottom = 1.0
+	rename_popup.add_child(overlay)
+
+	var panel := PanelContainer.new()
+	if kenney_theme:
+		panel.theme = kenney_theme
+	panel.custom_minimum_size = Vector2(RENAME_PANEL_W, RENAME_PANEL_H)
+	panel.anchor_left   = 0.5
+	panel.anchor_top    = 0.5
+	panel.anchor_right  = 0.5
+	panel.anchor_bottom = 0.5
+	panel.offset_left   = -RENAME_PANEL_W * 0.5
+	panel.offset_top    = -RENAME_PANEL_H * 0.5
+	panel.offset_right  = RENAME_PANEL_W * 0.5
+	panel.offset_bottom = RENAME_PANEL_H * 0.5
+	rename_popup.add_child(panel)
+
+	var margin := MarginContainer.new()
+	for side in ["left", "right", "top", "bottom"]:
+		margin.add_theme_constant_override("margin_" + side, 24)
+	panel.add_child(margin)
+
+	var vbox := VBoxContainer.new()
+	vbox.add_theme_constant_override("separation", 18)
+	vbox.alignment = BoxContainer.ALIGNMENT_CENTER
+	margin.add_child(vbox)
+
+	var title := Label.new()
+	title.text = "Rename \"%s\"" % deck_name.replace("_", " ")
+	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	title.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	title.add_theme_font_size_override("font_size", RENAME_TITLE_FONT)
+	vbox.add_child(title)
+
+	_rename_edit = LineEdit.new()
+	# Pre-filled with the name as SHOWN in the list, not the raw filename — the two differ for any
+	# legacy deck saved with underscores, and the player should be editing what they can see.
+	_rename_edit.text = deck_name.replace("_", " ")
+	_rename_edit.max_length = RENAME_MAX_LENGTH
+	_rename_edit.custom_minimum_size = Vector2(0, RENAME_EDIT_H)
+	_rename_edit.add_theme_font_size_override("font_size", RENAME_EDIT_FONT)
+	# Enter confirms. Deliberately the LineEdit's own signal rather than UIInput.is_accept(), which
+	# also counts SPACE -- and deck names have spaces in them ("Your First Deck"), so routing this
+	# through the usual accept test would make the space bar rename the deck mid-word.
+	_rename_edit.text_submitted.connect(func(t: String): _rename_deck(deck_name, t))
+	vbox.add_child(_rename_edit)
+
+	var btn_row := HBoxContainer.new()
+	btn_row.alignment = BoxContainer.ALIGNMENT_CENTER
+	btn_row.add_theme_constant_override("separation", 24)
+	vbox.add_child(btn_row)
+
+	var ok_btn := Button.new()
+	ok_btn.text = "Rename"
+	ok_btn.custom_minimum_size = Vector2(LOAD_ACTION_W, LOAD_ACTION_H)
+	ok_btn.add_theme_font_size_override("font_size", LOAD_ACTION_FONT)
+	var green_theme = load("res://UI_Themes/kenneyUI-green.tres")
+	if green_theme:
+		ok_btn.theme = green_theme
+	ok_btn.pressed.connect(func(): _rename_deck(deck_name, _rename_edit.text))
+	btn_row.add_child(ok_btn)
+
+	var cancel_btn := Button.new()
+	cancel_btn.text = "Cancel"
+	cancel_btn.custom_minimum_size = Vector2(LOAD_ACTION_W, LOAD_ACTION_H)
+	cancel_btn.add_theme_font_size_override("font_size", LOAD_ACTION_FONT)
+	var red_theme = load("res://UI_Themes/kenneyUI-red.tres")
+	if red_theme:
+		cancel_btn.theme = red_theme
+	cancel_btn.pressed.connect(_close_rename_popup)
+	btn_row.add_child(cancel_btn)
+
+	# Focus and select-all, so typing replaces the old name straight away.
+	await get_tree().process_frame
+	if _rename_edit != null and is_instance_valid(_rename_edit):
+		_rename_edit.grab_focus()
+		_rename_edit.select_all()
+
+
+func _close_rename_popup() -> void:
+	_rename_edit = null
+	if rename_popup != null and is_instance_valid(rename_popup):
+		rename_popup.queue_free()
+	rename_popup = null
+
+
+## Renames a deck file, after checking everything that can go wrong with turning typed text into a
+## filename. Rejections leave the box open so the name can be corrected rather than retyped.
+func _rename_deck(old_name: String, raw_new: String) -> void:
+	var new_name := raw_new.strip_edges()
+
+	if new_name == "":
+		_show_deck_message("Enter a name for the deck")
+		return
+
+	# Deck names ARE filenames — _save_deck_file() writes PLAYER_DECKS_FOLDER + name + ".json" with
+	# no sanitising at all — so anything the filesystem rejects has to be caught here instead.
+	for bad in RENAME_ILLEGAL_CHARS:
+		if bad in new_name:
+			_show_deck_message("A deck name cannot contain  %s" % " ".join(RENAME_ILLEGAL_CHARS))
+			return
+
+	if new_name == old_name:
+		_close_rename_popup()
+		return
+
+	var new_path := PLAYER_DECKS_FOLDER + new_name + ".json"
+	if FileAccess.file_exists(new_path):
+		_show_deck_message("A deck called \"%s\" already exists" % new_name)
+		return
+
+	var old_path := PLAYER_DECKS_FOLDER + old_name + ".json"
+	var err := DirAccess.rename_absolute(old_path, new_path)
+	if err != OK:
+		push_error("DeckBuild: could not rename " + old_path + " (error " + str(err) + ")")
+		_show_deck_message("Could not rename that deck")
+		return
+	print("DeckBuild: renamed deck ", old_path, " -> ", new_path)
+
+	# The name is a KEY, not just a label: Player_Current_Data.json remembers the active deck by
+	# name, so renaming the active one without following up leaves that pointer aimed at a file
+	# that no longer exists. Checked against the file rather than against current_deck_name,
+	# because the active deck is not necessarily the one open in the builder right now.
+	if _active_deck_name() == old_name:
+		_save_player_data(new_name)
+	# And if it IS the one open in the builder, the header box has to follow too.
+	if current_deck_name == old_name:
+		current_deck_name = new_name
+		if deck_name_edit != null and is_instance_valid(deck_name_edit):
+			deck_name_edit.text = new_name
+
+	_close_rename_popup()
+	# Rebuild the list so it reflects the new name, exactly as _delete_deck() does.
+	_close_load_popup()
+	_on_load_deck_pressed()
+
+
+## The deck name Player_Current_Data.json currently points at, or "" if it cannot be read.
+func _active_deck_name() -> String:
+	var f := FileAccess.open(PLAYER_DATA_PATH, FileAccess.READ)
+	if f == null:
+		return ""
+	var data = JSON.parse_string(f.get_as_text())
+	f.close()
+	if data is Dictionary:
+		return str(data.get("deck", ""))
+	return ""
 
 
 ## Trash pressed — confirm first, in the same styled Yes/No box the game uses to ask before
@@ -3620,6 +3883,7 @@ func _on_load_deck_pressed() -> void:
 				selection["deck_name"] = deck_name
 		)
 		row.add_child(btn)
+		row.add_child(_make_rename_deck_button(deck_name))
 		row.add_child(_make_delete_deck_button(deck_name))
 
 	# Bottom row: Load + Cancel buttons
