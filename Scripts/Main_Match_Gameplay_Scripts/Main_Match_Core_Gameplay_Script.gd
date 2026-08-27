@@ -1328,20 +1328,198 @@ func show_attack_buttons() -> void:
 		print("Active pokemon has no attacks")
 		return
 	
-	# Loop through each attack and generate a button for it
-	for i in range(attacks.size()):
-		var attack = attacks[i]
+	_attack_list = attacks
+	_attack_page = 0
+	_render_attack_page()
+
+
+# ============================================================
+# ATTACK BUTTON CONTENT — [energy icons] [name] [damage]
+# ============================================================
+# A Button cannot carry inline images through its `text`, so the row is built as
+# child Controls laid out with ANCHORS rather than absolute offsets: the button's
+# final size is decided by the HBoxContainer after this runs, and anchored
+# children re-flow to whatever it ends up being.
+#
+# Every child is MOUSE_FILTER_IGNORE, or it would swallow the click meant for the
+# button underneath it.
+#
+# The cost is read from the attack dict handed over by get_attacks_for_card(),
+# NOT from the card's own metadata — ex11's Delta Aura rewrites the cost of a
+# paired attack on the way through, so the button shows the discounted cost the
+# player will actually be charged.
+
+# ── Roomy defaults: what a normal 1-3 attack Pokemon gets ──
+# 99% of cards have three attacks or fewer, so these are tuned for that case and
+# everything below only kicks in when a card exceeds it.
+const ATTACK_BTN_MAX_W: float      = 520.0  # ceiling even when there is room to spare
+const ATTACK_BTN_PAD_X: float      = 14.0   # button edge -> first icon / last digit
+const ATTACK_COST_ICON: float      = 26.0   # energy icon square
+const ATTACK_COST_GAP: float       = 3.0    # between two energy icons
+const ATTACK_SECTION_GAP: float    = 12.0   # icons -> name, and name -> damage
+const ATTACK_NAME_FONT: int        = 20     # matches the kenneyUI theme's button size
+const ATTACK_NAME_MIN_FONT: int    = 9      # hard floor when a long name has to shrink
+const ATTACK_DAMAGE_FONT: int      = 24     # the headline number, a touch larger
+# Content on a disabled button, dimmed to sit alongside the theme's own
+# font_disabled_color rather than staying at full strength over a greyed panel.
+const ATTACK_DISABLED_ALPHA: float = 0.35
+
+# ── Crowding: how the row gives ground as attacks are added ──
+# A card can end up with far more attacks than it was printed with — every
+# Technical Machine attached replaces or adds one, Meteor Falls and gym1 Recall
+# add the whole pre-evolution chain, and ex12 Versatile adds the attacks of every
+# Pokemon in play. There is no upper bound, so the row has to degrade gracefully
+# rather than run off the screen.
+#
+# Three levers, applied in this order:
+#   1. CANCEL shrinks (it is one word in a 350px button)
+#   2. separation collapses
+#   3. the buttons themselves shrink, and their contents scale with them
+# Past ATTACKS_PER_PAGE the buttons would stop being readable, so the row pages
+# instead of shrinking any further.
+const ATTACK_ROOMY_MAX: int        = 3      # at or below this, keep the generous look
+const ATTACKS_PER_PAGE: int        = 5      # most that stay legible on one row
+const ATTACK_CANCEL_W_ROOMY: float = 350.0  # CANCEL's authored width
+const ATTACK_CANCEL_W_TIGHT: float = 200.0  # CANCEL once the row is crowded
+const ATTACK_MORE_BTN_W: float     = 210.0  # the "MORE 1/3" page button
+const ATTACK_SEP_BASE: float       = 100.0  # the container's authored separation
+const ATTACK_SEP_MIN: float        = 20.0
+const ATTACK_BTN_FLOOR_W: float    = 120.0  # absolute floor; only reachable on a tiny row
+# Used only if the container's own offsets ever read as zero. Matches the width
+# authored in Main_Match_Core_GamePlay_Scene.tscn (offset_left -1843 -> right 57).
+const ATTACK_ROW_FALLBACK_W: float = 1900.0
+# The project's reference resolution, as used by every other code-built screen
+# (DynamicMessageBox.SCREEN_W, CardDetailPanel.SCREEN_W). The row is clamped to
+# this because the button container is authored wider than the display.
+const ATTACK_SCREEN_W: float = 1920.0
+# Contents scale against this width. A button at or above it draws at full size;
+# narrower buttons scale their icons, padding and fonts down proportionally.
+const ATTACK_SCALE_REF_W: float    = 420.0
+const ATTACK_SCALE_MIN: float      = 0.42
+
+const ENERGY_ICON_DIR: String = "res://Image_Assets/Icons/Energy_Icons/"
+const ATTACK_BTN_FONT_PATH: String = "res://UI_Themes/kenvector_future.ttf"
+
+var _attack_btn_font: Font = null
+# The full attack list for the current selection, and which page of it is shown.
+# Held so the MORE button can re-render without re-running show_attack_buttons()'s
+# guards (which would re-show "cannot attack on the first turn" messages).
+var _attack_list: Array = []
+var _attack_page: int = 0
+
+
+func _get_attack_btn_font() -> Font:
+	if _attack_btn_font == null:
+		_attack_btn_font = load(ATTACK_BTN_FONT_PATH)
+	return _attack_btn_font
+
+
+## Everything the row needs to lay itself out for the current page, worked out in
+## one place so the button builder never has to re-derive a size.
+##
+## Returns: page_count, page_start, shown (attack count on this page), paged,
+## btn_w, sep, cancel_w, scale.
+func _attack_row_metrics() -> Dictionary:
+	var total: int = _attack_list.size()
+	var page_count: int = maxi(1, ceili(float(total) / float(ATTACKS_PER_PAGE)))
+	_attack_page = clampi(_attack_page, 0, page_count - 1)
+	var paged: bool = total > ATTACKS_PER_PAGE
+	var page_start: int = _attack_page * ATTACKS_PER_PAGE
+	var shown: int = mini(ATTACKS_PER_PAGE, total - page_start) if paged else total
+
+	var m := {
+		"page_count": page_count,
+		"page_start": page_start,
+		"shown": shown,
+		"paged": paged,
+	}
+	if shown <= 0:
+		m["btn_w"] = ATTACK_BTN_MAX_W
+		m["sep"] = ATTACK_SEP_BASE
+		m["cancel_w"] = ATTACK_CANCEL_W_ROOMY
+		m["scale"] = 1.0
+		return m
+
+	# How much room the row ACTUALLY has, which is not the container's own width.
+	#
+	# Two traps here, both of which cost a fix each:
+	#   1. NOT container.size.x. A BoxContainer's size is max(its own rect, the sum
+	#      of its children's minimums), so once a row has overflowed, size.x reports
+	#      the OVERFLOWED width and the next layout budgets against a row wider than
+	#      the screen — it would never recover.
+	#   2. NOT the authored offsets either. The container is 1900 wide but sits at
+	#      x=64 (BUTTONS is at offset_left 1907, the container at -1843), so its
+	#      right edge is at 1964 — 44px PAST the 1920 screen. Budgeting against 1900
+	#      put the last button half off the display no matter how the maths inside
+	#      it worked out.
+	# So: take the authored width, but clamp it to what fits on screen, mirroring the
+	# container's own left inset on the right so the row sits evenly.
+	var left_x: float = clampf(attack_buttons_container.global_position.x, 0.0, ATTACK_SCREEN_W)
+	var authored: float = attack_buttons_container.offset_right - attack_buttons_container.offset_left
+	if authored <= 0.0:
+		authored = ATTACK_ROW_FALLBACK_W
+	var row_w: float = minf(authored, ATTACK_SCREEN_W - left_x * 2.0)
+	if row_w <= 0.0:
+		row_w = ATTACK_ROW_FALLBACK_W
+
+	# Lever 1 + 2. Separation eases off rather than snapping, so going from three
+	# to four attacks does not visibly jolt the row.
+	var cancel_w: float = ATTACK_CANCEL_W_ROOMY if shown <= ATTACK_ROOMY_MAX else ATTACK_CANCEL_W_TIGHT
+	var sep: float = ATTACK_SEP_BASE
+	if shown > ATTACK_ROOMY_MAX:
+		sep = clampf(ATTACK_SEP_BASE / float(shown - ATTACK_ROOMY_MAX + 1),
+					 ATTACK_SEP_MIN, ATTACK_SEP_BASE)
+
+	# Children on the row: the attack buttons, CANCEL, and MORE when paging.
+	var child_count: int = shown + 1 + (1 if paged else 0)
+	var fixed_w: float = cancel_w + (ATTACK_MORE_BTN_W if paged else 0.0)
+	var free: float = row_w - fixed_w - sep * float(child_count - 1)
+	var btn_w: float = clampf(free / float(shown), ATTACK_BTN_FLOOR_W, ATTACK_BTN_MAX_W)
+
+	m["btn_w"] = btn_w
+	m["sep"] = sep
+	m["cancel_w"] = cancel_w
+	m["scale"] = clampf(btn_w / ATTACK_SCALE_REF_W, ATTACK_SCALE_MIN, 1.0)
+	return m
+
+
+## Builds (or rebuilds) the visible page of attack buttons. Safe to call again on
+## a page change — it clears everything except the permanent CANCEL button, which
+## is a scene node rather than a generated one.
+func _render_attack_page() -> void:
+	for child in attack_buttons_container.get_children():
+		if child.name == "cancel_attack_mode_button":
+			continue
+		# remove_child BEFORE queue_free: queue_free only takes effect at the end of
+		# the frame, so on a page change the old buttons would still be laid out by
+		# the container alongside the new ones and every width would be halved.
+		attack_buttons_container.remove_child(child)
+		child.queue_free()
+
+	var m := _attack_row_metrics()
+
+	attack_buttons_container.add_theme_constant_override("separation", int(m["sep"]))
+	var cancel := attack_buttons_container.get_node_or_null("cancel_attack_mode_button")
+	if cancel != null:
+		cancel.custom_minimum_size.x = float(m["cancel_w"])
+
+	var page_start: int = m["page_start"]
+	for offset in range(int(m["shown"])):
+		var index: int = page_start + offset
+		var attack = _attack_list[index]
 		var btn = Button.new()
-		btn.text = attack.get("name", "Attack")
-		btn.custom_minimum_size = Vector2(350, 50)
-		attack_buttons_container.add_child(btn)
-		
+		# The label is drawn by _build_attack_button_content() as icons + name +
+		# damage, so the Button's own text stays empty -- a Button draws its text
+		# centred over the whole rect and it would sit on top of the energy icons.
+		btn.text = ""
+
 		# Check if attack is disabled (Farfetch'd permanent, Amnesia, etc.)
 		var attack_name = attack.get("name", "")
+		var label_text: String = attack_name
 		if is_attack_disabled(player_active_pokemon, attack_name):
 			btn.disabled = true
 			btn.theme = theme_disabled
-			btn.text = attack_name + " (DISABLED)"
+			label_text = attack_name + " (DISABLED)"
 		# Enable and colour green if requirements met, disable and grey out if not
 		elif check_attack_requirements(attack, player_active_pokemon):
 			btn.disabled = false
@@ -1349,9 +1527,156 @@ func show_attack_buttons() -> void:
 		else:
 			btn.disabled = true
 			btn.theme = theme_disabled
-		
-		# bind(i) locks the current index into the callable so each button calls with its own attack index
-		btn.pressed.connect(perform_attack.bind(i))
+
+		btn.custom_minimum_size = Vector2(float(m["btn_w"]), 50)
+		attack_buttons_container.add_child(btn)
+		_build_attack_button_content(btn, attack, label_text, float(m["scale"]), float(m["btn_w"]))
+
+		# bind(index) locks the TRUE index into the callable — the index into the
+		# whole attack list, not the position on this page, or paging to page 2
+		# would fire page 1's attacks.
+		btn.pressed.connect(perform_attack.bind(index))
+
+	if m["paged"]:
+		attack_buttons_container.add_child(
+				_make_attack_page_button(int(m["page_count"]), float(m["sep"])))
+
+
+## The "MORE 2/3" button. One button that cycles forward and wraps, rather than a
+## back/forward pair plus a counter: three children would eat the width the
+## attack buttons need, and with only a handful of pages cycling round is quicker
+## than reaching for the right arrow anyway.
+func _make_attack_page_button(page_count: int, _sep: float) -> Button:
+	var btn := Button.new()
+	btn.text = "MORE  %d/%d" % [_attack_page + 1, page_count]
+	btn.theme = theme_blue
+	btn.custom_minimum_size = Vector2(ATTACK_MORE_BTN_W, 50)
+	btn.pressed.connect(func():
+		_attack_page = (_attack_page + 1) % page_count
+		_render_attack_page())
+	return btn
+
+
+## Total width the cost icons occupy at this scale, 0 for a free attack.
+func _attack_cost_width(attack: Dictionary, scale: float) -> float:
+	var n := _attack_cost_types(attack).size()
+	if n == 0:
+		return 0.0
+	return float(n) * (ATTACK_COST_ICON * scale) + float(n - 1) * (ATTACK_COST_GAP * scale)
+
+
+## The cost as a list of type names that actually have an icon on disk. An
+## unknown type is dropped rather than drawn as a gap, so a data typo shows a
+## short cost instead of a hole in the row.
+func _attack_cost_types(attack: Dictionary) -> Array:
+	var out: Array = []
+	for entry in attack.get("cost", []):
+		var type_name := String(entry).strip_edges()
+		if type_name == "":
+			continue
+		if ResourceLoader.exists(ENERGY_ICON_DIR + "color_icon_" + type_name.to_lower() + ".png"):
+			out.append(type_name)
+	return out
+
+
+func _build_attack_button_content(btn: Button, attack: Dictionary, label_text: String,
+								  scale: float, btn_w: float) -> void:
+	var font := _get_attack_btn_font()
+
+	# Everything on the row scales together, so a crowded button stays a smaller
+	# copy of a roomy one rather than a roomy one with the name squeezed out.
+	var pad_x: float   = ATTACK_BTN_PAD_X * scale
+	var icon_px: float = ATTACK_COST_ICON * scale
+	var sect_gap: float = ATTACK_SECTION_GAP * scale
+	# Damage is two to four characters, so it barely needs to give ground — it
+	# scales, but off a high floor.
+	var dmg_font: int = maxi(14, int(round(float(ATTACK_DAMAGE_FONT) * scale)))
+	# The NAME deliberately does NOT scale with the button. It is the one thing on
+	# the row you have to be able to read, so it starts at full size and the fit
+	# loop below takes it down only as far as this particular name actually needs.
+	# Scaling the ceiling too would shrink "COLLECT" on a crowded row for no reason.
+	var name_ceiling: int = ATTACK_NAME_FONT
+
+	# One wrapper for everything, so a disabled button dims its whole row with a
+	# single modulate instead of every child needing its own colour.
+	var content := Control.new()
+	content.anchor_right  = 1.0
+	content.anchor_bottom = 1.0
+	content.mouse_filter  = Control.MOUSE_FILTER_IGNORE
+	if btn.disabled:
+		content.modulate = Color(1, 1, 1, ATTACK_DISABLED_ALPHA)
+	btn.add_child(content)
+
+	# ── Energy cost, pinned left and vertically centred ──
+	var cost_types := _attack_cost_types(attack)
+	var x := pad_x
+	for type_name in cost_types:
+		var icon := TextureRect.new()
+		icon.texture = load(ENERGY_ICON_DIR + "color_icon_" + String(type_name).to_lower() + ".png")
+		icon.expand_mode  = TextureRect.EXPAND_IGNORE_SIZE
+		icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		icon.anchor_top    = 0.5
+		icon.anchor_bottom = 0.5
+		icon.offset_left   = x
+		icon.offset_right  = x + icon_px
+		icon.offset_top    = -icon_px * 0.5
+		icon.offset_bottom = icon_px * 0.5
+		content.add_child(icon)
+		x += icon_px + ATTACK_COST_GAP * scale
+
+	var cost_w := _attack_cost_width(attack, scale)
+
+	# ── Damage, pinned right ──
+	var dmg := String(attack.get("damage", ""))
+	var dmg_w: float = 0.0
+	if dmg != "":
+		dmg_w = font.get_string_size(dmg, HORIZONTAL_ALIGNMENT_LEFT, -1, dmg_font).x
+		var dmg_lbl := Label.new()
+		dmg_lbl.text = dmg
+		dmg_lbl.add_theme_font_override("font", font)
+		dmg_lbl.add_theme_font_size_override("font_size", dmg_font)
+		dmg_lbl.add_theme_color_override("font_color", Color(0, 0, 0, 1))
+		dmg_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+		dmg_lbl.vertical_alignment   = VERTICAL_ALIGNMENT_CENTER
+		dmg_lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		dmg_lbl.anchor_left   = 1.0
+		dmg_lbl.anchor_right  = 1.0
+		dmg_lbl.anchor_bottom = 1.0
+		dmg_lbl.offset_left   = -(pad_x + dmg_w)
+		dmg_lbl.offset_right  = -pad_x
+		content.add_child(dmg_lbl)
+
+	# ── Name, centred in whatever is left between the two ──
+	# Centred rather than left-aligned so names line up down the column of buttons
+	# instead of jogging sideways with each attack's cost count — and because that
+	# is how the name sits on the printed card.
+	var left_edge := pad_x + cost_w + (sect_gap if cost_w > 0.0 else 0.0)
+	var right_edge := pad_x + dmg_w + (sect_gap if dmg_w > 0.0 else 0.0)
+	var name_space: float = btn_w - left_edge - right_edge
+
+	# Step the size down until the name fits the gap, exactly the way
+	# DynamicMessageBox.set_body_text() fits a long line into a fixed panel.
+	var name_size := name_ceiling
+	while name_size > ATTACK_NAME_MIN_FONT \
+			and font.get_string_size(label_text, HORIZONTAL_ALIGNMENT_LEFT, -1, name_size).x > name_space:
+		name_size -= 1
+
+	var name_lbl := Label.new()
+	name_lbl.text = label_text
+	name_lbl.add_theme_font_override("font", font)
+	name_lbl.add_theme_font_size_override("font_size", name_size)
+	name_lbl.add_theme_color_override("font_color", Color(0, 0, 0, 1))
+	name_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	name_lbl.vertical_alignment   = VERTICAL_ALIGNMENT_CENTER
+	name_lbl.autowrap_mode = TextServer.AUTOWRAP_OFF
+	name_lbl.clip_text = true
+	name_lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	name_lbl.anchor_right  = 1.0
+	name_lbl.anchor_bottom = 1.0
+	name_lbl.offset_left   = left_edge
+	name_lbl.offset_right  = -right_edge
+	content.add_child(name_lbl)
 
 # Clears generated attack buttons and restores the main action buttons
 func hide_attack_buttons() -> void:
@@ -1359,8 +1684,19 @@ func hide_attack_buttons() -> void:
 		# Skip the cancel button — it's a permanent node, not dynamically generated
 		if child.name == "cancel_attack_mode_button":
 			continue
+		attack_buttons_container.remove_child(child)
 		child.queue_free()
-	
+
+	# Put back everything _render_attack_page() may have squeezed for a crowded
+	# card, so the next Pokemon starts from the authored layout rather than
+	# inheriting the last one's tight spacing.
+	attack_buttons_container.add_theme_constant_override("separation", int(ATTACK_SEP_BASE))
+	var cancel := attack_buttons_container.get_node_or_null("cancel_attack_mode_button")
+	if cancel != null:
+		cancel.custom_minimum_size.x = ATTACK_CANCEL_W_ROOMY
+	_attack_list = []
+	_attack_page = 0
+
 	attack_buttons_container.visible = false
 	main_buttons_container.visible = true
 
@@ -4152,10 +4488,31 @@ func get_attacks_for_card(card: card_object) -> Array:
 	# EX11 Delta Aura (Latias/Latios δ): while its partner is in play, the paired attack costs less.
 	attacks = powers_and_bodies.ex11_delta_aura_adjust_attacks(card, attacks)
 
-	# Any Technical Machine card (ecard1-144, ecard2's 8 Cubes, etc.): holder may use its attack INSTEAD of its own
+	# Any Technical Machine card (ecard1-144, ecard2's 8 Cubes, the ex5 Ancient TMs):
+	# "That Pokémon may use this card's attack instead of its own."
+	#
+	# "MAY ... INSTEAD OF" IS AN EXTRA OPTION, NOT A REPLACEMENT. This used to
+	# `return ac.metadata.attacks` on the first Technical Machine found, which threw
+	# away every attack the Pokemon actually had -- attaching an Ancient Technical
+	# Machine to Exploud left it with only Ice Generator and no way back. The player
+	# picks one attack per turn anyway, so offering both is what the card says.
+	#
+	# Appended with `+` rather than append() because `attacks` may still be the very
+	# array inside card.metadata; mutating it would weld the TM's attack onto the
+	# card permanently, long after the TM is discarded at end of turn.
+	var tm_extra: Array = []
+	var tm_seen: Dictionary = {}
+	for atk in attacks:
+		tm_seen[atk.get("name", "")] = true
 	for ac in card.attached_cards:
 		if "Technical Machine" in ac.metadata.get("subtypes", []):
-			return ac.metadata.get("attacks", [])
+			for atk in ac.metadata.get("attacks", []):
+				var tm_name = atk.get("name", "")
+				if tm_name != "" and not tm_seen.has(tm_name):
+					tm_seen[tm_name] = true
+					tm_extra.append(atk)
+	if not tm_extra.is_empty():
+		attacks = attacks + tm_extra
 
 	# GYM1 Recall (gym1-116): this turn the Active may also use any attack from its Basic / Evolution chain.
 	# We add attached_pre_evolutions' attacks to the list. Energy cost still applies per rules.
