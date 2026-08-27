@@ -589,7 +589,13 @@ func _build_opponent_rewards(col: VBoxContainer) -> void:
 	_w["card_reward"] = card
 	_add_row(col, "Card reward", card)
 
-	var pack := _make_line_edit("pack codes, comma-separated  (nothing reads this yet)", 120)
+	# The value is the pack ART BASENAME from Image_Assets/Packs/ — "gym1_a", not
+	# "Gym1-a". The UNDERSCORE matters: PackOpeningManager takes everything before
+	# the last underscore as the set id to roll cards from, so a hyphenated name
+	# rolls nothing. Match_End_Outro drops any name with no art on disk and pushes
+	# an error naming the file it looked for.
+	# Granted on the FIRST win only, like every other reward.
+	var pack := _make_line_edit("pack art names, comma-separated:  gym1_a, base5_c", 120)
 	_w["pack_reward"] = pack
 	_add_row(col, "Pack reward", pack)
 

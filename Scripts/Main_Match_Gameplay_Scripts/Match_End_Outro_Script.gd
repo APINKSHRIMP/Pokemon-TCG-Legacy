@@ -73,6 +73,15 @@ var _coin_rewards_for_anim:    Array = []   # coin filename strings
 var _card_rewards_for_anim:    Array = []   # card UID strings
 var _costume_rewards_for_anim: Array = []   # costume key strings
 var _sleeve_rewards_for_anim:  Array = []   # sleeve basename strings
+var _pack_rewards_for_anim:    Array = []   # pack ART basenames, e.g. "gym1_a"
+
+# Where the booster pack artwork lives. The name in an opponent's `pack_reward` is
+# the art BASENAME and must match a file here exactly — PackOpeningManager builds
+# both the texture path and the set id from it (see _validated_pack_arts).
+const PACK_IMAGE_DIR: String = "res://Image_Assets/Packs/"
+# Aspect-fit box for the pack reveal. The gym arts are ~457x726 and base5's is
+# 1555x2464, so this is a maximum rather than a size — _show_gift() fits to it.
+const PACK_REVEAL_BOX: Vector2 = Vector2(430, 682)
 
 var _result_dialogue: String = ""   # opponent win/loss text shown after fly-in
 
@@ -177,10 +186,15 @@ func _ready() -> void:
 	# So when there is nothing to reveal, the whole outro is ceremony over rewards the player already
 	# has, and we bail straight back to the map. transition_back_to_map() still runs the time-of-day
 	# advancement, so no progression is lost.
+	# A pack counts here even though the comment above says these arrays only drive
+	# OPTIONAL animation: a pack is the one reward that has not been granted yet at
+	# this point, because its cards do not exist until it is opened. Bailing out
+	# early with a pack owed would silently throw the reward away.
 	var has_gifts: bool = not (_coin_rewards_for_anim.is_empty()
 			and _card_rewards_for_anim.is_empty()
 			and _costume_rewards_for_anim.is_empty()
-			and _sleeve_rewards_for_anim.is_empty())
+			and _sleeve_rewards_for_anim.is_empty()
+			and _pack_rewards_for_anim.is_empty())
 	if GameState.is_transition_skipped() and not has_gifts:
 		# No win/loss jingle either — it would be cut off mid-note by the scene change below.
 		transition_back_to_map()
@@ -219,7 +233,8 @@ func _ready() -> void:
 
 	# Cash-only (no gift rewards) → exit immediately on the single click above
 	if _coin_rewards_for_anim.is_empty() and _card_rewards_for_anim.is_empty() \
-			and _costume_rewards_for_anim.is_empty() and _sleeve_rewards_for_anim.is_empty():
+			and _costume_rewards_for_anim.is_empty() and _sleeve_rewards_for_anim.is_empty() \
+			and _pack_rewards_for_anim.is_empty():
 		transition_back_to_map()
 		return
 
@@ -229,6 +244,14 @@ func _ready() -> void:
 
 
 func _input(event: InputEvent) -> void:
+	# While a reward pack is being opened, PackOpeningManager owns the screen and
+	# every click and key belongs to it. This scene is DEEPER in the tree than that
+	# autoload, and _input runs deepest-first, so without this guard the outro sees
+	# each event first and fires player_clicked — the click that turns over a card
+	# in the pack would also advance the gift sequence underneath it.
+	if PackOpeningManager.is_active():
+		return
+
 	# Space / Enter / Escape do whatever a click would do here — skip a reward
 	# animation, or advance the dialogue and the gift reveal. Escape used to call
 	# get_tree().quit(), which closed the game mid-reward-screen.
@@ -438,7 +461,87 @@ func build_rewards(is_first_win: bool) -> void:
 			row_index += 1
 			_sleeve_rewards_for_anim.append(sleeve_reward)
 
+		# --- 6. Booster pack reward (comma-separated art names) ---
+		# FIRST WIN ONLY, like every other reward in this block, and for a harder
+		# reason than the collectibles above: a pack is consumable, not a one-off
+		# collectible, so granting one on every rematch would be an unlimited
+		# source of cards worth $150-$400 a time. There is deliberately no
+		# "already owned" test to fall back on the way coins and costumes have.
+		#
+		# Nothing is granted here. Unlike the other five rewards, the CARDS DO NOT
+		# EXIST YET -- PackOpeningManager rolls the contents and writes them to the
+		# player's collection when the pack is actually opened, at the end of the
+		# gift sequence. All this does is record which packs are owed.
+		var pack_reward_str = opponent_data.get("pack_reward", "")
+		for art in _validated_pack_arts(pack_reward_str):
+			# There is no pack icon in Reward_Icons/ yet, so this borrows the card
+			# icon -- the same stand-in the sleeve row above uses.
+			reward_rows.append(_create_reward_row(
+					_format_pack_name(art), card_icon_tex, row_index))
+			row_index += 1
+			_pack_rewards_for_anim.append(art)
+
 	GameState.mark_opponent_beaten(GameState.current_opponent_name)
+
+
+## Splits a `pack_reward` field into art basenames, dropping any that have no
+## artwork on disk.
+##
+## The check is not paranoia. PackOpeningManager derives BOTH the texture path
+## (PACK_IMAGE_DIR + art + ".png") and the set id (everything before the LAST
+## UNDERSCORE) from this one string. The separator is therefore load-bearing: the
+## eight opponents that held "Gym2-c" before this was wired up would have failed
+## twice over -- no such texture, and a set id of "Gym2-c" that matches no file in
+## Card_Set_Data/, so the pack would have rolled zero cards.
+##
+## Case is NOT load-bearing, despite appearances: res:// paths are resolved
+## through the host filesystem, which on Windows folds case, so "Gym1_a" does find
+## gym1_a.png (measured, not assumed). The data was normalised to the on-disk
+## names anyway rather than leaning on that -- a set id is used as a dictionary
+## key in places where case would matter, and depending on filesystem case-folding
+## for correctness is a trap waiting for anyone who builds elsewhere.
+func _validated_pack_arts(raw: String) -> Array:
+	var out: Array = []
+	if raw.strip_edges() == "":
+		return out
+	for piece in raw.split(","):
+		var art: String = piece.strip_edges()
+		if art == "":
+			continue
+		if not ResourceLoader.exists(PACK_IMAGE_DIR + art + ".png"):
+			push_error("Match outro: pack_reward art not found, reward skipped: '%s' (expected %s%s.png)"
+					% [art, PACK_IMAGE_DIR, art])
+			continue
+		out.append(art)
+	return out
+
+
+## "gym1_a" -> "Gym Heroes Booster Pack". Falls back to the raw set id when the
+## set is not in the dictionary, so a new set reads as e.g. "ex9 Booster Pack"
+## rather than showing nothing.
+func _format_pack_name(art: String) -> String:
+	var set_id: String = art.rsplit("_", true, 1)[0]
+	return _set_display_name(set_id) + " Booster Pack"
+
+
+## set id -> printed set name, from the same dictionary the deck builder and the
+## card detail panel read. Loaded once and cached; the file is small but this is
+## called per reward row and again per reveal.
+static var _set_name_cache: Dictionary = {}
+
+func _set_display_name(set_id: String) -> String:
+	if _set_name_cache.is_empty():
+		var path := "res://Player_Data/Player_Owned_Cards/Set_ID_Names_Dictionary.json"
+		if ResourceLoader.exists(path) or FileAccess.file_exists(path):
+			var f := FileAccess.open(path, FileAccess.READ)
+			if f != null:
+				var parsed = JSON.parse_string(f.get_as_text())
+				f.close()
+				if parsed is Dictionary:
+					for entry in parsed.get("set_list", []):
+						if entry is Dictionary and entry.has("set_id"):
+							_set_name_cache[str(entry["set_id"])] = str(entry.get("set_name", ""))
+	return _set_name_cache.get(set_id, set_id)
 
 
 # Helper: create a label + icon pair for one reward row.
@@ -665,6 +768,47 @@ func _play_gift_sequence() -> void:
 		_hide_gift_message()
 		_clear_gift()
 
+	# Packs go LAST, after every other reveal is finished and cleared. Two reasons:
+	# the pack opening is the only reward that takes the screen away from this
+	# scene (PackOpeningManager builds its own overlay on the current scene), and
+	# it is the only one that hands the player cards they have not seen yet, so it
+	# is the natural crescendo.
+	for pack_art in _pack_rewards_for_anim:
+		var img: Texture2D = load(PACK_IMAGE_DIR + pack_art + ".png")
+		if img == null:
+			continue
+		# A fade-in rather than the card/coin flip: a booster pack has no back to
+		# flip from, so the costume reveal is the right animation here.
+		_show_gift(img, "pack")
+		var rect = _gift_container.get_child(0) as TextureRect
+		await _play_costume_fadein_anim(rect)
+		_show_gift_message("You received a " + _format_pack_name(pack_art) + "!")
+		await player_clicked
+		_hide_gift_message()
+		_clear_gift()
+		await _open_reward_pack(pack_art)
+
+
+## Hands one pack to PackOpeningManager and waits for the whole opening to finish.
+##
+## This is where the cards are actually rolled and written to the player's
+## collection — build_rewards() only recorded that a pack was owed.
+##
+## click_enabled is dropped for the duration. _input() also stands down while a
+## pack is open (see the guard there), but the two are not redundant: the guard
+## stops events being consumed twice in the same frame, while this stops a click
+## that lands in the gap between the overlay closing and this function resuming
+## from firing player_clicked into a sequence that is no longer awaiting one.
+func _open_reward_pack(pack_art: String) -> void:
+	if PackOpeningManager.is_active():
+		push_warning("Match outro: a pack opening is already running, skipping " + pack_art)
+		return
+	var was_click_enabled := click_enabled
+	click_enabled = false
+	PackOpeningManager.open_packs([pack_art])
+	await PackOpeningManager.all_packs_opened
+	click_enabled = was_click_enabled
+
 
 ## Sleeve basename -> readable name. Sleeves keep their own capitalisation
 ## ("Apex_Charizard", "1_Default_English") rather than being title-cased, so the
@@ -706,6 +850,7 @@ func _show_gift(tex: Texture2D, kind: String) -> void:
 		"coin":    sz = Vector2(250, 250)
 		"card":    sz = Vector2(430, 600)
 		"costume": sz = Vector2(432, 594)
+		"pack":    sz = PACK_REVEAL_BOX
 		_:         sz = Vector2(300, 300)
 
 	# ISSUE #77 FIX: these boxes were used as fixed sizes with STRETCH_SCALE, so any texture whose

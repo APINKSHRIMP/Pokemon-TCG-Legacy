@@ -887,7 +887,7 @@
     "Ex Gym Leader Blaine": {
       "coin_reward": "Energy Fire Red",
       "card_reward": "Gym2-1",
-      "pack_reward": "Gym2_c",
+      "pack_reward": "gym2_c",
       "music": "REPLACEMUSIC",
       "deck": "Burning Slot Machine",
       "prize_cards": 6,
@@ -898,7 +898,7 @@
     "Ex Gym Leader Brock": {
       "coin_reward": "Energy Fighting Brown",
       "card_reward": "Gym1-2",
-      "pack_reward": "Gym1_a",
+      "pack_reward": "gym1_a",
       "music": "REPLACEMUSIC",
       "deck": "Pewter Compassion",
       "prize_cards": 6,
@@ -909,7 +909,7 @@
     "Ex Gym Leader Erika": {
       "coin_reward": "Energy Grass Green",
       "card_reward": "Gym2-4",
-      "pack_reward": "Gym1_d",
+      "pack_reward": "gym1_d",
       "music": "REPLACEMUSIC",
       "deck": "Sunbathing",
       "prize_cards": 6,
@@ -920,7 +920,7 @@
     "Ex Gym Leader Giovanni": {
       "coin_reward": "Energy Darkness Black",
       "card_reward": "Gym2-7",
-      "pack_reward": "Gym2_d",
+      "pack_reward": "gym2_d",
       "music": "REPLACEMUSIC",
       "deck": "Kings And Queens",
       "prize_cards": 6,
@@ -931,7 +931,7 @@
     "Ex Gym Leader Koga": {
       "coin_reward": "Energy Colorless Silver",
       "card_reward": "Gym2-10",
-      "pack_reward": "Gym2_a",
+      "pack_reward": "gym2_a",
       "music": "REPLACEMUSIC",
       "deck": "Ninja Ambush",
       "prize_cards": 6,
@@ -942,7 +942,7 @@
     "Ex Gym Leader Lt. Surge": {
       "coin_reward": "Energy Lightning Gold",
       "card_reward": "Gym1-8",
-      "pack_reward": "Gym1_c",
+      "pack_reward": "gym1_c",
       "music": "REPLACEMUSIC",
       "deck": "Static Charge",
       "prize_cards": 6,
@@ -953,7 +953,7 @@
     "Ex Gym Leader Misty": {
       "coin_reward": "Energy Water Blue",
       "card_reward": "Gym2-12",
-      "pack_reward": "Gym1_b",
+      "pack_reward": "gym1_b",
       "music": "REPLACEMUSIC",
       "deck": "Cold Water Warmup",
       "prize_cards": 6,
@@ -964,7 +964,7 @@
     "Ex Gym Leader Sabrina": {
       "coin_reward": "Energy Psychic Purple",
       "card_reward": "Gym2-16",
-      "pack_reward": "Gym2_b",
+      "pack_reward": "gym2_b",
       "music": "REPLACEMUSIC",
       "deck": "Psychic Uplink",
       "prize_cards": 6,
@@ -1111,7 +1111,7 @@
     "Gym Challenge Blaine": {
       "coin_reward": "Energy Fire Red 2",
       "card_reward": "Gym1-1",
-      "pack_reward": "Gym2-c",
+      "pack_reward": "gym2_c",
       "music": "Gym Leader Challenge Battle (Pokemon Card GB2 - Duel Vs Fortress Leader)",
       "deck": "Stoke The Flames",
       "prize_cards": 6,
@@ -1122,7 +1122,7 @@
     "Gym Challenge Brock": {
       "coin_reward": "Energy Fighting Brown 2",
       "card_reward": "Gym1-1",
-      "pack_reward": "Gym1-a",
+      "pack_reward": "gym1_a",
       "music": "Gym Leader Challenge Battle (Pokemon Card GB2 - Duel Vs Fortress Leader)",
       "deck": "Pewter Crusher",
       "prize_cards": 6,
@@ -1133,7 +1133,7 @@
     "Gym Challenge Erika": {
       "coin_reward": "Energy Grass Green 2",
       "card_reward": "Gym1-1",
-      "pack_reward": "Gym1-d",
+      "pack_reward": "gym1_d",
       "music": "Gym Leader Challenge Battle (Pokemon Card GB2 - Duel Vs Fortress Leader)",
       "deck": "Life Draining Pollen",
       "prize_cards": 6,
@@ -1144,7 +1144,7 @@
     "Gym Challenge Giovanni": {
       "coin_reward": "Energy Darkness Black 2",
       "card_reward": "Gym1-1",
-      "pack_reward": "Gym2-d",
+      "pack_reward": "gym2_d",
       "music": "Gym Leader Challenge Battle (Pokemon Card GB2 - Duel Vs Fortress Leader)",
       "deck": "The Might Of The Boss",
       "prize_cards": 6,
@@ -1155,7 +1155,7 @@
     "Gym Challenge Koga": {
       "coin_reward": "Energy Colorless Silver 2",
       "card_reward": "Gym1-1",
-      "pack_reward": "Gym2-a",
+      "pack_reward": "gym2_a",
       "music": "Gym Leader Challenge Battle (Pokemon Card GB2 - Duel Vs Fortress Leader)",
       "deck": "Koga's Ninja Poison",
       "prize_cards": 6,
@@ -1166,7 +1166,7 @@
     "Gym Challenge Lt. Surge": {
       "coin_reward": "Energy Lightning Gold 2",
       "card_reward": "Gym1-1",
-      "pack_reward": "Gym1-c",
+      "pack_reward": "gym1_c",
       "music": "Gym Leader Challenge Battle (Pokemon Card GB2 - Duel Vs Fortress Leader)",
       "deck": "Power Surge",
       "prize_cards": 6,
@@ -1177,7 +1177,7 @@
     "Gym Challenge Misty": {
       "coin_reward": "Energy Water Blue 2",
       "card_reward": "Gym1-1",
-      "pack_reward": "Gym1-b",
+      "pack_reward": "gym1_b",
       "music": "Gym Leader Challenge Battle (Pokemon Card GB2 - Duel Vs Fortress Leader)",
       "deck": "Misty's Wrath",
       "prize_cards": 6,
@@ -1188,7 +1188,7 @@
     "Gym Challenge Sabrina": {
       "coin_reward": "Energy Psychic Purple 2",
       "card_reward": "Gym1-1",
-      "pack_reward": "Gym2-b",
+      "pack_reward": "gym2_b",
       "music": "Gym Leader Challenge Battle (Pokemon Card GB2 - Duel Vs Fortress Leader)",
       "deck": "Mixed Aura",
       "prize_cards": 6,
