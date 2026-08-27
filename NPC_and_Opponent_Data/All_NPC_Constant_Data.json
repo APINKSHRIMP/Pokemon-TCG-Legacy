@@ -1312,7 +1312,7 @@
     "Painter Jericho": {
       "coin_reward": "Eevee Silver",
       "card_reward": "base1-27, base1-27",
-      "music": "REPLACEMUSIC",
+      "music": "Nice_battle (PTCG2 - GRs Grass Water Forts)",
       "deck": "Art Assistants",
       "prize_cards": 2,
       "sprite": "Artist",
@@ -1652,7 +1652,7 @@
     "Youngster Joey": {
       "coin_reward": "Rattata Silver",
       "card_reward": "base1-82, base1-82",
-      "music": "REPLACEMUSIC",
+      "music": "normal_battle (PTCG)",
       "deck": "Basic Pokemon Barrage",
       "prize_cards": 2,
       "sprite": "Youngster2",

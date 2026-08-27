@@ -10,6 +10,7 @@ class_name UIInput
 #   is_advance(event)  either of the above — used by plain OK messages,
 #                      where both keys just dismiss the box
 #   is_zoom_*(event)   "hold to enlarge whatever the mouse is over"
+#   is_log_toggle(e)   "show / hide the in-match message history"
 #
 # Every message box, dialogue and yes/no prompt in the game routes its key
 # handling through here rather than testing keycodes itself. Adding controller
@@ -20,6 +21,7 @@ class_name UIInput
 #   accept — Space, Enter, numpad Enter, pad A (cross)
 #   cancel — Escape, pad B (circle)
 #   zoom   — Shift (held), pad L1
+#   log    — Caps Lock (toggle), pad Back/Select
 #
 # Two deliberate rules:
 #   - Key repeat (is_echo) is ignored. Holding Space must not tear through a
@@ -36,6 +38,7 @@ class_name UIInput
 const ACCEPT_KEYS: Array[int] = [KEY_SPACE, KEY_ENTER, KEY_KP_ENTER]
 const CANCEL_KEYS: Array[int] = [KEY_ESCAPE]
 const ZOOM_KEYS: Array[int]   = [KEY_SHIFT]
+const LOG_KEYS: Array[int]    = [KEY_CAPSLOCK]
 
 static func is_accept(event: InputEvent) -> bool:
 	if event is InputEventKey:
@@ -54,6 +57,24 @@ static func is_cancel(event: InputEvent) -> bool:
 # True for anything that should move a plain message along, whichever key it was.
 static func is_advance(event: InputEvent) -> bool:
 	return is_accept(event) or is_cancel(event)
+
+# ── Message history ──────────────────────────────────────────────────────────
+# Caps Lock opens and closes the in-match message log. It follows Shift (hold to
+# preview a card) as the second "look at something without touching the board"
+# key, and it is the only key on the board with no other job in the whole
+# project — nothing anywhere reads KEY_CAPSLOCK.
+#
+# Two things to know about it. It is a TOGGLE key at the OS level, so pressing it
+# also flips the machine's caps state; that is harmless here because a match has
+# no text fields, but do not reuse this key on a screen that does. And it is
+# edge-tested on the press only, exactly like accept/cancel, so holding it cannot
+# strobe the panel open and shut.
+static func is_log_toggle(event: InputEvent) -> bool:
+	if event is InputEventKey:
+		return _key_pressed(event) and event.keycode in LOG_KEYS
+	if event is InputEventJoypadButton:
+		return event.pressed and event.button_index == JOY_BUTTON_BACK
+	return false
 
 # ── Mouse ────────────────────────────────────────────────────────────────────
 # ISSUE #135: Godot delivers every mouse-wheel notch as an InputEventMouseButton with
@@ -74,12 +95,24 @@ static func is_scroll(event: InputEvent) -> bool:
 		MOUSE_BUTTON_WHEEL_LEFT, MOUSE_BUTTON_WHEEL_RIGHT,
 	]
 
+# The middle button is excluded for the same reason as the wheel: it has no job
+# anywhere in the game, and without this it falls through as a plain left-click —
+# middle-clicking would acknowledge a message box or pick up a card. It is on the
+# same physical control as the wheel, so a slightly heavy scroll press would fire
+# an action the player never asked for.
+static func is_inert_mouse_button(event: InputEvent) -> bool:
+	if not (event is InputEventMouseButton):
+		return false
+	if (event as InputEventMouseButton).button_index == MOUSE_BUTTON_MIDDLE:
+		return true
+	return is_scroll(event)
+
 static func is_click(event: InputEvent) -> bool:
 	if not (event is InputEventMouseButton):
 		return false
 	if not (event as InputEventMouseButton).pressed:
 		return false
-	return not is_scroll(event)
+	return not is_inert_mouse_button(event)
 
 # ── Hold-to-zoom ─────────────────────────────────────────────────────────────
 # Every enlarge-a-card/coin/sleeve preview in the game is held on Shift, not Space.

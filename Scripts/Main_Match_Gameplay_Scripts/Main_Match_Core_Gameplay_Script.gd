@@ -348,6 +348,25 @@ var _match_msgbox: DynamicMessageBox = null
 # ceiling rather than the overworld's 28 -- set_body_text() steps it down if a long line needs it.
 const MATCH_MSGBOX_HEIGHT: float = 138.0
 const MATCH_MSGBOX_FONT_SIZE: int = 40
+
+# ── MATCH LOG (Caps Lock) ────────────────────────────────────────────────────
+# Every message shown this match, oldest first, as
+# { "text": String, "turn": int, "opp": bool }. Appended by show_message(), which
+# is the single funnel all ~3,000 in-match messages pass through, so nothing else
+# had to change to capture them.
+#
+# BEST-OF-3: this is an instance var and every round loads a fresh copy of the
+# match scene through SceneCache.change_scene_to_packed(), so the log empties
+# itself between rounds with no explicit reset. Do NOT make it static.
+var _match_log: Array = []
+var _match_log_panel: MatchLogPanel = null
+var _match_log_layer: CanvasLayer = null
+var match_log_open: bool = false
+# Oldest entries are dropped past this. A long match with a lot of Powers can run
+# to several hundred messages and the panel rebuilds the whole list on open.
+const MATCH_LOG_MAX_ENTRIES: int = 250
+# Above the forfeit dialog (100), below the card preview (150).
+const MATCH_LOG_LAYER: int = 120
 @onready var coin_container = $coin_flip_container
 @onready var coin_texture = $coin_flip_container/coin_flip_texture
 @onready var opponent_blocker = $opponent_turn_input_blocker
@@ -1378,6 +1397,7 @@ func _match_msgbox_theme_key() -> String:
 
 # Displays the message box with given text and pauses execution until the player clicks
 func show_message(message_text: String) -> void:
+	_log_match_message(message_text)
 	var box := _ensure_match_msgbox()
 	# ISSUE #121: re-asserted on every show, exactly like the overworld box does in
 	# MapManager._apply_actor_chips() -- the box may have been built before the opponent data
@@ -1392,6 +1412,70 @@ func show_message(message_text: String) -> void:
 	# ISSUE #37 REVERTED (2026-07-22): the post-message pause added here was a bad change
 	# (user feedback) — it inserted a delay after EVERY message box. Removed entirely so
 	# messages dismiss instantly again.
+
+
+# ============================================================
+# MATCH LOG — Caps Lock message history
+# ============================================================
+# Records one message. Called from show_message() only, which is the single
+# funnel every in-match message goes through, so no effect script had to change.
+#
+# The entry is stamped with the turn it happened on and whose turn that was.
+# Neither is available at the ~3,000 call sites and neither needs to be: the
+# match already tracks both, so this reads them here for free. turn_number only
+# increments at the PLAYER's turn start (player_start_turn_checks), which makes
+# it a round number shared by both halves of a round — exactly what a divider
+# wants written on it.
+func _log_match_message(message_text: String) -> void:
+	var trimmed := message_text.strip_edges()
+	if trimmed == "":
+		return
+	_match_log.append({
+		"text": trimmed,
+		"turn": turn_number,
+		"opp":  opponents_turn_active,
+	})
+	if _match_log.size() > MATCH_LOG_MAX_ENTRIES:
+		_match_log = _match_log.slice(_match_log.size() - MATCH_LOG_MAX_ENTRIES)
+
+
+func _toggle_match_log() -> void:
+	if match_log_open:
+		_close_match_log()
+	else:
+		_open_match_log()
+
+
+func _open_match_log() -> void:
+	if match_log_open:
+		return
+	match_log_open = true
+	# The other half of the "this overlay owns the board" guard: card nodes sit
+	# deeper in the tree so their _input runs BEFORE this script's, and
+	# set_input_as_handled() cannot reach them. Same pattern the card preview uses.
+	CardDisplay.input_blocked = true
+
+	_match_log_layer = CanvasLayer.new()
+	_match_log_layer.layer = MATCH_LOG_LAYER
+	add_child(_match_log_layer)
+
+	_match_log_panel = MatchLogPanel.new()
+	_match_log_layer.add_child(_match_log_panel)
+	_match_log_panel.configure(_match_msgbox_theme_key(), GameState.current_opponent_name)
+	_match_log_panel.set_entries(_match_log)
+	_match_log_panel.scroll_to_bottom()
+
+
+func _close_match_log() -> void:
+	if not match_log_open:
+		return
+	match_log_open = false
+	CardDisplay.input_blocked = false
+	_match_log_panel = null
+	if _match_log_layer != null and is_instance_valid(_match_log_layer):
+		_match_log_layer.queue_free()
+	_match_log_layer = null
+
 
 # Changes the deck icon to show how many cards remain.
 # Draws ceil(count/5) stacked sleeve images, each offset -2px on x, to suggest depth.
@@ -7105,10 +7189,11 @@ func _hide_card_zoom() -> void:
 		zoom_overlay = null
 
 
-# The flag is static, so a match left while the key was still held would carry a
-# permanent "clicks are blocked" state into the next one.
+# Both flags are static, so a match left while the preview was held or the log was
+# open would carry a permanent "clicks are blocked" state into the next one.
 func _exit_tree() -> void:
 	CardDisplay.zoom_active = false
+	CardDisplay.input_blocked = false
 
 
 func _input(event: InputEvent) -> void:
@@ -7118,7 +7203,11 @@ func _input(event: InputEvent) -> void:
 	# including with a message box up, which is exactly when you want to look at the
 	# card the opponent just played. Shift is not the accept key, so opening a preview
 	# never competes with the Space/Enter that dismisses the message afterwards.
-	if UIInput.is_zoom_start(event):
+	# `not match_log_open` so Shift can't open a card preview underneath the log —
+	# the log's own swallow branch sits below this one, and this branch is
+	# deliberately first. The RELEASE is still processed unconditionally, so a
+	# Shift held across the log opening can't strand zoom_held at true.
+	if UIInput.is_zoom_start(event) and not match_log_open:
 		zoom_held = true
 		_refresh_card_zoom()
 		return
@@ -7134,6 +7223,34 @@ func _input(event: InputEvent) -> void:
 	# way out. Card nodes are deeper in the tree, so their own _input runs before this
 	# one and is blocked separately - see CardDisplay.zoom_active.
 	if is_zoomed:
+		get_viewport().set_input_as_handled()
+		return
+
+	# -- Caps Lock opens the match message log ---------------------------------
+	# Placed after the preview branches so the log can't open underneath an open
+	# card preview, and BEFORE the message-box branch below so opening the log to
+	# re-read a message doesn't also dismiss the message you opened it for.
+	if UIInput.is_log_toggle(event):
+		_toggle_match_log()
+		get_viewport().set_input_as_handled()
+		return
+
+	# While the log is open it owns the screen, exactly like the card preview
+	# above: the board is frozen and every event is swallowed so a click or a
+	# stray Space can't advance a message, pick a card or open the forfeit prompt
+	# behind something the player is still reading. Escape closes the log rather
+	# than falling through to the forfeit branch further down.
+	#
+	# Scrolling is driven by hand rather than left to the ScrollContainer -- see
+	# the note in Match_Log_Panel.gd. That is what makes the wheel work with the
+	# cursor anywhere on screen instead of only over the panel.
+	if match_log_open:
+		if UIInput.is_cancel(event):
+			_close_match_log()
+			get_viewport().set_input_as_handled()
+			return
+		if _match_log_panel != null and is_instance_valid(_match_log_panel):
+			_match_log_panel.handle_scroll_input(event)
 		get_viewport().set_input_as_handled()
 		return
 
@@ -7228,7 +7345,11 @@ func _input(event: InputEvent) -> void:
 		# a hand of 8+ cards (which goes into a scroll box) impossible to scroll through without losing
 		# the selected card. Scrolling is not a click: drop wheel events here and let the ScrollContainer
 		# under the cursor do its job.
-		if event.button_index in [MOUSE_BUTTON_WHEEL_UP, MOUSE_BUTTON_WHEEL_DOWN, MOUSE_BUTTON_WHEEL_LEFT, MOUSE_BUTTON_WHEEL_RIGHT]:
+		# The MIDDLE button is dropped by the same test. It has no job in a match and was landing here
+		# as an ordinary left-click — and since it is the same physical control as the wheel, a firm
+		# scroll press was throwing away a card selection. UIInput.is_inert_mouse_button() is the one
+		# definition of "this mouse button does nothing", shared with the card nodes.
+		if UIInput.is_inert_mouse_button(event):
 			return
 
 		if msgbox_container.visible:

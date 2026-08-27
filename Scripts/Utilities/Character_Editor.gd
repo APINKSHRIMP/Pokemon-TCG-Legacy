@@ -915,17 +915,20 @@ func _toggle_audition(button: Button) -> void:
 	_bgm_before_audition = SoundManagerScript._current_bgm_path
 	_auditioning = true
 	button.text = "STOP"
-	SoundManagerScript.play_bgm_named(music.get_item_text(music.selected), true)
+	# The preview runs on its own audio bus, so it stays audible with the music slider
+	# muted — muting the overworld loop while assigning tracks is the normal way to work.
+	# The map track is stopped anyway so the two never play over each other.
+	SoundManagerScript.stop_bgm()
+	SoundManagerScript.play_audition_bgm(music.get_item_text(music.selected))
 
 
 func _stop_audition() -> void:
 	if not _auditioning:
 		return
 	_auditioning = false
+	SoundManagerScript.stop_audition_bgm()
 	if _bgm_before_audition != "":
 		SoundManagerScript.play_bgm(_bgm_before_audition, true)
-	else:
-		SoundManagerScript.stop_bgm()
 
 
 # ============================================================
@@ -1294,7 +1297,7 @@ func _build_draft() -> Dictionary:
 		"character": to_character,
 		"rule": to_rule,
 		"remove": to_remove,
-		"entry": _build_entry(name, values),
+		"entry": _build_entry(name, values, to_remove),
 	}
 
 
@@ -1313,8 +1316,32 @@ func _overridden_in_rule(field: String) -> bool:
 
 ## The spawn-shaped entry MapManager consumes, so the draft can be shown in the
 ## world before anything is written. Position is filled in by the placement tool.
-func _build_entry(name: String, values: Dictionary) -> Dictionary:
+##
+## An edit starts from the character exactly as it resolves on disk right now,
+## expanded by CharacterSchedule -- the same call the map itself spawned them
+## through -- and only then layers the form's values on top. Building the entry out
+## of the form alone silently dropped everything the form does not ask about: a
+## patrol line's axis, distance and speed, a wanderer's radius, npc_type. The actor
+## came back standing still, and the placement tool, reading the pattern off the
+## respawned node, then believed that was the pattern the character had.
+func _build_entry(name: String, values: Dictionary, removals: Array = []) -> Dictionary:
 	var entry: Dictionary = {"name": name}
+	if _mode == Mode.EDIT:
+		entry = CharacterSchedule.to_entry(name, _resolved_body())
+		entry["name"] = name
+		# The placement tool owns where the actor stands -- it hands the position in
+		# separately, and for an edit that is wherever they already are.
+		entry.erase("position")
+		# A field the save is about to clear has to be gone here too, or the actor in
+		# front of you keeps a reward the file no longer grants.
+		for field in removals:
+			entry.erase(field)
+		# `says` is rewritten wholesale whenever the form has any text at all, so the
+		# old lines go with it. With every box emptied the file keeps what it had, and
+		# so does the actor.
+		if values.get("says") is Dictionary:
+			for key in ["meet_text", "repeat_text", "first_win_text", "rematch_win_text", "loss_text"]:
+				entry.erase(key)
 	for key in values:
 		if key == "says":
 			continue
@@ -1326,9 +1353,13 @@ func _build_entry(name: String, values: Dictionary) -> Dictionary:
 		if says.has("first_win"):   entry["first_win_text"] = says["first_win"]
 		if says.has("rematch_win"): entry["rematch_win_text"] = says["rematch_win"]
 		if says.has("loss"):        entry["loss_text"] = says["loss"]
-	if not _is_opponent():
+	if not _is_opponent() and not entry.has("npc_type"):
 		entry["npc_type"] = "text_only"
-	entry["pattern"] = "idle_random" if _is_opponent() else "idle_down"
+	# Only a brand new character needs a pattern invented for it. An edited one keeps
+	# whatever it was walking with -- the placement tool's R key is the only thing
+	# that changes a movement pattern.
+	if not entry.has("pattern"):
+		entry["pattern"] = "idle_random" if _is_opponent() else "idle_down"
 	return entry
 
 

@@ -192,7 +192,7 @@
         "axis": "horizontal",
         "distance": 210,
         "pattern": "patrol_square",
-        "speed": 120.0
+        "speed": 120
       },
       "says": {
         "meet": "how the hell did you manage to speak to me??",
@@ -207,7 +207,7 @@
         "axis": "horizontal",
         "distance": 210,
         "pattern": "patrol_line",
-        "speed": 120.0
+        "speed": 120
       },
       "says": {
         "meet": "cheating isn't cool.",
@@ -518,7 +518,7 @@
         "axis": "horizontal",
         "distance": 2700,
         "pattern": "patrol_line",
-        "speed": 130.0
+        "speed": 130
       },
       "says": {
         "meet": "*huff* *huff* I'm trying to beat my personal best again today so I can't stop and talk!!",
@@ -635,7 +635,7 @@
         "axis": "horizontal",
         "distance": 100,
         "pattern": "patrol_line",
-        "speed": 150.0
+        "speed": 150
       },
       "requires": "not met: Koga",
       "says": {
@@ -650,7 +650,7 @@
       "move": {
         "pattern": "random_wander",
         "radius": 120,
-        "speed": 30.0
+        "speed": 30
       },
       "says": {
         "meet": "lapras.",
@@ -779,7 +779,7 @@
           "move": {
             "pattern": "random_wander",
             "radius": 65,
-            "speed": 60.0
+            "speed": 60
           },
           "says": {
             "meet": "My girlfriend is out working at the juice bar today so I'm spending the morning running errands.",
@@ -888,7 +888,7 @@
       "move": {
         "pattern": "random_wander",
         "radius": 65,
-        "speed": 30.0
+        "speed": 30
       },
       "loop": false,
       "says": {
@@ -1142,7 +1142,7 @@
           "move": {
             "pattern": "random_wander",
             "radius": 65,
-            "speed": 60.0
+            "speed": 60
           },
           "says": {
             "meet": "All the Sharpedo are gone so it's safe to go to the beach again. I'm patrolling the area just to make sure.",
@@ -1290,7 +1290,7 @@
         "axis": "vertical",
         "distance": 200,
         "pattern": "patrol_line",
-        "speed": 80.0
+        "speed": 80
       },
       "says": {
         "meet": "*huff* I knew I'd be busy with the SS Anne arriving but *huff* I didn't think I'd be THIS busy....",
@@ -1318,7 +1318,7 @@
             "axis": "horizontal",
             "distance": 500,
             "pattern": "patrol_line",
-            "speed": 80.0
+            "speed": 80
           },
           "says": {
             "meet": "*huff* *huff* it's a hard graft looking after this dock. We don't have enough hard workers... Here, take this uniform. I have a lot spare because nobody wants to help out around here.",
@@ -1333,7 +1333,7 @@
             "axis": "horizontal",
             "distance": 500,
             "pattern": "patrol_line",
-            "speed": 40.0
+            "speed": 40
           },
           "says": {
             "meet": "I'm normally finished by now, but with the SS Anne arriving tomorrow there's still too much work to do.",
@@ -1352,7 +1352,7 @@
         "axis": "horizontal",
         "distance": 40,
         "pattern": "patrol_line",
-        "speed": 60.0
+        "speed": 60
       },
       "says": {
         "meet": "The SS Anne will be sailing for a long time. ",
@@ -1370,7 +1370,7 @@
             "axis": "horizontal",
             "distance": 40,
             "pattern": "patrol_line",
-            "speed": 40.0
+            "speed": 40
           }
         },
         {
@@ -1400,7 +1400,7 @@
       "move": {
         "pattern": "random_wander",
         "radius": 60,
-        "speed": 50.0
+        "speed": 50
       },
       "says": {
         "meet": "Good day. Trains run all day from here, but they're normally fully booked way in advance so you won't be able to just hop on any train and be on your way.",
@@ -1557,7 +1557,7 @@
       "move": {
         "pattern": "random_wander",
         "radius": 60,
-        "speed": 30.0
+        "speed": 30
       },
       "says": {
         "meet": "The 3 of us will be giving out winner medals tomorrow so if you think you're good enough now come back tomorrow and try and beat us!",
@@ -1571,7 +1571,7 @@
       "move": {
         "pattern": "random_wander",
         "radius": 60,
-        "speed": 30.0
+        "speed": 30
       },
       "says": {
         "meet": "Hoh Hoh, I imagine you're new in town ey? I'm Hamish one of the the 3 Card Elders in town. If you beat all 3 of us in a match we will grant you access to the Gym Hero Challenge. However... Because it's the bank holiday weekend we're having the day off!",
@@ -1593,7 +1593,7 @@
       "move": {
         "pattern": "random_wander",
         "radius": 65,
-        "speed": 40.0
+        "speed": 40
       },
       "says": {
         "meet": "I'm been tasked with litter picking with the influx of tourist.",
@@ -1635,7 +1635,7 @@
       "move": {
         "pattern": "random_wander",
         "radius": 60,
-        "speed": 50.0
+        "speed": 50
       },
       "says": {
         "meet": "I managed pick up a new coin from the shopkeeper over there. It was super expensive but I absolutely love visiting Galar so I had to have a little wooloo.",
@@ -1662,7 +1662,7 @@
         "axis": "horizontal",
         "distance": 280,
         "pattern": "patrol_line",
-        "speed": 30.0
+        "speed": 30
       },
       "says": {
         "meet": "Hello! I'm getting my daily steps in like I do every day, but I decided to do it on the beach instead today.",
@@ -1691,7 +1691,7 @@
             "axis": "horizontal",
             "distance": 2600,
             "pattern": "patrol_line",
-            "speed": 50.0
+            "speed": 50
           },
           "says": {
             "meet": "Hello! Nice to meet you, I live in the neighbourhood at number 11. I've just going for my morning walk to get my daily steps in!",
@@ -1775,7 +1775,7 @@
       "move": {
         "pattern": "random_wander",
         "radius": 65,
-        "speed": 40.0
+        "speed": 40
       },
       "says": {
         "meet": "I caught these bad looking dudes heading to the forest and they gave me some interesting cards and went on their way.",
@@ -1914,7 +1914,7 @@
         "axis": "vertical",
         "distance": 140,
         "pattern": "patrol_line",
-        "speed": 20.0
+        "speed": 20
       },
       "says": {
         "meet": "Some people hate bugs but I love them! Do you love bugs too?",
@@ -2269,7 +2269,7 @@
       "move": {
         "pattern": "random_wander",
         "radius": 65,
-        "speed": 40.0
+        "speed": 40
       },
       "says": {
         "meet": "I might be the garden manager but I do know how to have fun.",
@@ -2350,7 +2350,7 @@
       "move": {
         "pattern": "random_wander",
         "radius": 60,
-        "speed": 40.0
+        "speed": 40
       },
       "says": {
         "meet": "Well that's incredibly disappointing. I was hoping to have a trek through the forest but they've told me it's shut so I have nowhere to go now.",
@@ -2375,7 +2375,7 @@
       "move": {
         "pattern": "random_wander",
         "radius": 60,
-        "speed": 40.0
+        "speed": 40
       },
       "says": {
         "meet": "I've been hiking for hours and only just managed to reach the harbour and found everything is closed so now I have nothing to do for the evening.",
@@ -2421,7 +2421,7 @@
       ]
     },
     "Painter Jericho": {
-      "at": [-565, 2375],
+      "at": [-565, 2372],
       "move": "idle_right",
       "says": {
         "meet": "The evening sun is the most perfect time to come here and paint... or play cards!",
@@ -2443,7 +2443,8 @@
           "days": "4-8/2",
           "times": "E,N"
         }
-      ]
+      ],
+      "sleeve": "1_Default_English"
     },
     "RIVAL 1": {
       "days": "1",
@@ -2553,7 +2554,7 @@
         "axis": "vertical",
         "distance": 200,
         "pattern": "patrol_line",
-        "speed": 60.0
+        "speed": 60
       },
       "says": {
         "meet": "I'm trying out some new techniques using statuses. If we battle I'll show you how good they are.",
@@ -2575,7 +2576,8 @@
           "days": "4,8",
           "times": "M"
         }
-      ]
+      ],
+      "sleeve": "1_Default_English"
     },
     "Swimmer Jordan": {
       "at": [450, 2590],
@@ -2625,7 +2627,7 @@
         "axis": "horizontal",
         "distance": 250,
         "pattern": "patrol_line",
-        "speed": 50.0
+        "speed": 50
       },
       "says": {
         "meet": "I'm training for a Quadrathlon. It's a 1000m Swim, Bike, Run and then 100 TCG matches!",
@@ -2650,7 +2652,7 @@
       ]
     },
     "Test All Heads": {
-      "at": [-359.0, 2409.0],
+      "at": [-359, 2409],
       "days": "0",
       "times": "M,A",
       "move": "idle_down",
@@ -2675,7 +2677,7 @@
       "sprite": "Gambler"
     },
     "Test All Tails": {
-      "at": [-299.0, 2409.0],
+      "at": [-299, 2409],
       "days": "0",
       "times": "M,A",
       "move": "idle_down",
@@ -2700,7 +2702,7 @@
       "sprite": "Biker"
     },
     "Test Bench Limit": {
-      "at": [-359.0, 2479.0],
+      "at": [-359, 2479],
       "days": "0",
       "times": "M,A",
       "move": "idle_down",
@@ -2725,7 +2727,7 @@
       "sprite": "Tuber_M"
     },
     "Test Combo Best Of Three": {
-      "at": [-119.0, 2479.0],
+      "at": [-119, 2479],
       "days": "0",
       "times": "M,A",
       "move": "idle_down",
@@ -2769,7 +2771,7 @@
       "sprite": "Elder"
     },
     "Test Double Healing": {
-      "at": [-359.0, 2339.0],
+      "at": [-359, 2339],
       "days": "0",
       "times": "M,A",
       "move": "idle_down",
@@ -2794,7 +2796,7 @@
       "sprite": "Aromalady"
     },
     "Test Double Poison": {
-      "at": [-419.0, 2479.0],
+      "at": [-419, 2479],
       "days": "0",
       "times": "M,A",
       "move": "idle_down",
@@ -2819,7 +2821,7 @@
       "sprite": "Ninjaboy"
     },
     "Test Double Prizes": {
-      "at": [-239.0, 2339.0],
+      "at": [-239, 2339],
       "days": "0",
       "times": "M,A",
       "move": "idle_down",
@@ -2843,7 +2845,7 @@
       "sprite": "Richboy"
     },
     "Test Draw Two": {
-      "at": [1.0, 2269.0],
+      "at": [1, 2269],
       "days": "0",
       "times": "M,A",
       "move": "idle_down",
@@ -2868,7 +2870,7 @@
       "sprite": "Artist"
     },
     "Test End Of Turn Heal": {
-      "at": [61.0, 2339.0],
+      "at": [61, 2339],
       "days": "0",
       "times": "M,A",
       "move": "idle_down",
@@ -2893,7 +2895,7 @@
       "sprite": "Lady"
     },
     "Test Energy Full Heal": {
-      "at": [-239.0, 2409.0],
+      "at": [-239, 2409],
       "days": "0",
       "times": "M,A",
       "move": "idle_down",
@@ -2917,7 +2919,7 @@
       "sprite": "Swimmer_M"
     },
     "Test Energy Halve HP": {
-      "at": [-179.0, 2409.0],
+      "at": [-179, 2409],
       "days": "0",
       "times": "M,A",
       "move": "idle_down",
@@ -2941,7 +2943,7 @@
       "sprite": "Burglar"
     },
     "Test Evolve Full Heal": {
-      "at": [-119.0, 2409.0],
+      "at": [-119, 2409],
       "days": "0",
       "times": "M,A",
       "move": "idle_down",
@@ -2965,7 +2967,7 @@
       "sprite": "Twin1"
     },
     "Test Evolved Bonus": {
-      "at": [-119.0, 2269.0],
+      "at": [-119, 2269],
       "days": "0",
       "times": "M,A",
       "move": "idle_down",
@@ -2990,7 +2992,7 @@
       "sprite": "Gardener"
     },
     "Test Fire Bonus": {
-      "at": [-419.0, 2269.0],
+      "at": [-419, 2269],
       "days": "0",
       "times": "M,A",
       "move": "idle_down",
@@ -3016,7 +3018,7 @@
       "sprite": "Firebreather"
     },
     "Test Free Retreat": {
-      "at": [-179.0, 2479.0],
+      "at": [-179, 2479],
       "days": "0",
       "times": "M,A",
       "move": "idle_down",
@@ -3040,7 +3042,7 @@
       "sprite": "Swimmer_F"
     },
     "Test Grass Defense": {
-      "at": [-299.0, 2339.0],
+      "at": [-299, 2339],
       "days": "0",
       "times": "M,A",
       "move": "idle_down",
@@ -3066,7 +3068,7 @@
       "sprite": "Bugcatcher"
     },
     "Test Heavy Retreat": {
-      "at": [-239.0, 2479.0],
+      "at": [-239, 2479],
       "days": "0",
       "times": "M,A",
       "move": "idle_down",
@@ -3091,7 +3093,7 @@
       "sprite": "Hiker2"
     },
     "Test Ignore Resistance": {
-      "at": [-299.0, 2269.0],
+      "at": [-299, 2269],
       "days": "0",
       "times": "M,A",
       "move": "idle_down",
@@ -3115,7 +3117,7 @@
       "sprite": "Youngster3"
     },
     "Test Ignore Weakness": {
-      "at": [-359.0, 2269.0],
+      "at": [-359, 2269],
       "days": "0",
       "times": "M,A",
       "move": "idle_down",
@@ -3139,7 +3141,7 @@
       "sprite": "Youngster2"
     },
     "Test Ignore Weakness And Resistance": {
-      "at": [-239.0, 2269.0],
+      "at": [-239, 2269],
       "days": "0",
       "times": "M,A",
       "move": "idle_down",
@@ -3163,7 +3165,7 @@
       "sprite": "Gambler"
     },
     "Test Max HP Minus": {
-      "at": [61.0, 2409.0],
+      "at": [61, 2409],
       "days": "0",
       "times": "M,A",
       "move": "idle_down",
@@ -3188,7 +3190,7 @@
       "sprite": "Jogger"
     },
     "Test Max HP Plus": {
-      "at": [1.0, 2409.0],
+      "at": [1, 2409],
       "days": "0",
       "times": "M,A",
       "move": "idle_down",
@@ -3213,7 +3215,7 @@
       "sprite": "Battlegirl"
     },
     "Test No Healing": {
-      "at": [-419.0, 2339.0],
+      "at": [-419, 2339],
       "days": "0",
       "times": "M,A",
       "move": "idle_down",
@@ -3237,7 +3239,7 @@
       "sprite": "Doctor"
     },
     "Test No Retreat": {
-      "at": [-179.0, 2269.0],
+      "at": [-179, 2269],
       "days": "0",
       "times": "M,A",
       "move": "idle_down",
@@ -3261,7 +3263,7 @@
       "sprite": "Hiker"
     },
     "Test No Status": {
-      "at": [-419.0, 2409.0],
+      "at": [-419, 2409],
       "days": "0",
       "times": "M,A",
       "move": "idle_down",
@@ -3285,7 +3287,7 @@
       "sprite": "Sailor"
     },
     "Test Powers Blocked": {
-      "at": [-179.0, 2339.0],
+      "at": [-179, 2339],
       "days": "0",
       "times": "M,A",
       "move": "idle_down",
@@ -3309,7 +3311,7 @@
       "sprite": "Psychic_F"
     },
     "Test Rainbow Energy": {
-      "at": [-59.0, 2339.0],
+      "at": [-59, 2339],
       "days": "0",
       "times": "M,A",
       "move": "idle_down",
@@ -3333,7 +3335,7 @@
       "sprite": "Guitarist"
     },
     "Test Raw Damage Only": {
-      "at": [-119.0, 2339.0],
+      "at": [-119, 2339],
       "days": "0",
       "times": "M,A",
       "move": "idle_down",
@@ -3357,7 +3359,7 @@
       "sprite": "Blackbelt"
     },
     "Test Sleeve": {
-      "at": [-59.0, 2479.0],
+      "at": [-59, 2479],
       "days": "0",
       "times": "M,A",
       "move": "idle_down",
@@ -3377,7 +3379,7 @@
       "sprite": "Lass"
     },
     "Test Small Hands": {
-      "at": [-299.0, 2479.0],
+      "at": [-299, 2479],
       "days": "0",
       "times": "M,A",
       "move": "idle_down",
@@ -3402,7 +3404,7 @@
       "sprite": "Tuber_F"
     },
     "Test Stage Bonus": {
-      "at": [-59.0, 2269.0],
+      "at": [-59, 2269],
       "days": "0",
       "times": "M,A",
       "move": "idle_down",
@@ -3428,7 +3430,7 @@
       "sprite": "Worker"
     },
     "Test Trainer Tax": {
-      "at": [1.0, 2339.0],
+      "at": [1, 2339],
       "days": "0",
       "times": "M,A",
       "move": "idle_down",
@@ -3453,7 +3455,7 @@
       "sprite": "Gentleman"
     },
     "Test Two Energy": {
-      "at": [-59.0, 2409.0],
+      "at": [-59, 2409],
       "days": "0",
       "times": "M,A",
       "move": "idle_down",
@@ -3478,7 +3480,7 @@
       "sprite": "Guitarist2"
     },
     "Test Zero Damage": {
-      "at": [61.0, 2269.0],
+      "at": [61, 2269],
       "days": "0",
       "times": "M,A",
       "move": "idle_down",
@@ -3590,11 +3592,11 @@
       "move": {
         "pattern": "random_wander",
         "radius": 65,
-        "speed": 60.0
+        "speed": 60
       },
       "says": {
         "meet": "I just got given some cards off my grandma, she's so cool. I'm not really good at battling yet but it's a lot of fun!",
-        "repeat": "I'm getting better at playing!'",
+        "repeat": "I'm getting better at playing!",
         "first_win": "Take these full heal cards, you can use them to heal any status conditions your pokemon get. They're really useful.",
         "rematch_win": "I'm going to win one day!",
         "loss": "I didn't expect to win at all! These cards must be really good."
@@ -3608,7 +3610,8 @@
           "days": "2,6",
           "times": "M,A"
         }
-      ]
+      ],
+      "sleeve": "1_Default_English"
     }
   }
 }

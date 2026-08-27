@@ -184,7 +184,10 @@ static func _rule_sets(character: Dictionary, rule_index: int, field: String) ->
 
 
 ## Expand one character body into the legacy entry shape the spawner consumes.
-static func _to_entry(name: String, body: Dictionary) -> Dictionary:
+## Public because the character editor rebuilds the same entry when it respawns an
+## edited actor -- expanding `move` by hand a second time there is how a patrol line
+## goes missing the moment somebody edits the dialogue.
+static func to_entry(name: String, body: Dictionary) -> Dictionary:
 	var entry: Dictionary = {"name": name}
 
 	var at = body.get("at")
@@ -286,7 +289,7 @@ static func cast_for(map_name: String, day: int, time_of_day: String,
 			match body.get("kind", ""):
 				"npc":      target = "npcs"
 				"opponent": target = "opponents"
-			var built := _to_entry(name, body)
+			var built := to_entry(name, body)
 			# `at_owner` / `move_owner` record where the value actually came from: the
 			# rule index if that rule overrode it, or -1 for the character's defaults.
 			# The placement tool edits the field where it LIVES, so moving a character
@@ -326,7 +329,7 @@ static func find_opponent(map_name: String, opponent_name: String,
 		for key in character:
 			if key not in SCHEDULE_KEYS:
 				body[key] = character[key]
-		return merge_constants(_to_entry(matched, body), "opponents", matched)
+		return merge_constants(to_entry(matched, body), "opponents", matched)
 	return {}
 
 

@@ -20,6 +20,13 @@ var is_face_down: bool = false
 # everything while a preview is up" guard cannot reach them. This is that guard's other half.
 static var zoom_active: bool = false
 
+# The same guard for any OTHER full-screen match overlay that owns the board — currently
+# the Caps Lock message log. Kept separate from zoom_active rather than shared, so closing
+# one overlay can never clear the other one's block: they are opened and closed by
+# different code paths and a single flag would let a stray _hide_card_zoom() unblock the
+# board while the log is still on screen.
+static var input_blocked: bool = false
+
 # Animation and selection variables
 var tween: Tween
 var is_selected: bool = false
@@ -142,7 +149,7 @@ func _input(event: InputEvent) -> void:
 	# A card preview is open over the top of everything — clicking to close it must not
 	# also pick this card up underneath. See the zoom_active declaration above for why the
 	# screen script cannot block this on its own.
-	if zoom_active:
+	if zoom_active or input_blocked:
 		return
 
 	if event is InputEventMouseButton and event.pressed:
@@ -150,7 +157,10 @@ func _input(event: InputEvent) -> void:
 		# so scrolling with the cursor over a card counted as clicking that card and emitted
 		# card_clicked — scrolling a hand of 8+ cards kept selecting whichever card was under the
 		# cursor. Scrolling is not a click.
-		if event.button_index in [MOUSE_BUTTON_WHEEL_UP, MOUSE_BUTTON_WHEEL_DOWN, MOUSE_BUTTON_WHEEL_LEFT, MOUSE_BUTTON_WHEEL_RIGHT]:
+		# The same test now also drops the MIDDLE button, which has no job anywhere in the game and
+		# was otherwise landing here as an ordinary click. Both live in UIInput so there is one
+		# definition of "this mouse button does nothing" rather than a list copied per call site.
+		if UIInput.is_inert_mouse_button(event):
 			return
 		# Check if the click is actually on this card
 		if get_global_rect().has_point(event.position):

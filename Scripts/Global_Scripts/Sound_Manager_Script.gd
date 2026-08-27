@@ -6,10 +6,15 @@ extends Node
 # Handles all audio playback: SFX (one-shot) and BGM (looping).
 # Register this as an Autoload named "SoundManagerScript".
 #
-# Every sound in the game is routed through one of two audio buses created at boot by
-# _ensure_buses() — MUSIC_BUS for anything looping in the background, SFX_BUS for one-shots. The
-# Options screen drives their levels via GameState.set_music_volume / set_sfx_volume, so the two
-# sliders there cover the overworld, the menus AND a match without any per-scene plumbing.
+# Every sound in the game is routed through one of three audio buses created at boot by
+# _ensure_buses() — MUSIC_BUS for anything looping in the background, SFX_BUS for one-shots, and
+# AUDITION_BUS for the debug music preview. The Options screen drives the first two via
+# GameState.set_music_volume / set_sfx_volume, so the two sliders there cover the overworld, the
+# menus AND a match without any per-scene plumbing.
+#
+# AUDITION_BUS is deliberately NOT wired to either slider: the debug character editor's PLAY button
+# has to stay audible while the music slider is muted, which is exactly what you want when picking
+# opponent tracks with the overworld loop silenced. It sits at a fixed AUDITION_VOLUME instead.
 #
 # The buses are built in code rather than in a default_bus_layout.tres so there is no resource file
 # to keep in sync with this script. If you add a NEW AudioStreamPlayer anywhere outside this
@@ -19,8 +24,13 @@ extends Node
 
 # ─── Audio buses ─────────────────────────────────────────────────────────────
 
-const MUSIC_BUS := "Music"
-const SFX_BUS   := "SFX"
+const MUSIC_BUS    := "Music"
+const SFX_BUS      := "SFX"
+const AUDITION_BUS := "Audition"
+
+# TWEAKABLE — the fixed 0.0 - 1.0 level the debug music audition plays at. Matches the default music
+# volume so a track sounds in the preview roughly the way it will in a match.
+const AUDITION_VOLUME := 0.8
 
 # The player-facing volume, 0.0 - 1.0, is converted to decibels with linear_to_db(): 1.0 = 0 dB
 # (untouched), 0.5 = -6 dB, 0.1 = -20 dB. A slider sitting at exactly 0 mutes its bus outright
@@ -28,17 +38,20 @@ const SFX_BUS   := "SFX"
 func _ready() -> void:
 	_ensure_buses()
 
-# Creates the Music and SFX buses if they don't exist yet. Idempotent, so it is safe to call from
-# set_bus_volume() as well — GameState applies the saved volumes during its own _ready() and the
-# autoload order that puts this singleton first is not something to depend on silently.
+# Creates the Music, SFX and Audition buses if they don't exist yet. Idempotent, so it is safe to
+# call from set_bus_volume() as well — GameState applies the saved volumes during its own _ready()
+# and the autoload order that puts this singleton first is not something to depend on silently.
 func _ensure_buses() -> void:
-	for bus_name in [MUSIC_BUS, SFX_BUS]:
+	for bus_name in [MUSIC_BUS, SFX_BUS, AUDITION_BUS]:
 		if AudioServer.get_bus_index(bus_name) != -1:
 			continue
 		AudioServer.add_bus()
 		var idx := AudioServer.bus_count - 1
 		AudioServer.set_bus_name(idx, bus_name)
 		AudioServer.set_bus_send(idx, "Master")
+		# The audition bus has no slider behind it, so its level is set once, here.
+		if bus_name == AUDITION_BUS:
+			AudioServer.set_bus_volume_db(idx, linear_to_db(AUDITION_VOLUME))
 
 # Sets one bus to a 0.0 - 1.0 level. Callers should go through GameState so the choice is persisted.
 func set_bus_volume(bus_name: String, linear: float) -> void:
@@ -256,3 +269,41 @@ func stop_bgm() -> void:
 		bgm_player.queue_free()
 		bgm_player = null
 	_current_bgm_path = ""
+
+
+# ─── Debug music audition ────────────────────────────────────────────────────
+#
+# A second, independent BGM player on AUDITION_BUS, used by the PLAY button in the debug
+# character editor. It exists purely so the preview ignores the music slider: with the
+# overworld muted while tracks are being assigned to opponents, the preview still plays.
+#
+# It does not touch bgm_player or _current_bgm_path, so the caller decides whether the map
+# track keeps running underneath (the editor stops it, so nothing overlaps).
+
+var audition_player: AudioStreamPlayer = null
+
+# --- Audition: play a track by bare name, always looping ---
+# Restarts from the top even if the same track is already auditioning, which is what the
+# PLAY button should do. An empty name is a silent no-op.
+func play_audition_bgm(track_name: String) -> void:
+	stop_audition_bgm()
+	if track_name.strip_edges().is_empty():
+		return
+	var stream = load(bgm_path(track_name))
+	if stream == null:
+		print("SoundManager: Could not load BGM at: ", bgm_path(track_name))
+		return
+	_ensure_buses()
+	audition_player = AudioStreamPlayer.new()
+	add_child(audition_player)
+	audition_player.stream = stream
+	audition_player.bus = AUDITION_BUS
+	audition_player.stream.loop = true
+	audition_player.play()
+
+# --- Audition: stop and free the preview player ---
+func stop_audition_bgm() -> void:
+	if audition_player != null:
+		audition_player.stop()
+		audition_player.queue_free()
+		audition_player = null

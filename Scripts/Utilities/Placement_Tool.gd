@@ -335,10 +335,14 @@ func _record(actor: Node2D) -> void:
 	# Only record the pattern if R actually changed it. Writing it unconditionally
 	# replaced a structured move ({pattern, radius, speed}) with a bare pattern
 	# string, silently dropping the radius and speed the character was tuned with.
+	# Cycling R all the way back round to where it started counts as no change too,
+	# so the key is dropped again rather than left behind from the press before.
 	var was: String = str(actor.get_meta("original_pattern", ""))
 	var changed: bool = ("movement_pattern" in actor) and was != ""
 	if changed and actor.movement_pattern != was:
 		entry["pattern"] = actor.movement_pattern
+	elif changed:
+		entry.erase("pattern")
 	_pending[key] = entry
 
 
@@ -420,10 +424,23 @@ func _on_editor_confirmed(draft: Dictionary) -> void:
 	# keeps its original provenance so a positional write still lands on the rule it
 	# came from; a new one owns its defaults outright.
 	var at: Vector2
+	# What the actor is walking with right now, and what it spawned with. Both have to
+	# survive the respawn. The live pattern is what you can see it doing -- respawned
+	# from the form alone, a patrol line came back standing still. `original_pattern`
+	# is what _record() compares against to tell a deliberate R press from no change,
+	# and _refresh_actors() would otherwise stamp the editor's default onto the new
+	# node: R would then cycle on from the wrong pattern and save that.
+	var was_pattern: String = ""
 	var existing := _selected()
 	if not bool(draft.get("is_new", true)) and existing != null and is_instance_valid(existing):
 		at = existing.position
 		entry["_source"] = existing.get_meta("source", {}).duplicate(true)
+		if "movement_pattern" in existing:
+			# Set on the entry rather than on the node afterwards, so _init_movement()
+			# runs against the right pattern in _ready() -- an unsaved R press is kept
+			# this way round, not re-applied to a node that has already set itself up.
+			entry["pattern"] = existing.movement_pattern
+			was_pattern = str(existing.get_meta("original_pattern", existing.movement_pattern))
 		# Respawned rather than reconfigured: WorldObjectBase loads its sprite sheet
 		# in _ready(), so assigning a new sprite to a live node changes nothing.
 		if _tinted == existing:
@@ -447,6 +464,9 @@ func _on_editor_confirmed(draft: Dictionary) -> void:
 	if actor == null:
 		_flash("[color=red]could not spawn %s[/color]" % name)
 		return
+	# Before _refresh_actors(), which only stamps this meta on an actor that has none.
+	if was_pattern != "":
+		actor.set_meta("original_pattern", was_pattern)
 
 	_drafts["%s|%s" % [section, name]] = draft
 	_refresh_actors()
