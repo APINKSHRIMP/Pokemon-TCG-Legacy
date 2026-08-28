@@ -675,6 +675,28 @@
       "sprite": "Gym_Headset2",
       "friendly_name": "Gym Receptionist",
       "message_colour": "light_blue"
+    },
+    "Coin Flipper": {
+      "sprite": "Coinflipper",
+      "message_colour": "dark_blue",
+      "friendly_name": "Coin Flipper",
+      "npc_type": "coin_flipper"
+    },
+    "Card Buyer": {
+      "sprite": "Bulkbuyer",
+      "message_colour": "orange",
+      "friendly_name": "Card Buyer",
+      "npc_type": "card_buyer"
+    },
+    "Sleeve Seller": {
+      "sprite": "Sleeveseller",
+      "message_colour": "light_pink",
+      "friendly_name": "Sleeve Seller"
+    },
+    "Weighed Pack Seller": {
+      "sprite": "Weightedseller",
+      "message_colour": "dark_red",
+      "friendly_name": "Weighed Pack Seller"
     }
   },
   "opponents": {

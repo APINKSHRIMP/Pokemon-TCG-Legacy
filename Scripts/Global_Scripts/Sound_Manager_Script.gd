@@ -90,6 +90,9 @@ const SFX_battle_loss = preload("res://Audio/SFX/battle_loss_sound.ogg")
 const SFX_taxi_intro = preload("res://Audio/SFX/Taxi_intro.ogg")
 const SFX_taxi_out   = preload("res://Audio/SFX/Taxi_out.ogg")
 
+# Celebration sting for the Gym Plaza coin flipper's five-heads win.
+const SFX_confetti_applause = preload("res://Audio/SFX/confetti applause.ogg")
+
 
 # ─── BGM registry ────────────────────────────────────────────────────────────
 #

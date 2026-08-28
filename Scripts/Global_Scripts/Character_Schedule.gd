@@ -229,6 +229,121 @@ static func to_entry(name: String, body: Dictionary) -> Dictionary:
 	return entry
 
 
+## Rewrite one character's schedule from a list of {days, times} slots.
+##
+## One pair describes a rectangle -- those days, at those times -- and a real
+## schedule often is not one ("day 2 mornings, day 3 evenings"). That is why 247 of
+## the 344 when-rules across the character files carry nothing but days and times. So
+## a single slot stays a plain pair on whatever owns it, and a longer list becomes
+## that many rules, each carrying the same overrides the group already shared.
+##
+## `group` is the rule indices the slots currently occupy -- one variant's rules, as
+## the character editor grouped them. Returns { old rule index: new rule index },
+## empty when no rule moved: splicing the list shifts everything after it, and the
+## placement tool still has positional writes holding the indices the map spawned
+## with.
+##
+## Lives here rather than in the placement tool because this is the class that owns
+## the schedule format, and because it is free of autoloads and can therefore be
+## exercised by the headless verifier.
+static func apply_schedule(character: Dictionary, schedule: Dictionary) -> Dictionary:
+	var slots: Array = schedule.get("slots", [])
+	if slots.is_empty():
+		return {}
+	var group: Array = schedule.get("group", [])
+	var rules = character.get("when")
+
+	if rules is Array and not rules.is_empty():
+		if group.is_empty():
+			# The editor always names the rules it owns. Without them there is no way
+			# to tell this variant's rules from another's, and guessing would delete
+			# somebody else's dialogue.
+			push_warning("CharacterSchedule: schedule named no owning rules, rule list left alone")
+			return {}
+		return _splice_rules(character, rules, slots, group)
+
+	if slots.size() == 1:
+		_write_slot(character, slots[0])
+		return {}
+	# More slots than one pair can state. The character's own fields stay exactly
+	# where they are and become the defaults these rules inherit; only the schedule
+	# itself moves down into them.
+	character.erase("days")
+	character.erase("times")
+	var fresh: Array = []
+	for slot in slots:
+		fresh.append(_write_slot({}, slot))
+	character["when"] = fresh
+	return {}
+
+
+## Replace the rules one variant owns with one rule per slot, in place.
+##
+## Slots are laid into the group's existing positions in order, so a rule that is not
+## part of the group never moves relative to the ones that are -- `when` is evaluated
+## top to bottom, first match wins, and shuffling it changes which variant answers.
+## Extra slots are inserted straight after the group's last position; spare positions
+## are dropped.
+static func _splice_rules(character: Dictionary, rules: Array, slots: Array,
+		group: Array) -> Dictionary:
+	# Every rule in the group states the same overrides -- that is what made it a
+	# group -- so all the new rules are built from the first one's. The whole rule is
+	# copied, days and times included, and _write_slot then overwrites those two in
+	# place: a key assigned over keeps its position, so a rule whose schedule changed
+	# comes back out of JSON.stringify in the order it went in rather than reshuffled.
+	var content: Dictionary = {}
+	var first: int = int(group[0])
+	if first >= 0 and first < rules.size() and rules[first] is Dictionary:
+		content = (rules[first] as Dictionary).duplicate(true)
+
+	var built: Array = []
+	for slot in slots:
+		built.append(_write_slot(content.duplicate(true), slot))
+
+	var out: Array = []
+	var remap: Dictionary = {}
+	var used := 0
+	var last_owned: int = int(group[group.size() - 1])
+	for i in rules.size():
+		if group.find(i) == -1:
+			remap[i] = out.size()
+			out.append(rules[i])
+			continue
+		if used < built.size():
+			remap[i] = out.size()
+			out.append(built[used])
+			used += 1
+		else:
+			# The variant now needs fewer rules than it had. Anything still pointing
+			# at a dropped one follows the group's first surviving rule rather than
+			# being left aimed at a stranger.
+			remap[i] = int(remap.get(first, 0))
+		if i == last_owned:
+			while used < built.size():
+				out.append(built[used])
+				used += 1
+	# A group index past the end of the list (the file was edited by hand since the
+	# map loaded) would otherwise lose its slots silently.
+	while used < built.size():
+		out.append(built[used])
+		used += 1
+	character["when"] = out
+	return remap
+
+
+## Put one {days, times} pair onto a dictionary. An empty spec means "always", which
+## the data spells as the key simply not being there.
+static func _write_slot(target: Dictionary, slot: Variant) -> Dictionary:
+	var pair: Dictionary = slot if slot is Dictionary else {}
+	for key in ["days", "times"]:
+		var value := str(pair.get(key, "")).strip_edges()
+		if value == "":
+			target.erase(key)
+		else:
+			target[key] = value
+	return target
+
+
 ## The cast for one slot: { "npcs": [entry, ...], "opponents": [entry, ...] }.
 static func cast_for(map_name: String, day: int, time_of_day: String,
 		condition_eval: Callable = Callable()) -> Dictionary:

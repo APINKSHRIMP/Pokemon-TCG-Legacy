@@ -91,6 +91,18 @@ const JUICE_BROKE_MSG: String     = "Sorry, you don't have enough cash!"
 const JUICE_NORMAL_MSG: String    = "Mmmmm, that juice was delicious."
 const JUICE_COIN_MSG: String      = "Mmmmm, that juice was delicious...... Hey, there was a coin in the bottom of the cup!"
 
+# ── Coin flipper state ─────────────────────────────────────────────
+# The Gym Plaza coin flipper: $50 buys five coins flipped at once, and five
+# heads wins the Gold Pokeball coin. One prize per save — once won, the NPC
+# only ever repeats COINFLIP_DONE_MSG.
+var _coinflip_dim: ColorRect = null       # full-screen dim behind the coin row
+var _coinflip_container: Control = null   # holds the coin rects, sparkles and confetti
+var _coinflip_rects: Array = []           # the five TextureRects, left to right
+# True from the moment the coins start flipping until the result message is on
+# screen. wants_message_input() reports it so keys and clicks are swallowed for
+# the whole sequence rather than falling through to the map underneath.
+var _coinflip_animating: bool = false
+
 # Container holding the displayed card/coin TextureRects during gift reveal
 var _gift_display_container: Control = null
 
@@ -168,6 +180,88 @@ const GIFT_DISPLAY_CENTER_Y_COIN    := 570.0
 const GIFT_DISPLAY_CENTER_Y_COSTUME := 570.0
 
 # ============================================================
+# COIN FLIPPER — TWEAKABLES
+# ============================================================
+
+const COINFLIP_COST: int          = 50
+const COINFLIP_COIN_COUNT: int    = 5
+# The coin being flipped IS the prize, so the same art does both jobs.
+const COINFLIP_PRIZE_COIN: String = "Zzz Pokeball Gold"
+const COINFLIP_HEADS_PATH: String = "res://Image_Assets/Coins/" + COINFLIP_PRIZE_COIN + ".png"
+# Progress key, not has_coin() — the All_Coins cheat hands out every coin in the
+# folder, and that must not silently retire the game.
+const COINFLIP_WON_FLAG: String   = "coinflip_prize_won"
+# Pity, same idea as the juice bar's per-tier counters: paid goes are counted and
+# the COINFLIP_PITY'th one is a guaranteed five heads. 1-in-32 per go otherwise,
+# so ~46% of players would still be paying at go 20 without it.
+const COINFLIP_ATTEMPTS_KEY: String = "coinflip_attempts"
+const COINFLIP_PITY: int            = 20
+
+const COINFLIP_BROKE_MSG: String  = "Sorry, you don't have enough cash!"
+const COINFLIP_START_MSG: String  = "Flipping coins, good luck!"
+const COINFLIP_WIN_MSG: String    = "Wow!! Congrats, you got all 5 heads!"
+const COINFLIP_PRIZE_MSG: String  = "Here's your prize!"
+const COINFLIP_DONE_MSG: String   = "Sorry, only one coin per person, you've already proven your luck!"
+
+# TWEAKABLE — the coin row's geometry. It is boxed in on both sides: at the top of
+# its arc a coin must still be on screen (ROW_CENTER_Y - ARC_HEIGHT - COIN_SIZE.y/2
+# >= 0, currently 90px to spare) and at rest it must sit clear of the message box's
+# chip row, which starts around y=790 (currently 140px to spare). Raising ARC_HEIGHT
+# means shrinking COIN_SIZE, or the coins clip off the top of the screen.
+const COINFLIP_COIN_SIZE    := Vector2(160, 160)
+const COINFLIP_SEPARATION   := 45.0
+const COINFLIP_ROW_CENTER_Y := 570.0   # same height the gift reveal shows a coin at
+const COINFLIP_ARC_HEIGHT   := 400.0   # identical to the in-match flip
+const COINFLIP_DIM_ALPHA    := 0.6     # same dim as the main menu overlay
+
+# TWEAKABLE — flight time of ONE coin, and the gap between coins launching.
+# DURATION and SPINS are the in-match flip exactly (12 rotations over 0.96s, i.e.
+# 0.04s per half-turn), so a coin here behaves like a coin in a battle.
+# FLIP_DURATION must stay LONGER than (COIN_COUNT - 1) * STAGGER = 0.8s, or the
+# first coin lands before the last one is even airborne — having all five in the
+# air together is the point of the staggered launch. 0.96 vs 0.8 is not much
+# headroom, so raising STAGGER means raising FLIP_DURATION with it.
+const COINFLIP_FLIP_DURATION := 0.96
+const COINFLIP_STAGGER       := 0.2
+const COINFLIP_SPINS         := 12
+const COINFLIP_HOLD          := 1.0    # all five heads held before the celebration
+const COINFLIP_HOLD_LOSS     := 0.4    # a loss gets to the point faster
+const COINFLIP_FADE          := 0.5    # fade back to the overworld
+
+# TWEAKABLE — the two confetti cannons fired on a five-head win. One explosive
+# burst per side, angled inward and up; gravity does the rest and drags them off
+# the bottom of the screen.
+const COINFLIP_CONFETTI_AMOUNT: int  = 140     # pixels per cannon
+const COINFLIP_CONFETTI_LAUNCH       := 1.5    # rise time before the win message
+const COINFLIP_CONFETTI_LIFETIME     := 4.0    # long enough to clear the screen
+const COINFLIP_CONFETTI_GRAVITY      := 500.0
+# Tuned against GRAVITY so the slowest pixel peaks around 1.0s and the fastest
+# around 1.5s, and the spray straddles the middle of the screen rather than
+# stopping short of it or blasting straight out the far side.
+const COINFLIP_CONFETTI_SPEED_MIN    := 800.0
+const COINFLIP_CONFETTI_SPEED_MAX    := 1250.0
+const COINFLIP_CONFETTI_SPREAD       := 30.0   # degrees either side of the aim
+# Aim, before normalising: mostly across the screen with a strong upward lift, so
+# the burst arcs over the coin row rather than skimming under it.
+const COINFLIP_CONFETTI_AIM_Y        := -0.75
+const COINFLIP_CONFETTI_MUZZLE_Y     := 0.72   # fraction of screen height
+const COINFLIP_CONFETTI_PIXEL_MIN    := 5.0
+const COINFLIP_CONFETTI_PIXEL_MAX    := 11.0
+# Each pixel keeps ONE of these for its whole life — see _confetti_colour_ramp().
+const COINFLIP_CONFETTI_COLOURS := [
+	Color(1.00, 0.25, 0.25),
+	Color(1.00, 0.60, 0.10),
+	Color(1.00, 0.90, 0.20),
+	Color(0.30, 0.85, 0.35),
+	Color(0.25, 0.60, 1.00),
+	Color(0.70, 0.35, 1.00),
+	Color(1.00, 0.45, 0.80),
+	Color(1.00, 1.00, 1.00),
+]
+# Gold, matching the prize coin — the same value get_coin_sparkle_colour() uses.
+const COINFLIP_SPARKLE_COLOUR := Color(1.0, 0.85, 0.2)
+
+# ============================================================
 # INITIALISE
 # ============================================================
 
@@ -231,6 +325,27 @@ func _get_shop_config(shop_id: String) -> Dictionary:
 			if parsed is Dictionary:
 				_shop_configs = parsed
 	return _shop_configs.get(shop_id, {})
+
+# ============================================================
+# CARD BUYER (Gym Plaza)
+# ============================================================
+# The bulk-sell screen, opened by answering Yes to the Card Buyer's pitch. He is an NPC
+# rather than a world-object shop, so he does not go through shops.json — but the return
+# trip is the same "menu_return" deal the coin and holo shops use: remember the map, the
+# spot and the facing, and the screen's cancel button walks straight back to them.
+# The map path is taken from _map_scene_path rather than hard-coded, so moving him to
+# another map later needs no change here.
+
+const BULK_SELL_SCENE: String = "res://Scenes/Main_Menu_Scenes/Bulk_Sell_Shop.tscn"
+
+func _open_bulk_sell_shop() -> void:
+	_hide_message()
+	GameState.save_menu_return_state(
+		_map_scene_path,
+		_player.position,
+		_player.get_current_direction()
+	)
+	SceneCache.change_scene(BULK_SELL_SCENE)
 
 # ============================================================
 # OPPONENT SPAWNING
@@ -588,7 +703,7 @@ func _npc_is_vendor(npc: Node) -> bool:
 	if npc == null:
 		return false
 	var t: String = npc.npc_type if "npc_type" in npc else ""
-	return t == "shop" or t == "juice_vendor"
+	return t == "shop" or t == "juice_vendor" or t == "coin_flipper" or t == "card_buyer"
 
 
 # ISSUE #120: rebuilds the right-hand cash chip from the live balance. Called whenever the
@@ -689,6 +804,7 @@ func _hide_message():
 	message_panel.visible = false
 	message_panel.clear_chips()
 	_clear_gift_display()
+	_clear_coinflip_display()
 	_pending_confirm_yes = Callable()
 	_player.can_move = true
 	if current_opponent != null:
@@ -752,6 +868,7 @@ func show_interactable_confirm(text: String, on_yes: Callable) -> void:
 func wants_message_input() -> bool:
 	return _gift_reveal_active \
 		or _validation_popup_active \
+		or _coinflip_animating \
 		or (message_panel != null and message_panel.visible)
 
 func handle_message_accept() -> void:
@@ -840,6 +957,16 @@ func _on_yes_pressed():
 	# Juice vendor — handle purchase inline, bypass the shop/battle paths below
 	if current_npc != null and current_npc.npc_type == "juice_vendor":
 		_handle_juice_purchase()
+		return
+
+	# Coin flipper — take the entry fee and set the five coins up on screen
+	if current_npc != null and current_npc.npc_type == "coin_flipper":
+		_handle_coinflip_entry()
+		return
+
+	# Card buyer — his whole offer is a full screen, so hand over to it
+	if current_npc != null and current_npc.npc_type == "card_buyer":
+		_open_bulk_sell_shop()
 		return
 
 	# Shop NPC — open the appropriate menu scene from shop config
@@ -1015,6 +1142,29 @@ func _on_player_npc_interact(npc: Node):
 	if npc.npc_type == "juice_vendor":
 		npc.refresh_bubble()
 		_show_message_with_choices(_juice_greeting_text())   # ISSUE #120: cash chip comes with it
+		return
+
+	# Coin flipper: $50 for five simultaneous flips, five heads wins the prize coin.
+	# Once the prize is won the game is over for good and the Yes/No offer is
+	# replaced by a flat refusal — read has_been_met() BEFORE marking, or the
+	# first-ever greeting would already count as a repeat.
+	if npc.npc_type == "coin_flipper":
+		var seen_before: bool = npc.has_been_met() and npc.repeat_text != ""
+		npc.mark_as_met()
+		npc.refresh_bubble()
+		if _coinflip_already_won():
+			_show_message_with_ok(COINFLIP_DONE_MSG)
+		else:
+			_show_message_with_choices(npc.repeat_text if seen_before else npc.meet_text)
+		return
+
+	# Card buyer: buys every copy of a card beyond the fourth, priced by rarity. The pitch
+	# is a plain Yes/No; everything else happens on his own screen (Bulk_Sell_Shop).
+	if npc.npc_type == "card_buyer":
+		var buyer_seen: bool = npc.has_been_met() and npc.repeat_text != ""
+		npc.mark_as_met()
+		npc.refresh_bubble()
+		_show_message_with_choices(npc.repeat_text if buyer_seen else npc.meet_text)
 		return
 
 	# Costume-gated NPC: special greeting + gift only while the player wears
@@ -1816,6 +1966,357 @@ func _handle_juice_purchase() -> void:
 
 	# Chain to the result message via the existing OK pipeline
 	_on_ok_pressed()
+
+# ============================================================
+# COIN FLIPPER
+# ------------------------------------------------------------
+# $50 buys one go. Five coins are laid out over a dimmed screen showing heads,
+# then launched a fifth of a second apart, briefly leaving all five in the air
+# together; they land in the same order. Five heads wins the Gold Pokeball coin,
+# once per save, and the 20th paid go wins it outright (COINFLIP_PITY).
+#
+# The whole run is one await chain hanging off _run_coinflip_sequence(), driven
+# by the existing message pipeline at three points:
+#   Yes on the offer      -> _handle_coinflip_entry()   (pays, builds the row)
+#   OK on "good luck!"    -> _run_coinflip_sequence()   (via _pending_ok_action)
+#   OK on the win message -> _on_coinflip_prize_ack()   (fades out, then gifts)
+# A loss just ends on its own OK, which falls through to the normal dismiss.
+# ============================================================
+
+func _coinflip_already_won() -> bool:
+	return bool(GameState.progress.get(COINFLIP_WON_FLAG, false))
+
+# Yes on the offer. Charges the fee and puts the coin row on screen behind the
+# "good luck" message, which is what actually starts the flips when dismissed.
+func _handle_coinflip_entry() -> void:
+	if GameState.get_cash() < COINFLIP_COST:
+		_show_message_with_ok(COINFLIP_BROKE_MSG)
+		return
+
+	# Count the go here, where the fee is actually taken, so add_cash()'s save
+	# below persists the counter in the same write.
+	GameState.progress[COINFLIP_ATTEMPTS_KEY] = \
+		int(GameState.progress.get(COINFLIP_ATTEMPTS_KEY, 0)) + 1
+	GameState.add_cash(-COINFLIP_COST)   # saves progress itself
+	_build_coinflip_display()
+	# The box is shown AFTER the row is built so _apply_cash_chip() reads the
+	# post-payment balance and the panel ends up on top of the new overlay.
+	_pending_ok_action = _run_coinflip_sequence
+	_show_message_with_ok(COINFLIP_START_MSG)
+
+# Dim overlay + five coins in a row, all showing heads, sitting above the world
+# but below the message box.
+func _build_coinflip_display() -> void:
+	_clear_coinflip_display()
+
+	_coinflip_dim = ColorRect.new()
+	_coinflip_dim.color = Color(0, 0, 0, COINFLIP_DIM_ALPHA)
+	_coinflip_dim.anchor_right  = 1.0
+	_coinflip_dim.anchor_bottom = 1.0
+	# IGNORE, like the gift reveal's dim. A STOP overlay eats mouse buttons before
+	# they reach the player's _unhandled_input, which is where a click on the
+	# message box is turned into a dismiss -- Space worked, clicking did nothing.
+	# Nothing is left exposed by letting them through: while the box is up the
+	# click dismisses it, and during the flips can_move is false.
+	_coinflip_dim.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_ui_layer.add_child(_coinflip_dim)
+
+	_coinflip_container = Control.new()
+	_coinflip_container.anchor_right  = 1.0
+	_coinflip_container.anchor_bottom = 1.0
+	_coinflip_container.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_ui_layer.add_child(_coinflip_container)
+
+	_ensure_back_textures_loaded()   # the coin back doubles as the tails face
+	var heads_tex: Texture2D = load(COINFLIP_HEADS_PATH)
+
+	var total_w: float = COINFLIP_COIN_COUNT * COINFLIP_COIN_SIZE.x \
+		+ (COINFLIP_COIN_COUNT - 1) * COINFLIP_SEPARATION
+	var start_x: float = get_viewport().get_visible_rect().size.x / 2.0 - total_w / 2.0
+	var top_y: float = COINFLIP_ROW_CENTER_Y - COINFLIP_COIN_SIZE.y / 2.0
+
+	_coinflip_rects.clear()
+	for i in COINFLIP_COIN_COUNT:
+		var rect := TextureRect.new()
+		rect.texture             = heads_tex
+		# Same forced-size pattern as the gift coin reveal: EXPAND_IGNORE_SIZE plus
+		# STRETCH_SCALE with size and custom_minimum_size both set, so the coin
+		# renders at exactly COINFLIP_COIN_SIZE whatever the source dimensions are.
+		rect.expand_mode         = TextureRect.EXPAND_IGNORE_SIZE
+		rect.stretch_mode        = TextureRect.STRETCH_SCALE
+		rect.custom_minimum_size = COINFLIP_COIN_SIZE
+		rect.size                = COINFLIP_COIN_SIZE
+		rect.position            = Vector2(start_x + i * (COINFLIP_COIN_SIZE.x + COINFLIP_SEPARATION), top_y)
+		# Centre pivot, so the squash reads as a spin about the coin's middle
+		# rather than it sliding up off its own top edge.
+		rect.pivot_offset        = COINFLIP_COIN_SIZE / 2.0
+		rect.mouse_filter        = Control.MOUSE_FILTER_IGNORE
+		_coinflip_container.add_child(rect)
+		_coinflip_rects.append(rect)
+
+	# Keep the message box above the overlay it was just given.
+	if message_panel != null and message_panel.get_parent() == _ui_layer:
+		_ui_layer.move_child(message_panel, _ui_layer.get_child_count() - 1)
+
+# The run itself, from the first launch through to the result message.
+func _run_coinflip_sequence() -> void:
+	message_panel.visible = false
+	_coinflip_animating = true
+
+	# Rolled up front so the landing texture is decided before anything moves.
+	# The pity go skips the rolls entirely and lands all five heads.
+	var forced_win: bool = int(GameState.progress.get(COINFLIP_ATTEMPTS_KEY, 0)) >= COINFLIP_PITY
+	var results: Array = []
+	var heads: int = 0
+	for i in COINFLIP_COIN_COUNT:
+		var landed_heads: bool = forced_win or (randi() % 2 == 0)
+		results.append(landed_heads)
+		if landed_heads:
+			heads += 1
+	var all_heads: bool = heads == COINFLIP_COIN_COUNT
+
+	# ISSUE #34: both durations go through item_time() so the Options speed preset
+	# scales them by the SAME factor and the overlap between coins is preserved.
+	var flight: float  = GameState.item_time(COINFLIP_FLIP_DURATION)
+	var stagger: float = GameState.item_time(COINFLIP_STAGGER)
+	for i in COINFLIP_COIN_COUNT:
+		if i >= _coinflip_rects.size():
+			_coinflip_animating = false   # display torn down mid-launch — never stay locked
+			return
+		# Deliberately NOT awaited — each coin owns its own tweens so they overlap.
+		_coinflip_launch_one(_coinflip_rects[i], results[i], flight)
+		if i < COINFLIP_COIN_COUNT - 1:
+			await get_tree().create_timer(stagger).timeout
+	# The last coin was launched a moment ago; wait out its whole flight, then
+	# hold every face on screen before saying anything about the result. A win
+	# earns the full beat; a loss is already obvious and moves on sooner.
+	await get_tree().create_timer(flight).timeout
+	var hold: float = COINFLIP_HOLD if all_heads else COINFLIP_HOLD_LOSS
+	await get_tree().create_timer(GameState.item_time(hold)).timeout
+
+	if not _coinflip_still_valid():
+		return
+
+	if all_heads:
+		# Win: the coins stay up. Confetti first, then the message over the top.
+		await _coinflip_celebrate()
+		if not _coinflip_still_valid():
+			return
+		_coinflip_animating = false
+		_pending_ok_action = _on_coinflip_prize_ack
+		_show_message_with_ok(COINFLIP_WIN_MSG)
+	else:
+		# Loss: back to the overworld first, then the consolation line.
+		await _fade_out_coinflip_display()
+		if not _coinflip_still_valid():
+			return
+		_coinflip_animating = false
+		_show_message_with_ok(_coinflip_loss_text(COINFLIP_COIN_COUNT - heads))
+
+# Guard for every resume point in the chain above. The awaits span seconds, and
+# anything that tears the map down in the meantime (a scene change, the message
+# box being rebuilt) must abandon the run rather than talk to freed nodes.
+func _coinflip_still_valid() -> bool:
+	if message_panel == null or not is_instance_valid(message_panel):
+		_coinflip_animating = false
+		return false
+	return true
+
+# One coin: arc up and back down while squashing through COINFLIP_SPINS
+# rotations, then settle on its rolled face. Mirrors the in-match flip_coin()
+# squash-and-swap, with the arc and the flip tween sharing one duration so the
+# coin lands exactly as it stops spinning.
+func _coinflip_launch_one(rect: TextureRect, landed_heads: bool, flight: float) -> void:
+	if rect == null or not is_instance_valid(rect):
+		return
+	SoundManagerScript.play_sfx(SoundManagerScript.SFX_coin_flip_sound)
+
+	var heads_tex: Texture2D = load(COINFLIP_HEADS_PATH)
+	var tails_tex: Texture2D = _coinback_texture
+	var start_y: float = rect.position.y
+	var half_flip: float = flight / float(COINFLIP_SPINS * 2)
+
+	var pos_tween := create_tween()
+	pos_tween.tween_property(rect, "position:y", start_y - COINFLIP_ARC_HEIGHT, flight / 2.0).set_ease(Tween.EASE_OUT)
+	pos_tween.tween_property(rect, "position:y", start_y, flight / 2.0).set_ease(Tween.EASE_IN)
+
+	var flip_tween := create_tween()
+	var faces := [tails_tex, heads_tex]
+	for i in COINFLIP_SPINS:
+		flip_tween.tween_property(rect, "scale:y", 0.0, half_flip)
+		flip_tween.tween_callback(rect.set.bind("texture", faces[i % 2]))
+		flip_tween.tween_property(rect, "scale:y", 1.0, half_flip)
+
+	await flip_tween.finished
+	if rect == null or not is_instance_valid(rect):
+		return
+
+	# The spin ends on whichever face the parity landed on, so the result face is
+	# always set explicitly rather than left to the loop.
+	rect.texture = heads_tex if landed_heads else tails_tex
+	rect.scale.y = 1.0
+	if landed_heads:
+		_start_coinflip_sparkle(rect)
+
+func _coinflip_loss_text(tails: int) -> String:
+	match tails:
+		1: return "Wow that was so close!!"
+		2: return "Very close there, almost had it!"
+		3: return "No luck at all this time."
+		4: return "That's some tough luck there."
+		_: return "Wow incredibly unlucky!!!"
+
+# OK on the win message: fade the coins away, bank the prize, then hand it over
+# through the ordinary gift pipeline (_pending_gift_display is what the NEXT OK
+# press picks up, giving the usual coin flip reveal and "You received the..." box).
+func _on_coinflip_prize_ack() -> void:
+	message_panel.visible = false
+	_coinflip_animating = true   # keep input swallowed across the fade
+	await _fade_out_coinflip_display()
+	if not _coinflip_still_valid():
+		return
+	_coinflip_animating = false
+
+	GameState.add_coin_to_collection(COINFLIP_PRIZE_COIN)
+	GameState.progress[COINFLIP_WON_FLAG] = true
+	GameState.save_progress()   # add_coin doesn't save if the coin was already owned
+
+	_prepare_gift_display("coin", COINFLIP_PRIZE_COIN)
+	_show_message_with_ok(COINFLIP_PRIZE_MSG)
+
+# ------------------------------------------------------------
+# COIN FLIPPER — EFFECTS
+# ------------------------------------------------------------
+
+# Gold sparkle over a coin that landed heads. Same shape as the gift reveal's
+# holo sparkle, but the colour is fixed — every coin here is the gold Pokeball.
+func _start_coinflip_sparkle(rect: TextureRect) -> CPUParticles2D:
+	if _coinflip_container == null or not is_instance_valid(_coinflip_container):
+		return null
+
+	var particles := CPUParticles2D.new()
+	_coinflip_container.add_child(particles)
+	particles.global_position       = rect.global_position + rect.size / 2.0
+	particles.z_index               = 5
+	particles.amount                = 20
+	particles.lifetime              = 0.9
+	particles.one_shot              = false
+	particles.explosiveness         = 0.0
+	particles.emitting              = true
+	particles.emission_shape        = CPUParticles2D.EMISSION_SHAPE_RECTANGLE
+	particles.emission_rect_extents = rect.size / 2.0
+	particles.direction             = Vector2(0, 0)
+	particles.initial_velocity_min  = 0.0
+	particles.initial_velocity_max  = 0.0
+	particles.gravity               = Vector2(0, 0)
+	particles.scale_amount_min      = 3.0
+	particles.scale_amount_max      = 6.0
+
+	var bright: Color = COINFLIP_SPARKLE_COLOUR.lightened(1)
+	var gradient := Gradient.new()
+	gradient.set_color(0, Color(bright.r, bright.g, bright.b, 0.0))
+	gradient.add_point(0.3, COINFLIP_SPARKLE_COLOUR)
+	gradient.add_point(0.5, bright)
+	gradient.set_color(3, Color(COINFLIP_SPARKLE_COLOUR.r, COINFLIP_SPARKLE_COLOUR.g, COINFLIP_SPARKLE_COLOUR.b, 0.0))
+	particles.color_ramp = gradient
+
+	return particles
+
+# Five heads: applause plus a confetti cannon fired in from each side. Returns
+# once the burst has finished climbing, which is when the win message goes up —
+# the pixels keep falling behind it.
+func _coinflip_celebrate() -> void:
+	SoundManagerScript.play_sfx(SoundManagerScript.SFX_confetti_applause)
+	_spawn_confetti_cannon(true)
+	_spawn_confetti_cannon(false)
+	await get_tree().create_timer(COINFLIP_CONFETTI_LAUNCH).timeout
+
+# One party-popper burst: every pixel leaves the muzzle at once (one_shot with
+# full explosiveness), angled across the screen and up, and gravity alone turns
+# the climb into an arc that drops off the bottom.
+func _spawn_confetti_cannon(from_left: bool) -> CPUParticles2D:
+	if _coinflip_container == null or not is_instance_valid(_coinflip_container):
+		return null
+
+	var screen: Vector2 = get_viewport().get_visible_rect().size
+	var particles := CPUParticles2D.new()
+	_coinflip_container.add_child(particles)
+
+	# Muzzle just off the edge, so the pixels fly IN rather than appearing mid-air.
+	particles.position = Vector2(
+		-40.0 if from_left else screen.x + 40.0,
+		screen.y * COINFLIP_CONFETTI_MUZZLE_Y
+	)
+	particles.z_index               = 6   # over the coins
+	particles.amount                = COINFLIP_CONFETTI_AMOUNT
+	particles.lifetime              = COINFLIP_CONFETTI_LIFETIME
+	particles.one_shot              = true
+	particles.explosiveness         = 1.0
+	particles.emission_shape        = CPUParticles2D.EMISSION_SHAPE_SPHERE
+	particles.emission_sphere_radius = 30.0
+	particles.direction             = Vector2(1.0 if from_left else -1.0, COINFLIP_CONFETTI_AIM_Y).normalized()
+	particles.spread                = COINFLIP_CONFETTI_SPREAD
+	particles.initial_velocity_min  = COINFLIP_CONFETTI_SPEED_MIN
+	particles.initial_velocity_max  = COINFLIP_CONFETTI_SPEED_MAX
+	particles.gravity               = Vector2(0, COINFLIP_CONFETTI_GRAVITY)
+	# No texture, so each particle draws as a plain square scaled to this — the
+	# "pixel" look, same as the sparkle emitters.
+	particles.scale_amount_min      = COINFLIP_CONFETTI_PIXEL_MIN
+	particles.scale_amount_max      = COINFLIP_CONFETTI_PIXEL_MAX
+	# color_initial_ramp assigns each particle ONE colour at birth;
+	# color_ramp is deliberately left unset so that colour never changes.
+	particles.color_initial_ramp    = _confetti_colour_ramp()
+	particles.emitting              = true
+
+	return particles
+
+# The confetti palette as a Gradient for color_initial_ramp. CONSTANT
+# interpolation matters: with the default blend a particle sampling between two
+# stops would come out a muddy mix, instead of one of the eight colours.
+func _confetti_colour_ramp() -> Gradient:
+	var gradient := Gradient.new()
+	gradient.interpolation_mode = Gradient.GRADIENT_INTERPOLATE_CONSTANT
+	var offsets := PackedFloat32Array()
+	var colours := PackedColorArray()
+	var n: int = COINFLIP_CONFETTI_COLOURS.size()
+	for i in n:
+		offsets.append(float(i) / float(n))
+		colours.append(COINFLIP_CONFETTI_COLOURS[i])
+	gradient.offsets = offsets
+	gradient.colors  = colours
+	return gradient
+
+# ------------------------------------------------------------
+# COIN FLIPPER — TEARDOWN
+# ------------------------------------------------------------
+
+# Fades the dimmed coin screen back to the overworld, then frees it.
+func _fade_out_coinflip_display() -> void:
+	var has_container: bool = _coinflip_container != null and is_instance_valid(_coinflip_container)
+	var has_dim: bool = _coinflip_dim != null and is_instance_valid(_coinflip_dim)
+	if not has_container and not has_dim:
+		return   # a tween with no tweeners never emits finished
+
+	var duration: float = GameState.item_time(COINFLIP_FADE)
+	var tween := create_tween()
+	tween.set_parallel(true)
+	if has_container:
+		tween.tween_property(_coinflip_container, "modulate:a", 0.0, duration)
+	if has_dim:
+		tween.tween_property(_coinflip_dim, "color:a", 0.0, duration)
+	await tween.finished
+	_clear_coinflip_display()
+
+# Removes the coin row and its dim overlay. Safe to call when nothing is up —
+# _hide_message() runs it on every dismissal.
+func _clear_coinflip_display() -> void:
+	_coinflip_rects.clear()
+	if _coinflip_container != null and is_instance_valid(_coinflip_container):
+		_coinflip_container.queue_free()
+	_coinflip_container = null
+	if _coinflip_dim != null and is_instance_valid(_coinflip_dim):
+		_coinflip_dim.queue_free()
+	_coinflip_dim = null
 
 # ============================================================
 # DECK VALIDATION (opponent restrictions)

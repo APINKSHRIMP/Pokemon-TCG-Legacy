@@ -1,0 +1,298 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://Scripts/Menu_Scripts/Bulk_Sell_Shop_Script.gd" id="1_bulk"]
+[ext_resource type="Shader" uid="uid://ccm481fk14lc8" path="res://Scripts/Shaders/Background_Scroll_Right_Top_Border.gdshader" id="2_bulk"]
+[ext_resource type="Texture2D" uid="uid://dieqv60p12hlk" path="res://Image_Assets/Backgrounds_And_Borders/Borders/horizontal_border.png" id="3_bulk"]
+[ext_resource type="Shader" uid="uid://d3gofmygrsrkm" path="res://Scripts/Shaders/Background_Scroll_Left.gdshader" id="4_bulk"]
+[ext_resource type="Theme" uid="uid://6shp5ck1tnja" path="res://UI_Themes/kenneyUI.tres" id="5_bulk"]
+[ext_resource type="Texture2D" uid="uid://he803mdt247f" path="res://Image_Assets/Backgrounds_And_Borders/Backgrounds/background5.png" id="6_bulk"]
+[ext_resource type="Theme" uid="uid://mbsg4xqnedxi" path="res://UI_Themes/kenneyUI-red.tres" id="7_bulk"]
+[ext_resource type="Theme" uid="uid://bb6vwl0h1flws" path="res://UI_Themes/kenneyUI-blue.tres" id="8_bulk"]
+[ext_resource type="Theme" uid="uid://bnhngmri4tfgr" path="res://UI_Themes/kenneyUI-green.tres" id="9_bulk"]
+[ext_resource type="Shader" uid="uid://wbryi6fdcofj" path="res://Scripts/Shaders/Background_Scroll_Right_Side_Border.gdshader" id="10_bulk"]
+[ext_resource type="Texture2D" uid="uid://gcwevp2g0xyv" path="res://Image_Assets/Backgrounds_And_Borders/Borders/full_screen_border.png" id="11_bulk"]
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_bulk1"]
+shader = ExtResource("2_bulk")
+shader_parameter/scroll_speed = -0.009
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_bulk2"]
+shader = ExtResource("4_bulk")
+shader_parameter/scroll_speed = 0.002
+shader_parameter/tint = Vector4(1, 1, 1, 1)
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_bulk3"]
+shader = ExtResource("10_bulk")
+shader_parameter/scroll_speed = -0.01
+
+[node name="BULK SELL SHOP" type="Control"]
+layout_mode = 3
+anchors_preset = 0
+offset_right = 40.0
+offset_bottom = 40.0
+script = ExtResource("1_bulk")
+
+[node name="BACKGROUND" type="Control" parent="."]
+anchors_preset = 0
+offset_top = 59.0
+offset_right = 40.0
+offset_bottom = 99.0
+
+[node name="background_scroller" type="TextureRect" parent="BACKGROUND"]
+material = SubResource("ShaderMaterial_bulk2")
+layout_mode = 0
+offset_left = -2.0000002
+offset_top = 45.000004
+offset_right = 6622.0
+offset_bottom = 4462.0
+scale = Vector2(0.29, 0.29)
+texture = ExtResource("6_bulk")
+stretch_mode = 1
+
+[node name="top_border" type="TextureRect" parent="BACKGROUND"]
+z_index = 200
+material = SubResource("ShaderMaterial_bulk1")
+layout_mode = 0
+offset_top = -59.0
+offset_right = 1921.0
+offset_bottom = 48.0
+texture = ExtResource("3_bulk")
+stretch_mode = 1
+
+[node name="bottom_border" type="TextureRect" parent="BACKGROUND"]
+z_index = 200
+material = SubResource("ShaderMaterial_bulk1")
+layout_mode = 0
+offset_top = 918.0
+offset_right = 1921.0
+offset_bottom = 1021.0
+texture = ExtResource("3_bulk")
+stretch_mode = 1
+
+[node name="list_border" type="TextureRect" parent="BACKGROUND"]
+visible = false
+z_index = -10
+material = SubResource("ShaderMaterial_bulk3")
+layout_mode = 0
+offset_top = -59.0
+offset_right = 1919.0
+offset_bottom = 1260.0
+texture = ExtResource("11_bulk")
+stretch_mode = 1
+
+[node name="list_background_scroller" type="TextureRect" parent="BACKGROUND"]
+visible = false
+z_index = -10
+material = SubResource("ShaderMaterial_bulk2")
+layout_mode = 0
+offset_left = -238.00002
+offset_top = 48.000004
+offset_right = 6386.0
+offset_bottom = 4465.0
+scale = Vector2(0.29, 0.29)
+texture = ExtResource("6_bulk")
+stretch_mode = 1
+
+[node name="large_header_text_label" type="Label" parent="."]
+z_index = 999
+layout_mode = 0
+offset_left = -40.0
+offset_top = 17.0
+offset_right = 1960.0
+offset_bottom = 89.0
+theme = ExtResource("8_bulk")
+theme_override_colors/font_color = Color(0, 0, 0, 1)
+theme_override_colors/font_shadow_color = Color(1.0187511, 1.0187511, 1.0187511, 1)
+theme_override_constants/line_spacing = 3
+theme_override_constants/shadow_offset_x = 0
+theme_override_constants/shadow_offset_y = 0
+theme_override_constants/shadow_outline_size = 20
+theme_override_font_sizes/font_size = 61
+text = "Sell Your Spare Bulk"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="CARD FANS" type="Control" parent="."]
+anchors_preset = 0
+offset_right = 40.0
+offset_bottom = 40.0
+
+[node name="PRICE LABELS" type="Control" parent="."]
+anchors_preset = 0
+offset_right = 40.0
+offset_bottom = 40.0
+
+[node name="common_price_label" type="Label" parent="PRICE LABELS"]
+z_index = 100
+layout_mode = 0
+offset_left = 40.0
+offset_top = 630.0
+offset_right = 640.0
+offset_bottom = 700.0
+theme = ExtResource("5_bulk")
+theme_override_colors/font_outline_color = Color(0, 0, 0, 1)
+theme_override_constants/outline_size = 12
+theme_override_font_sizes/font_size = 50
+text = "$5 p/card"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="uncommon_price_label" type="Label" parent="PRICE LABELS"]
+z_index = 100
+layout_mode = 0
+offset_left = 660.0
+offset_top = 630.0
+offset_right = 1260.0
+offset_bottom = 700.0
+theme = ExtResource("5_bulk")
+theme_override_colors/font_outline_color = Color(0, 0, 0, 1)
+theme_override_constants/outline_size = 12
+theme_override_font_sizes/font_size = 50
+text = "$10 p/card"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="rare_price_label" type="Label" parent="PRICE LABELS"]
+z_index = 100
+layout_mode = 0
+offset_left = 1280.0
+offset_top = 630.0
+offset_right = 1880.0
+offset_bottom = 700.0
+theme = ExtResource("5_bulk")
+theme_override_colors/font_outline_color = Color(0, 0, 0, 1)
+theme_override_constants/outline_size = 12
+theme_override_font_sizes/font_size = 50
+text = "$25 p/card"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="HOME BUTTONS" type="Control" parent="."]
+anchors_preset = 0
+offset_right = 40.0
+offset_bottom = 40.0
+
+[node name="sell_common_button" type="Button" parent="HOME BUTTONS"]
+z_index = 300
+layout_mode = 0
+offset_left = 100.0
+offset_top = 720.0
+offset_right = 580.0
+offset_bottom = 790.0
+theme = ExtResource("8_bulk")
+theme_override_font_sizes/font_size = 30
+text = "sell commons only"
+
+[node name="sell_uncommon_button" type="Button" parent="HOME BUTTONS"]
+z_index = 300
+layout_mode = 0
+offset_left = 720.0
+offset_top = 720.0
+offset_right = 1200.0
+offset_bottom = 790.0
+theme = ExtResource("8_bulk")
+theme_override_font_sizes/font_size = 30
+text = "sell uncommons"
+
+[node name="sell_rare_button" type="Button" parent="HOME BUTTONS"]
+z_index = 300
+layout_mode = 0
+offset_left = 1340.0
+offset_top = 720.0
+offset_right = 1820.0
+offset_bottom = 790.0
+theme = ExtResource("8_bulk")
+theme_override_font_sizes/font_size = 30
+text = "sell rares"
+
+[node name="sell_all_button" type="Button" parent="HOME BUTTONS"]
+z_index = 300
+layout_mode = 0
+offset_left = 510.0
+offset_top = 830.0
+offset_right = 1410.0
+offset_bottom = 900.0
+theme = ExtResource("8_bulk")
+theme_override_font_sizes/font_size = 30
+text = "sell all spare bulk"
+
+[node name="home_cancel_button" type="Button" parent="HOME BUTTONS"]
+z_index = 300
+layout_mode = 0
+offset_left = 40.0
+offset_top = 990.0
+offset_right = 384.0
+offset_bottom = 1053.0
+theme = ExtResource("7_bulk")
+text = "cancel"
+
+[node name="MONEY LABELS" type="Control" parent="."]
+anchors_preset = 0
+offset_right = 40.0
+offset_bottom = 40.0
+
+[node name="your_money_text_label" type="Label" parent="MONEY LABELS"]
+z_index = 999
+layout_mode = 0
+offset_left = 1081.0
+offset_top = 985.0
+offset_right = 1666.0
+offset_bottom = 1055.0
+theme = ExtResource("8_bulk")
+theme_override_colors/font_color = Color(0, 0, 0, 1)
+theme_override_colors/font_shadow_color = Color(1.0187511, 1.0187511, 1.0187511, 1)
+theme_override_constants/line_spacing = 3
+theme_override_constants/shadow_offset_x = 0
+theme_override_constants/shadow_offset_y = 0
+theme_override_constants/shadow_outline_size = 20
+theme_override_font_sizes/font_size = 61
+text = "Your money:"
+horizontal_alignment = 2
+vertical_alignment = 1
+
+[node name="your_money_amount" type="Label" parent="MONEY LABELS"]
+z_index = 999
+layout_mode = 0
+offset_left = 1337.0
+offset_top = 985.0
+offset_right = 1902.0
+offset_bottom = 1055.0
+theme = ExtResource("8_bulk")
+theme_override_colors/font_color = Color(0, 0, 0, 1)
+theme_override_colors/font_shadow_color = Color(1.0187511, 1.0187511, 1.0187511, 1)
+theme_override_constants/line_spacing = 3
+theme_override_constants/shadow_offset_x = 0
+theme_override_constants/shadow_offset_y = 0
+theme_override_constants/shadow_outline_size = 20
+theme_override_font_sizes/font_size = 61
+text = "0"
+horizontal_alignment = 2
+vertical_alignment = 1
+
+[node name="LIST BUTTONS" type="Control" parent="."]
+visible = false
+anchors_preset = 0
+offset_right = 40.0
+offset_bottom = 40.0
+
+[node name="list_sell_button" type="Button" parent="LIST BUTTONS"]
+z_index = 300
+layout_mode = 0
+offset_left = 1689.0
+offset_top = 940.0
+offset_right = 1915.0
+offset_bottom = 1000.0
+theme = ExtResource("9_bulk")
+theme_override_font_sizes/font_size = 23
+text = "sell all"
+
+[node name="list_cancel_button" type="Button" parent="LIST BUTTONS"]
+z_index = 300
+layout_mode = 0
+offset_left = 1689.0
+offset_top = 1008.0
+offset_right = 1915.0
+offset_bottom = 1068.0
+theme = ExtResource("7_bulk")
+theme_override_font_sizes/font_size = 23
+text = "cancel"

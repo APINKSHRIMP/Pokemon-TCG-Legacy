@@ -34,7 +34,10 @@ const DEFAULT_MUSIC := "normal_battle (PTCG)"
 const DEFAULT_PRIZE_CARDS := 6
 const DEFAULT_MESSAGE_COLOUR := "grey"
 const DEFAULT_CASH_REWARD := "100"
-const DEFAULT_DAYS := "1-20"
+## Schedule a brand new character starts on: an empty days spec is "every day", and
+## all four times. Both are what the grid opens showing, and both are easier to
+## narrow down than to build up.
+const DEFAULT_SLOTS := [{"days": "", "times": "M,A,E,N"}]
 
 const FORM_FONT_SIZE := 21
 const TITLE_FONT_SIZE := 32
@@ -118,11 +121,22 @@ var _scope_label: Label = null
 
 # Widgets, looked up by field name so reading the form back is one loop.
 var _w: Dictionary = {}
-var _time_boxes: Dictionary = {}
 var _gift_group: ButtonGroup = null
 var _gift_type: String = "none"
 
+## When this character is on the map, as [{days, times}, ...]. A list rather than one
+## pair because a schedule like "day 2 mornings, day 3 evenings" is two rules in the
+## file; SchedulePickerOverlay hands the whole list back and _build_draft writes it.
+var _slots: Array = []
+## The when-rule indices `_slots` currently occupies, ascending. Empty when the
+## character has no rules and its own top-level days/times are the schedule.
+var _owner_rules: Array = []
+## Slots belonging to the character's OTHER variants -- rules whose overrides differ
+## from the one being edited. Shown in the grid as context, never editable there.
+var _other_slots: Array = []
+
 var _picker: AssetPickerOverlay = null
+var _schedule_picker: SchedulePickerOverlay = null
 ## BGM that was playing before an audition, restored on the way out.
 var _bgm_before_audition: String = ""
 var _auditioning: bool = false
@@ -444,6 +458,24 @@ func _scope_text() -> String:
 	return "matched when-rule #%d -- a field this rule states is rewritten in the rule, one it inherits is rewritten on the defaults" % _rule_index
 
 
+## The same question for the schedule grid, which rewrites whole rules rather than
+## fields: which of the character's rules are this variant's, and therefore replaced
+## wholesale by whatever comes back from the grid.
+func _schedule_scope_text() -> String:
+	if _mode == Mode.NEW:
+		return "new character -- every slot ticked here becomes a rule in Characters/%s.json" % _map_data
+	if _owner_rules.is_empty():
+		return "this character has no when-rules, so the whole schedule is editable here"
+	var numbers: Array = []
+	for index in _owner_rules:
+		numbers.append("#%d" % int(index))
+	var owned := "when-rule " + str(numbers[0]) if numbers.size() == 1 \
+			else "when-rules " + ", ".join(numbers)
+	if _other_slots.is_empty():
+		return "editing %s -- the character's only variant" % owned
+	return "editing %s -- this character has other variants with their own dialogue or position, shown grey" % owned
+
+
 # ---- section builders --------------------------------------------------------
 
 func _build_identity(col: VBoxContainer) -> void:
@@ -482,21 +514,30 @@ func _build_identity(col: VBoxContainer) -> void:
 
 	_add_heading(col, "SCHEDULE")
 
-	var days := _make_line_edit("3-6  |  1,3,5  |  2-8/2  |  4  |  blank = every day", 40)
-	days.text_changed.connect(func(_t: String): _revalidate())
-	_w["days"] = days
-	_add_row(col, "Days", days)
-
-	var times_box := HBoxContainer.new()
-	times_box.add_theme_constant_override("separation", 24)
-	for pair in [["M", "Morning"], ["A", "Afternoon"], ["E", "Evening"], ["N", "Night"]]:
-		var cb := CheckBox.new()
-		cb.text = str(pair[1])
-		cb.add_theme_font_size_override("font_size", FORM_FONT_SIZE)
-		cb.toggled.connect(func(_p: bool): _revalidate())
-		_time_boxes[str(pair[0])] = cb
-		times_box.add_child(cb)
-	_add_row(col, "Times", times_box)
+	# One button rather than a days box and four tick boxes. "1-2,4/2" is a correct
+	# and unreadable way to say when somebody is on the map; the grid behind this
+	# button says the same thing as ticks against day numbers, and can also say
+	# things a single days/times pair cannot.
+	#
+	# Laid out like the Deck and Music rows -- value on the left, the control that
+	# changes it on the right. A lone white plate showing a value is indistinguishable
+	# from the text fields above it, and nothing would say it could be clicked.
+	var schedule_row := HBoxContainer.new()
+	schedule_row.add_theme_constant_override("separation", 10)
+	var schedule := Button.new()
+	schedule.add_theme_font_size_override("font_size", FORM_FONT_SIZE)
+	schedule.alignment = HORIZONTAL_ALIGNMENT_LEFT
+	schedule.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	schedule.pressed.connect(_open_schedule_picker)
+	_w["schedule"] = schedule
+	schedule_row.add_child(schedule)
+	var pick_days := Button.new()
+	pick_days.text = "CHOOSE"
+	pick_days.custom_minimum_size = Vector2(150, 0)
+	pick_days.add_theme_font_size_override("font_size", FORM_FONT_SIZE)
+	pick_days.pressed.connect(_open_schedule_picker)
+	schedule_row.add_child(pick_days)
+	_add_row(col, "Days & times", schedule_row)
 
 	var loop := CheckBox.new()
 	loop.text = "repeats when the calendar loops (off for story characters)"
@@ -876,6 +917,48 @@ func _asset_value(key: String) -> String:
 
 
 # ============================================================
+# SCHEDULE GRID
+# ============================================================
+
+func _open_schedule_picker() -> void:
+	if _schedule_picker != null and is_instance_valid(_schedule_picker):
+		return
+	_schedule_picker = SchedulePickerOverlay.new()
+	get_tree().current_scene.add_child(_schedule_picker)
+	_schedule_picker.picked.connect(func(slots: Array):
+		_slots = slots
+		_refresh_schedule_button()
+		_revalidate())
+	var who := _typed_name()
+	if who == "":
+		who = "NEW " + ("OPPONENT" if _is_opponent() else "NPC")
+	_schedule_picker.setup(_slots, _other_slots, _calendar(),
+			"WHEN IS %s HERE?" % who.to_upper(), _schedule_scope_text())
+
+
+## The map's calendar block, so the grid can say which days the loop generates.
+func _calendar() -> Dictionary:
+	var doc := CharacterSchedule.load_map(_map_data)
+	var calendar = doc.get("calendar", {})
+	return calendar if calendar is Dictionary else {}
+
+
+func _refresh_schedule_button() -> void:
+	var button: Button = _w.get("schedule")
+	if button == null:
+		return
+	if _slots.is_empty():
+		button.text = "(never appears -- click to choose)"
+		button.tooltip_text = ""
+		return
+	# One slot fits spelled out, which is the common case and much easier to read at
+	# a glance. Several have to go compact, and the tooltip carries the long form.
+	button.text = SchedulePickerOverlay.summarise_long(_slots) if _slots.size() == 1 \
+			else SchedulePickerOverlay.summarise(_slots)
+	button.tooltip_text = SchedulePickerOverlay.summarise_long(_slots)
+
+
+# ============================================================
 # GIFT TYPE
 # ============================================================
 
@@ -944,9 +1027,8 @@ func _stop_audition() -> void:
 func _apply_new_defaults() -> void:
 	_set_asset(_w["sprite"], DEFAULT_SPRITE)
 	_select_option(_w["message_colour"], DEFAULT_MESSAGE_COLOUR)
-	_w["days"].text = DEFAULT_DAYS
-	for letter in ["M", "A", "E", "N"]:
-		_time_boxes[letter].button_pressed = true
+	_slots = DEFAULT_SLOTS.duplicate(true)
+	_refresh_schedule_button()
 	if _is_opponent():
 		_select_music(DEFAULT_MUSIC)
 		_w["cash_reward"].text = DEFAULT_CASH_REWARD
@@ -978,6 +1060,62 @@ func _resolved_body() -> Dictionary:
 	return body
 
 
+## The schedule the grid opens on, split into what this variant owns and what the
+## character's other variants own.
+##
+## days/times are schedule keys and are stripped before the entry is built, so they
+## come from the raw body rather than the resolved one. A character with no when-rules
+## has exactly one slot: its own top-level pair. A character with rules owns every
+## rule that overrides precisely what the matched one overrides -- two rules differing
+## only in days and times are two slots of ONE appearance, which is what 247 of the
+## 344 rules in the data are. A rule that overrides anything else is a different
+## variant, with its own dialogue and position, and is not this form's to rewrite.
+func _load_schedule() -> void:
+	_slots = []
+	_owner_rules = []
+	_other_slots = []
+	var rules = _character_raw.get("when")
+	if not (rules is Array) or rules.is_empty():
+		_slots = [{
+			"days": str(_character_raw.get("days", "")),
+			"times": str(_character_raw.get("times", "")),
+		}]
+		_refresh_schedule_button()
+		return
+	# A stale -1 (the file was edited by hand since the map loaded) falls back to the
+	# first rule rather than showing an empty grid.
+	var matched: int = clampi(_rule_index, 0, rules.size() - 1)
+	var mine := _content_signature(rules[matched])
+	for i in rules.size():
+		var rule = rules[i]
+		if not (rule is Dictionary):
+			continue
+		var slot: Dictionary = {
+			"days": str(rule.get("days", "")), "times": str(rule.get("times", "")),
+		}
+		if _content_signature(rule) == mine:
+			_owner_rules.append(i)
+			_slots.append(slot)
+		else:
+			slot["rule"] = i
+			_other_slots.append(slot)
+	_refresh_schedule_button()
+
+
+## Everything a when-rule states APART from when it applies, in a stable order, so
+## two rules that differ only in days and times compare equal.
+func _content_signature(rule: Dictionary) -> String:
+	var keys: Array = []
+	for key in rule:
+		if key not in ["days", "times"]:
+			keys.append(str(key))
+	keys.sort()
+	var parts: Array = []
+	for key in keys:
+		parts.append(str(key) + "=" + JSON.stringify(rule[key]))
+	return "|".join(parts)
+
+
 func _load_values_into_form() -> void:
 	var body := _resolved_body()
 	var says = body.get("says", {})
@@ -997,17 +1135,7 @@ func _load_values_into_form() -> void:
 	# the migration made every NPC lose its sprite.
 	_w["unique_key"].text = _existing_name + "     (renaming is not supported here)"
 
-	# days / times are schedule keys and are stripped before the entry is built, so
-	# they come from the raw body -- from the matched rule when there is one.
-	var schedule_owner := _character_raw
-	var rules = _character_raw.get("when")
-	if rules is Array and _rule_index >= 0 and _rule_index < rules.size() \
-			and rules[_rule_index] is Dictionary:
-		schedule_owner = rules[_rule_index]
-	_w["days"].text = str(schedule_owner.get("days", _character_raw.get("days", "")))
-	var times := str(schedule_owner.get("times", _character_raw.get("times", "")))
-	for letter in ["M", "A", "E", "N"]:
-		_time_boxes[letter].button_pressed = times == "" or times.contains(letter)
+	_load_schedule()
 	_w["loop"].button_pressed = bool(_character_raw.get("loop", true))
 
 	_w["meet"].text = str(says.get("meet", ""))
@@ -1114,37 +1242,16 @@ func _typed_name() -> String:
 	return _w["friendly_name"].text.strip_edges()
 
 
-func _selected_times() -> String:
-	var out: Array = []
-	for letter in ["M", "A", "E", "N"]:
-		if _time_boxes[letter].button_pressed:
-			out.append(letter)
-	return ",".join(out)
-
-
-## Reject a days spec that matches nothing at all. days_match() is forgiving --
-## garbage parses to int() 0 and silently matches no day -- so a typo would create
-## a character that never appears with no error anywhere.
-func _days_valid(spec: String) -> bool:
-	var text := spec.strip_edges()
-	if text == "" or text == "*":
-		return true
-	for day in range(-1, 61):
-		if CharacterSchedule.days_match(text, day):
-			return true
-	return false
-
-
 func _problems() -> Array:
 	var out: Array = []
 	if _typed_name() == "":
 		out.append("name")
 	if _asset_value("sprite") == "":
 		out.append("sprite")
-	if not _days_valid(_w["days"].text):
-		out.append("days (matches no day)")
-	if _selected_times() == "":
-		out.append("at least one time of day")
+	# The grid cannot produce a malformed spec, only an empty one -- and a character
+	# with no slots would never appear anywhere.
+	if _slots.is_empty():
+		out.append("days & times")
 	if _is_opponent():
 		if _w["deck"].text.strip_edges() == "":
 			out.append("deck")
@@ -1262,15 +1369,6 @@ func _build_draft() -> Dictionary:
 			"rule":      to_rule[field] = values[field]
 			_:           to_character[field] = values[field]
 
-	# Schedule keys never live in constants.
-	var times := _selected_times()
-	var days: String = _w["days"].text.strip_edges()
-	if _mode == Mode.EDIT and _rule_index >= 0:
-		to_rule["days"] = days
-		to_rule["times"] = times
-	else:
-		to_character["days"] = days
-		to_character["times"] = times
 	# `loop` defaults to true, so it is only written when it is false -- writing
 	# `"loop": true` on every character would be noise in every file.
 	if not _w["loop"].button_pressed:
@@ -1303,6 +1401,12 @@ func _build_draft() -> Dictionary:
 		"character": to_character,
 		"rule": to_rule,
 		"remove": to_remove,
+		# Schedule keys never live in constants, and one slot per when-rule means the
+		# placement tool rewrites the rule list rather than two string fields.
+		"schedule": {
+			"slots": _slots.duplicate(true),
+			"group": _owner_rules.duplicate(),
+		},
 		"entry": _build_entry(name, values, to_remove),
 	}
 
@@ -1402,3 +1506,17 @@ func _cancel() -> void:
 	_stop_audition()
 	cancelled.emit()
 	queue_free()
+
+
+## Both pickers are parented to the map scene rather than to this form -- they have
+## to outrank it, and a CanvasLayer cannot nest inside another one. So neither goes
+## away on its own if the form is torn down underneath it (the placement tool frees
+## the form in its own _exit_tree), and each is an opaque full-screen backdrop: one
+## left behind is a black screen that nothing on the map can be seen or clicked
+## through.
+func _exit_tree() -> void:
+	for overlay in [_picker, _schedule_picker]:
+		if overlay != null and is_instance_valid(overlay):
+			overlay.queue_free()
+	_picker = null
+	_schedule_picker = null

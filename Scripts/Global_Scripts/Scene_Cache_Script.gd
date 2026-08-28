@@ -38,6 +38,7 @@ const SCENES_TO_PRELOAD: Array = [
 	"res://Scenes/Main_Menu_Scenes/Pack_Purchase.tscn",
 	"res://Scenes/Main_Menu_Scenes/Coin_Shop.tscn",
 	"res://Scenes/Main_Menu_Scenes/Holo_Rare_Shop.tscn",
+	"res://Scenes/Main_Menu_Scenes/Bulk_Sell_Shop.tscn",
 	# Battle scenes
 	"res://Scenes/Main_Match_Gameplay_Scenes/Main_Match_Core_GamePlay_Scene.tscn",
 	"res://Scenes/Main_Match_Gameplay_Scenes/Match_Start_Intro_Scene.tscn",

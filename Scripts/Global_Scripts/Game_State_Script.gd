@@ -1183,3 +1183,79 @@ func give_cards(card_ids_csv: String) -> void:
 		write_file.close()
 
 	print("GameState.give_cards: Gave ", ids.size(), " cards")
+
+
+# ============================================================
+# CARD REMOVING (Global)
+# ============================================================
+# The counterpart to give_cards(), written for the Card Buyer's bulk-sell screen.
+# Takes a {card_id: count} dictionary rather than a CSV because every caller so far
+# already has its counts tallied, and a 300-card sale as a comma-separated string
+# would be absurd.
+#
+# Batches per set file exactly as give_cards() does, so a 200-card sale spanning
+# seven sets is seven reads and seven writes rather than 400.
+#
+# NEVER goes below zero and never removes a card the file does not list: the sell
+# screen only ever offers copies it read out of these same files, so a mismatch
+# means something else has already changed them and the safe move is to leave the
+# entry alone rather than invent a negative.
+#
+# set_unlocked is deliberately NOT touched — selling every spare copy of a set's
+# cards does not re-lock the set.
+
+func remove_cards(counts: Dictionary) -> int:
+	if counts.is_empty():
+		return 0
+
+	# Group by set name so we only read/write each file once
+	var by_set: Dictionary = {}
+	for card_id in counts.keys():
+		var amount: int = int(counts[card_id])
+		if amount <= 0:
+			continue
+		var parts = String(card_id).split("-")
+		if parts.size() < 2:
+			push_error("GameState.remove_cards: Invalid card_id format: " + str(card_id))
+			continue
+		var set_name = parts[0]
+		if not by_set.has(set_name):
+			by_set[set_name] = {}
+		by_set[set_name][card_id] = amount
+
+	var removed_total: int = 0
+
+	for set_name in by_set.keys():
+		var json_path = OWNED_CARDS_FOLDER + set_name + "_player_owned_cards.json"
+		var file = FileAccess.open(json_path, FileAccess.READ)
+		if file == null:
+			push_error("GameState.remove_cards: Cannot open: " + json_path)
+			continue
+		var data = JSON.parse_string(file.get_as_text())
+		file.close()
+		if not (data is Dictionary and data.has("owned_cards")):
+			push_error("GameState.remove_cards: Unexpected format in: " + json_path)
+			continue
+
+		var wanted: Dictionary = by_set[set_name]
+		for entry in data["owned_cards"]:
+			var cid = entry.get("card_id", "")
+			if not wanted.has(cid):
+				continue
+			var have: int = int(entry.get("owned", 0))
+			var take: int = mini(int(wanted[cid]), have)
+			if take <= 0:
+				continue
+			entry["owned"] = have - take
+			removed_total += take
+
+		var write_file = FileAccess.open(json_path, FileAccess.WRITE)
+		if write_file == null:
+			push_error("GameState.remove_cards: Cannot write: " + json_path)
+			continue
+		write_file.store_string(JSON.stringify(data, "\t"))
+		write_file.close()
+
+	print("GameState.remove_cards: Removed ", removed_total, " cards across ",
+		by_set.size(), " set file(s)")
+	return removed_total

@@ -385,7 +385,38 @@ func _open_editor(mode: int) -> void:
 	get_tree().current_scene.add_child(_editor)
 	_editor.confirmed.connect(_on_editor_confirmed)
 	_editor.cancelled.connect(_on_editor_cancelled)
+	# Before setup(): an edit whose character has vanished from the file cancels from
+	# inside setup(), and _on_editor_cancelled has to be the thing that thaws.
+	_freeze_player_for_form()
 	_editor.setup(_map_data, mode, actor, _draft_names(), _draft_coins())
+
+
+## The player must not walk while the form is on screen.
+##
+## Player_Object polls Input.is_key_pressed(KEY_W/A/S/D) straight from the OS in
+## _physics_process, so neither GUI focus nor a consumed event stops it: every
+## letter typed into a dialogue box walked the player, every capital held Shift and
+## ran them at the debug 10x multiplier, and the tool has already taken their
+## collision off -- so they left the map through the tree line while the form hid
+## the view. Confirm then dropped the new character on top of them, thousands of
+## pixels outside the map, and the camera (clamped to its limits) came back showing
+## nothing but empty space: an entirely black screen with no way to tell why.
+func _freeze_player_for_form() -> void:
+	if _player != null and is_instance_valid(_player):
+		_player.lock_movement()
+
+
+## Ctrl is polled in _process(), which stands down entirely while the form is open,
+## so _ctrl_held can be stale by the time we get back. Re-read it rather than
+## unlocking into a Ctrl that is still being held.
+func _thaw_player_after_form() -> void:
+	if _player == null or not is_instance_valid(_player):
+		return
+	_ctrl_held = Input.is_key_pressed(KEY_CTRL)
+	if _ctrl_held:
+		_player.lock_movement()
+	else:
+		_player.unlock_movement()
 
 
 ## Names and coins the drafts have already claimed. The editor reads the files on
@@ -411,11 +442,13 @@ func _draft_coins() -> Array:
 
 func _on_editor_cancelled() -> void:
 	_editor = null
+	_thaw_player_after_form()
 	_update_hud()
 
 
 func _on_editor_confirmed(draft: Dictionary) -> void:
 	_editor = null
+	_thaw_player_after_form()
 	var section: String = str(draft.get("section", "npcs"))
 	var name: String = str(draft.get("name", ""))
 	var entry: Dictionary = draft.get("entry", {}).duplicate(true)
@@ -514,6 +547,10 @@ func _save() -> void:
 	# positional pass below goes looking for it by name.
 	var constants: Dictionary = {}
 	var characters_written := 0
+	## "section|name" -> { old rule index: new rule index }, for the characters whose
+	## rule list a schedule change reshaped. The positional writes below still hold
+	## the indices the map spawned with.
+	var remaps: Dictionary = {}
 	if not _drafts.is_empty():
 		var cfile := FileAccess.open(CONSTANTS_PATH, FileAccess.READ)
 		if cfile == null:
@@ -526,7 +563,11 @@ func _save() -> void:
 			return
 		constants = parsed
 		for key in _drafts:
-			_apply_draft(doc, constants, _drafts[key])
+			var draft: Dictionary = _drafts[key]
+			var remap := _apply_draft(doc, constants, draft)
+			if not remap.is_empty():
+				remaps["%s|%s" % [str(draft.get("section", "npcs")),
+						str(draft.get("name", ""))]] = remap
 			characters_written += 1
 
 	var written := 0
@@ -543,14 +584,19 @@ func _save() -> void:
 			continue
 		var change: Dictionary = _pending[key]
 		var at: Vector2 = change["at"]
+		# A schedule edit in the same save may have spliced this character's rule
+		# list, so the index the actor spawned with is translated before it is used.
+		var remap: Dictionary = remaps.get("%s|%s" % [section, name], {})
 		# Write each field where it currently lives. A character whose rules only
 		# say WHEN they appear keeps one shared position, so moving them moves them
 		# everywhere; a rule that genuinely overrides the position keeps its override
 		# scoped to those days.
-		var at_target := _owner_of(character, int(change.get("at_owner", rule_index)))
+		var at_target := _owner_of(character,
+				_remap(remap, int(change.get("at_owner", rule_index))))
 		at_target["at"] = [roundi(at.x), roundi(at.y)]
 		if change.has("pattern"):
-			var move_target := _owner_of(character, int(change.get("move_owner", rule_index)))
+			var move_target := _owner_of(character,
+					_remap(remap, int(change.get("move_owner", rule_index))))
 			# Keep the object form's extra numbers if the character already had them.
 			if move_target.get("move") is Dictionary:
 				move_target["move"]["pattern"] = change["pattern"]
@@ -580,11 +626,14 @@ func _save() -> void:
 ## APPENDED to its section rather than inserted alphabetically -- the `opponents`
 ## section is sorted but `npcs` is not, so re-sorting would rewrite the whole file
 ## and bury the one real change in the diff.
-func _apply_draft(doc: Dictionary, constants: Dictionary, draft: Dictionary) -> void:
+##
+## Returns the old rule index -> new rule index map from the schedule rewrite, so the
+## positional pass can still find the rule an actor came from.
+func _apply_draft(doc: Dictionary, constants: Dictionary, draft: Dictionary) -> Dictionary:
 	var section: String = str(draft.get("section", "npcs"))
 	var name: String = str(draft.get("name", ""))
 	if name == "":
-		return
+		return {}
 
 	if not (doc.get(section) is Dictionary):
 		doc[section] = {}
@@ -595,9 +644,13 @@ func _apply_draft(doc: Dictionary, constants: Dictionary, draft: Dictionary) -> 
 	for field in draft.get("character", {}):
 		character[field] = draft["character"][field]
 
+	# The schedule goes in before any per-rule field, because rewriting it can add,
+	# drop or move the very rules those fields are about to be written into.
+	var remap := CharacterSchedule.apply_schedule(character, draft.get("schedule", {}))
+	var rule_index: int = _remap(remap, int(draft.get("rule_index", -1)))
+
 	var rule_fields: Dictionary = draft.get("rule", {})
 	if not rule_fields.is_empty():
-		var rule_index: int = int(draft.get("rule_index", -1))
 		var rules = character.get("when")
 		if rules is Array and rule_index >= 0 and rule_index < rules.size() \
 				and rules[rule_index] is Dictionary:
@@ -608,14 +661,14 @@ func _apply_draft(doc: Dictionary, constants: Dictionary, draft: Dictionary) -> 
 			# since the map loaded. Put the values on the defaults rather than
 			# dropping the edit on the floor.
 			push_warning("PlacementTool: when-rule #%d missing on %s/%s, writing to defaults"
-				% [int(draft.get("rule_index", -1)), section, name])
+				% [rule_index, section, name])
 			for field in rule_fields:
 				character[field] = rule_fields[field]
 
 	var constant_fields: Dictionary = draft.get("constants", {})
 	var removals: Array = draft.get("remove", [])
 	if constant_fields.is_empty() and removals.is_empty():
-		return
+		return remap
 	if not (constants.get(section) is Dictionary):
 		constants[section] = {}
 	if not (constants[section].get(name) is Dictionary):
@@ -632,10 +685,17 @@ func _apply_draft(doc: Dictionary, constants: Dictionary, draft: Dictionary) -> 
 		body.erase(field)
 		character.erase(field)
 		var rule_list = character.get("when")
-		var index: int = int(draft.get("rule_index", -1))
-		if rule_list is Array and index >= 0 and index < rule_list.size() \
-				and rule_list[index] is Dictionary:
-			rule_list[index].erase(field)
+		if rule_list is Array and rule_index >= 0 and rule_index < rule_list.size() \
+				and rule_list[rule_index] is Dictionary:
+			rule_list[rule_index].erase(field)
+	return remap
+
+
+## An old rule index seen through a rule-list rewrite. Anything the rewrite did not
+## touch -- including the -1 that means "the character's own defaults" -- passes
+## straight through.
+func _remap(remap: Dictionary, index: int) -> int:
+	return int(remap.get(index, index))
 
 
 func _write_json(path: String, doc: Dictionary) -> bool:
