@@ -31,6 +31,10 @@ var meet_text: String = ""
 var repeat_text: String = ""
 var gift_type: String = ""
 var gift_value: String = ""
+# Which block of stock a service NPC sells, for the types whose wares are data-driven
+# (currently "sleeve_seller"). Set from All_NPC_Constant_Data.json, defaulting to the
+# slugified npc_name, so two sellers of the same kind can carry different shelves.
+var shop_id: String = ""
 
 # Costume-gated interaction. When required_costume is set, the NPC shows a
 # different greeting (costume_match_text) and hands over its gift ONLY while

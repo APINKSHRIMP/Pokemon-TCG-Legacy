@@ -691,7 +691,9 @@
     "Sleeve Seller": {
       "sprite": "Sleeveseller",
       "message_colour": "light_pink",
-      "friendly_name": "Sleeve Seller"
+      "friendly_name": "Sleeve Seller",
+      "npc_type": "sleeve_seller",
+      "shop_id": "gym_plaza_sleeves"
     },
     "Weighed Pack Seller": {
       "sprite": "Weightedseller",
