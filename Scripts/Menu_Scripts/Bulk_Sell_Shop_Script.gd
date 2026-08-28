@@ -70,9 +70,19 @@ const BAND_WORD := {
 # fixed Fire / Grass / Water order left to right so all three read the same way. The
 # left card is tilted anticlockwise, the right one clockwise, the middle one square,
 # and the stacking runs left-over-middle-over-right in every group.
-const FAN_CARD_SIZE  := Vector2(300, 416)
-const FAN_X_STEP     := 145.0     # horizontal gap between one card's left edge and the next
-const FAN_TOP_Y      := 190.0
+## Down 20% from the original 300x416, and FAN_X_STEP with it so the overlap keeps its
+## proportions. At the old size a rotated card's corners reached about 20px past its box
+## and the outer cards of neighbouring groups just clipped each other; the 148px of clear
+## air between groups at this size absorbs that with room to spare.
+const FAN_CARD_SIZE  := Vector2(240, 333)
+const FAN_X_STEP     := 116.0     # horizontal gap between one card's left edge and the next
+## 220, down 30 from the original 190, with the price labels and all four sell buttons
+## moved 30 the other way in the scene. Shrinking the cards left ~94px of dead air in the
+## middle of the screen; closing it from both sides puts the whole cluster — fans at
+## 211..566 once the outer cards' rotation is counted, labels at 600, buttons ending at
+## 870 — centred on y 541, against a content band (header ends 89, money row starts 985)
+## whose centre is 537.
+const FAN_TOP_Y      := 220.0
 const FAN_CENTERS    := [340.0, 960.0, 1580.0]   # x centre of each group
 const FAN_TILT_DEG   := 7.0       # left card gets -this, right card +this, middle 0
 
@@ -87,8 +97,15 @@ const FAN_CARDS := [
 # ── Sell list screen ─────────────────────────────────────────────────────────
 # Matched to the deck viewer's geometry on purpose (Deck_Build_And_Card_View_Script.gd,
 # _on_view_deck_pressed) so the two screens are indistinguishable.
-const LIST_CARD_SIZE   := Vector2(183, 254)
-const LIST_COLUMNS     := 9
+## HALF the deck viewer's 183x254 — this screen routinely shows hundreds or thousands of
+## cards where the viewer shows sixty, so it does not follow the viewer's card size.
+## Halving each SIDE quarters the area, so about four times as many cards fit on screen
+## (9 columns x ~3.8 rows = ~34 visible, now 18 x ~7.6 = ~136), not double. If double was
+## the target, 129x179 at 12 columns is the size that gives it.
+## COLUMNS is derived, not guessed: 18*91 + 17*2 separation = 1672, just inside the
+## 1676-wide scroller. Change one and the other has to follow.
+const LIST_CARD_SIZE   := Vector2(91, 126)
+const LIST_COLUMNS     := 18
 const LIST_H_SEP       := 2
 const LIST_V_SEP       := 2
 const LIST_SCROLL_POS  := Vector2(5, 110)
@@ -97,14 +114,16 @@ const LIST_SCROLL_SIZE := Vector2(1676, 969)
 ## buttons under it (sell + cancel) where the viewer has only Close.
 const LIST_SIDE_BOTTOM := 930.0
 ## Cards added to the grid between frames. The deck viewer adds one per frame, which is
-## fine for 60 cards and far too slow for a 400-card bulk sale — a row at a time keeps
-## the progressive fill without the wait.
-const LIST_BUILD_BATCH := 9
+## fine for 60 cards and hopeless for the thousands this screen can be asked for. Three
+## rows a frame: the fill happens behind the loading overlay now, so there is no
+## progressive reveal to preserve and only throughput matters. At 3,000 cards this is
+## about a second where one-per-frame would be nearly a minute.
+const LIST_BUILD_BATCH := 54
 
 # ── Sale animation ───────────────────────────────────────────────────────────
 # TWEAKABLE. Cards vanish one at a time from the bottom-right of the grid, walking right
 # to left and bottom to top, each one throwing a floating price label as it goes.
-const VANISH_STAGGER   := 0.05    # delay between one card starting to vanish and the next
+const VANISH_STAGGER   := 0.02    # delay between one card starting to vanish and the next
 const VANISH_TIME      := 0.28    # how long a single card takes to shrink away
 const SCROLL_MARGIN    := 20.0    # px of clearance when scrolling the next card into view
 const SALE_SFX_EVERY   := 4       # play the tick SFX on every Nth card, not all of them
@@ -162,6 +181,13 @@ var _float_layer    : Control         = null
 
 var _on_list_screen : bool = false
 var _selling        : bool = false      # a sale animation is running; all input is dead
+
+## Dim + spinner shown while the sell grid builds. The deck-screen geometry is exactly
+## right here: it stops 237px short of the right edge, which is precisely the side banner,
+## so the sell and cancel buttons stay visible and clickable while the middle is blocked.
+## The sell BUTTON is disabled separately — see _open_sell_list — because the overlay
+## deliberately leaves that corner of the screen live for cancel.
+var _loading : MenuLoadingOverlay = MenuLoadingOverlay.new()
 
 # Hold-Shift card preview, mirrored from the deck builder so this grid behaves like that
 # one. See _refresh_hover_preview().
@@ -427,9 +453,12 @@ func _build_card_fans() -> void:
 func _show_home() -> void:
 	_on_list_screen = false
 	# The preview belongs to the grid that is about to go away — drop it before the chrome
-	# swaps, or it would hang over the home screen with nothing behind it.
+	# swaps, or it would hang over the home screen with nothing behind it. Same for the
+	# spinner: cancelling part-way through a build has to take it down immediately rather
+	# than waiting for the fill loop to notice on its next batch.
 	_zoom_held = false
 	_hide_zoom()
+	_loading.hide()
 
 	header_label.text = "Sell Your Spare Bulk"
 
@@ -502,7 +531,10 @@ func _open_sell_list(band: int, selection: Dictionary) -> void:
 	home_buttons.visible = false
 	money_root.visible   = false
 	list_buttons.visible = true
-	list_sell_btn.disabled   = false
+	# Sell stays dead until the last card is in the grid. Pressing it mid-build used to sell
+	# only what had rendered so far while the rest kept appearing behind the animation.
+	# Cancel stays live throughout — backing out of a slow build must always be possible.
+	list_sell_btn.disabled   = true
 	list_cancel_btn.disabled = false
 
 	# "Selling 24 Common Cards For $120" — the rarity word is dropped for a whole-collection
@@ -551,7 +583,17 @@ func _open_sell_list(band: int, selection: Dictionary) -> void:
 	CardViewerList.build_side_list(_list_overlay, lines,
 		CardViewerList.category_rows(selection, _get_card_meta), LIST_SIDE_BOTTOM)
 
+	# The spinner goes up before the fill and comes down after it, and needs one frame on
+	# screen first or a fast build would never paint it.
+	_loading.show_for_deck(self)
+	await get_tree().process_frame
 	await _fill_sell_grid(sorted_ids)
+	_loading.hide()
+
+	# Only arm Sell if the player is still here — cancel during a long build leaves this
+	# await to unwind against a screen that has already gone back home.
+	if _on_list_screen:
+		list_sell_btn.disabled = false
 
 
 ## One TextureRect per COPY being sold, in the shared viewer order. Each carries the cash
@@ -631,18 +673,19 @@ func _on_list_sell_pressed() -> void:
 			rects.append(child)
 	rects.reverse()   # bottom-right first, then leftwards and upwards
 
+	# One frame, once, so the grid's final layout pass has run and the scroller knows its
+	# real content height before _scroll_into_view starts doing arithmetic against it.
+	await get_tree().process_frame
+
 	var ticks := 0
 	for rect in rects:
 		if not is_instance_valid(rect) or not is_inside_tree():
 			break
-		_scroll_into_view(rect)
-		await get_tree().process_frame
-		if not is_instance_valid(rect):
-			break
 
+		var anchor := _scroll_into_view(rect)
 		var value : int = int(rect.get_meta("sell_value", 0))
 		_spawn_float_label("$" + str(value),
-			rect.global_position + rect.size / 2.0,
+			anchor + rect.size / 2.0,
 			CARD_LABEL_FONT, CARD_LABEL_OUTLINE, CARD_LABEL_SIZE,
 			CARD_LABEL_RISE_PX, CARD_LABEL_RISE_TIME, CARD_LABEL_FADE_TIME)
 		_vanish_card(rect)
@@ -691,14 +734,22 @@ func _vanish_card(rect: Control) -> void:
 
 
 ## Keeps the card that is about to vanish inside the scroller, so a sale that starts at
-## the bottom of a 400-card grid is actually visible. Walks upward with the animation.
-func _scroll_into_view(rect: Control) -> void:
+## the bottom of a 4,000-card grid is actually visible. Walks upward with the animation.
+##
+## Returns where the card will BE on screen once that scroll takes effect, worked out
+## arithmetically rather than by waiting a frame for the container to re-lay-out. That
+## wait used to sit in the sale loop, and at the old 0.05s stagger it hid inside the
+## timer; at 0.02s a frame is most of the gap again and would have made the real spacing
+## nearly twice what the constant says.
+func _scroll_into_view(rect: Control) -> Vector2:
+	var here : Vector2 = rect.global_position
 	if _list_scroll == null or not is_instance_valid(_list_scroll):
-		return
-	var content_y : float = rect.global_position.y - _list_scroll.global_position.y \
-		+ float(_list_scroll.scroll_vertical)
+		return here
+
+	var old_scroll : float = float(_list_scroll.scroll_vertical)
+	var content_y  : float = here.y - _list_scroll.global_position.y + old_scroll
 	var view_h : float = _list_scroll.size.y
-	var target : float = float(_list_scroll.scroll_vertical)
+	var target : float = old_scroll
 
 	if content_y + rect.size.y > target + view_h:
 		target = content_y + rect.size.y - view_h + SCROLL_MARGIN
@@ -706,6 +757,10 @@ func _scroll_into_view(rect: Control) -> void:
 		target = content_y - SCROLL_MARGIN
 
 	_list_scroll.scroll_vertical = maxi(int(target), 0)
+	# Read it back rather than trusting the request: a ScrollContainer clamps to its own
+	# content range, so the value that stuck is not always the value asked for.
+	var new_scroll : float = float(_list_scroll.scroll_vertical)
+	return Vector2(here.x, _list_scroll.global_position.y + content_y - new_scroll)
 
 
 # ─── Floating rainbow labels ─────────────────────────────────────────────────
