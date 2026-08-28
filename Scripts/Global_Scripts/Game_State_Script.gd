@@ -682,6 +682,14 @@ func load_progress():
 	if not progress.has("gym_challenge_audience_from_plaza"):
 		progress["gym_challenge_audience_from_plaza"] = false
 
+	# Story flags are seeded so they are visible in the save file rather than only existing
+	# once raised. An opponent-derived flag is seeded from its own source of truth, so a save
+	# that already beat that opponent starts with the flag up rather than never getting it.
+	for unlock_opponent in OPPONENT_FLAG_UNLOCKS:
+		var unlock_flag: String = OPPONENT_FLAG_UNLOCKS[unlock_opponent]
+		if not progress.has(unlock_flag):
+			progress[unlock_flag] = unlock_opponent in progress.get("opponents_beaten", [])
+
 	if not progress.has("shop_state"):
 		progress["shop_state"] = "initial"
 	if not progress.has("shop_free_packs_given"):
@@ -791,7 +799,35 @@ func mark_opponent_beaten(opponent_name: String):
 		progress["opponents_beaten"].append(opponent_name)
 		progress["opponents_beaten_count_current"] = progress.get("opponents_beaten_count_current", 0) + 1
 		progress["opponents_beaten_count_total"] = progress.get("opponents_beaten_count_total", 0) + 1
+		if OPPONENT_FLAG_UNLOCKS.has(opponent_name):
+			progress[OPPONENT_FLAG_UNLOCKS[opponent_name]] = true
 		save_progress()
+
+# ============================================================
+# STORY FLAGS
+# ============================================================
+# One-way global switches for milestones the whole game keys off. They live as plain
+# top-level keys in `progress` because that is exactly what the character-schedule gate
+# "requires: flag: NAME" already reads — declaring a flag here makes it usable in every
+# character JSON with no extra plumbing.
+
+## Raised the first time the player beats Gym Challenge Giovanni, i.e. the whole Gym
+## Challenge is complete. Currently gates the Gym packs at the Weighed Pack Seller.
+const GYM_CHALLENGE_COMPLETE_FLAG := "gym_challenge_complete"
+
+## opponent name -> flag raised by their first defeat. Handled in mark_opponent_beaten().
+const OPPONENT_FLAG_UNLOCKS := {
+	"Gym Challenge Giovanni": GYM_CHALLENGE_COMPLETE_FLAG,
+}
+
+func has_flag(flag_name: String) -> bool:
+	return bool(progress.get(flag_name, false))
+
+func set_flag(flag_name: String, value: bool = true) -> void:
+	if bool(progress.get(flag_name, false)) == value:
+		return
+	progress[flag_name] = value
+	save_progress()
 
 # ============================================================
 # MATCH RECORD

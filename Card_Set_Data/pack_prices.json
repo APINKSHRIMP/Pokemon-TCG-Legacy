@@ -1,27 +1,35 @@
 [
   {
     "pack": "base1",
-    "cost": "150"
+    "cost": "150",
+    "weighted_cost": "100"
   },
   {
     "pack": "base2",
-    "cost": "200"
+    "cost": "200",
+    "weighted_cost": "130"
   },
   {
     "pack": "base3",
-    "cost": "200"
+    "cost": "200",
+    "weighted_cost": "130"
   },
   {
     "pack": "base5",
-    "cost": "225"
+    "cost": "225",
+    "weighted_cost": "150"
   },
   {
     "pack": "gym1",
-    "cost": "250"
+    "cost": "250",
+    "weighted_cost": "170",
+    "weighted_requires_flag": "gym_challenge_complete"
   },
   {
     "pack": "gym2",
-    "cost": "250"
+    "cost": "250",
+    "weighted_cost": "170",
+    "weighted_requires_flag": "gym_challenge_complete"
   },
   {
     "pack": "neo1",

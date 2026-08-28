@@ -337,6 +337,8 @@ func _get_shop_config(shop_id: String) -> Dictionary:
 # another map later needs no change here.
 
 const BULK_SELL_SCENE: String = "res://Scenes/Main_Menu_Scenes/Bulk_Sell_Shop.tscn"
+const PACK_PURCHASE_SCENE: String = "res://Scenes/Main_Menu_Scenes/Pack_Purchase.tscn"
+const WEIGHTED_SHOP_ID: String = "weighted_mart"
 
 func _open_bulk_sell_shop() -> void:
 	_hide_message()
@@ -346,6 +348,19 @@ func _open_bulk_sell_shop() -> void:
 		_player.get_current_direction()
 	)
 	SceneCache.change_scene(BULK_SELL_SCENE)
+
+
+# The Weighed Pack Seller reuses the ordinary pack shop screen; the shop id is what puts it into
+# weighted mode (discounted prices, no rare slot) — see Pack_Purchase_Script.WEIGHTED_SHOP_ID.
+func _open_weighted_pack_shop() -> void:
+	_hide_message()
+	GameState.current_shop_id = WEIGHTED_SHOP_ID
+	GameState.save_menu_return_state(
+		_map_scene_path,
+		_player.position,
+		_player.get_current_direction()
+	)
+	SceneCache.change_scene(PACK_PURCHASE_SCENE)
 
 # ============================================================
 # OPPONENT SPAWNING
@@ -648,9 +663,9 @@ func _evaluate_condition(condition: Dictionary) -> bool:
 		"npc_not_met":
 			return not GameState.has_met_npc(condition.get("target", ""))
 		"flag_set":
-			return GameState.progress.get(condition.get("flag", ""), false)
+			return GameState.has_flag(condition.get("flag", ""))
 		"flag_not_set":
-			return not GameState.progress.get(condition.get("flag", ""), false)
+			return not GameState.has_flag(condition.get("flag", ""))
 	push_warning("MapManager: Unknown condition type: " + condition.get("type", ""))
 	return true
 
@@ -703,7 +718,8 @@ func _npc_is_vendor(npc: Node) -> bool:
 	if npc == null:
 		return false
 	var t: String = npc.npc_type if "npc_type" in npc else ""
-	return t == "shop" or t == "juice_vendor" or t == "coin_flipper" or t == "card_buyer"
+	return t == "shop" or t == "juice_vendor" or t == "coin_flipper" or t == "card_buyer" \
+			or t == "weighted_pack_seller"
 
 
 # ISSUE #120: rebuilds the right-hand cash chip from the live balance. Called whenever the
@@ -969,6 +985,11 @@ func _on_yes_pressed():
 		_open_bulk_sell_shop()
 		return
 
+	# Weighed pack seller — same, but his screen is the pack shop in weighted mode
+	if current_npc != null and current_npc.npc_type == "weighted_pack_seller":
+		_open_weighted_pack_shop()
+		return
+
 	# Shop NPC — open the appropriate menu scene from shop config
 	if current_npc != null and current_npc.npc_type == "shop":
 		GameState.current_shop_id = current_npc.shop_id
@@ -1165,6 +1186,15 @@ func _on_player_npc_interact(npc: Node):
 		npc.mark_as_met()
 		npc.refresh_bubble()
 		_show_message_with_choices(npc.repeat_text if buyer_seen else npc.meet_text)
+		return
+
+	# Weighed pack seller: discounted packs with the rare slot swapped for an uncommon. Same
+	# shape as the card buyer — a Yes/No pitch, then his own screen.
+	if npc.npc_type == "weighted_pack_seller":
+		var seller_seen: bool = npc.has_been_met() and npc.repeat_text != ""
+		npc.mark_as_met()
+		npc.refresh_bubble()
+		_show_message_with_choices(npc.repeat_text if seller_seen else npc.meet_text)
 		return
 
 	# Costume-gated NPC: special greeting + gift only while the player wears

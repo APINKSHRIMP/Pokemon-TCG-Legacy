@@ -696,7 +696,8 @@
     "Weighed Pack Seller": {
       "sprite": "Weightedseller",
       "message_colour": "dark_red",
-      "friendly_name": "Weighed Pack Seller"
+      "friendly_name": "Weighed Pack Seller",
+      "npc_type": "weighted_pack_seller"
     }
   },
   "opponents": {

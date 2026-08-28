@@ -11,6 +11,27 @@ const CARD_MART_SCENE      := "res://Scenes/Map_Scenes/Card_Mart.tscn"
 const ROCKET_MART_SCENE    := "res://Scenes/Map_Scenes/Rocket_Mart.tscn"
 const GYM_RECEPTION_SCENE  := "res://Scenes/Map_Scenes/Gym_Challenge_Reception.tscn"
 
+# ─── Weighted mode ───────────────────────────────────────────────────────────
+# The Gym Plaza Weighed Pack Seller runs this same screen with GameState.current_shop_id set to
+# WEIGHTED_SHOP_ID. His packs are the ones carrying a "weighted_cost" in pack_prices.json: same
+# 10 cards for roughly a third less, but the rare slot is a fourth uncommon (see
+# PackOpeningManager._generate_pack_cards). Everything else about the screen is unchanged.
+
+const WEIGHTED_SHOP_ID     := "weighted_mart"
+const HEADER_NORMAL        := "Select pack to purchase"
+const HEADER_WEIGHTED      := "Select WEIGHTED pack to purchase"
+
+## How far left the "pack cost:" pair slides to make room for the discounted figure beside it,
+## so the wider row stays centred on screen. All prices are three digits, so a flat shift is exact.
+const DISCOUNT_ROW_SHIFT   : float = 60.0
+## Gap between the struck-out old price and the discounted one. Measured from the old price's
+## label edge, so the strike's overhang eats into it — keep it comfortably above STRIKE_OVERHANG.
+const DISCOUNT_GAP         : float = 34.0
+## The strike overhangs the digits by this much each side, and is this thick.
+const STRIKE_OVERHANG      : float = 5.0
+const STRIKE_THICKNESS     : float = 6.0
+const STRIKE_COLOUR        := Color(0.85, 0.05, 0.05)
+
 # ─── State ───────────────────────────────────────────────────────────────────
 
 var set_list       : Array = []
@@ -18,6 +39,14 @@ var unlocked_packs : Array = []
 var current_pack_idx : int = 0
 var pack_prices    : Dictionary = {}
 var player_cash    : float = 0.0
+
+# ─── Weighted-mode state ─────────────────────────────────────────────────────
+
+var is_weighted_shop  : bool       = false
+var weighted_prices   : Dictionary = {}   # pack id -> discounted cost
+var weighted_flags    : Dictionary = {}   # pack id -> story flag that must be raised to stock it
+var discount_amount   : Label      = null # the payable price, beside the struck-out full one
+var discount_strike   : ColorRect  = null # the red line through the full price
 
 # ─── Selection state ─────────────────────────────────────────────────────────
 
@@ -45,12 +74,20 @@ var theme_kenney_green : Theme = preload("res://UI_Themes/kenneyUI-green.tres")
 @onready var cancel_button     : Button        = $buy_cancel_button
 @onready var next_btn          : Button        = $"SET NAVIGATION"/next_set
 @onready var prev_btn          : Button        = $"SET NAVIGATION"/previous_set
+@onready var money_labels      : Control       = $"MONEY LABELS"
+@onready var pack_cost_text    : Label         = $"MONEY LABELS"/pack_cost_text_label
+@onready var header_label      : Label         = $large_header_text_label
 
 
 # ─── Lifecycle ───────────────────────────────────────────────────────────────
 
 func _ready() -> void:
 	SoundManagerScript.play_bgm(SoundManagerScript.BGM_SHOP_2, true)
+
+	is_weighted_shop = GameState.current_shop_id == WEIGHTED_SHOP_ID
+	header_label.text = HEADER_WEIGHTED if is_weighted_shop else HEADER_NORMAL
+	if is_weighted_shop:
+		_build_discount_labels()
 
 	_load_set_dictionary()
 	_load_pack_prices()
@@ -89,14 +126,24 @@ func _load_pack_prices() -> void:
 	file.close()
 	if data is Array:
 		for entry in data:
-			pack_prices[entry["pack"]] = int(entry["cost"])
+			var pack_id : String = entry["pack"]
+			pack_prices[pack_id] = int(entry["cost"])
+			# A "weighted_cost" is what makes a pack part of the Weighed Pack Seller's stock;
+			# "weighted_requires_flag" holds it back until that story flag is raised.
+			if entry.has("weighted_cost"):
+				weighted_prices[pack_id] = int(entry["weighted_cost"])
+				var gate : String = entry.get("weighted_requires_flag", "")
+				if gate != "":
+					weighted_flags[pack_id] = gate
 
 
 func _load_player_data() -> void:
 	player_cash = float(GameState.get_cash())
 
 	var shop_id := GameState.current_shop_id
-	if shop_id == "rocket_mart":
+	if shop_id == WEIGHTED_SHOP_ID:
+		unlocked_packs = _weighted_stock()
+	elif shop_id == "rocket_mart":
 		unlocked_packs = ["base5"]
 	elif shop_id == "gym_mart":
 		unlocked_packs = ["gym1", "gym2"]
@@ -106,6 +153,32 @@ func _load_player_data() -> void:
 		unlocked_packs = ["base1", "base2", "base3"]
 
 
+## Every pack with a weighted price, in pack_prices.json order, minus any still behind an
+## unraised story flag. The base-set packs are always stocked — the Gym ones only appear once
+## the Gym Challenge is complete.
+func _weighted_stock() -> Array:
+	var stock : Array = []
+	for pack_id in weighted_prices.keys():
+		var gate : String = weighted_flags.get(pack_id, "")
+		if gate != "" and not GameState.has_flag(gate):
+			continue
+		stock.append(pack_id)
+	return stock
+
+
+## Price the current shop actually charges for a pack.
+func _cost_for(pack_id: String) -> int:
+	if is_weighted_shop:
+		return int(weighted_prices.get(pack_id, pack_prices.get(pack_id, 0)))
+	return int(pack_prices.get(pack_id, 0))
+
+
+## Key the browsed-to pack is remembered under. The weighted seller keeps his own so the two
+## shops don't drag each other's selection around — their stock lists barely overlap.
+func _last_pack_key() -> String:
+	return "last_weighted_pack_loaded" if is_weighted_shop else "last_pack_loaded"
+
+
 func _get_last_pack_loaded() -> String:
 	var file := FileAccess.open(PLAYER_DATA_PATH, FileAccess.READ)
 	if file == null:
@@ -113,7 +186,7 @@ func _get_last_pack_loaded() -> String:
 	var data = JSON.parse_string(file.get_as_text())
 	file.close()
 	if data is Dictionary:
-		return data.get("last_pack_loaded", "base1")
+		return data.get(_last_pack_key(), "base1")
 	return "base1"
 
 
@@ -134,8 +207,10 @@ func _refresh_display() -> void:
 	_clear_selection()
 	set_name_label.text = _get_set_name(pack_id)
 	_load_pack_images(pack_id)
-	var cost : int = pack_prices.get(pack_id, 0)
-	pack_cost_amount.text = str(cost)
+	if is_weighted_shop:
+		_refresh_discount_row(pack_id)
+	else:
+		pack_cost_amount.text = str(_cost_for(pack_id))
 	your_money_amount.text = str(int(player_cash))
 	_update_buy_button()
 	_update_nav_buttons()
@@ -146,6 +221,75 @@ func _update_nav_buttons() -> void:
 	var multi := unlocked_packs.size() > 1
 	next_btn.visible = multi
 	prev_btn.visible = multi
+
+
+# ─── Discount price row (weighted shop only) ─────────────────────────────────
+
+## Builds the two extra nodes the discount display needs and slides the existing "pack cost:"
+## pair left to make room. pack_cost_amount keeps showing the FULL price — it just gets a red
+## line through it — and the new label beside it carries the price actually charged.
+func _build_discount_labels() -> void:
+	pack_cost_text.offset_left    -= DISCOUNT_ROW_SHIFT
+	pack_cost_text.offset_right   -= DISCOUNT_ROW_SHIFT
+	pack_cost_amount.offset_left  -= DISCOUNT_ROW_SHIFT
+	pack_cost_amount.offset_right -= DISCOUNT_ROW_SHIFT
+
+	discount_amount = Label.new()
+	discount_amount.name = "discount_amount"
+	# Cloned off pack_cost_amount so the two figures match without restating the theme
+	# overrides — only the alignment differs, this one grows rightwards from a fixed left edge.
+	discount_amount.theme = pack_cost_amount.theme
+	_copy_label_style(pack_cost_amount, discount_amount)
+	discount_amount.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
+	discount_amount.vertical_alignment   = VERTICAL_ALIGNMENT_CENTER
+	discount_amount.z_index = pack_cost_amount.z_index
+	discount_amount.position = Vector2(pack_cost_amount.offset_right + DISCOUNT_GAP, pack_cost_amount.offset_top)
+	discount_amount.size     = Vector2(260.0, pack_cost_amount.offset_bottom - pack_cost_amount.offset_top)
+	discount_amount.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	money_labels.add_child(discount_amount)
+
+	# Drawn above both labels — they sit at z_index 999 and this has to cross the digits.
+	discount_strike = ColorRect.new()
+	discount_strike.name  = "discount_strike"
+	discount_strike.color = STRIKE_COLOUR
+	discount_strike.z_index = pack_cost_amount.z_index + 1
+	discount_strike.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	money_labels.add_child(discount_strike)
+
+
+## Copies the font/colour/shadow overrides that make pack_cost_amount look the way it does, so
+## the discounted figure beside it is visually the same label.
+func _copy_label_style(from: Label, to: Label) -> void:
+	for colour_name in ["font_color", "font_shadow_color"]:
+		if from.has_theme_color_override(colour_name):
+			to.add_theme_color_override(colour_name, from.get_theme_color(colour_name))
+	for const_name in ["line_spacing", "shadow_offset_x", "shadow_offset_y", "shadow_outline_size"]:
+		if from.has_theme_constant_override(const_name):
+			to.add_theme_constant_override(const_name, from.get_theme_constant(const_name))
+	if from.has_theme_font_size_override("font_size"):
+		to.add_theme_font_size_override("font_size", from.get_theme_font_size("font_size"))
+
+
+## Full price struck through in red, discounted price beside it. The strike is sized to the
+## digits themselves rather than the label box — the label is right-aligned and much wider than
+## its text, so a full-width bar would trail off to the left of the number.
+func _refresh_discount_row(pack_id: String) -> void:
+	var full_cost      : int = int(pack_prices.get(pack_id, 0))
+	var discount_cost  : int = _cost_for(pack_id)
+
+	pack_cost_amount.text = str(full_cost)
+	discount_amount.text  = str(discount_cost)
+
+	var font      : Font = pack_cost_amount.get_theme_font("font")
+	var font_size : int  = pack_cost_amount.get_theme_font_size("font_size")
+	var text_w    : float = font.get_string_size(
+			pack_cost_amount.text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size).x
+
+	var right_edge : float = pack_cost_amount.offset_right
+	discount_strike.position = Vector2(
+			right_edge - text_w - STRIKE_OVERHANG,
+			pack_cost_amount.offset_top + (pack_cost_amount.offset_bottom - pack_cost_amount.offset_top - STRIKE_THICKNESS) / 2.0)
+	discount_strike.size = Vector2(text_w + STRIKE_OVERHANG * 2.0, STRIKE_THICKNESS)
 
 
 func _get_set_name(set_id: String) -> String:
@@ -247,7 +391,7 @@ func _remove_selection_animation(rect: TextureRect) -> void:
 
 func _update_buy_button() -> void:
 	var pack_id : String = unlocked_packs[current_pack_idx]
-	var cost : int = pack_prices.get(pack_id, 0)
+	var cost : int = _cost_for(pack_id)
 	if selected_pack_rect != null and player_cash >= cost:
 		buy_button.disabled = false
 		buy_button.theme = theme_kenney_green
@@ -260,7 +404,7 @@ func _update_buy_button() -> void:
 
 func _on_buy_pressed() -> void:
 	var pack_id : String = unlocked_packs[current_pack_idx]
-	var cost    : int    = pack_prices.get(pack_id, 0)
+	var cost    : int    = _cost_for(pack_id)
 	if selected_pack_rect == null or player_cash < cost:
 		return
 
@@ -282,7 +426,7 @@ func _save_last_pack_loaded(pack_id: String) -> void:
 	file.close()
 	if not data is Dictionary:
 		return
-	data["last_pack_loaded"] = pack_id
+	data[_last_pack_key()] = pack_id
 	var save_file := FileAccess.open(PLAYER_DATA_PATH, FileAccess.WRITE)
 	if save_file == null:
 		return
@@ -313,6 +457,10 @@ func _on_prev_set() -> void:
 # ─── Cancel / Escape ─────────────────────────────────────────────────────────
 
 func _get_return_scene() -> String:
+	# The weighted seller is a character, not a world-object shop, so he saves a menu-return
+	# state on the way in and the player lands back beside him on the map he was standing on.
+	if is_weighted_shop and GameState.has_menu_return_state:
+		return GameState.menu_return_scene_path
 	if GameState.current_shop_id == "rocket_mart":
 		return ROCKET_MART_SCENE
 	elif GameState.current_shop_id == "gym_mart":
@@ -346,6 +494,10 @@ func _get_ui_nodes_to_toggle() -> Array:
 	nodes.append(set_name_label)
 	nodes.append(your_money_amount)
 	nodes.append(pack_cost_amount)
+	if discount_amount != null:
+		nodes.append(discount_amount)
+	if discount_strike != null:
+		nodes.append(discount_strike)
 	nodes.append(buy_button)
 	nodes.append(cancel_button)
 	nodes.append(next_btn)
@@ -442,7 +594,7 @@ func _begin_opening_sequence() -> void:
 	# Hand off to PackOpeningManager — pack is now at centre, no intro fade needed
 	temp_overlay.queue_free()
 	PackOpeningManager.all_packs_opened.connect(_on_pack_opening_finished, CONNECT_ONE_SHOT)
-	PackOpeningManager.open_packs([purchased_pack_art], 0.0)
+	PackOpeningManager.open_packs([purchased_pack_art], 0.0, is_weighted_shop)
 
 
 ## Called by PackOpeningManager.all_packs_opened to restore the shop UI.

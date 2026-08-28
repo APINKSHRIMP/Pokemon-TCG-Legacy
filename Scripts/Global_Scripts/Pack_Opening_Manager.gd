@@ -11,6 +11,7 @@ extends Node
 # Usage:
 #   PackOpeningManager.open_packs(["base1_a", "base5_c"])
 #   PackOpeningManager.open_packs(["base1_a"], 0.0)   # no intro fade
+#   PackOpeningManager.open_packs(["base1_a"], 0.0, true)  # weighted (no rare slot)
 #   PackOpeningManager.all_packs_opened                # signal: done
 #   PackOpeningManager.is_active()                     # bool guard
 # ============================================================
@@ -50,12 +51,19 @@ const GOD_PACK_CHANCE    : float = 0.005   # 0.5% per pack once unlocked
 const GOD_PACK_GUARANTEE : int   = 100     # Every Nth pack is guaranteed
 const GOD_PACK_SIZE      : int   = 10      # Cards per god pack
 
+# Weighted packs — the Weighed Pack Seller's discounted stock. Same 10 cards, but the rare
+# slot is another uncommon and none of the bonus rolls apply. See _generate_pack_cards().
+const WEIGHTED_COMMONS   : int   = 6
+const WEIGHTED_UNCOMMONS : int   = 4
+
 var _theme_kenney : Theme = preload("res://UI_Themes/kenneyUI.tres")
 
 # ── Session state ──────────────────────────────────────────
 var _is_active           : bool  = false
 var _pack_queue          : Array = []
 var _intro_fade_duration : float = 0.4
+# Applies to every pack in the current open_packs() call — the shops only ever queue one.
+var _weighted_pack       : bool  = false
 
 # ── Overlay ────────────────────────────────────────────────
 var _overlay : CanvasLayer = null
@@ -84,7 +92,7 @@ var _bonus_indices       : Dictionary      = {}
 
 # ── Public API ─────────────────────────────────────────────
 
-func open_packs(pack_arts: Array, intro_fade_duration: float = 0.4) -> void:
+func open_packs(pack_arts: Array, intro_fade_duration: float = 0.4, weighted: bool = false) -> void:
 	if pack_arts.is_empty():
 		return
 	if _is_active:
@@ -93,6 +101,7 @@ func open_packs(pack_arts: Array, intro_fade_duration: float = 0.4) -> void:
 	_is_active           = true
 	_pack_queue          = pack_arts.duplicate()
 	_intro_fade_duration = intro_fade_duration
+	_weighted_pack       = weighted
 	_create_overlay()
 	_open_next_pack()
 
@@ -204,8 +213,9 @@ func _finish_all() -> void:
 	_is_active = false
 	if _overlay != null and is_instance_valid(_overlay):
 		_overlay.queue_free()
-	_overlay    = null
-	_bg_rect    = null
+	_overlay       = null
+	_bg_rect       = null
+	_weighted_pack = false
 	_pack_queue.clear()
 	emit_signal("all_packs_opened")
 
@@ -615,28 +625,56 @@ func _generate_pack_cards(set_id: String) -> Array:
 				holo_rares.append(card)
 				rare_pool.append(card)
 
-	# ── God-pack check ──────────────────────────────────────────
-	# Bump the lifetime pack counter, then decide: every Nth pack (N =
-	# GOD_PACK_GUARANTEE) is a guaranteed god pack; otherwise a flat
-	# GOD_PACK_CHANCE roll per pack. The natural roll does NOT reset the modulo
-	# cadence — pack 100, 200, 300… are always god packs no matter how lucky
-	# the player was beforehand.
+	# ── Pack counters ───────────────────────────────────────────
+	# Two of them, and they are deliberately different numbers.
 	#
-	# A new-player lockout gates the whole feature: god packs are unavailable
-	# for the first GOD_PACK_UNLOCK_AT packs so beginners don't stumble into one
-	# before they understand the game. The counter still ticks from pack 1, so
-	# the first guaranteed god pack still lands at pack 100 (80 packs after the
-	# lockout lifts at pack 20).
+	# packs_opened_total is the lifetime stat the trainer card shows: EVERY pack counts,
+	# weighted ones included.
+	#
+	# packs_opened_standard drives the god pack, and only full-price packs move it. If the
+	# discounted weighted packs counted, a player could walk the odometer up to 99 on cheap
+	# rare-less packs and then buy their guaranteed 100th at full price — the god pack has to
+	# be earned by the packs that could actually have contained it.
 	var pack_number: int = int(GameState.progress.get("packs_opened_total", 0)) + 1
 	GameState.progress["packs_opened_total"] = pack_number
+
+	var standard_number: int = int(GameState.progress.get("packs_opened_standard", 0))
+	if not _weighted_pack:
+		standard_number += 1
+		GameState.progress["packs_opened_standard"] = standard_number
 	GameState.save_progress()
 
-	var god_pack_available: bool = pack_number > GOD_PACK_UNLOCK_AT
+	# ── Weighted pack ───────────────────────────────────────────
+	# The Weighed Pack Seller's discounted stock: still 10 cards, but the rare slot becomes a
+	# fourth uncommon. No rare, no bonus rare, no god pack — that is what the discount buys.
+	if _weighted_pack:
+		var w_result   : Array      = []
+		var w_used     : Dictionary = {}
+		for _i in range(WEIGHTED_COMMONS):
+			var w_common := _pick_unique(commons, w_used)
+			if not w_common.is_empty():
+				w_result.append(w_common)
+		for _i in range(WEIGHTED_UNCOMMONS):
+			var w_uncommon := _pick_unique(uncommons, w_used)
+			if not w_uncommon.is_empty():
+				w_result.append(w_uncommon)
+		return w_result
+
+	# ── God-pack check ──────────────────────────────────────────
+	# Every Nth standard pack (N = GOD_PACK_GUARANTEE) is a guaranteed god pack; otherwise a
+	# flat GOD_PACK_CHANCE roll per pack. The natural roll does NOT reset the modulo cadence —
+	# pack 100, 200, 300… are always god packs no matter how lucky the player was beforehand.
+	#
+	# A new-player lockout gates the whole feature: god packs are unavailable for the first
+	# GOD_PACK_UNLOCK_AT packs so beginners don't stumble into one before they understand the
+	# game. The counter still ticks from pack 1, so the first guaranteed god pack still lands
+	# at pack 100 (80 packs after the lockout lifts at pack 20).
+	var god_pack_available: bool = standard_number > GOD_PACK_UNLOCK_AT
 	var is_god_pack: bool = god_pack_available \
-			and ((pack_number % GOD_PACK_GUARANTEE == 0) or (randf() < GOD_PACK_CHANCE))
+			and ((standard_number % GOD_PACK_GUARANTEE == 0) or (randf() < GOD_PACK_CHANCE))
 
 	if is_god_pack and holo_rares.size() > 0:
-		print("PACK_OPENING: GOD PACK at pack #", pack_number, " (", holo_rares.size(), " unique Rare Holos in set)")
+		print("PACK_OPENING: GOD PACK at standard pack #", standard_number, " (", holo_rares.size(), " unique Rare Holos in set)")
 		var god_result : Array = []
 		var god_used   : Dictionary = {}
 		for _i in range(GOD_PACK_SIZE):
