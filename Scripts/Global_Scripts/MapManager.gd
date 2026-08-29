@@ -203,11 +203,6 @@ const COINFLIP_WIN_MSG: String    = "Wow!! Congrats, you got all 5 heads!"
 const COINFLIP_PRIZE_MSG: String  = "Here's your prize!"
 const COINFLIP_DONE_MSG: String   = "Sorry, only one coin per person, you've already proven your luck!"
 
-# Shown instead of the Yes/No pitch once a Sleeve Seller's whole stock is owned. His shelf
-# is finite — one of each — so there is no point opening a shop where everything is OWNED.
-const SLEEVE_SHOP_SOLD_OUT_MSG: String = "You've bought every sleeve I had! I'll let you know if any more limited editions come in."
-const SLEEVE_SHOP_INVENTORY_PATH: String = "res://NPC_and_Opponent_Data/sleeve_shop_inventory.json"
-
 # TWEAKABLE — the coin row's geometry. It is boxed in on both sides: at the top of
 # its arc a coin must still be on screen (ROW_CENTER_Y - ARC_HEIGHT - COIN_SIZE.y/2
 # >= 0, currently 90px to spare) and at rest it must sit clear of the message box's
@@ -344,7 +339,7 @@ func _get_shop_config(shop_id: String) -> Dictionary:
 const BULK_SELL_SCENE: String = "res://Scenes/Main_Menu_Scenes/Bulk_Sell_Shop.tscn"
 const PACK_PURCHASE_SCENE: String = "res://Scenes/Main_Menu_Scenes/Pack_Purchase.tscn"
 const WEIGHTED_SHOP_ID: String = "weighted_mart"
-const SLEEVE_SHOP_SCENE: String = "res://Scenes/Main_Menu_Scenes/Sleeve_Shop.tscn"
+const COSMETIC_SHOP_SCENE: String = "res://Scenes/Main_Menu_Scenes/Cosmetic_Shop.tscn"
 
 func _open_bulk_sell_shop() -> void:
 	_hide_message()
@@ -369,10 +364,11 @@ func _open_weighted_pack_shop() -> void:
 	SceneCache.change_scene(PACK_PURCHASE_SCENE)
 
 
-# A Sleeve Seller's whole offer is his own screen. His shop_id picks the stock block in
-# sleeve_shop_inventory.json, so a second seller elsewhere runs the same screen with
-# different sleeves — no code here changes, only the JSON and the NPC's shop_id.
-func _open_sleeve_shop(npc: Node) -> void:
+# A cosmetic seller's whole offer is his own screen. His shop_id picks the stock block in
+# cosmetic_shop_inventory.json, and that block's "kind" decides whether he deals in sleeves
+# or costumes — so another seller of either sort runs this same screen with different
+# wares: no code here changes, only the JSON and the NPC's shop_id.
+func _open_cosmetic_shop(npc: Node) -> void:
 	_hide_message()
 	GameState.current_shop_id = npc.shop_id
 	GameState.save_menu_return_state(
@@ -380,31 +376,7 @@ func _open_sleeve_shop(npc: Node) -> void:
 		_player.position,
 		_player.get_current_direction()
 	)
-	SceneCache.change_scene(SLEEVE_SHOP_SCENE)
-
-
-# True when the player already owns every sleeve this seller stocks. Reads the same file
-# the shop screen does, keyed the same way, so the two can never disagree about what is on
-# the shelf. An unknown shop_id or an unreadable file reports "not sold out" — better to
-# open a shop that turns out to be empty than to lock the player out of a working one.
-func _sleeve_shop_sold_out(shop_id: String) -> bool:
-	var file := FileAccess.open(SLEEVE_SHOP_INVENTORY_PATH, FileAccess.READ)
-	if file == null:
-		return false
-	var data = JSON.parse_string(file.get_as_text())
-	file.close()
-	if not data is Dictionary:
-		return false
-	var block = data.get(shop_id, null)
-	if not block is Dictionary:
-		return false
-	var sleeves: Array = block.get("sleeves", [])
-	if sleeves.is_empty():
-		return false
-	for entry in sleeves:
-		if not GameState.has_sleeve(String(entry.get("name", ""))):
-			return false
-	return true
+	SceneCache.change_scene(COSMETIC_SHOP_SCENE)
 
 # ============================================================
 # OPPONENT SPAWNING
@@ -766,7 +738,7 @@ func _npc_is_vendor(npc: Node) -> bool:
 		return false
 	var t: String = npc.npc_type if "npc_type" in npc else ""
 	return t == "shop" or t == "juice_vendor" or t == "coin_flipper" or t == "card_buyer" \
-			or t == "weighted_pack_seller" or t == "sleeve_seller"
+			or t == "weighted_pack_seller" or t == "sleeve_seller" or t == "costume_seller"
 
 
 # ISSUE #120: rebuilds the right-hand cash chip from the live balance. Called whenever the
@@ -1037,9 +1009,11 @@ func _on_yes_pressed():
 		_open_weighted_pack_shop()
 		return
 
-	# Sleeve seller — same shape again, onto his own stock's screen
-	if current_npc != null and current_npc.npc_type == "sleeve_seller":
-		_open_sleeve_shop(current_npc)
+	# Sleeve seller / costume salesman — same shape again, onto the cosmetic shop with
+	# their own block of stock loaded
+	if current_npc != null and (current_npc.npc_type == "sleeve_seller" \
+			or current_npc.npc_type == "costume_seller"):
+		_open_cosmetic_shop(current_npc)
 		return
 
 	# Shop NPC — open the appropriate menu scene from shop config
@@ -1249,18 +1223,16 @@ func _on_player_npc_interact(npc: Node):
 		_show_message_with_choices(npc.repeat_text if seller_seen else npc.meet_text)
 		return
 
-	# Sleeve seller: limited-edition card backs, one of each. Same Yes/No-then-own-screen
-	# shape, except that his stock is finite — once the player owns the lot there is nothing
-	# left to offer, so the pitch is replaced by a flat sold-out line rather than opening an
-	# entirely OWNED shop.
-	if npc.npc_type == "sleeve_seller":
-		var sleeve_seen: bool = npc.has_been_met() and npc.repeat_text != ""
+	# Sleeve seller / costume salesman: cosmetics, one of each. Same Yes/No-then-own-screen
+	# shape as the card buyer. Their stock is finite and never restocks, so there is
+	# deliberately NO sold-out branch — once the player owns the lot the shop still opens,
+	# with every cell stamped OWNED. Swapping the pitch for a "new stock coming in" line
+	# would be a promise nothing ever keeps, and hides a shop that still reads fine.
+	if npc.npc_type == "sleeve_seller" or npc.npc_type == "costume_seller":
+		var cosmetic_seen: bool = npc.has_been_met() and npc.repeat_text != ""
 		npc.mark_as_met()
 		npc.refresh_bubble()
-		if _sleeve_shop_sold_out(npc.shop_id):
-			_show_message_with_ok(SLEEVE_SHOP_SOLD_OUT_MSG)
-		else:
-			_show_message_with_choices(npc.repeat_text if sleeve_seen else npc.meet_text)
+		_show_message_with_choices(npc.repeat_text if cosmetic_seen else npc.meet_text)
 		return
 
 	# Costume-gated NPC: special greeting + gift only while the player wears

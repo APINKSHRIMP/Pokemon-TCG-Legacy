@@ -2109,11 +2109,11 @@ shape = SubResource("RectangleShape2D_r50et")
 position = Vector2(2054, 1668)
 shape = SubResource("RectangleShape2D_r50et")
 
-[node name="Sign_Shop_Bakery" type="CollisionShape2D" parent="Interactables" unique_id=1663229621]
+[node name="Sign_Shop_Costume" type="CollisionShape2D" parent="Interactables" unique_id=1663229621]
 position = Vector2(2422, 1669)
 shape = SubResource("RectangleShape2D_r50et")
 
-[node name="Sign_Shop_Right" type="CollisionShape2D" parent="Interactables" unique_id=193883232]
+[node name="Sign_Shop_Sleeve" type="CollisionShape2D" parent="Interactables" unique_id=193883232]
 position = Vector2(2534, 1668)
 shape = SubResource("RectangleShape2D_r50et")
 

@@ -162,28 +162,6 @@
       ],
       "gift_value": "LASS2"
     },
-    "Bakery Shopkeeper": {
-      "at": [2570, 1650],
-      "move": "idle_down",
-      "says": {
-        "meet": "Get your freshly baked pastries, cakes and bread all here.",
-        "repeat": "Everything is freshly baked this morning and some of the bread is still warm!"
-      },
-      "when": [
-        {
-          "days": "3-8",
-          "times": "M,A"
-        },
-        {
-          "days": "3-8",
-          "times": "E",
-          "says": {
-            "meet": "Get your freshly baked pastries, cakes and bread all here.",
-            "repeat": "Plenty of items still fresh to enjoy!"
-          }
-        }
-      ]
-    },
     "Biker1": {
       "at": [390, 920],
       "days": "1",
@@ -451,28 +429,6 @@
         "meet": "Some days if we can't catch any fish we'll come here for a juice instead.",
         "repeat": "You know what they say, you can take a fish to water but you can't make it drink!..... I think that's what they say?"
       }
-    },
-    "Fruit And Veg Shopkeeper": {
-      "at": [2460, 1650],
-      "move": "idle_down",
-      "says": {
-        "meet": "Hello - fresh fruit and veg for sale here. We've got everything you could ask for.",
-        "repeat": "It's all grown locally here so it'll be the freshest food you can find in the harbour!"
-      },
-      "when": [
-        {
-          "days": "3-8",
-          "times": "M,A"
-        },
-        {
-          "days": "3-8",
-          "times": "E",
-          "says": {
-            "meet": "Hello - fresh fruit and veg for sale here. We've got everything you could ask for.",
-            "repeat": "I've got some discounted fruit on offer if you're interested."
-          }
-        }
-      ]
     },
     "Giovanni": {
       "at": [920, 890],
@@ -1731,6 +1687,24 @@
           }
         }
       ]
+    },
+    "Costume Salesman": {
+      "says": {
+        "meet": "Hello! I make a living on this market place selling costumes if you're interested in buying any?",
+        "repeat": "Hello, are you looking to buy one of my costumes?"
+      },
+      "move": "idle_down",
+      "times": "M,A,E,N",
+      "at": [2461, 1648]
+    },
+    "Sleeve Seller 2": {
+      "says": {
+        "meet": "You look like you could use some card sleeves to put your cards into. I've got a few for sale if you're interested in buying. You don't want your cards to get damaged now do you!",
+        "repeat": "Hello again, are you looking to buy some sleeves for your cards? They'll keep them protected and look great!"
+      },
+      "move": "idle_down",
+      "times": "M,A,E,N",
+      "at": [2571, 1649]
     }
   },
   "opponents": {

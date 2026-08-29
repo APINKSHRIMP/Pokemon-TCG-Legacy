@@ -1,38 +1,49 @@
 extends Control
 
 # ============================================================
-# SLEEVE SELLER — SLEEVE SHOP
+# COSMETIC SHOP — SLEEVE SELLERS AND COSTUME SALESMEN
 # ============================================================
-# A Sleeve Seller NPC's full screen. Structurally the Coin Shop's twin: a grid of
-# buyable items, a cost/cash readout, buy + cancel, an "OWNED" stamp on anything the
-# player already has, and a full-screen reveal after a purchase.
+# One screen for every NPC who sells a cosmetic. Structurally the Coin Shop's twin: a
+# grid of buyable items, a cost/cash readout, buy + cancel, an "OWNED" stamp on anything
+# the player already has, and a full-screen reveal after a purchase.
 #
-# TWO DIFFERENCES from the Coin Shop, both because a sleeve is a card back:
-#   1. There is no sleeve "back" texture to flip from, so the reveal uses the COSTUME
-#      FADE-IN instead of the coin flip — the image starts fully black and fades up
-#      over the dim overlay (mirrors MapManager._play_costume_fadein).
-#   2. The stock is per-NPC rather than global. GameState.current_shop_id picks the
-#      block in sleeve_shop_inventory.json, so a second seller elsewhere in the world
-#      runs this exact screen with different sleeves and prices — no code changes,
-#      just a new block in the JSON and a shop_id on the NPC.
+# TWO DIFFERENCES from the Coin Shop:
+#   1. There is no "back" texture to flip from — a sleeve IS a card back and a costume is
+#      a character sprite — so the reveal uses the COSTUME FADE-IN instead of the coin
+#      flip: the image starts fully black and fades up over the dim overlay (mirrors
+#      MapManager._play_costume_fadein).
+#   2. The stock is per-NPC rather than global. GameState.current_shop_id picks the block
+#      in cosmetic_shop_inventory.json, so another seller elsewhere in the world runs this
+#      exact screen with different wares — no code changes, just a new block in the JSON
+#      and a shop_id on the NPC.
 #
-# Sleeve names are bare basenames ("Oricorio_Pink") throughout — that is how they are
-# stored in the player's progress "sleeves" array and how GameState.has_sleeve() and
-# add_sleeve_to_collection() expect them.
+# WHAT the block sells is the block's own "kind" field, which is the only thing that
+# differs between a Sleeve Seller and a Costume Salesman: where the art comes from, the
+# shape of a grid cell, and which GameState collection the purchase is banked into. Both
+# store bare basenames ("Oricorio_Pink", "Pokemaniac_Red") — that is how they sit in the
+# player's progress arrays and how GameState's has_/add_ calls expect them.
+#
+# There is deliberately NO sold-out gate. A seller's shelf is finite and never restocks,
+# so once the player owns the lot the shop simply opens with everything stamped OWNED
+# rather than being replaced by a "come back later" line that would never come true.
 # ============================================================
 
 
 # ─── Constants ───────────────────────────────────────────────────────────────
 
-const INVENTORY_PATH  := "res://NPC_and_Opponent_Data/sleeve_shop_inventory.json"
+const INVENTORY_PATH  := "res://NPC_and_Opponent_Data/cosmetic_shop_inventory.json"
 const SLEEVE_FOLDER   := "res://Image_Assets/Sleeves"
 const SLEEVE_SMALL    := "res://Image_Assets/Sleeves/small"
+const COSTUME_FOLDER  := "res://Image_Assets/Character_Sprites/In_Battle_Sprites"
 const GYM_PLAZA       := "res://Scenes/Map_Scenes/Gym_Plaza.tscn"
 
+const KIND_SLEEVE  := "sleeve"
+const KIND_COSTUME := "costume"
+
 ## TWEAKABLE — fallback price for an inventory entry with no "cost" field. The real
-## prices live in sleeve_shop_inventory.json; keep this in step so a malformed entry
-## cannot quietly sell a sleeve at an out-of-date price.
-const DEFAULT_SLEEVE_COST := 400
+## prices live in cosmetic_shop_inventory.json; keep this high enough that a malformed
+## entry cannot quietly sell something at an out-of-date price.
+const DEFAULT_ITEM_COST := 400
 
 ## The box the grid is laid out inside, in screen pixels. Matches the empty space the
 ## scene leaves between the header and the money labels.
@@ -40,15 +51,22 @@ const GRID_AREA_POS  := Vector2(260.0, 190.0)
 const GRID_AREA_SIZE := Vector2(1400.0, 610.0)
 
 ## TWEAKABLE — grid shape. Cells are sized to fit GRID_AREA_SIZE, so a seller stocking
-## more sleeves gets smaller cells rather than an overflowing grid.
+## more items gets smaller cells rather than an overflowing grid. A block may override
+## the column count with its own "columns" field (10 items at columns 5 = 2 rows of 5).
 const MAX_COLUMNS  := 4
 const CELL_SEP     := 60
-const MAX_CELL_H   := 412.0   # the small/ thumbnails' native height — never upscale past it
 
-## Card-back aspect (432 x 594, the same box the overworld gift reveal uses).
-const SLEEVE_ASPECT := 432.0 / 594.0
+## TWEAKABLE — per-kind cell shape. ASPECT is width/height; MAX_CELL_H caps the cell so a
+## small stock list never upscales the source past its native size.
+##   sleeve : the card-back box (432 x 594), thumbnails are 300 x 412
+##   costume: the battle sprites are square, and are drawn at their native 160px
+const SLEEVE_ASPECT   := 432.0 / 594.0
+const SLEEVE_MAX_CELL := 412.0
+const COSTUME_ASPECT  := 1.0
+const COSTUME_MAX_CELL := 320.0
 
-## TWEAKABLE — the purchase reveal.
+## TWEAKABLE — the purchase reveal. A costume shares the sleeve's box: the aspect-fit
+## below letterboxes a square sprite inside it, exactly as the overworld gift reveal does.
 const REVEAL_SIZE      := Vector2(432.0, 594.0)
 const REVEAL_FADE      := 1.0   # seconds to fade from black to full colour
 
@@ -56,9 +74,11 @@ const REVEAL_FADE      := 1.0   # seconds to fade from black to full colour
 # ─── State ───────────────────────────────────────────────────────────────────
 
 var inventory       : Array = []
+var shop_kind       : String = KIND_SLEEVE
 var shop_title      : String = "Sleeve Shop"
+var shop_columns    : int = 0        # 0 = let the grid pick; set from the block's "columns"
 var player_cash     : int = 0
-var _owned_sleeves  : Dictionary = {}
+var _owned_items    : Dictionary = {}
 
 var selected_cell   : Control = null
 var _active_tween   : Tween = null
@@ -76,12 +96,13 @@ var theme_kenney_green : Theme = preload("res://UI_Themes/kenneyUI-green.tres")
 
 # ─── Node references ─────────────────────────────────────────────────────────
 
-@onready var grid              : GridContainer = $sleeve_grid_container
-@onready var buy_btn           : Button        = $sleeve_buy_button
+@onready var grid              : GridContainer = $item_grid_container
+@onready var buy_btn           : Button        = $item_buy_button
 @onready var cancel_btn        : Button        = $buy_cancel_button
 @onready var header_label      : Label         = $large_header_text_label
 @onready var your_money_amount : Label         = $"MONEY LABELS"/your_money_amount
-@onready var sleeve_cost_amount: Label         = $"MONEY LABELS"/sleeve_cost_amount
+@onready var item_cost_label   : Label         = $"MONEY LABELS"/item_cost_text_label
+@onready var item_cost_amount  : Label         = $"MONEY LABELS"/item_cost_amount
 
 
 # ─── Lifecycle ───────────────────────────────────────────────────────────────
@@ -92,20 +113,21 @@ func _ready() -> void:
 	_load_inventory()
 	_load_player_data()
 
-	header_label.text = shop_title
+	header_label.text    = shop_title
+	item_cost_label.text = "Costume cost:" if shop_kind == KIND_COSTUME else "Sleeve cost:"
 
 	grid.add_theme_constant_override("h_separation", CELL_SEP)
 	grid.add_theme_constant_override("v_separation", CELL_SEP)
 
 	your_money_amount.text = str(player_cash)
-	sleeve_cost_amount.text = str(_lowest_cost())
+	item_cost_amount.text  = str(_lowest_cost())
 
 	buy_btn.disabled = true
 	buy_btn.pressed.connect(_on_buy_pressed)
 	cancel_btn.pressed.connect(_on_cancel_pressed)
 
 	await get_tree().process_frame
-	_build_sleeve_grid()
+	_build_item_grid()
 
 
 func _process(_delta: float) -> void:
@@ -115,48 +137,63 @@ func _process(_delta: float) -> void:
 
 # ─── Data loading ────────────────────────────────────────────────────────────
 
-## Stock is chosen by GameState.current_shop_id, which the Sleeve Seller NPC sets on its
-## way in (MapManager._open_sleeve_shop). An id with no block falls back to the first one
-## in the file so a mistyped shop_id shows a working shop rather than an empty screen.
+## Stock is chosen by GameState.current_shop_id, which the seller NPC sets on its way in
+## (MapManager._open_cosmetic_shop). An id with no block falls back to the first one in
+## the file so a mistyped shop_id shows a working shop rather than an empty screen.
 func _load_inventory() -> void:
 	var file := FileAccess.open(INVENTORY_PATH, FileAccess.READ)
 	if file == null:
-		push_error("SleeveShop: cannot open " + INVENTORY_PATH)
+		push_error("CosmeticShop: cannot open " + INVENTORY_PATH)
 		return
 	var data = JSON.parse_string(file.get_as_text())
 	file.close()
 	if not data is Dictionary:
-		push_error("SleeveShop: inventory JSON did not parse to Dictionary")
+		push_error("CosmeticShop: inventory JSON did not parse to Dictionary")
 		return
 
 	var block = data.get(GameState.current_shop_id, null)
 	if not block is Dictionary:
-		push_warning("SleeveShop: no stock block for shop_id '" + GameState.current_shop_id
+		push_warning("CosmeticShop: no stock block for shop_id '" + GameState.current_shop_id
 				+ "' — falling back to the first block in the file")
 		for key in data.keys():
-			if data[key] is Dictionary and data[key].has("sleeves"):
+			if data[key] is Dictionary and data[key].has("items"):
 				block = data[key]
 				break
 	if not block is Dictionary:
 		return
 
-	inventory  = block.get("sleeves", [])
-	shop_title = block.get("title", "Sleeve Shop")
+	inventory    = block.get("items", [])
+	shop_kind    = String(block.get("kind", KIND_SLEEVE))
+	shop_title   = block.get("title", "Costume Shop" if shop_kind == KIND_COSTUME else "Sleeve Shop")
+	shop_columns = int(block.get("columns", 0))
 
 
 func _load_player_data() -> void:
 	player_cash = GameState.get_cash()
-	for sleeve_name in GameState.get_sleeves():
-		_owned_sleeves[String(sleeve_name)] = true
+	# Costume filenames are stored lower-cased and with the .png suffix; sleeves are stored
+	# as bare basenames. _is_owned() does the per-kind lookup, so nothing is cached here for
+	# costumes — GameState is already the single source of truth for both.
+	if shop_kind == KIND_SLEEVE:
+		for item_name in GameState.get_sleeves():
+			_owned_items[String(item_name)] = true
+
+
+## True when the player already has this item. Sleeves and costumes live in different
+## progress arrays with different key formats, so the lookup goes through GameState rather
+## than being open-coded here.
+func _is_owned(item_name: String) -> bool:
+	if shop_kind == KIND_COSTUME:
+		return GameState.has_costume(item_name)
+	return _owned_items.has(item_name)
 
 
 ## The figure shown before anything is picked. Everything in stock is usually the same
 ## price, so the cheapest entry is the honest "from" number.
 func _lowest_cost() -> int:
-	var lowest := DEFAULT_SLEEVE_COST
+	var lowest := DEFAULT_ITEM_COST
 	var found := false
 	for entry in inventory:
-		var cost : int = int(entry.get("cost", DEFAULT_SLEEVE_COST))
+		var cost : int = int(entry.get("cost", DEFAULT_ITEM_COST))
 		if not found or cost < lowest:
 			lowest = cost
 			found = true
@@ -165,81 +202,95 @@ func _lowest_cost() -> int:
 
 # ─── Texture resolution ──────────────────────────────────────────────────────
 
-## Grid and reveal both use the small/ copy — the full-size originals are a mix of .jpg
-## and .png and are far bigger than either use needs. Falls back to the original if a
-## sleeve has no small/ copy, matching Sleeves_Scene's resolution order in reverse.
-func _load_sleeve_texture(sleeve_name: String) -> Texture2D:
-	var small_path := SLEEVE_SMALL + "/" + sleeve_name + ".jpg"
+## Grid art. Sleeves use the small/ copy — the full-size originals are a mix of .jpg and
+## .png and are far bigger than a grid cell needs. Costume sprites are already small
+## (160px square), so there is only ever one file to find.
+func _load_item_texture(item_name: String) -> Texture2D:
+	if shop_kind == KIND_COSTUME:
+		return _load_costume_texture(item_name)
+
+	var small_path := SLEEVE_SMALL + "/" + item_name + ".jpg"
 	if ResourceLoader.exists(small_path):
 		var small_tex := load(small_path) as Texture2D
 		if small_tex != null:
 			return small_tex
+	return _load_item_texture_full(item_name)
+
+
+## Same lookup at full size, for the purchase reveal. The reveal box is 432x594 and the
+## sleeve thumbnails are only 300x412, so showing one there would upscale it by 1.44x. One
+## full-size texture in a menu is cheap; a whole grid of them would not be, which is why
+## the grid still uses small/. Costumes have no second copy — same file both times.
+func _load_item_texture_full(item_name: String) -> Texture2D:
+	if shop_kind == KIND_COSTUME:
+		return _load_costume_texture(item_name)
+
 	for ext in [".png", ".jpg"]:
-		var full_path : String = SLEEVE_FOLDER + "/" + sleeve_name + String(ext)
+		var full_path : String = SLEEVE_FOLDER + "/" + item_name + String(ext)
 		if ResourceLoader.exists(full_path):
 			var full_tex := load(full_path) as Texture2D
 			if full_tex != null:
 				return full_tex
-	push_warning("SleeveShop: no texture found for sleeve " + sleeve_name)
+	push_warning("CosmeticShop: no texture found for sleeve " + item_name)
 	return null
 
 
-## Same lookup with the priority reversed, for the purchase reveal. The reveal box is
-## 432x594 and the small/ copies are only 300x412, so showing the thumbnail there would
-## upscale it by 1.44x. One full-size texture in a menu is cheap; a whole grid of them
-## would not be, which is why the grid still uses small/.
-func _load_sleeve_texture_full(sleeve_name: String) -> Texture2D:
-	for ext in [".png", ".jpg"]:
-		var full_path : String = SLEEVE_FOLDER + "/" + sleeve_name + String(ext)
-		if ResourceLoader.exists(full_path):
-			var full_tex := load(full_path) as Texture2D
-			if full_tex != null:
-				return full_tex
-	return _load_sleeve_texture(sleeve_name)
+func _load_costume_texture(item_name: String) -> Texture2D:
+	var path := COSTUME_FOLDER + "/" + item_name + ".png"
+	if ResourceLoader.exists(path):
+		var tex := load(path) as Texture2D
+		if tex != null:
+			return tex
+	push_warning("CosmeticShop: no texture found for costume " + item_name)
+	return null
 
 
 # ─── Grid building ───────────────────────────────────────────────────────────
 
-## Cells are sized from the stock count rather than fixed, so a seller with three sleeves
-## gets big ones and a seller with eight still fits inside GRID_AREA_SIZE. The whole block
+## Cells are sized from the stock count rather than fixed, so a seller with three items
+## gets big ones and a seller with ten still fits inside GRID_AREA_SIZE. The whole block
 ## is then re-centred inside that area — a GridContainer only lays out from its top-left.
-func _build_sleeve_grid() -> void:
+func _build_item_grid() -> void:
 	var count := inventory.size()
 	if count == 0:
 		return
 
-	var columns : int = min(count, MAX_COLUMNS)
+	var columns : int = shop_columns if shop_columns > 0 else MAX_COLUMNS
+	columns = min(count, columns)
 	var rows    : int = int(ceil(float(count) / float(columns)))
 	grid.columns = columns
+
+	var aspect   : float = COSTUME_ASPECT if shop_kind == KIND_COSTUME else SLEEVE_ASPECT
+	var max_cell : float = COSTUME_MAX_CELL if shop_kind == KIND_COSTUME else SLEEVE_MAX_CELL
 
 	var fit_w : float = (GRID_AREA_SIZE.x - float(columns - 1) * CELL_SEP) / float(columns)
 	var fit_h : float = (GRID_AREA_SIZE.y - float(rows - 1) * CELL_SEP) / float(rows)
 	# Height is the binding dimension: pick whichever of the two limits is tighter once
-	# the card-back aspect is applied, and never upscale past the source's native height.
-	var cell_h : float = min(fit_h, fit_w / SLEEVE_ASPECT, MAX_CELL_H)
-	var cell_size := Vector2(cell_h * SLEEVE_ASPECT, cell_h)
+	# the item's aspect is applied, and never upscale past the source's native height.
+	var cell_h : float = min(fit_h, fit_w / aspect, max_cell)
+	var cell_size := Vector2(cell_h * aspect, cell_h)
 
 	for entry in inventory:
-		var sleeve_name : String = String(entry.get("name", ""))
-		var cost        : int    = int(entry.get("cost", DEFAULT_SLEEVE_COST))
-		if sleeve_name == "":
+		var item_name : String = String(entry.get("name", ""))
+		var cost      : int    = int(entry.get("cost", DEFAULT_ITEM_COST))
+		if item_name == "":
 			continue
 
-		var tex := _load_sleeve_texture(sleeve_name)
+		var tex := _load_item_texture(item_name)
 		if tex == null:
 			continue
 
-		var is_owned : bool = _owned_sleeves.has(sleeve_name)
+		var is_owned : bool = _is_owned(item_name)
 
 		# Wrapper carries the cell geometry and the metadata; the TextureRect inside is
-		# aspect-fitted so a sleeve whose source is off-aspect is letterboxed, not squashed.
+		# aspect-fitted so an item whose source is off-aspect is letterboxed, not squashed.
 		var wrapper := Control.new()
 		wrapper.custom_minimum_size = cell_size
 		wrapper.size                = cell_size
 		wrapper.clip_contents       = true
-		wrapper.set_meta("sleeve_name", sleeve_name)
-		wrapper.set_meta("sleeve_cost", cost)
-		wrapper.set_meta("is_owned",    is_owned)
+		wrapper.set_meta("item_name", item_name)
+		wrapper.set_meta("item_cost", cost)
+		wrapper.set_meta("is_owned",  is_owned)
 
 		var tex_size := tex.get_size()
 		var s : float = minf(cell_size.x / tex_size.x, cell_size.y / tex_size.y)
@@ -259,14 +310,14 @@ func _build_sleeve_grid() -> void:
 			_mark_cell_owned(wrapper)
 		else:
 			wrapper.modulate = Color(0.8, 0.8, 0.8)
-			wrapper.gui_input.connect(_on_sleeve_clicked.bind(wrapper))
+			wrapper.gui_input.connect(_on_item_clicked.bind(wrapper))
 
 		grid.add_child(wrapper)
 
 	# Re-centre the block inside the grid area. The content size is computed from the cells
 	# rather than read back off the container: a GridContainer only lays out from its own
 	# top-left, and its size is not settled on the frame the children are added. Rows are
-	# recomputed from what actually went in, in case a sleeve's texture failed to load.
+	# recomputed from what actually went in, in case an item's texture failed to load.
 	var placed : int = grid.get_child_count()
 	if placed == 0:
 		return
@@ -280,7 +331,7 @@ func _build_sleeve_grid() -> void:
 	grid.position = GRID_AREA_POS + (GRID_AREA_SIZE - content) / 2.0
 
 
-## Dims the sleeve and stamps OWNED across it. self_modulate dims only the wrapper's own
+## Dims the item and stamps OWNED across it. self_modulate dims only the wrapper's own
 ## drawing, so it is applied to the image rect — the label added here stays readable.
 func _mark_cell_owned(wrapper: Control) -> void:
 	wrapper.set_meta("is_owned", true)
@@ -307,7 +358,7 @@ func _mark_cell_owned(wrapper: Control) -> void:
 
 # ─── Click / selection ───────────────────────────────────────────────────────
 
-func _on_sleeve_clicked(event: InputEvent, cell: Control) -> void:
+func _on_item_clicked(event: InputEvent, cell: Control) -> void:
 	if _in_purchase_seq:
 		return
 	# UIInput.is_click() rather than a raw button test — a mouse wheel notch is also an
@@ -316,29 +367,29 @@ func _on_sleeve_clicked(event: InputEvent, cell: Control) -> void:
 		return
 
 	if selected_cell and selected_cell != cell:
-		_deselect_sleeve(selected_cell)
+		_deselect_item(selected_cell)
 
 	if selected_cell == cell:
-		_deselect_sleeve(cell)
+		_deselect_item(cell)
 		selected_cell = null
-		sleeve_cost_amount.text = str(_lowest_cost())
+		item_cost_amount.text = str(_lowest_cost())
 		_update_buy_button()
 		SoundManagerScript.play_sfx(SoundManagerScript.SFX_minus_select)
 		return
 
-	_select_sleeve(cell)
-	sleeve_cost_amount.text = str(int(cell.get_meta("sleeve_cost", DEFAULT_SLEEVE_COST)))
+	_select_item(cell)
+	item_cost_amount.text = str(int(cell.get_meta("item_cost", DEFAULT_ITEM_COST)))
 	_update_buy_button()
 	SoundManagerScript.play_sfx(SoundManagerScript.SFX_plus_select)
 
 
-func _select_sleeve(cell: Control) -> void:
+func _select_item(cell: Control) -> void:
 	selected_cell = cell
 	_apply_selected_animation(cell)
 	_start_sparkle(cell)
 
 
-func _deselect_sleeve(cell: Control) -> void:
+func _deselect_item(cell: Control) -> void:
 	if _active_tween:
 		_active_tween.kill()
 		_active_tween = null
@@ -371,7 +422,7 @@ func _update_buy_button() -> void:
 	var can_buy := false
 	if selected_cell != null and is_instance_valid(selected_cell):
 		var is_owned : bool = selected_cell.get_meta("is_owned", true)
-		var cost     : int  = int(selected_cell.get_meta("sleeve_cost", DEFAULT_SLEEVE_COST))
+		var cost     : int  = int(selected_cell.get_meta("item_cost", DEFAULT_ITEM_COST))
 		can_buy = not is_owned and player_cash >= cost
 	buy_btn.disabled = not can_buy
 	buy_btn.theme    = theme_kenney_green if can_buy else theme_kenney
@@ -382,28 +433,31 @@ func _update_buy_button() -> void:
 func _on_buy_pressed() -> void:
 	if selected_cell == null or not is_instance_valid(selected_cell):
 		return
-	var sleeve_name : String = String(selected_cell.get_meta("sleeve_name", ""))
-	var cost        : int    = int(selected_cell.get_meta("sleeve_cost", DEFAULT_SLEEVE_COST))
-	if sleeve_name == "" or player_cash < cost:
+	var item_name : String = String(selected_cell.get_meta("item_name", ""))
+	var cost      : int    = int(selected_cell.get_meta("item_cost", DEFAULT_ITEM_COST))
+	if item_name == "" or player_cash < cost:
 		return
 
 	player_cash -= cost
 	GameState.add_cash(-cost)
-	GameState.add_sleeve_to_collection(sleeve_name)
-	_owned_sleeves[sleeve_name] = true
+	if shop_kind == KIND_COSTUME:
+		GameState.add_costume_to_collection(item_name)
+	else:
+		GameState.add_sleeve_to_collection(item_name)
+		_owned_items[item_name] = true
 	SoundManagerScript.play_sfx(SoundManagerScript.SFX_gamemode_select)
 
-	_show_purchase_display(sleeve_name)
+	_show_purchase_display(item_name)
 
 
-## The reveal. Same overlay furniture as the Coin Shop's, but the sleeve fades up from
-## black instead of flipping — there is no card-back-of-a-card-back to flip from.
-func _show_purchase_display(sleeve_name: String) -> void:
+## The reveal. Same overlay furniture as the Coin Shop's, but the item fades up from black
+## instead of flipping — neither a card back nor a costume has a back to flip from.
+func _show_purchase_display(item_name: String) -> void:
 	_in_purchase_seq = true
 	buy_btn.disabled    = true
 	cancel_btn.disabled = true
 
-	var sleeve_tex := _load_sleeve_texture_full(sleeve_name)
+	var item_tex := _load_item_texture_full(item_name)
 
 	# Full-screen overlay layer above everything
 	var overlay_layer := CanvasLayer.new()
@@ -418,40 +472,43 @@ func _show_purchase_display(sleeve_name: String) -> void:
 	dim.mouse_filter  = Control.MOUSE_FILTER_IGNORE
 	overlay_layer.add_child(dim)
 
-	# Sleeve aspect-fitted into the reveal box and centred on screen
+	# Item aspect-fitted into the reveal box and centred on screen
 	var vp_size : Vector2 = get_viewport_rect().size
 	var disp_size := REVEAL_SIZE
-	if sleeve_tex != null:
-		var t_size := sleeve_tex.get_size()
+	if item_tex != null:
+		var t_size := item_tex.get_size()
 		if t_size.x > 0.0 and t_size.y > 0.0:
 			var s : float = minf(REVEAL_SIZE.x / t_size.x, REVEAL_SIZE.y / t_size.y)
 			disp_size = Vector2(t_size.x * s, t_size.y * s)
 
-	var sleeve_pos := Vector2(
+	# Centre the art inside the full REVEAL_SIZE box rather than on its own size, so a
+	# square costume sits where a portrait sleeve does and the caption never jumps up.
+	var item_pos := Vector2(
 		vp_size.x / 2.0 - disp_size.x / 2.0,
-		vp_size.y / 2.0 - disp_size.y / 2.0 - 80.0
+		vp_size.y / 2.0 - REVEAL_SIZE.y / 2.0 - 80.0 + (REVEAL_SIZE.y - disp_size.y) / 2.0
 	)
+	var caption_y : float = vp_size.y / 2.0 + REVEAL_SIZE.y / 2.0 - 80.0 + 20.0
 
-	var sleeve_rect := TextureRect.new()
-	sleeve_rect.texture             = sleeve_tex
-	sleeve_rect.expand_mode         = TextureRect.EXPAND_IGNORE_SIZE
-	sleeve_rect.stretch_mode        = TextureRect.STRETCH_SCALE
-	sleeve_rect.custom_minimum_size = disp_size
-	sleeve_rect.size                = disp_size
-	sleeve_rect.position            = sleeve_pos
-	sleeve_rect.pivot_offset        = disp_size / 2.0
-	sleeve_rect.mouse_filter        = Control.MOUSE_FILTER_IGNORE
-	overlay_layer.add_child(sleeve_rect)
+	var item_rect := TextureRect.new()
+	item_rect.texture             = item_tex
+	item_rect.expand_mode         = TextureRect.EXPAND_IGNORE_SIZE
+	item_rect.stretch_mode        = TextureRect.STRETCH_SCALE
+	item_rect.custom_minimum_size = disp_size
+	item_rect.size                = disp_size
+	item_rect.position            = item_pos
+	item_rect.pivot_offset        = disp_size / 2.0
+	item_rect.mouse_filter        = Control.MOUSE_FILTER_IGNORE
+	overlay_layer.add_child(item_rect)
 
-	# Text label below the sleeve
+	# Text label below the item
 	var label := Label.new()
-	label.text                 = "You got the " + _format_sleeve_name(sleeve_name) + " Sleeve"
+	label.text                 = _purchase_caption(item_name)
 	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	label.position             = Vector2(160.0, sleeve_pos.y + disp_size.y + 20.0)
+	label.position             = Vector2(160.0, caption_y)
 	label.size                 = Vector2(1600.0, 80.0)
 	label.add_theme_font_size_override("font_size", 50)
 	label.add_theme_color_override("font_color", Color.WHITE)
-	label.modulate             = Color(1, 1, 1, 0)   # fades up with the sleeve
+	label.modulate             = Color(1, 1, 1, 0)   # fades up with the item
 	overlay_layer.add_child(label)
 
 	# OK button — hidden until the fade finishes
@@ -463,7 +520,7 @@ func _show_purchase_display(sleeve_name: String) -> void:
 	ok_btn.theme    = theme_kenney_green
 	overlay_layer.add_child(ok_btn)
 
-	await _play_fadein(sleeve_rect, label)
+	await _play_fadein(item_rect, label)
 	ok_btn.visible = true
 	_reveal_ok_btn = ok_btn   # _input() presses this from the keyboard
 
@@ -472,7 +529,7 @@ func _show_purchase_display(sleeve_name: String) -> void:
 	_reveal_ok_btn = null
 	overlay_layer.queue_free()
 
-	# Stamp the purchased sleeve as owned in the grid
+	# Stamp the purchased item as owned in the grid
 	var purchased_cell := selected_cell
 	if purchased_cell != null and is_instance_valid(purchased_cell):
 		if _active_tween:
@@ -484,10 +541,10 @@ func _show_purchase_display(sleeve_name: String) -> void:
 		_mark_cell_owned(purchased_cell)
 
 	selected_cell = null
-	your_money_amount.text  = str(player_cash)
-	sleeve_cost_amount.text = str(_lowest_cost())
-	cancel_btn.disabled     = false
-	_in_purchase_seq        = false
+	your_money_amount.text = str(player_cash)
+	item_cost_amount.text  = str(_lowest_cost())
+	cancel_btn.disabled    = false
+	_in_purchase_seq       = false
 	_update_buy_button()
 
 
@@ -496,7 +553,7 @@ func _show_purchase_display(sleeve_name: String) -> void:
 ## item-animation speed applies here too.
 ##
 ## The overworld version holds fully black for half a second before starting, which on a
-## black dim overlay is just half a second of nothing — the sleeve is invisible until the
+## black dim overlay is just half a second of nothing — the item is invisible until the
 ## fade begins. Dropped here: the tween starts on the same frame the rect is spawned.
 func _play_fadein(rect: TextureRect, label: Label) -> void:
 	if rect == null or not is_instance_valid(rect):
@@ -512,10 +569,16 @@ func _play_fadein(rect: TextureRect, label: Label) -> void:
 	await tween.finished
 
 
-## Sleeve basename -> readable name. Same rule as MapManager._format_sleeve_name: swap
+func _purchase_caption(item_name: String) -> String:
+	if shop_kind == KIND_COSTUME:
+		return "You got the " + _format_item_name(item_name) + " Costume"
+	return "You got the " + _format_item_name(item_name) + " Sleeve"
+
+
+## Basename -> readable name. Same rule as MapManager._format_sleeve_name: swap
 ## underscores for spaces and keep the file's own capitalisation, so the name reads as it
-## does in the sleeve menu ("Oricorio_Pink" -> "Oricorio Pink").
-func _format_sleeve_name(raw: String) -> String:
+## does in the sleeve/costume menu ("Oricorio_Pink" -> "Oricorio Pink").
+func _format_item_name(raw: String) -> String:
 	return raw.get_basename().replace("_", " ").strip_edges()
 
 
@@ -570,7 +633,7 @@ func _start_sparkle(target: Control) -> void:
 	particles.scale_amount_min      = 3.0
 	particles.scale_amount_max      = 6.0
 
-	var sparkle_colour := _get_sleeve_sparkle_colour(String(target.get_meta("sleeve_name", "")))
+	var sparkle_colour := _get_item_sparkle_colour(String(target.get_meta("item_name", "")))
 	var bright         := sparkle_colour.lightened(1.0)
 
 	var gradient := Gradient.new()
@@ -581,17 +644,20 @@ func _start_sparkle(target: Control) -> void:
 	particles.color_ramp = gradient
 
 
-## Colour word anywhere in the sleeve name tints its sparkle ("Oricorio_Pink" -> pink).
-## Underscores are swapped for spaces first so the match works on either separator.
-func _get_sleeve_sparkle_colour(sleeve_name: String) -> Color:
-	var n := " " + sleeve_name.to_lower().replace("_", " ") + " "
+## Colour word anywhere in the item's name tints its sparkle ("Oricorio_Pink" -> pink,
+## "Pokemaniac_Red" -> red). Underscores are swapped for spaces first so the match works
+## on either separator. The energy sleeves are matched by type name as well as by colour.
+func _get_item_sparkle_colour(item_name: String) -> Color:
+	var n := " " + item_name.to_lower().replace("_", " ") + " "
 	if " red"    in n: return Color(1.0,  0.2,  0.2)
 	if " gold"   in n: return Color(1.0,  0.85, 0.2)
-	if " silver" in n: return Color(0.85, 0.85, 0.9)
-	if " blue"   in n: return Color(0.3,  0.5,  1.0)
-	if " green"  in n: return Color(0.2,  0.9,  0.3)
-	if " pink"   in n: return Color(1.0,  0.2,  0.7)
-	if " purple" in n: return Color(0.55, 0.1,  1.0)
-	if " yellow" in n: return Color(1.0,  0.9,  0.3)
-	if " orange" in n: return Color(1.0,  0.55, 0.15)
+	if " silver" in n or " metal" in n: return Color(0.85, 0.85, 0.9)
+	if " blue"   in n or " water" in n: return Color(0.3,  0.5,  1.0)
+	if " green"  in n or " grass" in n: return Color(0.2,  0.9,  0.3)
+	if " pink"   in n or " psychic" in n: return Color(1.0,  0.2,  0.7)
+	if " purple" in n or " darkness" in n: return Color(0.55, 0.1,  1.0)
+	if " yellow" in n or " lightning" in n: return Color(1.0,  0.9,  0.3)
+	if " orange" in n or " fire" in n: return Color(1.0,  0.55, 0.15)
+	if " fighting" in n: return Color(0.8,  0.45, 0.15)
+	if " dragon"   in n: return Color(0.85, 0.7,  0.25)
 	return Color(1.0, 1.0, 1.0)

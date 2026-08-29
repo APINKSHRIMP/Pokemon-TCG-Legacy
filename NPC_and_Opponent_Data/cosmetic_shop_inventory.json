@@ -1,0 +1,42 @@
+{
+	"_comment": "Stock for every cosmetic-selling service NPC (Sleeve Sellers and Costume Salesmen). The top-level key is the NPC's shop_id (set in All_NPC_Constant_Data.json; defaults to the slugified NPC name). 'kind' picks what is being sold and therefore where the art comes from and how the purchase is banked: 'sleeve' -> Image_Assets/Sleeves, GameState.add_sleeve_to_collection; 'costume' -> Image_Assets/Character_Sprites/In_Battle_Sprites, GameState.add_costume_to_collection. Item names are bare basenames exactly as they appear in that folder and in the player's progress array -- no extension. 'columns' is optional and forces the grid's shape (10 items with columns 5 = 2 rows of 5); leave it out to let the grid pick. Add a new seller by adding a new block here and pointing an NPC's shop_id at it.",
+
+	"gym_plaza_sleeves": {
+		"kind": "sleeve",
+		"title": "Limited Edition Sleeves",
+		"items": [
+			{"name": "Oricorio_Pink",   "cost": 400},
+			{"name": "Oricorio_Red",    "cost": 400},
+			{"name": "Oricorio_Yellow", "cost": 400}
+		]
+	},
+
+	"harbour_market_sleeves": {
+		"kind": "sleeve",
+		"title": "Energy Sleeves",
+		"columns": 5,
+		"items": [
+			{"name": "Energy_Grass",     "cost": 50},
+			{"name": "Energy_Fire",      "cost": 50},
+			{"name": "Energy_Water",     "cost": 50},
+			{"name": "Energy_Lightning", "cost": 50},
+			{"name": "Energy_Psychic",   "cost": 50},
+			{"name": "Energy_Fighting",  "cost": 50},
+			{"name": "Energy_Darkness",  "cost": 50},
+			{"name": "Energy_Metal",     "cost": 50},
+			{"name": "Energy_Dragon",    "cost": 50},
+			{"name": "Energy_Colorless", "cost": 50}
+		]
+	},
+
+	"harbour_market_costumes": {
+		"kind": "costume",
+		"title": "Pokemaniac Costumes",
+		"items": [
+			{"name": "Pokemaniac_Red",    "cost": 200},
+			{"name": "Pokemaniac_Blue",   "cost": 200},
+			{"name": "Pokemaniac_Green",  "cost": 200},
+			{"name": "Pokemaniac_Purple", "cost": 200}
+		]
+	}
+}

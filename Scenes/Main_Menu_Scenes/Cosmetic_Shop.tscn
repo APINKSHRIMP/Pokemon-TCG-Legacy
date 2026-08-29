@@ -1,6 +1,6 @@
 [gd_scene format=3]
 
-[ext_resource type="Script" path="res://Scripts/Menu_Scripts/Sleeve_Shop_Script.gd" id="1_sshop"]
+[ext_resource type="Script" path="res://Scripts/Menu_Scripts/Cosmetic_Shop_Script.gd" id="1_sshop"]
 [ext_resource type="Shader" uid="uid://ccm481fk14lc8" path="res://Scripts/Shaders/Background_Scroll_Right_Top_Border.gdshader" id="2_sshop"]
 [ext_resource type="Texture2D" uid="uid://dieqv60p12hlk" path="res://Image_Assets/Backgrounds_And_Borders/Borders/horizontal_border.png" id="3_sshop"]
 [ext_resource type="Shader" uid="uid://d3gofmygrsrkm" path="res://Scripts/Shaders/Background_Scroll_Left.gdshader" id="4_sshop"]
@@ -18,7 +18,7 @@ shader = ExtResource("4_sshop")
 shader_parameter/scroll_speed = 0.002
 shader_parameter/tint = Vector4(1, 1, 1, 1)
 
-[node name="SLEEVE SHOP" type="Control"]
+[node name="COSMETIC SHOP" type="Control"]
 layout_mode = 3
 anchors_preset = 0
 offset_right = 40.0
@@ -81,7 +81,7 @@ text = "Sleeve Shop"
 horizontal_alignment = 1
 vertical_alignment = 1
 
-[node name="sleeve_grid_container" type="GridContainer" parent="."]
+[node name="item_grid_container" type="GridContainer" parent="."]
 layout_mode = 0
 offset_left = 260.0
 offset_top = 200.0
@@ -131,7 +131,7 @@ text = "0"
 horizontal_alignment = 2
 vertical_alignment = 1
 
-[node name="sleeve_cost_text_label" type="Label" parent="MONEY LABELS"]
+[node name="item_cost_text_label" type="Label" parent="MONEY LABELS"]
 z_index = 999
 layout_mode = 0
 offset_left = 1077.0
@@ -150,7 +150,7 @@ text = "Sleeve cost:"
 horizontal_alignment = 2
 vertical_alignment = 1
 
-[node name="sleeve_cost_amount" type="Label" parent="MONEY LABELS"]
+[node name="item_cost_amount" type="Label" parent="MONEY LABELS"]
 z_index = 999
 layout_mode = 0
 offset_left = 1344.0
@@ -169,7 +169,7 @@ text = "400"
 horizontal_alignment = 2
 vertical_alignment = 1
 
-[node name="sleeve_buy_button" type="Button" parent="."]
+[node name="item_buy_button" type="Button" parent="."]
 z_index = 300
 layout_mode = 0
 offset_left = 568.0

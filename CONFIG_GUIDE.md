@@ -765,7 +765,7 @@ Keyed by **scene name** (the `.tscn` filename without extension), then by the
 ```jsonc
 {
   "Celeste_Harbour": {
-    "Sign_Shop_Bakery": "Fresh hot bread from here!",
+    "Sign_Shop_Costume": "Poke Lovers Costume shop for all your poke costume needs",
     "Sign_Beach_Right_Big": "‹ Magikarp Pond  |  Pikachu Pond ›"
   },
   "Verdant_Forest": { "Sign_North": "Verdant Event Hall ahead." }

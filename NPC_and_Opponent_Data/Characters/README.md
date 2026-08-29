@@ -108,17 +108,20 @@ Any of them takes a `not ` prefix. Compound gates use the longhand object form:
 The first rule sets nothing — it just means *"also here, exactly as described above."*
 
 ```jsonc
-"Bakery Shopkeeper": {
-  "at": [2570, 1650],
+"Sunbathing Sailor 2": {
+  "at": [-46, 2273],
   "move": "idle_down",
   "says": {
-    "meet": "Get your freshly baked pastries, cakes and bread all here.",
-    "repeat": "Everything is freshly baked this morning and some of the bread is still warm!"
+    "meet": "I actually battled Misty years ago, back when she was Cerulean's gym leader.",
+    "repeat": "I lost and I'm too shy to say hello. Not like she'd remember me anyway."
   },
   "when": [
     { "days": "3-8", "times": "M,A" },
     { "days": "3-8", "times": "E",
-      "says": { "repeat": "Plenty of items still fresh to enjoy!" } }
+      "says": {
+        "meet": "Misty left and I didn't say hello. I have to head back to the Anne so I won't have chance now.",
+        "repeat": "Weird how life works. You never know who you're going to run into years down the line."
+      } }
   ]
 }
 ```

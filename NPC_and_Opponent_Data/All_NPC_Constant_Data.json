@@ -26,11 +26,6 @@
       "friendly_name": "Bread Lover",
       "message_colour": "light_pink"
     },
-    "Bakery Shopkeeper": {
-      "sprite": "NPC 19_1",
-      "friendly_name": "Baker",
-      "message_colour": "orange"
-    },
     "Beach Kid Evie": {
       "sprite": "Tuber_F",
       "friendly_name": "Beach Kid Evie",
@@ -173,11 +168,6 @@
       "sprite": "Fisherman",
       "friendly_name": "Fisherman Dave",
       "message_colour": "dark_blue"
-    },
-    "Fruit And Veg Shopkeeper": {
-      "sprite": "NPC 19",
-      "friendly_name": "Greengrocer",
-      "message_colour": "green"
     },
     "Giovanni": {
       "gift_type": "card",
@@ -700,6 +690,20 @@
       "message_colour": "dark_red",
       "friendly_name": "Weighed Pack Seller",
       "npc_type": "weighted_pack_seller"
+    },
+    "Costume Salesman": {
+      "sprite": "Costumeseller_2",
+      "message_colour": "purple",
+      "friendly_name": "Costume Salesman",
+      "npc_type": "costume_seller",
+      "shop_id": "harbour_market_costumes"
+    },
+    "Sleeve Seller 2": {
+      "sprite": "Sleeveseller_2",
+      "message_colour": "light_blue",
+      "friendly_name": "Sleeve Seller",
+      "npc_type": "sleeve_seller",
+      "shop_id": "harbour_market_sleeves"
     }
   },
   "opponents": {
