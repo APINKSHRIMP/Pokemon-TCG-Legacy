@@ -80,8 +80,9 @@ const FAN_X_STEP     := 116.0     # horizontal gap between one card's left edge 
 ## moved 30 the other way in the scene. Shrinking the cards left ~94px of dead air in the
 ## middle of the screen; closing it from both sides puts the whole cluster — fans at
 ## 211..566 once the outer cards' rotation is counted, labels at 600, buttons ending at
-## 870 — centred on y 541, against a content band (header ends 89, money row starts 985)
-## whose centre is 537.
+## 870 — centred on y 541. The content band it is centred against used to end at the money
+## row's 985; that row is now the wallet chip up on the header border, so the band runs to
+## the bottom border at 977 and the centre barely moved (533). Left as is.
 const FAN_TOP_Y      := 220.0
 const FAN_CENTERS    := [340.0, 960.0, 1580.0]   # x centre of each group
 const FAN_TILT_DEG   := 7.0       # left card gets -this, right card +this, middle 0
@@ -221,8 +222,11 @@ var _detail_panel : CardDetailPanel = null
 @onready var sell_all_btn        : Button  = $"HOME BUTTONS"/sell_all_button
 @onready var home_cancel_btn     : Button  = $"HOME BUTTONS"/home_cancel_button
 
-@onready var money_root        : Control = $"MONEY LABELS"
-@onready var money_amount      : Label   = $"MONEY LABELS"/your_money_amount
+## The top-right cash pill, built at runtime by ShopChrome. Replaces the font-61 "Your money"
+## pair that used to sit bottom-right, on top of the bottom border. Nothing on this screen is
+## priced per item — the three bands are sell rates, not purchases — so there are no price
+## pills here, only the wallet.
+var wallet_chip : Control = null
 
 @onready var list_buttons    : Control = $"LIST BUTTONS"
 @onready var list_sell_btn   : Button  = $"LIST BUTTONS"/list_sell_button
@@ -253,6 +257,8 @@ func _ready() -> void:
 	_float_layer.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_float_layer.z_index = 400
 	add_child(_float_layer)
+
+	wallet_chip = ShopChrome.add_wallet_chip(self, GameState.get_cash())
 
 	_scan_spares()
 	_build_card_fans()
@@ -471,7 +477,7 @@ func _show_home() -> void:
 	fan_root.visible     = true
 	price_root.visible   = true
 	home_buttons.visible = true
-	money_root.visible   = true
+	wallet_chip.visible  = true
 	list_buttons.visible = false
 
 	if _list_overlay != null:
@@ -498,7 +504,7 @@ func _refresh_home_buttons() -> void:
 
 
 func _update_money_label() -> void:
-	money_amount.text = str(GameState.get_cash())
+	ShopChrome.set_wallet_cash(wallet_chip, GameState.get_cash())
 
 
 # ─── Sell list screen ────────────────────────────────────────────────────────
@@ -529,7 +535,7 @@ func _open_sell_list(band: int, selection: Dictionary) -> void:
 	fan_root.visible     = false
 	price_root.visible   = false
 	home_buttons.visible = false
-	money_root.visible   = false
+	wallet_chip.visible  = false
 	list_buttons.visible = true
 	# Sell stays dead until the last card is in the grid. Pressing it mid-build used to sell
 	# only what had rendered so far while the rest kept appearing behind the animation.

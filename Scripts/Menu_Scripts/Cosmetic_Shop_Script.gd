@@ -7,7 +7,7 @@ extends Control
 # grid of buyable items, a cost/cash readout, buy + cancel, an "OWNED" stamp on anything
 # the player already has, and a full-screen reveal after a purchase.
 #
-# TWO DIFFERENCES from the Coin Shop:
+# THREE DIFFERENCES from the Coin Shop:
 #   1. There is no "back" texture to flip from — a sleeve IS a card back and a costume is
 #      a character sprite — so the reveal uses the COSTUME FADE-IN instead of the coin
 #      flip: the image starts fully black and fades up over the dim overlay (mirrors
@@ -16,6 +16,10 @@ extends Control
 #      in cosmetic_shop_inventory.json, so another seller elsewhere in the world runs this
 #      exact screen with different wares — no code changes, just a new block in the JSON
 #      and a shop_id on the NPC.
+#   3. NO SPARKLE PARTICLES on the selected cell. The glitter is reserved for things that
+#      actually shine — holo cards and coins (Coin_Shop, Holo_Rare_Shop, Coin_Case,
+#      Pack_Opening, and the coinflip/holo-gift reveals in MapManager). Selection here is
+#      the pulse tween alone. Do not re-add it.
 #
 # WHAT the block sells is the block's own "kind" field, which is the only thing that
 # differs between a Sleeve Seller and a Costume Salesman: where the art comes from, the
@@ -45,10 +49,20 @@ const KIND_COSTUME := "costume"
 ## entry cannot quietly sell something at an out-of-date price.
 const DEFAULT_ITEM_COST := 400
 
-## The box the grid is laid out inside, in screen pixels. Matches the empty space the
-## scene leaves between the header and the money labels.
-const GRID_AREA_POS  := Vector2(260.0, 190.0)
-const GRID_AREA_SIZE := Vector2(1400.0, 610.0)
+## TWEAKABLE — how far an item's ART is knocked back in each resting state. Both are applied
+## with self_modulate on the art rect so the price pill, a sibling under the same wrapper,
+## keeps its own colour. OWNED_DIM was 0.2 alongside the old centred "OWNED" stamp; with the
+## grey pill carrying that message the item no longer has to be blacked out.
+const OWNED_DIM      := Color(0.45, 0.45, 0.45)
+const UNSELECTED_DIM := Color(0.8, 0.8, 0.8)
+
+## The box the grid is laid out inside, in screen pixels. Grown from (260,190)/(1400,610)
+## when the "Your money / Sleeve cost" label block was replaced by the wallet chip and
+## per-item price pills (see ShopChrome) — that block used to reserve a 190px band across
+## the bottom of the screen. Bottom edge is kept clear of the bottom border at y977 so the
+## pills, which hang below their cells, still have somewhere to go.
+const GRID_AREA_POS  := Vector2(160.0, 140.0)
+const GRID_AREA_SIZE := Vector2(1600.0, 780.0)
 
 ## TWEAKABLE — grid shape. Cells are sized to fit GRID_AREA_SIZE, so a seller stocking
 ## more items gets smaller cells rather than an overflowing grid. A block may override
@@ -82,7 +96,6 @@ var _owned_items    : Dictionary = {}
 
 var selected_cell   : Control = null
 var _active_tween   : Tween = null
-var _active_particles : CPUParticles2D = null
 var _in_purchase_seq : bool = false
 ## The reveal's OK button, held so _input() can press it from the keyboard.
 var _reveal_ok_btn  : Button = null
@@ -100,9 +113,16 @@ var theme_kenney_green : Theme = preload("res://UI_Themes/kenneyUI-green.tres")
 @onready var buy_btn           : Button        = $item_buy_button
 @onready var cancel_btn        : Button        = $buy_cancel_button
 @onready var header_label      : Label         = $large_header_text_label
-@onready var your_money_amount : Label         = $"MONEY LABELS"/your_money_amount
-@onready var item_cost_label   : Label         = $"MONEY LABELS"/item_cost_text_label
-@onready var item_cost_amount  : Label         = $"MONEY LABELS"/item_cost_amount
+
+## The top-right cash pill, built at runtime by ShopChrome. Replaces the four font-61
+## "Your money / Sleeve cost" Labels that used to sit bottom-right; each item now carries
+## its own price on a pill in its bottom-right corner.
+var wallet_chip : Control = null
+
+## The flat layer every price pill is drawn on. Pills are NOT children of the cells: the
+## selection tween scales a cell, and a nested pill would be scaled along with it instead of
+## the item growing and shrinking behind a price that stays put.
+var pill_layer  : Control = null
 
 
 # ─── Lifecycle ───────────────────────────────────────────────────────────────
@@ -113,14 +133,13 @@ func _ready() -> void:
 	_load_inventory()
 	_load_player_data()
 
-	header_label.text    = shop_title
-	item_cost_label.text = "Costume cost:" if shop_kind == KIND_COSTUME else "Sleeve cost:"
+	header_label.text = shop_title
 
 	grid.add_theme_constant_override("h_separation", CELL_SEP)
 	grid.add_theme_constant_override("v_separation", CELL_SEP)
 
-	your_money_amount.text = str(player_cash)
-	item_cost_amount.text  = str(_lowest_cost())
+	wallet_chip = ShopChrome.add_wallet_chip(self, player_cash)
+	pill_layer  = ShopChrome.add_pill_layer(self)
 
 	buy_btn.disabled = true
 	buy_btn.pressed.connect(_on_buy_pressed)
@@ -128,11 +147,6 @@ func _ready() -> void:
 
 	await get_tree().process_frame
 	_build_item_grid()
-
-
-func _process(_delta: float) -> void:
-	if _active_particles and selected_cell:
-		_active_particles.global_position = selected_cell.global_position + selected_cell.size / 2.0
 
 
 # ─── Data loading ────────────────────────────────────────────────────────────
@@ -185,19 +199,6 @@ func _is_owned(item_name: String) -> bool:
 	if shop_kind == KIND_COSTUME:
 		return GameState.has_costume(item_name)
 	return _owned_items.has(item_name)
-
-
-## The figure shown before anything is picked. Everything in stock is usually the same
-## price, so the cheapest entry is the honest "from" number.
-func _lowest_cost() -> int:
-	var lowest := DEFAULT_ITEM_COST
-	var found := false
-	for entry in inventory:
-		var cost : int = int(entry.get("cost", DEFAULT_ITEM_COST))
-		if not found or cost < lowest:
-			lowest = cost
-			found = true
-	return lowest
 
 
 # ─── Texture resolution ──────────────────────────────────────────────────────
@@ -287,7 +288,10 @@ func _build_item_grid() -> void:
 		var wrapper := Control.new()
 		wrapper.custom_minimum_size = cell_size
 		wrapper.size                = cell_size
-		wrapper.clip_contents       = true
+		# NOT clipped: the price pill deliberately overhangs the cell's bottom-right corner
+		# and a clipping wrapper would slice it in half. The art below is aspect-fitted to
+		# the cell, so nothing else can spill out.
+		wrapper.clip_contents       = false
 		wrapper.set_meta("item_name", item_name)
 		wrapper.set_meta("item_cost", cost)
 		wrapper.set_meta("is_owned",  is_owned)
@@ -309,7 +313,9 @@ func _build_item_grid() -> void:
 		if is_owned:
 			_mark_cell_owned(wrapper)
 		else:
-			wrapper.modulate = Color(0.8, 0.8, 0.8)
+			# self_modulate on the ART, never modulate on the wrapper: modulate propagates
+			# into the price pill and would dim that along with the item.
+			rect.self_modulate = UNSELECTED_DIM
 			wrapper.gui_input.connect(_on_item_clicked.bind(wrapper))
 
 		grid.add_child(wrapper)
@@ -330,30 +336,64 @@ func _build_item_grid() -> void:
 	grid.size     = content
 	grid.position = GRID_AREA_POS + (GRID_AREA_SIZE - content) / 2.0
 
+	# After the re-centre, never before: pills anchor to each cell's global rect and the whole
+	# block has just moved.
+	_refresh_pills()
 
-## Dims the item and stamps OWNED across it. self_modulate dims only the wrapper's own
-## drawing, so it is applied to the image rect — the label added here stays readable.
+
+## Knocks the item back and lets its pill carry the OWNED message. The centred font-40
+## "OWNED" stamp this used to add is gone — the grey pill says it now, in the same corner
+## every other shop puts a price. Dimming is done with self_modulate on the ART rect so the
+## pill, which is also a child of the wrapper, keeps its own colour.
 func _mark_cell_owned(wrapper: Control) -> void:
 	wrapper.set_meta("is_owned", true)
 	wrapper.modulate     = Color(1, 1, 1, 1)
 	wrapper.scale        = Vector2(1.0, 1.0)
 	wrapper.mouse_filter = Control.MOUSE_FILTER_IGNORE
 
+	var art := _art_rect(wrapper)
+	if art != null:
+		art.self_modulate = OWNED_DIM
+
+
+# ─── Price pills ─────────────────────────────────────────────────────────────
+
+## The art rect inside a cell wrapper — the thing that gets dimmed and pulsed.
+func _art_rect(wrapper: Control) -> TextureRect:
 	for child in wrapper.get_children():
 		if child is TextureRect:
-			child.self_modulate = Color(0.2, 0.2, 0.2)
+			return child
+	return null
 
-	var owned_label := Label.new()
-	owned_label.text                 = "OWNED"
-	owned_label.position             = Vector2.ZERO
-	owned_label.size                 = wrapper.size
-	owned_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	owned_label.vertical_alignment   = VERTICAL_ALIGNMENT_CENTER
-	owned_label.mouse_filter         = Control.MOUSE_FILTER_IGNORE
-	owned_label.theme                = theme_kenney
-	owned_label.add_theme_color_override("font_color", Color.WHITE)
-	owned_label.add_theme_font_size_override("font_size", 40)
-	wrapper.add_child(owned_label)
+
+## Rebuilds the whole set of pills. Called after the grid is laid out and after any purchase —
+## not just for the item bought: spending puts the rest of the shelf out of reach, and those
+## pills have to turn red to say so. An item's pill reads grey OWNED once it is in the
+## collection, replacing the centred font-40 stamp.
+##
+## Deferred a frame so the GridContainer has actually placed its children; each pill anchors to
+## its cell's global rect. Every caller reaches this with selection cleared and scales back at
+## 1, which is what keeps those rects the resting ones.
+func _refresh_pills() -> void:
+	if not is_inside_tree():
+		return
+	await get_tree().process_frame
+	if not is_inside_tree():
+		return
+
+	ShopChrome.clear_pills(pill_layer)
+	for child in grid.get_children():
+		if not (child is Control) or not is_instance_valid(child):
+			continue
+		var cost : int = int(child.get_meta("item_cost", DEFAULT_ITEM_COST))
+		var state : int
+		if child.get_meta("is_owned", false):
+			state = ShopChrome.OWNED
+		elif player_cash >= cost:
+			state = ShopChrome.AFFORDABLE
+		else:
+			state = ShopChrome.UNAFFORDABLE
+		ShopChrome.add_price_pill(pill_layer, child.get_global_rect(), state, cost)
 
 
 # ─── Click / selection ───────────────────────────────────────────────────────
@@ -372,32 +412,30 @@ func _on_item_clicked(event: InputEvent, cell: Control) -> void:
 	if selected_cell == cell:
 		_deselect_item(cell)
 		selected_cell = null
-		item_cost_amount.text = str(_lowest_cost())
 		_update_buy_button()
 		SoundManagerScript.play_sfx(SoundManagerScript.SFX_minus_select)
 		return
 
 	_select_item(cell)
-	item_cost_amount.text = str(int(cell.get_meta("item_cost", DEFAULT_ITEM_COST)))
 	_update_buy_button()
 	SoundManagerScript.play_sfx(SoundManagerScript.SFX_plus_select)
 
 
+## Selection is the pulse tween alone. There are deliberately NO sparkle particles here:
+## the glitter is reserved for the holo-rare and coin shops, where the shine is the point.
 func _select_item(cell: Control) -> void:
 	selected_cell = cell
 	_apply_selected_animation(cell)
-	_start_sparkle(cell)
 
 
 func _deselect_item(cell: Control) -> void:
 	if _active_tween:
 		_active_tween.kill()
 		_active_tween = null
-	if _active_particles:
-		_active_particles.queue_free()
-		_active_particles = null
 	if is_instance_valid(cell) and not cell.get_meta("is_owned", false):
-		cell.modulate     = Color(0.8, 0.8, 0.8)
+		var art := _art_rect(cell)
+		if art != null:
+			art.self_modulate = UNSELECTED_DIM
 		cell.scale        = Vector2(1.0, 1.0)
 		cell.pivot_offset = cell.size / 2.0
 
@@ -406,13 +444,18 @@ func _apply_selected_animation(cell: Control) -> void:
 	if _active_tween:
 		_active_tween.kill()
 	cell.pivot_offset = cell.size / 2.0
-	cell.modulate = Color.WHITE
+	var art := _art_rect(cell)
+	if art == null:
+		return
+	art.self_modulate = Color.WHITE
 	var tween := create_tween()
 	tween.set_loops()
 	_active_tween = tween
-	tween.tween_property(cell, "modulate", Color.WHITE * 1.1, 0.2)
+	# The brightness pulse runs on the ART's self_modulate so it cannot reach the price pill;
+	# the scale pulse stays on the wrapper on purpose, so the pill grows with its item.
+	tween.tween_property(art, "self_modulate", Color.WHITE * 1.1, 0.2)
 	tween.parallel().tween_property(cell, "scale", Vector2(1.02, 1.02), 0.2)
-	tween.tween_property(cell, "modulate", Color.WHITE * 1.0, 0.2)
+	tween.tween_property(art, "self_modulate", Color.WHITE * 1.0, 0.2)
 	tween.parallel().tween_property(cell, "scale", Vector2(1.0, 1.0), 0.2)
 
 
@@ -535,14 +578,13 @@ func _show_purchase_display(item_name: String) -> void:
 		if _active_tween:
 			_active_tween.kill()
 			_active_tween = null
-		if _active_particles:
-			_active_particles.queue_free()
-			_active_particles = null
 		_mark_cell_owned(purchased_cell)
 
 	selected_cell = null
-	your_money_amount.text = str(player_cash)
-	item_cost_amount.text  = str(_lowest_cost())
+	ShopChrome.set_wallet_cash(wallet_chip, player_cash)
+	# Every pill, not just the one bought: the item just purchased flips to grey OWNED and
+	# anything the remaining balance no longer covers flips green -> red.
+	_refresh_pills()
 	cancel_btn.disabled    = false
 	_in_purchase_seq       = false
 	_update_buy_button()
@@ -605,59 +647,3 @@ func _input(event: InputEvent) -> void:
 		return
 	if UIInput.is_cancel(event):
 		_on_cancel_pressed()
-
-
-# ─── Sparkle particles ───────────────────────────────────────────────────────
-
-func _start_sparkle(target: Control) -> void:
-	if _active_particles:
-		_active_particles.queue_free()
-
-	var particles := CPUParticles2D.new()
-	add_child(particles)
-	_active_particles = particles
-
-	particles.global_position       = target.global_position + target.size / 2.0
-	particles.z_index               = 50
-	particles.amount                = 20
-	particles.lifetime              = 0.9
-	particles.one_shot              = false
-	particles.explosiveness         = 0.0
-	particles.emitting              = true
-	particles.emission_shape        = CPUParticles2D.EMISSION_SHAPE_RECTANGLE
-	particles.emission_rect_extents = target.size / 2.0
-	particles.direction             = Vector2(0, 0)
-	particles.initial_velocity_min  = 0.0
-	particles.initial_velocity_max  = 0.0
-	particles.gravity               = Vector2(0, 0)
-	particles.scale_amount_min      = 3.0
-	particles.scale_amount_max      = 6.0
-
-	var sparkle_colour := _get_item_sparkle_colour(String(target.get_meta("item_name", "")))
-	var bright         := sparkle_colour.lightened(1.0)
-
-	var gradient := Gradient.new()
-	gradient.set_color(0, Color(bright.r, bright.g, bright.b, 0.0))
-	gradient.add_point(0.3, sparkle_colour)
-	gradient.add_point(0.5, bright)
-	gradient.set_color(3, Color(sparkle_colour.r, sparkle_colour.g, sparkle_colour.b, 0.0))
-	particles.color_ramp = gradient
-
-
-## Colour word anywhere in the item's name tints its sparkle ("Oricorio_Pink" -> pink,
-## "Pokemaniac_Red" -> red). Underscores are swapped for spaces first so the match works
-## on either separator. The energy sleeves are matched by type name as well as by colour.
-func _get_item_sparkle_colour(item_name: String) -> Color:
-	var n := " " + item_name.to_lower().replace("_", " ") + " "
-	if " red"    in n: return Color(1.0,  0.2,  0.2)
-	if " gold"   in n: return Color(1.0,  0.85, 0.2)
-	if " silver" in n or " metal" in n: return Color(0.85, 0.85, 0.9)
-	if " blue"   in n or " water" in n: return Color(0.3,  0.5,  1.0)
-	if " green"  in n or " grass" in n: return Color(0.2,  0.9,  0.3)
-	if " pink"   in n or " psychic" in n: return Color(1.0,  0.2,  0.7)
-	if " purple" in n or " darkness" in n: return Color(0.55, 0.1,  1.0)
-	if " yellow" in n or " lightning" in n: return Color(1.0,  0.9,  0.3)
-	if " orange" in n or " fire" in n: return Color(1.0,  0.55, 0.15)
-	if " fighting" in n: return Color(0.8,  0.45, 0.15)
-	if " dragon"   in n: return Color(0.85, 0.7,  0.25)
-	return Color(1.0, 1.0, 1.0)

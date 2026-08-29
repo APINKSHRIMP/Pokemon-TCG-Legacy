@@ -6,8 +6,13 @@ const INVENTORY_PATH   := "res://NPC_and_Opponent_Data/coin_shop_inventory.json"
 const COIN_FOLDER      := "res://Image_Assets/Coins"
 const COINBACK_PATH    := "res://Image_Assets/Coins/Back Basic.png"
 const CELESTE_HARBOUR  := "res://Scenes/Map_Scenes/Celeste_Harbour.tscn"
-const COIN_SIZE        := Vector2(200, 200)
-const COIN_SEPARATION  := 100
+## TWEAKABLE — grid shape. Grown from 200/100 when the "Your money / Coin cost" label block
+## was replaced by the wallet chip and per-coin price pills (see ShopChrome): the freed band
+## across the bottom of the screen let the coins go up without crowding anything. Native coin
+## art is ~315px square, so 250 is still a downscale. The scene positions the container to
+## match — change these and move coin_grid_container's offsets in Coin_Shop.tscn to suit.
+const COIN_SIZE        := Vector2(250, 250)
+const COIN_SEPARATION  := 90
 const COLUMNS          := 5
 const GIFT_COIN_SIZE   := Vector2(250, 250)
 const GIFT_FLIP_TOTAL  := 1.5
@@ -16,6 +21,13 @@ const GIFT_FLIP_TOTAL  := 1.5
 # prices live in coin_shop_inventory.json — keep this in step with them so a malformed entry can't
 # quietly sell a coin at an out-of-date price.
 const DEFAULT_COIN_COST := 500
+
+## TWEAKABLE — how far the coin ART is knocked back in each resting state. Both are applied
+## with self_modulate so the price pill, which is a child, keeps its own colour. OWNED_DIM was
+## 0.2 alongside the old centred "OWNED" stamp; with the grey pill carrying that message the
+## coin no longer has to be blacked out to read as unavailable.
+const OWNED_DIM      := Color(0.45, 0.45, 0.45)
+const UNSELECTED_DIM := Color(0.8, 0.8, 0.8)
 
 # ─── State ───────────────────────────────────────────────────────────────────
 
@@ -40,8 +52,16 @@ var theme_kenney_green : Theme = preload("res://UI_Themes/kenneyUI-green.tres")
 @onready var grid             : GridContainer = $coin_grid_container
 @onready var buy_btn          : Button        = $coin_buy_button
 @onready var cancel_btn       : Button        = $buy_cancel_button
-@onready var your_money_amount: Label         = $"MONEY LABELS"/your_money_amount
-@onready var coin_cost_amount : Label         = $"MONEY LABELS"/coin_cost_amount
+
+## The top-right cash pill, built at runtime by ShopChrome. Replaces the four font-61
+## "Your money / Coin cost" Labels that used to sit bottom-right; the per-coin price is now
+## a pill on the coin itself.
+var wallet_chip : Control = null
+
+## The flat layer every price pill is drawn on. Pills are NOT children of the coins: the
+## selection tween scales a coin, and the sparkle emitter sits at z 50 — a nested pill would
+## be scaled by the first and drawn under the second.
+var pill_layer  : Control = null
 
 # ─── Lifecycle ───────────────────────────────────────────────────────────────
 
@@ -55,9 +75,8 @@ func _ready() -> void:
 	grid.add_theme_constant_override("h_separation", COIN_SEPARATION)
 	grid.add_theme_constant_override("v_separation", COIN_SEPARATION)
 
-	your_money_amount.text = str(player_cash)
-	if inventory.size() > 0:
-		coin_cost_amount.text = str(int(inventory[0].get("cost", DEFAULT_COIN_COST)))
+	wallet_chip = ShopChrome.add_wallet_chip(self, player_cash)
+	pill_layer  = ShopChrome.add_pill_layer(self)
 
 	buy_btn.disabled = true
 	buy_btn.pressed.connect(_on_buy_pressed)
@@ -117,27 +136,50 @@ func _build_coin_grid() -> void:
 		rect.set_meta("coin_cost",     cost)
 		rect.set_meta("is_owned",      is_owned)
 
+		# EVERY dim and pulse on a coin uses self_modulate, never modulate: modulate would
+		# propagate into the price pill hanging off the corner and dim or brighten that too.
 		if is_owned:
-			# self_modulate dims only the texture; children (the label) are unaffected
-			rect.self_modulate = Color(0.2, 0.2, 0.2)
+			rect.self_modulate = OWNED_DIM
 			rect.mouse_filter  = Control.MOUSE_FILTER_IGNORE
-
-			var owned_label := Label.new()
-			owned_label.text                 = "OWNED"
-			owned_label.position             = Vector2.ZERO
-			owned_label.size                 = COIN_SIZE
-			owned_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-			owned_label.vertical_alignment   = VERTICAL_ALIGNMENT_CENTER
-			owned_label.mouse_filter         = Control.MOUSE_FILTER_IGNORE
-			owned_label.theme                = theme_kenney
-			owned_label.add_theme_color_override("font_color", Color.WHITE)
-			owned_label.add_theme_font_size_override("font_size", 28)
-			rect.add_child(owned_label)
 		else:
-			rect.modulate = Color(0.8, 0.8, 0.8)
+			rect.self_modulate = UNSELECTED_DIM
 			rect.gui_input.connect(_on_coin_clicked.bind(rect))
 
 		grid.add_child(rect)
+
+	_refresh_pills()
+
+
+# ─── Price pills ─────────────────────────────────────────────────────────────
+
+## Rebuilds the whole set of pills. Called on build and after any purchase — not just for the
+## coin bought: spending puts the rest of the shelf out of reach, and those pills have to turn
+## red to say so. A coin's pill is grey OWNED once it is in the collection; the centred font-28
+## "OWNED" stamp this replaced is gone.
+##
+## Deferred a frame because the GridContainer has not placed its children yet on the frame they
+## are added, and each pill anchors to its coin's global rect. Every caller reaches this with
+## selection cleared and scales back at 1, which is what keeps those rects the resting ones.
+func _refresh_pills() -> void:
+	if not is_inside_tree():
+		return
+	await get_tree().process_frame
+	if not is_inside_tree():
+		return
+
+	ShopChrome.clear_pills(pill_layer)
+	for child in grid.get_children():
+		if not (child is TextureRect) or not is_instance_valid(child):
+			continue
+		var cost : int = child.get_meta("coin_cost", DEFAULT_COIN_COST)
+		var state : int
+		if child.get_meta("is_owned", false):
+			state = ShopChrome.OWNED
+		elif player_cash >= cost:
+			state = ShopChrome.AFFORDABLE
+		else:
+			state = ShopChrome.UNAFFORDABLE
+		ShopChrome.add_price_pill(pill_layer, child.get_global_rect(), state, cost)
 
 
 # ─── Click / selection ───────────────────────────────────────────────────────
@@ -179,22 +221,24 @@ func _deselect_coin(rect: TextureRect) -> void:
 		_active_particles.queue_free()
 		_active_particles = null
 	if is_instance_valid(rect) and not rect.get_meta("is_owned", false):
-		rect.modulate     = Color(0.8, 0.8, 0.8)
-		rect.scale        = Vector2(1.0, 1.0)
-		rect.pivot_offset = rect.size / 2.0
+		rect.self_modulate = UNSELECTED_DIM
+		rect.scale         = Vector2(1.0, 1.0)
+		rect.pivot_offset  = rect.size / 2.0
 
 
 func _apply_selected_animation(rect: TextureRect) -> void:
 	if _active_tween:
 		_active_tween.kill()
-	rect.pivot_offset = rect.size / 2.0
-	rect.modulate = Color.WHITE
+	rect.pivot_offset  = rect.size / 2.0
+	rect.self_modulate = Color.WHITE
 	var tween := create_tween()
 	tween.set_loops()
 	_active_tween = tween
-	tween.tween_property(rect, "modulate", Color.WHITE * 1.1, 0.2)
+	# self_modulate, not modulate — the pulse must not reach the price pill child. scale is
+	# left on the node itself on purpose, so the pill grows and shrinks with its coin.
+	tween.tween_property(rect, "self_modulate", Color.WHITE * 1.1, 0.2)
 	tween.parallel().tween_property(rect, "scale", Vector2(1.02, 1.02), 0.2)
-	tween.tween_property(rect, "modulate", Color.WHITE * 1.0, 0.2)
+	tween.tween_property(rect, "self_modulate", Color.WHITE * 1.0, 0.2)
 	tween.parallel().tween_property(rect, "scale", Vector2(1.0, 1.0), 0.2)
 
 
@@ -306,24 +350,15 @@ func _show_purchase_display(coin_filename: String) -> void:
 			_active_particles.queue_free()
 			_active_particles = null
 		purchased_rect.set_meta("is_owned", true)
-		purchased_rect.self_modulate = Color(0.2, 0.2, 0.2)
+		purchased_rect.self_modulate = OWNED_DIM
 		purchased_rect.scale         = Vector2(1.0, 1.0)
 		purchased_rect.mouse_filter  = Control.MOUSE_FILTER_IGNORE
 
-		var owned_label := Label.new()
-		owned_label.text                 = "OWNED"
-		owned_label.position             = Vector2.ZERO
-		owned_label.size                 = COIN_SIZE
-		owned_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		owned_label.vertical_alignment   = VERTICAL_ALIGNMENT_CENTER
-		owned_label.mouse_filter         = Control.MOUSE_FILTER_IGNORE
-		owned_label.theme                = theme_kenney
-		owned_label.add_theme_color_override("font_color", Color.WHITE)
-		owned_label.add_theme_font_size_override("font_size", 28)
-		purchased_rect.add_child(owned_label)
-
 	selected_coin_rect = null
-	your_money_amount.text = str(player_cash)
+	ShopChrome.set_wallet_cash(wallet_chip, player_cash)
+	# Every pill, not just the one bought: the coin just purchased flips to grey OWNED and
+	# anything the remaining balance no longer covers flips green -> red.
+	_refresh_pills()
 	cancel_btn.disabled = false
 	_in_purchase_seq = false
 	_update_buy_button()

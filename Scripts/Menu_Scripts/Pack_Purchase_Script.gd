@@ -21,16 +21,12 @@ const WEIGHTED_SHOP_ID     := "weighted_mart"
 const HEADER_NORMAL        := "Select pack to purchase"
 const HEADER_WEIGHTED      := "Select WEIGHTED pack to purchase"
 
-## How far left the "pack cost:" pair slides to make room for the discounted figure beside it,
-## so the wider row stays centred on screen. All prices are three digits, so a flat shift is exact.
-const DISCOUNT_ROW_SHIFT   : float = 60.0
-## Gap between the struck-out old price and the discounted one. Measured from the old price's
-## label edge, so the strike's overhang eats into it — keep it comfortably above STRIKE_OVERHANG.
-const DISCOUNT_GAP         : float = 34.0
-## The strike overhangs the digits by this much each side, and is this thick.
-const STRIKE_OVERHANG      : float = 5.0
-const STRIKE_THICKNESS     : float = 6.0
-const STRIKE_COLOUR        := Color(0.85, 0.05, 0.05)
+## THE DISCOUNT DISPLAY LIVES ON THE PACKS NOW. It used to be a centred row above them —
+## the full price struck through in red at font 42, the payable price beside it, plus a
+## DISCOUNT_ROW_SHIFT that slid the whole "pack cost:" pair left to make room. All of that
+## is gone with the rest of the money labels. Each pack carries its own pill instead: gold
+## with the price actually charged, and a smaller grey pill stacked above it holding the
+## struck-out original. See ShopChrome.add_price_pill's `old_price`.
 
 # ─── State ───────────────────────────────────────────────────────────────────
 
@@ -45,8 +41,6 @@ var player_cash    : float = 0.0
 var is_weighted_shop  : bool       = false
 var weighted_prices   : Dictionary = {}   # pack id -> discounted cost
 var weighted_flags    : Dictionary = {}   # pack id -> story flag that must be raised to stock it
-var discount_amount   : Label      = null # the payable price, beside the struck-out full one
-var discount_strike   : ColorRect  = null # the red line through the full price
 
 # ─── Selection state ─────────────────────────────────────────────────────────
 
@@ -68,15 +62,22 @@ var theme_kenney_green : Theme = preload("res://UI_Themes/kenneyUI-green.tres")
 
 @onready var pack_hbox         : HBoxContainer = $pack_hbox
 @onready var set_name_label    : Label         = $"SET NAVIGATION"/set_name_label
-@onready var your_money_amount : Label         = $"MONEY LABELS"/your_money_amount
-@onready var pack_cost_amount  : Label         = $"MONEY LABELS"/pack_cost_amount
 @onready var buy_button        : Button        = $pack_purchase_button
 @onready var cancel_button     : Button        = $buy_cancel_button
 @onready var next_btn          : Button        = $"SET NAVIGATION"/next_set
 @onready var prev_btn          : Button        = $"SET NAVIGATION"/previous_set
-@onready var money_labels      : Control       = $"MONEY LABELS"
-@onready var pack_cost_text    : Label         = $"MONEY LABELS"/pack_cost_text_label
 @onready var header_label      : Label         = $large_header_text_label
+
+## The top-right cash pill, built at runtime by ShopChrome. Replaces the "Cash:" pair that
+## used to sit up here as two loose Labels, and the "pack cost:" row that sat above the
+## packs — the price is on each pack now. There is no OWNED state in this shop: packs are
+## bought over and over.
+var wallet_chip : Control = null
+
+## The flat layer every price pill is drawn on. Pills are NOT children of the pack rects: the
+## selection tween scales the chosen pack, and a nested pill would ride along instead of the
+## pack growing and shrinking behind a price that stays put.
+var pill_layer  : Control = null
 
 
 # ─── Lifecycle ───────────────────────────────────────────────────────────────
@@ -86,12 +87,13 @@ func _ready() -> void:
 
 	is_weighted_shop = GameState.current_shop_id == WEIGHTED_SHOP_ID
 	header_label.text = HEADER_WEIGHTED if is_weighted_shop else HEADER_NORMAL
-	if is_weighted_shop:
-		_build_discount_labels()
 
 	_load_set_dictionary()
 	_load_pack_prices()
 	_load_player_data()
+
+	wallet_chip = ShopChrome.add_wallet_chip(self, int(player_cash))
+	pill_layer  = ShopChrome.add_pill_layer(self)
 
 	var last_pack := _get_last_pack_loaded()
 	_find_starting_pack(last_pack)
@@ -207,11 +209,8 @@ func _refresh_display() -> void:
 	_clear_selection()
 	set_name_label.text = _get_set_name(pack_id)
 	_load_pack_images(pack_id)
-	if is_weighted_shop:
-		_refresh_discount_row(pack_id)
-	else:
-		pack_cost_amount.text = str(_cost_for(pack_id))
-	your_money_amount.text = str(int(player_cash))
+	ShopChrome.set_wallet_cash(wallet_chip, int(player_cash), false)
+	_refresh_pills()
 	_update_buy_button()
 	_update_nav_buttons()
 	_save_last_pack_loaded(pack_id)
@@ -221,75 +220,6 @@ func _update_nav_buttons() -> void:
 	var multi := unlocked_packs.size() > 1
 	next_btn.visible = multi
 	prev_btn.visible = multi
-
-
-# ─── Discount price row (weighted shop only) ─────────────────────────────────
-
-## Builds the two extra nodes the discount display needs and slides the existing "pack cost:"
-## pair left to make room. pack_cost_amount keeps showing the FULL price — it just gets a red
-## line through it — and the new label beside it carries the price actually charged.
-func _build_discount_labels() -> void:
-	pack_cost_text.offset_left    -= DISCOUNT_ROW_SHIFT
-	pack_cost_text.offset_right   -= DISCOUNT_ROW_SHIFT
-	pack_cost_amount.offset_left  -= DISCOUNT_ROW_SHIFT
-	pack_cost_amount.offset_right -= DISCOUNT_ROW_SHIFT
-
-	discount_amount = Label.new()
-	discount_amount.name = "discount_amount"
-	# Cloned off pack_cost_amount so the two figures match without restating the theme
-	# overrides — only the alignment differs, this one grows rightwards from a fixed left edge.
-	discount_amount.theme = pack_cost_amount.theme
-	_copy_label_style(pack_cost_amount, discount_amount)
-	discount_amount.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
-	discount_amount.vertical_alignment   = VERTICAL_ALIGNMENT_CENTER
-	discount_amount.z_index = pack_cost_amount.z_index
-	discount_amount.position = Vector2(pack_cost_amount.offset_right + DISCOUNT_GAP, pack_cost_amount.offset_top)
-	discount_amount.size     = Vector2(260.0, pack_cost_amount.offset_bottom - pack_cost_amount.offset_top)
-	discount_amount.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	money_labels.add_child(discount_amount)
-
-	# Drawn above both labels — they sit at z_index 999 and this has to cross the digits.
-	discount_strike = ColorRect.new()
-	discount_strike.name  = "discount_strike"
-	discount_strike.color = STRIKE_COLOUR
-	discount_strike.z_index = pack_cost_amount.z_index + 1
-	discount_strike.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	money_labels.add_child(discount_strike)
-
-
-## Copies the font/colour/shadow overrides that make pack_cost_amount look the way it does, so
-## the discounted figure beside it is visually the same label.
-func _copy_label_style(from: Label, to: Label) -> void:
-	for colour_name in ["font_color", "font_shadow_color"]:
-		if from.has_theme_color_override(colour_name):
-			to.add_theme_color_override(colour_name, from.get_theme_color(colour_name))
-	for const_name in ["line_spacing", "shadow_offset_x", "shadow_offset_y", "shadow_outline_size"]:
-		if from.has_theme_constant_override(const_name):
-			to.add_theme_constant_override(const_name, from.get_theme_constant(const_name))
-	if from.has_theme_font_size_override("font_size"):
-		to.add_theme_font_size_override("font_size", from.get_theme_font_size("font_size"))
-
-
-## Full price struck through in red, discounted price beside it. The strike is sized to the
-## digits themselves rather than the label box — the label is right-aligned and much wider than
-## its text, so a full-width bar would trail off to the left of the number.
-func _refresh_discount_row(pack_id: String) -> void:
-	var full_cost      : int = int(pack_prices.get(pack_id, 0))
-	var discount_cost  : int = _cost_for(pack_id)
-
-	pack_cost_amount.text = str(full_cost)
-	discount_amount.text  = str(discount_cost)
-
-	var font      : Font = pack_cost_amount.get_theme_font("font")
-	var font_size : int  = pack_cost_amount.get_theme_font_size("font_size")
-	var text_w    : float = font.get_string_size(
-			pack_cost_amount.text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size).x
-
-	var right_edge : float = pack_cost_amount.offset_right
-	discount_strike.position = Vector2(
-			right_edge - text_w - STRIKE_OVERHANG,
-			pack_cost_amount.offset_top + (pack_cost_amount.offset_bottom - pack_cost_amount.offset_top - STRIKE_THICKNESS) / 2.0)
-	discount_strike.size = Vector2(text_w + STRIKE_OVERHANG * 2.0, STRIKE_THICKNESS)
 
 
 func _get_set_name(set_id: String) -> String:
@@ -318,10 +248,13 @@ func _load_pack_images(pack_id: String) -> void:
 		rect.mouse_filter = Control.MOUSE_FILTER_STOP
 		rect.gui_input.connect(_on_pack_clicked.bind(rect, letter))
 		pack_hbox.add_child(rect)
+	# TWEAKABLE — the four-pack row was 50..1682, an asymmetric 1632 wide that left 238px of
+	# dead margin on the right. Widened and centred now the money labels no longer need the
+	# room: 1800 wide takes each pack from ~385 to ~427, still under the 455px native art.
 	if pack_hbox.get_child_count() >= 4:
 		pack_hbox.add_theme_constant_override("separation", 30)
-		pack_hbox.offset_left  = 50.0
-		pack_hbox.offset_right = 1682.0
+		pack_hbox.offset_left  = 60.0
+		pack_hbox.offset_right = 1860.0
 	else:
 		pack_hbox.remove_theme_constant_override("separation")
 		pack_hbox.offset_left  = 155.0
@@ -332,6 +265,58 @@ func _load_texture(path: String) -> Texture2D:
 	if not ResourceLoader.exists(path):
 		return null
 	return load(path)
+
+
+# ─── Price pills ─────────────────────────────────────────────────────────────
+
+## A pill on every pack on screen. All four are the same set at the same price, so they show
+## the same figure — that is the point: the price belongs to the thing you click, and each
+## pill can go red on its own when the balance runs out.
+##
+## In the weighted shop the pill is GOLD and carries a second, smaller grey pill above it
+## with the full price struck through in red. If the discounted price is still out of reach
+## the main pill goes red instead of gold and the struck-out pill stays put — affordability
+## outranks the sale colour.
+##
+## Deferred a frame because the HBox has not sized its children yet on the frame they are
+## added, and a pill anchors to the art's drawn box, which is derived from that size. Every
+## caller reaches this with selection cleared and scales back at 1 — the anchor is read from
+## a pack's live global rect, so refreshing mid-pulse would bake the pulsed position in.
+func _refresh_pills() -> void:
+	if not is_inside_tree():
+		return
+	await get_tree().process_frame
+	if not is_inside_tree():
+		return
+	ShopChrome.clear_pills(pill_layer)
+	if unlocked_packs.is_empty():
+		return
+
+	var pack_id : String = unlocked_packs[current_pack_idx]
+	var cost    : int    = _cost_for(pack_id)
+	var full    : int    = int(pack_prices.get(pack_id, cost))
+	# Only a genuine saving gets the struck-out pill; a weighted pack priced at its full cost
+	# would otherwise show "$200" crossed out above "$200".
+	var old_price : int = full if (is_weighted_shop and full > cost) else 0
+
+	var affordable : bool = player_cash >= float(cost)
+	var state : int
+	if not affordable:
+		state = ShopChrome.UNAFFORDABLE
+	elif old_price > 0:
+		state = ShopChrome.DISCOUNTED
+	else:
+		state = ShopChrome.AFFORDABLE
+
+	for child in pack_hbox.get_children():
+		if not (child is TextureRect) or not is_instance_valid(child):
+			continue
+		# The GLOBAL drawn box, not the control rect: the pack rects are
+		# STRETCH_KEEP_ASPECT_CENTERED inside HBox cells taller than the art, so the two
+		# differ by a letterbox margin and a pill on the control rect floats below the pack.
+		# _get_drawn_texture_rect() already does this maths for the fly-to-centre animation.
+		ShopChrome.add_price_pill(pill_layer, _get_drawn_texture_rect(child),
+								  state, cost, old_price)
 
 
 # ─── Pack selection ──────────────────────────────────────────────────────────
@@ -370,14 +355,16 @@ func _apply_selection_animation(rect: TextureRect) -> void:
 	if selected_pack_tween != null:
 		selected_pack_tween.kill()
 		selected_pack_tween = null
-	rect.pivot_offset = rect.size / 2.0
-	rect.modulate = Color.WHITE
+	rect.pivot_offset  = rect.size / 2.0
+	rect.self_modulate = Color.WHITE
 	var tw := create_tween()
 	tw.set_loops()
 	selected_pack_tween = tw
-	tw.tween_property(rect, "modulate", Color.WHITE * 1.4, 0.5)
+	# self_modulate, not modulate — the brightness pulse must not reach the price pill child.
+	# scale stays on the rect itself, so the pill grows and shrinks with its pack.
+	tw.tween_property(rect, "self_modulate", Color.WHITE * 1.4, 0.5)
 	tw.parallel().tween_property(rect, "scale", Vector2(1.06, 1.06), 0.5)
-	tw.tween_property(rect, "modulate", Color.WHITE * 1.0, 0.5)
+	tw.tween_property(rect, "self_modulate", Color.WHITE * 1.0, 0.5)
 	tw.parallel().tween_property(rect, "scale", Vector2(1.0, 1.0), 0.5)
 
 
@@ -385,7 +372,7 @@ func _remove_selection_animation(rect: TextureRect) -> void:
 	if selected_pack_tween != null:
 		selected_pack_tween.kill()
 		selected_pack_tween = null
-	rect.modulate = Color.WHITE
+	rect.self_modulate = Color.WHITE
 	rect.scale = Vector2(1.0, 1.0)
 
 
@@ -492,20 +479,16 @@ func _get_ui_nodes_to_toggle() -> Array:
 		if child != selected_pack_rect:
 			nodes.append(child)
 	nodes.append(set_name_label)
-	nodes.append(your_money_amount)
-	nodes.append(pack_cost_amount)
-	if discount_amount != null:
-		nodes.append(discount_amount)
-	if discount_strike != null:
-		nodes.append(discount_strike)
+	if wallet_chip != null and is_instance_valid(wallet_chip):
+		nodes.append(wallet_chip)
+	# One entry fades every pill at once — they are all children of this layer now.
+	if pill_layer != null and is_instance_valid(pill_layer):
+		nodes.append(pill_layer)
 	nodes.append(buy_button)
 	nodes.append(cancel_button)
 	nodes.append(next_btn)
 	nodes.append(prev_btn)
-	var money_labels = get_node_or_null("MONEY LABELS")
-	var set_nav      = get_node_or_null("SET NAVIGATION")
-	if money_labels != null:
-		nodes.append(money_labels)
+	var set_nav = get_node_or_null("SET NAVIGATION")
 	if set_nav != null:
 		nodes.append(set_nav)
 	return nodes
@@ -532,6 +515,10 @@ func _begin_opening_sequence() -> void:
 	_in_opening_sequence = true
 
 	_remove_selection_animation(selected_pack_rect)
+	# Every pill goes now rather than fading with the row: the chosen pack flies to screen
+	# centre and a pill left on the layer would just hang in the air where the pack was.
+	# _on_pack_opening_finished() rebuilds them before the fade back in.
+	ShopChrome.clear_pills(pill_layer)
 
 	var ui_nodes := _get_ui_nodes_to_toggle()
 	buy_button.disabled    = true
@@ -605,6 +592,11 @@ func _on_pack_opening_finished() -> void:
 		selected_pack_rect.visible = true
 	_clear_selection()
 
+	# Rebuilt BEFORE the fade list is taken, so the pills fade back in with the packs they
+	# belong to instead of popping in afterwards. Also re-colours the row red if the purchase
+	# has taken the balance below the price.
+	await _refresh_pills()
+
 	var ui_nodes := _get_ui_nodes_to_toggle()
 	for node in ui_nodes:
 		if node != null and is_instance_valid(node):
@@ -622,5 +614,5 @@ func _on_pack_opening_finished() -> void:
 	next_btn.disabled      = false
 	prev_btn.disabled      = false
 	_update_nav_buttons()
-	your_money_amount.text = str(int(player_cash))
+	ShopChrome.set_wallet_cash(wallet_chip, int(player_cash))
 	_update_buy_button()

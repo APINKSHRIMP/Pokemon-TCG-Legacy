@@ -37,8 +37,17 @@ var theme_kenney_green : Theme = preload("res://UI_Themes/kenneyUI-green.tres")
 @onready var card_hbox         : HBoxContainer = $card_hbox
 @onready var buy_btn           : Button         = $card_buy_button
 @onready var cancel_btn        : Button         = $buy_cancel_button
-@onready var your_money_amount : Label          = $"MONEY LABELS"/your_money_amount
-@onready var card_cost_amount  : Label          = $"MONEY LABELS"/card_cost_amount
+
+## The top-right cash pill, built at runtime by ShopChrome. Replaces the four font-61
+## "Your money / Card cost" Labels that used to sit bottom-right; the price is now a pill on
+## each card. There is no OWNED state in this shop — every slot is a fresh random holo, so a
+## card here can be bought again and again.
+var wallet_chip : Control = null
+
+## The flat layer every price pill is drawn on. Pills are NOT children of the cards: the
+## selection tween scales a card, and the holo sparkle emitter sits at z 5 — a nested pill
+## would be scaled by the first and drawn under the second.
+var pill_layer  : Control = null
 
 # ─── Lifecycle ───────────────────────────────────────────────────────────────
 
@@ -48,8 +57,8 @@ func _ready() -> void:
 	_load_holo_rares()
 
 	player_cash = GameState.get_cash()
-	your_money_amount.text = str(player_cash)
-	card_cost_amount.text  = str(CARD_COST)
+	wallet_chip = ShopChrome.add_wallet_chip(self, player_cash)
+	pill_layer  = ShopChrome.add_pill_layer(self)
 
 	card_hbox.add_theme_constant_override("separation", CARD_SEPARATION)
 
@@ -136,9 +145,14 @@ func _build_display() -> void:
 		rect.custom_minimum_size = CARD_SIZE
 		rect.expand_mode         = TextureRect.EXPAND_IGNORE_SIZE
 		rect.stretch_mode        = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-		rect.modulate            = Color(0.0, 0.0, 0.0, 1.0)
+		# self_modulate, not modulate: the card is deliberately blacked out to a silhouette,
+		# and modulate would black out the price pill hanging off its corner along with it.
+		rect.self_modulate       = Color(0.0, 0.0, 0.0, 1.0)
 		rect.pivot_offset        = CARD_SIZE / 2.0
 		rect.mouse_filter        = Control.MOUSE_FILTER_STOP
+		# Without this the VBox stretches the rect to its share of the full-width row and the
+		# pill would anchor to empty letterbox space instead of the card's own corner.
+		rect.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 		vbox.add_child(rect)
 		rect.gui_input.connect(_on_card_clicked.bind(slot_idx))
 		_card_rects.append(rect)
@@ -152,6 +166,25 @@ func _build_display() -> void:
 		var cd   : Dictionary   = _active_cards[i]
 		var p    : CPUParticles2D = _start_holo_sparkle(rect, cd)
 		_sparkles.append(p)
+
+	_refresh_pills()
+
+
+# ─── Price pills ─────────────────────────────────────────────────────────────
+
+## Every slot costs the same CARD_COST, so all the pills say the same thing — they are green
+## or red together on whether the balance covers one. No OWNED state: a holo slot is a fresh
+## random card each time the row is rebuilt, so nothing here is ever already owned.
+##
+## Runs after the HBox has laid the row out, and only ever with the cards at rest — the pill
+## anchors to a card's global rect, so refreshing mid-pulse would bake the pulsed position in.
+func _refresh_pills() -> void:
+	ShopChrome.clear_pills(pill_layer)
+	var state : int = ShopChrome.AFFORDABLE if player_cash >= CARD_COST \
+			else ShopChrome.UNAFFORDABLE
+	for rect in _card_rects:
+		if rect is TextureRect and is_instance_valid(rect):
+			ShopChrome.add_price_pill(pill_layer, rect.get_global_rect(), state, CARD_COST)
 
 
 # ─── Card interaction ────────────────────────────────────────────────────────
@@ -206,7 +239,9 @@ func _on_buy_pressed() -> void:
 	GameState.give_cards(card["id"])
 	SoundManagerScript.play_sfx(SoundManagerScript.SFX_gamemode_select)
 	await _show_card_reveal(card)
-	your_money_amount.text = str(player_cash)
+	ShopChrome.set_wallet_cash(wallet_chip, player_cash)
+	# _build_display() re-rolls the row and rebuilds the pills with it, so a purchase that
+	# drops the balance below CARD_COST turns the whole row red on its own.
 	await _build_display()
 
 
