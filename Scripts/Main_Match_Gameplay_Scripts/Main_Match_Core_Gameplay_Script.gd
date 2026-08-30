@@ -253,10 +253,10 @@ var player_transparent_walls_active: bool = false   # gym2-125 Transparent Walls
 var opponent_transparent_walls_active: bool = false
 
 # PRELOADED RESOURCES
-var theme_disabled = preload("res://UI_Themes/kenneyUI.tres")
-var theme_green = preload("res://UI_Themes/kenneyUI-green.tres")
-var theme_blue = preload("res://UI_Themes/kenneyUI-blue.tres")
-var theme_red = preload("res://UI_Themes/kenneyUI-red.tres")
+var theme_disabled = preload("res://UI_Themes/ui/ui_secondary.tres")
+var theme_green = preload("res://UI_Themes/ui/ui_primary.tres")
+var theme_blue = preload("res://UI_Themes/ui/ui_secondary.tres")
+var theme_red = preload("res://UI_Themes/ui/ui_danger.tres")
 var card_display_script = preload("res://Scripts/Global_Scripts/Card_Image_Loader_Script.gd")
 var card_back_texture: Texture2D          # player's sleeve small — set in _ready
 var opponent_card_back_texture: Texture2D # opponent's sleeve small — set in _ready
@@ -347,7 +347,9 @@ var _match_msgbox: DynamicMessageBox = null
 # Same panel height as an overworld sign/interactable box. The font is the match's own 40pt
 # ceiling rather than the overworld's 28 -- set_body_text() steps it down if a long line needs it.
 const MATCH_MSGBOX_HEIGHT: float = 138.0
-const MATCH_MSGBOX_FONT_SIZE: int = 40
+const MATCH_MSGBOX_FONT_SIZE: int = 34
+## The MessageBoxTheme key the in-match box and the match log both use.
+const MATCH_MSGBOX_THEME: String = "match"
 
 # ── MATCH LOG (Caps Lock) ────────────────────────────────────────────────────
 # Every message shown this match, oldest first, as
@@ -379,6 +381,24 @@ const MATCH_LOG_LAYER: int = 120
 @onready var stadium_card_container = $CARD_COLLECTIONS/stadium_card
 
 # QUICK REFERENCE VECTORS JUST USED FOR EASY SWAPPING OF SIZES FOR DEVELOPMENT
+# Board chrome, built by _build_board_layout().
+var _board_header : UIKit.ChromeBar = null
+var _board_footer : UIKit.ChromeBar = null
+var _turn_chip_holder : Control = null
+var _turn_chip : Control = null
+var _turn_divider_label : Label = null
+var _duel_divider_x : float = 0.0
+
+# The two action-panel holders, filled by _build_action_panel().
+var _player_action_panel : Control = null
+var _opp_action_panel : Control = null
+var _stadium_overlay : Control = null
+var _end_turn_btn : Button = null
+
+# The prize count each side started the match with — see display_prize_cards().
+var player_prize_start : int = 0
+var opponent_prize_start : int = 0
+
 var card_scales: Dictionary = {
 	1: Vector2(450, 619),
 	1.5: Vector2(575, 791),
@@ -845,10 +865,766 @@ func display_hand_cards_array(hand: Array, hand_container, card_size: Vector2, f
 			hand_card_to_display.load_card_image(this_card_in_hand.uid, card_size, this_card_in_hand, face_down, sleeve_path)
 			hand_card_to_display.card_clicked.connect(this_card_clicked)
 						
+
+# ============================================================
+# BOARD LAYOUT (UI overhaul, stage 6)
+# ============================================================
+# The board is three horizontal bands and three vertical ones.
+#
+#   0 .. 92     top bar    - opponent's hand, the turn chip, the stadium
+#   92 .. 918   field      - the play area
+#   918 .. 1080 bottom bar - your hand and End Turn (162px, the only match-sized footer)
+#
+#   29 .. 209    left rail   - OPPONENT deck+discard (top), YOUR prizes (bottom)
+#   232 .. 1688  centre      - opponent bench / duel row / your bench
+#   1711 .. 1891 right rail  - OPPONENT prizes (top), YOUR deck+discard (bottom)
+#
+# THE RAILS ARE 180 DEGREE ROTATIONAL, NOT MIRRORED. The opponent sits opposite
+# you, so their piles are diagonally opposite yours: your deck is bottom-right,
+# theirs is top-left. Reading it as a vertical mirror is the easy mistake.
+#
+# Everything here is absolute at 1920x1080 and applied in _build_board_layout(),
+# which runs once. The scene's own offsets are overwritten wholesale - do not try
+# to keep the two in step, the scene is only a node list now.
+# ============================================================
+
+const BOARD_TOP_H    := 92.0
+const BOARD_BOT_H    := 162.0
+const FIELD_TOP      := BOARD_TOP_H
+const FIELD_BOT      := 1080.0 - BOARD_BOT_H
+
+const RAIL_W         := 180.0
+const RAIL_PAD       := 29.0
+const LEFT_RAIL_X    := RAIL_PAD
+const RIGHT_RAIL_X   := 1920.0 - RAIL_PAD - RAIL_W
+
+## Deck and discard piles: SIDE BY SIDE, never stacked. 77x107 with 13 between.
+const PILE_SIZE      := Vector2(77.0, 107.0)
+const PILE_GAP       := 13.0
+const PILE_TOP_Y     := 132.0    # opponent's, in the left rail
+const PILE_BOT_Y     := 690.0    # yours, in the right rail
+
+## Prize cards: 3 x 2 of the owner's sleeve. Taken ones stay in place, greyed -
+## the count is spatial.
+const PRIZE_SIZE     := Vector2(52.0, 72.0)
+const PRIZE_GAP      := 5.0
+const PRIZE_COLUMNS  := 3
+## How visible a taken prize's empty slot is.
+const PRIZE_TAKEN_ALPHA := 0.45
+const PRIZE_TOP_Y    := 132.0    # opponent's, in the right rail
+const PRIZE_BOT_Y    := 690.0    # yours, in the left rail
+
+## Benches: five slots, centred in the centre column.
+const BENCH_CARD     := Vector2(119.0, 165.0)
+const BENCH_GAP      := 29
+const OPP_BENCH_Y    := 106.0
+const PLAYER_BENCH_Y := 686.0
+
+## The duel row. Seven columns; see the diagram above. You are on the LEFT.
+const DUEL_MID_Y     := 470.0
+const ACTIVE_CARD    := Vector2(230.0, 319.0)
+const DUEL_COL_ATTACH := 96.0
+const DUEL_COL_INFO   := 322.0
+const DUEL_COL_DIVIDE := 88.0
+const DUEL_GAP        := 10.5
+
+## Top and bottom bar furniture.
+const HAND_X         := 40.0
+const OPP_HAND_Y     := 20.0
+const PLAYER_HAND_Y  := 936.0
+const STADIUM_SIZE   := Vector2(48.0, 66.0)
+const STADIUM_X      := 1740.0
+const STADIUM_Y      := 13.0
+
+## The opponent's hand is a fan of face-down sleeves on the top bar, so it is
+## smaller than yours.
+const OPP_HAND_CARD  := Vector2(36.0, 50.0)
+
+
+## Lays the whole board out and swaps the old scrolling background for the new
+## chrome. Called once from _ready.
+func _build_board_layout() -> void:
+	# The old background was a scrolling border texture behind everything. The
+	# field and the two bars replace it; the match footer is the 162px variant,
+	# which is the ONLY place in the game that uses it.
+	var bg := get_node_or_null("match_background")
+	if bg != null:
+		remove_child(bg)
+		bg.free()
+
+	UIKit.add_field(self)
+	_board_header = UIKit.add_header(self)
+	_board_footer = UIKit.add_footer(self, true)
+
+	# The turn chip is the primary turn indicator alongside the duel divider.
+	_turn_chip_holder = _board_header.centre
+	_refresh_turn_chip()
+
+	_place_duel_row()
+	_place_rails()
+	_place_benches()
+	_place_bars()
+	_place_turn_divider()
+	_style_selection_labels()
+
+
+## The seven duel columns. Only the two actives and their attachment/info columns
+## are placed here; what GOES in the info columns is stage 7's job.
+func _place_duel_row() -> void:
+	var total := DUEL_COL_ATTACH * 2.0 + DUEL_COL_INFO * 2.0 + ACTIVE_CARD.x * 2.0 		+ DUEL_COL_DIVIDE + DUEL_GAP * 6.0
+	var x := (1920.0 - total) * 0.5
+
+	var you_attach_x := x
+	x += DUEL_COL_ATTACH + DUEL_GAP
+	var you_info_x := x
+	x += DUEL_COL_INFO + DUEL_GAP
+	var you_active_x := x
+	x += ACTIVE_CARD.x + DUEL_GAP
+	_duel_divider_x = x
+	x += DUEL_COL_DIVIDE + DUEL_GAP
+	var opp_active_x := x
+	x += ACTIVE_CARD.x + DUEL_GAP
+	var opp_info_x := x
+	x += DUEL_COL_INFO + DUEL_GAP
+	var opp_attach_x := x
+
+	var active_y := DUEL_MID_Y - ACTIVE_CARD.y * 0.5
+
+	_set_rect(player_active_container, Vector2(you_active_x, active_y), ACTIVE_CARD)
+	_set_rect(opponent_active_container, Vector2(opp_active_x, active_y), ACTIVE_CARD)
+
+	# Attachments keep the existing peek-stack rendering (the mockup's two-group
+	# whole-card layout was dropped); they just move to the outboard columns.
+	_set_rect($"ACTIVE_POKEMON/PLAYER/player_active_pokemon_energies",
+		Vector2(you_attach_x + DUEL_COL_ATTACH - 60.0, active_y + 10.0), Vector2(43, 28))
+	_set_rect($"ACTIVE_POKEMON/PLAYER/player_active_pokemon_attached_cards",
+		Vector2(you_attach_x + DUEL_COL_ATTACH - 60.0, active_y + 130.0), Vector2(43, 28))
+	_set_rect($"ACTIVE_POKEMON/OPPONENT/opponent_active_pokemon_energies",
+		Vector2(opp_attach_x + 18.0, active_y + 10.0), Vector2(43, 28))
+	_set_rect($"ACTIVE_POKEMON/OPPONENT/opponent_active_pokemon_attached_cards",
+		Vector2(opp_attach_x + 18.0, active_y + 130.0), Vector2(43, 28))
+
+	# HP blocks and status chips sit in the info column beside each active.
+	_set_rect($"ACTIVE_POKEMON/PLAYER/player_active_pokemon_hp_container",
+		Vector2(you_info_x, active_y), Vector2(DUEL_COL_INFO, 60.0))
+	_set_rect($"ACTIVE_POKEMON/PLAYER/player_active_pokemon_status_container",
+		Vector2(you_info_x, active_y + 76.0), Vector2(DUEL_COL_INFO, 60.0))
+	_set_rect($"ACTIVE_POKEMON/OPPONENT/opponent_active_pokemon_hp_container",
+		Vector2(opp_info_x, active_y), Vector2(DUEL_COL_INFO, 60.0))
+	_set_rect($"ACTIVE_POKEMON/OPPONENT/opponent_active_pokemon_status_container",
+		Vector2(opp_info_x, active_y + 76.0), Vector2(DUEL_COL_INFO, 60.0))
+
+	# The action panels sit under the HP and status rows, filling the rest of the
+	# info column. They have room to grow downward and scroll past that.
+	var panel_top := active_y + ACTION_PANEL_TOP
+	var panel_h := ACTIVE_CARD.y - ACTION_PANEL_TOP + ACTION_PANEL_OVERHANG
+	_player_action_panel = _make_action_holder(Vector2(you_info_x, panel_top),
+		Vector2(DUEL_COL_INFO, panel_h))
+	_opp_action_panel = _make_action_holder(Vector2(opp_info_x, panel_top),
+		Vector2(DUEL_COL_INFO, panel_h))
+
+
+## Deck, discard and prizes, in 180-degree rotational symmetry.
+func _place_rails() -> void:
+	var pile_row_w := PILE_SIZE.x * 2.0 + PILE_GAP
+	var left_pile_x := LEFT_RAIL_X + (RAIL_W - pile_row_w) * 0.5
+	var right_pile_x := RIGHT_RAIL_X + (RAIL_W - pile_row_w) * 0.5
+
+	# OPPONENT's piles, top LEFT.
+	_set_rect(opponent_deck_icon, Vector2(left_pile_x, PILE_TOP_Y), PILE_SIZE)
+	_set_rect(opponent_discard_icon,
+		Vector2(left_pile_x + PILE_SIZE.x + PILE_GAP, PILE_TOP_Y), PILE_SIZE)
+	# YOURS, bottom RIGHT - diagonally opposite, not mirrored.
+	_set_rect(player_deck_icon, Vector2(right_pile_x, PILE_BOT_Y), PILE_SIZE)
+	_set_rect(player_discard_icon,
+		Vector2(right_pile_x + PILE_SIZE.x + PILE_GAP, PILE_BOT_Y), PILE_SIZE)
+
+	# 3 x 2, not a row of six. The containers are GridContainers for this reason;
+	# as HBoxContainers they laid all six out in one 304px line and burst the rail.
+	for pc in [opponent_prize_container, player_prize_container]:
+		if pc is GridContainer:
+			(pc as GridContainer).columns = PRIZE_COLUMNS
+			(pc as GridContainer).add_theme_constant_override("h_separation", int(PRIZE_GAP))
+			(pc as GridContainer).add_theme_constant_override("v_separation", int(PRIZE_GAP))
+
+	var prize_row_w := PRIZE_SIZE.x * float(PRIZE_COLUMNS) + PRIZE_GAP * float(PRIZE_COLUMNS - 1)
+	var prize_h := PRIZE_SIZE.y * 2.0 + PRIZE_GAP
+	# OPPONENT's prizes top RIGHT, yours bottom LEFT.
+	_set_rect(opponent_prize_container,
+		Vector2(RIGHT_RAIL_X + (RAIL_W - prize_row_w) * 0.5, PRIZE_TOP_Y),
+		Vector2(prize_row_w, prize_h))
+	_set_rect(player_prize_container,
+		Vector2(LEFT_RAIL_X + (RAIL_W - prize_row_w) * 0.5, PRIZE_BOT_Y),
+		Vector2(prize_row_w, prize_h))
+
+	# The four rail captions.
+	_place_rail_label($"SCREEN_LABELS/OPPONENT/opponent_prize_cards_label",
+		"Their prizes", RIGHT_RAIL_X, PRIZE_TOP_Y - 26.0)
+	_place_rail_label($"SCREEN_LABELS/PLAYER/player_prize_cards_label",
+		"Your prizes", LEFT_RAIL_X, PRIZE_BOT_Y - 26.0)
+	_place_rail_label($"SCREEN_LABELS/OPPONENT/opponent_bench_cards_label",
+		"Opponent", LEFT_RAIL_X, PILE_TOP_Y - 26.0)
+	_place_rail_label($"SCREEN_LABELS/PLAYER/player_bench_cards_label",
+		"You", RIGHT_RAIL_X, PILE_BOT_Y - 26.0)
+
+
+func _place_rail_label(lbl: Label, text: String, x: float, y: float) -> void:
+	if lbl == null:
+		return
+	lbl.theme = null
+	UIKit.set_label(lbl, "small_label", text, "field_mute")
+	lbl.position = Vector2(x, y)
+	lbl.size = Vector2(RAIL_W, 22.0)
+	lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+
+
+## Five slots each, centred, opponent above and you below.
+func _place_benches() -> void:
+	var row_w := BENCH_CARD.x * 5.0 + float(BENCH_GAP) * 4.0
+	var x := (1920.0 - row_w) * 0.5
+	for c in [opponent_bench_container, player_bench_container]:
+		if c is HBoxContainer:
+			(c as HBoxContainer).add_theme_constant_override("separation", BENCH_GAP)
+			(c as HBoxContainer).alignment = BoxContainer.ALIGNMENT_CENTER
+	_set_rect(opponent_bench_container, Vector2(x, OPP_BENCH_Y),
+		Vector2(row_w, BENCH_CARD.y + 40.0))
+	_set_rect(player_bench_container, Vector2(x, PLAYER_BENCH_Y),
+		Vector2(row_w, BENCH_CARD.y + 40.0))
+
+
+## Hands, turn chip and stadium, on the two chrome bars.
+func _place_bars() -> void:
+	_set_rect(opponent_hand_container, Vector2(HAND_X, OPP_HAND_Y), Vector2(420.0, 56.0))
+	_set_rect(player_hand_container, Vector2(HAND_X, PLAYER_HAND_Y), Vector2(1300.0, 140.0))
+
+	# The stadium gets a caption and a slot in the top right, which is the one
+	# piece of empty chrome on the board. Clicking it is stage 7.
+	# An empty slot behind the stadium, so the corner reads as a place a card goes
+	# rather than as blank chrome when none is in play.
+	var stadium_slot := UIKit.make_slot(STADIUM_SIZE)
+	stadium_slot.position = Vector2(STADIUM_X, STADIUM_Y)
+	stadium_slot.z_index = UIKit.Z_CHROME + 1
+	stadium_slot.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(stadium_slot)
+
+	var stadium := get_node_or_null("CARD_COLLECTIONS/stadium_card")
+	if stadium is Control:
+		# Clickable: at 48x66 the card is unreadable, so pressing it opens a full
+		# view with any activatable ability as a button — the same shape the bench
+		# power buttons use.
+		(stadium as Control).mouse_filter = Control.MOUSE_FILTER_STOP
+		(stadium as Control).gui_input.connect(_on_stadium_slot_input)
+		# The scene left scale = (0.4, 0.4) on this node from when it sat mid-board
+		# at full card size. Sized properly now, so the shrink has to go.
+		(stadium as Control).scale = Vector2.ONE
+		_set_rect(stadium as Control, Vector2(STADIUM_X, STADIUM_Y), STADIUM_SIZE)
+		(stadium as Control).z_index = UIKit.Z_CHROME + 1
+
+	var caption := Label.new()
+	UIKit.set_label(caption, "small_label", "Stadium", "chrome_fg")
+	caption.position = Vector2(STADIUM_X - 130.0, STADIUM_Y + 20.0)
+	caption.size = Vector2(120.0, 22.0)
+	caption.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	caption.z_index = UIKit.Z_CHROME + 1
+	add_child(caption)
+
+	# ATTACK, POWER and RETREAT are gone from the footer — they are rows on the
+	# Pokemon now. Only End Turn is left, and it is REPARENTED INTO the footer bar
+	# rather than floated over it: the bar draws at Z_CHROME, and a sibling laid on
+	# top of it is one z-order slip away from being invisible, which is exactly
+	# what happened on the first pass.
+	# DO NOT ZERO THIS NODE. The selection confirm button (card_action_button) and
+	# the attack-mode row are positioned by NEGATIVE offsets relative to BUTTONS,
+	# which the scene parks at (1907, 961). Zeroing it put the confirm button at
+	# x = -1186 - off the left edge - which is why the mulligan screen had nothing
+	# to press. Its authored position already lands those children inside the new
+	# 162px footer band, so it is left exactly where it is.
+	#
+	# It does need to draw ABOVE the footer bar though: the bar is at Z_CHROME and
+	# these are siblings, the same trap End Turn hit.
+	var buttons := get_node_or_null("BUTTONS")
+	if buttons is Control:
+		(buttons as Control).z_index = UIKit.Z_CHROME + 10
+	if main_buttons_container != null:
+		for retired in ["button_main_attack", "button_main_power", "button_main_retreat"]:
+			var b := main_buttons_container.get_node_or_null(retired)
+			if b != null:
+				b.visible = false
+		# The selection buttons keep their geometry but take the new skin.
+		if action_button is Button:
+			UIKit.style_button(action_button as Button, "primary")
+		if cancel_button is Button:
+			(cancel_button as Button).z_index = UIKit.Z_CHROME + 10
+			UIKit.style_button(cancel_button as Button, "secondary")
+		var attack_cancel := attack_buttons_container.get_node_or_null("cancel_attack_mode_button")
+		if attack_cancel is Button:
+			UIKit.style_button(attack_cancel as Button, "secondary")
+
+		var end_turn := main_buttons_container.get_node_or_null("button_main_endturn")
+		if end_turn is Button:
+			_end_turn_btn = end_turn as Button
+			_end_turn_btn.text = "End turn"
+			UIKit.adopt_button(_end_turn_btn, _board_footer.right, "primary")
+
+
+## The big instruction and its hint, used by every selection and target screen.
+##
+## They were authored at y 17 and y 94 - under the 92px header bar now - and were
+## still in the Kenney face at font 61. Moved below the bar and restyled as a
+## title with a subtitle beneath it.
+func _style_selection_labels() -> void:
+	if header_label != null and is_instance_valid(header_label):
+		header_label.theme = null
+		UIKit.style_label(header_label, "title", "field_fg")
+		header_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		_set_rect(header_label, Vector2(0.0, SELECT_TITLE_Y), Vector2(1920.0, 44.0))
+		header_label.z_index = UIKit.Z_CHROME + 5
+	if hint_label != null and is_instance_valid(hint_label):
+		hint_label.theme = null
+		UIKit.style_label(hint_label, "subtitle", "field_mute")
+		hint_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		_set_rect(hint_label, Vector2(0.0, SELECT_HINT_Y), Vector2(1920.0, 34.0))
+		hint_label.z_index = UIKit.Z_CHROME + 5
+
+
+## The thin rule and label that splits the field between the two actives.
+func _place_turn_divider() -> void:
+	var mid_x := _duel_divider_x + DUEL_COL_DIVIDE * 0.5
+	var half := ACTIVE_CARD.y * 0.5
+
+	for dy in [-half - 46.0, 30.0]:
+		var rule := ColorRect.new()
+		rule.color = UITheme.col("line")
+		rule.position = Vector2(mid_x - 1.0, DUEL_MID_Y + dy)
+		rule.size = Vector2(2.0, 76.0)
+		rule.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		rule.z_index = DUEL_DIVIDER_Z
+		add_child(rule)
+
+	_turn_divider_label = Label.new()
+	_turn_divider_label.position = Vector2(mid_x - DUEL_COL_DIVIDE * 0.5, DUEL_MID_Y - 30.0)
+	_turn_divider_label.size = Vector2(DUEL_COL_DIVIDE, 60.0)
+	_turn_divider_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_turn_divider_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	_turn_divider_label.autowrap_mode = TextServer.AUTOWRAP_WORD
+	UIKit.set_label(_turn_divider_label, "small_label", "Your turn", "accent")
+	_turn_divider_label.z_index = DUEL_DIVIDER_Z
+	add_child(_turn_divider_label)
+	_refresh_turn_divider()
+
+
+## Repaints the divider label for whoever is to move.
+func _refresh_turn_divider() -> void:
+	if _turn_divider_label == null or not is_instance_valid(_turn_divider_label):
+		return
+	var theirs := opponents_turn_active
+	UIKit.set_label(_turn_divider_label, "small_label",
+		"Their turn" if theirs else "Your turn", "accent_2" if theirs else "accent")
+
+
+## The "Turn 6" chip in the top bar.
+func _refresh_turn_chip() -> void:
+	if _turn_chip_holder == null or not is_instance_valid(_turn_chip_holder):
+		return
+	if _turn_chip != null and is_instance_valid(_turn_chip):
+		_turn_chip.queue_free()
+	_turn_chip = UIKit.make_chip("Turn %d" % maxi(turn_number, 1), "on_chrome")
+	_turn_chip_holder.add_child(_turn_chip)
+
+
+## Opens the stadium reader. Called from the top-right slot.
+func _on_stadium_slot_input(event: InputEvent) -> void:
+	if not UIInput.is_click(event):
+		return
+	if current_stadium_card == null or _stadium_overlay != null:
+		return
+	_show_stadium_detail()
+
+
+## The stadium at a readable size, with its activatable ability (if any) as a
+## button above it.
+##
+## At 48x66 in the header the card is a coloured stamp — legible enough to say
+## "a stadium is in play", nowhere near enough to read its rules text. This is
+## where you read it.
+func _show_stadium_detail() -> void:
+	_stadium_overlay = Control.new()
+	_stadium_overlay.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_stadium_overlay.z_index = STADIUM_OVERLAY_Z
+	add_child(_stadium_overlay)
+
+	var dim := ColorRect.new()
+	dim.color = Color(0, 0, 0, 0.78)
+	dim.set_anchors_preset(Control.PRESET_FULL_RECT)
+	dim.gui_input.connect(func(e): if UIInput.is_click(e): _close_stadium_detail())
+	_stadium_overlay.add_child(dim)
+
+	var card := TextureRect.new()
+	card.texture = get_card_texture(current_stadium_card)
+	card.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	card.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	card.size = STADIUM_DETAIL_SIZE
+	card.position = Vector2((1920.0 - STADIUM_DETAIL_SIZE.x) * 0.5, STADIUM_DETAIL_Y)
+	card.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_stadium_overlay.add_child(card)
+
+	# Any activatable ability, in the same accent_2 row style the bench uses.
+	var y := STADIUM_DETAIL_Y - 70.0
+	if powers_and_bodies != null:
+		for entry in powers_and_bodies.printed_powers_for(current_stadium_card):
+			var ability: Dictionary = entry["ability"]
+			var btn := _make_bench_power_button(current_stadium_card, entry,
+				Vector2(STADIUM_DETAIL_SIZE.x, 0.0))
+			btn.custom_minimum_size = Vector2(STADIUM_DETAIL_SIZE.x, 48.0)
+			btn.position = Vector2(card.position.x, y)
+			btn.size = Vector2(STADIUM_DETAIL_SIZE.x, 48.0)
+			btn.pressed.connect(_close_stadium_detail)
+			_stadium_overlay.add_child(btn)
+			y -= 56.0
+
+	var close := UIKit.make_footer_button("Close", "secondary")
+	close.position = Vector2((1920.0 - UIKit.FOOTER_BTN_W) * 0.5,
+		STADIUM_DETAIL_Y + STADIUM_DETAIL_SIZE.y + 24.0)
+	close.pressed.connect(_close_stadium_detail)
+	_stadium_overlay.add_child(close)
+
+
+func _close_stadium_detail() -> void:
+	if _stadium_overlay != null and is_instance_valid(_stadium_overlay):
+		_stadium_overlay.queue_free()
+	_stadium_overlay = null
+
+
+## A free-layout Control the action rows are built into.
+func _make_action_holder(pos: Vector2, holder_size: Vector2) -> Control:
+	var holder := Control.new()
+	holder.position = pos
+	holder.size = holder_size
+	holder.clip_contents = true
+	holder.mouse_filter = Control.MOUSE_FILTER_PASS
+	add_child(holder)
+	return holder
+
+
+## Absolute place-and-size for a board node. Every board node is a free-layout
+## child, so anchors are cleared on the way through.
+func _set_rect(node: Control, pos: Vector2, node_size: Vector2) -> void:
+	if node == null or not is_instance_valid(node):
+		return
+	node.set_anchors_preset(Control.PRESET_TOP_LEFT)
+	node.position = pos
+	node.size = node_size
+	node.custom_minimum_size = Vector2.ZERO
+
+
+
+# ============================================================
+# ACTION PANEL (UI overhaul, stage 7)
+# ============================================================
+# Attacks, Poke-Powers and Retreat live ON the Pokemon now, as a column of rows
+# in the info panel beside each active. The footer's ATTACK / POWER / RETREAT
+# buttons are gone; only End Turn is left.
+#
+# Row order, top to bottom:
+#   Poke-Power   accent_2 border, transparent fill. Only if the card has one.
+#   Attack       cost pips, name, damage. One row each.
+#   Retreat      DASHED border, so it never reads as a fourth attack.
+#
+# WHY RETREAT BELONGS HERE: it costs energy, it is paid by the active Pokemon,
+# and it competes with attacking for the same turn. Putting it in the panel makes
+# that competition visible and gives it somewhere to show its cost as pips, which
+# a footer button never could.
+#
+# THE OPPONENT GETS THE SAME PANEL, always dimmed and never interactive. It is
+# there so you can read the threat before committing your turn.
+#
+# ── THE LIST HAS NO UPPER BOUND ──────────────────────────────
+# A card's attacks are not the attacks it was printed with: every Technical
+# Machine adds or replaces one, Meteor Falls and gym1 Recall add the whole
+# pre-evolution chain, and ex12 Versatile adds the attacks of every Pokemon in
+# play. Past ACTION_MAX_ROWS the column becomes a ScrollContainer rather than
+# growing into the bench.
+# ============================================================
+
+## Rows are as wide as the info column so nearly every attack name fits on one
+## line — the whole point of moving them off a crowded horizontal footer.
+const ACTION_ROW_H     := 46.0
+const ACTION_ROW_GAP   := 6
+const ACTION_PAD       := 10.0
+const ACTION_PIP       := 20.0
+const ACTION_PIP_GAP   := 3.0
+const ACTION_NAME_FONT := 16
+const ACTION_DMG_FONT  := 19
+## Beyond this the column scrolls instead of running into the bench.
+const ACTION_MAX_ROWS  := 5
+## Where the action column starts inside the info column, measured from the top
+## of the active card — below the name, HP and status rows.
+const ACTION_PANEL_TOP := 140.0
+## How far past the bottom of the active card the column may run before it
+## scrolls. Kept clear of the bench rows above and below.
+const ACTION_PANEL_OVERHANG := 56.0
+
+## The power button above a benched Pokemon.
+const BENCH_POWER_H    := 26.0
+const BENCH_POWER_FONT := 13
+
+## The stadium reader opened by clicking the header slot.
+const STADIUM_DETAIL_SIZE := Vector2(400.0, 550.0)
+const STADIUM_DETAIL_Y    := 210.0
+const STADIUM_OVERLAY_Z   := 300
+
+## The selection screens' title and hint, just below the header bar.
+const SELECT_TITLE_Y := 104.0
+const SELECT_HINT_Y  := 150.0
+
+## The turn divider is board furniture: above the field, BELOW every card, so a
+## selection row laid over the board does not have it showing through.
+const DUEL_DIVIDER_Z := -1
+
+
+## The little power button that sits over a benched Pokemon.
+##
+## Shows the power's NAME, not the word "power": with five of them on screen the
+## player is choosing between abilities, not discovering that one exists.
+func _make_bench_power_button(mon: card_object, entry: Dictionary,
+		card_size: Vector2) -> Button:
+	var ability: Dictionary = entry["ability"]
+	var usable: bool = powers_and_bodies.is_power_usable(mon, ability) \
+		and not opponents_turn_active
+
+	var btn := Button.new()
+	btn.text = String(ability.get("name", "Power"))
+	btn.custom_minimum_size = Vector2(card_size.x, BENCH_POWER_H)
+	btn.disabled = not usable
+	btn.focus_mode = Control.FOCUS_NONE
+	btn.action_mode = BaseButton.ACTION_MODE_BUTTON_PRESS
+	btn.clip_text = true
+	btn.add_theme_font_override("font", UITheme.font("attack_name"))
+	btn.add_theme_font_size_override("font_size", BENCH_POWER_FONT)
+	btn.add_theme_color_override("font_color", UITheme.col("accent_2"))
+	btn.add_theme_color_override("font_disabled_color",
+		UITheme.col_a("accent_2", 0.35))
+
+	for state in ["normal", "hover", "pressed", "disabled"]:
+		var sb := StyleBoxFlat.new()
+		sb.bg_color = UITheme.col_a("accent_2", 0.16 if (state == "hover" and usable) else 0.06)
+		sb.set_border_width_all(1)
+		sb.border_color = UITheme.col_a("accent_2", 0.85 if usable else 0.30)
+		sb.set_corner_radius_all(6)
+		sb.anti_aliasing = true
+		sb.content_margin_left = 4
+		sb.content_margin_right = 4
+		btn.add_theme_stylebox_override(state, sb)
+	btn.add_theme_stylebox_override("focus", StyleBoxEmpty.new())
+
+	if usable:
+		btn.pressed.connect(func(): powers_and_bodies.activate_power(mon, ability))
+	return btn
+
+
+## Rebuilds one side's action panel. Called from display_pokemon(), so it
+## refreshes on every board change without a second hook.
+func _build_action_panel(is_opponent: bool) -> void:
+	var holder: Control = _opp_action_panel if is_opponent else _player_action_panel
+	if holder == null or not is_instance_valid(holder):
+		return
+	for c in holder.get_children():
+		holder.remove_child(c)
+		c.queue_free()
+
+	var mon: card_object = opponent_active_pokemon if is_opponent else player_active_pokemon
+	if mon == null:
+		return
+
+	var rows: Array = []
+
+	# ── Powers ──
+	if powers_and_bodies != null:
+		for entry in powers_and_bodies.printed_powers_for(mon):
+			var ability: Dictionary = entry["ability"]
+			var live: bool = (not is_opponent) and powers_and_bodies.is_power_usable(mon, ability)
+			rows.append({
+				"kind": "power",
+				"text": String(ability.get("name", "Power")),
+				"enabled": live,
+				"action": func(): powers_and_bodies.activate_power(mon, ability),
+			})
+
+	# ── Attacks ──
+	var attacks := get_attacks_for_card(mon)
+	for i in attacks.size():
+		var attack: Dictionary = attacks[i]
+		var attack_name: String = attack.get("name", "Attack")
+		var usable := false
+		if not is_opponent:
+			usable = (not is_attack_disabled(mon, attack_name)) \
+				and check_attack_requirements(attack, mon) and turn_number > 1
+		rows.append({
+			"kind": "attack",
+			"text": attack_name,
+			"attack": attack,
+			"enabled": usable,
+			"action": func(): perform_attack(i),
+		})
+
+	# ── Retreat ── the opponent's panel has none: it is not your decision.
+	if not is_opponent:
+		rows.append({
+			"kind": "retreat",
+			"text": "Retreat",
+			"enabled": true,
+			"action": start_retreat,
+		})
+
+	_render_action_rows(holder, rows, is_opponent)
+
+
+## Lays the rows out, wrapping them in a scroller once there are too many to fit.
+func _render_action_rows(holder: Control, rows: Array, is_opponent: bool) -> void:
+	var col := VBoxContainer.new()
+	col.add_theme_constant_override("separation", ACTION_ROW_GAP)
+
+	if rows.size() > ACTION_MAX_ROWS:
+		var scroll := ScrollContainer.new()
+		scroll.set_anchors_preset(Control.PRESET_FULL_RECT)
+		scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+		scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO
+		holder.add_child(scroll)
+		col.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		scroll.add_child(col)
+	else:
+		col.set_anchors_preset(Control.PRESET_FULL_RECT)
+		holder.add_child(col)
+
+	for r in rows:
+		col.add_child(_make_action_row(r, is_opponent))
+
+
+## One row. A Button so it keeps focus, hover and the press-to-fire behaviour
+## every other button in the game has.
+func _make_action_row(row: Dictionary, is_opponent: bool) -> Button:
+	var kind: String = row["kind"]
+	var enabled: bool = bool(row["enabled"]) and not is_opponent
+
+	var btn := Button.new()
+	btn.text = ""
+	btn.custom_minimum_size = Vector2(0, ACTION_ROW_H)
+	btn.disabled = not enabled
+	btn.focus_mode = Control.FOCUS_NONE
+	btn.action_mode = BaseButton.ACTION_MODE_BUTTON_PRESS
+	btn.add_theme_stylebox_override("normal", _action_row_box(kind, enabled, false))
+	btn.add_theme_stylebox_override("hover", _action_row_box(kind, enabled, true))
+	btn.add_theme_stylebox_override("pressed", _action_row_box(kind, enabled, true))
+	btn.add_theme_stylebox_override("disabled", _action_row_box(kind, false, false))
+	btn.add_theme_stylebox_override("focus", StyleBoxEmpty.new())
+	# The opponent's rows exist to be READ, never pressed.
+	if is_opponent:
+		btn.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		btn.modulate.a = 0.75
+	elif enabled and row.has("action"):
+		btn.pressed.connect(row["action"])
+
+	_fill_action_row(btn, row, enabled)
+	return btn
+
+
+## Border and fill per row kind. Retreat is DASHED-looking (a lighter, inset
+## border) so it never reads as a fourth attack; powers take accent_2.
+func _action_row_box(kind: String, enabled: bool, hover: bool) -> StyleBoxFlat:
+	var sb := StyleBoxFlat.new()
+	sb.set_corner_radius_all(UITheme.mi("corner_radius"))
+	sb.anti_aliasing = true
+	sb.content_margin_left = ACTION_PAD
+	sb.content_margin_right = ACTION_PAD
+	sb.content_margin_top = 4
+	sb.content_margin_bottom = 4
+	sb.set_border_width_all(1)
+
+	match kind:
+		"power":
+			sb.bg_color = UITheme.col_a("accent_2", 0.10 if hover else 0.04)
+			sb.border_color = UITheme.col_a("accent_2", 0.85 if enabled else 0.35)
+		"retreat":
+			sb.bg_color = UITheme.col_a("line", 0.06 if hover else 0.02)
+			sb.border_color = UITheme.col_a("field_mute", 0.55 if enabled else 0.25)
+		_:
+			sb.bg_color = UITheme.col("panel") if not hover else UITheme.col_a("accent", 0.10)
+			# A PAYABLE attack takes the accent border; the rest keep the quiet line.
+			sb.border_color = UITheme.col("accent") if enabled else UITheme.col("line")
+	return sb
+
+
+## Cost pips, then the name, then the damage — laid out as anchored children,
+## because the Button's own text would draw centred over the pips.
+func _fill_action_row(btn: Button, row: Dictionary, enabled: bool) -> void:
+	var kind: String = row["kind"]
+	var alpha := 1.0 if enabled else ATTACK_DISABLED_ALPHA
+
+	var box := HBoxContainer.new()
+	box.set_anchors_preset(Control.PRESET_FULL_RECT)
+	box.offset_left = ACTION_PAD
+	box.offset_right = -ACTION_PAD
+	box.add_theme_constant_override("separation", 8)
+	box.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	btn.add_child(box)
+
+	# Cost pips. Attacks read theirs from the attack dict (ex11's Delta Aura
+	# rewrites it), retreat from the card's retreat cost.
+	var cost: Array = []
+	if kind == "attack":
+		cost = (row["attack"] as Dictionary).get("cost", [])
+	elif kind == "retreat" and player_active_pokemon != null:
+		var retreat_n: int = int(player_active_pokemon.metadata.get("convertedRetreatCost", 0))
+		for _i in retreat_n:
+			cost.append("Colorless")
+
+	if not cost.is_empty():
+		var pips := HBoxContainer.new()
+		pips.add_theme_constant_override("separation", int(ACTION_PIP_GAP))
+		pips.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		box.add_child(pips)
+		for energy_type in cost:
+			var pip := Panel.new()
+			pip.custom_minimum_size = Vector2(ACTION_PIP, ACTION_PIP)
+			var psb := StyleBoxFlat.new()
+			psb.bg_color = UITheme.energy_colour(String(energy_type))
+			psb.set_corner_radius_all(int(ACTION_PIP * 0.5))
+			psb.anti_aliasing = true
+			pip.add_theme_stylebox_override("panel", psb)
+			pip.modulate.a = alpha
+			pip.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			pips.add_child(pip)
+
+	var name_lbl := Label.new()
+	var display_name: String = row["text"]
+	if kind == "power":
+		display_name = "Poké-Power · " + display_name
+	UIKit.set_label(name_lbl, "attack_name", display_name,
+		"accent_2" if kind == "power" else "field_fg")
+	name_lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	name_lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	name_lbl.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	name_lbl.clip_text = true
+	name_lbl.modulate.a = alpha
+	name_lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	box.add_child(name_lbl)
+
+	if kind == "attack":
+		var dmg: String = String((row["attack"] as Dictionary).get("damage", ""))
+		if dmg != "":
+			var dmg_lbl := Label.new()
+			UIKit.set_label(dmg_lbl, "attack_damage", dmg,
+				"accent" if enabled else "field_mute")
+			dmg_lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+			dmg_lbl.modulate.a = alpha
+			dmg_lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			box.add_child(dmg_lbl)
+
+
 # Refreshes the hand display for either player or opponent using standard sizes and containers
 func refresh_hand_display(is_opponent: bool) -> void:
 	if is_opponent:
-		display_hand_cards_array(opponent_hand, opponent_hand_container, card_scales[11.55], hide_hidden_cards, 400, 7, opponent_sleeve_small)
+		display_hand_cards_array(opponent_hand, opponent_hand_container, OPP_HAND_CARD, hide_hidden_cards, 400, 7, opponent_sleeve_small)
 	else:
 		display_hand_cards_array(player_hand, player_hand_container, card_scales[11])
 
@@ -869,7 +1645,7 @@ func display_pokemon(is_opponent: bool) -> void:
 		var active_card_display = TextureRect.new()
 		active_card_display.set_script(card_display_script)
 		active_container.add_child(active_card_display)
-		active_card_display.load_card_image(active_pokemon.uid, card_scales[3.5], active_pokemon)
+		active_card_display.load_card_image(active_pokemon.uid, ACTIVE_CARD, active_pokemon)
 		active_card_display.card_clicked.connect(this_card_clicked)
 	
 	# Clear bench container
@@ -883,11 +1659,14 @@ func display_pokemon(is_opponent: bool) -> void:
 	# bench_container is an HBoxContainer so slots are laid out horizontally.
 	if bench_pokemon_array.size() > 0:
 		for bench_pokemon in bench_pokemon_array:
-			var slot = build_pokemon_slot_with_energies_and_hp(bench_pokemon, card_scales[11], 16)
+			var slot = build_pokemon_slot_with_energies_and_hp(bench_pokemon, BENCH_CARD, 16)
 			bench_container.add_child(slot)
 			
 	# Display HP circles for active Pokemon
 	display_hp_circles_above_align(active_pokemon, is_opponent)
+
+	# Attacks, powers and retreat live on the Pokemon now.
+	_build_action_panel(is_opponent)
 
 # Updates the header and hint labels based on what array is being displayed
 func update_selection_mode_labels(array_displayed: Array, is_starting_game: bool = false) -> void:
@@ -1025,7 +1804,9 @@ func update_action_button() -> void:
 func display_prize_cards(is_opponent: bool) -> void:
 	
 	# Get the appropriate container and prize cards array
-	var prize_cards_container: HBoxContainer
+	# GridContainer since the prizes became a 3 x 2 block; typed loosely so the
+	# node type is stated in ONE place (the scene) rather than two.
+	var prize_cards_container: Container
 	var prize_cards: Array
 	
 	if is_opponent:
@@ -1039,10 +1820,15 @@ func display_prize_cards(is_opponent: bool) -> void:
 	for child in prize_cards_container.get_children():
 		child.queue_free()
 	
-	# If prize cards array is empty, nothing to display
-	if prize_cards.size() == 0:
-		return
-	
+	# Remember the count this side STARTED with. Taken prizes leave a greyed slot
+	# behind rather than closing the gap: the count is meant to be read spatially,
+	# and a block that re-flows every time a prize is taken cannot be.
+	if is_opponent:
+		opponent_prize_start = maxi(opponent_prize_start, prize_cards.size())
+	else:
+		player_prize_start = maxi(player_prize_start, prize_cards.size())
+	var started_with: int = opponent_prize_start if is_opponent else player_prize_start
+
 	# Display each prize card
 	for prize_card in prize_cards:
 		var prize_card_display = TextureRect.new()
@@ -1055,10 +1841,17 @@ func display_prize_cards(is_opponent: bool) -> void:
 		
 		# Load the card image with a size appropriate for prize cards
 		var prize_sleeve = opponent_sleeve_small if is_opponent else player_sleeve_small
-		prize_card_display.load_card_image(prize_card.uid, card_scales[11.55], prize_card, hide_hidden_cards, prize_sleeve)
+		prize_card_display.load_card_image(prize_card.uid, PRIZE_SIZE, prize_card, hide_hidden_cards, prize_sleeve)
 		
 		# Connect the signal so prize cards can be clicked if needed
-		prize_card_display.card_clicked.connect(this_card_clicked)	
+		prize_card_display.card_clicked.connect(this_card_clicked)
+
+	# One empty slot per prize already taken, so the 3 x 2 block keeps its shape.
+	for _i in range(started_with - prize_cards.size()):
+		var taken := UIKit.make_slot(PRIZE_SIZE)
+		taken.modulate.a = PRIZE_TAKEN_ALPHA
+		taken.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		prize_cards_container.add_child(taken)
 
 # Displays attached energy cards next to the active Pokemon, stacking with overlap
 func display_active_pokemon_energies(is_opponent: bool = false) -> void:
@@ -1136,6 +1929,16 @@ func build_pokemon_slot_with_energies_and_hp(card_obj: card_object, card_size: V
 
 	var slot = VBoxContainer.new()
 	slot.alignment = BoxContainer.ALIGNMENT_CENTER
+	slot.add_theme_constant_override("separation", 4)
+
+	# Bench power button, above the card. Built only for the player's own bench
+	# slots — `_is_active` is false there and true for the focus/preview slots the
+	# retreat and selection screens build, which must stay plain.
+	if not _is_active and show_hp_and_energies and powers_and_bodies != null \
+			and card_obj in player_bench:
+		var printed: Array = powers_and_bodies.printed_powers_for(card_obj)
+		if not printed.is_empty():
+			slot.add_child(_make_bench_power_button(card_obj, printed[0], card_size))
 
 	# ISSUE #46: show_energies can suppress the stacked-energy display independently of the HP label
 	# (used by the player retreat screen, where energies are already listed as selectable cards).
@@ -1217,11 +2020,18 @@ func build_pokemon_slot_with_energies_and_hp(card_obj: card_object, card_size: V
 		var max_hp = int(card_obj.metadata["hp"])
 		var current_hp = card_obj.current_hp
 		var hp_label = Label.new()
-		hp_label.text = str(current_hp) + "/" + str(max_hp) + "hp"
+		# "30 / 50", spaced, in the mono face so the digits line up down a bench row.
+		hp_label.text = "%d / %d" % [current_hp, max_hp]
 		hp_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		hp_label.add_theme_font_size_override("font_size", label_font_size)
-		hp_label.add_theme_color_override("font_color", Color.BLACK)
+		UIKit.style_label(hp_label, "hp", "field_fg", label_font_size)
 		slot.add_child(hp_label)
+
+		# ONE BLOCK PER 10 HP, never a bar. Attacks and effects in this game key off
+		# the NUMBER of damage counters, so the blocks are information, not
+		# decoration — see UIKit.make_damage_counters.
+		var blocks := UIKit.make_damage_counters(current_hp, max_hp, true)
+		blocks.alignment = BoxContainer.ALIGNMENT_CENTER
+		slot.add_child(blocks)
 	
 	return slot
 
@@ -1398,7 +2208,7 @@ const ATTACK_SCALE_REF_W: float    = 420.0
 const ATTACK_SCALE_MIN: float      = 0.42
 
 const ENERGY_ICON_DIR: String = "res://Image_Assets/Icons/Energy_Icons/"
-const ATTACK_BTN_FONT_PATH: String = "res://UI_Themes/kenvector_future.ttf"
+const ATTACK_BTN_FONT_PATH: String = "res://UI_Themes/ChakraPetch-Bold.ttf"
 
 var _attack_btn_font: Font = null
 # The full attack list for the current selection, and which page of it is shown.
@@ -1728,8 +2538,16 @@ func _ensure_match_msgbox() -> DynamicMessageBox:
 # the whole match reads as one screen in that trainer's colour. load_opponent_data_by_name() has
 # already merged All_NPC_Constant_Data.json into opponent_data by the time any message shows; an
 # unset or unknown key falls back to the default grey inside apply_theme().
+## The in-match box takes the UI ACCENT, not the opponent's colour.
+##
+## The user's split: overworld boxes stay per-speaker (each NPC carries its own
+## `message_colour`), while in-match boxes join the theme. A match message is the
+## GAME talking — "Staryu used Slap", "Flip a coin" — not the opponent, so
+## wearing their colour was always slightly wrong.
+##
+## The match log follows the same key so the box and its history match.
 func _match_msgbox_theme_key() -> String:
-	return str(opponent_data.get("message_colour", ""))
+	return MATCH_MSGBOX_THEME
 
 # Displays the message box with given text and pauses execution until the player clicks
 func show_message(message_text: String) -> void:
@@ -1931,16 +2749,10 @@ func update_main_screen_buttons() -> void:
 		power_menu_active
 	)
 
-	var btn_theme = theme_disabled if should_disable else theme_blue
-	var buttons = [
-		main_buttons_container.get_node("button_main_attack"),
-		main_buttons_container.get_node("button_main_power"),
-		main_buttons_container.get_node("button_main_retreat"),
-		main_buttons_container.get_node("button_main_endturn"),
-	]
-	for btn in buttons:
-		btn.theme = btn_theme
-		btn.disabled = should_disable
+	# Only End Turn is left on the footer; attacks, powers and retreat are rows on
+	# the Pokemon and disable themselves per row.
+	if _end_turn_btn != null and is_instance_valid(_end_turn_btn):
+		_end_turn_btn.disabled = should_disable
 
 # Updates the discard pile icon to show the top card and count for the specified player
 func update_discard_pile_display(is_opponent: bool) -> void:
@@ -3643,10 +4455,12 @@ func player_start_turn_checks() -> void:
 	opponent_blocker.visible = false
 	show_floating_label("Start turn", Vector2(50, 180), Color.WHITE, false)
 	turn_number += 1
+	_refresh_turn_chip()
 	print("PLAYER'S TURN START. TURN NUMBER IS ", turn_number)
 	var drawn_card = await draw_card_from_deck(false)
 
 	opponents_turn_active = false
+	_refresh_turn_divider()
 	update_main_screen_buttons()
 
 	if drawn_card == null:
@@ -3690,6 +4504,7 @@ func player_end_turn_checks() -> void:
 		return
 	opponent_blocker.visible = true
 	opponents_turn_active = true
+	_refresh_turn_divider()
 	update_main_screen_buttons()
 	show_floating_label("End turn", Vector2(1500, 880),Color.WHITE)
 	
@@ -7830,6 +8645,10 @@ func debug_key_heal_bench() -> void:
 
 # Called when the node enters the scene tree for the first time.
 func _ready() -> void:
+	# Chrome and board geometry first: everything below draws into the positions
+	# this sets, and the old scrolling background is freed here.
+	_build_board_layout()
+
 	# ISSUE #34: pick up the player's Options rule choices for this match.
 	burn_rules = GameState.burn_rule_setting
 	confusion_rules = GameState.confusion_rule_setting
@@ -7897,14 +8716,15 @@ func _ready() -> void:
 	cancel_button.pressed.connect(cancel_button_pressed_hide_selection_mode)
 	action_button.pressed.connect(action_button_pressed_perform_action)
 	attack_buttons_container.get_node("cancel_attack_mode_button").pressed.connect(hide_attack_buttons)
-	main_buttons_container.get_node("button_main_attack").pressed.connect(show_attack_buttons)
+	# ATTACK / POWER / RETREAT are retired: those are rows on the Pokemon now.
+	# _build_board_layout() hid the buttons and moved End Turn onto the footer, so
+	# it is connected through the reference the layout kept.
+	if _end_turn_btn != null and is_instance_valid(_end_turn_btn):
+		_end_turn_btn.pressed.connect(player_end_turn_checks)
 	attack_buttons_container.visible = false
 	
-	main_buttons_container.get_node("button_main_power").pressed.connect(powers_and_bodies.open_power_menu)
 	
-	main_buttons_container.get_node("button_main_retreat").pressed.connect(start_retreat)
 	
-	main_buttons_container.get_node("button_main_endturn").pressed.connect(player_end_turn_checks)
 
 
 	opponent_deck_name = GameState.current_opponent_deck

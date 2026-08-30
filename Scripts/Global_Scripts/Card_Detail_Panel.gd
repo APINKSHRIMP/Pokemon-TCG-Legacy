@@ -46,7 +46,7 @@ extends Control
 # ============================================================
 
 const SHADER_PATH := "res://Scripts/Shaders/Rounded_Message_Panel.gdshader"
-const FONT_PATH   := "res://UI_Themes/kenvector_future.ttf"
+const FONT_PATH   := "res://UI_Themes/ChakraPetch-Medium.ttf"
 
 const ENERGY_ICON_DIR  := "res://Image_Assets/Icons/Energy_Icons/"
 const SUBTYPE_ICON_DIR := "res://Image_Assets/Icons/Subtype_Icons/"

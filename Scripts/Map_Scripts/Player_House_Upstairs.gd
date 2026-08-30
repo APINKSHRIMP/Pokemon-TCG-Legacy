@@ -30,7 +30,7 @@ const BED_SLEEP_PROMPT_NIGHT_EXTRAS: Dictionary = {
 	7: "The Gym Hero Challenge registration opens in the morning.",
 	8: "The Gym Hero Challenge starts tomorrow!"
 }
-const NEXT_MORNING_FONT := "res://UI_Themes/kenvector_future.ttf"
+const NEXT_MORNING_FONT := "res://UI_Themes/ChakraPetch-Bold.ttf"
 
 func get_scene_path() -> String:      return SCENE_PATH
 func get_bgm_path() -> String:        return SoundManagerScript.BGM_PLAYER_HOME

@@ -334,12 +334,10 @@ func _refresh_save_button_state() -> void:
 	var name_changed := name_box.text.strip_edges() != saved_player_name
 	if name_changed:
 		save_btn.disabled = false
-		var green_theme = load("res://UI_Themes/kenneyUI-green.tres")
-		if green_theme:
-			save_btn.theme = green_theme
+		UIKit.style_button(save_btn, "good")
 	else:
 		save_btn.disabled = true
-		save_btn.theme = load("res://UI_Themes/kenneyUI.tres")
+		UIKit.style_button(save_btn, "primary")
 
 
 # ─── Save / Cancel ───────────────────────────────────────────────────────────
@@ -370,7 +368,7 @@ func _on_save_pressed() -> void:
 	SoundManagerScript.play_sfx(SoundManagerScript.SFX_gamemode_select)
 
 	save_btn.disabled = true
-	save_btn.theme = load("res://UI_Themes/kenneyUI.tres")
+	UIKit.style_button(save_btn, "primary")
 
 	var cheat_msg := CheatManager.check_and_apply(new_name)
 	if cheat_msg != "":
@@ -731,7 +729,7 @@ const CHEAT_RAINBOW_VAL  : float = 1.0   # brightness
 const CHEAT_BOX_HEIGHT   : float = 120.0
 const CHEAT_BOX_Y_OFFSET : float = -42.0
 
-const CHEAT_THEME_PATH := "res://UI_Themes/kenneyUI.tres"
+const CHEAT_THEME_PATH := "res://UI_Themes/ui/ui_secondary.tres"
 
 func _flash_cheat_message(message: String) -> void:
 	# ISSUE #53 FIX: drive the cheat popup as a self-contained "float up + fade out" like the in-match

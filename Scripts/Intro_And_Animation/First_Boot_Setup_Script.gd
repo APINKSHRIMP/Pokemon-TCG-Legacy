@@ -64,7 +64,7 @@ func _fade_in() -> void:
 #   Save btn  x=688  w=544   y=894
 
 func _build_ui() -> void:
-	var theme = load("res://UI_Themes/kenneyUI.tres")
+	var theme = load("res://UI_Themes/ui/ui_secondary.tres")
 
 	# ── Name box ─────────────────────────────────────────────
 	_name_box = LineEdit.new()
@@ -265,11 +265,11 @@ func _refresh_save_btn() -> void:
 
 	_save_btn.disabled = not all_ok
 	if all_ok:
-		var green := load("res://UI_Themes/kenneyUI-green.tres")
+		var green := load("res://UI_Themes/ui/ui_primary.tres")
 		if green:
 			_save_btn.theme = green
 	else:
-		_save_btn.theme = load("res://UI_Themes/kenneyUI.tres")
+		_save_btn.theme = load("res://UI_Themes/ui/ui_secondary.tres")
 
 
 # ─── Save and transition ──────────────────────────────────────────────────────

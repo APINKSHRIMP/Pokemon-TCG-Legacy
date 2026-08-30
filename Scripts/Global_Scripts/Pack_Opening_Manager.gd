@@ -56,7 +56,7 @@ const GOD_PACK_SIZE      : int   = 10      # Cards per god pack
 const WEIGHTED_COMMONS   : int   = 6
 const WEIGHTED_UNCOMMONS : int   = 4
 
-var _theme_kenney : Theme = preload("res://UI_Themes/kenneyUI.tres")
+var _theme_kenney : Theme = preload("res://UI_Themes/ui/ui_secondary.tres")
 
 # ── Session state ──────────────────────────────────────────
 var _is_active           : bool  = false

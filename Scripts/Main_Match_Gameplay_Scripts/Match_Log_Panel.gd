@@ -52,7 +52,7 @@ extends Control
 # ============================================================
 
 const SHADER_PATH := "res://Scripts/Shaders/Rounded_Message_Panel.gdshader"
-const FONT_PATH   := "res://UI_Themes/kenvector_future.ttf"
+const FONT_PATH   := "res://UI_Themes/ChakraPetch-Medium.ttf"
 
 # Reference screen, same space every offset below is written in.
 const SCREEN_W : float = 1920.0

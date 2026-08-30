@@ -67,6 +67,10 @@ const THEMES := {
 	"white":      { "base": "#d2d2dc", "hue_step":  -8.0 },   # RESERVED — rival only, see header
 	"grey":       { "base": "#666672", "hue_step":  -8.0 },
 	"black":      { "base": "#2e2e36", "hue_step":  -8.0 },
+	# The IN-MATCH box only. Every other box on this table belongs to a speaker and
+	# takes that speaker's colour; a match message has no speaker, so it takes the
+	# UI's own accent instead. Do NOT hand this key to an NPC — see the header.
+	"match":      { "base": "#ff7fc4", "hue_step":  10.0 },
 }
 
 # Used by any box with nobody behind it — the interactables: signs, the TV, the bed. Grey reads as

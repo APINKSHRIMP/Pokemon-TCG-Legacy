@@ -45,13 +45,13 @@ const SHADER_PATH   := "res://Scripts/Shaders/Rounded_Message_Panel.gdshader"
 # buttons sitting under it. Noticeably wider than the old Lupinademo face —
 # the font sizes below were retuned for it, don't raise them without checking
 # the longest opponent + deck name still fit on one chip row.
-const MSG_FONT_PATH := "res://UI_Themes/kenvector_future.ttf"
+const MSG_FONT_PATH := "res://UI_Themes/ChakraPetch-Medium.ttf"
 const ICON_DIR      := "res://Image_Assets/Icons/Message_Icons/"
 const SPRITE_DIR    := "res://Image_Assets/Character_Sprites/Overworld_Sprites/"
 
-const KENNEY_THEME_GREEN := "res://UI_Themes/kenneyUI-green.tres"
-const KENNEY_THEME_RED   := "res://UI_Themes/kenneyUI-red.tres"
-const KENNEY_THEME_BLUE  := "res://UI_Themes/kenneyUI-blue.tres"
+const KENNEY_THEME_GREEN := "res://UI_Themes/ui/ui_primary.tres"
+const KENNEY_THEME_RED   := "res://UI_Themes/ui/ui_secondary.tres"
+const KENNEY_THEME_BLUE  := "res://UI_Themes/ui/ui_primary.tres"
 
 # Reference screen. Every offset below is an absolute pixel in this space.
 const SCREEN_W : float = 1920.0

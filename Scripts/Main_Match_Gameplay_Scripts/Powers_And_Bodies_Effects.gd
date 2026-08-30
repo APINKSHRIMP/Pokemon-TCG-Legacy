@@ -515,6 +515,73 @@ func reset_power_used_flags(is_opponent: bool) -> void:
 
 # Discards PlusPower from a pokemon at end of turn
 
+
+## Is this ability a POWER the player can activate right now?
+##
+## Lifted out of open_power_menu() so the on-board power buttons added in the UI
+## overhaul apply exactly the same gates the old POWER menu did. There must only
+## ever be ONE copy of this list — a button that offers a power the menu would
+## have refused is a rules bug.
+##
+## Poke-BODIES are excluded: they are passive and there is nothing to press.
+func is_power_usable(pokemon: card_object, ability: Dictionary) -> bool:
+	if pokemon == null:
+		return false
+
+	var ability_type: String = ability.get("type", "")
+	if ability_type != "Pokémon Power" and ability_type != "Pokemon Power" \
+			and ability_type != "Poké-Power" and ability_type != "Poke-Power":
+		return false
+
+	var ability_name: String = ability.get("name", "")
+	# Only abilities with a registered activation function are offerable —
+	# passives and not-yet-implemented powers simply are not in _power_dispatch.
+	_ensure_power_dispatch_ready()
+	if not _power_dispatch.has(ability_name):
+		return false
+
+	if is_toxic_gas_active():
+		return false
+	if pokemon.power_disabled_until_end_of_next_turn:
+		return false
+	if pokemon.gaze_suppressed:
+		return false
+	if "Baby" in pokemon.metadata.get("subtypes", []) and is_scare_active(false):
+		return false
+	if ability_name != "Buzzap" and is_power_blocked_by_status(pokemon):
+		return false
+	if mt_moon_blocks_power(pokemon):
+		return false
+	return true
+
+
+## Every activatable power on one Pokemon, as { "pokemon", "ability" } entries.
+func usable_powers_for(pokemon: card_object) -> Array:
+	var out: Array = []
+	if pokemon == null:
+		return out
+	for ability in pokemon.metadata.get("abilities", []):
+		if is_power_usable(pokemon, ability):
+			out.append({ "pokemon": pokemon, "ability": ability })
+	return out
+
+
+## Every POWER printed on the card, usable or not, so the board can show a
+## disabled row rather than hiding the ability outright — a player needs to see
+## that the Pokemon HAS a power they cannot use this turn.
+func printed_powers_for(pokemon: card_object) -> Array:
+	var out: Array = []
+	if pokemon == null:
+		return out
+	_ensure_power_dispatch_ready()
+	for ability in pokemon.metadata.get("abilities", []):
+		var t: String = ability.get("type", "")
+		if t == "Pokémon Power" or t == "Pokemon Power" or t == "Poké-Power" or t == "Poke-Power":
+			if _power_dispatch.has(ability.get("name", "")):
+				out.append({ "pokemon": pokemon, "ability": ability })
+	return out
+
+
 func open_power_menu() -> void:
 	if main.opponents_turn_active:
 		return
