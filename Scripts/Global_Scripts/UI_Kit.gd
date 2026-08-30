@@ -29,6 +29,7 @@ extends RefCounted
 const SHADER_CHROME := "res://Scripts/Shaders/UI_Chrome_Bar.gdshader"
 const SHADER_FIELD  := "res://Scripts/Shaders/UI_Field.gdshader"
 const SHADER_RING   := "res://Scripts/Shaders/UI_Selection_Ring.gdshader"
+const SHADER_SLOT   := "res://Scripts/Shaders/UI_Slot.gdshader"
 
 # Reference screen. Every absolute number in this file is a pixel in this
 # space, matching DynamicMessageBox.SCREEN_W and CardDetailPanel.SCREEN_W.
@@ -46,6 +47,18 @@ const FOOTER_BTN_W := 230.0
 # Gap between the footer's action buttons.
 const FOOTER_BTN_GAP := 20
 
+# Shop-item drop shadow. TWEAKABLE — the illusion is that every item is a
+# physical thing floating just above the screen, so keep the offset small and the
+# alpha well under half or it reads as a second, dirtier copy of the item.
+const SHADOW_OFFSET := Vector2(11.0, 14.0)
+const SHADOW_ALPHA  := 0.38
+
+# The content band left between the two 92px bars on a standard screen. Every
+# converted screen lays its grid out inside this rather than re-deriving it.
+const CONTENT_TOP    := 92.0
+const CONTENT_BOTTOM := 988.0
+const CONTENT_H      := CONTENT_BOTTOM - CONTENT_TOP
+
 
 # ============================================================
 # ShaderRect — a ColorRect that keeps its shader honest
@@ -60,6 +73,9 @@ const FOOTER_BTN_GAP := 20
 # the speed was.
 class ShaderRect extends ColorRect:
 	var base_speed: float = 0.0
+	# False for the shapes that merely borrow this class for its rect_size
+	# syncing — a slot outline has no scroll_speed uniform and nothing to stop.
+	var tracks_motion: bool = true
 
 	func _ready() -> void:
 		resized.connect(_sync_size)
@@ -74,7 +90,7 @@ class ShaderRect extends ColorRect:
 			(material as ShaderMaterial).set_shader_parameter("rect_size", size)
 
 	func refresh_motion() -> void:
-		if not (material is ShaderMaterial):
+		if not tracks_motion or not (material is ShaderMaterial):
 			return
 		var ui := get_node_or_null("/root/UITheme")
 		var stopped: bool = ui != null and ui.motion_reduced()
@@ -220,6 +236,110 @@ static func _bar_slot(row: HBoxContainer, align: int) -> HBoxContainer:
 	return slot
 
 
+## Swaps a legacy screen's chrome for the new one, in place.
+##
+## Every pre-overhaul menu is built the same way: a `BACKGROUND` Control holding
+## a scrolling texture plus top and bottom border PNGs, a centred title Label,
+## and its action buttons floating below the bottom border. This frees that
+## BACKGROUND wholesale and lays in the field and the two bars, then hands the
+## bars back so the caller can move its own controls into them.
+##
+## The old borders ate down to y=108 at the top and started again at y=977; the
+## new bars are 92 each, so a converted screen gains ~27px of content height and
+## a clean 92..988 band to lay out in — see CONTENT_TOP / CONTENT_BOTTOM.
+##
+## Returns { "header": ChromeBar, "footer": ChromeBar }.
+static func convert_legacy_screen(root: Control, title: String) -> Dictionary:
+	# THE ROOT IS USUALLY 40x40. Every legacy menu scene was authored with a
+	# default-sized root Control and children pinned at absolute 1920x1080
+	# offsets — which drew correctly only because a Control does not clip its
+	# children. The new chrome is ANCHORED, so it would size itself to that 40x40
+	# stub and put the footer at y = -52. Nothing else depends on the root's rect,
+	# and the children keep their offsets from an unchanged top-left corner, so
+	# widening it to the full screen is safe and fixes every converted screen.
+	root.set_anchors_preset(Control.PRESET_FULL_RECT)
+	root.offset_left = 0.0
+	root.offset_top = 0.0
+	root.offset_right = 0.0
+	root.offset_bottom = 0.0
+
+	# The screen root carries ui_base, so every Label, LineEdit and Button below it
+	# picks up the new face without a per-node override. Anything that still
+	# assigns its own Theme in the scene keeps winning, which is what the button
+	# variants rely on.
+	root.theme = load("res://UI_Themes/ui/ui_base.tres")
+
+	var old_bg := root.get_node_or_null("BACKGROUND")
+	if old_bg != null:
+		# free(), not queue_free(): the new field is added on this same frame and
+		# deferred deletion would leave the old scrolling border drawing over it
+		# until idle.
+		root.remove_child(old_bg)
+		old_bg.free()
+
+	add_field(root)
+	var header := add_header(root)
+	var footer := add_footer(root)
+
+	if title != "":
+		var label := Label.new()
+		set_label(label, "title", title, "chrome_fg")
+		header.centre.add_child(label)
+
+	return { "header": header, "footer": footer }
+
+
+## Moves an existing Label into a chrome bar slot, restyled to a type role.
+##
+## For the screens whose title is set at runtime — a cosmetic shop names its
+## seller, the pack shop names the set — where rebuilding the Label would mean
+## finding and re-pointing every `header_label.text = ...` in the script.
+static func adopt_label(label: Label, slot: Control, role: String = "title",
+		colour_key: String = "chrome_fg") -> void:
+	if label.get_parent() != null:
+		label.get_parent().remove_child(label)
+	label.set_anchors_preset(Control.PRESET_TOP_LEFT)
+	label.offset_left = 0.0
+	label.offset_top = 0.0
+	label.offset_right = 0.0
+	label.offset_bottom = 0.0
+	label.custom_minimum_size = Vector2.ZERO
+	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	label.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	# Drop any Theme the legacy scene assigned, so the label falls through to the
+	# screen root's ui_base rather than to a Kenney variant.
+	label.theme = null
+	style_label(label, role, colour_key)
+	slot.add_child(label)
+
+
+## Moves an existing Button into a chrome bar slot, restyled. Legacy screens
+## already own their Save/Cancel buttons with their signals wired, so they are
+## reparented rather than rebuilt — rebuilding would mean re-connecting every
+## handler and losing whatever enabled/disabled state the screen had set.
+static func adopt_button(button: Button, slot: Control, variant: String,
+		footer_width: bool = true) -> void:
+	if button.get_parent() != null:
+		button.get_parent().remove_child(button)
+	# A legacy button carries absolute offsets AND a custom_minimum_size from its
+	# old position; inside a container both fight the layout. custom_minimum_size
+	# is the one that bites — a stepper arrow authored 90px tall stayed 90px tall
+	# and filled the whole header bar. Cleared here; callers that want a specific
+	# width set it after.
+	button.set_anchors_preset(Control.PRESET_TOP_LEFT)
+	button.offset_left = 0.0
+	button.offset_top = 0.0
+	button.offset_right = 0.0
+	button.offset_bottom = 0.0
+	button.custom_minimum_size = Vector2.ZERO
+	button.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	style_button(button, variant)
+	if footer_width:
+		button.custom_minimum_size.x = FOOTER_BTN_W
+	slot.add_child(button)
+
+
 # ─── Content components ──────────────────────────────────────────────────────
 
 ## The standard surface: panel fill, 1px line border, 15px radius, no drop
@@ -233,6 +353,31 @@ static func make_panel() -> PanelContainer:
 	sb.border_color = ui.col("line")
 	sb.set_corner_radius_all(ui.mi("panel_radius"))
 	sb.anti_aliasing = true
+	p.add_theme_stylebox_override("panel", sb)
+	return p
+
+
+## An OPAQUE panel, for modal dialogs — load deck, rename, the empty-deck confirm.
+##
+## make_panel() is a translucent surface for grouping content ON a screen, and it
+## is the wrong thing for a dialog: at 6.5% white over a dimmed board the whole
+## popup reads as a ghost and the screen behind it competes with the text. A
+## dialog needs to sit ON TOP of the world, so this one is solid, with a thicker
+## border and a bigger radius.
+static func make_modal_panel() -> PanelContainer:
+	var ui := _ui()
+	var p := PanelContainer.new()
+	var sb := StyleBoxFlat.new()
+	# Opaque, and a touch lighter than the field so it lifts off a dimmed screen.
+	sb.bg_color = ui.col("field").lightened(0.10)
+	sb.set_border_width_all(2)
+	sb.border_color = ui.col_a("accent", 0.55)
+	sb.set_corner_radius_all(ui.mi("panel_radius"))
+	sb.anti_aliasing = true
+	sb.content_margin_left = 8
+	sb.content_margin_right = 8
+	sb.content_margin_top = 8
+	sb.content_margin_bottom = 8
 	p.add_theme_stylebox_override("panel", sb)
 	return p
 
@@ -284,22 +429,27 @@ static func make_chip(text: String, variant: String = "on_field",
 ##
 ## This is the replacement for the black voids the old screens drew. A slot the
 ## player can see is progress; a black rectangle is a bug they have to rule out.
-static func make_slot(slot_size: Vector2, circular: bool = false) -> Panel:
+## Drawn by UI_Slot.gdshader rather than a StyleBoxFlat — see that file for why.
+## The short version: at the full-pill radius a circular slot needs, StyleBoxFlat's
+## four corner arcs meet at the edge midpoints and double-blend their
+## antialiasing, putting a white dot at north, east, south and west.
+static func make_slot(slot_size: Vector2, circular: bool = false) -> ShaderRect:
 	var ui := _ui()
-	var s := Panel.new()
+	var s := ShaderRect.new()
+	s.tracks_motion = false          # nothing here scrolls
+	s.color = Color.WHITE            # the shader replaces this entirely
 	s.custom_minimum_size = slot_size
 	s.size = slot_size
 
-	var sb := StyleBoxFlat.new()
-	sb.bg_color = ui.col("slot_fill")
-	sb.set_border_width_all(ui.mi("slot_outline"))
-	sb.border_color = ui.col("slot")
-	sb.anti_aliasing = true
-	# A coin is a circle, so its empty slot is too — half the short edge turns
-	# the rounded rect into one.
-	sb.set_corner_radius_all(int(min(slot_size.x, slot_size.y) * 0.5) if circular
-		else ui.mi("slot_radius"))
-	s.add_theme_stylebox_override("panel", sb)
+	var mat := ShaderMaterial.new()
+	mat.shader = load(SHADER_SLOT)
+	mat.set_shader_parameter("fill_color", ui.col("slot_fill"))
+	mat.set_shader_parameter("outline_color", ui.col("slot"))
+	mat.set_shader_parameter("outline_px", ui.m("slot_outline"))
+	# The shader clamps to half the short edge, so a big number is a circle.
+	mat.set_shader_parameter("corner_radius", 9999.0 if circular else ui.m("slot_radius"))
+	mat.set_shader_parameter("rect_size", slot_size)
+	s.material = mat
 	return s
 
 
@@ -378,6 +528,48 @@ static func make_damage_counters(current_hp: int, max_hp: int, bench: bool = fal
 	return row
 
 
+## Lifts a shop item off the screen with a drop shadow.
+##
+## The shadow is the item's OWN texture drawn black and semi-transparent, offset
+## down and right — so it takes the item's exact silhouette. A coin casts a round
+## shadow, a booster pack a rectangular one, and a card fan the shape of the fan.
+## A generic blurred blob under everything would not.
+##
+## Mounted as a CHILD with show_behind_parent, deliberately, and this is the one
+## place that differs from the price pills: a pill must NOT scale with the
+## selection pulse, but a shadow must — an item that grows while its shadow stays
+## put looks like the shadow came unstuck. Being a child also means it inherits
+## any dim the screen applies to the item.
+##
+## Safe to call on an item other code walks: the shadow is a grandchild of the
+## grid cell, so `for child in grid.get_children()` never sees it.
+static func add_drop_shadow(item: TextureRect, offset: Vector2 = SHADOW_OFFSET,
+		alpha: float = SHADOW_ALPHA) -> TextureRect:
+	if item == null or item.texture == null:
+		return null
+
+	var shadow := TextureRect.new()
+	shadow.name = "drop_shadow"
+	shadow.texture = item.texture
+	# Match the item's own fitting exactly, or the silhouette will not line up.
+	shadow.expand_mode = item.expand_mode
+	shadow.stretch_mode = item.stretch_mode
+	shadow.flip_h = item.flip_h
+	shadow.flip_v = item.flip_v
+	shadow.set_anchors_preset(Control.PRESET_FULL_RECT)
+	shadow.offset_left = offset.x
+	shadow.offset_top = offset.y
+	shadow.offset_right = offset.x
+	shadow.offset_bottom = offset.y
+	shadow.size = item.size
+	shadow.modulate = Color(0.0, 0.0, 0.0, alpha)
+	shadow.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	shadow.show_behind_parent = true
+
+	item.add_child(shadow)
+	return shadow
+
+
 # ─── Selection feedback ──────────────────────────────────────────────────────
 
 ## The rotating gradient ring. Mount it as a SIBLING of `target`, never a child.
@@ -444,11 +636,25 @@ static func pulse(target: Control, selected: bool, tile: bool = false) -> Tween:
 # ─── Text ────────────────────────────────────────────────────────────────────
 
 ## Applies a type role's face, size, tracking and colour to a Label.
+##
 ## `colour_key` names a UITheme colour; the default suits the dark field.
-static func style_label(label: Label, role: String, colour_key: String = "field_fg") -> void:
+## `size_px` overrides the role's size while keeping its face and casing — for
+## the handful of places that want, say, a small_label's mono caps at a larger
+## size. Leave it at -1 to take the role's own size, which is the normal case;
+## a screen that overrides it everywhere is a screen that wants a different role.
+static func style_label(label: Label, role: String, colour_key: String = "field_fg",
+		size_px: int = -1) -> void:
 	var ui := _ui()
+	# Strip Kenney-era decoration. Legacy Labels carry outline and drop-shadow
+	# overrides that were there to make a thin bevelled face readable on a busy
+	# background; left in place they render the new font with a heavy black halo.
+	for c in ["font_outline_color", "font_shadow_color"]:
+		label.remove_theme_color_override(c)
+	for k in ["outline_size", "shadow_offset_x", "shadow_offset_y", "shadow_outline_size"]:
+		label.remove_theme_constant_override(k)
+
 	label.add_theme_font_override("font", ui.font(role))
-	label.add_theme_font_size_override("font_size", ui.size(role))
+	label.add_theme_font_size_override("font_size", ui.size(role) if size_px < 0 else size_px)
 	label.add_theme_color_override("font_color", ui.col(colour_key))
 	var track: int = ui.tracking_px(role)
 	if track != 0:
@@ -462,8 +668,8 @@ static func style_label(label: Label, role: String, colour_key: String = "field_
 ## effects pass through untouched. Losing that distinction is losing the main
 ## win of leaving Kenney behind.
 static func set_label(label: Label, role: String, text: String,
-		colour_key: String = "field_fg") -> void:
-	style_label(label, role, colour_key)
+		colour_key: String = "field_fg", size_px: int = -1) -> void:
+	style_label(label, role, colour_key, size_px)
 	label.text = _ui().cased(role, text)
 
 

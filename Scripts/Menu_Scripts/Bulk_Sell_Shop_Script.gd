@@ -121,6 +121,14 @@ const LIST_SIDE_BOTTOM := 930.0
 ## about a second where one-per-frame would be nearly a minute.
 const LIST_BUILD_BATCH := 54
 
+# ── Confirm screen's sale panel ──────────────────────────────────────────────
+# TWEAKABLE. Sits to the right of the card grid, above the two footer buttons.
+const PANEL_X       := 1700.0
+const PANEL_Y       := 140.0
+const PANEL_W       := 200.0
+const PANEL_PAD     := 16.0
+const PANEL_ROW_GAP := 14
+
 # ── Sale animation ───────────────────────────────────────────────────────────
 # TWEAKABLE. Cards vanish one at a time from the bottom-right of the grid, walking right
 # to left and bottom to top, each one throwing a floating price label as it goes.
@@ -201,11 +209,15 @@ var _detail_panel : CardDetailPanel = null
 
 # ─── Node references ─────────────────────────────────────────────────────────
 
-@onready var background_scroller      : TextureRect = $BACKGROUND/background_scroller
-@onready var top_border               : TextureRect = $BACKGROUND/top_border
-@onready var bottom_border            : TextureRect = $BACKGROUND/bottom_border
-@onready var list_border              : TextureRect = $BACKGROUND/list_border
-@onready var list_background_scroller : TextureRect = $BACKGROUND/list_background_scroller
+
+# Footer button band: the 92px footer runs 988..1080, so a 64px button centred in
+# it starts at 1002. TWEAKABLE.
+const FOOTER_BTN_Y := 1002.0
+const FOOTER_BTN_H := 64.0
+
+## Header slot holding the confirm screen's "214 cards" chip. Empty on the home
+## screen, which has no count to show.
+var _count_chip_holder : Control = null
 
 @onready var header_label : Label   = $large_header_text_label
 @onready var fan_root     : Control = $"CARD FANS"
@@ -258,11 +270,67 @@ func _ready() -> void:
 	_float_layer.z_index = 400
 	add_child(_float_layer)
 
+	_build_chrome()
 	wallet_chip = ShopChrome.add_wallet_chip(self, GameState.get_cash())
 
 	_scan_spares()
 	_build_card_fans()
 	_show_home()
+
+
+## Swaps the old bordered chrome for the Spectrum Night bars.
+##
+## This screen used to carry TWO sets of border art — the shop look for the home
+## screen and the deck-viewer look for the sell list — shown and hidden as the
+## player moved between them. Both are gone: the new chrome is the same on both
+## screens, so only the header title and which footer buttons are visible change.
+##
+## The sell/cancel buttons DELIBERATELY stay inside their HOME BUTTONS and LIST
+## BUTTONS parents rather than being reparented into the footer slot. Those two
+## containers are what the existing screen switching shows and hides, and moving
+## the buttons out would mean rewriting that; only their geometry moves here.
+func _build_chrome() -> void:
+	var bars := UIKit.convert_legacy_screen(self, "")
+	UIKit.adopt_label(header_label, bars["header"].centre)
+
+	_count_chip_holder = bars["header"].left
+
+	_place_footer_button(home_cancel_btn, "secondary", 0)
+	_place_footer_button(list_cancel_btn, "secondary", -1)
+	_place_footer_button(list_sell_btn, "primary", 1)
+
+	# The three tier buttons and the grand total sit IN the content, not on the
+	# footer, and take their theme from the scene rather than from this script —
+	# so they need restyling by hand or they stay Kenney blue.
+	for b in [sell_common_btn, sell_uncommon_btn, sell_rare_btn]:
+		b.theme = null
+		UIKit.style_button(b, "secondary")
+	sell_all_btn.theme = null
+	UIKit.style_button(sell_all_btn, "primary")
+
+	# Same for the per-tier rate labels.
+	for l in [common_price_label, uncommon_price_label, rare_price_label]:
+		l.theme = null
+		UIKit.style_label(l, "name", "field_mute")
+
+
+## Positions a button on the footer's centre line. `slot` is -1 left of centre,
+## 0 dead centre, 1 right of centre.
+func _place_footer_button(btn: Button, variant: String, slot: int) -> void:
+	UIKit.style_button(btn, variant)
+	var w := UIKit.FOOTER_BTN_W
+	var gap := float(UIKit.FOOTER_BTN_GAP)
+	var centre_x := UIKit.SCREEN_W * 0.5
+	var x := centre_x - w * 0.5
+	if slot < 0:
+		x = centre_x - w - gap * 0.5
+	elif slot > 0:
+		x = centre_x + gap * 0.5
+	btn.set_anchors_preset(Control.PRESET_TOP_LEFT)
+	btn.offset_left   = x
+	btn.offset_right  = x + w
+	btn.offset_top    = FOOTER_BTN_Y
+	btn.offset_bottom = FOOTER_BTN_Y + FOOTER_BTN_H
 
 
 # ─── Card metadata ───────────────────────────────────────────────────────────
@@ -454,6 +522,7 @@ func _build_card_fans() -> void:
 			rect.z_index      = ids.size() - i
 			rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
 			fan_root.add_child(rect)
+			UIKit.add_drop_shadow(rect)
 
 
 func _show_home() -> void:
@@ -467,12 +536,8 @@ func _show_home() -> void:
 	_loading.hide()
 
 	header_label.text = "Sell Your Spare Bulk"
+	_set_count_chip("")
 
-	background_scroller.visible      = true
-	top_border.visible               = true
-	bottom_border.visible            = true
-	list_border.visible              = false
-	list_background_scroller.visible = false
 
 	fan_root.visible     = true
 	price_root.visible   = true
@@ -525,17 +590,15 @@ func _open_sell_list(band: int, selection: Dictionary) -> void:
 	_selection       = selection
 	_selection_value = _value_of(selection)
 
-	# ── Chrome swap: shop bars out, deck-viewer top-and-right border in ──
-	background_scroller.visible      = false
-	top_border.visible               = false
-	bottom_border.visible            = false
-	list_border.visible              = true
-	list_background_scroller.visible = true
+	# The two screens share ONE set of chrome now — the header title and the footer
+	# buttons are all that change between them.
 
 	fan_root.visible     = false
 	price_root.visible   = false
 	home_buttons.visible = false
-	wallet_chip.visible  = false
+	# The wallet STAYS on the confirm screen: the panel's "balance after" figure is
+	# meaningless without the balance before it sitting in the header.
+	wallet_chip.visible  = true
 	list_buttons.visible = true
 	# Sell stays dead until the last card is in the grid. Pressing it mid-build used to sell
 	# only what had rendered so far while the rest kept appearing behind the animation.
@@ -545,12 +608,12 @@ func _open_sell_list(band: int, selection: Dictionary) -> void:
 
 	# "Selling 24 Common Cards For $120" — the rarity word is dropped for a whole-collection
 	# sale, where naming one rarity would be a lie.
+	# The header names the ACT and the count; the money maths moved to the side
+	# panel, where "you receive" and "balance after" can sit next to each other.
 	var word : String = String(BAND_WORD.get(band, ""))
 	var copies := _copies_in(selection)
-	if word == "":
-		header_label.text = "Selling %d Cards for $%d" % [copies, _selection_value]
-	else:
-		header_label.text = "Selling %d %s Cards for $%d" % [copies, word, _selection_value]
+	header_label.text = "Confirm sale" if word == "" else "Confirm sale - %s" % word
+	_set_count_chip("%d cards" % copies)
 
 	_list_overlay = Control.new()
 	_list_overlay.set_anchors_preset(Control.PRESET_FULL_RECT)
@@ -585,9 +648,7 @@ func _open_sell_list(band: int, selection: Dictionary) -> void:
 	margin.add_child(_list_grid)
 
 	var sorted_ids : Array = CardViewerList.sort_ids(selection.keys(), _get_card_meta)
-	var lines : Array = CardViewerList.individual_lines(sorted_ids, selection, _get_card_meta)
-	CardViewerList.build_side_list(_list_overlay, lines,
-		CardViewerList.category_rows(selection, _get_card_meta), LIST_SIDE_BOTTOM)
+	_build_sale_panel(band, copies)
 
 	# The spinner goes up before the fill and comes down after it, and needs one frame on
 	# screen first or a fast build would never paint it.
@@ -604,6 +665,67 @@ func _open_sell_list(band: int, selection: Dictionary) -> void:
 
 ## One TextureRect per COPY being sold, in the shared viewer order. Each carries the cash
 ## it is worth as metadata, so the sale animation does not have to look its band up again.
+## Shows or clears the header count chip. Passing "" empties the slot, which is
+## what the home screen wants.
+func _set_count_chip(text: String) -> void:
+	if _count_chip_holder == null or not is_instance_valid(_count_chip_holder):
+		return
+	for c in _count_chip_holder.get_children():
+		c.queue_free()
+	if text != "":
+		_count_chip_holder.add_child(UIKit.make_chip(text, "on_chrome"))
+
+
+## The sale's arithmetic, down the right-hand side of the confirm screen.
+##
+## This REPLACES CardViewerList's INDIVIDUAL / CATEGORIES bar on this screen only.
+## The deck viewer still uses it — the two screens were deliberately identical, and
+## this is the one place they now diverge, because a sale wants the money laid out
+## rather than a second listing of cards the grid is already showing.
+func _build_sale_panel(band: int, copies: int) -> void:
+	var rate : int = int(BAND_PRICE.get(band, 0))
+	var balance := GameState.get_cash()
+
+	var panel := UIKit.make_panel()
+	panel.position = Vector2(PANEL_X, PANEL_Y)
+	panel.custom_minimum_size = Vector2(PANEL_W, 0.0)
+	panel.size = Vector2(PANEL_W, 0.0)
+	_list_overlay.add_child(panel)
+
+	var col := VBoxContainer.new()
+	col.add_theme_constant_override("separation", PANEL_ROW_GAP)
+	panel.add_child(col)
+
+	# A mixed-band sale has no single rate, so the row is dropped rather than
+	# printed as a lie — "sell all" spans three different prices.
+	var rows : Array = [["Cards sold", str(copies), "field_fg"]]
+	if rate > 0:
+		rows.append(["Rate", "$%d" % rate, "field_fg"])
+	rows.append(["You receive", "$%d" % _selection_value, "good"])
+	rows.append(["Balance after", "$%d" % (balance + _selection_value), "field_fg"])
+
+	for r in rows:
+		var row := HBoxContainer.new()
+		row.add_theme_constant_override("separation", 12)
+		var key := Label.new()
+		UIKit.set_label(key, "small_label", String(r[0]), "field_mute")
+		key.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		row.add_child(key)
+		var val := Label.new()
+		UIKit.set_label(val, "hp", String(r[1]), String(r[2]))
+		val.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+		row.add_child(val)
+		col.add_child(row)
+
+	var note := Label.new()
+	UIKit.set_label(note, "attack_name",
+		"Four of every card stay in your collection. Only true spares are listed here.",
+		"field_mute")
+	note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	note.custom_minimum_size.x = PANEL_W - PANEL_PAD * 2.0
+	col.add_child(note)
+
+
 func _fill_sell_grid(sorted_ids: Array) -> void:
 	var since_yield := 0
 	for card_id in sorted_ids:

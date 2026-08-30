@@ -19,6 +19,17 @@ const GYM_RECEPTION_SCENE  := "res://Scenes/Map_Scenes/Gym_Challenge_Reception.t
 
 const WEIGHTED_SHOP_ID     := "weighted_mart"
 const HEADER_NORMAL        := "Select pack to purchase"
+
+# The set stepper that IS this screen's header. STEPPER_NAME_W is reserved so the
+# longest real set name ("EX Team Magma vs Team Aqua") never shoves the arrows outward
+# as the player steps along the shelf. TWEAKABLE.
+const STEPPER_ARROW_W      := 78.0
+const STEPPER_NAME_W       := 620.0
+## The stepper row sits between the header bar (ends at 92) and the pack shelf
+## (starts at 247).
+const STEPPER_Y            := 112.0
+const STEPPER_H            := 62.0
+const STEPPER_GAP          := 18
 const HEADER_WEIGHTED      := "Select WEIGHTED pack to purchase"
 
 ## THE DISCOUNT DISPLAY LIVES ON THE PACKS NOW. It used to be a centred row above them —
@@ -55,8 +66,6 @@ var _in_opening_sequence : bool = false
 
 # ─── Theme references ────────────────────────────────────────────────────────
 
-var theme_kenney       : Theme = preload("res://UI_Themes/kenneyUI.tres")
-var theme_kenney_green : Theme = preload("res://UI_Themes/kenneyUI-green.tres")
 
 # ─── Node references ─────────────────────────────────────────────────────────
 
@@ -92,6 +101,7 @@ func _ready() -> void:
 	_load_pack_prices()
 	_load_player_data()
 
+	_build_chrome()
 	wallet_chip = ShopChrome.add_wallet_chip(self, int(player_cash))
 	pill_layer  = ShopChrome.add_pill_layer(self)
 
@@ -104,6 +114,48 @@ func _ready() -> void:
 	prev_btn.pressed.connect(_on_prev_set)
 
 	_refresh_display()
+
+
+## Swaps the old bordered chrome for the Spectrum Night bars and moves this
+## screen's controls into them. ShopChrome's wallet chip stays pinned top-right
+## on its own layer (z 1000) so it draws over the header bar, which is exactly
+## where the design wants the balance.
+func _build_chrome() -> void:
+	var bars := UIKit.convert_legacy_screen(self, "")
+	# The header carries the SCREEN's title ("Select pack to purchase"); the set
+	# stepper is a separate row directly beneath it, above the shelf. Putting the
+	# stepper in the header bar was tried and read as though the set name WAS the
+	# screen name.
+	UIKit.adopt_label(header_label, bars["header"].centre)
+
+	var stepper := HBoxContainer.new()
+	stepper.name = "set_stepper"
+	stepper.add_theme_constant_override("separation", STEPPER_GAP)
+	stepper.alignment = BoxContainer.ALIGNMENT_CENTER
+	stepper.set_anchors_preset(Control.PRESET_TOP_WIDE)
+	stepper.offset_top = STEPPER_Y
+	stepper.offset_bottom = STEPPER_Y + STEPPER_H
+	add_child(stepper)
+
+	UIKit.adopt_button(prev_btn, stepper, "secondary", false)
+	UIKit.adopt_label(set_name_label, stepper, "title", "field_fg")
+	UIKit.adopt_button(next_btn, stepper, "secondary", false)
+	prev_btn.text = "<"
+	next_btn.text = ">"
+	prev_btn.custom_minimum_size.x = STEPPER_ARROW_W
+	next_btn.custom_minimum_size.x = STEPPER_ARROW_W
+	# Reserved so the longest real set name ("EX Team Magma vs Team Aqua") does not
+	# shove the arrows outward as the player steps through the shelf.
+	set_name_label.custom_minimum_size.x = STEPPER_NAME_W
+
+	# Cancel first: the footer slot is an HBox, so insertion order is left-to-right.
+	UIKit.adopt_button(cancel_button, bars["footer"].centre, "secondary")
+	UIKit.adopt_button(buy_button, bars["footer"].centre, "primary")
+
+	var nav := get_node_or_null("SET NAVIGATION")
+	if nav != null:
+		nav.queue_free()
+
 
 
 # ─── Data loading ────────────────────────────────────────────────────────────
@@ -248,6 +300,7 @@ func _load_pack_images(pack_id: String) -> void:
 		rect.mouse_filter = Control.MOUSE_FILTER_STOP
 		rect.gui_input.connect(_on_pack_clicked.bind(rect, letter))
 		pack_hbox.add_child(rect)
+		UIKit.add_drop_shadow(rect)
 	# TWEAKABLE — the four-pack row was 50..1682, an asymmetric 1632 wide that left 238px of
 	# dead margin on the right. Widened and centred now the money labels no longer need the
 	# room: 1800 wide takes each pack from ~385 to ~427, still under the 455px native art.
@@ -381,10 +434,10 @@ func _update_buy_button() -> void:
 	var cost : int = _cost_for(pack_id)
 	if selected_pack_rect != null and player_cash >= cost:
 		buy_button.disabled = false
-		buy_button.theme = theme_kenney_green
+		UIKit.style_button(buy_button, "good")
 	else:
 		buy_button.disabled = true
-		buy_button.theme = theme_kenney
+		UIKit.style_button(buy_button, "primary")
 
 
 # ─── Buy logic ───────────────────────────────────────────────────────────────

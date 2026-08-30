@@ -1182,27 +1182,6 @@ func add_sleeves_to_collection(sleeve_names: Array) -> int:
 
 
 # ============================================================
-# TRAINER CARD COLOUR
-# ============================================================
-# Which Trainer_card_<colour>.png the Info screen wears. Stored in Player_Current_Data.json next
-# to the other cosmetics, and shipped as "blue" in the seed file so a fresh save already has it.
-# The Info screen writes through cycle_trainer_card_colour() the instant the card is clicked — this
-# setting deliberately does not wait for that screen's Save button.
-
-const TRAINER_CARD_COLOURS := ["blue", "green", "yellow", "red", "white"]
-
-func get_trainer_card_colour() -> String:
-	var colour := String(_read_current_data().get("trainer_card_colour", "blue"))
-	return colour if colour in TRAINER_CARD_COLOURS else "blue"
-
-# Advances one step round the cycle and returns the colour now in force.
-func cycle_trainer_card_colour() -> String:
-	var idx : int = TRAINER_CARD_COLOURS.find(get_trainer_card_colour())
-	var next_colour : String = TRAINER_CARD_COLOURS[(idx + 1) % TRAINER_CARD_COLOURS.size()]
-	_save_current_data_field("trainer_card_colour", next_colour)
-	return next_colour
-
-# ============================================================
 # CARD GIVING (Global)
 # ============================================================
 # Accepts a comma-separated string of card IDs, e.g.:

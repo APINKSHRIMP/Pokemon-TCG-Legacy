@@ -10,9 +10,80 @@ var OWNED_CARDS_FOLDER: String:
 var PLAYER_DECKS_FOLDER: String:
 	get: return GameState.PLAYER_DECKS_FOLDER
 
-const CARD_SIZE     := Vector2(183, 254)
-const CARD_H_SEP    := 2
-const CARD_V_SEP    := 2
+# ── Chrome geometry (UI overhaul) ────────────────────────────────────────────
+# TWEAKABLE. The sidebar keeps its authored x band (1690..1916); only the grid and
+# the header furniture are placed from here.
+const GRID_X          := 3.0
+const GRID_W          := 1678.0
+## Zero: the card grid runs edge to edge between the two bars, so the first and
+## last rows line up with the header and footer instead of floating inside a
+## dark band.
+const GRID_INSET_Y    := 0.0
+const DECK_NAME_W     := 330.0
+const DECK_NAME_H     := 52.0
+## 40% down from 54: the arrows were competing with the set name.
+const STEPPER_ARROW_W := 32.0
+## The '<' / '>' glyph, likewise 40% off the 17px button role.
+const STEPPER_ARROW_FONT := 10
+## Deck name, up from the 19px `name` role.
+const DECK_NAME_FONT     := 26
+
+# ── Deck viewer contents list ────────────────────────────────────────────────
+# TWEAKABLE. Sits in the same right-hand band the sidebar uses.
+const VIEWER_LIST_X   := 1690.0
+const VIEWER_LIST_W   := 226.0
+const VIEWER_LIST_PAD := 10.0
+const VIEWER_ROW_H    := 34.0
+const VIEWER_ROW_GAP  := 6
+const STEPPER_NAME_W  := 520.0
+const SEARCH_BTN_W    := 300.0
+
+# ── Right sidebar ────────────────────────────────────────────────────────────
+# TWEAKABLE. The sidebar keeps the x band the scene authored (1690..1916).
+# Top to bottom: energies, composition, then the three deck tools at the bottom.
+const SIDE_X          := 1690.0
+const SIDE_W          := 226.0
+const SIDE_PAD        := 10.0
+
+const ENERGY_PANEL_Y  := 100.0
+const ENERGY_PANEL_H  := 252.0
+const ENERGY_ICON     := Vector2(66.0, 90.0)
+const ENERGY_COL_X    := [1699.0, 1772.0, 1845.0]
+const ENERGY_ROW_Y    := [146.0, 246.0]
+## Outline behind the per-energy count, so it reads on light card art.
+const ENERGY_COUNT_OUTLINE := 7
+
+const COMP_PANEL_Y    := 368.0
+const COMP_PANEL_H    := 246.0
+const COMP_ROW_H      := 40.0
+const COMP_METER_H    := 10.0
+
+## The three deck tools, bottom-aligned so they sit under the composition box.
+const TOOL_BTN_H      := 66.0
+const TOOL_BTN_GAP    := 10.0
+const TOOL_STACK_BOT  := 972.0
+
+## Sized so nine columns plus CARD_H_SEP still fit GRID_W:
+## 9 * 177 + 8 * 10 = 1673, inside 1678. Raising the gap means shrinking this.
+const CARD_SIZE     := Vector2(177, 246)
+## Raised from 2: at 2px the cards read as one solid sheet rather than as a grid
+## of separate items.
+## Composition rows, in display order, with their headings.
+const COMP_ORDER := ["basic", "stage1", "stage2", "trainer", "energy"]
+const COMP_LABEL := {
+	"basic":   "Basic",
+	"stage1":  "Stage 1",
+	"stage2":  "Stage 2",
+	"trainer": "Trainer",
+	"energy":  "Energy",
+}
+
+const CARD_H_SEP    := 10
+const CARD_V_SEP    := 10
+
+## The "n / N" strip across the bottom of every card cell.
+const COUNT_STRIP_H    := 30
+const COUNT_STRIP_FONT := 17
 const COLUMNS       := 9
 const MAX_COPIES    := 4
 const DECK_SIZE     := 60
@@ -40,20 +111,6 @@ const ENERGY_TYPES := ["grass", "fire", "water", "lightning", "psychic", "fighti
 # CHT.All_Energy_Styles cheat grants exactly the styles this screen offers. Referenced through the
 # autoload rather than copied — two copies would drift the moment a style is added.
 
-# BBCode hex colours for the per-set deck breakdown label.
-# "__trainer__" is the combined Trainer + Special Energy bucket.
-const TYPE_COLOR_HEX : Dictionary = {
-	"Colorless":   "#ffffff",
-	"Darkness":    "#1a1a1a",
-	"Fighting":    "#d9823c",
-	"Fire":        "#ff4a36",
-	"Grass":       "#47d647",
-	"Lightning":   "#ffdc14",
-	"Metal":       "#8c8c8c",
-	"Psychic":     "#c247f0",
-	"Water":       "#4592ff",
-	"__trainer__": "#c8c8c8",
-}
 
 # ─── State ───────────────────────────────────────────────────────────────────
 
@@ -161,7 +218,22 @@ var zoomed_card : TextureRect = null
 var detail_panel : CardDetailPanel = null
 
 # RichTextLabel showing the per-set deck breakdown (created in _ready).
-var set_breakdown_label : RichTextLabel = null
+
+# Sidebar panels built in _build_chrome. _comp_rows maps a COMP_ORDER key to its
+# { count, meter, name } nodes.
+var _comp_rows              : Dictionary = {}
+var _comp_panel             : Control = null
+var _comp_heading           : Label = null
+var _energy_panel_nodes     : Array = []
+var _deck_count_chip_holder : Control = null
+var _deck_count_chip        : Control = null
+
+# The two chrome bars, kept so the deck viewer can put its own header and footer
+# content into them rather than drawing a title UNDER them.
+var _header : UIKit.ChromeBar = null
+var _footer : UIKit.ChromeBar = null
+# Everything the viewer added to those bars, torn down when it closes.
+var _viewer_chrome : Array = []
 
 # ─── Card search state ───────────────────────────────────────────────────────
 
@@ -276,13 +348,8 @@ func _ready() -> void:
 	deck_name_edit.text_changed.connect(_on_deck_name_changed)
 
 	# Wrap the grid in a scroll container so large sets can scroll
-	_wrap_grid_in_scroll_container()
-
-	# Load the player's current deck
-	_load_deck(current_deck_name)
-
-	# ── Energy icon setup ──
-	# Build the convenience dictionaries that map type name → node.
+	# -- Energy icon setup --
+	# Build the convenience dictionaries that map type name -> node.
 	# This lets the rest of the code work with energy types by string
 	# name ("grass", "fire", etc.) instead of individual variable names.
 	energy_icons = {
@@ -295,6 +362,13 @@ func _ready() -> void:
 		"water": water_energy_count, "lightning": lightning_energy_count,
 		"psychic": psychic_energy_count, "fighting": fighting_energy_count,
 	}
+
+	_build_chrome()
+	_wrap_grid_in_scroll_container()
+
+	# Load the player's current deck
+	_load_deck(current_deck_name)
+
 
 	# Load the saved energy style from player_data.json and update the icons
 	_load_energy_style()
@@ -316,12 +390,254 @@ func _ready() -> void:
 	_snapshot_deck_state()
 	_update_deck_count_label()
 	_refresh_save_button()
-	_create_set_breakdown_label()
-	_update_set_breakdown_label()
+	_update_composition_panel()
 
 	# Display the starting set
 	await get_tree().process_frame
 	_display_current_set()
+
+
+## Swaps the old bordered chrome for the Spectrum Night bars and rearranges this
+## screen's furniture into them.
+##
+## The deck builder already had the layout the design asks for — card grid left,
+## a tall sidebar right — so this is a chrome swap plus one move: Save and Cancel
+## come OUT of the sidebar and onto the slim footer, which is what frees the
+## sidebar's bottom for the deck tools.
+func _build_chrome() -> void:
+	var bars := UIKit.convert_legacy_screen(self, "")
+	_header = bars["header"]
+	_footer = bars["footer"]
+
+	# -- Header left: deck name field, rename hint, then the count chip --
+	var name_holder: Control = bars["header"].left
+	deck_name_edit.get_parent().remove_child(deck_name_edit)
+	deck_name_edit.set_anchors_preset(Control.PRESET_TOP_LEFT)
+	deck_name_edit.offset_left = 0.0
+	deck_name_edit.offset_top = 0.0
+	deck_name_edit.offset_right = 0.0
+	deck_name_edit.offset_bottom = 0.0
+	deck_name_edit.custom_minimum_size = Vector2(DECK_NAME_W, DECK_NAME_H)
+	deck_name_edit.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	deck_name_edit.theme = null
+	# White, not the inherited muted field colour - the deck name is the loudest
+	# thing in the header after the set.
+	deck_name_edit.add_theme_color_override("font_color", Color.WHITE)
+	deck_name_edit.add_theme_font_override("font", UITheme.font("name"))
+	deck_name_edit.add_theme_font_size_override("font_size", DECK_NAME_FONT)
+	name_holder.add_child(deck_name_edit)
+
+	_deck_count_chip_holder = name_holder
+	deck_count_label.visible = false
+
+	# -- Header centre: the set stepper --
+	UIKit.adopt_button(prev_btn, bars["header"].centre, "secondary", false)
+	UIKit.adopt_label(set_label, bars["header"].centre)
+	UIKit.adopt_button(next_btn, bars["header"].centre, "secondary", false)
+	prev_btn.text = "<"
+	next_btn.text = ">"
+	for arrow in [prev_btn, next_btn]:
+		arrow.custom_minimum_size = Vector2(STEPPER_ARROW_W, STEPPER_ARROW_W)
+		arrow.add_theme_font_size_override("font_size", STEPPER_ARROW_FONT)
+	set_label.custom_minimum_size.x = STEPPER_NAME_W
+
+	# -- Header right: search & filter --
+	UIKit.adopt_button(search_btn, bars["header"].right, "primary", false)
+	search_btn.custom_minimum_size.x = SEARCH_BTN_W
+	# The scene bakes a literal newline into this label ("SEARCH &\nFILTER"), which
+	# is what made the button two lines tall and burst the header. Set it fresh.
+	search_btn.text = "Search & filter"
+	UIKit.style_button(search_btn, "primary")
+
+	# -- Footer: Cancel then Save --
+	UIKit.adopt_button(cancel_btn, bars["footer"].centre, "secondary")
+	UIKit.adopt_button(save_btn, bars["footer"].centre, "primary")
+
+	# -- Sidebar --
+	_build_energy_panel()
+	_build_composition_panel()
+
+	# The three deck tools, bottom-aligned under the composition box.
+	var tools: Array = [view_deck_btn, load_btn, empty_btn]
+	for i in tools.size():
+		var b: Button = tools[i]
+		b.theme = null
+		# Emptying the deck throws work away - the only destructive act here.
+		UIKit.style_button(b, "danger" if b == empty_btn else "secondary")
+		var bottom: float = TOOL_STACK_BOT - float(tools.size() - 1 - i) * (TOOL_BTN_H + TOOL_BTN_GAP)
+		b.set_anchors_preset(Control.PRESET_TOP_LEFT)
+		b.offset_left = SIDE_X
+		b.offset_right = SIDE_X + SIDE_W
+		b.offset_top = bottom - TOOL_BTN_H
+		b.offset_bottom = bottom
+
+	# Energy styles are not granted until phase 3 (ecard era), so this button has
+	# nothing to offer yet. HIDDEN, not deleted - the picker behind it is finished
+	# and works; only the entry point is withheld.
+	# Deliberately NOT in _set_ui_visibility's toggle list — it used to be, so
+	# closing the deck viewer showed the old Kenney button again.
+	change_energy_btn.visible = false
+
+	grid.position = Vector2(GRID_X, UIKit.CONTENT_TOP + GRID_INSET_Y)
+	grid.size = Vector2(GRID_W, UIKit.CONTENT_H - GRID_INSET_Y * 2.0)
+
+
+## The "energies in deck" box. Keeps the real energy card art the screen has
+## always used - the mockup's flat colour tiles lose which STYLE of energy the
+## deck is built from - and just puts it in a panel with a heading.
+func _build_energy_panel() -> void:
+	var panel := UIKit.make_panel()
+	panel.position = Vector2(SIDE_X, ENERGY_PANEL_Y)
+	panel.size = Vector2(SIDE_W, ENERGY_PANEL_H)
+	panel.custom_minimum_size = panel.size
+	panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(panel)
+
+	var heading := Label.new()
+	UIKit.set_label(heading, "small_label", "Energies in deck", "field_mute")
+	heading.position = Vector2(SIDE_X + SIDE_PAD, ENERGY_PANEL_Y + SIDE_PAD)
+	heading.size = Vector2(SIDE_W - SIDE_PAD * 2.0, 20.0)
+	add_child(heading)
+	_energy_panel_nodes = [panel, heading]
+
+	# The icons and their counts are scene nodes; only their geometry moves, and
+	# they must stay ABOVE the panel, so the panel is added first.
+	for i in ENERGY_TYPES.size():
+		var t: String = ENERGY_TYPES[i]
+		var icon: TextureRect = energy_icons[t]
+		var lbl: Label = energy_labels[t]
+		var x: float = ENERGY_COL_X[i % 3]
+		var y: float = ENERGY_ROW_Y[i / 3]
+		# REPARENT FIRST. Both nodes hang off "ENERGY SECTION", a Control the scene
+		# parks at (-2, -232); an absolute position set on a child of that lands
+		# 232px above the screen. Moving them to the root makes the sidebar
+		# coordinates mean what they say.
+		for n in [icon, lbl]:
+			if n.get_parent() != null:
+				n.get_parent().remove_child(n)
+			add_child(n)
+		icon.position = Vector2(x, y)
+		icon.size = ENERGY_ICON
+		icon.custom_minimum_size = ENERGY_ICON
+		lbl.theme = null
+		UIKit.style_label(lbl, "title", "field_fg")
+		# The count sits ON the card art, which runs from near-white to bright
+		# yellow, so plain white digits disappeared into it. An outline is the one
+		# place on this screen that earns one back — style_label strips the
+		# Kenney-era outlines precisely because they were decoration, and this is
+		# not: without it the number is unreadable on three of the six energies.
+		lbl.add_theme_constant_override("outline_size", ENERGY_COUNT_OUTLINE)
+		lbl.add_theme_color_override("font_outline_color", Color(0.0, 0.0, 0.0, 0.9))
+		lbl.position = Vector2(x, y + ENERGY_ICON.y * 0.22)
+		lbl.size = Vector2(ENERGY_ICON.x, ENERGY_ICON.y * 0.4)
+		lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+
+
+## The composition box: how the sixty cards break down by kind.
+##
+## REPLACES the old per-SET colour breakdown ("Base 7 7 16 / Fossil 2"), which
+## answered a question nobody asks while building - which sets the cards came
+## from - and answered it in nine hard-to-read colours. What matters while
+## building is whether the deck has enough Basics to open with.
+func _build_composition_panel() -> void:
+	var panel := UIKit.make_panel()
+	panel.position = Vector2(SIDE_X, COMP_PANEL_Y)
+	panel.size = Vector2(SIDE_W, COMP_PANEL_H)
+	panel.custom_minimum_size = panel.size
+	panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(panel)
+	_comp_panel = panel
+
+	var heading := Label.new()
+	UIKit.set_label(heading, "small_label", "Composition", "field_mute")
+	_comp_heading = heading
+	heading.position = Vector2(SIDE_X + SIDE_PAD, COMP_PANEL_Y + SIDE_PAD)
+	heading.size = Vector2(SIDE_W - SIDE_PAD * 2.0, 20.0)
+	add_child(heading)
+
+	_comp_rows.clear()
+	var y: float = COMP_PANEL_Y + SIDE_PAD + 28.0
+	for key in COMP_ORDER:
+		var name_lbl := Label.new()
+		UIKit.set_label(name_lbl, "small_label", String(COMP_LABEL[key]), "field_fg")
+		name_lbl.position = Vector2(SIDE_X + SIDE_PAD, y)
+		name_lbl.size = Vector2(SIDE_W - SIDE_PAD * 2.0 - 44.0, 18.0)
+		add_child(name_lbl)
+
+		var count_lbl := Label.new()
+		UIKit.set_label(count_lbl, "hp", "0", "accent")
+		count_lbl.position = Vector2(SIDE_X + SIDE_W - SIDE_PAD - 44.0, y - 3.0)
+		count_lbl.size = Vector2(44.0, 20.0)
+		count_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+		add_child(count_lbl)
+
+		# The meter is rebuilt on every refresh rather than resized, because
+		# UIKit.make_meter bakes its fill width at construction time.
+		var meter_holder := Control.new()
+		meter_holder.position = Vector2(SIDE_X + SIDE_PAD, y + 21.0)
+		meter_holder.size = Vector2(SIDE_W - SIDE_PAD * 2.0, COMP_METER_H)
+		meter_holder.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		add_child(meter_holder)
+
+		_comp_rows[key] = { "count": count_lbl, "meter": meter_holder, "name": name_lbl }
+		y += COMP_ROW_H
+
+
+## Recomputes the composition box from the current deck.
+func _update_composition_panel() -> void:
+	if _comp_rows.is_empty():
+		return
+	var counts := _deck_composition()
+	var meter_w: float = SIDE_W - SIDE_PAD * 2.0
+	for key in COMP_ORDER:
+		var row: Dictionary = _comp_rows[key]
+		var n: int = int(counts.get(key, 0))
+		(row["count"] as Label).text = str(n)
+		var holder: Control = row["meter"]
+		for c in holder.get_children():
+			c.queue_free()
+		# Measured against the DECK SIZE, not against the largest row: the player
+		# is judging "how much of my sixty is this", not comparing bars.
+		holder.add_child(UIKit.make_meter(float(n), float(DECK_SIZE), meter_w))
+
+
+## Splits the deck into Basic / Stage 1 / Stage 2 / Trainer / Energy.
+## Baby Pokemon fold into Basic - they are Basics for deck-building purposes.
+func _deck_composition() -> Dictionary:
+	var out := { "basic": 0, "stage1": 0, "stage2": 0, "trainer": 0, "energy": 0 }
+	for card_id in deck_cards:
+		var n: int = deck_cards[card_id]
+		var meta = _get_card_meta(card_id)
+		if meta == null:
+			continue
+		var supertype := String(meta.get("supertype", ""))
+		if supertype == "Trainer":
+			out["trainer"] += n
+			continue
+		if supertype == "Energy":
+			out["energy"] += n
+			continue
+		var subs: Array = meta.get("subtypes", [])
+		if "Stage 2" in subs:
+			out["stage2"] += n
+		elif "Stage 1" in subs:
+			out["stage1"] += n
+		else:
+			out["basic"] += n
+	return out
+
+
+## Rebuilds the deck-count chip in the header.
+func _refresh_deck_count_chip() -> void:
+	if _deck_count_chip_holder == null or not is_instance_valid(_deck_count_chip_holder):
+		return
+	if _deck_count_chip != null and is_instance_valid(_deck_count_chip):
+		_deck_count_chip.queue_free()
+	_deck_count_chip = UIKit.make_chip(
+		"%d / %d" % [total_deck_count, DECK_SIZE], "on_chrome")
+	_deck_count_chip_holder.add_child(_deck_count_chip)
+
 
 
 # ─── Data loading ────────────────────────────────────────────────────────────
@@ -826,7 +1142,7 @@ func _on_change_energy_style_pressed() -> void:
 
 	# ── Title label ──
 	var title := Label.new()
-	var kenney_theme = load("res://UI_Themes/kenneyUI.tres")
+	var kenney_theme = load("res://UI_Themes/ui/ui_secondary.tres")
 	if kenney_theme:
 		title.theme = kenney_theme
 	title.text = "Select Energy Card Style"
@@ -885,9 +1201,7 @@ func _on_change_energy_style_pressed() -> void:
 	picker_save_btn.custom_minimum_size = Vector2(226, 63)
 	picker_save_btn.position = Vector2(1689, 902)
 	picker_save_btn.z_index = 55
-	var green_theme = load("res://UI_Themes/kenneyUI-green.tres")
-	if green_theme:
-		picker_save_btn.theme = green_theme
+	UIKit.style_button(picker_save_btn, "primary")
 	picker_save_btn.add_theme_font_size_override("font_size", 23)
 	picker_save_btn.pressed.connect(
 		func():
@@ -900,9 +1214,7 @@ func _on_change_energy_style_pressed() -> void:
 	picker_cancel_btn.custom_minimum_size = Vector2(224, 63)
 	picker_cancel_btn.position = Vector2(1690, 986)
 	picker_cancel_btn.z_index = 55
-	var red_theme = load("res://UI_Themes/kenneyUI-red.tres")
-	if red_theme:
-		picker_cancel_btn.theme = red_theme
+	UIKit.style_button(picker_cancel_btn, "secondary")
 	picker_cancel_btn.add_theme_font_size_override("font_size", 23)
 	picker_cancel_btn.pressed.connect(_on_energy_picker_cancel)
 	energy_picker_overlay.add_child(picker_cancel_btn)
@@ -1129,6 +1441,105 @@ func _close_energy_picker() -> void:
 # private to this script.
 
 
+## Fills the chrome bars with the deck viewer's own header and footer.
+##
+## Left: the card count. Centre: the deck name. Right: one chip per category,
+## which is where the old CATEGORIES block in the side bar has gone. Footer: Close.
+func _build_viewer_chrome() -> void:
+	_clear_viewer_chrome()
+	if _header == null or _footer == null:
+		return
+
+	var count_chip := UIKit.make_chip("%d cards" % total_deck_count, "on_chrome")
+	_header.left.add_child(count_chip)
+	_viewer_chrome.append(count_chip)
+
+	var name_label := Label.new()
+	UIKit.set_label(name_label, "title",
+		current_deck_name if current_deck_name != "" else "Deck", "chrome_fg")
+	_header.centre.add_child(name_label)
+	_viewer_chrome.append(name_label)
+
+	# A chip per category, dropping the empty ones — a deck with no Stage 2 does
+	# not need to be told it has none.
+	for row in CardViewerList.category_rows(deck_cards, _get_card_meta):
+		var n: int = int(row["count"])
+		if n <= 0:
+			continue
+		var chip := UIKit.make_chip("%s %d" % [String(row["label"]), n], "on_chrome")
+		_header.right.add_child(chip)
+		_viewer_chrome.append(chip)
+
+	var close_btn := UIKit.make_footer_button("Close", "primary")
+	close_btn.pressed.connect(_close_deck_viewer)
+	_footer.centre.add_child(close_btn)
+	_viewer_chrome.append(close_btn)
+
+
+## Removes everything _build_viewer_chrome added, so the deck builder's own
+## header and footer come back untouched.
+func _clear_viewer_chrome() -> void:
+	for n in _viewer_chrome:
+		if n != null and is_instance_valid(n):
+			n.queue_free()
+	_viewer_chrome.clear()
+
+
+## The right-hand contents list: one boxed row per unique card, name on the left
+## and the count on the right.
+##
+## REPLACES CardViewerList.build_side_list here. That helper draws an INDIVIDUAL
+## heading over a run of plain text lines and a CATEGORIES block under it; the
+## categories are chips in the header now, and a boxed row per card reads far
+## better than a text column. The helper is untouched for the bulk-sell screen.
+func _build_viewer_contents(sorted_ids: Array) -> void:
+	var scroll := ScrollContainer.new()
+	scroll.position = Vector2(VIEWER_LIST_X, UIKit.CONTENT_TOP + VIEWER_LIST_PAD)
+	scroll.size = Vector2(VIEWER_LIST_W, UIKit.CONTENT_H - VIEWER_LIST_PAD * 2.0)
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO
+	scroll.z_index = 55
+	deck_viewer_overlay.add_child(scroll)
+
+	var col := VBoxContainer.new()
+	col.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	col.add_theme_constant_override("separation", VIEWER_ROW_GAP)
+	scroll.add_child(col)
+
+	var heading := Label.new()
+	UIKit.set_label(heading, "small_label", "Contents", "field_mute")
+	col.add_child(heading)
+
+	for card_id in sorted_ids:
+		var n: int = int(deck_cards.get(card_id, 0))
+		if n <= 0:
+			continue
+		var meta = _get_card_meta(card_id)
+		var card_name: String = String(meta.get("name", card_id)) if meta != null else card_id
+
+		var row := UIKit.make_panel()
+		row.custom_minimum_size = Vector2(VIEWER_LIST_W - VIEWER_LIST_PAD * 2.0, VIEWER_ROW_H)
+		col.add_child(row)
+
+		var inner := HBoxContainer.new()
+		inner.add_theme_constant_override("separation", 8)
+		row.add_child(inner)
+
+		var name_lbl := Label.new()
+		UIKit.set_label(name_lbl, "attack_name", card_name, "field_fg")
+		name_lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		# Long names ellipsise rather than pushing the count off the row.
+		name_lbl.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+		name_lbl.clip_text = true
+		inner.add_child(name_lbl)
+
+		var count_lbl := Label.new()
+		UIKit.set_label(count_lbl, "hp", "x%d" % n, "accent")
+		count_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+		inner.add_child(count_lbl)
+
+
+
 ## Returns the full sorted card_id list for the current deck, ready for the viewer.
 ## Order: Pokémon by type → Trainers (Normal/Stadium/Tool) → Energy (Special/Basic).
 func _sort_deck_for_viewer() -> Array:
@@ -1171,20 +1582,11 @@ func _on_view_deck_pressed() -> void:
 	deck_viewer_overlay.add_child(backdrop)
 	print("ISSUE #151 FIX ACTIVE: deck viewer backdrop is transparent, click-blocking only")
 
-	var kenney_theme = load("res://UI_Themes/kenneyUI.tres")
-
-	var title := Label.new()
-	if kenney_theme:
-		title.theme = kenney_theme
-	var _viewer_deck_name : String = current_deck_name if current_deck_name != "" else "DECK"
-	title.text                    = _viewer_deck_name + "  (" + str(total_deck_count) + " cards)"
-	title.add_theme_font_size_override("font_size", 36)
-	title.add_theme_color_override("font_color", Color.WHITE)
-	title.horizontal_alignment    = HORIZONTAL_ALIGNMENT_CENTER
-	title.position                = Vector2(200, 35)
-	title.size                    = Vector2(1200, 50)
-	title.z_index                 = 55
-	deck_viewer_overlay.add_child(title)
+	# THE VIEWER BORROWS THE CHROME BARS. It used to draw its own title at y=35 and
+	# a Close button at y=1003, both of which now sit UNDER the header and footer.
+	# _set_ui_visibility(false) has already hidden the deck builder's own header
+	# content, so the slots are free.
+	_build_viewer_chrome()
 
 	var viewer_scroll := ScrollContainer.new()
 	viewer_scroll.position              = Vector2(5, 110)
@@ -1210,20 +1612,8 @@ func _on_view_deck_pressed() -> void:
 	viewer_grid.add_theme_constant_override("v_separation", CARD_V_SEP)
 	margin.add_child(viewer_grid)
 
-	var close_btn := Button.new()
-	close_btn.text                = "close"
-	close_btn.custom_minimum_size = Vector2(226, 63)
-	close_btn.position            = Vector2(1689, 1003)
-	close_btn.z_index             = 55
-	var red_theme = load("res://UI_Themes/kenneyUI-red.tres")
-	if red_theme:
-		close_btn.theme = red_theme
-	close_btn.add_theme_font_size_override("font_size", 23)
-	close_btn.pressed.connect(_close_deck_viewer)
-	deck_viewer_overlay.add_child(close_btn)
-
 	var sorted_ids : Array = _sort_deck_for_viewer()
-	_build_viewer_card_list(sorted_ids)   # ISSUE #152
+	_build_viewer_contents(sorted_ids)
 
 	await get_tree().process_frame
 
@@ -1289,6 +1679,7 @@ func _deck_category_rows() -> Array:
 ## Closes and frees the deck viewer overlay, restoring normal UI.
 ## Always freed (not hidden) because the deck may have changed since it was built.
 func _close_deck_viewer() -> void:
+	_clear_viewer_chrome()
 	deck_viewer_active = false
 	if deck_viewer_overlay != null:
 		deck_viewer_overlay.queue_free()
@@ -1471,22 +1862,19 @@ func _add_card_to_grid(card_data: Dictionary) -> void:
 	# are children of the card_rect so they move with it during animations.
 	var label_bg := ColorRect.new()
 	label_bg.color = Color(0, 0, 0, 0.65)
-	label_bg.position = Vector2(0, CARD_SIZE.y - 22)
-	label_bg.size = Vector2(CARD_SIZE.x, 22)
+	label_bg.position = Vector2(0, CARD_SIZE.y - COUNT_STRIP_H)
+	label_bg.size = Vector2(CARD_SIZE.x, COUNT_STRIP_H)
 	label_bg.z_index = 10
 	label_bg.mouse_filter = Control.MOUSE_FILTER_IGNORE
 
 	var count_label := Label.new()
-	var kenney_theme = load("res://UI_Themes/kenneyUI.tres")
-	if kenney_theme:
-		count_label.theme = kenney_theme
 	count_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	count_label.vertical_alignment   = VERTICAL_ALIGNMENT_CENTER
-	count_label.text = str(in_deck) + "/" + str(owned)
-	count_label.add_theme_font_size_override("font_size", 14)
-	count_label.add_theme_color_override("font_color", Color.WHITE)
+	# Spaces around the slash: "1 / 4" reads as a fraction, "1/4" as one token.
+	count_label.text = "%d / %d" % [in_deck, owned]
+	UIKit.style_label(count_label, "hp", "field_fg", COUNT_STRIP_FONT)
 	count_label.position = Vector2.ZERO
-	count_label.size = Vector2(CARD_SIZE.x, 22)
+	count_label.size = Vector2(CARD_SIZE.x, COUNT_STRIP_H)
 	count_label.z_index = 11
 	count_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 
@@ -1580,7 +1968,7 @@ func _on_card_gui_input(event: InputEvent, card_node: Control) -> void:
 		return   # ignore middle-click etc.
 
 	# Update the label and global UI
-	label.text = str(in_deck) + "/" + str(owned)
+	label.text = "%d / %d" % [in_deck, owned]
 	_update_deck_count_label()
 	_refresh_save_button()
 
@@ -2156,7 +2544,6 @@ func _show_confirm_popup(message: String, confirm_label: String, on_confirm: Cal
 	if confirm_popup != null and is_instance_valid(confirm_popup):
 		return
 
-	var kenney_theme = load("res://UI_Themes/kenneyUI.tres")
 	_confirm_action = on_confirm
 
 	confirm_popup = CanvasLayer.new()
@@ -2165,15 +2552,13 @@ func _show_confirm_popup(message: String, confirm_label: String, on_confirm: Cal
 
 	# Dim the screen behind the popup
 	var overlay := ColorRect.new()
-	overlay.color = Color(0, 0, 0, 0.6)
+	overlay.color = Color(0, 0, 0, 0.78)
 	overlay.anchor_right  = 1.0
 	overlay.anchor_bottom = 1.0
 	confirm_popup.add_child(overlay)
 
 	# Centered panel
-	var panel := PanelContainer.new()
-	if kenney_theme:
-		panel.theme = kenney_theme
+	var panel := UIKit.make_modal_panel()
 	panel.custom_minimum_size = Vector2(560, 240)
 	panel.anchor_left   = 0.5
 	panel.anchor_top    = 0.5
@@ -2207,9 +2592,8 @@ func _show_confirm_popup(message: String, confirm_label: String, on_confirm: Cal
 	yes_btn.text = confirm_label
 	yes_btn.custom_minimum_size = Vector2(150, 48)
 	yes_btn.add_theme_font_size_override("font_size", 22)
-	var red_theme = load("res://UI_Themes/kenneyUI-red.tres")
-	if red_theme:
-		yes_btn.theme = red_theme
+	# Destructive: this popup only ever confirms "Empty" or "Delete".
+	UIKit.style_button(yes_btn, "danger")
 	yes_btn.pressed.connect(_run_confirm_action)
 	btn_row.add_child(yes_btn)
 
@@ -2217,9 +2601,7 @@ func _show_confirm_popup(message: String, confirm_label: String, on_confirm: Cal
 	no_btn.text = "Cancel"
 	no_btn.custom_minimum_size = Vector2(150, 48)
 	no_btn.add_theme_font_size_override("font_size", 22)
-	var green_theme = load("res://UI_Themes/kenneyUI-green.tres")
-	if green_theme:
-		no_btn.theme = green_theme
+	UIKit.style_button(no_btn, "secondary")
 	no_btn.pressed.connect(_close_confirm_popup)
 	btn_row.add_child(no_btn)
 
@@ -2407,7 +2789,7 @@ func _save_last_set_loaded() -> void:
 ## - Shift release: closes the zoom overlay and restores UI
 func _input(event: InputEvent) -> void:
 	if event is InputEventMouseButton and event.pressed:
-		_update_set_breakdown_label()
+		_update_composition_panel()
 
 	# The rename box owns the keys while it is up, but it owns them by GETTING OUT OF THE WAY:
 	# only Escape is consumed (to close it), and every other key returns unhandled so the LineEdit
@@ -2620,40 +3002,13 @@ func _hide_zoom() -> void:
 
 ## Updates the "XX/60" label in the top bar.
 func _update_deck_count_label() -> void:
-	deck_count_label.text = str(total_deck_count) + "/" + str(DECK_SIZE)
-	_update_set_breakdown_label()
+	deck_count_label.text = "%d / %d" % [total_deck_count, DECK_SIZE]
+	_refresh_deck_count_chip()
+	_update_composition_panel()
 
 
-## Creates the RichTextLabel used for the per-set deck breakdown.
-## Positioned just below the energy count labels (y≈700) and above the save
-## button (y=902), spanning the full right-panel width.
-func _create_set_breakdown_label() -> void:
-	set_breakdown_label = RichTextLabel.new()
-	set_breakdown_label.bbcode_enabled = true
-	set_breakdown_label.scroll_active  = false
-	set_breakdown_label.fit_content    = true
-	set_breakdown_label.position       = Vector2(1690.0, 544.0)
-	set_breakdown_label.size           = Vector2(230.0, 112.0)
-	set_breakdown_label.z_index        = 200
-	set_breakdown_label.mouse_filter   = Control.MOUSE_FILTER_IGNORE
-	var kenney_theme = load("res://UI_Themes/kenneyUI.tres")
-	if kenney_theme:
-		set_breakdown_label.theme = kenney_theme
-	set_breakdown_label.add_theme_font_size_override("normal_font_size", 14)
-	set_breakdown_label.add_theme_constant_override("outline_size", 2)
-	set_breakdown_label.add_theme_color_override("font_outline_color", Color(0.85, 0.85, 0.85, 0.75))
-	set_breakdown_label.add_theme_constant_override("paragraph_separation", 1)
-	add_child(set_breakdown_label)
 
 
-## Returns a display-friendly version of a set name for the breakdown label.
-## Strips a leading "EX " prefix (any case) and shortens "Team" to "Tm".
-func _format_set_name_for_breakdown(raw_name: String) -> String:
-	var name := raw_name
-	if name.length() > 3 and name.substr(0, 3).to_lower() == "ex ":
-		name = name.substr(3)
-	name = name.replace("Team ", "Tm ")
-	return name.strip_edges()
 
 
 ## Hides or shows all UI elements so overlays (deck viewer, energy picker) can
@@ -2671,7 +3026,6 @@ func _set_ui_visibility(visible_flag: bool) -> void:
 		set_label,
 		deck_name_edit,
 		deck_count_label,
-		change_energy_btn,
 		view_deck_btn,
 		search_btn,
 	]
@@ -2680,8 +3034,19 @@ func _set_ui_visibility(visible_flag: bool) -> void:
 		nodes_to_toggle.append(energy_icons[energy_type])
 		nodes_to_toggle.append(energy_labels[energy_type])
 
-	if set_breakdown_label != null:
-		nodes_to_toggle.append(set_breakdown_label)
+	# The two sidebar panels and every row inside the composition box.
+	nodes_to_toggle.append_array(_energy_panel_nodes)
+	for key in _comp_rows:
+		var row: Dictionary = _comp_rows[key]
+		nodes_to_toggle.append(row["count"])
+		nodes_to_toggle.append(row["meter"])
+		nodes_to_toggle.append(row["name"])
+	if _comp_panel != null:
+		nodes_to_toggle.append(_comp_panel)
+	if _comp_heading != null:
+		nodes_to_toggle.append(_comp_heading)
+	if _deck_count_chip != null and is_instance_valid(_deck_count_chip):
+		nodes_to_toggle.append(_deck_count_chip)
 
 	for node in nodes_to_toggle:
 		if node != null and is_instance_valid(node):
@@ -2697,81 +3062,6 @@ func _set_ui_visibility(visible_flag: bool) -> void:
 		set_label.text    = SEARCH_MODE_LABEL
 		next_btn.visible  = false
 		prev_btn.visible  = false
-
-
-## Rebuilds the per-set type breakdown from deck_cards.
-## Layout per set: set name on its own line (header), then all coloured count
-## tokens on the line below.  A 5 px spacer separates each set block.
-##   - Pokémon grouped by first type, in that type's colour
-##   - Trainers + Special Energies combined in light grey
-##   - Basic Energies omitted (shown by the energy icon section)
-## Safe to call before the label is created — exits silently.
-func _update_set_breakdown_label() -> void:
-	if set_breakdown_label == null:
-		return
-
-	# Accumulate counts: set_id → { type_category → count }
-	var set_type_counts : Dictionary = {}
-
-	for card_id in deck_cards:
-		var count : int = deck_cards[card_id]
-		var set_id : String = card_id.split("-")[0]
-		var meta = _get_card_meta(card_id)
-		if meta == null:
-			continue
-
-		var supertype : String = meta["supertype"]
-		var subtypes  : Array  = meta["subtypes"]
-		var types     : Array  = meta.get("types", [])
-
-		var category : String
-		if supertype == "Pokémon":
-			category = types[0] if types.size() > 0 else "Colorless"
-		elif supertype == "Trainer":
-			category = "__trainer__"
-		elif supertype == "Energy":
-			if "Special" in subtypes:
-				category = "__trainer__"
-			else:
-				continue  # basic energy shown via energy icon counts
-		else:
-			continue
-
-		if not set_type_counts.has(set_id):
-			set_type_counts[set_id] = {}
-		var tgt : Dictionary = set_type_counts[set_id]
-		tgt[category] = tgt.get(category, 0) + count
-
-	# Fixed type order: alphabetical Pokémon types, then Trainer/Special last
-	var type_order : Array = [
-		"Colorless", "Darkness", "Fighting", "Fire", "Grass",
-		"Lightning", "Metal", "Psychic", "Water", "__trainer__"
-	]
-
-	# Each set is its own [p align=center] paragraph — paragraph_separation
-	# (set as a theme constant in _create_set_breakdown_label) controls the
-	# inter-set gap in real pixels, while the \n inside the paragraph keeps
-	# the set name and its counts tight together.
-	var bbcode := ""
-	for entry in set_list:
-		var set_id : String = entry["set_id"]
-		if not set_type_counts.has(set_id):
-			continue
-		var counts       : Dictionary = set_type_counts[set_id]
-		var display_name : String     = _format_set_name_for_breakdown(entry["set_name"])
-
-		var count_line := ""
-		for type_key in type_order:
-			if counts.has(type_key):
-				var hex : String = TYPE_COLOR_HEX.get(type_key, "#ffffff")
-				if count_line != "":
-					count_line += " "
-				count_line += "[color=" + hex + "]" + str(counts[type_key]) + "[/color]"
-
-		bbcode += "[p align=center][color=#ffffff]" + display_name + "[/color]\n"
-		bbcode += "[font_size=18]" + count_line + "[/font_size][/p]"
-
-	set_breakdown_label.text = bbcode
 
 
 ## Called every time the player types or deletes in the deck name field.
@@ -2814,7 +3104,7 @@ var _msg_bold_font: FontVariation = null
 func _get_msg_bold_font() -> FontVariation:
 	if _msg_bold_font != null:
 		return _msg_bold_font
-	var theme_res = load("res://UI_Themes/kenneyUI.tres")
+	var theme_res = load("res://UI_Themes/ui/ui_secondary.tres")
 	if theme_res == null or theme_res.default_font == null:
 		return null
 	_msg_bold_font = FontVariation.new()
@@ -2835,7 +3125,7 @@ func _show_deck_message(text: String) -> void:
 	lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	lbl.z_index = MSG_Z_INDEX
-	var kenney_theme = load("res://UI_Themes/kenneyUI.tres")
+	var kenney_theme = load("res://UI_Themes/ui/ui_secondary.tres")
 	if kenney_theme:
 		lbl.theme = kenney_theme
 	var bold := _get_msg_bold_font()
@@ -2923,12 +3213,7 @@ func _deck_has_basic_pokemon() -> bool:
 func _refresh_save_button() -> void:
 	var can_save := _deck_save_blocker() == "" and _is_deck_dirty()
 	save_btn.disabled = false
-	if can_save:
-		var green_theme = load("res://UI_Themes/kenneyUI-green.tres")
-		if green_theme:
-			save_btn.theme = green_theme
-	else:
-		save_btn.theme = load("res://UI_Themes/kenneyUI.tres")
+	UIKit.style_button(save_btn, "good" if can_save else "primary")
 
 
 # ─── Load deck popup ────────────────────────────────────────────────────────
@@ -2973,9 +3258,7 @@ func _make_delete_deck_button(deck_name: String) -> Button:
 	btn.custom_minimum_size = Vector2(LOAD_ROW_H, LOAD_ROW_H)
 	btn.size_flags_horizontal = Control.SIZE_SHRINK_END
 	btn.tooltip_text = "Delete this deck"
-	var red_theme = load("res://UI_Themes/kenneyUI-red.tres")
-	if red_theme:
-		btn.theme = red_theme
+	UIKit.style_button(btn, "secondary")
 
 	# MOUSE_FILTER_IGNORE so the glyph never eats the click meant for the button under it.
 	var glyph := Control.new()
@@ -3022,7 +3305,7 @@ func _make_rename_deck_button(deck_name: String) -> Button:
 	btn.custom_minimum_size = Vector2(LOAD_ROW_H, LOAD_ROW_H)
 	btn.size_flags_horizontal = Control.SIZE_SHRINK_END
 	btn.tooltip_text = "Rename this deck"
-	var blue_theme = load("res://UI_Themes/kenneyUI-blue.tres")
+	var blue_theme = load("res://UI_Themes/ui/ui_secondary.tres")
 	if blue_theme:
 		btn.theme = blue_theme
 
@@ -3084,21 +3367,18 @@ func _on_rename_deck_pressed(deck_name: String) -> void:
 	if rename_popup != null and is_instance_valid(rename_popup):
 		return
 
-	var kenney_theme = load("res://UI_Themes/kenneyUI.tres")
 
 	rename_popup = CanvasLayer.new()
 	rename_popup.layer = 110   # above the load popup at 100, same as the delete confirm
 	add_child(rename_popup)
 
 	var overlay := ColorRect.new()
-	overlay.color = Color(0, 0, 0, 0.6)
+	overlay.color = Color(0, 0, 0, 0.78)
 	overlay.anchor_right  = 1.0
 	overlay.anchor_bottom = 1.0
 	rename_popup.add_child(overlay)
 
-	var panel := PanelContainer.new()
-	if kenney_theme:
-		panel.theme = kenney_theme
+	var panel := UIKit.make_modal_panel()
 	panel.custom_minimum_size = Vector2(RENAME_PANEL_W, RENAME_PANEL_H)
 	panel.anchor_left   = 0.5
 	panel.anchor_top    = 0.5
@@ -3149,9 +3429,7 @@ func _on_rename_deck_pressed(deck_name: String) -> void:
 	ok_btn.text = "Rename"
 	ok_btn.custom_minimum_size = Vector2(LOAD_ACTION_W, LOAD_ACTION_H)
 	ok_btn.add_theme_font_size_override("font_size", LOAD_ACTION_FONT)
-	var green_theme = load("res://UI_Themes/kenneyUI-green.tres")
-	if green_theme:
-		ok_btn.theme = green_theme
+	UIKit.style_button(ok_btn, "primary")
 	ok_btn.pressed.connect(func(): _rename_deck(deck_name, _rename_edit.text))
 	btn_row.add_child(ok_btn)
 
@@ -3159,9 +3437,7 @@ func _on_rename_deck_pressed(deck_name: String) -> void:
 	cancel_btn.text = "Cancel"
 	cancel_btn.custom_minimum_size = Vector2(LOAD_ACTION_W, LOAD_ACTION_H)
 	cancel_btn.add_theme_font_size_override("font_size", LOAD_ACTION_FONT)
-	var red_theme = load("res://UI_Themes/kenneyUI-red.tres")
-	if red_theme:
-		cancel_btn.theme = red_theme
+	UIKit.style_button(cancel_btn, "secondary")
 	cancel_btn.pressed.connect(_close_rename_popup)
 	btn_row.add_child(cancel_btn)
 
@@ -3301,17 +3577,14 @@ func _on_load_deck_pressed() -> void:
 
 	# Semi-transparent background overlay to dim the screen behind the popup
 	var overlay := ColorRect.new()
-	overlay.color = Color(0, 0, 0, 0.6)
+	overlay.color = Color(0, 0, 0, 0.78)
 	overlay.anchor_right  = 1.0
 	overlay.anchor_bottom = 1.0
 	load_popup.add_child(overlay)
 
 	# Main panel — centered on screen. ISSUE #154: wider (500 -> LOAD_PANEL_W) and slightly taller
 	# (600 -> LOAD_PANEL_H).
-	var panel := PanelContainer.new()
-	var kenney_theme = load("res://UI_Themes/kenneyUI.tres")
-	if kenney_theme:
-		panel.theme = kenney_theme
+	var panel := UIKit.make_modal_panel()
 	panel.custom_minimum_size = Vector2(LOAD_PANEL_W, LOAD_PANEL_H)
 	panel.anchor_left   = 0.5
 	panel.anchor_top    = 0.5
@@ -3377,8 +3650,7 @@ func _on_load_deck_pressed() -> void:
 		var btn := Button.new()
 		btn.text = deck_name.replace("_", " ")
 		btn.alignment = HORIZONTAL_ALIGNMENT_LEFT
-		if kenney_theme:
-			btn.theme = kenney_theme
+		UIKit.style_button(btn, "secondary")
 		btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		btn.custom_minimum_size = Vector2(0, LOAD_ROW_H)
 		btn.add_theme_font_size_override("font_size", LOAD_ROW_FONT)
@@ -3387,11 +3659,9 @@ func _on_load_deck_pressed() -> void:
 			func():
 				# Un-highlight previous selection
 				if selection["button"] != null and is_instance_valid(selection["button"]):
-					selection["button"].theme = kenney_theme
+					UIKit.style_button(selection["button"], "secondary")
 				# Highlight new selection
-				var blue_theme = load("res://UI_Themes/kenneyUI-blue.tres")
-				if blue_theme:
-					btn.theme = blue_theme
+				UIKit.style_button(btn, "selected")
 				selection["button"] = btn
 				selection["deck_name"] = deck_name
 		)
@@ -3409,9 +3679,7 @@ func _on_load_deck_pressed() -> void:
 	load_confirm_btn.text = "Load"
 	load_confirm_btn.custom_minimum_size = Vector2(LOAD_ACTION_W, LOAD_ACTION_H)
 	load_confirm_btn.add_theme_font_size_override("font_size", LOAD_ACTION_FONT)
-	var green_theme = load("res://UI_Themes/kenneyUI-green.tres")
-	if green_theme:
-		load_confirm_btn.theme = green_theme
+	UIKit.style_button(load_confirm_btn, "primary")
 	load_confirm_btn.pressed.connect(
 		func():
 			if selection["deck_name"] != "":
@@ -3451,9 +3719,7 @@ func _on_load_deck_pressed() -> void:
 	cancel_popup_btn.text = "Cancel"
 	cancel_popup_btn.custom_minimum_size = Vector2(LOAD_ACTION_W, LOAD_ACTION_H)
 	cancel_popup_btn.add_theme_font_size_override("font_size", LOAD_ACTION_FONT)
-	var red_theme = load("res://UI_Themes/kenneyUI-red.tres")
-	if red_theme:
-		cancel_popup_btn.theme = red_theme
+	UIKit.style_button(cancel_popup_btn, "secondary")
 	cancel_popup_btn.pressed.connect(_close_load_popup)
 	btn_row.add_child(cancel_popup_btn)
 

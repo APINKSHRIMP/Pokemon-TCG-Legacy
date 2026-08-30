@@ -109,7 +109,10 @@ const CTRL_W := 1920.0 - RIGHT_MARGIN - CTRL_X
 # ISSUE #145 (retest): back up to 16 (it had been cut to 8) — killing the power row's dead 94px
 # paid for it. This is the value to raise first if more breathing room is ever wanted; every 1px
 # here costs 11px of screen.
-const ROW_GAP := 16.0
+## Cut from 16 when the icon rows became wrapping chips: the SET block alone grew
+## from 5 fixed lines to 7, and at 16 the SORT BY row ran under the footer. Every
+## 1px here costs ~12px of screen across the twelve rows.
+const ROW_GAP := 9.0
 
 # ISSUE #142 spreading, for the ICON rows only — the button rows use the fixed BTN_W/BTN_GAP pair
 # below (ISSUE #146 retest asked for consistent button sizing and spacing, which a fill-the-width
@@ -117,6 +120,16 @@ const ROW_GAP := 16.0
 # back to "cell + this much gap": a two-icon row flung to opposite ends of a 1530px strip is not
 # using the width, it is just broken. Raise this to spread the sparse icon rows further apart.
 const MAX_ICON_GAP := 56.0
+
+# -- Filter chips (UI overhaul) ----------------------------------------------
+# TWEAKABLE. Chips are sized to their own text and the rows WRAP, so a long row
+# grows downward instead of squeezing its pitch.
+const CHIP_H      := 38.0
+const CHIP_FONT   := 16
+const CHIP_PAD_X  := 16.0
+const CHIP_MIN_W  := 62.0
+const CHIP_GAP_X  := 8.0
+const CHIP_GAP_Y  := 8.0
 
 # Pokemon type icon row (single line, 9 icons). ISSUE #146: -10%.
 const TYPE_ICON  := 49.0
@@ -386,10 +399,13 @@ func setup(unlocked_set_ids: Array, set_list: Array) -> void:
 	_unlocked = unlocked_set_ids
 	_set_list = set_list
 
-	_theme_white = load("res://UI_Themes/kenneyUI.tres")
-	_theme_green = load("res://UI_Themes/kenneyUI-green.tres")
-	_theme_blue  = load("res://UI_Themes/kenneyUI-blue.tres")
-	_theme_red   = load("res://UI_Themes/kenneyUI-red.tres")
+	_theme_white = load("res://UI_Themes/ui/ui_secondary.tres")
+	# "green" is the SELECTED state for every filter chip on this screen, and
+	# selection is pink everywhere else in the game — so it points at ui_selected.
+	_theme_green = load("res://UI_Themes/ui/ui_selected.tres")
+	_theme_blue  = load("res://UI_Themes/ui/ui_selected.tres")
+	# Reset and Cancel back out; they do not destroy anything.
+	_theme_red   = load("res://UI_Themes/ui/ui_secondary.tres")
 
 	# A plain Control (not a CanvasLayer) so it sits in the normal z order: above the deck screen's
 	# right-hand border (z 50) but still inside this scene, exactly like the energy style picker.
@@ -455,7 +471,7 @@ func _build_header() -> void:
 
 func _build_footer() -> void:
 	_confirm_btn = Button.new()
-	_confirm_btn.theme = _theme_green
+	UIKit.style_button(_confirm_btn, "primary")
 	_confirm_btn.text  = "SEARCH"
 	_confirm_btn.add_theme_font_size_override("font_size", BTN_FONT)
 	_confirm_btn.position = Vector2(SEARCH_X, FOOT_BTN_Y)
@@ -527,18 +543,19 @@ func _build_name_row(y: float) -> float:
 
 
 func _build_type_row(y: float) -> float:
-	_add_row_label("POKEMON TYPE", y, TYPE_ICON)
+	_add_row_label("POKEMON TYPE", y, CHIP_H)
 
-	var pitch := _row_pitch(POKEMON_TYPES.size(), TYPE_ICON, MAX_ICON_GAP)
-	var x := CTRL_X
+	# The type chips are the one row that carries COLOUR, because here hue is data
+	# rather than decoration - see UITheme.ENERGY_COLOUR. Everything else on this
+	# screen is a neutral chip that only goes pink when selected.
+	var rows : Array = []
 	for entry in POKEMON_TYPES:
-		var key : String = entry["key"]
-		var icon := _make_icon(ENERGY_ICON_PATH, entry["icon"], TYPE_ICON, Vector2(x, y), key)
-		icon.gui_input.connect(_on_icon_input.bind(icon, "type", key))
-		_type_icons[key] = icon
-		x += pitch
+		rows.append({ "key": entry["key"], "tip": entry["key"] })
+	var end_y := _flow_chips(rows, y, "type", _type_icons)
+	for key in _type_icons:
+		_tint_type_chip(_type_icons[key], String(key), _sel_types.has(key))
 
-	return y + TYPE_ICON + ROW_GAP
+	return end_y + ROW_GAP
 
 
 ## ISSUE #147: one line per card-set generation instead of the old "split everything over one or
@@ -577,29 +594,22 @@ func _build_set_row(y: float) -> float:
 	if rows.is_empty():
 		return y
 
-	# ISSUE #142: ONE pitch shared by every line, taken from the busiest one (17 icons on the EX
-	# line with everything unlocked), so the icons sit in tidy columns and the busiest line is the
-	# one that fills the full width.
-	var widest := 0
-	for line2 in rows:
-		widest = maxi(widest, (line2 as Array).size())
-	var pitch := _row_pitch(widest, SET_ICON, MAX_ICON_GAP)
-
-	var block_h : float = rows.size() * SET_ICON + (rows.size() - 1) * SET_LINE_GAP
-	_add_row_label("SET", y, block_h)
-
+	# One generation per BLOCK, but each block flows and wraps on its own, so the
+	# ex era spilling onto extra lines pushes the rows below it down instead of
+	# squeezing every set into one pitch.
+	var line_y := y
 	for r in range(rows.size()):
 		var line3 : Array = rows[r]
-		var line_y : float = y + r * (SET_ICON + SET_LINE_GAP)
-		for c in range(line3.size()):
-			var entry3 : Dictionary = line3[c]
-			var sid3   : String     = entry3["set_id"]
-			var icon := _make_icon(SET_ICON_PATH, sid3, SET_ICON,
-				Vector2(CTRL_X + c * pitch, line_y), entry3["set_name"])
-			icon.gui_input.connect(_on_icon_input.bind(icon, "set", sid3))
-			_set_icons[sid3] = icon
+		var chip_rows : Array = []
+		for entry3 in line3:
+			chip_rows.append({ "key": entry3["set_id"], "tip": entry3["set_name"] })
+		line_y = _flow_chips(chip_rows, line_y, "set", _set_icons) + CHIP_GAP_Y
 
-	return y + block_h + ROW_GAP
+	# The label is added AFTER the flow, because only now is the block's real
+	# height known — with everything unlocked the ex era alone wraps three times.
+	_add_row_label("SET", y, line_y - CHIP_GAP_Y - y)
+
+	return line_y - CHIP_GAP_Y + ROW_GAP
 
 
 func _build_card_type_row(y: float) -> float:
@@ -659,20 +669,8 @@ func _build_pokemon_sub_row(y: float) -> float:
 	if shown.is_empty():
 		return y
 
-	_add_row_label("POKEMON SUB TYPE", y, SUB_ICON)
-
-	# ISSUE #146 (retest): uniform HEIGHT, width from each icon's own aspect — see _make_icon_h().
-	# The pitch is taken from the widest of them so the row never overlaps itself.
-	var pitch := _row_pitch(shown.size(), _widest_icon(SUBTYPE_ICON_PATH, shown, SUB_ICON), MAX_ICON_GAP)
-	var x := CTRL_X
-	for entry in shown:
-		var key : String = entry["key"]
-		var icon := _make_icon_h(SUBTYPE_ICON_PATH, entry["icon"], SUB_ICON, Vector2(x, y), entry["tip"])
-		icon.gui_input.connect(_on_icon_input.bind(icon, "pokemon_sub", key))
-		_sub_icons[key] = icon
-		x += pitch
-
-	return y + SUB_ICON + ROW_GAP
+	_add_row_label("POKEMON SUB TYPE", y, CHIP_H)
+	return _flow_chips(shown, y, "pokemon_sub", _sub_icons) + ROW_GAP
 
 
 ## ISSUE #140: "HAS POWER / BODY". Built exactly like the sub type row above it — same _make_icon
@@ -684,20 +682,8 @@ func _build_power_row(y: float) -> float:
 	if shown.is_empty():
 		return y
 
-	_add_row_label("HAS POWER OR BODY", y, POWER_ICON)
-
-	# ISSUE #145 (retest): sized by rendered HEIGHT — see _make_icon_h() and POWER_ICON.
-	var widest := _widest_icon(SUBTYPE_ICON_PATH, shown, POWER_ICON)
-	var pitch := _row_pitch(shown.size(), widest, MAX_ICON_GAP)
-	var x := CTRL_X
-	for entry in shown:
-		var key : String = entry["key"]
-		var icon := _make_icon_h(SUBTYPE_ICON_PATH, entry["icon"], POWER_ICON, Vector2(x, y), entry["tip"])
-		icon.gui_input.connect(_on_icon_input.bind(icon, "power", key))
-		_power_icons[key] = icon
-		x += pitch
-
-	return y + POWER_ICON + ROW_GAP
+	_add_row_label("HAS POWER OR BODY", y, CHIP_H)
+	return _flow_chips(shown, y, "power", _power_icons) + ROW_GAP
 
 
 ## ISSUE #143: free-text illustrator box. Always an AND against every other filter, matched as a
@@ -727,18 +713,8 @@ func _build_illustrator_row(y: float) -> float:
 ## Rarity is a whole-card property (Pokemon, Trainer and Energy all carry one), so unlike the stage
 ## and sub type rows it takes no part in the Pokemon/Trainer supertype lock.
 func _build_rarity_row(y: float) -> float:
-	_add_row_label("RARITY", y, RARITY_ICON)
-
-	var pitch := _row_pitch(RARITIES.size(), RARITY_ICON, MAX_ICON_GAP)
-	var x := CTRL_X
-	for entry in RARITIES:
-		var key : String = entry["key"]
-		var icon := _make_icon(RARITY_ICON_PATH, entry["icon"], RARITY_ICON, Vector2(x, y), entry["tip"])
-		icon.gui_input.connect(_on_icon_input.bind(icon, "rarity", key))
-		_rarity_icons[key] = icon
-		x += pitch
-
-	return y + RARITY_ICON + ROW_GAP
+	_add_row_label("RARITY", y, CHIP_H)
+	return _flow_chips(RARITIES, y, "rarity", _rarity_icons) + ROW_GAP
 
 
 ## RESERVED row — draws nothing while EFFECT_FILTERS is empty, and lays itself out exactly like the
@@ -799,14 +775,6 @@ func _row_pitch(count: int, cell: float, max_gap: float) -> float:
 	return minf(CTRL_W / float(count), cell + max_gap)
 
 
-## Widest rendered icon in a row drawn by _make_icon_h(), used to pick a pitch that cannot overlap.
-func _widest_icon(folder: String, entries: Array, height: float) -> float:
-	var widest := height
-	for entry in entries:
-		widest = maxf(widest, height * _icon_aspect(folder, entry["icon"]))
-	return widest
-
-
 ## Filters an option table down to the entries whose unlock gate has been met.
 ## An entry with no "gate" (or an empty one) is always shown.
 func _visible_options(table: Array) -> Array:
@@ -835,58 +803,68 @@ func _add_row_label(text: String, y: float, h: float) -> void:
 ## Creates one unselected filter icon. The art is drawn into a SQUARE cell with its aspect ratio
 ## preserved — set icons range from 41x21 (Base) to 128x128 (Southern Islands), so a fixed cell plus
 ## KEEP_ASPECT_CENTERED is what keeps the row visually even.
-func _make_icon(folder: String, stem: String, cell: float, pos: Vector2, tip: String) -> TextureRect:
-	var icon := TextureRect.new()
-	var tex = load(folder + "icon_" + stem + ".png")
-	if tex != null:
-		icon.texture = tex
-	else:
-		push_error("CardSearch: missing icon " + folder + "icon_" + stem + ".png")
-
-	icon.expand_mode  = TextureRect.EXPAND_IGNORE_SIZE
-	icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-	icon.position = pos
-	icon.size     = Vector2(cell, cell)
-	icon.custom_minimum_size = Vector2(cell, cell)
-	# Centre pivot so the selected pulse grows from the middle rather than the top-left
-	icon.pivot_offset = Vector2(cell, cell) / 2.0
-	icon.z_index = CONTENT_Z
-	icon.mouse_filter = Control.MOUSE_FILTER_STOP
-	icon.tooltip_text = tip
-	# Remembered so _set_icon_selected can swap between icon_ / color_icon_ art later
-	icon.set_meta("folder", folder)
-	icon.set_meta("stem", stem)
-	icon.set_meta("selected", false)
-	icon.set_meta("blocked", false)
-	add_child(icon)
-	return icon
-
-
-## ISSUE #145/#146 (retest): an icon sized by its RENDERED HEIGHT, with the width taken from the
-## art's own aspect ratio. _make_icon() above draws into a SQUARE cell, which is right for rows of
-## same-shaped badges (types, sets, rarities) but wrong for two cases here:
-##   * icon_power / icon_body are ~4.15:1 strips, so a square cell reserved 4x the height they
-##     actually drew in and left a band of dead air above and below the row;
-##   * the four POKEMON SUB TYPE glyphs range from 0.96:1 to 1.42:1, so a square cell drew them at
-##     four different heights and dual type looked taller than its neighbours.
-## Pinning the height makes a row of mismatched art read as one set. Use it for any future row
-## whose icons are not all the same shape.
-func _make_icon_h(folder: String, stem: String, height: float, pos: Vector2, tip: String) -> TextureRect:
-	var icon := _make_icon(folder, stem, height, pos, tip)
-	var w := height * _icon_aspect(folder, stem)
-	icon.size     = Vector2(w, height)
-	icon.custom_minimum_size = Vector2(w, height)
-	icon.pivot_offset = Vector2(w, height) / 2.0
-	return icon
+func _make_icon(folder: String, stem: String, cell: float, pos: Vector2, tip: String) -> Control:
+	# `folder`, `stem` and `cell` stay in the signature and in the metas so every
+	# call site reads the way it did, but no art is loaded any more. The rows this
+	# feeds were grids of icon art; they are text chips now, because a 49px set
+	# symbol is not readable and a player hunting "Team Rocket" was being asked to
+	# recognise a logo.
+	var chip := Button.new()
+	chip.text = tip
+	chip.position = pos
+	chip.custom_minimum_size = Vector2(0, CHIP_H)
+	chip.size = Vector2(_chip_width(tip), CHIP_H)
+	chip.z_index = CONTENT_Z
+	chip.mouse_filter = Control.MOUSE_FILTER_STOP
+	chip.focus_mode = Control.FOCUS_NONE
+	chip.tooltip_text = tip
+	# Centre pivot so the selected pulse grows from the middle.
+	chip.pivot_offset = chip.size / 2.0
+	chip.set_meta("folder", folder)
+	chip.set_meta("stem", stem)
+	chip.set_meta("selected", false)
+	chip.set_meta("blocked", false)
+	UIKit.style_button(chip, "secondary")
+	chip.add_theme_font_size_override("font_size", CHIP_FONT)
+	add_child(chip)
+	return chip
 
 
-## Width-to-height ratio of an icon's art, or 1.0 if it cannot be loaded. Godot caches the load, so
-## calling this next to _make_icon_h() does not read the file twice.
-func _icon_aspect(folder: String, stem: String) -> float:
-	var tex = load(folder + "icon_" + stem + ".png")
-	if tex == null or tex.get_height() <= 0:
-		return 1.0
-	return float(tex.get_width()) / float(tex.get_height())
+func _make_icon_h(folder: String, stem: String, height: float, pos: Vector2, tip: String) -> Control:
+	# Identical to _make_icon now - a chip is sized by its text, not by art aspect.
+	# Kept as its own name so the rows that used the height-fitted variant read the
+	# way they always did.
+	return _make_icon(folder, stem, height, pos, tip)
+
+
+## Width a chip needs for its label, floored so the short ones do not look starved.
+func _chip_width(text: String) -> float:
+	var f: Font = UITheme.font("button")
+	var w: float = f.get_string_size(text.to_upper(), HORIZONTAL_ALIGNMENT_LEFT, -1,
+		CHIP_FONT).x + CHIP_PAD_X * 2.0
+	return maxf(w, CHIP_MIN_W)
+
+
+## Lays a run of chips left to right from CTRL_X, wrapping to a new line when the
+## next one would pass the right margin. Returns the y AFTER the last line.
+##
+## This replaces the fixed-pitch maths every icon row used. A pitch only works
+## when every cell is the same width; chips are as wide as their words, and the
+## SET row in particular runs from "Base" to "EX Team Magma vs Team Aqua".
+func _flow_chips(entries: Array, y: float, category: String, store: Dictionary) -> float:
+	var x := CTRL_X
+	var line_y := y
+	for entry in entries:
+		var key: String = String(entry["key"])
+		var w := _chip_width(String(entry["tip"]))
+		if x > CTRL_X and x + w > CTRL_X + CTRL_W:
+			x = CTRL_X
+			line_y += CHIP_H + CHIP_GAP_Y
+		var chip := _make_icon("", key, CHIP_H, Vector2(x, line_y), String(entry["tip"]))
+		chip.gui_input.connect(_on_icon_input.bind(chip, category, key))
+		store[key] = chip
+		x += w + CHIP_GAP_X
+	return line_y + CHIP_H
 
 
 func _make_button(text: String, x: float, y: float, w: float, font_size: int) -> Button:
@@ -912,17 +890,45 @@ func _make_button(text: String, x: float, y: float, w: float, font_size: int) ->
 ## _apply_lock re-asserts every icon's look after each click, so this early-outs when the icon is
 ## already in the requested state — otherwise every selected icon's pulse would restart (and visibly
 ## snap back to full size) each time the player touched any other icon on the screen.
-func _set_icon_selected(icon: TextureRect, selected: bool, force: bool = false) -> void:
+## Paints a type chip in its energy colour. The selected state keeps the colour
+## and gains the accent border, so the row still reads as a colour key when a
+## type is chosen.
+func _tint_type_chip(chip: Control, type_key: String, selected: bool) -> void:
+	if not (chip is Button):
+		return
+	var b := chip as Button
+	var fill := UITheme.energy_colour(type_key.capitalize())
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = fill if selected else Color(fill.r, fill.g, fill.b, 0.45)
+	sb.set_corner_radius_all(UITheme.mi("corner_radius"))
+	sb.anti_aliasing = true
+	sb.content_margin_left = CHIP_PAD_X
+	sb.content_margin_right = CHIP_PAD_X
+	sb.content_margin_top = 6
+	sb.content_margin_bottom = 6
+	if selected:
+		sb.set_border_width_all(2)
+		sb.border_color = Color.WHITE
+	for state in ["normal", "hover", "pressed", "focus"]:
+		b.add_theme_stylebox_override(state, sb)
+	b.add_theme_color_override("font_color", UITheme.energy_fg(type_key.capitalize()))
+	b.add_theme_font_size_override("font_size", CHIP_FONT)
+
+
+func _set_icon_selected(icon: Control, selected: bool, force: bool = false) -> void:
 	if not force and bool(icon.get_meta("selected", false)) == selected:
 		return
 	icon.set_meta("selected", selected)
 
-	var folder : String = icon.get_meta("folder")
-	var stem   : String = icon.get_meta("stem")
-	var prefix := "color_icon_" if selected else "icon_"
-	var tex = load(folder + prefix + stem + ".png")
-	if tex != null:
-		icon.texture = tex
+	if icon is Button:
+		var type_key := String(icon.get_meta("stem", ""))
+		if _type_icons.has(type_key):
+			_tint_type_chip(icon, type_key, selected)
+		else:
+			UIKit.style_button(icon as Button, "selected" if selected else "secondary")
+		# style_button re-applies the button role, which resets the size the chip
+		# was built at.
+		(icon as Button).add_theme_font_size_override("font_size", CHIP_FONT)
 
 	var old = icon.get_meta("pulse", null)
 	if old != null:
@@ -935,18 +941,16 @@ func _set_icon_selected(icon: TextureRect, selected: bool, force: bool = false) 
 	if not selected:
 		return
 
+	# Scale only. The old pulse also brightened `modulate`, which on a coloured
+	# chip washes the fill out instead of reading as a highlight.
 	var tw := create_tween()
 	tw.set_loops()
 	icon.set_meta("pulse", tw)
 	tw.tween_property(icon, "scale", Vector2(PULSE_SCALE, PULSE_SCALE), PULSE_SECONDS)
-	tw.parallel().tween_property(icon, "modulate", Color.WHITE * PULSE_BRIGHT, PULSE_SECONDS)
 	tw.tween_property(icon, "scale", Vector2.ONE, PULSE_SECONDS)
-	tw.parallel().tween_property(icon, "modulate", Color.WHITE, PULSE_SECONDS)
 
 
-## Blocks or unblocks an icon. A blocked icon is dimmed and stops taking clicks; unblocking forces a
-## full restyle because the block overwrote whatever selected/unselected look it had.
-func _set_icon_blocked(icon: TextureRect, blocked: bool, selected: bool) -> void:
+func _set_icon_blocked(icon: Control, blocked: bool, selected: bool) -> void:
 	var was_blocked := bool(icon.get_meta("blocked", false))
 	if blocked:
 		icon.set_meta("blocked", true)
@@ -1016,7 +1020,7 @@ func _clear_button_overrides(btn: Button) -> void:
 ## ISSUE #98-style guard: a mouse WHEEL event is also an InputEventMouseButton, so the button index
 ## is checked explicitly rather than trusting `pressed` alone — scrolling over an icon must not
 ## toggle it.
-func _on_icon_input(event: InputEvent, icon: TextureRect, category: String, key: String) -> void:
+func _on_icon_input(event: InputEvent, icon: Control, category: String, key: String) -> void:
 	if not event is InputEventMouseButton:
 		return
 	if not event.pressed or event.button_index != MOUSE_BUTTON_LEFT:
@@ -1316,7 +1320,7 @@ func _refresh_confirm_button() -> void:
 	_clear_button_overrides(_confirm_btn)
 	if can_search:
 		_confirm_btn.disabled = false
-		_confirm_btn.theme = _theme_green
+		UIKit.style_button(_confirm_btn, "primary")
 	else:
 		_set_button_blocked(_confirm_btn)
 

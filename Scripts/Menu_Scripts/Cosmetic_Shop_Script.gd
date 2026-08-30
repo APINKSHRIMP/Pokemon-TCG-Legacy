@@ -103,8 +103,6 @@ var _reveal_ok_btn  : Button = null
 
 # ─── Theme references ────────────────────────────────────────────────────────
 
-var theme_kenney       : Theme = preload("res://UI_Themes/kenneyUI.tres")
-var theme_kenney_green : Theme = preload("res://UI_Themes/kenneyUI-green.tres")
 
 
 # ─── Node references ─────────────────────────────────────────────────────────
@@ -138,6 +136,7 @@ func _ready() -> void:
 	grid.add_theme_constant_override("h_separation", CELL_SEP)
 	grid.add_theme_constant_override("v_separation", CELL_SEP)
 
+	_build_chrome()
 	wallet_chip = ShopChrome.add_wallet_chip(self, player_cash)
 	pill_layer  = ShopChrome.add_pill_layer(self)
 
@@ -147,6 +146,22 @@ func _ready() -> void:
 
 	await get_tree().process_frame
 	_build_item_grid()
+
+
+## Swaps the old bordered chrome for the Spectrum Night bars and moves this
+## screen's controls into them. ShopChrome's wallet chip stays pinned top-right
+## on its own layer (z 1000) so it draws over the header bar, which is exactly
+## where the design wants the balance.
+func _build_chrome() -> void:
+	var bars := UIKit.convert_legacy_screen(self, "")
+	# The title names the seller and is written at runtime, so the existing Label
+	# moves into the header rather than being replaced.
+	UIKit.adopt_label(header_label, bars["header"].centre)
+
+	# Cancel first: the footer slot is an HBox, so insertion order is left-to-right.
+	UIKit.adopt_button(cancel_btn, bars["footer"].centre, "secondary")
+	UIKit.adopt_button(buy_btn, bars["footer"].centre, "primary")
+
 
 
 # ─── Data loading ────────────────────────────────────────────────────────────
@@ -319,6 +334,7 @@ func _build_item_grid() -> void:
 			wrapper.gui_input.connect(_on_item_clicked.bind(wrapper))
 
 		grid.add_child(wrapper)
+		UIKit.add_drop_shadow(rect)
 
 	# Re-centre the block inside the grid area. The content size is computed from the cells
 	# rather than read back off the container: a GridContainer only lays out from its own
@@ -468,7 +484,7 @@ func _update_buy_button() -> void:
 		var cost     : int  = int(selected_cell.get_meta("item_cost", DEFAULT_ITEM_COST))
 		can_buy = not is_owned and player_cash >= cost
 	buy_btn.disabled = not can_buy
-	buy_btn.theme    = theme_kenney_green if can_buy else theme_kenney
+	UIKit.style_button(buy_btn, "good" if can_buy else "primary")
 
 
 # ─── Purchase ────────────────────────────────────────────────────────────────
@@ -560,7 +576,7 @@ func _show_purchase_display(item_name: String) -> void:
 	ok_btn.size     = Vector2(400.0, 60.0)
 	ok_btn.position = Vector2(vp_size.x / 2.0 - 200.0, label.position.y + 90.0)
 	ok_btn.visible  = false
-	ok_btn.theme    = theme_kenney_green
+	UIKit.style_button(ok_btn, "good")
 	overlay_layer.add_child(ok_btn)
 
 	await _play_fadein(item_rect, label)

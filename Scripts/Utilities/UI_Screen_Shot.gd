@@ -22,6 +22,9 @@ extends SceneTree
 
 const SETTLE_FRAMES := 12
 
+# How long to hold after an optional method call, for a grid rebuild to settle.
+const CALL_SETTLE_SECONDS := 12.0
+
 
 func _init() -> void:
 	_run.call_deferred()
@@ -49,6 +52,23 @@ func _run() -> void:
 
 	for _i in SETTLE_FRAMES:
 		await process_frame
+
+	# Optional third arg: a no-argument method to call on the scene root before
+	# capturing, so a screen can be photographed in a state that normally needs a
+	# click to reach (an owned-only filter toggled off, a tab switched).
+	# A coroutine returns a signal here rather than completing, and there is no
+	# clean way to await an unknown one — so the wait is a flat hold long enough
+	# for a grid rebuild to finish.
+	if args.size() > 2 and screen.has_method(args[2]):
+		# A fourth arg is passed to the method as an int, for the handlers that
+		# take one (e.g. a sell band index).
+		if args.size() > 3:
+			screen.call(args[2], int(args[3]))
+		else:
+			screen.call(args[2])
+		await screen.get_tree().create_timer(CALL_SETTLE_SECONDS).timeout
+		for _j in SETTLE_FRAMES:
+			await process_frame
 
 	if screen is Control:
 		print("root rect ", (screen as Control).get_global_rect())

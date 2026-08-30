@@ -49,7 +49,16 @@ extends RefCounted
 
 
 const SHADER_PATH := "res://Scripts/Shaders/Rounded_Message_Panel.gdshader"
-const FONT_PATH   := "res://UI_Themes/kenvector_future.ttf"
+## The UI face. Read through UITheme so the pills match every other chip.
+##
+## NOTE THIS FORKS FROM THE OVERWORLD MESSAGE BOX. The pills and DynamicMessageBox's
+## chip row used to be deliberately identical — same shader, same font, same palette — so
+## the cash chip a shopkeeper shows you is the object you then see inside the shop. The UI
+## overhaul kept the OVERWORLD box on its per-NPC colours (each speaker carries its own
+## `message_colour`) while the shops moved to the theme, so the two now differ on purpose.
+## Restyling one no longer obliges you to restyle the other.
+static func _font_path() -> String:
+	return UITheme.FONT_UI_BOLD
 const CASH_ICON   := "res://Image_Assets/Icons/Reward_Icons/pokedollar_icon.png"
 
 const SCREEN_W : float = 1920.0
@@ -62,7 +71,7 @@ enum { AFFORDABLE, UNAFFORDABLE, OWNED, DISCOUNTED }
 # ─── TWEAKABLE: wallet chip (top right, on the header border) ─────────────────
 
 const WALLET_H          : float = 54.0    # pill height
-const WALLET_CENTRE_Y   : float = 53.0    # pill's vertical centre, screen px
+const WALLET_CENTRE_Y   : float = 46.0    # pill's vertical centre = the 92px header's midline
 const WALLET_MARGIN_R   : float = 30.0    # pill's right edge, in from the screen edge
 const WALLET_FONT_SIZE  : int   = 30
 const WALLET_PAD_L      : float = 12.0    # pill's left edge -> icon
@@ -70,8 +79,10 @@ const WALLET_GAP        : float = 6.0     # icon -> digits
 const WALLET_PAD_R      : float = 24.0    # digits -> pill's right edge
 const WALLET_ICON_H     : float = 42.0    # icon is drawn at this height, aspect kept
 const WALLET_Z          : int   = 1000    # above the header label (999) and border (200)
-const WALLET_COL_L      := Color(0.15, 0.42, 0.85)
-const WALLET_COL_R      := Color(0.24, 0.58, 0.96)
+## Translucent white, matching UIKit.make_chip("on_chrome") — the wallet sits ON the
+## header gradient, where a solid fill would fight it.
+const WALLET_COL_L      := Color(1.0, 1.0, 1.0, 0.14)
+const WALLET_COL_R      := Color(1.0, 1.0, 1.0, 0.18)
 const WALLET_TEXT_COL   := Color(1, 1, 1, 1)
 ## Seconds the figure takes to count from the old balance to the new one after a
 ## purchase. 0.0 snaps instantly. Slowed 25% from 0.45 so the decrement is easier to watch.
@@ -114,14 +125,17 @@ const PILL_SHADOW_OFF   : int = 2
 ## horizontal gradient the message box gives its chips.
 const PILL_GRADIENT_LIFT : float = 0.10
 
-const COL_AFFORDABLE   := Color(0.09, 0.66, 0.31)
-const COL_UNAFFORDABLE := Color(0.87, 0.11, 0.11)
-const COL_OWNED        := Color(0.42, 0.42, 0.44)
-const COL_DISCOUNT     := Color(0.95, 0.68, 0.06)
-const COL_OLD_PRICE    := Color(0.42, 0.42, 0.44)
+## The four pill states, from the theme. Affordability must never lose to the sale
+## colour — see add_price_pill, where `old_price` stacks a struck-out pill ABOVE whatever
+## colour the main one is.
+static func _col_affordable() -> Color:   return UITheme.col("good")
+static func _col_unaffordable() -> Color: return UITheme.col("danger")
+static func _col_owned() -> Color:        return UITheme.col("field_mute").darkened(0.45)
+static func _col_discount() -> Color:     return UITheme.col("warn")
+static func _col_old_price() -> Color:    return UITheme.col("field_mute").darkened(0.45)
 
 ## The line through the old price. Thickness is a ratio of the "was" pill's height.
-const STRIKE_COL          := Color(0.90, 0.08, 0.08)
+static func _strike_col() -> Color: return UITheme.col("danger")
 const STRIKE_THICK_RATIO  : float = 0.11
 const STRIKE_OVERHANG     : float = 5.0
 
@@ -288,16 +302,16 @@ static func add_price_pill(layer: Control, anchor: Rect2, state: int,
 	var main_text : String
 	match state:
 		OWNED:
-			main_col  = COL_OWNED
+			main_col  = _col_owned()
 			main_text = "OWNED"
 		UNAFFORDABLE:
-			main_col  = COL_UNAFFORDABLE
+			main_col  = _col_unaffordable()
 			main_text = "$" + str(price)
 		DISCOUNTED:
-			main_col  = COL_DISCOUNT
+			main_col  = _col_discount()
 			main_text = "$" + str(price)
 		_:
-			main_col  = COL_AFFORDABLE
+			main_col  = _col_affordable()
 			main_text = "$" + str(price)
 
 	# ── Main pill. Right edge overhangs the cell; bottom edge dips just below it.
@@ -316,7 +330,7 @@ static func add_price_pill(layer: Control, anchor: Rect2, state: int,
 		var old_x    : float  = main_x + main_w - old_w
 		var old_y    : float  = main_y - h * PILL_STACK_GAP - old_h
 		_add_pill_row(holder, Vector2(old_x, old_y), Vector2(old_w, old_h),
-					  COL_OLD_PRICE, old_text, old_font, true)
+					  _col_old_price(), old_text, old_font, true)
 
 
 ## One pill: the rounded rect, its centred label, and — when `strike` — a red bar across
@@ -337,7 +351,7 @@ static func _add_pill_row(holder: Control, pos: Vector2, size: Vector2, col: Col
 		var text_w := _text_width(text, font_size)
 		var thick  := maxf(size.y * STRIKE_THICK_RATIO, 2.0)
 		var bar := ColorRect.new()
-		bar.color        = STRIKE_COL
+		bar.color        = _strike_col()
 		bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		bar.size     = Vector2(text_w + STRIKE_OVERHANG * 2.0, thick)
 		bar.position = Vector2(
@@ -396,7 +410,7 @@ static func _make_label(text: String, font_size: int, col: Color) -> Label:
 
 
 static func _font() -> Font:
-	return load(FONT_PATH) as Font
+	return load(_font_path()) as Font
 
 
 static func _text_width(text: String, font_size: int) -> float:

@@ -78,7 +78,7 @@ const THEMES := {
 		"field_glow_right":  Color("3A1533"),
 		"field_texture":     Color(1.0, 1.0, 1.0, 0.026),
 		"field_fg":          Color("F4EDFA"),
-		"field_mute":        Color("A493C4"),
+		"field_mute":        Color("C9BBE0"),
 
 		# Surfaces and lines
 		"panel":             Color(1.0, 1.0, 1.0, 0.065),
@@ -108,8 +108,8 @@ const THEMES := {
 		"btn_primary_top":   Color("B4459B"),
 		"btn_primary_bot":   Color("7B3FD4"),
 		"btn_primary_fg":    Color("FFFFFF"),
-		"btn_secondary":     Color(1.0, 1.0, 1.0, 0.08),
-		"btn_secondary_fg":  Color("D9CBEC"),
+		"btn_secondary":     Color(1.0, 1.0, 1.0, 0.16),
+		"btn_secondary_fg":  Color("FFFFFF"),
 		"btn_edge":          Color(0.0, 0.0, 0.0, 0.30),
 
 		# Locked collection tiles. False means "draw the silhouette as-is";

@@ -226,7 +226,7 @@ func _show_quit_dialog() -> void:
 	quit_dialog.add_child(overlay)
 
 	# Centered panel
-	var panel := PanelContainer.new()
+	var panel := UIKit.make_modal_panel()
 	if kenney_theme:
 		panel.theme = kenney_theme
 	panel.custom_minimum_size = Vector2(460, 220)

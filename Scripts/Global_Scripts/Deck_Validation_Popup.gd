@@ -27,8 +27,8 @@ const CARD_H_SEP := 2
 const CARD_V_SEP := 2
 const COLUMNS    := 9
 
-const KENNEY_THEME     := "res://UI_Themes/kenneyUI.tres"
-const KENNEY_RED_THEME := "res://UI_Themes/kenneyUI-red.tres"
+const KENNEY_THEME     := "res://UI_Themes/ui/ui_secondary.tres"
+const KENNEY_RED_THEME := "res://UI_Themes/ui/ui_danger.tres"
 
 # Builds and attaches the overlay to `parent`. `on_closed` is invoked
 # (with no args) when the player clicks the close button.

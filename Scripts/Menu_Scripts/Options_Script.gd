@@ -54,14 +54,19 @@ extends Control
 # ─── Layout ──────────────────────────────────────────────────────────────────
 # TWEAKABLE. All in px at 1920x1080; the block is centred in whatever height is
 # left between the header and the footer.
-const BLOCK_W      := 1500.0   # the rows' total width, centred horizontally
-const LABEL_W      := 330.0    # the label column
-const LABEL_GAP    := 30.0     # label column -> first control
-const ROW_GAP      := 18.0     # between rows
-const OPTION_GAP   := 10.0     # between the buttons inside one row
-const SLIDER_W     := 620.0
+const BLOCK_W      := 1330.0   # the rows' total width, centred horizontally
+const LABEL_W      := 370.0    # the label column
+const LABEL_GAP    := 40.0     # label column -> first control
+const ROW_GAP      := 34.0     # between rows
+const OPTION_GAP   := 18.0     # between the buttons inside one row
+const SLIDER_W     := 690.0
 const VALUE_W      := 90.0     # the "80%" readout, wide enough for "100%"
-const ROW_MIN_H    := 52.0     # so a slider row and a button row match
+const ROW_MIN_H    := 62.0     # so a slider row and a button row match
+
+# The row labels keep small_label's mono caps — it reads as a form label rather
+# than a heading — but at a larger size than the role's own 13.5, which left the
+# screen looking sparse against eight widely spaced rows.
+const ROW_LABEL_SIZE := 19
 
 # ─── State ───────────────────────────────────────────────────────────────────
 
@@ -259,7 +264,7 @@ func _new_row(parent: VBoxContainer, label_text: String) -> HBoxContainer:
 	parent.add_child(row)
 
 	var label := Label.new()
-	UIKit.set_label(label, "small_label", label_text, "field_mute")
+	UIKit.set_label(label, "small_label", label_text, "field_mute", ROW_LABEL_SIZE)
 	label.custom_minimum_size = Vector2(LABEL_W, 0)
 	label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	row.add_child(label)

@@ -1,4 +1,4 @@
-extends Node
+extends Control
 
 # ─── Constants ───────────────────────────────────────────────────────────────
 
@@ -7,6 +7,14 @@ const COIN_BACK_IMAGE    := "Back Basic.png"
 const COIN_SIZE          := Vector2(100, 100)
 const COIN_SEPARATION    := 10
 const COLUMNS            := 17
+
+# Inset of the coin grid inside the band between the two chrome bars. TWEAKABLE.
+const GRID_INSET_X       := 26.0
+const GRID_INSET_Y       := 18.0
+
+# Fixed width for the owned-only toggle, so it does not resize between its two
+# labels. Must fit the longer one ("SHOW OWNED ONLY"). TWEAKABLE.
+const FILTER_BTN_W       := 300.0
 
 # Absolute paths to player data files.
 # GDScript's res:// is read-only in exported builds, so player data lives in
@@ -45,6 +53,11 @@ var _owned_coins         : Dictionary = {}
 # want the full case.
 var _hide_unowned        : bool = true
 var _is_rebuilding       : bool = false
+
+# Header slot that holds the "n / N" owned chip, plus the size of the universe
+# it counts against. _total_coins is filled while the folder is scanned.
+var _count_chip_holder   : Control = null
+var _total_coins         : int = 0
 
 # ─── Zoom state ──────────────────────────────────────────────────────────────
 var zoom_overlay     : CanvasLayer = null
@@ -85,6 +98,7 @@ func _ready() -> void:
 	hide_btn.pressed.connect(_on_hide_pressed)
 	_refresh_hide_button()
 
+	_build_chrome()
 	_wrap_grid_in_scroll_container()
 	# ISSUE #32: block input behind a loading overlay while the (potentially large) coin grid builds.
 	# Retest: shrink the blocker 142px top / 134px bottom so the banner buttons (Cancel) stay clickable.
@@ -101,6 +115,48 @@ func _ready() -> void:
 	# After all coins are in the grid, auto-select the player's saved coin
 	if saved_coin_name != "":
 		_select_coin_by_name(saved_coin_name)
+
+
+## Swaps the old bordered chrome for the Spectrum Night bars and moves this
+## screen's own controls into them.
+##
+## Runs BEFORE _wrap_grid_in_scroll_container(), because that helper copies the
+## grid's position and size onto the ScrollContainer it creates — so the grid
+## has to be sitting in its final band by the time it is called.
+func _build_chrome() -> void:
+	var bars := UIKit.convert_legacy_screen(self, "Coin case")
+
+	# The title now lives in the header bar, so the old floating label goes.
+	var old_title := get_node_or_null("large_header_text_label")
+	if old_title != null:
+		old_title.queue_free()
+
+	# Owned count, top left (the collection-wall header shape).
+	_count_chip_holder = bars["header"].left
+	_refresh_count_chip()
+
+	UIKit.adopt_button(hide_btn, bars["header"].right, "secondary", false)
+	# Fixed width: the two labels are different lengths and a button that resizes
+	# under the cursor as you toggle it is disorienting.
+	hide_btn.custom_minimum_size.x = FILTER_BTN_W
+
+	# Cancel first: the footer slot is an HBox, so insertion order is left-to-right.
+	UIKit.adopt_button(cancel_btn, bars["footer"].centre, "secondary")
+	UIKit.adopt_button(save_btn, bars["footer"].centre, "primary")
+
+	grid.position = Vector2(GRID_INSET_X, UIKit.CONTENT_TOP + GRID_INSET_Y)
+	grid.size = Vector2(1920.0 - GRID_INSET_X * 2.0, UIKit.CONTENT_H - GRID_INSET_Y * 2.0)
+
+
+## Rebuilds the "n / N" owned chip in the header. Cheap enough to throw away and
+## remake — it only changes when the collection does.
+func _refresh_count_chip() -> void:
+	if _count_chip_holder == null or not is_instance_valid(_count_chip_holder):
+		return
+	for c in _count_chip_holder.get_children():
+		c.queue_free()
+	_count_chip_holder.add_child(
+		UIKit.make_chip("%d / %d" % [_owned_coins.size(), _total_coins], "on_chrome"))
 
 
 func _process(_delta: float) -> void:
@@ -217,6 +273,12 @@ func _load_coins() -> void:
 
 	files.sort()
 
+	# The folder listing IS the universe the header chip counts against, so it is
+	# taken here rather than hardcoded — a coin added to the folder moves the
+	# denominator with no other edit.
+	_total_coins = files.size()
+	_refresh_count_chip()
+
 	for fname in files:
 		# ISSUE #32 FIX: bail if the scene was cancelled/freed mid-load (get_tree() would be null).
 		if not is_inside_tree():
@@ -233,16 +295,15 @@ func _add_coin_to_grid(file_name: String) -> void:
 	var is_owned : bool = _owned_coins.has(file_name)
 	print("DEBUG CoinCase: grid file=", file_name, " is_owned=", is_owned)
 
-	# Owned coins show their real image; unowned coins show the back face
-	var display_path : String
+	# Owned coins show their real image. An unowned coin used to show a dimmed
+	# card back; it is an EMPTY CIRCLE now — a slot outline the same size and
+	# shape as the coin that belongs in it. A silhouetted coin is just a black
+	# disc, which says nothing; an empty ring reads as a gap in a collection.
+	var texture : Texture2D = null
 	if is_owned:
-		display_path = COIN_FOLDER + "/" + file_name
-	else:
-		display_path = COIN_FOLDER + "/" + COIN_BACK_IMAGE
-
-	var texture := load(display_path) as Texture2D
-	if texture == null:
-		return
+		texture = load(COIN_FOLDER + "/" + file_name) as Texture2D
+		if texture == null:
+			return
 
 	var rect := TextureRect.new()
 	rect.texture             = texture
@@ -259,8 +320,12 @@ func _add_coin_to_grid(file_name: String) -> void:
 		rect.modulate = Color(0.8, 0.8, 0.8)
 		rect.gui_input.connect(_on_coin_clicked.bind(rect))
 	else:
-		# Unowned coins are heavily dimmed and completely ignore mouse input
-		rect.modulate     = Color(0.4, 0.4, 0.4)
+		# The empty ring is a CHILD of the TextureRect rather than replacing it,
+		# so every `child is TextureRect` walk over this grid still sees a full
+		# row of tiles and the is_owned meta stays the only ownership test.
+		var slot := UIKit.make_slot(COIN_SIZE, true)
+		slot.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		rect.add_child(slot)
 		rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
 
 	grid.add_child(rect)
@@ -277,14 +342,13 @@ func _select_coin_by_name(coin_name: String) -> void:
 
 # ─── Owned-only filter ───────────────────────────────────────────────────────
 
-# Blue "Show" while the unowned backs are filtered out, yellow "Hide" while everything is on show.
+# THE LABEL NAMES THE ACTION, NOT THE STATE. A toggle reading "Owned only" while
+# it is already showing only owned coins reads as a button you press to get that
+# — so it says what pressing it will do instead. Same reason it keeps ONE colour
+# in both states: a colour change implies a mode, and this is a plain action.
 func _refresh_hide_button() -> void:
-	if _hide_unowned:
-		hide_btn.text  = "Show Unowned Coins"
-		hide_btn.theme = load("res://UI_Themes/kenneyUI-blue.tres")
-	else:
-		hide_btn.text  = "Hide Unowned Coins"
-		hide_btn.theme = load("res://UI_Themes/kenneyUI-yellow.tres")
+	hide_btn.text = "Show all coins" if _hide_unowned else "Show owned only"
+	UIKit.style_button(hide_btn, "secondary")
 
 
 func _on_hide_pressed() -> void:
@@ -369,13 +433,11 @@ func _refresh_save_button_state() -> void:
 
 	if chosen_name != "" and chosen_name != saved_coin_name:
 		save_btn.disabled = false
-		var green_theme = load("res://UI_Themes/kenneyUI-green.tres")
-		if green_theme:
-			save_btn.theme = green_theme
+		UIKit.style_button(save_btn, "good")
 	else:
 		# Nothing picked, or the player re-clicked the already-saved coin — no changes to save
 		save_btn.disabled = true
-		save_btn.theme = load("res://UI_Themes/kenneyUI.tres")
+		UIKit.style_button(save_btn, "primary")
 
 
 func _select_coin(rect: TextureRect) -> void:
@@ -452,7 +514,7 @@ func _on_save_pressed() -> void:
 
 	saved_coin_name   = new_coin_name
 	save_btn.disabled = true
-	save_btn.theme    = load("res://UI_Themes/kenneyUI.tres")
+	UIKit.style_button(save_btn, "primary")
 
 
 func _on_cancel_pressed() -> void:

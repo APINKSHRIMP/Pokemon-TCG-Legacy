@@ -1,4 +1,4 @@
-extends Node
+extends Control
 
 # ─── Constants ───────────────────────────────────────────────────────────────
 
@@ -10,17 +10,6 @@ const OWNED_CARDS_SUFFIX := "_player_owned_cards.json"
 # ISSUE #134: the cosmetic-collection folder constants that used to sit here now live in
 # GameState (COIN_ASSET_FOLDER / COSTUME_ASSET_FOLDER / SLEEVE_SMALL_FOLDER / COIN_BACK_IMAGE /
 # DEFAULT_SLEEVE_PREFIX), so the X / Y counters below and the CHT.All_* cheats read one list.
-
-# ─── Trainer-card row geometry ───────────────────────────────
-# The stat rows sit on bars painted into Trainer_card.png, so the art dictates their spacing, not
-# a container. Measured off the 4102x1911 source: nine bars, each 76px tall on a 149.25px pitch,
-# first bar top at y=185 and last bar bottom at y=1455 — a 1270px block. The `statistics` Control
-# is set to exactly that block in screen space, so expressing the bar height as a ratio of its
-# height keeps the text glued to the bars if the card is ever moved or rescaled.
-# Nine rows is fixed by the artwork: a tenth row needs a tenth bar painted first.
-const STAT_ROWS       := 9
-const STAT_BAR_RATIO  := 76.0 / 1270.0   # bar height as a fraction of the block height
-const STAT_TEXT_INSET := 22.0            # left/right padding inside a bar, screen px
 
 # Godot centres a Label on the full ascent+descent box, but kenvector_future is caps-only, so
 # the empty descent space parks the visible ink below the middle of the bar. Measured off a
@@ -37,18 +26,6 @@ const DOB_CASH_FONT_SIZE    := 32
 const DOB_CASH_LINE_SPACING := 14
 
 
-# ─── Trainer-card colour ───────────────────────────────────
-# The cycle order lives in GameState.TRAINER_CARD_COLOURS; these two tables just say what each
-# colour looks like. medals_button follows the card — white uses the plain Kenney theme, the rest
-# use the matching named variant.
-const CARD_TEXTURE_PREFIX := "res://Image_Assets/Main_Menu_Images/Trainer_card_"
-const CARD_THEMES := {
-	"blue":   "res://UI_Themes/kenneyUI-blue.tres",
-	"green":  "res://UI_Themes/kenneyUI-green.tres",
-	"yellow": "res://UI_Themes/kenneyUI-yellow.tres",
-	"red":    "res://UI_Themes/kenneyUI-red.tres",
-	"white":  "res://UI_Themes/kenneyUI.tres",
-}
 
 # Colour-change burst. Same particle recipe as Coin_Shop_Script._start_sparkle — same scale range,
 # same four-stop gradient, same palette — with three changes: one_shot so it never re-emits, a
@@ -69,7 +46,45 @@ const SPARKLE_COLOURS       := {
 }
 
 # Target display sizes — uniform regardless of source image dimensions
-const SPRITE_SIZE  := Vector2(280, 360)  # fit (whole sprite visible, letterboxed)
+const SPRITE_SIZE  := Vector2(230, 300)  # fit (whole sprite visible, letterboxed)
+
+# ── Layout (UI overhaul) ─────────────────────────────────────────────────────
+# TWEAKABLE. Left column is the trainer; the right column carries every stat.
+const SET_DICT_PATH := "res://Player_Data/Player_Owned_Cards/Set_ID_Names_Dictionary.json"
+
+## basep (Wizard Promos) and np (EX Promos) are gift-only, so they can never be
+## completed by playing and must not sit at the top of the nearest-sets list.
+const PROMO_SET_IDS := ["basep", "np"]
+const NEAREST_SETS  := 3
+
+const PANEL_PAD      := 18.0
+const LEFT_X         := 34.0
+const LEFT_W         := 300.0
+const LEFT_Y         := 104.0
+const LEFT_H         := 796.0
+const RIGHT_X        := 368.0
+const RIGHT_W        := 1518.0
+
+const METER_Y        := 104.0
+const METER_H        := 320.0
+const METER_ROW_H    := 46.0
+const METER_LABEL_W  := 260.0
+const METER_VALUE_W  := 150.0
+
+const BOX_Y          := 448.0
+const BOX_H          := 130.0
+const BOX_GAP        := 18.0
+const BOX_VALUE_FONT := 40
+
+const SETS_Y         := 604.0
+const SETS_H         := 200.0
+
+## Equipped thumbnails under the costume sprite.
+const EQUIP_SIZE     := Vector2(96.0, 132.0)
+const EQUIP_GAP      := 18.0
+const MEDALS_BTN_W   := 240.0
+const NAME_BOX_H     := 54.0
+const NAME_FONT      := 24
 
 var PLAYER_DATA_PATH: String:
 	get: return GameState.PLAYER_CURRENT_DATA_PATH
@@ -90,7 +105,6 @@ var _sparkle : CPUParticles2D = null
 @onready var audio_player = AudioStreamPlayer.new()
 @onready var save_btn      : Button      = $"info_save_button"
 @onready var cancel_btn    : Button      = $"info_cancel_button"
-@onready var card_rect     : TextureRect = $"BACKGROUND/id_background"
 @onready var medals_btn    : Button      = $"medals_button"
 @onready var player_sprite : TextureRect = $"PlayerSprite"
 @onready var stats_control : Control     = $"statistics"
@@ -109,9 +123,8 @@ func _ready() -> void:
 		audio_stream.loop = true
 		audio_player.play()
 
-	_style_dob_cash_label()
-	_setup_card_colour_cycling()
 
+	_build_chrome()
 	_load_player_data()
 
 	name_box.max_length = MAX_NAME_LENGTH
@@ -123,6 +136,129 @@ func _ready() -> void:
 	cancel_btn.pressed.connect(_on_cancel_pressed)
 
 	_populate_stats()
+
+
+## Swaps the old chrome for the Spectrum Night bars and lays out the left column.
+##
+## THE TRAINER CARD ARTWORK IS GONE. This screen used to be a drawn card with the
+## stat rows painted onto bars in the image and five colour variants the player
+## cycled by clicking it. All of it was retired in the UI overhaul; the stats are
+## real controls now, which is what let them become meters and boxes.
+func _build_chrome() -> void:
+	var bars := UIKit.convert_legacy_screen(self, "Trainer card")
+
+	# The medals screen does not exist yet, so the button is left as it is —
+	# present, styled, and wired to nothing. Do not invent a count for it.
+	UIKit.adopt_button(medals_btn, bars["header"].right, "secondary", false)
+	medals_btn.custom_minimum_size.x = MEDALS_BTN_W
+
+	UIKit.adopt_button(cancel_btn, bars["footer"].centre, "secondary")
+	UIKit.adopt_button(save_btn, bars["footer"].centre, "primary")
+
+	# stats_control is the parent every stat panel is added to; it spans the whole
+	# content band now rather than the nine painted bars it used to sit on.
+	stats_control.position = Vector2.ZERO
+	stats_control.size = Vector2(UIKit.SCREEN_W, UIKit.SCREEN_H)
+
+	_build_left_panel()
+
+
+## The trainer: costume sprite, name, date, cash — and beneath the sprite, the
+## other two equipped cosmetics.
+##
+## The costume is NOT repeated in an equipped row. It is already the sprite at the
+## top of this panel, and showing it twice was the thing the user flagged; the
+## sleeve and coin sit under it instead.
+func _build_left_panel() -> void:
+	var panel := UIKit.make_panel()
+	panel.position = Vector2(LEFT_X, LEFT_Y)
+	panel.size = Vector2(LEFT_W, LEFT_H)
+	panel.custom_minimum_size = panel.size
+	panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(panel)
+
+	var centre_x := LEFT_X + LEFT_W * 0.5
+
+	# The scene left scale = (2,2) on this node, from when the sprite was drawn
+	# small onto the card art and doubled. It is sized to a real box now, so the
+	# doubling has to go or it bursts out of the panel.
+	player_sprite.scale = Vector2.ONE
+	player_sprite.position = Vector2(centre_x - SPRITE_SIZE.x * 0.5, LEFT_Y + PANEL_PAD * 2.0)
+	player_sprite.size = SPRITE_SIZE
+	player_sprite.custom_minimum_size = SPRITE_SIZE
+
+	var name_y := LEFT_Y + PANEL_PAD * 2.0 + SPRITE_SIZE.y + PANEL_PAD
+	name_box.position = Vector2(LEFT_X + PANEL_PAD, name_y)
+	name_box.size = Vector2(LEFT_W - PANEL_PAD * 2.0, NAME_BOX_H)
+	name_box.custom_minimum_size = name_box.size
+	name_box.theme = null
+	name_box.add_theme_color_override("font_color", Color.WHITE)
+	name_box.add_theme_font_override("font", UITheme.font("name"))
+	name_box.add_theme_font_size_override("font_size", NAME_FONT)
+
+	dob_cash_lbl.theme = null
+	UIKit.style_label(dob_cash_lbl, "small_label", "field_mute")
+	dob_cash_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	dob_cash_lbl.position = Vector2(LEFT_X + PANEL_PAD, name_y + NAME_BOX_H + 10.0)
+	dob_cash_lbl.size = Vector2(LEFT_W - PANEL_PAD * 2.0, 60.0)
+
+	# ── Equipped: sleeve and coin ──
+	var equip_y := name_y + NAME_BOX_H + 80.0
+	var equip_label := Label.new()
+	UIKit.set_label(equip_label, "small_label", "Equipped", "field_mute")
+	equip_label.position = Vector2(LEFT_X + PANEL_PAD, equip_y)
+	equip_label.size = Vector2(LEFT_W - PANEL_PAD * 2.0, 20.0)
+	add_child(equip_label)
+
+	var data := _read_current_data()
+	var total_w := EQUIP_SIZE.x * 2.0 + EQUIP_GAP
+	var x := centre_x - total_w * 0.5
+	var thumb_y := equip_y + 28.0
+
+	var sleeve := String(data.get("sleeve", ""))
+	if sleeve != "":
+		_add_equipped_thumb(GameState.SLEEVE_SMALL_FOLDER + "/" + sleeve + ".jpg",
+			Vector2(x, thumb_y), "Sleeve")
+	x += EQUIP_SIZE.x + EQUIP_GAP
+
+	var coin := String(data.get("coin", ""))
+	if coin != "":
+		if not coin.ends_with(".png"):
+			coin += ".png"
+		_add_equipped_thumb(GameState.COIN_ASSET_FOLDER + "/" + coin,
+			Vector2(x, thumb_y), "Coin")
+
+
+## One equipped-cosmetic thumbnail with its caption underneath.
+func _add_equipped_thumb(path: String, pos: Vector2, caption: String) -> void:
+	if not ResourceLoader.exists(path):
+		return
+	var rect := TextureRect.new()
+	rect.texture = load(path)
+	rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	rect.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	rect.position = pos
+	rect.size = EQUIP_SIZE
+	rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(rect)
+
+	var lbl := Label.new()
+	UIKit.set_label(lbl, "small_label", caption, "field_mute")
+	lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	lbl.position = Vector2(pos.x, pos.y + EQUIP_SIZE.y + 4.0)
+	lbl.size = Vector2(EQUIP_SIZE.x, 20.0)
+	add_child(lbl)
+
+
+## Player_Current_Data.json as a Dictionary, or empty on failure.
+func _read_current_data() -> Dictionary:
+	var f := FileAccess.open(PLAYER_DATA_PATH, FileAccess.READ)
+	if f == null:
+		return {}
+	var parsed = JSON.parse_string(f.get_as_text())
+	f.close()
+	return parsed if parsed is Dictionary else {}
+
 
 
 # ─── Data loading ────────────────────────────────────────────────────────────
@@ -144,7 +280,7 @@ func _load_player_data() -> void:
 
 	# DOB and cash share one centred Label under the name box - see _style_dob_cash_label().
 	var dob: String = data.get("date_of_birth", "")
-	dob_cash_lbl.text = "DOB: " + (dob if dob != "" else "--/--") + "\n$" + str(GameState.get_cash())
+	dob_cash_lbl.text = "Trainer since " + (dob if dob != "" else "--/--") + "\n$" + str(GameState.get_cash())
 
 	# Battle sprite — fit inside SPRITE_SIZE so different-shaped sprites all appear the same size
 	var sprite_name: String = data.get("sprite", "")
@@ -154,127 +290,23 @@ func _load_player_data() -> void:
 		var tex := load(SPRITE_FOLDER + "/" + sprite_name) as Texture2D
 		if tex:
 			_apply_fit_size(player_sprite, tex, SPRITE_SIZE)
+			player_sprite.position.x = LEFT_X + LEFT_W * 0.5 - player_sprite.size.x * 0.5
 
 
 # ─── DOB / cash label ─────────────────────────────────────
 
-# One Label carries both lines — "DOB: 21/12" over the cash total — centred in its box. The text is
-# filled in by _load_player_data(); this only sets the look, so the order of the two does not matter.
-func _style_dob_cash_label() -> void:
-	dob_cash_lbl.add_theme_font_size_override("font_size", DOB_CASH_FONT_SIZE)
-	dob_cash_lbl.add_theme_color_override("font_color", Color.BLACK)
-	dob_cash_lbl.add_theme_constant_override("line_spacing", DOB_CASH_LINE_SPACING)
-	dob_cash_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	dob_cash_lbl.vertical_alignment   = VERTICAL_ALIGNMENT_CENTER
 
 
 # ─── Trainer-card colour cycling ───────────────────────────
 
-# Two things guard this, because the scene’s mouse picking is awkward: BACKGROUND holds a
-# full-screen background_scroller and the card itself, both of which sit under every button.
-#  1. The card keeps MOUSE_FILTER_PASS — the TextureRect default, set explicitly here so nobody
-#     "fixes" it to STOP later. STOP does make gui_input fire reliably, but it also CONSUMES the
-#     click, which stops Save, Cancel, View MEDALS and the name box from ever seeing it.
-#  2. _click_lands_on_a_control() rejects clicks inside any interactive rect, so even if the card
-#     does win the pick over a button, pressing that button cannot also flip the colour.
-func _setup_card_colour_cycling() -> void:
-	card_rect.mouse_filter = Control.MOUSE_FILTER_PASS
-	card_rect.gui_input.connect(_on_card_gui_input)
-	# The stats block and its rows are pure text lying over the card — leaving them
-	# click-transparent lets that whole area cycle the colour too.
-	stats_control.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	# Same for the battle sprite: decoration sitting on the card, not a control.
-	player_sprite.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_apply_card_colour(GameState.get_trainer_card_colour(), false)
 
 
-# Clicking the card steps blue > green > yellow > red > white > blue and writes the choice to
-# Player_Current_Data.json there and then — no Save button involved.
-func _on_card_gui_input(event: InputEvent) -> void:
-	if not (event is InputEventMouseButton):
-		return
-	# A mouse WHEEL also arrives as InputEventMouseButton, so the button test is doing real work.
-	var mb := event as InputEventMouseButton
-	if mb.button_index != MOUSE_BUTTON_LEFT or not mb.pressed:
-		return
-	# Inside gui_input the event has been transformed into card_rect's own space, so
-	# mb.global_position is NOT viewport-global here — rebuild the screen point by hand.
-	var screen_pos := card_rect.global_position + mb.position
-	if _click_lands_on_a_control(screen_pos):
-		return
-	_apply_card_colour(GameState.cycle_trainer_card_colour(), true)
 
 
-# True when the click belongs to something the player can actually operate. Add to this list if a
-# new control is ever laid on top of the card.
-func _click_lands_on_a_control(pos: Vector2) -> bool:
-	for c : Control in [name_box, save_btn, cancel_btn, medals_btn]:
-		if c.visible and c.get_global_rect().has_point(pos):
-			return true
-	return false
 
 
-# Repaints the card and the medals button. `with_sparkle` is false for the initial load so the
-# screen does not burst on open, and true for a click.
-func _apply_card_colour(colour: String, with_sparkle: bool) -> void:
-	var tex := load(CARD_TEXTURE_PREFIX + colour + ".png") as Texture2D
-	if tex:
-		card_rect.texture = tex
-
-	var theme_path : String = CARD_THEMES.get(colour, CARD_THEMES["white"])
-	var btn_theme := load(theme_path) as Theme
-	if btn_theme:
-		medals_btn.theme = btn_theme
-
-	if with_sparkle:
-		_burst_sparkle(colour)
 
 
-# One-shot glitter across the whole card. Lifted from Coin_Shop_Script._start_sparkle; see the
-# SPARKLE_* constants for what was changed and why.
-func _burst_sparkle(colour: String) -> void:
-	if _sparkle != null and is_instance_valid(_sparkle):
-		_sparkle.queue_free()
-
-	var particles := CPUParticles2D.new()
-	add_child(particles)
-	_sparkle = particles
-
-	particles.global_position       = card_rect.global_position + card_rect.size / 2.0
-	particles.z_index               = 50
-	particles.amount                = SPARKLE_AMOUNT
-	particles.lifetime              = SPARKLE_LIFETIME
-	particles.one_shot              = true
-	particles.explosiveness         = SPARKLE_EXPLOSIVENESS
-	particles.emitting              = true
-	particles.emission_shape        = CPUParticles2D.EMISSION_SHAPE_RECTANGLE
-	particles.emission_rect_extents = card_rect.size / 2.0
-	particles.direction             = Vector2(0, 0)
-	particles.initial_velocity_min  = 0.0
-	particles.initial_velocity_max  = 0.0
-	particles.gravity               = Vector2(0, 0)
-	particles.scale_amount_min      = 3.0
-	particles.scale_amount_max      = 6.0
-
-	var sparkle_colour : Color = SPARKLE_COLOURS.get(colour, Color(1.0, 1.0, 1.0))
-	var bright         : Color = sparkle_colour.lightened(1.0)
-
-	var gradient := Gradient.new()
-	gradient.set_color(0, Color(bright.r, bright.g, bright.b, 0.0))
-	gradient.add_point(0.3, sparkle_colour)
-	gradient.add_point(0.5, bright)
-	gradient.set_color(3, Color(sparkle_colour.r, sparkle_colour.g, sparkle_colour.b, 0.0))
-	particles.color_ramp = gradient
-
-	# The last particle spawns at lifetime x (1 - explosiveness) and then lives a full lifetime,
-	# so the node has to outlast lifetime x (2 - explosiveness) before it is safe to free.
-	# ISSUE #53 pattern: the timer is owned by the tree, not this script, so leaving the screen
-	# mid-burst can never strand the node.
-	var burst_duration := SPARKLE_LIFETIME * (2.0 - SPARKLE_EXPLOSIVENESS)
-	get_tree().create_timer(burst_duration + 0.2).timeout.connect(
-		func() -> void:
-			if is_instance_valid(particles):
-				particles.queue_free())
 
 
 # ─── Uniform image sizing ────────────────────────────────────────────────────
@@ -369,19 +401,12 @@ func _input(event: InputEvent) -> void:
 
 func _populate_stats() -> void:
 	# ISSUE #133: callable more than once — the Save button rebuilds these rows after a cheat has
-	# changed the underlying numbers. Every row is a child added below, so clearing them first is
-	# all that is needed. free() rather than queue_free(): the rows are re-added in this same
-	# frame, and deferred deletion would leave the old set overlapping the new one until idle.
+	# changed the underlying numbers.
 	for old_row in stats_control.get_children():
 		stats_control.remove_child(old_row)
 		old_row.free()
 
 	var prog := GameState.progress
-
-	# Only the stats the trainer card actually shows are read here. The opponent counters
-	# (opponents_beaten / opponents_beaten_count_total) and matches_played are still recorded
-	# by Game_State, just not surfaced: a visible loss tally punishes a player who forfeits or
-	# grinds, and "unique opponents" is near-redundant with Matches Won.
 	var packs_opened : int = int(prog.get("packs_opened_total", 0))
 	var matches_won  : int = int(prog.get("matches_won", 0))
 
@@ -389,47 +414,209 @@ func _populate_stats() -> void:
 	var sets_total : int = int(cards["sets_total"])
 
 	# "Unlocked" means the set's pack is buyable — progress["packs_unlocked"] holds set ids.
-	# Intersected with the sets that actually exist so a stray entry can never push the
-	# numerator past the denominator.
 	var sets_unlocked := 0
 	for set_id in prog.get("packs_unlocked", []):
 		if cards["set_ids"].has(String(set_id)):
 			sets_unlocked += 1
 
-	# ISSUE #139 FIX: include_defaults = true. The three "1_Default*" card backs the player owns
-	# from first launch used to be excluded from the sleeve UNIVERSE while still sitting in
-	# progress["sleeves"], so _count_owned() could not see them -- a brand-new save read "0 / N"
-	# despite owning three, and every later count was three short of the grid the player is
-	# actually looking at. They now count on both sides of the fraction, matching the sleeve
-	# screen (which always showed them) and the CHT.All_Sleeves cheat (which already granted them).
+	# ISSUE #139 FIX: include_defaults = true, so the three "1_Default*" card backs the player
+	# owns from first launch count on BOTH sides of the fraction.
 	var sleeve_universe  := GameState.get_sleeve_universe(true)
 	var coin_universe    := GameState.get_coin_universe()
 	var costume_universe := GameState.get_costume_universe()
 
-	var rows := [
-		["Matches Won",            str(matches_won)],
-		["Packs Opened",           str(packs_opened)],
-		["Total Cards Owned",      str(cards["total"])],
-		["Unique Cards Collected", _fraction(int(cards["unique"]), int(cards["collectible"]))],
-		["Card Sets Unlocked",     _fraction(sets_unlocked, sets_total)],
-		["Sets Completed",         _fraction(int(cards["sets_completed"]), sets_total)],
-		["Coins Owned",            _fraction(_count_owned(coin_universe, GameState.get_coins()), coin_universe.size())],
-		["Costumes Owned",         _fraction(_count_owned(costume_universe, GameState.get_costumes()), costume_universe.size())],
-		["Sleeves Owned",          _fraction(_count_owned(sleeve_universe, GameState.get_sleeves()), sleeve_universe.size())],
+	# FRACTIONS GET A METER, whole numbers get a box. A bar with no ceiling is a
+	# progress track that does not exist, which is the same reason the "next
+	# unlock" panels were cut from the collection screens.
+	var meters := [
+		["Unique cards",  int(cards["unique"]),  int(cards["collectible"])],
+		["Sets unlocked", sets_unlocked,         sets_total],
+		["Sets completed", int(cards["sets_completed"]), sets_total],
+		["Coins",    _count_owned(coin_universe, GameState.get_coins()),       coin_universe.size()],
+		["Costumes", _count_owned(costume_universe, GameState.get_costumes()), costume_universe.size()],
+		["Sleeves",  _count_owned(sleeve_universe, GameState.get_sleeves()),   sleeve_universe.size()],
+	]
+	var boxes := [
+		["Matches won",  str(matches_won)],
+		["Packs opened", str(packs_opened)],
+		["Cards owned",  str(cards["total"])],
+		["Decks built",  str(_count_decks())],
 	]
 
-	if rows.size() != STAT_ROWS:
-		push_warning("Info: %d stat rows but the trainer card art has %d bars" % [rows.size(), STAT_ROWS])
+	_build_meter_panel(meters)
+	_build_stat_boxes(boxes)
+	_build_nearest_sets(cards["per_set"])
 
-	# Rows are placed on the bars painted into the card rather than stacked in a container:
-	# a VBoxContainer separation cannot be made to land on the artwork at every font size.
-	var bar_h := stats_control.size.y * STAT_BAR_RATIO
-	var pitch := (stats_control.size.y - bar_h) / float(STAT_ROWS - 1)
-	for i in rows.size():
-		var row := _make_stat_row(rows[i][0], rows[i][1])
-		row.position = Vector2(STAT_TEXT_INSET, i * pitch + STAT_TEXT_Y_NUDGE)
-		row.size     = Vector2(stats_control.size.x - STAT_TEXT_INSET * 2.0, bar_h)
-		stats_control.add_child(row)
+
+## Six fraction rows, each a label, a meter and its n / N.
+func _build_meter_panel(rows: Array) -> void:
+	var panel := UIKit.make_panel()
+	panel.position = Vector2(RIGHT_X, METER_Y)
+	panel.size = Vector2(RIGHT_W, METER_H)
+	panel.custom_minimum_size = panel.size
+	panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	stats_control.add_child(panel)
+
+	var y := METER_Y + PANEL_PAD
+	for r in rows:
+		var label := Label.new()
+		UIKit.set_label(label, "small_label", String(r[0]), "field_fg")
+		label.position = Vector2(RIGHT_X + PANEL_PAD, y + 4.0)
+		label.size = Vector2(METER_LABEL_W, 22.0)
+		stats_control.add_child(label)
+
+		var meter_x := RIGHT_X + PANEL_PAD + METER_LABEL_W + PANEL_PAD
+		var meter_w := RIGHT_W - (meter_x - RIGHT_X) - PANEL_PAD - METER_VALUE_W - PANEL_PAD
+		var holder := UIKit.make_meter(float(r[1]), float(r[2]), meter_w)
+		holder.position = Vector2(meter_x, y + 10.0)
+		stats_control.add_child(holder)
+
+		var value := Label.new()
+		UIKit.set_label(value, "hp", _fraction(int(r[1]), int(r[2])), "field_fg")
+		value.position = Vector2(RIGHT_X + RIGHT_W - PANEL_PAD - METER_VALUE_W, y + 2.0)
+		value.size = Vector2(METER_VALUE_W, 24.0)
+		value.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+		stats_control.add_child(value)
+
+		y += METER_ROW_H
+
+
+## Four whole-number boxes across the width: a big numeral under a small label.
+func _build_stat_boxes(boxes: Array) -> void:
+	var gap := BOX_GAP
+	var w: float = (RIGHT_W - gap * float(boxes.size() - 1)) / float(boxes.size())
+	for i in boxes.size():
+		var x: float = RIGHT_X + float(i) * (w + gap)
+
+		var panel := UIKit.make_panel()
+		panel.position = Vector2(x, BOX_Y)
+		panel.size = Vector2(w, BOX_H)
+		panel.custom_minimum_size = panel.size
+		panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		stats_control.add_child(panel)
+
+		var caption := Label.new()
+		UIKit.set_label(caption, "small_label", String(boxes[i][0]), "field_mute")
+		caption.position = Vector2(x + PANEL_PAD, BOX_Y + PANEL_PAD)
+		caption.size = Vector2(w - PANEL_PAD * 2.0, 20.0)
+		stats_control.add_child(caption)
+
+		var value := Label.new()
+		UIKit.set_label(value, "title", String(boxes[i][1]), "field_fg", BOX_VALUE_FONT)
+		value.position = Vector2(x + PANEL_PAD, BOX_Y + PANEL_PAD + 24.0)
+		value.size = Vector2(w - PANEL_PAD * 2.0, float(BOX_VALUE_FONT) + 12.0)
+		stats_control.add_child(value)
+
+
+## The three sets closest to being finished.
+##
+## The ONE progress track this screen keeps — the user asked for it by name, and
+## unlike a "next unlock" hint it is measuring something real: cards the player
+## already owns against a set they can already buy.
+##
+## Only UNLOCKED sets are eligible (an unbuyable set is not something you are
+## working on), already-complete sets are skipped, and PROMOS are excluded
+## outright — basep and np are gift-only, so they can never be completed by
+## playing and would sit at the top of the list forever.
+func _build_nearest_sets(per_set: Dictionary) -> void:
+	var panel := UIKit.make_panel()
+	panel.position = Vector2(RIGHT_X, SETS_Y)
+	panel.size = Vector2(RIGHT_W, SETS_H)
+	panel.custom_minimum_size = panel.size
+	panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	stats_control.add_child(panel)
+
+	var heading := Label.new()
+	UIKit.set_label(heading, "small_label", "Nearest sets to completion", "field_mute")
+	heading.position = Vector2(RIGHT_X + PANEL_PAD, SETS_Y + PANEL_PAD)
+	heading.size = Vector2(RIGHT_W - PANEL_PAD * 2.0, 20.0)
+	stats_control.add_child(heading)
+
+	var unlocked: Array = GameState.progress.get("packs_unlocked", [])
+	var names := _set_name_map()
+
+	var candidates: Array = []
+	for set_id in per_set:
+		var sid := String(set_id)
+		if sid in PROMO_SET_IDS:
+			continue
+		if not (sid in unlocked):
+			continue
+		var d: Dictionary = per_set[sid]
+		var total: int = int(d["total"])
+		var owned: int = int(d["owned"])
+		if total <= 0 or owned >= total:
+			continue
+		candidates.append({ "id": sid, "owned": owned, "total": total,
+			"frac": float(owned) / float(total) })
+
+	candidates.sort_custom(func(a, b): return a["frac"] > b["frac"])
+
+	if candidates.is_empty():
+		var none := Label.new()
+		UIKit.set_label(none, "attack_name",
+			"Every unlocked set is complete.", "field_mute")
+		none.position = Vector2(RIGHT_X + PANEL_PAD, SETS_Y + PANEL_PAD + 30.0)
+		none.size = Vector2(RIGHT_W - PANEL_PAD * 2.0, 24.0)
+		stats_control.add_child(none)
+		return
+
+	var y := SETS_Y + PANEL_PAD + 28.0
+	for i in mini(NEAREST_SETS, candidates.size()):
+		var c: Dictionary = candidates[i]
+
+		# The set name sits on the SAME row as its bar, per the user's note.
+		var label := Label.new()
+		UIKit.set_label(label, "small_label", String(names.get(c["id"], c["id"])), "field_fg")
+		label.position = Vector2(RIGHT_X + PANEL_PAD, y + 4.0)
+		label.size = Vector2(METER_LABEL_W, 22.0)
+		stats_control.add_child(label)
+
+		var meter_x := RIGHT_X + PANEL_PAD + METER_LABEL_W + PANEL_PAD
+		var meter_w := RIGHT_W - (meter_x - RIGHT_X) - PANEL_PAD - METER_VALUE_W - PANEL_PAD
+		var holder := UIKit.make_meter(float(c["owned"]), float(c["total"]), meter_w)
+		holder.position = Vector2(meter_x, y + 10.0)
+		stats_control.add_child(holder)
+
+		var value := Label.new()
+		UIKit.set_label(value, "hp", _fraction(int(c["owned"]), int(c["total"])), "field_fg")
+		value.position = Vector2(RIGHT_X + RIGHT_W - PANEL_PAD - METER_VALUE_W, y + 2.0)
+		value.size = Vector2(METER_VALUE_W, 24.0)
+		value.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+		stats_control.add_child(value)
+
+		y += METER_ROW_H
+
+
+## set_id -> display name, from the dictionary the deck builder and shops share.
+func _set_name_map() -> Dictionary:
+	var out := {}
+	var f := FileAccess.open(SET_DICT_PATH, FileAccess.READ)
+	if f == null:
+		return out
+	var parsed = JSON.parse_string(f.get_as_text())
+	f.close()
+	if parsed is Dictionary and parsed.has("set_list"):
+		for entry in parsed["set_list"]:
+			out[String(entry.get("set_id", ""))] = String(entry.get("set_name", ""))
+	return out
+
+
+## How many decks the player has saved. Derived from the folder rather than
+## tracked in progress, so it cannot drift from what the load screen lists.
+func _count_decks() -> int:
+	var dir := DirAccess.open(GameState.PLAYER_DECKS_FOLDER)
+	if dir == null:
+		return 0
+	var n := 0
+	dir.list_dir_begin()
+	var fname := dir.get_next()
+	while fname != "":
+		if not dir.current_is_dir() and fname.ends_with(".json"):
+			n += 1
+		fname = dir.get_next()
+	dir.list_dir_end()
+	return n
 
 
 # "12 / 37" — used by every X / Y counter so they all format identically.
@@ -437,27 +624,6 @@ func _fraction(owned: int, total: int) -> String:
 	return str(owned) + " / " + str(total)
 
 
-func _make_stat_row(label_text: String, value_text: String) -> HBoxContainer:
-	var hbox := HBoxContainer.new()
-	hbox.mouse_filter = Control.MOUSE_FILTER_IGNORE
-
-	var lbl := Label.new()
-	lbl.text = label_text
-	lbl.add_theme_font_size_override("font_size", STAT_FONT_SIZE)
-	lbl.add_theme_color_override("font_color", Color.BLACK)
-	lbl.vertical_alignment    = VERTICAL_ALIGNMENT_CENTER
-	lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-
-	var val := Label.new()
-	val.text = value_text
-	val.add_theme_font_size_override("font_size", STAT_FONT_SIZE)
-	val.add_theme_color_override("font_color", Color.BLACK)
-	val.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-	val.vertical_alignment   = VERTICAL_ALIGNMENT_CENTER
-
-	hbox.add_child(lbl)
-	hbox.add_child(val)
-	return hbox
 
 
 # One pass over user://Player_Owned_Cards/ answers every card statistic on this screen:
@@ -480,6 +646,8 @@ func _scan_card_collection() -> Dictionary:
 		"sets_total": 0,
 		"sets_completed": 0,
 		"set_ids": {},
+		# set_id -> { "owned": n, "total": n }, for the nearest-to-completion panel.
+		"per_set": {},
 	}
 
 	var dir := DirAccess.open(OWNED_CARDS_FOLDER)
@@ -511,6 +679,9 @@ func _scan_card_collection() -> Dictionary:
 					result["collectible"] += cards_in_set
 					if cards_in_set > 0 and owned_in_set == cards_in_set:
 						result["sets_completed"] += 1
+					result["per_set"][fname.trim_suffix(OWNED_CARDS_SUFFIX)] = {
+						"owned": owned_in_set, "total": cards_in_set,
+					}
 		fname = dir.get_next()
 	dir.list_dir_end()
 

@@ -81,7 +81,7 @@ func show(host: Node, icon_offset_x: float = 0.0, blocker_top_inset: float = 0.0
 	_overlay.add_child(dim)
 
 	var box := PanelContainer.new()
-	var kenney_theme = load("res://UI_Themes/kenneyUI.tres")
+	var kenney_theme = load("res://UI_Themes/ui/ui_secondary.tres")
 	if kenney_theme:
 		box.theme = kenney_theme
 	box.custom_minimum_size = Vector2(280, 160)

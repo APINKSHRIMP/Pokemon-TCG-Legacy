@@ -29,8 +29,6 @@ var _reveal_ok_btn   : Button     = null
 
 # ─── Theme references ────────────────────────────────────────────────────────
 
-var theme_kenney       : Theme = preload("res://UI_Themes/kenneyUI.tres")
-var theme_kenney_green : Theme = preload("res://UI_Themes/kenneyUI-green.tres")
 
 # ─── Node references ─────────────────────────────────────────────────────────
 
@@ -57,6 +55,7 @@ func _ready() -> void:
 	_load_holo_rares()
 
 	player_cash = GameState.get_cash()
+	_build_chrome()
 	wallet_chip = ShopChrome.add_wallet_chip(self, player_cash)
 	pill_layer  = ShopChrome.add_pill_layer(self)
 
@@ -68,6 +67,22 @@ func _ready() -> void:
 
 	await get_tree().process_frame
 	_build_display()
+
+
+## Swaps the old bordered chrome for the Spectrum Night bars and moves this
+## screen's controls into them. ShopChrome's wallet chip stays pinned top-right
+## on its own layer (z 1000) so it draws over the header bar, which is exactly
+## where the design wants the balance.
+func _build_chrome() -> void:
+	var bars := UIKit.convert_legacy_screen(self, "Holo rare")
+	var old_title := get_node_or_null("large_header_text_label")
+	if old_title != null:
+		old_title.queue_free()
+
+	# Cancel first: the footer slot is an HBox, so insertion order is left-to-right.
+	UIKit.adopt_button(cancel_btn, bars["footer"].centre, "secondary")
+	UIKit.adopt_button(buy_btn, bars["footer"].centre, "primary")
+
 
 
 # ─── Data loading ────────────────────────────────────────────────────────────
@@ -119,7 +134,7 @@ func _build_display() -> void:
 		_active_tween.kill()
 		_active_tween = null
 	buy_btn.disabled = true
-	buy_btn.theme    = theme_kenney
+	UIKit.style_button(buy_btn, "primary")
 
 	var slot_idx : int = 0
 	for type_name in TARGET_TYPES:
@@ -154,6 +169,10 @@ func _build_display() -> void:
 		# pill would anchor to empty letterbox space instead of the card's own corner.
 		rect.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 		vbox.add_child(rect)
+		# The card itself is pure black; the shadow is black at 38% over the purple
+		# field, so it reads LIGHTER than the silhouette it belongs to. That is the
+		# right way round — the mystery card sits on top of its own shadow.
+		UIKit.add_drop_shadow(rect)
 		rect.gui_input.connect(_on_card_clicked.bind(slot_idx))
 		_card_rects.append(rect)
 
@@ -225,7 +244,7 @@ func _apply_selected_animation(rect: TextureRect) -> void:
 func _update_buy_button() -> void:
 	var can_buy : bool = _selected_idx >= 0 and player_cash >= CARD_COST
 	buy_btn.disabled = not can_buy
-	buy_btn.theme    = theme_kenney_green if can_buy else theme_kenney
+	UIKit.style_button(buy_btn, "good" if can_buy else "primary")
 
 
 # ─── Purchase ────────────────────────────────────────────────────────────────
@@ -305,7 +324,7 @@ func _show_card_reveal(card: Dictionary) -> void:
 	ok_btn.text     = "OK"
 	ok_btn.size     = Vector2(400.0, 60.0)
 	ok_btn.position = Vector2(vp_size.x / 2.0 - 200.0, got_label.position.y + 90.0)
-	ok_btn.theme    = theme_kenney_green
+	UIKit.style_button(ok_btn, "good")
 	overlay_layer.add_child(ok_btn)
 	_reveal_ok_btn = ok_btn   # ISSUE #116: _input() presses this from the keyboard
 

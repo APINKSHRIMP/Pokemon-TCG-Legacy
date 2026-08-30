@@ -1,4 +1,4 @@
-extends Node
+extends Control
 
 # ─── Constants ───────────────────────────────────────────────────────────────
 
@@ -7,6 +7,12 @@ const SPRITE_SIZE        := Vector2(100, 200)
 const SPRITE_SEPARATION  := -4
 # At 250px + 10px gap = 260px per cell across 1920px usable width → 7 columns
 const COLUMNS            := 9
+
+# Inset of the grid inside the band between the two chrome bars, and the fixed
+# width of the owned-only toggle so it does not resize between its two labels.
+const GRID_INSET_X       := 0.0
+const GRID_INSET_Y       := 18.0
+const FILTER_BTN_W       := 340.0
 
 var PLAYER_DATA_PATH: String:
 	get: return GameState.PLAYER_CURRENT_DATA_PATH
@@ -38,6 +44,11 @@ var _owned_costumes         : Dictionary = {}
 # want the full wardrobe.
 var _hide_unowned           : bool = true
 var _is_rebuilding          : bool = false
+
+# Header slot holding the "n / N" owned chip, and the size of the universe it
+# counts against (filled while the sprite folder is scanned).
+var _count_chip_holder      : Control = null
+var _total_costumes         : int = 0
 
 # ─── Zoom state ──────────────────────────────────────────────────────────────
 var zoom_overlay        : CanvasLayer = null
@@ -78,6 +89,7 @@ func _ready() -> void:
 	hide_btn.pressed.connect(_on_hide_pressed)
 	_refresh_hide_button()
 
+	_build_chrome()
 	_wrap_grid_in_scroll_container()
 	# ISSUE #32: block input behind a loading overlay while the (potentially large) costume grid builds.
 	# Retest: shrink the blocker 142px top / 134px bottom so the banner buttons (Cancel) stay clickable.
@@ -153,6 +165,40 @@ func _load_player_data() -> void:
 
 # ─── Scroll container setup ──────────────────────────────────────────────────
 
+## Swaps the old bordered chrome for the Spectrum Night bars and moves this
+## screen's own controls into them. Runs BEFORE _wrap_grid_in_scroll_container(),
+## which copies the grid's position and size onto the ScrollContainer it makes.
+func _build_chrome() -> void:
+	var bars := UIKit.convert_legacy_screen(self, "Costumes")
+
+	var old_title := get_node_or_null("large_header_text_label")
+	if old_title != null:
+		old_title.queue_free()
+
+	_count_chip_holder = bars["header"].left
+	_refresh_count_chip()
+
+	UIKit.adopt_button(hide_btn, bars["header"].right, "secondary", false)
+	hide_btn.custom_minimum_size.x = FILTER_BTN_W
+
+	# Cancel first: the footer slot is an HBox, so insertion order is left-to-right.
+	UIKit.adopt_button(cancel_btn, bars["footer"].centre, "secondary")
+	UIKit.adopt_button(save_btn, bars["footer"].centre, "primary")
+
+	grid.position = Vector2(GRID_INSET_X, UIKit.CONTENT_TOP + GRID_INSET_Y)
+	grid.size = Vector2(1920.0 - GRID_INSET_X * 2.0, UIKit.CONTENT_H - GRID_INSET_Y * 2.0)
+
+
+## Rebuilds the "n / N" owned chip in the header.
+func _refresh_count_chip() -> void:
+	if _count_chip_holder == null or not is_instance_valid(_count_chip_holder):
+		return
+	for c in _count_chip_holder.get_children():
+		c.queue_free()
+	_count_chip_holder.add_child(
+		UIKit.make_chip("%d / %d" % [_owned_costumes.size(), _total_costumes], "on_chrome"))
+
+
 func _wrap_grid_in_scroll_container() -> void:
 	var parent = grid.get_parent()
 
@@ -196,6 +242,10 @@ func _load_characters() -> void:
 
 	files.sort()
 
+	# The folder listing IS the universe the header chip counts against.
+	_total_costumes = files.size()
+	_refresh_count_chip()
+
 	for fname in files:
 		# ISSUE #32 FIX: bail if the scene was cancelled/freed mid-load (get_tree() would be null).
 		if not is_inside_tree():
@@ -237,13 +287,24 @@ func _add_character_to_grid(file_name: String) -> void:
 		rect.modulate = Color(0.8, 0.8, 0.8)
 		rect.gui_input.connect(_on_character_clicked.bind(rect))
 	else:
-		# Keep the real texture but zero out all RGB channels via modulate.
-		# modulate multiplies every pixel's colour — black makes the sprite appear
-		# as a solid black silhouette with no texture swap needed.
-		# MOUSE_FILTER_IGNORE tells Godot to pass all input events straight through
-		# this node as if it doesn't exist, so it can never be clicked or hovered.
-		rect.modulate     = Color(0, 0, 0, 1)
-		rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		# Keep the real texture but zero out all RGB channels — that turns the
+		# sprite into a solid silhouette with no texture swap needed.
+		#
+		# self_modulate, NOT modulate: modulate PROPAGATES TO CHILDREN, and the
+		# slot outline added below is a child. With modulate the outline would be
+		# blacked out along with the sprite and the tile would vanish. Same trap
+		# as the shop price pills.
+		rect.self_modulate = Color(0, 0, 0, 1)
+		rect.mouse_filter  = Control.MOUSE_FILTER_IGNORE
+
+		# The square the silhouette sits in. Anchored full-rect so it takes the
+		# cell's real width, which the grid only settles after this frame.
+		var slot := UIKit.make_slot(SPRITE_SIZE)
+		slot.set_anchors_preset(Control.PRESET_FULL_RECT)
+		slot.custom_minimum_size = Vector2.ZERO
+		slot.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		slot.show_behind_parent = true
+		rect.add_child(slot)
 
 	grid.add_child(rect)
 
@@ -259,12 +320,8 @@ func _select_character_by_name(sprite_name: String) -> void:
 
 # Blue "Show" while the unowned silhouettes are filtered out, yellow "Hide" while everything is on show.
 func _refresh_hide_button() -> void:
-	if _hide_unowned:
-		hide_btn.text  = "Show Unowned Costumes"
-		hide_btn.theme = load("res://UI_Themes/kenneyUI-blue.tres")
-	else:
-		hide_btn.text  = "Hide Unowned Costumes"
-		hide_btn.theme = load("res://UI_Themes/kenneyUI-yellow.tres")
+	hide_btn.text = "Show all costumes" if _hide_unowned else "Show owned only"
+	UIKit.style_button(hide_btn, "secondary")
 
 
 func _on_hide_pressed() -> void:
@@ -381,12 +438,10 @@ func _refresh_save_button_state() -> void:
 
 	if sprite_changed:
 		save_btn.disabled = false
-		var green_theme = load("res://UI_Themes/kenneyUI-green.tres")
-		if green_theme:
-			save_btn.theme = green_theme
+		UIKit.style_button(save_btn, "good")
 	else:
 		save_btn.disabled = true
-		save_btn.theme    = load("res://UI_Themes/kenneyUI.tres")
+		UIKit.style_button(save_btn, "primary")
 
 
 # ─── Save / Cancel ───────────────────────────────────────────────────────────
@@ -421,7 +476,7 @@ func _on_save_pressed() -> void:
 	SoundManagerScript.play_sfx(SoundManagerScript.SFX_gamemode_select)
 
 	save_btn.disabled = true
-	save_btn.theme    = load("res://UI_Themes/kenneyUI.tres")
+	UIKit.style_button(save_btn, "primary")
 
 
 func _on_cancel_pressed() -> void:

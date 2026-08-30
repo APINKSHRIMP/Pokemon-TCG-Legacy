@@ -44,8 +44,6 @@ var _reveal_ok_btn     : Button      = null
 
 # ─── Theme references ─────────────────────────────────────────────────────────
 
-var theme_kenney       : Theme = preload("res://UI_Themes/kenneyUI.tres")
-var theme_kenney_green : Theme = preload("res://UI_Themes/kenneyUI-green.tres")
 
 # ─── Node references ─────────────────────────────────────────────────────────
 
@@ -75,6 +73,7 @@ func _ready() -> void:
 	grid.add_theme_constant_override("h_separation", COIN_SEPARATION)
 	grid.add_theme_constant_override("v_separation", COIN_SEPARATION)
 
+	_build_chrome()
 	wallet_chip = ShopChrome.add_wallet_chip(self, player_cash)
 	pill_layer  = ShopChrome.add_pill_layer(self)
 
@@ -84,6 +83,22 @@ func _ready() -> void:
 
 	await get_tree().process_frame
 	_build_coin_grid()
+
+
+## Swaps the old bordered chrome for the Spectrum Night bars and moves this
+## screen's controls into them. ShopChrome's wallet chip stays pinned top-right
+## on its own layer (z 1000) so it draws over the header bar, which is exactly
+## where the design wants the balance.
+func _build_chrome() -> void:
+	var bars := UIKit.convert_legacy_screen(self, "Coin shop")
+	var old_title := get_node_or_null("large_header_text_label")
+	if old_title != null:
+		old_title.queue_free()
+
+	# Cancel first: the footer slot is an HBox, so insertion order is left-to-right.
+	UIKit.adopt_button(cancel_btn, bars["footer"].centre, "secondary")
+	UIKit.adopt_button(buy_btn, bars["footer"].centre, "primary")
+
 
 
 func _process(_delta: float) -> void:
@@ -146,6 +161,7 @@ func _build_coin_grid() -> void:
 			rect.gui_input.connect(_on_coin_clicked.bind(rect))
 
 		grid.add_child(rect)
+		UIKit.add_drop_shadow(rect)
 
 	_refresh_pills()
 
@@ -251,7 +267,7 @@ func _update_buy_button() -> void:
 		var cost     : int  = selected_coin_rect.get_meta("coin_cost", DEFAULT_COIN_COST)
 		can_buy = not is_owned and player_cash >= cost
 	buy_btn.disabled = not can_buy
-	buy_btn.theme    = theme_kenney_green if can_buy else theme_kenney
+	UIKit.style_button(buy_btn, "good" if can_buy else "primary")
 
 
 # ─── Purchase ────────────────────────────────────────────────────────────────
@@ -327,7 +343,7 @@ func _show_purchase_display(coin_filename: String) -> void:
 	ok_btn.size     = Vector2(400.0, 60.0)
 	ok_btn.position = Vector2(vp_size.x / 2.0 - 200.0, label.position.y + 90.0)
 	ok_btn.visible  = false
-	ok_btn.theme    = theme_kenney_green
+	UIKit.style_button(ok_btn, "good")
 	overlay_layer.add_child(ok_btn)
 
 	# Play flip animation, then reveal OK

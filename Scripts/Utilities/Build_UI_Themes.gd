@@ -55,39 +55,44 @@ const OUT_DIR := "res://UI_Themes/ui/"
 # neither ever distorts however wide or tall the button is drawn.
 const TEX_SIZE   := 64
 const TEX_MARGIN := 16
-const RADIUS     := 11.0
-const EDGE_H     := 5.0
+
+# Filled from METRICS / the token block in _init(). Vars, not consts, precisely
+# so they cannot be edited here and drift from UI_Theme.gd.
+var RADIUS: float = 11.0
+var EDGE_H: float = 5.0
+var BTN_EDGE_COLOR: Color = Color(0.0, 0.0, 0.0, 0.30)
+var PAD_H: float = 29.0
+var PAD_V: float = 13.0
+var FONT_UI_BOLD: String = ""
+var FONT_UI_MEDIUM: String = ""
+var FONT_MONO: String = ""
+var SIZE_BUTTON: int = 17
+var SIZE_BODY: int = 22
+
+# ── TOKENS COME FROM UI_Theme.gd, NOT FROM COPIES HERE ───────
+# Autoloads do not exist in a `--script` run, so `UITheme` is not reachable.
+# GDScript class CONSTANTS are though: loading the script gives an object whose
+# `.THEMES` / `.METRICS` / `.TYPE` can be read directly, no instance needed.
+#
+# The first build hand-copied the palette into this file and it had already
+# drifted within a day. Never reintroduce a colour literal here that exists as
+# a token — change UI_Theme.gd and re-run.
+const UI_THEME_SCRIPT := "res://Scripts/Global_Scripts/UI_Theme.gd"
+
+var TOK: Dictionary   # the shipped theme's colour block
+var MET: Dictionary   # METRICS
+var TYP: Dictionary   # TYPE
 
 # Every button variant. `top`/`bot` equal means a flat fill; only primary uses
-# a gradient.
-#
-# `fg` is chosen for contrast against the fill, not from the palette — good,
-# warn and selected are light enough that white text on them is unreadable.
-var VARIANTS := {
-	"primary": {
-		"top": Color("B4459B"), "bot": Color("7B3FD4"), "fg": Color("FFFFFF"),
-	},
-	"secondary": {
-		"top": Color(1.0, 1.0, 1.0, 0.08), "bot": Color(1.0, 1.0, 1.0, 0.08),
-		"fg": Color("D9CBEC"),
-	},
-	"selected": {
-		# The header gradient's pink rather than the lighter `accent`, which is
-		# too pale to carry white text at 17px.
-		"top": Color("E8459B"), "bot": Color("E8459B"), "fg": Color("FFFFFF"),
-	},
-	"good": {
-		"top": Color("67D79B"), "bot": Color("67D79B"), "fg": Color("0E2418"),
-	},
-	"danger": {
-		"top": Color("E5484D"), "bot": Color("E5484D"), "fg": Color("FFFFFF"),
-	},
-	"warn": {
-		"top": Color("EFC44F"), "bot": Color("EFC44F"), "fg": Color("2A2010"),
-	},
-}
+# a gradient. Built in _init() once the tokens are loaded.
+var VARIANTS: Dictionary = {}
 
-const BTN_EDGE_COLOR := Color(0.0, 0.0, 0.0, 0.30)
+# Text colours for the three light fills. These are contrast picks against a
+# specific button colour, NOT palette entries — good, warn and selected are all
+# light enough that white text on them is unreadable, and nothing else in the
+# game wants "the colour that reads on mint green".
+const FG_ON_GOOD := Color("0E2418")
+const FG_ON_WARN := Color("2A2010")
 
 # Hover and press are composited OVER the fill rather than applied to its rgb.
 # The secondary button is white at 8% alpha, so "lighten the rgb by 6%" did
@@ -101,25 +106,48 @@ const PRESS_SINK := Color(0.0, 0.0, 0.0, 0.18)
 # no semantic colour, it is simply unavailable.
 const DISABLED_FILL := Color(0.0, 0.0, 0.0, 0.22)
 
-const FONT_UI_BOLD     := "res://UI_Themes/ChakraPetch-Bold.ttf"
-const FONT_UI_MEDIUM   := "res://UI_Themes/ChakraPetch-Medium.ttf"
-const FONT_UI_SEMIBOLD := "res://UI_Themes/ChakraPetch-SemiBold.ttf"
-const FONT_MONO        := "res://UI_Themes/IBMPlexMono-Regular.ttf"
-
-const SIZE_BUTTON := 17
-const SIZE_BODY   := 22
-
-const FIELD_FG   := Color("F4EDFA")
-const FIELD_MUTE := Color("A493C4")
-const PANEL_FILL := Color(1.0, 1.0, 1.0, 0.065)
-const LINE_COL   := Color(1.0, 1.0, 1.0, 0.14)
-const CHIP_BG    := Color(0.078, 0.047, 0.133, 0.62)
-const SLOT_COL   := Color(1.0, 1.0, 1.0, 0.16)
-const ACCENT     := Color("FF7FC4")
-
-
 func _init() -> void:
 	DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path(OUT_DIR))
+
+	var ui_theme = load(UI_THEME_SCRIPT)
+	if ui_theme == null:
+		printerr("Build_UI_Themes: cannot load ", UI_THEME_SCRIPT)
+		quit(1)
+		return
+	TOK = ui_theme.THEMES[ui_theme.DEFAULT_THEME]
+	MET = ui_theme.METRICS
+	TYP = ui_theme.TYPE
+
+	RADIUS         = float(MET["corner_radius"])
+	EDGE_H         = float(MET["btn_edge_h"])
+	PAD_H          = float(MET["btn_pad_h"])
+	PAD_V          = float(MET["btn_pad_v"])
+	BTN_EDGE_COLOR = TOK["btn_edge"]
+	FONT_UI_BOLD   = ui_theme.FONT_UI_BOLD
+	FONT_UI_MEDIUM = ui_theme.FONT_UI_MEDIUM
+	FONT_MONO      = ui_theme.FONT_MONO
+	SIZE_BUTTON    = int(round(float(TYP["button"]["size"])))
+	SIZE_BODY      = int(round(float(TYP["body"]["size"])))
+
+	VARIANTS = {
+		"primary": {
+			"top": TOK["btn_primary_top"], "bot": TOK["btn_primary_bot"],
+			"fg": TOK["btn_primary_fg"],
+		},
+		"secondary": {
+			"top": TOK["btn_secondary"], "bot": TOK["btn_secondary"],
+			"fg": TOK["btn_secondary_fg"],
+		},
+		"selected": {
+			# The header gradient's pink rather than the lighter `accent`, which
+			# is too pale to carry white text at 17px.
+			"top": TOK["chrome_grad_b"], "bot": TOK["chrome_grad_b"],
+			"fg": Color.WHITE,
+		},
+		"good":   { "top": TOK["good"],   "bot": TOK["good"],   "fg": FG_ON_GOOD },
+		"danger": { "top": TOK["danger"], "bot": TOK["danger"], "fg": Color.WHITE },
+		"warn":   { "top": TOK["warn"],   "bot": TOK["warn"],   "fg": FG_ON_WARN },
+	}
 
 	var ok := true
 	ok = _write_button_textures() and ok
@@ -194,7 +222,7 @@ func _write_grabber_texture() -> bool:
 				continue
 			# The outer 2.5px darken into a rim.
 			var rim: float = clampf((dist - (r - 2.5)) / 2.5, 0.0, 1.0)
-			var col := ACCENT.lerp(Color("2A1633"), rim * 0.55)
+			var col: Color = TOK["accent"].lerp(Color("2A1633"), rim * 0.55)
 			img.set_pixel(x, y, Color(col.r, col.g, col.b, a))
 
 	var path := OUT_DIR + "slider_grabber.png"
@@ -224,7 +252,7 @@ func _save_face(file_name: String, top: Color, bot: Color, with_edge: bool) -> b
 				continue
 
 			var t := float(y) / float(TEX_SIZE - 1)
-			var col := top.lerp(bot, t)
+			var col: Color = top.lerp(bot, t)
 
 			# The edge occupies the last EDGE_H rows INSIDE the shape, so it
 			# follows the bottom corners instead of cutting straight across.
@@ -281,33 +309,33 @@ func _write_base_theme() -> bool:
 
 	t.set_font("font", "Label", ui_medium)
 	t.set_font_size("font_size", "Label", SIZE_BODY)
-	t.set_color("font_color", "Label", FIELD_FG)
+	t.set_color("font_color", "Label", TOK["field_fg"])
 
 	t.set_font("font", "RichTextLabel", ui_medium)
 	t.set_font_size("normal_font_size", "RichTextLabel", SIZE_BODY)
-	t.set_color("default_color", "RichTextLabel", FIELD_FG)
+	t.set_color("default_color", "RichTextLabel", TOK["field_fg"])
 
 	t.set_font("font", "Button", ui_bold)
 	t.set_font_size("font_size", "Button", SIZE_BUTTON)
 
 	t.set_font("font", "LineEdit", ui_medium)
 	t.set_font_size("font_size", "LineEdit", SIZE_BODY)
-	t.set_color("font_color", "LineEdit", FIELD_FG)
-	t.set_color("font_placeholder_color", "LineEdit", FIELD_MUTE)
-	t.set_color("caret_color", "LineEdit", ACCENT)
-	t.set_stylebox("normal", "LineEdit", _flat(CHIP_BG, LINE_COL, 1, RADIUS))
-	t.set_stylebox("focus", "LineEdit", _flat(CHIP_BG, ACCENT, 1, RADIUS))
+	t.set_color("font_color", "LineEdit", TOK["field_fg"])
+	t.set_color("font_placeholder_color", "LineEdit", TOK["field_mute"])
+	t.set_color("caret_color", "LineEdit", TOK["accent"])
+	t.set_stylebox("normal", "LineEdit", _flat(TOK["chip_bg"], TOK["line"], 1, RADIUS))
+	t.set_stylebox("focus", "LineEdit", _flat(TOK["chip_bg"], TOK["accent"], 1, RADIUS))
 
-	t.set_stylebox("panel", "PanelContainer", _flat(PANEL_FILL, LINE_COL, 1, 15.0))
+	t.set_stylebox("panel", "PanelContainer", _flat(TOK["panel"], TOK["line"], 1, 15.0))
 
 	# Sliders. The track is the same 12px/6px-radius bar make_meter() draws, so a
 	# volume slider and a progress meter read as the same object at rest.
-	var track := _flat(SLOT_COL, Color(0, 0, 0, 0), 0, 6.0)
+	var track := _flat(TOK["slot"], Color(0, 0, 0, 0), 0, 6.0)
 	track.content_margin_top = 6
 	track.content_margin_bottom = 6
 	t.set_stylebox("slider", "HSlider", track)
-	t.set_stylebox("grabber_area", "HSlider", _flat(ACCENT, Color(0, 0, 0, 0), 0, 6.0))
-	t.set_stylebox("grabber_area_highlight", "HSlider", _flat(ACCENT, Color(0, 0, 0, 0), 0, 6.0))
+	t.set_stylebox("grabber_area", "HSlider", _flat(TOK["accent"], Color(0, 0, 0, 0), 0, 6.0))
+	t.set_stylebox("grabber_area_highlight", "HSlider", _flat(TOK["accent"], Color(0, 0, 0, 0), 0, 6.0))
 	var grabber: Texture2D = load(OUT_DIR + "slider_grabber.png")
 	if grabber != null:
 		t.set_icon("grabber", "HSlider", grabber)
@@ -378,10 +406,10 @@ func _tex_box(file_name: String) -> StyleBoxTexture:
 	var sb := StyleBoxTexture.new()
 	sb.texture = load(OUT_DIR + file_name)
 	sb.set_texture_margin_all(TEX_MARGIN)
-	sb.content_margin_left = 29
-	sb.content_margin_right = 29
-	sb.content_margin_top = 13
-	sb.content_margin_bottom = 13
+	sb.content_margin_left = PAD_H
+	sb.content_margin_right = PAD_H
+	sb.content_margin_top = PAD_V
+	sb.content_margin_bottom = PAD_V
 	return sb
 
 

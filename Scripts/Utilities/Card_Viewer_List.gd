@@ -298,7 +298,7 @@ const VIEWER_HEADER_COLOUR   := "#ffd86b"  # pale gold; reads over the patterned
 ## text actually rendered can never disagree about what is being measured.
 const VIEWER_HEADERS := ["INDIVIDUAL", "CATEGORIES"]
 
-const KENNEY_THEME_PATH := "res://UI_Themes/kenneyUI.tres"
+const KENNEY_THEME_PATH := "res://UI_Themes/ui/ui_secondary.tres"
 
 
 ## Builds the "<name> (xN)" lines for the INDIVIDUAL section, in the order given.
