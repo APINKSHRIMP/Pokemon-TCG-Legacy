@@ -200,7 +200,7 @@ func apply_on_attach_effects(energy_card: card_object, target_pokemon: card_obje
 			target_pokemon.current_hp = max(0, target_pokemon.current_hp - 10)
 			main.display_hp_circles_above_align(target_pokemon, is_opponent)
 			var label_x = 1030 if is_opponent else 530
-			main.show_floating_label("-10HP", Vector2(label_x, 300), true)
+			main.show_floating_label("-10HP", Vector2(label_x, 300), Color.RED, true)
 			await main.show_message("RAINBOW ENERGY DEALT 10 DAMAGE TO " + pokemon_name + "!")
 			if main._should_bail(): return true
 			await main.check_all_knockouts()
@@ -228,7 +228,7 @@ func apply_on_attach_effects(energy_card: card_object, target_pokemon: card_obje
 				main.display_hp_circles_above_align(target_pokemon, is_opponent)
 				SoundManagerScript.play_sfx(SoundManagerScript.SFX_heal_sound)
 				var label_x = 1030 if is_opponent else 530
-				main.show_floating_label("+" + str(actual_heal) + "HP", Vector2(label_x, 300), true)
+				main.show_floating_label("+" + str(actual_heal) + "HP", Vector2(label_x, 300), Color.GREEN, true)
 				await main.show_message("POTION ENERGY HEALED " + str(actual_heal) + " HP FROM " + pokemon_name + "!")
 				if main._should_bail(): return true
 				return true
