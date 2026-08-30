@@ -69,7 +69,7 @@ func _ready() -> void:
 
 	# Step 6: Fade in from black then run animations
 	var fade_in = create_tween()
-	fade_in.tween_property(self, "modulate:a", 1.0, 0.5)
+	fade_in.tween_property(self, "modulate:a", 1.0, GameState.transition_time(0.5))
 	await fade_in.finished
 	
 	# Scene is now visible — allow clicking to skip
@@ -181,7 +181,13 @@ func animate_intro() -> void:
 
 	# The intro is click-to-skip. There is no speed multiplier: Options offers only play-or-skip,
 	# and skip never reaches here (see _ready).
-	var dur := animation_duration
+	#
+	# Reduce motion is a THIRD state and is not the same as skip. At zero duration every property
+	# lands on its final value immediately, and the hold after `await` keeps the screen up for the
+	# beat the drift would have taken — the player still sees who they are fighting, the picture
+	# just does not move. Removing the screen is what the intro/outro row is for.
+	var reduced := GameState.is_motion_reduced()
+	var dur: float = 0.0 if reduced else animation_duration
 	tween.tween_property(player_sprite, "position:x", player_sprite.position.x - 100, dur)
 	tween.tween_property(opponent_sprite, "position:x", opponent_sprite.position.x + 100, dur)
 	tween.tween_property(player_name_label, "position:y", player_name_label.position.y - 50, dur)
@@ -192,6 +198,8 @@ func animate_intro() -> void:
 	
 	# If the animation finishes naturally (not skipped), transition automatically
 	await tween.finished
+	if reduced:
+		await get_tree().create_timer(animation_duration).timeout
 	if not transitioning:
 		transition_to_main_match()
 
@@ -211,7 +219,7 @@ func transition_to_main_match() -> void:
 	if not GameState.is_transition_skipped():
 		# Fade out to black
 		var tween = create_tween()
-		tween.tween_property(self, "modulate:a", 0.0, 0.5)
+		tween.tween_property(self, "modulate:a", 0.0, GameState.transition_time(0.5))
 		await tween.finished
 
 	get_tree().root.add_child(main_match_instance)

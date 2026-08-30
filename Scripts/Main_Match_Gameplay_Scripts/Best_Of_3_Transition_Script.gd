@@ -72,7 +72,7 @@ func _ready() -> void:
 	SoundManagerScript.play_sfx(SoundManagerScript.SFX_battle_start)
 
 	var fade_in := create_tween()
-	fade_in.tween_property(self, "modulate:a", 1.0, 0.5)
+	fade_in.tween_property(self, "modulate:a", 1.0, GameState.transition_time(0.5))
 	await fade_in.finished
 
 	_click_enabled = true
@@ -84,8 +84,14 @@ func _ready() -> void:
 
 	var active_label: Label = round_win_label if battle_won else round_loss_label
 
-	# All animations fire simultaneously
-	var anim_dur := ANIMATION_DURATION
+	# All animations fire simultaneously.
+	#
+	# Under reduce motion every property lands on its final value at once and the counter simply
+	# appears rather than spinning in; the hold after `await` keeps the screen up for the beat the
+	# drift would have taken. The round result is the information here, and it is still shown —
+	# removing the screen is what the intro/outro Options row does.
+	var reduced := GameState.is_motion_reduced()
+	var anim_dur: float = 0.0 if reduced else ANIMATION_DURATION
 	var main_tween := create_tween()
 	main_tween.set_parallel(true)
 	main_tween.set_trans(Tween.TRANS_LINEAR)
@@ -93,13 +99,18 @@ func _ready() -> void:
 	main_tween.tween_property(opponent_sprite, "position:x", opponent_sprite.position.x + 100, anim_dur)
 	main_tween.tween_property(active_label, "position:y", active_label.position.y - 50, anim_dur)
 
-	# Spin tween runs its own sequential squish cycles (same feel as gift coin flip)
-	var spin_tween := create_tween()
-	for dur in SPIN_DURATIONS:
-		spin_tween.tween_property(current_counter, "scale:x", 0.0, dur)
-		spin_tween.tween_property(current_counter, "scale:x", 1.0, dur)
+	# Spin tween runs its own sequential squish cycles (same feel as gift coin flip). Skipped
+	# outright under reduce motion — a Tween created with no commands errors, so it is not built
+	# at all rather than built with zero durations.
+	if not reduced:
+		var spin_tween := create_tween()
+		for dur in SPIN_DURATIONS:
+			spin_tween.tween_property(current_counter, "scale:x", 0.0, dur)
+			spin_tween.tween_property(current_counter, "scale:x", 1.0, dur)
 
 	await main_tween.finished
+	if reduced:
+		await get_tree().create_timer(ANIMATION_DURATION).timeout
 	await get_tree().create_timer(0.25).timeout
 	_do_transition()
 

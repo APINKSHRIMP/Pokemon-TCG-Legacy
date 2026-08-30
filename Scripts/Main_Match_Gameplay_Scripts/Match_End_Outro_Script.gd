@@ -207,14 +207,17 @@ func _ready() -> void:
 
 	# There ARE gifts to reveal, so the scene stays — but on "skip" every animation in it snaps
 	# straight to its finished state. The player still sees each reward and clicks through them.
-	_force_skip_anim = GameState.is_transition_skipped()
+	#
+	# Reduce motion lands in the same place from the other direction: it keeps the screen and
+	# removes the movement, which is precisely what this flag already does.
+	_force_skip_anim = GameState.is_transition_skipped() or GameState.is_motion_reduced()
 
 	# Create both message panels before they're needed
 	_create_msg_panels()
 
 	# Fade in from black
 	var fade_in = create_tween()
-	fade_in.tween_property(self, "modulate:a", 1.0, 0.5)
+	fade_in.tween_property(self, "modulate:a", 1.0, GameState.transition_time(0.5))
 	await fade_in.finished
 
 	animate_sprites()

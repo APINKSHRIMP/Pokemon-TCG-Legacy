@@ -60,107 +60,130 @@ var last_battled_opponent_entry: Dictionary = {}
 var last_interior_scene: String = ""
 var current_shop_id: String = "card_mart"
 
-# ISSUE #34: global game-speed multipliers, driven by the Options submenu. 1.0 plays an animation at
-# exactly its authored duration (the "slow" preset); higher = faster. Read these wherever an
-# animation/movement duration is computed so the whole game honours the player's preference. Each
-# has its own Options section and its own saved key:
+# ISSUE #34: global game-speed multipliers. 1.0 plays an animation at exactly its authored duration;
+# higher = faster. Read these wherever an animation/movement duration is computed so the whole game
+# honours the player's preference.
 #   card_match_animation_speed  — in-match animations: card placement, energy, retreat, damage
-#                                 labels, coin flips, KOs, CPU thinking pauses.  ("Match")
+#                                 labels, coin flips, KOs, CPU thinking pauses.
 #   item_animation_speed        — reward reveals: gift coin/card flips and costume fade-ins.
-#                                 Deliberately has no "skip" — these ARE the payoff, and every one
-#                                 of them is already click-skippable.
-#   pack_animation_speed        — the pack opening sequence only. Has its own "skip", which jumps
-#                                 from the buy press straight to the finished row of cards.
+#   pack_animation_speed        — the pack opening sequence only.
 #   overworld_walking_speed     — the player's default overworld walk/run speed multiplier.
+#
+# ── UI OVERHAUL 2026-08-30: THREE SETTINGS BECAME ONE ────────────────────────────────────────
+# The first three used to be three separate Options rows with three separate saved keys, each on
+# its own five-step ladder. They are now driven by ONE "Animation speed" row at slow / medium /
+# fast, saved under "animation_speed".
+#
+# The three MULTIPLIER TABLES stayed separate, and that is the point: a match, a gift reveal and a
+# pack tear are authored at different tempos, so "medium" still means 1.25 for a match and 0.75 for
+# a pack. One preset key, three ladders. Tune each table on its own.
+#
+# The old per-ladder "skip" presets are gone too. Skipping is now REDUCE MOTION — one switch that
+# collapses all three at once, so the player cannot end up with a skipped pack opening and a slow
+# match by accident. It is an accessibility control, not a fourth speed.
+#
+# Walking speed is deliberately NOT part of this. It affects play, not presentation.
 #
 # The match intro/outro has NO multiplier — see INTRO_OUTRO_OPTIONS below.
 var card_match_animation_speed: float = 1.25
 var item_animation_speed: float = 1.25
-var pack_animation_speed: float = 0.75   # ISSUE #94: matches the new DEFAULT_PACK_SPEED ("normal")
+var pack_animation_speed: float = 0.75   # PACK_SPEED_PRESETS["medium"], the boot default
 var overworld_walking_speed: float = 1.1
 
-# TWEAKABLE — raising a number speeds that preset up. These three dictionaries are deliberately
-# separate: "normal" does NOT have to mean the same multiplier for a match, an item reveal and a
-# pack opening, because those sequences are authored at different tempos. Tune each on its own.
-# "skip" is a deliberately huge multiplier so scaled_duration() collapses every animation to ~1
-# frame rather than skipping the await chains outright (which would desync the match engine); only
-# the two presets that offer it can ever return true from is_transition_skipped().
-const ANIMATION_SPEED_PRESETS := {
-	"very_slow": 0.7,
+# The one ladder the player picks from. Three steps, in this order — the Options row is built from
+# this array, so adding a step here adds the button.
+const ANIMATION_SPEED_OPTIONS := ["slow", "medium", "fast"]
+
+# TWEAKABLE — raising a number speeds that preset up. The three tables are deliberately separate
+# and MUST all carry the same three keys as ANIMATION_SPEED_OPTIONS. "medium" does not have to mean
+# the same multiplier in each, and does not: a pack tear is a set-piece and runs slower than the
+# match it paid for.
+const MATCH_SPEED_PRESETS := {
 	"slow": 1.0,
-	"normal": 1.25,
+	"medium": 1.25,
 	"fast": 2.2,
-	"skip": 100.0,
 }
 const ITEM_SPEED_PRESETS := {
-	"very_slow": 0.7,
 	"slow": 1.0,
-	"normal": 1.25,
+	"medium": 1.25,
 	"fast": 2.2,
 }
-# Pack opening runs slower than the match/item presets on purpose — the tear is a set-piece, not a
-# beat to get through.
-#
-# ISSUE #94: every preset here was relabelled one step FASTER while keeping its multiplier — what the
-# player used to pick as "very slow" is now offered as "slow", the old "slow" is now "normal", and so
-# on up to "very fast". Nothing about the tempo of the sequence changed; only the names did, because
-# the old ladder read a notch too slow against the rest of the game. The keys below are the labels,
-# so "fast" (not "normal") is now the straight 1.0 passthrough where the base durations written into
-# Pack_Opening_Manager.gd play exactly as authored — the default sits one notch under that.
+# ISSUE #94's relabel is preserved: "fast" is the straight 1.0 passthrough where the base durations
+# written into Pack_Opening_Manager.gd play exactly as authored, and the default sits one notch
+# under it.
 const PACK_SPEED_PRESETS := {
 	"slow": 0.5,
-	"normal": 0.75,
+	"medium": 0.75,
 	"fast": 1.0,
-	"very_fast": 2.0,
-	"skip": 100.0,
 }
 
-# The match intro/outro is a plain on/off, not a speed. Everything in those scenes is already
-# click-to-skip and the only thing a multiplier changed was how long the screen sat there — so the
-# choice that actually matters is "play it" or "don't".
+# Reduce motion. An accessibility switch, not a fourth speed.
+#
+# SKIP_MULTIPLIER is deliberately huge rather than infinite so scaled_duration() collapses every
+# animation to about one frame INSTEAD of skipping the await chains outright — bypassing the awaits
+# would desync the match engine. This is the same trick the old per-ladder "skip" presets used; it
+# now lives in one place and drives all three domains together.
+#
+# It also stops the chevron scroll and freezes the selection ring — see UITheme.motion_reduced(),
+# which reads reduce_motion_setting directly.
+const REDUCE_MOTION_OPTIONS := ["off", "where_possible"]
+const SKIP_MULTIPLIER := 100.0
+
+# The match intro/outro is a plain on/off, and stays its own row. Everything in those scenes is
+# already click-to-skip and the only thing a multiplier changed was how long the screen sat there —
+# so the choice that actually matters is "play it" or "don't".
+#
+# NOTE the two are NOT the same control: "skip" here bypasses the intro/outro SCREEN entirely, while
+# reduce motion keeps the screen and collapses its animations. See is_transition_skipped().
 const INTRO_OUTRO_OPTIONS := ["play", "skip"]
 
-const DEFAULT_ANIMATION_SPEED  := "normal"
-const DEFAULT_ITEM_SPEED       := "normal"
-# ISSUE #94: still the key "normal", but after the relabel that key is the 0.75 multiplier — i.e. a
-# fresh save now boots on what used to be called "slow", which is the intent of the relabel.
-const DEFAULT_PACK_SPEED       := "normal"
-const DEFAULT_INTRO_OUTRO      := "play"
+const DEFAULT_ANIMATION_SPEED := "medium"
+const DEFAULT_REDUCE_MOTION   := "off"
+const DEFAULT_INTRO_OUTRO     := "play"
 
 # The player's currently selected preset keys. Persisted in Player_Current_Data.json.
 var animation_speed_setting: String   = DEFAULT_ANIMATION_SPEED
-var item_speed_setting: String        = DEFAULT_ITEM_SPEED
-var pack_speed_setting: String        = DEFAULT_PACK_SPEED
+var reduce_motion_setting: String     = DEFAULT_REDUCE_MOTION
 var intro_outro_setting: String       = DEFAULT_INTRO_OUTRO
 
 # Applies a preset key to the live multiplier. Pass save = false to set it without touching the
 # save file (used on boot).
+## Sets the one animation-speed preset. All three domains follow it through
+## _apply_animation_multipliers(), each from its own table.
 func set_animation_speed(preset: String, save: bool = true) -> void:
-	if not ANIMATION_SPEED_PRESETS.has(preset):
-		push_warning("GameState: unknown match animation speed preset '" + preset + "'")
+	if not preset in ANIMATION_SPEED_OPTIONS:
+		push_warning("GameState: unknown animation speed preset '" + preset + "'")
 		return
 	animation_speed_setting = preset
-	card_match_animation_speed = ANIMATION_SPEED_PRESETS[preset]
+	_apply_animation_multipliers()
 	if save:
 		_save_current_data_field("animation_speed", animation_speed_setting)
 
-func set_item_speed(preset: String, save: bool = true) -> void:
-	if not ITEM_SPEED_PRESETS.has(preset):
-		push_warning("GameState: unknown item animation speed preset '" + preset + "'")
-		return
-	item_speed_setting = preset
-	item_animation_speed = ITEM_SPEED_PRESETS[preset]
-	if save:
-		_save_current_data_field("item_animation_speed", item_speed_setting)
 
-func set_pack_speed(preset: String, save: bool = true) -> void:
-	if not PACK_SPEED_PRESETS.has(preset):
-		push_warning("GameState: unknown pack animation speed preset '" + preset + "'")
+## Reduce motion. Overrides the speed preset for as long as it is on, so turning it off must
+## recompute rather than restore — which is exactly what _apply_animation_multipliers() does.
+func set_reduce_motion(choice: String, save: bool = true) -> void:
+	if not choice in REDUCE_MOTION_OPTIONS:
+		push_warning("GameState: unknown reduce motion choice '" + choice + "'")
 		return
-	pack_speed_setting = preset
-	pack_animation_speed = PACK_SPEED_PRESETS[preset]
+	reduce_motion_setting = choice
+	_apply_animation_multipliers()
 	if save:
-		_save_current_data_field("pack_animation_speed", pack_speed_setting)
+		_save_current_data_field("reduce_motion", reduce_motion_setting)
+
+
+## The single place the three live multipliers are computed. Called by both setters, so the pair of
+## settings can never disagree with the numbers the game is actually animating at.
+func _apply_animation_multipliers() -> void:
+	if reduce_motion_setting == "where_possible":
+		card_match_animation_speed = SKIP_MULTIPLIER
+		item_animation_speed = SKIP_MULTIPLIER
+		pack_animation_speed = SKIP_MULTIPLIER
+		return
+	card_match_animation_speed = MATCH_SPEED_PRESETS[animation_speed_setting]
+	item_animation_speed = ITEM_SPEED_PRESETS[animation_speed_setting]
+	pack_animation_speed = PACK_SPEED_PRESETS[animation_speed_setting]
+
 
 func set_intro_outro(choice: String, save: bool = true) -> void:
 	if not choice in INTRO_OUTRO_OPTIONS:
@@ -176,20 +199,17 @@ func set_intro_outro(choice: String, save: bool = true) -> void:
 func _load_animation_speed() -> void:
 	var data := _read_current_data()
 
+	# Reduce motion is read FIRST so the speed setter below computes the right multipliers on the
+	# first pass rather than being immediately overwritten.
+	var motion: String = str(data.get("reduce_motion", DEFAULT_REDUCE_MOTION))
+	if not motion in REDUCE_MOTION_OPTIONS:
+		motion = DEFAULT_REDUCE_MOTION
+	reduce_motion_setting = motion
+
 	var preset: String = str(data.get("animation_speed", DEFAULT_ANIMATION_SPEED))
-	if not ANIMATION_SPEED_PRESETS.has(preset):
+	if not preset in ANIMATION_SPEED_OPTIONS:
 		preset = DEFAULT_ANIMATION_SPEED
 	set_animation_speed(preset, false)
-
-	var item: String = str(data.get("item_animation_speed", DEFAULT_ITEM_SPEED))
-	if not ITEM_SPEED_PRESETS.has(item):
-		item = DEFAULT_ITEM_SPEED
-	set_item_speed(item, false)
-
-	var pack: String = str(data.get("pack_animation_speed", DEFAULT_PACK_SPEED))
-	if not PACK_SPEED_PRESETS.has(pack):
-		pack = DEFAULT_PACK_SPEED
-	set_pack_speed(pack, false)
 
 	var intro: String = str(data.get("intro_outro_animation", DEFAULT_INTRO_OUTRO))
 	if not intro in INTRO_OUTRO_OPTIONS:
@@ -378,16 +398,36 @@ func item_time(base_seconds: float) -> float:
 func pack_time(base_seconds: float) -> float:
 	return scaled_duration(base_seconds, pack_animation_speed)
 
-# True when the player has turned the match intro/outro ceremony off. Callers bypass whole sequences
+# True when the player has turned the match intro/outro ceremony OFF. Callers bypass whole sequences
 # (and their sound) rather than playing them fast — see Match_Start_Intro_Script.gd and
 # Match_End_Outro_Script.gd. Note this never suppresses a REWARD reveal: those follow item speed.
+#
+# This is NOT reduce motion. Reduce motion keeps the intro/outro screen and collapses its
+# animations; this removes the screen. Both can be on, and then the screen never appears at all.
 func is_transition_skipped() -> bool:
 	return intro_outro_setting == "skip"
 
+# True when the player has asked for reduced motion. Read it for anything decorative that a
+# multiplier cannot express — the chevron scroll, the selection ring spin, a purely cosmetic drift.
+func is_motion_reduced() -> bool:
+	return reduce_motion_setting == "where_possible"
+
 # True when the pack opening animation should be bypassed entirely — the buy press jumps straight to
 # the finished row of cards. See Pack_Opening_Manager._start_pack_opening().
+#
+# This used to be its own "skip" preset on the pack speed ladder. It is reduce motion now, so a
+# player who wants to stop watching pack tears turns off one switch rather than hunting three rows.
 func is_pack_skipped() -> bool:
-	return pack_speed_setting == "skip"
+	return is_motion_reduced()
+
+# Duration for a transition-screen tween — the match intro, outro and best-of-3 screens, which have
+# no speed multiplier of their own.
+#
+# Under reduce motion the screen still APPEARS; only its movement collapses. That is the difference
+# the player asked for: they want to stop the sliding and the fading, not to stop being told who
+# they are about to fight.
+func transition_time(base_seconds: float) -> float:
+	return 0.0 if is_motion_reduced() else base_seconds
 
 var sleep_wakeup_fade: bool = false
 

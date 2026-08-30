@@ -1,110 +1,88 @@
 extends Control
 
-# ISSUE #34: the Options screen. Seven sections, laid out as vertically stacked rows — each is a
-# centred header with its options in a horizontal button row beneath it. A wider gap after Burn
-# Rules and after Walking Speed splits them into three visual groups without needing sub-headers:
-#   Confusion Rules + Burn Rules   — match rule variants. ISSUE #150: these SHARE ONE LINE now,
-#                                    five buttons across, with a 100px group gap between the
-#                                    third and fourth so the two settings still read as separate.
-#   Walking Speed                  — overworld movement
-#   Match Animation Speed          — in-match animations
-#   Coin, Costume and Rewards …    — gift reveals only (no "skip": they ARE the payoff, and every
-#                                    one is already click-skippable)
-#   Pack Opening Animation Speed   — the pack sequence, with its own skip
-#   Play Match Intro / Outro …     — a plain on/off, not a speed. The intro/outro is click-to-skip
-#                                    already, so the only meaningful choice is whether it plays.
-#   Music / Sound Effects Volume   — ISSUE #150: also ONE line now, both sliders halved in width
-#                                    (880 -> 350) with a 140px gap between the music percentage
-#                                    and the "Sound Effects Volume" label. See SLIDER SECTIONS.
+# ============================================================
+# OPTIONS
+# ============================================================
+# Eight rows, each a label on the left and its control group on the right.
 #
-# SLIDER SECTIONS. The two volume rows are the only controls here that are not a row of preset
-# buttons, and they behave differently on purpose:
-#   * They apply LIVE while you drag, so you can hear what you are choosing. Every other row on this
-#     screen does nothing until Save.
-#   * Save still owns persistence — dragging never touches Player_Current_Data.json.
-#   * Because they apply live, Cancel and Escape have to put the volume back to the saved level on
-#     the way out (_revert_live_volume). A button row needs no such undo.
-# They share the pending/saved dictionaries and the Save button with everything else; only the
-# refresh (move the grabber, rewrite the percentage) differs. Values are held here as whole percents
-# 0-100 so the change detection stays an exact integer comparison — GameState stores 0.0-1.0.
+# ── BUILT IN CODE, NOT IN THE SCENE ──────────────────────────
+# This screen used to be ~55 hand-placed nodes at absolute offsets, and every
+# time a row was added the WHOLE page had to be re-spaced by hand — adding the
+# volume sliders moved every `offset_top` on the screen and squeezed the
+# inter-section gaps from 19/28px down to 12/18px to make room.
 #
-# Message box colour used to be an eighth section here. It is no longer a player setting: each NPC
-# and opponent carries its own `message_colour` in All_NPC_Constant_Data.json and the box is themed
-# per speaker. See MessageBoxTheme.
+# It is a VBoxContainer now. Adding a row is one entry in _build_rows() and one
+# entry in each of the three dictionaries; nothing else moves, and nothing has
+# to be measured. Options_Scene.tscn is a bare Control carrying this script.
+#
+# ── THE THREE DICTIONARIES ───────────────────────────────────
+# Every row, slider included, flows through the same pending/saved model:
+#
+#   section_buttons  section name -> { option value : Button }
+#   section_sliders  section name -> { "slider": HSlider, "value_label": Label }
+#   section_setters  section name -> the GameState call that persists it
+#
+# `pending` is what the player has clicked, `saved` is what is on disk. Save
+# walks the difference. A new row needs an entry in all three plus one in
+# _current_values() and nothing else.
+#
+# ── SLIDERS BEHAVE DIFFERENTLY, ON PURPOSE ───────────────────
+#   * They apply LIVE while you drag, so you can hear what you are choosing.
+#     Every other row on this screen does nothing until Save.
+#   * Save still owns persistence — dragging never touches the save file.
+#   * Because they apply live, Cancel and Escape have to put the volume back
+#     (_revert_live_volume). A button row needs no such undo.
+# Values are held here as whole percents 0-100 so change detection stays an
+# exact integer comparison; GameState stores 0.0-1.0.
+#
+# ── WHAT CHANGED IN THE UI OVERHAUL ──────────────────────────
+# The three animation-speed rows (match / item reveal / pack opening) became
+# ONE "Animation speed" row at slow / medium / fast. Their three multiplier
+# tables still exist and still differ — see GameState.
+#
+# The per-ladder "skip" presets became "Reduce motion", which collapses all
+# three at once AND stops the chevron scroll and the selection-ring spin.
+#
+# "Match intro & outro" stays its own row. It is not the same control as reduce
+# motion: this one removes the screen, reduce motion keeps the screen and
+# collapses its movement.
+#
+# Message box colour is not here and should not come back: each NPC and
+# opponent carries its own `message_colour` and the box is themed per speaker.
+# ============================================================
 
-# ─── Constants ───────────────────────────────────────────────────────────────
-
-const THEME_SELECTED   := "res://UI_Themes/kenneyUI.tres"        # the option currently in effect
-const THEME_UNSELECTED := "res://UI_Themes/kenneyUI-blue.tres"   # the other, pickable options
-const THEME_SAVE_READY := "res://UI_Themes/kenneyUI-green.tres"  # save button with a pending change
+# ─── Layout ──────────────────────────────────────────────────────────────────
+# TWEAKABLE. All in px at 1920x1080; the block is centred in whatever height is
+# left between the header and the footer.
+const BLOCK_W      := 1500.0   # the rows' total width, centred horizontally
+const LABEL_W      := 330.0    # the label column
+const LABEL_GAP    := 30.0     # label column -> first control
+const ROW_GAP      := 18.0     # between rows
+const OPTION_GAP   := 10.0     # between the buttons inside one row
+const SLIDER_W     := 620.0
+const VALUE_W      := 90.0     # the "80%" readout, wide enough for "100%"
+const ROW_MIN_H    := 52.0     # so a slider row and a button row match
 
 # ─── State ───────────────────────────────────────────────────────────────────
 
-# What the player has clicked but not yet saved, and what is currently persisted. One entry per
-# section, keyed by section name.
 var pending : Dictionary = {}
 var saved   : Dictionary = {}
 
-# section name -> { option value : Button }. Built in _ready() so every section refreshes and saves
-# through the same code.
 var section_buttons : Dictionary = {}
-
-# section name -> { "slider": HSlider, "value_label": Label }. Kept apart from section_buttons
-# because a slider row has no set of buttons to re-theme.
 var section_sliders : Dictionary = {}
-
-# section name -> the GameState setter that applies and persists it. Adding a section means adding
-# one entry here, one to section_buttons (or section_sliders), and one to _current_values() —
-# nothing else.
 var section_setters : Dictionary = {}
 
-# ─── Node references ─────────────────────────────────────────────────────────
+var save_btn   : Button
+var cancel_btn : Button
 
-@onready var audio_player = AudioStreamPlayer.new()
+@onready var audio_player := AudioStreamPlayer.new()
 
-@onready var confusion_base_btn   : Button = $"CONFUSION/confusion_base_button"
-@onready var confusion_fairer_btn : Button = $"CONFUSION/confusion_allowretreat_button"
-@onready var confusion_ex_btn     : Button = $"CONFUSION/confusion_ex_button"
+# Keep this in step with the `step` set on both HSliders below. Without the snap
+# an off-step saved value (only reachable by hand-editing the save) would be
+# nudged onto the nearest notch the moment the slider loaded it, and the screen
+# would open already claiming an unsaved change.
+const VOLUME_STEP := 5
 
-@onready var burn_base_btn : Button = $"BURN/burn_base_button"
-@onready var burn_ex_btn   : Button = $"BURN/burn_ex_button"
-
-@onready var walk_very_slow_btn : Button = $"WALKING/walking_very_slow_button"
-@onready var walk_slow_btn      : Button = $"WALKING/walking_slow_button"
-@onready var walk_normal_btn    : Button = $"WALKING/walking_normal_button"
-@onready var walk_fast_btn      : Button = $"WALKING/walking_fast_button"
-
-@onready var very_slow_btn : Button = $"SPEED/very_slow_button"
-@onready var slow_btn      : Button = $"SPEED/slow_button"
-@onready var normal_btn    : Button = $"SPEED/normal_button"
-@onready var fast_btn      : Button = $"SPEED/fast_button"
-@onready var skip_btn      : Button = $"SPEED/skip_button"
-
-@onready var item_very_slow_btn : Button = $"ITEM/item_very_slow_button"
-@onready var item_slow_btn      : Button = $"ITEM/item_slow_button"
-@onready var item_normal_btn    : Button = $"ITEM/item_normal_button"
-@onready var item_fast_btn      : Button = $"ITEM/item_fast_button"
-
-# ISSUE #94: the pack row is deliberately one label out of step with the Match/Item rows above it —
-# every preset was renamed one notch faster (the old "very slow" is this row's "slow", and so on), so
-# there is no pack_very_slow_button and there IS a pack_very_fast_button. The multipliers behind them
-# did not move; see PACK_SPEED_PRESETS in Game_State_Script.gd.
-@onready var pack_slow_btn      : Button = $"PACK/pack_slow_button"
-@onready var pack_normal_btn    : Button = $"PACK/pack_normal_button"
-@onready var pack_fast_btn      : Button = $"PACK/pack_fast_button"
-@onready var pack_very_fast_btn : Button = $"PACK/pack_very_fast_button"
-@onready var pack_skip_btn      : Button = $"PACK/pack_skip_button"
-
-@onready var intro_play_btn : Button = $"INTROOUTRO/intro_play_button"
-@onready var intro_skip_btn : Button = $"INTROOUTRO/intro_skip_button"
-
-@onready var music_slider     : HSlider = $"VOLUME/music_volume_slider"
-@onready var music_value_lbl  : Label   = $"VOLUME/music_volume_value"
-@onready var sfx_slider       : HSlider = $"VOLUME/sfx_volume_slider"
-@onready var sfx_value_lbl    : Label   = $"VOLUME/sfx_volume_value"
-
-@onready var save_btn   : Button = $"MAIN/options_save_button"
-@onready var cancel_btn : Button = $"MAIN/options_cancel_button"
 
 # ─── Lifecycle ───────────────────────────────────────────────────────────────
 
@@ -120,64 +98,20 @@ func _ready() -> void:
 		audio_stream.loop = true
 		audio_player.play()
 
-	section_buttons = {
-		"confusion": {
-			"base_set_confusion_rules":   confusion_base_btn,
-			"fairer_confusion_rules":     confusion_fairer_btn,
-			"modern_era_confusion_rules": confusion_ex_btn,
-		},
-		"burn": {
-			"base_set_burn_rules":   burn_base_btn,
-			"modern_era_burn_rules": burn_ex_btn,
-		},
-		"walking": {
-			"very_slow": walk_very_slow_btn,
-			"slow":      walk_slow_btn,
-			"normal":    walk_normal_btn,
-			"fast":      walk_fast_btn,
-		},
-		"speed": {
-			"very_slow": very_slow_btn,
-			"slow":      slow_btn,
-			"normal":    normal_btn,
-			"fast":      fast_btn,
-			"skip":      skip_btn,
-		},
-		"item": {
-			"very_slow": item_very_slow_btn,
-			"slow":      item_slow_btn,
-			"normal":    item_normal_btn,
-			"fast":      item_fast_btn,
-		},
-		"pack": {
-			"slow":      pack_slow_btn,
-			"normal":    pack_normal_btn,
-			"fast":      pack_fast_btn,
-			"very_fast": pack_very_fast_btn,
-			"skip":      pack_skip_btn,
-		},
-		"intro_outro": {
-			"play": intro_play_btn,
-			"skip": intro_skip_btn,
-		},
-	}
+	theme = load("res://UI_Themes/ui/ui_base.tres")
 
-	section_sliders = {
-		"music_volume": { "slider": music_slider, "value_label": music_value_lbl },
-		"sfx_volume":   { "slider": sfx_slider,   "value_label": sfx_value_lbl },
-	}
+	_build_chrome()
+	_build_rows()
 
-	# GameState owns both the live values and the writes to Player_Current_Data.json. The two volume
-	# entries wrap their setter because this screen counts in whole percents while GameState (and the
-	# audio bus behind it) works in 0.0 - 1.0.
 	section_setters = {
 		"confusion":    GameState.set_confusion_rule,
 		"burn":         GameState.set_burn_rule,
 		"walking":      GameState.set_walking_speed,
-		"speed":        GameState.set_animation_speed,
-		"item":         GameState.set_item_speed,
-		"pack":         GameState.set_pack_speed,
+		"animation":    GameState.set_animation_speed,
+		"reduce_motion": GameState.set_reduce_motion,
 		"intro_outro":  GameState.set_intro_outro,
+		# The two volume entries wrap their setter because this screen counts in whole percents
+		# while GameState (and the audio bus behind it) works in 0.0 - 1.0.
 		"music_volume": func(percent: int) -> void: GameState.set_music_volume(percent / 100.0),
 		"sfx_volume":   func(percent: int) -> void: GameState.set_sfx_volume(percent / 100.0),
 	}
@@ -197,49 +131,173 @@ func _ready() -> void:
 		slider.drag_ended.connect(_on_slider_drag_ended.bind(section))
 		_refresh_slider(section)
 
-	save_btn.pressed.connect(_on_save_pressed)
-	cancel_btn.pressed.connect(_on_cancel_pressed)
 	_refresh_save_button()
 
 
-# ISSUE #138: a Button's real width is max(offset width, minimum size), so text that does not fit
-# grows the Control past its right offset. "fairer retreat rules" needs ~306px (text + Kenney
-# stylebox margin), which is how it ended up sliding under "ex era rules" in a 268px slot. Every
-# button on the confusion/burn line is 320px wide now — check the text fits before narrowing them.
-#
-# ISSUE #150: Confusion+Burn share one line and Music+SFX share another, which freed two rows;
-# that space went into the gaps, so every row has 44px of clear air below it instead of ~18.
-# The content has to stay between the top border (ends y=107) and the bottom border (starts y=977).
-# Row tops are 116 / 249 / 382 / 515 / 648 / 781 with the volume line at 914..956.
+# ─── Chrome ──────────────────────────────────────────────────────────────────
 
-# The persisted value of every section, read straight off GameState.
+func _build_chrome() -> void:
+	UIKit.add_field(self)
+
+	var header := UIKit.add_header(self)
+	var title := Label.new()
+	UIKit.set_label(title, "title", "Options", "chrome_fg")
+	header.centre.add_child(title)
+
+	var footer := UIKit.add_footer(self)
+	cancel_btn = UIKit.make_footer_button("Cancel", "secondary")
+	cancel_btn.pressed.connect(_on_cancel_pressed)
+	footer.centre.add_child(cancel_btn)
+
+	save_btn = UIKit.make_footer_button("Save", "primary")
+	save_btn.pressed.connect(_on_save_pressed)
+	footer.centre.add_child(save_btn)
+
+
+# ─── Rows ────────────────────────────────────────────────────────────────────
+
+## Every row on the screen, in order. The option VALUES are the keys GameState
+## persists; the labels beside them are display text only.
+func _build_rows() -> void:
+	var header_h: float = UITheme.m("header_h")
+	var footer_h: float = UITheme.m("footer_slim_h")
+
+	var body := VBoxContainer.new()
+	body.add_theme_constant_override("separation", int(ROW_GAP))
+	# Centred in the space between the bars, so the block stays balanced however
+	# many rows there are.
+	body.set_anchors_preset(Control.PRESET_CENTER)
+	body.anchor_left = 0.5
+	body.anchor_right = 0.5
+	body.anchor_top = 0.0
+	body.anchor_bottom = 1.0
+	body.offset_left = -BLOCK_W * 0.5
+	body.offset_right = BLOCK_W * 0.5
+	body.offset_top = header_h
+	body.offset_bottom = -footer_h
+	body.alignment = BoxContainer.ALIGNMENT_CENTER
+	add_child(body)
+
+	_add_button_row(body, "confusion", "Confusion rules", [
+		["base_set_confusion_rules",   "Base set"],
+		["fairer_confusion_rules",     "Fairer retreat"],
+		["modern_era_confusion_rules", "EX era"],
+	])
+	_add_button_row(body, "burn", "Burn rules", [
+		["base_set_burn_rules",   "Base set"],
+		["modern_era_burn_rules", "EX era"],
+	])
+	_add_button_row(body, "walking", "Walking speed", [
+		["very_slow", "Very slow"],
+		["slow",      "Slow"],
+		["normal",    "Normal"],
+		["fast",      "Fast"],
+	])
+	_add_button_row(body, "animation", "Animation speed", [
+		["slow",   "Slow"],
+		["medium", "Medium"],
+		["fast",   "Fast"],
+	])
+	# The stored value stays "where_possible" — it is the key GameState persists and
+	# the one UITheme.motion_reduced() compares against. Only the label is "On".
+	_add_button_row(body, "reduce_motion", "Reduce motion", [
+		["off",            "Off"],
+		["where_possible", "On"],
+	])
+	_add_button_row(body, "intro_outro", "Match intro & outro", [
+		["play", "Play"],
+		["skip", "Skip"],
+	])
+	_add_slider_row(body, "music_volume", "Music")
+	_add_slider_row(body, "sfx_volume", "Sound effects")
+
+
+## One label + a row of mutually exclusive option buttons.
+func _add_button_row(parent: VBoxContainer, section: String, label_text: String,
+		options: Array) -> void:
+	var row := _new_row(parent, label_text)
+
+	var buttons: Dictionary = {}
+	for entry in options:
+		var value: String = entry[0]
+		var btn := Button.new()
+		btn.text = entry[1]
+		UIKit.style_button(btn, "secondary")   # _refresh_section repaints the chosen one
+		row.add_child(btn)
+		buttons[value] = btn
+	section_buttons[section] = buttons
+
+
+## One label + a slider and its percentage readout.
+func _add_slider_row(parent: VBoxContainer, section: String, label_text: String) -> void:
+	var row := _new_row(parent, label_text)
+
+	var slider := HSlider.new()
+	slider.custom_minimum_size = Vector2(SLIDER_W, 0)
+	slider.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	slider.min_value = 0
+	slider.max_value = 100
+	slider.step = VOLUME_STEP
+	row.add_child(slider)
+
+	var value_label := Label.new()
+	# Mono, so the readout does not jitter as the digits change width while dragging.
+	UIKit.style_label(value_label, "hp", "field_mute")
+	value_label.custom_minimum_size = Vector2(VALUE_W, 0)
+	value_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	row.add_child(value_label)
+
+	section_sliders[section] = { "slider": slider, "value_label": value_label }
+
+
+## The label column plus an HBox for whatever controls the row holds.
+func _new_row(parent: VBoxContainer, label_text: String) -> HBoxContainer:
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", int(OPTION_GAP))
+	row.custom_minimum_size.y = ROW_MIN_H
+	row.alignment = BoxContainer.ALIGNMENT_BEGIN
+	parent.add_child(row)
+
+	var label := Label.new()
+	UIKit.set_label(label, "small_label", label_text, "field_mute")
+	label.custom_minimum_size = Vector2(LABEL_W, 0)
+	label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	row.add_child(label)
+
+	# A spacer rather than padding on the label, so the label can be left-aligned
+	# and the controls still start on the same x in every row.
+	var gap := Control.new()
+	gap.custom_minimum_size = Vector2(LABEL_GAP, 0)
+	row.add_child(gap)
+
+	return row
+
+
+# ─── Values ──────────────────────────────────────────────────────────────────
+
+## The persisted value of every section, read straight off GameState.
 func _current_values() -> Dictionary:
 	return {
-		"confusion":    GameState.confusion_rule_setting,
-		"burn":         GameState.burn_rule_setting,
-		"walking":      GameState.walking_speed_setting,
-		"speed":        GameState.animation_speed_setting,
-		"item":         GameState.item_speed_setting,
-		"pack":         GameState.pack_speed_setting,
-		"intro_outro":  GameState.intro_outro_setting,
-		"music_volume": _to_percent(GameState.music_volume_setting),
-		"sfx_volume":   _to_percent(GameState.sfx_volume_setting),
+		"confusion":     GameState.confusion_rule_setting,
+		"burn":          GameState.burn_rule_setting,
+		"walking":       GameState.walking_speed_setting,
+		"animation":     GameState.animation_speed_setting,
+		"reduce_motion": GameState.reduce_motion_setting,
+		"intro_outro":   GameState.intro_outro_setting,
+		"music_volume":  _to_percent(GameState.music_volume_setting),
+		"sfx_volume":    _to_percent(GameState.sfx_volume_setting),
 	}
 
-
-# GameState's 0.0 - 1.0 level as a whole percent, snapped to the notch size the sliders use. Without
-# the snap an off-step saved value (only reachable by hand-editing the save) would be nudged onto the
-# nearest notch the moment the slider loaded it, and the screen would open already claiming a change.
-# Keep this in step with `step` on both HSliders in Options_Scene.tscn.
-const VOLUME_STEP := 5
 
 func _to_percent(linear: float) -> int:
 	return int(round(linear * 100.0 / VOLUME_STEP)) * VOLUME_STEP
 
 
 func _input(event: InputEvent) -> void:
-	if event is InputEventKey and event.pressed and event.keycode == KEY_ESCAPE:
+	if UIInput.is_cancel(event):
+		get_viewport().set_input_as_handled()
 		_leave()
+
 
 # ─── Option selection ────────────────────────────────────────────────────────
 
@@ -251,13 +309,27 @@ func _on_option_pressed(section: String, option: String) -> void:
 	_refresh_section(section)
 	_refresh_save_button()
 
+	# Reduce motion is the one row whose effect is visible on this very screen —
+	# it stops the chevrons. Apply it live so the player can see what they picked
+	# before committing, then let Cancel put it back the way the sliders do.
+	if section == "reduce_motion":
+		GameState.set_reduce_motion(option, false)
+		_refresh_chevrons()
 
-# Highlights whichever button in a section matches the pending selection.
+
+## Highlights whichever button in a section matches the pending selection.
 func _refresh_section(section: String) -> void:
-	var selected   := load(THEME_SELECTED)
-	var unselected := load(THEME_UNSELECTED)
 	for option in section_buttons[section]:
-		section_buttons[section][option].theme = selected if pending[section] == option else unselected
+		var btn: Button = section_buttons[section][option]
+		UIKit.style_button(btn, "selected" if pending[section] == option else "secondary")
+
+
+## Pushes the current reduce-motion state into every scrolling/spinning node on
+## screen. UIKit's ShaderRects listen for UITheme.theme_changed, so emitting it
+## is enough — nothing here needs to know where the chevrons live.
+func _refresh_chevrons() -> void:
+	UITheme.theme_changed.emit()
+
 
 # ─── Volume sliders ──────────────────────────────────────────────────────────
 
@@ -293,14 +365,18 @@ func _refresh_slider(section: String) -> void:
 	section_sliders[section]["value_label"].text = "%d%%" % percent
 
 
-# Puts the audio buses back to the last saved levels. Called when leaving without saving — without
-# this, a cancelled drag would keep its volume until the next boot re-read the save file.
-func _revert_live_volume() -> void:
+# Puts the audio buses AND reduce motion back to the last saved state. Called when leaving without
+# saving — without this, a cancelled drag would keep its volume until the next boot re-read the save
+# file, and a cancelled reduce-motion toggle would leave the chevrons stopped.
+func _revert_live_changes() -> void:
 	for section in section_sliders:
 		_apply_live_volume(section, saved[section])
+	if GameState.reduce_motion_setting != saved["reduce_motion"]:
+		GameState.set_reduce_motion(saved["reduce_motion"], false)
+		_refresh_chevrons()
 
 
-# The save button only lights up (green, enabled) while there is an unsaved change in any section.
+# The save button only lights up while there is an unsaved change in any section.
 func _refresh_save_button() -> void:
 	var has_change := false
 	for section in pending:
@@ -308,7 +384,8 @@ func _refresh_save_button() -> void:
 			has_change = true
 			break
 	save_btn.disabled = not has_change
-	save_btn.theme = load(THEME_SAVE_READY) if has_change else load(THEME_SELECTED)
+	UIKit.style_button(save_btn, "good" if has_change else "primary")
+
 
 # ─── Save / Cancel ───────────────────────────────────────────────────────────
 
@@ -332,6 +409,6 @@ func _on_cancel_pressed() -> void:
 
 
 func _leave() -> void:
-	_revert_live_volume()
+	_revert_live_changes()
 	if GameState.close_sub_menu(): return   # ISSUE #52: map is still loaded behind us — just pop this overlay
 	SceneCache.change_scene("res://Scenes/Main_Menu_Scenes/Main_Menu_Scene.tscn")
