@@ -1,0 +1,54 @@
+[
+	{
+		"count": 8,
+		"id": "base1-100"
+	},
+	{
+		"count": 8,
+		"id": "base1-97"
+	},
+	{
+		"count": 7,
+		"id": "base1-98"
+	},
+	{
+		"count": 4,
+		"id": "gym1-15"
+	},
+	{
+		"count": 4,
+		"id": "gym1-35"
+	},
+	{
+		"count": 4,
+		"id": "gym1-68"
+	},
+	{
+		"count": 4,
+		"id": "gym1-76"
+	},
+	{
+		"count": 3,
+		"id": "gym1-82"
+	},
+	{
+		"count": 4,
+		"id": "gym2-103"
+	},
+	{
+		"count": 4,
+		"id": "gym2-116"
+	},
+	{
+		"count": 2,
+		"id": "gym2-53"
+	},
+	{
+		"count": 4,
+		"id": "gym2-69"
+	},
+	{
+		"count": 4,
+		"id": "gym2-86"
+	}
+]

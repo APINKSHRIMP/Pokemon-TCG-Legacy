@@ -178,7 +178,7 @@
       ]
     },
     "Clown Glenn": {
-      "at": [491, 542],
+      "at": [584, 477],
       "move": {
         "distance": 100,
         "pattern": "patrol_square",
