@@ -26,7 +26,7 @@
         "repeat": "Fancy trying your luck again? Remember it's $50 per entry and you just need to flip 5 heads in a row to win a Golden Pokeball coin."
       },
       "move": "idle_right",
-      "times": "M,A,E,N",
+      "times": "M,A,E",
       "at": [1611, 1319]
     },
     "Card Buyer": {
@@ -35,7 +35,7 @@
         "repeat": "You looking to sell off your old bulk that you don't need? I'll take it all off your hands for a good price. You can sell everything all at once or just sell certain rarities at a time if you want."
       },
       "move": "idle_left",
-      "times": "M,A,E,N",
+      "times": "M,A,E",
       "at": [1892, 1319]
     },
     "Sleeve Seller": {
@@ -44,7 +44,7 @@
         "repeat": "Hello! Are you interested in some limited edition card sleeves?"
       },
       "move": "idle_left",
-      "times": "M,A,E,N",
+      "times": "M,A,E",
       "at": [1893, 1511]
     },
     "Weighed Pack Seller": {
@@ -53,7 +53,7 @@
         "repeat": "Are you looking for some common and uncommon cards? Remember none of these packs will have rare or holo rare cards, but they're heavily discounted."
       },
       "move": "idle_right",
-      "times": "M,A,E,N",
+      "times": "M,A,E",
       "at": [1612, 1511]
     }
   },

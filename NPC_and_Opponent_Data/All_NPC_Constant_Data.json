@@ -1696,6 +1696,24 @@
       "cash_reward": "110",
       "deck": "Creepy Crawlies",
       "message_colour": "light_blue"
+    },
+    "Gym Challenge Fan Archie": {
+      "sprite": "Youngster",
+      "message_colour": "light_blue",
+      "deck": "Gym Basics",
+      "music": "normal_battle (PTCG)",
+      "prize_cards": 2,
+      "cash_reward": "150",
+      "coin_reward": "Chansey Silver"
+    },
+    "Gym Challenger Rory": {
+      "sprite": "Youngster2",
+      "message_colour": "yellow",
+      "deck": "Damage And Recover",
+      "music": "Laid Back Battle (Pinball Blue Field)",
+      "prize_cards": 2,
+      "cash_reward": "150",
+      "coin_reward": "Jigglypuff Pink 2"
     }
   }
 }

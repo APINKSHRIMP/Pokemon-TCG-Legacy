@@ -22,8 +22,7 @@
   "npcs": {
     "Gym Receptionist 1": {
       "at": [298, 161],
-      "days": "8",
-      "times": "M,A",
+      "times": "M,A,E,N",
       "move": "idle_left",
       "says": {
         "meet": "Welcome! Are you here to enter the Gym Hero Challenge? The entrance fee is $500 which must be paid in full up front and the challenge begins tomorrow. Winning will grant you a large cash prize, free travel on any Bakushin transport service and a unique coin! Are you entering?",
@@ -32,8 +31,7 @@
     },
     "Gym Receptionist 2": {
       "at": [331, 198],
-      "days": "8",
-      "times": "M,A",
+      "times": "M,A,E,N",
       "move": "idle_down",
       "says": {
         "meet": "Each Gym Hero Challenge match is in best of 3 format. You must win at least 2 matches to progress to the next game. There is also a banned trainer list. You cannot use any of the following cards: Lass, Super Energy Removal, Energy Removal, Rocket's Sneak Attack, Imposter Oak's Revenge, The Rocket's Trap, No Removal Gym or Chaos Gym",
@@ -42,8 +40,7 @@
     },
     "Gym Receptionist 3": {
       "at": [414, 161],
-      "days": "8",
-      "times": "M,A",
+      "times": "M,A,E,N",
       "move": "idle_right",
       "says": {
         "meet": "Welcome! Sorry - If you're looking to register to enter the challenge, please speak with my colleague on the other side of the desk. She will be able to take your entrance fee and register you into the challenge. This side is spectator entrance only.",
@@ -52,8 +49,7 @@
     },
     "Gym Receptionist 4": {
       "at": [387, 198],
-      "days": "8",
-      "times": "M,A",
+      "times": "M,A,E,N",
       "move": "idle_down",
       "says": {
         "meet": "Each Gym Hero Challenge match is in best of 3 format. You must win at least 2 matches to progress to the next game. There is also a banned trainer list. You cannot use any of the following cards: Lass, Super Energy Removal, Energy Removal, Rocket's Sneak Attack, Imposter Oak's Revenge, The Rocket's Trap, No Removal Gym or Chaos Gym",
@@ -62,8 +58,7 @@
     },
     "Gym Security 1": {
       "at": [220, 40],
-      "days": "8",
-      "times": "M,A",
+      "times": "M,A,E,N",
       "move": "idle_down",
       "says": {
         "meet": "The Gym Hero Challenge does not start until tomorrow morning. We are still making final preperations but you can register for the challenge at the reception desk to your right.",
@@ -72,8 +67,7 @@
     },
     "Gym Security 2": {
       "at": [492, 40],
-      "days": "8",
-      "times": "M,A",
+      "times": "M,A,E,N",
       "move": "idle_down",
       "says": {
         "meet": "The Gym Hero Challenge doesn't start until tomorrow morning so no spectators are allowed in until then. Please purchase a spectator entry ticket at the desk, or you can register to enter into the competition yourself.",
@@ -82,8 +76,7 @@
     },
     "Gym Shopkeeper": {
       "at": [80, 355],
-      "days": "8",
-      "times": "M,A",
+      "times": "M,A,E,N",
       "move": "idle_right",
       "says": {
         "meet": "Welcome! The challenge start tomorrow but you can purchase your gym hero and gym challenge packs here today!",
@@ -91,5 +84,43 @@
       }
     }
   },
-  "opponents": {}
+  "opponents": {
+    "Gym Challenge Fan Archie": {
+      "says": {
+        "meet": "I just bought a few packs of the new Gym cards and I'm trying to make a deck using just those cards. If you have Gym cards too we can battle using just them.",
+        "repeat": "I'm still trying to figure out these Gym cards.",
+        "first_win": "You've got better Gym cards than I do!",
+        "rematch_win": "I'm going to buy more packs.",
+        "loss": "Ha! I've got it all figured out."
+      },
+      "sleeve": "Ditto",
+      "sleeve_reward": "Ditto",
+      "move": "idle_down",
+      "at": [532, 237],
+      "when": [
+        {
+          "days": "8-9",
+          "times": "M,A,E"
+        },
+        {
+          "days": "10",
+          "times": "A,E"
+        }
+      ]
+    },
+    "Gym Challenger Rory": {
+      "says": {
+        "meet": "I'm going to take the Gym Challenge but I was going to try to use just these new cards.",
+        "repeat": "I won't take the Gym Challenge until I win!",
+        "first_win": "Maybe I'm not good enough to take the challenge...",
+        "rematch_win": "I'm going to take the challenge anyway!",
+        "loss": "Yes! I'm registering right now!"
+      },
+      "sleeve": "Stall_Ice_Cream",
+      "sleeve_reward": "Stall_Ice_Cream",
+      "move": "idle_up",
+      "times": "M,A,E,N",
+      "at": [627, 409]
+    }
+  }
 }
