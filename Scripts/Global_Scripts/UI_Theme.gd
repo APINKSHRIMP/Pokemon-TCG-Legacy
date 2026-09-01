@@ -222,7 +222,12 @@ const TYPE := {
 	"attack_name":   { "size": 16.0,  "face": FONT_UI_SEMIBOLD, "track": 0.03, "upper": false },
 	"attack_damage": { "size": 19.0,  "face": FONT_MONO_MEDIUM, "track": 0.0,  "upper": false },
 	"hp":            { "size": 17.0,  "face": FONT_MONO_MEDIUM, "track": 0.0,  "upper": false },
-	"small_label":   { "size": 13.5,  "face": FONT_MONO,        "track": 0.19, "upper": true  },
+	# ISSUE #232: the caption face was IBM Plex Mono REGULAR (weight 400) at 13.5px
+	# with heavy tracking - the thinnest type on the board, and every label the
+	# fix named ("YOU", "OPPONENT", "YOUR PRIZES", the turn label) is this role.
+	# MEDIUM (weight 500) at 14 is the "make it bold" half; font_at() is the
+	# native half.
+	"small_label":   { "size": 14.0,  "face": FONT_MONO_MEDIUM, "track": 0.19, "upper": true  },
 	"body":          { "size": 22.0,  "face": FONT_UI_MEDIUM,   "track": 0.0,  "upper": false },
 }
 
@@ -236,7 +241,11 @@ const METRICS := {
 	"footer_match_h":    162.0,   # the match board only — it holds the hand
 
 	# Radii
-	"corner_radius":     11.0,    # buttons and chips
+	"corner_radius":     11.0,    # chips, small styleboxes
+	# ISSUE #184: buttons are pills, not rounded rectangles. 22 against the 48px
+	# button height reads as a full pill without the 9-patch corners meeting.
+	# Build_UI_Themes derives its TEX_MARGIN from this — re-run it after a change.
+	"btn_radius":        22.0,
 	"panel_radius":      15.0,
 	"slot_radius":       7.0,
 
@@ -262,9 +271,10 @@ const METRICS := {
 	"dmg_active_w":      16.0,
 	"dmg_active_h":      27.0,
 	"dmg_active_gap":    4.0,
-	"dmg_bench_w":       9.6,
-	"dmg_bench_h":       16.0,
-	"dmg_bench_gap":     3.0,
+	# ISSUE #234: bench counters -10% across the board (blocks and gap alike).
+	"dmg_bench_w":       8.64,
+	"dmg_bench_h":       14.4,
+	"dmg_bench_gap":     2.7,
 	"dmg_bench_drop":    22.0,    # below the card, centred
 
 	# Layout
@@ -403,6 +413,30 @@ func font(role: String) -> Font:
 	return font_at(path)
 
 
+## ISSUE #232: HOW EVERY FACE IN THE GAME IS RASTERISED. TWEAKABLE.
+##
+## The complaint was that thin strokes at small sizes wash out. That is not a
+## colour problem and not a weight problem - it is what happens when a 1px stem
+## lands across a pixel boundary and the antialiaser splits it into two half-lit
+## pixels. Godot exposes the three knobs that decide it and defaults all three to
+## the blurry end:
+##
+##   hinting NORMAL + force_autohinter - snaps stems onto whole pixels, so a
+##     vertical stroke is one solid pixel instead of two grey ones.
+##   subpixel_positioning DISABLED     - glyph origins land on integers, so the
+##     same letter rasterises identically everywhere instead of being resampled
+##     at a fractional offset.
+##   antialiasing GRAY                 - plain greyscale. LCD subpixel is sharper
+##     still but fringes colour, which is worse on a coloured field.
+##
+## Applied once per face on first load, so it costs nothing per label. Together
+## with `small_label` moving up to the MEDIUM weight (see TYPE) this is the
+## "anything native" half of the fix, before reaching for bold everywhere.
+const FONT_HINTING      := TextServer.HINTING_NORMAL
+const FONT_AUTOHINT     := true
+const FONT_SUBPIXEL     := TextServer.SUBPIXEL_POSITIONING_DISABLED
+const FONT_ANTIALIASING := TextServer.FONT_ANTIALIASING_GRAY
+
 ## Any of the five faces by path, cached.
 func font_at(path: String) -> Font:
 	if _font_cache.has(path):
@@ -411,6 +445,15 @@ func font_at(path: String) -> Font:
 	if f == null:
 		push_error("UITheme: could not load font " + path)
 		return ThemeDB.fallback_font
+	# ISSUE #232: sharpen on the way in. FontFile is the only class carrying
+	# these; a fallback Font or a FontVariation is left alone.
+	if f is FontFile:
+		var ff := f as FontFile
+		ff.antialiasing = FONT_ANTIALIASING
+		ff.hinting = FONT_HINTING
+		ff.force_autohinter = FONT_AUTOHINT
+		ff.subpixel_positioning = FONT_SUBPIXEL
+		ff.multichannel_signed_distance_field = false
 	_font_cache[path] = f
 	return f
 

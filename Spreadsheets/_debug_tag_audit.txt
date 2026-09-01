@@ -1,9 +1,9 @@
 ==============================================================================
 ISSUE DEBUG-TAG AUDIT
 ==============================================================================
-issues with tags in code : 128
-issues with live prints  : 37
-rows in Game_Issues          : 152
+issues with tags in code : 225
+issues with live prints  : 49
+rows in Game_Issues          : 285
 
 ------------------------------------------------------------------------------
 [1] CLEANUP REQUIRED — resolved issues still printing (0 issues, 0 lines)
@@ -16,9 +16,9 @@ rows in Game_Issues          : 152
   none.
 
 ------------------------------------------------------------------------------
-[3] KEEP — prints on issues still open/untested (37)
+[3] KEEP — prints on issues still open/untested (49)
 ------------------------------------------------------------------------------
-  #2 (Untested Fix, 1), #7 (Untested Fix, 3), #11 (Untested Fix, 1), #12 (Untested Fix, 2), #13 (Untested Fix, 1), #21 (Untested Fix, 2), #22 (Untested Fix, 1), #23 (Untested Fix, 4), #24 (Untested Fix, 2), #25 (Untested Fix, 2), #32 (Untested Fix, 1), #35 (Untested Fix, 4), #36 (Untested Fix, 1), #38 (Untested Fix, 1), #43 (Untested Fix, 1), #44 (Untested Fix, 1), #45 (Untested Fix, 1), #49 (Untested Fix, 2), #59 (Untested Fix, 3), #60 (Untested Fix, 1), #61 (Untested Fix, 3), #63 (Untested Fix, 2), #69 (Untested Fix, 2), #71 (Untested Fix, 1), #74 (Untested Fix, 5), #75 (Untested Fix, 2), #82 (Untested Fix, 1), #86 (Untested Fix, 1), #90 (Untested Fix, 1), #91 (Untested Fix, 2), #95 (Untested Fix, 1), #102 (Untested Fix, 1), #103 (Untested Fix, 4), #151 (Untested Fix, 1), #152 (Untested Fix, 1), #154 (Untested Fix, 1), #155 (Untested Fix, 1)
+  #2 (Untested Fix, 1), #7 (Untested Fix, 3), #11 (Untested Fix, 1), #12 (Untested Fix, 2), #13 (Untested Fix, 1), #21 (Untested Fix, 2), #22 (Untested Fix, 1), #23 (Untested Fix, 4), #24 (Untested Fix, 2), #25 (Untested Fix, 2), #32 (Untested Fix, 1), #35 (Untested Fix, 4), #36 (Untested Fix, 1), #38 (Untested Fix, 1), #43 (Untested Fix, 1), #44 (Untested Fix, 1), #45 (Untested Fix, 1), #49 (Untested Fix, 2), #59 (Untested Fix, 3), #60 (Untested Fix, 1), #61 (Untested Fix, 3), #63 (Untested Fix, 2), #69 (Untested Fix, 2), #71 (Untested Fix, 1), #74 (Untested Fix, 5), #75 (Untested Fix, 2), #82 (Untested Fix, 1), #86 (Untested Fix, 1), #90 (Untested Fix, 1), #91 (Untested Fix, 2), #95 (Untested Fix, 1), #102 (Untested Fix, 1), #103 (Untested Fix, 4), #157 (Untested Fix, 1), #158 (Untested Fix, 2), #163 (Untested Fix, 1), #164 (Untested Fix, 1), #174 (Untested Fix, 1), #192 (Untested Fix, 1), #200 (Untested Fix, 2), #217 (Untested Fix, 2), #233 (Untested Fix, 2), #236 (Untested Fix, 1), #246 (Untested Fix, 1), #247 (Untested Fix, 1), #253 (Untested Fix, 2), #254 (Untested Fix, 1), #255 (Untested Fix, 1), #258 (Untested Fix, 1)
 
 NOTE: `# ISSUE #n ...` comments are permanent documentation and are NOT
       reported here. Only executable print/push_error lines are.

@@ -94,6 +94,10 @@ const HEADER_PILL_GAP   : float = 10.0
 const HEADER_FONT_SIZE  : int   = 24
 const HEADER_HINT_SIZE  : int   = 19
 const HEADER_RULE_H     : float = 2.0
+## ISSUE #161: the opponent sprite drawn inside their header pill. TWEAKABLE — the
+## height is fixed and the width follows the trimmed art's aspect.
+const HEADER_ICON_H     : float = 38.0
+const HEADER_ICON_GAP   : float = 10.0
 const HEADER_RULE_GAP   : float = 12.0
 # Pill labels are black like the message box's chips, but the dark themes would
 # swallow them — same threshold and same flip to white.
@@ -214,7 +218,10 @@ func configure(theme_key: String, opponent_label: String) -> void:
 # component family without borrowing its private layout code.
 func _build_header(header_w: float) -> void:
 	var x := 0.0
-	x = _add_header_pill(_opponent_label, 0, x)
+	# ISSUE #161: the opponent's overworld sprite sits in their name pill, exactly
+	# as it does on the message boxes outside a match. The sprite name is carried
+	# in GameState.last_battled_opponent_entry, written when the battle starts.
+	x = _add_header_pill(_opponent_label, 0, x, _opponent_sprite_name())
 	_add_header_pill("MATCH LOG", 1, x)
 
 	# Right-aligned hint. Grey rather than themed — it is instruction, not content.
@@ -244,11 +251,35 @@ func _build_header(header_w: float) -> void:
 
 # Draws one pill at `x` and returns the x the next pill should start at.
 # `ramp_index` walks MessageBoxTheme's chip ramp exactly like a real chip row.
-func _add_header_pill(text: String, ramp_index: int, x: float) -> float:
+## ISSUE #161: the overworld sprite-sheet name for the opponent being fought, or
+## "" when there is none (the T-key TEST match leaves it blank on purpose).
+func _opponent_sprite_name() -> String:
+	var entry = GameState.last_battled_opponent_entry
+	if not (entry is Dictionary):
+		return ""
+	return String(entry.get("sprite", ""))
+
+
+func _add_header_pill(text: String, ramp_index: int, x: float,
+		sprite_name: String = "") -> float:
 	var col := MessageBoxTheme.chip_color(_theme_key, ramp_index)
 	var text_w := _font.get_string_size(
 		text, HORIZONTAL_ALIGNMENT_LEFT, -1, HEADER_FONT_SIZE).x
-	var pill_w: float = text_w + HEADER_PILL_PAD_X * 2.0
+
+	# ISSUE #161: DynamicMessageBox.sprite_icon() crops the idle-down frame of the
+	# 4x4 sheet to its opaque pixels and caches it, so this is the same picture the
+	# overworld chip row draws and costs nothing after the first call.
+	var icon_tex: Texture2D = null
+	var icon_size := Vector2.ZERO
+	if sprite_name != "":
+		icon_tex = DynamicMessageBox.sprite_icon(sprite_name)
+		if icon_tex != null:
+			var t := icon_tex.get_size()
+			var fit: float = HEADER_ICON_H / maxf(t.y, 1.0)
+			icon_size = Vector2(t.x * fit, t.y * fit)
+
+	var icon_slot: float = (icon_size.x + HEADER_ICON_GAP) if icon_tex != null else 0.0
+	var pill_w: float = text_w + icon_slot + HEADER_PILL_PAD_X * 2.0
 
 	var pill := _make_shader_rect()
 	pill.position = Vector2(x, 0.0)
@@ -262,14 +293,33 @@ func _add_header_pill(text: String, ramp_index: int, x: float) -> float:
 	lbl.add_theme_font_override("font", _font)
 	lbl.add_theme_font_size_override("font_size", HEADER_FONT_SIZE)
 	lbl.add_theme_color_override("font_color", _pill_text_color(col))
-	lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	lbl.vertical_alignment   = VERTICAL_ALIGNMENT_CENTER
 	lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	lbl.offset_left   = x
+	# ISSUE #161: with a sprite in the pill the label is left-aligned after it;
+	# without one it keeps the centred look every other pill has.
+	if icon_tex != null:
+		lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
+		lbl.offset_left = x + HEADER_PILL_PAD_X + icon_slot
+	else:
+		lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		lbl.offset_left = x
 	lbl.offset_right  = x + pill_w
 	lbl.offset_top    = 0.0
 	lbl.offset_bottom = HEADER_PILL_H
 	_header.add_child(lbl)
+
+	if icon_tex != null:
+		var icon := TextureRect.new()
+		icon.texture        = icon_tex
+		icon.expand_mode    = TextureRect.EXPAND_IGNORE_SIZE
+		icon.stretch_mode   = TextureRect.STRETCH_SCALE
+		# NEAREST: these are pixel-art sheets and bilinear turns them to mush.
+		icon.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+		icon.mouse_filter   = Control.MOUSE_FILTER_IGNORE
+		icon.size     = icon_size
+		icon.position = Vector2(x + HEADER_PILL_PAD_X,
+			(HEADER_PILL_H - icon_size.y) * 0.5)
+		_header.add_child(icon)
 
 	return x + pill_w + HEADER_PILL_GAP
 

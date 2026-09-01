@@ -82,8 +82,6 @@ static func _apply(code: String) -> void:
 			# builder's picker is built from, so this can never grant a style the picker won't show.
 			var styles := GameState.get_energy_style_universe()
 			var new_styles := GameState.add_energy_styles_to_collection(styles)
-			print("ISSUE #155 FIX ACTIVE: CHT.All_Energy_Styles granted ", new_styles,
-				" new styles of ", styles.size(), " total")
 		"CHT.All_Sleeves":
 			# include_defaults = true: the sleeve grid shows the "1_Default*" backs, so "all" owns them.
 			var sleeves := GameState.get_sleeve_universe(true).keys()

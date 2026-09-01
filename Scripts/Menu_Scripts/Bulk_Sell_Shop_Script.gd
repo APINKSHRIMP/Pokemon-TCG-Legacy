@@ -106,11 +106,21 @@ const FAN_CARDS := [
 ## COLUMNS is derived, not guessed: 18*91 + 17*2 separation = 1672, just inside the
 ## 1676-wide scroller. Change one and the other has to follow.
 const LIST_CARD_SIZE   := Vector2(91, 126)
-const LIST_COLUMNS     := 18
+## ISSUE #209: 18 -> 17. At 18 the grid was 1672px wide from x=5, so its last
+## column ended at 1681 and ran under the sale panel at PANEL_X 1652 — which only
+## became visible once that panel grew to 248px to fix its text padding. 17
+## columns are 1547 + 32 separation = 1579, ending at 1584, a clear 68px short of
+## the panel. Derived rather than guessed: LIST_SCROLL_SIZE follows it below.
+const LIST_COLUMNS     := 17
 const LIST_H_SEP       := 2
 const LIST_V_SEP       := 2
-const LIST_SCROLL_POS  := Vector2(5, 110)
-const LIST_SCROLL_SIZE := Vector2(1676, 969)
+## ISSUE #194: the confirm grid runs the full band BETWEEN the two chrome bars,
+## exactly like the deck builder's. It used to start 18px late (a black strip above
+## the first row) and run to y=1079, which hid the bottom rows behind the footer.
+const LIST_SCROLL_POS  := Vector2(5, UIKit.CONTENT_TOP)
+const LIST_SCROLL_SIZE := Vector2(
+	LIST_CARD_SIZE.x * float(LIST_COLUMNS) + float(LIST_H_SEP) * float(LIST_COLUMNS - 1) + 5.0,
+	UIKit.CONTENT_H)
 ## The side list stops higher than the deck viewer's 990 because this screen stacks TWO
 ## buttons under it (sell + cancel) where the viewer has only Close.
 const LIST_SIDE_BOTTOM := 930.0
@@ -123,10 +133,14 @@ const LIST_BUILD_BATCH := 54
 
 # ── Confirm screen's sale panel ──────────────────────────────────────────────
 # TWEAKABLE. Sits to the right of the card grid, above the two footer buttons.
-const PANEL_X       := 1700.0
+## ISSUE #209: WIDER, AND WITH REAL PADDING. At 200px every row's text ran into
+## the panel border on both sides, because a PanelContainer has no padding of its
+## own and the rows were parented straight into it. The inset is a MarginContainer
+## now (see _build_sale_panel) and the box grew to pay for it.
+const PANEL_X       := 1652.0
 const PANEL_Y       := 140.0
-const PANEL_W       := 200.0
-const PANEL_PAD     := 16.0
+const PANEL_W       := 248.0
+const PANEL_PAD     := 18.0
 const PANEL_ROW_GAP := 14
 
 # ── Sale animation ───────────────────────────────────────────────────────────
@@ -152,15 +166,27 @@ const CARD_LABEL_RISE_PX   := 70.0
 const CARD_LABEL_RISE_TIME := 0.85
 const CARD_LABEL_FADE_TIME := 0.7
 
-const TOTAL_LABEL_FONT      := 96
-const TOTAL_LABEL_OUTLINE   := 10
-const TOTAL_LABEL_SIZE      := Vector2(700, 150)
-const TOTAL_LABEL_RISE_PX   := 120.0
+## ISSUE #208: HALF SIZE, AND IT FALLS FROM THE WALLET CHIP.
+## The cash readout used to live in the bottom right of the screen, so the payout
+## rose out of it. The new UI puts the balance in a pill in the top-right corner of
+## the header, so the figure now drops DOWNWARD out of that pill instead — a
+## negative rise in _spawn_float_label — and 96px was a shout next to a 54px pill.
+## ISSUE #208 (retest): -20% again (48 -> 38).
+const TOTAL_LABEL_FONT      := 38
+const TOTAL_LABEL_OUTLINE   := 6
+const TOTAL_LABEL_SIZE      := Vector2(700, 90)
+const TOTAL_LABEL_RISE_PX   := -120.0
 const TOTAL_LABEL_RISE_TIME := 2.0
 const TOTAL_LABEL_FADE_TIME := 1.8
-## Where the payout label starts, as the centre of its box. Sits over the money readout
-## in the bottom right so the figure and the number it changes are in the same place.
-const TOTAL_LABEL_ANCHOR := Vector2(1520, 940)
+## ISSUE #208 (retest): the anchor is MEASURED off the wallet chip at spawn time
+## rather than guessed. 1560 was ~200px left of the pill, because the pill's width
+## depends on how many digits the balance has — there is no fixed x to hardcode.
+## _wallet_drop_anchor() reads the chip's live rect; this is only the fallback for
+## the frame before the chip exists.
+const TOTAL_LABEL_ANCHOR := Vector2(1750, 132)
+## Clearance between the bottom of the wallet pill and the top of the falling
+## label, so the two never overlap on the first frame. TWEAKABLE.
+const TOTAL_LABEL_PILL_GAP := 10.0
 
 
 # ─── State ───────────────────────────────────────────────────────────────────
@@ -299,14 +325,26 @@ func _build_chrome() -> void:
 	_place_footer_button(list_cancel_btn, "secondary", -1)
 	_place_footer_button(list_sell_btn, "primary", 1)
 
-	# The three tier buttons and the grand total sit IN the content, not on the
+	# The four tier buttons and the grand total sit IN the content, not on the
 	# footer, and take their theme from the scene rather than from this script —
 	# so they need restyling by hand or they stay Kenney blue.
-	for b in [sell_common_btn, sell_uncommon_btn, sell_rare_btn]:
+	#
+	# ISSUE #255: ALL FOUR ARE PRIMARY. Three of them were "secondary" (the
+	# transparent skin) and only "sell all spare bulk" was filled, which read as
+	# one real button and three labels — but they are four equal choices doing the
+	# same job at four different scopes, so they get the same weight.
+	#
+	# The wording is set here rather than in the scene so the four read as a set:
+	# only the commons button said "only", which made the other two look like they
+	# might sell something else as well. style_button applies the role's CASING, so
+	# the text must be set BEFORE it.
+	sell_common_btn.text   = "sell commons only"
+	sell_uncommon_btn.text = "sell uncommons only"
+	sell_rare_btn.text     = "sell rares only"
+	for b in [sell_common_btn, sell_uncommon_btn, sell_rare_btn, sell_all_btn]:
 		b.theme = null
-		UIKit.style_button(b, "secondary")
-	sell_all_btn.theme = null
-	UIKit.style_button(sell_all_btn, "primary")
+		UIKit.style_button(b, "primary")
+	print("ISSUE #255 FIX ACTIVE: all four bulk-sell buttons are primary and all three rarities say 'only'")
 
 	# Same for the per-tier rate labels.
 	for l in [common_price_label, uncommon_price_label, rare_price_label]:
@@ -636,8 +674,9 @@ func _open_sell_list(band: int, selection: Dictionary) -> void:
 	margin.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	margin.add_theme_constant_override("margin_left",   0)
 	margin.add_theme_constant_override("margin_right",  0)
-	margin.add_theme_constant_override("margin_top",    10)
-	margin.add_theme_constant_override("margin_bottom", 10)
+	# ISSUE #194: zero — the 10px inset was the black band above the first row.
+	margin.add_theme_constant_override("margin_top",    0)
+	margin.add_theme_constant_override("margin_bottom", 0)
 	_list_scroll.add_child(margin)
 
 	_list_grid = GridContainer.new()
@@ -692,9 +731,15 @@ func _build_sale_panel(band: int, copies: int) -> void:
 	panel.size = Vector2(PANEL_W, 0.0)
 	_list_overlay.add_child(panel)
 
+	# ISSUE #209: the inset every row sits inside.
+	var pad := MarginContainer.new()
+	for side in ["margin_left", "margin_right", "margin_top", "margin_bottom"]:
+		pad.add_theme_constant_override(side, int(PANEL_PAD))
+	panel.add_child(pad)
+
 	var col := VBoxContainer.new()
 	col.add_theme_constant_override("separation", PANEL_ROW_GAP)
-	panel.add_child(col)
+	pad.add_child(col)
 
 	# A mixed-band sale has no single rate, so the row is dropped rather than
 	# printed as a lie — "sell all" spans three different prices.
@@ -841,7 +886,7 @@ func _on_list_sell_pressed() -> void:
 	_show_home()
 	_selling = false
 
-	_spawn_float_label("+$" + str(payout), TOTAL_LABEL_ANCHOR,
+	_spawn_float_label("+$" + str(payout), _wallet_drop_anchor(),
 		TOTAL_LABEL_FONT, TOTAL_LABEL_OUTLINE, TOTAL_LABEL_SIZE,
 		TOTAL_LABEL_RISE_PX, TOTAL_LABEL_RISE_TIME, TOTAL_LABEL_FADE_TIME)
 
@@ -897,6 +942,22 @@ func _scroll_into_view(rect: Control) -> Vector2:
 ## than Label purely for BBCode's [rainbow], which offsets the hue per character and
 ## advances it every frame — that is the colour wave running through the text.
 ## Adapted from Pack_Opening_Manager._show_bonus_label.
+## ISSUE #208: where the payout figure starts — directly under the wallet pill,
+## touching neither it nor the header border.
+##
+## Returns the CENTRE of the label's box, which is what _spawn_float_label wants:
+## the pill's centre x so the figure falls straight out of the number it changes,
+## and far enough down that the box's top edge clears the pill's bottom.
+func _wallet_drop_anchor() -> Vector2:
+	if wallet_chip == null or not is_instance_valid(wallet_chip):
+		return TOTAL_LABEL_ANCHOR
+	var pill := wallet_chip.get_global_rect()
+	if pill.size.x <= 1.0:
+		return TOTAL_LABEL_ANCHOR
+	return Vector2(pill.position.x + pill.size.x * 0.5,
+		pill.position.y + pill.size.y + TOTAL_LABEL_PILL_GAP + TOTAL_LABEL_SIZE.y * 0.5)
+
+
 func _spawn_float_label(text: String, centre: Vector2, font_size: int, outline: int,
 		box: Vector2, rise_px: float, rise_time: float, fade_time: float) -> void:
 	if _float_layer == null or not is_instance_valid(_float_layer):

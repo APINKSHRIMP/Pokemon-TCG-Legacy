@@ -46,7 +46,10 @@ const SPARKLE_COLOURS       := {
 }
 
 # Target display sizes — uniform regardless of source image dimensions
-const SPRITE_SIZE  := Vector2(230, 300)  # fit (whole sprite visible, letterboxed)
+## ISSUE #200: +40% (230x300 -> 322x420), then (retest 2) +20% again -> 386x504.
+## Still a FIT box, so the letterboxing keeps the aspect; the left panel was
+## widened to hold it (#201) and grew downward to hold this (LEFT_H).
+const SPRITE_SIZE  := Vector2(386, 504)  # fit (whole sprite visible, letterboxed)
 
 # ── Layout (UI overhaul) ─────────────────────────────────────────────────────
 # TWEAKABLE. Left column is the trainer; the right column carries every stat.
@@ -57,34 +60,75 @@ const SET_DICT_PATH := "res://Player_Data/Player_Owned_Cards/Set_ID_Names_Dictio
 const PROMO_SET_IDS := ["basep", "np"]
 const NEAREST_SETS  := 3
 
+## ISSUE #201 (retest): THE LEFT COLUMN IS 50% WIDER (300 -> 450) AND THE RIGHT
+## ONE GIVES UP EXACTLY THAT WIDTH. The name box had 264px of usable width for a
+## 21-character name at font 36, so a long name ran straight off the end of the
+## box; widening the column is what actually fixes that, and it also makes room
+## for the 40%-bigger costume sprite (#200). The right column keeps the same
+## 34px gutter on both sides, so nothing else on the screen has to move.
 const PANEL_PAD      := 18.0
 const LEFT_X         := 34.0
-const LEFT_W         := 300.0
+const LEFT_W         := 450.0
 const LEFT_Y         := 104.0
-const LEFT_H         := 796.0
-const RIGHT_X        := 368.0
-const RIGHT_W        := 1518.0
+## ISSUE #200 (retest 2): 800 -> 880. A 504px sprite plus the name box, the dates
+## and the equipped pair does not fit in an 800px panel however tight the gaps
+## get, and the room the fix asks for is genuinely there: the content band runs to
+## UIKit.CONTENT_BOTTOM (988) and the right column's last panel stops at 904, so
+## the left panel can reach 984 without touching anything on the screen.
+const LEFT_H         := 880.0
+const RIGHT_X        := 518.0
+const RIGHT_W        := 1368.0
+
+## ISSUE #203: EVERY font on this screen is 50% larger except the "Trainer card"
+## title in the header and the button labels — those two are chrome and take their
+## roles straight from UITheme. Read the sizes through _stat_font() rather than
+## writing numbers, so the multiplier stays in one place.
+##
+## The panels below were re-measured to hold the bigger type: every row, panel and
+## band grew with it, and the three panels still stack inside the 104..904 band.
+const STAT_FONT_SCALE := 1.5
 
 const METER_Y        := 104.0
-const METER_H        := 320.0
-const METER_ROW_H    := 46.0
-const METER_LABEL_W  := 260.0
-const METER_VALUE_W  := 150.0
+const METER_H        := 386.0
+const METER_ROW_H    := 58.0
+const METER_LABEL_W  := 300.0
+const METER_VALUE_W  := 180.0
+const METER_ROW_H_TXT := 32.0    # height of a row's label / value box
 
-const BOX_Y          := 448.0
-const BOX_H          := 130.0
+const BOX_Y          := 510.0
+const BOX_H          := 158.0
 const BOX_GAP        := 18.0
-const BOX_VALUE_FONT := 40
+const BOX_VALUE_FONT := 60
 
-const SETS_Y         := 604.0
-const SETS_H         := 200.0
+const SETS_Y         := 688.0
+const SETS_H         := 216.0
 
-## Equipped thumbnails under the costume sprite.
+## The left panel's vertical rhythm, top to bottom. ALL TWEAKABLE — every gap in
+## _build_left_panel is one of these, so the stack can be retuned from here
+## without reading the builder.
+const SPRITE_TOP_GAP := 20.0   # panel top -> top of the costume art (ISSUE #200)
+const NAME_TOP_GAP   := 10.0   # bottom of the ART -> name box     (ISSUE #200)
+const DOB_H          := 56.0   # height of the "Trainer since / $" block
+const EQUIP_TOP_GAP  := 14.0   # bottom of the dates -> thumbnails (ISSUE #200)
+
+## Equipped thumbnails under the costume sprite. The "Equipped" heading that used
+## to sit over them was removed in #200 — each thumbnail captions itself.
+## ISSUE #200 (retest 2): EQUIP_GAP 18 -> 28, so the sleeve and the coin (and
+## their captions, which are as wide as the thumbnails) stand clearly apart
+## instead of reading as one two-panel block.
 const EQUIP_SIZE     := Vector2(96.0, 132.0)
-const EQUIP_GAP      := 18.0
+const EQUIP_GAP      := 28.0
 const MEDALS_BTN_W   := 240.0
-const NAME_BOX_H     := 54.0
-const NAME_FONT      := 24
+const NAME_BOX_H     := 62.0
+## ISSUE #203: +50% (24 -> 36). ISSUE #201 (retest): -25% again (36 -> 27) - at
+## 36 a full-length name overran the box no matter how wide it was.
+const NAME_FONT      := 27
+## ISSUE #201 (retest): how far the name box overhangs the panel padding on EACH
+## side. Small on purpose: it is a text field, not a panel.
+const NAME_BOX_BLEED := 5.0
+## ISSUE #204: gap between the name box and the "Trainer since" / cash lines. It
+## was 10px and the two read as one block. ISSUE #200 (retest 2): -5 (24 -> 19).
+const DOB_GAP        := 19.0
 
 var PLAYER_DATA_PATH: String:
 	get: return GameState.PLAYER_CURRENT_DATA_PATH
@@ -124,8 +168,12 @@ func _ready() -> void:
 		audio_player.play()
 
 
-	_build_chrome()
+	# ISSUE #200 (retest 2): DATA FIRST, THEN LAYOUT. The stack below the costume is
+	# measured from the bottom of the ART, and the art's real height is not known
+	# until its texture has been loaded and fitted — so _build_chrome (which calls
+	# _build_left_panel) has to run after the sprite exists, not before it.
 	_load_player_data()
+	_build_chrome()
 
 	name_box.max_length = MAX_NAME_LENGTH
 	name_box.alignment  = HORIZONTAL_ALIGNMENT_CENTER
@@ -159,6 +207,12 @@ func _build_chrome() -> void:
 	# content band now rather than the nine painted bars it used to sit on.
 	stats_control.position = Vector2.ZERO
 	stats_control.size = Vector2(UIKit.SCREEN_W, UIKit.SCREEN_H)
+	# ISSUE #201: THIS IS WHY THE NAME BOX COULD NOT BE CLICKED. stats_control now
+	# spans the whole screen, it is a later sibling than player_name, and Godot
+	# picks GUI input by walking siblings in REVERSE order — so a Control with the
+	# default MOUSE_FILTER_STOP sitting over everything swallowed every click on
+	# the box beneath it. Its panels are already IGNORE; the container was not.
+	stats_control.mouse_filter = Control.MOUSE_FILTER_IGNORE
 
 	_build_left_panel()
 
@@ -179,17 +233,36 @@ func _build_left_panel() -> void:
 
 	var centre_x := LEFT_X + LEFT_W * 0.5
 
+	# ISSUE #200/#201/#202: ONE VERTICAL STACK, measured top-down, so the bigger
+	# sprite and the wider column cannot push the equipped captions out of the
+	# bottom of the panel. Every gap below is a named constant; the sum has to stay
+	# inside LEFT_H.
+	var sprite_y := LEFT_Y + SPRITE_TOP_GAP
+
 	# The scene left scale = (2,2) on this node, from when the sprite was drawn
 	# small onto the card art and doubled. It is sized to a real box now, so the
 	# doubling has to go or it bursts out of the panel.
+	# The scene left scale = (2,2) on this node. Sized to a real box now, so it goes.
+	# _load_player_data has already fitted the art inside SPRITE_SIZE (see _ready),
+	# so its size is left alone here — overwriting it with the full box is the
+	# stretch #200 started out as. Only a save with no costume falls back to the box.
 	player_sprite.scale = Vector2.ONE
-	player_sprite.position = Vector2(centre_x - SPRITE_SIZE.x * 0.5, LEFT_Y + PANEL_PAD * 2.0)
-	player_sprite.size = SPRITE_SIZE
-	player_sprite.custom_minimum_size = SPRITE_SIZE
+	if player_sprite.texture == null:
+		player_sprite.size = SPRITE_SIZE
+		player_sprite.custom_minimum_size = SPRITE_SIZE
+	player_sprite.position = Vector2(centre_x - player_sprite.size.x * 0.5, sprite_y)
 
-	var name_y := LEFT_Y + PANEL_PAD * 2.0 + SPRITE_SIZE.y + PANEL_PAD
-	name_box.position = Vector2(LEFT_X + PANEL_PAD, name_y)
-	name_box.size = Vector2(LEFT_W - PANEL_PAD * 2.0, NAME_BOX_H)
+	# ISSUE #200 (retest 2): the name box rides NAME_TOP_GAP under the BOTTOM OF THE
+	# ART, not under the bottom of the fit BOX. A portrait sprite letterboxed into
+	# this box can leave 80px of empty space beneath it, and measuring from the box
+	# put the name that far adrift of the costume.
+	var art_bottom: float = sprite_y + SPRITE_SIZE.y
+	if player_sprite.texture != null and player_sprite.size.y > 1.0:
+		art_bottom = player_sprite.position.y + player_sprite.size.y
+	var name_y := art_bottom + NAME_TOP_GAP
+	# ISSUE #201: NAME_BOX_BLEED wider on each side than the panel padding.
+	name_box.position = Vector2(LEFT_X + PANEL_PAD - NAME_BOX_BLEED, name_y)
+	name_box.size = Vector2(LEFT_W - PANEL_PAD * 2.0 + NAME_BOX_BLEED * 2.0, NAME_BOX_H)
 	name_box.custom_minimum_size = name_box.size
 	name_box.theme = null
 	name_box.add_theme_color_override("font_color", Color.WHITE)
@@ -197,23 +270,25 @@ func _build_left_panel() -> void:
 	name_box.add_theme_font_size_override("font_size", NAME_FONT)
 
 	dob_cash_lbl.theme = null
-	UIKit.style_label(dob_cash_lbl, "small_label", "field_mute")
+	# ISSUE #203: +50%. ISSUE #204: DOB_GAP below the name box, not 10px.
+	UIKit.style_label(dob_cash_lbl, "small_label", "field_mute", _stat_font("small_label"))
 	dob_cash_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	dob_cash_lbl.position = Vector2(LEFT_X + PANEL_PAD, name_y + NAME_BOX_H + 10.0)
-	dob_cash_lbl.size = Vector2(LEFT_W - PANEL_PAD * 2.0, 60.0)
+	var dob_y := name_y + NAME_BOX_H + DOB_GAP
+	dob_cash_lbl.position = Vector2(LEFT_X + PANEL_PAD, dob_y)
+	dob_cash_lbl.size = Vector2(LEFT_W - PANEL_PAD * 2.0, DOB_H)
 
 	# ── Equipped: sleeve and coin ──
-	var equip_y := name_y + NAME_BOX_H + 80.0
-	var equip_label := Label.new()
-	UIKit.set_label(equip_label, "small_label", "Equipped", "field_mute")
-	equip_label.position = Vector2(LEFT_X + PANEL_PAD, equip_y)
-	equip_label.size = Vector2(LEFT_W - PANEL_PAD * 2.0, 20.0)
-	add_child(equip_label)
-
+	# ISSUE #200 (retest 2): THE "EQUIPPED" HEADING IS GONE. Each thumbnail already
+	# carries its own caption ("Sleeve", "Coin"), so the heading was labelling two
+	# things that were labelled, and it was the row that had pushed the captions
+	# out of the bottom of the panel when the thumbnails moved down for #202.
+	# Removing it is what buys the space back.
 	var data := _read_current_data()
 	var total_w := EQUIP_SIZE.x * 2.0 + EQUIP_GAP
 	var x := centre_x - total_w * 0.5
-	var thumb_y := equip_y + 28.0
+	var thumb_y := dob_y + DOB_H + EQUIP_TOP_GAP
+	print("ISSUE #200 FIX ACTIVE: left panel stack — sprite ", sprite_y, ", name ", name_y,
+		", dates ", dob_y, ", equipped ", thumb_y, " (panel ends ", LEFT_Y + LEFT_H, ")")
 
 	var sleeve := String(data.get("sleeve", ""))
 	if sleeve != "":
@@ -243,10 +318,10 @@ func _add_equipped_thumb(path: String, pos: Vector2, caption: String) -> void:
 	add_child(rect)
 
 	var lbl := Label.new()
-	UIKit.set_label(lbl, "small_label", caption, "field_mute")
+	UIKit.set_label(lbl, "small_label", caption, "field_mute", _stat_font("small_label"))
 	lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	lbl.position = Vector2(pos.x, pos.y + EQUIP_SIZE.y + 4.0)
-	lbl.size = Vector2(EQUIP_SIZE.x, 20.0)
+	lbl.size = Vector2(EQUIP_SIZE.x, 30.0)
 	add_child(lbl)
 
 
@@ -290,7 +365,16 @@ func _load_player_data() -> void:
 		var tex := load(SPRITE_FOLDER + "/" + sprite_name) as Texture2D
 		if tex:
 			_apply_fit_size(player_sprite, tex, SPRITE_SIZE)
+			# ISSUE #200: recentre in BOTH axes. A wide sprite fitted into the
+			# taller box leaves letterboxing at the bottom, which used to read as
+			# the sprite sitting high in the panel.
 			player_sprite.position.x = LEFT_X + LEFT_W * 0.5 - player_sprite.size.x * 0.5
+			# ISSUE #200 (retest 2): the art is TOP-aligned in its fit box now, not
+			# centred — "the top of the sprite about 20 pixels under the top of the
+			# box". Centring it in a box a fifth taller than the art pushed a wide
+			# costume down into the name field.
+			player_sprite.position.y = LEFT_Y + SPRITE_TOP_GAP
+			print("ISSUE #200 FIX ACTIVE: costume sprite fitted to ", player_sprite.size, " in a ", SPRITE_SIZE, " box")
 
 
 # ─── DOB / cash label ─────────────────────────────────────
@@ -309,6 +393,13 @@ func _load_player_data() -> void:
 
 
 
+## ISSUE #203: a type role's size, scaled up for this screen only. Pass the result
+## as style_label / set_label's `size_px` so the face, tracking and casing of the
+## role are all kept — only the size changes.
+func _stat_font(role: String) -> int:
+	return int(round(float(UITheme.size(role)) * STAT_FONT_SCALE))
+
+
 # ─── Uniform image sizing ────────────────────────────────────────────────────
 
 # Scales the texture to fit entirely inside target (letterbox / minf).
@@ -319,6 +410,12 @@ func _apply_fit_size(rect: TextureRect, tex: Texture2D, target: Vector2) -> void
 	rect.expand_mode  = TextureRect.EXPAND_IGNORE_SIZE
 	rect.stretch_mode = TextureRect.STRETCH_SCALE
 	rect.texture      = tex
+	# ISSUE #200: CLEAR THE MINIMUM SIZE FIRST. _build_left_panel sets
+	# custom_minimum_size to the full 230x300 box, and Godot clamps `size` up to
+	# the combined minimum — so the fitted size below was silently thrown away and
+	# a portrait sprite was stretched to fill a wider box. The fit maths was always
+	# right; the minimum was overruling it.
+	rect.custom_minimum_size = Vector2.ZERO
 	rect.size         = Vector2(tex_size.x * s, tex_size.y * s)
 
 
@@ -458,21 +555,23 @@ func _build_meter_panel(rows: Array) -> void:
 	var y := METER_Y + PANEL_PAD
 	for r in rows:
 		var label := Label.new()
-		UIKit.set_label(label, "small_label", String(r[0]), "field_fg")
-		label.position = Vector2(RIGHT_X + PANEL_PAD, y + 4.0)
-		label.size = Vector2(METER_LABEL_W, 22.0)
+		UIKit.set_label(label, "small_label", String(r[0]), "field_fg",
+			_stat_font("small_label"))    # ISSUE #203
+		label.position = Vector2(RIGHT_X + PANEL_PAD, y + 2.0)
+		label.size = Vector2(METER_LABEL_W, METER_ROW_H_TXT)
 		stats_control.add_child(label)
 
 		var meter_x := RIGHT_X + PANEL_PAD + METER_LABEL_W + PANEL_PAD
 		var meter_w := RIGHT_W - (meter_x - RIGHT_X) - PANEL_PAD - METER_VALUE_W - PANEL_PAD
 		var holder := UIKit.make_meter(float(r[1]), float(r[2]), meter_w)
-		holder.position = Vector2(meter_x, y + 10.0)
+		holder.position = Vector2(meter_x, y + 12.0)
 		stats_control.add_child(holder)
 
 		var value := Label.new()
-		UIKit.set_label(value, "hp", _fraction(int(r[1]), int(r[2])), "field_fg")
-		value.position = Vector2(RIGHT_X + RIGHT_W - PANEL_PAD - METER_VALUE_W, y + 2.0)
-		value.size = Vector2(METER_VALUE_W, 24.0)
+		UIKit.set_label(value, "hp", _fraction(int(r[1]), int(r[2])), "field_fg",
+			_stat_font("hp"))             # ISSUE #203
+		value.position = Vector2(RIGHT_X + RIGHT_W - PANEL_PAD - METER_VALUE_W, y)
+		value.size = Vector2(METER_VALUE_W, METER_ROW_H_TXT)
 		value.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 		stats_control.add_child(value)
 
@@ -494,14 +593,15 @@ func _build_stat_boxes(boxes: Array) -> void:
 		stats_control.add_child(panel)
 
 		var caption := Label.new()
-		UIKit.set_label(caption, "small_label", String(boxes[i][0]), "field_mute")
+		UIKit.set_label(caption, "small_label", String(boxes[i][0]), "field_mute",
+			_stat_font("small_label"))    # ISSUE #203
 		caption.position = Vector2(x + PANEL_PAD, BOX_Y + PANEL_PAD)
-		caption.size = Vector2(w - PANEL_PAD * 2.0, 20.0)
+		caption.size = Vector2(w - PANEL_PAD * 2.0, 30.0)
 		stats_control.add_child(caption)
 
 		var value := Label.new()
 		UIKit.set_label(value, "title", String(boxes[i][1]), "field_fg", BOX_VALUE_FONT)
-		value.position = Vector2(x + PANEL_PAD, BOX_Y + PANEL_PAD + 24.0)
+		value.position = Vector2(x + PANEL_PAD, BOX_Y + PANEL_PAD + 34.0)
 		value.size = Vector2(w - PANEL_PAD * 2.0, float(BOX_VALUE_FONT) + 12.0)
 		stats_control.add_child(value)
 
@@ -525,9 +625,12 @@ func _build_nearest_sets(per_set: Dictionary) -> void:
 	stats_control.add_child(panel)
 
 	var heading := Label.new()
-	UIKit.set_label(heading, "small_label", "Nearest sets to completion", "field_mute")
+	# ISSUE #203: +50%. ISSUE #202/#189: headings are centred.
+	UIKit.set_label(heading, "small_label", "Nearest sets to completion", "field_mute",
+		_stat_font("small_label"))
+	heading.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	heading.position = Vector2(RIGHT_X + PANEL_PAD, SETS_Y + PANEL_PAD)
-	heading.size = Vector2(RIGHT_W - PANEL_PAD * 2.0, 20.0)
+	heading.size = Vector2(RIGHT_W - PANEL_PAD * 2.0, 30.0)
 	stats_control.add_child(heading)
 
 	var unlocked: Array = GameState.progress.get("packs_unlocked", [])
@@ -553,33 +656,35 @@ func _build_nearest_sets(per_set: Dictionary) -> void:
 	if candidates.is_empty():
 		var none := Label.new()
 		UIKit.set_label(none, "attack_name",
-			"Every unlocked set is complete.", "field_mute")
-		none.position = Vector2(RIGHT_X + PANEL_PAD, SETS_Y + PANEL_PAD + 30.0)
-		none.size = Vector2(RIGHT_W - PANEL_PAD * 2.0, 24.0)
+			"Every unlocked set is complete.", "field_mute", _stat_font("attack_name"))
+		none.position = Vector2(RIGHT_X + PANEL_PAD, SETS_Y + PANEL_PAD + 42.0)
+		none.size = Vector2(RIGHT_W - PANEL_PAD * 2.0, 34.0)
 		stats_control.add_child(none)
 		return
 
-	var y := SETS_Y + PANEL_PAD + 28.0
+	var y := SETS_Y + PANEL_PAD + 40.0
 	for i in mini(NEAREST_SETS, candidates.size()):
 		var c: Dictionary = candidates[i]
 
 		# The set name sits on the SAME row as its bar, per the user's note.
 		var label := Label.new()
-		UIKit.set_label(label, "small_label", String(names.get(c["id"], c["id"])), "field_fg")
-		label.position = Vector2(RIGHT_X + PANEL_PAD, y + 4.0)
-		label.size = Vector2(METER_LABEL_W, 22.0)
+		UIKit.set_label(label, "small_label", String(names.get(c["id"], c["id"])), "field_fg",
+			_stat_font("small_label"))    # ISSUE #203
+		label.position = Vector2(RIGHT_X + PANEL_PAD, y + 2.0)
+		label.size = Vector2(METER_LABEL_W, METER_ROW_H_TXT)
 		stats_control.add_child(label)
 
 		var meter_x := RIGHT_X + PANEL_PAD + METER_LABEL_W + PANEL_PAD
 		var meter_w := RIGHT_W - (meter_x - RIGHT_X) - PANEL_PAD - METER_VALUE_W - PANEL_PAD
 		var holder := UIKit.make_meter(float(c["owned"]), float(c["total"]), meter_w)
-		holder.position = Vector2(meter_x, y + 10.0)
+		holder.position = Vector2(meter_x, y + 12.0)
 		stats_control.add_child(holder)
 
 		var value := Label.new()
-		UIKit.set_label(value, "hp", _fraction(int(c["owned"]), int(c["total"])), "field_fg")
-		value.position = Vector2(RIGHT_X + RIGHT_W - PANEL_PAD - METER_VALUE_W, y + 2.0)
-		value.size = Vector2(METER_VALUE_W, 24.0)
+		UIKit.set_label(value, "hp", _fraction(int(c["owned"]), int(c["total"])), "field_fg",
+			_stat_font("hp"))             # ISSUE #203
+		value.position = Vector2(RIGHT_X + RIGHT_W - PANEL_PAD - METER_VALUE_W, y)
+		value.size = Vector2(METER_VALUE_W, METER_ROW_H_TXT)
 		value.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 		stats_control.add_child(value)
 

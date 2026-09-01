@@ -207,52 +207,54 @@ func _on_exit_clicked(event: InputEvent) -> void:
 
 
 # ISSUE #30 FIX: build the quit confirmation with the same styled popup as the deck builder's
-# "Empty deck?" confirm (kenney-themed centred panel, red confirm + green cancel) instead of the
-# default engine ConfirmationDialog.
+# "Empty deck?" confirm rather than the default engine ConfirmationDialog.
+#
+# ISSUE #205: IT IS THE SPECTRUM NIGHT DIALOG NOW. The main menu itself is still out
+# of scope for the UI overhaul (A2), and the dialog was deliberately left on the
+# Kenney theme so it would not be half-converted — but it is the one piece of that
+# screen the player interacts with after the rest of the game changed, so it stood
+# out as the odd one. The whole dialog is converted here in one go: the opaque
+# modal panel, the button variants and the dim behind it all match the deck
+# builder's confirm exactly. Destructive action is DANGER and Cancel is quiet, the
+# same rule _show_confirm_popup follows.
 func _show_quit_dialog() -> void:
 	if quit_dialog != null and is_instance_valid(quit_dialog):
 		return
-	var kenney_theme = load("res://UI_Themes/kenneyUI.tres")
 
 	quit_dialog = CanvasLayer.new()
 	quit_dialog.layer = 100
 	add_child(quit_dialog)
 
-	# Dim the screen behind the popup
+	# Dim the screen behind the popup. 0.78, matching every other modal in the game
+	# — at 0.6 the menu behind competed with the question.
 	var overlay := ColorRect.new()
-	overlay.color = Color(0, 0, 0, 0.6)
+	overlay.color = Color(0, 0, 0, 0.78)
 	overlay.anchor_right  = 1.0
 	overlay.anchor_bottom = 1.0
 	quit_dialog.add_child(overlay)
 
-	# Centered panel
-	var panel := PanelContainer.new()
-	# Deliberately still the Kenney theme: the main menu is out of scope for the
-	# UI overhaul (A2), and a dialog restyled halfway is worse than one left alone.
-	if kenney_theme:
-		panel.theme = kenney_theme
-	if kenney_theme:
-		panel.theme = kenney_theme
-	panel.custom_minimum_size = Vector2(460, 220)
+	# Centred panel. make_modal_panel, NOT make_panel: the translucent surface is
+	# for grouping content on a screen, and over a dimmed menu it reads as a ghost.
+	var panel := UIKit.make_modal_panel()
+	panel.custom_minimum_size = Vector2(520, 240)
 	panel.anchor_left   = 0.5
 	panel.anchor_top    = 0.5
 	panel.anchor_right  = 0.5
 	panel.anchor_bottom = 0.5
-	panel.offset_left   = -230
-	panel.offset_top    = -110
-	panel.offset_right  = 230
-	panel.offset_bottom = 110
+	panel.offset_left   = -260
+	panel.offset_top    = -120
+	panel.offset_right  = 260
+	panel.offset_bottom = 120
 	quit_dialog.add_child(panel)
 
 	var vbox := VBoxContainer.new()
-	vbox.add_theme_constant_override("separation", 18)
+	vbox.add_theme_constant_override("separation", 24)
 	vbox.alignment = BoxContainer.ALIGNMENT_CENTER
 	panel.add_child(vbox)
 
 	var msg := Label.new()
-	msg.text = "Quit the game?"
+	UIKit.set_label(msg, "body", "Quit the game?", "field_fg")
 	msg.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	msg.add_theme_font_size_override("font_size", 24)
 	vbox.add_child(msg)
 
 	var btn_row := HBoxContainer.new()
@@ -260,21 +262,11 @@ func _show_quit_dialog() -> void:
 	btn_row.add_theme_constant_override("separation", 20)
 	vbox.add_child(btn_row)
 
-	var yes_btn := Button.new()
-	yes_btn.text = "Quit"
-	yes_btn.custom_minimum_size = Vector2(130, 45)
-	var red_theme = load("res://UI_Themes/kenneyUI-red.tres")
-	if red_theme:
-		yes_btn.theme = red_theme
+	var yes_btn := UIKit.make_footer_button("Quit", "danger")
 	yes_btn.pressed.connect(func(): get_tree().quit())
 	btn_row.add_child(yes_btn)
 
-	var no_btn := Button.new()
-	no_btn.text = "Cancel"
-	no_btn.custom_minimum_size = Vector2(130, 45)
-	var green_theme = load("res://UI_Themes/kenneyUI-green.tres")
-	if green_theme:
-		no_btn.theme = green_theme
+	var no_btn := UIKit.make_footer_button("Cancel", "secondary")
 	no_btn.pressed.connect(_on_quit_cancelled)
 	btn_row.add_child(no_btn)
 

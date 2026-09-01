@@ -23,8 +23,11 @@ const DECK_NAME_W     := 330.0
 const DECK_NAME_H     := 52.0
 ## 40% down from 54: the arrows were competing with the set name.
 const STEPPER_ARROW_W := 32.0
-## The '<' / '>' glyph, likewise 40% off the 17px button role.
-const STEPPER_ARROW_FONT := 10
+## ISSUE #183: the glyph is doubled (10 -> 20) and set in the bold face — at 10px
+## the '<' and '>' were barely visible against the header gradient.
+const STEPPER_ARROW_FONT := 20
+## ISSUE #183: the button is 10px taller than it is wide.
+const STEPPER_ARROW_H := STEPPER_ARROW_W + 10.0
 ## Deck name, up from the 19px `name` role.
 const DECK_NAME_FONT     := 26
 
@@ -35,6 +38,9 @@ const VIEWER_LIST_W   := 226.0
 const VIEWER_LIST_PAD := 10.0
 const VIEWER_ROW_H    := 34.0
 const VIEWER_ROW_GAP  := 6
+## ISSUE #190: horizontal inset inside each contents row, so the card name and its
+## count both clear the panel border.
+const VIEWER_ROW_PAD  := 8
 const STEPPER_NAME_W  := 520.0
 const SEARCH_BTN_W    := 300.0
 
@@ -55,17 +61,28 @@ const ENERGY_COUNT_OUTLINE := 7
 
 const COMP_PANEL_Y    := 368.0
 const COMP_PANEL_H    := 246.0
+
+## ISSUE #187: the "XX / 60" pill sits UNDER the composition box now, matching its
+## width, rather than beside the deck name in the header.
+const COUNT_PILL_Y    := COMP_PANEL_Y + COMP_PANEL_H + 14.0
+const COUNT_PILL_H    := 44.0
 const COMP_ROW_H      := 40.0
 const COMP_METER_H    := 10.0
+## ISSUE #188: +20% on the sidebar headings and the composition category names
+## (the 13.5px small_label role rounds to 14, so these are 17 and 16).
+const SIDE_HEADING_FONT := 17
+const COMP_ROW_FONT     := 16
 
 ## The three deck tools, bottom-aligned so they sit under the composition box.
 const TOOL_BTN_H      := 66.0
 const TOOL_BTN_GAP    := 10.0
 const TOOL_STACK_BOT  := 972.0
 
-## Sized so nine columns plus CARD_H_SEP still fit GRID_W:
-## 9 * 177 + 8 * 10 = 1673, inside 1678. Raising the gap means shrinking this.
-const CARD_SIZE     := Vector2(177, 246)
+## ISSUE #227: SEVEN columns, not nine, with the cards grown to take up the room.
+## Sized so seven columns plus CARD_H_SEP still fit GRID_W:
+## 7 * 231 + 6 * 10 = 1677, inside 1678. Raising the gap means shrinking this,
+## and the height must keep the 177:246 card aspect (231 * 1.3898 = 321).
+const CARD_SIZE     := Vector2(231, 321)
 ## Raised from 2: at 2px the cards read as one solid sheet rather than as a grid
 ## of separate items.
 ## Composition rows, in display order, with their headings.
@@ -84,7 +101,7 @@ const CARD_V_SEP    := 10
 ## The "n / N" strip across the bottom of every card cell.
 const COUNT_STRIP_H    := 30
 const COUNT_STRIP_FONT := 17
-const COLUMNS       := 9
+const COLUMNS       := 7          # ISSUE #227
 const MAX_COPIES    := 4
 const DECK_SIZE     := 60
 
@@ -411,6 +428,14 @@ func _build_chrome() -> void:
 
 	# -- Header left: deck name field, rename hint, then the count chip --
 	var name_holder: Control = bars["header"].left
+
+	# ISSUE #187: a "Name:" label to the LEFT of the field. The slot is an
+	# HBoxContainer, so adding the label first is what shifts the field right.
+	var name_tag := Label.new()
+	UIKit.set_label(name_tag, "small_label", "Name:", "chrome_fg")
+	name_tag.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	name_holder.add_child(name_tag)
+
 	deck_name_edit.get_parent().remove_child(deck_name_edit)
 	deck_name_edit.set_anchors_preset(Control.PRESET_TOP_LEFT)
 	deck_name_edit.offset_left = 0.0
@@ -427,7 +452,8 @@ func _build_chrome() -> void:
 	deck_name_edit.add_theme_font_size_override("font_size", DECK_NAME_FONT)
 	name_holder.add_child(deck_name_edit)
 
-	_deck_count_chip_holder = name_holder
+	# ISSUE #187: the count pill is a SIDEBAR element now — see _build_count_pill,
+	# called from _build_composition_panel so it lands under that box.
 	deck_count_label.visible = false
 
 	# -- Header centre: the set stepper --
@@ -437,8 +463,10 @@ func _build_chrome() -> void:
 	prev_btn.text = "<"
 	next_btn.text = ">"
 	for arrow in [prev_btn, next_btn]:
-		arrow.custom_minimum_size = Vector2(STEPPER_ARROW_W, STEPPER_ARROW_W)
+		# ISSUE #183: bigger, bolder glyph in a slightly taller button.
+		arrow.custom_minimum_size = Vector2(STEPPER_ARROW_W, STEPPER_ARROW_H)
 		arrow.add_theme_font_size_override("font_size", STEPPER_ARROW_FONT)
+		arrow.add_theme_font_override("font", UITheme.font_at(UITheme.FONT_UI_BOLD))
 	set_label.custom_minimum_size.x = STEPPER_NAME_W
 
 	# -- Header right: search & filter --
@@ -462,6 +490,11 @@ func _build_chrome() -> void:
 	for i in tools.size():
 		var b: Button = tools[i]
 		b.theme = null
+		# ISSUE #185: the scene left a font_size override on "View deck" only, so
+		# it drew larger than Load and Empty sitting under it. Drop every override
+		# here and let the button role decide.
+		b.remove_theme_font_size_override("font_size")
+		b.remove_theme_font_override("font")
 		# Emptying the deck throws work away - the only destructive act here.
 		UIKit.style_button(b, "danger" if b == empty_btn else "secondary")
 		var bottom: float = TOOL_STACK_BOT - float(tools.size() - 1 - i) * (TOOL_BTN_H + TOOL_BTN_GAP)
@@ -494,9 +527,12 @@ func _build_energy_panel() -> void:
 	add_child(panel)
 
 	var heading := Label.new()
-	UIKit.set_label(heading, "small_label", "Energies in deck", "field_mute")
+	# ISSUE #188: +20% on the panel headings. ISSUE #189: headings are centred.
+	UIKit.set_label(heading, "small_label", "Energies in deck", "field_mute",
+		SIDE_HEADING_FONT)
+	heading.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	heading.position = Vector2(SIDE_X + SIDE_PAD, ENERGY_PANEL_Y + SIDE_PAD)
-	heading.size = Vector2(SIDE_W - SIDE_PAD * 2.0, 20.0)
+	heading.size = Vector2(SIDE_W - SIDE_PAD * 2.0, 22.0)
 	add_child(heading)
 	_energy_panel_nodes = [panel, heading]
 
@@ -550,17 +586,22 @@ func _build_composition_panel() -> void:
 	_comp_panel = panel
 
 	var heading := Label.new()
-	UIKit.set_label(heading, "small_label", "Composition", "field_mute")
+	# ISSUE #188 / #189: +20% and centred, matching the energies panel above it.
+	UIKit.set_label(heading, "small_label", "Composition", "field_mute",
+		SIDE_HEADING_FONT)
+	heading.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_comp_heading = heading
 	heading.position = Vector2(SIDE_X + SIDE_PAD, COMP_PANEL_Y + SIDE_PAD)
-	heading.size = Vector2(SIDE_W - SIDE_PAD * 2.0, 20.0)
+	heading.size = Vector2(SIDE_W - SIDE_PAD * 2.0, 22.0)
 	add_child(heading)
 
 	_comp_rows.clear()
 	var y: float = COMP_PANEL_Y + SIDE_PAD + 28.0
 	for key in COMP_ORDER:
 		var name_lbl := Label.new()
-		UIKit.set_label(name_lbl, "small_label", String(COMP_LABEL[key]), "field_fg")
+		# ISSUE #188: +20% on the category names too.
+		UIKit.set_label(name_lbl, "small_label", String(COMP_LABEL[key]), "field_fg",
+			COMP_ROW_FONT)
 		name_lbl.position = Vector2(SIDE_X + SIDE_PAD, y)
 		name_lbl.size = Vector2(SIDE_W - SIDE_PAD * 2.0 - 44.0, 18.0)
 		add_child(name_lbl)
@@ -582,6 +623,24 @@ func _build_composition_panel() -> void:
 
 		_comp_rows[key] = { "count": count_lbl, "meter": meter_holder, "name": name_lbl }
 		y += COMP_ROW_H
+
+	_build_count_pill()
+
+
+## ISSUE #187: the deck-total pill, directly under the composition box and the
+## same width as it. It used to be a chip in the header beside the deck name,
+## where it competed with the set stepper for the eye.
+##
+## The holder is a plain Control the chip is centred in, so _refresh_deck_count_chip
+## can free and rebuild the chip without disturbing the layout.
+func _build_count_pill() -> void:
+	var holder := Control.new()
+	holder.position = Vector2(SIDE_X, COUNT_PILL_Y)
+	holder.size = Vector2(SIDE_W, COUNT_PILL_H)
+	holder.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(holder)
+	_deck_count_chip_holder = holder
+	_refresh_deck_count_chip()
 
 
 ## Recomputes the composition box from the current deck.
@@ -635,7 +694,14 @@ func _refresh_deck_count_chip() -> void:
 	if _deck_count_chip != null and is_instance_valid(_deck_count_chip):
 		_deck_count_chip.queue_free()
 	_deck_count_chip = UIKit.make_chip(
-		"%d / %d" % [total_deck_count, DECK_SIZE], "on_chrome")
+		"%d / %d" % [total_deck_count, DECK_SIZE], "on_field")
+	# ISSUE #187: the pill spans the sidebar so it lines up with the composition
+	# box above it rather than shrinking to its digits.
+	_deck_count_chip.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_deck_count_chip.offset_left = 0.0
+	_deck_count_chip.offset_top = 0.0
+	_deck_count_chip.offset_right = 0.0
+	_deck_count_chip.offset_bottom = 0.0
 	_deck_count_chip_holder.add_child(_deck_count_chip)
 
 
@@ -699,7 +765,8 @@ func _update_set_nav_buttons() -> void:
 	prev_btn.disabled = !enabled
 	var grey_sb := StyleBoxFlat.new()
 	grey_sb.bg_color = Color(0.67, 0.67, 0.67, 1.0)
-	grey_sb.set_corner_radius_all(5)
+	grey_sb.set_corner_radius_all(UITheme.mi("btn_radius"))   # ISSUE #184
+	grey_sb.anti_aliasing = true
 	grey_sb.content_margin_left   = 8.0
 	grey_sb.content_margin_right  = 8.0
 	grey_sb.content_margin_top    = 6.0
@@ -1460,15 +1527,9 @@ func _build_viewer_chrome() -> void:
 	_header.centre.add_child(name_label)
 	_viewer_chrome.append(name_label)
 
-	# A chip per category, dropping the empty ones — a deck with no Stage 2 does
-	# not need to be told it has none.
-	for row in CardViewerList.category_rows(deck_cards, _get_card_meta):
-		var n: int = int(row["count"])
-		if n <= 0:
-			continue
-		var chip := UIKit.make_chip("%s %d" % [String(row["label"]), n], "on_chrome")
-		_header.right.add_child(chip)
-		_viewer_chrome.append(chip)
+	# ISSUE #191: NO category chips. They repeated the Composition box the deck
+	# screen already shows one keypress away, and with seven of them the header's
+	# right slot was busier than the deck name it sat beside.
 
 	var close_btn := UIKit.make_footer_button("Close", "primary")
 	close_btn.pressed.connect(_close_deck_viewer)
@@ -1521,9 +1582,17 @@ func _build_viewer_contents(sorted_ids: Array) -> void:
 		row.custom_minimum_size = Vector2(VIEWER_LIST_W - VIEWER_LIST_PAD * 2.0, VIEWER_ROW_H)
 		col.add_child(row)
 
+		# ISSUE #190: the row text sat hard against the panel border on both
+		# sides. PanelContainer has no padding of its own, so the inset is a
+		# MarginContainer between the panel and the row.
+		var pad := MarginContainer.new()
+		for side in ["margin_left", "margin_right"]:
+			pad.add_theme_constant_override(side, VIEWER_ROW_PAD)
+		row.add_child(pad)
+
 		var inner := HBoxContainer.new()
 		inner.add_theme_constant_override("separation", 8)
-		row.add_child(inner)
+		pad.add_child(inner)
 
 		var name_lbl := Label.new()
 		UIKit.set_label(name_lbl, "attack_name", card_name, "field_fg")
@@ -1563,6 +1632,13 @@ func _on_view_deck_pressed() -> void:
 	deck_viewer_overlay = Control.new()
 	deck_viewer_overlay.z_index = 10
 	deck_viewer_overlay.set_anchors_preset(Control.PRESET_FULL_RECT)
+	# ISSUE #186: THE CLOSE BUTTON WAS UNCLICKABLE, and this is why. Godot picks
+	# GUI input by walking the root's children in REVERSE order and ignores
+	# z_index entirely, so this full-screen overlay — added after the chrome bars
+	# — was picked before the footer and ate every click on it. The overlay itself
+	# passes input through now; its backdrop still blocks the board behind, but
+	# only across the content band (see below), never over the two bars.
+	deck_viewer_overlay.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(deck_viewer_overlay)
 
 	# ISSUE #151 FIX: this used to be 55% black and sat at z 55 — ABOVE the card grid — which is
@@ -1576,11 +1652,13 @@ func _on_view_deck_pressed() -> void:
 	# card_id metadata (fixed below), not this rect.
 	var backdrop := ColorRect.new()
 	backdrop.color          = Color(0, 0, 0, 0.0)
-	backdrop.anchor_right   = 1.0
-	backdrop.anchor_bottom  = 1.0
+	# ISSUE #186: the content band ONLY — 92..988 — so the header and footer stay
+	# clickable while everything behind the cards stays blocked.
+	backdrop.set_anchors_preset(Control.PRESET_FULL_RECT)
+	backdrop.offset_top     = UIKit.CONTENT_TOP
+	backdrop.offset_bottom  = UIKit.CONTENT_BOTTOM - UIKit.SCREEN_H
 	backdrop.z_index        = 0
 	deck_viewer_overlay.add_child(backdrop)
-	print("ISSUE #151 FIX ACTIVE: deck viewer backdrop is transparent, click-blocking only")
 
 	# THE VIEWER BORROWS THE CHROME BARS. It used to draw its own title at y=35 and
 	# a Close button at y=1003, both of which now sit UNDER the header and footer.
@@ -1589,8 +1667,12 @@ func _on_view_deck_pressed() -> void:
 	_build_viewer_chrome()
 
 	var viewer_scroll := ScrollContainer.new()
-	viewer_scroll.position              = Vector2(5, 110)
-	viewer_scroll.size                  = Vector2(1676, 969)
+	# ISSUE #194: the card container ran to y=1079, so the bottom rows were hidden
+	# behind the footer, and started 18px late, which left a black band above the
+	# first row. It matches the deck-mode grid exactly now: same x, same width,
+	# and the full 92..988 band between the bars.
+	viewer_scroll.position              = Vector2(GRID_X, UIKit.CONTENT_TOP)
+	viewer_scroll.size                  = Vector2(GRID_W, UIKit.CONTENT_H)
 	viewer_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	viewer_scroll.vertical_scroll_mode  = ScrollContainer.SCROLL_MODE_AUTO
 	viewer_scroll.z_index               = 5   # ISSUE #151: above the transparent click blocker
@@ -1601,8 +1683,10 @@ func _on_view_deck_pressed() -> void:
 	margin.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	margin.add_theme_constant_override("margin_left",   0)
 	margin.add_theme_constant_override("margin_right",  0)
-	margin.add_theme_constant_override("margin_top",    10)
-	margin.add_theme_constant_override("margin_bottom", 10)
+	# ISSUE #194: zero, matching the deck grid's GRID_INSET_Y — the 10px top inset
+	# was the thin black band above the first row of cards.
+	margin.add_theme_constant_override("margin_top",    0)
+	margin.add_theme_constant_override("margin_bottom", 0)
 	viewer_scroll.add_child(margin)
 
 	var viewer_grid := GridContainer.new()
@@ -1830,10 +1914,11 @@ func _add_card_to_grid(card_data: Dictionary) -> void:
 	# would make the grid cell match the texture and cards would overlap.
 	var card_rect : Control
 	if owned == 0:
-		# No image — just a black placeholder rectangle the exact card size.
-		var placeholder := ColorRect.new()
-		placeholder.color = Color(0.08, 0.08, 0.08, 1.0)
-		card_rect = placeholder
+		# ISSUE #193: an EMPTY SLOT, not a black rectangle. This is the same
+		# UIKit.make_slot() the sleeves and coin walls use for a locked tile —
+		# translucent fill with an outline, so an unowned card reads as a place a
+		# card goes rather than as a hole in the grid.
+		card_rect = UIKit.make_slot(CARD_SIZE)
 	else:
 		var tex_rect := TextureRect.new()
 		var card_set := card_id.split("-")[0]
@@ -2455,15 +2540,33 @@ func _card_matches_effect(_card_id: String, _wanted_effects: Array) -> bool:
 	return true
 
 
+## ISSUE #225: the order the Pokemon energy types sort in when sort_mode is
+## "type". Anything not in this list (a Trainer, an Energy card, an unrecognised
+## type) sorts after every Pokemon — see _search_type_key.
+const TYPE_SORT_ORDER := ["Grass", "Fire", "Water", "Lightning", "Psychic",
+	"Fighting", "Colorless", "Darkness", "Metal"]
+
+
 ## "set"  — release order, then card number within each set (what browsing a set already looks like)
 ## "name" — grouped by card name, then release order and card number within each name
+## "type" — ISSUE #225: Pokemon first, bucketed by energy type in TYPE_SORT_ORDER,
+##          then Trainers, then Energy cards. Within a bucket it falls back to the
+##          same release-order tiebreak as "set".
 func _sort_search_results(results: Array, sort_mode: String) -> void:
 	# Position of each set in the dictionary's release order, so sorting never has to search the list
 	var set_order : Dictionary = {}
 	for i in range(set_list.size()):
 		set_order[set_list[i]["set_id"]] = i
 
-	if sort_mode == "name":
+	if sort_mode == "type":
+		results.sort_custom(func(a, b):
+			var ka : int = _search_type_key(a["card_id"])
+			var kb : int = _search_type_key(b["card_id"])
+			if ka != kb:
+				return ka < kb
+			return _search_sort_key(a["card_id"], set_order) < _search_sort_key(b["card_id"], set_order)
+		)
+	elif sort_mode == "name":
 		results.sort_custom(func(a, b):
 			var name_a : String = _search_card_name(a["card_id"])
 			var name_b : String = _search_card_name(b["card_id"])
@@ -2475,6 +2578,28 @@ func _sort_search_results(results: Array, sort_mode: String) -> void:
 		results.sort_custom(func(a, b):
 			return _search_sort_key(a["card_id"], set_order) < _search_sort_key(b["card_id"], set_order)
 		)
+
+
+## ISSUE #225: the sort bucket for "type". Pokemon take their first listed energy
+## type's index (0-8), Trainers 100 and Energy cards 200, so the three supertypes
+## never interleave. A card with no metadata sorts last rather than crashing.
+##
+## "first listed type" is deliberate: a dual-type or delta Pokemon files under the
+## type printed first on the card, which is how the player reads it.
+func _search_type_key(card_id: String) -> int:
+	var meta = _get_card_meta(card_id)
+	if meta == null:
+		return 900
+	var supertype := String(meta.get("supertype", ""))
+	if supertype == "Trainer":
+		return 100
+	if supertype == "Energy":
+		return 200
+	var types: Array = meta.get("types", [])
+	if types.is_empty():
+		return 99
+	var idx := TYPE_SORT_ORDER.find(String(types[0]))
+	return idx if idx >= 0 else 99
 
 
 ## Packs a card's set position and card number into one comparable integer so both sorts can share
@@ -2749,9 +2874,24 @@ func _save_player_data(deck_file_name: String) -> void:
 
 # ─── Cancel ──────────────────────────────────────────────────────────────────
 
-## Returns to the main menu. The last set viewed is saved so the player
-## returns to the same set next time they open the deck builder.
+## ISSUE #228: leaving with unsaved deck changes now asks first.
+##
+## _is_deck_dirty() already exists and drives the Save button's colour, so the
+## screen has always known this — it just never used it on the way out. Both exits
+## come through here: the Cancel button and the Escape key (see _input, which calls
+## this last once every overlay has had its chance to close).
 func _on_cancel_pressed() -> void:
+	if _is_deck_dirty():
+		_show_confirm_popup(
+			"You have unsaved changes.
+Are you sure you want to leave?",
+			"Leave", _do_leave_deck_builder)
+		return
+	_do_leave_deck_builder()
+
+
+## The actual exit, once the unsaved-changes question (if any) has been answered.
+func _do_leave_deck_builder() -> void:
 	_save_last_set_loaded()
 	SoundManagerScript.stop_bgm()
 	if GameState.close_sub_menu(): return   # ISSUE #52: map is still loaded behind us — just pop this overlay
@@ -3025,7 +3165,10 @@ func _set_ui_visibility(visible_flag: bool) -> void:
 		prev_btn,
 		set_label,
 		deck_name_edit,
-		deck_count_label,
+		# ISSUE #182: deck_count_label is permanently hidden — the sidebar pill
+		# replaced it. Leaving it in this list made every return from the deck
+		# viewer or the search screen show the old 61px "XX / XX" back in the
+		# middle of the screen.
 		view_deck_btn,
 		search_btn,
 	]
@@ -3045,8 +3188,8 @@ func _set_ui_visibility(visible_flag: bool) -> void:
 		nodes_to_toggle.append(_comp_panel)
 	if _comp_heading != null:
 		nodes_to_toggle.append(_comp_heading)
-	if _deck_count_chip != null and is_instance_valid(_deck_count_chip):
-		nodes_to_toggle.append(_deck_count_chip)
+	if _deck_count_chip_holder != null and is_instance_valid(_deck_count_chip_holder):
+		nodes_to_toggle.append(_deck_count_chip_holder)   # ISSUE #187
 
 	for node in nodes_to_toggle:
 		if node != null and is_instance_valid(node):
@@ -3537,7 +3680,6 @@ func _delete_deck(deck_name: String) -> void:
 		push_error("DeckBuild: could not delete " + path + " (error " + str(err) + ")")
 		_show_deck_message("Could not delete that deck")
 		return
-	print("ISSUE #154 FIX ACTIVE: deleted deck file ", path)
 
 	# Rebuild the popup so the list reflects the deletion. If that was the last deck,
 	# _on_load_deck_pressed() finds nothing to show and simply leaves the screen clear.

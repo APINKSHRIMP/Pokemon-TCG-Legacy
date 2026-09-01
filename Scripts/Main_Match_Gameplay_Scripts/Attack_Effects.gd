@@ -2075,7 +2075,7 @@ func execute_mind_shock(attacker: card_object, defender: card_object, is_opponen
 	SoundManagerScript.play_sfx(SoundManagerScript.SFX_damage_sound)
 	await main.powers_and_bodies.dispatch_on_damage(defender, attacker, final_damage, not is_opponent)
 	if main._should_bail(): return
-	await main.show_message("MIND SHOCK: " + str(final_damage) + " DAMAGE! (NO W/R)")
+	await main.show_message("MIND SHOCK: " + str(final_damage) + " DAMAGE!")
 	if main._should_bail(): return
 
 # MEGA BURN (Sabrina's Alakazam): deal damage then lock this attack for next turn
@@ -2793,9 +2793,9 @@ func execute_sonicboom(attacker: card_object, defender: card_object, is_opponent
 	main.show_floating_label("-" + str(final_damage) + "HP", defender_label_pos, Color.WHITE, true)
 	defender.current_hp = max(0, defender.current_hp - final_damage)
 	main.display_hp_circles_above_align(defender, !is_opponent)
-	await main.show_message("SONICBOOM: " + str(final_damage) + " DAMAGE! (IGNORES W/R)")
+	await main.show_message("SONICBOOM: " + str(final_damage) + " DAMAGE!")
 	if main._should_bail(): return
-	print("SONICBOOM: ", final_damage, " damage (no W/R)")
+	print("SONICBOOM: ", final_damage, " damage")
 
 # WILDFIRE (Moltres): Discard any number of Fire Energy, mill that many from opponent deck
 func execute_wildfire(attacker: card_object, is_opponent: bool) -> void:
@@ -3381,7 +3381,7 @@ func execute_snipe_no_wr(attacker: card_object, defender: card_object, is_oppone
 	selected.current_hp = max(0, selected.current_hp - damage)
 	var is_selected_opponent = is_target_opponent
 	main.display_hp_circles_above_align(selected, is_selected_opponent)
-	await main.show_message(str(damage) + " DAMAGE TO " + selected.metadata.get("name", "").to_upper() + "! (NO W/R)")
+	await main.show_message(str(damage) + " DAMAGE TO " + selected.metadata.get("name", "").to_upper() + "!")
 	if main._should_bail(): return
 	
 	await main.check_all_knockouts()
@@ -3472,7 +3472,7 @@ func execute_bench_manipulation(attacker: card_object, defender: card_object, is
 			tails_count += 1
 
 	var total_damage = 20 * tails_count
-	await main.show_message(str(tails_count) + " TAILS! " + str(total_damage) + " DAMAGE! (NO W/R)")
+	await main.show_message(str(tails_count) + " TAILS! " + str(total_damage) + " DAMAGE!")
 	if main._should_bail(): return
 	
 	if total_damage > 0:
@@ -7188,7 +7188,7 @@ func execute_squirt(attacker: card_object, is_opponent: bool) -> void:
 	if is_opponent:
 		target = main.player_active_pokemon
 	else:
-		target = await main.card_ops.prompt_select_card(all_targets, "SQUIRT — CHOOSE TARGET", "Select an opponent Pokémon to hit for 10 (no W/R)", "SQUIRT", false)
+		target = await main.card_ops.prompt_select_card(all_targets, "SQUIRT — CHOOSE TARGET", "Select an opponent Pokémon to hit for 10", "SQUIRT", false)
 		if main._should_bail(): return
 	if target == null: return
 
@@ -7208,7 +7208,7 @@ func execute_squirt(attacker: card_object, is_opponent: bool) -> void:
 
 	await main.check_all_knockouts()
 	if main._should_bail(): return
-	await main.show_message("SQUIRT! 10 DAMAGE TO " + target.metadata.get("name", "").to_upper() + "! (NO W/R)")
+	await main.show_message("SQUIRT! 10 DAMAGE TO " + target.metadata.get("name", "").to_upper() + "!")
 	if main._should_bail(): return
 
 # LAPRAS — Gentle Song: Heal self 20 HP, heal defender 20 HP, then defender is Asleep.
@@ -7288,7 +7288,7 @@ func execute_sharpshooter(attacker: card_object, is_opponent: bool) -> void:
 
 	await main.check_all_knockouts()
 	if main._should_bail(): return
-	await main.show_message(str(heads) + " HEADS! " + str(damage) + " DAMAGE TO " + target.metadata.get("name", "").to_upper() + "! (NO W/R)")
+	await main.show_message(str(heads) + " HEADS! " + str(damage) + " DAMAGE TO " + target.metadata.get("name", "").to_upper() + "!")
 	if main._should_bail(): return
 
 # SLOWKING — Revelation: Flip coin. Heads = search deck for a Trainer card, add to hand.
@@ -7402,7 +7402,7 @@ func execute_tongue_stretch(attacker: card_object, is_opponent: bool) -> void:
 
 	await main.check_all_knockouts()
 	if main._should_bail(): return
-	await main.show_message("TONGUE STRETCH! 20 DAMAGE TO " + target.metadata.get("name", "").to_upper() + "! (NO W/R)")
+	await main.show_message("TONGUE STRETCH! 20 DAMAGE TO " + target.metadata.get("name", "").to_upper() + "!")
 	if main._should_bail(): return
 
 # VILEPLUME — Paradise Pollen: Flip coin. Heads = heal Vileplume 20 HP, then optionally
@@ -10671,13 +10671,13 @@ func execute_neo3_sacred_fire(attacker: card_object, is_opponent: bool) -> void:
 				lowest_hp = p.current_hp
 				target = p
 	else:
-		target = await main.card_ops.prompt_select_card(all_opp, "SACRED FIRE!", "Choose any of your opponent's Pokemon to deal 40 damage (no W/R)", "SELECT", false)
+		target = await main.card_ops.prompt_select_card(all_opp, "SACRED FIRE!", "Choose any of your opponent's Pokemon to deal 40 damage", "SELECT", false)
 		if main._should_bail(): return
 		if target == null: target = opp_active
 	if target == null: return
 	gym1_hit_raw(target, 40, not is_opponent)
 	main.display_hp_circles_above_align(target, not is_opponent)
-	await main.show_message("SACRED FIRE! 40 DAMAGE TO " + target.metadata.get("name","").to_upper() + " (NO W/R)!")
+	await main.show_message("SACRED FIRE! 40 DAMAGE TO " + target.metadata.get("name","").to_upper() + "!")
 	if main._should_bail(): return
 	await main.check_all_knockouts()
 	if main._should_bail(): return
@@ -11169,7 +11169,7 @@ func execute_neo3_lightning_spark(attacker: card_object, defender: card_object, 
 				lowest_hp = bp.current_hp
 				bench_target = bp
 	else:
-		bench_target = await main.card_ops.prompt_select_card(opp_bench, "LIGHTNING SPARK!", "Choose an opponent's Benched Pokemon for 20 damage (no W/R)", "SELECT", false)
+		bench_target = await main.card_ops.prompt_select_card(opp_bench, "LIGHTNING SPARK!", "Choose an opponent's Benched Pokemon for 20 damage", "SELECT", false)
 		if main._should_bail(): return
 		if bench_target == null: bench_target = opp_bench[0]
 	if bench_target != null:
@@ -11675,7 +11675,7 @@ func execute_neo3_sharpshooting(attacker: card_object, is_opponent: bool) -> voi
 				lowest_hp = p.current_hp
 				target = p
 	else:
-		target = await main.card_ops.prompt_select_card(all_opp, "SHARPSHOOTING!", "Choose any opponent Pokemon for 20 damage (no W/R)", "SELECT", false)
+		target = await main.card_ops.prompt_select_card(all_opp, "SHARPSHOOTING!", "Choose any opponent Pokemon for 20 damage", "SELECT", false)
 		if main._should_bail(): return
 		if target == null: target = opp_active
 	if target == null: return
@@ -11894,17 +11894,38 @@ func execute_neo3_devastate(attacker: card_object, defender: card_object, is_opp
 func execute_neo3_gold_scale(attacker: card_object, is_opponent: bool) -> void:
 	if await handle_attack_confusion(attacker, is_opponent): return
 	if await handle_attack_blind(attacker, is_opponent): return
-	# Opponent of the attacker draws first (they decide whether to draw)
-	# Simplified: opponent always draws (CPU always benefits)
+	# ISSUE #157: "UP TO 2" IS A CHOICE, AND IT IS THE OTHER PLAYER'S TO MAKE.
+	#
+	# This used to force the draw on whoever was on the receiving end, with the
+	# comment "simplified: opponent always draws". When the CPU attacks, that means
+	# the human is handed two cards without being asked — and drawing is not always
+	# good: it can deck you out, and it feeds the opponent's Lass / hand-size
+	# effects. The player is now asked one card at a time, so 0, 1 and 2 are all
+	# reachable. The CPU still takes both, which is the right call for it.
 	var opp_of_attacker_is_opp = not is_opponent
-	await main.card_ops.draw_n(opp_of_attacker_is_opp, 2)
-	if main._should_bail(): return
+	var drawn := 0
+	if opp_of_attacker_is_opp:
+		await main.card_ops.draw_n(true, 2)
+		drawn = 2
+	else:
+		for i in range(2):
+			var word: String = "a card" if i == 0 else "a second card"
+			var take = await main.trainer_effects.gym1_prompt_yes_no(
+				main.player_active_pokemon, "GOLD SCALE",
+				"Draw " + word + "? (you may draw up to 2)", "DRAW", "STOP")
+			if main._should_bail(): return
+			if not take:
+				break
+			await main.card_ops.draw_n(false, 1)
+			if main._should_bail(): return
+			drawn += 1
+	print("ISSUE #157 FIX ACTIVE: Gold Scale — defending player chose to draw ", drawn)
 	# Then attacker draws 2
 	await main.card_ops.draw_n(is_opponent, 2)
 	if main._should_bail(): return
-	await main.show_message("GOLD SCALE! BOTH PLAYERS DREW 2 CARDS!")
+	await main.show_message("GOLD SCALE! THE ATTACKER DREW 2 CARDS AND THEIR OPPONENT DREW " + str(drawn) + "!")
 	if main._should_bail(): return
-	print("ATTACK EXECUTED: Gold Scale — both draw 2")
+	print("ATTACK EXECUTED: Gold Scale — attacker drew 2, opponent drew ", drawn)
 
 # DRAGON BOND (neo3-66 Shining Magikarp): search deck for Gyarados/Dark Gyarados/Shining Gyarados, put in hand
 func execute_neo3_dragon_bond(attacker: card_object, is_opponent: bool) -> void:
@@ -12400,7 +12421,7 @@ func execute_neo4_fling_away(attacker: card_object, defender: card_object, is_op
 					lowest = bp.current_hp
 					bench_target = bp
 		else:
-			bench_target = await main.card_ops.prompt_select_card(opp_bench, "FLING AWAY!", "Choose a Benched Pokemon for 30 damage (no W/R)", "SELECT", false)
+			bench_target = await main.card_ops.prompt_select_card(opp_bench, "FLING AWAY!", "Choose a Benched Pokemon for 30 damage", "SELECT", false)
 			if main._should_bail(): return
 			if bench_target == null: bench_target = opp_bench[0]
 		if bench_target != null:
@@ -12555,7 +12576,7 @@ func execute_neo4_ball_of_flame(attacker: card_object, defender: card_object, is
 	main.update_discard_pile_display(is_opponent)
 	var bench_target: card_object = opp_bench[0]
 	if not is_opponent:
-		bench_target = await main.card_ops.prompt_select_card(opp_bench, "BALL OF FLAME!", "Choose a Benched Pokemon for 20 damage (no W/R)", "SELECT", false)
+		bench_target = await main.card_ops.prompt_select_card(opp_bench, "BALL OF FLAME!", "Choose a Benched Pokemon for 20 damage", "SELECT", false)
 		if main._should_bail(): return
 		if bench_target == null: bench_target = opp_bench[0]
 	main.card_ops.apply_bench_damage(bench_target, 20, not is_opponent)
@@ -12954,7 +12975,7 @@ func execute_neo4_water_cannon(attacker: card_object, is_opponent: bool) -> void
 		return
 	var target: card_object = main.cpu_ai.cpu_pick_snipe_target(targets, dmg) if is_opponent else targets[0]
 	if not is_opponent:
-		target = await main.card_ops.prompt_select_card(targets, "WATER CANNON!", "Choose a Pokemon for " + str(dmg) + " damage (no W/R)", "SELECT", false)
+		target = await main.card_ops.prompt_select_card(targets, "WATER CANNON!", "Choose a Pokemon for " + str(dmg) + " damage", "SELECT", false)
 		if main._should_bail(): return
 		if target == null: target = targets[0]
 	main.card_ops.apply_bench_damage(target, dmg, not is_opponent)
@@ -13860,7 +13881,7 @@ func execute_neo4_thundersquall(attacker: card_object, defender: card_object, is
 	if not opp_bench.is_empty() and water > 0:
 		var target: card_object = opp_bench[0]
 		if not is_opponent:
-			target = await main.card_ops.prompt_select_card(opp_bench, "THUNDERSQUALL!", "Choose a Benched Pokemon for " + str(water*10) + " damage (no W/R)", "SELECT", false)
+			target = await main.card_ops.prompt_select_card(opp_bench, "THUNDERSQUALL!", "Choose a Benched Pokemon for " + str(water*10) + " damage", "SELECT", false)
 			if main._should_bail(): return
 			if target == null: target = opp_bench[0]
 		main.card_ops.apply_bench_damage(target, water * 10, not is_opponent)
@@ -24577,12 +24598,27 @@ func _register_ex10_attacks() -> void:
 			await _attack_finish(false, 0, atk, a.metadata.get("types",["Colorless"]), opp)
 		elif _pv_spintail: await _pv_spintail.call(atk, a, d, opp)
 
+	# ISSUE #158 (retest): THE FIX ONLY EVER REACHED ONE OF THE ELEVEN CARDS.
+	#
+	# This branch was gated on `a.uid.begins_with("ex10-")` - Noctowl - and every
+	# other printing of Surprise fell through to _pv_surprise, which is
+	# execute_surprise: Lt. Surge's Eevee's "look at a RANDOM card". That is a
+	# different attack. It picks silently with randi(), names the card it took in
+	# the message, and deals NO DAMAGE - which is exactly, and completely, what the
+	# retest reported for ex14-23 Loudred.
+	#
+	# There are ELEVEN "Choose 1 card from your opponent's hand without looking"
+	# printings across ex2, ex5, ex8, ex10, ex13, ex14 and ex16, with five
+	# different damage numbers between them (and four with none at all). Gating on
+	# a set prefix could never have covered them; the printed TEXT is what tells
+	# the two attacks apart, so that is what the branch reads now. The Lt. Surge
+	# card, whose text really does say "a random card", still gets the old path.
 	var _pv_surprise = _attack_dispatch.get("surprise")
 	_attack_dispatch["surprise"] = func(atk, a, d, opp):
-		if a.uid.begins_with("ex10-"):
+		if "without looking" in _tl.call(atk):
 			var b = parse_attack_base_damage(atk)
 			await execute_ex10_surprise_shuffle(a, d, opp, b)
-			await _attack_finish(true, b, atk, a.metadata.get("types",["Colorless"]), opp)
+			await _attack_finish(b > 0, b, atk, a.metadata.get("types",["Colorless"]), opp)
 		elif _pv_surprise: await _pv_surprise.call(atk, a, d, opp)
 
 	var _pv_swallow = _attack_dispatch.get("swallow up")
@@ -24816,6 +24852,46 @@ func execute_ex10_coin_hit_all_opp(attacker: card_object, is_opponent: bool, n: 
 		return
 	await execute_ex5_hit_all_opponent(attacker, is_opponent, n, true)
 
+## ISSUE #158: pick one card from a hand WITHOUT LOOKING AT IT.
+##
+## The player is shown the hand face down and picks a position; the card actually
+## taken is drawn from a shuffled copy of the hand, so the position carries no
+## information and the result is as random as the silent randi() it replaces —
+## but the player has made the choice the card text asks for.
+##
+## Returns null only if the hand is empty or the selection was abandoned. The CPU
+## does not get a prompt: it picks at random, which is all "without looking" can
+## mean for it.
+func _pick_blind_from_hand(hand: Array, chooser_is_opponent: bool, label: String) -> card_object:
+	if hand.is_empty():
+		return null
+	if chooser_is_opponent:
+		return hand[randi() % hand.size()]
+
+	# The pool handed to the picker is a SHUFFLED copy, so the card behind the
+	# position the player clicks is not the card that was sitting there.
+	var blind_pool: Array = hand.duplicate()
+	blind_pool.shuffle()
+	# Face down, in the OPPONENT's sleeve — the pool is their hand.
+	main.force_face_down_selection = true
+	main.force_face_down_sleeve = main.opponent_sleeve_small
+	# ISSUE #158 (retest): the button says CHOOSE. "Take" described the mechanic;
+	# the card says "choose", and the whole point of this screen is that the player
+	# is making the choice the card asks for.
+	var chosen = await main.card_ops.prompt_select_card(blind_pool,
+		label + " — CHOOSE WITHOUT LOOKING",
+		"Pick one of your opponent's cards. You cannot see what it is.",
+		"CHOOSE", false)
+	main.force_face_down_selection = false
+	main.force_face_down_sleeve = ""
+	if main._should_bail():
+		return null
+	if chosen == null:
+		return blind_pool[randi() % blind_pool.size()]
+	print("ISSUE #158 FIX ACTIVE: ", label, " — player chose blind from ", hand.size(), " cards")
+	return chosen
+
+
 # Surprise (Noctowl): base, then choose a random card from the opponent's hand (without looking),
 # look at it, and have the opponent shuffle it into their deck.
 func execute_ex10_surprise_shuffle(attacker: card_object, defender: card_object, is_opponent: bool, base_damage: int) -> void:
@@ -24831,15 +24907,67 @@ func execute_ex10_surprise_shuffle(attacker: card_object, defender: card_object,
 		await main.show_message("SURPRISE! OPPONENT HAS NO CARDS IN HAND!")
 		if main._should_bail(): return
 		return
-	var picked = opp_hand[randi() % opp_hand.size()]
+	# ISSUE #158: THE CARD IS RANDOM, BUT THE PICK IS STILL THE PLAYER'S.
+	#
+	# "Choose 1 card from your opponent's hand without looking" was implemented as
+	# a silent randi() — functionally identical, and that is exactly the problem:
+	# the player never made the choice the card asks them to make. They now pick a
+	# position out of a row of face-down cards, and which real card is behind that
+	# position is decided by shuffling the mapping, so it stays genuinely blind.
+	var picked = await _pick_blind_from_hand(opp_hand, is_opponent, "SURPRISE")
+	if main._should_bail(): return
+	if picked == null:
+		return
+	# ISSUE #158 (retest): THE CARD IS LOOKED AT, THEN IT TRAVELS.
+	#
+	# "Look at the card you chose" is printed on all eleven of these, so the card
+	# is held up FULL SCREEN exactly like a played Trainer rather than being named
+	# in a message over a board the player cannot read it from - and when the CPU
+	# is the one doing the choosing, "A CARD was shuffled" told the player nothing
+	# about their own hand. Both sides get the same beat now: see the card, read
+	# the line, then watch it leave.
+	#
+	# Order matters. The card is erased from the hand and the hand redrawn BEFORE
+	# the flight (#249), so it is gone from where it was before it starts moving,
+	# and the deck-shuffle animation plays after it lands.
+	# ISSUE #158 (retest): WHEN YOU CHOOSE IT, IT STAYS HIDDEN.
+	#
+	# The printed text does say "look at the card you chose", but naming it - and
+	# holding it up full screen - hands the player the information the blind pick
+	# exists to withhold, and knowing what you took makes the next few turns a
+	# different game. So the player's own pick is never revealed: no card on
+	# screen, no name in the line.
+	#
+	# The CPU's pick is the opposite case and still gets the full-screen show: the
+	# card comes out of the PLAYER'S OWN hand, so they already know every card it
+	# could have been, and "a card was shuffled" told them nothing about what they
+	# had just lost.
+	var picked_name: String = picked.metadata.get("name", "CARD").to_upper()
+	var owner_is_opponent := not is_opponent
+	if is_opponent:
+		await main.trainer_effects.show_card_with_message(picked,
+			"YOUR " + picked_name + " WAS SHUFFLED INTO YOUR DECK!")
+		if main._should_bail(): return
+	else:
+		await main.show_message("THE CARD WAS SHUFFLED INTO YOUR OPPONENT'S DECK!")
+		if main._should_bail(): return
+
+	var hand_node = main.player_hand_container if owner_is_opponent else main.opponent_hand_container
+	var deck_node = main.player_deck_icon if owner_is_opponent else main.opponent_deck_icon
+	var picked_texture = main.get_card_texture(picked)
 	opp_hand.erase(picked)
 	picked.current_location = "deck"
 	opp_deck.append(picked)
-	opp_deck.shuffle()
-	main.refresh_hand_display(not is_opponent)
-	main.update_deck_icon(not is_opponent)
-	await main.show_message("SURPRISE! SHUFFLED THE OPPONENT'S " + picked.metadata.get("name","CARD").to_upper() + " INTO THEIR DECK!")
+	main.refresh_hand_display(owner_is_opponent)
+	await main.animate_card_a_to_b(hand_node, deck_node, 0.3, picked_texture, main.card_scales[10])
 	if main._should_bail(): return
+	opp_deck.shuffle()
+	main.update_deck_icon(owner_is_opponent)
+	await main.animate_deck_shuffle(owner_is_opponent)
+	if main._should_bail(): return
+	print("ISSUE #158 FIX ACTIVE: SURPRISE shuffled ", picked_name,
+		" into the ", "player" if owner_is_opponent else "opponent",
+		"'s deck (revealed to the player: ", is_opponent, ")")
 
 # Copy (Sudowoodo): copy one of the Defender's attacks, but only if the attacker can pay its Energy
 # cost. Self-finishing (execute_copied_attack calls _attack_finish once); callers must not finish again.

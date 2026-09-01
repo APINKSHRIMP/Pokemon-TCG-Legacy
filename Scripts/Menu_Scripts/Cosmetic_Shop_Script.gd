@@ -84,6 +84,11 @@ const COSTUME_MAX_CELL := 320.0
 const REVEAL_SIZE      := Vector2(432.0, 594.0)
 const REVEAL_FADE      := 1.0   # seconds to fade from black to full colour
 
+## ISSUE #162: TWEAKABLE - peak scale of the selected-item pulse. Raised from 1.02,
+## which on a 400px sleeve was a 4px swell nobody could see. 1.10 grows a full-size
+## cell by ~20px a side, still inside the 60px CELL_SEP so neighbours do not touch.
+const SELECT_PULSE     := 1.10
+
 
 # ─── State ───────────────────────────────────────────────────────────────────
 
@@ -218,18 +223,17 @@ func _is_owned(item_name: String) -> bool:
 
 # ─── Texture resolution ──────────────────────────────────────────────────────
 
-## Grid art. Sleeves use the small/ copy — the full-size originals are a mix of .jpg and
-## .png and are far bigger than a grid cell needs. Costume sprites are already small
-## (160px square), so there is only ever one file to find.
+## Grid art. ISSUE #198: SLEEVES USE THE FULL-SIZE ORIGINAL, not the small/ copy.
+##
+## The thumbnails are 300x412 and SLEEVE_MAX_CELL is 412, so a shop stocking only a
+## few sleeves drew each one at up to 1.37x its source and they visibly softened.
+## A seller stocks a handful of items, not a whole collection wall, so the full-size
+## art is affordable here — the collection screens, which show every sleeve at once,
+## still use small/. Costume sprites are already small (160px square) and have only
+## one file either way.
 func _load_item_texture(item_name: String) -> Texture2D:
 	if shop_kind == KIND_COSTUME:
 		return _load_costume_texture(item_name)
-
-	var small_path := SLEEVE_SMALL + "/" + item_name + ".jpg"
-	if ResourceLoader.exists(small_path):
-		var small_tex := load(small_path) as Texture2D
-		if small_tex != null:
-			return small_tex
 	return _load_item_texture_full(item_name)
 
 
@@ -470,7 +474,7 @@ func _apply_selected_animation(cell: Control) -> void:
 	# The brightness pulse runs on the ART's self_modulate so it cannot reach the price pill;
 	# the scale pulse stays on the wrapper on purpose, so the pill grows with its item.
 	tween.tween_property(art, "self_modulate", Color.WHITE * 1.1, 0.2)
-	tween.parallel().tween_property(cell, "scale", Vector2(1.02, 1.02), 0.2)
+	tween.parallel().tween_property(cell, "scale", Vector2(SELECT_PULSE, SELECT_PULSE), 0.2)
 	tween.tween_property(art, "self_modulate", Color.WHITE * 1.0, 0.2)
 	tween.parallel().tween_property(cell, "scale", Vector2(1.0, 1.0), 0.2)
 

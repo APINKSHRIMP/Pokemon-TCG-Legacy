@@ -6261,7 +6261,7 @@ func power_neo3_electromagnetic_power(pokemon: card_object) -> void:
 				lowest = p.current_hp
 				target = p
 	else:
-		target = await main.card_ops.prompt_select_card(all_opp, "ELECTROMAGNETIC POWER!", "Choose an opponent's Pokemon for 20 damage (no W/R)", "SELECT", false)
+		target = await main.card_ops.prompt_select_card(all_opp, "ELECTROMAGNETIC POWER!", "Choose an opponent's Pokemon for 20 damage", "SELECT", false)
 		if main._should_bail(): return
 		if target == null: target = opp_active
 	if target != null:
@@ -6776,7 +6776,7 @@ func trigger_neo4_surprise_bite(crobat: card_object, is_opponent: bool) -> void:
 		return
 	var target: card_object = targets[0]
 	if not is_opponent:
-		target = await main.card_ops.prompt_select_card(targets, "SURPRISE BITE!", "Choose an opponent's Pokemon for 20 damage (no W/R)", "SELECT", false)
+		target = await main.card_ops.prompt_select_card(targets, "SURPRISE BITE!", "Choose an opponent's Pokemon for 20 damage", "SELECT", false)
 		if main._should_bail(): return
 		if target == null: target = targets[0]
 	else:

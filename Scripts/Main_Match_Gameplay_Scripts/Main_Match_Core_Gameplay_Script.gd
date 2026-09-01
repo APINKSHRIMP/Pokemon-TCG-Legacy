@@ -76,6 +76,12 @@ var opponent_discard_pile: Array = []
 var card_selection_mode_enabled = false
 var selected_card_for_action = null
 var prize_card_selection_active: bool = false
+
+## ISSUE #158: while true, show_enlarged_array_selection_mode draws the pool FACE
+## DOWN whatever array it was handed. Set it, run the prompt, clear it — see
+## Attack_Effects._pick_blind_from_hand, which is the only user.
+var force_face_down_selection: bool = false
+var force_face_down_sleeve: String = ""
 var knockout_bench_selection_active: bool = false
 
 var match_just_started_basic_pokemon_required = true
@@ -389,11 +395,21 @@ var _turn_chip : Control = null
 var _turn_divider_label : Label = null
 var _duel_divider_x : float = 0.0
 
+## ISSUE #212: the board furniture _set_board_furniture_visible() toggles.
+var _stadium_slot : Control = null
+var _stadium_caption : Label = null
+var _turn_divider_rules : Array = []
+
 # The two action-panel holders, filled by _build_action_panel().
 var _player_action_panel : Control = null
 var _opp_action_panel : Control = null
 var _stadium_overlay : Control = null
 var _end_turn_btn : Button = null
+## ISSUE #239: the two attachment-row captions per side, so #212 can hide them
+## with the rest of the board furniture.
+var _attach_captions: Array = []
+## ISSUE #214 / #235: true while a single card is being shown full-screen.
+var _card_showcase_active: bool = false
 
 # The prize count each side started the match with — see display_prize_cards().
 var player_prize_start : int = 0
@@ -490,6 +506,7 @@ func show_enlarged_array_selection_mode(card_array: Array) -> void:
 	var amount_of_cards_to_show = card_array.size()
 	
 	# Hide all main screen elements
+	_set_board_furniture_visible(false)   # ISSUE #212
 	player_hand_container.visible = false
 	opponent_hand_container.visible = false
 	player_active_container.visible = false
@@ -571,10 +588,17 @@ func show_enlarged_array_selection_mode(card_array: Array) -> void:
 		
 	update_selection_mode_labels(card_array, match_just_started_basic_pokemon_required)
 	
-	var should_hide = hide_hidden_cards and (card_array == opponent_hand or card_array == player_prize_cards or card_array == opponent_prize_cards)
+	# ISSUE #158: force_face_down_selection lets an effect show a pool the player
+	# must pick from WITHOUT SEEING IT — "choose 1 card from your opponent's hand
+	# without looking". The usual test is identity-based (`card_array ==
+	# opponent_hand`), which a shuffled copy of that hand can never satisfy.
+	var should_hide = force_face_down_selection or (hide_hidden_cards and (card_array == opponent_hand or card_array == player_prize_cards or card_array == opponent_prize_cards))
 	var selection_sleeve: String = ""
 	if should_hide:
-		selection_sleeve = opponent_sleeve_small if (card_array == opponent_hand or card_array == opponent_prize_cards) else player_sleeve_small
+		if force_face_down_selection and force_face_down_sleeve != "":
+			selection_sleeve = force_face_down_sleeve
+		else:
+			selection_sleeve = opponent_sleeve_small if (card_array == opponent_hand or card_array == opponent_prize_cards) else player_sleeve_small
 
 	# --- UNIFIED SIZING SYSTEM ---
 	# The white zone is the usable display area between the hint label bottom and the action buttons.
@@ -689,6 +713,33 @@ func show_enlarged_array_selection_mode(card_array: Array) -> void:
 		small_selection_container.offset_top = new_offset_top
 		small_selection_container.offset_bottom = new_offset_bottom
 		
+		# ISSUE #237: THE ROW HAD NO HORIZONTAL BOX TO LIVE IN.
+		#
+		# The scene parks small_selection_mode_container as a 40px-wide stub
+		# (offsets 920..960 off a centre anchor) and only the VERTICAL offsets were
+		# ever written. An HBoxContainer whose minimum width exceeds its rect then
+		# grows out of that stub, and where it grows to depends on which way the
+		# layout engine resolves the anchor that frame - which is why the row was
+		# usually centred but occasionally started AT the centre and ran off the
+		# right, and why it depended on the exact card count (six cards at
+		# card_scales[6] is the widest combination the small path ever builds).
+		#
+		# It gets a real full-screen box and a CENTRE alignment, so there is nothing
+		# left to resolve: the row is centred in 1920px whatever it contains.
+		small_selection_container.offset_left = SELECT_ROW_LEFT
+		small_selection_container.offset_right = SELECT_ROW_RIGHT
+		small_selection_container.grow_horizontal = Control.GROW_DIRECTION_BOTH
+		small_selection_container.alignment = BoxContainer.ALIGNMENT_CENTER
+
+		# ...and the cards are fitted to that width as well as to the height, so a
+		# row that would have overflowed is shrunk instead of spilling off-screen.
+		var natural_w: float = card_size.x * float(amount_of_cards_to_show) \
+			+ float(HAND_SEPARATION) * float(maxi(amount_of_cards_to_show - 1, 0)) \
+			+ (SELECT_FOCUS_EXTRA if is_pokemon_mode else 0.0)
+		if natural_w > SELECT_ROW_MAX_W:
+			var width_fit: float = SELECT_ROW_MAX_W / natural_w
+			card_size = Vector2(card_size.x * width_fit, card_size.y * width_fit)
+
 		display_hand_cards_array(card_array, small_selection_container, card_size, should_hide, 1300.0, 12, selection_sleeve)
 
 # Both the cancel button and action button will hide selection mode so function is vaguely named for both actions
@@ -718,6 +769,11 @@ func hide_selection_mode_display_main() -> void:
 	action_button.visible = false
 	
 	# Show the player and opponents hands
+	_set_board_furniture_visible(true)   # ISSUE #212
+	# ISSUE #217: coming OUT of a selection screen is a state change the action
+	# rows care about (is_pokemon_selection_mode_active is part of their gate), so
+	# they are rebuilt here as well as on every turn transition.
+	_refresh_action_panels()
 	player_hand_container.visible = true
 	opponent_hand_container.visible = true
 	
@@ -781,21 +837,45 @@ func hide_selection_mode_display_main() -> void:
 		card.mouse_filter = MOUSE_FILTER_PASS
 	
 # Displays both the player and opponents hand cards. Shows players at the top of screen and opponents in top right smaller.
+## ISSUE #248: the normal gap between two cards in a hand or a selection row. The
+## overlap branch below may go BELOW this (cards tuck behind each other) but never
+## above it.
+const HAND_SEPARATION := 3
+
 func display_hand_cards_array(hand: Array, hand_container, card_size: Vector2, face_down: bool = false, max_hand_width: float = 1300.0, max_before_overlap: int = 12, sleeve_path: String = ""):
 	
-	# Clear existing cards from container to prevent stale entries when cards leave or enter the hand
+	# Clear existing cards from container to prevent stale entries when cards leave or enter the hand.
+	#
+	# ISSUE #170: remove_child BEFORE queue_free. queue_free only detaches the node
+	# at the END of the frame, so the old hand was still parented — and still
+	# counted in the HBoxContainer's minimum width — while the new cards were being
+	# added beside it. The row therefore grew to hold BOTH hands, shoving itself
+	# out of position, and snapped back the moment the old cards were finally
+	# freed. That is the "hand moves, cards appear, hand moves back" the player
+	# sees whenever the opponent plays Bill or any other draw card.
 	for child in hand_container.get_children():
+		hand_container.remove_child(child)
 		child.queue_free()
 		
 	if hand_container is HBoxContainer:
 		var is_inside_scroller = hand_container.get_parent() is ScrollContainer
 		if not is_inside_scroller and hand.size() > max_before_overlap:
+			# ISSUE #248: THIS FORMULA COULD SPREAD A HAND OUT AS WELL AS TIGHTEN IT.
+			# It solves for the separation that makes the row exactly max_hand_width
+			# wide - so for the OPPONENT (36px sleeves in a 400px box, overlapping
+			# past 7) eight cards came out at 16px apart instead of the usual 3, and
+			# the fan visibly sprang open. Then a card was played, the count dropped
+			# back under the threshold, and it snapped shut again: exactly the
+			# "randomly became very spread out, went back after a card was played"
+			# that was reported. Overlapping is the ONLY thing this branch is for, so
+			# the result is clamped to the normal spacing.
 			var card_width = card_size.x
 			var n = hand.size()
-			var sep = (max_hand_width - (n * card_width)) / (n - 1)
-			hand_container.add_theme_constant_override("separation", int(sep))
+			var sep: float = (max_hand_width - (n * card_width)) / (n - 1)
+			var applied: int = mini(HAND_SEPARATION, int(floor(sep)))
+			hand_container.add_theme_constant_override("separation", applied)
 		else:
-			hand_container.add_theme_constant_override("separation", 3)
+			hand_container.add_theme_constant_override("separation", HAND_SEPARATION)
 	
 	# Determine if we are in a pokemon selection mode.
 	var is_bench_view = (hand == player_bench or hand == opponent_bench)
@@ -900,31 +980,94 @@ const RIGHT_RAIL_X   := 1920.0 - RAIL_PAD - RAIL_W
 
 ## Deck and discard piles: SIDE BY SIDE, never stacked. 77x107 with 13 between.
 const PILE_SIZE      := Vector2(77.0, 107.0)
-const PILE_GAP       := 13.0
+## ISSUE #220: 13 -> 24. The deck and the discard were nearly touching.
+const PILE_GAP       := 24.0
 const PILE_TOP_Y     := 132.0    # opponent's, in the left rail
-const PILE_BOT_Y     := 690.0    # yours, in the right rail
+## ISSUE #261: yours drop to just above the footer, matching the bench. Derived
+## from the footer so the two stay in step: pile bottom sits PILE_FOOT_GAP above
+## the 162px match footer, and its caption rides 26px above the pile.
+const PILE_FOOT_GAP  := 5.0
+const PILE_BOT_Y     := 1080.0 - BOARD_BOT_H - PILE_FOOT_GAP - PILE_SIZE.y
 
 ## Prize cards: 3 x 2 of the owner's sleeve. Taken ones stay in place, greyed -
 ## the count is spatial.
-const PRIZE_SIZE     := Vector2(52.0, 72.0)
-const PRIZE_GAP      := 5.0
-const PRIZE_COLUMNS  := 3
+## ISSUE #238: +40% (52x72 -> 73x101). The 3-wide block is then 227px against a
+## 180px rail, so it deliberately overhangs the rail inward; _place_rails clamps
+## it to PRIZE_EDGE_PAD off the screen edge. Nothing shares that band - the piles
+## are diagonally opposite and the benches start at x 648 - so the overhang is
+## free space.
+## ISSUE #260: ONE ROW OF SIX, +20% again (73x101 -> 88x121).
+##
+## Two rows of three stood 206px tall, and the opponent's block (top right, from
+## y 132) reached down to y 338 - straight into their attachment row, which starts
+## at y 326 and fans right across the same corner. A single row is 121 tall and
+## clears it by 80px, so the +20% is paid for by the shape change rather than
+## costing anything. Six across is 548px wide against a 180px rail, so the block
+## overhangs INWARD; see the clamp in _place_rails.
+const PRIZE_SIZE     := Vector2(88.0, 121.0)
+const PRIZE_GAP      := 4.0
+## Smallest gap between the prize block and the edge of the screen.
+const PRIZE_EDGE_PAD := 8.0
+const PRIZE_COLUMNS  := 6   # ISSUE #260: one row, filled left to right
 ## How visible a taken prize's empty slot is.
 const PRIZE_TAKEN_ALPHA := 0.45
 const PRIZE_TOP_Y    := 132.0    # opponent's, in the right rail
 const PRIZE_BOT_Y    := 690.0    # yours, in the left rail
+## ISSUE #247: how far each side's whole column - active card, HP, damage
+## counters, status icons, action rows and attachment stacks - moves OUTWARD from
+## the centre line. It buys clearance from the bench rows above and below, whose
+## attached-energy stacks fan up out of the outermost bench slot and were
+## catching the edge of the action panel. TWEAKABLE.
+const DUEL_SIDE_SHIFT := 10.0
 
 ## Benches: five slots, centred in the centre column.
-const BENCH_CARD     := Vector2(119.0, 165.0)
-const BENCH_GAP      := 29
-const OPP_BENCH_Y    := 106.0
-const PLAYER_BENCH_Y := 686.0
+## ISSUE #234: cards -10% (119x165 -> 107x148) and the horizontal gap -25%
+## (29 -> 22), which buys back ~120px of board width. The bench slot no longer
+## carries an HP NUMBER either - only the damage-counter blocks - so the row is
+## shorter as well as narrower; see display_pokemon / BENCH_SLOT_SEP.
+const BENCH_CARD     := Vector2(107.0, 148.0)
+## ISSUE #234: ~2px between the bottom of the card and the top of the counters.
+const BENCH_SLOT_SEP := 2
+## ISSUE #234: the height a bench slot's counter row occupies under the card,
+## used to size the empty slots so they line up with the real ones (#231).
+const BENCH_COUNTER_H := 15.0
+## ISSUE #213: how many slots a bench row always shows, filled or empty.
+const BENCH_SLOTS    := 5
+const BENCH_GAP      := 22
+## ISSUE #234: the player's bench drops so its counters finish ~5px above the
+## 162px footer (top edge y = 918). Slot content is card + BENCH_SLOT_SEP +
+## counters; BENCH_ROW_H is that plus room for a bench power button.
+const BENCH_ROW_H    := BENCH_CARD.y + 44.0
+## ISSUE #259: +10.
+const OPP_BENCH_Y    := 116.0
+const PLAYER_BENCH_Y := 1080.0 - BOARD_BOT_H - 5.0 - BENCH_ROW_H
 
 ## The duel row. Seven columns; see the diagram above. You are on the LEFT.
-const DUEL_MID_Y     := 470.0
+## ISSUE #219: 470 -> 486. The opponent's bench damage counters hang 22px below
+## their cards (dmg_bench_drop) and the top of the active card was landing on
+## them. There is spare field under the actives, so the whole duel row drops 16px
+## rather than the counters moving up into the card art.
+const DUEL_MID_Y     := 486.0
 const ACTIVE_CARD    := Vector2(230.0, 319.0)
 const DUEL_COL_ATTACH := 96.0
 const DUEL_COL_INFO   := 322.0
+## ISSUE #223: the attack rows are narrower than the info column they sit in, and
+## ISSUE #216: they are pushed to the side of that column NEAREST the active
+## Pokemon, which is what clears the attachment peek-stack out of their way.
+const ACTION_PANEL_W  := 258.0
+## ISSUE #239: the attachment rows and their new captions, as offsets from the
+## top of the active card. TWEAKABLE.
+##   energy row sits level with the top of the card (was +10 - "up 10px")
+##   tool row drops far enough that the ENERGY stack, which is a whole card tall,
+##   cannot reach the TOOLS caption above it. +130 -> +160 rather than the +140 a
+##   flat 10px would give, because the caption needs the clearance to exist.
+const ATTACH_ENERGY_DY := 0.0
+const ATTACH_TOOL_DY   := 160.0
+const ATTACH_CAPTION_DY := 26.0     # how far above its row a caption sits
+## ISSUE #239: attachment cards -10% (100x138 -> 90x124).
+const ATTACH_CARD_SIZE := Vector2(90.0, 124.0)
+## How wide an attachment caption may run before it ellipsises.
+const ATTACH_CAPTION_W := 150.0
 const DUEL_COL_DIVIDE := 88.0
 const DUEL_GAP        := 10.5
 
@@ -932,6 +1075,13 @@ const DUEL_GAP        := 10.5
 const HAND_X         := 40.0
 const OPP_HAND_Y     := 20.0
 const PLAYER_HAND_Y  := 936.0
+## ISSUE #244: the player's hand is CENTRED on the footer rather than starting at
+## HAND_X. It was laid out as a 1300px box at x=40, so its middle sat at x=690 -
+## 270px left of the screen centre, which is the "might as well be central".
+const PLAYER_HAND_W  := 1300.0
+const PLAYER_HAND_X  := (1920.0 - PLAYER_HAND_W) * 0.5
+## The opponent's fan is centred on its own box the same way.
+const OPP_HAND_W     := 420.0
 const STADIUM_SIZE   := Vector2(48.0, 66.0)
 const STADIUM_X      := 1740.0
 const STADIUM_Y      := 13.0
@@ -939,6 +1089,12 @@ const STADIUM_Y      := 13.0
 ## The opponent's hand is a fan of face-down sleeves on the top bar, so it is
 ## smaller than yours.
 const OPP_HAND_CARD  := Vector2(36.0, 50.0)
+## ISSUE #258: the right-hand end of the opponent's hand box. The stadium caption
+## begins at STADIUM_X - 130 = 1610, so the fan stops STADIUM_HAND_GAP short of it
+## and grows LEFT from there as a box - the cards inside still start at the box's
+## left edge and are added rightward.
+const STADIUM_HAND_GAP := 24.0
+const OPP_HAND_X     := STADIUM_X - 130.0 - STADIUM_HAND_GAP - OPP_HAND_W
 
 
 ## Lays the whole board out and swaps the old scrolling background for the new
@@ -966,6 +1122,211 @@ func _build_board_layout() -> void:
 	_place_bars()
 	_place_turn_divider()
 	_style_selection_labels()
+	_raise_bar_content()
+	_style_trainer_screen()
+	_fix_button_pick_order()
+
+
+## ISSUE #246: SOMETHING WAS EATING THE RIGHT HALF OF THE ACTION BUTTON.
+##
+## Godot picks GUI input by walking siblings in REVERSE ORDER and ignores
+## z_index entirely (the trap behind #186 and #201). BUTTONS sits fifth in the
+## scene root while CARD_COLLECTIONS, ACTIVE_POKEMON, SELECTION_MODE and the
+## chrome added at runtime all come after it - so any of those whose rect happens
+## to overlap the footer swallows the press before the button ever sees it, and
+## it only takes a partial overlap to kill exactly half a button.
+##
+## Two things fix it for good:
+##   1. the bare grouping Controls (which exist only to namespace their children
+##      and paint nothing) become MOUSE_FILTER_IGNORE, so they are skipped;
+##   2. BUTTONS and the secondary button are moved to the END of the root's child
+##      list, which puts them FIRST in the reverse walk. Nothing can cover them.
+func _fix_button_pick_order() -> void:
+	# ISSUE #246 (retest): THE TWO RETIRED FOOTER ROWS WERE THE NEW BLOCKER.
+	#
+	# main_screen_buttons_container and main_screen_attack_buttons_container are
+	# HBoxContainers spanning x 64..1964 of the footer band. Their BUTTONS are
+	# hidden (ATTACK / POWER / RETREAT retired in stage 7, End Turn reparented into
+	# the bar) but the CONTAINERS are still visible, still MOUSE_FILTER_STOP, and
+	# still 1900px wide - and moving BUTTONS last in the pick order put them in
+	# FRONT of everything. That is exactly "something blocking the entire centre of
+	# the footer": End Turn dead, and the hand clickable only above y 963 and below
+	# y 1035, which is the band those two containers do not cover.
+	#
+	# A layout container that paints nothing should never be pickable, so they join
+	# the grouping Controls below. Their own children keep MOUSE_FILTER_STOP.
+	for path in ["CARD_COLLECTIONS", "CARD_COLLECTIONS/PLAYER", "CARD_COLLECTIONS/OPPONENT",
+			"ACTIVE_POKEMON", "ACTIVE_POKEMON/PLAYER", "ACTIVE_POKEMON/OPPONENT",
+			"SCREEN_LABELS", "SCREEN_LABELS/PLAYER", "SCREEN_LABELS/OPPONENT",
+			"SCREEN_LABELS/MAIN_LABELS", "SELECTION_MODE",
+			"BUTTONS", "BUTTONS/SELECTION_BUTTONS",
+			"BUTTONS/main_screen_buttons_container",
+			"BUTTONS/main_screen_attack_buttons_container"]:
+		var node := get_node_or_null(path)
+		if node is Control:
+			(node as Control).mouse_filter = Control.MOUSE_FILTER_IGNORE
+
+	# ISSUE #217 (retest) / ISSUE #253: A BLOCKER THAT IS NOT LAST BLOCKS NOTHING.
+	#
+	# perform_attack() has always raised opponent_blocker on its very first line,
+	# and that is meant to be the answer to "the attack button is spammable". It
+	# never worked, for the same reason as everything else in this area: picking
+	# walks siblings in REVERSE, and the blocker is a SCENE node while the action
+	# panels are added at RUNTIME by _make_action_holder - so the panels sit after
+	# it in the child list and were picked in front of the full-screen blocker that
+	# was supposed to be covering them. Every click landed on the attack row.
+	#
+	# So the order is set explicitly here, once, last thing in the build. Read it
+	# bottom-up, because that is the order picking sees it:
+	#   opponent_blocker   - it is the opponent's turn: nothing at all is clickable
+	#   animation_blocker  - a card is in flight: same
+	#   trainer screen     - a card is being shown: same
+	#   BUTTONS / cancel   - the footer pair, in front of the board (#246)
+	#   buttons_only_blocker - board dead, footer live (it stops 100px short)
+	# Anything added to this scene later that must block input goes at the END.
+	var order: Array = [buttons_only_blocker, get_node_or_null("BUTTONS"), cancel_button,
+		trainer_block_container, animation_blocker, opponent_blocker]
+	for node in order:
+		if node != null and is_instance_valid(node) and node.get_parent() == self:
+			move_child(node, -1)
+	print("ISSUE #246/#217 FIX ACTIVE: retired footer rows made click-through; blockers moved to the END of the pick order")
+
+
+## ISSUE #213: THE HANDS AND THE MESSAGE BOX WERE UNDER THE CHROME BARS.
+##
+## Both hands live ON a bar — yours on the 162px footer, the opponent's on the
+## 92px header — and the message box sits over the bottom of the board. The bars
+## draw at Z_CHROME (200) and every one of these is a plain SIBLING of them, so
+## all three were painted over: "hand can't be seen", "messagebox can't be seen".
+##
+## This is the same trap End Turn hit in stage 7, where the fix was to REPARENT
+## into the bar. These four cannot be reparented — the hand containers are
+## addressed by path all over the file and the message box is a scene node — so
+## they are lifted above the bar's z band instead. Anything else added to a bar
+## later needs one or the other.
+func _raise_bar_content() -> void:
+	var raised := {
+		"hands": [player_hand_container, opponent_hand_container],
+		"message box": [msgbox_container],
+		"coin flip": [coin_container],
+	}
+	for what in raised:
+		for node in raised[what]:
+			if node != null and is_instance_valid(node) and node is CanvasItem:
+				(node as CanvasItem).z_index = UIKit.Z_CHROME + 5
+
+
+## ISSUE #214: the trainer-played screen is the FIELD, not a white sheet.
+##
+## trainer_block_screen_container is a bare ColorRect, which defaults to white,
+## and it only covered y 166..922 — so playing a trainer flashed a white band
+## across the middle of the board with the rest of the match showing round it.
+## It is the full screen in the field colour now, so everything behind it is
+## simply hidden and the card is read on the same background as every other
+## screen. It stays BELOW the chrome bars (default z) so the header and footer
+## still frame it.
+func _style_trainer_screen() -> void:
+	if trainer_block_container == null or not is_instance_valid(trainer_block_container):
+		return
+	# ISSUE #214 (retest): NOT A BACKGROUND AT ALL ANY MORE.
+	#
+	# Painting it the field colour still left a rectangle drawn over the board -
+	# the right colour, but a sheet all the same, and it had to be the exact size
+	# of the screen forever to stay invisible. What the card actually wants is the
+	# field that is ALREADY there, with everything else taken off it. So the rect
+	# is fully transparent now and exists purely to block clicks while a card is
+	# up; set_card_showcase_visible() does the hiding.
+	if trainer_block_container is ColorRect:
+		(trainer_block_container as ColorRect).color = Color(0, 0, 0, 0)
+	var old_top: float = trainer_block_container.offset_top
+	trainer_block_container.offset_left   = 0.0
+	trainer_block_container.offset_top    = 0.0
+	trainer_block_container.offset_right  = 1920.0
+	trainer_block_container.offset_bottom = 1080.0
+	# The card container is positioned RELATIVE to the rect that just moved, so it
+	# is pushed back down by the same amount and lands where it always did.
+	if played_trainer_container != null and is_instance_valid(played_trainer_container):
+		played_trainer_container.offset_top += old_top
+		played_trainer_container.offset_bottom += old_top
+
+
+## ISSUE #214 / #235: SHOW ONE CARD, ON THE BOARD'S OWN BACKGROUND.
+##
+## Every "hold this card up" moment - a Trainer being played, a card revealed to
+## the opponent - used to hide a hand-written list of nodes (the hand and the
+## four pile icons) and cover the rest with a sheet. Everything the list missed
+## stayed on screen: the actives, both benches, the prizes, the HP readouts, the
+## status icons and - the one that was reported - the attack rows beside the
+## active Pokemon, which sat there over the card being played.
+##
+## THIS IS THE ONE PLACE the board is hidden for a card showcase. Any new caller
+## uses it rather than growing another list, and any new board furniture is added
+## here (or to _set_board_furniture_visible) rather than being forgotten again.
+func set_card_showcase_visible(shown: bool) -> void:
+	_card_showcase_active = shown
+	var board_visible := not shown
+
+	# The furniture set already covers the turn chip, the divider, the stadium,
+	# the attachment captions, BOTH action panels and End Turn.
+	_set_board_furniture_visible(board_visible)
+
+	for node in [player_hand_container, opponent_hand_container,
+			player_active_container, opponent_active_container,
+			player_bench_container, opponent_bench_container,
+			player_energy_container, opponent_energy_container,
+			player_hp_container, opponent_hp_container,
+			player_status_container, opponent_status_container,
+			player_attached_cards_container, opponent_attached_cards_container,
+			player_prize_container, opponent_prize_container,
+			player_deck_icon, opponent_deck_icon,
+			player_discard_icon, opponent_discard_icon]:
+		if node != null and is_instance_valid(node):
+			node.visible = board_visible
+
+	for label_path in ["SCREEN_LABELS/OPPONENT/opponent_bench_cards_label",
+			"SCREEN_LABELS/PLAYER/player_bench_cards_label",
+			"SCREEN_LABELS/OPPONENT/opponent_prize_cards_label",
+			"SCREEN_LABELS/PLAYER/player_prize_cards_label"]:
+		var lbl := get_node_or_null(label_path)
+		if lbl is Control:
+			(lbl as Control).visible = board_visible
+
+	trainer_block_container.visible = shown
+
+
+## ISSUE #212: board furniture that must not show over a selection screen.
+##
+## The turn chip, the turn divider, the stadium slot and its caption, and both
+## action panels are BOARD furniture. They were built once and left visible, so
+## the mulligan screen — which shows the hand full-screen and hides the board —
+## still had "Turn 1", the divider, the stadium placeholder and, once a Pokemon
+## was placed, a full column of attack rows painted over it.
+##
+## Called from the same two places that hide and show the rest of the board:
+## show_enlarged_array_selection_mode() and hide_selection_mode_display_main().
+func _set_board_furniture_visible(shown: bool) -> void:
+	for node in [_turn_chip, _turn_divider_label, _stadium_slot, _stadium_caption,
+			_player_action_panel, _opp_action_panel]:
+		if node != null and is_instance_valid(node):
+			node.visible = shown
+	for rule in _turn_divider_rules:
+		if rule != null and is_instance_valid(rule):
+			rule.visible = shown
+	# ISSUE #239: the attachment captions belong to the board, so they go with it.
+	for cap in _attach_captions:
+		if cap != null and is_instance_valid(cap):
+			cap.visible = shown
+	# ISSUE #229: End Turn is REPARENTED INTO the footer bar, so it is no longer a
+	# child of main_buttons_container and the wholesale
+	# `main_buttons_container.visible = false` that hides the rest of the footer
+	# never touched it. That is why it sat there, live, over the mulligan screen
+	# and over every selection screen.
+	if _end_turn_btn != null and is_instance_valid(_end_turn_btn):
+		_end_turn_btn.visible = shown and not match_just_started_basic_pokemon_required \
+			and not bench_setup_phase_active
+	var stadium := get_node_or_null("CARD_COLLECTIONS/stadium_card")
+	if stadium is Control:
+		(stadium as Control).visible = shown and current_stadium_card != null
 
 
 ## The seven duel columns. Only the two actives and their attachment/info columns
@@ -974,19 +1335,25 @@ func _place_duel_row() -> void:
 	var total := DUEL_COL_ATTACH * 2.0 + DUEL_COL_INFO * 2.0 + ACTIVE_CARD.x * 2.0 		+ DUEL_COL_DIVIDE + DUEL_GAP * 6.0
 	var x := (1920.0 - total) * 0.5
 
-	var you_attach_x := x
+	# ISSUE #247: EVERY column on the player's side moves DUEL_SIDE_SHIFT left and
+	# every column on the opponent's the same distance right. The bench rows sit
+	# directly above and below this band and their attached-energy stacks fan
+	# UPWARD out of the outermost slot, which was clipping the near edge of the
+	# action panel; widening the middle is what clears it. The divider column stays
+	# put, so the two sides simply lean away from each other.
+	var you_attach_x := x - DUEL_SIDE_SHIFT
 	x += DUEL_COL_ATTACH + DUEL_GAP
-	var you_info_x := x
+	var you_info_x := x - DUEL_SIDE_SHIFT
 	x += DUEL_COL_INFO + DUEL_GAP
-	var you_active_x := x
+	var you_active_x := x - DUEL_SIDE_SHIFT
 	x += ACTIVE_CARD.x + DUEL_GAP
 	_duel_divider_x = x
 	x += DUEL_COL_DIVIDE + DUEL_GAP
-	var opp_active_x := x
+	var opp_active_x := x + DUEL_SIDE_SHIFT
 	x += ACTIVE_CARD.x + DUEL_GAP
-	var opp_info_x := x
+	var opp_info_x := x + DUEL_SIDE_SHIFT
 	x += DUEL_COL_INFO + DUEL_GAP
-	var opp_attach_x := x
+	var opp_attach_x := x + DUEL_SIDE_SHIFT
 
 	var active_y := DUEL_MID_Y - ACTIVE_CARD.y * 0.5
 
@@ -995,33 +1362,87 @@ func _place_duel_row() -> void:
 
 	# Attachments keep the existing peek-stack rendering (the mockup's two-group
 	# whole-card layout was dropped); they just move to the outboard columns.
+	# ISSUE #216: the player's stacks sat at the INNER edge of their attach column
+	# (x + 36), so the peek-stack fanned right, straight across the attack rows in
+	# the info column beside it. They start at the outer edge now, like the
+	# opponent's do on their side.
+	var you_attach_row_x := you_attach_x + 4.0
+	var opp_attach_row_x := opp_attach_x + 18.0
 	_set_rect($"ACTIVE_POKEMON/PLAYER/player_active_pokemon_energies",
-		Vector2(you_attach_x + DUEL_COL_ATTACH - 60.0, active_y + 10.0), Vector2(43, 28))
+		Vector2(you_attach_row_x, active_y + ATTACH_ENERGY_DY), Vector2(43, 28))
 	_set_rect($"ACTIVE_POKEMON/PLAYER/player_active_pokemon_attached_cards",
-		Vector2(you_attach_x + DUEL_COL_ATTACH - 60.0, active_y + 130.0), Vector2(43, 28))
+		Vector2(you_attach_row_x, active_y + ATTACH_TOOL_DY), Vector2(43, 28))
 	_set_rect($"ACTIVE_POKEMON/OPPONENT/opponent_active_pokemon_energies",
-		Vector2(opp_attach_x + 18.0, active_y + 10.0), Vector2(43, 28))
+		Vector2(opp_attach_row_x, active_y + ATTACH_ENERGY_DY), Vector2(43, 28))
 	_set_rect($"ACTIVE_POKEMON/OPPONENT/opponent_active_pokemon_attached_cards",
-		Vector2(opp_attach_x + 18.0, active_y + 130.0), Vector2(43, 28))
+		Vector2(opp_attach_row_x, active_y + ATTACH_TOOL_DY), Vector2(43, 28))
 
-	# HP blocks and status chips sit in the info column beside each active.
+	# ISSUE #239: the attachment rows get captions, like the prizes and the piles
+	# already had. Without one a lone Rainbow Energy beside the active reads as a
+	# loose card rather than as "what is attached to this Pokemon".
+	_add_attach_caption("Energy cards", you_attach_row_x, active_y + ATTACH_ENERGY_DY, false)
+	_add_attach_caption("Tools", you_attach_row_x, active_y + ATTACH_TOOL_DY, false)
+	_add_attach_caption("Energy cards", opp_attach_row_x, active_y + ATTACH_ENERGY_DY, true)
+	_add_attach_caption("Tools", opp_attach_row_x, active_y + ATTACH_TOOL_DY, true)
+
+	# ISSUE #233: HP blocks and status chips share the ACTION PANEL's left edge
+	# rather than the whole info column's, so the readout, the counters and the
+	# attack rows form one straight edge beside the card instead of the numbers
+	# floating 64px further out than the buttons under them.
+	var you_col_x := you_info_x + DUEL_COL_INFO - ACTION_PANEL_W
 	_set_rect($"ACTIVE_POKEMON/PLAYER/player_active_pokemon_hp_container",
-		Vector2(you_info_x, active_y), Vector2(DUEL_COL_INFO, 60.0))
+		Vector2(you_col_x, active_y), Vector2(ACTION_PANEL_W, 60.0))
 	_set_rect($"ACTIVE_POKEMON/PLAYER/player_active_pokemon_status_container",
-		Vector2(you_info_x, active_y + 76.0), Vector2(DUEL_COL_INFO, 60.0))
+		Vector2(you_col_x, active_y + 76.0), Vector2(ACTION_PANEL_W, 60.0))
 	_set_rect($"ACTIVE_POKEMON/OPPONENT/opponent_active_pokemon_hp_container",
-		Vector2(opp_info_x, active_y), Vector2(DUEL_COL_INFO, 60.0))
+		Vector2(opp_info_x, active_y), Vector2(ACTION_PANEL_W, 60.0))
 	_set_rect($"ACTIVE_POKEMON/OPPONENT/opponent_active_pokemon_status_container",
-		Vector2(opp_info_x, active_y + 76.0), Vector2(DUEL_COL_INFO, 60.0))
+		Vector2(opp_info_x, active_y + 76.0), Vector2(ACTION_PANEL_W, 60.0))
+	print("ISSUE #233 FIX ACTIVE: active HP/status column at x ", you_col_x,
+		" / ", opp_info_x, ", width ", ACTION_PANEL_W)
 
 	# The action panels sit under the HP and status rows, filling the rest of the
 	# info column. They have room to grow downward and scroll past that.
 	var panel_top := active_y + ACTION_PANEL_TOP
-	var panel_h := ACTIVE_CARD.y - ACTION_PANEL_TOP + ACTION_PANEL_OVERHANG
-	_player_action_panel = _make_action_holder(Vector2(you_info_x, panel_top),
-		Vector2(DUEL_COL_INFO, panel_h))
+	# ISSUE #247: THE COLUMN WAS SHORTER THAN THE ROWS IT PROMISES TO SHOW.
+	#
+	# ACTION_MAX_ROWS is 5, and five 44px rows with four 6px gaps need 244px - but
+	# the holder was 235 (card height minus the top inset plus a fixed overhang)
+	# and clip_contents is on, so the bottom of the fifth row (usually Retreat) was
+	# sliced off. The height is DERIVED from the row metrics now, so it can never
+	# drift out of step with them again; the overhang is only a floor.
+	var rows_h: float = ACTION_ROW_H * float(ACTION_MAX_ROWS) \
+		+ float(ACTION_ROW_GAP) * float(ACTION_MAX_ROWS - 1) + ACTION_ROW_SLACK
+	var panel_h := maxf(ACTIVE_CARD.y - ACTION_PANEL_TOP + ACTION_PANEL_OVERHANG, rows_h)
+	print("ISSUE #247 FIX ACTIVE: action panel ", ACTION_PANEL_W, "x", panel_h,
+		" holds ", ACTION_MAX_ROWS, " rows of ", ACTION_ROW_H)
+	# ISSUE #223 / #216: ACTION_PANEL_W wide, pinned to the side of the info column
+	# that touches the active card — right for you, left for the opponent.
+	_player_action_panel = _make_action_holder(
+		Vector2(you_info_x + DUEL_COL_INFO - ACTION_PANEL_W, panel_top),
+		Vector2(ACTION_PANEL_W, panel_h))
 	_opp_action_panel = _make_action_holder(Vector2(opp_info_x, panel_top),
-		Vector2(DUEL_COL_INFO, panel_h))
+		Vector2(ACTION_PANEL_W, panel_h))
+
+
+## ISSUE #239: one caption over an attachment row.
+##
+## The stacks fan AWAY from the active Pokemon - left for you, right for the
+## opponent - so the caption is anchored at the row origin and grows the same
+## way, or it would sit over the board on one side and off the screen on the
+## other. Registered as board furniture so a selection screen hides it (#212).
+func _add_attach_caption(text: String, row_x: float, row_y: float, is_opponent: bool) -> void:
+	var lbl := Label.new()
+	lbl.theme = null
+	UIKit.set_label(lbl, "small_label", text, "field_mute")
+	lbl.size = Vector2(ATTACH_CAPTION_W, 22.0)
+	lbl.position = Vector2(row_x if is_opponent else row_x + ATTACH_CARD_SIZE.x - ATTACH_CAPTION_W,
+		row_y - ATTACH_CAPTION_DY)
+	lbl.horizontal_alignment = (HORIZONTAL_ALIGNMENT_LEFT if is_opponent
+		else HORIZONTAL_ALIGNMENT_RIGHT)
+	lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(lbl)
+	_attach_captions.append(lbl)
 
 
 ## Deck, discard and prizes, in 180-degree rotational symmetry.
@@ -1048,33 +1469,40 @@ func _place_rails() -> void:
 			(pc as GridContainer).add_theme_constant_override("v_separation", int(PRIZE_GAP))
 
 	var prize_row_w := PRIZE_SIZE.x * float(PRIZE_COLUMNS) + PRIZE_GAP * float(PRIZE_COLUMNS - 1)
-	var prize_h := PRIZE_SIZE.y * 2.0 + PRIZE_GAP
+	# ISSUE #260: ONE row of six, so the height is one card, not two plus a gap.
+	var prize_h := PRIZE_SIZE.y
 	# OPPONENT's prizes top RIGHT, yours bottom LEFT.
-	_set_rect(opponent_prize_container,
-		Vector2(RIGHT_RAIL_X + (RAIL_W - prize_row_w) * 0.5, PRIZE_TOP_Y),
+	# ISSUE #238: at +40% the block is wider than the 180px rail, so centring it
+	# on the rail alone would push it off the screen. It is centred and then
+	# clamped to PRIZE_EDGE_PAD, which lets it overhang INWARD into the empty band
+	# beside the rail instead.
+	var opp_prize_x: float = minf(RIGHT_RAIL_X + (RAIL_W - prize_row_w) * 0.5,
+		1920.0 - PRIZE_EDGE_PAD - prize_row_w)
+	var you_prize_x: float = maxf(LEFT_RAIL_X + (RAIL_W - prize_row_w) * 0.5, PRIZE_EDGE_PAD)
+	_set_rect(opponent_prize_container, Vector2(opp_prize_x, PRIZE_TOP_Y),
 		Vector2(prize_row_w, prize_h))
-	_set_rect(player_prize_container,
-		Vector2(LEFT_RAIL_X + (RAIL_W - prize_row_w) * 0.5, PRIZE_BOT_Y),
+	_set_rect(player_prize_container, Vector2(you_prize_x, PRIZE_BOT_Y),
 		Vector2(prize_row_w, prize_h))
 
-	# The four rail captions.
+	# The four rail captions. ISSUE #260: the two PRIZE captions span the six-card
+	# row rather than the 180px rail, which the row is three times wider than.
 	_place_rail_label($"SCREEN_LABELS/OPPONENT/opponent_prize_cards_label",
-		"Their prizes", RIGHT_RAIL_X, PRIZE_TOP_Y - 26.0)
+		"Opponent's prizes", opp_prize_x, PRIZE_TOP_Y - 26.0, prize_row_w)   # ISSUE #251
 	_place_rail_label($"SCREEN_LABELS/PLAYER/player_prize_cards_label",
-		"Your prizes", LEFT_RAIL_X, PRIZE_BOT_Y - 26.0)
+		"Your prizes", you_prize_x, PRIZE_BOT_Y - 26.0, prize_row_w)
 	_place_rail_label($"SCREEN_LABELS/OPPONENT/opponent_bench_cards_label",
 		"Opponent", LEFT_RAIL_X, PILE_TOP_Y - 26.0)
 	_place_rail_label($"SCREEN_LABELS/PLAYER/player_bench_cards_label",
 		"You", RIGHT_RAIL_X, PILE_BOT_Y - 26.0)
 
 
-func _place_rail_label(lbl: Label, text: String, x: float, y: float) -> void:
+func _place_rail_label(lbl: Label, text: String, x: float, y: float, w: float = RAIL_W) -> void:
 	if lbl == null:
 		return
 	lbl.theme = null
 	UIKit.set_label(lbl, "small_label", text, "field_mute")
 	lbl.position = Vector2(x, y)
-	lbl.size = Vector2(RAIL_W, 22.0)
+	lbl.size = Vector2(w, 22.0)
 	lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 
 
@@ -1087,15 +1515,34 @@ func _place_benches() -> void:
 			(c as HBoxContainer).add_theme_constant_override("separation", BENCH_GAP)
 			(c as HBoxContainer).alignment = BoxContainer.ALIGNMENT_CENTER
 	_set_rect(opponent_bench_container, Vector2(x, OPP_BENCH_Y),
-		Vector2(row_w, BENCH_CARD.y + 40.0))
+		Vector2(row_w, BENCH_ROW_H))
 	_set_rect(player_bench_container, Vector2(x, PLAYER_BENCH_Y),
-		Vector2(row_w, BENCH_CARD.y + 40.0))
+		Vector2(row_w, BENCH_ROW_H))
 
 
 ## Hands, turn chip and stadium, on the two chrome bars.
 func _place_bars() -> void:
-	_set_rect(opponent_hand_container, Vector2(HAND_X, OPP_HAND_Y), Vector2(420.0, 56.0))
-	_set_rect(player_hand_container, Vector2(HAND_X, PLAYER_HAND_Y), Vector2(1300.0, 140.0))
+	# ISSUE #244: the hand is CENTRED on the footer, and the row inside it is
+	# centred too. Both halves are needed - a centred box whose HBox still starts
+	# at its left edge only moves the problem.
+	# ISSUE #258: the opponent's fan moves to the TOP RIGHT and is left-anchored
+	# inside its box, so the first sleeve never moves and each new card is added to
+	# the RIGHT of the last one. Centring it (which is right for YOUR hand, where
+	# the whole row is the object) meant every existing card shuffled sideways
+	# whenever they drew.
+	#
+	# It stops short of the screen edge on purpose: the "Stadium" caption and its
+	# slot own x 1610..1788 of the header, so OPP_HAND_X is measured back from
+	# there rather than from 1920.
+	_set_rect(opponent_hand_container, Vector2(OPP_HAND_X, OPP_HAND_Y), Vector2(OPP_HAND_W, 56.0))
+	_set_rect(player_hand_container, Vector2(PLAYER_HAND_X, PLAYER_HAND_Y),
+		Vector2(PLAYER_HAND_W, 140.0))
+	if player_hand_container is HBoxContainer:
+		(player_hand_container as HBoxContainer).alignment = BoxContainer.ALIGNMENT_CENTER
+	if opponent_hand_container is HBoxContainer:
+		(opponent_hand_container as HBoxContainer).alignment = BoxContainer.ALIGNMENT_BEGIN
+	print("ISSUE #258 FIX ACTIVE: opponent hand at x ", OPP_HAND_X,
+		" growing right, stopping at ", OPP_HAND_X + OPP_HAND_W)
 
 	# The stadium gets a caption and a slot in the top right, which is the one
 	# piece of empty chrome on the board. Clicking it is stage 7.
@@ -1106,6 +1553,7 @@ func _place_bars() -> void:
 	stadium_slot.z_index = UIKit.Z_CHROME + 1
 	stadium_slot.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(stadium_slot)
+	_stadium_slot = stadium_slot   # ISSUE #212
 
 	var stadium := get_node_or_null("CARD_COLLECTIONS/stadium_card")
 	if stadium is Control:
@@ -1127,6 +1575,7 @@ func _place_bars() -> void:
 	caption.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	caption.z_index = UIKit.Z_CHROME + 1
 	add_child(caption)
+	_stadium_caption = caption   # ISSUE #212
 
 	# ATTACK, POWER and RETREAT are gone from the footer — they are rows on the
 	# Pokemon now. Only End Turn is left, and it is REPARENTED INTO the footer bar
@@ -1145,6 +1594,13 @@ func _place_bars() -> void:
 	var buttons := get_node_or_null("BUTTONS")
 	if buttons is Control:
 		(buttons as Control).z_index = UIKit.Z_CHROME + 10
+		# ISSUE #211: the selection buttons (Place as active / Place on bench /
+		# Done) were centred on y=1022, 23px below the 162px footer's midline at
+		# y=999, so they sat low in the bar. Only the VERTICAL offsets move: the
+		# node's x is what lands its negative-offset children on screen at all, and
+		# zeroing it is what broke the mulligan screen the first time round.
+		(buttons as Control).offset_top -= FOOTER_BUTTON_RAISE
+		(buttons as Control).offset_bottom -= FOOTER_BUTTON_RAISE
 	if main_buttons_container != null:
 		for retired in ["button_main_attack", "button_main_power", "button_main_retreat"]:
 			var b := main_buttons_container.get_node_or_null(retired)
@@ -1156,6 +1612,13 @@ func _place_bars() -> void:
 		if cancel_button is Button:
 			(cancel_button as Button).z_index = UIKit.Z_CHROME + 10
 			UIKit.style_button(cancel_button as Button, "secondary")
+			# ISSUE #230: the secondary button (Done / Cancel) is NOT a child of
+			# BUTTONS - it is a root-level node with its own bottom anchor - so the
+			# FOOTER_BUTTON_RAISE that lifted the primary button onto the footer's
+			# midline in #211 never reached it, and the pair ended up 23px out of
+			# line with each other. Same lift, applied to the node that missed it.
+			(cancel_button as Button).offset_top -= FOOTER_BUTTON_RAISE
+			(cancel_button as Button).offset_bottom -= FOOTER_BUTTON_RAISE
 		var attack_cancel := attack_buttons_container.get_node_or_null("cancel_attack_mode_button")
 		if attack_cancel is Button:
 			UIKit.style_button(attack_cancel as Button, "secondary")
@@ -1192,22 +1655,29 @@ func _place_turn_divider() -> void:
 	var mid_x := _duel_divider_x + DUEL_COL_DIVIDE * 0.5
 	var half := ACTIVE_CARD.y * 0.5
 
-	for dy in [-half - 46.0, 30.0]:
+	# ISSUE #221: SHORTER, THICKER, CLOSER. They were 2x76 rules starting 46px
+	# clear of the card, which read as two long hairlines with a caption stranded
+	# between them rather than as a rule broken by a label.
+	for dy in [-DIVIDER_RULE_H - DIVIDER_RULE_GAP, DIVIDER_RULE_GAP]:
 		var rule := ColorRect.new()
 		rule.color = UITheme.col("line")
-		rule.position = Vector2(mid_x - 1.0, DUEL_MID_Y + dy)
-		rule.size = Vector2(2.0, 76.0)
+		rule.position = Vector2(mid_x - DIVIDER_RULE_W * 0.5, DUEL_MID_Y + dy)
+		rule.size = Vector2(DIVIDER_RULE_W, DIVIDER_RULE_H)
 		rule.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		rule.z_index = DUEL_DIVIDER_Z
 		add_child(rule)
+		_turn_divider_rules.append(rule)   # ISSUE #212
 
 	_turn_divider_label = Label.new()
-	_turn_divider_label.position = Vector2(mid_x - DUEL_COL_DIVIDE * 0.5, DUEL_MID_Y - 30.0)
-	_turn_divider_label.size = Vector2(DUEL_COL_DIVIDE, 60.0)
+	# ISSUE #252: the label is two lines now ("Your" over "Turn"), so it needs the
+	# height for a second line - a 60px box with 30px of lead clipped the descender
+	# off the first line the moment the text wrapped.
+	_turn_divider_label.position = Vector2(mid_x - DUEL_COL_DIVIDE * 0.5, DUEL_MID_Y - 34.0)
+	_turn_divider_label.size = Vector2(DUEL_COL_DIVIDE, 68.0)
 	_turn_divider_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_turn_divider_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	_turn_divider_label.autowrap_mode = TextServer.AUTOWRAP_WORD
-	UIKit.set_label(_turn_divider_label, "small_label", "Your turn", "accent")
+	UIKit.set_label(_turn_divider_label, "small_label", TURN_LABEL_YOURS, "accent")
 	_turn_divider_label.z_index = DUEL_DIVIDER_Z
 	add_child(_turn_divider_label)
 	_refresh_turn_divider()
@@ -1219,7 +1689,8 @@ func _refresh_turn_divider() -> void:
 		return
 	var theirs := opponents_turn_active
 	UIKit.set_label(_turn_divider_label, "small_label",
-		"Their turn" if theirs else "Your turn", "accent_2" if theirs else "accent")
+		TURN_LABEL_THEIRS if theirs else TURN_LABEL_YOURS,
+		"accent_2" if theirs else "accent")
 
 
 ## The "Turn 6" chip in the top bar.
@@ -1229,6 +1700,8 @@ func _refresh_turn_chip() -> void:
 	if _turn_chip != null and is_instance_valid(_turn_chip):
 		_turn_chip.queue_free()
 	_turn_chip = UIKit.make_chip("Turn %d" % maxi(turn_number, 1), "on_chrome")
+	# ISSUE #212: a rebuilt chip must not reappear over a selection screen.
+	_turn_chip.visible = not card_selection_mode_enabled
 	_turn_chip_holder.add_child(_turn_chip)
 
 
@@ -1348,7 +1821,14 @@ func _set_rect(node: Control, pos: Vector2, node_size: Vector2) -> void:
 
 ## Rows are as wide as the info column so nearly every attack name fits on one
 ## line — the whole point of moving them off a crowded horizontal footer.
-const ACTION_ROW_H     := 46.0
+## ISSUE #247: -5% (46 -> 44).
+const ACTION_ROW_H     := 44.0
+## ISSUE #247: how far the rows pull back from the side the scrollbar appears on
+## once there are more than ACTION_MAX_ROWS of them - the card side for each
+## player. Only applied when the column actually scrolls.
+const ACTION_SCROLL_PAD := 4
+## ISSUE #247: breathing room under the last row inside the holder.
+const ACTION_ROW_SLACK := 4.0
 const ACTION_ROW_GAP   := 6
 const ACTION_PAD       := 10.0
 const ACTION_PIP       := 20.0
@@ -1374,12 +1854,41 @@ const STADIUM_DETAIL_Y    := 210.0
 const STADIUM_OVERLAY_Z   := 300
 
 ## The selection screens' title and hint, just below the header bar.
+## ISSUE #211: how far the BUTTONS node lifts so its children centre on the
+## match footer's midline. Measured: children centre on 1022, the bar's middle is
+## at 918 + 162/2 = 999.
+const FOOTER_BUTTON_RAISE := 23.0
+
 const SELECT_TITLE_Y := 104.0
 const SELECT_HINT_Y  := 150.0
+
+## ISSUE #237: the small selection row's horizontal box, in the container's own
+## anchor space. Its parent SELECTION_MODE is the usual 40x40 scene stub, so its
+## centre anchor resolves to x = 20 - hence -20 and 1900 for a 0..1920 box.
+const SELECT_ROW_LEFT  := -20.0
+const SELECT_ROW_RIGHT := 1900.0
+## The widest a row may be before its cards are shrunk to fit.
+const SELECT_ROW_MAX_W := 1860.0
+## Slack left for the focus Pokemon's 1.05x blow-up and its 25px spacer.
+const SELECT_FOCUS_EXTRA := 60.0
 
 ## The turn divider is board furniture: above the field, BELOW every card, so a
 ## selection row laid over the board does not have it showing through.
 const DUEL_DIVIDER_Z := -1
+
+## ISSUE #221: the two rules that bracket the YOUR TURN / THEIR TURN label.
+## TWEAKABLE — width is the thickness, height the length, gap the clearance from
+## the label's own box.
+const DIVIDER_RULE_W   := 5.0
+const DIVIDER_RULE_H   := 34.0
+const DIVIDER_RULE_GAP := 32.0
+
+## ISSUE #251 / #252: "Their turn" became "Opponent's turn" (the board says
+## "Opponent" everywhere else, so "their" was the odd one out), and both are
+## broken over TWO LINES with the possessive on top - which is also the only way
+## "Opponent's turn" fits an 88px divider column at all.
+const TURN_LABEL_YOURS  := "Your\nturn"
+const TURN_LABEL_THEIRS := "Opponent's\nturn"
 
 
 ## The little power button that sits over a benched Pokemon.
@@ -1422,6 +1931,48 @@ func _make_bench_power_button(mon: card_object, entry: Dictionary,
 	return btn
 
 
+## ISSUE #217: TRUE only when it is the player's turn and no other screen owns
+## the board. Every action row on the player's panel goes through this first.
+##
+## The list mirrors update_main_screen_buttons()'s `should_disable` — the End Turn
+## button and the action rows must never disagree about whose turn it is — plus
+## is_pokemon_selection_mode_active(), which covers the target-picking modes.
+func _player_can_act_now() -> bool:
+	if game_is_over or opponents_turn_active:
+		return false
+	if match_just_started_basic_pokemon_required or bench_setup_phase_active:
+		return false
+	if card_selection_mode_enabled or power_menu_active:
+		return false
+	if trainer_card_mode_active or trainer_discard_selection_active \
+			or trainer_deck_search_active or yes_no_prompt_active:
+		return false
+	if prize_card_selection_active or knockout_bench_selection_active:
+		return false
+	if is_pokemon_selection_mode_active():
+		return false
+	return true
+
+
+## ISSUE #217: _player_can_act_now() plus the rules specific to ATTACKING.
+##
+## Turn 1 cannot attack, a Paralyzed or Asleep Pokemon cannot attack, and an
+## attack already made this turn ends the turn — pressing a second one used to
+## deal its damage anyway, which is the "keep hitting the attack button" the user
+## saw. show_attack_buttons() enforces the first three with messages; this is the
+## silent version the rows disable themselves with.
+func _player_can_attack_now() -> bool:
+	if not _player_can_act_now():
+		return false
+	if turn_number <= 1:
+		return false
+	if player_attacked_this_turn:
+		return false
+	if player_active_pokemon == null:
+		return false
+	return player_active_pokemon.special_condition not in ["Paralyzed", "Asleep"]
+
+
 ## Rebuilds one side's action panel. Called from display_pokemon(), so it
 ## refreshes on every board change without a second hook.
 func _build_action_panel(is_opponent: bool) -> void:
@@ -1457,8 +2008,14 @@ func _build_action_panel(is_opponent: bool) -> void:
 		var attack_name: String = attack.get("name", "Attack")
 		var usable := false
 		if not is_opponent:
-			usable = (not is_attack_disabled(mon, attack_name)) \
-				and check_attack_requirements(attack, mon) and turn_number > 1
+			# ISSUE #217: _player_can_attack_now() is the WHOLE gate. The row used
+			# to check only "is this attack legal for this Pokemon", which meant it
+			# stayed live during the opponent's turn, during every selection screen
+			# and after the player had already attacked — so it could be pressed
+			# over and over.
+			usable = _player_can_attack_now() \
+				and (not is_attack_disabled(mon, attack_name)) \
+				and check_attack_requirements(attack, mon)
 		rows.append({
 			"kind": "attack",
 			"text": attack_name,
@@ -1472,7 +2029,10 @@ func _build_action_panel(is_opponent: bool) -> void:
 		rows.append({
 			"kind": "retreat",
 			"text": "Retreat",
-			"enabled": true,
+			# ISSUE #217: retreating is a turn action too, and it was unconditionally
+			# enabled — pressable on the opponent's turn and mid-selection.
+			"enabled": _player_can_act_now() and not player_retreated_this_turn \
+				and not player_retreat_disabled,
 			"action": start_retreat,
 		})
 
@@ -1490,8 +2050,18 @@ func _render_action_rows(holder: Control, rows: Array, is_opponent: bool) -> voi
 		scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 		scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO
 		holder.add_child(scroll)
+		# ISSUE #247: a vertical scrollbar is drawn INSIDE the ScrollContainer, at
+		# its right edge - which on the player's side is the edge facing the active
+		# card, so it landed on top of the attack rows. The rows pull back
+		# ACTION_SCROLL_PAD from whichever edge that is for this side.
+		var pad := MarginContainer.new()
+		pad.set_anchors_preset(Control.PRESET_FULL_RECT)
+		pad.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		pad.add_theme_constant_override(
+			"margin_left" if is_opponent else "margin_right", ACTION_SCROLL_PAD)
+		scroll.add_child(pad)
 		col.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		scroll.add_child(col)
+		pad.add_child(col)
 	else:
 		col.set_anchors_preset(Control.PRESET_FULL_RECT)
 		holder.add_child(col)
@@ -1522,10 +2092,50 @@ func _make_action_row(row: Dictionary, is_opponent: bool) -> Button:
 		btn.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		btn.modulate.a = 0.75
 	elif enabled and row.has("action"):
-		btn.pressed.connect(row["action"])
+		# ISSUE #217 (retest): "Button pressed = disabled", before anything else
+		# happens. The blocker fix above closes the hole properly, but the press
+		# itself must not be repeatable either: a disabled Button emits no `pressed`
+		# at all, so killing the whole row set on the way IN is a hard stop that
+		# does not depend on how fast the rest of the turn gets going.
+		btn.pressed.connect(_run_action_row.bind(row))
 
 	_fill_action_row(btn, row, enabled)
 	return btn
+
+
+## ISSUE #217: fires one action row and kills every row on the way in.
+##
+## The rows are rebuilt from scratch by _build_action_panel on the next board
+## refresh (and on every turn transition, see _refresh_action_panels), so nothing
+## has to remember to switch them back on - they come back in whatever state the
+## new turn state says they should be in.
+func _run_action_row(row: Dictionary) -> void:
+	set_action_rows_disabled(true)
+	print("ISSUE #217 FIX ACTIVE: '", row.get("text", "?"),
+		"' pressed - every action row disabled before the action runs")
+	if row.has("action"):
+		row["action"].call()
+
+
+## ISSUE #217: hard-disable every action row on both panels, this frame.
+##
+## Also used by End Turn: pressing it commits the turn, so the rows must go dead
+## at the same instant rather than staying live through the hand-over.
+func set_action_rows_disabled(off: bool) -> void:
+	for panel in [_player_action_panel, _opp_action_panel]:
+		if panel == null or not is_instance_valid(panel):
+			continue
+		for btn in _all_buttons_under(panel):
+			btn.disabled = off
+
+
+func _all_buttons_under(node: Node) -> Array:
+	var out: Array = []
+	for child in node.get_children():
+		if child is Button:
+			out.append(child)
+		out.append_array(_all_buttons_under(child))
+	return out
 
 
 ## Border and fill per row kind. Retreat is DASHED-looking (a lighter, inset
@@ -1552,6 +2162,37 @@ func _action_row_box(kind: String, enabled: bool, hover: bool) -> StyleBoxFlat:
 			# A PAYABLE attack takes the accent border; the rest keep the quiet line.
 			sb.border_color = UITheme.col("accent") if enabled else UITheme.col("line")
 	return sb
+
+
+## ISSUE #215: ONE COST PIP — the printed energy symbol, not a coloured dot.
+##
+## The attack-mode buttons have always drawn the real icons out of
+## ENERGY_ICON_DIR (_build_attack_button_content); the action rows that replaced
+## them in stage 7 were built with flat coloured Panels instead, so the board had
+## two different vocabularies for the same thing. A type with no art on disk
+## still falls back to the coloured disc rather than leaving a gap.
+func _make_cost_pip(energy_type: String, alpha: float) -> Control:
+	var path := ENERGY_ICON_DIR + "color_icon_" + energy_type.to_lower() + ".png"
+	if ResourceLoader.exists(path):
+		var icon := TextureRect.new()
+		icon.texture = load(path)
+		icon.expand_mode  = TextureRect.EXPAND_IGNORE_SIZE
+		icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		icon.custom_minimum_size = Vector2(ACTION_PIP, ACTION_PIP)
+		icon.modulate.a = alpha
+		icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		return icon
+
+	var pip := Panel.new()
+	pip.custom_minimum_size = Vector2(ACTION_PIP, ACTION_PIP)
+	var psb := StyleBoxFlat.new()
+	psb.bg_color = UITheme.energy_colour(energy_type)
+	psb.set_corner_radius_all(int(ACTION_PIP * 0.5))
+	psb.anti_aliasing = true
+	pip.add_theme_stylebox_override("panel", psb)
+	pip.modulate.a = alpha
+	pip.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	return pip
 
 
 ## Cost pips, then the name, then the damage — laid out as anchored children,
@@ -1584,16 +2225,7 @@ func _fill_action_row(btn: Button, row: Dictionary, enabled: bool) -> void:
 		pips.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		box.add_child(pips)
 		for energy_type in cost:
-			var pip := Panel.new()
-			pip.custom_minimum_size = Vector2(ACTION_PIP, ACTION_PIP)
-			var psb := StyleBoxFlat.new()
-			psb.bg_color = UITheme.energy_colour(String(energy_type))
-			psb.set_corner_radius_all(int(ACTION_PIP * 0.5))
-			psb.anti_aliasing = true
-			pip.add_theme_stylebox_override("panel", psb)
-			pip.modulate.a = alpha
-			pip.mouse_filter = Control.MOUSE_FILTER_IGNORE
-			pips.add_child(pip)
+			pips.add_child(_make_cost_pip(String(energy_type), alpha))
 
 	var name_lbl := Label.new()
 	var display_name: String = row["text"]
@@ -1602,6 +2234,10 @@ func _fill_action_row(btn: Button, row: Dictionary, enabled: bool) -> void:
 	UIKit.set_label(name_lbl, "attack_name", display_name,
 		"accent_2" if kind == "power" else "field_fg")
 	name_lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	# ISSUE #222: centred in whatever is left between the pips and the damage, so
+	# the names line up down the column instead of jogging sideways with each
+	# attack's cost count. Same rule the old footer buttons followed.
+	name_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	name_lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	name_lbl.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	name_lbl.clip_text = true
@@ -1635,21 +2271,30 @@ func display_pokemon(is_opponent: bool) -> void:
 	var active_container = opponent_active_container if is_opponent else player_active_container
 	var bench_container = opponent_bench_container if is_opponent else player_bench_container
 	
-	# Clear active pokemon container
+	# Clear active pokemon container. ISSUE #170: detach first.
 	for child in active_container.get_children():
+		active_container.remove_child(child)
 		child.queue_free()
 	
 	# Display active pokemon if exists
 	if active_pokemon != null:
-		
+
 		var active_card_display = TextureRect.new()
 		active_card_display.set_script(card_display_script)
 		active_container.add_child(active_card_display)
 		active_card_display.load_card_image(active_pokemon.uid, ACTIVE_CARD, active_pokemon)
 		active_card_display.card_clicked.connect(this_card_clicked)
+	else:
+		# ISSUE #213: an EMPTY SLOT, not a hole in the board. A slot the player can
+		# see is information — "a Pokemon goes here" — where blank field is a bug
+		# they have to rule out. Same component the collection walls use.
+		var empty_active := UIKit.make_slot(ACTIVE_CARD)
+		empty_active.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		active_container.add_child(empty_active)
 	
-	# Clear bench container
+	# Clear bench container. ISSUE #170: detach first — see display_hand_cards_array.
 	for child in bench_container.get_children():
+		bench_container.remove_child(child)
 		child.queue_free()
 	
 	# Display bench pokemon
@@ -1659,14 +2304,55 @@ func display_pokemon(is_opponent: bool) -> void:
 	# bench_container is an HBoxContainer so slots are laid out horizontally.
 	if bench_pokemon_array.size() > 0:
 		for bench_pokemon in bench_pokemon_array:
-			var slot = build_pokemon_slot_with_energies_and_hp(bench_pokemon, BENCH_CARD, 16)
+			# ISSUE #234: no HP NUMBER on the bench, and the counters sit
+			# BENCH_SLOT_SEP under the card rather than 4px.
+			var slot = build_pokemon_slot_with_energies_and_hp(bench_pokemon, BENCH_CARD, 16,
+				false, true, true, false, BENCH_SLOT_SEP)
 			bench_container.add_child(slot)
+
+	# ISSUE #213: the rest of the bench is drawn as empty slots, so the row is
+	# always five wide and the player can see how much room is left. They are
+	# MOUSE_FILTER_IGNORE, so nothing about clicking a real bench Pokemon changes.
+	for _i in range(BENCH_SLOTS - bench_pokemon_array.size()):
+		bench_container.add_child(_make_empty_bench_slot())
 			
 	# Display HP circles for active Pokemon
 	display_hp_circles_above_align(active_pokemon, is_opponent)
 
 	# Attacks, powers and retreat live on the Pokemon now.
 	_build_action_panel(is_opponent)
+
+## ISSUE #231: AN EMPTY BENCH SLOT IS THE SIZE OF A CARD, NOT OF A WHOLE SLOT.
+##
+## The placeholder used to be a bare UIKit.make_slot(BENCH_CARD) dropped straight
+## into the bench HBoxContainer. A BoxContainer stretches its children on the
+## cross axis, so the outline was pulled to the FULL row height - card plus the
+## HP line plus the damage counters - and read as a much bigger box than the card
+## that would go in it.
+##
+## It is wrapped in the same VBox shape a real slot has instead: a card-sized
+## outline, then a spacer standing in for the counter row. The wrapper takes the
+## stretching, the outline keeps the card's exact rect, and the empty slots line
+## up with the occupied ones on both edges.
+func _make_empty_bench_slot() -> Control:
+	var wrap := VBoxContainer.new()
+	wrap.alignment = BoxContainer.ALIGNMENT_CENTER
+	wrap.add_theme_constant_override("separation", BENCH_SLOT_SEP)
+	wrap.mouse_filter = Control.MOUSE_FILTER_IGNORE
+
+	var outline := UIKit.make_slot(BENCH_CARD)
+	outline.custom_minimum_size = BENCH_CARD
+	outline.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	outline.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	outline.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	wrap.add_child(outline)
+
+	var counter_gap := Control.new()
+	counter_gap.custom_minimum_size = Vector2(BENCH_CARD.x, BENCH_COUNTER_H)
+	counter_gap.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	wrap.add_child(counter_gap)
+	return wrap
+
 
 # Updates the header and hint labels based on what array is being displayed
 func update_selection_mode_labels(array_displayed: Array, is_starting_game: bool = false) -> void:
@@ -1816,8 +2502,9 @@ func display_prize_cards(is_opponent: bool) -> void:
 		prize_cards_container = player_prize_container
 		prize_cards = player_prize_cards
 
-	# Clear any existing cards from the container
+	# Clear any existing cards from the container. ISSUE #170: detach first.
 	for child in prize_cards_container.get_children():
+		prize_cards_container.remove_child(child)
 		child.queue_free()
 	
 	# Remember the count this side STARTED with. Taken prizes leave a greyed slot
@@ -1847,7 +2534,15 @@ func display_prize_cards(is_opponent: bool) -> void:
 		prize_card_display.card_clicked.connect(this_card_clicked)
 
 	# One empty slot per prize already taken, so the 3 x 2 block keeps its shape.
-	for _i in range(started_with - prize_cards.size()):
+	#
+	# ISSUE #213: and the block is padded out to a full 3 x 2 even when the match
+	# STARTED with fewer than six prizes (some opponents are best-of-3 or short
+	# matches), so the corner always reads as a prize block rather than as a
+	# ragged row of two.
+	# ISSUE #260: the row is PRIZE_COLUMNS wide and one deep, so a match started
+	# with fewer than six prizes still draws a full row of slots and no more.
+	var slots_needed: int = maxi(started_with, PRIZE_COLUMNS)
+	for _i in range(slots_needed - prize_cards.size()):
 		var taken := UIKit.make_slot(PRIZE_SIZE)
 		taken.modulate.a = PRIZE_TAKEN_ALPHA
 		taken.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -1861,7 +2556,10 @@ func display_active_pokemon_energies(is_opponent: bool = false) -> void:
 	# Always refresh attached trainer cards display (PlusPower, Defender)
 	trainer_effects.display_attached_trainer_cards(is_opponent)
 
+	# ISSUE #170: detach before freeing, or the old stack is still parented (and
+	# still drawn) while the new one is added over it.
 	for child in energy_container.get_children():
+		energy_container.remove_child(child)
 		child.queue_free()
 
 	if active_pokemon == null:
@@ -1870,15 +2568,11 @@ func display_active_pokemon_energies(is_opponent: bool = false) -> void:
 	if active_pokemon.attached_energies.size() == 0:
 		return
 
-	
-	var energy_card_size = card_scales[11]
+	# ISSUE #239: -10% (card_scales[11] 100x138 -> 90x124).
+	var energy_card_size = ATTACH_CARD_SIZE
 	var card_width = energy_card_size.x
-	var overlap_offset = 80
-
-	if active_pokemon.attached_energies.size() > 6:
-		var target_width = 480.0
-		var n = active_pokemon.attached_energies.size()
-		overlap_offset = (target_width - card_width) / (n - 1)
+	var n = active_pokemon.attached_energies.size()
+	var overlap_offset = _stack_offset(n, card_width)
 
 	for i in range(active_pokemon.attached_energies.size()):
 		var attached_energy = active_pokemon.attached_energies[i]
@@ -1888,6 +2582,36 @@ func display_active_pokemon_energies(is_opponent: bool = false) -> void:
 		energy_display.load_card_image(attached_energy.uid, energy_card_size, attached_energy)
 		energy_display.position.x = overlap_offset * i if is_opponent else -(i * overlap_offset)
 		
+## ISSUE #160: HOW FAR APART THE CARDS IN AN ATTACHMENT PEEK-STACK SIT.
+##
+## The stack used to step a flat 80px per card and only compress past SIX, and
+## even then to a 480px target. Both actives sit in a 96px attachment column near
+## the edge of the board, so the FIFTH energy was already ~320px out — off the
+## left of the screen for the player and off the right for the opponent. That is
+## what "the game never seems to be aware of a 5th energy" actually was: the
+## energy was attached and counted, it just could not be seen.
+##
+## The whole stack is now held inside ATTACH_STACK_SPAN however many cards are on
+## it, so the fan gets tighter rather than longer. TWEAKABLE.
+## 160, not 210: the attachment column is only DUEL_COL_ATTACH (96) wide and the
+## player's stack fans LEFT from it, so anything wider walks into the left rail.
+## ISSUE #216 (retest): 160 -> 300. The stacks fan OUTWARD from the attachment
+## column into the band between the duel row and the rail, and at the duel row's
+## y (326..645) that band is completely empty - the rail's own occupants sit at
+## y 132..239 and y 690..767. 160px was throwing away roughly twice as much free
+## space as it was using, which is exactly what the retest said.
+const ATTACH_STACK_SPAN := 300.0
+const ATTACH_STACK_STEP := 80.0
+
+func _stack_offset(count: int, card_width: float) -> float:
+	if count <= 1:
+		return ATTACH_STACK_STEP
+	var natural: float = ATTACH_STACK_STEP * float(count - 1) + card_width
+	if natural <= ATTACH_STACK_SPAN:
+		return ATTACH_STACK_STEP
+	return maxf((ATTACH_STACK_SPAN - card_width) / float(count - 1), 8.0)
+
+
 # Calculates the total pixel height the tallest energy stack in the array will occupy above
 # its pokemon card. Used by display_hand_cards_array to shift small_selection_container down
 # so energy cards don't clip into the header area.
@@ -1925,11 +2649,15 @@ func _calculate_max_energy_stack_height(card_array: Array, card_size: Vector2, p
 # Energy cards use NEGATIVE y positions to extend upward outside card_area without
 # affecting the VBoxContainer's layout height, so the pokemon card and HP label never shift.
 var _issue59_zorder_logged: bool = false
-func build_pokemon_slot_with_energies_and_hp(card_obj: card_object, card_size: Vector2, label_font_size: int, _is_active: bool = false, show_hp_and_energies: bool = true, show_energies: bool = true) -> VBoxContainer:
+## ISSUE #234: `show_hp_number` and `separation` are new. A BENCH slot shows the
+## damage-counter blocks but NOT the "30 / 50" line - five of those across the
+## board was five numbers nobody reads while the blocks say the same thing at a
+## glance - and it sits its counters 2px under the card instead of 4.
+func build_pokemon_slot_with_energies_and_hp(card_obj: card_object, card_size: Vector2, label_font_size: int, _is_active: bool = false, show_hp_and_energies: bool = true, show_energies: bool = true, show_hp_number: bool = true, separation: int = 4) -> VBoxContainer:
 
 	var slot = VBoxContainer.new()
 	slot.alignment = BoxContainer.ALIGNMENT_CENTER
-	slot.add_theme_constant_override("separation", 4)
+	slot.add_theme_constant_override("separation", separation)
 
 	# Bench power button, above the card. Built only for the player's own bench
 	# slots — `_is_active` is false there and true for the focus/preview slots the
@@ -2019,19 +2747,39 @@ func build_pokemon_slot_with_energies_and_hp(card_obj: card_object, card_size: V
 	if show_hp_and_energies and card_obj.metadata.has("hp"):
 		var max_hp = int(card_obj.metadata["hp"])
 		var current_hp = card_obj.current_hp
-		var hp_label = Label.new()
-		# "30 / 50", spaced, in the mono face so the digits line up down a bench row.
-		hp_label.text = "%d / %d" % [current_hp, max_hp]
-		hp_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		UIKit.style_label(hp_label, "hp", "field_fg", label_font_size)
-		slot.add_child(hp_label)
+		# ISSUE #234: the bench passes show_hp_number = false. The blocks below carry
+		# the same information and are what the card text actually keys off.
+		if show_hp_number:
+			var hp_label = Label.new()
+			# "30 / 50", spaced, in the mono face so digits line up down a row.
+			hp_label.text = "%d / %d" % [current_hp, max_hp]
+			hp_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+			UIKit.style_label(hp_label, "hp", "field_fg", label_font_size)
+			slot.add_child(hp_label)
 
 		# ONE BLOCK PER 10 HP, never a bar. Attacks and effects in this game key off
 		# the NUMBER of damage counters, so the blocks are information, not
 		# decoration — see UIKit.make_damage_counters.
 		var blocks := UIKit.make_damage_counters(current_hp, max_hp, true)
 		blocks.alignment = BoxContainer.ALIGNMENT_CENTER
-		slot.add_child(blocks)
+		if show_hp_number:
+			slot.add_child(blocks)
+		else:
+			# ISSUE #234: a 12-block counter row is wider than a bench card even
+			# after the 10% shrink, and a BoxContainer takes its width from its
+			# WIDEST child - so the counters, not the card, were setting how far
+			# apart the bench slots sat. Asking for 25% less horizontal space while
+			# the counters keep dictating it is a contradiction. The row goes in a
+			# card-WIDTH holder and overflows it symmetrically, so the slot measures
+			# the card and the counters still centre under it.
+			var holder := Control.new()
+			holder.custom_minimum_size = Vector2(card_size.x, BENCH_COUNTER_H)
+			holder.mouse_filter = MOUSE_FILTER_IGNORE
+			blocks.set_anchors_preset(Control.PRESET_CENTER_TOP)
+			blocks.grow_horizontal = Control.GROW_DIRECTION_BOTH
+			blocks.mouse_filter = MOUSE_FILTER_IGNORE
+			holder.add_child(blocks)
+			slot.add_child(holder)
 	
 	return slot
 
@@ -2042,45 +2790,79 @@ func build_pokemon_slot_with_energies_and_hp(card_obj: card_object, card_size: V
 #
 # THE ONE PLACE the Active slot's visibility is toggled. Always use this instead of setting
 # `active_container.visible` directly, so the two can never get out of step.
+## ISSUE #245: it hides the STATUS icons and the ACTION ROWS too.
+##
+## "When a Pokemon retreats the screen should update as soon as it starts to
+## move" - the card and its HP already went with it (#87), but the status icons
+## and the attack/power/retreat rows stayed put, describing a Pokemon that was
+## visibly halfway to the bench. They belong to that Pokemon exactly as much as
+## its HP does, so they travel with it.
 func set_active_slot_visible(is_opponent: bool, is_slot_visible: bool) -> void:
 	var active_container = opponent_active_container if is_opponent else player_active_container
 	var hp_container = opponent_hp_container if is_opponent else player_hp_container
+	var status_container = opponent_status_container if is_opponent else player_status_container
+	var panel: Control = _opp_action_panel if is_opponent else _player_action_panel
 	active_container.visible = is_slot_visible
 	hp_container.visible = is_slot_visible
+	status_container.visible = is_slot_visible
+	if panel != null and is_instance_valid(panel):
+		panel.visible = is_slot_visible
 
-# Displays HP circles above the active pokemon, colouring red from damage taken
+## ISSUE #224: the active Pokemon's HP is drawn in the SAME style as the bench's.
+##
+## This used to be up to 24 hand-rolled 30x30 red/green ColorRects in a
+## 12-column grid — the pre-overhaul look, and 12 x 30 = 360px wide against a
+## 322px info column, which is also why the blocks ran over the active card
+## (ISSUE #213). It is a mono "30 / 50" over UIKit.make_damage_counters() now,
+## exactly like every bench slot, at the larger ACTIVE size.
+##
+## The function keeps its name and signature: it is called from a dozen places.
 func display_hp_circles_above_align(active_pokemon: card_object, is_opponent: bool) -> void:
 	var hp_grid_container = opponent_hp_container if is_opponent else player_hp_container
 
 	for child in hp_grid_container.get_children():
 		child.queue_free()
 
-	hp_grid_container.columns = 12
-
-	# ISSUE #87: no Active Pokemon (knocked out, or mid-swap) → no HP squares at all. This also
-	# re-reveals them on the next refresh once a replacement Pokemon has arrived in the slot.
+	# ISSUE #87: no Active Pokemon (knocked out, or mid-swap) -> no HP at all. This
+	# also re-reveals it on the next refresh once a replacement has arrived.
 	if active_pokemon == null or not active_pokemon.metadata.has("hp"):
 		hp_grid_container.visible = false
 		return
 	hp_grid_container.visible = true
+	hp_grid_container.columns = 1
 
-	var max_hp = int(active_pokemon.metadata["hp"])
-	var total_circles = max_hp / 10
-	var red_circles = (max_hp - active_pokemon.current_hp) / 10
-	
-	var circles_per_row = 12
-	var bottom_row_circles = min(total_circles, circles_per_row)
-	var top_row_circles = max(0, total_circles - circles_per_row)
-	var top_row_spacers = circles_per_row - top_row_circles
-	var bottom_row_spacers = circles_per_row - bottom_row_circles
-	
-	# Damage fills top row entirely first, remainder spills into bottom row
-	var top_red = min(red_circles, top_row_circles)
-	var bottom_red = red_circles - top_red
-	
-	# Opponent draws circles first (left-aligned), player draws spacers first (right-aligned)
-	_add_hp_row(hp_grid_container, top_row_circles, top_row_spacers, top_red, is_opponent, false)
-	_add_hp_row(hp_grid_container, bottom_row_circles, bottom_row_spacers, bottom_red, is_opponent, is_opponent)
+	var max_hp: int = int(active_pokemon.metadata["hp"])
+	var current_hp: int = active_pokemon.current_hp
+
+	# ISSUE #233 (retest) / #256 / #257: BOTH ROWS HUG THE ACTIVE CARD.
+	#
+	# Moving the container in (#233, first pass) was only half of it: the label and
+	# the block row were still CENTRED inside a 258px box, so a three-counter row
+	# sat ~100px from the card no matter where the box was. They are aligned to the
+	# INNER edge now - right for you, left for the opponent - which puts the "120"
+	# and the last damage block a few pixels off the card, and means each extra
+	# counter is added on the OUTER side (leftwards for you, rightwards for them)
+	# exactly as #256 describes. Same rule as the status icons (#262).
+	var inner_h: int = HORIZONTAL_ALIGNMENT_LEFT if is_opponent else HORIZONTAL_ALIGNMENT_RIGHT
+	var inner_box: int = (BoxContainer.ALIGNMENT_BEGIN if is_opponent
+		else BoxContainer.ALIGNMENT_END)
+
+	var hp_label := Label.new()
+	hp_label.text = "%d / %d" % [current_hp, max_hp]
+	hp_label.horizontal_alignment = inner_h
+	UIKit.style_label(hp_label, "hp", "field_fg", ACTIVE_HP_FONT)
+	hp_label.custom_minimum_size.x = ACTION_PANEL_W
+	hp_grid_container.add_child(hp_label)
+
+	# `false` = the ACTIVE block size (16x27), not the bench's smaller pair.
+	var blocks := UIKit.make_damage_counters(current_hp, max_hp, false)
+	blocks.alignment = inner_box
+	blocks.custom_minimum_size.x = ACTION_PANEL_W
+	blocks.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	hp_grid_container.add_child(blocks)
+	print("ISSUE #233/#256/#257 FIX ACTIVE: HP readout and counters aligned to the ",
+		"LEFT" if is_opponent else "RIGHT", " edge of the ", ACTION_PANEL_W, "px column")
+
 
 # Adds one row of HP circles and spacers to the grid container
 # circles_first: if true, circles are drawn before spacers (left-aligned for opponent)
@@ -2753,6 +3535,31 @@ func update_main_screen_buttons() -> void:
 	# the Pokemon and disable themselves per row.
 	if _end_turn_btn != null and is_instance_valid(_end_turn_btn):
 		_end_turn_btn.disabled = should_disable
+		# ISSUE #229: hidden, not merely greyed, before there is an Active to end a
+		# turn with and behind any full-screen selection.
+		_end_turn_btn.visible = not (card_selection_mode_enabled
+			or match_just_started_basic_pokemon_required or bench_setup_phase_active
+			or _card_showcase_active or game_is_over)
+
+	# ISSUE #217 (retest): THE ROWS WERE NEVER REBUILT WHEN THE TURN CHANGED.
+	#
+	# _player_can_act_now() / _player_can_attack_now() were correct, but the only
+	# thing that calls them is _build_action_panel, and the only thing that calls
+	# THAT is display_pokemon() - which runs when the board contents change, not
+	# when whose-turn-it-is changes. So the rows kept whatever enabled state they
+	# were built with at the end of the player's turn and stayed pressable right
+	# through the opponent's. update_main_screen_buttons() is already called from
+	# every turn transition and every mode change, which makes it the right place
+	# to refresh them: the End Turn button and the rows can no longer disagree.
+	_refresh_action_panels()
+
+
+## ISSUE #217: rebuild both action panels against the CURRENT turn state.
+func _refresh_action_panels() -> void:
+	if _player_action_panel == null or not is_instance_valid(_player_action_panel):
+		return
+	_build_action_panel(false)
+	_build_action_panel(true)
 
 # Updates the discard pile icon to show the top card and count for the specified player
 func update_discard_pile_display(is_opponent: bool) -> void:
@@ -2775,8 +3582,20 @@ func update_discard_pile_display(is_opponent: bool) -> void:
 	top_display.set_script(card_display_script)
 	top_display.mouse_filter = MOUSE_FILTER_IGNORE
 	icon.add_child(top_display)
-	top_display.load_card_image(top_card.uid, Vector2(110, 141), top_card)
+	# ISSUE #220: PILE_SIZE, not a hardcoded 110x141 — the discard's top card was
+	# drawing bigger than the deck beside it, so the two piles did not read as a
+	# pair.
+	top_display.load_card_image(top_card.uid, PILE_SIZE, top_card)
 	icon.move_child(icon.get_node(label_name), -1)
+
+## ISSUE #218: TWEAKABLE — the rendered height of one status icon. The width is
+## derived from the art so nothing is ever stretched.
+const STATUS_ICON_H := 30.0
+## ISSUE #218: space between two icons when more than one condition is on.
+const STATUS_ICON_GAP := 6
+
+## ISSUE #224: the active's "30 / 50" readout, a little larger than the bench's.
+const ACTIVE_HP_FONT := 24
 
 # Clears and rebuilds status condition icons for a pokemon's status container
 func update_status_icons(pokemon: card_object, is_opponent: bool) -> void:
@@ -2809,13 +3628,47 @@ func update_status_icons(pokemon: card_object, is_opponent: bool) -> void:
 	if pokemon.shielded_damage_threshold > 0:
 		icons_to_show.append("status_shielded_damage.png")
 
+	# ISSUE #218: the icons were forced into a 100x30 box — three times wider than
+	# they are tall — so every one of them was stretched into a smear across the
+	# info column. The HEIGHT is fixed now and the width follows the art's own
+	# aspect, which is the same rule the card-search chips and the match log's
+	# sprite use.
+	# ISSUE #218 (retest): THE ASPECT MATHS WAS ALWAYS RIGHT - THE CONTAINER WAS
+	# OVERRULING IT. player_active_pokemon_status_container is a VBoxContainer, and
+	# a BoxContainer stretches every child to its cross-axis width unless the child
+	# says otherwise. A TextureRect defaults to SIZE_FILL, so each icon was being
+	# blown back out to the full column width (322px, now ACTION_PANEL_W) on the
+	# very next layout pass, no matter what size or minimum the code had just set.
+	# That is why "nothing has changed".
+	#
+	# Two changes: the icons go in a centred HBox ROW (several conditions at once
+	# read as a row of badges, not a stack taller than the panel it lives in), and
+	# every icon is SHRINK_CENTER so the layout engine has nothing left to stretch.
+	var row := HBoxContainer.new()
+	# ISSUE #262: same inner-edge rule as the HP readout and the damage counters -
+	# the first icon touches the active card and any extra ones grow outward.
+	row.alignment = (BoxContainer.ALIGNMENT_BEGIN if is_opponent
+		else BoxContainer.ALIGNMENT_END)
+	row.add_theme_constant_override("separation", STATUS_ICON_GAP)
+	row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	container.add_child(row)
+
 	for icon_file in icons_to_show:
+		var tex: Texture2D = load("res://Image_Assets/Icons/Status_Icons/" + icon_file)
+		if tex == null:
+			continue
+		var t := tex.get_size()
+		var w: float = STATUS_ICON_H * (t.x / maxf(t.y, 1.0))
 		var icon = TextureRect.new()
-		icon.texture = load("res://Image_Assets/Icons/Status_Icons/" + icon_file)
-		icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-		icon.custom_minimum_size = Vector2(100, 30)
-		icon.size = Vector2(100, 30)
-		container.add_child(icon)
+		icon.texture = tex
+		icon.expand_mode  = TextureRect.EXPAND_IGNORE_SIZE
+		icon.stretch_mode = TextureRect.STRETCH_SCALE
+		icon.custom_minimum_size = Vector2(w, STATUS_ICON_H)
+		icon.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+		icon.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		row.add_child(icon)
 
 ############################################################### END DISPLAY FUNCTIONS ################################################################
 ######################################################################################################################################################
@@ -2878,16 +3731,106 @@ func show_floating_label(message: String, spawn_position: Vector2, label_color: 
 #                               get_pokemon_screen_location().
 # Tween duration is also lengthened by 50% for a smoother glide (0.3s → 0.45s etc).
 const _ANIM_POS_SENTINEL := Vector2(-99999, -99999)
-func animate_card_a_to_b(from_node: Control, to_node: Control, animation_speed: float = 0.8, custom_texture: Texture2D = null, custom_size: Vector2 = Vector2(83, 113), target_size: Vector2 = Vector2.ZERO, target_pos_override: Vector2 = _ANIM_POS_SENTINEL) -> void:
+
+## ISSUE #250: CARDS MOVE AT A SPEED, NOT FOR A TIME.
+##
+## Every call used to name a DURATION, so a card nudging 40px into a tool slot
+## and a card crossing the whole board both took the same 0.45s - which means the
+## long one was moving twenty times faster than the short one and was impossible
+## to follow. A single px/sec rate makes every move read at the same pace and
+## turns distance into time, which is the way round a viewer expects. The two
+## clamps keep a 30px nudge from being instant and a corner-to-corner flight from
+## becoming a journey. ALL THREE TWEAKABLE.
+const ANIM_PX_PER_SEC := 2100.0
+const ANIM_MIN_TIME   := 0.20
+const ANIM_MAX_TIME   := 0.95
+## ISSUE #236: how far through the flight the card drops behind the board, and
+## what z it drops to. 0.82 is "as it reaches the card", not on arrival.
+const ANIM_SINK_AT  := 0.82
+const ANIM_BEHIND_Z := -3
+
+## ISSUE #243: ONE CARD IN THE AIR AT A TIME.
+##
+## "At the end of a turn when tools are being discarded, finish this animation
+## before drawing a card." The end-of-turn hooks do await each other, but nothing
+## stopped a caller that FORGOT to await (animate_energies_to_discard is one)
+## from launching a second flight over the first - and two overlapping flights
+## also fight over animation_blocker, so the first one to land unblocks the board
+## while the second is still moving. Serialising here fixes both at the source and
+## costs nothing when calls are already sequential.
+var _anim_in_flight: bool = false
+
+## ISSUE #241: where a card ACTUALLY ends up when the caller did not say.
+##
+## Callers that pass no target_size used to leave the ghost at its starting size,
+## so a 405px active card "arriving" at the 77px discard pile simply vanished and
+## reappeared as a pile - the snapping the fix describes. Every destination on
+## this board has a known card size; this is the table.
+func _anim_dest_size(to_node: Control, fallback: Vector2) -> Vector2:
+	if to_node == null or not is_instance_valid(to_node):
+		return fallback
+	if to_node == player_deck_icon or to_node == opponent_deck_icon \
+			or to_node == player_discard_icon or to_node == opponent_discard_icon:
+		return PILE_SIZE
+	if to_node == player_active_container or to_node == opponent_active_container:
+		return ACTIVE_CARD
+	if to_node == player_bench_container or to_node == opponent_bench_container:
+		return BENCH_CARD
+	if to_node == player_energy_container or to_node == opponent_energy_container \
+			or to_node == player_attached_cards_container \
+			or to_node == opponent_attached_cards_container:
+		return ATTACH_CARD_SIZE
+	if to_node == player_hand_container:
+		return card_scales[11]
+	if to_node == opponent_hand_container:
+		return OPP_HAND_CARD
+	if to_node == player_prize_container or to_node == opponent_prize_container:
+		return PRIZE_SIZE
+	return fallback
+
+## `arrive_behind` (ISSUE #236): the card flies OVER everything, then drops
+## behind the board for the last stretch, so it slides in UNDER the Pokemon it is
+## being attached to instead of landing on top of it and vanishing. That is how
+## an attached tool or energy is actually drawn - peeking out from behind the
+## card - so the animation now ends in the same reading the board gives.
+func animate_card_a_to_b(from_node: Control, to_node: Control, animation_speed: float = 0.8, custom_texture: Texture2D = null, custom_size: Vector2 = Vector2(83, 113), target_size: Vector2 = Vector2.ZERO, target_pos_override: Vector2 = _ANIM_POS_SENTINEL, arrive_behind: bool = false) -> void:
+	# ISSUE #243: queue behind any flight already in the air.
+	while _anim_in_flight:
+		await get_tree().process_frame
+		if not is_inside_tree():
+			return
+	_anim_in_flight = true
+
+	# ISSUE #249: LET THE BOARD CATCH UP BEFORE THE CARD LEAVES.
+	#
+	# "As soon as the card starts to move it should already have been removed from
+	# its old array and the screen refreshed." The callers do erase and refresh
+	# first - but a refresh is only a rebuild of Control children, which does not
+	# reach the screen until the frame ends. Starting the tween in the same frame
+	# meant the card was visibly in two places for one frame, and a message box
+	# opened on the same frame described a board that had not been drawn yet.
+	# One frame of settle makes "remove, redraw, THEN move" true rather than
+	# merely intended.
+	await get_tree().process_frame
+
 	SoundManagerScript.play_sfx(SoundManagerScript.SFX_card_draw_sound)
 	animation_blocker.visible = true
-	var final_size: Vector2 = target_size if target_size != Vector2.ZERO else custom_size
+	# ISSUE #241: fall back to the DESTINATION's own card size, not the source's.
+	var final_size: Vector2 = target_size if target_size != Vector2.ZERO \
+		else _anim_dest_size(to_node, custom_size)
 	var card_image = TextureRect.new()
 	card_image.texture = custom_texture if custom_texture else card_back_texture
 	card_image.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	card_image.custom_minimum_size = custom_size
 	card_image.size = custom_size
-	card_image.z_index = 100
+	card_image.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	# ISSUE #240: THE CHROME BARS DREW OVER THE MOVING CARD.
+	#
+	# The bars sit at Z_CHROME (200) and the ghost was at 100, so any card flying
+	# to or from the hand, the deck or the discard - all of which live ON a bar -
+	# disappeared behind one for the last third of its journey. Above the bars,
+	# like the hand and the message box already are (#213).
+	card_image.z_index = UIKit.Z_CHROME + 20
 	add_child(card_image)
 
 	card_image.global_position = from_node.global_position
@@ -2899,18 +3842,71 @@ func animate_card_a_to_b(from_node: Control, to_node: Control, animation_speed: 
 		# card at the node's mid-x, so it landed half a card-width to the right of centre.)
 		target_pos = to_node.global_position + Vector2(to_node.size.x / 2 - final_size.x / 2, 0)
 
-	# ISSUE #34: scale every card-move animation by the global card-match animation-speed multiplier.
-	var duration = GameState.scaled_duration(animation_speed * 1.5, GameState.card_match_animation_speed)
+	# ISSUE #250: distance decides the time. `animation_speed` is kept in the
+	# signature - 75 call sites pass it - but it is a RELATIVE nudge now rather
+	# than the duration itself, normalised on the 0.3 that most callers use.
+	# ISSUE #34: still scaled by the global card-match animation-speed multiplier.
+	var distance: float = card_image.global_position.distance_to(target_pos)
+	var base_time: float = clampf(distance / ANIM_PX_PER_SEC, ANIM_MIN_TIME, ANIM_MAX_TIME)
+	var duration = GameState.scaled_duration(base_time * (animation_speed / 0.3),
+		GameState.card_match_animation_speed)
 	var tween = create_tween()
 	tween.set_parallel(true)
 	tween.tween_property(card_image, "global_position", target_pos, duration).set_ease(Tween.EASE_IN_OUT)
 	if final_size != custom_size:
 		tween.tween_property(card_image, "size", final_size, duration).set_ease(Tween.EASE_IN_OUT)
 		tween.tween_property(card_image, "custom_minimum_size", final_size, duration).set_ease(Tween.EASE_IN_OUT)
+	# ISSUE #236: the hand-off point, on a tween of its own so it fires DURING the
+	# flight rather than after it. Scales with the duration, so it stays "as the
+	# card reaches the Pokemon" at every animation speed.
+	if arrive_behind:
+		var sink := create_tween()
+		sink.tween_interval(duration * ANIM_SINK_AT)
+		sink.tween_callback(_sink_behind_board.bind(card_image))
 	tween.set_parallel(false)
 	tween.tween_callback(card_image.queue_free)
 	await tween.finished
 	animation_blocker.visible = false
+	_anim_in_flight = false
+
+
+## ISSUE #236: drops a moving card behind the board mid-flight.
+func _sink_behind_board(node: CanvasItem) -> void:
+	if node != null and is_instance_valid(node):
+		node.z_index = ANIM_BEHIND_Z
+
+
+## ISSUE #236: ONE PLACE THAT KNOWS WHERE AN ATTACHMENT LANDS.
+##
+## Every tool attach in Trainer_Effects flew the card to the ACTIVE Pokemon's tool
+## container - `attached_node` - whatever it had actually been attached to. So
+## attaching a Focus Band to a benched Pokemon sent the card to the far side of
+## the board, to a stack it was never going to join, and then it popped into
+## existence on the bench when the board refreshed. That is the bug as reported.
+##
+## The Active still measures its real slot in the tool stack (#54); a benched
+## Pokemon gets its own slot rect (#236) at bench card size, and arrives BEHIND
+## the card it is attaching to.
+##
+## `card_display_node` is the tool/energy card that has ALREADY been appended to
+## the target - call this after the append, like the Active path always has.
+func animate_attach_to_pokemon(card: card_object, target: card_object,
+		is_opponent: bool, from_node: Control) -> void:
+	var texture := get_card_texture(card)
+	var active := opponent_active_pokemon if is_opponent else player_active_pokemon
+	if target == active:
+		var attached_node = opponent_attached_cards_container if is_opponent else player_attached_cards_container
+		var rect := measure_and_hide_new_active_tool_slot(is_opponent)
+		await animate_card_a_to_b(from_node, attached_node, 0.3, texture, card_scales[10],
+			rect.get("size", ATTACH_CARD_SIZE), rect.get("position", _ANIM_POS_SENTINEL))
+		return
+
+	var bench_container = opponent_bench_container if is_opponent else player_bench_container
+	var loc := get_pokemon_screen_location(target)
+	print("ISSUE #236 FIX ACTIVE: attaching ", card.metadata.get("name", ""), " to BENCHED ",
+		target.metadata.get("name", ""), " at ", loc.get("position", Vector2.ZERO))
+	await animate_card_a_to_b(from_node, bench_container, 0.3, texture, card_scales[10],
+		loc.get("size", BENCH_CARD), loc.get("position", _ANIM_POS_SENTINEL), true)
 
 # Animate discarding for reatreat and knockout
 func animate_energies_to_discard(energy_cards: Array, pokemon: card_object, is_opponent: bool) -> void:
@@ -2975,7 +3971,18 @@ func animate_retreat(old_active: card_object, new_active: card_object, discarded
 		# 1) Hide the Active card and glide the outgoing Pokémon down to the Bench (shrinking to Bench size)
 		# ISSUE #87: hides the HP squares along with the card.
 		set_active_slot_visible(is_opponent, false)
-		await animate_card_a_to_b(active_container, bench_container, 0.3, old_tex, card_scales[3.5], card_scales[11])
+		# ISSUE #242: A FORCED SWITCH IS A RETREAT AND MUST LOOK LIKE ONE.
+		#
+		# The sequencing was already shared with a voluntary retreat - what was not
+		# shared was the geometry. Both flights were sized from card_scales[3.5] /
+		# [11] (405x557 and 100x138), neither of which the board has drawn since the
+		# overhaul, and both aimed at the bench CONTAINER's centre rather than at the
+		# slot the Pokemon lands in. So the card was the wrong size the whole way and
+		# then snapped somewhere else on arrival: "it doesn't follow the same
+		# animation for retreating". Exact slot rect, exact sizes, both directions.
+		var out_slot := _bench_slot_rect(maxi(side_bench.size() - 1, 0), bench_container)
+		await animate_card_a_to_b(active_container, bench_container, 0.3, old_tex,
+			ACTIVE_CARD, out_slot["size"], out_slot["position"])
 
 		# 2) Apply the swap in data — but only if the caller hasn't already done it (most callers
 		#    swap before calling; the few that swap afterwards have had that block removed).
@@ -3004,7 +4011,9 @@ func animate_retreat(old_active: card_object, new_active: card_object, discarded
 		# knockout-replacement animation (handle_action_knockout_bench) by passing the EXPLICIT active
 		# slot position + size from get_pokemon_screen_location, which works on BOTH sides.
 		var active_loc = get_pokemon_screen_location(new_active)
-		await animate_card_a_to_b(bench_container, active_container, 0.3, new_tex, card_scales[11], active_loc.get("size", card_scales[3.5]), active_loc.get("position", _ANIM_POS_SENTINEL))
+		await animate_card_a_to_b(bench_container, active_container, 0.3, new_tex,
+			BENCH_CARD, active_loc.get("size", ACTIVE_CARD),
+			active_loc.get("position", _ANIM_POS_SENTINEL))
 
 		# 5) Reveal the new Active
 		set_active_slot_visible(is_opponent, true)
@@ -3032,7 +4041,10 @@ func animate_retreat(old_active: card_object, new_active: card_object, discarded
 	# 1) Hide the Active card and glide the outgoing Pokémon down to the Bench (shrinking to Bench size)
 	# ISSUE #87: hides the HP squares along with the card.
 	set_active_slot_visible(is_opponent, false)
-	await animate_card_a_to_b(active_container, bench_container, 0.3, old_texture, card_scales[3.5], card_scales[11])
+	# ISSUE #242: same exact-slot geometry as the forced branch above.
+	var retreat_slot := _bench_slot_rect(maxi(side_bench.size() - 1, 0), bench_container)
+	await animate_card_a_to_b(active_container, bench_container, 0.3, old_texture,
+		ACTIVE_CARD, retreat_slot["size"], retreat_slot["position"])
 
 	# 2) The callers have already swapped the data arrays + current_location; ensure the Active
 	#    pointer matches too (the player retreat caller only reassigns it AFTER this returns).
@@ -3048,7 +4060,10 @@ func animate_retreat(old_active: card_object, new_active: card_object, discarded
 	set_active_slot_visible(is_opponent, false)
 
 	# 4) Glide the incoming Pokémon up into the Active slot, growing to Active size
-	await animate_card_a_to_b(bench_container, active_container, 0.3, new_texture, card_scales[11], card_scales[3.5])
+	var incoming_loc := get_pokemon_screen_location(new_active)
+	await animate_card_a_to_b(bench_container, active_container, 0.3, new_texture,
+		BENCH_CARD, incoming_loc.get("size", ACTIVE_CARD),
+		incoming_loc.get("position", _ANIM_POS_SENTINEL))
 
 	# 5) Reveal the new Active, then the closing message (animation plays fully first)
 	set_active_slot_visible(is_opponent, true)
@@ -3148,22 +4163,85 @@ func get_side(is_opponent: bool) -> Dictionary:
 func get_owner_side(card: card_object) -> Dictionary:
 	return get_side(card.is_owner_opp(self))
 
+## ISSUE #173: REFRESH THE RIGHT POKEMON'S HP READOUT.
+##
+## display_hp_circles_above_align() only ever draws the ACTIVE Pokemon's readout —
+## the container it writes into belongs to the active slot. Handing it a BENCHED
+## Pokemon (which several effects did) repainted the active's HP with the bench
+## Pokemon's numbers, so the active appeared to jump to 40/50 while the Pokemon
+## that actually took the damage still showed 50/50.
+##
+## Use this from any effect that can hit either. A bench Pokemon's HP is drawn as
+## part of its slot, so the whole side is rebuilt for it.
+func refresh_pokemon_hp_display(pokemon: card_object, is_opponent: bool) -> void:
+	if pokemon == null:
+		return
+	var active := opponent_active_pokemon if is_opponent else player_active_pokemon
+	if pokemon == active:
+		display_hp_circles_above_align(pokemon, is_opponent)
+	else:
+		display_pokemon(is_opponent)
+
+
+## ISSUE #173: a floating damage/heal label over the Pokemon it belongs to.
+##
+## The labels used to be spawned at a hardcoded x (1030 / 530) and y=300 — the two
+## ACTIVE slots — so a bench Pokemon's damage was announced over the active's
+## head. get_pokemon_screen_location() already knows where every Pokemon in play
+## is drawn; this centres the label on that rect and falls back to the old fixed
+## spot only when the Pokemon is not on the board at all.
+func float_label_over(pokemon: card_object, text: String, colour: Color,
+		is_opponent: bool = false) -> void:
+	var loc := get_pokemon_screen_location(pokemon)
+	if loc.is_empty():
+		show_floating_label(text, Vector2(1030.0 if is_opponent else 530.0, 300.0), colour, true)
+		return
+	var rect_pos: Vector2 = loc["position"]
+	var rect_size: Vector2 = loc["size"]
+	# show_floating_label centres its text in a 300px box, hence the -150.
+	show_floating_label(text,
+		Vector2(rect_pos.x + rect_size.x * 0.5 - 150.0, rect_pos.y + rect_size.y * 0.35),
+		colour, true)
+
+
+## ISSUE #236 / #241 / #242: THE SIZES HERE WERE PRE-OVERHAUL AND WRONG.
+##
+## It reported card_scales[3.5] (405x557) for an Active that is drawn at 230x319,
+## and card_scales[11] (100x138) for a bench slot drawn at BENCH_CARD - and it
+## stepped along the bench row by that wrong width too, so every bench slot past
+## the first was reported further right than it is. Everything that aims an
+## animation reads this, which is why cards "jump and appear in the new location
+## when the card didn't move there to the right spot" (#241), why a Wail switch
+## did not look like a retreat (#242), and why a card attached to a bench Pokemon
+## flew to the wrong place (#236). It reports the sizes the board actually draws
+## now, and the bench y accounts for the slot centring the card inside BENCH_ROW_H.
 func get_pokemon_screen_location(pokemon: card_object) -> Dictionary:
 	if pokemon == opponent_active_pokemon:
-		return {"position": opponent_active_container.global_position, "size": card_scales[3.5], "is_active": true}
+		return {"position": opponent_active_container.global_position, "size": ACTIVE_CARD, "is_active": true}
 	elif pokemon == player_active_pokemon:
-		return {"position": player_active_container.global_position, "size": card_scales[3.5], "is_active": true}
+		return {"position": player_active_container.global_position, "size": ACTIVE_CARD, "is_active": true}
 	elif pokemon in opponent_bench:
-		var index = opponent_bench.find(pokemon)
-		var size = card_scales[11]
-		var separation = opponent_bench_container.get_theme_constant("separation")
-		return {"position": opponent_bench_container.global_position + Vector2(index * (size.x + separation), 0), "size": size, "is_active": false}
+		return _bench_slot_rect(opponent_bench.find(pokemon), opponent_bench_container)
 	elif pokemon in player_bench:
-		var index = player_bench.find(pokemon)
-		var size = card_scales[11]
-		var separation = player_bench_container.get_theme_constant("separation")
-		return {"position": player_bench_container.global_position + Vector2(index * (size.x + separation), 0), "size": size, "is_active": false}
+		return _bench_slot_rect(player_bench.find(pokemon), player_bench_container)
 	return {}
+
+
+## ISSUE #236: the exact on-screen rect of one bench slot's CARD.
+##
+## The row is always five slots wide and centred, so the step is the real card
+## width plus the real gap. The card is not at the top of the slot either - the
+## slot is a VBox centred inside BENCH_ROW_H with the counter row beneath it - so
+## the y is nudged down by that padding.
+func _bench_slot_rect(index: int, container: Control) -> Dictionary:
+	var content_h: float = BENCH_CARD.y + float(BENCH_SLOT_SEP) + BENCH_COUNTER_H
+	var top_pad: float = maxf((BENCH_ROW_H - content_h) * 0.5, 0.0)
+	return {
+		"position": container.global_position
+			+ Vector2(float(index) * (BENCH_CARD.x + float(BENCH_GAP)), top_pad),
+		"size": BENCH_CARD,
+		"is_active": false,
+	}
 
 # ISSUE #40 FIX: build the real Active energy stack (so the just-appended energy occupies its true
 # final slot), then return that slot's exact on-screen rect {position, size} AND hide the slot so an
@@ -4494,6 +5572,15 @@ func player_start_turn_checks() -> void:
 	if _should_bail(): return
 	await trainer_effects.ex12_strange_cave_offer(false)
 	if _should_bail(): return
+
+## ISSUE #217: End Turn, with the board committed before anything else runs.
+func _on_end_turn_pressed() -> void:
+	if _end_turn_btn != null and is_instance_valid(_end_turn_btn):
+		_end_turn_btn.disabled = true
+	set_action_rows_disabled(true)
+	print("ISSUE #217 FIX ACTIVE: End turn pressed - action rows and End turn disabled immediately")
+	player_end_turn_checks()
+
 
 # Called when the player presses the end turn button to reset per-turn variables and begin next turn
 func player_end_turn_checks() -> void:
@@ -7737,6 +8824,14 @@ func handle_action_normal_card() -> void:
 			var validation_error = trainer_effects.validate_trainer_can_be_played(trainer_to_play, false)
 			if validation_error != "":
 				await show_message(validation_error)
+				# ISSUE #174: DROP THE SELECTION TOO. Returning here left the card
+				# still highlighted in the hand while the action button fell back to
+				# "SELECT A CARD" — so the trainer looked picked and the button said
+				# nothing was. clear_current_action_selection() deselects the card and
+				# resets the button without leaving the hand screen, which is exactly
+				# the state a refused play should land in.
+				print("ISSUE #174 FIX ACTIVE: clearing selection after refused trainer play")
+				clear_current_action_selection()
 				return
 			hide_selection_mode_display_main()
 			await trainer_effects.play_trainer_card(trainer_to_play, false)
@@ -8720,7 +9815,10 @@ func _ready() -> void:
 	# _build_board_layout() hid the buttons and moved End Turn onto the footer, so
 	# it is connected through the reference the layout kept.
 	if _end_turn_btn != null and is_instance_valid(_end_turn_btn):
-		_end_turn_btn.pressed.connect(player_end_turn_checks)
+		# ISSUE #217: "End turn pressed = buttons disabled". The turn is committed
+		# the instant it is pressed, so the rows and the button itself go dead here
+		# rather than waiting for the state change to propagate.
+		_end_turn_btn.pressed.connect(_on_end_turn_pressed)
 	attack_buttons_container.visible = false
 	
 	

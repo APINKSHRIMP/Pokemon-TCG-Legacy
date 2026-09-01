@@ -440,9 +440,6 @@ static func build_side_list(parent: Control, lines: Array, cat_rows: Array,
 	list_label.text = "\n".join(body)
 	list_scroll.add_child(list_label)
 
-	print("ISSUE #152 FIX ACTIVE: card list built, ", lines.size(), " unique cards at font ",
-		font_size, " (categories at ", cat_size, ") in a ", VIEWER_LIST_W, "x",
-		bottom - VIEWER_LIST_TOP, " bar")
 	return list_scroll
 
 

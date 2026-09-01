@@ -47,8 +47,19 @@ func _ready():
 	add_to_group("npcs")
 	super._ready()
 
+## ISSUE #166: EVERY NPC THAT SELLS SOMETHING GETS THE SHOP BUBBLE.
+##
+## The test used to be npc_type == "shop", which is only the original pack
+## shopkeepers. Every service NPC added since — the coin flipper, the card buyer,
+## the weighed-pack seller, the sleeve and costume sellers, the juice vendor — has
+## its own npc_type, so they all fell through to the plain talk bubble and looked
+## like ordinary townsfolk. SHOP_NPC_TYPES is the one list; add a new seller's type
+## here when you add it to MapManager's interaction routing.
+const SHOP_NPC_TYPES := ["shop", "juice_vendor", "coin_flipper", "card_buyer",
+	"weighted_pack_seller", "sleeve_seller", "costume_seller"]
+
 func _get_bubble_texture() -> Texture2D:
-	if npc_type == "shop":
+	if npc_type in SHOP_NPC_TYPES:
 		return load("res://Image_Assets/Icons/Message_Icons/shop_talk.png")
 	var already_interacted = has_gift_been_given() if is_gift_npc() else has_been_met()
 	if already_interacted:

@@ -122,14 +122,22 @@ func get_pack_target_rect() -> Rect2:
 	return Rect2(card_rect.position - margin, card_rect.size + margin * 2.0)
 
 
-## Cardback texture for the reveal: the player's equipped sleeve, falling back to the default.
-## ISSUE #50 FIX: use the equipped sleeve (matching the match board) instead of a hardcoded
-## cardback.png that doesn't exist -> null texture -> get_width() crash.
+## Cardback texture for the reveal: ALWAYS the default back.
+##
+## ISSUE #206: this used to be the player's equipped sleeve (ISSUE #50), matching
+## the match board. A sleeve is something you put YOUR deck in — the cards coming
+## out of a freshly opened booster are not in it yet, so the pack reveal shows the
+## printed back. _resolve_player_cardback_path() is kept below for the fallback
+## chain's default path and in case a future screen wants the sleeve again.
 func _get_cardback_texture() -> Texture2D:
-	var tex : Texture2D = _load_texture(_resolve_player_cardback_path())
+	var tex : Texture2D = _load_texture(DEFAULT_CARDBACK_PATH)
 	if tex == null:
 		tex = _load_texture(CARDBACK_PATH)
 	return tex
+
+
+## ISSUE #206: the printed card back every unopened booster card shows.
+const DEFAULT_CARDBACK_PATH := "res://Image_Assets/Sleeves/1_Default_English.png"
 
 
 ## Centred rect the revealed cards occupy — the cardback aspect fitted inside CARD_DISPLAY_SIZE.
@@ -686,16 +694,25 @@ func _generate_pack_cards(set_id: String) -> Array:
 		return god_result
 
 	# ── Standard pack ───────────────────────────────────────────
-	var bonus_rare : bool  = randf() < 0.25 and rare_pool.size() > 0
+	# ISSUE #196: A PACK IS ALWAYS TEN CARDS.
+	#
+	# The bonus rare used to be an ELEVENTH card bolted onto a full pack, at a 25%
+	# roll. It is half as likely now, and it REPLACES a common rather than adding
+	# to the pack — so a lucky pack is 5 commons, 3 uncommons, the normal rare and
+	# then the bonus rare, in that order, and every pack the player opens has the
+	# same number of cards in it whatever it rolled.
+	var bonus_rare : bool  = randf() < BONUS_RARE_CHANCE and rare_pool.size() > 0
 	var result     : Array = []
 	var used_ids   : Dictionary = {}
 
-	for _i in range(6):
+	# One fewer common on a bonus-rare pack — that is the slot the extra rare takes.
+	var common_count : int = PACK_COMMONS - (1 if bonus_rare else 0)
+	for _i in range(common_count):
 		var pick := _pick_unique(commons, used_ids)
 		if not pick.is_empty():
 			result.append(pick)
 
-	for _i in range(3):
+	for _i in range(PACK_UNCOMMONS):
 		var pick := _pick_unique(uncommons, used_ids)
 		if not pick.is_empty():
 			result.append(pick)
@@ -713,6 +730,15 @@ func _generate_pack_cards(set_id: String) -> Array:
 			_bonus_indices[result.size() - 1] = true
 
 	return result
+
+
+## ISSUE #196: the standard pack's shape, and the bonus-rare roll.
+## Halved from 0.25. The bonus rare no longer makes an 11th card — it takes a
+## common's slot, so PACK_COMMONS drops to 5 on a pack that rolls it and the pack
+## is ten cards either way.
+const BONUS_RARE_CHANCE := 0.125
+const PACK_COMMONS      := 6
+const PACK_UNCOMMONS    := 3
 
 
 func _pick_unique(pool: Array, used_ids: Dictionary) -> Dictionary:

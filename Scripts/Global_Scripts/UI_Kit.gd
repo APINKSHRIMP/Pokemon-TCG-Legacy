@@ -48,10 +48,25 @@ const FOOTER_BTN_W := 230.0
 const FOOTER_BTN_GAP := 20
 
 # Shop-item drop shadow. TWEAKABLE — the illusion is that every item is a
-# physical thing floating just above the screen, so keep the offset small and the
+# physical thing floating just above the screen, so keep the growth small and the
 # alpha well under half or it reads as a second, dirtier copy of the item.
-const SHADOW_OFFSET := Vector2(11.0, 14.0)
-const SHADOW_ALPHA  := 0.38
+#
+# ISSUE #197: EVERY NUMBER HERE IS A FRACTION OF THE ITEM, NOT A PIXEL COUNT.
+# The first version dropped every shadow by a flat (11, 14) px. That is a couple
+# of percent on a 430px booster pack — which is why the pack shop was the one
+# screen that looked right — and better than a tenth of a 100px coin or a 90px
+# sleeve, where it read as a second object lying beside the first. Anchor
+# fractions also mean the shadow never has to know the item's size, which is not
+# settled on the frame a container child is added.
+#
+# ISSUE #197 (retest 2): SAME SIZE as the item, offset RIGHT and DOWN. The
+# same-size half stands - a shadow bigger than its caster reads as a second copy
+# peeking out on every side at once, where an identically sized one displaced
+# further reads as one object lifted off the page. Only the direction changed
+# back: the light is above and to the left, so the shadow falls right and down.
+const SHADOW_GROW  := 0.0                     # same size as the item
+const SHADOW_DROP  := Vector2(0.030, 0.042)   # right / down, as a fraction of the item
+const SHADOW_ALPHA := 0.38
 
 # The content band left between the two 92px bars on a standard screen. Every
 # converted screen lays its grid out inside this rather than re-deriving it.
@@ -543,8 +558,8 @@ static func make_damage_counters(current_hp: int, max_hp: int, bench: bool = fal
 ##
 ## Safe to call on an item other code walks: the shadow is a grandchild of the
 ## grid cell, so `for child in grid.get_children()` never sees it.
-static func add_drop_shadow(item: TextureRect, offset: Vector2 = SHADOW_OFFSET,
-		alpha: float = SHADOW_ALPHA) -> TextureRect:
+static func add_drop_shadow(item: TextureRect, grow: float = SHADOW_GROW,
+		alpha: float = SHADOW_ALPHA, drop: Vector2 = SHADOW_DROP) -> TextureRect:
 	if item == null or item.texture == null:
 		return null
 
@@ -556,12 +571,19 @@ static func add_drop_shadow(item: TextureRect, offset: Vector2 = SHADOW_OFFSET,
 	shadow.stretch_mode = item.stretch_mode
 	shadow.flip_h = item.flip_h
 	shadow.flip_v = item.flip_v
-	shadow.set_anchors_preset(Control.PRESET_FULL_RECT)
-	shadow.offset_left = offset.x
-	shadow.offset_top = offset.y
-	shadow.offset_right = offset.x
-	shadow.offset_bottom = offset.y
-	shadow.size = item.size
+	# ISSUE #197: sized and placed by ANCHORS, so it stays the same size as the
+	# item and a fixed fraction right/down of it at every item size on every screen.
+	# Setting a pixel size here would be inert anyway — a full-rect anchored
+	# Control recomputes its rect from these fractions on the next layout pass.
+	var half: float = grow * 0.5
+	shadow.anchor_left   = -half + drop.x
+	shadow.anchor_right  = 1.0 + half + drop.x
+	shadow.anchor_top    = -half + drop.y
+	shadow.anchor_bottom = 1.0 + half + drop.y
+	shadow.offset_left = 0.0
+	shadow.offset_top = 0.0
+	shadow.offset_right = 0.0
+	shadow.offset_bottom = 0.0
 	shadow.modulate = Color(0.0, 0.0, 0.0, alpha)
 	shadow.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	shadow.show_behind_parent = true

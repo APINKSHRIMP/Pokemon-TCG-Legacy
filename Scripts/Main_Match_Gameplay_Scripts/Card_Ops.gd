@@ -424,8 +424,19 @@ func remove_one_energy(target: card_object, target_owner_is_opponent: bool,
 	if forced_card != null:
 		chosen = forced_card
 	elif picker_is_opponent:
-		# CPU picks first energy (caller can sort by preference before calling)
-		chosen = target.attached_energies[0]
+		# ISSUE #163: NOT attached_energies[0] any more — that was the attachment
+		# order, so which Energy the CPU gave up was pure luck.
+		#
+		# Which way to lean depends on WHOSE Pokemon this is. Stripping the player's
+		# Energy wants their MOST valuable one (special Energy, or a type their
+		# attacks rely on); paying a cost off its own Pokemon wants its LEAST
+		# valuable, and never one that is holding up an attack.
+		if target_owner_is_opponent:
+			chosen = main.cpu_ai.cpu_pick_own_energy_to_discard(target)
+		else:
+			chosen = main.cpu_ai.cpu_pick_energy_to_discard_from(target)
+		if chosen == null:
+			chosen = target.attached_energies[0]
 	else:
 		# Player chooses which energy to discard. When cancelable, the Cancel button aborts the
 		# whole effect (returns null so the caller can refund) — ISSUE #25.

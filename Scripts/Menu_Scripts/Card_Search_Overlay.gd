@@ -96,11 +96,16 @@ const PANEL_COLOR := Color(0.93, 0.93, 0.94, 1.0)
 # over two). LABEL_W is sized off the longest of them — "HAS POWER OR BODY", ~304px in the Kenney
 # font at 24pt — so none of them wrap or clip. Widening this pushes CTRL_X right; keep the two in
 # step or the labels will run under the controls.
-const LABEL_X     := 24.0
-const LABEL_W     := 312.0
+# ISSUE #178: the label column gives up 20px and the controls start 20px further
+# left, which is where the extra room for the wrapped chip rows comes from.
+const LABEL_X     := 20.0
+const LABEL_W     := 300.0
 const LABEL_FONT  := 24
-const LABEL_COLOR := Color(0.05, 0.05, 0.05, 1.0)
-const CTRL_X      := 350.0
+# ISSUE #177: white, not black. The light filter panel these were authored against
+# (SHOW_FILTER_PANEL) has been off since the overhaul, so a near-black label was
+# sitting on the dark field.
+const LABEL_COLOR := Color(0.957, 0.929, 0.980, 1.0)
+const CTRL_X      := 330.0
 
 # ISSUE #142: the width every row has to play with — CTRL_X across to the right margin. 1530px.
 const CTRL_W := 1920.0 - RIGHT_MARGIN - CTRL_X
@@ -125,11 +130,21 @@ const MAX_ICON_GAP := 56.0
 # TWEAKABLE. Chips are sized to their own text and the rows WRAP, so a long row
 # grows downward instead of squeezing its pitch.
 const CHIP_H      := 38.0
-const CHIP_FONT   := 16
-const CHIP_PAD_X  := 16.0
-const CHIP_MIN_W  := 62.0
-const CHIP_GAP_X  := 8.0
-const CHIP_GAP_Y  := 8.0
+const CHIP_FONT   := 15
+const CHIP_PAD_X  := 13.0
+const CHIP_MIN_W  := 58.0
+const CHIP_GAP_X  := 10.0
+const CHIP_GAP_Y  := 10.0
+
+# ISSUE #178: THE ROWS OVERLAPPED BECAUSE A CHIP IS NOT CHIP_H TALL.
+# Every chip and text button on this screen is a themed Button, and the shared
+# button face carries btn_pad_v (13px) top AND bottom as CONTENT MARGINS. That is
+# a MINIMUM size Godot enforces, so a "38px" chip actually drew at ~48px and every
+# row ran into the one below it. _tighten() re-margins the button's four state
+# boxes so the authored height is the real height. Re-apply it after ANY
+# UIKit.style_button() call, because that swaps the theme back.
+const CHIP_PAD_Y  := 4.0
+const BTN_PAD_Y   := 5.0
 
 # Pokemon type icon row (single line, 9 icons). ISSUE #146: -10%.
 const TYPE_ICON  := 49.0
@@ -184,10 +199,10 @@ const EFFECT_SINGLE_LINE_MAX := 12
 # "TECHNICAL MACHINE" (~205px at 16pt plus ~21px of Kenney stylebox margin), which also means it
 # fits on one line at the same font size as everything else — the old BTN_FONT_SMALL special case
 # is gone. The busiest row is 4 buttons: 4*250 + 3*80 = 1240 of the 1530 available.
-const BTN_H     := 39.0
-const BTN_W     := 250.0
-const BTN_GAP   := 80.0
-const BTN_FONT  := 16
+const BTN_H     := 40.0
+const BTN_W     := 236.0
+const BTN_GAP   := 60.0
+const BTN_FONT  := 15
 
 # Header controls
 const TITLE_FONT  := 46
@@ -298,8 +313,19 @@ const POKEMON_SUBS : Array = [
 # Card Type = Pokemon here would hide cards that genuinely match. It behaves like RARITY: a
 # whole-card property that simply ANDs with whatever else is selected.
 const POWER_FILTERS : Array = [
-	{"key": "power", "icon": "power", "tip": "Has a Pokemon Power / Poke-Power", "gate": ""},
-	{"key": "body",  "icon": "body",  "tip": "Has a Poke-Body",                  "gate": "ecard1"},
+	# ISSUE #179: the chip is labelled with its `tip`, so these are the button
+	# labels now, not tooltips — "Has a Pokemon Power / Poke-Power" was a sentence
+	# sitting in a chip row.
+	# ISSUE #179 (retest): "there should be a SECOND button for Poke-Body". There
+	# always was one - it was GATED on owning ecard1 (Expedition), the set that
+	# introduced Poke-Bodies, so on a save without that set the row drew a single
+	# chip and the two searches looked merged into one. The two are separate
+	# filters keyed on separate booleans (_card_matches_power) and always were;
+	# what was wrong is that only one of them was ever on screen. UNGATED now, so
+	# the pair is always offered - a search that returns nothing is a clearer
+	# answer than a missing control.
+	{"key": "power", "icon": "power", "tip": "Poke-Power", "gate": ""},
+	{"key": "body",  "icon": "body",  "tip": "Poke-Body",  "gate": ""},
 ]
 
 # Card rarity, in the order the player asked for: common -> uncommon -> rare -> holo rare.
@@ -338,9 +364,13 @@ const SET_ROW_GROUPS : Array = [
 	["pop1", "pop2", "pop3", "pop4", "pop5"],
 ]
 
+## ISSUE #225: "type" sorts Pokemon by energy type first (in the ENERGY_ORDER
+## below), then Trainers, then Energy cards. The ordering itself lives in the deck
+## builder's _sort_cards — this table only names the modes.
 const SORT_MODES : Array = [
 	{"key": "set",  "label": "SET"},
 	{"key": "name", "label": "NAME"},
+	{"key": "type", "label": "TYPE"},
 ]
 
 
@@ -465,6 +495,8 @@ func _build_header() -> void:
 	reset.size     = Vector2(RESET_W, RESET_H)
 	reset.custom_minimum_size = Vector2(RESET_W, RESET_H)
 	reset.z_index  = CONTENT_Z
+	# ISSUE #226: fire on press like every other button in the game.
+	reset.action_mode = BaseButton.ACTION_MODE_BUTTON_PRESS
 	reset.pressed.connect(_on_reset_pressed)
 	add_child(reset)
 
@@ -489,6 +521,7 @@ func _build_footer() -> void:
 	cancel.size     = Vector2(FOOT_BTN_W, FOOT_BTN_H)
 	cancel.custom_minimum_size = Vector2(FOOT_BTN_W, FOOT_BTN_H)
 	cancel.z_index  = CONTENT_Z
+	cancel.action_mode = BaseButton.ACTION_MODE_BUTTON_PRESS   # ISSUE #226
 	cancel.pressed.connect(_on_cancel_pressed)
 	add_child(cancel)
 
@@ -530,7 +563,8 @@ func _build_name_row(y: float) -> float:
 	_name_edit.size     = Vector2(NAME_W, h)
 	_name_edit.custom_minimum_size = Vector2(NAME_W, h)
 	_name_edit.add_theme_font_size_override("font_size", NAME_FONT)
-	_name_edit.add_theme_color_override("font_color", Color.BLACK)
+	# ISSUE #181: pure white. Black was left over from the light filter panel.
+	_name_edit.add_theme_color_override("font_color", Color.WHITE)
 	_name_edit.placeholder_text = "Card name..... (comma-separate for several)"
 	# ISSUE #149: no length cap — a comma-separated list of card names runs well past 30 characters.
 	_name_edit.z_index = CONTENT_Z
@@ -699,7 +733,8 @@ func _build_illustrator_row(y: float) -> float:
 	_illus_edit.size     = Vector2(ILLUS_W, ILLUS_H)
 	_illus_edit.custom_minimum_size = Vector2(ILLUS_W, ILLUS_H)
 	_illus_edit.add_theme_font_size_override("font_size", ILLUS_FONT)
-	_illus_edit.add_theme_color_override("font_color", Color.BLACK)
+	# ISSUE #181
+	_illus_edit.add_theme_color_override("font_color", Color.WHITE)
 	_illus_edit.placeholder_text = "Illustrator name..... (comma-separate for several)"
 	# ISSUE #149: no length cap, same as the name box.
 	_illus_edit.z_index = CONTENT_Z
@@ -824,10 +859,38 @@ func _make_icon(folder: String, stem: String, cell: float, pos: Vector2, tip: St
 	chip.set_meta("stem", stem)
 	chip.set_meta("selected", false)
 	chip.set_meta("blocked", false)
-	UIKit.style_button(chip, "secondary")
-	chip.add_theme_font_size_override("font_size", CHIP_FONT)
+	_apply_chip_style(chip, "secondary")
 	add_child(chip)
 	return chip
+
+
+## ISSUE #178: style a chip AND put its real height back where the layout thinks
+## it is. UIKit.style_button() points the button at a variant theme whose face
+## carries btn_pad_v as a content margin — 13px top and bottom, which forces a
+## ~48px minimum on a 38px chip. Duplicating the four state boxes and re-margining
+## them is the only way to shrink it without giving up the baked pill art.
+##
+## ALWAYS use this instead of style_button() on this screen, including on re-style
+## (selection swaps the theme back and the overrides would then draw the wrong
+## variant's texture).
+func _apply_chip_style(btn: Button, variant: String) -> void:
+	UIKit.style_button(btn, variant)
+	btn.add_theme_font_size_override("font_size", CHIP_FONT)
+	_tighten(btn, CHIP_PAD_X, CHIP_PAD_Y)
+
+
+## Re-margins a themed button's normal/hover/pressed/disabled faces in place.
+func _tighten(btn: Button, pad_x: float, pad_y: float) -> void:
+	for state in ["normal", "hover", "pressed", "disabled"]:
+		var box: StyleBox = btn.get_theme_stylebox(state, "Button")
+		if box == null:
+			continue
+		var dup: StyleBox = box.duplicate()
+		dup.content_margin_left = pad_x
+		dup.content_margin_right = pad_x
+		dup.content_margin_top = pad_y
+		dup.content_margin_bottom = pad_y
+		btn.add_theme_stylebox_override(state, dup)
 
 
 func _make_icon_h(folder: String, stem: String, height: float, pos: Vector2, tip: String) -> Control:
@@ -871,11 +934,16 @@ func _make_button(text: String, x: float, y: float, w: float, font_size: int) ->
 	var btn := Button.new()
 	btn.theme = _theme_white
 	btn.text  = text
+	# ISSUE #226: these are built by hand rather than through UIKit.style_button,
+	# so they kept Godot's fire-on-RELEASE default while every other button in the
+	# game fires on press.
+	btn.action_mode = BaseButton.ACTION_MODE_BUTTON_PRESS
 	btn.add_theme_font_size_override("font_size", font_size)
 	btn.position = Vector2(x, y)
 	btn.size     = Vector2(w, BTN_H)
 	btn.custom_minimum_size = Vector2(w, BTN_H)
 	btn.z_index  = CONTENT_Z
+	_tighten(btn, 10.0, BTN_PAD_Y)   # ISSUE #178
 	add_child(btn)
 	return btn
 
@@ -925,9 +993,9 @@ func _set_icon_selected(icon: Control, selected: bool, force: bool = false) -> v
 		if _type_icons.has(type_key):
 			_tint_type_chip(icon, type_key, selected)
 		else:
-			UIKit.style_button(icon as Button, "selected" if selected else "secondary")
-		# style_button re-applies the button role, which resets the size the chip
-		# was built at.
+			# ISSUE #178: _apply_chip_style, not style_button — it re-tightens the
+			# state boxes the theme swap just brought back at full padding.
+			_apply_chip_style(icon as Button, "selected" if selected else "secondary")
 		(icon as Button).add_theme_font_size_override("font_size", CHIP_FONT)
 
 	var old = icon.get_meta("pulse", null)
@@ -938,16 +1006,16 @@ func _set_icon_selected(icon: Control, selected: bool, force: bool = false) -> v
 	icon.scale = Vector2.ONE
 	icon.modulate = Color.WHITE
 
-	if not selected:
-		return
-
-	# Scale only. The old pulse also brightened `modulate`, which on a coloured
-	# chip washes the fill out instead of reading as a highlight.
-	var tw := create_tween()
-	tw.set_loops()
-	icon.set_meta("pulse", tw)
-	tw.tween_property(icon, "scale", Vector2(PULSE_SCALE, PULSE_SCALE), PULSE_SECONDS)
-	tw.tween_property(icon, "scale", Vector2.ONE, PULSE_SECONDS)
+	# ISSUE #254: NO PULSE. A chip that grows and shrinks forever is the only
+	# control in the game that does, and it fights the thing it is trying to say -
+	# a filter is either on or off, which is a STATE, and the rest of the game
+	# spells a state out with the "selected" button skin. The chips already switch
+	# to it above (and type chips to their own filled colour), so the animation was
+	# doing nothing the colour was not doing better. Options buttons behave exactly
+	# this way and always have.
+	if selected:
+		print("ISSUE #254 FIX ACTIVE: chip '", icon.get_meta("stem", "?"),
+			"' selected - skin swap, no pulse")
 
 
 func _set_icon_blocked(icon: Control, blocked: bool, selected: bool) -> void:
@@ -972,6 +1040,7 @@ func _set_icon_blocked(icon: Control, blocked: bool, selected: bool) -> void:
 func _set_button_selected(btn: Button, selected: bool, selected_theme: Theme) -> void:
 	btn.disabled = false
 	btn.theme = selected_theme if selected else _theme_white
+	_tighten(btn, 10.0, BTN_PAD_Y)   # ISSUE #178 — the theme swap restores full padding
 
 
 ## A card type button that is forced on by another row's selection: it stays green (so it still
@@ -982,11 +1051,13 @@ func _set_button_locked_on(btn: Button) -> void:
 	btn.disabled = true
 	var sb := StyleBoxFlat.new()
 	sb.bg_color = Color(0.29, 0.71, 0.24, 1.0)
-	sb.set_corner_radius_all(5)
-	sb.content_margin_left   = 8.0
-	sb.content_margin_right  = 8.0
-	sb.content_margin_top    = 6.0
-	sb.content_margin_bottom = 6.0
+	# ISSUE #184 / #178: match the pill radius and the tightened row height.
+	sb.set_corner_radius_all(UITheme.mi("btn_radius"))
+	sb.anti_aliasing = true
+	sb.content_margin_left   = 10.0
+	sb.content_margin_right  = 10.0
+	sb.content_margin_top    = BTN_PAD_Y
+	sb.content_margin_bottom = BTN_PAD_Y
 	btn.add_theme_stylebox_override("disabled", sb)
 	btn.add_theme_color_override("font_disabled_color", Color.WHITE)
 
@@ -998,11 +1069,13 @@ func _set_button_blocked(btn: Button) -> void:
 	btn.disabled = true
 	var sb := StyleBoxFlat.new()
 	sb.bg_color = Color(0.67, 0.67, 0.67, 1.0)
-	sb.set_corner_radius_all(5)
-	sb.content_margin_left   = 8.0
-	sb.content_margin_right  = 8.0
-	sb.content_margin_top    = 6.0
-	sb.content_margin_bottom = 6.0
+	# ISSUE #184 / #178: match the pill radius and the tightened row height.
+	sb.set_corner_radius_all(UITheme.mi("btn_radius"))
+	sb.anti_aliasing = true
+	sb.content_margin_left   = 10.0
+	sb.content_margin_right  = 10.0
+	sb.content_margin_top    = BTN_PAD_Y
+	sb.content_margin_bottom = BTN_PAD_Y
 	btn.add_theme_stylebox_override("disabled", sb)
 	btn.add_theme_color_override("font_disabled_color", Color(0.35, 0.35, 0.35, 1.0))
 

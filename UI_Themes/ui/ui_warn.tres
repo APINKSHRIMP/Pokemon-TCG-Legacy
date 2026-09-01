@@ -11,10 +11,10 @@ content_margin_top = 13.0
 content_margin_right = 29.0
 content_margin_bottom = 13.0
 texture = ExtResource("1_nm5yj")
-texture_margin_left = 16.0
-texture_margin_top = 16.0
-texture_margin_right = 16.0
-texture_margin_bottom = 16.0
+texture_margin_left = 24.0
+texture_margin_top = 24.0
+texture_margin_right = 24.0
+texture_margin_bottom = 24.0
 
 [sub_resource type="StyleBoxEmpty" id="StyleBoxEmpty_rdipe"]
 
@@ -24,10 +24,10 @@ content_margin_top = 13.0
 content_margin_right = 29.0
 content_margin_bottom = 13.0
 texture = ExtResource("2_lv18i")
-texture_margin_left = 16.0
-texture_margin_top = 16.0
-texture_margin_right = 16.0
-texture_margin_bottom = 16.0
+texture_margin_left = 24.0
+texture_margin_top = 24.0
+texture_margin_right = 24.0
+texture_margin_bottom = 24.0
 
 [sub_resource type="StyleBoxTexture" id="StyleBoxTexture_7nw8j"]
 content_margin_left = 29.0
@@ -35,10 +35,10 @@ content_margin_top = 13.0
 content_margin_right = 29.0
 content_margin_bottom = 13.0
 texture = ExtResource("3_f4aue")
-texture_margin_left = 16.0
-texture_margin_top = 16.0
-texture_margin_right = 16.0
-texture_margin_bottom = 16.0
+texture_margin_left = 24.0
+texture_margin_top = 24.0
+texture_margin_right = 24.0
+texture_margin_bottom = 24.0
 
 [sub_resource type="StyleBoxTexture" id="StyleBoxTexture_5ob0m"]
 content_margin_left = 29.0
@@ -46,10 +46,10 @@ content_margin_top = 13.0
 content_margin_right = 29.0
 content_margin_bottom = 13.0
 texture = ExtResource("4_e7ir7")
-texture_margin_left = 16.0
-texture_margin_top = 16.0
-texture_margin_right = 16.0
-texture_margin_bottom = 16.0
+texture_margin_left = 24.0
+texture_margin_top = 24.0
+texture_margin_right = 24.0
+texture_margin_bottom = 24.0
 
 [resource]
 Button/colors/font_color = Color(0.16470589, 0.1254902, 0.0627451, 1)

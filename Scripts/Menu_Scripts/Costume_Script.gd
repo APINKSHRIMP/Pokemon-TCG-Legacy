@@ -3,10 +3,29 @@ extends Control
 # ─── Constants ───────────────────────────────────────────────────────────────
 
 const SPRITE_FOLDER      := "res://Image_Assets/Character_Sprites/In_Battle_Sprites"
-const SPRITE_SIZE        := Vector2(100, 200)
-const SPRITE_SEPARATION  := -4
-# At 250px + 10px gap = 260px per cell across 1920px usable width → 7 columns
+
+# ISSUE #199: SQUARE CELLS, EXPLICIT SIZES, NO EXPAND_FILL.
+#
+# The old cell was a 100x200 portrait TextureRect with SIZE_EXPAND_FILL and
+# EXPAND_FIT_WIDTH_PROPORTIONAL, which is three separate ways of letting the
+# layout engine decide the size: the columns shared the leftover width so the
+# cell came out WIDE rather than square, and fit-width-proportional then grew the
+# sprite height to match that width, which is what made the sprites burst out of
+# their boxes and overlap.
+#
+# This follows the confirmed grid pattern instead - square cell, minf fit scale,
+# STRETCH_SCALE, explicit size and position inside a clipping wrapper - and the
+# columns are sized so nine of them plus their gaps fill the width exactly, so
+# there is no leftover for EXPAND_FILL to hand out.
+#   9 * 200 + 8 * 12 = 1896, inside the 1920 band with room for the scrollbar.
 const COLUMNS            := 9
+const CELL_SIZE          := Vector2(200.0, 200.0)
+const SPRITE_SEPARATION  := 12
+## ISSUE #199: the sprite is drawn at this much of the cell, so it sits INSIDE its
+## box with a margin rather than filling it edge to edge.
+const SPRITE_FIT         := 0.84
+## ISSUE #162: TWEAKABLE - peak scale of the selected-costume pulse.
+const SELECT_PULSE       := 1.2
 
 # Inset of the grid inside the band between the two chrome bars, and the fixed
 # width of the owned-only toggle so it does not resize between its two labels.
@@ -22,13 +41,13 @@ var PLAYER_PROGRESS_PATH: String:
 # ─── State ───────────────────────────────────────────────────────────────────
 
 var selected_character_path : String = ""
-var selected_character_rect : TextureRect = null
+var selected_character_rect : Control = null
 
 # The sprite name stored in player_data.json on load — used to detect unsaved changes
 var saved_sprite_name       : String = ""
 
 var _active_tween           : Tween = null
-var _last_clicked_rect      : TextureRect = null
+var _last_clicked_rect      : Control = null
 
 # ISSUE #32: input-blocking loading overlay shown while the costume grid builds.
 var _loading_overlay        : MenuLoadingOverlay = MenuLoadingOverlay.new()
@@ -53,12 +72,12 @@ var _total_costumes         : int = 0
 # ─── Zoom state ──────────────────────────────────────────────────────────────
 var zoom_overlay        : CanvasLayer = null
 var is_zoomed           : bool = false
-var last_zoomed_costume : TextureRect = null
+var last_zoomed_costume : Control = null
 # ISSUE #98: hold-to-preview, matching the deck builder. While Shift is held _process re-reads the
 # hovered costume every frame; the preview is sticky over the gaps between cells so sliding across
 # the grid never flashes the UI back on. Only releasing Space closes it.
 var zoom_held          : bool = false
-var zoomed_costume      : TextureRect = null
+var zoomed_costume      : Control = null
 var zoom_image          : TextureRect = null
 
 # ─── Node references ─────────────────────────────────────────────────────────
@@ -258,60 +277,76 @@ func _load_characters() -> void:
 		await get_tree().process_frame
 
 
+## ISSUE #199: one square cell. The grid child is a WRAPPER Control, not the
+## TextureRect - the box, the sprite and the click target are three different
+## things and only the wrapper is allowed to be the cell.
+##
+## EVERY costume gets a box now, owned or not. The boxes used to appear only on
+## the silhouettes, so the default costumes - which are always owned - sat in
+## empty space while everything around them was framed.
 func _add_character_to_grid(file_name: String) -> void:
 	var texture := load(SPRITE_FOLDER + "/" + file_name) as Texture2D
 	if texture == null:
 		return
 
-	var rect := TextureRect.new()
-	rect.texture = texture
-
-	rect.custom_minimum_size = SPRITE_SIZE
-	rect.size                = SPRITE_SIZE
-	rect.stretch_mode        = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-	rect.expand_mode         = TextureRect.EXPAND_FIT_WIDTH_PROPORTIONAL
-	# ISSUE #144 FIX: without SIZE_EXPAND a GridContainer sizes each column to its widest child's
-	# MINIMUM width and simply leaves the leftover width unused at the right-hand end -- which is
-	# what put a ~120px dead band between the last costume and the scrollbar. EXPAND_FILL makes the
-	# nine columns share that leftover evenly instead, so the row ends where the scrollbar begins.
-	# (The scene's grid also now spans the full 0..1920 rather than -11..1893.)
-	rect.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-
 	var is_owned : bool = _owned_costumes.has(file_name.to_lower())
-	print("DEBUG TrainerCard: grid file=", file_name, " is_owned=", is_owned)
 
-	rect.set_meta("sprite_name", file_name)
-	rect.set_meta("is_owned",    is_owned)
+	var cell := Control.new()
+	cell.custom_minimum_size = CELL_SIZE
+	cell.size                = CELL_SIZE
+	# NOT clipped: the fit maths above already keeps the sprite inside the cell,
+	# and clipping would cut its edges off the moment the selection pulse grew it.
+	cell.clip_contents       = false
+	cell.pivot_offset        = CELL_SIZE / 2.0
+	cell.set_meta("sprite_name", file_name)
+	cell.set_meta("is_owned",    is_owned)
+	# The zoom preview reads the art off the cell rather than reaching into it.
+	cell.set_meta("costume_texture", texture)
+
+	# The box. A child of the cell drawn behind everything else, sized to the cell
+	# in real pixels - an anchored slot would still be 0x0 on this frame.
+	var slot := UIKit.make_slot(CELL_SIZE)
+	slot.position = Vector2.ZERO
+	slot.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	cell.add_child(slot)
+
+	# The sprite: explicit fit maths, never the layout engine. minf, not maxf -
+	# a costume must be wholly visible, not cropped to fill.
+	var tex_size := texture.get_size()
+	var fit : float = minf(CELL_SIZE.x / tex_size.x, CELL_SIZE.y / tex_size.y) * SPRITE_FIT
+	var disp := Vector2(tex_size.x * fit, tex_size.y * fit)
+
+	var rect := TextureRect.new()
+	rect.texture      = texture
+	rect.expand_mode  = TextureRect.EXPAND_IGNORE_SIZE
+	rect.stretch_mode = TextureRect.STRETCH_SCALE
+	rect.size         = disp
+	rect.custom_minimum_size = disp
+	rect.position     = (CELL_SIZE - disp) / 2.0
+	rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	cell.add_child(rect)
+	# Selection dims and brightens the SPRITE, never the cell: modulate propagates
+	# and would drag the box outline up and down with it.
+	cell.set_meta("art_node", rect)
 
 	if is_owned:
 		rect.modulate = Color(0.8, 0.8, 0.8)
-		rect.gui_input.connect(_on_character_clicked.bind(rect))
+		cell.mouse_filter = Control.MOUSE_FILTER_STOP
+		cell.gui_input.connect(_on_character_clicked.bind(cell))
 	else:
-		# Keep the real texture but zero out all RGB channels — that turns the
-		# sprite into a solid silhouette with no texture swap needed.
-		#
-		# self_modulate, NOT modulate: modulate PROPAGATES TO CHILDREN, and the
-		# slot outline added below is a child. With modulate the outline would be
-		# blacked out along with the sprite and the tile would vanish. Same trap
-		# as the shop price pills.
+		# Keep the real texture but zero out all RGB channels - that turns the
+		# sprite into a solid silhouette with no texture swap needed. It is the
+		# SPRITE that is blacked out, never the cell: modulate propagates to
+		# children and would take the box outline with it.
 		rect.self_modulate = Color(0, 0, 0, 1)
-		rect.mouse_filter  = Control.MOUSE_FILTER_IGNORE
+		cell.mouse_filter  = Control.MOUSE_FILTER_IGNORE
 
-		# The square the silhouette sits in. Anchored full-rect so it takes the
-		# cell's real width, which the grid only settles after this frame.
-		var slot := UIKit.make_slot(SPRITE_SIZE)
-		slot.set_anchors_preset(Control.PRESET_FULL_RECT)
-		slot.custom_minimum_size = Vector2.ZERO
-		slot.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		slot.show_behind_parent = true
-		rect.add_child(slot)
-
-	grid.add_child(rect)
+	grid.add_child(cell)
 
 
 func _select_character_by_name(sprite_name: String) -> void:
 	for child in grid.get_children():
-		if child is TextureRect and String(child.get_meta("sprite_name", "")).to_lower() == sprite_name.to_lower():
+		if child.has_meta("sprite_name") and String(child.get_meta("sprite_name", "")).to_lower() == sprite_name.to_lower():
 			_select_character(child)
 			return
 
@@ -379,7 +414,7 @@ func _rebuild_grid() -> void:
 
 # ─── Click / selection ───────────────────────────────────────────────────────
 
-func _on_character_clicked(event: InputEvent, rect: TextureRect) -> void:
+func _on_character_clicked(event: InputEvent, rect: Control) -> void:
 	if not (event is InputEventMouseButton \
 			and event.button_index == MOUSE_BUTTON_LEFT \
 			and event.pressed):
@@ -394,35 +429,45 @@ func _on_character_clicked(event: InputEvent, rect: TextureRect) -> void:
 	_refresh_save_button_state()
 
 
-func _select_character(rect: TextureRect) -> void:
+func _select_character(rect: Control) -> void:
 	selected_character_rect = rect
 	selected_character_path = SPRITE_FOLDER + "/" + rect.get_meta("sprite_name", "")
 	_apply_selected_animation(rect)
 
 
-func _deselect_character(rect: TextureRect) -> void:
+func _deselect_character(rect: Control) -> void:
 	if _active_tween:
 		_active_tween.kill()
 		_active_tween = null
-	rect.modulate     = Color(0.8, 0.8, 0.8)
+	_costume_art(rect).modulate = Color(0.8, 0.8, 0.8)
 	rect.scale        = Vector2(1.0, 1.0)
 	rect.pivot_offset = rect.size / 2.0
 
 
-func _apply_selected_animation(rect: TextureRect) -> void:
+## The TextureRect inside a costume cell. Falls back to the cell so a caller can
+## never end up with null.
+func _costume_art(cell: Control) -> Control:
+	var art = cell.get_meta("art_node", null)
+	return art if (art != null and is_instance_valid(art)) else cell
+
+
+func _apply_selected_animation(rect: Control) -> void:
 	if _active_tween:
 		_active_tween.kill()
 
 	rect.pivot_offset = rect.size / 2.0
-	rect.modulate     = Color.WHITE
+	var art := _costume_art(rect)
+	art.modulate = Color.WHITE
 
 	var tween := create_tween()
 	tween.set_loops()
 	_active_tween = tween
 
-	tween.tween_property(rect, "modulate", Color.WHITE * 1.1, 0.2)
-	tween.parallel().tween_property(rect, "scale", Vector2(1.1, 1.1), 0.2)
-	tween.tween_property(rect, "modulate", Color.WHITE * 1.0, 0.2)
+	tween.tween_property(art, "modulate", Color.WHITE * 1.1, 0.2)
+	# ISSUE #162: grows to SELECT_PULSE, up from 1.1 - a 10% pulse was too subtle
+	# to show which costume was picked.
+	tween.parallel().tween_property(rect, "scale", Vector2(SELECT_PULSE, SELECT_PULSE), 0.2)
+	tween.tween_property(art, "modulate", Color.WHITE * 1.0, 0.2)
 	tween.parallel().tween_property(rect, "scale", Vector2(1.0, 1.0), 0.2)
 
 
@@ -546,7 +591,7 @@ func _check_click_miss() -> void:
 
 # ─── Costume zoom ─────────────────────────────────────────────────────────────
 
-func _get_hovered_costume() -> TextureRect:
+func _get_hovered_costume() -> Control:
 	var hovered = get_viewport().gui_get_hovered_control()
 	if hovered == null:
 		return null
@@ -555,13 +600,16 @@ func _get_hovered_costume() -> TextureRect:
 		if node == null:
 			return null
 		if node.has_meta("sprite_name") and node.get_meta("is_owned", false):
-			return node as TextureRect
+			return node as Control
 		node = node.get_parent()
 	return null
 
 
-func _show_zoom(rect: TextureRect) -> void:
-	if rect.texture == null:
+func _show_zoom(rect: Control) -> void:
+	# ISSUE #199: the grid child is a wrapper Control now, so the art comes off a
+	# meta rather than off the node.
+	var art: Texture2D = rect.get_meta("costume_texture", null)
+	if art == null:
 		return
 
 	last_zoomed_costume = rect
@@ -570,7 +618,7 @@ func _show_zoom(rect: TextureRect) -> void:
 	# ISSUE #98: overlay already up — swap the image in place rather than rebuilding the CanvasLayer,
 	# which flashed the bright costume grid through for a frame on every hover change.
 	if is_zoomed and zoom_image != null and is_instance_valid(zoom_image):
-		_apply_zoom_texture(rect.texture)
+		_apply_zoom_texture(art)
 		return
 
 	is_zoomed = true
@@ -592,7 +640,7 @@ func _show_zoom(rect: TextureRect) -> void:
 	zoom_image.stretch_mode = TextureRect.STRETCH_SCALE
 	zoom_image.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	zoom_overlay.add_child(zoom_image)
-	_apply_zoom_texture(rect.texture)
+	_apply_zoom_texture(art)
 
 
 # Scale to 9× the grid cell size (100×200), capped so it fits on screen

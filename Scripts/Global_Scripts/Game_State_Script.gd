@@ -613,6 +613,55 @@ func set_last_interior_scene(scene_name: String):
 func get_last_interior_scene() -> String:
 	return last_interior_scene
 
+# ============================================================
+# ISSUE #253 - CLICK QUEUEING
+# ============================================================
+# Nothing in this game is a reaction test. Every screen is a menu, a card or a
+# message box, so a burst of clicks faster than a person can read is never
+# intent - it is one press the player meant plus a handful they had already
+# committed to before the screen changed. Godot delivers all of them, and every
+# one lands on whatever happens to be under the cursor by the time it arrives:
+# the pack-shop arrows keep stepping after the player has stopped, a message box
+# eats the two behind it, a card gets picked on a screen the player never saw.
+#
+# This is the ONE place it is stopped, and it has to be here rather than in
+# UIInput: a Button fires from Godot's own GUI plumbing and never asks UIInput
+# anything. `_input` on an autoload runs BEFORE GUI picking, so marking the event
+# handled here hides it from Controls, Buttons and gui_input handlers alike.
+#
+# Only the PRESS is swallowed. A release is left alone - a Button that never
+# received the press does nothing with the release, while eating releases would
+# strand buttons in a held state.
+#
+# TWEAKABLE: the shortest gap between two clicks the game will act on.
+# ISSUE #253 (retest): 180 -> 260. Nothing in this game rewards clicking faster
+# than four times a second, and 180 was still letting a burst through. Note what a
+# debounce CANNOT do: where a screen is slow to redraw, the clicks are hundreds of
+# ms apart and every one of them is legitimate, so no window catches them - the
+# screen itself has to hold its controls down until it has caught up. See
+# Pack_Purchase_Script._step_to_current_set for that half of the same issue.
+const CLICK_MIN_GAP_MS: int = 260
+var _last_click_ms: int = 0
+
+func _input(event: InputEvent) -> void:
+	if not (event is InputEventMouseButton):
+		return
+	var mb := event as InputEventMouseButton
+	if not mb.pressed:
+		return
+	# The wheel and the middle button are inert everywhere (see UIInput), and
+	# scrolling a long list legitimately fires dozens of events a second.
+	if UIInput.is_inert_mouse_button(mb):
+		return
+	var now := Time.get_ticks_msec()
+	if now - _last_click_ms < CLICK_MIN_GAP_MS:
+		get_viewport().set_input_as_handled()
+		print("ISSUE #253 FIX ACTIVE: swallowed a click ", now - _last_click_ms,
+			"ms after the last one (minimum ", CLICK_MIN_GAP_MS, "ms)")
+		return
+	_last_click_ms = now
+
+
 func _ready():
 	_ensure_user_data_exists()
 	load_progress()

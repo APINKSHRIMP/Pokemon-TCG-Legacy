@@ -34,7 +34,9 @@ func _ready() -> void:
 func _play_bgm() -> void:
 	_bgm_player = AudioStreamPlayer.new()
 	add_child(_bgm_player)
-	var stream = load(SoundManagerScript.BGM_COIN_MODE)
+	# ISSUE #210: the PTCG main-menu theme that used to play in the Gym Plaza. The
+	# two swapped: the plaza now shares the Gym Challenge Hall track it adjoins.
+	var stream = load(SoundManagerScript.BGM_GYM_PLAZA)
 	if stream:
 		_bgm_player.stream = stream
 		_bgm_player.bus = SoundManagerScript.MUSIC_BUS
@@ -57,50 +59,47 @@ func _fade_in() -> void:
 
 # ─── UI construction ─────────────────────────────────────────────────────────
 #
-# Layout (1920×1080, all centred on x=960):
-#   Name box  x=660  w=600   y=108
-#   DoB box   x=780  w=360   y=172   (centre: 780+180=960)
-#   Grid      x=142  w=1636  y=290   (6 × 260 + 5 × 15 = 1635)
-#   Save btn  x=688  w=544   y=894
+# ISSUE #192: THIS SCREEN IS CONVERTED NOW. It had the new buttons, boxes and font
+# but was still drawing the pre-overhaul chrome — the blue/black scrolling borders
+# and the light background — because it was the one screen that never went through
+# UIKit.convert_legacy_screen(). It does now, which frees the scene's BACKGROUND
+# node and lays in the field plus both gradient bars.
+#
+# Layout (1920x1080, centred on x=960), inside the 92..988 content band:
+#   Name box   x=660  w=600   y=132
+#   DoB box    x=780  w=360   y=212
+#   Grid       x=142  w=1636  y=306   (6 x 260 + 5 x 15 = 1635)
+#   Save       on the footer bar
+const FIELD_W       := 600.0
+const DOB_W         := 360.0
+const FIELD_H       := 58.0
+const NAME_Y        := 132.0
+const DOB_Y         := 212.0
+const GRID_Y        := 306.0
+const SAVE_BTN_W    := 420.0
+const FIELD_FONT    := 30
 
 func _build_ui() -> void:
-	var theme = load("res://UI_Themes/ui/ui_secondary.tres")
+	# ISSUE #192: the chrome. Must run FIRST — it frees BACKGROUND and forces the
+	# 40x40 scene root to full-rect, which everything below is positioned against.
+	var bars := UIKit.convert_legacy_screen(self, "New trainer")
+	print("ISSUE #192 FIX ACTIVE: first-boot setup converted to the Spectrum Night chrome")
+
+	var hint := Label.new()
+	UIKit.set_label(hint, "subtitle", "Choose your name, birthday and look", "chrome_fg")
+	bars["header"].right.add_child(hint)
 
 	# ── Name box ─────────────────────────────────────────────
-	_name_box = LineEdit.new()
-	_name_box.position = Vector2(660, 108)
-	_name_box.size = Vector2(600, 54)
-	_name_box.max_length = 15
-	_name_box.placeholder_text = "Enter your name..."
-	_name_box.alignment = HORIZONTAL_ALIGNMENT_CENTER
-	if theme:
-		_name_box.theme = theme
-	_name_box.add_theme_font_size_override("font_size", 30)
-	_name_box.add_theme_color_override("font_color", Color.BLACK)
-	_name_box.add_theme_color_override("font_placeholder_color", Color(0.25, 0.25, 0.25, 0.6))
-	_name_box.text_changed.connect(_on_input_changed)
-	add_child(_name_box)
+	_name_box = _make_field("Enter your name...", 15, FIELD_W, NAME_Y, FIELD_FONT)
 
 	# ── DoB box ──────────────────────────────────────────────
-	_dob_box = LineEdit.new()
-	_dob_box.position = Vector2(780, 172)
-	_dob_box.size = Vector2(360, 54)
-	_dob_box.max_length = 5
-	_dob_box.placeholder_text = "Birthday (DD/MM)"
-	_dob_box.alignment = HORIZONTAL_ALIGNMENT_CENTER
-	if theme:
-		_dob_box.theme = theme
-	_dob_box.add_theme_font_size_override("font_size", 28)
-	_dob_box.add_theme_color_override("font_color", Color.BLACK)
-	_dob_box.add_theme_color_override("font_placeholder_color", Color(0.25, 0.25, 0.25, 0.6))
-	_dob_box.text_changed.connect(_on_input_changed)
-	add_child(_dob_box)
+	_dob_box = _make_field("Birthday (DD/MM)", 5, DOB_W, DOB_Y, FIELD_FONT - 2)
 
 	# ── Sprite grid ──────────────────────────────────────────
-	# Width = 6 × 260 + 5 × 15 = 1635 → start x = (1920 − 1635) / 2 = 142
+	# Width = 6 x 260 + 5 x 15 = 1635 -> start x = (1920 - 1635) / 2 = 142
 	var scroll := ScrollContainer.new()
-	scroll.position = Vector2(142, 290)
-	scroll.size = Vector2(1636, 590)
+	scroll.position = Vector2(142, GRID_Y)
+	scroll.size = Vector2(1636, UIKit.CONTENT_BOTTOM - GRID_Y - 18.0)
 	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO
 	add_child(scroll)
@@ -112,16 +111,33 @@ func _build_ui() -> void:
 	scroll.add_child(_grid)
 
 	# ── Save button ──────────────────────────────────────────
-	_save_btn = Button.new()
-	_save_btn.text = "Begin Your Journey"
-	_save_btn.position = Vector2(688, 894)
-	_save_btn.size = Vector2(544, 63)
-	_save_btn.z_index = 300
-	if theme:
-		_save_btn.theme = theme
+	# On the footer bar, and a CHILD of it: a sibling floated over a chrome bar is
+	# one z-order slip from invisible.
+	_save_btn = UIKit.make_footer_button("Begin your journey", "secondary")
+	_save_btn.custom_minimum_size.x = SAVE_BTN_W
 	_save_btn.disabled = true
 	_save_btn.pressed.connect(_on_save_pressed)
-	add_child(_save_btn)
+	bars["footer"].centre.add_child(_save_btn)
+
+
+## One centred text field on the field background. ISSUE #192: white text, not the
+## black these two carried from the light background they used to sit on.
+func _make_field(placeholder: String, max_len: int, w: float, y: float,
+		font_size: int) -> LineEdit:
+	var box := LineEdit.new()
+	box.position = Vector2(960.0 - w * 0.5, y)
+	box.size = Vector2(w, FIELD_H)
+	box.custom_minimum_size = box.size
+	box.max_length = max_len
+	box.placeholder_text = placeholder
+	box.alignment = HORIZONTAL_ALIGNMENT_CENTER
+	box.add_theme_font_override("font", UITheme.font("name"))
+	box.add_theme_font_size_override("font_size", font_size)
+	box.add_theme_color_override("font_color", Color.WHITE)
+	box.add_theme_color_override("font_placeholder_color", UITheme.col("field_mute"))
+	box.text_changed.connect(_on_input_changed)
+	add_child(box)
+	return box
 
 
 # ─── Sprite loading ───────────────────────────────────────────────────────────
@@ -264,12 +280,8 @@ func _refresh_save_btn() -> void:
 	var all_ok    := name_ok and dob_ok and sprite_ok
 
 	_save_btn.disabled = not all_ok
-	if all_ok:
-		var green := load("res://UI_Themes/ui/ui_primary.tres")
-		if green:
-			_save_btn.theme = green
-	else:
-		_save_btn.theme = load("res://UI_Themes/ui/ui_secondary.tres")
+	# ISSUE #192: through UIKit so the button keeps press-to-fire and the casing.
+	UIKit.style_button(_save_btn, "primary" if all_ok else "secondary")
 
 
 # ─── Save and transition ──────────────────────────────────────────────────────

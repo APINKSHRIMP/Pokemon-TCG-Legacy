@@ -261,6 +261,7 @@ func _refresh_display() -> void:
 	_clear_selection()
 	set_name_label.text = _get_set_name(pack_id)
 	_load_pack_images(pack_id)
+	_prefetch_neighbour_packs()   # ISSUE #207 — fire and forget, one image per frame
 	ShopChrome.set_wallet_cash(wallet_chip, int(player_cash), false)
 	_refresh_pills()
 	_update_buy_button()
@@ -314,10 +315,42 @@ func _load_pack_images(pack_id: String) -> void:
 		pack_hbox.offset_right = 1787.0
 
 
+## ISSUE #207: pack art is CACHED for the life of the screen.
+##
+## Godot's ResourceLoader only keeps a resource while something still references
+## it, and switching sets frees all four TextureRects — so every step of the
+## stepper went back to disk for four ~455px PNGs, which is the hitch the player
+## sees on base -> rocket and fossil -> rocket. Holding a reference here costs a
+## few MB and makes every set the player has already looked at instant.
+var _tex_cache : Dictionary = {}
+
 func _load_texture(path: String) -> Texture2D:
+	if _tex_cache.has(path):
+		return _tex_cache[path]
 	if not ResourceLoader.exists(path):
 		return null
-	return load(path)
+	var tex: Texture2D = load(path)
+	_tex_cache[path] = tex
+	return tex
+
+
+## ISSUE #207: warms the cache for the sets either side of the one on screen, one
+## image per frame so it never competes with the current set's own load. The first
+## visit to a set is then the only one that can hitch, and even that is usually
+## already paid for by the time the player steps onto it.
+func _prefetch_neighbour_packs() -> void:
+	if unlocked_packs.size() <= 1:
+		return
+	var neighbours: Array = [
+		unlocked_packs[(current_pack_idx + 1) % unlocked_packs.size()],
+		unlocked_packs[(current_pack_idx - 1 + unlocked_packs.size()) % unlocked_packs.size()],
+	]
+	for pack_id in neighbours:
+		for letter in ["a", "b", "c", "d"]:
+			if not is_inside_tree():
+				return
+			_load_texture(PACK_IMAGES_FOLDER + String(pack_id) + "_" + letter + ".png")
+			await get_tree().process_frame
 
 
 # ─── Price pills ─────────────────────────────────────────────────────────────
@@ -338,7 +371,21 @@ func _load_texture(path: String) -> Texture2D:
 func _refresh_pills() -> void:
 	if not is_inside_tree():
 		return
-	await get_tree().process_frame
+	# ISSUE #195: ONE frame is not enough after a set change. _load_pack_images
+	# replaces every child AND moves pack_hbox's own offsets, so the container
+	# re-sorts on the frame after its resize — read a frame too early and every
+	# pack's global rect is still (0,0,0,0), which is what put the pills in the
+	# corner of the screen. Wait until the row has actually been laid out.
+	for _i in range(6):
+		await get_tree().process_frame
+		if not is_inside_tree():
+			return
+		var first := pack_hbox.get_child_count() > 0
+		if not first:
+			break
+		var r: Control = pack_hbox.get_child(0)
+		if r.size.x > 1.0 and r.size.y > 1.0:
+			break
 	if not is_inside_tree():
 		return
 	ShopChrome.clear_pills(pill_layer)
@@ -476,22 +523,56 @@ func _save_last_pack_loaded(pack_id: String) -> void:
 
 # ─── Set navigation ──────────────────────────────────────────────────────────
 
+## ISSUE #253: TRUE WHILE A SET CHANGE IS STILL BEING DRAWN.
+##
+## This screen is the example the issue was logged against, and its stacking is
+## not really an input queue — it is a RENDER lag. _on_next_set steps the index
+## and returns immediately, but the work it kicks off (_load_pack_images, then
+## _refresh_pills, which waits up to six frames for the HBox to re-sort) takes a
+## few hundred milliseconds. So the index was already three sets ahead of the
+## packs on screen, and the shelf kept flipping after the player had stopped
+## clicking — with nothing queued anywhere.
+##
+## A global debounce cannot fix that: the clicks are hundreds of ms apart and each
+## one is perfectly legitimate. The screen has to say "not yet", so the arrows go
+## dead until what they asked for is on screen. It also gives the player the
+## feedback that was missing — a greyed arrow explains the pause.
+var _stepping : bool = false
+
 func _on_next_set() -> void:
-	if _in_opening_sequence or unlocked_packs.is_empty():
+	if _stepping or _in_opening_sequence or unlocked_packs.is_empty():
 		return
 	current_pack_idx = (current_pack_idx + 1) % unlocked_packs.size()
-	_refresh_display()
 	SoundManagerScript.play_sfx(SoundManagerScript.SFX_plus_select)
+	await _step_to_current_set()
 
 
 func _on_prev_set() -> void:
-	if _in_opening_sequence or unlocked_packs.is_empty():
+	if _stepping or _in_opening_sequence or unlocked_packs.is_empty():
 		return
 	current_pack_idx -= 1
 	if current_pack_idx < 0:
 		current_pack_idx = unlocked_packs.size() - 1
-	_refresh_display()
 	SoundManagerScript.play_sfx(SoundManagerScript.SFX_minus_select)
+	await _step_to_current_set()
+
+
+## ISSUE #253: refreshes the shelf with the arrows held down until it is drawn.
+func _step_to_current_set() -> void:
+	_stepping = true
+	next_btn.disabled = true
+	prev_btn.disabled = true
+	_refresh_display()
+	# _refresh_pills is the slow half and is fire-and-forget inside
+	# _refresh_display, so it is awaited HERE — that await is the whole lock.
+	await _refresh_pills()
+	if not is_inside_tree():
+		return
+	if not _in_opening_sequence:
+		next_btn.disabled = false
+		prev_btn.disabled = false
+	_stepping = false
+	print("ISSUE #253 FIX ACTIVE: set stepper unlocked on ", unlocked_packs[current_pack_idx])
 
 
 # ─── Cancel / Escape ─────────────────────────────────────────────────────────

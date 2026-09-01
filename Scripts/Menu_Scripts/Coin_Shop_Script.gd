@@ -20,7 +20,7 @@ const GIFT_FLIP_TOTAL  := 1.5
 # ISSUE #92: fallback price for an inventory entry with no "cost" field. TWEAKABLE, but the real
 # prices live in coin_shop_inventory.json — keep this in step with them so a malformed entry can't
 # quietly sell a coin at an out-of-date price.
-const DEFAULT_COIN_COST := 500
+const DEFAULT_COIN_COST := 100   # ISSUE #167: coins are $100, not $500
 
 ## TWEAKABLE — how far the coin ART is knocked back in each resting state. Both are applied
 ## with self_modulate so the price pill, which is a child, keeps its own colour. OWNED_DIM was
@@ -242,6 +242,11 @@ func _deselect_coin(rect: TextureRect) -> void:
 		rect.pivot_offset  = rect.size / 2.0
 
 
+## ISSUE #263: TWEAKABLE - peak scale of the selected-coin pulse, matched to the
+## costume grid's SELECT_PULSE. A 2% grow on a 100px coin is two pixels, which is
+## not visible at all; the costumes were raised to 1.2 for the same reason (#162).
+const SELECT_PULSE := 1.2
+
 func _apply_selected_animation(rect: TextureRect) -> void:
 	if _active_tween:
 		_active_tween.kill()
@@ -253,7 +258,7 @@ func _apply_selected_animation(rect: TextureRect) -> void:
 	# self_modulate, not modulate — the pulse must not reach the price pill child. scale is
 	# left on the node itself on purpose, so the pill grows and shrinks with its coin.
 	tween.tween_property(rect, "self_modulate", Color.WHITE * 1.1, 0.2)
-	tween.parallel().tween_property(rect, "scale", Vector2(1.02, 1.02), 0.2)
+	tween.parallel().tween_property(rect, "scale", Vector2(SELECT_PULSE, SELECT_PULSE), 0.2)
 	tween.tween_property(rect, "self_modulate", Color.WHITE * 1.0, 0.2)
 	tween.parallel().tween_property(rect, "scale", Vector2(1.0, 1.0), 0.2)
 

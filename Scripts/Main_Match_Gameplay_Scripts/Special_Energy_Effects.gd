@@ -198,9 +198,12 @@ func apply_on_attach_effects(energy_card: card_object, target_pokemon: card_obje
 		"Rainbow Energy":
 			# 10 damage to the pokemon it's attached to (no W/R)
 			target_pokemon.current_hp = max(0, target_pokemon.current_hp - 10)
-			main.display_hp_circles_above_align(target_pokemon, is_opponent)
-			var label_x = 1030 if is_opponent else 530
-			main.show_floating_label("-10HP", Vector2(label_x, 300), Color.RED, true)
+			# ISSUE #173: the BENCH is a legal Rainbow Energy target, and both of
+			# these used to be hardwired to the active slot — so attaching it to a
+			# benched Pokemon dealt the damage correctly but drew the loss on the
+			# active, whose readout then showed the bench Pokemon's HP.
+			main.refresh_pokemon_hp_display(target_pokemon, is_opponent)
+			main.float_label_over(target_pokemon, "-10HP", Color.RED, is_opponent)
 			await main.show_message("RAINBOW ENERGY DEALT 10 DAMAGE TO " + pokemon_name + "!")
 			if main._should_bail(): return true
 			await main.check_all_knockouts()
@@ -225,10 +228,12 @@ func apply_on_attach_effects(energy_card: card_object, target_pokemon: card_obje
 			if rule_heal > 0 and target_pokemon.current_hp < max_hp:
 				var actual_heal = min(rule_heal, max_hp - target_pokemon.current_hp)
 				target_pokemon.current_hp = min(max_hp, target_pokemon.current_hp + rule_heal)
-				main.display_hp_circles_above_align(target_pokemon, is_opponent)
+				# ISSUE #173: same fix as Rainbow Energy — Potion Energy can be
+				# attached to a benched Pokemon too.
+				main.refresh_pokemon_hp_display(target_pokemon, is_opponent)
 				SoundManagerScript.play_sfx(SoundManagerScript.SFX_heal_sound)
-				var label_x = 1030 if is_opponent else 530
-				main.show_floating_label("+" + str(actual_heal) + "HP", Vector2(label_x, 300), Color.GREEN, true)
+				main.float_label_over(target_pokemon, "+" + str(actual_heal) + "HP",
+					Color.GREEN, is_opponent)
 				await main.show_message("POTION ENERGY HEALED " + str(actual_heal) + " HP FROM " + pokemon_name + "!")
 				if main._should_bail(): return true
 				return true
@@ -249,7 +254,7 @@ func apply_on_attach_effects(energy_card: card_object, target_pokemon: card_obje
 			var rule_heal = main.match_effects.modify_heal_amount(10, is_opponent)
 			if rule_heal > 0 and target_pokemon.current_hp < heal_max_hp:
 				target_pokemon.current_hp = min(heal_max_hp, target_pokemon.current_hp + rule_heal)
-				main.display_hp_circles_above_align(target_pokemon, is_opponent)
+				main.refresh_pokemon_hp_display(target_pokemon, is_opponent)   # ISSUE #173
 				applied = true
 			if applied:
 				await main.show_message("HEAL ENERGY! REMOVED 1 DAMAGE COUNTER AND ALL SPECIAL CONDITIONS FROM " + pokemon_name + "!")

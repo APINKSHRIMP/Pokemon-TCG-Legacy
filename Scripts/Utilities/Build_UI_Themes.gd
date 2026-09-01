@@ -50,11 +50,14 @@ extends SceneTree
 
 const OUT_DIR := "res://UI_Themes/ui/"
 
-# Button face texture. 64x64 at a 16px patch margin leaves a 32px stretchable
-# middle, and 16 clears the 11px corner radius plus the 5px bottom edge, so
-# neither ever distorts however wide or tall the button is drawn.
-const TEX_SIZE   := 64
-const TEX_MARGIN := 16
+# Button face texture. The patch margin has to clear the corner radius (and the
+# 5px bottom edge), and the two margins together must not exceed the shortest
+# button the game draws — a 9-patch whose top+bottom slices are taller than the
+# control squashes its own corners. Buttons are ~48px tall (btn_pad_v 13 x 2
+# plus a 17px line), so a 24px margin is the ceiling and it is derived from
+# btn_radius rather than hand-set. ISSUE #184.
+var TEX_MARGIN: int = 24
+var TEX_SIZE: int = 56
 
 # Filled from METRICS / the token block in _init(). Vars, not consts, precisely
 # so they cannot be edited here and drift from UI_Theme.gd.
@@ -118,7 +121,10 @@ func _init() -> void:
 	MET = ui_theme.METRICS
 	TYP = ui_theme.TYPE
 
-	RADIUS         = float(MET["corner_radius"])
+	# ISSUE #184: buttons take btn_radius (the pill), not the chip radius.
+	RADIUS         = float(MET["btn_radius"])
+	TEX_MARGIN     = int(ceil(RADIUS)) + 2
+	TEX_SIZE       = TEX_MARGIN * 2 + 8
 	EDGE_H         = float(MET["btn_edge_h"])
 	PAD_H          = float(MET["btn_pad_h"])
 	PAD_V          = float(MET["btn_pad_v"])
@@ -323,8 +329,11 @@ func _write_base_theme() -> bool:
 	t.set_color("font_color", "LineEdit", TOK["field_fg"])
 	t.set_color("font_placeholder_color", "LineEdit", TOK["field_mute"])
 	t.set_color("caret_color", "LineEdit", TOK["accent"])
-	t.set_stylebox("normal", "LineEdit", _flat(TOK["chip_bg"], TOK["line"], 1, RADIUS))
-	t.set_stylebox("focus", "LineEdit", _flat(TOK["chip_bg"], TOK["accent"], 1, RADIUS))
+	# ISSUE #180: a LineEdit with no content margins puts the caret and the first
+	# glyph hard against the border. _text_box() insets both, and the inset has to
+	# clear the corner radius or the text tucks into the curve.
+	t.set_stylebox("normal", "LineEdit", _text_box(TOK["chip_bg"], TOK["line"]))
+	t.set_stylebox("focus", "LineEdit", _text_box(TOK["chip_bg"], TOK["accent"]))
 
 	t.set_stylebox("panel", "PanelContainer", _flat(TOK["panel"], TOK["line"], 1, 15.0))
 
@@ -386,6 +395,19 @@ func _apply_button(t: Theme, variant_name: String) -> void:
 	t.set_color("font_focus_color", "Button", fg)
 	t.set_color("font_disabled_color", "Button", Color(fg.r, fg.g, fg.b, 0.40))
 
+
+
+## A LineEdit face. Same fill as _flat() plus the text inset — ISSUE #180.
+## TEXT_PAD_H is measured from the radius so the first glyph always clears the
+## rounded corner however pill-like the boxes get.
+func _text_box(fill: Color, border: Color) -> StyleBoxFlat:
+	var sb := _flat(fill, border, 1, RADIUS)
+	var pad_h: float = maxf(14.0, RADIUS * 0.62)
+	sb.content_margin_left = pad_h
+	sb.content_margin_right = pad_h
+	sb.content_margin_top = 6.0
+	sb.content_margin_bottom = 6.0
+	return sb
 
 
 func _flat(fill: Color, border: Color, border_px: int, radius: float) -> StyleBoxFlat:

@@ -871,15 +871,24 @@ func tick_defender_counters(is_opponent: bool) -> void:
 func display_attached_trainer_cards(is_opponent: bool) -> void:
 	var container = main.opponent_attached_cards_container if is_opponent else main.player_attached_cards_container
 	var active = main.opponent_active_pokemon if is_opponent else main.player_active_pokemon
-	
+
+	# ISSUE #172: remove_child BEFORE queue_free. queue_free only takes effect at
+	# the END of the frame, so the old peek-stack was still parented and still
+	# being drawn while the new one was added on top of it — which is why a
+	# discard could leave the wrong number of tool cards on screen and then look
+	# like it discarded two on the following refresh. Detaching first makes the
+	# rebuild atomic. Same trap the deck builder's grid and the attack row hit.
 	for child in container.get_children():
+		container.remove_child(child)
 		child.queue_free()
 	
 	if active == null:
 		return
 	
 	var card_size = main.card_scales[11]  # Same size as energy cards
-	var overlap_offset = 80
+	# ISSUE #160: the tool stack is clamped exactly like the energy stack, so a
+	# fourth or fifth tool cannot walk off the edge of the board.
+	var overlap_offset = main._stack_offset(active.attached_cards.size(), card_size.x)
 	for i in range(active.attached_cards.size()):
 		var attached = active.attached_cards[i]
 		var display = TextureRect.new()
@@ -1050,7 +1059,9 @@ func validate_trainer_can_be_played(card: card_object, is_opponent: bool) -> Str
 
 	# Check Hay Fever (Dark Vileplume) - blocks all trainer cards
 	if main.powers_and_bodies.is_hay_fever_active():
-		return "Hay Fever: No Trainer cards can be played!"
+		# ISSUE #175: name the card doing it. "Hay Fever:" on its own reads as a
+		# rule the player has broken rather than as an opposing Pokemon's Power.
+		return "Dark Vileplume's Hay Fever prevents Trainer cards being played"
 
 	# ecard2 Addictive Pollen (Vileplume): blocks Supporter cards specifically, for one turn
 	if "Supporter" in card.metadata.get("subtypes", []):
@@ -1268,15 +1279,12 @@ func show_trainer_card_played_animation(card: card_object, is_opponent: bool) ->
 	var who = "Opponent" if is_opponent else "You"
 	var card_name = card.metadata.get("name", "Unknown")
 	
-	# Hide hand, decks, discards while trainer card is shown
-	main.player_hand_container.visible = false
-	main.player_deck_icon.visible = false
-	main.opponent_deck_icon.visible = false
-	main.player_discard_icon.visible = false
-	main.opponent_discard_icon.visible = false
+	# ISSUE #214 / #235: the WHOLE board goes, not a hand-written list of four
+	# icons plus a white sheet over the rest. The attack rows beside the active
+	# Pokemon were the ones this list kept missing, so they sat over the card that
+	# had just been played. See main.set_card_showcase_visible.
+	main.set_card_showcase_visible(true)
 	
-	# Show the overlay
-	main.trainer_block_container.visible = true
 	
 	# Display the card in the container
 	var card_display = TextureRect.new()
@@ -1287,15 +1295,13 @@ func show_trainer_card_played_animation(card: card_object, is_opponent: bool) ->
 	# Show message
 	await main.show_message(who + " played " + card_name + "!")
 	
-	# Clean up overlay and restore hidden elements
-	main.trainer_block_container.visible = false
+	# Clean up the card; set_card_showcase_visible restores the board.
+	# ISSUE #170: detach before freeing, or the next showcase parents its card
+	# alongside this one for a frame.
 	for child in main.played_trainer_container.get_children():
+		main.played_trainer_container.remove_child(child)
 		child.queue_free()
-	main.player_hand_container.visible = true
-	main.player_deck_icon.visible = true
-	main.opponent_deck_icon.visible = true
-	main.player_discard_icon.visible = true
-	main.opponent_discard_icon.visible = true
+	main.set_card_showcase_visible(false)
 	
 	# Animate card to appropriate destination
 	var hand_container_node = main.opponent_hand_container if is_opponent else main.player_hand_container
@@ -1422,15 +1428,10 @@ func resolve_attached_trainer(card: card_object, is_opponent: bool) -> void:
 				# ISSUE #54 FIX: fly Defender to its exact final spot. For the Active that's the tool slot
 				# (as PlusPower); for a Bench target it's that Pokémon's real bench slot position.
 				var hand_node = main.player_hand_container
-				var card_texture = main.get_card_texture(card)
-				if target == main.player_active_pokemon:
-					var dt_rect = main.measure_and_hide_new_active_tool_slot(false)
-					var dt_pos = dt_rect.get("position", main._ANIM_POS_SENTINEL)
-					var dt_size = dt_rect.get("size", main.card_scales[11])
-					await main.animate_card_a_to_b(hand_node, main.player_attached_cards_container, 0.3, card_texture, main.card_scales[10], dt_size, dt_pos)
-				else:
-					var bench_pos = main.get_pokemon_screen_location(target).get("position", main._ANIM_POS_SENTINEL)
-					await main.animate_card_a_to_b(hand_node, main.player_bench_container, 0.3, card_texture, main.card_scales[10], Vector2.ZERO, bench_pos)
+				# ISSUE #236: both branches through the one helper, so the bench case
+				# also gets the right SIZE (it kept the 150x206 hand size before) and
+				# arrives behind the Pokemon rather than on top of it.
+				await main.animate_attach_to_pokemon(card, target, false, hand_node)
 				# ISSUE #59 FIX (retest sub-issue 2): a BENCH target's tools are drawn by display_pokemon,
 				# not display_attached_trainer_cards (which only rebuilds the Active's tool stack), so the
 				# Defender wasn't visible on the bench until some later refresh. Refresh the board first.
@@ -1450,10 +1451,14 @@ func resolve_attached_trainer(card: card_object, is_opponent: bool) -> void:
 		active.attached_cards.append(card)
 		active.gym1_charity_attached = true
 		var hand_node = main.opponent_hand_container if is_opponent else main.player_hand_container
-		var attached_node = main.opponent_attached_cards_container if is_opponent else main.player_attached_cards_container
-		var card_texture = main.get_card_texture(card)
-		await main.animate_card_a_to_b(hand_node, attached_node, 0.3, card_texture, main.card_scales[10])
+		# ISSUE #236 (retest): this was one of SIX more sites still flying the card to
+		# the ACTIVE Pokemon's tool container whatever it had been attached to.
+		# main.animate_attach_to_pokemon aims at the Pokemon that received it.
+		await main.animate_attach_to_pokemon(card, active, is_opponent, hand_node)
 		display_attached_trainer_cards(is_opponent)
+		# ISSUE #236: a BENCH Pokemon's tools are drawn by display_pokemon, not by
+		# display_attached_trainer_cards (which only rebuilds the Active's stack).
+		main.display_pokemon(is_opponent)
 		await main.show_message("CHARITY ATTACHED TO " + active.metadata.get("name", "").to_upper() + "!")
 		if main._should_bail(): return
 		print("CHARITY: Attached to ", active.metadata.get("name", ""))
@@ -1483,11 +1488,9 @@ func resolve_attached_trainer(card: card_object, is_opponent: bool) -> void:
 			if main.opponent_active_pokemon != null and main.opponent_active_pokemon in sabrina_targets:
 				target = main.opponent_active_pokemon
 		else:
-			if sabrina_targets.size() == 1:
-				target = sabrina_targets[0]
-			else:
-				target = await main.card_ops.prompt_select_card(sabrina_targets, "ATTACH SABRINA'S ESP", "Choose a Sabrina Pokemon", "ATTACH", false)
-				if main._should_bail(): return
+			# ISSUE #156: always ask, even with one legal target.
+			target = await main.card_ops.prompt_select_card(sabrina_targets, "ATTACH SABRINA'S ESP", "Choose a Sabrina Pokemon", "ATTACH", false)
+			if main._should_bail(): return
 
 		if target == null:
 			var discard = main.opponent_discard_pile if is_opponent else main.player_discard_pile
@@ -1499,10 +1502,14 @@ func resolve_attached_trainer(card: card_object, is_opponent: bool) -> void:
 		target.gym1_sabrina_esp_attached = true
 		target.gym1_sabrina_esp_credit_active = true
 		var hand_node = main.opponent_hand_container if is_opponent else main.player_hand_container
-		var attached_node = main.opponent_attached_cards_container if is_opponent else main.player_attached_cards_container
-		var card_texture = main.get_card_texture(card)
-		await main.animate_card_a_to_b(hand_node, attached_node, 0.3, card_texture, main.card_scales[10])
+		# ISSUE #236 (retest): this was one of SIX more sites still flying the card to
+		# the ACTIVE Pokemon's tool container whatever it had been attached to.
+		# main.animate_attach_to_pokemon aims at the Pokemon that received it.
+		await main.animate_attach_to_pokemon(card, target, is_opponent, hand_node)
 		display_attached_trainer_cards(is_opponent)
+		# ISSUE #236: a BENCH Pokemon's tools are drawn by display_pokemon, not by
+		# display_attached_trainer_cards (which only rebuilds the Active's stack).
+		main.display_pokemon(is_opponent)
 		await main.show_message("SABRINA'S ESP ATTACHED TO " + target.metadata.get("name", "").to_upper() + "!")
 		if main._should_bail(): return
 		print("SABRINA'S ESP: Attached to ", target.metadata.get("name", ""))
@@ -1534,11 +1541,9 @@ func resolve_attached_trainer(card: card_object, is_opponent: bool) -> void:
 		if is_opponent:
 			wg_target = main.opponent_active_pokemon if main.opponent_active_pokemon != null else wg_targets[0]
 		else:
-			if wg_targets.size() == 1:
-				wg_target = wg_targets[0]
-			else:
-				wg_target = await main.card_ops.prompt_select_card(wg_targets, "ATTACH WEAKNESS GUARD", "Choose a Pokemon to remove its Weakness", "ATTACH", false)
-				if main._should_bail(): return
+			# ISSUE #156: always ask, even with one legal target.
+			wg_target = await main.card_ops.prompt_select_card(wg_targets, "ATTACH WEAKNESS GUARD", "Choose a Pokemon to remove its Weakness", "ATTACH", false)
+			if main._should_bail(): return
 		if wg_target == null:
 			var wg_discard2 = main.opponent_discard_pile if is_opponent else main.player_discard_pile
 			card.current_location = "discard"
@@ -1547,11 +1552,11 @@ func resolve_attached_trainer(card: card_object, is_opponent: bool) -> void:
 		wg_target.attached_cards.append(card)
 		wg_target.temporary_weakness = "NONE_ECARD2_WEAKNESS_GUARD"
 		wg_target.set_effect("ecard2_weakness_guard", "end_of_opponent_turn")
+		# ISSUE #236: aim at the Pokemon that received it, not at the Active's stack.
 		var wg_hand_node = main.opponent_hand_container if is_opponent else main.player_hand_container
-		var wg_attached_node = main.opponent_attached_cards_container if is_opponent else main.player_attached_cards_container
-		var wg_tex = main.get_card_texture(card)
-		await main.animate_card_a_to_b(wg_hand_node, wg_attached_node, 0.3, wg_tex, main.card_scales[10])
+		await main.animate_attach_to_pokemon(card, wg_target, is_opponent, wg_hand_node)
 		display_attached_trainer_cards(is_opponent)
+		main.display_pokemon(is_opponent)
 		await main.show_message("WEAKNESS GUARD ATTACHED TO " + wg_target.metadata.get("name","").to_upper() + "!")
 		if main._should_bail(): return
 		print("TRAINER: Weakness Guard attached to ", wg_target.metadata.get("name",""))
@@ -1599,11 +1604,9 @@ func resolve_attached_trainer(card: card_object, is_opponent: bool) -> void:
 		if is_opponent:
 			target_tm = main.opponent_active_pokemon if main.opponent_active_pokemon in targets else targets[0]
 		else:
-			if targets.size() == 1:
-				target_tm = targets[0]
-			else:
-				target_tm = await main.card_ops.prompt_select_card(targets, "ATTACH " + card.metadata.get("name","").to_upper(), "Choose a Pokemon to attach it to", "ATTACH", false)
-				if main._should_bail(): return
+			# ISSUE #156: always ask, even with one legal target.
+			target_tm = await main.card_ops.prompt_select_card(targets, "ATTACH " + card.metadata.get("name","").to_upper(), "Choose a Pokemon to attach it to", "ATTACH", false)
+			if main._should_bail(): return
 		if target_tm == null:
 			var discard_tm2 = main.opponent_discard_pile if is_opponent else main.player_discard_pile
 			card.current_location = "discard"
@@ -1611,10 +1614,14 @@ func resolve_attached_trainer(card: card_object, is_opponent: bool) -> void:
 			return
 		target_tm.attached_cards.append(card)
 		var hand_node_tm = main.opponent_hand_container if is_opponent else main.player_hand_container
-		var attached_node_tm = main.opponent_attached_cards_container if is_opponent else main.player_attached_cards_container
-		var card_texture_tm = main.get_card_texture(card)
-		await main.animate_card_a_to_b(hand_node_tm, attached_node_tm, 0.3, card_texture_tm, main.card_scales[10])
+		# ISSUE #236 (retest): this was one of SIX more sites still flying the card to
+		# the ACTIVE Pokemon's tool container whatever it had been attached to.
+		# main.animate_attach_to_pokemon aims at the Pokemon that received it.
+		await main.animate_attach_to_pokemon(card, target_tm, is_opponent, hand_node_tm)
 		display_attached_trainer_cards(is_opponent)
+		# ISSUE #236: a BENCH Pokemon's tools are drawn by display_pokemon, not by
+		# display_attached_trainer_cards (which only rebuilds the Active's stack).
+		main.display_pokemon(is_opponent)
 		await main.show_message(card.metadata.get("name","").to_upper() + " ATTACHED TO " + target_tm.metadata.get("name","").to_upper() + "!")
 		if main._should_bail(): return
 		print("TRAINER: ", card.metadata.get("name",""), " attached to ", target_tm.metadata.get("name",""))
@@ -1641,10 +1648,14 @@ func resolve_attached_trainer(card: card_object, is_opponent: bool) -> void:
 		active.attached_cards.append(card)
 		active.gym2_koga_ninja_trick_attached = true
 		var hand_node = main.opponent_hand_container if is_opponent else main.player_hand_container
-		var attached_node = main.opponent_attached_cards_container if is_opponent else main.player_attached_cards_container
-		var card_texture = main.get_card_texture(card)
-		await main.animate_card_a_to_b(hand_node, attached_node, 0.3, card_texture, main.card_scales[10])
+		# ISSUE #236 (retest): this was one of SIX more sites still flying the card to
+		# the ACTIVE Pokemon's tool container whatever it had been attached to.
+		# main.animate_attach_to_pokemon aims at the Pokemon that received it.
+		await main.animate_attach_to_pokemon(card, active, is_opponent, hand_node)
 		display_attached_trainer_cards(is_opponent)
+		# ISSUE #236: a BENCH Pokemon's tools are drawn by display_pokemon, not by
+		# display_attached_trainer_cards (which only rebuilds the Active's stack).
+		main.display_pokemon(is_opponent)
 		await main.show_message("KOGA'S NINJA TRICK ATTACHED TO " + active.metadata.get("name", "").to_upper() + "!")
 		if main._should_bail(): return
 		print("KOGA'S NINJA TRICK: Attached to ", active.metadata.get("name", ""))
@@ -1669,11 +1680,9 @@ func gym2_attach_named_tool(card: card_object, is_opponent: bool, name_substr: S
 				best_e = p.attached_energies.size()
 				target = p
 	else:
-		if targets.size() == 1:
-			target = targets[0]
-		else:
-			target = await main.card_ops.prompt_select_card(targets, "ATTACH " + display_name, "Choose a " + name_substr + " Pokemon", "ATTACH", false)
-			if main._should_bail(): return
+		# ISSUE #156: always ask, even with one legal target.
+		target = await main.card_ops.prompt_select_card(targets, "ATTACH " + display_name, "Choose a " + name_substr + " Pokemon", "ATTACH", false)
+		if main._should_bail(): return
 	if target == null:
 		var discard2 = main.opponent_discard_pile if is_opponent else main.player_discard_pile
 		card.current_location = "discard"
@@ -1682,10 +1691,14 @@ func gym2_attach_named_tool(card: card_object, is_opponent: bool, name_substr: S
 	target.attached_cards.append(card)
 	target.set(flag_name, true)
 	var hand_node = main.opponent_hand_container if is_opponent else main.player_hand_container
-	var attached_node = main.opponent_attached_cards_container if is_opponent else main.player_attached_cards_container
-	var card_texture = main.get_card_texture(card)
-	await main.animate_card_a_to_b(hand_node, attached_node, 0.3, card_texture, main.card_scales[10])
+	# ISSUE #236 (retest): this was one of SIX more sites still flying the card to
+	# the ACTIVE Pokemon's tool container whatever it had been attached to.
+	# main.animate_attach_to_pokemon aims at the Pokemon that received it.
+	await main.animate_attach_to_pokemon(card, target, is_opponent, hand_node)
 	display_attached_trainer_cards(is_opponent)
+	# ISSUE #236: a BENCH Pokemon's tools are drawn by display_pokemon, not by
+	# display_attached_trainer_cards (which only rebuilds the Active's stack).
+	main.display_pokemon(is_opponent)
 	await main.show_message(display_name + " ATTACHED TO " + target.metadata.get("name", "").to_upper() + "!")
 	if main._should_bail(): return
 	print(display_name, ": Attached to ", target.metadata.get("name", ""))
@@ -2170,25 +2183,20 @@ func effect_pokemon_breeder(is_opponent: bool) -> void:
 # message is shown, then hide it — used for "show this card to your opponent" moments so the player
 # actually sees the card on screen (like a played trainer) before it animates to its destination.
 func show_card_with_message(card: card_object, message: String) -> void:
-	main.player_hand_container.visible = false
-	main.player_deck_icon.visible = false
-	main.opponent_deck_icon.visible = false
-	main.player_discard_icon.visible = false
-	main.opponent_discard_icon.visible = false
-	main.trainer_block_container.visible = true
+	# ISSUE #214 / #235: the WHOLE board goes, not a hand-written list of four
+	# icons plus a white sheet over the rest. The attack rows beside the active
+	# Pokemon were the ones this list kept missing, so they sat over the card that
+	# had just been played. See main.set_card_showcase_visible.
+	main.set_card_showcase_visible(true)
 	var card_display = TextureRect.new()
 	card_display.set_script(main.card_display_script)
 	main.played_trainer_container.add_child(card_display)
 	card_display.load_card_image(card.uid, main.card_scales[1], card)
 	await main.show_message(message)
-	main.trainer_block_container.visible = false
 	for child in main.played_trainer_container.get_children():
+		main.played_trainer_container.remove_child(child)
 		child.queue_free()
-	main.player_hand_container.visible = true
-	main.player_deck_icon.visible = true
-	main.opponent_deck_icon.visible = true
-	main.player_discard_icon.visible = true
-	main.opponent_discard_icon.visible = true
+	main.set_card_showcase_visible(false)
 
 func effect_pokemon_trader(played_card: card_object, is_opponent: bool) -> void:
 	var hand = main.opponent_hand if is_opponent else main.player_hand
@@ -3076,7 +3084,15 @@ func effect_potion(is_opponent: bool) -> void:
 		return
 	
 	if is_opponent:
-		var target = damaged[0]
+		# ISSUE #164: NOT damaged[0], which is the first BENCH Pokemon. The CPU
+		# healed a benched 30/70 while its 30/60 Active was one attack from being
+		# knocked out. cpu_pick_heal_target weighs saving the Active above the
+		# damage fraction — see cpu_rank_heal_target.
+		var target = main.cpu_ai.cpu_pick_heal_target(damaged, 20)
+		if target == null:
+			target = damaged[0]
+		print("ISSUE #164 FIX ACTIVE: CPU Potion targets ", target.metadata.get("name", ""),
+			" (active=", target == main.opponent_active_pokemon, ")")
 		await main.card_ops.heal_pokemon(target, 20, true)
 		if main._should_bail(): return
 	else:
@@ -4063,13 +4079,22 @@ func gym1_end_of_turn_cleanup(side_is_opponent: bool) -> void:
 				print("STRENGTH CHARM: discarded from ", pokemon.metadata.get("name", ""))
 
 		# Any Technical Machine card (ecard1-144, ecard2's 8 Cubes, etc.): discarded at end of
-		# every turn, regardless of use
-		var tm_card: card_object = null
+		# every turn, regardless of use.
+		#
+		# ISSUE #159: ALL OF THEM, NOT JUST THE FIRST. This used to find one TM with
+		# a `break` and discard that — so with two or three attached the rest stayed
+		# on the Pokemon and kept granting their attacks turn after turn. Nothing
+		# limits a Pokemon to one TM (they have no tool slot; see the attach code,
+		# which deliberately has no "already has a TM" filter), so the list has to be
+		# collected first and then discarded.
+		#
+		# Collected into its own array BEFORE erasing: mutating attached_cards while
+		# iterating it skips entries.
+		var tm_cards: Array = []
 		for ac in pokemon.attached_cards:
 			if "Technical Machine" in ac.metadata.get("subtypes", []):
-				tm_card = ac
-				break
-		if tm_card != null:
+				tm_cards.append(ac)
+		for tm_card in tm_cards:
 			pokemon.attached_cards.erase(tm_card)
 			tm_card.current_location = "discard"
 			discard.append(tm_card)
@@ -4077,9 +4102,13 @@ func gym1_end_of_turn_cleanup(side_is_opponent: bool) -> void:
 			var discard_node3 = main.opponent_discard_icon if side_is_opponent else main.player_discard_icon
 			var tex3 = main.get_card_texture(tm_card)
 			main.animate_card_a_to_b(attached_node3, discard_node3, 0.25, tex3, main.card_scales[10])
+		if not tm_cards.is_empty():
+			# ISSUE #172: the board is refreshed ONCE, after every card has actually
+			# left attached_cards. Refreshing inside the loop redrew the peek-stack
+			# from a half-emptied list, which is how a discard could leave the wrong
+			# number of cards showing and then "discard two" on the following turn.
 			display_attached_trainer_cards(side_is_opponent)
 			main.update_discard_pile_display(side_is_opponent)
-			print("TECHNICAL MACHINE: discarded ", tm_card.metadata.get("name",""), " from ", pokemon.metadata.get("name", ""))
 
 		# ECARD2 Memory Berry (ecard2-128): discarded at the end of any turn its holder attacked
 		var attacked_this_turn = main.opponent_attacked_this_turn if side_is_opponent else main.player_attacked_this_turn
@@ -5503,11 +5532,9 @@ func gym2_effect_blaine(is_opponent: bool) -> void:
 		else:
 			target = blaine_targets[0]
 	else:
-		if blaine_targets.size() == 1:
-			target = blaine_targets[0]
-		else:
-			target = await main.card_ops.prompt_select_card(blaine_targets, "BLAINE — ATTACH 2 FIRE ENERGY", "Choose a Blaine Pokemon", "ATTACH", false)
-			if main._should_bail(): return
+		# ISSUE #156: always ask, even with one legal target.
+		target = await main.card_ops.prompt_select_card(blaine_targets, "BLAINE — ATTACH 2 FIRE ENERGY", "Choose a Blaine Pokemon", "ATTACH", false)
+		if main._should_bail(): return
 	if target == null:
 		return
 	# Move the 2 Fire Energies onto the target
@@ -5554,11 +5581,9 @@ func gym2_effect_giovanni(is_opponent: bool) -> void:
 				best_stage = stage
 				target = p
 	else:
-		if giovannis.size() == 1:
-			target = giovannis[0]
-		else:
-			target = await main.card_ops.prompt_select_card(giovannis, "GIOVANNI — CHOOSE A POKEMON", "It can evolve freely this turn", "SELECT", false)
-			if main._should_bail(): return
+		# ISSUE #156: always ask, even with one legal target.
+		target = await main.card_ops.prompt_select_card(giovannis, "GIOVANNI — CHOOSE A POKEMON", "It can evolve freely this turn", "SELECT", false)
+		if main._should_bail(): return
 	if target == null:
 		return
 	target.gym2_giovanni_evolve_anywhere = true
@@ -5671,11 +5696,9 @@ func gym2_effect_giovannis_last_resort(is_opponent: bool) -> void:
 				most = d
 				target = p
 	else:
-		if giovannis.size() == 1:
-			target = giovannis[0]
-		else:
-			target = await main.card_ops.prompt_select_card(giovannis, "GIOVANNI'S LAST RESORT", "Choose a Giovanni Pokemon to fully heal (will discard your hand)", "HEAL", false)
-			if main._should_bail(): return
+		# ISSUE #156: always ask, even with one legal target.
+		target = await main.card_ops.prompt_select_card(giovannis, "GIOVANNI'S LAST RESORT", "Choose a Giovanni Pokemon to fully heal (will discard your hand)", "HEAL", false)
+		if main._should_bail(): return
 	if target == null:
 		return
 	await main.card_ops.heal_pokemon(target, target.get_max_hp(), is_opponent)
@@ -6553,22 +6576,28 @@ func neo1_attach_tool(card: card_object, is_opponent: bool, eligibility_filter: 
 		# CPU: attach to active if no tool, otherwise bench
 		target = valid_targets[0]
 	else:
-		if valid_targets.size() == 1:
-			target = valid_targets[0]
-		else:
-			target = await main.card_ops.prompt_select_card(valid_targets, "ATTACH " + card.metadata.get("name",""), "Choose a Pokemon to attach " + card.metadata.get("name","") + " to", "ATTACH", false)
-			if main._should_bail(): return
+		# ISSUE #156: always ask, even with one legal target.
+		target = await main.card_ops.prompt_select_card(valid_targets, "ATTACH " + card.metadata.get("name",""), "Choose a Pokemon to attach " + card.metadata.get("name","") + " to", "ATTACH", false)
+		if main._should_bail(): return
 	if target == null:
 		var discard2 = main.opponent_discard_pile if is_opponent else main.player_discard_pile
 		card.current_location = "discard"
 		discard2.append(card)
 		return
 	target.attached_cards.append(card)
+	# ISSUE #236: this is the generic tool attach - Focus Band, Berry, Gold Berry,
+	# Strength Charm, Cessation Crystal, every ecard2/ex Pokemon Tool - and it flew
+	# every one of them to the ACTIVE Pokemon's tool container regardless of what
+	# they had been attached to. main.animate_attach_to_pokemon aims at whichever
+	# Pokemon actually received it.
 	var hand_node = main.opponent_hand_container if is_opponent else main.player_hand_container
-	var attached_node = main.opponent_attached_cards_container if is_opponent else main.player_attached_cards_container
-	var card_texture = main.get_card_texture(card)
-	await main.animate_card_a_to_b(hand_node, attached_node, 0.3, card_texture, main.card_scales[10])
+	await main.animate_attach_to_pokemon(card, target, is_opponent, hand_node)
 	display_attached_trainer_cards(is_opponent)
+	# ISSUE #236: a BENCH Pokemon's tools are drawn by display_pokemon, not by
+	# display_attached_trainer_cards (which only rebuilds the Active's stack).
+	main.display_pokemon(is_opponent)
+	# ISSUE #249: the board shows the attachment BEFORE the line describing it.
+	main.display_pokemon(is_opponent)
 	await main.show_message(card.metadata.get("name","").to_upper() + " ATTACHED TO " + target.metadata.get("name","").to_upper() + "!")
 	if main._should_bail(): return
 	print("TRAINER: ", card.metadata.get("name",""), " attached to ", target.metadata.get("name",""))
@@ -6725,11 +6754,9 @@ func effect_neo1_pokegear(is_opponent: bool) -> void:
 	if is_opponent:
 		pick = main.cpu_ai.cpu_pick_best_keep(trainers)
 	else:
-		if trainers.size() == 1:
-			pick = trainers[0]
-		else:
-			pick = await main.card_ops.prompt_select_card(trainers, "POKEGEAR: CHOOSE TRAINER", "Choose a Trainer card to take from top 7", "TAKE", true)
-			if main._should_bail(): return
+		# ISSUE #156: always ask, even with one legal target.
+		pick = await main.card_ops.prompt_select_card(trainers, "POKEGEAR: CHOOSE TRAINER", "Choose a Trainer card to take from top 7", "TAKE", true)
+		if main._should_bail(): return
 	if pick != null:
 		deck.erase(pick)
 		pick.current_location = "hand"
@@ -7007,11 +7034,9 @@ func effect_neo1_super_scoop_up(is_opponent: bool) -> void:
 		else:
 			target = main.opponent_active_pokemon
 	else:
-		if all_poke.size() == 1:
-			target = all_poke[0]
-		else:
-			target = await main.card_ops.prompt_select_card(all_poke, "SUPER SCOOP UP: CHOOSE POKEMON", "Choose a Pokemon to return to hand", "SELECT", false)
-			if main._should_bail(): return
+		# ISSUE #156: always ask, even with one legal target.
+		target = await main.card_ops.prompt_select_card(all_poke, "SUPER SCOOP UP: CHOOSE POKEMON", "Choose a Pokemon to return to hand", "SELECT", false)
+		if main._should_bail(): return
 	if target == null:
 		return
 	var hand = main.opponent_hand if is_opponent else main.player_hand
@@ -7434,11 +7459,9 @@ func neo3_attach_tool(card: card_object, is_opponent: bool) -> void:
 	if is_opponent:
 		target = valid_targets[0]
 	else:
-		if valid_targets.size() == 1:
-			target = valid_targets[0]
-		else:
-			target = await main.card_ops.prompt_select_card(valid_targets, "ATTACH " + card.metadata.get("name",""), "Choose a Pokemon to attach " + card.metadata.get("name","") + " to", "ATTACH", false)
-			if main._should_bail(): return
+		# ISSUE #156: always ask, even with one legal target.
+		target = await main.card_ops.prompt_select_card(valid_targets, "ATTACH " + card.metadata.get("name",""), "Choose a Pokemon to attach " + card.metadata.get("name","") + " to", "ATTACH", false)
+		if main._should_bail(): return
 	if target == null:
 		var discard2 = main.opponent_discard_pile if is_opponent else main.player_discard_pile
 		card.current_location = "discard"
@@ -7446,10 +7469,14 @@ func neo3_attach_tool(card: card_object, is_opponent: bool) -> void:
 		return
 	target.attached_cards.append(card)
 	var hand_node = main.opponent_hand_container if is_opponent else main.player_hand_container
-	var attached_node = main.opponent_attached_cards_container if is_opponent else main.player_attached_cards_container
-	var card_texture = main.get_card_texture(card)
-	await main.animate_card_a_to_b(hand_node, attached_node, 0.3, card_texture, main.card_scales[10])
+	# ISSUE #236 (retest): this was one of SIX more sites still flying the card to
+	# the ACTIVE Pokemon's tool container whatever it had been attached to.
+	# main.animate_attach_to_pokemon aims at the Pokemon that received it.
+	await main.animate_attach_to_pokemon(card, target, is_opponent, hand_node)
 	display_attached_trainer_cards(is_opponent)
+	# ISSUE #236: a BENCH Pokemon's tools are drawn by display_pokemon, not by
+	# display_attached_trainer_cards (which only rebuilds the Active's stack).
+	main.display_pokemon(is_opponent)
 	await main.show_message(card.metadata.get("name","").to_upper() + " ATTACHED TO " + target.metadata.get("name","").to_upper() + "!")
 	if main._should_bail(): return
 	print("TRAINER: ", card.metadata.get("name",""), " attached to ", target.metadata.get("name",""))

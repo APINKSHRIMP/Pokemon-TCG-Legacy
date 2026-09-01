@@ -1563,13 +1563,13 @@ func execute_cpu_retreat(cpu_eval: Dictionary) -> void:
 	# jumped by 2× the retreat cost. The player flow never pre-discards; the CPU now matches it —
 	# animate_energies_to_discard (inside animate_retreat) performs the single discard + animation.
 	var retreat_cost = main.get_retreat_cost(main.opponent_active_pokemon)
-	var discarded_energies = []
-	var _attached_for_retreat = main.opponent_active_pokemon.attached_energies
-	for i in range(retreat_cost):
-		var idx = _attached_for_retreat.size() - 1 - i   # take from the top, mirroring the old pop_back order
-		if idx >= 0:
-			discarded_energies.append(_attached_for_retreat[idx])
+	# ISSUE #163: pay the retreat cost with the LEAST valuable Energy attached, not
+	# whatever happens to be on top of the stack — which is how a Double Colorless
+	# ended up paying a retreat while a spare basic sat underneath it.
+	var discarded_energies = cpu_own_energy_discard_order(
+		main.opponent_active_pokemon, retreat_cost)
 	print("ISSUE #43 FIX ACTIVE: CPU retreat discards ", discarded_energies.size(), " energy once (no pre-discard)")
+	print("ISSUE #163 FIX ACTIVE: CPU retreat sheds its cheapest energy first")
 
 	var post_check = await main.check_confused_retreat(main.opponent_active_pokemon, true, "post_energy")
 	if not post_check:
@@ -2004,6 +2004,18 @@ func score_energy_pair(pokemon: card_object, energy_card: card_object, cpu_eval:
 		if not _enables_ko and _active_fully_powered_no_benefit(pokemon, pokemon_data):
 			print("ISSUE #35 FIX ACTIVE: over-powered Active ", pokemon.metadata.get("name", "?"), " — surplus energy deprioritised (-300)")
 			return -300.0
+
+	# ISSUE #176: UTILITY ENERGY IS ONLY WORTH PLAYING WHEN ITS UTILITY LANDS.
+	#
+	# Full Heal Energy and Potion Energy both provide a single Colorless — the
+	# weakest energy in the game — and are worth holding for the turn their real
+	# effect matters. The CPU was treating them as ordinary Colorless and put a
+	# Full Heal Energy on a benched Dark Primeape, which has no Colorless cost to
+	# pay AND cannot carry a Special Condition to be cured of.
+	var util_penalty := _score_utility_energy(pokemon, energy_card, is_active, energy_types)
+	if util_penalty <= -500.0:
+		return util_penalty
+	score += util_penalty
 
 	# DCE restriction: only attach to pokemon with an attack requiring 2+ Colorless
 	if main.trainer_effects.is_double_colorless_energy(energy_card):
@@ -5772,6 +5784,228 @@ func cpu_pick_best_keep(pool: Array) -> card_object:
 			best_s = s
 			best = c
 	return best
+
+# ISSUE #176: how much to add (or take off) for Full Heal Energy / Potion Energy.
+#
+# Both are Colorless providers whose value is in the effect they fire ON ATTACH.
+# The rule the player set: play them when the effect actually does something, OR
+# when the Colorless they provide is genuinely needed. If neither is true they are
+# the worst energy in hand and something else should go down instead.
+#
+# Returns a score contribution. -600 is a hard disqualification, matching the DCE
+# guard below it, and is only returned when the card can do literally nothing for
+# this target and the CPU has another energy it could attach instead.
+func _score_utility_energy(pokemon: card_object, energy_card: card_object,
+		is_active: bool, energy_types: Array) -> float:
+	var energy_name := String(energy_card.metadata.get("name", ""))
+	if energy_name != "Full Heal Energy" and energy_name != "Potion Energy":
+		return 0.0
+
+	# Would the Colorless it provides move this Pokemon closer to an attack?
+	var energy_needed := false
+	for atk in main.get_attacks_for_card(pokemon):
+		if get_unmet_energy_count(atk, pokemon) > 0:
+			energy_needed = true
+			break
+
+	var effect_lands := false
+	if energy_name == "Full Heal Energy":
+		# Only the Active can hold a Special Condition, so a bench attach can never
+		# cure anything.
+		effect_lands = is_active and (pokemon.special_condition != ""
+			or pokemon.is_poisoned or pokemon.is_burned)
+	else:
+		var max_hp: int = int(pokemon.metadata.get("hp", "0"))
+		effect_lands = max_hp > 0 and pokemon.current_hp < max_hp
+
+	if effect_lands and energy_needed:
+		return 60.0            # both halves of the card pay off — play it now
+	if effect_lands:
+		return 30.0            # worth it for the cure / heal alone
+	if energy_needed:
+		# The Colorless is wanted, but a plain basic would do the same job without
+		# spending the card's effect. Mild penalty so any other energy wins a tie.
+		return -35.0
+	return -600.0              # provides nothing and cures nothing
+
+
+# ISSUE #164: WHICH DAMAGED POKEMON THE CPU HEALS.
+#
+# Every healing Trainer used to take `damaged[0]` — the first entry of
+# build_field_pokemon_array, which is a BENCH Pokemon. The reported case: the CPU
+# potioned a 30/70 benched Pokemon while its 30/60 Active was staring down an
+# attack that would knock it out next turn. The bench Pokemon was a smaller
+# fraction of its maximum, but nothing was going to happen to it.
+#
+# So the fraction is the LAST thing considered. What matters, in order:
+#   1. Does this heal actually SAVE the Active from a knockout it is otherwise
+#      certain to take? Nothing else a heal can do is worth as much.
+#   2. Is this the Active at all, and is it under threat? Even a heal that does
+#      not fully save it buys a turn or forces a bigger attack.
+#   3. How much of the heal is not wasted — healing 20 into a Pokemon missing 10
+#      throws half of it away.
+#   4. How valuable the Pokemon is (threat score), then the damage fraction.
+#
+# `heal_amount` is what the card will actually restore, so the same ranker works
+# for Potion (20), Super Potion (40) and the rest.
+func cpu_rank_heal_target(pokemon: card_object, heal_amount: int) -> float:
+	if pokemon == null:
+		return -INF
+	var max_hp: int = int(pokemon.metadata.get("hp", "0"))
+	if max_hp <= 0 or pokemon.current_hp >= max_hp:
+		return -INF
+
+	var missing: int = max_hp - pokemon.current_hp
+	var effective: int = mini(heal_amount, missing)
+	var score := float(effective) * 4.0
+
+	var is_active: bool = (pokemon == main.opponent_active_pokemon)
+	if is_active:
+		var threats := evaluate_ko_threats()
+		var doomed_by_status: bool = bool(threats.get("cpu_active_dies_to_status", false))
+		if bool(threats.get("cpu_active_guaranteed_ko", false)):
+			# A heal that clears the incoming damage is the whole point of the card.
+			# One that does not — including a status death, which no heal prevents —
+			# is still worth something, but not a rescue.
+			if not doomed_by_status and _cpu_heal_prevents_ko(pokemon, effective):
+				score += 2000.0
+			else:
+				score += 250.0
+		elif bool(threats.get("cpu_active_potential_ko", false)):
+			score += 600.0
+		else:
+			score += 120.0        # the Active is simply the Pokemon in the firing line
+
+	score += _cpu_threat_score(pokemon) * 0.5
+	# The damage FRACTION is the tiebreak, not the headline — a nearly-dead bench
+	# Pokemon nobody can reach is not an emergency.
+	score += (float(missing) / float(max_hp)) * 20.0
+	return score
+
+
+# ISSUE #164: true when `heal` lifts the CPU's Active out of range of every attack
+# the player can actually use right now. Mirrors evaluate_ko_threats' arithmetic —
+# status damage lands BEFORE the player's attack, so it comes off first.
+func _cpu_heal_prevents_ko(pokemon: card_object, heal: int) -> bool:
+	if main.player_active_pokemon == null:
+		return true
+	var max_hp: int = int(pokemon.metadata.get("hp", "0"))
+	var tick: int = status_damage_before_next_attack(pokemon, true)
+	var hp_after: int = mini(pokemon.current_hp + heal, max_hp) - tick
+	if hp_after <= 0:
+		return false
+	var player_types = main.player_active_pokemon.metadata.get("types", ["Colorless"])
+	for attack in main.player_active_pokemon.metadata.get("attacks", []):
+		if get_unmet_energy_count(attack, main.player_active_pokemon) != 0:
+			continue
+		var rng = main.attack_effects.estimate_attack_damage_range(attack, main.player_active_pokemon, pokemon)
+		var worst = main.calculate_final_damage(rng["min"], player_types, pokemon)
+		if int(worst["damage"]) >= hp_after:
+			return false
+	return true
+
+
+# ISSUE #164: the best of `pool` to heal, or null when nothing can benefit.
+func cpu_pick_heal_target(pool: Array, heal_amount: int) -> card_object:
+	var best: card_object = null
+	var best_s := -INF
+	for p in pool:
+		var v := cpu_rank_heal_target(p, heal_amount)
+		if v > best_s:
+			best_s = v
+			best = p
+	return best
+
+
+# ISSUE #163: WHICH OF ITS **OWN** ENERGY THE CPU GIVES UP.
+#
+# Retreating, paying an attack's discard cost and answering an opponent's energy
+# removal all used to take `attached_energies[0]` or "the top of the stack" — the
+# arbitrary attachment order. That routinely threw away a Double Colorless while a
+# plain Fire Energy sat beside it doing nothing.
+#
+# The rule the player asked for, in order of weight:
+#   1. NEVER shed an Energy that is holding up an attack when another Energy is
+#      not. This outranks everything else: the CPU keeping a fancy Energy it
+#      cannot attack with is worse than losing it.
+#   2. Among Energy that costs the same number of attacks, the SPECIAL one is
+#      worth more than a basic — a multi-provider (Double Colorless, Rainbow,
+#      Multi, Dark Metal, R) most of all, because it is doing two cards' work.
+#   3. Basic Energy of a type none of the card's attacks name is the cheapest
+#      thing on the Pokemon.
+#
+# `cpu_own_energy_value()` is the score (higher = keep it); the two helpers below
+# turn that into a pick or an ordering.
+func cpu_own_energy_value(pokemon: card_object, energy: card_object) -> float:
+	if energy == null:
+		return 0.0
+	var score := 0.0
+
+	# 1. How many of this Pokemon's attacks stop being payable without it.
+	if pokemon != null:
+		var payable_now := 0
+		var payable_without := 0
+		var without: Array = pokemon.attached_energies.duplicate()
+		without.erase(energy)
+		var saved: Array = pokemon.attached_energies
+		for atk in main.get_attacks_for_card(pokemon):
+			if get_unmet_energy_count(atk, pokemon) == 0:
+				payable_now += 1
+		# get_unmet_energy_count reads attached_energies directly, so the list is
+		# swapped for the test and put straight back. Nothing awaits in between.
+		pokemon.attached_energies = without
+		for atk2 in main.get_attacks_for_card(pokemon):
+			if get_unmet_energy_count(atk2, pokemon) == 0:
+				payable_without += 1
+		pokemon.attached_energies = saved
+		score += float(maxi(payable_now - payable_without, 0)) * 1000.0
+
+	# 2. Specialness. A multi-provider is two cards in one.
+	var provided: Array = main.get_energy_provided_by_card(energy)
+	if "Special" in energy.metadata.get("subtypes", []):
+		score += 60.0
+	if provided.size() > 1:
+		score += 40.0
+
+	# 3. Does its type appear in any printed cost at all?
+	if pokemon != null:
+		var needed: Array = []
+		for atk3 in pokemon.metadata.get("attacks", []):
+			for cost_type in atk3.get("cost", []):
+				if cost_type != "Colorless" and cost_type not in needed:
+					needed.append(cost_type)
+		for t in provided:
+			if t in needed:
+				score += 10.0
+				break
+	return score
+
+
+# ISSUE #163: the single least valuable Energy on one of the CPU's own Pokemon.
+func cpu_pick_own_energy_to_discard(pokemon: card_object) -> card_object:
+	if pokemon == null or pokemon.attached_energies.is_empty():
+		return null
+	var worst: card_object = pokemon.attached_energies[0]
+	var worst_s := INF
+	for e in pokemon.attached_energies:
+		var v := cpu_own_energy_value(pokemon, e)
+		if v < worst_s:
+			worst_s = v
+			worst = e
+	return worst
+
+
+# ISSUE #163: `count` Energy to give up, cheapest first. Used by retreat, which
+# pays several at once — scoring them one at a time and taking the N worst is a
+# good enough approximation and far cheaper than re-scoring after each removal.
+func cpu_own_energy_discard_order(pokemon: card_object, count: int) -> Array:
+	if pokemon == null or count <= 0:
+		return []
+	var ranked: Array = pokemon.attached_energies.duplicate()
+	ranked.sort_custom(func(a, b):
+		return cpu_own_energy_value(pokemon, a) < cpu_own_energy_value(pokemon, b))
+	return ranked.slice(0, mini(count, ranked.size()))
+
 
 # ENERGY DISCARD TARGETING — when the CPU is the ATTACKER and an effect lets the attacker choose one
 # Energy to discard from a Pokemon (Whirlpool, Hyper Beam, etc.), pick the player's MOST valuable
