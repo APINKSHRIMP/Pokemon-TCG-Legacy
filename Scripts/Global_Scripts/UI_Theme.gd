@@ -205,6 +205,67 @@ const ENERGY_COLOUR := {
 }
 const ENERGY_FG_DARK := ["Colorless", "Metal"]
 
+# ─── Battle framing and dialogue chrome ──────────────────────────────────────
+# The intro / win / loss / best-of-three screens and the message box.
+#
+# These sit OUTSIDE the theme dictionary for the same reason ENERGY_COLOUR does:
+# hue carries meaning here rather than decoration. Win green and loss red must
+# never become the accent purple, or the screen stops being able to say which
+# way the match went before the word does.
+#
+# A "*_grad" entry is always THREE stops read left to right, and the same three
+# feed both a band and the badge ring beside it — that pairing is what makes the
+# ring read as part of the frame rather than an ornament dropped on top of it.
+const BATTLE := {
+	# Band + ring gradients, one set per screen.
+	"band_intro_grad": [Color("7B3FD4"), Color("E8459B"), Color("F5793B")],
+	"band_win_grad":   [Color("0FB8A6"), Color("2FCB63"), Color("C3E62E")],
+	"band_loss_grad":  [Color("FF3D7F"), Color("DC1F32"), Color("FF6B2C")],
+
+	# The word inside the badge, filled left to right with its own three stops.
+	# Deliberately lighter than the band behind it — the badge sits on the dark
+	# ground, not on the band, so it needs its own contrast.
+	"vs_text_grad":   [Color("C79BFF"), Color("FF9BD6"), Color("FFC08A")],
+	"win_text_grad":  [Color("3FE0C4"), Color("6BE87A"), Color("D8F04A")],
+	"loss_text_grad": [Color("FF74A6"), Color("F2495A"), Color("FF9350")],
+
+	# Best-of-three filled chips: the disc under the "Win" / "Loss" label.
+	"disc_win_grad":  [Color("17A793"), Color("209F4C"), Color("6E9E12")],
+	"disc_loss_grad": [Color("D02F68"), Color("B3182A"), Color("D1541F")],
+	"disc_sheen":     Color(1.0, 1.0, 1.0, 0.22),
+
+	# Per-side accents. The floor glow under each trainer and the rule under
+	# their name both take these, so a side reads as one colour.
+	"side_player":   Color("C79BFF"),
+	"side_opponent": Color("FFA45C"),
+
+	# Prize count under the intro badge, and the currency glyph in the rewards.
+	"prize_gold": Color("FFD98A"),
+
+	# Badge well — the dark disc the ring is drawn around.
+	"badge_well": Color(0.047, 0.031, 0.078, 0.55),   # 0C0814 @55%
+
+	# Sprite drop shadow, and the empty best-of-three ring's opacity.
+	"sprite_shadow": Color(0.0, 0.0, 0.0, 0.55),
+	"empty_ring_alpha": 0.45,
+}
+
+# The message box's own chrome. Shared by both variants; only the spine, the
+# glow and the border treatment differ between them (see Dynamic_Message_Box).
+const MSGBOX := {
+	"bg":     Color(0.082, 0.055, 0.137, 0.94),   # 150E23 @94%
+	"border": Color(1.0, 1.0, 1.0, 0.15),
+	"shadow": Color(0.0, 0.0, 0.0, 0.60),
+}
+
+# The shop cash pill. Gold rather than a theme colour on purpose — money is the
+# one thing on that box that is neither the speaker nor the UI.
+const CASH_PILL := {
+	"top": Color("F7C455"),
+	"bot": Color("E8952F"),
+	"fg":  Color("3A2410"),
+}
+
 # ─── Type scale ──────────────────────────────────────────────────────────────
 # Sizes are px at 1920x1080 before ui_scale. "face" picks the file; "track" is
 # letter-spacing in em; "upper" records whether the role is authored in caps.
@@ -368,6 +429,48 @@ func status_colour(code: String) -> Color:
 	if THEMES[current].has(key):
 		return col(key)
 	return col("accent_2")
+
+
+## One of the BATTLE dictionary's three-stop gradients, as [Color, Color, Color].
+## Call it with "band_win_grad", "vs_text_grad", "disc_loss_grad" and so on. An
+## unknown key returns the intro stops rather than crashing a match transition.
+func battle_grad(key: String) -> Array:
+	if not BATTLE.has(key):
+		push_warning("UITheme: no battle gradient '%s'" % key)
+		return BATTLE["band_intro_grad"]
+	return BATTLE[key]
+
+
+## A single colour out of the BATTLE dictionary — the side accents, the prize
+## gold, the badge well.
+func battle_col(key: String) -> Color:
+	if not BATTLE.has(key) or not (BATTLE[key] is Color):
+		push_warning("UITheme: no battle colour '%s'" % key)
+		return Color.MAGENTA
+	return BATTLE[key]
+
+
+## The band / ring stops for an outcome. `kind` is "intro", "win" or "loss" —
+## the one word the intro, outro and best-of-three screens all pass around.
+func outcome_grad(kind: String) -> Array:
+	return battle_grad("band_%s_grad" % kind)
+
+
+## The stops for the WORD inside the badge, for the same three kinds. Separate
+## from outcome_grad() because the text sits on the dark ground, not the band,
+## and needs the lighter ramp.
+func outcome_text_grad(kind: String) -> Array:
+	return battle_grad("%s_text_grad" % ("vs" if kind == "intro" else kind))
+
+
+## Message-box chrome — "bg", "border", "shadow".
+func msgbox_col(key: String) -> Color:
+	return MSGBOX.get(key, Color.MAGENTA)
+
+
+## Shop cash pill — "top", "bot", "fg".
+func cash_pill_col(key: String) -> Color:
+	return CASH_PILL.get(key, Color.MAGENTA)
 
 # ─── Type ────────────────────────────────────────────────────────────────────
 

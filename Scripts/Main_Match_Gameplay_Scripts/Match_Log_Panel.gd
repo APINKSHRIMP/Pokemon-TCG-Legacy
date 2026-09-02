@@ -65,15 +65,15 @@ const SCREEN_H : float = 1080.0
 # Panel geometry. MARGIN_X and BOTTOM_Y are deliberately copied from
 # DynamicMessageBox.PANEL_MARGIN_X / PANEL_BOTTOM_NO_BUTTONS so the log lines up
 # with the live box exactly. If you move the message box, move these too.
-const PANEL_MARGIN_X : float = 12.0
-const PANEL_BOTTOM_Y : float = 1068.0
+const PANEL_MARGIN_X : float = 46.0
+const PANEL_BOTTOM_Y : float = 1034.0
 # DERIVED, not a free number: the panel is inset from the top of the screen by
 # exactly as much as it is from the bottom, so the gap reads the same above and
-# below. PANEL_BOTTOM_Y leaves 12px under the panel, which is also PANEL_MARGIN_X,
-# so the log ends up with a uniform 12px margin on all four sides. Move the bottom
+# below. PANEL_BOTTOM_Y leaves 46px under the panel, which is also PANEL_MARGIN_X,
+# so the log ends up with a uniform 46px margin on all four sides. Move the bottom
 # edge and the top follows on its own — do not replace this with a literal.
 const PANEL_TOP_Y    : float = SCREEN_H - PANEL_BOTTOM_Y
-const PANEL_CORNER_R : float = 34.0
+const PANEL_CORNER_R : float = 18.0
 const PANEL_EDGE_SOLID : Vector2 = Vector2(26.0, 2.0)
 const PANEL_EDGE_FADE  : Vector2 = Vector2(12.0, 4.0)
 

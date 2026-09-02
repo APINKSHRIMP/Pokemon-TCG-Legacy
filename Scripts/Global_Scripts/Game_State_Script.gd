@@ -40,6 +40,20 @@ func build_test_opponent_data() -> Dictionary:
 var current_opponent_map: String = ""   # character-file basename for the map the battle started on
 var returning_from_battle: bool = false
 var battle_result: String = ""  # "win" or "loss"
+
+# ── The finished match's summary line ─────────────────────────────────────────
+# Written once by Main_Match_Core_Gameplay_Script.game_end_logic() and read by the
+# outro's stats row. Deliberately three plain numbers rather than a dictionary: the
+# outro is the only reader, and a missing key there would be a crash on the screen
+# the player sees least often.
+#
+# `last_match_prizes_taken` counts the prizes the PLAYER took, so on a loss it is the
+# honest partial figure rather than the winner's six. On a best-of-three these hold
+# the DECIDING round only — the stats row describes the game just played, and the
+# round tracker is what describes the series.
+var last_match_prizes_taken: int = 0
+var last_match_prize_total: int = 6
+var last_match_turns: int = 0
 var player_position: Vector2 = Vector2.ZERO
 var current_opponent_deck: String = ""
 
@@ -420,14 +434,32 @@ func is_motion_reduced() -> bool:
 func is_pack_skipped() -> bool:
 	return is_motion_reduced()
 
-# Duration for a transition-screen tween — the match intro, outro and best-of-3 screens, which have
-# no speed multiplier of their own.
+# TWEAKABLE — how long the intro / outro / best-of-three entrance takes, per Animation speed
+# preset. Unlike the three tables above these are DIVISORS turned the other way up: the numbers
+# authored into those screens are the FAST timings, and a slower preset stretches them. So a
+# higher number here means a SLOWER screen, the opposite of MATCH_SPEED_PRESETS.
 #
-# Under reduce motion the screen still APPEARS; only its movement collapses. That is the difference
-# the player asked for: they want to stop the sliding and the fading, not to stop being told who
-# they are about to fight.
+# Every duration AND every delay on those screens goes through transition_time(), so the ratio
+# between elements is identical at all three settings — there is no per-element hand-tuning.
+const TRANSITION_SPEED_PRESETS := {
+	"slow": 2.0,
+	"medium": 1.5,
+	"fast": 1.0,
+}
+
+# Duration for a transition-screen tween — the match intro, outro and best-of-3 screens.
+#
+# The authored numbers are the "fast" timings; medium stretches them by 1.5 and slow by 2, from
+# the one Animation speed row in Options.
+#
+# Under reduce motion the screen still APPEARS and every duration collapses to zero, so each
+# element is already at rest on the first frame. That is the difference the player asked for:
+# they want to stop the sliding and the fading, not to stop being told who they are about to
+# fight. Removing the screen outright is what the separate intro/outro row does.
 func transition_time(base_seconds: float) -> float:
-	return 0.0 if is_motion_reduced() else base_seconds
+	if is_motion_reduced():
+		return 0.0
+	return base_seconds * float(TRANSITION_SPEED_PRESETS.get(animation_speed_setting, 1.0))
 
 var sleep_wakeup_fade: bool = false
 
@@ -864,6 +896,41 @@ func mark_opponent_beaten(opponent_name: String):
 		if OPPONENT_FLAG_UNLOCKS.has(opponent_name):
 			progress[OPPONENT_FLAG_UNLOCKS[opponent_name]] = true
 		save_progress()
+
+
+# ── HEAD-TO-HEAD RECORD ──────────────────────────────────────────────────────
+# One wins/losses pair per opponent, keyed by the same name every other opponent
+# call uses. Feeds the "Record vs <opponent>" item on the win and loss screens.
+#
+# This is a SERIES-LEVEL tally, not a game-level one: a best-of-three counts once,
+# when it is decided, because that is what the player would call a match. The
+# rounds inside it are the round tracker's business.
+#
+# `opponents_beaten` is a set and cannot answer this — it knows whether you have
+# ever won, not how many times, and nothing at all about losses.
+const OPPONENT_RECORD_KEY := "opponent_records"
+
+## The pair for one opponent as [wins, losses]. An opponent never fought reads
+## 0 – 0, which is the correct thing to show on a first meeting.
+func get_opponent_record(opponent_name: String) -> Array:
+	var records: Dictionary = progress.get(OPPONENT_RECORD_KEY, {})
+	var entry: Dictionary = records.get(opponent_name, {})
+	return [int(entry.get("w", 0)), int(entry.get("l", 0))]
+
+
+## Adds one finished MATCH to an opponent's record. Called from the outro, which
+## runs once per match — including the deciding game of a best-of-three, and not
+## on the rounds before it. Test matches are ignored: they have no real opponent.
+func record_opponent_result(opponent_name: String, won: bool) -> void:
+	if test_match_mode or opponent_name == "":
+		return
+	if not progress.has(OPPONENT_RECORD_KEY):
+		progress[OPPONENT_RECORD_KEY] = {}
+	var records: Dictionary = progress[OPPONENT_RECORD_KEY]
+	var entry: Dictionary = records.get(opponent_name, {"w": 0, "l": 0})
+	entry["w" if won else "l"] = int(entry.get("w" if won else "l", 0)) + 1
+	records[opponent_name] = entry
+	save_progress()
 
 # ============================================================
 # STORY FLAGS

@@ -696,7 +696,7 @@ func _build_message_box():
 	if message_panel != null and is_instance_valid(message_panel):
 		message_panel.queue_free()
 
-	var box     = MessageBoxHelper.build(138.0, 28, true)
+	var box     = MessageBoxHelper.build(138.0, -1, true)
 	message_panel = box["root"]
 	message_label = box["label"]
 	yes_button    = box["yes_btn"]
@@ -763,11 +763,11 @@ func _apply_actor_chips() -> void:
 	# talks to, so this runs on every show, not just when the box is built.
 
 	if current_opponent != null:
+		message_panel.set_system_variant(false)
 		message_panel.apply_theme(current_opponent.message_colour)
 		message_panel.set_right_chips([])   # ISSUE #120: opponents never show cash
+		message_panel.set_name_pill(current_opponent.opponent_name, current_opponent.sprite)
 		message_panel.set_chips([
-			{ "text": current_opponent.opponent_name.to_upper(),
-			  "sprite": current_opponent.sprite },
 			{ "text": String(current_opponent.deck).to_upper(),
 			  "icon_path": MSG_ICON_DIR + "deck.png" },
 			{ "text": str(current_opponent.prize_cards),
@@ -784,16 +784,18 @@ func _apply_actor_chips() -> void:
 			shown = current_npc.npc_name
 		# Guarded like friendly_name above — current_npc is typed Node, so a
 		# future actor script without the field must not hard-crash dialogue.
+		message_panel.set_system_variant(false)
 		message_panel.apply_theme(current_npc.message_colour if "message_colour" in current_npc else "")
-		message_panel.set_chips([
-			{ "text": shown.to_upper(), "sprite": current_npc.sprite },
-		])
+		message_panel.set_name_pill(shown, current_npc.sprite)
+		message_panel.set_chips([])
 		_apply_cash_chip()   # ISSUE #120 -- vendors only, no-op for everyone else
 		return
 
-	# Nobody is speaking (a sign, the TV, the bed) — back to the interactables grey.
-	message_panel.apply_theme()
+	# Nobody is speaking (a sign, the TV, the bed). That is the GAME talking, so it
+	# gets the SYSTEM box -- the same gradient-bordered, centred box every in-match
+	# message uses -- rather than a grey character box with an empty pill row.
 	message_panel.clear_chips()
+	message_panel.show_as_plain()
 
 
 func _show_message_with_choices(text: String):

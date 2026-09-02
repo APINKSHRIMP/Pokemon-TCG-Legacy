@@ -34,6 +34,9 @@ uniform vec2  rect_size     = vec2(100.0, 100.0);
 uniform float corner_radius = 24.0;
 uniform vec2  edge_solid    = vec2(26.0, 2.0);   // px of pure colour: x = sides, y = top/bottom
 uniform vec2  edge_fade     = vec2(12.0, 4.0);   // px each band takes to reach fill_color
+// 0 ramps color_left -> color_right ACROSS the rect, 1 ramps it DOWN. The message
+// box's chips want horizontal; the gold cash pill is the one caller wanting vertical.
+uniform float grad_vertical = 0.0;
 
 void fragment() {
 	vec2 p  = UV * rect_size;
@@ -54,7 +57,7 @@ void fragment() {
 	// max() so the corners, which are inside both bands, stay fully coloured.
 	float t = max(tx, ty);
 
-	vec4 edge = mix(color_left, color_right, UV.x);
+	vec4 edge = mix(color_left, color_right, mix(UV.x, UV.y, grad_vertical));
 	vec4 col  = mix(fill_color, edge, t);
 
 	COLOR = vec4(col.rgb, col.a * inside);

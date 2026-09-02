@@ -3,12 +3,15 @@ extends Control
 # ============================================================
 # MATCH OUTRO SCENE SCRIPT
 # ============================================================
-# Displays after a match ends. Shows win/loss background,
-# plays the appropriate jingle, and (on win) displays reward
-# labels that fly in from off-screen. The opponent's win/loss
-# dialogue is shown in a message panel; clicking it advances
-# through gift reveal animations (coin spin, card flip, costume
-# fade) before transitioning back to the map.
+# Displays after a match ends. Builds the shared BattleFrame with the outcome's
+# gradient, greys out the loser, shows the match stats row, plays the jingle and
+# (on a win) flies the rewards in below the badge. The opponent's closing line is
+# shown in the character message box; clicking it advances through the gift reveal
+# animations (coin spin, card flip, costume fade) before returning to the map.
+#
+# Win and loss are the SAME FRAME with different content. The only differences are
+# the gradient, which trainer desaturates, the word in the badge, and whether the
+# slot below the badge holds rewards or nothing.
 # ============================================================
 
 # Data loaded at startup
@@ -21,11 +24,7 @@ var battle_won: bool = false
 # in bed. The counter resets on every time change (see GameState.advance_time).
 const OPPONENTS_TO_ADVANCE_TIME: int = 3
 
-# Animation config
-var sprite_drift_duration: float = 5.0
-
-# The Kenney UI theme used for reward labels
-var kenney_theme = preload("res://UI_Themes/kenneyUI.tres")
+const BATTLE_SPRITE_DIR := "res://Image_Assets/Character_Sprites/In_Battle_Sprites/"
 
 # Icon textures for rewards
 var pokedollar_icon_tex = preload("res://Image_Assets/Icons/Reward_Icons/pokedollar_icon.png")
@@ -33,37 +32,50 @@ var coin_icon_tex       = preload("res://Image_Assets/Icons/Reward_Icons/coin_ic
 var costume_icon_tex    = preload("res://Image_Assets/Icons/Reward_Icons/costume_icon.png")
 var card_icon_tex       = preload("res://Image_Assets/Icons/Reward_Icons/card_icon.png")
 
-# Scene node references
-@onready var background          = $match_outro_background
-@onready var player_sprite       = $PLAYER/player_sprite
-@onready var opponent_sprite     = $OPPONENT/opponent_sprite
-@onready var win_labels_container = $"WIN LABELS"
+# The shared stage. Everything on screen except the message boxes hangs off this.
+var frame: BattleFrame = null
 
-# Reward tracking — built during _ready, animated afterwards
-var reward_rows: Array = []  # Each entry: { "label": Label, "icon": Sprite2D, ... }
-var _header_label: Label = null   # "Rewards:" label, animated alongside rows
+# Reward tracking. build_rewards() fills this with DATA during _ready; the nodes
+# are added later by _build_rewards_block(), once the frame exists.
+var reward_rows: Array = []
+var _header_anim: Control = null    # the REWARDS caption's movement wrapper
+var _header_label: Label = null
 
 # Screen dimensions (matching the 1920x1080 project)
 const SCREEN_W: float        = 1920.0
 const SCREEN_CENTER_X: float = 960.0
 
-# Reward fly-in layout (local to WIN LABELS container at screen y=684).
-# The "Rewards:" header flies in first and lands at REWARD_ANCHOR_Y.
-# Each new reward row also flies in to REWARD_ANCHOR_Y, while the header
-# and any previously-shown rewards shift up by REWARD_ROW_SPACING so the
-# header always remains the topmost element of the stack.
-const REWARD_ANCHOR_Y: float   = -324.0   # container local → screen y 360
-# ISSUE #123: reward text and icons are 50% bigger. The row pitch had to grow with them --
-# at the old 35px a 32pt line would have overlapped the row above it.
-const REWARD_ROW_SPACING: float =   52.5   # was 35.0
-const REWARD_FONT_SIZE: int     =     32   # was 21
-const REWARD_ICON_PX: float     =   30.0   # was 20.0
-const REWARD_ICON_GAP: float    =   45.0   # icon width + gap; was 30.0
-const REWARD_ICON_DROP: float   =    7.5   # icon sits this far below the label top; was 5.0
-const HEADER_LOCAL_X: float    = -200.0   # final x for the centred header
-const HEADER_WIDTH: float      =  800.0
-const OFFSCREEN_RIGHT_X: float = 1200.0
-const OFFSCREEN_LEFT_X: float  = -1200.0
+# -- TWEAKABLE: the badge and the stats row -------------------
+const OUTCOME_FONT_SIZE : int = 46      # the word inside the wheel
+const STATS_SEPARATION  : int = 96      # gap between the three stat items
+const FADE_TIME         : float = 0.5
+
+# -- TWEAKABLE: the rewards block -----------------------------
+# Laid out inside a block that is centred under the badge, so every x below is
+# measured from the block's own left edge rather than from the screen.
+const REWARD_BLOCK_W     : float = 620.0
+const REWARD_LABEL_FONT  : int   = 14     # the small mono REWARDS caption
+const REWARD_LABEL_H     : float = 26.0
+const REWARD_FONT_SIZE   : int   = 22     # the reward lines themselves
+const REWARD_NOTE_FONT   : int   = 17     # the "(first win x3!)" aside
+const REWARD_NOTE_GAP    : float = 8.0
+const REWARD_ROW_H       : float = 32.0
+const REWARD_ROW_PITCH   : float = 38.0
+const REWARD_ICON_PX     : float = 26.0
+const REWARD_COIN_ICON_PX: float = 29.0   # coins get the larger glyph
+const REWARD_ICON_GAP    : float = 12.0
+# How far off-screen each half starts, measured from the rewards block's own left
+# edge - which sits around x=650, not at the screen edge. 1200 left the right-hand
+# half of a long reward line poking into view before it flew in; this clears the
+# screen by several hundred px on both sides.
+const REWARD_OFFSCREEN_X : float = 2200.0
+const REWARD_DROP_PX     : float = 65.0
+# Timings, at the FAST setting. Every one goes through GameState.transition_time().
+const REWARD_LABEL_DELAY : float = 0.50
+const REWARD_LABEL_TIME  : float = 0.45
+const REWARD_ROW_DELAY   : float = 0.55   # the first line
+const REWARD_ROW_STAGGER : float = 0.30   # each line after it
+const REWARD_ROW_TIME    : float = 0.50
 
 # ── Gift animation ────────────────────────────────────────────
 signal player_clicked   # emitted on every valid mouse click
@@ -97,9 +109,13 @@ var _dialogue_label: RichTextLabel = null
 var _gift_panel:     DynamicMessageBox = null
 var _gift_label:     RichTextLabel = null
 
-# ISSUE #122: match the overworld message box exactly -- same panel height, same body size.
+# The closing line matches an overworld message box exactly: same minimum height,
+# same body size (the character variant's own 22pt, which -1 selects).
 const DIALOGUE_BOX_HEIGHT: float = 138.0
-const DIALOGUE_FONT_SIZE:  int   = 28
+# The gift notice is the SYSTEM variant but keeps its larger headline type - it is
+# an announcement over a nearly-black reveal overlay, not dialogue to be read.
+const GIFT_BOX_HEIGHT: float = 156.0
+const GIFT_FONT_SIZE:  int   = 45
 
 const CARDBACK_PATH = "res://Image_Assets/Sleeves/1_Default_English.png"
 const COINBACK_PATH = "res://Image_Assets/Coins/Back Basic.png"
@@ -127,10 +143,6 @@ var _force_skip_anim: bool = false
 func _ready() -> void:
 	modulate.a = 0.0
 
-	# Hide placeholder labels — we build our own dynamically
-	for child in win_labels_container.get_children():
-		child.visible = false
-
 	battle_won = (GameState.battle_result == "win")
 
 	# ── Best-of-N series handling ──
@@ -151,18 +163,11 @@ func _ready() -> void:
 	load_opponent_data(GameState.current_opponent_name)
 	load_player_data()
 
-	# Background texture
-	if battle_won:
-		var tex = load("res://Image_Assets/Backgrounds_And_Borders/Backgrounds/battle_win_screen.png")
-		if tex:
-			background.texture = tex
-	else:
-		var tex = load("res://Image_Assets/Backgrounds_And_Borders/Backgrounds/battle_loss_screen.png")
-		if tex:
-			background.texture = tex
-
-	update_sprites()
 	SoundManagerScript.stop_bgm()
+
+	# The head-to-head record, counted once per MATCH. It has to happen before the
+	# stats row is built, because that row shows the score INCLUDING this game.
+	GameState.record_opponent_result(GameState.current_opponent_name, battle_won)
 
 	# Compute is_first_win once so both the dialogue and build_rewards share it
 	var is_first_win = not GameState.has_beaten_opponent(GameState.current_opponent_name)
@@ -212,15 +217,20 @@ func _ready() -> void:
 	# removes the movement, which is precisely what this flag already does.
 	_force_skip_anim = GameState.is_transition_skipped() or GameState.is_motion_reduced()
 
-	# Create both message panels before they're needed
+	# The whole screen. Built here rather than in _ready's first lines because every
+	# bail-out above this point leaves without ever showing it.
+	_build_frame()
 	_create_msg_panels()
 
-	# Fade in from black
+	# Fade in from black. NOT awaited: the fade and the entrance run TOGETHER, so the
+	# screen is revealed already in motion rather than sitting still and then jumping.
+	# The elements were parked at their start offsets when the frame was built.
 	var fade_in = create_tween()
-	fade_in.tween_property(self, "modulate:a", 1.0, GameState.transition_time(0.5))
-	await fade_in.finished
+	fade_in.tween_property(self, "modulate:a", 1.0, GameState.transition_time(FADE_TIME))
 
-	animate_sprites()
+	# The one-shot entrance, also not awaited: the reward fly-in and the closing line
+	# run over the top of it on their own delays, which is what the design asks for.
+	frame.play_entrance()
 
 	# Show the opponent's win/loss dialogue BEFORE rewards fly in — visible for longer
 	if _result_dialogue != "":
@@ -295,19 +305,17 @@ func _await_tween_or_skip(tw: Tween) -> void:
 	if not done["v"] and tw.is_valid():
 		tw.kill()
 
-# ISSUE #33 FIX: instantly places the "Rewards:" header and every reward row at its final resting
-# position (the stacked layout the fly-in animation builds up). Called when the fly-in finishes OR is
-# skipped, so a skipped fly-in shows all rewards at once exactly where they would have ended up.
+# Instantly places the REWARDS caption and every reward row at its resting position.
+# Called when the fly-in finishes OR is skipped, so a skipped fly-in shows all
+# rewards at once exactly where they would have ended up.
 func _snap_rewards_to_final() -> void:
-	var n := reward_rows.size()
-	if _header_label != null:
-		_header_label.position = Vector2(HEADER_LOCAL_X, REWARD_ANCHOR_Y - n * REWARD_ROW_SPACING)
-	for j in range(n):
-		var row = reward_rows[j]
-		var up := (n - 1 - j) * REWARD_ROW_SPACING
-		row["label"].position = Vector2(row["label_final_x"], REWARD_ANCHOR_Y - up)
-		row["icon"].position  = Vector2(row["icon_final_x"], REWARD_ANCHOR_Y + REWARD_ICON_DROP - up)
-
+	if _header_anim != null:
+		_header_anim.position = Vector2.ZERO
+	for row in reward_rows:
+		if not row.has("icon_node"):
+			continue
+		row["icon_node"].position.x = row["icon_final_x"]
+		row["value_node"].position.x = row["value_final_x"]
 # ============================================================
 # DATA LOADING
 # ============================================================
@@ -347,63 +355,80 @@ func load_player_data() -> void:
 	GameDataManager.player_data = player_data
 
 # ============================================================
-# SPRITE SETUP
+# THE SCREEN
 # ============================================================
+# Same frame as the intro and the best-of-three tracker, with the outcome's
+# gradient on the bands and the badge ring. Win and loss are the SAME frame with
+# different content, which is why the stats row lands in an identical position on
+# both and only what fills the slot below the badge differs.
 
-func _normalize_sprite_scale(sprite: Sprite2D, tex: Texture2D) -> void:
-	const TARGET: float = 480.0
-	var tex_size := tex.get_size()
-	var s := minf(TARGET / tex_size.x, TARGET / tex_size.y)
-	sprite.scale = Vector2(s, s)
+func _build_frame() -> void:
+	var kind := "win" if battle_won else "loss"
 
-func update_sprites() -> void:
-	if opponent_data.has("sprite"):
-		var path = "res://Image_Assets/Character_Sprites/In_Battle_Sprites/" + opponent_data["sprite"].to_lower() + ".png"
-		var tex = load(path)
-		if tex:
-			opponent_sprite.texture = tex
-			_normalize_sprite_scale(opponent_sprite, tex)
-		else:
-			print("Could not load opponent sprite: ", path)
+	frame = BattleFrame.new()
+	add_child(frame)
+	frame.setup(kind)
 
-	if player_data.has("sprite"):
-		var path = "res://Image_Assets/Character_Sprites/In_Battle_Sprites/" + player_data["sprite"].to_lower() + ".png"
-		var tex = load(path)
-		if tex:
-			player_sprite.texture = tex
-			player_sprite.flip_h = true
-			_normalize_sprite_scale(player_sprite, tex)
-		else:
-			print("Could not load player sprite: ", path)
+	frame.set_trainer(frame.player, _sprite_for(player_data),
+			str(player_data.get("name", "")), str(player_data.get("deck", "")))
+	frame.set_trainer(frame.opponent, _sprite_for(opponent_data),
+			str(opponent_data.get("name", "")), str(opponent_data.get("deck", "")))
 
-# ============================================================
-# SPRITE DRIFT ANIMATION (same as intro — slow slide apart)
-# ============================================================
+	# The DEFEATED trainer greys out; the winner is untouched. This is what lets
+	# the outcome read before the word does.
+	frame.desaturate(frame.opponent if battle_won else frame.player)
 
-func animate_sprites() -> void:
-	var tween = create_tween()
-	tween.set_trans(Tween.TRANS_LINEAR)
-	tween.set_parallel(true)
-	tween.tween_property(player_sprite,   "position:x", player_sprite.position.x   - 100, sprite_drift_duration)
-	tween.tween_property(opponent_sprite, "position:x", opponent_sprite.position.x + 100, sprite_drift_duration)
+	frame.badge_slot.add_child(frame.make_badge(
+			"WIN" if battle_won else "LOSS", kind, OUTCOME_FONT_SIZE))
+	_build_stats_row()
+
+	# On a loss the slot below the badge stays EMPTY. No missed rewards, no greyed
+	# prize money, no "what you could have won" - that punishes twice for one loss.
+	if battle_won:
+		_build_rewards_block()
+
+
+# Prizes taken, turns and the head-to-head record. Identical fields in an
+# identical position on both screens.
+func _build_stats_row() -> void:
+	var row := HBoxContainer.new()
+	row.alignment = BoxContainer.ALIGNMENT_CENTER
+	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	row.add_theme_constant_override("separation", STATS_SEPARATION)
+	row.position = Vector2.ZERO
+	row.size = frame.top_slot.size
+	frame.top_slot.add_child(row)
+
+	row.add_child(frame.make_stat("Prizes taken", "%d / %d" % [
+			GameState.last_match_prizes_taken, GameState.last_match_prize_total]))
+	row.add_child(frame.make_stat("Turns", str(GameState.last_match_turns)))
+
+	# record_opponent_result() has already counted the match just played, so this
+	# reads as the player expects: the score INCLUDING the game they just finished.
+	var record: Array = GameState.get_opponent_record(GameState.current_opponent_name)
+	var short_name := str(opponent_data.get("name", GameState.current_opponent_name))
+	row.add_child(frame.make_stat("Record vs %s" % short_name.replace("_", " "),
+			"%d – %d" % [record[0], record[1]]))
+
+
+func _sprite_for(data: Dictionary) -> Texture2D:
+	var key := str(data.get("sprite", ""))
+	if key == "":
+		return null
+	var path := BATTLE_SPRITE_DIR + key.to_lower() + ".png"
+	if not ResourceLoader.exists(path):
+		print("Could not load battle sprite: ", path)
+		return null
+	return load(path)
+
 
 # ============================================================
 # REWARD BUILDING (win only)
 # ============================================================
 
 func build_rewards(is_first_win: bool) -> void:
-	# --- "Rewards:" header — starts off-screen right, flies in during animate_rewards() ---
-	var header = Label.new()
-	header.text = "Rewards:"
-	header.theme = kenney_theme
-	header.add_theme_font_size_override("font_size", REWARD_FONT_SIZE)   # ISSUE #123
-	header.add_theme_color_override("font_color", Color(0, 0, 0, 1))
-	header.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	header.position = Vector2(OFFSCREEN_RIGHT_X, REWARD_ANCHOR_Y)
-	header.size = Vector2(HEADER_WIDTH, 90)   # ISSUE #123: taller to hold the bigger face
-	win_labels_container.add_child(header)
-	_header_label = header
-
+	# Nothing is BUILT here - this only decides what the player has won and grants it.
+	# The nodes come later, in _build_rewards_block(), once the frame exists.
 	var row_index: int = 0
 
 	# --- 1. Cash reward (always granted, tripled on first win) ---
@@ -412,10 +437,10 @@ func build_rewards(is_first_win: bool) -> void:
 		cash_amount *= 3
 	GameState.add_cash(cash_amount)
 
-	var cash_text = str(cash_amount)
-	if is_first_win:
-		cash_text += " (First Win ×3!)"
-	reward_rows.append(_create_reward_row(cash_text, pokedollar_icon_tex, row_index))
+	# The multiplier is an ASIDE, not part of the figure: smaller and in the accent,
+	# so the amount is what the eye lands on.
+	var cash_note: String = "(first win ×3!)" if is_first_win else ""
+	reward_rows.append(_reward_row(str(cash_amount), pokedollar_icon_tex, cash_note))
 	row_index += 1
 
 	# --- First-win-only rewards ---
@@ -424,7 +449,7 @@ func build_rewards(is_first_win: bool) -> void:
 		var coin_key = opponent_data.get("coin_reward", "")
 		if coin_key != "" and not GameState.has_coin(coin_key):
 			GameState.add_coin_to_collection(coin_key)
-			reward_rows.append(_create_reward_row(format_coin_name(coin_key), coin_icon_tex, row_index))
+			reward_rows.append(_reward_row(format_coin_name(coin_key), coin_icon_tex, "", REWARD_COIN_ICON_PX))
 			row_index += 1
 			_coin_rewards_for_anim.append(coin_key)
 
@@ -435,7 +460,7 @@ func build_rewards(is_first_win: bool) -> void:
 			for raw_id in card_reward_str.split(","):
 				var cid = raw_id.strip_edges()
 				if cid != "":
-					reward_rows.append(_create_reward_row(_get_card_display_name(cid), card_icon_tex, row_index))
+					reward_rows.append(_reward_row(_get_card_display_name(cid), card_icon_tex))
 					row_index += 1
 					_card_rewards_for_anim.append(cid)
 
@@ -447,7 +472,7 @@ func build_rewards(is_first_win: bool) -> void:
 				if ck != "" and not GameState.has_costume(ck):
 					GameState.add_costume_to_collection(ck)
 					var display = capitalise_words(_format_costume_name(ck) + " Trainer Class")
-					reward_rows.append(_create_reward_row(display, costume_icon_tex, row_index))
+					reward_rows.append(_reward_row(display, costume_icon_tex))
 					row_index += 1
 					_costume_rewards_for_anim.append(ck)
 
@@ -459,8 +484,8 @@ func build_rewards(is_first_win: bool) -> void:
 		var sleeve_reward = opponent_data.get("sleeve_reward", "")
 		if sleeve_reward != "" and not GameState.has_sleeve(sleeve_reward):
 			GameState.add_sleeve_to_collection(sleeve_reward)
-			reward_rows.append(_create_reward_row(
-					_format_sleeve_name(sleeve_reward) + " Sleeve", card_icon_tex, row_index))
+			reward_rows.append(_reward_row(
+					_format_sleeve_name(sleeve_reward) + " Sleeve", card_icon_tex))
 			row_index += 1
 			_sleeve_rewards_for_anim.append(sleeve_reward)
 
@@ -479,8 +504,7 @@ func build_rewards(is_first_win: bool) -> void:
 		for art in _validated_pack_arts(pack_reward_str):
 			# There is no pack icon in Reward_Icons/ yet, so this borrows the card
 			# icon -- the same stand-in the sleeve row above uses.
-			reward_rows.append(_create_reward_row(
-					_format_pack_name(art), card_icon_tex, row_index))
+			reward_rows.append(_reward_row(_format_pack_name(art), card_icon_tex))
 			row_index += 1
 			_pack_rewards_for_anim.append(art)
 
@@ -547,153 +571,229 @@ func _set_display_name(set_id: String) -> String:
 	return _set_name_cache.get(set_id, set_id)
 
 
-# Helper: create a label + icon pair for one reward row.
-# Both start off-screen at REWARD_ANCHOR_Y; animate_rewards() flies them in.
-# (row_index is unused now — the stack-from-top animation handles vertical placement.)
-func _create_reward_row(label_text: String, icon_texture: Texture2D, _row_index: int) -> Dictionary:
-	# WIN LABELS is at x=762 in screen space. Screen centre in local coords = 960 - 762 = 198.
-	var local_centre_x: float = 198.0
-	var icon_gap: float = REWARD_ICON_GAP   # ISSUE #123: icon width (30) + 15px gap
 
-	var label = Label.new()
-	label.text = label_text
-	label.theme = kenney_theme
-	label.add_theme_font_size_override("font_size", REWARD_FONT_SIZE)   # ISSUE #123
-	label.add_theme_color_override("font_color", Color(0, 0, 0, 1))
-	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
-	label.vertical_alignment   = VERTICAL_ALIGNMENT_CENTER
-	win_labels_container.add_child(label)
+## One reward, as data. Nothing is built until _build_rewards_block() runs, because
+## build_rewards() is called before the frame exists - it has to run even on the
+## paths that never show a screen, since it is what actually GRANTS the rewards.
+##
+## `note` is the smaller accent aside after the value; `icon_px` overrides the
+## default icon size for the one reward that needs a bigger glyph.
+func _reward_row(text: String, icon: Texture2D, note: String = "",
+				 icon_px: float = REWARD_ICON_PX) -> Dictionary:
+	return { "text": text, "icon": icon, "note": note, "icon_px": icon_px }
 
-	label.reset_size()
-	var label_width = label.size.x
-	var total_width = icon_gap + label_width
 
-	var label_final_x = local_centre_x - total_width / 2.0 + icon_gap
-	var icon_final_x  = local_centre_x - total_width / 2.0
+# ============================================================
+# THE REWARDS BLOCK
+# ============================================================
+# Sits BELOW the badge, in the same slot the intro uses for the prize count -
+# that column is the match-information column on all three screens.
+#
+# A label and an icon list, deliberately not cards, chips or boxes. Those were
+# tried and rejected: a reward is a line of information, and boxing each one made
+# a short list look like a menu.
+#
+# Every row is placed by hand inside a plain Control rather than by a container,
+# because the fly-in animates each row's x and a container would fight it for the
+# same property on the same frame.
+func _build_rewards_block() -> void:
+	if reward_rows.is_empty():
+		return
 
-	label.position = Vector2(OFFSCREEN_RIGHT_X, REWARD_ANCHOR_Y)
+	var pitch := REWARD_ROW_PITCH
+	var block := Control.new()
+	block.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	block.custom_minimum_size = Vector2(REWARD_BLOCK_W,
+			REWARD_LABEL_H + float(reward_rows.size()) * pitch)
+	block.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	frame.below_badge.add_child(block)
 
-	var icon = Sprite2D.new()
-	icon.texture  = icon_texture
-	icon.centered = false
-	var tex_size  = icon_texture.get_size()
-	icon.scale    = Vector2(REWARD_ICON_PX / tex_size.x, REWARD_ICON_PX / tex_size.y)   # ISSUE #123
-	icon.position = Vector2(OFFSCREEN_LEFT_X, REWARD_ANCHOR_Y + REWARD_ICON_DROP)
-	win_labels_container.add_child(icon)
+	# The REWARDS caption. Its own wrapper so it can drop in while the rows fly
+	# in sideways - centring on the label, movement on the wrapper.
+	_header_anim = Control.new()
+	_header_anim.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	block.add_child(_header_anim)
 
-	return {
-		"label":        label,
-		"icon":         icon,
-		"label_final_x": label_final_x,
-		"icon_final_x":  icon_final_x,
-	}
+	_header_label = Label.new()
+	_header_label.text = "REWARDS"
+	_header_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_header_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_header_label.add_theme_font_override("font", UITheme.font_at(UITheme.FONT_MONO_MEDIUM))
+	_header_label.add_theme_font_size_override("font_size", REWARD_LABEL_FONT)
+	_header_label.add_theme_constant_override("font_spacing_glyph",
+			int(round(0.2 * float(REWARD_LABEL_FONT))))
+	_header_label.add_theme_color_override("font_color", UITheme.col("field_mute"))
+	_header_label.position = Vector2.ZERO
+	_header_label.size = Vector2(REWARD_BLOCK_W, REWARD_LABEL_H)
+	_header_anim.add_child(_header_label)
+
+	for i in reward_rows.size():
+		_place_reward_row(block, reward_rows[i], REWARD_LABEL_H + float(i) * pitch)
+
+
+# Lays one row out and parks both halves off-screen ready for the fly-in. The
+# icon comes in from the left and the value from the right; they meet in the
+# middle, which is the animation this screen has always had. Only where they land
+# has changed.
+func _place_reward_row(block: Control, row: Dictionary, y: float) -> void:
+	var centre := REWARD_BLOCK_W * 0.5
+
+	var value := Control.new()
+	value.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	block.add_child(value)
+
+	var main_lbl := Label.new()
+	main_lbl.text = String(row["text"])
+	main_lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	main_lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	main_lbl.add_theme_font_override("font", UITheme.font_card("name"))
+	main_lbl.add_theme_font_size_override("font_size", REWARD_FONT_SIZE)
+	main_lbl.add_theme_color_override("font_color", UITheme.col("field_fg"))
+	var main_w: float = UITheme.font_card("name").get_string_size(
+			main_lbl.text, HORIZONTAL_ALIGNMENT_LEFT, -1, REWARD_FONT_SIZE).x
+	main_lbl.position = Vector2(0.0, 0.0)
+	main_lbl.size = Vector2(main_w, REWARD_ROW_H)
+	value.add_child(main_lbl)
+
+	# The "(first win x3!)" aside, smaller and in the accent, so the FIGURE is
+	# what the eye lands on rather than the reason for it.
+	var note := String(row.get("note", ""))
+	var note_w := 0.0
+	if note != "":
+		var note_lbl := Label.new()
+		note_lbl.text = note
+		note_lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		note_lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		note_lbl.add_theme_font_override("font", UITheme.font_card("subtitle"))
+		note_lbl.add_theme_font_size_override("font_size", REWARD_NOTE_FONT)
+		note_lbl.add_theme_color_override("font_color", UITheme.col("accent"))
+		note_w = UITheme.font_card("subtitle").get_string_size(
+				note, HORIZONTAL_ALIGNMENT_LEFT, -1, REWARD_NOTE_FONT).x
+		note_lbl.position = Vector2(main_w + REWARD_NOTE_GAP, 0.0)
+		note_lbl.size = Vector2(note_w, REWARD_ROW_H)
+		value.add_child(note_lbl)
+		note_w += REWARD_NOTE_GAP
+
+	var icon_px: float = float(row.get("icon_px", REWARD_ICON_PX))
+	var total := icon_px + REWARD_ICON_GAP + main_w + note_w
+	var icon_x := centre - total * 0.5
+	var value_x := icon_x + icon_px + REWARD_ICON_GAP
+
+	value.position = Vector2(REWARD_OFFSCREEN_X, y)
+	value.size = Vector2(main_w + note_w, REWARD_ROW_H)
+
+	var icon := TextureRect.new()
+	icon.texture = row["icon"]
+	icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	icon.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	icon.position = Vector2(-REWARD_OFFSCREEN_X, y + (REWARD_ROW_H - icon_px) * 0.5)
+	icon.size = Vector2(icon_px, icon_px)
+	block.add_child(icon)
+
+	row["icon_node"] = icon
+	row["value_node"] = value
+	row["icon_final_x"] = icon_x
+	row["value_final_x"] = value_x
+
 
 # ============================================================
 # REWARD FLY-IN ANIMATION
 # ============================================================
 
 func animate_rewards() -> void:
-	# ISSUE #33 FIX: the whole fly-in is now click-skippable. On a click, remaining tweens are killed
-	# and every reward snaps to its final stacked position at once (see _snap_rewards_to_final).
+	# The whole fly-in is click-skippable. On a click the remaining tweens are killed
+	# and every reward snaps to its resting position at once.
 	_in_skippable_anim = true
 	_skip_anim = _force_skip_anim
-	await get_tree().create_timer(0.3).timeout
+	if _skip_anim:
+		_snap_rewards_to_final()
+		_in_skippable_anim = false
+		return
 
-	# Step 1 — fly the "Rewards:" header in horizontally to the anchor row.
-	if _header_label != null and not _skip_anim:
-		var hdr_tween = create_tween()
-		hdr_tween.set_trans(Tween.TRANS_CUBIC)
-		hdr_tween.set_ease(Tween.EASE_OUT)
-		hdr_tween.tween_property(_header_label, "position:x", HEADER_LOCAL_X, 0.6)
-		await _await_tween_or_skip(hdr_tween)
-		if not _skip_anim:
-			await get_tree().create_timer(0.3).timeout
+	var gs := GameState
+	frame.drop_in(_header_anim, gs.transition_time(REWARD_LABEL_DELAY),
+			gs.transition_time(REWARD_LABEL_TIME), REWARD_DROP_PX)
 
-	# Step 2 — for each reward: shift the header (and any previously-shown
-	# rewards) up by ROW_SPACING, then fly the new reward in to the anchor row.
-	for i in range(reward_rows.size()):
-		if _skip_anim:
-			break
-		var row          = reward_rows[i]
-		var label: Label    = row["label"]
-		var icon: Sprite2D  = row["icon"]
+	# One line after another, each on its own delay, both halves meeting in the
+	# middle. Fixed rows rather than a stack that shifts up: the block grows
+	# downwards out of the badge now, so there is nothing above it to make room for.
+	var last_end := 0.0
+	for i in reward_rows.size():
+		var row = reward_rows[i]
+		var delay: float = gs.transition_time(
+				REWARD_ROW_DELAY + float(i) * REWARD_ROW_STAGGER)
+		var dur: float = gs.transition_time(REWARD_ROW_TIME)
+		last_end = maxf(last_end, delay + dur)
 
-		var tween = create_tween()
+		var tween := create_tween()
 		tween.set_parallel(true)
 		tween.set_trans(Tween.TRANS_CUBIC)
 		tween.set_ease(Tween.EASE_OUT)
+		tween.tween_property(row["icon_node"], "position:x", row["icon_final_x"], dur).set_delay(delay)
+		tween.tween_property(row["value_node"], "position:x", row["value_final_x"], dur).set_delay(delay)
 
-		# Shift the header up one row.
-		if _header_label != null:
-			tween.tween_property(_header_label, "position:y",
-				_header_label.position.y - REWARD_ROW_SPACING, 0.6)
+	await _await_timer_or_skip(last_end)
 
-		# Shift every previously-shown reward up one row.
-		for j in range(i):
-			var prev = reward_rows[j]
-			var prev_label: Label   = prev["label"]
-			var prev_icon:  Sprite2D = prev["icon"]
-			tween.tween_property(prev_label, "position:y",
-				prev_label.position.y - REWARD_ROW_SPACING, 0.6)
-			tween.tween_property(prev_icon, "position:y",
-				prev_icon.position.y - REWARD_ROW_SPACING, 0.6)
-
-		# Fly the new reward in horizontally to the anchor row.
-		tween.tween_property(label, "position:x", row["label_final_x"], 0.6)
-		tween.tween_property(icon,  "position:x", row["icon_final_x"],  0.6)
-
-		await _await_tween_or_skip(tween)
-
-		if not _skip_anim and i < reward_rows.size() - 1:
-			await get_tree().create_timer(0.3).timeout
-
-	# Finished naturally or skipped — pin everything to its final resting position.
+	# Finished naturally or skipped - pin everything to its resting position.
 	_snap_rewards_to_final()
 	_in_skippable_anim = false
 
+
+# Waits `seconds`, returning early if the player clicks to skip. The fly-in runs
+# several tweens at once on their own delays, so there is no single tween to await.
+func _await_timer_or_skip(seconds: float) -> void:
+	var left := seconds
+	while left > 0.0 and not _skip_anim:
+		await get_tree().process_frame
+		left -= get_process_delta_time()
+	_in_skippable_anim = false
 # ============================================================
 # MESSAGE PANELS
 # ============================================================
-# Two panels share the same image but differ in font and padding:
-#   Dialogue  — opponent win/loss text  (small font, +50 px padding)
-#   Gift      — "You received…" notice  (larger font, default padding)
+# Two boxes, both DynamicMessageBox, differing only by variant:
+#   Dialogue - the opponent's closing line. CHARACTER variant: their colour on the
+#              spine and the glow, their name and portrait on the pill.
+#   Gift     - "You received..." notices. SYSTEM variant: the game is speaking,
+#              not the beaten trainer, so no pill and the theme gradient border.
+#              It keeps its larger type, because it is a headline rather than
+#              dialogue and it sits over a nearly-black reveal overlay.
 # Both use MOUSE_FILTER_IGNORE so clicks reach _input().
 
 func _create_msg_panels() -> void:
-	# ISSUE #122: the dialogue box is now exactly an overworld message box -- same 138px panel,
-	# same 28pt body, no extra padding -- instead of the outsized 220px/36pt one-off it was.
-	var d = MessageBoxHelper.build(DIALOGUE_BOX_HEIGHT, DIALOGUE_FONT_SIZE, false)
+	var d = MessageBoxHelper.build(DIALOGUE_BOX_HEIGHT, -1, false)
 	_dialogue_panel = d["root"]
 	_dialogue_label = d["label"]
+	# "ok" means no buttons and a caret in the bottom-right corner, which is what
+	# both of these boxes are: click anywhere to move on.
+	_dialogue_panel.set_mode("ok")
 	add_child(_dialogue_panel)
 
-	# Gift: compact main-match-style box with centred text.
-	# ISSUE #124: the fit_content/expand-fill pair that used to live here made the label fill
-	# the whole panel, so "You received X" rendered hard against its top edge. Vertical centring
-	# is the box's own job now (DynamicMessageBox._place_body_label) -- don't reintroduce them.
-	var g = MessageBoxHelper.build(156.0, 45, false, 0.0)
+	var g = MessageBoxHelper.build(GIFT_BOX_HEIGHT, GIFT_FONT_SIZE, false)
 	_gift_panel = g["root"]
 	_gift_label = g["label"]
+	_gift_panel.set_system_variant(true)
+	_gift_panel.set_mode("ok")
 	add_child(_gift_panel)
 
-	# Both panels take the beaten opponent's colour, so the whole outro reads as one screen in
-	# their theme rather than the dialogue and the reward notices disagreeing. The key comes off
-	# opponent_data, which load_opponent_data() has already merged with All_NPC_Constant_Data.json
-	# by this point; an unset or unknown key falls back to the default theme inside apply_theme().
+	# The dialogue box takes the beaten opponent's colour, so the closing line reads
+	# as them speaking. The key comes off opponent_data, which load_opponent_data()
+	# has already merged with All_NPC_Constant_Data.json by this point; an unset or
+	# unknown key falls back to the default theme inside apply_theme().
+	#
+	# The gift box does NOT: it is the game talking and wears the theme gradient.
 	var opp_colour := str(opponent_data.get("message_colour", ""))
 	_dialogue_panel.apply_theme(opp_colour)
-	_gift_panel.apply_theme(opp_colour)
 
-	# ISSUE #122: the opponent's name and overworld sprite, on the same chip the overworld box
-	# gives them. set_chips AFTER apply_theme -- the chip ramp is derived from the theme.
-	# `sprite` names a file in both the in-battle and overworld sprite folders, so the same
-	# key that picks the battle portrait picks the little walking sprite for the chip.
+	# The opponent's name and overworld portrait on the pill, exactly as the
+	# overworld box gives them. set_name_pill AFTER apply_theme -- the pill's fill
+	# is the theme's own base colour. `sprite` names a file in both the in-battle
+	# and overworld sprite folders, so the same key that picks the battle portrait
+	# picks the little walking sprite for the pill.
 	var opp_name := str(opponent_data.get("name", ""))
 	if opp_name != "":
-		_dialogue_panel.set_chips([
-			{ "text": opp_name.to_upper(), "sprite": str(opponent_data.get("sprite", "")) },
-		])
-
+		_dialogue_panel.set_name_pill(opp_name, str(opponent_data.get("sprite", "")))
 func _show_dialogue_message(text: String) -> void:
 	if _dialogue_panel == null:
 		return
@@ -710,7 +810,8 @@ func _hide_dialogue_message() -> void:
 func _show_gift_message(text: String) -> void:
 	if _gift_panel == null:
 		return
-	_gift_panel.set_body_text("[center]" + text + "[/center]")
+	# Centring is the system variant's own job -- do not wrap in [center] here.
+	_gift_panel.set_body_text(text)
 	_gift_panel.visible = true
 	move_child(_gift_panel, get_child_count() - 1)
 
