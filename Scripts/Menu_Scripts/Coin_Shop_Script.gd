@@ -242,10 +242,13 @@ func _deselect_coin(rect: TextureRect) -> void:
 		rect.pivot_offset  = rect.size / 2.0
 
 
-## ISSUE #263: TWEAKABLE - peak scale of the selected-coin pulse, matched to the
+## ISSUE #263 (retest): 1.2 -> 1.08, i.e. 10% less. The user's original row was
+## about the COIN CASE, not this screen - see Coin_Case_Script.SELECT_PULSE - and
+## the shop only needed to come back down once the case was doing the shouting.
+## TWEAKABLE - peak scale of the selected-coin pulse, matched to the
 ## costume grid's SELECT_PULSE. A 2% grow on a 100px coin is two pixels, which is
 ## not visible at all; the costumes were raised to 1.2 for the same reason (#162).
-const SELECT_PULSE := 1.2
+const SELECT_PULSE := 1.08
 
 func _apply_selected_animation(rect: TextureRect) -> void:
 	if _active_tween:
@@ -259,6 +262,7 @@ func _apply_selected_animation(rect: TextureRect) -> void:
 	# left on the node itself on purpose, so the pill grows and shrinks with its coin.
 	tween.tween_property(rect, "self_modulate", Color.WHITE * 1.1, 0.2)
 	tween.parallel().tween_property(rect, "scale", Vector2(SELECT_PULSE, SELECT_PULSE), 0.2)
+	print("ISSUE #263 FIX ACTIVE: coin SHOP select pulse ", SELECT_PULSE)
 	tween.tween_property(rect, "self_modulate", Color.WHITE * 1.0, 0.2)
 	tween.parallel().tween_property(rect, "scale", Vector2(1.0, 1.0), 0.2)
 

@@ -459,6 +459,13 @@ func _deselect_coin(rect: TextureRect) -> void:
 	rect.pivot_offset = rect.size / 2.0
 
 
+## ISSUE #263 (retest): TWEAKABLE - peak scale of the selected-coin pulse in the
+## COIN CASE, which is the screen the row was actually about. It was 1.02: two
+## pixels on a 100px coin, which is no feedback at all. 1.2 is the same 20% grow
+## the costume grid uses (SELECT_PULSE there, raised for this exact reason in
+## #162) and the coin SHOP briefly had before it came back down to 1.08.
+const SELECT_PULSE := 1.2
+
 func _apply_selected_animation(rect: TextureRect) -> void:
 	if _active_tween:
 		_active_tween.kill()
@@ -471,7 +478,8 @@ func _apply_selected_animation(rect: TextureRect) -> void:
 	_active_tween = tween
 
 	tween.tween_property(rect, "modulate", Color.WHITE * 1.1, 0.2)
-	tween.parallel().tween_property(rect, "scale", Vector2(1.02, 1.02), 0.2)
+	tween.parallel().tween_property(rect, "scale", Vector2(SELECT_PULSE, SELECT_PULSE), 0.2)
+	print("ISSUE #263 FIX ACTIVE: coin case select pulse ", SELECT_PULSE)
 	tween.tween_property(rect, "modulate", Color.WHITE * 1.0, 0.2)
 	tween.parallel().tween_property(rect, "scale", Vector2(1.0, 1.0), 0.2)
 

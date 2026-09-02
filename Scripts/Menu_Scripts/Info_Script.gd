@@ -45,11 +45,10 @@ const SPARKLE_COLOURS       := {
 	"white":  Color(1.0,  1.0,  1.0),
 }
 
-# Target display sizes — uniform regardless of source image dimensions
-## ISSUE #200: +40% (230x300 -> 322x420), then (retest 2) +20% again -> 386x504.
-## Still a FIT box, so the letterboxing keeps the aspect; the left panel was
-## widened to hold it (#201) and grew downward to hold this (LEFT_H).
-const SPRITE_SIZE  := Vector2(386, 504)  # fit (whole sprite visible, letterboxed)
+# Target display sizes — uniform regardless of source image dimensions.
+## ISSUE #200: the costume's fit box went 230x300 -> 322x420 -> 386x504, and is
+## now DERIVED rather than written down at all — see SPRITE_SIZE further down,
+## which takes whatever the top panel has left after the name field and the dates.
 
 # ── Layout (UI overhaul) ─────────────────────────────────────────────────────
 # TWEAKABLE. Left column is the trainer; the right column carries every stat.
@@ -75,7 +74,23 @@ const LEFT_Y         := 104.0
 ## get, and the room the fix asks for is genuinely there: the content band runs to
 ## UIKit.CONTENT_BOTTOM (988) and the right column's last panel stops at 904, so
 ## the left panel can reach 984 without touching anything on the screen.
-const LEFT_H         := 880.0
+## ISSUE #200 (retest 3): THE LEFT COLUMN IS TWO BOXES, NOT ONE.
+##
+## The user asked for the trainer half and the equipped half to be separate
+## panels, each lining up with a panel opposite it in the right column - so the
+## screen reads as a 2x3 grid of boxes rather than one tall slab beside three
+## short ones. Both are DERIVED from the right column's own constants, because
+## "in line with" is the whole point: nudge BOX_Y or SETS_Y and the left column
+## follows instead of quietly drifting out of alignment.
+##
+##   TOP box    LEFT_Y .. bottom of the "Matches won" box   (BOX_Y + BOX_H)
+##   BOTTOM box exactly the "Set completion" band           (SETS_Y .. + SETS_H)
+##
+## LEFT_H is gone: neither box is 880 tall and nothing else used it.
+const LEFT_TOP_Y     := LEFT_Y
+const LEFT_TOP_H     := BOX_Y + BOX_H - LEFT_Y
+const LEFT_BOT_Y     := SETS_Y
+const LEFT_BOT_H     := SETS_H
 const RIGHT_X        := 518.0
 const RIGHT_W        := 1368.0
 
@@ -106,18 +121,27 @@ const SETS_H         := 216.0
 ## The left panel's vertical rhythm, top to bottom. ALL TWEAKABLE — every gap in
 ## _build_left_panel is one of these, so the stack can be retuned from here
 ## without reading the builder.
-const SPRITE_TOP_GAP := 20.0   # panel top -> top of the costume art (ISSUE #200)
+## ISSUE #200 (retest 3): SPRITE_TOP_GAP 20 -> 10 is the "move the sprite, the
+## name box and the dates up 10 pixels" - the three are one measured stack, so
+## lifting its head lifts all of it and the gaps between them are untouched.
+const SPRITE_TOP_GAP := 10.0   # top box top -> top of the costume art (ISSUE #200)
 const NAME_TOP_GAP   := 10.0   # bottom of the ART -> name box     (ISSUE #200)
 const DOB_H          := 56.0   # height of the "Trainer since / $" block
-const EQUIP_TOP_GAP  := 14.0   # bottom of the dates -> thumbnails (ISSUE #200)
+const EQUIP_TOP_GAP  := 14.0   # bottom box top -> thumbnails      (ISSUE #200)
+## ISSUE #200 (retest 3): "move the sleeve and coin down 10 pixels", inside their
+## own box. 14 + 10 = 24 off the top, which leaves 26 under the captions - the
+## pair sits very nearly centred in the band.
+const EQUIP_DOWN_NUDGE := 10.0
 
 ## Equipped thumbnails under the costume sprite. The "Equipped" heading that used
 ## to sit over them was removed in #200 — each thumbnail captions itself.
-## ISSUE #200 (retest 2): EQUIP_GAP 18 -> 28, so the sleeve and the coin (and
-## their captions, which are as wide as the thumbnails) stand clearly apart
-## instead of reading as one two-panel block.
+## ISSUE #200 (retest 2): EQUIP_GAP 18 -> 28. (retest 4): 28 -> 140 - the user
+## said 28 looked no different from 18, and it did not: 10px between two 96px
+## thumbnails is inside the noise. 140 puts them at opposite ends of the box
+## instead of side by side. The pair is 2*96 + 140 = 332 wide, centred in the
+## 450px panel, so 59px of margin each side.
 const EQUIP_SIZE     := Vector2(96.0, 132.0)
-const EQUIP_GAP      := 28.0
+const EQUIP_GAP      := 140.0
 const MEDALS_BTN_W   := 240.0
 const NAME_BOX_H     := 62.0
 ## ISSUE #203: +50% (24 -> 36). ISSUE #201 (retest): -25% again (36 -> 27) - at
@@ -129,6 +153,37 @@ const NAME_BOX_BLEED := 5.0
 ## ISSUE #204: gap between the name box and the "Trainer since" / cash lines. It
 ## was 10px and the two read as one block. ISSUE #200 (retest 2): -5 (24 -> 19).
 const DOB_GAP        := 19.0
+
+## ISSUE #200 (retest 3): THE FIT BOX IS WHATEVER IS LEFT, NOT A NUMBER.
+##
+## The top box is now pinned top and bottom (LEFT_TOP_H), and the name field, the
+## dates and the gaps between them are fixed heights - so the costume art gets the
+## remainder, and it is computed rather than guessed. That is the honest cost of
+## the alignment the redesign asks for: at 504 tall the sprite alone was most of a
+## 564px box, so it comes down to ~389.
+##
+## Only the BOX has a shape of its own - _apply_fit_size letterboxes the real art
+## inside it and keeps the art's aspect, which is what #200 was logged for.
+const SPRITE_FIT_H  := LEFT_TOP_H - (SPRITE_TOP_GAP + NAME_TOP_GAP
+	+ NAME_BOX_H + DOB_GAP + DOB_H + PANEL_PAD)
+
+## ISSUE #200 (retest 4): +25%, AND IT IS THE *WIDTH* THAT DELIVERS IT.
+##
+## Nearly every in-battle sprite on disk is SQUARE (160x160, 180x180, 928x928 -
+## 250 of the 258 files). Fitted into the 298x389 portrait box the previous pass
+## derived, a square sprite letterboxes on WIDTH and renders 298x298, leaving
+## ~91px of dead space underneath it. So making the BOX taller would have changed
+## nothing on screen at all, and the box could not get taller anyway without
+## breaking the alignment with the Matches won panel that the same row asked for.
+##
+## 298 * 1.25 = 372. That fits the panel's 414px of inner width (450 - 2*18), and
+## it is still under SPRITE_FIT_H, so the +25% costs the top box nothing and its
+## bottom edge stays exactly level with Matches won.
+##
+## The name field and the dates need no numbers of their own: _build_left_panel
+## measures them from the BOTTOM OF THE ART, so they move down 74px by themselves.
+const SPRITE_FIT_W  := 372.0
+const SPRITE_SIZE   := Vector2(SPRITE_FIT_W, SPRITE_FIT_H)
 
 var PLAYER_DATA_PATH: String:
 	get: return GameState.PLAYER_CURRENT_DATA_PATH
@@ -224,20 +279,32 @@ func _build_chrome() -> void:
 ## top of this panel, and showing it twice was the thing the user flagged; the
 ## sleeve and coin sit under it instead.
 func _build_left_panel() -> void:
-	var panel := UIKit.make_panel()
-	panel.position = Vector2(LEFT_X, LEFT_Y)
-	panel.size = Vector2(LEFT_W, LEFT_H)
-	panel.custom_minimum_size = panel.size
-	panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	add_child(panel)
+	# ISSUE #200 (retest 3): TWO panels, both in the same UIKit.make_panel() style
+	# as the three opposite them. The top one ends level with the "Matches won"
+	# box; the bottom one occupies exactly the "Set completion" band, top and
+	# bottom. See LEFT_TOP_H / LEFT_BOT_Y - both are derived from the right
+	# column, so the alignment cannot drift.
+	var top_panel := UIKit.make_panel()
+	top_panel.position = Vector2(LEFT_X, LEFT_TOP_Y)
+	top_panel.size = Vector2(LEFT_W, LEFT_TOP_H)
+	top_panel.custom_minimum_size = top_panel.size
+	top_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(top_panel)
+
+	var bot_panel := UIKit.make_panel()
+	bot_panel.position = Vector2(LEFT_X, LEFT_BOT_Y)
+	bot_panel.size = Vector2(LEFT_W, LEFT_BOT_H)
+	bot_panel.custom_minimum_size = bot_panel.size
+	bot_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(bot_panel)
 
 	var centre_x := LEFT_X + LEFT_W * 0.5
 
-	# ISSUE #200/#201/#202: ONE VERTICAL STACK, measured top-down, so the bigger
-	# sprite and the wider column cannot push the equipped captions out of the
-	# bottom of the panel. Every gap below is a named constant; the sum has to stay
-	# inside LEFT_H.
-	var sprite_y := LEFT_Y + SPRITE_TOP_GAP
+	# ISSUE #200/#201/#202: ONE VERTICAL STACK, measured top-down, so the sprite and
+	# the wider column cannot push the dates out of the bottom of the panel. Every
+	# gap below is a named constant, and SPRITE_FIT_H is the remainder after them -
+	# so the sum fits LEFT_TOP_H by construction rather than by luck.
+	var sprite_y := LEFT_TOP_Y + SPRITE_TOP_GAP
 
 	# The scene left scale = (2,2) on this node, from when the sprite was drawn
 	# small onto the card art and doubled. It is sized to a real box now, so the
@@ -284,11 +351,15 @@ func _build_left_panel() -> void:
 	# out of the bottom of the panel when the thumbnails moved down for #202.
 	# Removing it is what buys the space back.
 	var data := _read_current_data()
+	# ISSUE #200 (retest 3): the pair lives in the BOTTOM panel now and is measured
+	# from that panel's own top, not from the bottom of the dates in the panel
+	# above - the two boxes are independent, which is the point of splitting them.
 	var total_w := EQUIP_SIZE.x * 2.0 + EQUIP_GAP
 	var x := centre_x - total_w * 0.5
-	var thumb_y := dob_y + DOB_H + EQUIP_TOP_GAP
-	print("ISSUE #200 FIX ACTIVE: left panel stack — sprite ", sprite_y, ", name ", name_y,
-		", dates ", dob_y, ", equipped ", thumb_y, " (panel ends ", LEFT_Y + LEFT_H, ")")
+	var thumb_y := LEFT_BOT_Y + EQUIP_TOP_GAP + EQUIP_DOWN_NUDGE
+	print("ISSUE #200 FIX ACTIVE: top box ", LEFT_TOP_Y, "..", LEFT_TOP_Y + LEFT_TOP_H,
+		" (sprite ", sprite_y, " fit ", SPRITE_SIZE, ", name ", name_y, ", dates ", dob_y,
+		") / bottom box ", LEFT_BOT_Y, "..", LEFT_BOT_Y + LEFT_BOT_H, " (equipped ", thumb_y, ")")
 
 	var sleeve := String(data.get("sleeve", ""))
 	if sleeve != "":
@@ -592,18 +663,25 @@ func _build_stat_boxes(boxes: Array) -> void:
 		panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		stats_control.add_child(panel)
 
+		# ISSUE #273: heading AND numeral centred in the box. Both labels are already
+		# the full inner width of the panel, so this is one alignment each - a
+		# left-aligned caption over a left-aligned numeral read as text that had
+		# been pushed into the corner rather than as a stat tile.
 		var caption := Label.new()
 		UIKit.set_label(caption, "small_label", String(boxes[i][0]), "field_mute",
 			_stat_font("small_label"))    # ISSUE #203
+		caption.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		caption.position = Vector2(x + PANEL_PAD, BOX_Y + PANEL_PAD)
 		caption.size = Vector2(w - PANEL_PAD * 2.0, 30.0)
 		stats_control.add_child(caption)
 
 		var value := Label.new()
 		UIKit.set_label(value, "title", String(boxes[i][1]), "field_fg", BOX_VALUE_FONT)
+		value.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		value.position = Vector2(x + PANEL_PAD, BOX_Y + PANEL_PAD + 34.0)
 		value.size = Vector2(w - PANEL_PAD * 2.0, float(BOX_VALUE_FONT) + 12.0)
 		stats_control.add_child(value)
+	print("ISSUE #273 FIX ACTIVE: ", boxes.size(), " stat boxes centred (caption + value)")
 
 
 ## The three sets closest to being finished.

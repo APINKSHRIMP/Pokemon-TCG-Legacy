@@ -616,50 +616,23 @@ func get_last_interior_scene() -> String:
 # ============================================================
 # ISSUE #253 - CLICK QUEUEING
 # ============================================================
-# Nothing in this game is a reaction test. Every screen is a menu, a card or a
-# message box, so a burst of clicks faster than a person can read is never
-# intent - it is one press the player meant plus a handful they had already
-# committed to before the screen changed. Godot delivers all of them, and every
-# one lands on whatever happens to be under the cursor by the time it arrives:
-# the pack-shop arrows keep stepping after the player has stopped, a message box
-# eats the two behind it, a card gets picked on a screen the player never saw.
+# REVERTED at the user's request (01/09/2026 retest 2). There WAS a global
+# `_input` here that swallowed any mouse press arriving within 260ms of the last
+# accepted one. It is gone, and deliberately not coming back.
 #
-# This is the ONE place it is stopped, and it has to be here rather than in
-# UIInput: a Button fires from Godot's own GUI plumbing and never asks UIInput
-# anything. `_input` on an autoload runs BEFORE GUI picking, so marking the event
-# handled here hides it from Controls, Buttons and gui_input handlers alike.
+# Why the whole idea was wrong: a time window can only ever say "that click came
+# too soon", and the symptom the player actually sees - a button that keeps
+# firing after they have stopped clicking - is a SLOW SCREEN, not a fast player.
+# When a handler takes 300ms to redraw, every one of the player's clicks is
+# hundreds of ms apart and every one of them is legitimate, so no window catches
+# them; meanwhile the window is busy eating deliberate clicks on every fast
+# screen in the game. It cost real input and bought nothing.
 #
-# Only the PRESS is swallowed. A release is left alone - a Button that never
-# received the press does nothing with the release, while eating releases would
-# strand buttons in a held state.
-#
-# TWEAKABLE: the shortest gap between two clicks the game will act on.
-# ISSUE #253 (retest): 180 -> 260. Nothing in this game rewards clicking faster
-# than four times a second, and 180 was still letting a burst through. Note what a
-# debounce CANNOT do: where a screen is slow to redraw, the clicks are hundreds of
-# ms apart and every one of them is legitimate, so no window catches them - the
-# screen itself has to hold its controls down until it has caught up. See
-# Pack_Purchase_Script._step_to_current_set for that half of the same issue.
-const CLICK_MIN_GAP_MS: int = 260
-var _last_click_ms: int = 0
-
-func _input(event: InputEvent) -> void:
-	if not (event is InputEventMouseButton):
-		return
-	var mb := event as InputEventMouseButton
-	if not mb.pressed:
-		return
-	# The wheel and the middle button are inert everywhere (see UIInput), and
-	# scrolling a long list legitimately fires dozens of events a second.
-	if UIInput.is_inert_mouse_button(mb):
-		return
-	var now := Time.get_ticks_msec()
-	if now - _last_click_ms < CLICK_MIN_GAP_MS:
-		get_viewport().set_input_as_handled()
-		print("ISSUE #253 FIX ACTIVE: swallowed a click ", now - _last_click_ms,
-			"ms after the last one (minimum ", CLICK_MIN_GAP_MS, "ms)")
-		return
-	_last_click_ms = now
+# The fix that does work is per-screen and is the opposite shape: a control that
+# starts something is held DISABLED until the thing it started is on screen. See
+# Pack_Purchase_Script._step_to_current_set for the worked example, and
+# UIKit.hold_buttons() for the helper to do it on any other screen that shows the
+# same symptom.
 
 
 func _ready():

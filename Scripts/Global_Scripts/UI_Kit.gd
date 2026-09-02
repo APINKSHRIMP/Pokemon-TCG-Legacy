@@ -65,7 +65,22 @@ const FOOTER_BTN_GAP := 20
 # further reads as one object lifted off the page. Only the direction changed
 # back: the light is above and to the left, so the shadow falls right and down.
 const SHADOW_GROW  := 0.0                     # same size as the item
-const SHADOW_DROP  := Vector2(0.030, 0.042)   # right / down, as a fraction of the item
+# ISSUE #197 (retest 4): ONE NUMBER, AND THE SAME NUMBER OF PIXELS IN BOTH
+# DIRECTIONS. The light is above and to the left, so the shadow falls right and
+# down, and it has to be EQUALLY visible right and down or it stops reading as a
+# lift off the page.
+#
+# The old pair (0.030 right, 0.042 down) could not do that, because an anchor
+# fraction is a fraction of that AXIS: on a square coin 3% and 4.2% are near
+# enough the same few pixels — which is why the coins always looked right — but
+# on a 300x430 pack they are 9px right against 18px down. Retest 3's
+# SHADOW_DROP_TALL then pushed the x further out and made y NEGATIVE, which is
+# the shadow the user saw poking out of the TOP of the pack. Both are gone.
+#
+# SHADOW_DROP is now a single fraction of the item's WIDTH, and the vertical
+# anchor is scaled by the item's aspect at build time so it comes out as the same
+# pixel count. See add_drop_shadow.
+const SHADOW_DROP  := 0.032
 const SHADOW_ALPHA := 0.38
 
 # The content band left between the two 92px bars on a standard screen. Every
@@ -246,7 +261,19 @@ static func _bar_slot(row: HBoxContainer, align: int) -> HBoxContainer:
 		else (BoxContainer.ALIGNMENT_END if align == HORIZONTAL_ALIGNMENT_RIGHT
 		else BoxContainer.ALIGNMENT_CENTER))
 	slot.add_theme_constant_override("separation", 12)
-	slot.mouse_filter = Control.MOUSE_FILTER_PASS
+	# ISSUE #270: IGNORE, NOT PASS. A slot paints nothing, so it must never be
+	# pickable — and PASS is pickable. Godot's picker returns the topmost control
+	# whose filter is STOP *or PASS*, and PASS then forwards the event up the
+	# PARENT chain; it never re-tries the siblings drawn behind it. The two side
+	# slots are SIZE_EXPAND_FILL, so on the 162px match footer they span nearly the
+	# full width at the height of whatever button they hold — straight across the
+	# middle of the player's hand, which is exactly the band the user could not
+	# click ("the same space the secondary button takes up").
+	#
+	# Children are unaffected: the picker recurses into a control's children before
+	# considering the control itself, so the buttons and labels inside a slot are
+	# still picked normally. Same rule as the retired footer containers in #246.
+	slot.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	row.add_child(slot)
 	return slot
 
@@ -559,7 +586,7 @@ static func make_damage_counters(current_hp: int, max_hp: int, bench: bool = fal
 ## Safe to call on an item other code walks: the shadow is a grandchild of the
 ## grid cell, so `for child in grid.get_children()` never sees it.
 static func add_drop_shadow(item: TextureRect, grow: float = SHADOW_GROW,
-		alpha: float = SHADOW_ALPHA, drop: Vector2 = SHADOW_DROP) -> TextureRect:
+		alpha: float = SHADOW_ALPHA, drop: float = SHADOW_DROP) -> TextureRect:
 	if item == null or item.texture == null:
 		return null
 
@@ -575,11 +602,22 @@ static func add_drop_shadow(item: TextureRect, grow: float = SHADOW_GROW,
 	# item and a fixed fraction right/down of it at every item size on every screen.
 	# Setting a pixel size here would be inert anyway — a full-rect anchored
 	# Control recomputes its rect from these fractions on the next layout pass.
+	#
+	# ISSUE #197 (retest 4): the vertical fraction is the horizontal one times the
+	# item's ASPECT, so `drop` is the same number of PIXELS right as it is down on
+	# a tall pack, a square coin and a wide banner alike. The aspect comes from the
+	# texture rather than the rect, deliberately: the rect's size is not settled on
+	# the frame a container child is added, and every item on these screens is
+	# fitted to its own art anyway.
+	var tex_size: Vector2 = item.texture.get_size()
+	var aspect: float = 1.0
+	if tex_size.y > 0.0:
+		aspect = tex_size.x / tex_size.y
 	var half: float = grow * 0.5
-	shadow.anchor_left   = -half + drop.x
-	shadow.anchor_right  = 1.0 + half + drop.x
-	shadow.anchor_top    = -half + drop.y
-	shadow.anchor_bottom = 1.0 + half + drop.y
+	shadow.anchor_left   = -half + drop
+	shadow.anchor_right  = 1.0 + half + drop
+	shadow.anchor_top    = -half + drop * aspect
+	shadow.anchor_bottom = 1.0 + half + drop * aspect
 	shadow.offset_left = 0.0
 	shadow.offset_top = 0.0
 	shadow.offset_right = 0.0
@@ -589,6 +627,8 @@ static func add_drop_shadow(item: TextureRect, grow: float = SHADOW_GROW,
 	shadow.show_behind_parent = true
 
 	item.add_child(shadow)
+	print("ISSUE #197 FIX ACTIVE: drop shadow aspect ", aspect, " -> anchors +",
+		drop, " x / +", drop * aspect, " y (equal pixels right and down)")
 	return shadow
 
 
@@ -723,6 +763,39 @@ static func style_button(button: Button, variant: String = "secondary") -> void:
 	button.theme = t
 	button.action_mode = BaseButton.ACTION_MODE_BUTTON_PRESS
 	button.text = _ui().cased("button", button.text)
+
+
+## ISSUE #253: hold a set of controls DEAD until the work they started is on
+## screen, then hand them back.
+##
+## This is the shape that actually fixes "the button keeps firing after I stopped
+## clicking". That symptom is a slow screen, not a fast player: when a press
+## kicks off a few hundred ms of loading and redrawing, every click the player
+## makes in the meantime is hundreds of ms apart and perfectly deliberate, so no
+## global time-window debounce can tell them apart from intent (one was tried
+## globally in GameState and reverted — see the note there). The screen is the
+## only thing that knows it is not ready, so the screen says so, and a greyed
+## control explains the pause instead of swallowing the click silently.
+##
+## Usage — await the slow half INSIDE the hold, or the lock releases immediately:
+##     UIKit.hold_buttons([next_btn, prev_btn], true)
+##     await _do_the_slow_thing()
+##     UIKit.hold_buttons([next_btn, prev_btn], false)
+static func hold_buttons(buttons: Array, held: bool) -> void:
+	for b in buttons:
+		if b is BaseButton and is_instance_valid(b):
+			(b as BaseButton).disabled = held
+
+
+## ISSUE #254: THE selection colour — the one "this is on" fill in the game.
+##
+## It is the `selected` button variant's own fill (chrome_grad_b), so anything
+## that has to paint a selected state by hand — a locked-on filter chip, a type
+## chip that carries its own colour when idle — comes out the same pink as the
+## Options buttons, and a theme swap moves every one of them together. Green is
+## reserved for save/confirm and must not be used to mean "selected".
+static func selection_colour() -> Color:
+	return _ui().col("chrome_grad_b")
 
 
 ## A footer action button — Cancel, Save, Buy, Close, Confirm.

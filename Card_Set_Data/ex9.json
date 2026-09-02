@@ -168,9 +168,10 @@
           "Colorless",
           "Colorless",
           "Colorless",
+          "Colorless",
           "Colorless"
         ],
-        "convertedEnergyCost": 4,
+        "convertedEnergyCost": 5,
         "damage": "60+",
         "text": "If the Defending Pokémon is Pokémon-ex, this attack does 60 damage plus 40 more damage."
       }

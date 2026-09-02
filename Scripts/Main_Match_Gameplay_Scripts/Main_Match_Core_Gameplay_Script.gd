@@ -110,6 +110,9 @@ const RETREAT_ENERGY_RAISE_PX: float = 120.0
 var retreat_bench_selection_active: bool = false
 var retreat_energies_selected: Array = []
 var retreat_cost_remaining: int = 0
+## ISSUE #265: true while a disabled-row explanation is on screen, so a burst of
+## clicks on a dead Retreat row cannot stack up a queue of identical message boxes.
+var _disabled_reason_showing: bool = false
 var player_retreat_disabled: bool = false
 var opponent_retreat_disabled: bool = false
 
@@ -1004,7 +1007,17 @@ const PILE_BOT_Y     := 1080.0 - BOARD_BOT_H - PILE_FOOT_GAP - PILE_SIZE.y
 ## clears it by 80px, so the +20% is paid for by the shape change rather than
 ## costing anything. Six across is 548px wide against a 180px rail, so the block
 ## overhangs INWARD; see the clamp in _place_rails.
-const PRIZE_SIZE     := Vector2(88.0, 121.0)
+## ISSUE #260 (retest): -20% again (88x121 -> 70x97). The one-row shape stays -
+## that is what cleared the opponent's attachment fan - it is only the cards that
+## come back down. The caption over each row shrinks by the same 20% (see
+## PRIZE_LABEL_SCALE) so the block still reads as one object.
+const PRIZE_SIZE     := Vector2(70.0, 97.0)
+## ISSUE #272: 0.8 -> 1.0. #260 shrank these two captions with the cards; the
+## retest wanted them back at the same size as every other heading on the board
+## ("Opponent", "You", the attachment captions), which is what small_label gives
+## at scale 1. Kept as a constant rather than deleted - it is the one dial if the
+## prize headings ever need to differ from the rest again.
+const PRIZE_LABEL_SCALE := 1.0
 const PRIZE_GAP      := 4.0
 ## Smallest gap between the prize block and the edge of the screen.
 const PRIZE_EDGE_PAD := 8.0
@@ -1012,13 +1025,23 @@ const PRIZE_COLUMNS  := 6   # ISSUE #260: one row, filled left to right
 ## How visible a taken prize's empty slot is.
 const PRIZE_TAKEN_ALPHA := 0.45
 const PRIZE_TOP_Y    := 132.0    # opponent's, in the right rail
-const PRIZE_BOT_Y    := 690.0    # yours, in the left rail
+## ISSUE #260 (retest): YOURS DROP TO THE FOOTER. At a fixed 690 the block sat
+## mid-rail with 130px of dead field under it, while the opponent's was flush with
+## the top of the screen - the two were not the mirror image they read as. Derived
+## from the footer exactly like PILE_BOT_Y beside it, so a change to either the
+## footer height or the card size keeps the gap.
+const PRIZE_FOOT_GAP := 5.0
+const PRIZE_BOT_Y    := 1080.0 - BOARD_BOT_H - PRIZE_FOOT_GAP - PRIZE_SIZE.y
 ## ISSUE #247: how far each side's whole column - active card, HP, damage
 ## counters, status icons, action rows and attachment stacks - moves OUTWARD from
 ## the centre line. It buys clearance from the bench rows above and below, whose
 ## attached-energy stacks fan up out of the outermost bench slot and were
 ## catching the edge of the action panel. TWEAKABLE.
-const DUEL_SIDE_SHIFT := 10.0
+## ISSUE #267: 10 -> 20. Part of the same pass that grew the actives inward; the
+## whole column - card, HP blocks, status row, action panel and attachments -
+## leans 10px further out on each side, which is where the extra 20px of centre
+## clearance for the bigger cards comes from.
+const DUEL_SIDE_SHIFT := 20.0
 
 ## Benches: five slots, centred in the centre column.
 ## ISSUE #234: cards -10% (119x165 -> 107x148) and the horizontal gap -25%
@@ -1048,22 +1071,40 @@ const PLAYER_BENCH_Y := 1080.0 - BOARD_BOT_H - 5.0 - BENCH_ROW_H
 ## them. There is spare field under the actives, so the whole duel row drops 16px
 ## rather than the counters moving up into the card art.
 const DUEL_MID_Y     := 486.0
-const ACTIVE_CARD    := Vector2(230.0, 319.0)
+## ISSUE #267: THE CARD IS BIGGER THAN ITS COLUMN, ON PURPOSE.
+##
+## +15% (230x319 -> 265x367), and it has to grow INWARD - the player's active to
+## the RIGHT, the opponent's to the LEFT - so the info columns beside them, which
+## hold the HP blocks and the attack rows, do not move at all. The seven-column
+## arithmetic is therefore still done with the OLD width (ACTIVE_COL_W): if the
+## column grew, the whole row would re-centre and each card would end up
+## expanding OUTWARD across its own attack buttons, which is the opposite of what
+## was asked. The extra 35px per side comes out of the 88px divider column and the
+## widened DUEL_SIDE_SHIFT, leaving ~79px of clear centre for the turn divider.
+const ACTIVE_COL_W   := 230.0
+const ACTIVE_CARD    := Vector2(265.0, 367.0)
 const DUEL_COL_ATTACH := 96.0
 const DUEL_COL_INFO   := 322.0
 ## ISSUE #223: the attack rows are narrower than the info column they sit in, and
 ## ISSUE #216: they are pushed to the side of that column NEAREST the active
 ## Pokemon, which is what clears the attachment peek-stack out of their way.
-const ACTION_PANEL_W  := 258.0
+## ISSUE #267: +10% (258 -> 284). This is the number the active HP counters and
+## the status row are both sized against - see dmg_active_w in UITheme.METRICS
+## and STATUS_ICON_H below - so all three read as one stack of the same width.
+const ACTION_PANEL_W  := 284.0
 ## ISSUE #239: the attachment rows and their new captions, as offsets from the
 ## top of the active card. TWEAKABLE.
 ##   energy row sits level with the top of the card (was +10 - "up 10px")
 ##   tool row drops far enough that the ENERGY stack, which is a whole card tall,
 ##   cannot reach the TOOLS caption above it. +130 -> +160 rather than the +140 a
 ##   flat 10px would give, because the caption needs the clearance to exist.
-const ATTACH_ENERGY_DY := 0.0
-const ATTACH_TOOL_DY   := 160.0
 const ATTACH_CAPTION_DY := 26.0     # how far above its row a caption sits
+## ISSUE #264: the whole attachment stack drops by exactly one caption height, so
+## the "Energy cards" HEADING - not the row of cards under it - is what lines up
+## with the top of the active card. It was the row that lined up, which put the
+## caption 26px above the card and left it floating against the field.
+const ATTACH_ENERGY_DY := ATTACH_CAPTION_DY
+const ATTACH_TOOL_DY   := 160.0 + ATTACH_CAPTION_DY
 ## ISSUE #239: attachment cards -10% (100x138 -> 90x124).
 const ATTACH_CARD_SIZE := Vector2(90.0, 124.0)
 ## How wide an attachment caption may run before it ellipsises.
@@ -1083,18 +1124,27 @@ const PLAYER_HAND_X  := (1920.0 - PLAYER_HAND_W) * 0.5
 ## The opponent's fan is centred on its own box the same way.
 const OPP_HAND_W     := 420.0
 const STADIUM_SIZE   := Vector2(48.0, 66.0)
-const STADIUM_X      := 1740.0
+## ISSUE #266: 1740 -> 1848, i.e. hard against the right end of the header
+## (STADIUM_EDGE_PAD clear of the screen edge) instead of 132px short of it. Its
+## caption is right-aligned in the 120px immediately to its left, so the pair
+## still reads as one label-and-slot unit.
+const STADIUM_EDGE_PAD := 24.0
+const STADIUM_X      := 1920.0 - STADIUM_EDGE_PAD - STADIUM_SIZE.x
 const STADIUM_Y      := 13.0
 
 ## The opponent's hand is a fan of face-down sleeves on the top bar, so it is
 ## smaller than yours.
-const OPP_HAND_CARD  := Vector2(36.0, 50.0)
-## ISSUE #258: the right-hand end of the opponent's hand box. The stadium caption
-## begins at STADIUM_X - 130 = 1610, so the fan stops STADIUM_HAND_GAP short of it
-## and grows LEFT from there as a box - the cards inside still start at the box's
-## left edge and are added rightward.
-const STADIUM_HAND_GAP := 24.0
-const OPP_HAND_X     := STADIUM_X - 130.0 - STADIUM_HAND_GAP - OPP_HAND_W
+## ISSUE #269: +20% (36x50 -> 43x60), then (retest) +10% again -> 47x66. At 66
+## tall the fan finishes at y 86, still inside the 92px header - that is the
+## ceiling, there is no room for another step without moving OPP_HAND_Y up.
+const OPP_HAND_CARD  := Vector2(47.0, 66.0)
+## ISSUE #258 (retest): TOP LEFT, not top right. The fan is left-anchored inside
+## its box and the box starts at HAND_X, so the first sleeve sits in the corner of
+## the header and every card drawn after it is added to the RIGHT of the last -
+## nothing already on screen ever moves. The right-hand corner belongs to the
+## stadium slot and its caption (#266), which is why the fan was put there in the
+## first place; it is out of their way entirely now.
+const OPP_HAND_X     := HAND_X
 
 
 ## Lays the whole board out and swaps the old scrolling background for the new
@@ -1111,6 +1161,12 @@ func _build_board_layout() -> void:
 	UIKit.add_field(self)
 	_board_header = UIKit.add_header(self)
 	_board_footer = UIKit.add_footer(self, true)
+	# ISSUE #270: the footer's three layout slots must be un-pickable, or the two
+	# EXPAND_FILL side ones lie across the middle of the hand. Fixed in
+	# UIKit._bar_slot; asserted here because this is the screen it was breaking.
+	print("ISSUE #270 FIX ACTIVE: footer slot mouse filters L/C/R = ",
+		_board_footer.left.mouse_filter, "/", _board_footer.centre.mouse_filter,
+		"/", _board_footer.right.mouse_filter, " (", Control.MOUSE_FILTER_IGNORE, " = IGNORE)")
 
 	# The turn chip is the primary turn indicator alongside the duel divider.
 	_turn_chip_holder = _board_header.centre
@@ -1189,7 +1245,6 @@ func _fix_button_pick_order() -> void:
 	for node in order:
 		if node != null and is_instance_valid(node) and node.get_parent() == self:
 			move_child(node, -1)
-	print("ISSUE #246/#217 FIX ACTIVE: retired footer rows made click-through; blockers moved to the END of the pick order")
 
 
 ## ISSUE #213: THE HANDS AND THE MESSAGE BOX WERE UNDER THE CHROME BARS.
@@ -1332,7 +1387,12 @@ func _set_board_furniture_visible(shown: bool) -> void:
 ## The seven duel columns. Only the two actives and their attachment/info columns
 ## are placed here; what GOES in the info columns is stage 7's job.
 func _place_duel_row() -> void:
-	var total := DUEL_COL_ATTACH * 2.0 + DUEL_COL_INFO * 2.0 + ACTIVE_CARD.x * 2.0 		+ DUEL_COL_DIVIDE + DUEL_GAP * 6.0
+	# ISSUE #267: ACTIVE_COL_W, not ACTIVE_CARD.x. The card is 15% wider than the
+	# column it sits in and grows INWARD out of it; if the column grew with it the
+	# whole row would re-centre and each card would expand outward across its own
+	# attack buttons instead.
+	var total := (DUEL_COL_ATTACH * 2.0 + DUEL_COL_INFO * 2.0 + ACTIVE_COL_W * 2.0
+		+ DUEL_COL_DIVIDE + DUEL_GAP * 6.0)
 	var x := (1920.0 - total) * 0.5
 
 	# ISSUE #247: EVERY column on the player's side moves DUEL_SIDE_SHIFT left and
@@ -1346,19 +1406,28 @@ func _place_duel_row() -> void:
 	var you_info_x := x - DUEL_SIDE_SHIFT
 	x += DUEL_COL_INFO + DUEL_GAP
 	var you_active_x := x - DUEL_SIDE_SHIFT
-	x += ACTIVE_CARD.x + DUEL_GAP
+	x += ACTIVE_COL_W + DUEL_GAP
 	_duel_divider_x = x
 	x += DUEL_COL_DIVIDE + DUEL_GAP
 	var opp_active_x := x + DUEL_SIDE_SHIFT
-	x += ACTIVE_CARD.x + DUEL_GAP
+	x += ACTIVE_COL_W + DUEL_GAP
 	var opp_info_x := x + DUEL_SIDE_SHIFT
 	x += DUEL_COL_INFO + DUEL_GAP
 	var opp_attach_x := x + DUEL_SIDE_SHIFT
 
 	var active_y := DUEL_MID_Y - ACTIVE_CARD.y * 0.5
 
+	# ISSUE #267: the extra width goes INWARD. Yours keeps its left edge and grows
+	# right; theirs keeps its RIGHT edge (column x + old column width) and grows
+	# left. Both therefore lean into the divider column, and neither one moves over
+	# the info column that holds its own HP blocks and attack rows.
+	var active_overhang := ACTIVE_CARD.x - ACTIVE_COL_W
 	_set_rect(player_active_container, Vector2(you_active_x, active_y), ACTIVE_CARD)
-	_set_rect(opponent_active_container, Vector2(opp_active_x, active_y), ACTIVE_CARD)
+	_set_rect(opponent_active_container,
+		Vector2(opp_active_x - active_overhang, active_y), ACTIVE_CARD)
+	print("ISSUE #267 FIX ACTIVE: actives ", ACTIVE_CARD, " at x ", you_active_x,
+		" / ", opp_active_x - active_overhang, ", panel ", ACTION_PANEL_W,
+		"w, side shift ", DUEL_SIDE_SHIFT)
 
 	# Attachments keep the existing peek-stack rendering (the mockup's two-group
 	# whole-card layout was dropped); they just move to the outboard columns.
@@ -1398,15 +1467,13 @@ func _place_duel_row() -> void:
 		Vector2(opp_info_x, active_y), Vector2(ACTION_PANEL_W, 60.0))
 	_set_rect($"ACTIVE_POKEMON/OPPONENT/opponent_active_pokemon_status_container",
 		Vector2(opp_info_x, active_y + 76.0), Vector2(ACTION_PANEL_W, 60.0))
-	print("ISSUE #233 FIX ACTIVE: active HP/status column at x ", you_col_x,
-		" / ", opp_info_x, ", width ", ACTION_PANEL_W)
 
 	# The action panels sit under the HP and status rows, filling the rest of the
 	# info column. They have room to grow downward and scroll past that.
 	var panel_top := active_y + ACTION_PANEL_TOP
 	# ISSUE #247: THE COLUMN WAS SHORTER THAN THE ROWS IT PROMISES TO SHOW.
 	#
-	# ACTION_MAX_ROWS is 5, and five 44px rows with four 6px gaps need 244px - but
+	# ACTION_MAX_ROWS was 5, and five 44px rows with four 6px gaps need 244px - but
 	# the holder was 235 (card height minus the top inset plus a fixed overhang)
 	# and clip_contents is on, so the bottom of the fifth row (usually Retreat) was
 	# sliced off. The height is DERIVED from the row metrics now, so it can never
@@ -1414,8 +1481,6 @@ func _place_duel_row() -> void:
 	var rows_h: float = ACTION_ROW_H * float(ACTION_MAX_ROWS) \
 		+ float(ACTION_ROW_GAP) * float(ACTION_MAX_ROWS - 1) + ACTION_ROW_SLACK
 	var panel_h := maxf(ACTIVE_CARD.y - ACTION_PANEL_TOP + ACTION_PANEL_OVERHANG, rows_h)
-	print("ISSUE #247 FIX ACTIVE: action panel ", ACTION_PANEL_W, "x", panel_h,
-		" holds ", ACTION_MAX_ROWS, " rows of ", ACTION_ROW_H)
 	# ISSUE #223 / #216: ACTION_PANEL_W wide, pinned to the side of the info column
 	# that touches the active card — right for you, left for the opponent.
 	_player_action_panel = _make_action_holder(
@@ -1486,21 +1551,32 @@ func _place_rails() -> void:
 
 	# The four rail captions. ISSUE #260: the two PRIZE captions span the six-card
 	# row rather than the 180px rail, which the row is three times wider than.
+	# ISSUE #260 (retest): the two prize captions take PRIZE_LABEL_SCALE, so the
+	# heading shrinks by the same 20% the cards did and the block stays one object.
 	_place_rail_label($"SCREEN_LABELS/OPPONENT/opponent_prize_cards_label",
-		"Opponent's prizes", opp_prize_x, PRIZE_TOP_Y - 26.0, prize_row_w)   # ISSUE #251
+		"Opponent's prizes", opp_prize_x, PRIZE_TOP_Y - 26.0, prize_row_w,
+		PRIZE_LABEL_SCALE)   # ISSUE #251
 	_place_rail_label($"SCREEN_LABELS/PLAYER/player_prize_cards_label",
-		"Your prizes", you_prize_x, PRIZE_BOT_Y - 26.0, prize_row_w)
+		"Your prizes", you_prize_x, PRIZE_BOT_Y - 26.0, prize_row_w, PRIZE_LABEL_SCALE)
+	print("ISSUE #272 FIX ACTIVE: prize captions at scale ", PRIZE_LABEL_SCALE,
+		" = font ", int(round(float(UITheme.size("small_label")) * PRIZE_LABEL_SCALE)),
+		", same as every other board heading")
 	_place_rail_label($"SCREEN_LABELS/OPPONENT/opponent_bench_cards_label",
 		"Opponent", LEFT_RAIL_X, PILE_TOP_Y - 26.0)
 	_place_rail_label($"SCREEN_LABELS/PLAYER/player_bench_cards_label",
 		"You", RIGHT_RAIL_X, PILE_BOT_Y - 26.0)
 
 
-func _place_rail_label(lbl: Label, text: String, x: float, y: float, w: float = RAIL_W) -> void:
+func _place_rail_label(lbl: Label, text: String, x: float, y: float, w: float = RAIL_W,
+		font_scale: float = 1.0) -> void:
 	if lbl == null:
 		return
 	lbl.theme = null
 	UIKit.set_label(lbl, "small_label", text, "field_mute")
+	# ISSUE #260: a caption that labels a resized block scales with it.
+	if not is_equal_approx(font_scale, 1.0):
+		lbl.add_theme_font_size_override("font_size",
+			int(round(float(UITheme.size("small_label")) * font_scale)))
 	lbl.position = Vector2(x, y)
 	lbl.size = Vector2(w, 22.0)
 	lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -1525,15 +1601,11 @@ func _place_bars() -> void:
 	# ISSUE #244: the hand is CENTRED on the footer, and the row inside it is
 	# centred too. Both halves are needed - a centred box whose HBox still starts
 	# at its left edge only moves the problem.
-	# ISSUE #258: the opponent's fan moves to the TOP RIGHT and is left-anchored
-	# inside its box, so the first sleeve never moves and each new card is added to
-	# the RIGHT of the last one. Centring it (which is right for YOUR hand, where
-	# the whole row is the object) meant every existing card shuffled sideways
-	# whenever they drew.
-	#
-	# It stops short of the screen edge on purpose: the "Stadium" caption and its
-	# slot own x 1610..1788 of the header, so OPP_HAND_X is measured back from
-	# there rather than from 1920.
+	# ISSUE #258 (retest): the opponent's fan sits in the TOP LEFT corner of the
+	# header and is left-anchored inside its box, so the first sleeve never moves
+	# and each new card is added to the RIGHT of the last one. Centring it (which
+	# is right for YOUR hand, where the whole row is the object) meant every
+	# existing card shuffled sideways whenever they drew.
 	_set_rect(opponent_hand_container, Vector2(OPP_HAND_X, OPP_HAND_Y), Vector2(OPP_HAND_W, 56.0))
 	_set_rect(player_hand_container, Vector2(PLAYER_HAND_X, PLAYER_HAND_Y),
 		Vector2(PLAYER_HAND_W, 140.0))
@@ -1541,8 +1613,6 @@ func _place_bars() -> void:
 		(player_hand_container as HBoxContainer).alignment = BoxContainer.ALIGNMENT_CENTER
 	if opponent_hand_container is HBoxContainer:
 		(opponent_hand_container as HBoxContainer).alignment = BoxContainer.ALIGNMENT_BEGIN
-	print("ISSUE #258 FIX ACTIVE: opponent hand at x ", OPP_HAND_X,
-		" growing right, stopping at ", OPP_HAND_X + OPP_HAND_W)
 
 	# The stadium gets a caption and a slot in the top right, which is the one
 	# piece of empty chrome on the board. Clicking it is stage 7.
@@ -1576,6 +1646,7 @@ func _place_bars() -> void:
 	caption.z_index = UIKit.Z_CHROME + 1
 	add_child(caption)
 	_stadium_caption = caption   # ISSUE #212
+	print("ISSUE #269 FIX ACTIVE: opponent hand cards ", OPP_HAND_CARD)
 
 	# ATTACK, POWER and RETREAT are gone from the footer — they are rows on the
 	# Pokemon now. Only End Turn is left, and it is REPARENTED INTO the footer bar
@@ -1821,8 +1892,11 @@ func _set_rect(node: Control, pos: Vector2, node_size: Vector2) -> void:
 
 ## Rows are as wide as the info column so nearly every attack name fits on one
 ## line — the whole point of moving them off a crowded horizontal footer.
-## ISSUE #247: -5% (46 -> 44).
-const ACTION_ROW_H     := 44.0
+## ISSUE #247: -5% (46 -> 44). ISSUE #267 (retest): -5% again (44 -> 41.8), which
+## is what buys the SIXTH row below - six 41.8px rows with five 6px gaps need
+## 284.8px against the five-row 254, and the holder is derived from these numbers
+## so it grew to hold them without anything else moving.
+const ACTION_ROW_H     := 41.8
 ## ISSUE #247: how far the rows pull back from the side the scrollbar appears on
 ## once there are more than ACTION_MAX_ROWS of them - the card side for each
 ## player. Only applied when the column actually scrolls.
@@ -1836,7 +1910,12 @@ const ACTION_PIP_GAP   := 3.0
 const ACTION_NAME_FONT := 16
 const ACTION_DMG_FONT  := 19
 ## Beyond this the column scrolls instead of running into the bench.
-const ACTION_MAX_ROWS  := 5
+## ISSUE #267 (retest): 5 -> 6. Five was one short of the common worst case - four
+## attacks plus a Poke-Power plus Retreat - so a scrollbar appeared on Pokemon
+## that are not unusual at all. Six covers effectively all real play; the
+## ScrollContainer is still there for a Technical Machine or ex12 Versatile
+## stacking extra attacks on top of that.
+const ACTION_MAX_ROWS  := 6
 ## Where the action column starts inside the info column, measured from the top
 ## of the active card — below the name, HP and status rows.
 const ACTION_PANEL_TOP := 140.0
@@ -1973,6 +2052,34 @@ func _player_can_attack_now() -> bool:
 	return player_active_pokemon.special_condition not in ["Paralyzed", "Asleep"]
 
 
+## ISSUE #265: why THIS attack row is dead, in the order the player would ask.
+##
+## An empty string means "say nothing": the board is not the player's to act on
+## right now (the opponent's turn, a selection screen, a message box open), and a
+## popup explaining that on every stray click would be noise rather than help.
+##
+## The wording matches show_attack_buttons() line for line, so the same rule
+## reads the same whichever route the player reaches it by.
+func _attack_row_reason(mon: card_object, attack: Dictionary, attack_name: String) -> String:
+	if not _player_can_act_now():
+		return ""
+	# Card-specific first. An attack shut off by an effect is a different sentence
+	# from one the Pokemon simply cannot pay for.
+	if is_attack_disabled(mon, attack_name):
+		return attack_name.to_upper() + " is disabled and can't be used!"
+	if not check_attack_requirements(attack, mon):
+		return "Energy requirements not met to use " + attack_name.to_upper() + "!"
+	if turn_number <= 1:
+		return "You cannot attack on the first turn!"
+	if player_attacked_this_turn:
+		return "You have already attacked this turn!"
+	if mon.special_condition == "Paralyzed":
+		return mon.metadata.get("name", "").to_upper() + " is Paralyzed and cannot attack!"
+	if mon.special_condition == "Asleep":
+		return mon.metadata.get("name", "").to_upper() + " is Asleep and cannot attack!"
+	return ""
+
+
 ## Rebuilds one side's action panel. Called from display_pokemon(), so it
 ## refreshes on every board change without a second hook.
 func _build_action_panel(is_opponent: bool) -> void:
@@ -2007,32 +2114,48 @@ func _build_action_panel(is_opponent: bool) -> void:
 		var attack: Dictionary = attacks[i]
 		var attack_name: String = attack.get("name", "Attack")
 		var usable := false
+		var why := ""
 		if not is_opponent:
-			# ISSUE #217: _player_can_attack_now() is the WHOLE gate. The row used
-			# to check only "is this attack legal for this Pokemon", which meant it
-			# stayed live during the opponent's turn, during every selection screen
-			# and after the player had already attacked — so it could be pressed
-			# over and over.
-			usable = _player_can_attack_now() \
-				and (not is_attack_disabled(mon, attack_name)) \
-				and check_attack_requirements(attack, mon)
+			# ISSUE #217: _player_can_attack_now() is the WHOLE gate. The row used to
+			# check only "is this attack legal for this Pokemon", which meant it stayed
+			# live during the opponent's turn, during every selection screen and after
+			# the player had already attacked - so it could be pressed over and over.
+			usable = (_player_can_attack_now()
+				and (not is_attack_disabled(mon, attack_name))
+				and check_attack_requirements(attack, mon))
+			# ISSUE #265: and if it is dead, WHY it is dead.
+			if not usable:
+				why = _attack_row_reason(mon, attack, attack_name)
 		rows.append({
 			"kind": "attack",
 			"text": attack_name,
 			"attack": attack,
 			"enabled": usable,
+			"disabled_reason": why,
 			"action": func(): perform_attack(i),
 		})
 
 	# ── Retreat ── the opponent's panel has none: it is not your decision.
 	if not is_opponent:
+		# ISSUE #265: THE ROW IS GATED ON THE REAL RULE, NOT A SUBSET OF IT.
+		#
+		# It used to test three of can_retreat()'s eleven blockers, so a Pokemon that
+		# was Asleep, short of Energy, held by Boost Energy or facing a Snorlax still
+		# had a live-looking Retreat row that only failed once it was pressed.
+		# can_retreat() IS the rule, so the row asks it - and the same call supplies
+		# the sentence the player gets if they press it anyway.
+		var retreat_ok := _player_can_act_now()
+		var retreat_why := ""
+		if retreat_ok:
+			var rc := can_retreat(false)
+			retreat_ok = bool(rc["can_retreat"])
+			if not retreat_ok:
+				retreat_why = String(rc["reason"])
 		rows.append({
 			"kind": "retreat",
 			"text": "Retreat",
-			# ISSUE #217: retreating is a turn action too, and it was unconditionally
-			# enabled — pressable on the opponent's turn and mid-selection.
-			"enabled": _player_can_act_now() and not player_retreated_this_turn \
-				and not player_retreat_disabled,
+			"enabled": retreat_ok,
+			"disabled_reason": retreat_why,
 			"action": start_retreat,
 		})
 
@@ -2098,9 +2221,52 @@ func _make_action_row(row: Dictionary, is_opponent: bool) -> Button:
 		# at all, so killing the whole row set on the way IN is a hard stop that
 		# does not depend on how fast the rest of the turn gets going.
 		btn.pressed.connect(_run_action_row.bind(row))
+	elif String(row.get("disabled_reason", "")) != "":
+		# ISSUE #265: dead, but not silent.
+		_add_disabled_reason_catcher(btn, String(row["disabled_reason"]))
 
 	_fill_action_row(btn, row, enabled)
 	return btn
+
+
+## ISSUE #265: lets a DISABLED action row still explain itself when it is pressed.
+##
+## The button really is `disabled` - it emits no `pressed`, so #217's "one action
+## per turn" hard stop is untouched and no dead row can ever fire its action. The
+## explanation comes from a transparent Control laid over the button instead: a
+## child Control is picked by the GUI ahead of its parent, and a parent being
+## disabled does not stop it from receiving the click.
+##
+## Only ever added to a row that is dead AND has something worth saying - never
+## to a live one, where it would swallow the real press, and never when the reason
+## is empty, which is how "the board is not yours to act on right now" is spelled.
+func _add_disabled_reason_catcher(btn: Button, reason: String) -> void:
+	if reason.strip_edges() == "":
+		return
+	var catcher := Control.new()
+	catcher.name = "disabled_reason_catcher"
+	catcher.set_anchors_preset(Control.PRESET_FULL_RECT)
+	catcher.mouse_filter = Control.MOUSE_FILTER_STOP
+	catcher.set_meta("disabled_reason", reason)
+	catcher.gui_input.connect(_on_disabled_row_input.bind(catcher))
+	btn.add_child(catcher)
+
+
+## ISSUE #265: one message per press, never a queue of them.
+func _on_disabled_row_input(event: InputEvent, catcher: Control) -> void:
+	# UIInput.is_click, never a raw button test - the mouse WHEEL is a mouse button
+	# event too, and scrolling a long action panel must not fire this.
+	if not UIInput.is_click(event):
+		return
+	catcher.accept_event()
+	if _disabled_reason_showing:
+		return
+	var reason := String(catcher.get_meta("disabled_reason", ""))
+	if reason == "":
+		return
+	_disabled_reason_showing = true
+	await show_message(reason.to_upper())
+	_disabled_reason_showing = false
 
 
 ## ISSUE #217: fires one action row and kills every row on the way in.
@@ -2111,8 +2277,6 @@ func _make_action_row(row: Dictionary, is_opponent: bool) -> Button:
 ## new turn state says they should be in.
 func _run_action_row(row: Dictionary) -> void:
 	set_action_rows_disabled(true)
-	print("ISSUE #217 FIX ACTIVE: '", row.get("text", "?"),
-		"' pressed - every action row disabled before the action runs")
 	if row.has("action"):
 		row["action"].call()
 
@@ -2860,8 +3024,6 @@ func display_hp_circles_above_align(active_pokemon: card_object, is_opponent: bo
 	blocks.custom_minimum_size.x = ACTION_PANEL_W
 	blocks.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	hp_grid_container.add_child(blocks)
-	print("ISSUE #233/#256/#257 FIX ACTIVE: HP readout and counters aligned to the ",
-		"LEFT" if is_opponent else "RIGHT", " edge of the ", ACTION_PANEL_W, "px column")
 
 
 # Adds one row of HP circles and spacers to the grid container
@@ -3590,7 +3752,12 @@ func update_discard_pile_display(is_opponent: bool) -> void:
 
 ## ISSUE #218: TWEAKABLE — the rendered height of one status icon. The width is
 ## derived from the art so nothing is ever stretched.
-const STATUS_ICON_H := 30.0
+## ISSUE #267: 30 -> 28.5 (-5%). The art is ~3.18:1, so an icon is 3.18 x this
+## wide: three of them plus two STATUS_ICON_GAPs come to 3*90.7 + 2*6 = 284, which
+## is ACTION_PANEL_W exactly. Three conditions at once therefore fill the same
+## width as the attack buttons under them instead of overrunning them, which is
+## what 30 (297px for three) was doing.
+const STATUS_ICON_H := 28.5
 ## ISSUE #218: space between two icons when more than one condition is on.
 const STATUS_ICON_GAP := 6
 
@@ -3903,8 +4070,6 @@ func animate_attach_to_pokemon(card: card_object, target: card_object,
 
 	var bench_container = opponent_bench_container if is_opponent else player_bench_container
 	var loc := get_pokemon_screen_location(target)
-	print("ISSUE #236 FIX ACTIVE: attaching ", card.metadata.get("name", ""), " to BENCHED ",
-		target.metadata.get("name", ""), " at ", loc.get("position", Vector2.ZERO))
 	await animate_card_a_to_b(from_node, bench_container, 0.3, texture, card_scales[10],
 		loc.get("size", BENCH_CARD), loc.get("position", _ANIM_POS_SENTINEL), true)
 
@@ -5578,7 +5743,6 @@ func _on_end_turn_pressed() -> void:
 	if _end_turn_btn != null and is_instance_valid(_end_turn_btn):
 		_end_turn_btn.disabled = true
 	set_action_rows_disabled(true)
-	print("ISSUE #217 FIX ACTIVE: End turn pressed - action rows and End turn disabled immediately")
 	player_end_turn_checks()
 
 

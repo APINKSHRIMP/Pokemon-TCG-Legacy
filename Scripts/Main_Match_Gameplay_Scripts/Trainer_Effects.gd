@@ -4094,10 +4094,27 @@ func gym1_end_of_turn_cleanup(side_is_opponent: bool) -> void:
 		for ac in pokemon.attached_cards:
 			if "Technical Machine" in ac.metadata.get("subtypes", []):
 				tm_cards.append(ac)
+		# ISSUE #271: OFF THE POKEMON FIRST, THEN THE FLIGHT.
+		#
+		# A Technical Machine's whole point is that it adds an attack, and that
+		# attack is a row on the action panel. The panel is only rebuilt by
+		# display_pokemon(), which nothing here calls, so the row sat there through
+		# the discard animation and until the next board change - describing an
+		# attack the Pokemon no longer had.
+		#
+		# The erase loop is split from the animate loop so that every TM is out of
+		# attached_cards BEFORE _refresh_action_panels() reads it. Doing both in one
+		# pass would rebuild the panel from a half-emptied list, the same trap #172
+		# fixed for the peek-stack.
 		for tm_card in tm_cards:
 			pokemon.attached_cards.erase(tm_card)
 			tm_card.current_location = "discard"
 			discard.append(tm_card)
+		if not tm_cards.is_empty():
+			main._refresh_action_panels()
+			print("ISSUE #271 FIX ACTIVE: ", tm_cards.size(), " Technical Machine(s) off ",
+				pokemon.metadata.get("name", ""), " - action rows rebuilt before the flight")
+		for tm_card in tm_cards:
 			var attached_node3 = main.opponent_attached_cards_container if side_is_opponent else main.player_attached_cards_container
 			var discard_node3 = main.opponent_discard_icon if side_is_opponent else main.player_discard_icon
 			var tex3 = main.get_card_texture(tm_card)
@@ -4125,9 +4142,16 @@ func gym1_end_of_turn_cleanup(side_is_opponent: bool) -> void:
 				var attached_node5 = main.opponent_attached_cards_container if side_is_opponent else main.player_attached_cards_container
 				var discard_node5 = main.opponent_discard_icon if side_is_opponent else main.player_discard_icon
 				var tex5 = main.get_card_texture(mb_card)
+				# ISSUE #271: Memory Berry is the OTHER end-of-turn discard that
+				# changes what the Pokemon can attack with (it grants the
+				# pre-evolution's attacks), so its rows go at the same instant the
+				# TMs' do rather than lingering until the next board refresh.
+				main._refresh_action_panels()
 				main.animate_card_a_to_b(attached_node5, discard_node5, 0.25, tex5, main.card_scales[10])
 				display_attached_trainer_cards(side_is_opponent)
 				main.update_discard_pile_display(side_is_opponent)
+				print("ISSUE #271 FIX ACTIVE: Memory Berry off ",
+					pokemon.metadata.get("name", ""), " - action rows rebuilt before the flight")
 				print("MEMORY BERRY: discarded from ", pokemon.metadata.get("name", ""))
 
 		# ECARD3 Crystal Shard (ecard3-122) / ex8-85: discarded at the end of any turn its holder attacked

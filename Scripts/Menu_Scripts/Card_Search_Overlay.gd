@@ -430,8 +430,10 @@ func setup(unlocked_set_ids: Array, set_list: Array) -> void:
 	_set_list = set_list
 
 	_theme_white = load("res://UI_Themes/ui/ui_secondary.tres")
-	# "green" is the SELECTED state for every filter chip on this screen, and
-	# selection is pink everywhere else in the game — so it points at ui_selected.
+	# ISSUE #254: "green" and "blue" are STALE NAMES kept only so the call sites
+	# below read the way they always did — every one of them loads ui_selected,
+	# i.e. the same pink the Options buttons use. Nothing on this screen paints a
+	# selected state any other colour; green is save/confirm only.
 	_theme_green = load("res://UI_Themes/ui/ui_selected.tres")
 	_theme_blue  = load("res://UI_Themes/ui/ui_selected.tres")
 	# Reset and Cancel back out; they do not destroy anything.
@@ -880,8 +882,26 @@ func _apply_chip_style(btn: Button, variant: String) -> void:
 
 
 ## Re-margins a themed button's normal/hover/pressed/disabled faces in place.
+##
+## ISSUE #254 (retest 3): THIS IS WHY THE CHIPS NEVER TURNED PINK. It clears its
+## own overrides before reading, and it MUST.
+##
+## get_theme_stylebox() checks local stylebox OVERRIDES before it looks at the
+## button's theme. This function writes overrides. So the first call baked the
+## secondary (white) faces in as overrides, and every later call - including the
+## one right after style_button() had just pointed the button at ui_selected -
+## read those same stale white boxes straight back out and re-wrote them. The
+## theme swap happened, was correct, and was invisible: an override always wins.
+##
+## The buttons that DID go pink were the ones that never came through here with a
+## stale override on them - _set_button_locked_on writes a fresh StyleBoxFlat of
+## its own, which is exactly why the user saw the forced-on buttons work and
+## nothing else.
 func _tighten(btn: Button, pad_x: float, pad_y: float) -> void:
 	for state in ["normal", "hover", "pressed", "disabled"]:
+		# Drop the previous override FIRST, so the lookup below falls through to
+		# whatever theme the button is pointing at right now.
+		btn.remove_theme_stylebox_override(state)
 		var box: StyleBox = btn.get_theme_stylebox(state, "Button")
 		if box == null:
 			continue
@@ -961,13 +981,34 @@ func _make_button(text: String, x: float, y: float, w: float, font_size: int) ->
 ## Paints a type chip in its energy colour. The selected state keeps the colour
 ## and gains the accent border, so the row still reads as a colour key when a
 ## type is chosen.
+## ISSUE #254 (retest 3): the idle type chip, as a fraction of the real type
+## colour. Saturation 0.8 is "20% more desaturated than it was"; the alpha is
+## unchanged at 0.45. A SELECTED chip is neither - it is the type colour at full
+## saturation and full opacity. Both TWEAKABLE.
+const CHIP_IDLE_SAT   := 0.8
+const CHIP_IDLE_ALPHA := 0.45
+
 func _tint_type_chip(chip: Control, type_key: String, selected: bool) -> void:
 	if not (chip is Button):
 		return
 	var b := chip as Button
+	# ISSUE #254 (retest 3): THE TYPE CHIPS ARE THE ONE EXCEPTION AND STAY THEIR
+	# OWN COLOUR. Retest 2 painted them pink along with everything else, which was
+	# wrong: this row is a colour KEY, and a key that turns every entry the same
+	# colour when picked has stopped being one. So the type is what changes state
+	# here - it goes from a washed-out hint of itself to the full article.
+	#
+	#   idle      CHIP_IDLE_SAT of the type colour, at CHIP_IDLE_ALPHA
+	#   selected  the type colour exactly - full saturation, fully opaque
 	var fill := UITheme.energy_colour(type_key.capitalize())
+	var idle := fill
+	idle.s = fill.s * CHIP_IDLE_SAT      # HSV saturation, so the hue is untouched
+	idle.a = CHIP_IDLE_ALPHA
+	var on := fill
+	on.s = 1.0
+	on.a = 1.0
 	var sb := StyleBoxFlat.new()
-	sb.bg_color = fill if selected else Color(fill.r, fill.g, fill.b, 0.45)
+	sb.bg_color = on if selected else idle
 	sb.set_corner_radius_all(UITheme.mi("corner_radius"))
 	sb.anti_aliasing = true
 	sb.content_margin_left = CHIP_PAD_X
@@ -1014,8 +1055,11 @@ func _set_icon_selected(icon: Control, selected: bool, force: bool = false) -> v
 	# doing nothing the colour was not doing better. Options buttons behave exactly
 	# this way and always have.
 	if selected:
+		var skin := "<not a button>"
+		if icon is Button and (icon as Button).theme != null:
+			skin = (icon as Button).theme.resource_path
 		print("ISSUE #254 FIX ACTIVE: chip '", icon.get_meta("stem", "?"),
-			"' selected - skin swap, no pulse")
+			"' selected - skin ", skin, ", stale style overrides cleared, no pulse")
 
 
 func _set_icon_blocked(icon: Control, blocked: bool, selected: bool) -> void:
@@ -1043,14 +1087,20 @@ func _set_button_selected(btn: Button, selected: bool, selected_theme: Theme) ->
 	_tighten(btn, 10.0, BTN_PAD_Y)   # ISSUE #178 — the theme swap restores full padding
 
 
-## A card type button that is forced on by another row's selection: it stays green (so it still
-## reads as selected) but can't be clicked, because it isn't the player's choice to make while the
-## row that implied it still has something in it.
+## A card type button that is forced on by another row's selection: it stays in the
+## SELECTED colour (so it still reads as selected) but can't be clicked, because it
+## isn't the player's choice to make while the row that implied it still has
+## something in it.
+##
+## ISSUE #254 (retest): the fill was a hardcoded green, the one control on this
+## screen that never went pink. It is UIKit.selection_colour() now — the same
+## pink the Options buttons use, from the same token, so a colour-scheme change
+## carries it.
 func _set_button_locked_on(btn: Button) -> void:
 	btn.theme = _theme_green
 	btn.disabled = true
 	var sb := StyleBoxFlat.new()
-	sb.bg_color = Color(0.29, 0.71, 0.24, 1.0)
+	sb.bg_color = UIKit.selection_colour()
 	# ISSUE #184 / #178: match the pill radius and the tightened row height.
 	sb.set_corner_radius_all(UITheme.mi("btn_radius"))
 	sb.anti_aliasing = true

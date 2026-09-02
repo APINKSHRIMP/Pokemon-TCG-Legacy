@@ -24930,18 +24930,19 @@ func execute_ex10_surprise_shuffle(attacker: card_object, defender: card_object,
 	# Order matters. The card is erased from the hand and the hand redrawn BEFORE
 	# the flight (#249), so it is gone from where it was before it starts moving,
 	# and the deck-shuffle animation plays after it lands.
-	# ISSUE #158 (retest): WHEN YOU CHOOSE IT, IT STAYS HIDDEN.
+	# ISSUE #158 (retest 2): THE PICK IS BLIND, THE RESULT IS NOT — REVERTED to
+	# showing the card on BOTH sides.
 	#
-	# The printed text does say "look at the card you chose", but naming it - and
-	# holding it up full screen - hands the player the information the blind pick
-	# exists to withhold, and knowing what you took makes the next few turns a
-	# different game. So the player's own pick is never revealed: no card on
-	# screen, no name in the line.
+	# Retest 1 hid the player's own pick on the reasoning that naming it handed
+	# back the information the blind pick exists to withhold. That was wrong about
+	# the card: it says "choose 1 card from your opponent's hand WITHOUT LOOKING,
+	# look at the card you chose" — the concealment is entirely in the CHOOSING,
+	# and looking afterwards is the printed reward for it. So the card is held up
+	# FULL SCREEN, exactly like a played Trainer, whichever side chose it.
 	#
-	# The CPU's pick is the opposite case and still gets the full-screen show: the
-	# card comes out of the PLAYER'S OWN hand, so they already know every card it
-	# could have been, and "a card was shuffled" told them nothing about what they
-	# had just lost.
+	# The CPU's pick was always shown and stays shown: that card comes out of the
+	# PLAYER'S OWN hand, so "a card was shuffled" told them nothing about what
+	# they had just lost.
 	var picked_name: String = picked.metadata.get("name", "CARD").to_upper()
 	var owner_is_opponent := not is_opponent
 	if is_opponent:
@@ -24949,7 +24950,8 @@ func execute_ex10_surprise_shuffle(attacker: card_object, defender: card_object,
 			"YOUR " + picked_name + " WAS SHUFFLED INTO YOUR DECK!")
 		if main._should_bail(): return
 	else:
-		await main.show_message("THE CARD WAS SHUFFLED INTO YOUR OPPONENT'S DECK!")
+		await main.trainer_effects.show_card_with_message(picked,
+			"YOUR OPPONENT'S " + picked_name + " WAS SHUFFLED INTO THEIR DECK!")
 		if main._should_bail(): return
 
 	var hand_node = main.player_hand_container if owner_is_opponent else main.opponent_hand_container
@@ -24967,7 +24969,7 @@ func execute_ex10_surprise_shuffle(attacker: card_object, defender: card_object,
 	if main._should_bail(): return
 	print("ISSUE #158 FIX ACTIVE: SURPRISE shuffled ", picked_name,
 		" into the ", "player" if owner_is_opponent else "opponent",
-		"'s deck (revealed to the player: ", is_opponent, ")")
+		"'s deck - shown full screen on both sides")
 
 # Copy (Sudowoodo): copy one of the Defender's attacks, but only if the attacker can pay its Energy
 # cost. Self-finishing (execute_copied_attack calls _attack_finish once); callers must not finish again.

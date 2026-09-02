@@ -268,13 +268,18 @@ const METRICS := {
 
 	# Damage counters — ONE block per 10 HP, never a continuous bar, because
 	# attacks and effects key off counter counts.
-	"dmg_active_w":      16.0,
+	# ISSUE #267: the active row is sized to MATCH THE ATTACK BUTTONS under it.
+	# A 120HP Pokemon shows all 12 blocks, so 12*w + 11*gap has to come to
+	# Main_Match_Core_Gameplay_Script.ACTION_PANEL_W (284): 12*20 + 11*4 = 284.
+	# Width only — the height is what reads as a damage counter and it is unchanged.
+	"dmg_active_w":      20.0,
 	"dmg_active_h":      27.0,
 	"dmg_active_gap":    4.0,
 	# ISSUE #234: bench counters -10% across the board (blocks and gap alike).
-	"dmg_bench_w":       8.64,
-	"dmg_bench_h":       14.4,
-	"dmg_bench_gap":     2.7,
+	# ISSUE #268: -20% again, blocks and gap alike (8.64x14.4/2.7 -> 6.91x11.52/2.16).
+	"dmg_bench_w":       6.912,
+	"dmg_bench_h":       11.52,
+	"dmg_bench_gap":     2.16,
 	"dmg_bench_drop":    22.0,    # below the card, centred
 
 	# Layout

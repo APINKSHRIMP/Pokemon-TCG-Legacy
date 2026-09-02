@@ -572,7 +572,6 @@ func _step_to_current_set() -> void:
 		next_btn.disabled = false
 		prev_btn.disabled = false
 	_stepping = false
-	print("ISSUE #253 FIX ACTIVE: set stepper unlocked on ", unlocked_packs[current_pack_idx])
 
 
 # ─── Cancel / Escape ─────────────────────────────────────────────────────────

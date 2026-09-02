@@ -137,9 +137,14 @@ const LIST_BUILD_BATCH := 54
 ## the panel border on both sides, because a PanelContainer has no padding of its
 ## own and the rows were parented straight into it. The inset is a MarginContainer
 ## now (see _build_sale_panel) and the box grew to pay for it.
-const PANEL_X       := 1652.0
+## ISSUE #209 (retest 2): 10px wider again, and PANEL_X is DERIVED so the gap to
+## the right of the box (box -> screen edge) is exactly the gap to its left (last
+## card column -> box). Hardcoding x meant every change to LIST_COLUMNS or PANEL_W
+## silently unbalanced it; now the two gaps cannot drift apart.
+const PANEL_W       := 258.0
+const LIST_RIGHT_EDGE := LIST_SCROLL_POS.x + LIST_SCROLL_SIZE.x
+const PANEL_X       := LIST_RIGHT_EDGE + (UIKit.SCREEN_W - LIST_RIGHT_EDGE - PANEL_W) * 0.5
 const PANEL_Y       := 140.0
-const PANEL_W       := 248.0
 const PANEL_PAD     := 18.0
 const PANEL_ROW_GAP := 14
 
@@ -183,10 +188,13 @@ const TOTAL_LABEL_FADE_TIME := 1.8
 ## depends on how many digits the balance has — there is no fixed x to hardcode.
 ## _wallet_drop_anchor() reads the chip's live rect; this is only the fallback for
 ## the frame before the chip exists.
-const TOTAL_LABEL_ANCHOR := Vector2(1750, 132)
+const TOTAL_LABEL_ANCHOR := Vector2(1780, 132)
 ## Clearance between the bottom of the wallet pill and the top of the falling
 ## label, so the two never overlap on the first frame. TWEAKABLE.
 const TOTAL_LABEL_PILL_GAP := 10.0
+## ISSUE #208 (retest 3): 10 -> 30. The figure sits 30px right of the pill's own
+## centre. TWEAKABLE.
+const TOTAL_LABEL_X_NUDGE := 30.0
 
 
 # ─── State ───────────────────────────────────────────────────────────────────
@@ -344,7 +352,6 @@ func _build_chrome() -> void:
 	for b in [sell_common_btn, sell_uncommon_btn, sell_rare_btn, sell_all_btn]:
 		b.theme = null
 		UIKit.style_button(b, "primary")
-	print("ISSUE #255 FIX ACTIVE: all four bulk-sell buttons are primary and all three rarities say 'only'")
 
 	# Same for the per-tier rate labels.
 	for l in [common_price_label, uncommon_price_label, rare_price_label]:
@@ -954,7 +961,9 @@ func _wallet_drop_anchor() -> Vector2:
 	var pill := wallet_chip.get_global_rect()
 	if pill.size.x <= 1.0:
 		return TOTAL_LABEL_ANCHOR
-	return Vector2(pill.position.x + pill.size.x * 0.5,
+	print("ISSUE #208 FIX ACTIVE: payout falls from pill centre x ",
+		pill.position.x + pill.size.x * 0.5, " + nudge ", TOTAL_LABEL_X_NUDGE)
+	return Vector2(pill.position.x + pill.size.x * 0.5 + TOTAL_LABEL_X_NUDGE,
 		pill.position.y + pill.size.y + TOTAL_LABEL_PILL_GAP + TOTAL_LABEL_SIZE.y * 0.5)
 
 
