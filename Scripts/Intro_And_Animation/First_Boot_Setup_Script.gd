@@ -19,7 +19,6 @@ var _name_box   : LineEdit
 var _dob_box    : LineEdit
 var _save_btn   : Button
 var _grid       : GridContainer
-var _bgm_player : AudioStreamPlayer
 
 # ─── Lifecycle ───────────────────────────────────────────────────────────────
 
@@ -31,17 +30,16 @@ func _ready() -> void:
 	await _load_sprites()
 
 
+# ISSUE #210: the PTCG main-menu theme that used to play in the Gym Plaza. The two
+# swapped: the plaza now shares the Gym Challenge Hall track it adjoins.
+#
+# Routed through SoundManagerScript rather than a local player ON PURPOSE. The
+# splash starts this same track the moment its menu buttons appear, and play_bgm()
+# no-ops when the requested path is already playing — so pressing New Game there
+# carries the music across the scene change unbroken. A local AudioStreamPlayer
+# would restart it from the top and make the transition audible.
 func _play_bgm() -> void:
-	_bgm_player = AudioStreamPlayer.new()
-	add_child(_bgm_player)
-	# ISSUE #210: the PTCG main-menu theme that used to play in the Gym Plaza. The
-	# two swapped: the plaza now shares the Gym Challenge Hall track it adjoins.
-	var stream = load(SoundManagerScript.BGM_GYM_PLAZA)
-	if stream:
-		_bgm_player.stream = stream
-		_bgm_player.bus = SoundManagerScript.MUSIC_BUS
-		stream.loop = true
-		_bgm_player.play()
+	SoundManagerScript.play_bgm(SoundManagerScript.BGM_STARTING_MENU)
 
 
 func _fade_in() -> void:
@@ -288,7 +286,7 @@ func _refresh_save_btn() -> void:
 
 func _on_save_pressed() -> void:
 	_save_btn.disabled = true
-	_bgm_player.stop()
+	SoundManagerScript.stop_bgm()
 	SoundManagerScript.play_sfx(SoundManagerScript.SFX_gamemode_select)
 
 	var data_path := GameState.PLAYER_CURRENT_DATA_PATH

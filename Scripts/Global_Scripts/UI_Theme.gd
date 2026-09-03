@@ -266,6 +266,50 @@ const CASH_PILL := {
 	"fg":  Color("3A2410"),
 }
 
+# ─── Boot splash ─────────────────────────────────────────────────────────────
+# The splash is the one screen with no chrome bars, no panels and its own type
+# scale, so its handful of colours live here rather than being invented at the
+# call site. Everything it can share it already does: the field comes from the
+# theme block above, and Continue Game is the btn_primary_* gradient the rest of
+# the game's confirm buttons use.
+#
+# The three that are genuinely its own are the mark's four gradient stops, the
+# rule's near colour, and New Game's fill — which is white at 8%, HALF the
+# game's btn_secondary, because a full-strength secondary button next to the
+# primary reads as two equal choices and the splash wants one.
+const SPLASH := {
+	# The mark. Upper arm runs top-left to bottom-right, lower arm top-right to
+	# bottom-left, so the pink is shared and lands in the middle of the lockup.
+	"mark_upper_a": Color("7B3FD4"),
+	"mark_upper_b": Color("E8459B"),
+	"mark_lower_a": Color("E8459B"),
+	"mark_lower_b": Color("F5793B"),
+
+	# The rule. One near colour at the TCG cap, then each segment fades out
+	# through its own side's accent at 35%.
+	"rule_near":  Color("FF6FBE"),
+	"rule_mid_l": Color(0.910, 0.271, 0.608, 0.35),   # E8459B @35%
+	"rule_mid_r": Color(0.961, 0.475, 0.231, 0.35),   # F5793B @35%
+
+	# The wordmark. TCG is a shade off white so it sits behind the two big words
+	# rather than competing with them.
+	"wordmark": Color("FFFFFF"),
+	"tcg":      Color("F0E4FA"),
+
+	# New Game's face and label. Continue Game takes btn_primary_top/bot/fg.
+	"new_game_top": Color(1.0, 1.0, 1.0, 0.08),
+	"new_game_bot": Color(1.0, 1.0, 1.0, 0.08),
+	"new_game_fg":  Color("D9CBEC"),
+
+	# Hover and press, composited OVER a face. Same values the baked button art
+	# uses, so the splash buttons react like every other button in the game.
+	"btn_hover": Color(1.0, 1.0, 1.0, 0.10),
+	"btn_press": Color(0.0, 0.0, 0.0, 0.18),
+
+	# The hand-off fade.
+	"fade": Color("000000"),
+}
+
 # ─── Type scale ──────────────────────────────────────────────────────────────
 # Sizes are px at 1920x1080 before ui_scale. "face" picks the file; "track" is
 # letter-spacing in em; "upper" records whether the role is authored in caps.
@@ -471,6 +515,11 @@ func msgbox_col(key: String) -> Color:
 ## Shop cash pill — "top", "bot", "fg".
 func cash_pill_col(key: String) -> Color:
 	return CASH_PILL.get(key, Color.MAGENTA)
+
+
+## Boot splash chrome — see the SPLASH block for the key list.
+func splash_col(key: String) -> Color:
+	return SPLASH.get(key, Color.MAGENTA)
 
 # ─── Type ────────────────────────────────────────────────────────────────────
 

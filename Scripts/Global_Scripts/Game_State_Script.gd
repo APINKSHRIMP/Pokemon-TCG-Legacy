@@ -726,6 +726,63 @@ func _copy_seed_folder(seed_folder: String, dest_folder: String):
 	dir.list_dir_end()
 
 # ============================================================
+# NEW GAME — wipe user:// back to the shipped seed
+# ============================================================
+# Behind the splash's New Game button, and behind a yes/no confirm. Nothing else
+# in the game calls it.
+#
+# ── WHAT IT DELETES, AND THE ONE THING IT DOES NOT ───────────
+# Player_Game_Progress.json, Player_Current_Data.json and everything inside
+# Player_Owned_Cards/ go. **Player_Decks/ SURVIVES** — deck building is hours of
+# work that has nothing to do with campaign progress, and losing it to a New Game
+# would be the single most expensive mistake this button could make. If you ever
+# find yourself adding PLAYER_DECKS_FOLDER to the list below, don't.
+#
+# ── WHY IT RELOADS RATHER THAN JUST DELETING ─────────────────
+# `progress` is held in memory for the whole session and save_progress() writes
+# the WHOLE dictionary. Deleting the file without reloading would leave the old
+# save sitting in RAM, and the very next add_cash() would write all of it
+# straight back — see the save-file invariant note above. So: delete, re-copy the
+# res:// seeds, then re-read everything the boot path reads.
+func reset_new_game() -> void:
+	for path in [PROGRESS_PATH, PLAYER_CURRENT_DATA_PATH]:
+		if FileAccess.file_exists(path):
+			DirAccess.remove_absolute(path)
+
+	_delete_folder_contents(OWNED_CARDS_FOLDER)
+
+	# Re-seed and re-read, in the same order _ready() does it.
+	_ensure_user_data_exists()
+	load_progress()
+	_load_animation_speed()
+	_load_walking_speed()
+	_load_rule_settings()
+	_load_audio_volumes()
+
+	# Session state that outlived the file it described.
+	clear_menu_return_state()
+	player_position = Vector2.ZERO
+	last_interior_scene = ""
+	last_player_direction = "down"
+
+
+## Removes every file in a user:// folder, leaving the folder itself in place so
+## the seed copy has somewhere to land. Sub-folders are left alone; nothing under
+## Player_Owned_Cards/ nests.
+func _delete_folder_contents(folder: String) -> void:
+	var dir := DirAccess.open(folder)
+	if dir == null:
+		return
+	dir.list_dir_begin()
+	var fname := dir.get_next()
+	while fname != "":
+		if not dir.current_is_dir():
+			DirAccess.remove_absolute(folder + fname)
+		fname = dir.get_next()
+	dir.list_dir_end()
+
+
+# ============================================================
 # PROGRESS FILE I/O
 # ============================================================
 

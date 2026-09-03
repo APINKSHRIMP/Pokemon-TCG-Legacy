@@ -31,7 +31,8 @@ const TREE_VERT_NIGHT     = preload("res://Image_Assets/Map_Objects/Forest/TreeL
 
 func get_scene_path() -> String:     return SCENE_PATH
 ## ISSUE #210: the plaza and the hall behind it are one place, so they share a
-## track. BGM_GYM_PLAZA (the PTCG main-menu theme) moved to the first-launch setup
+## track. BGM_STARTING_MENU (the PTCG main-menu theme) moved to the boot splash and
+## the first-launch setup
 ## screen, which is the only other place a menu theme belongs.
 func get_bgm_path() -> String:       return SoundManagerScript.BGM_GYM_CHALLENGE_HALL
 func get_default_spawn() -> Vector2: return DEFAULT_SPAWN_POSITION
