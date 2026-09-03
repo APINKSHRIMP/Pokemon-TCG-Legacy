@@ -285,7 +285,6 @@ var forfeit_dialog: CanvasLayer = null
 # energies and tools attached to them, the top of a discard pile, and the cards laid out
 # by a selection screen. Face-down cards (the opponent's hand, both sets of prize cards)
 # are refused, and stay refused until some effect turns one face up.
-const ZOOM_BACKDROP_ALPHA: float = 0.95        # how much of the board the preview hides behind it
 var zoom_overlay: CanvasLayer = null
 var is_zoomed: bool = false
 var zoom_held: bool = false                    # the key is down, so the preview tracks the mouse
@@ -9964,15 +9963,8 @@ func _show_card_zoom(card_node: CardDisplay) -> void:
 	zoom_overlay.layer = 150
 	add_child(zoom_overlay)
 
-	var backdrop := ColorRect.new()
-	backdrop.color = Color(0, 0, 0, ZOOM_BACKDROP_ALPHA)
-	backdrop.anchor_right = 1.0
-	backdrop.anchor_bottom = 1.0
-	# Must never absorb hover, or gui_get_hovered_control() would report the backdrop
-	# instead of the board underneath and the preview would freeze on its first card.
-	backdrop.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	zoom_overlay.add_child(backdrop)
-
+	# No backdrop: CardDetailPanel paints its own opaque scrolling field, and a
+	# black rect added here would be a sibling at z 0 over that field at z -100.
 	detail_panel = CardDetailPanel.new()
 	zoom_overlay.add_child(detail_panel)
 	detail_panel.show_card(uid)

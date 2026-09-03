@@ -3108,9 +3108,10 @@ func _get_hovered_card() -> TextureRect:
 
 ## Shows the enlarged view of the given card.
 ## Creates a CanvasLayer overlay (layer 150, above everything including the
-## load popup at layer 100) with a dimmed background and a CardDetailPanel: the
-## card art down the left-hand half, and every piece of the card's data broken
-## into its own message box down the right. See Card_Detail_Panel.gd.
+## load popup at layer 100) holding a CardDetailPanel: the card art down the
+## left-hand half, and every piece of the card's data broken into its own
+## message box down the right. The panel paints its own scrolling field, so
+## there is no backdrop here to paint over it. See Card_Detail_Panel.gd.
 func _show_zoom(card_rect: TextureRect) -> void:
 	var card_id : String = card_rect.get_meta("card_id")
 	zoomed_card = card_rect
@@ -3128,16 +3129,6 @@ func _show_zoom(card_rect: TextureRect) -> void:
 	zoom_overlay = CanvasLayer.new()
 	zoom_overlay.layer = 150
 	add_child(zoom_overlay)
-
-	# Semi-transparent black backdrop
-	var backdrop := ColorRect.new()
-	backdrop.color = Color(0, 0, 0, 0.95)
-	backdrop.anchor_right  = 1.0
-	backdrop.anchor_bottom = 1.0
-	# ISSUE #13: the overlay must never absorb hover, or gui_get_hovered_control() would report
-	# the backdrop instead of the card grid underneath and the live preview would flicker off.
-	backdrop.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	zoom_overlay.add_child(backdrop)
 
 	detail_panel = CardDetailPanel.new()
 	zoom_overlay.add_child(detail_panel)

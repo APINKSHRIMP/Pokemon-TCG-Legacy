@@ -4,7 +4,9 @@ extends Control
 # ============================================================
 # CARD DETAIL PANEL — the hold-Shift card preview
 # ============================================================
-# One Control that fills a 1920x1080 reference screen and draws:
+# One Control that fills a 1920x1080 reference screen. It draws its own
+# scrolling chevron field (UIKit.add_field) as the ground, then the card, then
+# a stack of glass message boxes, so a call site adds this and nothing else:
 #
 #   +--------------------+  +--------------------------------+
 #   |                    |  | NAME                  120HP (R)|  <- header
@@ -23,9 +25,15 @@ extends Control
 #   |                    |  | (rar) RARITY / Illus. ARTIST   |
 #   +--------------------+  +--------------------------------+
 #
-# Used by the deck builder and by a match. The sleeve, coin and costume
-# previews are deliberately NOT routed through here — they show one image and
-# have no card data behind them.
+# Used by the deck builder, the card buyer and a match. The sleeve, coin and
+# costume previews are deliberately NOT routed through here — they show one
+# image and have no card data behind them.
+#
+# ── THE BOXES ARE MESSAGE BOXES ────────────────────
+# Every box is UI_Dialogue_Panel in its character variant, exactly as an
+# overworld dialogue box is: translucent dark glass, a white hairline round it,
+# and the accent on the LEFT EDGE ONLY. The accent is the card's type colour and
+# every box in the stack carries it, so the type reads down the whole column.
 #
 # USAGE
 #   var panel := CardDetailPanel.new()
@@ -45,8 +53,9 @@ extends Control
 # widths are purely additive and the measurement is exact rather than close.
 # ============================================================
 
-const SHADER_PATH := "res://Scripts/Shaders/Rounded_Message_Panel.gdshader"
-const FONT_PATH   := "res://UI_Themes/ChakraPetch-Medium.ttf"
+const SHADER_PATH    := "res://Scripts/Shaders/UI_Dialogue_Panel.gdshader"
+const FONT_PATH      := "res://UI_Themes/ChakraPetch-Medium.ttf"
+const FONT_BOLD_PATH := "res://UI_Themes/ChakraPetch-SemiBold.ttf"
 
 const ENERGY_ICON_DIR  := "res://Image_Assets/Icons/Energy_Icons/"
 const SUBTYPE_ICON_DIR := "res://Image_Assets/Icons/Subtype_Icons/"
@@ -81,14 +90,40 @@ const CARD_TO_PANEL_GAP   : float = 26.0   # card -> first box
 const PANEL_MARGIN_RIGHT  : float = 22.0   # last box -> screen edge
 
 const BOX_GAP    : float = 9.0    # vertical gap between one box and the next
-const BOX_PAD_X  : float = 44.0   # box edge -> content; must clear the edge glow
-const BOX_PAD_Y  : float = 17.0   # white space above and below a box's content
-const CORNER_R   : float = 34.0
+const BOX_PAD_X  : float = 44.0   # box edge -> content
+const BOX_PAD_Y  : float = 17.0   # clear space above and below a box's content
+const CORNER_R   : float = 18.0   # the message box's radius
 
-# Border glow, matching DynamicMessageBox: a wide band down the sides, a
-# hairline along the top and bottom.
-const EDGE_SOLID : Vector2 = Vector2(26.0, 2.0)
-const EDGE_FADE  : Vector2 = Vector2(12.0, 4.0)
+# ── The glass box ──────────────────────────────────────
+# The same component as a message box: UI_Dialogue_Panel in its CHARACTER
+# variant — a translucent dark fill, a white hairline all the way round, and the
+# colour on the LEFT EDGE ONLY. Here the spine takes the card's type colour
+# rather than a speaker's, and EVERY box in the stack carries it, so the type
+# reads down the whole column rather than off the header alone.
+#
+# The shader draws its shadow and glow OUTSIDE the panel, so the ColorRect is
+# inflated by SHADOW_PAD on all four sides and the content is parented to a
+# separate, exactly-sized Control on top — which is why BOX_PAD_X is still
+# measured from the box's real edge and no layout number below had to move.
+#
+# Boxes sit BOX_GAP apart, which is nothing like a message box's clear screen
+# edge, so the shadow and the glow are much smaller here: a message box's 36px
+# blur would smear onto the box under it.
+# The ramp below was pitched against a WHITE box, so it runs light to dark and
+# its bottom end — Darkness at #2b2b31 — is invisible on the glass. Rather than
+# re-pitching nine colours, any spine darker than this is lifted to it and every
+# other one is left exactly as authored. TWEAKABLE: raise it and Metal and the
+# special-energy grey brighten too; lower it and Darkness starts to disappear.
+const SPINE_MIN_V : float = 0.46   # minimum HSV value for a spine on the glass
+
+const SHADOW_PAD  : float = 26.0   # rect inflation; must clear SHADOW_DY + blur
+const SPINE_W     : float = 8.0    # the accent bar, left edge only
+const BORDER_W    : float = 1.0
+const SHADOW_DY   : float = 4.0
+const SHADOW_BLUR : float = 14.0
+const GLOW_BLUR   : float = 24.0
+const GLOW_SPREAD : float = 4.0    # blur/2 - spread = 8px of halo outside the box
+const GLOW_ALPHA  : float = 0.30
 
 # Font sizes. NAME/SUBTYPE are one line each and never shrink; the rest come
 # down together if a card somehow can't fit (see SHRINK_FLOOR).
@@ -132,7 +167,7 @@ const META_ROW_GAP  : float = 6.0
 # sensible size and settle on two, which is what the design asks for.
 const FONT_RULE_MIN : int = 15
 
-# ── Border colour per card ───────────────────────────────────
+# ── Spine colour per card ────────────────────────────────────
 # Pokemon and basic energy take their type's colour. Everything else lands on
 # one of five greys: Colorless is the lightest, then Trainers, then the special
 # energies with no type in their name; Metal is a grey nudged toward gold and
@@ -150,6 +185,18 @@ const TYPE_COLORS : Dictionary = {
 }
 const COLOR_TRAINER        : Color = Color("#9a9aa6")   # grey 2
 const COLOR_SPECIAL_ENERGY : Color = Color("#5c5c66")   # grey 3
+
+# ── Text on the glass ──────────────────────────────────
+# Two tiers, both read from UITheme so a theme change carries: everything the
+# card SAYS in field_fg, and everything that is only labelling it — the subtype
+# line, the printed reminders, the weakness captions and the set / rarity /
+# illustrator rows — in field_mute. The constants below are the fallback for the
+# case where the autoload is somehow not up yet.
+const TEXT_FG_FALLBACK   : Color = Color("F4EDFA")
+const TEXT_MUTE_FALLBACK : Color = Color("C9BBE0")
+const GLASS_FALLBACK     : Color = Color(0.082, 0.055, 0.137, 0.94)
+const LINE_FALLBACK      : Color = Color(1.0, 1.0, 1.0, 0.15)
+const SHADOW_FALLBACK    : Color = Color(0.0, 0.0, 0.0, 0.60)
 
 # Name fragments that give a special energy a colour, tried IN THIS ORDER so
 # the FIRST type mentioned wins ("Dark Metal Energy" reads as Darkness).
@@ -175,18 +222,24 @@ const ENERGY_NAME_COLORS : Array = [
 # the COLOUR holo icon, which reads as "rarer than the plain holo symbol".
 # A card with no rarity key at all is either a Southern Islands card or a basic
 # energy (which never reaches here — it has no meta box at all).
+#
+# The white_icon_* art is the inverted cut of the plain icon_* symbols, made for
+# this screen: the originals are solid BLACK shapes drawn for a white box and
+# they simply are not there on the glass. The colour holo symbol is real
+# artwork, is perfectly visible as it is, and is the ONLY thing separating the
+# four rarest tiers from a plain Holo Rare — so it keeps its own colours.
 const RARITY_TABLE : Dictionary = {
-	"Common":         { "icon": "icon_common",        "label": "Common" },
-	"Uncommon":       { "icon": "icon_uncommon",      "label": "Uncommon" },
-	"Rare":           { "icon": "icon_rare",          "label": "Rare" },
-	"Rare Holo":      { "icon": "icon_holorare",      "label": "Holo Rare" },
-	"Rare Holo EX":   { "icon": "color_icon_holorare","label": "Holo Rare EX" },
-	"Rare Holo Star": { "icon": "color_icon_holorare","label": "Holo Rare Star" },
-	"Rare Shining":   { "icon": "color_icon_holorare","label": "Shining Rare" },
-	"Rare Secret":    { "icon": "color_icon_holorare","label": "Secret Rare" },
-	"Promo":          { "icon": "icon_promo",         "label": "Promo" },
+	"Common":         { "icon": "white_icon_common",   "label": "Common" },
+	"Uncommon":       { "icon": "white_icon_uncommon", "label": "Uncommon" },
+	"Rare":           { "icon": "white_icon_rare",     "label": "Rare" },
+	"Rare Holo":      { "icon": "white_icon_holorare", "label": "Holo Rare" },
+	"Rare Holo EX":   { "icon": "color_icon_holorare", "label": "Holo Rare EX" },
+	"Rare Holo Star": { "icon": "color_icon_holorare", "label": "Holo Rare Star" },
+	"Rare Shining":   { "icon": "color_icon_holorare", "label": "Shining Rare" },
+	"Rare Secret":    { "icon": "color_icon_holorare", "label": "Secret Rare" },
+	"Promo":          { "icon": "white_icon_promo",    "label": "Promo" },
 }
-const RARITY_FALLBACK : Dictionary = { "icon": "icon_special", "label": "Special" }
+const RARITY_FALLBACK : Dictionary = { "icon": "white_icon_special", "label": "Special" }
 
 # ── Energy types, for the text -> icon substitution ──────────
 # Longest first so the alternation in the regex can't stop early inside a
@@ -253,7 +306,9 @@ static var _card_cache     : Dictionary = {}   # card_uid -> card dict
 static var _tex_cache      : Dictionary = {}   # res path -> Texture2D (or null)
 static var _set_names      : Dictionary = {}   # set_id -> display name
 static var _base_font      : FontFile   = null
+static var _bold_base_font : FontFile   = null
 static var _font           : FontVariation = null
+static var _bold_font      : FontVariation = null
 static var _font_warned    : bool = false
 static var _type_run_regex : RegEx = null
 
@@ -273,6 +328,11 @@ func _init() -> void:
 	offset_right  = SCREEN_W
 	offset_bottom = SCREEN_H
 	mouse_filter  = Control.MOUSE_FILTER_IGNORE
+
+	# The striped, slowly scrolling field every other screen sits on. Added
+	# first and at UIKit.Z_FIELD, so it is the ground the preview is drawn on
+	# — which is why none of the three call sites needs a backdrop any more.
+	UIKit.add_field(self)
 
 	_card_image = TextureRect.new()
 	_card_image.expand_mode  = TextureRect.EXPAND_IGNORE_SIZE
@@ -370,11 +430,11 @@ static func card_metadata(card_uid: String) -> Dictionary:
 
 func _build(card: Dictionary) -> void:
 	var fit := measure_stack(card)
-	var border := _border_color(card)
+	var accent := _border_color(card)
 	var y := MARGIN_TOP
 	for m in fit["boxes"]:
 		var h := float(m["height"])
-		var box := _make_box(Vector2(panel_x0(), y), Vector2(panel_x1() - panel_x0(), h), border)
+		var box := _make_box(Vector2(panel_x0(), y), Vector2(panel_x1() - panel_x0(), h), accent)
 		_render_section(m, box)
 		y += h + BOX_GAP
 
@@ -483,10 +543,10 @@ func _measure(section: Dictionary, shrink: int) -> Dictionary:
 			var right_w := _header_right_width(card)
 			var name_size := _fit_text(String(card.get("name", "")),
 									   content_w - right_w - ICON_GAP * 2.0,
-									   FONT_NAME, FONT_NAME_MIN)
+									   FONT_NAME, FONT_NAME_MIN, true)
 			var subtype := _subtype_line(card)
 			var sub_size := _fit_text(subtype, content_w, FONT_SUBTYPE, FONT_SUBTYPE_MIN)
-			var name_h := _line_height(String(card.get("name", "")), name_size)
+			var name_h := _line_height(String(card.get("name", "")), name_size, true)
 			var right_h: float = TYPE_ICON if not _header_types(card).is_empty() else name_h
 			var sub_h := _line_height(subtype, sub_size)
 			m["name_size"] = name_size
@@ -518,8 +578,8 @@ func _measure(section: Dictionary, shrink: int) -> Dictionary:
 			# Poke-POWER / Poke-BODY pill on the left.
 			var title := _fit_text(String(ability.get("name", "")),
 								   _centred_room(content_w, _badge_width(ability), 0.0),
-								   maxi(FONT_SECTION - shrink, 14), FONT_TITLE_MIN)
-			var title_h := maxf(BADGE_H, _line_height(String(ability.get("name", "")), title))
+								   maxi(FONT_SECTION - shrink, 14), FONT_TITLE_MIN, true)
+			var title_h := maxf(BADGE_H, _line_height(String(ability.get("name", "")), title, true))
 			var h := BOX_PAD_Y + title_h
 			var text := String(ability.get("text", ""))
 			var lines3: Array = []
@@ -540,13 +600,13 @@ func _measure(section: Dictionary, shrink: int) -> Dictionary:
 			var cost_w := 0.0
 			if not cost.is_empty():
 				cost_w = float(cost.size()) * (COST_ICON + ICON_GAP)
-			var damage_w := _text_width(String(attack.get("damage", "")), damage_size)
+			var damage_w := _text_width(String(attack.get("damage", "")), damage_size, true)
 			var title2 := _fit_text(String(attack.get("name", "")),
 									_centred_room(content_w, cost_w, damage_w),
-									maxi(FONT_SECTION - shrink, 14), FONT_TITLE_MIN)
+									maxi(FONT_SECTION - shrink, 14), FONT_TITLE_MIN, true)
 			var title_h2 := maxf(COST_ICON if not cost.is_empty() else 0.0,
-								 _line_height(String(attack.get("name", "")), title2))
-			title_h2 = maxf(title_h2, _line_height("0", damage_size))
+								 _line_height(String(attack.get("name", "")), title2, true))
+			title_h2 = maxf(title_h2, _line_height("0", damage_size, true))
 			var h2 := BOX_PAD_Y + title_h2
 			var text2 := String(attack.get("text", ""))
 			var lines4: Array = []
@@ -586,10 +646,10 @@ func _measure(section: Dictionary, shrink: int) -> Dictionary:
 # RENDER
 # ══════════════════════════════════════════════════════════════════════════
 
-func _render_section(m: Dictionary, box: ColorRect) -> void:
+func _render_section(m: Dictionary, box: Control) -> void:
 	match String(m["kind"]):
 		"header":  _render_header(m, box)
-		"rule":    _render_text_only(m, box, int(m["size"]))
+		"rule":    _render_text_only(m, box, int(m["size"]), true)
 		"effect":  _render_text_only(m, box, int(m["size"]))
 		"ability": _render_ability(m, box)
 		"attack":  _render_attack(m, box)
@@ -597,7 +657,7 @@ func _render_section(m: Dictionary, box: ColorRect) -> void:
 		"meta":    _render_meta(m, box)
 
 
-func _render_header(m: Dictionary, box: ColorRect) -> void:
+func _render_header(m: Dictionary, box: Control) -> void:
 	var card: Dictionary = m["card"]
 	var x0 := BOX_PAD_X
 	var x1 := box.size.x - BOX_PAD_X
@@ -624,24 +684,24 @@ func _render_header(m: Dictionary, box: ColorRect) -> void:
 	var hp := String(card.get("hp", ""))
 	if hp != "":
 		var hp_text := hp + "HP"
-		var hp_w := _text_width(hp_text, name_size)
+		var hp_w := _text_width(hp_text, name_size, true)
 		_add_label(box, hp_text, Vector2(right_x - ICON_GAP - hp_w, BOX_PAD_Y),
-				   Vector2(hp_w, top_row_h), name_size, HORIZONTAL_ALIGNMENT_RIGHT)
+				   Vector2(hp_w, top_row_h), name_size, HORIZONTAL_ALIGNMENT_RIGHT, true)
 
 	_add_label(box, String(card.get("name", "")), Vector2(x0, BOX_PAD_Y),
-			   Vector2(x1 - x0, top_row_h), name_size, HORIZONTAL_ALIGNMENT_LEFT)
+			   Vector2(x1 - x0, top_row_h), name_size, HORIZONTAL_ALIGNMENT_LEFT, true)
 
 	_add_label(box, _subtype_line(card), Vector2(x0, BOX_PAD_Y + top_row_h),
 			   Vector2(x1 - x0, float(m["sub_h"])), int(m["sub_size"]),
-			   HORIZONTAL_ALIGNMENT_LEFT)
+			   HORIZONTAL_ALIGNMENT_LEFT, false, true)
 
 
-func _render_text_only(m: Dictionary, box: ColorRect, size: int) -> void:
+func _render_text_only(m: Dictionary, box: Control, size: int, muted: bool = false) -> void:
 	_add_rich(box, m["lines"], size, Vector2(BOX_PAD_X, BOX_PAD_Y),
-			  box.size.x - BOX_PAD_X * 2.0)
+			  box.size.x - BOX_PAD_X * 2.0, muted)
 
 
-func _render_ability(m: Dictionary, box: ColorRect) -> void:
+func _render_ability(m: Dictionary, box: Control) -> void:
 	var ability: Dictionary = m["ability"]
 	var title_h := float(m["title_h"])
 	var title_size := int(m["title_size"])
@@ -666,7 +726,7 @@ func _render_ability(m: Dictionary, box: ColorRect) -> void:
 				  box.size.x - BOX_PAD_X * 2.0)
 
 
-func _render_attack(m: Dictionary, box: ColorRect) -> void:
+func _render_attack(m: Dictionary, box: Control) -> void:
 	var attack: Dictionary = m["attack"]
 	var title_h := float(m["title_h"])
 
@@ -682,9 +742,9 @@ func _render_attack(m: Dictionary, box: ColorRect) -> void:
 	var damage := String(attack.get("damage", ""))
 	if damage != "":
 		var dsize := int(m["damage_size"])
-		var dw := _text_width(damage, dsize)
+		var dw := _text_width(damage, dsize, true)
 		_add_label(box, damage, Vector2(box.size.x - BOX_PAD_X - dw, BOX_PAD_Y),
-				   Vector2(dw, title_h), dsize, HORIZONTAL_ALIGNMENT_RIGHT)
+				   Vector2(dw, title_h), dsize, HORIZONTAL_ALIGNMENT_RIGHT, true)
 
 	_add_centred_title(box, String(attack.get("name", "")), int(m["title_size"]),
 					   BOX_PAD_Y, title_h)
@@ -695,7 +755,7 @@ func _render_attack(m: Dictionary, box: ColorRect) -> void:
 				  box.size.x - BOX_PAD_X * 2.0)
 
 
-func _render_wrr(m: Dictionary, box: ColorRect) -> void:
+func _render_wrr(m: Dictionary, box: Control) -> void:
 	var card: Dictionary = m["card"]
 	var cap := int(m["cap_size"])
 	var x0 := BOX_PAD_X
@@ -717,7 +777,7 @@ func _render_wrr(m: Dictionary, box: ColorRect) -> void:
 			"centre": left = (x0 + x1 - w) * 0.5
 			"right":  left = x1 - w
 		_add_label(box, label, Vector2(left, BOX_PAD_Y), Vector2(w, cap_h), cap,
-				   HORIZONTAL_ALIGNMENT_LEFT)
+				   HORIZONTAL_ALIGNMENT_LEFT, false, true)
 
 		# The icons sit centred under the CAPTION, not under the column, so a
 		# single icon lands on the caption's midpoint and a pair straddles it.
@@ -733,7 +793,7 @@ func _render_wrr(m: Dictionary, box: ColorRect) -> void:
 			ix += WRR_ICON + ICON_GAP
 
 
-func _render_meta(m: Dictionary, box: ColorRect) -> void:
+func _render_meta(m: Dictionary, box: Control) -> void:
 	var card: Dictionary = m["card"]
 	var size := int(m["meta_size"])
 	var row_h := float(m["row_h"])
@@ -742,7 +802,7 @@ func _render_meta(m: Dictionary, box: ColorRect) -> void:
 	var y := BOX_PAD_Y
 
 	var set_id := String(card.get("id", "")).split("-")[0]
-	var set_icon := _load_texture(SET_ICON_DIR + "icon_" + set_id + ".png")
+	var set_icon := _set_symbol(set_id)
 	if set_icon != null:
 		# Set symbols range from 41x21 to 128x128, so each one is fitted into a
 		# square cell with its aspect kept and centred in that cell.
@@ -751,7 +811,8 @@ func _render_meta(m: Dictionary, box: ColorRect) -> void:
 				  Vector2(BOX_PAD_X + (SET_ICON - fitted.x) * 0.5, y + (row_h - fitted.y) * 0.5),
 				  fitted)
 	_add_label(box, set_display_name(set_id), Vector2(text_x, y),
-			   Vector2(box.size.x - text_x - BOX_PAD_X, row_h), size, HORIZONTAL_ALIGNMENT_LEFT)
+			   Vector2(box.size.x - text_x - BOX_PAD_X, row_h), size,
+			   HORIZONTAL_ALIGNMENT_LEFT, false, true)
 	y += row_h + META_ROW_GAP
 
 	var rarity: Dictionary = RARITY_TABLE.get(String(card.get("rarity", "")), RARITY_FALLBACK)
@@ -761,14 +822,15 @@ func _render_meta(m: Dictionary, box: ColorRect) -> void:
 				  Vector2(BOX_PAD_X + (SET_ICON - RARITY_ICON) * 0.5, y + (rarity_row_h - RARITY_ICON) * 0.5),
 				  Vector2(RARITY_ICON, RARITY_ICON))
 	_add_label(box, String(rarity["label"]), Vector2(text_x, y),
-			   Vector2(box.size.x - text_x - BOX_PAD_X, rarity_row_h), size, HORIZONTAL_ALIGNMENT_LEFT)
+			   Vector2(box.size.x - text_x - BOX_PAD_X, rarity_row_h), size,
+			   HORIZONTAL_ALIGNMENT_LEFT, false, true)
 	y += rarity_row_h + META_ROW_GAP
 
 	var artist := String(card.get("artist", ""))
 	if artist != "":
 		var artist_row_h := maxf(RARITY_ICON, _line_height("X", size))
 		# The icon says "illustrator", so the word doesn't need to as well.
-		var illus_icon := _load_texture(SUBTYPE_ICON_DIR + "icon_illus.png")
+		var illus_icon := _load_texture(SUBTYPE_ICON_DIR + "white_icon_illus.png")
 		if illus_icon != null:
 			var fitted_illus := _fit(illus_icon.get_size(), Vector2(RARITY_ICON, RARITY_ICON))
 			_add_icon(box, illus_icon,
@@ -777,18 +839,32 @@ func _render_meta(m: Dictionary, box: ColorRect) -> void:
 					  fitted_illus)
 		_add_label(box, artist, Vector2(text_x, y),
 				   Vector2(box.size.x - text_x - BOX_PAD_X, artist_row_h), size,
-				   HORIZONTAL_ALIGNMENT_LEFT)
+				   HORIZONTAL_ALIGNMENT_LEFT, false, true)
+
+
+## A set symbol for the glass. Most of the symbols carry a white keyline and
+## read fine as they are; base1, base2 and base3 do not, so a white_icon_* cut
+## was made for those three — a straight palette invert of the original, which
+## on base1's opaque wordmark means a WHITE BLOCK WITH BLACK LETTERING, not
+## white lettering on nothing. Anything with a white cut uses it, so dropping a
+## new white_icon_<set>.png into Set_Icons/ is all it takes to fix another one.
+func _set_symbol(set_id: String) -> Texture2D:
+	var white := _load_texture(SET_ICON_DIR + "white_icon_" + set_id + ".png")
+	if white != null:
+		return white
+	return _load_texture(SET_ICON_DIR + "icon_" + set_id + ".png")
 
 
 ## An ability or attack name, centred on the TRUE middle of the box. That is
 ## deliberate: it means a one-energy attack sits nearer its damage and a
 ## five-energy attack sits nearer its cost, which reads as a real card. The
 ## only concession is a shrink if the name would actually collide with either.
-func _add_centred_title(box: ColorRect, text: String, size: int, y: float, row_h: float) -> void:
+func _add_centred_title(box: Control, text: String, size: int, y: float, row_h: float) -> void:
 	if text == "":
 		return
 	_add_label(box, text, Vector2(BOX_PAD_X, y),
-			   Vector2(box.size.x - BOX_PAD_X * 2.0, row_h), size, HORIZONTAL_ALIGNMENT_CENTER)
+			   Vector2(box.size.x - BOX_PAD_X * 2.0, row_h), size,
+			   HORIZONTAL_ALIGNMENT_CENTER, true)
 
 
 # ══════════════════════════════════════════════════════════════════════════
@@ -1139,12 +1215,12 @@ func _line_plain_text(line: Array) -> String:
 ## A line is taller when it carries a glyph Kenney doesn't have, because the
 ## fallback face has deeper metrics. Only delta, star, the Nidoran genders and
 ## the e-card Greek letters do that, so most lines are the plain height.
-func _line_height(text: String, font_size: int) -> float:
-	var base := _get_base_font()
+func _line_height(text: String, font_size: int, bold: bool = false) -> float:
+	var base := _get_bold_base_font() if bold else _get_base_font()
 	if base != null and text != "":
 		for i in text.length():
 			if not base.has_char(text.unicode_at(i)):
-				return _get_font().get_height(font_size)
+				return _face(bold).get_height(font_size)
 	if base != null:
 		return base.get_height(font_size)
 	return float(font_size) * 1.2
@@ -1169,11 +1245,12 @@ func _fit_rule_size(text: String, width: float, shrink: int) -> int:
 ## Largest size from `ceiling` down to `floor_size` at which `text` fits in
 ## `width`. Used for the three rows that have to share their line with
 ## something else, rather than for the whole stack's shrink-to-fit.
-func _fit_text(text: String, width: float, ceiling: int, floor_size: int) -> int:
+func _fit_text(text: String, width: float, ceiling: int, floor_size: int,
+			   bold: bool = false) -> int:
 	if text == "" or width <= 0.0:
 		return ceiling
 	var size := ceiling
-	while size > floor_size and _text_width(text, size) > width:
+	while size > floor_size and _text_width(text, size, bold) > width:
 		size -= 1
 	return size
 
@@ -1207,7 +1284,7 @@ func _header_right_width(card: Dictionary) -> float:
 		total += TYPE_ICON + ICON_GAP
 	var hp := String(card.get("hp", ""))
 	if hp != "":
-		total += _text_width(hp + "HP", FONT_HP) + ICON_GAP
+		total += _text_width(hp + "HP", FONT_HP, true) + ICON_GAP
 	return total
 
 
@@ -1217,40 +1294,74 @@ func _inline_icon_size(font_size: int) -> float:
 	return floorf(float(font_size) * INLINE_ICON_RATIO)
 
 
-func _text_width(text: String, font_size: int) -> float:
+func _text_width(text: String, font_size: int, bold: bool = false) -> float:
 	if text == "":
 		return 0.0
-	return _get_font().get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size).x
+	return _face(bold).get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size).x
 
 
 # ══════════════════════════════════════════════════════════════════════════
 # NODE FACTORIES
 # ══════════════════════════════════════════════════════════════════════════
 
-func _make_box(pos: Vector2, size: Vector2, border: Color) -> ColorRect:
+## A type colour lifted far enough out of the black to read as an accent on the
+## glass. Hue and saturation are untouched, so Darkness stays the same near-black
+## purple-grey it always was — just light enough to see.
+static func _spine_colour(accent: Color) -> Color:
+	if accent.v >= SPINE_MIN_V:
+		return accent
+	return Color.from_hsv(accent.h, accent.s, SPINE_MIN_V, accent.a)
+
+
+## One glass box: the shader on an inflated ColorRect, and an exactly-sized
+## Control on top of it for the content. The content Control is what every
+## _render_* function receives, so its (0,0) is the box's real top left.
+func _make_box(pos: Vector2, size: Vector2, accent: Color) -> Control:
 	var rect := ColorRect.new()
-	rect.position = pos
-	rect.size = size
+	rect.position = pos - Vector2(SHADOW_PAD, SHADOW_PAD)
+	rect.size = size + Vector2(SHADOW_PAD, SHADOW_PAD) * 2.0
+	rect.color = Color.WHITE          # the shader replaces this entirely
 	rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	rect.clip_contents = false
 
 	var mat := ShaderMaterial.new()
 	mat.shader = load(SHADER_PATH)
-	mat.set_shader_parameter("color_left",    border)
-	mat.set_shader_parameter("color_right",   border)
-	mat.set_shader_parameter("fill_color",    Color.WHITE)
-	mat.set_shader_parameter("rect_size",     size)
+	mat.set_shader_parameter("rect_size",     rect.size)
+	mat.set_shader_parameter("pad",           SHADOW_PAD)
 	mat.set_shader_parameter("corner_radius", CORNER_R)
-	mat.set_shader_parameter("edge_solid",    EDGE_SOLID)
-	mat.set_shader_parameter("edge_fade",     EDGE_FADE)
+	mat.set_shader_parameter("fill",          _msgbox_col("bg", GLASS_FALLBACK))
+	mat.set_shader_parameter("border_col",    _msgbox_col("border", LINE_FALLBACK))
+	mat.set_shader_parameter("border_w",      BORDER_W)
+	mat.set_shader_parameter("border_grad",   0.0)
+	mat.set_shader_parameter("top_strip_w",   0.0)
+	# The card's type colour, left edge only, on every box in the stack.
+	mat.set_shader_parameter("spine_w",       SPINE_W)
+	var spine := _spine_colour(accent)
+	mat.set_shader_parameter("spine_col",     spine)
+	mat.set_shader_parameter("glow_col",      Color(spine.r, spine.g, spine.b, GLOW_ALPHA))
+	mat.set_shader_parameter("glow_blur",     GLOW_BLUR)
+	mat.set_shader_parameter("glow_spread",   GLOW_SPREAD)
+	mat.set_shader_parameter("shadow_col",    _msgbox_col("shadow", SHADOW_FALLBACK))
+	mat.set_shader_parameter("shadow_dy",     SHADOW_DY)
+	mat.set_shader_parameter("shadow_blur",   SHADOW_BLUR)
 	rect.material = mat
-
 	_box_root.add_child(rect)
-	return rect
+
+	# The inflated rects overlap their neighbours, so the content has to sit in
+	# a band of its own — otherwise the next box's padding draws over this
+	# box's last line of text.
+	var content := Control.new()
+	content.position = pos
+	content.size = size
+	content.z_index = 1
+	content.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_box_root.add_child(content)
+	return content
 
 
 func _add_label(parent: Control, text: String, pos: Vector2, size: Vector2,
-				font_size: int, align: int) -> Label:
+				font_size: int, align: int, bold: bool = false,
+				muted: bool = false) -> Label:
 	var label := Label.new()
 	label.text = text
 	label.position = pos
@@ -1258,13 +1369,17 @@ func _add_label(parent: Control, text: String, pos: Vector2, size: Vector2,
 	label.horizontal_alignment = align
 	label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	label.add_theme_font_override("font", _get_font())
+	label.add_theme_font_override("font", _face(bold))
 	label.add_theme_font_size_override("font_size", font_size)
-	label.add_theme_color_override("font_color", Color(0, 0, 0, 1))
+	label.add_theme_color_override("font_color", _text_colour(muted))
 	parent.add_child(label)
 	return label
 
 
+## No tinting anywhere: every icon this panel draws is artwork that already
+## reads on the glass. The mono symbols that did not are drawn from their
+## white_icon_* cuts instead — recolouring at draw time was the first fix and it
+## flattened the dark cutouts inside the promo star.
 func _add_icon(parent: Control, tex: Texture2D, pos: Vector2, size: Vector2) -> TextureRect:
 	var rect := TextureRect.new()
 	rect.texture = tex
@@ -1279,7 +1394,8 @@ func _add_icon(parent: Control, tex: Texture2D, pos: Vector2, size: Vector2) -> 
 
 ## Draws pre-wrapped lines into a RichTextLabel with autowrap OFF, so the label
 ## renders exactly the lines that were measured — no second, different wrap.
-func _add_rich(parent: Control, lines: Array, font_size: int, pos: Vector2, width: float) -> RichTextLabel:
+func _add_rich(parent: Control, lines: Array, font_size: int, pos: Vector2,
+			   width: float, muted: bool = false) -> RichTextLabel:
 	var label := RichTextLabel.new()
 	label.bbcode_enabled = true
 	label.scroll_active  = false
@@ -1290,7 +1406,7 @@ func _add_rich(parent: Control, lines: Array, font_size: int, pos: Vector2, widt
 	label.size = Vector2(width, _lines_height(lines, font_size))
 	label.add_theme_font_override("normal_font", _get_font())
 	label.add_theme_font_size_override("normal_font_size", font_size)
-	label.add_theme_color_override("default_color", Color(0, 0, 0, 1))
+	label.add_theme_color_override("default_color", _text_colour(muted))
 	label.add_theme_constant_override("line_separation", LINE_SEPARATION)
 	parent.add_child(label)
 
@@ -1325,6 +1441,63 @@ static func _get_base_font() -> FontFile:
 	if _base_font == null:
 		_base_font = load(FONT_PATH)
 	return _base_font
+
+
+## The SemiBold cut of the same family, for the things the card announces — its
+## name, its HP, an attack's name and its damage. Everything else stays Medium.
+static func _get_bold_base_font() -> FontFile:
+	if _bold_base_font == null:
+		_bold_base_font = load(FONT_BOLD_PATH)
+	return _bold_base_font
+
+
+## Either face, with the same symbol fallback chained behind it. `bold` is
+## threaded through every measure and every draw, so a name is measured in the
+## face it is drawn in — SemiBold is wider than Medium, and measuring one in the
+## other is how a fitted name ends up overlapping the HP beside it.
+static func _face(bold: bool) -> FontVariation:
+	return _get_bold_font() if bold else _get_font()
+
+
+static func _get_bold_font() -> FontVariation:
+	if _bold_font != null:
+		return _bold_font
+	_bold_font = FontVariation.new()
+	_bold_font.base_font = _get_bold_base_font()
+	_bold_font.fallbacks = _get_font().fallbacks
+	return _bold_font
+
+
+# ═══════════════════════════════════════════════════════════════════════
+# THEME COLOURS
+# ═══════════════════════════════════════════════════════════════════════
+# Read live rather than cached: the theme can change between one preview and
+# the next, and every one of these is asked for at build time anyway.
+
+static func _theme() -> Node:
+	var loop := Engine.get_main_loop()
+	if loop == null:
+		return null
+	return (loop as SceneTree).get_root().get_node_or_null("UITheme")
+
+
+static func _theme_col(key: String, fallback: Color) -> Color:
+	var ui := _theme()
+	return fallback if ui == null else ui.col(key)
+
+
+## The message box's own three colours, so the glass here is literally the glass
+## a message box is made of. They live in UITheme.MSGBOX, not in the theme
+## dictionary col() reads, which is why this is a second accessor.
+static func _msgbox_col(key: String, fallback: Color) -> Color:
+	var ui := _theme()
+	return fallback if ui == null else ui.msgbox_col(key)
+
+
+static func _text_colour(muted: bool) -> Color:
+	if muted:
+		return _theme_col("field_mute", TEXT_MUTE_FALLBACK)
+	return _theme_col("field_fg", TEXT_FG_FALLBACK)
 
 
 ## Kenney, plus a system face behind it for the seven glyphs Kenney lacks:

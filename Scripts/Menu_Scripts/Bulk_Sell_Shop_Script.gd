@@ -1130,15 +1130,8 @@ func _show_zoom(card_rect: TextureRect) -> void:
 	_zoom_overlay.layer = 150
 	add_child(_zoom_overlay)
 
-	var backdrop := ColorRect.new()
-	backdrop.color         = Color(0, 0, 0, 0.95)
-	backdrop.anchor_right  = 1.0
-	backdrop.anchor_bottom = 1.0
-	# The overlay must never absorb hover, or gui_get_hovered_control() would report the
-	# backdrop instead of the grid underneath and the live preview would flicker off.
-	backdrop.mouse_filter  = Control.MOUSE_FILTER_IGNORE
-	_zoom_overlay.add_child(backdrop)
-
+	# No backdrop: CardDetailPanel paints its own scrolling field, and a black
+	# rect added here would be a sibling at z 0 over the panel's field at z -100.
 	_detail_panel = CardDetailPanel.new()
 	_zoom_overlay.add_child(_detail_panel)
 	_detail_panel.show_card(card_id)
