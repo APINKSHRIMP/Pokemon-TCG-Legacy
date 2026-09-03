@@ -48,7 +48,12 @@ const SCREEN_CENTER_X: float = 960.0
 # -- TWEAKABLE: the badge and the stats row -------------------
 const OUTCOME_FONT_SIZE : int = 46      # the word inside the wheel
 const STATS_SEPARATION  : int = 96      # gap between the three stat items
-const FADE_TIME         : float = 0.5
+## ISSUE #288: 0.5 -> 1.0. "Double the fade in time for all scene transitions."
+## The same doubling is applied on the match board, the intro, the outro and the
+## best-of-three tracker, so every boundary in a match moves at one pace. It is
+## still multiplied by the Animation speed preset via transition_time(), and
+## reduce motion still collapses it to zero. TWEAKABLE.
+const FADE_TIME         : float = 1.0
 
 # -- TWEAKABLE: the rewards block -----------------------------
 # Laid out inside a block that is centred under the badge, so every x below is
@@ -308,14 +313,20 @@ func _await_tween_or_skip(tw: Tween) -> void:
 # Instantly places the REWARDS caption and every reward row at its resting position.
 # Called when the fly-in finishes OR is skipped, so a skipped fly-in shows all
 # rewards at once exactly where they would have ended up.
+## ISSUE #289: settled means opaque as well as in position. Both the natural end
+## of the fly-in and a click-to-skip come through here, so neither can leave a
+## reward line half-faded.
 func _snap_rewards_to_final() -> void:
 	if _header_anim != null:
 		_header_anim.position = Vector2.ZERO
+		_header_anim.modulate.a = 1.0
 	for row in reward_rows:
 		if not row.has("icon_node"):
 			continue
 		row["icon_node"].position.x = row["icon_final_x"]
 		row["value_node"].position.x = row["value_final_x"]
+		row["icon_node"].modulate.a = 1.0
+		row["value_node"].modulate.a = 1.0
 # ============================================================
 # DATA LOADING
 # ============================================================
@@ -679,8 +690,10 @@ func _place_reward_row(block: Control, row: Dictionary, y: float) -> void:
 	var icon_x := centre - total * 0.5
 	var value_x := icon_x + icon_px + REWARD_ICON_GAP
 
+	# ISSUE #289: parked transparent, like every other element that flies in.
 	value.position = Vector2(REWARD_OFFSCREEN_X, y)
 	value.size = Vector2(main_w + note_w, REWARD_ROW_H)
+	value.modulate.a = 0.0
 
 	var icon := TextureRect.new()
 	icon.texture = row["icon"]
@@ -690,6 +703,7 @@ func _place_reward_row(block: Control, row: Dictionary, y: float) -> void:
 	icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	icon.position = Vector2(-REWARD_OFFSCREEN_X, y + (REWARD_ROW_H - icon_px) * 0.5)
 	icon.size = Vector2(icon_px, icon_px)
+	icon.modulate.a = 0.0   # ISSUE #289
 	block.add_child(icon)
 
 	row["icon_node"] = icon
@@ -713,6 +727,7 @@ func animate_rewards() -> void:
 		return
 
 	var gs := GameState
+	print("ISSUE #289 FIX ACTIVE: reward rows fade up as they fly in")
 	frame.drop_in(_header_anim, gs.transition_time(REWARD_LABEL_DELAY),
 			gs.transition_time(REWARD_LABEL_TIME), REWARD_DROP_PX)
 
@@ -733,6 +748,11 @@ func animate_rewards() -> void:
 		tween.set_ease(Tween.EASE_OUT)
 		tween.tween_property(row["icon_node"], "position:x", row["icon_final_x"], dur).set_delay(delay)
 		tween.tween_property(row["value_node"], "position:x", row["value_final_x"], dur).set_delay(delay)
+		# ISSUE #289: the prize icon and its figure fade up as they fly in, so a
+		# reward line arrives instead of sliding in already fully drawn.
+		var fade_dur: float = maxf(dur * BattleFrame.DROP_FADE_SHARE, 0.01)
+		tween.tween_property(row["icon_node"], "modulate:a", 1.0, fade_dur).set_delay(delay)
+		tween.tween_property(row["value_node"], "modulate:a", 1.0, fade_dur).set_delay(delay)
 
 	await _await_timer_or_skip(last_end)
 
@@ -1167,7 +1187,10 @@ func transition_back_to_map() -> void:
 			child.queue_free()
 
 	var tween = create_tween()
-	tween.tween_property(self, "modulate:a", 0.0, 0.5)
+	# ISSUE #288: the "outro to overworld" half, doubled with the rest. It was the
+	# one boundary still carrying a hardcoded number instead of FADE_TIME.
+	print("ISSUE #288 FIX ACTIVE: outro fades out over ", FADE_TIME, "s")
+	tween.tween_property(self, "modulate:a", 0.0, FADE_TIME)
 	await tween.finished
 
 	# Clear battle_result so MapManager knows the outro already handled the dialogue

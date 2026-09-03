@@ -479,7 +479,6 @@ func _apply_selected_animation(rect: TextureRect) -> void:
 
 	tween.tween_property(rect, "modulate", Color.WHITE * 1.1, 0.2)
 	tween.parallel().tween_property(rect, "scale", Vector2(SELECT_PULSE, SELECT_PULSE), 0.2)
-	print("ISSUE #263 FIX ACTIVE: coin case select pulse ", SELECT_PULSE)
 	tween.tween_property(rect, "modulate", Color.WHITE * 1.0, 0.2)
 	tween.parallel().tween_property(rect, "scale", Vector2(1.0, 1.0), 0.2)
 

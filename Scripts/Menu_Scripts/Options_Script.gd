@@ -68,6 +68,11 @@ const ROW_MIN_H    := 62.0     # so a slider row and a button row match
 # screen looking sparse against eight widely spaced rows.
 const ROW_LABEL_SIZE := 19
 
+## ISSUE #275: the sub-caption under a row label. Small enough to read as a note
+## on the row above rather than as a row of its own. TWEAKABLE.
+const ROW_SUB_SIZE := 13
+const ROW_SUB_GAP  := 2
+
 # ─── State ───────────────────────────────────────────────────────────────────
 
 var pending : Dictionary = {}
@@ -205,10 +210,13 @@ func _build_rows() -> void:
 	])
 	# The stored value stays "where_possible" — it is the key GameState persists and
 	# the one UITheme.motion_reduced() compares against. Only the label is "On".
+	# ISSUE #275: "Reduce motion" is the only row on this screen whose name does not
+	# say what it does - it sounds like a comfort setting when it actually removes
+	# every animation in the game. The sub-caption says so on the row itself.
 	_add_button_row(body, "reduce_motion", "Reduce motion", [
 		["off",            "Off"],
 		["where_possible", "On"],
-	])
+	], "(skips all animations)")
 	_add_button_row(body, "intro_outro", "Match intro & outro", [
 		["play", "Play"],
 		["skip", "Skip"],
@@ -219,8 +227,8 @@ func _build_rows() -> void:
 
 ## One label + a row of mutually exclusive option buttons.
 func _add_button_row(parent: VBoxContainer, section: String, label_text: String,
-		options: Array) -> void:
-	var row := _new_row(parent, label_text)
+		options: Array, sub_text: String = "") -> void:
+	var row := _new_row(parent, label_text, sub_text)
 
 	var buttons: Dictionary = {}
 	for entry in options:
@@ -256,7 +264,16 @@ func _add_slider_row(parent: VBoxContainer, section: String, label_text: String)
 
 
 ## The label column plus an HBox for whatever controls the row holds.
-func _new_row(parent: VBoxContainer, label_text: String) -> HBoxContainer:
+## ISSUE #275: `sub_text`, when given, is a smaller second line under the row
+## label. It is centred on the LABEL'S OWN TEXT, not on the 370px label column -
+## the column is a lot wider than any of these names, so centring in the column
+## would leave the note floating well to the right of the words it belongs to.
+## The width is measured off the rendered label, so it stays centred whatever the
+## row is called.
+##
+## The label column becomes a VBox in that case. It is SHRINK_CENTER so the two
+## lines stay vertically centred in the row, which is where the single label sat.
+func _new_row(parent: VBoxContainer, label_text: String, sub_text: String = "") -> HBoxContainer:
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", int(OPTION_GAP))
 	row.custom_minimum_size.y = ROW_MIN_H
@@ -267,7 +284,36 @@ func _new_row(parent: VBoxContainer, label_text: String) -> HBoxContainer:
 	UIKit.set_label(label, "small_label", label_text, "field_mute", ROW_LABEL_SIZE)
 	label.custom_minimum_size = Vector2(LABEL_W, 0)
 	label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	row.add_child(label)
+	if sub_text == "":
+		row.add_child(label)
+	else:
+		var col := VBoxContainer.new()
+		col.add_theme_constant_override("separation", ROW_SUB_GAP)
+		col.custom_minimum_size = Vector2(LABEL_W, 0)
+		col.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		col.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		row.add_child(col)
+
+		label.custom_minimum_size = Vector2(LABEL_W, 0)
+		label.vertical_alignment = VERTICAL_ALIGNMENT_BOTTOM
+		col.add_child(label)
+
+		var sub := Label.new()
+		UIKit.set_label(sub, "small_label", sub_text, "field_mute", ROW_SUB_SIZE)
+		sub.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		sub.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		# Centred under the WORDS, so the note is measured against the label's own
+		# rendered width rather than the width of the column it sits in.
+		var name_font: Font = label.get_theme_font("font")
+		var name_w: float = LABEL_W
+		if name_font != null:
+			name_w = name_font.get_string_size(label.text, HORIZONTAL_ALIGNMENT_LEFT,
+				-1, ROW_LABEL_SIZE).x
+		sub.custom_minimum_size = Vector2(name_w, 0)
+		sub.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
+		col.add_child(sub)
+		print("ISSUE #275 FIX ACTIVE: sub-caption '", sub_text, "' centred on ",
+			name_w, "px of '", label.text, "'")
 
 	# A spacer rather than padding on the label, so the label can be left-aligned
 	# and the controls still start on the same x in every row.

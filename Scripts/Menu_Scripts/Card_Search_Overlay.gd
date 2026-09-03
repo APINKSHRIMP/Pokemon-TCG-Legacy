@@ -1058,8 +1058,6 @@ func _set_icon_selected(icon: Control, selected: bool, force: bool = false) -> v
 		var skin := "<not a button>"
 		if icon is Button and (icon as Button).theme != null:
 			skin = (icon as Button).theme.resource_path
-		print("ISSUE #254 FIX ACTIVE: chip '", icon.get_meta("stem", "?"),
-			"' selected - skin ", skin, ", stale style overrides cleared, no pulse")
 
 
 func _set_icon_blocked(icon: Control, blocked: bool, selected: bool) -> void:

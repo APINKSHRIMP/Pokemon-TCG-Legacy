@@ -551,10 +551,14 @@ func prepare_entrance() -> void:
 	player.drift.position = Vector2.ZERO
 	opponent.drift.position = Vector2.ZERO
 
-	player.name_anim.position = Vector2(0.0, -BLOCK_DROP_PX)
-	opponent.name_anim.position = Vector2(0.0, -BLOCK_DROP_PX)
-	_top_slot_anim.position = Vector2(0.0, -BLOCK_DROP_PX)
-	_below_badge_anim.position = Vector2(0.0, -BLOCK_DROP_PX)
+	# ISSUE #289: parked INVISIBLE as well as parked offset. Everything that flies
+	# in was fully opaque and stationary while the screen faded up, so the eye had
+	# already read the finished picture before anything moved and the entrance
+	# looked like a twitch rather than an arrival. Same reasoning as
+	# prepare_entrance itself, applied to opacity instead of position.
+	for anim in [player.name_anim, opponent.name_anim, _top_slot_anim, _below_badge_anim]:
+		anim.position = Vector2(0.0, -BLOCK_DROP_PX)
+		anim.modulate.a = 0.0
 
 
 # ============================================================
@@ -611,6 +615,16 @@ func play_entrance() -> void:
 
 ## One element's single-phase drop. Public because the screens reuse it for the
 ## pieces they own - the REWARDS label, a round title.
+##
+## ISSUE #289: the element FADES UP AS IT TRAVELS. It starts fully transparent and
+## reaches full opacity as it lands, so a line of text arrives rather than being
+## already there and then jumping. The fade runs on its own tween in parallel with
+## the move: putting both on one sequential tween would play them one after the
+## other, and a tween bound to the node dies with it either way.
+## FADE_SHARE is how much of the travel the fade takes - finishing slightly early
+## keeps the last of the movement readable rather than still half-invisible.
+const DROP_FADE_SHARE := 0.75
+
 func drop_in(node: Control, delay: float, duration: float = -1.0,
 			 distance: float = BLOCK_DROP_PX) -> void:
 	if node == null:
@@ -619,13 +633,20 @@ func drop_in(node: Control, delay: float, duration: float = -1.0,
 	var dur: float = duration if duration >= 0.0 else gs.transition_time(P1_TIME)
 	if dur <= 0.0 and delay <= 0.0:
 		node.position = Vector2.ZERO
+		node.modulate.a = 1.0
 		return
 	node.position = Vector2(0.0, -distance)
+	node.modulate.a = 0.0
 	var tw := node.create_tween()
 	tw.set_trans(Tween.TRANS_EXPO).set_ease(Tween.EASE_OUT)
 	if delay > 0.0:
 		tw.tween_interval(delay)
 	tw.tween_property(node, "position", Vector2.ZERO, dur)
+
+	var fade := node.create_tween()
+	if delay > 0.0:
+		fade.tween_interval(delay)
+	fade.tween_property(node, "modulate:a", 1.0, maxf(dur * DROP_FADE_SHARE, 0.01))
 
 
 # Sets up one element's two chained phases. `from` is where the FAST wrapper
@@ -660,10 +681,11 @@ func snap_to_rest() -> void:
 	player.drift.position = Vector2(-SPRITE_P2_PX, 0.0)
 	opponent.fast.position = Vector2.ZERO
 	opponent.drift.position = Vector2(SPRITE_P2_PX, 0.0)
-	player.name_anim.position = Vector2.ZERO
-	opponent.name_anim.position = Vector2.ZERO
-	_top_slot_anim.position = Vector2.ZERO
-	_below_badge_anim.position = Vector2.ZERO
+	# ISSUE #289: at rest is fully opaque - reduce motion and click-to-skip both
+	# land here, and neither may leave an element invisible.
+	for anim in [player.name_anim, opponent.name_anim, _top_slot_anim, _below_badge_anim]:
+		anim.position = Vector2.ZERO
+		anim.modulate.a = 1.0
 
 
 # ============================================================

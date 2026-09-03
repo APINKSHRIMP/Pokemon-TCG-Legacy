@@ -357,9 +357,6 @@ func _build_left_panel() -> void:
 	var total_w := EQUIP_SIZE.x * 2.0 + EQUIP_GAP
 	var x := centre_x - total_w * 0.5
 	var thumb_y := LEFT_BOT_Y + EQUIP_TOP_GAP + EQUIP_DOWN_NUDGE
-	print("ISSUE #200 FIX ACTIVE: top box ", LEFT_TOP_Y, "..", LEFT_TOP_Y + LEFT_TOP_H,
-		" (sprite ", sprite_y, " fit ", SPRITE_SIZE, ", name ", name_y, ", dates ", dob_y,
-		") / bottom box ", LEFT_BOT_Y, "..", LEFT_BOT_Y + LEFT_BOT_H, " (equipped ", thumb_y, ")")
 
 	var sleeve := String(data.get("sleeve", ""))
 	if sleeve != "":
@@ -445,7 +442,6 @@ func _load_player_data() -> void:
 			# box". Centring it in a box a fifth taller than the art pushed a wide
 			# costume down into the name field.
 			player_sprite.position.y = LEFT_Y + SPRITE_TOP_GAP
-			print("ISSUE #200 FIX ACTIVE: costume sprite fitted to ", player_sprite.size, " in a ", SPRITE_SIZE, " box")
 
 
 # ─── DOB / cash label ─────────────────────────────────────
@@ -681,7 +677,6 @@ func _build_stat_boxes(boxes: Array) -> void:
 		value.position = Vector2(x + PANEL_PAD, BOX_Y + PANEL_PAD + 34.0)
 		value.size = Vector2(w - PANEL_PAD * 2.0, float(BOX_VALUE_FONT) + 12.0)
 		stats_control.add_child(value)
-	print("ISSUE #273 FIX ACTIVE: ", boxes.size(), " stat boxes centred (caption + value)")
 
 
 ## The three sets closest to being finished.

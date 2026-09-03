@@ -627,8 +627,6 @@ static func add_drop_shadow(item: TextureRect, grow: float = SHADOW_GROW,
 	shadow.show_behind_parent = true
 
 	item.add_child(shadow)
-	print("ISSUE #197 FIX ACTIVE: drop shadow aspect ", aspect, " -> anchors +",
-		drop, " x / +", drop * aspect, " y (equal pixels right and down)")
 	return shadow
 
 

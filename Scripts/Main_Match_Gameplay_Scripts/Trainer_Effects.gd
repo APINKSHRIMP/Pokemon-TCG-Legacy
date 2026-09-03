@@ -4112,8 +4112,6 @@ func gym1_end_of_turn_cleanup(side_is_opponent: bool) -> void:
 			discard.append(tm_card)
 		if not tm_cards.is_empty():
 			main._refresh_action_panels()
-			print("ISSUE #271 FIX ACTIVE: ", tm_cards.size(), " Technical Machine(s) off ",
-				pokemon.metadata.get("name", ""), " - action rows rebuilt before the flight")
 		for tm_card in tm_cards:
 			var attached_node3 = main.opponent_attached_cards_container if side_is_opponent else main.player_attached_cards_container
 			var discard_node3 = main.opponent_discard_icon if side_is_opponent else main.player_discard_icon
@@ -4150,8 +4148,6 @@ func gym1_end_of_turn_cleanup(side_is_opponent: bool) -> void:
 				main.animate_card_a_to_b(attached_node5, discard_node5, 0.25, tex5, main.card_scales[10])
 				display_attached_trainer_cards(side_is_opponent)
 				main.update_discard_pile_display(side_is_opponent)
-				print("ISSUE #271 FIX ACTIVE: Memory Berry off ",
-					pokemon.metadata.get("name", ""), " - action rows rebuilt before the flight")
 				print("MEMORY BERRY: discarded from ", pokemon.metadata.get("name", ""))
 
 		# ECARD3 Crystal Shard (ecard3-122) / ex8-85: discarded at the end of any turn its holder attacked

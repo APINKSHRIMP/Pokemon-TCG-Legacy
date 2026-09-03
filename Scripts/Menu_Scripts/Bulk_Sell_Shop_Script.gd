@@ -194,7 +194,10 @@ const TOTAL_LABEL_ANCHOR := Vector2(1780, 132)
 const TOTAL_LABEL_PILL_GAP := 10.0
 ## ISSUE #208 (retest 3): 10 -> 30. The figure sits 30px right of the pill's own
 ## centre. TWEAKABLE.
-const TOTAL_LABEL_X_NUDGE := 30.0
+## ISSUE #208 (retest 3): back to 0. It was walked out to 30 chasing a label that
+## was never moving for an unrelated reason (see _wallet_drop_anchor); now the
+## anchor is genuinely the pill's centre, a nudge would only push it back off it.
+const TOTAL_LABEL_X_NUDGE := 0.0
 
 
 # ─── State ───────────────────────────────────────────────────────────────────
@@ -955,14 +958,24 @@ func _scroll_into_view(rect: Control) -> Vector2:
 ## Returns the CENTRE of the label's box, which is what _spawn_float_label wants:
 ## the pill's centre x so the figure falls straight out of the number it changes,
 ## and far enough down that the box's top edge clears the pill's bottom.
+## ISSUE #208 (retest 3) - WHY THREE NUDGES CHANGED NOTHING.
+##
+## `wallet_chip` is the HOLDER add_wallet_chip returns, and that holder is never
+## given a size: the pill is a child placed at absolute coordinates inside it, so
+## the holder's rect is (0,0) 0x0. `wallet_chip.get_global_rect().size.x` was
+## therefore always 0, the guard below always tripped, and the function returned
+## the HARDCODED fallback every single time. The "measured off the wallet chip"
+## description was never true in a running build, which is why the label sat in
+## the same place through 1560 -> 1750 -> 1760 -> 1780. ShopChrome.wallet_pill_rect
+## asks the pill itself, so the measurement finally works and the figure falls out
+## of the centre of the number it changes whatever the balance is.
 func _wallet_drop_anchor() -> Vector2:
-	if wallet_chip == null or not is_instance_valid(wallet_chip):
-		return TOTAL_LABEL_ANCHOR
-	var pill := wallet_chip.get_global_rect()
+	var pill := ShopChrome.wallet_pill_rect(wallet_chip)
 	if pill.size.x <= 1.0:
+		print("ISSUE #208: wallet pill not laid out yet - fallback anchor ", TOTAL_LABEL_ANCHOR)
 		return TOTAL_LABEL_ANCHOR
-	print("ISSUE #208 FIX ACTIVE: payout falls from pill centre x ",
-		pill.position.x + pill.size.x * 0.5, " + nudge ", TOTAL_LABEL_X_NUDGE)
+	print("ISSUE #208 FIX ACTIVE: pill rect ", pill, " -> payout falls from x ",
+		pill.position.x + pill.size.x * 0.5 + TOTAL_LABEL_X_NUDGE)
 	return Vector2(pill.position.x + pill.size.x * 0.5 + TOTAL_LABEL_X_NUDGE,
 		pill.position.y + pill.size.y + TOTAL_LABEL_PILL_GAP + TOTAL_LABEL_SIZE.y * 0.5)
 

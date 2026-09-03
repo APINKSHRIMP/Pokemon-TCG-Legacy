@@ -179,6 +179,26 @@ static func add_wallet_chip(parent: Node, cash: int) -> Control:
 	return holder
 
 
+## ISSUE #208: THE CHIP'S OWN RECT IS EMPTY - ASK FOR THE PILL'S.
+##
+## add_wallet_chip returns a bare holder Control that is never sized or
+## positioned: the pill, the icon and the figure are children placed at absolute
+## coordinates inside it, so the holder's rect stays (0,0) 0x0 forever. Anything
+## that called get_global_rect() on the chip - the bulk-sell payout label did, for
+## three retests - got an empty rect, failed its own sanity check and silently
+## fell back to a hardcoded number, which is exactly why moving the label "did
+## nothing" every time. This returns the rect that is actually on screen.
+##
+## Returns an empty Rect2 if the pill has not been laid out yet.
+static func wallet_pill_rect(chip: Control) -> Rect2:
+	if chip == null or not is_instance_valid(chip):
+		return Rect2()
+	var pill: ColorRect = chip.get_node_or_null("pill")
+	if pill == null or pill.size.x <= 1.0:
+		return Rect2()
+	return Rect2(pill.global_position, pill.size)
+
+
 ## Updates the pill. With `animate` the figure counts up (or down) to the new balance
 ## over WALLET_COUNT_TIME rather than jumping, so a purchase reads as money leaving.
 static func set_wallet_cash(chip: Control, cash: int, animate: bool = true) -> void:

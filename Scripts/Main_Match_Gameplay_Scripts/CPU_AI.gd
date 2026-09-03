@@ -1819,6 +1819,10 @@ func cpu_phase_energy_attachment(cpu_eval: Dictionary) -> void:
 		print("CPU energy attachment blocked: Freeze Lock")
 		return
 
+	# ISSUE #284: measure the sleeve WHERE IT SITS IN THE OPPONENT'S FAN, before the
+	# erase below takes its node away. Same reasoning as the player's own attach
+	# (#283) - the flight used to start at the hand container's left edge.
+	var energy_from: Dictionary = main._card_rect_now(energy)
 	# Perform the attachment
 	main.opponent_hand.erase(energy)
 	target.attached_energies.append(energy)
@@ -1836,18 +1840,36 @@ func cpu_phase_energy_attachment(cpu_eval: Dictionary) -> void:
 
 	var energy_target_node = main.opponent_energy_container if target == main.opponent_active_pokemon else main.opponent_bench_container
 	var energy_texture = main.get_card_texture(energy)
+	# ISSUE #284: THE ENERGY LANDS ON ITS SLOT AND SINKS BEHIND THE POKEMON.
+	#
+	# Two separate faults on the bench branch. It aimed at the Pokemon's OWN
+	# position - "the origin of the pokemon it's being attached to" - rather than
+	# at the slot the energy ends up in, and it arrived on TOP of the card and
+	# vanished, because an attached energy is drawn peeking out from BEHIND. The
+	# `arrive_behind` flag (#236) is exactly that hand-off: the ghost drops to
+	# ANIM_BEHIND_Z at 82% of the flight, so it slides under the card instead of
+	# over it. Both branches get it - the Active's stack sits behind the card too.
+	print("ISSUE #284 FIX ACTIVE: opponent energy from ",
+		energy_from.get("position", "container fallback"), " arrive_behind=true")
 	if target == main.opponent_active_pokemon:
 		# ISSUE #40 FIX: fly the Energy to its EXACT final slot in the opponent Active energy stack
 		# (position AND size), read off the freshly-built stack. Previously it flew to the Active card's
 		# position (which for the opponent sat ~300px left of the energy stack) and then snapped over.
 		var slot_rect = main.measure_and_hide_new_active_energy_slot(true)
-		var slot_pos = slot_rect.get("position", Vector2(-99999, -99999))
-		var slot_size = slot_rect.get("size", main.card_scales[11])
-		await main.animate_card_a_to_b(main.opponent_hand_container, energy_target_node, 0.2, energy_texture, main.card_scales[12], slot_size, slot_pos)
+		var slot_pos = slot_rect.get("position", main._ANIM_POS_SENTINEL)
+		var slot_size = slot_rect.get("size", main.ATTACH_CARD_SIZE)
+		await main.animate_card_a_to_b(main.opponent_hand_container, energy_target_node, 0.2,
+			energy_texture, energy_from.get("size", main.card_scales[12]),
+			slot_size, slot_pos, true,
+			energy_from.get("position", main._ANIM_POS_SENTINEL))
 	else:
-		# ISSUE #20 FIX: fly the Energy to the ACTUAL benched Pokémon slot.
-		var energy_pos_override = main.get_pokemon_screen_location(target).get("position", Vector2(-99999, -99999))
-		await main.animate_card_a_to_b(main.opponent_hand_container, energy_target_node, 0.2, energy_texture, main.card_scales[12], Vector2.ZERO, energy_pos_override)
+		# ISSUE #20 / #284: the benched Pokemon's real slot rect, at its real size.
+		var bench_loc = main.get_pokemon_screen_location(target)
+		await main.animate_card_a_to_b(main.opponent_hand_container, energy_target_node, 0.2,
+			energy_texture, energy_from.get("size", main.card_scales[12]),
+			bench_loc.get("size", main.BENCH_CARD),
+			bench_loc.get("position", main._ANIM_POS_SENTINEL), true,
+			energy_from.get("position", main._ANIM_POS_SENTINEL))
 	if main._should_bail(): return
 
 	main.refresh_hand_display(true)
@@ -4427,6 +4449,8 @@ func cpu_phase_bench_play() -> void:
 			print("CPU: Not benching " + best_card.metadata["name"] + " (Score: " + str(int(best_score)) + ") — below the threshold (" + str(score_threshold) + ") needed to justify a " + str(current_bench_count) + "-Pokémon bench")
 			break
 
+		# ISSUE #283/#284: the sleeve's place in the fan, before the erase frees it.
+		var bench_from: Dictionary = main._card_rect_now(best_card)
 		# Play the pokemon onto the bench
 		main.opponent_hand.erase(best_card)
 		best_card.current_location = "bench"
@@ -4440,7 +4464,11 @@ func cpu_phase_bench_play() -> void:
 		var card_texture = main.get_card_texture(best_card)
 		# ISSUE #20: land on the actual next bench slot
 		var bench_loc = main.get_pokemon_screen_location(best_card)
-		await main.animate_card_a_to_b(main.opponent_hand_container, main.opponent_bench_container, 0.3, card_texture, main.card_scales[11], bench_loc.get("size", main.card_scales[11]), bench_loc.get("position", Vector2(-99999, -99999)))
+		await main.animate_card_a_to_b(main.opponent_hand_container, main.opponent_bench_container,
+			0.3, card_texture, bench_from.get("size", main.card_scales[11]),
+			bench_loc.get("size", main.BENCH_CARD),
+			bench_loc.get("position", main._ANIM_POS_SENTINEL), false,
+			bench_from.get("position", main._ANIM_POS_SENTINEL))
 		if main._should_bail(): return
 		main.display_pokemon(true)
 		main.refresh_hand_display(true)
@@ -4532,6 +4560,8 @@ func cpu_phase_evolution() -> void:
 		for reason in best["reasons"]:
 			print("  - " + reason)
 
+		# ISSUE #283/#284: measured before perform_evolution takes it out of the hand.
+		var evo_from: Dictionary = main._card_rect_now(best["evo_card"])
 		# Set the globals that perform_evolution reads from
 		main.evolution_card_awaiting_target = best["evo_card"]
 		main.selected_card_for_action = best["target"]
@@ -4546,7 +4576,11 @@ func cpu_phase_evolution() -> void:
 		var evo_texture = main.get_card_texture(best["evo_card"])
 		# ISSUE #20: land on the evolving Pokémon's actual slot at its real size
 		var evo_loc = main.get_pokemon_screen_location(best["evo_card"])
-		await main.animate_card_a_to_b(main.opponent_hand_container, evo_target_node, 0.3, evo_texture, evo_scale, evo_loc.get("size", evo_scale), evo_loc.get("position", Vector2(-99999, -99999)))
+		await main.animate_card_a_to_b(main.opponent_hand_container, evo_target_node, 0.3,
+			evo_texture, evo_from.get("size", evo_scale),
+			evo_loc.get("size", evo_scale),
+			evo_loc.get("position", main._ANIM_POS_SENTINEL), false,
+			evo_from.get("position", main._ANIM_POS_SENTINEL))
 		if main._should_bail(): return
 
 		main.display_pokemon(true)

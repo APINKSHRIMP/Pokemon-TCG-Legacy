@@ -51,7 +51,12 @@ const FLIP_FROM_SCALE : float = 0.72
 const SLOTS_DELAY     : float = 0.30
 const SLOTS_TIME      : float = 0.50
 const HOLD_AFTER      : float = 1.4
-const FADE_TIME       : float = 0.5
+## ISSUE #288: 0.5 -> 1.0. "Double the fade in time for all scene transitions."
+## The same doubling is applied on the match board, the intro, the outro and the
+## best-of-three tracker, so every boundary in a match moves at one pace. It is
+## still multiplied by the Animation speed preset via transition_time(), and
+## reduce motion still collapses it to zero. TWEAKABLE.
+const FADE_TIME       : float = 1.0
 
 var opponent_data: Dictionary = {}
 var player_data: Dictionary = {}

@@ -28,7 +28,12 @@ const PRIZE_ICON_GAP : float = 10.0
 # by the Animation speed preset, and NOT collapsed by reduce motion - the screen
 # is the information, the movement is the decoration.
 const HOLD_AFTER     : float = 1.6
-const FADE_TIME      : float = 0.5
+## ISSUE #288: 0.5 -> 1.0. "Double the fade in time for all scene transitions."
+## The same doubling is applied on the match board, the intro, the outro and the
+## best-of-three tracker, so every boundary in a match moves at one pace. It is
+## still multiplied by the Animation speed preset via transition_time(), and
+## reduce motion still collapses it to zero. TWEAKABLE.
+const FADE_TIME      : float = 1.0
 
 var opponent_data: Dictionary
 var player_data: Dictionary

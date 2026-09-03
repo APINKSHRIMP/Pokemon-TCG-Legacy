@@ -1041,7 +1041,12 @@ const PRIZE_BOT_Y    := 1080.0 - BOARD_BOT_H - PRIZE_FOOT_GAP - PRIZE_SIZE.y
 ## whole column - card, HP blocks, status row, action panel and attachments -
 ## leans 10px further out on each side, which is where the extra 20px of centre
 ## clearance for the bigger cards comes from.
-const DUEL_SIDE_SHIFT := 20.0
+## ISSUE #277: 20 -> 25. "Move the player's active Pokemon and all of its details
+## left 5 pixels and the opponent's right 5 pixels" is exactly this dial - it is
+## the ONE number that moves the card, the HP readout, the status row, the action
+## rows and the attachment stacks together, which is what "all of its details"
+## means. Moving any of them on its own would break the straight edge #233 built.
+const DUEL_SIDE_SHIFT := 25.0
 
 ## Benches: five slots, centred in the centre column.
 ## ISSUE #234: cards -10% (119x165 -> 107x148) and the horizontal gap -25%
@@ -1114,7 +1119,6 @@ const DUEL_GAP        := 10.5
 
 ## Top and bottom bar furniture.
 const HAND_X         := 40.0
-const OPP_HAND_Y     := 20.0
 const PLAYER_HAND_Y  := 936.0
 ## ISSUE #244: the player's hand is CENTRED on the footer rather than starting at
 ## HAND_X. It was laid out as a 1300px box at x=40, so its middle sat at x=690 -
@@ -1134,10 +1138,16 @@ const STADIUM_Y      := 13.0
 
 ## The opponent's hand is a fan of face-down sleeves on the top bar, so it is
 ## smaller than yours.
-## ISSUE #269: +20% (36x50 -> 43x60), then (retest) +10% again -> 47x66. At 66
-## tall the fan finishes at y 86, still inside the 92px header - that is the
-## ceiling, there is no room for another step without moving OPP_HAND_Y up.
-const OPP_HAND_CARD  := Vector2(47.0, 66.0)
+## ISSUE #269: +20% (36x50 -> 43x60), then (retest) +10% -> 47x66, then (retest
+## 2) +10% again -> 52x73. The last step is only possible because OPP_HAND_Y is
+## DERIVED now rather than fixed at 20 - see below.
+const OPP_HAND_CARD  := Vector2(52.0, 73.0)
+## ISSUE #269 (retest 2): "equal distance from the top of the card to the top of
+## the screen and from the bottom of the card to the bottom of the header." That
+## is a derivation, not a number: whatever the card grows to, the header height
+## left over is split evenly above and below it. A hardcoded 20 is what made
+## every previous size step run out of room at the bottom of the 92px bar.
+const OPP_HAND_Y     := (BOARD_TOP_H - OPP_HAND_CARD.y) * 0.5
 ## ISSUE #258 (retest): TOP LEFT, not top right. The fan is left-anchored inside
 ## its box and the box starts at HAND_X, so the first sleeve sits in the corner of
 ## the header and every card drawn after it is added to the RIGHT of the last -
@@ -1164,9 +1174,6 @@ func _build_board_layout() -> void:
 	# ISSUE #270: the footer's three layout slots must be un-pickable, or the two
 	# EXPAND_FILL side ones lie across the middle of the hand. Fixed in
 	# UIKit._bar_slot; asserted here because this is the screen it was breaking.
-	print("ISSUE #270 FIX ACTIVE: footer slot mouse filters L/C/R = ",
-		_board_footer.left.mouse_filter, "/", _board_footer.centre.mouse_filter,
-		"/", _board_footer.right.mouse_filter, " (", Control.MOUSE_FILTER_IGNORE, " = IGNORE)")
 
 	# The turn chip is the primary turn indicator alongside the duel divider.
 	_turn_chip_holder = _board_header.centre
@@ -1425,9 +1432,6 @@ func _place_duel_row() -> void:
 	_set_rect(player_active_container, Vector2(you_active_x, active_y), ACTIVE_CARD)
 	_set_rect(opponent_active_container,
 		Vector2(opp_active_x - active_overhang, active_y), ACTIVE_CARD)
-	print("ISSUE #267 FIX ACTIVE: actives ", ACTIVE_CARD, " at x ", you_active_x,
-		" / ", opp_active_x - active_overhang, ", panel ", ACTION_PANEL_W,
-		"w, side shift ", DUEL_SIDE_SHIFT)
 
 	# Attachments keep the existing peek-stack rendering (the mockup's two-group
 	# whole-card layout was dropped); they just move to the outboard columns.
@@ -1558,9 +1562,6 @@ func _place_rails() -> void:
 		PRIZE_LABEL_SCALE)   # ISSUE #251
 	_place_rail_label($"SCREEN_LABELS/PLAYER/player_prize_cards_label",
 		"Your prizes", you_prize_x, PRIZE_BOT_Y - 26.0, prize_row_w, PRIZE_LABEL_SCALE)
-	print("ISSUE #272 FIX ACTIVE: prize captions at scale ", PRIZE_LABEL_SCALE,
-		" = font ", int(round(float(UITheme.size("small_label")) * PRIZE_LABEL_SCALE)),
-		", same as every other board heading")
 	_place_rail_label($"SCREEN_LABELS/OPPONENT/opponent_bench_cards_label",
 		"Opponent", LEFT_RAIL_X, PILE_TOP_Y - 26.0)
 	_place_rail_label($"SCREEN_LABELS/PLAYER/player_bench_cards_label",
@@ -1606,7 +1607,11 @@ func _place_bars() -> void:
 	# and each new card is added to the RIGHT of the last one. Centring it (which
 	# is right for YOUR hand, where the whole row is the object) meant every
 	# existing card shuffled sideways whenever they drew.
-	_set_rect(opponent_hand_container, Vector2(OPP_HAND_X, OPP_HAND_Y), Vector2(OPP_HAND_W, 56.0))
+	# ISSUE #269 (retest 2): the box is exactly one card tall, so the derived
+	# OPP_HAND_Y really does leave the same gap above the fan as below it. At a
+	# fixed 56 the box was shorter than the 73px card and the "centring" was a lie.
+	_set_rect(opponent_hand_container, Vector2(OPP_HAND_X, OPP_HAND_Y),
+		Vector2(OPP_HAND_W, OPP_HAND_CARD.y))
 	_set_rect(player_hand_container, Vector2(PLAYER_HAND_X, PLAYER_HAND_Y),
 		Vector2(PLAYER_HAND_W, 140.0))
 	if player_hand_container is HBoxContainer:
@@ -1646,7 +1651,9 @@ func _place_bars() -> void:
 	caption.z_index = UIKit.Z_CHROME + 1
 	add_child(caption)
 	_stadium_caption = caption   # ISSUE #212
-	print("ISSUE #269 FIX ACTIVE: opponent hand cards ", OPP_HAND_CARD)
+	print("ISSUE #269 FIX ACTIVE: opponent hand cards ", OPP_HAND_CARD,
+		" at y ", OPP_HAND_Y, " - header ", BOARD_TOP_H,
+		", so ", OPP_HAND_Y, "px clear above and below")
 
 	# ATTACK, POWER and RETREAT are gone from the footer — they are rows on the
 	# Pokemon now. Only End Turn is left, and it is REPARENTED INTO the footer bar
@@ -1966,8 +1973,9 @@ const DIVIDER_RULE_GAP := 32.0
 ## "Opponent" everywhere else, so "their" was the odd one out), and both are
 ## broken over TWO LINES with the possessive on top - which is also the only way
 ## "Opponent's turn" fits an 88px divider column at all.
+## ISSUE #278: the possessive goes - "Opponent turn", not "Opponent's turn".
 const TURN_LABEL_YOURS  := "Your\nturn"
-const TURN_LABEL_THEIRS := "Opponent's\nturn"
+const TURN_LABEL_THEIRS := "Opponent\nturn"
 
 
 ## The little power button that sits over a benched Pokemon.
@@ -3025,6 +3033,93 @@ func display_hp_circles_above_align(active_pokemon: card_object, is_opponent: bo
 	blocks.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	hp_grid_container.add_child(blocks)
 
+	# ISSUE #286: if this redraw is a DROP in HP on the same Pokemon, walk the row
+	# back to where it was and take the blocks off one at a time.
+	_maybe_animate_hp_deplete(blocks, hp_label, active_pokemon, is_opponent,
+		current_hp, max_hp)
+
+
+## ISSUE #286: THE BLOCKS COME OFF ONE AT A TIME.
+##
+## display_hp_circles_above_align REBUILDS the whole row on every call, so a
+## 60-damage hit simply repainted six blocks between two frames and the counter
+## had already finished before the damage figure had finished floating. There is
+## nothing to tween - the row is new every time - so the animation has to be
+## driven from the DIFFERENCE between what is on screen and what has just been
+## drawn, which is what _hp_shown remembers.
+##
+## Only a DROP animates, and only on the same Pokemon: a heal, a replacement, a
+## first draw or a Pokemon swap all snap, because none of them read as damage.
+## TWEAKABLE - the gap between blocks, scaled by the match animation-speed preset
+## like every other in-match beat (#34), so "slow" spreads it out and reduce
+## motion collapses it to nothing.
+const HP_BLOCK_STEP := 0.07
+
+var _hp_shown: Dictionary = {}
+
+func _maybe_animate_hp_deplete(blocks: HBoxContainer, hp_label: Label,
+		mon: card_object, is_opponent: bool, current_hp: int, max_hp: int) -> void:
+	var side := "opp" if is_opponent else "you"
+	var total: int = int(ceil(maxf(float(max_hp), 0.0) / 10.0))
+	var damaged_now: int = mini(int(ceil(float(maxi(max_hp - current_hp, 0)) / 10.0)), total)
+	var prev: Dictionary = _hp_shown.get(side, {})
+	_hp_shown[side] = {"mon": mon, "hp": current_hp, "damaged": damaged_now, "total": total}
+
+	if prev.is_empty() or prev.get("mon") != mon or int(prev.get("total", -1)) != total:
+		return
+	var damaged_was: int = int(prev.get("damaged", damaged_now))
+	if damaged_now <= damaged_was:
+		return
+	var step: float = GameState.match_time(HP_BLOCK_STEP)
+	if step <= 0.0:
+		return   # reduce motion / instant preset: the row is already correct
+
+	print("ISSUE #286 FIX ACTIVE: HP blocks ", damaged_was, " -> ", damaged_now,
+		" of ", total, " on ", mon.metadata.get("name", "?"), ", ", step, "s per block")
+	_deplete_hp_blocks(blocks, hp_label, total, damaged_was, damaged_now,
+		int(prev.get("hp", current_hp)), current_hp, max_hp, step)
+
+
+## Repaints the row back to its previous state, then removes the new blocks one
+## per `step`. Deliberately NOT awaited by the caller: display_hp_circles_above_align
+## is called from a dozen places, most of them not in a coroutine, and a stray
+## rebuild while this is running simply frees the row - which every step checks for.
+func _deplete_hp_blocks(blocks: HBoxContainer, hp_label: Label, total: int,
+		from_damaged: int, to_damaged: int, from_hp: int, to_hp: int, max_hp: int,
+		step: float) -> void:
+	# UIKit.make_damage_counters greys the LAST `damaged` blocks, so the newly lost
+	# ones are the run immediately before the greyed tail, taken from the inside out.
+	for i in range(from_damaged, to_damaged):
+		_paint_hp_block(blocks, total - 1 - i, false)
+	if hp_label != null and is_instance_valid(hp_label):
+		hp_label.text = "%d / %d" % [from_hp, max_hp]
+
+	var steps: int = to_damaged - from_damaged
+	for i in range(steps):
+		await get_tree().create_timer(step).timeout
+		if not is_instance_valid(blocks):
+			return
+		_paint_hp_block(blocks, total - 1 - (from_damaged + i), true)
+		if hp_label != null and is_instance_valid(hp_label):
+			var frac: float = float(i + 1) / float(steps)
+			hp_label.text = "%d / %d" % [
+				int(round(lerpf(float(from_hp), float(to_hp), frac))), max_hp]
+
+
+## One block's fill. Same two colours make_damage_counters uses, so the animated
+## row and a freshly built one are indistinguishable once it settles.
+func _paint_hp_block(blocks: HBoxContainer, index: int, is_damaged: bool) -> void:
+	if not is_instance_valid(blocks) or index < 0 or index >= blocks.get_child_count():
+		return
+	var block := blocks.get_child(index)
+	if not (block is Panel):
+		return
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = UITheme.col_a("accent_2", 0.30) if is_damaged else UITheme.col("good")
+	sb.set_corner_radius_all(2)
+	sb.anti_aliasing = true
+	(block as Panel).add_theme_stylebox_override("panel", sb)
+
 
 # Adds one row of HP circles and spacers to the grid container
 # circles_first: if true, circles are drawn before spacers (left-aligned for opponent)
@@ -3282,6 +3377,10 @@ func _render_attack_page() -> void:
 			btn.disabled = true
 			btn.theme = theme_disabled
 
+		# ISSUE #287: same press-not-release fix as the forfeit dialog. These are
+		# hand-built Buttons carrying the legacy themes, so they never picked up
+		# UIKit.style_button's action_mode either.
+		btn.action_mode = BaseButton.ACTION_MODE_BUTTON_PRESS
 		btn.custom_minimum_size = Vector2(float(m["btn_w"]), 50)
 		attack_buttons_container.add_child(btn)
 		_build_attack_button_content(btn, attack, label_text, float(m["scale"]), float(m["btn_w"]))
@@ -3304,6 +3403,7 @@ func _make_attack_page_button(page_count: int, _sep: float) -> Button:
 	var btn := Button.new()
 	btn.text = "MORE  %d/%d" % [_attack_page + 1, page_count]
 	btn.theme = theme_blue
+	btn.action_mode = BaseButton.ACTION_MODE_BUTTON_PRESS   # ISSUE #287
 	btn.custom_minimum_size = Vector2(ATTACK_MORE_BTN_W, 50)
 	btn.pressed.connect(func():
 		_attack_page = (_attack_page + 1) % page_count
@@ -3849,8 +3949,27 @@ func update_status_icons(pokemon: card_object, is_opponent: bool) -> void:
 ######################################################################################################################################################
 ################################################################ ANIMATION FUNCTIONS #################################################################
 
+## ISSUE #279: the TYPE SIZE is an argument now.
+##
+## Every floating label on the board was 36pt with a 10px outline, which is right
+## for "Start turn" across an empty corner and far too heavy for a damage figure
+## that has to sit beside a Pokemon without covering it. The damage and modifier
+## labels pass FLOAT_DAMAGE_FONT; everything else keeps the old numbers by
+## default, so no other caller changes. TWEAKABLE.
+## ISSUE #288: how long the match board takes to fade up from black. Doubled from
+## 0.5 alongside FADE_TIME on the intro, outro and best-of-three screens, so every
+## boundary in the sequence moves at the same pace. TWEAKABLE.
+const MATCH_FADE_IN_TIME := 1.0
+
+const FLOAT_LABEL_FONT    := 36
+const FLOAT_LABEL_OUTLINE := 10
+## Half size, and the outline halves with it - an outline that does not scale
+## with the glyph swallows a small one whole.
+const FLOAT_DAMAGE_FONT    := 18
+const FLOAT_DAMAGE_OUTLINE := 5
+
 # Creates a floating label at a given position that drifts upward and fades out over 2 seconds
-func show_floating_label(message: String, spawn_position: Vector2, label_color: Color = Color.WHITE, upwards: bool = true,) -> void:
+func show_floating_label(message: String, spawn_position: Vector2, label_color: Color = Color.WHITE, upwards: bool = true, font_size: int = FLOAT_LABEL_FONT, outline: int = FLOAT_LABEL_OUTLINE) -> void:
 	var label = Label.new()
 	label.text = message
 	
@@ -3865,8 +3984,8 @@ func show_floating_label(message: String, spawn_position: Vector2, label_color: 
 	label.theme = theme_disabled
 	label.add_theme_color_override("font_color", label_color)
 	label.add_theme_color_override("font_outline_color", Color.BLACK)
-	label.add_theme_constant_override("outline_size", 10)
-	label.add_theme_font_size_override("font_size", 36)
+	label.add_theme_constant_override("outline_size", outline)
+	label.add_theme_font_size_override("font_size", font_size)
 	
 	add_child(label)
 	
@@ -3960,7 +4079,15 @@ func _anim_dest_size(to_node: Control, fallback: Vector2) -> Vector2:
 ## being attached to instead of landing on top of it and vanishing. That is how
 ## an attached tool or energy is actually drawn - peeking out from behind the
 ## card - so the animation now ends in the same reading the board gives.
-func animate_card_a_to_b(from_node: Control, to_node: Control, animation_speed: float = 0.8, custom_texture: Texture2D = null, custom_size: Vector2 = Vector2(83, 113), target_size: Vector2 = Vector2.ZERO, target_pos_override: Vector2 = _ANIM_POS_SENTINEL, arrive_behind: bool = false) -> void:
+## `from_pos_override` (ISSUE #280 / #283): the exact top-left the card STARTS
+## from. Every caller used to hand over a CONTAINER - the hand box, the Active's
+## card - so a card played out of the middle of your hand took off from the left
+## edge of the hand, and an energy being discarded took off from the Pokemon it
+## was attached to rather than from the energy card itself. The card's own node is
+## usually gone by the time the flight starts (the caller erases and refreshes
+## first, and it must), so the position has to be MEASURED BEFORE that and passed
+## in - which is what _card_rect_now() is for.
+func animate_card_a_to_b(from_node: Control, to_node: Control, animation_speed: float = 0.8, custom_texture: Texture2D = null, custom_size: Vector2 = Vector2(83, 113), target_size: Vector2 = Vector2.ZERO, target_pos_override: Vector2 = _ANIM_POS_SENTINEL, arrive_behind: bool = false, from_pos_override: Vector2 = _ANIM_POS_SENTINEL) -> void:
 	# ISSUE #243: queue behind any flight already in the air.
 	while _anim_in_flight:
 		await get_tree().process_frame
@@ -4000,7 +4127,8 @@ func animate_card_a_to_b(from_node: Control, to_node: Control, animation_speed: 
 	card_image.z_index = UIKit.Z_CHROME + 20
 	add_child(card_image)
 
-	card_image.global_position = from_node.global_position
+	# ISSUE #280 / #283: start where the card actually IS, when the caller knows.
+	card_image.global_position = from_pos_override if from_pos_override != _ANIM_POS_SENTINEL 		else from_node.global_position
 	var target_pos: Vector2
 	if target_pos_override != _ANIM_POS_SENTINEL:
 		target_pos = target_pos_override
@@ -4074,17 +4202,38 @@ func animate_attach_to_pokemon(card: card_object, target: card_object,
 		loc.get("size", BENCH_CARD), loc.get("position", _ANIM_POS_SENTINEL), true)
 
 # Animate discarding for reatreat and knockout
+#
+# ISSUE #280: EACH ENERGY LEAVES FROM ITS OWN CARD, NOT FROM THE POKEMON.
+#
+# `from_node` was the POKEMON's card for every energy in the stack, so a discard
+# always took off from the Active slot however far the energy actually sat from
+# it - and the peek-stack fans a whole ATTACH_STACK_SPAN (300px) out to the side,
+# so the card visibly jumped to the Pokemon before starting to move. Each energy's
+# own rect is measured first, then the board is refreshed, then it flies: "hide
+# the energy, then animate it from where it was" (which is also #285's first beat).
+#
+# ISSUE #285: each flight is AWAITED. The old loop fired an un-awaited animation
+# and then slept 0.2s, which #243's serialisation turned into a queue running
+# behind a timer that had nothing to do with it. Awaiting means the Pokemon's own
+# flight (the caller's next step on a knockout) cannot start until the last energy
+# has actually landed.
 func animate_energies_to_discard(energy_cards: Array, pokemon: card_object, is_opponent: bool) -> void:
 	var discard_node = opponent_discard_icon if is_opponent else player_discard_icon
 	var discard_pile = opponent_discard_pile if is_opponent else player_discard_pile
-	var from_node = find_card_ui_for_object(pokemon)
-
-	if from_node == null:
+	# The Pokemon's own rect, captured once, as the fallback for any energy that
+	# has no card of its own on screen (a benched Pokemon's are not drawn). Taken
+	# as a RECT rather than kept as a node because the refreshes inside the loop
+	# can free it, and a freed from_node would take the flight down with it.
+	var poke_rect := _card_rect_now(pokemon)
+	if poke_rect.is_empty():
 		return
 
 	for energy in energy_cards:
 		var energy_texture = get_card_texture(energy)
-		animate_card_a_to_b(from_node, discard_node, 0.2, energy_texture, card_scales[10])
+		# ISSUE #280: measured BEFORE the erase + refresh frees the energy's node.
+		# A benched Pokemon's energies are not drawn as separate cards, so there is
+		# nothing to measure there and the Pokemon's own rect stays the fallback.
+		var energy_from := _card_rect_now(energy)
 
 		# Remove this energy from the pokemon's attached list NOW,
 		# so the redraw reflects one fewer energy each frame
@@ -4098,7 +4247,13 @@ func animate_energies_to_discard(energy_cards: Array, pokemon: card_object, is_o
 		# ISSUE #79: refresh the discard pile visual after EVERY energy (not just at the end) so the
 		# player sees each discarded energy land on the pile as it is discarded during retreat/KO.
 		update_discard_pile_display(is_opponent)
-		await get_tree().create_timer(GameState.match_time(0.2)).timeout
+
+		var start := energy_from if not energy_from.is_empty() else poke_rect
+		print("ISSUE #280 FIX ACTIVE: discarding ", energy.metadata.get("name", "?"),
+			" from ", start["position"], " (own card: ", not energy_from.is_empty(), ")")
+		await animate_card_a_to_b(discard_node, discard_node, 0.2, energy_texture,
+			start.get("size", card_scales[10]), Vector2.ZERO, _ANIM_POS_SENTINEL,
+			false, start["position"])
 
 	# Update the discard pile visual to show the new top card
 	update_discard_pile_display(is_opponent)
@@ -4355,18 +4510,51 @@ func refresh_pokemon_hp_display(pokemon: card_object, is_opponent: bool) -> void
 ## head. get_pokemon_screen_location() already knows where every Pokemon in play
 ## is drawn; this centres the label on that rect and falls back to the old fixed
 ## spot only when the Pokemon is not on the board at all.
+## ISSUE #279: HOW FAR OUTWARD THE FIGURE SITS FROM THE CARD'S CENTRE.
+##
+## Centred on the card, a damage figure lands squarely on the Pokemon's art. The
+## HP readout and the damage counters both live on the side of the card AWAY from
+## the centre line (yours to the left, theirs to the right - see _place_duel_row),
+## so pushing the label the same way lines it up with the number it is changing
+## and clears the art at the same time. TWEAKABLE.
+const FLOAT_LABEL_SIDE_NUDGE := 25.0
+
+## ISSUE #281: BOTH TURN LABELS RISE OUT OF THE SAME PLACE.
+##
+## "Start turn" spawned top-LEFT at (50, 180) and drifted DOWN while "End turn"
+## spawned bottom-right and drifted up - two opposite gestures for the two halves
+## of one event, and neither was anywhere near the player's own corner after the
+## overhaul moved the piles and prizes. They now both rise out of the gap just
+## above the "You" caption in the bottom-right rail, which is the label that names
+## whose turn it is about to be.
+##
+## Derived, not hardcoded: the caption itself is drawn at (RIGHT_RAIL_X,
+## PILE_BOT_Y - 26) by _place_rails, so if the rail or the footer moves the labels
+## follow. show_floating_label centres its text in a 300px box, hence the -150.
+## TWEAKABLE: only the clearance above the caption.
+const TURN_FLOAT_GAP := 46.0
+static func _turn_float_anchor() -> Vector2:
+	return Vector2(RIGHT_RAIL_X + RAIL_W * 0.5 - 150.0,
+		PILE_BOT_Y - 26.0 - TURN_FLOAT_GAP)
+
 func float_label_over(pokemon: card_object, text: String, colour: Color,
 		is_opponent: bool = false) -> void:
 	var loc := get_pokemon_screen_location(pokemon)
+	# ISSUE #279: outward is LEFT for you and RIGHT for the opponent, matching the
+	# side each one's HP block already sits on.
+	var nudge: float = FLOAT_LABEL_SIDE_NUDGE if is_opponent else -FLOAT_LABEL_SIDE_NUDGE
 	if loc.is_empty():
-		show_floating_label(text, Vector2(1030.0 if is_opponent else 530.0, 300.0), colour, true)
+		show_floating_label(text,
+			Vector2((1030.0 if is_opponent else 530.0) + nudge, 300.0), colour, true,
+			FLOAT_DAMAGE_FONT, FLOAT_DAMAGE_OUTLINE)
 		return
 	var rect_pos: Vector2 = loc["position"]
 	var rect_size: Vector2 = loc["size"]
 	# show_floating_label centres its text in a 300px box, hence the -150.
 	show_floating_label(text,
-		Vector2(rect_pos.x + rect_size.x * 0.5 - 150.0, rect_pos.y + rect_size.y * 0.35),
-		colour, true)
+		Vector2(rect_pos.x + rect_size.x * 0.5 - 150.0 + nudge,
+			rect_pos.y + rect_size.y * 0.35),
+		colour, true, FLOAT_DAMAGE_FONT, FLOAT_DAMAGE_OUTLINE)
 
 
 ## ISSUE #236 / #241 / #242: THE SIZES HERE WERE PRE-OVERHAUL AND WRONG.
@@ -4430,6 +4618,59 @@ func measure_and_hide_new_active_energy_slot(is_opponent: bool) -> Dictionary:
 # (PlusPower, Defender, …). Builds the real attached-trainer stack for the Active, returns the exact
 # {position, size} of the just-appended (last) slot, and hides it so the incoming card can fly to its
 # precise final spot instead of guessing the container's origin (which sat ~150-200px too low).
+## ISSUE #280 / #283: WHERE A CARD IS RIGHT NOW, captured before it is erased.
+##
+## find_card_ui_for_object already walks the hands, the actives, the benches and
+## the Active energy stacks, so any card the player can see has a node. The rect
+## has to be taken BEFORE the caller erases the card and refreshes the board -
+## a refresh frees the node - which is why this is a separate call rather than
+## something animate_card_a_to_b could do for itself.
+##
+## Returns {} when the card has no node on screen; callers fall back to the
+## container they used to pass, so nothing regresses if a card is not drawn.
+func _card_rect_now(card_obj: card_object) -> Dictionary:
+	if card_obj == null:
+		return {}
+	var node := find_card_ui_for_object(card_obj)
+	if node == null or not is_instance_valid(node):
+		return {}
+	return {"position": node.global_position, "size": node.size}
+
+
+## ISSUE #282: WHERE A DRAWN CARD ACTUALLY LANDS IN THE HAND.
+##
+## A draw flew to `player_hand_container` with no override, so it aimed at the
+## CENTRE of the hand box and the card then popped to the end of the row when the
+## board refreshed. The hand is a centred HBoxContainer, so the landing slot is
+## not something that can be calculated - it depends on how many cards are in the
+## hand and how tightly they are overlapping. So build the new hand first, let the
+## container sort itself, and read the last slot's real rect off the screen.
+##
+## The new card is made TRANSPARENT rather than hidden, unlike the Active energy
+## and tool stacks: hiding a child of a centred HBox drops it out of the layout
+## and re-centres every other card in the hand, which would make the whole row
+## shuffle sideways for the length of the flight. Alpha keeps the geometry.
+## The caller's normal refresh puts the alpha back.
+##
+## Assumes the card is ALREADY appended to the hand array (so it is the last one).
+func measure_and_hide_new_hand_slot(is_opponent: bool) -> Dictionary:
+	var hand_container = opponent_hand_container if is_opponent else player_hand_container
+	refresh_hand_display(is_opponent)
+	# A BoxContainer sorts its children on a deferred pass, so the positions are
+	# not real until the frame ends. The energy/tool stacks do not need this -
+	# they set position.x by hand - but the hand does.
+	await get_tree().process_frame
+	if not is_inside_tree():
+		return {}
+	var count := hand_container.get_child_count()
+	if count == 0:
+		return {}
+	var slot: Control = hand_container.get_child(count - 1)
+	var rect := {"position": slot.global_position, "size": slot.size}
+	slot.modulate.a = 0.0
+	return rect
+
+
 func measure_and_hide_new_active_tool_slot(is_opponent: bool) -> Dictionary:
 	trainer_effects.display_attached_trainer_cards(is_opponent)
 	var container = opponent_attached_cards_container if is_opponent else player_attached_cards_container
@@ -4823,10 +5064,20 @@ func _show_forfeit_dialog() -> void:
 	btn_row.add_theme_constant_override("separation", 20)
 	vbox.add_child(btn_row)
 
+	# ISSUE #287: FIRES ON PRESS, NOT RELEASE.
+	#
+	# Godot's default is ACTION_MODE_BUTTON_RELEASE - nothing happens until the
+	# mouse comes back UP, and nudging the pointer while held cancels the click
+	# outright, which reads as a dead button. UIKit.style_button sets press mode on
+	# every button it themes, but this dialog predates the overhaul and still
+	# carries the old theme_red/theme_green, so it never got it. Both buttons, not
+	# just Cancel: they are the same control in the same row and a dialog where one
+	# half responds on press and the other on release is worse than either.
 	var yes_btn := Button.new()
 	yes_btn.text = "Forfeit"
 	yes_btn.custom_minimum_size = Vector2(130, 45)
 	yes_btn.theme = theme_red
+	yes_btn.action_mode = BaseButton.ACTION_MODE_BUTTON_PRESS
 	yes_btn.pressed.connect(_on_forfeit_confirmed)
 	btn_row.add_child(yes_btn)
 
@@ -4834,8 +5085,10 @@ func _show_forfeit_dialog() -> void:
 	no_btn.text = "Cancel"
 	no_btn.custom_minimum_size = Vector2(130, 45)
 	no_btn.theme = theme_green
+	no_btn.action_mode = BaseButton.ACTION_MODE_BUTTON_PRESS
 	no_btn.pressed.connect(_close_forfeit_dialog)
 	btn_row.add_child(no_btn)
+	print("ISSUE #287 FIX ACTIVE: forfeit dialog buttons on ACTION_MODE_BUTTON_PRESS")
 
 
 func _close_forfeit_dialog() -> void:
@@ -5292,6 +5545,10 @@ func perform_energy_attachment() -> void:
 		hide_selection_mode_display_main()
 		return
 
+	# ISSUE #283: measure the energy card WHERE IT SITS IN THE HAND, before the
+	# erase + refresh below frees its node. Without this the flight starts at the
+	# hand container's origin - the left end of the row - whichever card was played.
+	var energy_from := _card_rect_now(energy_card)
 	target_pokemon.attached_energies.append(energy_card)
 	print("Attached ", energy_card.metadata.get("name", "Unknown Energy"), " to ", target_pokemon.metadata.get("name", "Unknown Pokemon"))
 	player_hand.erase(energy_card)
@@ -5320,11 +5577,21 @@ func perform_energy_attachment() -> void:
 		var slot_rect = measure_and_hide_new_active_energy_slot(false)
 		var slot_pos = slot_rect.get("position", _ANIM_POS_SENTINEL)
 		var slot_size = slot_rect.get("size", card_scales[11])
-		await animate_card_a_to_b(player_hand_container, target_node, 0.2, energy_texture, card_scales[12], slot_size, slot_pos)
+		# ISSUE #283: leaves from the card's own place in the hand, at the size it
+		# was drawn there, and sinks BEHIND the Pokemon as it lands (#236).
+		print("ISSUE #283 FIX ACTIVE: energy leaves hand from ",
+			energy_from.get("position", "container fallback"))
+		await animate_card_a_to_b(player_hand_container, target_node, 0.2, energy_texture,
+			energy_from.get("size", card_scales[12]), slot_size, slot_pos, true,
+			energy_from.get("position", _ANIM_POS_SENTINEL))
 	else:
 		# ISSUE #20 FIX: fly the Energy to the ACTUAL benched Pokémon's slot position.
-		var energy_pos_override = get_pokemon_screen_location(target_pokemon).get("position", Vector2(-99999, -99999))
-		await animate_card_a_to_b(player_hand_container, target_node, 0.2, energy_texture, card_scales[12], Vector2.ZERO, energy_pos_override)
+		var bench_energy_loc = get_pokemon_screen_location(target_pokemon)
+		var energy_pos_override = bench_energy_loc.get("position", _ANIM_POS_SENTINEL)
+		await animate_card_a_to_b(player_hand_container, target_node, 0.2, energy_texture,
+			energy_from.get("size", card_scales[12]),
+			bench_energy_loc.get("size", BENCH_CARD), energy_pos_override, true,
+			energy_from.get("position", _ANIM_POS_SENTINEL))
 
 	display_pokemon(false)
 	display_active_pokemon_energies(false)
@@ -5461,10 +5728,22 @@ func draw_card_from_deck(is_opponent: bool, speed_multiplier: float = 1.0) -> ca
 	drawn_card.current_location = "hand"
 	hand.append(drawn_card)
 
-	if is_opponent:
-		await animate_card_a_to_b(opponent_deck_icon, opponent_hand_container, 0.2 * speed_multiplier, opponent_card_back_texture)
-	else:
-		await animate_card_a_to_b(player_deck_icon, player_hand_container, 0.3 * speed_multiplier, card_back_texture)
+	# ISSUE #282: fly to the slot the card will REALLY occupy - the end of the row -
+	# instead of to the middle of the hand box. measure_and_hide_new_hand_slot
+	# builds the new hand, reads the last slot's rect and makes it transparent so
+	# the card is not visible in two places during the flight.
+	var hand_container = opponent_hand_container if is_opponent else player_hand_container
+	var deck_icon = opponent_deck_icon if is_opponent else player_deck_icon
+	var back_tex = opponent_card_back_texture if is_opponent else card_back_texture
+	var speed: float = (0.2 if is_opponent else 0.3) * speed_multiplier
+	var slot := await measure_and_hide_new_hand_slot(is_opponent)
+	if not slot.is_empty():
+		print("ISSUE #282 FIX ACTIVE: draw lands at ", slot["position"], " size ", slot["size"])
+	await animate_card_a_to_b(deck_icon, hand_container, speed, back_tex,
+		Vector2(83, 113), slot.get("size", Vector2.ZERO),
+		slot.get("position", _ANIM_POS_SENTINEL))
+	# Puts the transparent slot back to full opacity.
+	refresh_hand_display(is_opponent)
 
 	return drawn_card
 
@@ -5696,7 +5975,9 @@ func player_start_turn_checks() -> void:
 	# Reset trainer lock from Headache
 	trainer_effects.reset_trainer_lock(false)
 	opponent_blocker.visible = false
-	show_floating_label("Start turn", Vector2(50, 180), Color.WHITE, false)
+	# ISSUE #281: up out of the player's corner, exactly like "End turn".
+	print("ISSUE #281 FIX ACTIVE: turn labels rise from ", _turn_float_anchor())
+	show_floating_label("Start turn", _turn_float_anchor(), Color.WHITE, true)
 	turn_number += 1
 	_refresh_turn_chip()
 	print("PLAYER'S TURN START. TURN NUMBER IS ", turn_number)
@@ -5757,7 +6038,8 @@ func player_end_turn_checks() -> void:
 	opponents_turn_active = true
 	_refresh_turn_divider()
 	update_main_screen_buttons()
-	show_floating_label("End turn", Vector2(1500, 880),Color.WHITE)
+	# ISSUE #281: the same anchor "Start turn" now uses.
+	show_floating_label("End turn", _turn_float_anchor(), Color.WHITE, true)
 	
 	await check_all_knockouts()
 	
@@ -7002,7 +7284,18 @@ func display_and_apply_attack_damage(attacker: card_object, defender: card_objec
 		final_damage = await trainer_effects.gym1_charity_choose_reduction(attacker, defender, final_damage, is_opponent)
 		print("CHARITY: damage resolved to ", final_damage)
 
-	var defender_label_pos = Vector2(530, 300) if is_opponent else Vector2(1030, 300)
+	# ISSUE #279: THE DAMAGE AND MULTIPLIER FIGURES ARE PLACED, NOT HARDCODED.
+	#
+	# Both were spawned at a fixed (530|1030, 300) - the pre-overhaul Active slots -
+	# so they landed on top of whatever the board draws there now. float_label_over
+	# reads the defender's real rect (#173), pushes the figure out to the side its
+	# HP counters are on and draws it at half size (FLOAT_DAMAGE_FONT), which is
+	# the whole of "in line with the HP counters instead of overlapping the card".
+	# `is_opponent` here is the ATTACKER's side, so the DEFENDER is the other one.
+	var defender_is_opponent: bool = not is_opponent
+	print("ISSUE #279 FIX ACTIVE: damage label over ",
+		defender.metadata.get("name", "?"), " defender_is_opponent=", defender_is_opponent,
+		" nudge ", FLOAT_LABEL_SIDE_NUDGE, " font ", FLOAT_DAMAGE_FONT)
 	for modifier in modifiers:
 		var color_to_pass = Color.WHITE
 		if "WEAKNESS" in modifier:
@@ -7012,14 +7305,14 @@ func display_and_apply_attack_damage(attacker: card_object, defender: card_objec
 		else:
 			color_to_pass = Color.WHITE
 			
-		show_floating_label(modifier, defender_label_pos, color_to_pass, true)
+		float_label_over(defender, modifier, color_to_pass, defender_is_opponent)
 		await get_tree().create_timer(GameState.match_time(0.5)).timeout
 	# Only show damage label if there is actual damage, or if the attack originally had damage
 	# but it was reduced to 0 by resistance/other modifiers (not shields)
 	var has_shield_modifier = "NO DAMAGE" in modifiers
 	var show_damage_label = final_damage > 0 or (base_damage > 0 and modifiers.size() > 0 and not has_shield_modifier)
 	if show_damage_label:
-		show_floating_label("-" + str(final_damage) + "HP", defender_label_pos, Color.WHITE, true)
+		float_label_over(defender, "-" + str(final_damage) + "HP", Color.WHITE, defender_is_opponent)
 	defender.current_hp = max(0, defender.current_hp - final_damage)
 	print(attacker.metadata["name"] + " dealt " + str(final_damage) + " damage to " + defender.metadata["name"] + "! HP remaining: " + str(defender.current_hp))
 	display_hp_circles_above_align(defender, !is_opponent)
@@ -7643,25 +7936,52 @@ func check_and_handle_knockout(pokemon: card_object, is_opponent: bool) -> bool:
 		cpu_ai.invalidate_cpu_evaluation()
 		return true
 	
-	# Grab UI references before any animations that might free nodes
-	var pokemon_ui = find_card_ui_for_object(pokemon)
+	# ISSUE #285: THE KNOCKOUT IS FOUR BEATS, IN THIS ORDER.
+	#
+	#   1. every attached Energy disappears from the stack and flies to the discard,
+	#      one at a time, each from its OWN card (ISSUE #280);
+	#   2. only once the last one has LANDED does the Pokemon itself go;
+	#   3. the Active slot is hidden, so the card is gone from the board before the
+	#      ghost leaves rather than sitting under it;
+	#   4. the ghost flies from the card's EXACT rect and tweens down to the discard
+	#      pile's size on the way.
+	#
+	# Beat 4 is what was actually broken. The flight was sized from card_scales[10]
+	# - a size the board has not drawn since the overhaul - so a 265x367 Active
+	# "left" as a small card that appeared from nowhere. The rect is measured off
+	# the real node now, before anything hides it.
 	var pokemon_texture = get_card_texture(pokemon)
+	var ko_rect := _card_rect_now(pokemon)
+	if ko_rect.is_empty():
+		var loc := get_pokemon_screen_location(pokemon)
+		ko_rect = {
+			"position": loc.get("position", active_container.global_position),
+			"size": loc.get("size", ACTIVE_CARD),
+		}
 	
-	# Animate energies before send_card_to_discard clears them
+	# Beat 1 + 2: awaited, so nothing below starts until the stack is empty.
 	if pokemon.attached_energies.size() > 0:
 		await animate_energies_to_discard(pokemon.attached_energies.duplicate(), pokemon, is_opponent)
 		display_active_pokemon_energies(is_opponent)
 	
-	# Use the container as fallback if pokemon_ui was freed
-	var from_node = pokemon_ui if is_instance_valid(pokemon_ui) else active_container
-
-	# ISSUE #87: when it is the ACTIVE being knocked out, hide its slot (card + HP squares) before the
-	# card flies to the discard, so the squares don't sit above an empty Active spot for the whole
-	# animation. They come back with the replacement Pokemon via display_hp_circles_above_align.
+	# Beat 3. ISSUE #87: when it is the ACTIVE being knocked out, hide its slot
+	# (card + HP squares + status + action rows) before the card flies to the
+	# discard, so nothing is left describing a Pokemon that has gone. They come back
+	# with the replacement via display_hp_circles_above_align.
 	if pokemon == active:
 		set_active_slot_visible(is_opponent, false)
+	else:
+		# A benched Pokemon has no slot toggle, so take it out of the bench row and
+		# redraw before the ghost leaves - same "gone before it moves" reading.
+		bench.erase(pokemon)
+		display_pokemon(is_opponent)
 
-	await animate_card_a_to_b(from_node, discard_node, 0.3, pokemon_texture, card_scales[10])
+	# Beat 4. _anim_dest_size resolves the discard pile to PILE_SIZE, so the ghost
+	# shrinks from the card's real size to the pile's over the flight.
+	print("ISSUE #285 FIX ACTIVE: KO ghost leaves ", ko_rect["position"],
+		" at ", ko_rect["size"], " -> discard pile at ", PILE_SIZE)
+	await animate_card_a_to_b(discard_node, discard_node, 0.3, pokemon_texture,
+		ko_rect["size"], Vector2.ZERO, _ANIM_POS_SENTINEL, false, ko_rect["position"])
 
 
 	if pokemon == active:
@@ -7823,11 +8143,28 @@ func handle_post_knockout(is_opponent: bool) -> void:
 		if new_active == null:
 			new_active = bench[0]
 
+		# ISSUE #276: the slot the card is LEAVING, measured before the bench redraws.
+		var repl_from := _card_rect_now(new_active)
 		bench.erase(new_active)
+		display_pokemon(true)
 		var new_texture = get_card_texture(new_active)
 
-		# ISSUE #20: grow to active size while gliding to the active slot (no post-refresh pop)
-		await animate_card_a_to_b(bench_container, active_container, 0.3, new_texture, card_scales[9], card_scales[3.5])
+		# ISSUE #276: THE CARD GREW TO A SIZE THE BOARD NO LONGER DRAWS.
+		#
+		# This flight ended at card_scales[3.5] - 405x557, the PRE-OVERHAUL Active
+		# size - while the Active slot is ACTIVE_CARD (265x367). So the replacement
+		# ballooned to half again the right size in mid-air and then snapped down
+		# the moment display_pokemon redrew it, which is the report exactly. It
+		# started from card_scales[9] rather than BENCH_CARD for the same reason,
+		# and aimed at the CONTAINER's centre instead of the slot.
+		# The same trap #236/#241/#242 fixed everywhere else; this call was missed.
+		print("ISSUE #276 FIX ACTIVE: bench -> active ",
+			repl_from.get("size", BENCH_CARD), " -> ", ACTIVE_CARD,
+			" (was card_scales[9] -> card_scales[3.5] = 405x557)")
+		await animate_card_a_to_b(bench_container, active_container, 0.3, new_texture,
+			repl_from.get("size", BENCH_CARD), ACTIVE_CARD,
+			active_container.global_position, false,
+			repl_from.get("position", _ANIM_POS_SENTINEL))
 
 		new_active.current_location = "active"
 		opponent_active_pokemon = new_active
@@ -8849,6 +9186,9 @@ func handle_action_retreat_bench() -> void:
 # Moves a bench pokemon to the active slot after a knockout and triggers post-knockout signals
 func handle_action_knockout_bench() -> void:
 	var new_active = selected_card_for_action
+	# ISSUE #276: measured while the card is still on the bench (or in the picker),
+	# before the erase and the screen teardown below take its node away.
+	var pl_repl_from := _card_rect_now(new_active)
 	player_bench.erase(new_active)
 	new_active.current_location = "active"
 	player_active_pokemon = new_active
@@ -8860,8 +9200,18 @@ func handle_action_knockout_bench() -> void:
 
 	var new_texture = get_card_texture(new_active)
 	# ISSUE #20: glide to the real active slot and grow to active size (no post-refresh pop)
+	# ISSUE #276: the SIBLING of the opponent's replacement above - same two stale
+	# card_scales entries. get_pokemon_screen_location already reported the right
+	# numbers here, so only the fallbacks and the start size were wrong, but they
+	# are the ones that bite the moment the lookup misses.
 	var active_loc = get_pokemon_screen_location(new_active)
-	await animate_card_a_to_b(player_bench_container, player_active_container, 0.3, new_texture, card_scales[9], active_loc.get("size", card_scales[3.5]), active_loc.get("position", _ANIM_POS_SENTINEL))
+	print("ISSUE #276 FIX ACTIVE: player bench -> active ",
+		pl_repl_from.get("size", BENCH_CARD), " -> ", active_loc.get("size", ACTIVE_CARD))
+	await animate_card_a_to_b(player_bench_container, player_active_container, 0.3,
+		new_texture, pl_repl_from.get("size", BENCH_CARD),
+		active_loc.get("size", ACTIVE_CARD),
+		active_loc.get("position", _ANIM_POS_SENTINEL), false,
+		pl_repl_from.get("position", _ANIM_POS_SENTINEL))
 
 	display_pokemon(false)
 	# ISSUE #87: the slot was hidden for the knockout animation — reveal it now the replacement has
@@ -8882,6 +9232,10 @@ func handle_action_knockout_bench() -> void:
 func handle_action_evolution() -> void:
 	var evo_card = evolution_card_awaiting_target
 	var target_card = selected_card_for_action
+	
+	# ISSUE #283: measured BEFORE perform_evolution, which takes the card out of
+	# the hand - after that there is no node left to measure.
+	var evo_from := _card_rect_now(evo_card)
 	
 	perform_evolution(false)
 	
@@ -8905,7 +9259,13 @@ func handle_action_evolution() -> void:
 	var evo_texture = get_card_texture(evo_card)
 	# ISSUE #20: land on the evolving Pokémon's actual slot at its real size
 	var evo_loc = get_pokemon_screen_location(evo_card)
-	await animate_card_a_to_b(player_hand_container, target_node, 0.3, evo_texture, card_scale_to_animate, evo_loc.get("size", card_scale_to_animate), evo_loc.get("position", _ANIM_POS_SENTINEL))
+	print("ISSUE #283 FIX ACTIVE: evolution leaves hand from ",
+		evo_from.get("position", "container fallback"))
+	await animate_card_a_to_b(player_hand_container, target_node, 0.3, evo_texture,
+		evo_from.get("size", card_scale_to_animate),
+		evo_loc.get("size", card_scale_to_animate),
+		evo_loc.get("position", _ANIM_POS_SENTINEL), false,
+		evo_from.get("position", _ANIM_POS_SENTINEL))
 
 	display_pokemon(false)
 	await get_tree().process_frame
@@ -8963,6 +9323,10 @@ func handle_action_normal_card() -> void:
 				start_bench_setup_phase()
 			else:
 				var bench_card = selected_card_for_action
+				# ISSUE #283: measured before add_pokemon_to_bench/refresh frees the
+				# hand node, so the card takes off from where the player clicked it
+				# rather than from the left end of the hand.
+				var bench_from := _card_rect_now(bench_card)
 				add_pokemon_to_bench(bench_card)
 				refresh_hand_display(false)
 				
@@ -8977,7 +9341,13 @@ func handle_action_normal_card() -> void:
 					var bench_texture = get_card_texture(bench_card)
 					# ISSUE #20: land on the actual next bench slot (bench cards are same size, so no morph)
 					var bench_loc = get_pokemon_screen_location(bench_card)
-					await animate_card_a_to_b(player_hand_container, player_bench_container, 0.3, bench_texture, card_scales[11], bench_loc.get("size", card_scales[11]), bench_loc.get("position", _ANIM_POS_SENTINEL))
+					print("ISSUE #283 FIX ACTIVE: bench placement leaves hand from ",
+						bench_from.get("position", "container fallback"))
+					await animate_card_a_to_b(player_hand_container, player_bench_container, 0.3,
+						bench_texture, bench_from.get("size", card_scales[11]),
+						bench_loc.get("size", BENCH_CARD),
+						bench_loc.get("position", _ANIM_POS_SENTINEL), false,
+						bench_from.get("position", _ANIM_POS_SENTINEL))
 					display_pokemon(false)
 					# GYM2-119 Rocket's Minefield Gym — coin flip per benched Basic from hand; tails = 20 damage
 					await trainer_effects.gym2_minefield_gym_trigger(bench_card, false)
@@ -9960,9 +10330,12 @@ func _ready() -> void:
 		if _coin_tex != null:
 			tex_heads = _coin_tex
 		
+	# ISSUE #288: 0.5 -> 1.0, the same doubling the intro, the outro and the
+	# best-of-three tracker got. This is the "intro to main match" half of it.
 	modulate.a = 0.0
 	var tween = create_tween()
-	tween.tween_property(self, "modulate:a", 1.0, 0.5)
+	tween.tween_property(self, "modulate:a", 1.0, MATCH_FADE_IN_TIME)
+	print("ISSUE #288 FIX ACTIVE: match board fades in over ", MATCH_FADE_IN_TIME, "s")
 	
 	# Connect all the signals so that when parts of the UI are clicked by mouse they can perform actions
 	player_bench_container.gui_input.connect(array_container_clicked.bind(player_bench))

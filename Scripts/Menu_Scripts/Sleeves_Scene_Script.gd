@@ -216,8 +216,11 @@ func _wrap_grid_in_scroll_container() -> void:
 # ─── Sleeve loading ───────────────────────────────────────────────────────────
 
 func _load_sleeves() -> void:
-	# Grid is built from the small/ copies — 593 full-size sleeves is ~440 MB of texture,
-	# the shrunken set is ~17 MB. The full-size original is only loaded on Shift zoom.
+	# ISSUE #274: the small/ folder is still the LISTING - it is the canonical set of
+	# sleeve names and what the count chip measures against - but each cell now loads
+	# the full-size original (see _add_sleeve_to_grid). Memory cost is real and was
+	# flagged: ~600 full-size textures rather than the ~17 MB shrunken set.
+	print("ISSUE #274 FIX ACTIVE: sleeve grid loading LARGE originals")
 	var dir := DirAccess.open(SLEEVE_SMALL_FOLDER)
 	if dir == null:
 		push_error("Sleeves: cannot open folder " + SLEEVE_SMALL_FOLDER)
@@ -260,7 +263,17 @@ func _add_sleeve_to_grid(file_name: String) -> void:
 	var base_name : String = file_name.get_basename()
 	var is_owned  : bool   = _owned_sleeves.has(base_name)
 
-	var texture := load(SLEEVE_SMALL_FOLDER + "/" + file_name) as Texture2D
+	# ISSUE #274: THE LARGE ORIGINAL, NOT THE SHRUNKEN COPY.
+	#
+	# The grid was built from small/ on the theory that texture size drives the
+	# load time. It does not: what makes this screen slow is DRAWING ~600 cells,
+	# and that cost is the same whichever texture each one holds. The full-size
+	# sleeve is also the one the zoom already loads, so a cell and its zoom now
+	# share a texture instead of loading two. small/ stays as the fallback for any
+	# sleeve whose original is missing.
+	var texture := _large_sleeve_texture(base_name)
+	if texture == null:
+		texture = load(SLEEVE_SMALL_FOLDER + "/" + file_name) as Texture2D
 	if texture == null:
 		return
 
