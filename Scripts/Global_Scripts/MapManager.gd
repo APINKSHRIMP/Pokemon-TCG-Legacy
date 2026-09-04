@@ -761,20 +761,49 @@ func _apply_cash_chip() -> void:
 # those are deliberately different questions: losing to someone twice without ever
 # beating them leaves the "new" bubble up but shows 0W-2L.
 #
-# An opponent never fought shows RECORD_NEW_TEXT rather than 0W-0L -- a record of
-# nothing is noise, and "NEW" is the thing worth saying.
-const RECORD_NEW_TEXT := "NEW"
+# THREE STATES, and the text names whichever one the player needs to act on:
+#
+#   never fought      -> RECORD_NEW_TEXT       ("a record of nothing" is noise)
+#   fought, never won -> RECORD_UNBEATEN_TEXT  (the FIRST-WIN REWARD is still unclaimed)
+#   beaten at least   -> the head-to-head score
+#     once
+#
+# The middle state is why the score is not shown unconditionally: reading 0W-2L off
+# a pill and inferring "so the reward is still there" is work, and a first win is the
+# one thing about an opponent worth walking across town for. Once they have been
+# beaten there is no reward left to announce, so the slot is free for the score.
+const RECORD_NEW_TEXT      := "NEW"
+const RECORD_UNBEATEN_TEXT := "UNBEATEN"
+
+# The pill icons are a SEPARATE SET from the two head bubbles, even though they say
+# the same thing -- *_pill.png is drawn to sit in a small dark well next to text,
+# the bubble is drawn to float over a sprite. Changing the pill must not change the
+# bubble, so Opponent_Object._get_bubble_texture() keeps its own pair.
+const RECORD_ICON_NEW  := MSG_ICON_DIR + "new_battle_pill.png"
+const RECORD_ICON_OLD  := MSG_ICON_DIR + "old_battle_pill.png"
+
+# The two rule-warning pills. Both are presence-only: the pill says a rule exists,
+# the pre-match validation screen and the match itself say what it is.
+const RESTRICTIONS_ICON := MSG_ICON_DIR + "restricted_card_pill.png"
+const RESTRICTIONS_TEXT := "RESTRICTIONS"
+const MODIFIERS_ICON    := MSG_ICON_DIR + "modifier_card_pill.png"
+const MODIFIERS_TEXT    := "MODIFIERS"
 
 func _record_chip(opponent_name: String) -> Dictionary:
 	var beaten: bool = GameState.has_beaten_opponent(opponent_name)
-	var icon: String = MSG_ICON_DIR + ("old_battle.png" if beaten else "new_battle.png")
+	var icon: String = RECORD_ICON_OLD if beaten else RECORD_ICON_NEW
 	var record: Array = GameState.get_opponent_record(opponent_name)
 	var wins: int = int(record[0])
 	var losses: int = int(record[1])
-	var text: String = RECORD_NEW_TEXT
-	if wins + losses > 0:
-		text = "%dW-%dL" % [wins, losses]
-	return { "text": text, "icon_path": icon }
+
+	# The switch is has_beaten_opponent(), NOT wins > 0. opponents_beaten is the same
+	# set the first-win reward itself is paid from, so keying the pill off it means the
+	# pill and the reward can never disagree; the record is a display tally kept
+	# alongside it and is the wrong thing to ask about entitlement.
+	if not beaten:
+		return { "text": RECORD_NEW_TEXT if wins + losses == 0 else RECORD_UNBEATEN_TEXT,
+				"icon_path": icon }
+	return { "text": "%dW-%dL" % [wins, losses], "icon_path": icon }
 
 
 func _apply_actor_chips() -> void:
@@ -790,13 +819,21 @@ func _apply_actor_chips() -> void:
 		message_panel.apply_theme(current_opponent.message_colour)
 		message_panel.set_right_chips([])   # ISSUE #120: opponents never show cash
 		message_panel.set_name_pill(current_opponent.opponent_name, current_opponent.sprite)
-		message_panel.set_chips([
+		var opponent_chips: Array = [
 			{ "text": String(current_opponent.deck).to_upper(),
 			  "icon_path": MSG_ICON_DIR + "deck.png" },
 			{ "text": str(current_opponent.prize_cards),
 			  "icon_path": MSG_ICON_DIR + "prizes.png" },
 			_record_chip(current_opponent.opponent_name),
-		])
+		]
+		# Deck restrictions and match-wide rule modifiers are both OPTIONAL blocks on
+		# the opponent JSON, defaulted to an empty dict/array by the loader, so an
+		# ordinary opponent adds no pills and the row stays the length it was.
+		if not current_opponent.restrictions.is_empty():
+			opponent_chips.append({ "text": RESTRICTIONS_TEXT, "icon_path": RESTRICTIONS_ICON })
+		if not current_opponent.match_effects.is_empty():
+			opponent_chips.append({ "text": MODIFIERS_TEXT, "icon_path": MODIFIERS_ICON })
+		message_panel.set_chips(opponent_chips)
 		return
 
 	# NPCs get their name and nothing else — no deck, no prizes. friendly_name
