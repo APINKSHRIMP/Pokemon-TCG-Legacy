@@ -754,6 +754,29 @@ func _apply_cash_chip() -> void:
 		message_panel.set_right_chips([])
 
 
+# The head-to-head chip. Reuses the two battle bubbles that already float over an
+# opponent's head on the map, so the pill says the same thing the player has just
+# read walking up to them -- new_battle until they have been beaten once, old_battle
+# after. The ICON follows has_beaten_opponent(); the TEXT follows the record, and
+# those are deliberately different questions: losing to someone twice without ever
+# beating them leaves the "new" bubble up but shows 0W-2L.
+#
+# An opponent never fought shows RECORD_NEW_TEXT rather than 0W-0L -- a record of
+# nothing is noise, and "NEW" is the thing worth saying.
+const RECORD_NEW_TEXT := "NEW"
+
+func _record_chip(opponent_name: String) -> Dictionary:
+	var beaten: bool = GameState.has_beaten_opponent(opponent_name)
+	var icon: String = MSG_ICON_DIR + ("old_battle.png" if beaten else "new_battle.png")
+	var record: Array = GameState.get_opponent_record(opponent_name)
+	var wins: int = int(record[0])
+	var losses: int = int(record[1])
+	var text: String = RECORD_NEW_TEXT
+	if wins + losses > 0:
+		text = "%dW-%dL" % [wins, losses]
+	return { "text": text, "icon_path": icon }
+
+
 func _apply_actor_chips() -> void:
 	if message_panel == null:
 		return
@@ -772,6 +795,7 @@ func _apply_actor_chips() -> void:
 			  "icon_path": MSG_ICON_DIR + "deck.png" },
 			{ "text": str(current_opponent.prize_cards),
 			  "icon_path": MSG_ICON_DIR + "prizes.png" },
+			_record_chip(current_opponent.opponent_name),
 		])
 		return
 
