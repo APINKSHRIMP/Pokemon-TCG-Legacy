@@ -872,7 +872,7 @@
           "times": "M,A",
           "move": "idle_down",
           "says": {
-            "meet": "Good morning! I'm going to spend my day here I think. The sun is warm, the wind is calm and I have nothing else to do!",
+            "meet": "Good [TIME] [NAME]! I'm going to spend my day here I think. The sun is warm, the wind is calm and I have nothing else to do!",
             "repeat": "I'm glad the beach has reopened today, the great Sharpedo migration is an amazing sight to behold, if not a scary one. It'll be a long time before they're back."
           }
         },
@@ -1359,7 +1359,7 @@
         "speed": 50
       },
       "says": {
-        "meet": "Good day. Trains run all day from here, but they're normally fully booked way in advance so you won't be able to just hop on any train and be on your way.",
+        "meet": "Good [TIME]. Trains run all day from here, but they're normally fully booked way in advance so you won't be able to just hop on any train and be on your way.",
         "repeat": "Do you require any further assistance?"
       },
       "when": [
@@ -1371,7 +1371,7 @@
           "days": "4-8/2",
           "times": "M,A",
           "says": {
-            "meet": "Good day. Trains run all day from here, but they're normally fully booked way in advance so you won't be able to just hop on any train and be on your way.",
+            "meet": "Good [TIME]. Trains run all day from here, but they're normally fully booked way in advance so you won't be able to just hop on any train and be on your way.",
             "repeat": "Have you got any questions about the train departures?"
           }
         },

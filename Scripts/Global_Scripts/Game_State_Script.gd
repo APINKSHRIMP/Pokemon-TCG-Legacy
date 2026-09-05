@@ -1040,6 +1040,14 @@ func record_match_result(won: bool) -> void:
 func get_time() -> String:
 	return progress.get("time", "Morning")
 
+## Returns the player's chosen trainer name, or "" if the save has none yet.
+## Read straight off Player_Current_Data.json rather than cached: the name can be
+## changed at any time from the trainer card, and the only caller (the [NAME]
+## dialogue token) asks for it once per message box, never per frame.
+func get_player_name() -> String:
+	return String(_read_current_data().get("name", "")).strip_edges()
+
+
 ## Returns the current date as an integer (1, 2, 3, ...)
 func get_date() -> int:
 	return int(progress.get("date", 1))

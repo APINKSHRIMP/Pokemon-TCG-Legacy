@@ -652,7 +652,7 @@
       "at": [3711, 1101],
       "move": "idle_left",
       "says": {
-        "meet": "Good day. I'm not the most youthful but I love a good match.",
+        "meet": "Good [TIME]. I'm not the most youthful but I love a good match.",
         "repeat": "Hello again, up for another match ey?",
         "first_win": "Hoh, hoh, very well played there.",
         "rematch_win": "Another jolly good show old chum.",

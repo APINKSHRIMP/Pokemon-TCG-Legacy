@@ -902,7 +902,64 @@ static func sprite_icon(sprite_name: String) -> Texture2D:
 #
 # Body text is SENTENCE CASE. Do not to_upper() it: uppercase is for labels,
 # buttons, titles and names, and dialogue is the thing the player actually reads.
+# ============================================================
+# DIALOGUE TOKENS
+# ============================================================
+# Authored dialogue may carry tokens that only resolve at the moment the line is
+# shown. They are substituted HERE, in the one funnel every message in the game
+# passes through, so no caller and no map script has to know they exist:
+#
+#     "Good [TIME]! How's it going [NAME]?"  ->  "Good Morning! How's it going Olly?"
+#
+# Write them in the `says` blocks of NPC_and_Opponent_Data/Characters/*.json.
+#
+#   [TIME]  the time of day, capitalised   -> Morning / Afternoon / Evening / Night
+#   [time]  the same, lowercase, for mid-sentence use ("see you in the [time]")
+#   [NAME]  the player's trainer name
+#
+# TWO RULES THIS MUST KEEP:
+#
+#   1. Substitute BEFORE the RichTextLabel sees the string. A token is
+#      syntactically a bbcode tag, so anything left unresolved is swallowed by
+#      the parser and takes the rest of the line with it.
+#   2. An UNKNOWN token is left exactly as written. A typo must show up as a
+#      visible "[TIEM]" in game, never as a blanked-out line of dialogue.
+#
+# Adding a token is one entry in _resolve_tokens(). Keep the list short - every
+# token is another thing the writer has to remember.
+const TOKEN_TIME_UPPER := "[TIME]"
+const TOKEN_TIME_LOWER := "[time]"
+const TOKEN_NAME       := "[NAME]"
+
+## Replaces every known dialogue token in `text`. Unknown tokens pass through
+## untouched. Each lookup is skipped entirely unless its token is present, so a
+## line with no tokens costs one `contains()` per token and no file I/O.
+func _resolve_tokens(text: String) -> String:
+	if not text.contains("["):
+		return text
+
+	var out := text
+	if out.contains(TOKEN_TIME_UPPER) or out.contains(TOKEN_TIME_LOWER):
+		# GameState.get_time() already returns "Morning"/"Afternoon"/"Evening"/"Night".
+		var tod := GameState.get_time()
+		out = out.replace(TOKEN_TIME_UPPER, tod)
+		out = out.replace(TOKEN_TIME_LOWER, tod.to_lower())
+
+	if out.contains(TOKEN_NAME):
+		var pname := GameState.get_player_name()
+		# A save with no name yet must not leave a hole mid-sentence.
+		if pname == "":
+			pname = "Trainer"
+		out = out.replace(TOKEN_NAME, pname)
+
+	return out
+
+
 func set_body_text(text: String, max_font_size: int = -1) -> void:
+	# Dialogue tokens ([TIME], [NAME]) resolve here, before anything measures or
+	# parses the string - see _resolve_tokens() above. The RESOLVED text is what
+	# gets cached, so a relayout never re-substitutes.
+	text = _resolve_tokens(text)
 	_body_text = text
 	_body_ceiling = max_font_size
 
