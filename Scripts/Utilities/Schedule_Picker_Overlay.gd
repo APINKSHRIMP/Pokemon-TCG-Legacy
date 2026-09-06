@@ -41,6 +41,9 @@ const TICKED_DARKEN := 0.30
 const HOVER_DARKEN := 0.10
 ## Cells owned by another variant of the same character. Shown, not editable here.
 const OTHER_VARIANT := Color(0.55, 0.55, 0.60)
+## Days before the map opens. Darker than every live plate, so a closed stretch
+## reads as absent rather than as an empty but usable row.
+const CLOSED_DAY := Color(0.26, 0.26, 0.30)
 
 const DAY_COL_W := 230
 const TIME_COL_W := 200
@@ -77,6 +80,9 @@ var _cells: Dictionary = {}
 var _day_rows: Array = []
 var _max_day: int = 12
 var _authored_through: int = 0
+## The first day this map is reachable. Days before it are shown but locked --
+## a character authored there stands in an area the player cannot walk into.
+var _opens: int = 1
 var _scope: String = ""
 var _heading: String = "SCHEDULE"
 
@@ -99,6 +105,7 @@ func setup(slots: Array, others: Array, calendar: Dictionary, heading: String,
 	_heading = heading
 	_scope = scope
 	_authored_through = int(calendar.get("authored_through", 0))
+	_opens = maxi(1, int(calendar.get("opens", 1)))
 
 	# The grid has to be tall enough to hold every day anything already refers to.
 	# Capping it at authored_through would silently drop a "5-12" spec on a map
@@ -127,12 +134,23 @@ func setup(slots: Array, others: Array, calendar: Dictionary, heading: String,
 	_refresh()
 
 
+## What the EVERY DAY row writes. On a map that opens on day 1 that is no day list
+## at all, the spelling every existing character already uses. On a map that opens
+## later it has to be the live window instead: an empty spec means day 1, which
+## would stand the character in the map before the player can reach it.
+func _every_day_spec() -> String:
+	if _opens <= 1:
+		return ""
+	var last: int = maxi(_authored_through, _opens)
+	return str(_opens) if last == _opens else "%d-%d" % [_opens, last]
+
+
 ## Every "day|letter" key one {days, times} slot covers.
 func _slot_keys(slot: Dictionary) -> Array:
 	var days_spec := str(slot.get("days", "")).strip_edges()
 	var letters := parse_times(str(slot.get("times", "")))
 	var keys: Array = []
-	if days_spec == "" or days_spec == "*":
+	if days_spec == "" or days_spec == "*" or days_spec == _every_day_spec():
 		for letter in letters:
 			keys.append(_key(EVERY_DAY, str(letter)))
 		return keys
@@ -255,6 +273,8 @@ func _build_ui() -> void:
 	if _authored_through > 0:
 		var note := Label.new()
 		note.text = "this map is authored through day %d -- later days repeat out of the calendar loop, so there is nothing to author past it" % _authored_through
+		if _opens > 1:
+			note.text = "this map opens on day %d and is authored through day %d -- earlier days are locked, and later ones repeat out of the calendar loop" 					% [_opens, _authored_through]
 		note.position = Vector2(left, footer + 26)
 		note.size = Vector2(1920 - left - MARGIN, 28)
 		note.clip_text = true
@@ -340,13 +360,16 @@ func _day_label(day: int) -> Button:
 	var ink := DebugFormTheme.INK
 	if day == EVERY_DAY:
 		button.text = "EVERY DAY"
-		button.tooltip_text = "here every day at these times -- writes no day list at all"
+		button.tooltip_text = "here every day at these times -- writes no day list at all" 				if _opens <= 1 else 				"here every day the map is open, at these times -- writes days %s" % _every_day_spec()
 	elif day == 0:
 		button.text = "0   (test day)"
 		button.tooltip_text = "the debug test day, reached with the [ key"
 	else:
 		button.text = str(day)
-		if _authored_through > 0 and day > _authored_through:
+		if day < _opens:
+			ink = DebugFormTheme.INK_DIM
+			button.tooltip_text = "this map does not open until day %d" % _opens
+		elif _authored_through > 0 and day > _authored_through:
 			# Authoring past authored_through is dead weight: resolve_day() folds those
 			# days back into the loop block before the cast is ever read.
 			ink = DebugFormTheme.INK_DIM
@@ -504,6 +527,9 @@ func _set_mark(day: int, letter: String, on: bool) -> void:
 func _editable(day: int, letter: String) -> bool:
 	if _others.has(_key(day, letter)):
 		return false
+	# Day 0 is the debug test day and belongs to no calendar, so it stays open.
+	if day != EVERY_DAY and day > 0 and day < _opens:
+		return false
 	# A column the EVERY DAY row claims is already covered on every day. The marks
 	# underneath are kept, not cleared, so unticking the EVERY DAY cell brings the
 	# original days back rather than leaving an empty column.
@@ -522,6 +548,7 @@ func _refresh() -> void:
 			var covered: bool = int(day) != EVERY_DAY \
 					and _marks.has(_key(EVERY_DAY, str(letter)))
 			var other: bool = _others.has(key)
+			var closed: bool = int(day) != EVERY_DAY and int(day) > 0 					and int(day) < _opens
 			# A cell is ticked whether the slot is this variant's, another variant's,
 			# or inherited from the EVERY DAY row -- the tick says "the character is
 			# here", and the plate colour says whose it is to change.
@@ -530,7 +557,13 @@ func _refresh() -> void:
 			# _on_cell_toggled for every cell it touched.
 			cell.set_pressed_no_signal(on)
 			cell.icon = _tick() if on else null
-			cell.disabled = other or covered
+			cell.disabled = other or covered or closed
+			if closed and not other:
+				cell.set_pressed_no_signal(false)
+				cell.icon = null
+				cell.tooltip_text = "the map does not open until day %d" % _opens
+				_paint(cell, CLOSED_DAY, CLOSED_DAY, CLOSED_DAY, CLOSED_DAY)
+				continue
 			if other:
 				var rule: int = int(_others[key])
 				cell.tooltip_text = "another variant of this character is here" \
@@ -592,7 +625,7 @@ func build_slots() -> Array:
 	for mask in by_mask:
 		slots.append({"days": compress_days(by_mask[mask]), "times": spaced(str(mask))})
 	if every != "":
-		slots.append({"days": "", "times": spaced(every)})
+		slots.append({"days": _every_day_spec(), "times": spaced(every)})
 	return slots
 
 

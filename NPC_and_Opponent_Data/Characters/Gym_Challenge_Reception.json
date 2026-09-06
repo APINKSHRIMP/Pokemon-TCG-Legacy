@@ -13,15 +13,17 @@
   ],
   "map": "Gym_Challenge_Reception",
   "calendar": {
-    "authored_through": 8,
+    "opens": 9,
+    "authored_through": 16,
     "loop": {
-      "from": 8,
+      "from": 13,
       "period": 4
     }
   },
   "npcs": {
     "Gym Receptionist 1": {
       "at": [298, 161],
+      "days": "9-16",
       "times": "M,A,E,N",
       "move": "idle_left",
       "says": {
@@ -31,6 +33,7 @@
     },
     "Gym Receptionist 2": {
       "at": [331, 198],
+      "days": "9-16",
       "times": "M,A,E,N",
       "move": "idle_down",
       "says": {
@@ -40,6 +43,7 @@
     },
     "Gym Receptionist 3": {
       "at": [414, 161],
+      "days": "9-16",
       "times": "M,A,E,N",
       "move": "idle_right",
       "says": {
@@ -49,6 +53,7 @@
     },
     "Gym Receptionist 4": {
       "at": [387, 198],
+      "days": "9-16",
       "times": "M,A,E,N",
       "move": "idle_down",
       "says": {
@@ -58,6 +63,7 @@
     },
     "Gym Security 1": {
       "at": [220, 40],
+      "days": "9-16",
       "times": "M,A,E,N",
       "move": "idle_down",
       "says": {
@@ -67,6 +73,7 @@
     },
     "Gym Security 2": {
       "at": [492, 40],
+      "days": "9-16",
       "times": "M,A,E,N",
       "move": "idle_down",
       "says": {
@@ -76,6 +83,7 @@
     },
     "Gym Shopkeeper": {
       "at": [80, 355],
+      "days": "9-16",
       "times": "M,A,E,N",
       "move": "idle_right",
       "says": {
@@ -99,11 +107,11 @@
       "at": [532, 237],
       "when": [
         {
-          "days": "8-9",
-          "times": "M,A,E"
+          "days": "9-10",
+          "times": "M,A"
         },
         {
-          "days": "10",
+          "days": "11",
           "times": "A,E"
         }
       ]
@@ -119,8 +127,17 @@
       "sleeve": "Stall_Ice_Cream",
       "sleeve_reward": "Stall_Ice_Cream",
       "move": "idle_up",
-      "times": "M,A,E,N",
-      "at": [627, 409]
+      "at": [627, 409],
+      "when": [
+        {
+          "days": "9-10",
+          "times": "M,A"
+        },
+        {
+          "days": "11",
+          "times": "A,E"
+        }
+      ]
     }
   }
 }

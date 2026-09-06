@@ -1,9 +1,9 @@
-[gd_resource type="Theme" format=3]
+[gd_resource type="Theme" format=3 uid="uid://lxn6svxuxu3a"]
 
-[ext_resource type="Texture2D" path="res://UI_Themes/ui/btn_disabled.png" id="1_tqx8f"]
-[ext_resource type="Texture2D" path="res://UI_Themes/ui/btn_primary_hover.png" id="2_6lqgd"]
-[ext_resource type="Texture2D" path="res://UI_Themes/ui/btn_primary.png" id="3_4yejg"]
-[ext_resource type="Texture2D" path="res://UI_Themes/ui/btn_primary_pressed.png" id="4_moy4h"]
+[ext_resource type="Texture2D" uid="uid://c70u84bdtow0i" path="res://UI_Themes/ui/btn_disabled.png" id="1_tqx8f"]
+[ext_resource type="Texture2D" uid="uid://blvjnmbst0i8f" path="res://UI_Themes/ui/btn_primary_hover.png" id="2_6lqgd"]
+[ext_resource type="Texture2D" uid="uid://uupmfjuwy81i" path="res://UI_Themes/ui/btn_primary.png" id="3_4yejg"]
+[ext_resource type="Texture2D" uid="uid://812r7sam2l4k" path="res://UI_Themes/ui/btn_primary_pressed.png" id="4_moy4h"]
 
 [sub_resource type="StyleBoxTexture" id="StyleBoxTexture_paqmh"]
 content_margin_left = 29.0

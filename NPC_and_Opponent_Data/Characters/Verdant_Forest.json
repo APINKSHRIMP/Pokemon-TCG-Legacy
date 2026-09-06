@@ -13,6 +13,7 @@
   ],
   "map": "Verdant_Forest",
   "calendar": {
+    "opens": 5,
     "authored_through": 12,
     "loop": {
       "from": 9,

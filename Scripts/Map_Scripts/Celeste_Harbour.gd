@@ -229,7 +229,7 @@ func apply_permanent_unlocks(date: int) -> void:
 	if station_open and has_node("Collision Objects/BLOCKS/STATION GATE"):
 		$"Collision Objects/BLOCKS/STATION GATE".queue_free()
 
-	var forest_open := date >= 4
+	var forest_open := date >= 5
 	$"TILE_MAPS/PLAYER ROAD BLOCKS/Forest Gate block".visible = not forest_open
 	if forest_open and has_node("Collision Objects/BLOCKS/FOREST GATE"):
 		$"Collision Objects/BLOCKS/FOREST GATE".queue_free()

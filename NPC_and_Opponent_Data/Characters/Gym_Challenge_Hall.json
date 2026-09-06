@@ -13,9 +13,10 @@
   ],
   "map": "Gym_Challenge_Hall",
   "calendar": {
-    "authored_through": 8,
+    "opens": 13,
+    "authored_through": 13,
     "loop": {
-      "from": 8,
+      "from": 13,
       "period": 1
     }
   },
@@ -30,11 +31,11 @@
       },
       "when": [
         {
-          "days": "8",
+          "days": "13",
           "times": "M,A,E"
         },
         {
-          "days": "8",
+          "days": "13",
           "times": "N"
         }
       ]
@@ -49,11 +50,11 @@
       },
       "when": [
         {
-          "days": "8",
+          "days": "13",
           "times": "M,A,E"
         },
         {
-          "days": "8",
+          "days": "13",
           "times": "N"
         }
       ]
@@ -68,11 +69,11 @@
       },
       "when": [
         {
-          "days": "8",
+          "days": "13",
           "times": "M,A,E"
         },
         {
-          "days": "8",
+          "days": "13",
           "times": "N"
         }
       ]
@@ -87,11 +88,11 @@
       },
       "when": [
         {
-          "days": "8",
+          "days": "13",
           "times": "M,A,E"
         },
         {
-          "days": "8",
+          "days": "13",
           "times": "N"
         }
       ]
@@ -106,11 +107,11 @@
       },
       "when": [
         {
-          "days": "8",
+          "days": "13",
           "times": "M,A,E"
         },
         {
-          "days": "8",
+          "days": "13",
           "times": "N"
         }
       ]
@@ -125,11 +126,11 @@
       },
       "when": [
         {
-          "days": "8",
+          "days": "13",
           "times": "M,A,E"
         },
         {
-          "days": "8",
+          "days": "13",
           "times": "N"
         }
       ]
@@ -144,11 +145,11 @@
       },
       "when": [
         {
-          "days": "8",
+          "days": "13",
           "times": "M,A,E"
         },
         {
-          "days": "8",
+          "days": "13",
           "times": "N"
         }
       ]
@@ -163,11 +164,11 @@
       },
       "when": [
         {
-          "days": "8",
+          "days": "13",
           "times": "M,A,E"
         },
         {
-          "days": "8",
+          "days": "13",
           "times": "N"
         }
       ]
@@ -182,11 +183,11 @@
       },
       "when": [
         {
-          "days": "8",
+          "days": "13",
           "times": "M,A,E"
         },
         {
-          "days": "8",
+          "days": "13",
           "times": "N"
         }
       ]
@@ -201,11 +202,11 @@
       },
       "when": [
         {
-          "days": "8",
+          "days": "13",
           "times": "M,A,E"
         },
         {
-          "days": "8",
+          "days": "13",
           "times": "N"
         }
       ]
@@ -220,11 +221,11 @@
       },
       "when": [
         {
-          "days": "8",
+          "days": "13",
           "times": "M,A,E"
         },
         {
-          "days": "8",
+          "days": "13",
           "times": "N"
         }
       ]
@@ -239,11 +240,11 @@
       },
       "when": [
         {
-          "days": "8",
+          "days": "13",
           "times": "M,A,E"
         },
         {
-          "days": "8",
+          "days": "13",
           "times": "N"
         }
       ]
@@ -258,11 +259,11 @@
       },
       "when": [
         {
-          "days": "8",
+          "days": "13",
           "times": "M,A,E"
         },
         {
-          "days": "8",
+          "days": "13",
           "times": "N"
         }
       ]
@@ -277,11 +278,11 @@
       },
       "when": [
         {
-          "days": "8",
+          "days": "13",
           "times": "M,A,E"
         },
         {
-          "days": "8",
+          "days": "13",
           "times": "N"
         }
       ]
@@ -296,11 +297,11 @@
       },
       "when": [
         {
-          "days": "8",
+          "days": "13",
           "times": "M,A,E"
         },
         {
-          "days": "8",
+          "days": "13",
           "times": "N"
         }
       ]
@@ -332,11 +333,11 @@
       },
       "when": [
         {
-          "days": "8",
+          "days": "13",
           "times": "M,A,E"
         },
         {
-          "days": "8",
+          "days": "13",
           "times": "N"
         }
       ],
@@ -379,11 +380,11 @@
       },
       "when": [
         {
-          "days": "8",
+          "days": "13",
           "times": "M,A,E"
         },
         {
-          "days": "8",
+          "days": "13",
           "times": "N"
         }
       ],
@@ -438,11 +439,11 @@
       },
       "when": [
         {
-          "days": "8",
+          "days": "13",
           "times": "M,A,E"
         },
         {
-          "days": "8",
+          "days": "13",
           "times": "N"
         }
       ],
@@ -497,11 +498,11 @@
       },
       "when": [
         {
-          "days": "8",
+          "days": "13",
           "times": "M,A,E"
         },
         {
-          "days": "8",
+          "days": "13",
           "times": "N"
         }
       ],
@@ -556,11 +557,11 @@
       },
       "when": [
         {
-          "days": "8",
+          "days": "13",
           "times": "M,A,E"
         },
         {
-          "days": "8",
+          "days": "13",
           "times": "N"
         }
       ],
@@ -615,11 +616,11 @@
       },
       "when": [
         {
-          "days": "8",
+          "days": "13",
           "times": "M,A,E"
         },
         {
-          "days": "8",
+          "days": "13",
           "times": "N"
         }
       ],
@@ -673,11 +674,11 @@
       },
       "when": [
         {
-          "days": "8",
+          "days": "13",
           "times": "M,A,E"
         },
         {
-          "days": "8",
+          "days": "13",
           "times": "N"
         }
       ],
@@ -732,11 +733,11 @@
       },
       "when": [
         {
-          "days": "8",
+          "days": "13",
           "times": "M,A,E"
         },
         {
-          "days": "8",
+          "days": "13",
           "times": "N"
         }
       ],

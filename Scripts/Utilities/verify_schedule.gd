@@ -13,12 +13,12 @@ extends SceneTree
 const MAPS := {
 	"Celeste_Harbour": [1, 20],
 	"Verdant_Forest": [5, 20],
-	"Gym_Challenge_Hall": [8, 20],
-	"Gym_Challenge_Reception": [8, 20],
+	"Gym_Challenge_Hall": [13, 24],
+	"Gym_Challenge_Reception": [9, 24],
 	"Card_Mart": [1, 3],
 	"Rocket_Mart": [1, 3],
 	"Windmill": [1, 3],
-	"Gym_Plaza": [1, 3],
+	"Gym_Plaza": [9, 24],
 }
 const TIMES := ["Morning", "Afternoon", "Evening", "Night"]
 
@@ -74,6 +74,7 @@ func _initialize() -> void:
 	failures += _check_constants()
 	failures += _check_loop_identity()
 	failures += _check_story_characters()
+	failures += _check_closed_before_opening()
 	print("")
 	print("slots resolved : %d" % slots)
 	print("entries built  : %d" % total_spawns)
@@ -228,7 +229,7 @@ func _check_constants() -> int:
 ## must produce exactly the same cast, forever.
 func _check_loop_identity() -> int:
 	var bad := 0
-	for map_name in ["Celeste_Harbour", "Verdant_Forest", "Gym_Challenge_Hall"]:
+	for map_name in MAPS:
 		var doc := CharacterSchedule.load_map(map_name)
 		var loop: Dictionary = doc.get("calendar", {}).get("loop", {})
 		if loop.is_empty():
@@ -252,7 +253,7 @@ func _check_loop_identity() -> int:
 ## loop:false characters must NOT come back when the calendar comes round again.
 func _check_story_characters() -> int:
 	var bad := 0
-	for map_name in ["Celeste_Harbour", "Verdant_Forest"]:
+	for map_name in MAPS:
 		var doc := CharacterSchedule.load_map(map_name)
 		for section in ["npcs", "opponents"]:
 			for name in doc.get(section, {}):
@@ -268,6 +269,30 @@ func _check_story_characters() -> int:
 					printerr("  %s: story character %s reappears after day 30" % [map_name, name])
 					bad += 1
 	print("story characters (loop:false): checked they stay gone through day 45")
+	return bad
+
+
+## A map must be deserted on every day before it opens. This is what broke when the
+## Gym Plaza kept an authored_through of 1: its shopkeepers carried no `days` at
+## all, so they stood in an area the player cannot reach yet, and every dated rule
+## in the file resolved back to day 1 and could never fire.
+func _check_closed_before_opening() -> int:
+	var bad := 0
+	for map_name in MAPS:
+		# The map file is the authority on when it opens; MAPS only says how far out
+		# to resolve it.
+		var calendar: Dictionary = CharacterSchedule.load_map(map_name).get("calendar", {})
+		var opens: int = int(calendar.get("opens", MAPS[map_name][0]))
+		if opens <= 1:
+			continue
+		for day in range(1, opens):
+			for time in TIMES:
+				var names := _names(CharacterSchedule.cast_for(map_name, day, time))
+				if not names.is_empty():
+					printerr("  %s: opens day %d but day %d %s has %d character(s): %s"
+						% [map_name, opens, day, time, names.size(), str(names)])
+					bad += 1
+	print("closed maps: checked every map is deserted before it opens")
 	return bad
 
 

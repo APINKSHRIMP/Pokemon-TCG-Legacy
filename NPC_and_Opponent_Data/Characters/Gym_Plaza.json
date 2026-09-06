@@ -13,10 +13,11 @@
   ],
   "map": "Gym_Plaza",
   "calendar": {
-    "authored_through": 1,
+    "opens": 9,
+    "authored_through": 16,
     "loop": {
-      "from": 1,
-      "period": 1
+      "from": 13,
+      "period": 4
     }
   },
   "npcs": {
@@ -26,6 +27,7 @@
         "repeat": "Fancy trying your luck again? Remember it's $50 per entry and you just need to flip 5 heads in a row to win a Golden Pokeball coin."
       },
       "move": "idle_right",
+      "days": "9-16",
       "times": "M,A,E",
       "at": [1611, 1319]
     },
@@ -35,6 +37,7 @@
         "repeat": "You looking to sell off your old bulk that you don't need? I'll take it all off your hands for a good price. You can sell everything all at once or just sell certain rarities at a time if you want."
       },
       "move": "idle_left",
+      "days": "9-16",
       "times": "M,A,E",
       "at": [1892, 1319]
     },
@@ -44,6 +47,7 @@
         "repeat": "Hello! Are you interested in some limited edition card sleeves?"
       },
       "move": "idle_left",
+      "days": "9-16",
       "times": "M,A,E",
       "at": [1893, 1511]
     },
@@ -53,11 +57,38 @@
         "repeat": "Are you looking for some common and uncommon cards? Remember none of these packs will have rare or holo rare cards, but they're heavily discounted."
       },
       "move": "idle_right",
+      "days": "9-16",
       "times": "M,A,E",
       "at": [1612, 1511]
     }
   },
   "opponents": {
-
+    "Spectator Pete": {
+      "says": {
+        "meet": "Heh, I've built a deck entirely from gym cards that just cannot be beaten. You'll never be able to defeat me.",
+        "repeat": "I'm gonna try this deck again.",
+        "first_win": "WHAT! You must have cheated. I'll see you on Reddit.",
+        "rematch_win": "4chan will hear about this.",
+        "loss": "Hahaha! Go woke, go broke kiddo."
+      },
+      "sleeve": "Giga_Charizard_ETB",
+      "sleeve_reward": "Giga_Charizard_ETB",
+      "move": "random_wander",
+      "when": [
+        {
+          "days": "9",
+          "times": "E,N"
+        },
+        {
+          "days": "10",
+          "times": "A,E,N"
+        },
+        {
+          "days": "11",
+          "times": "M,A,E"
+        }
+      ],
+      "at": [1261, 1511]
+    }
   }
 }

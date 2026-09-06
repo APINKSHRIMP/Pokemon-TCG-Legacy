@@ -34,7 +34,7 @@ Everything else is the field names you already know.
 {
   "_help": [ ... ],                  // cheat sheet, ignored by the game
   "map": "Celeste_Harbour",
-  "calendar": { "authored_through": 8, "loop": { "from": 5, "period": 4 } },
+  "calendar": { "opens": 1, "authored_through": 8, "loop": { "from": 5, "period": 4 } },
   "dressing": { ... },               // optional, rotating scenery
   "npcs":      { "Name": { ... } },
   "opponents": { "Name": { ... } }
@@ -195,20 +195,30 @@ Two things to know:
 ## Calendars
 
 ```jsonc
-"calendar": { "authored_through": 8, "loop": { "from": 5, "period": 4 } }
+"calendar": { "opens": 1, "authored_through": 8, "loop": { "from": 5, "period": 4 } }
 ```
 
 Days up to `from` are authored literally. From then on, day `D` resolves to
 authored day `from + ((D - from) % period)` — so day 9 is day 5, day 12 is day 8,
 day 847 is day 7. **The player can play forever and never run out of content.**
 
-| map | loop | why there |
-|---|---|---|
-| `Celeste_Harbour` | from 5, period 4 | Verdant Forest opens on day 5 |
-| `Verdant_Forest` | from 9, period 4 | the Gym Challenge starts on day 8 |
-| `Gym_Challenge_Hall` | from 8, period 1 | day 8 repeats; the 8 leaders never change |
-| `Gym_Challenge_Reception` | from 8, period 4 | opens day 8, repeating cast |
-| `Gym_Plaza` | — | not populated yet |
+`opens` is the first day the map is reachable. Nothing may be scheduled before it:
+the schedule picker greys those rows out and refuses the ticks, and
+`verify_schedule.gd` fails the run if any character resolves there.
+
+Each area opens the day after the one before it stopped adding new characters,
+takes four days of new arrivals, then loops the four days after that.
+
+| map | opens | new arrivals | loop | why there |
+|---|---|---|---|---|
+| `Celeste_Harbour` | 1 | 1-4 | from 5, period 4 | Verdant Forest opens on day 5 |
+| `Verdant_Forest` | 5 | 5-8 | from 9, period 4 | the Gym Plaza opens on day 9 |
+| `Gym_Plaza` | 9 | 9-12 | from 13, period 4 | the Gym Challenge starts on day 13 |
+| `Gym_Challenge_Reception` | 9 | 9-12 | from 13, period 4 | opens with the Plaza |
+| `Gym_Challenge_Hall` | 13 | none | from 13, period 1 | day 13 repeats; the 8 leaders never change |
+
+Beating the Gym Challenge grants the VIP train ticket to the next area, so there
+is no post-game on these maps — that content lives in the Plaza's days 9-12.
 
 > **The loop block must start after the last irreversible world change on that
 > map.** Otherwise the loop rewinds the world — a Celeste Harbour loop covering
@@ -219,6 +229,11 @@ day 5's positions. It does not touch your save. An opponent gated
 `not beaten: self` is still filtered out once you've beaten them, permanently.
 So: **anything you want farmable in the endgame must not be gated on its own
 defeat.**
+
+**A character with no `days` at all is present on every day, including days before
+its map opens.** On a map whose `opens` is later than day 1, give it the live
+window instead — `"days": "9-16"` for the Plaza. The picker's EVERY DAY row writes
+that spelling for you.
 
 Don't list days past `authored_through` in a character's schedule — the loop
 generates them. `loop: false` characters are the exception: they're matched

@@ -13,6 +13,7 @@
   ],
   "map": "Celeste_Harbour",
   "calendar": {
+    "opens": 1,
     "authored_through": 8,
     "loop": {
       "from": 5,
