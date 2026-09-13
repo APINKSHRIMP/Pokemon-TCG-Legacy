@@ -53,9 +53,14 @@ const SCREEN_H : float = 1080.0
 # ─── TWEAKABLE: the phone on screen ──────────────────────────────────────────
 # The art is 39x62 pixel art, so this is a big multiplier. Keep it a WHOLE number: the project
 # renders textures nearest-neighbour and a fractional scale gives the phone uneven pixel edges.
-const PHONE_SCALE    : float = 9.0
-const PHONE_CENTRE_X : float = 270.0    # left of centre, clear of the road the taxi drives down
-const PHONE_TOP_Y    : float = 310.0    # where the phone rests once it has risen
+const PHONE_SCALE    : float = 7.0
+const PHONE_CENTRE_X : float = 290.0    # left of centre, clear of the road the taxi drives down
+# Where the phone rests is MEASURED, not fixed: its bottom edge sits PHONE_BOTTOM_GAP above the
+# message box's top edge. The box grows with its text, so the figure is taken from the TALLEST line
+# the call will speak - see _compute_rest_y(). The clamp stops a maximum-height box from pushing the
+# phone off the top of the screen.
+const PHONE_BOTTOM_GAP : float = 5.0
+const PHONE_TOP_Y_MIN  : float = 20.0
 # How far below the bottom of the screen it starts and returns to. The phone's own height is added
 # to this, so it is fully off-screen either way.
 const PHONE_OFFSCREEN_PAD : float = 60.0
@@ -114,7 +119,7 @@ const COVER_TOP_COLOUR : Color = Color(0.16, 0.16, 0.18, 1.0)
 const COVER_BOT_COLOUR : Color = Color(0.04, 0.04, 0.05, 1.0)
 const SPINNER_SIZE     : float = 0.20    # fraction of the screen's WIDTH
 const SPINNER_SPIN_TIME: float = 1.0     # one full turn, matching MenuLoadingOverlay
-const COVER_LABEL_SIZE : int   = 20
+const COVER_LABEL_SIZE : int   = 16
 const COVER_LABEL_GAP  : float = 0.055   # fraction of the screen's height, spinner to word
 const CONNECT_WORD     : String = "Connecting…"
 const HANGUP_WORD      : String = "Disconnecting…"
@@ -130,7 +135,7 @@ const SCREEN_BLACK_HOLD: float = 0.30
 # The pill is the CALLER'S OWN COLOUR - the same one their message box wears - rather than black,
 # so the two read as one person speaking. Translucent enough to show the picture through it.
 const NAME_PILL_ALPHA  : float = 0.72
-const NAME_PILL_SIZE   : int   = 15
+const NAME_PILL_SIZE   : int   = 12
 const NAME_PILL_PAD_X  : float = 10.0
 const NAME_PILL_PAD_Y  : float = 4.0
 const NAME_PILL_INSET  : float = 8.0     # from the screen's bottom-right corner
@@ -181,6 +186,7 @@ var _frame_step: int = 0
 var _mouth_timer: float = 0.0
 var _screen_rect: Rect2 = Rect2()    # the hole, in RIG-LOCAL pixels
 var _phone_size: Vector2 = Vector2.ZERO
+var _rest_y: float = 0.0             # where the rig comes to rest, measured off the message box
 var _advance_pressed: bool = false   # set by _input, consumed by the line loop
 var _playing: bool = false
 var _finished: bool = false
@@ -343,6 +349,24 @@ func _build() -> void:
 	_rig.add_child(phone_rect)
 
 	_build_message_box()
+	_compute_rest_y()
+
+
+## Where the phone comes to rest: its bottom edge PHONE_BOTTOM_GAP above the top of the message box.
+##
+## The box's height is not fixed - it grows with the text and is recomputed on every line - so a
+## single resting place has to be measured against the TALLEST box the call will ever put up, or a
+## long line would grow up behind the phone. measure_panel_height() answers that without showing
+## anything, and the emotion tag is stripped first so what is measured is what will be typed.
+func _compute_rest_y() -> void:
+	if _box == null or _rig == null:
+		return
+	var tallest: float = 0.0
+	for line in _lines:
+		var spoken := _split_emotion(String(line))
+		tallest = maxf(tallest, _box.measure_panel_height(String(spoken["text"])))
+	var box_top: float = DynamicMessageBox.PANEL_BOTTOM_Y - tallest
+	_rest_y = maxf(PHONE_TOP_Y_MIN, box_top - PHONE_BOTTOM_GAP - _phone_size.y)
 
 
 ## Cover-fits the background into the screen: scaled until it fills both axes, then centred. A
@@ -643,9 +667,9 @@ func play() -> void:
 	var fade_in := create_tween()
 	fade_in.tween_property(_rig, "modulate:a", 1.0, SLIDE_IN_TIME * 0.6)
 	var rise := create_tween()
-	rise.tween_property(_rig, "position:y", PHONE_TOP_Y - PHONE_OVERSHOOT, SLIDE_IN_TIME * 0.78) \
+	rise.tween_property(_rig, "position:y", _rest_y - PHONE_OVERSHOOT, SLIDE_IN_TIME * 0.78) \
 		.set_trans(Tween.TRANS_QUINT).set_ease(Tween.EASE_OUT)
-	rise.tween_property(_rig, "position:y", PHONE_TOP_Y, SLIDE_IN_TIME * 0.22) \
+	rise.tween_property(_rig, "position:y", _rest_y, SLIDE_IN_TIME * 0.22) \
 		.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
 	await rise.finished
 
@@ -710,7 +734,7 @@ func play() -> void:
 	var fade_out := create_tween()
 	fade_out.tween_property(_rig, "modulate:a", 0.0, SLIDE_OUT_TIME)
 	var leave := create_tween()
-	leave.tween_property(_rig, "position:y", PHONE_TOP_Y - PHONE_OVERSHOOT, SLIDE_OUT_TIME * 0.25) \
+	leave.tween_property(_rig, "position:y", _rest_y - PHONE_OVERSHOOT, SLIDE_OUT_TIME * 0.25) \
 		.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
 	leave.tween_property(_rig, "position:y", _offscreen_y(), SLIDE_OUT_TIME * 0.75) \
 		.set_trans(Tween.TRANS_QUINT).set_ease(Tween.EASE_IN)

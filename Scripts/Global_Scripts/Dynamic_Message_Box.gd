@@ -995,6 +995,34 @@ func set_body_text(text: String, max_font_size: int = -1, retype: bool = true) -
 	_body_text = text
 	_body_ceiling = max_font_size
 
+	var measured := _measure_for(text, max_font_size)
+	var plain: String = measured["plain"]
+	var size: int = measured["size"]
+
+	_panel_height = float(measured["height"])
+	_apply_body_font(size)
+
+	# The system variant centres its text. Doing it here rather than asking the
+	# callers keeps "which variant centres" in one place; an existing [center] tag
+	# from a caller is harmless inside it.
+	label.text = ("[center]%s[/center]" % text) if _system_variant else text
+
+	_layout_panel()
+	_place_body_label(plain, size)
+
+	if retype:
+		_start_typing()
+	else:
+		_preserve_typing()
+
+
+## How tall the panel would be for this text, and at what font size, worked out without touching
+## anything on screen. set_body_text() lays out from this, and PhoneCall asks it AHEAD of the call
+## so it can park the phone a fixed distance above the tallest box the call will ever show. One
+## copy of the sizing rule, so the two can never disagree.
+##
+## `text` must already have had its tokens resolved - set_body_text() does that before it calls in.
+func _measure_for(text: String, max_font_size: int) -> Dictionary:
 	var ceiling: int = max_font_size
 	if ceiling <= 0:
 		ceiling = _body_font_size
@@ -1014,21 +1042,17 @@ func set_body_text(text: String, max_font_size: int = -1, retype: bool = true) -
 		size -= 1
 		text_h = _measured_text_height(plain, wrap_w, size)
 
-	_panel_height = clampf(chrome_h + text_h, _panel_min_height, PANEL_MAX_H)
-	_apply_body_font(size)
+	return {
+		"plain": plain,
+		"size": size,
+		"height": clampf(chrome_h + text_h, _panel_min_height, PANEL_MAX_H),
+	}
 
-	# The system variant centres its text. Doing it here rather than asking the
-	# callers keeps "which variant centres" in one place; an existing [center] tag
-	# from a caller is harmless inside it.
-	label.text = ("[center]%s[/center]" % text) if _system_variant else text
 
-	_layout_panel()
-	_place_body_label(plain, size)
-
-	if retype:
-		_start_typing()
-	else:
-		_preserve_typing()
+## The height this text WOULD make the panel, without showing it. The box's top edge is
+## PANEL_BOTTOM_Y minus this, which is what anything positioning itself above the box needs.
+func measure_panel_height(text: String, max_font_size: int = -1) -> float:
+	return float(_measure_for(_resolve_tokens(text), max_font_size)["height"])
 
 
 # ============================================================
