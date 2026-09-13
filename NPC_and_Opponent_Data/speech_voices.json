@@ -1,0 +1,1698 @@
+{
+  "_readme": [
+    "Dialogue blip voices, keyed on OVERWORLD SPRITE NAME. See Scripts/Global_Scripts/Speech_Voice.gd.",
+    "pitch: 1.0 is the Speech.ogg sample untouched. Lower is deeper (big, heavy, mean, old men);",
+    "       higher is lighter (women, and higher again for children).",
+    "rate:  blips per letter, relative. 1.0 is normal, 1.3 is a fast chatty kid, 0.7 is a slow elder.",
+    "       It does NOT change how fast the text types - that is the player's Text-speed option.",
+    "A sprite's numbered alternates and second walk frames (Beauty5, NPCMan_2) fall back to the base",
+    "row, so only a genuinely new archetype needs a new entry here. Anything unmatched falls back on",
+    "the _F/_M defaults below. Keys are sorted alphabetically; this block is ignored by the loader.",
+    "A speaker sprite that is NOT an overworld sprite - a phone call's talking-head costume, or",
+    "in-battle art named differently - resolves through the aliases block: a name PREFIX mapped",
+    "onto a voices key, longest prefix wins. One alias covers every costume and expression."
+  ],
+  "defaults": {
+    "M": {
+      "pitch": 0.92,
+      "rate": 1.0
+    },
+    "F": {
+      "pitch": 1.12,
+      "rate": 1.02
+    },
+    "neutral": {
+      "pitch": 1.0,
+      "rate": 1.0
+    }
+  },
+  "aliases": {
+    "Rival_Ellie": "0Ellie"
+  },
+  "voices": {
+    "0Ellie": {
+      "pitch": 1.2,
+      "rate": 1.12
+    },
+    "1Ash": {
+      "pitch": 1.06,
+      "rate": 1.14
+    },
+    "1Barry": {
+      "pitch": 1.02,
+      "rate": 1.2
+    },
+    "1GreenFRLG": {
+      "pitch": 0.98,
+      "rate": 1.08
+    },
+    "1Hilbert": {
+      "pitch": 1.02,
+      "rate": 1.08
+    },
+    "1Hilda": {
+      "pitch": 1.18,
+      "rate": 1.1
+    },
+    "1MayEmerald": {
+      "pitch": 1.18,
+      "rate": 1.1
+    },
+    "1Nate": {
+      "pitch": 1.04,
+      "rate": 1.1
+    },
+    "1PokemonTrainer_PlayerF": {
+      "pitch": 1.16,
+      "rate": 1.08
+    },
+    "1PokemonTrainer_PlayerM": {
+      "pitch": 1.02,
+      "rate": 1.08
+    },
+    "1PokemonTrainer_Rival": {
+      "pitch": 1.0,
+      "rate": 1.1
+    },
+    "1PokemonTrainer_RivalF": {
+      "pitch": 1.16,
+      "rate": 1.1
+    },
+    "1PokemonTrainer_RivalM": {
+      "pitch": 1.0,
+      "rate": 1.1
+    },
+    "1Rosa": {
+      "pitch": 1.2,
+      "rate": 1.12
+    },
+    "1WallyEmerald": {
+      "pitch": 1.12,
+      "rate": 1.16
+    },
+    "AceTrainer_F": {
+      "pitch": 1.12,
+      "rate": 1.08
+    },
+    "AceTrainer_M": {
+      "pitch": 0.94,
+      "rate": 1.05
+    },
+    "Alder": {
+      "pitch": 0.76,
+      "rate": 0.86
+    },
+    "Argenta": {
+      "pitch": 1.06,
+      "rate": 0.98
+    },
+    "AromaLady": {
+      "pitch": 1.1,
+      "rate": 0.92
+    },
+    "Artist_F": {
+      "pitch": 1.1,
+      "rate": 1.0
+    },
+    "Artist_M": {
+      "pitch": 0.9,
+      "rate": 0.96
+    },
+    "Backer_F": {
+      "pitch": 1.16,
+      "rate": 1.14
+    },
+    "Backer_M": {
+      "pitch": 0.86,
+      "rate": 1.12
+    },
+    "Backpacker_F": {
+      "pitch": 1.1,
+      "rate": 1.05
+    },
+    "Backpacker_M": {
+      "pitch": 0.88,
+      "rate": 1.0
+    },
+    "Baker": {
+      "pitch": 1.14,
+      "rate": 1.06
+    },
+    "Bakushin_Clerk": {
+      "pitch": 1.0,
+      "rate": 1.05
+    },
+    "Bakushin_Janitor": {
+      "pitch": 0.88,
+      "rate": 0.92
+    },
+    "Bakushin_Sailor": {
+      "pitch": 0.8,
+      "rate": 0.95
+    },
+    "Bakushin_Waitress": {
+      "pitch": 1.16,
+      "rate": 1.06
+    },
+    "BattleGirl": {
+      "pitch": 1.1,
+      "rate": 1.14
+    },
+    "Beauty": {
+      "pitch": 1.16,
+      "rate": 0.98
+    },
+    "Benga": {
+      "pitch": 0.98,
+      "rate": 1.1
+    },
+    "Bianca": {
+      "pitch": 1.2,
+      "rate": 1.18
+    },
+    "Biker": {
+      "pitch": 0.74,
+      "rate": 0.9
+    },
+    "Bill": {
+      "pitch": 0.96,
+      "rate": 1.12
+    },
+    "BirdKeeper_F": {
+      "pitch": 1.12,
+      "rate": 1.04
+    },
+    "BirdKeeper_M": {
+      "pitch": 0.9,
+      "rate": 1.0
+    },
+    "BlackBelt": {
+      "pitch": 0.78,
+      "rate": 0.94
+    },
+    "Boarder": {
+      "pitch": 0.94,
+      "rate": 1.1
+    },
+    "Buck": {
+      "pitch": 0.98,
+      "rate": 1.08
+    },
+    "BugCatcher": {
+      "pitch": 1.22,
+      "rate": 1.2
+    },
+    "BulkBuyer": {
+      "pitch": 1.1,
+      "rate": 1.04
+    },
+    "Burglar": {
+      "pitch": 0.8,
+      "rate": 0.92
+    },
+    "Cabbie": {
+      "pitch": 0.86,
+      "rate": 1.0
+    },
+    "CafeMaster": {
+      "pitch": 0.86,
+      "rate": 0.86
+    },
+    "Caitlin": {
+      "pitch": 1.14,
+      "rate": 0.86
+    },
+    "Cameraman": {
+      "pitch": 0.9,
+      "rate": 1.02
+    },
+    "Camper_F": {
+      "pitch": 1.2,
+      "rate": 1.14
+    },
+    "Camper_M": {
+      "pitch": 1.18,
+      "rate": 1.16
+    },
+    "Champion": {
+      "pitch": 0.92,
+      "rate": 0.98
+    },
+    "ChampionDiantha": {
+      "pitch": 1.1,
+      "rate": 0.94
+    },
+    "Charon": {
+      "pitch": 0.84,
+      "rate": 0.8
+    },
+    "Cheerleader": {
+      "pitch": 1.26,
+      "rate": 1.22
+    },
+    "Chef": {
+      "pitch": 0.88,
+      "rate": 0.98
+    },
+    "Cheryl": {
+      "pitch": 1.16,
+      "rate": 0.96
+    },
+    "Clerk_F": {
+      "pitch": 1.12,
+      "rate": 1.05
+    },
+    "Clerk_M": {
+      "pitch": 0.94,
+      "rate": 1.05
+    },
+    "Clown": {
+      "pitch": 1.02,
+      "rate": 1.2
+    },
+    "CoinFlipper": {
+      "pitch": 0.96,
+      "rate": 1.08
+    },
+    "Collector": {
+      "pitch": 0.88,
+      "rate": 1.02
+    },
+    "Cook": {
+      "pitch": 0.86,
+      "rate": 0.98
+    },
+    "CoolTrainer_F": {
+      "pitch": 1.12,
+      "rate": 1.06
+    },
+    "CoolTrainer_M": {
+      "pitch": 0.92,
+      "rate": 1.04
+    },
+    "CostumeSeller": {
+      "pitch": 1.0,
+      "rate": 1.1
+    },
+    "Courier": {
+      "pitch": 0.92,
+      "rate": 1.06
+    },
+    "CowGirl": {
+      "pitch": 1.12,
+      "rate": 1.06
+    },
+    "Cyclist_F": {
+      "pitch": 1.16,
+      "rate": 1.14
+    },
+    "Cyclist_M": {
+      "pitch": 0.94,
+      "rate": 1.12
+    },
+    "Dahlia": {
+      "pitch": 1.16,
+      "rate": 1.14
+    },
+    "Dancer_F": {
+      "pitch": 1.18,
+      "rate": 1.12
+    },
+    "Dancer_M": {
+      "pitch": 0.94,
+      "rate": 1.1
+    },
+    "Darach": {
+      "pitch": 0.92,
+      "rate": 0.98
+    },
+    "Delinquent": {
+      "pitch": 0.84,
+      "rate": 1.02
+    },
+    "DepotAgent": {
+      "pitch": 0.88,
+      "rate": 0.96
+    },
+    "Doctor_F": {
+      "pitch": 1.1,
+      "rate": 0.98
+    },
+    "Doctor_M": {
+      "pitch": 0.88,
+      "rate": 0.96
+    },
+    "DragonTamer": {
+      "pitch": 0.84,
+      "rate": 0.98
+    },
+    "E4Aaron": {
+      "pitch": 0.96,
+      "rate": 1.08
+    },
+    "E4Bertha": {
+      "pitch": 1.02,
+      "rate": 0.7
+    },
+    "E4Bruno": {
+      "pitch": 0.7,
+      "rate": 0.88
+    },
+    "E4Cynthia": {
+      "pitch": 1.06,
+      "rate": 0.94
+    },
+    "E4Flint": {
+      "pitch": 0.88,
+      "rate": 1.06
+    },
+    "E4Karen": {
+      "pitch": 1.08,
+      "rate": 0.96
+    },
+    "E4Lance": {
+      "pitch": 0.86,
+      "rate": 0.96
+    },
+    "E4Lucian": {
+      "pitch": 0.9,
+      "rate": 0.94
+    },
+    "E4Will": {
+      "pitch": 0.96,
+      "rate": 1.0
+    },
+    "Elder": {
+      "pitch": 0.82,
+      "rate": 0.66
+    },
+    "Elite": {
+      "pitch": 0.92,
+      "rate": 0.98
+    },
+    "Emmet": {
+      "pitch": 0.92,
+      "rate": 1.08
+    },
+    "Eusine": {
+      "pitch": 0.94,
+      "rate": 1.04
+    },
+    "Ex_Gym_Leader_Blaine": {
+      "pitch": 0.84,
+      "rate": 0.92
+    },
+    "Ex_Gym_Leader_Brock": {
+      "pitch": 0.84,
+      "rate": 0.96
+    },
+    "Ex_Gym_Leader_Erika": {
+      "pitch": 1.12,
+      "rate": 0.84
+    },
+    "Ex_Gym_Leader_Giovanni": {
+      "pitch": 0.7,
+      "rate": 0.86
+    },
+    "Ex_Gym_Leader_Koga": {
+      "pitch": 0.82,
+      "rate": 0.92
+    },
+    "Ex_Gym_Leader_Lt_Surge": {
+      "pitch": 0.72,
+      "rate": 0.98
+    },
+    "Ex_Gym_Leader_Misty": {
+      "pitch": 1.2,
+      "rate": 1.16
+    },
+    "Ex_Gym_Leader_Sabrina": {
+      "pitch": 1.08,
+      "rate": 0.88
+    },
+    "FairyGirl": {
+      "pitch": 1.3,
+      "rate": 1.14
+    },
+    "FireBreather": {
+      "pitch": 0.78,
+      "rate": 0.98
+    },
+    "Firefighter": {
+      "pitch": 0.8,
+      "rate": 0.98
+    },
+    "Fisher_F": {
+      "pitch": 1.08,
+      "rate": 0.98
+    },
+    "Fisher_M": {
+      "pitch": 0.86,
+      "rate": 0.94
+    },
+    "FurisodeGirl": {
+      "pitch": 1.16,
+      "rate": 1.0
+    },
+    "Gambler": {
+      "pitch": 0.84,
+      "rate": 1.02
+    },
+    "Gardener": {
+      "pitch": 0.86,
+      "rate": 0.94
+    },
+    "Gentleman": {
+      "pitch": 0.86,
+      "rate": 0.84
+    },
+    "Gloria": {
+      "pitch": 1.2,
+      "rate": 1.12
+    },
+    "Guitarist_F": {
+      "pitch": 1.12,
+      "rate": 1.1
+    },
+    "Guitarist_M": {
+      "pitch": 0.88,
+      "rate": 1.06
+    },
+    "Gym_Challenge_Blaine": {
+      "pitch": 0.84,
+      "rate": 0.92
+    },
+    "Gym_Challenge_Brock": {
+      "pitch": 0.84,
+      "rate": 0.96
+    },
+    "Gym_Challenge_Erika": {
+      "pitch": 1.12,
+      "rate": 0.84
+    },
+    "Gym_Challenge_Giovanni": {
+      "pitch": 0.7,
+      "rate": 0.86
+    },
+    "Gym_Challenge_Koga": {
+      "pitch": 0.82,
+      "rate": 0.92
+    },
+    "Gym_Challenge_Lt_Surge": {
+      "pitch": 0.72,
+      "rate": 0.98
+    },
+    "Gym_Challenge_Misty": {
+      "pitch": 1.2,
+      "rate": 1.16
+    },
+    "Gym_Challenge_Sabrina": {
+      "pitch": 1.08,
+      "rate": 0.88
+    },
+    "Gym_Headset": {
+      "pitch": 1.14,
+      "rate": 1.06
+    },
+    "Gym_Helper": {
+      "pitch": 1.18,
+      "rate": 1.12
+    },
+    "Gym_Hero_Blaine": {
+      "pitch": 0.84,
+      "rate": 0.92
+    },
+    "Gym_Hero_Brock": {
+      "pitch": 0.84,
+      "rate": 0.96
+    },
+    "Gym_Hero_Erika": {
+      "pitch": 1.12,
+      "rate": 0.84
+    },
+    "Gym_Hero_Giovanni": {
+      "pitch": 0.7,
+      "rate": 0.86
+    },
+    "Gym_Hero_Koga": {
+      "pitch": 0.82,
+      "rate": 0.92
+    },
+    "Gym_Hero_Lt_Surge": {
+      "pitch": 0.72,
+      "rate": 0.98
+    },
+    "Gym_Hero_Misty": {
+      "pitch": 1.2,
+      "rate": 1.16
+    },
+    "Gym_Hero_Sabrina": {
+      "pitch": 1.08,
+      "rate": 0.88
+    },
+    "Gym_Leader": {
+      "pitch": 0.92,
+      "rate": 1.0
+    },
+    "Gym_Leader_01": {
+      "pitch": 0.92,
+      "rate": 1.06
+    },
+    "Gym_Leader_02": {
+      "pitch": 1.1,
+      "rate": 1.02
+    },
+    "Gym_Leader_03": {
+      "pitch": 1.16,
+      "rate": 1.08
+    },
+    "Gym_Leader_04": {
+      "pitch": 1.22,
+      "rate": 1.14
+    },
+    "Gym_Leader_05": {
+      "pitch": 0.72,
+      "rate": 0.88
+    },
+    "Gym_Leader_06": {
+      "pitch": 1.18,
+      "rate": 1.1
+    },
+    "Gym_Leader_07": {
+      "pitch": 0.8,
+      "rate": 0.96
+    },
+    "Gym_Leader_08": {
+      "pitch": 0.82,
+      "rate": 0.74
+    },
+    "Gym_Leader_09": {
+      "pitch": 0.94,
+      "rate": 1.0
+    },
+    "Gym_Leader_10": {
+      "pitch": 1.04,
+      "rate": 0.74
+    },
+    "Gym_Leader_11": {
+      "pitch": 0.84,
+      "rate": 0.94
+    },
+    "Gym_Leader_Blue": {
+      "pitch": 0.94,
+      "rate": 1.06
+    },
+    "Gym_Leader_Bugsy": {
+      "pitch": 1.14,
+      "rate": 1.12
+    },
+    "Gym_Leader_Byron": {
+      "pitch": 0.74,
+      "rate": 0.86
+    },
+    "Gym_Leader_Candice": {
+      "pitch": 1.2,
+      "rate": 1.14
+    },
+    "Gym_Leader_Chuck": {
+      "pitch": 0.72,
+      "rate": 0.92
+    },
+    "Gym_Leader_Clair": {
+      "pitch": 1.06,
+      "rate": 0.96
+    },
+    "Gym_Leader_Crasher_Wake": {
+      "pitch": 0.68,
+      "rate": 0.9
+    },
+    "Gym_Leader_Falkner": {
+      "pitch": 0.96,
+      "rate": 1.04
+    },
+    "Gym_Leader_Fantina": {
+      "pitch": 1.12,
+      "rate": 1.04
+    },
+    "Gym_Leader_Gardenia": {
+      "pitch": 1.16,
+      "rate": 1.1
+    },
+    "Gym_Leader_Janine": {
+      "pitch": 1.18,
+      "rate": 1.1
+    },
+    "Gym_Leader_Jasmine": {
+      "pitch": 1.16,
+      "rate": 0.92
+    },
+    "Gym_Leader_Maylene": {
+      "pitch": 1.2,
+      "rate": 1.12
+    },
+    "Gym_Leader_Morty": {
+      "pitch": 0.92,
+      "rate": 0.94
+    },
+    "Gym_Leader_Pryce": {
+      "pitch": 0.82,
+      "rate": 0.7
+    },
+    "Gym_Leader_Roark": {
+      "pitch": 0.92,
+      "rate": 1.0
+    },
+    "Gym_Leader_Volkner": {
+      "pitch": 0.88,
+      "rate": 0.98
+    },
+    "Gym_Leader_Whitney": {
+      "pitch": 1.24,
+      "rate": 1.18
+    },
+    "Gym_Receptionist": {
+      "pitch": 1.14,
+      "rate": 1.04
+    },
+    "Gym_Security": {
+      "pitch": 0.78,
+      "rate": 0.92
+    },
+    "Gym_Shopkeeper": {
+      "pitch": 0.9,
+      "rate": 1.02
+    },
+    "Harlequin": {
+      "pitch": 1.04,
+      "rate": 1.2
+    },
+    "HexManiac": {
+      "pitch": 1.1,
+      "rate": 0.82
+    },
+    "Hiker": {
+      "pitch": 0.76,
+      "rate": 0.9
+    },
+    "Hoopster": {
+      "pitch": 0.78,
+      "rate": 1.02
+    },
+    "Hugh": {
+      "pitch": 0.98,
+      "rate": 1.1
+    },
+    "Idol": {
+      "pitch": 1.22,
+      "rate": 1.14
+    },
+    "Infielder": {
+      "pitch": 0.86,
+      "rate": 1.06
+    },
+    "Ingo": {
+      "pitch": 0.82,
+      "rate": 0.96
+    },
+    "Janitor": {
+      "pitch": 0.86,
+      "rate": 0.92
+    },
+    "Jogger": {
+      "pitch": 0.9,
+      "rate": 1.1
+    },
+    "Juggler": {
+      "pitch": 0.96,
+      "rate": 1.14
+    },
+    "KimonoGirl": {
+      "pitch": 1.14,
+      "rate": 0.92
+    },
+    "Kindler": {
+      "pitch": 0.82,
+      "rate": 1.0
+    },
+    "Lady": {
+      "pitch": 1.14,
+      "rate": 0.94
+    },
+    "Lapras": {
+      "pitch": 1.0,
+      "rate": 1.0
+    },
+    "Lass": {
+      "pitch": 1.26,
+      "rate": 1.16
+    },
+    "Linebacker": {
+      "pitch": 0.7,
+      "rate": 0.94
+    },
+    "Looker": {
+      "pitch": 0.88,
+      "rate": 1.06
+    },
+    "Madame": {
+      "pitch": 1.04,
+      "rate": 0.78
+    },
+    "Maid": {
+      "pitch": 1.16,
+      "rate": 1.04
+    },
+    "Marley": {
+      "pitch": 1.18,
+      "rate": 0.88
+    },
+    "Medium": {
+      "pitch": 1.06,
+      "rate": 0.84
+    },
+    "Mewtwo": {
+      "pitch": 0.62,
+      "rate": 0.8
+    },
+    "Mira": {
+      "pitch": 1.3,
+      "rate": 1.16
+    },
+    "Model_F": {
+      "pitch": 1.16,
+      "rate": 1.0
+    },
+    "Model_M": {
+      "pitch": 0.92,
+      "rate": 0.98
+    },
+    "Neckbeard": {
+      "pitch": 0.86,
+      "rate": 1.08
+    },
+    "NinjaBoy": {
+      "pitch": 1.24,
+      "rate": 1.18
+    },
+    "NPC": {
+      "pitch": 1.0,
+      "rate": 1.0
+    },
+    "NPC01_1": {
+      "pitch": 1.1,
+      "rate": 1.02
+    },
+    "NPC02": {
+      "pitch": 1.32,
+      "rate": 1.22
+    },
+    "NPC03": {
+      "pitch": 1.16,
+      "rate": 1.08
+    },
+    "NPC04": {
+      "pitch": 1.08,
+      "rate": 1.0
+    },
+    "NPC05": {
+      "pitch": 1.14,
+      "rate": 1.05
+    },
+    "NPC06": {
+      "pitch": 1.22,
+      "rate": 1.15
+    },
+    "NPC07": {
+      "pitch": 0.88,
+      "rate": 0.95
+    },
+    "NPC08": {
+      "pitch": 1.02,
+      "rate": 0.85
+    },
+    "NPC09": {
+      "pitch": 1.3,
+      "rate": 1.2
+    },
+    "NPC10": {
+      "pitch": 0.86,
+      "rate": 0.72
+    },
+    "NPC11": {
+      "pitch": 0.84,
+      "rate": 0.8
+    },
+    "NPC12": {
+      "pitch": 1.1,
+      "rate": 1.02
+    },
+    "NPC12_1": {
+      "pitch": 1.04,
+      "rate": 0.68
+    },
+    "NPC13": {
+      "pitch": 0.88,
+      "rate": 0.92
+    },
+    "NPC14": {
+      "pitch": 1.12,
+      "rate": 0.95
+    },
+    "NPC15": {
+      "pitch": 0.86,
+      "rate": 0.88
+    },
+    "NPC16": {
+      "pitch": 0.84,
+      "rate": 0.7
+    },
+    "NPC17": {
+      "pitch": 1.1,
+      "rate": 1.02
+    },
+    "NPC17_1": {
+      "pitch": 1.1,
+      "rate": 1.02
+    },
+    "NPC18": {
+      "pitch": 1.3,
+      "rate": 1.18
+    },
+    "NPC19": {
+      "pitch": 1.12,
+      "rate": 1.04
+    },
+    "NPC20": {
+      "pitch": 1.1,
+      "rate": 0.98
+    },
+    "NPC21": {
+      "pitch": 1.22,
+      "rate": 1.12
+    },
+    "NPC22": {
+      "pitch": 0.9,
+      "rate": 0.95
+    },
+    "NPC23": {
+      "pitch": 1.1,
+      "rate": 1.02
+    },
+    "NPC24": {
+      "pitch": 1.1,
+      "rate": 1.02
+    },
+    "NPC25": {
+      "pitch": 1.24,
+      "rate": 1.16
+    },
+    "NPC26": {
+      "pitch": 1.28,
+      "rate": 1.16
+    },
+    "NPC27": {
+      "pitch": 1.14,
+      "rate": 1.06
+    },
+    "NPC28": {
+      "pitch": 1.26,
+      "rate": 1.14
+    },
+    "NPC29": {
+      "pitch": 1.28,
+      "rate": 1.16
+    },
+    "NPC30": {
+      "pitch": 0.78,
+      "rate": 0.9
+    },
+    "NPC31": {
+      "pitch": 1.2,
+      "rate": 1.14
+    },
+    "NPC32": {
+      "pitch": 1.14,
+      "rate": 1.06
+    },
+    "NPC33": {
+      "pitch": 1.06,
+      "rate": 0.92
+    },
+    "NPC34": {
+      "pitch": 1.24,
+      "rate": 1.18
+    },
+    "NPC35": {
+      "pitch": 1.22,
+      "rate": 1.14
+    },
+    "NPC36": {
+      "pitch": 1.3,
+      "rate": 1.18
+    },
+    "NPC37": {
+      "pitch": 0.72,
+      "rate": 0.92
+    },
+    "NPC38": {
+      "pitch": 0.74,
+      "rate": 0.86
+    },
+    "NPC39": {
+      "pitch": 1.04,
+      "rate": 0.68
+    },
+    "NPC40": {
+      "pitch": 0.86,
+      "rate": 0.74
+    },
+    "NPC41": {
+      "pitch": 1.1,
+      "rate": 1.02
+    },
+    "NPC42": {
+      "pitch": 0.86,
+      "rate": 0.95
+    },
+    "NPC43": {
+      "pitch": 0.86,
+      "rate": 0.94
+    },
+    "NPC44": {
+      "pitch": 1.24,
+      "rate": 1.14
+    },
+    "NPC45": {
+      "pitch": 1.3,
+      "rate": 1.2
+    },
+    "NPC46": {
+      "pitch": 0.9,
+      "rate": 0.98
+    },
+    "NPC47": {
+      "pitch": 0.76,
+      "rate": 0.84
+    },
+    "NPC48": {
+      "pitch": 1.2,
+      "rate": 1.14
+    },
+    "NPC49": {
+      "pitch": 1.12,
+      "rate": 0.96
+    },
+    "NPC50": {
+      "pitch": 1.12,
+      "rate": 0.96
+    },
+    "NPC51": {
+      "pitch": 1.16,
+      "rate": 1.06
+    },
+    "NPC52": {
+      "pitch": 1.14,
+      "rate": 1.05
+    },
+    "NPC53": {
+      "pitch": 0.94,
+      "rate": 1.02
+    },
+    "NPC54": {
+      "pitch": 0.92,
+      "rate": 1.0
+    },
+    "NPC55": {
+      "pitch": 1.18,
+      "rate": 1.12
+    },
+    "NPC56": {
+      "pitch": 1.24,
+      "rate": 1.12
+    },
+    "NPC57": {
+      "pitch": 1.2,
+      "rate": 1.14
+    },
+    "NPC58": {
+      "pitch": 0.92,
+      "rate": 1.05
+    },
+    "NPC59": {
+      "pitch": 1.14,
+      "rate": 1.08
+    },
+    "NPC60": {
+      "pitch": 0.84,
+      "rate": 0.82
+    },
+    "NPC61": {
+      "pitch": 0.9,
+      "rate": 1.05
+    },
+    "NPC62": {
+      "pitch": 1.26,
+      "rate": 1.16
+    },
+    "NPC63": {
+      "pitch": 1.22,
+      "rate": 1.12
+    },
+    "NPC64": {
+      "pitch": 1.12,
+      "rate": 1.08
+    },
+    "NPC65": {
+      "pitch": 0.88,
+      "rate": 1.05
+    },
+    "NPC66": {
+      "pitch": 0.9,
+      "rate": 0.95
+    },
+    "NPC67": {
+      "pitch": 0.84,
+      "rate": 0.88
+    },
+    "NPC68": {
+      "pitch": 1.1,
+      "rate": 1.0
+    },
+    "NPC69": {
+      "pitch": 0.92,
+      "rate": 1.0
+    },
+    "NPC70": {
+      "pitch": 0.82,
+      "rate": 0.92
+    },
+    "NPC70_2": {
+      "pitch": 0.94,
+      "rate": 1.05
+    },
+    "NPC71": {
+      "pitch": 1.24,
+      "rate": 1.12
+    },
+    "NPC71_2": {
+      "pitch": 1.24,
+      "rate": 1.12
+    },
+    "NPC72": {
+      "pitch": 1.16,
+      "rate": 1.06
+    },
+    "NPC72_2": {
+      "pitch": 1.16,
+      "rate": 1.06
+    },
+    "NPC73": {
+      "pitch": 1.16,
+      "rate": 1.06
+    },
+    "NPC73_2": {
+      "pitch": 1.16,
+      "rate": 1.06
+    },
+    "NPC74": {
+      "pitch": 1.14,
+      "rate": 1.04
+    },
+    "NPC75": {
+      "pitch": 1.16,
+      "rate": 1.06
+    },
+    "NPC_Captain": {
+      "pitch": 0.74,
+      "rate": 0.88
+    },
+    "NPC_Coin_Shopkeeper": {
+      "pitch": 1.12,
+      "rate": 1.04
+    },
+    "NPC_Holo_Rare_Shopkeeper": {
+      "pitch": 0.84,
+      "rate": 0.8
+    },
+    "NPC_Oldlady": {
+      "pitch": 1.04,
+      "rate": 0.68
+    },
+    "NPC_Oldman": {
+      "pitch": 0.84,
+      "rate": 0.7
+    },
+    "NPCBackpacker": {
+      "pitch": 0.9,
+      "rate": 1.02
+    },
+    "NPCBeauty": {
+      "pitch": 1.16,
+      "rate": 0.98
+    },
+    "NPCBonnie": {
+      "pitch": 1.38,
+      "rate": 1.24
+    },
+    "NPCClerk": {
+      "pitch": 1.1,
+      "rate": 1.05
+    },
+    "NPCCyclist": {
+      "pitch": 0.94,
+      "rate": 1.12
+    },
+    "NPCDexio": {
+      "pitch": 0.96,
+      "rate": 1.06
+    },
+    "NPCEmma": {
+      "pitch": 1.22,
+      "rate": 1.14
+    },
+    "NPCGymGuy": {
+      "pitch": 0.9,
+      "rate": 1.1
+    },
+    "NPCMan": {
+      "pitch": 0.9,
+      "rate": 0.98
+    },
+    "NPCMrBonding": {
+      "pitch": 0.88,
+      "rate": 1.08
+    },
+    "NPCMysteryGiftGirl": {
+      "pitch": 1.2,
+      "rate": 1.08
+    },
+    "NPCPhilThePhotoGuy": {
+      "pitch": 0.94,
+      "rate": 1.1
+    },
+    "NPCPreschooler": {
+      "pitch": 1.36,
+      "rate": 1.24
+    },
+    "NPCReceptionist": {
+      "pitch": 1.14,
+      "rate": 1.04
+    },
+    "NPCSchoolBoy": {
+      "pitch": 1.22,
+      "rate": 1.16
+    },
+    "NPCSchoolGirl": {
+      "pitch": 1.26,
+      "rate": 1.16
+    },
+    "NPCSina": {
+      "pitch": 1.12,
+      "rate": 1.04
+    },
+    "NPCStylist": {
+      "pitch": 1.14,
+      "rate": 1.08
+    },
+    "NPCTeenager": {
+      "pitch": 1.04,
+      "rate": 1.1
+    },
+    "NPCWoman": {
+      "pitch": 1.1,
+      "rate": 1.0
+    },
+    "Nurse": {
+      "pitch": 1.16,
+      "rate": 1.02
+    },
+    "NurseryAide": {
+      "pitch": 1.12,
+      "rate": 0.98
+    },
+    "OfficeWorker_F": {
+      "pitch": 1.1,
+      "rate": 1.02
+    },
+    "OfficeWorker_M": {
+      "pitch": 0.9,
+      "rate": 0.98
+    },
+    "Owner": {
+      "pitch": 0.84,
+      "rate": 0.74
+    },
+    "Palmer": {
+      "pitch": 0.88,
+      "rate": 1.0
+    },
+    "ParasolLady": {
+      "pitch": 1.16,
+      "rate": 0.98
+    },
+    "Picnicker": {
+      "pitch": 1.22,
+      "rate": 1.14
+    },
+    "Pilot": {
+      "pitch": 0.88,
+      "rate": 0.98
+    },
+    "PokeFan_F": {
+      "pitch": 1.14,
+      "rate": 1.08
+    },
+    "PokeFan_M": {
+      "pitch": 0.9,
+      "rate": 1.06
+    },
+    "PokeKid": {
+      "pitch": 1.34,
+      "rate": 1.22
+    },
+    "PokeManiac": {
+      "pitch": 0.86,
+      "rate": 1.1
+    },
+    "Pokemaniac_Blue": {
+      "pitch": 0.86,
+      "rate": 1.1
+    },
+    "Pokemaniac_Green": {
+      "pitch": 0.86,
+      "rate": 1.1
+    },
+    "Pokemaniac_Purple": {
+      "pitch": 0.86,
+      "rate": 1.1
+    },
+    "Pokemaniac_Red": {
+      "pitch": 0.86,
+      "rate": 1.1
+    },
+    "PokemonBreeder_F": {
+      "pitch": 1.14,
+      "rate": 1.04
+    },
+    "PokemonBreeder_M": {
+      "pitch": 0.92,
+      "rate": 1.0
+    },
+    "PokemonRanger_F": {
+      "pitch": 1.12,
+      "rate": 1.06
+    },
+    "PokemonRanger_M": {
+      "pitch": 0.92,
+      "rate": 1.02
+    },
+    "PokemonTrainer_Red": {
+      "pitch": 1.0,
+      "rate": 1.08
+    },
+    "Policeman": {
+      "pitch": 0.8,
+      "rate": 0.94
+    },
+    "Postman": {
+      "pitch": 0.9,
+      "rate": 1.04
+    },
+    "Preschooler_F": {
+      "pitch": 1.4,
+      "rate": 1.26
+    },
+    "Preschooler_M": {
+      "pitch": 1.36,
+      "rate": 1.26
+    },
+    "ProfElm": {
+      "pitch": 0.92,
+      "rate": 1.04
+    },
+    "ProfOak": {
+      "pitch": 0.84,
+      "rate": 0.76
+    },
+    "ProfRowan": {
+      "pitch": 0.78,
+      "rate": 0.76
+    },
+    "Psychic_F": {
+      "pitch": 1.1,
+      "rate": 0.86
+    },
+    "Psychic_M": {
+      "pitch": 0.92,
+      "rate": 0.86
+    },
+    "Punk_F": {
+      "pitch": 1.14,
+      "rate": 1.1
+    },
+    "Punk_M": {
+      "pitch": 0.72,
+      "rate": 0.96
+    },
+    "PunkGirl": {
+      "pitch": 1.14,
+      "rate": 1.1
+    },
+    "PunkGuy": {
+      "pitch": 0.72,
+      "rate": 0.96
+    },
+    "Rancher_F": {
+      "pitch": 1.1,
+      "rate": 1.0
+    },
+    "Rancher_M": {
+      "pitch": 0.84,
+      "rate": 0.94
+    },
+    "Rebel": {
+      "pitch": 1.1,
+      "rate": 1.02
+    },
+    "Reporter": {
+      "pitch": 1.12,
+      "rate": 1.14
+    },
+    "RichBoy": {
+      "pitch": 1.16,
+      "rate": 1.06
+    },
+    "Riley": {
+      "pitch": 0.92,
+      "rate": 0.96
+    },
+    "RisingStar_F": {
+      "pitch": 1.16,
+      "rate": 1.1
+    },
+    "RisingStar_M": {
+      "pitch": 0.96,
+      "rate": 1.08
+    },
+    "Rival": {
+      "pitch": 1.0,
+      "rate": 1.1
+    },
+    "Rocket_Shopkeeper": {
+      "pitch": 0.8,
+      "rate": 0.86
+    },
+    "Rogue": {
+      "pitch": 0.86,
+      "rate": 0.94
+    },
+    "RollerSkater_F": {
+      "pitch": 1.22,
+      "rate": 1.18
+    },
+    "RollerSkater_M": {
+      "pitch": 0.98,
+      "rate": 1.16
+    },
+    "Roughneck": {
+      "pitch": 0.72,
+      "rate": 0.9
+    },
+    "RuinManiac": {
+      "pitch": 0.86,
+      "rate": 0.92
+    },
+    "RuinManiac_F": {
+      "pitch": 1.08,
+      "rate": 0.94
+    },
+    "Sage": {
+      "pitch": 0.82,
+      "rate": 0.68
+    },
+    "Sailor": {
+      "pitch": 0.76,
+      "rate": 0.94
+    },
+    "SchoolBoy": {
+      "pitch": 1.22,
+      "rate": 1.16
+    },
+    "SchoolGirl": {
+      "pitch": 1.26,
+      "rate": 1.16
+    },
+    "SchoolKid_F": {
+      "pitch": 1.26,
+      "rate": 1.16
+    },
+    "SchoolKid_M": {
+      "pitch": 1.22,
+      "rate": 1.16
+    },
+    "Scientist_F": {
+      "pitch": 1.08,
+      "rate": 1.0
+    },
+    "Scientist_M": {
+      "pitch": 0.88,
+      "rate": 1.0
+    },
+    "Security": {
+      "pitch": 0.8,
+      "rate": 0.94
+    },
+    "Shopkeeper": {
+      "pitch": 0.86,
+      "rate": 0.88
+    },
+    "Sightseer_F": {
+      "pitch": 1.12,
+      "rate": 1.02
+    },
+    "Sightseer_M": {
+      "pitch": 0.9,
+      "rate": 1.0
+    },
+    "Skier_F": {
+      "pitch": 1.14,
+      "rate": 1.08
+    },
+    "Skier_M": {
+      "pitch": 0.92,
+      "rate": 1.04
+    },
+    "SleeveSeller": {
+      "pitch": 1.2,
+      "rate": 1.1
+    },
+    "Smasher": {
+      "pitch": 1.16,
+      "rate": 1.12
+    },
+    "Socialite": {
+      "pitch": 1.06,
+      "rate": 0.82
+    },
+    "StaffMember": {
+      "pitch": 0.94,
+      "rate": 1.06
+    },
+    "Steven": {
+      "pitch": 0.9,
+      "rate": 0.94
+    },
+    "StreetBoy": {
+      "pitch": 1.1,
+      "rate": 1.14
+    },
+    "StreetThug": {
+      "pitch": 0.74,
+      "rate": 0.98
+    },
+    "Striker": {
+      "pitch": 0.92,
+      "rate": 1.08
+    },
+    "Supernerd": {
+      "pitch": 0.96,
+      "rate": 1.14
+    },
+    "Swimmer_F": {
+      "pitch": 1.18,
+      "rate": 1.1
+    },
+    "Swimmer_M": {
+      "pitch": 0.88,
+      "rate": 1.04
+    },
+    "Taunie": {
+      "pitch": 1.24,
+      "rate": 1.12
+    },
+    "Teacher": {
+      "pitch": 1.12,
+      "rate": 1.0
+    },
+    "TeamPlasma_F": {
+      "pitch": 1.08,
+      "rate": 1.02
+    },
+    "TeamPlasma_M": {
+      "pitch": 0.84,
+      "rate": 1.0
+    },
+    "TeamPlasmaColross": {
+      "pitch": 0.86,
+      "rate": 0.92
+    },
+    "TeamPlasmaGhetsis": {
+      "pitch": 0.72,
+      "rate": 0.82
+    },
+    "TeamPlasmaN": {
+      "pitch": 0.98,
+      "rate": 1.1
+    },
+    "TeamPlasmaSevenSage": {
+      "pitch": 0.8,
+      "rate": 0.7
+    },
+    "TeamPlasmaShadowTriad": {
+      "pitch": 0.74,
+      "rate": 0.92
+    },
+    "TeamPlasmaZinzolin": {
+      "pitch": 0.8,
+      "rate": 0.84
+    },
+    "TeamRocket_F": {
+      "pitch": 1.06,
+      "rate": 1.02
+    },
+    "TeamRocket_M": {
+      "pitch": 0.8,
+      "rate": 0.98
+    },
+    "TeamRocketArcher": {
+      "pitch": 0.84,
+      "rate": 0.96
+    },
+    "TeamRocketAriana": {
+      "pitch": 1.04,
+      "rate": 0.94
+    },
+    "TeamRocketBoss": {
+      "pitch": 0.68,
+      "rate": 0.86
+    },
+    "TeamRocketPetrel": {
+      "pitch": 0.8,
+      "rate": 0.98
+    },
+    "TeamRocketProton": {
+      "pitch": 0.78,
+      "rate": 0.94
+    },
+    "TeamSkull_F": {
+      "pitch": 1.1,
+      "rate": 1.08
+    },
+    "TeamSkull_M": {
+      "pitch": 0.76,
+      "rate": 1.04
+    },
+    "Teenager_F": {
+      "pitch": 1.18,
+      "rate": 1.12
+    },
+    "Teenager_M": {
+      "pitch": 1.02,
+      "rate": 1.12
+    },
+    "Thorton": {
+      "pitch": 0.94,
+      "rate": 1.02
+    },
+    "Tourist_F": {
+      "pitch": 1.12,
+      "rate": 1.02
+    },
+    "Tourist_M": {
+      "pitch": 0.9,
+      "rate": 1.0
+    },
+    "TrainWorker": {
+      "pitch": 0.84,
+      "rate": 0.94
+    },
+    "TrialGuide_M": {
+      "pitch": 0.9,
+      "rate": 0.98
+    },
+    "Tuber_F": {
+      "pitch": 1.34,
+      "rate": 1.22
+    },
+    "Tuber_M": {
+      "pitch": 1.3,
+      "rate": 1.22
+    },
+    "Twin": {
+      "pitch": 1.32,
+      "rate": 1.22
+    },
+    "Twins": {
+      "pitch": 1.32,
+      "rate": 1.22
+    },
+    "Urbain": {
+      "pitch": 1.14,
+      "rate": 1.1
+    },
+    "Veteran_F": {
+      "pitch": 1.06,
+      "rate": 0.9
+    },
+    "Veteran_M": {
+      "pitch": 0.82,
+      "rate": 0.88
+    },
+    "Waiter": {
+      "pitch": 0.94,
+      "rate": 1.06
+    },
+    "Waitress": {
+      "pitch": 1.16,
+      "rate": 1.08
+    },
+    "WeightedSeller": {
+      "pitch": 0.86,
+      "rate": 0.94
+    },
+    "WingGlider_F": {
+      "pitch": 1.16,
+      "rate": 1.1
+    },
+    "WingGlider_M": {
+      "pitch": 0.94,
+      "rate": 1.08
+    },
+    "Worker": {
+      "pitch": 0.8,
+      "rate": 0.92
+    },
+    "YoungCouple": {
+      "pitch": 1.1,
+      "rate": 1.06
+    },
+    "Youngster": {
+      "pitch": 1.24,
+      "rate": 1.18
+    },
+    "z_Named_Guy": {
+      "pitch": 0.84,
+      "rate": 0.78
+    }
+  }
+}

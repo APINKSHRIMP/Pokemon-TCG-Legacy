@@ -840,6 +840,7 @@ func _apply_actor_chips() -> void:
 		message_panel.set_right_chips([])
 		message_panel.set_name_pill(
 			str(cutscene_speaker.get("name", "")), str(cutscene_speaker.get("sprite", "")))
+		message_panel.set_voice(str(cutscene_speaker.get("sprite", "")))
 		message_panel.set_chips([])
 		return
 
@@ -853,6 +854,9 @@ func _apply_actor_chips() -> void:
 		message_panel.apply_theme(current_opponent.message_colour)
 		message_panel.set_right_chips([])   # ISSUE #120: opponents never show cash
 		message_panel.set_name_pill(current_opponent.opponent_name, current_opponent.sprite)
+		# The pre-match line is the opponent talking, so it gets their blip. The match
+		# itself does not: every in-match box is the system variant, which is silent.
+		message_panel.set_voice(current_opponent.sprite)
 		var opponent_chips: Array = [
 			{ "text": String(current_opponent.deck).to_upper(),
 			  "icon_path": MSG_ICON_DIR + "deck.png" },
@@ -882,6 +886,9 @@ func _apply_actor_chips() -> void:
 		message_panel.set_system_variant(false)
 		message_panel.apply_theme(current_npc.message_colour if "message_colour" in current_npc else "")
 		message_panel.set_name_pill(shown, current_npc.sprite)
+		# Shopkeepers are NPCs, so this covers them too — the only overworld boxes left
+		# silent are the ones below, where nobody is speaking.
+		message_panel.set_voice(current_npc.sprite)
 		message_panel.set_chips([])
 		_apply_cash_chip()   # ISSUE #120 -- vendors only, no-op for everyone else
 		return
@@ -1050,6 +1057,10 @@ func start_forced_battle(entry: Dictionary) -> void:
 		"match_effects":    entry.get("match_effects", []),
 		"match_format":     str(entry.get("match_format", "")),
 		"sleeve":           str(entry.get("sleeve", "")),
+		# A scripted fight the story cannot continue past a loss. The outro reads this
+		# and restarts the match instead of returning to the overworld -- see
+		# Match_End_Outro_Script._wants_retry_on_loss().
+		"retry_on_loss":    bool(entry.get("retry_on_loss", false)),
 	}
 
 	var match_format: String = str(entry.get("match_format", ""))

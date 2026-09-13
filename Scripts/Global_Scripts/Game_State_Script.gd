@@ -99,10 +99,10 @@ var current_shop_id: String = "card_mart"
 # Walking speed is deliberately NOT part of this. It affects play, not presentation.
 #
 # The match intro/outro has NO multiplier — see INTRO_OUTRO_OPTIONS below.
-var card_match_animation_speed: float = 1.25
-var item_animation_speed: float = 1.25
-var pack_animation_speed: float = 0.75   # PACK_SPEED_PRESETS["medium"], the boot default
-var overworld_walking_speed: float = 1.1
+var card_match_animation_speed: float = 1.0
+var item_animation_speed: float = 1.0
+var pack_animation_speed: float = 0.5    # PACK_SPEED_PRESETS["slow"], the boot default
+var overworld_walking_speed: float = 0.6
 
 # The one ladder the player picks from. Three steps, in this order — the Options row is built from
 # this array, so adding a step here adds the button.
@@ -162,8 +162,9 @@ const TEXT_SPEED_PRESETS := {
 	"fast": 13.5,
 }
 const TEXT_BASE_LETTER_DELAY := 0.05   # seconds per letter at 1.0x
-# The live value every message box reads. 0.0 means instant.
-var text_letter_delay: float = TEXT_BASE_LETTER_DELAY
+# The live value every message box reads. 0.0 means instant. Derived from the default
+# preset rather than from the 1.0x base, so it matches DEFAULT_TEXT_SPEED on a first run.
+var text_letter_delay: float = TEXT_BASE_LETTER_DELAY / float(TEXT_SPEED_PRESETS[DEFAULT_TEXT_SPEED])
 
 # Reduce motion. An accessibility switch, not a fourth speed.
 #
@@ -185,8 +186,8 @@ const SKIP_MULTIPLIER := 100.0
 # reduce motion keeps the screen and collapses its animations. See is_transition_skipped().
 const INTRO_OUTRO_OPTIONS := ["play", "skip"]
 
-const DEFAULT_TEXT_SPEED      := "medium"
-const DEFAULT_ANIMATION_SPEED := "medium"
+const DEFAULT_TEXT_SPEED      := "slow"
+const DEFAULT_ANIMATION_SPEED := "slow"
 const DEFAULT_REDUCE_MOTION   := "off"
 const DEFAULT_INTRO_OUTRO     := "play"
 
@@ -362,7 +363,7 @@ const WALKING_SPEED_PRESETS := {
 	"normal": 1.1,
 	"fast": 1.6,
 }
-const DEFAULT_WALKING_SPEED := "normal"
+const DEFAULT_WALKING_SPEED := "slow"
 
 # The player's currently selected preset key. Persisted in Player_Current_Data.json.
 var walking_speed_setting: String = DEFAULT_WALKING_SPEED

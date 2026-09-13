@@ -820,6 +820,9 @@ func _create_msg_panels() -> void:
 	var opp_name := str(opponent_data.get("name", ""))
 	if opp_name != "":
 		_dialogue_panel.set_name_pill(opp_name, str(opponent_data.get("sprite", "")))
+	# The closing win/loss line is the opponent speaking, so it blips. The gift box
+	# beside it is the game talking and uses the system variant, which stays silent.
+	_dialogue_panel.set_voice(str(opponent_data.get("sprite", "")))
 ## Finishes whichever panel is on screen and still typing. True when the input was spent doing it.
 func _skip_panel_typing() -> bool:
 	for panel in [_dialogue_panel, _gift_panel]:
@@ -1173,7 +1176,59 @@ func _transition_to_bo3_scene() -> void:
 # SCENE TRANSITION — BACK TO MAP
 # ============================================================
 
+## True when the player just lost a scripted fight the story cannot continue past, so
+## the outro sends them back into the same match rather than out to the overworld.
+##
+## Read off last_battled_opponent_entry, which start_forced_battle() wrote when the
+## match began: it is the copy that survives the match, and it already carries every
+## other per-entry rule the outro needs.
+##
+## A win always leaves normally -- the flag only ever holds a LOSS back.
+func _wants_retry_on_loss() -> bool:
+	if battle_won:
+		return false
+	return bool(GameState.last_battled_opponent_entry.get("retry_on_loss", false))
+
+
+## Straight back into the same match from the outro, with no trip through the
+## overworld. Everything the intro needs is still in GameState -- it loads the
+## opponent from current_opponent_name, and nothing in a match clears it -- so this
+## is the same fade the map transition uses pointed at the intro scene instead.
+func _restart_match() -> void:
+	transitioning = true
+	click_enabled = false
+
+	_stop_outcome_jingle()
+
+	var tween := create_tween()
+	tween.tween_property(self, "modulate:a", 0.0, FADE_TIME)
+	await tween.finished
+
+	# The map is never reached, so nothing downstream reads the result. Clearing both
+	# keeps the intro from opening as though it were resuming a finished battle.
+	GameState.battle_result = ""
+	GameState.returning_from_battle = false
+
+	SceneCache.change_scene("res://Scenes/Main_Match_Gameplay_Scenes/Match_Start_Intro_Scene.tscn")
+
+
+## Kills the win/loss jingle. Split out of transition_back_to_map() so the retry path
+## can stop it too without duplicating the loop.
+func _stop_outcome_jingle() -> void:
+	for child in SoundManagerScript.get_children():
+		if child is AudioStreamPlayer:
+			child.stop()
+			child.queue_free()
+
+
 func transition_back_to_map() -> void:
+	# A lost scripted fight never reaches the overworld: it goes straight back into
+	# the match. Checked before anything else here, so none of the leaving-the-match
+	# bookkeeping below runs for a battle that is about to start again.
+	if _wants_retry_on_loss():
+		await _restart_match()
+		return
+
 	print("DEBUG return path: ", GameState.return_map_scene_path)
 	transitioning  = true
 	click_enabled  = false
@@ -1194,11 +1249,7 @@ func transition_back_to_map() -> void:
 				if GameState.progress.get("player_collected_shop_starter_set", false):
 					GameState.advance_time("Night")
 
-	# Stop win/loss jingle
-	for child in SoundManagerScript.get_children():
-		if child is AudioStreamPlayer:
-			child.stop()
-			child.queue_free()
+	_stop_outcome_jingle()
 
 	var tween = create_tween()
 	# ISSUE #288: the "outro to overworld" half, doubled with the rest. It was the

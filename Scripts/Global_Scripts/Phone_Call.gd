@@ -630,6 +630,15 @@ func _build_message_box() -> void:
 		_box.apply_theme(_colour)
 		if _screen_name == "":
 			_box.set_name_pill(_speaker, _speaker_sprite)
+		# Outside the name-pill branch on purpose: a call that shows its caller's name
+		# over the picture instead of on the box is still that caller speaking, and the
+		# voice follows the speaker, not the pill.
+		#
+		# pill_sprite is OPTIONAL and most calls leave it out - a video call already says
+		# who is on it with the pill over the picture, so it has no overworld portrait to
+		# name. Falling back to the talking-head costume is what keeps those calls voiced:
+		# SpeechVoice's alias table maps a costume name onto the character's own voice.
+		_box.set_voice(_speaker_sprite if _speaker_sprite != "" else _caller_name)
 	_box.set_mode("ok")
 	# A timed call cannot be advanced, so it must not show the caret that says it can.
 	if _auto_advance:

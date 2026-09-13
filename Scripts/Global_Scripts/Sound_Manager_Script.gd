@@ -194,6 +194,51 @@ func play_sfx_from_path(path: String) -> void:
 	else:
 		print("SoundManager: Could not load SFX at: ", path)
 
+# ============================================================
+# SPEECH BLIP
+# ============================================================
+# The dialogue tick that plays as letters land in a character message box, one
+# short sample retriggered per few letters and pitched to the speaker. See
+# Speech_Voice.gd for where a pitch comes from and Dynamic_Message_Box.gd for
+# when one is asked for.
+#
+# ONE player, reused and restarted, rather than play_sfx()'s throwaway node: a
+# blip fires several times a second for the length of every conversation in the
+# game, and spawning an AudioStreamPlayer per letter would churn hundreds of
+# nodes a minute. Restarting the same player also self-limits the sound — a blip
+# can never stack on top of itself into a drone, which is exactly the behaviour
+# the Animal Crossing style tick wants.
+const SPEECH_BLIP_PATH := "res://Audio/SFX/Speech.ogg"
+
+var _speech_player: AudioStreamPlayer = null
+
+# Plays one dialogue blip at `pitch` (1.0 is the sample untouched). Lives on the
+# SFX bus, so the Options SFX slider covers it like every other sound.
+func play_speech_blip(pitch: float = 1.0) -> void:
+	# is_instance_valid as well as null: the match outro frees every AudioStreamPlayer
+	# child of this node to stop the win/loss jingle, and this player is one of them.
+	# A freed Object is not null, so checking only for null would call play() on it.
+	if _speech_player == null or not is_instance_valid(_speech_player):
+		var stream = load(SPEECH_BLIP_PATH)
+		if stream == null:
+			print("SoundManager: Could not load speech blip at: ", SPEECH_BLIP_PATH)
+			return
+		# An .ogg that was imported with looping on would turn the first blip into a
+		# continuous tone, since nothing ever stops it. Say so rather than rely on
+		# the import setting.
+		if "loop" in stream:
+			stream = stream.duplicate()
+			stream.loop = false
+		_speech_player = AudioStreamPlayer.new()
+		_speech_player.stream = stream
+		_speech_player.bus = SFX_BUS
+		add_child(_speech_player)
+	_speech_player.pitch_scale = pitch
+	# play() from the top restarts a blip that is still ringing, which is what
+	# keeps a fast talker crisp instead of muddy.
+	_speech_player.play()
+
+
 # --- BGM: play background music from a res:// path ---
 # If loop is true the track will repeat. Calling this while BGM is
 # already playing will stop the old track and start the new one.

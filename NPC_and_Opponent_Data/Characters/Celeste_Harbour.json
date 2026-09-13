@@ -3596,6 +3596,7 @@
         "rematch_win": "THIS TEXT SHOULD NEVER SHOW",
         "loss": "I'll let you try again, I'll take it even easier on you this time!"
       },
+      "retry_on_loss": true,
       "sleeve": "1_Default_English",
       "days": "1",
       "times": "M",

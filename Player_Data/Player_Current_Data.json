@@ -1,5 +1,5 @@
 {
-	"animation_speed": "medium",
+	"animation_speed": "slow",
 	"burn_rules": "base_set_burn_rules",
 	"coin": "Pikachu Silver",
 	"confusion_rules": "base_set_confusion_rules",
@@ -15,5 +15,6 @@
 	"sfx_volume": 0.8,
 	"sleeve": "1_Default_English",
 	"sprite": "",
-	"walking_speed": "normal"
+	"text_speed": "slow",
+	"walking_speed": "slow"
 }

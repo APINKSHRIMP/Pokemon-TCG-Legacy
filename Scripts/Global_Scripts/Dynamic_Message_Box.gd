@@ -218,6 +218,35 @@ var _typing: bool = false
 var _type_progress: float = 0.0
 var _type_total: int = 0
 
+# TWEAKABLE — letters between blips at rate 1.0. 3 is roughly a syllable; 2 is
+# chattier, 4 is sparse and deliberate. A speaker's "rate" divides this, so a
+# rate of 1.5 blips every 2 letters and a rate of 0.75 every 4.
+const BLIP_EVERY_LETTERS : float = 3.0
+# TWEAKABLE — the shortest gap in seconds between two blips, whatever the letter
+# count says. Stops the fastest text speed from fusing the ticks into a tone.
+const BLIP_MIN_GAP : float = 0.045
+
+# -- THE SPEECH BLIP ------------------------------------------
+# The Animal Crossing / Mystery Dungeon dialogue tick: a short sample retriggered
+# as the letters land, pitched and paced to the person speaking.
+#
+# It is OPT-IN and it is per-speaker: set_voice() arms it with a sprite name and
+# NOTHING plays until something does. That is deliberate — it means a system box
+# is silent without every caller in the game having to remember to mute it. The
+# system variant is the game talking rather than a person, so set_system_variant()
+# and show_as_plain() disarm the voice on the way past, which covers every in-match
+# message, the sign, the TV, the bed and the gift notice for free.
+#
+# Cadence is counted in LETTERS, not seconds, so the blip follows the player's
+# Animation-speed option automatically: faster text ticks faster, exactly as it
+# should. BLIP_MIN_GAP is the one concession to time — at the fastest text speed a
+# per-letter count alone would fuse into a buzz.
+var _voice_sprite: String = ""
+var _voice_pitch: float = 1.0
+var _voice_rate: float = 1.0
+var _blip_countdown: float = 0.0
+var _blip_last_time: float = 0.0
+
 # sprite name -> cropped idle-down AtlasTexture. Built once per sprite sheet;
 # the opaque-bounds scan is cheap but there is no reason to redo it every time
 # the player talks to the same person.
@@ -364,6 +393,10 @@ func set_system_variant(is_system: bool) -> void:
 		_right_chips = []
 		_name_text = ""
 		_name_sprite = ""
+		# The system box is the GAME talking, and the game has no voice. Clearing it
+		# here rather than at each call site is what keeps every in-match message,
+		# sign, TV and gift notice silent without any of them knowing the blip exists.
+		set_voice("")
 	apply_theme(_theme_key)
 	if _body_text != "":
 		set_body_text(_body_text, _body_ceiling, false)
@@ -624,6 +657,10 @@ func show_as_plain() -> void:
 	_right_chips = []
 	_name_text = ""
 	_name_sprite = ""
+	# Explicit as well as via set_system_variant() below: that setter early-returns
+	# when the variant is unchanged, so a box that was ALREADY system would keep the
+	# last speaker's voice if this were left to it.
+	set_voice("")
 	set_system_variant(true)
 	apply_theme()
 
@@ -639,6 +676,25 @@ func set_name_pill(display_name: String, sprite: String = "") -> void:
 	_name_text = display_name
 	_name_sprite = sprite
 	_rebuild_chips()
+
+
+## Arms the dialogue blip for one speaker. `sprite` is the same overworld sprite-sheet
+## name set_name_pill() takes, and "" disarms it — the box is then silent.
+##
+## Call it wherever a PERSON is speaking: an overworld NPC or opponent, a cutscene
+## actor, a phone caller, the beaten opponent's closing line. Do NOT call it for the
+## game's own voice; the system variant disarms it for you, which is why signs, the
+## TV, gift notices and every in-match message tick along in silence.
+##
+## The pitch and cadence come from Speech_Voice.gd, which reads them out of
+## speech_voices.json. Resolved once, here, rather than per letter.
+func set_voice(sprite: String) -> void:
+	_voice_sprite = sprite
+	if sprite == "":
+		return
+	var voice := SpeechVoice.for_sprite(sprite)
+	_voice_pitch = float(voice.get("pitch", 1.0))
+	_voice_rate = float(voice.get("rate", 1.0))
 
 
 func set_chips(chips: Array) -> void:
@@ -658,6 +714,8 @@ func clear_chips() -> void:
 	_right_chips = []
 	_name_text = ""
 	_name_sprite = ""
+	# Losing the name pill means losing the speaker, and the voice belongs to them.
+	set_voice("")
 	set_chips([])
 
 
@@ -1067,6 +1125,11 @@ func _start_typing() -> void:
 		return
 	_type_total = label.get_total_character_count()
 	_type_progress = 0.0
+	# The blip counter restarts with the line rather than carrying over, so the first
+	# letter of every message ticks. A message that opens on silence reads as a
+	# dropped sound, not as a pause.
+	_blip_countdown = 0.0
+	_blip_last_time = 0.0
 	# 0.0 is reduce motion (and any future "instant" preset): show the line whole.
 	if _letter_delay() <= 0.0 or _type_total <= 0:
 		finish_typing()
@@ -1096,11 +1159,45 @@ func _process(delta: float) -> void:
 	if delay <= 0.0:
 		finish_typing()
 		return
+	var before := int(_type_progress)
 	_type_progress += delta / delay
 	if int(_type_progress) >= _type_total:
+		# The blip for the last few letters still owes itself; play it before the line
+		# snaps whole, so a short message is never revealed in total silence.
+		_tick_blip(_type_total - before)
 		finish_typing()
 	else:
 		label.visible_characters = int(_type_progress)
+		_tick_blip(int(_type_progress) - before)
+
+
+## Counts `letters` off the blip cadence and plays the sample each time it runs out.
+## Counting letters rather than seconds is what makes the tick follow the player's
+## Animation-speed option for free — faster text, faster blips.
+##
+## Silent unless set_voice() has armed a speaker, which is how every system box,
+## in-match message, sign and TV stays quiet without its caller doing anything.
+func _tick_blip(letters: int) -> void:
+	if _voice_sprite == "" or letters <= 0:
+		return
+	_blip_countdown -= float(letters)
+	if _blip_countdown > 0.0:
+		return
+	# Reset from zero rather than adding the interval back on: a frame that revealed
+	# a whole clause at once owes ONE blip, not eight queued up to fire in a burst.
+	_blip_countdown = maxf(BLIP_EVERY_LETTERS / _voice_rate, 1.0)
+	# The floor is in real time, so it holds regardless of how many letters a single
+	# frame happened to turn over.
+	var now := float(Time.get_ticks_msec()) / 1000.0
+	if now - _blip_last_time < BLIP_MIN_GAP:
+		return
+	_blip_last_time = now
+	var loop := Engine.get_main_loop()
+	if loop == null:
+		return
+	var sound = loop.get_root().get_node_or_null("/root/SoundManagerScript")
+	if sound != null:
+		sound.play_speech_blip(_voice_pitch)
 
 
 ## True while letters are still landing. The advance handlers ask this so the first click or key
