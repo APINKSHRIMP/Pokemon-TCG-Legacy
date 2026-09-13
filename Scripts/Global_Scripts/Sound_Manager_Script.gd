@@ -93,6 +93,11 @@ const SFX_taxi_out   = preload("res://Audio/SFX/Taxi_out.ogg")
 # Celebration sting for the Gym Plaza coin flipper's five-heads win.
 const SFX_confetti_applause = preload("res://Audio/SFX/confetti applause.ogg")
 
+# The "you got something" sting. Plays under the big centred announcement for a
+# one-off story item -- the starter box upstairs, the starter set from the mart.
+# Pack openings and gift NPCs have their own reveal sequences and do not use it.
+const SFX_item_acquired = preload("res://Audio/SFX/ItemAcquired.ogg")
+
 
 # ─── BGM registry ────────────────────────────────────────────────────────────
 #

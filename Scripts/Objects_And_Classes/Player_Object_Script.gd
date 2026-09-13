@@ -38,6 +38,18 @@ var nearby_npc: Node:
 func lock_movement():
 	can_move = false
 	velocity = Vector2.ZERO
+	# Settle the walk cycle HERE rather than leaving it to the next _physics_process.
+	# That branch only runs `if is_moving`, and it forces idle_ and speed_scale 1.0 --
+	# so locking the player mid-stride left a live is_moving flag that fired ONE FRAME
+	# LATER and wiped out whatever animation had been set in between. A cutscene that
+	# takes control of a running player and immediately walks them somewhere
+	# (Cutscene.player_walk_to) had its walk animation killed on the very next frame,
+	# and the player slid into position instead.
+	if is_moving:
+		is_moving = false
+		if animated_sprite != null:
+			animated_sprite.speed_scale = 1.0
+			animated_sprite.play("idle_" + current_direction)
 
 func unlock_movement():
 	can_move = true

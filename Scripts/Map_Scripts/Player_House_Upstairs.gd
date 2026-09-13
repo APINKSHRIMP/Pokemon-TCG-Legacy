@@ -15,9 +15,25 @@ const SPAWN_FROM_PLAYER_HOUSE_DOWNSTAIRS = Vector2(50, 20)
 # CheatManager._STARTER_BOX_CARDS mirrors this constant -- change both together.
 const STARTER_BOX_CARDS = "base1-27, base1-27, base1-47, base1-47, base1-47, base1-47, base1-48, base1-48, base1-48, base1-48, base1-52, base1-52, base1-52, base1-52, base1-59, base1-59, base1-61, base1-61, base1-61, base1-61, base1-65, base1-65, base1-65, base1-65, base1-67, base1-67, base1-90, base1-90, base1-91, base1-91, base1-94, base1-94"
 
-const NOTE_TEXT = "\"Hi Sweetie, we found these tucked away in a cupboard when we were packing our things up. They must have been your's from when you were just a kid! Oh my - how time flies. Everyone in the harbour seems to play the game too but me and your father never got the hang of it so you might as well keep hold of them to see if you're still any good. Don't forget to catch the train and come visit us at our new place as soon as you can. Love you lots, See you soon x\""
+# ── The note on top of the starter box ───────────────────────────────────────
+# The letter used to be a wall of dialogue text; it is now the hand-written note ITSELF, flown up
+# over a darkened screen exactly the way the phone arrives in a call (Phone_Call.gd) -- it sails a
+# little past its resting place and settles back, then dips upward before dropping away on the
+# click that dismisses it.
+const NOTE_TEXTURE       := "res://Image_Assets/Assorted_Extras/Note.png"
+const NOTE_DIM_ALPHA     := 0.75   # darkness of the translucent blocker behind the note
+const NOTE_HEIGHT        := 0.92   # note height as a fraction of the screen's height
+const NOTE_RISE_TIME     := 0.45   # note flies in from the bottom
+const NOTE_DROP_TIME     := 0.38   # note flies off the bottom
+const NOTE_OVERSHOOT     := 18.0   # px past the resting place at each end of the flight
+const NOTE_OFFSCREEN_PAD := 40.0   # how far below the screen edge it waits and lands
 
 var _box_sparkle: CPUParticles2D = null
+var _note_root: Control = null
+var _note_image: TextureRect = null
+var _note_dim: ColorRect = null
+var _note_dismissable: bool = false
+var _note_done: Callable = Callable()
 var _box_triggered: bool = false
 var _player_in_bed_area: bool = true  # starts true to suppress any load-time trigger
 const SLEEP_FADE_DURATION := 2.5
@@ -154,7 +170,122 @@ func _on_box_body_entered(body: Node2D) -> void:
 	)
 
 func _on_box_step2() -> void:
-	MapManager.show_message_then(NOTE_TEXT, _on_box_step3)
+	_show_note_then(_on_box_step3)
+
+
+# ============================================================
+# THE NOTE
+# ============================================================
+
+## Darkens the screen, flies the note up from below and holds it there until the player clicks.
+## `on_done` runs once the note has dropped back off the bottom and the dim has faded out.
+func _show_note_then(on_done: Callable) -> void:
+	_note_done = on_done
+	# The box that asked for this does NOT close itself: MapManager's OK handler runs a pending
+	# callback INSTEAD of dismissing the panel, so "there's a note on top" would still be sitting
+	# there under the note. Close it by hand, then take movement back off the player -- _hide_message
+	# hands it straight back.
+	MapManager._hide_message()
+	if _player != null:
+		_player.can_move = false
+
+	var vp := get_viewport().get_visible_rect().size
+
+	_note_root = Control.new()
+	_note_root.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_note_root.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_ui_layer.add_child(_note_root)
+
+	# STOP so nothing behind the dim can be clicked through it. The dismiss press itself is NOT read
+	# here -- it is read in _input() below, which runs before GUI picking and so catches a click
+	# anywhere on the screen and the keys equally.
+	_note_dim = ColorRect.new()
+	_note_dim.color = Color(0, 0, 0, NOTE_DIM_ALPHA)
+	_note_dim.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_note_dim.mouse_filter = Control.MOUSE_FILTER_STOP
+	_note_dim.modulate.a = 0.0
+	_note_root.add_child(_note_dim)
+
+	# EXPAND_IGNORE_SIZE is load-bearing: without it a TextureRect's minimum size is its TEXTURE's
+	# size and a Control can never be smaller than its minimum, so the fitted size below would be
+	# clamped straight back up to the source image's full pixel height.
+	var tex: Texture2D = load(NOTE_TEXTURE)
+	var src := Vector2(float(tex.get_width()), float(tex.get_height()))
+	_note_image = TextureRect.new()
+	_note_image.texture = tex
+	_note_image.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	_note_image.stretch_mode = TextureRect.STRETCH_SCALE
+	_note_image.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var fit: float = vp.y * NOTE_HEIGHT / maxf(1.0, src.y)
+	_note_image.size = src * fit
+	_note_image.position = Vector2((vp.x - _note_image.size.x) * 0.5, vp.y + NOTE_OFFSCREEN_PAD)
+	_note_image.modulate.a = 0.0
+	_note_root.add_child(_note_image)
+
+	var rest_y: float = (vp.y - _note_image.size.y) * 0.5
+
+	# Two tweens, the way the phone does it: the flight is a SEQUENCE (sail past the resting place,
+	# settle back onto it) while the fades run across the whole of it.
+	var fade := create_tween()
+	fade.set_parallel(true)
+	fade.tween_property(_note_dim, "modulate:a", 1.0, NOTE_RISE_TIME * 0.8)
+	fade.tween_property(_note_image, "modulate:a", 1.0, NOTE_RISE_TIME * 0.6)
+
+	var rise := create_tween()
+	rise.tween_property(_note_image, "position:y", rest_y - NOTE_OVERSHOOT, NOTE_RISE_TIME * 0.78) \
+		.set_trans(Tween.TRANS_QUINT).set_ease(Tween.EASE_OUT)
+	rise.tween_property(_note_image, "position:y", rest_y, NOTE_RISE_TIME * 0.22) \
+		.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	# Only dismissable once it has landed, so the click that closed the message before it cannot
+	# carry through and skip the note the instant it appears.
+	rise.tween_callback(func() -> void: _note_dismissable = true)
+
+
+## The note is dismissed from _input(), not from a gui_input on the dim: a Control only hears the
+## clicks GUI picking hands it, while _input() runs before picking and sees the whole screen -- and
+## Space/Enter/Escape never reach a ColorRect at all. Overriding the base scene's _input() also
+## keeps Escape and Enter from opening the main menu behind the note; everything is passed back up
+## to BaseMapScene once the note is gone.
+func _input(event: InputEvent) -> void:
+	if _note_root != null and is_instance_valid(_note_root):
+		# UIInput, not raw keycodes: is_click ignores a mouse-wheel notch (which is a button press
+		# too) and is_advance covers Space, Enter and Escape alike.
+		if _note_dismissable and (UIInput.is_click(event) or UIInput.is_advance(event)):
+			_note_dismissable = false
+			get_viewport().set_input_as_handled()
+			_hide_note()
+		# While the note is on screen it owns every key and button, including the ones that would
+		# otherwise open the menu or walk the player about.
+		return
+	super._input(event)
+
+
+func _hide_note() -> void:
+	var vp := get_viewport().get_visible_rect().size
+
+	var fade := create_tween()
+	fade.set_parallel(true)
+	fade.tween_property(_note_image, "modulate:a", 0.0, NOTE_DROP_TIME)
+	fade.tween_property(_note_dim, "modulate:a", 0.0, NOTE_DROP_TIME)
+
+	var leave := create_tween()
+	leave.tween_property(_note_image, "position:y", _note_image.position.y - NOTE_OVERSHOOT, NOTE_DROP_TIME * 0.25) \
+		.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	leave.tween_property(_note_image, "position:y", vp.y + NOTE_OFFSCREEN_PAD, NOTE_DROP_TIME * 0.75) \
+		.set_trans(Tween.TRANS_QUINT).set_ease(Tween.EASE_IN)
+	leave.tween_callback(_finish_note)
+
+
+func _finish_note() -> void:
+	if _note_root != null and is_instance_valid(_note_root):
+		_note_root.queue_free()
+	_note_root = null
+	_note_image = null
+	_note_dim = null
+	var cb := _note_done
+	_note_done = Callable()
+	if cb.is_valid():
+		cb.call()
 
 func _get_sleep_prompt() -> String:
 	var day := GameState.get_date()
@@ -221,4 +352,5 @@ func _on_box_step3() -> void:
 	GameState.save_progress()
 	GameState.give_cards(STARTER_BOX_CARDS)
 	# ISSUE #28 FIX: large centred kenney-font message, matching the match's big messagebox style.
+	SoundManagerScript.play_sfx(SoundManagerScript.SFX_item_acquired)
 	MapManager._show_large_message_with_ok("Pokemon Starter Deck Acquired!")

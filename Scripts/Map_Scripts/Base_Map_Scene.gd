@@ -274,6 +274,12 @@ func _input(event: InputEvent) -> void:
 		MapManager.handle_message_cancel()
 		return
 
+	# A cutscene owns the screen: no main menu until it hands control back. The
+	# message-box branch above still runs first, so Escape keeps advancing the
+	# cutscene's own dialogue.
+	if MapManager.cutscene_active:
+		return
+
 	if not (event is InputEventKey and event.pressed and not event.is_echo()):
 		return
 	var is_enter: bool = event.keycode == KEY_ENTER or event.keycode == KEY_KP_ENTER

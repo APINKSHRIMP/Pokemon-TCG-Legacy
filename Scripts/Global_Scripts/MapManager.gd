@@ -32,6 +32,20 @@ var _constant_data_loaded: bool = false
 var current_opponent: Node = null
 var current_npc: Node = null
 
+# ------------------------------------------------------------
+# CUTSCENES (Scripts/Global_Scripts/Cutscene.gd)
+# ------------------------------------------------------------
+# cutscene_active is the master "the player is not driving" switch. It keeps the
+# main menu shut (Base_Map_Scene._input) and, crucially, stops _hide_message()
+# handing movement back at the end of every line -- a cutscene's dialogue is
+# punctuated by messages closing, and the player must stay put through all of it.
+var cutscene_active: bool = false
+
+# Who is speaking during a cutscene, as {name, sprite, colour}. A cutscene's
+# speaker has no node in the world to read those off, so the box is told directly.
+# Empty at all other times, and _apply_actor_chips() then behaves exactly as before.
+var cutscene_speaker: Dictionary = {}
+
 # True while the deck-validation popup is open. Blocks the regular
 # opponent/NPC interact handlers so the player can't re-trigger a
 # battle dialog by pressing space while the overlay is up.
@@ -279,6 +293,13 @@ func initialise(
 	_ui_layer = ui_layer
 	_map_scene_path = map_scene_path
 	_map_data = map_data
+
+	# A fresh map load owns no cutscene. Anything that wants control back (a
+	# cutscene resuming after a forced battle) re-takes it from the map's _ready(),
+	# which runs after this — so a cutscene interrupted by a quit or a door can
+	# never leave the player permanently frozen.
+	cutscene_active = false
+	cutscene_speaker = {}
 
 	_build_message_box()
 	if not GameState.returning_from_battle:
@@ -809,6 +830,19 @@ func _record_chip(opponent_name: String) -> Dictionary:
 func _apply_actor_chips() -> void:
 	if message_panel == null:
 		return
+
+	# A cutscene speaker outranks everyone: the character talking is usually a
+	# CutsceneActor with no entry in the world's cast at all, and even when they do
+	# have one, a story beat is not the place for deck/prize/record pills.
+	if not cutscene_speaker.is_empty():
+		message_panel.set_system_variant(false)
+		message_panel.apply_theme(str(cutscene_speaker.get("colour", "")))
+		message_panel.set_right_chips([])
+		message_panel.set_name_pill(
+			str(cutscene_speaker.get("name", "")), str(cutscene_speaker.get("sprite", "")))
+		message_panel.set_chips([])
+		return
+
 	# Recolour first, THEN build the chips — the chip ramp is derived from the
 	# theme, so setting them the other way round would leave the previous
 	# speaker's colours on the row. The box is shared by everyone the player
@@ -904,7 +938,9 @@ func _hide_message():
 	_clear_gift_display()
 	_clear_coinflip_display()
 	_pending_confirm_yes = Callable()
-	_player.can_move = true
+	# A cutscene closes and reopens this box between every line. Handing movement
+	# back each time would let the player walk off mid-conversation.
+	_player.can_move = not cutscene_active
 	if current_opponent != null:
 		current_opponent.resume_movement()
 	if current_npc != null:
@@ -941,6 +977,102 @@ func show_npc_message_with_ok(npc: Node, text: String, font_size: int = 28) -> v
 	if npc != null and is_instance_valid(npc):
 		current_npc = npc
 	_show_message_with_ok(text, font_size)
+
+# ------------------------------------------------------------
+# CUTSCENE DIALOGUE
+# ------------------------------------------------------------
+# Same box, same click-to-advance, but the speaker is handed in rather than read
+# off an actor in the world. Cutscene.say() awaits on_ok, so a conversation is
+# written as a straight list of lines.
+#
+# Deliberately does NOT guard on message_panel.visible the way
+# show_interactable_message() does: consecutive lines swap the text in place, so
+# the box stays up for the whole conversation.
+
+func show_cutscene_message(text: String, speaker: Dictionary, on_ok: Callable) -> void:
+	cutscene_speaker = speaker
+	_pending_ok_action = on_ok
+	_show_message_with_ok(text)
+
+
+## Take the cutscene box down. The player stays locked while cutscene_active is
+## set -- see the note in _hide_message().
+func end_cutscene_message() -> void:
+	cutscene_speaker = {}
+	_pending_ok_action = Callable()
+	_hide_message()
+
+
+# ------------------------------------------------------------
+# FORCED BATTLES
+# ------------------------------------------------------------
+# A battle that starts from a cutscene rather than from the player walking up to
+# somebody. The opponent has no node in the world at all -- their entry in the
+# character file is marked `placeholder`, so nothing spawns and nothing can be
+# challenged -- so everything the match needs is taken from the data entry.
+#
+# `entry` is a character-file opponent entry with constants merged in; get one
+# with CharacterSchedule.find_opponent(map, name, date, time).
+#
+# Mirrors the opponent branch of _on_yes_pressed(). The one deliberate difference
+# is that deck RESTRICTIONS are not enforced: a story battle the player cannot
+# walk away from must not be able to reject them and strand the cutscene.
+
+func start_forced_battle(entry: Dictionary) -> void:
+	if entry.is_empty():
+		push_error("MapManager: start_forced_battle called with an empty entry")
+		return
+
+	GameState.test_match_mode = false
+	GameState.current_opponent_name = str(entry.get("name", ""))
+	GameState.current_opponent_deck = str(entry.get("deck", ""))
+	GameState.current_opponent_map  = _map_data
+	GameState.player_position       = _player.position
+	GameState.returning_from_battle = false
+	GameState.return_map_scene_path = _map_scene_path
+	# No "position" key: _load_and_spawn_opponents() checks for one before
+	# re-spawning the opponent you just fought, and a cutscene opponent must not
+	# be left standing in the world afterwards.
+	GameState.last_battled_opponent_entry = {
+		"name":             str(entry.get("name", "")),
+		"sprite":           str(entry.get("sprite", "")),
+		"music":            str(entry.get("music", "")),
+		"deck":             str(entry.get("deck", "")),
+		"prize_cards":      int(entry.get("prize_cards", 6)),
+		"meet_text":        str(entry.get("meet_text", "")),
+		"repeat_text":      str(entry.get("repeat_text", "")),
+		"first_win_text":   str(entry.get("first_win_text", "")),
+		"rematch_win_text": str(entry.get("rematch_win_text", "")),
+		"loss_text":        str(entry.get("loss_text", "")),
+		"coin_reward":      str(entry.get("coin_reward", "")),
+		"cash_reward":      entry.get("cash_reward", 0),
+		"restrictions":     entry.get("restrictions", {}),
+		"match_effects":    entry.get("match_effects", []),
+		"match_format":     str(entry.get("match_format", "")),
+		"sleeve":           str(entry.get("sleeve", "")),
+	}
+
+	var match_format: String = str(entry.get("match_format", ""))
+	if match_format != "":
+		GameState.start_match_series(str(entry.get("name", "")), match_format)
+	else:
+		GameState.clear_match_series()
+
+	end_cutscene_message()
+	SoundManagerScript.stop_bgm()
+	_freeze_overworld_actors()
+
+	var overlay := ColorRect.new()
+	overlay.color   = Color(0, 0, 0, 0)
+	overlay.size    = Vector2(1920, 1080)
+	overlay.z_index = 100
+	get_tree().current_scene.add_child(overlay)
+
+	var tween := get_tree().current_scene.create_tween()
+	tween.tween_property(overlay, "color:a", 1.0, 0.5)
+	await tween.finished
+	SceneCache.change_scene("res://Scenes/Main_Match_Gameplay_Scenes/Match_Start_Intro_Scene.tscn")
+
 
 # Shows a Yes/No dialog. on_yes is called (after the dialog closes)
 # only if the player chooses Yes. Ignored if a dialog is already open.

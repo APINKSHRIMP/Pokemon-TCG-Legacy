@@ -1,0 +1,20 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://Scripts/Objects_And_Classes/Cutscene_Actor.gd" id="1_csact"]
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_csact"]
+size = Vector2(18, 25)
+
+[node name="CutsceneActor" type="CharacterBody2D"]
+collision_layer = 4
+collision_mask = 1
+script = ExtResource("1_csact")
+
+[node name="AnimatedSprite2D" type="AnimatedSprite2D" parent="."]
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="."]
+position = Vector2(0, 2.5)
+shape = SubResource("RectangleShape2D_csact")
+
+[node name="DirectionTimer" type="Timer" parent="."]
+one_shot = true

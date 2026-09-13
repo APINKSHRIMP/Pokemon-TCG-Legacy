@@ -174,6 +174,7 @@ func _finish_starter_purchase():
 	# announcement. The Yes that got us here already ran _hide_message(), which nulls
 	# MapManager.current_npc, so the speaker has to be re-seated: show_npc_message_with_ok() does
 	# exactly that. The big notice above deliberately stays chipless, matching the starter box.
+	SoundManagerScript.play_sfx(SoundManagerScript.SFX_item_acquired)
 	MapManager._show_large_message_then(
 		"You received the Starter Set!",
 		func(): MapManager.show_npc_message_with_ok(self, "Thanks for your purchase! I'll get the order in right away for my usual shipment now so they'll be here for tomorrow morning. I'll throw you a couple packs in for free as a thank you when you come back! ")

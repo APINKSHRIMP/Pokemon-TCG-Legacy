@@ -273,6 +273,9 @@ size = Vector2(19, 188)
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_nmxio"]
 size = Vector2(102, 20)
 
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_hw2gf"]
+size = Vector2(119, 67)
+
 [node name="CELESTE HARBOUR" type="Node2D" unique_id=332229534]
 script = ExtResource("1_7oril")
 
@@ -6361,3 +6364,20 @@ offset_bottom = 1865.0
 texture = ExtResource("9_a0lly")
 expand_mode = 1
 stretch_mode = 4
+
+[node name="CutsceneCollisions" type="Area2D" parent="." unique_id=2118879612]
+position = Vector2(-725, 2735)
+
+[node name="StartingCutsceneEnd" type="CollisionShape2D" parent="CutsceneCollisions" unique_id=1577249391]
+position = Vector2(5.5, -15.5)
+shape = SubResource("RectangleShape2D_hw2gf")
+
+[node name="Paths" type="Control" parent="." unique_id=1384889907]
+layout_mode = 3
+anchors_preset = 0
+offset_right = 40.0
+offset_bottom = 40.0
+
+[node name="EllieRunPath" type="Line2D" parent="Paths" unique_id=1957920687]
+visible = false
+points = PackedVector2Array(-271, 1703, -597, 1703, -597, 1487, -596, 1727, -714, 1724, -731, 2159, -793, 2159, -794, 2550, -827, 2550, -827, 2703, -704, 2703, -704, 2748)

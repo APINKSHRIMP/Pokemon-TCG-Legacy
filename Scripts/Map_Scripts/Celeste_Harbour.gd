@@ -75,7 +75,14 @@ func get_map_data_name() -> String: return "Celeste_Harbour"
 func _ready() -> void:
 	if not GameState.progress.get("taxi_intro_pending", false):
 		$Taxi.visible = false
-		super._ready()
+		# A cutscene that is about to take over must not give the player a frame or
+		# two of free movement while the map fades in.
+		var cutscene_due: bool = EllieIntroCutscene.should_run(GameState.entering_from)
+		if cutscene_due:
+			_player.lock_movement()
+		await super._ready()
+		if cutscene_due:
+			_start_ellie_intro()
 		return
 
 	# Taxi intro path: skip normal startup, run the cutscene instead
@@ -201,6 +208,21 @@ func _run_taxi_intro() -> void:
 	trans_tween.tween_callback(func():
 		SceneCache.change_scene("res://Scenes/Map_Scenes/Player_House_Downstairs.tscn")
 	)
+
+
+# ============================================================
+# STORY CUTSCENES
+# ============================================================
+# Everything about the Ellie intro — where she runs, what she says, when it plays
+# — lives in Scripts/Cutscenes/Ellie_Intro_Cutscene.gd. All the map has to do is
+# ask whether it is due and hand the scene over; the cutscene object adds itself to
+# this scene, takes the player's input, and frees itself when it is done. Add
+# further cutscenes the same way.
+
+func _start_ellie_intro() -> void:
+	var cutscene := EllieIntroCutscene.new()
+	cutscene.install(self)
+	cutscene.run()
 
 
 ## Rings Ellie up a couple of seconds into the drive. Fire-and-forget: it returns as soon as the
