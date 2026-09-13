@@ -30,15 +30,20 @@
 
   "ellie_intro": {
 	"speaker": "Ellie",
-	"sprite": "Rival_Ellie_Call_Dress_Clutch",
+	"sprite": "Rival_Ellie_Call_Dress",
 	"background": "BlurryTreeBackground",
 	"phone": "iPhone4",
 	"colour": "light_pink",
 	"auto_advance": false,
 	"lines": [
-	  "Oh hey! So you're just coming round the corner then? I bet the journey was quick. I'll see you drive right on by in a sec! The movers did a good job getting all your stuff in fine, they've finished and the truck's just left now",
-	  "You timed your move well, today's the first day it's been sunny this week and you know how depressing the harbour gets when it's cold and rainy like that. Even the forest is closed for now while they clear up the trees.",
-      "Well anyway, I'll let you drop your stuff off first and get settled in at least a little bit before I come to bug you. I'll drop by in a bit, see you soon!"
+	  "Oh hey! So you're just coming round the corner now then?",
+	  "[WINK] I knew you'd be late, I don't think you've ever been early.",
+	  "I'll see you drive right on by in a sec! The movers did a good job getting all your stuff in fine, they've finished and the truck's just left now",
+	  "You timed your move well, today's the first day it's been sunny this week",
+	  "[SAD] You know how depressing the harbour gets when it's cold and rainy like that",
+	  "[SAD] Even the forest is closed for now while they clear up the trees. And on a long bank holiday weekend too, there's nothing to do until the weekend is over now.",
+	  "Well anyway, I'll let you drop your stuff off first and get settled in at least a little bit before I come to bug you.",
+	  "[WINK] I'll drop by in a bit, see you soon!"
 	]
   }
 }
