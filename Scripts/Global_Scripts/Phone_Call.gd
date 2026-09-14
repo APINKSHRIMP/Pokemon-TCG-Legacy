@@ -9,10 +9,11 @@ extends CanvasLayer
 #
 #   PHONE        the handset art. Expected to stay the same, but it is a config field so a
 #                character can call from a different model later.
-#   TALKING HEAD the caller. One base sprite plus its numbered frames (`_2`, `_3`, ...), which are
-#                discovered automatically — the mouth animation is built from however many exist.
-#                Swapping a costume is swapping this one name.
-#   BACKGROUND   whatever is behind them. Also one name.
+#   CHARACTER    the caller, built from PARTS stacked on one shared canvas - see PARTS. Every part
+#                lives in Talking_Sprites/Characters/<Character>/<Folder>/. Only the CLOTHES change
+#                between calls; hair, face and mouth belong to the character, so every outfit gets
+#                every expression for free.
+#   BACKGROUND   whatever is behind them, from Talking_Sprites/Backgrounds/. Also one name.
 #
 # Every call is a Dictionary (or an entry in Phone_Calls.json), so a new call is data, not code:
 #
@@ -30,10 +31,11 @@ extends CanvasLayer
 # and the message box over everything.
 #
 # ── THE MOUTH ────────────────────────────────────────────────
-# The frames cycle 1-2-3-2-1-2-3-2... (a ping-pong, so the loop never jumps) and ONLY while the
-# message box is actually typing letters. The moment the text stops appearing the caller drops back
-# to frame 1 with their mouth shut. That is why this reads as speech rather than as an idle loop —
-# see DynamicMessageBox.is_typing(), which is the single thing driving it.
+# The mouth frames cycle 1-2-3-2-1-2-3-2... (a ping-pong, so the loop never jumps) and ONLY while the
+# message box is actually typing letters. The moment the text stops appearing the mouth drops back
+# to frame 1, shut. Every other part holds still while a line is spoken. That is why this reads as
+# speech rather than as an idle loop - see DynamicMessageBox.is_typing(), which is the single thing
+# driving it.
 #
 # ── AUTO-ADVANCING CALLS ─────────────────────────────────────
 # `auto_advance` is for a call that plays over a cutscene the player is not driving — the taxi
@@ -43,8 +45,28 @@ extends CanvasLayer
 
 signal finished
 
-const SPRITE_DIR := "res://Image_Assets/Character_Sprites/Talking_Sprites/"
-const DATA_PATH  := "res://NPC_and_Opponent_Data/Phone_Calls.json"
+const SPRITE_DIR     := "res://Image_Assets/Character_Sprites/Talking_Sprites/"
+const CHARACTER_DIR  := SPRITE_DIR + "Characters/"
+const PHONE_DIR      := SPRITE_DIR + "Phones/"
+const BACKGROUND_DIR := SPRITE_DIR + "Backgrounds/"
+const DATA_PATH      := "res://NPC_and_Opponent_Data/Phone_Calls.json"
+
+# ─── The caller's parts, BACK to FRONT ───────────────────────────────────────
+# Each part is <Character>/<folder>/<Character>_<name>.png, all drawn on the SAME canvas so they stack
+# with no offsets. A name of "" means the call's CLOTHES (`Ellie_Dress`, `Ellie_Hoodie`). The one
+# `talks` part is the mouth: numbered frames (`Ellie_Mouth_1`, `_2`, ...) cycled while text types.
+#
+# An emotion looks for `<part>_<Emotion>` in EVERY part and each falls back to its neutral art on its
+# own, so [SAD] can swap the face and the mouth while [WINK] swaps only the face.
+#
+# Adding a moving part later - eyes, say - is a row here and a folder of art, nothing else.
+const PARTS: Array[Dictionary] = [
+	{ "folder": "Hair",    "name": "Hair_Back" },
+	{ "folder": "Clothes", "name": "" },
+	{ "folder": "Face",    "name": "Face" },
+	{ "folder": "Mouths",  "name": "Mouth", "talks": true },
+	{ "folder": "Hair",    "name": "Hair_Front" },
+]
 
 # Reference screen. Every figure below is an absolute pixel in this space, as everywhere else.
 const SCREEN_W : float = 1920.0
@@ -80,7 +102,7 @@ const SPRITE_TOP_INSET  : float = 0.04  # headroom above them, as a fraction of 
 const SPRITE_HEAD_BAND  : float = 0.333
 
 # ─── TWEAKABLE: the mouth ────────────────────────────────────────────────────
-const MOUTH_FRAME_TIME : float = 0.085  # seconds per frame while talking
+const MOUTH_FRAME_TIME : float = 0.06  # seconds per frame while talking
 
 # ─── TWEAKABLE: the sequence ─────────────────────────────────────────────────
 # The phone FLIES in and out: short, and with an overshoot at each end - it sails a little past its
@@ -155,7 +177,8 @@ var _speaker: String = ""
 var _speaker_sprite: String = ""     # overworld sprite name for the name pill's portrait, optional
 var _colour: String = ""             # message-box theme key
 var _phone_name: String = "iPhone4"
-var _caller_name: String = ""
+var _character: String = ""         # the folder under Characters/, and every part's name prefix
+var _clothes: String = ""            # the outfit, e.g. "Dress" for Ellie_Dress.png
 var _background_name: String = ""
 var _lines: Array = []
 var _auto_advance: bool = false
@@ -166,7 +189,8 @@ var _blocker: Control = null
 var _rig: Control = null             # the phone assembly; this is what slides
 var _screen: Control = null          # clipped to the hole in the phone
 var _bg: TextureRect = null
-var _caller: TextureRect = null
+var _layers: Array[TextureRect] = [] # one per PARTS row, in the same (back-to-front) order
+var _mouth: TextureRect = null       # the `talks` layer, the only one that animates
 var _picture: Control = null         # the caller + their background, faded in as one
 var _cover: Control = null           # the phone's own screen, a child of _screen so it clips too
 var _connect_ui: Control = null      # the gradient + spinner + word, faded in over the black
@@ -177,10 +201,13 @@ var _spinner_tween: Tween = null
 var _box: DynamicMessageBox = null
 
 # ─── State ───────────────────────────────────────────────────────────────────
-var _frames: Array[Texture2D] = []          # the set currently being cycled
-var _default_frames: Array[Texture2D] = []  # the caller's neutral set, returned to between emotions
-var _emotion_frames: Dictionary = {}        # emotion -> Array[Texture2D], looked up once each
-var _screen_size: Vector2 = Vector2.ZERO    # the hole, kept so a new frame set can re-fit itself
+var _frames: Array[Texture2D] = []          # the MOUTH frames currently being cycled
+var _mouth_index: int = -1                  # which PARTS row talks
+# A "look" is an Array with one Array[Texture2D] per PARTS row: a still part holds one texture, the
+# mouth holds its frames, and an empty entry means that part has no art (the layer is left blank).
+var _default_look: Array = []               # the neutral look, returned to between emotions
+var _emotion_looks: Dictionary = {}         # emotion -> look, each part already filled from neutral
+var _screen_size: Vector2 = Vector2.ZERO    # the hole
 var _frame_order: PackedInt32Array = PackedInt32Array()
 var _frame_step: int = 0
 var _mouth_timer: float = 0.0
@@ -246,9 +273,10 @@ static func load_call_data(call_id: String) -> Dictionary:
 ## Every field is optional except `lines` and `caller`.
 ##
 ##   speaker      name on the message box's pill. "" gives the system box instead.
-##   sprite       the caller's talking-head base name, WITHOUT its _2 / _3 suffixes
-##   background   what is behind them
-##   phone        the handset art, default iPhone4
+##   character    the caller's folder under Talking_Sprites/Characters/, e.g. "Ellie"
+##   clothes      the outfit: "Dress" loads Clothes/Ellie_Dress.png ("Ellie_Dress" works too)
+##   background   what is behind them, from Talking_Sprites/Backgrounds/
+##   phone        the handset art from Talking_Sprites/Phones/, default iPhone4
 ##   colour       message_colour key, as an NPC carries
 ##   pill_sprite  overworld sprite name for the pill's portrait, if they have one yet
 ##   auto_advance true = timed, input-proof. Default false = an ordinary click-to-advance box.
@@ -258,7 +286,11 @@ func configure(config: Dictionary) -> void:
 	_speaker_sprite  = String(config.get("pill_sprite", ""))
 	_colour          = String(config.get("colour", ""))
 	_phone_name      = String(config.get("phone", "iPhone4"))
-	_caller_name     = String(config.get("sprite", ""))
+	_character       = String(config.get("character", ""))
+	_clothes         = String(config.get("clothes", ""))
+	# Forgiving of the full file name, since that is what sits in the Clothes folder.
+	if _character != "" and _clothes.begins_with(_character + "_"):
+		_clothes = _clothes.substr(_character.length() + 1)
 	_background_name = String(config.get("background", ""))
 	_lines           = config.get("lines", [])
 	_auto_advance    = bool(config.get("auto_advance", false))
@@ -287,7 +319,7 @@ func _build() -> void:
 	_blocker.mouse_filter = Control.MOUSE_FILTER_STOP if _auto_advance else Control.MOUSE_FILTER_IGNORE
 	add_child(_blocker)
 
-	var phone_tex: Texture2D = _load_art(_phone_name)
+	var phone_tex: Texture2D = _load_art(PHONE_DIR, _phone_name)
 	if phone_tex == null:
 		push_warning("PhoneCall: phone art '%s' not found" % _phone_name)
 		return
@@ -372,7 +404,7 @@ func _compute_rest_y() -> void:
 ## Cover-fits the background into the screen: scaled until it fills both axes, then centred. A
 ## background of any shape can be dropped in without letterboxing.
 func _build_background(screen_size: Vector2) -> void:
-	var tex: Texture2D = _load_art(_background_name)
+	var tex: Texture2D = _load_art(BACKGROUND_DIR, _background_name)
 	if tex == null:
 		return
 	_bg = TextureRect.new()
@@ -389,61 +421,82 @@ func _build_background(screen_size: Vector2) -> void:
 	_picture.add_child(_bg)
 
 
-## The caller, fitted by their OPAQUE BOUNDS rather than by the texture rect — see SPRITE_FILL.
-## Every frame shares the same canvas and the same bounds, so the rect is measured once from frame 1
-## and the later frames only swap the texture. Anything else would make the head jump as they talk.
+## The caller: one TextureRect per PARTS row, added back to front so child order IS the stacking
+## order. Every part shares one canvas, so every layer gets the same size and position and the parts
+## line up with no per-part offsets.
 func _build_caller(screen_size: Vector2) -> void:
 	_screen_size = screen_size
-	_default_frames = _load_frames(_caller_name)
-	if _default_frames.is_empty():
-		push_warning("PhoneCall: caller sprite '%s' not found" % _caller_name)
+	_default_look = _load_look("")
+	var has_art := false
+	for frames: Array in _default_look:
+		has_art = has_art or not frames.is_empty()
+	if not has_art:
+		push_warning("PhoneCall: no parts found for character '%s' in %s%s/"
+			% [_character, CHARACTER_DIR, _character])
 		return
 
-	_caller = TextureRect.new()
-	# EXPAND_IGNORE_SIZE IS LOAD-BEARING. A TextureRect's minimum size is its TEXTURE's size unless
-	# this is set, and a Control can never be smaller than its minimum - so the size computed in
-	# _fit_caller() was silently clamped back up to the full 1024x913 canvas and the caller was drawn
-	# at native size, which inside a 261px screen is a close-up of her hair. Setting the size is not
-	# enough on its own; the two go together.
-	_caller.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	_caller.stretch_mode = TextureRect.STRETCH_SCALE
-	_caller.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_picture.add_child(_caller)
+	for i in PARTS.size():
+		var rect := TextureRect.new()
+		# EXPAND_IGNORE_SIZE IS LOAD-BEARING. A TextureRect's minimum size is its TEXTURE's size
+		# unless this is set, and a Control can never be smaller than its minimum - so the size
+		# computed in _fit_caller() was silently clamped back up to the full 1024px canvas and the
+		# caller was drawn at native size, which inside a 261px screen is a close-up of her hair.
+		# Setting the size is not enough on its own; the two go together.
+		rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		rect.stretch_mode = TextureRect.STRETCH_SCALE
+		rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		_picture.add_child(rect)
+		_layers.append(rect)
+		if PARTS[i].get("talks", false):
+			_mouth = rect
+			_mouth_index = i
+			if (_default_look[i] as Array).is_empty():
+				push_warning("PhoneCall: no mouth frames for '%s' - wanted %s_1.png. The caller will not talk."
+					% [_character, _part_name(PARTS[i])])
 
-	_use_frames(_default_frames)
+	_fit_caller()
+	_use_look(_default_look)
 
 
-## Switches the caller to a frame set and restarts the cycle on its first frame.
-##
-## The rect is re-fitted from the new set's own art rather than kept, so an emotion drawn on a
-## different canvas, or with the head somewhere else, still lands framed and centred. For art that
-## matches the neutral set - which is the normal case - it computes the same numbers again.
-func _use_frames(frames: Array[Texture2D]) -> void:
-	if frames.is_empty() or _caller == null:
+## Puts a look on the caller - a texture on every layer - and restarts the mouth on frame 1.
+func _use_look(look: Array) -> void:
+	if _layers.is_empty():
 		return
-	_frames = frames
-	_frame_order = _ping_pong_order(frames.size())
+	for i in _layers.size():
+		var frames: Array = look[i]
+		_layers[i].texture = frames[0] if not frames.is_empty() else null
+	_frames.clear()
+	if _mouth_index >= 0:
+		for tex in look[_mouth_index]:
+			_frames.append(tex)
+	_frame_order = _ping_pong_order(_frames.size())
 	_frame_step = 0
 	_mouth_timer = 0.0
-	_caller.texture = frames[0]
-	_fit_caller(frames[0])
 
 
-## Sizes and places the caller inside the screen. See _head_centre_x() for the horizontal rule and
+## Sizes and places the caller inside the screen, ONCE, from the neutral look flattened into one
+## image - the whole character, hair and all, is what gets framed. Emotions are drawn on the same
+## canvas, so they never need re-fitting. See _head_centre_x() for the horizontal rule and
 ## SPRITE_FILL / SPRITE_TOP_INSET for the vertical one.
-func _fit_caller(tex: Texture2D) -> void:
-	var src := Vector2(tex.get_width(), tex.get_height())
-	var bounds := _opaque_bounds(tex)
+func _fit_caller() -> void:
+	var img := _composite_image(_default_look)
+	if img == null:
+		return
+	var src := Vector2(img.get_width(), img.get_height())
+	var used := img.get_used_rect()
+	var bounds := Rect2(used.position, used.size) if used.size.x > 0 and used.size.y > 0 \
+		else Rect2(Vector2.ZERO, src)
 	var scale: float = _screen_size.y * SPRITE_FILL / maxf(1.0, bounds.size.y)
-	var centre_x := _head_centre_x(tex, bounds, scale, _screen_size.y)
-	_caller.size = src * scale
-	# Their HEAD goes in the middle of the screen, near its top edge, and the texture rect is placed
-	# so that lands there. Anchored from the top because the caller is taller than the screen:
-	# whatever does not fit is cropped off their feet, never their face.
-	var bounds_top: float = bounds.position.y * scale
-	_caller.position = Vector2(
+	var centre_x := _head_centre_x(img, bounds, scale, _screen_size.y)
+	# Their HEAD goes in the middle of the screen, near its top edge, and the layers are placed so
+	# that lands there. Anchored from the top because the caller is taller than the screen: whatever
+	# does not fit is cropped off their feet, never their face.
+	var pos := Vector2(
 		_screen_size.x * 0.5 - centre_x * scale,
-		_screen_size.y * SPRITE_TOP_INSET - bounds_top)
+		_screen_size.y * SPRITE_TOP_INSET - bounds.position.y * scale)
+	for rect in _layers:
+		rect.size = src * scale
+		rect.position = pos
 
 
 ## The caller's name, over the bottom-right of the picture. Added BEFORE the cover, so it is both
@@ -502,9 +555,8 @@ func _build_name_pill(screen_size: Vector2) -> void:
 ##
 ## get_region().get_used_rect() rather than a GDScript pixel loop: both are C++, and scanning a
 ## 1024px-wide band by hand is a visible hitch.
-func _head_centre_x(tex: Texture2D, bounds: Rect2, scale: float, screen_h: float) -> float:
+func _head_centre_x(img: Image, bounds: Rect2, scale: float, screen_h: float) -> float:
 	var fallback: float = bounds.position.x + bounds.size.x * 0.5
-	var img := _readable_image(tex)
 	if img == null or scale <= 0.0:
 		return fallback
 
@@ -638,7 +690,7 @@ func _build_message_box() -> void:
 		# who is on it with the pill over the picture, so it has no overworld portrait to
 		# name. Falling back to the talking-head costume is what keeps those calls voiced:
 		# SpeechVoice's alias table maps a costume name onto the character's own voice.
-		_box.set_voice(_speaker_sprite if _speaker_sprite != "" else _caller_name)
+		_box.set_voice(_speaker_sprite if _speaker_sprite != "" else "%s_%s" % [_character, _clothes])
 	_box.set_mode("ok")
 	# A timed call cannot be advanced, so it must not show the caret that says it can.
 	if _auto_advance:
@@ -798,18 +850,18 @@ func _offscreen_y() -> float:
 # Frames step ONLY while letters are landing. When the box is not typing — between lines, during the
 # reading hold, before the first line — the caller resets to frame 1 with their mouth closed.
 func _process(delta: float) -> void:
-	if _caller == null or _frames.size() < 2:
+	if _mouth == null or _frames.size() < 2:
 		return
 	if _box != null and _box.visible and _box.is_typing():
 		_mouth_timer -= delta
 		if _mouth_timer <= 0.0:
 			_mouth_timer = MOUTH_FRAME_TIME
 			_frame_step = (_frame_step + 1) % _frame_order.size()
-			_caller.texture = _frames[_frame_order[_frame_step]]
+			_mouth.texture = _frames[_frame_order[_frame_step]]
 	elif _frame_step != 0:
 		_frame_step = 0
 		_mouth_timer = 0.0
-		_caller.texture = _frames[0]
+		_mouth.texture = _frames[0]
 
 
 # ============================================================
@@ -820,15 +872,14 @@ func _process(delta: float) -> void:
 #     "[HAPPY]Oh hey! So you're just coming round the corner then?"
 #     "I just saw the movers come and go..."          <- back to the neutral face
 #
-# The tag names a whole frame set, not a still: the mouth animates through it exactly as it does
-# through the neutral set, so an expression talks. Files are the caller's sprite name, the emotion,
-# then the frame number:
+# An emotion looks for every PART separately, and each falls back to its neutral art on its own:
 #
-#     Rival_Ellie_Call_Dress_Clutch_Happy_1.png
-#     Rival_Ellie_Call_Dress_Clutch_Happy_2.png   ...
+#     [SAD]   Face/Ellie_Face_Sad.png            -> else Face/Ellie_Face.png
+#             Mouths/Ellie_Mouth_Sad_1.png, _2 ... -> else Mouths/Ellie_Mouth_1.png, _2 ...
+#             Clothes/Ellie_Dress_Sad.png        -> else Clothes/Ellie_Dress.png   (and so on)
 #
-# Numbering from _1 is the emotion convention; the neutral set's "no suffix, then _2, _3" shape is
-# accepted too, so either naming works. Casing is forgiving - [HAPPY] finds Happy, HAPPY or happy.
+# So a wink is just Ellie_Face_Wink talking with the ordinary mouth, and because the clothes are only
+# one part, every outfit gets every expression. Casing is forgiving - [SAD] finds Sad, SAD or sad.
 #
 # Missing art is a warning and the neutral face, never a broken call: an emotion nobody has drawn
 # yet simply does not change the expression, and the tag is still stripped out of the dialogue.
@@ -873,37 +924,63 @@ func _is_emotion_tag(tag: String) -> bool:
 ## Puts the named expression on the caller for the line about to be spoken. "" restores the neutral
 ## set, which is what a line with no tag gets.
 func _set_emotion(emotion: String) -> void:
-	if _caller == null:
+	if _layers.is_empty():
 		return
-	if emotion == "":
-		_use_frames(_default_frames)
-		return
-	var frames := _frames_for_emotion(emotion)
-	_use_frames(frames if not frames.is_empty() else _default_frames)
+	_use_look(_default_look if emotion == "" else _look_for_emotion(emotion))
 
 
-## The frame set for an emotion, loaded once and remembered - a call that swings between two moods
-## does not go back to the filesystem every line. A set that cannot be found is remembered as empty,
-## so the warning is printed once rather than per line.
-func _frames_for_emotion(emotion: String) -> Array[Texture2D]:
-	if _emotion_frames.has(emotion):
-		return _emotion_frames[emotion]
+## The look for an emotion, loaded once and remembered - a call that swings between two moods does
+## not go back to the filesystem every line. Each part falls back to its neutral art on its own, and
+## the warning is printed once, only when NO part has any art for the emotion.
+func _look_for_emotion(emotion: String) -> Array:
+	if _emotion_looks.has(emotion):
+		return _emotion_looks[emotion]
 
-	var frames: Array[Texture2D] = []
-	for spelling in _emotion_spellings(emotion):
-		var base := "%s_%s" % [_caller_name, spelling]
-		# _1, _2, _3 ... the emotion convention, then the neutral set's shape as a fallback.
-		frames = _load_numbered_frames(base)
-		if frames.is_empty():
-			frames = _load_frames(base)
-		if not frames.is_empty():
-			break
+	var look := _load_look(emotion)
+	var found := false
+	for i in look.size():
+		if (look[i] as Array).is_empty():
+			look[i] = _default_look[i]
+		else:
+			found = true
+	if not found:
+		push_warning("PhoneCall: no art for expression '%s' on '%s' - no part has a _%s version. Using the neutral face."
+			% [emotion, _character, _emotion_spellings(emotion)[0]])
+	_emotion_looks[emotion] = look
+	return look
 
-	if frames.is_empty():
-		push_warning("PhoneCall: no art for expression '%s' on '%s' - wanted %s_%s_1.png. Using the neutral face."
-			% [emotion, _caller_name, _caller_name, _emotion_spellings(emotion)[0]])
-	_emotion_frames[emotion] = frames
-	return frames
+
+## One entry per PARTS row, for an emotion ("" = neutral). An entry is EMPTY where that part has no
+## art for the emotion; the caller decides what to fall back to.
+func _load_look(emotion: String) -> Array:
+	var look := []
+	for part: Dictionary in PARTS:
+		var frames: Array[Texture2D] = []
+		var suffixes: Array = [""] if emotion == "" else _emotion_spellings(emotion).map(
+			func(s): return "_" + String(s))
+		for suffix in suffixes:
+			var art_name := _part_name(part) + String(suffix)
+			var folder := _part_folder(part)
+			if part.get("talks", false):
+				frames = _load_numbered_frames(folder, art_name)
+			else:
+				var tex := _load_art(folder, art_name)
+				if tex != null:
+					frames = [tex]
+			if not frames.is_empty():
+				break
+		look.append(frames)
+	return look
+
+
+## A part's file name without extension or frame number: "Ellie_Face", "Ellie_Dress".
+func _part_name(part: Dictionary) -> String:
+	var part_name := String(part["name"])
+	return "%s_%s" % [_character, _clothes if part_name == "" else part_name]
+
+
+func _part_folder(part: Dictionary) -> String:
+	return "%s%s/%s/" % [CHARACTER_DIR, _character, part["folder"]]
 
 
 ## How an emotion tag might be spelled in a filename, best guess first: Happy, then HAPPY as typed,
@@ -975,41 +1052,23 @@ func _stop_spinner() -> void:
 	_spinner_tween = null
 
 
-func _load_art(art_name: String) -> Texture2D:
+func _load_art(folder: String, art_name: String) -> Texture2D:
 	if art_name == "":
 		return null
-	var path := SPRITE_DIR + art_name + ".png"
+	var path := folder + art_name + ".png"
 	if not ResourceLoader.exists(path):
 		return null
 	return load(path) as Texture2D
 
 
-## The base sprite plus every numbered frame after it: `Name.png`, `Name_2.png`, `Name_3.png` ...
-## Stops at the first gap, so adding a fourth mouth frame to a costume is dropping `_4.png` next to
-## the others — no code and no data change.
-func _load_frames(base_name: String) -> Array[Texture2D]:
-	var out: Array[Texture2D] = []
-	var first := _load_art(base_name)
-	if first == null:
-		return out
-	out.append(first)
-	var n := 2
-	while true:
-		var tex := _load_art("%s_%d" % [base_name, n])
-		if tex == null:
-			break
-		out.append(tex)
-		n += 1
-	return out
-
-
-## Frames numbered from ONE: `Name_1.png`, `Name_2.png` ... the expression convention. Empty when
-## there is no `_1`, which is how the caller tells an expression apart from a missing one.
-func _load_numbered_frames(base: String) -> Array[Texture2D]:
+## Frames numbered from ONE: `Name_1.png`, `Name_2.png` ... Stops at the first gap, so a fourth mouth
+## frame is dropping `_4.png` next to the others — no code and no data change. Empty when there is
+## no `_1`, which is how an emotion tells its own mouth apart from a missing one.
+func _load_numbered_frames(folder: String, base: String) -> Array[Texture2D]:
 	var out: Array[Texture2D] = []
 	var n := 1
 	while true:
-		var tex := _load_art("%s_%d" % [base, n])
+		var tex := _load_art(folder, "%s_%d" % [base, n])
 		if tex == null:
 			break
 		out.append(tex)
@@ -1017,16 +1076,25 @@ func _load_numbered_frames(base: String) -> Array[Texture2D]:
 	return out
 
 
-## The opaque part of a texture, in its own pixels. Used to frame the caller by the character rather
-## than by the empty canvas around them.
-func _opaque_bounds(tex: Texture2D) -> Rect2:
-	var img := _readable_image(tex)
-	if img == null:
-		return Rect2(Vector2.ZERO, Vector2(tex.get_width(), tex.get_height()))
-	var used := img.get_used_rect()
-	if used.size.x <= 0 or used.size.y <= 0:
-		return Rect2(Vector2.ZERO, Vector2(tex.get_width(), tex.get_height()))
-	return Rect2(used.position, used.size)
+## Every part of a look flattened into one image, back to front, so the caller is framed by the
+## WHOLE character - hair included - rather than by whichever part happens to be biggest. blend_rect
+## is C++, so this is quick even on a 1024px canvas. Null if no part has readable art.
+func _composite_image(look: Array) -> Image:
+	var out: Image = null
+	for frames: Array in look:
+		if frames.is_empty():
+			continue
+		var img := _readable_image(frames[0])
+		if img == null:
+			continue
+		if img.get_format() != Image.FORMAT_RGBA8:
+			img = img.duplicate()
+			img.convert(Image.FORMAT_RGBA8)
+		if out == null:
+			out = img.duplicate()
+		else:
+			out.blend_rect(img, Rect2i(Vector2i.ZERO, img.get_size()), Vector2i.ZERO)
+	return out
 
 
 ## FINDS the phone's screen: the transparent rectangle INSIDE its opaque body.
