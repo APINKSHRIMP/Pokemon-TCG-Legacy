@@ -98,6 +98,11 @@ const SFX_confetti_applause = preload("res://Audio/SFX/confetti applause.ogg")
 # Pack openings and gift NPCs have their own reveal sequences and do not use it.
 const SFX_item_acquired = preload("res://Audio/SFX/ItemAcquired.ogg")
 
+# Phone call one-shots: Connecting as the phone rises into view, Disconnecting as the screen
+# slides back over the caller at hang-up. Played from PhoneCall.play().
+const SFX_phone_connecting    = preload("res://Audio/SFX/PhoneConnecting.ogg")
+const SFX_phone_disconnecting = preload("res://Audio/SFX/PhoneDisconnecting.ogg")
+
 
 # ─── BGM registry ────────────────────────────────────────────────────────────
 #

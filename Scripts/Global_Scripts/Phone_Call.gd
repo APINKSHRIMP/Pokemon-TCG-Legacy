@@ -721,6 +721,7 @@ func play() -> void:
 	# The phone fades in as it rises: a call can start over a scene that is itself still fading up
 	# from black - the taxi intro does exactly that - and this layer sits above that fade.
 	_rig.modulate.a = 0.0
+	SoundManagerScript.play_sfx(SoundManagerScript.SFX_phone_connecting)
 
 	# ── Rise from the bottom with the screen OFF ──
 	# Two tweens rather than one parallel one: the flight is a SEQUENCE (sail past the resting
@@ -768,6 +769,7 @@ func play() -> void:
 	_box.visible = false
 	_cover_label.text = UITheme.cased("small_label", HANGUP_WORD)
 	_spin_spinner()
+	SoundManagerScript.play_sfx(SoundManagerScript.SFX_phone_disconnecting)
 	# Down into the black as the screen comes back over them, the mirror of the reveal.
 	_fade_picture(0.0, HANGUP_RISE_TIME)
 	var back := create_tween()
