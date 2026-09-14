@@ -21,6 +21,8 @@ extends CanvasLayer
 
 signal confirmed(draft: Dictionary)
 signal cancelled
+## N -> POKÉMON. The form frees itself; the placement tool opens PokemonSpawnEditor.
+signal pokemon_chosen
 
 enum Mode { NEW, EDIT }
 
@@ -314,7 +316,7 @@ func _build_kind_choice() -> void:
 
 	var npc_btn := Button.new()
 	npc_btn.text = "NPC"
-	npc_btn.position = Vector2(1920 / 2 - 420, 470)
+	npc_btn.position = Vector2(1920 / 2 - 620, 470)
 	npc_btn.size = Vector2(400, 120)
 	npc_btn.add_theme_font_size_override("font_size", TITLE_FONT_SIZE)
 	npc_btn.pressed.connect(func(): _choose_kind("npcs"))
@@ -322,11 +324,23 @@ func _build_kind_choice() -> void:
 
 	var opp_btn := Button.new()
 	opp_btn.text = "OPPONENT"
-	opp_btn.position = Vector2(1920 / 2 + 20, 470)
+	opp_btn.position = Vector2(1920 / 2 - 200, 470)
 	opp_btn.size = Vector2(400, 120)
 	opp_btn.add_theme_font_size_override("font_size", TITLE_FONT_SIZE)
 	opp_btn.pressed.connect(func(): _choose_kind("opponents"))
 	_root.add_child(opp_btn)
+
+	# Not a character at all: hands straight over to PokemonSpawnEditor, which the
+	# placement tool opens in place of this form.
+	var pokemon_btn := Button.new()
+	pokemon_btn.text = "POKÉMON"
+	pokemon_btn.position = Vector2(1920 / 2 + 220, 470)
+	pokemon_btn.size = Vector2(400, 120)
+	pokemon_btn.add_theme_font_size_override("font_size", TITLE_FONT_SIZE)
+	pokemon_btn.pressed.connect(func():
+		pokemon_chosen.emit()
+		queue_free())
+	_root.add_child(pokemon_btn)
 
 	var hint := Label.new()
 	hint.text = "Escape to cancel"

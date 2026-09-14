@@ -1,0 +1,11 @@
+{
+  "flyers": {"interval": 0.5, "chance": 100, "min": 1, "max": 4, "times": "M,A,E,N", "table": [{"species": "187_Hoppip", "percent": 50}, {"species": "278_Wingull", "percent": 50}]},
+  "spawn_points": [
+    {"id": "bug_tree_1", "template": "bug_tree", "at": [460, 1450], "chance": 100, "times": "M,A,E,N", "table": [{"species": "010_Caterpie", "percent": 100}]},
+    {"id": "swinging_bug_1", "template": "swinging_bug", "at": [500, 1450], "chance": 100, "times": "M,A,E,N", "table": [{"species": "167_Spinarak", "percent": 100}]},
+    {"id": "rodent_1", "template": "rodent", "at": [540, 1500], "chance": 100, "times": "M,A,E,N", "table": [{"species": "019_Rattata", "percent": 100}]},
+    {"id": "burying_1", "template": "burying", "at": [580, 1500], "chance": 100, "interval": 0.5, "up_time": 1, "times": "M,A,E,N", "table": [{"species": "050_Diglett", "percent": 100}]},
+    {"id": "surfacing_1", "template": "surfacing", "at": [620, 1500], "chance": 100, "interval": 0.5, "times": "M,A,E,N", "table": [{"species": "129_Magikarp", "percent": 100}]},
+    {"id": "static_1", "template": "static", "at": [660, 1500], "chance": 100, "pattern": "patrol_square", "distance": 20, "speed": 30, "times": "M,A,E,N", "table": [{"species": "133_Eevee", "percent": 100}]}
+  ]
+}

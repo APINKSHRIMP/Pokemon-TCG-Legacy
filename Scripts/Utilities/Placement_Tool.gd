@@ -55,6 +55,24 @@ var _drafts: Dictionary = {}
 
 var _editor: CharacterEditor = null
 
+## ---- overworld Pokémon spawns ----
+## The map's spawner, whose markers are selectable here like actors.
+var _spawner: OverworldPokemonSpawner = null
+## Working copy of Pokemon/Spawns/<map>.json. Markers hold references into it, so
+## moving one edits it directly. Written on Enter, thrown away on F.
+var _pk_doc: Dictionary = {}
+var _pk_dirty: bool = false
+## species -> [templates] to append to Overworld_Pokemon.json on save.
+var _pk_registry_additions: Dictionary = {}
+var _pokemon_editor: PokemonSpawnEditor = null
+
+const POKEMON_SPAWN_HELP := [
+	"Overworld Pokemon for this map. Written by the placement tool (F, then N -> POKEMON, or M on a spawn marker); safe to hand-edit.",
+	"flyers: map-wide. Every `interval` seconds, `chance`% to send min-max of ONE species from `table` across the screen.",
+	"spawn_points: id, template, at [x, y], chance (%), times (M,A,E,N), table [{species, percent}]. burying/surfacing also roll every `interval` seconds; burying may set up_time; static sets pattern (+ distance/speed/axis for patrols).",
+	"Table percents are weights and need not add to 100. Species keys are sprite basenames in Image_Assets/Pokemon_Sprites/.",
+]
+
 var _panel: PanelContainer = null
 var _label: RichTextLabel = null
 var _tinted: Node2D = null
@@ -71,6 +89,10 @@ func setup(map_data: String, container: Node2D, player: Node2D) -> void:
 	layer = 128
 	_disable_player_collision()
 	_build_hud()
+	_spawner = get_tree().get_first_node_in_group(OverworldPokemonSpawner.GROUP) as OverworldPokemonSpawner
+	if _spawner != null:
+		_pk_doc = _spawner.doc.duplicate(true)
+		_spawner.show_markers(_pk_doc)
 	_refresh_actors()
 	if _actors.size() > 0:
 		_index = 0
@@ -97,6 +119,8 @@ func _refresh_actors() -> void:
 			if not child.has_meta("original_pattern") and "movement_pattern" in child:
 				child.set_meta("original_pattern", child.movement_pattern)
 			_actors.append(child)
+	if _spawner != null and is_instance_valid(_spawner):
+		_actors.append_array(_spawner.get_markers())
 	if _player != null and is_instance_valid(_player):
 		var origin: Vector2 = _player.global_position
 		_actors.sort_custom(func(a, b):
@@ -109,6 +133,8 @@ func _refresh_actors() -> void:
 
 
 func _name_of(actor: Node) -> String:
+	if actor is PokemonSpawnMarker:
+		return "Pokémon spawn: %s" % str(actor.point.get("id", "?"))
 	if "opponent_name" in actor and actor.opponent_name != "":
 		return actor.opponent_name
 	if "npc_name" in actor:
@@ -185,7 +211,7 @@ func _input(event: InputEvent) -> void:
 	# The character editor is full of text boxes and takes its own keys. This runs
 	# first, so without standing down entirely, typing a G into a dialogue line would
 	# also grab whoever is selected out in the world.
-	if _editor != null and is_instance_valid(_editor):
+	if _form_open():
 		return
 
 	var handled := true
@@ -239,7 +265,7 @@ func _input(event: InputEvent) -> void:
 func _process(_delta: float) -> void:
 	# Ctrl is polled, not event-driven, so it would still register through the form --
 	# a Ctrl+C in a dialogue box would lock and unlock the player behind it.
-	if _editor != null and is_instance_valid(_editor):
+	if _form_open():
 		return
 	# Arrow keys are the player's movement and are polled, not event-driven, so
 	# consuming the key event is not enough -- the player has to be held still for
@@ -277,9 +303,12 @@ func _grab() -> void:
 	if actor == null:
 		return
 	_grabbed = true
-	_grab_collision = [actor.collision_layer, actor.collision_mask]
-	actor.collision_layer = 0
-	actor.collision_mask = 0
+	_grab_collision.clear()
+	# Spawn markers are plain Node2Ds with no collision to lift.
+	if actor is CollisionObject2D:
+		_grab_collision = [actor.collision_layer, actor.collision_mask]
+		actor.collision_layer = 0
+		actor.collision_mask = 0
 	if actor.has_method("freeze"):
 		actor.freeze()
 	_clear_camera()
@@ -326,6 +355,13 @@ func _cycle_pattern() -> void:
 
 
 func _record(actor: Node2D) -> void:
+	# A spawn marker holds a reference into _pk_doc, so its new position goes
+	# straight into the working copy of the spawn file.
+	if actor is PokemonSpawnMarker:
+		actor.point["at"] = [roundi(actor.global_position.x), roundi(actor.global_position.y)]
+		actor.queue_redraw()
+		_pk_dirty = true
+		return
 	var key := _key_for(actor)
 	var src: Dictionary = actor.get_meta("source", {})
 	var entry: Dictionary = _pending.get(key, {})
@@ -351,9 +387,9 @@ func _close() -> void:
 		_drop()
 	# F is the deliberate discard path (Escape refuses instead), but say what went
 	# in the bin -- losing a move silently is how you lose it twice.
-	if not _pending.is_empty() or not _drafts.is_empty():
-		print("PlacementTool: closed, DISCARDING %d move(s) and %d character draft(s)"
-			% [_pending.size(), _drafts.size()])
+	if has_unsaved_changes():
+		print("PlacementTool: closed, DISCARDING %d move(s), %d character draft(s)%s"
+			% [_pending.size(), _drafts.size(), " and Pokémon spawn edits" if _pk_dirty else ""])
 	queue_free()
 
 
@@ -364,13 +400,16 @@ func _close() -> void:
 ## Open the creation / edit form. Nothing it produces reaches disk on its own --
 ## Confirm hands back a draft, which is placed in the world and held until Enter.
 func _open_editor(mode: int) -> void:
-	if _editor != null and is_instance_valid(_editor):
+	if _form_open():
 		return
 	var actor: Node2D = null
 	if mode == CharacterEditor.Mode.EDIT:
 		actor = _selected()
 		if actor == null:
 			_flash("[color=orange]nothing selected — Tab to pick a character, then M[/color]")
+			return
+		if actor is PokemonSpawnMarker:
+			_open_pokemon_editor(actor.point)
 			return
 		if not actor.has_meta("source"):
 			# Dynamically generated actors (the gym crowd) are spawned without
@@ -385,6 +424,7 @@ func _open_editor(mode: int) -> void:
 	get_tree().current_scene.add_child(_editor)
 	_editor.confirmed.connect(_on_editor_confirmed)
 	_editor.cancelled.connect(_on_editor_cancelled)
+	_editor.pokemon_chosen.connect(_on_editor_pokemon_chosen)
 	# Before setup(): an edit whose character has vanished from the file cancels from
 	# inside setup(), and _on_editor_cancelled has to be the thing that thaws.
 	_freeze_player_for_form()
@@ -444,6 +484,150 @@ func _on_editor_cancelled() -> void:
 	_editor = null
 	_thaw_player_after_form()
 	_update_hud()
+
+
+func _form_open() -> bool:
+	return (_editor != null and is_instance_valid(_editor)) \
+		or (_pokemon_editor != null and is_instance_valid(_pokemon_editor))
+
+
+# ============================================================
+# POKÉMON SPAWN EDITOR
+# ============================================================
+
+## N -> POKÉMON. The character form has already freed itself; the player is still
+## frozen from when it opened.
+func _on_editor_pokemon_chosen() -> void:
+	_editor = null
+	_open_pokemon_editor({})
+
+
+## `point` is a spawn point in _pk_doc to edit, or {} for a new point / the flyers.
+func _open_pokemon_editor(point: Dictionary) -> void:
+	if _spawner == null or not is_instance_valid(_spawner):
+		_thaw_player_after_form()
+		_flash("[color=orange]this map has no Pokémon spawner (it has no character file)[/color]")
+		return
+	if _grabbed:
+		_drop()
+	_pokemon_editor = PokemonSpawnEditor.new()
+	get_tree().current_scene.add_child(_pokemon_editor)
+	_pokemon_editor.confirmed.connect(_on_pokemon_editor_confirmed)
+	_pokemon_editor.cancelled.connect(_on_pokemon_editor_cancelled)
+	_freeze_player_for_form()
+	_pokemon_editor.setup(_map_data, _pk_doc, point, _pk_registry_additions)
+	_update_hud()
+
+
+func _on_pokemon_editor_cancelled() -> void:
+	_pokemon_editor = null
+	_thaw_player_after_form()
+	_update_hud()
+
+
+func _on_pokemon_editor_confirmed(draft: Dictionary) -> void:
+	_pokemon_editor = null
+	_thaw_player_after_form()
+	var additions: Dictionary = draft.get("registry_additions", {})
+	for species in additions:
+		var list: Array = _pk_registry_additions.get(species, [])
+		for template in additions[species]:
+			if not list.has(template):
+				list.append(template)
+		_pk_registry_additions[species] = list
+	_pk_dirty = true
+
+	if str(draft.get("kind", "")) == "flyers":
+		_pk_doc["flyers"] = draft.get("flyers", {})
+		_update_hud()
+		_flash("[color=lime]flyer table updated — Enter to write Pokemon/Spawns/%s.json[/color]" % _map_data)
+		return
+
+	if not (_pk_doc.get("spawn_points") is Array):
+		_pk_doc["spawn_points"] = []
+	var points: Array = _pk_doc["spawn_points"]
+	var original_id := str(draft.get("original_id", ""))
+	var point: Dictionary = draft.get("point", {})
+	var id := str(point.get("id", ""))
+
+	if bool(draft.get("delete", false)):
+		for i in points.size():
+			if points[i] is Dictionary and str(points[i].get("id", "")) == original_id:
+				points.remove_at(i)
+				break
+		_rebuild_markers("")
+		_update_hud()
+		_flash("[color=orange]%s deleted — Enter to write, F to discard[/color]" % original_id)
+		return
+
+	if bool(draft.get("is_new", true)):
+		if _player == null or not is_instance_valid(_player):
+			_flash("[color=red]no player to place %s at[/color]" % id)
+			return
+		# Handed to you to place, the same as a new character.
+		point["at"] = [roundi(_player.global_position.x), roundi(_player.global_position.y)]
+		points.append(point)
+		_rebuild_markers(id)
+		_grab()
+	else:
+		var existing := OverworldPokemonData.find_point(_pk_doc, original_id)
+		if existing.is_empty():
+			points.append(point)
+		else:
+			# Rewritten in place so the point keeps its position in the list.
+			existing.clear()
+			existing.merge(point)
+		_rebuild_markers(id)
+		_look_at_selection()
+	_update_hud()
+	_flash("[color=lime]%s ready — Enter to write Pokemon/Spawns/%s.json[/color]" % [id, _map_data])
+
+
+## Redraw every marker from _pk_doc and reselect `select_id` if given.
+func _rebuild_markers(select_id: String) -> void:
+	if _spawner == null or not is_instance_valid(_spawner):
+		return
+	_spawner.show_markers(_pk_doc)
+	_refresh_actors()
+	if select_id != "":
+		var marker := _spawner.find_marker(select_id)
+		if marker != null and _actors.has(marker):
+			_index = _actors.find(marker)
+	_look_at_selection()
+
+
+## Write the spawn file (and any new species->template assignments), then re-roll
+## the live Pokémon from it so the change can be seen straight away.
+func _save_pokemon() -> bool:
+	DirAccess.make_dir_recursive_absolute(OverworldPokemonData.SPAWN_DIR)
+	var out: Dictionary = {"_help": POKEMON_SPAWN_HELP}
+	for key in _pk_doc:
+		if key != "_help":
+			out[key] = _pk_doc[key]
+	if not _write_json(OverworldPokemonData.spawn_path(_map_data), out):
+		return false
+	if not _pk_registry_additions.is_empty():
+		var registry := OverworldPokemonData._read_json(OverworldPokemonData.REGISTRY_PATH)
+		if not (registry.get("species") is Dictionary):
+			registry["species"] = {}
+		for species in _pk_registry_additions:
+			var body = registry["species"].get(species)
+			if not (body is Dictionary):
+				body = {"templates": []}
+				registry["species"][species] = body
+			var list: Array = body.get("templates", [])
+			for template in _pk_registry_additions[species]:
+				if not list.has(template):
+					list.append(template)
+			body["templates"] = list
+		if not _write_json(OverworldPokemonData.REGISTRY_PATH, registry):
+			return false
+		OverworldPokemonData.invalidate()
+		_pk_registry_additions.clear()
+	_pk_dirty = false
+	if _spawner != null and is_instance_valid(_spawner):
+		_spawner.apply_doc(_pk_doc.duplicate(true))
+	return true
 
 
 func _on_editor_confirmed(draft: Dictionary) -> void:
@@ -528,10 +712,21 @@ func _save() -> void:
 	if _grabbed:
 		_drop()
 		_update_hud()
-	if _pending.is_empty() and _drafts.is_empty():
+	if _pending.is_empty() and _drafts.is_empty() and not _pk_dirty:
 		_flash("[color=orange]nothing to save — move an actor first[/color]")
 		print("PlacementTool: save requested with no pending changes")
 		return
+	# Pokémon spawns live in their own file, so they are written first and on their
+	# own -- the character file is only rewritten when a character actually changed.
+	var pokemon_saved := false
+	if _pk_dirty:
+		if not _save_pokemon():
+			return
+		pokemon_saved = true
+		if _pending.is_empty() and _drafts.is_empty():
+			_flash("[color=lime]saved Pokémon spawns to Pokemon/Spawns/%s.json[/color]" % _map_data)
+			print("PlacementTool: saved Pokémon spawns -> " + OverworldPokemonData.spawn_path(_map_data))
+			return
 	var path := CharacterSchedule.DIR + _map_data + ".json"
 	var file := FileAccess.open(path, FileAccess.READ)
 	if file == null:
@@ -615,6 +810,8 @@ func _save() -> void:
 	var summary := "saved %d move(s)" % written
 	if characters_written > 0:
 		summary += " and %d character(s), incl. All_NPC_Constant_Data.json" % characters_written
+	if pokemon_saved:
+		summary += ", plus Pokémon spawns"
 	_flash("[color=lime]%s to %s.json[/color]" % [summary, _map_data])
 	print("PlacementTool: %s -> %s" % [summary, path])
 
@@ -797,6 +994,8 @@ func _build_hud() -> void:
 ## `days: "8,12"` moves the actor on day 12 as well. This is usually what you want
 ## when repositioning someone, but it has to be visible before you press Enter.
 func _scope_text(actor: Node) -> String:
+	if actor is PokemonSpawnMarker:
+		return "%s spawn point in Pokemon/Spawns/%s.json" % [str(actor.point.get("template", "?")), _map_data]
 	var src: Dictionary = actor.get_meta("source", {})
 	var doc := CharacterSchedule.load_map(_map_data)
 	var character = doc.get(str(src.get("section", "")), {}).get(str(src.get("name", "")))
@@ -859,11 +1058,13 @@ func _update_hud() -> void:
 	var dirty_text := "%d unsaved move(s)" % dirty
 	if drafted > 0:
 		dirty_text += ", %d new/edited character(s)" % drafted
+	if _pk_dirty:
+		dirty_text += ", Pokémon spawns edited"
 	lines.append("[color=%s]%s[/color]%s"
-		% ["orange" if dirty > 0 or drafted > 0 else "gray", dirty_text,
+		% ["orange" if has_unsaved_changes() else "gray", dirty_text,
 		   "   [color=aqua]CTRL: player held still, arrows nudge[/color]" if _ctrl_held else ""])
 	lines.append("[color=gray]Tab select  G grab  Ctrl+arrows nudge  R pattern[/color]")
-	lines.append("[color=gray]N new character  M edit selected  Enter save  Esc/F close[/color]")
+	lines.append("[color=gray]N new character / Pokémon spawn  M edit selected  Enter save  Esc/F close[/color]")
 	_label.text = "\n".join(lines)
 
 
@@ -874,7 +1075,7 @@ func _flash(message: String) -> void:
 
 
 func has_unsaved_changes() -> bool:
-	return not _pending.is_empty() or not _drafts.is_empty()
+	return not _pending.is_empty() or not _drafts.is_empty() or _pk_dirty
 
 
 func _exit_tree() -> void:
@@ -883,6 +1084,13 @@ func _exit_tree() -> void:
 	if _editor != null and is_instance_valid(_editor):
 		_editor.queue_free()
 		_editor = null
+	if _pokemon_editor != null and is_instance_valid(_pokemon_editor):
+		_pokemon_editor.queue_free()
+		_pokemon_editor = null
+	# Markers only exist while the tool is open. Unsaved spawn edits are simply
+	# dropped with _pk_doc -- the spawner's own doc was never touched.
+	if _spawner != null and is_instance_valid(_spawner):
+		_spawner.hide_markers()
 	# Never leave the world in a tool-only state: restore the tint, the camera, the
 	# grabbed actor's collision, and the player's ability to move.
 	if _tinted != null and is_instance_valid(_tinted):

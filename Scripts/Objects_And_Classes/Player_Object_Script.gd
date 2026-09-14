@@ -6,6 +6,10 @@ extends CharacterBody2D
 
 signal interact_pressed(opponent)
 signal npc_interact_pressed(npc)
+signal pokemon_interact_pressed(pokemon)
+
+# Groups the InteractionArea treats as something Space can talk to.
+const INTERACT_GROUPS := ["opponents", "npcs", "pokemon"]
 
 @export var move_speed: float = 160.0
 # Speed/animation multiplier while Shift is held. The debug value is used instead while
@@ -117,7 +121,7 @@ func _seed_existing_overlaps():
 	if not is_instance_valid(interaction_area):
 		return
 	for body in interaction_area.get_overlapping_bodies():
-		if body.is_in_group("opponents") or body.is_in_group("npcs"):
+		if _is_interactable_body(body):
 			if not _nearby_candidates.has(body):
 				_nearby_candidates.append(body)
 	_update_active_candidate()
@@ -209,6 +213,8 @@ func _unhandled_input(event):
 				interact_pressed.emit(_active_candidate)
 			elif _active_candidate.is_in_group("npcs"):
 				npc_interact_pressed.emit(_active_candidate)
+			elif _active_candidate.is_in_group("pokemon"):
+				pokemon_interact_pressed.emit(_active_candidate)
 
 	if event is InputEventMouseButton:
 		if event.pressed:
@@ -233,8 +239,14 @@ func _unhandled_input(event):
 			elif event.button_index == MOUSE_BUTTON_WHEEL_DOWN:
 				camera.zoom = (camera.zoom - Vector2(0.05, 0.05)).clamp(Vector2(0.5, 0.5), Vector2(10, 10))
 
+func _is_interactable_body(body: Node) -> bool:
+	for group in INTERACT_GROUPS:
+		if body.is_in_group(group):
+			return true
+	return false
+
 func _on_interaction_area_body_entered(body: Node2D):
-	if body.is_in_group("opponents") or body.is_in_group("npcs"):
+	if _is_interactable_body(body):
 		if not _nearby_candidates.has(body):
 			_nearby_candidates.append(body)
 		_update_active_candidate()
@@ -252,7 +264,9 @@ func _on_interaction_area_body_exited(body: Node2D):
 # ------------------------------------------------------------
 func _update_active_candidate():
 	# Purge invalid refs
-	_nearby_candidates = _nearby_candidates.filter(func(n): return is_instance_valid(n))
+	# The group check drops a Pokémon that stopped being talkable while still in
+	# range -- a rodent leaves the "pokemon" group the moment it bolts.
+	_nearby_candidates = _nearby_candidates.filter(func(n): return is_instance_valid(n) and _is_interactable_body(n))
 
 	if _nearby_candidates.is_empty():
 		_active_candidate = null

@@ -31,6 +31,8 @@ var _constant_data_loaded: bool = false
 
 var current_opponent: Node = null
 var current_npc: Node = null
+## The overworld Pokémon (rodent / static template) currently saying its name.
+var current_pokemon: Node = null
 
 # ------------------------------------------------------------
 # CUTSCENES (Scripts/Global_Scripts/Cutscene.gd)
@@ -312,8 +314,19 @@ func initialise(
 	_load_and_spawn_opponents(cast.get("opponents", []))
 	_load_and_spawn_npcs(cast.get("npcs", []))
 
+	# Overworld Pokémon. Attached here rather than in BaseMapScene._ready() because
+	# not every map load goes through that (Celeste Harbour's taxi intro calls
+	# initialise() itself). Every map with a character file gets a spawner even with
+	# no spawn file yet, so the placement tool can create the first spawn point there.
+	# Parented to the map root (the player's parent), never the NPC container.
+	var map_root: Node = _player.get_parent()
+	if map_data != "" and map_root != null \
+			and map_root.get_node_or_null("OVERWORLD_POKEMON") == null:
+		OverworldPokemonSpawner.attach(map_root, map_data, _player)
+
 	_player.interact_pressed.connect(_on_player_interact)
 	_player.npc_interact_pressed.connect(_on_player_npc_interact)
+	_player.pokemon_interact_pressed.connect(_on_player_pokemon_interact)
 
 	if GameState.returning_from_battle:
 		_handle_battle_return()
@@ -844,6 +857,17 @@ func _apply_actor_chips() -> void:
 		message_panel.set_chips([])
 		return
 
+	# An overworld Pokémon: its name on the pill, nothing else. No voice -- the speech
+	# blips are keyed by trainer sprite and a Pokémon has none.
+	if current_pokemon != null and is_instance_valid(current_pokemon):
+		message_panel.set_system_variant(false)
+		message_panel.apply_theme("")
+		message_panel.set_right_chips([])
+		message_panel.set_name_pill(str(current_pokemon.display_name), "")
+		message_panel.set_voice("")
+		message_panel.set_chips([])
+		return
+
 	# Recolour first, THEN build the chips — the chip ramp is derived from the
 	# theme, so setting them the other way round would leave the previous
 	# speaker's colours on the row. The box is shared by everyone the player
@@ -952,8 +976,11 @@ func _hide_message():
 		current_opponent.resume_movement()
 	if current_npc != null:
 		current_npc.resume_movement()
+	if current_pokemon != null and is_instance_valid(current_pokemon):
+		current_pokemon.resume_movement()
 	current_opponent = null
 	current_npc = null
+	current_pokemon = null
 
 # ------------------------------------------------------------
 # INTERACTABLES — public hooks for scene interactables (signs,
@@ -1377,6 +1404,18 @@ func _on_pack_opening_finished() -> void:
 # ============================================================
 # INTERACTION — NPCs
 # ============================================================
+
+## Space on an overworld Pokémon (rodent / static templates). For now it just says
+## its own name; OverworldPokemon.cry_text() is the one place that line comes from.
+func _on_player_pokemon_interact(pokemon: Node) -> void:
+	if message_panel.visible or _validation_popup_active:
+		return
+	if not is_instance_valid(pokemon) or not pokemon.is_interactable():
+		return
+	current_pokemon = pokemon
+	pokemon.pause_and_face(_player.global_position)
+	_face_player_toward_actor(pokemon)
+	_show_message_with_ok(pokemon.cry_text())
 
 func _on_player_npc_interact(npc: Node):
 	if message_panel.visible or _validation_popup_active:

@@ -20,7 +20,7 @@ extends CanvasLayer
 signal picked(value: String)
 signal cancelled
 
-enum Kind { SPRITE, COIN, SLEEVE, COSTUME }
+enum Kind { SPRITE, COIN, SLEEVE, COSTUME, POKEMON }
 
 const SPRITE_DIR   := "res://Image_Assets/Character_Sprites/Overworld_Sprites/"
 const COIN_DIR     := "res://Image_Assets/Coins/"
@@ -61,6 +61,9 @@ var _selected_value: String = ""
 var _unavailable: Dictionary = {}
 ## Only meaningful for Kind.SPRITE: flags sprites with no in-battle portrait.
 var _warn_missing_portrait: bool = false
+## When non-empty, the grid offers exactly these values instead of the whole folder
+## (the Pokémon spawn editor's ADD FROM TEMPLATE).
+var _only_values: Array = []
 
 var _grid: GridContainer = null
 var _scroll: ScrollContainer = null
@@ -83,8 +86,9 @@ static var _sprite_frame_cache: Dictionary = {}
 ## in `unavailable`, so re-opening the picker on an existing character does not grey
 ## out that character's own coin.
 func setup(kind: int, current: String = "", unavailable: Dictionary = {},
-		warn_missing_portrait: bool = false) -> void:
+		warn_missing_portrait: bool = false, only_values: Array = []) -> void:
 	_kind = kind
+	_only_values = only_values
 	_selected_value = current
 	_unavailable = unavailable.duplicate()
 	_unavailable.erase(current)
@@ -182,6 +186,7 @@ func _title_text() -> String:
 		Kind.COIN:    return "CHOOSE A COIN"
 		Kind.SLEEVE:  return "CHOOSE A SLEEVE"
 		Kind.COSTUME: return "CHOOSE A COSTUME"
+		Kind.POKEMON: return "CHOOSE A POKÉMON"
 	return "CHOOSE"
 
 
@@ -191,6 +196,7 @@ func _columns() -> int:
 		Kind.COIN:    return COLUMNS_COIN
 		Kind.SLEEVE:  return COLUMNS_SLEEVE
 		Kind.COSTUME: return COLUMNS_COSTUME
+		Kind.POKEMON: return COLUMNS_SPRITE
 	return 12
 
 
@@ -200,6 +206,7 @@ func _cell_size() -> Vector2:
 		Kind.COIN:    return CELL_SIZE_COIN
 		Kind.SLEEVE:  return CELL_SIZE_SLEEVE
 		Kind.COSTUME: return CELL_SIZE_COSTUME
+		Kind.POKEMON: return CELL_SIZE_SPRITE
 	return Vector2(96, 96)
 
 
@@ -209,6 +216,7 @@ func _folder() -> String:
 		Kind.COIN:    return COIN_DIR
 		Kind.SLEEVE:  return SLEEVE_DIR
 		Kind.COSTUME: return COSTUME_DIR
+		Kind.POKEMON: return OverworldPokemonData.SPRITE_DIR
 	return SPRITE_DIR
 
 
@@ -220,6 +228,11 @@ func _folder() -> String:
 ## -- bare basenames, matching how sprite / coin_reward / sleeve / costume values
 ## are all written in the data.
 func _values() -> Array:
+	if not _only_values.is_empty():
+		return _only_values
+	# Shiny sheets are left out: a species is chosen, not a colouring.
+	if _kind == Kind.POKEMON:
+		return OverworldPokemonData.all_species()
 	var names: Dictionary = {}
 	var dir := DirAccess.open(_folder())
 	if dir == null:
@@ -248,6 +261,8 @@ func _values() -> Array:
 func _texture_for(value: String) -> Texture2D:
 	if _kind == Kind.SPRITE:
 		return sprite_frame(value)
+	if _kind == Kind.POKEMON:
+		return pokemon_frame(value)
 	for ext in [".png", ".jpg"]:
 		var path: String = _folder() + value + ext
 		if ResourceLoader.exists(path):
@@ -279,6 +294,22 @@ static func sprite_frame(sprite_name: String) -> Texture2D:
 	# frame size has to be derived rather than hardcoded to 64.
 	atlas.region = Rect2(0, 0, sheet.get_width() / 4.0, sheet.get_height() / 4.0)
 	_sprite_frame_cache[sprite_name] = atlas
+	return atlas
+
+
+## The facing-down first frame of a Pokémon sheet in Pokemon_Sprites/.
+static func pokemon_frame(species: String) -> Texture2D:
+	var key := "pokemon:" + species
+	if _sprite_frame_cache.has(key):
+		return _sprite_frame_cache[key]
+	var path := OverworldPokemonData.sheet_path(species)
+	var sheet: Texture2D = load(path) if ResourceLoader.exists(path) else null
+	var atlas: AtlasTexture = null
+	if sheet != null:
+		atlas = AtlasTexture.new()
+		atlas.atlas = sheet
+		atlas.region = Rect2(0, 0, sheet.get_width() / 4.0, sheet.get_height() / 4.0)
+	_sprite_frame_cache[key] = atlas
 	return atlas
 
 
