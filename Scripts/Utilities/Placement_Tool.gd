@@ -84,7 +84,7 @@ var _pokemon_editor: PokemonSpawnEditor = null
 
 const POKEMON_SPAWN_HELP := [
 	"Overworld Pokemon for this map. Written by the placement tool (DEL debug menu -> NEW NPC / OPPONENT / POKEMON or FLYER TABLES, or EDIT CURRENT NPCS then EDIT NPC on a spawn marker); safe to hand-edit.",
-	"flyers: map-wide, one table per time of day (Morning/Afternoon/Evening/Night). The current time's table rolls every `interval` seconds with `chance`% to send a flock of ONE species from its `table` [{species, percent, min, max, speed_min, speed_max, spin}] across the screen. min/max = flock size; speed in px/s (the flock shares one); spin = turns as it flies, faster when faster.",
+	"flyers: map-wide, one table per time of day (Morning/Afternoon/Evening/Night). The current time's table rolls every `interval` seconds with `chance`% to send a flock of ONE species from its `table` [{species, percent, min, max, speed_min, speed_max, spin, erratic}] across the screen. min/max = flock size; speed in px/s (the flock shares one); spin = turns as it flies, faster when faster; erratic = big jerky bat-like bob.",
 	"spawn_points: id, template, at [x, y], tables {Morning/Afternoon/Evening/Night: {chance (%), table [{species, percent}]}} -- an empty table spawns nothing at that time. burying/surfacing tables also have `interval` (seconds between rolls); burying may set up_time; static sets pattern (+ distance/speed/axis for patrols).",
 	"Table percents are weights and need not add to 100. Species keys are sprite basenames in Image_Assets/Pokemon_Sprites/.",
 ]

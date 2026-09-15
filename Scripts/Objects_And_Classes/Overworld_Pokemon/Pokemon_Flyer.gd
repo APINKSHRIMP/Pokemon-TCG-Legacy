@@ -31,6 +31,14 @@ const SHADOW_Z := 9
 ## full bob. Each bird starts at a random point so a flock doesn't bob in step.
 const BOB_PIXELS := 3.0
 const BOB_PERIOD := 1.2
+## Erratic flyers (Zubat, Golbat): a much bigger bob made of a slow swoop plus a fast
+## flutter at an unrelated period, so it never settles into a smooth wave -- the
+## jerky up-and-down of a bat. ERRATIC_FLUTTER_SHARE is how much of the height is
+## the flutter (0 = one smooth big wave, 1 = all flutter).
+const ERRATIC_BOB_PIXELS := 14.0
+const ERRATIC_BOB_PERIOD := 0.9
+const ERRATIC_FLUTTER_PERIOD := 0.33
+const ERRATIC_FLUTTER_SHARE := 0.35
 # -----------------------------------------------------------------------------
 
 ## +1 flies right, -1 flies left. Set by the spawner before add_child().
@@ -42,6 +50,8 @@ var end_x: float = 0.0
 var speed: float = 0.0
 ## Turns round and round as it flies. Set by the spawner from the table row.
 var spins: bool = false
+## Big jerky bob instead of the gentle one. Set by the spawner from the table row.
+var erratic: bool = false
 
 var _spin_step: float = SPIN_STEP
 var _spin_time: float = 0.0
@@ -91,7 +101,14 @@ func _bob(delta: float) -> void:
 	if sprite == null:
 		return
 	_bob_time += delta
-	sprite.position.y = roundf(BOB_PIXELS * sin(TAU * _bob_time / BOB_PERIOD))
+	var height: float
+	if erratic:
+		height = ERRATIC_BOB_PIXELS * (
+				(1.0 - ERRATIC_FLUTTER_SHARE) * sin(TAU * _bob_time / ERRATIC_BOB_PERIOD)
+				+ ERRATIC_FLUTTER_SHARE * sin(TAU * _bob_time / ERRATIC_FLUTTER_PERIOD))
+	else:
+		height = BOB_PIXELS * sin(TAU * _bob_time / BOB_PERIOD)
+	sprite.position.y = roundf(height)
 
 
 ## modulate multiplies, so black at SHADOW_ALPHA turns every opaque pixel into a flat

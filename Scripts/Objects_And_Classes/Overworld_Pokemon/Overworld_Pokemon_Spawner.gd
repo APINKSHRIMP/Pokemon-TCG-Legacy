@@ -221,6 +221,7 @@ func spawn_flyer_group(config: Dictionary) -> void:
 	var flock_speed := randf_range(slowest, fastest)
 	# The row decides; a row without the key falls back to the species' registry default.
 	var spins := bool(row.get("spin", OverworldPokemonData.species_info(species).get("spin", false)))
+	var erratic := bool(row.get("erratic", OverworldPokemonData.species_info(species).get("erratic", false)))
 	var placed: Array[Vector2] = []
 	for i in count:
 		var flyer := PokemonFlyer.new()
@@ -229,6 +230,7 @@ func spawn_flyer_group(config: Dictionary) -> void:
 		flyer.end_x = end_x
 		flyer.speed = flock_speed
 		flyer.spins = spins
+		flyer.erratic = erratic
 		var offset := Vector2.ZERO if i == 0 else _flock_offset(direction, placed)
 		placed.append(offset)
 		flyer.position = to_local(start + offset)

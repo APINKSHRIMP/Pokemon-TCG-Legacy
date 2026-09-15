@@ -60,7 +60,8 @@ const FLYER_DEFAULT_CHANCE := 15.0
 const FLYER_DEFAULT_INTERVAL := 30.0
 
 ## Flyer table rows carry their own flock size, speed range and spin:
-## {species, percent, min, max, speed_min, speed_max, spin}.
+## {species, percent, min, max, speed_min, speed_max, spin, erratic}. `spin` and
+## `erratic` default from the same keys on the species in the registry.
 const DEFAULT_FLOCK_MIN := 1
 const DEFAULT_FLOCK_MAX := 3
 const FLOCK_LIMIT := 12

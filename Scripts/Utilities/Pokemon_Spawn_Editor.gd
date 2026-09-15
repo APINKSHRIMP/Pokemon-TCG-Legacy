@@ -30,8 +30,8 @@ const COLUMN_GAP := 46
 const ROW_GAP := 8
 const ICON_SIZE := Vector2(56, 56)
 ## Widths of the flock and speed min / max boxes on a flyer row's second line.
-const FLOCK_SPIN_WIDTH := 95
-const SPEED_SPIN_WIDTH := 110
+const FLOCK_SPIN_WIDTH := 90
+const SPEED_SPIN_WIDTH := 100
 ## How far the second line sits in from the left edge.
 const FLYER_LINE_INDENT := 24
 const SCROLL_TOP := 92
@@ -591,23 +591,26 @@ func _rebuild_table() -> void:
 	_revalidate()
 
 
-## Flock size, speed and spin for a row that doesn't have them yet. Spin starts from
-## the species' registry `spin` (the Hoppip line), then belongs to the row.
+## Flock size, speed, spin and erratic for a row that doesn't have them yet. Spin and
+## erratic start from the species' registry keys (the Hoppip line spins, Zubat and
+## Golbat are erratic), then belong to the row.
 func _fill_flyer_defaults(entry: Dictionary) -> void:
-	var species_spin := bool(OverworldPokemonData.species_info(str(entry.get("species", ""))).get("spin", false))
+	var info := OverworldPokemonData.species_info(str(entry.get("species", "")))
 	var defaults := {
 		"min": OverworldPokemonData.DEFAULT_FLOCK_MIN,
 		"max": OverworldPokemonData.DEFAULT_FLOCK_MAX,
 		"speed_min": OverworldPokemonData.DEFAULT_FLYER_SPEED_MIN,
 		"speed_max": OverworldPokemonData.DEFAULT_FLYER_SPEED_MAX,
-		"spin": species_spin,
+		"spin": bool(info.get("spin", false)),
+		"erratic": bool(info.get("erratic", false)),
 	}
 	for key in defaults:
 		if not entry.has(key):
 			entry[key] = defaults[key]
 
 
-## The line under a flyer's species row: Flock [min]–[max]  Speed px/s [min]–[max]  [x] Spin.
+## The line under a flyer's species row:
+## Flock [min]–[max]  Speed [min]–[max]  [x] Spin  [x] Erratic   (speed in px/s)
 func _flyer_line(entry: Dictionary) -> HBoxContainer:
 	_fill_flyer_defaults(entry)
 	var line := HBoxContainer.new()
@@ -617,16 +620,24 @@ func _flyer_line(entry: Dictionary) -> HBoxContainer:
 	line.add_child(indent)
 	_range_pair(line, "Flock", entry, "min", "max", OverworldPokemonData.FLOCK_LIMIT,
 			FLOCK_SPIN_WIDTH, "flock of this species")
-	_range_pair(line, "Speed px/s", entry, "speed_min", "speed_max", OverworldPokemonData.FLYER_SPEED_LIMIT,
-			SPEED_SPIN_WIDTH, "speed a flock of this species flies at")
-	var spin := CheckBox.new()
-	spin.text = "Spin"
-	spin.tooltip_text = "Turns round and round as it flies; the faster it flies, the faster it spins"
-	spin.button_pressed = bool(entry["spin"])
-	spin.add_theme_font_size_override("font_size", FORM_FONT_SIZE)
-	spin.toggled.connect(func(on: bool): entry["spin"] = on)
-	line.add_child(spin)
+	_range_pair(line, "Speed", entry, "speed_min", "speed_max", OverworldPokemonData.FLYER_SPEED_LIMIT,
+			SPEED_SPIN_WIDTH, "speed (px/s) a flock of this species flies at")
+	_flag_box(line, entry, "spin", "Spin",
+			"Turns round and round as it flies; the faster it flies, the faster it spins")
+	_flag_box(line, entry, "erratic", "Erratic",
+			"A big, jerky up-and-down bob instead of the gentle one -- bat-like flight")
 	return line
+
+
+## A tick box writing true / false to `key` on `entry`.
+func _flag_box(line: HBoxContainer, entry: Dictionary, key: String, text: String, tip: String) -> void:
+	var box := CheckBox.new()
+	box.text = text
+	box.tooltip_text = tip
+	box.button_pressed = bool(entry.get(key, false))
+	box.add_theme_font_size_override("font_size", FORM_FONT_SIZE)
+	box.toggled.connect(func(on: bool): entry[key] = on)
+	line.add_child(box)
 
 
 ## "Caption [low] – [high]", each box writing its key on `entry`.
@@ -729,6 +740,7 @@ func _clean_rows(rows: Array) -> Array:
 			clean["speed_min"] = int(row.get("speed_min", OverworldPokemonData.DEFAULT_FLYER_SPEED_MIN))
 			clean["speed_max"] = int(row.get("speed_max", OverworldPokemonData.DEFAULT_FLYER_SPEED_MAX))
 			clean["spin"] = bool(row.get("spin", false))
+			clean["erratic"] = bool(row.get("erratic", false))
 		out.append(clean)
 	return out
 
