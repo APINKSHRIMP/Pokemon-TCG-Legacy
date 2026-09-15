@@ -43,9 +43,10 @@ func _template_ready() -> void:
 	collision_mask = 1
 	var shape := CollisionShape2D.new()
 	var rect := RectangleShape2D.new()
-	rect.size = COLLISION_SIZE
+	# A scaled-up Pokémon gets a body to match.
+	rect.size = COLLISION_SIZE * size_scale
 	shape.shape = rect
-	shape.position = COLLISION_OFFSET
+	shape.position = COLLISION_OFFSET * size_scale
 	add_child(shape)
 	add_to_group("pokemon")
 

@@ -2,30 +2,26 @@ class_name PokemonSwingingBug
 extends OverworldPokemon
 
 ## SWINGING BUG template -- Spinarak, Kakuna, Burmy... Dangles from a strand of silk
-## at its spawn point. It turns left-down-right-down on a loop, as if twisting on
-## the thread (never shows its back), and sways through a slow shallow U: down-and-right to
-## the bottom of the arc, up-and-right to the top, then back the same way. No
-## collision.
+## at its spawn point, facing one way (no turning, no walk cycle), and sways through a
+## slow shallow U: down-and-right to the bottom of the arc, up-and-right to the top,
+## then back the same way. No collision.
 
 # ---- tweakables -------------------------------------------------------------
 const Z := 25
-const SPIN_SEQUENCE := ["left", "down", "right", "down"]
-## Seconds per facing in the spin sequence.
-const SPIN_STEP := 1.0
+## The one direction it faces for as long as it hangs there.
+const FACING := "down"
 ## Half-width of the sway, and how far the middle of the U dips, in world pixels.
-const SWAY_PIXELS := 4.0
+const SWAY_PIXELS := 1.0
 ## Seconds for one full swing there and back.
 const SWAY_PERIOD := 10.0
 ## Silk strand drawn from the top of the sprite upwards. 0 hides it.
-const SILK_LENGTH := 20.0
+const SILK_LENGTH := 5.0
 const SILK_COLOUR := Color(1, 1, 1, 0.55)
 const SILK_WIDTH := 0.5
 # -----------------------------------------------------------------------------
 
 var _anchor: Vector2
 var _time: float = 0.0
-var _spin_time: float = 0.0
-var _spin_index: int = 0
 
 
 func _template_ready() -> void:
@@ -33,20 +29,14 @@ func _template_ready() -> void:
 	z_index = Z
 	animating = false
 	_anchor = global_position
-	# Start somewhere random in both cycles so neighbouring bugs don't swing in step.
+	# Start somewhere random in the swing so neighbouring bugs don't sway in step.
 	_time = randf() * SWAY_PERIOD
-	_spin_index = randi() % SPIN_SEQUENCE.size()
-	set_facing(SPIN_SEQUENCE[_spin_index])
+	set_facing(FACING)
 	_update_sway()
 
 
 func _template_process(delta: float) -> void:
 	_time += delta
-	_spin_time += delta
-	if _spin_time >= SPIN_STEP:
-		_spin_time -= SPIN_STEP
-		_spin_index = (_spin_index + 1) % SPIN_SEQUENCE.size()
-		set_facing(SPIN_SEQUENCE[_spin_index])
 	_update_sway()
 
 
@@ -66,6 +56,6 @@ func _update_sway() -> void:
 func _draw() -> void:
 	if SILK_LENGTH <= 0.0:
 		return
-	var art_top_local: float = (-cell.y * 0.5 + art_top) * SPRITE_SCALE
+	var art_top_local: float = (-cell.y * 0.5 + art_top) * draw_scale()
 	var pivot_local: Vector2 = to_local(_anchor + Vector2(0, art_top_local - SILK_LENGTH))
 	draw_line(pivot_local, Vector2(0, art_top_local), SILK_COLOUR, SILK_WIDTH)

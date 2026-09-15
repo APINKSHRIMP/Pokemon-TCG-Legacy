@@ -19,21 +19,37 @@ signal cancelled
 signal save_requested(draft: Dictionary)
 
 # ---- tweakables -------------------------------------------------------------
-const DEFAULT_TEMPLATE := "rodent"
+const DEFAULT_TEMPLATE := "skittish"
 
-const FORM_FONT_SIZE := 21
-const TITLE_FONT_SIZE := 32
-const LABEL_WIDTH := 250
+const FORM_FONT_SIZE := 18
+const TITLE_FONT_SIZE := 28
+const LABEL_WIDTH := 170
 const FORM_MARGIN := 40
-const COLUMN_WIDTH := 880
-const COLUMN_GAP := 46
-const ROW_GAP := 8
-const ICON_SIZE := Vector2(56, 56)
-## Widths of the flock and speed min / max boxes on a flyer row's second line.
-const FLOCK_SPIN_WIDTH := 90
-const SPEED_SPIN_WIDTH := 100
-## How far the second line sits in from the left edge.
-const FLYER_LINE_INDENT := 24
+## The left column only holds a handful of settings; the species table on the right
+## needs the room (a flyer row's second line runs to ~1000px). Together with the gap
+## and the scrollbar they fill the 1840px between the margins.
+const LEFT_COLUMN_WIDTH := 520
+const RIGHT_COLUMN_WIDTH := 1270
+const COLUMN_GAP := 36
+const ROW_GAP := 6
+const ICON_SIZE := Vector2(40, 40)
+## A species row is one line: icon, name, Rate, Scale, (flyers: Flock, Speed, Spin,
+## Erratic), REMOVE. Every piece has a fixed width so the columns line up row to row.
+const NAME_WIDTH := 150
+const ROW_ITEM_GAP := 8
+## Width of the Rate (%) box.
+const PERCENT_SPIN_WIDTH := 84
+## The square bin button that removes a species row.
+const REMOVE_BUTTON_SIZE := 34
+## Width of a spin box's up / down arrow strip (DebugFormTheme's default is 34).
+const SPIN_BUTTONS_WIDTH := 18
+## Left/right padding inside a number box (DebugFormTheme's default is 8).
+const SPIN_FIELD_PADDING := 6
+## Widths of the flock and speed min / max boxes on a flyer row.
+const FLOCK_SPIN_WIDTH := 58
+const SPEED_SPIN_WIDTH := 70
+## Width of the Scale box on every species row.
+const SCALE_SPIN_WIDTH := 90
 const SCROLL_TOP := 92
 const SCROLL_HEIGHT := 900
 const FOOTER_TOP := 1010
@@ -56,6 +72,11 @@ var _table: Array = []
 ## own. Kept apart so switching template between the two never mixes them.
 var _flyer_tables: Dictionary = {}
 var _point_tables: Dictionary = {}
+## species -> {speed_min, speed_max, scale}: the species-wide settings being edited.
+## Seeded from the registry (and any unsaved edits the placement tool is holding), so a
+## speed set on the Morning table is already there on the Night table. Only the ones
+## that differ from the registry go into the draft.
+var _species_settings: Dictionary = {}
 ## Which time of day's table is on screen.
 var _table_time: String = ""
 var _time_opt: OptionButton = null
@@ -78,6 +99,7 @@ var _pattern_opt: OptionButton = null
 var _distance: SpinBox = null
 var _speed: SpinBox = null
 var _axis_opt: OptionButton = null
+var _flee_opt: OptionButton = null
 var _rows: Dictionary = {}
 var _table_box: VBoxContainer = null
 var _total_label: Label = null
@@ -94,8 +116,10 @@ var _picker: AssetPickerOverlay = null
 ## `point` is the spawn point being edited, or {} for a new one. `open_flyers` opens
 ## straight onto the map's flyer tables (N -> FLYER TABLES).
 func setup(map_data: String, working_doc: Dictionary, point: Dictionary,
-		known_additions: Dictionary = {}, open_flyers: bool = false) -> void:
+		known_additions: Dictionary = {}, open_flyers: bool = false,
+		species_settings: Dictionary = {}) -> void:
 	_map_data = map_data
+	_species_settings = species_settings.duplicate(true)
 	_doc = working_doc
 	_original = point
 	_is_new = point.is_empty()
@@ -121,6 +145,7 @@ func _load_point(point: Dictionary) -> void:
 	_distance.value = float(point.get("distance", PokemonStatic.DEFAULT_DISTANCE))
 	_speed.value = float(point.get("speed", PokemonStatic.DEFAULT_SPEED))
 	_select_option(_axis_opt, str(point.get("axis", "horizontal")))
+	_select_option(_flee_opt, str(point.get("flee", "random")))
 	_point_tables = OverworldPokemonData.normalise_point_tables(point.get("tables")).duplicate(true)
 
 
@@ -159,8 +184,8 @@ func _build() -> void:
 	columns.add_theme_constant_override("separation", COLUMN_GAP)
 	scroll.add_child(columns)
 
-	var left := _column(columns)
-	var right := _column(columns)
+	var left := _column(columns, LEFT_COLUMN_WIDTH)
+	var right := _column(columns, RIGHT_COLUMN_WIDTH)
 
 	# ---- left: template + spawn settings ----
 	_heading(left, "TEMPLATE")
@@ -185,7 +210,7 @@ func _build() -> void:
 
 	_desc = Label.new()
 	_desc.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	_desc.custom_minimum_size = Vector2(COLUMN_WIDTH, 0)
+	_desc.custom_minimum_size = Vector2(LEFT_COLUMN_WIDTH, 0)
 	_desc.add_theme_font_size_override("font_size", FORM_FONT_SIZE - 2)
 	_desc.add_theme_color_override("font_color", Color(0.8, 0.84, 0.92))
 	left.add_child(_desc)
@@ -234,6 +259,15 @@ func _build() -> void:
 		_axis_opt.set_item_metadata(_axis_opt.item_count - 1, axis)
 	_rows["axis"] = _add_row(left, "Patrol axis", _axis_opt)
 
+	# Skittish only: which way it bolts when the player gets close.
+	_flee_opt = OptionButton.new()
+	_flee_opt.fit_to_longest_item = false
+	_flee_opt.add_theme_font_size_override("font_size", FORM_FONT_SIZE)
+	for direction in OverworldPokemonData.SKITTISH_FLEE_DIRECTIONS:
+		_flee_opt.add_item(str(direction).capitalize())
+		_flee_opt.set_item_metadata(_flee_opt.item_count - 1, direction)
+	_rows["flee"] = _add_row(left, "Runs away", _flee_opt)
+
 	# ---- right: species table ----
 	_heading(right, "SPECIES TABLE")
 	var add_row := HBoxContainer.new()
@@ -259,7 +293,7 @@ func _build() -> void:
 
 	_table_box = VBoxContainer.new()
 	_table_box.add_theme_constant_override("separation", 6)
-	_table_box.custom_minimum_size = Vector2(COLUMN_WIDTH, 0)
+	_table_box.custom_minimum_size = Vector2(RIGHT_COLUMN_WIDTH, 0)
 	right.add_child(_table_box)
 
 	# ---- footer ----
@@ -298,9 +332,9 @@ func _build() -> void:
 	_root.add_child(_cancel_btn)
 
 
-func _column(parent: Control) -> VBoxContainer:
+func _column(parent: Control, width: int) -> VBoxContainer:
 	var col := VBoxContainer.new()
-	col.custom_minimum_size = Vector2(COLUMN_WIDTH, 0)
+	col.custom_minimum_size = Vector2(width, 0)
 	col.add_theme_constant_override("separation", ROW_GAP)
 	parent.add_child(col)
 	return col
@@ -336,7 +370,20 @@ func _spin(min_value: float, max_value: float, step: float, value: float, suffix
 	spin.step = step
 	spin.value = value
 	spin.suffix = suffix
-	spin.get_line_edit().add_theme_font_size_override("font_size", FORM_FONT_SIZE)
+	spin.add_theme_constant_override("buttons_width", SPIN_BUTTONS_WIDTH)
+	var field := spin.get_line_edit()
+	field.add_theme_font_size_override("font_size", FORM_FONT_SIZE)
+	# custom_minimum_size is only a floor: a LineEdit refuses to go narrower than
+	# `minimum_character_width` (4 "M"s) plus its stylebox's side padding, so without
+	# these the box widths above were silently ignored and every row ran off the right
+	# edge, taking the bin button with it.
+	field.add_theme_constant_override("minimum_character_width", 0)
+	for state in ["normal", "focus", "read_only"]:
+		var box := DebugFormTheme._flat(DebugFormTheme.PAPER_DISABLED if state == "read_only" else DebugFormTheme.PAPER,
+				DebugFormTheme.FOCUS_BORDER if state == "focus" else Color(0, 0, 0, 0), 2 if state == "focus" else 0)
+		box.content_margin_left = SPIN_FIELD_PADDING
+		box.content_margin_right = SPIN_FIELD_PADDING
+		field.add_theme_stylebox_override(state, box)
 	return spin
 
 
@@ -375,6 +422,9 @@ func _on_template_changed() -> void:
 		_title.text = "NEW POKÉMON SPAWN  —  %s" % _map_data
 	else:
 		_title.text = "EDIT POKÉMON SPAWN  —  %s" % str(_original.get("id", "?"))
+		var linked := _group_size()
+		if linked > 1:
+			_title.text += "   (linked: edits apply to all %d)" % linked
 	# Flyer tables have no position to place, so SAVE writes straight away and the
 	# screen stays up; a spawn point is still handed to the tool to be placed.
 	_confirm_btn.text = "SAVE" if is_flyer else "CONFIRM"
@@ -397,7 +447,19 @@ func _on_template_changed() -> void:
 	_rows["distance"].visible = patrols
 	_rows["speed"].visible = patrols
 	_rows["axis"].visible = is_static and _option_value(_pattern_opt) == "patrol_line"
+	_rows["flee"].visible = _template == "skittish"
 	_rebuild_table()
+
+
+## How many spawn points share the edited point's group, itself included. Confirming
+## rewrites the rules of every one of them (PlacementTool._on_pokemon_editor_confirmed).
+func _group_size() -> int:
+	var group := str(_original.get("group", _original.get("id", "")))
+	var count := 0
+	for other in _doc.get("spawn_points", []):
+		if other is Dictionary and str(other.get("group", other.get("id", ""))) == group:
+			count += 1
+	return count
 
 
 # ============================================================
@@ -547,8 +609,10 @@ func _rebuild_table() -> void:
 	for i in _table.size():
 		var entry: Dictionary = _table[i]
 		var species := str(entry.get("species", ""))
+		# One line per species. Every piece before REMOVE has a fixed width, so each
+		# box sits at the same x on every row.
 		var row := HBoxContainer.new()
-		row.add_theme_constant_override("separation", 12)
+		row.add_theme_constant_override("separation", ROW_ITEM_GAP)
 
 		var icon := TextureRect.new()
 		icon.custom_minimum_size = ICON_SIZE
@@ -557,80 +621,182 @@ func _rebuild_table() -> void:
 		icon.texture = AssetPickerOverlay.pokemon_frame(species)
 		row.add_child(icon)
 
-		var name_label := Label.new()
-		name_label.text = OverworldPokemonData.display_name(species)
-		if not known.has(species):
-			name_label.text += "   (new to template)"
-			name_label.add_theme_color_override("font_color", Color(1.0, 0.75, 0.35))
+		var name_label := _caption(row, OverworldPokemonData.display_name(species))
+		name_label.custom_minimum_size = Vector2(NAME_WIDTH, 0)
+		name_label.clip_text = true
 		name_label.tooltip_text = species
 		name_label.mouse_filter = Control.MOUSE_FILTER_PASS
-		name_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-		name_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		name_label.add_theme_font_size_override("font_size", FORM_FONT_SIZE)
-		row.add_child(name_label)
+		if not known.has(species):
+			# Orange + "*" rather than a long suffix, which would push the columns out.
+			name_label.text += " *"
+			name_label.tooltip_text = species + " -- new to this template, added to it on save"
+			name_label.add_theme_color_override("font_color", Color(1.0, 0.75, 0.35))
 
-		var percent := _spin(0, 100, 1, float(entry.get("percent", 0)), " %")
-		percent.custom_minimum_size = Vector2(150, 0)
+		_caption(row, "Rate")
+		var percent := _spin(0, 100, 1, float(entry.get("percent", 0)), "%")
+		percent.tooltip_text = "How often this species is picked, as a share of the table"
+		percent.custom_minimum_size = Vector2(PERCENT_SPIN_WIDTH, 0)
 		percent.value_changed.connect(func(v: float):
 			entry["percent"] = v
 			_revalidate())
 		row.add_child(percent)
 
+		_caption(row, "Scale")
+		var settings := _settings_for(species)
+		var scale_box := _spin(OverworldPokemonData.MIN_SCALE, OverworldPokemonData.MAX_SCALE, 0.1,
+				float(settings["scale"]), "x")
+		scale_box.tooltip_text = "Size on the map (1.0 = normal). Belongs to the species: the same on every table and map."
+		scale_box.custom_minimum_size = Vector2(SCALE_SPIN_WIDTH, 0)
+		scale_box.value_changed.connect(func(v: float): settings["scale"] = snappedf(v, 0.1))
+		row.add_child(scale_box)
+
+		if is_flyer:
+			_add_flyer_controls(row, entry)
+		elif _template == "skittish":
+			_add_wander_control(row, species)
+
+		# Pushes REMOVE to the right edge, so it lines up too.
+		var spacer := Control.new()
+		spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		row.add_child(spacer)
+
+		# A bin, like the deck builder's delete-deck button, instead of the word REMOVE.
 		var remove := Button.new()
-		remove.text = "REMOVE"
-		remove.add_theme_font_size_override("font_size", FORM_FONT_SIZE)
+		remove.tooltip_text = "Remove %s from this table" % OverworldPokemonData.display_name(species)
+		remove.custom_minimum_size = Vector2(REMOVE_BUTTON_SIZE, REMOVE_BUTTON_SIZE)
+		remove.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		# MOUSE_FILTER_IGNORE so the glyph never eats the click meant for the button.
+		var bin := Control.new()
+		bin.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		bin.set_anchors_preset(Control.PRESET_FULL_RECT)
+		# Dark ink: the debug form's buttons are white.
+		bin.draw.connect(func(): UIKit.draw_trash_icon(bin, DebugFormTheme.INK))
+		remove.add_child(bin)
 		remove.pressed.connect(func():
 			_table.erase(entry)
 			_rebuild_table())
 		row.add_child(remove)
 
 		_table_box.add_child(row)
-		# Flyers only: a second line with this species' flock size, speed and spin.
-		if is_flyer:
-			_table_box.add_child(_flyer_line(entry))
 	_revalidate()
 
 
-## Flock size, speed, spin and erratic for a row that doesn't have them yet. Spin and
-## erratic start from the species' registry keys (the Hoppip line spins, Zubat and
-## Golbat are erratic), then belong to the row.
+## Flock size for a flyer row that doesn't have one yet. (Speed, scale, spin and
+## erratic are species-wide -- see _settings_for.)
 func _fill_flyer_defaults(entry: Dictionary) -> void:
-	var info := OverworldPokemonData.species_info(str(entry.get("species", "")))
 	var defaults := {
 		"min": OverworldPokemonData.DEFAULT_FLOCK_MIN,
 		"max": OverworldPokemonData.DEFAULT_FLOCK_MAX,
-		"speed_min": OverworldPokemonData.DEFAULT_FLYER_SPEED_MIN,
-		"speed_max": OverworldPokemonData.DEFAULT_FLYER_SPEED_MAX,
-		"spin": bool(info.get("spin", false)),
-		"erratic": bool(info.get("erratic", false)),
 	}
 	for key in defaults:
 		if not entry.has(key):
 			entry[key] = defaults[key]
 
 
-## The line under a flyer's species row:
+## The flyer-only part of a species row, added in place after Scale:
 ## Flock [min]–[max]  Speed [min]–[max]  [x] Spin  [x] Erratic   (speed in px/s)
-func _flyer_line(entry: Dictionary) -> HBoxContainer:
+func _add_flyer_controls(line: HBoxContainer, entry: Dictionary) -> void:
 	_fill_flyer_defaults(entry)
-	var line := HBoxContainer.new()
-	line.add_theme_constant_override("separation", 10)
-	var indent := Control.new()
-	indent.custom_minimum_size = Vector2(FLYER_LINE_INDENT, 0)
-	line.add_child(indent)
 	_range_pair(line, "Flock", entry, "min", "max", OverworldPokemonData.FLOCK_LIMIT,
 			FLOCK_SPIN_WIDTH, "flock of this species")
-	_range_pair(line, "Speed", entry, "speed_min", "speed_max", OverworldPokemonData.FLYER_SPEED_LIMIT,
-			SPEED_SPIN_WIDTH, "speed (px/s) a flock of this species flies at")
-	_flag_box(line, entry, "spin", "Spin",
-			"Turns round and round as it flies; the faster it flies, the faster it spins")
-	_flag_box(line, entry, "erratic", "Erratic",
-			"A big, jerky up-and-down bob instead of the gentle one -- bat-like flight")
-	return line
+	# Writes the species' settings, not the row: the same speed on every table and map.
+	_range_pair(line, "Speed", _settings_for(str(entry.get("species", ""))), "speed_min", "speed_max",
+			OverworldPokemonData.FLYER_SPEED_LIMIT, SPEED_SPIN_WIDTH,
+			"speed (px/s) this species flies at, on every table and map")
+	# Species-wide, like Speed: ticking Spin here makes it spin on every table and map.
+	var settings := _settings_for(str(entry.get("species", "")))
+	_flag_box(line, settings, "spin", "Spin",
+			"Turns round and round as it flies, faster the faster it flies. Same on every table and map.")
+	var styles: Array = [
+		_flag_box(line, settings, "erratic", "Erratic",
+				"A big, jerky up-and-down bob instead of the gentle one -- bat-like flight. Same on every table and map."),
+		_flag_box(line, settings, "bug", "Bug",
+				"A smaller, smoother wobble that speeds up and slows down as it goes -- butterfly flight. Same on every table and map."),
+		_flag_box(line, settings, "ghost", "Ghost",
+				"Slow, wide drifting that fades out and back in every 5-15 seconds. Same on every table and map."),
+	]
+	# Erratic, Bug and Ghost are alternative movement styles: ticking one clears the others.
+	for box in styles:
+		var this_box: CheckBox = box
+		this_box.toggled.connect(func(on: bool):
+			if not on:
+				return
+			for other in styles:
+				if other != this_box:
+					(other as CheckBox).button_pressed = false)
+
+
+## The species-wide settings for `species`, filled in from the registry the first time
+## it is asked for. The boxes write straight into this dictionary.
+func _settings_for(species: String) -> Dictionary:
+	var settings: Dictionary = _species_settings.get(species, {})
+	var speed_range := OverworldPokemonData.species_speed_range(species)
+	var saved := {
+		"speed_min": speed_range.x,
+		"speed_max": speed_range.y,
+		"scale": OverworldPokemonData.species_scale(species),
+		"wander_speed": int(OverworldPokemonData.species_wander_speed(species)),
+		"spin": bool(OverworldPokemonData.species_info(species).get("spin", false)),
+		"erratic": bool(OverworldPokemonData.species_info(species).get("erratic", false)),
+		"bug": bool(OverworldPokemonData.species_info(species).get("bug", false)),
+		"ghost": bool(OverworldPokemonData.species_info(species).get("ghost", false)),
+	}
+	for key in saved:
+		if not settings.has(key):
+			settings[key] = saved[key]
+	_species_settings[species] = settings
+	return settings
+
+
+## Species settings that differ from what the registry already says -> the draft.
+func _changed_species_settings() -> Dictionary:
+	var out: Dictionary = {}
+	for species in _species_settings:
+		var settings := _settings_for(str(species))
+		var speed_range := OverworldPokemonData.species_speed_range(str(species))
+		var changes: Dictionary = {}
+		if int(settings["speed_min"]) != speed_range.x:
+			changes["speed_min"] = int(settings["speed_min"])
+		if int(settings["speed_max"]) != speed_range.y:
+			changes["speed_max"] = int(settings["speed_max"])
+		var scale_now := snappedf(float(settings["scale"]), 0.1)
+		if not is_equal_approx(scale_now, OverworldPokemonData.species_scale(str(species))):
+			changes["scale"] = scale_now
+		if int(settings["wander_speed"]) != int(OverworldPokemonData.species_wander_speed(str(species))):
+			changes["wander_speed"] = int(settings["wander_speed"])
+		var info := OverworldPokemonData.species_info(str(species))
+		for flag in ["spin", "erratic", "bug", "ghost"]:
+			if bool(settings[flag]) != bool(info.get(flag, false)):
+				changes[flag] = bool(settings[flag])
+		if not changes.is_empty():
+			out[species] = changes
+	return out
+
+
+## Skittish rows: the species' wandering speed (world px/s), the same on every table and
+## map. Running away is always the fixed, faster-than-the-player FLEE_SPEED.
+func _add_wander_control(line: HBoxContainer, species: String) -> void:
+	var settings := _settings_for(species)
+	_caption(line, "Wander")
+	var box := _spin(1, OverworldPokemonData.WANDER_SPEED_LIMIT, 1, int(settings["wander_speed"]))
+	box.tooltip_text = "Wandering speed (px/s) of this species, on every table and map. Running away is always fast."
+	box.custom_minimum_size = Vector2(SPEED_SPIN_WIDTH, 0)
+	box.value_changed.connect(func(v: float): settings["wander_speed"] = int(v))
+	line.add_child(box)
+
+
+## A vertically-centred text label added to a row.
+func _caption(line: HBoxContainer, text: String) -> Label:
+	var label := Label.new()
+	label.text = text
+	label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	label.add_theme_font_size_override("font_size", FORM_FONT_SIZE)
+	line.add_child(label)
+	return label
 
 
 ## A tick box writing true / false to `key` on `entry`.
-func _flag_box(line: HBoxContainer, entry: Dictionary, key: String, text: String, tip: String) -> void:
+func _flag_box(line: HBoxContainer, entry: Dictionary, key: String, text: String, tip: String) -> CheckBox:
 	var box := CheckBox.new()
 	box.text = text
 	box.tooltip_text = tip
@@ -638,6 +804,7 @@ func _flag_box(line: HBoxContainer, entry: Dictionary, key: String, text: String
 	box.add_theme_font_size_override("font_size", FORM_FONT_SIZE)
 	box.toggled.connect(func(on: bool): entry[key] = on)
 	line.add_child(box)
+	return box
 
 
 ## "Caption [low] – [high]", each box writing its key on `entry`.
@@ -685,7 +852,8 @@ func _problems() -> Array:
 				var bird := OverworldPokemonData.display_name(str(row.get("species", "")))
 				if int(row.get("min", 1)) > int(row.get("max", 1)):
 					out.append("%s: %s flock min is bigger than max" % [time_name, bird])
-				if int(row.get("speed_min", 1)) > int(row.get("speed_max", 1)):
+				var speeds := _settings_for(str(row.get("species", "")))
+				if int(speeds["speed_min"]) > int(speeds["speed_max"]):
 					out.append("%s: %s speed min is bigger than max" % [time_name, bird])
 	# The map having no flyers is fine; a spawn point that can never spawn isn't.
 	if not any_rows and _template != "flyer":
@@ -737,10 +905,6 @@ func _clean_rows(rows: Array) -> Array:
 		if _template == "flyer":
 			clean["min"] = int(row.get("min", OverworldPokemonData.DEFAULT_FLOCK_MIN))
 			clean["max"] = int(row.get("max", OverworldPokemonData.DEFAULT_FLOCK_MAX))
-			clean["speed_min"] = int(row.get("speed_min", OverworldPokemonData.DEFAULT_FLYER_SPEED_MIN))
-			clean["speed_max"] = int(row.get("speed_max", OverworldPokemonData.DEFAULT_FLYER_SPEED_MAX))
-			clean["spin"] = bool(row.get("spin", false))
-			clean["erratic"] = bool(row.get("erratic", false))
 		out.append(clean)
 	return out
 
@@ -752,6 +916,7 @@ func _build_draft() -> Dictionary:
 			"kind": "flyers",
 			"flyers": tables,
 			"registry_additions": _registry_additions(),
+			"species_settings": _changed_species_settings(),
 		}
 
 	var id := str(_original.get("id", "")) if not _is_new \
@@ -760,9 +925,13 @@ func _build_draft() -> Dictionary:
 		"id": id,
 		"template": _template,
 		"at": _original.get("at", [0, 0]),
+		# The linked-clone group: kept on an edit, a brand new point starts its own.
+		"group": str(_original.get("group", id)) if not _is_new else id,
 	}
 	if _template == "burying" and _up_time.value > 0.0:
 		point["up_time"] = snappedf(_up_time.value, 0.1)
+	if _template == "skittish":
+		point["flee"] = _option_value(_flee_opt)
 	if _template == "static":
 		var pattern := _option_value(_pattern_opt)
 		point["pattern"] = pattern
@@ -779,6 +948,7 @@ func _build_draft() -> Dictionary:
 		"point": point,
 		"delete": false,
 		"registry_additions": _registry_additions(),
+		"species_settings": _changed_species_settings(),
 	}
 
 

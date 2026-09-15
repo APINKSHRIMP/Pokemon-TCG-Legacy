@@ -125,5 +125,5 @@ func _next(phase: int) -> void:
 
 
 func _splash() -> void:
-	var width := cell.x * SPRITE_SCALE * 0.5
+	var width := cell.x * draw_scale() * 0.5
 	PixelBurst.fire(get_parent(), global_position, SPLASH_COLOURS, SPLASH_COUNT, SPLASH_SPEED, width, Z + 1)

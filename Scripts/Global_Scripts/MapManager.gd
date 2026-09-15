@@ -31,7 +31,7 @@ var _constant_data_loaded: bool = false
 
 var current_opponent: Node = null
 var current_npc: Node = null
-## The overworld Pokémon (rodent / static template) currently saying its name.
+## The overworld Pokémon (skittish / static template) currently saying its name.
 var current_pokemon: Node = null
 
 # ------------------------------------------------------------
@@ -1407,7 +1407,7 @@ func _on_pack_opening_finished() -> void:
 # INTERACTION — NPCs
 # ============================================================
 
-## Space on an overworld Pokémon (rodent / static templates). For now it just says
+## Space on an overworld Pokémon (skittish / static templates). For now it just says
 ## its own name; OverworldPokemon.cry_text() is the one place that line comes from.
 func _on_player_pokemon_interact(pokemon: Node) -> void:
 	if message_panel.visible or _validation_popup_active:
@@ -2714,10 +2714,11 @@ func _on_validation_popup_closed() -> void:
 # ============================================================
 # DEBUG / TESTING CHEATS (overworld only)
 # ------------------------------------------------------------
-# DEL opens the debug menu (Scripts/Utilities/Debug_Menu.gd). It is the only
-# overworld debug key: time of day, jump to a date, set cash, +1 defeated,
-# the TEST match, the placement tool's three modes and the name cheats are
-# all buttons on it, and those buttons call the debug_* functions below.
+# DEL opens the debug menu (Scripts/Utilities/Debug_Menu.gd): time of day, jump
+# to a date, set cash, +1 defeated, the TEST match, the placement tool's three
+# modes and the name cheats are all buttons on it, and those buttons call the
+# debug_* functions below. The most used also keep keys: H/J/K/L time of day,
+# 1-0 - = days 1-12, [ day 0, F placement (edit), N placement (create screen).
 #
 # A date or time change resets the current-period defeated count to 0, then
 # reloads the active map scene in place so its date/time characters are
@@ -2784,16 +2785,54 @@ func _unhandled_input(event: InputEvent) -> void:
 	if is_placement_tool_open() or is_debug_menu_open():
 		return
 
-	# DEL is the one overworld debug key. Everything that used to have a key of its own
-	# (time, date, cash, defeated count, TEST match, placement) is a button on the menu.
-	if event.keycode != KEY_DELETE:
-		return
 	# Not over a message box, cutscene or the main menu: they hold the player still
-	# too, and closing the debug menu would let the player walk away from them.
+	# too, and the debug menu (or a map reload) would let the player walk away from them.
 	if _player != null and is_instance_valid(_player) and "can_move" in _player and not _player.can_move:
 		return
+
+	# DEL opens the debug menu, which has a button for everything. The most used ones
+	# also keep a key of their own:
+	#   H J K L       time of day: Morning / Afternoon / Evening / Night
+	#   1-9 0 - =     day 1-12        [   day 0 (the match-effects test day)
+	#   F             placement tool, edit mode
+	#   N             placement tool, straight to the create screen
+	var new_time := ""
+	var new_date := -1
+	match event.keycode:
+		KEY_DELETE:
+			get_viewport().set_input_as_handled()
+			_open_debug_menu()
+			return
+		KEY_F, KEY_N:
+			if event.ctrl_pressed:
+				return
+			get_viewport().set_input_as_handled()
+			debug_open_placement_tool(PlacementTool.Mode.EDIT if event.keycode == KEY_F else PlacementTool.Mode.NEW)
+			return
+		KEY_H: new_time = "Morning"
+		KEY_J: new_time = "Afternoon"
+		KEY_K: new_time = "Evening"
+		KEY_L: new_time = "Night"
+		KEY_1, KEY_KP_1: new_date = 1
+		KEY_2, KEY_KP_2: new_date = 2
+		KEY_3, KEY_KP_3: new_date = 3
+		KEY_4, KEY_KP_4: new_date = 4
+		KEY_5, KEY_KP_5: new_date = 5
+		KEY_6, KEY_KP_6: new_date = 6
+		KEY_7, KEY_KP_7: new_date = 7
+		KEY_8, KEY_KP_8: new_date = 8
+		KEY_9, KEY_KP_9: new_date = 9
+		KEY_0, KEY_KP_0: new_date = 10
+		KEY_MINUS:       new_date = 11
+		KEY_EQUAL:       new_date = 12
+		KEY_BRACKETLEFT: new_date = 0
+		_:
+			return
 	get_viewport().set_input_as_handled()
-	_open_debug_menu()
+	if new_date != -1:
+		debug_set_date(new_date)
+	else:
+		debug_set_time(new_time)
 
 
 # ---- DEL debug menu: opening, closing, and what its buttons call ----------------

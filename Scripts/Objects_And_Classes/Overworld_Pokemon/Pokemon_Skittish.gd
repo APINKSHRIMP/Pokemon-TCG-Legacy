@@ -1,40 +1,42 @@
-class_name PokemonRodent
+class_name PokemonSkittish
 extends OverworldPokemon
 
-## RODENT template -- Rattata, Sentret, Zigzagoon... Wanders quickly around its spawn
-## point with real collision, bouncing off anything it runs into.
+## SKITTISH template -- Rattata, Sentret, Zigzagoon, Ekans... Wanders around its spawn
+## point with real collision, bouncing off anything it runs into, at its species' own
+## wander speed (registry `wander_speed`).
 ##
-## Walk up to it at a sneaking pace and Space makes it say its name. Come at it
-## running (Shift) or with the walking-speed option on a preset outside
-## SNEAK_SPEED_PRESETS and it bolts directly away from you, very fast, until it is
-## off screen, then despawns for the rest of this map load.
+## When the player comes within SCARE_DISTANCE it bolts sideways -- left, right, a
+## random one of the two, or away from the player, per the spawn point's `flee` -- very
+## fast and straight through anything in the way, then fades out and is gone for the
+## rest of this map load. It is drawn under every tree layer, so it can vanish behind
+## the trees as it runs.
 
 # ---- tweakables -------------------------------------------------------------
-const Z := 1
-const WANDER_SPEED := 85.0
+## Absolute z. The map's ground tiles and tree trunks are 0 and every tree top / tree
+## wall is 1 or higher, and the spawner is added after the tile maps, so 0 draws it
+## over the ground but behind the trees (Celeste Harbour and Verdant Forest).
+const Z := 0
 const WANDER_RADIUS := 140.0
 const STEP_MIN := 24.0
 const STEP_MAX := 70.0
+## The walk cycle follows the wander speed (the default speed = normal), within these.
+const WANDER_ANIM_MIN := 0.25
+const WANDER_ANIM_MAX := 1.5
 ## Seconds it stands still between dashes.
 const PAUSE_MIN := 0.5
 const PAUSE_MAX := 2.2
 ## Bounces off obstacles allowed in one dash before it gives up and pauses.
 const MAX_BOUNCES := 3
-## A moving player this close can scare it.
-const SCARE_RADIUS := 72.0
-const FLEE_SPEED := 320.0
+## The player this close (world px) sends it running. 100 world px = 250 px on screen at
+## the default 2.5x zoom.
+const SCARE_DISTANCE := 100.0
+## The same for every species, and always faster than the player: the fastest normal
+## player is 160 px/s x 1.6 (Fast walking option) x 2 (Shift) = 512 px/s.
+const FLEE_SPEED := 640.0
 const FLEE_ANIM_SPEED := 3.0
-## Safety net: gone after this long even if it is somehow still on screen.
-const FLEE_TIMEOUT := 6.0
-## If it is pinned against something for this long while fleeing, it drops its
-## collision and squeezes through rather than grinding in place on camera.
-const STUCK_PHASE_TIME := 0.25
-const OFFSCREEN_MARGIN := 24.0
-## Stops wandering when the player stands this close (so it can be talked to).
-const PLAYER_BLOCK_DISTANCE := 26.0
-## Walking-speed presets (GameState.WALKING_SPEED_PRESETS keys) that let the player
-## walk right up to one without scaring it. Shift always scares.
-const SNEAK_SPEED_PRESETS := ["very_slow", "slow", "normal"]
+## Seconds of running before it starts to fade, and how long the fade takes.
+const FLEE_FADE_DELAY := 0.2
+const FLEE_FADE_TIME := 1.0
 const COLLISION_SIZE := Vector2(14, 10)
 const COLLISION_OFFSET := Vector2(0, 5)
 # -----------------------------------------------------------------------------
@@ -48,7 +50,7 @@ var _pause: float = 0.0
 var _bounces: int = 0
 var _flee_dir: Vector2 = Vector2.RIGHT
 var _flee_time: float = 0.0
-var _stuck_time: float = 0.0
+var _wander_speed: float = OverworldPokemonData.DEFAULT_SKITTISH_WANDER_SPEED
 
 
 func _template_ready() -> void:
@@ -61,12 +63,14 @@ func _template_ready() -> void:
 	collision_mask = 1 | 4
 	var shape := CollisionShape2D.new()
 	var rect := RectangleShape2D.new()
-	rect.size = COLLISION_SIZE
+	# A scaled-up Pokémon gets a body to match.
+	rect.size = COLLISION_SIZE * size_scale
 	shape.shape = rect
-	shape.position = COLLISION_OFFSET
+	shape.position = COLLISION_OFFSET * size_scale
 	add_child(shape)
 	add_to_group("pokemon")
 	animating = false
+	_wander_speed = OverworldPokemonData.species_wander_speed(species)
 	_home = global_position
 	_pause = randf_range(PAUSE_MIN, PAUSE_MAX)
 	set_facing(DIRECTIONS[randi() % DIRECTIONS.size()])
@@ -98,19 +102,15 @@ func _physics_process(delta: float) -> void:
 		return
 
 	# WANDER
-	var player := player_node()
-	if player != null and global_position.distance_to(player.global_position) < PLAYER_BLOCK_DISTANCE:
-		_go_idle(randf_range(PAUSE_MIN, PAUSE_MAX))
-		return
 	var to_target := _target - global_position
 	if to_target.length() < 2.0:
 		_go_idle(randf_range(PAUSE_MIN, PAUSE_MAX))
 		return
 	var heading := to_target.normalized()
-	velocity = heading * WANDER_SPEED
+	velocity = heading * _wander_speed
 	face_vector(heading)
 	move_and_slide()
-	if get_slide_collision_count() > 0 and get_real_velocity().length() < WANDER_SPEED * 0.5:
+	if get_slide_collision_count() > 0 and get_real_velocity().length() < _wander_speed * 0.5:
 		_bounces += 1
 		if _bounces > MAX_BOUNCES:
 			_go_idle(randf_range(PAUSE_MIN, PAUSE_MAX))
@@ -134,6 +134,9 @@ func _pick_target() -> void:
 	_bounces = 0
 	_state = State.WANDER
 	animating = true
+	# A slow Ekans shuffles, a quick Sentret scurries: the walk cycle keeps pace.
+	anim_speed = clampf(_wander_speed / OverworldPokemonData.DEFAULT_SKITTISH_WANDER_SPEED,
+			WANDER_ANIM_MIN, WANDER_ANIM_MAX)
 	_apply_region()
 
 
@@ -145,36 +148,38 @@ func _go_idle(pause: float) -> void:
 	_apply_region()
 
 
-# ---- scaring ----------------------------------------------------------------
+# ---- running away -----------------------------------------------------------
 
+## Close enough, whatever the player is doing -- unless a message box or cutscene has
+## the player held still.
 func _should_flee() -> bool:
 	var player := player_node()
 	if player == null:
 		return false
 	if "can_move" in player and not player.can_move:
 		return false
-	if not ("is_moving" in player and player.is_moving):
-		return false
-	if global_position.distance_to(player.global_position) > SCARE_RADIUS:
-		return false
-	if Input.is_key_pressed(KEY_SHIFT):
-		return true
-	return not SNEAK_SPEED_PRESETS.has(GameState.walking_speed_setting)
+	return global_position.distance_to(player.global_position) <= SCARE_DISTANCE
 
 
 func _start_flee() -> void:
-	var player := player_node()
 	_state = State.FLEE
 	_flee_time = 0.0
-	_stuck_time = 0.0
-	if player != null:
-		_flee_dir = global_position - player.global_position
-	if _flee_dir.length() < 0.001:
-		_flee_dir = Vector2.from_angle(randf() * TAU)
-	_flee_dir = _flee_dir.normalized()
-	# Off the NPC layer so the player's InteractionArea lets go of it -- no bubble,
-	# no Space, on something that is running away.
+	_flee_dir = Vector2.LEFT if randf() < 0.5 else Vector2.RIGHT
+	match str(spawn_point.get("flee", "random")):
+		"left":
+			_flee_dir = Vector2.LEFT
+		"right":
+			_flee_dir = Vector2.RIGHT
+		"away_from_player":
+			# Sideways only: whichever way takes it further from the player. Level with
+			# the player (or no player) keeps the random pick above.
+			var player := player_node()
+			if player != null and not is_equal_approx(player.global_position.x, global_position.x):
+				_flee_dir = Vector2.RIGHT if player.global_position.x < global_position.x else Vector2.LEFT
+	# Off the NPC layer so the player's InteractionArea lets go of it (no bubble, no
+	# Space), and no mask so it runs straight through fences and behind trees.
 	collision_layer = 0
+	collision_mask = 0
 	hide_bubble()
 	remove_from_group("pokemon")
 	animating = true
@@ -185,16 +190,11 @@ func _start_flee() -> void:
 
 func _process_flee(delta: float) -> void:
 	_flee_time += delta
-	velocity = _flee_dir * FLEE_SPEED
-	move_and_slide()
-	if get_real_velocity().length() < FLEE_SPEED * 0.3:
-		_stuck_time += delta
-		if _stuck_time >= STUCK_PHASE_TIME:
-			collision_mask = 0
-	else:
-		_stuck_time = 0.0
-	face_vector(get_real_velocity() if get_real_velocity().length() > 1.0 else _flee_dir)
-	if _flee_time > FLEE_TIMEOUT or not view_rect().grow(OFFSCREEN_MARGIN).has_point(global_position):
+	global_position += _flee_dir * FLEE_SPEED * delta
+	var fade_t := (_flee_time - FLEE_FADE_DELAY) / FLEE_FADE_TIME
+	if fade_t > 0.0:
+		modulate.a = clampf(1.0 - fade_t, 0.0, 1.0)
+	if fade_t >= 1.0:
 		despawn()
 
 

@@ -973,6 +973,34 @@ static func hold_buttons(buttons: Array, held: bool) -> void:
 ## desaturated chrome bar falls back to its accent — UITheme.selection_for()
 ## owns that decision and Build_UI_Themes.gd bakes the button face from the same
 ## call, so the two can never disagree.
+## Draws a small trash bin filling `c`: lid handle, lid, body outline and two slots. Hand-drawn
+## because there is no bin icon in Image_Assets, and every measurement is a fraction of `c`, so
+## it scales with whatever button it sits on. Connect it to a full-rect, MOUSE_FILTER_IGNORE
+## child Control's `draw` signal. Used by the deck builder's delete-deck button and the Pokémon
+## spawn editor's remove-species button.
+static func draw_trash_icon(c: Control, colour: Color) -> void:
+	var w := c.size.x
+	var h := c.size.y
+	if w <= 0.0 or h <= 0.0:
+		return
+	var cx := w * 0.5
+	var body_w := w * 0.44
+	var body_h := h * 0.42
+	var body_top := h * 0.34
+	var thick := maxf(1.0, h * 0.055)
+
+	# handle, then the lid just under it
+	c.draw_rect(Rect2(cx - body_w * 0.20, body_top - h * 0.20, body_w * 0.40, h * 0.055), colour)
+	c.draw_rect(Rect2(cx - body_w * 0.62, body_top - h * 0.13, body_w * 1.24, h * 0.065), colour)
+	# body outline
+	c.draw_rect(Rect2(cx - body_w * 0.5, body_top, body_w, body_h), colour, false, thick)
+	# two slots down the body
+	var slot_top := body_top + body_h * 0.20
+	var slot_h := body_h * 0.60
+	c.draw_rect(Rect2(cx - body_w * 0.20 - thick * 0.5, slot_top, thick, slot_h), colour)
+	c.draw_rect(Rect2(cx + body_w * 0.20 - thick * 0.5, slot_top, thick, slot_h), colour)
+
+
 static func selection_colour() -> Color:
 	var ui := _ui()
 	return ui.selection_for(ui.THEMES[ui.current])

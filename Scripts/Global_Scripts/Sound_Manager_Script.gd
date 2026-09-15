@@ -26,6 +26,8 @@ extends Node
 
 const MUSIC_BUS    := "Music"
 const SFX_BUS      := "SFX"
+## Overworld Pokémon cries, with their own Options slider (GameState.set_cries_volume).
+const CRIES_BUS    := "Cries"
 const AUDITION_BUS := "Audition"
 
 # TWEAKABLE — the fixed 0.0 - 1.0 level the debug music audition plays at. Matches the default music
@@ -42,7 +44,7 @@ func _ready() -> void:
 # call from set_bus_volume() as well — GameState applies the saved volumes during its own _ready()
 # and the autoload order that puts this singleton first is not something to depend on silently.
 func _ensure_buses() -> void:
-	for bus_name in [MUSIC_BUS, SFX_BUS, AUDITION_BUS]:
+	for bus_name in [MUSIC_BUS, SFX_BUS, CRIES_BUS, AUDITION_BUS]:
 		if AudioServer.get_bus_index(bus_name) != -1:
 			continue
 		AudioServer.add_bus()
@@ -242,6 +244,41 @@ func play_speech_blip(pitch: float = 1.0) -> void:
 	# play() from the top restarts a blip that is still ringing, which is what
 	# keeps a fast talker crisp instead of muddy.
 	_speech_player.play()
+
+
+# ============================================================
+# POKÉMON CRIES
+# ============================================================
+# One player on its own bus. A cry asked for while another is still playing is
+# DROPPED, not queued: a screen of Wingull should sound like birds now and then, not
+# a backlog that keeps crying after they have flown off.
+const CRY_DIR := "res://Audio/Cries/"
+
+var _cry_player: AudioStreamPlayer = null
+
+# `species` is the sprite basename, e.g. "278_Wingull" -> res://Audio/Cries/278_Wingull.ogg.
+# Returns true if the cry started.
+func play_cry(species: String) -> bool:
+	# is_instance_valid as well as null: the match outro frees every AudioStreamPlayer child.
+	if _cry_player != null and is_instance_valid(_cry_player) and _cry_player.playing:
+		return false
+	var path := CRY_DIR + species + ".ogg"
+	if not ResourceLoader.exists(path):
+		return false
+	var stream = load(path)
+	if stream == null:
+		return false
+	if "loop" in stream:
+		stream = stream.duplicate()
+		stream.loop = false
+	_ensure_buses()
+	if _cry_player == null or not is_instance_valid(_cry_player):
+		_cry_player = AudioStreamPlayer.new()
+		_cry_player.bus = CRIES_BUS
+		add_child(_cry_player)
+	_cry_player.stream = stream
+	_cry_player.play()
+	return true
 
 
 # --- BGM: play background music from a res:// path ---

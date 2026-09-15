@@ -1,8 +1,8 @@
 {
   "_help": [
-    "Overworld Pokemon for this map. Written by the placement tool (F, then N -> POKEMON, or M on a spawn marker); safe to hand-edit.",
-    "flyers: map-wide, one table per time of day (Morning/Afternoon/Evening/Night). The current time's table rolls every `interval` seconds with `chance`% to send a flock of ONE species from its `table` [{species, percent, min, max}] across the screen.",
-    "spawn_points: id, template, at [x, y], tables {Morning/Afternoon/Evening/Night: {chance (%), table [{species, percent}]}} -- an empty table spawns nothing at that time. burying/surfacing tables also have `interval` (seconds between rolls); burying may set up_time; static sets pattern (+ distance/speed/axis for patrols).",
+    "Overworld Pokemon for this map. Written by the placement tool (DEL debug menu -> NEW NPC / OPPONENT / POKEMON or FLYER TABLES, or EDIT CURRENT NPCS then EDIT NPC on a spawn marker); safe to hand-edit.",
+    "flyers: map-wide, one table per time of day (Morning/Afternoon/Evening/Night). The current time's table rolls every `interval` seconds with `chance`% to send a flock of ONE species from its `table` [{species, percent, scale, min, max, speed_min, speed_max, spin, erratic}] across the screen. scale = size multiplier (1 = normal). min/max = flock size; speed in px/s (the flock shares one); spin = turns as it flies, faster when faster; erratic = big jerky bat-like bob.",
+    "spawn_points: id, template, at [x, y], tables {Morning/Afternoon/Evening/Night: {chance (%), table [{species, percent, scale}]}} -- an empty table spawns nothing at that time. burying/surfacing tables also have `interval` (seconds between rolls); burying may set up_time; static sets pattern (+ distance/speed/axis for patrols).",
     "Table percents are weights and need not add to 100. Species keys are sprite basenames in Image_Assets/Pokemon_Sprites/."
   ],
   "flyers": {
@@ -13,56 +13,101 @@
         {
           "species": "017_Pidgeotto",
           "percent": 5,
+          "scale": 1,
           "min": 1,
-          "max": 3
+          "max": 3,
+          "speed_min": 45,
+          "speed_max": 75,
+          "spin": false,
+          "erratic": false
         },
         {
           "species": "018_Pidgeot",
           "percent": 1,
+          "scale": 1,
           "min": 1,
-          "max": 1
+          "max": 1,
+          "speed_min": 75,
+          "speed_max": 90,
+          "spin": false,
+          "erratic": false
         },
         {
           "species": "022_Fearow",
           "percent": 1,
+          "scale": 1,
           "min": 1,
-          "max": 1
+          "max": 1,
+          "speed_min": 60,
+          "speed_max": 85,
+          "spin": false,
+          "erratic": false
         },
         {
           "species": "277_Swellow",
           "percent": 10,
+          "scale": 1,
           "min": 1,
-          "max": 3
+          "max": 3,
+          "speed_min": 70,
+          "speed_max": 90,
+          "spin": false,
+          "erratic": false
         },
         {
           "species": "397_Staravia",
           "percent": 5,
+          "scale": 1,
           "min": 1,
-          "max": 4
+          "max": 4,
+          "speed_min": 45,
+          "speed_max": 65,
+          "spin": false,
+          "erratic": false
         },
         {
           "species": "398_Staraptor",
           "percent": 1,
+          "scale": 1,
           "min": 1,
-          "max": 1
+          "max": 1,
+          "speed_min": 70,
+          "speed_max": 90,
+          "spin": false,
+          "erratic": false
         },
         {
           "species": "519_Pidove",
           "percent": 71,
+          "scale": 1,
           "min": 1,
-          "max": 6
+          "max": 6,
+          "speed_min": 45,
+          "speed_max": 60,
+          "spin": false,
+          "erratic": false
         },
         {
           "species": "520_Tranquill",
           "percent": 5,
+          "scale": 1,
           "min": 1,
-          "max": 4
+          "max": 4,
+          "speed_min": 55,
+          "speed_max": 70,
+          "spin": false,
+          "erratic": false
         },
         {
           "species": "521_Unfezant",
           "percent": 1,
+          "scale": 1,
           "min": 1,
-          "max": 1
+          "max": 1,
+          "speed_min": 70,
+          "speed_max": 85,
+          "spin": false,
+          "erratic": false
         }
       ]
     },
@@ -73,56 +118,101 @@
         {
           "species": "187_Hoppip",
           "percent": 10,
+          "scale": 1,
           "min": 1,
-          "max": 6
+          "max": 6,
+          "speed_min": 15,
+          "speed_max": 35,
+          "spin": true,
+          "erratic": false
         },
         {
           "species": "188_Skiploom",
           "percent": 5,
+          "scale": 1,
           "min": 1,
-          "max": 4
+          "max": 4,
+          "speed_min": 20,
+          "speed_max": 40,
+          "spin": true,
+          "erratic": false
         },
         {
           "species": "189_Jumpluff",
           "percent": 1,
+          "scale": 1,
           "min": 1,
-          "max": 3
+          "max": 3,
+          "speed_min": 25,
+          "speed_max": 45,
+          "spin": true,
+          "erratic": false
         },
         {
           "species": "277_Swellow",
           "percent": 1,
+          "scale": 1,
           "min": 1,
-          "max": 3
+          "max": 3,
+          "speed_min": 75,
+          "speed_max": 95,
+          "spin": false,
+          "erratic": false
         },
         {
           "species": "278_Wingull",
           "percent": 71,
+          "scale": 1,
           "min": 1,
-          "max": 6
+          "max": 6,
+          "speed_min": 45,
+          "speed_max": 55,
+          "spin": false,
+          "erratic": false
         },
         {
           "species": "279_Pelipper",
           "percent": 5,
+          "scale": 1,
           "min": 1,
-          "max": 3
+          "max": 3,
+          "speed_min": 35,
+          "speed_max": 45,
+          "spin": false,
+          "erratic": false
         },
         {
           "species": "662_Fletchinder",
           "percent": 5,
+          "scale": 1,
           "min": 1,
-          "max": 3
+          "max": 3,
+          "speed_min": 35,
+          "speed_max": 45,
+          "spin": false,
+          "erratic": false
         },
         {
           "species": "663_Talonflame",
           "percent": 1,
+          "scale": 1,
           "min": 1,
-          "max": 1
+          "max": 1,
+          "speed_min": 35,
+          "speed_max": 45,
+          "spin": false,
+          "erratic": false
         },
         {
           "species": "581_Swanna",
           "percent": 1,
+          "scale": 1,
           "min": 2,
-          "max": 2
+          "max": 2,
+          "speed_min": 35,
+          "speed_max": 45,
+          "spin": false,
+          "erratic": false
         }
       ]
     },
@@ -133,56 +223,101 @@
         {
           "species": "017_Pidgeotto",
           "percent": 5,
+          "scale": 1,
           "min": 1,
-          "max": 3
+          "max": 3,
+          "speed_min": 55,
+          "speed_max": 75,
+          "spin": false,
+          "erratic": false
         },
         {
           "species": "018_Pidgeot",
           "percent": 1,
+          "scale": 1.5,
           "min": 1,
-          "max": 1
+          "max": 1,
+          "speed_min": 70,
+          "speed_max": 90,
+          "spin": false,
+          "erratic": false
         },
         {
           "species": "164_Noctowl",
           "percent": 1,
+          "scale": 1,
           "min": 1,
-          "max": 1
+          "max": 1,
+          "speed_min": 55,
+          "speed_max": 75,
+          "spin": false,
+          "erratic": false
         },
         {
           "species": "278_Wingull",
           "percent": 70,
+          "scale": 1,
           "min": 1,
-          "max": 4
+          "max": 4,
+          "speed_min": 35,
+          "speed_max": 45,
+          "spin": false,
+          "erratic": false
         },
         {
           "species": "279_Pelipper",
           "percent": 5,
+          "scale": 1,
           "min": 1,
-          "max": 3
+          "max": 3,
+          "speed_min": 35,
+          "speed_max": 45,
+          "spin": false,
+          "erratic": false
         },
         {
           "species": "425_Drifloon",
           "percent": 1,
+          "scale": 1,
           "min": 1,
-          "max": 2
+          "max": 2,
+          "speed_min": 15,
+          "speed_max": 20,
+          "spin": false,
+          "erratic": false
         },
         {
           "species": "581_Swanna",
           "percent": 1,
+          "scale": 2,
           "min": 2,
-          "max": 2
+          "max": 2,
+          "speed_min": 35,
+          "speed_max": 45,
+          "spin": false,
+          "erratic": false
         },
         {
           "species": "662_Fletchinder",
           "percent": 15,
+          "scale": 1,
           "min": 1,
-          "max": 3
+          "max": 3,
+          "speed_min": 55,
+          "speed_max": 75,
+          "spin": false,
+          "erratic": false
         },
         {
           "species": "663_Talonflame",
           "percent": 1,
+          "scale": 1,
           "min": 1,
-          "max": 1
+          "max": 1,
+          "speed_min": 70,
+          "speed_max": 90,
+          "spin": false,
+          "erratic": false
         }
       ]
     },
@@ -193,20 +328,35 @@
         {
           "species": "425_Drifloon",
           "percent": 50,
+          "scale": 1,
           "min": 1,
-          "max": 5
+          "max": 5,
+          "speed_min": 20,
+          "speed_max": 30,
+          "spin": true,
+          "erratic": false
         },
         {
           "species": "426_Drifblim",
           "percent": 10,
+          "scale": 1.5,
           "min": 1,
-          "max": 3
+          "max": 3,
+          "speed_min": 35,
+          "speed_max": 45,
+          "spin": true,
+          "erratic": false
         },
         {
           "species": "164_Noctowl",
           "percent": 40,
+          "scale": 1,
           "min": 1,
-          "max": 3
+          "max": 1,
+          "speed_min": 55,
+          "speed_max": 75,
+          "spin": false,
+          "erratic": false
         }
       ]
     }

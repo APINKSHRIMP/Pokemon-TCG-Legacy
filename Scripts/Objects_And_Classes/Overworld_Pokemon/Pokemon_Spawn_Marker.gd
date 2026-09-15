@@ -15,7 +15,7 @@ const TEXT_WIDTH := 220.0
 const TEMPLATE_COLOURS := {
 	"bug_tree": Color(0.45, 0.9, 0.35),
 	"swinging_bug": Color(0.75, 0.95, 0.4),
-	"rodent": Color(0.95, 0.65, 0.3),
+	"skittish": Color(0.95, 0.65, 0.3),
 	"burying": Color(0.7, 0.5, 0.3),
 	"surfacing": Color(0.35, 0.65, 1.0),
 	"static": Color(0.9, 0.45, 0.9),
@@ -35,7 +35,7 @@ func _draw() -> void:
 	draw_arc(Vector2.ZERO, RADIUS, 0.0, TAU, 24, colour, 1.5)
 	draw_line(Vector2(-3, 0), Vector2(3, 0), colour, 1.0)
 	draw_line(Vector2(0, -3), Vector2(0, 3), colour, 1.0)
-	# Chance per time of day, "-" where that time's table is empty: "rodent_1  M100 A- E- N40".
+	# Chance per time of day, "-" where that time's table is empty: "skittish_1  M100 A- E- N40".
 	var parts: Array = [str(point.get("id", "?"))]
 	for time_name in OverworldPokemonData.TIMES_OF_DAY:
 		var table := OverworldPokemonData.time_table(point.get("tables"), str(time_name))

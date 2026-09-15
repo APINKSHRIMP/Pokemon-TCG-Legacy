@@ -38,6 +38,10 @@ var nearby_npc: Node:
 @onready var animated_sprite: AnimatedSprite2D = $AnimatedSprite2D
 @onready var interaction_area: Area2D = $InteractionArea
 @onready var camera: Camera2D = $Camera2D
+## The camera's zoom as the scene sets it (2.5x) is the widest view the player ever
+## gets: the wheel can zoom in from there, never out past it. Distances the user
+## quotes "on screen" are at this zoom.
+@onready var _widest_zoom: Vector2 = camera.zoom
 
 func lock_movement():
 	can_move = false
@@ -235,9 +239,9 @@ func _unhandled_input(event):
 			if not can_move:
 				return
 			if event.button_index == MOUSE_BUTTON_WHEEL_UP:
-				camera.zoom = (camera.zoom + Vector2(0.05, 0.05)).clamp(Vector2(0.5, 0.5), Vector2(10, 10))
+				camera.zoom = (camera.zoom + Vector2(0.05, 0.05)).clamp(_widest_zoom, Vector2(10, 10))
 			elif event.button_index == MOUSE_BUTTON_WHEEL_DOWN:
-				camera.zoom = (camera.zoom - Vector2(0.05, 0.05)).clamp(Vector2(0.5, 0.5), Vector2(10, 10))
+				camera.zoom = (camera.zoom - Vector2(0.05, 0.05)).clamp(_widest_zoom, Vector2(10, 10))
 
 func _is_interactable_body(body: Node) -> bool:
 	for group in INTERACT_GROUPS:
@@ -265,7 +269,7 @@ func _on_interaction_area_body_exited(body: Node2D):
 func _update_active_candidate():
 	# Purge invalid refs
 	# The group check drops a Pokémon that stopped being talkable while still in
-	# range -- a rodent leaves the "pokemon" group the moment it bolts.
+	# range -- a skittish Pokémon leaves the "pokemon" group the moment it bolts.
 	_nearby_candidates = _nearby_candidates.filter(func(n): return is_instance_valid(n) and _is_interactable_body(n))
 
 	if _nearby_candidates.is_empty():

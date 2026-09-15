@@ -72,6 +72,6 @@ func _template_process(delta: float) -> void:
 
 func _burst() -> void:
 	var base := particle_colour(DEFAULT_PARTICLE_COLOUR)
-	var width := cell.x * SPRITE_SCALE * 0.5
+	var width := cell.x * draw_scale() * 0.5
 	PixelBurst.fire(get_parent(), global_position,
 			[base, base.darkened(0.25), base.lightened(0.15)], PARTICLE_COUNT, 1.0, width, Z + 1)

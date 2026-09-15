@@ -3426,28 +3426,9 @@ func _make_delete_deck_button(deck_name: String) -> Button:
 	return btn
 
 
-## Draws the little trash bin: lid handle, lid, tapered body outline and two slots.
+## Draws the little trash bin -- shared with the Pokémon spawn editor via UIKit.
 func _draw_trash_icon(c: Control) -> void:
-	var w := c.size.x
-	var h := c.size.y
-	if w <= 0.0 or h <= 0.0:
-		return
-	var cx := w * 0.5
-	var body_w := w * 0.44
-	var body_h := h * 0.42
-	var body_top := h * 0.34
-	var thick := maxf(1.0, h * 0.055)
-
-	# handle, then the lid just under it
-	c.draw_rect(Rect2(cx - body_w * 0.20, body_top - h * 0.20, body_w * 0.40, h * 0.055), TRASH_COLOUR)
-	c.draw_rect(Rect2(cx - body_w * 0.62, body_top - h * 0.13, body_w * 1.24, h * 0.065), TRASH_COLOUR)
-	# body outline
-	c.draw_rect(Rect2(cx - body_w * 0.5, body_top, body_w, body_h), TRASH_COLOUR, false, thick)
-	# two slots down the body
-	var slot_top := body_top + body_h * 0.20
-	var slot_h := body_h * 0.60
-	c.draw_rect(Rect2(cx - body_w * 0.20 - thick * 0.5, slot_top, thick, slot_h), TRASH_COLOUR)
-	c.draw_rect(Rect2(cx + body_w * 0.20 - thick * 0.5, slot_top, thick, slot_h), TRASH_COLOUR)
+	UIKit.draw_trash_icon(c, TRASH_COLOUR)
 
 
 ## A square rename button for one deck row. Blue rather than the delete button's red — renaming is

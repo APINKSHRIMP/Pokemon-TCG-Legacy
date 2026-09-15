@@ -141,7 +141,7 @@ func _ready():
 	GameState.entering_from      = ""
 	# returning_from_battle is deliberately NOT cleared here: MapManager.initialise() below still needs
 	# it to respawn the opponent that was just fought, to resolve opponent_defeated spawn conditions,
-	# and to show the post-battle dialogue. It clears the flag itself in _handle_battle_return().
+	# and to show the post-battle dialogue. It clears the flag itself in _handle_battle_return(). 	
 	# (The old code cleared it in the battle branch — i.e. BEFORE initialise — so whenever that branch
 	# actually won, all three of those behaviours silently no-op'd.)
 

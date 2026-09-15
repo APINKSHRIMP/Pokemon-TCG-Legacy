@@ -79,7 +79,8 @@ const LABEL_W      := 370.0    # the label column
 const LABEL_GAP    := 40.0     # label column -> first control
 # 10% tighter was 30.6 and left the last row clipped. Trimmed further until the
 # whole page fits between the bars with nothing to scroll.
-const ROW_GAP      := 20.0     # between rows
+# 20 -> 16 when the Cries slider made it thirteen rows: 13 * 53 + 12 * 16 = 881 of 896.
+const ROW_GAP      := 16.0     # between rows
 const OPTION_GAP   := 18.0     # between the buttons inside one row
 const SLIDER_W     := 690.0
 const VALUE_W      := 90.0     # the "80%" readout, wide enough for "100%"
@@ -132,6 +133,9 @@ var close_overlay_callback: Callable = Callable()
 # would open already claiming an unsaved change.
 const VOLUME_STEP := 5
 
+# The cry played when the Cries slider is released. TWEAKABLE.
+const CRY_PREVIEW_SPECIES := "025_Pikachu"
+
 # ── THE TWO PSEUDO-SECTIONS ──────────────────────────────────
 # The theme picker is two rows on screen but ONE stored value. These are the
 # section names of those rows; neither has an entry in section_setters, and
@@ -175,6 +179,7 @@ func _ready() -> void:
 		# while GameState (and the audio bus behind it) works in 0.0 - 1.0.
 		"music_volume": func(percent: int) -> void: GameState.set_music_volume(percent / 100.0),
 		"sfx_volume":   func(percent: int) -> void: GameState.set_sfx_volume(percent / 100.0),
+		"cries_volume": func(percent: int) -> void: GameState.set_cries_volume(percent / 100.0),
 		"ui_theme":     GameState.set_ui_theme,
 		"hide_bars":    GameState.set_hide_bars,
 	}
@@ -232,8 +237,8 @@ func _build_rows() -> void:
 	# longer fit in the 896px band, and the last of them would simply have been
 	# drawn past the footer.
 	#
-	# ROW_GAP and ROW_MIN_H are what keep the CURRENT twelve rows on one screen with
-	# nothing to scroll: 12 * 53 + 11 * 20 = 856 of the 896px available. A thirteenth
+	# ROW_GAP and ROW_MIN_H are what keep the CURRENT thirteen rows on one screen with
+	# nothing to scroll: 13 * 53 + 12 * 16 = 881 of the 896px available. A fourteenth
 	# row means trimming one of those two again.
 	#
 	# A ScrollContainer takes the overflow. It only scrolls when there IS overflow,
@@ -313,6 +318,7 @@ func _build_rows() -> void:
 	])
 	_add_slider_row(body, "music_volume", "Music")
 	_add_slider_row(body, "sfx_volume", "Sound effects")
+	_add_slider_row(body, "cries_volume", "Cries")
 	_add_theme_row(body)
 	# Stored as "no"/"yes" rather than off/on to match the question the row asks.
 	_add_button_row(body, "hide_bars", "Hide header/footer", [
@@ -479,6 +485,7 @@ func _current_values() -> Dictionary:
 		"intro_outro":   GameState.intro_outro_setting,
 		"music_volume":  _to_percent(GameState.music_volume_setting),
 		"sfx_volume":    _to_percent(GameState.sfx_volume_setting),
+		"cries_volume":  _to_percent(GameState.cries_volume_setting),
 		"ui_theme":      GameState.ui_theme_setting,
 		"hide_bars":     GameState.hide_bars_setting,
 	}
@@ -591,13 +598,16 @@ func _on_slider_changed(value: float, section: String) -> void:
 func _on_slider_drag_ended(value_changed: bool, section: String) -> void:
 	if value_changed and section == "sfx_volume":
 		SoundManagerScript.play_sfx(SoundManagerScript.SFX_select_button)
+	# A sample cry, so the Cries row can be judged at its new level too.
+	if value_changed and section == "cries_volume":
+		SoundManagerScript.play_cry(CRY_PREVIEW_SPECIES)
 
 
 func _apply_live_volume(section: String, percent: int) -> void:
-	if section == "music_volume":
-		GameState.set_music_volume(percent / 100.0, false)
-	else:
-		GameState.set_sfx_volume(percent / 100.0, false)
+	match section:
+		"music_volume": GameState.set_music_volume(percent / 100.0, false)
+		"sfx_volume":   GameState.set_sfx_volume(percent / 100.0, false)
+		"cries_volume": GameState.set_cries_volume(percent / 100.0, false)
 
 
 func _refresh_slider(section: String) -> void:

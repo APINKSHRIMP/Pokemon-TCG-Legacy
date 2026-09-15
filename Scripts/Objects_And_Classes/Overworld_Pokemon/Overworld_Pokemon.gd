@@ -11,7 +11,7 @@ extends CharacterBody2D
 ## every NPC. The cell size is derived from the sheet, never assumed (Caterpie is
 ## 192px, Palossand 512px).
 ##
-## Extends CharacterBody2D so the rodent and static templates get move_and_slide()
+## Extends CharacterBody2D so the skittish and static templates get move_and_slide()
 ## and the player's InteractionArea can see them. Templates without collision leave
 ## both layers at 0 and never move through physics.
 
@@ -23,6 +23,13 @@ const SPRITE_SCALE := 0.5
 ## Walk-cycle frames per second at anim_speed 1.0 (SpriteSheetLoader uses 6).
 const ANIM_FPS := 6.0
 const BUBBLE_Y_OFFSET := -19.0
+## Cries. Once a Pokémon has been on screen for CRY_INTERVAL seconds it rolls
+## CRY_CHANCE% every CRY_INTERVAL seconds to cry; leaving the screen resets its timer.
+## Each Pokémon rolls on its own, so five Wingull on screen are five times as likely to
+## be heard. A cry that fires while another is playing is dropped, never queued (see
+## SoundManagerScript.play_cry). Which templates cry: OverworldPokemonData.CRY_TEMPLATES.
+const CRY_INTERVAL := 2.0
+const CRY_CHANCE := 5.0
 # -----------------------------------------------------------------------------
 
 const ROWS := {"down": 0, "left": 1, "right": 2, "up": 3}
@@ -35,6 +42,13 @@ var display_name: String = ""
 var species_data: Dictionary = {}
 ## The spawn point that produced this Pokémon; {} for flyers.
 var spawn_point: Dictionary = {}
+## Size multiplier on top of SPRITE_SCALE -- 1.0 is normal, 10 is a Wailord the size
+## of a house. Set by the spawner from the table row before add_child(). (Not
+## `scale`: that is Node2D's own transform.)
+var size_scale: float = 1.0
+## Set by the spawner from OverworldPokemonData.CRY_TEMPLATES before add_child().
+var can_cry: bool = false
+var _cry_time: float = 0.0
 
 var sprite: Sprite2D = null
 var facing: String = "down"
@@ -73,7 +87,7 @@ func _ready() -> void:
 	collision_layer = 0
 	collision_mask = 0
 	sprite = Sprite2D.new()
-	sprite.scale = Vector2(SPRITE_SCALE, SPRITE_SCALE)
+	sprite.scale = Vector2(draw_scale(), draw_scale())
 	sprite.region_enabled = true
 	sprite.region_filter_clip_enabled = true
 	var path := OverworldPokemonData.sheet_path(species)
@@ -104,6 +118,23 @@ func _process(delta: float) -> void:
 			_frame = next
 			_apply_region()
 	_template_process(delta)
+	_update_cry(delta)
+
+
+## On screen for CRY_INTERVAL seconds -> a CRY_CHANCE% roll, then another every
+## CRY_INTERVAL seconds while it stays on screen. "On screen" is the camera's view.
+func _update_cry(delta: float) -> void:
+	if not can_cry or _is_gone:
+		return
+	if not view_rect().has_point(global_position):
+		_cry_time = 0.0
+		return
+	_cry_time += delta
+	if _cry_time < CRY_INTERVAL:
+		return
+	_cry_time -= CRY_INTERVAL
+	if randf() * 100.0 < CRY_CHANCE:
+		SoundManagerScript.play_cry(species)
 
 
 # ---- template hooks ---------------------------------------------------------
@@ -132,6 +163,12 @@ func set_clip_rows(rows: int) -> void:
 	_apply_region()
 
 
+## World pixels per sheet pixel: the NPC scale times this Pokémon's size_scale.
+## Everything that places art, particles or collision in world space goes through it.
+func draw_scale() -> float:
+	return SPRITE_SCALE * size_scale
+
+
 func art_height() -> int:
 	return art_bottom - art_top + 1
 
@@ -152,7 +189,7 @@ func _apply_region() -> void:
 	sprite.visible = k > 0
 	sprite.centered = false
 	sprite.region_rect = Rect2(origin.x, origin.y + art_top, cell.x, maxi(k, 1))
-	sprite.position = Vector2(-cell.x * SPRITE_SCALE * 0.5, -k * SPRITE_SCALE)
+	sprite.position = Vector2(-cell.x * draw_scale() * 0.5, -k * draw_scale())
 	_on_region_applied(origin, k)
 
 
@@ -228,7 +265,7 @@ func despawn() -> void:
 	queue_free()
 
 
-# ---- interaction (rodent / static) ------------------------------------------
+# ---- interaction (skittish / static) ------------------------------------------
 
 func is_interactable() -> bool:
 	return false
@@ -245,7 +282,7 @@ func show_bubble() -> void:
 	if _bubble == null:
 		_bubble = Sprite2D.new()
 		_bubble.texture = load("res://Image_Assets/Icons/Message_Icons/new_talk.png")
-		_bubble.position = Vector2(0, BUBBLE_Y_OFFSET)
+		_bubble.position = Vector2(0, BUBBLE_Y_OFFSET * size_scale)
 		_bubble.z_index = 100
 		add_child(_bubble)
 	_bubble.visible = true

@@ -450,9 +450,11 @@ func _load_rule_settings() -> void:
 # game UP, which is the more useful direction when the default mix already sits near the ceiling.
 const DEFAULT_MUSIC_VOLUME := 0.8
 const DEFAULT_SFX_VOLUME   := 0.8
+const DEFAULT_CRIES_VOLUME := 0.8
 
 var music_volume_setting: float = DEFAULT_MUSIC_VOLUME
 var sfx_volume_setting: float   = DEFAULT_SFX_VOLUME
+var cries_volume_setting: float = DEFAULT_CRIES_VOLUME
 
 # Applies a level to the Music bus. Pass save = false while a slider is being dragged so the player
 # hears the change immediately without a disk write per pixel of travel — the Options screen commits
@@ -469,12 +471,20 @@ func set_sfx_volume(value: float, save: bool = true) -> void:
 	if save:
 		_save_current_data_field("sfx_volume", sfx_volume_setting)
 
+# Overworld Pokémon cries ("cries_volume"), on their own bus.
+func set_cries_volume(value: float, save: bool = true) -> void:
+	cries_volume_setting = clampf(value, 0.0, 1.0)
+	SoundManagerScript.set_bus_volume(SoundManagerScript.CRIES_BUS, cries_volume_setting)
+	if save:
+		_save_current_data_field("cries_volume", cries_volume_setting)
+
 # Reads both saved levels out of Player_Current_Data.json and applies them. Called once on boot. A
 # missing or non-numeric value falls back to the default rather than erroring.
 func _load_audio_volumes() -> void:
 	var data := _read_current_data()
 	set_music_volume(_read_volume(data, "music_volume", DEFAULT_MUSIC_VOLUME), false)
 	set_sfx_volume(_read_volume(data, "sfx_volume", DEFAULT_SFX_VOLUME), false)
+	set_cries_volume(_read_volume(data, "cries_volume", DEFAULT_CRIES_VOLUME), false)
 
 func _read_volume(data: Dictionary, key: String, fallback: float) -> float:
 	var value = data.get(key, fallback)

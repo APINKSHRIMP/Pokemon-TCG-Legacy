@@ -16,13 +16,13 @@ const SPRITE_DIR := "res://Image_Assets/Pokemon_Sprites/"
 ## Every template, in the order the editor lists them. A template is a behaviour
 ## script; adding one means a script, an entry here, and a line in
 ## OverworldPokemonSpawner.TEMPLATE_SCRIPTS.
-const TEMPLATES := ["flyer", "bug_tree", "swinging_bug", "rodent", "burying", "surfacing", "static"]
+const TEMPLATES := ["flyer", "bug_tree", "swinging_bug", "skittish", "burying", "surfacing", "static"]
 
 const TEMPLATE_LABELS := {
 	"flyer": "Flying (overhead, map-wide)",
 	"bug_tree": "Bug in tree",
 	"swinging_bug": "Swinging bug",
-	"rodent": "Rodent",
+	"skittish": "Skittish",
 	"burying": "Burying",
 	"surfacing": "Surfacing",
 	"static": "Static / patrol",
@@ -31,21 +31,33 @@ const TEMPLATE_LABELS := {
 const TEMPLATE_DESCRIPTIONS := {
 	"flyer": "No spawn point. The map has one table per time of day; the current time's table rolls every INTERVAL seconds with CHANCE% to send a flock of one species (flock size set per species) across the screen from just off one edge to the end of the map. No collision.",
 	"bug_tree": "Rolled once per map load. Random facings, shuffles a few pixels every few seconds. No collision, drawn above tree canopies.",
-	"swinging_bug": "Rolled once per map load. Hangs still on silk, turns left-down-right-down about once a second and sways in a slow U arc. No collision.",
-	"rodent": "Rolled once per map load. Fast wide wander with collision. Flees off-screen if approached running / at Fast speed; Space to talk otherwise.",
+	"swinging_bug": "Rolled once per map load. Hangs on a short silk strand facing one way and sways in a slow U arc. No collision.",
+	"skittish": "Rolled once per map load. Wanders around its spawn point at its species' Wander speed. When the player gets close it bolts left, right, randomly or away from the player (Runs away), passing behind trees, and fades out.",
 	"burying": "Every INTERVAL seconds, CHANCE% to pop out of the ground with a dirt burst, stay UP TIME seconds, then burrow back down.",
 	"surfacing": "Every INTERVAL seconds, CHANCE% to surface out of the water (blue depth tint, splash), drift a couple dozen pixels, then submerge.",
 	"static": "Rolled once per map load. Collision, stands still or walks an existing pattern (idle cycle, patrol line, patrol square). Space to talk.",
 }
 
+## Templates whose Pokémon cry while on screen (OverworldPokemon.CRY_CHANCE). Add a
+## template name here to give it cries -- nothing else needs to change.
+const CRY_TEMPLATES := ["flyer"]
+
 ## Rolled once when the map loads. Everything else rolls on a repeating timer.
-const ONE_SHOT_TEMPLATES := ["bug_tree", "swinging_bug", "rodent", "static"]
+const ONE_SHOT_TEMPLATES := ["bug_tree", "swinging_bug", "skittish", "static"]
 const TIMED_TEMPLATES := ["burying", "surfacing"]
 
 ## Which knobs the editor shows per template.
 const TEMPLATE_USES_INTERVAL := ["flyer", "burying", "surfacing"]
 
 const STATIC_PATTERNS := ["idle_cycle", "idle_random", "idle_down", "patrol_line", "patrol_square"]
+
+## Which way a skittish Pokémon bolts when the player gets close (spawn point `flee`).
+const SKITTISH_FLEE_DIRECTIONS := ["random", "left", "right", "away_from_player"]
+
+## A skittish species' wandering speed in world px/s (registry `wander_speed`). Running
+## away is one fixed speed for all of them (PokemonSkittish.FLEE_SPEED).
+const DEFAULT_SKITTISH_WANDER_SPEED := 85
+const WANDER_SPEED_LIMIT := 300
 
 ## A map's flyers and every spawn point have exactly one table per time of day, keyed
 ## by the names GameState.get_time() returns. A Pokémon seen at two times is listed in
@@ -59,9 +71,10 @@ const POINT_DEFAULT_INTERVAL := 10.0
 const FLYER_DEFAULT_CHANCE := 15.0
 const FLYER_DEFAULT_INTERVAL := 30.0
 
-## Flyer table rows carry their own flock size, speed range and spin:
-## {species, percent, min, max, speed_min, speed_max, spin, erratic}. `spin` and
-## `erratic` default from the same keys on the species in the registry.
+## Flyer table rows carry only their rate and flock size: {species, percent, min, max}.
+## Speed, scale, spin and erratic are NOT per row: they belong to the species (registry
+## `speed_min`, `speed_max`, `scale`, `spin`, `erratic`, `bug`, `ghost`), so a species flies the same
+## way on every table and every map.
 const DEFAULT_FLOCK_MIN := 1
 const DEFAULT_FLOCK_MAX := 3
 const FLOCK_LIMIT := 12
@@ -69,6 +82,10 @@ const FLOCK_LIMIT := 12
 const DEFAULT_FLYER_SPEED_MIN := 35
 const DEFAULT_FLYER_SPEED_MAX := 45
 const FLYER_SPEED_LIMIT := 400
+
+## A species' size multiplier (registry `scale`), used by every template.
+const MIN_SCALE := 0.1
+const MAX_SCALE := 20.0
 
 static var _registry: Dictionary = {}
 static var _registry_loaded: bool = false
@@ -199,6 +216,10 @@ static func load_spawns(map_data: String) -> Dictionary:
 	for point in doc["spawn_points"]:
 		if point is Dictionary:
 			point["tables"] = normalise_point_tables(point.get("tables"))
+			# A point with no group is a group of one. Clones share their source's group,
+			# and editing any point in a group rewrites the rules of all of them.
+			if str(point.get("group", "")) == "":
+				point["group"] = str(point.get("id", ""))
 	return doc
 
 
@@ -257,6 +278,26 @@ static func pick_row(table: Array) -> Dictionary:
 		if r < 0.0:
 			return row
 	return last
+
+
+## A species' size multiplier: its registry `scale`, else 1.
+static func species_scale(species: String) -> float:
+	return clampf(float(species_info(species).get("scale", 1.0)), MIN_SCALE, MAX_SCALE)
+
+
+## A skittish species' wandering speed in world px/s: registry `wander_speed`, else 85.
+static func species_wander_speed(species: String) -> float:
+	return clampf(float(species_info(species).get("wander_speed", DEFAULT_SKITTISH_WANDER_SPEED)),
+			1.0, WANDER_SPEED_LIMIT)
+
+
+## A flyer species' speed range in px/s: registry `speed_min` / `speed_max`, else the
+## defaults. A flock rolls one speed inside it.
+static func species_speed_range(species: String) -> Vector2i:
+	var info := species_info(species)
+	var low := int(info.get("speed_min", DEFAULT_FLYER_SPEED_MIN))
+	var high := int(info.get("speed_max", DEFAULT_FLYER_SPEED_MAX))
+	return Vector2i(low, high)
 
 
 static func table_total(table: Array) -> float:

@@ -17,6 +17,9 @@ extends CanvasLayer
 ##   F              close the tool, discarding unsaved changes
 ##   Tab / Shift+Tab   select next / previous actor (camera pans to them)   PREV / NEXT
 ##   G              grab or drop the selected actor                         GRAB / DROP
+##   C              clone the selected Pokémon spawn point, held at the player  CLONE
+##   Delete         delete the spawn point being held                       DELETE
+##   P              Pokémon spawns: FORCED (all out, to place / scale) or RANDOM (real odds)
 ##   Ctrl+arrows    nudge 1px (add Shift for 10px) -- Ctrl also holds the player still
 ##   R              cycle movement pattern
 ##   M              edit the selected character in the character editor   EDIT NPC
@@ -44,8 +47,9 @@ const NUDGE_LARGE := 10.0
 enum Mode { EDIT, NEW, FLYERS }
 
 ## The clickable button bar along the bottom of the screen.
-const BUTTON_FONT_SIZE := 22
-const BUTTON_SIZE := Vector2(190, 56)
+## Ten buttons: 10 x 170 + 9 x 12 = 1808px, inside the 1872px between the margins.
+const BUTTON_FONT_SIZE := 20
+const BUTTON_SIZE := Vector2(170, 56)
 const BUTTON_BAR_MARGIN := 24
 
 var _map_data: String = ""
@@ -58,6 +62,11 @@ var _grabbed: bool = false
 var _ctrl_held: bool = false
 var _mode: int = Mode.EDIT
 var _grab_button: Button = null
+## P / the SPAWNS button. true = every spawn point and a steady stream of flocks are
+## forced out, to check placement and scale; false = real chances, rates and timers,
+## to see what a 2% rate actually looks like. Both run on the unsaved working copy.
+var _forced_spawns: bool = true
+var _spawns_button: Button = null
 
 const CONSTANTS_PATH := "res://NPC_and_Opponent_Data/All_NPC_Constant_Data.json"
 
@@ -80,12 +89,15 @@ var _pk_doc: Dictionary = {}
 var _pk_dirty: bool = false
 ## species -> [templates] to append to Overworld_Pokemon.json on save.
 var _pk_registry_additions: Dictionary = {}
+## species -> {speed_min, speed_max, scale, spin, erratic, bug, ghost} edited in the Pokémon form, written to
+## Overworld_Pokemon.json on save. Species-wide, so they apply on every table and map.
+var _pk_species_settings: Dictionary = {}
 var _pokemon_editor: PokemonSpawnEditor = null
 
 const POKEMON_SPAWN_HELP := [
 	"Overworld Pokemon for this map. Written by the placement tool (DEL debug menu -> NEW NPC / OPPONENT / POKEMON or FLYER TABLES, or EDIT CURRENT NPCS then EDIT NPC on a spawn marker); safe to hand-edit.",
-	"flyers: map-wide, one table per time of day (Morning/Afternoon/Evening/Night). The current time's table rolls every `interval` seconds with `chance`% to send a flock of ONE species from its `table` [{species, percent, min, max, speed_min, speed_max, spin, erratic}] across the screen. min/max = flock size; speed in px/s (the flock shares one); spin = turns as it flies, faster when faster; erratic = big jerky bat-like bob.",
-	"spawn_points: id, template, at [x, y], tables {Morning/Afternoon/Evening/Night: {chance (%), table [{species, percent}]}} -- an empty table spawns nothing at that time. burying/surfacing tables also have `interval` (seconds between rolls); burying may set up_time; static sets pattern (+ distance/speed/axis for patrols).",
+	"flyers: map-wide, one table per time of day (Morning/Afternoon/Evening/Night). The current time's table rolls every `interval` seconds with `chance`% to send a flock of ONE species from its `table` [{species, percent, min, max}] across the screen. min/max = flock size. Speed (px/s), scale, spin, erratic, bug, ghost and (skittish) wander_speed are per SPECIES, in Overworld_Pokemon.json, not per table.",
+	"spawn_points: id, template, at [x, y], group (points sharing a group share every rule -- clones join their source's group, and editing one edits them all), tables {Morning/Afternoon/Evening/Night: {chance (%), table [{species, percent}]}} -- an empty table spawns nothing at that time. burying/surfacing tables also have `interval` (seconds between rolls); burying may set up_time; skittish sets flee (random/left/right/away_from_player); static sets pattern (+ distance/speed/axis for patrols).",
 	"Table percents are weights and need not add to 100. Species keys are sprite basenames in Image_Assets/Pokemon_Sprites/.",
 ]
 
@@ -111,6 +123,9 @@ func setup(map_data: String, container: Node2D, player: Node2D, mode: int = Mode
 	if _spawner != null:
 		_pk_doc = _spawner.doc.duplicate(true)
 		_spawner.show_markers(_pk_doc)
+		# Every spawn point (and a stream of flocks) shows while the tool is open, so they
+		# can be seen. P switches to the real random rolls.
+		_spawner.set_preview(_forced_spawns, _pk_doc)
 	_refresh_actors()
 	if _actors.size() > 0:
 		_index = 0
@@ -249,6 +264,16 @@ func _input(event: InputEvent) -> void:
 			_step_selection(-1 if event.shift_pressed else 1)
 		KEY_G:
 			_toggle_grab()
+		KEY_DELETE:
+			_delete_held()
+		KEY_P:
+			_toggle_forced_spawns()
+		KEY_C:
+			# Plain C only: Ctrl is the nudge modifier and is held while nudging.
+			if event.ctrl_pressed:
+				handled = false
+			else:
+				_clone_spawn_point()
 		KEY_R:
 			_cycle_pattern()
 		KEY_ENTER, KEY_KP_ENTER:
@@ -288,6 +313,79 @@ func _toggle_grab() -> void:
 	else:
 		_grab()
 	_update_hud()
+
+
+## C and the CLONE button: copy the selected Pokémon spawn point -- template, time-of-day
+## tables, pattern, everything -- as a new point with its own id under the player,
+## already grabbed, so it can be walked to its spot and dropped with G. Pressing it
+## again while carrying the copy puts that one down where it is and hands over another.
+func _clone_spawn_point() -> void:
+	var marker := _selected() as PokemonSpawnMarker
+	if marker == null:
+		_flash("[color=orange]select a Pokémon spawn point to clone (Tab), then C[/color]")
+		return
+	if _player == null or not is_instance_valid(_player):
+		return
+	# Drop first, so a point being carried is recorded where it is before the copy is made.
+	if _grabbed:
+		_drop()
+	var source: Dictionary = marker.point
+	# The clone joins the source's group, so editing either one later edits both.
+	if str(source.get("group", "")) == "":
+		source["group"] = str(source.get("id", ""))
+	var copy: Dictionary = source.duplicate(true)
+	copy["id"] = OverworldPokemonData.next_point_id(_pk_doc, str(copy.get("template", "")))
+	copy["at"] = [roundi(_player.global_position.x), roundi(_player.global_position.y)]
+	if not (_pk_doc.get("spawn_points") is Array):
+		_pk_doc["spawn_points"] = []
+	(_pk_doc["spawn_points"] as Array).append(copy)
+	_pk_dirty = true
+	_rebuild_markers(str(copy["id"]))
+	_grab()
+	_update_hud()
+	_flash("[color=lime]%s cloned as %s — walk it to its spot and G to drop, C for another, Enter to save[/color]"
+			% [str(source.get("id", "?")), str(copy["id"])])
+
+
+## P and the SPAWNS button: switch between FORCED (every point out, flocks every
+## PREVIEW_FLYER_INTERVAL taking species in turn) and RANDOM (the real chances). Both
+## respawn everything at once from the working copy, unsaved edits included.
+func _toggle_forced_spawns() -> void:
+	_forced_spawns = not _forced_spawns
+	if _spawner != null and is_instance_valid(_spawner):
+		_spawner.set_preview(_forced_spawns, _pk_doc)
+	_update_hud()
+	_flash("[color=aqua]%s[/color]" % ("FORCED spawns — every spawn point out, a flock every %.1fs, species in turn"
+			% OverworldPokemonSpawner.PREVIEW_FLYER_INTERVAL if _forced_spawns
+			else "RANDOM spawns — real chances, rates and timers (from your unsaved edits)"))
+
+
+## Delete and the DELETE button: remove the spawn point being HELD, with no form. Only
+## while grabbed, so a stray key can't delete whatever happens to be selected. Like
+## every other edit it waits for Enter / SAVE (F discards). Characters have no delete
+## path anywhere in the tool, so this is spawn points only.
+func _delete_held() -> void:
+	if not _grabbed:
+		_flash("[color=orange]grab a spawn point first (G), then Delete[/color]")
+		return
+	var marker := _selected() as PokemonSpawnMarker
+	if marker == null:
+		_flash("[color=orange]only Pokémon spawn points can be deleted here[/color]")
+		return
+	var id := str(marker.point.get("id", ""))
+	# Let go without _drop(): there is nothing left to record a position for.
+	_grabbed = false
+	_grab_collision.clear()
+	var points: Array = _pk_doc.get("spawn_points", [])
+	for i in points.size():
+		if points[i] is Dictionary and str(points[i].get("id", "")) == id:
+			points.remove_at(i)
+			break
+	_pk_dirty = true
+	_rebuild_markers("")
+	_preview_point(id)
+	_update_hud()
+	_flash("[color=orange]%s deleted — Enter to write, F to discard[/color]" % id)
 
 
 ## Escape and the CLOSE button. Refuses while anything is unsaved -- F is the
@@ -405,6 +503,8 @@ func _record(actor: Node2D) -> void:
 		actor.point["at"] = [roundi(actor.global_position.x), roundi(actor.global_position.y)]
 		actor.queue_redraw()
 		_pk_dirty = true
+		# Show what it spawns at its new spot straight away.
+		_preview_point(str(actor.point.get("id", "")))
 		return
 	var key := _key_for(actor)
 	var src: Dictionary = actor.get_meta("source", {})
@@ -569,7 +669,7 @@ func _open_pokemon_editor(point: Dictionary, flyers: bool = false) -> void:
 	_pokemon_editor.cancelled.connect(_on_pokemon_editor_cancelled)
 	_pokemon_editor.save_requested.connect(_on_pokemon_editor_save_requested)
 	_freeze_player_for_form()
-	_pokemon_editor.setup(_map_data, _pk_doc, point, _pk_registry_additions, flyers)
+	_pokemon_editor.setup(_map_data, _pk_doc, point, _pk_registry_additions, flyers, _pk_species_settings)
 	_update_hud()
 
 
@@ -592,6 +692,7 @@ func _on_pokemon_editor_confirmed(draft: Dictionary) -> void:
 	var original_id := str(draft.get("original_id", ""))
 	var point: Dictionary = draft.get("point", {})
 	var id := str(point.get("id", ""))
+	var linked_updates := 0
 
 	if bool(draft.get("delete", false)):
 		for i in points.size():
@@ -599,6 +700,7 @@ func _on_pokemon_editor_confirmed(draft: Dictionary) -> void:
 				points.remove_at(i)
 				break
 		_rebuild_markers("")
+		_preview_point(original_id)
 		_update_hud()
 		_flash("[color=orange]%s deleted — Enter to write, F to discard[/color]" % original_id)
 		return
@@ -620,10 +722,28 @@ func _on_pokemon_editor_confirmed(draft: Dictionary) -> void:
 			# Rewritten in place so the point keeps its position in the list.
 			existing.clear()
 			existing.merge(point)
+		# Linked clones: every other point in the same group takes the same rules, keeping
+		# only its own id and position. Cleared and merged in place, because the markers
+		# hold references to these dictionaries.
+		var group := str(point.get("group", id))
+		for other in points:
+			if not (other is Dictionary) or is_same(other, existing) or str(other.get("group", "")) != group:
+				continue
+			var keep_id = other.get("id")
+			var keep_at = other.get("at")
+			other.clear()
+			other.merge(point.duplicate(true))
+			other["id"] = keep_id
+			other["at"] = keep_at
+			linked_updates += 1
 		_rebuild_markers(id)
+		for other in points:
+			if other is Dictionary and str(other.get("group", "")) == group:
+				_preview_point(str(other.get("id", "")))
 		_look_at_selection()
 	_update_hud()
-	_flash("[color=lime]%s ready — Enter to write Pokemon/Spawns/%s.json[/color]" % [id, _map_data])
+	var also := "" if linked_updates == 0 else " (and %d linked clone%s)" % [linked_updates, "" if linked_updates == 1 else "s"]
+	_flash("[color=lime]%s%s ready — Enter to write Pokemon/Spawns/%s.json[/color]" % [id, also, _map_data])
 
 
 ## Flyer tables' SAVE: write the spawn file straight away and leave the form open.
@@ -641,6 +761,11 @@ func _on_pokemon_editor_save_requested(draft: Dictionary) -> void:
 
 
 func _merge_registry_additions(draft: Dictionary) -> void:
+	var settings: Dictionary = draft.get("species_settings", {})
+	for species in settings:
+		var merged: Dictionary = _pk_species_settings.get(species, {})
+		merged.merge(settings[species], true)
+		_pk_species_settings[species] = merged
 	var additions: Dictionary = draft.get("registry_additions", {})
 	for species in additions:
 		var list: Array = _pk_registry_additions.get(species, [])
@@ -648,6 +773,13 @@ func _merge_registry_additions(draft: Dictionary) -> void:
 			if not list.has(template):
 				list.append(template)
 		_pk_registry_additions[species] = list
+
+
+## Show the Pokémon spawn point `id` would put out, where the point now is (or clear
+## it if the point has been deleted).
+func _preview_point(id: String) -> void:
+	if _spawner != null and is_instance_valid(_spawner) and id != "":
+		_spawner.respawn_point(id)
 
 
 ## Redraw every marker from _pk_doc and reselect `select_id` if given.
@@ -673,7 +805,7 @@ func _save_pokemon() -> bool:
 			out[key] = _pk_doc[key]
 	if not _write_json(OverworldPokemonData.spawn_path(_map_data), out):
 		return false
-	if not _pk_registry_additions.is_empty():
+	if not _pk_registry_additions.is_empty() or not _pk_species_settings.is_empty():
 		var registry := OverworldPokemonData._read_json(OverworldPokemonData.REGISTRY_PATH)
 		if not (registry.get("species") is Dictionary):
 			registry["species"] = {}
@@ -687,13 +819,23 @@ func _save_pokemon() -> bool:
 				if not list.has(template):
 					list.append(template)
 			body["templates"] = list
-		if not _write_json(OverworldPokemonData.REGISTRY_PATH, registry):
+		# Speed and scale are the species' own, so they go here rather than into a table.
+		for species in _pk_species_settings:
+			var body = registry["species"].get(species)
+			if not (body is Dictionary):
+				body = {"templates": []}
+				registry["species"][species] = body
+			for key in _pk_species_settings[species]:
+				body[key] = _pk_species_settings[species][key]
+		if not _write_registry(registry):
 			return false
 		OverworldPokemonData.invalidate()
 		_pk_registry_additions.clear()
+		_pk_species_settings.clear()
 	_pk_dirty = false
 	if _spawner != null and is_instance_valid(_spawner):
-		_spawner.apply_doc(_pk_doc.duplicate(true))
+		# Still open, so still previewing -- against the working copy that was just saved.
+		_spawner.set_preview(_forced_spawns, _pk_doc)
 	return true
 
 
@@ -983,6 +1125,31 @@ func _write_json(path: String, doc: Dictionary) -> bool:
 	return true
 
 
+## Overworld_Pokemon.json is hand-edited and kept one species per line. The general
+## writer would spread every entry over several lines and bury a one-number speed
+## change in a diff of the whole file, so it gets this compact layout instead.
+func _write_registry(registry: Dictionary) -> bool:
+	var doc: Dictionary = _normalise_numbers(registry)
+	var lines: Array = ["{"]
+	if doc.has("_help"):
+		lines.append('  "_help": %s,' % JSON.stringify(doc["_help"], "  ").replace("\n", "\n  "))
+	lines.append('  "species": {')
+	var species: Dictionary = doc.get("species", {})
+	var keys: Array = species.keys()
+	for i in keys.size():
+		var comma := "," if i < keys.size() - 1 else ""
+		lines.append('    %s: %s%s' % [JSON.stringify(str(keys[i])), JSON.stringify(species[keys[i]]), comma])
+	lines.append("  }")
+	lines.append("}")
+	var out := FileAccess.open(OverworldPokemonData.REGISTRY_PATH, FileAccess.WRITE)
+	if out == null:
+		_flash("[color=red]cannot write %s[/color]" % OverworldPokemonData.REGISTRY_PATH)
+		return false
+	out.store_string("\n".join(lines) + "\n")
+	out.close()
+	return true
+
+
 ## The rule that owns a field, or the character itself when the value is inherited.
 func _owner_of(character: Dictionary, owner_index: int) -> Dictionary:
 	if owner_index < 0:
@@ -1075,6 +1242,9 @@ func _build_buttons() -> void:
 	_add_button(bar, "< PREV", func(): _step_selection(-1))
 	_add_button(bar, "NEXT >", func(): _step_selection(1))
 	_grab_button = _add_button(bar, "GRAB", _toggle_grab)
+	_add_button(bar, "CLONE", _clone_spawn_point)
+	_add_button(bar, "DELETE", _delete_held)
+	_spawns_button = _add_button(bar, "FORCED SPAWNS", _toggle_forced_spawns)
 	_add_button(bar, "EDIT NPC", func(): _open_editor(CharacterEditor.Mode.EDIT))
 	_add_button(bar, "SAVE", _save)
 	_add_button(bar, "CLOSE", _request_close)
@@ -1136,6 +1306,8 @@ func _update_hud() -> void:
 	_apply_selection_tint()
 	if _grab_button != null:
 		_grab_button.text = "DROP" if _grabbed else "GRAB"
+	if _spawns_button != null:
+		_spawns_button.text = "FORCED SPAWNS" if _forced_spawns else "RANDOM SPAWNS"
 	if _label == null:
 		return
 	var actor := _selected()
@@ -1170,7 +1342,7 @@ func _update_hud() -> void:
 	lines.append("[color=%s]%s[/color]%s"
 		% ["orange" if has_unsaved_changes() else "gray", dirty_text,
 		   "   [color=aqua]CTRL: player held still, arrows nudge[/color]" if _ctrl_held else ""])
-	lines.append("[color=gray]Tab select  G grab  Ctrl+arrows nudge  R pattern  M edit selected[/color]")
+	lines.append("[color=gray]Tab select  G grab  C clone spawn point  Del delete held spawn point  P forced/random spawns  Ctrl+arrows nudge  R pattern  M edit selected[/color]")
 	lines.append("[color=gray]Enter save  Esc close  F close and discard  (or the buttons along the bottom)[/color]")
 	if _mode == Mode.NEW:
 		lines.append("[color=aqua]NEW: place it, then SAVE — the create screen opens again for the next one[/color]")
@@ -1196,10 +1368,12 @@ func _exit_tree() -> void:
 	if _pokemon_editor != null and is_instance_valid(_pokemon_editor):
 		_pokemon_editor.queue_free()
 		_pokemon_editor = null
-	# Markers only exist while the tool is open. Unsaved spawn edits are simply
-	# dropped with _pk_doc -- the spawner's own doc was never touched.
+	# Markers and the force-everything-out preview only exist while the tool is open.
+	# Leaving preview reloads the spawn FILE, so unsaved spawn edits in _pk_doc are
+	# dropped and normal chance-based spawning resumes.
 	if _spawner != null and is_instance_valid(_spawner):
 		_spawner.hide_markers()
+		_spawner.set_preview(false)
 	# Never leave the world in a tool-only state: restore the tint, the camera, the
 	# grabbed actor's collision, and the player's ability to move.
 	if _tinted != null and is_instance_valid(_tinted):
