@@ -4,8 +4,8 @@ extends OverworldPokemon
 ## FLYER template -- Pidgey, Wingull, Swellow... Spawned by OverworldPokemonSpawner
 ## just off the left or right edge of the camera, flies straight across above
 ## everything (no collision), and despawns once it passes the far edge of the map.
-## A species with `"spin": true` in the registry (the Hoppip line) cycles its facings
-## as it goes, so it turns round and round while drifting across.
+## A flyer whose table row has `"spin": true` cycles its facings as it goes, so it
+## turns round and round while drifting across -- faster the faster it flies.
 
 # ---- tweakables -------------------------------------------------------------
 ## World pixels per second. The map is ~7500px wide, so a full crossing is minutes.
@@ -15,13 +15,14 @@ const SPEED := 40.0
 const SPEED_VARIANCE := 0.12
 ## Drawn above tree canopies (z 10-20) and everything else on the map.
 const Z := 60
-## Seconds per facing while spinning.
+## Seconds per facing while spinning, for a flyer moving at SPEED. Scaled by
+## SPEED / speed, so one flying twice as fast spins twice as fast.
 const SPIN_STEP := 0.3
 const SPIN_ORDER := ["down", "left", "up", "right"]
 ## Ground shadow: a black copy of the current frame, offset down-right (sun from the
 ## top left). World pixels -- the overworld camera is zoomed 2.5x, so on screen it
 ## is 2.5x further.
-const SHADOW_OFFSET := Vector2(50, 300)
+const SHADOW_OFFSET := Vector2(25, 150)
 const SHADOW_ALPHA := 0.2
 ## Just under tree canopies (z 10-20), so the shadow passes beneath them.
 const SHADOW_Z := 9
@@ -39,8 +40,10 @@ var end_x: float = 0.0
 ## World pixels per second. The spawner sets one value for the whole flock; <= 0
 ## rolls a speed of its own.
 var speed: float = 0.0
+## Turns round and round as it flies. Set by the spawner from the table row.
+var spins: bool = false
 
-var _spins: bool = false
+var _spin_step: float = SPIN_STEP
 var _spin_time: float = 0.0
 var _spin_index: int = 0
 var _shadow: Sprite2D = null
@@ -58,8 +61,8 @@ func _template_ready() -> void:
 		speed = roll_speed()
 	_make_shadow()
 	_bob_time = randf() * BOB_PERIOD
-	_spins = bool(species_data.get("spin", false))
-	if _spins:
+	_spin_step = SPIN_STEP * SPEED / maxf(speed, 1.0)
+	if spins:
 		_spin_index = randi() % SPIN_ORDER.size()
 		set_facing(SPIN_ORDER[_spin_index])
 	else:
@@ -68,10 +71,10 @@ func _template_ready() -> void:
 
 func _template_process(delta: float) -> void:
 	global_position.x += direction * speed * delta
-	if _spins:
+	if spins:
 		_spin_time += delta
-		if _spin_time >= SPIN_STEP:
-			_spin_time -= SPIN_STEP
+		if _spin_time >= _spin_step:
+			_spin_time -= _spin_step
 			_spin_index = (_spin_index + 1) % SPIN_ORDER.size()
 			set_facing(SPIN_ORDER[_spin_index])
 	_bob(delta)

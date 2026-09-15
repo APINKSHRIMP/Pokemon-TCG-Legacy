@@ -260,7 +260,7 @@ func _input(event: InputEvent) -> void:
 	# the tool rather than opening the menu behind it, and Enter saves rather than
 	# opening the menu. Both handlers are _input(), so this defers explicitly
 	# instead of depending on which node the viewport happens to reach first.
-	if MapManager.is_placement_tool_open():
+	if MapManager.is_placement_tool_open() or MapManager.is_debug_menu_open():
 		return
 
 	# A dialog on screen owns Escape: it answers NO on a Yes/No question and

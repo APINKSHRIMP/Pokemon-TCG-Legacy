@@ -10,15 +10,18 @@ extends CanvasLayer
 ## in the map's character file that produced this actor today, so a position that
 ## only applies on Tuesday evenings stays scoped to Tuesday evenings.
 ##
-##   F              close the tool
-##   Tab / Shift+Tab   select next / previous actor (camera pans to them)
-##   G              grab or drop the selected actor
+## Opened from the DEL debug menu in one of three modes (see Mode): EDIT CURRENT NPCS,
+## NEW NPC / OPPONENT / POKÉMON, or FLYER TABLES. The buttons along the bottom do
+## the same as the keys.
+##
+##   F              close the tool, discarding unsaved changes
+##   Tab / Shift+Tab   select next / previous actor (camera pans to them)   PREV / NEXT
+##   G              grab or drop the selected actor                         GRAB / DROP
 ##   Ctrl+arrows    nudge 1px (add Shift for 10px) -- Ctrl also holds the player still
 ##   R              cycle movement pattern
-##   N              create a new NPC or opponent (opens the character editor)
-##   M              edit the selected character in the character editor
-##   Enter          save every pending change to the character file
-##   Escape         close (refuses while changes are unsaved)
+##   M              edit the selected character in the character editor   EDIT NPC
+##   Enter          save every pending change to the character file       SAVE
+##   Escape         close (refuses while changes are unsaved)              CLOSE
 ##
 ## Input is taken in _input() rather than _unhandled_input() so the tool gets first
 ## refusal on every key. Escape and Enter would otherwise reach BaseMapScene and
@@ -34,6 +37,17 @@ const HUD_FONT_SIZE := 20
 const NUDGE_SMALL := 1.0
 const NUDGE_LARGE := 10.0
 
+## How the DEL debug menu opened the tool.
+##   EDIT    walk round and edit what is already on the map
+##   NEW     straight onto the create screen, and back to it after every save
+##   FLYERS  straight onto the map's flyer tables; closes once they are saved
+enum Mode { EDIT, NEW, FLYERS }
+
+## The clickable button bar along the bottom of the screen.
+const BUTTON_FONT_SIZE := 22
+const BUTTON_SIZE := Vector2(190, 56)
+const BUTTON_BAR_MARGIN := 24
+
 var _map_data: String = ""
 var _container: Node2D = null
 var _player: Node2D = null
@@ -42,6 +56,8 @@ var _actors: Array = []
 var _index: int = -1
 var _grabbed: bool = false
 var _ctrl_held: bool = false
+var _mode: int = Mode.EDIT
+var _grab_button: Button = null
 
 const CONSTANTS_PATH := "res://NPC_and_Opponent_Data/All_NPC_Constant_Data.json"
 
@@ -67,8 +83,8 @@ var _pk_registry_additions: Dictionary = {}
 var _pokemon_editor: PokemonSpawnEditor = null
 
 const POKEMON_SPAWN_HELP := [
-	"Overworld Pokemon for this map. Written by the placement tool (F, then N -> POKEMON, or M on a spawn marker); safe to hand-edit.",
-	"flyers: map-wide, one table per time of day (Morning/Afternoon/Evening/Night). The current time's table rolls every `interval` seconds with `chance`% to send a flock of ONE species from its `table` [{species, percent, min, max}] across the screen.",
+	"Overworld Pokemon for this map. Written by the placement tool (DEL debug menu -> NEW NPC / OPPONENT / POKEMON or FLYER TABLES, or EDIT CURRENT NPCS then EDIT NPC on a spawn marker); safe to hand-edit.",
+	"flyers: map-wide, one table per time of day (Morning/Afternoon/Evening/Night). The current time's table rolls every `interval` seconds with `chance`% to send a flock of ONE species from its `table` [{species, percent, min, max, speed_min, speed_max, spin}] across the screen. min/max = flock size; speed in px/s (the flock shares one); spin = turns as it flies, faster when faster.",
 	"spawn_points: id, template, at [x, y], tables {Morning/Afternoon/Evening/Night: {chance (%), table [{species, percent}]}} -- an empty table spawns nothing at that time. burying/surfacing tables also have `interval` (seconds between rolls); burying may set up_time; static sets pattern (+ distance/speed/axis for patrols).",
 	"Table percents are weights and need not add to 100. Species keys are sprite basenames in Image_Assets/Pokemon_Sprites/.",
 ]
@@ -82,13 +98,15 @@ var _grab_collision: Array = []
 var _player_collision: Array = []
 
 
-func setup(map_data: String, container: Node2D, player: Node2D) -> void:
+func setup(map_data: String, container: Node2D, player: Node2D, mode: int = Mode.EDIT) -> void:
 	_map_data = map_data
 	_container = container
 	_player = player
+	_mode = mode
 	layer = 128
 	_disable_player_collision()
 	_build_hud()
+	_build_buttons()
 	_spawner = get_tree().get_first_node_in_group(OverworldPokemonSpawner.GROUP) as OverworldPokemonSpawner
 	if _spawner != null:
 		_pk_doc = _spawner.doc.duplicate(true)
@@ -98,6 +116,11 @@ func setup(map_data: String, container: Node2D, player: Node2D) -> void:
 		_index = 0
 	_look_at_selection()
 	_update_hud()
+	match _mode:
+		Mode.NEW:
+			_open_editor(CharacterEditor.Mode.NEW)
+		Mode.FLYERS:
+			_open_pokemon_editor({}, true)
 
 
 # ============================================================
@@ -218,29 +241,14 @@ func _input(event: InputEvent) -> void:
 	match event.keycode:
 		KEY_F:
 			_close()
-		KEY_N:
-			_open_editor(CharacterEditor.Mode.NEW)
 		KEY_M:
 			_open_editor(CharacterEditor.Mode.EDIT)
 		KEY_ESCAPE:
-			if has_unsaved_changes():
-				_flash("[color=orange]unsaved changes — Enter to save, F to discard and close[/color]")
-			else:
-				_close()
+			_request_close()
 		KEY_TAB:
-			if _grabbed:
-				_drop()
-			_refresh_actors()
-			if not _actors.is_empty():
-				_index = wrapi(_index + (-1 if event.shift_pressed else 1), 0, _actors.size())
-				_look_at_selection()
-			_update_hud()
+			_step_selection(-1 if event.shift_pressed else 1)
 		KEY_G:
-			if _grabbed:
-				_drop()
-			else:
-				_grab()
-			_update_hud()
+			_toggle_grab()
 		KEY_R:
 			_cycle_pattern()
 		KEY_ENTER, KEY_KP_ENTER:
@@ -260,6 +268,42 @@ func _input(event: InputEvent) -> void:
 
 	if handled:
 		get_viewport().set_input_as_handled()
+
+
+## Tab / Shift+Tab and the PREV / NEXT buttons.
+func _step_selection(step: int) -> void:
+	if _grabbed:
+		_drop()
+	_refresh_actors()
+	if not _actors.is_empty():
+		_index = wrapi(_index + step, 0, _actors.size())
+		_look_at_selection()
+	_update_hud()
+
+
+## G and the GRAB / DROP button.
+func _toggle_grab() -> void:
+	if _grabbed:
+		_drop()
+	else:
+		_grab()
+	_update_hud()
+
+
+## Escape and the CLOSE button. Refuses while anything is unsaved -- F is the
+## deliberate discard.
+func _request_close() -> void:
+	if has_unsaved_changes():
+		_flash("[color=orange]unsaved changes — SAVE (Enter) first, or F to discard and close[/color]")
+	else:
+		_close()
+
+
+## NEW and FLYERS mode exist for the form they opened on, so backing out of it with
+## nothing waiting to be saved goes straight back to the game.
+func _close_if_done() -> void:
+	if _mode != Mode.EDIT and not has_unsaved_changes():
+		_close()
 
 
 func _process(_delta: float) -> void:
@@ -485,6 +529,7 @@ func _on_editor_cancelled() -> void:
 	_editor = null
 	_thaw_player_after_form()
 	_update_hud()
+	_close_if_done()
 
 
 func _form_open() -> bool:
@@ -522,6 +567,7 @@ func _open_pokemon_editor(point: Dictionary, flyers: bool = false) -> void:
 	get_tree().current_scene.add_child(_pokemon_editor)
 	_pokemon_editor.confirmed.connect(_on_pokemon_editor_confirmed)
 	_pokemon_editor.cancelled.connect(_on_pokemon_editor_cancelled)
+	_pokemon_editor.save_requested.connect(_on_pokemon_editor_save_requested)
 	_freeze_player_for_form()
 	_pokemon_editor.setup(_map_data, _pk_doc, point, _pk_registry_additions, flyers)
 	_update_hud()
@@ -531,25 +577,14 @@ func _on_pokemon_editor_cancelled() -> void:
 	_pokemon_editor = null
 	_thaw_player_after_form()
 	_update_hud()
+	_close_if_done()
 
 
 func _on_pokemon_editor_confirmed(draft: Dictionary) -> void:
 	_pokemon_editor = null
 	_thaw_player_after_form()
-	var additions: Dictionary = draft.get("registry_additions", {})
-	for species in additions:
-		var list: Array = _pk_registry_additions.get(species, [])
-		for template in additions[species]:
-			if not list.has(template):
-				list.append(template)
-		_pk_registry_additions[species] = list
+	_merge_registry_additions(draft)
 	_pk_dirty = true
-
-	if str(draft.get("kind", "")) == "flyers":
-		_pk_doc["flyers"] = draft.get("flyers", {})
-		_update_hud()
-		_flash("[color=lime]flyer tables updated — Enter to write Pokemon/Spawns/%s.json (F discards)[/color]" % _map_data)
-		return
 
 	if not (_pk_doc.get("spawn_points") is Array):
 		_pk_doc["spawn_points"] = []
@@ -589,6 +624,30 @@ func _on_pokemon_editor_confirmed(draft: Dictionary) -> void:
 		_look_at_selection()
 	_update_hud()
 	_flash("[color=lime]%s ready — Enter to write Pokemon/Spawns/%s.json[/color]" % [id, _map_data])
+
+
+## Flyer tables' SAVE: write the spawn file straight away and leave the form open.
+## Any spawn-point edits already waiting in _pk_doc are written with it.
+func _on_pokemon_editor_save_requested(draft: Dictionary) -> void:
+	_merge_registry_additions(draft)
+	_pk_doc["flyers"] = draft.get("flyers", {})
+	_pk_dirty = true
+	var ok := _save_pokemon()
+	if ok:
+		print("PlacementTool: saved flyer tables -> " + OverworldPokemonData.spawn_path(_map_data))
+	if _pokemon_editor != null and is_instance_valid(_pokemon_editor):
+		_pokemon_editor.notify_saved(ok)
+	_update_hud()
+
+
+func _merge_registry_additions(draft: Dictionary) -> void:
+	var additions: Dictionary = draft.get("registry_additions", {})
+	for species in additions:
+		var list: Array = _pk_registry_additions.get(species, [])
+		for template in additions[species]:
+			if not list.has(template):
+				list.append(template)
+		_pk_registry_additions[species] = list
 
 
 ## Redraw every marker from _pk_doc and reselect `select_id` if given.
@@ -734,6 +793,7 @@ func _save() -> void:
 		if _pending.is_empty() and _drafts.is_empty():
 			_flash("[color=lime]saved Pokémon spawns to Pokemon/Spawns/%s.json[/color]" % _map_data)
 			print("PlacementTool: saved Pokémon spawns -> " + OverworldPokemonData.spawn_path(_map_data))
+			_after_save()
 			return
 	var path := CharacterSchedule.DIR + _map_data + ".json"
 	var file := FileAccess.open(path, FileAccess.READ)
@@ -822,6 +882,14 @@ func _save() -> void:
 		summary += ", plus Pokémon spawns"
 	_flash("[color=lime]%s to %s.json[/color]" % [summary, _map_data])
 	print("PlacementTool: %s -> %s" % [summary, path])
+	_after_save()
+
+
+## NEW mode goes straight back to the create screen for the next one. (FLYERS mode
+## saves from the form itself and closes when the form is closed.)
+func _after_save() -> void:
+	if _mode == Mode.NEW:
+		_open_editor(CharacterEditor.Mode.NEW)
 
 
 ## Merge one editor draft into the two documents.
@@ -995,6 +1063,35 @@ func _build_hud() -> void:
 	add_child(_panel)
 
 
+## Clickable versions of the keys, along the bottom-left of the screen. Every button
+## is FOCUS_NONE: a focused button eats the arrow keys the player walks with, and
+## Space / Enter would press it again.
+func _build_buttons() -> void:
+	var bar := HBoxContainer.new()
+	bar.theme = DebugFormTheme.build()
+	bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	bar.add_theme_constant_override("separation", 12)
+	add_child(bar)
+	_add_button(bar, "< PREV", func(): _step_selection(-1))
+	_add_button(bar, "NEXT >", func(): _step_selection(1))
+	_grab_button = _add_button(bar, "GRAB", _toggle_grab)
+	_add_button(bar, "EDIT NPC", func(): _open_editor(CharacterEditor.Mode.EDIT))
+	_add_button(bar, "SAVE", _save)
+	_add_button(bar, "CLOSE", _request_close)
+	bar.position = Vector2(BUTTON_BAR_MARGIN, 1080 - BUTTON_BAR_MARGIN - BUTTON_SIZE.y)
+
+
+func _add_button(parent: Control, text: String, action: Callable) -> Button:
+	var button := Button.new()
+	button.text = text
+	button.focus_mode = Control.FOCUS_NONE
+	button.custom_minimum_size = BUTTON_SIZE
+	button.add_theme_font_size_override("font_size", BUTTON_FONT_SIZE)
+	button.pressed.connect(action)
+	parent.add_child(button)
+	return button
+
+
 ## Which days and times a save would rewrite for this actor.
 ##
 ## The save edits the matched rule in place, so the blast radius is that rule's
@@ -1037,6 +1134,8 @@ func _apply_selection_tint() -> void:
 
 func _update_hud() -> void:
 	_apply_selection_tint()
+	if _grab_button != null:
+		_grab_button.text = "DROP" if _grabbed else "GRAB"
 	if _label == null:
 		return
 	var actor := _selected()
@@ -1071,8 +1170,10 @@ func _update_hud() -> void:
 	lines.append("[color=%s]%s[/color]%s"
 		% ["orange" if has_unsaved_changes() else "gray", dirty_text,
 		   "   [color=aqua]CTRL: player held still, arrows nudge[/color]" if _ctrl_held else ""])
-	lines.append("[color=gray]Tab select  G grab  Ctrl+arrows nudge  R pattern[/color]")
-	lines.append("[color=gray]N new character / Pokémon spawn  M edit selected  Enter save  Esc/F close[/color]")
+	lines.append("[color=gray]Tab select  G grab  Ctrl+arrows nudge  R pattern  M edit selected[/color]")
+	lines.append("[color=gray]Enter save  Esc close  F close and discard  (or the buttons along the bottom)[/color]")
+	if _mode == Mode.NEW:
+		lines.append("[color=aqua]NEW: place it, then SAVE — the create screen opens again for the next one[/color]")
 	_label.text = "\n".join(lines)
 
 

@@ -55,6 +55,16 @@ static func check_and_apply(player_name: String) -> String:
 	return ""
 
 
+## Every cheat code, in the order the DEL debug menu lists them.
+static func codes() -> Array:
+	return _CHEAT_LABELS.keys()
+
+
+## Apply one code directly -- the debug menu's buttons. Returns its confirmation text.
+static func apply_code(code: String) -> String:
+	return check_and_apply(code)
+
+
 static func _apply(code: String) -> void:
 	match code:
 		"CHT.All_Cards_1", "CHT.All_Cards_2", "CHT.All_Cards_3", "CHT.All_Cards_4":

@@ -59,10 +59,15 @@ const POINT_DEFAULT_INTERVAL := 10.0
 const FLYER_DEFAULT_CHANCE := 15.0
 const FLYER_DEFAULT_INTERVAL := 30.0
 
-## Flyer table rows carry their own flock size: {species, percent, min, max}.
+## Flyer table rows carry their own flock size, speed range and spin:
+## {species, percent, min, max, speed_min, speed_max, spin}.
 const DEFAULT_FLOCK_MIN := 1
 const DEFAULT_FLOCK_MAX := 3
 const FLOCK_LIMIT := 12
+## World pixels per second. A flock flies at one speed picked from its row's range.
+const DEFAULT_FLYER_SPEED_MIN := 35
+const DEFAULT_FLYER_SPEED_MAX := 45
+const FLYER_SPEED_LIMIT := 400
 
 static var _registry: Dictionary = {}
 static var _registry_loaded: bool = false

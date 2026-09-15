@@ -216,7 +216,11 @@ func spawn_flyer_group(config: Dictionary) -> void:
 	var start := Vector2(start_x, randf_range(top, bottom))
 	var end_x := _map_edge(direction)
 	# One speed for the whole flock, so it crosses the map together.
-	var flock_speed := PokemonFlyer.roll_speed()
+	var slowest := maxf(1.0, float(row.get("speed_min", OverworldPokemonData.DEFAULT_FLYER_SPEED_MIN)))
+	var fastest := maxf(slowest, float(row.get("speed_max", OverworldPokemonData.DEFAULT_FLYER_SPEED_MAX)))
+	var flock_speed := randf_range(slowest, fastest)
+	# The row decides; a row without the key falls back to the species' registry default.
+	var spins := bool(row.get("spin", OverworldPokemonData.species_info(species).get("spin", false)))
 	var placed: Array[Vector2] = []
 	for i in count:
 		var flyer := PokemonFlyer.new()
@@ -224,6 +228,7 @@ func spawn_flyer_group(config: Dictionary) -> void:
 		flyer.direction = direction
 		flyer.end_x = end_x
 		flyer.speed = flock_speed
+		flyer.spins = spins
 		var offset := Vector2.ZERO if i == 0 else _flock_offset(direction, placed)
 		placed.append(offset)
 		flyer.position = to_local(start + offset)

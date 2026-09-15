@@ -155,6 +155,8 @@ var _actor_movement: Dictionary = {}
 # Debug-only placement editor, built on demand by the F key. Never constructed in
 # a release build -- see DebugMode.is_enabled().
 var _placement_tool: PlacementTool = null
+# Debug-only DEL menu (Debug_Menu.gd), same gate as the placement tool.
+var _debug_menu: DebugMenu = null
 
 # Preloaded back textures used during the gift reveal animation
 const _CARDBACK_PATH := "res://Image_Assets/Sleeves/1_Default_English.png"
@@ -2712,32 +2714,26 @@ func _on_validation_popup_closed() -> void:
 # ============================================================
 # DEBUG / TESTING CHEATS (overworld only)
 # ------------------------------------------------------------
-# Number row 1-9 set the in-game date to that value; 0 sets date 10.
-# M / A / E / N set the time of day to Morning / Afternoon / Evening / Night.
-# Any of those date/time keys also resets the current-period defeated
-# count to 0, then reloads the active map scene in place so its
-# date/time NPC & opponent JSON is reloaded — handy for sweeping
-# through all 30 day/time placements without restarting the game.
-# The player is restored to the exact spot they were standing.
+# DEL opens the debug menu (Scripts/Utilities/Debug_Menu.gd). It is the only
+# overworld debug key: time of day, jump to a date, set cash, +1 defeated,
+# the TEST match, the placement tool's three modes and the name cheats are
+# all buttons on it, and those buttons call the debug_* functions below.
 #
-# C bumps the current-period defeated count (opponents_beaten_count_current)
-# by 1 and flashes a large on-screen label for 2s. This is the same count
-# the outro reads to auto-advance time at 3 wins, so pressing C to 2 then
-# winning a real battle (→3) exercises the genuine time-advance path.
+# A date or time change resets the current-period defeated count to 0, then
+# reloads the active map scene in place so its date/time characters are
+# rebuilt, with the player restored to the exact spot they were standing.
 #
 # Lives here in the MapManager autoload so it applies to every map
 # scene without per-scene duplication. Guarded twice: it fires ONLY in
 # overworld map scenes, so it never interferes with battles/menus, and
 # ONLY while DebugMode.is_enabled() (Debug_Mode.gd), so a release build
-# has no cheat keys at all.
+# has no debug menu at all.
 # ============================================================
 
 const _MAP_SCENES_PREFIX := "res://Scenes/Map_Scenes/"
 
 var _debug_defeated_label: Label = null
 var _debug_label_token: int = 0
-var _debug_cash_label: Label = null
-var _debug_cash_token: int = 0
 
 ## True while the debug placement editor is on screen. BaseMapScene checks this so
 ## its Escape/Enter menu handling stands down -- both live in _input(), and relying
@@ -2746,25 +2742,31 @@ func is_placement_tool_open() -> bool:
 	return _placement_tool != null and is_instance_valid(_placement_tool)
 
 
-## Open the debug placement editor. It closes itself (F or Escape) and restores the
-## camera, the player's movement and any grabbed actor's collision on the way out.
-func _open_placement_tool() -> void:
+## True while the DEL debug menu is on screen. BaseMapScene stands down for it the
+## same way it does for the placement tool.
+func is_debug_menu_open() -> bool:
+	return _debug_menu != null and is_instance_valid(_debug_menu)
+
+
+## Open the debug placement editor in one of PlacementTool.Mode's modes. It closes
+## itself and restores the camera, the player's movement and any grabbed actor's
+## collision on the way out.
+func _open_placement_tool(mode: int) -> void:
 	if _placement_tool != null and is_instance_valid(_placement_tool):
-		return   # already open; the tool owns F from here
+		return
 	if _opponents_container == null or not is_instance_valid(_opponents_container):
 		print("PlacementTool: no actor container on this map")
 		return
 	_placement_tool = PlacementTool.new()
 	get_tree().current_scene.add_child(_placement_tool)
-	_placement_tool.setup(_map_data, _opponents_container, _player)
-	print("PlacementTool: open on %s — Tab select, G grab, Enter save" % _map_data)
+	_placement_tool.setup(_map_data, _opponents_container, _player, mode)
+	print("PlacementTool: open on %s" % _map_data)
 
 
 func _unhandled_input(event: InputEvent) -> void:
-	# Developer-only. Without this gate an exported build lets anyone press C to
-	# advance the time-of-day loop, P/O to mint cash, T to launch a test match and
-	# the number/letter rows to set the date and time. See Debug_Mode.gd for how
-	# debug mode is switched on and off — in the editor it is always on.
+	# Developer-only. Without this gate an exported build would let anyone open the
+	# debug menu and mint cash, skip time or launch a test match. See Debug_Mode.gd for
+	# how debug mode is switched on and off — in the editor it is always on.
 	if not DebugMode.is_enabled():
 		return
 
@@ -2777,88 +2779,98 @@ func _unhandled_input(event: InputEvent) -> void:
 	if not String(current.scene_file_path).begins_with(_MAP_SCENES_PREFIX):
 		return
 
-	# The placement tool owns the keyboard while it is open, and its character editor
-	# is full of text boxes. A focused LineEdit consumes printable keys before
-	# _unhandled_input, so most of these never fire anyway -- but typing "2" into a
-	# cash-reward box that has just lost focus would otherwise jump the date to day 2
-	# and reload the map out from under an unsaved draft.
-	if is_placement_tool_open() and event.keycode != KEY_F:
+	# The placement tool and the menu own the keyboard while they are open, and both
+	# are full of text boxes.
+	if is_placement_tool_open() or is_debug_menu_open():
 		return
 
-	# F — open the NPC/opponent placement editor. Once open the tool handles its own
-	# keys from _input(), which runs ahead of this, so nothing here (or in
-	# BaseMapScene's Escape/Enter menu handling) can steal them back.
-	if event.keycode == KEY_F and not event.ctrl_pressed:
-		get_viewport().set_input_as_handled()
-		_open_placement_tool()
+	# DEL is the one overworld debug key. Everything that used to have a key of its own
+	# (time, date, cash, defeated count, TEST match, placement) is a button on the menu.
+	if event.keycode != KEY_DELETE:
 		return
-
-	# C — bump the defeated count and flash the label. No reset, no reload.
-	if event.keycode == KEY_C:
-		GameState.progress["opponents_beaten_count_current"] = GameState.get_current_defeated() + 1
-		GameState.save_progress()
-		print("DEBUG: opponents defeated = ", GameState.get_current_defeated())
-		get_viewport().set_input_as_handled()
-		_debug_flash_defeated_count()
+	# Not over a message box, cutscene or the main menu: they hold the player still
+	# too, and closing the debug menu would let the player walk away from them.
+	if _player != null and is_instance_valid(_player) and "can_move" in _player and not _player.can_move:
 		return
+	get_viewport().set_input_as_handled()
+	_open_debug_menu()
 
-	# P / O — adjust cash by ±200 and flash the delta.
-	if event.keycode == KEY_P:
-		GameState.add_cash(200)
-		print("DEBUG: cash = ", GameState.get_cash())
-		get_viewport().set_input_as_handled()
-		_debug_flash_cash(200)
+
+# ---- DEL debug menu: opening, closing, and what its buttons call ----------------
+
+func _open_debug_menu() -> void:
+	if is_debug_menu_open():
 		return
-	if event.keycode == KEY_O:
-		GameState.add_cash(-200)
-		print("DEBUG: cash = ", GameState.get_cash())
-		get_viewport().set_input_as_handled()
-		_debug_flash_cash(-200)
+	_debug_menu = DebugMenu.new()
+	get_tree().current_scene.add_child(_debug_menu)
+	# The player polls WASD straight from the OS, so typing into the cash box would
+	# walk them without this.
+	if _player != null and is_instance_valid(_player):
+		_player.lock_movement()
+
+
+func close_debug_menu() -> void:
+	if not is_debug_menu_open():
 		return
+	# remove_child before queue_free, so is_debug_menu_open() is false straight away
+	# rather than at the end of the frame.
+	if _debug_menu.get_parent() != null:
+		_debug_menu.get_parent().remove_child(_debug_menu)
+	_debug_menu.queue_free()
+	_debug_menu = null
+	if _player != null and is_instance_valid(_player):
+		_player.unlock_movement()
 
-	# T — jump straight into a TEST match: both player and opponent use the
-	# "TEST" deck in user://Player_Decks/. No NPC data needed.
-	if event.keycode == KEY_T:
-		get_viewport().set_input_as_handled()
-		_start_test_match(current)
-		return
 
-	var new_date: int = -1
-	var new_time: String = ""
+func debug_set_time(time_name: String) -> void:
+	_debug_set_date_time(-1, time_name)
 
-	match event.keycode:
-		KEY_1, KEY_KP_1: new_date = 1
-		KEY_2, KEY_KP_2: new_date = 2
-		KEY_3, KEY_KP_3: new_date = 3
-		KEY_4, KEY_KP_4: new_date = 4
-		KEY_5, KEY_KP_5: new_date = 5
-		KEY_6, KEY_KP_6: new_date = 6
-		KEY_7, KEY_KP_7: new_date = 7
-		KEY_8, KEY_KP_8: new_date = 8
-		KEY_9, KEY_KP_9: new_date = 9
-		KEY_0, KEY_KP_0: new_date = 10
-		KEY_MINUS:       new_date = 11
-		KEY_EQUAL:       new_date = 12
-		KEY_BRACKETLEFT: new_date = 0  # Date 0 = match-effects test day (Characters/Celeste_Harbour.json, days "0")
-		KEY_H: new_time = "Morning"
-		KEY_J: new_time = "Afternoon"
-		KEY_K: new_time = "Evening"
-		KEY_L: new_time = "Night"
-		_: return
 
+func debug_set_date(date: int) -> void:
+	_debug_set_date_time(date, "")
+
+
+## Changing date/time wipes the current-period defeated count, mirroring what
+## advance_time() does, then reloads the map in place so its date/time characters
+## are rebuilt with the player standing where they were.
+func _debug_set_date_time(new_date: int, new_time: String) -> void:
+	var current := get_tree().current_scene
+	close_debug_menu()
 	if new_date != -1:
 		GameState.progress["date"] = new_date
 		print("DEBUG: date set to ", new_date)
 	else:
 		GameState.progress["time"] = new_time
 		print("DEBUG: time set to ", new_time)
-	# Changing date/time wipes the current-period defeated count, mirroring
-	# what advance_time() does so testing always starts from a clean slate.
 	GameState.progress["opponents_beaten_count_current"] = 0
 	GameState.save_progress()
+	if current != null:
+		_debug_reload_map_in_place(current)
 
-	get_viewport().set_input_as_handled()
-	_debug_reload_map_in_place(current)
+
+func debug_set_cash(amount: int) -> void:
+	GameState.add_cash(amount - GameState.get_cash())
+	print("DEBUG: cash = ", GameState.get_cash())
+
+
+## No reset, no reload. This is the count the outro reads to auto-advance time at 3
+## wins, so taking it to 2 and then winning a real battle exercises the real path.
+func debug_add_defeated() -> void:
+	GameState.progress["opponents_beaten_count_current"] = GameState.get_current_defeated() + 1
+	GameState.save_progress()
+	print("DEBUG: opponents defeated = ", GameState.get_current_defeated())
+
+
+func debug_start_test_match() -> void:
+	var current := get_tree().current_scene
+	close_debug_menu()
+	if current != null:
+		_start_test_match(current)
+
+
+func debug_open_placement_tool(mode: int) -> void:
+	close_debug_menu()
+	_open_placement_tool(mode)
 
 # Launches an instant TEST match from the overworld. Both the player and the
 # opponent draw from user://Player_Decks/TEST.json, and the opponent's metadata
@@ -2967,35 +2979,3 @@ func _debug_flash_defeated_label_finish() -> void:
 		_debug_defeated_label.queue_free()
 		_debug_defeated_label = null
 
-# Shows a "+200 Cash" / "-200 Cash" label for 2 seconds. Same token pattern as above.
-func _debug_flash_cash(delta: int) -> void:
-	if _ui_layer == null or not is_instance_valid(_ui_layer):
-		return
-
-	if _debug_cash_label == null or not is_instance_valid(_debug_cash_label):
-		_debug_cash_label = Label.new()
-		_debug_cash_label.name = "DebugCashLabel"
-		_debug_cash_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		_debug_cash_label.vertical_alignment   = VERTICAL_ALIGNMENT_CENTER
-		_debug_cash_label.add_theme_font_size_override("font_size", 72)
-		_debug_cash_label.add_theme_color_override("font_outline_color", Color.BLACK)
-		_debug_cash_label.add_theme_constant_override("outline_size", 12)
-		_debug_cash_label.anchor_left   = 0.0
-		_debug_cash_label.anchor_right  = 1.0
-		_debug_cash_label.anchor_top    = 0.0
-		_debug_cash_label.anchor_bottom = 0.0
-		_debug_cash_label.offset_top    = 280
-		_debug_cash_label.offset_bottom = 400
-		_debug_cash_label.mouse_filter  = Control.MOUSE_FILTER_IGNORE
-		_ui_layer.add_child(_debug_cash_label)
-
-	var prefix := "+" if delta > 0 else ""
-	_debug_cash_label.text = prefix + str(delta) + " Cash  (Total: " + str(GameState.get_cash()) + ")"
-	_debug_cash_label.add_theme_color_override("font_color", Color.GREEN if delta > 0 else Color.RED)
-
-	_debug_cash_token += 1
-	var my_token: int = _debug_cash_token
-	await get_tree().create_timer(2.0).timeout
-	if my_token == _debug_cash_token and _debug_cash_label != null and is_instance_valid(_debug_cash_label):
-		_debug_cash_label.queue_free()
-		_debug_cash_label = null

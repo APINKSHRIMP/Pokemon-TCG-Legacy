@@ -2,8 +2,9 @@ class_name PokemonSpawnEditor
 extends CanvasLayer
 
 ## In-game form for overworld Pokémon spawns. Debug builds only -- reached from the
-## placement tool (F), via N -> POKÉMON for a new spawn point, N -> FLYER TABLES for
-## the map's four time-of-day flyer tables, or M on a selected spawn-point marker.
+## placement tool, which the DEL debug menu opens: NEW NPC / OPPONENT / POKÉMON ->
+## POKÉMON for a new spawn point, FLYER TABLES for the map's four time-of-day flyer
+## tables, or EDIT CURRENT NPCS -> EDIT NPC (M) on a selected spawn-point marker.
 ##
 ## Like the character editor it writes nothing itself. Confirm hands a draft back to
 ## PlacementTool, which places a new point at the player, lets you grab it, and
@@ -13,6 +14,9 @@ extends CanvasLayer
 
 signal confirmed(draft: Dictionary)
 signal cancelled
+## Flyer tables only: SAVE. The placement tool writes the file and answers with
+## notify_saved(); the form stays open.
+signal save_requested(draft: Dictionary)
 
 # ---- tweakables -------------------------------------------------------------
 const DEFAULT_TEMPLATE := "rodent"
@@ -25,8 +29,11 @@ const COLUMN_WIDTH := 880
 const COLUMN_GAP := 46
 const ROW_GAP := 8
 const ICON_SIZE := Vector2(56, 56)
-## Width of each flock min / max box in a flyer table row.
-const FLOCK_SPIN_WIDTH := 100
+## Widths of the flock and speed min / max boxes on a flyer row's second line.
+const FLOCK_SPIN_WIDTH := 95
+const SPEED_SPIN_WIDTH := 110
+## How far the second line sits in from the left edge.
+const FLYER_LINE_INDENT := 24
 const SCROLL_TOP := 92
 const SCROLL_HEIGHT := 900
 const FOOTER_TOP := 1010
@@ -53,6 +60,12 @@ var _point_tables: Dictionary = {}
 var _table_time: String = ""
 var _time_opt: OptionButton = null
 var _title: Label = null
+var _scope: Label = null
+var _cancel_btn: Button = null
+## Flyer tables as last saved (JSON), so CLOSE can tell whether it would lose edits.
+var _flyer_saved_json: String = ""
+## CLOSE was clicked once over unsaved flyer edits; the next click discards them.
+var _close_armed: bool = false
 
 var _root: Control = null
 var _template_opt: OptionButton = null
@@ -129,12 +142,12 @@ func _build() -> void:
 	_title.add_theme_font_size_override("font_size", TITLE_FONT_SIZE)
 	_root.add_child(_title)
 
-	var scope := Label.new()
-	scope.text = "Confirm hands this to the placement tool — Enter there writes Pokemon/Spawns/%s.json" % _map_data
-	scope.position = Vector2(FORM_MARGIN, 54)
-	scope.add_theme_font_size_override("font_size", FORM_FONT_SIZE)
-	scope.add_theme_color_override("font_color", Color(0.45, 0.85, 1.0))
-	_root.add_child(scope)
+	# Text is set by _on_template_changed(): flyer tables save in place, points don't.
+	_scope = Label.new()
+	_scope.position = Vector2(FORM_MARGIN, 54)
+	_scope.add_theme_font_size_override("font_size", FORM_FONT_SIZE)
+	_scope.add_theme_color_override("font_color", Color(0.45, 0.85, 1.0))
+	_root.add_child(_scope)
 
 	var scroll := ScrollContainer.new()
 	scroll.position = Vector2(FORM_MARGIN, SCROLL_TOP)
@@ -276,13 +289,13 @@ func _build() -> void:
 	_confirm_btn.pressed.connect(_confirm)
 	_root.add_child(_confirm_btn)
 
-	var cancel_btn := Button.new()
-	cancel_btn.text = "CANCEL"
-	cancel_btn.position = Vector2(1640, FOOTER_TOP)
-	cancel_btn.size = Vector2(220, FOOTER_HEIGHT)
-	cancel_btn.add_theme_font_size_override("font_size", FORM_FONT_SIZE)
-	cancel_btn.pressed.connect(_cancel)
-	_root.add_child(cancel_btn)
+	_cancel_btn = Button.new()
+	_cancel_btn.text = "CANCEL"
+	_cancel_btn.position = Vector2(1640, FOOTER_TOP)
+	_cancel_btn.size = Vector2(220, FOOTER_HEIGHT)
+	_cancel_btn.add_theme_font_size_override("font_size", FORM_FONT_SIZE)
+	_cancel_btn.pressed.connect(_cancel)
+	_root.add_child(_cancel_btn)
 
 
 func _column(parent: Control) -> VBoxContainer:
@@ -362,6 +375,14 @@ func _on_template_changed() -> void:
 		_title.text = "NEW POKÉMON SPAWN  —  %s" % _map_data
 	else:
 		_title.text = "EDIT POKÉMON SPAWN  —  %s" % str(_original.get("id", "?"))
+	# Flyer tables have no position to place, so SAVE writes straight away and the
+	# screen stays up; a spawn point is still handed to the tool to be placed.
+	_confirm_btn.text = "SAVE" if is_flyer else "CONFIRM"
+	_cancel_btn.text = "CLOSE" if is_flyer else "CANCEL"
+	if is_flyer:
+		_scope.text = "SAVE writes Pokemon/Spawns/%s.json straight away and keeps this screen open" % _map_data
+	else:
+		_scope.text = "Confirm hands this to the placement tool — Enter there writes Pokemon/Spawns/%s.json" % _map_data
 	_desc.text = OverworldPokemonData.TEMPLATE_DESCRIPTIONS.get(_template, "")
 	if is_flyer:
 		_chance_label.text = "Chance per roll"
@@ -405,6 +426,8 @@ func _enter_time_tables() -> void:
 	# would write the old template's values into the new set of tables.
 	_table_time = ""
 	_show_time_table(target)
+	if _template == "flyer" and _flyer_saved_json == "":
+		_flyer_saved_json = _flyer_json()
 
 
 ## Put the on-screen chance, interval and rows back into their time's table.
@@ -510,8 +533,7 @@ func _add_species(species: String) -> void:
 		percent = 10.0
 	var entry := {"species": species, "percent": roundf(percent)}
 	if _template == "flyer":
-		entry["min"] = OverworldPokemonData.DEFAULT_FLOCK_MIN
-		entry["max"] = OverworldPokemonData.DEFAULT_FLOCK_MAX
+		_fill_flyer_defaults(entry)
 	_table.append(entry)
 	_rebuild_table()
 
@@ -554,37 +576,6 @@ func _rebuild_table() -> void:
 			_revalidate())
 		row.add_child(percent)
 
-		# Flyers only: this species' flock size, min to max.
-		if is_flyer:
-			if not entry.has("min"):
-				entry["min"] = OverworldPokemonData.DEFAULT_FLOCK_MIN
-			if not entry.has("max"):
-				entry["max"] = OverworldPokemonData.DEFAULT_FLOCK_MAX
-			var flock_label := Label.new()
-			flock_label.text = "Flock"
-			flock_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-			flock_label.add_theme_font_size_override("font_size", FORM_FONT_SIZE)
-			row.add_child(flock_label)
-			var flock_min := _spin(1, OverworldPokemonData.FLOCK_LIMIT, 1, int(entry["min"]))
-			flock_min.tooltip_text = "Smallest flock of this species"
-			flock_min.custom_minimum_size = Vector2(FLOCK_SPIN_WIDTH, 0)
-			flock_min.value_changed.connect(func(v: float):
-				entry["min"] = int(v)
-				_revalidate())
-			row.add_child(flock_min)
-			var dash := Label.new()
-			dash.text = "–"
-			dash.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-			dash.add_theme_font_size_override("font_size", FORM_FONT_SIZE)
-			row.add_child(dash)
-			var flock_max := _spin(1, OverworldPokemonData.FLOCK_LIMIT, 1, int(entry["max"]))
-			flock_max.tooltip_text = "Largest flock of this species"
-			flock_max.custom_minimum_size = Vector2(FLOCK_SPIN_WIDTH, 0)
-			flock_max.value_changed.connect(func(v: float):
-				entry["max"] = int(v)
-				_revalidate())
-			row.add_child(flock_max)
-
 		var remove := Button.new()
 		remove.text = "REMOVE"
 		remove.add_theme_font_size_override("font_size", FORM_FONT_SIZE)
@@ -594,7 +585,73 @@ func _rebuild_table() -> void:
 		row.add_child(remove)
 
 		_table_box.add_child(row)
+		# Flyers only: a second line with this species' flock size, speed and spin.
+		if is_flyer:
+			_table_box.add_child(_flyer_line(entry))
 	_revalidate()
+
+
+## Flock size, speed and spin for a row that doesn't have them yet. Spin starts from
+## the species' registry `spin` (the Hoppip line), then belongs to the row.
+func _fill_flyer_defaults(entry: Dictionary) -> void:
+	var species_spin := bool(OverworldPokemonData.species_info(str(entry.get("species", ""))).get("spin", false))
+	var defaults := {
+		"min": OverworldPokemonData.DEFAULT_FLOCK_MIN,
+		"max": OverworldPokemonData.DEFAULT_FLOCK_MAX,
+		"speed_min": OverworldPokemonData.DEFAULT_FLYER_SPEED_MIN,
+		"speed_max": OverworldPokemonData.DEFAULT_FLYER_SPEED_MAX,
+		"spin": species_spin,
+	}
+	for key in defaults:
+		if not entry.has(key):
+			entry[key] = defaults[key]
+
+
+## The line under a flyer's species row: Flock [min]–[max]  Speed px/s [min]–[max]  [x] Spin.
+func _flyer_line(entry: Dictionary) -> HBoxContainer:
+	_fill_flyer_defaults(entry)
+	var line := HBoxContainer.new()
+	line.add_theme_constant_override("separation", 10)
+	var indent := Control.new()
+	indent.custom_minimum_size = Vector2(FLYER_LINE_INDENT, 0)
+	line.add_child(indent)
+	_range_pair(line, "Flock", entry, "min", "max", OverworldPokemonData.FLOCK_LIMIT,
+			FLOCK_SPIN_WIDTH, "flock of this species")
+	_range_pair(line, "Speed px/s", entry, "speed_min", "speed_max", OverworldPokemonData.FLYER_SPEED_LIMIT,
+			SPEED_SPIN_WIDTH, "speed a flock of this species flies at")
+	var spin := CheckBox.new()
+	spin.text = "Spin"
+	spin.tooltip_text = "Turns round and round as it flies; the faster it flies, the faster it spins"
+	spin.button_pressed = bool(entry["spin"])
+	spin.add_theme_font_size_override("font_size", FORM_FONT_SIZE)
+	spin.toggled.connect(func(on: bool): entry["spin"] = on)
+	line.add_child(spin)
+	return line
+
+
+## "Caption [low] – [high]", each box writing its key on `entry`.
+func _range_pair(line: HBoxContainer, caption: String, entry: Dictionary, low_key: String,
+		high_key: String, limit: int, width: int, what: String) -> void:
+	var label := Label.new()
+	label.text = caption
+	label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	label.add_theme_font_size_override("font_size", FORM_FONT_SIZE)
+	line.add_child(label)
+	for key in [low_key, high_key]:
+		var field_key := str(key)
+		if field_key == high_key:
+			var dash := Label.new()
+			dash.text = "–"
+			dash.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+			dash.add_theme_font_size_override("font_size", FORM_FONT_SIZE)
+			line.add_child(dash)
+		var box := _spin(1, limit, 1, int(entry[field_key]))
+		box.tooltip_text = ("Lowest " if field_key == low_key else "Highest ") + what
+		box.custom_minimum_size = Vector2(width, 0)
+		box.value_changed.connect(func(v: float):
+			entry[field_key] = int(v)
+			_revalidate())
+		line.add_child(box)
 
 
 # ============================================================
@@ -614,9 +671,11 @@ func _problems() -> Array:
 			out.append("%s: percentages are all 0" % time_name)
 		if _template == "flyer":
 			for row in rows:
+				var bird := OverworldPokemonData.display_name(str(row.get("species", "")))
 				if int(row.get("min", 1)) > int(row.get("max", 1)):
-					out.append("%s: %s flock min is bigger than max" % [time_name,
-							OverworldPokemonData.display_name(str(row.get("species", "")))])
+					out.append("%s: %s flock min is bigger than max" % [time_name, bird])
+				if int(row.get("speed_min", 1)) > int(row.get("speed_max", 1)):
+					out.append("%s: %s speed min is bigger than max" % [time_name, bird])
 	# The map having no flyers is fine; a spawn point that can never spawn isn't.
 	if not any_rows and _template != "flyer":
 		out.append("add a Pokémon to at least one time of day")
@@ -667,6 +726,9 @@ func _clean_rows(rows: Array) -> Array:
 		if _template == "flyer":
 			clean["min"] = int(row.get("min", OverworldPokemonData.DEFAULT_FLOCK_MIN))
 			clean["max"] = int(row.get("max", OverworldPokemonData.DEFAULT_FLOCK_MAX))
+			clean["speed_min"] = int(row.get("speed_min", OverworldPokemonData.DEFAULT_FLYER_SPEED_MIN))
+			clean["speed_max"] = int(row.get("speed_max", OverworldPokemonData.DEFAULT_FLYER_SPEED_MAX))
+			clean["spin"] = bool(row.get("spin", false))
 		out.append(clean)
 	return out
 
@@ -728,8 +790,30 @@ func _input(event: InputEvent) -> void:
 func _confirm() -> void:
 	if not _problems().is_empty():
 		return
+	if _template == "flyer":
+		save_requested.emit(_build_draft())
+		return
 	confirmed.emit(_build_draft())
 	queue_free()
+
+
+## The placement tool's answer to save_requested.
+func notify_saved(ok: bool) -> void:
+	if not ok:
+		_status.text = "Could not write Pokemon/Spawns/%s.json — see the output log." % _map_data
+		_status.add_theme_color_override("font_color", Color(1.0, 0.55, 0.45))
+		return
+	_flyer_saved_json = _flyer_json()
+	_close_armed = false
+	# Species added with ADD ANY are in the registry now: drop their "(new to template)".
+	# Before the status line, which the rebuild's revalidate would overwrite.
+	_rebuild_table()
+	_status.text = "Saved to Pokemon/Spawns/%s.json." % _map_data
+	_status.add_theme_color_override("font_color", Color(0.55, 0.95, 0.55))
+
+
+func _flyer_json() -> String:
+	return JSON.stringify(_draft_tables())
 
 
 func _delete() -> void:
@@ -745,6 +829,12 @@ func _delete() -> void:
 
 
 func _cancel() -> void:
+	# Flyer tables: closing over edits made since the last SAVE asks once first.
+	if _template == "flyer" and not _close_armed and _flyer_json() != _flyer_saved_json:
+		_close_armed = true
+		_status.text = "Unsaved changes — SAVE them, or CLOSE again to throw them away."
+		_status.add_theme_color_override("font_color", Color(1.0, 0.75, 0.35))
+		return
 	cancelled.emit()
 	queue_free()
 

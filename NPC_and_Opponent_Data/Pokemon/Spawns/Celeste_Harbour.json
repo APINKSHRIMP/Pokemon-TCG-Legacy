@@ -7,8 +7,8 @@
   ],
   "flyers": {
     "Morning": {
-      "chance": 15,
-      "interval": 30,
+      "chance": 100,
+      "interval": 1,
       "table": [
         {
           "species": "017_Pidgeotto",
@@ -67,19 +67,148 @@
       ]
     },
     "Afternoon": {
-      "chance": 15,
-      "interval": 30,
-      "table": []
+      "chance": 100,
+      "interval": 1,
+      "table": [
+        {
+          "species": "187_Hoppip",
+          "percent": 10,
+          "min": 1,
+          "max": 6
+        },
+        {
+          "species": "188_Skiploom",
+          "percent": 5,
+          "min": 1,
+          "max": 4
+        },
+        {
+          "species": "189_Jumpluff",
+          "percent": 1,
+          "min": 1,
+          "max": 3
+        },
+        {
+          "species": "277_Swellow",
+          "percent": 1,
+          "min": 1,
+          "max": 3
+        },
+        {
+          "species": "278_Wingull",
+          "percent": 71,
+          "min": 1,
+          "max": 6
+        },
+        {
+          "species": "279_Pelipper",
+          "percent": 5,
+          "min": 1,
+          "max": 3
+        },
+        {
+          "species": "662_Fletchinder",
+          "percent": 5,
+          "min": 1,
+          "max": 3
+        },
+        {
+          "species": "663_Talonflame",
+          "percent": 1,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "species": "581_Swanna",
+          "percent": 1,
+          "min": 2,
+          "max": 2
+        }
+      ]
     },
     "Evening": {
-      "chance": 15,
-      "interval": 30,
-      "table": []
+      "chance": 100,
+      "interval": 1,
+      "table": [
+        {
+          "species": "017_Pidgeotto",
+          "percent": 5,
+          "min": 1,
+          "max": 3
+        },
+        {
+          "species": "018_Pidgeot",
+          "percent": 1,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "species": "164_Noctowl",
+          "percent": 1,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "species": "278_Wingull",
+          "percent": 70,
+          "min": 1,
+          "max": 4
+        },
+        {
+          "species": "279_Pelipper",
+          "percent": 5,
+          "min": 1,
+          "max": 3
+        },
+        {
+          "species": "425_Drifloon",
+          "percent": 1,
+          "min": 1,
+          "max": 2
+        },
+        {
+          "species": "581_Swanna",
+          "percent": 1,
+          "min": 2,
+          "max": 2
+        },
+        {
+          "species": "662_Fletchinder",
+          "percent": 15,
+          "min": 1,
+          "max": 3
+        },
+        {
+          "species": "663_Talonflame",
+          "percent": 1,
+          "min": 1,
+          "max": 1
+        }
+      ]
     },
     "Night": {
-      "chance": 15,
-      "interval": 30,
-      "table": []
+      "chance": 100,
+      "interval": 1,
+      "table": [
+        {
+          "species": "425_Drifloon",
+          "percent": 50,
+          "min": 1,
+          "max": 5
+        },
+        {
+          "species": "426_Drifblim",
+          "percent": 10,
+          "min": 1,
+          "max": 3
+        },
+        {
+          "species": "164_Noctowl",
+          "percent": 40,
+          "min": 1,
+          "max": 3
+        }
+      ]
     }
   },
   "spawn_points": []
