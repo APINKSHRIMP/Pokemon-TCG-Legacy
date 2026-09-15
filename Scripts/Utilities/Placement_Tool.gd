@@ -68,8 +68,8 @@ var _pokemon_editor: PokemonSpawnEditor = null
 
 const POKEMON_SPAWN_HELP := [
 	"Overworld Pokemon for this map. Written by the placement tool (F, then N -> POKEMON, or M on a spawn marker); safe to hand-edit.",
-	"flyers: map-wide. Every `interval` seconds, `chance`% to send min-max of ONE species from `table` across the screen.",
-	"spawn_points: id, template, at [x, y], chance (%), times (M,A,E,N), table [{species, percent}]. burying/surfacing also roll every `interval` seconds; burying may set up_time; static sets pattern (+ distance/speed/axis for patrols).",
+	"flyers: map-wide, one table per time of day (Morning/Afternoon/Evening/Night). The current time's table rolls every `interval` seconds with `chance`% to send a flock of ONE species from its `table` [{species, percent, min, max}] across the screen.",
+	"spawn_points: id, template, at [x, y], tables {Morning/Afternoon/Evening/Night: {chance (%), table [{species, percent}]}} -- an empty table spawns nothing at that time. burying/surfacing tables also have `interval` (seconds between rolls); burying may set up_time; static sets pattern (+ distance/speed/axis for patrols).",
 	"Table percents are weights and need not add to 100. Species keys are sprite basenames in Image_Assets/Pokemon_Sprites/.",
 ]
 
@@ -425,6 +425,7 @@ func _open_editor(mode: int) -> void:
 	_editor.confirmed.connect(_on_editor_confirmed)
 	_editor.cancelled.connect(_on_editor_cancelled)
 	_editor.pokemon_chosen.connect(_on_editor_pokemon_chosen)
+	_editor.flyers_chosen.connect(_on_editor_flyers_chosen)
 	# Before setup(): an edit whose character has vanished from the file cancels from
 	# inside setup(), and _on_editor_cancelled has to be the thing that thaws.
 	_freeze_player_for_form()
@@ -502,8 +503,15 @@ func _on_editor_pokemon_chosen() -> void:
 	_open_pokemon_editor({})
 
 
+## N -> FLYER TABLES. As above, but straight onto the map's flyer tables.
+func _on_editor_flyers_chosen() -> void:
+	_editor = null
+	_open_pokemon_editor({}, true)
+
+
 ## `point` is a spawn point in _pk_doc to edit, or {} for a new point / the flyers.
-func _open_pokemon_editor(point: Dictionary) -> void:
+## `flyers` opens the form on the map's time-of-day flyer tables.
+func _open_pokemon_editor(point: Dictionary, flyers: bool = false) -> void:
 	if _spawner == null or not is_instance_valid(_spawner):
 		_thaw_player_after_form()
 		_flash("[color=orange]this map has no Pokémon spawner (it has no character file)[/color]")
@@ -515,7 +523,7 @@ func _open_pokemon_editor(point: Dictionary) -> void:
 	_pokemon_editor.confirmed.connect(_on_pokemon_editor_confirmed)
 	_pokemon_editor.cancelled.connect(_on_pokemon_editor_cancelled)
 	_freeze_player_for_form()
-	_pokemon_editor.setup(_map_data, _pk_doc, point, _pk_registry_additions)
+	_pokemon_editor.setup(_map_data, _pk_doc, point, _pk_registry_additions, flyers)
 	_update_hud()
 
 
@@ -540,7 +548,7 @@ func _on_pokemon_editor_confirmed(draft: Dictionary) -> void:
 	if str(draft.get("kind", "")) == "flyers":
 		_pk_doc["flyers"] = draft.get("flyers", {})
 		_update_hud()
-		_flash("[color=lime]flyer table updated — Enter to write Pokemon/Spawns/%s.json[/color]" % _map_data)
+		_flash("[color=lime]flyer tables updated — Enter to write Pokemon/Spawns/%s.json (F discards)[/color]" % _map_data)
 		return
 
 	if not (_pk_doc.get("spawn_points") is Array):

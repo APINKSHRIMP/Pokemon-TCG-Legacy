@@ -2,8 +2,8 @@ class_name PokemonSpawnEditor
 extends CanvasLayer
 
 ## In-game form for overworld Pokémon spawns. Debug builds only -- reached from the
-## placement tool (F), via N -> POKÉMON for a new spawn point or the map's flyer
-## table, or M on a selected spawn-point marker to edit it.
+## placement tool (F), via N -> POKÉMON for a new spawn point, N -> FLYER TABLES for
+## the map's four time-of-day flyer tables, or M on a selected spawn-point marker.
 ##
 ## Like the character editor it writes nothing itself. Confirm hands a draft back to
 ## PlacementTool, which places a new point at the player, lets you grab it, and
@@ -15,9 +15,6 @@ signal confirmed(draft: Dictionary)
 signal cancelled
 
 # ---- tweakables -------------------------------------------------------------
-## A brand new spawn point starts at 100% so it shows up the first time you look.
-const DEFAULT_CHANCE := 100.0
-const DEFAULT_INTERVAL := 10.0
 const DEFAULT_TEMPLATE := "rodent"
 
 const FORM_FONT_SIZE := 21
@@ -28,6 +25,8 @@ const COLUMN_WIDTH := 880
 const COLUMN_GAP := 46
 const ROW_GAP := 8
 const ICON_SIZE := Vector2(56, 56)
+## Width of each flock min / max box in a flyer table row.
+const FLOCK_SPIN_WIDTH := 100
 const SCROLL_TOP := 92
 const SCROLL_HEIGHT := 900
 const FOOTER_TOP := 1010
@@ -43,8 +42,17 @@ var _is_new: bool = true
 var _known_additions: Dictionary = {}
 
 var _template: String = DEFAULT_TEMPLATE
-## [{species, percent}]
+## [{species, percent}] (+ min, max for flyers) of the time of day on screen. This IS
+## the array inside the active tables dictionary, so edits land there directly.
 var _table: Array = []
+## Working copies of the four time-of-day tables: the map's flyers, and this point's
+## own. Kept apart so switching template between the two never mixes them.
+var _flyer_tables: Dictionary = {}
+var _point_tables: Dictionary = {}
+## Which time of day's table is on screen.
+var _table_time: String = ""
+var _time_opt: OptionButton = null
+var _title: Label = null
 
 var _root: Control = null
 var _template_opt: OptionButton = null
@@ -52,14 +60,11 @@ var _desc: Label = null
 var _chance_label: Label = null
 var _chance: SpinBox = null
 var _interval: SpinBox = null
-var _min_count: SpinBox = null
-var _max_count: SpinBox = null
 var _up_time: SpinBox = null
 var _pattern_opt: OptionButton = null
 var _distance: SpinBox = null
 var _speed: SpinBox = null
 var _axis_opt: OptionButton = null
-var _times: Dictionary = {}
 var _rows: Dictionary = {}
 var _table_box: VBoxContainer = null
 var _total_label: Label = null
@@ -73,9 +78,10 @@ var _picker: AssetPickerOverlay = null
 # SETUP
 # ============================================================
 
-## `point` is the spawn point being edited, or {} for a new one.
+## `point` is the spawn point being edited, or {} for a new one. `open_flyers` opens
+## straight onto the map's flyer tables (N -> FLYER TABLES).
 func setup(map_data: String, working_doc: Dictionary, point: Dictionary,
-		known_additions: Dictionary = {}) -> void:
+		known_additions: Dictionary = {}, open_flyers: bool = false) -> void:
 	_map_data = map_data
 	_doc = working_doc
 	_original = point
@@ -84,35 +90,25 @@ func setup(map_data: String, working_doc: Dictionary, point: Dictionary,
 	layer = 129
 	if not _is_new:
 		_template = str(point.get("template", DEFAULT_TEMPLATE))
+	elif open_flyers:
+		_template = "flyer"
 	_build()
 	if _is_new:
-		_apply_point_defaults()
+		_up_time.value = 0
 	else:
 		_load_point(point)
+	_enter_time_tables()
 	_on_template_changed()
 
 
-func _apply_point_defaults() -> void:
-	_chance.value = DEFAULT_CHANCE
-	_interval.value = DEFAULT_INTERVAL
-	_up_time.value = 0
-	for key in _times:
-		_times[key].button_pressed = true
-	_table = []
-
-
+## Point-wide settings, plus the point's four tables (shown by _enter_time_tables).
 func _load_point(point: Dictionary) -> void:
-	_chance.value = float(point.get("chance", DEFAULT_CHANCE))
-	_interval.value = float(point.get("interval", DEFAULT_INTERVAL))
 	_up_time.value = float(point.get("up_time", 0))
-	_min_count.value = int(point.get("min", 1))
-	_max_count.value = int(point.get("max", 4))
-	_set_times(str(point.get("times", "")))
 	_select_option(_pattern_opt, str(point.get("pattern", "idle_cycle")))
 	_distance.value = float(point.get("distance", PokemonStatic.DEFAULT_DISTANCE))
 	_speed.value = float(point.get("speed", PokemonStatic.DEFAULT_SPEED))
 	_select_option(_axis_opt, str(point.get("axis", "horizontal")))
-	_table = (point.get("table", []) as Array).duplicate(true)
+	_point_tables = OverworldPokemonData.normalise_point_tables(point.get("tables")).duplicate(true)
 
 
 # ============================================================
@@ -127,12 +123,11 @@ func _build() -> void:
 	_root.theme = DebugFormTheme.build()
 	add_child(_root)
 
-	var title := Label.new()
-	title.text = ("NEW POKÉMON SPAWN  —  %s" % _map_data) if _is_new \
-			else ("EDIT POKÉMON SPAWN  —  %s" % str(_original.get("id", "?")))
-	title.position = Vector2(FORM_MARGIN, 12)
-	title.add_theme_font_size_override("font_size", TITLE_FONT_SIZE)
-	_root.add_child(title)
+	# Text is set by _on_template_changed(): it depends on the template.
+	_title = Label.new()
+	_title.position = Vector2(FORM_MARGIN, 12)
+	_title.add_theme_font_size_override("font_size", TITLE_FONT_SIZE)
+	_root.add_child(_title)
 
 	var scope := Label.new()
 	scope.text = "Confirm hands this to the placement tool — Enter there writes Pokemon/Spawns/%s.json" % _map_data
@@ -169,6 +164,8 @@ func _build() -> void:
 	_select_option(_template_opt, _template)
 	_template_opt.item_selected.connect(func(idx: int):
 		var previous := _template
+		# Before _template changes: it decides which set of tables this goes back into.
+		_store_time_table(_tables_for(previous))
 		_template = str(_template_opt.get_item_metadata(idx))
 		_on_template_switched(previous))
 	_add_row(left, "Template", _template_opt)
@@ -181,20 +178,25 @@ func _build() -> void:
 	left.add_child(_desc)
 
 	_heading(left, "SPAWNING")
-	_chance = _spin(0, 100, 0.1, DEFAULT_CHANCE, " %")
+	# Which of the four time-of-day tables the chance, interval and species list below
+	# belong to. Every template has four.
+	_time_opt = OptionButton.new()
+	_time_opt.fit_to_longest_item = false
+	_time_opt.add_theme_font_size_override("font_size", FORM_FONT_SIZE)
+	for time_name in OverworldPokemonData.TIMES_OF_DAY:
+		_time_opt.add_item(time_name)
+		_time_opt.set_item_metadata(_time_opt.item_count - 1, time_name)
+	_time_opt.item_selected.connect(func(idx: int):
+		_show_time_table(str(_time_opt.get_item_metadata(idx))))
+	_add_row(left, "Table for", _time_opt)
+
+	_chance = _spin(0, 100, 1, OverworldPokemonData.POINT_DEFAULT_CHANCE, " %")
 	_chance.value_changed.connect(func(_v: float): _revalidate())
 	var chance_row := _add_row(left, "Chance", _chance)
 	_chance_label = chance_row.get_child(0)
 
-	_interval = _spin(0.5, 3600, 0.5, DEFAULT_INTERVAL, " s")
+	_interval = _spin(0.5, 3600, 0.5, OverworldPokemonData.POINT_DEFAULT_INTERVAL, " s")
 	_rows["interval"] = _add_row(left, "Roll every", _interval)
-
-	_min_count = _spin(1, 12, 1, 1)
-	_rows["min"] = _add_row(left, "Flock size min", _min_count)
-	_max_count = _spin(1, 12, 1, 4)
-	_rows["max"] = _add_row(left, "Flock size max", _max_count)
-	_min_count.value_changed.connect(func(_v: float): _revalidate())
-	_max_count.value_changed.connect(func(_v: float): _revalidate())
 
 	_up_time = _spin(0, 120, 0.5, 0, " s")
 	_rows["up_time"] = _add_row(left, "Up time (0 = species)", _up_time)
@@ -218,18 +220,6 @@ func _build() -> void:
 		_axis_opt.add_item(axis)
 		_axis_opt.set_item_metadata(_axis_opt.item_count - 1, axis)
 	_rows["axis"] = _add_row(left, "Patrol axis", _axis_opt)
-
-	var times_row := HBoxContainer.new()
-	times_row.add_theme_constant_override("separation", 18)
-	for key in OverworldPokemonData.TIME_KEYS:
-		var box := CheckBox.new()
-		box.text = OverworldPokemonData.TIME_KEYS[key]
-		box.add_theme_font_size_override("font_size", FORM_FONT_SIZE)
-		box.button_pressed = true
-		box.toggled.connect(func(_on: bool): _revalidate())
-		times_row.add_child(box)
-		_times[key] = box
-	_add_row(left, "Times of day", times_row)
 
 	# ---- right: species table ----
 	_heading(right, "SPECIES TABLE")
@@ -350,43 +340,28 @@ func _option_value(option: OptionButton) -> String:
 	return str(option.get_item_metadata(option.selected))
 
 
-func _set_times(spec: String) -> void:
-	var clean := spec.strip_edges()
-	for key in _times:
-		_times[key].button_pressed = clean == "" or clean.to_upper().split(",").has(key)
-
-
-func _times_spec() -> String:
-	var keys: Array = []
-	for key in _times:
-		if _times[key].button_pressed:
-			keys.append(key)
-	return ",".join(keys)
-
-
 # ============================================================
 # TEMPLATE SWITCHING
 # ============================================================
 
-## The flyer table is the map's, not a point's: switching TO it shows what the map
-## already has, and switching away from it starts the point from blank again.
+## The flyer tables are the map's and a point's tables are its own, so crossing
+## between flyer and a point template swaps which set is on screen (edits to both are
+## kept). Point template to point template keeps the same tables.
 func _on_template_switched(previous: String) -> void:
-	if _template == "flyer":
-		var flyers: Dictionary = _doc.get("flyers", OverworldPokemonData.default_flyers())
-		_chance.value = float(flyers.get("chance", 10))
-		_interval.value = float(flyers.get("interval", 10))
-		_min_count.value = int(flyers.get("min", 1))
-		_max_count.value = int(flyers.get("max", 4))
-		_set_times(str(flyers.get("times", "")))
-		_table = (flyers.get("table", []) as Array).duplicate(true)
-	elif previous == "flyer":
-		_apply_point_defaults()
+	if (previous == "flyer") != (_template == "flyer"):
+		_enter_time_tables()
 	_on_template_changed()
 
 
 func _on_template_changed() -> void:
 	var is_flyer := _template == "flyer"
 	var is_static := _template == "static"
+	if is_flyer:
+		_title.text = "FLYER TABLES  —  %s" % _map_data
+	elif _is_new:
+		_title.text = "NEW POKÉMON SPAWN  —  %s" % _map_data
+	else:
+		_title.text = "EDIT POKÉMON SPAWN  —  %s" % str(_original.get("id", "?"))
 	_desc.text = OverworldPokemonData.TEMPLATE_DESCRIPTIONS.get(_template, "")
 	if is_flyer:
 		_chance_label.text = "Chance per roll"
@@ -395,8 +370,6 @@ func _on_template_changed() -> void:
 	else:
 		_chance_label.text = "Chance per map load"
 	_rows["interval"].visible = OverworldPokemonData.TEMPLATE_USES_INTERVAL.has(_template)
-	_rows["min"].visible = is_flyer
-	_rows["max"].visible = is_flyer
 	_rows["up_time"].visible = _template == "burying"
 	_rows["pattern"].visible = is_static
 	var patrols := is_static and _option_value(_pattern_opt).begins_with("patrol")
@@ -404,6 +377,96 @@ func _on_template_changed() -> void:
 	_rows["speed"].visible = patrols
 	_rows["axis"].visible = is_static and _option_value(_pattern_opt) == "patrol_line"
 	_rebuild_table()
+
+
+# ============================================================
+# TIME-OF-DAY TABLES
+# ============================================================
+
+## Flyers edit the map's four tables; spawn points edit their own four.
+func _tables_for(template: String) -> Dictionary:
+	return _flyer_tables if template == "flyer" else _point_tables
+
+
+## Fill in whichever set of tables the template uses (once -- edits survive switching
+## template away and back) and show the same time of day as before, or the game's
+## current time the first time round.
+func _enter_time_tables() -> void:
+	if _template == "flyer":
+		if _flyer_tables.is_empty():
+			_flyer_tables = OverworldPokemonData.normalise_flyers(_doc.get("flyers")).duplicate(true)
+	elif _point_tables.is_empty():
+		_point_tables = OverworldPokemonData.normalise_point_tables({})
+	var target := _table_time
+	if target == "":
+		var now := str(GameState.get_time())
+		target = now if OverworldPokemonData.TIMES_OF_DAY.has(now) else str(OverworldPokemonData.TIMES_OF_DAY[0])
+	# Cleared first: the outgoing table was already stored, and storing again here
+	# would write the old template's values into the new set of tables.
+	_table_time = ""
+	_show_time_table(target)
+
+
+## Put the on-screen chance, interval and rows back into their time's table.
+func _store_time_table(tables: Dictionary) -> void:
+	if _table_time == "":
+		return
+	tables[_table_time] = {
+		"interval": _interval.value,
+		"chance": _chance.value,
+		"table": _table,
+	}
+
+
+func _show_time_table(time_name: String) -> void:
+	var tables := _tables_for(_template)
+	_store_time_table(tables)
+	_table_time = time_name
+	var config = tables.get(time_name)
+	if not (config is Dictionary):
+		config = OverworldPokemonData.default_flyer_table() if _template == "flyer" \
+				else OverworldPokemonData.default_point_table()
+		tables[time_name] = config
+	if not (config.get("table") is Array):
+		config["table"] = []
+	_table = config["table"]
+	_chance.value = float(config.get("chance", 0))
+	_interval.value = float(config.get("interval", OverworldPokemonData.POINT_DEFAULT_INTERVAL))
+	_select_option(_time_opt, time_name)
+	_rebuild_table()
+
+
+## A time's species rows; the table on screen is the live _table.
+func _time_rows(time_name: String) -> Array:
+	if time_name == _table_time:
+		return _table
+	var rows = OverworldPokemonData.time_table(_tables_for(_template), time_name).get("table", [])
+	return rows if rows is Array else []
+
+
+## Every row across all four tables.
+func _all_rows() -> Array:
+	var out: Array = []
+	for time_name in OverworldPokemonData.TIMES_OF_DAY:
+		out.append_array(_time_rows(str(time_name)))
+	return out
+
+
+## The four tables as the file stores them. `interval` is only kept where the
+## template rolls on a timer.
+func _draft_tables() -> Dictionary:
+	var tables := _tables_for(_template)
+	_store_time_table(tables)
+	var uses_interval := OverworldPokemonData.TEMPLATE_USES_INTERVAL.has(_template)
+	var out: Dictionary = {}
+	for time_name in OverworldPokemonData.TIMES_OF_DAY:
+		var config := OverworldPokemonData.time_table(tables, str(time_name))
+		var clean: Dictionary = {"chance": snappedf(float(config.get("chance", 0)), 0.1)}
+		if uses_interval:
+			clean["interval"] = snappedf(float(config.get("interval", OverworldPokemonData.POINT_DEFAULT_INTERVAL)), 0.1)
+		clean["table"] = _clean_rows(_time_rows(str(time_name)))
+		out[time_name] = clean
+	return out
 
 
 # ============================================================
@@ -445,7 +508,11 @@ func _add_species(species: String) -> void:
 	var percent := 100.0 - total
 	if percent <= 0.0:
 		percent = 10.0
-	_table.append({"species": species, "percent": snappedf(percent, 0.1)})
+	var entry := {"species": species, "percent": roundf(percent)}
+	if _template == "flyer":
+		entry["min"] = OverworldPokemonData.DEFAULT_FLOCK_MIN
+		entry["max"] = OverworldPokemonData.DEFAULT_FLOCK_MAX
+	_table.append(entry)
 	_rebuild_table()
 
 
@@ -454,6 +521,7 @@ func _rebuild_table() -> void:
 		_table_box.remove_child(child)
 		child.queue_free()
 	var known := _template_species()
+	var is_flyer := _template == "flyer"
 	for i in _table.size():
 		var entry: Dictionary = _table[i]
 		var species := str(entry.get("species", ""))
@@ -479,12 +547,43 @@ func _rebuild_table() -> void:
 		name_label.add_theme_font_size_override("font_size", FORM_FONT_SIZE)
 		row.add_child(name_label)
 
-		var percent := _spin(0, 100, 0.1, float(entry.get("percent", 0)), " %")
-		percent.custom_minimum_size = Vector2(170, 0)
+		var percent := _spin(0, 100, 1, float(entry.get("percent", 0)), " %")
+		percent.custom_minimum_size = Vector2(150, 0)
 		percent.value_changed.connect(func(v: float):
 			entry["percent"] = v
 			_revalidate())
 		row.add_child(percent)
+
+		# Flyers only: this species' flock size, min to max.
+		if is_flyer:
+			if not entry.has("min"):
+				entry["min"] = OverworldPokemonData.DEFAULT_FLOCK_MIN
+			if not entry.has("max"):
+				entry["max"] = OverworldPokemonData.DEFAULT_FLOCK_MAX
+			var flock_label := Label.new()
+			flock_label.text = "Flock"
+			flock_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+			flock_label.add_theme_font_size_override("font_size", FORM_FONT_SIZE)
+			row.add_child(flock_label)
+			var flock_min := _spin(1, OverworldPokemonData.FLOCK_LIMIT, 1, int(entry["min"]))
+			flock_min.tooltip_text = "Smallest flock of this species"
+			flock_min.custom_minimum_size = Vector2(FLOCK_SPIN_WIDTH, 0)
+			flock_min.value_changed.connect(func(v: float):
+				entry["min"] = int(v)
+				_revalidate())
+			row.add_child(flock_min)
+			var dash := Label.new()
+			dash.text = "–"
+			dash.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+			dash.add_theme_font_size_override("font_size", FORM_FONT_SIZE)
+			row.add_child(dash)
+			var flock_max := _spin(1, OverworldPokemonData.FLOCK_LIMIT, 1, int(entry["max"]))
+			flock_max.tooltip_text = "Largest flock of this species"
+			flock_max.custom_minimum_size = Vector2(FLOCK_SPIN_WIDTH, 0)
+			flock_max.value_changed.connect(func(v: float):
+				entry["max"] = int(v)
+				_revalidate())
+			row.add_child(flock_max)
 
 		var remove := Button.new()
 		remove.text = "REMOVE"
@@ -504,14 +603,23 @@ func _rebuild_table() -> void:
 
 func _problems() -> Array:
 	var out: Array = []
-	if _table.is_empty():
-		out.append("add at least one Pokémon to the table")
-	elif OverworldPokemonData.table_total(_table) <= 0.0:
-		out.append("the table's percentages are all 0")
-	if _template == "flyer" and _min_count.value > _max_count.value:
-		out.append("flock min is bigger than max")
-	if _times_spec() == "":
-		out.append("tick at least one time of day")
+	var any_rows := false
+	for time_name in OverworldPokemonData.TIMES_OF_DAY:
+		var rows := _time_rows(str(time_name))
+		# An empty table is fine -- nothing spawns at that time of day.
+		if rows.is_empty():
+			continue
+		any_rows = true
+		if OverworldPokemonData.table_total(rows) <= 0.0:
+			out.append("%s: percentages are all 0" % time_name)
+		if _template == "flyer":
+			for row in rows:
+				if int(row.get("min", 1)) > int(row.get("max", 1)):
+					out.append("%s: %s flock min is bigger than max" % [time_name,
+							OverworldPokemonData.display_name(str(row.get("species", "")))])
+	# The map having no flyers is fine; a spawn point that can never spawn isn't.
+	if not any_rows and _template != "flyer":
+		out.append("add a Pokémon to at least one time of day")
 	return out
 
 
@@ -519,13 +627,13 @@ func _revalidate() -> void:
 	if _total_label != null:
 		var total := OverworldPokemonData.table_total(_table)
 		if _table.is_empty():
-			_total_label.text = "Table is empty."
+			_total_label.text = "%s table is empty — nothing spawns then." % _table_time
 			_total_label.add_theme_color_override("font_color", Color(0.8, 0.84, 0.92))
 		elif is_equal_approx(total, 100.0):
-			_total_label.text = "Table total: 100%"
+			_total_label.text = "%s table total: 100%%" % _table_time
 			_total_label.add_theme_color_override("font_color", Color(0.55, 0.95, 0.55))
 		else:
-			_total_label.text = "Table total: %s%%  (scaled to 100%% when rolled)" % str(snappedf(total, 0.1))
+			_total_label.text = "%s table total: %s%%  (scaled to 100%% when rolled)" % [_table_time, str(snappedf(total, 0.1))]
 			_total_label.add_theme_color_override("font_color", Color(1.0, 0.75, 0.35))
 	if _status == null:
 		return
@@ -545,32 +653,30 @@ func _revalidate() -> void:
 func _registry_additions() -> Dictionary:
 	var known := _template_species()
 	var out: Dictionary = {}
-	for row in _table:
+	for row in _all_rows():
 		var species := str(row.get("species", ""))
 		if species != "" and not known.has(species):
 			out[species] = [_template]
 	return out
 
 
-func _clean_table() -> Array:
+func _clean_rows(rows: Array) -> Array:
 	var out: Array = []
-	for row in _table:
-		out.append({"species": str(row.get("species", "")), "percent": snappedf(float(row.get("percent", 0)), 0.1)})
+	for row in rows:
+		var clean := {"species": str(row.get("species", "")), "percent": snappedf(float(row.get("percent", 0)), 0.1)}
+		if _template == "flyer":
+			clean["min"] = int(row.get("min", OverworldPokemonData.DEFAULT_FLOCK_MIN))
+			clean["max"] = int(row.get("max", OverworldPokemonData.DEFAULT_FLOCK_MAX))
+		out.append(clean)
 	return out
 
 
 func _build_draft() -> Dictionary:
+	var tables := _draft_tables()
 	if _template == "flyer":
 		return {
 			"kind": "flyers",
-			"flyers": {
-				"interval": snappedf(_interval.value, 0.1),
-				"chance": snappedf(_chance.value, 0.1),
-				"min": int(_min_count.value),
-				"max": int(_max_count.value),
-				"times": _times_spec(),
-				"table": _clean_table(),
-			},
+			"flyers": tables,
 			"registry_additions": _registry_additions(),
 		}
 
@@ -580,11 +686,7 @@ func _build_draft() -> Dictionary:
 		"id": id,
 		"template": _template,
 		"at": _original.get("at", [0, 0]),
-		"chance": snappedf(_chance.value, 0.1),
-		"times": _times_spec(),
 	}
-	if OverworldPokemonData.TIMED_TEMPLATES.has(_template):
-		point["interval"] = snappedf(_interval.value, 0.1)
 	if _template == "burying" and _up_time.value > 0.0:
 		point["up_time"] = snappedf(_up_time.value, 0.1)
 	if _template == "static":
@@ -595,7 +697,7 @@ func _build_draft() -> Dictionary:
 			point["speed"] = int(_speed.value)
 		if pattern == "patrol_line":
 			point["axis"] = _option_value(_axis_opt)
-	point["table"] = _clean_table()
+	point["tables"] = tables
 	return {
 		"kind": "point",
 		"is_new": _is_new,

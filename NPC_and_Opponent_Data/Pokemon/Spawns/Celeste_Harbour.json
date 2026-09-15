@@ -1,11 +1,86 @@
 {
-  "flyers": {"interval": 0.5, "chance": 100, "min": 1, "max": 4, "times": "M,A,E,N", "table": [{"species": "187_Hoppip", "percent": 50}, {"species": "278_Wingull", "percent": 50}]},
-  "spawn_points": [
-    {"id": "bug_tree_1", "template": "bug_tree", "at": [460, 1450], "chance": 100, "times": "M,A,E,N", "table": [{"species": "010_Caterpie", "percent": 100}]},
-    {"id": "swinging_bug_1", "template": "swinging_bug", "at": [500, 1450], "chance": 100, "times": "M,A,E,N", "table": [{"species": "167_Spinarak", "percent": 100}]},
-    {"id": "rodent_1", "template": "rodent", "at": [540, 1500], "chance": 100, "times": "M,A,E,N", "table": [{"species": "019_Rattata", "percent": 100}]},
-    {"id": "burying_1", "template": "burying", "at": [580, 1500], "chance": 100, "interval": 0.5, "up_time": 1, "times": "M,A,E,N", "table": [{"species": "050_Diglett", "percent": 100}]},
-    {"id": "surfacing_1", "template": "surfacing", "at": [620, 1500], "chance": 100, "interval": 0.5, "times": "M,A,E,N", "table": [{"species": "129_Magikarp", "percent": 100}]},
-    {"id": "static_1", "template": "static", "at": [660, 1500], "chance": 100, "pattern": "patrol_square", "distance": 20, "speed": 30, "times": "M,A,E,N", "table": [{"species": "133_Eevee", "percent": 100}]}
-  ]
+  "_help": [
+    "Overworld Pokemon for this map. Written by the placement tool (F, then N -> POKEMON, or M on a spawn marker); safe to hand-edit.",
+    "flyers: map-wide, one table per time of day (Morning/Afternoon/Evening/Night). The current time's table rolls every `interval` seconds with `chance`% to send a flock of ONE species from its `table` [{species, percent, min, max}] across the screen.",
+    "spawn_points: id, template, at [x, y], tables {Morning/Afternoon/Evening/Night: {chance (%), table [{species, percent}]}} -- an empty table spawns nothing at that time. burying/surfacing tables also have `interval` (seconds between rolls); burying may set up_time; static sets pattern (+ distance/speed/axis for patrols).",
+    "Table percents are weights and need not add to 100. Species keys are sprite basenames in Image_Assets/Pokemon_Sprites/."
+  ],
+  "flyers": {
+    "Morning": {
+      "chance": 15,
+      "interval": 30,
+      "table": [
+        {
+          "species": "017_Pidgeotto",
+          "percent": 5,
+          "min": 1,
+          "max": 3
+        },
+        {
+          "species": "018_Pidgeot",
+          "percent": 1,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "species": "022_Fearow",
+          "percent": 1,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "species": "277_Swellow",
+          "percent": 10,
+          "min": 1,
+          "max": 3
+        },
+        {
+          "species": "397_Staravia",
+          "percent": 5,
+          "min": 1,
+          "max": 4
+        },
+        {
+          "species": "398_Staraptor",
+          "percent": 1,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "species": "519_Pidove",
+          "percent": 71,
+          "min": 1,
+          "max": 6
+        },
+        {
+          "species": "520_Tranquill",
+          "percent": 5,
+          "min": 1,
+          "max": 4
+        },
+        {
+          "species": "521_Unfezant",
+          "percent": 1,
+          "min": 1,
+          "max": 1
+        }
+      ]
+    },
+    "Afternoon": {
+      "chance": 15,
+      "interval": 30,
+      "table": []
+    },
+    "Evening": {
+      "chance": 15,
+      "interval": 30,
+      "table": []
+    },
+    "Night": {
+      "chance": 15,
+      "interval": 30,
+      "table": []
+    }
+  },
+  "spawn_points": []
 }

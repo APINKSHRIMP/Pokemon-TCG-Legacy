@@ -23,6 +23,8 @@ signal confirmed(draft: Dictionary)
 signal cancelled
 ## N -> POKÉMON. The form frees itself; the placement tool opens PokemonSpawnEditor.
 signal pokemon_chosen
+## N -> FLYER TABLES. Same hand-over, but the Pokémon form opens on the map's flyer tables.
+signal flyers_chosen
 
 enum Mode { NEW, EDIT }
 
@@ -316,16 +318,16 @@ func _build_kind_choice() -> void:
 
 	var npc_btn := Button.new()
 	npc_btn.text = "NPC"
-	npc_btn.position = Vector2(1920 / 2 - 620, 470)
-	npc_btn.size = Vector2(400, 120)
+	npc_btn.position = Vector2(195, 470)
+	npc_btn.size = Vector2(360, 120)
 	npc_btn.add_theme_font_size_override("font_size", TITLE_FONT_SIZE)
 	npc_btn.pressed.connect(func(): _choose_kind("npcs"))
 	_root.add_child(npc_btn)
 
 	var opp_btn := Button.new()
 	opp_btn.text = "OPPONENT"
-	opp_btn.position = Vector2(1920 / 2 - 200, 470)
-	opp_btn.size = Vector2(400, 120)
+	opp_btn.position = Vector2(585, 470)
+	opp_btn.size = Vector2(360, 120)
 	opp_btn.add_theme_font_size_override("font_size", TITLE_FONT_SIZE)
 	opp_btn.pressed.connect(func(): _choose_kind("opponents"))
 	_root.add_child(opp_btn)
@@ -334,13 +336,24 @@ func _build_kind_choice() -> void:
 	# placement tool opens in place of this form.
 	var pokemon_btn := Button.new()
 	pokemon_btn.text = "POKÉMON"
-	pokemon_btn.position = Vector2(1920 / 2 + 220, 470)
-	pokemon_btn.size = Vector2(400, 120)
+	pokemon_btn.position = Vector2(975, 470)
+	pokemon_btn.size = Vector2(360, 120)
 	pokemon_btn.add_theme_font_size_override("font_size", TITLE_FONT_SIZE)
 	pokemon_btn.pressed.connect(func():
 		pokemon_chosen.emit()
 		queue_free())
 	_root.add_child(pokemon_btn)
+
+	# The map's four time-of-day flyer tables -- the way back into them once saved.
+	var flyers_btn := Button.new()
+	flyers_btn.text = "FLYER TABLES"
+	flyers_btn.position = Vector2(1365, 470)
+	flyers_btn.size = Vector2(360, 120)
+	flyers_btn.add_theme_font_size_override("font_size", TITLE_FONT_SIZE)
+	flyers_btn.pressed.connect(func():
+		flyers_chosen.emit()
+		queue_free())
+	_root.add_child(flyers_btn)
 
 	var hint := Label.new()
 	hint.text = "Escape to cancel"

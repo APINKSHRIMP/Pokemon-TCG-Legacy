@@ -2,16 +2,16 @@ class_name PokemonSwingingBug
 extends OverworldPokemon
 
 ## SWINGING BUG template -- Spinarak, Kakuna, Burmy... Dangles from a strand of silk
-## at its spawn point. It turns up-left-down-right-up-right-down-left on a loop, as
-## if twisting on the thread, and sways through a slow shallow U: down-and-right to
+## at its spawn point. It turns left-down-right-down on a loop, as if twisting on
+## the thread (never shows its back), and sways through a slow shallow U: down-and-right to
 ## the bottom of the arc, up-and-right to the top, then back the same way. No
 ## collision.
 
 # ---- tweakables -------------------------------------------------------------
 const Z := 25
-const SPIN_SEQUENCE := ["up", "left", "down", "right", "up", "right", "down", "left"]
+const SPIN_SEQUENCE := ["left", "down", "right", "down"]
 ## Seconds per facing in the spin sequence.
-const SPIN_STEP := 0.4
+const SPIN_STEP := 1.0
 ## Half-width of the sway, and how far the middle of the U dips, in world pixels.
 const SWAY_PIXELS := 4.0
 ## Seconds for one full swing there and back.

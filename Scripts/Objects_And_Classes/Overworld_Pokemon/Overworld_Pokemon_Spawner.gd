@@ -7,11 +7,16 @@ extends Node2D
 ##   bug_tree, swinging_bug, rodent, static   rolled ONCE, when the map loads
 ##   burying, surfacing                       rolled every `interval` seconds while
 ##                                            nothing from that point is out
-##   flyers                                   map-wide: every `interval` seconds,
-##                                            `chance`% to send 1-4 of one species
+##   flyers                                   map-wide, one table per time of day:
+##                                            every `interval` seconds the current
+##                                            time's table has `chance`% to send a
+##                                            flock of one species
+##                                            (size from that species' table row)
 ##                                            across the screen
 ##
-## A roll first checks the point's `chance`, then picks the species from its table.
+## Every point (and the flyers) has one table per time of day. A roll uses the table
+## for the current time: its `chance` first, then a species from its rows. An empty
+## table spawns nothing at that time.
 ## Nothing is saved: a battle, a door or a debug reload rebuilds the map and rolls
 ## again, which is what "every time the scene is reloaded" means.
 ##
@@ -35,11 +40,15 @@ static func make_pokemon(template: String) -> OverworldPokemon:
 
 # ---- tweakables -------------------------------------------------------------
 ## Flyers already in the air past which a tick spawns nothing.
-const MAX_LIVE_FLYERS := 12
+const MAX_LIVE_FLYERS := 6
 ## How far outside the camera's edge a flock starts.
 const FLYER_EDGE_MARGIN := 32.0
 ## A flock is scattered inside this box, trailing behind its leader.
-const FLYER_GROUP_SPREAD := Vector2(48, 36)
+const FLYER_GROUP_SPREAD := Vector2(96, 56)
+## Minimum distance between the centres of two flock members, so none overlap.
+const FLYER_MIN_SEPARATION := 36.0
+## Random placements tried per member before taking the least-crowded one.
+const FLYER_PLACE_ATTEMPTS := 12
 ## Keeps flocks from spawning right against the top/bottom of the screen.
 const FLYER_VERTICAL_PADDING := 24.0
 ## How far past the camera limit a flyer carries on before it despawns.
@@ -90,13 +99,13 @@ func apply_doc(new_doc: Dictionary) -> void:
 		if not OverworldPokemonData.TEMPLATES.has(template):
 			push_warning("OverworldPokemonSpawner: unknown template '%s' on %s" % [template, point.get("id", "?")])
 			continue
+		var config := OverworldPokemonData.time_table(point.get("tables"), time_name)
 		if OverworldPokemonData.ONE_SHOT_TEMPLATES.has(template):
-			if OverworldPokemonData.time_allowed(str(point.get("times", "")), time_name) \
-					and OverworldPokemonData.roll(float(point.get("chance", 0))):
-				_spawn_at(point)
+			if OverworldPokemonData.roll(float(config.get("chance", 0))):
+				_spawn_at(point, config)
 		elif OverworldPokemonData.TIMED_TEMPLATES.has(template):
-			_timers[str(point.get("id", ""))] = randf_range(FIRST_ROLL_MIN, maxf(FIRST_ROLL_MIN, _interval(point)))
-	_flyer_timer = _interval(doc.get("flyers", {}))
+			_timers[str(point.get("id", ""))] = randf_range(FIRST_ROLL_MIN, maxf(FIRST_ROLL_MIN, _interval(config)))
+	_flyer_timer = _interval(_flyer_config(time_name))
 
 
 func clear_pokemon() -> void:
@@ -117,13 +126,14 @@ func _process(delta: float) -> void:
 		var id := str(point.get("id", ""))
 		if _live.has(id):
 			continue
-		_timers[id] = float(_timers.get(id, _interval(point))) - delta
+		# The table for right now, so a time-of-day change mid-map switches species and odds.
+		var config := OverworldPokemonData.time_table(point.get("tables"), time_name)
+		_timers[id] = float(_timers.get(id, _interval(config))) - delta
 		if _timers[id] > 0.0:
 			continue
-		_timers[id] = _interval(point)
-		if OverworldPokemonData.time_allowed(str(point.get("times", "")), time_name) \
-				and OverworldPokemonData.roll(float(point.get("chance", 0))):
-			_spawn_at(point)
+		_timers[id] = _interval(config)
+		if OverworldPokemonData.roll(float(config.get("chance", 0))):
+			_spawn_at(point, config)
 	_process_flyers(delta, time_name)
 
 
@@ -135,8 +145,9 @@ func _interval(config: Dictionary) -> float:
 # SPAWN POINTS
 # ============================================================
 
-func _spawn_at(point: Dictionary) -> OverworldPokemon:
-	var species := OverworldPokemonData.pick_species(point.get("table", []))
+## `config` is the point's table for the current time of day.
+func _spawn_at(point: Dictionary, config: Dictionary) -> OverworldPokemon:
+	var species := OverworldPokemonData.pick_species(config.get("table", []))
 	if species == "":
 		return null
 	var pokemon := make_pokemon(str(point.get("template", "")))
@@ -159,7 +170,7 @@ func _on_pokemon_gone(pokemon: OverworldPokemon, id: String) -> void:
 		# A burrower that just went down waits a full interval before the next roll.
 		var point := OverworldPokemonData.find_point(doc, id)
 		if not point.is_empty():
-			_timers[id] = _interval(point)
+			_timers[id] = _interval(OverworldPokemonData.time_table(point.get("tables"), GameState.get_time()))
 
 
 # ============================================================
@@ -167,8 +178,8 @@ func _on_pokemon_gone(pokemon: OverworldPokemon, id: String) -> void:
 # ============================================================
 
 func _process_flyers(delta: float, time_name: String) -> void:
-	var config = doc.get("flyers", {})
-	if not (config is Dictionary) or (config.get("table", []) as Array).is_empty():
+	var config := _flyer_config(time_name)
+	if (config.get("table", []) as Array).is_empty():
 		return
 	_flyer_timer -= delta
 	if _flyer_timer > 0.0:
@@ -177,19 +188,24 @@ func _process_flyers(delta: float, time_name: String) -> void:
 	_flyers = _flyers.filter(func(f): return is_instance_valid(f))
 	if _flyers.size() >= MAX_LIVE_FLYERS:
 		return
-	if not OverworldPokemonData.time_allowed(str(config.get("times", "")), time_name):
-		return
 	if not OverworldPokemonData.roll(float(config.get("chance", 0))):
 		return
 	spawn_flyer_group(config)
 
 
+## The flyer table for this time of day ({} if there isn't one).
+func _flyer_config(time_name: String) -> Dictionary:
+	return OverworldPokemonData.time_table(doc.get("flyers"), time_name)
+
+
 func spawn_flyer_group(config: Dictionary) -> void:
-	var species := OverworldPokemonData.pick_species(config.get("table", []))
+	var row := OverworldPokemonData.pick_row(config.get("table", []))
+	var species := str(row.get("species", ""))
 	if species == "":
 		return
-	var low: int = maxi(1, int(config.get("min", 1)))
-	var high: int = maxi(low, int(config.get("max", low)))
+	# Flock size belongs to the species row, so Wingull and Pidgey can differ.
+	var low: int = maxi(1, int(row.get("min", OverworldPokemonData.DEFAULT_FLOCK_MIN)))
+	var high: int = maxi(low, int(row.get("max", OverworldPokemonData.DEFAULT_FLOCK_MAX)))
 	var count := randi_range(low, high)
 	var view := _view_rect()
 	var from_left := randf() < 0.5
@@ -199,17 +215,40 @@ func spawn_flyer_group(config: Dictionary) -> void:
 	var bottom := maxf(top, view.end.y - FLYER_VERTICAL_PADDING)
 	var start := Vector2(start_x, randf_range(top, bottom))
 	var end_x := _map_edge(direction)
+	# One speed for the whole flock, so it crosses the map together.
+	var flock_speed := PokemonFlyer.roll_speed()
+	var placed: Array[Vector2] = []
 	for i in count:
 		var flyer := PokemonFlyer.new()
 		flyer.configure(species)
 		flyer.direction = direction
 		flyer.end_x = end_x
-		# Trail behind the leader (further off screen), never ahead of it.
-		var offset := Vector2(-direction * randf_range(0.0, FLYER_GROUP_SPREAD.x),
-				randf_range(-FLYER_GROUP_SPREAD.y, FLYER_GROUP_SPREAD.y) * 0.5)
+		flyer.speed = flock_speed
+		var offset := Vector2.ZERO if i == 0 else _flock_offset(direction, placed)
+		placed.append(offset)
 		flyer.position = to_local(start + offset)
 		add_child(flyer)
 		_flyers.append(flyer)
+
+
+## A spot for the next flock member: trailing behind the leader (further off screen,
+## never ahead of it) and at least FLYER_MIN_SEPARATION from everyone already placed.
+## If the box is too crowded, the try furthest from its nearest neighbour wins.
+func _flock_offset(direction: float, placed: Array[Vector2]) -> Vector2:
+	var best := Vector2.ZERO
+	var best_gap := -1.0
+	for attempt in FLYER_PLACE_ATTEMPTS:
+		var candidate := Vector2(-direction * randf_range(0.0, FLYER_GROUP_SPREAD.x),
+				randf_range(-FLYER_GROUP_SPREAD.y, FLYER_GROUP_SPREAD.y) * 0.5)
+		var gap := INF
+		for other in placed:
+			gap = minf(gap, candidate.distance_to(other))
+		if gap >= FLYER_MIN_SEPARATION:
+			return candidate
+		if gap > best_gap:
+			best_gap = gap
+			best = candidate
+	return best
 
 
 ## The far end of the map in the direction of travel: the player camera's limit.
