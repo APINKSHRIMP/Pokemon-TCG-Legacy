@@ -98,7 +98,12 @@ func _physics_process(delta: float) -> void:
 	if _state == State.IDLE:
 		_pause -= delta
 		if _pause <= 0.0:
-			_pick_target()
+			if _wander_speed > 0.0:
+				_pick_target()
+			else:
+				# Wander speed 0 (Sudowoodo, Bonsly): stands its ground, glancing about.
+				_pause = randf_range(PAUSE_MIN, PAUSE_MAX)
+				set_facing(DIRECTIONS[randi() % DIRECTIONS.size()])
 		return
 
 	# WANDER

@@ -20,6 +20,7 @@ extends CanvasLayer
 ##   C              clone the selected Pokémon spawn point, held at the player  CLONE
 ##   Delete         delete the spawn point being held                       DELETE
 ##   P              Pokémon spawns: FORCED (all out, to place / scale) or RANDOM (real odds)
+##   V              surfacing point's water area: V to start (clears it), then V at 4 corners  REGION
 ##   Ctrl+arrows    nudge 1px (add Shift for 10px) -- Ctrl also holds the player still
 ##   R              cycle movement pattern
 ##   M              edit the selected character in the character editor   EDIT NPC
@@ -47,9 +48,12 @@ const NUDGE_LARGE := 10.0
 enum Mode { EDIT, NEW, FLYERS }
 
 ## The clickable button bar along the bottom of the screen.
-## Ten buttons: 10 x 170 + 9 x 12 = 1808px, inside the 1872px between the margins.
-const BUTTON_FONT_SIZE := 20
-const BUTTON_SIZE := Vector2(170, 56)
+## Eleven buttons: 11 x 155 + 10 x 12 = 1825px, inside the 1872px between the margins.
+const BUTTON_FONT_SIZE := 18
+const BUTTON_SIZE := Vector2(155, 56)
+## A water area smaller than this (world px) either way is refused -- four clicks on
+## nearly the same spot.
+const REGION_MIN_SIZE := 8.0
 const BUTTON_BAR_MARGIN := 24
 
 var _map_data: String = ""
@@ -67,6 +71,12 @@ var _grab_button: Button = null
 ## to see what a 2% rate actually looks like. Both run on the unsaved working copy.
 var _forced_spawns: bool = true
 var _spawns_button: Button = null
+## V / the REGION button: capturing a surfacing point's water area, one corner per press.
+var _region_capture_id: String = ""
+var _region_corners: Array = []
+## The area the point had before capture started, put back if the capture is abandoned.
+var _region_backup = null
+var _region_button: Button = null
 
 const CONSTANTS_PATH := "res://NPC_and_Opponent_Data/All_NPC_Constant_Data.json"
 
@@ -96,8 +106,8 @@ var _pokemon_editor: PokemonSpawnEditor = null
 
 const POKEMON_SPAWN_HELP := [
 	"Overworld Pokemon for this map. Written by the placement tool (DEL debug menu -> NEW NPC / OPPONENT / POKEMON or FLYER TABLES, or EDIT CURRENT NPCS then EDIT NPC on a spawn marker); safe to hand-edit.",
-	"flyers: map-wide, one table per time of day (Morning/Afternoon/Evening/Night). The current time's table rolls every `interval` seconds with `chance`% to send a flock of ONE species from its `table` [{species, percent, min, max}] across the screen. min/max = flock size. Speed (px/s), scale, spin, erratic, bug, ghost and (skittish) wander_speed are per SPECIES, in Overworld_Pokemon.json, not per table.",
-	"spawn_points: id, template, at [x, y], group (points sharing a group share every rule -- clones join their source's group, and editing one edits them all), tables {Morning/Afternoon/Evening/Night: {chance (%), table [{species, percent}]}} -- an empty table spawns nothing at that time. burying/surfacing tables also have `interval` (seconds between rolls); burying may set up_time; skittish sets flee (random/left/right/away_from_player); static sets pattern (+ distance/speed/axis for patrols).",
+	"flyers: map-wide, one table per time of day (Morning/Afternoon/Evening/Night). The current time's table rolls every `interval` seconds with `chance`% to send a flock of ONE species from its `table` [{species, percent, min, max}] across the screen. min/max = flock size. Speed (px/s), scale, spin, erratic, bug, ghost, (skittish) wander_speed and (surfacing) swim_speed are per SPECIES, in Overworld_Pokemon.json, not per table.",
+	"spawn_points: id, template, at [x, y], group (points sharing a group share every rule -- clones join their source's group, and editing one edits them all), tables {Morning/Afternoon/Evening/Night: {chance (%), table [{species, percent}]}} -- an empty table spawns nothing at that time. burying/surfacing tables also have `interval` (seconds between rolls); surfacing may have `region` [min_x, min_y, max_x, max_y] (a water area: surfaces anywhere inside, swims to the furthest edge; set with V, `at` is its centre); burying may set up_time; skittish sets flee (random/left/right/away_from_player); static sets pattern (+ distance/speed/axis for patrols).",
 	"Table percents are weights and need not add to 100. Species keys are sprite basenames in Image_Assets/Pokemon_Sprites/.",
 ]
 
@@ -268,6 +278,8 @@ func _input(event: InputEvent) -> void:
 			_delete_held()
 		KEY_P:
 			_toggle_forced_spawns()
+		KEY_V:
+			_region_step()
 		KEY_C:
 			# Plain C only: Ctrl is the nudge modifier and is held while nudging.
 			if event.ctrl_pressed:
@@ -336,6 +348,13 @@ func _clone_spawn_point() -> void:
 	var copy: Dictionary = source.duplicate(true)
 	copy["id"] = OverworldPokemonData.next_point_id(_pk_doc, str(copy.get("template", "")))
 	copy["at"] = [roundi(_player.global_position.x), roundi(_player.global_position.y)]
+	# A cloned water area comes along centred on the new spot.
+	var source_region := OverworldPokemonData.point_region(source)
+	if source_region.has_area():
+		var source_at = source.get("at", [0, 0])
+		var shift := Vector2(copy["at"][0] - float(source_at[0]), copy["at"][1] - float(source_at[1]))
+		copy["region"] = OverworldPokemonData.region_from_corners(
+				[source_region.position + shift, source_region.end + shift])
 	if not (_pk_doc.get("spawn_points") is Array):
 		_pk_doc["spawn_points"] = []
 	(_pk_doc["spawn_points"] as Array).append(copy)
@@ -388,9 +407,102 @@ func _delete_held() -> void:
 	_flash("[color=orange]%s deleted — Enter to write, F to discard[/color]" % id)
 
 
+## V and the REGION button. Not capturing: start capturing the selected surfacing point's
+## water area, clearing any area it had (the "reset"). Capturing: drop a corner where the
+## player stands; the fourth snaps all four to the rectangle around them, moves the point
+## to its centre and shows a Pokémon in it.
+func _region_step() -> void:
+	if _region_capture_id == "":
+		var marker := _selected() as PokemonSpawnMarker
+		if marker == null or str(marker.point.get("template", "")) != "surfacing":
+			_flash("[color=orange]select a surfacing spawn point (Tab), then V to set its water area[/color]")
+			return
+		if _grabbed:
+			_drop()
+		_start_region_capture(str(marker.point.get("id", "")))
+		return
+	if _player == null or not is_instance_valid(_player):
+		return
+	_region_corners.append(_player.global_position.round())
+	if _region_corners.size() < 4:
+		_refresh_capture_marker()
+		_update_hud()
+		_flash("[color=aqua]corner %d/4 set — walk to the next corner and press V[/color]" % _region_corners.size())
+		return
+	_finish_region_capture()
+
+
+func _start_region_capture(id: String) -> void:
+	var point := OverworldPokemonData.find_point(_pk_doc, id)
+	if point.is_empty():
+		return
+	_region_capture_id = id
+	_region_corners.clear()
+	_region_backup = point.get("region")
+	point.erase("region")
+	_pk_dirty = true
+	_preview_point(id)
+	_refresh_capture_marker()
+	_update_hud()
+	_flash("[color=aqua]%s: walk to a corner of the water and press V (4 corners). Esc cancels.[/color]" % id)
+
+
+func _finish_region_capture() -> void:
+	var id := _region_capture_id
+	var point := OverworldPokemonData.find_point(_pk_doc, id)
+	var region := OverworldPokemonData.region_from_corners(_region_corners)
+	var rect := Rect2(Vector2(region[0], region[1]), Vector2(region[2] - region[0], region[3] - region[1]))
+	if point.is_empty() or rect.size.x < REGION_MIN_SIZE or rect.size.y < REGION_MIN_SIZE:
+		_region_corners.clear()
+		_refresh_capture_marker()
+		_update_hud()
+		_flash("[color=orange]that area is too thin — pick the 4 corners again (V), or Esc to cancel[/color]")
+		return
+	point["region"] = region
+	var centre := rect.get_center()
+	point["at"] = [roundi(centre.x), roundi(centre.y)]
+	_region_capture_id = ""
+	_region_corners.clear()
+	_region_backup = null
+	_pk_dirty = true
+	_rebuild_markers(id)
+	_preview_point(id)
+	_update_hud()
+	_flash("[color=lime]%s water area set (%d x %d) — Enter to save, V again to redo it[/color]"
+			% [id, roundi(rect.size.x), roundi(rect.size.y)])
+
+
+## Escape mid-capture: the point gets back whatever area it had before.
+func _cancel_region_capture() -> void:
+	var point := OverworldPokemonData.find_point(_pk_doc, _region_capture_id)
+	if not point.is_empty() and _region_backup is Array:
+		point["region"] = _region_backup
+	var id := _region_capture_id
+	_region_capture_id = ""
+	_region_corners.clear()
+	_region_backup = null
+	_rebuild_markers(id)
+	_preview_point(id)
+	_update_hud()
+	_flash("[color=orange]water area capture cancelled[/color]")
+
+
+func _refresh_capture_marker() -> void:
+	if _spawner == null or not is_instance_valid(_spawner):
+		return
+	var marker := _spawner.find_marker(_region_capture_id)
+	if marker != null:
+		marker.pending_corners = _region_corners.duplicate()
+		marker.queue_redraw()
+
+
 ## Escape and the CLOSE button. Refuses while anything is unsaved -- F is the
 ## deliberate discard.
 func _request_close() -> void:
+	# Mid-capture, Escape backs out of the capture rather than the tool.
+	if _region_capture_id != "":
+		_cancel_region_capture()
+		return
 	if has_unsaved_changes():
 		_flash("[color=orange]unsaved changes — SAVE (Enter) first, or F to discard and close[/color]")
 	else:
@@ -500,7 +612,14 @@ func _record(actor: Node2D) -> void:
 	# A spawn marker holds a reference into _pk_doc, so its new position goes
 	# straight into the working copy of the spawn file.
 	if actor is PokemonSpawnMarker:
-		actor.point["at"] = [roundi(actor.global_position.x), roundi(actor.global_position.y)]
+		var old_at = actor.point.get("at", [0, 0])
+		var new_at := [roundi(actor.global_position.x), roundi(actor.global_position.y)]
+		# A water area travels with its point.
+		var region := OverworldPokemonData.point_region(actor.point)
+		if region.has_area():
+			var shift := Vector2(new_at[0] - float(old_at[0]), new_at[1] - float(old_at[1]))
+			actor.point["region"] = OverworldPokemonData.region_from_corners([region.position + shift, region.end + shift])
+		actor.point["at"] = new_at
 		actor.queue_redraw()
 		_pk_dirty = true
 		# Show what it spawns at its new spot straight away.
@@ -709,11 +828,15 @@ func _on_pokemon_editor_confirmed(draft: Dictionary) -> void:
 		if _player == null or not is_instance_valid(_player):
 			_flash("[color=red]no player to place %s at[/color]" % id)
 			return
-		# Handed to you to place, the same as a new character.
 		point["at"] = [roundi(_player.global_position.x), roundi(_player.global_position.y)]
 		points.append(point)
 		_rebuild_markers(id)
-		_grab()
+		if str(point.get("template", "")) == "surfacing":
+			# A surfacing point is an area of water: straight into picking its 4 corners.
+			_start_region_capture(id)
+		else:
+			# Handed to you to place, the same as a new character.
+			_grab()
 	else:
 		var existing := OverworldPokemonData.find_point(_pk_doc, original_id)
 		if existing.is_empty():
@@ -729,12 +852,18 @@ func _on_pokemon_editor_confirmed(draft: Dictionary) -> void:
 		for other in points:
 			if not (other is Dictionary) or is_same(other, existing) or str(other.get("group", "")) != group:
 				continue
+			# Id, spot and water area are where each clone IS, not its rules.
 			var keep_id = other.get("id")
 			var keep_at = other.get("at")
+			var keep_region = other.get("region")
 			other.clear()
 			other.merge(point.duplicate(true))
 			other["id"] = keep_id
 			other["at"] = keep_at
+			if keep_region is Array:
+				other["region"] = keep_region
+			else:
+				other.erase("region")
 			linked_updates += 1
 		_rebuild_markers(id)
 		for other in points:
@@ -1245,6 +1374,7 @@ func _build_buttons() -> void:
 	_add_button(bar, "CLONE", _clone_spawn_point)
 	_add_button(bar, "DELETE", _delete_held)
 	_spawns_button = _add_button(bar, "FORCED SPAWNS", _toggle_forced_spawns)
+	_region_button = _add_button(bar, "REGION", _region_step)
 	_add_button(bar, "EDIT NPC", func(): _open_editor(CharacterEditor.Mode.EDIT))
 	_add_button(bar, "SAVE", _save)
 	_add_button(bar, "CLOSE", _request_close)
@@ -1308,6 +1438,8 @@ func _update_hud() -> void:
 		_grab_button.text = "DROP" if _grabbed else "GRAB"
 	if _spawns_button != null:
 		_spawns_button.text = "FORCED SPAWNS" if _forced_spawns else "RANDOM SPAWNS"
+	if _region_button != null:
+		_region_button.text = ("CORNER %d/4" % (_region_corners.size() + 1)) if _region_capture_id != "" else "REGION"
 	if _label == null:
 		return
 	var actor := _selected()
@@ -1342,7 +1474,7 @@ func _update_hud() -> void:
 	lines.append("[color=%s]%s[/color]%s"
 		% ["orange" if has_unsaved_changes() else "gray", dirty_text,
 		   "   [color=aqua]CTRL: player held still, arrows nudge[/color]" if _ctrl_held else ""])
-	lines.append("[color=gray]Tab select  G grab  C clone spawn point  Del delete held spawn point  P forced/random spawns  Ctrl+arrows nudge  R pattern  M edit selected[/color]")
+	lines.append("[color=gray]Tab select  G grab  C clone spawn point  Del delete held spawn point  P forced/random spawns  V surfacing water area (4 corners)  Ctrl+arrows nudge  R pattern  M edit selected[/color]")
 	lines.append("[color=gray]Enter save  Esc close  F close and discard  (or the buttons along the bottom)[/color]")
 	if _mode == Mode.NEW:
 		lines.append("[color=aqua]NEW: place it, then SAVE — the create screen opens again for the next one[/color]")

@@ -222,8 +222,14 @@ func _spawn_at(point: Dictionary, config: Dictionary) -> OverworldPokemon:
 	pokemon.size_scale = OverworldPokemonData.species_scale(species)
 	pokemon.can_cry = OverworldPokemonData.CRY_TEMPLATES.has(str(point.get("template", "")))
 	var at = point.get("at", [0, 0])
+	var spawn_pos := Vector2(float(at[0]), float(at[1]))
+	# A point with a water area (surfacing) comes up anywhere inside it.
+	var region := OverworldPokemonData.point_region(point)
+	if region.has_area():
+		spawn_pos = Vector2(randf_range(region.position.x, region.end.x),
+				randf_range(region.position.y, region.end.y)).round()
 	# Position before add_child(): the templates read their home in _ready().
-	pokemon.position = to_local(Vector2(float(at[0]), float(at[1])))
+	pokemon.position = to_local(spawn_pos)
 	var id := str(point.get("id", ""))
 	pokemon.gone.connect(_on_pokemon_gone.bind(id))
 	add_child(pokemon)

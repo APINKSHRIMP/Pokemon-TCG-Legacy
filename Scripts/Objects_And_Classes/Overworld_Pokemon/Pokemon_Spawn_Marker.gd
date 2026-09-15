@@ -22,6 +22,9 @@ const TEMPLATE_COLOURS := {
 }
 
 var point: Dictionary = {}
+## Corners picked so far while the placement tool is capturing this point's water area
+## (world positions), drawn as dots. Not saved.
+var pending_corners: Array = []
 
 
 func _ready() -> void:
@@ -31,6 +34,26 @@ func _ready() -> void:
 
 func _draw() -> void:
 	var colour: Color = TEMPLATE_COLOURS.get(str(point.get("template", "")), Color.WHITE)
+	# The water area, relative to the point's saved spot so it moves with the marker
+	# while it is being carried.
+	var region := OverworldPokemonData.point_region(point)
+	if region.has_area():
+		var at = point.get("at", [0, 0])
+		var offset := region.position - Vector2(float(at[0]), float(at[1]))
+		draw_rect(Rect2(offset, region.size), Color(colour, 0.12), true)
+		draw_rect(Rect2(offset, region.size), colour, false, 1.5)
+	# Corners picked so far during capture, and the rectangle they already make.
+	if not pending_corners.is_empty():
+		var local_corners: Array = []
+		for corner in pending_corners:
+			local_corners.append(to_local(corner))
+		if local_corners.size() >= 2:
+			var preview := Rect2(local_corners[0], Vector2.ZERO)
+			for c in local_corners:
+				preview = preview.expand(c)
+			draw_rect(preview, Color(1, 0.9, 0.2, 0.8), false, 1.0)
+		for c in local_corners:
+			draw_circle(c, 3.0, Color(1, 0.9, 0.2))
 	draw_circle(Vector2.ZERO, RADIUS, Color(colour, 0.3))
 	draw_arc(Vector2.ZERO, RADIUS, 0.0, TAU, 24, colour, 1.5)
 	draw_line(Vector2(-3, 0), Vector2(3, 0), colour, 1.0)

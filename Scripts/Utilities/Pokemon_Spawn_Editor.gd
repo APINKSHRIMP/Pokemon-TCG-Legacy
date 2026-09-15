@@ -654,6 +654,8 @@ func _rebuild_table() -> void:
 			_add_flyer_controls(row, entry)
 		elif _template == "skittish":
 			_add_wander_control(row, species)
+		elif _template == "surfacing":
+			_add_swim_control(row, species)
 
 		# Pushes REMOVE to the right edge, so it lines up too.
 		var spacer := Control.new()
@@ -736,6 +738,7 @@ func _settings_for(species: String) -> Dictionary:
 		"speed_max": speed_range.y,
 		"scale": OverworldPokemonData.species_scale(species),
 		"wander_speed": int(OverworldPokemonData.species_wander_speed(species)),
+		"swim_speed": int(OverworldPokemonData.species_swim_speed(species)),
 		"spin": bool(OverworldPokemonData.species_info(species).get("spin", false)),
 		"erratic": bool(OverworldPokemonData.species_info(species).get("erratic", false)),
 		"bug": bool(OverworldPokemonData.species_info(species).get("bug", false)),
@@ -764,6 +767,8 @@ func _changed_species_settings() -> Dictionary:
 			changes["scale"] = scale_now
 		if int(settings["wander_speed"]) != int(OverworldPokemonData.species_wander_speed(str(species))):
 			changes["wander_speed"] = int(settings["wander_speed"])
+		if int(settings["swim_speed"]) != int(OverworldPokemonData.species_swim_speed(str(species))):
+			changes["swim_speed"] = int(settings["swim_speed"])
 		var info := OverworldPokemonData.species_info(str(species))
 		for flag in ["spin", "erratic", "bug", "ghost"]:
 			if bool(settings[flag]) != bool(info.get(flag, false)):
@@ -778,10 +783,22 @@ func _changed_species_settings() -> Dictionary:
 func _add_wander_control(line: HBoxContainer, species: String) -> void:
 	var settings := _settings_for(species)
 	_caption(line, "Wander")
-	var box := _spin(1, OverworldPokemonData.WANDER_SPEED_LIMIT, 1, int(settings["wander_speed"]))
-	box.tooltip_text = "Wandering speed (px/s) of this species, on every table and map. Running away is always fast."
+	var box := _spin(0, OverworldPokemonData.WANDER_SPEED_LIMIT, 1, int(settings["wander_speed"]))
+	box.tooltip_text = "Wandering speed (px/s) of this species, on every table and map. 0 stands still until scared. Running away is always fast."
 	box.custom_minimum_size = Vector2(SPEED_SPIN_WIDTH, 0)
 	box.value_changed.connect(func(v: float): settings["wander_speed"] = int(v))
+	line.add_child(box)
+
+
+## Surfacing rows: the species' swimming speed while it is up (world px/s), the same on
+## every table and map. 0 surfaces, stays put and submerges.
+func _add_swim_control(line: HBoxContainer, species: String) -> void:
+	var settings := _settings_for(species)
+	_caption(line, "Swim")
+	var box := _spin(0, OverworldPokemonData.SWIM_SPEED_LIMIT, 1, int(settings["swim_speed"]))
+	box.tooltip_text = "Swimming speed (px/s) of this species while surfaced, on every table and map. 0 stays put."
+	box.custom_minimum_size = Vector2(SPEED_SPIN_WIDTH, 0)
+	box.value_changed.connect(func(v: float): settings["swim_speed"] = int(v))
 	line.add_child(box)
 
 
@@ -928,6 +945,9 @@ func _build_draft() -> Dictionary:
 		# The linked-clone group: kept on an edit, a brand new point starts its own.
 		"group": str(_original.get("group", id)) if not _is_new else id,
 	}
+	# A surfacing point's water area is set in the world (V), not in this form -- keep it.
+	if _template == "surfacing" and _original.get("region") is Array:
+		point["region"] = (_original["region"] as Array).duplicate()
 	if _template == "burying" and _up_time.value > 0.0:
 		point["up_time"] = snappedf(_up_time.value, 0.1)
 	if _template == "skittish":

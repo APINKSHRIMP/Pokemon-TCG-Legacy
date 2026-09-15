@@ -34,7 +34,7 @@ const TEMPLATE_DESCRIPTIONS := {
 	"swinging_bug": "Rolled once per map load. Hangs on a short silk strand facing one way and sways in a slow U arc. No collision.",
 	"skittish": "Rolled once per map load. Wanders around its spawn point at its species' Wander speed. When the player gets close it bolts left, right, randomly or away from the player (Runs away), passing behind trees, and fades out.",
 	"burying": "Every INTERVAL seconds, CHANCE% to pop out of the ground with a dirt burst, stay UP TIME seconds, then burrow back down.",
-	"surfacing": "Every INTERVAL seconds, CHANCE% to surface out of the water (blue depth tint, splash), drift a couple dozen pixels, then submerge.",
+	"surfacing": "Every INTERVAL seconds, CHANCE% to surface out of the water (blue depth tint, splash), drift a couple dozen pixels, then submerge. Give it a water area with V (4 corners) and it surfaces anywhere inside, swims towards the furthest edge, then submerges.",
 	"static": "Rolled once per map load. Collision, stands still or walks an existing pattern (idle cycle, patrol line, patrol square). Space to talk.",
 }
 
@@ -58,6 +58,11 @@ const SKITTISH_FLEE_DIRECTIONS := ["random", "left", "right", "away_from_player"
 ## away is one fixed speed for all of them (PokemonSkittish.FLEE_SPEED).
 const DEFAULT_SKITTISH_WANDER_SPEED := 85
 const WANDER_SPEED_LIMIT := 300
+
+## A surfacing species' swimming speed while it is up, in world px/s (registry
+## `swim_speed`). 0 surfaces, stays put and submerges.
+const DEFAULT_SURFACING_SWIM_SPEED := 7
+const SWIM_SPEED_LIMIT := 100
 
 ## A map's flyers and every spawn point have exactly one table per time of day, keyed
 ## by the names GameState.get_time() returns. A Pokémon seen at two times is listed in
@@ -223,6 +228,28 @@ static func load_spawns(map_data: String) -> Dictionary:
 	return doc
 
 
+## A surfacing point's water area as a Rect2 in world coordinates, or an empty Rect2 if
+## it has none (then it spawns at its `at` like any other point). Stored on the point as
+## `region`: [min_x, min_y, max_x, max_y].
+static func point_region(point: Dictionary) -> Rect2:
+	var r = point.get("region")
+	if not (r is Array) or (r as Array).size() != 4:
+		return Rect2()
+	var corner_a := Vector2(float(r[0]), float(r[1]))
+	var corner_b := Vector2(float(r[2]), float(r[3]))
+	return Rect2(corner_a, Vector2.ZERO).expand(corner_b)
+
+
+## Any number of clicked corners snapped to the rectangle around them, as a `region` value.
+static func region_from_corners(corners: Array) -> Array:
+	if corners.is_empty():
+		return []
+	var rect := Rect2(corners[0], Vector2.ZERO)
+	for corner in corners:
+		rect = rect.expand(corner)
+	return [roundi(rect.position.x), roundi(rect.position.y), roundi(rect.end.x), roundi(rect.end.y)]
+
+
 static func find_point(doc: Dictionary, id: String) -> Dictionary:
 	for point in doc.get("spawn_points", []):
 		if point is Dictionary and str(point.get("id", "")) == id:
@@ -286,9 +313,16 @@ static func species_scale(species: String) -> float:
 
 
 ## A skittish species' wandering speed in world px/s: registry `wander_speed`, else 85.
+## 0 is allowed -- it stands its ground (turning now and then) until scared off.
 static func species_wander_speed(species: String) -> float:
 	return clampf(float(species_info(species).get("wander_speed", DEFAULT_SKITTISH_WANDER_SPEED)),
-			1.0, WANDER_SPEED_LIMIT)
+			0.0, WANDER_SPEED_LIMIT)
+
+
+## A surfacing species' swimming speed in world px/s: registry `swim_speed`, else 7.
+static func species_swim_speed(species: String) -> float:
+	return clampf(float(species_info(species).get("swim_speed", DEFAULT_SURFACING_SWIM_SPEED)),
+			0.0, SWIM_SPEED_LIMIT)
 
 
 ## A flyer species' speed range in px/s: registry `speed_min` / `speed_max`, else the
