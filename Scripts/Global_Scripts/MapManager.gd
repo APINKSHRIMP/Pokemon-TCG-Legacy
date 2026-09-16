@@ -158,6 +158,9 @@ var _placement_tool: PlacementTool = null
 # Debug-only DEL menu (Debug_Menu.gd), same gate as the placement tool.
 var _debug_menu: DebugMenu = null
 
+## The running fishing sequence, or null. See start_fishing().
+var _fishing: FishingMinigame = null
+
 # Preloaded back textures used during the gift reveal animation
 const _CARDBACK_PATH := "res://Image_Assets/Sleeves/1_Default_English.png"
 const _COINBACK_PATH := "res://Image_Assets/Coins/Back Basic.png"
@@ -304,6 +307,8 @@ func initialise(
 	# never leave the player permanently frozen.
 	cutscene_active = false
 	cutscene_speaker = {}
+	# The old scene's fishing sequence died with it.
+	_fishing = null
 
 	_build_message_box()
 	if not GameState.returning_from_battle:
@@ -2910,6 +2915,42 @@ func debug_start_test_match() -> void:
 func debug_open_placement_tool(mode: int) -> void:
 	close_debug_menu()
 	_open_placement_tool(mode)
+
+
+# ============================================================
+# FISHING
+# ============================================================
+# Started by a FishingZone when the player presses Space inside one of its rects.
+# The sequence node owns itself from there and calls finish_fishing() when it ends.
+
+func start_fishing(direction: String) -> void:
+	if _fishing != null and is_instance_valid(_fishing):
+		return
+	if _player == null or not is_instance_valid(_player):
+		return
+	var map_root: Node = _player.get_parent()
+	if map_root == null:
+		return
+	# Both halves of the lock. cutscene_active is what keeps the player frozen while a
+	# "the line snapped" box is dismissed mid-retract -- _hide_message() restores
+	# can_move as `not cutscene_active`.
+	cutscene_active = true
+	_player.lock_movement()
+	_fishing = FishingMinigame.new()
+	_fishing.name = "FISHING"
+	_fishing.setup(_player, direction, _map_data)
+	map_root.add_child(_fishing)
+
+
+func finish_fishing() -> void:
+	_fishing = null
+	cutscene_active = false
+	if _player != null and is_instance_valid(_player):
+		_player.unlock_movement()
+
+
+func is_fishing() -> bool:
+	return _fishing != null and is_instance_valid(_fishing)
 
 # Launches an instant TEST match from the overworld. Both the player and the
 # opponent draw from user://Player_Decks/TEST.json, and the opponent's metadata

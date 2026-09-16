@@ -71,6 +71,10 @@ var _table: Array = []
 ## Working copies of the four time-of-day tables: the map's flyers, and this point's
 ## own. Kept apart so switching template between the two never mixes them.
 var _flyer_tables: Dictionary = {}
+var _fish_tables: Dictionary = {}
+## FISH TABLE mode: the map's four fishing tables instead of a template's. Saves in
+## place like the flyer tables, and has no chance, interval or point settings at all.
+var _fish_mode: bool = false
 var _point_tables: Dictionary = {}
 ## species -> {speed_min, speed_max, scale}: the species-wide settings being edited.
 ## Seeded from the registry (and any unsaved edits the placement tool is holding), so a
@@ -119,7 +123,7 @@ var _picker: AssetPickerOverlay = null
 ## straight onto the map's flyer tables (N -> FLYER TABLES).
 func setup(map_data: String, working_doc: Dictionary, point: Dictionary,
 		known_additions: Dictionary = {}, open_flyers: bool = false,
-		species_settings: Dictionary = {}) -> void:
+		species_settings: Dictionary = {}, open_fish: bool = false) -> void:
 	_map_data = map_data
 	_species_settings = species_settings.duplicate(true)
 	_doc = working_doc
@@ -131,6 +135,11 @@ func setup(map_data: String, working_doc: Dictionary, point: Dictionary,
 		_template = str(point.get("template", DEFAULT_TEMPLATE))
 	elif open_flyers:
 		_template = "flyer"
+	if open_fish:
+		_fish_mode = true
+		# Not a real template -- it only seeds ADD FROM TEMPLATE with the water Pokémon,
+		# which is the list a fishing table almost always wants.
+		_template = "surfacing"
 	_build()
 	if _is_new:
 		_up_time.value = 0
@@ -211,7 +220,7 @@ func _build() -> void:
 		_store_time_table(_tables_for(previous))
 		_template = str(_template_opt.get_item_metadata(idx))
 		_on_template_switched(previous))
-	_add_row(left, "Template", _template_opt)
+	_rows["template"] = _add_row(left, "Template", _template_opt)
 
 	_desc = Label.new()
 	_desc.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
@@ -236,6 +245,7 @@ func _build() -> void:
 	_chance = _spin(0, 100, 1, OverworldPokemonData.POINT_DEFAULT_CHANCE, " %")
 	_chance.value_changed.connect(func(_v: float): _revalidate())
 	var chance_row := _add_row(left, "Chance", _chance)
+	_rows["chance"] = chance_row
 	_chance_label = chance_row.get_child(0)
 
 	_interval = _spin(0.5, 3600, 0.5, OverworldPokemonData.POINT_DEFAULT_INTERVAL, " s")
@@ -431,6 +441,9 @@ func _on_template_switched(previous: String) -> void:
 func _on_template_changed() -> void:
 	var is_flyer := _template == "flyer"
 	var is_static := _template == "static"
+	if _fish_mode:
+		_on_fish_mode_changed()
+		return
 	if is_flyer:
 		_title.text = "FLYER TABLES  —  %s" % _map_data
 	elif _is_new:
@@ -467,6 +480,22 @@ func _on_template_changed() -> void:
 	_rebuild_table()
 
 
+## FISH TABLE mode. A cast always hooks exactly one fish, so there is no spawn chance,
+## no roll interval and no template to choose -- the whole left column collapses to the
+## time-of-day picker.
+func _on_fish_mode_changed() -> void:
+	_title.text = "FISH TABLE  —  %s" % _map_data
+	_confirm_btn.text = "SAVE"
+	_cancel_btn.text = "CLOSE"
+	_scope.text = "SAVE writes Pokemon/Spawns/%s.json straight away and keeps this screen open" % _map_data
+	_desc.text = "Which Pokémon can be hooked here, by time of day. A cast always rolls " \
+			+ "exactly one fish, so there is no spawn chance — an empty table just means " \
+			+ "nothing bites then."
+	for key in _rows:
+		(_rows[key] as Control).visible = false
+	_rebuild_table()
+
+
 ## How many spawn points share the edited point's group, itself included. Confirming
 ## rewrites the rules of every one of them (PlacementTool._on_pokemon_editor_confirmed).
 func _group_size() -> int:
@@ -482,16 +511,28 @@ func _group_size() -> int:
 # TIME-OF-DAY TABLES
 # ============================================================
 
-## Flyers edit the map's four tables; spawn points edit their own four.
+## Flyers edit the map's four tables; spawn points edit their own four; the fish table
+## is the map's too.
 func _tables_for(template: String) -> Dictionary:
+	if _fish_mode:
+		return _fish_tables
 	return _flyer_tables if template == "flyer" else _point_tables
+
+
+## Flyer and fish tables belong to the map and have nowhere to be placed, so SAVE writes
+## the file straight away and the form stays open. A spawn point is handed to the tool.
+func _saves_in_place() -> bool:
+	return _fish_mode or _template == "flyer"
 
 
 ## Fill in whichever set of tables the template uses (once -- edits survive switching
 ## template away and back) and show the same time of day as before, or the game's
 ## current time the first time round.
 func _enter_time_tables() -> void:
-	if _template == "flyer":
+	if _fish_mode:
+		if _fish_tables.is_empty():
+			_fish_tables = OverworldPokemonData.normalise_fishing(_doc.get("fishing")).duplicate(true)
+	elif _template == "flyer":
 		if _flyer_tables.is_empty():
 			_flyer_tables = OverworldPokemonData.normalise_flyers(_doc.get("flyers")).duplicate(true)
 	elif _point_tables.is_empty():
@@ -504,7 +545,7 @@ func _enter_time_tables() -> void:
 	# would write the old template's values into the new set of tables.
 	_table_time = ""
 	_show_time_table(target)
-	if _template == "flyer" and _flyer_saved_json == "":
+	if _saves_in_place() and _flyer_saved_json == "":
 		_flyer_saved_json = _flyer_json()
 
 
@@ -558,8 +599,13 @@ func _all_rows() -> Array:
 func _draft_tables() -> Dictionary:
 	var tables := _tables_for(_template)
 	_store_time_table(tables)
-	var uses_interval := OverworldPokemonData.TEMPLATE_USES_INTERVAL.has(_template)
 	var out: Dictionary = {}
+	if _fish_mode:
+		# Species rows and nothing else -- no chance, no interval.
+		for time_name in OverworldPokemonData.TIMES_OF_DAY:
+			out[time_name] = {"table": _clean_rows(_time_rows(str(time_name)))}
+		return out
+	var uses_interval := OverworldPokemonData.TEMPLATE_USES_INTERVAL.has(_template)
 	for time_name in OverworldPokemonData.TIMES_OF_DAY:
 		var config := OverworldPokemonData.time_table(tables, str(time_name))
 		var clean: Dictionary = {"chance": snappedf(float(config.get("chance", 0)), 0.1)}
@@ -642,7 +688,7 @@ func _rebuild_table() -> void:
 		name_label.clip_text = true
 		name_label.tooltip_text = species
 		name_label.mouse_filter = Control.MOUSE_FILTER_PASS
-		if not known.has(species):
+		if not known.has(species) and not _fish_mode:
 			# Orange + "*" rather than a long suffix, which would push the columns out.
 			name_label.text += " *"
 			name_label.tooltip_text = species + " -- new to this template, added to it on save"
@@ -670,7 +716,7 @@ func _rebuild_table() -> void:
 			_add_flyer_controls(row, entry)
 		elif _template == "skittish":
 			_add_wander_control(row, species)
-		elif _template == "surfacing":
+		elif _template == "surfacing" and not _fish_mode:
 			_add_swim_control(row, species)
 
 		# Pushes REMOVE to the right edge, so it lines up too.
@@ -899,8 +945,8 @@ func _problems() -> Array:
 				var speeds := _settings_for(str(row.get("species", "")))
 				if int(speeds["speed_min"]) > int(speeds["speed_max"]):
 					out.append("%s: %s speed min is bigger than max" % [time_name, bird])
-	# The map having no flyers is fine; a spawn point that can never spawn isn't.
-	if not any_rows and _template != "flyer":
+	# A map with no flyers and no fish is fine; a spawn point that can never spawn is not.
+	if not any_rows and not _saves_in_place():
 		out.append("add a Pokémon to at least one time of day")
 	return out
 
@@ -955,6 +1001,15 @@ func _clean_rows(rows: Array) -> Array:
 
 func _build_draft() -> Dictionary:
 	var tables := _draft_tables()
+	if _fish_mode:
+		# No registry additions: a fish table may list any Pokémon, and writing them all
+		# into the surfacing template would put them in the sea as well.
+		return {
+			"kind": "fishing",
+			"fishing": tables,
+			"registry_additions": {},
+			"species_settings": _changed_species_settings(),
+		}
 	if _template == "flyer":
 		return {
 			"kind": "flyers",
@@ -1020,7 +1075,7 @@ func _input(event: InputEvent) -> void:
 func _confirm() -> void:
 	if not _problems().is_empty():
 		return
-	if _template == "flyer":
+	if _saves_in_place():
 		save_requested.emit(_build_draft())
 		return
 	confirmed.emit(_build_draft())
@@ -1059,8 +1114,8 @@ func _delete() -> void:
 
 
 func _cancel() -> void:
-	# Flyer tables: closing over edits made since the last SAVE asks once first.
-	if _template == "flyer" and not _close_armed and _flyer_json() != _flyer_saved_json:
+	# Flyer and fish tables: closing over edits made since the last SAVE asks once first.
+	if _saves_in_place() and not _close_armed and _flyer_json() != _flyer_saved_json:
 		_close_armed = true
 		_status.text = "Unsaved changes — SAVE them, or CLOSE again to throw them away."
 		_status.add_theme_color_override("font_color", Color(1.0, 0.75, 0.35))

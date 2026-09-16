@@ -225,6 +225,16 @@ static func normalise_point_tables(tables) -> Dictionary:
 	return normalise_time_tables(tables, default_point_table())
 
 
+## The fishing table is the odd one out: a cast always rolls exactly one fish, so there
+## is no spawn chance, no roll interval and no flock size -- just the species rows.
+static func default_fish_table() -> Dictionary:
+	return {"table": []}
+
+
+static func normalise_fishing(fishing) -> Dictionary:
+	return normalise_time_tables(fishing, default_fish_table())
+
+
 ## One time's table out of a four-table dictionary ({} if it isn't there).
 static func time_table(tables, time_name: String) -> Dictionary:
 	var table = tables.get(time_name) if tables is Dictionary else null
@@ -236,6 +246,7 @@ static func time_table(tables, time_name: String) -> Dictionary:
 static func load_spawns(map_data: String) -> Dictionary:
 	var doc := _read_json(spawn_path(map_data))
 	doc["flyers"] = normalise_flyers(doc.get("flyers"))
+	doc["fishing"] = normalise_fishing(doc.get("fishing"))
 	if not (doc.get("spawn_points") is Array):
 		doc["spawn_points"] = []
 	for point in doc["spawn_points"]:

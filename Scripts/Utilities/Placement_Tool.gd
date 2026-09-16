@@ -45,7 +45,8 @@ const NUDGE_LARGE := 10.0
 ##   EDIT    walk round and edit what is already on the map
 ##   NEW     straight onto the create screen, and back to it after every save
 ##   FLYERS  straight onto the map's flyer tables; closes once they are saved
-enum Mode { EDIT, NEW, FLYERS }
+##   FISH    straight onto the map's fishing tables; same, but the fish table
+enum Mode { EDIT, NEW, FLYERS, FISH }
 
 ## The clickable button bar along the bottom of the screen.
 ## Eleven buttons: 11 x 155 + 10 x 12 = 1825px, inside the 1872px between the margins.
@@ -108,6 +109,7 @@ const POKEMON_SPAWN_HELP := [
 	"Overworld Pokemon for this map. Written by the placement tool (DEL debug menu -> NEW NPC / OPPONENT / POKEMON or FLYER TABLES, or EDIT CURRENT NPCS then EDIT NPC on a spawn marker); safe to hand-edit.",
 	"flyers: map-wide, one table per time of day (Morning/Afternoon/Evening/Night). The current time's table rolls every `interval` seconds with `chance`% to send a flock of ONE species from its `table` [{species, percent, min, max}] across the screen. min/max = flock size. Speed (px/s), scale, spin, erratic, bug, ghost, (skittish) wander_speed and (surfacing) swim_speed are per SPECIES, in Overworld_Pokemon.json, not per table.",
 	"spawn_points: id, template, at [x, y], group (points sharing a group share every rule -- clones join their source's group, and editing one edits them all), tables {Morning/Afternoon/Evening/Night: {chance (%), table [{species, percent}]}} -- an empty table spawns nothing at that time. burying/surfacing tables also have `interval` (seconds between rolls); surfacing may have `region` [min_x, min_y, max_x, max_y] (a water area: surfaces anywhere inside, swims to the furthest edge; set with V, `at` is its centre); burying may set up_time; skittish sets flee (the run-away directions it is ALLOWED, any of left/right/up/down; out of those it takes whichever heads away from the player -- missing or empty means all four) and into_water (true = it stops at the first collider it runs into, leaps and sinks with a splash instead of fading out); static sets pattern (+ distance/speed/axis for patrols).",
+	"fishing: map-wide, one table per time of day (DEL debug menu -> FISH TABLE). Which Pokemon can be hooked from a fishing area on this map. A cast always rolls exactly ONE fish, so there is no chance and no interval -- just `table` [{species, percent}]. An empty table means nothing bites at that time of day. Fishing areas themselves are named CollisionShape2D children of a FishingAreas Area2D in the map scene (Fish_Down, Fish_Left_2, ... -- the name says which way the water is), not data in this file.",
 	"Table percents are weights and need not add to 100. Species keys are sprite basenames in Image_Assets/Pokemon_Sprites/.",
 ]
 
@@ -146,6 +148,8 @@ func setup(map_data: String, container: Node2D, player: Node2D, mode: int = Mode
 			_open_editor(CharacterEditor.Mode.NEW)
 		Mode.FLYERS:
 			_open_pokemon_editor({}, true)
+		Mode.FISH:
+			_open_pokemon_editor({}, false, true)
 
 
 # ============================================================
@@ -775,7 +779,7 @@ func _on_editor_flyers_chosen() -> void:
 
 ## `point` is a spawn point in _pk_doc to edit, or {} for a new point / the flyers.
 ## `flyers` opens the form on the map's time-of-day flyer tables.
-func _open_pokemon_editor(point: Dictionary, flyers: bool = false) -> void:
+func _open_pokemon_editor(point: Dictionary, flyers: bool = false, fish: bool = false) -> void:
 	if _spawner == null or not is_instance_valid(_spawner):
 		_thaw_player_after_form()
 		_flash("[color=orange]this map has no Pokémon spawner (it has no character file)[/color]")
@@ -788,7 +792,8 @@ func _open_pokemon_editor(point: Dictionary, flyers: bool = false) -> void:
 	_pokemon_editor.cancelled.connect(_on_pokemon_editor_cancelled)
 	_pokemon_editor.save_requested.connect(_on_pokemon_editor_save_requested)
 	_freeze_player_for_form()
-	_pokemon_editor.setup(_map_data, _pk_doc, point, _pk_registry_additions, flyers, _pk_species_settings)
+	_pokemon_editor.setup(_map_data, _pk_doc, point, _pk_registry_additions, flyers,
+			_pk_species_settings, fish)
 	_update_hud()
 
 
@@ -875,15 +880,22 @@ func _on_pokemon_editor_confirmed(draft: Dictionary) -> void:
 	_flash("[color=lime]%s%s ready — Enter to write Pokemon/Spawns/%s.json[/color]" % [id, also, _map_data])
 
 
-## Flyer tables' SAVE: write the spawn file straight away and leave the form open.
+## Flyer or fish tables. SAVE: write the spawn file straight away and leave the form open.
 ## Any spawn-point edits already waiting in _pk_doc are written with it.
 func _on_pokemon_editor_save_requested(draft: Dictionary) -> void:
 	_merge_registry_additions(draft)
-	_pk_doc["flyers"] = draft.get("flyers", {})
+	var kind := str(draft.get("kind", "flyers"))
+	if kind == "fishing":
+		_pk_doc["fishing"] = draft.get("fishing", {})
+		# The next cast reads the file again rather than the table it cached on load.
+		FishingData.invalidate()
+	else:
+		_pk_doc["flyers"] = draft.get("flyers", {})
 	_pk_dirty = true
 	var ok := _save_pokemon()
 	if ok:
-		print("PlacementTool: saved flyer tables -> " + OverworldPokemonData.spawn_path(_map_data))
+		print("PlacementTool: saved %s tables -> %s"
+				% [kind, OverworldPokemonData.spawn_path(_map_data)])
 	if _pokemon_editor != null and is_instance_valid(_pokemon_editor):
 		_pokemon_editor.notify_saved(ok)
 	_update_hud()

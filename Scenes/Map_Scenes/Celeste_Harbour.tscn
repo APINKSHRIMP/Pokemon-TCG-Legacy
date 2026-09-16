@@ -10,6 +10,7 @@
 [ext_resource type="Texture2D" uid="uid://5rb2vlanfegv" path="res://Image_Assets/Map_Objects/Forest/TreeLineThird.png" id="4_aw4ai"]
 [ext_resource type="PackedScene" uid="uid://bprufyh8mxqom" path="res://Scenes/Objects/Player_Object_Scene.tscn" id="5_a0lly"]
 [ext_resource type="Texture2D" uid="uid://u6wrch4agrln" path="res://Image_Assets/Map_Objects/Bakushin_Taxi.png" id="9_a0lly"]
+[ext_resource type="Script" uid="uid://bbrlrblh7j22j" path="res://Scripts/Objects_And_Classes/Fishing/Fishing_Zone.gd" id="99_fishzone"]
 [ext_resource type="Script" uid="uid://cphl8h5xtm64h" path="res://Scripts/Map_Scripts/Interactables_Script.gd" id="int_script"]
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_njjmc"]
@@ -276,6 +277,9 @@ size = Vector2(102, 20)
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_hw2gf"]
 size = Vector2(119, 67)
 
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_fish1"]
+size = Vector2(732, 40.5)
+
 [node name="CELESTE HARBOUR" type="Node2D" unique_id=332229534]
 script = ExtResource("1_7oril")
 
@@ -324,7 +328,7 @@ tile_set = ExtResource("2_bf13f")
 
 [node name="Sea Rocks" type="TileMapLayer" parent="TILE_MAPS/TERRAIN" unique_id=1191279107]
 position = Vector2(-1, 0)
-tile_map_data = PackedByteArray("AAAPAHIAAAA0ADgAABAPAHMAAAA0ADkAABAPAHQAAAA0ADoAABAQAHIAAAAzADgAABAQAHMAAAAzADkAABAQAHQAAAAzADoAABARAHIAAAAyADgAABARAHMAAAAyADkAABARAHQAAAAyADoAABCqAFkAAAAyADgAAACqAFoAAAAyADkAAACqAFsAAAAyADoAAACrAFgAAAAzADcAAACrAFkAAAAzADgAAACrAFoAAAAzADkAAACrAFsAAAAzADoAAACsAFkAAAA0ADgAAACsAFoAAAA0ADkAAACsAFsAAAA0ADoAAABnAFwAAAAzADcAABBoAF0AAAAyADgAABBnAF0AAAAzADgAABBmAF0AAAA0ADgAABBoAF4AAAAyADkAABBnAF4AAAAzADkAABBmAF4AAAA0ADkAABBoAF8AAAAyADoAABBnAF8AAAAzADoAABBmAF8AAAA0ADoAABDg/1cAAAAzADcAABDh/1gAAAAyADgAABDg/1gAAAAzADgAABDf/1gAAAA0ADgAABDh/1kAAAAyADkAABDg/1kAAAAzADkAABDf/1kAAAA0ADkAABDh/1oAAAAyADoAABDg/1oAAAAzADoAABDf/1oAAAA0ADoAABDF/1MAAAAzADcAAADG/1QAAAA0ADgAAADF/1QAAAAzADgAAADE/1QAAAAyADgAAADG/1UAAAA0ADkAAADF/1UAAAAzADkAAADE/1UAAAAyADkAAADG/1YAAAA0ADoAAADF/1YAAAAzADoAAADE/1YAAAAyADoAAAA=")
+tile_map_data = PackedByteArray("AAAPAHIAAAA0ADgAABAPAHMAAAA0ADkAABAPAHQAAAA0ADoAABAQAHIAAAAzADgAABAQAHMAAAAzADkAABAQAHQAAAAzADoAABARAHIAAAAyADgAABARAHMAAAAyADkAABARAHQAAAAyADoAABCqAFkAAAAyADgAAACqAFoAAAAyADkAAACqAFsAAAAyADoAAACrAFgAAAAzADcAAACrAFkAAAAzADgAAACrAFoAAAAzADkAAACrAFsAAAAzADoAAACsAFkAAAA0ADgAAACsAFoAAAA0ADkAAACsAFsAAAA0ADoAAABnAFwAAAAzADcAABBoAF0AAAAyADgAABBnAF0AAAAzADgAABBmAF0AAAA0ADgAABBoAF4AAAAyADkAABBnAF4AAAAzADkAABBmAF4AAAA0ADkAABBoAF8AAAAyADoAABBnAF8AAAAzADoAABBmAF8AAAA0ADoAABDg/1cAAAAzADcAABDh/1gAAAAyADgAABDg/1gAAAAzADgAABDf/1gAAAA0ADgAABDh/1kAAAAyADkAABDg/1kAAAAzADkAABDf/1kAAAA0ADkAABDh/1oAAAAyADoAABDg/1oAAAAzADoAABDf/1oAAAA0ADoAABA=")
 tile_set = ExtResource("2_bf13f")
 
 [node name="Grass" type="TileMapLayer" parent="TILE_MAPS/TERRAIN" unique_id=1695474527]
@@ -6381,3 +6385,18 @@ offset_bottom = 40.0
 [node name="EllieRunPath" type="Line2D" parent="Paths" unique_id=1957920687]
 visible = false
 points = PackedVector2Array(-271, 1703, -597, 1703, -597, 1487, -596, 1727, -714, 1724, -731, 2159, -793, 2159, -794, 2550, -827, 2550, -827, 2703, -704, 2703, -704, 2748)
+
+[node name="FishingAreas" type="Area2D" parent="." unique_id=771001001]
+script = ExtResource("99_fishzone")
+
+[node name="Fish_Down" type="CollisionShape2D" parent="FishingAreas" unique_id=771001002]
+position = Vector2(-840, 2733)
+shape = SubResource("RectangleShape2D_fish1")
+
+[node name="Fish_Down3" type="CollisionShape2D" parent="FishingAreas" unique_id=2094343374]
+position = Vector2(-720, 2733)
+shape = SubResource("RectangleShape2D_fish1")
+
+[node name="Fish_Down2" type="CollisionShape2D" parent="FishingAreas" unique_id=714508886]
+position = Vector2(-602, 2740)
+shape = SubResource("RectangleShape2D_fish1")

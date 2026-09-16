@@ -3,6 +3,7 @@
     "Overworld Pokemon for this map. Written by the placement tool (DEL debug menu -> NEW NPC / OPPONENT / POKEMON or FLYER TABLES, or EDIT CURRENT NPCS then EDIT NPC on a spawn marker); safe to hand-edit.",
     "flyers: map-wide, one table per time of day (Morning/Afternoon/Evening/Night). The current time's table rolls every `interval` seconds with `chance`% to send a flock of ONE species from its `table` [{species, percent, min, max}] across the screen. min/max = flock size. Speed (px/s), scale, spin, erratic, bug, ghost, (skittish) wander_speed and (surfacing) swim_speed are per SPECIES, in Overworld_Pokemon.json, not per table.",
     "spawn_points: id, template, at [x, y], group (points sharing a group share every rule -- clones join their source's group, and editing one edits them all), tables {Morning/Afternoon/Evening/Night: {chance (%), table [{species, percent}]}} -- an empty table spawns nothing at that time. burying/surfacing tables also have `interval` (seconds between rolls); surfacing may have `region` [min_x, min_y, max_x, max_y] (a water area: surfaces anywhere inside, swims to the furthest edge; set with V, `at` is its centre); burying may set up_time; skittish sets flee (the run-away directions it is ALLOWED, any of left/right/up/down; out of those it takes whichever heads away from the player -- missing or empty means all four) and into_water (true = it stops at the first collider it runs into, leaps and sinks with a splash instead of fading out); static sets pattern (+ distance/speed/axis for patrols).",
+    "fishing: map-wide, one table per time of day (DEL debug menu -> FISH TABLE). Which Pokemon can be hooked from a fishing area on this map. A cast always rolls exactly ONE fish, so there is no chance and no interval -- just `table` [{species, percent}]. An empty table means nothing bites at that time of day. Fishing areas themselves are named CollisionShape2D children of a FishingAreas Area2D in the map scene (Fish_Down, Fish_Left_2, ... -- the name says which way the water is), not data in this file.",
     "Table percents are weights and need not add to 100. Species keys are sprite basenames in Image_Assets/Pokemon_Sprites/."
   ],
   "flyers": {
@@ -207,6 +208,136 @@
           "percent": 40,
           "min": 1,
           "max": 1
+        }
+      ]
+    }
+  },
+  "fishing": {
+    "Morning": {
+      "table": [
+        {
+          "species": "129_Magikarp",
+          "percent": 35
+        },
+        {
+          "species": "118_Goldeen",
+          "percent": 20
+        },
+        {
+          "species": "116_Horsea",
+          "percent": 15
+        },
+        {
+          "species": "072_Tentacool",
+          "percent": 15
+        },
+        {
+          "species": "223_Remoraid",
+          "percent": 10
+        },
+        {
+          "species": "120_Staryu",
+          "percent": 4
+        },
+        {
+          "species": "130_Gyarados",
+          "percent": 1
+        }
+      ]
+    },
+    "Afternoon": {
+      "table": [
+        {
+          "species": "129_Magikarp",
+          "percent": 35
+        },
+        {
+          "species": "118_Goldeen",
+          "percent": 20
+        },
+        {
+          "species": "116_Horsea",
+          "percent": 15
+        },
+        {
+          "species": "072_Tentacool",
+          "percent": 15
+        },
+        {
+          "species": "223_Remoraid",
+          "percent": 10
+        },
+        {
+          "species": "120_Staryu",
+          "percent": 4
+        },
+        {
+          "species": "130_Gyarados",
+          "percent": 1
+        },
+        {
+          "species": "350_Milotic",
+          "percent": 10
+        }
+      ]
+    },
+    "Evening": {
+      "table": [
+        {
+          "species": "129_Magikarp",
+          "percent": 35
+        },
+        {
+          "species": "118_Goldeen",
+          "percent": 20
+        },
+        {
+          "species": "116_Horsea",
+          "percent": 15
+        },
+        {
+          "species": "072_Tentacool",
+          "percent": 15
+        },
+        {
+          "species": "223_Remoraid",
+          "percent": 10
+        },
+        {
+          "species": "120_Staryu",
+          "percent": 4
+        },
+        {
+          "species": "130_Gyarados",
+          "percent": 1
+        }
+      ]
+    },
+    "Night": {
+      "table": [
+        {
+          "species": "130_Gyarados",
+          "percent": 10
+        },
+        {
+          "species": "350_Milotic",
+          "percent": 10
+        },
+        {
+          "species": "121_Starmie",
+          "percent": 10
+        },
+        {
+          "species": "367_Huntail",
+          "percent": 10
+        },
+        {
+          "species": "368_Gorebyss",
+          "percent": 10
+        },
+        {
+          "species": "457_Lumineon",
+          "percent": 10
         }
       ]
     }

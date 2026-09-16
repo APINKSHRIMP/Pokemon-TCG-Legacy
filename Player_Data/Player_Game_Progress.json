@@ -22,6 +22,7 @@
 		"Base1"
 	],
 	"gifts_received": [],
+	"has_fishing_rod": true,
 	"matches_played": 0,
 	"matches_won": 0,
 	"moving_in_completed": false,

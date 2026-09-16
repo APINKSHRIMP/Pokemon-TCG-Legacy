@@ -42,7 +42,7 @@ Collect every single card from **Base Set** all the way through to **EX Power Ke
 
 ![Cards](Image_Assets/Screenshots/Cards.gif)![loading-ag-295](Image_Assets/Screenshots/Previews.gif)
 
-![loading-ag-296](Image_Assets/Screenshots/packs.gif)
+![Fishing minigame](Image_Assets/Screenshots/fishing.gif)
 
 ### Familiar NPCs and gifts
 
@@ -74,9 +74,13 @@ Win coins and sleeves as rewards for every battle and find some as gifts to use 
 
 ### Endless replayability
 
-Hundreds of unique decks and opponents to battle so you never have to battle the same opponent twice! (Unless you want to)
+Hundreds of unique decks and opponents to battle so you never have to battle the same opponent twice! (Unless you want to). Fishing minigame!
 
-![](Image_Assets/Screenshots/Messages.gif)![loading-ag-300](Image_Assets/Screenshots/intro.gif)
+![](Image_Assets/Screenshots/Messages.gif)
+
+![loading-ag-300](Image_Assets/Screenshots/intro.gif)
+
+![loading-ag-296](Image_Assets/Screenshots/fishing.gif)
 
 ## Technical
 

@@ -155,6 +155,9 @@ func _build_placement_column(col: VBoxContainer) -> void:
 	col.add_child(_button("FLYER TABLES",
 			func(): MapManager.debug_open_placement_tool(PlacementTool.Mode.FLYERS)))
 	col.add_child(_note("This map's Morning / Afternoon / Evening / Night flying Pokémon."))
+	col.add_child(_button("FISH TABLE",
+			func(): MapManager.debug_open_placement_tool(PlacementTool.Mode.FISH)))
+	col.add_child(_note("This map's Morning / Afternoon / Evening / Night catchable fish."))
 
 
 func _build_cheat_column(col: VBoxContainer) -> void:
