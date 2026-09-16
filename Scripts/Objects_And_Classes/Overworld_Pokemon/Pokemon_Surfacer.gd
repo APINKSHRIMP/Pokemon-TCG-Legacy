@@ -50,11 +50,13 @@ const DRIFT_SPEED := 7.0
 const SWIM_ANIM_MIN := 0.25
 const SWIM_ANIM_MAX := 2.0
 const DRIFT_ANIM_SPEED := 0.5
-## With a water area: it swims towards the edge furthest from where it surfaced, a
-## random REGION_DRIFT_FRACTION_MIN..1 of the way there, but at most REGION_DRIFT_MAX
-## world px (and never out of the area).
-const REGION_DRIFT_FRACTION_MIN := 0.4
-const REGION_DRIFT_MAX := 60.0
+## With a water area: it swims towards one of the two edges with the most room --
+## picked at random -- covering a random REGION_DRIFT_FRACTION_MIN..1 of the way there,
+## so no two swims are the same length. Rolling near 1 takes it right up to the water's
+## edge, where it submerges like anywhere else. There is deliberately no fixed ceiling
+## on the distance: capping it made every swim in a pond bigger than the cap exactly
+## the cap long, which is what "they all travel the same distance" was.
+const REGION_DRIFT_FRACTION_MIN := 0.5
 const SPLASH_COLOURS := [Color8(54, 108, 158), Color8(120, 170, 214), Color8(220, 236, 248)]
 const SPLASH_COUNT := 18
 const SPLASH_SPEED := 0.8
@@ -94,6 +96,16 @@ enum Phase { SURFACING, DRIFT, SUBMERGING }
 
 static var _shader: Shader = null
 
+
+## The water shader, compiled once and shared. PokemonSkittish's "jumps into water"
+## escape uses the same one, so a Pokemon going under looks the same wherever it happens
+## -- same blue, same fade into the depths.
+static func water_shader() -> Shader:
+	if _shader == null:
+		_shader = Shader.new()
+		_shader.code = WATER_SHADER
+	return _shader
+
 var _phase: int = Phase.SURFACING
 var _time: float = 0.0
 var _max_rows: int = 1
@@ -112,11 +124,8 @@ func _template_ready() -> void:
 	z_as_relative = false
 	z_index = Z
 	animating = false
-	if _shader == null:
-		_shader = Shader.new()
-		_shader.code = WATER_SHADER
 	_material = ShaderMaterial.new()
-	_material.shader = _shader
+	_material.shader = water_shader()
 	_material.set_shader_parameter("water_colour", WATER_COLOUR)
 	_material.set_shader_parameter("deep_colour", DEEP_COLOUR)
 	_material.set_shader_parameter("tint_rows", TINT_ROWS)
@@ -207,8 +216,11 @@ func _template_process(delta: float) -> void:
 
 
 ## Surfaced somewhere inside its water area: head, in a straight line, towards one of the
-## TWO edges with the most room -- picked at random -- stopping short of it. In the
-## top-right of a pond that is down or left; in the bottom-left, up or right.
+## TWO edges with the most room -- picked at random, a coin flip between them. In the
+## top-right of a pond that is down or left; in the bottom-left, up or right. (In a pond
+## far wider than it is tall the two roomiest edges are nearly always left and right, so
+## it will look horizontal unless it surfaces near one end.) How far it goes is rolled
+## against the room it has that way, so it never swims out of the water.
 func _aim_at_furthest_edge(region: Rect2) -> void:
 	var pos := global_position
 	var room := [
@@ -220,8 +232,12 @@ func _aim_at_furthest_edge(region: Rect2) -> void:
 	room.sort_custom(func(a, b): return float(a[1]) > float(b[1]))
 	var choice: Array = room[randi() % 2]
 	_drift_vec = choice[0]
+	# How far it could go before running out of water this way, and how far it actually
+	# does: at least REGION_DRIFT_FRACTION_MIN of it, at most all of it. The fraction
+	# multiplies the room it HAS, so a big pond gives long swims and a puddle short ones;
+	# clamping after the roll instead pinned every roomy pond to the same length.
 	var available := maxf(float(choice[1]), 0.0)
-	_drift_left = minf(randf_range(REGION_DRIFT_FRACTION_MIN, 1.0) * available, REGION_DRIFT_MAX)
+	_drift_left = randf_range(REGION_DRIFT_FRACTION_MIN, 1.0) * available
 
 
 func _next(phase: int) -> void:

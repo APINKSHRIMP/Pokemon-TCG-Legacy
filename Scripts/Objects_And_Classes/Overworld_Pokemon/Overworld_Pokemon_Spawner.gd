@@ -51,6 +51,13 @@ const FLYER_MIN_SEPARATION := 36.0
 const FLYER_PLACE_ATTEMPTS := 12
 ## Keeps flocks from spawning right against the top/bottom of the screen.
 const FLYER_VERTICAL_PADDING := 24.0
+## Head-on misses: a flock never starts within this much of the height of a flyer
+## already crossing the other way, or the two streams fly straight through each other.
+## Too close and the start height moves FLYER_HEADON_SHIFT up or down -- whichever
+## leaves the bigger gap, still inside the screen. 80 world px = 200 px on screen at
+## the default (and widest) 2.5x camera zoom.
+const FLYER_HEADON_GAP := 80.0
+const FLYER_HEADON_SHIFT := 80.0
 ## How far past the camera limit a flyer carries on before it despawns.
 const FLYER_END_MARGIN := 64.0
 ## Guaranteed flocks: if this many seconds pass with no flock spawning at all, one is
@@ -59,6 +66,14 @@ const FLYER_END_MARGIN := 64.0
 ## the wait, so lucky rolls can still add extras in between.
 const FLYER_GUARANTEE_SECONDS := 20.0
 const FLYER_GUARANTEE_SECONDS_NIGHT := 30.0
+## Elbow room for spawn points: a point does not put a Pokémon out if one of its own
+## kind is already out within this box of where it would appear. These are HALF the
+## box, so the whole of it is 900 x 500 px on screen -- about a screenful -- at the
+## default 2.5x camera zoom (450 x 250 either side, / 2.5 for world px).
+## Flyers passing overhead never count, and surfacing Pokémon are their own kind: a
+## Magikarp out on a pond has nothing to do with a Caterpie on the bank, but two
+## surfacing points still keep their distance from each other.
+const GROUND_SPACING := Vector2(180.0, 100.0)
 ## Seconds before a burying/surfacing point first rolls: random within 1..interval,
 ## so every point on the map does not pop on the same frame.
 const FIRST_ROLL_MIN := 1.0
@@ -112,6 +127,7 @@ func apply_doc(new_doc: Dictionary) -> void:
 	doc = new_doc
 	_timers.clear()
 	var time_name: String = GameState.get_time()
+	var one_shots: Array = []
 	for point in doc.get("spawn_points", []):
 		if not (point is Dictionary):
 			continue
@@ -119,15 +135,22 @@ func apply_doc(new_doc: Dictionary) -> void:
 		if not OverworldPokemonData.TEMPLATES.has(template):
 			push_warning("OverworldPokemonSpawner: unknown template '%s' on %s" % [template, point.get("id", "?")])
 			continue
-		var config := _config_for(point, time_name)
 		if OverworldPokemonData.ONE_SHOT_TEMPLATES.has(template):
-			if preview or OverworldPokemonData.roll(float(config.get("chance", 0))):
-				_spawn_at(point, config)
+			one_shots.append(point)
 		elif OverworldPokemonData.TIMED_TEMPLATES.has(template):
+			var config := _config_for(point, time_name)
 			if preview:
 				_spawn_at(point, config)
 			else:
 				_timers[str(point.get("id", ""))] = randf_range(FIRST_ROLL_MIN, maxf(FIRST_ROLL_MIN, _interval(config)))
+	# Shuffled, because GROUND_SPACING lets whoever goes first through and crowds the
+	# rest out: in file order a dense map would thin down to the same handful of points
+	# every load. (Preview ignores the spacing, so the order makes no odds there.)
+	one_shots.shuffle()
+	for point in one_shots:
+		var config := _config_for(point, time_name)
+		if preview or OverworldPokemonData.roll(float(config.get("chance", 0))):
+			_spawn_at(point, config)
 	# Forced preview sends the first flock almost at once rather than after a full interval.
 	_flyer_timer = 0.2 if preview else _interval(_flyer_config(time_name))
 	_since_last_flock = 0.0
@@ -215,12 +238,7 @@ func _spawn_at(point: Dictionary, config: Dictionary) -> OverworldPokemon:
 	var species := str(row.get("species", ""))
 	if species == "":
 		return null
-	var pokemon := make_pokemon(str(point.get("template", "")))
-	if pokemon == null:
-		return null
-	pokemon.configure(species, point)
-	pokemon.size_scale = OverworldPokemonData.species_scale(species)
-	pokemon.can_cry = OverworldPokemonData.CRY_TEMPLATES.has(str(point.get("template", "")))
+	var template := str(point.get("template", ""))
 	var at = point.get("at", [0, 0])
 	var spawn_pos := Vector2(float(at[0]), float(at[1]))
 	# A point with a water area (surfacing) comes up anywhere inside it.
@@ -228,6 +246,16 @@ func _spawn_at(point: Dictionary, config: Dictionary) -> OverworldPokemon:
 	if region.has_area():
 		spawn_pos = Vector2(randf_range(region.position.x, region.end.x),
 				randf_range(region.position.y, region.end.y)).round()
+	# Elbow room: this roll is dropped if one of its own kind is already out too close.
+	# The placement tool's preview shows every point whatever is around it.
+	if not preview and _is_crowded(template, spawn_pos):
+		return null
+	var pokemon := make_pokemon(template)
+	if pokemon == null:
+		return null
+	pokemon.configure(species, point)
+	pokemon.size_scale = OverworldPokemonData.species_scale(species)
+	pokemon.can_cry = OverworldPokemonData.CRY_TEMPLATES.has(template)
 	# Position before add_child(): the templates read their home in _ready().
 	pokemon.position = to_local(spawn_pos)
 	var id := str(point.get("id", ""))
@@ -235,6 +263,24 @@ func _spawn_at(point: Dictionary, config: Dictionary) -> OverworldPokemon:
 	add_child(pokemon)
 	_live[id] = pokemon
 	return pokemon
+
+
+## True if a Pokémon of the same kind is already out within GROUND_SPACING of
+## `spawn_pos` (a global position). "Kind" is only surfacing vs everything else on the
+## ground: bugs, skittish, burrowers and static Pokémon all crowd each other out,
+## while a surfacing Pokémon is blocked by other surfacing ones alone. Flyers are not
+## in `_live` at all, so they never block anything.
+func _is_crowded(template: String, spawn_pos: Vector2) -> bool:
+	var surfacing := template == "surfacing"
+	for pokemon in _live.values():
+		if not is_instance_valid(pokemon):
+			continue
+		if (str(pokemon.spawn_point.get("template", "")) == "surfacing") != surfacing:
+			continue
+		var offset: Vector2 = (pokemon.global_position - spawn_pos).abs()
+		if offset.x <= GROUND_SPACING.x and offset.y <= GROUND_SPACING.y:
+			return true
+	return false
 
 
 func _on_pokemon_gone(pokemon: OverworldPokemon, id: String) -> void:
@@ -321,7 +367,7 @@ func spawn_flyer_group(config: Dictionary) -> void:
 	var start_x := view.position.x - FLYER_EDGE_MARGIN if from_left else view.end.x + FLYER_EDGE_MARGIN
 	var top := view.position.y + FLYER_VERTICAL_PADDING
 	var bottom := maxf(top, view.end.y - FLYER_VERTICAL_PADDING)
-	var start := Vector2(start_x, randf_range(top, bottom))
+	var start := Vector2(start_x, _headon_clear_y(randf_range(top, bottom), direction, start_x, top, bottom))
 	var end_x := _map_edge(direction)
 	# One speed for the whole flock, so it crosses the map together.
 	# Speed and scale belong to the species (the registry), the same on every table and map.
@@ -353,6 +399,49 @@ func spawn_flyer_group(config: Dictionary) -> void:
 		flyer.position = to_local(start + offset)
 		add_child(flyer)
 		_flyers.append(flyer)
+
+
+## Keeps a new flock clear of oncoming traffic. Only flyers going the other way that
+## have yet to reach `start_x` can meet it head on; if one of those is flying within
+## FLYER_HEADON_GAP of `y`, the flock starts FLYER_HEADON_SHIFT above or below instead
+## -- whichever leaves the bigger gap, clamped to the screen -- so the two streams pass
+## over and under each other rather than through.
+func _headon_clear_y(y: float, direction: float, start_x: float, top: float, bottom: float) -> float:
+	var oncoming := _oncoming_flyer_heights(direction, start_x)
+	var best_gap := _nearest_height(y, oncoming)
+	if best_gap >= FLYER_HEADON_GAP:
+		return y
+	var best := y
+	for shift: float in [FLYER_HEADON_SHIFT, -FLYER_HEADON_SHIFT]:
+		var candidate := clampf(y + shift, top, bottom)
+		var gap := _nearest_height(candidate, oncoming)
+		if gap > best_gap:
+			best_gap = gap
+			best = candidate
+	return best
+
+
+## The heights of the live flyers travelling the other way that `start_x` is still
+## behind. One already past the starting edge is on its way out and cannot collide.
+func _oncoming_flyer_heights(direction: float, start_x: float) -> Array:
+	var heights: Array = []
+	for flyer in _flyers:
+		if not is_instance_valid(flyer) or not (flyer is PokemonFlyer):
+			continue
+		if flyer.direction * direction >= 0.0:
+			continue
+		if (flyer.global_position.x - start_x) * direction <= 0.0:
+			continue
+		heights.append(flyer.global_position.y)
+	return heights
+
+
+## How close `y` comes to the nearest of `heights` (INF if there are none).
+func _nearest_height(y: float, heights: Array) -> float:
+	var nearest := INF
+	for other in heights:
+		nearest = minf(nearest, absf(y - float(other)))
+	return nearest
 
 
 ## A spot for the next flock member: trailing behind the leader (further off screen,

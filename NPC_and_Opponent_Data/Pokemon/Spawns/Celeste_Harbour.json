@@ -2,13 +2,13 @@
   "_help": [
     "Overworld Pokemon for this map. Written by the placement tool (DEL debug menu -> NEW NPC / OPPONENT / POKEMON or FLYER TABLES, or EDIT CURRENT NPCS then EDIT NPC on a spawn marker); safe to hand-edit.",
     "flyers: map-wide, one table per time of day (Morning/Afternoon/Evening/Night). The current time's table rolls every `interval` seconds with `chance`% to send a flock of ONE species from its `table` [{species, percent, min, max}] across the screen. min/max = flock size. Speed (px/s), scale, spin, erratic, bug, ghost, (skittish) wander_speed and (surfacing) swim_speed are per SPECIES, in Overworld_Pokemon.json, not per table.",
-    "spawn_points: id, template, at [x, y], group (points sharing a group share every rule -- clones join their source's group, and editing one edits them all), tables {Morning/Afternoon/Evening/Night: {chance (%), table [{species, percent}]}} -- an empty table spawns nothing at that time. burying/surfacing tables also have `interval` (seconds between rolls); surfacing may have `region` [min_x, min_y, max_x, max_y] (a water area: surfaces anywhere inside, swims to the furthest edge; set with V, `at` is its centre); burying may set up_time; skittish sets flee (random/left/right/away_from_player); static sets pattern (+ distance/speed/axis for patrols).",
+    "spawn_points: id, template, at [x, y], group (points sharing a group share every rule -- clones join their source's group, and editing one edits them all), tables {Morning/Afternoon/Evening/Night: {chance (%), table [{species, percent}]}} -- an empty table spawns nothing at that time. burying/surfacing tables also have `interval` (seconds between rolls); surfacing may have `region` [min_x, min_y, max_x, max_y] (a water area: surfaces anywhere inside, swims to the furthest edge; set with V, `at` is its centre); burying may set up_time; skittish sets flee (the run-away directions it is ALLOWED, any of left/right/up/down; out of those it takes whichever heads away from the player -- missing or empty means all four) and into_water (true = it stops at the first collider it runs into, leaps and sinks with a splash instead of fading out); static sets pattern (+ distance/speed/axis for patrols).",
     "Table percents are weights and need not add to 100. Species keys are sprite basenames in Image_Assets/Pokemon_Sprites/."
   ],
   "flyers": {
     "Morning": {
-      "chance": 100,
-      "interval": 1,
+      "chance": 20,
+      "interval": 5,
       "table": [
         {
           "species": "017_Pidgeotto",
@@ -67,8 +67,8 @@
       ]
     },
     "Afternoon": {
-      "chance": 100,
-      "interval": 1,
+      "chance": 20,
+      "interval": 5,
       "table": [
         {
           "species": "187_Hoppip",
@@ -127,8 +127,8 @@
       ]
     },
     "Evening": {
-      "chance": 100,
-      "interval": 1,
+      "chance": 20,
+      "interval": 5,
       "table": [
         {
           "species": "017_Pidgeotto",
@@ -187,8 +187,8 @@
       ]
     },
     "Night": {
-      "chance": 100,
-      "interval": 1,
+      "chance": 25,
+      "interval": 10,
       "table": [
         {
           "species": "425_Drifloon",
@@ -226,7 +226,7 @@
       "tables": {
         "Morning": {
           "chance": 100,
-          "interval": 10,
+          "interval": 5,
           "table": [
             {
               "species": "072_Tentacool",
@@ -339,6 +339,1119 @@
               "percent": 5
             }
           ]
+        }
+      }
+    },
+    {
+      "id": "surfacing_2",
+      "template": "surfacing",
+      "at": [96, 3097],
+      "group": "surfacing_1",
+      "tables": {
+        "Morning": {
+          "chance": 100,
+          "interval": 5,
+          "table": [
+            {
+              "species": "072_Tentacool",
+              "percent": 34
+            },
+            {
+              "species": "073_Tentacruel",
+              "percent": 5
+            },
+            {
+              "species": "116_Horsea",
+              "percent": 30
+            },
+            {
+              "species": "117_Seadra",
+              "percent": 5
+            },
+            {
+              "species": "230_Kingdra",
+              "percent": 1
+            },
+            {
+              "species": "223_Remoraid",
+              "percent": 20
+            },
+            {
+              "species": "224_Octillery",
+              "percent": 5
+            }
+          ]
+        },
+        "Afternoon": {
+          "chance": 5,
+          "interval": 5,
+          "table": [
+            {
+              "species": "458_Mantyke",
+              "percent": 30
+            },
+            {
+              "species": "226_Mantine",
+              "percent": 10
+            },
+            {
+              "species": "211_Qwilfish",
+              "percent": 30
+            },
+            {
+              "species": "320_Wailmer",
+              "percent": 20
+            },
+            {
+              "species": "779_Bruxish",
+              "percent": 10
+            }
+          ]
+        },
+        "Evening": {
+          "chance": 100,
+          "interval": 10,
+          "table": [
+            {
+              "species": "456_Finneon",
+              "percent": 35
+            },
+            {
+              "species": "457_Lumineon",
+              "percent": 5
+            },
+            {
+              "species": "120_Staryu",
+              "percent": 33
+            },
+            {
+              "species": "121_Starmie",
+              "percent": 1
+            },
+            {
+              "species": "690_Skrelp",
+              "percent": 25
+            },
+            {
+              "species": "691_Dragalge",
+              "percent": 1
+            }
+          ]
+        },
+        "Night": {
+          "chance": 100,
+          "interval": 10,
+          "table": [
+            {
+              "species": "602_Tynamo",
+              "percent": 45
+            },
+            {
+              "species": "603_Eelektrik",
+              "percent": 5
+            },
+            {
+              "species": "604_Eelektross",
+              "percent": 1
+            },
+            {
+              "species": "170_Chinchou",
+              "percent": 44
+            },
+            {
+              "species": "171_Lanturn",
+              "percent": 5
+            }
+          ]
+        }
+      },
+      "region": [
+        -50,
+        3018,
+        242,
+        3176
+      ]
+    },
+    {
+      "id": "surfacing_3",
+      "template": "surfacing",
+      "at": [2173, 2962],
+      "group": "surfacing_1",
+      "tables": {
+        "Morning": {
+          "chance": 100,
+          "interval": 5,
+          "table": [
+            {
+              "species": "072_Tentacool",
+              "percent": 34
+            },
+            {
+              "species": "073_Tentacruel",
+              "percent": 5
+            },
+            {
+              "species": "116_Horsea",
+              "percent": 30
+            },
+            {
+              "species": "117_Seadra",
+              "percent": 5
+            },
+            {
+              "species": "230_Kingdra",
+              "percent": 1
+            },
+            {
+              "species": "223_Remoraid",
+              "percent": 20
+            },
+            {
+              "species": "224_Octillery",
+              "percent": 5
+            }
+          ]
+        },
+        "Afternoon": {
+          "chance": 5,
+          "interval": 5,
+          "table": [
+            {
+              "species": "458_Mantyke",
+              "percent": 30
+            },
+            {
+              "species": "226_Mantine",
+              "percent": 10
+            },
+            {
+              "species": "211_Qwilfish",
+              "percent": 30
+            },
+            {
+              "species": "320_Wailmer",
+              "percent": 20
+            },
+            {
+              "species": "779_Bruxish",
+              "percent": 10
+            }
+          ]
+        },
+        "Evening": {
+          "chance": 100,
+          "interval": 10,
+          "table": [
+            {
+              "species": "456_Finneon",
+              "percent": 35
+            },
+            {
+              "species": "457_Lumineon",
+              "percent": 5
+            },
+            {
+              "species": "120_Staryu",
+              "percent": 33
+            },
+            {
+              "species": "121_Starmie",
+              "percent": 1
+            },
+            {
+              "species": "690_Skrelp",
+              "percent": 25
+            },
+            {
+              "species": "691_Dragalge",
+              "percent": 1
+            }
+          ]
+        },
+        "Night": {
+          "chance": 100,
+          "interval": 10,
+          "table": [
+            {
+              "species": "602_Tynamo",
+              "percent": 45
+            },
+            {
+              "species": "603_Eelektrik",
+              "percent": 5
+            },
+            {
+              "species": "604_Eelektross",
+              "percent": 1
+            },
+            {
+              "species": "170_Chinchou",
+              "percent": 44
+            },
+            {
+              "species": "171_Lanturn",
+              "percent": 5
+            }
+          ]
+        }
+      },
+      "region": [
+        1981,
+        2860,
+        2365,
+        3063
+      ]
+    },
+    {
+      "id": "surfacing_4",
+      "template": "surfacing",
+      "at": [1839, 3071],
+      "group": "surfacing_1",
+      "tables": {
+        "Morning": {
+          "chance": 100,
+          "interval": 5,
+          "table": [
+            {
+              "species": "072_Tentacool",
+              "percent": 34
+            },
+            {
+              "species": "073_Tentacruel",
+              "percent": 5
+            },
+            {
+              "species": "116_Horsea",
+              "percent": 30
+            },
+            {
+              "species": "117_Seadra",
+              "percent": 5
+            },
+            {
+              "species": "230_Kingdra",
+              "percent": 1
+            },
+            {
+              "species": "223_Remoraid",
+              "percent": 20
+            },
+            {
+              "species": "224_Octillery",
+              "percent": 5
+            }
+          ]
+        },
+        "Afternoon": {
+          "chance": 5,
+          "interval": 5,
+          "table": [
+            {
+              "species": "458_Mantyke",
+              "percent": 30
+            },
+            {
+              "species": "226_Mantine",
+              "percent": 10
+            },
+            {
+              "species": "211_Qwilfish",
+              "percent": 30
+            },
+            {
+              "species": "320_Wailmer",
+              "percent": 20
+            },
+            {
+              "species": "779_Bruxish",
+              "percent": 10
+            }
+          ]
+        },
+        "Evening": {
+          "chance": 100,
+          "interval": 10,
+          "table": [
+            {
+              "species": "456_Finneon",
+              "percent": 35
+            },
+            {
+              "species": "457_Lumineon",
+              "percent": 5
+            },
+            {
+              "species": "120_Staryu",
+              "percent": 33
+            },
+            {
+              "species": "121_Starmie",
+              "percent": 1
+            },
+            {
+              "species": "690_Skrelp",
+              "percent": 25
+            },
+            {
+              "species": "691_Dragalge",
+              "percent": 1
+            }
+          ]
+        },
+        "Night": {
+          "chance": 100,
+          "interval": 10,
+          "table": [
+            {
+              "species": "602_Tynamo",
+              "percent": 45
+            },
+            {
+              "species": "603_Eelektrik",
+              "percent": 5
+            },
+            {
+              "species": "604_Eelektross",
+              "percent": 1
+            },
+            {
+              "species": "170_Chinchou",
+              "percent": 44
+            },
+            {
+              "species": "171_Lanturn",
+              "percent": 5
+            }
+          ]
+        }
+      },
+      "region": [
+        1709,
+        2973,
+        1969,
+        3168
+      ]
+    },
+    {
+      "id": "surfacing_5",
+      "template": "surfacing",
+      "at": [3138, 1708],
+      "group": "surfacing_1",
+      "tables": {
+        "Morning": {
+          "chance": 100,
+          "interval": 5,
+          "table": [
+            {
+              "species": "072_Tentacool",
+              "percent": 34
+            },
+            {
+              "species": "073_Tentacruel",
+              "percent": 5
+            },
+            {
+              "species": "116_Horsea",
+              "percent": 30
+            },
+            {
+              "species": "117_Seadra",
+              "percent": 5
+            },
+            {
+              "species": "230_Kingdra",
+              "percent": 1
+            },
+            {
+              "species": "223_Remoraid",
+              "percent": 20
+            },
+            {
+              "species": "224_Octillery",
+              "percent": 5
+            }
+          ]
+        },
+        "Afternoon": {
+          "chance": 5,
+          "interval": 5,
+          "table": [
+            {
+              "species": "458_Mantyke",
+              "percent": 30
+            },
+            {
+              "species": "226_Mantine",
+              "percent": 10
+            },
+            {
+              "species": "211_Qwilfish",
+              "percent": 30
+            },
+            {
+              "species": "320_Wailmer",
+              "percent": 20
+            },
+            {
+              "species": "779_Bruxish",
+              "percent": 10
+            }
+          ]
+        },
+        "Evening": {
+          "chance": 100,
+          "interval": 10,
+          "table": [
+            {
+              "species": "456_Finneon",
+              "percent": 35
+            },
+            {
+              "species": "457_Lumineon",
+              "percent": 5
+            },
+            {
+              "species": "120_Staryu",
+              "percent": 33
+            },
+            {
+              "species": "121_Starmie",
+              "percent": 1
+            },
+            {
+              "species": "690_Skrelp",
+              "percent": 25
+            },
+            {
+              "species": "691_Dragalge",
+              "percent": 1
+            }
+          ]
+        },
+        "Night": {
+          "chance": 100,
+          "interval": 10,
+          "table": [
+            {
+              "species": "602_Tynamo",
+              "percent": 45
+            },
+            {
+              "species": "603_Eelektrik",
+              "percent": 5
+            },
+            {
+              "species": "604_Eelektross",
+              "percent": 1
+            },
+            {
+              "species": "170_Chinchou",
+              "percent": 44
+            },
+            {
+              "species": "171_Lanturn",
+              "percent": 5
+            }
+          ]
+        }
+      },
+      "region": [
+        2946,
+        1606,
+        3330,
+        1809
+      ]
+    },
+    {
+      "id": "surfacing_6",
+      "template": "surfacing",
+      "at": [3380, 1607],
+      "group": "surfacing_1",
+      "tables": {
+        "Morning": {
+          "chance": 100,
+          "interval": 5,
+          "table": [
+            {
+              "species": "072_Tentacool",
+              "percent": 34
+            },
+            {
+              "species": "073_Tentacruel",
+              "percent": 5
+            },
+            {
+              "species": "116_Horsea",
+              "percent": 30
+            },
+            {
+              "species": "117_Seadra",
+              "percent": 5
+            },
+            {
+              "species": "230_Kingdra",
+              "percent": 1
+            },
+            {
+              "species": "223_Remoraid",
+              "percent": 20
+            },
+            {
+              "species": "224_Octillery",
+              "percent": 5
+            }
+          ]
+        },
+        "Afternoon": {
+          "chance": 5,
+          "interval": 5,
+          "table": [
+            {
+              "species": "458_Mantyke",
+              "percent": 30
+            },
+            {
+              "species": "226_Mantine",
+              "percent": 10
+            },
+            {
+              "species": "211_Qwilfish",
+              "percent": 30
+            },
+            {
+              "species": "320_Wailmer",
+              "percent": 20
+            },
+            {
+              "species": "779_Bruxish",
+              "percent": 10
+            }
+          ]
+        },
+        "Evening": {
+          "chance": 100,
+          "interval": 10,
+          "table": [
+            {
+              "species": "456_Finneon",
+              "percent": 35
+            },
+            {
+              "species": "457_Lumineon",
+              "percent": 5
+            },
+            {
+              "species": "120_Staryu",
+              "percent": 33
+            },
+            {
+              "species": "121_Starmie",
+              "percent": 1
+            },
+            {
+              "species": "690_Skrelp",
+              "percent": 25
+            },
+            {
+              "species": "691_Dragalge",
+              "percent": 1
+            }
+          ]
+        },
+        "Night": {
+          "chance": 100,
+          "interval": 10,
+          "table": [
+            {
+              "species": "602_Tynamo",
+              "percent": 45
+            },
+            {
+              "species": "603_Eelektrik",
+              "percent": 5
+            },
+            {
+              "species": "604_Eelektross",
+              "percent": 1
+            },
+            {
+              "species": "170_Chinchou",
+              "percent": 44
+            },
+            {
+              "species": "171_Lanturn",
+              "percent": 5
+            }
+          ]
+        }
+      },
+      "region": [
+        3325,
+        1500,
+        3434,
+        1714
+      ]
+    },
+    {
+      "id": "surfacing_7",
+      "template": "surfacing",
+      "at": [3096, 1951],
+      "group": "surfacing_1",
+      "tables": {
+        "Morning": {
+          "chance": 100,
+          "interval": 5,
+          "table": [
+            {
+              "species": "072_Tentacool",
+              "percent": 34
+            },
+            {
+              "species": "073_Tentacruel",
+              "percent": 5
+            },
+            {
+              "species": "116_Horsea",
+              "percent": 30
+            },
+            {
+              "species": "117_Seadra",
+              "percent": 5
+            },
+            {
+              "species": "230_Kingdra",
+              "percent": 1
+            },
+            {
+              "species": "223_Remoraid",
+              "percent": 20
+            },
+            {
+              "species": "224_Octillery",
+              "percent": 5
+            }
+          ]
+        },
+        "Afternoon": {
+          "chance": 5,
+          "interval": 5,
+          "table": [
+            {
+              "species": "458_Mantyke",
+              "percent": 30
+            },
+            {
+              "species": "226_Mantine",
+              "percent": 10
+            },
+            {
+              "species": "211_Qwilfish",
+              "percent": 30
+            },
+            {
+              "species": "320_Wailmer",
+              "percent": 20
+            },
+            {
+              "species": "779_Bruxish",
+              "percent": 10
+            }
+          ]
+        },
+        "Evening": {
+          "chance": 100,
+          "interval": 10,
+          "table": [
+            {
+              "species": "456_Finneon",
+              "percent": 35
+            },
+            {
+              "species": "457_Lumineon",
+              "percent": 5
+            },
+            {
+              "species": "120_Staryu",
+              "percent": 33
+            },
+            {
+              "species": "121_Starmie",
+              "percent": 1
+            },
+            {
+              "species": "690_Skrelp",
+              "percent": 25
+            },
+            {
+              "species": "691_Dragalge",
+              "percent": 1
+            }
+          ]
+        },
+        "Night": {
+          "chance": 100,
+          "interval": 10,
+          "table": [
+            {
+              "species": "602_Tynamo",
+              "percent": 45
+            },
+            {
+              "species": "603_Eelektrik",
+              "percent": 5
+            },
+            {
+              "species": "604_Eelektross",
+              "percent": 1
+            },
+            {
+              "species": "170_Chinchou",
+              "percent": 44
+            },
+            {
+              "species": "171_Lanturn",
+              "percent": 5
+            }
+          ]
+        }
+      },
+      "region": [
+        2999,
+        1818,
+        3192,
+        2084
+      ]
+    },
+    {
+      "id": "surfacing_8",
+      "template": "surfacing",
+      "at": [3175, 2289],
+      "group": "surfacing_1",
+      "tables": {
+        "Morning": {
+          "chance": 100,
+          "interval": 5,
+          "table": [
+            {
+              "species": "072_Tentacool",
+              "percent": 34
+            },
+            {
+              "species": "073_Tentacruel",
+              "percent": 5
+            },
+            {
+              "species": "116_Horsea",
+              "percent": 30
+            },
+            {
+              "species": "117_Seadra",
+              "percent": 5
+            },
+            {
+              "species": "230_Kingdra",
+              "percent": 1
+            },
+            {
+              "species": "223_Remoraid",
+              "percent": 20
+            },
+            {
+              "species": "224_Octillery",
+              "percent": 5
+            }
+          ]
+        },
+        "Afternoon": {
+          "chance": 5,
+          "interval": 5,
+          "table": [
+            {
+              "species": "458_Mantyke",
+              "percent": 30
+            },
+            {
+              "species": "226_Mantine",
+              "percent": 10
+            },
+            {
+              "species": "211_Qwilfish",
+              "percent": 30
+            },
+            {
+              "species": "320_Wailmer",
+              "percent": 20
+            },
+            {
+              "species": "779_Bruxish",
+              "percent": 10
+            }
+          ]
+        },
+        "Evening": {
+          "chance": 100,
+          "interval": 10,
+          "table": [
+            {
+              "species": "456_Finneon",
+              "percent": 35
+            },
+            {
+              "species": "457_Lumineon",
+              "percent": 5
+            },
+            {
+              "species": "120_Staryu",
+              "percent": 33
+            },
+            {
+              "species": "121_Starmie",
+              "percent": 1
+            },
+            {
+              "species": "690_Skrelp",
+              "percent": 25
+            },
+            {
+              "species": "691_Dragalge",
+              "percent": 1
+            }
+          ]
+        },
+        "Night": {
+          "chance": 100,
+          "interval": 10,
+          "table": [
+            {
+              "species": "602_Tynamo",
+              "percent": 45
+            },
+            {
+              "species": "603_Eelektrik",
+              "percent": 5
+            },
+            {
+              "species": "604_Eelektross",
+              "percent": 1
+            },
+            {
+              "species": "170_Chinchou",
+              "percent": 44
+            },
+            {
+              "species": "171_Lanturn",
+              "percent": 5
+            }
+          ]
+        }
+      },
+      "region": [
+        3078,
+        2156,
+        3271,
+        2422
+      ]
+    },
+    {
+      "id": "surfacing_9",
+      "template": "surfacing",
+      "at": [2618, 2929],
+      "group": "surfacing_1",
+      "tables": {
+        "Morning": {
+          "chance": 100,
+          "interval": 5,
+          "table": [
+            {
+              "species": "072_Tentacool",
+              "percent": 34
+            },
+            {
+              "species": "073_Tentacruel",
+              "percent": 5
+            },
+            {
+              "species": "116_Horsea",
+              "percent": 30
+            },
+            {
+              "species": "117_Seadra",
+              "percent": 5
+            },
+            {
+              "species": "230_Kingdra",
+              "percent": 1
+            },
+            {
+              "species": "223_Remoraid",
+              "percent": 20
+            },
+            {
+              "species": "224_Octillery",
+              "percent": 5
+            }
+          ]
+        },
+        "Afternoon": {
+          "chance": 5,
+          "interval": 5,
+          "table": [
+            {
+              "species": "458_Mantyke",
+              "percent": 30
+            },
+            {
+              "species": "226_Mantine",
+              "percent": 10
+            },
+            {
+              "species": "211_Qwilfish",
+              "percent": 30
+            },
+            {
+              "species": "320_Wailmer",
+              "percent": 20
+            },
+            {
+              "species": "779_Bruxish",
+              "percent": 10
+            }
+          ]
+        },
+        "Evening": {
+          "chance": 100,
+          "interval": 10,
+          "table": [
+            {
+              "species": "456_Finneon",
+              "percent": 35
+            },
+            {
+              "species": "457_Lumineon",
+              "percent": 5
+            },
+            {
+              "species": "120_Staryu",
+              "percent": 33
+            },
+            {
+              "species": "121_Starmie",
+              "percent": 1
+            },
+            {
+              "species": "690_Skrelp",
+              "percent": 25
+            },
+            {
+              "species": "691_Dragalge",
+              "percent": 1
+            }
+          ]
+        },
+        "Night": {
+          "chance": 100,
+          "interval": 10,
+          "table": [
+            {
+              "species": "602_Tynamo",
+              "percent": 45
+            },
+            {
+              "species": "603_Eelektrik",
+              "percent": 5
+            },
+            {
+              "species": "604_Eelektross",
+              "percent": 1
+            },
+            {
+              "species": "170_Chinchou",
+              "percent": 44
+            },
+            {
+              "species": "171_Lanturn",
+              "percent": 5
+            }
+          ]
+        }
+      },
+      "region": [
+        2521,
+        2796,
+        2714,
+        3062
+      ]
+    },
+    {
+      "id": "skittish_1",
+      "template": "skittish",
+      "at": [2635, 2408],
+      "group": "skittish_1",
+      "flee": [
+        "right",
+        "down"
+      ],
+      "into_water": true,
+      "tables": {
+        "Morning": {
+          "chance": 100,
+          "table": [
+            {
+              "species": "098_Krabby",
+              "percent": 100
+            }
+          ]
+        },
+        "Afternoon": {
+          "chance": 100,
+          "table": [
+            {
+              "species": "098_Krabby",
+              "percent": 100
+            }
+          ]
+        },
+        "Evening": {
+          "chance": 100,
+          "table": []
+        },
+        "Night": {
+          "chance": 100,
+          "table": []
+        }
+      }
+    },
+    {
+      "id": "skittish_2",
+      "template": "skittish",
+      "at": [2863, 1859],
+      "group": "skittish_2",
+      "flee": [
+        "right",
+        "up"
+      ],
+      "into_water": true,
+      "tables": {
+        "Morning": {
+          "chance": 100,
+          "table": []
+        },
+        "Afternoon": {
+          "chance": 100,
+          "table": [
+            {
+              "species": "098_Krabby",
+              "percent": 100
+            }
+          ]
+        },
+        "Evening": {
+          "chance": 100,
+          "table": []
+        },
+        "Night": {
+          "chance": 100,
+          "table": []
         }
       }
     }

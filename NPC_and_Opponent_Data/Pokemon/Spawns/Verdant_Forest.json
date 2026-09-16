@@ -2,7 +2,7 @@
   "_help": [
     "Overworld Pokemon for this map. Written by the placement tool (DEL debug menu -> NEW NPC / OPPONENT / POKEMON or FLYER TABLES, or EDIT CURRENT NPCS then EDIT NPC on a spawn marker); safe to hand-edit.",
     "flyers: map-wide, one table per time of day (Morning/Afternoon/Evening/Night). The current time's table rolls every `interval` seconds with `chance`% to send a flock of ONE species from its `table` [{species, percent, min, max}] across the screen. min/max = flock size. Speed (px/s), scale, spin, erratic, bug, ghost, (skittish) wander_speed and (surfacing) swim_speed are per SPECIES, in Overworld_Pokemon.json, not per table.",
-    "spawn_points: id, template, at [x, y], group (points sharing a group share every rule -- clones join their source's group, and editing one edits them all), tables {Morning/Afternoon/Evening/Night: {chance (%), table [{species, percent}]}} -- an empty table spawns nothing at that time. burying/surfacing tables also have `interval` (seconds between rolls); surfacing may have `region` [min_x, min_y, max_x, max_y] (a water area: surfaces anywhere inside, swims to the furthest edge; set with V, `at` is its centre); burying may set up_time; skittish sets flee (random/left/right/away_from_player); static sets pattern (+ distance/speed/axis for patrols).",
+    "spawn_points: id, template, at [x, y], group (points sharing a group share every rule -- clones join their source's group, and editing one edits them all), tables {Morning/Afternoon/Evening/Night: {chance (%), table [{species, percent}]}} -- an empty table spawns nothing at that time. burying/surfacing tables also have `interval` (seconds between rolls); surfacing may have `region` [min_x, min_y, max_x, max_y] (a water area: surfaces anywhere inside, swims to the furthest edge; set with V, `at` is its centre); burying may set up_time; skittish sets flee (the run-away directions it is ALLOWED, any of left/right/up/down; out of those it takes whichever heads away from the player -- missing or empty means all four) and into_water (true = it stops at the first collider it runs into, leaps and sinks with a splash instead of fading out); static sets pattern (+ distance/speed/axis for patrols).",
     "Table percents are weights and need not add to 100. Species keys are sprite basenames in Image_Assets/Pokemon_Sprites/."
   ],
   "flyers": {
@@ -12807,7 +12807,7 @@
       "template": "skittish",
       "at": [-264, 1283],
       "group": "skittish_1",
-      "flee": "away_from_player",
+      "flee": ["left", "right", "up", "down"],
       "tables": {
         "Morning": {
           "chance": 5,
@@ -14210,7 +14210,7 @@
       "template": "skittish",
       "at": [-207, 1101],
       "group": "skittish_1",
-      "flee": "away_from_player",
+      "flee": ["left", "right", "up", "down"],
       "tables": {
         "Morning": {
           "chance": 5,
@@ -14335,7 +14335,7 @@
       "template": "skittish",
       "at": [1003, 97],
       "group": "skittish_1",
-      "flee": "away_from_player",
+      "flee": ["left", "right", "up", "down"],
       "tables": {
         "Morning": {
           "chance": 5,
@@ -14460,7 +14460,7 @@
       "template": "skittish",
       "at": [2992, 88],
       "group": "skittish_1",
-      "flee": "away_from_player",
+      "flee": ["left", "right", "up", "down"],
       "tables": {
         "Morning": {
           "chance": 5,
@@ -14585,7 +14585,7 @@
       "template": "skittish",
       "at": [3277, 672],
       "group": "skittish_1",
-      "flee": "away_from_player",
+      "flee": ["left", "right", "up", "down"],
       "tables": {
         "Morning": {
           "chance": 5,
@@ -14710,7 +14710,7 @@
       "template": "skittish",
       "at": [3712, 1031],
       "group": "skittish_1",
-      "flee": "away_from_player",
+      "flee": ["left", "right", "up", "down"],
       "tables": {
         "Morning": {
           "chance": 5,
@@ -14835,7 +14835,7 @@
       "template": "skittish",
       "at": [2507, 1551],
       "group": "skittish_1",
-      "flee": "away_from_player",
+      "flee": ["left", "right", "up", "down"],
       "tables": {
         "Morning": {
           "chance": 5,
@@ -14960,7 +14960,7 @@
       "template": "skittish",
       "at": [900, 1634],
       "group": "skittish_1",
-      "flee": "away_from_player",
+      "flee": ["left", "right", "up", "down"],
       "tables": {
         "Morning": {
           "chance": 5,
@@ -15085,7 +15085,7 @@
       "template": "skittish",
       "at": [1234, 1353],
       "group": "skittish_1",
-      "flee": "away_from_player",
+      "flee": ["left", "right", "up", "down"],
       "tables": {
         "Morning": {
           "chance": 5,
@@ -15210,7 +15210,7 @@
       "template": "skittish",
       "at": [1072, 870],
       "group": "skittish_1",
-      "flee": "away_from_player",
+      "flee": ["left", "right", "up", "down"],
       "tables": {
         "Morning": {
           "chance": 5,
@@ -15335,7 +15335,7 @@
       "template": "skittish",
       "at": [822, 595],
       "group": "skittish_1",
-      "flee": "away_from_player",
+      "flee": ["left", "right", "up", "down"],
       "tables": {
         "Morning": {
           "chance": 5,
@@ -15460,7 +15460,7 @@
       "template": "skittish",
       "at": [2559, 1065],
       "group": "skittish_1",
-      "flee": "away_from_player",
+      "flee": ["left", "right", "up", "down"],
       "tables": {
         "Morning": {
           "chance": 5,
@@ -15585,7 +15585,7 @@
       "template": "skittish",
       "at": [2783, 1673],
       "group": "skittish_1",
-      "flee": "away_from_player",
+      "flee": ["left", "right", "up", "down"],
       "tables": {
         "Morning": {
           "chance": 5,
@@ -15710,7 +15710,7 @@
       "template": "skittish",
       "at": [1772, 271],
       "group": "skittish_1",
-      "flee": "away_from_player",
+      "flee": ["left", "right", "up", "down"],
       "tables": {
         "Morning": {
           "chance": 5,
@@ -15835,7 +15835,7 @@
       "template": "skittish",
       "at": [1784, 772],
       "group": "skittish_1",
-      "flee": "away_from_player",
+      "flee": ["left", "right", "up", "down"],
       "tables": {
         "Morning": {
           "chance": 5,
@@ -15960,7 +15960,7 @@
       "template": "skittish",
       "at": [1777, 722],
       "group": "skittish_1",
-      "flee": "away_from_player",
+      "flee": ["left", "right", "up", "down"],
       "tables": {
         "Morning": {
           "chance": 5,

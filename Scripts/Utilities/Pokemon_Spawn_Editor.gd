@@ -99,7 +99,9 @@ var _pattern_opt: OptionButton = null
 var _distance: SpinBox = null
 var _speed: SpinBox = null
 var _axis_opt: OptionButton = null
-var _flee_opt: OptionButton = null
+## Direction name -> its "Runs away" tick box.
+var _flee_boxes: Dictionary = {}
+var _into_water: CheckBox = null
 var _rows: Dictionary = {}
 var _table_box: VBoxContainer = null
 var _total_label: Label = null
@@ -145,7 +147,10 @@ func _load_point(point: Dictionary) -> void:
 	_distance.value = float(point.get("distance", PokemonStatic.DEFAULT_DISTANCE))
 	_speed.value = float(point.get("speed", PokemonStatic.DEFAULT_SPEED))
 	_select_option(_axis_opt, str(point.get("axis", "horizontal")))
-	_select_option(_flee_opt, str(point.get("flee", "random")))
+	var allowed := OverworldPokemonData.flee_directions(point)
+	for direction in _flee_boxes:
+		(_flee_boxes[direction] as CheckBox).button_pressed = allowed.has(direction)
+	_into_water.button_pressed = bool(point.get("into_water", false))
 	_point_tables = OverworldPokemonData.normalise_point_tables(point.get("tables")).duplicate(true)
 
 
@@ -259,14 +264,24 @@ func _build() -> void:
 		_axis_opt.set_item_metadata(_axis_opt.item_count - 1, axis)
 	_rows["axis"] = _add_row(left, "Patrol axis", _axis_opt)
 
-	# Skittish only: which way it bolts when the player gets close.
-	_flee_opt = OptionButton.new()
-	_flee_opt.fit_to_longest_item = false
-	_flee_opt.add_theme_font_size_override("font_size", FORM_FONT_SIZE)
+	# Skittish only: which ways it is ALLOWED to bolt when the player gets close. Out of
+	# the ticked ones it takes whichever heads away from the player.
+	var flee_line := HBoxContainer.new()
+	flee_line.add_theme_constant_override("separation", 12)
 	for direction in OverworldPokemonData.SKITTISH_FLEE_DIRECTIONS:
-		_flee_opt.add_item(str(direction).capitalize())
-		_flee_opt.set_item_metadata(_flee_opt.item_count - 1, direction)
-	_rows["flee"] = _add_row(left, "Runs away", _flee_opt)
+		var box := CheckBox.new()
+		box.text = str(direction).capitalize()
+		box.button_pressed = true
+		box.tooltip_text = "Let it run " + str(direction) + " to get away from the player."
+		box.add_theme_font_size_override("font_size", FORM_FONT_SIZE)
+		flee_line.add_child(box)
+		_flee_boxes[str(direction)] = box
+	_rows["flee"] = _add_row(left, "Runs away", flee_line)
+	_into_water = CheckBox.new()
+	_into_water.tooltip_text = "It runs until it hits something (water edges have collision), " \
+			+ "pauses, leaps in with a splash and sinks, instead of fading out as it runs."
+	_into_water.add_theme_font_size_override("font_size", FORM_FONT_SIZE)
+	_rows["into_water"] = _add_row(left, "Jumps into water", _into_water)
 
 	# ---- right: species table ----
 	_heading(right, "SPECIES TABLE")
@@ -448,6 +463,7 @@ func _on_template_changed() -> void:
 	_rows["speed"].visible = patrols
 	_rows["axis"].visible = is_static and _option_value(_pattern_opt) == "patrol_line"
 	_rows["flee"].visible = _template == "skittish"
+	_rows["into_water"].visible = _template == "skittish"
 	_rebuild_table()
 
 
@@ -812,6 +828,17 @@ func _caption(line: HBoxContainer, text: String) -> Label:
 	return label
 
 
+## The ticked "Runs away" directions, in SKITTISH_FLEE_DIRECTIONS order. None ticked is
+## no constraint at all rather than "it cannot run", so it saves all four.
+func _flee_selection() -> Array:
+	var allowed: Array = []
+	for direction in OverworldPokemonData.SKITTISH_FLEE_DIRECTIONS:
+		var box: CheckBox = _flee_boxes.get(direction)
+		if box != null and box.button_pressed:
+			allowed.append(direction)
+	return allowed if not allowed.is_empty() else OverworldPokemonData.SKITTISH_FLEE_DIRECTIONS.duplicate()
+
+
 ## A tick box writing true / false to `key` on `entry`.
 func _flag_box(line: HBoxContainer, entry: Dictionary, key: String, text: String, tip: String) -> CheckBox:
 	var box := CheckBox.new()
@@ -951,7 +978,8 @@ func _build_draft() -> Dictionary:
 	if _template == "burying" and _up_time.value > 0.0:
 		point["up_time"] = snappedf(_up_time.value, 0.1)
 	if _template == "skittish":
-		point["flee"] = _option_value(_flee_opt)
+		point["flee"] = _flee_selection()
+		point["into_water"] = _into_water.button_pressed
 	if _template == "static":
 		var pattern := _option_value(_pattern_opt)
 		point["pattern"] = pattern

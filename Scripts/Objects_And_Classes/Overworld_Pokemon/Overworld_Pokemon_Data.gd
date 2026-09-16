@@ -32,15 +32,17 @@ const TEMPLATE_DESCRIPTIONS := {
 	"flyer": "No spawn point. The map has one table per time of day; the current time's table rolls every INTERVAL seconds with CHANCE% to send a flock of one species (flock size set per species) across the screen from just off one edge to the end of the map. No collision.",
 	"bug_tree": "Rolled once per map load. Random facings, shuffles a few pixels every few seconds. No collision, drawn above tree canopies.",
 	"swinging_bug": "Rolled once per map load. Hangs on a short silk strand facing one way and sways in a slow U arc. No collision.",
-	"skittish": "Rolled once per map load. Wanders around its spawn point at its species' Wander speed. When the player gets close it bolts left, right, randomly or away from the player (Runs away), passing behind trees, and fades out.",
+	"skittish": "Rolled once per map load. Wanders around its spawn point at its species' Wander speed. When the player gets close it bolts away from the player, in whichever of the four directions its spawn point allows (Runs away), passing behind trees, and fades out. Tick Jumps into water (Krabby, Psyduck) and instead of fading it stops at the first thing it runs into, pauses, leaps -- shadow and all -- and drops under the surface with a splash.",
 	"burying": "Every INTERVAL seconds, CHANCE% to pop out of the ground with a dirt burst, stay UP TIME seconds, then burrow back down.",
 	"surfacing": "Every INTERVAL seconds, CHANCE% to surface out of the water (blue depth tint, splash), drift a couple dozen pixels, then submerge. Give it a water area with V (4 corners) and it surfaces anywhere inside, swims towards the furthest edge, then submerges.",
 	"static": "Rolled once per map load. Collision, stands still or walks an existing pattern (idle cycle, patrol line, patrol square). Space to talk.",
 }
 
-## Templates whose Pokémon cry while on screen (OverworldPokemon.CRY_CHANCE). Add a
-## template name here to give it cries -- nothing else needs to change.
-const CRY_TEMPLATES := ["flyer"]
+## Templates whose Pokémon cry while on screen (OverworldPokemon.CRY_CHANCE): all of
+## them -- anything the player can see, flying overhead or sitting in a tree, has the
+## same small chance of calling out. Take a name out of this list to silence that
+## template; nothing else needs to change.
+const CRY_TEMPLATES := TEMPLATES
 
 ## Rolled once when the map loads. Everything else rolls on a repeating timer.
 const ONE_SHOT_TEMPLATES := ["bug_tree", "swinging_bug", "skittish", "static"]
@@ -51,8 +53,26 @@ const TEMPLATE_USES_INTERVAL := ["flyer", "burying", "surfacing"]
 
 const STATIC_PATTERNS := ["idle_cycle", "idle_random", "idle_down", "patrol_line", "patrol_square"]
 
-## Which way a skittish Pokémon bolts when the player gets close (spawn point `flee`).
-const SKITTISH_FLEE_DIRECTIONS := ["random", "left", "right", "away_from_player"]
+## The ways a skittish Pokémon may bolt when the player gets close. The spawn point's
+## `flee` is the list of the ones it is ALLOWED to take; out of those it runs whichever
+## heads away from the player (see PokemonSkittish._flee_direction). Tick all four and
+## it always has somewhere to go; tick only "left" and it always bolts left, player or
+## no player.
+const SKITTISH_FLEE_DIRECTIONS := ["left", "right", "up", "down"]
+
+
+## A spawn point's allowed run-away directions, cleaned up: known names only, no
+## duplicates, and an empty or missing list (or a hand-edited one that is not a list at
+## all) means all four are allowed.
+static func flee_directions(point: Dictionary) -> Array:
+	var raw = point.get("flee", [])
+	var allowed: Array = []
+	if raw is Array:
+		for entry in raw:
+			var name := str(entry)
+			if SKITTISH_FLEE_DIRECTIONS.has(name) and not allowed.has(name):
+				allowed.append(name)
+	return allowed if not allowed.is_empty() else SKITTISH_FLEE_DIRECTIONS.duplicate()
 
 ## A skittish species' wandering speed in world px/s (registry `wander_speed`). Running
 ## away is one fixed speed for all of them (PokemonSkittish.FLEE_SPEED).

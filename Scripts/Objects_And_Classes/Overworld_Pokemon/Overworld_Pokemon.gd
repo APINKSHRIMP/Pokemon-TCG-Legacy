@@ -27,7 +27,8 @@ const BUBBLE_Y_OFFSET := -19.0
 ## CRY_CHANCE% every CRY_INTERVAL seconds to cry; leaving the screen resets its timer.
 ## Each Pokémon rolls on its own, so five Wingull on screen are five times as likely to
 ## be heard. A cry that fires while another is playing is dropped, never queued (see
-## SoundManagerScript.play_cry). Which templates cry: OverworldPokemonData.CRY_TEMPLATES.
+## SoundManagerScript.play_cry). Which templates cry: OverworldPokemonData.CRY_TEMPLATES
+## -- all of them, so a Caterpie in a tree is as likely to be heard as a bird overhead.
 const CRY_INTERVAL := 2.0
 const CRY_CHANCE := 5.0
 # -----------------------------------------------------------------------------
@@ -125,6 +126,10 @@ func _process(delta: float) -> void:
 ## CRY_INTERVAL seconds while it stays on screen. "On screen" is the camera's view.
 func _update_cry(delta: float) -> void:
 	if not can_cry or _is_gone:
+		return
+	# Underground or below the waterline: drawn but not showing, so not heard either.
+	if sprite == null or not sprite.visible:
+		_cry_time = 0.0
 		return
 	if not view_rect().has_point(global_position):
 		_cry_time = 0.0
