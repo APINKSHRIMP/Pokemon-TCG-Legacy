@@ -112,6 +112,56 @@ const FLYER_SPEED_LIMIT := 400
 const MIN_SCALE := 0.1
 const MAX_SCALE := 20.0
 
+## ---- fishing --------------------------------------------------------------
+## The six numbers below are the whole of a fish's fight. They belong to the SPECIES, in
+## the registry beside `scale` and `speed_min` -- a Magikarp fights a Magikarp's fight on
+## every map and at every time of day, so there is one place to tune it. (A fish table
+## may list a species the registry has no entry for; saving one of these creates the
+## entry with an empty `templates` list, which spawns it nowhere.)
+##
+## Every default is exactly what the fight used before these were tunable, so a species
+## without them behaves as it always did. Distances and speeds are WORLD pixels
+## (on-screen pixels / 2.5); FISH_STAT_LIMITS bounds each one for the editor's boxes.
+##
+##   energy            stamina bar. Countering correctly drains it; at 0 the fish is
+##                     blown and the reeling window opens.
+##   line_strength     how far the line can be loaded either way before it snaps
+##                     (a single number: 80 means -80 slack .. +80 snapped).
+##   recharge_time     seconds the blown fish rests -- the length of the reel-in window,
+##                     after which it is back to full energy.
+##   reel_step         world px the fish is dragged in per reel press.
+##   initial_distance  world px out from the player it yanks the line to on the hook.
+##                     160 is the cast distance, i.e. no yank at all.
+##   lateral_speed     world px/s it runs left and right across the cast.
+const FISH_STAT_DEFAULTS := {
+	"energy": 100.0,
+	"line_strength": 100.0,
+	"recharge_time": 2.0,
+	"reel_step": 6.0,
+	"initial_distance": 160.0,
+	"lateral_speed": 110.0,
+}
+## key -> [min, max, step] for the FISH TABLE editor's number boxes.
+const FISH_STAT_LIMITS := {
+	"energy": [1.0, 1000.0, 1.0],
+	"line_strength": [1.0, 1000.0, 1.0],
+	"recharge_time": [0.1, 30.0, 0.1],
+	"reel_step": [0.5, 200.0, 0.5],
+	"initial_distance": [20.0, 2000.0, 10.0],
+	"lateral_speed": [0.0, 1000.0, 5.0],
+}
+## The order the boxes appear in, and the caption on each. Kept to one short word each:
+## all six share a single line with the name, rate and scale, so there is no room for
+## prose -- the tooltip is where the explanation lives.
+const FISH_STAT_LABELS := {
+	"energy": "Energy",
+	"line_strength": "Line",
+	"recharge_time": "Rest",
+	"reel_step": "Reel",
+	"initial_distance": "Dist",
+	"lateral_speed": "Speed",
+}
+
 static var _registry: Dictionary = {}
 static var _registry_loaded: bool = false
 static var _all_species_cache: Array = []
@@ -336,6 +386,19 @@ static func pick_row(table: Array) -> Dictionary:
 		if r < 0.0:
 			return row
 	return last
+
+
+## A species' six fight numbers, each taken from its registry entry, else
+## FISH_STAT_DEFAULTS, and clamped to its FISH_STAT_LIMITS range. Every key is always
+## present, so the result can be read without a .get. "" gives the defaults.
+static func fish_stats(species: String) -> Dictionary:
+	var info := species_info(species)
+	var out: Dictionary = {}
+	for key in FISH_STAT_DEFAULTS:
+		var value := float(info.get(key, FISH_STAT_DEFAULTS[key]))
+		var limits: Array = FISH_STAT_LIMITS[key]
+		out[key] = clampf(value, float(limits[0]), float(limits[1]))
+	return out
 
 
 ## A species' size multiplier: its registry `scale`, else 1.

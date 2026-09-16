@@ -50,6 +50,26 @@ const FLOCK_SPIN_WIDTH := 58
 const SPEED_SPIN_WIDTH := 70
 ## Width of the Scale box on every species row.
 const SCALE_SPIN_WIDTH := 90
+## FISH TABLE mode hangs six more number boxes off the end of the species row, so the
+## whole row -- name, Rate, Scale, all six fight stats and the bin -- has to fit inside
+## RIGHT_COLUMN_WIDTH on ONE line. Everything about a fish row is therefore tighter than
+## the others: shorter captions (FISH_STAT_LABELS), narrower boxes and a smaller gap.
+## _add_fish_controls is measured by probe; go over RIGHT_COLUMN_WIDTH and the bin falls off.
+const FISH_STAT_SPIN_WIDTH := 66
+const FISH_STAT_GAP := 3
+## Rate and Scale shrink too on a fish row; Scale loses its "x" suffix for the room.
+const FISH_NAME_WIDTH := 126
+const FISH_PERCENT_SPIN_WIDTH := 66
+const FISH_SCALE_SPIN_WIDTH := 66
+## What each of the six fish boxes does, as its tooltip -- the captions are too short to say.
+const FISH_STAT_TIPS := {
+	"energy": "Stamina. Pulling the right way drains it at 40 a second; at 0 the fish is blown and can be reeled in. Higher = a longer fight.",
+	"line_strength": "How hard the line can be loaded either way before it breaks -- one number for both ends, so 100 means -100 (gone slack) to +100 (snapped). Lower = less room for mistakes.",
+	"recharge_time": "Seconds the blown fish rests before it is back to full energy. This IS the reel-in window, so higher = more presses land per run.",
+	"reel_step": "World pixels the fish is dragged in by each reel press during that window. It is landed at 80 out. Higher = a shorter fight.",
+	"initial_distance": "World pixels out from the player the strike yanks it to. 160 is the cast itself, i.e. no yank at all; anything more and it runs for open water the moment it is hooked.",
+	"lateral_speed": "World pixels a second it runs left and right across the cast. Higher = faster dashes to read and counter.",
+}
 const SCROLL_TOP := 92
 const SCROLL_HEIGHT := 900
 const FOOTER_TOP := 1010
@@ -490,7 +510,7 @@ func _on_fish_mode_changed() -> void:
 	_scope.text = "SAVE writes Pokemon/Spawns/%s.json straight away and keeps this screen open" % _map_data
 	_desc.text = "Which Pokémon can be hooked here, by time of day. A cast always rolls " \
 			+ "exactly one fish, so there is no spawn chance — an empty table just means " \
-			+ "nothing bites then."
+			+ "nothing bites then. The six boxes after Scale are that fish's fight, and like " 			+ "Scale they belong to the species: the same on every map and time of day."
 	for key in _rows:
 		(_rows[key] as Control).visible = false
 	_rebuild_table()
@@ -674,7 +694,7 @@ func _rebuild_table() -> void:
 		# One line per species. Every piece before REMOVE has a fixed width, so each
 		# box sits at the same x on every row.
 		var row := HBoxContainer.new()
-		row.add_theme_constant_override("separation", ROW_ITEM_GAP)
+		row.add_theme_constant_override("separation", FISH_STAT_GAP if _fish_mode else ROW_ITEM_GAP)
 
 		var icon := TextureRect.new()
 		icon.custom_minimum_size = ICON_SIZE
@@ -684,7 +704,7 @@ func _rebuild_table() -> void:
 		row.add_child(icon)
 
 		var name_label := _caption(row, OverworldPokemonData.display_name(species))
-		name_label.custom_minimum_size = Vector2(NAME_WIDTH, 0)
+		name_label.custom_minimum_size = Vector2(FISH_NAME_WIDTH if _fish_mode else NAME_WIDTH, 0)
 		name_label.clip_text = true
 		name_label.tooltip_text = species
 		name_label.mouse_filter = Control.MOUSE_FILTER_PASS
@@ -695,9 +715,9 @@ func _rebuild_table() -> void:
 			name_label.add_theme_color_override("font_color", Color(1.0, 0.75, 0.35))
 
 		_caption(row, "Rate")
-		var percent := _spin(0, 100, 1, float(entry.get("percent", 0)), "%")
+		var percent := _spin(0, 100, 1, float(entry.get("percent", 0)), "" if _fish_mode else "%")
 		percent.tooltip_text = "How often this species is picked, as a share of the table"
-		percent.custom_minimum_size = Vector2(PERCENT_SPIN_WIDTH, 0)
+		percent.custom_minimum_size = Vector2(FISH_PERCENT_SPIN_WIDTH if _fish_mode else PERCENT_SPIN_WIDTH, 0)
 		percent.value_changed.connect(func(v: float):
 			entry["percent"] = v
 			_revalidate())
@@ -706,9 +726,9 @@ func _rebuild_table() -> void:
 		_caption(row, "Scale")
 		var settings := _settings_for(species)
 		var scale_box := _spin(OverworldPokemonData.MIN_SCALE, OverworldPokemonData.MAX_SCALE, 0.1,
-				float(settings["scale"]), "x")
+				float(settings["scale"]), "" if _fish_mode else "x")
 		scale_box.tooltip_text = "Size on the map (1.0 = normal). Belongs to the species: the same on every table and map."
-		scale_box.custom_minimum_size = Vector2(SCALE_SPIN_WIDTH, 0)
+		scale_box.custom_minimum_size = Vector2(FISH_SCALE_SPIN_WIDTH if _fish_mode else SCALE_SPIN_WIDTH, 0)
 		scale_box.value_changed.connect(func(v: float): settings["scale"] = snappedf(v, 0.1))
 		row.add_child(scale_box)
 
@@ -716,7 +736,9 @@ func _rebuild_table() -> void:
 			_add_flyer_controls(row, entry)
 		elif _template == "skittish":
 			_add_wander_control(row, species)
-		elif _template == "surfacing" and not _fish_mode:
+		elif _fish_mode:
+			_add_fish_controls(row, species)
+		elif _template == "surfacing":
 			_add_swim_control(row, species)
 
 		# Pushes REMOVE to the right edge, so it lines up too.
@@ -743,6 +765,24 @@ func _rebuild_table() -> void:
 
 		_table_box.add_child(row)
 	_revalidate()
+
+
+## The fish-only part of a species row, added in place after Scale: one captioned number
+## box per fight stat. Like Scale and a flyer's Speed these write the SPECIES' settings,
+## not the row -- the same fight on every table, map and time of day. Distances and
+## speeds are world pixels: on-screen pixels / 2.5, the overworld's zoom.
+func _add_fish_controls(line: HBoxContainer, species: String) -> void:
+	var settings := _settings_for(species)
+	for key in OverworldPokemonData.FISH_STAT_LABELS:
+		var stat_key := str(key)
+		var limits: Array = OverworldPokemonData.FISH_STAT_LIMITS[stat_key]
+		_caption(line, str(OverworldPokemonData.FISH_STAT_LABELS[stat_key]))
+		var box := _spin(float(limits[0]), float(limits[1]), float(limits[2]),
+				float(settings[stat_key]))
+		box.tooltip_text = str(FISH_STAT_TIPS[stat_key])
+		box.custom_minimum_size = Vector2(FISH_STAT_SPIN_WIDTH, 0)
+		box.value_changed.connect(func(v: float): settings[stat_key] = v)
+		line.add_child(box)
 
 
 ## Flock size for a flyer row that doesn't have one yet. (Speed, scale, spin and
@@ -806,6 +846,10 @@ func _settings_for(species: String) -> Dictionary:
 		"bug": bool(OverworldPokemonData.species_info(species).get("bug", false)),
 		"ghost": bool(OverworldPokemonData.species_info(species).get("ghost", false)),
 	}
+	# The six fishing numbers, already filled in and clamped by fish_stats().
+	var fighting := OverworldPokemonData.fish_stats(species)
+	for key in fighting:
+		saved[key] = fighting[key]
 	for key in saved:
 		if not settings.has(key):
 			settings[key] = saved[key]
@@ -835,6 +879,14 @@ func _changed_species_settings() -> Dictionary:
 		for flag in ["spin", "erratic", "bug", "ghost"]:
 			if bool(settings[flag]) != bool(info.get(flag, false)):
 				changes[flag] = bool(settings[flag])
+		# Fishing. Written out whenever the species HAS an entry for them or the box has
+		# been moved off the default, so a fish that was never edited stays absent from
+		# the registry rather than gaining six keys it does not need.
+		var fighting := OverworldPokemonData.fish_stats(str(species))
+		for key in fighting:
+			var now := snappedf(float(settings[key]), 0.1)
+			if not is_equal_approx(now, float(fighting[key])):
+				changes[key] = now
 		if not changes.is_empty():
 			out[species] = changes
 	return out
@@ -995,6 +1047,9 @@ func _clean_rows(rows: Array) -> Array:
 		if _template == "flyer":
 			clean["min"] = int(row.get("min", OverworldPokemonData.DEFAULT_FLOCK_MIN))
 			clean["max"] = int(row.get("max", OverworldPokemonData.DEFAULT_FLOCK_MAX))
+		# A fish row is only {species, percent}: the fight numbers are the SPECIES' own
+		# and go to the registry through _changed_species_settings(). Rebuilding the row
+		# from scratch here is what drops any that an older save left on it.
 		out.append(clean)
 	return out
 

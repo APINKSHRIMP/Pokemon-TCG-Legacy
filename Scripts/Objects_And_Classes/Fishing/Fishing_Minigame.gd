@@ -150,13 +150,8 @@ const TENSION_WRONG_PRESS := 35.0
 ## per second -- that is what the mashing window is for: it hands you a clean line for the
 ## next run.
 const TENSION_REST_RECOVER := 120.0
-const TENSION_LIMIT := 100.0
-const ENERGY_START := 100.0
 const ENERGY_DRAIN := 40.0       ## per second of correct input
 const TIRED_SPEED_FACTOR := 0.5
-## The run across the cast is the visible half of the fight -- long, fast dashes the
-## player has to read and counter.
-const FIGHT_LATERAL_SPEED := 110.0
 ## The fish is on a LEASH at whatever range it has been reeled to. It surges out to
 ## FIGHT_SURGE beyond that and comes back to it, over and over, but can never get further
 ## in than the leash -- so ground won by reeling is never given back, and the only thing
@@ -170,14 +165,15 @@ const FIGHT_SWITCH_MAX := 2.2
 ## with how far out it is, so it thrashes right across the screen while it is still out
 ## at sea and is pinned almost dead ahead by the time it is nearly landed. Hitting the
 ## edge of the cone turns it round, same as running out the switch timer.
-const FIGHT_CONE_MIN := 20.0     ## world px of sideways room at the catch line
+## FIGHT_CONE_MIN is the room it has right at the landing point, so it is what decides
+## how tight the cone is CLOSE IN; FIGHT_CONE_SLOPE is what opens it out at sea. Drop
+## the slope as well if the near HALF still feels too wide -- the slope term takes over
+## within ~10 world px of the catch line.
+const FIGHT_CONE_MIN := 6.0      ## world px of sideways room at the catch line
 const FIGHT_CONE_SLOPE := 2.5    ## extra sideways room per world px further out
-## Reeling is a MASH, not a hold: every Space/Enter press drags the leash in by
-## REEL_STEP. How much ground a rest wins is down to how fast the player can hit it.
-const REEL_STEP := 6.0           ## world px per press
-## How long the fish stays blown once its energy runs out -- the mashing window.
-const REST_TIME_MIN := 1.5
-const REST_TIME_MAX := 2.5
+## Reeling is a MASH, not a hold: every Space/Enter press drags the leash in by the
+## fish's `reel_step`. How much ground a rest wins is down to how fast the player can
+## hit it.
 ## It only has to be brought HALF as close as it used to be.
 const CATCH_DISTANCE := 200.0 * SCREEN_TO_WORLD
 const CATCH_PAUSE := 0.1
@@ -215,6 +211,19 @@ const SFX := {
 	"fight": "res://Audio/SFX/FishingFight.ogg",
 }
 
+## PER-SPECIES STATS. These six are NOT constants: they are the rolled species' own,
+## read from the Pokemon registry (OverworldPokemonData.fish_stats, edited in
+## DEL -> FISH TABLE), so a Magikarp fights a Magikarp's fight on every map and at every
+## time of day. Their defaults are exactly the numbers this file used before they were
+## tunable, so a species with none of them set fights the way it always did.
+##
+##   _stats.energy            stamina bar; correct input drains it at ENERGY_DRAIN/s
+##   _stats.line_strength     +/- limit the line snaps at (the -100..+100 of old)
+##   _stats.recharge_time     seconds blown -- the reel-in window, then full energy again
+##   _stats.reel_step         world px hauled in per reel press
+##   _stats.initial_distance  world px out the hook yanks it to (160 = the cast, no yank)
+##   _stats.lateral_speed     world px/s of its run across the cast
+
 const BREAK_MESSAGE := "The line snapped!"
 const ESCAPED_MESSAGE := "It got away..."
 # -----------------------------------------------------------------------------
@@ -251,6 +260,9 @@ var _cast_speed: float = 0.0
 var _sink_from_frame: int = 1
 
 var _fish_species: String = ""
+## The rolled species' six fight numbers -- see the PER-SPECIES STATS note above. Always
+## fully populated (fish_stats fills every key), so it can be read without a .get.
+var _stats: Dictionary = OverworldPokemonData.fish_stats("")
 var _fish_frame: int = 0
 var _fish_anim: float = 0.0
 var _fish_speed: float = 0.0
@@ -262,7 +274,7 @@ var _fish_aim: Vector2 = Vector2.UP
 var _bite_delay: float = 0.0
 
 var _tension: float = 0.0
-var _energy: float = ENERGY_START
+var _energy: float = 0.0
 var _fight_side: float = 1.0
 var _fight_switch: float = 0.0
 ## Seconds of "blown" left. Above zero the fish is resting, the line is recovering and
@@ -595,6 +607,7 @@ func _bobber_bottom() -> Vector2:
 
 func _spawn_fish() -> void:
 	_fish_species = FishingData.pick_fish(map_data)
+	_stats = OverworldPokemonData.fish_stats(_fish_species)
 	if _fish_species == "":
 		return  # nothing lives here at this hour; the player reels in by hand
 	_fish = Sprite2D.new()
@@ -718,15 +731,18 @@ func _hook() -> void:
 	_hide_exclamation()
 	_bobber.visible = false
 	_tension = 0.0
-	_energy = ENERGY_START
+	_energy = float(_stats["energy"])
 	_fight_side = 1.0 if randf() < 0.5 else -1.0
 	_fight_switch = randf_range(FIGHT_SWITCH_MIN, FIGHT_SWITCH_MAX)
 	_rest_left = 0.0
 	if _fish != null and is_instance_valid(_fish):
-		# Where it is hooked is where the leash starts: it works in and out from here and
-		# only ever gets closer by being reeled.
-		_leash = (_fish.global_position - _player.global_position).dot(_cast_dir)
+		# The fish's own `initial_distance` is where the leash starts: it works in and out
+		# from there and only ever gets closer by being reeled. The fish is hooked at the
+		# bobber, so anything past the cast distance is a yank out to sea on the strike --
+		# _clamp_to_leash drags it, and the line with it, straight out to the leash.
+		_leash = float(_stats["initial_distance"])
 		_set_surge(1.0)
+		_clamp_to_leash()
 		# Turns on the spot about its head, which is what the hook is through.
 		_fish.rotation += PI
 		_fish_aim = -_fish_aim
@@ -747,7 +763,7 @@ func _process_fight(delta: float) -> void:
 		_rest_left -= delta
 		if _rest_left <= 0.0:
 			# Second wind: back to full energy and off it goes again.
-			_energy = ENERGY_START
+			_energy = float(_stats["energy"])
 			_fight_switch = randf_range(FIGHT_SWITCH_MIN, FIGHT_SWITCH_MAX)
 
 	_fight_switch -= delta
@@ -770,7 +786,7 @@ func _process_fight(delta: float) -> void:
 		_tension += TENSION_CORRECT * delta
 		_energy -= ENERGY_DRAIN * delta
 		if _energy <= 0.0:
-			_rest_left = randf_range(REST_TIME_MIN, REST_TIME_MAX)
+			_rest_left = float(_stats["recharge_time"])
 	else:
 		_tension -= TENSION_DECAY * delta
 	# Blown beats everything: a fish with nothing left barely ripples the surface.
@@ -779,7 +795,7 @@ func _process_fight(delta: float) -> void:
 	else:
 		_tick_fight_splashes(delta, "wrong" if (pulled != 0.0 and not correct) else "correct")
 
-	if absf(_tension) >= TENSION_LIMIT:
+	if absf(_tension) >= float(_stats["line_strength"]):
 		_scare_fish()
 		_begin_retract(BREAK_MESSAGE if _tension > 0.0 else ESCAPED_MESSAGE)
 		return
@@ -787,7 +803,7 @@ func _process_fight(delta: float) -> void:
 	# Side to side across the cast, and in and out along it between the leash and
 	# FIGHT_SURGE beyond it.
 	var tired := TIRED_SPEED_FACTOR if resting else 1.0
-	var run := _perp * _fight_side * FIGHT_LATERAL_SPEED \
+	var run := _perp * _fight_side * float(_stats["lateral_speed"]) \
 			+ _cast_dir * _surge_dir * _surge_speed
 	_fish.global_position += run * tired * delta
 	_aim_fish(run)
@@ -801,8 +817,9 @@ func _process_fight(delta: float) -> void:
 ## One Space/Enter press while the fish is blown: drags the leash in a notch and hauls the
 ## fish in with it. Pressing at any other time is a mistake, handled in _input().
 func _reel_step() -> void:
-	_leash = maxf(0.0, _leash - REEL_STEP)
-	_fish.global_position -= _cast_dir * REEL_STEP
+	var step := float(_stats["reel_step"])
+	_leash = maxf(0.0, _leash - step)
+	_fish.global_position -= _cast_dir * step
 	_clamp_to_cone()
 	_clamp_to_leash()
 	if _leash <= CATCH_DISTANCE:
@@ -1143,7 +1160,7 @@ func _update_line() -> void:
 func _line_colour() -> Color:
 	if _state != State.FIGHT:
 		return LINE_NEUTRAL
-	var t := clampf(_tension / TENSION_LIMIT, -1.0, 1.0)
+	var t := clampf(_tension / maxf(1.0, float(_stats["line_strength"])), -1.0, 1.0)
 	var near := LINE_TIGHT_NEAR
 	var far := LINE_TIGHT_FAR
 	if t < 0.0:

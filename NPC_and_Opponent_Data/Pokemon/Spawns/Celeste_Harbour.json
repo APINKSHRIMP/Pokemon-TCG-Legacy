@@ -217,31 +217,11 @@
       "table": [
         {
           "species": "129_Magikarp",
-          "percent": 35
-        },
-        {
-          "species": "118_Goldeen",
-          "percent": 20
-        },
-        {
-          "species": "116_Horsea",
-          "percent": 15
-        },
-        {
-          "species": "072_Tentacool",
-          "percent": 15
-        },
-        {
-          "species": "223_Remoraid",
-          "percent": 10
-        },
-        {
-          "species": "120_Staryu",
-          "percent": 4
+          "percent": 1
         },
         {
           "species": "130_Gyarados",
-          "percent": 1
+          "percent": 99
         }
       ]
     },

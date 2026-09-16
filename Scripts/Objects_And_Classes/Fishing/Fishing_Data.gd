@@ -15,6 +15,12 @@ extends RefCounted
 ## table in the spawn file. A cast always rolls exactly one fish, so unlike a spawn point
 ## there is no `chance` and no `interval`. An empty table means nothing bites at that
 ## time of day and the player has to reel in by hand.
+##
+## The six numbers that make up a fish's fight (energy, line strength, recharge time,
+## reel step, initial distance, lateral speed) are NOT here: they belong to the species,
+## in Overworld_Pokemon.json, so a species fights the same way on every map and at every
+## time of day. They are edited on the same FISH TABLE screen and read through
+## OverworldPokemonData.fish_stats().
 
 const FLAG := "has_fishing_rod"
 
@@ -44,7 +50,9 @@ static func current_table(map_data: String) -> Array:
 	return rows if rows is Array else []
 
 
-## One species key rolled off the current table, or "" when nothing is listed.
+## One species key rolled off the current table, or "" when nothing is listed. How that
+## fish FIGHTS is not here: it belongs to the species, in the registry -- see
+## OverworldPokemonData.fish_stats().
 static func pick_fish(map_data: String) -> String:
 	return str(OverworldPokemonData.pick_row(current_table(map_data)).get("species", ""))
 
