@@ -104,8 +104,12 @@ const RIGHT_W        := 1368.0
 const STAT_FONT_SCALE := 1.5
 
 const METER_Y        := 104.0
-const METER_H        := 386.0
-const METER_ROW_H    := 58.0
+## SEVEN rows now, not six — "Pokemon met" joined the panel. The band between
+## METER_Y and BOX_Y is 406px and cannot grow (the left column's top box is
+## derived from BOX_Y), so the extra row is paid for out of the row height:
+## 7 * 54 + PANEL_PAD = 396, and the panel stops 6px clear of the stat boxes.
+const METER_H        := 400.0
+const METER_ROW_H    := 54.0
 const METER_LABEL_W  := 300.0
 const METER_VALUE_W  := 180.0
 const METER_ROW_H_TXT := 32.0    # height of a row's label / value box
@@ -143,6 +147,8 @@ const EQUIP_DOWN_NUDGE := 10.0
 const EQUIP_SIZE     := Vector2(96.0, 132.0)
 const EQUIP_GAP      := 140.0
 const MEDALS_BTN_W   := 240.0
+## Wider than Medals only because "View FIELD GUIDE" is a longer string.
+const GUIDE_BTN_W    := 300.0
 const NAME_BOX_H     := 62.0
 ## ISSUE #203: +50% (24 -> 36). ISSUE #201 (retest): -25% again (36 -> 27) - at
 ## 36 a full-length name overran the box no matter how wide it was.
@@ -205,6 +211,7 @@ var _sparkle : CPUParticles2D = null
 @onready var save_btn      : Button      = $"info_save_button"
 @onready var cancel_btn    : Button      = $"info_cancel_button"
 @onready var medals_btn    : Button      = $"medals_button"
+@onready var guide_btn     : Button      = $"field_guide_button"
 @onready var player_sprite : TextureRect = $"PlayerSprite"
 @onready var stats_control : Control     = $"statistics"
 
@@ -254,6 +261,12 @@ func _build_chrome() -> void:
 	# present, styled, and wired to nothing. Do not invent a count for it.
 	UIKit.adopt_button(medals_btn, bars["header"].right, "secondary", false)
 	medals_btn.custom_minimum_size.x = MEDALS_BTN_W
+
+	# The Field Guide sits beside Medals in the same header slot. Unlike Medals it
+	# HAS a screen behind it, so it is wired up.
+	UIKit.adopt_button(guide_btn, bars["header"].right, "secondary", false)
+	guide_btn.custom_minimum_size.x = GUIDE_BTN_W
+	guide_btn.pressed.connect(_on_field_guide_pressed)
 
 	UIKit.adopt_button(cancel_btn, bars["footer"].centre, "secondary")
 	UIKit.adopt_button(save_btn, bars["footer"].centre, "primary")
@@ -548,6 +561,16 @@ func _on_save_pressed() -> void:
 		_populate_stats()
 
 
+func _on_field_guide_pressed() -> void:
+	SoundManagerScript.play_sfx(SoundManagerScript.SFX_plus_select)
+	var path := "res://Scenes/Main_Menu_Scenes/Field_Guide_Scene.tscn"
+	# ISSUE #52 shape: opened over the map it becomes another overlay on the
+	# sub-menu stack; opened from the main menu it is a scene change.
+	if GameState.open_sub_menu(path):
+		return
+	SceneCache.change_scene(path)
+
+
 func _on_cancel_pressed() -> void:
 	if GameState.close_sub_menu(): return   # ISSUE #52: map is still loaded behind us — just pop this overlay
 	SceneCache.change_scene("res://Scenes/Main_Menu_Scenes/Main_Menu_Scene.tscn")
@@ -596,6 +619,7 @@ func _populate_stats() -> void:
 		["Unique cards",  int(cards["unique"]),  int(cards["collectible"])],
 		["Sets unlocked", sets_unlocked,         sets_total],
 		["Sets completed", int(cards["sets_completed"]), sets_total],
+		["Pokemon met", GameState.get_met_species_total(), _species_total()],
 		["Coins",    _count_owned(coin_universe, GameState.get_coins()),       coin_universe.size()],
 		["Costumes", _count_owned(costume_universe, GameState.get_costumes()), costume_universe.size()],
 		["Sleeves",  _count_owned(sleeve_universe, GameState.get_sleeves()),   sleeve_universe.size()],
@@ -605,6 +629,7 @@ func _populate_stats() -> void:
 		["Packs opened", str(packs_opened)],
 		["Cards owned",  str(cards["total"])],
 		["Decks built",  str(_count_decks())],
+		["Fish caught",  str(GameState.get_fish_caught())],
 	]
 
 	_build_meter_panel(meters)
@@ -612,7 +637,7 @@ func _populate_stats() -> void:
 	_build_nearest_sets(cards["per_set"])
 
 
-## Six fraction rows, each a label, a meter and its n / N.
+## Seven fraction rows, each a label, a meter and its n / N.
 func _build_meter_panel(rows: Array) -> void:
 	var panel := UIKit.make_panel()
 	panel.position = Vector2(RIGHT_X, METER_Y)
@@ -647,7 +672,9 @@ func _build_meter_panel(rows: Array) -> void:
 		y += METER_ROW_H
 
 
-## Four whole-number boxes across the width: a big numeral under a small label.
+## Five whole-number boxes across the width: a big numeral under a small label.
+## The row divides RIGHT_W by however many it is given, so adding one makes them
+## all narrower rather than pushing the last off the panel.
 func _build_stat_boxes(boxes: Array) -> void:
 	var gap := BOX_GAP
 	var w: float = (RIGHT_W - gap * float(boxes.size() - 1)) / float(boxes.size())
@@ -782,6 +809,14 @@ func _set_name_map() -> Dictionary:
 
 ## How many decks the player has saved. Derived from the folder rather than
 ## tracked in progress, so it cannot drift from what the load screen lists.
+## The Field Guide's universe: every species with an overworld sheet, which is
+## also every species with a Field Guide portrait — the two folders are keyed by
+## the same basenames. Guarded so a screen that never opens the guide still draws
+## its meter rather than dividing by nothing.
+func _species_total() -> int:
+	return maxi(1, OverworldPokemonData.all_species().size())
+
+
 func _count_decks() -> int:
 	var dir := DirAccess.open(GameState.PLAYER_DECKS_FOLDER)
 	if dir == null:

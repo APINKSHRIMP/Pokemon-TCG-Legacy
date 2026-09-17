@@ -125,6 +125,16 @@ offset_bottom = 931.0
 theme = ExtResource("9_xfvrr")
 text = "View MEDALS"
 
+[node name="field_guide_button" type="Button" parent="." unique_id=971801697]
+z_index = 300
+layout_mode = 0
+offset_left = 1135.0
+offset_top = 862.0
+offset_right = 1542.0
+offset_bottom = 931.0
+theme = ExtResource("9_xfvrr")
+text = "View FIELD GUIDE"
+
 [node name="PlayerSprite" type="TextureRect" parent="." unique_id=541156267]
 layout_mode = 0
 offset_left = 233.0

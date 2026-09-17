@@ -11,7 +11,8 @@ class_name OverworldPokemonData
 
 const REGISTRY_PATH := "res://NPC_and_Opponent_Data/Pokemon/Overworld_Pokemon.json"
 const SPAWN_DIR := "res://NPC_and_Opponent_Data/Pokemon/Spawns/"
-const SPRITE_DIR := "res://Image_Assets/Pokemon_Sprites/"
+const SPRITE_DIR := "res://Image_Assets/Pokemon_Sprites/Overworld_Sprites/"
+const FIELD_GUIDE_DIR := "res://Image_Assets/Pokemon_Sprites/Field_Guide_Sprites/"
 
 ## Every template, in the order the editor lists them. A template is a behaviour
 ## script; adding one means a script, an entry here, and a line in
@@ -222,7 +223,7 @@ static func species_for_template(template: String) -> Array:
 	return out
 
 
-## Every non-shiny sprite sheet in Pokemon_Sprites/, as bare basenames.
+## Every non-shiny sprite sheet in Pokemon_Sprites/Overworld_Sprites/, as bare basenames.
 static func all_species() -> Array:
 	if not _all_species_cache.is_empty():
 		return _all_species_cache
@@ -248,6 +249,42 @@ static func all_species() -> Array:
 
 static func sheet_path(species: String) -> String:
 	return SPRITE_DIR + species + ".png"
+
+
+# ============================================================
+# FIELD GUIDE ART
+# ============================================================
+# A SECOND sprite per species, in Field_Guide_Sprites/, keyed by exactly the same
+# basename as the overworld sheet. The overworld sheet is a 4x4 walk cycle; this
+# one is a single front-facing portrait, and it is what the Field Guide screen
+# shows large. Both live under Pokemon_Sprites/ so a species is one name in two
+# folders and nothing has to map between them.
+#
+# Not every species has a Shiny portrait (four are missing from the art dump), so
+# always test the path before loading one.
+
+static func field_guide_path(species: String, shiny: bool = false) -> String:
+	return FIELD_GUIDE_DIR + species + ("_Shiny" if shiny else "") + ".png"
+
+
+static func has_field_guide_art(species: String, shiny: bool = false) -> bool:
+	return ResourceLoader.exists(field_guide_path(species, shiny))
+
+
+## "019_Rattata_Alolan" -> 19. 0 when the basename does not start with a number.
+static func dex_number(species: String) -> int:
+	var parts := species.split("_")
+	return int(parts[0]) if parts.size() >= 1 and parts[0].is_valid_int() else 0
+
+
+## "019_Rattata_Alolan" -> "019 Rattata (Alolan)". The Field Guide's caption.
+static func guide_label(species: String) -> String:
+	var parts := species.split("_")
+	var number := str(parts[0]) if parts.size() >= 1 else ""
+	var form := ""
+	if parts.size() > 2:
+		form = " (" + " ".join(Array(parts).slice(2)).replace("_", " ") + ")"
+	return "%s %s%s" % [number, display_name(species), form]
 
 
 # ============================================================

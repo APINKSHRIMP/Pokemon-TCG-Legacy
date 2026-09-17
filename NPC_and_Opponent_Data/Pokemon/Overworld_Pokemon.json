@@ -1,6 +1,6 @@
 {
   "_help": [
-    "Which overworld templates each Pokemon sprite can use. Keys are sprite basenames in Image_Assets/Pokemon_Sprites/ (no .png, never the _Shiny sheet).",
+    "Which overworld templates each Pokemon sprite can use. Keys are sprite basenames in Image_Assets/Pokemon_Sprites/Overworld_Sprites/ (no .png, never the _Shiny sheet).",
     "templates: any of flyer, bug_tree, swinging_bug, skittish, burying, surfacing, static. The spawn editor lists a template's species first; ADD ANY POKEMON appends the template here on save.",
     "Optional per-species tweaks: name (message-box name, default is the word after the dex number), spin (flyer: cycle facings while flying), erratic (flyer: big jerky bat-like bob), bug (flyer: smaller smoother wobble with butterfly speed changes), ghost (flyer: slow wide drift that fades out and back in), scale (size multiplier, default 1, every template) and speed_min / speed_max (flyer px/s, default 35-45) -- these are the SAME for this species on every table and map; the spawn editor's Scale, Speed, Spin, Erratic, Bug and Ghost controls write them here, particle_colour (burying: burst colour, hex), up_time (burying: seconds above ground), wander_speed (skittish: wandering px/s, default 85, same on every table and map -- the editor's Wander box; running away is always the one fast speed), swim_speed (surfacing: px/s while surfaced, default 7, same on every table and map -- the editor's Swim box)."
   ],

@@ -32,6 +32,7 @@ const SCENES_TO_PRELOAD: Array = [
 	"res://Scenes/Main_Menu_Scenes/Deck_Build_And_Card_View_Scene.tscn",
 	"res://Scenes/Main_Menu_Scenes/Costume_Scene.tscn",
 	"res://Scenes/Main_Menu_Scenes/Info_Scene.tscn",
+	"res://Scenes/Main_Menu_Scenes/Field_Guide_Scene.tscn",
 	"res://Scenes/Main_Menu_Scenes/Sleeves_Scene.tscn",
 	"res://Scenes/Main_Menu_Scenes/Options_Scene.tscn",
 	"res://Scenes/Main_Menu_Scenes/Coin_Case_Scene.tscn",

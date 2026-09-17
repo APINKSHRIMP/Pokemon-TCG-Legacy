@@ -752,6 +752,9 @@ const OWNED_CARDS_SEED_FOLDER = "res://Player_Data/Player_Owned_Cards/"
 const PLAYER_DECKS_FOLDER = "user://Player_Decks/"
 const PLAYER_DECKS_SEED_FOLDER = "res://Player_Data/Player_Decks/"
 
+const NATURE_GUIDE_PATH = "user://Nature_guide.json"
+const NATURE_GUIDE_SEED_PATH = "res://Player_Data/Nature_guide.json"
+
 # ============================================================
 # INTERIOR SCENE TRANSITIONS
 # ============================================================
@@ -825,6 +828,9 @@ func _ensure_user_data_exists():
 	# Copy Player_Decks folder
 	_copy_seed_folder(PLAYER_DECKS_SEED_FOLDER, PLAYER_DECKS_FOLDER)
 
+	# Copy Nature_guide.json (the Field Guide record)
+	_copy_seed_file(NATURE_GUIDE_SEED_PATH, NATURE_GUIDE_PATH)
+
 
 func _copy_seed_file(seed_path: String, dest_path: String):
 	if FileAccess.file_exists(dest_path):
@@ -878,9 +884,13 @@ func _copy_seed_folder(seed_folder: String, dest_folder: String):
 # straight back — see the save-file invariant note above. So: delete, re-copy the
 # res:// seeds, then re-read everything the boot path reads.
 func reset_new_game() -> void:
-	for path in [PROGRESS_PATH, PLAYER_CURRENT_DATA_PATH]:
+	for path in [PROGRESS_PATH, PLAYER_CURRENT_DATA_PATH, NATURE_GUIDE_PATH]:
 		if FileAccess.file_exists(path):
 			DirAccess.remove_absolute(path)
+	# The guide is cached in memory like `progress` is, so the same rule applies:
+	# drop the cache or the next catch writes the old record straight back.
+	_nature_guide = {}
+	_nature_guide_loaded = false
 
 	_delete_folder_contents(OWNED_CARDS_FOLDER)
 
@@ -1304,6 +1314,102 @@ func get_sleeve_universe(include_defaults: bool = false) -> Dictionary:
 			continue
 		out[String(fname).get_basename()] = true
 	return out
+
+
+# ============================================================
+# NATURE GUIDE  (the Field Guide record)
+# ============================================================
+# user://Nature_guide.json, seeded from res://Player_Data/. Its own file rather
+# than a key in Player_Game_Progress.json because it is a per-species table that
+# will grow to hundreds of rows as more ways of meeting a Pokémon are added, and
+# it has nothing to do with campaign progress.
+#
+#   met          species basename -> how many times it has been met
+#   fish_caught  every fish ever landed, new species or not
+#
+# "Met" is currently only ever set by fishing. Everything that meets a Pokémon in
+# future calls record_pokemon_met() too; it returns true the FIRST time a species
+# is seen, which is the caller's cue to play a NEW! flourish.
+#
+# Same invariant as `progress`: the dictionary is held in memory for the session
+# and the whole thing is written on every save, so nothing may edit the file
+# directly — go through these wrappers.
+
+var _nature_guide: Dictionary = {}
+var _nature_guide_loaded: bool = false
+
+
+func _load_nature_guide() -> void:
+	if _nature_guide_loaded:
+		return
+	_nature_guide_loaded = true
+	_nature_guide = {"met": {}, "fish_caught": 0}
+	if not FileAccess.file_exists(NATURE_GUIDE_PATH):
+		return
+	var file = FileAccess.open(NATURE_GUIDE_PATH, FileAccess.READ)
+	if file == null:
+		return
+	var raw = file.get_as_text()
+	file.close()
+	var data = JSON.parse_string(raw)
+	if not data is Dictionary:
+		push_error("GameState: Nature_guide.json is malformed")
+		return
+	if data.get("met") is Dictionary:
+		_nature_guide["met"] = data["met"]
+	_nature_guide["fish_caught"] = int(data.get("fish_caught", 0))
+
+
+func save_nature_guide() -> void:
+	_load_nature_guide()
+	var file = FileAccess.open(NATURE_GUIDE_PATH, FileAccess.WRITE)
+	if file == null:
+		push_error("GameState: cannot write " + NATURE_GUIDE_PATH)
+		return
+	file.store_string(JSON.stringify(_nature_guide, "\t"))
+	file.close()
+
+
+## species basename -> met count, for every species the player has met.
+func get_met_pokemon() -> Dictionary:
+	_load_nature_guide()
+	return _nature_guide["met"]
+
+
+func has_met_pokemon(species: String) -> bool:
+	return get_met_pokemon().has(species)
+
+
+func get_met_count(species: String) -> int:
+	return int(get_met_pokemon().get(species, 0))
+
+
+func get_met_species_total() -> int:
+	return get_met_pokemon().size()
+
+
+## Records one meeting and saves. Returns TRUE only when this is the first time
+## the species has ever been met — the caller's cue to show the NEW! flourish.
+func record_pokemon_met(species: String) -> bool:
+	if species == "":
+		return false
+	_load_nature_guide()
+	var met: Dictionary = _nature_guide["met"]
+	var is_new: bool = not met.has(species)
+	met[species] = int(met.get(species, 0)) + 1
+	save_nature_guide()
+	return is_new
+
+
+func get_fish_caught() -> int:
+	_load_nature_guide()
+	return int(_nature_guide.get("fish_caught", 0))
+
+
+func add_fish_caught(amount: int = 1) -> void:
+	_load_nature_guide()
+	_nature_guide["fish_caught"] = get_fish_caught() + amount
+	save_nature_guide()
 
 
 # ============================================================

@@ -1,0 +1,5 @@
+{
+	"_comment": "Field Guide record. `met` maps an overworld sprite basename (the same key Overworld_Pokemon.json uses) to how many times the player has met that species; a key being present at all is what unlocks its Field Guide entry. `fish_caught` is every fish ever landed, new species or not. Seeded empty; GameState.record_pokemon_met() is the only thing that writes it.",
+	"met": {},
+	"fish_caught": 0
+}

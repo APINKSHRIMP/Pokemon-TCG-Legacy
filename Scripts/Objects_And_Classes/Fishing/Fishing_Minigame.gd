@@ -293,6 +293,18 @@ const NAME_TAG_OFFSET := 9.0
 const NAME_TAG_FONT_SIZE := 8
 const NAME_TAG_WIDTH := 160.0
 const NAME_TAG_COLOUR := Color(1.0, 0.95, 0.6)
+
+## The rainbow NEW! shown over the player's head the first time a species is landed.
+## ALL WORLD PIXELS -- the camera is at 2.5x, so these are 2.5x bigger on screen: a
+## font size of 14 renders at 35, and it rises 45 screen pixels over RISE_TIME.
+## RISE / RISE_TIME is the drift SPEED; scale both by the same factor to change how
+## long it lives without changing how fast it climbs.
+const NEW_TAG_OFFSET    := 26.0   ## world px above the player's origin
+const NEW_TAG_FONT_SIZE := 14
+const NEW_TAG_RISE      := 18.0
+const NEW_TAG_RISE_TIME := 1.25
+const NEW_TAG_FADE_TIME := 1.1
+const NEW_TAG_Z := 26
 const SINK_TIME := 0.5
 const WATER_CLEAR_ROWS := 5.0
 const WATER_FADE_ROWS := 8.0
@@ -1565,9 +1577,35 @@ func _carry_caught() -> void:
 func _show_catch_message() -> void:
 	_message_open = true
 	_set_state(State.CATCH_MESSAGE)
+
+	# THE ONE PLACE A FISH IS BANKED. _process_catch_yank calls this exactly once per
+	# landed fish, on arrival at the rod tip, so the tally and the Field Guide entry
+	# cannot double-count however the player dismisses the box afterwards.
+	GameState.add_fish_caught()
+	if GameState.record_pokemon_met(_fish_species):
+		_show_new_tag()
+
 	var species_name := OverworldPokemonData.display_name(_fish_species)
 	MapManager.show_message_then("You caught a %s!" % species_name,
 			Callable(self, "_on_catch_message_ok"))
+
+
+## The rainbow NEW! over the player's head, for a species the Field Guide has never
+## seen before. Same idea as the NEW! that floats off a new card in a pack
+## (Pack_Opening_Manager._show_new_label) -- rise, fade, free itself -- but drawn in
+## world space over the player rather than as a UI Label over a card.
+func _show_new_tag() -> void:
+	if _player == null or not is_instance_valid(_player):
+		return
+	var tag := NewTag.new()
+	tag.font_size = NEW_TAG_FONT_SIZE
+	tag.rise = NEW_TAG_RISE
+	tag.rise_time = NEW_TAG_RISE_TIME
+	tag.fade_time = NEW_TAG_FADE_TIME
+	tag.z_as_relative = false
+	tag.z_index = NEW_TAG_Z
+	add_child(tag)
+	tag.global_position = _player.global_position + Vector2(0.0, -NEW_TAG_OFFSET)
 
 
 func _on_catch_message_ok() -> void:
@@ -1833,6 +1871,60 @@ class NameTag extends Node2D:
 				font_size, 2, Color.BLACK)
 		draw_string(font, at, text, HORIZONTAL_ALIGNMENT_CENTER, width,
 				font_size, colour)
+
+
+## "NEW!" rising and fading over the player's head, each letter its own hue and the
+## hues travelling through the word -- the drawn equivalent of BBCode's [rainbow],
+## which cannot be used here because this is world space, not a RichTextLabel.
+## Frees itself when it has faded; nothing outside has to hold a reference to it.
+##
+## Per-CHARACTER rather than a colour cycling through the whole word: a word that
+## changes colour as one block reads as a flash, and the travelling hue is what makes
+## it read as the same flourish a new card gets.
+class NewTag extends Node2D:
+	## TWEAKABLE. FREQ is colour cycles per second and SPREAD how much of the hue
+	## wheel the word spans at any instant -- 1.0 is a full rainbow across "NEW!".
+	const FREQ := 1.0
+	const SPREAD := 1.0
+	const SAT := 0.9
+	const VAL := 1.0
+	const OUTLINE := 2
+
+	var text: String = "NEW!"
+	var font_size: int = 14
+	var rise: float = 18.0
+	var rise_time: float = 1.25
+	var fade_time: float = 1.1
+
+	var _t: float = 0.0
+
+	func _process(delta: float) -> void:
+		_t += delta
+		if _t >= maxf(rise_time, fade_time):
+			queue_free()
+			return
+		queue_redraw()
+
+	func _draw() -> void:
+		if text == "":
+			return
+		var font := ThemeDB.fallback_font
+		var climb: float = -rise * clampf(_t / maxf(rise_time, 0.01), 0.0, 1.0)
+		var alpha: float = 1.0 - clampf(_t / maxf(fade_time, 0.01), 0.0, 1.0)
+		var count := text.length()
+		var total := font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size).x
+		var x := -total * 0.5
+		for i in count:
+			var glyph := text[i]
+			var at := Vector2(x, climb)
+			var hue := fposmod(_t * FREQ + (float(i) / float(count)) * SPREAD, 1.0)
+			# The black outline is what keeps a yellow or pale-green letter legible
+			# against the sand and the sea, and it never takes the hue.
+			draw_string_outline(font, at, glyph, HORIZONTAL_ALIGNMENT_LEFT, -1,
+					font_size, OUTLINE, Color(0.0, 0.0, 0.0, alpha))
+			draw_string(font, at, glyph, HORIZONTAL_ALIGNMENT_LEFT, -1,
+					font_size, Color.from_hsv(hue, SAT, VAL, alpha))
+			x += font.get_string_size(glyph, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size).x
 
 
 # ============================================================

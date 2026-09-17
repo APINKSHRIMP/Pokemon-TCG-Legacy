@@ -297,7 +297,7 @@ static func sprite_frame(sprite_name: String) -> Texture2D:
 	return atlas
 
 
-## The facing-down first frame of a Pokémon sheet in Pokemon_Sprites/.
+## The facing-down first frame of a Pokémon sheet in Pokemon_Sprites/Overworld_Sprites/.
 static func pokemon_frame(species: String) -> Texture2D:
 	var key := "pokemon:" + species
 	if _sprite_frame_cache.has(key):
