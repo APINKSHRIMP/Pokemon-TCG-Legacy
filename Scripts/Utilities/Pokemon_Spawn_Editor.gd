@@ -67,7 +67,7 @@ const FISH_STAT_TIPS := {
 	"line_strength": "How hard the line can be loaded either way before it breaks -- one number for both ends, so 100 means -100 (gone slack) to +100 (snapped). Lower = less room for mistakes.",
 	"recharge_time": "Seconds the blown fish rests before it is back to full energy. This IS the reel-in window, so higher = more presses land per run.",
 	"reel_step": "World pixels the fish is dragged in by each reel press during that window. It is landed at 80 out. Higher = a shorter fight.",
-	"initial_distance": "World pixels out from the player the strike yanks it to. 160 is the cast itself, i.e. no yank at all; anything more and it runs for open water the moment it is hooked.",
+	"initial_distance": "World pixels the strike runs it out PAST THE BOBBER -- added to wherever the cast landed. 0 is no run at all; the more, the further it bolts for open water the moment it is hooked.",
 	"lateral_speed": "World pixels a second it runs left and right across the cast. Higher = faster dashes to read and counter.",
 }
 const SCROLL_TOP := 92
@@ -723,13 +723,25 @@ func _rebuild_table() -> void:
 			_revalidate())
 		row.add_child(percent)
 
+		# On a FISH row, Scale edits `fish_size` -- how big the hooked silhouette is
+		# drawn -- and deliberately leaves the shared `scale` key alone: the fishing art
+		# is already the right size, and `scale` is what the overworld spawns use.
 		_caption(row, "Scale")
 		var settings := _settings_for(species)
-		var scale_box := _spin(OverworldPokemonData.MIN_SCALE, OverworldPokemonData.MAX_SCALE, 0.1,
-				float(settings["scale"]), "" if _fish_mode else "x")
-		scale_box.tooltip_text = "Size on the map (1.0 = normal). Belongs to the species: the same on every table and map."
+		var scale_key := "fish_size" if _fish_mode else "scale"
+		var scale_low := OverworldPokemonData.MIN_SCALE
+		var scale_high := OverworldPokemonData.MAX_SCALE
+		if _fish_mode:
+			var scale_limits: Array = OverworldPokemonData.FISH_STAT_LIMITS["fish_size"]
+			scale_low = float(scale_limits[0])
+			scale_high = float(scale_limits[1])
+		var scale_box := _spin(scale_low, scale_high, 0.1,
+				float(settings[scale_key]), "" if _fish_mode else "x")
+		scale_box.tooltip_text = ("Multiplier on the hooked fish silhouette (1.0 = as drawn, 0.8 a fifth smaller). Belongs to the species."
+				if _fish_mode
+				else "Size on the map (1.0 = normal). Belongs to the species: the same on every table and map.")
 		scale_box.custom_minimum_size = Vector2(FISH_SCALE_SPIN_WIDTH if _fish_mode else SCALE_SPIN_WIDTH, 0)
-		scale_box.value_changed.connect(func(v: float): settings["scale"] = snappedf(v, 0.1))
+		scale_box.value_changed.connect(func(v: float): settings[scale_key] = snappedf(v, 0.1))
 		row.add_child(scale_box)
 
 		if is_flyer:
@@ -773,6 +785,9 @@ func _rebuild_table() -> void:
 ## speeds are world pixels: on-screen pixels / 2.5, the overworld's zoom.
 func _add_fish_controls(line: HBoxContainer, species: String) -> void:
 	var settings := _settings_for(species)
+	# Which of the two silhouette sets it is hooked as. Species-wide like the rest.
+	_flag_box(line, settings, "big", "Big",
+			"Hooks as one of the BIG fish silhouettes instead of the small ones. Same on every table and map.")
 	for key in OverworldPokemonData.FISH_STAT_LABELS:
 		var stat_key := str(key)
 		var limits: Array = OverworldPokemonData.FISH_STAT_LIMITS[stat_key]
@@ -845,6 +860,7 @@ func _settings_for(species: String) -> Dictionary:
 		"erratic": bool(OverworldPokemonData.species_info(species).get("erratic", false)),
 		"bug": bool(OverworldPokemonData.species_info(species).get("bug", false)),
 		"ghost": bool(OverworldPokemonData.species_info(species).get("ghost", false)),
+		"big": OverworldPokemonData.species_big_fish(species),
 	}
 	# The six fishing numbers, already filled in and clamped by fish_stats().
 	var fighting := OverworldPokemonData.fish_stats(species)
@@ -876,7 +892,7 @@ func _changed_species_settings() -> Dictionary:
 		if int(settings["swim_speed"]) != int(OverworldPokemonData.species_swim_speed(str(species))):
 			changes["swim_speed"] = int(settings["swim_speed"])
 		var info := OverworldPokemonData.species_info(str(species))
-		for flag in ["spin", "erratic", "bug", "ghost"]:
+		for flag in ["spin", "erratic", "bug", "ghost", "big"]:
 			if bool(settings[flag]) != bool(info.get(flag, false)):
 				changes[flag] = bool(settings[flag])
 		# Fishing. Written out whenever the species HAS an entry for them or the box has

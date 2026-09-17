@@ -130,16 +130,25 @@ const MAX_SCALE := 20.0
 ##   recharge_time     seconds the blown fish rests -- the length of the reel-in window,
 ##                     after which it is back to full energy.
 ##   reel_step         world px the fish is dragged in per reel press.
-##   initial_distance  world px out from the player it yanks the line to on the hook.
-##                     160 is the cast distance, i.e. no yank at all.
+##   initial_distance  world px the strike runs it out BEYOND THE BOBBER -- added to
+##                     wherever the bobber landed, not measured from the player. 0 is no
+##                     run at all; it was an absolute distance from the player while the
+##                     cast was a fixed 160, which it no longer is (the throw is half the
+##                     Fishing_Zone rectangle now, so it differs per spot).
 ##   lateral_speed     world px/s it runs left and right across the cast.
+##   fish_size         multiplier on the SILHOUETTE the minigame draws, 1 = as drawn.
+##                     This is what the Scale box edits on a FISH row -- the shared
+##                     `scale` key is left alone there, because the silhouettes are
+##                     already drawn at the right size and `scale` belongs to the
+##                     overworld spawns. 0.8 is a fifth smaller, 1.2 a fifth bigger.
 const FISH_STAT_DEFAULTS := {
 	"energy": 100.0,
 	"line_strength": 100.0,
 	"recharge_time": 2.0,
 	"reel_step": 6.0,
-	"initial_distance": 160.0,
+	"initial_distance": 50.0,
 	"lateral_speed": 110.0,
+	"fish_size": 1.0,
 }
 ## key -> [min, max, step] for the FISH TABLE editor's number boxes.
 const FISH_STAT_LIMITS := {
@@ -147,8 +156,9 @@ const FISH_STAT_LIMITS := {
 	"line_strength": [1.0, 1000.0, 1.0],
 	"recharge_time": [0.1, 30.0, 0.1],
 	"reel_step": [0.5, 200.0, 0.5],
-	"initial_distance": [20.0, 2000.0, 10.0],
+	"initial_distance": [0.0, 500.0, 5.0],
 	"lateral_speed": [0.0, 1000.0, 5.0],
+	"fish_size": [0.3, 3.0, 0.1],
 }
 ## The order the boxes appear in, and the caption on each. Kept to one short word each:
 ## all six share a single line with the name, rate and scale, so there is no room for
@@ -399,6 +409,12 @@ static func fish_stats(species: String) -> Dictionary:
 		var limits: Array = FISH_STAT_LIMITS[key]
 		out[key] = clampf(value, float(limits[0]), float(limits[1]))
 	return out
+
+
+## True when this species is hooked as one of the BIG silhouettes rather than the small
+## ones -- the `big` tick on its FISH TABLE row. Species-wide, like every fish stat.
+static func species_big_fish(species: String) -> bool:
+	return bool(species_info(species).get("big", false))
 
 
 ## A species' size multiplier: its registry `scale`, else 1.

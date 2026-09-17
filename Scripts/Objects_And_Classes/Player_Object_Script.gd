@@ -21,6 +21,10 @@ const INTERACT_GROUPS := ["opponents", "npcs", "pokemon"]
 var current_direction: String = "down"
 var is_moving: bool = false
 var can_move: bool = true
+## Lets the mouse wheel keep zooming while the player is locked. Set by the fishing
+## minigame, which freezes movement for a minute at a time and still wants the player to
+## be able to pull the camera in on the bobber. Nothing else should set it.
+var zoom_while_locked: bool = false
 
 # All interactables currently overlapping the InteractionArea (opponents + npcs)
 var _nearby_candidates: Array = []
@@ -236,7 +240,7 @@ func _unhandled_input(event):
 			# loaded map. Scroll events fall THROUGH those sub-menu Controls to this _unhandled_input, so
 			# without this guard scrolling a card/deck list zoomed the map underneath, only visible on
 			# return. Movement keys were already gated on can_move; the zoom was not.
-			if not can_move:
+			if not can_move and not zoom_while_locked:
 				return
 			if event.button_index == MOUSE_BUTTON_WHEEL_UP:
 				camera.zoom = (camera.zoom + Vector2(0.05, 0.05)).clamp(_widest_zoom, Vector2(10, 10))

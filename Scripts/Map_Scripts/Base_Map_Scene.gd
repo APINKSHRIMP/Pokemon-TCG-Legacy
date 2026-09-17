@@ -301,6 +301,11 @@ func _open_menu_overlay() -> void:
 	GameState.save_current_location(scene_path, _player.position)
 	SoundManagerScript.stop_bgm()
 	_player.lock_movement()
+	# Pause means pause: NPCs stop walking their patrols, overworld Pokemon stop moving
+	# and crying, a fishing cast holds where it is and the sea fades out. Undone in
+	# _close_menu_overlay(); a scene change out of the menu instead clears it in
+	# MapManager.initialise().
+	MapManager.set_overworld_paused(true)
 
 	_menu_canvas_layer = CanvasLayer.new()
 	_menu_canvas_layer.layer = 10
@@ -337,6 +342,7 @@ func _close_menu_overlay() -> void:
 	# the moment the overlay closes in place, so drop it here.
 	if GameState.has_menu_return_state and GameState.menu_return_scene_path == get_scene_path():
 		GameState.clear_menu_return_state()
+	MapManager.set_overworld_paused(false)
 	_player.unlock_movement()
 	var bgm := get_bgm_path()
 	if bgm != "":

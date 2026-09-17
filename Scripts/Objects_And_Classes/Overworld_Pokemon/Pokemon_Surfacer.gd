@@ -120,6 +120,11 @@ var _art_top_row: float = 0.0
 var _splashed: bool = false
 
 
+## Under water at spawn: it is lit in _template_process() as it surfaces instead.
+func glow_on_spawn() -> bool:
+	return false
+
+
 func _template_ready() -> void:
 	z_as_relative = false
 	z_index = Z
@@ -186,6 +191,10 @@ func _template_process(delta: float) -> void:
 			if _time >= rise_delay and not _splashed:
 				_splashed = true
 				_splash()   # breaking the surface
+				# A Chinchou's lure lights up as it breaks the surface, not while it is
+				# still a shape under the water -- which is why this template opts out of
+				# the base class's spawn-time glow.
+				PokemonGlow.attach(self, sprite, species, self)
 			set_clip_rows(ceili(_max_rows * rise_t))
 			if rise_t >= 1.0 and _reveal >= 1.0:
 				_next(Phase.DRIFT)

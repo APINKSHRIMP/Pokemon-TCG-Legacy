@@ -185,19 +185,23 @@ var bgm_player: AudioStreamPlayer = null
 var _current_bgm_path: String = ""
 
 # --- SFX: play a preloaded AudioStream as a one-shot ---
-func play_sfx(sound: AudioStream) -> void:
+# `pitch` scales pitch AND tempo together, which is what a "random pitch/tempo wobble"
+# means for a one-shot -- the fishing fight rolls one per splash so the same two files
+# never sound like a loop.
+func play_sfx(sound: AudioStream, pitch: float = 1.0) -> void:
 	var player := AudioStreamPlayer.new()
 	add_child(player)
 	player.stream = sound
 	player.bus = SFX_BUS
+	player.pitch_scale = maxf(0.01, pitch)
 	player.play()
 	player.finished.connect(player.queue_free)
 
 # --- SFX: load from a res:// path and play as a one-shot ---
-func play_sfx_from_path(path: String) -> void:
+func play_sfx_from_path(path: String, pitch: float = 1.0) -> void:
 	var stream = load(path)
 	if stream:
-		play_sfx(stream)
+		play_sfx(stream, pitch)
 	else:
 		print("SoundManager: Could not load SFX at: ", path)
 
@@ -256,9 +260,25 @@ const CRY_DIR := "res://Audio/Cries/"
 
 var _cry_player: AudioStreamPlayer = null
 
+# How long this species' cry runs for, in seconds, or 0 when it has not got one. For
+# lining something up with the end of a cry -- the fishing minigame's catch jingle waits
+# on it.
+func cry_length(species: String) -> float:
+	var path := CRY_DIR + species + ".ogg"
+	if not ResourceLoader.exists(path):
+		return 0.0
+	var stream = load(path)
+	return stream.get_length() if stream != null else 0.0
+
+
 # `species` is the sprite basename, e.g. "278_Wingull" -> res://Audio/Cries/278_Wingull.ogg.
 # Returns true if the cry started.
 func play_cry(species: String) -> bool:
+	# The main menu pauses the overworld: nothing out there should still be calling out
+	# from behind the menu. The Pokemon themselves are frozen too, so this is the safety
+	# net for any other caller (a cry fired from an interaction, the fishing catch).
+	if MapManager.overworld_paused:
+		return false
 	# is_instance_valid as well as null: the match outro frees every AudioStreamPlayer child.
 	if _cry_player != null and is_instance_valid(_cry_player) and _cry_player.playing:
 		return false
@@ -279,6 +299,13 @@ func play_cry(species: String) -> bool:
 	_cry_player.stream = stream
 	_cry_player.play()
 	return true
+
+
+# Cuts a cry that is still sounding. Used when the overworld pauses under the main menu,
+# so a cry that started a frame before the menu opened does not carry on over it.
+func stop_cry() -> void:
+	if _cry_player != null and is_instance_valid(_cry_player):
+		_cry_player.stop()
 
 
 # --- BGM: play background music from a res:// path ---
@@ -303,6 +330,7 @@ func play_bgm(path: String, loop: bool = true) -> void:
 		bgm_player.stream.loop = true
 	
 	_current_bgm_path = path
+	_apply_bgm_duck()
 	bgm_player.play()
 
 
@@ -360,6 +388,54 @@ func list_battle_bgm() -> Array[String]:
 		if is_battle_bgm(n):
 			out.append(n)
 	return out
+
+# ─── BGM ducking ─────────────────────────────────────────────────────────────
+#
+# A multiplier on the CURRENT track only, applied to bgm_player.volume_db and NOT to the
+# Music bus -- the bus carries the player's own music slider (GameState.set_music_volume)
+# and must never be stomped by a gameplay effect.
+#
+# fade_bgm(0.0, 2.0) takes two seconds to silence, fade_bgm(1.0, 1.0) one second to come
+# back. The level is remembered across a play_bgm(), so a track that starts while the
+# music is ducked starts ducked; anything that ducks must fade back when it is done.
+
+const BGM_SILENT_DB := -60.0
+
+var _bgm_duck: float = 1.0
+var _bgm_duck_target: float = 1.0
+var _bgm_duck_rate: float = 0.0
+var _bgm_duck_delay: float = 0.0
+
+
+## Ramp the current track to `target_linear` (0 = silent, 1 = full) over `seconds`, after
+## waiting `delay` first. The delay is what keeps a chain-fisher's music down: each cast
+## starts a new fade to 0 with no delay, which cancels the pending fade back up.
+func fade_bgm(target_linear: float, seconds: float, delay: float = 0.0) -> void:
+	_bgm_duck_target = clampf(target_linear, 0.0, 1.0)
+	_bgm_duck_delay = maxf(0.0, delay)
+	if seconds <= 0.0 and _bgm_duck_delay <= 0.0:
+		_bgm_duck = _bgm_duck_target
+		_bgm_duck_rate = 0.0
+		_apply_bgm_duck()
+		return
+	_bgm_duck_rate = 1.0 / maxf(0.01, seconds)
+
+
+func _process(delta: float) -> void:
+	if is_equal_approx(_bgm_duck, _bgm_duck_target):
+		return
+	if _bgm_duck_delay > 0.0:
+		_bgm_duck_delay -= delta
+		return
+	_bgm_duck = move_toward(_bgm_duck, _bgm_duck_target, _bgm_duck_rate * delta)
+	_apply_bgm_duck()
+
+
+func _apply_bgm_duck() -> void:
+	if bgm_player == null or not is_instance_valid(bgm_player):
+		return
+	bgm_player.volume_db = BGM_SILENT_DB if _bgm_duck <= 0.001 else linear_to_db(_bgm_duck)
+
 
 # --- BGM: stop and free the current BGM player ---
 func stop_bgm() -> void:

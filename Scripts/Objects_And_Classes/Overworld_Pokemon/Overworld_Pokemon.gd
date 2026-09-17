@@ -107,6 +107,17 @@ func _ready() -> void:
 	add_child(sprite)
 	_template_ready()
 	_apply_region()
+	# The handful of species that carry a light get one here, so a firefly glows whatever
+	# template it is spawned under. It follows the SPRITE, not the node, so a flyer's bob
+	# and a swinging bug's swing carry it. PokemonGlow returns null for everything else.
+	if glow_on_spawn():
+		PokemonGlow.attach(self, sprite, species, self)
+
+
+## False while a template wants to light its own Pokémon later than spawn -- the
+## surfacing one, which is under water to start with and lights up as it breaks through.
+func glow_on_spawn() -> bool:
+	return true
 
 
 func _process(delta: float) -> void:

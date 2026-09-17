@@ -217,95 +217,99 @@
       "table": [
         {
           "species": "129_Magikarp",
-          "percent": 1
+          "percent": 10
         },
         {
           "species": "130_Gyarados",
-          "percent": 99
+          "percent": 1
+        },
+        {
+          "species": "147_Dratini",
+          "percent": 3
+        },
+        {
+          "species": "148_Dragonair",
+          "percent": 1
+        },
+        {
+          "species": "779_Bruxish",
+          "percent": 15
+        },
+        {
+          "species": "117_Seadra",
+          "percent": 10
+        },
+        {
+          "species": "230_Kingdra",
+          "percent": 5
+        },
+        {
+          "species": "116_Horsea",
+          "percent": 25
+        },
+        {
+          "species": "692_Clauncher",
+          "percent": 25
+        },
+        {
+          "species": "693_Clawitzer",
+          "percent": 5
         }
       ]
     },
     "Afternoon": {
       "table": [
         {
-          "species": "129_Magikarp",
-          "percent": 35
-        },
-        {
-          "species": "118_Goldeen",
-          "percent": 20
-        },
-        {
-          "species": "116_Horsea",
-          "percent": 15
-        },
-        {
           "species": "072_Tentacool",
-          "percent": 15
+          "percent": 19
+        },
+        {
+          "species": "073_Tentacruel",
+          "percent": 5
+        },
+        {
+          "species": "211_Qwilfish",
+          "percent": 18
+        },
+        {
+          "species": "320_Wailmer",
+          "percent": 16
         },
         {
           "species": "223_Remoraid",
-          "percent": 10
+          "percent": 22
         },
         {
-          "species": "120_Staryu",
-          "percent": 4
+          "species": "224_Octillery",
+          "percent": 5
+        },
+        {
+          "species": "147_Dratini",
+          "percent": 3
+        },
+        {
+          "species": "148_Dragonair",
+          "percent": 1
+        },
+        {
+          "species": "129_Magikarp",
+          "percent": 10
         },
         {
           "species": "130_Gyarados",
           "percent": 1
-        },
-        {
-          "species": "350_Milotic",
-          "percent": 10
         }
       ]
     },
     "Evening": {
       "table": [
         {
-          "species": "129_Magikarp",
-          "percent": 35
+          "species": "369_Relicanth",
+          "percent": 15
         },
         {
-          "species": "118_Goldeen",
+          "species": "222_Corsola",
           "percent": 20
-        },
-        {
-          "species": "116_Horsea",
-          "percent": 15
-        },
-        {
-          "species": "072_Tentacool",
-          "percent": 15
-        },
-        {
-          "species": "223_Remoraid",
-          "percent": 10
-        },
-        {
-          "species": "120_Staryu",
-          "percent": 4
-        },
-        {
-          "species": "130_Gyarados",
-          "percent": 1
-        }
-      ]
-    },
-    "Night": {
-      "table": [
-        {
-          "species": "130_Gyarados",
-          "percent": 10
-        },
-        {
-          "species": "350_Milotic",
-          "percent": 10
-        },
-        {
-          "species": "121_Starmie",
-          "percent": 10
         },
         {
           "species": "367_Huntail",
@@ -316,8 +320,72 @@
           "percent": 10
         },
         {
-          "species": "457_Lumineon",
+          "species": "090_Shellder",
+          "percent": 25
+        },
+        {
+          "species": "091_Cloyster",
+          "percent": 5
+        },
+        {
+          "species": "147_Dratini",
+          "percent": 3
+        },
+        {
+          "species": "148_Dragonair",
+          "percent": 1
+        },
+        {
+          "species": "129_Magikarp",
           "percent": 10
+        },
+        {
+          "species": "130_Gyarados",
+          "percent": 1
+        }
+      ]
+    },
+    "Night": {
+      "table": [
+        {
+          "species": "690_Skrelp",
+          "percent": 25
+        },
+        {
+          "species": "691_Dragalge",
+          "percent": 5
+        },
+        {
+          "species": "456_Finneon",
+          "percent": 25
+        },
+        {
+          "species": "457_Lumineon",
+          "percent": 5
+        },
+        {
+          "species": "170_Chinchou",
+          "percent": 25
+        },
+        {
+          "species": "171_Lanturn",
+          "percent": 5
+        },
+        {
+          "species": "147_Dratini",
+          "percent": 3
+        },
+        {
+          "species": "148_Dragonair",
+          "percent": 1
+        },
+        {
+          "species": "129_Magikarp",
+          "percent": 5
+        },
+        {
+          "species": "130_Gyarados",
+          "percent": 1
         }
       ]
     }

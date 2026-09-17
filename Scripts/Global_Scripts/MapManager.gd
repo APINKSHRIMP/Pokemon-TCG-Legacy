@@ -309,6 +309,9 @@ func initialise(
 	cutscene_speaker = {}
 	# The old scene's fishing sequence died with it.
 	_fishing = null
+	# A fresh map is never paused: the flag belongs to a menu overlay over the OLD
+	# map, and a scene change out of that menu never runs _close_menu_overlay().
+	overworld_paused = false
 
 	_build_message_box()
 	if not GameState.returning_from_battle:
@@ -467,6 +470,43 @@ func capture_actor_positions() -> void:
 			# otherwise the restored position is undone by a reset movement state.
 			if child.has_method("capture_movement_state"):
 				_actor_movement[child.get_meta("pos_key")] = child.capture_movement_state()
+
+# ============================================================
+# OVERWORLD PAUSE -- the main menu overlay
+# ============================================================
+## True while the main menu is open over a still-loaded map. The menu overlay leaves the
+## map in the tree, so without this everything under it carried on: NPCs kept walking
+## their patrols, Pokemon kept moving and crying, and the sea kept washing. Pausing these
+## branches rather than the whole SceneTree keeps the menu itself (and its tweens) alive.
+##
+## Set by BaseMapScene when the overlay opens and closes, and cleared by initialise() in
+## case the menu led to a scene change instead.
+var overworld_paused: bool = false
+
+## Freezes/unfreezes every overworld branch: NPCs and opponents, overworld Pokemon (which
+## stops their cries with them, since the cry timer lives in their _process) and a running
+## fishing cast. SoundManagerScript.play_cry() also refuses outright while paused, so a
+## cry from anywhere else cannot slip through, and any cry already sounding is cut.
+func set_overworld_paused(paused: bool) -> void:
+	overworld_paused = paused
+	var mode: Node.ProcessMode = Node.PROCESS_MODE_DISABLED if paused else Node.PROCESS_MODE_INHERIT
+	if _opponents_container != null and is_instance_valid(_opponents_container):
+		_opponents_container.process_mode = mode
+	var map_root: Node = null
+	if _player != null and is_instance_valid(_player):
+		map_root = _player.get_parent()
+	if map_root != null:
+		for branch_name in ["OVERWORLD_POKEMON", "FISHING"]:
+			var branch: Node = map_root.get_node_or_null(NodePath(branch_name))
+			if branch != null and is_instance_valid(branch):
+				branch.process_mode = mode
+		# The sea ambience is NOT frozen with the rest -- the zone keeps processing so it
+		# can fade the water out under the menu and back in on the way out.
+		var zone: FishingZone = FishingZone.find_in(map_root)
+		if zone != null and is_instance_valid(zone):
+			zone.set_ambience_paused(paused)
+	if paused:
+		SoundManagerScript.stop_cry()
 
 # ISSUE #55: hard-stop every overworld actor (opponents + NPCs live in the opponents container) plus
 # the player so nothing keeps wandering during the fade-out between accepting a battle and the intro.

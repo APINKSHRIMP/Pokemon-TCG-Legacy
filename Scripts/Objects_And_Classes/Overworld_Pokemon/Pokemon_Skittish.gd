@@ -75,6 +75,8 @@ const WATER_FADE_ROWS := 8.0
 const WATER_ABOVE_TINT := 0.0
 const WATER_TINT_ROWS := 8.0
 ## A bigger, faster burst than a surfacing Pokemon's -- this one lands in the water.
+## The fishing bobber's plop, reused for anything that goes into the sea.
+const WATER_SPLASH_SFX := "res://Audio/SFX/FishBobberSplash.ogg"
 const WATER_SPLASH_COUNT := 30
 const WATER_SPLASH_SPEED := 1.3
 ## The shadow under it in mid-air: half-width and half-height in world px (before the
@@ -363,6 +365,10 @@ func _enter_water() -> void:
 	PixelBurst.fire(get_parent(), Vector2(global_position.x, _water_y),
 			PokemonSurfacer.SPLASH_COLOURS, WATER_SPLASH_COUNT, WATER_SPLASH_SPEED,
 			cell.x * draw_scale() * 0.5, Z + 1)
+	WaterRipples.fire(get_parent(), Vector2(global_position.x, _water_y),
+			cell.x * draw_scale() * 0.5, 1.0, Z + 1)
+	if ResourceLoader.exists(WATER_SPLASH_SFX):
+		SoundManagerScript.play_sfx_from_path(WATER_SPLASH_SFX)
 
 
 ## Tell the shader which sprite row the surface is cutting through right now. The sprite

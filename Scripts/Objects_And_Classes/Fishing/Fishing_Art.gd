@@ -14,31 +14,48 @@ const SHEET_PATH := "res://Image_Assets/Assorted_Extras/Fishing.png"
 const ROD_VERTICAL_PATH := "res://Image_Assets/Assorted_Extras/FishingRodVertical.png"
 const ROD_HORIZONTAL_PATH := "res://Image_Assets/Assorted_Extras/FishingRodHorizontal.png"
 
-## Bobber cast strip: 7 frames, frame 0 fully above water, frame 6 all but gone.
-const BOBBER_ORIGIN := Vector2i(128, 16)
-const BOBBER_CELL := Vector2i(16, 16)
-const BOBBER_FRAMES := 7
-
-## The exclamation mark. Clipped to 8 rows on purpose: a pink heart sits at y=8-14 and a
-## red X at y=16-23 inside the same 16x16 cell.
-const EXCLAMATION_RECT := Rect2i(240, 0, 8, 8)
+## Bobber table: 14 frames in two rows of 7, at x = 256 + 16 * column.
+##
+##   frames 0-6   (the user's sprites 1-7)  the top row: the bobber sinking to nothing
+##   frames 7-13  (the user's sprites 8-14) the bottom row, the same again
+##
+## The two rows are all but identical by design -- the cast plunges down the first, comes
+## back up the second and then bobs inside its first few frames. The rects are MEASURED
+## off the art (the rows sit at y 8 and y 32, each 21 px tall, 16 px apart across); an
+## re-export that moves them has to move these too.
+##
+## Every frame's BOTTOM pixel row is the waterline: the art sinks by moving DOWN inside
+## its cell and being cut off at the bottom edge. That is why the two rows are different
+## heights, and why the bobber hangs off bobber_anchor() (its waterline) rather than off
+## its top -- anchoring the top made the sink read as "the bottom pixel is being deleted".
+const BOBBER_COLUMNS := 7
+const BOBBER_FRAMES := 14
+const BOBBER_ROW_RECTS: Array[Rect2i] = [
+	Rect2i(256, 8, 16, 21),
+	Rect2i(256, 32, 16, 21),
+]
 
 ## Small fish. 0/1/2 are the straight swim cycle, 3/4 the curved "darting" pair.
+## Every rect here is the sprite's exact opaque bounding box, measured off the sheet --
+## a rect with slack in it drags a neighbouring frame's pixels in once the sprite is
+## rotated, which is what "the fish shows two different sprites" was.
 const FISH_SMALL_RECTS: Array[Rect2i] = [
 	Rect2i(5, 36, 5, 18),
 	Rect2i(21, 36, 5, 17),
 	Rect2i(37, 36, 5, 17),
-	Rect2i(0, 61, 10, 13),
-	Rect2i(19, 61, 11, 13),
+	Rect2i(0, 61, 9, 13),
+	Rect2i(22, 61, 9, 13),
 ]
 
-## Big fish silhouettes -- not used yet (Phase 2's big/small tick box), measured here so
-## the rects do not have to be found again.
+## Big fish silhouettes, sitting directly to the right of the small ones. There are only
+## FOUR: 0/1/2 are the straight swim cycle and 3 is the curved dart, and the other half
+## of the cycle is the same frames MIRRORED (see the big frame lists in
+## Fishing_Minigame.gd). Bounding boxes, same as above.
 const FISH_BIG_RECTS: Array[Rect2i] = [
-	Rect2i(48, 33, 13, 31),
-	Rect2i(64, 33, 13, 31),
-	Rect2i(80, 33, 13, 31),
-	Rect2i(105, 36, 14, 43),
+	Rect2i(49, 33, 13, 46),
+	Rect2i(65, 33, 13, 46),
+	Rect2i(81, 33, 13, 46),
+	Rect2i(100, 36, 19, 37),
 ]
 
 static var _sheet_image_cache: Image = null
@@ -53,10 +70,6 @@ static var _anchors: Dictionary = {}
 
 static func bobber_texture(frame: int) -> Texture2D:
 	return _frame_texture(_bobber_rect(frame))
-
-
-static func exclamation_texture() -> Texture2D:
-	return _frame_texture(EXCLAMATION_RECT)
 
 
 static func fish_texture(frame: int, big: bool = false) -> Texture2D:
@@ -94,14 +107,25 @@ static func rod_size(vertical: bool) -> Vector2:
 # ============================================================
 # All returned as PIXEL CENTRES relative to the frame's own top-left corner.
 
-## Centre of the bobber's top-most orange pixel -- where the line ties on.
+## Centre of the bobber's top-most pixel -- the antenna tip, where the line ties on.
 static func bobber_top(frame: int) -> Vector2:
-	return _anchor("bt%d" % frame, _bobber_rect(frame), "top_orange")
+	return _anchor("bt%d" % frame, _bobber_rect(frame), "top_any")
 
 
-## Centre of the bobber's bottom-most submerged (non-orange) pixel -- what a fish aims at.
-static func bobber_bottom(frame: int) -> Vector2:
-	return _anchor("bb%d" % frame, _bobber_rect(frame), "bottom_dark")
+## The bobber's WATERLINE: the bottom edge of the frame, on the tie-on column. This is
+## the bobber's node origin, so a sinking frame stays put at the surface instead of
+## hanging off a top that is moving down inside the cell. Sharing bobber_top()'s x means
+## the line ties on at exactly the sprite's own x, which is what stopped it drawing half
+## a pixel to one side of the antenna.
+static func bobber_anchor(frame: int) -> Vector2:
+	return Vector2(bobber_top(frame).x, float(_bobber_rect(frame).size.y))
+
+
+## Centre of the bobber's BOTTOM-most pixel -- the end of the line, which is what a
+## caught Pokémon hangs off. Not the same as bobber_anchor(): a frame that is still
+## riding high has empty rows between its art and the waterline.
+static func bobber_low(frame: int) -> Vector2:
+	return _anchor("bl%d" % frame, _bobber_rect(frame), "bottom_any")
 
 
 ## Centre of the fish's top-most pixel: its head, and its rotation origin.
@@ -127,8 +151,9 @@ static func rod_pivot(vertical: bool) -> Vector2:
 
 static func _bobber_rect(frame: int) -> Rect2i:
 	var i := clampi(frame, 0, BOBBER_FRAMES - 1)
-	return Rect2i(BOBBER_ORIGIN.x + i * BOBBER_CELL.x, BOBBER_ORIGIN.y,
-			BOBBER_CELL.x, BOBBER_CELL.y)
+	var row: Rect2i = BOBBER_ROW_RECTS[i / BOBBER_COLUMNS]
+	return Rect2i(row.position.x + (i % BOBBER_COLUMNS) * row.size.x, row.position.y,
+			row.size.x, row.size.y)
 
 
 static func _fish_rect(frame: int, big: bool) -> Rect2i:
@@ -156,6 +181,9 @@ static func _frame_texture(rect: Rect2i) -> Texture2D:
 	var atlas := AtlasTexture.new()
 	atlas.atlas = load(SHEET_PATH)
 	atlas.region = Rect2(rect.position.x, rect.position.y, rect.size.x, rect.size.y)
+	# Without this a ROTATED sprite samples just outside its region and drags the
+	# neighbouring frame in along one edge -- the "fish shows two sprites at once" bug.
+	atlas.filter_clip = true
 	_textures[key] = atlas
 	return atlas
 
@@ -241,8 +269,8 @@ static func _scan(img: Image, mode: String, rect: Rect2i) -> Vector2:
 			if not want_bottom:
 				break
 	if found_y < 0:
-		# Nothing matched -- frame 6 of the bobber is a single orange pixel, so it has no
-		# dark part at all. Use the bottom-most opaque pixel instead of giving up.
+		# Nothing matched -- the last bobber frame of a row is a couple of dark pixels, so
+		# it has no orange part at all. Use the bottom-most opaque pixel instead of giving up.
 		if want_bottom and mode != "bottom_any":
 			return _scan(img, "bottom_any", rect)
 		return Vector2(rect.size.x, rect.size.y) * 0.5

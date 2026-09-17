@@ -85,7 +85,7 @@
         },
         {
           "species": "269_Dustox",
-          "percent": 40,
+          "percent": 35,
           "min": 1,
           "max": 5
         },
@@ -97,9 +97,15 @@
         },
         {
           "species": "414_Mothim",
-          "percent": 40,
+          "percent": 35,
           "min": 1,
           "max": 5
+        },
+        {
+          "species": "164_Noctowl",
+          "percent": 10,
+          "min": 1,
+          "max": 3
         }
       ]
     },
@@ -115,7 +121,7 @@
         },
         {
           "species": "041_Zubat",
-          "percent": 30,
+          "percent": 25,
           "min": 1,
           "max": 5
         },
@@ -133,7 +139,7 @@
         },
         {
           "species": "164_Noctowl",
-          "percent": 30,
+          "percent": 23,
           "min": 1,
           "max": 3
         },
@@ -142,6 +148,18 @@
           "percent": 5,
           "min": 1,
           "max": 1
+        },
+        {
+          "species": "527_Woobat",
+          "percent": 25,
+          "min": 1,
+          "max": 3
+        },
+        {
+          "species": "528_Swoobat",
+          "percent": 10,
+          "min": 1,
+          "max": 3
         }
       ]
     }

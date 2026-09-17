@@ -78,7 +78,7 @@ size = Vector2(30, 649.5)
 size = Vector2(22.75, 822.625)
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_v1hrq"]
-size = Vector2(406, 20)
+size = Vector2(406, 26)
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_m7cm3"]
 size = Vector2(231.75, 13)
@@ -278,7 +278,10 @@ size = Vector2(102, 20)
 size = Vector2(119, 67)
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_fish1"]
-size = Vector2(732, 40.5)
+size = Vector2(45.5, 28.625)
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_o32cx"]
+size = Vector2(682, 419)
 
 [node name="CELESTE HARBOUR" type="Node2D" unique_id=332229534]
 script = ExtResource("1_7oril")
@@ -328,7 +331,12 @@ tile_set = ExtResource("2_bf13f")
 
 [node name="Sea Rocks" type="TileMapLayer" parent="TILE_MAPS/TERRAIN" unique_id=1191279107]
 position = Vector2(-1, 0)
-tile_map_data = PackedByteArray("AAAPAHIAAAA0ADgAABAPAHMAAAA0ADkAABAPAHQAAAA0ADoAABAQAHIAAAAzADgAABAQAHMAAAAzADkAABAQAHQAAAAzADoAABARAHIAAAAyADgAABARAHMAAAAyADkAABARAHQAAAAyADoAABCqAFkAAAAyADgAAACqAFoAAAAyADkAAACqAFsAAAAyADoAAACrAFgAAAAzADcAAACrAFkAAAAzADgAAACrAFoAAAAzADkAAACrAFsAAAAzADoAAACsAFkAAAA0ADgAAACsAFoAAAA0ADkAAACsAFsAAAA0ADoAAABnAFwAAAAzADcAABBoAF0AAAAyADgAABBnAF0AAAAzADgAABBmAF0AAAA0ADgAABBoAF4AAAAyADkAABBnAF4AAAAzADkAABBmAF4AAAA0ADkAABBoAF8AAAAyADoAABBnAF8AAAAzADoAABBmAF8AAAA0ADoAABDg/1cAAAAzADcAABDh/1gAAAAyADgAABDg/1gAAAAzADgAABDf/1gAAAA0ADgAABDh/1kAAAAyADkAABDg/1kAAAAzADkAABDf/1kAAAA0ADkAABDh/1oAAAAyADoAABDg/1oAAAAzADoAABDf/1oAAAA0ADoAABA=")
+tile_map_data = PackedByteArray("AAAPAHIAAAA0ADgAABAPAHMAAAA0ADkAABAPAHQAAAA0ADoAABAQAHIAAAAzADgAABAQAHMAAAAzADkAABAQAHQAAAAzADoAABARAHIAAAAyADgAABARAHMAAAAyADkAABARAHQAAAAyADoAABCqAFkAAAAyADgAAACqAFoAAAAyADkAAACqAFsAAAAyADoAAACrAFgAAAAzADcAAACrAFkAAAAzADgAAACrAFoAAAAzADkAAACrAFsAAAAzADoAAACsAFkAAAA0ADgAAACsAFoAAAA0ADkAAACsAFsAAAA0ADoAAABnAFwAAAAzADcAABBoAF0AAAAyADgAABBnAF0AAAAzADgAABBmAF0AAAA0ADgAABBoAF4AAAAyADkAABBnAF4AAAAzADkAABBmAF4AAAA0ADkAABBoAF8AAAAyADoAABBnAF8AAAAzADoAABBmAF8AAAA0ADoAABDB/0sAAAA0ADgAABDB/0wAAAA0ADkAABDB/00AAAA0ADoAABDC/0oAAAAzADcAABDC/0sAAAAzADgAABDC/0wAAAAzADkAABDC/00AAAAzADoAABDD/0sAAAAyADgAABDD/0wAAAAyADkAABDD/00AAAAyADoAABA=")
+tile_set = ExtResource("2_bf13f")
+
+[node name="Sea Rocks2" type="TileMapLayer" parent="TILE_MAPS/TERRAIN" unique_id=526367253]
+position = Vector2(-1, 0)
+tile_map_data = PackedByteArray("AAAPAHIAAAA0ADgAABAPAHMAAAA0ADkAABAPAHQAAAA0ADoAABAQAHIAAAAzADgAABAQAHMAAAAzADkAABAQAHQAAAAzADoAABARAHIAAAAyADgAABARAHMAAAAyADkAABARAHQAAAAyADoAABCqAFkAAAAyADgAAACqAFoAAAAyADkAAACqAFsAAAAyADoAAACrAFgAAAAzADcAAACrAFkAAAAzADgAAACrAFoAAAAzADkAAACrAFsAAAAzADoAAACsAFkAAAA0ADgAAACsAFoAAAA0ADkAAACsAFsAAAA0ADoAAABnAFwAAAAzADcAABBoAF0AAAAyADgAABBnAF0AAAAzADgAABBmAF0AAAA0ADgAABBoAF4AAAAyADkAABBnAF4AAAAzADkAABBmAF4AAAA0ADkAABBoAF8AAAAyADoAABBnAF8AAAAzADoAABBmAF8AAAA0ADoAABDn/1gAAAA0ADgAABDn/1kAAAA0ADkAABDn/1oAAAA0ADoAABDo/1cAAAAzADcAABDo/1gAAAAzADgAABDo/1kAAAAzADkAABDo/1oAAAAzADoAABDp/1gAAAAyADgAABDp/1kAAAAyADkAABDp/1oAAAAyADoAABA=")
 tile_set = ExtResource("2_bf13f")
 
 [node name="Grass" type="TileMapLayer" parent="TILE_MAPS/TERRAIN" unique_id=1695474527]
@@ -1839,10 +1847,10 @@ tile_set = ExtResource("2_bf13f")
 
 [node name="SSANNE" type="TextureRect" parent="TILE_MAPS/JETTY2" unique_id=387986581]
 z_index = 11
-offset_left = 652.0
-offset_top = 1643.0
-offset_right = 905.0
-offset_bottom = 1740.0
+offset_left = 551.0
+offset_top = 1637.0
+offset_right = 884.486
+offset_bottom = 1764.8583
 scale = Vector2(3.105, 3.105)
 texture = ExtResource("3_bf13f")
 
@@ -3871,8 +3879,8 @@ script = ExtResource("3_u8po5")
 [node name="LighthouseCone" type="PointLight2D" parent="LIGHTS/LighthouseLight" unique_id=1236229627]
 position = Vector2(-25.000034, 40.999996)
 scale = Vector2(0.8125579, 0.9688423)
-color = Color(5.912981, 5.7696743, 1.6137719, 0.08235294)
-energy = 2.03
+color = Color(5.912981, 5.7798786, 1.6093352, 0.05882353)
+energy = 1.33
 texture = ExtResource("4_401pq")
 offset = Vector2(-0.38427734, 775.4363)
 
@@ -4458,7 +4466,7 @@ position = Vector2(-848.25, -482.375)
 shape = SubResource("RectangleShape2D_7w14o")
 
 [node name="Small bottom fence" type="CollisionShape2D" parent="Collision Objects/Fence and Walls" unique_id=1263588540]
-position = Vector2(-707, 902)
+position = Vector2(-707, 899)
 shape = SubResource("RectangleShape2D_v1hrq")
 
 [node name="House walls" type="CollisionShape2D" parent="Collision Objects/Fence and Walls" unique_id=631102869]
@@ -6390,13 +6398,21 @@ points = PackedVector2Array(-271, 1703, -597, 1703, -597, 1487, -596, 1727, -714
 script = ExtResource("99_fishzone")
 
 [node name="Fish_Down" type="CollisionShape2D" parent="FishingAreas" unique_id=771001002]
-position = Vector2(-840, 2733)
+position = Vector2(-841, 2733.3125)
 shape = SubResource("RectangleShape2D_fish1")
 
-[node name="Fish_Down3" type="CollisionShape2D" parent="FishingAreas" unique_id=2094343374]
-position = Vector2(-720, 2733)
+[node name="Fish_Down2" type="CollisionShape2D" parent="FishingAreas" unique_id=321453220]
+position = Vector2(-699, 2733)
 shape = SubResource("RectangleShape2D_fish1")
 
-[node name="Fish_Down2" type="CollisionShape2D" parent="FishingAreas" unique_id=714508886]
-position = Vector2(-602, 2740)
+[node name="Fish_Down3" type="CollisionShape2D" parent="FishingAreas" unique_id=1183911853]
+position = Vector2(-744, 2733)
 shape = SubResource("RectangleShape2D_fish1")
+
+[node name="Fish_Down4" type="CollisionShape2D" parent="FishingAreas" unique_id=1491557767]
+position = Vector2(-601, 2733)
+shape = SubResource("RectangleShape2D_fish1")
+
+[node name="Fishing_Zone" type="CollisionShape2D" parent="FishingAreas" unique_id=827081669]
+position = Vector2(-715, 3008.5)
+shape = SubResource("RectangleShape2D_o32cx")
