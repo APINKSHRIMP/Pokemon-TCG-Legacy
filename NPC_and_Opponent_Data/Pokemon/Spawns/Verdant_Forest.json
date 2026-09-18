@@ -13,7 +13,7 @@
       "table": [
         {
           "species": "165_Ledyba",
-          "percent": 30,
+          "percent": 35,
           "min": 1,
           "max": 5
         },
@@ -25,21 +25,15 @@
         },
         {
           "species": "012_Butterfree",
-          "percent": 25,
+          "percent": 30,
           "min": 1,
           "max": 3
         },
         {
           "species": "267_Beautifly",
-          "percent": 25,
+          "percent": 30,
           "min": 1,
           "max": 3
-        },
-        {
-          "species": "291_Ninjask",
-          "percent": 5,
-          "min": 1,
-          "max": 2
         }
       ]
     },
@@ -47,6 +41,60 @@
       "chance": 20,
       "interval": 5,
       "table": [
+        {
+          "species": "742_Cutiefly",
+          "percent": 25,
+          "min": 1,
+          "max": 3
+        },
+        {
+          "species": "015_Beedrill",
+          "percent": 30,
+          "min": 1,
+          "max": 3
+        },
+        {
+          "species": "269_Dustox",
+          "percent": 10,
+          "min": 1,
+          "max": 3
+        },
+        {
+          "species": "414_Mothim",
+          "percent": 10,
+          "min": 1,
+          "max": 3
+        },
+        {
+          "species": "291_Ninjask",
+          "percent": 20,
+          "min": 1,
+          "max": 3
+        },
+        {
+          "species": "743_Ribombee",
+          "percent": 5,
+          "min": 1,
+          "max": 1
+        }
+      ]
+    },
+    "Evening": {
+      "chance": 20,
+      "interval": 5,
+      "table": [
+        {
+          "species": "292_Shedinja",
+          "percent": 1,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "species": "164_Noctowl",
+          "percent": 30,
+          "min": 1,
+          "max": 3
+        },
         {
           "species": "313_Volbeat",
           "percent": 10,
@@ -60,50 +108,26 @@
           "max": 3
         },
         {
-          "species": "742_Cutiefly",
-          "percent": 10,
-          "min": 1,
-          "max": 3
-        },
-        {
-          "species": "015_Beedrill",
-          "percent": 10,
-          "min": 1,
-          "max": 3
-        }
-      ]
-    },
-    "Evening": {
-      "chance": 20,
-      "interval": 5,
-      "table": [
-        {
-          "species": "015_Beedrill",
-          "percent": 19,
-          "min": 1,
-          "max": 3
-        },
-        {
-          "species": "269_Dustox",
-          "percent": 35,
+          "species": "041_Zubat",
+          "percent": 22,
           "min": 1,
           "max": 5
         },
         {
-          "species": "292_Shedinja",
-          "percent": 1,
+          "species": "042_Golbat",
+          "percent": 2,
           "min": 1,
-          "max": 1
+          "max": 3
         },
         {
-          "species": "414_Mothim",
-          "percent": 35,
+          "species": "527_Woobat",
+          "percent": 22,
           "min": 1,
           "max": 5
         },
         {
-          "species": "164_Noctowl",
-          "percent": 10,
+          "species": "528_Swoobat",
+          "percent": 3,
           "min": 1,
           "max": 3
         }
@@ -121,13 +145,13 @@
         },
         {
           "species": "041_Zubat",
-          "percent": 25,
+          "percent": 20,
           "min": 1,
           "max": 5
         },
         {
           "species": "042_Golbat",
-          "percent": 10,
+          "percent": 5,
           "min": 1,
           "max": 3
         },
@@ -139,27 +163,39 @@
         },
         {
           "species": "164_Noctowl",
-          "percent": 23,
+          "percent": 15,
           "min": 1,
           "max": 3
         },
         {
           "species": "292_Shedinja",
-          "percent": 5,
+          "percent": 2,
           "min": 1,
           "max": 1
         },
         {
           "species": "527_Woobat",
-          "percent": 25,
+          "percent": 15,
+          "min": 1,
+          "max": 5
+        },
+        {
+          "species": "528_Swoobat",
+          "percent": 1,
           "min": 1,
           "max": 3
         },
         {
-          "species": "528_Swoobat",
-          "percent": 10,
+          "species": "313_Volbeat",
+          "percent": 20,
           "min": 1,
-          "max": 3
+          "max": 5
+        },
+        {
+          "species": "314_Illumise",
+          "percent": 20,
+          "min": 1,
+          "max": 5
         }
       ]
     }
@@ -7224,7 +7260,7 @@
     {
       "id": "swinging_bug_64",
       "template": "swinging_bug",
-      "at": [-336, 1700],
+      "at": [-556, 946],
       "group": "swinging_bug_1",
       "tables": {
         "Morning": {
@@ -7336,7 +7372,7 @@
     {
       "id": "swinging_bug_65",
       "template": "swinging_bug",
-      "at": [-327, 1524],
+      "at": [-581, 1583],
       "group": "swinging_bug_1",
       "tables": {
         "Morning": {
@@ -7448,7 +7484,7 @@
     {
       "id": "swinging_bug_66",
       "template": "swinging_bug",
-      "at": [-57, 1424],
+      "at": [-76, 1279],
       "group": "swinging_bug_1",
       "tables": {
         "Morning": {
@@ -7560,7 +7596,7 @@
     {
       "id": "swinging_bug_67",
       "template": "swinging_bug",
-      "at": [-307, 1360],
+      "at": [-440, 1577],
       "group": "swinging_bug_1",
       "tables": {
         "Morning": {
@@ -7672,7 +7708,7 @@
     {
       "id": "swinging_bug_68",
       "template": "swinging_bug",
-      "at": [-329, 1110],
+      "at": [-691, 1058],
       "group": "swinging_bug_1",
       "tables": {
         "Morning": {
@@ -7784,7 +7820,7 @@
     {
       "id": "swinging_bug_69",
       "template": "swinging_bug",
-      "at": [-84, 1148],
+      "at": [-265, 1037],
       "group": "swinging_bug_1",
       "tables": {
         "Morning": {
@@ -12822,136 +12858,6 @@
       }
     },
     {
-      "id": "skittish_1",
-      "template": "skittish",
-      "at": [-264, 1283],
-      "group": "skittish_1",
-      "flee": [
-        "left",
-        "right",
-        "up",
-        "down"
-      ],
-      "tables": {
-        "Morning": {
-          "chance": 5,
-          "table": [
-            {
-              "species": "161_Sentret",
-              "percent": 35
-            },
-            {
-              "species": "162_Furret",
-              "percent": 5
-            },
-            {
-              "species": "263_Zigzagoon",
-              "percent": 35
-            },
-            {
-              "species": "114_Tangela",
-              "percent": 15
-            },
-            {
-              "species": "427_Buneary",
-              "percent": 9
-            },
-            {
-              "species": "428_Lopunny",
-              "percent": 1
-            }
-          ]
-        },
-        "Afternoon": {
-          "chance": 5,
-          "table": [
-            {
-              "species": "056_Mankey",
-              "percent": 15
-            },
-            {
-              "species": "029_Nidoran_Female",
-              "percent": 15
-            },
-            {
-              "species": "032_Nidoran_Male",
-              "percent": 15
-            },
-            {
-              "species": "190_Aipom",
-              "percent": 15
-            },
-            {
-              "species": "114_Tangela",
-              "percent": 15
-            },
-            {
-              "species": "417_Pachirisu",
-              "percent": 5
-            }
-          ]
-        },
-        "Evening": {
-          "chance": 5,
-          "table": [
-            {
-              "species": "023_Ekans",
-              "percent": 40
-            },
-            {
-              "species": "056_Mankey",
-              "percent": 25
-            },
-            {
-              "species": "190_Aipom",
-              "percent": 15
-            },
-            {
-              "species": "057_Primeape",
-              "percent": 1
-            },
-            {
-              "species": "024_Arbok",
-              "percent": 2
-            },
-            {
-              "species": "096_Drowzee",
-              "percent": 17
-            }
-          ]
-        },
-        "Night": {
-          "chance": 2,
-          "table": [
-            {
-              "species": "096_Drowzee",
-              "percent": 28
-            },
-            {
-              "species": "097_Hypno",
-              "percent": 1
-            },
-            {
-              "species": "019_Rattata",
-              "percent": 40
-            },
-            {
-              "species": "020_Raticate",
-              "percent": 15
-            },
-            {
-              "species": "023_Ekans",
-              "percent": 15
-            },
-            {
-              "species": "024_Arbok",
-              "percent": 1
-            }
-          ]
-        }
-      }
-    },
-    {
       "id": "surfacing_1",
       "template": "surfacing",
       "at": [3207, 1514],
@@ -14090,14 +13996,8 @@
     {
       "id": "surfacing_9",
       "template": "surfacing",
-      "at": [105, 1182],
+      "at": [144, 1217],
       "group": "surfacing_1",
-      "region": [
-        49,
-        1153,
-        161,
-        1211
-      ],
       "tables": {
         "Morning": {
           "chance": 5,
@@ -14227,12 +14127,18 @@
             }
           ]
         }
-      }
+      },
+      "region": [
+        113,
+        1168,
+        174,
+        1266
+      ]
     },
     {
       "id": "skittish_2",
       "template": "skittish",
-      "at": [-207, 1101],
+      "at": [-198, 569],
       "group": "skittish_1",
       "flee": [
         "left",
@@ -18054,7 +17960,7 @@
     {
       "id": "bug_tree_27",
       "template": "bug_tree",
-      "at": [-54, 1672],
+      "at": [-743, 1501],
       "group": "bug_tree_1",
       "tables": {
         "Morning": {
@@ -18126,7 +18032,7 @@
     {
       "id": "bug_tree_28",
       "template": "bug_tree",
-      "at": [-63, 1456],
+      "at": [-802, 1585],
       "group": "bug_tree_1",
       "tables": {
         "Morning": {
@@ -18414,7 +18320,7 @@
     {
       "id": "bug_tree_32",
       "template": "bug_tree",
-      "at": [-334, 1728],
+      "at": [-503, 1730],
       "group": "bug_tree_1",
       "tables": {
         "Morning": {
@@ -19032,7 +18938,7 @@
     {
       "id": "skittish_21",
       "template": "skittish",
-      "at": [-306, 1685],
+      "at": [-740, 1467],
       "group": "skittish_21",
       "flee": [
         "right",
@@ -19258,7 +19164,7 @@
     {
       "id": "skittish_24",
       "template": "skittish",
-      "at": [-109, 1552],
+      "at": [-60, 1683],
       "group": "skittish_20",
       "flee": [
         "left",
@@ -19593,20 +19499,398 @@
           ]
         }
       }
+    },
+    {
+      "id": "skittish_1",
+      "template": "skittish",
+      "at": [-77, 1314],
+      "group": "skittish_20",
+      "flee": [
+        "left",
+        "down"
+      ],
+      "into_water": true,
+      "tables": {
+        "Morning": {
+          "chance": 5,
+          "table": [
+            {
+              "species": "194_Wooper",
+              "percent": 35
+            },
+            {
+              "species": "195_Quagsire",
+              "percent": 4
+            },
+            {
+              "species": "183_Marill",
+              "percent": 35
+            },
+            {
+              "species": "184_Azumarill",
+              "percent": 1
+            },
+            {
+              "species": "298_Azurill",
+              "percent": 25
+            }
+          ]
+        },
+        "Afternoon": {
+          "chance": 5,
+          "table": [
+            {
+              "species": "007_Squirtle",
+              "percent": 20
+            },
+            {
+              "species": "158_Totodile",
+              "percent": 48
+            },
+            {
+              "species": "054_Psyduck",
+              "percent": 30
+            },
+            {
+              "species": "055_Golduck",
+              "percent": 1
+            },
+            {
+              "species": "008_Wartortle",
+              "percent": 1
+            }
+          ]
+        },
+        "Evening": {
+          "chance": 5,
+          "table": [
+            {
+              "species": "656_Froakie",
+              "percent": 20
+            },
+            {
+              "species": "657_Frogadier",
+              "percent": 1
+            },
+            {
+              "species": "007_Squirtle",
+              "percent": 49
+            },
+            {
+              "species": "008_Wartortle",
+              "percent": 5
+            },
+            {
+              "species": "054_Psyduck",
+              "percent": 20
+            },
+            {
+              "species": "055_Golduck",
+              "percent": 5
+            }
+          ]
+        },
+        "Night": {
+          "chance": 5,
+          "table": [
+            {
+              "species": "536_Palpitoad",
+              "percent": 39
+            },
+            {
+              "species": "537_Seismitoad",
+              "percent": 1
+            },
+            {
+              "species": "656_Froakie",
+              "percent": 55
+            },
+            {
+              "species": "657_Frogadier",
+              "percent": 5
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "skittish_26",
+      "template": "skittish",
+      "at": [-235, 1127],
+      "group": "skittish_20",
+      "flee": [
+        "left",
+        "down"
+      ],
+      "into_water": true,
+      "tables": {
+        "Morning": {
+          "chance": 5,
+          "table": [
+            {
+              "species": "194_Wooper",
+              "percent": 35
+            },
+            {
+              "species": "195_Quagsire",
+              "percent": 4
+            },
+            {
+              "species": "183_Marill",
+              "percent": 35
+            },
+            {
+              "species": "184_Azumarill",
+              "percent": 1
+            },
+            {
+              "species": "298_Azurill",
+              "percent": 25
+            }
+          ]
+        },
+        "Afternoon": {
+          "chance": 5,
+          "table": [
+            {
+              "species": "007_Squirtle",
+              "percent": 20
+            },
+            {
+              "species": "158_Totodile",
+              "percent": 48
+            },
+            {
+              "species": "054_Psyduck",
+              "percent": 30
+            },
+            {
+              "species": "055_Golduck",
+              "percent": 1
+            },
+            {
+              "species": "008_Wartortle",
+              "percent": 1
+            }
+          ]
+        },
+        "Evening": {
+          "chance": 5,
+          "table": [
+            {
+              "species": "656_Froakie",
+              "percent": 20
+            },
+            {
+              "species": "657_Frogadier",
+              "percent": 1
+            },
+            {
+              "species": "007_Squirtle",
+              "percent": 49
+            },
+            {
+              "species": "008_Wartortle",
+              "percent": 5
+            },
+            {
+              "species": "054_Psyduck",
+              "percent": 20
+            },
+            {
+              "species": "055_Golduck",
+              "percent": 5
+            }
+          ]
+        },
+        "Night": {
+          "chance": 5,
+          "table": [
+            {
+              "species": "536_Palpitoad",
+              "percent": 39
+            },
+            {
+              "species": "537_Seismitoad",
+              "percent": 1
+            },
+            {
+              "species": "656_Froakie",
+              "percent": 55
+            },
+            {
+              "species": "657_Frogadier",
+              "percent": 5
+            }
+          ]
+        }
+      }
     }
   ],
   "fishing": {
     "Morning": {
-      "table": []
+      "table": [
+        {
+          "species": "060_Poliwag",
+          "percent": 20
+        },
+        {
+          "species": "061_Poliwhirl",
+          "percent": 3
+        },
+        {
+          "species": "062_Poliwrath",
+          "percent": 1
+        },
+        {
+          "species": "194_Wooper",
+          "percent": 20
+        },
+        {
+          "species": "195_Quagsire",
+          "percent": 5
+        },
+        {
+          "species": "186_Politoed",
+          "percent": 1
+        },
+        {
+          "species": "129_Magikarp",
+          "percent": 10
+        },
+        {
+          "species": "130_Gyarados",
+          "percent": 1
+        },
+        {
+          "species": "147_Dratini",
+          "percent": 3
+        },
+        {
+          "species": "148_Dragonair",
+          "percent": 1
+        },
+        {
+          "species": "183_Marill",
+          "percent": 15
+        },
+        {
+          "species": "184_Azumarill",
+          "percent": 3
+        },
+        {
+          "species": "298_Azurill",
+          "percent": 17
+        }
+      ]
     },
     "Afternoon": {
-      "table": []
+      "table": [
+        {
+          "species": "550_Basculin_Blue_Striped",
+          "percent": 10
+        },
+        {
+          "species": "550_Basculin_Red_Striped",
+          "percent": 10
+        },
+        {
+          "species": "270_Lotad",
+          "percent": 21
+        },
+        {
+          "species": "271_Lombre",
+          "percent": 5
+        },
+        {
+          "species": "272_Ludicolo",
+          "percent": 1
+        },
+        {
+          "species": "418_Buizel",
+          "percent": 20
+        },
+        {
+          "species": "419_Floatzel",
+          "percent": 3
+        },
+        {
+          "species": "118_Goldeen",
+          "percent": 25
+        },
+        {
+          "species": "119_Seaking",
+          "percent": 5
+        }
+      ]
     },
     "Evening": {
-      "table": []
+      "table": [
+        {
+          "species": "339_Barboach",
+          "percent": 100
+        },
+        {
+          "species": "340_Whiscash",
+          "percent": 10
+        },
+        {
+          "species": "535_Tympole",
+          "percent": 10
+        },
+        {
+          "species": "536_Palpitoad",
+          "percent": 10
+        },
+        {
+          "species": "537_Seismitoad",
+          "percent": 10
+        },
+        {
+          "species": "079_Slowpoke",
+          "percent": 10
+        },
+        {
+          "species": "080_Slowbro",
+          "percent": 10
+        },
+        {
+          "species": "199_Slowking",
+          "percent": 10
+        }
+      ]
     },
     "Night": {
-      "table": []
+      "table": [
+        {
+          "species": "602_Tynamo",
+          "percent": 10
+        },
+        {
+          "species": "603_Eelektrik",
+          "percent": 10
+        },
+        {
+          "species": "604_Eelektross",
+          "percent": 10
+        },
+        {
+          "species": "349_Feebas",
+          "percent": 10
+        },
+        {
+          "species": "350_Milotic",
+          "percent": 10
+        },
+        {
+          "species": "054_Psyduck",
+          "percent": 10
+        },
+        {
+          "species": "055_Golduck",
+          "percent": 10
+        }
+      ]
     }
   }
 }
