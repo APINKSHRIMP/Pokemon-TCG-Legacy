@@ -31,6 +31,7 @@ shape = SubResource("CircleShape2D_spatu")
 [node name="Camera2D" type="Camera2D" parent="." unique_id=1358489532]
 physics_interpolation_mode = 1
 zoom = Vector2(2.5, 2.5)
+limit_enabled = false
 limit_left = -1000
 limit_top = -1000
 limit_right = 6500
