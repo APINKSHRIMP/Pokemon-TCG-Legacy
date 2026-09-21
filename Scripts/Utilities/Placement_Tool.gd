@@ -20,7 +20,7 @@ extends CanvasLayer
 ##   C              clone the selected Pokémon spawn point, held at the player  CLONE
 ##   Delete         delete the spawn point being held                       DELETE
 ##   P              Pokémon spawns: FORCED (all out, to place / scale) or RANDOM (real odds)
-##   V              surfacing point's water area: V to start (clears it), then V at 4 corners  REGION
+##   V              surfacing / fish tank area: V to start (clears it), then V at 4 corners  REGION
 ##   Ctrl+arrows    nudge 1px (add Shift for 10px) -- Ctrl also holds the player still
 ##   R              cycle movement pattern
 ##   M              edit the selected character in the character editor   EDIT NPC
@@ -108,7 +108,7 @@ var _pokemon_editor: PokemonSpawnEditor = null
 const POKEMON_SPAWN_HELP := [
 	"Overworld Pokemon for this map. Written by the placement tool (DEL debug menu -> NEW NPC / OPPONENT / POKEMON or FLYER TABLES, or EDIT CURRENT NPCS then EDIT NPC on a spawn marker); safe to hand-edit.",
 	"flyers: map-wide, one table per time of day (Morning/Afternoon/Evening/Night). The current time's table rolls every `interval` seconds with `chance`% to send a flock of ONE species from its `table` [{species, percent, min, max}] across the screen. min/max = flock size. Speed (px/s), scale, spin, erratic, bug, ghost, (skittish) wander_speed and (surfacing) swim_speed are per SPECIES, in Overworld_Pokemon.json, not per table.",
-	"spawn_points: id, template, at [x, y], group (points sharing a group share every rule -- clones join their source's group, and editing one edits them all), tables {Morning/Afternoon/Evening/Night: {chance (%), table [{species, percent}]}} -- an empty table spawns nothing at that time. burying/surfacing tables also have `interval` (seconds between rolls); surfacing may have `region` [min_x, min_y, max_x, max_y] (a water area: surfaces anywhere inside, swims to the furthest edge; set with V, `at` is its centre); burying may set up_time; skittish sets flee (the run-away directions it is ALLOWED, any of left/right/up/down; out of those it takes whichever heads away from the player -- missing or empty means all four) and into_water (true = it stops at the first collider it runs into, leaps and sinks with a splash instead of fading out); static sets pattern (+ distance/speed/axis for patrols).",
+	"spawn_points: id, template, at [x, y], group (points sharing a group share every rule -- clones join their source's group, and editing one edits them all), tables {Morning/Afternoon/Evening/Night: {chance (%), table [{species, percent}]}} -- an empty table spawns nothing at that time. burying/surfacing tables also have `interval` (seconds between rolls); surfacing and fish_tank have `region` [min_x, min_y, max_x, max_y] (the water: set with V, `at` is its centre). A fish_tank has NO `tables` at all -- it is not rolled and has no time of day: its `fish_table` [{species, count}] is put out in full, every count of every row, inside the region, and `front` names the map node its fish are drawn behind (default FishTankFront -- indoors the scene tree's order is the draw order, so the fish are parented one place before it); burying may set up_time; skittish sets flee (the run-away directions it is ALLOWED, any of left/right/up/down; out of those it takes whichever heads away from the player -- missing or empty means all four) and into_water (true = it stops at the first collider it runs into, leaps and sinks with a splash instead of fading out); static sets pattern (+ distance/speed/axis for patrols).",
 	"fishing: map-wide, one table per time of day (DEL debug menu -> FISH TABLE). Which Pokemon can be hooked from a fishing area on this map. A cast always rolls exactly ONE fish, so there is no chance and no interval -- just `table` [{species, percent}]. An empty table means nothing bites at that time of day. Fishing areas themselves are named CollisionShape2D children of a FishingAreas Area2D in the map scene (Fish_Down, Fish_Left_2, ... -- the name says which way the water is), not data in this file.",
 	"Table percents are weights and need not add to 100. Species keys are sprite basenames in Image_Assets/Pokemon_Sprites/Overworld_Sprites/.",
 ]
@@ -418,8 +418,8 @@ func _delete_held() -> void:
 func _region_step() -> void:
 	if _region_capture_id == "":
 		var marker := _selected() as PokemonSpawnMarker
-		if marker == null or str(marker.point.get("template", "")) != "surfacing":
-			_flash("[color=orange]select a surfacing spawn point (Tab), then V to set its water area[/color]")
+		if marker == null or not OverworldPokemonData.REGION_TEMPLATES.has(str(marker.point.get("template", ""))):
+			_flash("[color=orange]select a surfacing or fish tank spawn point (Tab), then V to draw its water[/color]")
 			return
 		if _grabbed:
 			_drop()
@@ -836,8 +836,9 @@ func _on_pokemon_editor_confirmed(draft: Dictionary) -> void:
 		point["at"] = [roundi(_player.global_position.x), roundi(_player.global_position.y)]
 		points.append(point)
 		_rebuild_markers(id)
-		if str(point.get("template", "")) == "surfacing":
-			# A surfacing point is an area of water: straight into picking its 4 corners.
+		if OverworldPokemonData.REGION_TEMPLATES.has(str(point.get("template", ""))):
+			# Surfacing points and fish tanks are areas of water, not spots: straight into
+			# picking their 4 corners.
 			_start_region_capture(id)
 		else:
 			# Handed to you to place, the same as a new character.

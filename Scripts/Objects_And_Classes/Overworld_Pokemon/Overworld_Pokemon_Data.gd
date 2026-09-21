@@ -17,7 +17,7 @@ const FIELD_GUIDE_DIR := "res://Image_Assets/Pokemon_Sprites/Field_Guide_Sprites
 ## Every template, in the order the editor lists them. A template is a behaviour
 ## script; adding one means a script, an entry here, and a line in
 ## OverworldPokemonSpawner.TEMPLATE_SCRIPTS.
-const TEMPLATES := ["flyer", "bug_tree", "swinging_bug", "skittish", "burying", "surfacing", "static"]
+const TEMPLATES := ["flyer", "bug_tree", "swinging_bug", "skittish", "burying", "surfacing", "static", "fish_tank"]
 
 const TEMPLATE_LABELS := {
 	"flyer": "Flying (overhead, map-wide)",
@@ -27,6 +27,7 @@ const TEMPLATE_LABELS := {
 	"burying": "Burying",
 	"surfacing": "Surfacing",
 	"static": "Static / patrol",
+	"fish_tank": "Fish tank",
 }
 
 const TEMPLATE_DESCRIPTIONS := {
@@ -37,6 +38,7 @@ const TEMPLATE_DESCRIPTIONS := {
 	"burying": "Every INTERVAL seconds, CHANCE% to pop out of the ground with a dirt burst, stay UP TIME seconds, then burrow back down.",
 	"surfacing": "Every INTERVAL seconds, CHANCE% to surface out of the water (blue depth tint, splash), drift a couple dozen pixels, then submerge. Give it a water area with V (4 corners) and it surfaces anywhere inside, swims towards the furthest edge, then submerges.",
 	"static": "Rolled once per map load. Collision, stands still or walks an existing pattern (idle cycle, patrol line, patrol square). Space to talk.",
+	"fish_tank": "An aquarium. Unlike every other template this one spawns EVERY species in its table (Count each) at once, inside the swim area you draw with V, and it ignores the time of day -- one table per tank. They cruise left and right at their own Swim speed, spinning round at the glass, drifting very slowly up and down, and turning round when two of them bump nose to nose. Bubbles rise from their mouths to the surface every few seconds.",
 }
 
 ## Templates whose Pokémon cry while on screen (OverworldPokemon.CRY_CHANCE): all of
@@ -51,6 +53,32 @@ const TIMED_TEMPLATES := ["burying", "surfacing"]
 
 ## Which knobs the editor shows per template.
 const TEMPLATE_USES_INTERVAL := ["flyer", "burying", "surfacing"]
+
+## Templates whose spawn point is an AREA rather than a spot: the placement tool sends a
+## new one straight into corner capture (V), the point's `at` becomes the centre of what
+## you draw, and the marker draws the rectangle.
+const REGION_TEMPLATES := ["surfacing", "fish_tank"]
+
+## FISH TANK. The odd one out in every way: its table is not rolled, it is not a time of
+## day and it is not a chance -- a tank puts out EVERY row in it, `count` of each, the
+## moment the map loads, and they stay. The rows live on the point as `fish_table`
+## ([{species, count}]) rather than in `tables`, because a tank indoors has no morning.
+const TANK_TEMPLATE := "fish_tank"
+const DEFAULT_TANK_COUNT := 1
+const TANK_COUNT_LIMIT := 12
+## A tank fish's cruising speed in world px/s (registry `tank_speed`). Slow: 14 world px
+## is 35 on screen at the default 2.5x zoom, so it crosses a 300px tank in ten seconds.
+const DEFAULT_TANK_SPEED := 14
+const TANK_SPEED_LIMIT := 120
+## The swim area a tank falls back on when its region was never drawn (world px, half
+## extents around `at`), so a half-finished tank still shows something.
+const DEFAULT_TANK_SIZE := Vector2(60, 26)
+## Speed and size are the SPECIES' own, as everywhere else -- but a row of identical
+## fish looks like a row of identical fish, so a tank fish's size is nudged up to this
+## much either way. Not with randf(): the wobble is worked out from the species name and
+## the fish's place in its row, so the five Magikarp in one tank come out five slightly
+## different sizes AND the five in the tank next door come out exactly the same five.
+const TANK_SIZE_VARIATION := 0.1
 
 const STATIC_PATTERNS := ["idle_cycle", "idle_random", "idle_down", "patrol_line", "patrol_square"]
 
@@ -349,6 +377,10 @@ static func load_spawns(map_data: String) -> Dictionary:
 	for point in doc["spawn_points"]:
 		if point is Dictionary:
 			point["tables"] = normalise_point_tables(point.get("tables"))
+			# A fish tank's species live on the point as `fish_table`, not in the four
+			# time-of-day tables: an aquarium indoors has no morning or night.
+			if str(point.get("template", "")) == TANK_TEMPLATE and not (point.get("fish_table") is Array):
+				point["fish_table"] = []
 			# A point with no group is a group of one. Clones share their source's group,
 			# and editing any point in a group rewrites the rules of all of them.
 			if str(point.get("group", "")) == "":
@@ -470,6 +502,61 @@ static func species_wander_speed(species: String) -> float:
 static func species_swim_speed(species: String) -> float:
 	return clampf(float(species_info(species).get("swim_speed", DEFAULT_SURFACING_SWIM_SPEED)),
 			0.0, SWIM_SPEED_LIMIT)
+
+
+## A tank fish's cruising speed in world px/s: registry `tank_speed`, else 14. Species-
+## wide, like every other speed -- a Goldeen swims a Goldeen's swim in every aquarium.
+static func species_tank_speed(species: String) -> float:
+	return clampf(float(species_info(species).get("tank_speed", DEFAULT_TANK_SPEED)),
+			0.0, TANK_SPEED_LIMIT)
+
+
+## A fish tank's rows, [{species, count}]. Cleaned up: a row with no species is dropped
+## and a missing or silly count becomes 1.
+static func tank_rows(point: Dictionary) -> Array:
+	var out: Array = []
+	var rows = point.get("fish_table", [])
+	if not (rows is Array):
+		return out
+	for row in rows:
+		if not (row is Dictionary):
+			continue
+		var species := str(row.get("species", ""))
+		if species == "":
+			continue
+		out.append({
+			"species": species,
+			"count": clampi(int(row.get("count", DEFAULT_TANK_COUNT)), 1, TANK_COUNT_LIMIT),
+		})
+	return out
+
+
+## How many fish a tank puts out in total -- what the spawn marker shows.
+static func tank_total(point: Dictionary) -> int:
+	var total := 0
+	for row in tank_rows(point):
+		total += int(row["count"])
+	return total
+
+
+## The water a tank's fish swim in: its `region`, else a default-sized box around `at`.
+static func tank_region(point: Dictionary) -> Rect2:
+	var region := point_region(point)
+	if region.has_area():
+		return region
+	var at = point.get("at", [0, 0])
+	var centre := Vector2(float(at[0]), float(at[1]))
+	return Rect2(centre - DEFAULT_TANK_SIZE, DEFAULT_TANK_SIZE * 2.0)
+
+
+## The size of the `index`-th fish of `species` in a tank: the species' scale with its
+## deterministic TANK_SIZE_VARIATION wobble (see that constant).
+static func tank_fish_scale(species: String, index: int) -> float:
+	var rng := RandomNumberGenerator.new()
+	rng.seed = hash("%s#%d" % [species, index])
+	var wobble := rng.randf_range(-TANK_SIZE_VARIATION, TANK_SIZE_VARIATION)
+	return clampf(species_scale(species) * (1.0 + wobble), MIN_SCALE, MAX_SCALE)
+
 
 
 ## A flyer species' speed range in px/s: registry `speed_min` / `speed_max`, else the

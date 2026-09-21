@@ -36,6 +36,7 @@ static func make_pokemon(template: String) -> OverworldPokemon:
 		"burying":      return PokemonBurrower.new()
 		"surfacing":    return PokemonSurfacer.new()
 		"static":       return PokemonStatic.new()
+		"fish_tank":    return PokemonFishTank.new()
 	return null
 
 # ---- tweakables -------------------------------------------------------------
@@ -83,6 +84,22 @@ const PREVIEW_RESPAWN_DELAY := 0.5
 ## Forced preview: seconds between flocks (ignoring chance and interval), still capped
 ## by MAX_LIVE_FLYERS. Species take turns in table order rather than by rate.
 const PREVIEW_FLYER_INTERVAL := 1.5
+## FISH TANKS. A tank is the one spawn point that does not roll at all: every row of its
+## table is put out, `count` of each, the moment the map loads, and they stay.
+##
+## Indoors NOTHING has a z_index -- the floor, the sand, the glass front of the tank, the
+## player and the walls are all z 0, and what covers what is decided by the order of the
+## scene tree. So tank fish are not children of the spawner (which is added last and would
+## draw them over the glass): they are parented as SIBLINGS of the tank's front object,
+## one place before it, which puts them in front of the sand, behind the glass, and under
+## the player, who is a later sibling of the whole tilemap. TANK_FRONT_DEFAULT is the node
+## looked for by name (recursively, from the map root); a point may name a different one
+## with `front` when a map has more than one tank object.
+const TANK_FRONT_DEFAULT := "FishTankFront"
+## Random spots tried per fish before taking the least crowded, and how far apart two
+## fish would rather start (world px).
+const TANK_PLACE_ATTEMPTS := 12
+const TANK_MIN_SEPARATION := 24.0
 # -----------------------------------------------------------------------------
 
 var map_data: String = ""
@@ -93,6 +110,9 @@ var _player: Node2D = null
 var _live: Dictionary = {}
 ## point id -> seconds until the next roll
 var _timers: Dictionary = {}
+## tank point id -> the fish it put out. Kept apart from _live because a tank has many
+## Pokémon out at once and they are not children of this node.
+var _tanks: Dictionary = {}
 var _flyer_timer: float = 0.0
 ## Seconds since the last flock spawned, for the guaranteed flock.
 var _since_last_flock: float = 0.0
@@ -135,7 +155,10 @@ func apply_doc(new_doc: Dictionary) -> void:
 		if not OverworldPokemonData.TEMPLATES.has(template):
 			push_warning("OverworldPokemonSpawner: unknown template '%s' on %s" % [template, point.get("id", "?")])
 			continue
-		if OverworldPokemonData.ONE_SHOT_TEMPLATES.has(template):
+		if template == OverworldPokemonData.TANK_TEMPLATE:
+			# A tank is not rolled and has no timer: its whole table goes in, now.
+			_spawn_tank(point)
+		elif OverworldPokemonData.ONE_SHOT_TEMPLATES.has(template):
 			one_shots.append(point)
 		elif OverworldPokemonData.TIMED_TEMPLATES.has(template):
 			var config := _config_for(point, time_name)
@@ -160,6 +183,11 @@ func clear_pokemon() -> void:
 	for child in get_children():
 		if child is OverworldPokemon:
 			child.despawn()
+	# Tank fish live elsewhere in the scene tree (see TANK_FRONT_DEFAULT), so they are
+	# not caught by the loop above.
+	for id in _tanks.keys():
+		_clear_tank(str(id))
+	_tanks.clear()
 	_live.clear()
 	_flyers.clear()
 
@@ -220,6 +248,13 @@ func set_preview(on: bool, working_doc: Dictionary = {}) -> void:
 ## whatever it has out goes, and (if the point still exists) a fresh Pokémon appears at
 ## its current spot straight away.
 func respawn_point(id: String) -> void:
+	# A tank: the whole tankful goes and comes back, whatever the chance says.
+	var tank := OverworldPokemonData.find_point(doc, id)
+	if _tanks.has(id) or str(tank.get("template", "")) == OverworldPokemonData.TANK_TEMPLATE:
+		_clear_tank(id)
+		if not tank.is_empty():
+			_spawn_tank(tank)
+		return
 	var existing = _live.get(id)
 	_live.erase(id)
 	if existing != null and is_instance_valid(existing):
@@ -281,6 +316,93 @@ func _is_crowded(template: String, spawn_pos: Vector2) -> bool:
 		if offset.x <= GROUND_SPACING.x and offset.y <= GROUND_SPACING.y:
 			return true
 	return false
+
+
+
+
+# ============================================================
+# FISH TANKS
+# ============================================================
+
+## Fill one tank. Every row of `fish_table` puts out `count` fish, spread around inside
+## the swim area (`region`, drawn with V in the placement tool). Nothing here is rolled
+## and nothing is timed: a tank looks the same every time you walk into the shop, at any
+## hour. See TANK_FRONT_DEFAULT for why the fish are parented where they are.
+func _spawn_tank(point: Dictionary) -> void:
+	var id := str(point.get("id", ""))
+	_clear_tank(id)
+	var region := OverworldPokemonData.tank_region(point)
+	var front := _tank_front(point)
+	var host: Node = self if front == null else front.get_parent()
+	var host_2d := host as Node2D
+	var fish: Array = []
+	var placed: Array[Vector2] = []
+	for row in OverworldPokemonData.tank_rows(point):
+		var species := str(row["species"])
+		for i in int(row["count"]):
+			var pokemon := PokemonFishTank.new()
+			pokemon.configure(species, point)
+			pokemon.tank_id = id
+			pokemon.tank_region = region
+			# Speed is the species'. Size is too, wobbled by this fish's place in the
+			# row -- the same set of sizes in every tank that holds this species.
+			pokemon.size_scale = OverworldPokemonData.tank_fish_scale(species, i)
+			pokemon.can_cry = OverworldPokemonData.CRY_TEMPLATES.has(OverworldPokemonData.TANK_TEMPLATE)
+			# No tank object to hide behind: fall back to an absolute z of its own.
+			if front == null:
+				pokemon.z_as_relative = false
+			var spot := _tank_spot(region, placed)
+			placed.append(spot)
+			# Placed before add_child(), like every other template: _template_ready()
+			# reads where it is to work out the water it may swim in.
+			pokemon.position = host_2d.to_local(spot) if host_2d != null else spot
+			host.add_child(pokemon)
+			if front != null:
+				# One place BEFORE the glass: in front of the sand, behind the front.
+				host.move_child(pokemon, front.get_index())
+			fish.append(pokemon)
+	_tanks[id] = fish
+
+
+## Somewhere inside the water for the next fish: the least crowded of a few tries, so a
+## tankful does not start in a heap.
+func _tank_spot(region: Rect2, placed: Array[Vector2]) -> Vector2:
+	var best := region.get_center()
+	var best_gap := -1.0
+	for attempt in TANK_PLACE_ATTEMPTS:
+		var candidate := Vector2(randf_range(region.position.x, region.end.x),
+				randf_range(region.position.y, region.end.y))
+		var gap := INF
+		for other in placed:
+			gap = minf(gap, candidate.distance_to(other))
+		if gap >= TANK_MIN_SEPARATION:
+			return candidate
+		if gap > best_gap:
+			best_gap = gap
+			best = candidate
+	return best
+
+
+## The map object the tank's fish are drawn behind: the point's `front`, else
+## TANK_FRONT_DEFAULT, looked up by name anywhere under the map root. null if the map
+## has no such node (the fish then fall back to their own z index).
+func _tank_front(point: Dictionary) -> CanvasItem:
+	var wanted := str(point.get("front", TANK_FRONT_DEFAULT))
+	var root := get_parent()
+	if wanted == "" or root == null:
+		return null
+	return root.find_child(wanted, true, false) as CanvasItem
+
+
+func _clear_tank(id: String) -> void:
+	for fish in _tanks.get(id, []):
+		if not is_instance_valid(fish):
+			continue
+		var parent: Node = fish.get_parent()
+		if parent != null:
+			parent.remove_child(fish)
+		fish.despawn()
+	_tanks.erase(id)
 
 
 func _on_pokemon_gone(pokemon: OverworldPokemon, id: String) -> void:

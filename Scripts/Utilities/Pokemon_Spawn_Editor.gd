@@ -95,6 +95,11 @@ var _fish_tables: Dictionary = {}
 ## FISH TABLE mode: the map's four fishing tables instead of a template's. Saves in
 ## place like the flyer tables, and has no chance, interval or point settings at all.
 var _fish_mode: bool = false
+## FISH TANK mode: the one point template with a single table instead of four (an
+## aquarium indoors has no time of day) and no chance at all -- every row in it is put
+## out, `count` of each. Kept in its own array for the same reason the flyer and fish
+## tables are: switching template away and back must not mix them up.
+var _tank_table: Array = []
 var _point_tables: Dictionary = {}
 ## species -> {speed_min, speed_max, scale}: the species-wide settings being edited.
 ## Seeded from the registry (and any unsaved edits the placement tool is holding), so a
@@ -126,6 +131,7 @@ var _axis_opt: OptionButton = null
 ## Direction name -> its "Runs away" tick box.
 var _flee_boxes: Dictionary = {}
 var _into_water: CheckBox = null
+var _front: LineEdit = null
 var _rows: Dictionary = {}
 var _table_box: VBoxContainer = null
 var _total_label: Label = null
@@ -180,6 +186,10 @@ func _load_point(point: Dictionary) -> void:
 	for direction in _flee_boxes:
 		(_flee_boxes[direction] as CheckBox).button_pressed = allowed.has(direction)
 	_into_water.button_pressed = bool(point.get("into_water", false))
+	_front.text = str(point.get("front", OverworldPokemonSpawner.TANK_FRONT_DEFAULT))
+	# A tank's species sit on the point as `fish_table`, not in the four time tables.
+	var tank_rows = point.get("fish_table", [])
+	_tank_table = (tank_rows as Array).duplicate(true) if tank_rows is Array else []
 	_point_tables = OverworldPokemonData.normalise_point_tables(point.get("tables")).duplicate(true)
 
 
@@ -260,7 +270,7 @@ func _build() -> void:
 		_time_opt.set_item_metadata(_time_opt.item_count - 1, time_name)
 	_time_opt.item_selected.connect(func(idx: int):
 		_show_time_table(str(_time_opt.get_item_metadata(idx))))
-	_add_row(left, "Table for", _time_opt)
+	_rows["time"] = _add_row(left, "Table for", _time_opt)
 
 	_chance = _spin(0, 100, 1, OverworldPokemonData.POINT_DEFAULT_CHANCE, " %")
 	_chance.value_changed.connect(func(_v: float): _revalidate())
@@ -312,6 +322,17 @@ func _build() -> void:
 			+ "pauses, leaps in with a splash and sinks, instead of fading out as it runs."
 	_into_water.add_theme_font_size_override("font_size", FORM_FONT_SIZE)
 	_rows["into_water"] = _add_row(left, "Jumps into water", _into_water)
+
+	# Fish tank only: the map object its fish are drawn BEHIND. Indoors nothing has a
+	# z_index -- the glass, the sand and the player are all z 0 and the scene tree's
+	# order is the draw order -- so the fish are parented one place before this node.
+	_front = LineEdit.new()
+	_front.text = OverworldPokemonSpawner.TANK_FRONT_DEFAULT
+	_front.tooltip_text = "Name of the map node the fish swim behind (the tank's glass front). " \
+			+ "Found by name anywhere in the map scene. Leave it as it is unless this map's tank " \
+			+ "object is called something else; if it is not found the fish are drawn over the tank."
+	_front.add_theme_font_size_override("font_size", FORM_FONT_SIZE)
+	_rows["front"] = _add_row(left, "Draw behind", _front)
 
 	# ---- right: species table ----
 	_heading(right, "SPECIES TABLE")
@@ -453,7 +474,10 @@ func _option_value(option: OptionButton) -> String:
 ## between flyer and a point template swaps which set is on screen (edits to both are
 ## kept). Point template to point template keeps the same tables.
 func _on_template_switched(previous: String) -> void:
-	if (previous == "flyer") != (_template == "flyer"):
+	# Crossing between the map's flyer tables, a point's four time tables and a tank's
+	# single one swaps which table is on screen; the ones left behind keep their edits.
+	var tank := OverworldPokemonData.TANK_TEMPLATE
+	if (previous == "flyer") != (_template == "flyer") or (previous == tank) != (_template == tank):
 		_enter_time_tables()
 	_on_template_changed()
 
@@ -497,6 +521,10 @@ func _on_template_changed() -> void:
 	_rows["axis"].visible = is_static and _option_value(_pattern_opt) == "patrol_line"
 	_rows["flee"].visible = _template == "skittish"
 	_rows["into_water"].visible = _template == "skittish"
+	# A tank has one table and puts every row of it out: no time of day, no chance.
+	_rows["front"].visible = _is_tank()
+	_rows["time"].visible = not _is_tank()
+	_rows["chance"].visible = not _is_tank()
 	_rebuild_table()
 
 
@@ -539,6 +567,12 @@ func _tables_for(template: String) -> Dictionary:
 	return _flyer_tables if template == "flyer" else _point_tables
 
 
+## A fish tank: one table, no time of day, no chance -- everything in the table is put
+## out at once. Enough of this form works differently for it to be worth asking.
+func _is_tank() -> bool:
+	return not _fish_mode and _template == OverworldPokemonData.TANK_TEMPLATE
+
+
 ## Flyer and fish tables belong to the map and have nowhere to be placed, so SAVE writes
 ## the file straight away and the form stays open. A spawn point is handed to the tool.
 func _saves_in_place() -> bool:
@@ -549,6 +583,11 @@ func _saves_in_place() -> bool:
 ## template away and back) and show the same time of day as before, or the game's
 ## current time the first time round.
 func _enter_time_tables() -> void:
+	if _is_tank():
+		# One table, and it is the point's own.
+		_table = _tank_table
+		_rebuild_table()
+		return
 	if _fish_mode:
 		if _fish_tables.is_empty():
 			_fish_tables = OverworldPokemonData.normalise_fishing(_doc.get("fishing")).duplicate(true)
@@ -571,7 +610,8 @@ func _enter_time_tables() -> void:
 
 ## Put the on-screen chance, interval and rows back into their time's table.
 func _store_time_table(tables: Dictionary) -> void:
-	if _table_time == "":
+	# A tank's table is not one of a set of four: it is already _tank_table.
+	if _is_tank() or _table_time == "":
 		return
 	tables[_table_time] = {
 		"interval": _interval.value,
@@ -581,6 +621,8 @@ func _store_time_table(tables: Dictionary) -> void:
 
 
 func _show_time_table(time_name: String) -> void:
+	if _is_tank():
+		return
 	var tables := _tables_for(_template)
 	_store_time_table(tables)
 	_table_time = time_name
@@ -608,6 +650,8 @@ func _time_rows(time_name: String) -> Array:
 
 ## Every row across all four tables.
 func _all_rows() -> Array:
+	if _is_tank():
+		return _tank_table
 	var out: Array = []
 	for time_name in OverworldPokemonData.TIMES_OF_DAY:
 		out.append_array(_time_rows(str(time_name)))
@@ -676,6 +720,9 @@ func _add_species(species: String) -> void:
 	if percent <= 0.0:
 		percent = 10.0
 	var entry := {"species": species, "percent": roundf(percent)}
+	if _is_tank():
+		# A tank row is how MANY of that fish, not how often it is picked.
+		entry = {"species": species, "count": OverworldPokemonData.DEFAULT_TANK_COUNT}
 	if _template == "flyer":
 		_fill_flyer_defaults(entry)
 	_table.append(entry)
@@ -714,14 +761,26 @@ func _rebuild_table() -> void:
 			name_label.tooltip_text = species + " -- new to this template, added to it on save"
 			name_label.add_theme_color_override("font_color", Color(1.0, 0.75, 0.35))
 
-		_caption(row, "Rate")
-		var percent := _spin(0, 100, 1, float(entry.get("percent", 0)), "" if _fish_mode else "%")
-		percent.tooltip_text = "How often this species is picked, as a share of the table"
-		percent.custom_minimum_size = Vector2(FISH_PERCENT_SPIN_WIDTH if _fish_mode else PERCENT_SPIN_WIDTH, 0)
-		percent.value_changed.connect(func(v: float):
-			entry["percent"] = v
-			_revalidate())
-		row.add_child(percent)
+		if _is_tank():
+			# No rate: a tank puts out every row. The number is how many of them.
+			_caption(row, "Count")
+			var count := _spin(1, OverworldPokemonData.TANK_COUNT_LIMIT, 1,
+					float(entry.get("count", OverworldPokemonData.DEFAULT_TANK_COUNT)))
+			count.tooltip_text = "How many of this Pokémon swim in this tank. They are all the species' size, each nudged up to 10% either way — and the same tankful in another aquarium comes out the same."
+			count.custom_minimum_size = Vector2(PERCENT_SPIN_WIDTH, 0)
+			count.value_changed.connect(func(v: float):
+				entry["count"] = int(v)
+				_revalidate())
+			row.add_child(count)
+		else:
+			_caption(row, "Rate")
+			var percent := _spin(0, 100, 1, float(entry.get("percent", 0)), "" if _fish_mode else "%")
+			percent.tooltip_text = "How often this species is picked, as a share of the table"
+			percent.custom_minimum_size = Vector2(FISH_PERCENT_SPIN_WIDTH if _fish_mode else PERCENT_SPIN_WIDTH, 0)
+			percent.value_changed.connect(func(v: float):
+				entry["percent"] = v
+				_revalidate())
+			row.add_child(percent)
 
 		# On a FISH row, Scale edits `fish_size` -- how big the hooked silhouette is
 		# drawn -- and deliberately leaves the shared `scale` key alone: the fishing art
@@ -752,6 +811,8 @@ func _rebuild_table() -> void:
 			_add_fish_controls(row, species)
 		elif _template == "surfacing":
 			_add_swim_control(row, species)
+		elif _is_tank():
+			_add_tank_control(row, species)
 
 		# Pushes REMOVE to the right edge, so it lines up too.
 		var spacer := Control.new()
@@ -856,6 +917,7 @@ func _settings_for(species: String) -> Dictionary:
 		"scale": OverworldPokemonData.species_scale(species),
 		"wander_speed": int(OverworldPokemonData.species_wander_speed(species)),
 		"swim_speed": int(OverworldPokemonData.species_swim_speed(species)),
+		"tank_speed": int(OverworldPokemonData.species_tank_speed(species)),
 		"spin": bool(OverworldPokemonData.species_info(species).get("spin", false)),
 		"erratic": bool(OverworldPokemonData.species_info(species).get("erratic", false)),
 		"bug": bool(OverworldPokemonData.species_info(species).get("bug", false)),
@@ -891,6 +953,8 @@ func _changed_species_settings() -> Dictionary:
 			changes["wander_speed"] = int(settings["wander_speed"])
 		if int(settings["swim_speed"]) != int(OverworldPokemonData.species_swim_speed(str(species))):
 			changes["swim_speed"] = int(settings["swim_speed"])
+		if int(settings["tank_speed"]) != int(OverworldPokemonData.species_tank_speed(str(species))):
+			changes["tank_speed"] = int(settings["tank_speed"])
 		var info := OverworldPokemonData.species_info(str(species))
 		for flag in ["spin", "erratic", "bug", "ghost", "big"]:
 			if bool(settings[flag]) != bool(info.get(flag, false)):
@@ -917,6 +981,19 @@ func _add_wander_control(line: HBoxContainer, species: String) -> void:
 	box.tooltip_text = "Wandering speed (px/s) of this species, on every table and map. 0 stands still until scared. Running away is always fast."
 	box.custom_minimum_size = Vector2(SPEED_SPIN_WIDTH, 0)
 	box.value_changed.connect(func(v: float): settings["wander_speed"] = int(v))
+	line.add_child(box)
+
+
+## Fish tank rows: the species' cruising speed in the tank (world px/s), the same in
+## every aquarium. Size is the Scale box, also species-wide -- the only thing that differs
+## between two fish of a species is the small size wobble the spawner gives each one.
+func _add_tank_control(line: HBoxContainer, species: String) -> void:
+	var settings := _settings_for(species)
+	_caption(line, "Swim")
+	var box := _spin(0, OverworldPokemonData.TANK_SPEED_LIMIT, 1, int(settings["tank_speed"]))
+	box.tooltip_text = "Cruising speed (px/s) of this species in any fish tank. 0 hovers on the spot."
+	box.custom_minimum_size = Vector2(SPEED_SPIN_WIDTH, 0)
+	box.value_changed.connect(func(v: float): settings["tank_speed"] = int(v))
 	line.add_child(box)
 
 
@@ -996,6 +1073,11 @@ func _range_pair(line: HBoxContainer, caption: String, entry: Dictionary, low_ke
 
 func _problems() -> Array:
 	var out: Array = []
+	if _is_tank():
+		# No percentages to add up: a tank puts out everything in its table.
+		if _tank_table.is_empty():
+			out.append("add a Pokémon to the tank")
+		return out
 	var any_rows := false
 	for time_name in OverworldPokemonData.TIMES_OF_DAY:
 		var rows := _time_rows(str(time_name))
@@ -1020,7 +1102,15 @@ func _problems() -> Array:
 
 
 func _revalidate() -> void:
-	if _total_label != null:
+	if _total_label != null and _is_tank():
+		var heads := 0
+		for row in _tank_table:
+			heads += clampi(int(row.get("count", 1)), 1, OverworldPokemonData.TANK_COUNT_LIMIT)
+		var caption := "This tank holds %d fish." % heads if heads > 0 else "The tank is empty — add a Pokémon."
+		_total_label.text = caption
+		_total_label.add_theme_color_override("font_color",
+				Color(0.55, 0.95, 0.55) if heads > 0 else Color(0.8, 0.84, 0.92))
+	elif _total_label != null:
 		var total := OverworldPokemonData.table_total(_table)
 		if _table.is_empty():
 			_total_label.text = "%s table is empty — nothing spawns then." % _table_time
@@ -1056,6 +1146,22 @@ func _registry_additions() -> Dictionary:
 	return out
 
 
+## A tank's rows as the file stores them: species and count, nothing else. Speed and
+## size belong to the species, so they go to the registry, not onto the point.
+func _clean_tank_rows() -> Array:
+	var out: Array = []
+	for row in _tank_table:
+		var species := str(row.get("species", ""))
+		if species == "":
+			continue
+		out.append({
+			"species": species,
+			"count": clampi(int(row.get("count", OverworldPokemonData.DEFAULT_TANK_COUNT)),
+					1, OverworldPokemonData.TANK_COUNT_LIMIT),
+		})
+	return out
+
+
 func _clean_rows(rows: Array) -> Array:
 	var out: Array = []
 	for row in rows:
@@ -1071,7 +1177,8 @@ func _clean_rows(rows: Array) -> Array:
 
 
 func _build_draft() -> Dictionary:
-	var tables := _draft_tables()
+	# A tank has no time-of-day tables to gather up.
+	var tables: Dictionary = {} if _is_tank() else _draft_tables()
 	if _fish_mode:
 		# No registry additions: a fish table may list any Pokémon, and writing them all
 		# into the surfacing template would put them in the sea as well.
@@ -1098,8 +1205,8 @@ func _build_draft() -> Dictionary:
 		# The linked-clone group: kept on an edit, a brand new point starts its own.
 		"group": str(_original.get("group", id)) if not _is_new else id,
 	}
-	# A surfacing point's water area is set in the world (V), not in this form -- keep it.
-	if _template == "surfacing" and _original.get("region") is Array:
+	# An area template's rectangle is set in the world (V), not in this form -- keep it.
+	if OverworldPokemonData.REGION_TEMPLATES.has(_template) and _original.get("region") is Array:
 		point["region"] = (_original["region"] as Array).duplicate()
 	if _template == "burying" and _up_time.value > 0.0:
 		point["up_time"] = snappedf(_up_time.value, 0.1)
@@ -1114,7 +1221,12 @@ func _build_draft() -> Dictionary:
 			point["speed"] = int(_speed.value)
 		if pattern == "patrol_line":
 			point["axis"] = _option_value(_axis_opt)
-	point["tables"] = tables
+	if _is_tank():
+		# The one point template with no time-of-day tables at all.
+		point["fish_table"] = _clean_tank_rows()
+		point["front"] = _front.text.strip_edges()
+	else:
+		point["tables"] = tables
 	return {
 		"kind": "point",
 		"is_new": _is_new,

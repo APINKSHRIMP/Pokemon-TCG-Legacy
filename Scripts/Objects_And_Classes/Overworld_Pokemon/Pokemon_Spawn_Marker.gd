@@ -18,6 +18,7 @@ const TEMPLATE_COLOURS := {
 	"skittish": Color(0.95, 0.65, 0.3),
 	"burying": Color(0.7, 0.5, 0.3),
 	"surfacing": Color(0.35, 0.65, 1.0),
+	"fish_tank": Color(0.3, 0.95, 0.85),
 	"static": Color(0.9, 0.45, 0.9),
 }
 
@@ -60,11 +61,15 @@ func _draw() -> void:
 	draw_line(Vector2(0, -3), Vector2(0, 3), colour, 1.0)
 	# Chance per time of day, "-" where that time's table is empty: "skittish_1  M100 A- E- N40".
 	var parts: Array = [str(point.get("id", "?"))]
-	for time_name in OverworldPokemonData.TIMES_OF_DAY:
-		var table := OverworldPokemonData.time_table(point.get("tables"), str(time_name))
-		var rows = table.get("table", [])
-		var shown: String = "-" if not (rows is Array) or (rows as Array).is_empty() else str(table.get("chance", 0))
-		parts.append(str(time_name).left(1) + shown)
+	if str(point.get("template", "")) == OverworldPokemonData.TANK_TEMPLATE:
+		# A tank has no times and no chance -- what it has is a headcount.
+		parts.append("%d fish" % OverworldPokemonData.tank_total(point))
+	else:
+		for time_name in OverworldPokemonData.TIMES_OF_DAY:
+			var table := OverworldPokemonData.time_table(point.get("tables"), str(time_name))
+			var rows = table.get("table", [])
+			var shown: String = "-" if not (rows is Array) or (rows as Array).is_empty() else str(table.get("chance", 0))
+			parts.append(str(time_name).left(1) + shown)
 	var text := "  ".join(parts)
 	var font := ThemeDB.fallback_font
 	draw_string_outline(font, Vector2(-TEXT_WIDTH * 0.5, -RADIUS - 3), text, HORIZONTAL_ALIGNMENT_CENTER, TEXT_WIDTH, FONT_SIZE, 2, Color.BLACK)
