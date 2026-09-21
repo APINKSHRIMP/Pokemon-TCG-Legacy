@@ -8,11 +8,11 @@ extends OverworldPokemon
 ##
 ## What a fish does:
 ##   left and right   cruises at its species' Swim speed (registry `tank_speed`) until it
-##                    reaches the glass, then SPINS round (the sprite squashes through
-##                    nothing and comes back out facing the other way) and cruises back
-##   up and down      very slowly drifts a few pixels up over a few seconds, then a few
-##                    down, each leg a different length and speed, so over time it has
-##                    wandered the whole rectangle rather than one line
+##                    reaches the glass, then turns on the spot -- instantly, no flourish
+##                    (the user asked for the spin animation to go) -- and cruises back
+##   up and down      very slowly drifts to a height picked anywhere in the swim area,
+##                    pauses, then picks another, so given a minute it has wandered the
+##                    whole rectangle rather than one line
 ##   bumping          two fish that come nose to nose both spin round and go back the
 ##                    way they came (they only see fish in their OWN tank)
 ##   bubbles          every few seconds a little string of bubbles leaves its mouth and
@@ -22,34 +22,42 @@ extends OverworldPokemon
 ## and the walls are all z 0 and the order they are drawn in is the order they sit in the
 ## scene tree. So a fish is NOT a child of the spawner (that would put it over the glass):
 ## OverworldPokemonSpawner parents it as a SIBLING of the tank's front layer, one place
-## before it. Everything a fish emits (its bubbles) is a child of the fish for the same
-## reason, kept in world space with `top_level` instead of its own z.
+## before it. That is the point's `front`, which ANY template may now set -- a bug in a
+## tree or an idle Pokemon can be put inside a tank the same way. Everything a fish emits
+## (its bubbles) goes in at the fish's own index for the same reason.
 
 # ---- tweakables -------------------------------------------------------------
-## Fallback drawing height, only used when the tank's front object cannot be found.
-const FALLBACK_Z := 1
-## Seconds the turn-round takes, and how much of the way through it the fish is facing
-## the new way (halfway: the sprite is edge-on to us then).
-const TURN_TIME := 0.5
-## How thin the sprite gets at the middle of the spin. 0 is edge-on and invisible;
-## a little more than that keeps a pixel of fish there throughout.
-const TURN_MIN_SQUASH := 0.06
-## Up-and-down drift. A leg is DRIFT_PIXELS world px taken over DRIFT_SECONDS -- both
-## rolled per leg, so no two fish drift together. 4 px over 5 s is 10 on-screen px at
-## a crawl, which is the "very very slowly and gently" this is meant to be.
-const DRIFT_PIXELS_MIN := 2.0
-const DRIFT_PIXELS_MAX := 7.0
-const DRIFT_SECONDS_MIN := 2.5
-const DRIFT_SECONDS_MAX := 6.0
+## Up and down. The fish picks a HEIGHT ANYWHERE IN ITS SWIM AREA and drifts to it at
+## DRIFT_SPEED world px/s, pauses now and then, and picks another -- so given a minute it
+## has been everywhere in the rectangle, which is the whole point of drawing one.
+##
+## Two earlier goes at this both read as "they only go left and right": short alternating
+## legs (first 2-7 px, then 5-16 px) leave the fish bobbing in a band around wherever it
+## spawned and it never crosses the tank. Do not go back to fixed-length legs -- if the
+## rise and fall wants toning down, lower the SPEED, which only makes a long journey
+## take longer.
+const DRIFT_SPEED_MIN := 2.5
+const DRIFT_SPEED_MAX := 6.0
+## A new target is always at least this much of the swim area's height from where the
+## fish is now, so every leg is a real journey rather than a nudge. Tries this many
+## random heights and takes the furthest if none of them clears the bar (which is what
+## happens in a tank barely taller than the fish).
+const DRIFT_MIN_TRAVEL_FRACTION := 0.45
+const DRIFT_TARGET_ATTEMPTS := 8
 ## Chance a finished leg is followed by a pause instead of turning straight round, and
 ## how long that pause is.
-const DRIFT_PAUSE_CHANCE := 0.35
-const DRIFT_PAUSE_MIN := 0.5
-const DRIFT_PAUSE_MAX := 2.5
+const DRIFT_PAUSE_CHANCE := 0.25
+const DRIFT_PAUSE_MIN := 0.4
+const DRIFT_PAUSE_MAX := 1.8
 ## How much of a cell counts as the fish for keeping it inside the glass: 0.5 would be
 ## the whole cell (most of which is empty space around the art), 0.3 lets it get its
-## nose closer to the glass.
+## nose closer to the glass. In a tank too small to give that much away the margin is
+## cut down instead (see _swim_bounds) -- an aquarium only 30 px deep would otherwise
+## leave the fish no room to drift up and down at all.
 const EDGE_MARGIN_FRACTION := 0.3
+## The most of a swim area, either way, that the margin above may eat. 0.4 leaves at
+## least a fifth of the tank to move in on both axes.
+const EDGE_MARGIN_LIMIT := 0.4
 ## Bumping. Two fish bump when they are within BUMP_GAP_FRACTION of their two half
 ## widths of each other AND within BUMP_HEIGHT world px of the same height -- one
 ## passing well under another does not count. After a bump neither can bump again for
@@ -85,14 +93,11 @@ var _dir: float = 1.0
 ## The rectangle the fish's CENTRE stays inside (the region, pulled in by its own size).
 var _bounds: Rect2 = Rect2()
 
-## Turning: -1 when not turning, otherwise seconds into the spin.
-var _turn_time: float = -1.0
+## Seconds before this fish may turn again, so a nose-to-nose pair cannot jam.
 var _bump_cooldown: float = 0.0
 
-## Vertical drift: which way, how far is left of this leg, how fast, and the pause
-## before the next one.
-var _drift_dir: float = -1.0
-var _drift_left: float = 0.0
+## Vertical drift: the height being swum to, how fast, and the pause before setting off.
+var _drift_target: float = 0.0
 var _drift_speed: float = 0.0
 var _drift_pause: float = 0.0
 
@@ -100,11 +105,9 @@ var _bubble_timer: float = 0.0
 
 
 func _template_ready() -> void:
-	# No z of its own: the spawner has put this node in the right place in the scene
-	# tree, between the tank's sand and its glass. Only a fish whose tank object could
-	# not be found falls back to an absolute z.
-	if z_as_relative == false:
-		z_index = FALLBACK_Z
+	# No z of its own: the spawner has already put this node in the right place in the
+	# scene tree, between the tank's sand and its glass (see _place_pokemon, which also
+	# owns the fallback for a tank whose front object could not be found).
 	_speed = OverworldPokemonData.species_tank_speed(species)
 	if tank_region.size == Vector2.ZERO:
 		tank_region = OverworldPokemonData.tank_region(spawn_point)
@@ -121,14 +124,16 @@ func _template_ready() -> void:
 
 
 ## The box the fish's centre may move in: the tank's water pulled in by the fish's own
-## half size, so its art stops at the glass rather than swimming through it. A tank too
-## small for the fish in it collapses to its centre line instead of inverting.
+## half size, so its art stops at the glass rather than swimming through it.
+##
+## The margin is never allowed to eat more than EDGE_MARGIN_LIMIT of the area: a big
+## Pokemon in a shallow tank would otherwise be left a box of zero height, pinned to the
+## middle, which is what "they only move left and right" looked like.
 func _swim_bounds() -> Rect2:
 	var margin := Vector2(cell.x, cell.y) * draw_scale() * EDGE_MARGIN_FRACTION
-	var size := tank_region.size - margin * 2.0
-	if size.x <= 0.0 or size.y <= 0.0:
-		return Rect2(tank_region.get_center(), Vector2(maxf(size.x, 0.0), maxf(size.y, 0.0)))
-	return Rect2(tank_region.position + margin, size)
+	margin.x = minf(margin.x, tank_region.size.x * EDGE_MARGIN_LIMIT)
+	margin.y = minf(margin.y, tank_region.size.y * EDGE_MARGIN_LIMIT)
+	return Rect2(tank_region.position + margin, tank_region.size - margin * 2.0)
 
 
 func _clamp_to_bounds(pos: Vector2) -> Vector2:
@@ -138,11 +143,8 @@ func _clamp_to_bounds(pos: Vector2) -> Vector2:
 
 func _template_process(delta: float) -> void:
 	_bump_cooldown = maxf(0.0, _bump_cooldown - delta)
-	if _turn_time >= 0.0:
-		_process_turn(delta)
-	else:
-		_process_swim(delta)
-		_process_bumps()
+	_process_swim(delta)
+	_process_bumps()
 	_process_drift(delta)
 	_process_bubbles(delta)
 
@@ -153,38 +155,23 @@ func _process_swim(delta: float) -> void:
 	if _speed <= 0.0:
 		return
 	global_position.x += _dir * _speed * delta
-	# At the glass: pull back to it and spin round.
+	# At the glass: pull back to it and turn round.
 	if _dir > 0.0 and global_position.x >= _bounds.end.x:
 		global_position.x = _bounds.end.x
-		_start_turn()
+		_turn_round()
 	elif _dir < 0.0 and global_position.x <= _bounds.position.x:
 		global_position.x = _bounds.position.x
-		_start_turn()
+		_turn_round()
 
 
-## The spin: the sprite is squashed horizontally through nothing and back out, swapping
-## which way it faces at the thinnest point, so it reads as the fish turning on the spot.
-func _start_turn() -> void:
-	if _turn_time >= 0.0:
-		return
-	_turn_time = 0.0
+## Turning round is instant: the facing row swaps and it swims back the other way on the
+## same frame. (There WAS a squash-through-nothing spin here; the user had it taken out.)
+## The only thing left of it is the cooldown, which stops a nose-to-nose pair flipping
+## back and forth every frame.
+func _turn_round() -> void:
+	_dir = -_dir
+	set_facing("right" if _dir > 0.0 else "left")
 	_bump_cooldown = BUMP_COOLDOWN
-
-
-func _process_turn(delta: float) -> void:
-	_turn_time += delta
-	var t := clampf(_turn_time / TURN_TIME, 0.0, 1.0)
-	# 1 -> TURN_MIN_SQUASH -> 1.
-	var squash: float = lerpf(TURN_MIN_SQUASH, 1.0, absf(cos(PI * t)))
-	sprite.scale.x = draw_scale() * squash
-	if t >= 0.5 and _facing_dir() == _dir:
-		# Halfway: it is edge-on, so this is the frame to swap round.
-		_dir = -_dir
-		set_facing("right" if _dir > 0.0 else "left")
-	if t < 1.0:
-		return
-	_turn_time = -1.0
-	sprite.scale.x = draw_scale()
 	global_position = _clamp_to_bounds(global_position)
 
 
@@ -204,7 +191,7 @@ func _process_bumps() -> void:
 		if not (other is PokemonFishTank) or other == self:
 			continue
 		var fish: PokemonFishTank = other
-		if fish.tank_id != tank_id or fish._bump_cooldown > 0.0 or fish._turn_time >= 0.0:
+		if fish.tank_id != tank_id or fish._bump_cooldown > 0.0:
 			continue
 		var offset := fish.global_position - global_position
 		if absf(offset.y) > BUMP_HEIGHT:
@@ -212,8 +199,8 @@ func _process_bumps() -> void:
 		# In front of me, and close enough that our noses meet.
 		if signf(offset.x) != signf(_dir) or absf(offset.x) > reach + fish.cell.x * fish.draw_scale() * BUMP_GAP_FRACTION:
 			continue
-		_start_turn()
-		fish._start_turn()
+		_turn_round()
+		fish._turn_round()
 		return
 
 
@@ -223,30 +210,43 @@ func _process_drift(delta: float) -> void:
 	if _drift_pause > 0.0:
 		_drift_pause -= delta
 		return
-	if _drift_left <= 0.0:
+	var gap := _drift_target - global_position.y
+	var step := _drift_speed * delta
+	if absf(gap) <= step:
+		# Arrived: settle exactly on it and choose somewhere else to be.
+		global_position.y = _drift_target
 		_start_drift_leg()
 		return
-	var step := minf(_drift_speed * delta, _drift_left)
-	var wanted := global_position.y + _drift_dir * step
-	var clamped := clampf(wanted, _bounds.position.y, _bounds.end.y)
-	global_position.y = clamped
-	_drift_left -= step
-	# Ran into the top or bottom of the tank: that leg is over, go the other way.
-	if not is_equal_approx(wanted, clamped):
-		_drift_left = 0.0
-		_drift_dir = -_drift_dir
+	global_position.y += signf(gap) * step
 
 
-## The next up-or-down leg: the other way from the last one, a random few pixels over a
-## random few seconds, sometimes after a pause. Alternating is what makes the fish's
-## path over time fill the tank rather than trend one way.
+## The next leg: a new height somewhere else in the swim area, a new speed, and
+## sometimes a pause before setting off.
 func _start_drift_leg() -> void:
-	_drift_dir = -_drift_dir
-	var pixels := randf_range(DRIFT_PIXELS_MIN, DRIFT_PIXELS_MAX)
-	var seconds := randf_range(DRIFT_SECONDS_MIN, DRIFT_SECONDS_MAX)
-	_drift_left = pixels
-	_drift_speed = pixels / seconds
+	_drift_speed = randf_range(DRIFT_SPEED_MIN, DRIFT_SPEED_MAX)
+	_drift_target = _pick_drift_target()
 	_drift_pause = randf_range(DRIFT_PAUSE_MIN, DRIFT_PAUSE_MAX) if randf() < DRIFT_PAUSE_CHANCE else 0.0
+
+
+## A height inside the swim area that is a decent distance from the one the fish is at.
+## Random rather than "the other half", so the pattern never looks like a metronome.
+func _pick_drift_target() -> float:
+	var top := _bounds.position.y
+	var bottom := _bounds.end.y
+	if bottom - top <= 0.5:
+		return global_position.y
+	var min_travel := (bottom - top) * DRIFT_MIN_TRAVEL_FRACTION
+	var best := top
+	var best_gap := -1.0
+	for attempt in DRIFT_TARGET_ATTEMPTS:
+		var candidate := randf_range(top, bottom)
+		var gap := absf(candidate - global_position.y)
+		if gap >= min_travel:
+			return candidate
+		if gap > best_gap:
+			best_gap = gap
+			best = candidate
+	return best
 
 
 # ---- bubbles ----------------------------------------------------------------
@@ -256,11 +256,22 @@ func _process_bubbles(delta: float) -> void:
 	if _bubble_timer > 0.0:
 		return
 	_bubble_timer = randf_range(BUBBLE_INTERVAL_MIN, BUBBLE_INTERVAL_MAX)
-	# Parented to the fish so it is drawn in the same place in the tree (behind the
-	# glass), top_level so it stays where it was let go of instead of being towed along.
-	FishBubbles.fire(self, _mouth_position(),
+	# The bubbles go in at the FISH'S OWN PLACE IN THE TREE, as a sibling immediately
+	# before it. Indoors that position is the draw order, so this is what keeps them
+	# behind the tank's glass with the fish instead of rising over the front of it.
+	# (A child of the fish would be dragged along by it; a top_level node escapes the
+	# tree's ordering altogether and draws over everything -- both were tried.)
+	var host := get_parent()
+	if host == null:
+		return
+	var bubbles := FishBubbles.fire(host, _mouth_position(),
 			tank_region.position.y + SURFACE_INSET,
 			randi_range(BUBBLE_COUNT_MIN, BUBBLE_COUNT_MAX), size_scale)
+	# Only matters in the fallback case, where no tank front was found and the fish is
+	# drawing at an absolute z of its own.
+	bubbles.z_as_relative = z_as_relative
+	bubbles.z_index = z_index
+	host.move_child(bubbles, get_index())
 
 
 func _mouth_position() -> Vector2:

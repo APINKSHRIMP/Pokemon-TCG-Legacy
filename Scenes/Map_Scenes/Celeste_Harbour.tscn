@@ -10,13 +10,12 @@
 [ext_resource type="Texture2D" uid="uid://5rb2vlanfegv" path="res://Image_Assets/Map_Objects/Forest/TreeLineThird.png" id="4_aw4ai"]
 [ext_resource type="PackedScene" uid="uid://bprufyh8mxqom" path="res://Scenes/Objects/Player_Object_Scene.tscn" id="5_a0lly"]
 [ext_resource type="Texture2D" uid="uid://bpgp2llb66dny" path="res://Image_Assets/Map_Objects/FishShop.png" id="7_jpjx1"]
-[ext_resource type="Texture2D" uid="uid://ew31wveu64vb" path="res://Image_Assets/Map_Objects/FISH.png" id="8_tj6nx"]
 [ext_resource type="Texture2D" uid="uid://u6wrch4agrln" path="res://Image_Assets/Map_Objects/Bakushin_Taxi.png" id="9_a0lly"]
 [ext_resource type="Script" uid="uid://bbrlrblh7j22j" path="res://Scripts/Objects_And_Classes/Fishing/Fishing_Zone.gd" id="99_fishzone"]
 [ext_resource type="Script" uid="uid://cphl8h5xtm64h" path="res://Scripts/Map_Scripts/Interactables_Script.gd" id="int_script"]
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_njjmc"]
-size = Vector2(26, 5.5)
+size = Vector2(43, 10)
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_h0m0o"]
 size = Vector2(120, 20)
@@ -2128,15 +2127,6 @@ texture = ExtResource("7_jpjx1")
 expand_mode = 1
 stretch_mode = 4
 
-[node name="Fish" type="TextureRect" parent="TILE_MAPS/FISHSHOP" unique_id=502438879]
-offset_left = -1072.0
-offset_top = -392.0
-offset_right = -978.0
-offset_bottom = -250.0
-texture = ExtResource("8_tj6nx")
-expand_mode = 1
-stretch_mode = 4
-
 [node name="EMPTY GROUP2" type="TileMap" parent="TILE_MAPS" unique_id=762813426]
 format = 2
 
@@ -2156,6 +2146,11 @@ metadata/target_scene = "res://Scenes/Map_Scenes/Player_House_Downstairs.tscn"
 position = Vector2(468, -17)
 shape = SubResource("RectangleShape2D_njjmc")
 metadata/target_scene = "res://Scenes/Map_Scenes/Card_Mart.tscn"
+
+[node name="DoorArea_FishShop" type="CollisionShape2D" parent="Door Areas" unique_id=779155805]
+position = Vector2(-984.5, -402)
+shape = SubResource("RectangleShape2D_njjmc")
+metadata/target_scene = "res://Scenes/Map_Scenes/Fish_Shop.tscn"
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="Door Areas" unique_id=271657158]
 position = Vector2(959, -598)
@@ -3978,7 +3973,6 @@ texture = ExtResource("4_401pq")
 offset = Vector2(-0.38427734, 775.4363)
 
 [node name="Collision Objects" type="Control" parent="." unique_id=557795143]
-visible = false
 layout_mode = 3
 anchors_preset = 0
 offset_right = 40.0
@@ -4556,7 +4550,7 @@ position = Vector2(-914.625, 485.3125)
 shape = SubResource("RectangleShape2D_7w14o")
 
 [node name="Long Fence down2" type="CollisionShape2D" parent="Collision Objects/Fence and Walls" unique_id=408946022]
-position = Vector2(-848.25, -482.375)
+position = Vector2(-1197, -562)
 shape = SubResource("RectangleShape2D_7w14o")
 
 [node name="Small bottom fence" type="CollisionShape2D" parent="Collision Objects/Fence and Walls" unique_id=1263588540]

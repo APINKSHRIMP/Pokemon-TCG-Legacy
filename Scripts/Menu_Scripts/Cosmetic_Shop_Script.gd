@@ -1,7 +1,7 @@
 extends Control
 
 # ============================================================
-# COSMETIC SHOP — SLEEVE SELLERS AND COSTUME SALESMEN
+# COSMETIC SHOP — SLEEVE SELLERS, COSTUME SALESMEN AND GENERAL STORES
 # ============================================================
 # One screen for every NPC who sells a cosmetic. Structurally the Coin Shop's twin: a
 # grid of buyable items, a cost/cash readout, buy + cancel, an "OWNED" stamp on anything
@@ -21,11 +21,16 @@ extends Control
 #      Pack_Opening, and the coinflip/holo-gift reveals in MapManager). Selection here is
 #      the pulse tween alone. Do not re-add it.
 #
-# WHAT the block sells is the block's own "kind" field, which is the only thing that
-# differs between a Sleeve Seller and a Costume Salesman: where the art comes from, the
-# shape of a grid cell, and which GameState collection the purchase is banked into. Both
-# store bare basenames ("Oricorio_Pink", "Pokemaniac_Red") — that is how they sit in the
-# player's progress arrays and how GameState's has_/add_ calls expect them.
+# WHAT is being sold is the "kind" field: where the art comes from, the shape of a grid
+# cell, and which GameState collection the purchase is banked into. Four kinds —
+# sleeve, costume, coin and item — and the block's kind is only its DEFAULT: every row
+# may carry its own, which is how the Fish Shop sells a rod, two costumes and a coin off
+# one shelf. Names are bare basenames exactly as the art folder and the player's progress
+# array spell them ("Oricorio_Pink", "Fisher_M", "Zz Gyarados Blue", "Basic_Rod").
+#
+# An "item" is anything that is not a card, a coin or a cosmetic — the fishing rods are
+# the first of them. A row whose art is missing, or is still the 1px stand-in, shows its
+# name in the cell instead, so a shop is usable before its sprites are drawn.
 #
 # There is deliberately NO sold-out gate. A seller's shelf is finite and never restocks,
 # so once the player owns the lot the shop simply opens with everything stamped OWNED
@@ -39,10 +44,18 @@ const INVENTORY_PATH  := "res://NPC_and_Opponent_Data/cosmetic_shop_inventory.js
 const SLEEVE_FOLDER   := "res://Image_Assets/Sleeves"
 const SLEEVE_SMALL    := "res://Image_Assets/Sleeves/small"
 const COSTUME_FOLDER  := "res://Image_Assets/Character_Sprites/In_Battle_Sprites"
+const COIN_FOLDER     := "res://Image_Assets/Coins"
+const ITEM_FOLDER     := "res://Image_Assets/Assorted_Extras"
 const GYM_PLAZA       := "res://Scenes/Map_Scenes/Gym_Plaza.tscn"
 
 const KIND_SLEEVE  := "sleeve"
 const KIND_COSTUME := "costume"
+const KIND_COIN    := "coin"
+const KIND_ITEM    := "item"
+
+## TWEAKABLE — art this small in either direction is treated as a stand-in rather than a
+## picture, and the cell shows the row's name instead. The placeholder rod art is 1x1.
+const PLACEHOLDER_ART_SIZE := 8.0
 
 ## TWEAKABLE — fallback price for an inventory entry with no "cost" field. The real
 ## prices live in cosmetic_shop_inventory.json; keep this high enough that a malformed
@@ -76,6 +89,8 @@ const CELL_SEP     := 60
 ##   costume: the battle sprites are square, and are drawn at their native 160px
 const SLEEVE_ASPECT   := 432.0 / 594.0
 const SLEEVE_MAX_CELL := 412.0
+## Everything that is not a sleeve is drawn in a square cell and aspect-fitted inside it,
+## so a mixed shelf of costumes, coins and items lines up.
 const COSTUME_ASPECT  := 1.0
 const COSTUME_MAX_CELL := 320.0
 
@@ -198,8 +213,22 @@ func _load_inventory() -> void:
 
 	inventory    = block.get("items", [])
 	shop_kind    = String(block.get("kind", KIND_SLEEVE))
-	shop_title   = block.get("title", "Costume Shop" if shop_kind == KIND_COSTUME else "Sleeve Shop")
+	shop_title   = block.get("title", _default_title(shop_kind))
 	shop_columns = int(block.get("columns", 0))
+
+
+func _default_title(kind: String) -> String:
+	match kind:
+		KIND_COSTUME: return "Costume Shop"
+		KIND_COIN:    return "Coin Shop"
+		KIND_ITEM:    return "Shop"
+	return "Sleeve Shop"
+
+
+## A row's kind: its own if it states one, else the block's. This is the one thing that
+## lets a single shelf hold four different sorts of thing.
+func _item_kind(entry: Dictionary) -> String:
+	return String(entry.get("kind", shop_kind))
 
 
 func _load_player_data() -> void:
@@ -207,17 +236,19 @@ func _load_player_data() -> void:
 	# Costume filenames are stored lower-cased and with the .png suffix; sleeves are stored
 	# as bare basenames. _is_owned() does the per-kind lookup, so nothing is cached here for
 	# costumes — GameState is already the single source of truth for both.
-	if shop_kind == KIND_SLEEVE:
-		for item_name in GameState.get_sleeves():
-			_owned_items[String(item_name)] = true
+	# Loaded whatever the block's kind is: a mixed shelf may carry a sleeve row.
+	for item_name in GameState.get_sleeves():
+		_owned_items[String(item_name)] = true
 
 
 ## True when the player already has this item. Sleeves and costumes live in different
 ## progress arrays with different key formats, so the lookup goes through GameState rather
 ## than being open-coded here.
-func _is_owned(item_name: String) -> bool:
-	if shop_kind == KIND_COSTUME:
-		return GameState.has_costume(item_name)
+func _is_owned(item_name: String, kind: String) -> bool:
+	match kind:
+		KIND_COSTUME: return GameState.has_costume(item_name)
+		KIND_COIN:    return GameState.has_coin(item_name)
+		KIND_ITEM:    return GameState.has_item(item_name)
 	return _owned_items.has(item_name)
 
 
@@ -231,19 +262,19 @@ func _is_owned(item_name: String) -> bool:
 ## art is affordable here — the collection screens, which show every sleeve at once,
 ## still use small/. Costume sprites are already small (160px square) and have only
 ## one file either way.
-func _load_item_texture(item_name: String) -> Texture2D:
-	if shop_kind == KIND_COSTUME:
-		return _load_costume_texture(item_name)
-	return _load_item_texture_full(item_name)
+func _load_item_texture(item_name: String, kind: String) -> Texture2D:
+	if kind != KIND_SLEEVE:
+		return _load_flat_texture(item_name, kind)
+	return _load_item_texture_full(item_name, kind)
 
 
 ## Same lookup at full size, for the purchase reveal. The reveal box is 432x594 and the
 ## sleeve thumbnails are only 300x412, so showing one there would upscale it by 1.44x. One
 ## full-size texture in a menu is cheap; a whole grid of them would not be, which is why
 ## the grid still uses small/. Costumes have no second copy — same file both times.
-func _load_item_texture_full(item_name: String) -> Texture2D:
-	if shop_kind == KIND_COSTUME:
-		return _load_costume_texture(item_name)
+func _load_item_texture_full(item_name: String, kind: String) -> Texture2D:
+	if kind != KIND_SLEEVE:
+		return _load_flat_texture(item_name, kind)
 
 	for ext in [".png", ".jpg"]:
 		var full_path : String = SLEEVE_FOLDER + "/" + item_name + String(ext)
@@ -255,17 +286,35 @@ func _load_item_texture_full(item_name: String) -> Texture2D:
 	return null
 
 
-func _load_costume_texture(item_name: String) -> Texture2D:
-	var path := COSTUME_FOLDER + "/" + item_name + ".png"
+## Costumes, coins and items are all one file in one folder, at one size — the only
+## difference is which folder. A missing file is not fatal: the cell falls back to the
+## row's name (see _build_item_grid), which is also how a not-yet-drawn item reads.
+func _load_flat_texture(item_name: String, kind: String) -> Texture2D:
+	var folder := COSTUME_FOLDER
+	match kind:
+		KIND_COIN: folder = COIN_FOLDER
+		KIND_ITEM: folder = ITEM_FOLDER
+	var path := folder + "/" + item_name + ".png"
 	if ResourceLoader.exists(path):
 		var tex := load(path) as Texture2D
 		if tex != null:
 			return tex
-	push_warning("CosmeticShop: no texture found for costume " + item_name)
+	push_warning("CosmeticShop: no texture found for %s '%s' in %s" % [kind, item_name, folder])
 	return null
 
 
 # ─── Grid building ───────────────────────────────────────────────────────────
+
+## One shared 1x1 transparent texture, for a row whose art is missing. The cell then
+## shows its name (is_stand_in in _build_item_grid) rather than nothing at all.
+static var _blank_tex: ImageTexture = null
+func _blank_texture() -> Texture2D:
+	if _blank_tex == null:
+		var img := Image.create(1, 1, false, Image.FORMAT_RGBA8)
+		img.fill(Color(0, 0, 0, 0))
+		_blank_tex = ImageTexture.create_from_image(img)
+	return _blank_tex
+
 
 ## Cells are sized from the stock count rather than fixed, so a seller with three items
 ## gets big ones and a seller with ten still fits inside GRID_AREA_SIZE. The whole block
@@ -280,8 +329,10 @@ func _build_item_grid() -> void:
 	var rows    : int = int(ceil(float(count) / float(columns)))
 	grid.columns = columns
 
-	var aspect   : float = COSTUME_ASPECT if shop_kind == KIND_COSTUME else SLEEVE_ASPECT
-	var max_cell : float = COSTUME_MAX_CELL if shop_kind == KIND_COSTUME else SLEEVE_MAX_CELL
+	# One cell shape for the whole shelf, from the BLOCK's kind: a mixed shop is square and
+	# each row's art is aspect-fitted inside it. Only an all-sleeve shop gets the tall box.
+	var aspect   : float = SLEEVE_ASPECT if shop_kind == KIND_SLEEVE else COSTUME_ASPECT
+	var max_cell : float = SLEEVE_MAX_CELL if shop_kind == KIND_SLEEVE else COSTUME_MAX_CELL
 
 	var fit_w : float = (GRID_AREA_SIZE.x - float(columns - 1) * CELL_SEP) / float(columns)
 	var fit_h : float = (GRID_AREA_SIZE.y - float(rows - 1) * CELL_SEP) / float(rows)
@@ -293,14 +344,21 @@ func _build_item_grid() -> void:
 	for entry in inventory:
 		var item_name : String = String(entry.get("name", ""))
 		var cost      : int    = int(entry.get("cost", DEFAULT_ITEM_COST))
+		var kind      : String = _item_kind(entry)
+		var label     : String = String(entry.get("label", _format_item_name(item_name)))
 		if item_name == "":
 			continue
 
-		var tex := _load_item_texture(item_name)
+		# A row with no art yet still gets a cell: it is a real thing on sale, and hiding
+		# it would make a missing sprite look like a missing item.
+		var tex := _load_item_texture(item_name, kind)
+		var tex_wide : float = 0.0 if tex == null else tex.get_size().x
+		var tex_high : float = 0.0 if tex == null else tex.get_size().y
+		var is_stand_in : bool = tex_wide < PLACEHOLDER_ART_SIZE or tex_high < PLACEHOLDER_ART_SIZE
 		if tex == null:
-			continue
+			tex = _blank_texture()
 
-		var is_owned : bool = _is_owned(item_name)
+		var is_owned : bool = _is_owned(item_name, kind)
 
 		# Wrapper carries the cell geometry and the metadata; the TextureRect inside is
 		# aspect-fitted so an item whose source is off-aspect is letterboxed, not squashed.
@@ -311,9 +369,11 @@ func _build_item_grid() -> void:
 		# and a clipping wrapper would slice it in half. The art below is aspect-fitted to
 		# the cell, so nothing else can spill out.
 		wrapper.clip_contents       = false
-		wrapper.set_meta("item_name", item_name)
-		wrapper.set_meta("item_cost", cost)
-		wrapper.set_meta("is_owned",  is_owned)
+		wrapper.set_meta("item_name",  item_name)
+		wrapper.set_meta("item_cost",  cost)
+		wrapper.set_meta("is_owned",   is_owned)
+		wrapper.set_meta("item_kind",  kind)
+		wrapper.set_meta("item_label", label)
 
 		var tex_size := tex.get_size()
 		var s : float = minf(cell_size.x / tex_size.x, cell_size.y / tex_size.y)
@@ -328,6 +388,20 @@ func _build_item_grid() -> void:
 		rect.position            = (cell_size - disp_size) / 2.0
 		rect.mouse_filter        = Control.MOUSE_FILTER_IGNORE
 		wrapper.add_child(rect)
+
+		# Stand-in art: the name goes in the cell so the shelf reads while the sprite is
+		# still to be drawn. It is a child of the wrapper, so it pulses with the selection.
+		if is_stand_in:
+			var name_label := Label.new()
+			name_label.text                 = label
+			name_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+			name_label.vertical_alignment   = VERTICAL_ALIGNMENT_CENTER
+			name_label.autowrap_mode        = TextServer.AUTOWRAP_WORD_SMART
+			name_label.size                 = cell_size
+			name_label.custom_minimum_size  = cell_size
+			name_label.mouse_filter         = Control.MOUSE_FILTER_IGNORE
+			name_label.add_theme_font_size_override("font_size", 36)
+			wrapper.add_child(name_label)
 
 		if is_owned:
 			_mark_cell_owned(wrapper)
@@ -498,29 +572,34 @@ func _on_buy_pressed() -> void:
 		return
 	var item_name : String = String(selected_cell.get_meta("item_name", ""))
 	var cost      : int    = int(selected_cell.get_meta("item_cost", DEFAULT_ITEM_COST))
+	var kind      : String = String(selected_cell.get_meta("item_kind", shop_kind))
 	if item_name == "" or player_cash < cost:
 		return
 
 	player_cash -= cost
 	GameState.add_cash(-cost)
-	if shop_kind == KIND_COSTUME:
-		GameState.add_costume_to_collection(item_name)
-	else:
-		GameState.add_sleeve_to_collection(item_name)
-		_owned_items[item_name] = true
+	# Each kind banks into its own collection; GameState is the only place that knows how
+	# each one is stored (costumes lower-cased with .png, coins with .png, the rest bare).
+	match kind:
+		KIND_COSTUME: GameState.add_costume_to_collection(item_name)
+		KIND_COIN:    GameState.add_coin_to_collection(item_name)
+		KIND_ITEM:    GameState.add_item_to_collection(item_name)
+		_:
+			GameState.add_sleeve_to_collection(item_name)
+			_owned_items[item_name] = true
 	SoundManagerScript.play_sfx(SoundManagerScript.SFX_gamemode_select)
 
-	_show_purchase_display(item_name)
+	_show_purchase_display(item_name, kind, String(selected_cell.get_meta("item_label", item_name)))
 
 
 ## The reveal. Same overlay furniture as the Coin Shop's, but the item fades up from black
 ## instead of flipping — neither a card back nor a costume has a back to flip from.
-func _show_purchase_display(item_name: String) -> void:
+func _show_purchase_display(item_name: String, kind: String, display_name: String) -> void:
 	_in_purchase_seq = true
 	buy_btn.disabled    = true
 	cancel_btn.disabled = true
 
-	var item_tex := _load_item_texture_full(item_name)
+	var item_tex := _load_item_texture_full(item_name, kind)
 
 	# Full-screen overlay layer above everything
 	var overlay_layer := CanvasLayer.new()
@@ -565,7 +644,7 @@ func _show_purchase_display(item_name: String) -> void:
 
 	# Text label below the item
 	var label := Label.new()
-	label.text                 = _purchase_caption(item_name)
+	label.text                 = _purchase_caption(display_name, kind)
 	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	label.position             = Vector2(160.0, caption_y)
 	label.size                 = Vector2(1600.0, 80.0)
@@ -631,10 +710,12 @@ func _play_fadein(rect: TextureRect, label: Label) -> void:
 	await tween.finished
 
 
-func _purchase_caption(item_name: String) -> String:
-	if shop_kind == KIND_COSTUME:
-		return "You got the " + _format_item_name(item_name) + " Costume"
-	return "You got the " + _format_item_name(item_name) + " Sleeve"
+func _purchase_caption(label: String, kind: String) -> String:
+	match kind:
+		KIND_COSTUME: return "You got the " + _format_item_name(label) + " Costume"
+		KIND_COIN:    return "You got the " + _format_item_name(label) + " Coin"
+		KIND_ITEM:    return "You got the " + _format_item_name(label)
+	return "You got the " + _format_item_name(label) + " Sleeve"
 
 
 ## Basename -> readable name. Same rule as MapManager._format_sleeve_name: swap

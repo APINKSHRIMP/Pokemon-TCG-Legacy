@@ -1,4 +1,10 @@
 {
+  "fish_shop": {
+	"always_open": true,
+	"menu_scene": "res://Scenes/Main_Menu_Scenes/Cosmetic_Shop.tscn",
+	"return_mode": "menu_return",
+	"return_scene": "res://Scenes/Map_Scenes/Fish_Shop.tscn"
+  },
   "card_mart": {
 	"menu_scene": "res://Scenes/Main_Menu_Scenes/Pack_Purchase.tscn",
 	"return_mode": "spawn_position"

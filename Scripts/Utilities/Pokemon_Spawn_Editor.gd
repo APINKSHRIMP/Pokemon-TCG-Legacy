@@ -131,7 +131,7 @@ var _axis_opt: OptionButton = null
 ## Direction name -> its "Runs away" tick box.
 var _flee_boxes: Dictionary = {}
 var _into_water: CheckBox = null
-var _front: LineEdit = null
+var _in_tank: CheckBox = null
 var _rows: Dictionary = {}
 var _table_box: VBoxContainer = null
 var _total_label: Label = null
@@ -186,7 +186,7 @@ func _load_point(point: Dictionary) -> void:
 	for direction in _flee_boxes:
 		(_flee_boxes[direction] as CheckBox).button_pressed = allowed.has(direction)
 	_into_water.button_pressed = bool(point.get("into_water", false))
-	_front.text = str(point.get("front", OverworldPokemonSpawner.TANK_FRONT_DEFAULT))
+	_in_tank.button_pressed = bool(point.get("in_tank", false))
 	# A tank's species sit on the point as `fish_table`, not in the four time tables.
 	var tank_rows = point.get("fish_table", [])
 	_tank_table = (tank_rows as Array).duplicate(true) if tank_rows is Array else []
@@ -323,16 +323,19 @@ func _build() -> void:
 	_into_water.add_theme_font_size_override("font_size", FORM_FONT_SIZE)
 	_rows["into_water"] = _add_row(left, "Jumps into water", _into_water)
 
-	# Fish tank only: the map object its fish are drawn BEHIND. Indoors nothing has a
-	# z_index -- the glass, the sand and the player are all z 0 and the scene tree's
-	# order is the draw order -- so the fish are parented one place before this node.
-	_front = LineEdit.new()
-	_front.text = OverworldPokemonSpawner.TANK_FRONT_DEFAULT
-	_front.tooltip_text = "Name of the map node the fish swim behind (the tank's glass front). " \
-			+ "Found by name anywhere in the map scene. Leave it as it is unless this map's tank " \
-			+ "object is called something else; if it is not found the fish are drawn over the tank."
-	_front.add_theme_font_size_override("font_size", FORM_FONT_SIZE)
-	_rows["front"] = _add_row(left, "Draw behind", _front)
+	# ANY template: put this point's Pokémon INSIDE the aquarium it stands in. Indoors
+	# nothing has a z_index -- the glass, the sand and the player are all z 0 and the
+	# scene tree's order is the draw order -- so a ticked point is parented one place
+	# before that tank's glass at z 0 instead of over the whole map. Which tank is worked
+	# out from where the point is (OverworldPokemonSpawner._tank_front_at). A fish tank
+	# is always in one, so the box is hidden for that template.
+	_in_tank = CheckBox.new()
+	_in_tank.tooltip_text = "Draw this point's Pokémon behind the glass of the fish tank it stands " \
+			+ "in, instead of over the map -- for putting a bug, an idle Pokémon or a patrol inside " \
+			+ "an aquarium. The tank is found automatically; if the point is not inside one, the " \
+			+ "nearest is used."
+	_in_tank.add_theme_font_size_override("font_size", FORM_FONT_SIZE)
+	_rows["in_tank"] = _add_row(left, "In fish tank", _in_tank)
 
 	# ---- right: species table ----
 	_heading(right, "SPECIES TABLE")
@@ -522,7 +525,8 @@ func _on_template_changed() -> void:
 	_rows["flee"].visible = _template == "skittish"
 	_rows["into_water"].visible = _template == "skittish"
 	# A tank has one table and puts every row of it out: no time of day, no chance.
-	_rows["front"].visible = _is_tank()
+	# Any template can be put in a tank; a fish tank is in one by definition.
+	_rows["in_tank"].visible = not is_flyer and not _is_tank()
 	_rows["time"].visible = not _is_tank()
 	_rows["chance"].visible = not _is_tank()
 	_rebuild_table()
@@ -1224,9 +1228,12 @@ func _build_draft() -> Dictionary:
 	if _is_tank():
 		# The one point template with no time-of-day tables at all.
 		point["fish_table"] = _clean_tank_rows()
-		point["front"] = _front.text.strip_edges()
 	else:
 		point["tables"] = tables
+	# Any template may be put inside a tank. A fish tank always is, so it does not carry
+	# the key, and an unticked point leaves it off altogether rather than writing false.
+	if _in_tank.button_pressed and not _is_tank():
+		point["in_tank"] = true
 	return {
 		"kind": "point",
 		"is_new": _is_new,

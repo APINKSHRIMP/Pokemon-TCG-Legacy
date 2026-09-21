@@ -1548,6 +1548,7 @@ func add_costumes_to_collection(battle_sprites: Array) -> int:
 func has_sleeve(sleeve_name: String) -> bool:
 	return sleeve_name in progress.get("sleeves", [])
 
+
 func add_sleeve_to_collection(sleeve_name: String) -> void:
 	var sleeves = progress.get("sleeves", [])
 	if sleeve_name not in sleeves:
@@ -1557,6 +1558,29 @@ func add_sleeve_to_collection(sleeve_name: String) -> void:
 
 func get_sleeves() -> Array:
 	return progress.get("sleeves", [])
+
+
+# ============================================================
+# ITEM COLLECTION
+# ============================================================
+# Bought things that are neither a card, a coin nor a cosmetic -- the fishing rods
+# from the Fish Shop are the first of them. Stored as bare names ("Basic_Rod") in
+# progress["items"], the same shape sleeves use, so whatever reads them later only
+# has to ask has_item().
+
+func has_item(item_name: String) -> bool:
+	return String(item_name) in progress.get("items", [])
+
+func add_item_to_collection(item_name: String) -> void:
+	var items: Array = progress.get("items", [])
+	if String(item_name) not in items:
+		items.append(String(item_name))
+		progress["items"] = items
+		save_progress()
+
+func get_items() -> Array:
+	return progress.get("items", [])
+
 
 # ISSUE #134: bulk grant used by the CHT.All_Sleeves cheat. One save at the end, same reasoning as
 # add_coins_to_collection(). Sleeves are stored as bare basenames, so any extension is stripped.

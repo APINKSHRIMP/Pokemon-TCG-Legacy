@@ -42,14 +42,17 @@ var _bubbles: Array = []
 
 
 ## `global_pos` is the mouth, `surface_y` the GLOBAL y of the top of the water.
-## `size` scales the bubbles with the fish that blew them. The node is parented to that
-## fish (so it draws where the fish does) but is top_level, so it stays put in the world.
+## `size` scales the bubbles with the fish that blew them.
+##
+## `parent` is the fish's OWN PARENT, never the fish: the bubbles have to stay where they
+## were let go of, and a child would be towed along. `top_level` would do that too and was
+## what this used at first -- but a top_level CanvasItem is re-parented to the canvas in
+## the renderer, which takes it out of the scene tree's draw order and floats it over the
+## tank's glass. Being a plain sibling of the fish is what keeps the two together; the
+## caller slots it in at the fish's own index (PokemonFishTank._process_bubbles).
 static func fire(parent: Node, global_pos: Vector2, surface_y: float, count: int = 3,
 		size: float = 1.0) -> FishBubbles:
 	var node := FishBubbles.new()
-	# Kept in world space rather than towed along by whatever let it go, while still
-	# drawing where its parent does -- indoors that tree position IS the draw order.
-	node.top_level = true
 	node._size_scale = maxf(0.2, size)
 	parent.add_child(node)
 	node.global_position = global_pos

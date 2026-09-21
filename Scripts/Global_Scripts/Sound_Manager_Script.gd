@@ -159,7 +159,8 @@ const BGM_NORMAL_BATTLE                  := BGM_DIR + "normal_battle (PTCG)" + B
 const BGM_WEIRD_BATTLE                   := BGM_DIR + "weird_battle (PTCG Imakuma)" + BGM_EXT
 
 # --- Location, menu and cutscene tracks ---
-const BGM_CELESTE_HARBOUR                := BGM_DIR + "Celeste_Harbour_BGM (HGSS National Park)" + BGM_EXT
+const BGM_CELESTE_HARBOUR                := BGM_DIR + "CelesteHarbour (RSE Dewford)" + BGM_EXT
+const BGM_FISH_SHOP                      := BGM_DIR + "FishShop (RSE Rustboro)" + BGM_EXT
 const BGM_GYM_CHALLENGE_HALL             := BGM_DIR + "Gym Leader Challenge Hall (Pokmon Card GB2 - GRs Challenge Cup)" + BGM_EXT
 const BGM_MYSTERY                        := BGM_DIR + "Mystery (PMD Personality_Test)" + BGM_EXT
 const BGM_MYSTERY_2                      := BGM_DIR + "Mystery 2 (PMD Welcome_to_the_World_of_Pokmon)" + BGM_EXT

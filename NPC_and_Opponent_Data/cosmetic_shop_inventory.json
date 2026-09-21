@@ -1,5 +1,16 @@
 {
-	"_comment": "Stock for every cosmetic-selling service NPC (Sleeve Sellers and Costume Salesmen). The top-level key is the NPC's shop_id (set in All_NPC_Constant_Data.json; defaults to the slugified NPC name). 'kind' picks what is being sold and therefore where the art comes from and how the purchase is banked: 'sleeve' -> Image_Assets/Sleeves, GameState.add_sleeve_to_collection; 'costume' -> Image_Assets/Character_Sprites/In_Battle_Sprites, GameState.add_costume_to_collection. Item names are bare basenames exactly as they appear in that folder and in the player's progress array -- no extension. 'columns' is optional and forces the grid's shape (10 items with columns 5 = 2 rows of 5); leave it out to let the grid pick. Add a new seller by adding a new block here and pointing an NPC's shop_id at it.",
+	"_comment": "Stock for every shop that sells things one at a time off a shelf -- Sleeve Sellers, Costume Salesmen and general stores like the Fish Shop. The top-level key is the NPC's shop_id (set in All_NPC_Constant_Data.json or the map's character file; defaults to the slugified NPC name). 'kind' picks what is being sold and therefore where the art comes from and how the purchase is banked: 'sleeve' -> Image_Assets/Sleeves, GameState.add_sleeve_to_collection; 'costume' -> Image_Assets/Character_Sprites/In_Battle_Sprites, GameState.add_costume_to_collection; 'coin' -> Image_Assets/Coins, GameState.add_coin_to_collection (the name is the file's, spaces and all, without .png); 'item' -> Image_Assets/Assorted_Extras, GameState.add_item_to_collection. A block's 'kind' is its default and EVERY ROW MAY OVERRIDE IT with its own 'kind', which is how one shop sells a rod, two costumes and a coin off the same shelf. An 'item' row may carry a 'label' for the readable name, and shows that name in its cell until its art exists. Item names are bare basenames exactly as they appear in that folder and in the player's progress array -- no extension. 'columns' is optional and forces the grid's shape (10 items with columns 5 = 2 rows of 5); leave it out to let the grid pick. Add a new seller by adding a new block here and pointing an NPC's shop_id at it.",
+
+	"fish_shop": {
+		"kind": "item",
+		"title": "Fish Shop",
+		"items": [
+			{"kind": "item",    "name": "Basic_Rod",        "cost": 500, "label": "Basic Rod"},
+			{"kind": "costume", "name": "Fisher_M",         "cost": 200},
+			{"kind": "costume", "name": "Fisher_F",         "cost": 200},
+			{"kind": "coin",    "name": "Zz Gyarados Blue", "cost": 150}
+		]
+	},
 
 	"gym_plaza_sleeves": {
 		"kind": "sleeve",
