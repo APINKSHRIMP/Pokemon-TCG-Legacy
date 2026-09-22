@@ -166,6 +166,9 @@ func apply_doc(new_doc: Dictionary) -> void:
 		if not OverworldPokemonData.TEMPLATES.has(template):
 			push_warning("OverworldPokemonSpawner: unknown template '%s' on %s" % [template, point.get("id", "?")])
 			continue
+		if OverworldPokemonData.NON_SPAWNING_TEMPLATES.has(template):
+			# A fishing spot: a rectangle of water and a fish table, nothing to put out.
+			continue
 		if template == OverworldPokemonData.TANK_TEMPLATE:
 			# A tank is not rolled and has no timer: its whole table goes in, now.
 			_spawn_tank(point)
@@ -286,7 +289,7 @@ func respawn_point(id: String) -> void:
 	_live.erase(id)
 	_remove_pokemon(existing)
 	var point := OverworldPokemonData.find_point(doc, id)
-	if point.is_empty():
+	if point.is_empty() or OverworldPokemonData.NON_SPAWNING_TEMPLATES.has(str(point.get("template", ""))):
 		return
 	var config := _config_for(point, GameState.get_time())
 	if preview or OverworldPokemonData.roll(float(config.get("chance", 0))):

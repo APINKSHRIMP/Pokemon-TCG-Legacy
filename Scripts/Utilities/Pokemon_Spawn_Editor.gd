@@ -50,7 +50,7 @@ const FLOCK_SPIN_WIDTH := 58
 const SPEED_SPIN_WIDTH := 70
 ## Width of the Scale box on every species row.
 const SCALE_SPIN_WIDTH := 90
-## FISH TABLE mode hangs six more number boxes off the end of the species row, so the
+## A FISHING SPOT hangs six more number boxes off the end of the species row, so the
 ## whole row -- name, Rate, Scale, all six fight stats and the bin -- has to fit inside
 ## RIGHT_COLUMN_WIDTH on ONE line. Everything about a fish row is therefore tighter than
 ## the others: shorter captions (FISH_STAT_LABELS), narrower boxes and a smaller gap.
@@ -91,10 +91,6 @@ var _table: Array = []
 ## Working copies of the four time-of-day tables: the map's flyers, and this point's
 ## own. Kept apart so switching template between the two never mixes them.
 var _flyer_tables: Dictionary = {}
-var _fish_tables: Dictionary = {}
-## FISH TABLE mode: the map's four fishing tables instead of a template's. Saves in
-## place like the flyer tables, and has no chance, interval or point settings at all.
-var _fish_mode: bool = false
 ## FISH TANK mode: the one point template with a single table instead of four (an
 ## aquarium indoors has no time of day) and no chance at all -- every row in it is put
 ## out, `count` of each. Kept in its own array for the same reason the flyer and fish
@@ -149,7 +145,7 @@ var _picker: AssetPickerOverlay = null
 ## straight onto the map's flyer tables (N -> FLYER TABLES).
 func setup(map_data: String, working_doc: Dictionary, point: Dictionary,
 		known_additions: Dictionary = {}, open_flyers: bool = false,
-		species_settings: Dictionary = {}, open_fish: bool = false) -> void:
+		species_settings: Dictionary = {}) -> void:
 	_map_data = map_data
 	_species_settings = species_settings.duplicate(true)
 	_doc = working_doc
@@ -161,11 +157,6 @@ func setup(map_data: String, working_doc: Dictionary, point: Dictionary,
 		_template = str(point.get("template", DEFAULT_TEMPLATE))
 	elif open_flyers:
 		_template = "flyer"
-	if open_fish:
-		_fish_mode = true
-		# Not a real template -- it only seeds ADD FROM TEMPLATE with the water Pokémon,
-		# which is the list a fishing table almost always wants.
-		_template = "surfacing"
 	_build()
 	if _is_new:
 		_up_time.value = 0
@@ -488,9 +479,7 @@ func _on_template_switched(previous: String) -> void:
 func _on_template_changed() -> void:
 	var is_flyer := _template == "flyer"
 	var is_static := _template == "static"
-	if _fish_mode:
-		_on_fish_mode_changed()
-		return
+	var is_fishing := _is_fishing()
 	if is_flyer:
 		_title.text = "FLYER TABLES  —  %s" % _map_data
 	elif _is_new:
@@ -526,25 +515,11 @@ func _on_template_changed() -> void:
 	_rows["into_water"].visible = _template == "skittish"
 	# A tank has one table and puts every row of it out: no time of day, no chance.
 	# Any template can be put in a tank; a fish tank is in one by definition.
-	_rows["in_tank"].visible = not is_flyer and not _is_tank()
+	_rows["in_tank"].visible = not is_flyer and not _is_tank() and not is_fishing
 	_rows["time"].visible = not _is_tank()
-	_rows["chance"].visible = not _is_tank()
-	_rebuild_table()
-
-
-## FISH TABLE mode. A cast always hooks exactly one fish, so there is no spawn chance,
-## no roll interval and no template to choose -- the whole left column collapses to the
-## time-of-day picker.
-func _on_fish_mode_changed() -> void:
-	_title.text = "FISH TABLE  —  %s" % _map_data
-	_confirm_btn.text = "SAVE"
-	_cancel_btn.text = "CLOSE"
-	_scope.text = "SAVE writes Pokemon/Spawns/%s.json straight away and keeps this screen open" % _map_data
-	_desc.text = "Which Pokémon can be hooked here, by time of day. A cast always rolls " \
-			+ "exactly one fish, so there is no spawn chance — an empty table just means " \
-			+ "nothing bites then. The six boxes after Scale are that fish's fight, and like " 			+ "Scale they belong to the species: the same on every map and time of day."
-	for key in _rows:
-		(_rows[key] as Control).visible = false
+	# A cast always hooks exactly one fish, so a fishing spot has no spawn chance: an
+	# empty table just means nothing bites at that time. It keeps the four times.
+	_rows["chance"].visible = not _is_tank() and not is_fishing
 	_rebuild_table()
 
 
@@ -563,24 +538,28 @@ func _group_size() -> int:
 # TIME-OF-DAY TABLES
 # ============================================================
 
-## Flyers edit the map's four tables; spawn points edit their own four; the fish table
-## is the map's too.
+## Flyers edit the map's four tables; spawn points -- a fishing spot included -- edit
+## their own four.
 func _tables_for(template: String) -> Dictionary:
-	if _fish_mode:
-		return _fish_tables
 	return _flyer_tables if template == "flyer" else _point_tables
 
 
 ## A fish tank: one table, no time of day, no chance -- everything in the table is put
 ## out at once. Enough of this form works differently for it to be worth asking.
 func _is_tank() -> bool:
-	return not _fish_mode and _template == OverworldPokemonData.TANK_TEMPLATE
+	return _template == OverworldPokemonData.TANK_TEMPLATE
+
+
+## A fishing spot: four time tables of species rows and nothing else -- no chance, no
+## interval, no Pokémon put on the map. Its rows carry the six fight boxes.
+func _is_fishing() -> bool:
+	return _template == OverworldPokemonData.FISHING_TEMPLATE
 
 
 ## Flyer and fish tables belong to the map and have nowhere to be placed, so SAVE writes
 ## the file straight away and the form stays open. A spawn point is handed to the tool.
 func _saves_in_place() -> bool:
-	return _fish_mode or _template == "flyer"
+	return _template == "flyer"
 
 
 ## Fill in whichever set of tables the template uses (once -- edits survive switching
@@ -592,10 +571,7 @@ func _enter_time_tables() -> void:
 		_table = _tank_table
 		_rebuild_table()
 		return
-	if _fish_mode:
-		if _fish_tables.is_empty():
-			_fish_tables = OverworldPokemonData.normalise_fishing(_doc.get("fishing")).duplicate(true)
-	elif _template == "flyer":
+	if _template == "flyer":
 		if _flyer_tables.is_empty():
 			_flyer_tables = OverworldPokemonData.normalise_flyers(_doc.get("flyers")).duplicate(true)
 	elif _point_tables.is_empty():
@@ -668,7 +644,7 @@ func _draft_tables() -> Dictionary:
 	var tables := _tables_for(_template)
 	_store_time_table(tables)
 	var out: Dictionary = {}
-	if _fish_mode:
+	if _is_fishing():
 		# Species rows and nothing else -- no chance, no interval.
 		for time_name in OverworldPokemonData.TIMES_OF_DAY:
 			out[time_name] = {"table": _clean_rows(_time_rows(str(time_name)))}
@@ -690,10 +666,14 @@ func _draft_tables() -> Dictionary:
 
 func _template_species() -> Array:
 	var names: Dictionary = {}
-	for species in OverworldPokemonData.species_for_template(_template):
+	# A fishing spot has no species of its own in the registry -- nothing is ever written
+	# under it (see _registry_additions). ADD FROM TEMPLATE offers the water Pokémon
+	# instead, which is the list a fish table almost always wants; ADD ANY has the rest.
+	var source := "surfacing" if _is_fishing() else _template
+	for species in OverworldPokemonData.species_for_template(source):
 		names[species] = true
 	for species in _known_additions:
-		if (_known_additions[species] as Array).has(_template):
+		if (_known_additions[species] as Array).has(source):
 			names[species] = true
 	var out: Array = names.keys()
 	out.sort_custom(func(a, b): return str(a).naturalnocasecmp_to(str(b)) < 0)
@@ -739,13 +719,14 @@ func _rebuild_table() -> void:
 		child.queue_free()
 	var known := _template_species()
 	var is_flyer := _template == "flyer"
+	var is_fishing := _is_fishing()
 	for i in _table.size():
 		var entry: Dictionary = _table[i]
 		var species := str(entry.get("species", ""))
 		# One line per species. Every piece before REMOVE has a fixed width, so each
 		# box sits at the same x on every row.
 		var row := HBoxContainer.new()
-		row.add_theme_constant_override("separation", FISH_STAT_GAP if _fish_mode else ROW_ITEM_GAP)
+		row.add_theme_constant_override("separation", FISH_STAT_GAP if is_fishing else ROW_ITEM_GAP)
 
 		var icon := TextureRect.new()
 		icon.custom_minimum_size = ICON_SIZE
@@ -755,11 +736,11 @@ func _rebuild_table() -> void:
 		row.add_child(icon)
 
 		var name_label := _caption(row, OverworldPokemonData.display_name(species))
-		name_label.custom_minimum_size = Vector2(FISH_NAME_WIDTH if _fish_mode else NAME_WIDTH, 0)
+		name_label.custom_minimum_size = Vector2(FISH_NAME_WIDTH if is_fishing else NAME_WIDTH, 0)
 		name_label.clip_text = true
 		name_label.tooltip_text = species
 		name_label.mouse_filter = Control.MOUSE_FILTER_PASS
-		if not known.has(species) and not _fish_mode:
+		if not known.has(species) and not is_fishing:
 			# Orange + "*" rather than a long suffix, which would push the columns out.
 			name_label.text += " *"
 			name_label.tooltip_text = species + " -- new to this template, added to it on save"
@@ -778,9 +759,9 @@ func _rebuild_table() -> void:
 			row.add_child(count)
 		else:
 			_caption(row, "Rate")
-			var percent := _spin(0, 100, 1, float(entry.get("percent", 0)), "" if _fish_mode else "%")
+			var percent := _spin(0, 100, 1, float(entry.get("percent", 0)), "" if is_fishing else "%")
 			percent.tooltip_text = "How often this species is picked, as a share of the table"
-			percent.custom_minimum_size = Vector2(FISH_PERCENT_SPIN_WIDTH if _fish_mode else PERCENT_SPIN_WIDTH, 0)
+			percent.custom_minimum_size = Vector2(FISH_PERCENT_SPIN_WIDTH if is_fishing else PERCENT_SPIN_WIDTH, 0)
 			percent.value_changed.connect(func(v: float):
 				entry["percent"] = v
 				_revalidate())
@@ -791,19 +772,19 @@ func _rebuild_table() -> void:
 		# is already the right size, and `scale` is what the overworld spawns use.
 		_caption(row, "Scale")
 		var settings := _settings_for(species)
-		var scale_key := "fish_size" if _fish_mode else "scale"
+		var scale_key := "fish_size" if is_fishing else "scale"
 		var scale_low := OverworldPokemonData.MIN_SCALE
 		var scale_high := OverworldPokemonData.MAX_SCALE
-		if _fish_mode:
+		if is_fishing:
 			var scale_limits: Array = OverworldPokemonData.FISH_STAT_LIMITS["fish_size"]
 			scale_low = float(scale_limits[0])
 			scale_high = float(scale_limits[1])
 		var scale_box := _spin(scale_low, scale_high, 0.1,
-				float(settings[scale_key]), "" if _fish_mode else "x")
+				float(settings[scale_key]), "" if is_fishing else "x")
 		scale_box.tooltip_text = ("Multiplier on the hooked fish silhouette (1.0 = as drawn, 0.8 a fifth smaller). Belongs to the species."
-				if _fish_mode
+				if is_fishing
 				else "Size on the map (1.0 = normal). Belongs to the species: the same on every table and map.")
-		scale_box.custom_minimum_size = Vector2(FISH_SCALE_SPIN_WIDTH if _fish_mode else SCALE_SPIN_WIDTH, 0)
+		scale_box.custom_minimum_size = Vector2(FISH_SCALE_SPIN_WIDTH if is_fishing else SCALE_SPIN_WIDTH, 0)
 		scale_box.value_changed.connect(func(v: float): settings[scale_key] = snappedf(v, 0.1))
 		row.add_child(scale_box)
 
@@ -811,7 +792,7 @@ func _rebuild_table() -> void:
 			_add_flyer_controls(row, entry)
 		elif _template == "skittish":
 			_add_wander_control(row, species)
-		elif _fish_mode:
+		elif is_fishing:
 			_add_fish_controls(row, species)
 		elif _template == "surfacing":
 			_add_swim_control(row, species)
@@ -1099,8 +1080,9 @@ func _problems() -> Array:
 				var speeds := _settings_for(str(row.get("species", "")))
 				if int(speeds["speed_min"]) > int(speeds["speed_max"]):
 					out.append("%s: %s speed min is bigger than max" % [time_name, bird])
-	# A map with no flyers and no fish is fine; a spawn point that can never spawn is not.
-	if not any_rows and not _saves_in_place():
+	# A map with no flyers is fine, and so is a fishing spot nothing bites at yet -- the
+	# water it draws is the useful half. A spawn point that can never spawn is not.
+	if not any_rows and not _saves_in_place() and not _is_fishing():
 		out.append("add a Pokémon to at least one time of day")
 	return out
 
@@ -1141,6 +1123,10 @@ func _revalidate() -> void:
 ## Species in the table that this template doesn't list yet -> [template]. The
 ## placement tool appends them to Overworld_Pokemon.json when it saves.
 func _registry_additions() -> Dictionary:
+	# A fishing spot writes NONE. A fish table may list any Pokémon at all, and recording
+	# them would put them under the surfacing template -- which would put them in the sea.
+	if _is_fishing():
+		return {}
 	var known := _template_species()
 	var out: Dictionary = {}
 	for row in _all_rows():
@@ -1183,15 +1169,6 @@ func _clean_rows(rows: Array) -> Array:
 func _build_draft() -> Dictionary:
 	# A tank has no time-of-day tables to gather up.
 	var tables: Dictionary = {} if _is_tank() else _draft_tables()
-	if _fish_mode:
-		# No registry additions: a fish table may list any Pokémon, and writing them all
-		# into the surfacing template would put them in the sea as well.
-		return {
-			"kind": "fishing",
-			"fishing": tables,
-			"registry_additions": {},
-			"species_settings": _changed_species_settings(),
-		}
 	if _template == "flyer":
 		return {
 			"kind": "flyers",

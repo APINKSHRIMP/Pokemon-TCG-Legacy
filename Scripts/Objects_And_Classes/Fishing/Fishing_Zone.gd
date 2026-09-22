@@ -4,13 +4,18 @@ extends Area2D
 ## ============================================================
 ## FISHING AREAS -- attached to a "FishingAreas" Area2D node
 ## ============================================================
-## Each RectangleShape2D CollisionShape2D child of this node is a spot the player can
-## fish from. The shape's NAME carries the direction the WATER lies in:
+## Each RectangleShape2D CollisionShape2D child of this node is a place the player can
+## cast FROM. The shape's NAME carries the direction the WATER lies in:
 ##
 ##   Fish_Down      water is below the player -- they end up facing down
 ##   Fish_Left_2    water is to the left; the _2 only keeps the node name unique
 ##
 ## Pressing Space/Enter while standing inside one starts the cast.
+##
+## That is ALL these rectangles do. The water the hooked fish then fights in, and the
+## table of what bites there, belong to a `fishing_spot` spawn point -- placed and drawn
+## in the placement tool, picked per cast by whichever one is nearest (FishingData).
+## So a map with two fishing spots needs no scene change here beyond a rect to stand on.
 ##
 ## Shaped after Interactables_Script.gd, which does the same named-shape lookup for
 ## signs and the bed. Do NOT overlap a fishing rect with an interactable rect on the same
@@ -34,10 +39,9 @@ const AMBIENCE_FADE_OUT := 3.0    ## walking away: "lower the ocean sound slowly
 const AMBIENCE_SILENT_DB := -60.0
 const AMBIENCE_PAUSE_FADE := 0.4   ## fading the sea out under the main menu, and back in
 
-## The one shape that is NOT a fishing spot: the rectangle of water the hooked fish is
-## allowed to swim in. Its edge nearest the player is the line a fish has to be reeled
-## over to be landed, the edge opposite them is where it breaks free, and half its span
-## along the cast is how far the bobber is thrown. Skipped by direction_at().
+## Left over from when the water was a shape in the scene too. It is a `fishing_spot`
+## spawn point now, but a map whose old shape has not been deleted would otherwise be
+## read as a cast rect with a nonsense direction, so it is still skipped.
 const BOUNDS_NAME := "Fishing_Zone"
 
 var _player: Node2D = null
@@ -181,17 +185,6 @@ static func _direction_from_name(shape_name: String) -> String:
 	while word.length() > 0 and word[word.length() - 1].is_valid_int():
 		word = word.substr(0, word.length() - 1)
 	return word if word in OverworldPokemon.DIRECTIONS else ""
-
-
-## The water rectangle the hooked fish is confined to, in GLOBAL coordinates, or an empty
-## Rect2 when the map has no Fishing_Zone shape (the minigame then falls back to its own
-## fixed cast and catch distances).
-func bounds_rect() -> Rect2:
-	var node := get_node_or_null(NodePath(BOUNDS_NAME)) as CollisionShape2D
-	if node == null or not (node.shape is RectangleShape2D):
-		return Rect2()
-	var rect_size: Vector2 = node.shape.size
-	return Rect2(to_global(node.position - rect_size / 2.0), rect_size)
 
 
 ## The FishingZone on a map, or null. The minigame is built by MapManager and has no

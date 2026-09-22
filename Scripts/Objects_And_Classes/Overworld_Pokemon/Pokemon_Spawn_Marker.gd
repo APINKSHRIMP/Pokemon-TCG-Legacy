@@ -19,6 +19,7 @@ const TEMPLATE_COLOURS := {
 	"burying": Color(0.7, 0.5, 0.3),
 	"surfacing": Color(0.35, 0.65, 1.0),
 	"fish_tank": Color(0.3, 0.95, 0.85),
+	"fishing_spot": Color(0.2, 0.45, 0.95),
 	"static": Color(0.9, 0.45, 0.9),
 }
 
@@ -61,14 +62,21 @@ func _draw() -> void:
 	draw_line(Vector2(0, -3), Vector2(0, 3), colour, 1.0)
 	# Chance per time of day, "-" where that time's table is empty: "skittish_1  M100 A- E- N40".
 	var parts: Array = [str(point.get("id", "?"))]
-	if str(point.get("template", "")) == OverworldPokemonData.TANK_TEMPLATE:
+	var template := str(point.get("template", ""))
+	if template == OverworldPokemonData.TANK_TEMPLATE:
 		# A tank has no times and no chance -- what it has is a headcount.
 		parts.append("%d fish" % OverworldPokemonData.tank_total(point))
 	else:
+		# A fishing spot has the four times but no chance (a cast always hooks one fish),
+		# so what its four numbers count is the SPECIES that bite at that time.
+		var is_fishing := template == OverworldPokemonData.FISHING_TEMPLATE
 		for time_name in OverworldPokemonData.TIMES_OF_DAY:
 			var table := OverworldPokemonData.time_table(point.get("tables"), str(time_name))
 			var rows = table.get("table", [])
-			var shown: String = "-" if not (rows is Array) or (rows as Array).is_empty() else str(table.get("chance", 0))
+			var empty: bool = not (rows is Array) or (rows as Array).is_empty()
+			var shown: String = "-"
+			if not empty:
+				shown = str((rows as Array).size()) if is_fishing else str(table.get("chance", 0))
 			parts.append(str(time_name).left(1) + shown)
 	var text := "  ".join(parts)
 	var font := ThemeDB.fallback_font

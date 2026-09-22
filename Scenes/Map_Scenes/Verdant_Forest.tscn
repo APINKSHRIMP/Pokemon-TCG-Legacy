@@ -110,9 +110,6 @@ size = Vector2(27, 29.375)
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_2dtkk"]
 size = Vector2(283.5, 39.65625)
 
-[sub_resource type="RectangleShape2D" id="RectangleShape2D_dy23j"]
-size = Vector2(538, 286)
-
 [node name="VerdantForest" type="Node2D" unique_id=1780779826]
 script = ExtResource("20_vfscr")
 
@@ -7169,7 +7166,3 @@ script = ExtResource("30_0qbvq")
 [node name="Fish_Down" type="CollisionShape2D" parent="FishingAreas" unique_id=599656080]
 position = Vector2(1452.25, 2714.8281)
 shape = SubResource("RectangleShape2D_2dtkk")
-
-[node name="Fishing_Zone" type="CollisionShape2D" parent="FishingAreas" unique_id=679578292]
-position = Vector2(1440, 2889)
-shape = SubResource("RectangleShape2D_dy23j")

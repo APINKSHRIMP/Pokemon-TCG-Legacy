@@ -157,7 +157,7 @@ func _build_placement_column(col: VBoxContainer) -> void:
 	col.add_child(_note("This map's Morning / Afternoon / Evening / Night flying Pokémon."))
 	col.add_child(_button("FISH TABLE",
 			func(): MapManager.debug_open_placement_tool(PlacementTool.Mode.FISH)))
-	col.add_child(_note("This map's Morning / Afternoon / Evening / Night catchable fish."))
+	col.add_child(_note("The nearest fishing spot's Morning / Afternoon / Evening / Night catchable fish. A map can have several and they fish differently — add one with NEW, template \"Fishing spot\"."))
 
 
 func _build_cheat_column(col: VBoxContainer) -> void:

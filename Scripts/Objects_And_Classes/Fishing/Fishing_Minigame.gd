@@ -83,7 +83,7 @@ const CAUGHT_Z := 23
 const DRIP_Z := 24
 const NAME_TAG_Z := 25
 
-## Cast. CAST_DISTANCE is only the FALLBACK for a map with no Fishing_Zone rectangle --
+## Cast. CAST_DISTANCE is only the FALLBACK for a map with no fishing spot --
 ## normally the throw is half the zone's span along the cast (see _resolve_bounds).
 const CAST_DISTANCE := 400.0 * SCREEN_TO_WORLD
 const CAST_TIME := 0.55
@@ -245,7 +245,7 @@ const FIGHT_SWITCH_MAX := 5.0
 ##
 ## The room it has is measured against WHERE THE BOBBER LANDED, not against the far wall:
 ## FIGHT_CONE_MIN at the catch line, FIGHT_CONE_MIN + FIGHT_CONE_AT_CAST out at the cast,
-## and it keeps opening past that (the Fishing_Zone's own side walls bound it in the end).
+## and it keeps opening past that (the spot's own side walls bound it in the end).
 ## FIGHT_CONE_POWER above 1 is what makes it pinch in towards the player instead of
 ## tapering in a straight line.
 ##
@@ -257,7 +257,7 @@ const FIGHT_CONE_POWER := 2.2     ## >1 pinches it in towards the player
 ## Reeling is a MASH, not a hold: every Space/Enter press drags the leash in by the
 ## fish's `reel_step`. How much ground a rest wins is down to how fast the player can
 ## hit it.
-## FALLBACK only: with a Fishing_Zone rectangle the catch line is that rectangle's edge
+## FALLBACK only: with a fishing spot the catch line is that rectangle's edge
 ## nearest the player (see _resolve_bounds), not a fixed distance.
 const CATCH_DISTANCE := 200.0 * SCREEN_TO_WORLD
 const CATCH_PAUSE := 0.1
@@ -372,7 +372,7 @@ const JINGLE_AFTER_CRY_LEAD := 0.06
 const BREAK_MESSAGE := "The line snapped!"
 const SLACK_MESSAGE := "No tension on rod, the fish broke free!"
 const TOO_LATE_MESSAGE := "You reeled in too late, the fish stole the bait!"
-## Run all the way out to the far edge of the Fishing_Zone rectangle.
+## Run all the way out to the far edge of the spot's water.
 const BROKE_FREE_MESSAGE := "The fish was able to swim away!"
 const ESCAPED_MESSAGE := "It got away..."
 # -----------------------------------------------------------------------------
@@ -410,7 +410,7 @@ var _bobber_pos: Vector2 = Vector2.ZERO
 var _cast_dir: Vector2 = Vector2.DOWN
 var _cast_speed: float = 0.0
 ## The straight line out from the player towards the water, and how far the bobber is
-## thrown along it. _cast_distance is half the Fishing_Zone rectangle's span on this axis.
+## thrown along it. _cast_distance is half the spot's span on this axis.
 var _axis: Vector2 = Vector2.DOWN
 var _cast_distance: float = CAST_DISTANCE
 
@@ -421,11 +421,11 @@ var _bobber_seq_time: float = 0.0
 var _bobber_seq_fps: float = 1.0
 var _bite_anim: bool = false
 
-## The Fishing_Zone rectangle and what it works out to for this cast, all measured from
+## The spot's water rectangle and what it works out to for this cast, all measured from
 ## the player: _catch_radial is its nearest edge (reel the fish over it and it is landed),
 ## _lost_radial the edge opposite the player (reach it and the fish breaks free), and
 ## _side_min/_side_max the two walls it turns round at. Left at the fallbacks when the
-## map has no Fishing_Zone shape.
+## map has no fishing spot.
 var _bounds: Rect2 = Rect2()
 var _catch_radial: float = CATCH_DISTANCE
 var _lost_radial: float = INF
@@ -496,6 +496,9 @@ var _jingle_left: float = -1.0
 
 ## The map's FishingZone, which owns the looping sea bed.
 var _zone: FishingZone = null
+## The `fishing_spot` spawn point this cast belongs to ({} on a map with none): its
+## region is _bounds and its table is what bites. Worked out once, in _resolve_bounds().
+var _spot: Dictionary = {}
 ## Which row of the caught Pokémon's sheet is on screen. The sink shader's waterline is
 ## measured inside that row, so it has to follow the hop's turn -- reading `water_dir`
 ## after the turn is what killed the blue-from-the-bottom fade.
@@ -549,9 +552,11 @@ func _ready() -> void:
 	_set_state(State.SHAKE)
 
 
-## Works the whole cast out of the map's Fishing_Zone rectangle: how far to throw, where
-## the catch line is, where the fish breaks free, and the two walls it turns round at.
-## A map without one keeps the old fixed numbers.
+## Works the whole cast out of the fishing SPOT the player is casting from -- the nearest
+## `fishing_spot` spawn point, whose region is the water: how far to throw, where the
+## catch line is, where the fish breaks free, and the two walls it turns round at. The
+## same spot decides what bites (_spawn_fish). A map with no fishing spot at all keeps
+## the old fixed numbers.
 func _resolve_bounds() -> void:
 	_axis = _dir_vector(water_dir)
 	_catch_radial = CATCH_DISTANCE
@@ -560,7 +565,11 @@ func _resolve_bounds() -> void:
 	_side_max = INF
 	_cast_distance = CAST_DISTANCE
 	_zone = FishingZone.find_in(get_parent())
-	_bounds = _zone.bounds_rect() if _zone != null else Rect2()
+	# Resolved ONCE, here, rather than per cast stage: the player does not move during a
+	# cast, so the spot cannot change under it, and _spawn_fish must roll on the same
+	# spot the water came from.
+	_spot = FishingData.spot_at(map_data, _player.global_position) if _player != null else {}
+	_bounds = FishingData.region_of(_spot)
 	if _player == null or _bounds.size.x <= 0.0 or _bounds.size.y <= 0.0:
 		return
 	# Project all four corners onto the two axes: whichever way round the player is
@@ -935,7 +944,7 @@ func _tick_bobber_idle(delta: float) -> void:
 # ============================================================
 
 func _spawn_fish() -> void:
-	_fish_species = FishingData.pick_fish(map_data)
+	_fish_species = FishingData.pick_fish(_spot)
 	_stats = OverworldPokemonData.fish_stats(_fish_species)
 	if _fish_species == "":
 		return  # nothing lives here at this hour; the player reels in by hand
@@ -1098,7 +1107,7 @@ func _hook() -> void:
 	if _fish != null and is_instance_valid(_fish):
 		# The fish's own `initial_distance` is how far past THE BOBBER the strike runs it
 		# out -- added to wherever the cast landed, not measured from the player, because
-		# the throw is half the Fishing_Zone rectangle and differs from spot to spot. That
+		# the throw is half the spot's water and differs from spot to spot. That
 		# is where the leash starts: it works in and out from there and only ever gets
 		# closer by being reeled. It swims out there at its fighting speed, never teleports.
 		# Clamped into the zone: a leash outside the water would be unreelable, or would
@@ -1373,7 +1382,7 @@ func _tick_fight_splashes(delta: float, tier: String) -> void:
 
 
 ## Keeps the fish inside the cone opening out from the player, and inside the
-## Fishing_Zone's own side walls.
+## spot's own side walls.
 ##
 ## It does NOT turn the fish round. A fish pinned against either wall goes on swimming
 ## that way and just stops getting anywhere -- swimming on the spot until its own switch
@@ -1389,7 +1398,7 @@ func _clamp_to_cone() -> void:
 	# the splashdown the cone carries on opening, and the zone's side walls take over.
 	var out := maxf(0.0, (radial - _catch_radial) / maxf(1.0, _cast_radial - _catch_radial))
 	var room := FIGHT_CONE_MIN + FIGHT_CONE_AT_CAST * pow(out, FIGHT_CONE_POWER)
-	# The cone and the Fishing_Zone rectangle, whichever is tighter on each side. The
+	# The cone and the spot's water, whichever is tighter on each side. The
 	# rectangle's walls are not symmetrical about the player, so they are kept apart.
 	var low := maxf(-room, _side_min)
 	var high := minf(room, _side_max)

@@ -2,8 +2,8 @@
   "_help": [
     "Overworld Pokemon for this map. Written by the placement tool (DEL debug menu -> NEW NPC / OPPONENT / POKEMON or FLYER TABLES, or EDIT CURRENT NPCS then EDIT NPC on a spawn marker); safe to hand-edit.",
     "flyers: map-wide, one table per time of day (Morning/Afternoon/Evening/Night). The current time's table rolls every `interval` seconds with `chance`% to send a flock of ONE species from its `table` [{species, percent, min, max}] across the screen. min/max = flock size. Speed (px/s), scale, spin, erratic, bug, ghost, (skittish) wander_speed and (surfacing) swim_speed are per SPECIES, in Overworld_Pokemon.json, not per table.",
-    "spawn_points: id, template, at [x, y], group (points sharing a group share every rule -- clones join their source's group, and editing one edits them all), tables {Morning/Afternoon/Evening/Night: {chance (%), table [{species, percent}]}} -- an empty table spawns nothing at that time. burying/surfacing tables also have `interval` (seconds between rolls); surfacing may have `region` [min_x, min_y, max_x, max_y] (a water area: surfaces anywhere inside, swims to the furthest edge; set with V, `at` is its centre); burying may set up_time; skittish sets flee (the run-away directions it is ALLOWED, any of left/right/up/down; out of those it takes whichever heads away from the player -- missing or empty means all four) and into_water (true = it stops at the first collider it runs into, leaps and sinks with a splash instead of fading out); static sets pattern (+ distance/speed/axis for patrols).",
-    "fishing: map-wide, one table per time of day (DEL debug menu -> FISH TABLE). Which Pokemon can be hooked from a fishing area on this map. A cast always rolls exactly ONE fish, so there is no chance and no interval -- just `table` [{species, percent}]. An empty table means nothing bites at that time of day. Fishing areas themselves are named CollisionShape2D children of a FishingAreas Area2D in the map scene (Fish_Down, Fish_Left_2, ... -- the name says which way the water is), not data in this file.",
+    "spawn_points: id, template, at [x, y], group (points sharing a group share every rule -- clones join their source's group, and editing one edits them all), tables {Morning/Afternoon/Evening/Night: {chance (%), table [{species, percent}]}} -- an empty table spawns nothing at that time. burying/surfacing tables also have `interval` (seconds between rolls); surfacing and fish_tank have `region` [min_x, min_y, max_x, max_y] (the water: set with V, `at` is its centre). A fish_tank has NO `tables` at all -- it is not rolled and has no time of day: its `fish_table` [{species, count}] is put out in full, every count of every row, inside the region. ANY point, whatever its template, may tick `in_tank` to be drawn INSIDE the aquarium it stands in: indoors the scene tree's order is the draw order, so the Pokemon is parented one place before that tank's FishTankFront layer at relative z 0 -- which is what puts a bug, an idle Pokemon or a whole tank of fish behind the glass instead of over it. Which of the map's tanks is worked out from the point's position (the one it is inside, else the nearest), so nothing names a node. A fish_tank is always in a tank and does not carry the key; burying may set up_time; skittish sets flee (the run-away directions it is ALLOWED, any of left/right/up/down; out of those it takes whichever heads away from the player -- missing or empty means all four) and into_water (true = it stops at the first collider it runs into, leaps and sinks with a splash instead of fading out); static sets pattern (+ distance/speed/axis for patrols).",
+    "fishing_spot: a spawn point that spawns NOTHING. Its `region` is a patch of water that can be fished -- how far the bobber is thrown, where a fish is landed and where it breaks free are all read off that rectangle -- and its four `tables` are what bites there, one per time of day. A cast always rolls exactly ONE fish, so there is no chance and no interval, just `table` [{species, percent}]; an empty table means nothing bites then and the bait is stolen. A map may have any number and they fish differently: a cast uses the spot whose water the player stands in, else the NEAREST one, so nothing names a node. The rectangles the player stands ON to cast are still CollisionShape2D children of a FishingAreas Area2D in the map scene (Fish_Down, Fish_Left_2, ... -- the name says which way the water is); they say only which way to face and belong to no particular spot.",
     "Table percents are weights and need not add to 100. Species keys are sprite basenames in Image_Assets/Pokemon_Sprites/Overworld_Sprites/."
   ],
   "flyers": {
@@ -208,184 +208,6 @@
           "percent": 40,
           "min": 1,
           "max": 1
-        }
-      ]
-    }
-  },
-  "fishing": {
-    "Morning": {
-      "table": [
-        {
-          "species": "129_Magikarp",
-          "percent": 10
-        },
-        {
-          "species": "130_Gyarados",
-          "percent": 1
-        },
-        {
-          "species": "147_Dratini",
-          "percent": 3
-        },
-        {
-          "species": "148_Dragonair",
-          "percent": 1
-        },
-        {
-          "species": "779_Bruxish",
-          "percent": 15
-        },
-        {
-          "species": "117_Seadra",
-          "percent": 10
-        },
-        {
-          "species": "230_Kingdra",
-          "percent": 5
-        },
-        {
-          "species": "116_Horsea",
-          "percent": 25
-        },
-        {
-          "species": "692_Clauncher",
-          "percent": 25
-        },
-        {
-          "species": "693_Clawitzer",
-          "percent": 5
-        }
-      ]
-    },
-    "Afternoon": {
-      "table": [
-        {
-          "species": "072_Tentacool",
-          "percent": 19
-        },
-        {
-          "species": "073_Tentacruel",
-          "percent": 5
-        },
-        {
-          "species": "211_Qwilfish",
-          "percent": 18
-        },
-        {
-          "species": "320_Wailmer",
-          "percent": 16
-        },
-        {
-          "species": "223_Remoraid",
-          "percent": 22
-        },
-        {
-          "species": "224_Octillery",
-          "percent": 5
-        },
-        {
-          "species": "147_Dratini",
-          "percent": 3
-        },
-        {
-          "species": "148_Dragonair",
-          "percent": 1
-        },
-        {
-          "species": "129_Magikarp",
-          "percent": 10
-        },
-        {
-          "species": "130_Gyarados",
-          "percent": 1
-        }
-      ]
-    },
-    "Evening": {
-      "table": [
-        {
-          "species": "369_Relicanth",
-          "percent": 15
-        },
-        {
-          "species": "222_Corsola",
-          "percent": 20
-        },
-        {
-          "species": "367_Huntail",
-          "percent": 10
-        },
-        {
-          "species": "368_Gorebyss",
-          "percent": 10
-        },
-        {
-          "species": "090_Shellder",
-          "percent": 25
-        },
-        {
-          "species": "091_Cloyster",
-          "percent": 5
-        },
-        {
-          "species": "147_Dratini",
-          "percent": 3
-        },
-        {
-          "species": "148_Dragonair",
-          "percent": 1
-        },
-        {
-          "species": "129_Magikarp",
-          "percent": 10
-        },
-        {
-          "species": "130_Gyarados",
-          "percent": 1
-        }
-      ]
-    },
-    "Night": {
-      "table": [
-        {
-          "species": "690_Skrelp",
-          "percent": 25
-        },
-        {
-          "species": "691_Dragalge",
-          "percent": 5
-        },
-        {
-          "species": "456_Finneon",
-          "percent": 25
-        },
-        {
-          "species": "457_Lumineon",
-          "percent": 5
-        },
-        {
-          "species": "170_Chinchou",
-          "percent": 25
-        },
-        {
-          "species": "171_Lanturn",
-          "percent": 5
-        },
-        {
-          "species": "147_Dratini",
-          "percent": 3
-        },
-        {
-          "species": "148_Dragonair",
-          "percent": 1
-        },
-        {
-          "species": "129_Magikarp",
-          "percent": 5
-        },
-        {
-          "species": "130_Gyarados",
-          "percent": 1
         }
       ]
     }
@@ -1631,6 +1453,112 @@
         "Night": {
           "chance": 100,
           "table": []
+        }
+      }
+    },
+    {
+      "id": "fishing_spot_1",
+      "template": "fishing_spot",
+      "at": [-715, 3009],
+      "group": "fishing_spot_1",
+      "region": [
+        -1056,
+        2799,
+        -374,
+        3218
+      ],
+      "tables": {
+        "Morning": {
+          "table": [
+            {
+              "species": "692_Clauncher",
+              "percent": 25
+            },
+            {
+              "species": "693_Clawitzer",
+              "percent": 5
+            },
+            {
+              "species": "098_Krabby",
+              "percent": 70
+            },
+            {
+              "species": "099_Kingler",
+              "percent": 10
+            }
+          ]
+        },
+        "Afternoon": {
+          "table": [
+            {
+              "species": "072_Tentacool",
+              "percent": 19
+            },
+            {
+              "species": "073_Tentacruel",
+              "percent": 5
+            },
+            {
+              "species": "223_Remoraid",
+              "percent": 22
+            },
+            {
+              "species": "224_Octillery",
+              "percent": 5
+            }
+          ]
+        },
+        "Evening": {
+          "table": [
+            {
+              "species": "116_Horsea",
+              "percent": 100
+            },
+            {
+              "species": "117_Seadra",
+              "percent": 10
+            },
+            {
+              "species": "230_Kingdra",
+              "percent": 10
+            },
+            {
+              "species": "211_Qwilfish",
+              "percent": 10
+            },
+            {
+              "species": "370_Luvdisc",
+              "percent": 10
+            }
+          ]
+        },
+        "Night": {
+          "table": [
+            {
+              "species": "690_Skrelp",
+              "percent": 25
+            },
+            {
+              "species": "691_Dragalge",
+              "percent": 5
+            },
+            {
+              "species": "456_Finneon",
+              "percent": 25
+            },
+            {
+              "species": "457_Lumineon",
+              "percent": 5
+            },
+            {
+              "species": "170_Chinchou",
+              "percent": 40
+            },
+            {
+              "species": "171_Lanturn",
+              "percent": 10
+            }
+          ]
         }
       }
     }

@@ -17,7 +17,7 @@ const FIELD_GUIDE_DIR := "res://Image_Assets/Pokemon_Sprites/Field_Guide_Sprites
 ## Every template, in the order the editor lists them. A template is a behaviour
 ## script; adding one means a script, an entry here, and a line in
 ## OverworldPokemonSpawner.TEMPLATE_SCRIPTS.
-const TEMPLATES := ["flyer", "bug_tree", "swinging_bug", "skittish", "burying", "surfacing", "static", "fish_tank"]
+const TEMPLATES := ["flyer", "bug_tree", "swinging_bug", "skittish", "burying", "surfacing", "static", "fish_tank", "fishing_spot"]
 
 const TEMPLATE_LABELS := {
 	"flyer": "Flying (overhead, map-wide)",
@@ -28,6 +28,7 @@ const TEMPLATE_LABELS := {
 	"surfacing": "Surfacing",
 	"static": "Static / patrol",
 	"fish_tank": "Fish tank",
+	"fishing_spot": "Fishing spot (water to cast into)",
 }
 
 const TEMPLATE_DESCRIPTIONS := {
@@ -39,13 +40,19 @@ const TEMPLATE_DESCRIPTIONS := {
 	"surfacing": "Every INTERVAL seconds, CHANCE% to surface out of the water (blue depth tint, splash), drift a couple dozen pixels, then submerge. Give it a water area with V (4 corners) and it surfaces anywhere inside, swims towards the furthest edge, then submerges.",
 	"static": "Rolled once per map load. Collision, stands still or walks an existing pattern (idle cycle, patrol line, patrol square). Space to talk.",
 	"fish_tank": "An aquarium. Unlike every other template this one spawns EVERY species in its table (Count each) at once, inside the swim area you draw with V, and it ignores the time of day -- one table per tank. They cruise left and right at their own Swim speed, spinning round at the glass, drifting very slowly up and down, and turning round when two of them bump nose to nose. Bubbles rise from their mouths to the surface every few seconds.",
+	"fishing_spot": "A patch of water that can be fished. It spawns nothing at all: what it holds is the water rectangle a hooked fish fights inside (draw it with V, 4 corners) and one table per time of day of what bites there. A cast always rolls exactly ONE fish from the table of the spot NEAREST the player, so two spots on the same map fish differently. An empty table means nothing bites at that time and the bait is stolen. The six numbers after Scale are the fight, and they belong to the SPECIES -- the same on every spot, map and time of day.",
 }
 
-## Templates whose Pokémon cry while on screen (OverworldPokemon.CRY_CHANCE): all of
-## them -- anything the player can see, flying overhead or sitting in a tree, has the
-## same small chance of calling out. Take a name out of this list to silence that
-## template; nothing else needs to change.
-const CRY_TEMPLATES := TEMPLATES
+## A template that puts NOTHING on the map. A fishing spot is a rectangle of water and a
+## table of what bites in it -- it is only a spawn point so that it can be placed, drawn,
+## selected and edited with everything else. The spawner skips these outright.
+const NON_SPAWNING_TEMPLATES := ["fishing_spot"]
+
+## Templates whose Pokémon cry while on screen (OverworldPokemon.CRY_CHANCE): all the
+## ones that actually put a Pokémon out -- anything the player can see, flying overhead
+## or sitting in a tree, has the same small chance of calling out. Take a name out of
+## this list to silence that template; nothing else needs to change.
+const CRY_TEMPLATES := ["flyer", "bug_tree", "swinging_bug", "skittish", "burying", "surfacing", "static", "fish_tank"]
 
 ## Rolled once when the map loads. Everything else rolls on a repeating timer.
 const ONE_SHOT_TEMPLATES := ["bug_tree", "swinging_bug", "skittish", "static"]
@@ -57,13 +64,22 @@ const TEMPLATE_USES_INTERVAL := ["flyer", "burying", "surfacing"]
 ## Templates whose spawn point is an AREA rather than a spot: the placement tool sends a
 ## new one straight into corner capture (V), the point's `at` becomes the centre of what
 ## you draw, and the marker draws the rectangle.
-const REGION_TEMPLATES := ["surfacing", "fish_tank"]
+const REGION_TEMPLATES := ["surfacing", "fish_tank", "fishing_spot"]
 
 ## FISH TANK. The odd one out in every way: its table is not rolled, it is not a time of
 ## day and it is not a chance -- a tank puts out EVERY row in it, `count` of each, the
 ## moment the map loads, and they stay. The rows live on the point as `fish_table`
 ## ([{species, count}]) rather than in `tables`, because a tank indoors has no morning.
 const TANK_TEMPLATE := "fish_tank"
+
+## FISHING SPOT. Not a spawn point at all in the end: the rectangle it draws is the water
+## a hooked fish fights in, and its four tables are what bites there. Which spot a cast
+## uses is worked out from where the player is standing (fishing_spot_at), so the
+## Fish_* rectangles in the map scene name nothing and stay as they are.
+const FISHING_TEMPLATE := "fishing_spot"
+## The water a spot falls back on when its region was never drawn (world px, half
+## extents around `at`), so a half-finished spot is still castable.
+const DEFAULT_FISHING_SIZE := Vector2(120, 80)
 const DEFAULT_TANK_COUNT := 1
 const TANK_COUNT_LIMIT := 12
 ## A tank fish's cruising speed in world px/s (registry `tank_speed`). Slow: 14 world px
@@ -163,7 +179,7 @@ const MAX_SCALE := 20.0
 ##                     wherever the bobber landed, not measured from the player. 0 is no
 ##                     run at all; it was an absolute distance from the player while the
 ##                     cast was a fixed 160, which it no longer is (the throw is half the
-##                     Fishing_Zone rectangle now, so it differs per spot).
+##                     fishing spot's water now, so it differs per spot).
 ##   lateral_speed     world px/s it runs left and right across the cast.
 ##   fish_size         multiplier on the SILHOUETTE the minigame draws, 1 = as drawn.
 ##                     This is what the Scale box edits on a FISH row -- the shared
@@ -350,14 +366,14 @@ static func normalise_point_tables(tables) -> Dictionary:
 	return normalise_time_tables(tables, default_point_table())
 
 
-## The fishing table is the odd one out: a cast always rolls exactly one fish, so there
-## is no spawn chance, no roll interval and no flock size -- just the species rows.
+## A fishing spot's table is the odd one out: a cast always rolls exactly one fish, so
+## there is no spawn chance, no roll interval and no flock size -- just the species rows.
 static func default_fish_table() -> Dictionary:
 	return {"table": []}
 
 
-static func normalise_fishing(fishing) -> Dictionary:
-	return normalise_time_tables(fishing, default_fish_table())
+static func normalise_fishing_tables(tables) -> Dictionary:
+	return normalise_time_tables(tables, default_fish_table())
 
 
 ## One time's table out of a four-table dictionary ({} if it isn't there).
@@ -371,12 +387,16 @@ static func time_table(tables, time_name: String) -> Dictionary:
 static func load_spawns(map_data: String) -> Dictionary:
 	var doc := _read_json(spawn_path(map_data))
 	doc["flyers"] = normalise_flyers(doc.get("flyers"))
-	doc["fishing"] = normalise_fishing(doc.get("fishing"))
 	if not (doc.get("spawn_points") is Array):
 		doc["spawn_points"] = []
 	for point in doc["spawn_points"]:
 		if point is Dictionary:
-			point["tables"] = normalise_point_tables(point.get("tables"))
+			# A fishing spot has the same four tables as any other point, but they carry
+			# only species rows: a cast is not a chance and not on a timer.
+			if str(point.get("template", "")) == FISHING_TEMPLATE:
+				point["tables"] = normalise_fishing_tables(point.get("tables"))
+			else:
+				point["tables"] = normalise_point_tables(point.get("tables"))
 			# A fish tank's species live on the point as `fish_table`, not in the four
 			# time-of-day tables: an aquarium indoors has no morning or night.
 			if str(point.get("template", "")) == TANK_TEMPLATE and not (point.get("fish_table") is Array):
@@ -547,6 +567,53 @@ static func tank_region(point: Dictionary) -> Rect2:
 	var at = point.get("at", [0, 0])
 	var centre := Vector2(float(at[0]), float(at[1]))
 	return Rect2(centre - DEFAULT_TANK_SIZE, DEFAULT_TANK_SIZE * 2.0)
+
+
+## ---- fishing spots ---------------------------------------------------------
+
+## Every fishing spot in a map's spawn document, in file order.
+static func fishing_spots(doc: Dictionary) -> Array:
+	var out: Array = []
+	for point in doc.get("spawn_points", []):
+		if point is Dictionary and str(point.get("template", "")) == FISHING_TEMPLATE:
+			out.append(point)
+	return out
+
+
+## The water a spot's fish fights in: its `region`, else a default-sized box around `at`.
+## Same shape as tank_region -- an undrawn area still gives the minigame something.
+static func fishing_region(point: Dictionary) -> Rect2:
+	var region := point_region(point)
+	if region.has_area():
+		return region
+	var at = point.get("at", [0, 0])
+	var centre := Vector2(float(at[0]), float(at[1]))
+	return Rect2(centre - DEFAULT_FISHING_SIZE, DEFAULT_FISHING_SIZE * 2.0)
+
+
+## The fishing spot a cast from `world_pos` belongs to, out of `spots`: the one whose
+## water the player is stood in, else the one whose water is NEAREST them. Exactly how a
+## point in a tank finds its glass (_tank_front_at) -- nothing names a node, so several
+## spots on one map need no naming convention and no scene edits.
+static func nearest_fishing_spot(spots: Array, world_pos: Vector2) -> Dictionary:
+	var best: Dictionary = {}
+	var best_distance := INF
+	for point in spots:
+		if not (point is Dictionary):
+			continue
+		var water := fishing_region(point)
+		if water.has_point(world_pos):
+			return point
+		# Distance to the rectangle itself, not to its centre: a long pier's water would
+		# otherwise lose to a small pond the player is further from but centred on.
+		var nearest := Vector2(
+				clampf(world_pos.x, water.position.x, water.end.x),
+				clampf(world_pos.y, water.position.y, water.end.y))
+		var distance := world_pos.distance_squared_to(nearest)
+		if distance < best_distance:
+			best_distance = distance
+			best = point
+	return best
 
 
 ## The size of the `index`-th fish of `species` in a tank: the species' scale with its

@@ -45,7 +45,7 @@ const NUDGE_LARGE := 10.0
 ##   EDIT    walk round and edit what is already on the map
 ##   NEW     straight onto the create screen, and back to it after every save
 ##   FLYERS  straight onto the map's flyer tables; closes once they are saved
-##   FISH    straight onto the map's fishing tables; same, but the fish table
+##   FISH    EDIT, opened with this map's first fishing spot already selected
 enum Mode { EDIT, NEW, FLYERS, FISH }
 
 ## The clickable button bar along the bottom of the screen.
@@ -109,7 +109,7 @@ const POKEMON_SPAWN_HELP := [
 	"Overworld Pokemon for this map. Written by the placement tool (DEL debug menu -> NEW NPC / OPPONENT / POKEMON or FLYER TABLES, or EDIT CURRENT NPCS then EDIT NPC on a spawn marker); safe to hand-edit.",
 	"flyers: map-wide, one table per time of day (Morning/Afternoon/Evening/Night). The current time's table rolls every `interval` seconds with `chance`% to send a flock of ONE species from its `table` [{species, percent, min, max}] across the screen. min/max = flock size. Speed (px/s), scale, spin, erratic, bug, ghost, (skittish) wander_speed and (surfacing) swim_speed are per SPECIES, in Overworld_Pokemon.json, not per table.",
 	"spawn_points: id, template, at [x, y], group (points sharing a group share every rule -- clones join their source's group, and editing one edits them all), tables {Morning/Afternoon/Evening/Night: {chance (%), table [{species, percent}]}} -- an empty table spawns nothing at that time. burying/surfacing tables also have `interval` (seconds between rolls); surfacing and fish_tank have `region` [min_x, min_y, max_x, max_y] (the water: set with V, `at` is its centre). A fish_tank has NO `tables` at all -- it is not rolled and has no time of day: its `fish_table` [{species, count}] is put out in full, every count of every row, inside the region. ANY point, whatever its template, may tick `in_tank` to be drawn INSIDE the aquarium it stands in: indoors the scene tree's order is the draw order, so the Pokemon is parented one place before that tank's FishTankFront layer at relative z 0 -- which is what puts a bug, an idle Pokemon or a whole tank of fish behind the glass instead of over it. Which of the map's tanks is worked out from the point's position (the one it is inside, else the nearest), so nothing names a node. A fish_tank is always in a tank and does not carry the key; burying may set up_time; skittish sets flee (the run-away directions it is ALLOWED, any of left/right/up/down; out of those it takes whichever heads away from the player -- missing or empty means all four) and into_water (true = it stops at the first collider it runs into, leaps and sinks with a splash instead of fading out); static sets pattern (+ distance/speed/axis for patrols).",
-	"fishing: map-wide, one table per time of day (DEL debug menu -> FISH TABLE). Which Pokemon can be hooked from a fishing area on this map. A cast always rolls exactly ONE fish, so there is no chance and no interval -- just `table` [{species, percent}]. An empty table means nothing bites at that time of day. Fishing areas themselves are named CollisionShape2D children of a FishingAreas Area2D in the map scene (Fish_Down, Fish_Left_2, ... -- the name says which way the water is), not data in this file.",
+	"fishing_spot: a spawn point that spawns NOTHING. Its `region` is a patch of water that can be fished -- how far the bobber is thrown, where a fish is landed and where it breaks free are all read off that rectangle -- and its four `tables` are what bites there, one per time of day. A cast always rolls exactly ONE fish, so there is no chance and no interval, just `table` [{species, percent}]; an empty table means nothing bites then and the bait is stolen. A map may have any number and they fish differently: a cast uses the spot whose water the player stands in, else the NEAREST one, so nothing names a node. The rectangles the player stands ON to cast are still CollisionShape2D children of a FishingAreas Area2D in the map scene (Fish_Down, Fish_Left_2, ... -- the name says which way the water is); they say only which way to face and belong to no particular spot.",
 	"Table percents are weights and need not add to 100. Species keys are sprite basenames in Image_Assets/Pokemon_Sprites/Overworld_Sprites/.",
 ]
 
@@ -149,7 +149,7 @@ func setup(map_data: String, container: Node2D, player: Node2D, mode: int = Mode
 		Mode.FLYERS:
 			_open_pokemon_editor({}, true)
 		Mode.FISH:
-			_open_pokemon_editor({}, false, true)
+			_select_first_fishing_spot()
 
 
 # ============================================================
@@ -419,7 +419,7 @@ func _region_step() -> void:
 	if _region_capture_id == "":
 		var marker := _selected() as PokemonSpawnMarker
 		if marker == null or not OverworldPokemonData.REGION_TEMPLATES.has(str(marker.point.get("template", ""))):
-			_flash("[color=orange]select a surfacing or fish tank spawn point (Tab), then V to draw its water[/color]")
+			_flash("[color=orange]select a surfacing point, fish tank or fishing spot (Tab), then V to draw its water[/color]")
 			return
 		if _grabbed:
 			_drop()
@@ -771,6 +771,21 @@ func _on_editor_pokemon_chosen() -> void:
 	_open_pokemon_editor({})
 
 
+## The FISH TABLE button (Mode.FISH). A fishing spot is an ordinary spawn point now, so
+## this is only a shortcut past Tabbing round to it: the form opens on the spot NEAREST
+## the player, which is the one they walked to. A map with none is told where to make one.
+func _select_first_fishing_spot() -> void:
+	var spots := OverworldPokemonData.fishing_spots(_pk_doc)
+	if spots.is_empty():
+		_flash("[color=orange]no fishing spot on this map yet — make one with NEW NPC / OPPONENT / POKÉMON, template \"Fishing spot\"[/color]")
+		return
+	var spot: Dictionary = spots[0]
+	if _player != null and is_instance_valid(_player):
+		spot = OverworldPokemonData.nearest_fishing_spot(spots, _player.global_position)
+	_rebuild_markers(str(spot.get("id", "")))
+	_open_pokemon_editor(spot)
+
+
 ## N -> FLYER TABLES. As above, but straight onto the map's flyer tables.
 func _on_editor_flyers_chosen() -> void:
 	_editor = null
@@ -779,7 +794,7 @@ func _on_editor_flyers_chosen() -> void:
 
 ## `point` is a spawn point in _pk_doc to edit, or {} for a new point / the flyers.
 ## `flyers` opens the form on the map's time-of-day flyer tables.
-func _open_pokemon_editor(point: Dictionary, flyers: bool = false, fish: bool = false) -> void:
+func _open_pokemon_editor(point: Dictionary, flyers: bool = false) -> void:
 	if _spawner == null or not is_instance_valid(_spawner):
 		_thaw_player_after_form()
 		_flash("[color=orange]this map has no Pokémon spawner (it has no character file)[/color]")
@@ -793,7 +808,7 @@ func _open_pokemon_editor(point: Dictionary, flyers: bool = false, fish: bool = 
 	_pokemon_editor.save_requested.connect(_on_pokemon_editor_save_requested)
 	_freeze_player_for_form()
 	_pokemon_editor.setup(_map_data, _pk_doc, point, _pk_registry_additions, flyers,
-			_pk_species_settings, fish)
+			_pk_species_settings)
 	_update_hud()
 
 
@@ -837,8 +852,8 @@ func _on_pokemon_editor_confirmed(draft: Dictionary) -> void:
 		points.append(point)
 		_rebuild_markers(id)
 		if OverworldPokemonData.REGION_TEMPLATES.has(str(point.get("template", ""))):
-			# Surfacing points and fish tanks are areas of water, not spots: straight into
-			# picking their 4 corners.
+			# Surfacing points, fish tanks and fishing spots are areas of water rather
+			# than spots: straight into picking their 4 corners.
 			_start_region_capture(id)
 		else:
 			# Handed to you to place, the same as a new character.
@@ -881,17 +896,12 @@ func _on_pokemon_editor_confirmed(draft: Dictionary) -> void:
 	_flash("[color=lime]%s%s ready — Enter to write Pokemon/Spawns/%s.json[/color]" % [id, also, _map_data])
 
 
-## Flyer or fish tables. SAVE: write the spawn file straight away and leave the form open.
+## Flyer tables. SAVE: write the spawn file straight away and leave the form open.
 ## Any spawn-point edits already waiting in _pk_doc are written with it.
 func _on_pokemon_editor_save_requested(draft: Dictionary) -> void:
 	_merge_registry_additions(draft)
 	var kind := str(draft.get("kind", "flyers"))
-	if kind == "fishing":
-		_pk_doc["fishing"] = draft.get("fishing", {})
-		# The next cast reads the file again rather than the table it cached on load.
-		FishingData.invalidate()
-	else:
-		_pk_doc["flyers"] = draft.get("flyers", {})
+	_pk_doc["flyers"] = draft.get("flyers", {})
 	_pk_dirty = true
 	var ok := _save_pokemon()
 	if ok:
@@ -947,6 +957,9 @@ func _save_pokemon() -> bool:
 			out[key] = _pk_doc[key]
 	if not _write_json(OverworldPokemonData.spawn_path(_map_data), out):
 		return false
+	# Fishing spots live in this file, so the next cast reads what was just written
+	# rather than the spots cached when the map loaded.
+	FishingData.invalidate()
 	if not _pk_registry_additions.is_empty() or not _pk_species_settings.is_empty():
 		var registry := OverworldPokemonData._read_json(OverworldPokemonData.REGISTRY_PATH)
 		if not (registry.get("species") is Dictionary):
