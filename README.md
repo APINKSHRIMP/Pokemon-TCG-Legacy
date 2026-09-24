@@ -80,7 +80,7 @@ Hundreds of unique decks and opponents to battle so you never have to battle the
 
 ![loading-ag-300](Image_Assets/Screenshots/intro.gif)
 
-![loading-ag-296](Image_Assets/Screenshots/fishing.gif)
+![](image_assets/screenshots/fishing.gif)
 
 ## Technical
 
