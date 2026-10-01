@@ -1561,6 +1561,41 @@
           ]
         }
       }
+    },
+    {
+      "id": "fishing_spot_2",
+      "template": "fishing_spot",
+      "at": [-944, 961],
+      "group": "fishing_spot_2",
+      "tables": {
+        "Morning": {
+          "table": [
+            {
+              "species": "341_Corphish",
+              "percent": 100
+            },
+            {
+              "species": "342_Crawdaunt",
+              "percent": 10
+            }
+          ]
+        },
+        "Afternoon": {
+          "table": []
+        },
+        "Evening": {
+          "table": []
+        },
+        "Night": {
+          "table": []
+        }
+      },
+      "region": [
+        -1114,
+        832,
+        -774,
+        1090
+      ]
     }
   ]
 }

@@ -1,3 +1,9 @@
+# 26/09/2026
+
+ Got married 😎 Got really ill 🤧 back to it.
+
+
+
 # Pokémon TCG Legacy
 
 ![Trainer icons](Image_Assets/Screenshots/banner.gif)
