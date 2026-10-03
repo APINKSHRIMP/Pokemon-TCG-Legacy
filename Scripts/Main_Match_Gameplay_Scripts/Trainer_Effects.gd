@@ -491,14 +491,14 @@ func _register_base_validations() -> void:
 
 	_validator_dispatch["base1-86"] = func(c, opp):  # Pokemon Flute
 		var opp_bench = main.player_bench if opp else main.opponent_bench
-		if opp_bench.size() >= 5: return "Opponent's bench is full!"
+		if opp_bench.size() >= main.get_max_bench_size(): return "Opponent's bench is full!"   # ISSUE #309: Narrow Gym etc.
 		var opp_discard = main.player_discard_pile if opp else main.opponent_discard_pile
 		return "" if opp_discard.any(func(x): return main.is_basic_pokemon(x)) else "No Basic Pokemon in opponent's discard pile!"
 
 	_validator_dispatch["base1-82"] = func(c, opp):  # Full Heal
 		var active = main.opponent_active_pokemon if opp else main.player_active_pokemon
 		if active == null: return "No active Pokemon!"
-		return "" if (active.special_condition != "" or active.is_poisoned or active.is_burned) else "Active Pokemon has no conditions to heal!"
+		return "" if (active.special_condition != "" or active.is_poisoned) else "Active Pokemon has no conditions to heal!"
 
 	_validator_dispatch["base1-77"] = func(c, opp):  # Pokemon Trader
 		var hand = main.opponent_hand if opp else main.player_hand
@@ -507,9 +507,10 @@ func _register_base_validations() -> void:
 		if deck.filter(func(x): return x.metadata.get("supertype","").to_lower() == "pokémon").is_empty(): return "No Pokemon in deck to trade for!"
 		return ""
 
+	# ISSUE #309: "Look at your opponent's hand. IF he or she has any Trainer cards..." — playable even when
+	# there are none (you still get to look); the validator used to read the hidden hand and refuse.
 	var fn_rsa_v = func(c, opp):  # Rocket's Sneak Attack
-		var target = main.player_hand if opp else main.opponent_hand
-		return "" if target.any(func(x): return x.metadata.get("supertype","") == "Trainer") else "Opponent has no Trainer cards in hand!"
+		return ""
 	_validator_dispatch["base5-16"] = fn_rsa_v;  _validator_dispatch["base5-72"] = fn_rsa_v
 
 	_validator_dispatch["base5-73"] = func(c, opp):  # The Boss's Way
@@ -658,7 +659,14 @@ func _register_gym2_validations() -> void:
 	var fn_bq_v = func(c, opp):  # Blaine's Quiz 2/3
 		var others = (main.opponent_hand if opp else main.player_hand).filter(func(x): return x != c)
 		return "" if others.size() >= 1 else "Need at least 1 other card in hand!"
-	_validator_dispatch["gym2-111"] = fn_bq_v;  _validator_dispatch["gym2-112"] = fn_bq_v
+	_validator_dispatch["gym2-111"] = fn_bq_v
+	# ISSUE #312: Quiz #3 needs a Pokémon card with an attack; Quiz #1 a Pokémon whose length is known
+	_validator_dispatch["gym2-112"] = func(c, opp):
+		var h3 = (main.opponent_hand if opp else main.player_hand).filter(func(x): return x != c and x.metadata.get("supertype","") in ["Pokémon","Pokemon"] and not x.metadata.get("attacks", []).is_empty())
+		return "" if h3.size() >= 1 else "Need a Pokemon card with an attack in your hand!"
+	_validator_dispatch["gym1-97"] = func(c, opp):
+		var h1 = (main.opponent_hand if opp else main.player_hand).filter(func(x): return x != c and x.metadata.get("supertype","") in ["Pokémon","Pokemon"] and _pokemon_length_in(x) > 0)
+		return "" if h1.size() >= 1 else "Need a Basic Pokemon or Evolution card in your hand!"
 
 	_validator_dispatch["gym2-115"] = func(c, opp):  # Koga's Ninja Trick
 		var active = main.opponent_active_pokemon if opp else main.player_active_pokemon
@@ -698,6 +706,11 @@ func _register_gym2_validations() -> void:
 # Trainer lock flags (Psyduck Headache)
 var player_trainer_locked: bool = false
 var opponent_trainer_locked: bool = false
+# ISSUE #309: extra END-OF-OWN-TURN boundaries a lock survives. 0 = lifts at the end of the locked side's
+# next/current turn (Headache, High Voltage, "no more Trainers this turn"); 1 = Rocket's Secret Experiment
+# ("until the end of your NEXT turn", set during your own turn).
+var player_trainer_lock_extra_turns: int = 0
+var opponent_trainer_lock_extra_turns: int = 0
 var player_supporter_locked: bool = false   # ecard2 Addictive Pollen (Vileplume) — no Supporter cards this turn
 var opponent_supporter_locked: bool = false
 var player_trainer_except_supporter_locked: bool = false   # ex8 Disconnect (Manectric ex) — no non-Supporter Trainers this turn
@@ -1212,8 +1225,8 @@ func play_trainer_card(card: card_object, is_opponent: bool) -> void:
 			main.refresh_hand_display(is_opponent)
 			return
 
-	# GYM2-102 Chaos Gym — Whenever a player plays a non-Stadium Trainer, flip a coin. Tails: card is wasted (discarded with no effect).
-	# Simplification: the "opponent may steal the card" mechanic is skipped (same approach as Lt. Surge's Secret Plan).
+	# GYM2-102 Chaos Gym — Whenever a player plays a non-Stadium Trainer, flip a coin. Tails: the card can't be
+	# played; if it isn't a card that is put into play, the opponent may use it instead (_chaos_gym_offer_steal).
 	if main.is_stadium_in_play(StadiumIds.CHAOS_GYM) and not is_stadium_trainer(card):
 		await main.show_message("CHAOS GYM: FLIPPING COIN FOR " + card_name.to_upper() + "...")
 		if main._should_bail(): return
@@ -1230,6 +1243,9 @@ func play_trainer_card(card: card_object, is_opponent: bool) -> void:
 			await main.animate_card_a_to_b(hand_node_chaos, discard_node_chaos, 0.3, ctex_chaos, main.card_scales[10])
 			if main._should_bail(): return
 			main.update_discard_pile_display(is_opponent)
+			# ISSUE #309: "If the card isn't put into play, the player's opponent may use that card instead, if
+			# he or she does everything required in order to play that card." The steal half was skipped.
+			await _chaos_gym_offer_steal(card, not is_opponent)
 			main.cpu_ai.invalidate_cpu_evaluation()
 			return
 
@@ -1273,6 +1289,32 @@ func play_trainer_card(card: card_object, is_opponent: bool) -> void:
 	
 	# Fix 2: Invalidate CPU evaluation cache — trainer cards can change board state
 	main.cpu_ai.invalidate_cpu_evaluation()
+
+# ISSUE #309: Chaos Gym tails — `stealer_is_opp` may resolve the wasted Trainer as if they had played it
+# (paying any costs themselves). Cards that are put into play (PlusPower, Defender, tools, Clefairy Doll,
+# Mysterious Fossil) can't be taken. The card itself stays in its owner's discard pile.
+func _chaos_gym_offer_steal(card: card_object, stealer_is_opp: bool) -> void:
+	if is_attached_trainer(card) or is_bench_token_trainer(card) or is_stadium_trainer(card):
+		return
+	if validate_trainer_can_be_played(card, stealer_is_opp) != "":
+		return
+	var take := false
+	if stealer_is_opp:
+		take = main.cpu_ai.cpu_score_trainer_card(card) >= 30.0
+	else:
+		var anchor = main.player_active_pokemon if main.player_active_pokemon != null else card
+		take = await gym1_prompt_yes_no(anchor, "CHAOS GYM", "The opponent's " + card.metadata.get("name", "") + " failed. Use it yourself?", "USE IT", "NO")
+		if main._should_bail(): return
+	if not take:
+		return
+	await main.show_message("CHAOS GYM: " + ("THE OPPONENT" if stealer_is_opp else "YOU") + " USE " + card.metadata.get("name", "").to_upper() + "!")
+	if main._should_bail(): return
+	var uid_l = card.uid.to_lower()
+	if uid_l in ["base1-92", "base1-79"]:
+		if not await gym1_no_removal_gym_pay_tax(card, stealer_is_opp):
+			return
+	print("ISSUE #309 FIX ACTIVE: Chaos Gym steal — ", card.metadata.get("name", ""), " used by ", "CPU" if stealer_is_opp else "player")
+	await resolve_standard_trainer(card, stealer_is_opp)
 
 # Displays the trainer card animation overlay
 func show_trainer_card_played_animation(card: card_object, is_opponent: bool) -> void:
@@ -1838,16 +1880,9 @@ func effect_devolution_spray(is_opponent: bool) -> void:
 	var devolve_to: card_object = null
 
 	if is_opponent:
-		# CPU picks the most damaged evolved pokemon
-		var worst_pct = 1.0
-		for p in evolved_pokemon:
-			var max_hp = int(p.metadata.get("hp", "0"))
-			if max_hp <= 0:
-				continue
-			var pct = float(p.current_hp) / float(max_hp)
-			if pct < worst_pct:
-				worst_pct = pct
-				target = p
+		# ISSUE #309: CPU only sprays a Pokémon to shed a Special Condition, and only one that survives
+		# devolving to its Basic (damage counters stay).
+		target = main.cpu_ai.cpu_pick_devolution_spray_target(evolved_pokemon)
 		if target == null:
 			target = evolved_pokemon[0]
 		# CPU always devolves to the lowest pre-evolution (the basic)
@@ -1891,11 +1926,14 @@ func effect_devolution_spray(is_opponent: bool) -> void:
 	target.attached_pre_evolutions.clear()
 	devolve_to.attached_cards = evo_card.attached_cards.duplicate()
 	evo_card.attached_cards.clear()
-	# Transfer damage, clamping so it has at least 10 HP
-	var max_hp_old = int(evo_card.metadata.get("hp", "0"))
-	var damage_taken = max_hp_old - evo_card.current_hp
-	var new_max_hp = int(devolve_to.metadata.get("hp", "0"))
-	devolve_to.current_hp = max(10, new_max_hp - damage_taken)
+	# ISSUE #309: PlusPower / Defender counters ride along with the attached cards
+	devolve_to.defender_turns_remaining = evo_card.defender_turns_remaining
+	devolve_to.defender_count = evo_card.defender_count
+	devolve_to.pluspower_count = evo_card.pluspower_count
+	# ISSUE #309: damage counters stay — if they reach the lower HP the Pokémon is Knocked Out (the old
+	# code clamped it to 10 HP).
+	var damage_taken = evo_card.get_max_hp() - evo_card.current_hp
+	devolve_to.current_hp = max(0, devolve_to.get_max_hp() - damage_taken)
 	devolve_to.current_location = field_location
 	main.clear_all_statuses(devolve_to, is_opponent)
 	# Replace in the appropriate slot
@@ -1915,6 +1953,8 @@ func effect_devolution_spray(is_opponent: bool) -> void:
 	main.update_discard_pile_display(is_opponent)
 	await main.show_message(evo_card.metadata.get("name", "") + " devolved into " + devolve_to.metadata.get("name", "") + "!")
 	if main._should_bail(): return
+	if devolve_to.current_hp <= 0:
+		await main.check_all_knockouts()
 
 # base1-73 — Impostor Professor Oak: Opponent shuffles hand into deck, draws 7
 func effect_impostor_professor_oak(is_opponent: bool) -> void:
@@ -2133,7 +2173,7 @@ func effect_pokemon_breeder(is_opponent: bool) -> void:
 				if _basic_matches_stage2(pokemon, s2):
 					main.evolution_card_awaiting_target = s2
 					main.selected_card_for_action = pokemon
-					main.perform_evolution(true)
+					await main.perform_evolution(true)   # ISSUE #309: coroutine (Viridian heal, on-evolve Powers)
 					await main.show_message("Opponent used Pokemon Breeder to evolve " + pokemon.metadata.get("name", "") + " into " + s2.metadata.get("name", "") + "!")
 					if main._should_bail(): return
 					main.display_pokemon(true)
@@ -2169,7 +2209,7 @@ func effect_pokemon_breeder(is_opponent: bool) -> void:
 		if target != null:
 			main.evolution_card_awaiting_target = s2_card
 			main.selected_card_for_action = target
-			main.perform_evolution(false)
+			await main.perform_evolution(false)   # ISSUE #309: coroutine
 			main.display_pokemon(false)
 			main.display_active_pokemon_energies(false)
 			main.refresh_hand_display(false)
@@ -2303,11 +2343,21 @@ func effect_scoop_up(is_opponent: bool) -> void:
 	var target: card_object = null
 	
 	if is_opponent:
-		# CPU: pick the pokemon at lowest HP that is guaranteed KO'd
+		# ISSUE #310: scoop the badly damaged Pokémon that costs least to rebuild (few Energy / no evolution
+		# lost) — and never the Active with an empty Bench, which would lose the game on the spot.
+		var best_s := -INF
 		for pokemon in all_in_play:
-			if pokemon.current_hp <= int(pokemon.metadata.get("hp", "0")) / 2:
+			if pokemon.current_hp * 2 > pokemon.get_max_hp():
+				continue
+			if pokemon == active and bench.is_empty():
+				continue
+			var s := float(pokemon.get_max_hp() - pokemon.current_hp)
+			s -= pokemon.attached_energies.size() * 25.0
+			s -= pokemon.attached_pre_evolutions.size() * 20.0
+			if pokemon == active: s += 30.0
+			if s > best_s:
+				best_s = s
 				target = pokemon
-				break
 		if target == null:
 			return
 	else:
@@ -2432,21 +2482,31 @@ func effect_super_energy_removal(is_opponent: bool) -> void:
 		return
 	
 	if is_opponent:
-		# CPU logic
-		var source = own_with_energy[0]
+		# ISSUE #310: pay with the CPU's least valuable Energy (prefer a Pokémon that isn't attacking), then
+		# strip up to 2 of the most valuable Energy from the player's Pokémon where it hurts most.
+		var source: card_object = null
+		var best_spare := -INF
 		for p in own_with_energy:
-			if p.attached_energies.size() > source.attached_energies.size():
+			var spare = float(p.attached_energies.size())
+			for atk in p.metadata.get("attacks", []):
+				spare = min(spare, float(p.attached_energies.size() - atk.get("cost", []).size()))
+			if p == main.opponent_active_pokemon: spare -= 0.5
+			if spare > best_spare:
+				best_spare = spare
 				source = p
-		var energy = source.attached_energies.pop_back()
+		var energy = main.cpu_ai.cpu_pick_own_energy_to_discard(source)
+		if energy == null: energy = source.attached_energies.back()
+		source.attached_energies.erase(energy)
 		energy.current_location = "discard"
 		own_discard.append(energy)
 		
-		var target_active = main.player_active_pokemon
-		var target = target_active if target_active != null and target_active.attached_energies.size() > 0 else (target_with_energy[0] if target_with_energy.size() > 0 else null)
+		var target = main.cpu_ai.cpu_pick_energy_removal_target(target_with_energy) if target_with_energy.size() > 0 else null
 		if target != null:
 			var removed = 0
 			while removed < 2 and target.attached_energies.size() > 0:
-				var e = target.attached_energies.pop_back()
+				var e = main.cpu_ai.cpu_pick_energy_to_discard_from(target)
+				if e == null: e = target.attached_energies.back()
+				target.attached_energies.erase(e)
 				e.current_location = "discard"
 				target_discard.append(e)
 				removed += 1
@@ -2575,7 +2635,10 @@ func effect_energy_retrieval(played_card: card_object, is_opponent: bool) -> voi
 		discard.append(to_discard[0])
 		
 		var retrieved = 0
-		for energy in basic_energies.duplicate():
+		# ISSUE #310: the basic Energy its Pokémon need most (was the first two in the discard pile)
+		var ranked_e = basic_energies.duplicate()
+		ranked_e.sort_custom(func(x, y): return main.cpu_ai.cpu_energy_need_value(x) > main.cpu_ai.cpu_energy_need_value(y))
+		for energy in ranked_e:
 			if retrieved >= 2:
 				break
 			discard.erase(energy)
@@ -2644,8 +2707,9 @@ func effect_full_heal(is_opponent: bool) -> void:
 	var active = main.opponent_active_pokemon if is_opponent else main.player_active_pokemon
 	if active == null:
 		return
-	var had_status = active.special_condition != "" or active.is_poisoned
-	main.clear_all_statuses(active, is_opponent)
+	# ISSUE #309: "no longer Asleep, Confused, Paralyzed, or Poisoned" — clear_all_statuses also wiped Leer/
+	# Amnesia/attack locks, Defender-style shields and other attack effects that Full Heal doesn't touch.
+	var had_status = main.cure_special_conditions(active, is_opponent, false)
 	if had_status:
 		SoundManagerScript.play_sfx(SoundManagerScript.SFX_heal_sound)
 		await main.show_message(active.metadata.get("name", "") + " was fully healed of all conditions!")
@@ -2707,19 +2771,15 @@ func effect_pokemon_center(is_opponent: bool) -> void:
 	
 	var healed_any = false
 	for pokemon in all_pokemon:
-		var max_hp = int(pokemon.metadata.get("hp", "0"))
-		var damage = max_hp - pokemon.current_hp
+		var damage = pokemon.get_max_hp() - pokemon.current_hp
 		if damage <= 0:
 			continue
-		
+
 		healed_any = true
-		pokemon.current_hp = max_hp
-		
-		# Show floating heal label at pokemon location
-		var loc = main.get_pokemon_screen_location(pokemon)
-		if not loc.is_empty():
-			SoundManagerScript.play_sfx(SoundManagerScript.SFX_heal_sound)
-			main.show_floating_label("+" + str(damage) + " HP", loc["position"] + Vector2(0, -20), Color.GREEN, true)
+		# ISSUE #309: through heal_pokemon — match rules (no-healing / multipliers) and real max HP
+		# (Gaseous Form, tools) apply; it used to read the printed HP and ignore match rules.
+		await main.card_ops.heal_pokemon(pokemon, damage, is_opponent)
+		if main._should_bail(): return
 		
 		# Animate energy cards going to discard
 		for energy in pokemon.attached_energies:
@@ -2868,8 +2928,8 @@ func effect_revive(is_opponent: bool) -> void:
 		if best != null:
 			discard.erase(best)
 			best.current_location = "bench"
-			var max_hp = int(best.metadata.get("hp", "0"))
-			best.current_hp = max(10, max_hp / 2)
+			# ISSUE #309: damage counters = half its HP rounded DOWN to the nearest 10 (was HP = half, unrounded)
+			best.current_hp = best.get_max_hp() - int(best.get_max_hp() / 2 / 10) * 10
 			best.placed_on_field_this_turn = true
 			bench.append(best)
 			main.display_pokemon(true)
@@ -2882,8 +2942,9 @@ func effect_revive(is_opponent: bool) -> void:
 		if chosen != null:
 			discard.erase(chosen)
 			chosen.current_location = "bench"
-			var max_hp = int(chosen.metadata.get("hp", "0"))
-			chosen.current_hp = max(10, (max_hp / 20) * 10) # Half HP rounded down to nearest 10
+			# ISSUE #309: damage counters = half its HP rounded DOWN to the nearest 10 (60 HP -> 30 left,
+			# 70 HP -> 40 left). The old formula set the REMAINING HP to the rounded-down half (70 -> 30).
+			chosen.current_hp = chosen.get_max_hp() - int(chosen.get_max_hp() / 2 / 10) * 10
 			chosen.placed_on_field_this_turn = true
 			bench.append(chosen)
 			main.display_pokemon(false)
@@ -2907,15 +2968,13 @@ func effect_super_potion(card: card_object, is_opponent: bool) -> void:
 		return
 
 	if is_opponent:
-		var best_target: card_object = null
-		var most_damage = 0
-		for pokemon in valid_targets:
-			var dmg = int(pokemon.metadata.get("hp", "0")) - pokemon.current_hp
-			if dmg > most_damage:
-				most_damage = dmg
-				best_target = pokemon
+		# ISSUE #310: shared heal scorer (survival, the Active first) and the least valuable Energy —
+		# was "most damage counters" and whichever Energy was attached last.
+		var best_target: card_object = main.cpu_ai.cpu_pick_heal_target(valid_targets, 40)
 		if best_target != null:
-			var energy = best_target.attached_energies.pop_back()
+			var energy = main.cpu_ai.cpu_pick_own_energy_to_discard(best_target)
+			if energy == null: energy = best_target.attached_energies.back()
+			best_target.attached_energies.erase(energy)
 			energy.current_location = "discard"
 			discard.append(energy)
 			main.display_active_pokemon_energies(true)
@@ -2971,9 +3030,11 @@ func effect_energy_removal(is_opponent: bool) -> void:
 		return
 	
 	if is_opponent:
-		var target_active = main.player_active_pokemon
-		var target = target_active if target_active != null and target_active.attached_energies.size() > 0 else targets_with_energy[0]
-		var energy = target.attached_energies.pop_back()
+		# ISSUE #310: the player's Pokémon where losing an Energy hurts most, and its most valuable Energy
+		var target = main.cpu_ai.cpu_pick_energy_removal_target(targets_with_energy)
+		var energy = main.cpu_ai.cpu_pick_energy_to_discard_from(target)
+		if energy == null: energy = target.attached_energies.back()
+		target.attached_energies.erase(energy)
 		energy.current_location = "discard"
 		target_discard.append(energy)
 		var from_node = main.find_card_ui_for_object(target)
@@ -3031,20 +3092,10 @@ func effect_gust_of_wind(is_opponent: bool) -> void:
 	var new_active: card_object = null
 	
 	if is_opponent:
-		# CPU: pull in easiest to KO target
-		var best: card_object = null
-		var best_score = -999.0
-		for bp in target_bench:
-			var score = 0.0
-			# Low HP = easy KO
-			score += (200.0 - bp.current_hp)
-			# No energy = can't fight back
-			if bp.attached_energies.size() == 0:
-				score += 100.0
-			if score > best_score:
-				best_score = score
-				best = bp
-		new_active = best
+		# ISSUE #310: a Pokémon the CPU's Active can KO this turn (W/R/PlusPower counted), else one that is
+		# stranded Active — the shared gust scorer.
+		new_active = main.cpu_ai.cpu_pick_gust_target(target_bench, main.cpu_ai.cpu_best_damage_vs_any(), main.opponent_active_pokemon)
+		if new_active == null: new_active = target_bench[0]
 	else:
 		new_active = await main.card_ops.prompt_select_card(target_bench, "GUST OF WIND", "Select opponent's bench Pokemon to pull forward", "SWITCH", false)
 		if main._should_bail(): return
@@ -3076,7 +3127,7 @@ func effect_potion(is_opponent: bool) -> void:
 	var active = main.opponent_active_pokemon if is_opponent else main.player_active_pokemon
 	var bench = main.opponent_bench if is_opponent else main.player_bench
 	
-	var damaged = build_field_pokemon_array(is_opponent).filter(func(p): return p.current_hp < int(p.metadata.get("hp", "0")))
+	var damaged = build_field_pokemon_array(is_opponent).filter(func(p): return p.current_hp < p.get_max_hp())
 	
 	if damaged.size() == 0:
 		await main.show_message("No Pokemon with damage!")
@@ -3345,23 +3396,13 @@ func effect_energy_search(is_opponent: bool) -> void:
 	var chosen: card_object = null
 	
 	if is_opponent:
-		# CPU picks the energy type it needs most
-		var active = main.opponent_active_pokemon
-		if active != null:
-			var needed_types: Array = []
-			for attack in active.metadata.get("attacks", []):
-				for cost in attack.get("cost", []):
-					if cost != "Colorless" and cost not in needed_types:
-						needed_types.append(cost)
-			# Pick matching energy
-			for e in basic_energies:
-				var e_name = e.metadata.get("name", "")
-				for nt in needed_types:
-					if nt in e_name:
-						chosen = e
-						break
-				if chosen != null:
-					break
+		# ISSUE #310: the type its WHOLE side still needs most (was only the Active's attack costs)
+		var best_v := -INF
+		for e in basic_energies:
+			var v = main.cpu_ai.cpu_energy_need_value(e)
+			if v > best_v:
+				best_v = v
+				chosen = e
 		if chosen == null:
 			chosen = basic_energies[0]
 	else:
@@ -3489,8 +3530,21 @@ func effect_recycle(is_opponent: bool) -> void:
 func reset_trainer_lock(is_opponent: bool) -> void:
 	if is_opponent:
 		opponent_trainer_locked = false
+		opponent_trainer_lock_extra_turns = 0
 	else:
 		player_trainer_locked = false
+		player_trainer_lock_extra_turns = 0
+
+# ISSUE #309: called at the END of each side's turn. The locks used to be cleared at the START of the
+# locked side's turn — so "your opponent can't play Trainer cards during his or her next turn" (Headache,
+# High Voltage) was wiped the moment that turn began and never blocked anything.
+func tick_trainer_lock(side_is_opponent: bool) -> void:
+	if side_is_opponent:
+		if opponent_trainer_lock_extra_turns > 0: opponent_trainer_lock_extra_turns -= 1
+		else: opponent_trainer_locked = false
+	else:
+		if player_trainer_lock_extra_turns > 0: player_trainer_lock_extra_turns -= 1
+		else: player_trainer_locked = false
 
 ######################################################################################################################################################
 ################################################### BASE5 (TEAM ROCKET) TRAINER EFFECTS ##############################################################
@@ -3525,7 +3579,10 @@ func effect_rockets_sneak_attack(is_opponent: bool) -> void:
 	var selected: card_object = null
 	
 	if not is_opponent:
-		# Player sees opponent's hand and picks a trainer
+		# ISSUE #312: "Look at your opponent's hand" — the whole hand is revealed first, then a Trainer is picked
+		print("ISSUE #315 FIX ACTIVE: Rocket's Sneak Attack reveals the whole hand")
+		await gym1_reveal_hand(false, "ROCKET'S SNEAK ATTACK — OPPONENT'S HAND", "Review the hand, then choose a Trainer")
+		if main._should_bail(): return
 		selected = await main.card_ops.prompt_select_card(trainer_cards, "CHOOSE A TRAINER TO SHUFFLE INTO DECK", "", "SELECT", false)
 		if main._should_bail(): return
 	else:
@@ -3600,92 +3657,64 @@ func effect_the_boss_way(is_opponent: bool) -> void:
 func effect_challenge(is_opponent: bool) -> void:
 	var own_bench = main.opponent_bench if is_opponent else main.player_bench
 	var opp_bench = main.player_bench if is_opponent else main.opponent_bench
-	
-	# For CPU: accept if bench has space and deck has basics, otherwise decline
-	var accepted = false
-	
-	if is_opponent:
-		# CPU played Challenge - player decides
-		# For simplicity, auto-decline (player draws 2 for CPU, CPU draws 2 for player)
-		# Actually the rule is: if opponent declines OR both benches full, the player who played it draws 2
-		if own_bench.size() >= main.get_max_bench_size() and opp_bench.size() >= main.get_max_bench_size():
-			# Both benches full
-			await main.card_ops.draw_n(is_opponent, 2)
-			if main._should_bail(): return
-			await main.show_message("BOTH BENCHES FULL! DREW 2 CARDS!")
-			if main._should_bail(): return
-			return
-		# CPU played it - player can accept or decline
-		# Simplify: player declines, CPU draws 2
+	var max_b = main.get_max_bench_size()
+	if own_bench.size() >= max_b and opp_bench.size() >= max_b:
 		await main.card_ops.draw_n(is_opponent, 2)
 		if main._should_bail(): return
-		await main.show_message("CHALLENGE DECLINED! DREW 2 CARDS!")
+		await main.show_message("BOTH BENCHES FULL! DREW 2 CARDS!")
+		return
+	# ISSUE #308: the OTHER player decides. When the CPU played it the player is now asked (it used to
+	# auto-decline for you); when you play it the CPU accepts only if it actually gains Bench Pokémon.
+	var accepted := false
+	if is_opponent:
+		var anchor = main.player_active_pokemon if main.player_active_pokemon != null else main.opponent_active_pokemon
+		accepted = await gym1_prompt_yes_no(anchor, "CHALLENGE!", "Accept? Both players put any number of Basic Pokemon from their decks onto their Benches. Decline: the opponent draws 2.", "ACCEPT", "DECLINE")
 		if main._should_bail(): return
 	else:
-		# Player played Challenge - CPU decides
-		# CPU accepts if it has basics in deck and bench space
-		var cpu_deck = main.opponent_deck
-		var cpu_has_basics = false
-		for card in cpu_deck:
-			if main.is_basic_pokemon(card):
-				cpu_has_basics = true
-				break
-		
-		if cpu_has_basics and opp_bench.size() < 5:
-			accepted = true
-		
-		if not accepted or (own_bench.size() >= main.get_max_bench_size() and opp_bench.size() >= main.get_max_bench_size()):
-			# Declined or both full
-			await main.card_ops.draw_n(is_opponent, 2)
-			if main._should_bail(): return
-			await main.show_message("CHALLENGE DECLINED! DREW 2 CARDS!")
-			if main._should_bail(): return
-		else:
-			await main.show_message("CHALLENGE ACCEPTED!")
-			if main._should_bail(): return
-			
-			# Both search for basics
-			# Player searches
-			var player_deck = main.player_deck
-			var player_basics: Array = []
-			for card in player_deck:
-				if main.is_basic_pokemon(card):
-					player_basics.append(card)
-			
-			if player_basics.size() > 0 and main.player_bench.size() < 5:
-				var player_pick = await main.card_ops.prompt_select_card(player_basics, "CHOOSE BASIC POKÉMON FOR BENCH", "", "SELECT", false, true)
-				if main._should_bail(): return
-				
-				if player_pick != null:
-					player_deck.erase(player_pick)
-					player_pick.current_location = "bench"
-					player_pick.placed_on_field_this_turn = true
-					main.player_bench.append(player_pick)
-			
-			# CPU searches
-			var cpu_basics: Array = []
-			for card in cpu_deck:
-				if main.is_basic_pokemon(card):
-					cpu_basics.append(card)
-			
-			if cpu_basics.size() > 0 and main.opponent_bench.size() < 5:
-				var cpu_pick = main.cpu_ai.cpu_search_deck_for_best_pokemon(cpu_basics)
-				if cpu_pick != null:
-					cpu_deck.erase(cpu_pick)
-					cpu_pick.current_location = "bench"
-					cpu_pick.placed_on_field_this_turn = true
-					main.opponent_bench.append(cpu_pick)
-			
-			player_deck.shuffle()
-			cpu_deck.shuffle()
-			main.display_pokemon(false)
-			main.display_pokemon(true)
-			main.update_deck_icon(false)
-			main.update_deck_icon(true)
-			await main.show_message("BOTH PLAYERS SEARCHED FOR BASICS!")
-			if main._should_bail(): return
-	
-	print("TRAINER: Challenge!")
+		var cpu_basics = main.opponent_deck.filter(func(c): return main.is_basic_pokemon(c)).size()
+		var cpu_room = max_b - main.opponent_bench.size()
+		accepted = cpu_basics > 0 and cpu_room >= 1 and min(cpu_basics, cpu_room) >= min(2, cpu_room)
+	if not accepted:
+		await main.card_ops.draw_n(is_opponent, 2)
+		if main._should_bail(): return
+		await main.show_message("CHALLENGE DECLINED! " + ("THE OPPONENT" if is_opponent else "YOU") + " DREW 2 CARDS!")
+		return
+	await main.show_message("CHALLENGE ACCEPTED!")
+	if main._should_bail(): return
+	# "Each of you searches your decks for ANY NUMBER of Basic Pokémon cards" (was 1 each)
+	var player_added := 0
+	while main.player_bench.size() < max_b:
+		var player_basics = main.player_deck.filter(func(c): return main.is_basic_pokemon(c))
+		if player_basics.is_empty():
+			break
+		var pick = await main.card_ops.prompt_select_card(player_basics, "CHALLENGE! (" + str(player_added) + " CHOSEN)", "Choose a Basic Pokemon for your Bench (Cancel when done)", "SELECT", true, true)
+		if main._should_bail(): return
+		if pick == null:
+			break
+		main.player_deck.erase(pick)
+		pick.current_hp = pick.get_max_hp()
+		main.card_ops.place_on_bench(pick, false)
+		player_added += 1
+	var cpu_added := 0
+	while main.opponent_bench.size() < max_b:
+		var cpu_basics2 = main.opponent_deck.filter(func(c): return main.is_basic_pokemon(c))
+		if cpu_basics2.is_empty():
+			break
+		var cpu_pick = main.cpu_ai.cpu_search_deck_for_best_pokemon(cpu_basics2)
+		if cpu_pick == null:
+			break
+		main.opponent_deck.erase(cpu_pick)
+		cpu_pick.current_hp = cpu_pick.get_max_hp()
+		main.card_ops.place_on_bench(cpu_pick, true)
+		cpu_added += 1
+	main.player_deck.shuffle()
+	main.opponent_deck.shuffle()
+	main.update_deck_icon(false)
+	main.update_deck_icon(true)
+	main.display_pokemon(false)
+	main.display_pokemon(true)
+	await main.show_message("CHALLENGE! YOU BENCHED " + str(player_added) + ", THE OPPONENT BENCHED " + str(cpu_added) + "!")
+	print("ISSUE #308 FIX ACTIVE: Challenge! accepted — ", player_added, " / ", cpu_added)
 
 # Digger: Recursive coin flip damage
 func effect_digger(is_opponent: bool) -> void:
@@ -3913,27 +3942,30 @@ func gym1_charity_choose_reduction(attacker: card_object, defender: card_object,
 		return damage
 	if defender == null:
 		return damage
-	# Only meaningful when the attack would KO the defender.
-	if damage < defender.current_hp:
-		return damage
-	# Compute the reduction needed to leave the defender at 10 HP (the standard Charity use case).
-	var target_hp = 10
-	var reduction = damage - (defender.current_hp - target_hp)
-	# Round reduction UP to the nearest 10 per card text
-	reduction = int(ceil(reduction / 10.0)) * 10
-	if reduction <= 0 or reduction > damage:
-		return damage
-	# Yes/No prompt anchored on the attacker card so the player has a visible target
-	var pick = await gym1_prompt_yes_no(
-		attacker,
-		"CHARITY",
-		"Reduce damage by %d to leave %s at %d HP?" % [reduction, defender.metadata.get("name", ""), defender.current_hp - (damage - reduction)],
-		"REDUCE",
-		"FULL DAMAGE"
-	)
-	if pick:
-		return damage - reduction
-	return damage
+	# ISSUE #308: "you may reduce that damage by ANY amount (rounded to the nearest 10)" — the player picks the
+	# damage to deal (it used to offer only "leave it at 10 HP" and only when the hit would Knock Out).
+	var values: Array = []
+	var v = damage
+	while v >= 0:
+		values.append(v)
+		v -= 10
+	if values.size() > 8:
+		var keep: Array = [damage, 0, 10]
+		if damage >= defender.current_hp and defender.current_hp > 10:
+			keep.append(defender.current_hp - 10)
+		for f in [0.75, 0.5, 0.25]:
+			keep.append(int(round(damage * f / 10.0)) * 10)
+		values = []
+		for x in keep:
+			if x >= 0 and x <= damage and x not in values: values.append(x)
+		values.sort()
+		values.reverse()
+	var labels: Array = []
+	for x in values:
+		labels.append(("FULL DAMAGE: " if x == damage else "DO ") + str(x) + ("  (KNOCKS OUT)" if x >= defender.current_hp else ""))
+	var pick = await prompt_option_buttons("CHARITY — HOW MUCH DAMAGE TO " + defender.metadata.get("name", "").to_upper() + "?", labels)
+	if main._should_bail(): return damage
+	return int(values[clampi(pick, 0, values.size() - 1)])
 
 # Generic two-option (yes/no) prompt that re-uses the existing trainer_pokemon_selection UI.
 # Returns true if the player confirmed (action_button), false if cancelled (cancel_button).
@@ -3966,6 +3998,20 @@ func gym1_prompt_yes_no(anchor_card: card_object, header_text: String, hint_text
 # Called from inbetween_turn_checks at end of the side's own turn. Handles Charity return-to-hand, Sabrina's ESP discard,
 # Recall expiry, Misty boost expiry, and Tickling Machine restoration for the side whose turn just ended.
 func gym1_end_of_turn_cleanup(side_is_opponent: bool) -> void:
+	tick_trainer_lock(side_is_opponent)
+	# ISSUE #312: "During your next turn" self-boosts (Focus Energy, Swords Dance) used to last until the
+	# boosted attack was finally used, however many turns later. They now lapse at the end of the
+	# owner's next turn (set on turn T, still valid on T+2, cleared when T+2 ends).
+	for bp in main.card_ops.get_all_pokemon_in_play(side_is_opponent):
+		if bp.boost_set_turn != -1 and main.turn_number > bp.boost_set_turn:
+			bp.boost_set_turn = -1
+			bp.focus_energy_active = false
+			bp.gym2_focus_energy_active = false
+			bp.swords_dance_active = false
+			bp.swords_dance_slash_damage = 0
+			for k in ["ex2_vigoroth_focus", "pop_swellow_focus", "ex14_hjk_focus"]:
+				bp.clear_effect(k)
+			print("ISSUE #312 FIX ACTIVE: next-turn boost expired on ", bp.metadata.get("name", ""))
 	var active = main.opponent_active_pokemon if side_is_opponent else main.player_active_pokemon
 	var bench = main.opponent_bench if side_is_opponent else main.player_bench
 	var hand = main.opponent_hand if side_is_opponent else main.player_hand
@@ -4344,8 +4390,7 @@ func gym1_heal_pokemon(pokemon: card_object, amount: int, is_opp: bool) -> void:
 func gym1_effect_brock(is_opponent: bool) -> void:
 	var healed_any = false
 	for p in build_field_pokemon_array(is_opponent):
-		var max_hp = int(p.metadata.get("hp", "0"))
-		if p.current_hp < max_hp:
+		if p.current_hp < p.get_max_hp():   # ISSUE #312: real max HP (Gaseous Form, tools...)
 			gym1_heal_pokemon(p, 10, is_opponent)
 			healed_any = true
 	if healed_any:
@@ -4358,15 +4403,76 @@ func gym1_effect_brock(is_opponent: bool) -> void:
 # You may draw up to 3, then your opponent may draw up to 3. We collapse "up to" to a simple yes/no per side
 # (drawing more is almost always optimal — only skipped when the hand is already very large).
 func gym1_effect_erika(is_opponent: bool) -> void:
-	var draw_count_self = await gym1_choose_draw_count(3, is_opponent, "ERIKA — DRAW 3 CARDS?")
+	# ISSUE #308: "up to 3" — the player picks 0-3 (was all-or-nothing); the CPU never empties its deck.
+	var draw_count_self = await choose_up_to_draw_count(3, is_opponent, "ERIKA")
+	if main._should_bail(): return
 	await main.card_ops.draw_n(is_opponent, draw_count_self)
 	if main._should_bail(): return
 	var other_is_opp = not is_opponent
-	var draw_count_other = await gym1_choose_draw_count(3, other_is_opp, "ERIKA — OPPONENT MAY DRAW 3")
+	var draw_count_other = await choose_up_to_draw_count(3, other_is_opp, "ERIKA (OPPONENT'S DRAW)")
+	if main._should_bail(): return
 	await main.card_ops.draw_n(other_is_opp, draw_count_other)
 	if main._should_bail(): return
 
 # CPU draws max unless its hand is full; player gets a YES/NO prompt (draw max or skip).
+# ISSUE #308: generic multiple-choice prompt for the PLAYER — one button per label, returns the chosen
+# index. Same button-row mechanism as Flame Pillar's yes/no (attack_buttons_container +
+# special_attack_selected), so it works during attacks and Trainer resolution alike. Used for "up to N"
+# counts (Third Eye, Erika, Charity), Rock-Paper-Scissors (Misty's Duel), quiz answers (Blaine's Quiz).
+func prompt_option_buttons(message: String, labels: Array) -> int:
+	if labels.is_empty():
+		return -1
+	main.special_attack_selection_active = true
+	main.buttons_only_blocker.visible = true
+	main.attack_buttons_container.visible = true
+	main.main_buttons_container.visible = false
+	for child in main.attack_buttons_container.get_children():
+		if child.name == "cancel_attack_mode_button":
+			child.visible = false
+			continue
+		child.queue_free()
+	for i in range(labels.size()):
+		var btn = Button.new()
+		btn.text = str(labels[i])
+		btn.custom_minimum_size = Vector2(350, 50)
+		btn.theme = main.theme_green
+		main.attack_buttons_container.add_child(btn)
+		var idx = i
+		btn.pressed.connect(func(): main.special_attack_selected.emit(idx))
+	await main.show_message(message)
+	var selected_index = -1
+	if not main._should_bail():
+		selected_index = await main.special_attack_selected
+	for child in main.attack_buttons_container.get_children():
+		if child.name == "cancel_attack_mode_button":
+			child.visible = true
+			continue
+		child.queue_free()
+	main.attack_buttons_container.visible = false
+	main.main_buttons_container.visible = true
+	main.special_attack_selection_active = false
+	main.buttons_only_blocker.visible = false
+	return selected_index
+
+# ISSUE #308: "draw up to N" for either side. Player picks 0..max_n from buttons; the CPU draws as many as
+# it safely can — never so many that its deck is left empty (a deck-out loss), and never past 7 in hand.
+func choose_up_to_draw_count(max_n: int, side_is_opp: bool, header_text: String) -> int:
+	var deck = main.opponent_deck if side_is_opp else main.player_deck
+	max_n = min(max_n, deck.size())
+	if max_n <= 0:
+		return 0
+	if side_is_opp:
+		var hand_room = max(0, 7 - main.opponent_hand.size())
+		var safe = max(0, deck.size() - 1)
+		return min(max_n, hand_room, safe)
+	var labels: Array = []
+	for n in range(max_n, -1, -1):
+		labels.append("DRAW " + str(n) if n > 0 else "DON'T DRAW")
+	var pick = await prompt_option_buttons(header_text + ": HOW MANY CARDS WILL YOU DRAW?", labels)
+	if pick < 0:
+		return 0
+	return max_n - pick
+
 func gym1_choose_draw_count(max_n: int, side_is_opp: bool, header_text: String) -> int:
 	if side_is_opp:
 		var hand = main.opponent_hand
@@ -4498,21 +4604,71 @@ func gym1_effect_rockets_trap(is_opponent: bool) -> void:
 
 # ============================ gym1-97 — Blaine's Quiz #1 ============================
 # Adapted: coin flip (we can't run a real interactive guess). Heads = opponent guessed right (opp draws 2). Tails = opp wrong (you draw 2).
+# ISSUE #312: Pokédex heights in decimetres for #1–151 (the species printed in base–Gym). Card "Length"
+# lines are these heights in feet/inches. Used by Blaine's Quiz #1.
+const POKEMON_LENGTH_DM := {1: 7, 2: 10, 3: 20, 4: 6, 5: 11, 6: 17, 7: 5, 8: 10, 9: 16, 10: 3, 11: 7, 12: 11, 13: 3, 14: 6, 15: 10, 16: 3, 17: 11, 18: 15, 19: 3, 20: 7, 21: 3, 22: 12, 23: 20, 24: 35, 25: 4, 26: 8, 27: 6, 28: 10, 29: 4, 30: 8, 31: 13, 32: 5, 33: 9, 34: 14, 35: 6, 36: 13, 37: 6, 38: 11, 39: 5, 40: 10, 41: 8, 42: 16, 43: 5, 44: 8, 45: 12, 46: 3, 47: 10, 48: 10, 49: 15, 50: 2, 51: 7, 52: 4, 53: 10, 54: 8, 55: 17, 56: 5, 57: 10, 58: 7, 59: 19, 60: 6, 61: 10, 62: 13, 63: 9, 64: 13, 65: 15, 66: 8, 67: 15, 68: 16, 69: 7, 70: 10, 71: 17, 72: 9, 73: 16, 74: 4, 75: 10, 76: 14, 77: 10, 78: 17, 79: 12, 80: 16, 81: 3, 82: 10, 83: 8, 84: 14, 85: 18, 86: 11, 87: 17, 88: 9, 89: 12, 90: 3, 91: 15, 92: 13, 93: 16, 94: 15, 95: 88, 96: 10, 97: 16, 98: 4, 99: 13, 100: 5, 101: 12, 102: 4, 103: 20, 104: 4, 105: 10, 106: 15, 107: 14, 108: 12, 109: 6, 110: 12, 111: 10, 112: 19, 113: 11, 114: 10, 115: 22, 116: 4, 117: 12, 118: 6, 119: 13, 120: 8, 121: 11, 122: 13, 123: 15, 124: 14, 125: 11, 126: 13, 127: 15, 128: 14, 129: 9, 130: 65, 131: 25, 132: 3, 133: 3, 134: 10, 135: 8, 136: 9, 137: 8, 138: 4, 139: 10, 140: 5, 141: 13, 142: 18, 143: 21, 144: 17, 145: 16, 146: 20, 147: 18, 148: 40, 149: 22, 150: 20, 151: 4}
+
+# Length in inches for a Pokémon card, or -1 if unknown (species outside #1–151).
+func _pokemon_length_in(card: card_object) -> int:
+	var nums = card.metadata.get("nationalPokedexNumbers", [])
+	if nums.is_empty() or not POKEMON_LENGTH_DM.has(int(nums[0])):
+		return -1
+	return int(round(POKEMON_LENGTH_DM[int(nums[0])] * 3.937))
+
+func _fmt_length(inches: int) -> String:
+	return str(inches / 12) + "' " + str(inches % 12) + "''"
+
+# ISSUE #312: the real quiz (was a coin flip). The card player puts a Basic/Evolution card face down and
+# names it; the other player guesses its printed length from four options. Right guess: the guesser draws 2;
+# wrong: the card player draws 2. The card goes back to hand either way.
 func gym1_effect_blaines_quiz(is_opponent: bool) -> void:
-	await main.show_message("BLAINE'S QUIZ! FLIPPING COIN…")
-	if main._should_bail(): return
-	var coin = await main.flip_coin(false, is_opponent)
-	if coin:
-		# Opponent guessed right
-		var other = not is_opponent
-		await main.card_ops.draw_n(other, 2)
-		if main._should_bail(): return
-		await main.show_message("HEADS! OPPONENT GUESSED RIGHT AND DREW 2 CARDS!")
+	var hand = main.opponent_hand if is_opponent else main.player_hand
+	var mons = hand.filter(func(c): return c.metadata.get("supertype", "") in ["Pokémon", "Pokemon"] and _pokemon_length_in(c) > 0)
+	if mons.is_empty():
+		return
+	var hidden: card_object = null
+	if is_opponent:
+		hidden = mons[randi() % mons.size()]
 	else:
-		await main.card_ops.draw_n(is_opponent, 2)
+		hidden = await main.card_ops.prompt_select_card(mons, "BLAINE'S QUIZ #1", "Choose a Basic Pokemon or Evolution card to put face down", "SELECT", false)
 		if main._should_bail(): return
-		await main.show_message("TAILS! OPPONENT GUESSED WRONG — YOU DREW 2 CARDS!")
+		if hidden == null: hidden = mons[0]
+	var truth = _pokemon_length_in(hidden)
+	# four options: the real length plus three plausible decoys a few inches to a couple of feet away
+	var opts: Array = [truth]
+	var deltas = [-14, -9, -5, -3, 3, 5, 9, 14, 20]
+	deltas.shuffle()
+	for dlt in deltas:
+		var v = truth + dlt
+		if v >= 4 and v not in opts:
+			opts.append(v)
+		if opts.size() >= 4:
+			break
+	opts.shuffle()
+	await main.show_message("BLAINE'S QUIZ! HOW LONG IS " + hidden.metadata.get("name", "").to_upper() + "?")
 	if main._should_bail(): return
+	var guess := 0
+	if is_opponent:
+		var labels: Array = []
+		for o in opts: labels.append(_fmt_length(o))
+		var gi = await prompt_option_buttons("GUESS THE LENGTH OF " + hidden.metadata.get("name", "").to_upper() + ":", labels)
+		if main._should_bail(): return
+		guess = opts[clampi(gi, 0, opts.size() - 1)]
+	else:
+		# The CPU "knows" the answer some of the time (CPU_QUIZ_KNOWLEDGE); otherwise it guesses.
+		guess = truth if randf() < CPU_QUIZ_KNOWLEDGE else opts.filter(func(o): return o != truth)[randi() % (opts.size() - 1)]
+		await main.show_message("THE OPPONENT GUESSES " + _fmt_length(guess) + "!")
+		if main._should_bail(): return
+	var right = guess == truth
+	await main.show_message(hidden.metadata.get("name", "").to_upper() + " IS " + _fmt_length(truth) + " — " + ("RIGHT!" if right else "WRONG!"))
+	if main._should_bail(): return
+	await main.card_ops.draw_n((not is_opponent) if right else is_opponent, 2)
+	if main._should_bail(): return
+	await main.show_message(("THE GUESSER" if right else "THE QUIZ MASTER") + " DREW 2 CARDS!")
+	print("ISSUE #314 FIX ACTIVE: Blaine's Quiz #1 — ", hidden.metadata.get("name", ""), " ", _fmt_length(truth), " guessed ", _fmt_length(guess))
+
+# Chance the CPU names the right length / category in Blaine's Quizzes when it is the guesser.
+const CPU_QUIZ_KNOWLEDGE := 0.35
 
 # ============================ gym1-105 — Blaine's Last Resort ============================
 # Show hand to opp (it's empty here, since validation requires no other cards) then draw 5.
@@ -4634,7 +4790,7 @@ func gym1_effect_erikas_perfume(is_opponent: bool) -> void:
 		return
 
 	var to_bench: Array = []
-	while to_bench.size() < basics_in_opp_hand.size() and opp_bench.size() + to_bench.size() < 5:
+	while to_bench.size() < basics_in_opp_hand.size() and opp_bench.size() + to_bench.size() < main.get_max_bench_size():
 		var remaining: Array = []
 		for c in basics_in_opp_hand:
 			if c not in to_bench:
@@ -4711,30 +4867,48 @@ func gym1_effect_good_manners(is_opponent: bool) -> void:
 # The OPPONENT (other side) chooses: both players take a prize, OR the card player draws 1.
 # Cross-player choice is auto-resolved (see effect_challenge precedent).
 func gym1_effect_lt_surges_treaty(is_opponent: bool) -> void:
-	# The chooser is the OTHER side
+	# "Your opponent chooses 1 of the following" — the OTHER side chooses.
 	var chooser_is_opp = not is_opponent
-	var chooser_prizes_left = (main.opponent_prize_cards.size() if chooser_is_opp else main.player_prize_cards.size())
-	var card_player_prizes_left = (main.opponent_prize_cards.size() if is_opponent else main.player_prize_cards.size())
-
-	# Choice heuristic: take a prize if chooser is behind or tied on prizes (more aggressive recovery)
-	# else hand the card player just 1 draw (denies a free prize advancement).
-	var take_prizes = chooser_prizes_left >= card_player_prizes_left
-
-	var chooser_label = "OPPONENT" if chooser_is_opp else "PLAYER"
-	if take_prizes:
-		await main.show_message("LT. SURGE'S TREATY — " + chooser_label + " CHOOSES: EACH PLAYER TAKES A PRIZE!")
-		if main._should_bail(): return
-		# Card-player picks own prize (player) / CPU random (opponent)
-		if is_opponent:
-			# Card player = CPU
-			await main.cpu_ai.opponent_take_prize_card()
-			# Other side = real player picks
-			await gym1_player_take_own_prize()
+	var take_prizes := false
+	if chooser_is_opp:
+		# ISSUE #308: CPU — taking a Prize each helps whoever is closer to winning. Never hand the player
+		# their last Prize; take its own last Prize when it can; otherwise take only when ahead.
+		var cpu_left = main.opponent_prize_cards.size()
+		var pl_left = main.player_prize_cards.size()
+		if pl_left <= 1:
+			take_prizes = false
+		elif cpu_left <= 1:
+			take_prizes = true
 		else:
-			await gym1_player_take_own_prize()
-			await main.cpu_ai.opponent_take_prize_card()
+			take_prizes = cpu_left < pl_left
 	else:
-		await main.show_message("LT. SURGE'S TREATY — " + chooser_label + " CHOOSES: CARD PLAYER DRAWS 1!")
+		# ISSUE #308: the player chooses (the old heuristic decided for them)
+		var pick = await prompt_option_buttons("LT. SURGE'S TREATY — CHOOSE ONE:", ["EVERYONE TAKES 1 PRIZE", "OPPONENT DRAWS A CARD"])
+		if main._should_bail(): return
+		take_prizes = (pick == 0)
+	var chooser_label = "THE OPPONENT" if chooser_is_opp else "YOU"
+	if take_prizes:
+		await main.show_message("LT. SURGE'S TREATY — " + chooser_label + " CHOSE: EVERYONE TAKES A PRIZE!")
+		if main._should_bail(): return
+		await gym1_player_take_own_prize()
+		if main._should_bail(): return
+		if main.opponent_prize_cards.size() > 0:
+			await main.cpu_ai.opponent_take_prize_card()
+			if main._should_bail(): return
+		# Taking your last Prize this way wins (both at once = draw, a loss for the player by house rules)
+		var pl0 = main.player_prize_cards.is_empty()
+		var op0 = main.opponent_prize_cards.is_empty()
+		if pl0 and op0:
+			main.game_end_logic(true, true)
+		elif pl0:
+			await main.show_message("YOU TOOK YOUR LAST PRIZE CARD!")
+			main.game_end_logic(false)
+		elif op0:
+			await main.show_message("OPPONENT TOOK THEIR LAST PRIZE CARD!")
+			main.game_end_logic(true)
+	else:
+		await main.show_message("LT. SURGE'S TREATY — " + chooser_label + " CHOSE: " + ("THE OPPONENT" if is_opponent else "YOU") + " DRAW 1!")
+		if main._should_bail(): return
 		await main.card_ops.draw_n(is_opponent, 1)
 		if main._should_bail(): return
 
@@ -4742,10 +4916,10 @@ func gym1_effect_lt_surges_treaty(is_opponent: bool) -> void:
 func gym1_player_take_own_prize() -> void:
 	if main.player_prize_cards.size() == 0:
 		return
-	var pick = await main.card_ops.prompt_select_card(main.player_prize_cards, "CHOOSE A PRIZE CARD", "Pick a prize to take into your hand", "TAKE", false)
+	# ISSUE #308: Prizes are face down — choose a position, not a visible card.
+	var idx = await main.powers_and_bodies._choose_prize_slot(main.player_prize_cards.size(), "CHOOSE ONE OF YOUR PRIZE CARDS")
 	if main._should_bail(): return
-	if pick != null:
-		await main.take_prize_card(pick, false)
+	await main.take_prize_card(main.player_prize_cards[idx], false)
 
 # ============================ gym1-113 — Minion of Team Rocket ============================
 # Flip 2 coins. Both heads = return one of opp's bench pokemon (and attached cards) to opp's hand. Any tails = your turn ends.
@@ -5079,27 +5253,37 @@ func gym1_effect_energy_flow(is_opponent: bool) -> void:
 # ============================ gym1-123 — Misty's Duel ============================
 # Card says: rock-paper-scissors; if you don't know, flip a coin. Winner shuffles hand and draws 5.
 func gym1_effect_mistys_duel(is_opponent: bool) -> void:
-	await main.show_message("MISTY'S DUEL — FLIPPING COIN!")
-	if main._should_bail(): return
-	var coin = await main.flip_coin(false, is_opponent)
-	# Heads = card player wins; tails = other side wins
-	var winner_is_opp = is_opponent if coin else not is_opponent
-
+	# ISSUE #308: a real game of Rock-Paper-Scissors (was a coin flip). The player picks; the CPU throws
+	# at random. Draws are replayed.
+	var names = ["ROCK", "PAPER", "SCISSORS"]
+	var winner_is_opp := false
+	while true:
+		var mine = await prompt_option_buttons("MISTY'S DUEL — ROCK, PAPER, SCISSORS!", names)
+		if main._should_bail(): return
+		mine = clampi(mine, 0, 2)
+		var cpu = randi() % 3
+		await main.show_message("YOU: " + names[mine] + "  —  OPPONENT: " + names[cpu])
+		if main._should_bail(): return
+		if mine == cpu:
+			await main.show_message("A DRAW! GO AGAIN!")
+			if main._should_bail(): return
+			continue
+		# rock(0) beats scissors(2), paper(1) beats rock(0), scissors(2) beats paper(1)
+		var player_wins = (mine - cpu + 3) % 3 == 1
+		winner_is_opp = not player_wins
+		break
 	var hand = main.opponent_hand if winner_is_opp else main.player_hand
 	var deck = main.opponent_deck if winner_is_opp else main.player_deck
-	# Shuffle winner's hand into deck
 	for c in hand.duplicate():
 		c.current_location = "deck"
 		deck.append(c)
 	hand.clear()
 	deck.shuffle()
 	main.refresh_hand_display(winner_is_opp)
-	# Draw 5
 	await main.card_ops.draw_n(winner_is_opp, 5)
 	if main._should_bail(): return
-	var who = "OPPONENT" if winner_is_opp else "YOU"
+	var who = "THE OPPONENT" if winner_is_opp else "YOU"
 	await main.show_message("MISTY'S DUEL — " + who + " WON AND DREW A NEW HAND OF 5!")
-	if main._should_bail(): return
 
 # ============================ gym1-125 — Sabrina's Gaze ============================
 # Each player shuffles hand into deck and draws same number of cards.
@@ -5308,7 +5492,7 @@ func gym1_celadon_activate(is_opponent: bool) -> void:
 			continue
 		if p.attached_energies.size() == 0:
 			continue
-		if p.special_condition == "" and not p.is_poisoned and not p.is_burned:
+		if p.special_condition == "" and not p.is_poisoned:   # Burn isn't on Celadon's list
 			continue
 		eligible.append(p)
 
@@ -5330,8 +5514,10 @@ func gym1_celadon_activate(is_opponent: bool) -> void:
 				target = p
 		if target == null:
 			return
-		# CPU picks the LOWEST-priority energy to discard (last attached / non-special)
-		energy_to_discard = target.attached_energies[target.attached_energies.size() - 1]
+		# ISSUE #309: the CPU's least valuable Energy on it (never one an attack still needs, if avoidable)
+		energy_to_discard = main.cpu_ai.cpu_pick_own_energy_to_discard(target)
+		if energy_to_discard == null:
+			energy_to_discard = target.attached_energies[target.attached_energies.size() - 1]
 	else:
 		# Player chooses Erika pokemon
 		target = await main.card_ops.prompt_select_card(eligible, "CELADON CITY GYM", "Choose an Erika Pokemon to cure (discards 1 energy)", "SELECT", true)
@@ -5369,8 +5555,8 @@ func gym1_celadon_activate(is_opponent: bool) -> void:
 	await main.animate_card_a_to_b(from_node, owner_discard_node, 0.2, energy_texture, main.card_scales[10])
 	if main._should_bail(): return
 
-	# Clear status conditions
-	main.clear_all_statuses(target, is_opponent)
+	# ISSUE #309: only Asleep/Confused/Paralyzed/Poisoned — clear_all_statuses also wiped attack effects
+	main.cure_special_conditions(target, is_opponent, false)
 	main.display_active_pokemon_energies(is_opponent)
 	main.update_discard_pile_display(is_opponent)
 	await main.show_message("CELADON CITY GYM: " + target.metadata.get("name", "").to_upper() + " IS CURED!")
@@ -5386,10 +5572,8 @@ func gym1_celadon_activate(is_opponent: bool) -> void:
 func gym1_celadon_has_target(is_opponent: bool) -> bool:
 	if not main.is_stadium_in_play(StadiumIds.CELADON_CITY_GYM):
 		return false
-	if is_opponent and main.opponent_celadon_used_this_turn:
-		return false
-	if not is_opponent and main.player_celadon_used_this_turn:
-		return false
+	# ISSUE #309: no once-per-turn limit on the card ("During each player's turn, that player may choose
+	# to discard an Energy card...") — the old flag allowed only one cure per turn.
 	var bench = main.opponent_bench if is_opponent else main.player_bench
 	var active = main.opponent_active_pokemon if is_opponent else main.player_active_pokemon
 	var all_p: Array = []
@@ -5401,7 +5585,7 @@ func gym1_celadon_has_target(is_opponent: bool) -> bool:
 			continue
 		if p.attached_energies.size() == 0:
 			continue
-		if p.special_condition == "" and not p.is_poisoned and not p.is_burned:
+		if p.special_condition == "" and not p.is_poisoned:   # Burn isn't on Celadon's list
 			continue
 		return true
 	return false
@@ -5472,17 +5656,31 @@ func gym2_koga_ninja_trick_offer_switch(defender: card_object, defender_is_opp: 
 		return false
 	var chosen: card_object = null
 	if defender_is_opp:
-		# CPU side: switch in the bench pokemon with the highest HP if our active is in worse shape
-		var def_max = int(defender.metadata.get("hp", "0"))
-		var def_pct = float(defender.current_hp) / max(1, def_max)
-		var best_pct = def_pct
+		# ISSUE #309: CPU — estimate the incoming attack. If it would Knock Out the defender, switch in a
+		# Benched Pokémon that survives it (or, failing that, the cheapest one to lose instead of a valuable
+		# Pokémon-ex). Otherwise stay put.
+		var ae = main.attack_effects
+		var atk: Dictionary = main.mirror_record_on_opponent.get("attack", {})
+		var attacker = ae.current_attacker
+		var est := 0
+		if attacker != null and not atk.is_empty():
+			var raw = int(ae.estimate_attack_damage_range(atk, attacker, defender).get("max", 0))
+			est = int(main.calculate_final_damage(raw, attacker.get_effective_types(), defender, attacker)["damage"])
+		if est < defender.current_hp:
+			return false
+		var best_s := -INF
 		for bp in bench:
-			var max_hp = int(bp.metadata.get("hp", "0"))
-			var pct = float(bp.current_hp) / max(1, max_hp)
-			if pct > best_pct + 0.15:
-				best_pct = pct
+			var raw2 = int(ae.estimate_attack_damage_range(atk, attacker, bp).get("max", 0)) if attacker != null else 0
+			var d2 = int(main.calculate_final_damage(raw2, attacker.get_effective_types(), bp, attacker)["damage"]) if attacker != null else 0
+			var s := 0.0
+			if d2 < bp.current_hp:
+				s += 1000.0 + float(bp.current_hp - d2)
+			else:
+				s -= main.cpu_ai.cpu_rank_keep_value(bp) + (500.0 if main.is_ex_pokemon(bp) else 0.0)
+			if s > best_s:
+				best_s = s
 				chosen = bp
-		if chosen == null:
+		if chosen == null or (best_s < 1000.0 and not main.is_ex_pokemon(defender) and defender.attached_energies.size() < 2):
 			return false
 	else:
 		# Player chooses — YES/NO prompt anchored on the defender card
@@ -5507,11 +5705,12 @@ func gym2_koga_ninja_trick_offer_switch(defender: card_object, defender_is_opp: 
 		to_discard_tool.current_location = "discard"
 		discard.append(to_discard_tool)
 		defender.gym2_koga_ninja_trick_attached = false
-	# Move chosen to active slot
+	# Move chosen to active slot (a Pokémon going to the Bench loses its Special Conditions)
 	bench.erase(chosen)
 	chosen.current_location = "active"
 	defender.current_location = "bench"
 	bench.append(defender)
+	main.clear_all_statuses(defender, defender_is_opp)
 	if defender_is_opp:
 		main.opponent_active_pokemon = chosen
 	else:
@@ -5546,11 +5745,9 @@ func gym2_effect_blaine(is_opponent: bool) -> void:
 		return
 	var target: card_object = null
 	if is_opponent:
-		# CPU: pick the active if it's Blaine, else first Blaine bench
-		if main.opponent_active_pokemon != null and "Blaine" in main.opponent_active_pokemon.metadata.get("name", ""):
-			target = main.opponent_active_pokemon
-		else:
-			target = blaine_targets[0]
+		# ISSUE #312: the Blaine Pokémon these 2 Fire help most (the Active gets a bonus in the scorer)
+		target = main.cpu_ai.cpu_pick_benefit_recipient(blaine_targets, "energy", fires[0])
+		if target == null: target = blaine_targets[0]
 	else:
 		# ISSUE #156: always ask, even with one legal target.
 		target = await main.card_ops.prompt_select_card(blaine_targets, "BLAINE — ATTACH 2 FIRE ENERGY", "Choose a Blaine Pokemon", "ATTACH", false)
@@ -5588,9 +5785,14 @@ func gym2_effect_giovanni(is_opponent: bool) -> void:
 		return
 	var target: card_object = null
 	if is_opponent:
-		# CPU: pick the lowest-stage Giovanni first (more evolution headroom)
+		# ISSUE #312: prefer a Giovanni Pokémon with its evolution in hand (the whole point of the card)
+		for p in giovannis:
+			if main.opponent_hand.any(func(c): return main.can_evolve_from(c, p)):
+				target = p
+				break
 		var best_stage = 999
 		for p in giovannis:
+			if target != null: break
 			var subs = p.metadata.get("subtypes", [])
 			var stage = 0
 			if "Stage 1" in subs:
@@ -5640,20 +5842,23 @@ func gym2_effect_sabrina(is_opponent: bool) -> void:
 	var dest: card_object = null
 
 	if is_opponent:
-		# CPU: pick the most-energy-laden Sabrina with the FEWEST attack uses (heuristic: bench candidate)
-		var best_e = 0
-		for s in sources:
-			if s.attached_energies.size() > best_e:
-				best_e = s.attached_energies.size()
-				source = s
-		# Destination: any other Sabrina (prefer active)
-		if main.opponent_active_pokemon != null and "Sabrina" in main.opponent_active_pokemon.metadata.get("name", "") and main.opponent_active_pokemon != source:
-			dest = main.opponent_active_pokemon
+		# ISSUE #312: power up the Active Sabrina Pokémon from a Benched one (never strip the Active); with
+		# no Sabrina Active, feed the Benched Sabrina that needs Energy most from the one with the most.
+		var act = main.opponent_active_pokemon
+		if act != null and "Sabrina" in act.metadata.get("name", ""):
+			dest = act
+			var best_e = 0
+			for s in sources:
+				if s != act and s.attached_energies.size() > best_e:
+					best_e = s.attached_energies.size()
+					source = s
 		else:
-			for s in sabrinas:
-				if s != source:
-					dest = s
-					break
+			var best_e2 = 0
+			for s in sources:
+				if s.attached_energies.size() > best_e2:
+					best_e2 = s.attached_energies.size()
+					source = s
+			dest = main.cpu_ai.cpu_pick_benefit_recipient(sabrinas.filter(func(s): return s != source), "energy")
 	else:
 		# Player picks source then destination
 		source = await main.card_ops.prompt_select_card(sources, "SABRINA — PICK ENERGY SOURCE", "Move all its energies", "SELECT", false)
@@ -5702,7 +5907,7 @@ func gym2_effect_erikas_kindness(_is_opponent: bool) -> void:
 func gym2_effect_giovannis_last_resort(is_opponent: bool) -> void:
 	var giovannis: Array = []
 	for p in build_field_pokemon_array(is_opponent):
-		if "Giovanni" in p.metadata.get("name", "") and p.current_hp < int(p.metadata.get("hp", "0")):
+		if "Giovanni" in p.metadata.get("name", "") and p.current_hp < p.get_max_hp():
 			giovannis.append(p)
 	if giovannis.size() == 0:
 		return
@@ -5711,7 +5916,7 @@ func gym2_effect_giovannis_last_resort(is_opponent: bool) -> void:
 		# Pick the most-damaged
 		var most = 0
 		for p in giovannis:
-			var d = int(p.metadata.get("hp", "0")) - p.current_hp
+			var d = p.get_max_hp() - p.current_hp
 			if d > most:
 				most = d
 				target = p
@@ -5741,48 +5946,23 @@ func gym2_effect_giovannis_last_resort(is_opponent: bool) -> void:
 func gym2_effect_lt_surges_secret_plan(is_opponent: bool) -> void:
 	var hand = main.opponent_hand if is_opponent else main.player_hand
 	var bench = main.opponent_bench if is_opponent else main.player_bench
-	var discard = main.opponent_discard_pile if is_opponent else main.player_discard_pile
 	if bench.size() >= main.get_max_bench_size() or hand.size() == 0:
 		return
-	# Build candidates: any card from hand can be picked. Basics → bench normally; non-basics → discard.
+	var pick: card_object = null
 	if is_opponent:
-		# CPU doesn't play this card (returns early via -100 score), but for safety pick a basic if available.
-		var basics: Array = []
-		for c in hand:
-			if main.is_basic_pokemon(c):
-				basics.append(c)
-		if basics.size() == 0:
-			return
-		var pick = main.cpu_ai.cpu_pick_best_keep(basics)
-		hand.erase(pick)
-		pick.current_hp = pick.get_max_hp()
-		pick.current_location = "bench"
-		pick.placed_on_field_this_turn = true
-		bench.append(pick)
-		main.refresh_hand_display(true)
-		main.display_pokemon(true)
-		return
-	# Player path
-	var pick_c = await main.card_ops.prompt_select_card(hand, "LT. SURGE'S SECRET PLAN", "Pick a card to put on bench (must be a Basic Pokemon, or it's discarded)", "BENCH", false)
-	if main._should_bail(): return
-	if pick_c == null:
-		return
-	hand.erase(pick_c)
-	if main.is_basic_pokemon(pick_c):
-		pick_c.current_hp = pick_c.get_max_hp()
-		pick_c.current_location = "bench"
-		pick_c.placed_on_field_this_turn = true
-		bench.append(pick_c)
-		main.refresh_hand_display(false)
-		main.display_pokemon(false)
-		await main.show_message("LT. SURGE'S SECRET PLAN — " + pick_c.metadata.get("name", "").to_upper() + " BENCHED!")
+		# CPU (rarely plays it): bluff with its least useful card, or a spare Basic
+		var basics = hand.filter(func(c): return main.is_basic_pokemon(c))
+		pick = main.cpu_ai.cpu_pick_best_keep(basics) if not basics.is_empty() else cpu_get_discard_priority(hand, 1)[0]
 	else:
-		pick_c.current_location = "discard"
-		discard.append(pick_c)
-		main.refresh_hand_display(false)
-		main.update_discard_pile_display(false)
-		await main.show_message("LT. SURGE'S SECRET PLAN — NOT A BASIC POKEMON! DISCARDED!")
-	if main._should_bail(): return
+		pick = await main.card_ops.prompt_select_card(hand, "LT. SURGE'S SECRET PLAN", "Choose a card to put FACE DOWN on your Bench (it's discarded when flipped unless it's a Basic Pokemon)", "PLACE", false)
+		if main._should_bail(): return
+	if pick == null:
+		return
+	hand.erase(pick)
+	main.card_ops.place_secret_plan_card(pick, is_opponent)
+	main.refresh_hand_display(is_opponent)
+	main.display_pokemon(is_opponent)
+	await main.show_message("LT. SURGE'S SECRET PLAN — A CARD WAS PLACED FACE DOWN ON THE BENCH!")
 
 # ============================ gym2-108 — Misty's Wish ============================
 # Look at a prize. The opponent decides: swap with one of your hand cards, or you draw 1.
@@ -5791,92 +5971,188 @@ func gym2_effect_mistys_wish(is_opponent: bool) -> void:
 	var hand = main.opponent_hand if is_opponent else main.player_hand
 	if prizes.size() == 0:
 		return
-	# Card player looks at a prize
-	var chosen_prize: card_object = null
+	# "Look at 1 of your Prize cards" — chosen face down
+	var prize_idx := 0
 	if is_opponent:
-		chosen_prize = prizes[randi() % prizes.size()]
+		prize_idx = randi() % prizes.size()
 	else:
-		chosen_prize = await main.card_ops.prompt_select_card(prizes, "MISTY'S WISH — LOOK AT A PRIZE", "Pick a Prize card to examine", "LOOK", false)
+		prize_idx = await main.powers_and_bodies._choose_prize_slot(prizes.size(), "MISTY'S WISH: LOOK AT WHICH PRIZE?")
 		if main._should_bail(): return
-	if chosen_prize == null:
-		return
-
-	# The OTHER side decides: accept the swap (player gets prize → hand; their picked card → prize stack) or decline (player draws 1).
-	# CPU decision: accept the swap if the prize is a key card type (any Pokémon or any Trainer) — denies player a free key card.
-	# Player as decider: auto-decline by default (TODO: prompt UI later). Same fallback as effect_challenge.
-	# Simplified: ALWAYS decline (other side blocks the swap; card player draws 1).
-	if hand.size() == 0:
-		# Can't swap anyway; draw 1
+	var chosen_prize: card_object = prizes[prize_idx]
+	if not is_opponent:
+		main.show_enlarged_array_selection_mode([chosen_prize])
+		main.header_label.text = "MISTY'S WISH: PRIZE #" + str(prize_idx + 1)
+		main.hint_label.text = chosen_prize.metadata.get("name", "")
+		main.action_button.text = "OK"
+		main.action_button.disabled = false
+		main.cancel_button.visible = false
+		main.selected_card_for_action = chosen_prize
+		main.trainer_pokemon_selection_active = true
+		await main.trainer_target_selected
+		main.trainer_pokemon_selection_active = false
+		main.hide_selection_mode_display_main()
+		if main._should_bail(): return
+	# ISSUE #308: the OTHER side decides. The player is now asked when the CPU plays it (it used to be
+	# decided for you); the CPU declines when you play it — a swap lets you pick a card you've just seen
+	# instead of a random draw.
+	var accepted := false
+	if is_opponent:
+		var anchor = main.player_active_pokemon if main.player_active_pokemon != null else main.opponent_active_pokemon
+		accepted = await gym1_prompt_yes_no(anchor, "MISTY'S WISH", "Let the opponent swap the Prize card it looked at with a card from its hand? (Decline: it draws a card.)", "ACCEPT", "DECLINE")
+		if main._should_bail(): return
+	if not accepted:
 		await main.card_ops.draw_n(is_opponent, 1)
 		if main._should_bail(): return
-		await main.show_message("MISTY'S WISH — DREW A CARD!")
+		await main.show_message("MISTY'S WISH — DECLINED. " + ("THE OPPONENT DREW" if is_opponent else "YOU DREW") + " A CARD!")
 		return
-	# Decision logic: accept if prize is a Pokemon (deny the card player the setup advantage)
-	var prize_is_pokemon = chosen_prize.metadata.get("supertype", "") == "Pokémon"
-	var accept = prize_is_pokemon
-	if accept:
-		# Card player picks a hand card to swap
-		var swap_card: card_object = null
-		if is_opponent:
-			# CPU swap: pick lowest-value hand card
-			var to_swap = cpu_get_discard_priority(hand, 1)
-			if to_swap.size() > 0:
-				swap_card = to_swap[0]
-		else:
-			swap_card = await main.card_ops.prompt_select_card(hand, "MISTY'S WISH — SWAP WITH WHICH CARD?", "This card replaces the chosen Prize card", "SWAP", false)
-			if main._should_bail(): return
-		if swap_card != null:
-			# Swap prize ↔ hand card
-			var prize_idx = prizes.find(chosen_prize)
-			hand.erase(swap_card)
-			chosen_prize.current_location = "hand"
-			hand.append(chosen_prize)
-			swap_card.current_location = "prize"
-			prizes[prize_idx] = swap_card
-			main.refresh_hand_display(is_opponent)
-			main.display_prize_cards(is_opponent)
-			await main.show_message("MISTY'S WISH — SWAPPED PRIZE WITH " + swap_card.metadata.get("name", "").to_upper() + "!")
-			if main._should_bail(): return
+	if hand.is_empty():
+		await main.show_message("MISTY'S WISH — NO OTHER CARDS IN HAND TO SWAP.")
 		return
-	# Declined → draw 1
-	await main.card_ops.draw_n(is_opponent, 1)
-	if main._should_bail(): return
-	await main.show_message("MISTY'S WISH — OPPONENT DECLINED. DREW A CARD!")
-	if main._should_bail(): return
+	var swap_card: card_object = null
+	if is_opponent:
+		# The CPU swaps only if the Prize is worth more to it than its weakest hand card
+		var to_swap = cpu_get_discard_priority(hand, 1)
+		if to_swap.size() > 0 and main.cpu_ai.cpu_rank_keep_value(chosen_prize) > main.cpu_ai.cpu_rank_keep_value(to_swap[0]):
+			swap_card = to_swap[0]
+	else:
+		swap_card = await main.card_ops.prompt_select_card(hand, "MISTY'S WISH — SWAP WITH WHICH CARD?", "This card replaces the Prize card (Cancel to keep things as they are)", "SWAP", true)
+		if main._should_bail(): return
+	if swap_card == null:
+		await main.show_message("MISTY'S WISH — NO SWAP.")
+		return
+	hand.erase(swap_card)
+	chosen_prize.current_location = "hand"
+	hand.append(chosen_prize)
+	swap_card.current_location = "prize"
+	prizes[prize_idx] = swap_card
+	main.refresh_hand_display(is_opponent)
+	main.display_prize_cards(is_opponent)
+	await main.show_message("MISTY'S WISH — A PRIZE CARD WAS SWAPPED WITH A CARD FROM HAND!")
 
 # ============================ gym2-111 — Blaine's Quiz #2 ============================
-# Coin-flip approximation of category guess.
+# The card player hides a hand card; the other player guesses its category.
 func gym2_effect_blaines_quiz_2(is_opponent: bool) -> void:
-	await main.show_message("BLAINE'S QUIZ #2 — FLIPPING COIN…")
-	if main._should_bail(): return
-	var coin = await main.flip_coin(false, is_opponent)
-	if coin:
-		var other = not is_opponent
-		await main.card_ops.draw_n(other, 2)
+	# ISSUE #308: the real quiz (was a coin flip). The card player picks a hand card; the other player
+	# guesses Energy / Trainer / Pokémon. Either way the card goes back to hand.
+	var hand = main.opponent_hand if is_opponent else main.player_hand
+	if hand.is_empty():
+		return
+	var cats = ["POKEMON", "TRAINER", "ENERGY"]
+	var cat_of = func(c): return 0 if c.metadata.get("supertype","") in ["Pokémon","Pokemon"] else (1 if c.metadata.get("supertype","") == "Trainer" else 2)
+	var hidden: card_object = null
+	var guess := 0
+	if is_opponent:
+		# CPU hides a card from the category it holds least of its whole deck list (hardest to guess)
+		var counts = [0, 0, 0]
+		for c in main.opponent_deck + main.opponent_hand + main.opponent_prize_cards:
+			counts[cat_of.call(c)] += 1
+		var order = [0, 1, 2]
+		order.sort_custom(func(a, b): return counts[a] < counts[b])
+		for cat in order:
+			for c in hand:
+				if cat_of.call(c) == cat:
+					hidden = c
+					break
+			if hidden != null:
+				break
+		guess = await prompt_option_buttons("BLAINE'S QUIZ #2 — GUESS THE OPPONENT'S FACE-DOWN CARD:", cats)
 		if main._should_bail(): return
-		await main.show_message("OPPONENT GUESSED RIGHT! THEY DREW 2 CARDS!")
 	else:
-		await main.card_ops.draw_n(is_opponent, 2)
+		hidden = await main.card_ops.prompt_select_card(hand, "BLAINE'S QUIZ #2", "Choose a card to put face down", "SELECT", false)
 		if main._should_bail(): return
-		await main.show_message("OPPONENT GUESSED WRONG! YOU DREW 2 CARDS!")
+		if hidden == null: hidden = hand[0]
+		# CPU guesses the most common category in your deck list
+		var counts2 = [0, 0, 0]
+		for c in main.player_deck + main.player_hand + main.player_prize_cards:
+			counts2[cat_of.call(c)] += 1
+		guess = 0
+		for i in range(3):
+			if counts2[i] > counts2[guess]: guess = i
+		await main.show_message("THE OPPONENT GUESSES: " + cats[guess] + "!")
+		if main._should_bail(): return
+	var right = cat_of.call(hidden) == clampi(guess, 0, 2)
+	await main.show_message("THE CARD WAS " + hidden.metadata.get("name","").to_upper() + " — " + ("RIGHT!" if right else "WRONG!"))
 	if main._should_bail(): return
+	await main.card_ops.draw_n((not is_opponent) if right else is_opponent, 2)
+	if main._should_bail(): return
+	await main.show_message(("THE GUESSER" if right else "THE QUIZ MASTER") + " DREW 2 CARDS!")
 
 # ============================ gym2-112 — Blaine's Quiz #3 ============================
-# Coin-flip approximation of card-name guess (rewards are 3 cards).
+# The card player hides a Pokémon and names one of its attacks; the other player guesses the card.
 func gym2_effect_blaines_quiz_3(is_opponent: bool) -> void:
-	await main.show_message("BLAINE'S QUIZ #3 — FLIPPING COIN…")
-	if main._should_bail(): return
-	var coin = await main.flip_coin(false, is_opponent)
-	if coin:
-		var other = not is_opponent
-		await main.card_ops.draw_n(other, 3)
-		if main._should_bail(): return
-		await main.show_message("OPPONENT GUESSED RIGHT! THEY DREW 3 CARDS!")
+	# ISSUE #308: the real quiz (was a coin flip). A Pokémon card goes face down, one of its attack names is
+	# announced, and the other player guesses the card's name from every Pokémon (base–Gym era) that has
+	# an attack with that name.
+	var hand = main.opponent_hand if is_opponent else main.player_hand
+	var mons = hand.filter(func(c): return c.metadata.get("supertype","") in ["Pokémon","Pokemon"] and not c.metadata.get("attacks", []).is_empty())
+	if mons.is_empty():
+		return
+	var hidden: card_object = null
+	var atk_name := ""
+	if is_opponent:
+		# CPU hides the card whose attack name is shared by the most different Pokémon
+		var best_n := -1
+		for c in mons:
+			for a in c.metadata.get("attacks", []):
+				var n = _quiz3_candidates(a.get("name","")).size()
+				if n > best_n:
+					best_n = n
+					hidden = c
+					atk_name = a.get("name","")
 	else:
-		await main.card_ops.draw_n(is_opponent, 3)
+		hidden = await main.card_ops.prompt_select_card(mons, "BLAINE'S QUIZ #3", "Choose a Pokemon card to put face down", "SELECT", false)
 		if main._should_bail(): return
-		await main.show_message("OPPONENT GUESSED WRONG! YOU DREW 3 CARDS!")
+		if hidden == null: hidden = mons[0]
+		var anames: Array = []
+		for a in hidden.metadata.get("attacks", []):
+			anames.append(a.get("name",""))
+		var ai = 0
+		if anames.size() > 1:
+			ai = await prompt_option_buttons("BLAINE'S QUIZ #3 — WHICH ATTACK NAME DO YOU ANNOUNCE?", anames)
+			if main._should_bail(): return
+		atk_name = anames[clampi(ai, 0, anames.size() - 1)]
+	var true_name: String = hidden.metadata.get("name","")
+	var cands: Array = _quiz3_candidates(atk_name)
+	if true_name not in cands: cands.append(true_name)
+	await main.show_message("THE ATTACK IS \"" + atk_name.to_upper() + "\"!")
 	if main._should_bail(): return
+	var guess_name := ""
+	if is_opponent:
+		# the player guesses — up to 6 candidates (the true one always included)
+		var opts: Array = [true_name]
+		var others = cands.filter(func(n): return n != true_name)
+		others.shuffle()
+		opts.append_array(others.slice(0, 5))
+		opts.shuffle()
+		var gi = await prompt_option_buttons("BLAINE'S QUIZ #3 — NAME THE CARD:", opts)
+		if main._should_bail(): return
+		guess_name = opts[clampi(gi, 0, opts.size() - 1)]
+	else:
+		# CPU guesses a candidate it has already seen you play (in play / discard), else one at random
+		var seen: Array = []
+		for c in main.card_ops.get_all_pokemon_in_play(false) + main.player_discard_pile:
+			seen.append(c.metadata.get("name",""))
+		var seen_c = cands.filter(func(n): return n in seen)
+		guess_name = seen_c[randi() % seen_c.size()] if not seen_c.is_empty() else cands[randi() % cands.size()]
+		await main.show_message("THE OPPONENT GUESSES " + guess_name.to_upper() + "!")
+		if main._should_bail(): return
+	var right = guess_name == true_name
+	await main.show_message("IT WAS " + true_name.to_upper() + " — " + ("RIGHT!" if right else "WRONG!"))
+	if main._should_bail(): return
+	await main.card_ops.draw_n((not is_opponent) if right else is_opponent, 3)
+	if main._should_bail(): return
+	await main.show_message(("THE GUESSER" if right else "THE QUIZ MASTER") + " DREW 3 CARDS!")
+
+# Every Pokémon name from the base–Gym sets with an attack named `atk_name` (Blaine's Quiz #3 guesses).
+func _quiz3_candidates(atk_name: String) -> Array:
+	var out: Array = []
+	for st in ["base1", "base2", "base3", "base5", "gym1", "gym2"]:
+		main.get_card_metadata(st + "-1")   # warms the per-set cache
+		for c in main._set_metadata_cache.get(st, []):
+			for a in c.get("attacks", []):
+				if a.get("name","") == atk_name and c.get("name","") not in out:
+					out.append(c.get("name",""))
+	return out
 
 # ============================ gym2-116 — Master Ball ============================
 # Look at top 7 of deck; choose one Pokemon (Basic or Evolution) to add to hand; shuffle the rest back.
@@ -5941,8 +6217,11 @@ func gym2_effect_max_revive(played_card: card_object, is_opponent: bool) -> void
 		return
 	var to_discard: Array = []
 	if is_opponent:
-		to_discard.append(energy_in_hand[0])
-		to_discard.append(energy_in_hand[1])
+		# ISSUE #310: give up the two Energy cards it needs least (was the first two in hand)
+		var ranked_h = energy_in_hand.duplicate()
+		ranked_h.sort_custom(func(x, y): return main.cpu_ai.cpu_energy_need_value(x) < main.cpu_ai.cpu_energy_need_value(y))
+		to_discard.append(ranked_h[0])
+		to_discard.append(ranked_h[1])
 	else:
 		# Player picks 2 energies
 		for i in range(2):
@@ -6084,12 +6363,15 @@ func gym2_effect_rockets_secret_experiment(is_opponent: bool) -> void:
 		main.update_deck_icon(is_opponent)
 		await main.show_message("HEADS! ADDED " + (chosen.metadata.get("name", "").to_upper() if chosen != null else "...") + " TO HAND!")
 	else:
-		# Tails: trainer lock on the card player until end of opp's next turn
+		# Tails: "you can't play Trainer cards until the end of your NEXT turn" (ISSUE #309: the message said
+		# the opponent's next turn, and the lock actually lifted at the start of your next turn)
 		if is_opponent:
 			opponent_trainer_locked = true
+			opponent_trainer_lock_extra_turns = 1
 		else:
 			player_trainer_locked = true
-		await main.show_message("TAILS! TRAINER CARDS LOCKED UNTIL END OF OPPONENT'S NEXT TURN!")
+			player_trainer_lock_extra_turns = 1
+		await main.show_message("TAILS! NO TRAINER CARDS UNTIL THE END OF " + ("THE OPPONENT'S" if is_opponent else "YOUR") + " NEXT TURN!")
 	if main._should_bail(): return
 
 # ============================ gym2-121 — Sabrina's Psychic Control ============================
@@ -6106,7 +6388,9 @@ func gym2_effect_sabrinas_psychic_control(is_opponent: bool) -> void:
 	# Filter eligible trainers
 	var eligible: Array = []
 	for c in opp_discard:
-		if is_trainer_card(c) and not is_attached_trainer(c) and not is_bench_token_trainer(c) and not is_stadium_trainer(c):
+		# ISSUE #312: "if you do everything required in order to play that card" — it must be playable now
+		if is_trainer_card(c) and not is_attached_trainer(c) and not is_bench_token_trainer(c) and not is_stadium_trainer(c) \
+				and validate_trainer_can_be_played(c, is_opponent) == "":
 			eligible.append(c)
 	if eligible.size() == 0:
 		await main.show_message("HEADS! BUT NO ELIGIBLE TRAINERS IN OPPONENT'S DISCARD!")
@@ -6129,6 +6413,9 @@ func gym2_effect_sabrinas_psychic_control(is_opponent: bool) -> void:
 	# The card stays in the opp's discard (we don't move it).
 	await main.show_message("HEADS! USING " + chosen.metadata.get("name", "").to_upper() + " FROM OPPONENT'S DISCARD!")
 	if main._should_bail(): return
+	if chosen.uid.to_lower() in ["base1-92", "base1-79"]:
+		if not await gym1_no_removal_gym_pay_tax(chosen, is_opponent):
+			return
 	await resolve_standard_trainer(chosen, is_opponent)
 	if main._should_bail(): return
 
@@ -6174,69 +6461,36 @@ func gym2_effect_transparent_walls(is_opponent: bool) -> void:
 # ============================ gym2-126 — Warp Point ============================
 # If opp has bench, opp chooses one of their bench to switch with their active. Then you switch one of your bench with your active.
 func gym2_effect_warp_point(is_opponent: bool) -> void:
-	var opp_bench = main.player_bench if is_opponent else main.opponent_bench
-	var opp_active_ref = main.player_active_pokemon if is_opponent else main.opponent_active_pokemon
-	# Step 1: opp side switches
-	if opp_bench.size() > 0 and opp_active_ref != null:
-		var opp_pick: card_object = null
-		var opp_chooses_is_opp = not is_opponent  # the OTHER side chooses
-		if opp_chooses_is_opp:
-			# CPU is the chooser — pick the worst bench candidate (least useful frontline) to swap in
-			var worst_hp = 9999
-			for bp in opp_bench:
-				var hp = int(bp.metadata.get("hp", "0"))
-				if hp < worst_hp:
-					worst_hp = hp
-					opp_pick = bp
+	# ISSUE #309: "your opponent chooses 1 of [their Benched] and switches it with his or her Active, then
+	# you switch 1 of yours". The CPU used to bring up its WORST Pokémon when you played it, picked its own
+	# by HP% when it played it, and the swaps skipped the status-clearing swap animation.
+	var other_is_opp = not is_opponent
+	var other_bench = main.opponent_bench if other_is_opp else main.player_bench
+	var other_active = main.opponent_active_pokemon if other_is_opp else main.player_active_pokemon
+	if other_bench.size() > 0 and other_active != null:
+		var pick: card_object = null
+		if other_is_opp:
+			pick = main.cpu_ai.pick_best_bench_replacement(other_bench, main.player_active_pokemon, main.cpu_ai.build_cpu_evaluation())
+			if pick == null: pick = other_bench[0]
 		else:
-			# Player is the chooser — but it's the opponent's bench they're switching (this is unusual UX)
-			opp_pick = await main.card_ops.prompt_select_card(opp_bench, "WARP POINT — OPPONENT MUST CHOOSE", "(you decide for them) Pick which of their bench switches in", "SWITCH", false)
+			pick = await main.card_ops.prompt_select_card(other_bench, "WARP POINT — SWITCH IN WHICH OF YOUR POKEMON?", "The opponent's Warp Point: choose your new Active", "SWITCH", false)
 			if main._should_bail(): return
-		if opp_pick != null:
-			opp_bench.erase(opp_pick)
-			opp_pick.current_location = "active"
-			opp_active_ref.current_location = "bench"
-			opp_bench.append(opp_active_ref)
-			if is_opponent:
-				main.player_active_pokemon = opp_pick
-			else:
-				main.opponent_active_pokemon = opp_pick
-			main.display_pokemon(not is_opponent)
-			main.display_active_pokemon_energies(not is_opponent)
-			await main.show_message("WARP POINT — OPPONENT'S " + opp_pick.metadata.get("name", "").to_upper() + " IS NOW ACTIVE!")
-			if main._should_bail(): return
-
-	# Step 2: card player switches one of their bench
+			if pick == null: pick = other_bench[0]
+		await main.animate_retreat(other_active, pick, [], other_is_opp, true)
+		if main._should_bail(): return
 	var own_bench = main.opponent_bench if is_opponent else main.player_bench
 	var own_active = main.opponent_active_pokemon if is_opponent else main.player_active_pokemon
 	if own_bench.size() == 0 or own_active == null:
 		return
 	var own_pick: card_object = null
 	if is_opponent:
-		# CPU picks best bench to swap in (highest HP%)
-		var best_pct = -1.0
-		for bp in own_bench:
-			var max_hp = int(bp.metadata.get("hp", "0"))
-			var pct = float(bp.current_hp) / max(1, max_hp)
-			if pct > best_pct:
-				best_pct = pct
-				own_pick = bp
+		own_pick = main.cpu_ai.pick_best_bench_replacement(own_bench, main.player_active_pokemon, main.cpu_ai.build_cpu_evaluation())
+		if own_pick == null: own_pick = own_bench[0]
 	else:
-		own_pick = await main.card_ops.prompt_select_card(own_bench, "WARP POINT — CHOOSE A BENCHED POKEMON", "Switch them with your Active", "SWITCH", false)
+		own_pick = await main.card_ops.prompt_select_card(own_bench, "WARP POINT — CHOOSE A BENCHED POKEMON", "Switch it with your Active", "SWITCH", false)
 		if main._should_bail(): return
-	if own_pick == null:
-		return
-	own_bench.erase(own_pick)
-	own_pick.current_location = "active"
-	own_active.current_location = "bench"
-	own_bench.append(own_active)
-	if is_opponent:
-		main.opponent_active_pokemon = own_pick
-	else:
-		main.player_active_pokemon = own_pick
-	main.display_pokemon(is_opponent)
-	main.display_active_pokemon_energies(is_opponent)
-	await main.show_message("WARP POINT — YOUR " + own_pick.metadata.get("name", "").to_upper() + " IS NOW ACTIVE!")
+		if own_pick == null: return
+	await main.animate_retreat(own_active, own_pick, [], is_opponent, true)
 	if main._should_bail(): return
 
 ######################################################################################################################################################
@@ -6399,8 +6653,7 @@ func gym2_fuchsia_activate(is_opponent: bool) -> void:
 func gym2_saffron_has_target(is_opponent: bool) -> bool:
 	if not main.is_stadium_in_play(StadiumIds.SAFFRON_CITY_GYM):
 		return false
-	if is_opponent and main.opponent_saffron_used_this_turn: return false
-	if not is_opponent and main.player_saffron_used_this_turn: return false
+	# ISSUE #309: "As often as each player likes during his or her turn" — no once-per-turn flag.
 	var active = main.opponent_active_pokemon if is_opponent else main.player_active_pokemon
 	var bench = main.opponent_bench if is_opponent else main.player_bench
 	var all_p: Array = []
@@ -6445,15 +6698,18 @@ func gym2_saffron_activate(is_opponent: bool) -> void:
 	var target: card_object = null
 	var energy_to_return: card_object = null
 	if is_opponent:
-		# CPU: pick the pokemon with the most excess energy (least likely to need it)
-		var most_excess = -1
+		# ISSUE #309: the Pokémon with the most basic Energy BEYOND its most expensive attack's cost
+		var most_excess = -999
 		for p in eligible:
 			var basics = 0
 			for e in p.attached_energies:
 				if main.is_basic_energy_card(e):
 					basics += 1
-			if basics > most_excess:
-				most_excess = basics
+			var max_cost = 0
+			for atk in p.metadata.get("attacks", []):
+				max_cost = max(max_cost, atk.get("cost", []).size())
+			if basics - max_cost > most_excess:
+				most_excess = basics - max_cost
 				target = p
 		if target == null:
 			return

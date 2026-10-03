@@ -325,6 +325,16 @@ func apply_status(pokemon: card_object, status: String, is_opponent: bool) -> vo
 	# NEO4 Flash Touch (Light Ledian): immune to special conditions while Active
 	if pokemon != null and pokemon.neo4_immune_to_status and status != "":
 		return
+	# ISSUE #304: Clefairy Doll / Mysterious Fossil "can't be Asleep, Confused, Paralyzed, or Poisoned",
+	# and Snorlax's Thick Skinned ("can't become Asleep, Confused, Paralyzed, or Poisoned"). Both were
+	# only checked in Main.apply_status_effect, so every effect that goes through THIS function (Strange
+	# Powder, Long-Distance Hypnosis, Pollen Stench, Sleep!, Petal Whirlwind...) ignored them.
+	if pokemon != null and status != "" and pokemon.is_bench_token:
+		return
+	if pokemon != null and status in ["Asleep", "Confused", "Paralyzed", "Poisoned", "Toxic"] and pokemon.has_ability("Thick Skinned"):
+		if not pokemon.is_status_blocked() and not main.powers_and_bodies.is_power_blocked(pokemon):
+			print("ISSUE #304 FIX ACTIVE: Thick Skinned blocked ", status, " on ", pokemon.metadata.get("name", ""))
+			return
 	# EX16 Sidney's Stadium (ex16-82): each player's Darkness Pokemon can't be Asleep, Confused, or Paralyzed.
 	if pokemon != null and status in ["Asleep", "Confused", "Paralyzed"] and main.is_stadium_in_play(StadiumIds.SIDNEYS_STADIUM):
 		if "Darkness" in pokemon.get_effective_types():
@@ -414,9 +424,23 @@ func clear_statuses(pokemon: card_object, is_opponent: bool) -> void:
 # `picker_is_opponent` determines whose side is making the choice (the attacker/effect owner).
 # Pass `forced_card` to skip the selection UI and discard a specific energy directly.
 # Returns the removed card, or null if none were available.
+# ISSUE #297: GYM2 Brock's Protection (gym2-101) — "Energy cards attached to that Pokémon can't be removed
+# by your opponent's attacks or Trainer cards." True (with a message) when `remover_is_opponent`'s side is
+# not allowed to take Energy off `target`.
+func energy_removal_blocked(target: card_object, target_owner_is_opponent: bool, remover_is_opponent: bool) -> bool:
+	if target == null or target_owner_is_opponent == remover_is_opponent:
+		return false
+	if not target.gym2_brocks_protection_attached:
+		return false
+	main.show_floating_label("BROCK'S PROTECTION", main.get_pokemon_screen_location(target).get("position", Vector2(800, 300)), Color.BLUE, true)
+	print("ISSUE #297 FIX ACTIVE: Brock's Protection kept the Energy on ", target.metadata.get("name", ""))
+	return true
+
 func remove_one_energy(target: card_object, target_owner_is_opponent: bool,
 		picker_is_opponent: bool, forced_card: card_object = null, cancelable: bool = false) -> card_object:
 	if target.attached_energies.is_empty():
+		return null
+	if energy_removal_blocked(target, target_owner_is_opponent, picker_is_opponent):
 		return null
 
 	var chosen: card_object = null
@@ -469,6 +493,97 @@ func remove_one_energy(target: card_object, target_owner_is_opponent: bool,
 		if main._should_bail(): return null
 	main.display_active_pokemon_energies(target_owner_is_opponent)
 	return chosen
+
+# ── Lt. Surge's Secret Plan (gym2-107) ─────────────────────────────────────────────────────
+# ISSUE #309: the card goes onto the Bench FACE DOWN as a stand-in Basic Pokémon (it used to be revealed and
+# discarded on the spot when it wasn't a Basic). It is flipped when it would be damaged or otherwise
+# affected by an attack, when it becomes the Active Pokémon, if damage counters land on it, or whenever
+# its owner chooses (the "Flip Face-Down Card" entry in the Power menu). On the flip a Basic Pokémon takes
+# its place (keeping anything attached and any damage); anything else is discarded with all attachments.
+const SECRET_PLAN_FLIP := "Flip Face-Down Card"
+
+func place_secret_plan_card(card: card_object, is_opponent: bool) -> card_object:
+	var meta := {"name": "Face-Down Card", "supertype": "Pokémon", "subtypes": ["Basic"], "hp": "10",
+		"types": ["Colorless"], "attacks": [], "retreatCost": [], "convertedRetreatCost": 0,
+		"abilities": [{"name": SECRET_PLAN_FLIP, "type": "Pokémon Power",
+			"text": "At any time during your turn, you may flip this card over. If it isn't a Basic Pokémon, discard it and all cards attached to it."}]}
+	var stand_in := card_object.new(card.uid, meta)
+	stand_in.secret_plan_face_down = true
+	stand_in.secret_plan_card = card
+	stand_in.current_hp = 10
+	card.current_location = "secret_plan"
+	place_on_bench(stand_in, is_opponent)
+	return stand_in
+
+# Flip a face-down Secret Plan card. Returns the real Pokémon now in that spot, or null if it was discarded.
+func reveal_secret_plan(stand_in: card_object, is_opponent: bool) -> card_object:
+	if stand_in == null or not stand_in.secret_plan_face_down:
+		return stand_in
+	var real: card_object = stand_in.secret_plan_card
+	stand_in.secret_plan_face_down = false
+	var counters = max(0, stand_in.get_max_hp() - stand_in.current_hp)
+	var bench = main.opponent_bench if is_opponent else main.player_bench
+	var was_active = stand_in == (main.opponent_active_pokemon if is_opponent else main.player_active_pokemon)
+	await main.show_message("THE FACE-DOWN CARD IS FLIPPED: " + real.metadata.get("name", "").to_upper() + "!")
+	if main.is_basic_pokemon(real):
+		real.attached_energies = stand_in.attached_energies.duplicate()
+		real.attached_cards = stand_in.attached_cards.duplicate()
+		real.pluspower_count = stand_in.pluspower_count
+		real.defender_count = stand_in.defender_count
+		real.defender_turns_remaining = stand_in.defender_turns_remaining
+		real.placed_on_field_this_turn = stand_in.placed_on_field_this_turn
+		real.current_hp = max(0, real.get_max_hp() - counters)
+		real.current_location = "active" if was_active else "bench"
+		if was_active:
+			if is_opponent: main.opponent_active_pokemon = real
+			else: main.player_active_pokemon = real
+		else:
+			var i = bench.find(stand_in)
+			if i != -1: bench[i] = real
+		main.display_pokemon(is_opponent)
+		main.display_active_pokemon_energies(is_opponent)
+		print("ISSUE #309 FIX ACTIVE: Secret Plan revealed a Basic — ", real.metadata.get("name", ""))
+		return real
+	# Not a Basic Pokémon: discard it and everything attached
+	var discard = main.opponent_discard_pile if is_opponent else main.player_discard_pile
+	for e in stand_in.attached_energies:
+		e.current_location = "discard"
+		discard.append(e)
+	for ac in stand_in.attached_cards:
+		ac.current_location = "discard"
+		discard.append(ac)
+	real.current_location = "discard"
+	discard.append(real)
+	if was_active:
+		if is_opponent: main.opponent_active_pokemon = null
+		else: main.player_active_pokemon = null
+	else:
+		bench.erase(stand_in)
+	main.display_pokemon(is_opponent)
+	main.update_discard_pile_display(is_opponent)
+	await main.show_message("IT ISN'T A BASIC POKEMON — DISCARDED!")
+	print("ISSUE #309 FIX ACTIVE: Secret Plan revealed a non-Basic — discarded")
+	return null
+
+# Flip every face-down card in play that has to be revealed now: one that became an Active Pokémon or one
+# that has damage counters on it. Promotes a new Active if the flip emptied the Active spot.
+func reveal_pending_secret_plans() -> void:
+	for side in [false, true]:
+		var pool: Array = get_all_pokemon_in_play(side)
+		var emptied_active := false
+		for p in pool:
+			if p == null or not p.secret_plan_face_down:
+				continue
+			var is_active = p == (main.opponent_active_pokemon if side else main.player_active_pokemon)
+			if is_active or p.current_hp < p.get_max_hp():
+				var real = await reveal_secret_plan(p, side)
+				if main._should_bail(): return
+				if is_active and real == null:
+					emptied_active = true
+		# only promote when THIS flip emptied the Active spot (never interfere with a KO in progress)
+		if emptied_active and (main.opponent_active_pokemon if side else main.player_active_pokemon) == null:
+			await main.handle_post_knockout(side)
+			if main._should_bail(): return
 
 # ── Bench Placement ───────────────────────────────────────────────────────────────────────
 
@@ -562,43 +677,74 @@ func choose_card(pool: Array, is_opponent: bool, header: String, hint: String,
 
 # Apply `damage` to a bench pokemon and show a floating damage label above its bench position.
 # Does not check KO — caller is responsible for running check_all_knockouts afterwards.
-func apply_bench_damage(pokemon: card_object, damage: int, is_opponent: bool) -> void:
-	if damage <= 0:
+#
+# ISSUE #294: THE one bench-damage path. There used to be three (this one, Attack_Effects.apply_bench_damage
+# and the raw `current_hp -= n` in gym1_hit_raw), and each knew a different subset of the rules: this one
+# knew the prevention bodies but not Defender, Transparent Walls or Bench Guard; the generic one knew
+# those three but not the prevention bodies; the raw one knew none of them. Everything now comes here.
+#   from_attack = true  — damage from an ATTACK: every prevention body, Transparent Walls ("damage from
+#                         attacks done to your Benched Pokémon"), Defender ("damage done ... by attacks"),
+#                         Relaxing Scent ("whenever an attack ... does damage to any Pokémon").
+#   from_attack = false — damage from a Pokémon Power / Trainer: none of those apply.
+# Bench Guard ("whenever 1 of your Benched Pokémon is damaged") applies either way, and may prompt the
+# player — which is why this is awaitable.
+func apply_bench_damage(pokemon: card_object, damage: int, is_opponent: bool, from_attack: bool = true) -> void:
+	if damage <= 0 or pokemon == null:
 		return
-	# Articuno Aurora Veil (basep-48): bench immune to attack damage
-	if main.powers_and_bodies.check_aurora_veil(is_opponent):
-		return
-	# NEO4 Ice Pillar (Light Dewgong): prevent attack damage to your benched while it is your Active
-	var ip_active = main.opponent_active_pokemon if is_opponent else main.player_active_pokemon
-	if ip_active != null and ip_active.neo4_prevent_bench_damage:
-		return
-	# Protective Flame / invincible flag on bench pokemon
-	if pokemon.is_invincible:
-		return
-	# EX5 Power Diffusion (Rhydon ex5-46): while Rhydon is that side's Active, prevent all attack
-	# damage to that side's Benched Pokemon.
-	if main.powers_and_bodies.is_ex5_power_diffusion_active(is_opponent):
-		return
-	# On-Bench damage-prevention bodies (EX3 Submerge / ex9 Feebas Submerge / ex9 Swablu Feathery).
-	# Guard on the ability TEXT ("prevent all damage" + "bench"), not just the name — neo3 Lanturn also
-	# has a "Submerge" ability with a completely different, type-changing effect.
-	if not main.powers_and_bodies.is_power_blocked(pokemon):
-		for ab in pokemon.metadata.get("abilities", []):
-			if ab.get("type","") != "Poké-Body": continue
-			var abtext = ab.get("text","").to_lower()
-			if "prevent all damage" in abtext and "bench" in abtext:
-				return
-	# EX14 Sand Veil (Dugtrio ex14-5): prevent all attack damage to that side's Benched Pokemon while a
-	# Dugtrio with this Body is in play on that side.
-	for sv in main.card_ops.get_all_pokemon_in_play(is_opponent):
-		if sv.has_ability("Sand Veil") and not main.powers_and_bodies.is_power_blocked(sv):
+	if pokemon.secret_plan_face_down:   # ISSUE #309: flipped before it is damaged
+		pokemon = await reveal_secret_plan(pokemon, is_opponent)
+		if pokemon == null or main._should_bail():
 			return
-	# EX15 Solid Shell (Cloyster δ ex15-14): prevent all effects of attacks (including damage) to that
-	# side's Benched Pokémon that have δ on their card, while a Cloyster with this Body is in play.
-	if pokemon.is_delta():
-		for cs in main.card_ops.get_all_pokemon_in_play(is_opponent):
-			if cs.has_ability("Solid Shell") and not main.powers_and_bodies.is_power_blocked(cs):
+	if from_attack:
+		# Articuno Aurora Veil (basep-48): bench immune to attack damage
+		if main.powers_and_bodies.check_aurora_veil(is_opponent):
+			return
+		# NEO4 Ice Pillar (Light Dewgong): prevent attack damage to your benched while it is your Active
+		var ip_active = main.opponent_active_pokemon if is_opponent else main.player_active_pokemon
+		if ip_active != null and ip_active.neo4_prevent_bench_damage:
+			return
+		# Protective Flame / invincible flag on bench pokemon
+		if pokemon.is_invincible:
+			return
+		# EX5 Power Diffusion (Rhydon ex5-46): while Rhydon is that side's Active, prevent all attack
+		# damage to that side's Benched Pokemon.
+		if main.powers_and_bodies.is_ex5_power_diffusion_active(is_opponent):
+			return
+		# On-Bench damage-prevention bodies (EX3 Submerge / ex9 Feebas Submerge / ex9 Swablu Feathery).
+		# Guard on the ability TEXT ("prevent all damage" + "bench"), not just the name — neo3 Lanturn also
+		# has a "Submerge" ability with a completely different, type-changing effect.
+		if not main.powers_and_bodies.is_power_blocked(pokemon):
+			for ab in pokemon.metadata.get("abilities", []):
+				if ab.get("type","") != "Poké-Body": continue
+				var abtext = ab.get("text","").to_lower()
+				if "prevent all damage" in abtext and "bench" in abtext:
+					return
+		# EX14 Sand Veil (Dugtrio ex14-5): prevent all attack damage to that side's Benched Pokemon while a
+		# Dugtrio with this Body is in play on that side.
+		for sv in main.card_ops.get_all_pokemon_in_play(is_opponent):
+			if sv.has_ability("Sand Veil") and not main.powers_and_bodies.is_power_blocked(sv):
 				return
+		# EX15 Solid Shell (Cloyster δ ex15-14): prevent all effects of attacks (including damage) to that
+		# side's Benched Pokémon that have δ on their card, while a Cloyster with this Body is in play.
+		if pokemon.is_delta():
+			for cs in main.card_ops.get_all_pokemon_in_play(is_opponent):
+				if cs.has_ability("Solid Shell") and not main.powers_and_bodies.is_power_blocked(cs):
+					return
+		# GYM2 Transparent Walls (gym2-125): the protected side's Bench takes no damage from attacks.
+		var walls_on = main.opponent_transparent_walls_active if is_opponent else main.player_transparent_walls_active
+		if walls_on:
+			print("ISSUE #294 FIX ACTIVE: Transparent Walls prevented ", damage, " bench damage to ", pokemon.metadata.get("name", ""))
+			return
+	# GYM1 Brock's Rhydon Bench Guard — its owner may take 10 of this damage on the Rhydon instead.
+	damage = await main.powers_and_bodies.check_bench_guard(pokemon, damage, is_opponent)
+	if from_attack and damage > 0:
+		# Defender (base1-80): -20 per Defender attached, bench damage included (ISSUE #60).
+		damage = max(0, damage - main.get_defender_reduction(pokemon, damage))
+		# GYM2 Erika's Ivysaur Relaxing Scent: halves damage an attack does to ANY Pokemon (round up to 10).
+		damage = main.powers_and_bodies.apply_relaxing_scent(damage)
+	if damage <= 0:
+		print("ISSUE #294 FIX ACTIVE: bench damage to ", pokemon.metadata.get("name", ""), " fully prevented")
+		return
 	pokemon.current_hp = max(0, pokemon.current_hp - damage)
 	var loc = main.get_pokemon_screen_location(pokemon)
 	if not loc.is_empty():
@@ -620,7 +766,8 @@ func apply_bench_damage_wave(targets: Array, damage: int) -> void:
 	for idx in range(live.size()):
 		var bp = live[idx]
 		var owner_is_opp = bp in main.opponent_bench
-		apply_bench_damage(bp, damage, owner_is_opp)
+		await apply_bench_damage(bp, damage, owner_is_opp)
+		if main._should_bail(): return
 		# Stagger between labels (not after the final one) so the wave stays snappy.
 		if idx < live.size() - 1:
 			await get_tree().create_timer(GameState.match_time(0.4)).timeout

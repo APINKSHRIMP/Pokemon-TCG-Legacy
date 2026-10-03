@@ -152,6 +152,13 @@ var opponent_dragon_dance_active: int = 0
 # Mirror Move: stores the last attack result so Pidgeotto can copy it
 var last_attack_on_player: Dictionary = {}   # {"damage": int, "attack": Dictionary, "attacker_types": Array}
 var last_attack_on_opponent: Dictionary = {} # same structure
+# ISSUE #298: Mirror Move's source of truth. Opened by attack_effects.begin_attack() for EVERY attack
+# with the Pokemon it was aimed at, and filled with the FINAL damage that actually landed on it
+# (attack_effects.note_attack_damage). last_attack_on_* above is still written by many per-set attacks
+# with their base damage and an empty attack dict, so it can't answer "what did the last attack do
+# to THIS Pokemon".
+var mirror_record_on_player: Dictionary = {}
+var mirror_record_on_opponent: Dictionary = {}
 
 # Special attack selection modes (Metronome, Amnesia, Conversion)
 var special_attack_selection_active: bool = false
@@ -2091,6 +2098,10 @@ func _attack_row_reason(mon: card_object, attack: Dictionary, attack_name: Strin
 		return attack_name.to_upper() + " is disabled and can't be used!"
 	if not check_attack_requirements(attack, mon):
 		return "Energy requirements not met to use " + attack_name.to_upper() + "!"
+	# ISSUE #292: the attack's own printed "can't be used" condition.
+	var unusable: String = attack_effects.attack_unusable_reason(attack, mon)
+	if unusable != "":
+		return unusable
 	if turn_number <= 1:
 		return "You cannot attack on the first turn!"
 	if player_attacked_this_turn:
@@ -2144,7 +2155,8 @@ func _build_action_panel(is_opponent: bool) -> void:
 			# the player had already attacked - so it could be pressed over and over.
 			usable = (_player_can_attack_now()
 				and (not is_attack_disabled(mon, attack_name))
-				and check_attack_requirements(attack, mon))
+				and check_attack_requirements(attack, mon)
+				and attack_effects.attack_unusable_reason(attack, mon) == "")
 			# ISSUE #265: and if it is dead, WHY it is dead.
 			if not usable:
 				why = _attack_row_reason(mon, attack, attack_name)
@@ -3383,6 +3395,10 @@ func _render_attack_page() -> void:
 			btn.disabled = true
 			btn.theme = theme_disabled
 			label_text = attack_name + " (DISABLED)"
+		# ISSUE #292: printed "can't be used" condition currently unmet — greyed out like a disabled attack.
+		elif attack_effects.attack_unusable_reason(attack, player_active_pokemon) != "":
+			btn.disabled = true
+			btn.theme = theme_disabled
 		# Enable and colour green if requirements met, disable and grey out if not
 		elif check_attack_requirements(attack, player_active_pokemon):
 			btn.disabled = false
@@ -5944,6 +5960,49 @@ func draw_animation_speed_multiplier(total_cards: int) -> float:
 # Flips a coin with animation, blocks input, shows result message, returns true for heads.
 # flipper_is_opponent: when true, uses the opponent's coin texture for the heads face
 # (falls back to the player's coin if the opponent has no coin_reward / texture failed to load).
+# ISSUE #309: Sabrina's ESP bookkeeping. While > 0 we are inside flip_coins_batch, so single flips must
+# not consume the ESP credit (the batch re-flips every coin together, as the card says).
+var _esp_batch_depth: int = 0
+
+# True when the flipper's Active holds an unused Sabrina's ESP and the flip belongs to ITS attack (the
+# attack is under way and its pre-attack checks — Confusion, Smokescreen — are already done).
+func _esp_applies(flipper_is_opponent: bool) -> bool:
+	var holder = opponent_active_pokemon if flipper_is_opponent else player_active_pokemon
+	if holder == null or not holder.gym1_sabrina_esp_credit_active:
+		return false
+	return attack_effects.current_attacker == holder and attack_effects._prechecked_attacker == holder
+
+# ISSUE #309: flip `n` coins for an attack and return the results. With Sabrina's ESP the attacker may
+# re-flip ALL of them once ("If you do, re-flip all the coins"); the CPU does when it got fewer heads
+# than average. Use this for every multi-coin attack a Sabrina Pokémon can use.
+func flip_coins_batch(n: int, flipper_is_opponent: bool) -> Array:
+	var res: Array = []
+	_esp_batch_depth += 1
+	for i in range(n):
+		res.append(await flip_coin(n > 1, flipper_is_opponent))
+		if _should_bail():
+			_esp_batch_depth -= 1
+			return res
+	_esp_batch_depth -= 1
+	var heads = res.count(true)
+	if n > 0 and heads < n and _esp_applies(flipper_is_opponent):
+		var holder = opponent_active_pokemon if flipper_is_opponent else player_active_pokemon
+		var use_esp := false
+		if flipper_is_opponent:
+			use_esp = float(heads) < n * 0.5
+		else:
+			use_esp = await trainer_effects.gym1_prompt_yes_no(holder, "SABRINA'S ESP", str(heads) + " of " + str(n) + " heads. Re-flip ALL " + str(n) + " coins?", "RE-FLIP ALL", "KEEP")
+		if use_esp:
+			holder.gym1_sabrina_esp_credit_active = false
+			await show_message("SABRINA'S ESP — RE-FLIPPING ALL " + str(n) + " COINS!")
+			res = []
+			_esp_batch_depth += 1
+			for i in range(n):
+				res.append(await flip_coin(n > 1, flipper_is_opponent))
+			_esp_batch_depth -= 1
+			print("ISSUE #309 FIX ACTIVE: Sabrina's ESP re-flipped ", n, " coins -> ", res.count(true), " heads")
+	return res
+
 func flip_coin(silent: bool = false, flipper_is_opponent: bool = false) -> bool:
 	# MATCH EFFECT: coin_flip_override — every flip forced to heads/tails (animation still plays)
 	var rule_override: String = match_effects.coin_override(flipper_is_opponent)
@@ -5995,15 +6054,17 @@ func flip_coin(silent: bool = false, flipper_is_opponent: bool = false) -> bool:
 		sparkles = start_sparkle_effect(coin)
 	coin.scale.y = 1.0
 
-	# GYM1 Sabrina's ESP: if the flipper's active pokemon has the credit and result is tails, auto re-flip once.
-	# (Faithful simplification of "you may re-flip those coins once" — we always take the re-flip on tails since
-	#  it can only be better than the original tails. Credit is consumed.)
-	if not result and rule_override == "":
+	# GYM1 Sabrina's ESP — single-coin attacks. ISSUE #309: only for coins of an ATTACK by the ESP holder
+	# (not Pokémon Powers, Trainers, the opponent's flips or the Confusion/Smokescreen pre-checks), never
+	# inside a multi-coin batch (flip_coins_batch re-flips ALL of those at once), and optional for the player.
+	if not result and rule_override == "" and _esp_batch_depth == 0 and _esp_applies(flipper_is_opponent):
 		var esp_owner = opponent_active_pokemon if flipper_is_opponent else player_active_pokemon
-		if esp_owner != null and esp_owner.gym1_sabrina_esp_credit_active:
+		var use_esp := true
+		if not flipper_is_opponent:
+			use_esp = await trainer_effects.gym1_prompt_yes_no(esp_owner, "SABRINA'S ESP", "Tails! Use Sabrina's ESP to re-flip this coin?", "RE-FLIP", "KEEP")
+		if use_esp:
 			esp_owner.gym1_sabrina_esp_credit_active = false
-			if not silent:
-				await show_message("SABRINA'S ESP — RE-FLIPPING!")
+			await show_message("SABRINA'S ESP — RE-FLIPPING!")
 			result = (randi() % 2 == 0)
 			coin.texture = heads_tex if result else tex_tails
 			if result:
@@ -6153,8 +6214,7 @@ func restore_opponent_blocker(was_visible: bool, context: String = "") -> void:
 func player_start_turn_checks() -> void:
 	if _should_bail():
 		return
-	# Reset trainer lock from Headache
-	trainer_effects.reset_trainer_lock(false)
+	# ISSUE #309: Trainer locks now lift at the END of the locked side's turn (Trainer_Effects.tick_trainer_lock)
 	opponent_blocker.visible = false
 	# ISSUE #281: up out of the player's corner, exactly like "End turn".
 	print("ISSUE #281 FIX ACTIVE: turn labels rise from ", _turn_float_anchor())
@@ -6233,7 +6293,10 @@ func player_end_turn_checks() -> void:
 func inbetween_turn_checks(player_turn_just_ended: bool = true) -> void:
 	if _should_bail():
 		return
-	
+	# ISSUE #291: no attack is in progress between turns (safety net for any attack exit path that
+	# didn't close its context) — Fortitude and Transparency rely on this being accurate.
+	attack_effects.end_attack()
+
 	player_energy_played_this_turn = false
 	player_retreated_this_turn = false
 	opponent_energy_played_this_turn = false
@@ -6509,7 +6572,21 @@ func clear_end_of_turn_statuses(pokemon: card_object, is_opponent: bool) -> void
 		pokemon.is_blind = false
 		print("END OF TURN: ", pokemon_name, " is no longer Blind")
 		changed = true
-	
+
+	# ISSUE #291: Leer / Tail Wag / Intimidate ("can't attack during your opponent's next turn") and the
+	# legacy coin-flip block are set on the DEFENDING Pokemon, so they must last through ITS owner's next
+	# turn and expire at the END of that turn — i.e. here. They used to be cleared by
+	# clear_jungle_defensive_statuses, which runs at the end of the ATTACKER's turn, so they were wiped
+	# before the affected Pokemon ever got to try attacking.
+	if pokemon.attack_blocked_next_turn:
+		pokemon.attack_blocked_next_turn = false
+		pokemon.attack_blocked_by_id = -1
+		print("ISSUE #291 FIX ACTIVE: ", pokemon_name, " attack block expired at the end of its owner's turn")
+		changed = true
+	if pokemon.attack_flip_blocked:
+		pokemon.attack_flip_blocked = false
+		changed = true
+
 	# Clear end_of_turn disabled attacks; demote skip_one_turn -> end_of_turn so it survives the owner's NEXT turn
 	var keys_to_remove = []
 	var keys_to_demote = []
@@ -6569,17 +6646,10 @@ func clear_jungle_defensive_statuses(pokemon: card_object, is_opponent: bool) ->
 		return
 	if pokemon.damage_reduction_next_turn > 0:
 		pokemon.damage_reduction_next_turn = 0
+		pokemon.damage_reduction_source_id = -1
 		print("EXPIRED: ", pokemon.metadata.get("name", ""), " damage reduction wore off")
-	if pokemon.attack_blocked_next_turn:
-		pokemon.attack_blocked_next_turn = false
-		pokemon.attack_blocked_by_id = -1
-		print("EXPIRED: ", pokemon.metadata.get("name", ""), " attack block wore off")
-	if pokemon.attack_flip_blocked:
-		pokemon.attack_flip_blocked = false
-		print("EXPIRED: ", pokemon.metadata.get("name", ""), " coin-flip attack block wore off")
-	if pokemon.gym2_mega_burn_locked:
-		pokemon.gym2_mega_burn_locked = false
-		print("EXPIRED: ", pokemon.metadata.get("name", ""), " Mega Burn lock wore off")
+	# ISSUE #291: attack_blocked_next_turn / attack_flip_blocked moved to clear_end_of_turn_statuses —
+	# clearing them here (end of the ATTACKER's turn) wiped them before they could ever apply.
 	# GYM1: Crosscounter / Fire Wall counter-attacks and Deflector halving wear off after the opponent's turn
 	if pokemon.counter_attack_double:
 		pokemon.counter_attack_double = false
@@ -7423,8 +7493,9 @@ func display_and_apply_attack_damage(attacker: card_object, defender: card_objec
 			return
 		print("SLIME: tails would block but got heads — damage proceeds")
 
-	# GYM2 Koga's Ninja Trick (gym2-115): defender's owner may switch this active with a benched pokemon before damage.
-	if defender.gym2_koga_ninja_trick_attached:
+	# GYM2 Koga's Ninja Trick (gym2-115): now offered once when the attack is declared (run_attack_prechecks);
+	# this damage-step fallback only runs for damage that isn't from an attack in progress.
+	if defender.gym2_koga_ninja_trick_attached and not attack_effects.is_attack_in_progress():
 		var defender_owner_is_opp = (defender == opponent_active_pokemon)
 		var bench_for_swap = opponent_bench if defender_owner_is_opp else player_bench
 		if bench_for_swap.size() > 0:
@@ -7497,6 +7568,8 @@ func display_and_apply_attack_damage(attacker: card_object, defender: card_objec
 	defender.current_hp = max(0, defender.current_hp - final_damage)
 	print(attacker.metadata["name"] + " dealt " + str(final_damage) + " damage to " + defender.metadata["name"] + "! HP remaining: " + str(defender.current_hp))
 	display_hp_circles_above_align(defender, !is_opponent)
+	# ISSUE #298: Mirror Move mirrors what actually landed on it, after every modifier.
+	attack_effects.note_attack_damage(defender, final_damage)
 	
 	if final_damage > 0:
 		SoundManagerScript.play_sfx(SoundManagerScript.SFX_damage_sound)
@@ -7539,7 +7612,15 @@ func perform_attack(attack_index: int) -> void:
 		await show_message(attack_name.to_upper() + " IS DISABLED!")
 		hide_attack_buttons()
 		return
-	
+	# ISSUE #292: the attack's own "can't be used" condition (no opposing Bench, full Bench, target not
+	# Asleep, ...). Refused before it is declared, exactly like a disabled attack — the turn goes on.
+	var unusable_reason: String = attack_effects.attack_unusable_reason(attack, player_active_pokemon)
+	if unusable_reason != "":
+		print("ISSUE #292 FIX ACTIVE: refused ", attack_name, " — ", unusable_reason)
+		await show_message(unusable_reason.to_upper())
+		hide_attack_buttons()
+		return
+
 	SoundManagerScript.play_sfx(SoundManagerScript.SFX_attack_sound)
 	await show_message((player_active_pokemon.metadata["name"] + " USED " + attack_name).to_upper())
 
@@ -7586,6 +7667,17 @@ func perform_attack(attack_index: int) -> void:
 		player_end_turn_checks()
 		return
 
+	# ISSUE #291: Leer / Tail Wag / Intimidate / Suggestion / Smokescreen / Confusion / Blindness are
+	# resolved HERE for every attack, before any dispatched effect code can run.
+	attack_effects.begin_attack(attack, player_active_pokemon, opponent_active_pokemon, false)
+	if await attack_effects.run_attack_prechecks(player_active_pokemon, opponent_active_pokemon, false):
+		attack_effects.end_attack()
+		player_attacked_this_turn = true
+		hide_attack_buttons()
+		await get_tree().create_timer(GameState.match_time(0.5)).timeout
+		player_end_turn_checks()
+		return
+
 	# GYM1-120 Vermilion City Gym pre-attack flip (player). Optional flip for Lt. Surge attacker.
 	await maybe_vermilion_lt_surge_flip(player_active_pokemon, false)
 
@@ -7611,33 +7703,9 @@ func perform_attack(attack_index: int) -> void:
 		if await attack_effects.dispatch_attack(attack, player_active_pokemon, opponent_active_pokemon, false):
 			return
 
-	# Check attack_blocked flag (Tail Wag / Leer) - benching either pokemon ends this
-	if player_active_pokemon.attack_blocked_next_turn:
-		if opponent_active_pokemon.get_instance_id() == player_active_pokemon.attack_blocked_by_id:
-			await show_message(player_active_pokemon.metadata["name"].to_upper() + " CAN'T ATTACK!")
-			hide_attack_buttons()
-			player_active_pokemon.attack_blocked_next_turn = false
-			player_active_pokemon.attack_blocked_by_id = -1
-			await get_tree().create_timer(GameState.match_time(0.5)).timeout
-			player_end_turn_checks()
-			return
-		else:
-			# Benching broke the effect
-			player_active_pokemon.attack_blocked_next_turn = false
-			player_active_pokemon.attack_blocked_by_id = -1
-
-	# Coin-flip attack block (Sand-attack / Smokescreen): flip — tails = attack fails this turn
-	if player_active_pokemon.attack_flip_blocked:
-		player_active_pokemon.attack_flip_blocked = false
-		var coin = await flip_coin(false, false)
-		if not coin:
-			await show_message(player_active_pokemon.metadata["name"].to_upper() + " CAN'T ATTACK! (SAND-ATTACK / SMOKESCREEN)")
-			hide_attack_buttons()
-			await get_tree().create_timer(GameState.match_time(0.5)).timeout
-			player_end_turn_checks()
-			return
-		await show_message("HEADS! " + player_active_pokemon.metadata["name"].to_upper() + " CAN ATTACK!")
-		if _should_bail(): return
+	# ISSUE #291: the Tail Wag / Leer block and the Sand-attack / Smokescreen flip used to be checked
+	# HERE — after dispatch_attack, so only generic attacks ever honoured them. They are now part of
+	# attack_effects.run_attack_prechecks(), which every attack passes through above.
 
 	# Swords Dance: If active, boost Slash base damage (base Scyther = 60, ex8 Ninjask = 80)
 	if player_active_pokemon.swords_dance_active and attack_name.to_lower() == "slash":
@@ -7684,37 +7752,42 @@ func perform_attack(attack_index: int) -> void:
 		for msg in variable_result["messages"]:
 			await show_message(msg)
 		hide_attack_buttons()
+		player_attacked_this_turn = true
 		# Still process non-damage effects (like Farfetch'd disable)
 		var _pae_effects_failed = attack_effects.parse_card_text_effects(attack.get("text", ""), player_active_pokemon.metadata.get("name", ""))
 		if _pae_effects_failed.size() > 0:
 			await attack_effects.apply_card_text_effects(_pae_effects_failed, player_active_pokemon, opponent_active_pokemon, false, flip_result)
+		# e.g. Erika's Exeggcute's Egg Bomb hurts itself on tails — that can knock it out.
+		await check_all_knockouts()
+		attack_effects.end_attack()
+		if _should_bail(): return
 		await get_tree().create_timer(GameState.match_time(0.5)).timeout
 		player_end_turn_checks()
 		return
-	
+
 	# Show variable damage messages
 	for msg in variable_result["messages"]:
 		await show_message(msg)
-	
+
 	var attacking_types = player_active_pokemon.metadata.get("types", ["Colorless"])
 	var result = calculate_final_damage(resolved_base, attacking_types, opponent_active_pokemon, player_active_pokemon)
 	var final_damage = result["damage"]
-	
+
+	# ISSUE #294: Agility / Barrier / Play Dead protect ONLY the Defending Pokemon. This used to end the
+	# whole attack, so the attacker's own costs and side-effects were skipped too — Fire Blast kept its
+	# Fire Energy, Selfdestruct dealt no self/bench damage. Now just the damage is skipped; every effect
+	# aimed at the Defending Pokemon is filtered out by apply_card_text_effects' invincible check.
 	if check_defender_invincible(opponent_active_pokemon, true):
-		hide_attack_buttons()
-		await get_tree().create_timer(GameState.match_time(0.5)).timeout
-		player_end_turn_checks()
-		return
-
-	final_damage = apply_defender_no_damage_shield(opponent_active_pokemon, final_damage, true)
-
-	await display_and_apply_attack_damage(player_active_pokemon, opponent_active_pokemon, final_damage, result["modifiers"], false, resolved_base)
+		print("ISSUE #294 FIX ACTIVE: defender invincible — damage skipped, attacker-side effects still resolve")
+	else:
+		final_damage = apply_defender_no_damage_shield(opponent_active_pokemon, final_damage, true)
+		await display_and_apply_attack_damage(player_active_pokemon, opponent_active_pokemon, final_damage, result["modifiers"], false, resolved_base)
 	hide_attack_buttons()
-	
+
 	# Store last attack for Mirror Move tracking
 	last_attack_on_opponent = {"damage": final_damage, "attack": attack, "attacker_types": attacking_types}
 	player_attacked_this_turn = true
-	
+
 	# MATCH EFFECT: raw_damage_only — card-text effects are skipped entirely
 	var _pae_effects = [] if match_effects.raw_damage_only(false) else attack_effects.parse_card_text_effects(attack.get("text", ""), player_active_pokemon.metadata.get("name", ""))
 
@@ -7722,9 +7795,10 @@ func perform_attack(attack_index: int) -> void:
 	player_active_pokemon.clear_attack_boost_flags()
 	if _pae_effects.size() > 0:
 		await attack_effects.apply_card_text_effects(_pae_effects, player_active_pokemon, opponent_active_pokemon, false, flip_result)
-	
+
 	await check_all_knockouts()
-	
+	attack_effects.end_attack()
+
 	await get_tree().create_timer(GameState.match_time(0.5)).timeout
 	player_end_turn_checks()
 	
@@ -7734,7 +7808,13 @@ func perform_attack(attack_index: int) -> void:
 # apply_self_damage_modifiers(), so the PlusPower and Defender blocks below must be skipped here or the
 # same hit would be modified twice — with defending_pokemon == the attacker, Defender was silently
 # applied in both places (ISSUE #82 / ISSUE #90).
-func calculate_final_damage(base_damage: int, attacking_types: Array, defending_pokemon: card_object, attacker_pokemon: card_object = null, is_self_damage: bool = false) -> Dictionary:
+# ISSUE #294: ignore_weakness / ignore_resistance — for attacks printed "Don't apply Weakness and
+# Resistance for this attack" (Stare, Flitter, Dig Under, Coin Hurl, Flame Jet, Magic Darts, Sonicboom,
+# Mind Shock, Spiral Dive, Summon Storm, ...) and "Don't apply Resistance" (Hook Shot). Everything else
+# in here — PlusPower, Defender, Withdraw-style shields handled by the callers, Minimize, Harden,
+# Invisible Wall, Kabuto Armor, Shell Armor, Relaxing Scent — still applies, exactly as the cards say
+# ("Any other effects that would happen after applying Weakness and Resistance still happen").
+func calculate_final_damage(base_damage: int, attacking_types: Array, defending_pokemon: card_object, attacker_pokemon: card_object = null, is_self_damage: bool = false, ignore_weakness: bool = false, ignore_resistance: bool = false) -> Dictionary:
 	var damage = base_damage
 	var modifiers_applied = []
 
@@ -7762,8 +7842,8 @@ func calculate_final_damage(base_damage: int, attacking_types: Array, defending_
 
 	# Apply weakness (check temporary override from Porygon Conversion 1 first)
 	# GYM2-113 Cinnabar City Gym — Ignore Weakness when a Water Pokemon attacks a Blaine-named pokemon
-	var skip_weakness = false
-	if is_stadium_in_play(StadiumIds.CINNABAR_CITY_GYM) and attacker_pokemon != null:
+	var skip_weakness = ignore_weakness
+	if not skip_weakness and is_stadium_in_play(StadiumIds.CINNABAR_CITY_GYM) and attacker_pokemon != null:
 		var def_name_cinnabar = defending_pokemon.metadata.get("name", "")
 		if "Blaine" in def_name_cinnabar and "Water" in attacking_types:
 			skip_weakness = true
@@ -7809,8 +7889,8 @@ func calculate_final_damage(base_damage: int, attacking_types: Array, defending_
 	
 	# Apply resistance (check temporary override from Porygon Conversion 2 first)
 	# GYM1-115 Pewter City Gym — Pokemon with "Brock" in name ignore Resistance on their attacks
-	var skip_resistance = false
-	if is_stadium_in_play(StadiumIds.PEWTER_CITY_GYM) and attacker_pokemon != null:
+	var skip_resistance = ignore_resistance
+	if not skip_resistance and is_stadium_in_play(StadiumIds.PEWTER_CITY_GYM) and attacker_pokemon != null:
 		var atk_name_pewter = attacker_pokemon.metadata.get("name", "")
 		if "Brock" in atk_name_pewter:
 			skip_resistance = true
@@ -7883,13 +7963,17 @@ func calculate_final_damage(base_damage: int, attacking_types: Array, defending_
 		var defender_abilities = defending_pokemon.metadata.get("abilities", [])
 		for ability in defender_abilities:
 			if ability.get("name", "") == "Invisible Wall":
-				if defending_pokemon.special_condition not in ["Paralyzed", "Asleep", "Confused"] and not defending_pokemon.is_poisoned and not powers_and_bodies.is_toxic_gas_active():
+				# ISSUE #304: Poison does NOT switch Invisible Wall off (only Asleep/Confused/Paralyzed do);
+				# Toxic Gas / Goop Gas / power shutdowns do — all covered by the shared gate.
+				if not powers_and_bodies.is_power_blocked_by_status(defending_pokemon):
 					modifiers_applied.append("INVISIBLE WALL")
 					damage = 0
 					break
 	
 	# Apply damage reduction from Minimize / Pounce / Snivel
-	if damage > 0 and defending_pokemon.damage_reduction_next_turn > 0:
+	var dr_applies = defending_pokemon.damage_reduction_source_id == -1 or attacker_pokemon == null \
+		or attacker_pokemon.get_instance_id() == defending_pokemon.damage_reduction_source_id
+	if damage > 0 and defending_pokemon.damage_reduction_next_turn > 0 and dr_applies:
 		var reduction = min(damage, defending_pokemon.damage_reduction_next_turn)
 		damage -= reduction
 		modifiers_applied.append("REDUCED -" + str(reduction))
@@ -8207,6 +8291,9 @@ func check_and_handle_knockout(pokemon: card_object, is_opponent: bool) -> bool:
 # Scans all Pokemon on the field for both players, handles each KO, and returns a summary of what was knocked out
 func check_all_knockouts() -> Dictionary:
 	var results = {"player_kos": 0, "opponent_kos": 0}
+	# ISSUE #309: a face-down Secret Plan card is flipped before it could be Knocked Out / once it's Active
+	await card_ops.reveal_pending_secret_plans()
+	if _should_bail(): return results
 	# Track KOs that should award prizes separately from bench token KOs
 	var opponent_prize_kos = 0
 	var player_prize_kos = 0
@@ -8300,6 +8387,17 @@ func check_all_knockouts() -> Dictionary:
 		await show_message("OPPONENT TOOK THEIR LAST PRIZE CARD!")
 		game_end_logic(true)  # true = player loses
 		return results
+
+	# ISSUE #305: an Active that left play WITHOUT a Knock Out (Scram, Cowardice, Fade Out...) still has to
+	# be replaced — or, with an empty Bench, its owner loses. Nothing above handles that case.
+	if opponent_active_pokemon == null and results["opponent_kos"] == 0:
+		print("ISSUE #305 FIX ACTIVE: opponent Active empty without a KO — promoting")
+		await handle_post_knockout(true)
+		if _should_bail():
+			return results
+	if player_active_pokemon == null and results["player_kos"] == 0:
+		print("ISSUE #305 FIX ACTIVE: player Active empty without a KO — promoting")
+		await handle_post_knockout(false)
 
 	return results
 
@@ -8420,10 +8518,20 @@ func apply_status_effect(effect: Dictionary, attacker: card_object, defender: ca
 
 	# Snorlax Thick Skinned: can't become Asleep, Confused, Paralyzed, or Poisoned
 	# Blocked by Muk's Toxic Gas (it's a Pokemon Power)
+	# ISSUE #299: Agility / Barrier / Play Dead — "prevent all effects of attacks" covers Special
+	# Conditions too, and several dispatched attacks call this directly without checking it.
+	if effect.get("target", "") == "defender" and target_pokemon.is_invincible:
+		print("ISSUE #299 FIX ACTIVE: ", target_pokemon.metadata.get("name", ""), " is protected — status blocked")
+		return
+	# ISSUE #299: Transparency (Haunter) — the once-per-attack flip also shields it from the attack's effects.
+	if effect.get("target", "") == "defender" and attack_effects.is_attack_in_progress():
+		if await powers_and_bodies.check_transparency(target_pokemon):
+			return
 	var target_abilities = target_pokemon.metadata.get("abilities", [])
 	for _ab in target_abilities:
 		if _ab.get("name", "") == "Thick Skinned":
-			if target_pokemon.special_condition not in ["Asleep", "Confused", "Paralyzed"] and not powers_and_bodies.is_toxic_gas_active():
+			# ISSUE #304: Toxic Gas, Goop Gas, Dark Wave and Stare all switch Thick Skinned off.
+			if target_pokemon.special_condition not in ["Asleep", "Confused", "Paralyzed"] and not powers_and_bodies.is_power_blocked(target_pokemon, true):
 				await show_message(target_pokemon.metadata.get("name", "").to_upper() + "'S THICK SKINNED PREVENTS STATUS!")
 				print("STATUS BLOCKED: Thick Skinned prevents status on ", target_pokemon.metadata.get("name", ""))
 				return
@@ -8443,6 +8551,8 @@ func apply_status_effect(effect: Dictionary, attacker: card_object, defender: ca
 	await show_message(target_pokemon.metadata["name"].to_upper() + " IS NOW " + status.to_upper() + "!")
 	print("STATUS APPLIED: ", target_pokemon.metadata["name"], " is now ", status)
 	update_status_icons(target_pokemon, is_target_opponent)
+	if effect.get("target", "") == "defender":
+		attack_effects.note_attack_status(target_pokemon, status)
 	# GYM2 Brock's Ninetales Shapeshift — A/C/P status discards the attached form
 	await powers_and_bodies.shapeshift_check_status_discard(target_pokemon)
 
@@ -8571,6 +8681,9 @@ func check_confused_retreat(pokemon: card_object, is_opponent: bool, phase: Stri
 func clear_all_statuses(pokemon: card_object, is_opponent: bool) -> void:
 	if pokemon == null:
 		return
+	# ISSUE #312: "Benching either Pokémon ends this effect" (Pounce / Snivel / Minimize-style reductions)
+	pokemon.damage_reduction_next_turn = 0
+	pokemon.damage_reduction_source_id = -1
 
 	var had_status = false
 	if pokemon.special_condition != "":
@@ -8591,7 +8704,12 @@ func clear_all_statuses(pokemon: card_object, is_opponent: bool) -> void:
 	pokemon.is_invincible = false
 	pokemon.has_destiny_bond = false
 	pokemon.shielded_damage_threshold = 0
-	
+	# ISSUE #291 / #301: "Benching either Pokemon ends this effect" (Leer, Tail Wag, Intimidate) and Ink
+	# Spurt "lasts until the Defending Pokemon evolves or is Benched".
+	pokemon.attack_blocked_next_turn = false
+	pokemon.attack_blocked_by_id = -1
+	pokemon.ink_spurt_blind = false
+
 	# Clear temporary type overrides when leaving play
 	pokemon.temporary_weakness = ""
 	pokemon.temporary_resistance = ""
@@ -8622,6 +8740,24 @@ func clear_all_statuses(pokemon: card_object, is_opponent: bool) -> void:
 		print("STATUSES CLEARED: ", pokemon.metadata.get("name", "Unknown"))
 		update_status_icons(pokemon, is_opponent)
 
+# ISSUE #309: cures ONLY the Special Conditions — for cards worded "is no longer Asleep, Confused,
+# Paralyzed, or Poisoned" (Full Heal, Celadon City Gym, Full Heal Energy). clear_all_statuses() above is
+# the "leaves the Active spot / evolves" reset: it also wipes Withdraw/Agility shields, Conversion,
+# Amnesia and Leer, which a Full Heal must not touch.
+func cure_special_conditions(pokemon: card_object, is_opponent: bool, include_burn: bool = true) -> bool:
+	if pokemon == null:
+		return false
+	var had = pokemon.special_condition != "" or pokemon.is_poisoned or (include_burn and pokemon.is_burned)
+	pokemon.special_condition = ""
+	pokemon.is_poisoned = false
+	pokemon.poison_damage = 10
+	if include_burn:
+		pokemon.is_burned = false
+	if had:
+		update_status_icons(pokemon, is_opponent)
+		print("ISSUE #309 FIX ACTIVE: cured Special Conditions only on ", pokemon.metadata.get("name", ""))
+	return had
+
 # Walks backwards from a keyword position in text to extract the preceding number
 func get_all_basic_pokemon(card_array: Array) -> Array:
 	var basic_pokemon = []
@@ -8640,6 +8776,9 @@ func get_all_basic_pokemon(card_array: Array) -> Array:
 # NOTE this is deliberately NOT given to Rocket's Scizor ex, which only ever evolves from Rocket's
 # Scyther ex.
 func can_evolve_from(evolving_pokemon: card_object, base_pokemon: card_object) -> bool:
+	# ISSUE #305: a Shapeshifted Brock's Ninetales "can't evolve" (its name is now the form's name)
+	if base_pokemon.shapeshift_form_card != null:
+		return false
 	var base_name = base_pokemon.metadata.get("name", "")
 	if evolving_pokemon.metadata.get("evolvesFrom", "") == base_name:
 		return true

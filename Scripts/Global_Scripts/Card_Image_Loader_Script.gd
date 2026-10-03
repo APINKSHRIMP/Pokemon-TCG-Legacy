@@ -36,6 +36,9 @@ var original_modulate: Color
 func load_card_image(card_passed_uid: String, card_target_size, card_object_ref: card_object = null, face_down: bool = false, sleeve_path: String = ""):
 	# Store reference to the card object so we can emit it when clicked
 	self.card_ref = card_object_ref
+	# ISSUE #309: Lt. Surge's Secret Plan — a face-down card on the Bench shows its back to everyone
+	if card_object_ref != null and card_object_ref.secret_plan_face_down:
+		face_down = true
 
 	# Remembered so the preview can refuse to enlarge a card the player isn't allowed to see
 	self.is_face_down = face_down

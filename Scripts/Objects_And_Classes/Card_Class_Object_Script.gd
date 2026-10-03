@@ -71,6 +71,8 @@ var swords_dance_slash_damage: int = 0
 
 # Minimize / Pounce / Snivel: reduce incoming damage by this amount next turn
 var damage_reduction_next_turn: int = 0
+var damage_reduction_source_id: int = -1
+var boost_set_turn: int = -1   # turn a "during your next turn" self-boost was set (Focus Energy, Swords Dance)   # Pounce/Snivel: only this Pokémon's attacks are reduced (-1 = any)
 
 # Tail Wag / Leer: if true, the defending pokemon can't attack this pokemon next turn
 # Benching either pokemon ends the effect
@@ -136,7 +138,6 @@ var gym2_focus_energy_active: bool = false # Lt. Surge's Raticate/Rattata Focus 
 var gym2_lie_low_counter: int = 0          # Brock's Dugtrio Lie Low — Earthdrill is usable while this is > 0
 var ditto_giant_growth: bool = false       # Koga's Ditto Giant Growth — max HP 80, Pound base damage 30
 var max_hp_override: int = 0               # If > 0, overrides the metadata HP value (Koga's Ditto Giant Growth)
-var gym2_mega_burn_locked: bool = false    # Sabrina's Alakazam Mega Burn — can't use this attack next turn
 
 # EX3 (EX Dragon) properties
 var ex3_buffer_piece_turns: int = 0        # ex3-83 Buffer Piece Tool: end-of-turn counter; discarded after the opponent's turn following play
@@ -156,6 +157,13 @@ var shockwave_markers: int = 0
 # Coin-flip attack block (Sand-attack, Smokescreen, Lightning Flash, Sandstorm, Mirage)
 # When set, the pokemon must flip before attacking: tails = attack fails
 var attack_flip_blocked: bool = false      # If true, this pokemon must flip before attacking next turn
+# gym2-87 Misty's Horsea Ink Spurt: unlike Sand-attack this does NOT wear off after one turn — every
+# attack this Pokemon tries needs a coin flip until it evolves or is Benched (clear_all_statuses).
+var ink_spurt_blind: bool = false
+# gym2-107 Lt. Surge's Secret Plan: this bench "Pokemon" is a face-down card. secret_plan_card is the real
+# card underneath when it is NOT a Basic Pokemon (the token stands in for it until it is flipped).
+var secret_plan_face_down: bool = false
+var secret_plan_card: card_object = null
 
 # GYM1 (Gym Heroes) Trainer attachments / per-turn buffs
 var gym1_charity_attached: bool = false       # gym1-99 Charity — outgoing damage may be reduced this turn; returns to hand at end of turn if not KO'd

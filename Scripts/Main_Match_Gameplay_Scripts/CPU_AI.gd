@@ -31,8 +31,7 @@ func invalidate_cpu_evaluation() -> void:
 func opponent_start_turn_checks() -> void:
 	if main._should_bail():
 		return
-	# Reset trainer lock from Headache
-	main.trainer_effects.reset_trainer_lock(true)
+	# ISSUE #309: Trainer locks now lift at the END of the locked side's turn (Trainer_Effects.tick_trainer_lock)
 	main.turn_number += 1
 	print("OPPONENT'S TURN START. TURN NUMBER IS ", main.turn_number)
 	await get_tree().create_timer(GameState.match_time(0.5)).timeout
@@ -2755,10 +2754,17 @@ func cpu_phase_attack(cpu_eval: Dictionary) -> void:
 		print("CPU cannot attack: active is Asleep")
 		return
 	
+	# ISSUE #293: the CPU's attack list is the SAME list the player's menu is built from —
+	# get_attacks_for_card() — so Sabrina's Alakazam's Psylink copies, Technical Machines, Recall,
+	# Brock's Ninetales' Shapeshift form, Memory Berry etc. are all available to it. It used to read
+	# metadata["attacks"] only, so the CPU could never use any granted or copied attack.
+	var attacks = main.get_attacks_for_card(main.opponent_active_pokemon)
+
 	# Check attack readiness from live board state, not stale cpu_eval
 	var has_usable_attack = false
-	for attack in main.opponent_active_pokemon.metadata.get("attacks", []):
-		if get_unmet_energy_count(attack, main.opponent_active_pokemon) == 0 and not main.is_attack_disabled(main.opponent_active_pokemon, attack.get("name", "")):
+	for attack in attacks:
+		if get_unmet_energy_count(attack, main.opponent_active_pokemon) == 0 and not main.is_attack_disabled(main.opponent_active_pokemon, attack.get("name", "")) \
+				and main.attack_effects.attack_unusable_reason(attack, main.opponent_active_pokemon) == "":
 			has_usable_attack = true
 			break
 
@@ -2768,7 +2774,6 @@ func cpu_phase_attack(cpu_eval: Dictionary) -> void:
 
 	var cpu_types = main.opponent_active_pokemon.metadata.get("types", ["Colorless"])
 	var player_hp = main.player_active_pokemon.current_hp
-	var attacks = main.opponent_active_pokemon.metadata.get("attacks", [])
 	var pokemon_name = main.opponent_active_pokemon.metadata.get("name", "")
 	
 	# Check if CPU is guaranteed to be KO'd next turn
@@ -2790,6 +2795,12 @@ func cpu_phase_attack(cpu_eval: Dictionary) -> void:
 			continue
 		if main.is_attack_disabled(main.opponent_active_pokemon, attack.get("name", "")):
 			print("CPU: Cannot use " + attack.get("name", "") + " — disabled this turn")
+			continue
+		# ISSUE #292: the attack's own "can't be used" condition (Dream Eater on an awake target, Lucky
+		# Shot / Fling / Drag Off with no Bench to target, Retaliation without 2 counters, ...).
+		var cpu_unusable: String = main.attack_effects.attack_unusable_reason(attack, main.opponent_active_pokemon)
+		if cpu_unusable != "":
+			print("ISSUE #292 FIX ACTIVE: CPU skips " + attack.get("name", "") + " — " + cpu_unusable)
 			continue
 
 		# ISSUE #9 FIX ACTIVE: Metronome (and Super Metronome) print with no damage/effect text of
@@ -4184,6 +4195,13 @@ func cpu_phase_attack(cpu_eval: Dictionary) -> void:
 		var effect_score = score_parsed_effects(parsed_effects, main.player_active_pokemon)
 		score += effect_score
 
+		# ISSUE #312: utility attacks whose effect isn't damage or a parsed rider (searches, recovery,
+		# set-up, disruption) used to score ~0, so the CPU only ever used them when it had nothing else.
+		var utility = cpu_utility_attack_value(attack, main.opponent_active_pokemon, main.player_active_pokemon, cpu_will_be_koed)
+		if utility != 0.0:
+			score += utility
+			print("ISSUE #313 FIX ACTIVE: utility value ", int(utility), " for ", attack.get("name", ""))
+
 		attack_score_log.append({"name": attack.get("name", ""), "score": score})
 		if score > best_attack_score:
 			best_attack_score = score
@@ -4229,6 +4247,16 @@ func cpu_phase_attack(cpu_eval: Dictionary) -> void:
 		main.opponent_attacked_this_turn = true
 		return
 
+	# ISSUE #291: shared pre-attack checks (Leer / Tail Wag / Intimidate / Suggestion / Smokescreen /
+	# Confusion / Blindness) for EVERY attack, before any dispatched effect code runs.
+	main.attack_effects.begin_attack(chosen_attack, main.opponent_active_pokemon, main.player_active_pokemon, true)
+	if await main.attack_effects.run_attack_prechecks(main.opponent_active_pokemon, main.player_active_pokemon, true):
+		main.attack_effects.end_attack()
+		main.opponent_attacked_this_turn = true
+		main.display_active_pokemon_energies(true)
+		return
+	if main._should_bail(): return
+
 	# GYM1-120 Vermilion City Gym pre-attack flip (CPU side). Optional flip for Lt. Surge attacker.
 	await main.maybe_vermilion_lt_surge_flip(main.opponent_active_pokemon, true)
 	if main._should_bail(): return
@@ -4260,30 +4288,8 @@ func cpu_phase_attack(cpu_eval: Dictionary) -> void:
 		if await main.attack_effects.dispatch_attack(chosen_attack, main.opponent_active_pokemon, main.player_active_pokemon, true):
 			return
 
-	# Check attack_blocked flag (Tail Wag / Leer) - benching either pokemon ends this
-	if main.opponent_active_pokemon.attack_blocked_next_turn:
-		if main.player_active_pokemon != null and main.player_active_pokemon.get_instance_id() == main.opponent_active_pokemon.attack_blocked_by_id:
-			await main.show_message(main.opponent_active_pokemon.metadata["name"].to_upper() + " CAN'T ATTACK!")
-			if main._should_bail(): return
-			main.opponent_active_pokemon.attack_blocked_next_turn = false
-			main.opponent_active_pokemon.attack_blocked_by_id = -1
-			main.display_active_pokemon_energies(true)
-			return
-		else:
-			# Benching broke the effect
-			main.opponent_active_pokemon.attack_blocked_next_turn = false
-			main.opponent_active_pokemon.attack_blocked_by_id = -1
-
-	# Coin-flip attack block (Sand-attack / Smokescreen): flip — tails = CPU can't attack
-	if main.opponent_active_pokemon.attack_flip_blocked:
-		main.opponent_active_pokemon.attack_flip_blocked = false
-		var flip = await main.flip_coin(false, true)
-		if not flip:
-			await main.show_message("Opponent's " + main.opponent_active_pokemon.metadata.get("name", "").to_upper() + " CAN'T ATTACK! (SAND-ATTACK)")
-			if main._should_bail(): return
-			return
-		await main.show_message("Heads! Opponent's " + main.opponent_active_pokemon.metadata.get("name", "").to_upper() + " CAN ATTACK!")
-		if main._should_bail(): return
+	# ISSUE #291: Tail Wag / Leer / Sand-attack / Smokescreen are handled by run_attack_prechecks above
+	# (they used to be checked only here, after dispatch, so dispatched attacks ignored them).
 
 	# Swords Dance: boost Slash damage (base Scyther = 60, ex8 Ninjask = 80)
 	if main.opponent_active_pokemon.swords_dance_active and chosen_name.to_lower() == "slash":
@@ -4326,28 +4332,32 @@ func cpu_phase_attack(cpu_eval: Dictionary) -> void:
 		for msg in variable_result["messages"]:
 			await main.show_message(msg)
 			if main._should_bail(): return
+		main.opponent_attacked_this_turn = true
 		var _cpu_pae1 = main.attack_effects.parse_card_text_effects(chosen_attack.get("text", ""), main.opponent_active_pokemon.metadata.get("name", ""))
 		if _cpu_pae1.size() > 0:
 			await main.attack_effects.apply_card_text_effects(_cpu_pae1, main.opponent_active_pokemon, main.player_active_pokemon, true, flip_result)
 		if main._should_bail(): return
+		await main.check_all_knockouts()
+		main.attack_effects.end_attack()
+		if main._should_bail(): return
 		main.display_active_pokemon_energies(true)
 		return
-	
+
 	for msg in variable_result["messages"]:
 		await main.show_message(msg)
 		if main._should_bail(): return
-	
+
 	var result = main.calculate_final_damage(resolved_base, cpu_types, main.player_active_pokemon, main.opponent_active_pokemon)
 	var final_damage = result["damage"]
-	
+
+	# ISSUE #294: an invincible Defending Pokemon only blocks the damage and the effects aimed at it —
+	# the attacker's own costs and bench/self effects still resolve (see the matching player path).
 	if main.check_defender_invincible(main.player_active_pokemon, false):
-		main.display_active_pokemon_energies(true)
-		return
-
-	final_damage = main.apply_defender_no_damage_shield(main.player_active_pokemon, final_damage, false)
-
-	await main.display_and_apply_attack_damage(main.opponent_active_pokemon, main.player_active_pokemon, final_damage, result["modifiers"], true, resolved_base)
-	if main._should_bail(): return
+		print("ISSUE #294 FIX ACTIVE: defender invincible — CPU damage skipped, attacker-side effects still resolve")
+	else:
+		final_damage = main.apply_defender_no_damage_shield(main.player_active_pokemon, final_damage, false)
+		await main.display_and_apply_attack_damage(main.opponent_active_pokemon, main.player_active_pokemon, final_damage, result["modifiers"], true, resolved_base)
+		if main._should_bail(): return
 	
 	# Store last attack for Mirror Move tracking
 	main.last_attack_on_player = {"damage": final_damage, "attack": chosen_attack, "attacker_types": cpu_types}
@@ -4363,6 +4373,7 @@ func cpu_phase_attack(cpu_eval: Dictionary) -> void:
 	if main._should_bail(): return
 
 	await main.check_all_knockouts()
+	main.attack_effects.end_attack()
 	if main._should_bail(): return
 	main.display_active_pokemon_energies(true)
 
@@ -5322,7 +5333,31 @@ func _cpu_score_computer_search(card: card_object) -> float:
 	return 60.0
 
 func _cpu_score_devolution_spray() -> float:
-	return -100.0
+	# ISSUE #309: worth it only to shed Paralysis / Sleep / Confusion / Poison from a Pokémon that survives
+	var evolved = get_all_cpu_field_pokemon().filter(func(p): return not p.attached_pre_evolutions.is_empty())
+	return 55.0 if cpu_pick_devolution_spray_target(evolved) != null else -100.0
+
+# ISSUE #309: the CPU's own evolved Pokémon worth Devolution-Spraying — Special-Conditioned (the Active
+# Paralyzed/Asleep is the big win), and still alive after dropping to its Basic's HP.
+func cpu_pick_devolution_spray_target(pool: Array) -> card_object:
+	var best: card_object = null
+	var best_s := 0.0
+	for p in pool:
+		if p.attached_pre_evolutions.is_empty():
+			continue
+		var basic: card_object = p.attached_pre_evolutions[0]
+		var dmg = p.get_max_hp() - p.current_hp
+		if dmg >= basic.get_max_hp():
+			continue
+		var s := 0.0
+		if p.special_condition in ["Paralyzed", "Asleep"]: s += 40.0
+		elif p.special_condition == "Confused": s += 25.0
+		if p.is_poisoned: s += 15.0
+		if p == main.opponent_active_pokemon: s *= 1.5
+		if s > best_s:
+			best_s = s
+			best = p
+	return best
 
 func _cpu_score_impostor_prof_oak() -> float:
 	if main.player_hand.size() >= 7:
@@ -6098,6 +6133,276 @@ func cpu_pick_snipe_target(pool: Array, damage: int) -> card_object:
 		if s > best_s:
 			best_s = s
 			best = p
+	return best
+
+# ISSUE #300: how much the CPU wants a given Energy card back (Energy Conversion & co.) — need for its
+# Pokémon's unpaid attack costs, plus a bump for special Energy.
+func cpu_energy_need_value(energy: card_object) -> float:
+	if energy == null:
+		return -INF
+	var v := 10.0
+	if "Special" in energy.metadata.get("subtypes", []):
+		v += 15.0
+	var provided: Array = main.get_energy_provided_by_card(energy)
+	for p in get_all_cpu_field_pokemon():
+		for atk in p.metadata.get("attacks", []):
+			if get_unmet_energy_count(atk, p) <= 0:
+				continue
+			for c in atk.get("cost", []):
+				if c in provided: v += 6.0
+				elif c == "Colorless": v += 1.0
+	return v
+
+# ISSUE #300: the attacking type that matters most on one side of the board. `cpu_side` = the CPU's own
+# Pokémon (Conversion 1: make the player WEAK to it); false = the player's (Conversion 2: RESIST it).
+# Weighted by each Pokémon's threat, Active counted double; falls back to the first legal type.
+func cpu_dominant_attack_type(cpu_side: bool, legal: Array) -> String:
+	var field: Array = []
+	var act = main.opponent_active_pokemon if cpu_side else main.player_active_pokemon
+	if act != null: field.append(act)
+	field.append_array(main.opponent_bench if cpu_side else main.player_bench)
+	var weight := {}
+	for p in field:
+		var w := 1.0 + _cpu_threat_score(p) * 0.1
+		if p == act: w *= 2.0
+		for t in p.get_effective_types():
+			if t in legal:
+				weight[t] = weight.get(t, 0.0) + w
+	var best := ""
+	var best_w := -1.0
+	for t in weight:
+		if weight[t] > best_w:
+			best_w = weight[t]
+			best = t
+	return best if best != "" else legal[0]
+
+# ISSUE #300: the most damage the CPU's Active can do to `target` this/next turn (0 if none). Used to
+# avoid healing a player Pokémon the CPU is about to Knock Out.
+func cpu_best_damage_vs(target: card_object) -> int:
+	var me = main.opponent_active_pokemon
+	if me == null or target == null:
+		return 0
+	var best := 0
+	for atk in main.get_attacks_for_card(me):
+		if get_unmet_energy_count(atk, me) > 1:
+			continue
+		var r = main.attack_effects.estimate_attack_damage_range(atk, me, target)
+		var d = int(main.calculate_final_damage(int(r.get("max", 0)), me.get_effective_types(), target, me)["damage"])
+		best = max(best, d)
+	return best
+
+# ISSUE #312: board-aware value of a utility attack (no damage, nothing the text parser scores). Positive
+# when the effect actually helps right now, negative when it would do nothing or hurt. Comparable to the
+# damage scale used by cpu_phase_attack (score ≈ 2 × damage).
+func cpu_utility_attack_value(attack: Dictionary, me: card_object, foe: card_object, doomed: bool) -> float:
+	var n: String = attack.get("name", "").to_lower()
+	var t: String = attack.get("text", "").to_lower()
+	var hand = main.opponent_hand
+	var deck = main.opponent_deck
+	var discard = main.opponent_discard_pile
+	var bench = main.opponent_bench
+	var room = main.get_max_bench_size() - bench.size()
+	var counters = me.get_damage_counters() if me != null else 0
+	var need := 0
+	for p in get_all_cpu_field_pokemon():
+		need = max(need, main.powers_and_bodies._cpu_unmet_energy(p))
+	var draw_value = func(k: int) -> float:
+		if deck.size() <= k: return -200.0
+		return float(min(k, max(0, 8 - hand.size()))) * 12.0
+	match n:
+		"call for family", "call for friend", "sprout", "jellyfish pod", "messenger":
+			var hits = deck.filter(func(c): return main.is_basic_pokemon(c) or c.metadata.get("supertype", "") in ["Pokémon", "Pokemon"]).size()
+			if hits == 0: return -60.0
+			if n == "jellyfish pod" or n == "messenger": return 25.0
+			if room <= 0: return -100.0
+			return 45.0 if bench.size() <= 2 else 20.0
+		"fetch", "dizziness", "psychic exchange":
+			if n == "psychic exchange":
+				return 35.0 if hand.size() <= 2 and deck.size() > 6 else -15.0
+			return draw_value.call(1)
+		"grasping vine":
+			return draw_value.call(2) * 0.5
+		"third eye":
+			return draw_value.call(3) - 15.0
+		"moonwatching", "energy support", "sleight of hand":
+			return 30.0 if need > 0 else -10.0
+		"afternoon nap", "stoke":
+			return 35.0 if need > 0 else 10.0
+		"charge", "plasma":
+			var lt = discard.filter(func(c): return c.metadata.get("supertype", "") == "Energy" and "Lightning" in main.get_energy_provided_by_card(c)).size()
+			return (30.0 if need > 0 else 8.0) if lt > 0 else -40.0
+		"growth":
+			var g = hand.filter(func(c): return c.metadata.get("supertype", "") == "Energy" and "Grass" in main.get_energy_provided_by_card(c)).size()
+			return 0.5 * min(2, g) * (25.0 if need > 0 else 8.0)
+		"energy conversion":
+			var en = discard.filter(func(c): return c.metadata.get("supertype", "") == "Energy").size()
+			if me != null and me.current_hp <= 10: return -300.0
+			return min(2, en) * 15.0 - 10.0
+		"scavenge":
+			var best := 0.0
+			for c in discard:
+				if c.metadata.get("supertype", "") == "Trainer":
+					best = max(best, cpu_score_trainer_card(c))
+			return best * 0.4 - 15.0
+		"errand-running":
+			return 18.0 if deck.any(func(c): return c.metadata.get("supertype", "") == "Trainer") else -30.0
+		"recover":
+			return float(counters) * 8.0 if counters >= 3 else -20.0
+		"naptime":
+			return 0.5 * min(3, counters) * 8.0 - 10.0
+		"healing pollen":
+			var damaged = get_all_cpu_field_pokemon().filter(func(p): return p.get_damage_counters() > 0).size()
+			if "flip 3 coins" in t:
+				return damaged * 12.0
+			return 0.5 * min(4, counters) * 8.0
+		"amnesia":
+			if foe == null: return 0.0
+			var top := 0
+			for a in main.get_attacks_for_card(foe):
+				if get_unmet_energy_count(a, foe) <= 1:
+					top = max(top, int(main.attack_effects.estimate_attack_damage_range(a, foe, me).get("max", 0)))
+			return float(top) * 0.8
+		"suggestion":
+			return 25.0 if foe != null and foe.special_condition == "" else 5.0
+		"conversion 1":
+			return 25.0 if foe != null and not foe.metadata.get("weaknesses", []).is_empty() else -50.0
+		"conversion 2":
+			return 20.0 if not doomed else 0.0
+		"swords dance":
+			return -20.0 if doomed else 35.0
+		"mirror move":
+			var rec: Dictionary = main.mirror_record_on_opponent
+			if not rec.is_empty() and me != null and rec.get("defender_id", -1) == me.get_instance_id() and int(rec.get("turn", -99)) == main.turn_number - 1:
+				var md = int(rec.get("damage", 0))
+				return md * 2.0 + (500.0 if foe != null and md >= foe.current_hp else 0.0)
+			return -100.0
+		"vanish":
+			return 60.0 if doomed and not bench.is_empty() else -40.0
+		"fairy power":
+			var hurt = get_all_cpu_field_pokemon().filter(func(p): return p.current_hp * 2 <= p.get_max_hp() and p.attached_energies.size() <= 1).size()
+			return 0.5 * hurt * 25.0 - 5.0
+		"rapid evolution":
+			return 80.0 if deck.any(func(c): return c.metadata.get("name", "") in ["Gyarados", "Dark Gyarados"]) else -50.0
+		"lunar power":
+			return 30.0
+		"invigorate":
+			var own = discard.filter(func(c): return main.is_basic_pokemon(c)).size()
+			return 25.0 if own > 0 and room > 0 else -60.0
+		"prophecy", "mischief":
+			return 3.0
+		"pranks", "false charity", "surprise":
+			return 12.0 if main.player_hand.size() > 0 or main.player_discard_pile.size() > 0 else 0.0
+		"crosscounter", "mirror shell", "shadow images", "deflector":
+			return -10.0 if doomed else 25.0
+		"damage shift":
+			var movable = get_all_cpu_field_pokemon().filter(func(p): return p.get_damage_counters() > 0).size()
+			return movable * 20.0
+		"life drain":
+			if foe == null or foe.current_hp <= 10: return -50.0
+			return 0.5 * float(foe.current_hp - 10) * 2.0
+		"summon storm":
+			var mine = get_all_cpu_field_pokemon().size() - 1
+			var theirs = (1 if main.player_active_pokemon != null else 0) + main.player_bench.size()
+			return 0.25 * 40.0 * float(theirs - mine)
+		"spiral dive":
+			var tgt = (1 if main.player_active_pokemon != null else 0) + main.player_bench.size()
+			return tgt * 15.0
+		"lucky shot":
+			return 25.0 if not main.player_bench.is_empty() else -100.0
+		"magic darts":
+			return 30.0
+	return 0.0
+
+# ISSUE #307: the biggest BASE damage (before Weakness/Resistance) the CPU's Active can do this turn with
+# an attack it can already pay for — the follow-up damage a gust (Fragrance Trap) sets up.
+func cpu_best_damage_vs_any() -> int:
+	var me = main.opponent_active_pokemon
+	if me == null:
+		return 0
+	var best := 0
+	for atk in main.get_attacks_for_card(me):
+		if get_unmet_energy_count(atk, me) > 0:
+			continue
+		best = max(best, int(main.attack_effects.estimate_attack_damage_range(atk, me, null).get("max", 0)))
+	return best
+
+# ISSUE #300: where to park a PLAYER Energy card the CPU is moving (Magnetic Lines) — the player's Benched
+# Pokemon that gains the least from it: no attack that needs its type, and the lowest threat.
+func cpu_pick_energy_dump_target(pool: Array, energy: card_object) -> card_object:
+	var best: card_object = null
+	var best_s := -INF
+	var provided: Array = main.get_energy_provided_by_card(energy) if energy != null else []
+	for p in pool:
+		if p == null or p.current_hp <= 0:
+			continue
+		var s := 0.0
+		for atk in p.metadata.get("attacks", []):
+			for c in atk.get("cost", []):
+				if c in provided: s -= 40.0
+				elif c == "Colorless": s -= 10.0
+		s -= _cpu_threat_score(p)
+		if s > best_s:
+			best_s = s
+			best = p
+	return best if best != null else (pool[0] if not pool.is_empty() else null)
+
+# ISSUE #310: which of the PLAYER's Pokémon to strip Energy from (Energy Removal, Super Energy Removal):
+# the Active first (it attacks next turn), weighted by threat, and especially one that drops below the
+# cost of its best attack.
+func cpu_pick_energy_removal_target(pool: Array) -> card_object:
+	var best: card_object = null
+	var best_s := -INF
+	for p in pool:
+		if p == null or p.attached_energies.is_empty():
+			continue
+		var s := _cpu_threat_score(p)
+		if p == main.player_active_pokemon: s += 40.0
+		for atk in p.metadata.get("attacks", []):
+			if get_unmet_energy_count(atk, p) == 0 and p.attached_energies.size() <= atk.get("cost", []).size():
+				s += 35.0   # one card off and this attack is gone
+				break
+		if s > best_s:
+			best_s = s
+			best = p
+	print("ISSUE #310 FIX ACTIVE: CPU Energy Removal target -> ", best.metadata.get("name", "") if best != null else "none")
+	return best
+
+# ISSUE #300: GUST TARGET — which of the PLAYER's Benched Pokemon the CPU should drag into the Active spot
+# (Drag Off, Flytrap, Lure, Gust of Wind...). `damage` is the attack's follow-up damage to the new
+# Defending Pokemon (0 for a pure gust); `attacker` lets Weakness/Resistance/PlusPower count.
+# Priorities: 1) a Knock Out with the follow-up damage (Pokemon-ex = 2 Prizes, worth more);
+# 2) a Pokemon that is stranded once Active — no attack it can pay for, and a costly retreat;
+# 3) otherwise keep the player's ready attackers on the Bench and pull up the weakest-hitting one.
+func cpu_pick_gust_target(pool: Array, damage: int = 0, attacker: card_object = null) -> card_object:
+	var best: card_object = null
+	var best_s := -INF
+	for p in pool:
+		if p == null or p.current_hp <= 0:
+			continue
+		var s := 0.0
+		if damage > 0:
+			var dmg := damage
+			if attacker != null:
+				dmg = int(main.calculate_final_damage(damage, attacker.get_effective_types(), p, attacker)["damage"])
+			if dmg >= p.current_hp:
+				s += 1000.0 + (500.0 if main.is_ex_pokemon(p) else 0.0)
+			else:
+				s += float(dmg) * 2.0
+		var can_attack := false
+		for atk in p.metadata.get("attacks", []):
+			if get_unmet_energy_count(atk, p) == 0:
+				can_attack = true
+				break
+		if not can_attack:
+			s += 120.0
+			s += float(main.get_retreat_cost(p)) * 30.0          # harder to escape = longer stranded
+		else:
+			s -= _cpu_threat_score(p)                            # don't hand the player its best attacker
+		s += cpu_decision_override(p, "gust")
+		if s > best_s:
+			best_s = s
+			best = p
+	print("ISSUE #300 FIX ACTIVE: CPU gust target -> ", best.metadata.get("name", "") if best != null else "none")
 	return best
 
 # OWN-POKEMON BENEFIT RECIPIENT — rank one of the CPU's own Pokemon (active or bench) as the target for
