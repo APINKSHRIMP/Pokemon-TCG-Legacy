@@ -242,6 +242,9 @@ var special_energy_effects: Node
 
 # BASE5 (TEAM ROCKET) VARIABLES
 var goop_gas_active: bool = false
+# ISSUE #338: Shield Beam (Jirachi ex ex14-94) — that side can't use Poke-Powers during its next turn.
+var shield_beam_lock_player: bool = false
+var shield_beam_lock_opp: bool = false
 var goop_gas_owner_is_opponent: bool = false
 var goop_gas_expire_turn: int = -1   # ISSUE #317: Sputter lasts "until the end of YOUR next turn" (turn number it ends on)
 var player_prizes_face_up: bool = false
@@ -6463,12 +6466,14 @@ func inbetween_turn_checks(player_turn_just_ended: bool = true) -> void:
 	# Stare disables "until the end of your opponent's next turn", so clear the flag
 	# at the end of the AFFECTED pokemon's owner's turn (not the attacker's turn).
 	if player_turn_just_ended:
+		shield_beam_lock_player = false   # ISSUE #338
 		# Player's turn just ended — clear player's own disabled flags
 		for bp in player_bench:
 			bp.power_disabled_until_end_of_next_turn = false
 		if player_active_pokemon != null:
 			player_active_pokemon.power_disabled_until_end_of_next_turn = false
 	else:
+		shield_beam_lock_opp = false   # ISSUE #338
 		# Opponent's turn just ended — clear opponent's disabled flags
 		for bp in opponent_bench:
 			bp.power_disabled_until_end_of_next_turn = false
@@ -7879,6 +7884,24 @@ func calculate_final_damage(base_damage: int, attacking_types: Array, defending_
 			if typeof(gd) == TYPE_DICTIONARY and int(gd.get("source", -1)) == attacker_pokemon.get_instance_id():
 				damage = max(0, damage - int(gd.get("amount", 10)))
 				modifiers_applied.append("REDUCED -" + str(int(gd.get("amount", 10))))
+		# ISSUE #350: every "(before applying Weakness and Resistance)" Body (Intimidating Fang, Hunch, Lazy Aura, Battle
+		# Aura, Vigorous Aura ...).
+		damage = powers_and_bodies.run_pre_wr_hooks(damage, attacker_pokemon, defending_pokemon, modifiers_applied)
+		# ISSUE #362: special Energy printed "before applying Weakness and Resistance" (ex Darkness, R, Double Rainbow).
+		var sem_pre: int = special_energy_effects.r4_energy_damage_mod(attacker_pokemon, defending_pokemon, true)
+		if sem_pre != 0 and damage > 0:
+			damage = max(0, damage + sem_pre)
+			modifiers_applied.append(("ENERGY +" if sem_pre > 0 else "ENERGY ") + str(sem_pre))
+		# ISSUE #345: Power Pinchers (Crawdaunt ex3-3) — +10 before W/R (it was added after them).
+		var ppb: int = powers_and_bodies.ex3_power_pinchers_bonus(attacker_pokemon)
+		if ppb > 0:
+			damage += ppb
+			modifiers_applied.append("POWER PINCHERS +" + str(ppb))
+		# ISSUE #342: Delta Reduction (ex13-4 Deoxys δ) — damage done TO it is reduced before W/R.
+		if defending_pokemon.has_effect("r4_pre_wr_reduction"):
+			var pr := int(defending_pokemon.get_effect_data("r4_pre_wr_reduction"))
+			damage = max(0, damage - pr)
+			modifiers_applied.append("REDUCED -" + str(pr))
 		if damage <= 0:
 			return {"damage": 0, "modifiers": modifiers_applied}
 
@@ -7989,7 +8012,10 @@ func calculate_final_damage(base_damage: int, attacking_types: Array, defending_
 				resistance_type = defending_pokemon.temporary_resistance
 			if resistance_type in attacking_types:
 				var value = int(resistance["value"])
-				if resistance_reduction > 0:
+				# ISSUE #363: Enervating Pollen — Resistance "only reduces damage by 10" (a -20 Resistance went to 0).
+				if powers_and_bodies.is_enervating_pollen_active() and value < 0:
+					value = max(value, -10)
+				elif resistance_reduction > 0:
 					# Resistance values are negative (e.g. -30). Reducing means adding +20 capped at 0.
 					value = min(0, value + resistance_reduction)
 				if value < 0:
@@ -8052,6 +8078,12 @@ func calculate_final_damage(base_damage: int, attacking_types: Array, defending_
 		modifiers_applied.append("PLUSPOWER +" + str(pp_bonus))
 
 	# Registered damage-modifier hooks (passive bodies, attached tools — see Powers_And_Bodies_Effects)
+	# ISSUE #362: special Energy applied after W/R (neo/ecard Darkness Energy, Metal Energy).
+	if damage > 0 and not is_self_damage and attacker_pokemon != null:
+		var sem_post: int = special_energy_effects.r4_energy_damage_mod(attacker_pokemon, defending_pokemon, false)
+		if sem_post != 0:
+			damage = max(0, damage + sem_post)
+			modifiers_applied.append(("ENERGY +" if sem_post > 0 else "ENERGY ") + str(sem_post))
 	damage = powers_and_bodies.run_damage_modifier_hooks(damage, attacker_pokemon, defending_pokemon, modifiers_applied)
 
 	# GYM1 Misty (gym1-18/102): +20 to next damage attack by an attacker whose name contains "Misty"

@@ -234,6 +234,17 @@ func effect_ex8_master_ball(is_opponent: bool) -> void:
 	await main.show_message("MASTER BALL! ADDED " + chosen.metadata.get("name","").to_upper() + " TO HAND!")
 	if main._should_bail(): return
 
+# ISSUE #361: CPU pick of a Basic to bench — keep value (an evolution line it holds beats a bigger dead Basic), HP tie-break.
+func _r4_cpu_best_basic(pool: Array) -> card_object:
+	var best: card_object = null
+	var best_s := -INF
+	for c in pool:
+		var s: float = main.cpu_ai.cpu_rank_keep_value(c) + float(int(c.metadata.get("hp", "0"))) * 0.05
+		if s > best_s:
+			best_s = s
+			best = c
+	return best
+
 # PROFESSOR COZMO'S DISCOVERY (ex8-90, Supporter): flip a coin. If heads, draw the bottom 3 cards of
 # your deck. If tails, draw the top 2 cards of your deck.
 func effect_ex8_professor_cozmos_discovery(is_opponent: bool) -> void:
@@ -4011,7 +4022,7 @@ func gym1_end_of_turn_cleanup(side_is_opponent: bool) -> void:
 			bp.swords_dance_active = false
 			bp.swords_dance_slash_damage = 0
 			bp.lock_on_active = false   # ISSUE #316: Lock-on lasts through the owner's next turn
-			for k in ["ex2_vigoroth_focus", "pop_swellow_focus", "ex14_hjk_focus", "ex1_stockpile"]:   # ISSUE #324: + Stockpile
+			for k in ["ex2_vigoroth_focus", "pop_swellow_focus", "ex14_hjk_focus", "ex1_stockpile", "ex10_standing_by", "ex11_glide_boost"]:   # ISSUE #324/#334: + Stockpile, Standing By
 				bp.clear_effect(k)
 			print("ISSUE #312 FIX ACTIVE: next-turn boost expired on ", bp.metadata.get("name", ""))
 	# ISSUE #319: Armor Up lasts until the end of its owner's next turn.
@@ -10249,9 +10260,7 @@ func _ex4_bench_team_pokemon(is_opponent: bool, candidates: Array, header: Strin
 		return
 	var chosen: card_object = null
 	if is_opponent:
-		chosen = candidates[0]
-		for c in candidates:
-			if int(c.metadata.get("hp","0")) > int(chosen.metadata.get("hp","0")): chosen = c
+		chosen = _r4_cpu_best_basic(candidates)   # ISSUE #361: was the highest printed HP
 	else:
 		chosen = await main.card_ops.choose_card(candidates, is_opponent, header, "Choose a Pokemon to put on your Bench", "SELECT", true)
 		if main._should_bail(): return
@@ -10457,12 +10466,7 @@ func effect_ex6_great_ball(is_opponent: bool) -> void:
 		return
 	var chosen: card_object = null
 	if is_opponent:
-		var best = -1
-		for c in pool:
-			var hp = int(c.metadata.get("hp","0"))
-			if hp > best:
-				best = hp
-				chosen = c
+		chosen = _r4_cpu_best_basic(pool)   # ISSUE #361: was the highest printed HP
 	else:
 		chosen = await main.card_ops.prompt_select_card(pool, "GREAT BALL: CHOOSE A POKEMON", "Select a Basic Pokemon to put on your Bench", "SELECT", true, true)
 		if main._should_bail(): return
@@ -10565,9 +10569,8 @@ func effect_ex5_life_herb(is_opponent: bool) -> void:
 		return
 	var target: card_object
 	if is_opponent:
-		target = pool[0]
-		for p in pool:
-			if (p.get_max_hp() - p.current_hp) > (target.get_max_hp() - target.current_hp): target = p
+		target = main.cpu_ai.cpu_pick_benefit_recipient(pool, "heal")   # ISSUE #361: Active / threatened first
+		if target == null: target = pool[0]
 	else:
 		target = await main.card_ops.choose_card(pool, false, "LIFE HERB", "Choose a Pokemon to heal and cure", "SELECT", false)
 		if main._should_bail(): return
@@ -10651,7 +10654,8 @@ func effect_ex7_pokemon_retriever(is_opponent: bool) -> void:
 		while shuffled < 3 and not pool.is_empty():
 			var pick2: card_object = null
 			if is_opponent:
-				pick2 = pool[0]
+				pick2 = main.cpu_ai.cpu_pick_best_keep(pool)   # ISSUE #361: the ones it wants back in the deck most
+				if pick2 == null: pick2 = pool[0]
 			else:
 				pick2 = await main.card_ops.choose_card(pool, false, "POKÉMON RETRIEVER", "Shuffle into deck (" + str(shuffled + 1) + " of 3)", "SHUFFLE", false, Callable(), true)
 				if main._should_bail(): return
@@ -10684,8 +10688,16 @@ func effect_ex7_pow_hand_extension(is_opponent: bool) -> void:
 	var do_move_energy = true
 	var can_move = defender != null and not defender.attached_energies.is_empty() and not opp_bench.is_empty()
 	var can_gust = not opp_bench.is_empty()
+	var pow_gust: card_object = null
 	if is_opponent:
-		do_move_energy = can_move and opp_bench.is_empty()
+		# ISSUE #361: the CPU's test could never pick "move Energy" (it needed a Bench AND no Bench). Gust when the
+		# pick beats the current Defender; otherwise strip an Energy off the Defender.
+		var oa_pow = main.opponent_active_pokemon
+		if can_gust and oa_pow != null and defender != null:
+			pow_gust = main.attack_effects.r4_cpu_gust_choice(oa_pow, defender, opp_bench, main.attack_effects.r4_best_payable_damage(oa_pow))
+		do_move_energy = can_move and pow_gust == null
+		if not do_move_energy and pow_gust == null and not can_gust:
+			do_move_energy = false
 	elif can_move and can_gust:
 		do_move_energy = await gym1_prompt_yes_no(main.player_active_pokemon, "POW! HAND EXTENSION", "Move an Energy on the Defender? (No = drag up a Benched Pokémon.)", "MOVE ENERGY", "SWITCH")
 		if main._should_bail(): return
@@ -10694,10 +10706,14 @@ func effect_ex7_pow_hand_extension(is_opponent: bool) -> void:
 	else:
 		do_move_energy = false
 	if do_move_energy and can_move:
-		var energy: card_object = defender.attached_energies[0]
+		# ISSUE #361: the user picks the Energy (it always moved the first one); CPU parks it where it helps least.
+		var energy: card_object = await main.attack_effects.r3_pick_defender_energy(defender, is_opponent, "POW! HAND EXTENSION: MOVE WHICH ENERGY?")
+		if main._should_bail(): return
+		if energy == null: energy = defender.attached_energies[0]
 		var dest: card_object = null
 		if is_opponent:
-			dest = opp_bench[0]
+			dest = main.cpu_ai.cpu_pick_energy_dump_target(opp_bench, energy)
+			if dest == null: dest = opp_bench[0]
 		else:
 			dest = await main.card_ops.choose_card(opp_bench, is_opponent, "POW! HAND EXTENSION", "Move an Energy to which Benched Pokémon?", "SELECT", false, Callable(), true)
 			if main._should_bail(): return
@@ -10709,10 +10725,15 @@ func effect_ex7_pow_hand_extension(is_opponent: bool) -> void:
 		await main.show_message("POW! HAND EXTENSION! MOVED AN ENERGY!")
 		if main._should_bail(): return
 	elif can_gust:
-		# The player using the card chooses which Benched Pokémon is dragged up (attacker chooser).
-		var eff = {"type": "force_switch", "target": "defender", "chooser": "attacker", "flip": "none"}
-		await main.attack_effects.apply_force_switch(eff, is_opponent)
-		if main._should_bail(): return
+		if is_opponent and pow_gust != null:
+			main.attack_effects._force_bench_to_active(pow_gust, true)
+			await main.show_message("POW! HAND EXTENSION! " + pow_gust.metadata.get("name","").to_upper() + " WAS DRAGGED INTO THE ACTIVE SPOT!")
+			if main._should_bail(): return
+		else:
+			# The player using the card chooses which Benched Pokémon is dragged up (attacker chooser).
+			var eff = {"type": "force_switch", "target": "defender", "chooser": "attacker", "flip": "none"}
+			await main.attack_effects.apply_force_switch(eff, is_opponent)
+			if main._should_bail(): return
 	else:
 		await main.show_message("POW! HAND EXTENSION: NOTHING TO DO!")
 		if main._should_bail(): return
@@ -10756,7 +10777,9 @@ func effect_ex7_rockets_mission(is_opponent: bool) -> void:
 			if c.metadata.get("supertype","") == "Pokémon" and ("Dark" in c.metadata.get("name","") or "Rocket's" in c.metadata.get("name","")):
 				pick = c
 				break
-		if pick == null: pick = hand[0]
+		if pick == null:
+			var rm_low = cpu_get_discard_priority(hand, 1)   # ISSUE #361: least useful card (was the first card)
+			pick = rm_low[0] if not rm_low.is_empty() else hand[0]
 	else:
 		pick = await main.card_ops.choose_card(hand, false, "ROCKET'S MISSION", "Discard a card (a Dark/Rocket's Pokémon draws 4)", "DISCARD", false, Callable(), true)
 		if main._should_bail(): return
@@ -10796,9 +10819,8 @@ func effect_ex7_venture_bomb(is_opponent: bool) -> void:
 	if target_is_opp:
 		# Heads for player use → target opponent; CPU (opp use) tails → target player. Chooser is the card user.
 		if is_opponent:
-			target = pool[0]
-			for c in pool:
-				if c.current_hp < target.current_hp: target = c
+			target = main.cpu_ai.cpu_pick_snipe_target(pool, 10)   # ISSUE #361: KO / threat (was lowest HP)
+			if target == null: target = pool[0]
 		else:
 			target = await main.card_ops.choose_card(pool, is_opponent, "VENTURE BOMB", "Put 1 damage counter on which Pokémon?", "SELECT", false, Callable(), true)
 			if main._should_bail(): return
@@ -10833,7 +10855,19 @@ func effect_ex7_surprise_time_machine(is_opponent: bool) -> void:
 		return
 	var target: card_object = null
 	if is_opponent:
+		# ISSUE #361: was the first Evolved Pokemon. The one whose lower Stage can be re-evolved into the best card
+		# from the deck (a different line beats the same card back), and that survives the devolve.
 		target = evolved[0]
+		var stm_best := -INF
+		for t in evolved:
+			var low: card_object = t.attached_pre_evolutions.back()
+			if int(low.metadata.get("hp", "0")) <= int(t.metadata.get("hp", "0")) - t.current_hp: continue
+			var opts = deck.filter(func(c): return c.metadata.get("supertype","") == "Pokémon" and c.metadata.get("evolvesFrom","") == low.metadata.get("name",""))
+			for o in opts:
+				var s: float = main.cpu_ai.cpu_rank_keep_value(o) + (30.0 if o.metadata.get("name","") != t.metadata.get("name","") else 0.0)
+				if s > stm_best:
+					stm_best = s
+					target = t
 	else:
 		target = await main.card_ops.choose_card(evolved, false, "SURPRISE! TIME MACHINE", "Choose an Evolved Pokémon to devolve by 1 stage", "SELECT", false, Callable(), true)
 		if main._should_bail(): return
@@ -10879,7 +10913,7 @@ func effect_ex7_surprise_time_machine(is_opponent: bool) -> void:
 		return
 	var evo_pick: card_object = null
 	if is_opponent:
-		evo_pick = evo_pool[0]
+		evo_pick = main.cpu_ai.cpu_pick_best_keep(evo_pool)   # ISSUE #361: was the first match in the deck
 	else:
 		evo_pick = await main.card_ops.choose_card(evo_pool, false, "SURPRISE! TIME MACHINE", "Choose an Evolution to put on " + devolve_to.metadata.get("name",""), "EVOLVE", true, Callable(), true)
 		if main._should_bail(): return
@@ -10910,8 +10944,14 @@ func effect_ex7_swoop_teleporter(is_opponent: bool) -> void:
 	var target: card_object = null
 	var new_basic: card_object = null
 	if is_opponent:
+		# ISSUE #361: was in-play[0] / deck[0]. Swap the weakest in-play Basic for the best deck Basic that survives the
+		# damage it inherits.
 		target = in_play_basics[0]
-		new_basic = deck_basics[0]
+		for c in in_play_basics:
+			if main.cpu_ai.cpu_rank_keep_value(c) < main.cpu_ai.cpu_rank_keep_value(target): target = c
+		var sw_dmg = target.get_max_hp() - target.current_hp
+		var sw_pool = deck_basics.filter(func(c): return int(c.metadata.get("hp", "0")) > sw_dmg)
+		new_basic = _r4_cpu_best_basic(sw_pool if not sw_pool.is_empty() else deck_basics)
 	else:
 		target = await main.card_ops.choose_card(in_play_basics, false, "SWOOP! TELEPORTER", "Choose a Basic Pokémon in play to switch out", "SELECT", false, Callable(), true)
 		if main._should_bail(): return
@@ -11255,13 +11295,13 @@ func effect_ex11_holon_transceiver(is_opponent: bool) -> void:
 		use_discard = not await gym1_prompt_yes_no(main.player_active_pokemon, "HOLON TRANSCEIVER", "Search your DECK or your DISCARD PILE?", "DECK", "DISCARD")
 		if main._should_bail(): return
 	if use_discard:
-		var pick_d: card_object = discard_pool[0] if is_opponent else await main.card_ops.choose_card(discard_pool, false, "HOLON TRANSCEIVER", "Choose a Holon Supporter", "TAKE", false, Callable(), true)
+		var pick_d: card_object = (main.cpu_ai.cpu_pick_best_keep(discard_pool) if is_opponent else await main.card_ops.choose_card(discard_pool, false, "HOLON TRANSCEIVER", "Choose a Holon Supporter", "TAKE", false, Callable(), true))   # ISSUE #361
 		if main._should_bail(): return
 		if pick_d == null: pick_d = discard_pool[0]
 		await main.card_ops.recover_to_hand(pick_d, is_opponent)
 		if main._should_bail(): return
 	else:
-		var pick: card_object = deck_pool[0] if is_opponent else await main.card_ops.choose_card(deck_pool, false, "HOLON TRANSCEIVER", "Choose a Holon Supporter", "TAKE", false, Callable(), true)
+		var pick: card_object = main.cpu_ai.cpu_pick_best_keep(deck_pool) if is_opponent else await main.card_ops.choose_card(deck_pool, false, "HOLON TRANSCEIVER", "Choose a Holon Supporter", "TAKE", false, Callable(), true)
 		if main._should_bail(): return
 		if pick == null: pick = deck_pool[0]
 		deck.erase(pick); pick.current_location = "hand"
@@ -11428,7 +11468,7 @@ func effect_ex13_holon_fossil(is_opponent: bool) -> void:
 			await main.show_message("NO MATCHING POKÉMON IN YOUR HAND!")
 			if main._should_bail(): return
 			return
-		chosen = hpool[0] if is_opponent else await main.card_ops.choose_card(hpool, false, "HOLON FOSSIL", "Choose a Pokémon from your hand to put on your Bench", "SELECT", false, Callable(), true)
+		chosen = _r4_cpu_best_basic(hpool) if is_opponent else await main.card_ops.choose_card(hpool, false, "HOLON FOSSIL", "Choose a Pokémon from your hand to put on your Bench", "SELECT", false, Callable(), true)
 		if main._should_bail(): return
 		if chosen == null: chosen = hpool[0]
 		(main.opponent_hand if is_opponent else main.player_hand).erase(chosen)
@@ -11593,7 +11633,7 @@ func effect_ex14_pokenav(is_opponent: bool) -> void:
 		return
 	var top: Array = []
 	for i in range(min(3, deck.size())):
-		top.append(deck[deck.size() - 1 - i])
+		top.append(deck[i])   # ISSUE #358: top of the deck = front (it looked at the bottom 3)
 	var is_eligible = func(c):
 		var st = c.metadata.get("supertype","")
 		if st == "Energy": return true
@@ -11607,7 +11647,7 @@ func effect_ex14_pokenav(is_opponent: bool) -> void:
 		await main.show_message("POKÉNAV: NO BASIC POKÉMON, EVOLUTION, OR ENERGY IN THE TOP 3!")
 		if main._should_bail(): return
 	else:
-		chosen = eligible[0] if is_opponent else await main.card_ops.choose_card(eligible, false, "POKÉNAV", "Choose a card to put into your hand", "TAKE", false)
+		chosen = main.cpu_ai.cpu_pick_best_keep(eligible) if is_opponent else await main.card_ops.choose_card(eligible, false, "POKÉNAV", "Choose a card to put into your hand", "TAKE", false)
 		if main._should_bail(): return
 		if chosen == null: chosen = eligible[0]
 		deck.erase(chosen)
@@ -11617,7 +11657,9 @@ func effect_ex14_pokenav(is_opponent: bool) -> void:
 		main.update_deck_icon(is_opponent)
 		await main.show_message("POKÉNAV! PUT " + chosen.metadata.get("name","").to_upper() + " INTO YOUR HAND!")
 		if main._should_bail(): return
-	# The other 2 stay on top of the deck (already there); order is irrelevant vs. no reshuffle.
+	# ISSUE #358: "put the other 2 back on top of your deck in any order" — the owner orders them.
+	if deck.size() >= 2:
+		await main.attack_effects.r3_reorder_top(is_opponent, 2, is_opponent, "POKÉNAV")
 
 # WINDSTORM (ex14-85, Item): choose up to 2 Pokémon Tool cards and/or Stadium cards in play (both players)
 # and discard them.

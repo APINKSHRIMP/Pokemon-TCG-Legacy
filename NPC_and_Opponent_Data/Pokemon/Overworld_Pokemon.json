@@ -125,9 +125,9 @@
     "270_Lotad": {"energy":70,"fish_size":0.8,"initial_distance":0,"lateral_speed":40,"line_strength":120,"recharge_time":3,"reel_step":5,"templates":["surfacing"]},
     "271_Lombre": {"energy":110,"fish_size":1.2,"initial_distance":25,"lateral_speed":80,"reel_step":5,"templates":["surfacing"]},
     "272_Ludicolo": {"big":true,"energy":250,"initial_distance":50,"lateral_speed":100,"line_strength":80,"recharge_time":5,"reel_step":3.5,"templates":["surfacing"]},
-    "319_Sharpedo": {"templates":["surfacing"]},
-    "320_Wailmer": {"energy":150,"fish_size":1.5,"lateral_speed":70,"line_strength":200,"recharge_time":3.5,"reel_step":65,"swim_speed":20,"templates":["surfacing"]},
-    "321_Wailord": {"scale":5,"templates":["surfacing"]},
+    "319_Sharpedo": {"big":true,"templates":["surfacing"]},
+    "320_Wailmer": {"big":true,"energy":150,"fish_size":1.5,"lateral_speed":70,"line_strength":200,"recharge_time":3.5,"reel_step":6,"swim_speed":20,"templates":["surfacing"]},
+    "321_Wailord": {"big":true,"fish_size":3,"scale":5,"templates":["surfacing"]},
     "349_Feebas": {"energy":50,"initial_distance":0,"lateral_speed":40,"line_strength":200,"recharge_time":3,"reel_step":6.5,"swim_speed":15,"templates":["surfacing","fish_tank"]},
     "350_Milotic": {"big":true,"energy":160,"initial_distance":75,"line_strength":110,"recharge_time":1.5,"reel_step":4.5,"swim_speed":50,"templates":["surfacing"]},
     "367_Huntail": {"big":true,"energy":75,"fish_size":1.1,"initial_distance":100,"lateral_speed":180,"line_strength":75,"recharge_time":2,"reel_step":6,"templates":["surfacing"]},
@@ -261,6 +261,7 @@
     "657_Frogadier": {"swim_speed":20,"templates":["skittish","surfacing"],"wander_speed":0},
     "658_Greninja": {"scale":1.2,"swim_speed":25,"templates":["skittish","surfacing"],"wander_speed":130},
     "090_Shellder": {"energy":80,"initial_distance":25,"lateral_speed":70,"line_strength":120,"reel_step":7,"templates":[]},
-    "091_Cloyster": {"big":true,"energy":120,"lateral_speed":80,"line_strength":110,"recharge_time":3.5,"reel_step":4,"templates":[]}
+    "091_Cloyster": {"big":true,"energy":120,"lateral_speed":80,"line_strength":110,"recharge_time":3.5,"reel_step":4,"templates":[]},
+    "342_Crawdaunt": {"big":true,"templates":[]}
   }
 }

@@ -12,11 +12,15 @@
     "          calendar loops -- they are matched against the real day instead."
   ],
   "map": "Windmill",
-  "calendar": {},
-  "npcs": {},
+  "calendar": {
+
+  },
+  "npcs": {
+
+  },
   "opponents": {
     "Mewtwo": {
-      "at": [87, 51],
+      "at": [409, 648],
       "move": "idle_down",
       "says": {
         "meet": "...So. Someone finally found the way in. Do not look so surprised — I have been listening to your footsteps since the forest path. I have no interest in your words. Show me your cards instead.",

@@ -1567,6 +1567,12 @@
       "template": "fishing_spot",
       "at": [-944, 961],
       "group": "fishing_spot_2",
+      "region": [
+        -1114,
+        832,
+        -774,
+        1090
+      ],
       "tables": {
         "Morning": {
           "table": [
@@ -1576,7 +1582,7 @@
             },
             {
               "species": "342_Crawdaunt",
-              "percent": 10
+              "percent": 100
             }
           ]
         },
@@ -1589,13 +1595,7 @@
         "Night": {
           "table": []
         }
-      },
-      "region": [
-        -1114,
-        832,
-        -774,
-        1090
-      ]
+      }
     }
   ]
 }

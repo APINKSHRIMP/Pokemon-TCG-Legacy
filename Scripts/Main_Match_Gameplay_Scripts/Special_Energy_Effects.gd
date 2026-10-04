@@ -375,6 +375,48 @@ func process_end_of_turn_discards(is_opponent: bool) -> void:
 ############################################### PASSIVE DAMAGE MODIFIERS (Darkness/Metal bonus/reduction while attached) #############################
 ######################################################################################################################################################
 
+# ISSUE #362: Darkness Energy (+10), R Energy (+10), Double Rainbow Energy (-10) and Metal Energy (-10 taken; -10 dealt
+# by a non-Metal holder on the older printings) were never applied — get_outgoing_damage_modifier /
+# get_incoming_damage_reduction below had no callers. main.calculate_final_damage now calls this twice: pre_wr=true
+# before Weakness/Resistance and pre_wr=false after, and each printing is applied in the step its own text names
+# ("before/after applying Weakness and Resistance"), with its own type condition.
+func r4_energy_damage_mod(attacker: card_object, defender: card_object, pre_wr: bool) -> int:
+	if attacker == null or defender == null:
+		return 0
+	if main.powers_and_bodies.is_miraculous_wind_active():
+		return 0
+	var mod := 0
+	var def_is_active: bool = defender == main.player_active_pokemon or defender == main.opponent_active_pokemon
+	var atk_types: Array = attacker.get_effective_types()
+	for e in attacker.attached_energies:
+		var nm: String = e.metadata.get("name", "")
+		var tx: String = " ".join(e.metadata.get("rules", [])).to_lower()
+		var before: bool = "(before applying" in tx
+		match nm:
+			"Darkness Energy":
+				if not def_is_active or before != pre_wr: continue
+				if "ignore this effect unless" in tx and not ("Darkness" in atk_types or "Dark" in attacker.metadata.get("name", "")): continue
+				mod += 10
+			"R Energy":
+				if def_is_active and pre_wr: mod += 10
+			"Double Rainbow Energy":
+				if before == pre_wr: mod -= 10
+			"Metal Energy":
+				# Older printings: a non-Metal holder deals 10 less (before or after W/R per the card).
+				var mi = tx.find("isn't metal, whenever it damages")
+				if mi != -1 and not ("Metal" in atk_types):
+					var tail = tx.substr(mi)
+					if ("(before applying" in tail) == pre_wr:
+						mod -= 10
+	if not pre_wr:
+		var def_types: Array = defender.get_effective_types()
+		for e in defender.attached_energies:
+			if e.metadata.get("name", "") != "Metal Energy": continue
+			var tx2: String = " ".join(e.metadata.get("rules", [])).to_lower()
+			if "ignore this effect if" in tx2 and not ("Metal" in def_types): continue
+			mod -= 10
+	return mod
+
 # Returns a damage modifier dictionary for outgoing attacks from this pokemon.
 # Called during damage calculation if the attacker has special energies attached.
 # Returns: {"bonus": int, "reduction": int}
