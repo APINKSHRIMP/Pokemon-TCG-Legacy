@@ -3238,15 +3238,12 @@ func cpu_phase_attack(cpu_eval: Dictionary) -> void:
 					water_count += 1
 			score += water_count * 8.0  # scale with water in discard
 		if attack_name_lower == "flower dance":
+			# ISSUE #323: only the CPU's OWN Bellossom count (the damage is now estimated exactly as well)
 			var bellosom_count = 0
-			var all_field: Array = []
-			if main.player_active_pokemon != null: all_field.append(main.player_active_pokemon)
-			if main.opponent_active_pokemon != null: all_field.append(main.opponent_active_pokemon)
-			all_field.append_array(main.player_bench + main.opponent_bench)
-			for p in all_field:
+			for p in get_all_cpu_field_pokemon():
 				if "Bellossom" in p.metadata.get("name",""):
 					bellosom_count += 1
-			score += bellosom_count * 25.0  # 30 damage per bellossom
+			score += bellosom_count * 25.0
 		if attack_name_lower == "zzzap":
 			var power_count = 0
 			var all_field2: Array = []
@@ -3286,7 +3283,7 @@ func cpu_phase_attack(cpu_eval: Dictionary) -> void:
 			score += 30.0 if cpu_will_be_koed else -50.0
 		if attack_name_lower == "eeeeeeek":
 			score += 20.0 if main.opponent_hand.size() <= 2 else -50.0
-		if attack_name_lower == "squaredance" or attack_name_lower == "pilfer":
+		if attack_name_lower == "squaredance":
 			score += 10.0
 		if attack_name_lower == "super metronome":
 			score += 40.0  # copying opponent attack can be very powerful
@@ -3308,9 +3305,13 @@ func cpu_phase_attack(cpu_eval: Dictionary) -> void:
 		if attack_name_lower == "crunch":
 			score += 20.0  # future damage bonus is very useful
 		if attack_name_lower == "sketch":
-			var last = main.last_attack_on_opponent
-			if not last.is_empty() and last.has("damage"):
-				score += float(last["damage"]) * 0.8
+			# ISSUE #323: only when the Defending Pokémon attacked last turn (same test as the attack itself)
+			var sk_rec: Dictionary = main.mirror_record_on_opponent
+			if not sk_rec.is_empty() and int(sk_rec.get("turn", -99)) == main.turn_number - 1 \
+					and sk_rec.get("attacker_id", -2) == main.player_active_pokemon.get_instance_id() and not main.opponent_active_pokemon.placed_on_field_this_turn:
+				score += float(main.attack_effects.estimate_attack_damage_range(sk_rec.get("attack", {}), main.opponent_active_pokemon, main.player_active_pokemon).get("expected", 0)) * 2.0
+			else:
+				score -= 200.0
 		if attack_name_lower == "counter":
 			score += 25.0 if cpu_will_be_koed else 10.0
 		if attack_name_lower == "shockwave":
@@ -6311,6 +6312,152 @@ func cpu_utility_attack_value(attack: Dictionary, me: card_object, foe: card_obj
 			return 25.0 if not main.player_bench.is_empty() else -100.0
 		"magic darts":
 			return 30.0
+	# ISSUE #323: neo1-4 / ecard1-3 utility attacks (none of these was valued before, so the CPU only used them
+	# when nothing else was usable).
+	var top_foe := 0
+	if foe != null and me != null:
+		for fa in main.get_attacks_for_card(foe):
+			if get_unmet_energy_count(fa, foe) <= 1:
+				top_foe = max(top_foe, int(main.attack_effects.estimate_attack_damage_range(fa, foe, me).get("max", 0)))
+	var field: Array = get_all_cpu_field_pokemon()
+	var best_missing := 0
+	for p in field: best_missing = max(best_missing, p.get_max_hp() - p.current_hp)
+	var damaged_n = field.filter(func(p): return p.get_damage_counters() > 0).size()
+	var deck_has = func(f: Callable) -> bool: return deck.any(f)
+	var basic_e = func(c): return c.metadata.get("supertype", "") == "Energy" and "Special" not in c.metadata.get("subtypes", [])
+	var opp_prizes = main.player_prize_cards.size()
+	match n:
+		"sweet nectar":
+			return best_missing * 0.4 if best_missing > 0 else -40.0
+		"bind wound":
+			return min(20, best_missing) * 0.5 if best_missing > 0 else -40.0
+		"healing light", "healing dust":
+			return damaged_n * 9.0 if damaged_n > 0 else -40.0
+		"healing water":
+			var bm := 0
+			for bp in bench: bm = max(bm, bp.get_max_hp() - bp.current_hp)
+			return min(bm, me.attached_energies.filter(func(e): return "Water" in main.get_energy_provided_by_card(e)).size() * 10) * 0.8 if bm > 0 else -40.0
+		"energy heal":
+			return 8.0 if field.any(func(p): return p.get_damage_counters() > 0 and not p.attached_energies.is_empty()) else -40.0
+		"nap":
+			var nn = main.attack_effects.extract_number_before(t, "damage counter")
+			return float(min(counters, nn if nn > 0 else 1)) * 8.0 if counters > 0 else -40.0
+		"deep dive", "milk drink":
+			return min(counters, 2) * 8.0 if counters > 0 else -40.0
+		"energy healing":
+			return min(counters * 10, me.attached_energies.size() * 20) * 0.8 if counters > 0 else -40.0
+		"empathic healing":
+			return field.filter(func(p): return p.get_damage_counters() > 0 and p.get_effective_types().any(func(x): return x in me.get_effective_types())).size() * 12.0 - 5.0
+		"wash away":
+			var wb := -INF
+			for bp in bench: wb = max(wb, bp.get_damage_counters() * 10.0 - bp.attached_energies.size() * 15.0)
+			return (0.5 * wb) if wb > 0 else -40.0
+		"sweet scent":
+			return 8.0 if damaged_n > 0 else -5.0
+		"evolutionary spore":
+			var es = field.filter(func(p): return ("Hoppip" in p.metadata.get("name", "") or "Skiploom" in p.metadata.get("name", "")) and deck.any(func(c): return main.can_evolve_from(c, p))).size()
+			return es * 35.0 if es > 0 else -60.0
+		"hatch", "sunbathe", "spore evolution":
+			var ev_ok = deck.any(func(c): return main.can_evolve_from(c, me))
+			return (60.0 if n == "spore evolution" else 35.0) if ev_ok else -60.0
+		"water of evolution":
+			return 80.0 if hand.any(func(c): return c.metadata.get("name", "") == "Omastar") else -100.0
+		"evolution song":
+			return 25.0 if field.any(func(p): return deck.any(func(c): return main.can_evolve_from(c, p))) else -30.0
+		"perish song":
+			if foe != null and foe.special_condition == "Asleep" and foe.has_effect("night_eyes") and int(foe.get_effect_data("night_eyes")) == main.turn_number - 2:
+				return 600.0
+			return -100.0
+		"night eyes":
+			return 10.0
+		"terrorize":
+			return float(top_foe) * 0.8 if foe != null and "Basic" in foe.metadata.get("subtypes", []) else -60.0
+		"freeze", "scary face", "tickling vines", "leer":
+			return float(top_foe) * 0.5
+		"mean look", "spider web":
+			return 12.0
+		"sputter":
+			var pw = main.card_ops.get_all_pokemon_in_play(false).filter(func(p): return p.metadata.get("abilities", []).any(func(ab): return ab.get("type", "") in ["Pokémon Power", "Poké-Power"])).size()
+			return 10.0 + pw * 10.0
+		"growl", "negative ion", "charm":
+			return 0.0 if doomed else 12.0
+		"pollen shield":
+			return 10.0
+		"light wave", "dodge", "pulse guard", "reflect shield", "armor up":
+			return 30.0 if doomed else 8.0
+		"energy cycle":
+			return 10.0 if foe != null and not foe.attached_energies.is_empty() and not main.player_bench.is_empty() else -40.0
+		"pilfer":
+			return 60.0 if doomed else -40.0
+		"static electricity":
+			var mp = main.card_ops.get_all_pokemon_in_play(true).filter(func(p): return p.metadata.get("name", "") == "Mareep").size() + main.card_ops.get_all_pokemon_in_play(false).filter(func(p): return p.metadata.get("name", "") == "Mareep").size()
+			return mp * (25.0 if need > 0 else 5.0)
+		"attract current":
+			return 30.0 if need > 0 else 5.0
+		"baton pass":
+			return 25.0 if bench.any(func(p): return "Grass" in p.get_effective_types()) and doomed else -10.0
+		"gold scale":
+			return draw_value.call(2) - 10.0
+		"dragon bond":
+			return 40.0 if deck.any(func(c): return c.metadata.get("name", "") in ["Gyarados", "Dark Gyarados", "Shining Gyarados"]) else -40.0
+		"grab", "swipe":
+			return 22.0 if main.card_ops.get_all_pokemon_in_play(false).any(func(p): return p.attached_cards.any(func(ac): return main.trainer_effects.is_attached_trainer(ac))) else -40.0
+		"psykiss":
+			return 15.0 if main.card_ops.get_all_pokemon_in_play(false).any(func(p): return p.attached_energies.any(func(e): return "Special" in e.metadata.get("subtypes", []))) else -40.0
+		"tusk toss":
+			return 40.0 if not main.player_bench.is_empty() else -60.0
+		"eerie howl":
+			return 15.0 if main.player_bench.size() < main.get_max_bench_size() else -40.0
+		"threaten", "incinerate", "rob", "spy", "data sort", "fish out", "provoke", "flipper stroke", "foresight", "searchlight":
+			return 6.0
+		"flash touch":
+			return 15.0 if not bench.is_empty() else -50.0
+		"call back":
+			return 12.0 if main.player_bench.size() < main.get_max_bench_size() and main.player_discard_pile.any(func(c): return main.is_basic_pokemon(c)) else -40.0
+		"warm up", "energy support":
+			return (30.0 if need > 0 else 8.0) if not bench.is_empty() else -40.0
+		"return home":
+			return 15.0 if bench.any(func(p): return p.get_damage_counters() >= 2) else -20.0
+		"guiding flame":
+			return 30.0 if room > 0 and discard.any(func(c): return main.is_basic_pokemon(c)) else -50.0
+		"mysterious wing":
+			return 12.0 if discard.any(func(c): return c.metadata.get("supertype", "") == "Pokémon") else 0.0
+		"reflected sunlight", "growth spurt", "sudden growth":
+			return (25.0 if need > 0 else 5.0) if hand.any(func(c): return c.metadata.get("supertype", "") == "Energy") else -40.0
+		"prehistoric water":
+			return 30.0 if main.card_ops.get_all_pokemon_in_play(false).any(func(p): return not p.attached_pre_evolutions.is_empty()) else -50.0
+		"energy catch", "energy recall":
+			return (30.0 if need > 0 else 8.0) if discard.any(basic_e) else -40.0
+		"energy draw", "energy plant", "charge up", "minor errand-running":
+			return (30.0 if need > 0 else 8.0) if deck.any(func(c): return c.metadata.get("supertype", "") == "Energy") else -40.0
+		"energy patch":
+			return 8.0
+		"energy recycle":
+			return 6.0 if discard.any(basic_e) else -40.0
+		"limited delivery":
+			return 20.0 if deck_has.call(func(c): return "Technical Machine" in c.metadata.get("subtypes", []) or "Pokémon Tool" in c.metadata.get("subtypes", [])) else -40.0
+		"assist":
+			return 30.0 if deck_has.call(func(c): return "Supporter" in c.metadata.get("subtypes", [])) else -40.0
+		"baby outing", "fishing tail":
+			return 20.0
+		"sleep inducer":
+			return 35.0 if not main.player_bench.is_empty() else -60.0
+		"paint trick":
+			return 15.0
+		"destructive roar":
+			return 15.0 if main.card_ops.get_all_pokemon_in_play(false).any(func(p): return not p.attached_energies.is_empty()) else -40.0
+		"mountain eater":
+			return 8.0
+		"desert burn", "stone crush", "retro cave", "healing oasis":
+			if opp_prizes >= 5: return 25.0
+			if (n in ["desert burn", "stone crush"] and opp_prizes == 1) or (n in ["retro cave", "healing oasis"] and opp_prizes == 2): return 45.0
+			return -100.0
+		"signs of evolution":
+			return 15.0 if deck.any(func(c): return c.metadata.get("evolvesFrom", "") == me.metadata.get("name", "")) else -40.0
+		"shadow hand", "warp hole", "bounce off", "star back":
+			return 5.0
+		"focus energy":
+			return -20.0 if doomed else 30.0
 	return 0.0
 
 # ISSUE #307: the biggest BASE damage (before Weakness/Resistance) the CPU's Active can do this turn with

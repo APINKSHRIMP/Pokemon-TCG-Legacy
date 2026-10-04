@@ -243,6 +243,7 @@ var special_energy_effects: Node
 # BASE5 (TEAM ROCKET) VARIABLES
 var goop_gas_active: bool = false
 var goop_gas_owner_is_opponent: bool = false
+var goop_gas_expire_turn: int = -1   # ISSUE #317: Sputter lasts "until the end of YOUR next turn" (turn number it ends on)
 var player_prizes_face_up: bool = false
 var opponent_prizes_face_up: bool = false
 
@@ -6441,7 +6442,12 @@ func inbetween_turn_checks(player_turn_just_ended: bool = true) -> void:
 	# Player played it (owner=false): expires when opponent's turn ends (player_turn_just_ended=false)
 	# CPU played it (owner=true): expires when player's turn ends (player_turn_just_ended=true)
 	if goop_gas_active:
-		if (goop_gas_owner_is_opponent and player_turn_just_ended) or (not goop_gas_owner_is_opponent and not player_turn_just_ended):
+		if goop_gas_expire_turn > 0:
+			if turn_number >= goop_gas_expire_turn:
+				goop_gas_active = false
+				goop_gas_expire_turn = -1
+				print("ISSUE #317 FIX ACTIVE: Sputter power lock expired")
+		elif (goop_gas_owner_is_opponent and player_turn_just_ended) or (not goop_gas_owner_is_opponent and not player_turn_just_ended):
 			goop_gas_active = false
 			print("GOOP GAS: Effect expired")
 
@@ -6699,6 +6705,9 @@ func get_valid_evolution_targets(evolution_card: card_object, is_opponent: bool)
 	if opposing_active != null and opposing_active.has_ability("Primal Stare") and not powers_and_bodies.is_power_blocked_by_status(opposing_active):
 		valid_targets = valid_targets.filter(func(t): return t != active)
 
+	# ISSUE #316: Dark Tentacle (neo4-19) — the Pokémon can't be evolved from the hand during this turn.
+	valid_targets = valid_targets.filter(func(t): return not t.neo4_cant_evolve_next_turn)
+
 	# EX4-90 Cradily ex Primal Vibes: while the opposing Active is Cradily ex, you can't play a
 	# Pokemon from hand to evolve YOUR Active (Benched evolutions are unaffected)
 	if opposing_active != null and opposing_active.has_ability("Primal Vibes") and not powers_and_bodies.is_power_blocked_by_status(opposing_active):
@@ -6948,6 +6957,14 @@ func can_retreat(is_opponent: bool) -> Dictionary:
 		return {"can_retreat": false, "reason": "Cannot retreat with no Pokemon on your bench!"}
 	if is_disabled:
 		return {"can_retreat": false, "reason": "You have been prevented from retreating!"}
+	# ISSUE #316: lasting locks — Spider Web (until it is Benched or evolves), Mean Look (while that Pokémon
+	# stays the opponent's Active).
+	if active.has_effect("retreat_locked"):
+		var rl_src := int(active.get_effect_data("retreat_locked"))
+		var foe_active = player_active_pokemon if is_opponent else opponent_active_pokemon
+		if rl_src == -1 or (foe_active != null and foe_active.get_instance_id() == rl_src):
+			return {"can_retreat": false, "reason": active.metadata.get("name", "") + " can't retreat!"}
+		active.clear_effect("retreat_locked")
 	# EX5 Fast Feet (Dodrio ex5-33): can retreat even when Asleep or Paralyzed
 	var fast_feet = active.has_ability("Fast Feet") and not powers_and_bodies.is_power_blocked(active)
 	if not fast_feet and active.special_condition == "Paralyzed":
@@ -7449,7 +7466,15 @@ func apply_defender_no_damage_shield(defender: card_object, damage: int, is_oppo
 
 # Checks if a specific attack is disabled on this pokemon
 func is_attack_disabled(pokemon: card_object, attack_name: String) -> bool:
-	return pokemon.disabled_attacks.has(attack_name)
+	if pokemon.disabled_attacks.has(attack_name):
+		return true
+	# ISSUE #316: several handlers store the key lowercased ("leek jab", "high-speed charge"), which never
+	# matched the printed name, so those attacks were never actually disabled.
+	var l := attack_name.to_lower()
+	for k in pokemon.disabled_attacks:
+		if str(k).to_lower() == l:
+			return true
+	return false
 
 # Resolves variable damage from attack text BEFORE weakness/resistance is applied.
 # Handles: coin flip multipliers (×), does-nothing-on-tails, heads/tails bonus,
@@ -7479,6 +7504,17 @@ func display_and_apply_attack_damage(attacker: card_object, defender: card_objec
 			return
 		defender.dodge_active = false
 		update_status_icons(defender, !is_opponent)
+
+	# ISSUE #319: Dodge (neo4-69 Hitmonchan) — during the opponent's next turn, Hitmonchan's owner flips
+	# whenever an attack would damage it; heads prevents that attack's damage.
+	if defender.has_effect("neo4_dodge") and final_damage > 0:
+		await show_message(defender.metadata.get("name", "").to_upper() + " TRIES TO DODGE! FLIPPING...")
+		var ndg = await flip_coin(false, !is_opponent)
+		if ndg:
+			var ndg_pos = Vector2(530, 300) if is_opponent else Vector2(1030, 300)
+			show_floating_label("DODGED!", ndg_pos, Color.BLUE, true)
+			print("ISSUE #319 FIX ACTIVE: Dodge prevented the damage")
+			return
 
 	# NEO2 Slime (Wooper neo2-71): if defender has slime_active, attacker must flip; tails = no damage
 	if defender.slime_active and final_damage > 0:
@@ -7830,6 +7866,22 @@ func calculate_final_damage(base_damage: int, attacking_types: Array, defending_
 	if base_damage <= 0:
 		return {"damage": 0, "modifiers": modifiers_applied}
 
+	# ISSUE #317: Charm (neo4-56) — the Defending Pokémon's attacks do N less damage (before W/R) during its
+	# owner's next turn. Growl / Negative Ion — damage from the Pokémon that was Defending is reduced
+	# before W/R.
+	if attacker_pokemon != null and not is_self_damage:
+		if attacker_pokemon.has_effect("neo_charm"):
+			var ch := int(attacker_pokemon.get_effect_data("neo_charm"))
+			damage = max(0, damage - ch)
+			modifiers_applied.append("CHARM -" + str(ch))
+		if defending_pokemon.has_effect("neo_growl"):
+			var gd = defending_pokemon.get_effect_data("neo_growl")
+			if typeof(gd) == TYPE_DICTIONARY and int(gd.get("source", -1)) == attacker_pokemon.get_instance_id():
+				damage = max(0, damage - int(gd.get("amount", 10)))
+				modifiers_applied.append("REDUCED -" + str(int(gd.get("amount", 10))))
+		if damage <= 0:
+			return {"damage": 0, "modifiers": modifiers_applied}
+
 	# ECARD2/ECARD3 Crystal Type + Crystal Shard: if the attacker's own type is currently
 	# overridden (temporary Crystal Type energy-attach, or permanent Crystal Shard Tool), use the
 	# effective type for Weakness-triggering instead of whatever the caller happened to compute
@@ -8137,6 +8189,23 @@ func check_and_handle_knockout(pokemon: card_object, is_opponent: bool) -> bool:
 		await show_message("ENDURE! " + pokemon.metadata.get("name","").to_upper() + " SURVIVED WITH 10 HP!")
 		if _should_bail(): return false
 		return false
+
+	# ISSUE #319: Armor Up (neo4-35 Dark Forretress) — "if it would be Knocked Out by damage from an attack,
+	# flip a coin. If heads, it is not Knocked Out and its remaining HP become 10" (until the end of its
+	# owner's next turn).
+	if pokemon.has_effect("neo4_armor_up") and attack_effects.is_attack_in_progress() \
+			and pokemon.is_owner_opp(self) != attack_effects.current_attacker_is_opponent:
+		await show_message("ARMOR UP! FLIPPING FOR " + pokemon.metadata.get("name","").to_upper() + "...")
+		if _should_bail(): return false
+		var au_coin = await flip_coin(false, pokemon.is_owner_opp(self))
+		if _should_bail(): return false
+		if au_coin:
+			pokemon.current_hp = 10
+			display_hp_circles_above_align(pokemon, is_opponent)
+			await show_message("HEADS! " + pokemon.metadata.get("name","").to_upper() + " ISN'T KNOCKED OUT!")
+			if _should_bail(): return false
+			print("ISSUE #319 FIX ACTIVE: Armor Up saved ", pokemon.metadata.get("name",""))
+			return false
 
 	# NEO3 Time Travel (Celebi neo3-3): if KO'd by attack, flip — heads: survive by shuffling Celebi back into deck
 	if await powers_and_bodies.check_time_travel(pokemon, is_opponent):
@@ -8537,22 +8606,24 @@ func apply_status_effect(effect: Dictionary, attacker: card_object, defender: ca
 				return
 
 	var status = effect["status"]
-	var mutually_exclusive = ["Paralyzed", "Asleep", "Confused"]
-
-	if status in mutually_exclusive:
-		target_pokemon.special_condition = status
-	if status == "Poisoned":
-		target_pokemon.is_poisoned = true
-		target_pokemon.poison_damage = 10
-	if status == "Burned":
-		target_pokemon.is_burned = true
+	# ISSUE #317: applied through card_ops.apply_status — the one gate that knows every immunity (Immunity,
+	# Poison Resistance, Thick Skin, Crystal Body, Clear Body, Pollen Shield...). This path used to set the
+	# condition directly, so attacks resolved from their text ignored all of them.
+	card_ops.apply_status(target_pokemon, status, is_target_opponent)
+	var landed := false
+	match status:
+		"Poisoned": landed = target_pokemon.is_poisoned
+		"Burned": landed = target_pokemon.is_burned
+		_: landed = target_pokemon.special_condition == status
+	if not landed:
+		print("ISSUE #317 FIX ACTIVE: ", status, " did not land on ", target_pokemon.metadata.get("name", ""))
+		await show_message(target_pokemon.metadata.get("name", "").to_upper() + " IS UNAFFECTED!")
+		return
 
 	SoundManagerScript.play_sfx(SoundManagerScript.SFX_status_sound)
 	await show_message(target_pokemon.metadata["name"].to_upper() + " IS NOW " + status.to_upper() + "!")
 	print("STATUS APPLIED: ", target_pokemon.metadata["name"], " is now ", status)
 	update_status_icons(target_pokemon, is_target_opponent)
-	if effect.get("target", "") == "defender":
-		attack_effects.note_attack_status(target_pokemon, status)
 	# GYM2 Brock's Ninetales Shapeshift — A/C/P status discards the attached form
 	await powers_and_bodies.shapeshift_check_status_discard(target_pokemon)
 
@@ -8709,6 +8780,14 @@ func clear_all_statuses(pokemon: card_object, is_opponent: bool) -> void:
 	pokemon.attack_blocked_next_turn = false
 	pokemon.attack_blocked_by_id = -1
 	pokemon.ink_spurt_blind = false
+	# ISSUE #316: effects that last until the Pokémon is Benched (Spider Web, Mean Look, Freeze) and the
+	# Active-only ones (Flash Touch, Growl, Jaw Clamp, Screech, Dark Tentacle) end when it leaves the Active spot.
+	pokemon.clear_effects_with_duration("until_benched")
+	pokemon.clear_effect("neo_growl")
+	pokemon.jaw_clamp_locked = false
+	pokemon.neo4_immune_to_status = false
+	pokemon.neo4_cant_evolve_next_turn = false
+	pokemon.screech_damage_bonus = 0
 
 	# Clear temporary type overrides when leaving play
 	pokemon.temporary_weakness = ""

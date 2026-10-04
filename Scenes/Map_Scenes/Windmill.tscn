@@ -68,9 +68,9 @@ position = Vector2(337, 399)
 shape = SubResource("RectangleShape2D_annoh")
 
 [node name="MEWTWO?" type="TextureRect" parent="." unique_id=2139754661]
-offset_left = 298.0
-offset_top = 25.0
-offset_right = 338.0
-offset_bottom = 65.0
+offset_left = 320.0
+offset_top = 30.0
+offset_right = 360.0
+offset_bottom = 70.0
 scale = Vector2(1.5, 1.5)
 texture = ExtResource("5_witqj")

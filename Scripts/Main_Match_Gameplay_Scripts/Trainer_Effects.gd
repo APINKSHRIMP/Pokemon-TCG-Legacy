@@ -3876,6 +3876,7 @@ func effect_nightly_garbage_run(is_opponent: bool) -> void:
 func effect_goop_gas_attack(is_opponent: bool) -> void:
 	main.goop_gas_active = true
 	main.goop_gas_owner_is_opponent = is_opponent
+	main.goop_gas_expire_turn = -1
 	await main.show_message("ALL POKÉMON POWERS STOP WORKING!")
 	if main._should_bail(): return
 	print("TRAINER: Goop Gas Attack - powers disabled")
@@ -4009,9 +4010,14 @@ func gym1_end_of_turn_cleanup(side_is_opponent: bool) -> void:
 			bp.gym2_focus_energy_active = false
 			bp.swords_dance_active = false
 			bp.swords_dance_slash_damage = 0
-			for k in ["ex2_vigoroth_focus", "pop_swellow_focus", "ex14_hjk_focus"]:
+			bp.lock_on_active = false   # ISSUE #316: Lock-on lasts through the owner's next turn
+			for k in ["ex2_vigoroth_focus", "pop_swellow_focus", "ex14_hjk_focus", "ex1_stockpile"]:   # ISSUE #324: + Stockpile
 				bp.clear_effect(k)
 			print("ISSUE #312 FIX ACTIVE: next-turn boost expired on ", bp.metadata.get("name", ""))
+	# ISSUE #319: Armor Up lasts until the end of its owner's next turn.
+	for bp in main.card_ops.get_all_pokemon_in_play(side_is_opponent):
+		if bp.has_effect("neo4_armor_up") and main.turn_number > int(bp.get_effect_data("neo4_armor_up")):
+			bp.clear_effect("neo4_armor_up")
 	var active = main.opponent_active_pokemon if side_is_opponent else main.player_active_pokemon
 	var bench = main.opponent_bench if side_is_opponent else main.player_bench
 	var hand = main.opponent_hand if side_is_opponent else main.player_hand
@@ -10843,7 +10849,7 @@ func effect_ex7_surprise_time_machine(is_opponent: bool) -> void:
 	var max_hp_old = int(target.metadata.get("hp", "0"))
 	var damage_taken = max_hp_old - target.current_hp
 	var new_max = int(devolve_to.metadata.get("hp", "0"))
-	devolve_to.current_hp = max(10, new_max - damage_taken)
+	devolve_to.current_hp = max(0, new_max - damage_taken)   # ISSUE #324: carried damage can KO the lower Stage
 	devolve_to.current_location = target.current_location
 	# Clear the top card's carried state and shuffle it into the deck.
 	target.attached_energies.clear()
@@ -10919,7 +10925,7 @@ func effect_ex7_swoop_teleporter(is_opponent: bool) -> void:
 	var max_hp_old = int(target.metadata.get("hp", "0"))
 	var damage_taken = max_hp_old - target.current_hp
 	var new_max = int(new_basic.metadata.get("hp", "0"))
-	new_basic.current_hp = max(10, new_max - damage_taken)
+	new_basic.current_hp = max(0, new_max - damage_taken)   # ISSUE #324
 	new_basic.special_condition = target.special_condition
 	new_basic.is_poisoned = target.is_poisoned
 	new_basic.poison_damage = target.poison_damage

@@ -5105,21 +5105,20 @@ func process_turn_start_tools_and_counters(is_opponent: bool) -> void:
 
 # Clear jaw_clamp_locked at end of opponent's turn (called when clearing retreat flags)
 func clear_neo1_flags_end_of_turn(is_opponent: bool) -> void:
-	var all_poke: Array = []
-	var active = main.opponent_active_pokemon if is_opponent else main.player_active_pokemon
-	var bench = main.opponent_bench if is_opponent else main.player_bench
-	if active != null: all_poke.append(active)
-	all_poke.append_array(bench)
-	for p in all_poke:
+	# ISSUE #316: called at the end of a turn with is_opponent = the side whose turn did NOT just end. It used
+	# to wipe that side's retreat lock, Jaw Clamp and Screech bonus — all placed on it by the attack that was
+	# just made — so none of them ever reached the turn they are meant for. Main clears X_retreat_disabled
+	# for the side whose turn ended.
+	for p in main.card_ops.get_all_pokemon_in_play(is_opponent):
+		p.endure_active = false   # Endure lasted through the opponent's turn that just ended
+		# Screech / Crunch: placed by the side whose turn just ended, valid until the end of that side's
+		# NEXT turn — only a bonus placed on an earlier turn expires now.
+		if p.screech_damage_bonus > 0 and p.screech_set_turn != main.turn_number:
+			p.screech_damage_bonus = 0
+			p.screech_set_turn = -1
+	# Jaw Clamp / Sticky Nectar locked the side whose turn just ended — it has now had that turn.
+	for p in main.card_ops.get_all_pokemon_in_play(not is_opponent):
 		p.jaw_clamp_locked = false
-		p.screech_damage_bonus = 0
-		p.endure_active = false
-	if is_opponent:
-		if main.opponent_retreat_disabled and not main.opponent_active_pokemon in []:
-			main.opponent_retreat_disabled = false
-	else:
-		if main.player_retreat_disabled:
-			main.player_retreat_disabled = false
 
 # ── On-play triggers ─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
 
@@ -5926,18 +5925,17 @@ func trigger_neo2_unown_increase(unown_i: card_object, is_opponent: bool) -> voi
 # ─── FLAG CLEARING ────────────────────────────────────────────────────────────
 
 func clear_neo2_flags_end_of_turn(is_opponent: bool) -> void:
-	var all_poke: Array = []
-	var active = main.opponent_active_pokemon if is_opponent else main.player_active_pokemon
-	var bench = main.opponent_bench if is_opponent else main.player_bench
-	if active != null: all_poke.append(active)
-	all_poke.append_array(bench)
-	for p in all_poke:
-		p.lock_on_active = false
+	# ISSUE #316: is_opponent = the side whose turn did NOT just end. Its own protections (Counter, Secrete
+	# Poison, Slime) lasted through the turn that just ended. Pursuit sits on the Pokémon the attack hit and
+	# must survive that Pokémon's owner's turn, so it is cleared on the side whose turn just ended; Lock-on
+	# lasts through its owner's next turn (boost_set_turn, Trainer_Effects.gym1_end_of_turn_cleanup).
+	for p in main.card_ops.get_all_pokemon_in_play(is_opponent):
 		p.counter_active = false
-		p.pursuit_active = false
 		p.secrete_poison_active = false
 		p.slime_active = false
 		p.gaze_suppressed = false
+	for p in main.card_ops.get_all_pokemon_in_play(not is_opponent):
+		p.pursuit_active = false
 
 # ─── CPU PHASE ────────────────────────────────────────────────────────────────
 
@@ -6198,21 +6196,16 @@ func apply_hard_shell(defender: card_object, damage: int, modifiers_applied: Arr
 # ── NEO3 FLAG CLEARING ─────────────────────────────────────────────────────────
 
 func clear_neo3_flags_end_of_turn(is_opponent: bool) -> void:
-	var active = main.opponent_active_pokemon if is_opponent else main.player_active_pokemon
-	var bench = main.opponent_bench if is_opponent else main.player_bench
-	var all_poke: Array = []
-	if active != null: all_poke.append(active)
-	all_poke.append_array(bench)
-	for p in all_poke:
-		p.triggered_poison_active = false
-		p.neo3_high_speed_locked = false
+	# ISSUE #316: is_opponent = the side whose turn did NOT just end. Its own next-turn protections expire
+	# now; Triggered Poison and Dark Tentacle sit on the Pokémon the attack hit and last through that
+	# Pokémon's owner's turn, so they are cleared on the side whose turn just ended.
+	for p in main.card_ops.get_all_pokemon_in_play(is_opponent):
 		p.submerge_active = false
-		# NEO4 per-turn protection flags (last until your next turn ends)
 		p.neo4_prevent_high_damage = 0
 		p.neo4_prevent_bench_damage = false
+	for p in main.card_ops.get_all_pokemon_in_play(not is_opponent):
+		p.triggered_poison_active = false
 		p.neo4_cant_evolve_next_turn = false
-		# night_eyes_used intentionally NOT cleared here (persists across turns for Perish Song)
-		# legendary_body_active is metadata-based, not per-turn
 
 # ── NEO4 FLAG CLEARING ─────────────────────────────────────────────────────────
 # Clears per-turn neo4 flags for the side that just finished their own turn.
@@ -11953,8 +11946,17 @@ func _hook_ex5_silver_wind(damage: int, _attacker: card_object, defender: card_o
 	if damage <= 0 or defender == null:
 		return damage
 	if defender.has_effect("ex5_silver_wind"):
-		modifiers.append("SILVER WIND +30")
-		return damage + 30
+		# ISSUE #329: only during the Silver Wind user's NEXT turn (turn set + 2); lapses after it.
+		var sw = defender.get_effect_data("ex5_silver_wind")
+		var sw_turn: int = int(sw.get("turn", main.turn_number - 2)) if sw is Dictionary else main.turn_number - 2
+		if main.turn_number > sw_turn + 2:
+			defender.clear_effect("ex5_silver_wind")
+			return damage
+		if main.turn_number == sw_turn + 2:
+			var bonus: int = int(sw.get("bonus", 30)) if sw is Dictionary else 30
+			modifiers.append("SILVER WIND +" + str(bonus))
+			print("ISSUE #329 FIX ACTIVE: Silver Wind +", bonus)
+			return damage + bonus
 	return damage
 
 # ── Passive body helpers wired into core hooks ────────────────────────────────

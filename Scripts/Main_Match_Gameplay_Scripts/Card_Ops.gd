@@ -34,6 +34,12 @@ func draw_n(is_opponent: bool, count: int) -> void:
 # Recycle Energy and Ecogym (non-Colorless) return to owner's hand; others go to discard.
 # Pass is_ko_discard=true for KO sequences so Ecogym protection is skipped.
 func discard_energy_from_pokemon(energy: card_object, is_owner_opp: bool, is_ko_discard: bool = false) -> void:
+	# ISSUE #317: many callers only sent the card to the discard pile and left it attached as well (one card
+	# in two places — Searing Flames, Dark Flame, Mega Flame, Twister, Lava Flow...). Detach it here.
+	for side in [false, true]:
+		for p in get_all_pokemon_in_play(side):
+			if energy in p.attached_energies:
+				p.attached_energies.erase(energy)
 	var card_name = energy.metadata.get("name", "")
 	if card_name == "Recycle Energy":
 		var hand = main.opponent_hand if is_owner_opp else main.player_hand
@@ -215,9 +221,13 @@ func search_deck_to_hand(is_opponent: bool, filter_fn: Callable, prompt: String,
 	var chosen: Array = []
 
 	if is_opponent:
-		# CPU takes the first N matches (caller pre-sorts by preference if needed)
+		# ISSUE #324: the CPU took the first N matches in (shuffled) deck order — i.e. a random pick for every
+		# CPU deck search in the game. It now takes the N cards it values most (cpu_rank_keep_value: Energy
+		# its attackers need, Evolutions whose base is in play, Basics while the Bench has room...).
+		candidates.sort_custom(func(x, y): return main.cpu_ai.cpu_rank_keep_value(x) > main.cpu_ai.cpu_rank_keep_value(y))
 		for i in range(min(count, candidates.size())):
 			chosen.append(candidates[i])
+		print("ISSUE #324 FIX ACTIVE: CPU deck search ranked ", candidates.size(), " candidates, took ", chosen.size())
 	else:
 		# ISSUE #21 FIX ACTIVE: a deck search triggered by an ATTACK (e.g. Oddish's Sprout) runs while
 		# perform_attack() has the full-screen opponent_blocker up, which would sit on top of this
@@ -325,6 +335,17 @@ func apply_status(pokemon: card_object, status: String, is_opponent: bool) -> vo
 	# NEO4 Flash Touch (Light Ledian): immune to special conditions while Active
 	if pokemon != null and pokemon.neo4_immune_to_status and status != "":
 		return
+	# ISSUE #317: Pollen Shield ("can't become affected by a Special Condition"), and an attack's Special
+	# Condition never lands on a Pokémon protected from that attack's effects (Agility, Transparency, Light Wave).
+	if pokemon != null and status != "":
+		if pokemon.has_effect("status_immune"):
+			print("ISSUE #317 FIX ACTIVE: ", status, " blocked by Pollen Shield on ", pokemon.metadata.get("name", ""))
+			return
+		var ae = main.attack_effects
+		if ae != null and ae.is_attack_in_progress() and pokemon != ae.current_attacker \
+				and pokemon.is_owner_opp(main) != ae.current_attacker_is_opponent and ae.is_protected_from_effects(pokemon):
+			print("ISSUE #317 FIX ACTIVE: ", status, " blocked — ", pokemon.metadata.get("name", ""), " is protected from the attack's effects")
+			return
 	# ISSUE #304: Clefairy Doll / Mysterious Fossil "can't be Asleep, Confused, Paralyzed, or Poisoned",
 	# and Snorlax's Thick Skinned ("can't become Asleep, Confused, Paralyzed, or Poisoned"). Both were
 	# only checked in Main.apply_status_effect, so every effect that goes through THIS function (Strange
@@ -402,6 +423,8 @@ func apply_status(pokemon: card_object, status: String, is_opponent: bool) -> vo
 		"Blind":
 			pokemon.is_blind = true
 	main.update_status_icons(pokemon, is_opponent)
+	if main.attack_effects != null and status in ["Poisoned", "Toxic", "Burned", "Asleep", "Confused", "Paralyzed"]:
+		main.attack_effects.note_attack_status(pokemon, "Poisoned" if status == "Toxic" else status)
 	# ECARD3 Mirror Coat (Wobbuffet): if Wobbuffet becomes Poisoned or Burned, mirror that same
 	# status onto the opposing Active Pokemon (approximated as "the Defending Pokemon" since this
 	# function is only ever called with an attack/effect already in progress). Guarded against

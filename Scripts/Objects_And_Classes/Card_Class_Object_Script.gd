@@ -106,6 +106,7 @@ var lightning_rod_marked: bool = false   # basep-46 Electabuzz Lightning Rod —
 
 # NEO1 (Neo Genesis) properties
 var screech_damage_bonus: int = 0      # neo1-31/69 Screech: +20 damage from next attack received this turn
+var screech_set_turn: int = -1         # ISSUE #316: turn the Screech/Crunch bonus was placed (it lasts until the end of the attacker's NEXT turn)
 var has_char_counter: bool = false     # neo1-47 Quilava Char: each turn owner flips; tails = 20 damage
 var endure_active: bool = false        # neo1-43 Phanpy Endure: survive KO at 10 HP one time
 var jaw_clamp_locked: bool = false     # neo1-31 Croconaw Jaw Clamp: target can't retreat next turn
