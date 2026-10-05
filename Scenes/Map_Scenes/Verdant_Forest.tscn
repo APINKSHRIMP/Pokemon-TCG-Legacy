@@ -90,10 +90,10 @@ radius = 11.0
 height = 46.0
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_efv3c"]
-size = Vector2(300, 3.375)
+size = Vector2(300, 26.6875)
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_x6xh7"]
-size = Vector2(7.5, 34)
+size = Vector2(12.75, 20)
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_mu53r"]
 size = Vector2(2453, 573)
@@ -5698,6 +5698,7 @@ tile_map_data = PackedByteArray("AACi/0AAAAAjABQAAACj/z8AAAAkABMAAACj/0AAAAAkABQ
 tile_set = ExtResource("1_vnhbh")
 
 [node name="LIGHTS" type="Control" parent="TILE_MAPS" unique_id=753293066]
+visible = false
 layout_mode = 3
 anchors_preset = 0
 offset_right = 40.0
@@ -6555,7 +6556,7 @@ position = Vector2(1771, 1050)
 position = Vector2(-30, 1482)
 
 [node name="DoorArea_CelesteHarbour" type="CollisionShape2D" parent="Door Areas" unique_id=2053991931]
-position = Vector2(1815, 526)
+position = Vector2(1815, 537.65625)
 shape = SubResource("RectangleShape2D_efv3c")
 metadata/target_scene = "res://Scenes/Map_Scenes/Celeste_Harbour.tscn"
 
@@ -6565,9 +6566,14 @@ shape = SubResource("RectangleShape2D_efv3c")
 metadata/target_scene = "res://Scenes/Map_Scenes/Gym_Plaza.tscn"
 
 [node name="DoorArea_RocketMart" type="CollisionShape2D" parent="Door Areas" unique_id=1006479648]
-position = Vector2(2209, -106)
+position = Vector2(308, -447)
 shape = SubResource("RectangleShape2D_x6xh7")
 metadata/target_scene = "res://Scenes/Map_Scenes/Rocket_Mart.tscn"
+
+[node name="DoorArea_Windmill" type="CollisionShape2D" parent="Door Areas" unique_id=1907085530]
+position = Vector2(3560, -1586)
+shape = SubResource("RectangleShape2D_x6xh7")
+metadata/target_scene = "res://Scenes/Map_Scenes/Windmill.tscn"
 
 [node name="OPPONENTS" type="Node2D" parent="." unique_id=1249595646]
 z_index = 1
