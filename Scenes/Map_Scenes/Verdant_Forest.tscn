@@ -6559,21 +6559,25 @@ position = Vector2(-30, 1482)
 position = Vector2(1815, 537.65625)
 shape = SubResource("RectangleShape2D_efv3c")
 metadata/target_scene = "res://Scenes/Map_Scenes/Celeste_Harbour.tscn"
+metadata/spawn_side = "above"
 
 [node name="DoorArea_GymPlaza" type="CollisionShape2D" parent="Door Areas" unique_id=1544821637]
 position = Vector2(1816, -1802.6875)
 shape = SubResource("RectangleShape2D_efv3c")
 metadata/target_scene = "res://Scenes/Map_Scenes/Gym_Plaza.tscn"
+metadata/spawn_side = "below"
 
 [node name="DoorArea_RocketMart" type="CollisionShape2D" parent="Door Areas" unique_id=1006479648]
 position = Vector2(308, -447)
 shape = SubResource("RectangleShape2D_x6xh7")
 metadata/target_scene = "res://Scenes/Map_Scenes/Rocket_Mart.tscn"
+metadata/spawn_side = "below"
 
 [node name="DoorArea_Windmill" type="CollisionShape2D" parent="Door Areas" unique_id=1907085530]
 position = Vector2(3560, -1586)
 shape = SubResource("RectangleShape2D_x6xh7")
 metadata/target_scene = "res://Scenes/Map_Scenes/Windmill.tscn"
+metadata/spawn_side = "below"
 
 [node name="OPPONENTS" type="Node2D" parent="." unique_id=1249595646]
 z_index = 1

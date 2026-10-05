@@ -11,7 +11,7 @@ extends Node2D
 #   - Fade in / fade out
 #   - Door area setup (collision, signal connection)
 #   - Spawn position resolution (menu return → shop return →
-#     battle return → entering_from lookup → default fallback)
+#     battle return → arrival door → default fallback)
 #   - Save current location to GameState
 #   - MapManager.initialise() call
 #   - _input() main-menu exit shortcut
@@ -32,16 +32,12 @@ func get_scene_path() -> String:
 	push_error("BaseMapScene: get_scene_path() not overridden in " + name)
 	return ""
 
-# Map of entering_from keys → spawn Vector2 for each door.
-func get_entry_positions() -> Dictionary:
-	return {}
-
-# Fallback spawn when no entering_from key matches. Default: first
-# entry position, or Vector2.ZERO if no entries are defined.
+# Fallback spawn (in this scene's local space) when no arrival door matches — a first
+# load or an unknown entering_from. Default: beside the first door in "Door Areas".
 func get_default_spawn() -> Vector2:
-	var positions := get_entry_positions()
-	if not positions.is_empty():
-		return positions.values()[0]
+	for child in $"Door Areas".get_children():
+		if child is CollisionShape2D:
+			return to_local(_spawn_beside_door(child)[0])
 	return Vector2.ZERO
 
 # BGM .ogg path for this scene. Return "" to skip BGM play.
@@ -102,7 +98,7 @@ func _ready():
 	_scene_setup()
 
 	var scene_path := get_scene_path()
-	var entry_positions := get_entry_positions()
+	var arrival_door := _find_arrival_door(GameState.entering_from)
 
 	# ISSUE #96 FIX: every branch below is fed by a ONE-SHOT flag, but each used to clear only its own
 	# flag — so whenever a higher-priority branch won, the loser's flag survived into the next map load
@@ -123,8 +119,10 @@ func _ready():
 	elif GameState.returning_from_battle:
 		resolved_spawn = GameState.player_position
 		spawn_source   = "battle_return"
-	elif entry_positions.has(GameState.entering_from):
-		resolved_spawn = entry_positions[GameState.entering_from]
+	elif arrival_door != null:
+		var placed: Array = _spawn_beside_door(arrival_door)
+		resolved_spawn = _player.get_parent().to_local(placed[0])
+		resolved_dir   = placed[1]
 		spawn_source   = "door:" + GameState.entering_from
 	else:
 		resolved_spawn = get_default_spawn()
@@ -184,6 +182,62 @@ func _exit_tree():
 # DOORS
 # ============================================================
 
+# ------------------------------------------------------------
+# DOOR-BASED SPAWNING
+# ------------------------------------------------------------
+# Every map link is two-way: the player always arrives at the door in this map that
+# leads back to the map they just left (matched by target_scene basename against
+# GameState.entering_from), so no map hardcodes spawn coordinates any more.
+#
+# Each door says which side of it the player appears on with metadata/spawn_side:
+#   "below" (default) -- outdoor doors into buildings, an interior door at the top of a room
+#   "above"           -- an interior exit at the bottom of the room
+#   "left" / "right"  -- side doors and stairs
+# The player is centred on the door along the other axis and faces away from it.
+
+## TWEAKABLE: clear gap in px between the player's collision box and the door's, so
+## arriving never overlaps the door and bounces the player straight back out.
+const DOOR_SPAWN_GAP := 5.0
+
+const _FACING_FOR_SIDE := {"below": "down", "above": "up", "left": "left", "right": "right"}
+
+func _find_arrival_door(from_map: String) -> CollisionShape2D:
+	if from_map == "":
+		return null
+	for child in $"Door Areas".get_children():
+		if child is CollisionShape2D and child.has_meta("target_scene"):
+			if String(child.get_meta("target_scene")).get_file().get_basename() == from_map:
+				return child
+	return null
+
+## Returns [global_position, facing] for the player standing beside `door`.
+func _spawn_beside_door(door: CollisionShape2D) -> Array:
+	var side: String = door.get_meta("spawn_side", "below")
+	if not _FACING_FOR_SIDE.has(side):
+		push_warning("BaseMapScene: door %s has unknown spawn_side '%s' -- using below" % [door.name, side])
+		side = "below"
+
+	var door_half := Vector2.ZERO
+	if door.shape is RectangleShape2D:
+		door_half = (door.shape as RectangleShape2D).size * 0.5 * door.global_scale.abs()
+	var door_centre := door.global_position
+
+	# The player's own collision box, relative to the player's origin.
+	var body_offset := Vector2.ZERO
+	var body_half := Vector2(8, 11.5)
+	var body_shape := _player.get_node_or_null("CollisionShape2D") as CollisionShape2D
+	if body_shape != null and body_shape.shape is RectangleShape2D:
+		body_offset = body_shape.position * _player.global_scale
+		body_half = (body_shape.shape as RectangleShape2D).size * 0.5 * _player.global_scale.abs()
+
+	var pos := door_centre - body_offset
+	match side:
+		"below": pos.y = door_centre.y + door_half.y + DOOR_SPAWN_GAP + body_half.y - body_offset.y
+		"above": pos.y = door_centre.y - door_half.y - DOOR_SPAWN_GAP - body_half.y - body_offset.y
+		"left":  pos.x = door_centre.x - door_half.x - DOOR_SPAWN_GAP - body_half.x - body_offset.x
+		"right": pos.x = door_centre.x + door_half.x + DOOR_SPAWN_GAP + body_half.x - body_offset.x
+	return [pos, _FACING_FOR_SIDE[side]]
+
 func _setup_doors():
 	var door_areas := $"Door Areas"
 	door_areas.collision_layer = 3
@@ -233,7 +287,11 @@ func _on_door_entered(body: Node2D):
 	if nearest_shape == null:
 		return
 
-	var target: String = nearest_shape.get_meta("target_scene")
+	# A door may point at a map that is not built yet (the Train Station's endgame
+	# platforms): it stays inert until that scene exists.
+	var target: String = nearest_shape.get_meta("target_scene", "")
+	if target == "" or not ResourceLoader.exists(target):
+		return
 
 	if not _on_before_door_transition(body, target):
 		return

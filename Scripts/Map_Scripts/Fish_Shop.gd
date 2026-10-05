@@ -10,13 +10,6 @@ extends BaseMapScene
 
 const SCENE_PATH = "res://Scenes/Map_Scenes/Fish_Shop.tscn"
 
-## Just inside the door at the bottom of the room, facing up -- the same relationship the
-## other two marts have between their door area and their spawn.
-const SPAWN_FROM_CELESTE_HARBOUR = Vector2(223, 277)
-
 func get_scene_path() -> String:      return SCENE_PATH
 func get_bgm_path() -> String:        return SoundManagerScript.BGM_FISH_SHOP
-func get_default_spawn() -> Vector2:  return SPAWN_FROM_CELESTE_HARBOUR
-func get_entry_positions() -> Dictionary:
-	return {"Celeste_Harbour": SPAWN_FROM_CELESTE_HARBOUR}
 func get_map_data_name() -> String: return "Fish_Shop"

@@ -3344,46 +3344,55 @@ position = Vector2(-37, 1468)
 position = Vector2(-888, -8)
 shape = SubResource("RectangleShape2D_njjmc")
 metadata/target_scene = "res://Scenes/Map_Scenes/Player_House_Downstairs.tscn"
+metadata/spawn_side = "below"
 
 [node name="DoorArea_CardMart" type="CollisionShape2D" parent="Door Areas" unique_id=1953881513]
 position = Vector2(468, -17)
 shape = SubResource("RectangleShape2D_njjmc")
 metadata/target_scene = "res://Scenes/Map_Scenes/Card_Mart.tscn"
+metadata/spawn_side = "below"
 
 [node name="DoorArea_FishShop" type="CollisionShape2D" parent="Door Areas" unique_id=779155805]
 position = Vector2(-1620, -864)
 shape = SubResource("RectangleShape2D_njjmc")
 metadata/target_scene = "res://Scenes/Map_Scenes/Fish_Shop.tscn"
+metadata/spawn_side = "below"
 
 [node name="DoorArea_DeepOceanFishing" type="CollisionShape2D" parent="Door Areas" unique_id=1406899974]
 position = Vector2(-1862, -418)
 shape = SubResource("RectangleShape2D_njjmc")
 metadata/target_scene = "res://Scenes/Map_Scenes/DeepOceanFishing.tscn"
+metadata/spawn_side = "below"
 
 [node name="DoorArea_VerdantForest" type="CollisionShape2D" parent="Door Areas" unique_id=271657158]
 position = Vector2(960, -1035)
 shape = SubResource("RectangleShape2D_h0m0o")
 metadata/target_scene = "res://Scenes/Map_Scenes/Verdant_Forest.tscn"
+metadata/spawn_side = "below"
 
 [node name="DoorArea_TownHall" type="CollisionShape2D" parent="Door Areas" unique_id=211848895]
 position = Vector2(1436, -715)
 shape = SubResource("RectangleShape2D_h0m0o")
 metadata/target_scene = "res://Scenes/Map_Scenes/TownHall.tscn"
+metadata/spawn_side = "below"
 
 [node name="DoorArea_TrainStation" type="CollisionShape2D" parent="Door Areas" unique_id=1510638713]
 position = Vector2(3082, -903)
 shape = SubResource("RectangleShape2D_h0m0o")
 metadata/target_scene = "res://Scenes/Map_Scenes/TrainStation.tscn"
+metadata/spawn_side = "below"
 
 [node name="DoorArea_Hotel" type="CollisionShape2D" parent="Door Areas" unique_id=1171351068]
 position = Vector2(3448, -897)
 shape = SubResource("RectangleShape2D_gg651")
-metadata/TargetScene = "res://Scenes/Map_Scenes/Hotel.tscn"
+metadata/target_scene = "res://Scenes/Map_Scenes/Hotel.tscn"
+metadata/spawn_side = "below"
 
 [node name="DoorArea_Cafe" type="CollisionShape2D" parent="Door Areas" unique_id=834152587]
 position = Vector2(2084, -516)
 shape = SubResource("RectangleShape2D_gg651")
-metadata/TargetScene = "res://Scenes/Map_Scenes/Hotel.tscn"
+metadata/target_scene = "res://Scenes/Map_Scenes/Cafe.tscn"
+metadata/spawn_side = "below"
 
 [node name="Interactables" type="Area2D" parent="." unique_id=1377595820]
 script = ExtResource("int_script")

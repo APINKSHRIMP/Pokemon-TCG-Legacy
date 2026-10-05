@@ -2,8 +2,6 @@ extends BaseMapScene
 
 const SCENE_PATH = "res://Scenes/Map_Scenes/Player_House_Upstairs.tscn"
 
-const SPAWN_FROM_PLAYER_HOUSE_DOWNSTAIRS = Vector2(50, 20)
-
 # ISSUE #130 FIX: the box gift and Player_Data/Player_Decks/"Your First Deck".json had drifted --
 # the deck ran 4 Doduo and 2 Poliwag the player was never given, and 2 Bill it did not contain,
 # while the gift handed over 4 Voltorb against the deck's 2. Both are now the SAME 60-card list:
@@ -50,9 +48,6 @@ const NEXT_MORNING_FONT := "res://UI_Themes/ChakraPetch-Bold.ttf"
 
 func get_scene_path() -> String:      return SCENE_PATH
 func get_bgm_path() -> String:        return SoundManagerScript.BGM_PLAYER_HOME
-func get_default_spawn() -> Vector2:  return SPAWN_FROM_PLAYER_HOUSE_DOWNSTAIRS
-func get_entry_positions() -> Dictionary:
-	return {"Player_House_Downstairs": SPAWN_FROM_PLAYER_HOUSE_DOWNSTAIRS}
 
 func _scene_setup():
 	_apply_moving_in_state()

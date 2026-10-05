@@ -10,8 +10,6 @@ extends BaseMapScene
 const SCENE_PATH = "res://Scenes/Map_Scenes/Gym_Plaza.tscn"
 
 const DEFAULT_SPAWN_POSITION             = Vector2(1763, 1810)
-const SPAWN_FROM_VERDANT_FOREST          = Vector2(1760, 2130)
-const SPAWN_FROM_GYM_CHALLENGE_RECEPTION = Vector2(1757, 1219)
 
 # Gym Plaza shares Verdant Forest's tilesets
 const TILESET_MORNING   = preload("res://Image_Assets/Map_Sheets/Tile_Sets/Verdant_Forest_Morning.tres")
@@ -36,11 +34,6 @@ func get_scene_path() -> String:     return SCENE_PATH
 ## screen, which is the only other place a menu theme belongs.
 func get_bgm_path() -> String:       return SoundManagerScript.BGM_GYM_CHALLENGE_HALL
 func get_default_spawn() -> Vector2: return DEFAULT_SPAWN_POSITION
-func get_entry_positions() -> Dictionary:
-	return {
-		"Verdant_Forest":          SPAWN_FROM_VERDANT_FOREST,
-		"Gym_Challenge_Reception": SPAWN_FROM_GYM_CHALLENGE_RECEPTION,
-	}
 func get_map_data_name() -> String: return "Gym_Plaza"
 
 func _scene_setup():

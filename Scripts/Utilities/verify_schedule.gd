@@ -20,6 +20,11 @@ const MAPS := {
 	"Fish_Shop": [1, 3],
 	"Windmill": [1, 3],
 	"Gym_Plaza": [9, 24],
+	"TownHall": [1, 20],
+	"TrainStation": [1, 3],
+	"Hotel": [1, 3],
+	"Cafe": [1, 3],
+	"DeepOceanFishing": [1, 3],
 }
 const TIMES := ["Morning", "Afternoon", "Evening", "Night"]
 

@@ -680,11 +680,13 @@ position = Vector2(-37, 1468)
 position = Vector2(1787, 709)
 shape = SubResource("RectangleShape2D_efv3c")
 metadata/target_scene = "res://Scenes/Map_Scenes/Verdant_Forest.tscn"
+metadata/spawn_side = "above"
 
-[node name="DoorArea_GymHall" type="CollisionShape2D" parent="Door Areas" unique_id=1006479648]
+[node name="DoorArea_GymReception" type="CollisionShape2D" parent="Door Areas" unique_id=1006479648]
 position = Vector2(1794, -274.25)
 shape = SubResource("RectangleShape2D_x6xh7")
 metadata/target_scene = "res://Scenes/Map_Scenes/Gym_Challenge_Reception.tscn"
+metadata/spawn_side = "below"
 
 [node name="OPPONENTS" type="Node2D" parent="." unique_id=1249595646]
 z_index = 1

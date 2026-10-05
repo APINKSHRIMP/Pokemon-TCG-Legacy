@@ -2,17 +2,9 @@ extends BaseMapScene
 
 const SCENE_PATH = "res://Scenes/Map_Scenes/Player_House_Downstairs.tscn"
 
-const SPAWN_FROM_CELESTE_HARBOUR       = Vector2(200, 205)
-const SPAWN_FROM_PLAYER_HOUSE_UPSTAIRS = Vector2(365, 10)
 
 func get_scene_path() -> String:      return SCENE_PATH
 func get_bgm_path() -> String:        return SoundManagerScript.BGM_PLAYER_HOME
-func get_default_spawn() -> Vector2:  return SPAWN_FROM_CELESTE_HARBOUR
-func get_entry_positions() -> Dictionary:
-	return {
-		"Celeste_Harbour":       SPAWN_FROM_CELESTE_HARBOUR,
-		"Player_House_Upstairs": SPAWN_FROM_PLAYER_HOUSE_UPSTAIRS,
-	}
 
 func _ready() -> void:
 	super._ready()

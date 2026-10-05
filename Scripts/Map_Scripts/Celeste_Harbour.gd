@@ -8,11 +8,6 @@ const TILESET_EVENING   = preload("res://Image_Assets/Map_Sheets/Tile_Sets/Celes
 const TILESET_NIGHT     = preload("res://Image_Assets/Map_Sheets/Tile_Sets/Celeste_Harbour_Night.tres")
 
 const DEFAULT_SPAWN_POSITION             = Vector2(-600, 1500)
-const SPAWN_FROM_VERDANT_FOREST          = Vector2(918, 900)
-const SPAWN_FROM_PLAYER_HOUSE_DOWNSTAIRS = Vector2(-597, 1473)
-const SPAWN_FROM_CARD_MART               = Vector2(431, 1474)
-# On the porch under the Fish Shop door (the building art runs x -1135..-906, bottom y 1164).
-const SPAWN_FROM_FISH_SHOP               = Vector2(-1020, 1185)
 
 const TAXI_START_POS := Vector2(2573.0, 1816.0)
 const TAXI_END_POS   := Vector2(-742.0, 1828.0)
@@ -62,13 +57,6 @@ func _allow_menu_open(_is_enter: bool) -> bool:
 func get_scene_path() -> String:    return SCENE_PATH
 func get_bgm_path() -> String:      return SoundManagerScript.BGM_CELESTE_HARBOUR
 func get_default_spawn() -> Vector2: return DEFAULT_SPAWN_POSITION
-func get_entry_positions() -> Dictionary:
-	return {
-		"Verdant_Forest":           SPAWN_FROM_VERDANT_FOREST,
-		"Player_House_Downstairs":  SPAWN_FROM_PLAYER_HOUSE_DOWNSTAIRS,
-		"Card_Mart":                SPAWN_FROM_CARD_MART,
-		"Fish_Shop":                SPAWN_FROM_FISH_SHOP,
-	}
 func get_map_data_name() -> String: return "Celeste_Harbour"
 
 # ============================================================

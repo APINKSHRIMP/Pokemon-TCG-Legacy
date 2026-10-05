@@ -164,10 +164,11 @@ position = Vector2(361, 447)
 [node name="Door Areas" type="Area2D" parent="." unique_id=207957012]
 position = Vector2(139, 1523)
 
-[node name="DoorArea_GymHall" type="CollisionShape2D" parent="Door Areas" unique_id=1738726847]
+[node name="DoorArea_GymReception" type="CollisionShape2D" parent="Door Areas" unique_id=1738726847]
 position = Vector2(222, -1025)
 shape = SubResource("RectangleShape2D_m8vm5")
 metadata/target_scene = "res://Scenes/Map_Scenes/Gym_Challenge_Reception.tscn"
+metadata/spawn_side = "above"
 
 [node name="UILAYER" type="CanvasLayer" parent="." unique_id=1060825490]
 

@@ -9,17 +9,9 @@ extends BaseMapScene
 
 const SCENE_PATH = "res://Scenes/Map_Scenes/Gym_Challenge_Reception.tscn"
 
-const SPAWN_FROM_GYM_PLAZA          = Vector2(350, 450)
-const SPAWN_FROM_GYM_CHALLENGE_HALL = Vector2(220, 45)
 
 func get_scene_path() -> String:      return SCENE_PATH
 func get_bgm_path() -> String:        return SoundManagerScript.BGM_GYM_CHALLENGE_HALL
-func get_default_spawn() -> Vector2:  return SPAWN_FROM_GYM_PLAZA
-func get_entry_positions() -> Dictionary:
-	return {
-		"Gym_Plaza":          SPAWN_FROM_GYM_PLAZA,
-		"Gym_Challenge_Hall": SPAWN_FROM_GYM_CHALLENGE_HALL,
-	}
 func get_map_data_name() -> String: return "Gym_Challenge_Reception"
 
 func _scene_setup():
