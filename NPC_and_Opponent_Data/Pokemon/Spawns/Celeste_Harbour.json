@@ -1471,20 +1471,20 @@
         "Morning": {
           "table": [
             {
+              "species": "098_Krabby",
+              "percent": 45
+            },
+            {
+              "species": "099_Kingler",
+              "percent": 15
+            },
+            {
               "species": "692_Clauncher",
-              "percent": 25
+              "percent": 35
             },
             {
               "species": "693_Clawitzer",
               "percent": 5
-            },
-            {
-              "species": "098_Krabby",
-              "percent": 70
-            },
-            {
-              "species": "099_Kingler",
-              "percent": 10
             }
           ]
         },
@@ -1492,18 +1492,18 @@
           "table": [
             {
               "species": "072_Tentacool",
-              "percent": 19
+              "percent": 45
             },
             {
               "species": "073_Tentacruel",
-              "percent": 5
+              "percent": 15
             },
             {
-              "species": "223_Remoraid",
-              "percent": 22
+              "species": "688_Binacle",
+              "percent": 35
             },
             {
-              "species": "224_Octillery",
+              "species": "689_Barbaracle",
               "percent": 5
             }
           ]
@@ -1511,51 +1511,39 @@
         "Evening": {
           "table": [
             {
+              "species": "211_Qwilfish",
+              "percent": 30
+            },
+            {
               "species": "116_Horsea",
-              "percent": 100
+              "percent": 45
             },
             {
               "species": "117_Seadra",
-              "percent": 10
+              "percent": 20
             },
             {
               "species": "230_Kingdra",
-              "percent": 10
-            },
-            {
-              "species": "211_Qwilfish",
-              "percent": 10
-            },
-            {
-              "species": "370_Luvdisc",
-              "percent": 10
+              "percent": 5
             }
           ]
         },
         "Night": {
           "table": [
             {
-              "species": "690_Skrelp",
-              "percent": 25
-            },
-            {
-              "species": "691_Dragalge",
-              "percent": 5
-            },
-            {
-              "species": "456_Finneon",
-              "percent": 25
-            },
-            {
-              "species": "457_Lumineon",
-              "percent": 5
-            },
-            {
               "species": "170_Chinchou",
-              "percent": 40
+              "percent": 42
             },
             {
               "species": "171_Lanturn",
+              "percent": 15
+            },
+            {
+              "species": "456_Finneon",
+              "percent": 33
+            },
+            {
+              "species": "457_Lumineon",
               "percent": 10
             }
           ]
@@ -1578,22 +1566,93 @@
           "table": [
             {
               "species": "341_Corphish",
-              "percent": 100
+              "percent": 35
             },
             {
               "species": "342_Crawdaunt",
-              "percent": 100
+              "percent": 5
+            },
+            {
+              "species": "298_Azurill",
+              "percent": 33
+            },
+            {
+              "species": "183_Marill",
+              "percent": 22
+            },
+            {
+              "species": "184_Azumarill",
+              "percent": 5
             }
           ]
         },
         "Afternoon": {
-          "table": []
+          "table": [
+            {
+              "species": "550_Basculin_Red_Striped",
+              "percent": 29
+            },
+            {
+              "species": "418_Buizel",
+              "percent": 30
+            },
+            {
+              "species": "419_Floatzel",
+              "percent": 5
+            },
+            {
+              "species": "129_Magikarp",
+              "percent": 35
+            },
+            {
+              "species": "130_Gyarados",
+              "percent": 1
+            }
+          ]
         },
         "Evening": {
-          "table": []
+          "table": [
+            {
+              "species": "079_Slowpoke",
+              "percent": 45
+            },
+            {
+              "species": "080_Slowbro",
+              "percent": 5
+            },
+            {
+              "species": "199_Slowking",
+              "percent": 5
+            },
+            {
+              "species": "550_Basculin_Blue_Striped",
+              "percent": 45
+            }
+          ]
         },
         "Night": {
-          "table": []
+          "table": [
+            {
+              "species": "602_Tynamo",
+              "percent": 45
+            },
+            {
+              "species": "603_Eelektrik",
+              "percent": 13
+            },
+            {
+              "species": "604_Eelektross",
+              "percent": 2
+            },
+            {
+              "species": "453_Croagunk",
+              "percent": 35
+            },
+            {
+              "species": "454_Toxicroak",
+              "percent": 5
+            }
+          ]
         }
       }
     }

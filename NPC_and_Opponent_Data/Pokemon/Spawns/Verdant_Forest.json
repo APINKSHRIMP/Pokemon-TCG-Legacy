@@ -19753,16 +19753,16 @@
               "percent": 1
             },
             {
-              "species": "194_Wooper",
+              "species": "186_Politoed",
+              "percent": 1
+            },
+            {
+              "species": "399_Bidoof",
               "percent": 20
             },
             {
-              "species": "195_Quagsire",
+              "species": "400_Bibarel",
               "percent": 5
-            },
-            {
-              "species": "186_Politoed",
-              "percent": 1
             }
           ]
         },
@@ -19817,12 +19817,12 @@
         "Night": {
           "table": [
             {
-              "species": "349_Feebas",
-              "percent": 10
+              "species": "194_Wooper",
+              "percent": 20
             },
             {
-              "species": "350_Milotic",
-              "percent": 10
+              "species": "195_Quagsire",
+              "percent": 5
             },
             {
               "species": "054_Psyduck",

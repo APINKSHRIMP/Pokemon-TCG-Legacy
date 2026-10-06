@@ -37,6 +37,16 @@ const FLICK_TIME := 0.1 * PULL_OUT_TIME_SCALE
 const ROD_SCALE := 0.5
 const BOBBER_SCALE := 1.0
 const FISH_SCALE := 1.0
+## The caught Pokémon's sprite scale for a fish of ordinary size in the water.
+const CAUGHT_BASE_SCALE := 0.5
+## How far the caught sprite follows the fish's size in the water -- deliberately much
+## less than 1:1, so a tiny fish is not a speck on the line and a whale is not the whole
+## screen. Smaller than normal: linear, 0.5x -> 0.9, 0.75x -> 0.95. Bigger than normal:
+## log2, 1.2x -> ~1.07, 2x -> 1.25, 3x -> ~1.4, the biggest Wailord (~7.7x) -> ~1.74.
+const CAUGHT_SHRINK_PER_SIZE := 0.2
+const CAUGHT_GROW_PER_DOUBLING := 0.25
+const CAUGHT_FACTOR_MIN := 0.8
+const CAUGHT_FACTOR_MAX := 1.75
 
 ## Where the rod handle sits relative to the player origin, per facing, in world px.
 ## Right hand for every direction.
@@ -195,33 +205,40 @@ const BITE_WINDOW := 1.0
 ## Tug-of-war. Line strength runs -100 (slack, about to be dropped) to +100 (snapped).
 ## Only MISTAKES load the line now: countering correctly holds it wherever it is and just
 ## tires the fish out, so the fight is about reading the fish's run rather than rationing
-## a pull. A wrong hold snaps it in under a second and letting go goes slack in one, so
-## there is no resting -- the right key has to be held nearly all of the time.
-const TENSION_DECAY := 100.0     ## per second with no input
+## a pull. At line strength 100 a wrong hold snaps it in ~1.25 s and letting go drops it
+## slack in ~1.3 s, so the right key has to be held most of the time.
+## With no input the line drifts towards slack: quickly while it is still red (above 0)
+## so an overloaded line cools down fast, slowly once it is blue (below 0) so a slack line
+## is not dropped in a blink.
+const TENSION_DECAY_RED := 120.0
+const TENSION_DECAY_BLUE := 75.0
 const TENSION_CORRECT := 0.0     ## countering the right way costs the line nothing
 ## A SLACK line (negative tension) is taken back up to neutral while the player counters
 ## correctly, at a middling rate -- so pulling the right way also recovers a line that was
 ## nearly dropped, instead of leaving it sitting in the blue.
-const TENSION_CORRECT_RECOVER := 55.0
-const TENSION_WRONG := 120.0     ## per second pulling the wrong way
+const TENSION_CORRECT_RECOVER := 75.0
+const TENSION_WRONG := 80.0      ## per second pulling the wrong way
 ## One hit per REEL press made while the fish still has fight in it. Enough that
 ## panic-mashing early costs, not so much that a couple of hopeful presses end the fight.
-const TENSION_WRONG_PRESS := 17.5
+const TENSION_WRONG_PRESS := 10.0
 ## While the fish is blown, the line settles back to neutral from EITHER side at this rate
 ## per second -- that is what the mashing window is for: it hands you a clean line for the
 ## next run.
-const TENSION_REST_RECOVER := 120.0
-const ENERGY_DRAIN := 40.0       ## per second of correct input
-## The fish also tires on its own, at a flat fraction of its whole bar every second,
-## whatever the player is doing. At 0.05 a fish that is never countered still blows in
-## 20 seconds, so a fight always moves forwards.
-const ENERGY_BLEED_FRACTION := 0.05
+const TENSION_REST_RECOVER := 150.0
+const ENERGY_DRAIN := 10.0       ## per second of correct input
+## The fish also tires on its own, a flat amount of energy every second whatever the
+## player is doing, so a fight always moves forwards. Flat, not a share of the bar: a
+## 50-energy Magikarp blows in 25 s uncountered, a 300-energy Wailord takes 150 s.
+const ENERGY_BLEED := 2.0
+## Every time the fish blows, the bar it gets back after resting is this much smaller
+## than the last one (compounding: 100 -> 90 -> 81 ...), so a long fight gets easier.
+const ENERGY_MAX_LOSS_PER_REST := 0.10
 ## Speed and tail scale while it is blown and getting its breath back.
 const TIRED_SPEED_FACTOR := 0.25
 ## What the player's input does to the fish's speed: countering correctly slows it,
 ## pulling the wrong way lets it run.
-const FIGHT_INPUT_SLOW := 0.8
-const FIGHT_INPUT_FAST := 1.2
+const FIGHT_INPUT_SLOW := 0.7
+const FIGHT_INPUT_FAST := 1.3
 ## The run out to `initial_distance` after the strike is swum at the fish's FIGHTING
 ## speed (its `lateral_speed`, the same one it runs side to side at), not at the crawl it
 ## crept up on the bait with -- a hooked fish bolting is the fastest it ever moves. The
@@ -367,13 +384,12 @@ const JINGLE_AFTER_CRY_LEAD := 0.06
 
 ## One line per way of losing a fish, so the player is told WHICH mistake they made
 ## rather than being left to work it out: the line ran red (too much wrong input), the
-## line ran blue (no tension at all), the strike window closed, or it simply outran them.
+## line ran blue (no tension at all), or the strike window closed. Running out to the far
+## edge of the water loses nothing -- that edge is a wall (_clamp_to_cone).
 ## ESCAPED_MESSAGE is the fallback for a fish that goes away without a reason of its own.
 const BREAK_MESSAGE := "The line snapped!"
 const SLACK_MESSAGE := "No tension on rod, the fish broke free!"
 const TOO_LATE_MESSAGE := "You reeled in too late, the fish stole the bait!"
-## Run all the way out to the far edge of the spot's water.
-const BROKE_FREE_MESSAGE := "The fish was able to swim away!"
 const ESCAPED_MESSAGE := "It got away..."
 # -----------------------------------------------------------------------------
 
@@ -423,12 +439,12 @@ var _bite_anim: bool = false
 
 ## The spot's water rectangle and what it works out to for this cast, all measured from
 ## the player: _catch_radial is its nearest edge (reel the fish over it and it is landed),
-## _lost_radial the edge opposite the player (reach it and the fish breaks free), and
-## _side_min/_side_max the two walls it turns round at. Left at the fallbacks when the
+## _far_radial the edge opposite the player, and _side_min/_side_max the side edges --
+## all three are walls the fish is held inside, never a way to lose it. Left at the fallbacks when the
 ## map has no fishing spot.
 var _bounds: Rect2 = Rect2()
 var _catch_radial: float = CATCH_DISTANCE
-var _lost_radial: float = INF
+var _far_radial: float = INF
 ## Radial distance of the splashdown. The cone's width is measured against this, so the
 ## fight is shaped by how far the player actually cast rather than by the size of the sea.
 ## Seeded from the zone and then corrected to where the bobber really landed.
@@ -459,6 +475,9 @@ var _bite_delay: float = 0.0
 
 var _tension: float = 0.0
 var _energy: float = 0.0
+## What a rest refills _energy to. Starts at the species' `energy` and shrinks by
+## ENERGY_MAX_LOSS_PER_REST each time the fish blows.
+var _energy_max: float = 0.0
 var _fight_side: float = 1.0
 var _fight_switch: float = 0.0
 ## Seconds of "blown" left. Above zero the fish is resting, the line is recovering and
@@ -554,13 +573,13 @@ func _ready() -> void:
 
 ## Works the whole cast out of the fishing SPOT the player is casting from -- the nearest
 ## `fishing_spot` spawn point, whose region is the water: how far to throw, where the
-## catch line is, where the fish breaks free, and the two walls it turns round at. The
+## catch line is, and the far and side walls it is held inside. The
 ## same spot decides what bites (_spawn_fish). A map with no fishing spot at all keeps
 ## the old fixed numbers.
 func _resolve_bounds() -> void:
 	_axis = _dir_vector(water_dir)
 	_catch_radial = CATCH_DISTANCE
-	_lost_radial = INF
+	_far_radial = INF
 	_side_min = -INF
 	_side_max = INF
 	_cast_distance = CAST_DISTANCE
@@ -582,12 +601,12 @@ func _resolve_bounds() -> void:
 		radial.append(from_player.dot(_axis))
 		across.append(from_player.dot(_perp))
 	_catch_radial = maxf(1.0, float(radial.min()))
-	_lost_radial = float(radial.max())
+	_far_radial = float(radial.max())
 	_side_min = float(across.min())
 	_side_max = float(across.max())
 	# "Measure the height of the box and throw half of it" -- which is the span between
 	# the two edges, not the distance to the far one.
-	_cast_distance = maxf(8.0, (_lost_radial - _catch_radial) * 0.5)
+	_cast_distance = maxf(8.0, (_far_radial - _catch_radial) * 0.5)
 	_cast_radial = _catch_radial + _cast_distance
 
 
@@ -961,8 +980,7 @@ func _spawn_fish() -> void:
 	_apply_fish_scale()
 	var lateral := _perp * randf_range(-FISH_SPAWN_LATERAL, FISH_SPAWN_LATERAL)
 	_fish.global_position = _bobber_pos + _axis * FISH_SPAWN_DISTANCE + lateral
-	# Never outside its own water, and never right on the far wall -- that is the line it
-	# breaks free on, and it must not be sitting on it before the fight has begun.
+	# Never outside its own water, and never right on the far wall.
 	if _bounds.size.x > 0.0 and _bounds.size.y > 0.0:
 		var inner := _bounds.grow(-2.0)
 		_fish.global_position = _fish.global_position.clamp(inner.position, inner.end)
@@ -1098,7 +1116,8 @@ func _process_bite(_delta: float) -> void:
 ## Hooked in time: the line runs straight to the fish (the bobber is already under).
 func _hook() -> void:
 	_tension = 0.0
-	_energy = float(_stats["energy"])
+	_energy_max = float(_stats["energy"])
+	_energy = _energy_max
 	_fight_side = 1.0 if randf() < 0.5 else -1.0
 	_fight_switch = randf_range(FIGHT_SWITCH_MIN, FIGHT_SWITCH_MAX)
 	_rest_left = 0.0
@@ -1110,11 +1129,11 @@ func _hook() -> void:
 		# the throw is half the spot's water and differs from spot to spot. That
 		# is where the leash starts: it works in and out from there and only ever gets
 		# closer by being reeled. It swims out there at its fighting speed, never teleports.
-		# Clamped into the zone: a leash outside the water would be unreelable, or would
-		# be sitting on the break-free line before the fight had started.
+		# Clamped into the zone, FIGHT_SURGE short of the far wall so the in-and-out
+		# surge has room to swing before the wall stops it.
 		var bobber_radial := (_bobber_pos - _player.global_position).dot(_axis)
 		_leash = clampf(bobber_radial + float(_stats["initial_distance"]), _catch_radial,
-				maxf(_catch_radial, _lost_radial - FIGHT_SURGE))
+				maxf(_catch_radial, _far_radial - FIGHT_SURGE))
 		_set_surge(1.0)
 		var radial := (_fish.global_position - _player.global_position).dot(_axis)
 		_yanking = radial < _leash
@@ -1159,8 +1178,8 @@ func _process_fight(delta: float) -> void:
 	if resting:
 		_rest_left -= delta
 		if _rest_left <= 0.0:
-			# Second wind: back to full energy and off it goes again.
-			_energy = float(_stats["energy"])
+			# Second wind: back to its (shrunk) full bar and off it goes again.
+			_energy = _energy_max
 			_fight_switch = randf_range(FIGHT_SWITCH_MIN, FIGHT_SWITCH_MAX)
 
 	_fight_switch -= delta
@@ -1187,13 +1206,17 @@ func _process_fight(delta: float) -> void:
 			_tension += TENSION_CORRECT * delta
 		_energy -= ENERGY_DRAIN * delta
 	else:
-		_tension -= TENSION_DECAY * delta
-	# It tires whatever the player does: a flat slice of its own bar every second, so a
-	# fish always blows inside twenty seconds even if it is never countered once.
+		# Red side first at the fast rate; whatever is left of the frame after crossing
+		# zero is spent on the blue side at the slow one.
+		var red_time := clampf(_tension / TENSION_DECAY_RED, 0.0, delta)
+		_tension -= TENSION_DECAY_RED * red_time + TENSION_DECAY_BLUE * (delta - red_time)
+	# It tires whatever the player does: ENERGY_BLEED a second, so even a fish that is
+	# never countered once blows eventually -- the bigger its bar, the longer it takes.
 	if not resting:
-		_energy -= float(_stats["energy"]) * ENERGY_BLEED_FRACTION * delta
+		_energy -= ENERGY_BLEED * delta
 		if _energy <= 0.0:
 			_rest_left = float(_stats["recharge_time"])
+			_energy_max *= 1.0 - ENERGY_MAX_LOSS_PER_REST
 	# Blown beats everything: a fish with nothing left barely ripples the surface.
 	var pulling_wrong := pulled != 0.0 and not correct
 	if resting:
@@ -1224,7 +1247,6 @@ func _process_fight(delta: float) -> void:
 	_clamp_to_cone()
 	if not _yanking:
 		_clamp_to_leash()
-	_check_broke_free()
 
 
 ## One Space/Enter press while the fish is blown: drags the leash in a notch and hauls the
@@ -1238,18 +1260,6 @@ func _reel_step() -> void:
 	_clamp_to_leash()
 	if _leash <= _catch_radial:
 		_start_catch()
-
-
-## The fish has run all the way out to the edge of its water opposite the player: it is
-## gone, and there is nothing the player can do about it. Returns true when it fires.
-func _check_broke_free() -> bool:
-	if is_inf(_lost_radial) or _fish == null or not is_instance_valid(_fish):
-		return false
-	if (_fish.global_position - _player.global_position).dot(_axis) < _lost_radial:
-		return false
-	_scare_fish()
-	_begin_retract(BROKE_FREE_MESSAGE)
-	return true
 
 
 ## Holds the fish between its leash and FIGHT_SURGE beyond it, turning it round at either
@@ -1402,9 +1412,12 @@ func _clamp_to_cone() -> void:
 	# rectangle's walls are not symmetrical about the player, so they are kept apart.
 	var low := maxf(-room, _side_min)
 	var high := minf(room, _side_max)
-	if across >= low and across <= high:
-		return
-	_fish.global_position += _perp * (clampf(across, low, high) - across)
+	if across < low or across > high:
+		_fish.global_position += _perp * (clampf(across, low, high) - across)
+	# The far edge of the water is a wall too: it can run all the way out, but it is
+	# never lost for it.
+	if radial > _far_radial:
+		_fish.global_position -= _axis * (radial - _far_radial)
 
 
 ## -1 / 0 / +1 along the axis across the cast. Mirrors the player's own WASD + arrows.
@@ -1476,6 +1489,24 @@ func _process_catch_pause() -> void:
 	_set_state(State.CATCH_YANK)
 
 
+## How big the fish read in the water, relative to a small silhouette at fish_size 1.
+## The big silhouette is drawn ~2.5x longer than the small one, so a big fish at 0.6
+## is really bigger than a small fish at 1.0 -- `fish_size` alone would not say so.
+func _fish_water_size() -> float:
+	var length := FishingArt.fish_size(0, _fish_big).y / FishingArt.fish_size(0, false).y
+	return length * float(_stats["fish_size"])
+
+
+## Water size -> caught sprite multiplier. See CAUGHT_SHRINK_PER_SIZE.
+static func caught_size_factor(water_size: float) -> float:
+	var factor := 1.0
+	if water_size < 1.0:
+		factor = 1.0 - CAUGHT_SHRINK_PER_SIZE * (1.0 - water_size)
+	elif water_size > 1.0:
+		factor = 1.0 + CAUGHT_GROW_PER_DOUBLING * log(water_size) / log(2.0)
+	return clampf(factor, CAUGHT_FACTOR_MIN, CAUGHT_FACTOR_MAX)
+
+
 func _build_caught() -> void:
 	_caught = Sprite2D.new()
 	_caught.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
@@ -1487,9 +1518,9 @@ func _build_caught() -> void:
 	if sheet == null:
 		return
 	_caught_cell = Vector2(sheet.get_width() / 4.0, sheet.get_height() / 4.0)
-	# A flat half scale: the sprites are already drawn the size they want to be, and the
-	# species' `scale` belongs to its overworld spawns, not to what comes off a line.
-	_caught_scale = 0.5
+	# Half scale, nudged by how big the fish was in the water. The species' `scale`
+	# belongs to its overworld spawns, not to what comes off a line.
+	_caught_scale = CAUGHT_BASE_SCALE * caught_size_factor(_fish_water_size())
 	_caught.scale = Vector2(_caught_scale, _caught_scale)
 	_set_caught_row(1)  # idle_left
 	# Hauled out sideways: the left-facing frame turned a quarter turn clockwise.
