@@ -68,6 +68,14 @@ var _pending_confirm_yes: Callable = Callable()
 # dismiss logic. Used by scene interactables to chain message sequences.
 var _pending_ok_action: Callable = Callable()
 
+# SPEECH EMOTES -- "[!]" / "[?]" at the very start or end of a line of dialogue. A
+# leading tag pops over the speaker BEFORE the box shows the line; a trailing one is
+# held here and pops AFTER the player clears it, before anything else happens. The box
+# is never up while one plays, and presses are swallowed (wants_message_input).
+var _after_emote: String = ""
+var _after_emote_node: Node2D = null
+var _emote_busy: bool = false
+
 # ============================================================
 # GIFT DISPLAY STATE
 # ============================================================
@@ -192,6 +200,9 @@ const GIFT_COIN_SIZE := Vector2(250, 250)
 
 # Costume display size — 50% larger than the standard size
 const GIFT_COSTUME_SIZE := Vector2(432, 594)
+## TWEAKABLE: the box a key item (rod, permit) is fitted into on its reveal. Item art is
+## tiny pixel art (24 px rods), so it is drawn with nearest filtering at a whole multiple.
+const GIFT_ITEM_SIZE := Vector2(288, 288)
 
 const GIFT_ITEM_SEPARATION := 20.0
 
@@ -815,6 +826,14 @@ const FISH_COIN_CHIP_ICON := "res://Image_Assets/Icons/Reward_Icons/FishCoin.png
 ## "fish_coins": true blocks in cosmetic_shop_inventory.json.
 const FISH_COIN_SHOP_IDS := ["fish_shop"]
 
+# The Fishing Captain on the Celeste Harbour dock (npc_type "fishing_captain"). With the
+# Deep Ocean Fishing Permit he offers the trip; without it he says his `says.meet` line.
+# Yes sails the player out exactly as walking through a door would, so they arrive at
+# Deep Ocean's harbour door and walking back lands them on the dock beside him.
+const FISHING_CAPTAIN_ASK := "Are ye looking to be going out t' fish int' deepest o' waters?"
+const DEEP_OCEAN_PERMIT := "Deep_Ocean_Fishing_Permit"
+const DEEP_OCEAN_SCENE := "res://Scenes/Map_Scenes/DeepOceanFishing.tscn"
+
 # ISSUE #120: the NPCs that trade in cash -- the three marts and the coin/holo shops all run
 # through the "shop" state machine, the juice bar through its own path. Only these show the
 # cash chip; everyone else gets a plain name chip as before.
@@ -981,6 +1000,7 @@ func _apply_actor_chips() -> void:
 
 
 func _show_message_with_choices(text: String):
+	text = await _emote_prelude(text)
 	_apply_actor_chips()
 	# set_mode() BEFORE set_body_text(): it can move the panel (a Yes/No box sits higher to
 	# leave room for the buttons), and the text is centred against wherever the panel ends up.
@@ -994,11 +1014,82 @@ func _show_message_with_choices(text: String):
 # ISSUE #126: "OK" boxes no longer draw an OK button -- a click anywhere, Space, Enter or
 # Escape all dismiss them -- and the panel drops into the space the button row used to take.
 func _show_message_with_ok(text: String, font_size: int = 28):
+	text = await _emote_prelude(text)
 	_apply_actor_chips()
 	message_panel.set_mode("ok")
 	message_panel.set_body_text(text, font_size)
 	message_panel.visible = true
 	_player.can_move = false
+
+# ------------------------------------------------------------
+# SPEECH EMOTES
+# ------------------------------------------------------------
+
+## Splits "[!]Hello" / "Bye.[?]" into {text, before, after}; before/after are "!", "?"
+## or "". Tags are only recognised at the very start or very end of the line.
+static func split_emote_tags(raw: String) -> Dictionary:
+	var text := raw.strip_edges()
+	var before := ""
+	var after := ""
+	for kind in ["!", "?"]:
+		var tag: String = "[" + kind + "]"
+		if text.begins_with(tag):
+			before = kind
+			text = text.substr(tag.length()).strip_edges()
+		if text.ends_with(tag):
+			after = kind
+			text = text.substr(0, text.length() - tag.length()).strip_edges()
+	return {"text": text, "before": before, "after": after}
+
+
+## Whoever is speaking right now, for an emote to sit on: a cutscene speaker's "node",
+## else the NPC or opponent being talked to.
+func _emote_target() -> Node2D:
+	var node = cutscene_speaker.get("node", null)
+	if node is Node2D and is_instance_valid(node):
+		return node
+	if current_npc != null and is_instance_valid(current_npc):
+		return current_npc as Node2D
+	if current_opponent != null and is_instance_valid(current_opponent):
+		return current_opponent as Node2D
+	return null
+
+
+## Strips a line's tags, plays a leading one (box down while it does) and remembers a
+## trailing one for _flush_after_emote(). Returns the bare line.
+func _emote_prelude(text: String) -> String:
+	if text.find("[") < 0:
+		return text
+	var parts := split_emote_tags(text)
+	var target := _emote_target()
+	if String(parts["after"]) != "":
+		_after_emote = String(parts["after"])
+		_after_emote_node = target
+	if String(parts["before"]) != "" and target != null:
+		message_panel.visible = false
+		_player.can_move = false
+		_emote_busy = true
+		await SpeechEmote.play(target, String(parts["before"]))
+		_emote_busy = false
+	return String(parts["text"])
+
+
+## Plays the held trailing emote, if any, with the box down. Every handler that clears
+## a box awaits this first.
+func _flush_after_emote() -> void:
+	if _after_emote == "":
+		return
+	var kind := _after_emote
+	var node := _after_emote_node
+	_after_emote = ""
+	_after_emote_node = null
+	if node == null or not is_instance_valid(node):
+		return
+	message_panel.visible = false
+	_emote_busy = true
+	await SpeechEmote.play(node, kind)
+	_emote_busy = false
+
 
 # ISSUE #28 FIX: shows an OK dialog styled like the match's LARGE message — large size, centred
 # horizontally AND vertically. Nothing needs restoring afterwards: set_body_text() re-derives the
@@ -1190,12 +1281,14 @@ func show_interactable_confirm(text: String, on_yes: Callable) -> void:
 # world underneath it.
 
 func wants_message_input() -> bool:
-	return _gift_reveal_active \
+	return _emote_busy or _gift_reveal_active \
 		or _validation_popup_active \
 		or _coinflip_animating \
 		or (message_panel != null and message_panel.visible)
 
 func handle_message_accept() -> void:
+	if _emote_busy:
+		return
 	if _skip_gift_reveal_if_playing():
 		return
 	if _validation_popup_active:
@@ -1216,6 +1309,8 @@ func handle_message_accept() -> void:
 		_on_yes_pressed()
 
 func handle_message_cancel() -> void:
+	if _emote_busy:
+		return
 	if _skip_gift_reveal_if_playing():
 		return
 	if _validation_popup_active:
@@ -1276,12 +1371,17 @@ func _on_player_interact(opponent: Node):
 	_show_message_with_choices(opponent.get_greeting_text())
 
 func _on_yes_pressed():
+	await _flush_after_emote()
 	# Generic interactable confirm (bed, etc.) — runs before opponent/NPC logic
 	if _pending_confirm_yes.is_valid():
 		var cb: Callable = _pending_confirm_yes
 		_pending_confirm_yes = Callable()
 		_hide_message()
 		cb.call()
+		return
+
+	if current_npc != null and current_npc.npc_type == "fishing_captain":
+		_sail_to_deep_ocean()
 		return
 
 	# Juice vendor — handle purchase inline, bypass the shop/battle paths below
@@ -1405,6 +1505,7 @@ func _on_yes_pressed():
 		SceneCache.change_scene("res://Scenes/Main_Match_Gameplay_Scenes/Match_Start_Intro_Scene.tscn")
 
 func _on_no_pressed():
+	await _flush_after_emote()
 	if current_opponent != null:
 		current_opponent.refresh_bubble()
 	if current_npc != null:
@@ -1412,6 +1513,7 @@ func _on_no_pressed():
 	_hide_message()
 
 func _on_ok_pressed():
+	await _flush_after_emote()
 	# Juice result chain: greeting → "delicious..." message → optional coin reveal
 	if not _pending_juice_result.is_empty():
 		var jr = _pending_juice_result
@@ -1482,6 +1584,13 @@ func _on_player_npc_interact(npc: Node):
 	# ISSUE #57: the player also turns to face the NPC being talked to.
 	_face_player_toward_actor(npc)
 
+	# Olly / Alexander at the Fish Shop: their own milestone conversation, which ends in
+	# the usual Yes/No into the shop (FishShopDialogue).
+	if npc.npc_type == "shop" and FishShopDialogue.is_keeper(npc.npc_name):
+		npc.refresh_bubble()
+		_run_npc_steps(FishShopDialogue.build(npc.npc_name), 0)
+		return
+
 	# Shop NPC: delegate entirely to its own state machine
 	if npc.npc_type == "shop" and npc.has_method("on_interact"):
 		npc.refresh_bubble()
@@ -1490,6 +1599,16 @@ func _on_player_npc_interact(npc: Node):
 			return
 		# on_interact() returned false → open pack purchase
 		_show_message_with_choices(npc.meet_text)
+		return
+
+	# Fishing Captain: the Deep Ocean trip, permit holders only.
+	if npc.npc_type == "fishing_captain":
+		npc.mark_as_met()
+		npc.refresh_bubble()
+		if GameState.has_item(DEEP_OCEAN_PERMIT):
+			_show_message_with_choices(FISHING_CAPTAIN_ASK)
+		else:
+			_show_message_with_ok(npc.meet_text)
 		return
 
 	# Juice vendor: tiered coin lottery, $50/cup ($25 after all 3 coins won)
@@ -1570,6 +1689,71 @@ func _on_player_npc_interact(npc: Node):
 		_show_message_with_ok(npc.repeat_text)
 	else:
 		_show_message_with_ok(npc.meet_text)
+
+# The captain's "Yes": the same hand-off BaseMapScene._on_door_entered() makes, so the
+# Deep Ocean map spawns the player beside its door back to this map.
+func _sail_to_deep_ocean() -> void:
+	_hide_message()
+	if _player == null or not is_instance_valid(_player):
+		return
+	GameState.save_player_direction(_player.get_current_direction())
+	_player.lock_movement()
+	GameState.entering_from = _map_scene_path.get_file().get_basename()
+	var tween := get_tree().current_scene.create_tween()
+	tween.tween_property(get_tree().current_scene, "modulate", Color.BLACK, 0.5)
+	tween.tween_callback(func(): SceneCache.change_scene(DEEP_OCEAN_SCENE))
+
+
+# ============================================================
+# MULTI-BOX NPC CONVERSATIONS
+# ============================================================
+# A run of boxes from the NPC being talked to (current_npc), built as data -- see
+# FishShopDialogue.build() for the step format. Each step's OK runs the next; a step
+# with a reveal plays its item notice between its own box and the next; a final step
+# with `ask` is a Yes/No that _on_yes_pressed() treats like any other for this NPC.
+
+func _run_npc_steps(steps: Array, i: int) -> void:
+	if i >= steps.size():
+		_on_ok_pressed()
+		return
+	_clear_gift_display()
+	var step: Dictionary = steps[i]
+	var last := i == steps.size() - 1
+	if last and bool(step.get("ask", false)):
+		_show_message_with_choices(str(step["text"]))
+		return
+	if step.has("reveal_id"):
+		var reveal_id := str(step["reveal_id"])
+		var reveal_text := str(step["reveal_text"])
+		var reveal_image := str(step.get("reveal_image", ""))
+		_pending_ok_action = func():
+			GameState.mark_fish_shop_revealed(reveal_id)
+			show_item_reveal(reveal_text, reveal_image, _end_or_next_step.bind(steps, i + 1))
+	else:
+		_pending_ok_action = _end_or_next_step.bind(steps, i + 1)
+	_show_message_with_ok(str(step["text"]))
+
+
+func _end_or_next_step(steps: Array, next: int) -> void:
+	if next >= steps.size():
+		_clear_gift_display()
+		if current_npc != null:
+			current_npc.refresh_bubble()
+		_hide_message()
+		return
+	_run_npc_steps(steps, next)
+
+
+## A key item fading up on the gift overlay with `text` under it -- the costume reveal,
+## for rods and permits. `image_path` "" shows the text alone. `on_ok` runs when the
+## player clears it (the overlay is still up; the next box or _hide_message clears it).
+func show_item_reveal(text: String, image_path: String, on_ok: Callable) -> void:
+	_pending_ok_action = on_ok
+	var paths: Array = []
+	if image_path != "" and ResourceLoader.exists(image_path):
+		paths.append(image_path)
+	_show_gift_display(text, paths, "item")
+
 
 # ============================================================
 # COSTUME-GATED NPCs
@@ -1754,6 +1938,9 @@ func _show_gift_display(text: String, image_paths: Array, kind: String) -> void:
 	if kind == "coin":
 		target_box = GIFT_COIN_SIZE
 		center_y = GIFT_DISPLAY_CENTER_Y_COIN
+	elif kind == "item":
+		target_box = GIFT_ITEM_SIZE
+		center_y = GIFT_DISPLAY_CENTER_Y_COSTUME
 	elif kind == "costume" or kind == "sleeve":
 		# A sleeve is a card back, so it shares the costume box: 432x594 is a 0.727
 		# aspect and a card is 0.72, so the aspect-fit below barely has to move it.
@@ -1841,6 +2028,8 @@ func _show_gift_display(text: String, image_paths: Array, kind: String) -> void:
 		rect.position            = Vector2(cursor_x, top_y)
 		rect.pivot_offset        = sz / 2.0
 		rect.mouse_filter        = Control.MOUSE_FILTER_IGNORE
+		if kind == "item":
+			rect.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 		_gift_display_container.add_child(rect)
 		spawned_rects.append({"rect": rect, "card_uid": e["card_uid"]})
 
@@ -1878,12 +2067,12 @@ func _show_gift_display(text: String, image_paths: Array, kind: String) -> void:
 				_play_flip_animation(rect_ref, _coinback_texture, rect_ref.texture)
 			"card":
 				_play_card_flip_with_holo(rect_ref, _cardback_texture, rect_ref.texture, uid)
-			"costume", "sleeve":
+			"costume", "sleeve", "item":
 				_play_costume_fadein(rect_ref)
 
 	# Wait for the longest animation to complete (scaled by item animation speed) OR a skip click.
 	var total_duration: float = 0.0
-	if kind == "costume" or kind == "sleeve":
+	if kind == "costume" or kind == "sleeve" or kind == "item":
 		total_duration = GIFT_COSTUME_TOTAL_DURATION
 	elif kind == "card" or kind == "coin":
 		total_duration = GIFT_FLIP_TOTAL_DURATION
@@ -2996,6 +3185,11 @@ func finish_fishing() -> void:
 	cutscene_active = false
 	if _player != null and is_instance_valid(_player):
 		_player.unlock_movement()
+
+
+## The map data name of the map currently loaded ("Celeste_Harbour", "Fish_Shop", ...).
+func get_map_data() -> String:
+	return _map_data
 
 
 func is_fishing() -> bool:

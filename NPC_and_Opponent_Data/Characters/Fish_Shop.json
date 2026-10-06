@@ -11,29 +11,40 @@
     "loop    : set false for story characters who must never repeat when the",
     "          calendar loops -- they are matched against the real day instead.",
     "",
-    "WHO IS BEHIND THE COUNTER alternates every day. The calendar below authors two",
-    "days and loops them from day 1 with a period of 2, so real day 1 is authored day",
-    "1, day 2 is day 2, day 3 is day 1 again, and so on for ever. Olly works the odd",
-    "days, Alexander the even ones -- swap the two 'days' values to flip that. They",
-    "share the shop_id 'fish_shop', so the stock is the same whoever is in."
+    "WHO IS BEHIND THE COUNTER. Exactly one of Olly / Alexander at every time slot. The",
+    "calendar mirrors Celeste Harbour's (authored through day 8, days 5-8 loop for ever):",
+    "  day 1 Olly all day | 2 Alexander M,A  Olly E,N | 3 Olly M,E  Alexander A,N",
+    "  4 Alexander M,A,E  Olly N | 5 Olly M,A  Alexander E,N | 6 Alexander M,E  Olly A,N",
+    "  7 Olly M,E  Alexander A,N | 8 Alexander M,E  Olly A,N",
+    "Both share shop_id 'fish_shop'. What they SAY is not here: it is milestone-driven,",
+    "in Scripts/Objects_And_Classes/Fishing/Fish_Shop_Dialogue.gd. 'at' puts them centred",
+    "on the Desk collision with their feet on its top edge (MART/NPCS is at (121, 59))."
   ],
   "map": "Fish_Shop",
   "calendar": {
     "opens": 1,
-    "authored_through": 2,
+    "authored_through": 8,
     "loop": {
-      "from": 1,
-      "period": 2
+      "from": 5,
+      "period": 4
     }
   },
   "npcs": {
     "Fish Shop Olly": {
-      "at": [113, 24],
-      "days": "1",
+      "at": [107.5, -23.5],
       "move": "idle_down",
+      "when": [
+        { "days": "1", "times": "M,A,E,N" },
+        { "days": "2", "times": "E,N" },
+        { "days": "3", "times": "M,E" },
+        { "days": "4", "times": "N" },
+        { "days": "5", "times": "M,A" },
+        { "days": "6", "times": "A,N" },
+        { "days": "7", "times": "M,E" },
+        { "days": "8", "times": "A,N" }
+      ],
       "says": {
-        "meet": "Morning! Fresh tackle, fresh fish. Want to see what we've got in?",
-        "repeat": "Back again? Take a look at the shelves."
+        "meet": "Hey [NAME]! I hope the waters are treating you well! Do you need any FISH gear?"
       },
       "friendly_name": "Olly",
       "interact_facing": "up",
@@ -43,12 +54,19 @@
       "sprite": "1Olly_Jeans_Bag"
     },
     "Fish Shop Alexander": {
-      "at": [113, 24],
-      "days": "2",
+      "at": [107.5, -23.5],
       "move": "idle_down",
+      "when": [
+        { "days": "2", "times": "M,A" },
+        { "days": "3", "times": "A,N" },
+        { "days": "4", "times": "M,A,E" },
+        { "days": "5", "times": "E,N" },
+        { "days": "6", "times": "M,E" },
+        { "days": "7", "times": "A,N" },
+        { "days": "8", "times": "M,E" }
+      ],
       "says": {
-        "meet": "Olly's got the day off, so you're stuck with me. Fancy a browse?",
-        "repeat": "Still minding the shop. See anything you like?"
+        "meet": "Hey [NAME], do you need anything?"
       },
       "friendly_name": "Alexander",
       "interact_facing": "up",

@@ -26,11 +26,23 @@ extends Control
 # sleeve, costume, coin and item — and the block's kind is only its DEFAULT: every row
 # may carry its own, which is how the Fish Shop sells a rod, two costumes and a coin off
 # one shelf. Names are bare basenames exactly as the art folder and the player's progress
-# array spell them ("Oricorio_Pink", "Fisher_M", "Zz Gyarados Blue", "Basic_Rod").
+# array spell them ("Oricorio_Pink", "Fisher_M", "Zz Gyarados Blue", "Proto_Rod").
 #
 # An "item" is anything that is not a card, a coin or a cosmetic — the fishing rods are
 # the first of them. A row whose art is missing, or is still the 1px stand-in, shows its
 # name in the cell instead, so a shop is usable before its sprites are drawn.
+#
+# PAGES (the Fish Shop). A block may carry "pages": [{title, kind, columns, items}, ...]
+# instead of one "items" list. The screen then shows one page at a time with < > arrows
+# under the header, exactly like the Card Mart's set stepper. A page's kind/columns work
+# as a block's do. Rows on a fish_coins shop may also carry:
+#   "rod": true          a fishing rod -- owned once it or any BETTER rod is owned, priced
+#                        with the best owned rod's discount (FishingRods), and buying it
+#                        also banks every worse rod
+#   "not_for_sale": true shown greyed as OWNED and never sold (the Celeste Harbour permit
+#                        Olly hands over in the opening scene, so the page says permits exist)
+# and a row whose item a keeper has not yet announced (FishShopDialogue.UNLOCKS) is
+# hidden until they have.
 #
 # There is deliberately NO sold-out gate. A seller's shelf is finite and never restocks,
 # so once the player owns the lot the shop simply opens with everything stamped OWNED
@@ -76,6 +88,16 @@ const UNSELECTED_DIM := Color(0.8, 0.8, 0.8)
 ## pills, which hang below their cells, still have somewhere to go.
 const GRID_AREA_POS  := Vector2(160.0, 140.0)
 const GRID_AREA_SIZE := Vector2(1600.0, 780.0)
+## With pages, the stepper takes the band under the header, so the grid starts lower.
+const PAGED_GRID_AREA_POS  := Vector2(160.0, 200.0)
+const PAGED_GRID_AREA_SIZE := Vector2(1600.0, 720.0)
+
+## TWEAKABLE — the page stepper, same measurements as Pack_Purchase's set stepper.
+const STEPPER_ARROW_W := 78.0
+const STEPPER_NAME_W  := 520.0
+const STEPPER_GAP     := 24
+const STEPPER_Y       := 112.0
+const STEPPER_H       := 62.0
 
 ## TWEAKABLE — grid shape. Cells are sized to fit GRID_AREA_SIZE, so a seller stocking
 ## more items gets smaller cells rather than an overflowing grid. A block may override
@@ -118,6 +140,12 @@ var player_cash     : int = 0
 var uses_fish_coins : bool = false
 var player_fish_coins : int = 0
 var _owned_items    : Dictionary = {}
+## Every page of the block (one page when it has none), and which one is showing.
+var _pages          : Array = []
+var _page_index     : int = 0
+var _page_label     : Label = null
+var _prev_btn       : Button = null
+var _next_btn       : Button = null
 
 var selected_cell   : Control = null
 var _active_tween   : Tween = null
@@ -191,6 +219,61 @@ func _build_chrome() -> void:
 	UIKit.adopt_button(cancel_btn, bars["footer"].centre, "secondary")
 	UIKit.adopt_button(buy_btn, bars["footer"].centre, "primary")
 
+	if _pages.size() > 1:
+		_build_page_stepper()
+
+
+## "<  Rods  >" under the header, as Pack_Purchase does for card sets.
+func _build_page_stepper() -> void:
+	var stepper := HBoxContainer.new()
+	stepper.name = "page_stepper"
+	stepper.add_theme_constant_override("separation", STEPPER_GAP)
+	stepper.alignment = BoxContainer.ALIGNMENT_CENTER
+	stepper.set_anchors_preset(Control.PRESET_TOP_WIDE)
+	stepper.offset_top = STEPPER_Y
+	stepper.offset_bottom = STEPPER_Y + STEPPER_H
+	add_child(stepper)
+
+	_prev_btn = Button.new()
+	_next_btn = Button.new()
+	_page_label = Label.new()
+	_page_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	UIKit.adopt_button(_prev_btn, stepper, "secondary", false)
+	UIKit.adopt_label(_page_label, stepper, "title", "field_fg")
+	UIKit.adopt_button(_next_btn, stepper, "secondary", false)
+	_prev_btn.text = "<"
+	_next_btn.text = ">"
+	_prev_btn.custom_minimum_size.x = STEPPER_ARROW_W
+	_next_btn.custom_minimum_size.x = STEPPER_ARROW_W
+	_page_label.custom_minimum_size.x = STEPPER_NAME_W
+	_page_label.text = String(_pages[_page_index].get("title", ""))
+	_prev_btn.pressed.connect(_step_page.bind(-1))
+	_next_btn.pressed.connect(_step_page.bind(1))
+
+
+func _step_page(step: int) -> void:
+	if _in_purchase_seq:
+		return
+	SoundManagerScript.play_sfx(SoundManagerScript.SFX_plus_select)
+	_show_page(_page_index + step)
+
+
+## Swaps the shelf for page `index`: selection cleared, grid and pills rebuilt.
+func _show_page(index: int) -> void:
+	if _active_tween:
+		_active_tween.kill()
+		_active_tween = null
+	selected_cell = null
+	_update_buy_button()
+	ShopChrome.clear_pills(pill_layer)
+	for child in grid.get_children():
+		grid.remove_child(child)
+		child.queue_free()
+	_apply_page(index)
+	if _page_label != null:
+		_page_label.text = String(_pages[_page_index].get("title", ""))
+	_build_item_grid()
+
 
 
 # ─── Data loading ────────────────────────────────────────────────────────────
@@ -220,11 +303,38 @@ func _load_inventory() -> void:
 	if not block is Dictionary:
 		return
 
-	inventory    = block.get("items", [])
 	shop_kind    = String(block.get("kind", KIND_SLEEVE))
 	shop_title   = block.get("title", _default_title(shop_kind))
 	shop_columns = int(block.get("columns", 0))
 	uses_fish_coins = bool(block.get("fish_coins", false))
+	_pages = []
+	if block.get("pages") is Array:
+		for page in block["pages"]:
+			if page is Dictionary:
+				_pages.append(page)
+	if _pages.is_empty():
+		_pages.append({"title": "", "kind": shop_kind, "columns": shop_columns,
+				"items": block.get("items", [])})
+	_apply_page(0)
+
+
+## Makes page `index` the current stock: its rows (those on sale yet), kind and columns.
+func _apply_page(index: int) -> void:
+	_page_index = posmod(index, _pages.size())
+	var page: Dictionary = _pages[_page_index]
+	shop_kind    = String(page.get("kind", shop_kind))
+	shop_columns = int(page.get("columns", 0))
+	inventory = []
+	for entry in page.get("items", []):
+		if entry is Dictionary and _row_on_sale(entry):
+			inventory.append(entry)
+
+
+## Hidden until a keeper has announced it (Fish Shop only).
+func _row_on_sale(entry: Dictionary) -> bool:
+	if not uses_fish_coins:
+		return true
+	return FishShopDialogue.item_unlocked(String(entry.get("name", "")))
 
 
 func _default_title(kind: String) -> String:
@@ -261,6 +371,14 @@ func _is_owned(item_name: String, kind: String) -> bool:
 		KIND_COIN:    return GameState.has_coin(item_name)
 		KIND_ITEM:    return GameState.has_item(item_name)
 	return _owned_items.has(item_name)
+
+
+func _grid_area_pos() -> Vector2:
+	return PAGED_GRID_AREA_POS if _pages.size() > 1 else GRID_AREA_POS
+
+
+func _grid_area_size() -> Vector2:
+	return PAGED_GRID_AREA_SIZE if _pages.size() > 1 else GRID_AREA_SIZE
 
 
 # ─── Texture resolution ──────────────────────────────────────────────────────
@@ -345,8 +463,9 @@ func _build_item_grid() -> void:
 	var aspect   : float = SLEEVE_ASPECT if shop_kind == KIND_SLEEVE else COSTUME_ASPECT
 	var max_cell : float = SLEEVE_MAX_CELL if shop_kind == KIND_SLEEVE else COSTUME_MAX_CELL
 
-	var fit_w : float = (GRID_AREA_SIZE.x - float(columns - 1) * CELL_SEP) / float(columns)
-	var fit_h : float = (GRID_AREA_SIZE.y - float(rows - 1) * CELL_SEP) / float(rows)
+	var area_size := _grid_area_size()
+	var fit_w : float = (area_size.x - float(columns - 1) * CELL_SEP) / float(columns)
+	var fit_h : float = (area_size.y - float(rows - 1) * CELL_SEP) / float(rows)
 	# Height is the binding dimension: pick whichever of the two limits is tighter once
 	# the item's aspect is applied, and never upscale past the source's native height.
 	var cell_h : float = min(fit_h, fit_w / aspect, max_cell)
@@ -356,7 +475,15 @@ func _build_item_grid() -> void:
 		var item_name : String = String(entry.get("name", ""))
 		var cost      : int    = int(entry.get("cost", DEFAULT_ITEM_COST))
 		var fish_cost : int    = int(entry.get("fish_cost", 0)) if uses_fish_coins else 0
+		var is_rod    : bool   = bool(entry.get("rod", false))
 		var kind      : String = _item_kind(entry)
+		# A rod is priced with the best owned rod's discount; the full price is kept
+		# for the struck-out "was" pill.
+		var full_cost      : int = cost
+		var full_fish_cost : int = fish_cost
+		if is_rod:
+			cost      = FishingRods.discounted(full_cost, item_name)
+			fish_cost = FishingRods.discounted(full_fish_cost, item_name)
 		var label     : String = String(entry.get("label", _format_item_name(item_name)))
 		if item_name == "":
 			continue
@@ -371,6 +498,10 @@ func _build_item_grid() -> void:
 			tex = _blank_texture()
 
 		var is_owned : bool = _is_owned(item_name, kind)
+		if is_rod:
+			is_owned = FishingRods.owned_or_superseded(item_name)
+		if bool(entry.get("not_for_sale", false)):
+			is_owned = true
 
 		# Wrapper carries the cell geometry and the metadata; the TextureRect inside is
 		# aspect-fitted so an item whose source is off-aspect is letterboxed, not squashed.
@@ -384,6 +515,9 @@ func _build_item_grid() -> void:
 		wrapper.set_meta("item_name",  item_name)
 		wrapper.set_meta("item_cost",  cost)
 		wrapper.set_meta("item_fish_cost", fish_cost)
+		wrapper.set_meta("item_full_cost", full_cost)
+		wrapper.set_meta("item_full_fish_cost", full_fish_cost)
+		wrapper.set_meta("is_rod", is_rod)
 		wrapper.set_meta("is_owned",   is_owned)
 		wrapper.set_meta("item_kind",  kind)
 		wrapper.set_meta("item_label", label)
@@ -441,7 +575,7 @@ func _build_item_grid() -> void:
 		float(placed_rows) * cell_size.y + float(placed_rows - 1) * CELL_SEP
 	)
 	grid.size     = content
-	grid.position = GRID_AREA_POS + (GRID_AREA_SIZE - content) / 2.0
+	grid.position = _grid_area_pos() + (_grid_area_size() - content) / 2.0
 
 	# After the re-centre, never before: pills anchor to each cell's global rect and the whole
 	# block has just moved.
@@ -494,14 +628,23 @@ func _refresh_pills() -> void:
 			continue
 		var cost : int = int(child.get_meta("item_cost", DEFAULT_ITEM_COST))
 		var fish_cost : int = int(child.get_meta("item_fish_cost", 0))
+		var full_cost : int = int(child.get_meta("item_full_cost", cost))
+		var full_fish : int = int(child.get_meta("item_full_fish_cost", fish_cost))
+		var on_sale : bool = full_cost != cost or full_fish != fish_cost
 		var state : int
 		if child.get_meta("is_owned", false):
 			state = ShopChrome.OWNED
-		elif _can_afford(cost, fish_cost):
-			state = ShopChrome.AFFORDABLE
-		else:
+		elif not _can_afford(cost, fish_cost):
 			state = ShopChrome.UNAFFORDABLE
-		ShopChrome.add_price_pill(pill_layer, child.get_global_rect(), state, cost, 0, fish_cost)
+		elif on_sale:
+			state = ShopChrome.DISCOUNTED
+		else:
+			state = ShopChrome.AFFORDABLE
+		# The struck-out full price sits above a discounted rod, like the weighted packs.
+		var old_cost : int = full_cost if on_sale and state != ShopChrome.OWNED else 0
+		var old_fish : int = full_fish if on_sale and state != ShopChrome.OWNED else 0
+		ShopChrome.add_price_pill(pill_layer, child.get_global_rect(), state, cost, old_cost,
+				fish_cost, old_fish)
 
 
 ## Cash AND Fish Coins both covered. fish_cost is always 0 outside a fish_coins shop.
@@ -607,7 +750,11 @@ func _on_buy_pressed() -> void:
 	match kind:
 		KIND_COSTUME: GameState.add_costume_to_collection(item_name)
 		KIND_COIN:    GameState.add_coin_to_collection(item_name)
-		KIND_ITEM:    GameState.add_item_to_collection(item_name)
+		KIND_ITEM:
+			if bool(selected_cell.get_meta("is_rod", false)):
+				FishingRods.grant(item_name)   # and every worse rod with it
+			else:
+				GameState.add_item_to_collection(item_name)
 		_:
 			GameState.add_sleeve_to_collection(item_name)
 			_owned_items[item_name] = true
@@ -707,8 +854,13 @@ func _show_purchase_display(item_name: String, kind: String, display_name: Strin
 	ShopChrome.set_wallet_cash(wallet_chip, player_cash)
 	ShopChrome.set_wallet_cash(fish_coin_chip, player_fish_coins)
 	# Every pill, not just the one bought: the item just purchased flips to grey OWNED and
-	# anything the remaining balance no longer covers flips green -> red.
-	_refresh_pills()
+	# anything the remaining balance no longer covers flips green -> red. A rod changes
+	# other CELLS too (worse rods owned, better ones discounted), so a paged shop rebuilds
+	# the whole page instead.
+	if _pages.size() > 1:
+		_show_page(_page_index)
+	else:
+		_refresh_pills()
 	cancel_btn.disabled    = false
 	_in_purchase_seq       = false
 	_update_buy_button()

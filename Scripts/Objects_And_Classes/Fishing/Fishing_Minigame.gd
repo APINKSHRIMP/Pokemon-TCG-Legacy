@@ -478,6 +478,11 @@ var _fish_species: String = ""
 ## silhouette, the Pokémon pulled out and the reward alike.
 var _fish_rate: float = 0.0
 var _size_roll: float = 1.0
+## The rod being fished with (FishingRods.current()), read once in _ready. `_rod_factor`
+## is its 1 + modifier: it scales the fish's line_strength / reel_step / recharge_time
+## (applied to _stats in _spawn_fish), ENERGY_DRAIN and both TENSION_DECAY rates.
+var _rod_stats: Dictionary = {}
+var _rod_factor: float = 1.0
 ## The rolled species' six fight numbers -- see the PER-SPECIES STATS note above. Always
 ## fully populated (fish_stats fills every key), so it can be read without a .get.
 var _stats: Dictionary = OverworldPokemonData.fish_stats("")
@@ -568,6 +573,8 @@ func setup(player: CharacterBody2D, direction: String, map_key: String) -> void:
 
 
 func _ready() -> void:
+	_rod_stats = FishingRods.current()
+	_rod_factor = 1.0 + float(_rod_stats["modifier"])
 	_facing = _opposite(water_dir)
 	_vertical_rod = _facing == "up" or _facing == "down"
 	_perp = Vector2.RIGHT if (water_dir == "up" or water_dir == "down") else Vector2.DOWN
@@ -629,9 +636,9 @@ func _resolve_bounds() -> void:
 	_far_radial = float(radial.max())
 	_side_min = float(across.min())
 	_side_max = float(across.max())
-	# "Measure the height of the box and throw half of it" -- which is the span between
-	# the two edges, not the distance to the far one.
-	_cast_distance = maxf(8.0, (_far_radial - _catch_radial) * 0.5)
+	# Throw the rod's fraction of the span between the two edges (not the distance to
+	# the far one): a quarter with the Proto Rod, up to 80% with the Gold Rod.
+	_cast_distance = maxf(8.0, (_far_radial - _catch_radial) * float(_rod_stats.get("throw", 0.5)))
 	_cast_radial = _catch_radial + _cast_distance
 
 
@@ -995,6 +1002,10 @@ func _spawn_fish() -> void:
 	_stats = OverworldPokemonData.fish_stats(_fish_species)
 	if _fish_species == "":
 		return  # nothing lives here at this hour; the player reels in by hand
+	# The rod's side of the fight. A copy: fish_stats() builds a fresh dictionary, and
+	# the reward (FishingData.fish_coin_points) reads the registry, never this.
+	for key in ["line_strength", "reel_step", "recharge_time"]:
+		_stats[key] = float(_stats[key]) * _rod_factor
 	_fish_big = OverworldPokemonData.species_big_fish(_fish_species)
 	_size_roll = FishingData.roll_fish_size()
 	_fish_size = FISH_SCALE * float(_stats["fish_size"]) * _size_roll
@@ -1233,12 +1244,14 @@ func _process_fight(delta: float) -> void:
 			_tension = move_toward(_tension, 0.0, TENSION_CORRECT_RECOVER * delta)
 		else:
 			_tension += TENSION_CORRECT * delta
-		_energy -= ENERGY_DRAIN * delta
+		_energy -= ENERGY_DRAIN * _rod_factor * delta
 	else:
 		# Red side first at the fast rate; whatever is left of the frame after crossing
 		# zero is spent on the blue side at the slow one.
-		var red_time := clampf(_tension / TENSION_DECAY_RED, 0.0, delta)
-		_tension -= TENSION_DECAY_RED * red_time + TENSION_DECAY_BLUE * (delta - red_time)
+		var decay_red := TENSION_DECAY_RED * _rod_factor
+		var decay_blue := TENSION_DECAY_BLUE * _rod_factor
+		var red_time := clampf(_tension / decay_red, 0.0, delta)
+		_tension -= decay_red * red_time + decay_blue * (delta - red_time)
 	# It tires whatever the player does: ENERGY_BLEED a second, so even a fish that is
 	# never countered once blows eventually -- the bigger its bar, the longer it takes.
 	if not resting:

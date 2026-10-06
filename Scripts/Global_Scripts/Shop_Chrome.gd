@@ -340,9 +340,11 @@ static func clear_pills(layer: Control) -> void:
 ##
 ## `fish_price` > 0 (the Fish Shop) makes the main pill carry both prices -- "$500" then
 ## the Fish Coin icon and "50" -- in the one state colour, which then means "can afford
-## BOTH". OWNED ignores it.
+## BOTH". OWNED ignores it. With `old_price` / `old_fish_price` the struck-out full
+## price stacks above it as its own two-currency pill, the same way a cash sale does.
 static func add_price_pill(layer: Control, anchor: Rect2, state: int,
-						   price: int, old_price: int = 0, fish_price: int = 0) -> void:
+						   price: int, old_price: int = 0, fish_price: int = 0,
+						   old_fish_price: int = 0) -> void:
 	if layer == null or not is_instance_valid(layer):
 		return
 
@@ -389,6 +391,26 @@ static func add_price_pill(layer: Control, anchor: Rect2, state: int,
 		var dual_y : float = cell_origin.y + cell_size.y + h * PILL_OVERHANG_Y - h
 		_add_dual_pill_row(holder, Vector2(dual_x, dual_y), Vector2(dual_w, h), main_col,
 				main_text, fish_text, font_size, pad, gap, icon_h)
+		if old_price > 0 or old_fish_price > 0:
+			var o_h     : float = h * PILL_OLD_SCALE
+			var o_font  : int   = maxi(int(round(o_h * PILL_FONT_RATIO)), 8)
+			var o_pad   : float = o_h * PILL_PAD_RATIO
+			var o_gap   : float = o_h * PILL_ICON_GAP_RATIO
+			var o_icon  : float = o_h * PILL_ICON_RATIO
+			var o_cash  : String = "$" + str(old_price)
+			var o_fish  : String = str(old_fish_price)
+			var o_w : float = _text_width(o_cash, o_font) + o_gap * 2.0 + _fish_icon_width(o_icon) 					+ _text_width(o_fish, o_font) + o_pad * 2.0
+			var o_pos := Vector2(dual_x + dual_w - o_w, dual_y - h * PILL_STACK_GAP - o_h)
+			_add_dual_pill_row(holder, o_pos, Vector2(o_w, o_h), _col_old_price(),
+					o_cash, o_fish, o_font, o_pad, o_gap, o_icon)
+			# One red bar through the whole figure, padding excluded.
+			var thick := maxf(o_h * STRIKE_THICK_RATIO, 2.0)
+			var bar := ColorRect.new()
+			bar.color        = _strike_col()
+			bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			bar.size     = Vector2(o_w - o_pad * 2.0 + STRIKE_OVERHANG * 2.0, thick)
+			bar.position = Vector2(o_pos.x + o_pad - STRIKE_OVERHANG, o_pos.y + (o_h - thick) * 0.5)
+			holder.add_child(bar)
 		return
 
 	var main_w : float = _text_width(main_text, font_size) + pad * 2.0

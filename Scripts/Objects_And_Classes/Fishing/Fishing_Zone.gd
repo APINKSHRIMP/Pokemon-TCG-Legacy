@@ -144,13 +144,16 @@ func _unhandled_input(event: InputEvent) -> void:
 		return
 	if _player == null or not is_instance_valid(_player) or not _player.can_move:
 		return
-	if not FishingData.player_has_rod():
-		return
 	var direction := direction_at(_player.global_position)
 	if direction == "":
 		return
 	# Consume it so it can't also trigger an NPC or a sign behind us.
 	get_viewport().set_input_as_handled()
+	# No rod at all, or no permit for this map's water: say so in the system box.
+	var blocked := FishingRods.fishing_blocked_reason(MapManager.get_map_data())
+	if blocked != "":
+		MapManager.show_interactable_message(blocked)
+		return
 	MapManager.start_fishing(direction)
 
 

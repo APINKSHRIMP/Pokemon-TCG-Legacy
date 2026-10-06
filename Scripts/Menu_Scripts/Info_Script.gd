@@ -149,6 +149,8 @@ const EQUIP_GAP      := 140.0
 const MEDALS_BTN_W   := 240.0
 ## Wider than Medals only because "View FIELD GUIDE" is a longer string.
 const GUIDE_BTN_W    := 300.0
+const BAG_BTN_W      := 220.0
+const BAG_SCENE      := "res://Scenes/Main_Menu_Scenes/Bag_Scene.tscn"
 const NAME_BOX_H     := 62.0
 ## ISSUE #203: +50% (24 -> 36). ISSUE #201 (retest): -25% again (36 -> 27) - at
 ## 36 a full-length name overran the box no matter how wide it was.
@@ -261,6 +263,15 @@ func _build_chrome() -> void:
 	# present, styled, and wired to nothing. Do not invent a count for it.
 	UIKit.adopt_button(medals_btn, bars["header"].right, "secondary", false)
 	medals_btn.custom_minimum_size.x = MEDALS_BTN_W
+
+	# The Bag (key items: rods, permits, the starter box and set). Built here rather
+	# than in the scene -- it is a plain button and the header slot lays it out.
+	var bag_btn := Button.new()
+	bag_btn.name = "bag_button"
+	bag_btn.text = "View Bag"
+	UIKit.adopt_button(bag_btn, bars["header"].right, "secondary", false)
+	bag_btn.custom_minimum_size.x = BAG_BTN_W
+	bag_btn.pressed.connect(_on_bag_pressed)
 
 	# The Field Guide sits beside Medals in the same header slot. Unlike Medals it
 	# HAS a screen behind it, so it is wired up.
@@ -569,6 +580,14 @@ func _on_field_guide_pressed() -> void:
 	if GameState.open_sub_menu(path):
 		return
 	SceneCache.change_scene(path)
+
+
+func _on_bag_pressed() -> void:
+	SoundManagerScript.play_sfx(SoundManagerScript.SFX_plus_select)
+	# Same shape as the Field Guide: an overlay over the map, else a scene change.
+	if GameState.open_sub_menu(BAG_SCENE):
+		return
+	SceneCache.change_scene(BAG_SCENE)
 
 
 func _on_cancel_pressed() -> void:

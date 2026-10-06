@@ -1096,6 +1096,52 @@ func add_fish_coins(amount: int) -> void:
 	save_progress()
 
 # ============================================================
+# FISH SHOP RECORD
+# ============================================================
+# What Olly and Alexander have told the player, and which "can now be purchased"
+# notices have played (see FishShopDialogue). progress["fish_shop"]:
+#   heard    keeper id ("olly" / "alexander") -> milestone ids that keeper has said
+#   reveals  milestone ids whose shop-unlock notice has played -- it plays ONCE, from
+#            whichever keeper gets there first, and is what puts the item on the shelf
+# The opening scene itself is the story flag FISH_SHOP_INTRO_FLAG.
+
+const FISH_SHOP_INTRO_FLAG := "fish_shop_intro_done"
+
+func _fish_shop_record() -> Dictionary:
+	var rec = progress.get("fish_shop", null)
+	if not rec is Dictionary:
+		rec = {}
+	if not rec.get("heard") is Dictionary:
+		rec["heard"] = {}
+	if not rec.get("reveals") is Array:
+		rec["reveals"] = []
+	progress["fish_shop"] = rec
+	return rec
+
+func fish_shop_heard(keeper: String) -> Array:
+	var heard: Dictionary = _fish_shop_record()["heard"]
+	var list = heard.get(keeper, [])
+	return list if list is Array else []
+
+func mark_fish_shop_heard(keeper: String, milestone_ids: Array) -> void:
+	var heard: Dictionary = _fish_shop_record()["heard"]
+	var list: Array = fish_shop_heard(keeper).duplicate()
+	for id in milestone_ids:
+		if String(id) not in list:
+			list.append(String(id))
+	heard[keeper] = list
+	save_progress()
+
+func fish_shop_revealed(milestone_id: String) -> bool:
+	return milestone_id in _fish_shop_record()["reveals"]
+
+func mark_fish_shop_revealed(milestone_id: String) -> void:
+	var reveals: Array = _fish_shop_record()["reveals"]
+	if milestone_id not in reveals:
+		reveals.append(milestone_id)
+		save_progress()
+
+# ============================================================
 # OPPONENT TRACKING
 # ============================================================
 
@@ -1578,7 +1624,7 @@ func get_sleeves() -> Array:
 # ITEM COLLECTION
 # ============================================================
 # Bought things that are neither a card, a coin nor a cosmetic -- the fishing rods
-# from the Fish Shop are the first of them. Stored as bare names ("Basic_Rod") in
+# from the Fish Shop are the first of them. Stored as bare names ("Proto_Rod") in
 # progress["items"], the same shape sleeves use, so whatever reads them later only
 # has to ask has_item().
 

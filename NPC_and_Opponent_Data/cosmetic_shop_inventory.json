@@ -2,14 +2,50 @@
 	"_comment": "Stock for every shop that sells things one at a time off a shelf -- Sleeve Sellers, Costume Salesmen and general stores like the Fish Shop. The top-level key is the NPC's shop_id (set in All_NPC_Constant_Data.json or the map's character file; defaults to the slugified NPC name). 'kind' picks what is being sold and therefore where the art comes from and how the purchase is banked: 'sleeve' -> Image_Assets/Sleeves, GameState.add_sleeve_to_collection; 'costume' -> Image_Assets/Character_Sprites/In_Battle_Sprites, GameState.add_costume_to_collection; 'coin' -> Image_Assets/Coins, GameState.add_coin_to_collection (the name is the file's, spaces and all, without .png); 'item' -> Image_Assets/Assorted_Extras, GameState.add_item_to_collection. A block's 'kind' is its default and EVERY ROW MAY OVERRIDE IT with its own 'kind', which is how one shop sells a rod, two costumes and a coin off the same shelf. An 'item' row may carry a 'label' for the readable name, and shows that name in its cell until its art exists. Item names are bare basenames exactly as they appear in that folder and in the player's progress array -- no extension. 'columns' is optional and forces the grid's shape (10 items with columns 5 = 2 rows of 5); leave it out to let the grid pick. Add a new seller by adding a new block here and pointing an NPC's shop_id at it. A block with 'fish_coins': true (the Fish Shop) also shows the Fish Coin wallet and charges each row's 'fish_cost' in Fish Coins ON TOP OF its cash 'cost'; both must be covered to buy.",
 
 	"fish_shop": {
+		"_comment": "FISH. Five pages (< > under the header). Every row costs cash 'cost' AND Fish Coins 'fish_cost'. Rods ('rod': true) are discounted by the best rod owned and buying one owns every worse rod too -- the numbers are in Scripts/Objects_And_Classes/Fishing/Fishing_Rods.gd. The Gold Rod and the Verdant / Deep Ocean permits stay hidden until Olly or Alexander announce them (Fish_Shop_Dialogue.gd). The Proto Rod is Olly's gift and never sold; the Celeste permit is given with it and only shown, greyed.",
 		"kind": "item",
-		"title": "Fish Shop",
+		"title": "FISH",
 		"fish_coins": true,
-		"items": [
-			{"kind": "item",    "name": "Basic_Rod",        "cost": 500, "fish_cost": 500, "label": "Basic Rod"},
-			{"kind": "costume", "name": "Fisher_M",         "cost": 200, "fish_cost": 250},
-			{"kind": "costume", "name": "Fisher_F",         "cost": 200, "fish_cost": 250},
-			{"kind": "coin",    "name": "Zz Gyarados Blue", "cost": 150, "fish_cost": 300}
+		"pages": [
+			{"title": "Fishing Sleeves", "kind": "sleeve", "columns": 5, "items": [
+				{"name": "Gyarados_3", "cost": 100, "fish_cost": 200},
+				{"name": "Qwilfish",   "cost": 100, "fish_cost": 200},
+				{"name": "Magikarp",   "cost": 100, "fish_cost": 200},
+				{"name": "Jellicent",  "cost": 250, "fish_cost": 400},
+				{"name": "Lapras_2",   "cost": 250, "fish_cost": 500},
+				{"name": "Milotic_3",  "cost": 300, "fish_cost": 500},
+				{"name": "Wishiwashi", "cost": 300, "fish_cost": 500},
+				{"name": "Wailord",    "cost": 400, "fish_cost": 600},
+				{"name": "Kingdra",    "cost": 400, "fish_cost": 600},
+				{"name": "Manaphy",    "cost": 500, "fish_cost": 1000}
+			]},
+			{"title": "Costumes", "kind": "costume", "columns": 3, "items": [
+				{"name": "Fisher_F",  "cost": 200, "fish_cost": 100},
+				{"name": "Fisher_M",  "cost": 200, "fish_cost": 100},
+				{"name": "Fisher_M2", "cost": 250, "fish_cost": 200},
+				{"name": "Fisher_M3", "cost": 300, "fish_cost": 400},
+				{"name": "Fisher_M4", "cost": 350, "fish_cost": 600},
+				{"name": "Fisher_M5", "cost": 500, "fish_cost": 1000}
+			]},
+			{"title": "Coins", "kind": "coin", "columns": 5, "items": [
+				{"name": "Zz Gyarados Blue",  "cost": 250, "fish_cost": 200},
+				{"name": "Zz Blastoise Blue", "cost": 300, "fish_cost": 200},
+				{"name": "Zz Quagsire Blue",  "cost": 300, "fish_cost": 200},
+				{"name": "Zz Greninja Blue",  "cost": 400, "fish_cost": 200},
+				{"name": "Zz Suicune Blue",   "cost": 400, "fish_cost": 200}
+			]},
+			{"title": "Permits", "kind": "item", "columns": 3, "items": [
+				{"name": "Celeste_Harbour_Fishing_Permit", "label": "Celeste Harbour Fishing Permit", "cost": 0,   "fish_cost": 0, "not_for_sale": true},
+				{"name": "Verdant_Forest_Fishing_Permit",  "label": "Verdant Forest Fishing Permit",  "cost": 50,  "fish_cost": 200},
+				{"name": "Deep_Ocean_Fishing_Permit",      "label": "Deep Ocean Fishing Permit",      "cost": 500, "fish_cost": 1000}
+			]},
+			{"title": "Rods", "kind": "item", "columns": 5, "items": [
+				{"name": "Improved_Rod", "label": "Improved Rod", "rod": true, "cost": 250,  "fish_cost": 250},
+				{"name": "Good_Rod",     "label": "Good Rod",     "rod": true, "cost": 600,  "fish_cost": 1000},
+				{"name": "Super_Rod",    "label": "Super Rod",    "rod": true, "cost": 1000, "fish_cost": 2000},
+				{"name": "Amazing_Rod",  "label": "Amazing Rod",  "rod": true, "cost": 1500, "fish_cost": 5000},
+				{"name": "Gold_Rod",     "label": "Gold Rod",     "rod": true, "cost": 3000, "fish_cost": 10000}
+			]}
 		]
 	},
 

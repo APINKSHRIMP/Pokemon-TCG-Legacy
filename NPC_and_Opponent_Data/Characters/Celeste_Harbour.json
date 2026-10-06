@@ -48,6 +48,13 @@
     }
   },
   "npcs": {
+    "Fishing Captain": {
+      "at": [-1960, 1135],
+      "move": "idle_random",
+      "says": {
+        "meet": "I be the fishing cap'n int' harbour and I work with Olly at Fish. We're always out looking for t' biggest fish"
+      }
+    },
     "2nd Woman Drinking Juice": {
       "at": [855, 2315],
       "move": "idle_right",

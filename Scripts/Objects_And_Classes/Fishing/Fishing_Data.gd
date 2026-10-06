@@ -28,15 +28,12 @@ extends RefCounted
 ## in Overworld_Pokemon.json, so a species fights the same way at every spot and time of
 ## day. They are edited on the same form and read through OverworldPokemonData.fish_stats().
 
-const FLAG := "has_fishing_rod"
-
 static var _cache: Dictionary = {}
 
 
-## True when the player owns a rod. Seeded true for new games in
-## Player_Data/Player_Game_Progress.json until the rod becomes purchasable.
+## True when the player owns any rod (FishingRods -- the Proto Rod is Olly's gift).
 static func player_has_rod() -> bool:
-	return GameState.has_flag(FLAG)
+	return FishingRods.has_any_rod()
 
 
 ## Every fishing spot on a map, in file order.
@@ -71,9 +68,33 @@ static func current_table(spot: Dictionary) -> Array:
 ## is listed. The row and not just the species, because its `percent` is the fish's
 ## rarity on THIS table and feeds its Fish Coin reward. How the fish FIGHTS is not here:
 ## it belongs to the species, in the registry -- see OverworldPokemonData.fish_stats().
+##
+## The roll uses the CURRENT ROD's rates (FishingRods.adjusted_rate): big fish up or
+## gone, small fish down. The row handed back is the table's own, untouched, so its
+## `percent` -- and therefore the Fish Coin reward -- never depends on the rod.
 static func pick_fish_row(spot: Dictionary) -> Dictionary:
-	var row = OverworldPokemonData.pick_row(current_table(spot))
-	return row if row is Dictionary else {}
+	var rows: Array = []
+	var weights: Array = []
+	var total := 0.0
+	for row in current_table(spot):
+		if not row is Dictionary:
+			continue
+		var species := str(row.get("species", ""))
+		var w := FishingRods.adjusted_rate(maxf(0.0, float(row.get("percent", 0))),
+				OverworldPokemonData.species_big_fish(species))
+		if w <= 0.0:
+			continue
+		rows.append(row)
+		weights.append(w)
+		total += w
+	if total <= 0.0:
+		return {}
+	var r := randf() * total
+	for i in rows.size():
+		r -= float(weights[i])
+		if r <= 0.0:
+			return rows[i]
+	return rows[rows.size() - 1]
 
 
 # ============================================================

@@ -46,6 +46,9 @@ var nearby_npc: Node:
 ## gets: the wheel can zoom in from there, never out past it. Distances the user
 ## quotes "on screen" are at this zoom.
 @onready var _widest_zoom: Vector2 = camera.zoom
+## DEBUG MODE ONLY: how far out the wheel may go instead (the floor before the
+## widest-view lock was added). Smaller = further out.
+const DEBUG_WIDEST_ZOOM := Vector2(0.5, 0.5)
 
 func lock_movement():
 	can_move = false
@@ -243,9 +246,13 @@ func _unhandled_input(event):
 			if not can_move and not zoom_while_locked:
 				return
 			if event.button_index == MOUSE_BUTTON_WHEEL_UP:
-				camera.zoom = (camera.zoom + Vector2(0.05, 0.05)).clamp(_widest_zoom, Vector2(10, 10))
+				camera.zoom = (camera.zoom + Vector2(0.05, 0.05)).clamp(_zoom_floor(), Vector2(10, 10))
 			elif event.button_index == MOUSE_BUTTON_WHEEL_DOWN:
-				camera.zoom = (camera.zoom - Vector2(0.05, 0.05)).clamp(_widest_zoom, Vector2(10, 10))
+				camera.zoom = (camera.zoom - Vector2(0.05, 0.05)).clamp(_zoom_floor(), Vector2(10, 10))
+
+## The widest zoom the wheel allows: the scene's own view normally, much wider in debug mode.
+func _zoom_floor() -> Vector2:
+	return DEBUG_WIDEST_ZOOM if DebugMode.is_enabled() else _widest_zoom
 
 func _is_interactable_body(body: Node) -> bool:
 	for group in INTERACT_GROUPS:

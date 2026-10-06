@@ -100,6 +100,12 @@
 	  "friendly_name": "Ship Captain",
 	  "message_colour": "dark_blue"
 	},
+	"Fishing Captain": {
+	  "sprite": "NPC_Captain2",
+	  "friendly_name": "Fishing Captain",
+	  "message_colour": "dark_blue",
+	  "npc_type": "fishing_captain"
+	},
 	"Car Park Guy": {
 	  "sprite": "Security",
 	  "friendly_name": "Parking Warden",
@@ -160,7 +166,7 @@
 	  "message_colour": "dark_red"
 	},
 	"Fisherman 2 Drinking Juice": {
-	  "sprite": "Fisher_M2",
+	  "sprite": "Fisher_M3",
 	  "friendly_name": "Fisherman John",
 	  "message_colour": "dark_blue"
 	},
@@ -1040,7 +1046,7 @@
 	"Fisherman John": {
 	  "prize_cards": 4,
 	  "coin_reward": "Squirtle Blue",
-	  "sprite": "Fisher_M2",
+	  "sprite": "Fisher_M3",
 	  "music": "REPLACEMUSIC",
 	  "cash_reward": "65",
 	  "deck": "Seavolutions",
