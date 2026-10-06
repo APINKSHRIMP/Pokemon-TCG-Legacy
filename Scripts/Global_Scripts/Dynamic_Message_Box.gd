@@ -138,6 +138,10 @@ const PILL_TRACK_EM    : float = 0.11
 # Cash pill - top right, same row as the name pill
 const CASH_FONT_SIZE   : int   = 17
 const CASH_PAD_H       : float = 20.0
+# A right-hand pill whose entry has an icon (the Fish Shop's Fish Coins) draws it at
+# this height before the figure, CASH_ICON_GAP short of it.
+const CASH_ICON_H      : float = 28.0
+const CASH_ICON_GAP    : float = 5.0
 
 # How far each pill shades toward its neighbours, so the row reads as one
 # continuous ramp rather than three unrelated blocks.
@@ -869,33 +873,63 @@ func _measure_pills(entries: Array, font_size: int) -> Array:
 	return out
 
 
-# The cash pill's text, or "" when there is no cash to show.
-func _cash_text() -> String:
-	if _right_chips.is_empty():
-		return ""
-	return String(_right_chips[0].get("text", ""))
+# The right-hand pills: normally just the vendor's cash, plus the Fish Coin pill to
+# its LEFT at the Fish Shop. Entries are laid out left to right in array order, the
+# last one flush with the box's right inset; an entry with no text is skipped.
+func _right_entries() -> Array:
+	var out: Array = []
+	for entry in _right_chips:
+		if entry is Dictionary and String(entry.get("text", "")) != "":
+			out.append(entry)
+	return out
+
+
+# Only an entry flagged "inline_icon" draws its icon: the vendor cash entry has always
+# carried an icon_path the pill never drew, and every other shop keeps its plain "$N".
+func _right_icon_width(entry: Dictionary) -> float:
+	if not bool(entry.get("inline_icon", false)):
+		return 0.0
+	var icon := _resolve_icon(entry)
+	if icon == null or icon.get_height() <= 0:
+		return 0.0
+	return CASH_ICON_H * icon.get_width() / float(icon.get_height())
+
+
+func _measure_right_pill(entry: Dictionary) -> float:
+	var font: Font = _ui().font("name")
+	var w := font.get_string_size(String(entry.get("text", "")), HORIZONTAL_ALIGNMENT_LEFT,
+			-1, CASH_FONT_SIZE).x + CASH_PAD_H * 2.0
+	var icon_w := _right_icon_width(entry)
+	if icon_w > 0.0:
+		# The icon sits in the left padding's place, so the pill keeps a pad on the right.
+		w += icon_w + CASH_ICON_GAP - CASH_PAD_H * 0.5
+	return w
 
 
 # Measured separately from the build so the pill row knows where it has to stop.
+# The whole right-hand group, gaps included.
 func _measure_cash_pill() -> float:
-	var text := _cash_text()
-	if text == "":
-		return 0.0
-	var font: Font = _ui().font("name")
-	return font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, CASH_FONT_SIZE).x \
-			+ CASH_PAD_H * 2.0
+	var entries := _right_entries()
+	var total := 0.0
+	for entry in entries:
+		total += _measure_right_pill(entry)
+	if entries.size() > 1:
+		total += PILL_GAP * (entries.size() - 1)
+	return total
 
 
 # The shop's money readout. Gold rather than a ramp colour on purpose - money is
 # neither the speaker nor the UI, and it is the one figure on the box the player
 # is looking for rather than reading.
 func _build_cash_pill(x: float, top: float, h: float) -> void:
-	var text := _cash_text()
-	if text == "":
-		return
-	var ui := _ui()
-	var w := _measure_cash_pill()
+	for entry in _right_entries():
+		var w := _measure_right_pill(entry)
+		_build_right_pill(entry, x, top, w, h)
+		x += w + PILL_GAP
 
+
+func _build_right_pill(entry: Dictionary, x: float, top: float, w: float, h: float) -> void:
+	var ui := _ui()
 	var pill := _make_chip_rect()
 	pill.position = Vector2(x, top)
 	pill.size     = Vector2(w, h)
@@ -903,16 +937,32 @@ func _build_cash_pill(x: float, top: float, h: float) -> void:
 	_apply_chip_shader(pill, ui.cash_pill_col("top"), ui.cash_pill_col("bot"),
 			ui.cash_pill_col("top"), h * 0.5, true)
 
+	var text_x := x
+	var text_w := w
+	var icon_w := _right_icon_width(entry)
+	if icon_w > 0.0:
+		var icon := TextureRect.new()
+		icon.texture        = _resolve_icon(entry)
+		icon.expand_mode    = TextureRect.EXPAND_IGNORE_SIZE
+		icon.stretch_mode   = TextureRect.STRETCH_SCALE
+		icon.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR
+		icon.mouse_filter   = Control.MOUSE_FILTER_IGNORE
+		icon.size     = Vector2(icon_w, CASH_ICON_H)
+		icon.position = Vector2(x + CASH_PAD_H * 0.5, top + (h - CASH_ICON_H) * 0.5)
+		_chip_row.add_child(icon)
+		text_x = x + CASH_PAD_H * 0.5 + icon_w + CASH_ICON_GAP
+		text_w = w - (text_x - x) - CASH_PAD_H
+
 	var lbl := Label.new()
-	lbl.text = text
+	lbl.text = String(entry.get("text", ""))
 	lbl.add_theme_font_override("font", ui.font("name"))
 	lbl.add_theme_font_size_override("font_size", CASH_FONT_SIZE)
 	lbl.add_theme_color_override("font_color", ui.cash_pill_col("fg"))
 	lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	lbl.vertical_alignment   = VERTICAL_ALIGNMENT_CENTER
 	lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	lbl.position = Vector2(x, top)
-	lbl.size = Vector2(w, h)
+	lbl.position = Vector2(text_x, top)
+	lbl.size = Vector2(text_w, h)
 	_chip_row.add_child(lbl)
 
 

@@ -1082,6 +1082,20 @@ func add_cash(amount: int) -> void:
 	save_progress()
 
 # ============================================================
+# FISH COINS
+# ============================================================
+# The fishing currency. Earned by landing fish (FishingData.fish_coin_reward), spent
+# only at the Fish Shop alongside cash, so better rods and fishing trips sit behind
+# actually having fished. Never shown anywhere else.
+
+func get_fish_coins() -> int:
+	return int(progress.get("fish_coins", 0))
+
+func add_fish_coins(amount: int) -> void:
+	progress["fish_coins"] = maxi(0, get_fish_coins() + amount)
+	save_progress()
+
+# ============================================================
 # OPPONENT TRACKING
 # ============================================================
 

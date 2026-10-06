@@ -67,11 +67,80 @@ static func current_table(spot: Dictionary) -> Array:
 	return rows if rows is Array else []
 
 
-## One species key rolled off a spot's current table, or "" when nothing is listed. How
-## that fish FIGHTS is not here: it belongs to the species, in the registry -- see
-## OverworldPokemonData.fish_stats().
-static func pick_fish(spot: Dictionary) -> String:
-	return str(OverworldPokemonData.pick_row(current_table(spot)).get("species", ""))
+## One row rolled off a spot's current table -- {species, percent} -- or {} when nothing
+## is listed. The row and not just the species, because its `percent` is the fish's
+## rarity on THIS table and feeds its Fish Coin reward. How the fish FIGHTS is not here:
+## it belongs to the species, in the registry -- see OverworldPokemonData.fish_stats().
+static func pick_fish_row(spot: Dictionary) -> Dictionary:
+	var row = OverworldPokemonData.pick_row(current_table(spot))
+	return row if row is Dictionary else {}
+
+
+# ============================================================
+# FISH COINS
+# ============================================================
+# Every landed fish pays out Fish Coins, scaled by how rare it is and how hard it is to
+# land. The formula is the one in Spreadsheets/Fish_Export.xlsx (columns S..AC) -- keep
+# the two in step. Every term reads a fish stat from the registry, plus the row's rate:
+#
+#   rarity      200 - rate * 4             commoner fish pay less (can go negative)
+#   big         +150 if a big silhouette
+#   size        100 * fish_size            the species' size, NOT the per-catch roll
+#   line        200 / (line_strength/100)^2   a weak line is harder to keep
+#   rest        200 / recharge_time        short rests = short reel windows
+#   reel        20 / reel_step^2 * 100     small reel steps = more reeling
+#   run         initial_distance / 2
+#   speed       lateral_speed / 2
+#   energy      energy / 2
+#
+#   coins = round(sum / FISH_COIN_DIVISOR * size_roll * multiplier), at least 1.
+#
+# `size_roll` is the same 0.8..1.2 the minigame drew the fish at, so a big one of its
+# kind is worth more. Magikarp at rate 35 lands ~27-40, Wailord ~110-165.
+
+## TWEAKABLE. The spreadsheet's AC column divides by 10.
+const FISH_COIN_DIVISOR := 10.0
+const FISH_COIN_BIG_BONUS := 150.0
+## Per-catch size roll -- the fish is drawn this much bigger or smaller than its species'
+## fish_size, and its reward scales by the same factor.
+const FISH_SIZE_ROLL_MIN := 0.8
+const FISH_SIZE_ROLL_MAX := 1.2
+## Reward multiplier once that species' fish tank is full and the catch goes back in the
+## water instead. Not wired up yet -- the tanks come next; pass tank_full when they do.
+const FISH_COIN_TANK_FULL_MULT := 0.5
+
+
+static func roll_fish_size() -> float:
+	return randf_range(FISH_SIZE_ROLL_MIN, FISH_SIZE_ROLL_MAX)
+
+
+## The un-rolled reward sum for a species caught off a row of rate `rate` -- the
+## spreadsheet's CALCULATION column. Exposed on its own for tuning tools.
+static func fish_coin_points(species: String, rate: float) -> float:
+	var s := OverworldPokemonData.fish_stats(species)
+	var line := float(s["line_strength"]) / 100.0
+	var reel := float(s["reel_step"])
+	var total := 200.0 - rate * 4.0
+	if OverworldPokemonData.species_big_fish(species):
+		total += FISH_COIN_BIG_BONUS
+	total += 100.0 * float(s["fish_size"])
+	total += 200.0 / (line * line)
+	total += 200.0 / float(s["recharge_time"])
+	total += 20.0 / (reel * reel) * 100.0
+	total += float(s["initial_distance"]) / 2.0
+	total += float(s["lateral_speed"]) / 2.0
+	total += float(s["energy"]) / 2.0
+	return total
+
+
+## What one landed fish is worth. fish_stats() clamps every stat above zero, so none of
+## the divisions can blow up.
+static func fish_coin_reward(species: String, rate: float, size_roll: float,
+		tank_full: bool = false) -> int:
+	var coins := fish_coin_points(species, rate) / FISH_COIN_DIVISOR * size_roll
+	if tank_full:
+		coins *= FISH_COIN_TANK_FULL_MULT
+	return maxi(1, int(round(coins)))
 
 
 ## Dropped after the placement tool writes, so the next cast reads the new spots.

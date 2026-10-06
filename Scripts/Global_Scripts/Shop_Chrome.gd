@@ -60,6 +60,7 @@ const SHADER_PATH := "res://Scripts/Shaders/Rounded_Message_Panel.gdshader"
 static func _font_path() -> String:
 	return UITheme.FONT_UI_BOLD
 const CASH_ICON   := "res://Image_Assets/Icons/Reward_Icons/pokedollar_icon.png"
+const FISH_COIN_ICON := "res://Image_Assets/Icons/Reward_Icons/FishCoin.png"
 
 const SCREEN_W : float = 1920.0
 
@@ -87,6 +88,8 @@ const WALLET_TEXT_COL   := Color(1, 1, 1, 1)
 ## Seconds the figure takes to count from the old balance to the new one after a
 ## purchase. 0.0 snaps instantly. Slowed 25% from 0.45 so the decrement is easier to watch.
 const WALLET_COUNT_TIME : float = 0.56
+## Gap between the cash chip and a second chip (the Fish Shop's Fish Coins) to its left.
+const WALLET_PAIR_GAP   : float = 14.0
 
 
 # ─── TWEAKABLE: item price pills ─────────────────────────────────────────────
@@ -103,6 +106,8 @@ const PILL_FONT_RATIO   : float = 0.52   # font size
 const PILL_PAD_RATIO    : float = 0.46   # padding each side of the text
 const PILL_STACK_GAP    : float = 0.10   # gap between the "was" pill and the main one
 const PILL_OLD_SCALE    : float = 0.86   # the "was" pill is this much of the main one
+const PILL_ICON_RATIO   : float = 0.72   # Fish Coin icon height on a two-currency pill
+const PILL_ICON_GAP_RATIO : float = 0.18 # gap either side of that icon
 
 ## How far the pill breaks out of the cell it belongs to. X is a fraction of the pill's
 ## WIDTH past the cell's right edge; Y a fraction of its HEIGHT below the cell's bottom.
@@ -148,7 +153,11 @@ const PILL_LAYER_NAME := "ShopChromePills"
 
 ## Adds the cash pill to `parent` (normally the shop's root Control) and returns it.
 ## Call set_wallet_cash() on the returned node whenever the balance moves.
-static func add_wallet_chip(parent: Node, cash: int) -> Control:
+##
+## `icon_path` / `prefix` make the same chip show another currency; see
+## add_fish_coin_chip(), the only other caller.
+static func add_wallet_chip(parent: Node, cash: int, icon_path: String = CASH_ICON,
+		prefix: String = "$") -> Control:
 	var holder := Control.new()
 	holder.name         = "WalletChip"
 	holder.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -165,8 +174,12 @@ static func add_wallet_chip(parent: Node, cash: int) -> Control:
 	icon.stretch_mode   = TextureRect.STRETCH_SCALE
 	icon.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	icon.mouse_filter   = Control.MOUSE_FILTER_IGNORE
-	if ResourceLoader.exists(CASH_ICON):
-		icon.texture = load(CASH_ICON)
+	if ResourceLoader.exists(icon_path):
+		icon.texture = load(icon_path)
+	# The Fish Coin art is 170 px drawn at 42: nearest filtering would shred it. The
+	# pokédollar is pixel art at roughly its drawn size and keeps nearest.
+	if icon_path != CASH_ICON:
+		icon.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR
 	holder.add_child(icon)
 
 	var label := _make_label("", WALLET_FONT_SIZE, WALLET_TEXT_COL)
@@ -175,8 +188,21 @@ static func add_wallet_chip(parent: Node, cash: int) -> Control:
 	holder.add_child(label)
 
 	holder.set_meta("shown_cash", cash)
+	holder.set_meta("prefix", prefix)
 	_layout_wallet(holder, cash)
 	return holder
+
+
+## The Fish Shop's second chip: Fish Coins, sat immediately LEFT of `wallet` (the cash
+## chip) and kept there as the cash figure grows and shrinks. Update it with
+## set_wallet_cash() like any wallet chip.
+static func add_fish_coin_chip(parent: Node, fish_coins: int, wallet: Control) -> Control:
+	var chip := add_wallet_chip(parent, fish_coins, FISH_COIN_ICON, "")
+	if wallet != null and is_instance_valid(wallet):
+		chip.set_meta("follows", wallet)
+		wallet.set_meta("follower", chip)
+		_layout_wallet(chip, fish_coins)
+	return chip
 
 
 ## ISSUE #208: THE CHIP'S OWN RECT IS EMPTY - ASK FOR THE PILL'S.
@@ -227,7 +253,8 @@ static func _layout_wallet(chip: Control, cash: int) -> void:
 	if pill == null or label == null:
 		return
 
-	label.text = "$" + str(cash)
+	chip.set_meta("laid_out", cash)
+	label.text = String(chip.get_meta("prefix", "$")) + str(cash)
 	var text_w := _text_width(label.text, WALLET_FONT_SIZE)
 
 	var icon_w := 0.0
@@ -237,7 +264,14 @@ static func _layout_wallet(chip: Control, cash: int) -> void:
 			icon_w = tex_size.x * (WALLET_ICON_H / tex_size.y)
 
 	var pill_w := WALLET_PAD_L + icon_w + WALLET_GAP + text_w + WALLET_PAD_R
-	var left   := SCREEN_W - WALLET_MARGIN_R - pill_w
+	# A chip that follows another ends where that one's pill starts, less the gap.
+	var right  := SCREEN_W - WALLET_MARGIN_R
+	var leader = chip.get_meta("follows") if chip.has_meta("follows") else null
+	if leader is Control and is_instance_valid(leader):
+		var lead_rect := wallet_pill_rect(leader)
+		if lead_rect.size.x > 1.0:
+			right = lead_rect.position.x - WALLET_PAIR_GAP
+	var left   := right - pill_w
 	var top    := WALLET_CENTRE_Y - WALLET_H * 0.5
 
 	pill.position = Vector2(left, top)
@@ -249,6 +283,11 @@ static func _layout_wallet(chip: Control, cash: int) -> void:
 
 	label.size     = Vector2(text_w, WALLET_H)
 	label.position = Vector2(left + WALLET_PAD_L + icon_w + WALLET_GAP, top)
+
+	# This chip moved or resized: drag the one pinned to its left along with it.
+	var follower = chip.get_meta("follower") if chip.has_meta("follower") else null
+	if follower is Control and is_instance_valid(follower):
+		_layout_wallet(follower, int(follower.get_meta("laid_out", 0)))
 
 
 # ============================================================
@@ -298,8 +337,12 @@ static func clear_pills(layer: Control) -> void:
 ## `old_price` > 0 stacks a smaller grey pill with a red line through it directly
 ## above the main pill. It is independent of `state`, so an unaffordable sale item
 ## still shows red on top of the struck-out original.
+##
+## `fish_price` > 0 (the Fish Shop) makes the main pill carry both prices -- "$500" then
+## the Fish Coin icon and "50" -- in the one state colour, which then means "can afford
+## BOTH". OWNED ignores it.
 static func add_price_pill(layer: Control, anchor: Rect2, state: int,
-						   price: int, old_price: int = 0) -> void:
+						   price: int, old_price: int = 0, fish_price: int = 0) -> void:
 	if layer == null or not is_instance_valid(layer):
 		return
 
@@ -335,6 +378,19 @@ static func add_price_pill(layer: Control, anchor: Rect2, state: int,
 			main_text = "$" + str(price)
 
 	# ── Main pill. Right edge overhangs the cell; bottom edge dips just below it.
+	if fish_price > 0 and state != OWNED:
+		var fish_text := str(fish_price)
+		var icon_h    := h * PILL_ICON_RATIO
+		var icon_w    := _fish_icon_width(icon_h)
+		var gap       := h * PILL_ICON_GAP_RATIO
+		var dual_w : float = _text_width(main_text, font_size) + gap * 2.0 + icon_w \
+				+ _text_width(fish_text, font_size) + pad * 2.0
+		var dual_x : float = cell_origin.x + cell_size.x + dual_w * PILL_OVERHANG_X - dual_w
+		var dual_y : float = cell_origin.y + cell_size.y + h * PILL_OVERHANG_Y - h
+		_add_dual_pill_row(holder, Vector2(dual_x, dual_y), Vector2(dual_w, h), main_col,
+				main_text, fish_text, font_size, pad, gap, icon_h)
+		return
+
 	var main_w : float = _text_width(main_text, font_size) + pad * 2.0
 	var main_x : float = cell_origin.x + cell_size.x + main_w * PILL_OVERHANG_X - main_w
 	var main_y : float = cell_origin.y + cell_size.y + h * PILL_OVERHANG_Y - h
@@ -351,6 +407,51 @@ static func add_price_pill(layer: Control, anchor: Rect2, state: int,
 		var old_y    : float  = main_y - h * PILL_STACK_GAP - old_h
 		_add_pill_row(holder, Vector2(old_x, old_y), Vector2(old_w, old_h),
 					  _col_old_price(), old_text, old_font, true)
+
+
+## A two-currency pill: "$500  [fish coin] 50". One rect, two labels and the icon, laid
+## left to right with `pad` at each end and `gap` either side of the icon.
+static func _add_dual_pill_row(holder: Control, pos: Vector2, size: Vector2, col: Color,
+							   cash_text: String, fish_text: String, font_size: int,
+							   pad: float, gap: float, icon_h: float) -> void:
+	var pill := _make_pill(size, col, col.lerp(Color.WHITE, PILL_GRADIENT_LIFT))
+	pill.position = pos
+	holder.add_child(pill)
+
+	var x := pos.x + pad
+	var cash_w := _text_width(cash_text, font_size)
+	var cash := _make_label(cash_text, font_size, PILL_TEXT_COL)
+	cash.position = Vector2(x, pos.y)
+	cash.size     = Vector2(cash_w, size.y)
+	holder.add_child(cash)
+	x += cash_w + gap
+
+	var icon_w := _fish_icon_width(icon_h)
+	if icon_w > 0.0:
+		var icon := TextureRect.new()
+		icon.texture        = load(FISH_COIN_ICON)
+		icon.expand_mode    = TextureRect.EXPAND_IGNORE_SIZE
+		icon.stretch_mode   = TextureRect.STRETCH_SCALE
+		icon.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR
+		icon.mouse_filter   = Control.MOUSE_FILTER_IGNORE
+		icon.size     = Vector2(icon_w, icon_h)
+		icon.position = Vector2(x, pos.y + (size.y - icon_h) * 0.5)
+		holder.add_child(icon)
+	x += icon_w + gap
+
+	var fish := _make_label(fish_text, font_size, PILL_TEXT_COL)
+	fish.position = Vector2(x, pos.y)
+	fish.size     = Vector2(_text_width(fish_text, font_size), size.y)
+	holder.add_child(fish)
+
+
+static func _fish_icon_width(icon_h: float) -> float:
+	if not ResourceLoader.exists(FISH_COIN_ICON):
+		return 0.0
+	var tex: Texture2D = load(FISH_COIN_ICON)
+	if tex == null or tex.get_height() <= 0:
+		return 0.0
+	return icon_h * tex.get_width() / float(tex.get_height())
 
 
 ## One pill: the rounded rect, its centred label, and — when `strike` — a red bar across

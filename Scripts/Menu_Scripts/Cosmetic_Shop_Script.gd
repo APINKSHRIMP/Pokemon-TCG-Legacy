@@ -112,6 +112,11 @@ var shop_kind       : String = KIND_SLEEVE
 var shop_title      : String = "Sleeve Shop"
 var shop_columns    : int = 0        # 0 = let the grid pick; set from the block's "columns"
 var player_cash     : int = 0
+## Fish Coins: only a block with "fish_coins": true shows them or charges them (the Fish
+## Shop). Its rows then carry a "fish_cost" on top of their cash "cost", and BOTH must be
+## covered to buy.
+var uses_fish_coins : bool = false
+var player_fish_coins : int = 0
 var _owned_items    : Dictionary = {}
 
 var selected_cell   : Control = null
@@ -136,6 +141,8 @@ var _reveal_ok_btn  : Button = null
 ## "Your money / Sleeve cost" Labels that used to sit bottom-right; each item now carries
 ## its own price on a pill in its bottom-right corner.
 var wallet_chip : Control = null
+## The Fish Coin chip left of the cash one -- null in every shop but a fish_coins block.
+var fish_coin_chip : Control = null
 
 ## The flat layer every price pill is drawn on. Pills are NOT children of the cells: the
 ## selection tween scales a cell, and a nested pill would be scaled along with it instead of
@@ -158,6 +165,8 @@ func _ready() -> void:
 
 	_build_chrome()
 	wallet_chip = ShopChrome.add_wallet_chip(self, player_cash)
+	if uses_fish_coins:
+		fish_coin_chip = ShopChrome.add_fish_coin_chip(self, player_fish_coins, wallet_chip)
 	pill_layer  = ShopChrome.add_pill_layer(self)
 
 	buy_btn.disabled = true
@@ -215,6 +224,7 @@ func _load_inventory() -> void:
 	shop_kind    = String(block.get("kind", KIND_SLEEVE))
 	shop_title   = block.get("title", _default_title(shop_kind))
 	shop_columns = int(block.get("columns", 0))
+	uses_fish_coins = bool(block.get("fish_coins", false))
 
 
 func _default_title(kind: String) -> String:
@@ -233,6 +243,7 @@ func _item_kind(entry: Dictionary) -> String:
 
 func _load_player_data() -> void:
 	player_cash = GameState.get_cash()
+	player_fish_coins = GameState.get_fish_coins()
 	# Costume filenames are stored lower-cased and with the .png suffix; sleeves are stored
 	# as bare basenames. _is_owned() does the per-kind lookup, so nothing is cached here for
 	# costumes — GameState is already the single source of truth for both.
@@ -344,6 +355,7 @@ func _build_item_grid() -> void:
 	for entry in inventory:
 		var item_name : String = String(entry.get("name", ""))
 		var cost      : int    = int(entry.get("cost", DEFAULT_ITEM_COST))
+		var fish_cost : int    = int(entry.get("fish_cost", 0)) if uses_fish_coins else 0
 		var kind      : String = _item_kind(entry)
 		var label     : String = String(entry.get("label", _format_item_name(item_name)))
 		if item_name == "":
@@ -371,6 +383,7 @@ func _build_item_grid() -> void:
 		wrapper.clip_contents       = false
 		wrapper.set_meta("item_name",  item_name)
 		wrapper.set_meta("item_cost",  cost)
+		wrapper.set_meta("item_fish_cost", fish_cost)
 		wrapper.set_meta("is_owned",   is_owned)
 		wrapper.set_meta("item_kind",  kind)
 		wrapper.set_meta("item_label", label)
@@ -480,14 +493,20 @@ func _refresh_pills() -> void:
 		if not (child is Control) or not is_instance_valid(child):
 			continue
 		var cost : int = int(child.get_meta("item_cost", DEFAULT_ITEM_COST))
+		var fish_cost : int = int(child.get_meta("item_fish_cost", 0))
 		var state : int
 		if child.get_meta("is_owned", false):
 			state = ShopChrome.OWNED
-		elif player_cash >= cost:
+		elif _can_afford(cost, fish_cost):
 			state = ShopChrome.AFFORDABLE
 		else:
 			state = ShopChrome.UNAFFORDABLE
-		ShopChrome.add_price_pill(pill_layer, child.get_global_rect(), state, cost)
+		ShopChrome.add_price_pill(pill_layer, child.get_global_rect(), state, cost, 0, fish_cost)
+
+
+## Cash AND Fish Coins both covered. fish_cost is always 0 outside a fish_coins shop.
+func _can_afford(cost: int, fish_cost: int) -> bool:
+	return player_cash >= cost and player_fish_coins >= fish_cost
 
 
 # ─── Click / selection ───────────────────────────────────────────────────────
@@ -560,7 +579,8 @@ func _update_buy_button() -> void:
 	if selected_cell != null and is_instance_valid(selected_cell):
 		var is_owned : bool = selected_cell.get_meta("is_owned", true)
 		var cost     : int  = int(selected_cell.get_meta("item_cost", DEFAULT_ITEM_COST))
-		can_buy = not is_owned and player_cash >= cost
+		var fish_cost : int = int(selected_cell.get_meta("item_fish_cost", 0))
+		can_buy = not is_owned and _can_afford(cost, fish_cost)
 	buy_btn.disabled = not can_buy
 	UIKit.style_button(buy_btn, "good" if can_buy else "primary")
 
@@ -572,12 +592,16 @@ func _on_buy_pressed() -> void:
 		return
 	var item_name : String = String(selected_cell.get_meta("item_name", ""))
 	var cost      : int    = int(selected_cell.get_meta("item_cost", DEFAULT_ITEM_COST))
+	var fish_cost : int    = int(selected_cell.get_meta("item_fish_cost", 0))
 	var kind      : String = String(selected_cell.get_meta("item_kind", shop_kind))
-	if item_name == "" or player_cash < cost:
+	if item_name == "" or not _can_afford(cost, fish_cost):
 		return
 
 	player_cash -= cost
 	GameState.add_cash(-cost)
+	if fish_cost > 0:
+		player_fish_coins -= fish_cost
+		GameState.add_fish_coins(-fish_cost)
 	# Each kind banks into its own collection; GameState is the only place that knows how
 	# each one is stored (costumes lower-cased with .png, coins with .png, the rest bare).
 	match kind:
@@ -681,6 +705,7 @@ func _show_purchase_display(item_name: String, kind: String, display_name: Strin
 
 	selected_cell = null
 	ShopChrome.set_wallet_cash(wallet_chip, player_cash)
+	ShopChrome.set_wallet_cash(fish_coin_chip, player_fish_coins)
 	# Every pill, not just the one bought: the item just purchased flips to grey OWNED and
 	# anything the remaining balance no longer covers flips green -> red.
 	_refresh_pills()

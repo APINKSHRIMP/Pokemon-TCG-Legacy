@@ -810,6 +810,10 @@ func _build_message_box():
 const MSG_ICON_DIR := "res://Image_Assets/Icons/Message_Icons/"
 # ISSUE #120: reuses the outro's reward icon rather than adding a near-identical asset.
 const CASH_CHIP_ICON := "res://Image_Assets/Icons/Reward_Icons/pokedollar_icon.png"
+const FISH_COIN_CHIP_ICON := "res://Image_Assets/Icons/Reward_Icons/FishCoin.png"
+## Shop ids whose keepers also show the player's Fish Coins. Keep in step with the
+## "fish_coins": true blocks in cosmetic_shop_inventory.json.
+const FISH_COIN_SHOP_IDS := ["fish_shop"]
 
 # ISSUE #120: the NPCs that trade in cash -- the three marts and the coin/holo shops all run
 # through the "shop" state machine, the juice bar through its own path. Only these show the
@@ -828,9 +832,14 @@ func _apply_cash_chip() -> void:
 	if message_panel == null:
 		return
 	if current_npc != null and _npc_is_vendor(current_npc):
-		message_panel.set_right_chips([
-			{ "text": "$" + str(GameState.get_cash()), "icon_path": CASH_CHIP_ICON },
-		])
+		var chips: Array = []
+		# The Fish Shop trades in Fish Coins too: their pill goes LEFT of the cash one.
+		var shop_id: String = current_npc.shop_id if "shop_id" in current_npc else ""
+		if shop_id in FISH_COIN_SHOP_IDS:
+			chips.append({ "text": str(GameState.get_fish_coins()),
+					"icon_path": FISH_COIN_CHIP_ICON, "inline_icon": true })
+		chips.append({ "text": "$" + str(GameState.get_cash()), "icon_path": CASH_CHIP_ICON })
+		message_panel.set_right_chips(chips)
 	else:
 		message_panel.set_right_chips([])
 

@@ -322,6 +322,23 @@ const NEW_TAG_RISE      := 18.0
 const NEW_TAG_RISE_TIME := 1.25
 const NEW_TAG_FADE_TIME := 1.1
 const NEW_TAG_Z := 26
+
+## The white "+123" Fish Coin reward floated over the player on every catch, same rise and
+## fade as the NEW! tag, with the Fish Coin icon to its left. World px, like NEW_TAG_*.
+## When the catch is ALSO new, NEW! rises from FISH_COIN_TAG_STACK higher up so the two
+## never overlap.
+const FISH_COIN_ICON := "res://Image_Assets/Icons/Reward_Icons/FishCoin.png"
+const FISH_COIN_TAG_FONT_SIZE := 12
+const FISH_COIN_TAG_ICON_H := 12.0
+const FISH_COIN_TAG_GAP := 2.0
+const FISH_COIN_TAG_STACK := 16.0
+
+## What happens to a landed fish after the catch box is dismissed. TRUE = it is beamed
+## off to the fish tanks (FishTeleport); FALSE = it hops back into the water. The tanks
+## and their per-species limits are not built yet, so this is a single switch for now --
+## when they are, a full tank sends it back in the water (and halves its reward, see
+## FishingData.FISH_COIN_TANK_FULL_MULT) and anything else teleports.
+const TELEPORT_TO_TANK := true
 const SINK_TIME := 0.5
 const WATER_CLEAR_ROWS := 5.0
 const WATER_FADE_ROWS := 8.0
@@ -352,6 +369,8 @@ const SFX := {
 	"splash_bad": "res://Audio/SFX/FishSplashBad.ogg",
 	"caught": "res://Audio/SFX/FishSplashCaught.ogg",
 	"jingle": "res://Audio/SFX/FishCaughtJingle.ogg",
+	# Not recorded yet -- silent until a file lands at this path.
+	"teleport": "res://Audio/SFX/FishTeleport.ogg",
 }
 
 ## Water noise during the fight. A splash every so often, picked from the two "good"
@@ -395,7 +414,8 @@ const ESCAPED_MESSAGE := "It got away..."
 
 enum State {
 	SHAKE, TURN_AWAY, TURN_BACK, FLICK, CAST, WAIT, SINK, BITE, FIGHT,
-	CATCH_PAUSE_STATE, CATCH_YANK, CATCH_MESSAGE, CATCH_HOP, CATCH_SINK, RETRACT, DONE
+	CATCH_PAUSE_STATE, CATCH_YANK, CATCH_MESSAGE, CATCH_HOP, CATCH_SINK, CATCH_TELEPORT,
+	RETRACT, DONE
 }
 
 var map_data: String = ""
@@ -453,6 +473,11 @@ var _side_min: float = -INF
 var _side_max: float = INF
 
 var _fish_species: String = ""
+## The rolled row's weight on its table (its rarity, for the Fish Coin reward) and this
+## particular fish's size roll, FishingData.FISH_SIZE_ROLL_MIN..MAX. The roll scales the
+## silhouette, the Pokémon pulled out and the reward alike.
+var _fish_rate: float = 0.0
+var _size_roll: float = 1.0
 ## The rolled species' six fight numbers -- see the PER-SPECIES STATS note above. Always
 ## fully populated (fish_stats fills every key), so it can be read without a .get.
 var _stats: Dictionary = OverworldPokemonData.fish_stats("")
@@ -700,6 +725,7 @@ func _process(delta: float) -> void:
 		State.CATCH_MESSAGE: pass
 		State.CATCH_HOP: _process_catch_hop(delta)
 		State.CATCH_SINK: _process_catch_sink()
+		State.CATCH_TELEPORT: pass  # FishTeleport runs itself and calls back
 		State.RETRACT: _process_retract(delta)
 	_tick_jingle(delta)
 	_update_fish_anim(delta)
@@ -963,12 +989,15 @@ func _tick_bobber_idle(delta: float) -> void:
 # ============================================================
 
 func _spawn_fish() -> void:
-	_fish_species = FishingData.pick_fish(_spot)
+	var row := FishingData.pick_fish_row(_spot)
+	_fish_species = str(row.get("species", ""))
+	_fish_rate = float(row.get("percent", 0.0))
 	_stats = OverworldPokemonData.fish_stats(_fish_species)
 	if _fish_species == "":
 		return  # nothing lives here at this hour; the player reels in by hand
 	_fish_big = OverworldPokemonData.species_big_fish(_fish_species)
-	_fish_size = FISH_SCALE * float(_stats["fish_size"])
+	_size_roll = FishingData.roll_fish_size()
+	_fish_size = FISH_SCALE * float(_stats["fish_size"]) * _size_roll
 	_fish_flip = false
 	_fish = Sprite2D.new()
 	_fish.centered = false
@@ -1492,9 +1521,10 @@ func _process_catch_pause() -> void:
 ## How big the fish read in the water, relative to a small silhouette at fish_size 1.
 ## The big silhouette is drawn ~2.5x longer than the small one, so a big fish at 0.6
 ## is really bigger than a small fish at 1.0 -- `fish_size` alone would not say so.
+## Includes this fish's size roll, so a big one of its kind comes out bigger too.
 func _fish_water_size() -> float:
 	var length := FishingArt.fish_size(0, _fish_big).y / FishingArt.fish_size(0, false).y
-	return length * float(_stats["fish_size"])
+	return length * float(_stats["fish_size"]) * _size_roll
 
 
 ## Water size -> caught sprite multiplier. See CAUGHT_SHRINK_PER_SIZE.
@@ -1622,11 +1652,15 @@ func _show_catch_message() -> void:
 	# landed fish, on arrival at the rod tip, so the tally and the Field Guide entry
 	# cannot double-count however the player dismisses the box afterwards.
 	GameState.add_fish_caught()
-	if GameState.record_pokemon_met(_fish_species):
-		_show_new_tag()
+	var reward := FishingData.fish_coin_reward(_fish_species, _fish_rate, _size_roll)
+	GameState.add_fish_coins(reward)
+	var is_new := GameState.record_pokemon_met(_fish_species)
+	_show_fish_coin_tag(reward)
+	if is_new:
+		_show_new_tag(FISH_COIN_TAG_STACK)
 
 	var species_name := OverworldPokemonData.display_name(_fish_species)
-	MapManager.show_message_then("You caught a %s!" % species_name,
+	MapManager.show_message_then("You caught a %s worth %d Fish Coins!" % [species_name, reward],
 			Callable(self, "_on_catch_message_ok"))
 
 
@@ -1634,11 +1668,31 @@ func _show_catch_message() -> void:
 ## seen before. Same idea as the NEW! that floats off a new card in a pack
 ## (Pack_Opening_Manager._show_new_label) -- rise, fade, free itself -- but drawn in
 ## world space over the player rather than as a UI Label over a card.
-func _show_new_tag() -> void:
+func _show_new_tag(lift: float = 0.0) -> void:
 	if _player == null or not is_instance_valid(_player):
 		return
 	var tag := NewTag.new()
 	tag.font_size = NEW_TAG_FONT_SIZE
+	tag.rise = NEW_TAG_RISE
+	tag.rise_time = NEW_TAG_RISE_TIME
+	tag.fade_time = NEW_TAG_FADE_TIME
+	tag.z_as_relative = false
+	tag.z_index = NEW_TAG_Z
+	add_child(tag)
+	tag.global_position = _player.global_position + Vector2(0.0, -NEW_TAG_OFFSET - lift)
+
+
+## The white "+N" with the Fish Coin icon, on every catch. Rises and fades exactly like
+## the NEW! tag (same NEW_TAG_* timings) so the two read as one flourish when both show.
+func _show_fish_coin_tag(amount: int) -> void:
+	if _player == null or not is_instance_valid(_player):
+		return
+	var tag := FishCoinTag.new()
+	tag.text = "+%d" % amount
+	tag.icon = load(FISH_COIN_ICON) if ResourceLoader.exists(FISH_COIN_ICON) else null
+	tag.font_size = FISH_COIN_TAG_FONT_SIZE
+	tag.icon_h = FISH_COIN_TAG_ICON_H
+	tag.gap = FISH_COIN_TAG_GAP
 	tag.rise = NEW_TAG_RISE
 	tag.rise_time = NEW_TAG_RISE_TIME
 	tag.fade_time = NEW_TAG_FADE_TIME
@@ -1659,6 +1713,9 @@ func _on_catch_message_ok() -> void:
 	if _caught == null or not is_instance_valid(_caught):
 		_finish()
 		return
+	if TELEPORT_TO_TANK:
+		_start_teleport()
+		return
 	# Back to a normal standing sprite, still facing the player, and it hops back in --
 	# it only turns to face the way it is going once it is clear of the rod.
 	_caught.rotation_degrees = 0.0
@@ -1671,6 +1728,24 @@ func _on_catch_message_ok() -> void:
 	_line.visible = false
 	_bobber.visible = false
 	_set_state(State.CATCH_HOP)
+
+
+## Beamed off to the fish tanks: stood upright where it hung, facing the player, then
+## FishTeleport whitens it and breaks it up into rising specks. The line and bobber go
+## the moment it starts, as they do for the hop.
+func _start_teleport() -> void:
+	_caught.rotation_degrees = 0.0
+	_set_caught_row(int(OverworldPokemon.ROWS.get(_opposite(water_dir), 0)))
+	_carry_caught()
+	_line.visible = false
+	_bobber.visible = false
+	_set_state(State.CATCH_TELEPORT)
+	var fx := FishTeleport.fire(self, _caught, CAUGHT_Z)
+	if fx == null:
+		_finish()
+		return
+	_sfx("teleport")
+	fx.finished.connect(_finish)
 
 
 func _process_catch_hop(delta: float) -> void:
@@ -1965,6 +2040,58 @@ class NewTag extends Node2D:
 			draw_string(font, at, glyph, HORIZONTAL_ALIGNMENT_LEFT, -1,
 					font_size, Color.from_hsv(hue, SAT, VAL, alpha))
 			x += font.get_string_size(glyph, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size).x
+
+
+## "+N" in white with the Fish Coin icon before it, rising and fading over the player's
+## head. Same life as NewTag; every number is handed in at construction because an inner
+## class cannot read the outer class's constants.
+class FishCoinTag extends Node2D:
+	const OUTLINE := 2
+
+	var text: String = ""
+	var icon: Texture2D = null
+	var font_size: int = 12
+	var icon_h: float = 12.0
+	var gap: float = 2.0
+	var rise: float = 18.0
+	var rise_time: float = 1.25
+	var fade_time: float = 1.1
+
+	var _t: float = 0.0
+
+	func _ready() -> void:
+		# The icon is 170 px drawn at ~30 on screen: nearest would shred it.
+		texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR
+
+	func _process(delta: float) -> void:
+		_t += delta
+		if _t >= maxf(rise_time, fade_time):
+			queue_free()
+			return
+		queue_redraw()
+
+	func _draw() -> void:
+		var font := ThemeDB.fallback_font
+		var climb: float = -rise * clampf(_t / maxf(rise_time, 0.01), 0.0, 1.0)
+		var alpha: float = 1.0 - clampf(_t / maxf(fade_time, 0.01), 0.0, 1.0)
+		var text_w := font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size).x
+		var icon_w := 0.0
+		if icon != null and icon.get_height() > 0:
+			icon_w = icon_h * icon.get_width() / float(icon.get_height())
+		var total := icon_w + (gap if icon_w > 0.0 else 0.0) + text_w
+		var x := -total * 0.5
+		if icon_w > 0.0:
+			# Centred on the text's cap height: the baseline is y = climb, and the
+			# digits stand roughly 0.7 of the font size above it.
+			var mid := climb - font_size * 0.35
+			draw_texture_rect(icon, Rect2(Vector2(x, mid - icon_h * 0.5), Vector2(icon_w, icon_h)),
+					false, Color(1, 1, 1, alpha))
+			x += icon_w + gap
+		var at := Vector2(x, climb)
+		draw_string_outline(font, at, text, HORIZONTAL_ALIGNMENT_LEFT, -1,
+				font_size, OUTLINE, Color(0.0, 0.0, 0.0, alpha))
+		draw_string(font, at, text, HORIZONTAL_ALIGNMENT_LEFT, -1,
+				font_size, Color(1.0, 1.0, 1.0, alpha))
 
 
 # ============================================================
