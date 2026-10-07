@@ -61,6 +61,10 @@ const FISH_STAT_GAP := 3
 const FISH_NAME_WIDTH := 126
 const FISH_PERCENT_SPIN_WIDTH := 66
 const FISH_SCALE_SPIN_WIDTH := 66
+## The live average-Fish-Coin readout at the end of a fish row: icon size and the width
+## kept for the number (3 digits).
+const FISH_COIN_READOUT_ICON := 22
+const FISH_COIN_READOUT_WIDTH := 40
 ## What each of the six fish boxes does, as its tooltip -- the captions are too short to say.
 const FISH_STAT_TIPS := {
 	"energy": "Stamina. Pulling the right way drains it at 40 a second; at 0 the fish is blown and can be reeled in. Higher = a longer fight.",
@@ -746,6 +750,7 @@ func _rebuild_table() -> void:
 			name_label.tooltip_text = species + " -- new to this template, added to it on save"
 			name_label.add_theme_color_override("font_color", Color(1.0, 0.75, 0.35))
 
+		var rate_box: SpinBox = null
 		if _is_tank():
 			# No rate: a tank puts out every row. The number is how many of them.
 			_caption(row, "Count")
@@ -766,6 +771,7 @@ func _rebuild_table() -> void:
 				entry["percent"] = v
 				_revalidate())
 			row.add_child(percent)
+			rate_box = percent
 
 		# On a FISH row, Scale edits `fish_size` -- how big the hooked silhouette is
 		# drawn -- and deliberately leaves the shared `scale` key alone: the fishing art
@@ -793,7 +799,11 @@ func _rebuild_table() -> void:
 		elif _template == "skittish":
 			_add_wander_control(row, species)
 		elif is_fishing:
-			_add_fish_controls(row, species)
+			# Rate and Scale (fish_size) feed the coin price too.
+			var reprice := _add_fish_controls(row, species, entry)
+			scale_box.value_changed.connect(func(_v: float): reprice.call())
+			if rate_box != null:
+				rate_box.value_changed.connect(func(_v: float): reprice.call())
 		elif _template == "surfacing":
 			_add_swim_control(row, species)
 		elif _is_tank():
@@ -829,11 +839,16 @@ func _rebuild_table() -> void:
 ## box per fight stat. Like Scale and a flyer's Speed these write the SPECIES' settings,
 ## not the row -- the same fight on every table, map and time of day. Distances and
 ## speeds are world pixels: on-screen pixels / 2.5, the overworld's zoom.
-func _add_fish_controls(line: HBoxContainer, species: String) -> void:
+##
+## Ends with the row's AVERAGE Fish Coin reward (coin icon + number), worked out live
+## from the row's Rate and the species' unsaved settings. Returns the Callable that
+## re-prices it; _rebuild_table hooks Rate and Scale to it, this hooks Big and the six.
+func _add_fish_controls(line: HBoxContainer, species: String, entry: Dictionary) -> Callable:
 	var settings := _settings_for(species)
 	# Which of the two silhouette sets it is hooked as. Species-wide like the rest.
-	_flag_box(line, settings, "big", "Big",
+	var big_box := _flag_box(line, settings, "big", "Big",
 			"Hooks as one of the BIG fish silhouettes instead of the small ones. Same on every table and map.")
+	var boxes: Array = []
 	for key in OverworldPokemonData.FISH_STAT_LABELS:
 		var stat_key := str(key)
 		var limits: Array = OverworldPokemonData.FISH_STAT_LIMITS[stat_key]
@@ -844,6 +859,36 @@ func _add_fish_controls(line: HBoxContainer, species: String) -> void:
 		box.custom_minimum_size = Vector2(FISH_STAT_SPIN_WIDTH, 0)
 		box.value_changed.connect(func(v: float): settings[stat_key] = v)
 		line.add_child(box)
+		boxes.append(box)
+
+	var coin := TextureRect.new()
+	coin.custom_minimum_size = Vector2(FISH_COIN_READOUT_ICON, FISH_COIN_READOUT_ICON)
+	coin.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	coin.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	coin.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR
+	coin.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	if ResourceLoader.exists(FishingMinigame.FISH_COIN_ICON):
+		coin.texture = load(FishingMinigame.FISH_COIN_ICON)
+	line.add_child(coin)
+	var value := _caption(line, "")
+	value.custom_minimum_size = Vector2(FISH_COIN_READOUT_WIDTH, 0)
+	var tip := "Average Fish Coins for one catch at this Rate (a middle-sized one -- the size roll moves it %d%% either way). Does not include the +%d / +%d bonus for sending it to FISH." % [
+			int(round((FishingData.FISH_SIZE_ROLL_MAX - 1.0) * 100.0)),
+			FishingData.FISH_SHOP_BONUS_SMALL, FishingData.FISH_SHOP_BONUS_BIG]
+	value.tooltip_text = tip
+	value.mouse_filter = Control.MOUSE_FILTER_PASS
+	coin.tooltip_text = tip
+
+	var refresh := func() -> void:
+		value.text = str(FishingData.average_fish_coin_reward(settings,
+				float(entry.get("percent", 0)), bool(settings.get("big", false))))
+	# Connected AFTER each box's own handler, so the setting is already written when the
+	# price is worked out.
+	big_box.toggled.connect(func(_on: bool): refresh.call())
+	for box in boxes:
+		(box as SpinBox).value_changed.connect(func(_v: float): refresh.call())
+	refresh.call()
+	return refresh
 
 
 ## Flock size for a flyer row that doesn't have one yet. (Speed, scale, spin and

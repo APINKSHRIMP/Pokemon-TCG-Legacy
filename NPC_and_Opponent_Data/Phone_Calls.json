@@ -50,5 +50,122 @@
 	  "Well anyway, I'll let you drop your stuff off first and get settled in at least a little bit before I come to bug you.",
 	  "[WINK] I'll drop by in a bit, see you soon!"
 	]
+  },
+
+  "_fish_shop_readme": [
+	"FISH milestone calls: fish_shop_<N>_olly / fish_shop_<N>_alexander, rung by FishShopCalls the",
+	"moment the player has SENT N fish to FISH. Whoever is behind the counter today rings (the other",
+	"keeper's call is the fallback). N = every Interior_<N> in the two Fish Shop scenes, plus",
+	"FishShopCalls.CALL_ONLY (10, 200) and ITEM_UNLOCKS (50 permit, 200 Gold Rod). A line that is",
+	"exactly \"[UNLOCK]\" is where the item reveal plays; with none it plays after the last line.",
+	"The Olly/Alexander talking-head art does not exist yet -- the calls play with an empty screen."
+  ],
+
+  "fish_shop_10_olly": {
+	"speaker": "Olly", "character": "Olly", "clothes": "Jeans_Bag", "pill_sprite": "1Olly_Jeans_Bag", "colour": "aqua",
+	"lines": [
+	  "Hey [NAME]! You've already sent me back almost a dozen fish, it was looking a bit empty in here before.",
+	  "Thanks again for helping me with this! You could definitely use some new FISH gear, come and see me at the shop!"
+	]
+  },
+  "fish_shop_10_alexander": {
+	"speaker": "Alexander", "character": "Alexander", "clothes": "Casual", "pill_sprite": "1Alexander", "colour": "light_blue",
+	"lines": [
+	  "Hey [NAME], you've been busy recently I see, these tanks were practically empty before you started helping out.",
+	  "Olly is already starting to clear out the basement to make room for more down there."
+	]
+  },
+
+  "fish_shop_25_olly": {
+	"speaker": "Olly", "character": "Olly", "clothes": "Jeans_Bag", "pill_sprite": "1Olly_Jeans_Bag", "colour": "aqua",
+	"lines": [
+	  "Hey [NAME]! That's 25 fish you've sent back to FISH!",
+	  "Research is going great thanks to you, the fish just keep flying on in!",
+	  "I've opened up the back of the shop and put a load of new tanks in, so you can send me more of each fish now!",
+	  "Thanks again for all your hard work fishing, I've not had that much time with research to actually fish!"
+	]
+  },
+  "fish_shop_25_alexander": {
+	"speaker": "Alexander", "character": "Alexander", "clothes": "Casual", "pill_sprite": "1Alexander", "colour": "light_blue",
+	"lines": [
+	  "Hey [NAME], 25 fish sent back already... you're keeping us in business.",
+	  "We've had to put a whole load of new tanks in out back, so you can send us more of each fish now.",
+	  "But thanks to you I have to clean out all these tanks every day now... I need a raise..."
+	]
+  },
+
+  "fish_shop_50_olly": {
+	"speaker": "Olly", "character": "Olly", "clothes": "Jeans_Bag", "pill_sprite": "1Olly_Jeans_Bag", "colour": "aqua",
+	"lines": [
+	  "Hey [NAME]! 50 fish! I can't believe how fast the shop is filling up!",
+	  "I've rebuilt the tanks downstairs too, so there's room for more of every fish from the forest now.",
+	  "Oh, and we've found an amazing fishing spot a few miles out of the harbour right in the middle of the ocean.",
+	  "We've started offering trips out there a couple of times a day if you're interested in going to fish up some rare Pokemon!",
+	  "[UNLOCK]",
+	  "Just make sure you buy the permit to get there then show it to the boat captain at our fishing dock and he'll take you any time you want!",
+	  "You'll only need to buy the permit once and we'll take you out there whenever you want, free of charge!"
+	]
+  },
+  "fish_shop_50_alexander": {
+	"speaker": "Alexander", "character": "Alexander", "clothes": "Casual", "pill_sprite": "1Alexander", "colour": "light_blue",
+	"lines": [
+	  "Hey [NAME], that's 50 fish sent back. Olly's had me rebuilding the tanks downstairs all week, so there's more room for the forest fish now.",
+	  "Did Olly tell you about the new fishing spot we found out in the middle of the ocean?",
+	  "[UNLOCK]",
+	  "If you buy the permit from us then all you have to do is show it to the captain on our fishing dock and he'll sail you out.",
+	  "He'll take you for free at any point you want to go and you might find some rare Pokemon so it's worth checking out."
+	]
+  },
+
+  "fish_shop_75_olly": {
+	"speaker": "Olly", "character": "Olly", "clothes": "Jeans_Bag", "pill_sprite": "1Olly_Jeans_Bag", "colour": "aqua",
+	"lines": [
+	  "Hey [NAME]! 75 fish sent back to FISH, you're unstoppable!",
+	  "So many people are coming in just to see the tanks that I've opened up even more of the shop.",
+	  "Come and have a look next time you're passing, it's really starting to look like a proper aquarium!"
+	]
+  },
+  "fish_shop_75_alexander": {
+	"speaker": "Alexander", "character": "Alexander", "clothes": "Casual", "pill_sprite": "1Alexander", "colour": "light_blue",
+	"lines": [
+	  "Hey [NAME], 75 fish. People are coming in just to look at the tanks now...",
+	  "So naturally I've been the one putting up even more shelves. Come and see it next time you're in."
+	]
+  },
+
+  "fish_shop_100_olly": {
+	"speaker": "Olly", "character": "Olly", "clothes": "Jeans_Bag", "pill_sprite": "1Olly_Jeans_Bag", "colour": "aqua",
+	"lines": [
+	  "Hey [NAME]! You've done it, 100 fish sent back to FISH!",
+	  "This is the best thing that's ever happened to the shop. I'm rebuilding the whole thing, upstairs and downstairs, bigger than ever!",
+	  "There'll be room for way more of every fish now, so keep them coming!"
+	]
+  },
+  "fish_shop_100_alexander": {
+	"speaker": "Alexander", "character": "Alexander", "clothes": "Casual", "pill_sprite": "1Alexander", "colour": "light_blue",
+	"lines": [
+	  "Hey [NAME]... 100 fish. Olly's lost it, we're rebuilding the whole shop. Upstairs AND downstairs.",
+	  "Bigger tanks and more room for every fish you can catch. Which means even more tanks for me to clean.",
+	  "...Honestly though, thanks. The place has never looked better."
+	]
+  },
+
+  "fish_shop_200_olly": {
+	"speaker": "Olly", "character": "Olly", "clothes": "Jeans_Bag", "pill_sprite": "1Olly_Jeans_Bag", "colour": "aqua",
+	"lines": [
+	  "Hey [NAME]! 200 fish! I've never seen such a dedicated true to heart fisher.",
+	  "I've got a special rod just for you and nobody else.",
+	  "[UNLOCK]",
+	  "It might cost you half an arm or a leg but you won't get any better than the Gold Rod!"
+	]
+  },
+  "fish_shop_200_alexander": {
+	"speaker": "Alexander", "character": "Alexander", "clothes": "Casual", "pill_sprite": "1Alexander", "colour": "light_blue",
+	"lines": [
+	  "Hey [NAME], 200 fish sent back. Our best customer by miles.",
+	  "I've been told that you might be interested in our new Gold Rod.",
+	  "[UNLOCK]",
+	  "It's honestly the best rod I think has ever existed and makes fishing a breeze. It's just a bit pricey but we've got it if you want it."
+	]
   }
 }

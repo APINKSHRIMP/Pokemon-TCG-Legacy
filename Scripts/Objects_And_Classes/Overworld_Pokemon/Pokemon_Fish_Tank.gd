@@ -86,6 +86,9 @@ const SWIM_ANIM_MAX := 2.0
 ## the same tank bump into each other) and the water it may swim in.
 var tank_id: String = ""
 var tank_region: Rect2 = Rect2()
+## False = swims straight through other fish instead of turning round nose to nose. The
+## FISH shop's code-filled tanks (FishShopFloor) set this: fish there may overlap.
+var bumps: bool = true
 
 var _speed: float = OverworldPokemonData.DEFAULT_TANK_SPEED
 ## +1 swimming right, -1 swimming left.
@@ -184,7 +187,7 @@ func _facing_dir() -> float:
 ## Nose to nose with another fish of the SAME tank: both turn round. Only the fish in
 ## front counts -- one catching another up from behind swims past it.
 func _process_bumps() -> void:
-	if _bump_cooldown > 0.0 or _speed <= 0.0:
+	if not bumps or _bump_cooldown > 0.0 or _speed <= 0.0:
 		return
 	var reach := cell.x * draw_scale() * BUMP_GAP_FRACTION
 	for other in get_parent().get_children():

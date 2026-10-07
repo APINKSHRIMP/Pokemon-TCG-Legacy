@@ -464,7 +464,9 @@ func _build_item_grid() -> void:
 	var max_cell : float = SLEEVE_MAX_CELL if shop_kind == KIND_SLEEVE else COSTUME_MAX_CELL
 
 	var area_size := _grid_area_size()
-	var fit_w : float = (area_size.x - float(columns - 1) * CELL_SEP) / float(columns)
+	# Width: the whole screen, CELL_SEP at least between items and at each edge -- the row
+	# is spread evenly across it below rather than packed into the middle.
+	var fit_w : float = (UIKit.SCREEN_W - float(columns + 1) * CELL_SEP) / float(columns)
 	var fit_h : float = (area_size.y - float(rows - 1) * CELL_SEP) / float(rows)
 	# Height is the binding dimension: pick whichever of the two limits is tighter once
 	# the item's aspect is applied, and never upscale past the source's native height.
@@ -518,12 +520,18 @@ func _build_item_grid() -> void:
 		wrapper.set_meta("item_full_cost", full_cost)
 		wrapper.set_meta("item_full_fish_cost", full_fish_cost)
 		wrapper.set_meta("is_rod", is_rod)
+		# Name over the art: rods and permits only (FishingRods knows both).
+		wrapper.set_meta("show_name", is_rod or FishingRods.PERMIT_LABELS.has(item_name))
 		wrapper.set_meta("is_owned",   is_owned)
 		wrapper.set_meta("item_kind",  kind)
 		wrapper.set_meta("item_label", label)
 
 		var tex_size := tex.get_size()
 		var s : float = minf(cell_size.x / tex_size.x, cell_size.y / tex_size.y)
+		# Item art (rods, permits) is pixel art: snap an enlargement to a whole number so
+		# every pixel stays the same size. Stand-ins are left alone (they are hidden).
+		if kind == KIND_ITEM and s >= 1.0 and not is_stand_in:
+			s = floorf(s)
 		var disp_size := Vector2(tex_size.x * s, tex_size.y * s)
 
 		var rect := TextureRect.new()
@@ -538,7 +546,7 @@ func _build_item_grid() -> void:
 
 		# Stand-in art: the name goes in the cell so the shelf reads while the sprite is
 		# still to be drawn. It is a child of the wrapper, so it pulses with the selection.
-		if is_stand_in:
+		if is_stand_in and not (is_rod or FishingRods.PERMIT_LABELS.has(item_name)):
 			var name_label := Label.new()
 			name_label.text                 = label
 			name_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -570,12 +578,18 @@ func _build_item_grid() -> void:
 		return
 	var placed_cols : int = min(placed, columns)
 	var placed_rows : int = int(ceil(float(placed) / float(placed_cols)))
+	# Columns spread evenly across the screen: the gap between items equals the gap to the
+	# screen edges, so a short shelf is spaced out rather than huddled in the middle.
+	var h_gap : int = int(ShopChrome.spread_gap(UIKit.SCREEN_W, placed_cols, cell_size.x, CELL_SEP))
+	grid.add_theme_constant_override("h_separation", h_gap)
 	var content := Vector2(
-		float(placed_cols) * cell_size.x + float(placed_cols - 1) * CELL_SEP,
+		float(placed_cols) * cell_size.x + float(placed_cols - 1) * h_gap,
 		float(placed_rows) * cell_size.y + float(placed_rows - 1) * CELL_SEP
 	)
 	grid.size     = content
-	grid.position = _grid_area_pos() + (_grid_area_size() - content) / 2.0
+	grid.position = Vector2(
+		ShopChrome.spread_left(UIKit.SCREEN_W, placed_cols, cell_size.x, h_gap),
+		_grid_area_pos().y + (_grid_area_size().y - content.y) / 2.0)
 
 	# After the re-centre, never before: pills anchor to each cell's global rect and the whole
 	# block has just moved.
@@ -621,30 +635,48 @@ func _refresh_pills() -> void:
 	await get_tree().process_frame
 	if not is_inside_tree():
 		return
+	# Lay the grid out NOW. A Container sorts its children in a deferred call, and a
+	# rebuild started from a button press (a page arrow, a purchase) reaches this point
+	# before that call has run -- every cell still reported the first cell's rect, so
+	# every pill stacked on the first item until the next page change.
+	grid.notification(Container.NOTIFICATION_SORT_CHILDREN)
 
 	ShopChrome.clear_pills(pill_layer)
 	for child in grid.get_children():
-		if not (child is Control) or not is_instance_valid(child):
+		if not (child is Control) or not is_instance_valid(child) or child.is_queued_for_deletion():
 			continue
 		var cost : int = int(child.get_meta("item_cost", DEFAULT_ITEM_COST))
 		var fish_cost : int = int(child.get_meta("item_fish_cost", 0))
 		var full_cost : int = int(child.get_meta("item_full_cost", cost))
 		var full_fish : int = int(child.get_meta("item_full_fish_cost", fish_cost))
 		var on_sale : bool = full_cost != cost or full_fish != fish_cost
+		# Each currency coloured on its own: the $ pill by cash, the Fish Coin pill by
+		# Fish Coins (a fish_coins shop draws them as two pills; elsewhere fish_cost is 0
+		# and the cash state is the whole story).
 		var state : int
+		var fish_state : int
 		if child.get_meta("is_owned", false):
 			state = ShopChrome.OWNED
-		elif not _can_afford(cost, fish_cost):
-			state = ShopChrome.UNAFFORDABLE
-		elif on_sale:
-			state = ShopChrome.DISCOUNTED
+			fish_state = ShopChrome.OWNED
 		else:
-			state = ShopChrome.AFFORDABLE
+			state = _price_state(player_cash >= cost, full_cost != cost)
+			fish_state = _price_state(player_fish_coins >= fish_cost, full_fish != fish_cost)
 		# The struck-out full price sits above a discounted rod, like the weighted packs.
 		var old_cost : int = full_cost if on_sale and state != ShopChrome.OWNED else 0
 		var old_fish : int = full_fish if on_sale and state != ShopChrome.OWNED else 0
-		ShopChrome.add_price_pill(pill_layer, child.get_global_rect(), state, cost, old_cost,
-				fish_cost, old_fish)
+		var pills_top := ShopChrome.add_price_pill(pill_layer, child.get_global_rect(), state,
+				cost, old_cost, fish_cost, old_fish, fish_state)
+		# Rods and permits carry their name over the art, above the pills.
+		if bool(child.get_meta("show_name", false)):
+			ShopChrome.add_name_label(pill_layer, child.get_global_rect(), pills_top,
+					String(child.get_meta("item_label", "")))
+
+
+## One currency's pill state: red when it is not covered, gold when it is on sale.
+func _price_state(covered: bool, on_sale: bool) -> int:
+	if not covered:
+		return ShopChrome.UNAFFORDABLE
+	return ShopChrome.DISCOUNTED if on_sale else ShopChrome.AFFORDABLE
 
 
 ## Cash AND Fish Coins both covered. fish_cost is always 0 outside a fish_coins shop.

@@ -34,6 +34,11 @@ func _ready() -> void:
 
 ## Reads the REAL date, like Celeste_Harbour.apply_permanent_unlocks: once open it
 ## stays open, whatever day the calendar loop resolves to.
+##
+## Then the shop grows with the fish sent to it: FishShopFloor keeps the Interior_<N>s
+## the player has reached (0 always, 25 and 75 added on top, 100 replacing them all),
+## drops CollisionToRemove once one above 0 is open, and fills the tanks.
 func _scene_setup() -> void:
 	if GameState.get_date() >= FishShopDialogue.VERDANT_OPEN_DATE and has_node(DOWNSTAIRS_BLOCK):
 		get_node(DOWNSTAIRS_BLOCK).queue_free()
+	FishShopFloor.setup(self, get_map_data_name())

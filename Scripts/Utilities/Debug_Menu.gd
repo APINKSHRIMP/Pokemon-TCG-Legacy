@@ -45,6 +45,8 @@ var _state_label: Label = null
 var _status: Label = null
 var _date_spin: SpinBox = null
 var _cash_edit: LineEdit = null
+var _fish_coin_edit: LineEdit = null
+var _fish_sent_edit: LineEdit = null
 ## The confirm-first cheat that has had its first click.
 var _armed_code: String = ""
 
@@ -135,6 +137,28 @@ func _build_world_column(col: VBoxContainer) -> void:
 	cash_row.add_child(_cash_edit)
 	_add_expanded(cash_row, _button("SET CASH", _set_cash))
 
+	_heading(col, "FISH COINS")
+	var fish_row := _row(col)
+	_fish_coin_edit = LineEdit.new()
+	_fish_coin_edit.placeholder_text = "Amount"
+	_fish_coin_edit.custom_minimum_size = Vector2(240, BUTTON_HEIGHT)
+	_fish_coin_edit.add_theme_font_size_override("font_size", FONT_SIZE)
+	_fish_coin_edit.text_submitted.connect(func(_text: String): _set_fish_coins())
+	fish_row.add_child(_fish_coin_edit)
+	_add_expanded(fish_row, _button("SET FISH COINS", _set_fish_coins))
+
+	_heading(col, "FISH SENT")
+	var sent_row := _row(col)
+	_fish_sent_edit = LineEdit.new()
+	_fish_sent_edit.placeholder_text = "Amount"
+	_fish_sent_edit.custom_minimum_size = Vector2(240, BUTTON_HEIGHT)
+	_fish_sent_edit.add_theme_font_size_override("font_size", FONT_SIZE)
+	_fish_sent_edit.text_submitted.connect(func(_text: String): _set_fish_sent())
+	sent_row.add_child(_fish_sent_edit)
+	_add_expanded(sent_row, _button("SET FISH SENT", _set_fish_sent))
+	col.add_child(_button("FILL ALL TANKS", _fill_fish_tanks))
+	col.add_child(_note("Milestones at or below the number count as rung (items unlocked); the next real catch past one rings it. Re-enter FISH to see the change."))
+
 	_heading(col, "PROGRESS")
 	col.add_child(_button("+1 OPPONENTS DEFEATED", _add_defeated))
 	col.add_child(_note("Three in one period advances the time after your next real win."))
@@ -191,6 +215,31 @@ func _set_cash() -> void:
 	_say("Cash set to %d." % GameState.get_cash())
 
 
+func _set_fish_coins() -> void:
+	var text := _fish_coin_edit.text.strip_edges()
+	if not text.is_valid_int() or int(text) < 0:
+		_say("Fish Coins have to be a whole number, 0 or more.", BAD_COLOUR)
+		return
+	MapManager.debug_set_fish_coins(int(text))
+	_fish_coin_edit.release_focus()
+	_say("Fish Coins set to %d." % GameState.get_fish_coins())
+
+
+func _set_fish_sent() -> void:
+	var text := _fish_sent_edit.text.strip_edges()
+	if not text.is_valid_int() or int(text) < 0:
+		_say("Fish sent has to be a whole number, 0 or more.", BAD_COLOUR)
+		return
+	FishShopCalls.debug_set_sent(int(text))
+	_fish_sent_edit.release_focus()
+	_say("Fish sent to FISH set to %d. Re-enter FISH to see it." % GameState.fish_sent_total())
+
+
+func _fill_fish_tanks() -> void:
+	FishShopCalls.debug_fill_tanks()
+	_say("Every FISH tank filled for %d fish sent. Re-enter FISH to see it." % GameState.fish_sent_total())
+
+
 func _add_defeated() -> void:
 	MapManager.debug_add_defeated()
 	_say("Opponents defeated this period: %d." % GameState.get_current_defeated())
@@ -219,11 +268,15 @@ func _say(text: String, colour: Color = GOOD_COLOUR) -> void:
 func _refresh_state() -> void:
 	if _state_label == null:
 		return
-	_state_label.text = "Day %d   |   %s   |   Cash %d   |   Defeated this period %d" % [
+	_state_label.text = "Day %d   |   %s   |   Cash %d   |   Fish Coins %d   |   Defeated this period %d" % [
 			GameState.get_date(), GameState.get_time(), GameState.get_cash(),
-			GameState.get_current_defeated()]
+			GameState.get_fish_coins(), GameState.get_current_defeated()]
 	if _cash_edit != null and not _cash_edit.has_focus():
 		_cash_edit.text = str(GameState.get_cash())
+	if _fish_coin_edit != null and not _fish_coin_edit.has_focus():
+		_fish_coin_edit.text = str(GameState.get_fish_coins())
+	if _fish_sent_edit != null and not _fish_sent_edit.has_focus():
+		_fish_sent_edit.text = str(GameState.fish_sent_total())
 
 
 ## "CHT.All_Cards_1" -> "ALL CARDS 1".

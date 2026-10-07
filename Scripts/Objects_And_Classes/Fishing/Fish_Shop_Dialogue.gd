@@ -9,17 +9,17 @@ extends RefCounted
 ##   * MILESTONES the keeper has not told the player about yet, in MILESTONE_ORDER, each
 ##     its own block of lines. Each keeper says each block once; the other keeper still
 ##     says theirs on the player's first talk with them.
-##   * A block with an unlock ("verdant", "fish_50", "fish_200") is followed by the
-##     "X can now be purchased in the FISH shop" notice -- ONCE EVER, from whichever
-##     keeper gets there first. That notice is also what puts the item on the shelf
-##     (GameState.fish_shop_revealed).
-##   * The flavour-only blocks ("fish_10", "fish_25") are SKIPPED for good if an unlock
-##     block is also waiting, and only the later of the two plays if both are -- the
-##     player has moved on.
+##   * A block with an unlock is followed by the "X can now be purchased in the FISH
+##     shop" notice -- ONCE EVER, from whichever keeper gets there first. That notice is
+##     also what puts the item on the shelf (GameState.fish_shop_revealed).
 ##   * Nothing waiting: the keeper's REGULAR line for how far the player has got.
 ##
 ## The last box asks Yes/No and Yes opens the shop -- unless the visit ended on an
 ## unlock notice, in which case the conversation simply ends (talk again to shop).
+##
+## Only the Verdant Forest milestone is said over the counter now. The fish-count ones
+## (10, 25, 50, 75, 100, 200 fish SENT TO FISH) are PHONE CALLS that ring the moment the
+## number is reached -- see FishShopCalls and the fish_shop_* entries in Phone_Calls.json.
 ##
 ## [NAME] is substituted by the message box. "[!]" / "[?]" at the start or end of a line
 ## pop over the keeper's head (MapManager.split_emote_tags).
@@ -35,16 +35,12 @@ const GREETING := {
 	"alexander": "Hey [NAME], ",
 }
 
-## Unlock blocks first in story order, then the flavour blocks (only one of which can
-## ever play in a visit, and never alongside an unlock block).
-const MILESTONE_ORDER := ["verdant", "fish_50", "fish_200", "fish_10", "fish_25"]
-const FLAVOUR := ["fish_10", "fish_25"]
+const MILESTONE_ORDER := ["verdant"]
 
-## Milestone -> the item its notice puts on the shelf.
+## Milestone -> the item its notice puts on the shelf. (The fish-count unlocks are
+## FishShopCalls.ITEM_UNLOCKS.)
 const UNLOCKS := {
 	"verdant": "Verdant_Forest_Fishing_Permit",
-	"fish_50": "Deep_Ocean_Fishing_Permit",
-	"fish_200": "Gold_Rod",
 }
 const UNLOCK_NOTICE := "%s can now be purchased in the FISH shop"
 
@@ -54,49 +50,20 @@ const VERDANT_OPEN_DATE := 5
 ## Lines per keeper per milestone, WITHOUT the greeting (the first box gets it).
 const LINES := {
 	"olly": {
-		"fish_10": [
-			"You've already sent me back almost a dozen fish, it was looking a bit empty in here before. Thanks again for helping me with this! You could definitely use some new FISH gear!",
-		],
 		"verdant": [
 			"I've finished clearing out downstairs so I've got way more room now. Have you tried your rod out over in Verdant forest yet?",
 			"Make sure you buy a forest fishing permit from here if you haven't already and are wanting to fish there! You only need to buy the permit once but you can't fish in the forest without one.",
 		],
-		"fish_25": [
-			"Research is going great thanks to you, the fish just keep flying on in! Thanks again to all your hard work fishing, I've not had that much time with research to actually fish!",
-		],
-		"fish_50": [
-			"We've found an amazing fishing spot a few miles out of the harbour right in the middle of the ocean",
-			"We've started offering trips out there a couple of times a day if you're interested in going to fish up some rare Pokemon!",
-			"Just make sure you buy the permit to get there then show it to the boat captain at our fishing dock and he'll take you any time you want!",
-			"You'll only need to buy the permit once and we'll take you out there whenever you want, free of charge!",
-		],
-		"fish_200": [
-			"I've never seen such a dedicated true to heart fisher. I've got a special rod just for you and nobody else. It might cost you half an arm or a leg but you won't get any better than the Gold Rod!",
-		],
 	},
 	"alexander": {
-		"fish_10": [
-			"you've been busy recently I see, these tanks were practically empty before you starting helping out. Olly is already starting to clear out the basement to make room for more down there. Do you need anything?",
-		],
 		"verdant": [
 			"looks like they finally cleared out and reopened Verdant forest again.",
 			"If you haven't fished there yet and don't have a fishing permit for it then you'll have to buy one from here",
 		],
-		"fish_25": [
-			"you're keeping us in business, but thanks to you I have to clean out these tanks every day now... I need a raise... What can I get for you?",
-		],
-		"fish_50": [
-			"did Olly tell you about the new fishing spot we found out in the middle of the ocean?",
-			"If you buy the permit from us then all you have to do is show it to the captain on our fishing dock and sail you out",
-			"He'll take you for free at any point you want to go and you might find some rare Pokemon so it's worth checking out.",
-		],
-		"fish_200": [
-			"I've been told that you might be interested in our new Gold Rod. It's honestly the best rod I think has ever existed and makes fishing a breeze. It's just a bit pricey but we've got it if you want it.",
-		],
 	},
 }
 
-## The everyday line once nothing new is waiting, by total fish caught: the highest
+## The everyday line once nothing new is waiting, by fish SENT TO FISH: the highest
 ## threshold reached wins. Full lines, greeting included.
 const REGULAR := {
 	"olly": [
@@ -121,12 +88,7 @@ static func is_keeper(npc_name: String) -> bool:
 
 
 static func reached(milestone: String) -> bool:
-	var fish := GameState.get_fish_caught()
 	match milestone:
-		"fish_10": return fish >= 10
-		"fish_25": return fish >= 25
-		"fish_50": return fish >= 50
-		"fish_200": return fish >= 200
 		"verdant": return GameState.get_date() >= VERDANT_OPEN_DATE
 	return false
 
@@ -137,6 +99,9 @@ static func item_unlocked(item_name: String) -> bool:
 	for milestone in UNLOCKS:
 		if UNLOCKS[milestone] == item_name:
 			return GameState.fish_shop_revealed(milestone)
+	var fish_milestone := FishShopCalls.milestone_for_item(item_name)
+	if fish_milestone >= 0:
+		return GameState.fish_shop_revealed(FishShopCalls.reveal_id(fish_milestone))
 	return true
 
 
@@ -146,29 +111,12 @@ static func item_unlocked(item_name: String) -> bool:
 static func build(npc_name: String) -> Array:
 	var keeper: String = KEEPERS.get(npc_name, "olly")
 	var heard := GameState.fish_shop_heard(keeper)
-	var pending: Array = []
+	var play: Array = []
 	for milestone in MILESTONE_ORDER:
 		if reached(milestone) and milestone not in heard:
-			pending.append(milestone)
-
-	var unlock_waiting := false
-	for milestone in pending:
-		if milestone not in FLAVOUR:
-			unlock_waiting = true
-	var play: Array = []
-	if unlock_waiting:
-		for milestone in pending:
-			if milestone not in FLAVOUR:
-				play.append(milestone)
-	elif not pending.is_empty():
-		play.append(pending[pending.size() - 1])  # the later flavour block only
-
-	# Every pending block counts as heard, played or skipped.
-	if not pending.is_empty():
-		GameState.mark_fish_shop_heard(keeper, pending)
-
-	if play.is_empty():
-		return [{"text": regular_line(keeper), "ask": true}]
+			play.append(milestone)
+	if not play.is_empty():
+		GameState.mark_fish_shop_heard(keeper, play)
 
 	var steps: Array = []
 	for milestone in play:
@@ -191,7 +139,7 @@ static func build(npc_name: String) -> Array:
 
 
 static func regular_line(keeper: String) -> String:
-	var fish := GameState.get_fish_caught()
+	var fish := GameState.fish_sent_total()
 	for pair in REGULAR.get(keeper, REGULAR["olly"]):
 		if fish >= int(pair[0]):
 			return str(pair[1])

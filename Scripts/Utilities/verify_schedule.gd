@@ -18,6 +18,7 @@ const MAPS := {
 	"Card_Mart": [1, 3],
 	"Rocket_Mart": [1, 3],
 	"Fish_Shop": [1, 3],
+	"Fish_Shop_Downstairs": [1, 3],
 	"Windmill": [1, 3],
 	"Gym_Plaza": [9, 24],
 	"TownHall": [1, 20],

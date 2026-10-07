@@ -163,6 +163,16 @@ func _build_coin_grid() -> void:
 		grid.add_child(rect)
 		UIKit.add_drop_shadow(rect)
 
+	# Spread the columns evenly across the screen (same gap between coins as to the
+	# screen edges) instead of packing them into a fixed block in the middle.
+	var placed : int = grid.get_child_count()
+	if placed > 0:
+		var cols : int = mini(placed, COLUMNS)
+		var gap : int = int(ShopChrome.spread_gap(UIKit.SCREEN_W, cols, COIN_SIZE.x, COIN_SEPARATION))
+		grid.add_theme_constant_override("h_separation", gap)
+		grid.position.x = ShopChrome.spread_left(UIKit.SCREEN_W, cols, COIN_SIZE.x, gap)
+		grid.size.x = cols * COIN_SIZE.x + (cols - 1) * gap
+
 	_refresh_pills()
 
 
@@ -182,6 +192,9 @@ func _refresh_pills() -> void:
 	await get_tree().process_frame
 	if not is_inside_tree():
 		return
+	# Lay the grid out now: a Container sorts in a deferred call, and pills placed before
+	# it runs all anchor to the first coin (see Cosmetic_Shop_Script._refresh_pills).
+	grid.notification(Container.NOTIFICATION_SORT_CHILDREN)
 
 	ShopChrome.clear_pills(pill_layer)
 	for child in grid.get_children():

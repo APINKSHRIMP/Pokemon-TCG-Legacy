@@ -131,6 +131,11 @@ const SLIDE_OUT_TIME    : float = 0.38   # phone flies off the bottom
 # conversational dialogue. THE CAP IS THE FIGURE THAT MATTERS for a call with long lines - at the
 # old 3.0s a 227-character line got the same time as a 100-character one and flashed past. Raise the
 # cap, not the rate, when a call reads too fast.
+## A mid-call item reveal (_play_reveal): the phone's brightness while the item is up
+## (1.0 = untouched, 0.0 = black) and how long it takes to dim and come back.
+const REVEAL_PHONE_DIM : float = 0.45
+const REVEAL_DIM_TIME  : float = 0.25
+
 const AUTO_HOLD_PER_CHAR : float = 0.036
 const AUTO_HOLD_MIN      : float = 1.60
 const AUTO_HOLD_MAX      : float = 9.00
@@ -395,6 +400,8 @@ func _compute_rest_y() -> void:
 		return
 	var tallest: float = 0.0
 	for line in _lines:
+		if line is Dictionary:
+			continue  # a reveal step puts up MapManager's box, not this one
 		var spoken := _split_emotion(String(line))
 		tallest = maxf(tallest, _box.measure_panel_height(String(spoken["text"])))
 	var box_top: float = DynamicMessageBox.PANEL_BOTTOM_Y - tallest
@@ -814,6 +821,9 @@ func play() -> void:
 ## is_typing() in _process(), so it stays in step however the player has set their text speed.
 func _speak_lines() -> void:
 	for line in _lines:
+		if line is Dictionary:
+			await _play_reveal(line)
+			continue
 		# The emotion is read off the front of the line and the face is changed BEFORE the box says
 		# anything, so the expression is already right as the first letter lands. A line with no tag
 		# puts the neutral set back - an expression lasts exactly one message.
@@ -834,6 +844,35 @@ func _speak_lines() -> void:
 			while not _advance_pressed:
 				await get_tree().process_frame
 			_advance_pressed = false
+
+
+## A key item revealed MID-CALL -- the Fish Shop's "X can now be purchased" notice. A
+## line may be a Dictionary instead of a String (built at runtime by FishShopCalls, never
+## written in Phone_Calls.json):
+##   { "reveal_text": "...", "reveal_image": "res://...png" or "", "on_shown": Callable }
+## The call's own box goes away, the phone dims behind MapManager's ordinary gift reveal
+## (the same overlay a shopkeeper's reveal uses), and once the player clears it the phone
+## comes back up and the call carries on. on_shown runs as the reveal starts.
+func _play_reveal(step: Dictionary) -> void:
+	_box.visible = false
+	var dim := create_tween()
+	dim.tween_property(_rig, "modulate", Color(REVEAL_PHONE_DIM, REVEAL_PHONE_DIM,
+			REVEAL_PHONE_DIM, 1.0), REVEAL_DIM_TIME)
+	var on_shown = step.get("on_shown", null)
+	if on_shown is Callable and (on_shown as Callable).is_valid():
+		(on_shown as Callable).call()
+	var done := [false]
+	MapManager.show_item_reveal(String(step.get("reveal_text", "")),
+			String(step.get("reveal_image", "")), func(): done[0] = true)
+	while not done[0]:
+		await get_tree().process_frame
+	# MapManager hands the OK to the callback and leaves its box up, expecting a chain;
+	# this is the end of that chain. Movement stays locked: whoever rang the call set
+	# cutscene_active, which is what _hide_message restores can_move from.
+	MapManager._hide_message()
+	var undim := create_tween()
+	undim.tween_property(_rig, "modulate", Color.WHITE, REVEAL_DIM_TIME)
+	await undim.finished
 
 
 ## How long an auto-advancing line stays up once it has finished typing.

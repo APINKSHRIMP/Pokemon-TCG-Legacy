@@ -114,21 +114,24 @@ static func pick_fish_row(spot: Dictionary) -> Dictionary:
 #   speed       lateral_speed / 2
 #   energy      energy / 2
 #
-#   coins = round(sum / FISH_COIN_DIVISOR * size_roll * multiplier), at least 1.
+#   coins = round(sum / FISH_COIN_DIVISOR * size_roll), at least 1.
 #
 # `size_roll` is the same 0.8..1.2 the minigame drew the fish at, so a big one of its
-# kind is worth more. Magikarp at rate 35 lands ~27-40, Wailord ~110-165.
+# kind is worth more. At the /20 divisor: Magikarp at rate 35 lands ~14-20, Wailord ~55-80.
 
-## TWEAKABLE. The spreadsheet's AC column divides by 10.
-const FISH_COIN_DIVISOR := 10.0
+## TWEAKABLE. The spreadsheet's AC column divides by 10; halved to 20 on 2026-10-07 (keep the
+## sheet in step if it is used for tuning).
+const FISH_COIN_DIVISOR := 20.0
 const FISH_COIN_BIG_BONUS := 150.0
 ## Per-catch size roll -- the fish is drawn this much bigger or smaller than its species'
 ## fish_size, and its reward scales by the same factor.
 const FISH_SIZE_ROLL_MIN := 0.8
 const FISH_SIZE_ROLL_MAX := 1.2
-## Reward multiplier once that species' fish tank is full and the catch goes back in the
-## water instead. Not wired up yet -- the tanks come next; pass tank_full when they do.
-const FISH_COIN_TANK_FULL_MULT := 0.5
+## The flat bonus for a catch that is SENT TO FISH (there was room in its tanks) --
+## paid on top of the catch reward, never instead of it. A catch with no room is not
+## penalised: it just misses the bonus. "Big" is the registry's big-silhouette flag.
+const FISH_SHOP_BONUS_SMALL := 10
+const FISH_SHOP_BONUS_BIG := 25
 
 
 static func roll_fish_size() -> float:
@@ -138,15 +141,21 @@ static func roll_fish_size() -> float:
 ## The un-rolled reward sum for a species caught off a row of rate `rate` -- the
 ## spreadsheet's CALCULATION column. Exposed on its own for tuning tools.
 static func fish_coin_points(species: String, rate: float) -> float:
-	var s := OverworldPokemonData.fish_stats(species)
-	var line := float(s["line_strength"]) / 100.0
-	var reel := float(s["reel_step"])
+	return fish_coin_points_for(OverworldPokemonData.fish_stats(species), rate,
+			OverworldPokemonData.species_big_fish(species))
+
+
+## The same sum from a stats dictionary (the fish_stats() keys) rather than the saved
+## registry -- what the FISH TABLE editor uses to price a row as it is being edited.
+static func fish_coin_points_for(s: Dictionary, rate: float, big: bool) -> float:
+	var line := maxf(0.01, float(s["line_strength"]) / 100.0)
+	var reel := maxf(0.01, float(s["reel_step"]))
 	var total := 200.0 - rate * 4.0
-	if OverworldPokemonData.species_big_fish(species):
+	if big:
 		total += FISH_COIN_BIG_BONUS
 	total += 100.0 * float(s["fish_size"])
 	total += 200.0 / (line * line)
-	total += 200.0 / float(s["recharge_time"])
+	total += 200.0 / maxf(0.01, float(s["recharge_time"]))
 	total += 20.0 / (reel * reel) * 100.0
 	total += float(s["initial_distance"]) / 2.0
 	total += float(s["lateral_speed"]) / 2.0
@@ -156,12 +165,21 @@ static func fish_coin_points(species: String, rate: float) -> float:
 
 ## What one landed fish is worth. fish_stats() clamps every stat above zero, so none of
 ## the divisions can blow up.
-static func fish_coin_reward(species: String, rate: float, size_roll: float,
-		tank_full: bool = false) -> int:
+static func fish_coin_reward(species: String, rate: float, size_roll: float) -> int:
 	var coins := fish_coin_points(species, rate) / FISH_COIN_DIVISOR * size_roll
-	if tank_full:
-		coins *= FISH_COIN_TANK_FULL_MULT
 	return maxi(1, int(round(coins)))
+
+
+## The AVERAGE reward for a catch with these stats -- a size roll of 1.0, the middle of
+## FISH_SIZE_ROLL_MIN..MAX. Excludes the sent-to-FISH bonus.
+static func average_fish_coin_reward(stats: Dictionary, rate: float, big: bool) -> int:
+	return maxi(1, int(round(fish_coin_points_for(stats, rate, big) / FISH_COIN_DIVISOR)))
+
+
+## The sent-to-FISH bonus for this species (see FISH_SHOP_BONUS_*).
+static func fish_shop_bonus(species: String) -> int:
+	return FISH_SHOP_BONUS_BIG if OverworldPokemonData.species_big_fish(species) \
+			else FISH_SHOP_BONUS_SMALL
 
 
 ## Dropped after the placement tool writes, so the next cast reads the new spots.

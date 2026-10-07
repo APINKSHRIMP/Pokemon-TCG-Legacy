@@ -15,9 +15,9 @@ extends Control
 
 ## TWEAKABLE — grid shape and text.
 const COLUMNS     := 6
-const CELL_SIZE   := Vector2(280.0, 280.0)
+const CELL_SIZE   := Vector2(280.0, 300.0)
 const CELL_SEP    := 24
-const ART_FIT     := 0.55    ## fraction of the cell the art may fill, above the caption
+const ART_BOX     := 200.0   ## the most room the art gets, above the caption
 const NAME_FONT   := 26
 const GRID_INSET_Y := 30.0
 const EMPTY_TEXT  := "Your bag is empty."
@@ -111,13 +111,18 @@ func _make_cell(entry: Dictionary) -> Control:
 	var art_path := "res://Image_Assets/Assorted_Extras/%s.png" % str(entry.get("art", ""))
 	if ResourceLoader.exists(art_path):
 		var tex: Texture2D = load(art_path)
-		var side := CELL_SIZE.x * ART_FIT
+		# Pixel art: a whole-number enlargement (24px rods x8), or a plain fit when the
+		# art is bigger than the box (the 200px permits fit at 1x).
+		var tex_size := tex.get_size()
+		var fit := minf(ART_BOX / tex_size.x, ART_BOX / tex_size.y)
+		if fit >= 1.0:
+			fit = floorf(fit)
 		var rect := TextureRect.new()
 		rect.texture = tex
 		rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-		rect.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		rect.stretch_mode = TextureRect.STRETCH_SCALE
 		rect.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
-		rect.custom_minimum_size = Vector2(side, side)
+		rect.custom_minimum_size = tex_size * fit
 		rect.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 		rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		box.add_child(rect)

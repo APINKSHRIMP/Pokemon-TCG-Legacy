@@ -1,0 +1,238 @@
+{
+  "_help": [
+    "What lives in the FISH tanks, and how many of each species FISH can take. Read by",
+    "Scripts/Objects_And_Classes/Fishing/Fish_Shop_Tanks.gd (FishShopTanks).",
+    "",
+    "floors: map data name -> { stages, replace_at }.",
+    "  stages: '<N>' -> { tank node name -> [ {species, pattern, max}, ... ] }.",
+    "    N is the number of fish SENT TO FISH that stage needs. The stage in force is the",
+    "    highest N the player has reached -- it REPLACES the lower lists outright, so a",
+    "    stage lists every tank on that floor, including ones carried over from before.",
+    "    A tank node is found by NAME anywhere in the floor's scene, so the tanks inside",
+    "    Interior_0 can still be filled at stage 25.",
+    "  replace_at: Interior_<N> numbers that REPLACE every lower interior on that floor",
+    "    instead of being added on top (downstairs Interior_50 swaps out Interior_0).",
+    "",
+    "A species' CAP is the sum of its `max` over every row in the stages in force on both",
+    "floors. Under the cap a catch is sent to FISH (+bonus); the catch that reaches it",
+    "says 'Maximum X caught'; anything after says 'No room at FISH to send X'. A species",
+    "with no row at all has a cap of 0.",
+    "",
+    "pattern: fish = swims (PokemonFishTank), may overlap other fish",
+    "         wander = short slow steps in any direction, bumps into neighbours",
+    "         idle_random = stands still, looks a random way now and then",
+    "Each tank's movement area is its MOVEMENTZONE* ColorRect (hidden in game).",
+    "",
+    "The floors' Interior_<N> node names are the other half of this: renaming",
+    "Interior_100 to Interior_150 moves that expansion (and its phone call) -- rename the",
+    "stage key here and the fish_shop_<N>_* calls in Phone_Calls.json to match. With",
+    "DebugMode on, entering a floor warns about anything that does not line up."
+  ],
+  "floors": {
+    "Fish_Shop": {
+      "replace_at": [100],
+      "stages": {
+        "0": {
+          "BIG_WATER_1": [
+            { "species": "550_Basculin_Red_Striped", "pattern": "fish", "max": 6 },
+            { "species": "550_Basculin_Blue_Striped", "pattern": "fish", "max": 6 }
+          ],
+          "BIG_WATER_2": [
+            { "species": "072_Tentacool", "pattern": "fish", "max": 4 },
+            { "species": "211_Qwilfish", "pattern": "fish", "max": 4 },
+            { "species": "116_Horsea", "pattern": "fish", "max": 4 }
+          ],
+          "BIG_LAND_1": [
+            { "species": "418_Buizel", "pattern": "wander", "max": 2 },
+            { "species": "079_Slowpoke", "pattern": "wander", "max": 2 },
+            { "species": "341_Corphish", "pattern": "wander", "max": 4 }
+          ],
+          "BIG_LAND_2": [
+            { "species": "098_Krabby", "pattern": "wander", "max": 3 },
+            { "species": "688_Binacle", "pattern": "idle_random", "max": 3 },
+            { "species": "692_Clauncher", "pattern": "wander", "max": 2 }
+          ],
+          "SMALL_WATER_1": [
+            { "species": "170_Chinchou", "pattern": "fish", "max": 4 },
+            { "species": "456_Finneon", "pattern": "fish", "max": 4 }
+          ],
+          "SMALL_WATER_2": [
+            { "species": "129_Magikarp", "pattern": "fish", "max": 2 },
+            { "species": "602_Tynamo", "pattern": "fish", "max": 2 }
+          ],
+          "SMALL_LAND_1": [
+            { "species": "298_Azurill", "pattern": "wander", "max": 3 },
+            { "species": "183_Marill", "pattern": "wander", "max": 1 }
+          ],
+          "SMALL_LAND_2": [
+            { "species": "453_Croagunk", "pattern": "wander", "max": 3 }
+          ]
+        },
+        "25": {
+          "BIG_WATER_1": [
+            { "species": "550_Basculin_Red_Striped", "pattern": "fish", "max": 10 },
+            { "species": "550_Basculin_Blue_Striped", "pattern": "fish", "max": 10 }
+          ],
+          "BIG_WATER_2": [
+            { "species": "072_Tentacool", "pattern": "fish", "max": 8 },
+            { "species": "073_Tentacruel", "pattern": "fish", "max": 2 },
+            { "species": "211_Qwilfish", "pattern": "fish", "max": 8 }
+          ],
+          "BIG_WATER_3": [
+            { "species": "170_Chinchou", "pattern": "fish", "max": 8 },
+            { "species": "171_Lanturn", "pattern": "fish", "max": 2 },
+            { "species": "456_Finneon", "pattern": "fish", "max": 8 },
+            { "species": "457_Lumineon", "pattern": "fish", "max": 2 }
+          ],
+          "BIG_WATER_4": [
+            { "species": "129_Magikarp", "pattern": "fish", "max": 15 },
+            { "species": "130_Gyarados", "pattern": "fish", "max": 2 }
+          ],
+          "BIG_WATER_5": [
+            { "species": "592_Frillish", "pattern": "fish", "max": 8 },
+            { "species": "593_Jellicent", "pattern": "fish", "max": 2 },
+            { "species": "686_Inkay", "pattern": "fish", "max": 8 },
+            { "species": "687_Malamar", "pattern": "fish", "max": 2 }
+          ],
+          "BIG_WATER_6": [
+            { "species": "746_Wishiwashi", "pattern": "fish", "max": 12 },
+            { "species": "320_Wailmer", "pattern": "fish", "max": 4 }
+          ],
+          "BIG_WATER_7": [
+            { "species": "963_Finizen", "pattern": "fish", "max": 8 },
+            { "species": "964_Palafin", "pattern": "fish", "max": 2 },
+            { "species": "976_Veluza", "pattern": "fish", "max": 5 }
+          ],
+          "BIG_WATER_8": [
+            { "species": "846_Arrokuda", "pattern": "fish", "max": 8 },
+            { "species": "847_Barraskewda", "pattern": "fish", "max": 4 },
+            { "species": "223_Remoraid", "pattern": "fish", "max": 10 }
+          ],
+          "BIG_WATER_9": [
+            { "species": "781_Dhelmise", "pattern": "fish", "max": 5 },
+            { "species": "318_Carvanha", "pattern": "fish", "max": 10 },
+            { "species": "319_Sharpedo", "pattern": "fish", "max": 2 }
+          ],
+          "BIG_WATER_10": [
+            { "species": "367_Huntail", "pattern": "fish", "max": 4 },
+            { "species": "368_Gorebyss", "pattern": "fish", "max": 4 },
+            { "species": "369_Relicanth", "pattern": "fish", "max": 4 },
+            { "species": "693_Clawitzer", "pattern": "fish", "max": 4 }
+          ],
+          "BIG_WATER_11": [
+            { "species": "116_Horsea", "pattern": "fish", "max": 12 },
+            { "species": "117_Seadra", "pattern": "fish", "max": 5 },
+            { "species": "230_Kingdra", "pattern": "fish", "max": 2 }
+          ],
+          "BIG_WATER_12": [
+            { "species": "602_Tynamo", "pattern": "fish", "max": 12 },
+            { "species": "603_Eelektrik", "pattern": "fish", "max": 5 },
+            { "species": "604_Eelektross", "pattern": "fish", "max": 2 }
+          ],
+          "BIG_LAND_1": [
+            { "species": "079_Slowpoke", "pattern": "wander", "max": 7 },
+            { "species": "080_Slowbro", "pattern": "wander", "max": 3 },
+            { "species": "199_Slowking", "pattern": "wander", "max": 3 }
+          ],
+          "BIG_LAND_2": [
+            { "species": "418_Buizel", "pattern": "wander", "max": 5 },
+            { "species": "419_Floatzel", "pattern": "wander", "max": 2 },
+            { "species": "341_Corphish", "pattern": "wander", "max": 5 },
+            { "species": "342_Crawdaunt", "pattern": "wander", "max": 2 }
+          ],
+          "BIG_LAND_3": [
+            { "species": "688_Binacle", "pattern": "idle_random", "max": 5 },
+            { "species": "689_Barbaracle", "pattern": "wander", "max": 2 },
+            { "species": "692_Clauncher", "pattern": "wander", "max": 5 }
+          ],
+          "BIG_LAND_4": [
+            { "species": "298_Azurill", "pattern": "wander", "max": 6 },
+            { "species": "183_Marill", "pattern": "wander", "max": 4 },
+            { "species": "184_Azumarill", "pattern": "wander", "max": 2 }
+          ],
+          "SMALL_LAND_1": [
+            { "species": "098_Krabby", "pattern": "wander", "max": 5 },
+            { "species": "099_Kingler", "pattern": "wander", "max": 2 }
+          ],
+          "SMALL_LAND_2": [
+            { "species": "453_Croagunk", "pattern": "wander", "max": 3 },
+            { "species": "454_Toxicroak", "pattern": "wander", "max": 1 }
+          ],
+          "SMALL_WATER_1": [
+            { "species": "366_Clamperl", "pattern": "idle_random", "max": 5 }
+          ],
+          "SMALL_WATER_2": [
+            { "species": "224_Octillery", "pattern": "wander", "max": 2 }
+          ]
+        }
+      }
+    },
+    "Fish_Shop_Downstairs": {
+      "replace_at": [50, 100],
+      "stages": {
+        "0": {
+          "BIG_WATER_1": [
+            { "species": "118_Goldeen", "pattern": "fish", "max": 8 }
+          ],
+          "BIG_WATER_2": [
+            { "species": "339_Barboach", "pattern": "fish", "max": 8 }
+          ],
+          "BIG_LAND_1": [
+            { "species": "060_Poliwag", "pattern": "wander", "max": 6 }
+          ],
+          "BIG_LAND_2": [
+            { "species": "270_Lotad", "pattern": "wander", "max": 6 }
+          ],
+          "BIG_LAND_3": [
+            { "species": "399_Bidoof", "pattern": "wander", "max": 3 },
+            { "species": "054_Psyduck", "pattern": "wander", "max": 3 }
+          ],
+          "BIG_LAND_4": [
+            { "species": "535_Tympole", "pattern": "wander", "max": 3 },
+            { "species": "194_Wooper", "pattern": "wander", "max": 3 }
+          ]
+        },
+        "50": {
+          "BIG_WATER_1": [
+            { "species": "118_Goldeen", "pattern": "fish", "max": 15 },
+            { "species": "119_Seaking", "pattern": "fish", "max": 5 }
+          ],
+          "BIG_WATER_2": [
+            { "species": "339_Barboach", "pattern": "fish", "max": 15 },
+            { "species": "340_Whiscash", "pattern": "fish", "max": 5 }
+          ],
+          "BIG_LAND_1": [
+            { "species": "060_Poliwag", "pattern": "wander", "max": 6 },
+            { "species": "061_Poliwhirl", "pattern": "wander", "max": 4 },
+            { "species": "062_Poliwrath", "pattern": "wander", "max": 2 }
+          ],
+          "BIG_LAND_2": [
+            { "species": "270_Lotad", "pattern": "wander", "max": 6 },
+            { "species": "271_Lombre", "pattern": "wander", "max": 4 },
+            { "species": "272_Ludicolo", "pattern": "wander", "max": 2 }
+          ],
+          "BIG_LAND_3": [
+            { "species": "399_Bidoof", "pattern": "wander", "max": 8 },
+            { "species": "400_Bibarel", "pattern": "wander", "max": 6 }
+          ],
+          "BIG_LAND_4": [
+            { "species": "535_Tympole", "pattern": "wander", "max": 8 },
+            { "species": "536_Palpitoad", "pattern": "wander", "max": 4 },
+            { "species": "537_Seismitoad", "pattern": "wander", "max": 2 }
+          ],
+          "BIG_LAND_5": [
+            { "species": "194_Wooper", "pattern": "wander", "max": 8 },
+            { "species": "195_Quagsire", "pattern": "wander", "max": 6 }
+          ],
+          "BIG_LAND_6": [
+            { "species": "054_Psyduck", "pattern": "wander", "max": 8 },
+            { "species": "055_Golduck", "pattern": "wander", "max": 6 }
+          ],
+          "BIG_LAND_7": [
+            { "species": "186_Politoed", "pattern": "wander", "max": 5 }
+          ]
+        }
+      }
+    }
+  }
+}

@@ -108,6 +108,19 @@ const PILL_STACK_GAP    : float = 0.10   # gap between the "was" pill and the ma
 const PILL_OLD_SCALE    : float = 0.86   # the "was" pill is this much of the main one
 const PILL_ICON_RATIO   : float = 0.72   # Fish Coin icon height on a two-currency pill
 const PILL_ICON_GAP_RATIO : float = 0.18 # gap either side of that icon
+## The white "+" left of the Fish Coin pill: its size against the pill text, and the gap
+## to the pill as a fraction of the pill height.
+const PLUS_FONT_SCALE   : float = 1.25
+const PLUS_GAP_RATIO    : float = 0.12
+const PLUS_COL          := Color(1, 1, 1, 1)
+
+## TWEAKABLE — the rod / permit name over the art (add_name_label). Font is the pill
+## text size times NAME_FONT_SCALE; NAME_GAP is the space above the pills.
+const NAME_FONT_SCALE   : float = 0.95
+const NAME_GAP          : float = 6.0
+const NAME_MAX_LINES    : int   = 2
+const NAME_OUTLINE      : int   = 6
+const NAME_OUTLINE_COL  := Color(0, 0, 0, 0.85)
 
 ## How far the pill breaks out of the cell it belongs to. X is a fraction of the pill's
 ## WIDTH past the cell's right edge; Y a fraction of its HEIGHT below the cell's bottom.
@@ -338,15 +351,17 @@ static func clear_pills(layer: Control) -> void:
 ## above the main pill. It is independent of `state`, so an unaffordable sale item
 ## still shows red on top of the struck-out original.
 ##
-## `fish_price` > 0 (the Fish Shop) makes the main pill carry both prices -- "$500" then
-## the Fish Coin icon and "50" -- in the one state colour, which then means "can afford
-## BOTH". OWNED ignores it. With `old_price` / `old_fish_price` the struck-out full
-## price stacks above it as its own two-currency pill, the same way a cash sale does.
+## `fish_price` > 0 (the Fish Shop) draws TWO identical pills stacked on the item: "$500"
+## on top in `state`'s colour, the Fish Coin icon and "250" underneath in `fish_state`'s,
+## with a white "+" to the left of the lower one. Each pill is coloured by its OWN
+## currency, so enough cash but too few Fish Coins reads green over red. OWNED ignores
+## all of it. With `old_price` / `old_fish_price` the struck-out full price stacks above
+## the pair as one smaller pill, the same way a cash sale does.
 static func add_price_pill(layer: Control, anchor: Rect2, state: int,
 						   price: int, old_price: int = 0, fish_price: int = 0,
-						   old_fish_price: int = 0) -> void:
+						   old_fish_price: int = 0, fish_state: int = -1) -> float:
 	if layer == null or not is_instance_valid(layer):
-		return
+		return anchor.end.y
 
 	var holder := Control.new()
 	holder.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -381,16 +396,30 @@ static func add_price_pill(layer: Control, anchor: Rect2, state: int,
 
 	# ── Main pill. Right edge overhangs the cell; bottom edge dips just below it.
 	if fish_price > 0 and state != OWNED:
-		var fish_text := str(fish_price)
-		var icon_h    := h * PILL_ICON_RATIO
-		var icon_w    := _fish_icon_width(icon_h)
-		var gap       := h * PILL_ICON_GAP_RATIO
-		var dual_w : float = _text_width(main_text, font_size) + gap * 2.0 + icon_w \
-				+ _text_width(fish_text, font_size) + pad * 2.0
-		var dual_x : float = cell_origin.x + cell_size.x + dual_w * PILL_OVERHANG_X - dual_w
-		var dual_y : float = cell_origin.y + cell_size.y + h * PILL_OVERHANG_Y - h
-		_add_dual_pill_row(holder, Vector2(dual_x, dual_y), Vector2(dual_w, h), main_col,
-				main_text, fish_text, font_size, pad, gap, icon_h)
+		var fish_st   : int    = fish_state if fish_state >= 0 else state
+		var fish_text : String = str(fish_price)
+		var icon_h    : float  = h * PILL_ICON_RATIO
+		var icon_w    : float  = _fish_icon_width(icon_h)
+		var gap       : float  = h * PILL_ICON_GAP_RATIO
+		# Both pills the width of the wider figure, so the pair reads as one column.
+		var pair_w : float = maxf(_text_width(main_text, font_size),
+				icon_w + gap + _text_width(fish_text, font_size)) + pad * 2.0
+		var pair_x : float = cell_origin.x + cell_size.x + pair_w * PILL_OVERHANG_X - pair_w
+		var fish_y : float = cell_origin.y + cell_size.y + h * PILL_OVERHANG_Y - h
+		var cash_y : float = fish_y - h * PILL_STACK_GAP - h
+		_add_pill_row(holder, Vector2(pair_x, cash_y), Vector2(pair_w, h),
+				_state_col(state), main_text, font_size, false)
+		_add_icon_pill_row(holder, Vector2(pair_x, fish_y), Vector2(pair_w, h),
+				_state_col(fish_st), fish_text, font_size, icon_h, gap)
+
+		# "+" to the left of the Fish Coin pill: $500, + 250 FC.
+		var plus_font : int   = maxi(int(round(font_size * PLUS_FONT_SCALE)), 8)
+		var plus_w    : float = _text_width("+", plus_font)
+		var plus := _make_label("+", plus_font, PLUS_COL)
+		plus.size     = Vector2(plus_w, h)
+		plus.position = Vector2(pair_x - h * PLUS_GAP_RATIO - plus_w, fish_y)
+		holder.add_child(plus)
+
 		if old_price > 0 or old_fish_price > 0:
 			var o_h     : float = h * PILL_OLD_SCALE
 			var o_font  : int   = maxi(int(round(o_h * PILL_FONT_RATIO)), 8)
@@ -399,8 +428,9 @@ static func add_price_pill(layer: Control, anchor: Rect2, state: int,
 			var o_icon  : float = o_h * PILL_ICON_RATIO
 			var o_cash  : String = "$" + str(old_price)
 			var o_fish  : String = str(old_fish_price)
-			var o_w : float = _text_width(o_cash, o_font) + o_gap * 2.0 + _fish_icon_width(o_icon) 					+ _text_width(o_fish, o_font) + o_pad * 2.0
-			var o_pos := Vector2(dual_x + dual_w - o_w, dual_y - h * PILL_STACK_GAP - o_h)
+			var o_w : float = _text_width(o_cash, o_font) + o_gap * 2.0 + _fish_icon_width(o_icon) \
+					+ _text_width(o_fish, o_font) + o_pad * 2.0
+			var o_pos := Vector2(pair_x + pair_w - o_w, cash_y - h * PILL_STACK_GAP - o_h)
 			_add_dual_pill_row(holder, o_pos, Vector2(o_w, o_h), _col_old_price(),
 					o_cash, o_fish, o_font, o_pad, o_gap, o_icon)
 			# One red bar through the whole figure, padding excluded.
@@ -411,7 +441,7 @@ static func add_price_pill(layer: Control, anchor: Rect2, state: int,
 			bar.size     = Vector2(o_w - o_pad * 2.0 + STRIKE_OVERHANG * 2.0, thick)
 			bar.position = Vector2(o_pos.x + o_pad - STRIKE_OVERHANG, o_pos.y + (o_h - thick) * 0.5)
 			holder.add_child(bar)
-		return
+		return _holder_top(holder)
 
 	var main_w : float = _text_width(main_text, font_size) + pad * 2.0
 	var main_x : float = cell_origin.x + cell_size.x + main_w * PILL_OVERHANG_X - main_w
@@ -429,6 +459,97 @@ static func add_price_pill(layer: Control, anchor: Rect2, state: int,
 		var old_y    : float  = main_y - h * PILL_STACK_GAP - old_h
 		_add_pill_row(holder, Vector2(old_x, old_y), Vector2(old_w, old_h),
 					  _col_old_price(), old_text, old_font, true)
+	return _holder_top(holder)
+
+
+## The top edge (layer-local y) of everything one add_price_pill() call drew -- what a
+## name label above the pills stands on.
+static func _holder_top(holder: Control) -> float:
+	var top := INF
+	for child in holder.get_children():
+		if child is Control:
+			top = minf(top, (child as Control).position.y)
+	return top
+
+
+# ============================================================
+# ITEM NAME LABEL (rods and permits)
+# ============================================================
+
+## The item's name over its art, centred on the item, its last line sitting NAME_GAP
+## above `bottom_y` (the top of the price pills, from add_price_pill). Wraps to the item's
+## width. Lives on the pill layer, so it stays put while the item pulses.
+static func add_name_label(layer: Control, anchor: Rect2, bottom_y: float, text: String) -> void:
+	if layer == null or not is_instance_valid(layer) or text == "":
+		return
+	var h : float = clampf(minf(anchor.size.x, anchor.size.y) * PILL_HEIGHT_RATIO, PILL_MIN_H, PILL_MAX_H)
+	var font_size : int = maxi(int(round(h * PILL_FONT_RATIO * NAME_FONT_SCALE)), 10)
+	var origin : Vector2 = layer.get_global_transform().affine_inverse() * anchor.position
+	var label := _make_label(text, font_size, PILL_TEXT_COL)
+	label.add_theme_color_override("font_outline_color", NAME_OUTLINE_COL)
+	label.add_theme_constant_override("outline_size", NAME_OUTLINE)
+	label.autowrap_mode      = TextServer.AUTOWRAP_WORD_SMART
+	label.vertical_alignment = VERTICAL_ALIGNMENT_BOTTOM
+	var box_h : float = font_size * NAME_MAX_LINES * 1.3
+	label.size     = Vector2(anchor.size.x, box_h)
+	label.position = Vector2(origin.x, bottom_y - NAME_GAP - box_h)
+	layer.add_child(label)
+
+
+# ============================================================
+# GRID SPREAD
+# ============================================================
+
+## The gap that spreads `cols` items `cell_w` wide evenly across `width`: the same space
+## between neighbours as between the outer items and the screen edges. Never below
+## `min_gap`. Shops use it for both the column gap and (via spread_left) the margin.
+static func spread_gap(width: float, cols: int, cell_w: float, min_gap: float) -> float:
+	if cols <= 0:
+		return min_gap
+	return maxf(min_gap, (width - cols * cell_w) / float(cols + 1))
+
+
+## The left edge of a row spread with spread_gap(), centred on `width`.
+static func spread_left(width: float, cols: int, cell_w: float, gap: float) -> float:
+	return (width - (cols * cell_w + (cols - 1) * gap)) * 0.5
+
+
+## The pill colour for a state (OWNED never reaches the two-pill branch).
+static func _state_col(state: int) -> Color:
+	match state:
+		OWNED:        return _col_owned()
+		UNAFFORDABLE: return _col_unaffordable()
+		DISCOUNTED:   return _col_discount()
+	return _col_affordable()
+
+
+## The Fish Coin pill: icon then figure, centred together in the pill.
+static func _add_icon_pill_row(holder: Control, pos: Vector2, size: Vector2, col: Color,
+							   text: String, font_size: int, icon_h: float, gap: float) -> void:
+	var pill := _make_pill(size, col, col.lerp(Color.WHITE, PILL_GRADIENT_LIFT))
+	pill.position = pos
+	holder.add_child(pill)
+
+	var icon_w := _fish_icon_width(icon_h)
+	var text_w := _text_width(text, font_size)
+	var content : float = text_w + (icon_w + gap if icon_w > 0.0 else 0.0)
+	var x : float = pos.x + (size.x - content) * 0.5
+	if icon_w > 0.0:
+		var icon := TextureRect.new()
+		icon.texture        = load(FISH_COIN_ICON)
+		icon.expand_mode    = TextureRect.EXPAND_IGNORE_SIZE
+		icon.stretch_mode   = TextureRect.STRETCH_SCALE
+		icon.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR
+		icon.mouse_filter   = Control.MOUSE_FILTER_IGNORE
+		icon.size     = Vector2(icon_w, icon_h)
+		icon.position = Vector2(x, pos.y + (size.y - icon_h) * 0.5)
+		holder.add_child(icon)
+		x += icon_w + gap
+
+	var label := _make_label(text, font_size, PILL_TEXT_COL)
+	label.position = Vector2(x, pos.y)
+	label.size     = Vector2(text_w, size.y)
+	holder.add_child(label)
 
 
 ## A two-currency pill: "$500  [fish coin] 50". One rect, two labels and the icon, laid

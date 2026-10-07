@@ -1103,6 +1103,10 @@ func add_fish_coins(amount: int) -> void:
 #   heard    keeper id ("olly" / "alexander") -> milestone ids that keeper has said
 #   reveals  milestone ids whose shop-unlock notice has played -- it plays ONCE, from
 #            whichever keeper gets there first, and is what puts the item on the shelf
+#   sent     species -> how many of it have been SENT TO FISH (beamed into a tank)
+#   sent_total  every fish ever sent -- what the expansions, phone calls and fishing
+#            unlocks all count (NOT fish_caught, which also counts ones sent back)
+#   calls    milestone numbers whose phone call has rung (FishShopCalls)
 # The opening scene itself is the story flag FISH_SHOP_INTRO_FLAG.
 
 const FISH_SHOP_INTRO_FLAG := "fish_shop_intro_done"
@@ -1115,8 +1119,56 @@ func _fish_shop_record() -> Dictionary:
 		rec["heard"] = {}
 	if not rec.get("reveals") is Array:
 		rec["reveals"] = []
+	if not rec.get("sent") is Dictionary:
+		rec["sent"] = {}
+	if not rec.get("calls") is Array:
+		rec["calls"] = []
 	progress["fish_shop"] = rec
 	return rec
+
+## Every fish ever sent to FISH.
+func fish_sent_total() -> int:
+	return int(_fish_shop_record().get("sent_total", 0))
+
+## How many of one species have been sent to FISH.
+func fish_sent_count(species: String) -> int:
+	return int(_fish_shop_record()["sent"].get(species, 0))
+
+## One fish beamed into the tanks. The caller checks for room first (FishShopTanks).
+func record_fish_sent(species: String) -> void:
+	var rec := _fish_shop_record()
+	rec["sent"][species] = fish_sent_count(species) + 1
+	rec["sent_total"] = fish_sent_total() + 1
+	save_progress()
+
+## DEBUG (DEL menu): overwrite the sent tally. `per_species` replaces the per-species
+## counts when given; `rung` replaces the rung-calls list; reveal ids in `reveal_on` are
+## added and those in `reveal_off` removed.
+func debug_set_fish_sent(total: int, per_species = null, rung: Array = [],
+		reveal_on: Array = [], reveal_off: Array = []) -> void:
+	var rec := _fish_shop_record()
+	rec["sent_total"] = maxi(0, total)
+	if per_species is Dictionary:
+		rec["sent"] = per_species.duplicate()
+	rec["calls"] = rung.duplicate()
+	var reveals: Array = rec["reveals"]
+	for id in reveal_on:
+		if id not in reveals:
+			reveals.append(id)
+	for id in reveal_off:
+		reveals.erase(id)
+	save_progress()
+
+func fish_shop_call_rung(milestone: int) -> bool:
+	for n in _fish_shop_record()["calls"]:
+		if int(n) == milestone:
+			return true
+	return false
+
+func mark_fish_shop_call_rung(milestone: int) -> void:
+	if not fish_shop_call_rung(milestone):
+		_fish_shop_record()["calls"].append(milestone)
+		save_progress()
 
 func fish_shop_heard(keeper: String) -> Array:
 	var heard: Dictionary = _fish_shop_record()["heard"]

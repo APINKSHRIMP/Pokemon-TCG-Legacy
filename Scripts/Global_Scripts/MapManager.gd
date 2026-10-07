@@ -1978,6 +1978,10 @@ func _show_gift_display(text: String, image_paths: Array, kind: String) -> void:
 				var scale_x := target_box.x / orig_w
 				var scale_y := target_box.y / orig_h
 				var scale_factor: float = min(scale_x, scale_y)
+				# Key items are pixel art: a whole-number scale keeps every pixel the
+				# same size (a 200px permit stays 1x, a 24px rod goes 12x).
+				if kind == "item" and scale_factor >= 1.0:
+					scale_factor = floorf(scale_factor)
 				actual_size = Vector2(orig_w * scale_factor, orig_h * scale_factor)
 
 		# Derive the card UID from the path so we can look up rarity/types
@@ -3135,6 +3139,11 @@ func debug_set_cash(amount: int) -> void:
 	print("DEBUG: cash = ", GameState.get_cash())
 
 
+func debug_set_fish_coins(amount: int) -> void:
+	GameState.add_fish_coins(amount - GameState.get_fish_coins())
+	print("DEBUG: fish coins = ", GameState.get_fish_coins())
+
+
 ## No reset, no reload. This is the count the outro reads to auto-advance time at 3
 ## wins, so taking it to 2 and then winning a real battle exercises the real path.
 func debug_add_defeated() -> void:
@@ -3180,8 +3189,38 @@ func start_fishing(direction: String) -> void:
 	map_root.add_child(_fishing)
 
 
-func finish_fishing() -> void:
+## `call_delay`: seconds to wait before any FISH milestone call rings -- the minigame
+## passes how long its last floating label still has to run, so the phone never
+## covers "Maximum X caught".
+func finish_fishing(call_delay: float = 0.0) -> void:
 	_fishing = null
+	cutscene_active = false
+	if _player != null and is_instance_valid(_player):
+		_player.unlock_movement()
+	ring_fish_shop_calls(call_delay)
+
+
+## Rings every FISH milestone call that is due (FishShopCalls.pending), one after the
+## other, with the player frozen from the moment fishing ends until the last one hangs
+## up. Each is marked rung BEFORE it plays, so nothing can ring twice. Does nothing
+## when no call is due, which is almost every catch.
+func ring_fish_shop_calls(delay: float = 0.0) -> void:
+	var due := FishShopCalls.pending()
+	if due.is_empty() or _player == null or not is_instance_valid(_player):
+		return
+	cutscene_active = true
+	_player.lock_movement()
+	if delay > 0.0:
+		await get_tree().create_timer(delay).timeout
+	for milestone in due:
+		GameState.mark_fish_shop_call_rung(milestone)
+		var config := FishShopCalls.build_config(milestone)
+		if config.is_empty():
+			FishShopCalls.unlock_without_call(milestone)
+			continue
+		var call := PhoneCall.play_call(get_tree().current_scene, config)
+		if call != null and not call.is_finished():
+			await call.finished
 	cutscene_active = false
 	if _player != null and is_instance_valid(_player):
 		_player.unlock_movement()

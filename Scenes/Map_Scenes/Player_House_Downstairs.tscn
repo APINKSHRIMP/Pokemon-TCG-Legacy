@@ -69,7 +69,7 @@ points = PackedVector2Array(18, -17.5, -16, -0.5, 18, -0.5)
 size = Vector2(356.5, 20.5)
 
 [sub_resource type="ConvexPolygonShape2D" id="ConvexPolygonShape2D_kd744"]
-points = PackedVector2Array(213, -132, 163, -132, 163, -112)
+points = PackedVector2Array(212, -132.5, 172, -132.5, 172, -113.5)
 
 [node name="PlayerHouseDownstairs" type="Node2D" unique_id=1007463427]
 script = ExtResource("1_m8vm5")
@@ -374,6 +374,6 @@ shape = SubResource("ConvexPolygonShape2D_m48fr")
 position = Vector2(-20.25, -118.25)
 shape = SubResource("RectangleShape2D_m48fr")
 
-[node name="CollisionShape2D" type="CollisionShape2D" parent="Collision Objects/Walls" unique_id=226517112]
+[node name="Stairstop" type="CollisionShape2D" parent="Collision Objects/Walls" unique_id=226517112]
 position = Vector2(-5, 4)
 shape = SubResource("ConvexPolygonShape2D_kd744")

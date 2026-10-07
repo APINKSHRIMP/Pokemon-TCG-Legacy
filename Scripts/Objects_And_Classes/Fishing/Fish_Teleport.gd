@@ -8,8 +8,8 @@ extends Node2D
 ##               soft blue glow just outside the silhouette.
 ##   2. HOLD     a moment lit up like that.
 ##   3. DISSOLVE the silhouette comes apart one texel at a time, TOP ROW FIRST, each
-##               texel rising away as a white/blue speck -- data being beamed up -- under
-##               a faint column of light.
+##               texel rising away as a white/blue speck -- data being beamed up. (There
+##               was a light column over it too; removed on request, 2026-10-07.)
 ##
 ## Everything is drawn by hand from the sprite's own pixels (the same approach PixelBurst
 ## and DripLayer take), so beat 1 and beat 3 are the same texels and the hand-over is
@@ -26,6 +26,11 @@ signal finished
 # -----------------------------------------------------------------------------
 # TWEAKABLE -- times are seconds, distances WORLD px (screen = world x 2.5)
 # -----------------------------------------------------------------------------
+## How fast the whole effect plays back. Every time below is authored at 1.0 and the
+## effect's clock runs this many times faster, so the look (how far the specks rise, how
+## the rows break up) is identical and only the duration changes: 4.0 = a quarter of the
+## time from start to finish (~0.6 s instead of ~2.4 s).
+const PLAYBACK_SPEED := 4.0
 const WHITEN_TIME := 0.45
 const HOLD_TIME := 0.25
 ## Seconds from the first texel leaving (top row) to the last one (bottom row).
@@ -56,10 +61,6 @@ const SPECK_SIZE := 1.0
 ## How far a speck's colour slides from its own white/blue to EDGE_COLOUR over its life.
 const SPECK_BLUE_SHIFT := 0.7
 
-## The light column over the Pokémon while it dissolves. Peak alpha and height in world px.
-const BEAM_ALPHA := 0.22
-const BEAM_HEIGHT := 90.0
-
 ## Big sprites are sampled in CHUNKS of texels so a Wailord does not become 20,000 specks.
 const MAX_SPECKS := 4000
 
@@ -67,6 +68,7 @@ const MAX_SPECKS := 4000
 
 var _texel: float = 0.5        ## world px per drawn chunk
 var _size: Vector2 = Vector2.ZERO  ## the frame in world px
+var _origin: Vector2 = Vector2.ZERO  ## the frame's top-left in GLOBAL px, applied once in the tree
 var _t: float = 0.0
 
 # Solid texels (become specks).
@@ -95,6 +97,10 @@ static func fire(parent: Node, sprite: Sprite2D, z: int) -> FishTeleport:
 	fx.z_as_relative = false
 	fx.z_index = z
 	parent.add_child(fx)
+	# Placed AFTER add_child: a global position set on a node outside the tree is kept as
+	# a LOCAL one, so it shifted by the parent's offset once added -- Deep Ocean's scene
+	# root sits at (2, 55) and the effect started ~55 world px below the Pokémon there.
+	fx.global_position = fx._origin
 	sprite.visible = false
 	return fx
 
@@ -157,7 +163,7 @@ func _build(sprite: Sprite2D) -> bool:
 	var top_left := sprite.offset
 	if sprite.centered:
 		top_left -= Vector2(region.size) * 0.5
-	global_position = sprite.global_position + top_left * scale_x
+	_origin = sprite.global_position + top_left * scale_x
 
 	for gy in h:
 		for gx in w:
@@ -225,7 +231,8 @@ static func _chamfer(d: PackedFloat32Array, w: int, h: int) -> void:
 			d[i] = v
 
 
-func _process(delta: float) -> void:
+func _process(real_delta: float) -> void:
+	var delta := real_delta * PLAYBACK_SPEED
 	_t += delta
 	var dissolve_t := _t - WHITEN_TIME - HOLD_TIME
 	if dissolve_t > 0.0:
@@ -250,17 +257,6 @@ func _draw() -> void:
 	whiten = whiten * whiten * (3.0 - 2.0 * whiten)  # smoothstep
 	var dissolve_t := _t - WHITEN_TIME - HOLD_TIME
 	var progress := clampf(dissolve_t / DISSOLVE_TIME, 0.0, 1.0)
-
-	# The light column, rising out of the Pokémon while it goes.
-	if dissolve_t > 0.0:
-		var beam := BEAM_ALPHA * sin(PI * clampf(dissolve_t / (DISSOLVE_TIME + LIFE_MAX), 0.0, 1.0))
-		var steps := 12
-		for s in steps:
-			var f := float(s) / float(steps)
-			var c := EDGE_COLOUR.lerp(CORE_COLOUR, 0.5)
-			c.a = beam * (1.0 - f)
-			var y := _size.y - (_size.y + BEAM_HEIGHT) * (f + 1.0 / steps)
-			draw_rect(Rect2(Vector2(0.0, y), Vector2(_size.x, (_size.y + BEAM_HEIGHT) / steps)), c)
 
 	# Outside glow: up with the whiten, away with the dissolve.
 	var glow_k := whiten * (1.0 - progress)

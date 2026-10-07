@@ -333,12 +333,15 @@ const FISH_COIN_TAG_ICON_H := 12.0
 const FISH_COIN_TAG_GAP := 2.0
 const FISH_COIN_TAG_STACK := 16.0
 
-## What happens to a landed fish after the catch box is dismissed. TRUE = it is beamed
-## off to the fish tanks (FishTeleport); FALSE = it hops back into the water. The tanks
-## and their per-species limits are not built yet, so this is a single switch for now --
-## when they are, a full tank sends it back in the water (and halves its reward, see
-## FishingData.FISH_COIN_TANK_FULL_MULT) and anything else teleports.
-const TELEPORT_TO_TANK := true
+## What happens to a landed fish after the catch box is dismissed: if FISH has room for
+## its species (FishShopTanks.has_room) it is beamed there (FishTeleport) for the
+## FishingData.fish_shop_bonus; if not, it hops back into the water. The labels that
+## say which, floated over the player like the coin tag:
+const SENT_LABEL := "Sent to FISH"
+const MAX_CAUGHT_LABEL := "Maximum %s caught"
+const NO_ROOM_LABEL := "No room at FISH to send %s"
+## Gap after the last label before a FISH milestone phone call rings.
+const CALL_AFTER_LABELS := 0.3
 const SINK_TIME := 0.5
 const WATER_CLEAR_ROWS := 5.0
 const WATER_FADE_ROWS := 8.0
@@ -478,6 +481,15 @@ var _fish_species: String = ""
 ## silhouette, the Pokémon pulled out and the reward alike.
 var _fish_rate: float = 0.0
 var _size_roll: float = 1.0
+## Decided when the catch is banked (_show_catch_message): true = there was room at
+## FISH, so it is beamed there for the bonus; false = it hops back into the water.
+var _send_to_shop: bool = false
+## This catch took the species' last free place at FISH ("Maximum X caught").
+var _filled_last_slot: bool = false
+var _shop_bonus: int = 0
+## Ticks (msec) at which the last floating label has gone, so a milestone phone call
+## waits for it (see _finish).
+var _labels_end_msec: int = 0
 ## The rod being fished with (FishingRods.current()), read once in _ready. `_rod_factor`
 ## is its 1 + modifier: it scales the fish's line_strength / reel_step / recharge_time
 ## (applied to _stats in _spawn_fish), ENERGY_DRAIN and both TENSION_DECAY rates.
@@ -752,6 +764,10 @@ func _input(event: InputEvent) -> void:
 		return
 	# The catch / failure box owns Space and Escape while it is up.
 	if MapManager.wants_message_input():
+		return
+	if _is_debug_catch_key(event):
+		get_viewport().set_input_as_handled()
+		_debug_instant_catch()
 		return
 	if UIInput.is_cancel(event):
 		# Bail out any time before the fish is actually on the bank.
@@ -1491,6 +1507,29 @@ func _held(direction: String) -> bool:
 # THE CATCH
 # ============================================================
 
+## DEBUG ONLY (DebugMode.is_enabled()): DEBUG_CATCH_KEY lands the fish on the spot --
+## approaching, at the bobber, biting or mid-fight -- for stacking up catches while
+## testing FISH. Everything after the fight is the real thing: the haul out, the catch
+## box, the reward, sending to FISH and any milestone call.
+const DEBUG_CATCH_KEY := KEY_P
+const DEBUG_CATCH_STATES := [State.WAIT, State.SINK, State.BITE, State.FIGHT]
+
+func _is_debug_catch_key(event: InputEvent) -> bool:
+	if not (event is InputEventKey and event.pressed and not event.echo):
+		return false
+	if (event as InputEventKey).keycode != DEBUG_CATCH_KEY or not DebugMode.is_enabled():
+		return false
+	return _state in DEBUG_CATCH_STATES and _fish != null and is_instance_valid(_fish)
+
+
+func _debug_instant_catch() -> void:
+	_bobber_seq = []
+	_yanking = false
+	_tension = 0.0
+	_fish.modulate.a = 1.0
+	_start_catch()
+
+
 func _start_catch() -> void:
 	_aim_fish(_player.global_position - _fish.global_position)
 	_fish_fleeing = false
@@ -1667,6 +1706,14 @@ func _show_catch_message() -> void:
 	GameState.add_fish_caught()
 	var reward := FishingData.fish_coin_reward(_fish_species, _fish_rate, _size_roll)
 	GameState.add_fish_coins(reward)
+	# Sent to FISH is banked here too, for the same reason: the tally moves once. The
+	# bonus is paid now and only SHOWN when the teleport starts.
+	_send_to_shop = FishShopTanks.has_room(_fish_species)
+	if _send_to_shop:
+		GameState.record_fish_sent(_fish_species)
+		_shop_bonus = FishingData.fish_shop_bonus(_fish_species)
+		GameState.add_fish_coins(_shop_bonus)
+		_filled_last_slot = not FishShopTanks.has_room(_fish_species)
 	var is_new := GameState.record_pokemon_met(_fish_species)
 	_show_fish_coin_tag(reward)
 	if is_new:
@@ -1715,6 +1762,41 @@ func _show_fish_coin_tag(amount: int) -> void:
 	tag.global_position = _player.global_position + Vector2(0.0, -NEW_TAG_OFFSET)
 
 
+## One of the FISH labels over the player's head ("Sent to FISH [icon]+25", "Maximum X
+## caught", "No room at FISH to send X"): the same rise and fade as the coin tag, shown
+## after `delay` seconds so two can play one after the other. Parented to the MAP, not
+## to this minigame, because the minigame frees itself as soon as the teleport ends and
+## the label still has a second to run.
+func _show_shop_label(prefix: String, amount: String, with_icon: bool, delay: float = 0.0) -> void:
+	if _player == null or not is_instance_valid(_player):
+		return
+	var host := get_parent()
+	if host == null:
+		return
+	var tag := FishCoinTag.new()
+	tag.prefix = prefix
+	tag.text = amount
+	tag.icon = load(FISH_COIN_ICON) if with_icon and ResourceLoader.exists(FISH_COIN_ICON) else null
+	tag.font_size = FISH_COIN_TAG_FONT_SIZE
+	tag.icon_h = FISH_COIN_TAG_ICON_H
+	tag.gap = FISH_COIN_TAG_GAP
+	tag.rise = NEW_TAG_RISE
+	tag.rise_time = NEW_TAG_RISE_TIME
+	tag.fade_time = NEW_TAG_FADE_TIME
+	tag.delay = delay
+	tag.z_as_relative = false
+	tag.z_index = NEW_TAG_Z
+	host.add_child(tag)
+	tag.global_position = _player.global_position + Vector2(0.0, -NEW_TAG_OFFSET)
+	_labels_end_msec = maxi(_labels_end_msec,
+			Time.get_ticks_msec() + int((delay + _label_life()) * 1000.0))
+
+
+## How long one floating label lives.
+func _label_life() -> float:
+	return maxf(NEW_TAG_RISE_TIME, NEW_TAG_FADE_TIME)
+
+
 func _on_catch_message_ok() -> void:
 	# _on_ok_pressed() hands a pending callback the press and returns WITHOUT closing the
 	# box -- a chain is expected to put the next line up. This is the end of the chain, so
@@ -1726,9 +1808,14 @@ func _on_catch_message_ok() -> void:
 	if _caught == null or not is_instance_valid(_caught):
 		_finish()
 		return
-	if TELEPORT_TO_TANK:
+	var species_name := OverworldPokemonData.display_name(_fish_species)
+	if _send_to_shop:
+		_show_shop_label(SENT_LABEL, "+%d" % _shop_bonus, true)
+		if _filled_last_slot:
+			_show_shop_label(MAX_CAUGHT_LABEL % species_name, "", false, _label_life())
 		_start_teleport()
 		return
+	_show_shop_label(NO_ROOM_LABEL % species_name, "", false)
 	# Back to a normal standing sprite, still facing the player, and it hops back in --
 	# it only turns to face the way it is going once it is clear of the rod.
 	_caught.rotation_degrees = 0.0
@@ -2062,6 +2149,9 @@ class FishCoinTag extends Node2D:
 	const OUTLINE := 2
 
 	var text: String = ""
+	## Words before the icon ("Sent to FISH"), or the whole label when there is no
+	## icon and no text ("Maximum Magikarp caught").
+	var prefix: String = ""
 	var icon: Texture2D = null
 	var font_size: int = 12
 	var icon_h: float = 12.0
@@ -2069,12 +2159,16 @@ class FishCoinTag extends Node2D:
 	var rise: float = 18.0
 	var rise_time: float = 1.25
 	var fade_time: float = 1.1
+	## Seconds it waits, invisible, before it starts to rise -- how a second label
+	## follows the first.
+	var delay: float = 0.0
 
 	var _t: float = 0.0
 
 	func _ready() -> void:
 		# The icon is 170 px drawn at ~30 on screen: nearest would shred it.
 		texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR
+		_t = -delay
 
 	func _process(delta: float) -> void:
 		_t += delta
@@ -2084,6 +2178,8 @@ class FishCoinTag extends Node2D:
 		queue_redraw()
 
 	func _draw() -> void:
+		if _t < 0.0:
+			return
 		var font := ThemeDB.fallback_font
 		var climb: float = -rise * clampf(_t / maxf(rise_time, 0.01), 0.0, 1.0)
 		var alpha: float = 1.0 - clampf(_t / maxf(fade_time, 0.01), 0.0, 1.0)
@@ -2091,8 +2187,20 @@ class FishCoinTag extends Node2D:
 		var icon_w := 0.0
 		if icon != null and icon.get_height() > 0:
 			icon_w = icon_h * icon.get_width() / float(icon.get_height())
-		var total := icon_w + (gap if icon_w > 0.0 else 0.0) + text_w
+		var prefix_w := 0.0
+		if prefix != "":
+			prefix_w = font.get_string_size(prefix, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size).x
+			if icon_w > 0.0 or text != "":
+				prefix_w += gap * 2.0
+		var total := prefix_w + icon_w + (gap if icon_w > 0.0 else 0.0) + text_w
 		var x := -total * 0.5
+		if prefix != "":
+			var prefix_at := Vector2(x, climb)
+			draw_string_outline(font, prefix_at, prefix, HORIZONTAL_ALIGNMENT_LEFT, -1,
+					font_size, OUTLINE, Color(0.0, 0.0, 0.0, alpha))
+			draw_string(font, prefix_at, prefix, HORIZONTAL_ALIGNMENT_LEFT, -1,
+					font_size, Color(1.0, 1.0, 1.0, alpha))
+			x += prefix_w
 		if icon_w > 0.0:
 			# Centred on the text's cap height: the baseline is y = climb, and the
 			# digits stand roughly 0.7 of the font size above it.
@@ -2188,5 +2296,7 @@ func _finish() -> void:
 	_restore_sound()
 	if _player != null and _player.camera != null:
 		_player.camera.offset = Vector2.ZERO
-	MapManager.finish_fishing()
+	# A FISH milestone call (if this catch reached one) waits for the labels to finish.
+	var labels_left := maxf(0.0, (_labels_end_msec - Time.get_ticks_msec()) / 1000.0)
+	MapManager.finish_fishing(labels_left + CALL_AFTER_LABELS if labels_left > 0.0 else 0.0)
 	queue_free()
