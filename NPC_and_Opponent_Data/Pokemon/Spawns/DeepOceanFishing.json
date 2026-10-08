@@ -146,6 +146,124 @@
           ]
         }
       }
+    },
+    {
+      "id": "fishing_spot_2",
+      "template": "fishing_spot",
+      "at": [543, 169],
+      "group": "fishing_spot_1",
+      "region": [
+        284,
+        -13,
+        801,
+        351
+      ],
+      "tables": {
+        "Morning": {
+          "table": [
+            {
+              "species": "592_Frillish",
+              "percent": 33
+            },
+            {
+              "species": "593_Jellicent",
+              "percent": 5
+            },
+            {
+              "species": "746_Wishiwashi",
+              "percent": 39
+            },
+            {
+              "species": "746_Wishiwashi_School",
+              "percent": 1
+            },
+            {
+              "species": "963_Finizen",
+              "percent": 20
+            },
+            {
+              "species": "964_Palafin",
+              "percent": 2
+            }
+          ]
+        },
+        "Afternoon": {
+          "table": [
+            {
+              "species": "320_Wailmer",
+              "percent": 19
+            },
+            {
+              "species": "321_Wailord",
+              "percent": 1
+            },
+            {
+              "species": "846_Arrokuda",
+              "percent": 30
+            },
+            {
+              "species": "847_Barraskewda",
+              "percent": 10
+            },
+            {
+              "species": "223_Remoraid",
+              "percent": 35
+            },
+            {
+              "species": "224_Octillery",
+              "percent": 5
+            }
+          ]
+        },
+        "Evening": {
+          "table": [
+            {
+              "species": "366_Clamperl",
+              "percent": 40
+            },
+            {
+              "species": "368_Gorebyss",
+              "percent": 8
+            },
+            {
+              "species": "367_Huntail",
+              "percent": 8
+            },
+            {
+              "species": "976_Veluza",
+              "percent": 10
+            },
+            {
+              "species": "369_Relicanth",
+              "percent": 34
+            }
+          ]
+        },
+        "Night": {
+          "table": [
+            {
+              "species": "686_Inkay",
+              "percent": 33
+            },
+            {
+              "species": "687_Malamar",
+              "percent": 8
+            },
+            {
+              "species": "318_Carvanha",
+              "percent": 39
+            },
+            {
+              "species": "319_Sharpedo",
+              "percent": 8
+            },
+            {
+              "species": "781_Dhelmise",
+              "percent": 12
+            }
+          ]
+        }
+      }
     }
   ]
 }

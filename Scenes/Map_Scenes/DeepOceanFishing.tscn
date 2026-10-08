@@ -1,22 +1,16 @@
 [gd_scene format=4 uid="uid://benpkgfkhrtkn"]
 
-[ext_resource type="Script" uid="uid://ca33y6vp3liaq" path="res://Scripts/Map_Scripts/Deep_Ocean_Fishing.gd" id="1_wbkbu"]
+[ext_resource type="Script" path="res://Scripts/Map_Scripts/Deep_Ocean_Fishing.gd" id="1_wbkbu"]
 [ext_resource type="TileSet" uid="uid://dqknfbtehgo6c" path="res://Image_Assets/Map_Sheets/Tile_Sets/Celeste_Harbour_Morning.tres" id="4_cnx4p"]
 [ext_resource type="PackedScene" uid="uid://bprufyh8mxqom" path="res://Scenes/Objects/Player_Object_Scene.tscn" id="4_n7p1c"]
 [ext_resource type="Texture2D" uid="uid://3yd2uxgvhb43" path="res://Image_Assets/Map_Objects/FishingBoat.png" id="4_wbkbu"]
 [ext_resource type="Script" uid="uid://bbrlrblh7j22j" path="res://Scripts/Objects_And_Classes/Fishing/Fishing_Zone.gd" id="5_wbkbu"]
 
-[sub_resource type="RectangleShape2D" id="RectangleShape2D_p15o0"]
-size = Vector2(4, 224)
-
-[sub_resource type="RectangleShape2D" id="RectangleShape2D_annoh"]
-size = Vector2(254, 20)
-
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_47xlm"]
-size = Vector2(106.75, 28.625)
+size = Vector2(113.375, 40.3125)
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_377ug"]
-size = Vector2(133.9375, 213.75)
+size = Vector2(24.96875, 22)
 
 [node name="DeepOcean" type="Node2D" unique_id=1007463427]
 position = Vector2(2, 55)
@@ -41,18 +35,8 @@ position = Vector2(-1, 0)
 tile_map_data = PackedByteArray("AAD4/xgAAAA0ADgAABD4/xkAAAA0ADkAABD4/xoAAAA0ADoAABD5/xcAAAAzADcAABD5/xgAAAAzADgAABD5/xkAAAAzADkAABD5/xoAAAAzADoAABD6/xgAAAAyADgAABD6/xkAAAAyADkAABD6/xoAAAAyADoAABBAACkAAAA0ADgAABBAACoAAAA0ADkAABBAACsAAAA0ADoAABBBACgAAAAzADcAABBBACkAAAAzADgAABBBACoAAAAzADkAABBBACsAAAAzADoAABBCACkAAAAyADgAABBCACoAAAAyADkAABBCACsAAAAyADoAABA=")
 tile_set = ExtResource("4_cnx4p")
 
-[node name="EMPTY LAYER7" type="TileMapLayer" parent="Tile_Map" unique_id=175412278]
-position = Vector2(-1, 0)
-tile_set = ExtResource("4_cnx4p")
-
-[node name="EMPTY LAYER8" type="TileMapLayer" parent="Tile_Map" unique_id=2086465657]
-position = Vector2(-1, 0)
-tile_set = ExtResource("4_cnx4p")
-
-[node name="NPCS" type="Node2D" parent="." unique_id=427928302]
-position = Vector2(121, 59)
-
-[node name="Fishingboat" type="TextureRect" parent="." unique_id=900509078]
+[node name="Fishingboat" type="TextureRect" parent="Tile_Map" unique_id=900509078]
+visible = false
 offset_left = 399.99997
 offset_top = 257.0
 offset_right = 1200.0
@@ -61,23 +45,39 @@ scale = Vector2(0.4, 0.4)
 texture = ExtResource("4_wbkbu")
 stretch_mode = 4
 
-[node name="Collision" type="StaticBody2D" parent="." unique_id=1628633344]
+[node name="Boat" type="Control" parent="Tile_Map" unique_id=402991087]
+layout_mode = 3
+anchors_preset = 0
+offset_right = 40.0
+offset_bottom = 40.0
 
-[node name="Wall V" type="CollisionShape2D" parent="Collision" unique_id=1487724711]
-position = Vector2(420, 299)
-shape = SubResource("RectangleShape2D_p15o0")
+[node name="BOAT Top" type="TileMapLayer" parent="Tile_Map/Boat" unique_id=27191599]
+z_index = 10
+position = Vector2(-168.99998, -96.99999)
+scale = Vector2(1.25, 1.25)
+tile_map_data = PackedByteArray("AAAfABcAAAAhAHUAAAAgABcAAAAiAHUAAAAhABcAAAAjAHUAAAAiABcAAAAkAHUAAAAjABcAAAAlAHUAAAAkABcAAAAmAHUAAAAlABcAAAAnAHUAAAAmABcAAAAoAHUAAAAnABcAAAApAHUAAAAoABcAAAAqAHUAAAApABcAAAArAHUAAAAgABgAAAAiAHYAAAAhABgAAAAjAHYAAAAiABgAAAAkAHYAAAAjABgAAAAlAHYAAAAkABgAAAAmAHYAAAAlABgAAAAnAHYAAAAmABgAAAAoAHYAAAAnABgAAAApAHYAAAAoABgAAAAqAHYAAAApABgAAAArAHYAAAA=")
+tile_set = ExtResource("4_cnx4p")
 
-[node name="Wall V2" type="CollisionShape2D" parent="Collision" unique_id=2122923753]
-position = Vector2(578, 335)
-shape = SubResource("RectangleShape2D_p15o0")
+[node name="BOAT Bottom" type="TileMapLayer" parent="Tile_Map/Boat" unique_id=175412278]
+position = Vector2(-168.99998, -96.99999)
+scale = Vector2(1.25, 1.25)
+tile_map_data = PackedByteArray("AAAeABQAAAAgAHIAAAAeABUAAAAgAHMAAAAeABYAAAAgAHQAAAAfABMAAAAhAHEAAAAfABQAAAAhAHIAAAAfABUAAAAhAHMAAAAfABYAAAAhAHQAAAAfABcAAAAhAHUAAAAgABMAAAAiAHEAAAAgABQAAAAiAHIAAAAgABUAAAAiAHMAAAAgABYAAAAiAHQAAAAhABMAAAAjAHEAAAAhABQAAAAjAHIAAAAhABUAAAAjAHMAAAAhABYAAAAjAHQAAAAiABMAAAAkAHEAAAAiABQAAAAkAHIAAAAiABUAAAAkAHMAAAAiABYAAAAkAHQAAAAjABYAAAAlAHQAAAAkABMAAAAmAHEAAAAkABQAAAAmAHIAAAAkABUAAAAmAHMAAAAkABYAAAAmAHQAAAAlABMAAAAnAHEAAAAlABQAAAAnAHIAAAAlABUAAAAnAHMAAAAlABYAAAAnAHQAAAAmABIAAAAoAHAAAAAmABMAAAAoAHEAAAAmABQAAAAoAHIAAAAmABUAAAAoAHMAAAAmABYAAAAoAHQAAAAnABIAAAApAHAAAAAnABMAAAApAHEAAAAnABQAAAApAHIAAAAnABUAAAApAHMAAAAnABYAAAApAHQAAAAoABMAAAAqAHEAAAAoABQAAAAqAHIAAAAoABUAAAAqAHMAAAAoABYAAAAqAHQAAAApABIAAAArAHAAAAApABMAAAArAHEAAAApABQAAAArAHIAAAApABUAAAArAHMAAAApABYAAAArAHQAAAAjABUAAAAlAHMAAAAjABQAAAAlAHIAAAAjABMAAAAlAHEAAAA=")
+tile_set = ExtResource("4_cnx4p")
 
-[node name="Wall H" type="CollisionShape2D" parent="Collision" unique_id=88657917]
-position = Vector2(575, 276)
-shape = SubResource("RectangleShape2D_annoh")
+[node name="Collision" type="StaticBody2D" parent="Tile_Map/Boat" unique_id=1628633344]
+position = Vector2(-1.5258789e-05, -7.6293945e-06)
+scale = Vector2(0.99999994, 0.99999994)
 
-[node name="Wall H2" type="CollisionShape2D" parent="Collision" unique_id=1356412145]
-position = Vector2(570, 379)
-shape = SubResource("RectangleShape2D_annoh")
+[node name="CollisionPolygon2D2" type="CollisionPolygon2D" parent="Tile_Map/Boat/Collision" unique_id=3940437]
+z_index = 12
+polygon = PackedVector2Array(561, 291, 499, 291, 488, 294, 458, 304, 443, 316, 443, 333, 446, 335, 457, 345, 470, 353, 478, 356, 483, 358, 492, 360, 502, 361, 502, 367, 563, 367, 563, 291, 572, 291, 572, 388, 475, 388, 414, 333, 480, 249, 572, 271)
+
+[node name="EMPTY LAYER8" type="TileMapLayer" parent="Tile_Map" unique_id=2086465657]
+position = Vector2(-1, 0)
+tile_set = ExtResource("4_cnx4p")
+
+[node name="NPCS" type="Node2D" parent="." unique_id=427928302]
+position = Vector2(121, 59)
 
 [node name="EMPTY_Tile_GROUP" type="TileMap" parent="." unique_id=42692496]
 format = 2
@@ -93,18 +93,14 @@ script = ExtResource("5_wbkbu")
 position = Vector2(525, 356)
 shape = SubResource("RectangleShape2D_47xlm")
 
-[node name="Fish_Up" type="CollisionShape2D" parent="FishingAreas" unique_id=1414739251]
-position = Vector2(527, 306)
-shape = SubResource("RectangleShape2D_47xlm")
-
 [node name="Player" parent="." unique_id=510514557 instance=ExtResource("4_n7p1c")]
-position = Vector2(352, 339)
+position = Vector2(346, 335)
 
 [node name="Door Areas" type="Area2D" parent="." unique_id=207957012]
 position = Vector2(-37, 1468)
 
 [node name="DoorArea_CelesteHarbour" type="CollisionShape2D" parent="Door Areas" unique_id=2119147692]
-position = Vector2(683.03125, -1132.125)
+position = Vector2(677, -1134)
 shape = SubResource("RectangleShape2D_377ug")
 metadata/target_scene = "res://Scenes/Map_Scenes/Celeste_Harbour.tscn"
 metadata/spawn_side = "left"
