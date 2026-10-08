@@ -66,12 +66,18 @@ func discard_energy_from_pokemon(energy: card_object, is_owner_opp: bool, is_ko_
 # Move a single card to the given side's discard pile. Optionally animate it.
 func send_to_discard(card: card_object, is_opponent: bool, animate: bool = false, anim_from: Control = null) -> void:
 	if animate:
-		var from_node = anim_from if anim_from != null else main.find_card_ui_for_object(card)
-		if from_node == null:
-			from_node = main.opponent_active_container if is_opponent else main.player_active_container
 		var discard_node = main.opponent_discard_icon if is_opponent else main.player_discard_icon
 		var tex = main.get_card_texture(card)
-		await main.animate_card_a_to_b(from_node, discard_node, 0.2, tex, main.card_scales[10])
+		var in_hand: bool = card in (main.opponent_hand if is_opponent else main.player_hand)
+		if anim_from == null and in_hand:
+			# FLIGHTS: a hand card leaves from its own (computed) slot — right even while the hand is hidden.
+			var hd_from: Dictionary = main.lift_card_from_hand(card, is_opponent)
+			await main.animate_card_out_of_hand(card, is_opponent, hd_from, discard_node, 0.2, tex)
+		else:
+			var from_node = anim_from if anim_from != null else main.find_card_ui_for_object(card)
+			if from_node == null:
+				from_node = main.opponent_active_container if is_opponent else main.player_active_container
+			await main.animate_card_a_to_b(from_node, discard_node, 0.2, tex, main.card_scales[10])
 		if main._should_bail(): return
 	var discard = main.opponent_discard_pile if is_opponent else main.player_discard_pile
 	if not discard.has(card):
@@ -167,24 +173,9 @@ func discard_from_hand(is_opponent: bool, count: int, exclude_card: card_object 
 	if selectable.is_empty():
 		return []
 
-	main.trainer_discard_selected.clear()
-	main.trainer_discard_cards_needed = count
-	main.trainer_discard_selection_active = true
-	main.show_enlarged_array_selection_mode(selectable)
-	main.header_label.text = "DISCARD " + str(count) + " CARD(S)"
-	main.hint_label.text = "0/" + str(count) + " selected"
-	main.action_button.text = str(count) + " MORE"
-	main.action_button.disabled = true
-	main.action_button.theme = main.theme_disabled
-	main.cancel_button.visible = false
-
-	await main.trainer_discard_selection_done
-	main.trainer_discard_selection_active = false
-	main.hide_selection_mode_display_main()
+	var discarded = await prompt_select_cards(selectable, count, count,
+		"DISCARD " + str(count) + " CARD(S)", "", "DISCARD")
 	if main._should_bail(): return []
-
-	var discarded = main.trainer_discard_selected.duplicate()
-	main.trainer_discard_selected.clear()
 	for card in discarded:
 		hand.erase(card)
 		card.current_location = "discard"
@@ -229,35 +220,11 @@ func search_deck_to_hand(is_opponent: bool, filter_fn: Callable, prompt: String,
 			chosen.append(candidates[i])
 		print("ISSUE #324 FIX ACTIVE: CPU deck search ranked ", candidates.size(), " candidates, took ", chosen.size())
 	else:
-		# ISSUE #21 FIX ACTIVE: a deck search triggered by an ATTACK (e.g. Oddish's Sprout) runs while
-		# perform_attack() has the full-screen opponent_blocker up, which would sit on top of this
-		# selection UI and eat the click on the confirm button. Save/hide it here and restore it after,
-		# exactly like prompt_select_card does (issue #3), so the confirm button is clickable.
-		var restore_opponent_blocker = main.opponent_blocker.visible
-		main.opponent_blocker.visible = false
-		print("ISSUE #21 FIX ACTIVE (search_deck_to_hand): opponent_blocker hidden, will restore to ", restore_opponent_blocker)
-		# Player multi-select using discard-selection machinery
-		main.trainer_discard_selected.clear()
-		main.trainer_discard_cards_needed = count
-		main.trainer_discard_selection_active = true
-		main.show_enlarged_array_selection_mode(candidates)
-		main.header_label.text = prompt.to_upper()
-		var need_text = "SELECT " + str(count) + " CARD(S)" if count > 1 else "SELECT A CARD"
-		main.hint_label.text = need_text
-		main.action_button.text = str(count) + " MORE" if count > 1 else "TAKE CARD"
-		main.action_button.disabled = true
-		main.action_button.theme = main.theme_disabled
-		main.cancel_button.visible = false
-
-		await main.trainer_discard_selection_done
-		main.trainer_discard_selection_active = false
-		main.hide_selection_mode_display_main()
-		main.opponent_blocker.visible = restore_opponent_blocker
-		print("ISSUE #21 FIX ACTIVE (search_deck_to_hand): opponent_blocker restored to ", restore_opponent_blocker)
+		# Deck searches are "up to" (a search may always fail to find), so min 0. prompt_select_cards
+		# also hides/restores the attack-time opponent_blocker (ISSUE #21).
+		var need_text = "Select up to " + str(count) + " card(s)" if count > 1 else "Select a card"
+		chosen = await prompt_select_cards(candidates, 0, count, prompt.to_upper(), need_text, "TAKE CARD", false, true)
 		if main._should_bail(): return []
-
-		chosen = main.trainer_discard_selected.duplicate()
-		main.trainer_discard_selected.clear()
 
 	for card in chosen:
 		deck.erase(card)
@@ -279,9 +246,9 @@ func recover_to_hand(card: card_object, is_opponent: bool, animate: bool = false
 	hand.append(card)
 	if animate:
 		var discard_icon = main.opponent_discard_icon if is_opponent else main.player_discard_icon
-		var hand_node    = main.opponent_hand_container if is_opponent else main.player_hand_container
-		var tex = main.get_card_texture(card)
-		await main.animate_card_a_to_b(discard_icon, hand_node, 0.3, tex, main.card_scales[10])
+		main.update_discard_pile_display(is_opponent)
+		# FLIGHTS: lands on the card's real slot in the hand (not the hand box's left edge)
+		await main.animate_card_into_hand(card, is_opponent, discard_icon, {}, 0.3, main.get_card_texture(card))
 		if main._should_bail(): return
 	main.refresh_hand_display(is_opponent)
 	main.update_discard_pile_display(is_opponent)
@@ -695,6 +662,135 @@ func choose_card(pool: Array, is_opponent: bool, header: String, hint: String,
 			return best
 		return pool[0]
 	return await prompt_select_card(pool, header, hint, btn_text, cancelable, search_mode)
+
+# ── Multi-select (choose several at once) ───────────────────────────────────────
+# THE way any effect that makes more than one choice from the same pool asks the player: every
+# pick is made on ONE screen (click to toggle, click again to un-pick) and confirmed once. Never
+# loop prompt_select_card for "choose 2" / "up to 3" — that is the old one-at-a-time flow.
+#   min_n / max_n — "choose 2" is (2, 2); "up to 3" is (0, 3); "1 or 2" is (1, 2). max_n is clamped
+#                   to the pool, min_n to max_n, so a short pool never soft-locks the confirm button.
+#   validator     — optional fn(candidate, selected_so_far) -> bool; a pick it rejects is ignored.
+#   cancelable    — shows Cancel; a cancel returns [] (same as confirming with nothing picked).
+# Returns the chosen cards in the order they were picked.
+func prompt_select_cards(pool: Array, min_n: int, max_n: int, header: String, hint: String,
+		btn_text: String = "CONFIRM", cancelable: bool = false, _search_mode: bool = false,
+		validator: Callable = Callable()) -> Array:
+	if pool.is_empty():
+		return []
+	max_n = clampi(max_n, 0, pool.size())
+	min_n = clampi(min_n, 0, max_n)
+	if max_n == 0:
+		return []
+	var restore_opponent_blocker = main.opponent_blocker.visible
+	main.opponent_blocker.visible = false
+	main.trainer_discard_selected.clear()
+	main.trainer_discard_cards_needed = max_n
+	main.trainer_discard_cards_min = min_n
+	main.trainer_discard_validator = validator
+	main.multi_select_hint_base = hint
+	main.multi_select_btn_text = btn_text
+	main.trainer_discard_selection_active = true
+	main.show_enlarged_array_selection_mode(pool)
+	main.header_label.text = header
+	main.cancel_button.visible = cancelable
+	# Same re-layout prompt_select_card does once cancel_button.visible is known (base1-2 bug).
+	if main.action_button.visible:
+		if main.cancel_button.visible:
+			main.action_button.offset_left = main.action_button_paired_offset_left
+			main.action_button.offset_right = main.action_button_paired_offset_right
+			main.cancel_button.offset_left = 35.0
+			main.cancel_button.offset_right = 473.0
+		else:
+			main.action_button.offset_left = main.action_button_default_offset_left
+			main.action_button.offset_right = main.action_button_default_offset_right
+	main.refresh_multi_select_labels()
+	await main.trainer_discard_selection_done
+	var chosen: Array = main.trainer_discard_selected.duplicate()
+	main.trainer_discard_selected.clear()
+	main.trainer_discard_selection_active = false
+	main.trainer_discard_cards_min = -1
+	main.trainer_discard_validator = Callable()
+	main.multi_select_hint_base = ""
+	main.multi_select_btn_text = "CONFIRM"
+	main.hide_selection_mode_display_main()
+	main.opponent_blocker.visible = restore_opponent_blocker
+	print("MULTI-SELECT: ", header, " -> ", chosen.size(), " of ", min_n, "..", max_n)
+	return chosen
+
+# MULTI-SELECT: "put them back in any order" on ONE screen — the Pokédex reorder mode (click the
+# cards in the order you want them, first click = first/top). Returns the cards in that order.
+func prompt_reorder_cards(cards: Array, header: String, hint: String = "Click the cards in order (top of deck first)") -> Array:
+	if cards.size() <= 1:
+		return cards.duplicate()
+	var restore_opponent_blocker = main.opponent_blocker.visible
+	main.opponent_blocker.visible = false
+	main.pokedex_cards = cards.duplicate()
+	main.pokedex_reorder_result.clear()
+	main.trainer_reorder_active = true
+	main.show_enlarged_array_selection_mode(main.pokedex_cards)
+	main.header_label.text = header
+	main.hint_label.text = hint
+	main.action_button.text = "0/" + str(cards.size()) + " SELECTED"
+	main.action_button.disabled = true
+	main.action_button.theme = main.theme_disabled
+	main.cancel_button.visible = false
+	await main.trainer_reorder_done
+	var ordered: Array = main.pokedex_reorder_result.duplicate()
+	main.trainer_reorder_active = false
+	main.hide_selection_mode_display_main()
+	main.opponent_blocker.visible = restore_opponent_blocker
+	main.pokedex_cards.clear()
+	main.pokedex_reorder_result.clear()
+	# Safety: anything left unnumbered keeps its old relative order at the end.
+	for c in cards:
+		if c not in ordered:
+			ordered.append(c)
+	return ordered
+
+# MULTI-SELECT validator for "different types of basic Energy": refuses a card that provides a
+# (non-Colorless) type an already-picked card provides.
+func distinct_energy_type_validator() -> Callable:
+	return func(c, picked: Array) -> bool:
+		var taken: Array = []
+		for p in picked:
+			for t in main.get_energy_provided_by_card(p):
+				if t != "Colorless": taken.append(t)
+		for t in main.get_energy_provided_by_card(c):
+			if t != "Colorless" and t in taken:
+				return false
+		return true
+
+# MULTI-SELECT validator for "N different kinds": refuses a card whose key_fn(card) value matches
+# an already-picked card's (key_fn returns e.g. a category string or card name).
+func distinct_key_validator(key_fn: Callable) -> Callable:
+	return func(c, picked: Array) -> bool:
+		var k = key_fn.call(c)
+		for p in picked:
+			if key_fn.call(p) == k:
+				return false
+		return true
+
+# Both-sides version of prompt_select_cards, mirroring choose_card: the CPU takes up to max_n cards
+# greedily by cpu_rank_fn (pool order when none), honouring the validator. The CPU always takes the
+# full max_n it can — callers that want the CPU to stop early keep their own CPU branch.
+func choose_cards(pool: Array, is_opponent: bool, min_n: int, max_n: int, header: String, hint: String,
+		btn_text: String = "CONFIRM", cancelable: bool = false, cpu_rank_fn: Callable = Callable(),
+		search_mode: bool = false, validator: Callable = Callable()) -> Array:
+	if pool.is_empty() or max_n <= 0:
+		return []
+	if not is_opponent:
+		return await prompt_select_cards(pool, min_n, max_n, header, hint, btn_text, cancelable, search_mode, validator)
+	var ranked: Array = pool.duplicate()
+	if cpu_rank_fn.is_valid():
+		ranked.sort_custom(func(a, b): return float(cpu_rank_fn.call(a)) > float(cpu_rank_fn.call(b)))
+	var chosen: Array = []
+	for c in ranked:
+		if chosen.size() >= max_n:
+			break
+		if validator.is_valid() and not validator.call(c, chosen.duplicate()):
+			continue
+		chosen.append(c)
+	return chosen
 
 # ── Bench Damage ──────────────────────────────────────────────────────────────────────────
 

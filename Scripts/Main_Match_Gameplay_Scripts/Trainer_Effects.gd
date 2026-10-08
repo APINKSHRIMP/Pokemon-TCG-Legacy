@@ -89,6 +89,11 @@ func effect_ex9_mr_stones_project(is_opponent: bool) -> void:
 			if main._should_bail(): return
 			return
 		var taken := 0
+		# MULTI-SELECT: "up to 2" on one screen
+		var player_picks: Array = []
+		if not is_opponent:
+			player_picks = await main.card_ops.prompt_select_cards(pool, 0, 2, "MR. STONE'S PROJECT", "Choose up to 2 basic Energy from your discard pile", "TAKE")
+			if main._should_bail(): return
 		for i in range(2):
 			pool = discard.filter(energy_filter)
 			if pool.is_empty(): break
@@ -96,9 +101,8 @@ func effect_ex9_mr_stones_project(is_opponent: bool) -> void:
 			if is_opponent:
 				pick = main.cpu_ai.cpu_pick_best_keep(pool)  # recover the Energy type the attacker needs
 			else:
-				pick = await main.card_ops.prompt_select_card(pool, "MR. STONE'S PROJECT", "Choose a basic Energy from your discard pile (or cancel to stop)", "TAKE", true, true)
-				if main._should_bail(): return
-				if pick == null: break
+				if i >= player_picks.size(): break
+				pick = player_picks[i]
 			await main.card_ops.recover_to_hand(pick, is_opponent)
 			if main._should_bail(): return
 			taken += 1
@@ -139,6 +143,12 @@ func effect_ex8_energy_charge(is_opponent: bool) -> void:
 	var discard = main.opponent_discard_pile if is_opponent else main.player_discard_pile
 	var deck = main.opponent_deck if is_opponent else main.player_deck
 	var moved = 0
+	# MULTI-SELECT: 2 Energy (1 if only 1) on one screen
+	var player_picks: Array = []
+	if not is_opponent:
+		player_picks = await main.card_ops.prompt_select_cards(discard.filter(func(c): return c.metadata.get("supertype","") == "Energy"),
+			2, 2, "ENERGY CHARGE", "Choose 2 Energy to shuffle into your deck", "SHUFFLE IN")
+		if main._should_bail(): return
 	while moved < 2:
 		var pool = discard.filter(func(c): return c.metadata.get("supertype","") == "Energy")
 		if pool.is_empty(): break
@@ -146,9 +156,8 @@ func effect_ex8_energy_charge(is_opponent: bool) -> void:
 		if is_opponent:
 			chosen = main.cpu_ai.cpu_pick_best_keep(pool)  # recycle the most useful Energy back into the deck
 		else:
-			chosen = await main.card_ops.choose_card(pool, false, "ENERGY CHARGE", "Choose an Energy to shuffle into your deck (" + str(moved + 1) + " of 2)", "SELECT", moved > 0, Callable(), true)
-			if main._should_bail(): return
-			if chosen == null: break
+			if moved >= player_picks.size(): break
+			chosen = player_picks[moved]
 		discard.erase(chosen)
 		chosen.current_location = "deck"
 		deck.append(chosen)
@@ -164,6 +173,13 @@ func effect_ex8_energy_charge(is_opponent: bool) -> void:
 func effect_ex8_lady_outing(is_opponent: bool) -> void:
 	var chosen_types: Array = []
 	var found = 0
+	# MULTI-SELECT: up to 3 of DIFFERENT types on one screen (the validator refuses a repeat type)
+	var player_picks: Array = []
+	if not is_opponent:
+		player_picks = await main.card_ops.prompt_select_cards(_ex8_basic_energy_pool(false, []), 0, 3,
+			"LADY OUTING", "Choose up to 3 basic Energy of different types", "TAKE", false, true,
+			main.card_ops.distinct_energy_type_validator())
+		if main._should_bail(): return
 	while found < 3:
 		var pool = _ex8_basic_energy_pool(is_opponent, chosen_types)
 		if pool.is_empty(): break
@@ -171,9 +187,8 @@ func effect_ex8_lady_outing(is_opponent: bool) -> void:
 		if is_opponent:
 			chosen = main.cpu_ai.cpu_pick_best_keep(pool)  # fetch a basic Energy type the attacker actually needs
 		else:
-			chosen = await main.card_ops.choose_card(pool, false, "LADY OUTING", "Choose a basic Energy of a NEW type (" + str(found + 1) + " of 3)", "SELECT", found > 0, Callable(), true)
-			if main._should_bail(): return
-			if chosen == null: break
+			if found >= player_picks.size(): break
+			chosen = player_picks[found]
 		var deck = main.opponent_deck if is_opponent else main.player_deck
 		var hand = main.opponent_hand if is_opponent else main.player_hand
 		deck.erase(chosen)
@@ -1248,10 +1263,9 @@ func play_trainer_card(card: card_object, is_opponent: bool) -> void:
 			if main._should_bail(): return
 			card.current_location = "discard"
 			discard.append(card)
-			var hand_node_chaos = main.opponent_hand_container if is_opponent else main.player_hand_container
 			var discard_node_chaos = main.opponent_discard_icon if is_opponent else main.player_discard_icon
 			var ctex_chaos = main.get_card_texture(card)
-			await main.animate_card_a_to_b(hand_node_chaos, discard_node_chaos, 0.3, ctex_chaos, main.card_scales[10])
+			await main.animate_card_out_of_hand(card, is_opponent, main.showcase_card_rect(), discard_node_chaos, 0.3, ctex_chaos)
 			if main._should_bail(): return
 			main.update_discard_pile_display(is_opponent)
 			# ISSUE #309: "If the card isn't put into play, the player's opponent may use that card instead, if
@@ -1348,6 +1362,11 @@ func show_trainer_card_played_animation(card: card_object, is_opponent: bool) ->
 	# Show message
 	await main.show_message(who + " played " + card_name + "!")
 	
+	# FLIGHTS: the flight starts FROM THE SHOWCASE CARD — large, centre stage — not from the bottom-left
+	# of the hand box. Measured before it is freed.
+	var showcase_rect: Dictionary = {"position": card_display.global_position, "size": card_display.custom_minimum_size} \
+		if card_display.custom_minimum_size != Vector2.ZERO else main.showcase_card_rect()
+
 	# Clean up the card; set_card_showcase_visible restores the board.
 	# ISSUE #170: detach before freeing, or the next showcase parents its card
 	# alongside this one for a frame.
@@ -1355,24 +1374,35 @@ func show_trainer_card_played_animation(card: card_object, is_opponent: bool) ->
 		main.played_trainer_container.remove_child(child)
 		child.queue_free()
 	main.set_card_showcase_visible(false)
-	
-	# Animate card to appropriate destination
+
+	# Animate card to appropriate destination: the large card lingers while the board comes back,
+	# then flies to the exact spot it ends up in (PLAY_HOLD_TIME).
 	var hand_container_node = main.opponent_hand_container if is_opponent else main.player_hand_container
 	var card_texture = main.get_card_texture(card)
-	
+	var from_size: Vector2 = showcase_rect["size"]
+	var from_pos: Vector2 = showcase_rect["position"]
+
 	if is_bench_token_trainer(card):
+		# Lands on the first EMPTY bench slot — where resolve_bench_token_trainer will put it.
 		var bench_container_node = main.opponent_bench_container if is_opponent else main.player_bench_container
-		await main.animate_card_a_to_b(hand_container_node, bench_container_node, 0.3, card_texture, main.card_scales[10])
+		var bench_arr = main.opponent_bench if is_opponent else main.player_bench
+		var land: Dictionary = main.bench_slot_rect(is_opponent, bench_arr.size())
+		await main.animate_card_a_to_b(hand_container_node, bench_container_node, 0.3, card_texture, from_size,
+			land["size"], land["position"], false, from_pos, main.PLAY_HOLD_TIME)
 	elif is_attached_trainer(card):
 		# Don't animate here - attached trainers animate to their target in resolve_attached_trainer
 		pass
 	elif is_stadium_trainer(card):
 		# Stadium cards animate to the stadium zone (the resolve_stadium_trainer function handles the rest)
-		await main.animate_card_a_to_b(hand_container_node, main.stadium_card_container, 0.3, card_texture, main.card_scales[10])
+		var land: Dictionary = main.landing_rect_node(main.stadium_card_container, main.STADIUM_SIZE)
+		await main.animate_card_a_to_b(hand_container_node, main.stadium_card_container, 0.3, card_texture, from_size,
+			land["size"], land["position"], false, from_pos, main.PLAY_HOLD_TIME)
 	else:
 		# Standard trainers animate to the discard pile
 		var discard_node = main.opponent_discard_icon if is_opponent else main.player_discard_icon
-		await main.animate_card_a_to_b(hand_container_node, discard_node, 0.3, card_texture, main.card_scales[10])
+		var land: Dictionary = main.landing_rect_node(discard_node)
+		await main.animate_card_a_to_b(hand_container_node, discard_node, 0.3, card_texture, from_size,
+			land["size"], land["position"], false, from_pos, main.PLAY_HOLD_TIME)
 
 ############################################### Section D: STANDARD TRAINER CARD EFFECTS ############################################################
 
@@ -1434,7 +1464,8 @@ func resolve_attached_trainer(card: card_object, is_opponent: bool) -> void:
 		var pp_rect = main.measure_and_hide_new_active_tool_slot(is_opponent)
 		var pp_pos = pp_rect.get("position", main._ANIM_POS_SENTINEL)
 		var pp_size = pp_rect.get("size", main.card_scales[11])
-		await main.animate_card_a_to_b(hand_node, attached_node, 0.3, card_texture, main.card_scales[10], pp_size, pp_pos)
+		var sc_pp: Dictionary = main.showcase_card_rect()   # FLIGHTS: from the large showcase card
+		await main.animate_card_a_to_b(hand_node, attached_node, 0.3, card_texture, sc_pp["size"], pp_size, pp_pos, false, sc_pp["position"], main.PLAY_HOLD_TIME)
 		# ISSUE #59 FIX (retest sub-issue 2): board refresh BEFORE the message so the tool is visibly
 		# attached while the message is up.
 		display_attached_trainer_cards(is_opponent)
@@ -1458,7 +1489,8 @@ func resolve_attached_trainer(card: card_object, is_opponent: bool) -> void:
 			var def_rect = main.measure_and_hide_new_active_tool_slot(true)
 			var def_pos = def_rect.get("position", main._ANIM_POS_SENTINEL)
 			var def_size = def_rect.get("size", main.card_scales[11])
-			await main.animate_card_a_to_b(hand_node, attached_node, 0.3, card_texture, main.card_scales[10], def_size, def_pos)
+			var sc_def: Dictionary = main.showcase_card_rect()   # FLIGHTS: from the large showcase card
+			await main.animate_card_a_to_b(hand_node, attached_node, 0.3, card_texture, sc_def["size"], def_size, def_pos, false, sc_def["position"], main.PLAY_HOLD_TIME)
 			# ISSUE #85 FIX: drop the "(-20 damage)" suffix — the message just states the attachment.
 			# ISSUE #59 FIX (retest sub-issue 2): refresh the board BEFORE the message so the tool is
 			# visibly attached while the message is on screen, rather than appearing after it closes.
@@ -1759,22 +1791,11 @@ func gym2_attach_named_tool(card: card_object, is_opponent: bool, name_substr: S
 # --- INDIVIDUAL TRAINER EFFECTS ---
 
 # base1-91 — Bill: Draw 2 cards
-func player_select_cards_to_discard(hand: Array, count: int, title: String, hint: String) -> void:
-	main.trainer_discard_selected.clear()
-	main.trainer_discard_cards_needed = count
-	main.trainer_discard_selection_active = true
-	
-	main.show_enlarged_array_selection_mode(hand)
-	main.header_label.text = title
-	main.hint_label.text = hint + " (0/" + str(count) + " selected)"
-	main.action_button.text = str(count) + " MORE"
-	main.action_button.disabled = true
-	main.action_button.theme = main.theme_disabled
-	main.cancel_button.visible = false
-	
-	await main.trainer_discard_selection_done
-	main.trainer_discard_selection_active = false
-	main.hide_selection_mode_display_main()
+# Exactly-`count` multi-select over `hand`; the result is left in main.trainer_discard_selected for
+# the callers that read it from there. min_n < count makes it "up to".
+func player_select_cards_to_discard(hand: Array, count: int, title: String, hint: String, min_n: int = -1) -> void:
+	var picked = await main.card_ops.prompt_select_cards(hand, count if min_n < 0 else min_n, count, title, hint)
+	main.trainer_discard_selected = picked
 # Master scoring function: returns the CPU priority score for a trainer card
 func effect_bill(is_opponent: bool) -> void:
 	await main.card_ops.draw_n(is_opponent, 2)
@@ -1790,10 +1811,11 @@ func effect_professor_oak(played_card: card_object, is_opponent: bool) -> void:
 	# Animate each hand card going to discard
 	var hand_copy = hand.duplicate()
 	for card in hand_copy:
+		var oak_from: Dictionary = main.lift_card_from_hand(card, is_opponent)   # FLIGHTS: from its own slot
 		card.current_location = "discard"
 		discard.append(card)
 		var card_texture = main.get_card_texture(card)
-		main.animate_card_a_to_b(hand_container_node, discard_node, 0.15, card_texture, main.card_scales[12])
+		main.animate_card_out_of_hand(card, is_opponent, oak_from, discard_node, 0.15, card_texture)
 		await get_tree().create_timer(GameState.match_time(0.1)).timeout
 		if main._should_bail(): return
 	hand.clear()
@@ -1861,7 +1883,7 @@ func effect_computer_search(played_card: card_object, is_opponent: bool) -> void
 				hand.append(chosen)
 				# Animate card from deck to hand
 				var card_texture = main.get_card_texture(chosen)
-				await main.animate_card_a_to_b(main.player_deck_icon, main.player_hand_container, 0.3, card_texture, main.card_scales[10])
+				await main.animate_card_into_hand(chosen, false, main.player_deck_icon, {}, 0.3, card_texture)
 				if main._should_bail(): return
 		
 		deck.shuffle()
@@ -1979,10 +2001,11 @@ func effect_impostor_professor_oak(is_opponent: bool) -> void:
 	# Animate each card from hand to deck
 	var hand_copy = target_hand.duplicate()
 	for card in hand_copy:
+		var io_from: Dictionary = main.lift_card_from_hand(card, target_is_opponent)   # FLIGHTS: from its own slot
 		card.current_location = "deck"
 		target_deck.append(card)
 		var card_texture = main.get_card_texture(card)
-		main.animate_card_a_to_b(target_hand_container, target_deck_node, 0.15, card_texture, main.card_scales[12])
+		main.animate_card_out_of_hand(card, target_is_opponent, io_from, target_deck_node, 0.15, card_texture)
 		await get_tree().create_timer(GameState.match_time(0.1)).timeout
 		if main._should_bail(): return
 	target_hand.clear()
@@ -2065,7 +2088,7 @@ func effect_item_finder(played_card: card_object, is_opponent: bool) -> void:
 			hand.append(chosen)
 			# Animate trainer from discard to hand
 			var trainer_texture = main.get_card_texture(chosen)
-			await main.animate_card_a_to_b(main.player_discard_icon, main.player_hand_container, 0.3, trainer_texture, main.card_scales[10])
+			await main.animate_card_into_hand(chosen, false, main.player_discard_icon, {}, 0.3, trainer_texture)
 			if main._should_bail(): return
 			await main.show_message("Retrieved " + chosen.metadata.get("name", "") + " from discard pile!")
 			if main._should_bail(): return
@@ -2116,22 +2139,24 @@ func effect_lass(is_opponent: bool) -> void:
 
 	# Animate player trainers going to deck
 	for card in p_trainers:
+		var lp_from: Dictionary = main.lift_card_from_hand(card, false)   # FLIGHTS: before it leaves the hand
 		main.player_hand.erase(card)
 		card.current_location = "deck"
 		main.player_deck.append(card)
 		var card_texture = main.get_card_texture(card)
-		main.animate_card_a_to_b(main.player_hand_container, main.player_deck_icon, 0.15, card_texture, main.card_scales[12])
+		main.animate_card_out_of_hand(card, false, lp_from, main.player_deck_icon, 0.15, card_texture)
 		await get_tree().create_timer(GameState.match_time(0.1)).timeout
 		if main._should_bail(): return
 		main.update_deck_icon(false)
 	
 	# Animate opponent trainers going to deck
 	for card in o_trainers:
+		var lo_from: Dictionary = main.lift_card_from_hand(card, true)   # FLIGHTS: before it leaves the hand
 		main.opponent_hand.erase(card)
 		card.current_location = "deck"
 		main.opponent_deck.append(card)
 		var card_texture = main.get_card_texture(card)
-		main.animate_card_a_to_b(main.opponent_hand_container, main.opponent_deck_icon, 0.15, card_texture, main.card_scales[12])
+		main.animate_card_out_of_hand(card, true, lo_from, main.opponent_deck_icon, 0.15, card_texture)
 		await get_tree().create_timer(GameState.match_time(0.1)).timeout
 		if main._should_bail(): return
 		main.update_deck_icon(true)
@@ -2290,7 +2315,8 @@ func effect_pokemon_trader(played_card: card_object, is_opponent: bool) -> void:
 		card_to_trade.current_location = "deck"
 		deck.append(card_to_trade)
 		var trade_texture = main.get_card_texture(card_to_trade)
-		await main.animate_card_a_to_b(main.opponent_hand_container, main.opponent_deck_icon, 0.3, trade_texture, main.card_scales[12])
+		# FLIGHTS: from the showcase card it was just shown as, onto the deck
+		await main.animate_card_out_of_hand(card_to_trade, true, main.showcase_card_rect(), main.opponent_deck_icon, 0.3, trade_texture)
 		if main._should_bail(): return
 		main.refresh_hand_display(true)
 		main.update_deck_icon(true)
@@ -2305,7 +2331,8 @@ func effect_pokemon_trader(played_card: card_object, is_opponent: bool) -> void:
 		search_card.current_location = "hand"
 		hand.append(search_card)
 		var search_texture = main.get_card_texture(search_card)
-		await main.animate_card_a_to_b(main.opponent_deck_icon, main.opponent_hand_container, 0.3, search_texture, main.card_scales[12])
+		# FLIGHTS: from the showcase card into its real slot in the hand
+		await main.animate_card_into_hand(search_card, true, main.opponent_deck_icon, main.showcase_card_rect(), 0.3, search_texture)
 		if main._should_bail(): return
 		main.refresh_hand_display(true)
 		main.update_deck_icon(true)
@@ -2320,6 +2347,7 @@ func effect_pokemon_trader(played_card: card_object, is_opponent: bool) -> void:
 		if main._should_bail(): return
 		
 		if search_card != null:
+			var trade_from: Dictionary = main.hand_card_rect(card_to_trade, false)   # FLIGHTS: before it leaves the hand
 			hand.erase(card_to_trade)
 			card_to_trade.current_location = "deck"
 			deck.append(card_to_trade)
@@ -2329,11 +2357,11 @@ func effect_pokemon_trader(played_card: card_object, is_opponent: bool) -> void:
 			deck.shuffle()
 			# Animate traded card to deck and searched card to hand
 			var trade_texture = main.get_card_texture(card_to_trade)
-			main.animate_card_a_to_b(main.player_hand_container, main.player_deck_icon, 0.2, trade_texture, main.card_scales[10])
-			await get_tree().create_timer(GameState.match_time(0.2)).timeout
+			main.refresh_hand_display(false)
+			await main.animate_card_out_of_hand(card_to_trade, false, trade_from, main.player_deck_icon, 0.2, trade_texture)
 			if main._should_bail(): return
 			var search_texture = main.get_card_texture(search_card)
-			await main.animate_card_a_to_b(main.player_deck_icon, main.player_hand_container, 0.3, search_texture, main.card_scales[10])
+			await main.animate_card_into_hand(search_card, false, main.player_deck_icon, {}, 0.3, search_texture)
 			if main._should_bail(): return
 			main.refresh_hand_display(false)
 			main.update_deck_icon(false)
@@ -2395,6 +2423,8 @@ func effect_scoop_up(is_opponent: bool) -> void:
 
 	# Grab the on-board node BEFORE anything is removed, so the card can fly from where it sat.
 	var target_node = main.find_card_ui_for_object(target)
+	# FLIGHTS: measured now — display_pokemon below frees this node before the flight starts
+	var scoop_rect: Dictionary = main._card_rect_now(target)
 
 	# Discard all attachments (energies, evolutions, attached cards) — one at a time, animated.
 	await main.card_ops.discard_all_attachments_animated(target, is_opponent)
@@ -2430,7 +2460,7 @@ func effect_scoop_up(is_opponent: bool) -> void:
 	var hand_node = main.opponent_hand_container if is_opponent else main.player_hand_container
 	var scoop_from = target_node if (target_node != null and is_instance_valid(target_node)) else hand_node
 	var basic_texture = main.opponent_card_back_texture if is_opponent else main.get_card_texture(basic_card)
-	await main.animate_card_a_to_b(scoop_from, hand_node, 0.3, basic_texture, main.card_scales[10])
+	await main.animate_card_into_hand(basic_card, is_opponent, scoop_from, scoop_rect, 0.3, basic_texture)
 	if main._should_bail(): return
 
 	main.update_discard_pile_display(is_opponent)
@@ -2580,24 +2610,11 @@ func effect_super_energy_removal(is_opponent: bool) -> void:
 				if main._should_bail(): return
 				removed += 1
 		else:
-			# Player selects which 2 energies using multi-select mode
-			main.trainer_discard_selected.clear()
-			main.trainer_discard_cards_needed = 2
-			main.trainer_discard_selection_active = true
-			
-			main.show_enlarged_array_selection_mode(target.attached_energies)
-			main.cancel_button.visible = false
-			main.header_label.text = "REMOVE ENERGY (SELECT 2)"
-			main.hint_label.text = "Select 2 energies to remove (0/2 selected)"
-			main.action_button.text = "2 MORE"
-			main.action_button.disabled = true
-			main.action_button.theme = main.theme_disabled
-			
-			await main.trainer_discard_selection_done
+			# Player selects which energies ("up to 2") on one screen
+			main.trainer_discard_selected = await main.card_ops.prompt_select_cards(target.attached_energies.duplicate(),
+				1, 2, "REMOVE ENERGY", "Select up to 2 energies to remove", "REMOVE")
 			if main._should_bail(): return
-			main.trainer_discard_selection_active = false
-			main.hide_selection_mode_display_main()
-			
+
 			for e in main.trainer_discard_selected:
 				target.attached_energies.erase(e)
 				e.current_location = "discard"
@@ -2681,34 +2698,17 @@ func effect_energy_retrieval(played_card: card_object, is_opponent: bool) -> voi
 				basic_energies.append(card)
 		
 		if basic_energies.size() > 0:
-			var max_retrieve = min(2, basic_energies.size())
-			main.trainer_discard_selected.clear()
-			main.trainer_discard_cards_needed = max_retrieve
-			main.trainer_discard_selection_active = true
-			
-			main.show_enlarged_array_selection_mode(basic_energies)
-			main.header_label.text = "ENERGY RETRIEVAL"
-			main.hint_label.text = "Select up to " + str(max_retrieve) + " Basic Energy to retrieve (0/" + str(max_retrieve) + " selected)"
-			main.action_button.text = str(max_retrieve) + " MORE"
-			main.action_button.disabled = true
-			main.action_button.theme = main.theme_disabled
-			main.cancel_button.visible = false
-			
-			await main.trainer_discard_selection_done
+			# "up to 2" — 0, 1 or 2 on one screen
+			var retrieved = await main.card_ops.prompt_select_cards(basic_energies, 0, 2,
+				"ENERGY RETRIEVAL", "Select up to 2 Basic Energy to retrieve", "RETRIEVE")
 			if main._should_bail(): return
-			main.trainer_discard_selection_active = false
-			main.hide_selection_mode_display_main()
-			
-			for card in main.trainer_discard_selected:
+			for card in retrieved:
 				discard.erase(card)
 				card.current_location = "hand"
 				hand.append(card)
-				# Animate each retrieved energy from discard to hand
-				var discard_node = main.player_discard_icon
-				var energy_texture = main.get_card_texture(card)
-				await main.animate_card_a_to_b(discard_node, main.player_hand_container, 0.3, energy_texture, main.card_scales[10])
+				main.update_discard_pile_display(false)
+				await main.animate_card_into_hand(card, false, main.player_discard_icon)
 				if main._should_bail(): return
-			main.trainer_discard_selected.clear()
 		
 		main.refresh_hand_display(false)
 		main.update_discard_pile_display(false)
@@ -2747,10 +2747,11 @@ func effect_maintenance(played_card: card_object, is_opponent: bool) -> void:
 		await main.show_message("Opponent shuffled 2 cards into their deck!")
 		if main._should_bail(): return
 		for card in to_shuffle:
+			var mt_from: Dictionary = main.lift_card_from_hand(card, true)   # FLIGHTS: from its own slot
 			hand.erase(card)
 			card.current_location = "deck"
 			deck.append(card)
-			await main.animate_card_a_to_b(main.opponent_hand_container, main.opponent_deck_icon, 0.3, main.opponent_card_back_texture, main.card_scales[12])
+			await main.animate_card_out_of_hand(card, true, mt_from, main.opponent_deck_icon, 0.3, main.opponent_card_back_texture)
 			if main._should_bail(): return
 			main.refresh_hand_display(true)
 			main.update_deck_icon(true)
@@ -2853,7 +2854,10 @@ func effect_pokemon_flute(is_opponent: bool) -> void:
 			var discard_node = main.opponent_discard_icon if target_is_opponent else main.player_discard_icon
 			var bench_node = main.opponent_bench_container if target_is_opponent else main.player_bench_container
 			var card_texture = main.get_card_texture(chosen)
-			await main.animate_card_a_to_b(discard_node, bench_node, 0.3, card_texture, main.card_scales[10])
+			# FLIGHTS: land on the empty bench slot it is taking (the bench isn't redrawn yet)
+			var pf_land: Dictionary = main.bench_slot_rect(target_is_opponent, target_bench.size() - 1)
+			await main.animate_card_a_to_b(discard_node, bench_node, 0.3, card_texture, main.PILE_SIZE,
+				pf_land["size"], pf_land["position"], false, discard_node.global_position)
 			if main._should_bail(): return
 			main.update_discard_pile_display(target_is_opponent)
 			main.display_pokemon(target_is_opponent)
@@ -3434,10 +3438,9 @@ func effect_energy_search(is_opponent: bool) -> void:
 		var deck_icon = main.opponent_deck_icon if is_opponent else main.player_deck_icon
 		var hand_container = main.opponent_hand_container if is_opponent else main.player_hand_container
 		print("ISSUE #86 FIX ACTIVE: Energy Search animates deck->hand with no reveal message")
-		await main.animate_card_a_to_b(deck_icon, hand_container, 0.3, search_texture, main.card_scales[12])
-		if main._should_bail(): return
-		main.refresh_hand_display(is_opponent)
 		main.update_deck_icon(is_opponent)
+		await main.animate_card_into_hand(chosen, is_opponent, deck_icon, {}, 0.3, search_texture)
+		if main._should_bail(): return
 
 	deck.shuffle()
 
@@ -3694,13 +3697,13 @@ func effect_challenge(is_opponent: bool) -> void:
 	if main._should_bail(): return
 	# "Each of you searches your decks for ANY NUMBER of Basic Pokémon cards" (was 1 each)
 	var player_added := 0
-	while main.player_bench.size() < max_b:
-		var player_basics = main.player_deck.filter(func(c): return main.is_basic_pokemon(c))
-		if player_basics.is_empty():
-			break
-		var pick = await main.card_ops.prompt_select_card(player_basics, "CHALLENGE! (" + str(player_added) + " CHOSEN)", "Choose a Basic Pokemon for your Bench (Cancel when done)", "SELECT", true, true)
-		if main._should_bail(): return
-		if pick == null:
+	# MULTI-SELECT: any number (up to the Bench space) on one screen
+	var player_picks: Array = await main.card_ops.prompt_select_cards(
+		main.player_deck.filter(func(c): return main.is_basic_pokemon(c)), 0, max_b - main.player_bench.size(),
+		"CHALLENGE!", "Choose any number of Basic Pokemon for your Bench", "BENCH")
+	if main._should_bail(): return
+	for pick in player_picks:
+		if main.player_bench.size() >= max_b:
 			break
 		main.player_deck.erase(pick)
 		pick.current_hp = pick.get_max_hp()
@@ -3844,22 +3847,9 @@ func effect_nightly_garbage_run(is_opponent: bool) -> void:
 	var max_picks = min(3, valid_cards.size())
 	
 	if not is_opponent:
-		# Player selects up to 3
-		for i in range(max_picks):
-			var remaining: Array = []
-			for card in valid_cards:
-				if card not in chosen:
-					remaining.append(card)
-			if remaining.size() == 0:
-				break
-			
-			var pick = await main.card_ops.prompt_select_card(remaining, "CHOOSE CARD " + str(i + 1) + "/" + str(max_picks) + " (OR DONE)", "", "SELECT", true)
-			if main._should_bail(): return
-			
-			if pick != null:
-				chosen.append(pick)
-			else:
-				break
+		# Player selects up to 3 on one screen
+		chosen = await main.card_ops.prompt_select_cards(valid_cards, 0, max_picks, "NIGHTLY GARBAGE RUN", "Choose up to 3 Pokemon / basic Energy cards", "SELECT")
+		if main._should_bail(): return
 	else:
 		# CPU picks best cards: prioritize evolution cards, then basics, then energy
 		valid_cards.sort_custom(func(a, b):
@@ -4094,11 +4084,10 @@ func gym1_end_of_turn_cleanup(side_is_opponent: bool) -> void:
 				hand.append(charity_card)
 				pokemon.gym1_charity_attached = false
 				var attached_node = main.opponent_attached_cards_container if side_is_opponent else main.player_attached_cards_container
-				var hand_node = main.opponent_hand_container if side_is_opponent else main.player_hand_container
 				var tex = main.get_card_texture(charity_card)
-				main.animate_card_a_to_b(attached_node, hand_node, 0.25, tex, main.card_scales[10])
+				# FLIGHTS: lands on its real hand slot (the helper refreshes the hand when it lands)
+				main.animate_card_into_hand(charity_card, side_is_opponent, attached_node, {}, 0.25, tex)
 				display_attached_trainer_cards(side_is_opponent)
-				main.refresh_hand_display(side_is_opponent)
 				print("CHARITY: returned to hand from ", pokemon.metadata.get("name", ""))
 
 		# Sabrina's ESP: discarded at end of own turn
@@ -4754,18 +4743,8 @@ func gym1_search_deck_by_name_substring(is_opponent: bool, substr: String, heade
 		for i in range(min(max_n, candidates.size())):
 			picks.append(candidates[i])
 	else:
-		for i in range(min(max_n, candidates.size())):
-			var remaining: Array = []
-			for c in candidates:
-				if c not in picks:
-					remaining.append(c)
-			if remaining.size() == 0:
-				break
-			var pick = await main.card_ops.prompt_select_card(remaining, header_text + " — CHOOSE " + str(i + 1) + "/" + str(min(max_n, candidates.size())), "Pick a Pokemon to add to your hand (cancel to stop)", "TAKE", true, true)
-			if main._should_bail(): return
-			if pick == null:
-				break
-			picks.append(pick)
+		picks = await main.card_ops.prompt_select_cards(candidates, 0, max_n, header_text, "Choose up to " + str(max_n) + " Pokemon to add to your hand", "TAKE")
+		if main._should_bail(): return
 
 	for c in picks:
 		deck.erase(c)
@@ -4806,19 +4785,9 @@ func gym1_effect_erikas_perfume(is_opponent: bool) -> void:
 		if main._should_bail(): return
 		return
 
-	var to_bench: Array = []
-	while to_bench.size() < basics_in_opp_hand.size() and opp_bench.size() + to_bench.size() < main.get_max_bench_size():
-		var remaining: Array = []
-		for c in basics_in_opp_hand:
-			if c not in to_bench:
-				remaining.append(c)
-		if remaining.size() == 0:
-			break
-		var pick = await main.card_ops.prompt_select_card(remaining, "ERIKA'S PERFUME — BENCH WHICH BASIC?", "Pick a Basic to put on opponent's bench (or DONE)", "BENCH", true)
-		if main._should_bail(): return
-		if pick == null:
-			break
-		to_bench.append(pick)
+	var to_bench: Array = await main.card_ops.prompt_select_cards(basics_in_opp_hand, 0,
+		main.get_max_bench_size() - opp_bench.size(), "ERIKA'S PERFUME", "Choose any number of Basics to put on the opponent's Bench", "BENCH")
+	if main._should_bail(): return
 
 	# Move the picks from opp's hand to opp's bench
 	for c in to_bench:
@@ -5038,18 +5007,8 @@ func gym1_effect_mistys_wrath(is_opponent: bool) -> void:
 		for i in range(pick_count):
 			picks.append(scored[i])
 	else:
-		for i in range(pick_count):
-			var remaining: Array = []
-			for c in top_n:
-				if c not in picks:
-					remaining.append(c)
-			if remaining.size() == 0:
-				break
-			var pick = await main.card_ops.prompt_select_card(remaining, "MISTY'S WRATH — PICK CARD " + str(i + 1) + "/" + str(pick_count), "Choose a card to add to your hand", "TAKE", false)
-			if main._should_bail(): return
-			if pick == null:
-				break
-			picks.append(pick)
+		picks = await main.card_ops.prompt_select_cards(top_n, pick_count, pick_count, "MISTY'S WRATH", "Choose " + str(pick_count) + " cards to add to your hand", "TAKE")
+		if main._should_bail(): return
 
 	# Resolve: picks → hand, rest → discard
 	for c in picks:
@@ -5113,18 +5072,9 @@ func gym1_effect_secret_mission(is_opponent: bool) -> void:
 		var to_discard = cpu_get_discard_priority(hand, n)
 		discards = to_discard
 	else:
-		# Player chooses any subset to discard
-		# We'll re-use a "discard any number" UI: pick one at a time, DONE to finish
-		var remaining = hand.duplicate()
-		while remaining.size() > 0:
-			var pick = await main.card_ops.prompt_select_card(remaining, "SECRET MISSION — DISCARD WHICH? (DONE TO STOP)", "Selected so far: " + str(discards.size()), "DISCARD", true)
-			if main._should_bail(): return
-			main.cancel_button.text = "Cancel"
-			main.cancel_button.theme = main.theme_red
-			if pick == null:
-				break
-			discards.append(pick)
-			remaining.erase(pick)
+		# Player chooses any subset to discard, on one screen
+		discards = await main.card_ops.prompt_select_cards(hand.duplicate(), 0, hand.size(), "SECRET MISSION", "Choose any number of cards to discard (you draw that many)", "DISCARD")
+		if main._should_bail(): return
 
 	# Apply discards and draw same number
 	for c in discards:
@@ -5190,17 +5140,9 @@ func gym1_effect_blaines_gamble(played_card: card_object, is_opponent: bool) -> 
 		var to_discard = cpu_get_discard_priority(hand, n, played_card)
 		discards = to_discard
 	else:
-		# Player picks any number
-		var remaining = hand.duplicate()
-		while remaining.size() > 0:
-			var pick = await main.card_ops.prompt_select_card(remaining, "BLAINE'S GAMBLE — DISCARD HOW MANY?", "Selected: " + str(discards.size()) + " (DONE to flip)", "DISCARD", true)
-			if main._should_bail(): return
-			main.cancel_button.text = "Cancel"
-			main.cancel_button.theme = main.theme_red
-			if pick == null:
-				break
-			discards.append(pick)
-			remaining.erase(pick)
+		# Player picks any number, on one screen
+		discards = await main.card_ops.prompt_select_cards(hand.duplicate(), 0, hand.size(), "BLAINE'S GAMBLE", "Choose any number of cards to discard, then flip", "DISCARD")
+		if main._should_bail(): return
 
 	for c in discards:
 		hand.erase(c)
@@ -5241,15 +5183,10 @@ func gym1_effect_energy_flow(is_opponent: bool) -> void:
 				to_return = pokemon.attached_energies.duplicate()
 			# else: skip
 		else:
-			# Player picks any number for this pokemon
-			var remaining = pokemon.attached_energies.duplicate()
-			while remaining.size() > 0:
-				var pick = await main.card_ops.prompt_select_card(remaining, "ENERGY FLOW — " + pokemon.metadata.get("name", "").to_upper(), "Return energies to hand (DONE to move on)", "RETURN", true)
-				if main._should_bail(): return
-				if pick == null:
-					break
-				to_return.append(pick)
-				remaining.erase(pick)
+			# Player picks any number for this pokemon, on one screen
+			to_return = await main.card_ops.prompt_select_cards(pokemon.attached_energies.duplicate(), 0, pokemon.attached_energies.size(),
+				"ENERGY FLOW — " + pokemon.metadata.get("name", "").to_upper(), "Choose any number of Energy to return to your hand", "RETURN")
+			if main._should_bail(): return
 
 		if to_return.size() == 0:
 			continue
@@ -5633,30 +5570,18 @@ func gym1_no_removal_gym_pay_tax(card: card_object, is_opponent: bool) -> bool:
 		# Player picks 2 cards
 		await main.show_message("NO REMOVAL GYM: DISCARD 2 CARDS FROM YOUR HAND")
 		if main._should_bail(): return false
-		main.trainer_discard_selection_active = true
-		main.trainer_discard_cards_needed = 2
-		main.trainer_discard_selected = []
-		main.header_label.text = "NO REMOVAL GYM"
-		main.hint_label.text = "Choose 2 cards to discard"
-		main.action_button.text = "DISCARD (0/2)"
-		main.action_button.disabled = true
-		main.action_button.theme = main.theme_disabled
-		main.cancel_button.visible = false
-		main.show_enlarged_array_selection_mode(available)
-		await main.trainer_discard_selection_done
+		to_discard = await main.card_ops.prompt_select_cards(available, 2, 2, "NO REMOVAL GYM", "Choose 2 cards to discard", "DISCARD")
 		if main._should_bail(): return false
-		to_discard = main.trainer_discard_selected.duplicate()
-		main.trainer_discard_selection_active = false
-		main.trainer_discard_selected = []
-		main.hide_selection_mode_display_main()
 
 	# Discard chosen cards
+	main.refresh_hand_display(is_opponent)   # FLIGHTS: hand row matches the array before measuring
 	for c in to_discard:
+		var nr_from: Dictionary = main.lift_card_from_hand(c, is_opponent)
 		hand.erase(c)
 		c.current_location = "discard"
 		discard.append(c)
 		var ctex = main.get_card_texture(c)
-		await main.animate_card_a_to_b(hand_node, discard_node, 0.2, ctex, main.card_scales[10])
+		await main.animate_card_out_of_hand(c, is_opponent, nr_from, discard_node, 0.2, ctex)
 		if main._should_bail(): return false
 	main.refresh_hand_display(is_opponent)
 	main.update_discard_pile_display(is_opponent)
@@ -6240,19 +6165,9 @@ func gym2_effect_max_revive(played_card: card_object, is_opponent: bool) -> void
 		to_discard.append(ranked_h[0])
 		to_discard.append(ranked_h[1])
 	else:
-		# Player picks 2 energies
-		for i in range(2):
-			var remaining: Array = []
-			for c in energy_in_hand:
-				if c not in to_discard:
-					remaining.append(c)
-			if remaining.size() == 0:
-				break
-			var pick = await main.card_ops.prompt_select_card(remaining, "MAX REVIVE — DISCARD ENERGY " + str(i + 1) + "/2", "Discard an Energy card", "DISCARD", false)
-			if main._should_bail(): return
-			if pick == null:
-				return
-			to_discard.append(pick)
+		# Player picks 2 energies on one screen
+		to_discard = await main.card_ops.prompt_select_cards(energy_in_hand, 2, 2, "MAX REVIVE", "Discard 2 Energy cards", "DISCARD")
+		if main._should_bail(): return
 	if to_discard.size() < 2:
 		return
 	for e in to_discard:
@@ -6331,19 +6246,8 @@ func gym2_effect_mistys_tears(played_card: card_object, is_opponent: bool) -> vo
 		for i in range(max_n):
 			picks.append(waters[i])
 	else:
-		for i in range(max_n):
-			var remaining: Array = []
-			for c in waters:
-				if c not in picks:
-					remaining.append(c)
-			if remaining.size() == 0:
-				break
-			var pick = await main.card_ops.prompt_select_card(remaining, "MISTY'S TEARS — PICK WATER ENERGY " + str(i + 1) + "/" + str(max_n), "Add a Water Energy to your hand", "TAKE", true, true)
-			if main._should_bail(): return
-			main.cancel_button.theme = main.theme_red
-			if pick == null:
-				break
-			picks.append(pick)
+		picks = await main.card_ops.prompt_select_cards(waters, 0, max_n, "MISTY'S TEARS", "Choose up to 2 Water Energy to add to your hand", "TAKE")
+		if main._should_bail(): return
 	for c in picks:
 		deck.erase(c)
 		c.current_location = "hand"
@@ -6971,15 +6875,12 @@ func effect_neo1_energy_charge(is_opponent: bool) -> void:
 			e.current_location = "deck"
 			deck.append(e)
 	else:
-		for i in range(picks):
-			var remaining = energy_cards.filter(func(c): return c in discard)
-			if remaining.size() == 0: break
-			var pick = await main.card_ops.prompt_select_card(remaining, "ENERGY CHARGE: PICK " + str(i+1) + "/" + str(picks), "Choose an Energy to shuffle into your deck", "SELECT", false)
-			if main._should_bail(): return
-			if pick != null:
-				discard.erase(pick)
-				pick.current_location = "deck"
-				deck.append(pick)
+		var chosen_e: Array = await main.card_ops.prompt_select_cards(energy_cards, picks, picks, "ENERGY CHARGE", "Choose " + str(picks) + " Energy to shuffle into your deck", "SHUFFLE IN")
+		if main._should_bail(): return
+		for pick in chosen_e:
+			discard.erase(pick)
+			pick.current_location = "deck"
+			deck.append(pick)
 	deck.shuffle()
 	main.update_discard_pile_display(is_opponent)
 	main.update_deck_icon(is_opponent)
@@ -7001,21 +6902,19 @@ func effect_neo1_mary(is_opponent: bool) -> void:
 			deck.append(c)
 	else:
 		var to_return = 2
-		for i in range(to_return):
-			var remaining = hand.duplicate()
-			if remaining.size() == 0: break
-			if is_opponent:
-				var pick = remaining[remaining.size() - 1]
+		if is_opponent:
+			for i in range(to_return):
+				var pick = hand[hand.size() - 1]
 				hand.erase(pick)
 				pick.current_location = "deck"
 				deck.append(pick)
-			else:
-				var pick = await main.card_ops.prompt_select_card(remaining, "MARY: SHUFFLE BACK " + str(i+1) + "/" + str(to_return), "Choose a card to shuffle back into your deck", "SELECT", false)
-				if main._should_bail(): return
-				if pick != null:
-					hand.erase(pick)
-					pick.current_location = "deck"
-					deck.append(pick)
+		else:
+			var picks: Array = await main.card_ops.prompt_select_cards(hand.duplicate(), to_return, to_return, "MARY", "Choose 2 cards to shuffle back into your deck", "SHUFFLE IN")
+			if main._should_bail(): return
+			for pick in picks:
+				hand.erase(pick)
+				pick.current_location = "deck"
+				deck.append(pick)
 	deck.shuffle()
 	main.refresh_hand_display(is_opponent)
 	main.update_deck_icon(is_opponent)
@@ -7100,15 +6999,13 @@ func effect_neo1_super_energy_retrieval(card: card_object, is_opponent: bool) ->
 			e.current_location = "hand"
 			hand.append(e)
 	else:
-		for i in range(takes):
-			var remaining = basic_energy.filter(func(c): return c in discard)
-			if remaining.size() == 0: break
-			var pick = await main.card_ops.prompt_select_card(remaining, "SUPER ENERGY RETRIEVAL: PICK " + str(i+1) + "/" + str(takes), "Choose a basic Energy to take", "SELECT", false)
-			if main._should_bail(): return
-			if pick != null:
-				discard.erase(pick)
-				pick.current_location = "hand"
-				hand.append(pick)
+		# "up to 4" on one screen
+		var picks: Array = await main.card_ops.prompt_select_cards(basic_energy, 0, takes, "SUPER ENERGY RETRIEVAL", "Choose up to 4 basic Energy to take", "TAKE")
+		if main._should_bail(): return
+		for pick in picks:
+			discard.erase(pick)
+			pick.current_location = "hand"
+			hand.append(pick)
 	main.refresh_hand_display(is_opponent)
 	main.update_discard_pile_display(is_opponent)
 	await main.show_message("SUPER ENERGY RETRIEVAL: TOOK UP TO 4 BASIC ENERGY FROM DISCARD!")
@@ -7151,15 +7048,8 @@ func effect_neo1_time_capsule(is_opponent: bool) -> void:
 				for i in range(picks):
 					chosen.append(valid[i])
 			else:
-				for i in range(picks):
-					var remaining = valid.filter(func(c): return c not in chosen)
-					if remaining.size() == 0: break
-					var pick = await main.card_ops.prompt_select_card(remaining, "TIME CAPSULE: PICK " + str(i+1) + "/" + str(picks), "Choose a card to shuffle into your deck", "SELECT", true)
-					if main._should_bail(): return
-					if pick != null:
-						chosen.append(pick)
-					else:
-						break
+				chosen = await main.card_ops.prompt_select_cards(valid, 0, picks, "TIME CAPSULE", "Choose up to 5 cards to shuffle into your deck", "SHUFFLE IN")
+				if main._should_bail(): return
 		for c in chosen:
 			discard.erase(c)
 			c.current_location = "deck"
@@ -7261,17 +7151,8 @@ func effect_neo1_new_pokedex(is_opponent: bool) -> void:
 		await main.show_message("OPPONENT USED NEW POKEDEX TO REARRANGE DECK!")
 		if main._should_bail(): return
 	else:
-		var reordered: Array = []
-		var remaining = top_cards.duplicate()
-		for pick in range(reveal_count):
-			if remaining.size() == 1:
-				reordered.append(remaining[0])
-				break
-			var chosen = await main.card_ops.prompt_select_card(remaining, "NEW POKEDEX: POSITION " + str(pick + 1) + " FROM TOP", "", "PLACE", false)
-			if main._should_bail(): return
-			if chosen != null:
-				reordered.append(chosen)
-				remaining.erase(chosen)
+		var reordered: Array = await main.card_ops.prompt_reorder_cards(top_cards, "NEW POKEDEX - CLICK CARDS IN ORDER")
+		if main._should_bail(): return
 		for i in range(reordered.size()):
 			deck[i] = reordered[i]
 		await main.show_message("NEW POKEDEX: REARRANGED TOP " + str(reveal_count) + " CARDS!")
@@ -8315,23 +8196,21 @@ func np_championship_arena_check(player_turn_just_ended: bool) -> void:
 	var excess = hand.size() - 7
 	await main.show_message("CHAMPIONSHIP ARENA! " + ("OPPONENT HAS" if is_opponent_side else "YOU HAVE") + " " + str(hand.size()) + " CARDS — DISCARD " + str(excess) + "!")
 	if main._should_bail(): return
-	for i in range(excess):
-		if hand.is_empty(): break
-		if is_opponent_side:
+	if is_opponent_side:
+		for i in range(excess):
+			if hand.is_empty(): break
 			var discarded = hand[-1]
 			hand.erase(discarded)
 			discarded.current_location = "discard"
 			main.opponent_discard_pile.append(discarded)
-		else:
-			var remaining = hand.size() - 7
-			var chosen = await main.card_ops.prompt_select_card(hand.duplicate(), "CHAMPIONSHIP ARENA", "Discard a card (" + str(remaining) + " more to discard)", "DISCARD", false)
-			if main._should_bail(): return
-			if chosen == null:
-				chosen = hand[-1]
+	else:
+		# MULTI-SELECT: every card to discard on one screen
+		var chosen_cards: Array = await main.card_ops.prompt_select_cards(hand.duplicate(), excess, excess, "CHAMPIONSHIP ARENA", "Discard " + str(excess) + " card(s)", "DISCARD")
+		if main._should_bail(): return
+		for chosen in chosen_cards:
 			hand.erase(chosen)
 			chosen.current_location = "discard"
 			main.player_discard_pile.append(chosen)
-		if main._should_bail(): return
 	main.refresh_hand_display(is_opponent_side)
 	main.update_discard_pile_display(is_opponent_side)
 
@@ -8455,6 +8334,13 @@ func effect_ecard1_energy_restore(is_opponent: bool) -> void:
 		if main._should_bail(): return
 		return
 	var moved = 0
+	# MULTI-SELECT: one pick per heads, all on one screen
+	var player_picks: Array = []
+	if not is_opponent:
+		player_picks = await main.card_ops.prompt_select_cards(
+			discard.filter(func(c): return c.metadata.get("supertype","") == "Energy" and "Special" not in c.metadata.get("subtypes",[])),
+			heads_count, heads_count, "ENERGY RESTORE", "Choose " + str(heads_count) + " basic Energy to return to your hand", "TAKE")
+		if main._should_bail(): return
 	for i in range(heads_count):
 		var basic_energies = discard.filter(func(c): return c.metadata.get("supertype","") == "Energy" and "Special" not in c.metadata.get("subtypes",[]))
 		if basic_energies.is_empty():
@@ -8463,10 +8349,8 @@ func effect_ecard1_energy_restore(is_opponent: bool) -> void:
 		if is_opponent:
 			chosen = basic_energies[0]
 		else:
-			chosen = await main.card_ops.prompt_select_card(basic_energies, "ENERGY RESTORE", "Select a basic Energy to return to hand (" + str(heads_count - moved) + " remaining)", "SELECT", false, true)
-			if main._should_bail(): return
-			if chosen == null:
-				break
+			if i >= player_picks.size(): break
+			chosen = player_picks[i]
 		await main.card_ops.recover_to_hand(chosen, is_opponent, true)
 		if main._should_bail(): return
 		moved += 1
@@ -8629,6 +8513,10 @@ func effect_ecard1_power_charge(is_opponent: bool) -> void:
 		return
 	var want = min(2, energies_in_discard.size())
 	var moved: Array = []
+	var player_picks: Array = []
+	if not is_opponent:
+		player_picks = await main.card_ops.prompt_select_cards(energies_in_discard, want, want, "POWER CHARGE", "Choose " + str(want) + " Energy to shuffle into your deck", "SHUFFLE IN")
+		if main._should_bail(): return
 	for i in range(want):
 		var pool = discard.filter(func(c): return c.metadata.get("supertype","") == "Energy")
 		if pool.is_empty(): break
@@ -8636,9 +8524,8 @@ func effect_ecard1_power_charge(is_opponent: bool) -> void:
 		if is_opponent:
 			chosen = main.cpu_ai.cpu_pick_best_keep(pool)  # recycle the most useful Energy back into the deck
 		else:
-			chosen = await main.card_ops.prompt_select_card(pool, "POWER CHARGE", "Select an Energy to shuffle into your deck (" + str(want - moved.size()) + " remaining)", "SELECT", false, true)
-			if main._should_bail(): return
-			if chosen == null: break
+			if i >= player_picks.size(): break
+			chosen = player_picks[i]
 		discard.erase(chosen)
 		chosen.current_location = "deck"
 		deck.append(chosen)
@@ -8982,6 +8869,10 @@ func check_time_shard(pokemon: card_object, attacker: card_object, is_pokemon_op
 	var hand = main.opponent_hand if is_pokemon_opp else main.player_hand
 	var want = min(2, basics.size())
 	var moved = 0
+	var player_picks: Array = []
+	if not is_pokemon_opp:
+		player_picks = await main.card_ops.prompt_select_cards(basics, 0, want, "TIME SHARD", "Choose up to 2 basic Energy to return to your hand", "RETURN")
+		if main._should_bail(): return
 	for i in range(want):
 		var pool = pokemon.attached_energies.filter(func(c): return main.attack_effects.gym1_is_basic_energy(c))
 		if pool.is_empty(): break
@@ -8989,9 +8880,8 @@ func check_time_shard(pokemon: card_object, attacker: card_object, is_pokemon_op
 		if is_pokemon_opp:
 			chosen = pool[0]
 		else:
-			chosen = await main.card_ops.prompt_select_card(pool, "TIME SHARD", "Select a basic Energy to return to hand (" + str(want - moved) + " remaining)", "SELECT", true)
-			if main._should_bail(): return
-			if chosen == null: break
+			if i >= player_picks.size(): break
+			chosen = player_picks[i]
 		pokemon.attached_energies.erase(chosen)
 		chosen.current_location = "hand"
 		hand.append(chosen)
@@ -9146,18 +9036,9 @@ func effect_ecard2_juggler(is_opponent: bool) -> void:
 	if is_opponent:
 		for i in range(want): discarded.append(basics[i])
 	else:
-		var confirm_2 = false
-		if want >= 2:
-			confirm_2 = await gym1_prompt_yes_no(basics[0], "JUGGLER", "Discard 2 basic Energy to draw 5 cards? (No = discard 1 to draw 3)", "DISCARD 2", "DISCARD 1")
-			if main._should_bail(): return
-		var pick_count = 2 if confirm_2 else 1
-		for i in range(min(pick_count, basics.size())):
-			var pool = hand.filter(func(c): return main.attack_effects.gym1_is_basic_energy(c) and c not in discarded)
-			if pool.is_empty(): break
-			var chosen = await main.card_ops.prompt_select_card(pool, "JUGGLER", "Select a basic Energy to discard", "DISCARD", false)
-			if main._should_bail(): return
-			if chosen == null: break
-			discarded.append(chosen)
+		# MULTI-SELECT: 1 or 2 on one screen (1 = draw 3, 2 = draw 5) — replaces the "how many?" prompt
+		discarded = await main.card_ops.prompt_select_cards(basics, 1, want, "JUGGLER", "Discard 1 basic Energy to draw 3, or 2 to draw 5", "DISCARD")
+		if main._should_bail(): return
 	if discarded.is_empty():
 		await main.show_message("NO ENERGY DISCARDED!")
 		if main._should_bail(): return
@@ -9239,18 +9120,8 @@ func effect_ecard2_town_volunteers(is_opponent: bool) -> void:
 	if is_opponent:
 		for i in range(want): chosen.append(candidates[i])
 	else:
-		for i in range(want):
-			var pool = discard.filter(func(c):
-				var st = c.metadata.get("supertype","")
-				if c in chosen: return false
-				if st == "Pokémon": return true
-				if st == "Energy" and main.attack_effects.gym1_is_basic_energy(c): return true
-				return false)
-			if pool.is_empty(): break
-			var pick = await main.card_ops.prompt_select_card(pool, "TOWN VOLUNTEERS", "Choose a card to shuffle into your deck (" + str(want - chosen.size()) + " remaining, cancel to stop)", "SELECT", true)
-			if main._should_bail(): return
-			if pick == null: break
-			chosen.append(pick)
+		chosen = await main.card_ops.prompt_select_cards(candidates, 0, want, "TOWN VOLUNTEERS", "Choose up to 5 Pokemon / basic Energy to shuffle into your deck", "SHUFFLE IN")
+		if main._should_bail(): return
 	for c in chosen:
 		discard.erase(c)
 		c.current_location = "deck"
@@ -9543,22 +9414,8 @@ func effect_ecard3_fisherman(is_opponent: bool) -> void:
 	if is_opponent:
 		for i in range(want): chosen.append(candidates[i])
 	else:
-		main.trainer_discard_selected.clear()
-		main.trainer_discard_cards_needed = want
-		main.trainer_discard_selection_active = true
-		main.show_enlarged_array_selection_mode(candidates)
-		main.header_label.text = "FISHERMAN: CHOOSE UP TO " + str(want) + " BASIC ENERGY"
-		main.hint_label.text = "SELECT " + str(want) + " CARD(S)"
-		main.action_button.text = str(want) + " MORE"
-		main.action_button.disabled = true
-		main.action_button.theme = main.theme_disabled
-		main.cancel_button.visible = false
-		await main.trainer_discard_selection_done
-		main.trainer_discard_selection_active = false
-		main.hide_selection_mode_display_main()
+		chosen = await main.card_ops.prompt_select_cards(candidates, 0, want, "FISHERMAN", "Choose up to " + str(want) + " basic Energy for your hand", "TAKE")
 		if main._should_bail(): return
-		chosen = main.trainer_discard_selected.duplicate()
-		main.trainer_discard_selected.clear()
 	for c in chosen:
 		discard.erase(c)
 		c.current_location = "hand"
@@ -9611,11 +9468,12 @@ func effect_ecard3_hyper_potion(is_opponent: bool) -> void:
 		if target == null: return
 	var basics = target.attached_energies.filter(func(e): return main.attack_effects.gym1_is_basic_energy(e))
 	var want = min(2, basics.size())
-	if not is_opponent and want >= 2:
-		var confirm_2 = await gym1_prompt_yes_no(target, "HYPER POTION", "Discard 2 basic Energy to heal up to 5? (No = discard 1 to heal up to 3)", "DISCARD 2", "DISCARD 1")
-		if main._should_bail(): return
-		want = 2 if confirm_2 else 1
 	var discarded: Array = []
+	if not is_opponent:
+		# MULTI-SELECT: 1 or 2 on one screen (1 = heal 30, 2 = heal 50) — replaces the "how many?" prompt
+		discarded = await main.card_ops.prompt_select_cards(basics, 1, want, "HYPER POTION", "Discard 1 basic Energy to heal 30, or 2 to heal 50", "DISCARD")
+		if main._should_bail(): return
+		want = 0   # picks made — skip the CPU loop below
 	for i in range(want):
 		var pool = target.attached_energies.filter(func(e): return main.attack_effects.gym1_is_basic_energy(e) and e not in discarded)
 		if pool.is_empty(): break
@@ -9652,14 +9510,21 @@ func effect_ecard3_lure_ball(is_opponent: bool) -> void:
 		return
 	var discard = main.opponent_discard_pile if is_opponent else main.player_discard_pile
 	var recovered = 0
+	var player_picks: Array = []
+	if not is_opponent:
+		player_picks = await main.card_ops.prompt_select_cards(
+			discard.filter(func(c): return c.metadata.get("supertype","") == "Pokémon" and not main.is_basic_pokemon(c)),
+			heads, heads, "LURE BALL", "Choose " + str(heads) + " Evolution card(s) to recover", "RECOVER")
+		if main._should_bail(): return
 	for i in range(heads):
 		var candidates = discard.filter(func(c): return c.metadata.get("supertype","") == "Pokémon" and not main.is_basic_pokemon(c))
 		if candidates.is_empty(): break
-		var chosen: card_object = main.cpu_ai.cpu_pick_best_keep(candidates) if is_opponent else candidates[0]
-		if not is_opponent and candidates.size() > 1:
-			chosen = await main.card_ops.prompt_select_card(candidates, "LURE BALL", "Choose an Evolution card to recover (" + str(heads - recovered) + " remaining)", "RECOVER", false)
-			if main._should_bail(): return
-			if chosen == null: break
+		var chosen: card_object = null
+		if is_opponent:
+			chosen = main.cpu_ai.cpu_pick_best_keep(candidates)
+		else:
+			if i >= player_picks.size(): break
+			chosen = player_picks[i]
 		await main.card_ops.recover_to_hand(chosen, is_opponent)
 		if main._should_bail(): return
 		recovered += 1
@@ -9681,22 +9546,8 @@ func effect_ecard3_oracle(is_opponent: bool) -> void:
 		ranked.sort_custom(func(a, b): return _cpu_pokedex_priority(a) > _cpu_pokedex_priority(b))
 		for i in range(want): chosen.append(ranked[i])
 	else:
-		main.trainer_discard_selected.clear()
-		main.trainer_discard_cards_needed = want
-		main.trainer_discard_selection_active = true
-		main.show_enlarged_array_selection_mode(deck)
-		main.header_label.text = "ORACLE: CHOOSE " + str(want) + " CARDS (SELECTION ORDER = TOP OF DECK ORDER)"
-		main.hint_label.text = "SELECT " + str(want) + " CARD(S)"
-		main.action_button.text = str(want) + " MORE"
-		main.action_button.disabled = true
-		main.action_button.theme = main.theme_disabled
-		main.cancel_button.visible = false
-		await main.trainer_discard_selection_done
-		main.trainer_discard_selection_active = false
-		main.hide_selection_mode_display_main()
+		chosen = await main.card_ops.prompt_select_cards(deck, want, want, "ORACLE (PICK ORDER = TOP OF DECK ORDER)", "Choose " + str(want) + " cards to put on top of your deck", "CONFIRM")
 		if main._should_bail(): return
-		chosen = main.trainer_discard_selected.duplicate()
-		main.trainer_discard_selected.clear()
 	for c in chosen:
 		deck.erase(c)
 	deck.shuffle()
@@ -9729,22 +9580,8 @@ func effect_ecard3_underground_expedition(is_opponent: bool) -> void:
 		ranked.sort_custom(func(a, b): return _cpu_pokedex_priority(a) > _cpu_pokedex_priority(b))
 		for i in range(want): chosen.append(ranked[i])
 	else:
-		main.trainer_discard_selected.clear()
-		main.trainer_discard_cards_needed = want
-		main.trainer_discard_selection_active = true
-		main.show_enlarged_array_selection_mode(bottom_cards)
-		main.header_label.text = "UNDERGROUND EXPEDITION: CHOOSE " + str(want) + " CARDS FOR YOUR HAND"
-		main.hint_label.text = "SELECT " + str(want) + " CARD(S)"
-		main.action_button.text = str(want) + " MORE"
-		main.action_button.disabled = true
-		main.action_button.theme = main.theme_disabled
-		main.cancel_button.visible = false
-		await main.trainer_discard_selection_done
-		main.trainer_discard_selection_active = false
-		main.hide_selection_mode_display_main()
+		chosen = await main.card_ops.prompt_select_cards(bottom_cards, want, want, "UNDERGROUND EXPEDITION", "Choose " + str(want) + " cards for your hand", "TAKE")
 		if main._should_bail(): return
-		chosen = main.trainer_discard_selected.duplicate()
-		main.trainer_discard_selected.clear()
 	for c in chosen:
 		deck.erase(c)
 		c.current_location = "hand"
@@ -10092,6 +9929,12 @@ func effect_ex3_energy_recycle_system(is_opponent: bool) -> void:
 	else:
 		var deck = main.opponent_deck if is_opponent else main.player_deck
 		var moved = 0
+		var player_picks: Array = []
+		if not is_opponent:
+			player_picks = await main.card_ops.prompt_select_cards(
+				discard.filter(func(c): return c.metadata.get("supertype","") == "Energy" and "Basic" in c.metadata.get("subtypes", [])),
+				3, 3, "ENERGY RECYCLE SYSTEM", "Choose 3 basic Energy to shuffle into your deck", "SHUFFLE IN")
+			if main._should_bail(): return
 		for i in range(3):
 			var pool = discard.filter(func(c): return c.metadata.get("supertype","") == "Energy" and "Basic" in c.metadata.get("subtypes", []))
 			if pool.is_empty(): break
@@ -10101,9 +9944,8 @@ func effect_ex3_energy_recycle_system(is_opponent: bool) -> void:
 				for e in pool:
 					if main.cpu_ai.cpu_rank_keep_value(e) < main.cpu_ai.cpu_rank_keep_value(chosen2): chosen2 = e
 			else:
-				chosen2 = await main.card_ops.choose_card(pool, is_opponent, "ENERGY RECYCLE SYSTEM", "Choose a basic Energy to shuffle into your deck (" + str(3 - moved) + " left)", "SHUFFLE", moved >= 1)
-				if main._should_bail(): return
-				if chosen2 == null: break
+				if i >= player_picks.size(): break
+				chosen2 = player_picks[i]
 			discard.erase(chosen2)
 			chosen2.current_location = "deck"
 			deck.append(chosen2)
@@ -10651,15 +10493,18 @@ func effect_ex7_pokemon_retriever(is_opponent: bool) -> void:
 		if main._should_bail(): return
 	else:
 		var shuffled = 0
+		var player_picks: Array = []
+		if not is_opponent:
+			player_picks = await main.card_ops.prompt_select_cards(pool, 3, 3, "POKÉMON RETRIEVER", "Choose 3 Pokémon to shuffle into your deck", "SHUFFLE IN")
+			if main._should_bail(): return
 		while shuffled < 3 and not pool.is_empty():
 			var pick2: card_object = null
 			if is_opponent:
 				pick2 = main.cpu_ai.cpu_pick_best_keep(pool)   # ISSUE #361: the ones it wants back in the deck most
 				if pick2 == null: pick2 = pool[0]
 			else:
-				pick2 = await main.card_ops.choose_card(pool, false, "POKÉMON RETRIEVER", "Shuffle into deck (" + str(shuffled + 1) + " of 3)", "SHUFFLE", false, Callable(), true)
-				if main._should_bail(): return
-				if pick2 == null: pick2 = pool[0]
+				if shuffled >= player_picks.size(): break
+				pick2 = player_picks[shuffled]
 			discard.erase(pick2)
 			pool.erase(pick2)
 			pick2.current_location = "deck"
@@ -11065,6 +10910,10 @@ func effect_ex10_energy_recycle_system(is_opponent: bool) -> void:
 	else:
 		var deck = main.opponent_deck if is_opponent else main.player_deck
 		var moved = 0
+		var player_picks: Array = []
+		if not is_opponent:
+			player_picks = await main.card_ops.prompt_select_cards(basics, 3, 3, "ENERGY RECYCLE SYSTEM", "Choose 3 basic Energy to shuffle into your deck", "SHUFFLE IN")
+			if main._should_bail(): return
 		for i in range(3):
 			var pool = discard.filter(func(c): return c.metadata.get("supertype","") == "Energy" and "Basic" in c.metadata.get("subtypes",[]))
 			if pool.is_empty(): break
@@ -11074,8 +10923,8 @@ func effect_ex10_energy_recycle_system(is_opponent: bool) -> void:
 				for e in pool:
 					if main.cpu_ai.cpu_rank_keep_value(e) < main.cpu_ai.cpu_rank_keep_value(pick2): pick2 = e
 			else:
-				pick2 = await main.card_ops.choose_card(pool, false, "ENERGY RECYCLE SYSTEM", "Shuffle which basic Energy into your deck? (" + str(i+1) + " of 3)", "SELECT", i > 0, Callable(), true)
-			if main._should_bail(): return
+				if i >= player_picks.size(): break
+				pick2 = player_picks[i]
 			if pick2 == null: break
 			discard.erase(pick2); pick2.current_location = "deck"; deck.append(pick2); moved += 1
 		deck.shuffle()
@@ -11180,22 +11029,37 @@ func effect_ex11_holon_farmer(is_opponent: bool) -> void:
 	var discard = main.opponent_discard_pile if is_opponent else main.player_discard_pile
 	var deck = main.opponent_deck if is_opponent else main.player_deck
 	var moved = 0
-	# Up to 3 basic Energy.
-	for i in range(3):
-		var pool = discard.filter(func(c): return c.metadata.get("supertype","") == "Energy" and "Basic" in c.metadata.get("subtypes", []))
-		if pool.is_empty(): break
-		var pick: card_object = main.cpu_ai.cpu_pick_best_keep(pool) if is_opponent else await main.card_ops.choose_card(pool, false, "HOLON FARMER", "Return a basic Energy to your deck (" + str(i+1) + " of up to 3, cancel to stop)", "SELECT", true, Callable(), true)
+	var is_basic_e = func(c): return c.metadata.get("supertype","") == "Energy" and "Basic" in c.metadata.get("subtypes", [])
+	var is_poke = func(c): return c.metadata.get("supertype","") == "Pokémon"
+	if not is_opponent:
+		# MULTI-SELECT: up to 3 basic Energy AND up to 3 Pokemon, all on one screen (the validator caps
+		# each kind at 3).
+		var pool_all: Array = discard.filter(func(c): return is_basic_e.call(c) or is_poke.call(c))
+		var cap3 = func(c, picked: Array) -> bool:
+			var same := 0
+			for p in picked:
+				if bool(is_poke.call(p)) == bool(is_poke.call(c)): same += 1
+			return same < 3
+		var picks: Array = await main.card_ops.prompt_select_cards(pool_all, 0, 6, "HOLON FARMER",
+			"Choose up to 3 basic Energy and up to 3 Pokemon to put back into your deck", "RETURN", false, true, cap3)
 		if main._should_bail(): return
-		if pick == null: break
-		discard.erase(pick); pick.current_location = "deck"; deck.append(pick); moved += 1
-	# Up to 3 Basic Pokemon or Evolution cards.
-	for i in range(3):
-		var pool2 = discard.filter(func(c): return c.metadata.get("supertype","") == "Pokémon")
-		if pool2.is_empty(): break
-		var pick2: card_object = main.cpu_ai.cpu_pick_best_keep(pool2) if is_opponent else await main.card_ops.choose_card(pool2, false, "HOLON FARMER", "Return a Pokemon to your deck (" + str(i+1) + " of up to 3, cancel to stop)", "SELECT", true, Callable(), true)
-		if main._should_bail(): return
-		if pick2 == null: break
-		discard.erase(pick2); pick2.current_location = "deck"; deck.append(pick2); moved += 1
+		for pick in picks:
+			discard.erase(pick); pick.current_location = "deck"; deck.append(pick); moved += 1
+	else:
+		# Up to 3 basic Energy.
+		for i in range(3):
+			var pool = discard.filter(is_basic_e)
+			if pool.is_empty(): break
+			var pick: card_object = main.cpu_ai.cpu_pick_best_keep(pool)
+			if pick == null: break
+			discard.erase(pick); pick.current_location = "deck"; deck.append(pick); moved += 1
+		# Up to 3 Basic Pokemon or Evolution cards.
+		for i in range(3):
+			var pool2 = discard.filter(is_poke)
+			if pool2.is_empty(): break
+			var pick2: card_object = main.cpu_ai.cpu_pick_best_keep(pool2)
+			if pick2 == null: break
+			discard.erase(pick2); pick2.current_location = "deck"; deck.append(pick2); moved += 1
 	deck.shuffle()
 	main.update_deck_icon(is_opponent); main.update_discard_pile_display(is_opponent)
 	await main.show_message("HOLON FARMER! RETURNED " + str(moved) + " CARD(S) TO YOUR DECK!")
@@ -11490,6 +11354,12 @@ func ex12_giant_stump_on_play(playing_is_opponent: bool) -> void:
 
 func _ex12_stump_trim(side_is_opp: bool) -> void:
 	var bench = main.opponent_bench if side_is_opp else main.player_bench
+	# MULTI-SELECT: the player picks every Pokemon to discard on one screen
+	var player_picks: Array = []
+	if not side_is_opp and bench.size() > 3:
+		var excess: int = bench.size() - 3
+		player_picks = await main.card_ops.prompt_select_cards(bench.duplicate(), excess, excess, "GIANT STUMP", "Choose " + str(excess) + " Benched Pokemon to discard (down to 3)", "DISCARD")
+		if main._should_bail(): return
 	while bench.size() > 3:
 		var victim: card_object = null
 		if side_is_opp:
@@ -11498,9 +11368,7 @@ func _ex12_stump_trim(side_is_opp: bool) -> void:
 				if b.attached_energies.size() < victim.attached_energies.size():
 					victim = b
 		else:
-			victim = await main.card_ops.choose_card(bench, false, "GIANT STUMP", "Choose a Benched Pokemon to discard (down to 3)", "DISCARD", false)
-			if main._should_bail(): return
-			if victim == null: victim = bench[0]
+			victim = player_picks.pop_front() if not player_picks.is_empty() else bench[0]
 		bench.erase(victim)
 		main.card_ops.discard_all_attachments(victim, side_is_opp)
 		await main.card_ops.send_to_discard(victim, side_is_opp, false)
@@ -11684,6 +11552,11 @@ func effect_ex14_windstorm(is_opponent: bool) -> void:
 		pool.append(main.current_stadium_card)
 	var picks: Array = []
 	var max_picks = min(2, pool.size())
+	if not is_opponent:
+		# MULTI-SELECT: 1 or 2 on one screen
+		picks = await main.card_ops.prompt_select_cards(pool, 1, max_picks, "WINDSTORM", "Choose up to 2 Pokémon Tools / Stadium to discard", "DISCARD")
+		if main._should_bail(): return
+		max_picks = 0   # picks made — skip the CPU loop below
 	for i in range(max_picks):
 		if pool.is_empty(): break
 		var pick: card_object = null

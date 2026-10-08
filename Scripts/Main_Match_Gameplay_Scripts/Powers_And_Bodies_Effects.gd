@@ -903,15 +903,20 @@ func _cpu_rain_dance_attach(target: card_object, energy: card_object) -> void:
 	print("ISSUE #12 FIX ACTIVE (rain dance attach): ", target.metadata.get("name",""))
 	await main.show_message("RAIN DANCE: OPPONENT ATTACHED WATER ENERGY TO " + target.metadata.get("name","").to_upper() + "!")
 	if main._should_bail(): return
+	var rd_from: Dictionary = main.hand_card_rect(energy, true)   # FLIGHTS: from its slot in the fan
 	main.opponent_hand.erase(energy)
 	target.attached_energies.append(energy)
 	main.refresh_hand_display(true)
 	var energy_target_node = main.opponent_energy_container if target == main.opponent_active_pokemon else main.opponent_bench_container
 	var energy_texture = main.get_card_texture(energy)
-	var pos_override = Vector2(-99999, -99999)
-	if target != main.opponent_active_pokemon:
-		pos_override = main.get_pokemon_screen_location(target).get("position", pos_override)
-	await main.animate_card_a_to_b(main.opponent_hand_container, energy_target_node, 0.2, energy_texture, main.card_scales[12], Vector2.ZERO, pos_override)
+	var rd_land: Dictionary = {}
+	if target == main.opponent_active_pokemon:
+		rd_land = main.measure_and_hide_new_active_energy_slot(true)
+	else:
+		rd_land = main.get_pokemon_screen_location(target)
+	await main.animate_card_a_to_b(main.opponent_hand_container, energy_target_node, 0.2, energy_texture,
+		rd_from.get("size", main.card_scales[12]), rd_land.get("size", Vector2.ZERO),
+		rd_land.get("position", main._ANIM_POS_SENTINEL), true, rd_from.get("position", main._ANIM_POS_SENTINEL))
 	if main._should_bail(): return
 	main.display_pokemon(true)
 	main.display_active_pokemon_energies(true)
@@ -3025,7 +3030,13 @@ func trigger_summon_minions(dragonite: card_object, is_opponent: bool) -> void:
 	if main._should_bail(): return
 	
 	var picks_remaining = min(2, main.get_max_bench_size() - bench.size())
-	
+	# MULTI-SELECT: ISSUE #306 "up to 2" — on one screen
+	var player_picks: Array = []
+	if not is_opponent:
+		player_picks = await main.card_ops.prompt_select_cards(deck.filter(func(c): return main.is_basic_pokemon(c)), 0, picks_remaining,
+			"SUMMON MINIONS", "Choose up to " + str(picks_remaining) + " Basic Pokémon for your Bench", "BENCH")
+		if main._should_bail(): return
+
 	for i in range(picks_remaining):
 		var remaining_basics: Array = []
 		for card in deck:
@@ -3037,11 +3048,9 @@ func trigger_summon_minions(dragonite: card_object, is_opponent: bool) -> void:
 		var pick: card_object = null
 		
 		if not is_opponent:
-			# ISSUE #306: "up to 2" — the player may stop early (cancel)
-			pick = await main.card_ops.prompt_select_card(remaining_basics, "CHOOSE BASIC " + str(i + 1) + "/" + str(picks_remaining), "Cancel to stop", "SELECT", true, true)
-			if main._should_bail(): return
-			if pick == null:
+			if i >= player_picks.size():
 				break
+			pick = player_picks[i]
 		else:
 			pick = main.cpu_ai.cpu_search_deck_for_best_pokemon(remaining_basics)
 			if pick == null:
@@ -3090,21 +3099,8 @@ func trigger_reel_in(slowbro: card_object, is_opponent: bool) -> void:
 	var chosen: Array = []
 	
 	if not is_opponent:
-		for i in range(max_picks):
-			var remaining: Array = []
-			for c in valid:
-				if c not in chosen:
-					remaining.append(c)
-			if remaining.size() == 0:
-				break
-			
-			var pick = await main.card_ops.prompt_select_card(remaining, "CHOOSE CARD " + str(i + 1) + "/" + str(max_picks), "", "SELECT", true)
-			if main._should_bail(): return
-			
-			if pick != null:
-				chosen.append(pick)
-			else:
-				break
+		chosen = await main.card_ops.prompt_select_cards(valid, 0, max_picks, "REEL IN", "Choose up to " + str(max_picks) + " cards", "SELECT")
+		if main._should_bail(): return
 	else:
 		# CPU picks evolution cards first
 		valid.sort_custom(func(a, b):
@@ -4265,7 +4261,25 @@ func power_soak_up(bellsprout: card_object) -> void:
 	var is_opp: bool = (bellsprout == main.opponent_active_pokemon or bellsprout in main.opponent_bench)
 	# Build source pokemon list (any of your other pokemon with Grass energy)
 	var moved_count := 0
-	for _i in range(2):
+	if not is_opp:
+		# MULTI-SELECT: the Grass Energy themselves, up to 2, from any of your other Pokémon, on one screen
+		var su_pool: Array = []
+		for p in main.card_ops.get_all_pokemon_in_play(false):
+			if p == bellsprout: continue
+			for e in p.attached_energies:
+				if _is_basic_energy_of(e, "Grass"): su_pool.append(e)
+		var su_picks: Array = await main.card_ops.prompt_select_cards(su_pool, 0, 2, "SOAK UP", "Choose up to 2 Grass Energy to move to " + bellsprout.metadata.get("name","").to_upper(), "MOVE")
+		if main._should_bail(): return
+		for e in su_picks:
+			for p in main.card_ops.get_all_pokemon_in_play(false):
+				if e in p.attached_energies:
+					p.attached_energies.erase(e)
+					break
+			bellsprout.attached_energies.append(e)
+			moved_count += 1
+		main.display_active_pokemon_energies(false)
+		main.display_pokemon(false)
+	for _i in range(2 if is_opp else 0):
 		var sources: Array = []
 		var active = main.opponent_active_pokemon if is_opp else main.player_active_pokemon
 		var bench = main.opponent_bench if is_opp else main.player_bench
@@ -9281,13 +9295,12 @@ func power_ecard2_magnetic_flow(magneton: card_object) -> void:
 	var pokemon_a: card_object = with_energy[0]
 	var pokemon_b: card_object = with_energy[1]
 	if not is_opponent:
-		pokemon_a = await main.card_ops.prompt_select_card(with_energy, "MAGNETIC FLOW", "Select the first Pokemon", "SELECT", false)
+		# MULTI-SELECT: both Pokemon on one screen
+		var mfl_picks: Array = await main.card_ops.prompt_select_cards(with_energy, 2, 2, "MAGNETIC FLOW", "Choose the 2 Pokemon to swap an Energy between", "SELECT")
 		if main._should_bail(): return
-		if pokemon_a == null: return
-		var remaining = with_energy.filter(func(p): return p != pokemon_a)
-		pokemon_b = await main.card_ops.prompt_select_card(remaining, "MAGNETIC FLOW", "Select the second Pokemon", "SELECT", false)
-		if main._should_bail(): return
-		if pokemon_b == null: return
+		if mfl_picks.size() < 2: return
+		pokemon_a = mfl_picks[0]
+		pokemon_b = mfl_picks[1]
 	var energy_a = pokemon_a.attached_energies[0]
 	var energy_b = pokemon_b.attached_energies[0]
 	pokemon_a.attached_energies.erase(energy_a)
@@ -9495,13 +9508,9 @@ func power_ecard2_dark_moon(umbreon: card_object) -> void:
 	if is_opponent:
 		for i in range(want): chosen.append(opp_hand[i])
 	else:
-		for i in range(want):
-			var pool = opp_hand.filter(func(c): return c not in chosen)
-			if pool.is_empty(): break
-			var pick = await main.card_ops.prompt_select_card(pool, "DARK MOON", "Choose a card from opponent's hand to shuffle away (" + str(want - chosen.size()) + " remaining, cancel to stop)", "SELECT", true, true)
-			if main._should_bail(): return
-			if pick == null: break
-			chosen.append(pick)
+		chosen = await main.card_ops.prompt_select_cards(opp_hand.duplicate(), 0, want, "DARK MOON",
+			"Choose up to " + str(want) + " cards from your opponent's hand to shuffle into their deck", "SELECT")
+		if main._should_bail(): return
 	for c in chosen:
 		opp_hand.erase(c)
 		c.current_location = "deck"
@@ -10300,14 +10309,20 @@ func trigger_ecard3_energy_recharge(arcanine: card_object, is_opponent: bool) ->
 		return
 	var discard = main.opponent_discard_pile if is_opponent else main.player_discard_pile
 	var attached_n = 0
+	var er_picks: Array = []
+	if not is_opponent:
+		er_picks = await main.card_ops.prompt_select_cards(discard.filter(func(c): return main.attack_effects.gym1_is_basic_energy(c)), heads, heads,
+			"ENERGY RECHARGE", "Choose " + str(heads) + " basic Energy to attach", "ATTACH")
+		if main._should_bail(): return
 	for i in range(heads):
 		var basics = discard.filter(func(c): return main.attack_effects.gym1_is_basic_energy(c))
 		if basics.is_empty(): break
-		var chosen: card_object = main.cpu_ai.cpu_pick_best_keep(basics) if is_opponent else basics[0]
-		if not is_opponent and basics.size() > 1:
-			chosen = await main.card_ops.prompt_select_card(basics, "ENERGY RECHARGE", "Choose a basic Energy to attach (" + str(heads - attached_n) + " remaining)", "ATTACH", false)
-			if main._should_bail(): return
-			if chosen == null: break
+		var chosen: card_object = null
+		if is_opponent:
+			chosen = main.cpu_ai.cpu_pick_best_keep(basics)
+		elif i < er_picks.size():
+			chosen = er_picks[i]
+		if chosen == null: break
 		discard.erase(chosen)
 		arcanine.attached_energies.append(chosen)
 		attached_n += 1
@@ -10363,14 +10378,20 @@ func trigger_ecard3_manipulate(gengar: card_object, is_opponent: bool) -> void:
 		if await main.flip_coin(true, is_opponent): heads += 1
 	if main._should_bail(): return
 	var attached_n = 0
+	var mp_picks: Array = []
+	if not is_opponent:
+		mp_picks = await main.card_ops.prompt_select_cards(discard.filter(func(c): return main.attack_effects.gym1_is_basic_energy(c)), heads, heads,
+			"MANIPULATE", "Choose " + str(heads) + " basic Energy to attach", "ATTACH")
+		if main._should_bail(): return
 	for i in range(heads):
 		var basics = discard.filter(func(c): return main.attack_effects.gym1_is_basic_energy(c))
 		if basics.is_empty(): break
-		var e: card_object = main.cpu_ai.cpu_pick_best_keep(basics) if is_opponent else basics[0]
-		if not is_opponent and basics.size() > 1:
-			e = await main.card_ops.prompt_select_card(basics, "MANIPULATE", "Choose a basic Energy to attach", "ATTACH", false)
-			if main._should_bail(): return
-			if e == null: break
+		var e: card_object = null
+		if is_opponent:
+			e = main.cpu_ai.cpu_pick_best_keep(basics)
+		elif i < mp_picks.size():
+			e = mp_picks[i]
+		if e == null: break
 		discard.erase(e)
 		chosen.attached_energies.append(e)
 		attached_n += 1
@@ -10397,13 +10418,17 @@ func trigger_ecard3_flame_vapor(gyarados: card_object, is_opponent: bool) -> voi
 		if main._should_bail(): return
 		return
 	var discarded = 0
+	var fv_picks: Array = []
+	if not is_opponent and not defender.attached_energies.is_empty():
+		fv_picks = await main.card_ops.prompt_select_cards(defender.attached_energies.duplicate(), heads, heads,
+			"FLAME VAPOR", "Choose " + str(heads) + " Energy to discard from the Defending Pokemon", "DISCARD")
+		if main._should_bail(): return
 	for i in range(heads):
 		if defender.attached_energies.is_empty(): break
 		var e: card_object = defender.attached_energies[0]
-		if not is_opponent and defender.attached_energies.size() > 1:
-			e = await main.card_ops.prompt_select_card(defender.attached_energies, "FLAME VAPOR", "Choose an Energy to discard from the Defending Pokemon", "DISCARD", false)
-			if main._should_bail(): return
-			if e == null: break
+		if not is_opponent:
+			if i >= fv_picks.size(): break
+			e = fv_picks[i]
 		defender.attached_energies.erase(e)
 		main.card_ops.discard_energy_from_pokemon(e, not is_opponent)
 		discarded += 1
@@ -11622,12 +11647,11 @@ func power_ex3_magnetic_field(magneton: card_object) -> void:
 	await main.card_ops.send_to_discard(to_discard, is_opponent, true)
 	if main._should_bail(): return
 	var moved = 0
-	for i in range(2):
-		var pool = discard.filter(func(c): return c != to_discard and c.metadata.get("supertype","") == "Energy" and "Basic" in c.metadata.get("subtypes", []))
-		if pool.is_empty(): break
-		var chosen = await main.card_ops.prompt_select_card(pool, "MAGNETIC FIELD", "Choose a basic Energy from your discard (cancel to stop)", "TAKE", moved >= 1)
-		if main._should_bail(): return
-		if chosen == null: break
+	var mf_picks: Array = await main.card_ops.prompt_select_cards(
+		discard.filter(func(c): return c != to_discard and c.metadata.get("supertype","") == "Energy" and "Basic" in c.metadata.get("subtypes", [])),
+		1, 2, "MAGNETIC FIELD", "Choose up to 2 basic Energy from your discard pile", "TAKE")
+	if main._should_bail(): return
+	for chosen in mf_picks:
 		await main.card_ops.recover_to_hand(chosen, is_opponent)
 		if main._should_bail(): return
 		moved += 1
@@ -11957,14 +11981,9 @@ func power_ex4_energy_move(pokemon: card_object, team: String, max_move: int) ->
 		if e == null: return
 		to_move = [e]
 	else:
-		# ISSUE #346: "any number" — pick them one at a time (cancel when done).
-		var remaining = pool.duplicate()
-		while not remaining.is_empty():
-			var pe = await main.card_ops.prompt_select_card(remaining, "POWER SHIFT", "Choose a basic Energy to move (" + str(to_move.size()) + " chosen — cancel when done)", "MOVE", true)
-			if main._should_bail(): return
-			if pe == null: break
-			to_move.append(pe)
-			remaining.erase(pe)
+		# ISSUE #346: "any number" — all on one screen.
+		to_move = await main.card_ops.prompt_select_cards(pool, 0, pool.size(), "POWER SHIFT", "Choose any number of basic Energy to move", "MOVE")
+		if main._should_bail(): return
 		if to_move.is_empty(): return
 	pokemon.power_used_this_turn = true
 	for e in to_move:
@@ -13037,6 +13056,12 @@ func power_ex6_extra_energy_bomb(electrode: card_object) -> void:
 	if main._should_bail(): return
 	# Attach up to 5 Energy from the discard pile to your Pokemon (excluding Pokemon-ex).
 	var attached = 0
+	# MULTI-SELECT: up to 5 Energy picked on one screen, then a destination for each
+	var eeb_picks: Array = []
+	if not is_opponent and not main.card_ops.get_all_pokemon_in_play(false).filter(func(p): return not main.is_ex_pokemon(p)).is_empty():
+		eeb_picks = await main.card_ops.prompt_select_cards(main.player_discard_pile.filter(func(c): return c.metadata.get("supertype","") == "Energy"),
+			0, 5, "EXTRA ENERGY BOMB", "Choose up to 5 Energy from your discard pile", "SELECT")
+		if main._should_bail(): return
 	for i in range(5):
 		var discard = main.opponent_discard_pile if is_opponent else main.player_discard_pile
 		var pool = discard.filter(func(c): return c.metadata.get("supertype","") == "Energy")
@@ -13056,10 +13081,9 @@ func power_ex6_extra_energy_bomb(electrode: card_object) -> void:
 						e = cand
 						target = t
 		else:
-			e = await main.card_ops.choose_card(pool, false, "EXTRA ENERGY BOMB", "Choose an Energy from your discard pile (" + str(attached) + "/5)", "SELECT", true)
-			if main._should_bail(): return
-			if e == null: break
-			target = await main.card_ops.choose_card(targets, false, "EXTRA ENERGY BOMB", "Attach the Energy to which Pokemon?", "ATTACH", false)
+			if i >= eeb_picks.size(): break
+			e = eeb_picks[i]
+			target = targets[0] if targets.size() == 1 else await main.card_ops.choose_card(targets, false, "EXTRA ENERGY BOMB", "Attach " + e.metadata.get("name","").to_upper() + " to which Pokemon?", "ATTACH", false)
 			if main._should_bail(): return
 			if target == null: target = targets[0]
 		discard.erase(e)
@@ -13198,15 +13222,15 @@ func trigger_ex6_legendary_ascent(bird: card_object, is_opponent: bool) -> void:
 			var others2 = main.card_ops.get_all_pokemon_in_play(true).filter(func(p): return p != bird)
 			moved = r4_cpu_plan_energy_moves(others2, la_pool_fn, -1, false, [bird]).size()
 		else:
-			while true:
-				var la_pool: Array = []
-				for p in main.card_ops.get_all_pokemon_in_play(false):
-					if p == bird: continue
-					la_pool.append_array(la_pool_fn.call(p))
-				if la_pool.is_empty(): break
-				var la_e = await main.card_ops.prompt_select_card(la_pool, "LEGENDARY ASCENT", "Move a basic " + etype + " Energy to " + bird.metadata.get("name","") + "? (cancel when done)", "MOVE", true)
-				if main._should_bail(): return
-				if la_e == null: break
+			# MULTI-SELECT: "any number" on one screen
+			var la_pool: Array = []
+			for p in main.card_ops.get_all_pokemon_in_play(false):
+				if p == bird: continue
+				la_pool.append_array(la_pool_fn.call(p))
+			var la_picks: Array = await main.card_ops.prompt_select_cards(la_pool, 0, la_pool.size(), "LEGENDARY ASCENT",
+				"Choose any number of basic " + etype + " Energy to move to " + bird.metadata.get("name",""), "MOVE")
+			if main._should_bail(): return
+			for la_e in la_picks:
 				for p in main.card_ops.get_all_pokemon_in_play(false):
 					if la_e in p.attached_energies:
 						p.attached_energies.erase(la_e)
@@ -14558,6 +14582,15 @@ func check_ex8_lightning_burst(target_pokemon: card_object, energy_card: card_ob
 func trigger_ex8_dragon_boost(rayquaza: card_object, is_opponent: bool) -> void:
 	if rayquaza == null or not rayquaza.has_ability("Dragon Boost"): return
 	var sources = main.card_ops.get_all_pokemon_in_play(is_opponent).filter(func(p): return p != rayquaza)
+	# MULTI-SELECT: the player's "any number" is chosen on one screen up front
+	var db_picks: Array = []
+	if not is_opponent:
+		var db_pool: Array = []
+		for p in sources:
+			for e in p.attached_energies:
+				if main.is_basic_energy_card(e): db_pool.append(e)
+		db_picks = await main.card_ops.prompt_select_cards(db_pool, 0, db_pool.size(), "DRAGON BOOST", "Choose any number of basic Energy to move to Rayquaza ex", "MOVE")
+		if main._should_bail(): return
 	while true:
 		var movable: Array = []
 		for p in sources:
@@ -14577,10 +14610,8 @@ func trigger_ex8_dragon_boost(rayquaza: card_object, is_opponent: bool) -> void:
 			db_plan[0]["from"].attached_energies.append(db_plan[0]["e"])
 			chosen_entry = {"energy": db_plan[0]["e"], "from": db_plan[0]["from"]}
 		else:
-			var options = movable.map(func(m): return m["energy"])
-			var pick = await main.card_ops.choose_card(options, false, "DRAGON BOOST", "Move a basic Energy to Rayquaza ex? (Cancel to stop)", "MOVE", true, Callable(), true)
-			if main._should_bail(): return
-			if pick == null: break
+			if db_picks.is_empty(): break
+			var pick = db_picks.pop_front()
 			chosen_entry = null
 			for m in movable:
 				if m["energy"] == pick:
@@ -15300,14 +15331,18 @@ func trigger_ex10_bursting_up(typhlosion: card_object, is_opponent: bool) -> voi
 		if target == null: target = fire_pokemon[0]
 	var deck = main.opponent_deck if is_opponent else main.player_deck
 	var attached = 0
+	var bu_picks: Array = []
+	if not is_opponent:
+		bu_picks = await main.card_ops.prompt_select_cards(deck.filter(func(c): return c.metadata.get("supertype","") == "Energy" and "Basic" in c.metadata.get("subtypes",[]) and "Fire" in main.get_energy_provided_by_card(c)),
+			0, n, "BURSTING UP", "Choose up to " + str(n) + " Fire Energy to attach", "ATTACH")
+		if main._should_bail(): return
 	for i in range(n):
 		var pool = deck.filter(func(c): return c.metadata.get("supertype","") == "Energy" and "Basic" in c.metadata.get("subtypes",[]) and "Fire" in main.get_energy_provided_by_card(c))
 		if pool.is_empty(): break
 		var e: card_object = pool[0]
-		if not is_opponent and pool.size() > 1:
-			e = await main.card_ops.choose_card(pool, false, "BURSTING UP", "Attach a Fire Energy (" + str(i+1) + " of " + str(n) + ")", "ATTACH", true, Callable(), true)
-			if main._should_bail(): return
-			if e == null: break
+		if not is_opponent:
+			if i >= bu_picks.size(): break
+			e = bu_picks[i]
 		deck.erase(e)
 		e.current_location = "attached"
 		target.attached_energies.append(e)
@@ -15487,6 +15522,11 @@ func check_ex10_golden_wing(pokemon: card_object, attacker: card_object, is_poke
 	var others = main.card_ops.get_all_pokemon_in_play(is_pokemon_opp).filter(func(p): return p != pokemon)
 	if others.is_empty(): return
 	var moved = 0
+	# MULTI-SELECT: up to 2 Energy picked on one screen, then a destination for each
+	var gw_picks: Array = []
+	if not is_pokemon_opp:
+		gw_picks = await main.card_ops.prompt_select_cards(pokemon.attached_energies.duplicate(), 0, 2, "GOLDEN WING", "Choose up to 2 Energy to move off Ho-Oh ex", "MOVE")
+		if main._should_bail(): return
 	while moved < 2 and not pokemon.attached_energies.is_empty():
 		# ISSUE #353: the owner picks which Energy and where (CPU: best Energy/receiver pair; it used others[0] and the
 		# first Energy).
@@ -15503,12 +15543,9 @@ func check_ex10_golden_wing(pokemon: card_object, attacker: card_object, is_poke
 						target = t
 			if e == null: break
 		else:
-			e = pokemon.attached_energies[0]
-			if pokemon.attached_energies.size() > 1:
-				e = await main.card_ops.prompt_select_card(pokemon.attached_energies.duplicate(), "GOLDEN WING", "Move which Energy off Ho-Oh ex? (cancel to stop)", "MOVE", true)
-				if main._should_bail(): return
-				if e == null: break
-			target = await main.card_ops.choose_card(others, false, "GOLDEN WING", "Move it to which Pokémon? (cancel to stop)", "MOVE", true)
+			if moved >= gw_picks.size(): break
+			e = gw_picks[moved]
+			target = others[0] if others.size() == 1 else await main.card_ops.choose_card(others, false, "GOLDEN WING", "Move " + e.metadata.get("name","").to_upper() + " to which Pokémon?", "MOVE", false)
 			if main._should_bail(): return
 			if target == null: break
 		pokemon.attached_energies.erase(e)
@@ -16692,6 +16729,12 @@ func trigger_ex12_emerge_charge(flygon: card_object, is_opponent: bool) -> void:
 	if is_toxic_gas_active() or main.goop_gas_active: return
 	var discard = main.opponent_discard_pile if is_opponent else main.player_discard_pile
 	var attached = 0
+	var ec_picks: Array = []
+	if not is_opponent:
+		# ISSUE #356: "up to 2" (0 allowed) — on one screen.
+		ec_picks = await main.card_ops.prompt_select_cards(discard.filter(func(c): return c.metadata.get("supertype","") == "Energy"),
+			0, 2, "EMERGE CHARGE", "Choose up to 2 Energy from your discard pile to attach", "ATTACH")
+		if main._should_bail(): return
 	while attached < 2:
 		var pool = discard.filter(func(c): return c.metadata.get("supertype","") == "Energy")
 		if pool.is_empty(): break
@@ -16699,10 +16742,8 @@ func trigger_ex12_emerge_charge(flygon: card_object, is_opponent: bool) -> void:
 		if is_opponent:
 			e = main.attack_effects._r3_cpu_needed_energy(pool, flygon)   # ISSUE #356: was the first Energy in the pile
 		else:
-			# ISSUE #356: "up to 2" — the first pick can be declined too.
-			e = await main.card_ops.choose_card(pool, false, "EMERGE CHARGE", "Attach an Energy from your discard (" + str(attached+1) + " of up to 2)", "ATTACH", true, Callable(), true)
-			if main._should_bail(): return
-			if e == null: break
+			if attached >= ec_picks.size(): break
+			e = ec_picks[attached]
 		discard.erase(e)
 		e.current_location = "active" if flygon == (main.opponent_active_pokemon if is_opponent else main.player_active_pokemon) else "bench"
 		flygon.attached_energies.append(e)
@@ -16766,16 +16807,20 @@ func check_ex12_reactive_recharge(pokemon: card_object, attacker: card_object, i
 	var targets = main.card_ops.get_all_pokemon_in_play(is_pokemon_opp).filter(func(p): return p != pokemon and p.current_hp > 0)
 	if targets.is_empty(): return
 	if not is_pokemon_opp:
-		var do_it = await main.trainer_effects.gym1_prompt_yes_no(pokemon, "REACTIVE RECHARGE", "Move Magneton's React Energy to your other Pokemon?", "YES", "NO")
+		# MULTI-SELECT: "any number" of the React Energy, chosen on one screen (then a destination for each)
+		react_cards = await main.card_ops.prompt_select_cards(react_cards, 0, react_cards.size(), "REACTIVE RECHARGE",
+			"Choose any number of React Energy to move to your other Pokemon", "MOVE")
 		if main._should_bail(): return
-		if not do_it: return
+		if react_cards.is_empty(): return
 	for react in react_cards:
 		var dst: card_object = null
 		if is_pokemon_opp:
 			dst = main.cpu_ai.cpu_pick_benefit_recipient(targets, "energy", react)   # ISSUE #356: was the fewest-Energy Pokemon
 			if dst == null: dst = targets[0]
+		elif targets.size() == 1:
+			dst = targets[0]
 		else:
-			dst = await main.card_ops.choose_card(targets, false, "REACTIVE RECHARGE", "Move a React Energy to which Pokemon?", "ATTACH", false)
+			dst = await main.card_ops.choose_card(targets, false, "REACTIVE RECHARGE", "Move this React Energy to which Pokemon?", "ATTACH", false)
 			if main._should_bail(): return
 			if dst == null: dst = targets[0]
 		pokemon.attached_energies.erase(react)
@@ -17396,13 +17441,17 @@ func power_ex14_energy_recycle(swampert: card_object) -> void:
 		return
 	swampert.power_used_this_turn = true
 	var attached = 0
+	# MULTI-SELECT: all 3 Energy picked on one screen, then a destination for each
+	var erc_picks: Array = []
+	if not is_opp:
+		erc_picks = await main.card_ops.prompt_select_cards(energies, 1, 3, "ENERGY RECYCLE", "Choose 3 Energy to attach to your Pokemon", "SELECT")
+		if main._should_bail(): return
 	for i in range(3):
 		energies = discard.filter(func(c): return c.metadata.get("supertype","") == "Energy")
 		if energies.is_empty(): break
 		var targets = main.card_ops.get_all_pokemon_in_play(is_opp)
 		if targets.is_empty(): break
-		var e: card_object = energies[0] if is_opp else await main.card_ops.choose_card(energies, false, "ENERGY RECYCLE", "Choose an Energy to attach (" + str(3 - i) + " left)", "SELECT", i > 0, Callable(), true)
-		if main._should_bail(): return
+		var e: card_object = energies[0] if is_opp else (erc_picks[i] if i < erc_picks.size() else null)
 		if e == null: break
 		var target: card_object
 		if is_opp:
@@ -18311,10 +18360,13 @@ func trigger_ex15_dig_up(quagsire: card_object, is_opponent: bool) -> void:
 	if is_power_blocked_by_status(quagsire): return
 	var discard = main.opponent_discard_pile if is_opponent else main.player_discard_pile
 	if not discard.any(func(c): return "Pokémon Tool" in c.metadata.get("subtypes", [])): return
+	# MULTI-SELECT: ISSUE #359 "up to 2" (0 = decline) on one screen — replaces the yes/no + one-at-a-time picks
+	var du_picks: Array = []
 	if not is_opponent:
-		var yes = await main.trainer_effects.gym1_prompt_yes_no(quagsire, "DIG UP", "Search your discard pile for up to 2 Pokémon Tool cards?", "SEARCH", "NO")
+		du_picks = await main.card_ops.prompt_select_cards(discard.filter(func(c): return "Pokémon Tool" in c.metadata.get("subtypes", [])),
+			0, 2, "DIG UP", "Choose up to 2 Pokémon Tools to put into your hand", "TAKE")
 		if main._should_bail(): return
-		if not yes: return
+		if du_picks.is_empty(): return
 	for i in range(2):
 		var tools = discard.filter(func(c): return "Pokémon Tool" in c.metadata.get("subtypes", []))
 		if tools.is_empty(): break
@@ -18322,10 +18374,8 @@ func trigger_ex15_dig_up(quagsire: card_object, is_opponent: bool) -> void:
 		if is_opponent:
 			chosen = main.cpu_ai.cpu_pick_best_keep(tools)   # ISSUE #359: was the first Tool in the pile
 		else:
-			var cancelable = true   # ISSUE #359: "up to 2" — the first pick can be declined too
-			chosen = await main.card_ops.choose_card(tools, false, "DIG UP", "Choose a Pokémon Tool to take (" + str(2 - i) + " left)", "TAKE", cancelable, Callable(), true)
-			if main._should_bail(): return
-			if chosen == null: break
+			if i >= du_picks.size(): break
+			chosen = du_picks[i]
 		await main.card_ops.recover_to_hand(chosen, is_opponent)
 		if main._should_bail(): return
 	await main.show_message("DIG UP!")

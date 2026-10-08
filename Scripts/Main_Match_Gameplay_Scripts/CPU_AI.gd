@@ -1821,7 +1821,7 @@ func cpu_phase_energy_attachment(cpu_eval: Dictionary) -> void:
 	# ISSUE #284: measure the sleeve WHERE IT SITS IN THE OPPONENT'S FAN, before the
 	# erase below takes its node away. Same reasoning as the player's own attach
 	# (#283) - the flight used to start at the hand container's left edge.
-	var energy_from: Dictionary = main._card_rect_now(energy)
+	var energy_from: Dictionary = main.hand_card_rect(energy, true)   # FLIGHTS: computed slot (right even if the fan is hidden)
 	# Perform the attachment
 	main.opponent_hand.erase(energy)
 	target.attached_energies.append(energy)
@@ -4462,7 +4462,7 @@ func cpu_phase_bench_play() -> void:
 			break
 
 		# ISSUE #283/#284: the sleeve's place in the fan, before the erase frees it.
-		var bench_from: Dictionary = main._card_rect_now(best_card)
+		var bench_from: Dictionary = main.hand_card_rect(best_card, true)
 		# Play the pokemon onto the bench
 		main.opponent_hand.erase(best_card)
 		best_card.current_location = "bench"
@@ -4573,7 +4573,7 @@ func cpu_phase_evolution() -> void:
 			print("  - " + reason)
 
 		# ISSUE #283/#284: measured before perform_evolution takes it out of the hand.
-		var evo_from: Dictionary = main._card_rect_now(best["evo_card"])
+		var evo_from: Dictionary = main.hand_card_rect(best["evo_card"], true)
 		# Set the globals that perform_evolution reads from
 		main.evolution_card_awaiting_target = best["evo_card"]
 		main.selected_card_for_action = best["target"]

@@ -27,7 +27,11 @@ func is_pokemon_selection_mode_active() -> bool:
 		or knockout_bench_selection_active or damage_swap_mode_active
 		or rain_dance_mode_active or energy_trans_mode_active
 		or buzzap_mode_active or trainer_bench_token_discard_active
-		or pokemon_preview_active)  # ISSUE #80: single-card preview lays the focus Pokémon out like the retreat active
+		or pokemon_preview_active  # ISSUE #80: single-card preview lays the focus Pokémon out like the retreat active
+		# MULTI-SELECT: in-play Pokémon in a multi-pick pool (bench targets...) keep their HP/energy, as
+		# they did in the old one-at-a-time trainer_pokemon_selection_active picks. Hand/deck/discard
+		# cards are unaffected (only cards whose location is bench/active get the Pokémon slot).
+		or trainer_discard_selection_active)
 
 
 # Fix 1: Returns cached card array for a set prefix
@@ -179,6 +183,17 @@ var opponent_attacked_this_turn: bool = false
 var trainer_card_mode_active: bool = false
 var trainer_discard_selection_active: bool = false
 var trainer_discard_cards_needed: int = 0
+# MULTI-SELECT: the fewest cards the confirm button accepts. -1 = "exactly trainer_discard_cards_needed"
+# (the original behaviour). 0 = "up to N" (confirm with none picked reads SKIP). Set via
+# Card_Ops.prompt_select_cards and reset by _reset_multi_select_rules() whenever the mode closes.
+var trainer_discard_cards_min: int = -1
+# MULTI-SELECT: optional per-click rule — fn(candidate: card_object, selected_so_far: Array) -> bool.
+# A click it rejects is ignored ("different types only", "one of each kind"...).
+var trainer_discard_validator: Callable = Callable()
+# MULTI-SELECT: the caller's hint ("Choose up to 3 benched Pokémon") and its confirm word for a
+# single pick ("TAKE", "ATTACH"), kept so refresh_multi_select_labels can add the running count.
+var multi_select_hint_base: String = ""
+var multi_select_btn_text: String = "CONFIRM"
 var trainer_discard_selected: Array = []
 var trainer_deck_search_active: bool = false
 var trainer_pokemon_selection_active: bool = false
@@ -4075,6 +4090,9 @@ const ANIM_MAX_TIME   := 0.95
 ## what z it drops to. 0.82 is "as it reaches the card", not on arrival.
 const ANIM_SINK_AT  := 0.82
 const ANIM_BEHIND_Z := -3
+## FLIGHTS: how long a card played from the hand lingers, LARGE and where it was, after the hand
+## is hidden and before it flies to where it lands. TWEAKABLE (seconds, scaled by match speed).
+const PLAY_HOLD_TIME := 0.18
 
 ## ISSUE #243: ONE CARD IN THE AIR AT A TIME.
 ##
@@ -4128,7 +4146,7 @@ func _anim_dest_size(to_node: Control, fallback: Vector2) -> Vector2:
 ## usually gone by the time the flight starts (the caller erases and refreshes
 ## first, and it must), so the position has to be MEASURED BEFORE that and passed
 ## in - which is what _card_rect_now() is for.
-func animate_card_a_to_b(from_node: Control, to_node: Control, animation_speed: float = 0.8, custom_texture: Texture2D = null, custom_size: Vector2 = Vector2(83, 113), target_size: Vector2 = Vector2.ZERO, target_pos_override: Vector2 = _ANIM_POS_SENTINEL, arrive_behind: bool = false, from_pos_override: Vector2 = _ANIM_POS_SENTINEL) -> void:
+func animate_card_a_to_b(from_node: Control, to_node: Control, animation_speed: float = 0.8, custom_texture: Texture2D = null, custom_size: Vector2 = Vector2(83, 113), target_size: Vector2 = Vector2.ZERO, target_pos_override: Vector2 = _ANIM_POS_SENTINEL, arrive_behind: bool = false, from_pos_override: Vector2 = _ANIM_POS_SENTINEL, hold_time: float = 0.0) -> void:
 	# ISSUE #243: queue behind any flight already in the air.
 	while _anim_in_flight:
 		await get_tree().process_frame
@@ -4146,7 +4164,11 @@ func animate_card_a_to_b(from_node: Control, to_node: Control, animation_speed: 
 	# opened on the same frame described a board that had not been drawn yet.
 	# One frame of settle makes "remove, redraw, THEN move" true rather than
 	# merely intended.
-	await get_tree().process_frame
+	# FLIGHTS: a HELD flight (hold_time > 0, the "play from hand" beat) skips the settle frame: its
+	# ghost appears on the very frame the selection view closes, covering the card that just left,
+	# so there is no blank frame between the large card vanishing and the ghost appearing.
+	if hold_time <= 0.0:
+		await get_tree().process_frame
 
 	SoundManagerScript.play_sfx(SoundManagerScript.SFX_card_draw_sound)
 	animation_blocker.visible = true
@@ -4182,6 +4204,13 @@ func animate_card_a_to_b(from_node: Control, to_node: Control, animation_speed: 
 	# signature - 75 call sites pass it - but it is a RELATIVE nudge now rather
 	# than the duration itself, normalised on the 0.3 that most callers use.
 	# ISSUE #34: still scaled by the global card-match animation-speed multiplier.
+	# FLIGHTS: the played card lingers where it was (large, on screen) before it moves.
+	if hold_time > 0.0:
+		await get_tree().create_timer(GameState.match_time(hold_time)).timeout
+		if not is_inside_tree() or not is_instance_valid(card_image):
+			animation_blocker.visible = false
+			_anim_in_flight = false
+			return
 	var distance: float = card_image.global_position.distance_to(target_pos)
 	var base_time: float = clampf(distance / ANIM_PX_PER_SEC, ANIM_MIN_TIME, ANIM_MAX_TIME)
 	var duration = GameState.scaled_duration(base_time * (animation_speed / 0.3),
@@ -4230,17 +4259,27 @@ func animate_attach_to_pokemon(card: card_object, target: card_object,
 		is_opponent: bool, from_node: Control) -> void:
 	var texture := get_card_texture(card)
 	var active := opponent_active_pokemon if is_opponent else player_active_pokemon
+	# FLIGHTS: a Tool/TM played from the hand has just been shown LARGE by the trainer showcase, so it
+	# leaves from that showcase spot, lingers a beat, then flies — instead of rising from the bottom-left
+	# of the hand box. Any other source keeps its own node.
+	var from_rect: Dictionary = {}
+	var hold := 0.0
+	if from_node == player_hand_container or from_node == opponent_hand_container:
+		from_rect = showcase_card_rect()
+		hold = PLAY_HOLD_TIME
+	var from_size: Vector2 = from_rect.get("size", card_scales[10])
+	var from_pos: Vector2 = from_rect.get("position", _ANIM_POS_SENTINEL)
 	if target == active:
 		var attached_node = opponent_attached_cards_container if is_opponent else player_attached_cards_container
 		var rect := measure_and_hide_new_active_tool_slot(is_opponent)
-		await animate_card_a_to_b(from_node, attached_node, 0.3, texture, card_scales[10],
-			rect.get("size", ATTACH_CARD_SIZE), rect.get("position", _ANIM_POS_SENTINEL))
+		await animate_card_a_to_b(from_node, attached_node, 0.3, texture, from_size,
+			rect.get("size", ATTACH_CARD_SIZE), rect.get("position", _ANIM_POS_SENTINEL), false, from_pos, hold)
 		return
 
 	var bench_container = opponent_bench_container if is_opponent else player_bench_container
 	var loc := get_pokemon_screen_location(target)
-	await animate_card_a_to_b(from_node, bench_container, 0.3, texture, card_scales[10],
-		loc.get("size", BENCH_CARD), loc.get("position", _ANIM_POS_SENTINEL), true)
+	await animate_card_a_to_b(from_node, bench_container, 0.3, texture, from_size,
+		loc.get("size", BENCH_CARD), loc.get("position", _ANIM_POS_SENTINEL), true, from_pos, hold)
 
 # Animate discarding for reatreat and knockout
 #
@@ -4695,21 +4734,179 @@ func _card_rect_now(card_obj: card_object) -> Dictionary:
 ##
 ## Assumes the card is ALREADY appended to the hand array (so it is the last one).
 func measure_and_hide_new_hand_slot(is_opponent: bool) -> Dictionary:
+	var hand = opponent_hand if is_opponent else player_hand
+	if hand.is_empty():
+		return {}
+	return measure_and_hide_hand_slot_for(hand[hand.size() - 1], is_opponent)
+
+
+## FLIGHTS: WHERE A CARD BEING PLAYED FROM THE HAND STARTS ITS FLIGHT.
+##
+## The flow every play uses: the LARGE card is on screen, it leaves the hand, the
+## hand/selection view goes, the large card lingers (PLAY_HOLD_TIME) and then flies
+## to where it lands. When the card is still drawn on screen (the enlarged hand
+## the player clicked it in) that is simply its rect. When it is NOT on screen any
+## more - energy and evolution cards are chosen, then the screen switches to the
+## TARGET list - a hidden node's rect is meaningless (a hidden hand is never laid
+## out), so it starts from the showcase spot the trainer cards use instead: large,
+## centre stage. Measure BEFORE the card is erased from the hand.
+func played_card_start_rect(card: card_object) -> Dictionary:
+	var node := find_card_ui_for_object(card)
+	if node != null and is_instance_valid(node) and node.is_visible_in_tree():
+		return {"position": node.global_position, "size": node.size}
+	return showcase_card_rect()
+
+
+## FLIGHTS: the rect of the large centre-stage card the trainer showcase draws.
+## The showcase card is a plain child of played_trainer_container (a bare Control), so it sits at
+## that node's top-left at card_scales[1] — the same rect show_trainer_card_played_animation draws.
+func showcase_card_rect() -> Dictionary:
+	var sz: Vector2 = card_scales[1]
+	if played_trainer_container != null and is_instance_valid(played_trainer_container):
+		return {"position": played_trainer_container.global_position, "size": sz}
+	return {"position": get_viewport_rect().size / 2.0 - sz / 2.0, "size": sz}
+
+
+## FLIGHTS: WHERE ANY CARD IN THE HAND SITS - COMPUTED, NOT READ BACK.
+##
+## The old version refreshed the hand, waited a frame and read the child's
+## position. That only works while the hand is ON SCREEN: a BoxContainer skips
+## every child that is not visible-in-tree when it sorts, so a draw that happens
+## while the hand is hidden (any selection screen, the trainer showcase - Bill,
+## Professor Oak, every search) read back a never-sorted child at (0, 0) of the
+## hand box: its LEFT EDGE. That is the "card flies way over to the left and then
+## pops into place".
+##
+## So this does the HBoxContainer's own sum instead, from the freshly built
+## children's minimum sizes and the separation display_hand_cards_array just set:
+## total = widths + separation gaps, offset by the box's alignment (centred for
+## the player, begin for the opponent; never negative, like BoxContainer). It is
+## right whether or not the hand is visible, and needs no frame wait.
+##
+## `card` must already be in the hand array. Its slot is made transparent (not
+## hidden - that would re-centre the row) until the caller's next refresh.
+func measure_and_hide_hand_slot_for(card: card_object, is_opponent: bool) -> Dictionary:
+	var hand = opponent_hand if is_opponent else player_hand
 	var hand_container = opponent_hand_container if is_opponent else player_hand_container
 	refresh_hand_display(is_opponent)
-	# A BoxContainer sorts its children on a deferred pass, so the positions are
-	# not real until the frame ends. The energy/tool stacks do not need this -
-	# they set position.x by hand - but the hand does.
-	await get_tree().process_frame
-	if not is_inside_tree():
-		return {}
-	var count := hand_container.get_child_count()
-	if count == 0:
-		return {}
-	var slot: Control = hand_container.get_child(count - 1)
-	var rect := {"position": slot.global_position, "size": slot.size}
-	slot.modulate.a = 0.0
+	var idx: int = hand.find(card)
+	var rect := _hand_layout_rect(is_opponent, idx)
+	if not rect.is_empty():
+		(hand_container.get_child(mini(idx, hand_container.get_child_count() - 1)) as Control).modulate.a = 0.0
 	return rect
+
+
+## FLIGHTS: where a card that is STILL IN the hand sits right now — for a card about to LEAVE the hand
+## (discarded, shuffled back, played by the CPU). Call it BEFORE erasing the card / refreshing the
+## hand. Same computed layout as measure_and_hide_hand_slot_for, so it is right even while hidden.
+func hand_card_rect(card: card_object, is_opponent: bool) -> Dictionary:
+	var hand = opponent_hand if is_opponent else player_hand
+	return _hand_layout_rect(is_opponent, hand.find(card))
+
+
+## FLIGHTS: hand_card_rect + make that slot transparent, for a card that is about to fly OUT of the
+## hand while the row is still drawn (batch discards / shuffles that refresh the hand only at the end).
+## The slot keeps its width (alpha, not hidden) so the rest of the hand doesn't shuffle mid-flight.
+func lift_card_from_hand(card: card_object, is_opponent: bool) -> Dictionary:
+	var hand = opponent_hand if is_opponent else player_hand
+	var hand_container = opponent_hand_container if is_opponent else player_hand_container
+	var idx: int = hand.find(card)
+	var rect := _hand_layout_rect(is_opponent, idx)
+	if not rect.is_empty() and idx < hand_container.get_child_count():
+		(hand_container.get_child(idx) as Control).modulate.a = 0.0
+	return rect
+
+
+## FLIGHTS: the HBoxContainer's own layout sum for child `idx` of a hand container, from the children
+## as they are built right now. {} when there is no such child.
+func _hand_layout_rect(is_opponent: bool, idx: int) -> Dictionary:
+	var hand_container = opponent_hand_container if is_opponent else player_hand_container
+	var count: int = hand_container.get_child_count()
+	if idx < 0 or count == 0:
+		return {}
+	idx = mini(idx, count - 1)
+	var sep: int = hand_container.get_theme_constant("separation") if hand_container is BoxContainer else 0
+	var total: float = 0.0
+	var x_in_box: float = 0.0
+	for i in range(count):
+		var w: float = (hand_container.get_child(i) as Control).get_combined_minimum_size().x
+		if i == idx:
+			x_in_box = total
+		total += w
+		if i < count - 1:
+			total += sep
+	var start: float = 0.0
+	if hand_container is BoxContainer and (hand_container as BoxContainer).alignment == BoxContainer.ALIGNMENT_CENTER:
+		start = floorf(maxf(0.0, hand_container.size.x - total) / 2.0)
+	elif hand_container is BoxContainer and (hand_container as BoxContainer).alignment == BoxContainer.ALIGNMENT_END:
+		start = maxf(0.0, hand_container.size.x - total)
+	var slot: Control = hand_container.get_child(idx)
+	return {"position": hand_container.global_position + Vector2(start + x_in_box, 0.0),
+		"size": slot.get_combined_minimum_size()}
+
+
+## FLIGHTS: a card that has JUST been put in a hand array flies from where it was
+## to the exact slot it will occupy, then the hand is redrawn so it is simply there.
+##   from_node — the pile/icon/container it is leaving (deck icon, discard icon...).
+##   from_rect — its measured rect (_card_rect_now / a showcase card), when known;
+##               otherwise the flight starts on from_node at from_node's size.
+##   texture   — defaults to the face the hand will show (sleeve for a hidden CPU hand).
+func animate_card_into_hand(card: card_object, is_opponent: bool, from_node: Control,
+		from_rect: Dictionary = {}, speed: float = 0.3, texture: Texture2D = null) -> void:
+	var hand_container = opponent_hand_container if is_opponent else player_hand_container
+	var slot := measure_and_hide_hand_slot_for(card, is_opponent)
+	var tex: Texture2D = texture
+	if tex == null:
+		tex = opponent_card_back_texture if (is_opponent and hide_hidden_cards) else get_card_texture(card)
+	var start_size: Vector2 = from_rect.get("size", from_node.size if from_node != null and from_node.size != Vector2.ZERO else card_scales[10])
+	var start_pos: Vector2 = from_rect.get("position", from_node.global_position if from_node != null else _ANIM_POS_SENTINEL)
+	await animate_card_a_to_b(from_node if from_node != null else hand_container, hand_container, speed, tex,
+		start_size, slot.get("size", Vector2.ZERO), slot.get("position", _ANIM_POS_SENTINEL), false, start_pos)
+	refresh_hand_display(is_opponent)
+
+
+## FLIGHTS: a card leaving a hand. Measure BEFORE erasing it (its slot rect), then
+## erase + refresh, then call this with that rect — the flight starts exactly where
+## the card was. Lands on `to_node`'s own rect at `to_size` unless a landing rect
+## is passed (target_pos / target_size), so a pile-bound card ends ON the pile.
+func animate_card_out_of_hand(card: card_object, is_opponent: bool, from_rect: Dictionary,
+		to_node: Control, speed: float = 0.3, texture: Texture2D = null,
+		target_size: Vector2 = Vector2.ZERO, target_pos: Vector2 = _ANIM_POS_SENTINEL) -> void:
+	var hand_container = opponent_hand_container if is_opponent else player_hand_container
+	var tex: Texture2D = texture
+	if tex == null:
+		tex = opponent_card_back_texture if (is_opponent and hide_hidden_cards) else get_card_texture(card)
+	var land := landing_rect_node(to_node, target_size)
+	if target_pos != _ANIM_POS_SENTINEL:
+		land["position"] = target_pos
+	await animate_card_a_to_b(hand_container, to_node, speed, tex,
+		from_rect.get("size", card_scales[12]), land["size"], land["position"], false,
+		from_rect.get("position", _ANIM_POS_SENTINEL))
+
+
+## FLIGHTS: the rect of bench slot `idx` as the bench is CURRENTLY drawn — call it before the bench is
+## redrawn for a Pokémon that is about to land in an empty slot (the slot is still the empty outline).
+## The bench always draws BENCH_SLOTS slots (#213), so slot idx exists while the bench has room.
+func bench_slot_rect(is_opponent: bool, idx: int) -> Dictionary:
+	var bench_container = opponent_bench_container if is_opponent else player_bench_container
+	if idx < 0 or idx >= bench_container.get_child_count():
+		return landing_rect_node(bench_container, BENCH_CARD)
+	var slot: Control = bench_container.get_child(idx)
+	var card_area: Control = slot.get_child(0) if slot.get_child_count() > 0 else slot
+	return {"position": card_area.global_position, "size": BENCH_CARD}
+
+
+## FLIGHTS: the rect a card lands on when it goes to a fixed board node (deck or
+## discard icon, stadium slot, prize box): centred on the node at the node's card
+## size (_anim_dest_size), so the flight finishes exactly where the pile is drawn.
+func landing_rect_node(to_node: Control, size_override: Vector2 = Vector2.ZERO) -> Dictionary:
+	var sz: Vector2 = size_override if size_override != Vector2.ZERO else _anim_dest_size(to_node, card_scales[10])
+	if to_node == null:
+		return {"position": _ANIM_POS_SENTINEL, "size": sz}
+	var pos: Vector2 = to_node.global_position + (to_node.size - sz) / 2.0
+	if to_node.size == Vector2.ZERO:
+		pos = to_node.global_position
+	return {"position": pos, "size": sz}
 
 
 func measure_and_hide_new_active_tool_slot(is_opponent: bool) -> Dictionary:
@@ -5744,7 +5941,7 @@ func perform_energy_attachment() -> void:
 	# ISSUE #283: measure the energy card WHERE IT SITS IN THE HAND, before the
 	# erase + refresh below frees its node. Without this the flight starts at the
 	# hand container's origin - the left end of the row - whichever card was played.
-	var energy_from := _card_rect_now(energy_card)
+	var energy_from := played_card_start_rect(energy_card)
 	target_pokemon.attached_energies.append(energy_card)
 	print("Attached ", energy_card.metadata.get("name", "Unknown Energy"), " to ", target_pokemon.metadata.get("name", "Unknown Pokemon"))
 	player_hand.erase(energy_card)
@@ -5779,7 +5976,7 @@ func perform_energy_attachment() -> void:
 			energy_from.get("position", "container fallback"))
 		await animate_card_a_to_b(player_hand_container, target_node, 0.2, energy_texture,
 			energy_from.get("size", card_scales[12]), slot_size, slot_pos, true,
-			energy_from.get("position", _ANIM_POS_SENTINEL))
+			energy_from.get("position", _ANIM_POS_SENTINEL), PLAY_HOLD_TIME)
 	else:
 		# ISSUE #20 FIX: fly the Energy to the ACTUAL benched Pokémon's slot position.
 		var bench_energy_loc = get_pokemon_screen_location(target_pokemon)
@@ -5787,7 +5984,7 @@ func perform_energy_attachment() -> void:
 		await animate_card_a_to_b(player_hand_container, target_node, 0.2, energy_texture,
 			energy_from.get("size", card_scales[12]),
 			bench_energy_loc.get("size", BENCH_CARD), energy_pos_override, true,
-			energy_from.get("position", _ANIM_POS_SENTINEL))
+			energy_from.get("position", _ANIM_POS_SENTINEL), PLAY_HOLD_TIME)
 
 	display_pokemon(false)
 	display_active_pokemon_energies(false)
@@ -5933,18 +6130,13 @@ func draw_card_from_deck(is_opponent: bool, speed_multiplier: float = 1.0) -> ca
 	# instead of to the middle of the hand box. measure_and_hide_new_hand_slot
 	# builds the new hand, reads the last slot's rect and makes it transparent so
 	# the card is not visible in two places during the flight.
-	var hand_container = opponent_hand_container if is_opponent else player_hand_container
+	# FLIGHTS: the slot is now COMPUTED (measure_and_hide_hand_slot_for), so it is right even when
+	# the hand is hidden behind a selection screen or the trainer showcase.
 	var deck_icon = opponent_deck_icon if is_opponent else player_deck_icon
 	var back_tex = opponent_card_back_texture if is_opponent else card_back_texture
 	var speed: float = (0.2 if is_opponent else 0.3) * speed_multiplier
-	var slot := await measure_and_hide_new_hand_slot(is_opponent)
-	if not slot.is_empty():
-		print("ISSUE #282 FIX ACTIVE: draw lands at ", slot["position"], " size ", slot["size"])
-	await animate_card_a_to_b(deck_icon, hand_container, speed, back_tex,
-		Vector2(83, 113), slot.get("size", Vector2.ZERO),
-		slot.get("position", _ANIM_POS_SENTINEL))
-	# Puts the transparent slot back to full opacity.
-	refresh_hand_display(is_opponent)
+	await animate_card_into_hand(drawn_card, is_opponent, deck_icon,
+		{"position": deck_icon.global_position, "size": deck_icon.size}, speed, back_tex)
 
 	return drawn_card
 
@@ -6155,19 +6347,22 @@ func take_prize_card(card: card_object, is_opponent: bool) -> void:
 	var prize_container = opponent_prize_container if is_opponent else player_prize_container
 	var hand_container = opponent_hand_container if is_opponent else player_hand_container
 	
+	# FLIGHTS: leave from the prize card's own slot (measured before it is removed) and land on the
+	# slot it takes in the hand.
+	var prize_from: Dictionary = {}
 	var card_ui = find_card_ui_for_object(card)
+	if card_ui != null and is_instance_valid(card_ui) and card_ui.is_visible_in_tree():
+		prize_from = {"position": card_ui.global_position, "size": card_ui.size}
 	# For opponent, always show card back during animation to hide the card
 	var card_texture = opponent_card_back_texture if is_opponent else get_card_texture(card)
-	
+
 	prizes.erase(card)
 	card.current_location = "hand"
 	hand.append(card)
-	
+
 	display_prize_cards(is_opponent)
-	
-	await animate_card_a_to_b(prize_container, hand_container, 0.3, card_texture, card_scales[11])
-	
-	refresh_hand_display(is_opponent)
+
+	await animate_card_into_hand(card, is_opponent, prize_container, prize_from, 0.3, card_texture)
 
 # Opens selection mode to choose a prize card and return that as the object to put into hand
 func player_pick_prize_card() -> void:
@@ -9471,10 +9666,10 @@ func action_button_pressed_perform_action() -> void:
 	
 	if trainer_discard_selection_active:
 		# Confirm the selection (cards already toggled via click handler)
-		if trainer_discard_selected.size() >= trainer_discard_cards_needed:
+		if trainer_discard_selected.size() >= multi_select_min():
 			trainer_discard_selection_done.emit()
 		return
-	
+
 	# Pokedex reorder: confirm the chosen order
 	if trainer_reorder_active:
 		if pokedex_reorder_result.size() >= pokedex_cards.size():
@@ -9666,7 +9861,7 @@ func handle_action_evolution() -> void:
 	
 	# ISSUE #283: measured BEFORE perform_evolution, which takes the card out of
 	# the hand - after that there is no node left to measure.
-	var evo_from := _card_rect_now(evo_card)
+	var evo_from := played_card_start_rect(evo_card)
 	
 	perform_evolution(false)
 	
@@ -9696,7 +9891,7 @@ func handle_action_evolution() -> void:
 		evo_from.get("size", card_scale_to_animate),
 		evo_loc.get("size", card_scale_to_animate),
 		evo_loc.get("position", _ANIM_POS_SENTINEL), false,
-		evo_from.get("position", _ANIM_POS_SENTINEL))
+		evo_from.get("position", _ANIM_POS_SENTINEL), PLAY_HOLD_TIME)
 
 	display_pokemon(false)
 	await get_tree().process_frame
@@ -9757,7 +9952,7 @@ func handle_action_normal_card() -> void:
 				# ISSUE #283: measured before add_pokemon_to_bench/refresh frees the
 				# hand node, so the card takes off from where the player clicked it
 				# rather than from the left end of the hand.
-				var bench_from := _card_rect_now(bench_card)
+				var bench_from := played_card_start_rect(bench_card)
 				add_pokemon_to_bench(bench_card)
 				refresh_hand_display(false)
 				
@@ -9778,7 +9973,7 @@ func handle_action_normal_card() -> void:
 						bench_texture, bench_from.get("size", card_scales[11]),
 						bench_loc.get("size", BENCH_CARD),
 						bench_loc.get("position", _ANIM_POS_SENTINEL), false,
-						bench_from.get("position", _ANIM_POS_SENTINEL))
+						bench_from.get("position", _ANIM_POS_SENTINEL), PLAY_HOLD_TIME)
 					display_pokemon(false)
 					# GYM2-119 Rocket's Minefield Gym — coin flip per benched Basic from hand; tails = 20 damage
 					await trainer_effects.gym2_minefield_gym_trigger(bench_card, false)
@@ -10165,22 +10360,16 @@ func this_card_clicked(clicked_card: card_object) -> void:
 			else:
 				if trainer_discard_selected.size() >= trainer_discard_cards_needed:
 					return
+				# MULTI-SELECT: a rule-breaking pick ("different types only") is simply not taken.
+				if trainer_discard_validator.is_valid() \
+						and not trainer_discard_validator.call(clicked_card, trainer_discard_selected.duplicate()):
+					return
 				trainer_discard_selected.append(clicked_card)
 				var card_display = find_card_ui_for_object(clicked_card)
 				if card_display:
 					card_display.set_selected(true)
-			
-			var remaining = trainer_discard_cards_needed - trainer_discard_selected.size()
-			hint_label.text = str(trainer_discard_selected.size()) + "/" + str(trainer_discard_cards_needed) + " selected"
-			
-			if remaining <= 0:
-				action_button.text = "CONFIRM"
-				action_button.disabled = false
-				action_button.theme = theme_green
-			else:
-				action_button.text = str(remaining) + " MORE"
-				action_button.disabled = true
-				action_button.theme = theme_disabled
+
+			refresh_multi_select_labels()
 			return
 		
 		# TRAINER POKEMON SELECTION MODE
@@ -10214,6 +10403,30 @@ func this_card_clicked(clicked_card: card_object) -> void:
 ######################################################################################################################################################
 ####################################################### START OF MAIN GAME RUNNING FUNCTIONS #########################################################
 	
+# MULTI-SELECT: the fewest picks the open multi-select accepts (see trainer_discard_cards_min).
+func multi_select_min() -> int:
+	return trainer_discard_cards_needed if trainer_discard_cards_min < 0 else trainer_discard_cards_min
+
+# MULTI-SELECT: one place that words the hint + confirm button for the open multi-select, from
+# the current pick count. "N MORE" (greyed) until the minimum is met, then "CONFIRM (k)" — or
+# "SKIP" when nothing is picked and none are required. The caller's own hint stays in front.
+func refresh_multi_select_labels() -> void:
+	var picked := trainer_discard_selected.size()
+	var need := trainer_discard_cards_needed
+	var min_n := multi_select_min()
+	var count_txt := str(picked) + "/" + str(need) + " selected"
+	if min_n < need:
+		count_txt = str(picked) + "/" + str(need) + " selected (up to " + str(need) + ")"
+	hint_label.text = (multi_select_hint_base + "  —  " + count_txt) if multi_select_hint_base != "" else count_txt
+	if picked < min_n:
+		action_button.text = str(min_n - picked) + " MORE"
+		action_button.disabled = true
+		action_button.theme = theme_disabled
+	else:
+		action_button.text = "SKIP" if picked == 0 else ("CONFIRM (" + str(picked) + ")" if need > 1 else multi_select_btn_text)
+		action_button.disabled = false
+		action_button.theme = theme_green
+
 # ISSUE #77/#78: clear ALL currently-selected cards for the in-progress action — a single-select
 # (a hand/bench card) OR a multi-select mode (retreat energy discard, trainer discard, Pokédex
 # reorder). Stops each card's selection animation (set_selected(false) / un-dim / strip number
@@ -10246,10 +10459,7 @@ func clear_current_action_selection() -> void:
 			var ui = find_card_ui_for_object(c)
 			if ui: ui.set_selected(false)
 		trainer_discard_selected.clear()
-		hint_label.text = "0/" + str(trainer_discard_cards_needed) + " selected"
-		action_button.text = str(trainer_discard_cards_needed) + " MORE"
-		action_button.disabled = true
-		action_button.theme = theme_disabled
+		refresh_multi_select_labels()
 		return
 
 	# ── Multi-select: Pokédex reorder (assign an order number to each card) ──
