@@ -18,6 +18,10 @@ extends Node
 #   --stack=UID         stacked deck for the BOT: its opening hand is UID's whole evolution line plus the Energy its
 #                       untested attack costs (the rest of that Energy is drawn next; the Prizes get filler). Use to
 #                       reach expensive attacks a shuffled deck rarely powers up, e.g. --stack=ex15-100 --matches=10
+#   --real              the CPU plays every REAL opponent in turn (deck, sprite, Prize count, match_effects from
+#                       NPC_and_Opponent_Data); the bot plays decks from user://Player_Decks. Writes balance_report.txt.
+#   --bot=smart         the bot plays a sensible plan (evolve, attach to what needs it, best attack) instead of randomly
+#   --stress            the bot's deck is an extreme recipe (1 Basic + 59 Energy, Trainer flood, 60 Basics, ...)
 #   --strict            also check for duplicated cards after EVERY in-game message, and name the message where a
 #                       duplicate first appears (use with --replay to pin down a CARD DUPLICATED find)
 #   --reset-coverage    start the cumulative coverage file from zero
@@ -51,6 +55,13 @@ var opt_timescale := 4.0
 var opt_watch := false
 var opt_stack := ""
 var opt_strict := false
+const CpuWeights = preload("res://Scripts/Main_Match_Gameplay_Scripts/CPU_Weights.gd")
+var opt_tune := false              # --tune: one self-play tuning job (Tools/cpu_tuner.py) — quiet, no coverage/log writes
+var opt_weights_path := ""         # --weights=<abs path>: CPU weight multipliers for this job
+var opt_result_path := ""          # --result=<abs path>: one JSON line per match, then {"done": true}
+var opt_synergy_path := ""        # --synergy=<abs path>: learned synergy table for this job ("" = none)
+var opt_explore := 0.0             # --explore=<0..1>: random free fetch choices (synergy exploration jobs)
+var opt_worker := "0"              # --worker=<id>: keeps parallel jobs' scratch files apart
 var replay_record: Dictionary = {}
 var replay_run := ""
 var replay_prior_events: Array = []   # events of the matches before the replayed one (to rebuild its coverage)
@@ -64,7 +75,11 @@ var power_names: Dictionary = {}
 var cpu_usage: Dictionary = {}         # key -> {"offered": turns it was available, "used": turns the CPU used it}
 var _cpu_offered: Dictionary = {}      # this CPU turn
 var _cpu_used: Dictionary = {}
-var _cpu_turn_open := false  # activatable Power names (from _power_dispatch)
+var _cpu_turn_open := false
+var _cpu_ko_attacks: Array = []        # attacks this CPU turn that were a guaranteed Knock Out
+var _cpu_had_energy := false
+var _cpu_attempted := false            # the CPU began an attack (even one that then failed to Confusion)           # CPU held Energy at the start of its turn
+var _cpu_needed_energy := false        # ...and something in play still needed Energy  # activatable Power names (from _power_dispatch)
 
 var match_scene: PackedScene
 var current_main: Node = null
@@ -140,9 +155,26 @@ func _ready() -> void:
 		GameState.card_match_animation_speed = GameState.SKIP_MULTIPLIER
 		GameState.text_letter_delay = 0.0
 	run_dir = OUT_DIR + "runs/" + Time.get_datetime_string_from_system().replace(":", "-") + "/"
+	if opt_tune:
+		run_dir = OUT_DIR + "tuner/work/w" + opt_worker + "/"
+		var wm := {}
+		if opt_weights_path != "" and FileAccess.file_exists(opt_weights_path):
+			var parsed = JSON.parse_string(FileAccess.get_file_as_string(opt_weights_path))
+			if parsed is Dictionary:
+				wm = parsed
+		CpuWeights.set_multipliers(wm)
+		var syn := {}
+		if opt_synergy_path != "" and FileAccess.file_exists(opt_synergy_path):
+			var ps = JSON.parse_string(FileAccess.get_file_as_string(opt_synergy_path))
+			if ps is Dictionary:
+				syn = ps
+		CpuWeights.set_synergy(syn)   # tune jobs never read the shipped table: the tuner decides
+		CpuWeights.explore_rate = opt_explore
 	DirAccess.make_dir_recursive_absolute(run_dir)
 	DirAccess.make_dir_recursive_absolute(OUT_DIR + "decks")
 	_load_cards()
+	if opt_real:
+		_load_real_entries()
 	_load_coverage()
 	if FileAccess.file_exists(OUT_DIR + "cpu_usage.json"):
 		var cu = JSON.parse_string(FileAccess.get_file_as_string(OUT_DIR + "cpu_usage.json"))
@@ -158,7 +190,7 @@ func _ready() -> void:
 				_count_event(String(e))
 		else:
 			push_error("AUTOTEST: no coverage_start.json for that run — the replay may drift from the original")
-	else:
+	elif not opt_tune:
 		_write_json(run_dir + "coverage_start.json", coverage)
 	match_scene = load(MATCH_SCENE)
 	print("AUTOTEST: %d cards loaded, %d matches, base seed %d, output %s" % [cards.size(), opt_matches, opt_seed, ProjectSettings.globalize_path(run_dir)])
@@ -182,6 +214,18 @@ func _parse_args() -> void:
 				opt_watch = true
 				opt_timescale = 1.0
 			"strict": opt_strict = true
+			"tune":
+				opt_tune = true
+				opt_real = true
+				opt_bot_smart = true
+			"weights": opt_weights_path = v
+			"result": opt_result_path = v
+			"worker": opt_worker = v
+			"synergy": opt_synergy_path = v
+			"explore": opt_explore = float(v)
+			"real": opt_real = true
+			"bot": opt_bot_smart = (v == "smart")
+			"stress": opt_stress = true
 			"stack":
 				opt_stack = v.to_lower()
 				opt_cards = [opt_stack]
@@ -208,6 +252,12 @@ func _parse_args() -> void:
 func _run_all() -> void:
 	for i in opt_matches:
 		await _play_match(i)
+	if opt_tune:
+		_append_line(opt_result_path, JSON.stringify({"done": true}))
+		OS.remove_logger(_logger)
+		GameState.autotest = null
+		get_tree().quit()
+		return
 	_write_summary()
 	print("AUTOTEST: done — see ", ProjectSettings.globalize_path(run_dir + "summary.txt"))
 	OS.remove_logger(_logger)
@@ -221,6 +271,7 @@ func _play_match(i: int) -> void:
 	match_index = i
 	match_seed = opt_seed + i
 	seed(match_seed)
+	CpuWeights.seed_explore(match_seed * 7919 + 13)
 	var rng := RandomNumberGenerator.new()
 	rng.seed = match_seed
 	match_done = false
@@ -237,10 +288,29 @@ func _play_match(i: int) -> void:
 	_last_checked_turn = -1
 	_logger.take_errors()
 
-	var p_deck: Array = replay_record["player_deck"] if not replay_record.is_empty() else _build_deck(rng)
-	var o_deck: Array = replay_record["opponent_deck"] if not replay_record.is_empty() else _build_deck(rng)
-	var p_path := OUT_DIR + "decks/player.json"
-	var o_path := OUT_DIR + "decks/opponent.json"
+	var p_deck: Array = []
+	var o_deck: Array = []
+	var opp_data: Dictionary = {}
+	if not replay_record.is_empty():
+		p_deck = replay_record["player_deck"]
+		o_deck = replay_record["opponent_deck"]
+		opp_data = replay_record.get("opponent_data", {})
+	else:
+		if opt_real and not real_entries.is_empty():
+			var entry: Dictionary = real_entries[(match_seed if opt_tune else i) % real_entries.size()]
+			o_deck = _read_deck_file(AssetLookup.deck_path(entry["deck"]))
+			opp_data = real_opponent_data_for(entry)
+			p_deck = _read_deck_file(player_deck_files[rng.randi() % player_deck_files.size()]) if not player_deck_files.is_empty() else _build_deck(rng)
+		else:
+			p_deck = _build_deck(rng)
+			o_deck = _build_deck(rng)
+		if opt_stress:
+			p_deck = _stress_deck(i, rng)
+	current_opponent_label = String(opp_data.get("name", "TEST OPPONENT"))
+	current_match_effects = opp_data.get("match_effects", [])
+	GameState.autotest_opponent_data = opp_data
+	var p_path := (run_dir if opt_tune else OUT_DIR + "decks/") + "player.json"
+	var o_path := (run_dir if opt_tune else OUT_DIR + "decks/") + "opponent.json"
 	_write_json(p_path, p_deck)
 	_write_json(o_path, o_deck)
 
@@ -286,9 +356,27 @@ func _play_match(i: int) -> void:
 		results[match_result] += 1
 	var rec := {"match": i + 1, "seed": match_seed, "result": match_result, "turns": turns,
 		"player_deck": p_deck, "opponent_deck": o_deck, "problems": match_problems.size(),
-		"events": match_events}
-	_append_line(run_dir + "matches.jsonl", JSON.stringify(rec))
-	_write_match_log(i + 1, rec)
+		"events": match_events, "opponent": current_opponent_label, "opponent_data": GameState.autotest_opponent_data}
+	if opt_real:
+		if not balance.has(current_opponent_label):
+			balance[current_opponent_label] = {"games": 0, "cpu_wins": 0, "bot_wins": 0, "turns": 0}
+		var bl: Dictionary = balance[current_opponent_label]
+		bl["games"] += 1
+		bl["turns"] += maxi(0, turns)
+		if match_result == "loss": bl["cpu_wins"] += 1
+		elif match_result == "win": bl["bot_wins"] += 1
+	if opt_tune:
+		var m = current_main
+		var tr := {"seed": match_seed, "result": match_result, "turns": turns,
+			"cpu_prizes_left": m.opponent_prize_cards.size() if is_instance_valid(m) else -1,
+			"bot_prizes_left": m.player_prize_cards.size() if is_instance_valid(m) else -1,
+			"opponent": current_opponent_label,
+			"problems": match_problems.map(func(p): return String(p["kind"])),
+			"cpu_cards": _cpu_cards_used(m) if is_instance_valid(m) else []}
+		_append_line(opt_result_path, JSON.stringify(tr))
+	else:
+		_append_line(run_dir + "matches.jsonl", JSON.stringify(rec))
+		_write_match_log(i + 1, rec)
 	print("AUTOTEST: match %d -> %s after %d turns, %d problem(s)" % [i + 1, match_result, turns, match_problems.size()])
 
 	if is_instance_valid(current_bot):
@@ -299,9 +387,23 @@ func _play_match(i: int) -> void:
 	current_main = null
 	current_bot = null
 	GameState.autotest = null
-	_save_coverage()
+	if not opt_tune:
+		_save_coverage()
 	for _f in 3:
 		await get_tree().process_frame
+
+
+## Tune mode: every distinct CPU card that reached play this match (in play, attached, or in the discard pile) —
+## the raw material for the tuner's synergy table.
+func _cpu_cards_used(m) -> Array:
+	var seen := {}
+	for pair in _zones(m, true):
+		if pair[1] in ["deck", "hand", "prize_cards"]:
+			continue
+		var c = pair[0]
+		if c is Object and "uid" in c:
+			seen[String(c.uid).to_lower()] = true
+	return seen.keys()
 
 
 ## A readable record of one match: both decks, then every in-game message (the Caps Lock match log) with whose
@@ -333,7 +435,16 @@ func _write_match_log(n: int, rec: Dictionary) -> void:
 
 ## Hook: start of every CPU turn, after its draw. Closes the previous turn, then records what the CPU could play now.
 func cpu_turn_start(m) -> void:
-	_cpu_close_turn()
+	_cpu_close_turn()   # judge the PREVIOUS turn before its KO list / Energy snapshot are reset
+	_cpu_ko_attacks = []
+	# Only BASIC Energy counts: holding a situational Special Energy (Scramble while ahead, R Energy with no Rocket's Pokémon) is fine.
+	_cpu_had_energy = m.opponent_hand.any(func(c): return c.metadata.get("supertype", "") == "Energy" and "Basic" in c.metadata.get("subtypes", []))
+	_cpu_needed_energy = false
+	for p in m.card_ops.get_all_pokemon_in_play(true):
+		if m.powers_and_bodies._cpu_unmet_energy(p) > 0 and not p.has_effect("ex5_energy_lock"):   # Crystal Beam: no Energy may be attached
+			_cpu_needed_energy = true
+	cpu_turn_t0 = Time.get_ticks_usec()
+	cpu_turn_ctx = "%s active, %d in hand, %d benched" % [m.opponent_active_pokemon.metadata.get("name", "?") if m.opponent_active_pokemon != null else "none", m.opponent_hand.size(), m.opponent_bench.size()]
 	_cpu_turn_open = true
 	for c in m.opponent_hand:
 		var st: String = c.metadata.get("supertype", "")
@@ -352,6 +463,11 @@ func cpu_turn_start(m) -> void:
 
 ## Hook: start of the CPU's attack phase — every attack its Active could legally use right now.
 func cpu_attack_phase(m) -> void:
+	# Checked HERE (after the CPU's Energy step, same turn): held Energy, something needed it, attached none.
+	var still_has_energy: bool = m.opponent_hand.any(func(c): return c.metadata.get("supertype", "") == "Energy" and "Basic" in c.metadata.get("subtypes", []) and m.card_ops.get_all_pokemon_in_play(true).any(func(p): return not p.has_effect("ex5_energy_lock") and m.powers_and_bodies._cpu_unmet_energy(p) > 0))
+	if still_has_energy and _cpu_needed_energy and not m.opponent_energy_played_this_turn:
+		_problem("CPU DECISION: NO ENERGY", "held Energy and had a Pokémon that needed it, but attached none", "noe" + str(match_index) + str(m.turn_number))
+	_cpu_ko_attacks = []   # this attack phase only - never a stale list from an earlier turn
 	var mon = m.opponent_active_pokemon
 	if mon == null or m.turn_number <= 1 or mon.special_condition in ["Paralyzed", "Asleep"]:
 		return
@@ -360,6 +476,14 @@ func cpu_attack_phase(m) -> void:
 		if m.is_attack_disabled(mon, an) or not m.check_attack_requirements(a, mon) or m.attack_effects.attack_unusable_reason(a, mon) != "":
 			continue
 		_cpu_offered["attack|" + mon.uid + "|" + an] = true
+		var foe = m.player_active_pokemon
+		if foe != null:
+			var rng_d: Dictionary = m.attack_effects.estimate_attack_damage_range(a, mon, foe)
+			var mn := int(rng_d.get("min", 0))
+			if mn > 0:
+				mn = int(m.calculate_final_damage(mn, mon.get_effective_types(), foe, mon).get("damage", mn))
+			if mn >= foe.current_hp:
+				_cpu_ko_attacks.append(an)
 
 
 func _cpu_close_turn() -> void:
@@ -372,6 +496,15 @@ func _cpu_close_turn() -> void:
 	for k in _cpu_used:
 		if k.begins_with("attack|"):
 			used_attack = k.get_slice("|", 2)
+	# ISSUE #375 smartness checks — flagged as "CPU DECISION" for review, with the CPU's own reasoning in problems.txt.
+	var offered_attacks: Array = _cpu_offered.keys().filter(func(k): return k.begins_with("attack|"))
+	# The CPU won the game on this turn, or began an attack (Confusion, a "can't attack X" block): not a missed KO.
+	var cpu_won: bool = match_done and match_result == "loss"
+	if not _cpu_ko_attacks.is_empty() and used_attack not in _cpu_ko_attacks and not cpu_won and not (used_attack == "(no attack)" and _cpu_attempted):
+		_problem("CPU DECISION: MISSED KO", "used %s when %s was a guaranteed Knock Out" % [used_attack, ", ".join(_cpu_ko_attacks)], "mko" + str(match_index) + str(_cpu_ko_attacks))
+	elif not offered_attacks.is_empty() and used_attack == "(no attack)" and not _cpu_attempted and is_instance_valid(current_main) and not current_main.game_is_over:
+		_problem("CPU DECISION: SKIPPED ATTACK", "could use %s but ended the turn without attacking" % ", ".join(offered_attacks.map(func(k): return k.get_slice("|", 2))), "skip" + str(match_index) + str(offered_attacks))
+
 	for k in keys:
 		if not cpu_usage.has(k):
 			cpu_usage[k] = {"offered": 0, "used": 0}
@@ -385,6 +518,7 @@ func _cpu_close_turn() -> void:
 			cpu_usage[k]["lost_to"][used_attack] = int(cpu_usage[k]["lost_to"].get(used_attack, 0)) + 1
 	_cpu_offered = {}
 	_cpu_used = {}
+	_cpu_attempted = false
 
 
 func _write_cpu_usage_report() -> void:
@@ -510,6 +644,328 @@ func stack_player_deck(deck: Array) -> void:
 	print("AUTOTEST: stacked deck for ", cards[opt_stack].get("name", ""), " — attack '", target_atk.get("name", ""), "', hand ", hand.map(func(c): return c.metadata.get("name", "")), ", then ", late.size(), " more Energy after the Prizes")
 
 
+# ───────────────────────────── real opponents (--real) ─────────────────────────────
+
+var opt_real := false
+var opt_bot_smart := false
+var opt_stress := false
+var real_entries: Array = []          # every opponent entry in the game: {label, deck, sprite, prize_cards, match_effects}
+var player_deck_files: Array = []     # user://Player_Decks/*.json — the editable copies + the player's own decks
+var current_opponent_label := ""
+var current_match_effects: Array = []
+var balance: Dictionary = {}          # label -> {"games", "cpu_wins", "bot_wins", "turns"}
+
+## Every opponent entry in NPC_and_Opponent_Data (Characters/*.json + All_NPC_Constant_Data.json): anything with a "deck".
+func _load_real_entries() -> void:
+	real_entries = []
+	var files: Array = ["res://NPC_and_Opponent_Data/All_NPC_Constant_Data.json"]
+	var d := DirAccess.open("res://NPC_and_Opponent_Data/Characters")
+	if d != null:
+		for f in d.get_files():
+			if f.ends_with(".json"):
+				files.append("res://NPC_and_Opponent_Data/Characters/" + f)
+	for f in files:
+		var data = JSON.parse_string(FileAccess.get_file_as_string(f))
+		_walk_entries(data, "")
+	var seen: Dictionary = {}
+	var unique: Array = []
+	for e in real_entries:
+		var key: String = e["label"] + "|" + e["deck"] + "|" + JSON.stringify(e["match_effects"])
+		if not seen.has(key):
+			seen[key] = true
+			unique.append(e)
+	real_entries = unique
+	var pd := DirAccess.open("user://Player_Decks")
+	if pd != null:
+		for f in pd.get_files():
+			if f.ends_with(".json"):
+				player_deck_files.append("user://Player_Decks/" + f)
+	print("AUTOTEST: --real — ", real_entries.size(), " opponent entries, ", player_deck_files.size(), " player decks")
+
+
+func _walk_entries(o, parent_key: String) -> void:
+	if o is Dictionary:
+		if o.has("deck") and o["deck"] is String and String(o["deck"]) != "":
+			var label := String(o.get("name", parent_key))
+			if label == "": label = String(o["deck"])
+			real_entries.append({"label": label, "deck": o["deck"], "sprite": o.get("sprite", ""),
+				"prize_cards": int(o.get("prize_cards", 6)), "match_effects": o.get("match_effects", [])})
+		for k in o:
+			_walk_entries(o[k], String(k) if not (o[k] is Array) else parent_key)
+	elif o is Array:
+		for v in o:
+			_walk_entries(v, parent_key)
+
+
+func _read_deck_file(path: String) -> Array:
+	var data = JSON.parse_string(FileAccess.get_file_as_string(path))
+	return data if data is Array else []
+
+
+## The opponent data the match should load (Main.load_opponent_data_by_name reads it). Empty = the plain test opponent.
+func real_opponent_data_for(entry: Dictionary) -> Dictionary:
+	return {"name": entry["label"], "deck": entry["deck"], "sprite": entry["sprite"], "music": "",
+		"prize_cards": entry["prize_cards"], "coin_reward": "", "sleeve": "", "match_effects": entry["match_effects"], "restrictions": {}}
+
+
+# ───────────────────────────── stress decks (--stress) ─────────────────────────────
+
+## Extreme player decks that reach edge cases normal decks never do.
+func _stress_deck(i: int, rng: RandomNumberGenerator) -> Array:
+	var basics: Array = []
+	var stage2: Array = []
+	var trainers: Array = []
+	for uid in cards:
+		var c: Dictionary = cards[uid]
+		match c.get("supertype", ""):
+			"Pokémon":
+				if "Basic" in c.get("subtypes", []): basics.append(uid)
+				elif "Stage 2" in c.get("subtypes", []): stage2.append(uid)
+			"Trainer": trainers.append(uid)
+	var e: String = basic_energy_for.get(["Fire", "Water", "Grass", "Lightning", "Psychic", "Fighting"][rng.randi() % 6], "base1-98")
+	var deck: Dictionary = {}
+	var add = func(uid: String, n: int) -> void: deck[uid] = int(deck.get(uid, 0)) + n
+	var recipe: int = i % 5
+	match recipe:
+		0:   # one Basic + 59 Energy — deck-out race, nothing to play
+			add.call(basics[rng.randi() % basics.size()], 1); add.call(e, 59)
+		1:   # Trainer flood — 4 Basics, 56 Trainers
+			for _k in 4: add.call(basics[rng.randi() % basics.size()], 1)
+			for _k in 56: add.call(trainers[rng.randi() % trainers.size()], 1)
+		2:   # 60 Basic Pokémon — benches always full, no Energy
+			for _k in 60: add.call(basics[rng.randi() % basics.size()], 1)
+		3:   # Stage 2s with no Stage 1s — dead hands
+			for _k in 4: add.call(basics[rng.randi() % basics.size()], 1)
+			for _k in 24: add.call(stage2[rng.randi() % stage2.size()], 1)
+			add.call(e, 32)
+		4:   # a single Energy card
+			for _k in 30: add.call(basics[rng.randi() % basics.size()], 1)
+			for _k in 29: add.call(trainers[rng.randi() % trainers.size()], 1)
+			add.call(e, 1)
+	print("AUTOTEST: --stress recipe ", ["one Basic + 59 Energy", "Trainer flood", "60 Basics", "Stage 2s without Stage 1s", "one Energy"][recipe])
+	var out: Array = []
+	for uid in deck:
+		out.append({"id": uid, "count": deck[uid]})
+	return out
+
+
+# ───────────────────────────── rule-check oracles ─────────────────────────────
+
+var oracle_pending: Dictionary = {}
+var oracle_stats := {"damage": [0, 0], "status": [0, 0], "draw": [0, 0]}   # [checked, failed]
+
+## Hook: Attack_Effects.begin_attack — snapshot what the attack should change.
+func attack_begin(attack: Dictionary, attacker, defender, is_opponent: bool) -> void:
+	oracle_pending = {}
+	if is_opponent:
+		_cpu_attempted = true
+		if _cpu_turn_open:
+			_cpu_used["attack|" + attacker.uid + "|" + String(attack.get("name", ""))] = true
+	if not is_instance_valid(current_main) or attacker == null or defender == null:
+		return
+	var m = current_main
+	var text: String = String(attack.get("text", "")).strip_edges().to_lower()
+	var dmg_str: String = String(attack.get("damage", "")).strip_edges()
+	var kind := ""
+	if text == "" and dmg_str.is_valid_int() and int(dmg_str) > 0:
+		kind = "damage"
+	elif RegEx.create_from_string("^the defending pok.mon is now (asleep|confused|paralyzed|poisoned|burned)\\.$").search(text) != null:
+		kind = "status"
+	elif RegEx.create_from_string("^draw ([0-9]+) cards?\\.$").search(text) != null:
+		kind = "draw"
+	if kind == "":
+		return
+	oracle_pending = {"kind": kind, "attack": attack, "attacker": attacker, "defender": defender, "is_opp": is_opponent,
+		"hp_before": defender.current_hp, "clean": _oracle_clean(attacker, defender),
+		"hand_before": (m.opponent_hand if is_opponent else m.player_hand).size(),
+		"deck_before": (m.opponent_deck if is_opponent else m.player_deck).size(), "text": text}
+
+
+## A board where nothing else can change the result: no Tools / attached Trainers, no Stadium, no match rules, no
+## temporary effects, no Pokémon with any Power or Body anywhere, no Special Condition on the attacker.
+func _oracle_clean(attacker, defender) -> bool:
+	var m = current_main
+	if m.current_stadium_card != null or not current_match_effects.is_empty():
+		return false
+	if attacker.special_condition != "" or attacker.is_blind:
+		return false
+	for p in [attacker, defender]:
+		if not p.attached_cards.is_empty() or not p.active_effects.is_empty() or p.is_invincible \
+				or p.shielded_damage_threshold > 0 or p.defender_count > 0 or p.pluspower_count > 0 or p.damage_reduction_next_turn > 0:
+			return false
+		# Any other set flag (Scrunch, Swords Dance, Focus Energy, Tail Wag, Giant Growth...) or a Special Energy
+		# (Aqua / Magma Energy +10...) can change the damage — the oracle only judges plain board states.
+		if _flags(p) not in ["none", p.special_condition]:
+			return false
+		for e in p.attached_energies:
+			if "Special" in e.metadata.get("subtypes", []):
+				return false
+	for side in [false, true]:
+		for p in m.card_ops.get_all_pokemon_in_play(side):
+			if not p.metadata.get("abilities", []).is_empty():
+				return false
+	return true
+
+
+## Hook: Attack_Effects.end_attack — compare what happened with what the card text says.
+func attack_end() -> void:
+	if oracle_pending.is_empty() or not is_instance_valid(current_main):
+		oracle_pending = {}
+		return
+	var o := oracle_pending
+	oracle_pending = {}
+	var m = current_main
+	var att = o["attacker"]
+	var dfd = o["defender"]
+	var in_play: bool = dfd in m.card_ops.get_all_pokemon_in_play(not o["is_opp"])
+	match o["kind"]:
+		"damage":
+			if not o["clean"]:
+				return
+			var base := int(String(o["attack"].get("damage", "0")))
+			var types: Array = att.get_effective_types()
+			var exp := base
+			for w in dfd.metadata.get("weaknesses", []):
+				if w.get("type", "") in types:
+					var v := String(w.get("value", "×2"))
+					exp = exp * 2 if ("×" in v or "x" in v) else exp + int(v.replace("+", ""))
+			for r in dfd.metadata.get("resistances", []):
+				if r.get("type", "") in types:
+					exp = maxi(0, exp + int(String(r.get("value", "-30"))))
+			oracle_stats["damage"][0] += 1
+			var dealt: int = (o["hp_before"] - dfd.current_hp) if in_play else o["hp_before"]
+			var ok: bool = (dealt == mini(exp, o["hp_before"])) if in_play else (exp >= o["hp_before"])
+			if not ok:
+				oracle_stats["damage"][1] += 1
+				_problem("ORACLE: DAMAGE", "%s's %s did %d to %s (%d HP before) — the card says %d (base %d, after Weakness/Resistance). Flags: %s / %s" % [
+					_cname(att), o["attack"].get("name", ""), dealt, _cname(dfd), o["hp_before"], exp, base, _flags(att), _flags(dfd)],
+					"oracle-dmg" + str(att.uid) + o["attack"].get("name", ""))
+		"status":
+			if not in_play or not dfd.metadata.get("abilities", []).is_empty():
+				return
+			var want: String = RegEx.create_from_string("is now (asleep|confused|paralyzed|poisoned|burned)").search(o["text"]).get_string(1).capitalize()
+			oracle_stats["status"][0] += 1
+			var has: bool = dfd.special_condition == want if want in ["Asleep", "Confused", "Paralyzed"] else (dfd.is_poisoned if want == "Poisoned" else dfd.is_burned)
+			if not has and not o["clean"]:
+				return   # something on the board may have stopped it — only judge clean boards
+			if not has:
+				oracle_stats["status"][1] += 1
+				_problem("ORACLE: STATUS", "%s's %s should leave %s %s — it isn't. Flags: %s" % [_cname(att), o["attack"].get("name", ""), _cname(dfd), want, _flags(dfd)],
+					"oracle-st" + str(att.uid) + o["attack"].get("name", ""))
+		"draw":
+			var n := int(RegEx.create_from_string("draw ([0-9]+)").search(o["text"]).get_string(1))
+			var hand: Array = m.opponent_hand if o["is_opp"] else m.player_hand
+			var got: int = hand.size() - int(o["hand_before"])
+			var want_n: int = mini(n, int(o["deck_before"]))
+			oracle_stats["draw"][0] += 1
+			if got != want_n:
+				oracle_stats["draw"][1] += 1
+				_problem("ORACLE: DRAW", "%s's %s drew %d — the card says %d (deck had %d)" % [_cname(att), o["attack"].get("name", ""), got, n, o["deck_before"]],
+					"oracle-dr" + str(att.uid) + o["attack"].get("name", ""))
+
+
+## Every non-default flag on a card, for triaging an oracle mismatch.
+func _flags(c) -> String:
+	var out: Array = []
+	for prop in c.get_property_list():
+		var nm: String = prop["name"]
+		if prop["type"] == TYPE_BOOL and c.get(nm) == true and nm not in ["placed_on_field_this_turn"]:
+			out.append(nm)
+	if not c.active_effects.is_empty():
+		out.append("effects:" + str(c.active_effects.keys()))
+	if c.special_condition != "":
+		out.append(c.special_condition)
+	return ", ".join(out) if not out.is_empty() else "none"
+
+
+# ───────────────────────────── extra per-turn checks ─────────────────────────────
+
+func _extra_checks(m) -> void:
+	for side in [false, true]:
+		var nm := "CPU" if side else "BOT"
+		var bench: Array = m.opponent_bench if side else m.player_bench
+		var active = m.opponent_active_pokemon if side else m.player_active_pokemon
+		if bench.size() > m.get_max_bench_size():
+			_problem("BENCH OVER LIMIT", "%s has %d Benched Pokémon (max %d)" % [nm, bench.size(), m.get_max_bench_size()], "bench" + nm)
+		if active == null and not bench.is_empty():
+			_problem("NO ACTIVE", "%s has no Active Pokémon but %d on the Bench" % [nm, bench.size()], "noact" + nm)
+		# It is the BOT's turn now: the CPU's turn just ended (its "end_of_own_turn" effects must be gone), and the
+		# player's "end_of_opponent_turn" effects must be gone too.
+		for p in m.card_ops.get_all_pokemon_in_play(side):
+			for k in p.active_effects:
+				var dur: String = p.active_effects[k].get("duration", "")
+				if (side and dur == "end_of_own_turn") or (not side and dur == "end_of_opponent_turn"):
+					_problem("STALE EFFECT", "%s's %s still has '%s' (%s) after that turn ended" % [nm, _cname(p), k, dur], "stale" + k + str(p.get_instance_id()))
+			for e in p.attached_energies:
+				# "You can attach this card to your Pokémon that has..." (Bounce Energy) is checked only AT attach time —
+				# Bounce itself then returns that basic Energy, so failing it later is legal.
+				var attach_time_only: bool = "you can attach this card to" in str(e.metadata.get("rules", [])).to_lower()
+				if "Special" in e.metadata.get("subtypes", []) and not attach_time_only and not bool(m.special_energy_effects.can_attach_to(e, p).get("allowed", true)):
+					_problem("ILLEGAL ENERGY", "%s's %s holds %s, which can't be attached to it" % [nm, _cname(p), _cname(e)], "illeg" + str(e.get_instance_id()))
+
+
+const BAD_LOG_TEXT := ["not implemented", "error: ", "[name]", "[time]", " null", "<null>", "todo"]   # not " error": card names have it (Computer Error, Terror Strike)
+
+func _scan_log_text(text: String) -> void:
+	var tl := text.to_lower().replace("computer error", "").replace("terror", "")   # card names, not error text
+	for b in BAD_LOG_TEXT:
+		if b in tl:
+			_problem("LOG TEXT", "In-game message contains '%s': \"%s\"" % [b, text], "logtxt" + b + text.left(40))
+			return
+
+
+# ───────────────────────────── CPU turn timing ─────────────────────────────
+
+var cpu_turn_t0 := 0
+var cpu_turn_ctx := ""
+var cpu_turn_times: Array = []   # [ms, "match/turn/context"]
+var _was_cpu_turn := false
+
+func _time_cpu_turns(m) -> void:
+	var cpu_turn: bool = m.opponents_turn_active
+	if _was_cpu_turn and not cpu_turn and cpu_turn_t0 > 0:
+		var ms := (Time.get_ticks_usec() - cpu_turn_t0) / 1000.0
+		cpu_turn_times.append([ms, "match %d turn %d: %s" % [match_index + 1, m.turn_number, cpu_turn_ctx]])
+		cpu_turn_t0 = 0
+	_was_cpu_turn = cpu_turn
+
+
+func _timing_and_oracle_report() -> PackedStringArray:
+	var s := PackedStringArray()
+	s.append("")
+	s.append("RULE-CHECK ORACLES (clean boards only): damage %d checked / %d wrong, status %d / %d, draw %d / %d" % [
+		oracle_stats["damage"][0], oracle_stats["damage"][1], oracle_stats["status"][0], oracle_stats["status"][1], oracle_stats["draw"][0], oracle_stats["draw"][1]])
+	if not cpu_turn_times.is_empty():
+		var ms_list: Array = cpu_turn_times.map(func(x): return x[0])
+		ms_list.sort()
+		var total := 0.0
+		for x in ms_list: total += x
+		s.append("CPU TURN TIME: %d turns, average %.0f ms, 95th percentile %.0f ms, slowest %.0f ms" % [ms_list.size(), total / ms_list.size(), ms_list[int(ms_list.size() * 0.95)], ms_list[-1]])
+		var slow := cpu_turn_times.duplicate()
+		slow.sort_custom(func(a, b): return a[0] > b[0])
+		for x in slow.slice(0, 10):
+			s.append("   %6.0f ms  %s" % [x[0], x[1]])
+	return s
+
+
+func _write_balance_report() -> void:
+	if balance.is_empty():
+		return
+	var rows: Array = []
+	for label in balance:
+		var b: Dictionary = balance[label]
+		rows.append([float(b["cpu_wins"]) / maxf(1.0, float(b["games"])), label, b])
+	rows.sort_custom(func(a, b): return a[0] > b[0])
+	var s := PackedStringArray()
+	s.append("OPPONENT BALANCE — CPU win rate vs the %s bot, per opponent (deck + match rules as in the game)" % ("SMART" if opt_bot_smart else "random"))
+	for r in rows:
+		var b: Dictionary = r[2]
+		s.append("  %5.1f%%  %3d games  avg %4.1f turns  %s" % [r[0] * 100.0, b["games"], float(b["turns"]) / maxf(1.0, float(b["games"])), r[1]])
+	var f := FileAccess.open(run_dir + "balance_report.txt", FileAccess.WRITE)
+	f.store_string("\n".join(s))
+	f.close()
+
+
 ## Called by game_end_logic() instead of moving to the outro.
 func on_match_over(_m: Node, result: String, is_draw: bool) -> void:
 	match_result = "draw" if is_draw else ("win" if result == "win" else "loss")
@@ -539,6 +995,9 @@ func note(kind: String, uid: String, name: String, is_opponent: bool) -> void:
 ## Every in-game message, in full (the game's own log keeps only the last 250).
 func log_message(text: String, turn: int, opp_turn: bool) -> void:
 	match_messages.append([turn, opp_turn, text])
+	if opp_turn and "CAN'T ATTACK" in text.to_upper():
+		_cpu_attempted = true   # the CPU chose an attack and the game blocked it
+	_scan_log_text(text)
 	if opt_strict and is_instance_valid(current_main) and not originals[0].is_empty():
 		for side in [false, true]:
 			var seen: Dictionary = {}
@@ -583,6 +1042,7 @@ func _watch(delta: float) -> void:
 		_problem("TURN LIMIT", "Match reached turn %d — a stall loop, or two decks that can't finish each other" % m.turn_number, "turnlimit")
 		_abort("turn limit")
 		return
+	_time_cpu_turns(m)
 	var s := _signature(m)
 	if s != _sig:
 		_sig = s
@@ -597,6 +1057,7 @@ func _watch(delta: float) -> void:
 	if not m.opponents_turn_active and m.turn_number != _last_checked_turn and current_bot._board_idle():
 		_last_checked_turn = m.turn_number
 		_check_cards(m)
+		_extra_checks(m)
 
 
 func _signature(m) -> String:
@@ -1027,6 +1488,8 @@ func _write_summary() -> void:
 	for kind in ["attack", "power", "trainer", "energy"]:
 		var pct: float = 100.0 * used[kind] / max(1, universe[kind])
 		s.append("  %-8s %5d / %5d used at least once  (%.1f%%)" % [kind, used[kind], universe[kind], pct])
+	s.append_array(_timing_and_oracle_report())
+	_write_balance_report()
 	var f := FileAccess.open(run_dir + "summary.txt", FileAccess.WRITE)
 	f.store_string("\n".join(s))
 	f.close()

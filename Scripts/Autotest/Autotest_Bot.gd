@@ -189,6 +189,15 @@ func _answer_selection() -> bool:
 	if not m.action_button.visible:
 		return _press_cancel()
 
+	# --bot=smart: Energy goes where it gets an attack closest to usable.
+	if _smart() and m.card_attach_mode_active:
+		var best_t = _smart_attach_target(pool)
+		if best_t != null:
+			_click(best_t)
+			if _press_action():
+				_log("smart: attach to " + _name(best_t))
+				return true
+
 	# --stack: Energy and evolutions go onto the target's line, like a player with a plan.
 	if _stacking() and (m.card_attach_mode_active or m.evolution_mode_active):
 		for c in pool:
@@ -276,7 +285,13 @@ func _run_driver_step() -> void:
 		_actions_this_turn = 0
 		_powers_this_turn = 0
 		_retreated_this_turn = false
+		_smart_trainers = 0
 	_actions_this_turn += 1
+	if _smart():
+		_driver_busy = true
+		await _smart_step()
+		_driver_busy = false
+		return
 
 	var options: Array = []   # [weight, label, Callable]
 	var forced_end := _actions_this_turn > MAX_ACTIONS_PER_TURN
@@ -343,6 +358,103 @@ func _run_driver_step() -> void:
 	_driver_busy = true
 	await chosen[2].call()
 	_driver_busy = false
+
+
+# ───────────────────────────── --bot=smart: a sensible plan ─────────────────────────────
+
+var _smart_trainers := 0
+
+func _smart() -> bool:
+	return runner != null and bool(runner.get("opt_bot_smart"))
+
+
+func _smart_step() -> void:
+	var m = main
+	if _actions_this_turn > MAX_ACTIONS_PER_TURN:
+		_end_turn()
+		return
+	# 1. Evolve whatever can evolve.
+	for card in m.player_hand:
+		if m.get_card_action(card).get("action", "") == "EVOLVE" and not m.get_valid_evolution_targets(card, false).is_empty():
+			_log("SMART: evolve " + _name(card))
+			await _play_hand_card(card)
+			return
+	# 2. Keep three Pokémon on the Bench.
+	if m.player_bench.size() < mini(3, m.get_max_bench_size()):
+		for card in m.player_hand:
+			if m.get_card_action(card).get("action", "") == "SET_POKEMON":
+				_log("SMART: bench " + _name(card))
+				await _play_hand_card(card)
+				return
+	# 3. One Energy, onto whatever it helps most (the answerer picks the target).
+	if not m.player_energy_played_this_turn:
+		for card in m.player_hand:
+			if m.get_card_action(card).get("action", "") == "ATTACH_ENERGY" and _energy_has_target(card):
+				_log("SMART: attach " + _name(card))
+				await _play_hand_card(card)
+				return
+	# 4. Up to three Trainers a turn.
+	if _smart_trainers < 3:
+		for card in m.player_hand:
+			if m.get_card_action(card).get("action", "") == "PLAY_TRAINER" and m.trainer_effects.validate_trainer_can_be_played(card, false) == "":
+				_smart_trainers += 1
+				_log("SMART: trainer " + _name(card))
+				await _play_hand_card(card)
+				return
+	# 5. Retreat only into something that can attack when the Active can't.
+	var attacks := _usable_attacks()
+	if attacks.is_empty() and not _retreated_this_turn and not m.player_bench.is_empty() and bool(m.can_retreat(false).get("can_retreat", false)):
+		for bp in m.player_bench:
+			if _payable_attack(bp):
+				_retreated_this_turn = true
+				_log("SMART: retreat")
+				_retreat()
+				return
+	# 6. The best attack — a Knock Out first.
+	if not attacks.is_empty():
+		var mon = m.player_active_pokemon
+		var foe = m.opponent_active_pokemon
+		var all_attacks: Array = m.get_attacks_for_card(mon)
+		var best_i: int = attacks[0]
+		var best_v := -INF
+		for i in attacks:
+			var ex := float(m.attack_effects.estimate_attack_damage_range(all_attacks[i], mon, foe).get("expected", 0))
+			var v := ex + (1000.0 if foe != null and ex >= foe.current_hp else 0.0)
+			if v > best_v:
+				best_v = v
+				best_i = i
+		_log("SMART: attack " + str(all_attacks[best_i].get("name", "")))
+		await _attack(best_i)
+		return
+	_log("SMART: end turn")
+	_end_turn()
+
+
+func _payable_attack(p) -> bool:
+	for a in main.get_attacks_for_card(p):
+		if main.check_attack_requirements(a, p):
+			return true
+	return false
+
+
+## The Pokémon whose best attack is closest to (but not yet) payable — the Active first.
+func _smart_attach_target(pool: Array):
+	var best = null
+	var best_short := 999
+	for p in pool:
+		if not (p is Object) or not ("attached_energies" in p):
+			continue
+		var short := 999
+		for a in main.get_attacks_for_card(p):
+			short = mini(short, main.cpu_ai.get_unmet_energy_count(a, p))
+		if short <= 0:
+			short = 50   # already has what it needs
+		if p == main.player_active_pokemon:
+			short -= 1
+		if short < best_short:
+			best_short = short
+			best = p
+	return best
 
 
 func _stacking() -> bool:

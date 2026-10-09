@@ -69,6 +69,7 @@ var test_match_mode: bool = false
 var autotest: Node = null
 var autotest_player_deck_path: String = ""
 var autotest_opponent_deck_path: String = ""
+var autotest_opponent_data: Dictionary = {}   # AUTOTEST --real: the real opponent entry to load (empty = test opponent)
 
 var return_to_scene: String = ""
 var interior_entry_position: Vector2 = Vector2.ZERO

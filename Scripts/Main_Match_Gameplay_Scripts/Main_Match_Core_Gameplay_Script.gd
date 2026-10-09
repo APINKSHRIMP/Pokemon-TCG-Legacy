@@ -9764,6 +9764,8 @@ func load_opponent_data_by_name(opp_name: String):
 	# TEMP TESTING: T-key TEST match synthesizes opponent data instead of reading NPC JSON.
 	if GameState.test_match_mode:
 		opponent_data = GameState.build_test_opponent_data()
+		if GameState.autotest != null and not GameState.autotest_opponent_data.is_empty():
+			opponent_data = GameState.autotest_opponent_data.duplicate(true)   # AUTOTEST --real: a real opponent's rules
 		return
 
 	opponent_data = CharacterSchedule.find_opponent(

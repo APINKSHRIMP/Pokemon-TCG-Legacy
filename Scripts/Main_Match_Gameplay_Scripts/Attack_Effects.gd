@@ -520,6 +520,7 @@ var _prechecked_attacker: card_object = null
 var _transparency_results: Dictionary = {}
 
 func begin_attack(attack: Dictionary, attacker: card_object, defender: card_object, is_opponent: bool) -> void:
+	if GameState.autotest != null: GameState.autotest.attack_begin(attack, attacker, defender, is_opponent)   # AUTOTEST oracles
 	attack_serial += 1
 	current_attacker = attacker
 	current_attacker_is_opponent = is_opponent
@@ -540,6 +541,7 @@ func begin_attack(attack: Dictionary, attacker: card_object, defender: card_obje
 		" uses ", attack.get("name", "?"))
 
 func end_attack() -> void:
+	if GameState.autotest != null: GameState.autotest.attack_end()   # AUTOTEST oracles
 	current_attacker = null
 	current_defender = null
 	_prechecked_attacker = null
@@ -2497,6 +2499,11 @@ func apply_card_text_effects(effects: Array, attacker: card_object, defender: ca
 			print("EFFECT SKIPPED: Needed ", required_flip, " but got ", flip_result)
 			continue
 
+		# ISSUE #375: the Defending Pokémon can be gone before the effects resolve (Knocked Out / removed by an
+		# on-damage Power mid-attack — the caller then passes a null Active). Its effects have nothing to land on.
+		if effect.get("target") == "defender" and defender == null:
+			print("ISSUE #375 FIX ACTIVE: no Defending Pokémon left — skipping ", effect["type"])
+			continue
 		if effect.get("target") == "defender" and defender.is_invincible:
 			print("EFFECT BLOCKED: Defender is invincible - skipping ", effect["type"])
 			continue

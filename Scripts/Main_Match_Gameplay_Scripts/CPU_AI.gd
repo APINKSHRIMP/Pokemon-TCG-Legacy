@@ -13,6 +13,7 @@ var main: Node
 # ISSUE #74: Lass (base1-75, the only card with this name) is deliberately held back until every
 # other CPU action has resolved, so it is skipped by the normal trainer phases and played by
 # cpu_phase_play_lass_last() immediately before the attack phase.
+const CpuWeights = preload("res://Scripts/Main_Match_Gameplay_Scripts/CPU_Weights.gd")   # ISSUE #375 self-play tuning
 const LASS_UID := "base1-75"
 
 # Fix 2: CPU evaluation cache
@@ -758,7 +759,7 @@ func _offensive_retreat_target() -> card_object:
 		if _is_guaranteed_ko_by(bench_pokemon, main.player_active_pokemon):
 			continue
 		var bench_damage = _best_usable_damage_against(bench_pokemon, main.player_active_pokemon)
-		if bench_damage >= active_damage + 20 and bench_damage >= int(active_damage * 1.5) + 1 and bench_damage > best_damage:
+		if bench_damage >= active_damage + int(CpuWeights.g("retreat.offensive_gain", 20.0)) and bench_damage >= int(active_damage * CpuWeights.g("retreat.offensive_ratio", 1.5)) + 1 and bench_damage > best_damage:
 			best = bench_pokemon
 			best_damage = bench_damage
 	return best
@@ -897,12 +898,12 @@ func criterion_1_single_energy_attack(basic_pokemon: card_object) -> Dictionary:
 	
 	if min_cost == 1:
 		return {
-			"score_change": 100.0,
+			"score_change": CpuWeights.g("setup.one_energy_attack", 100.0),
 			"reason": "Can attack for only 1 energy. (+100 points)"
 		}
 	else:
 		return {
-			"score_change": -50.0,
+			"score_change": CpuWeights.g("setup.no_one_energy_attack", -50.0),
 			"reason": "Minimum attack cost is " + str(min_cost) + " energy. (-50 points)"
 		}
 
@@ -920,7 +921,7 @@ func criterion_2_evolution_available(basic_pokemon: card_object, hand: Array) ->
 		if card.metadata.has("subtypes") and card.metadata["subtypes"].has("Stage 1"):
 			if main.can_evolve_from(card, basic_pokemon):
 				stage_1_list.append(card)
-				score_change += 100.0
+				score_change += CpuWeights.g("setup.stage1_in_hand", 100.0)
 	
 	# Check if ANY of the Stage 1s has a Stage 2 evolution (only count once)
 	if stage_1_list.size() > 0:
@@ -930,7 +931,7 @@ func criterion_2_evolution_available(basic_pokemon: card_object, hand: Array) ->
 				break
 		
 		if has_stage_2_chain:
-			score_change += 100.0
+			score_change += CpuWeights.g("setup.stage2_chain", 100.0)
 			reason = "Has " + str(stage_1_list.size()) + " Stage 1(s) with Stage 2 chain. (+"+str(score_change) +" points)"
 		else:
 			reason = "Has " + str(stage_1_list.size()) + " Stage 1 evolution(s) (+"+str(score_change) +" points)"
@@ -962,7 +963,7 @@ func criterion_3_energy_type_match(basic_pokemon: card_object, hand: Array) -> D
 	
 	# Handle Colorless pokemon - gets +20 per basic energy available
 	if pokemon_type == "Colorless":
-		var score_bonus = 15.0 * basic_energies_in_hand.size()
+		var score_bonus = CpuWeights.g("setup.colorless_per_energy", 15.0) * basic_energies_in_hand.size()
 		return {
 			"score_change": score_bonus,
 			"reason": "Colorless type - " + str(basic_energies_in_hand.size()) + " basic energies available (+"+str(score_bonus) +" points)"
@@ -977,7 +978,7 @@ func criterion_3_energy_type_match(basic_pokemon: card_object, hand: Array) -> D
 	
 	# If matching energies found
 	if matching_energy_count > 0:
-		var score_bonus = 30.0 * matching_energy_count
+		var score_bonus = CpuWeights.g("setup.per_matching_energy", 30.0) * matching_energy_count
 		return {
 			"score_change": score_bonus,
 			"reason": "Has " + str(matching_energy_count) + " " + pokemon_type + " energy card(s) (+"+str(score_bonus) +" points)"
@@ -985,7 +986,7 @@ func criterion_3_energy_type_match(basic_pokemon: card_object, hand: Array) -> D
 	
 	# No matching energy found
 	return {
-		"score_change": -150.0,
+		"score_change": CpuWeights.g("setup.no_matching_energy", -150.0),
 		"reason": "No matching " + pokemon_type + " energy in hand (-150 points)"
 	}	
 	
@@ -995,7 +996,7 @@ func criterion_3_energy_type_match(basic_pokemon: card_object, hand: Array) -> D
 # e.g 100HP = +150
 func criterion_4_pokemon_hp(basic_pokemon: card_object) -> Dictionary:
 	var hp = main.get_pokemon_hp(basic_pokemon)
-	var score_bonus = hp * 2
+	var score_bonus = hp * CpuWeights.g("setup.hp_mult", 2.0)
 	
 	return {
 		"score_change": score_bonus,
@@ -1020,7 +1021,7 @@ func criterion_5_attack_damage(basic_pokemon: card_object) -> Dictionary:
 	var min_cost_attack = get_minimum_cost_attack(basic_pokemon)
 	if not min_cost_attack.is_empty() and min_cost_attack.get("cost") == 1:
 		var one_energy_damage = min_cost_attack.get("damage", 0)
-		var one_energy_bonus = one_energy_damage * 3
+		var one_energy_bonus = one_energy_damage * CpuWeights.g("setup.one_energy_damage_mult", 3.0)
 		score_bonus += one_energy_bonus
 		reason_parts.append(str(one_energy_damage) + " damage at 1 energy (+" + str(one_energy_bonus) + " points)")
 		
@@ -1057,7 +1058,7 @@ func criterion_5_attack_damage(basic_pokemon: card_object) -> Dictionary:
 		# Only calculate efficiency if there's actual damage
 		if max_damage > 0:
 			var efficiency = float(max_damage) / float(max_cost)
-			var efficiency_bonus = efficiency * 3.0
+			var efficiency_bonus = efficiency * CpuWeights.g("setup.efficiency_mult", 3.0)
 			score_bonus += efficiency_bonus
 			reason_parts.append("highest damage efficiency " + str(max_damage) + "/" + str(max_cost) + " energy (+" + str(efficiency_bonus) + " points)")
 	
@@ -1094,7 +1095,7 @@ func criterion_6_bench_duplicate(basic_pokemon: card_object, hand: Array) -> Dic
 			"reason": "Already have " + str(duplicate_count) + " " + name + " on Bench, and a field effect benefits from the stack (flat +300 points)"
 		}
 
-	var magnitude = 75.0 * duplicate_count
+	var magnitude = CpuWeights.g("setup.duplicate_penalty", 75.0) * duplicate_count
 	return {
 		"score_change": -magnitude,
 		"reason": "Already have " + str(duplicate_count) + " " + name + " on Bench (-" + str(magnitude) + " points)"
@@ -1523,7 +1524,7 @@ func is_retreat_cost_worthwhile(cpu_eval: Dictionary) -> bool:
 		return false
 
 	# Losing more than half the energy for primary attack is generally bad
-	if energy_lost_ratio > 0.5 and not can_attack_after:
+	if energy_lost_ratio > CpuWeights.g("retreat.max_energy_loss", 0.5) and not can_attack_after:
 		print("CPU retreat not worthwhile: would lose " + str(retreat_cost) + " energy and cannot attack from bench")
 		return false
 
@@ -1772,7 +1773,7 @@ func score_bench_as_replacement(bench_pokemon: card_object, against_pokemon: car
 
 	# Can already attack: strong preference
 	if bench_data.get("can_attack", false):
-		score += 200.0
+		score += CpuWeights.g("replace.can_attack", 200.0)
 
 	# Among attackers, prefer one that can KO the opposing active
 	if bench_data.get("can_attack", false) and against_pokemon != null:
@@ -1781,7 +1782,7 @@ func score_bench_as_replacement(bench_pokemon: card_object, against_pokemon: car
 				continue
 			var result = main.calculate_final_damage(attack["damage_min"], bench_types, against_pokemon)
 			if result["damage"] >= against_pokemon.current_hp:
-				score += 150.0
+				score += CpuWeights.g("replace.can_ko", 150.0)
 				break
 
 	# Closest to attacking if can't attack yet
@@ -1791,7 +1792,7 @@ func score_bench_as_replacement(bench_pokemon: card_object, against_pokemon: car
 			if attack["unmet"] < lowest_unmet:
 				lowest_unmet = attack["unmet"]
 		if lowest_unmet < 999:
-			score += max(0.0, 80.0 - (lowest_unmet * 25.0))
+			score += max(0.0, CpuWeights.g("replace.near_attack", 80.0) - (lowest_unmet * 25.0))
 
 	# Survivability: can this pokemon take a hit from the opposing active
 	if against_pokemon != null:
@@ -1804,13 +1805,13 @@ func score_bench_as_replacement(bench_pokemon: card_object, against_pokemon: car
 			var result = main.calculate_final_damage(damage_range["max"], enemy_types, bench_pokemon)
 			enemy_max_damage = max(enemy_max_damage, result["damage"])
 		if bench_pokemon.current_hp > enemy_max_damage:
-			score += 100.0
+			score += CpuWeights.g("replace.survives", 100.0)
 
 	# Type advantage: our attacks hit the opponent's weakness
 	if against_pokemon != null:
 		for weakness in against_pokemon.metadata.get("weaknesses", []):
 			if weakness["type"] in bench_types:
-				score += 75.0
+				score += CpuWeights.g("replace.hits_weakness", 75.0)
 				break
 
 	# Type disadvantage: opponent's attacks hit our weakness
@@ -1818,7 +1819,7 @@ func score_bench_as_replacement(bench_pokemon: card_object, against_pokemon: car
 		var enemy_types = against_pokemon.metadata.get("types", ["Colorless"])
 		for weakness in bench_pokemon.metadata.get("weaknesses", []):
 			if weakness["type"] in enemy_types:
-				score -= 60.0
+				score -= CpuWeights.g("replace.is_weak", 60.0)
 				break
 
 	# Resistance bonus: we resist the opponent's type
@@ -1826,11 +1827,11 @@ func score_bench_as_replacement(bench_pokemon: card_object, against_pokemon: car
 		var enemy_types = against_pokemon.metadata.get("types", ["Colorless"])
 		for resistance in bench_pokemon.metadata.get("resistances", []):
 			if resistance["type"] in enemy_types:
-				score += 50.0
+				score += CpuWeights.g("replace.resists", 50.0)
 				break
 
 	# HP tiebreaker
-	score += bench_pokemon.current_hp * 0.1
+	score += bench_pokemon.current_hp * CpuWeights.g("replace.hp", 0.1)
 
 	return score
 
@@ -2146,9 +2147,9 @@ func score_energy_pair(pokemon: card_object, energy_card: card_object, cpu_eval:
 	# ISSUE #35 FIX: bumped the Active bonus by +50 (40 -> 90) to put more weight on keeping the
 	# Active powered up rather than feeding the bench.
 	if is_active:
-		score += 90.0
+		score += CpuWeights.g("energy.active_bonus", 90.0)
 	else:
-		score -= 20.0
+		score -= CpuWeights.g("energy.bench_penalty", 20.0)
 
 	# ISSUE #35 FIX: penalise attaching Energy to a DAMAGED Pokemon — it may be knocked out before
 	# it can use the Energy, wasting the attach. Penalty scales with damage taken: (100 - HP%).
@@ -2158,6 +2159,7 @@ func score_energy_pair(pokemon: card_object, energy_card: card_object, cpu_eval:
 		var hp_percent_35 = float(pokemon.current_hp) / float(max_hp_35) * 100.0
 		var hp_penalty_35 = 100.0 - hp_percent_35
 		if hp_penalty_35 > 0.0:
+			hp_penalty_35 *= CpuWeights.g("energy.damaged_penalty", 1.0)
 			score -= hp_penalty_35
 			print("ISSUE #35 FIX ACTIVE: -", int(hp_penalty_35), " energy-attach HP penalty on ", pokemon.metadata.get("name", "?"), " (", pokemon.current_hp, "/", max_hp_35, ")")
 	
@@ -2239,7 +2241,7 @@ func score_energy_pair(pokemon: card_object, energy_card: card_object, cpu_eval:
 							# Check if CPU won't be KO'd next turn (no point in over-investing)
 							var ko_threats = evaluate_ko_threats()
 							if not ko_threats["cpu_active_guaranteed_ko"]:
-								score += 60.0
+								score += CpuWeights.g("energy.extra_energy_attack", 60.0)
 								print("ENERGY SCORE: +60 for extra energy bonus attack on ", pokemon.metadata["name"])
 
 	return score
@@ -2265,7 +2267,7 @@ func score_energy_type_match(pokemon: card_object, energy_types: Array, pokemon_
 
 	# Direct type match — this energy is exactly what the pokemon wants
 	if has_type_match:
-		score += 80.0 if is_active else 60.0
+		score += CpuWeights.g("energy.type_match", 80.0) if is_active else CpuWeights.g("energy.type_match", 60.0)
 		return score
 
 	# Check if this pokemon has any attacks with unmet colorless slots
@@ -2281,7 +2283,7 @@ func score_energy_type_match(pokemon: card_object, energy_types: Array, pokemon_
 
 	# Any energy can fill colorless slots — moderate positive match
 	if has_unmet_colorless_slots:
-		score += 50.0 if is_active else 35.0
+		score += CpuWeights.g("energy.colorless_slot", 50.0) if is_active else CpuWeights.g("energy.colorless_slot", 35.0)
 		return score
 
 	# 2.2: Does attaching this energy fill a colorless slot and unlock an attack?
@@ -2315,7 +2317,7 @@ func score_energy_type_match(pokemon: card_object, energy_types: Array, pokemon_
 							any_pokemon_needs_type = true
 
 	if any_pokemon_needs_type:
-		score -= 200.0
+		score -= CpuWeights.g("energy.needed_elsewhere", 200.0)
 		return score
 
 	# Nobody needs this type — colorless fallback scoring
@@ -2348,10 +2350,10 @@ func score_active_needs_energy(pokemon: card_object, energy_types: Array, pokemo
 				lowest_unmet = attack["unmet"]
 
 	if has_unmet:
-		score += 80.0
+		score += CpuWeights.g("energy.active_needs", 80.0)
 		# Progress bonus: the closer to unlocking, the more valuable each energy is
 		if lowest_unmet <= 3:
-			score += max(0.0, 80.0 - (lowest_unmet * 20.0))
+			score += max(0.0, CpuWeights.g("energy.active_progress", 80.0) - (lowest_unmet * 20.0))
 
 	# 2.5: Would this specific energy unlock a currently unusable attack?
 	for attack in attack_data:
@@ -2361,11 +2363,11 @@ func score_active_needs_energy(pokemon: card_object, energy_types: Array, pokemo
 		if remaining_type == null:
 			continue
 		if remaining_type == "Colorless":
-			score += 100.0
+			score += CpuWeights.g("energy.unlocks_attack", 100.0)
 			break
 		for provided in energy_types:
 			if provided == remaining_type or provided == "Any":
-				score += 100.0
+				score += CpuWeights.g("energy.unlocks_attack", 100.0)
 				break
 
 	return score
@@ -2425,7 +2427,7 @@ func score_active_overpowered(pokemon_data: Dictionary, cpu_eval: Dictionary) ->
 	if pokemon_data.get("can_evolve_further", false) and pokemon_data.get("evolved_form_needs_energy", false):
 		return 0.0
 
-	return -100.0
+	return CpuWeights.g("energy.overpowered", -100.0)
 
 # 2.7, 2.8, 2.9: Adjusts score when active is threatened with KO
 func score_active_ko_threat(pokemon: card_object, energy_types: Array, pokemon_data: Dictionary, cpu_eval: Dictionary) -> float:
@@ -2468,7 +2470,7 @@ func score_active_ko_threat(pokemon: card_object, energy_types: Array, pokemon_d
 		# Striking first is extremely valuable — override KO threat penalties
 		if cpu_eval.get("cpu_prizes_remaining", 6) == 1:
 			return 500.0
-		return 250.0
+		return CpuWeights.g("energy.enables_ko", 250.0)
 
 	# 2.7a: Guaranteed KO and active can already attack — don't invest further
 	if guaranteed_ko and can_attack:
@@ -2480,8 +2482,8 @@ func score_active_ko_threat(pokemon: card_object, energy_types: Array, pokemon_d
 					unlocks_stronger = true
 					break
 			if unlocks_stronger:
-				return -80.0
-		return -150.0
+				return CpuWeights.g("energy.doomed_unlock", -80.0)
+		return CpuWeights.g("energy.doomed_can_attack", -150.0)
 
 	# 2.7c: Guaranteed KO and cannot attack yet
 	if guaranteed_ko and not can_attack:
@@ -2492,9 +2494,9 @@ func score_active_ko_threat(pokemon: card_object, energy_types: Array, pokemon_d
 				break
 		
 		if not would_enable_attack:
-			return -200.0
+			return CpuWeights.g("energy.doomed_no_attack", -200.0)
 		else:
-			return -100.0
+			return CpuWeights.g("energy.doomed_enable", -100.0)
 			
 	return 0.0
 
@@ -2507,11 +2509,11 @@ func score_evolution_potential(pokemon: card_object, pokemon_data: Dictionary, c
 
 	# 2.10a: Evolution in hand and evolved form needs more energy
 	if has_evo_in_hand and needs_energy:
-		score += 100.0
+		score += CpuWeights.g("energy.evo_in_hand", 100.0)
 
 	# 2.10b: Evolution in deck/prizes only — less certain
 	elif has_evo_in_deck and needs_energy:
-		score += 50.0
+		score += CpuWeights.g("energy.evo_in_deck", 50.0)
 
 	# 2.11: Active already doing its job — redirect to evolving bench pokemon
 	if is_active and cpu_eval.get("cpu_can_ko_player_active", false):
@@ -2526,7 +2528,7 @@ func score_evolution_potential(pokemon: card_object, pokemon_data: Dictionary, c
 				break
 
 		if dominated_by_bench_evo:
-			score -= 70.0
+			score -= CpuWeights.g("energy.bench_evo_redirect", 70.0)
 
 	return score
 
@@ -2543,7 +2545,7 @@ func score_bench_candidate(pokemon: card_object, pokemon_data: Dictionary, cpu_e
 			break
 
 	if has_unmet:
-		score += 50.0
+		score += CpuWeights.g("energy.bench_needs", 50.0)
 
 	# 2.13: Boost bench when active is doomed and can already attack
 	var active_doomed = cpu_eval.get("cpu_active_guaranteed_ko", false)
@@ -2552,7 +2554,7 @@ func score_bench_candidate(pokemon: card_object, pokemon_data: Dictionary, cpu_e
 	var active_can_attack = active_data.get("can_attack", false)
 
 	if active_doomed and active_can_attack:
-		score += 100.0
+		score += CpuWeights.g("energy.bench_active_doomed", 100.0)
 
 		# Prefer bench pokemon that can survive the player's strongest usable attack
 		if main.player_active_pokemon != null:
@@ -2575,7 +2577,7 @@ func score_bench_candidate(pokemon: card_object, pokemon_data: Dictionary, cpu_e
 			lowest_unmet = attack["unmet"]
 
 	if lowest_unmet < 999:
-		score += max(0.0, 60.0 - (lowest_unmet * 20.0))
+		score += max(0.0, CpuWeights.g("energy.bench_progress", 60.0) - (lowest_unmet * 20.0))
 
 	return score
 
@@ -2938,19 +2940,19 @@ func cpu_phase_attack(cpu_eval: Dictionary) -> void:
 
 		# ---- GUARANTEED KO: Strongly prefer ----
 		if effective_min_damage >= player_hp:
-			score += 500.0
+			score += CpuWeights.g("attack.guaranteed_ko", 500.0)
 			score -= (effective_min_damage - player_hp) * 0.5
 		# ---- POTENTIAL KO: Variable damage might KO ----
 		elif effective_max_damage >= player_hp:
-			score += 200.0
+			score += CpuWeights.g("attack.possible_ko", 200.0)
 			# ISSUE #95: a coin attack whose AVERAGE roll already kills is a far better bet than one
 			# that only kills on an all-heads miracle — separate the two instead of scoring both +200.
 			if effective_exp_damage >= player_hp:
-				score += 100.0
+				score += CpuWeights.g("attack.likely_ko", 100.0)
 
 		# ---- BASE DAMAGE CONTRIBUTION ----
 		# ISSUE #95 FIX ACTIVE: average roll, not the guaranteed floor (see exp_result above).
-		score += effective_exp_damage * 2.0
+		score += effective_exp_damage * CpuWeights.g("attack.damage_mult", 2.0)
 		if effective_exp_damage != effective_min_damage:
 			print("ISSUE #95 FIX ACTIVE: ", attack.get("name", ""), " scored on expected damage ",
 				effective_exp_damage, " (min ", effective_min_damage, " / max ", effective_max_damage, ")")
@@ -4539,7 +4541,7 @@ func get_maximum_damage_attack(pokemon_card: card_object) -> Dictionary:
 
 # Main function to evaluate a basic pokemon and return a score by calling criterion 1-5 and returns the total score with breakdown reasoning
 func cpu_phase_bench_play() -> void:
-	var bench_thresholds = {0: -999, 1: 100, 2: 200, 3: 350, 4: 500}
+	var bench_thresholds = {0: -999, 1: int(CpuWeights.g("bench.threshold_1", 100.0)), 2: int(CpuWeights.g("bench.threshold_2", 200.0)), 3: int(CpuWeights.g("bench.threshold_3", 350.0)), 4: int(CpuWeights.g("bench.threshold_4", 500.0))}
 
 	# ISSUE #373: respect the real Bench cap (Narrow Gym 4, Giant Stump 3, match rules) — it always allowed 5.
 	while main.opponent_bench.size() < main.get_max_bench_size():
@@ -4549,7 +4551,7 @@ func cpu_phase_bench_play() -> void:
 		# replacement attacker coming — bench a reasonable Basic rather than holding it (autotester: a stranded
 		# Venusaur sat for 15 turns while a Bulbasaur stayed in hand at "340 < 350").
 		if not _cpu_active_can_attack() and not main.opponent_hand.any(func(c): return c.metadata.get("supertype", "") == "Energy"):
-			score_threshold = mini(score_threshold, 150)
+			score_threshold = mini(score_threshold, int(CpuWeights.g("bench.stranded_threshold", 150.0)))
 
 		# Score all basic pokemon in hand using existing priority criteria
 		var best_card: card_object = null
@@ -6356,6 +6358,9 @@ func cpu_phase_play_lass_last() -> void:
 # CPU search deck helpers
 func cpu_search_deck_for_best_card(deck: Array) -> card_object:
 	# Priority: draw trainers > evolution cards > energy > basic pokemon
+	var explored = CpuWeights.explore_pick(deck)
+	if explored != null:
+		return explored
 	var best: card_object = null
 	var best_score = -1.0
 	for card in deck:
@@ -6368,12 +6373,16 @@ func cpu_search_deck_for_best_card(deck: Array) -> card_object:
 			if targets.size() > 0: score = 80.0
 		elif card.metadata.get("supertype", "").to_lower() == "energy": score = 50.0
 		elif main.is_basic_pokemon(card) and main.opponent_bench.size() < 3: score = 40.0
+		score += cpu_synergy_bonus(card)   # ISSUE #375: learned card synergy
 		if score > best_score:
 			best_score = score
 			best = card
 	return best
 
 func cpu_search_deck_for_best_pokemon(pokemon_list: Array) -> card_object:
+	var explored = CpuWeights.explore_pick(pokemon_list)
+	if explored != null:
+		return explored
 	var best: card_object = null
 	var best_score = -1.0
 	for card in pokemon_list:
@@ -6385,6 +6394,7 @@ func cpu_search_deck_for_best_pokemon(pokemon_list: Array) -> card_object:
 		else:
 			var result = evaluate_opponents_start_setup_pokemon_choices(card, main.opponent_hand)
 			score = result.get("total_score", 0) / 10.0
+		score += cpu_synergy_bonus(card)   # ISSUE #375: learned card synergy
 		if score > best_score:
 			best_score = score
 			best = card
@@ -6438,6 +6448,32 @@ func cpu_decision_override(_card: card_object, _context: String) -> float:
 		return 15.0
 	return 0.0
 
+# ISSUE #375 (learned synergy): how much `card` fits what the CPU already has — summed from the self-play synergy
+# table (CpuWeights.synergy(): pairs that win more together than apart) over its Pokémon in play (full weight) and the
+# rest of its hand (half weight). Scaled by the tunable "search.synergy". 0 when no table is loaded.
+func cpu_synergy_bonus(card: card_object) -> float:
+	if card == null:
+		return 0.0
+	var table: Dictionary = CpuWeights.synergy()
+	if table.is_empty():
+		return 0.0
+	var row = table.get(card.uid.to_lower(), null)
+	if not (row is Dictionary) or row.is_empty():
+		return 0.0
+	var seen := {card.uid.to_lower(): true}
+	var total := 0.0
+	for p in get_all_cpu_field_pokemon():
+		var u: String = p.uid.to_lower()
+		if not seen.has(u):
+			seen[u] = true
+			total += float(row.get(u, 0.0))
+	for c in main.opponent_hand:
+		var u2: String = c.uid.to_lower()
+		if not seen.has(u2):
+			seen[u2] = true
+			total += 0.5 * float(row.get(u2, 0.0))
+	return clampf(total * CpuWeights.g("search.synergy", 1.0), -40.0, 40.0)
+
 # KEEP VALUE — how much the CPU wants to ADD this card to hand / keep it / fetch it from deck or discard.
 # Used for deck search, recover-to-hand, "take a card", and keep-vs-discard framing. Higher = better.
 func cpu_rank_keep_value(card: card_object) -> float:
@@ -6461,10 +6497,13 @@ func cpu_rank_keep_value(card: card_object) -> float:
 				score = 85.0 if "Stage 2" in card.metadata.get("subtypes", []) else 75.0
 			else:
 				score = 20.0
-	return score + cpu_decision_override(card, "keep")
+	return score + cpu_decision_override(card, "keep") + cpu_synergy_bonus(card)
 
 # Pick the single best card to fetch/keep/take from a pool (deck search, recover, "put a card into your hand").
 func cpu_pick_best_keep(pool: Array) -> card_object:
+	var explored = CpuWeights.explore_pick(pool)   # self-play exploration only (tuner); null in the real game
+	if explored != null:
+		return explored
 	var best: card_object = null
 	var best_s := -INF
 	for c in pool:
@@ -7286,7 +7325,9 @@ func _cpu_has_evolution_base(evo: card_object) -> bool:
 #     Advice against a lone Active draws 1) minus what the hand loses (a held Stage 2 line, needed Energy).
 #   * After a late draw the CPU develops again (evolve, bench, attach) instead of passing with a fresh hand.
 
-const CPU_TRAINER_PLAY_THRESHOLD := 29.9
+const CPU_TRAINER_PLAY_THRESHOLD_BASE := 29.9
+var CPU_TRAINER_PLAY_THRESHOLD: float:
+	get: return CpuWeights.g("trainer.play_threshold", CPU_TRAINER_PLAY_THRESHOLD_BASE)
 # The trainer phase the orchestrator is running: "early" (before evolutions/bench), "mid" (after them, before the
 # Energy attachment) or "late" (after Energy and retreat).
 var cpu_trainer_phase := "late"
@@ -7322,11 +7363,30 @@ func _cpu_attack_context_adjust(parsed_effects: Array, min_dmg: int, exp_dmg: in
 		if prizes_for_ko >= main.opponent_prize_cards.size() or main.player_bench.is_empty():
 			adj += 1000.0                                  # this Knock Out wins the game
 		elif prizes_for_ko == 2:
-			adj += 80.0
+			adj += CpuWeights.g("attack.two_prize_ko", 80.0)
 	var guaranteed: bool = bool(ko_threats.get("cpu_active_guaranteed_ko", false))
 	var potential: bool = bool(ko_threats.get("cpu_active_potential_ko", false))
 	var foe_max := _player_effective_damage_against(me, true)
 	for e in parsed_effects:
+		# ISSUE #375 (think like a person): a condition the attack puts on OUR OWN Pokémon (Foul Odor, Dream Dance,
+		# Outrage...) is a cost — the CPU used to count only the half that hit the player.
+		if e.get("type", "") == "status" and e.get("target", "") == "self" and not kos:
+			var sst: String = e.get("status", "")
+			var already_self: bool = (me.special_condition == sst) if sst in ["Paralyzed", "Asleep", "Confused"] else ((me.is_poisoned) if sst == "Poisoned" else (me.is_burned if sst == "Burned" else false))
+			if not already_self:
+				var my_best := float(_cpu_best_damage(me, me.attached_energies, foe))
+				var my_retreat: int = main.get_retreat_cost(me)
+				var cost := 0.0
+				match sst:
+					"Confused": cost = 15.0 + minf(my_best, 60.0) * 0.3 * (1.5 if my_retreat >= 2 else 1.0)
+					"Asleep": cost = 20.0 + minf(my_best, 60.0) * 0.35
+					"Paralyzed": cost = 30.0 + minf(my_best, 60.0) * 0.5
+					"Poisoned": cost = 15.0
+					"Burned": cost = 12.0
+				if guaranteed: cost *= 0.3   # going down next turn anyway
+				adj -= cost * (0.5 if e.get("flip", "none") != "none" else 1.0)
+				print("ISSUE #375 FIX ACTIVE: self-inflicted ", sst, " costs ", int(cost))
+			continue
 		if e.get("type", "") != "status" or e.get("target", "") != "defender":
 			continue
 		var st: String = e.get("status", "")
@@ -7346,15 +7406,15 @@ func _cpu_attack_context_adjust(parsed_effects: Array, min_dmg: int, exp_dmg: in
 		#               a big, expensive-to-retreat Pokémon, or one that's about to KO us (they won't want to retreat it),
 		#               or one with nowhere to retreat to — then it beats a risky one-turn stall, ESPECIALLY when we're
 		#               going down anyway (its 50% stop on that attack is guaranteed, the flip isn't).
-		var v := cpu_status_value(st, exp_dmg, ko_threats)
+		var v := cpu_status_value(st, exp_dmg, ko_threats) * CpuWeights.g("attack.status_value", 1.0)
 		adj += v * mult
 	# Defensive "prevent all damage done to this Pokémon" attacks (Scrunch, Agility-style, ...): the right play when
 	# the next attack would Knock us Out and we can't Knock them Out first; a wasted turn otherwise. (Mewtwo's
 	# Barrier wording is scored separately in cpu_phase_attack.)
 	if text != "" and "prevent all effects of attacks, including damage" not in text and "prevent all damage done to" in text 			and ("done to " + me.metadata.get("name", "").to_lower() in text or "this pokémon" in text) and not kos:
 		var flip_w := 0.5 if "flip" in text else 1.0
-		if guaranteed and not bool(ko_threats.get("cpu_active_dies_to_status", false)): adj += 70.0 * flip_w
-		elif potential: adj += 30.0 * flip_w
+		if guaranteed and not bool(ko_threats.get("cpu_active_dies_to_status", false)): adj += CpuWeights.g("attack.protect_when_doomed", 70.0) * flip_w
+		elif potential: adj += CpuWeights.g("attack.protect_when_threatened", 30.0) * flip_w
 		elif exp_dmg <= 0: adj -= 25.0
 
 	# ISSUE #375 (the user's rule): "damage done to this Pokémon during your opponent's next turn is reduced by N"
@@ -7380,7 +7440,7 @@ func _cpu_attack_context_adjust(parsed_effects: Array, min_dmg: int, exp_dmg: in
 			var save_share := saved / maxf(1.0, float(me.current_hp))
 			var deal_share := best_alt / maxf(1.0, float(foe.current_hp))
 			var building: bool = main.opponent_bench.size() > 0 or main.opponent_hand.any(func(c): return c.metadata.get("supertype", "") == "Pokémon")
-			var bonus := (save_share - deal_share) * 100.0 * (1.0 if saved >= incoming * 0.5 else 0.5) + (10.0 if building else 0.0)
+			var bonus := (save_share - deal_share) * CpuWeights.g("attack.damage_reduction_stall", 100.0) * (1.0 if saved >= incoming * 0.5 else 0.5) + (10.0 if building else 0.0)
 			if bonus > 0.0:
 				defensive_ok = true
 			adj += bonus
@@ -7390,7 +7450,7 @@ func _cpu_attack_context_adjust(parsed_effects: Array, min_dmg: int, exp_dmg: in
 	# evolves / accelerates Energy rather than poking for 10-20. Matched on wording, so every card that says the same
 	# thing is covered (Call for Friends, Look for Friends, Ascension, Hatch, Fast Evolution, Collect, Energy Stream...).
 	if not kos and tl != "":
-		var setup := _cpu_setup_attack_value(tl, me, guaranteed)
+		var setup := _cpu_setup_attack_value(tl, me, guaranteed) * CpuWeights.g("attack.setup_value", 1.0)
 		if setup > 0.0:
 			adj += setup
 			print("ISSUE #375 FIX ACTIVE: setup value ", int(setup), " for ", attacks[index].get("name", ""))
@@ -7405,7 +7465,7 @@ func _cpu_attack_context_adjust(parsed_effects: Array, min_dmg: int, exp_dmg: in
 				damaging_alt = true
 				break
 		if damaging_alt:
-			adj -= 45.0 * cpu_no_damage_streak * (0.5 if defensive_ok else 1.0)   # ISSUE #375: a justified stall is penalised less
+			adj -= CpuWeights.g("attack.stall_penalty", 45.0) * cpu_no_damage_streak * (0.5 if defensive_ok else 1.0)   # ISSUE #375: a justified stall is penalised less
 	return adj
 
 ## ISSUE #375 (the user's rule — think like a person): what inflicting Special Condition `st` on the player's Active is
@@ -7420,7 +7480,7 @@ func cpu_status_value(st: String, exp_dmg: int, ko_threats: Dictionary) -> float
 	var guaranteed: bool = bool(ko_threats.get("cpu_active_guaranteed_ko", false))
 	var potential: bool = bool(ko_threats.get("cpu_active_potential_ko", false))
 	var foe_max := _player_effective_damage_against(me, true)
-	var threat_stop := 90.0 if guaranteed else (45.0 if potential else 0.0)   # value of stopping their next attack
+	var threat_stop := CpuWeights.g("status.stop_lethal", 90.0) if guaranteed else (CpuWeights.g("status.stop_threat", 45.0) if potential else 0.0)   # value of stopping their next attack
 	var retreat: int = main.get_retreat_cost(foe)
 	var stays := 1.0                                                           # turns it likely stays Active
 	if main.player_bench.is_empty():
@@ -7436,11 +7496,11 @@ func cpu_status_value(st: String, exp_dmg: int, ko_threats: Dictionary) -> float
 	var v := 0.0
 	match st:
 		"Paralyzed":
-			v = threat_stop + 10.0 * min(retreat, 3) + (10.0 if foe_max > 0 else 0.0)
+			v = (threat_stop + 10.0 * min(retreat, 3) + (10.0 if foe_max > 0 else 0.0)) * CpuWeights.g("status.paralysis", 1.0)
 		"Asleep":
 			v = threat_stop * 0.5 + 6.0 * min(retreat, 3) + (6.0 if foe_max > 0 else 0.0) + per_turn * 0.5 * (stays - 1.0)
 		"Confused":
-			v = threat_stop * 0.5 + per_turn * stays
+			v = (threat_stop * 0.5 + per_turn * stays) * CpuWeights.g("status.confusion", 1.0)
 		"Poisoned", "Burned":
 			# Chip damage pays off on a big Pokémon that stays in, not on one we KO next turn anyway.
 			var left: int = foe.current_hp - exp_dmg
