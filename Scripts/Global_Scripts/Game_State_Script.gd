@@ -63,6 +63,13 @@ var current_opponent_deck: String = ""
 # whenever a normal battle starts.
 var test_match_mode: bool = false
 
+# AUTOTEST: the CPU-vs-bot match runner (Scenes/Autotest/Autotest_Runner.tscn). Non-null only while it is
+# running; it supplies both decks as deck-file paths and takes the result when a match ends, so the
+# match never moves on to the outro. Always run alongside test_match_mode, which keeps the save untouched.
+var autotest: Node = null
+var autotest_player_deck_path: String = ""
+var autotest_opponent_deck_path: String = ""
+
 var return_to_scene: String = ""
 var interior_entry_position: Vector2 = Vector2.ZERO
 var spawn_position: Vector2 = Vector2.ZERO

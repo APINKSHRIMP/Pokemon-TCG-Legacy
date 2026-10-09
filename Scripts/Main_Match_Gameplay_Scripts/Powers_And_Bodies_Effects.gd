@@ -835,6 +835,7 @@ func activate_power(pokemon: card_object, ability: Dictionary) -> void:
 			await main.show_message("MT. MOON PREVENTS " + pokemon.metadata.get("name","").to_upper() + " FROM USING POKE-POWERS!")
 		return
 	var ability_name = ability.get("name", "")
+	if GameState.autotest != null: GameState.autotest.note("power", pokemon.uid if pokemon != null else "stadium", ability_name, main.opponents_turn_active)
 	if _power_dispatch.has(ability_name):
 		neo3_power_resolving = true   # ISSUE #374: Allergic Pollen shields discard piles from Pokémon Powers
 		await _power_dispatch[ability_name].call(pokemon)
@@ -1101,20 +1102,30 @@ func power_buzzap(electrode: card_object) -> void:
 	
 	# KO Electrode (prize will be awarded via normal knockout flow)
 	electrode.current_hp = 0
-	
-	# Create the electrode-as-energy token
-	var electrode_energy = card_object.new(electrode.uid, electrode.metadata)
-	electrode_energy.is_electrode_energy = true
-	electrode_energy.electrode_energy_type = chosen_type
-	target.attached_energies.append(electrode_energy)
-	
-	main.display_active_pokemon_energies(false)
 	await main.show_message("Electrode became " + chosen_type + " Energy!")
 	if main._should_bail(): return
 	
-	# Process the knockout
+	# Process the knockout, then the Electrode card itself becomes the Energy.
 	await main.check_all_knockouts()
 	if main._should_bail(): return
+	_buzzap_attach_electrode(electrode, target, chosen_type, false)
+
+
+## ISSUE #375: Buzzap attaches the ELECTRODE CARD ITSELF as the Energy. It used to attach a brand-new copy while the
+## real Electrode went to the discard pile through the knockout — one physical card in two places, and a second
+## Electrode in the discard pile once the holder was discarded (found by the autotester's card-count check).
+## Called after the knockout has resolved, so the prize is taken and the card is in the discard pile.
+func _buzzap_attach_electrode(electrode: card_object, target: card_object, energy_type: String, is_opp: bool) -> void:
+	var discard: Array = main.opponent_discard_pile if is_opp else main.player_discard_pile
+	discard.erase(electrode)
+	electrode.current_location = "attached"
+	electrode.is_electrode_energy = true
+	electrode.electrode_energy_type = energy_type
+	target.attached_energies.append(electrode)
+	main.update_discard_pile_display(is_opp)
+	main.display_active_pokemon_energies(is_opp)
+	main.display_pokemon(is_opp)
+	print("ISSUE #375 FIX ACTIVE: Buzzap attached the real Electrode card as ", energy_type, " Energy")
 
 # Discard bench token (Clefairy Doll voluntary discard)
 
@@ -2252,13 +2263,9 @@ func cpu_phase_activate_powers() -> void:
 					if main._should_bail(): return
 					# Execute Buzzap
 					electrode_buzzap.current_hp = 0
-					var electrode_energy = card_object.new(electrode_buzzap.uid, electrode_buzzap.metadata)
-					electrode_energy.is_electrode_energy = true
-					electrode_energy.electrode_energy_type = best_type
-					best_target.attached_energies.append(electrode_energy)
-					main.display_active_pokemon_energies(true)
 					await main.check_all_knockouts()
 					if main._should_bail(): return
+					_buzzap_attach_electrode(electrode_buzzap, best_target, best_type, true)
 	
 	# --- BASE3 POWERS ---
 	
@@ -2784,6 +2791,7 @@ func _damage_swap_best_destination(exclude: card_object) -> card_object:
 func announce_cpu_power(pokemon: card_object, power_name: String) -> void:
 	if pokemon == null:
 		return
+	if GameState.autotest != null: GameState.autotest.note("power", pokemon.uid, power_name, true)
 	var pokemon_name: String = pokemon.metadata.get("name", "POKEMON")
 	print("ISSUE #102 FIX ACTIVE: announcing CPU power ", power_name, " on ", pokemon_name)
 	await main.show_message("OPPONENT USED " + pokemon_name.to_upper() + "'S " + power_name.to_upper() + " POWER!")
@@ -9134,21 +9142,11 @@ func power_ecard2_bubble_turn(azumarill: card_object) -> void:
 		await main.show_message("TAILS! BUBBLE TURN HAD NO EFFECT!")
 		if main._should_bail(): return
 		return
-	var hand = main.opponent_hand if is_opponent else main.player_hand
-	for e in azumarill.attached_energies.duplicate():
-		e.current_location = "hand"
-		hand.append(e)
-	azumarill.attached_energies.clear()
-	for ac in azumarill.attached_cards.duplicate():
-		ac.current_location = "hand"
-		hand.append(ac)
-	azumarill.attached_cards.clear()
-	bench.erase(azumarill)
-	main.clear_all_statuses(azumarill, is_opponent)
-	azumarill.current_location = "hand"
-	hand.append(azumarill)
+	# ISSUE #375: the shared return-to-hand path. The hand-rolled version left the Marill underneath behind — it vanished
+	# from the game (autotester: "Marill in no zone") — and never reset Azumarill's damage.
+	await main.attack_effects.gym1_return_pokemon_to_hand(azumarill, is_opponent)
+	print("ISSUE #375 FIX ACTIVE: Bubble Turn returned Azumarill with its pre-evolutions and attachments")
 	main.refresh_hand_display(is_opponent)
-	main.display_pokemon(is_opponent)
 	await main.show_message("HEADS! AZUMARILL AND ITS CARDS RETURNED TO HAND!")
 	if main._should_bail(): return
 	print("POWER USED: Bubble Turn")

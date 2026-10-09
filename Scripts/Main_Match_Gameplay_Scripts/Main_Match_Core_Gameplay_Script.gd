@@ -52,7 +52,7 @@ var confusion_rules: String = "base_set_confusion_rules" # "base_set_confusion_r
 
 # Customisable in game textures
 # Load coin textures
-var tex_heads = load("res://Image_Assets/Coins/Pikachu Gold 1.png")
+var tex_heads = load("res://Image_Assets/Coins/Pikachu Silver.png")   # AUTOTEST find: was "Pikachu Gold 1.png", which no longer exists (the starter coin is Pikachu Silver)
 var tex_opp_heads = null   # loaded after opponent_data is available; falls back to tex_heads
 var tex_tails = load("res://Image_Assets/Coins/Back Basic.png")
 
@@ -272,6 +272,7 @@ var opponent_misty_boost_active: bool = false
 # ECARD1 Charizard Burning Energy: while active, all basic Energy on that side's Pokemon counts as Fire (cleared at end of turn)
 var player_ecard1_burning_energy_active: bool = false
 var opponent_ecard1_burning_energy_active: bool = false
+var shown_selection_pool: Array = []   # AUTOTEST: the array the selection screen is currently showing
 var player_tickled_set_aside: Array = []          # gym1-119 Tickling Machine — cards held away from hand
 var opponent_tickled_set_aside: Array = []
 var player_hand_tickled: bool = false             # true while player's hand is held in player_tickled_set_aside
@@ -546,6 +547,7 @@ func show_enlarged_array_selection_mode(card_array: Array) -> void:
 		hide_attack_buttons()
 	
 	card_selection_mode_enabled = true
+	shown_selection_pool = card_array   # AUTOTEST: the bot picks from exactly what the player is shown
 	var amount_of_cards_to_show = card_array.size()
 	
 	# Hide all main screen elements
@@ -603,6 +605,12 @@ func show_enlarged_array_selection_mode(card_array: Array) -> void:
 	
 	if trainer_pokemon_selection_active or trainer_deck_search_active or trainer_discard_selection_active or trainer_reorder_active:
 		action_button.visible = true
+	# ISSUE #375: Lure / ex Pokémon Reversal show the opponent's Bench as a PICKER, but the opponent's Bench is on
+	# the view-only list above — so the action button was hidden and, with no Cancel either, the player could only
+	# look at the cards forever (autotester soft-lock).
+	if forced_switch_selection_active:
+		action_button.visible = true
+		print("ISSUE #375 FIX ACTIVE: forced-switch picker keeps its action button")
 
 	# ISSUE #80: bench viewing and the single-card preview are view-only — never show an action button
 	# (this removes the legacy "PLACE ON BENCH" that used to appear when viewing the player's bench).
@@ -3686,6 +3694,7 @@ func _log_match_message(message_text: String) -> void:
 	var trimmed := message_text.strip_edges()
 	if trimmed == "":
 		return
+	if GameState.autotest != null: GameState.autotest.log_message(trimmed, turn_number, opponents_turn_active)
 	_match_log.append({
 		"text": trimmed,
 		"turn": turn_number,
@@ -4171,6 +4180,21 @@ func animate_card_a_to_b(from_node: Control, to_node: Control, animation_speed: 
 	# so there is no blank frame between the large card vanishing and the ghost appearing.
 	if hold_time <= 0.0:
 		await get_tree().process_frame
+		if not is_inside_tree():
+			_anim_in_flight = false
+			return
+
+	# ISSUE #375: a source or target node can be freed during that settle frame (the board/hand redraw that
+	# frame exists for, e.g. playing basep-40 Pokémon Center). Touching it crashed the flight with
+	# _anim_in_flight still true, so every later flight queued behind it forever — a match soft-lock found
+	# by the autotester. No destination = no flight; no source = start from the destination.
+	if not is_instance_valid(to_node):
+		print("ISSUE #375 FIX ACTIVE: card flight skipped — its destination node was freed")
+		_anim_in_flight = false
+		return
+	if not is_instance_valid(from_node):
+		print("ISSUE #375 FIX ACTIVE: card flight source was freed — starting from the destination")
+		from_node = to_node
 
 	SoundManagerScript.play_sfx(SoundManagerScript.SFX_card_draw_sound)
 	animation_blocker.visible = true
@@ -5095,7 +5119,9 @@ func setup_player():
 	
 	# Load the players CURRENT deck from saved files
 	var player_deck_path = "user://Player_Decks/"+player_deck_name+".json"
-	
+	if GameState.autotest != null:
+		player_deck_path = GameState.autotest_player_deck_path
+
 	# Load and shuffle deck
 	player_deck = load_deck_from_file(player_deck_path)
 	
@@ -5111,13 +5137,15 @@ func setup_opponent(opponent_id: String):
 	# Deck names are typed by hand in All_NPC_Constant_Data.json, so the lookup
 	# ignores capitalisation -- a slip used to load nothing at all, and only stayed
 	# invisible because NTFS is case-insensitive.
-	var opponent_deck_path = AssetLookup.deck_path(opponent_id)
-	if opponent_deck_path == "":
+	var opponent_deck_path = "" if GameState.test_match_mode else AssetLookup.deck_path(opponent_id)
+	if opponent_deck_path == "" and not GameState.test_match_mode:
 		push_error("No deck file matching '%s' in Opponent_Deck_Data/" % opponent_id)
 	# TEMP TESTING: T-key TEST match — opponent draws from the player's user:// "TEST" deck.
 	if GameState.test_match_mode:
 		opponent_deck_path = "user://Player_Decks/TEST.json"
-	
+	if GameState.autotest != null:
+		opponent_deck_path = GameState.autotest_opponent_deck_path
+
 	# Load the deck from the opponent data folder file
 	opponent_deck = load_deck_from_file(opponent_deck_path)
 	
@@ -5528,7 +5556,7 @@ func get_card_metadata(card_uid: String):
 	# Now loop through the cached card set data and find the specific card by UID
 	var card_set_data = _set_metadata_cache[card_set]
 	for this_card in card_set_data:
-		if this_card.get("id") == card_uid.to_lower():
+		if String(this_card.get("id", "")).to_lower() == card_uid.to_lower():   # AUTOTEST find: ids like "ecard3-H20" never matched
 			return this_card
 	
 	# If the card could not be found in this set then return null
@@ -5719,6 +5747,19 @@ func add_pokemon_to_bench(pokemon: card_object) -> void:
 	print("Pokemon added to bench. Bench size: ", player_bench.size())
 	powers_and_bodies.refresh_holon_veil()   # EX15 Holon Veil
 
+	# On-bench triggers run in run_bench_from_hand_triggers() — awaited by the caller once the card has landed.
+
+## ISSUE #375: the "when you play this Pokémon from your hand onto your Bench" triggers, split out of
+## add_pokemon_to_bench(). The player's bench action used to call add_pokemon_to_bench() WITHOUT await, then
+## immediately hid the selection screen — so every trigger that asks the player something (Time Reversal,
+## Purple Ray, [Engage], Dragon Boost, Delta Switch...) opened a prompt that was hidden at once: an invisible
+## question and a frozen match. Found by the autotester. The caller now awaits this AFTER the card has landed.
+## Never during the opening setup — that isn't a turn, and the setup screen must stay up.
+func run_bench_from_hand_triggers(pokemon: card_object) -> void:
+	if match_just_started_basic_pokemon_required or bench_setup_phase_active:
+		return
+	var original_location = "hand"
+	print("ISSUE #375 FIX ACTIVE: on-bench triggers for ", pokemon.metadata.get("name", ""), " run after it lands")
 	# GYM2 Giovanni's Persian Call the Boss — search deck for a Giovanni trainer when Persian comes into play from hand
 	if original_location == "hand":
 		await powers_and_bodies.trigger_call_the_boss(pokemon, false)
@@ -5764,6 +5805,7 @@ func add_pokemon_to_bench(pokemon: card_object) -> void:
 		await powers_and_bodies.trigger_ex16_on_bench(pokemon, false)
 		# POP on-bench-from-hand powers: Time Reversal (Celebi ex), Purple Ray (Espeon Star), Dark Ray (Umbreon Star).
 		await powers_and_bodies.trigger_pop_on_bench(pokemon, false)
+
 
 # Function that get's the card position/location/object. Called from various functions when trying to find a specific card object
 func find_card_ui_for_object(card_obj: card_object) -> TextureRect:
@@ -6096,7 +6138,12 @@ func game_end_logic(loser_is_player: bool, is_draw: bool = false) -> void:
 	# Trainer-card statistics: every finished match counts, win or loss, including each round of
 	# a best-of-3 and a forfeit. Test matches are ignored inside record_match_result().
 	GameState.record_match_result(GameState.battle_result == "win")
-	
+
+	# AUTOTEST: the runner takes the result and starts the next match itself — no outro, no scene change.
+	if GameState.autotest != null:
+		GameState.autotest.on_match_over(self, GameState.battle_result, is_draw)
+		return
+
 	GameState.returning_from_battle = true
 	
 	# Stop the match BGM before transitioning
@@ -6299,6 +6346,18 @@ func send_card_to_discard(card: card_object, is_opponent: bool) -> void:
 	
 	# Revert Ditto Transform before discarding so original card data is preserved
 	powers_and_bodies.revert_ditto_if_needed(card)
+
+	# ISSUE #375: Brock's Ninetales Shapeshift — the attached form card goes to the discard pile too, and Ninetales
+	# gets its own card data back. The form card used to vanish from the game (autotester: "Arcanine in no zone").
+	if card.shapeshift_form_card != null:
+		powers_and_bodies._shapeshift_restore(card)
+		var form: card_object = card.shapeshift_form_card
+		form.current_location = "discard"
+		discard.append(form)
+		card.shapeshift_form_card = null
+		card.shapeshift_form_uid = ""
+		card.shapeshift_form_metadata = {}
+		print("ISSUE #375 FIX ACTIVE: Shapeshift form ", form.metadata.get("name", ""), " discarded with ", card.metadata.get("name", ""))
 	
 	for energy in card.attached_energies:
 		card_ops.discard_energy_from_pokemon(energy, is_opponent, true)  # is_ko_discard=true: skip Ecogym
@@ -6970,7 +7029,7 @@ func start_evolution() -> void:
 	action_button.theme = theme_disabled
 
 # Replaces a Pokemon on the field with its evolution, transferring all attachments and damage
-func perform_evolution(is_opponent: bool) -> void:
+func perform_evolution(is_opponent: bool, defer_after: bool = false) -> void:
 	if evolution_card_awaiting_target == null or selected_card_for_action == null:
 		print("Error: Missing evolution card or target")
 		return
@@ -6978,13 +7037,10 @@ func perform_evolution(is_opponent: bool) -> void:
 	var evo_card = evolution_card_awaiting_target
 	var target_card = selected_card_for_action
 	
-	# Calculate damage taken on the pre-evolution to carry over
-	var max_hp_old = int(target_card.metadata.get("hp", "0"))
-	var damage_taken = max_hp_old - target_card.current_hp
-	
-	# Set the new card's HP as its max minus the carried damage
-	var max_hp_new = int(evo_card.metadata.get("hp", "0"))
-	evo_card.current_hp = max(1, max_hp_new - damage_taken)
+	# Calculate damage taken on the pre-evolution to carry over.
+	# ISSUE #375: measured against the REAL max HP (get_max_hp: HP overrides, Energy Root...). The printed HP made a
+	# boosted Pokémon's damage negative, so its evolution came in ABOVE its max (autotester: Arbok 90/80 HP).
+	var damage_taken = max(0, target_card.get_max_hp() - target_card.current_hp)
 	
 	# Transfer all attached energies from old card to new card
 	evo_card.attached_energies = target_card.attached_energies.duplicate()
@@ -7007,6 +7063,10 @@ func perform_evolution(is_opponent: bool) -> void:
 	target_card.attached_pre_evolutions.clear()
 	evo_card.attached_pre_evolutions.append(target_card)
 	
+	# Set the new card's HP as its max minus the carried damage — after the Tools moved over, so an HP Tool counts.
+	evo_card.current_hp = max(1, evo_card.get_max_hp() - damage_taken)
+	print("ISSUE #375 FIX ACTIVE: evolution carries ", damage_taken, " damage -> ", evo_card.current_hp, "/", evo_card.get_max_hp())
+
 	# Mark as played this turn so it can't evolve again immediately
 	evo_card.placed_on_field_this_turn = true
 
@@ -7036,14 +7096,26 @@ func perform_evolution(is_opponent: bool) -> void:
 	print(target_card.metadata["name"], " evolved into ", evo_card.metadata["name"], "! (Damage carried: ", damage_taken, ")")
 	clear_all_statuses(target_card, is_opponent)
 
+	# ISSUE #375: everything after the evolution itself (Viridian heal, the "when you evolve" Power triggers, Darkest
+	# Impulse...) lives in _after_evolution(). The player's own evolve (handle_action_evolution) passes defer_after and
+	# runs it once the card has landed — it used to call this WITHOUT await and then close the selection screen, which
+	# hid every on-evolve prompt (Manipulate, Energy Recharge, Healing Shower...): an invisible question, a frozen match.
+	if defer_after:
+		return
+	await _after_evolution(evo_card, target_card, is_opponent)
+
+
+## ISSUE #375: the post-evolution half of perform_evolution(). See the note at the end of perform_evolution().
+func _after_evolution(evo_card: card_object, target_card: card_object, is_opponent: bool) -> void:
+
 	# GYM2-123 Viridian City Gym — when a Giovanni-named pokemon evolves, heal 20 (or 10 if only 1 counter)
 	if is_stadium_in_play(StadiumIds.VIRIDIAN_CITY_GYM) and "Giovanni" in evo_card.metadata.get("name", ""):
-		var counters = max_hp_new - evo_card.current_hp
+		var counters = evo_card.get_max_hp() - evo_card.current_hp
 		# MATCH EFFECTS: no_healing / healing_multiplier gate
 		var viridian_heal = match_effects.modify_heal_amount(20 if counters >= 20 else 10, is_opponent)
 		if counters > 0 and viridian_heal > 0:
 			var heal_amount = viridian_heal
-			evo_card.current_hp = min(max_hp_new, evo_card.current_hp + heal_amount)
+			evo_card.current_hp = min(evo_card.get_max_hp(), evo_card.current_hp + heal_amount)
 			display_hp_circles_above_align(evo_card, is_opponent)
 			await show_message("VIRIDIAN CITY GYM: " + evo_card.metadata.get("name", "").to_upper() + " HEALED " + str(heal_amount) + " HP!")
 			if _should_bail(): return
@@ -7954,10 +8026,16 @@ func perform_attack(attack_index: int) -> void:
 	attack_effects.begin_attack(attack, player_active_pokemon, opponent_active_pokemon, false)
 	if await attack_effects.run_attack_prechecks(player_active_pokemon, opponent_active_pokemon, false):
 		attack_effects.end_attack()
+		if _should_bail(): return
 		player_attacked_this_turn = true
 		hide_attack_buttons()
 		await get_tree().create_timer(GameState.match_time(0.5)).timeout
 		player_end_turn_checks()
+		return
+	# ISSUE #375: the prechecks can Knock Out the attacker (Confusion self-damage) — nothing left to attack with.
+	if _should_bail() or player_active_pokemon == null:
+		print("ISSUE #375 FIX ACTIVE: attack abandoned — the attacker is gone or the game ended during the prechecks")
+		attack_effects.end_attack()
 		return
 
 	# GYM1-120 Vermilion City Gym pre-attack flip (player). Optional flip for Lt. Surge attacker.
@@ -9733,18 +9811,15 @@ func action_button_pressed_perform_action() -> void:
 	
 	# Forced switch: player selects bench pokemon to switch in
 	if forced_switch_selection_active:
-		if selected_card_for_action != null and selected_card_for_action in player_bench:
-			var old_active = player_active_pokemon
-			player_bench.erase(selected_card_for_action)
-			player_bench.append(old_active)
-			old_active.current_location = "bench"
-			selected_card_for_action.current_location = "active"
-			player_active_pokemon = selected_card_for_action
-			clear_all_statuses(old_active, false)
-			hide_selection_mode_display_main()
-			display_pokemon(false)
-			display_active_pokemon_energies(false)
-			await show_message("SWITCHED TO " + player_active_pokemon.metadata["name"].to_upper() + "!")
+		# ISSUE #375 (found by the autotester): this branch only hands the pick back — every waiter
+		# (apply_force_switch for Lure / Whirlwind, apply_self_switch for Teleport) does the swap itself through
+		# animate_retreat (ISSUE #7), which also clears statuses and shows the message. It used to:
+		#   - ignore a pick from the OPPONENT's Bench (Lure, ex Pokémon Reversal), so that prompt — which has no
+		#     Cancel — could never close: a soft-lock;
+		#   - swap a pick from the player's own Bench HERE as well, so the waiter's animate_retreat swapped a
+		#     second time (Whirlwind: the new Active also left on the Bench; Teleport: the attacker benched twice).
+		if selected_card_for_action != null and (selected_card_for_action in opponent_bench or selected_card_for_action in player_bench):
+			print("ISSUE #375 FIX ACTIVE: forced switch pick handed back to the effect (no second swap)")
 			forced_switch_chosen.emit()
 		return
 	
@@ -9919,7 +9994,7 @@ func handle_action_evolution() -> void:
 	# the hand - after that there is no node left to measure.
 	var evo_from := played_card_start_rect(evo_card)
 	
-	perform_evolution(false)
+	perform_evolution(false, true)   # ISSUE #375: the evolution itself; _after_evolution() runs once the card lands
 	
 	evolution_card_awaiting_target = null
 	selected_card_for_action = null
@@ -9953,6 +10028,10 @@ func handle_action_evolution() -> void:
 	await get_tree().process_frame
 	await play_evolution_effect(evo_card)
 	display_active_pokemon_energies(false)
+	if _should_bail(): return
+	# ISSUE #375: the on-evolve Powers / Viridian heal / Darkest Impulse, now that the card has landed.
+	print("ISSUE #375 FIX ACTIVE: post-evolution effects for ", evo_card.metadata.get("name", ""), " run after it lands")
+	await _after_evolution(evo_card, target_card, false)
 
 # Takes the selected prize card and adds it to the player's hand with animation
 func handle_action_prize_card() -> void:
@@ -10033,6 +10112,8 @@ func handle_action_normal_card() -> void:
 					display_pokemon(false)
 					# GYM2-119 Rocket's Minefield Gym — coin flip per benched Basic from hand; tails = 20 damage
 					await trainer_effects.gym2_minefield_gym_trigger(bench_card, false)
+					if _should_bail(): return
+					await run_bench_from_hand_triggers(bench_card)   # ISSUE #375
 		
 		"PLAY_TRAINER":
 			var trainer_to_play = selected_card_for_action

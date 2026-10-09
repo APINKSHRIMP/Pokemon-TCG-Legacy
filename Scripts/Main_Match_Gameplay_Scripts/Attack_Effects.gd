@@ -417,6 +417,7 @@ func register_on_damage_hooks(powers: Node) -> void:
 func dispatch_attack(attack: Dictionary, attacker: card_object, defender: card_object, is_opponent: bool) -> bool:
 	_ensure_dispatch_ready()
 	var attack_name = attack.get("name", "")
+	if GameState.autotest != null: GameState.autotest.note("attack", attacker.uid, attack_name, is_opponent)
 	var an = attack_name.to_lower()
 	var text_lower = attack.get("text", "").to_lower()
 	var base = parse_attack_base_damage(attack)
@@ -1497,7 +1498,7 @@ func handle_attack_confusion(attacker: card_object, is_opponent: bool) -> bool:
 	if attacker.special_condition != "Confused":
 		return false
 	await main.show_message(attacker.metadata["name"].to_upper() + " IS CONFUSED! FLIPPING COIN...")
-	if main._should_bail(): return false
+	if main._should_bail(): return true   # ISSUE #375: a bail STOPS the attack (was: let it run on a finished game)
 	var coin = await main.flip_coin(false, is_opponent)
 	if coin:
 		return false
@@ -1517,13 +1518,13 @@ func handle_attack_confusion(attacker: card_object, is_opponent: bool) -> bool:
 	self_damage = main.apply_self_damage_modifiers(attacker, self_damage)
 	attacker.current_hp = max(0, attacker.current_hp - self_damage)
 	await main.show_message("THE ATTACK FAILED! " + attacker.metadata["name"].to_upper() + " HURT ITSELF FOR " + str(self_damage) + " DAMAGE!")
-	if main._should_bail(): return false
+	if main._should_bail(): return true   # ISSUE #375: a bail STOPS the attack (was: let it run on a finished game)
 	var attacker_label_pos = Vector2(1030, 300) if is_opponent else Vector2(530, 300)
 	main.show_floating_label("-" + str(self_damage) + "HP", attacker_label_pos, Color.YELLOW, true)
 	main.display_hp_circles_above_align(attacker, is_opponent)
 	print("CONFUSED: ", attacker.metadata["name"], " hurt itself for ", self_damage)
 	await main.check_all_knockouts()
-	if main._should_bail(): return false
+	if main._should_bail(): return true   # ISSUE #375: a bail STOPS the attack (was: let it run on a finished game)
 	return true
 
 # Handles the blind coin flip when an attacker cannot see
@@ -1533,24 +1534,24 @@ func handle_attack_blind(attacker: card_object, is_opponent: bool) -> bool:
 		return false
 	if attacker.is_blind:
 		await main.show_message(attacker.metadata["name"].to_upper() + " CAN'T SEE! FLIPPING COIN...")
-		if main._should_bail(): return false
+		if main._should_bail(): return true   # ISSUE #375: a bail STOPS the attack (was: let it run on a finished game)
 		var blind_coin = await main.flip_coin(false, is_opponent)
 		attacker.is_blind = false
 		main.update_status_icons(attacker, is_opponent)
 		if not blind_coin:
 			await main.show_message("THE ATTACK FAILED!")
-			if main._should_bail(): return false
+			if main._should_bail(): return true   # ISSUE #375: a bail STOPS the attack (was: let it run on a finished game)
 			return true
 	# ISSUE #301: Ink Spurt (gym2-87) lasts until the Pokemon evolves or is Benched — it is NOT used up
 	# by one attack the way Sand-attack/Smokescreen are, so the flag is left in place.
 	if attacker.ink_spurt_blind:
 		print("ISSUE #301 FIX ACTIVE: Ink Spurt flip for ", attacker.metadata.get("name", ""))
 		await main.show_message(attacker.metadata["name"].to_upper() + " IS COVERED IN INK! FLIPPING COIN...")
-		if main._should_bail(): return false
+		if main._should_bail(): return true   # ISSUE #375: a bail STOPS the attack (was: let it run on a finished game)
 		var ink_coin = await main.flip_coin(false, is_opponent)
 		if not ink_coin:
 			await main.show_message("TAILS! THE ATTACK DOES NOTHING!")
-			if main._should_bail(): return false
+			if main._should_bail(): return true   # ISSUE #375: a bail STOPS the attack (was: let it run on a finished game)
 			return true
 	return false
 
@@ -5903,6 +5904,7 @@ func gym1_return_pokemon_to_hand(pokemon: card_object, is_pokemon_opponent: bool
 	pokemon.attached_energies.clear()
 	for pre in pokemon.attached_pre_evolutions:
 		pre.current_location = "hand"
+		pre.current_hp = pre.get_max_hp()   # ISSUE #375: a card back in the hand is undamaged
 		hand.append(pre)
 	pokemon.attached_pre_evolutions.clear()
 	for ac in pokemon.attached_cards:
@@ -8557,7 +8559,7 @@ func execute_devolution_beam(attacker: card_object, defender: card_object, is_op
 	# Carry damage over
 	var old_max = target.get_max_hp()
 	var damage_taken = old_max - target.current_hp
-	var new_max = int(new_form.metadata.get("hp", "0"))
+	var new_max = new_form.get_max_hp()   # ISSUE #375: real max HP (Tools moved over, overrides), not printed HP
 	new_form.current_hp = max(0, new_max - damage_taken)   # ISSUE #324: carried damage can KO the lower Stage
 	new_form.current_location = target.current_location
 	main.clear_all_statuses(new_form, target_is_opp)
@@ -19163,7 +19165,7 @@ func _ex2_devolve_pokemon(target: card_object, target_is_opp: bool, destination:
 	target.attached_cards.clear()
 	var old_max = target.get_max_hp()
 	var damage_taken = old_max - target.current_hp
-	var new_max = int(new_form.metadata.get("hp", "0"))
+	var new_max = new_form.get_max_hp()   # ISSUE #375: real max HP (Tools moved over, overrides), not printed HP
 	new_form.current_hp = max(0, new_max - damage_taken)   # ISSUE #324: carried damage can KO the lower Stage
 	new_form.current_location = target.current_location
 	main.clear_all_statuses(new_form, target_is_opp)

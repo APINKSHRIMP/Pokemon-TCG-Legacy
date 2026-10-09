@@ -1146,6 +1146,7 @@ func validate_trainer_can_be_played(card: card_object, is_opponent: bool) -> Str
 
 # Main entry point for playing a trainer card (handles animation, routing, and discard)
 func play_trainer_card(card: card_object, is_opponent: bool) -> void:
+	if GameState.autotest != null: GameState.autotest.note("trainer", card.uid, card.metadata.get("name", ""), is_opponent)
 	# Check trainer lock (Psyduck Headache)
 	if is_opponent and opponent_trainer_locked:
 		await main.show_message("TRAINER CARDS ARE LOCKED THIS TURN!")
@@ -7673,8 +7674,9 @@ func neo3_healing_field_activate(is_opponent: bool) -> void:
 # For each Basic Pokemon on your bench, flip; heads = search deck for its Evolution and put in hand
 func effect_neo3_pokemon_breeder_fields(card: card_object, is_opponent: bool) -> void:
 	var discard = main.opponent_discard_pile if is_opponent else main.player_discard_pile
-	card.current_location = "discard"
-	discard.append(card)
+	# ISSUE #375: play_trainer_card() has already moved the card to the discard pile — appending it again
+	# left two copies of the same card in the pile (found by the autotester).
+	print("ISSUE #375 FIX ACTIVE: %s not re-added to the discard pile" % "Breeder Fields")
 	var own_deck = main.opponent_deck if is_opponent else main.player_deck
 	var own_hand = main.opponent_hand if is_opponent else main.player_hand
 	# ISSUE #371: printed "Flip a coin for 1 or 2 of your non-Baby Pokémon that can evolve. For each heads, search your
@@ -7739,8 +7741,9 @@ func rockets_hideout_bonus_hp(pokemon: card_object) -> int:
 # Flip 2 coins: both heads = choose 1 Pokemon from discard to hand; both tails = choose 1 Trainer from discard to hand
 func effect_neo3_old_rod(card: card_object, is_opponent: bool) -> void:
 	var discard = main.opponent_discard_pile if is_opponent else main.player_discard_pile
-	card.current_location = "discard"
-	discard.append(card)
+	# ISSUE #375: play_trainer_card() has already moved the card to the discard pile — appending it again
+	# left two copies of the same card in the pile (found by the autotester).
+	print("ISSUE #375 FIX ACTIVE: %s not re-added to the discard pile" % "Old Rod")
 	var coin1 = await main.flip_coin(true, is_opponent)
 	if main._should_bail(): return
 	var coin2 = await main.flip_coin(true, is_opponent)
@@ -8786,29 +8789,15 @@ func undersea_ruins_activate(is_opponent: bool) -> void:
 		target = await main.card_ops.prompt_select_card(candidates, "UNDERSEA RUINS", "Choose a Pokemon to devolve", "DEVOLVE", false)
 		if main._should_bail(): return
 		if target == null: return
-	var discard = main.opponent_discard_pile if is_opponent else main.player_discard_pile
-	var pre_evo = target.attached_pre_evolutions.pop_back()
-	pre_evo.current_hp = target.current_hp
-	pre_evo.attached_energies = target.attached_energies.duplicate()
-	target.attached_energies.clear()
-	pre_evo.attached_pre_evolutions = target.attached_pre_evolutions.duplicate()
-	target.attached_pre_evolutions.clear()
-	var is_active_slot = (target == active)
-	pre_evo.current_location = target.current_location
-	if is_active_slot:
-		if is_opponent:
-			main.opponent_active_pokemon = pre_evo
-		else:
-			main.player_active_pokemon = pre_evo
-	else:
-		var idx = bench.find(target)
-		if idx >= 0: bench[idx] = pre_evo
-	target.current_location = "discard"
-	discard.append(target)
-	main.display_pokemon(is_opponent)
-	main.display_active_pokemon_energies(is_opponent)
-	main.update_discard_pile_display(is_opponent)
+	# ISSUE #375: through the shared devolve path (damage counters stay, Tools move, statuses clear, the lower Stage
+	# can be Knocked Out). The hand-rolled version copied the evolved card's HP straight onto the lower Stage
+	# (autotester: Skitty at 70/40 HP) and left any Tool behind on the discarded card.
+	var pre_evo: card_object = target.attached_pre_evolutions.back()
+	main.attack_effects._ex2_devolve_pokemon(target, is_opponent, "discard")
+	print("ISSUE #375 FIX ACTIVE: Undersea Ruins devolve via _ex2_devolve_pokemon -> ", pre_evo.current_hp, "/", pre_evo.get_max_hp())
 	await main.show_message("HEADS! " + target.metadata.get("name","").to_upper() + " DEVOLVED INTO " + pre_evo.metadata.get("name","").to_upper() + "!")
+	if main._should_bail(): return
+	await main.check_all_knockouts()
 	if main._should_bail(): return
 	print("STADIUM: Undersea Ruins — devolved ", target.metadata.get("name",""))
 

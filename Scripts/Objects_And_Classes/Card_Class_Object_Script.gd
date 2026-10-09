@@ -412,7 +412,10 @@ func react_energy_count() -> int:
 # Constructor - initialize the card with a UID and load its metadata
 func _init(card_uid: String, card_metadata: Dictionary) -> void:
 	uid = card_uid
-	metadata = card_metadata
+	# ISSUE #375: every card OWNS its metadata. It used to hold a reference to the set cache's dictionary, shared by
+	# every copy of that card in the match — so an effect that rewrites a card's data (Brock's Ninetales Shapeshift)
+	# rewrote all copies at once, in the deck, hand and discard pile too.
+	metadata = card_metadata.duplicate(true)
 	
 	# Initialize current HP to max HP (from metadata)
 	if metadata.has("hp"):

@@ -213,6 +213,7 @@ func can_attach_to(energy_card: card_object, target_pokemon: card_object) -> Dic
 # Applies any on-attach effects. Called AFTER the energy is successfully attached.
 # Returns true if an effect was applied (for UI messaging purposes).
 func apply_on_attach_effects(energy_card: card_object, target_pokemon: card_object, is_opponent: bool) -> bool:
+	if GameState.autotest != null: GameState.autotest.note("energy", energy_card.uid, energy_card.metadata.get("name", ""), is_opponent)
 	var card_name = energy_card.metadata.get("name", "")
 	var pokemon_name = target_pokemon.metadata.get("name", "").to_upper()
 	

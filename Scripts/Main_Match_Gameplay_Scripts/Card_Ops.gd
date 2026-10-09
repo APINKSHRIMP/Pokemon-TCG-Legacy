@@ -69,13 +69,20 @@ func discard_energy_from_pokemon(energy: card_object, is_owner_opp: bool, is_ko_
 
 # Move a single card to the given side's discard pile. Optionally animate it.
 func send_to_discard(card: card_object, is_opponent: bool, animate: bool = false, anim_from: Control = null) -> void:
+	# ISSUE #375: a card discarded from the hand used to STAY in the hand as well (Team Aqua/Magma Schemer
+	# and every other "discard a card from your hand" caller that didn't erase it first) — found by the
+	# autotester as the same card in hand and discard pile at once. The move is now complete here.
+	var hand: Array = main.opponent_hand if is_opponent else main.player_hand
+	var in_hand: bool = card in hand
 	if animate:
 		var discard_node = main.opponent_discard_icon if is_opponent else main.player_discard_icon
 		var tex = main.get_card_texture(card)
-		var in_hand: bool = card in (main.opponent_hand if is_opponent else main.player_hand)
 		if anim_from == null and in_hand:
 			# FLIGHTS: a hand card leaves from its own (computed) slot — right even while the hand is hidden.
+			# Measure, THEN erase + refresh, THEN fly.
 			var hd_from: Dictionary = main.lift_card_from_hand(card, is_opponent)
+			hand.erase(card)
+			main.refresh_hand_display(is_opponent)
 			await main.animate_card_out_of_hand(card, is_opponent, hd_from, discard_node, 0.2, tex)
 		else:
 			var from_node = anim_from if anim_from != null else main.find_card_ui_for_object(card)
@@ -83,6 +90,10 @@ func send_to_discard(card: card_object, is_opponent: bool, animate: bool = false
 				from_node = main.opponent_active_container if is_opponent else main.player_active_container
 			await main.animate_card_a_to_b(from_node, discard_node, 0.2, tex, main.card_scales[10])
 		if main._should_bail(): return
+	if hand.has(card):
+		print("ISSUE #375 FIX ACTIVE: ", card.metadata.get("name", ""), " taken out of the hand as it is discarded")
+		hand.erase(card)
+		main.refresh_hand_display(is_opponent)
 	var discard = main.opponent_discard_pile if is_opponent else main.player_discard_pile
 	if not discard.has(card):
 		discard.append(card)
