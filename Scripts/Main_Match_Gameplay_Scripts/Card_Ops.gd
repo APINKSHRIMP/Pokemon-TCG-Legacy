@@ -39,6 +39,10 @@ func discard_energy_from_pokemon(energy: card_object, is_owner_opp: bool, is_ko_
 	for side in [false, true]:
 		for p in get_all_pokemon_in_play(side):
 			if energy in p.attached_energies:
+				# ISSUE #374: [Keep] (Unown [K]) — the opponent's effects can't discard Energy from your Unown.
+				if not is_ko_discard and main.powers_and_bodies.keep_protects_energy(p):
+					print("ISSUE #374 FIX ACTIVE: [Keep] kept ", energy.metadata.get("name",""), " on ", p.metadata.get("name",""))
+					return
 				p.attached_energies.erase(energy)
 	var card_name = energy.metadata.get("name", "")
 	if card_name == "Recycle Energy":
@@ -241,6 +245,11 @@ func search_deck_to_hand(is_opponent: bool, filter_fn: Callable, prompt: String,
 func recover_to_hand(card: card_object, is_opponent: bool, animate: bool = false) -> void:
 	var discard = main.opponent_discard_pile if is_opponent else main.player_discard_pile
 	var hand    = main.opponent_hand if is_opponent else main.player_hand
+	# ISSUE #374: Allergic Pollen (Parasect neo3-35) — discard-pile cards aren't affected by attacks or Powers.
+	if card in discard and main.powers_and_bodies.allergic_pollen_blocks_discard():
+		print("ISSUE #374 FIX ACTIVE: Allergic Pollen kept ", card.metadata.get("name",""), " in the discard pile")
+		await main.show_message("ALLERGIC POLLEN! CARDS IN THE DISCARD PILE CAN'T BE AFFECTED!")
+		return
 	discard.erase(card)
 	card.current_location = "hand"
 	hand.append(card)
@@ -420,6 +429,11 @@ func clear_statuses(pokemon: card_object, is_opponent: bool) -> void:
 func energy_removal_blocked(target: card_object, target_owner_is_opponent: bool, remover_is_opponent: bool) -> bool:
 	if target == null or target_owner_is_opponent == remover_is_opponent:
 		return false
+	# ISSUE #371: Legendary Body — a Trainer card (no attack / Power resolving) can't touch the Active's Energy.
+	if not main.attack_effects.is_attack_in_progress() and not main.powers_and_bodies.neo3_power_resolving and main.powers_and_bodies.legendary_body_shields(target):
+		main.show_floating_label("LEGENDARY BODY", main.get_pokemon_screen_location(target).get("position", Vector2(800, 300)), Color.BLUE, true)
+		print("ISSUE #371 FIX ACTIVE: Legendary Body kept the Energy on ", target.metadata.get("name", ""))
+		return true
 	if not target.gym2_brocks_protection_attached:
 		return false
 	main.show_floating_label("BROCK'S PROTECTION", main.get_pokemon_screen_location(target).get("position", Vector2(800, 300)), Color.BLUE, true)
@@ -749,6 +763,26 @@ func prompt_reorder_cards(cards: Array, header: String, hint: String = "Click th
 
 # MULTI-SELECT validator for "different types of basic Energy": refuses a card that provides a
 # (non-Colorless) type an already-picked card provides.
+# ISSUE #367: "Look at N cards (or your opponent's hand) and choose ..." — the player sees EVERY looked-at card, but only
+# the ones `eligible_fn` accepts can be picked. With nothing eligible the whole group is still shown (OK closes it).
+# Effects used to show only the eligible cards, so the player never saw what else was there.
+func pick_from_looked_at(all_cards: Array, eligible_fn: Callable, min_n: int, max_n: int, header: String, hint: String, btn_text: String = "SELECT") -> Array:
+	if all_cards.is_empty():
+		return []
+	var eligible: Array = all_cards.filter(eligible_fn)
+	if eligible.is_empty() or max_n <= 0:
+		await show_cards(all_cards, header, hint + " — nothing here can be chosen")
+		return []
+	return await prompt_select_cards(all_cards.duplicate(), mini(min_n, eligible.size()), mini(max_n, eligible.size()), header, hint, btn_text, false, false,
+		func(c, _picked): return bool(eligible_fn.call(c)))
+
+# ISSUE #367: show a group of cards face up so the player can read them (OK / Cancel closes it). Always a COPY of the
+# array, so an opponent's hand isn't drawn face down by the identity check in show_enlarged_array_selection_mode.
+func show_cards(cards: Array, header: String, hint: String) -> void:
+	if cards.is_empty():
+		return
+	await prompt_select_card(cards.duplicate(), header, hint + " (close to continue)", "OK", true, false)
+
 func distinct_energy_type_validator() -> Callable:
 	return func(c, picked: Array) -> bool:
 		var taken: Array = []

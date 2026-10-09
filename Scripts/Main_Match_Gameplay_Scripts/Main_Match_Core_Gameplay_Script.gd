@@ -635,13 +635,15 @@ func show_enlarged_array_selection_mode(card_array: Array) -> void:
 	# must pick from WITHOUT SEEING IT — "choose 1 card from your opponent's hand
 	# without looking". The usual test is identity-based (`card_array ==
 	# opponent_hand`), which a shuffled copy of that hand can never satisfy.
-	var should_hide = force_face_down_selection or (hide_hidden_cards and (card_array == opponent_hand or card_array == player_prize_cards or card_array == opponent_prize_cards))
+	# ISSUE #372: identity (is_same), not ==. Array == compares CONTENTS, so a face-up COPY of the opponent's hand or of
+	# the Prizes (every "look at your opponent's hand" screen) was drawn face down as well.
+	var should_hide = force_face_down_selection or (hide_hidden_cards and (is_same(card_array, opponent_hand) or is_same(card_array, player_prize_cards) or is_same(card_array, opponent_prize_cards)))
 	var selection_sleeve: String = ""
 	if should_hide:
 		if force_face_down_selection and force_face_down_sleeve != "":
 			selection_sleeve = force_face_down_sleeve
 		else:
-			selection_sleeve = opponent_sleeve_small if (card_array == opponent_hand or card_array == opponent_prize_cards) else player_sleeve_small
+			selection_sleeve = opponent_sleeve_small if (is_same(card_array, opponent_hand) or is_same(card_array, opponent_prize_cards)) else player_sleeve_small
 
 	# --- UNIFIED SIZING SYSTEM ---
 	# The white zone is the usable display area between the hint label bottom and the action buttons.
@@ -2745,7 +2747,7 @@ func display_prize_cards(is_opponent: bool) -> void:
 		
 		# Load the card image with a size appropriate for prize cards
 		var prize_sleeve = opponent_sleeve_small if is_opponent else player_sleeve_small
-		prize_card_display.load_card_image(prize_card.uid, PRIZE_SIZE, prize_card, hide_hidden_cards, prize_sleeve)
+		prize_card_display.load_card_image(prize_card.uid, PRIZE_SIZE, prize_card, hide_hidden_cards and not prize_card.prize_face_up, prize_sleeve)   # ISSUE #364: face-up Prizes
 		
 		# Connect the signal so prize cards can be clicked if needed
 		prize_card_display.card_clicked.connect(this_card_clicked)
@@ -5754,6 +5756,10 @@ func add_pokemon_to_bench(pokemon: card_object) -> void:
 		# Imprison markers, and Shock-wave markers from your Pokémon.
 		if pokemon.has_ability("Tropical Heal"):
 			await powers_and_bodies.trigger_ex15_tropical_heal(pokemon, false)
+		# NEO3 Howl (Entei neo3-6): may discard the top 5, attach Fire Energy among them; ends the turn (ISSUE #374)
+		if pokemon.has_ability("Howl"):
+			await powers_and_bodies.trigger_neo3_howl(pokemon, false)
+			if _should_bail(): return
 		# EX16 on-bench-from-hand powers: Cursed Eyes (Absol ex), Crimson/Yellow/Blue Ray (Star Eeveelutions).
 		await powers_and_bodies.trigger_ex16_on_bench(pokemon, false)
 		# POP on-bench-from-hand powers: Time Reversal (Celebi ex), Purple Ray (Espeon Star), Dark Ray (Umbreon Star).
@@ -6006,8 +6012,9 @@ func perform_energy_attachment() -> void:
 	await powers_and_bodies.check_energy_evolution(target_pokemon, energy_card, false)
 	# NEO3 Triggered Poison (Crobat neo3-4): if energy is attached to a pokemon with triggered_poison_active, poison it
 	await powers_and_bodies.check_triggered_poison(target_pokemon, false)
-	# NEO3 Lightning Burst (Flaaffy neo3-28): when Lightning Energy is attached, deal 10 to each opp benched pokemon
-	powers_and_bodies.check_lightning_burst(target_pokemon, energy_card, false)
+	# NEO3 Lightning Burst (Raikou neo3-13): Lightning Energy from hand -> the opponent switches in a Benched Pokemon
+	await powers_and_bodies.check_lightning_burst(target_pokemon, energy_card, false)
+	if _should_bail(): return
 	# NEO4 Conductivity (Dark Ampharos neo4-1): opponent's Ampharos deals 10 to this Pokemon
 	powers_and_bodies.check_neo4_conductivity(target_pokemon, false)
 	if _should_bail(): return
@@ -6342,6 +6349,7 @@ func send_card_to_discard(card: card_object, is_opponent: bool) -> void:
 
 # Removes a prize card from the specified player's prizes and adds it to their hand with animation
 func take_prize_card(card: card_object, is_opponent: bool) -> void:
+	card.prize_face_up = false   # ISSUE #364
 	var prizes = opponent_prize_cards if is_opponent else player_prize_cards
 	var hand = opponent_hand if is_opponent else player_hand
 	var prize_container = opponent_prize_container if is_opponent else player_prize_container
@@ -6696,6 +6704,15 @@ func inbetween_turn_checks(player_turn_just_ended: bool = true) -> void:
 
 	# NP between-turn passive bodies: Rain Dish (heal Ludicolo), Burning Aura (damage both Actives)
 	await powers_and_bodies.apply_np_between_turn_bodies()
+	if _should_bail():
+		return
+
+	# ISSUE #371: neo / e-card Darkness Energy — "At the end of every turn, put 1 damage counter on the Pokémon Darkness
+	# Energy is attached to, unless it's Darkness or has Dark in its name." Never implemented.
+	await powers_and_bodies.apply_old_darkness_energy_counters()
+	if _should_bail():
+		return
+	await powers_and_bodies.apply_legendary_body_discards()
 	if _should_bail():
 		return
 
@@ -7094,6 +7111,9 @@ func perform_evolution(is_opponent: bool) -> void:
 		await powers_and_bodies.trigger_ex10_bursting_up(evo_card, is_opponent)
 	elif evo_card.has_ability("Darker Ring"):
 		await powers_and_bodies.trigger_ex10_darker_ring(evo_card, is_opponent)
+	# NEO3 Softboiled (Blissey neo3-2): on evolving from hand, may flip to remove 8 / 4 damage counters (ISSUE #374)
+	elif evo_card.has_ability("Softboiled"):
+		await powers_and_bodies.trigger_neo3_softboiled(evo_card, is_opponent)
 	# EX11 on-play (evolve from hand) power triggers (Eeveelution ex)
 	elif evo_card.has_ability("Evolutionary Flame"):
 		await powers_and_bodies.trigger_ex11_evolutionary_flame(evo_card, is_opponent)
@@ -7575,6 +7595,10 @@ func _get_energy_provided_raw(energy_card: card_object) -> Array:
 	
 	# Basic energy: strip " Energy" from name to get the type string
 	if "Basic" in subtypes:
+		# ISSUE #374: NEO3 Energy Converter (Porygon2) — this basic Energy card is another type until end of turn.
+		var cv_type: String = powers_and_bodies.neo3_converted_type(energy_card)
+		if cv_type != "":
+			return [cv_type]
 		var energy_type = card_name.replace(" Energy", "").strip_edges()
 		# EX11 Holon Research Tower (ex11-94 Stadium): each player's basic Energy attached to a Pokemon
 		# that has δ on its card is both its usual type AND Metal (still only 1 Energy at a time).
@@ -7611,6 +7635,28 @@ func _get_energy_provided_raw(energy_card: card_object) -> Array:
 		if rb_holder != null and rb_holder.metadata.get("name","") in ["Huntail", "Gorebyss"]:
 			if powers_and_bodies.is_ex12_reactive_booster_active(rb_holder):
 				return ["Any", "Any"]
+
+	# ISSUE #371: Rainbow Energy (ecard2 / ex printings) "provides EVERY type of Energy" — Darkness and Metal were
+	# missing. (base5-17 Team Rocket's Rainbow counts as every type of BASIC Energy — the 6 base types.)
+	if card_name == "Rainbow Energy" and energy_card.uid.to_lower() != "base5-17":
+		return ["Fire", "Water", "Grass", "Lightning", "Psychic", "Fighting", "Darkness", "Metal"]
+	# ISSUE #372: ecard2-146 Crystal Energy — 1 Energy of every type of BASIC Energy attached to its holder (Colorless if
+	# there are none). Never implemented.
+	if card_name == "Crystal Energy":
+		var ce_holder = _find_energy_holder(energy_card)
+		var ce_types: Array = []
+		if ce_holder != null:
+			for x in ce_holder.attached_energies:
+				if x != energy_card and "Basic" in x.metadata.get("subtypes", []):
+					var bt = x.metadata.get("name", "").replace(" Energy", "").strip_edges()
+					if bt != "" and bt not in ce_types: ce_types.append(bt)
+		return ce_types if not ce_types.is_empty() else ["Colorless"]
+	# ISSUE #371: Multi Energy "provides Colorless Energy when attached to a Pokémon that already has Special Energy
+	# cards attached to it" — never applied.
+	if card_name == "Multi Energy":
+		var me_holder = _find_energy_holder(energy_card)
+		if me_holder != null and me_holder.attached_energies.any(func(x): return x != energy_card and "Special" in x.metadata.get("subtypes", [])):
+			return ["Colorless"]
 
 	# EX13 δ Rainbow Energy (ex13-98): provides Colorless normally, but every type of Energy (1 at a
 	# time) while attached to a Pokémon that has δ on its card. Needs holder context; resolved here.
@@ -8170,6 +8216,11 @@ func calculate_final_damage(base_damage: int, attacking_types: Array, defending_
 	if not skip_resistance and powers_and_bodies.is_ex1_withering_dust_in_play():
 		skip_resistance = true
 		modifiers_applied.append("WITHERING DUST (NO RESISTANCE)")
+	# ISSUE #371: neo4-101 Magnifier — "If the Pokémon Magnifier is attached to attacks, don't apply Resistance" (it was
+	# attach-only, with no effect).
+	if not skip_resistance and attacker_pokemon != null and attacker_pokemon.attached_cards.any(func(ac): return ac.uid.to_lower() == "neo4-101"):
+		skip_resistance = true
+		modifiers_applied.append("MAGNIFIER (NO RESISTANCE)")
 	# EX11 Holon Energy FF + basic Fighting attached: the holder's attacks aren't affected by Resistance.
 	if not skip_resistance and attacker_pokemon != null and special_energy_effects.ex11_holon_ff_ignore_resistance(attacker_pokemon):
 		skip_resistance = true
@@ -9022,6 +9073,7 @@ func clear_all_statuses(pokemon: card_object, is_opponent: bool) -> void:
 
 	# NEO3: clear flags that should expire when the pokemon leaves the active slot
 	pokemon.night_eyes_used = false
+	pokemon.clear_effect("neo3_octazooka")   # ISSUE #371: Benching ends Octazooka
 	pokemon.submerge_active = false
 	pokemon.triggered_poison_active = false
 	pokemon.neo3_high_speed_locked = false
@@ -9238,6 +9290,9 @@ func get_retreat_cost(pokemon: card_object) -> int:
 			if jp.metadata.get("name","") == "Jynx δ" and jp.has_ability("Stages of Evolution") and not jp.attached_pre_evolutions.is_empty() and not powers_and_bodies.is_power_blocked(jp):
 				cost = max(0, cost - 1)
 
+	# ISSUE #370: neo4 Tentacle Wrap (tails) — 1 more Colorless to retreat during that Pokémon's next turn.
+	if pokemon.has_effect("neo4_tentacle_wrap"):
+		cost += 1
 	# Dark Muk Sticky Goo: opponent pays 2 more to retreat
 	var is_player_pokemon = (pokemon == player_active_pokemon or pokemon in player_bench)
 	cost += powers_and_bodies.get_sticky_goo_cost(is_player_pokemon)
@@ -9799,8 +9854,9 @@ func handle_action_retreat_bench() -> void:
 	if _should_bail(): return
 	await check_all_knockouts()
 	if _should_bail(): return
-	# NEO3 Magma Pool (Magcargo neo3-33): when Magcargo retreats, both pokemon take 20 damage
-	powers_and_bodies.check_magma_pool(retreating_pokemon, player_active_pokemon, false)
+	# NEO3 Magma Pool (Magcargo neo3-33): retreating Magcargo moves 1 Fire Energy to the new Active
+	await powers_and_bodies.check_magma_pool(retreating_pokemon, player_active_pokemon, false)
+	if _should_bail(): return
 	await check_all_knockouts()
 	if _should_bail(): return
 	# NEO2 Spikes (Forretress): 10 damage to new active pokemon (player's bench→active)

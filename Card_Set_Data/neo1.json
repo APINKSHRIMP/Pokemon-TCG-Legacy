@@ -3729,7 +3729,7 @@
           "Grass"
         ],
         "convertedEnergyCost": 2,
-        "damage": "",
+        "damage": "10×",
         "text": "Flip 4 coins. This attack does 10 damage times the number of heads."
       }
     ],

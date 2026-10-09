@@ -1,12 +1,12 @@
 ==============================================================================
 ISSUE DEBUG-TAG AUDIT
 ==============================================================================
-issues with tags in code : 279
-issues with live prints  : 83
-rows in Game_Issues          : 367
+issues with tags in code : 330
+issues with live prints  : 97
+rows in Game_Issues          : 371
 
 ------------------------------------------------------------------------------
-[1] CLEANUP REQUIRED — resolved issues still printing (12 issues, 16 lines)
+[1] CLEANUP REQUIRED — resolved issues still printing (11 issues, 15 lines)
 ------------------------------------------------------------------------------
 
   ISSUE #274  [Issue Resolved]  1 print line(s)
@@ -18,45 +18,41 @@ rows in Game_Issues          : 367
         print("ISSUE #275 FIX ACTIVE: sub-caption '", sub_text, "' centred on ",
 
   ISSUE #276  [Issue Resolved]  2 print line(s)
-    Scripts/Main_Match_Gameplay_Scripts/Main_Match_Core_Gameplay_Script.gd:8509
+    Scripts/Main_Match_Gameplay_Scripts/Main_Match_Core_Gameplay_Script.gd:8787
         print("ISSUE #276 FIX ACTIVE: bench -> active ",
-    Scripts/Main_Match_Gameplay_Scripts/Main_Match_Core_Gameplay_Script.gd:9607
+    Scripts/Main_Match_Gameplay_Scripts/Main_Match_Core_Gameplay_Script.gd:9890
         print("ISSUE #276 FIX ACTIVE: player bench -> active ",
 
   ISSUE #280  [Issue Resolved]  1 print line(s)
-    Scripts/Main_Match_Gameplay_Scripts/Main_Match_Core_Gameplay_Script.gd:4290
+    Scripts/Main_Match_Gameplay_Scripts/Main_Match_Core_Gameplay_Script.gd:4334
         print("ISSUE #280 FIX ACTIVE: discarding ", energy.metadata.get("name", "?"),
 
-  ISSUE #282  [Issue Resolved]  1 print line(s)
-    Scripts/Main_Match_Gameplay_Scripts/Main_Match_Core_Gameplay_Script.gd:5939  <-- BLOCK RISK: sole statement in its block, needs care
-        print("ISSUE #282 FIX ACTIVE: draw lands at ", slot["position"], " size ", slot["size"])
-
   ISSUE #283  [Issue Resolved]  3 print line(s)
-    Scripts/Main_Match_Gameplay_Scripts/Main_Match_Core_Gameplay_Script.gd:5775
+    Scripts/Main_Match_Gameplay_Scripts/Main_Match_Core_Gameplay_Script.gd:5981
         print("ISSUE #283 FIX ACTIVE: energy leaves hand from ",
-    Scripts/Main_Match_Gameplay_Scripts/Main_Match_Core_Gameplay_Script.gd:9661
+    Scripts/Main_Match_Gameplay_Scripts/Main_Match_Core_Gameplay_Script.gd:9944
         print("ISSUE #283 FIX ACTIVE: evolution leaves hand from ",
-    Scripts/Main_Match_Gameplay_Scripts/Main_Match_Core_Gameplay_Script.gd:9743
+    Scripts/Main_Match_Gameplay_Scripts/Main_Match_Core_Gameplay_Script.gd:10026
         print("ISSUE #283 FIX ACTIVE: bench placement leaves hand from ",
 
   ISSUE #284  [Issue Resolved]  1 print line(s)
-    Scripts/Main_Match_Gameplay_Scripts/CPU_AI.gd:1851
+    Scripts/Main_Match_Gameplay_Scripts/CPU_AI.gd:1939
         print("ISSUE #284 FIX ACTIVE: opponent energy from ",
 
   ISSUE #285  [Issue Resolved]  1 print line(s)
-    Scripts/Main_Match_Gameplay_Scripts/Main_Match_Core_Gameplay_Script.gd:8315
+    Scripts/Main_Match_Gameplay_Scripts/Main_Match_Core_Gameplay_Script.gd:8593
         print("ISSUE #285 FIX ACTIVE: KO ghost leaves ", ko_rect["position"],
 
   ISSUE #286  [Issue Resolved]  1 print line(s)
-    Scripts/Main_Match_Gameplay_Scripts/Main_Match_Core_Gameplay_Script.gd:3104
+    Scripts/Main_Match_Gameplay_Scripts/Main_Match_Core_Gameplay_Script.gd:3124
         print("ISSUE #286 FIX ACTIVE: HP blocks ", damaged_was, " -> ", damaged_now,
 
   ISSUE #287  [Issue Resolved]  1 print line(s)
-    Scripts/Main_Match_Gameplay_Scripts/Main_Match_Core_Gameplay_Script.gd:5284
+    Scripts/Main_Match_Gameplay_Scripts/Main_Match_Core_Gameplay_Script.gd:5486
         print("ISSUE #287 FIX ACTIVE: forfeit dialog buttons on ACTION_MODE_BUTTON_PRESS")
 
   ISSUE #288  [Issue Resolved]  2 print line(s)
-    Scripts/Main_Match_Gameplay_Scripts/Main_Match_Core_Gameplay_Script.gd:10755
+    Scripts/Main_Match_Gameplay_Scripts/Main_Match_Core_Gameplay_Script.gd:11053
         print("ISSUE #288 FIX ACTIVE: match board fades in over ", MATCH_FADE_IN_TIME, "s")
     Scripts/Main_Match_Gameplay_Scripts/Match_End_Outro_Script.gd:1257
         print("ISSUE #288 FIX ACTIVE: outro fades out over ", FADE_TIME, "s")
@@ -71,9 +67,9 @@ rows in Game_Issues          : 367
   none.
 
 ------------------------------------------------------------------------------
-[3] KEEP — prints on issues still open/untested (71)
+[3] KEEP — prints on issues still open/untested (86)
 ------------------------------------------------------------------------------
-  #2 (Untested Fix, 1), #7 (Untested Fix, 3), #11 (Untested Fix, 1), #12 (Untested Fix, 2), #13 (Untested Fix, 1), #21 (Untested Fix, 2), #22 (Untested Fix, 1), #23 (Untested Fix, 4), #24 (Untested Fix, 2), #25 (Untested Fix, 2), #32 (Untested Fix, 1), #35 (Untested Fix, 4), #36 (Untested Fix, 1), #38 (Untested Fix, 1), #43 (Untested Fix, 1), #44 (Untested Fix, 1), #45 (Untested Fix, 1), #49 (Untested Fix, 2), #59 (Untested Fix, 3), #60 (Untested Fix, 1), #61 (Untested Fix, 3), #63 (Untested Fix, 2), #69 (Untested Fix, 2), #71 (Untested Fix, 1), #74 (Untested Fix, 5), #75 (Untested Fix, 2), #82 (Untested Fix, 1), #86 (Untested Fix, 1), #90 (Untested Fix, 1), #91 (Untested Fix, 2), #95 (Untested Fix, 1), #102 (Untested Fix, 1), #103 (Untested Fix, 4), #157 (Untested Fix, 1), #158 (Untested Fix, 2), #163 (Untested Fix, 1), #164 (Untested Fix, 1), #174 (Untested Fix, 1), #192 (Untested Fix, 1), #208 (Untested Fix, 2), #269 (Untested Fix, 1), #279 (Fix Failed, 1), #281 (Improve Further, 1), #291 (Untested Fix, 4), #292 (Untested Fix, 2), #294 (Untested Fix, 8), #295 (Untested Fix, 2), #296 (Untested Fix, 5), #297 (Untested Fix, 1), #298 (Untested Fix, 1), #299 (Untested Fix, 3), #300 (Untested Fix, 3), #301 (Untested Fix, 2), #302 (Untested Fix, 1), #303 (Untested Fix, 1), #304 (Untested Fix, 1), #305 (Untested Fix, 3), #306 (Untested Fix, 1), #307 (Untested Fix, 1), #308 (Untested Fix, 1), #309 (Untested Fix, 5), #310 (Untested Fix, 1), #312 (Untested Fix, 3), #313 (Untested Fix, 1), #314 (Untested Fix, 1), #315 (Untested Fix, 1), #317 (Untested Fix, 6), #318 (Untested Fix, 10), #319 (Untested Fix, 26), #320 (Untested Fix, 11), #321 (Untested Fix, 2)
+  #2 (Untested Fix, 1), #7 (Untested Fix, 3), #11 (Untested Fix, 1), #12 (Untested Fix, 2), #13 (Untested Fix, 1), #22 (Untested Fix, 1), #23 (Untested Fix, 4), #24 (Untested Fix, 2), #25 (Untested Fix, 2), #32 (Untested Fix, 1), #35 (Untested Fix, 4), #36 (Untested Fix, 1), #38 (Untested Fix, 1), #43 (Untested Fix, 1), #44 (Untested Fix, 1), #45 (Untested Fix, 1), #49 (Untested Fix, 2), #59 (Untested Fix, 3), #60 (Untested Fix, 1), #61 (Untested Fix, 3), #63 (Untested Fix, 2), #69 (Untested Fix, 2), #71 (Untested Fix, 1), #74 (Untested Fix, 5), #75 (Untested Fix, 2), #82 (Untested Fix, 1), #86 (Untested Fix, 1), #90 (Untested Fix, 1), #91 (Untested Fix, 2), #95 (Untested Fix, 1), #102 (Untested Fix, 1), #103 (Untested Fix, 4), #158 (Untested Fix, 2), #163 (Untested Fix, 1), #164 (Untested Fix, 1), #174 (Untested Fix, 1), #192 (Untested Fix, 1), #208 (Untested Fix, 2), #269 (Untested Fix, 1), #279 (Fix Failed, 1), #281 (Improve Further, 1), #291 (Untested Fix, 4), #292 (Untested Fix, 2), #294 (Untested Fix, 8), #295 (Untested Fix, 2), #296 (Untested Fix, 5), #297 (Untested Fix, 1), #298 (Untested Fix, 1), #299 (Untested Fix, 3), #300 (Untested Fix, 3), #301 (Untested Fix, 2), #302 (Untested Fix, 1), #303 (Untested Fix, 1), #304 (Untested Fix, 1), #305 (Untested Fix, 3), #306 (Untested Fix, 1), #307 (Untested Fix, 1), #308 (Untested Fix, 1), #309 (Untested Fix, 5), #310 (Untested Fix, 1), #312 (Untested Fix, 3), #313 (Untested Fix, 1), #314 (Untested Fix, 1), #315 (Untested Fix, 1), #317 (Untested Fix, 6), #318 (Untested Fix, 10), #319 (Untested Fix, 26), #320 (Untested Fix, 11), #321 (Untested Fix, 2), #324 (Untested Fix, 5), #325 (Untested Fix, 2), #326 (Untested Fix, 1), #329 (Untested Fix, 1), #338 (Untested Fix, 1), #346 (Untested Fix, 1), #364 (Untested Fix, 7), #365 (Untested Fix, 11), #366 (Untested Fix, 5), #367 (Untested Fix, 7), #368 (Untested Fix, 1), #369 (Untested Fix, 5), #370 (Untested Fix, 2), #371 (Untested Fix, 9), #372 (Untested Fix, 3), #373 (Untested Fix, 11), #374 (Untested Fix, 13)
 
 NOTE: `# ISSUE #n ...` comments are permanent documentation and are NOT
       reported here. Only executable print/push_error lines are.

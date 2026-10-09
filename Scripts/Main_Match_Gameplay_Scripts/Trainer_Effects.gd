@@ -227,6 +227,9 @@ func effect_ex8_master_ball(is_opponent: bool) -> void:
 		top.append(deck[i])
 	var pool = top.filter(func(c): return c.metadata.get("supertype","") == "Pokémon")
 	if pool.is_empty():
+		if not is_opponent:
+			await main.card_ops.show_cards(top, "MASTER BALL — THE TOP " + str(top.size()) + " CARDS", "No Basic Pokémon or Evolution cards")   # ISSUE #367
+			if main._should_bail(): return
 		deck.shuffle()
 		main.update_deck_icon(is_opponent)
 		await main.show_message("MASTER BALL! NO POKEMON IN THE TOP 7.")
@@ -236,9 +239,10 @@ func effect_ex8_master_ball(is_opponent: bool) -> void:
 	if is_opponent:
 		chosen = main.cpu_ai.cpu_pick_best_keep(pool)  # fetch the Pokemon that completes a line / is playable now
 	else:
-		chosen = await main.card_ops.choose_card(pool, false, "MASTER BALL", "Choose a Basic Pokemon or Evolution card to put into your hand", "TAKE", false, Callable(), true)
+		# ISSUE #367: all 7 looked-at cards are shown (only the Pokémon among them were).
+		var mb8: Array = await main.card_ops.pick_from_looked_at(top, func(c): return c in pool, 1, 1, "MASTER BALL — THE TOP " + str(top.size()) + " CARDS", "Choose a Basic Pokémon or Evolution card to put into your hand", "TAKE")
 		if main._should_bail(): return
-		if chosen == null: chosen = pool[0]
+		chosen = mb8[0] if not mb8.is_empty() else pool[0]
 	deck.erase(chosen)
 	chosen.current_location = "hand"
 	var hand = main.opponent_hand if is_opponent else main.player_hand
@@ -975,45 +979,23 @@ func _score_card_for_discard(card: card_object) -> float:
 		if already_in_play and main.opponent_bench.size() >= 2:
 			return 10.0
 	
-	# Priority 2: Excess energy (if hand has 3+ energy cards)
+	# Priority 2: Energy — ISSUE #373: valued by what the board still needs (an Energy type nothing uses goes
+	# first, a needed type stays, the last Energy in hand stays).
 	if supertype == "energy":
-		var energy_count = 0
-		for c in main.opponent_hand:
-			if c.metadata.get("supertype", "").to_lower() == "energy":
-				energy_count += 1
-		if energy_count >= 4:
-			return 15.0
-		elif energy_count >= 3:
-			return 25.0
-		# Never discard last energy
-		if energy_count <= 1:
-			return 90.0
-		return 40.0
-	
-	# Priority 3: Unplayable evolution cards
+		return main.cpu_ai.cpu_hand_energy_keep(card)
+
+	# Priority 3: Evolution cards — ISSUE #373: a Stage 2 whose LINE is alive (its Basic in play/hand, Rare
+	# Candy/Breeder in hand) is protected; one with no route left is the first thing to go.
 	if supertype == "pokémon" and not main.is_basic_pokemon(card):
-		var evolves_from = card.metadata.get("evolvesFrom", "")
-		var has_base_in_play = false
-		var has_base_in_hand = false
-		if main.opponent_active_pokemon != null and main.opponent_active_pokemon.metadata.get("name", "") == evolves_from:
-			has_base_in_play = true
-		for bp in main.opponent_bench:
-			if bp.metadata.get("name", "") == evolves_from:
-				has_base_in_play = true
-		for c in main.opponent_hand:
-			if c.metadata.get("name", "") == evolves_from:
-				has_base_in_hand = true
-		
-		if not has_base_in_play and not has_base_in_hand:
-			# Check if it's Stage 2 (never discard if possible)
-			if "Stage 2" in subtypes:
-				return 30.0
-			return 20.0
-		# Has matching base: high value, don't discard
-		if "Stage 2" in subtypes:
-			return 95.0
-		return 80.0
-	
+		var line_state: int = main.cpu_ai.cpu_evolution_line_state(card)
+		var is_s2 = "Stage 2" in subtypes
+		match line_state:
+			3: return 95.0 if is_s2 else 82.0
+			2: return 90.0 if is_s2 else 75.0
+			1: return 85.0
+			0: return 45.0 if is_s2 else 32.0
+			_: return 12.0
+
 	# Priority 4: Low-priority trainer cards
 	if supertype == "trainer":
 		var trainer_score = main.cpu_ai.cpu_score_trainer_card(card)
@@ -2382,21 +2364,9 @@ func effect_scoop_up(is_opponent: bool) -> void:
 	var target: card_object = null
 	
 	if is_opponent:
-		# ISSUE #310: scoop the badly damaged Pokémon that costs least to rebuild (few Energy / no evolution
-		# lost) — and never the Active with an empty Bench, which would lose the game on the spot.
-		var best_s := -INF
-		for pokemon in all_in_play:
-			if pokemon.current_hp * 2 > pokemon.get_max_hp():
-				continue
-			if pokemon == active and bench.is_empty():
-				continue
-			var s := float(pokemon.get_max_hp() - pokemon.current_hp)
-			s -= pokemon.attached_energies.size() * 25.0
-			s -= pokemon.attached_pre_evolutions.size() * 20.0
-			if pokemon == active: s += 30.0
-			if s > best_s:
-				best_s = s
-				target = pokemon
+		# ISSUE #310 / #373: the shared scoop ranker — save a Prize, wipe big damage on a high-HP Pokémon,
+		# cheapest to rebuild; never the Active with an empty Bench.
+		target = main.cpu_ai.cpu_pick_scoop_target(all_in_play, false, -1000000.0)
 		if target == null:
 			return
 	else:
@@ -2596,8 +2566,9 @@ func effect_super_energy_removal(is_opponent: bool) -> void:
 		# Step 4: Remove up to 2 energy using multi-select
 		var max_remove = min(2, target.attached_energies.size())
 		var removed = 0
-		if max_remove <= 2 and target.attached_energies.size() <= 2:
-			# 2 or fewer - just take them all
+		# ISSUE #366: with exactly 2 Energy attached both were discarded without asking — "up to 2" lets the player
+		# take just 1. Only a single attached Energy is taken automatically now.
+		if target.attached_energies.size() <= 1:
 			while target.attached_energies.size() > 0 and removed < 2:
 				var e = target.attached_energies.pop_back()
 				e.current_location = "discard"
@@ -3586,6 +3557,10 @@ func effect_rockets_sneak_attack(is_opponent: bool) -> void:
 			trainer_cards.append(card)
 	
 	if trainer_cards.size() == 0:
+		# ISSUE #367: "Look at your opponent's hand" — the hand is shown even when there's no Trainer to take.
+		if not is_opponent:
+			await gym1_reveal_hand(false, "ROCKET'S SNEAK ATTACK — OPPONENT'S HAND", "No Trainer cards — press DONE")
+			if main._should_bail(): return
 		await main.show_message("NO TRAINER CARDS IN OPPONENT'S HAND!")
 		if main._should_bail(): return
 		return
@@ -4202,6 +4177,20 @@ func gym1_end_of_turn_cleanup(side_is_opponent: bool) -> void:
 				main.update_discard_pile_display(side_is_opponent)
 				print("MEMORY BERRY: discarded from ", pokemon.metadata.get("name", ""))
 
+		# ISSUE #371: neo4-101 Magnifier — "At the end of your turn, discard Magnifier."
+		var mg_card: card_object = null
+		for ac in pokemon.attached_cards:
+			if ac.uid.to_lower() == "neo4-101":
+				mg_card = ac
+				break
+		if mg_card != null:
+			pokemon.attached_cards.erase(mg_card)
+			mg_card.current_location = "discard"
+			discard.append(mg_card)
+			display_attached_trainer_cards(side_is_opponent)
+			main.update_discard_pile_display(side_is_opponent)
+			print("ISSUE #371 FIX ACTIVE: Magnifier discarded at end of turn from ", pokemon.metadata.get("name", ""))
+
 		# ECARD3 Crystal Shard (ecard3-122) / ex8-85: discarded at the end of any turn its holder attacked
 		if attacked_this_turn:
 			var cs_card: card_object = null
@@ -4592,10 +4581,15 @@ func gym1_effect_rockets_trap(is_opponent: bool) -> void:
 	var opp_deck = main.player_deck if is_opponent else main.opponent_deck
 	if opp_hand.size() == 0:
 		return
+	# ISSUE #366: "choose UP TO 3 cards at random" — always 3 before. The player picks how many (the cards
+	# themselves are still random, as printed); the CPU takes all 3.
+	var max_n = min(3, opp_hand.size())
+	var n: int = await main.attack_effects.r3_choose_count(is_opponent, "THE ROCKET'S TRAP: HOW MANY RANDOM CARDS?", max_n, max_n)
+	if main._should_bail(): return
+	print("ISSUE #366 FIX ACTIVE: The Rocket's Trap — ", n, " random card(s)")
 	var picks: Array = []
 	var pool = opp_hand.duplicate()
 	pool.shuffle()
-	var n = min(3, pool.size())
 	for i in range(n):
 		picks.append(pool[i])
 	for c in picks:
@@ -6120,12 +6114,12 @@ func gym2_effect_master_ball(is_opponent: bool) -> void:
 		if chosen == null and pokemon_candidates.size() > 0:
 			chosen = pokemon_candidates[0]
 	else:
-		if pokemon_candidates.size() == 0:
-			await main.show_message("MASTER BALL — NO POKEMON IN TOP 7!")
-		else:
-			chosen = await main.card_ops.prompt_select_card(pokemon_candidates, "MASTER BALL — CHOOSE A POKEMON", "Add a Basic or Evolution to your hand", "TAKE", true, true)
-			if main._should_bail(): return
-			main.cancel_button.text = "Cancel"
+		# ISSUE #367: "Look at 7 cards" — all 7 are shown now (only the Pokémon among them were); "you MAY choose" a
+		# Basic Pokémon or Evolution card (0 or 1).
+		print("ISSUE #367 FIX ACTIVE: Master Ball (gym2) — all looked-at cards shown")
+		var mb_picks: Array = await main.card_ops.pick_from_looked_at(top, func(c): return c.metadata.get("supertype", "") == "Pokémon", 0, 1, "MASTER BALL — THE TOP " + str(top.size()) + " CARDS", "You may take a Basic Pokémon or Evolution card", "TAKE")
+		if main._should_bail(): return
+		chosen = mb_picks[0] if not mb_picks.is_empty() else null
 	if chosen != null:
 		top.erase(chosen)
 		chosen.current_location = "hand"
@@ -6681,23 +6675,24 @@ func gym2_saffron_activate(is_opponent: bool) -> void:
 
 # basep-16 Computer Error (Rocket's Secret Machine): both players may draw up to 5 cards; turn ends
 func effect_computer_error(is_opponent: bool) -> void:
-	# Playing player draws up to 5
-	var own_deck = main.opponent_deck if is_opponent else main.player_deck
-	var draw_count = min(5, own_deck.size())
+	# ISSUE #366: "You MAY draw UP TO 5 cards, then your opponent MAY draw UP TO 5" — both sides were forced to draw
+	# 5. Each drawing side now picks 0-5 (the CPU stops short of decking itself).
+	var draw_count = await choose_up_to_draw_count(5, is_opponent, "COMPUTER ERROR")
+	if main._should_bail(): return
+	print("ISSUE #366 FIX ACTIVE: Computer Error — player of the card draws ", draw_count)
 	if draw_count > 0:
 		await main.card_ops.draw_n(is_opponent, draw_count)
 		if main._should_bail(): return
-		await main.show_message(("OPPONENT" if is_opponent else "YOU") + " DREW " + str(draw_count) + " CARD(S)!")
-		if main._should_bail(): return
-	# Opponent draws up to 5
+	await main.show_message(("OPPONENT" if is_opponent else "YOU") + " DREW " + str(draw_count) + " CARD(S)!")
+	if main._should_bail(): return
 	var opp_is = not is_opponent
-	var opp_deck = main.player_deck if is_opponent else main.opponent_deck
-	var opp_draw = min(5, opp_deck.size())
+	var opp_draw = await choose_up_to_draw_count(5, opp_is, "COMPUTER ERROR (OPPONENT'S DRAW)")
+	if main._should_bail(): return
 	if opp_draw > 0:
 		await main.card_ops.draw_n(opp_is, opp_draw)
 		if main._should_bail(): return
-		await main.show_message(("YOU" if is_opponent else "OPPONENT") + " DREW " + str(opp_draw) + " CARD(S)!")
-		if main._should_bail(): return
+	await main.show_message(("YOU" if is_opponent else "OPPONENT") + " DREW " + str(opp_draw) + " CARD(S)!")
+	if main._should_bail(): return
 	await main.show_message("COMPUTER ERROR! TURN ENDS!")
 	if main._should_bail(): return
 	# Signal turn-end: playing side cannot attack this turn
@@ -6815,6 +6810,9 @@ func effect_neo1_arcade_game(is_opponent: bool) -> void:
 		revealed.append(deck[i])
 	await main.show_message("ARCADE GAME: REVEALED " + str(reveal_count) + " CARDS!")
 	if main._should_bail(): return
+	# ISSUE #367: "reveal the top 3" — the revealed cards were never shown.
+	await main.card_ops.show_cards(revealed, "ARCADE GAME — REVEALED", ("Your opponent revealed these" if is_opponent else "The top 3 cards of your deck"))
+	if main._should_bail(): return
 	# Check if 2+ share the same name
 	var name_counts: Dictionary = {}
 	for c in revealed:
@@ -6868,23 +6866,29 @@ func effect_neo1_energy_charge(is_opponent: bool) -> void:
 		if main._should_bail(): return
 		return
 	var picks = min(2, energy_cards.size())
+	var moved := 0
 	if is_opponent:
 		for i in range(picks):
-			var e = energy_cards[i]
+			var e = main.cpu_ai.cpu_pick_best_keep(energy_cards)
+			if e == null: break
+			energy_cards.erase(e)
 			discard.erase(e)
 			e.current_location = "deck"
 			deck.append(e)
+			moved += 1
 	else:
-		var chosen_e: Array = await main.card_ops.prompt_select_cards(energy_cards, picks, picks, "ENERGY CHARGE", "Choose " + str(picks) + " Energy to shuffle into your deck", "SHUFFLE IN")
+		# ISSUE #366: "shuffle UP TO 2 Energy cards" — the player was forced to take exactly 2.
+		var chosen_e: Array = await main.card_ops.prompt_select_cards(energy_cards, 0, picks, "ENERGY CHARGE", "Choose up to " + str(picks) + " Energy to shuffle into your deck", "SHUFFLE IN")
 		if main._should_bail(): return
 		for pick in chosen_e:
 			discard.erase(pick)
 			pick.current_location = "deck"
 			deck.append(pick)
+			moved += 1
 	deck.shuffle()
 	main.update_discard_pile_display(is_opponent)
 	main.update_deck_icon(is_opponent)
-	await main.show_message("ENERGY CHARGE: HEADS! SHUFFLED ENERGY INTO DECK!")
+	await main.show_message("ENERGY CHARGE: HEADS! SHUFFLED " + str(moved) + " ENERGY INTO THE DECK!")
 	if main._should_bail(): return
 	print("TRAINER: Energy Charge")
 
@@ -6936,6 +6940,9 @@ func effect_neo1_pokegear(is_opponent: bool) -> void:
 		revealed.append(deck[i])
 	var trainers: Array = revealed.filter(func(c): return c.metadata.get("supertype","") == "Trainer")
 	if trainers.size() == 0:
+		if not is_opponent:
+			await main.card_ops.show_cards(revealed, "POKEGEAR — THE TOP " + str(reveal_count) + " CARDS", "No Trainer cards")   # ISSUE #367
+			if main._should_bail(): return
 		await main.show_message("POKEGEAR: NO TRAINERS IN TOP " + str(reveal_count) + " CARDS!")
 		if main._should_bail(): return
 		# Lock trainers
@@ -6947,8 +6954,10 @@ func effect_neo1_pokegear(is_opponent: bool) -> void:
 		pick = main.cpu_ai.cpu_pick_best_keep(trainers)
 	else:
 		# ISSUE #156: always ask, even with one legal target.
-		pick = await main.card_ops.prompt_select_card(trainers, "POKEGEAR: CHOOSE TRAINER", "Choose a Trainer card to take from top 7", "TAKE", true)
+		# ISSUE #367: all 7 looked-at cards are shown (only the Trainers were); taking one is optional ("you may").
+		var pg: Array = await main.card_ops.pick_from_looked_at(revealed, func(c): return c.metadata.get("supertype","") == "Trainer", 0, 1, "POKEGEAR — THE TOP " + str(reveal_count) + " CARDS", "You may take 1 Trainer card", "TAKE")
 		if main._should_bail(): return
+		pick = pg[0] if not pg.is_empty() else null
 	if pick != null:
 		deck.erase(pick)
 		pick.current_location = "hand"
@@ -7000,7 +7009,8 @@ func effect_neo1_super_energy_retrieval(card: card_object, is_opponent: bool) ->
 			hand.append(e)
 	else:
 		# "up to 4" on one screen
-		var picks: Array = await main.card_ops.prompt_select_cards(basic_energy, 0, takes, "SUPER ENERGY RETRIEVAL", "Choose up to 4 basic Energy to take", "TAKE")
+		# ISSUE #371: "for 4 basic Energy cards (all if fewer)" is not "up to" — the player picks exactly that many.
+		var picks: Array = await main.card_ops.prompt_select_cards(basic_energy, takes, takes, "SUPER ENERGY RETRIEVAL", "Choose " + str(takes) + " basic Energy to take", "TAKE")
 		if main._should_bail(): return
 		for pick in picks:
 			discard.erase(pick)
@@ -7080,53 +7090,39 @@ func effect_neo1_bills_teleporter(is_opponent: bool) -> void:
 
 # CARD-FLIP GAME (neo1-92): guess a face-down prize type, reveal it, if right draw 2
 func effect_neo1_card_flip_game(is_opponent: bool) -> void:
-	var prizes = main.opponent_prize_cards if is_opponent else main.player_prize_cards
-	if prizes.size() == 0:
-		await main.show_message("CARD-FLIP GAME: NO PRIZE CARDS!")
+	# ISSUE #364: it used YOUR OWN Prizes, picked one at random and left it face down. Printed: choose 1 of your
+	# OPPONENT's face-down Prizes, guess Energy / Trainer / Pokémon, flip it face up (it stays face up), and if you
+	# guessed right draw 2 cards.
+	var prizes = main.player_prize_cards if is_opponent else main.opponent_prize_cards
+	var prize_idx: int = await main.powers_and_bodies._choose_face_down_prize(prizes, is_opponent, "CARD-FLIP GAME: CHOOSE 1 OF YOUR OPPONENT'S FACE-DOWN PRIZES")
+	if main._should_bail(): return
+	if prize_idx < 0:
+		await main.show_message("CARD-FLIP GAME: NO FACE-DOWN PRIZE CARDS!")
 		if main._should_bail(): return
 		return
-	var types = ["Energy", "Trainer", "Pokemon"]
+	var prize = prizes[prize_idx]
+	var types = ["ENERGY", "TRAINER", "POKEMON"]
 	var guess_str: String = ""
 	if is_opponent:
 		guess_str = types[randi() % types.size()]
 	else:
-		main.special_attack_selection_active = true
-		main.buttons_only_blocker.visible = true
-		main.attack_buttons_container.visible = true
-		main.main_buttons_container.visible = false
-		for child in main.attack_buttons_container.get_children():
-			if child.name == "cancel_attack_mode_button": child.visible = false; continue
-			child.queue_free()
-		for i in range(types.size()):
-			var btn = Button.new()
-			btn.text = types[i]
-			btn.custom_minimum_size = Vector2(200, 50)
-			btn.theme = main.theme_blue
-			main.attack_buttons_container.add_child(btn)
-			btn.pressed.connect(func(): main.special_attack_selected.emit(i))
-		var selected = await main.special_attack_selected
-		for child in main.attack_buttons_container.get_children():
-			if child.name == "cancel_attack_mode_button": child.visible = true; continue
-			child.queue_free()
-		main.attack_buttons_container.visible = false
-		main.main_buttons_container.visible = true
-		main.special_attack_selection_active = false
-		main.buttons_only_blocker.visible = false
-		guess_str = types[selected]
-	# Pick a random face-down prize
-	var prize_idx = randi() % prizes.size()
-	var prize = prizes[prize_idx]
+		var g: int = await prompt_option_buttons("CARD-FLIP GAME: PRIZE " + str(prize_idx + 1) + " — IS IT AN ENERGY, TRAINER OR POKEMON CARD?", types)
+		if main._should_bail(): return
+		guess_str = types[clampi(g, 0, 2)]
+	print("ISSUE #364 FIX ACTIVE: Card-Flip Game — opponent's Prize ", prize_idx + 1, " chosen, guess ", guess_str)
 	var actual_super = prize.metadata.get("supertype", "Pokémon")
-	var actual_type: String = "Pokemon"
-	if actual_super == "Energy": actual_type = "Energy"
-	elif actual_super == "Trainer": actual_type = "Trainer"
-	await main.show_message("CARD-FLIP GAME: YOU GUESSED " + guess_str.to_upper() + "! THE PRIZE IS... " + actual_type.to_upper() + "!")
+	var actual_type: String = "POKEMON"
+	if actual_super == "Energy": actual_type = "ENERGY"
+	elif actual_super == "Trainer": actual_type = "TRAINER"
+	prize.prize_face_up = true
+	main.display_prize_cards(not is_opponent)
+	await show_card_with_message(prize, ("THE OPPONENT GUESSED " if is_opponent else "YOU GUESSED ") + guess_str + "! THE PRIZE IS " + prize.metadata.get("name","").to_upper() + " (" + actual_type + ")!")
 	if main._should_bail(): return
 	if guess_str == actual_type:
 		await main.card_ops.draw_n(is_opponent, 2)
 		if main._should_bail(): return
 		main.refresh_hand_display(is_opponent)
-		await main.show_message("CORRECT! DREW 2 CARDS!")
+		await main.show_message("CORRECT! " + ("THE OPPONENT DREW" if is_opponent else "DREW") + " 2 CARDS!")
 	else:
 		await main.show_message("WRONG! NO DRAW!")
 	if main._should_bail(): return
@@ -7200,50 +7196,28 @@ func effect_neo1_super_scoop_up(is_opponent: bool) -> void:
 		return
 	var target: card_object = null
 	if is_opponent:
-		# CPU: scoop the most-damaged non-active, or active if nothing better
-		var bench = main.opponent_bench
-		if bench.size() > 0:
-			bench.sort_custom(func(a,b): return (a.get_max_hp()-a.current_hp) > (b.get_max_hp()-b.current_hp))
-			target = bench[0]
-		else:
-			target = main.opponent_active_pokemon
+		# ISSUE #373: shared scoop ranker (it used to sort the live Bench array in place and take the most damaged).
+		target = main.cpu_ai.cpu_pick_scoop_target(all_poke, true, -1000000.0)
+		if target == null:
+			await main.show_message("SUPER SCOOP UP: NOTHING WORTH RETURNING!")
+			if main._should_bail(): return
+			return
 	else:
 		# ISSUE #156: always ask, even with one legal target.
 		target = await main.card_ops.prompt_select_card(all_poke, "SUPER SCOOP UP: CHOOSE POKEMON", "Choose a Pokemon to return to hand", "SELECT", false)
 		if main._should_bail(): return
 	if target == null:
 		return
-	var hand = main.opponent_hand if is_opponent else main.player_hand
-	var discard = main.opponent_discard_pile if is_opponent else main.player_discard_pile
-	var bench_ref = main.opponent_bench if is_opponent else main.player_bench
 	var is_active = (target == (main.opponent_active_pokemon if is_opponent else main.player_active_pokemon))
-	# Discard attached energies and pre-evos, return target to hand
-	for e in target.attached_energies.duplicate():
-		target.attached_energies.erase(e)
-		e.current_location = "discard"
-		discard.append(e)
-	for pre in target.attached_pre_evolutions.duplicate():
-		target.attached_pre_evolutions.erase(pre)
-		pre.current_location = "discard"
-		discard.append(pre)
-	for ac in target.attached_cards.duplicate():
-		target.attached_cards.erase(ac)
-		ac.current_location = "discard"
-		discard.append(ac)
-	target.current_hp = target.get_max_hp()
-	main.clear_all_statuses(target, is_opponent)
+	# ISSUE #373: "return 1 of your Pokémon and ALL CARDS ATTACHED TO IT to your hand" — the Energy, Tools and
+	# evolution cards used to be DISCARDED (that is the base-set Scoop Up's rule, not Super Scoop Up's).
 	target.pluspower_count = 0
-	target.current_location = "hand"
-	hand.append(target)
-	if is_active:
-		if is_opponent: main.opponent_active_pokemon = null
-		else: main.player_active_pokemon = null
-	else:
-		bench_ref.erase(target)
-	main.display_pokemon(is_opponent)
+	await main.attack_effects.gym1_return_pokemon_to_hand(target, is_opponent)
+	if main._should_bail(): return
 	main.refresh_hand_display(is_opponent)
 	main.update_discard_pile_display(is_opponent)
-	await main.show_message("SUPER SCOOP UP! HEADS! " + target.metadata.get("name","").to_upper() + " RETURNED TO HAND!")
+	print("ISSUE #373 FIX ACTIVE: Super Scoop Up returned ", target.metadata.get("name",""), " with every attached card")
+	await main.show_message("SUPER SCOOP UP! HEADS! " + target.metadata.get("name","").to_upper() + " AND ALL ITS CARDS RETURNED TO HAND!")
 	if main._should_bail(): return
 	if is_active:
 		await main.handle_post_knockout(is_opponent)
@@ -7466,20 +7440,26 @@ func effect_neo2_fossil_egg(is_opponent: bool) -> void:
 		if main._should_bail(): return
 		return
 	var chosen: card_object = null
-	var from_deck = false
-	if not hand_fossils.is_empty():
-		if is_opponent:
-			chosen = hand_fossils[0]
-		else:
-			chosen = await main.card_ops.prompt_select_card(hand_fossils, "FOSSIL EGG: FROM HAND", "Choose fossil from hand to bench", "SELECT", false)
-			if main._should_bail(): return
-	if chosen == null and not deck_fossils.is_empty():
-		if is_opponent:
-			chosen = deck_fossils[0]
-		else:
-			chosen = await main.card_ops.prompt_select_card(deck_fossils, "FOSSIL EGG: FROM DECK", "Choose fossil from deck to bench", "SELECT", false)
-			if main._should_bail(): return
-		from_deck = true
+	# ISSUE #365: "search your deck ... OR put a card ... from your hand" — the player chooses where from (a hand
+	# card always won before, and the deck was only reachable when the hand had none).
+	var from_deck = hand_fossils.is_empty()
+	if not is_opponent and not hand_fossils.is_empty() and not deck_fossils.is_empty():
+		var fe_src: int = await prompt_option_buttons("FOSSIL EGG: WHERE FROM?", ["SEARCH YOUR DECK", "FROM YOUR HAND"])
+		if main._should_bail(): return
+		from_deck = fe_src == 0
+		print("ISSUE #365 FIX ACTIVE: Fossil Egg — player chose ", "deck" if from_deck else "hand")
+	if is_opponent:
+		var fe_pool: Array = deck_fossils if from_deck else hand_fossils
+		chosen = main.cpu_ai.cpu_pick_best_keep(fe_pool)
+		if chosen == null: chosen = fe_pool[0]
+	elif from_deck:
+		chosen = await main.card_ops.choose_card(deck_fossils, false, "FOSSIL EGG: FROM DECK", "Choose a card that evolves from Mysterious Fossil", "SELECT", false, Callable(), true)
+		if main._should_bail(): return
+		if chosen == null: chosen = deck_fossils[0]
+	else:
+		chosen = await main.card_ops.prompt_select_card(hand_fossils, "FOSSIL EGG: FROM HAND", "Choose a card from your hand to put onto your Bench", "SELECT", false)
+		if main._should_bail(): return
+		if chosen == null: chosen = hand_fossils[0]
 	if chosen == null: return
 	if from_deck:
 		deck.erase(chosen)
@@ -7514,40 +7494,21 @@ func effect_neo2_hyper_devolution_spray(is_opponent: bool) -> void:
 	var target: card_object = null
 	if is_opponent:
 		target = evolved[0]
+		for ev in evolved:
+			if ev.current_hp < target.current_hp: target = ev   # rescue the most damaged evolved Pokémon's Evolution card
 	else:
 		target = await main.card_ops.prompt_select_card(evolved, "HYPER DEVOLUTION SPRAY", "Choose an evolved Pokemon to devolve", "SELECT", false)
 		if main._should_bail(): return
 	if target == null: return
-	# The card itself IS the top stage — put it in hand, restore the pre-evo
-	var hand = main.opponent_hand if is_opponent else main.player_hand
-	var pre_evo = target.attached_pre_evolutions.back()
-	# Move energy and attached cards to the pre-evo
-	for e in target.attached_energies.duplicate():
-		target.attached_energies.erase(e)
-		pre_evo.attached_energies.append(e)
-	for c in target.attached_cards.duplicate():
-		target.attached_cards.erase(c)
-		pre_evo.attached_cards.append(c)
-	pre_evo.attached_pre_evolutions = target.attached_pre_evolutions.duplicate()
-	pre_evo.attached_pre_evolutions.erase(pre_evo)
-	target.attached_pre_evolutions.clear()
-	target.attached_energies.clear()
-	target.attached_cards.clear()
-	pre_evo.placed_on_field_this_turn = true
-	pre_evo.current_location = target.current_location
-	if target.current_location == "active":
-		if is_opponent:
-			main.opponent_active_pokemon = pre_evo
-		else:
-			main.player_active_pokemon = pre_evo
-	else:
-		bench.erase(target)
-		bench.append(pre_evo)
-	target.current_location = "hand"
-	hand.append(target)
-	main.display_pokemon(is_opponent)
-	main.display_active_pokemon_energies(is_opponent)
-	main.refresh_hand_display(is_opponent)
+	# ISSUE #369: hand-rolled devolve left the lower Stage with the evolved card's HP value (damage wasn't carried
+	# properly) and kept Special Conditions. The shared devolve carries the damage and clears conditions.
+	print("ISSUE #369 FIX ACTIVE: Hyper Devolution Spray uses _ex2_devolve_pokemon")
+	var hds_low: card_object = target.attached_pre_evolutions.back()
+	main.attack_effects._ex2_devolve_pokemon(target, is_opponent, "hand")
+	if hds_low != null:
+		hds_low.placed_on_field_this_turn = true   # "You can't evolve a Pokémon the turn you devolve it."
+	await main.check_all_knockouts()
+	if main._should_bail(): return
 	await main.show_message("HYPER DEVOLUTION SPRAY! " + target.metadata.get("name","").to_upper() + " RETURNED TO HAND!")
 	if main._should_bail(): return
 	print("TRAINER: Hyper Devolution Spray — devolved ", target.metadata.get("name",""))
@@ -7585,15 +7546,13 @@ func effect_neo2_energy_ark(is_opponent: bool) -> void:
 		await main.show_message("ENERGY ARK: 0 HEADS — NO ENERGY!")
 		if main._should_bail(): return
 		return
-	await main.show_message("ENERGY ARK: " + str(heads) + " HEADS — SEARCHING FOR " + str(heads) + " BASIC ENERGY!")
+	# ISSUE #371: one deck search per heads → ONE search screen for both cards.
+	var found = await main.card_ops.search_deck_to_hand(is_opponent, func(c): return c.metadata.get("supertype","") == "Energy" and "Basic" in c.metadata.get("subtypes",[]), "ENERGY ARK: CHOOSE " + str(heads) + " BASIC ENERGY", heads)
 	if main._should_bail(): return
-	for i in range(heads):
-		var found = await main.card_ops.search_deck_to_hand(is_opponent, func(c): return c.metadata.get("supertype","") == "Energy" and "Basic" in c.metadata.get("subtypes",[]), "ENERGY ARK: CHOOSE BASIC ENERGY " + str(i+1), 1)
-		if main._should_bail(): return
 	main.refresh_hand_display(is_opponent)
-	await main.show_message("ENERGY ARK! " + str(heads) + " BASIC ENERGY ADDED TO HAND!")
+	await main.show_message("ENERGY ARK! " + str(found.size()) + " BASIC ENERGY ADDED TO HAND!")
 	if main._should_bail(): return
-	print("TRAINER: Energy Ark — ", heads, " energy retrieved")
+	print("TRAINER: Energy Ark — ", found.size(), " energy retrieved")
 
 ######################################################################################################################################################
 ######################################################## NEO3 (NEO REVELATION) TRAINER EFFECTS #######################################################
@@ -7716,55 +7675,48 @@ func effect_neo3_pokemon_breeder_fields(card: card_object, is_opponent: bool) ->
 	var discard = main.opponent_discard_pile if is_opponent else main.player_discard_pile
 	card.current_location = "discard"
 	discard.append(card)
-	var own_bench = main.opponent_bench if is_opponent else main.player_bench
 	var own_deck = main.opponent_deck if is_opponent else main.player_deck
 	var own_hand = main.opponent_hand if is_opponent else main.player_hand
-	var basic_bench: Array = []
-	for bp in own_bench:
-		if "Basic" in bp.metadata.get("subtypes",[]):
-			basic_bench.append(bp)
-	if basic_bench.is_empty():
-		await main.show_message("POKEMON BREEDER FIELDS: NO BASIC POKEMON ON BENCH!")
+	# ISSUE #371: printed "Flip a coin for 1 or 2 of your non-Baby Pokémon that can evolve. For each heads, search your
+	# deck for a later-Stage card that matches that Pokémon." It flipped for EVERY Benched Basic and took the first
+	# evolvesTo name. Now: any non-Baby Pokémon in play (Active too, Stage 1 too) — the player picks 1 or 2.
+	var can_evolve = func(p): return "Baby" not in p.metadata.get("subtypes", []) and not p.metadata.get("evolvesTo", []).is_empty()
+	var pool: Array = main.card_ops.get_all_pokemon_in_play(is_opponent).filter(can_evolve)
+	if pool.is_empty():
+		await main.show_message("POKEMON BREEDER FIELDS: NONE OF YOUR POKEMON CAN EVOLVE!")
 		if main._should_bail(): return
 		return
+	var picks: Array = []
+	if is_opponent:
+		var ranked = pool.filter(func(p): return own_deck.any(func(c): return c.metadata.get("evolvesFrom","") == p.metadata.get("name","")))
+		picks = ranked.slice(0, min(2, ranked.size()))
+		if picks.is_empty(): picks = [pool[0]]
+	else:
+		picks = await main.card_ops.prompt_select_cards(pool, 1, 2, "POKEMON BREEDER FIELDS", "Choose 1 or 2 of your Pokémon to flip for", "FLIP")
+		if main._should_bail(): return
+		if picks.is_empty(): picks = [pool[0]]
 	var searched = 0
-	for bp in basic_bench:
+	for bp in picks:
 		var coin = await main.flip_coin(true, is_opponent)
 		if main._should_bail(): return
 		if not coin:
 			await main.show_message("TAILS FOR " + bp.metadata.get("name","").to_upper() + "!")
 			if main._should_bail(): return
 			continue
-		var evo_name = bp.metadata.get("evolvesTo", [])
-		if evo_name.is_empty():
-			await main.show_message("HEADS FOR " + bp.metadata.get("name","").to_upper() + " BUT NO EVOLUTION!")
-			if main._should_bail(): return
-			continue
-		var first_evo = evo_name[0]
-		var found_card: card_object = null
-		for c in own_deck:
-			if c.metadata.get("name","") == first_evo:
-				found_card = c
-				break
-		if found_card == null:
-			await main.show_message("HEADS! BUT " + first_evo.to_upper() + " NOT IN DECK!")
-			if main._should_bail(): return
-			continue
-		own_deck.erase(found_card)
-		found_card.current_location = "hand"
-		own_hand.append(found_card)
-		searched += 1
-		await main.show_message("POKEMON BREEDER FIELDS! " + first_evo.to_upper() + " ADDED TO HAND!")
+		var bp_name = bp.metadata.get("name","")
+		var found = await main.card_ops.search_deck_to_hand(is_opponent, func(c): return c.metadata.get("supertype","") == "Pokémon" and c.metadata.get("evolvesFrom","") == bp_name, "BREEDER FIELDS: AN EVOLUTION OF " + bp_name.to_upper(), 1)
 		if main._should_bail(): return
+		if found.is_empty():
+			await main.show_message("HEADS! BUT NO EVOLUTION OF " + bp_name.to_upper() + " IN THE DECK!")
+			if main._should_bail(): return
+			continue
+		searched += 1
 	own_deck.shuffle()
 	main.update_deck_icon(is_opponent)
 	main.refresh_hand_display(is_opponent)
-	if searched == 0:
-		await main.show_message("POKEMON BREEDER FIELDS: NO EVOLUTIONS FOUND!")
-	else:
-		await main.show_message("POKEMON BREEDER FIELDS: " + str(searched) + " EVOLUTION(S) RETRIEVED!")
+	await main.show_message("POKEMON BREEDER FIELDS: " + str(searched) + " EVOLUTION(S) RETRIEVED!")
 	if main._should_bail(): return
-	print("TRAINER: Pokemon Breeder Fields — ", searched, " evolutions retrieved")
+	print("ISSUE #371 FIX ACTIVE: Pokemon Breeder Fields — ", searched)
 
 # ── ROCKET'S HIDEOUT (neo3-63) ────────────────────────────────────────────────
 
@@ -7872,21 +7824,37 @@ func effect_neo4_impostor_oaks_invention(is_opponent: bool) -> void:
 		await main.show_message("IMPOSTOR OAK'S INVENTION: OPPONENT HAS NO PRIZES!")
 		if main._should_bail(): return
 		return
-	# Shuffle opponent's prizes into their deck
+	# ISSUE #365: "Look at your opponent's Prize cards. You MAY have your opponent shuffle them into his or her deck."
+	# The Prizes were never shown and the shuffle always happened. The player now sees them and decides; the CPU
+	# (looking at the player's Prizes) re-deals them when they hold something the player wants.
+	var do_it := false
+	if is_opponent:
+		await main.show_message("IMPOSTOR OAK'S INVENTION! YOUR OPPONENT LOOKED AT YOUR PRIZE CARDS.")
+		if main._should_bail(): return
+		do_it = opp_prizes.any(func(c): return main.attack_effects._r4_player_card_value(c) >= 60.0)
+	else:
+		await main.card_ops.choose_card(opp_prizes.duplicate(), false, "IMPOSTOR OAK'S INVENTION", "Your opponent's Prize cards (close to continue)", "OK", true, Callable(), true)
+		if main._should_bail(): return
+		do_it = await gym1_prompt_yes_no(main.player_active_pokemon, "IMPOSTOR OAK'S INVENTION", "Have your opponent shuffle their Prize cards into their deck and set aside " + str(n) + " new ones?", "SHUFFLE", "NO")
+		if main._should_bail(): return
+	print("ISSUE #365 FIX ACTIVE: Impostor Oak's Invention — re-deal ", do_it)
+	if not do_it:
+		await main.show_message("IMPOSTOR OAK'S INVENTION! THE PRIZES WERE LEFT AS THEY ARE.")
+		if main._should_bail(): return
+		return
 	for p in opp_prizes.duplicate():
 		p.current_location = "deck"
+		p.prize_face_up = false
 		opp_deck.append(p)
 	opp_prizes.clear()
 	opp_deck.shuffle()
-	# Re-draw the same number of new prizes off the top
 	for i in range(n):
 		if opp_deck.is_empty(): break
 		var c = opp_deck.pop_front()
 		c.current_location = "prize"
 		opp_prizes.append(c)
 	main.update_deck_icon(not is_opponent)
-	if main.has_method("display_prize_cards"):
-		main.display_prize_cards(not is_opponent)
+	main.display_prize_cards(not is_opponent)
 	await main.show_message("IMPOSTOR OAK'S INVENTION! OPPONENT'S PRIZES WERE SHUFFLED AND RE-DEALT!")
 	if main._should_bail(): return
 	print("TRAINER: Impostor Professor Oak's Invention — ", n, " prizes re-dealt")
@@ -7904,23 +7872,38 @@ func effect_neo4_thought_wave_machine(is_opponent: bool) -> void:
 		else:
 			break
 	var returned = 0
-	if opp_active != null:
-		for i in range(heads):
-			if opp_active.attached_energies.is_empty(): break
-			var e = opp_active.attached_energies.pop_back()
+	if opp_active != null and heads > 0 and not opp_active.attached_energies.is_empty():
+		# ISSUE #365: the LAST attached cards were taken automatically. With fewer heads than attached Energy, the
+		# player of the card chooses which ones go back (the CPU takes the ones the player needs most).
+		var twm: Array = []
+		if heads >= opp_active.attached_energies.size():
+			twm = opp_active.attached_energies.duplicate()
+		elif is_opponent:
+			for i in range(heads):
+				var left: Array = opp_active.attached_energies.filter(func(x): return x not in twm)
+				var e = await main.attack_effects.r3_pick_defender_energy(opp_active, true, "", left)
+				if e == null: break
+				twm.append(e)
+		else:
+			twm = await main.card_ops.prompt_select_cards(opp_active.attached_energies.duplicate(), heads, heads, "THOUGHT WAVE MACHINE", "Choose " + str(heads) + " Energy to return to your opponent's hand", "RETURN")
+			if main._should_bail(): return
+		print("ISSUE #365 FIX ACTIVE: Thought Wave Machine — chosen Energy returned: ", twm.size())
+		for e in twm:
+			opp_active.attached_energies.erase(e)
 			e.current_location = "hand"
 			opp_hand.append(e)
 			returned += 1
 		main.display_active_pokemon_energies(not is_opponent)
 		main.refresh_hand_display(not is_opponent)
-	await main.show_message("THOUGHT WAVE MACHINE! " + str(heads) + " HEADS — RETURNED " + str(returned) + " ENERGY! YOUR TURN IS OVER!")
+	await main.show_message("THOUGHT WAVE MACHINE! " + str(heads) + " HEADS — RETURNED " + str(returned) + " ENERGY! THE TURN IS OVER!")
 	if main._should_bail(): return
-	# End turn (Rocket's Secret Machine: you don't get to attack)
+	# Your turn is over now (you don't get to attack)
 	if is_opponent:
 		main.opponent_attacked_this_turn = true
+		main.opponent_turn_force_end = true
 	else:
 		main.player_attacked_this_turn = true
-		main.player_end_turn_checks()
+		main.player_turn_force_end = true
 	print("TRAINER: Thought Wave Machine — ", returned, " energy returned")
 
 # ENERGY AMPLIFIER (neo4-98): shuffle an Energy from hand into deck; flip heads search up to 3 basic Energy to hand
@@ -7958,29 +7941,51 @@ func effect_neo4_energy_amplifier(card: card_object, is_opponent: bool) -> void:
 	if main._should_bail(): return
 	print("TRAINER: Energy Amplifier — ", found.size(), " energy to hand")
 
-# POKEMON PERSONALITY TEST (neo4-102): guessing game (simplified to a coin flip outcome)
+# POKEMON PERSONALITY TEST (neo4-102): Evolution card face down, the opponent guesses Light / Dark / neither
 func effect_neo4_personality_test(is_opponent: bool) -> void:
 	var hand = main.opponent_hand if is_opponent else main.player_hand
-	var has_evo = false
-	for c in hand:
-		if c.metadata.get("supertype","") == "Pokémon" and ("Stage 1" in c.metadata.get("subtypes",[]) or "Stage 2" in c.metadata.get("subtypes",[])):
-			has_evo = true
-			break
-	if not has_evo:
+	var evos = hand.filter(func(c): return c.metadata.get("supertype","") == "Pokémon" and ("Stage 1" in c.metadata.get("subtypes",[]) or "Stage 2" in c.metadata.get("subtypes",[])))
+	if evos.is_empty():
 		await main.show_message("POKEMON PERSONALITY TEST: NO EVOLUTION CARD IN HAND!")
 		if main._should_bail(): return
 		return
-	# Opponent guesses; simplified as a coin flip (heads = opponent guessed right → opponent draws 3; tails = you draw 3)
-	var coin = await main.flip_coin(false, is_opponent)
+	# ISSUE #365: this was replaced by a coin flip. Printed: put an Evolution card from your hand face down; your
+	# opponent guesses Light / Dark / neither; flip it over — right guess: the guesser draws 3, wrong: you draw 3.
+	var options = ["LIGHT", "DARK", "NEITHER"]
+	var card: card_object = null
+	var guess: String = ""
+	if is_opponent:
+		card = evos[randi() % evos.size()]
+		await main.show_message("POKEMON PERSONALITY TEST! YOUR OPPONENT PUT AN EVOLUTION CARD FACE DOWN.")
+		if main._should_bail(): return
+		var gi: int = await prompt_option_buttons("IS IT A POKEMON WITH LIGHT IN ITS NAME, DARK IN ITS NAME, OR NEITHER?", options)
+		if main._should_bail(): return
+		guess = options[clampi(gi, 0, 2)]
+	else:
+		card = await main.card_ops.choose_card(evos, false, "POKEMON PERSONALITY TEST", "Put an Evolution card from your hand face down", "SELECT", false)
+		if main._should_bail(): return
+		if card == null: card = evos[0]
+		guess = options[randi() % 3]
+		await main.show_message("YOUR OPPONENT GUESSES: " + guess + "!")
+		if main._should_bail(): return
+	var nm: String = card.metadata.get("name","")
+	var truth := "NEITHER"
+	if "Light" in nm: truth = "LIGHT"
+	elif "Dark" in nm: truth = "DARK"
+	print("ISSUE #365 FIX ACTIVE: Personality Test — card ", nm, " truth ", truth, " guess ", guess)
+	await show_card_with_message(card, "THE CARD IS " + nm.to_upper() + " (" + truth + ")!")
 	if main._should_bail(): return
-	if coin:
-		await main.card_ops.draw_n(not is_opponent, 3)
-		await main.show_message("POKEMON PERSONALITY TEST! OPPONENT GUESSED RIGHT — THEY DREW 3 CARDS!")
+	var guesser_is_opp = not is_opponent
+	if guess == truth:
+		await main.card_ops.draw_n(guesser_is_opp, 3)
+		if main._should_bail(): return
+		await main.show_message(("YOUR OPPONENT" if guesser_is_opp else "YOU") + " GUESSED RIGHT — DREW 3 CARDS!")
 	else:
 		await main.card_ops.draw_n(is_opponent, 3)
-		await main.show_message("POKEMON PERSONALITY TEST! OPPONENT GUESSED WRONG — YOU DREW 3 CARDS!")
+		if main._should_bail(): return
+		await main.show_message("WRONG GUESS — " + ("YOUR OPPONENT DREW" if is_opponent else "YOU DREW") + " 3 CARDS!")
 	if main._should_bail(): return
-	print("TRAINER: Pokemon Personality Test — heads=", coin)
+	print("TRAINER: Pokemon Personality Test — ", nm)
 
 # TEAM ROCKET'S EVIL DEEDS (neo4-103): choose a card from opp hand, shuffle into deck; opp may draw up to 2
 func effect_neo4_evil_deeds(is_opponent: bool) -> void:
@@ -7991,7 +7996,10 @@ func effect_neo4_evil_deeds(is_opponent: bool) -> void:
 		if main._should_bail(): return
 		return
 	var chosen: card_object = opp_hand[0]
-	if not is_opponent:
+	if is_opponent:
+		for c in opp_hand:
+			if main.attack_effects._r4_player_card_value(c) > main.attack_effects._r4_player_card_value(chosen): chosen = c
+	else:
 		chosen = await main.card_ops.prompt_select_card(opp_hand.duplicate(), "TEAM ROCKET'S EVIL DEEDS", "Choose a card from opponent's hand to shuffle into their deck", "SELECT", false)
 		if main._should_bail(): return
 		if chosen == null: chosen = opp_hand[0]
@@ -8001,9 +8009,16 @@ func effect_neo4_evil_deeds(is_opponent: bool) -> void:
 	opp_deck.shuffle()
 	main.update_deck_icon(not is_opponent)
 	main.refresh_hand_display(not is_opponent)
-	await main.card_ops.draw_n(not is_opponent, 2)
+	await main.show_message("TEAM ROCKET'S EVIL DEEDS! " + chosen.metadata.get("name","").to_upper() + " WAS SHUFFLED INTO " + ("YOUR" if is_opponent else "THE OPPONENT'S") + " DECK!")
 	if main._should_bail(): return
-	await main.show_message("TEAM ROCKET'S EVIL DEEDS! A CARD WAS SHUFFLED AWAY; OPPONENT DREW 2!")
+	# ISSUE #365: "your opponent MAY draw up to 2 cards" — they always drew 2. The drawing side chooses 0-2.
+	var ed_n: int = await choose_up_to_draw_count(2, not is_opponent, "TEAM ROCKET'S EVIL DEEDS")
+	if main._should_bail(): return
+	print("ISSUE #365 FIX ACTIVE: Evil Deeds — opponent draws ", ed_n)
+	if ed_n > 0:
+		await main.card_ops.draw_n(not is_opponent, ed_n)
+		if main._should_bail(): return
+	await main.show_message(("YOU DREW " if is_opponent else "YOUR OPPONENT DREW ") + str(ed_n) + " CARD(S).")
 	if main._should_bail(): return
 	print("TRAINER: Team Rocket's Evil Deeds")
 
@@ -8056,10 +8071,14 @@ func neo4_radio_tower_activate(is_opponent: bool) -> void:
 		await main.show_message("RADIO TOWER: DECK IS EMPTY!")
 		if main._should_bail(): return
 		return
-	var names: Array = []
+	var top: Array = []
 	for i in range(min(2, deck.size())):
-		names.append(deck[i].metadata.get("name",""))
-	await main.show_message("RADIO TOWER! TOP CARDS: " + ", ".join(names).to_upper())
+		top.append(deck[i])
+	# ISSUE #367: the cards were only listed by name (and the CPU's own peek was named to the human).
+	if is_opponent:
+		await main.show_message("RADIO TOWER! YOUR OPPONENT LOOKED AT THE TOP 2 CARDS OF THEIR DECK.")
+	else:
+		await main.card_ops.show_cards(top, "RADIO TOWER — THE TOP " + str(top.size()) + " CARDS OF YOUR DECK", "They go back in the same order")
 	if main._should_bail(): return
 	print("STADIUM: Radio Tower — viewed top 2")
 
@@ -8167,20 +8186,29 @@ func effect_np_tropical_tidal_wave(is_opponent: bool) -> void:
 	if main._should_bail(): return
 	var coin = await main.flip_coin(false, is_opponent)
 	if main._should_bail(): return
+	# ISSUE #371: "discard ALL Trainer cards [that side] has in play" — only the Stadium was discarded. Attached Trainer
+	# cards (Pokémon Tools, PlusPower, Defender, TMs...) go too.
+	var side_opp: bool = (not is_opponent) if coin else is_opponent
+	var n := 0
+	if main.current_stadium_card != null and main.current_stadium_owner_is_opponent == side_opp:
+		remove_current_stadium("Tropical Tidal Wave")
+		n += 1
+	var tt_discard = main.opponent_discard_pile if side_opp else main.player_discard_pile
+	for p in main.card_ops.get_all_pokemon_in_play(side_opp):
+		for ac in p.attached_cards.duplicate():
+			if ac.metadata.get("supertype","") == "Trainer":
+				p.attached_cards.erase(ac)
+				ac.current_location = "discard"
+				tt_discard.append(ac)
+				n += 1
+	display_attached_trainer_cards(side_opp)
+	main.display_pokemon(side_opp)
+	main.update_discard_pile_display(side_opp)
+	print("ISSUE #371 FIX ACTIVE: Tropical Tidal Wave discarded ", n, " Trainer card(s)")
 	if coin:
-		if main.current_stadium_card != null and main.current_stadium_owner_is_opponent != is_opponent:
-			var sname = main.current_stadium_card.metadata.get("name","").to_upper()
-			remove_current_stadium("Tropical Tidal Wave (heads)")
-			await main.show_message("TROPICAL TIDAL WAVE! HEADS — " + sname + " DISCARDED!")
-		else:
-			await main.show_message("TROPICAL TIDAL WAVE! HEADS — OPPONENT HAS NO TRAINERS IN PLAY!")
+		await main.show_message("TROPICAL TIDAL WAVE! HEADS — DISCARDED " + str(n) + " OF YOUR OPPONENT'S TRAINER CARDS IN PLAY!" if not is_opponent else "TROPICAL TIDAL WAVE! HEADS — " + str(n) + " OF YOUR TRAINER CARDS IN PLAY WERE DISCARDED!")
 	else:
-		if main.current_stadium_card != null and main.current_stadium_owner_is_opponent == is_opponent:
-			var sname = main.current_stadium_card.metadata.get("name","").to_upper()
-			remove_current_stadium("Tropical Tidal Wave (tails)")
-			await main.show_message("TROPICAL TIDAL WAVE! TAILS — YOUR " + sname + " WAS DISCARDED!")
-		else:
-			await main.show_message("TROPICAL TIDAL WAVE! TAILS — YOU HAVE NO TRAINERS IN PLAY!")
+		await main.show_message("TROPICAL TIDAL WAVE! TAILS — " + str(n) + " TRAINER CARD(S) OF ITS PLAYER WERE DISCARDED!")
 	if main._should_bail(): return
 	print("TRAINER: Tropical Tidal Wave - ", "heads" if coin else "tails")
 
@@ -8399,8 +8427,13 @@ func effect_ecard1_master_ball(is_opponent: bool) -> void:
 		if is_opponent:
 			chosen = main.cpu_ai.cpu_search_deck_for_best_card(candidates)
 		else:
-			chosen = await main.card_ops.prompt_select_card(candidates, "MASTER BALL", "Choose a Basic or Evolution card to add to your hand (optional)", "TAKE", true)
+			# ISSUE #367: all 7 looked-at cards are shown (only the eligible ones were).
+			var mb1: Array = await main.card_ops.pick_from_looked_at(top_cards, func(c): return c in candidates, 0, 1, "MASTER BALL — THE TOP " + str(look_count) + " CARDS", "You may take a Basic Pokémon or Evolution card", "TAKE")
 			if main._should_bail(): return
+			chosen = mb1[0] if not mb1.is_empty() else null
+	elif not is_opponent:
+		await main.card_ops.show_cards(top_cards, "MASTER BALL — THE TOP " + str(look_count) + " CARDS", "No Basic Pokémon or Evolution cards")
+		if main._should_bail(): return
 	if chosen != null:
 		deck.erase(chosen)
 		chosen.current_location = "hand"
@@ -8446,6 +8479,24 @@ func effect_ecard1_pokemon_nurse(is_opponent: bool) -> void:
 	print("TRAINER: Pokemon Nurse - healed and discarded energy from ", target.metadata.get("name",""))
 
 # POKEMON REVERSAL (ecard1-146): choose opponent's bench Pokemon, flip; heads swap it into the Defending spot
+# ISSUE #371: ex-era Pokémon Reversal flips FIRST. ex1-87: "your opponent switches 1 of his or her Active Pokémon with
+# 1 of his or her Benched Pokémon" (the opponent picks); ex6-97 / ex10-88: "choose 1 of your opponent's Benched Pokémon"
+# after heads (you pick). All three used the e-card version (choose first, then flip, always you pick).
+func effect_ex_pokemon_reversal(is_opponent: bool, opponent_chooses: bool) -> void:
+	var target_bench = main.player_bench if is_opponent else main.opponent_bench
+	if target_bench.is_empty():
+		await main.show_message("OPPONENT HAS NO BENCH POKEMON!")
+		if main._should_bail(): return
+		return
+	var coin = await main.flip_coin(false, is_opponent)
+	if main._should_bail(): return
+	if not coin:
+		await main.show_message("TAILS! POKEMON REVERSAL FAILED!")
+		if main._should_bail(): return
+		return
+	print("ISSUE #371 FIX ACTIVE: Pokemon Reversal (ex) — chooser ", "defender" if opponent_chooses else "attacker")
+	await main.attack_effects.apply_force_switch({"type": "force_switch", "target": "defender", "chooser": ("defender" if opponent_chooses else "attacker"), "flip": "none"}, is_opponent)
+
 func effect_ecard1_pokemon_reversal(is_opponent: bool) -> void:
 	var target_bench = main.player_bench if is_opponent else main.opponent_bench
 	var target_is_opp = not is_opponent
@@ -9010,8 +9061,10 @@ func effect_ecard2_forest_guardian(is_opponent: bool) -> void:
 	if is_opponent:
 		chosen = main.cpu_ai.cpu_search_deck_for_best_card(top_cards)
 	else:
-		chosen = await main.card_ops.prompt_select_card(top_cards, "FOREST GUARDIAN", "Choose a card to add to your hand", "TAKE", true)
+		# ISSUE #367: "Choose 1 of those cards" is mandatory — the prompt could be cancelled.
+		chosen = await main.card_ops.prompt_select_card(top_cards, "FOREST GUARDIAN", "Choose 1 card to put into your hand", "TAKE", false)
 		if main._should_bail(): return
+		if chosen == null: chosen = top_cards[0]
 	if chosen != null:
 		deck.erase(chosen)
 		chosen.current_location = "hand"
@@ -9089,8 +9142,13 @@ func effect_ecard2_seer(is_opponent: bool) -> void:
 	var deck = main.opponent_deck if is_opponent else main.player_deck
 	var hand = main.opponent_hand if is_opponent else main.player_hand
 	var found = top_cards.filter(func(c): return main.attack_effects.gym1_is_basic_energy(c))
-	await main.show_message("SEER: LOOKING AT TOP " + str(top_cards.size()) + " CARDS!")
-	if main._should_bail(): return
+	# ISSUE #367: the 6 looked-at cards (and the Energy shown to the opponent) were never displayed.
+	if not is_opponent:
+		await main.card_ops.show_cards(top_cards, "SEER — THE TOP " + str(top_cards.size()) + " CARDS", "Every basic Energy card here goes into your hand")
+		if main._should_bail(): return
+	elif not found.is_empty():
+		await main.card_ops.show_cards(found, "SEER — YOUR OPPONENT SHOWS YOU", "The basic Energy your opponent found")
+		if main._should_bail(): return
 	for c in found:
 		deck.erase(c)
 		c.current_location = "hand"
@@ -9120,7 +9178,8 @@ func effect_ecard2_town_volunteers(is_opponent: bool) -> void:
 	if is_opponent:
 		for i in range(want): chosen.append(candidates[i])
 	else:
-		chosen = await main.card_ops.prompt_select_cards(candidates, 0, want, "TOWN VOLUNTEERS", "Choose up to 5 Pokemon / basic Energy to shuffle into your deck", "SHUFFLE IN")
+		# ISSUE #366: "Take 5" is mandatory (all of them when fewer) — the prompt allowed 0.
+		chosen = await main.card_ops.prompt_select_cards(candidates, want, want, "TOWN VOLUNTEERS", "Choose " + str(want) + " Pokemon / basic Energy to shuffle into your deck", "SHUFFLE IN")
 		if main._should_bail(): return
 	for c in chosen:
 		discard.erase(c)
@@ -9299,31 +9358,20 @@ func ecard3_star_piece_check() -> void:
 			var p_name = p.metadata.get("name","")
 			var candidates = deck.filter(func(c): return c.metadata.get("evolvesFrom","") == p_name)
 			if candidates.is_empty(): continue
-			var do_it = side
-			if not side:
-				do_it = await gym1_prompt_yes_no(p, "STAR PIECE", "Search your deck for an Evolution card and evolve " + p_name.to_upper() + "?", "EVOLVE", "SKIP")
-				if main._should_bail(): return
-			if not do_it: continue
+			# ISSUE #369: "search your deck for an Evolution card ... and put it on top" is mandatory (it was a yes/no).
 			var evo_card: card_object = main.cpu_ai.cpu_pick_best_keep(candidates) if side else candidates[0]
 			if not side and candidates.size() > 1:
 				evo_card = await main.card_ops.prompt_select_card(candidates, "STAR PIECE", "Choose an Evolution card", "EVOLVE", false)
 				if main._should_bail(): return
 				if evo_card == null: continue
-			deck.erase(evo_card)
-			var max_hp_old = p.get_max_hp()
-			var damage_taken = max_hp_old - p.current_hp
-			var max_hp_new = int(evo_card.metadata.get("hp", "0"))
-			evo_card.current_hp = max(1, max_hp_new - damage_taken)
-			evo_card.attached_energies = p.attached_energies.duplicate()
-			p.attached_energies.clear()
-			evo_card.attached_pre_evolutions = p.attached_pre_evolutions.duplicate()
-			p.attached_pre_evolutions.clear()
-			evo_card.attached_pre_evolutions.append(p)
-			evo_card.placed_on_field_this_turn = true
-			evo_card.current_location = "bench"
-			var idx = bench.find(p)
-			if idx >= 0: bench[idx] = evo_card
-			p.attached_cards.erase(star)
+			# ISSUE #369: hand-rolled evolution → the real evolution path; the Star Piece then moves to the evolved card
+			# with the other attachments, and is discarded from there.
+			print("ISSUE #369 FIX ACTIVE: Star Piece uses perform_evolution")
+			await main.attack_effects.r3_evolve_with(p, evo_card, side)
+			if main._should_bail(): return
+			for holder in [evo_card, p]:
+				if star in holder.attached_cards:
+					holder.attached_cards.erase(star)
 			var discard = main.opponent_discard_pile if side else main.player_discard_pile
 			star.current_location = "discard"
 			discard.append(star)
@@ -9375,6 +9423,8 @@ func effect_ecard3_apricorn_maker(is_opponent: bool) -> void:
 
 # DESERT SHAMAN (ecard3-123): shuffle your hand into your deck and draw 4; opponent does the same
 func effect_ecard3_desert_shaman(is_opponent: bool) -> void:
+	# ISSUE #366: "Shuffle your hand into your deck and draw UP TO 4 cards. Your opponent does the same." — both
+	# players were forced to draw 4. Each side now picks 0-4.
 	for side in [is_opponent, not is_opponent]:
 		var hand = main.opponent_hand if side else main.player_hand
 		var deck = main.opponent_deck if side else main.player_deck
@@ -9385,20 +9435,43 @@ func effect_ecard3_desert_shaman(is_opponent: bool) -> void:
 		deck.shuffle()
 		main.refresh_hand_display(side)
 		main.update_deck_icon(side)
-		await main.card_ops.draw_n(side, 4)
+		var ds_n: int = await choose_up_to_draw_count(4, side, "DESERT SHAMAN" + (" (OPPONENT'S DRAW)" if side != is_opponent else ""))
 		if main._should_bail(): return
-	await main.show_message("DESERT SHAMAN! BOTH PLAYERS SHUFFLED THEIR HAND AND DREW 4!")
+		print("ISSUE #366 FIX ACTIVE: Desert Shaman — side ", "CPU" if side else "player", " draws ", ds_n)
+		if ds_n > 0:
+			await main.card_ops.draw_n(side, ds_n)
+			if main._should_bail(): return
+	await main.show_message("DESERT SHAMAN! BOTH PLAYERS SHUFFLED THEIR HAND AND DREW NEW CARDS!")
 	if main._should_bail(): return
 	print("TRAINER: Desert Shaman")
 
 # FAST BALL (ecard3-124): search deck for an Evolution card to hand
 func effect_ecard3_fast_ball(is_opponent: bool) -> void:
-	var filter_fn = func(c): return c.metadata.get("supertype","") == "Pokémon" and not main.is_basic_pokemon(c)
-	var found = await main.card_ops.search_deck_to_hand(is_opponent, filter_fn, "FAST BALL: CHOOSE AN EVOLUTION CARD", 1)
+	# ISSUE #367: printed "Reveal cards from your deck until you reveal an Evolution card ... put it into your hand.
+	# Shuffle the other revealed cards into your deck." — it was a free search of the whole deck for any Evolution.
+	var deck = main.opponent_deck if is_opponent else main.player_deck
+	var hand = main.opponent_hand if is_opponent else main.player_hand
+	var revealed: Array = []
+	var found: card_object = null
+	for c in deck:
+		revealed.append(c)
+		if c.metadata.get("supertype","") == "Pokémon" and ("Stage 1" in c.metadata.get("subtypes", []) or "Stage 2" in c.metadata.get("subtypes", [])):
+			found = c
+			break
+	if not revealed.is_empty():
+		await main.card_ops.show_cards(revealed, "FAST BALL — REVEALED", ("Your opponent revealed " if is_opponent else "You revealed ") + str(revealed.size()) + " card(s)")
+		if main._should_bail(): return
+	if found != null:
+		deck.erase(found)
+		found.current_location = "hand"
+		hand.append(found)
+		main.refresh_hand_display(is_opponent)
+	deck.shuffle()
+	main.update_deck_icon(is_opponent)
+	print("ISSUE #367 FIX ACTIVE: Fast Ball — revealed ", revealed.size(), ", found ", found.metadata.get("name","") if found != null else "nothing")
+	await main.show_message("FAST BALL! FOUND " + found.metadata.get("name","").to_upper() + "!" if found != null else "FAST BALL! NO EVOLUTION CARD WAS REVEALED!")
 	if main._should_bail(): return
-	await main.show_message("FAST BALL! FOUND " + found[0].metadata.get("name","").to_upper() + "!" if found.size() > 0 else "NO EVOLUTION CARDS IN DECK!")
-	if main._should_bail(): return
-	print("TRAINER: Fast Ball — found ", found.size())
+	print("TRAINER: Fast Ball")
 
 # FISHERMAN (ecard3-125): choose up to 4 basic Energy cards from discard pile to hand
 func effect_ecard3_fisherman(is_opponent: bool) -> void:
@@ -9414,7 +9487,8 @@ func effect_ecard3_fisherman(is_opponent: bool) -> void:
 	if is_opponent:
 		for i in range(want): chosen.append(candidates[i])
 	else:
-		chosen = await main.card_ops.prompt_select_cards(candidates, 0, want, "FISHERMAN", "Choose up to " + str(want) + " basic Energy for your hand", "TAKE")
+		# ISSUE #366: "Choose 4 basic Energy cards (if fewer, take all)" is mandatory — the prompt allowed 0.
+		chosen = await main.card_ops.prompt_select_cards(candidates, want, want, "FISHERMAN", "Choose " + str(want) + " basic Energy for your hand", "TAKE")
 		if main._should_bail(): return
 	for c in chosen:
 		discard.erase(c)
@@ -9586,6 +9660,16 @@ func effect_ecard3_underground_expedition(is_opponent: bool) -> void:
 		deck.erase(c)
 		c.current_location = "hand"
 		hand.append(c)
+	# ISSUE #367: "return the remaining cards to the bottom of your deck in any order" — the order was never asked.
+	var rest: Array = bottom_cards.filter(func(c): return c not in chosen)
+	if not is_opponent and rest.size() > 1:
+		var ordered: Array = await main.card_ops.prompt_reorder_cards(rest, "UNDERGROUND EXPEDITION: BOTTOM OF YOUR DECK", "Click the cards in order (the LAST one clicked goes on the very bottom)")
+		if main._should_bail(): return
+		for c in rest:
+			deck.erase(c)
+		for c in ordered:
+			deck.append(c)
+		print("ISSUE #367 FIX ACTIVE: Underground Expedition — player ordered the bottom cards")
 	main.refresh_hand_display(is_opponent)
 	main.update_deck_icon(is_opponent)
 	await main.show_message("UNDERGROUND EXPEDITION! ADDED " + str(chosen.size()) + " CARD(S) TO HAND!")
@@ -9602,7 +9686,7 @@ func _register_ex1_trainers() -> void:
 	_trainer_dispatch["ex1-82"] = func(c, opp): await effect_ecard2_energy_switch(opp)
 	_trainer_dispatch["ex1-83"] = func(c, opp): await effect_ex1_lady_outing(opp)
 	_trainer_dispatch["ex1-86"] = func(c, opp): await effect_poke_ball(opp)
-	_trainer_dispatch["ex1-87"] = func(c, opp): await effect_ecard1_pokemon_reversal(opp)
+	_trainer_dispatch["ex1-87"] = func(c, opp): await effect_ex_pokemon_reversal(opp, true)   # ISSUE #371: the opponent switches
 	_trainer_dispatch["ex1-88"] = func(c, opp): await effect_ex1_pokenav(opp)
 	_trainer_dispatch["ex1-89"] = func(c, opp): await effect_ex1_professor_birch(opp)
 	_trainer_dispatch["ex1-90"] = func(c, opp): await effect_energy_search(opp)
@@ -9652,27 +9736,29 @@ func effect_ex1_pokenav(is_opponent: bool) -> void:
 	var hand = main.opponent_hand if is_opponent else main.player_hand
 	var candidates = top3.filter(func(c): return c.metadata.get("supertype","") != "Trainer")
 	var chosen: card_object = null
-	if not candidates.is_empty():
-		chosen = await main.card_ops.choose_card(candidates, is_opponent, "POKENAV", "Choose a Pokemon or Energy card from the top 3", "TAKE", false)
+	if is_opponent:
+		if not candidates.is_empty():
+			chosen = main.cpu_ai.cpu_pick_best_keep(candidates)
+	else:
+		# ISSUE #367: all 3 looked-at cards are shown (only the eligible ones were).
+		var pn: Array = await main.card_ops.pick_from_looked_at(top3, func(c): return c in candidates, 1, 1, "POKENAV — THE TOP " + str(top3.size()) + " CARDS", "Choose a Basic Pokémon, Evolution card or Energy card", "TAKE")
 		if main._should_bail(): return
-	var remaining = top3.duplicate()
+		chosen = pn[0] if not pn.is_empty() else null
 	if chosen != null:
-		remaining.erase(chosen)
 		deck.erase(chosen)
 		chosen.current_location = "hand"
 		hand.append(chosen)
 		main.refresh_hand_display(is_opponent)
-	# Put the other cards back on top, preserving their original relative order
-	for c in remaining:
-		deck.erase(c)
-	for i in range(remaining.size() - 1, -1, -1):
-		deck.insert(0, remaining[i])
 	main.update_deck_icon(is_opponent)
 	if chosen != null:
 		await main.show_message("POKENAV! ADDED " + chosen.metadata.get("name","").to_upper() + " TO HAND!")
 	else:
 		await main.show_message("POKENAV: NO MATCHING CARD FOUND!")
 	if main._should_bail(): return
+	# ISSUE #367: "Put the 2 other cards back on top of your deck in any order" — the order was never asked.
+	var rest_n = top3.size() - (1 if chosen != null else 0)
+	if rest_n >= 2:
+		await main.attack_effects.r3_reorder_top(is_opponent, rest_n, is_opponent, "POKENAV")
 	print("TRAINER: PokeNav")
 
 # PROFESSOR BIRCH (ex1-89, Supporter): draw cards from your deck until you have 6 in hand.
@@ -9967,18 +10053,12 @@ func effect_ex3_mr_brineys_compassion(is_opponent: bool) -> void:
 		return
 	var chosen: card_object = null
 	if is_opponent:
-		# CPU: prefer returning a heavily-damaged non-ex Pokemon to save it (most damage counters).
-		chosen = pool[0]
-		for c in pool:
-			if c.get_damage_counters() > chosen.get_damage_counters():
-				chosen = c
-		# Don't bother if nothing is damaged and it's the lone Active with no bench.
-		if chosen.get_damage_counters() == 0:
-			var own_bench = main.opponent_bench if is_opponent else main.player_bench
-			if own_bench.is_empty():
-				await main.show_message("MR. BRINEY'S COMPASSION: NOTHING WORTH RETURNING!")
-				if main._should_bail(): return
-				return
+		# ISSUE #373: shared scoop ranker (everything returns to hand).
+		chosen = main.cpu_ai.cpu_pick_scoop_target(pool, true, -1000000.0)
+		if chosen == null:
+			await main.show_message("MR. BRINEY'S COMPASSION: NOTHING WORTH RETURNING!")
+			if main._should_bail(): return
+			return
 	else:
 		chosen = await main.card_ops.choose_card(pool, is_opponent, "MR. BRINEY'S COMPASSION", "Choose 1 of your Pokemon (not an ex) to return to your hand", "RETURN", true)
 		if main._should_bail(): return
@@ -10264,7 +10344,7 @@ func _register_ex6_trainers() -> void:
 	_trainer_dispatch["ex6-90"] = func(c, opp): await effect_ecard2_energy_switch(opp)               # Energy Switch
 	_trainer_dispatch["ex6-93"] = func(c, opp): await effect_ex5_life_herb(opp)                       # Life Herb
 	_trainer_dispatch["ex6-95"] = func(c, opp): await effect_poke_ball(opp)                           # Poké Ball
-	_trainer_dispatch["ex6-97"] = func(c, opp): await effect_ecard1_pokemon_reversal(opp)             # Pokémon Reversal
+	_trainer_dispatch["ex6-97"] = func(c, opp): await effect_ex_pokemon_reversal(opp, false)             # Pokémon Reversal
 	_trainer_dispatch["ex6-98"] = func(c, opp): await effect_ecard1_professor_oaks_research(opp)      # Prof. Oak's Research
 	_trainer_dispatch["ex6-99"] = func(c, opp): await effect_neo1_super_scoop_up(opp)                 # Super Scoop Up
 	_trainer_dispatch["ex6-101"] = func(c, opp): await effect_potion(opp)                             # Potion
@@ -10427,13 +10507,17 @@ func effect_ex5_life_herb(is_opponent: bool) -> void:
 # STEVEN'S ADVICE (ex5-92, Supporter): draw a number of cards up to the number of the opponent's
 # Pokemon in play.
 func effect_ex5_stevens_advice(is_opponent: bool) -> void:
+	# ISSUE #366: "Draw a number of cards UP TO the number of your opponent's Pokémon in play" — forced to the max.
 	var n = main.card_ops.get_all_pokemon_in_play(not is_opponent).size()
-	if n > 0:
-		await main.card_ops.draw_n(is_opponent, n)
-		if main._should_bail(): return
-	await main.show_message("STEVEN'S ADVICE! DREW " + str(n) + " CARDS!")
+	var sa_n: int = await choose_up_to_draw_count(n, is_opponent, "STEVEN'S ADVICE")
 	if main._should_bail(): return
-	print("TRAINER: Steven's Advice — drew ", n)
+	print("ISSUE #366 FIX ACTIVE: Steven's Advice — draws ", sa_n, " of up to ", n)
+	if sa_n > 0:
+		await main.card_ops.draw_n(is_opponent, sa_n)
+		if main._should_bail(): return
+	await main.show_message("STEVEN'S ADVICE! DREW " + str(sa_n) + " CARDS!")
+	if main._should_bail(): return
+	print("TRAINER: Steven's Advice — drew ", sa_n)
 
 # EX5 Island Cave (ex5-89 Stadium): whenever any player attaches an Energy card from hand to a Water,
 # Fighting, or Metal Pokemon, remove any Special Conditions from that Pokemon. Called from both energy
@@ -10587,6 +10671,8 @@ func effect_ex7_pow_hand_extension(is_opponent: bool) -> void:
 # ROCKET'S ADMIN. (ex7-86, Supporter): each player shuffles his or her hand into the deck, then draws
 # up to the number of his or her remaining Prize cards. You draw first.
 func effect_ex7_rockets_admin(is_opponent: bool) -> void:
+	# ISSUE #366: "each player draws UP TO a number of cards equal to his or her remaining Prize cards" — both
+	# players were forced to draw the maximum. Each side now picks.
 	for who in [is_opponent, not is_opponent]:
 		var hand = main.opponent_hand if who else main.player_hand
 		var deck = main.opponent_deck if who else main.player_deck
@@ -10598,7 +10684,9 @@ func effect_ex7_rockets_admin(is_opponent: bool) -> void:
 		main.refresh_hand_display(who)
 		main.update_deck_icon(who)
 		var prizes = (main.opponent_prize_cards if who else main.player_prize_cards).size()
-		var to_draw = min(prizes, deck.size())
+		var to_draw: int = await choose_up_to_draw_count(prizes, who, "ROCKET'S ADMIN." + (" (OPPONENT'S DRAW)" if who != is_opponent else ""))
+		if main._should_bail(): return
+		print("ISSUE #366 FIX ACTIVE: Rocket's Admin. — side ", "CPU" if who else "player", " draws ", to_draw)
 		if to_draw > 0:
 			await main.card_ops.draw_n(who, to_draw)
 			if main._should_bail(): return
@@ -10877,7 +10965,7 @@ func _register_ex10_trainers() -> void:
 	_trainer_dispatch["ex10-84"] = func(c, opp): await effect_ecard2_energy_switch(opp)          # Energy Switch (Item)
 	_trainer_dispatch["ex10-86"] = func(c, opp): await effect_ex10_marys_request(opp)            # Mary's Request (Supporter)
 	_trainer_dispatch["ex10-87"] = func(c, opp): await effect_poke_ball(opp)                     # Poké Ball (Item)
-	_trainer_dispatch["ex10-88"] = func(c, opp): await effect_ecard1_pokemon_reversal(opp)       # Pokémon Reversal (Item)
+	_trainer_dispatch["ex10-88"] = func(c, opp): await effect_ex_pokemon_reversal(opp, false)       # Pokémon Reversal (Item)
 	_trainer_dispatch["ex10-89"] = func(c, opp): await effect_ecard1_professor_elms_training_method(opp)  # Professor Elm's Training Method (Supporter)
 	_trainer_dispatch["ex10-93"] = func(c, opp): await effect_ecard1_warp_point(opp)             # Warp Point (Item)
 	_trainer_dispatch["ex10-94"] = func(c, opp): await effect_energy_search(opp)                 # Energy Search (Item)
@@ -11081,17 +11169,17 @@ func effect_ex11_holon_lass(is_opponent: bool) -> void:
 	var top = main.card_ops.peek_top_n(is_opponent, look)
 	var energies = top.filter(func(c): return c.metadata.get("supertype","") == "Energy")
 	var hand = main.opponent_hand if is_opponent else main.player_hand
-	var taken = 0
+	var picks: Array = []
 	if is_opponent:
-		for e in energies:
-			deck.erase(e); e.current_location = "hand"; hand.append(e); taken += 1
+		picks = energies
 	else:
-		if not energies.is_empty():
-			for e in energies:
-				var yes = await gym1_prompt_yes_no(main.player_active_pokemon, "HOLON LASS", "Put " + e.metadata.get("name","").to_upper() + " into your hand?", "YES", "NO")
-				if main._should_bail(): return
-				if yes:
-					deck.erase(e); e.current_location = "hand"; hand.append(e); taken += 1
+		# ISSUE #367: one yes/no per Energy (and the other looked-at cards were never shown) → ONE screen of every
+		# looked-at card, "choose as many Energy cards as you like".
+		picks = await main.card_ops.pick_from_looked_at(top, func(c): return c in energies, 0, energies.size(), "HOLON LASS — THE TOP " + str(top.size()) + " CARDS", "Choose any number of Energy cards for your hand", "TAKE")
+		if main._should_bail(): return
+	var taken = 0
+	for e in picks:
+		deck.erase(e); e.current_location = "hand"; hand.append(e); taken += 1
 	deck.shuffle()
 	main.update_deck_icon(is_opponent); main.refresh_hand_display(is_opponent)
 	await main.show_message("HOLON LASS! PUT " + str(taken) + " ENERGY INTO YOUR HAND!")
@@ -11635,9 +11723,31 @@ func effect_ex15_holon_mentor(is_opponent: bool) -> void:
 # cards. (Per-prize face-up state isn't modelled by this engine — it has only a single all-prizes flag — so
 # the mechanically meaningful "draw 2" is applied; see the same documented limitation on ex11 Prize Shift.)
 func effect_ex15_island_hermit(is_opponent: bool) -> void:
+	# ISSUE #371: "Choose up to 2 of your Prize cards and put them face up (for the rest of the game). Draw 2 cards." —
+	# the Prize choice was skipped. The player picks up to 2 face-down Prizes (blind) and they turn face up.
+	var prizes = main.opponent_prize_cards if is_opponent else main.player_prize_cards
+	var face_down = prizes.filter(func(c): return not c.prize_face_up)
+	if not face_down.is_empty():
+		var ih: Array = []
+		if is_opponent:
+			ih = face_down.slice(0, min(2, face_down.size()))
+		else:
+			main.force_face_down_selection = true
+			main.force_face_down_sleeve = main.player_sleeve_small
+			ih = await main.card_ops.prompt_select_cards(face_down, 0, 2, "ISLAND HERMIT", "Choose up to 2 of your face-down Prize cards to turn face up", "TURN UP")
+			main.force_face_down_selection = false
+			main.force_face_down_sleeve = ""
+			if main._should_bail(): return
+		for c in ih:
+			c.prize_face_up = true
+		main.display_prize_cards(is_opponent)
+		if not ih.is_empty():
+			await main.card_ops.show_cards(ih, "ISLAND HERMIT — NOW FACE UP", "These Prize cards stay face up")
+			if main._should_bail(): return
+		print("ISSUE #371 FIX ACTIVE: Island Hermit — ", ih.size(), " Prize(s) face up")
 	await main.card_ops.draw_n(is_opponent, 2)
 	if main._should_bail(): return
-	await main.show_message("ISLAND HERMIT! REVEALED UP TO 2 PRIZE CARDS AND DREW 2 CARDS!")
+	await main.show_message("ISLAND HERMIT! DREW 2 CARDS!")
 	if main._should_bail(): return
 
 # PROFESSOR ELM'S TRAINING METHOD (ex15-79, Supporter): search your deck for an Evolution card, show it to

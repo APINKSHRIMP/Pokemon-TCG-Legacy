@@ -82,6 +82,10 @@ var attack_blocked_by_id: int = -1  # instance_id of the pokemon that set the bl
 # Venomoth Shift: temporary type override (persists until changed or leaves play)
 var temporary_type: String = ""
 
+# ISSUE #364: a Prize card turned face up by an effect (Card-Flip Game, Prize Shift, Island Hermit). Shown face up in
+# the Prize block and excluded from "face-down Prize" choices. Cleared when the card is taken as a Prize.
+var prize_face_up: bool = false
+
 # Ditto Transform: stores original data so Transform can be reverted cleanly
 var is_ditto_transformed: bool = false
 var ditto_original_uid: String = ""          # Ditto's real UID (for image restore)
@@ -303,9 +307,13 @@ func get_effective_types() -> Array:
 			return ["Colorless"]
 	if has_effect("crystal_type_active"):
 		return [get_effect_data("crystal_type_active")]
+	# ISSUE #374: neo3 Submerge (Lanturn) — Water until the end of the turn; reverts while Asleep/Confused/Paralyzed.
+	if has_effect("neo3_submerge") and special_condition not in ["Asleep", "Confused", "Paralyzed"]:
+		return ["Water"]
 	# ex2 Lunar/Solar Eclipse (Lunatone/Solrock): temporary type override until end of turn.
 	if has_effect("ex2_type_override"):
-		return [get_effect_data("ex2_type_override")]
+		var t_ov = get_effect_data("ex2_type_override")
+		return t_ov.duplicate() if t_ov is Array else [t_ov]   # ISSUE #371: Type Change can copy several types
 	# ISSUE #45 FIX: Venomoth's Shift (and similar temporary_type overrides like Texture Magic) fully
 	# change this Pokémon's type until it changes again or leaves play. Routing it through the
 	# effective-types path means Weakness/Resistance now actually respect the shifted type (previously

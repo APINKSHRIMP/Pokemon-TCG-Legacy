@@ -103,9 +103,20 @@ func get_energy_types_provided(card_name: String) -> Array:
 			# every type of Energy (1 at a time) — that δ upgrade needs holder context and is resolved in
 			# Main.get_energy_provided_by_card. This fallback (no holder known) is the Colorless base.
 			return ["Colorless"]
-		# --- FUTURE SETS: Add new special energies below ---
-		# "Boost Energy":
-		#	return ["Colorless", "Colorless", "Colorless"]
+		# ISSUE #372: four Special Energy cards had no implementation at all (they provided nothing).
+		"Bounce Energy":
+			# ecard3-142: provides Colorless Colorless (on-attach: return a basic Energy from that Pokémon to hand).
+			return ["Colorless", "Colorless"]
+		"Retro Energy":
+			# ecard3-144: provides Colorless (on-attach to an Evolved Pokémon: may heal 2 counters and devolve it).
+			return ["Colorless"]
+		"Miracle Energy":
+			# neo4-16: every type, 2 Energy at a time; Shining / Light Pokémon only; discarded at the end of your turn.
+			return ["Any", "Any"]
+		"Crystal Energy":
+			# ecard2-146: 1 Energy of every type of BASIC Energy attached to its holder (Colorless with none) — resolved
+			# with holder context in Main._get_energy_provided_raw; this is the no-holder fallback.
+			return ["Colorless"]
 		_:
 			return []
 
@@ -173,6 +184,17 @@ func can_attach_to(energy_card: card_object, target_pokemon: card_object) -> Dic
 			# Only on Evolved Pokemon, excluding Pokemon-ex
 			if main.is_basic_pokemon(target_pokemon) or main.is_ex_pokemon(target_pokemon):
 				return {"allowed": false, "reason": "DOUBLE RAINBOW ENERGY CAN ONLY BE ATTACHED TO AN EVOLVED POKEMON (NOT ex)!"}
+			return {"allowed": true, "reason": ""}
+		"Bounce Energy":
+			# ISSUE #372: "You can attach this card to your Pokémon that has basic Energy cards attached to it."
+			if not target_pokemon.attached_energies.any(func(e): return "Basic" in e.metadata.get("subtypes", []) and e.metadata.get("supertype","") == "Energy"):
+				return {"allowed": false, "reason": "BOUNCE ENERGY NEEDS A POKEMON WITH BASIC ENERGY ATTACHED!"}
+			return {"allowed": true, "reason": ""}
+		"Miracle Energy":
+			# ISSUE #372: "Attach Miracle Energy to 1 of your Shining or Light Pokémon."
+			var mname = target_pokemon.metadata.get("name", "")
+			if not mname.begins_with("Shining ") and not mname.begins_with("Light "):
+				return {"allowed": false, "reason": "MIRACLE ENERGY CAN ONLY BE ATTACHED TO A SHINING OR LIGHT POKEMON!"}
 			return {"allowed": true, "reason": ""}
 		# --- FUTURE SETS: Add type-locked energies below ---
 		# "Boost Energy":
@@ -262,53 +284,72 @@ func apply_on_attach_effects(energy_card: card_object, target_pokemon: card_obje
 			return applied
 
 		"Warp Energy":
-			# When attached from hand, you may switch the Pokemon it's attached to with 1 of your
-			# Benched Pokemon. (CPU skips this situational switch.)
-			if is_opponent: return false
-			var w_bench = main.player_bench
+			# ISSUE #365: printed "When you attach this card from your hand to your ACTIVE Pokémon, switch that Pokémon
+			# with 1 of your Benched Pokémon." — mandatory, Active only, both sides. It used to be a "may", also fired
+			# when attached to a Benched Pokémon, and the CPU never switched.
+			var w_active = main.opponent_active_pokemon if is_opponent else main.player_active_pokemon
+			if target_pokemon != w_active: return false
+			var w_bench = main.opponent_bench if is_opponent else main.player_bench
 			if w_bench.is_empty(): return false
-			var w_yes = await main.trainer_effects.gym1_prompt_yes_no(target_pokemon, "WARP ENERGY", "Switch " + pokemon_name + " with a Benched Pokemon?", "YES", "NO")
+			print("ISSUE #365 FIX ACTIVE: Warp Energy — mandatory self-switch")
+			await main.show_message("WARP ENERGY! " + pokemon_name + " MUST SWITCH WITH A BENCHED POKEMON!")
 			if main._should_bail(): return true
-			if not w_yes: return false
-			if target_pokemon == main.player_active_pokemon:
-				await main.attack_effects.apply_self_switch(target_pokemon, false)
-				if main._should_bail(): return true
-			else:
-				var old_active = main.player_active_pokemon
-				var idx = w_bench.find(target_pokemon)
-				main.player_active_pokemon = target_pokemon
-				target_pokemon.current_location = "active"
-				if old_active != null and idx != -1:
-					old_active.current_location = "bench"
-					w_bench[idx] = old_active
-				main.display_pokemon(false)
-			await main.show_message("WARP ENERGY! SWITCHED YOUR ACTIVE POKEMON!")
+			await main.attack_effects.apply_self_switch(target_pokemon, is_opponent)
 			if main._should_bail(): return true
 			return true
 
 		"Cyclone Energy":
-			# When attached from hand to your Active Pokemon, you may switch 1 of your opponent's
-			# Benched Pokemon with their Active Pokemon (you choose). (CPU skips.)
-			if is_opponent: return false
-			if target_pokemon != main.player_active_pokemon: return false
-			var c_bench = main.opponent_bench
+			# ISSUE #365: printed "When you attach this card from your hand to your Active Pokémon, switch 1 of the
+			# Defending Pokémon with 1 of your opponent's Benched Pokémon. Your OPPONENT chooses the Benched Pokémon."
+			# Mandatory, both sides. It was a "may", the attacher picked, and the CPU never used it.
+			var c_active = main.opponent_active_pokemon if is_opponent else main.player_active_pokemon
+			if target_pokemon != c_active: return false
+			var c_bench = main.player_bench if is_opponent else main.opponent_bench
 			if c_bench.is_empty(): return false
-			var c_yes = await main.trainer_effects.gym1_prompt_yes_no(target_pokemon, "CYCLONE ENERGY", "Switch one of the opponent's Benched Pokemon into their Active spot?", "YES", "NO")
+			print("ISSUE #365 FIX ACTIVE: Cyclone Energy — opponent switches, opponent chooses")
+			await main.show_message("CYCLONE ENERGY! " + ("YOU MUST SWITCH IN ONE OF YOUR BENCHED POKEMON!" if is_opponent else "YOUR OPPONENT MUST SWITCH IN A BENCHED POKEMON!"))
 			if main._should_bail(): return true
-			if not c_yes: return false
-			var chosen = await main.card_ops.choose_card(c_bench, false, "CYCLONE ENERGY", "Choose the opponent's Benched Pokemon to switch in", "SELECT", false)
+			await main.attack_effects.apply_force_switch({"type": "force_switch", "target": "defender", "chooser": "defender", "flip": "none"}, is_opponent)
 			if main._should_bail(): return true
-			if chosen == null: return false
-			var old_opp = main.opponent_active_pokemon
-			var c_idx = c_bench.find(chosen)
-			main.opponent_active_pokemon = chosen
-			chosen.current_location = "active"
-			if old_opp != null and c_idx != -1:
-				old_opp.current_location = "bench"
-				c_bench[c_idx] = old_opp
-			main.display_pokemon(true)
-			await main.show_message("CYCLONE ENERGY! THE OPPONENT'S " + chosen.metadata.get("name","").to_upper() + " IS NOW ACTIVE!")
+			return true
+
+		"Bounce Energy":
+			# ISSUE #372: "return a basic Energy card attached to that Pokémon to your hand" (mandatory; owner picks which).
+			var be_pool: Array = target_pokemon.attached_energies.filter(func(e): return e != energy_card and "Basic" in e.metadata.get("subtypes", []) and e.metadata.get("supertype","") == "Energy")
+			if be_pool.is_empty(): return false
+			var be_pick = await main.attack_effects.r4_pick_own_energy(target_pokemon, be_pool, is_opponent, "BOUNCE ENERGY: RETURN A BASIC ENERGY TO YOUR HAND")
 			if main._should_bail(): return true
+			target_pokemon.attached_energies.erase(be_pick)
+			be_pick.current_location = "hand"
+			(main.opponent_hand if is_opponent else main.player_hand).append(be_pick)
+			main.refresh_hand_display(is_opponent)
+			main.display_pokemon(is_opponent)
+			main.display_active_pokemon_energies(is_opponent)
+			print("ISSUE #372 FIX ACTIVE: Bounce Energy returned ", be_pick.metadata.get("name",""), " to hand")
+			await main.show_message("BOUNCE ENERGY! " + be_pick.metadata.get("name","").to_upper() + " RETURNED TO " + ("THEIR" if is_opponent else "YOUR") + " HAND!")
+			if main._should_bail(): return true
+			return true
+
+		"Retro Energy":
+			# ISSUE #372: on an Evolved Pokémon, "you MAY remove up to 2 damage counters from that Pokémon and discard
+			# the top card from it (this counts as devolving it)".
+			if target_pokemon.attached_pre_evolutions.is_empty(): return false
+			var re_yes := false
+			if is_opponent:
+				var re_low = target_pokemon.attached_pre_evolutions.back()
+				var dmg_after = max(0, target_pokemon.get_damage_counters() * 10 - 20)
+				re_yes = target_pokemon.get_damage_counters() >= 3 and re_low != null and int(re_low.metadata.get("hp", "0")) > dmg_after + 20
+			else:
+				re_yes = await main.trainer_effects.gym1_prompt_yes_no(target_pokemon, "RETRO ENERGY", "Remove up to 2 damage counters from " + target_pokemon.metadata.get("name","") + " and devolve it (discard its top card)?", "YES", "NO")
+				if main._should_bail(): return true
+			if not re_yes: return false
+			await main.card_ops.heal_pokemon(target_pokemon, 20, is_opponent)
+			if main._should_bail(): return true
+			main.attack_effects._ex2_devolve_pokemon(target_pokemon, is_opponent, "discard")
+			print("ISSUE #372 FIX ACTIVE: Retro Energy devolved ", pokemon_name)
+			await main.show_message("RETRO ENERGY! " + pokemon_name + " WAS DEVOLVED!")
+			if main._should_bail(): return true
+			await main.check_all_knockouts()
 			return true
 
 		# --- FUTURE SETS: Add on-attach effects below ---
@@ -336,6 +377,9 @@ func must_discard_end_of_turn(card_name: String) -> bool:
 			return true
 		"Boost Energy":
 			# EX8: "Discard Boost Energy at the end of the turn it was attached."
+			return true
+		"Miracle Energy":
+			# ISSUE #372: neo4-16 — "At the end of your turn, discard Miracle Energy."
 			return true
 		_:
 			return false
