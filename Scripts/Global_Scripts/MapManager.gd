@@ -2350,7 +2350,7 @@ func _get_card_image_path(card_uid: String) -> String:
 	if split.size() != 2:
 		return ""
 	var set_code: String = split[0]
-	return "res://Image_Assets/Card_Image_Library/" + set_code + "/Large/" + card_uid + ".png"
+	return "res://Image_Assets/Card_Image_Library/" + set_code + "/Large/" + AssetLookup.card_image_name(card_uid) + ".png"
 
 func _get_card_display_name(card_uid: String) -> String:
 	var split = card_uid.split("-")

@@ -65,12 +65,12 @@ func load_card_image(card_passed_uid: String, card_target_size, card_object_ref:
 		if face_down:
 			card_image_path = sleeve_path if sleeve_path != "" else "res://Image_Assets/Sleeves/1_Default_English.png"
 		else:
-			card_image_path="res://Image_Assets/Card_Image_Library/"+card_set+"/Small/"+card_passed_uid+".png"
+			card_image_path="res://Image_Assets/Card_Image_Library/"+card_set+"/Small/"+AssetLookup.card_image_name(card_passed_uid)+".png"
 	else:
 		if face_down:
 			card_image_path = sleeve_path if sleeve_path != "" else "res://Image_Assets/Sleeves/1_Default_English.png"
 		else:
-			card_image_path="res://Image_Assets/Card_Image_Library/"+card_set+"/Large/"+card_passed_uid+".png"
+			card_image_path="res://Image_Assets/Card_Image_Library/"+card_set+"/Large/"+AssetLookup.card_image_name(card_passed_uid)+".png"
 	
 	# Now find the image from the path provided
 	var card_texture = load(card_image_path)

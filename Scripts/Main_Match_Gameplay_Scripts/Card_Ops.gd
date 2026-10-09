@@ -580,6 +580,31 @@ func reveal_secret_plan(stand_in: card_object, is_opponent: bool) -> card_object
 	print("ISSUE #309 FIX ACTIVE: Secret Plan revealed a non-Basic — discarded")
 	return null
 
+# ISSUE #375: a face-down Secret Plan stand-in LEAVING play (shuffled into the deck, returned to hand, discarded) takes
+# the REAL card with it, not the stand-in. Mr. Fuji shuffled the stand-in into the deck and the real card vanished from
+# the game (autotester card-count check). Swaps the real card into the stand-in's slot (with its attachments) and
+# returns it, so the caller moves the real card. No reveal message — it isn't being flipped in play.
+func unwrap_secret_plan(card: card_object, is_opponent: bool) -> card_object:
+	if card == null or not card.secret_plan_face_down or card.secret_plan_card == null:
+		return card
+	var real: card_object = card.secret_plan_card
+	card.secret_plan_face_down = false
+	real.attached_energies = card.attached_energies.duplicate()
+	real.attached_cards = card.attached_cards.duplicate()
+	card.attached_energies.clear()
+	card.attached_cards.clear()
+	real.current_location = card.current_location
+	if card == (main.opponent_active_pokemon if is_opponent else main.player_active_pokemon):
+		if is_opponent: main.opponent_active_pokemon = real
+		else: main.player_active_pokemon = real
+	else:
+		var bench: Array = main.opponent_bench if is_opponent else main.player_bench
+		var i := bench.find(card)
+		if i != -1: bench[i] = real
+	print("ISSUE #375 FIX ACTIVE: face-down Secret Plan card leaves play as the real ", real.metadata.get("name", ""))
+	return real
+
+
 # Flip every face-down card in play that has to be revealed now: one that became an Active Pokémon or one
 # that has damage counters on it. Promotes a new Active if the flip emptied the Active spot.
 func reveal_pending_secret_plans() -> void:

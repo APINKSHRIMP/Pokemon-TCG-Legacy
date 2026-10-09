@@ -1070,7 +1070,7 @@ func _update_energy_icons() -> void:
 		var card_set := card_id.split("-")[0]
 		# ISSUE #274: Large here too - these six icons are the same card images the
 		# grid draws, and a mixed-resolution screen reads as an inconsistency.
-		var image_path := "res://Image_Assets/Card_Image_Library/" + card_set + "/Large/" + card_id + ".png"
+		var image_path := "res://Image_Assets/Card_Image_Library/" + card_set + "/Large/" + AssetLookup.card_image_name(card_id) + ".png"
 		var tex = _load_card_texture_with_fallback(image_path)
 		if tex != null:
 			energy_icons[energy_type].texture = tex
@@ -1330,7 +1330,7 @@ func _on_change_energy_style_pressed() -> void:
 
 			var card_id : String = card_ids[col]
 			var card_set := card_id.split("-")[0]
-			var image_path := "res://Image_Assets/Card_Image_Library/" + card_set + "/Large/" + card_id + ".png"
+			var image_path := "res://Image_Assets/Card_Image_Library/" + card_set + "/Large/" + AssetLookup.card_image_name(card_id) + ".png"
 			var tex = load(image_path)
 
 			var card_rect := TextureRect.new()
@@ -1725,7 +1725,7 @@ func _on_view_deck_pressed() -> void:
 		var cid        : String = card_id
 		var count      : int    = deck_cards[cid]
 		var card_set   : String = cid.split("-")[0]
-		var image_path : String = "res://Image_Assets/Card_Image_Library/" + card_set + "/Large/" + cid + ".png"
+		var image_path : String = "res://Image_Assets/Card_Image_Library/" + card_set + "/Large/" + AssetLookup.card_image_name(cid) + ".png"
 		var card_texture        = load(image_path)
 
 		for _i in range(count):
@@ -1943,7 +1943,7 @@ func _add_card_to_grid(card_data: Dictionary) -> void:
 		# and STRETCH_KEEP_ASPECT_CENTERED scales whatever it is given, so the only
 		# thing the small copy bought was a slightly blurrier card. What makes this
 		# screen slow is the NUMBER of cells, not the size of each texture.
-		var image_path := "res://Image_Assets/Card_Image_Library/" + card_set + "/Large/" + card_id + ".png"
+		var image_path := "res://Image_Assets/Card_Image_Library/" + card_set + "/Large/" + AssetLookup.card_image_name(card_id) + ".png"
 		var card_texture = _load_card_texture_with_fallback(image_path)
 		if card_texture != null:
 			tex_rect.texture = card_texture

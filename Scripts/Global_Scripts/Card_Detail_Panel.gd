@@ -980,7 +980,7 @@ func _card_image_path(uid: String) -> String:
 	var parts := uid.split("-")
 	if parts.size() < 2:
 		return ""
-	return CARD_IMAGE_DIR + parts[0] + "/Large/" + uid + ".png"
+	return CARD_IMAGE_DIR + parts[0] + "/Large/" + AssetLookup.card_image_name(uid) + ".png"
 
 
 # ══════════════════════════════════════════════════════════════════════════

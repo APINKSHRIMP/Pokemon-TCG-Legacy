@@ -3319,6 +3319,7 @@ func effect_mr_fuji(is_opponent: bool) -> void:
 	
 	if chosen == null:
 		return
+	chosen = main.card_ops.unwrap_secret_plan(chosen, is_opponent)   # ISSUE #375
 	
 	var pokemon_name = chosen.metadata.get("name", "").to_upper()
 	
@@ -3540,6 +3541,7 @@ func tick_trainer_lock(side_is_opponent: bool) -> void:
 func effect_here_comes_team_rocket(is_opponent: bool) -> void:
 	main.player_prizes_face_up = true
 	main.opponent_prizes_face_up = true
+	print("ISSUE #375 FIX ACTIVE: Here Comes Team Rocket! — both sides' Prizes face up for the rest of the game")
 	main.display_prize_cards(false)
 	main.display_prize_cards(true)
 	await main.show_message("ALL PRIZE CARDS ARE NOW FACE UP!")
@@ -4656,8 +4658,8 @@ func gym1_effect_blaines_quiz(is_opponent: bool) -> void:
 		if main._should_bail(): return
 		guess = opts[clampi(gi, 0, opts.size() - 1)]
 	else:
-		# The CPU "knows" the answer some of the time (CPU_QUIZ_KNOWLEDGE); otherwise it guesses.
-		guess = truth if randf() < CPU_QUIZ_KNOWLEDGE else opts.filter(func(o): return o != truth)[randi() % (opts.size() - 1)]
+			# ISSUE #375: the CPU knows the answer as often as its opponent class would (Quiz_Knowledge.json).
+		guess = truth if randf() < _quiz_skill("detail") else opts.filter(func(o): return o != truth)[randi() % (opts.size() - 1)]
 		await main.show_message("THE OPPONENT GUESSES " + _fmt_length(guess) + "!")
 		if main._should_bail(): return
 	var right = guess == truth
@@ -4668,8 +4670,32 @@ func gym1_effect_blaines_quiz(is_opponent: bool) -> void:
 	await main.show_message(("THE GUESSER" if right else "THE QUIZ MASTER") + " DREW 2 CARDS!")
 	print("ISSUE #314 FIX ACTIVE: Blaine's Quiz #1 — ", hidden.metadata.get("name", ""), " ", _fmt_length(truth), " guessed ", _fmt_length(guess))
 
-# Chance the CPU names the right length / category in Blaine's Quizzes when it is the guesser.
-const CPU_QUIZ_KNOWLEDGE := 0.35
+# ISSUE #375: how often THIS opponent guesses a Blaine's Quiz right, from NPC_and_Opponent_Data/Quiz_Knowledge.json keyed
+# on their in-battle sprite (Gym Leaders always know, twins never do...). kind: "detail" (Quiz #1 length / #3 name) or
+# "type" (Quiz #2 card type). Returns 0..1.
+const QUIZ_KNOWLEDGE_PATH := "res://NPC_and_Opponent_Data/Quiz_Knowledge.json"
+var _quiz_cfg: Dictionary = {}
+
+func _quiz_skill(kind: String) -> float:
+	if _quiz_cfg.is_empty():
+		var parsed = JSON.parse_string(FileAccess.get_file_as_string(QUIZ_KNOWLEDGE_PATH))
+		_quiz_cfg = parsed if parsed is Dictionary else {"default": {"detail": 45, "type": 50}, "classes": []}
+	var sprite: String = String(main.opponent_data.get("sprite", "")).to_lower()
+	var pct = _quiz_cfg.get("default", {}).get(kind, 45)
+	var label := "default"
+	if sprite != "":
+		for cls in _quiz_cfg.get("classes", []):
+			var hit := false
+			for m in cls.get("match", []):
+				if String(m).to_lower() in sprite:
+					hit = true
+					break
+			if hit:
+				pct = cls.get(kind, pct)
+				label = cls.get("label", "?")
+				break
+	print("ISSUE #375 FIX ACTIVE: quiz skill (", kind, ") for sprite '", sprite, "' = ", pct, "% [", label, "]")
+	return clampf(float(pct) / 100.0, 0.0, 1.0)
 
 # ============================ gym1-105 — Blaine's Last Resort ============================
 # Show hand to opp (it's empty here, since validation requires no other cards) then draw 5.
@@ -5998,13 +6024,14 @@ func gym2_effect_blaines_quiz_2(is_opponent: bool) -> void:
 		hidden = await main.card_ops.prompt_select_card(hand, "BLAINE'S QUIZ #2", "Choose a card to put face down", "SELECT", false)
 		if main._should_bail(): return
 		if hidden == null: hidden = hand[0]
-		# CPU guesses the most common category in your deck list
-		var counts2 = [0, 0, 0]
-		for c in main.player_deck + main.player_hand + main.player_prize_cards:
-			counts2[cat_of.call(c)] += 1
-		guess = 0
-		for i in range(3):
-			if counts2[i] > counts2[guess]: guess = i
+			# ISSUE #375: right as often as this opponent class would be (Quiz_Knowledge.json "type"), otherwise one of the
+		# two wrong categories.
+		var truth_cat: int = cat_of.call(hidden)
+		if randf() < _quiz_skill("type"):
+			guess = truth_cat
+		else:
+			var wrong: Array = [0, 1, 2].filter(func(i): return i != truth_cat)
+			guess = wrong[randi() % wrong.size()]
 		await main.show_message("THE OPPONENT GUESSES: " + cats[guess] + "!")
 		if main._should_bail(): return
 	var right = cat_of.call(hidden) == clampi(guess, 0, 2)
@@ -6065,12 +6092,10 @@ func gym2_effect_blaines_quiz_3(is_opponent: bool) -> void:
 		if main._should_bail(): return
 		guess_name = opts[clampi(gi, 0, opts.size() - 1)]
 	else:
-		# CPU guesses a candidate it has already seen you play (in play / discard), else one at random
-		var seen: Array = []
-		for c in main.card_ops.get_all_pokemon_in_play(false) + main.player_discard_pile:
-			seen.append(c.metadata.get("name",""))
-		var seen_c = cands.filter(func(n): return n in seen)
-		guess_name = seen_c[randi() % seen_c.size()] if not seen_c.is_empty() else cands[randi() % cands.size()]
+			# ISSUE #375: right as often as this opponent class would be (Quiz_Knowledge.json "detail"); otherwise a wrong
+		# candidate (if the attack name belongs to only this card, there's nothing wrong to say).
+		var wrong_n: Array = cands.filter(func(n): return n != true_name)
+		guess_name = true_name if (randf() < _quiz_skill("detail") or wrong_n.is_empty()) else wrong_n[randi() % wrong_n.size()]
 		await main.show_message("THE OPPONENT GUESSES " + guess_name.to_upper() + "!")
 		if main._should_bail(): return
 	var right = guess_name == true_name
@@ -6767,7 +6792,16 @@ func neo1_attach_tool(card: card_object, is_opponent: bool, eligibility_filter: 
 	var target: card_object = null
 	if is_opponent:
 		# CPU: attach to active if no tool, otherwise bench
-		target = valid_targets[0]
+		# ISSUE #375: it took valid_targets[0] — and build_field_pokemon_array lists the BENCH first, so Tools went onto
+		# the first Benched Pokémon. The Active when it can take it (that's where the CPU valued the Tool), else the
+		# Benched Pokémon that benefits most.
+		var oa = main.opponent_active_pokemon
+		if oa != null and oa in valid_targets:
+			target = oa
+		else:
+			target = main.cpu_ai.cpu_pick_benefit_recipient(valid_targets, "energy")   # the Bench Pokémon about to matter most
+			if target == null: target = valid_targets[0]
+		print("ISSUE #375 FIX ACTIVE: CPU attaches ", card.metadata.get("name", ""), " to ", target.metadata.get("name", ""))
 	else:
 		# ISSUE #156: always ask, even with one legal target.
 		target = await main.card_ops.prompt_select_card(valid_targets, "ATTACH " + card.metadata.get("name",""), "Choose a Pokemon to attach " + card.metadata.get("name","") + " to", "ATTACH", false)
@@ -7494,9 +7528,9 @@ func effect_neo2_hyper_devolution_spray(is_opponent: bool) -> void:
 		return
 	var target: card_object = null
 	if is_opponent:
-		target = evolved[0]
-		for ev in evolved:
-			if ev.current_hp < target.current_hp: target = ev   # rescue the most damaged evolved Pokémon's Evolution card
+		# ISSUE #375: the evolved Pokémon most worth devolving one stage on this board.
+		target = main.cpu_ai.cpu_pick_devolution_spray_target(evolved, false)
+		if target == null: target = evolved[0]
 	else:
 		target = await main.card_ops.prompt_select_card(evolved, "HYPER DEVOLUTION SPRAY", "Choose an evolved Pokemon to devolve", "SELECT", false)
 		if main._should_bail(): return
@@ -10802,10 +10836,8 @@ func effect_ex7_surprise_time_machine(is_opponent: bool) -> void:
 	devolve_to.attached_energies = target.attached_energies.duplicate()
 	devolve_to.attached_pre_evolutions = target.attached_pre_evolutions.duplicate()
 	devolve_to.attached_cards = target.attached_cards.duplicate()
-	var max_hp_old = int(target.metadata.get("hp", "0"))
-	var damage_taken = max_hp_old - target.current_hp
-	var new_max = int(devolve_to.metadata.get("hp", "0"))
-	devolve_to.current_hp = max(0, new_max - damage_taken)   # ISSUE #324: carried damage can KO the lower Stage
+	var damage_taken = max(0, target.get_max_hp() - target.current_hp)   # ISSUE #375: real max HP, not printed
+	devolve_to.current_hp = max(0, devolve_to.get_max_hp() - damage_taken)   # ISSUE #324: carried damage can KO the lower Stage
 	devolve_to.current_location = target.current_location
 	# Clear the top card's carried state and shuffle it into the deck.
 	target.attached_energies.clear()
@@ -10868,12 +10900,14 @@ func effect_ex7_swoop_teleporter(is_opponent: bool) -> void:
 	if is_opponent:
 		# ISSUE #361: was in-play[0] / deck[0]. Swap the weakest in-play Basic for the best deck Basic that survives the
 		# damage it inherits.
-		target = in_play_basics[0]
-		for c in in_play_basics:
-			if main.cpu_ai.cpu_rank_keep_value(c) < main.cpu_ai.cpu_rank_keep_value(target): target = c
-		var sw_dmg = target.get_max_hp() - target.current_hp
-		var sw_pool = deck_basics.filter(func(c): return int(c.metadata.get("hp", "0")) > sw_dmg)
-		new_basic = _r4_cpu_best_basic(sw_pool if not sw_pool.is_empty() else deck_basics)
+		# ISSUE #375: the same board-fit judgement the CPU used to decide to play it (cpu_best_swoop).
+		var sw: Dictionary = main.cpu_ai.cpu_best_swoop()
+		target = sw["target"] if sw["target"] != null else in_play_basics[0]
+		new_basic = sw["new"]
+		if new_basic == null:
+			var sw_dmg = target.get_max_hp() - target.current_hp
+			var sw_pool = deck_basics.filter(func(c): return c.get_max_hp() > sw_dmg)
+			new_basic = _r4_cpu_best_basic(sw_pool if not sw_pool.is_empty() else deck_basics)
 	else:
 		target = await main.card_ops.choose_card(in_play_basics, false, "SWOOP! TELEPORTER", "Choose a Basic Pokémon in play to switch out", "SELECT", false, Callable(), true)
 		if main._should_bail(): return

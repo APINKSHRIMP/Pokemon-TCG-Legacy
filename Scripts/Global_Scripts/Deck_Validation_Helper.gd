@@ -532,4 +532,4 @@ static func card_image_path(card_id: String) -> String:
 	var parts := card_id.split("-")
 	if parts.size() != 2:
 		return ""
-	return "res://Image_Assets/Card_Image_Library/" + String(parts[0]) + "/Large/" + card_id + ".png"
+	return "res://Image_Assets/Card_Image_Library/" + String(parts[0]) + "/Large/" + AssetLookup.card_image_name(card_id) + ".png"

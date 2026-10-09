@@ -152,7 +152,7 @@ func _build_display() -> void:
 		card_hbox.add_child(vbox)
 
 		var set_id   : String   = card["id"].split("-")[0]
-		var tex_path : String   = "res://Image_Assets/Card_Image_Library/" + set_id + "/Large/" + card["id"] + ".png"
+		var tex_path : String   = "res://Image_Assets/Card_Image_Library/" + set_id + "/Large/" + AssetLookup.card_image_name(card["id"]) + ".png"
 		var tex      : Texture2D = load(tex_path) as Texture2D
 
 		var rect := TextureRect.new()
@@ -283,7 +283,7 @@ func _show_card_reveal(card: Dictionary) -> void:
 	var vp_size : Vector2 = get_viewport_rect().size
 
 	var rev_set_id : String   = card["id"].split("-")[0]
-	var rev_path   : String   = "res://Image_Assets/Card_Image_Library/" + rev_set_id + "/Large/" + card["id"] + ".png"
+	var rev_path   : String   = "res://Image_Assets/Card_Image_Library/" + rev_set_id + "/Large/" + AssetLookup.card_image_name(card["id"]) + ".png"
 	var face_tex   : Texture2D = load(rev_path) as Texture2D
 
 	var reveal_rect := TextureRect.new()

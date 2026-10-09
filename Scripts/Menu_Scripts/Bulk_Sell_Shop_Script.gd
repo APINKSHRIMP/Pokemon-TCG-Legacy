@@ -823,7 +823,7 @@ func _card_texture(card_id: String) -> Texture2D:
 	if _texture_cache.has(card_id):
 		return _texture_cache[card_id]
 	var card_set : String = card_id.split("-")[0]
-	var path : String = CARD_IMAGE_FOLDER + card_set + "/Large/" + card_id + ".png"
+	var path : String = CARD_IMAGE_FOLDER + card_set + "/Large/" + AssetLookup.card_image_name(card_id) + ".png"
 	var tex = load(path)
 	_texture_cache[card_id] = tex
 	return tex

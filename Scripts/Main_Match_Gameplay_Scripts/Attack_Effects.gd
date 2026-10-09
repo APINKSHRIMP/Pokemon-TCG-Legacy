@@ -992,6 +992,24 @@ func _estimate_board_scaled(attack: Dictionary, attacker: card_object, defender:
 		var kb := extract_number_before(text, "more damage")
 		if kb <= 0: kb = 20
 		return mk.call(base, base + kb, base + kb / 2.0)
+	# ISSUE #375: "plus N more damage for each Energy attached to <this Pokémon>" (Power Blow and 25 more). The generic
+	# estimate read these as the bare base, so the CPU never picked them over a flat attack (autotester CPU-usage report:
+	# Breloom's Power Blow scored 20 vs Body Slam's 120 with 3 Energy attached).
+	if attacker != null and ("more damage for each energy attached to " + attacker.metadata.get("name", "").to_lower()) in text \
+			and "not used to pay" not in text:
+		var per_e := extract_number_before(text, "more damage for each energy")
+		if per_e <= 0: per_e = 10
+		var units := 0
+		for e in attacker.attached_energies: units += max(1, main.get_energy_provided_by_card(e).size())
+		var tot := base + per_e * units
+		return mk.call(tot, tot, tot)
+	# ISSUE #375: Ultra Energy Source — × basic Energy cards on BOTH Active Pokémon.
+	if times and "basic energy cards attached to all of the active pokémon" in text:
+		var nb := 0
+		for act in [main.player_active_pokemon, main.opponent_active_pokemon]:
+			if act != null:
+				nb += act.attached_energies.filter(func(e): return "Basic" in e.metadata.get("subtypes", [])).size()
+		return mk.call(base * nb, base * nb, base * nb)
 	# Boyfriends: +20 per Nidoking you have in play
 	if "more damage for each nidoking you have in play" in text:
 		var nn := 0
@@ -5185,6 +5203,7 @@ func gym1_is_basic_energy(card: card_object) -> bool:
 
 # Helper: shuffle a Pokemon and everything attached to it into its owner's deck. Returns true if it was the Active.
 func gym1_shuffle_into_deck(pokemon: card_object, is_pokemon_opponent: bool) -> bool:
+	pokemon = main.card_ops.unwrap_secret_plan(pokemon, is_pokemon_opponent)   # ISSUE #375
 	var deck = main.opponent_deck if is_pokemon_opponent else main.player_deck
 	for e in pokemon.attached_energies:
 		e.current_location = "deck"
@@ -5897,6 +5916,7 @@ func execute_fairy_power(attacker: card_object, is_opponent: bool) -> void:
 
 # Helper: return a Pokemon and everything attached to it to its owner's hand
 func gym1_return_pokemon_to_hand(pokemon: card_object, is_pokemon_opponent: bool) -> void:
+	pokemon = main.card_ops.unwrap_secret_plan(pokemon, is_pokemon_opponent)   # ISSUE #375
 	var hand = main.opponent_hand if is_pokemon_opponent else main.player_hand
 	for e in pokemon.attached_energies:
 		e.current_location = "hand"
@@ -22464,7 +22484,9 @@ func execute_ex5_sheer_cold(attacker: card_object, defender: card_object, is_opp
 # applicable conditions; pass a custom list for cards that restrict the choice.
 func choose_special_condition(is_opponent: bool, header: String, cpu_pick: String = "Paralyzed", allowed: Array = ["Asleep", "Burned", "Confused", "Paralyzed", "Poisoned"]) -> String:   # ISSUE #328: + Burned
 	if is_opponent:
-		return cpu_pick
+		# ISSUE #375: the CPU picks the condition worth most on THIS board (shared status maths), not a fixed one.
+		var smart: String = main.cpu_ai.cpu_pick_status(allowed)
+		return smart if smart != "" else cpu_pick
 	var options: Array = []
 	for s in allowed:
 		options.append(card_object.new("opt_" + s.to_lower(), {"name": s}))
@@ -26972,6 +26994,11 @@ func execute_ex10_bouncy_move(attacker: card_object, defender: card_object, is_o
 
 # Simple integer-choice prompt reusing the attack-button UI (player picks a value from `options`).
 func _ex10_choose_int(header: String, hint: String, options: Array) -> int:
+	return int(options[await _ex10_choose_index(header, hint, options)])
+
+# ISSUE #375: the button prompt itself returns the INDEX. It used to return options[idx] from an int function, so
+# _ex10_choose_str (text options — the Hidden Power guess) crashed with a script error (autotester).
+func _ex10_choose_index(header: String, hint: String, options: Array) -> int:
 	main.special_attack_selection_active = true
 	main.buttons_only_blocker.visible = true
 	for child in main.attack_buttons_container.get_children():
@@ -26999,7 +27026,7 @@ func _ex10_choose_int(header: String, hint: String, options: Array) -> int:
 	main.main_buttons_container.visible = true
 	main.special_attack_selection_active = false
 	main.buttons_only_blocker.visible = false
-	return options[idx]
+	return int(idx)
 
 # Star "if you have fewer Prize cards left than your opponent" self-penalty attacks (Suicune/Entei/Raikou ★).
 func execute_ex10_star_if_behind(attacker: card_object, defender: card_object, is_opponent: bool, base_damage: int, mode: String) -> void:
@@ -28042,8 +28069,9 @@ func _ex10_hidden_power_guess(attacker: card_object, is_opponent: bool) -> void:
 
 # String-choice prompt (reuses the attack-button UI); returns the chosen string.
 func _ex10_choose_str(header: String, hint: String, options: Array) -> String:
-	var choice = await _ex10_choose_int(header, hint, options)
-	return str(choice)
+	var idx: int = await _ex10_choose_index(header, hint, options)
+	print("ISSUE #375 FIX ACTIVE: text choice -> ", options[idx])
+	return str(options[idx])
 
 ######################################################################################################################################################
 ############################################################## EX11 (EX DELTA SPECIES) ATTACKS #######################################################
@@ -33390,8 +33418,14 @@ func r4_cpu_spend_energy(a: card_object, energy: card_object, gives_ko: bool, be
 		return false
 	if gives_ko:
 		return true
-	if a == main.opponent_active_pokemon and main.cpu_ai.evaluate_ko_threats().get("cpu_active_guaranteed_ko", false):
-		return true
+	if a == main.opponent_active_pokemon:
+		var th: Dictionary = main.cpu_ai.evaluate_ko_threats()
+		if th.get("cpu_active_guaranteed_ko", false):
+			return true
+		# ISSUE #375 (the user's rule): a LIKELY Knock Out makes this Energy probably lost anyway — spend it on the effect
+		# unless it's the Energy the Pokémon most needs to keep attacking.
+		if th.get("cpu_active_potential_ko", false):
+			return main.cpu_ai.cpu_own_energy_value(a, energy) < 2000.0
 	return main.cpu_ai.cpu_own_energy_value(a, energy) < 1000.0
 
 # Would `dmg` (before W/R) knock out `target` if it hit the Active?

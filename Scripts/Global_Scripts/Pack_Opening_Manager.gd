@@ -818,9 +818,9 @@ func _load_card_texture(card_id: String, target_size: Vector2) -> Texture2D:
 	var card_set : String = parts[0]
 	var path     : String
 	if target_size.x < 250 or target_size.y < 350:
-		path = "res://Image_Assets/Card_Image_Library/" + card_set + "/Small/" + card_id + ".png"
+		path = "res://Image_Assets/Card_Image_Library/" + card_set + "/Small/" + AssetLookup.card_image_name(card_id) + ".png"
 	else:
-		path = "res://Image_Assets/Card_Image_Library/" + card_set + "/Large/" + card_id + ".png"
+		path = "res://Image_Assets/Card_Image_Library/" + card_set + "/Large/" + AssetLookup.card_image_name(card_id) + ".png"
 	var tex := _load_texture(path)
 	if tex == null:
 		tex = _load_texture("res://Image_Assets/null.png")

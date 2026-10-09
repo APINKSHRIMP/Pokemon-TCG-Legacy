@@ -1,0 +1,23 @@
+{
+	"_about": "Blaine's Quiz: how often the CPU opponent guesses RIGHT when YOU play a quiz. Keyed on the opponent's in-battle sprite name (case-insensitive). The FIRST entry whose 'match' list contains a substring of the sprite name wins, so specific entries go above general ones. 'detail' = Quiz #1 (Pokémon length) and Quiz #3 (card name from an attack), 0-100. 'type' = Quiz #2 (Energy / Trainer / Pokémon), kept to 20-80. Read by Trainer_Effects._quiz_skill().",
+	"default": { "detail": 45, "type": 50 },
+	"classes": [
+		{ "label": "Gym Leaders (every era)",          "match": ["Gym_Challenge_", "Ex_Gym_Leader_", "Gym_Hero_"], "detail": 100, "type": 80 },
+		{ "label": "Champions / Elite / Professors",   "match": ["ChampionDiantha", "Alder", "Caitlin", "Steven", "Cheryl", "Riley", "Marley", "Buck", "Charon", "Argenta", "Palmer", "Urbain", "ProfOak", "ProfElm", "ProfRowan", "Bill", "Looker", "Eusine", "Ingo", "Emmet", "CafeMaster", "TrialGuide"], "detail": 100, "type": 80 },
+		{ "label": "Villain bosses / admins",          "match": ["TeamRocketBoss", "TeamRocketArcher", "TeamRocketAriana", "TeamRocketPetrel", "TeamRocketProton", "TeamPlasmaGhetsis", "TeamPlasmaN", "TeamPlasmaColross", "TeamPlasmaZinzolin", "TeamPlasmaShadowTriad"], "detail": 85, "type": 70 },
+		{ "label": "Scientists / researchers / experts","match": ["Scientist", "Doctor", "Supernerd", "PokeManiac", "Pokemaniac", "RuinManiac", "Teacher", "Sage", "Psychic", "HexManiac", "Medium"], "detail": 90, "type": 75 },
+		{ "label": "Skilled trainers",                 "match": ["AceTrainer", "CoolTrainer", "PokemonBreeder", "PokemonRanger", "Veteran", "DragonTamer", "RisingStar", "PokemonTrainer_", "1Ash", "1Barry", "1Hilbert", "1Hilda", "1Nate", "1Rosa", "1GreenFRLG", "1MayEmerald", "1WallyEmerald", "1Alexander", "Rival_Ellie", "1ellie", "Hugh", "Bianca", "Gloria", "Taunie", "Benga"], "detail": 80, "type": 70 },
+		{ "label": "Know Pokémon sizes from the field", "match": ["BugCatcher", "Fisher", "BirdKeeper", "Hiker", "Camper", "Picnicker", "Collector", "PokeFan", "Rancher", "Owner", "NurseryAide", "Nurse", "Swimmer", "Backpacker", "Kindler", "Elder"], "detail": 70, "type": 60 },
+		{ "label": "Fighters / athletes",              "match": ["BlackBelt", "BattleGirl", "Striker", "Smasher", "Linebacker", "Hoopster", "Infielder", "Jogger", "Cyclist", "Skier", "Boarder", "RollerSkater", "WingGlider", "NinjaBoy"], "detail": 50, "type": 55 },
+		{ "label": "Grunts / tough types",             "match": ["TeamRocket", "TeamPlasma", "TeamSkull", "Rogue", "Rebel", "Punk", "Delinquent", "StreetThug", "StreetBoy", "Burglar", "Biker", "Roughneck", "Gambler"], "detail": 40, "type": 45 },
+		{ "label": "Well-off / worldly adults",         "match": ["Gentleman", "Lady", "Madame", "Socialite", "RichBoy", "Beauty", "ParasolLady", "AromaLady", "KimonoGirl", "FurisodeGirl", "Tourist", "Sightseer", "Reporter", "Cameraman", "Artist"], "detail": 55, "type": 55 },
+		{ "label": "Everyday working adults",          "match": ["Chef", "Cook", "Baker", "Waiter", "Waitress", "Maid", "Worker", "OfficeWorker", "Clerk", "Cabbie", "Postman", "Courier", "Policeman", "Security", "Janitor", "Gardener", "Sailor", "Firefighter", "Pilot", "DepotAgent", "StaffMember", "TrainWorker", "Bakushin_"], "detail": 35, "type": 45 },
+		{ "label": "Performers / showbiz",             "match": ["Guitarist", "Dancer", "Model", "Idol", "Clown", "Harlequin", "Juggler", "Cheerleader", "FireBreather", "CowGirl", "FairyGirl"], "detail": 30, "type": 40 },
+		{ "label": "Teenagers / couples",              "match": ["Teenager", "YoungCouple", "Backer", "Neckbeard"], "detail": 45, "type": 50 },
+		{ "label": "School kids",                      "match": ["SchoolKid", "SchoolBoy", "SchoolGirl"], "detail": 25, "type": 35 },
+		{ "label": "Lasses",                           "match": ["Lass"], "detail": 15, "type": 30 },
+		{ "label": "Youngsters",                       "match": ["Youngster"], "detail": 10, "type": 30 },
+		{ "label": "Little kids",                      "match": ["Tuber", "PokeKid"], "detail": 5, "type": 25 },
+		{ "label": "Twins / preschoolers",             "match": ["Twin", "Preschooler"], "detail": 0, "type": 20 }
+	]
+}

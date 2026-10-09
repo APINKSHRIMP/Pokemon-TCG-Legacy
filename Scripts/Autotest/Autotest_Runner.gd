@@ -15,6 +15,11 @@ extends Node
 #   --turn-limit=N      abort a match that reaches this turn (default 120; it counts each player's turn) — catches stall loops
 #   --timescale=N       Engine.time_scale (default 4; --watch uses 1)
 #   --watch             normal-looking speed so a person can follow it
+#   --stack=UID         stacked deck for the BOT: its opening hand is UID's whole evolution line plus the Energy its
+#                       untested attack costs (the rest of that Energy is drawn next; the Prizes get filler). Use to
+#                       reach expensive attacks a shuffled deck rarely powers up, e.g. --stack=ex15-100 --matches=10
+#   --strict            also check for duplicated cards after EVERY in-game message, and name the message where a
+#                       duplicate first appears (use with --replay to pin down a CARD DUPLICATED find)
 #   --reset-coverage    start the cumulative coverage file from zero
 #   --replay=RUN:N      replay match N of an earlier run exactly (same decks + seed), e.g.
 #                       --replay=2026-10-09T11-17-10:16   (RUN is the folder name under autotest/runs/)
@@ -25,6 +30,8 @@ extends Node
 #   runs/<stamp>/matches.jsonl — one line per match: decks, result, turns, events
 #   coverage.json              — cumulative use counts across every run (drives deck building)
 #   coverage_missing.txt       — every attack / Power / Trainer / Special Energy never used yet
+#   cpu_usage.json / cpu_usage_report.txt — CUMULATIVE: for every Trainer, Special Energy, Power and attack the CPU
+#                                COULD use on a turn, how often it DID. Flags always / rarely / never used.
 #
 # The save file is never touched: matches run in test_match_mode, which already skips every save write.
 
@@ -42,14 +49,22 @@ var opt_cards: Array = []
 var opt_turn_limit := 120
 var opt_timescale := 4.0
 var opt_watch := false
+var opt_stack := ""
+var opt_strict := false
 var replay_record: Dictionary = {}
+var replay_run := ""
+var replay_prior_events: Array = []   # events of the matches before the replayed one (to rebuild its coverage)
 
 var cards: Dictionary = {}        # uid -> metadata
 var by_name: Dictionary = {}      # card name -> [uid]
 var basic_energy_for: Dictionary = {}  # type -> uid
 var coverage: Dictionary = {}     # key -> count  (cumulative)
 var run_dir := ""
-var power_names: Dictionary = {}  # activatable Power names (from _power_dispatch)
+var power_names: Dictionary = {}
+var cpu_usage: Dictionary = {}         # key -> {"offered": turns it was available, "used": turns the CPU used it}
+var _cpu_offered: Dictionary = {}      # this CPU turn
+var _cpu_used: Dictionary = {}
+var _cpu_turn_open := false  # activatable Power names (from _power_dispatch)
 
 var match_scene: PackedScene
 var current_main: Node = null
@@ -129,6 +144,22 @@ func _ready() -> void:
 	DirAccess.make_dir_recursive_absolute(OUT_DIR + "decks")
 	_load_cards()
 	_load_coverage()
+	if FileAccess.file_exists(OUT_DIR + "cpu_usage.json"):
+		var cu = JSON.parse_string(FileAccess.get_file_as_string(OUT_DIR + "cpu_usage.json"))
+		if cu is Dictionary:
+			cpu_usage = cu
+	if not replay_record.is_empty():
+		# The bot weights its attacks by coverage, so a replay needs the coverage exactly as it was at that match:
+		# the run's starting coverage plus every event of the matches before it.
+		var start_path := OUT_DIR + "runs/" + replay_run + "/coverage_start.json"
+		if FileAccess.file_exists(start_path):
+			coverage = JSON.parse_string(FileAccess.get_file_as_string(start_path))
+			for e in replay_prior_events:
+				_count_event(String(e))
+		else:
+			push_error("AUTOTEST: no coverage_start.json for that run — the replay may drift from the original")
+	else:
+		_write_json(run_dir + "coverage_start.json", coverage)
 	match_scene = load(MATCH_SCENE)
 	print("AUTOTEST: %d cards loaded, %d matches, base seed %d, output %s" % [cards.size(), opt_matches, opt_seed, ProjectSettings.globalize_path(run_dir)])
 	_run_all.call_deferred()
@@ -150,6 +181,10 @@ func _parse_args() -> void:
 			"watch":
 				opt_watch = true
 				opt_timescale = 1.0
+			"strict": opt_strict = true
+			"stack":
+				opt_stack = v.to_lower()
+				opt_cards = [opt_stack]
 			"reset-coverage":
 				DirAccess.remove_absolute(OUT_DIR + "coverage.json")
 			"replay":
@@ -160,6 +195,9 @@ func _parse_args() -> void:
 					var rec = JSON.parse_string(line)
 					if rec is Dictionary and int(rec.get("match", 0)) == n:
 						replay_record = rec
+					elif rec is Dictionary and int(rec.get("match", 0)) < n:
+						replay_prior_events.append_array(rec.get("events", []))
+					replay_run = run
 				if replay_record.is_empty():
 					push_error("AUTOTEST: no match %d in %s" % [n, path])
 				else:
@@ -242,6 +280,7 @@ func _play_match(i: int) -> void:
 		_watch(get_process_delta_time())
 
 	_drain_errors()
+	_cpu_close_turn()
 	var turns: int = current_main.turn_number if is_instance_valid(current_main) else -1
 	if results.has(match_result):
 		results[match_result] += 1
@@ -290,6 +329,187 @@ func _write_match_log(n: int, rec: Dictionary) -> void:
 	f.close()
 
 
+# ───────────────────────────── CPU usage (offered vs used) ─────────────────────────────
+
+## Hook: start of every CPU turn, after its draw. Closes the previous turn, then records what the CPU could play now.
+func cpu_turn_start(m) -> void:
+	_cpu_close_turn()
+	_cpu_turn_open = true
+	for c in m.opponent_hand:
+		var st: String = c.metadata.get("supertype", "")
+		if st == "Trainer":
+			if m.trainer_effects.validate_trainer_can_be_played(c, true) == "":
+				_cpu_offered["trainer|" + c.uid] = true
+		elif st == "Energy" and "Special" in c.metadata.get("subtypes", []):
+			for p in m.card_ops.get_all_pokemon_in_play(true):
+				if bool(m.special_energy_effects.can_attach_to(c, p).get("allowed", true)):
+					_cpu_offered["energy|" + c.uid] = true
+					break
+	for p in m.card_ops.get_all_pokemon_in_play(true):
+		for e in m.powers_and_bodies.usable_powers_for(p):
+			_cpu_offered["power|" + p.uid + "|" + String(e["ability"].get("name", ""))] = true
+
+
+## Hook: start of the CPU's attack phase — every attack its Active could legally use right now.
+func cpu_attack_phase(m) -> void:
+	var mon = m.opponent_active_pokemon
+	if mon == null or m.turn_number <= 1 or mon.special_condition in ["Paralyzed", "Asleep"]:
+		return
+	for a in m.get_attacks_for_card(mon):
+		var an: String = a.get("name", "")
+		if m.is_attack_disabled(mon, an) or not m.check_attack_requirements(a, mon) or m.attack_effects.attack_unusable_reason(a, mon) != "":
+			continue
+		_cpu_offered["attack|" + mon.uid + "|" + an] = true
+
+
+func _cpu_close_turn() -> void:
+	if not _cpu_turn_open:
+		return
+	_cpu_turn_open = false
+	var keys: Dictionary = _cpu_offered.duplicate()
+	keys.merge(_cpu_used)   # drawn and played in the same turn = it was available
+	var used_attack := "(no attack)"
+	for k in _cpu_used:
+		if k.begins_with("attack|"):
+			used_attack = k.get_slice("|", 2)
+	for k in keys:
+		if not cpu_usage.has(k):
+			cpu_usage[k] = {"offered": 0, "used": 0}
+		cpu_usage[k]["offered"] = int(cpu_usage[k]["offered"]) + 1
+		if _cpu_used.has(k):
+			cpu_usage[k]["used"] = int(cpu_usage[k]["used"]) + 1
+		elif k.begins_with("attack|"):
+			# What the CPU did INSTEAD of this attack — the evidence for judging whether skipping it was right.
+			if not cpu_usage[k].has("lost_to"):
+				cpu_usage[k]["lost_to"] = {}
+			cpu_usage[k]["lost_to"][used_attack] = int(cpu_usage[k]["lost_to"].get(used_attack, 0)) + 1
+	_cpu_offered = {}
+	_cpu_used = {}
+
+
+func _write_cpu_usage_report() -> void:
+	var by_kind := {"trainer": [], "energy": [], "power": [], "attack": []}
+	for k in cpu_usage:
+		var kind: String = k.get_slice("|", 0)
+		if by_kind.has(kind):
+			by_kind[kind].append(k)
+	var s := PackedStringArray()
+	s.append("CPU USAGE — cumulative over every autotest run. 'offered' = CPU turns it could have used it; 'used' = turns it did.")
+	s.append("ALWAYS = used on 90%+ of chances (fine for Bill; suspicious for situational cards).  RARE = under 10%.  NEVER = 0.")
+	s.append("Only cards offered at least 5 times are judged.")
+	s.append("POWERS: 'offered' means the Power's button was usable — not that its own needs were met. Form changes need another")
+	s.append("form in the deck, Baby Evolution needs the evolution in hand, Reactive Shift needs React Energy... A NEVER here can be")
+	s.append("legit; confirm with --cards=<power card>,<partner cards> (verified 2026-10-09: Form Change, Temperamental Weather,")
+	s.append("Baby Evolution, Reactive Shift all used by the CPU once their partners were in the deck).")
+	for kind in ["trainer", "energy", "power", "attack"]:
+		var always: Array = []
+		var rare: Array = []
+		var never: Array = []
+		var tested := 0
+		for k in by_kind[kind]:
+			var o := int(cpu_usage[k]["offered"])
+			var u := int(cpu_usage[k]["used"])
+			if o < 5:
+				continue
+			tested += 1
+			var r := float(u) / o
+			var uid: String = k.get_slice("|", 1)
+			var label := "%5.1f%%  %3d/%-3d  %s (%s)%s" % [r * 100.0, u, o, cards.get(uid, {}).get("name", "?"), uid,
+				("  — " + k.get_slice("|", 2)) if kind in ["attack", "power"] else ""]
+			if cpu_usage[k].has("lost_to"):
+				var lt: Dictionary = cpu_usage[k]["lost_to"]
+				var names := lt.keys()
+				names.sort_custom(func(a, b): return lt[a] > lt[b])
+				var bits: Array = []
+				for nm in names.slice(0, 3):
+					bits.append("%s x%d" % [nm, lt[nm]])
+				label += "   [instead: " + ", ".join(bits) + "]"
+			if u == 0:
+				never.append([r, label])
+			elif r >= 0.9:
+				always.append([r, label])
+			elif r < 0.1:
+				rare.append([r, label])
+		for grp in [always, rare]:
+			grp.sort_custom(func(a, b): return a[0] > b[0])
+		s.append("")
+		s.append("==== %s — %d judged ====" % [kind.to_upper(), tested])
+		for pair in [["ALWAYS USED", always], ["RARELY USED", rare], ["NEVER USED", never]]:
+			s.append("-- %s (%d)" % [pair[0], pair[1].size()])
+			for e in pair[1]:
+				s.append("   " + e[1])
+	var f := FileAccess.open(OUT_DIR + "cpu_usage_report.txt", FileAccess.WRITE)
+	f.store_string("\n".join(s))
+	f.close()
+
+
+## --stack: the names in the target's line (the bot steers Energy / evolutions onto them) and the target attack name.
+var stack_line_names: Array = []
+var stack_attack_name := ""
+
+
+## --stack: called by Main.setup_player() on the bot's freshly shuffled deck (before the opening hand and Prizes are
+## drawn, both from the FRONT). Order: [0..6] opening hand = the target's line + Energy for its untested attack,
+## [7..12] filler for the Prizes, then the rest of that Energy, then everything else.
+func stack_player_deck(deck: Array) -> void:
+	if opt_stack == "" or not cards.has(opt_stack):
+		return
+	# The target's evolution line, Basic first, using the copies actually in this deck.
+	var line_uids: Array = []
+	var u := opt_stack
+	var guard := 0
+	while u != "" and guard < 4:
+		line_uids.push_front(u)
+		var from: String = cards[u].get("evolvesFrom", "")
+		u = ""
+		if from != "":
+			for c in deck:
+				if c.metadata.get("name", "") == from:
+					u = c.uid.to_lower()
+					break
+		guard += 1
+	# The untested attack (else the most expensive one) and the Energy it costs.
+	var target_atk: Dictionary = {}
+	for a in cards[opt_stack].get("attacks", []):
+		if int(coverage.get("attack|" + opt_stack + "|" + a.get("name", ""), 0)) == 0:
+			target_atk = a
+			break
+	if target_atk.is_empty():
+		for a in cards[opt_stack].get("attacks", []):
+			if a.get("cost", []).size() > target_atk.get("cost", []).size():
+				target_atk = a
+	stack_line_names = []
+	for lu in line_uids:
+		stack_line_names.append(cards[lu].get("name", ""))
+	stack_attack_name = target_atk.get("name", "")
+	var energy_uids: Array = []
+	for cost in target_atk.get("cost", []):
+		var want: String = basic_energy_for.get(cost, "") if cost != "Colorless" else ""
+		energy_uids.append(want)   # "" = any Energy card
+	var picked: Array = []
+	var take = func(match_uid: String) -> void:
+		for c in deck:
+			if c in picked:
+				continue
+			if match_uid == "" and c.metadata.get("supertype", "") == "Energy":
+				picked.append(c); return
+			if match_uid != "" and c.uid.to_lower() == match_uid.to_lower():
+				picked.append(c); return
+	for lu in line_uids:
+		take.call(lu)
+	for eu in energy_uids:
+		take.call(eu)
+	var hand: Array = picked.slice(0, 7)
+	var late: Array = picked.slice(7)
+	var rest: Array = deck.filter(func(c): return c not in picked)
+	var filler: Array = rest.slice(0, 7 - hand.size()) + rest.slice(7 - hand.size(), 13 - hand.size())
+	var tail: Array = rest.slice(13 - hand.size())
+	var ordered: Array = hand + filler.slice(0, 7 - hand.size()) + filler.slice(7 - hand.size()) + late + tail
+	deck.clear()
+	deck.append_array(ordered)
+	print("AUTOTEST: stacked deck for ", cards[opt_stack].get("name", ""), " — attack '", target_atk.get("name", ""), "', hand ", hand.map(func(c): return c.metadata.get("name", "")), ", then ", late.size(), " more Energy after the Prizes")
+
+
 ## Called by game_end_logic() instead of moving to the outro.
 func on_match_over(_m: Node, result: String, is_draw: bool) -> void:
 	match_result = "draw" if is_draw else ("win" if result == "win" else "loss")
@@ -310,6 +530,8 @@ func _abort(reason: String) -> void:
 func note(kind: String, uid: String, name: String, is_opponent: bool) -> void:
 	var key := kind + "|" + uid + ("|" + name if kind in ["attack", "power"] else "")
 	coverage[key] = int(coverage.get(key, 0)) + 1
+	if is_opponent and _cpu_turn_open and (kind != "energy" or "Special" in cards.get(uid, {}).get("subtypes", [])):
+		_cpu_used[key] = true
 	var turn = current_main.turn_number if is_instance_valid(current_main) else -1
 	match_events.append("T%s %s %s %s %s" % [turn, "CPU" if is_opponent else "BOT", kind, uid, name])
 
@@ -317,6 +539,21 @@ func note(kind: String, uid: String, name: String, is_opponent: bool) -> void:
 ## Every in-game message, in full (the game's own log keeps only the last 250).
 func log_message(text: String, turn: int, opp_turn: bool) -> void:
 	match_messages.append([turn, opp_turn, text])
+	if opt_strict and is_instance_valid(current_main) and not originals[0].is_empty():
+		for side in [false, true]:
+			var seen: Dictionary = {}
+			for pair in _zones(current_main, side):
+				if not (pair[0] is Object):
+					continue
+				var id: int = pair[0].get_instance_id()
+				# Mid-retreat the Pokémon is briefly both Active and Benched — an in-play/in-play pair is that, not a bug.
+				if seen.has(id) and not (_in_play_zone(seen[id]) and _in_play_zone(pair[1])):
+					_problem("CARD DUPLICATED (strict)", "%s's %s in %s AND %s — first seen at message: \"%s\"" % ["CPU" if side else "BOT", _cname(pair[0]), seen[id], pair[1], text], "sdup" + str(id))
+				seen[id] = pair[1]
+
+
+func _in_play_zone(z: String) -> bool:
+	return z.begins_with("active") or z.begins_with("bench")
 
 
 func bot_log(s: String) -> void:
@@ -465,9 +702,15 @@ func _drain_errors() -> void:
 		_problem(kind, where + " — " + msg + ("\n" + e["backtrace"] if e["backtrace"] != "" else ""), kind + where + msg)
 
 
+# Problems already logged for the user as Manual Fix (Issue_Log #376 / #377) — not reported again.
+const KNOWN_IGNORED := []
+
 func _problem(kind: String, detail: String, dedupe: String) -> void:
 	if match_reported.has(dedupe):
 		return
+	for k in KNOWN_IGNORED:
+		if k in detail:
+			return
 	match_reported[dedupe] = true
 	var m = current_main
 	var ctx := {"kind": kind, "detail": detail, "match": match_index + 1, "seed": match_seed,
@@ -518,9 +761,12 @@ func _keys_for(uid: String) -> Array:
 	match c.get("supertype", ""):
 		"Pokémon":
 			for a in c.get("attacks", []):
+				if a.get("name", "") == "Genetic Memory":
+					continue   # it never runs under its own name — it lists the pre-evolutions' attacks, which are counted
 				keys.append("attack|" + uid + "|" + a.get("name", ""))
 			for ab in c.get("abilities", []):
-				if power_names.has(ab.get("name", "")):
+				# Only ACTIVATED powers can be "used" — a Poké-Body that shares a name with one (Submerge) isn't a Power.
+				if power_names.has(ab.get("name", "")) and ab.get("type", "") not in ["Poké-Body", "Poke-Body"]:
 					keys.append("power|" + uid + "|" + ab.get("name", ""))
 		"Trainer":
 			keys.append("trainer|" + uid)
@@ -628,7 +874,7 @@ func _build_deck(rng: RandomNumberGenerator) -> Array:
 	for uid in leads:
 		_add_line(deck, uid, rng, 2)
 		for t in _cost_types(uid):
-			if allowed.size() < 2 or allowed.has(t):
+			if allowed.size() < 3 or allowed.has(t):   # up to 3 types: some attacks cost three different Energy
 				allowed[t] = true
 	if allowed.is_empty():
 		var ts := basic_energy_for.keys()
@@ -706,7 +952,20 @@ func _load_coverage() -> void:
 			coverage = d
 
 
+## Re-counts one logged event line ("T<turn> <side> <kind> <uid> <name>") into coverage.
+func _count_event(e: String) -> void:
+	var parts := e.split(" ", true, 4)
+	if parts.size() < 4:
+		return
+	var kind := parts[2]
+	var key := kind + "|" + parts[3] + ("|" + (parts[4] if parts.size() > 4 else "") if kind in ["attack", "power"] else "")
+	coverage[key] = int(coverage.get(key, 0)) + 1
+
+
 func _save_coverage() -> void:
+	if not replay_record.is_empty():
+		return   # a replay never changes the cumulative coverage
+	_write_json(OUT_DIR + "cpu_usage.json", cpu_usage)
 	_write_json(OUT_DIR + "coverage.json", coverage)
 
 
@@ -730,6 +989,8 @@ func _cname(c) -> String:
 
 
 func _write_summary() -> void:
+	if replay_record.is_empty():
+		_write_cpu_usage_report()
 	var s := PackedStringArray()
 	s.append("AUTOTEST SUMMARY — %s" % Time.get_datetime_string_from_system())
 	s.append("Matches: %d   bot wins %d / CPU wins %d / draws %d / aborted %d   (base seed %d)" % [opt_matches,

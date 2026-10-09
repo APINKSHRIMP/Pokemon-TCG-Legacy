@@ -61,3 +61,9 @@ static func match_key(source: Dictionary, wanted: String) -> String:
 
 static func invalidate() -> void:
 	_dir_cache.clear()
+
+
+## The image FILE name for a card id. A few ids hold characters a Windows filename can't (Unown ? is "ex10-?"),
+## so their image is saved under a spelled-out name instead. Every card-image path goes through this.
+static func card_image_name(card_id: String) -> String:
+	return card_id.replace("?", "question")

@@ -189,6 +189,15 @@ func _answer_selection() -> bool:
 	if not m.action_button.visible:
 		return _press_cancel()
 
+	# --stack: Energy and evolutions go onto the target's line, like a player with a plan.
+	if _stacking() and (m.card_attach_mode_active or m.evolution_mode_active):
+		for c in pool:
+			if c is Object and "metadata" in c and c.metadata.get("name", "") in runner.stack_line_names:
+				_click(c)
+				if _press_action():
+					_log("stack: put it on " + _name(c))
+					return true
+
 	# Single pick. Sometimes back out, to exercise every cancel path.
 	if m.cancel_button.visible and rng.randf() < 0.12:
 		_log("CANCEL on '" + m.header_label.text + "'")
@@ -281,10 +290,11 @@ func _run_driver_step() -> void:
 						options.append([3.0, "bench " + _name(card), _play_hand_card.bind(card)])
 				"EVOLVE":
 					if not m.get_valid_evolution_targets(card, false).is_empty():
-						options.append([4.0, "evolve " + _name(card), _play_hand_card.bind(card)])
+						var ew := 40.0 if _stacking() and card.metadata.get("name", "") in runner.stack_line_names else 4.0
+						options.append([ew, "evolve " + _name(card), _play_hand_card.bind(card)])
 				"ATTACH_ENERGY":
 					if not m.player_energy_played_this_turn and _energy_has_target(card):
-						options.append([3.0, "attach " + _name(card), _play_hand_card.bind(card)])
+						options.append([30.0 if _stacking() else 3.0, "attach " + _name(card), _play_hand_card.bind(card)])
 				"PLAY_TRAINER":
 					if m.trainer_effects.validate_trainer_can_be_played(card, false) == "":
 						options.append([2.5, "trainer " + _name(card), _play_hand_card.bind(card)])
@@ -313,7 +323,10 @@ func _run_driver_step() -> void:
 			wsum += aw
 		for k in attacks.size():
 			var i: int = attacks[k]
-			options.append([w * weights[k] / wsum, "attack " + str(all_attacks[i].get("name", "")), _attack.bind(i)])
+			var aw2: float = w * weights[k] / wsum
+			if _stacking() and all_attacks[i].get("name", "") == runner.stack_attack_name:
+				aw2 = 500.0   # --stack: the attack under test, as soon as it can be paid for
+			options.append([aw2, "attack " + str(all_attacks[i].get("name", "")), _attack.bind(i)])
 	options.append([100.0 if forced_end else (0.4 if attacks.is_empty() else 0.15), "end turn", _end_turn])
 
 	var total := 0.0
@@ -330,6 +343,10 @@ func _run_driver_step() -> void:
 	_driver_busy = true
 	await chosen[2].call()
 	_driver_busy = false
+
+
+func _stacking() -> bool:
+	return runner != null and runner.get("stack_attack_name") != null and String(runner.stack_attack_name) != ""
 
 
 func _usable_attacks() -> Array:

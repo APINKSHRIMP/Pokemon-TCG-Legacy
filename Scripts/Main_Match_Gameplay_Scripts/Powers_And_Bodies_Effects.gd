@@ -1414,16 +1414,11 @@ func power_peek(mankey: card_object) -> void:
 				peek_source = "OPPONENT\'S PRIZE #" + str(idx4 + 1)
 	
 	if peeked_card != null:
-		# Show the card briefly
-		main.show_enlarged_array_selection_mode([peeked_card])
-		main.header_label.text = "PEEK: " + peek_source
-		main.hint_label.text = peeked_card.metadata.get("name", "Unknown")
-		main.action_button.text = "OK"
-		main.action_button.disabled = false
-		main.cancel_button.visible = false
-		await main.trainer_target_selected
+		# ISSUE #375: through the shared viewer. The hand-built one never set a selection mode, so its OK button fell
+		# through to "play this card from your hand", refused, and the screen could never close (autotester soft-lock).
+		print("ISSUE #375 FIX ACTIVE: Peek shows the card through card_ops.show_cards")
+		await main.card_ops.show_cards([peeked_card], "PEEK: " + peek_source, peeked_card.metadata.get("name", "Unknown"))
 		if main._should_bail(): return
-		main.hide_selection_mode_display_main()
 		print("POWER USED: Peek at ", peek_source, " -> ", peeked_card.metadata.get("name", ""))
 	else:
 		await main.show_message("NOTHING TO PEEK AT!")
@@ -4735,6 +4730,10 @@ func _cpu_type_surplus(p: card_object, energy_type: String) -> int:
 	for e in p.attached_energies:
 		if _is_basic_energy_of(e, energy_type):
 			have += 1
+	# ISSUE #375 (the user's rule): the CPU's Active that is certain to be Knocked Out next turn loses this Energy anyway —
+	# all of it is "surplus" to the effects that would spend it (Crushing Lava, Fire Blow...).
+	if p == main.opponent_active_pokemon and main.cpu_ai.evaluate_ko_threats().get("cpu_active_guaranteed_ko", false):
+		return have
 	var need := 0
 	for atk in p.metadata.get("attacks", []):
 		need = max(need, atk.get("cost", []).count(energy_type))
@@ -5945,7 +5944,10 @@ func power_neo2_revive_friends(kabuto: card_object) -> void:
 		await main.show_message("TAILS! REVIVE FRIENDS FAILED!")
 		if main._should_bail(): return
 		return
-	var found = await main.card_ops.search_deck_to_hand(is_opponent, func(c): return "Kabuto" in c.metadata.get("name","") and main.is_basic_pokemon(c), "REVIVE FRIENDS: CHOOSE KABUTO TO BENCH", 1)
+	# ISSUE #375: "a card named Kabuto ... Treat the new Kabuto as a Basic" — the Kabuto it finds is a Stage 1, so the old
+	# is_basic_pokemon filter meant this Power could never find anything (autotester CPU-usage report: used 0 times).
+	print("ISSUE #375 FIX ACTIVE: Revive Friends searches for any card named Kabuto")
+	var found = await main.card_ops.search_deck_to_hand(is_opponent, func(c): return c.metadata.get("name","") == "Kabuto" and c.metadata.get("supertype","") == "Pokémon", "REVIVE FRIENDS: CHOOSE KABUTO TO BENCH", 1)
 	if main._should_bail(): return
 	if found.is_empty():
 		await main.show_message("NO KABUTO FOUND IN DECK!")
@@ -6109,7 +6111,7 @@ func cpu_phase_neo2_powers() -> void:
 		if main.opponent_bench.size() < main.get_max_bench_size():
 			var has_kabuto_in_deck = false
 			for c in main.opponent_deck:
-				if "Kabuto" in c.metadata.get("name","") and main.is_basic_pokemon(c):
+				if c.metadata.get("name","") == "Kabuto" and c.metadata.get("supertype","") == "Pokémon":   # ISSUE #375
 					has_kabuto_in_deck = true
 					break
 			if has_kabuto_in_deck:

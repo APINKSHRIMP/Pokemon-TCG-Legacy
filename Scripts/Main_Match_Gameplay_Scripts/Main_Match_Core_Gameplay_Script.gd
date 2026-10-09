@@ -262,7 +262,7 @@ var shield_beam_lock_player: bool = false
 var shield_beam_lock_opp: bool = false
 var goop_gas_owner_is_opponent: bool = false
 var goop_gas_expire_turn: int = -1   # ISSUE #317: Sputter lasts "until the end of YOUR next turn" (turn number it ends on)
-var player_prizes_face_up: bool = false
+var player_prizes_face_up: bool = false   # ISSUE #375: Here Comes Team Rocket! — read by prize_is_face_up()
 var opponent_prizes_face_up: bool = false
 
 # GYM1 (GYM HEROES) trainer match-state
@@ -645,7 +645,10 @@ func show_enlarged_array_selection_mode(card_array: Array) -> void:
 	# opponent_hand`), which a shuffled copy of that hand can never satisfy.
 	# ISSUE #372: identity (is_same), not ==. Array == compares CONTENTS, so a face-up COPY of the opponent's hand or of
 	# the Prizes (every "look at your opponent's hand" screen) was drawn face down as well.
-	var should_hide = force_face_down_selection or (hide_hidden_cards and (is_same(card_array, opponent_hand) or is_same(card_array, player_prize_cards) or is_same(card_array, opponent_prize_cards)))
+	# ISSUE #375: Here Comes Team Rocket! — that side's Prizes are face up for the rest of the game.
+	var should_hide = force_face_down_selection or (hide_hidden_cards and (is_same(card_array, opponent_hand) \
+		or (is_same(card_array, player_prize_cards) and not player_prizes_face_up) \
+		or (is_same(card_array, opponent_prize_cards) and not opponent_prizes_face_up)))
 	var selection_sleeve: String = ""
 	if should_hide:
 		if force_face_down_selection and force_face_down_sleeve != "":
@@ -2714,6 +2717,13 @@ func update_action_button() -> void:
 			action_button.theme = theme_green
 
 # Displays the prize cards for the specified player in their prize cards container
+## ISSUE #375: a Prize is face up when an effect turned that card over (Island Hermit, Card-Flip Game...) OR its side
+## plays with Prizes face up (Here Comes Team Rocket!, "for the rest of the game"). Those side flags were set by the card
+## but never read anywhere, so it did nothing.
+func prize_is_face_up(card: card_object, is_opponent: bool) -> bool:
+	return card.prize_face_up or (opponent_prizes_face_up if is_opponent else player_prizes_face_up)
+
+
 func display_prize_cards(is_opponent: bool) -> void:
 	
 	# Get the appropriate container and prize cards array
@@ -2755,7 +2765,7 @@ func display_prize_cards(is_opponent: bool) -> void:
 		
 		# Load the card image with a size appropriate for prize cards
 		var prize_sleeve = opponent_sleeve_small if is_opponent else player_sleeve_small
-		prize_card_display.load_card_image(prize_card.uid, PRIZE_SIZE, prize_card, hide_hidden_cards and not prize_card.prize_face_up, prize_sleeve)   # ISSUE #364: face-up Prizes
+		prize_card_display.load_card_image(prize_card.uid, PRIZE_SIZE, prize_card, hide_hidden_cards and not prize_is_face_up(prize_card, is_opponent), prize_sleeve)   # ISSUE #364: face-up Prizes
 		
 		# Connect the signal so prize cards can be clicked if needed
 		prize_card_display.card_clicked.connect(this_card_clicked)
@@ -4332,9 +4342,22 @@ func animate_energies_to_discard(energy_cards: Array, pokemon: card_object, is_o
 	# can free it, and a freed from_node would take the flight down with it.
 	var poke_rect := _card_rect_now(pokemon)
 	if poke_rect.is_empty():
+		# ISSUE #375: nothing on screen to animate from — still DISCARD them (this used to return, so the retreat
+		# cost was never paid).
+		for energy in energy_cards:
+			if energy in pokemon.attached_energies:
+				pokemon.attached_energies.erase(energy)
+				energy.current_location = "discard"
+				discard_pile.append(energy)
+		update_discard_pile_display(is_opponent)
 		return
 
 	for energy in energy_cards:
+		# ISSUE #375: already gone — e.g. Octillery's Suction Cups discarded every Energy on the retreating Pokémon
+		# first. Discarding it again put the same card in the discard pile twice (autotester).
+		if energy not in pokemon.attached_energies:
+			print("ISSUE #375 FIX ACTIVE: ", energy.metadata.get("name", ""), " already discarded — not discarded twice")
+			continue
 		var energy_texture = get_card_texture(energy)
 		# ISSUE #280: measured BEFORE the erase + refresh frees the energy's node.
 		# A benched Pokemon's energies are not drawn as separate cards, so there is
@@ -5124,6 +5147,8 @@ func setup_player():
 
 	# Load and shuffle deck
 	player_deck = load_deck_from_file(player_deck_path)
+	if GameState.autotest != null:
+		GameState.autotest.stack_player_deck(player_deck)   # AUTOTEST --stack: no-op otherwise
 	
 	# Draw opening hand with mulligan (opening_hand_size match effect may override the count)
 	player_hand = draw_opening_hand(player_deck, "Player", match_effects.opening_hand_size(false))
@@ -6342,6 +6367,7 @@ func flip_coin(silent: bool = false, flipper_is_opponent: bool = false) -> bool:
 	
 # Sends a card and all its attachments (energies, pre-evolutions, attached cards) to the discard pile
 func send_card_to_discard(card: card_object, is_opponent: bool) -> void:
+	card = card_ops.unwrap_secret_plan(card, is_opponent)   # ISSUE #375
 	var discard = opponent_discard_pile if is_opponent else player_discard_pile
 	
 	# Revert Ditto Transform before discarding so original card data is preserved
@@ -9661,7 +9687,7 @@ func get_card_texture(card: card_object) -> Texture2D:
 		# Load the target card's texture and apply a 20% white overlay
 		var target_uid = card.ditto_transform_uid
 		var target_set = target_uid.split("-")[0]
-		var base_tex = load("res://Image_Assets/Card_Image_Library/" + target_set + "/Small/" + target_uid + ".png")
+		var base_tex = load("res://Image_Assets/Card_Image_Library/" + target_set + "/Small/" + AssetLookup.card_image_name(target_uid) + ".png")
 		if base_tex != null:
 			var img = base_tex.get_image()
 			if img != null:
@@ -9686,7 +9712,7 @@ func get_card_texture(card: card_object) -> Texture2D:
 	if card.uid in _texture_cache:
 		return _texture_cache[card.uid]
 	var card_set = card.uid.split("-")[0]
-	var tex = load("res://Image_Assets/Card_Image_Library/" + card_set + "/Small/" + card.uid + ".png")
+	var tex = load("res://Image_Assets/Card_Image_Library/" + card_set + "/Small/" + AssetLookup.card_image_name(card.uid) + ".png")
 	_texture_cache[card.uid] = tex
 	return tex
 
@@ -10210,6 +10236,17 @@ func cancel_button_pressed_hide_selection_mode() -> void:
 		return
 
 	# Trainer/Power selection cancel: emit signal with null so awaiting functions can continue
+	# ISSUE #375: Energy-type pickers (Buzzap, Shift, Conversion 1/2) — answer the waiting effect with "nothing chosen".
+	# Cancel used to just close the screen and leave that effect suspended; using the Power again then woke BOTH copies
+	# on the next pick, and one closed the other's target screen — a frozen match (autotester).
+	elif energy_type_selection_active:
+		print("ISSUE #375 FIX ACTIVE: energy type selection cancelled — the waiting effect is released")
+		selected_card_for_action = null
+		energy_type_selection_active = false
+		hide_selection_mode_display_main()
+		energy_type_selected.emit("")
+		return
+
 	elif trainer_pokemon_selection_active:
 		print("Trainer pokemon selection cancelled")
 		selected_card_for_action = null

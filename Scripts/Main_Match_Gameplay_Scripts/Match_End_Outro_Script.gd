@@ -873,7 +873,7 @@ func _play_gift_sequence() -> void:
 
 	for card_uid in _card_rewards_for_anim:
 		var split = card_uid.split("-")
-		var img: Texture2D = load("res://Image_Assets/Card_Image_Library/" + split[0] + "/Large/" + card_uid + ".png")
+		var img: Texture2D = load("res://Image_Assets/Card_Image_Library/" + split[0] + "/Large/" + AssetLookup.card_image_name(card_uid) + ".png")
 		_show_gift(img, "card")
 		var rect = _gift_container.get_child(0) as TextureRect
 		await _play_flip_anim(rect, load(CARDBACK_PATH), img)
