@@ -1832,6 +1832,8 @@ func score_bench_as_replacement(bench_pokemon: card_object, against_pokemon: car
 
 	# HP tiebreaker
 	score += bench_pokemon.current_hp * CpuWeights.g("replace.hp", 0.1)
+	# ISSUE #375: learned matchup (self-play) — how this Pokémon tends to fare against that one, and why.
+	score += CpuWeights.g("learn.matchup", 100.0) * cpu_learned_matchup(bench_pokemon, against_pokemon)
 
 	return score
 
@@ -6474,6 +6476,86 @@ func cpu_synergy_bonus(card: card_object) -> float:
 			total += 0.5 * float(row.get(u2, 0.0))
 	return clampf(total * CpuWeights.g("search.synergy", 1.0), -40.0, 40.0)
 
+# ───────────── ISSUE #375: LEARNED MATCHUPS (self-play) ─────────────
+# Live relations between two Pokémon — the "why" facts the learner combines with card traits. The autotester records
+# exactly these for training (Autotest_Runner tune mode), so play and training always agree.
+func cpu_rel_features(me: card_object, foe: card_object) -> Array:
+	var out: Array = []
+	if me == null or foe == null:
+		return out
+	var my_types: Array = me.get_effective_types()
+	var foe_types: Array = foe.get_effective_types()
+	if foe.metadata.get("weaknesses", []).any(func(x): return x.get("type", "") in my_types): out.append("hits_weak")
+	if me.metadata.get("weaknesses", []).any(func(x): return x.get("type", "") in foe_types): out.append("is_weak")
+	if foe.metadata.get("resistances", []).any(func(x): return x.get("type", "") in my_types): out.append("resisted")
+	if me.metadata.get("resistances", []).any(func(x): return x.get("type", "") in foe_types): out.append("resists")
+	if _cpu_max_printed_vs(me, foe) >= foe.current_hp: out.append("i_ohko")
+	if _cpu_max_printed_vs(foe, me) >= me.current_hp: out.append("they_ohko")
+	if me.current_hp >= foe.current_hp * 1.5: out.append("hp_adv")
+	elif me.current_hp * 1.5 <= foe.current_hp: out.append("hp_dis")
+	if foe.special_condition != "" or foe.is_poisoned or foe.is_burned: out.append("foe_status")
+	return out
+
+## Best damage any of a's attacks could do to d (Energy not required — what the matchup threatens).
+func _cpu_max_printed_vs(a: card_object, d: card_object) -> int:
+	var best := 0
+	for atk in a.metadata.get("attacks", []):
+		var mx := int(main.attack_effects.estimate_attack_damage_range(atk, a, d).get("max", 0))
+		if mx > 0:
+			mx = int(main.calculate_final_damage(mx, a.get_effective_types(), d, a).get("damage", mx))
+		best = maxi(best, mx)
+	return best
+
+## Learned value of `me` facing `foe` (~1.0 = a Knock Out's worth of swing per exchange). 0 with no learned table.
+func cpu_learned_matchup(me: card_object, foe: card_object) -> float:
+	var L: Dictionary = CpuWeights.learned()
+	if L.is_empty() or me == null or foe == null:
+		return 0.0
+	var w: Dictionary = L.get("w", {})
+	var cards: Dictionary = L.get("cards", {})
+	var mf: Array = cards.get(me.uid.to_lower(), [])
+	var ff: Array = cards.get(foe.uid.to_lower(), [])
+	var s := 0.0
+	for m in mf:
+		for f in ff:
+			s += float(w.get("A|%s|%s" % [m, f], 0.0))
+	for r in cpu_rel_features(me, foe):
+		s += float(w.get("R|" + r, 0.0))
+		for f in ff:
+			s += float(w.get("R|%s|%s" % [r, f], 0.0))
+	return s
+
+## Learned value of using `attack` (by `me`, the CPU's Active) on `foe` this turn — status vs big Pokémon, bench damage vs
+## a Bench of stallers / Power holders, gust vs stranded attackers... 0 with no learned table or an unknown attack.
+func cpu_learned_attack_value(me: card_object, attack: Dictionary, foe: card_object) -> float:
+	var L: Dictionary = CpuWeights.learned()
+	if L.is_empty() or me == null or foe == null:
+		return 0.0
+	var at: Array = L.get("attacks", {}).get(me.uid.to_lower() + "|" + String(attack.get("name", "")).to_lower(), [])
+	if at.is_empty():
+		return 0.0
+	var w: Dictionary = L.get("w", {})
+	var cards: Dictionary = L.get("cards", {})
+	var ff: Array = cards.get(foe.uid.to_lower(), [])
+	var bench_keep: Array = L.get("bench_traits", [])
+	var bench := {}
+	for b in main.player_bench:
+		for tr in cards.get(b.uid.to_lower(), []):
+			if tr in bench_keep:
+				bench[tr] = true
+	if main.player_bench.is_empty():
+		bench["empty"] = true
+	var rel := cpu_rel_features(me, foe)
+	var s := 0.0
+	for a in at:
+		for f in ff:
+			s += float(w.get("B|%s|%s" % [a, f], 0.0))
+		for b in bench:
+			s += float(w.get("BB|%s|%s" % [a, b], 0.0))
+		for r in rel:
+			s += float(w.get("BR|%s|%s" % [a, r], 0.0))
+	return s
+
 # KEEP VALUE — how much the CPU wants to ADD this card to hand / keep it / fetch it from deck or discard.
 # Used for deck search, recover-to-hand, "take a card", and keep-vs-discard framing. Higher = better.
 func cpu_rank_keep_value(card: card_object) -> float:
@@ -7204,6 +7286,10 @@ func cpu_pick_gust_target(pool: Array, damage: int = 0, attacker: card_object = 
 		else:
 			s -= _cpu_threat_score(p)                            # don't hand the player its best attacker
 		s += cpu_decision_override(p, "gust")
+		# ISSUE #375: learned matchup — drag up what OUR Active fares best against.
+		var gust_me = attacker if attacker != null else main.opponent_active_pokemon
+		if gust_me != null and p in main.player_bench:
+			s += CpuWeights.g("learn.gust", 100.0) * cpu_learned_matchup(gust_me, p)
 		if s > best_s:
 			best_s = s
 			best = p
@@ -7454,6 +7540,10 @@ func _cpu_attack_context_adjust(parsed_effects: Array, min_dmg: int, exp_dmg: in
 		if setup > 0.0:
 			adj += setup
 			print("ISSUE #375 FIX ACTIVE: setup value ", int(setup), " for ", attacks[index].get("name", ""))
+
+	# ISSUE #375: learned attack value (self-play) — e.g. poison vs high HP, Paralysis vs a Power holder, bench damage vs
+	# a Bench of stallers. 0 until a learned table exists.
+	adj += CpuWeights.g("learn.attack", 100.0) * cpu_learned_attack_value(me, attacks[index], foe)
 
 	# Stall guard: a non-damaging attack again while a damaging one is available.
 	if exp_dmg <= 0 and not kos and cpu_no_damage_streak > 0 and _cpu_streak_attacker == me:

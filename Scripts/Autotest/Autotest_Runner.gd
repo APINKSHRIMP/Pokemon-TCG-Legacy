@@ -60,6 +60,9 @@ var opt_tune := false              # --tune: one self-play tuning job (Tools/cpu
 var opt_weights_path := ""         # --weights=<abs path>: CPU weight multipliers for this job
 var opt_result_path := ""          # --result=<abs path>: one JSON line per match, then {"done": true}
 var opt_synergy_path := ""        # --synergy=<abs path>: learned synergy table for this job ("" = none)
+var opt_learned_path := ""        # --learned=<abs path>: learned matchup table for this job
+var _ex_open := {}                 # tune mode: the CPU turn exchange being measured (see _ex_begin)
+var _ex_list: Array = []           # tune mode: finished exchanges this match
 var opt_explore := 0.0             # --explore=<0..1>: random free fetch choices (synergy exploration jobs)
 var opt_worker := "0"              # --worker=<id>: keeps parallel jobs' scratch files apart
 var replay_record: Dictionary = {}
@@ -170,6 +173,12 @@ func _ready() -> void:
 				syn = ps
 		CpuWeights.set_synergy(syn)   # tune jobs never read the shipped table: the tuner decides
 		CpuWeights.explore_rate = opt_explore
+		var lt := {}
+		if opt_learned_path != "" and FileAccess.file_exists(opt_learned_path):
+			var pl = JSON.parse_string(FileAccess.get_file_as_string(opt_learned_path))
+			if pl is Dictionary:
+				lt = pl
+		CpuWeights.set_learned(lt)
 	DirAccess.make_dir_recursive_absolute(run_dir)
 	DirAccess.make_dir_recursive_absolute(OUT_DIR + "decks")
 	_load_cards()
@@ -223,6 +232,7 @@ func _parse_args() -> void:
 			"worker": opt_worker = v
 			"synergy": opt_synergy_path = v
 			"explore": opt_explore = float(v)
+			"learned": opt_learned_path = v
 			"real": opt_real = true
 			"bot": opt_bot_smart = (v == "smart")
 			"stress": opt_stress = true
@@ -272,6 +282,8 @@ func _play_match(i: int) -> void:
 	match_seed = opt_seed + i
 	seed(match_seed)
 	CpuWeights.seed_explore(match_seed * 7919 + 13)
+	_ex_open = {}
+	_ex_list = []
 	var rng := RandomNumberGenerator.new()
 	rng.seed = match_seed
 	match_done = false
@@ -372,7 +384,8 @@ func _play_match(i: int) -> void:
 			"bot_prizes_left": m.player_prize_cards.size() if is_instance_valid(m) else -1,
 			"opponent": current_opponent_label,
 			"problems": match_problems.map(func(p): return String(p["kind"])),
-			"cpu_cards": _cpu_cards_used(m) if is_instance_valid(m) else []}
+			"cpu_cards": _cpu_cards_used(m) if is_instance_valid(m) else [],
+			"ex": _ex_finish(m)}
 		_append_line(opt_result_path, JSON.stringify(tr))
 	else:
 		_append_line(run_dir + "matches.jsonl", JSON.stringify(rec))
@@ -391,6 +404,51 @@ func _play_match(i: int) -> void:
 		_save_coverage()
 	for _f in 3:
 		await get_tree().process_frame
+
+
+# ── Tune mode: EXCHANGES for the matchup learner (Scripts/Autotest/cpu_learner.py) ──
+# One per CPU turn: from its start to the start of the CPU's next turn, the damage + Prizes swung each way.
+func _ex_damage(m, side: bool) -> int:
+	var d := 0
+	for p in m.card_ops.get_all_pokemon_in_play(side):
+		d += maxi(0, p.get_max_hp() - p.current_hp)
+	return d
+
+
+func _ex_begin(m) -> void:
+	_ex_open = {}
+	var me = m.opponent_active_pokemon
+	var foe = m.player_active_pokemon
+	if me == null or foe == null:
+		return
+	var ahead: int = m.player_prize_cards.size() - m.opponent_prize_cards.size()
+	_ex_open = {"me": String(me.uid).to_lower(), "foe": String(foe.uid).to_lower(), "atk": "",
+		"rel": m.cpu_ai.cpu_rel_features(me, foe),
+		"foe_bench": m.player_bench.map(func(b): return String(b.uid).to_lower()),
+		"state": ["ahead" if ahead > 0 else ("behind" if ahead < 0 else "even"), "early" if m.turn_number <= 6 else "late"],
+		"dp": _ex_damage(m, false), "dc": _ex_damage(m, true),
+		"pc": m.opponent_prize_cards.size(), "pp": m.player_prize_cards.size()}
+
+
+func _ex_close(m) -> void:
+	if _ex_open.is_empty() or not is_instance_valid(m):
+		_ex_open = {}
+		return
+	var o := _ex_open
+	_ex_open = {}
+	var cpu_took: int = int(o["pc"]) - m.opponent_prize_cards.size()
+	var bot_took: int = int(o["pp"]) - m.player_prize_cards.size()
+	var y := (float(_ex_damage(m, false) - int(o["dp"])) + 80.0 * cpu_took) / 100.0 \
+		- (float(_ex_damage(m, true) - int(o["dc"])) + 80.0 * bot_took) / 100.0
+	o.erase("dp"); o.erase("dc"); o.erase("pc"); o.erase("pp")
+	o["y"] = snappedf(y, 0.01)
+	_ex_list.append(o)
+
+
+func _ex_finish(m) -> Array:
+	if is_instance_valid(m):
+		_ex_close(m)
+	return _ex_list
 
 
 ## Tune mode: every distinct CPU card that reached play this match (in play, attached, or in the discard pile) —
@@ -436,6 +494,9 @@ func _write_match_log(n: int, rec: Dictionary) -> void:
 ## Hook: start of every CPU turn, after its draw. Closes the previous turn, then records what the CPU could play now.
 func cpu_turn_start(m) -> void:
 	_cpu_close_turn()   # judge the PREVIOUS turn before its KO list / Energy snapshot are reset
+	if opt_tune:
+		_ex_close(m)
+		_ex_begin(m)
 	_cpu_ko_attacks = []
 	# Only BASIC Energy counts: holding a situational Special Energy (Scramble while ahead, R Energy with no Rocket's Pokémon) is fine.
 	_cpu_had_energy = m.opponent_hand.any(func(c): return c.metadata.get("supertype", "") == "Energy" and "Basic" in c.metadata.get("subtypes", []))
@@ -759,6 +820,8 @@ func attack_begin(attack: Dictionary, attacker, defender, is_opponent: bool) -> 
 	oracle_pending = {}
 	if is_opponent:
 		_cpu_attempted = true
+		if not _ex_open.is_empty() and _ex_open["atk"] == "":
+			_ex_open["atk"] = String(attacker.uid).to_lower() + "|" + String(attack.get("name", "")).to_lower()
 		if _cpu_turn_open:
 			_cpu_used["attack|" + attacker.uid + "|" + String(attack.get("name", ""))] = true
 	if not is_instance_valid(current_main) or attacker == null or defender == null:

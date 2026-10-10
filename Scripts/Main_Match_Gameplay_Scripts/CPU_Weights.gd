@@ -68,3 +68,24 @@ static func _load_shipped() -> void:
 		for k in parsed:
 			if k is String and not k.begins_with("_") and (parsed[k] is float or parsed[k] is int):
 				_mult[k] = float(parsed[k])
+
+
+# ── Learned matchups (ISSUE #375) ── {"cards": {uid: [traits]}, "attacks": {"uid|attack": [traits]}, "bench_traits": [...],
+# "w": {cross: weight}} — trait-combination weights learned from self-play (Scripts/Autotest/cpu_learner.py). Shipped copy
+# in res://NPC_and_Opponent_Data/CPU_Learned.json; empty = no learned terms.
+const SHIPPED_LEARNED_PATH := "res://NPC_and_Opponent_Data/CPU_Learned.json"
+static var _learned: Dictionary = {}
+static var _learned_loaded := false
+
+static func learned() -> Dictionary:
+	if not _learned_loaded:
+		_learned_loaded = true
+		if FileAccess.file_exists(SHIPPED_LEARNED_PATH):
+			var parsed = JSON.parse_string(FileAccess.get_file_as_string(SHIPPED_LEARNED_PATH))
+			if parsed is Dictionary:
+				_learned = parsed
+	return _learned
+
+static func set_learned(table: Dictionary) -> void:
+	_learned = table
+	_learned_loaded = true

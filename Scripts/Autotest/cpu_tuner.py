@@ -22,6 +22,7 @@ Outputs in TUNER_DIR:
   tuner_log.txt       timestamped log
 """
 import ctypes
+import cpu_learner
 import json
 import math
 import os
@@ -30,6 +31,7 @@ import re
 import subprocess
 import sys
 import time
+import threading
 import uuid
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timedelta
@@ -63,6 +65,8 @@ SYN_MIN_PAIR = 40            # games a pair must appear in (per deck) before it 
 SYN_SHRINK = 150.0           # shrinkage: a pair seen n times keeps n / (n + SYN_SHRINK) of its measured lift
 SYN_CAP = 30.0               # max points either way per pair
 SYN_MIN_DECK = 100           # games a deck needs before its pairs are used
+FILLERS = 16                 # extra exploration workers at IDLE priority: they only use CPU the main jobs leave free
+LEARN_EXPORT_EVERY = 3       # generations between learned-matchup exports
 
 STATE = os.path.join(TUNER_DIR, "state.json")
 LOG = os.path.join(TUNER_DIR, "tuner_log.txt")
@@ -74,6 +78,11 @@ PIDFILE = os.path.join(TUNER_DIR, "tuner.pid")
 SYN_STATS = os.path.join(TUNER_DIR, "synergy_stats.json")
 SYNERGY = os.path.join(TUNER_DIR, "synergy.json")
 SYN_REPORT = os.path.join(TUNER_DIR, "synergy_report.txt")
+LEARN_STATE = os.path.join(TUNER_DIR, "learned_model_state.json")
+LEARNED = os.path.join(TUNER_DIR, "learned.json")
+LEARN_REPORT = os.path.join(TUNER_DIR, "learned_report.txt")
+CARD_DIR = os.path.join(PROJECT, "Card_Set_Data")
+IDLE = 0x00000040
 
 CREATE_NO_WINDOW = 0x08000000
 BELOW_NORMAL = 0x00004000
@@ -163,7 +172,7 @@ def load_shipped():
 
 # ───────────────────────── running matches ─────────────────────────
 
-def run_job(weights, seed_start, n, synergy=None, explore=0.0):
+def run_job(weights, seed_start, n, synergy=None, explore=0.0, learned=None, priority=None):
     """One Godot process: n matches from seed_start with these multipliers. Returns {seed: record}."""
     tag = uuid.uuid4().hex[:10]
     wpath = os.path.join(WORK, f"w_{tag}.json")
@@ -177,10 +186,12 @@ def run_job(weights, seed_start, n, synergy=None, explore=0.0):
         cmd.append(f"--synergy={synergy}")
     if explore > 0:
         cmd.append(f"--explore={explore}")
+    if learned:
+        cmd.append(f"--learned={learned}")
     out = {}
     try:
         p = subprocess.Popen(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, stdin=subprocess.DEVNULL,
-                             creationflags=CREATE_NO_WINDOW | BELOW_NORMAL, cwd=PROJECT)
+                             creationflags=CREATE_NO_WINDOW | (priority or BELOW_NORMAL), cwd=PROJECT)
         try:
             p.wait(timeout=JOB_TIMEOUT)
         except subprocess.TimeoutExpired:
@@ -214,14 +225,14 @@ def run_job(weights, seed_start, n, synergy=None, explore=0.0):
     return out
 
 
-def evaluate(pool, weight_sets, seed_start, n_seeds, synergy=None):
+def evaluate(pool, weight_sets, seed_start, n_seeds, synergy=None, learned=None):
     """Run every weight set on the same seeds, in parallel. Returns a list of {seed: record} per set."""
     jobs = []
     for wi, w in enumerate(weight_sets):
         for s in range(seed_start, seed_start + n_seeds, JOB_MATCHES):
             jobs.append((wi, w, s, min(JOB_MATCHES, seed_start + n_seeds - s)))
     random.shuffle(jobs)
-    futures = [(wi, pool.submit(run_job, w, s, n, synergy)) for wi, w, s, n in jobs]
+    futures = [(wi, pool.submit(run_job, w, s, n, synergy, 0.0, learned)) for wi, w, s, n in jobs]
     results = [dict() for _ in weight_sets]
     for wi, fut in futures:
         try:
@@ -420,6 +431,43 @@ def current_synergy():
     return SYNERGY if os.path.exists(SYNERGY) else None
 
 
+def current_learned():
+    return LEARNED if os.path.exists(LEARNED) else None
+
+
+class Filler:
+    """Exploration games on IDLE-priority workers, running continuously: Windows only gives them CPU the main
+    comparison jobs leave free (the gaps while a round waits for its slowest games). Data only — never compared."""
+    def __init__(self, n):
+        self.lock = threading.Lock()
+        self.records = []
+        self.champ = {}
+        self.stop = False
+        self.games = 0
+        self.threads = [threading.Thread(target=self.loop, daemon=True) for _ in range(n)]
+        for th in self.threads:
+            th.start()
+
+    def loop(self):
+        rng = random.Random()
+        while not self.stop:
+            try:
+                res = run_job(dict(self.champ), rng.randint(1_000_000_000, 2_000_000_000), JOB_MATCHES,
+                              current_synergy(), EXPLORE_RATE, current_learned(), IDLE)
+                with self.lock:
+                    self.records += list(res.values())
+                    self.games += len(res)
+            except Exception as e:
+                log(f"filler job failed: {e!r}")
+                time.sleep(10)
+
+    def take(self):
+        with self.lock:
+            out, self.records = self.records, []
+            n, self.games = self.games, 0
+        return out, n
+
+
 def benchmark(pool, st):
     log("BENCHMARK: champion vs the ORIGINAL weights on %d fixed seeds..." % BENCH_SEEDS)
     if not st.get("orig_bench"):
@@ -427,7 +475,7 @@ def benchmark(pool, st):
         st["orig_bench"] = {str(k): v for k, v in orig.items()}   # the original weights are deterministic: run once
         atomic_write_json(STATE, st)
     orig = {int(k): v for k, v in st["orig_bench"].items()}
-    champ = evaluate(pool, [st["champion"]], BENCH_SEED_BASE, BENCH_SEEDS, current_synergy())[0]
+    champ = evaluate(pool, [st["champion"]], BENCH_SEED_BASE, BENCH_SEEDS, current_synergy(), current_learned())[0]
     st["matches"] += len(champ)
     p = paired(champ, orig)
     st["last_bench"] = {"time": now(), "n": p["n"], "champ_wr": winrate(champ), "orig_wr": winrate(orig),
@@ -456,11 +504,15 @@ def smoke_setup():
     global WORKERS, JOB_MATCHES, SCREEN_SEEDS, CONFIRM_SEEDS, BENCH_SEEDS, SCREEN_Z, ACCEPT_Z, CONFIRM_Z
     global EXPLORE_SEEDS, SYN_REBUILD_EVERY, SYN_MIN_PAIR, SYN_MIN_DECK, SYN_STATS, SYNERGY, SYN_REPORT
     EXPLORE_SEEDS, SYN_REBUILD_EVERY, SYN_MIN_PAIR, SYN_MIN_DECK = 6, 1, 1, 1
+    global FILLERS, LEARN_EXPORT_EVERY, LEARN_STATE, LEARNED, LEARN_REPORT
+    FILLERS, LEARN_EXPORT_EVERY = 2, 1
+    cpu_learner.MIN_SEEN = 1
     TUNER_DIR = TUNER_DIR + "_smoke"
     WORK = os.path.join(TUNER_DIR, "work")
     STATE, LOG, HISTORY = [os.path.join(TUNER_DIR, f) for f in ("state.json", "tuner_log.txt", "history.jsonl")]
     REPORT, BEST, STOP, PIDFILE = [os.path.join(TUNER_DIR, f) for f in ("report.txt", "best_weights.json", "STOP", "tuner.pid")]
     SYN_STATS, SYNERGY, SYN_REPORT = [os.path.join(TUNER_DIR, f) for f in ("synergy_stats.json", "synergy.json", "synergy_report.txt")]
+    LEARN_STATE, LEARNED, LEARN_REPORT = [os.path.join(TUNER_DIR, f) for f in ("learned_model_state.json", "learned.json", "learned_report.txt")]
     WORKERS, JOB_MATCHES, SCREEN_SEEDS, CONFIRM_SEEDS, BENCH_SEEDS = 8, 3, 12, 12, 12
     SCREEN_Z, ACCEPT_Z, CONFIRM_Z = -99.0, -99.0, -99.0   # accept anything: exercises every branch
 
@@ -529,6 +581,12 @@ def main():
     write_report(st, keys)
 
     syn_stats = load_syn_stats()
+    feat_cards, feat_attacks = cpu_learner.extract_features(CARD_DIR)
+    model = cpu_learner.Model(LEARN_STATE)
+    log("LEARNER: traits for %d Pokémon / %d attacks; model has %s exchanges so far." % (
+        len(feat_cards), len(feat_attacks), f"{model.records:,}"))
+    filler = Filler(FILLERS)
+    filler.champ = st["champion"]
     with ThreadPoolExecutor(max_workers=WORKERS) as pool:
         while time.time() < st["deadline_ts"] and not os.path.exists(STOP):
             if len(st["accepted"]) - st.get("accepts_at_bench", 0) >= BENCH_EVERY_ACCEPTS or \
@@ -542,13 +600,15 @@ def main():
             champ = st["champion"]
             cands = [propose(champ, keys, st) for _ in range(CANDIDATES_PER_GEN)]
             syn = current_synergy()
+            lrn = current_learned()
+            filler.champ = champ
             # Exploration games run in the same pool, alongside the screening (synergy data only).
             xs = take_seeds(st, EXPLORE_SEEDS)
-            xfuts = [pool.submit(run_job, champ, s, min(JOB_MATCHES, xs + EXPLORE_SEEDS - s), syn, EXPLORE_RATE)
+            xfuts = [pool.submit(run_job, champ, s, min(JOB_MATCHES, xs + EXPLORE_SEEDS - s), syn, EXPLORE_RATE, lrn)
                      for s in range(xs, xs + EXPLORE_SEEDS, JOB_MATCHES)]
             s0 = take_seeds(st, SCREEN_SEEDS)
             t0 = time.time()
-            res = evaluate(pool, [champ] + [c for c, _ in cands], s0, SCREEN_SEEDS, syn)
+            res = evaluate(pool, [champ] + [c for c, _ in cands], s0, SCREEN_SEEDS, syn, lrn)
             gen_records = [r for rs in res for r in rs.values()]
             for f in xfuts:
                 try:
@@ -575,7 +635,7 @@ def main():
             if best_p["z"] >= SCREEN_Z and (best_p["mean"] > 0 or SCREEN_Z < -50):
                 s1 = take_seeds(st, CONFIRM_SEEDS)
                 t1 = time.time()
-                r2 = evaluate(pool, [champ, best_c], s1, CONFIRM_SEEDS, syn)
+                r2 = evaluate(pool, [champ, best_c], s1, CONFIRM_SEEDS, syn, lrn)
                 st["matches"] += len(r2[0]) + len(r2[1])
                 gen_records += list(r2[0].values()) + list(r2[1].values())
                 p2 = paired(r2[1], r2[0])
@@ -595,6 +655,19 @@ def main():
                     atomic_write_json(BEST, {"_note": "CPU weight multipliers from the self-play tuner (1.0 = original). "
                                                       "Copy to res://NPC_and_Opponent_Data/CPU_Weights.json to ship.",
                                              **best_c})
+            frecs, fgames = filler.take()
+            gen_records += frecs
+            st["matches"] += fgames
+            st["filler_games"] = st.get("filler_games", 0) + fgames
+            tl0 = time.time()
+            exchanges = [ex for r in gen_records for ex in r.get("ex", [])]
+            model.train(exchanges, feat_cards, feat_attacks)
+            model.save()
+            if gen % LEARN_EXPORT_EVERY == 0:
+                nw = model.export(LEARNED, feat_cards, feat_attacks)
+                model.report(LEARN_REPORT, now())
+                log("LEARNED: %s exchanges this gen (%.0fs), %s total; exported %d weights" % (
+                    f"{len(exchanges):,}", time.time() - tl0, f"{model.records:,}", nw))
             add_syn_stats(syn_stats, gen_records)
             atomic_write_json(SYN_STATS, syn_stats)
             if gen % SYN_REBUILD_EVERY == 0:
@@ -615,6 +688,7 @@ def main():
             log("RUN FINISHED.")
         else:
             log("STOP file found — exiting cleanly (resume with: py cpu_tuner.py).")
+    filler.stop = True
     keep_awake(False)
     try:
         os.remove(PIDFILE)
