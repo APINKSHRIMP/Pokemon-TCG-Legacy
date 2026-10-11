@@ -18,6 +18,43 @@ static func g(key: String, default_value: float) -> float:
 	return default_value * float(_mult.get(key, 1.0))
 
 
+## A yes/no CPU rule (ISSUE #375 rule audit): on unless its multiplier is set below 0.5 ("rule.x": 0 switches it off).
+static func on(key: String) -> bool:
+	return g(key, 1.0) >= 0.5
+
+
+# ── Branch replay (ISSUE #375, lab only) ── every real CPU choice is counted; the lab replays a match with choice number
+# branch_target replaced by a random alternative, then compares the result with the unbranched match on the same seed.
+static var branch_target := -1
+static var branch_counter := 0
+static var branch_record: Dictionary = {}
+static var _branch_rng := RandomNumberGenerator.new()
+
+static func branch_reset(target: int, s: int) -> void:
+	branch_target = target
+	branch_counter = 0
+	branch_record = {}
+	_branch_rng.seed = s
+
+## Returns the option to take: `chosen` normally, a random other option when this is the targeted choice.
+static func branch_point(kind: String, n: int, chosen: int, labels: Array = []) -> int:
+	if n < 2 or chosen < 0 or chosen >= n:
+		return chosen
+	branch_counter += 1
+	if branch_counter != branch_target:
+		return chosen
+	var alt := _branch_rng.randi() % (n - 1)
+	if alt >= chosen:
+		alt += 1
+	branch_record = {"kind": kind, "n": n, "chosen": chosen, "alt": alt, "k": branch_counter,
+		"labels": labels.map(func(x): return str(x))}
+	return alt
+
+## True straight after branch_point() took the alternative and before its context was recorded.
+static func needs_branch_ctx() -> bool:
+	return not branch_record.is_empty() and int(branch_record.get("k", -1)) == branch_counter and not branch_record.has("ctx")
+
+
 static func set_multipliers(m: Dictionary) -> void:
 	_mult = m.duplicate()
 	_loaded = true
@@ -89,3 +126,53 @@ static func learned() -> Dictionary:
 static func set_learned(table: Dictionary) -> void:
 	_learned = table
 	_learned_loaded = true
+
+
+# ── CPU foresight / "cheat mode" (ISSUE #375) ── two SEPARATE dials, 0.0 = fair (default) .. 1.0 = always:
+#   cheat_cards — sees hidden CARDS: its own Prize cards, the player's hand and next draw. Subtle: it just seems to pick
+#                 the right Prize or play safe at the right time.
+#   cheat_coins — knows the coin results it is about to flip (the flips stay fair). Obvious if overused (it never goes
+#                 for a flip that will fail), so it is a separate switch.
+# Between 0 and 1 each decision uses the knowledge with that probability (sometimes it still makes the "honest" choice).
+# Opponent JSON: "cpu_cheat_cards" / "cpu_cheat_coins" (Main loads them); autotester: --cheat-cards= / --cheat-coins=.
+static var cheat_cards := 0.0
+static var cheat_coins := 0.0
+static var _cheat_rng := RandomNumberGenerator.new()
+
+static func seed_cheat(s: int) -> void:
+	_cheat_rng.seed = s
+
+static func cheating_cards() -> bool:
+	return cheat_cards > 0.0 and (cheat_cards >= 1.0 or _cheat_rng.randf() < cheat_cards)
+
+static func cheating_coins() -> bool:
+	return cheat_coins > 0.0 and (cheat_coins >= 1.0 or _cheat_rng.randf() < cheat_coins)
+
+
+# ── Learned counters (ISSUE #375) ── {"cards": {cpu_uid: {player_uid: pts}}, "style": {trait: {style: pts}},
+# "traits": {uid: [traits]}} — which CPU cards win more when the player has a given card out, and which CPU card traits
+# pay off against a player's play style (Trainer-heavy, evolving, bench damage...). Shipped: res://NPC_and_Opponent_Data/
+# CPU_Counters.json; the lab passes its own with --counters.
+const SHIPPED_COUNTERS_PATH := "res://NPC_and_Opponent_Data/CPU_Counters.json"
+static var _counters: Dictionary = {}
+static var _counters_loaded := false
+
+static func counters() -> Dictionary:
+	if not _counters_loaded:
+		_counters_loaded = true
+		if FileAccess.file_exists(SHIPPED_COUNTERS_PATH):
+			var parsed = JSON.parse_string(FileAccess.get_file_as_string(SHIPPED_COUNTERS_PATH))
+			if parsed is Dictionary:
+				_counters = parsed
+	return _counters
+
+static func set_counters(table: Dictionary) -> void:
+	_counters = table
+	_counters_loaded = true
+
+
+# ── Multi-turn planner (ISSUE #375 phase 3) ── turns of lookahead (0 = off). Opponent JSON "cpu_plan_turns"; autotester
+# --plan-turns=N. Timing accumulators let the tester report thinking time.
+static var plan_turns := 0
+static var plan_ms_total := 0.0
+static var plan_calls := 0

@@ -60,6 +60,15 @@ var opt_tune := false              # --tune: one self-play tuning job (Tools/cpu
 var opt_weights_path := ""         # --weights=<abs path>: CPU weight multipliers for this job
 var opt_result_path := ""          # --result=<abs path>: one JSON line per match, then {"done": true}
 var opt_synergy_path := ""        # --synergy=<abs path>: learned synergy table for this job ("" = none)
+var opt_branch_plan: Dictionary = {}   # --branch-plan=<abs path>: {"seed": decision number to branch at} (lab)
+var opt_cheat_cards := 0.0         # --cheat-cards=0..1: CPU sees Prizes + player hand/next draw (ISSUE #375)
+var opt_cheat_coins := 0.0         # --cheat-coins=0..1: CPU knows its coin results (ISSUE #375)
+var opt_counters_path := ""        # --counters=<abs path>: learned counter table for this job
+var opt_plan_turns := 0            # --plan-turns=N: CPU multi-turn planner depth (ISSUE #375 phase 3)
+var opt_era_mix := 0.0             # --era-mix=0..1: share of --real matches played with GENERATED era-pure decks
+const ERA_SETS := {"neo": ["neo1", "neo2", "neo3", "neo4", "np", "basep", "si1"], "ecard": ["ecard1", "ecard2", "ecard3"],
+	"ex": ["ex1", "ex2", "ex3", "ex4", "ex5", "ex6", "ex7", "ex8", "ex9", "ex10", "ex11", "ex12", "ex13", "ex14", "ex15", "ex16",
+		"pop1", "pop2", "pop3", "pop4", "pop5"]}
 var opt_learned_path := ""        # --learned=<abs path>: learned matchup table for this job
 var _ex_open := {}                 # tune mode: the CPU turn exchange being measured (see _ex_begin)
 var _ex_list: Array = []           # tune mode: finished exchanges this match
@@ -179,6 +188,12 @@ func _ready() -> void:
 			if pl is Dictionary:
 				lt = pl
 		CpuWeights.set_learned(lt)
+		var ct := {}
+		if opt_counters_path != "" and FileAccess.file_exists(opt_counters_path):
+			var pc = JSON.parse_string(FileAccess.get_file_as_string(opt_counters_path))
+			if pc is Dictionary:
+				ct = pc
+		CpuWeights.set_counters(ct)
 	DirAccess.make_dir_recursive_absolute(run_dir)
 	DirAccess.make_dir_recursive_absolute(OUT_DIR + "decks")
 	_load_cards()
@@ -233,6 +248,15 @@ func _parse_args() -> void:
 			"synergy": opt_synergy_path = v
 			"explore": opt_explore = float(v)
 			"learned": opt_learned_path = v
+			"era-mix": opt_era_mix = float(v)
+			"plan-turns": opt_plan_turns = int(v)
+			"cheat-cards": opt_cheat_cards = float(v)
+			"cheat-coins": opt_cheat_coins = float(v)
+			"counters": opt_counters_path = v
+			"branch-plan":
+				var bp = JSON.parse_string(FileAccess.get_file_as_string(v)) if FileAccess.file_exists(v) else null
+				if bp is Dictionary:
+					opt_branch_plan = bp
 			"real": opt_real = true
 			"bot": opt_bot_smart = (v == "smart")
 			"stress": opt_stress = true
@@ -282,6 +306,13 @@ func _play_match(i: int) -> void:
 	match_seed = opt_seed + i
 	seed(match_seed)
 	CpuWeights.seed_explore(match_seed * 7919 + 13)
+	CpuWeights.cheat_cards = opt_cheat_cards if opt_tune else 0.0
+	CpuWeights.cheat_coins = opt_cheat_coins if opt_tune else 0.0
+	CpuWeights.plan_turns = opt_plan_turns
+	CpuWeights.plan_ms_total = 0.0
+	CpuWeights.plan_calls = 0
+	CpuWeights.seed_cheat(match_seed * 15485863 + 3)
+	CpuWeights.branch_reset(int(opt_branch_plan.get(str(match_seed), -1)), match_seed * 104729 + 7)
 	_ex_open = {}
 	_ex_list = []
 	var rng := RandomNumberGenerator.new()
@@ -308,7 +339,22 @@ func _play_match(i: int) -> void:
 		o_deck = replay_record["opponent_deck"]
 		opp_data = replay_record.get("opponent_data", {})
 	else:
-		if opt_real and not real_entries.is_empty():
+		var era_rng := RandomNumberGenerator.new()
+		era_rng.seed = match_seed * 31337 + 1
+		if opt_real and opt_era_mix > 0.0 and era_rng.randf() < opt_era_mix:
+			# ISSUE #375: a generated era-pure match (Neo / e-Card / EX), the CPU's deck and — 80% — the bot's from that era.
+			var eras: Array = ERA_SETS.keys()
+			var era: String = eras[era_rng.randi() % eras.size()]
+			var keep_sets := opt_sets
+			opt_sets = ERA_SETS[era]
+			o_deck = _build_deck(rng)
+			if era_rng.randf() < 0.8 or player_deck_files.is_empty():
+				p_deck = _build_deck(rng)
+			else:
+				p_deck = _read_deck_file(player_deck_files[rng.randi() % player_deck_files.size()])
+			opt_sets = keep_sets
+			opp_data = {"name": "GEN " + era}
+		elif opt_real and not real_entries.is_empty():
 			var entry: Dictionary = real_entries[(match_seed if opt_tune else i) % real_entries.size()]
 			o_deck = _read_deck_file(AssetLookup.deck_path(entry["deck"]))
 			opp_data = real_opponent_data_for(entry)
@@ -385,7 +431,10 @@ func _play_match(i: int) -> void:
 			"opponent": current_opponent_label,
 			"problems": match_problems.map(func(p): return String(p["kind"])),
 			"cpu_cards": _cpu_cards_used(m) if is_instance_valid(m) else [],
-			"ex": _ex_finish(m)}
+			"bot_cards": _cpu_cards_used(m, false) if is_instance_valid(m) else [],
+			"ex": _ex_finish(m),
+			"dp": CpuWeights.branch_counter, "branch": CpuWeights.branch_record,
+			"plan_ms": snappedf(CpuWeights.plan_ms_total, 0.1), "plan_calls": CpuWeights.plan_calls}
 		_append_line(opt_result_path, JSON.stringify(tr))
 	else:
 		_append_line(run_dir + "matches.jsonl", JSON.stringify(rec))
@@ -453,9 +502,9 @@ func _ex_finish(m) -> Array:
 
 ## Tune mode: every distinct CPU card that reached play this match (in play, attached, or in the discard pile) —
 ## the raw material for the tuner's synergy table.
-func _cpu_cards_used(m) -> Array:
+func _cpu_cards_used(m, side: bool = true) -> Array:
 	var seen := {}
-	for pair in _zones(m, true):
+	for pair in _zones(m, side):
 		if pair[1] in ["deck", "hand", "prize_cards"]:
 			continue
 		var c = pair[0]
@@ -1048,7 +1097,8 @@ func _abort(reason: String) -> void:
 ## Coverage + event log. kind: attack | trainer | power | energy.
 func note(kind: String, uid: String, name: String, is_opponent: bool) -> void:
 	var key := kind + "|" + uid + ("|" + name if kind in ["attack", "power"] else "")
-	coverage[key] = int(coverage.get(key, 0)) + 1
+	if not opt_tune:   # tune jobs keep coverage frozen so a seed always builds the same decks (branch replay needs it)
+		coverage[key] = int(coverage.get(key, 0)) + 1
 	if is_opponent and _cpu_turn_open and (kind != "energy" or "Special" in cards.get(uid, {}).get("subtypes", [])):
 		_cpu_used[key] = true
 	var turn = current_main.turn_number if is_instance_valid(current_main) else -1

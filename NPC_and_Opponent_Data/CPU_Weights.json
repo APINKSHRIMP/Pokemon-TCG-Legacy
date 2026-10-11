@@ -1,0 +1,6 @@
+{
+ "_note": "CPU weight multipliers from the self-play tuner (1.0 = original). Copy to res://NPC_and_Opponent_Data/CPU_Weights.json to ship.",
+ "attack.status_value": 0.477,
+ "bench.stranded_threshold": 2.0,
+ "energy.doomed_no_attack": 0.5
+}

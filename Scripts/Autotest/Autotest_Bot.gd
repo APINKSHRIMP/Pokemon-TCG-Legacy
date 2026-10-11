@@ -104,7 +104,7 @@ func _answer_buttons() -> bool:
 			live.append(child)
 	if not _count_attempt("buttons:" + str(live.size())):
 		return true
-	if cancel_btn != null and (live.is_empty() or rng.randf() < 0.1):
+	if cancel_btn != null and (live.is_empty() or (rng.randf() < 0.1 and not _smart())):
 		_log("press CANCEL on button menu")
 		cancel_btn.pressed.emit()
 		return true
@@ -128,13 +128,17 @@ func _answer_selection() -> bool:
 		var basics: Array = m.player_hand.filter(func(c): return m.is_basic_pokemon(c))
 		if basics.is_empty():
 			return false
-		_click(basics[rng.randi() % basics.size()])
+		if _smart():
+			basics.sort_custom(func(a, c): return _opening_value(a) > _opening_value(c))
+			_click(basics[0])
+		else:
+			_click(basics[rng.randi() % basics.size()])
 		return _press_action()
 
 	# Opening: bench some Basics, then "Done".
 	if m.bench_setup_phase_active:
 		var basics: Array = m.player_hand.filter(func(c): return m.is_basic_pokemon(c))
-		if not basics.is_empty() and m.player_bench.size() < m.get_max_bench_size() and rng.randf() < 0.75:
+		if not basics.is_empty() and m.player_bench.size() < m.get_max_bench_size() and (rng.randf() < 0.75 or (_smart() and m.player_bench.size() < 4)):
 			_click(basics[rng.randi() % basics.size()])
 			if _press_action():
 				return true
@@ -144,7 +148,7 @@ func _answer_selection() -> bool:
 
 	# Yes / no.
 	if m.yes_no_prompt_active:
-		if rng.randf() < 0.5:
+		if _smart() or rng.randf() < 0.5:   # smart: "may" effects are almost always worth taking
 			_log("answer YES: " + m.header_label.text)
 			m.action_button.pressed.emit()
 		else:
@@ -163,6 +167,8 @@ func _answer_selection() -> bool:
 		return _press_action() or _press_cancel()
 
 	# Multi-pick: a random count between min and max, then confirm.
+	if m.trainer_discard_selection_active and _smart() and _smart_multi_pick(pool):
+		return true
 	if m.trainer_discard_selection_active:
 		var max_n: int = m.trainer_discard_cards_needed
 		var min_n: int = max(0, m.multi_select_min())
@@ -207,8 +213,26 @@ func _answer_selection() -> bool:
 					_log("stack: put it on " + _name(c))
 					return true
 
+	# --bot=smart: a reasoned single pick (new Active, targets, searches, discards).
+	if _smart():
+		# Repeatable Powers ("as often as you like": Energy Trans, Damage Swap) would loop forever moving the same
+		# thing back and forth - after 6 picks on one prompt in a turn, stop.
+		if m.turn_number != _pick_turn:
+			_pick_turn = m.turn_number
+			_pick_counts = {}
+		var hk: String = str(m.header_label.text)
+		_pick_counts[hk] = int(_pick_counts.get(hk, 0)) + 1
+		if _pick_counts[hk] > 6 and _press_cancel():
+			return true
+		var pick = _smart_single_pick(pool)
+		if pick != null:
+			_click(pick)
+			if _press_action():
+				_log("smart pick %s on '%s'" % [_name(pick), m.header_label.text])
+				return true
+
 	# Single pick. Sometimes back out, to exercise every cancel path.
-	if m.cancel_button.visible and rng.randf() < 0.12:
+	if m.cancel_button.visible and rng.randf() < 0.12 and not _smart():
 		_log("CANCEL on '" + m.header_label.text + "'")
 		m.cancel_button.pressed.emit()
 		return true
@@ -363,71 +387,330 @@ func _run_driver_step() -> void:
 # ───────────────────────────── --bot=smart: a sensible plan ─────────────────────────────
 
 var _smart_trainers := 0
+var _pick_turn := -1
+var _pick_counts := {}
 
 func _smart() -> bool:
 	return runner != null and bool(runner.get("opt_bot_smart"))
 
 
 func _smart_step() -> void:
+	# ISSUE #375 (smart bot v2, 2026-10-10): a sparring partner that plays like a sensible person, so the CPU's
+	# self-play tuning learns from a real opponent. Order: evolve, bench, Energy, Powers, Trainers (only when they help),
+	# retreat when it pays, then the best attack (a KO first, never a suicidal recoil).
 	var m = main
 	if _actions_this_turn > MAX_ACTIONS_PER_TURN:
 		_end_turn()
 		return
-	# 1. Evolve whatever can evolve.
+	var foe = m.opponent_active_pokemon
+	# 1. Evolve — the Active first (the answerer picks the target).
 	for card in m.player_hand:
 		if m.get_card_action(card).get("action", "") == "EVOLVE" and not m.get_valid_evolution_targets(card, false).is_empty():
 			_log("SMART: evolve " + _name(card))
 			await _play_hand_card(card)
 			return
-	# 2. Keep three Pokémon on the Bench.
-	if m.player_bench.size() < mini(3, m.get_max_bench_size()):
+	# 2. Bench up to four, Basics with an evolution in hand first.
+	if m.player_bench.size() < mini(4, m.get_max_bench_size()):
+		var best_b = null
+		var best_bv := -INF
 		for card in m.player_hand:
 			if m.get_card_action(card).get("action", "") == "SET_POKEMON":
-				_log("SMART: bench " + _name(card))
-				await _play_hand_card(card)
-				return
-	# 3. One Energy, onto whatever it helps most (the answerer picks the target).
+				var bv := _opening_value(card)
+				if bv > best_bv:
+					best_bv = bv
+					best_b = card
+		if best_b != null:
+			_log("SMART: bench " + _name(best_b))
+			await _play_hand_card(best_b)
+			return
+	# 3. One Energy, onto whatever it helps most.
 	if not m.player_energy_played_this_turn:
 		for card in m.player_hand:
 			if m.get_card_action(card).get("action", "") == "ATTACH_ENERGY" and _energy_has_target(card):
 				_log("SMART: attach " + _name(card))
 				await _play_hand_card(card)
 				return
-	# 4. Up to three Trainers a turn.
-	if _smart_trainers < 3:
+	# 4. Pokémon Powers (Rain Dance, Damage Swap, Energy Trans...) — a few uses a turn.
+	if _powers_this_turn < 3 and _has_power_option():
+		_log("SMART: power menu")
+		await _use_power()
+		return
+	# 5. Trainers that help right now (up to six a turn).
+	if _smart_trainers < 6:
 		for card in m.player_hand:
-			if m.get_card_action(card).get("action", "") == "PLAY_TRAINER" and m.trainer_effects.validate_trainer_can_be_played(card, false) == "":
+			if m.get_card_action(card).get("action", "") == "PLAY_TRAINER" and m.trainer_effects.validate_trainer_can_be_played(card, false) == "" \
+					and _trainer_worth_it(card):
 				_smart_trainers += 1
 				_log("SMART: trainer " + _name(card))
 				await _play_hand_card(card)
 				return
-	# 5. Retreat only into something that can attack when the Active can't.
+	# 6. Retreat when it pays: the Active can't attack (or is about to be KO'd) and a Benched Pokémon does better.
 	var attacks := _usable_attacks()
-	if attacks.is_empty() and not _retreated_this_turn and not m.player_bench.is_empty() and bool(m.can_retreat(false).get("can_retreat", false)):
+	var me = m.player_active_pokemon
+	if me != null and not _retreated_this_turn and not m.player_bench.is_empty() and bool(m.can_retreat(false).get("can_retreat", false)):
+		var stay := _attacker_value(me, foe)
+		var best_bp = null
+		var best_v := stay + 60.0
 		for bp in m.player_bench:
-			if _payable_attack(bp):
-				_retreated_this_turn = true
-				_log("SMART: retreat")
-				_retreat()
-				return
-	# 6. The best attack — a Knock Out first.
-	if not attacks.is_empty():
-		var mon = m.player_active_pokemon
-		var foe = m.opponent_active_pokemon
-		var all_attacks: Array = m.get_attacks_for_card(mon)
-		var best_i: int = attacks[0]
-		var best_v := -INF
-		for i in attacks:
-			var ex := float(m.attack_effects.estimate_attack_damage_range(all_attacks[i], mon, foe).get("expected", 0))
-			var v := ex + (1000.0 if foe != null and ex >= foe.current_hp else 0.0)
+			var v := _attacker_value(bp, foe)
 			if v > best_v:
 				best_v = v
+				best_bp = bp
+		if best_bp != null and (attacks.is_empty() or (foe != null and _threat(foe, me) >= me.current_hp)):
+			_retreated_this_turn = true
+			_log("SMART: retreat (better: " + _name(best_bp) + ")")
+			_retreat()
+			return
+	# 7. The best attack.
+	if not attacks.is_empty():
+		var all_attacks: Array = m.get_attacks_for_card(me)
+		var best_i: int = attacks[0]
+		var best_av := -INF
+		for i in attacks:
+			var av := _attack_value(all_attacks[i], me, foe)
+			if av > best_av:
+				best_av = av
 				best_i = i
 		_log("SMART: attack " + str(all_attacks[best_i].get("name", "")))
 		await _attack(best_i)
 		return
 	_log("SMART: end turn")
 	_end_turn()
+
+
+# ── smart v2 evaluation helpers (player's side) ──
+
+func _dmg_vs(a: Dictionary, p, target, which: String = "expected") -> int:
+	if target == null:
+		return 0
+	var d := int(main.attack_effects.estimate_attack_damage_range(a, p, target).get(which, 0))
+	if d > 0:
+		d = int(main.calculate_final_damage(d, p.get_effective_types(), target, p).get("damage", d))
+	return d
+
+
+## Best damage p can do to target with attacks it can pay for now.
+func _best_dmg(p, target, which: String = "expected") -> int:
+	var best := 0
+	if p == null or target == null:
+		return 0
+	for a in main.get_attacks_for_card(p):
+		if main.check_attack_requirements(a, p):
+			best = maxi(best, _dmg_vs(a, p, target, which))
+	return best
+
+
+## What attacker could do to target soon (attacks at most 1 Energy short) — the threat it poses.
+func _threat(attacker, target) -> int:
+	var best := 0
+	if attacker == null or target == null:
+		return 0
+	for a in attacker.metadata.get("attacks", []):
+		if main.cpu_ai.get_unmet_energy_count(a, attacker) <= 1:
+			best = maxi(best, _dmg_vs(a, attacker, target, "max"))
+	return best
+
+
+## How good p would be as the Active against foe.
+func _attacker_value(p, foe) -> float:
+	if p == null:
+		return -INF
+	var v := 0.0
+	var short := 9
+	for a in main.get_attacks_for_card(p):
+		short = mini(short, main.cpu_ai.get_unmet_energy_count(a, p))
+	if _payable_attack(p):
+		v += 100.0
+	v -= short * 15.0
+	if foe != null:
+		var d := _best_dmg(p, foe)
+		v += d
+		if _best_dmg(p, foe, "min") >= foe.current_hp:
+			v += 200.0
+		if _threat(foe, p) >= p.current_hp:
+			v -= 90.0
+	v += p.current_hp * 0.2
+	return v
+
+
+func _attack_value(a: Dictionary, me, foe) -> float:
+	var tl := String(a.get("text", "")).to_lower()
+	var ex := float(_dmg_vs(a, me, foe))
+	var mn := _dmg_vs(a, me, foe, "min")
+	var v := ex
+	if foe != null and mn >= foe.current_hp:
+		v += 1000.0 + (500.0 if main.is_ex_pokemon(foe) else 0.0)
+	elif foe != null and ex >= foe.current_hp:
+		v += 300.0
+	# Recoil that would Knock Out our own Pokémon (unless it wins the game).
+	if "damage to itself" in tl:
+		var self_d: int = main.attack_effects.extract_number_before(tl, " damage to itself")
+		if self_d >= me.current_hp and not (foe != null and mn >= foe.current_hp and main.player_prize_cards.size() <= 1):
+			v -= 800.0
+	if foe != null and mn < foe.current_hp:
+		if "paralyz" in tl: v += 25.0 * (0.5 if "flip" in tl else 1.0)
+		if "confus" in tl or "asleep" in tl: v += 12.0 * (0.5 if "flip" in tl else 1.0)
+		if "poison" in tl and not foe.is_poisoned: v += 10.0
+	return v
+
+
+## Opening / bench choice: attack soon, HP, an evolution waiting in hand.
+func _opening_value(c) -> float:
+	var v: float = float(main.get_pokemon_hp(c))
+	var cheapest := 9
+	for a in c.metadata.get("attacks", []):
+		cheapest = mini(cheapest, a.get("cost", []).size())
+	v -= cheapest * 20.0
+	var nm: String = c.metadata.get("name", "")
+	if main.player_hand.any(func(h): return h.metadata.get("evolvesFrom", "") == nm):
+		v += 60.0
+	return v
+
+
+## How much a card in a search / discard pool is worth to us.
+func _card_value(c) -> float:
+	var m = main
+	if not (c is Object) or not ("metadata" in c):
+		return 0.0
+	var st: String = c.metadata.get("supertype", "")
+	if st.begins_with("Pok"):
+		var from: String = c.metadata.get("evolvesFrom", "")
+		if from != "":
+			var mine: Array = m.player_bench.duplicate()
+			if m.player_active_pokemon != null:
+				mine.append(m.player_active_pokemon)
+			return 90.0 if mine.any(func(p): return p.metadata.get("name", "") == from) else 25.0
+		return 65.0 if m.player_bench.size() < 4 else 30.0
+	if st == "Energy":
+		var mine2: Array = m.player_bench.duplicate()
+		if m.player_active_pokemon != null:
+			mine2.append(m.player_active_pokemon)
+		for p in mine2:
+			for a in m.get_attacks_for_card(p):
+				if m.cpu_ai.get_unmet_energy_count(a, p) > 0:
+					return 60.0
+		return 35.0
+	return 45.0
+
+
+func _in_play_mine(c) -> bool:
+	return c == main.player_active_pokemon or c in main.player_bench
+
+
+func _in_play_theirs(c) -> bool:
+	return c == main.opponent_active_pokemon or c in main.opponent_bench
+
+
+## A reasoned pick for a single-choice prompt, or null to fall back to the default behaviour.
+func _smart_single_pick(pool: Array):
+	var m = main
+	var cards: Array = pool.filter(func(c): return c is Object and "metadata" in c)
+	if cards.is_empty():
+		return null
+	var h: String = (str(m.header_label.text) + " " + str(m.hint_label.text)).to_upper()
+	var negative: bool = "DISCARD" in h or "RETURN" in h or "SHUFFLE" in h or "REMOVE" in h and "YOUR" in h
+	var foe = m.opponent_active_pokemon
+	var me = m.player_active_pokemon
+	if cards.all(func(c): return _in_play_mine(c)):
+		if m.evolution_mode_active and me in cards:
+			return me
+		var best = null
+		var best_v := -INF
+		for c in cards:
+			var v := _attacker_value(c, foe)
+			if negative:
+				v = -v
+			if v > best_v:
+				best_v = v
+				best = c
+		return best
+	if cards.all(func(c): return _in_play_theirs(c)):
+		var best2 = null
+		var best_v2 := -INF
+		for c in cards:
+			var v2 := 0.0
+			if "ENERGY" in h:
+				v2 = c.attached_energies.size() * 10.0 + (20.0 if c == foe else 0.0)
+			else:
+				if me != null and _best_dmg(me, c, "min") >= c.current_hp:
+					v2 += 500.0 + (300.0 if m.is_ex_pokemon(c) else 0.0)
+				v2 -= c.current_hp
+				if not _payable_attack(c):
+					v2 += 40.0 + 15.0 * m.get_retreat_cost(c)
+			if v2 > best_v2:
+				best_v2 = v2
+				best2 = c
+		return best2
+	# Cards from a deck / discard pile / hand.
+	var best3 = null
+	var best_v3 := -INF
+	for c in cards:
+		var v3 := _card_value(c)
+		if negative:
+			v3 = -v3
+		if v3 > best_v3:
+			best_v3 = v3
+			best3 = c
+	return best3
+
+
+## Multi-pick: take as many good cards as allowed, or as few (and the least useful) when it costs us.
+func _smart_multi_pick(pool: Array) -> bool:
+	var m = main
+	var h: String = (str(m.header_label.text) + " " + str(m.hint_label.text)).to_upper()
+	var negative: bool = "DISCARD" in h or "RETURN" in h or "SHUFFLE" in h
+	var max_n: int = m.trainer_discard_cards_needed
+	var min_n: int = max(0, m.multi_select_min())
+	var want: int = min_n if negative else max_n
+	var order: Array = pool.duplicate()
+	order.sort_custom(func(a, c): return (_card_value(a) < _card_value(c)) if negative else (_card_value(a) > _card_value(c)))
+	for c in order:
+		if m.trainer_discard_selected.size() >= want:
+			break
+		if c not in m.trainer_discard_selected:
+			_click(c)
+	if _press_action():
+		_log("smart multi-pick %d on '%s'" % [m.trainer_discard_selected.size(), m.header_label.text])
+		return true
+	return false
+
+
+## Situational Trainers only when they do something now; everything else is played.
+func _trainer_worth_it(card) -> bool:
+	var m = main
+	var nm: String = card.metadata.get("name", "")
+	var me = m.player_active_pokemon
+	var foe = m.opponent_active_pokemon
+	if nm in ["Gust of Wind", "Pokémon Reversal", "Double Gust", "Warp Point", "Pokémon Catcher"]:
+		if me == null:
+			return false
+		var best_dmg := _best_dmg(me, foe, "min")
+		for t in m.opponent_bench:
+			if _best_dmg(me, t, "min") >= t.current_hp and (foe == null or best_dmg < foe.current_hp):
+				return true
+			if not _payable_attack(t) and m.get_retreat_cost(t) >= 2 and (foe == null or _payable_attack(foe)):
+				return true
+		return false
+	if nm == "PlusPower":
+		if me == null or foe == null:
+			return false
+		var bd := _best_dmg(me, foe, "min")
+		return bd > 0 and bd < foe.current_hp and bd + 10 >= foe.current_hp
+	if "Potion" in nm or nm in ["Pokémon Center", "Super Potion"]:
+		return me != null and me.get_max_hp() - me.current_hp >= 20
+	if nm in ["Switch", "Escape Rope"]:
+		if me == null or m.player_bench.is_empty():
+			return false
+		return _usable_attacks().is_empty() and m.player_bench.any(func(p): return _payable_attack(p))
+	if nm == "Defender":
+		return me != null and foe != null and _threat(foe, me) >= me.current_hp
+	if nm in ["Professor Oak", "Imposter Professor Oak", "Lass"]:
+		return m.player_hand.size() <= 4
+	if "Energy Removal" in nm:
+		return foe != null and not foe.attached_energies.is_empty()
+	if nm in ["Full Heal"]:
+		return me != null and (me.special_condition != "" or me.is_poisoned or me.is_burned)
+	return true
 
 
 func _payable_attack(p) -> bool:

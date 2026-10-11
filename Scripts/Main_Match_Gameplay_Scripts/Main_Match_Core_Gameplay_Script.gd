@@ -59,6 +59,8 @@ var tex_tails = load("res://Image_Assets/Coins/Back Basic.png")
 # Game Variables
 var turn_number: int = 0
 var opponent_data = {}
+var coin_future: Array = []   # ISSUE #375 CPU foresight: pre-rolled coin results, consumed in order by flip_coin()
+const CpuWeights = preload("res://Scripts/Main_Match_Gameplay_Scripts/CPU_Weights.gd")
 
 # PLAYER VARIABLES
 var player_hand: Array = []
@@ -6278,10 +6280,19 @@ func flip_coins_batch(n: int, flipper_is_opponent: bool) -> Array:
 			print("ISSUE #309 FIX ACTIVE: Sabrina's ESP re-flipped ", n, " coins -> ", res.count(true), " heads")
 	return res
 
+## ISSUE #375 CPU foresight: the next n coin results (rolled now, then used in order by flip_coin — the flips stay fair,
+## only the CPU's KNOWLEDGE of them is the cheat). Empty while a match rule forces every flip.
+func peek_coins(n: int) -> Array:
+	if match_effects.coin_override(true) != "":
+		return []
+	while coin_future.size() < n:
+		coin_future.append(randi() % 2 == 0)
+	return coin_future.slice(0, n)
+
 func flip_coin(silent: bool = false, flipper_is_opponent: bool = false) -> bool:
 	# MATCH EFFECT: coin_flip_override — every flip forced to heads/tails (animation still plays)
 	var rule_override: String = match_effects.coin_override(flipper_is_opponent)
-	var result: bool = (rule_override == "heads") if rule_override != "" else (randi() % 2 == 0)
+	var result: bool = (rule_override == "heads") if rule_override != "" else (coin_future.pop_front() if not coin_future.is_empty() else (randi() % 2 == 0))
 	SoundManagerScript.play_sfx(SoundManagerScript.SFX_coin_flip_sound)
 
 	# Resolve which heads face to use for this flip
@@ -9771,6 +9782,12 @@ func load_opponent_data_by_name(opp_name: String):
 	opponent_data = CharacterSchedule.find_opponent(
 		GameState.current_opponent_map, opp_name,
 		GameState.get_date(), GameState.get_time(), MapManager.evaluate_condition)
+	# ISSUE #375 foresight dials (0.0-1.0): "cpu_cheat_cards" = sees its Prizes + the player's hand/next draw (subtle);
+	# "cpu_cheat_coins" = knows its coin results before choosing (obvious — keep separate).
+	CpuWeights.cheat_cards = clampf(float(opponent_data.get("cpu_cheat_cards", 0.0)), 0.0, 1.0)
+	CpuWeights.cheat_coins = clampf(float(opponent_data.get("cpu_cheat_coins", 0.0)), 0.0, 1.0)
+	# ISSUE #375 phase 3: "cpu_plan_turns" — how many turns ahead this opponent plans (0 = off).
+	CpuWeights.plan_turns = int(opponent_data.get("cpu_plan_turns", 0))
 	if opponent_data.is_empty():
 		print("Opponent with name ", opp_name, " not found on map ",
 			GameState.current_opponent_map)

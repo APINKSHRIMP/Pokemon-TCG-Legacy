@@ -81,6 +81,25 @@ def card_traits(c):
     out.append("stage:2" if "Stage 2" in subs else ("stage:1" if "Stage 1" in subs else "stage:0"))
     if "EX" in subs or " ex" in (c.get("name") or ""): out.append("ex")
     for ab in c.get("abilities") or []:
+        # ISSUE #375 counters: what the Power / Body DOES, read from its text (scales to any future set).
+        at = (ab.get("text") or "").lower()
+        blocks = ("can't play" in at or "cannot play" in at or "can't be played" in at or ("no " in at and "can be played" in at))
+        if "trainer" in at and blocks:
+            out.append("pw:trainer_lock")
+        if (blocks or "can't evolve" in at) and "evolution" in at:
+            out.append("pw:evo_lock")
+        if ("pokémon powers" in at or "poké-powers" in at or "poké-bodies" in at) and ("can't" in at or "ignore all" in at or "no effect" in at):
+            out.append("pw:power_lock")
+        if "bench" in at and ("prevent" in at or "no damage" in at) and "damage" in at:
+            out.append("pw:bench_guard")
+        if "damage counter" in at and ("move" in at or "swap" in at):
+            out.append("pw:damage_move")
+        if "attach" in at and "energy" in at and ("hand" in at or "deck" in at or "discard" in at or "your pokémon" in at or "as often as you like" in at or "doesn't use up" in at):
+            out.append("pw:energy_accel")
+        if "draw" in at and "card" in at:
+            out.append("pw:draw")
+        if "remove" in at and "damage counter" in at:
+            out.append("pw:heal")
         ty = (ab.get("type") or "").lower()
         if "body" in ty: out.append("body")
         elif "power" in ty: out.append("power")
@@ -110,7 +129,12 @@ def extract_features(card_dir):
         if not isinstance(data, list):
             continue
         for c in data:
-            if not isinstance(c, dict) or "id" not in c or not str(c.get("supertype", "")).startswith("Pok"):
+            if not isinstance(c, dict) or "id" not in c:
+                continue
+            if str(c.get("supertype", "")) == "Trainer":
+                cards[c["id"].lower()] = ["super:trainer"]
+                continue
+            if not str(c.get("supertype", "")).startswith("Pok"):
                 continue
             uid = c["id"].lower()
             cards[uid] = card_traits(c)
@@ -212,3 +236,145 @@ class Model:
         with open(tmp, "w", encoding="utf-8") as f:
             f.write("\n".join(lines) + "\n")
         os.replace(tmp, path)
+
+
+# ───────────────────────── COUNTERS (ISSUE #375) ─────────────────────────
+# Which CPU cards win more when the PLAYER shows a given card, and which CPU card traits pay off against a player's play
+# STYLE. Outcome = CPU win minus that CPU deck's running win rate (so strong/weak decks don't masquerade as counters).
+
+def opp_style(uids, cards):
+    """The player's style from the cards they showed — mirrored exactly by CPU_AI.cpu_opp_style()."""
+    flags = set()
+    trainers = pokemon = 0
+    for u in set(uids):
+        tr = cards.get(u, [])
+        if "super:trainer" in tr: trainers += 1
+        if any(x.startswith("stage:") for x in tr): pokemon += 1
+        if "stage:1" in tr or "stage:2" in tr: flags.add("opp:evolves")
+        if "atk:bench" in tr: flags.add("opp:bench_dmg")
+        if "power" in tr: flags.add("opp:powers")
+        if "atk:staller" in tr: flags.add("opp:stall")
+        if "hp:vhi" in tr: flags.add("opp:high_hp")
+    if trainers >= 3: flags.add("opp:trainers")
+    if pokemon >= 6: flags.add("opp:many_pokemon")
+    return sorted(flags)
+
+
+COUNTER_MIN_PAIR = 60
+COUNTER_SHRINK = 150.0
+COUNTER_CAP = 25.0
+
+
+class Counters:
+    def __init__(self, path):
+        self.path = path
+        self.d = {"deck": {}, "pair": {}, "cpu": {}, "bot": {}, "tstyle": {}, "trait": {}, "style": {}, "games": 0}
+        try:
+            self.d = json.load(open(path, encoding="utf-8"))
+        except Exception:
+            pass
+
+    @staticmethod
+    def _add(table, key, r):
+        v = table.setdefault(key, [0, 0.0])
+        v[0] += 1
+        v[1] += r
+
+    def add(self, records, cards):
+        d = self.d
+        for rec in records:
+            deck = rec.get("opponent", "")
+            if not deck or rec.get("result") not in ("win", "loss") or "bot_cards" not in rec:
+                continue
+            won = 1.0 if rec["result"] == "loss" else 0.0
+            ds = d["deck"].setdefault(deck, [0, 0.0])
+            base = (ds[1] + 0.65 * 20) / (ds[0] + 20)       # running deck win rate (prior 65%)
+            ds[0] += 1
+            ds[1] += won
+            r = won - base
+            d["games"] += 1
+            mine = sorted(set(rec.get("cpu_cards", [])))
+            theirs = sorted(u for u in set(rec.get("bot_cards", [])) if any(x.startswith("stage:") for x in cards.get(u, [])))
+            for y in mine:
+                self._add(d["cpu"], y, r)
+            for x in theirs:
+                self._add(d["bot"], x, r)
+            for y in mine:
+                for x in theirs:
+                    self._add(d["pair"], y + "|" + x, r)
+            styles = opp_style(rec.get("bot_cards", []), cards)
+            traits = sorted({tr for y in mine for tr in cards.get(y, []) if tr.startswith(("pw:", "atk:", "power", "body", "hp:", "stage:", "super:"))})
+            for s in styles:
+                self._add(d["style"], s, r)
+            for tr in traits:
+                self._add(d["trait"], tr, r)
+                for s in styles:
+                    self._add(d["tstyle"], tr + "|" + s, r)
+
+    def save(self):
+        tmp = self.path + ".tmp"
+        with open(tmp, "w", encoding="utf-8") as f:
+            json.dump(self.d, f)
+            f.flush()
+            os.fsync(f.fileno())
+        os.replace(tmp, self.path)
+
+    def _lift(self, both, a, b):
+        n, s = both
+        if n < COUNTER_MIN_PAIR:
+            return None
+        ma = a[1] / a[0] if a and a[0] else 0.0
+        mb = b[1] / b[0] if b and b[0] else 0.0
+        lift = (s / n) - ma - mb
+        return max(-COUNTER_CAP, min(COUNTER_CAP, 100.0 * lift * n / (n + COUNTER_SHRINK)))
+
+    def export(self, path, cards):
+        d = self.d
+        out = {"cards": {}, "style": {}, "traits": cards, "games": d["games"]}
+        for key, v in d["pair"].items():
+            y, x = key.split("|")
+            pts = self._lift(v, d["cpu"].get(y), d["bot"].get(x))
+            if pts is not None and abs(pts) >= 1.0:
+                out["cards"].setdefault(y, {})[x] = round(pts, 1)
+        for key, v in d["tstyle"].items():
+            tr, s = key.split("|")
+            pts = self._lift(v, d["trait"].get(tr), d["style"].get(s))
+            if pts is not None and abs(pts) >= 0.5:
+                out["style"].setdefault(tr, {})[s] = round(pts, 1)
+        tmp = path + ".tmp"
+        with open(tmp, "w", encoding="utf-8") as f:
+            json.dump(out, f)
+        os.replace(tmp, path)
+        return out
+
+    def report(self, path, table, names, stamp):
+        pairs = sorted(((v, y, x) for y, row in table["cards"].items() for x, v in row.items()), reverse=True)
+        styles = sorted(((v, tr, s) for tr, row in table["style"].items() for s, v in row.items()), reverse=True)
+        nm = lambda u: "%s (%s)" % (names.get(u, "?"), u)
+        lines = ["LEARNED COUNTERS (updated %s) from %s games" % (stamp, f"{self.d['games']:,}"),
+                 "Points = extra CPU win %% when the CPU's card is out AND the player shows theirs, beyond each alone.", "",
+                 "CPU TRAITS vs PLAYER STYLE (the WHY — scales to new cards):"]
+        lines += ["  %+5.1f  CPU card with [%s] vs a player who %s" % (v, tr, s) for v, tr, s in styles[:40]]
+        lines += ["  ...", "  worst:"] + ["  %+5.1f  CPU card with [%s] vs a player who %s" % (v, tr, s) for v, tr, s in styles[-20:]]
+        lines += ["", "BEST CARD COUNTERS (CPU card  vs  player's card):"]
+        lines += ["  %+5.1f  %s  vs  %s" % (v, nm(y), nm(x)) for v, y, x in pairs[:60]]
+        lines += ["", "WORST (CPU card struggles against):"]
+        lines += ["  %+5.1f  %s  vs  %s" % (v, nm(y), nm(x)) for v, y, x in pairs[-40:][::-1]]
+        tmp = path + ".tmp"
+        with open(tmp, "w", encoding="utf-8") as f:
+            f.write("\n".join(lines) + "\n")
+        os.replace(tmp, path)
+
+
+def card_names(card_dir):
+    names = {}
+    for f in glob.glob(os.path.join(card_dir, "*.json")):
+        try:
+            data = json.load(open(f, encoding="utf-8"))
+        except Exception:
+            continue
+        if isinstance(data, list):
+            for c in data:
+                if isinstance(c, dict) and "id" in c:
+                    names[c["id"].lower()] = c.get("name", "?")
+    return names

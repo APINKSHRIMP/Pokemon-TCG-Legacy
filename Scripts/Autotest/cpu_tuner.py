@@ -12,6 +12,7 @@ the window, lose power — run it again (or let the Startup entry do it) and it 
   py cpu_tuner.py --hours 8       new run length (only when starting a new run)
   py cpu_tuner.py --until "2026-10-10 09:00"   set the run's deadline (works on a new or resumed run)
   py cpu_tuner.py --resume        resume only if a run is active and before its deadline (used by the Startup entry)
+  py cpu_tuner.py --new --from-best   new run (fresh baseline) starting from best_weights.json
   py cpu_tuner.py --new           discard the current run's state and start again from the shipped weights
   create TUNER_DIR/STOP           finish the current step and exit cleanly
 
@@ -172,7 +173,7 @@ def load_shipped():
 
 # ───────────────────────── running matches ─────────────────────────
 
-def run_job(weights, seed_start, n, synergy=None, explore=0.0, learned=None, priority=None):
+def run_job(weights, seed_start, n, synergy=None, explore=0.0, learned=None, priority=None, extra=None):
     """One Godot process: n matches from seed_start with these multipliers. Returns {seed: record}."""
     tag = uuid.uuid4().hex[:10]
     wpath = os.path.join(WORK, f"w_{tag}.json")
@@ -188,6 +189,8 @@ def run_job(weights, seed_start, n, synergy=None, explore=0.0, learned=None, pri
         cmd.append(f"--explore={explore}")
     if learned:
         cmd.append(f"--learned={learned}")
+    if extra:
+        cmd += list(extra)
     out = {}
     try:
         p = subprocess.Popen(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, stdin=subprocess.DEVNULL,
@@ -490,6 +493,9 @@ def benchmark(pool, st):
 def new_state(hours):
     t = datetime.now()
     champ = load_shipped()
+    if '--from-best' in sys.argv and os.path.exists(BEST):
+        # Start a new run (fresh baseline/benchmark) from the previous run's champion multipliers.
+        champ = {k: float(v) for k, v in json.load(open(BEST, encoding='utf-8')).items() if not k.startswith('_')}
     return {"started": t.strftime("%Y-%m-%d %H:%M"), "started_ts": time.time(),
             "deadline": (t + timedelta(hours=hours)).strftime("%Y-%m-%d %H:%M"),
             "deadline_ts": time.time() + hours * 3600, "active": True,
