@@ -98,6 +98,7 @@ func opponent_start_turn_checks() -> void:
 	main.powers_and_bodies.update_ditto_transform(true)
 	main.powers_and_bodies.update_ditto_transform(false)
 	if GameState.autotest != null: GameState.autotest.cpu_turn_start(main)   # AUTOTEST: what the CPU could play
+	if main._rec() != null: main._rec().turn_start(true)   # ISSUE #375 DEV: match recorder
 
 	# NEO1: process turn-start tools (Gold Berry, Berry, Miracle Berry) and Char counters for CPU's side
 	await main.powers_and_bodies.process_turn_start_tools_and_counters(true)
@@ -6922,6 +6923,104 @@ func cpu_counter_bonus(card: card_object) -> float:
 				for s in styles:
 					total += float(srow.get(s, 0.0))
 	return clampf(total * CpuWeights.g("search.counter", 1.0), -40.0, 40.0)
+
+# ───────────── ISSUE #375 DEV: SHADOW CPU (what the CPU would do in the PLAYER's seat) ─────────────
+# The CPU's code reads the opponent_* side, so the two sides' match data is swapped, the normal scoring functions are
+# asked (nothing is executed), and the sides are swapped straight back — all in one frame, no awaits in between.
+const _SHADOW_FIELDS := ["active_pokemon", "hand", "bench", "deck", "discard_pile", "prize_cards", "energy_played_this_turn",
+	"retreated_this_turn", "attacked_this_turn", "energy_attach_count", "prizes_face_up", "blaine_double_attach_used",
+	"turn_force_end"]
+
+func _shadow_swap() -> void:
+	for f in _SHADOW_FIELDS:
+		var a = main.get("player_" + f)
+		main.set("player_" + f, main.get("opponent_" + f))
+		main.set("opponent_" + f, a)
+	invalidate_cpu_evaluation()
+
+
+func shadow_player_decisions() -> Dictionary:
+	if main.player_active_pokemon == null or main.opponent_active_pokemon == null:
+		return {}
+	_shadow_swap()
+	var out := {}
+	out = _shadow_evaluate()
+	_shadow_swap()   # always restored, whatever the evaluation returned
+	return out
+
+
+func _shadow_evaluate() -> Dictionary:
+	var out := {}
+	var me = main.opponent_active_pokemon   # (the player's Active, while swapped)
+	var foe = main.player_active_pokemon
+	var cpu_eval: Dictionary = build_cpu_evaluation()
+	# Energy: the best (Pokémon, Energy) pair.
+	if not main.opponent_energy_played_this_turn:
+		var best_s := -INF
+		for e in main.opponent_hand:
+			if e.metadata.get("supertype", "") != "Energy":
+				continue
+			for p in get_all_cpu_field_pokemon():
+				var pd: Dictionary = cpu_eval["pokemon_data"].get(p.get_instance_id(), {})
+				var s := score_energy_pair(p, e, cpu_eval, pd)
+				if s > best_s:
+					best_s = s
+					out["energy"] = {"energy": e.uid, "target": p.uid, "target_name": p.metadata.get("name", ""), "score": int(s)}
+	# Retreat: would the CPU retreat, and into what?
+	if not main.opponent_bench.is_empty() and not main.opponent_retreated_this_turn:
+		var would: bool = evaluate_retreat_reasons(cpu_eval) and is_retreat_cost_worthwhile(cpu_eval) \
+			and me.attached_energies.size() >= main.get_retreat_cost(me) and not (me.special_condition in ["Paralyzed", "Asleep"])
+		var to = pick_best_bench_replacement(main.opponent_bench, foe, cpu_eval) if would else null
+		out["retreat"] = {"would": would, "to": to.uid if to != null else "", "to_name": to.metadata.get("name", "") if to != null else ""}
+	# Trainers: the CPU's score for each one in hand (played above the threshold).
+	var trs: Array = []
+	for c in main.opponent_hand:
+		if main.trainer_effects.is_trainer_card(c):
+			var s2 := cpu_score_trainer_for_play(c)
+			trs.append({"uid": c.uid, "name": c.metadata.get("name", ""), "score": int(s2), "play": s2 > CPU_TRAINER_PLAY_THRESHOLD})
+	out["trainers"] = trs
+	# Bench: the best Basic and whether it clears the bench threshold.
+	var best_b = null
+	var best_bs := -INF
+	for c in main.opponent_hand:
+		if main.is_basic_pokemon(c):
+			var bs: float = float(evaluate_opponents_start_setup_pokemon_choices(c, main.opponent_hand).get("total_score", 0))
+			if bs > best_bs:
+				best_bs = bs
+				best_b = c
+	if best_b != null:
+		out["bench"] = {"uid": best_b.uid, "name": best_b.metadata.get("name", ""), "score": int(best_bs), "bench_size": main.opponent_bench.size()}
+	# Evolution: the best pair.
+	var best_ev := -INF
+	for c in main.opponent_hand:
+		for tgt in main.get_valid_evolution_targets(c, true):
+			var r: Dictionary = evaluate_evolution_pair(c, tgt)
+			if float(r.get("score", 0)) > best_ev:
+				best_ev = float(r.get("score", 0))
+				out["evolve"] = {"card": c.uid, "target": tgt.uid, "target_name": tgt.metadata.get("name", ""), "score": int(best_ev)}
+	# Attack: the CPU's main attack terms (damage, KO, context, lookahead) for each usable attack.
+	var atks: Array = []
+	var types: Array = me.get_effective_types()
+	for a in main.get_attacks_for_card(me):
+		if get_unmet_energy_count(a, me) > 0 or main.is_attack_disabled(me, a.get("name", "")) or main.attack_effects.attack_unusable_reason(a, me) != "":
+			continue
+		var rng: Dictionary = main.attack_effects.estimate_attack_damage_range(a, me, foe)
+		var mn := int(main.calculate_final_damage(rng["min"], types, foe).get("damage", 0))
+		var ex := int(main.calculate_final_damage(rng["expected"], types, foe).get("damage", 0))
+		var mx := int(main.calculate_final_damage(rng["max"], types, foe).get("damage", 0))
+		var sc := float(ex) * 2.0
+		if mn >= foe.current_hp:
+			sc += 500.0
+		elif mx >= foe.current_hp:
+			sc += 200.0
+		var effs: Array = main.attack_effects.parse_card_text_effects(a.get("text", ""), me.metadata.get("name", ""))
+		sc += _cpu_attack_context_adjust(effs, mn, ex, foe.current_hp, evaluate_ko_threats(), main.get_attacks_for_card(me), main.get_attacks_for_card(me).find(a), String(a.get("text", "")).to_lower())
+		if CpuWeights.on("rule.lookahead"):
+			sc += _la().attack_value(a, me, foe)
+		atks.append({"name": a.get("name", ""), "score": int(sc), "exp": ex})
+	atks.sort_custom(func(x, y): return x["score"] > y["score"])
+	out["attacks"] = atks
+	return out
 
 # KEEP VALUE — how much the CPU wants to ADD this card to hand / keep it / fetch it from deck or discard.
 # Used for deck search, recover-to-hand, "take a card", and keep-vs-discard framing. Higher = better.

@@ -2490,6 +2490,35 @@ func _fill_action_row(btn: Button, row: Dictionary, enabled: bool) -> void:
 
 
 # Refreshes the hand display for either player or opponent using standard sizes and containers
+var _reveal_held := false
+# ISSUE #375 DEV: match recorder — every real match (DebugMode, not the autotester) to user://match_logs/*.jsonl.
+const MatchRecorder = preload("res://Scripts/Main_Match_Gameplay_Scripts/Match_Recorder.gd")
+var _recorder = null
+var _recorder_checked := false
+
+func _rec():
+	if not _recorder_checked:
+		_recorder_checked = true
+		if DebugMode.is_enabled() and (GameState.autotest == null or bool(GameState.autotest.get("opt_record"))):
+			_recorder = MatchRecorder.new(self)
+	return _recorder
+var _reveal_saved_hide := true
+
+## DEV (hold Ctrl): show / re-hide the opponent's hand and the Prize cards without changing the match's own setting.
+func _set_reveal_hidden(on: bool) -> void:
+	if on == _reveal_held:
+		return
+	if on:
+		_reveal_saved_hide = hide_hidden_cards
+		hide_hidden_cards = false
+	else:
+		hide_hidden_cards = _reveal_saved_hide
+	_reveal_held = on
+	refresh_hand_display(true)
+	display_prize_cards(true)
+	display_prize_cards(false)
+
+
 func refresh_hand_display(is_opponent: bool) -> void:
 	if is_opponent:
 		display_hand_cards_array(opponent_hand, opponent_hand_container, OPP_HAND_CARD, hide_hidden_cards, 400, 7, opponent_sleeve_small)
@@ -3703,6 +3732,8 @@ func show_message(message_text: String) -> void:
 # it a round number shared by both halves of a round — exactly what a divider
 # wants written on it.
 func _log_match_message(message_text: String) -> void:
+	if _rec() != null:
+		_rec().message(message_text, turn_number, opponents_turn_active)
 	var trimmed := message_text.strip_edges()
 	if trimmed == "":
 		return
@@ -6139,6 +6170,8 @@ func apply_energy_attach_match_effects(target_pokemon: card_object, is_opponent:
 
 # Called when any win/loss condition is met to end the match
 func game_end_logic(loser_is_player: bool, is_draw: bool = false) -> void:
+	if _rec() != null:
+		_rec().finish("draw" if is_draw else ("loss" if loser_is_player else "win"))
 	# Set the flag immediately so no other async functions continue processing
 	game_is_over = true
 
@@ -6515,6 +6548,8 @@ func restore_opponent_blocker(was_visible: bool, context: String = "") -> void:
 
 # Called at the start of the player's turn to perform mandatory actions
 func player_start_turn_checks() -> void:
+	if _rec() != null:
+		_rec().turn_start(false)
 	if _should_bail():
 		return
 	# ISSUE #309: Trainer locks now lift at the END of the locked side's turn (Trainer_Effects.tick_trainer_lock)
@@ -6565,6 +6600,8 @@ func player_start_turn_checks() -> void:
 
 ## ISSUE #217: End Turn, with the board committed before anything else runs.
 func _on_end_turn_pressed() -> void:
+	if _rec() != null and not opponents_turn_active:
+		_rec().decision("end_turn", {})
 	if _end_turn_btn != null and is_instance_valid(_end_turn_btn):
 		_end_turn_btn.disabled = true
 	set_action_rows_disabled(true)
@@ -7320,6 +7357,8 @@ func can_retreat(is_opponent: bool) -> Dictionary:
 
 # Initiates the retreat flow: validates, then shows attached energies for the player to select for discarding
 func start_retreat() -> void:
+	if _rec() != null and not opponents_turn_active:
+		_rec().decision("retreat", {})
 	var retreat_check = can_retreat(false)
 	
 	if not retreat_check["can_retreat"]:
@@ -7987,6 +8026,8 @@ func display_and_apply_attack_damage(attacker: card_object, defender: card_objec
 
 # Applies damage from the chosen attack to the opponent's active pokemon and refreshes the HP display
 func perform_attack(attack_index: int) -> void:
+	if _rec() != null and not opponents_turn_active:
+		_rec().decision("attack", {"attack_index": attack_index, "attack": get_attacks_for_card(player_active_pokemon)[attack_index].get("name", "") if player_active_pokemon != null and attack_index < get_attacks_for_card(player_active_pokemon).size() else ""})
 	if opponent_active_pokemon == null:
 		print("Error: No opponent active pokemon to attack")
 		return
@@ -10090,6 +10131,8 @@ func handle_action_prize_card() -> void:
 
 # Handles playing a card from the player's hand: placing pokemon, attaching energy, evolving, or playing trainers
 func handle_action_normal_card() -> void:
+	if _rec() != null and not opponents_turn_active:
+		_rec().decision("play_card", {"card": selected_card_for_action.uid if selected_card_for_action != null else "", "card_name": selected_card_for_action.metadata.get("name", "") if selected_card_for_action != null else ""})
 	# Don't do anything if no card is selected
 	if selected_card_for_action == null:
 		print("Error: No card selected for action")
@@ -10685,6 +10728,12 @@ func clear_current_action_selection() -> void:
 
 # Follows the mouse for as long as the key is held.
 func _process(_delta: float) -> void:
+	# DEV: hold Ctrl to see the opponent's hand + Prize cards. Polled (not an input event) so it works at any moment —
+	# the CPU's turn, message boxes, input blockers, card previews — and alt-tab can't strand it.
+	if DebugMode.is_enabled() and GameState.autotest == null:
+		var ctrl_held := Input.is_key_pressed(KEY_CTRL)
+		if ctrl_held != _reveal_held:
+			_set_reveal_hidden(ctrl_held)
 	if not zoom_held:
 		return
 	# Safety net: alt-tabbing with the key down swallows the release event, which would
@@ -10825,6 +10874,8 @@ func _exit_tree() -> void:
 
 
 func _input(event: InputEvent) -> void:
+
+	# (DEV hold-Ctrl reveal is polled in _process, so no blocker or swallowed event can stop it.)
 
 	# -- Hold Shift to enlarge the card under the mouse -------------------------
 	# First branch in the function on purpose, so a card can be read at ANY moment -

@@ -660,6 +660,8 @@ func printed_powers_for(pokemon: card_object) -> Array:
 
 
 func open_power_menu() -> void:
+	if main._rec() != null and not main.opponents_turn_active:
+		main._rec().decision("power_menu", {})   # ISSUE #375 DEV: match recorder
 	if main.opponents_turn_active:
 		return
 	

@@ -64,6 +64,7 @@ var opt_branch_plan: Dictionary = {}   # --branch-plan=<abs path>: {"seed": deci
 var opt_cheat_cards := 0.0         # --cheat-cards=0..1: CPU sees Prizes + player hand/next draw (ISSUE #375)
 var opt_cheat_coins := 0.0         # --cheat-coins=0..1: CPU knows its coin results (ISSUE #375)
 var opt_counters_path := ""        # --counters=<abs path>: learned counter table for this job
+var opt_record := false            # --record: also run the dev match recorder (to test it)
 var opt_plan_turns := 0            # --plan-turns=N: CPU multi-turn planner depth (ISSUE #375 phase 3)
 var opt_era_mix := 0.0             # --era-mix=0..1: share of --real matches played with GENERATED era-pure decks
 const ERA_SETS := {"neo": ["neo1", "neo2", "neo3", "neo4", "np", "basep", "si1"], "ecard": ["ecard1", "ecard2", "ecard3"],
@@ -250,6 +251,7 @@ func _parse_args() -> void:
 			"learned": opt_learned_path = v
 			"era-mix": opt_era_mix = float(v)
 			"plan-turns": opt_plan_turns = int(v)
+			"record": opt_record = true
 			"cheat-cards": opt_cheat_cards = float(v)
 			"cheat-coins": opt_cheat_coins = float(v)
 			"counters": opt_counters_path = v
