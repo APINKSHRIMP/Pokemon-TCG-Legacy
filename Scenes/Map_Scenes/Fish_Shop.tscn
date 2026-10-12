@@ -1208,6 +1208,7 @@ position = Vector2(65, 136)
 shape = SubResource("RectangleShape2D_j34lu")
 
 [node name="MOVEMENTZONE9" type="ColorRect" parent="MART/Interior_25/BIG_LAND_4" unique_id=2128418774]
+visible = false
 layout_mode = 0
 offset_left = 27.0
 offset_top = 96.0
