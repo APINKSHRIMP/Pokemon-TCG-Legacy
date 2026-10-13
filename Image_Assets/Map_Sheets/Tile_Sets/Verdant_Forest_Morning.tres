@@ -1,6 +1,6 @@
-[gd_resource type="TileSet" format=3 uid="uid://brncoaox03ylg"]
+[gd_resource type="TileSet" format=3 uid="uid://dnaeudmxuybpb"]
 
-[ext_resource type="Texture2D" uid="uid://tg6ree2b0xh0" path="res://Image_Assets/Map_Sheets/Image_Sheets/Verdant_Forest_Morning.png" id="1_e137y"]
+[ext_resource type="Texture2D" uid="uid://dvwdtpbyq7cg1" path="res://Image_Assets/Map_Sheets/Image_Sheets/Verdant_Forest.png" id="1_e137y"]
 
 [sub_resource type="TileSetAtlasSource" id="TileSetAtlasSource_t2yrq"]
 texture = ExtResource("1_e137y")
@@ -1637,6 +1637,9 @@ texture = ExtResource("1_e137y")
 39:36/0 = 0
 40:36/0 = 0
 43:36/0 = 0
+56:24/0 = 0
+56:25/0 = 0
+56:26/0 = 0
 
 [resource]
 sources/0 = SubResource("TileSetAtlasSource_t2yrq")

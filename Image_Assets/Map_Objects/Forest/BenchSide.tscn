@@ -1,6 +1,6 @@
 [gd_scene format=3 uid="uid://buir7p6b708vv"]
 
-[ext_resource type="TileSet" uid="uid://brncoaox03ylg" path="res://Image_Assets/Map_Sheets/Tile_Sets/Verdant_Forest_Morning.tres" id="1_tl4b0"]
+[ext_resource type="TileSet" uid="uid://brncoaox03ylg" path="res://Image_Assets/Map_Sheets/Tile_Sets/Verdant_Forest.tres" id="1_tl4b0"]
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_dig5e"]
 size = Vector2(1, 21)

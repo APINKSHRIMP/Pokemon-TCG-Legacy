@@ -1,9 +1,9 @@
 [gd_scene format=4 uid="uid://d1lfen2hksh55"]
 
-[ext_resource type="TileSet" uid="uid://brncoaox03ylg" path="res://Image_Assets/Map_Sheets/Tile_Sets/Verdant_Forest_Morning.tres" id="1_vnhbh"]
+[ext_resource type="TileSet" uid="uid://brncoaox03ylg" path="res://Image_Assets/Map_Sheets/Tile_Sets/Verdant_Forest.tres" id="1_vnhbh"]
 [ext_resource type="PackedScene" uid="uid://bprufyh8mxqom" path="res://Scenes/Objects/Player_Object_Scene.tscn" id="2_06m8d"]
 [ext_resource type="PackedScene" uid="uid://c10qeone4u11s" path="res://Image_Assets/Map_Objects/Forest/DarkTree.tscn" id="4_0jajs"]
-[ext_resource type="TileSet" uid="uid://dqknfbtehgo6c" path="res://Image_Assets/Map_Sheets/Tile_Sets/Celeste_Harbour_Morning.tres" id="4_li0g5"]
+[ext_resource type="TileSet" path="res://Image_Assets/Map_Sheets/Tile_Sets/Celeste_Harbour.tres" id="4_li0g5"]
 [ext_resource type="PackedScene" uid="uid://d0k3aqu382y78" path="res://Image_Assets/Map_Objects/Forest/LightTree.tscn" id="5_efv3c"]
 [ext_resource type="PackedScene" uid="uid://bd1cf7d6oc7n0" path="res://Image_Assets/Map_Objects/Forest/Forest_Lamp.tscn" id="6_3uusb"]
 [ext_resource type="PackedScene" uid="uid://bw46iqrxgoxpp" path="res://Image_Assets/Map_Objects/Forest/LightVinesTree.tscn" id="6_7yrxg"]
@@ -88,6 +88,9 @@ height = 34.0
 [sub_resource type="CapsuleShape2D" id="CapsuleShape2D_aklnl"]
 radius = 11.0
 height = 46.0
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_dy23j"]
+size = Vector2(9, 4)
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_efv3c"]
 size = Vector2(300, 26.6875)
@@ -1948,9 +1951,6 @@ position = Vector2(-322, 737)
 [node name="DarkVinesTree51" parent="TILE_MAPS/PONDS/MAGIKARP_POND_L/MAGIKARP_POND_L_TREES/MAGIKARP_TREES_BOTTOM" unique_id=493405565 instance=ExtResource("7_442b1")]
 position = Vector2(-300, 767)
 
-[node name="MediumTree35" parent="TILE_MAPS/PONDS/MAGIKARP_POND_L/MAGIKARP_POND_L_TREES/MAGIKARP_TREES_BOTTOM" unique_id=1307043827 instance=ExtResource("8_6ll1i")]
-position = Vector2(-2651, 177)
-
 [node name="LightVinesTree42" parent="TILE_MAPS/PONDS/MAGIKARP_POND_L/MAGIKARP_POND_L_TREES/MAGIKARP_TREES_BOTTOM" unique_id=662496800 instance=ExtResource("6_7yrxg")]
 position = Vector2(145, 795)
 
@@ -2132,12 +2132,6 @@ position = Vector2(424, 764)
 [node name="DarkVinesTree64" parent="TILE_MAPS/PONDS/MAGIKARP_POND_L/MAGIKARP_POND_L_TREES/MAGIKARP_TREES_BOTTOM" unique_id=1017121960 instance=ExtResource("7_442b1")]
 position = Vector2(424, 764)
 
-[node name="LightTree46" parent="TILE_MAPS/PONDS/MAGIKARP_POND_L/MAGIKARP_POND_L_TREES/MAGIKARP_TREES_BOTTOM" unique_id=1862682452 instance=ExtResource("5_efv3c")]
-position = Vector2(-2685, 227)
-
-[node name="LightTree48" parent="TILE_MAPS/PONDS/MAGIKARP_POND_L/MAGIKARP_POND_L_TREES/MAGIKARP_TREES_BOTTOM" unique_id=1887324314 instance=ExtResource("5_efv3c")]
-position = Vector2(-2645, 271)
-
 [node name="LightTree49" parent="TILE_MAPS/PONDS/MAGIKARP_POND_L/MAGIKARP_POND_L_TREES/MAGIKARP_TREES_BOTTOM" unique_id=793728976 instance=ExtResource("5_efv3c")]
 position = Vector2(-411, 753)
 
@@ -2186,9 +2180,6 @@ position = Vector2(386, 852)
 [node name="MediumVinesTree41" parent="TILE_MAPS/PONDS/MAGIKARP_POND_L/MAGIKARP_POND_L_TREES/MAGIKARP_TREES_BOTTOM" unique_id=1179800231 instance=ExtResource("9_x6xh7")]
 position = Vector2(-186, 915)
 
-[node name="MediumVinesTree44" parent="TILE_MAPS/PONDS/MAGIKARP_POND_L/MAGIKARP_POND_L_TREES/MAGIKARP_TREES_BOTTOM" unique_id=1904082084 instance=ExtResource("9_x6xh7")]
-position = Vector2(-2661, 321)
-
 [node name="DarkTree41" parent="TILE_MAPS/PONDS/MAGIKARP_POND_L/MAGIKARP_POND_L_TREES/MAGIKARP_TREES_BOTTOM" unique_id=1817205062 instance=ExtResource("4_0jajs")]
 position = Vector2(0, 925)
 
@@ -2206,15 +2197,6 @@ position = Vector2(-133, 960)
 
 [node name="DarkVinesTree40" parent="TILE_MAPS/PONDS/MAGIKARP_POND_L/MAGIKARP_POND_L_TREES/MAGIKARP_TREES_BOTTOM" unique_id=52274648 instance=ExtResource("7_442b1")]
 position = Vector2(-89, 992)
-
-[node name="LightTree40" parent="TILE_MAPS/PONDS/MAGIKARP_POND_L/MAGIKARP_POND_L_TREES/MAGIKARP_TREES_BOTTOM" unique_id=460067049 instance=ExtResource("5_efv3c")]
-position = Vector2(-2622, 354)
-
-[node name="MediumVinesTree40" parent="TILE_MAPS/PONDS/MAGIKARP_POND_L/MAGIKARP_POND_L_TREES/MAGIKARP_TREES_BOTTOM" unique_id=587445564 instance=ExtResource("9_x6xh7")]
-position = Vector2(-2643, 394)
-
-[node name="MediumVinesTree45" parent="TILE_MAPS/PONDS/MAGIKARP_POND_L/MAGIKARP_POND_L_TREES/MAGIKARP_TREES_BOTTOM" unique_id=232534094 instance=ExtResource("9_x6xh7")]
-position = Vector2(-2577, 394)
 
 [node name="MediumVinesTree42" parent="TILE_MAPS/PONDS/MAGIKARP_POND_L/MAGIKARP_POND_L_TREES/MAGIKARP_TREES_BOTTOM" unique_id=1784986138 instance=ExtResource("9_x6xh7")]
 position = Vector2(80, 910)
@@ -2261,17 +2243,11 @@ position = Vector2(250, 991)
 [node name="DarkVinesTree42" parent="TILE_MAPS/PONDS/MAGIKARP_POND_L/MAGIKARP_POND_L_TREES/MAGIKARP_TREES_BOTTOM" unique_id=1514832941 instance=ExtResource("7_442b1")]
 position = Vector2(344, 974)
 
-[node name="DarkVinesTree39" parent="TILE_MAPS/PONDS/MAGIKARP_POND_L/MAGIKARP_POND_L_TREES/MAGIKARP_TREES_BOTTOM" unique_id=1403351879 instance=ExtResource("7_442b1")]
-position = Vector2(-2609, 439)
-
 [node name="MediumTree58" parent="TILE_MAPS/PONDS/MAGIKARP_POND_L/MAGIKARP_POND_L_TREES/MAGIKARP_TREES_BOTTOM" unique_id=1442922450 instance=ExtResource("8_6ll1i")]
 position = Vector2(366, 999)
 
 [node name="MediumTree74" parent="TILE_MAPS/PONDS/MAGIKARP_POND_L/MAGIKARP_POND_L_TREES/MAGIKARP_TREES_BOTTOM" unique_id=1823593206 instance=ExtResource("8_6ll1i")]
 position = Vector2(466, 1062)
-
-[node name="MediumTree64" parent="TILE_MAPS/PONDS/MAGIKARP_POND_L/MAGIKARP_POND_L_TREES/MAGIKARP_TREES_BOTTOM" unique_id=2070389775 instance=ExtResource("8_6ll1i")]
-position = Vector2(-2543, 435)
 
 [node name="DarkVinesTree46" parent="TILE_MAPS/PONDS/MAGIKARP_POND_L/MAGIKARP_POND_L_TREES/MAGIKARP_TREES_BOTTOM" unique_id=1758779374 instance=ExtResource("7_442b1")]
 position = Vector2(-272, 898)
@@ -2391,14 +2367,6 @@ scale = Vector2(-1, 1)
 position = Vector2(-1154, 1210)
 scale = Vector2(-1, 1)
 
-[node name="MediumVinesTree49" parent="TILE_MAPS/PONDS/MAGIKARP_POND_L/MAGIKARP_POND_L_TREES/MAGIKARP_TREES_BOTTOM" unique_id=1817650346 instance=ExtResource("9_x6xh7")]
-position = Vector2(-2381, 330)
-scale = Vector2(-1, 1)
-
-[node name="MediumTree65" parent="TILE_MAPS/PONDS/MAGIKARP_POND_L/MAGIKARP_POND_L_TREES/MAGIKARP_TREES_BOTTOM" unique_id=596684777 instance=ExtResource("8_6ll1i")]
-position = Vector2(-2429, 360)
-scale = Vector2(-1, 1)
-
 [node name="DarkTree47" parent="TILE_MAPS/PONDS/MAGIKARP_POND_L/MAGIKARP_POND_L_TREES/MAGIKARP_TREES_BOTTOM" unique_id=941425116 instance=ExtResource("4_0jajs")]
 position = Vector2(112, 1013)
 
@@ -2438,9 +2406,6 @@ position = Vector2(408, 1030)
 [node name="LightVinesTree54" parent="TILE_MAPS/PONDS/MAGIKARP_POND_L/MAGIKARP_POND_L_TREES/MAGIKARP_TREES_BOTTOM" unique_id=187331436 instance=ExtResource("6_7yrxg")]
 position = Vector2(349, 1056)
 
-[node name="LightVinesTree71" parent="TILE_MAPS/PONDS/MAGIKARP_POND_L/MAGIKARP_POND_L_TREES/MAGIKARP_TREES_BOTTOM" unique_id=1651196998 instance=ExtResource("6_7yrxg")]
-position = Vector2(-2401, 386)
-
 [node name="MediumTree73" parent="TILE_MAPS/PONDS/MAGIKARP_POND_L/MAGIKARP_POND_L_TREES/MAGIKARP_TREES_BOTTOM" unique_id=576272730 instance=ExtResource("8_6ll1i")]
 position = Vector2(435, 1078)
 
@@ -2470,9 +2435,6 @@ position = Vector2(-119, 1061)
 
 [node name="MediumTree77" parent="TILE_MAPS/PONDS/MAGIKARP_POND_L/MAGIKARP_POND_L_TREES/MAGIKARP_TREES_BOTTOM" unique_id=116823862 instance=ExtResource("8_6ll1i")]
 position = Vector2(-184, 1066)
-
-[node name="MediumTree78" parent="TILE_MAPS/PONDS/MAGIKARP_POND_L/MAGIKARP_POND_L_TREES/MAGIKARP_TREES_BOTTOM" unique_id=480786960 instance=ExtResource("8_6ll1i")]
-position = Vector2(-2287, 379)
 
 [node name="DarkTree49" parent="TILE_MAPS/PONDS/MAGIKARP_POND_L/MAGIKARP_POND_L_TREES/MAGIKARP_TREES_BOTTOM" unique_id=582080930 instance=ExtResource("4_0jajs")]
 position = Vector2(-271, 1238)
@@ -2537,26 +2499,8 @@ position = Vector2(446, 1229)
 [node name="MediumTree85" parent="TILE_MAPS/PONDS/MAGIKARP_POND_L/MAGIKARP_POND_L_TREES/MAGIKARP_TREES_BOTTOM" unique_id=917716489 instance=ExtResource("8_6ll1i")]
 position = Vector2(397, 1235)
 
-[node name="LightVinesTree60" parent="TILE_MAPS/PONDS/MAGIKARP_POND_L/MAGIKARP_POND_L_TREES/MAGIKARP_TREES_BOTTOM" unique_id=1778541627 instance=ExtResource("6_7yrxg")]
-position = Vector2(-2203, 380)
-
-[node name="LightVinesTree72" parent="TILE_MAPS/PONDS/MAGIKARP_POND_L/MAGIKARP_POND_L_TREES/MAGIKARP_TREES_BOTTOM" unique_id=391786571 instance=ExtResource("6_7yrxg")]
-position = Vector2(-2329, 400)
-
-[node name="LightVinesTree73" parent="TILE_MAPS/PONDS/MAGIKARP_POND_L/MAGIKARP_POND_L_TREES/MAGIKARP_TREES_BOTTOM" unique_id=1944672578 instance=ExtResource("6_7yrxg")]
-position = Vector2(-1883, 416)
-
 [node name="LightVinesTree61" parent="TILE_MAPS/PONDS/MAGIKARP_POND_L/MAGIKARP_POND_L_TREES/MAGIKARP_TREES_BOTTOM" unique_id=354166621 instance=ExtResource("6_7yrxg")]
 position = Vector2(-192, 1234)
-
-[node name="MediumTree89" parent="TILE_MAPS/PONDS/MAGIKARP_POND_L/MAGIKARP_POND_L_TREES/MAGIKARP_TREES_BOTTOM" unique_id=678606983 instance=ExtResource("8_6ll1i")]
-position = Vector2(-2271, 437)
-
-[node name="MediumTree90" parent="TILE_MAPS/PONDS/MAGIKARP_POND_L/MAGIKARP_POND_L_TREES/MAGIKARP_TREES_BOTTOM" unique_id=1941824455 instance=ExtResource("8_6ll1i")]
-position = Vector2(-2370, 454)
-
-[node name="MediumTree91" parent="TILE_MAPS/PONDS/MAGIKARP_POND_L/MAGIKARP_POND_L_TREES/MAGIKARP_TREES_BOTTOM" unique_id=1820708121 instance=ExtResource("8_6ll1i")]
-position = Vector2(-2440, 422)
 
 [node name="MAGIKARP_TREES_TOP" type="TileMap" parent="TILE_MAPS/PONDS/MAGIKARP_POND_L/MAGIKARP_POND_L_TREES" unique_id=1435742225]
 position = Vector2(-2563, -661)
@@ -5698,7 +5642,6 @@ tile_map_data = PackedByteArray("AACi/0AAAAAjABQAAACj/z8AAAAkABMAAACj/0AAAAAkABQ
 tile_set = ExtResource("1_vnhbh")
 
 [node name="LIGHTS" type="Control" parent="TILE_MAPS" unique_id=753293066]
-visible = false
 layout_mode = 3
 anchors_preset = 0
 offset_right = 40.0
@@ -5819,16 +5762,6 @@ position = Vector2(-247, 592)
 rotation = -3.1415925
 scale = Vector2(1, -1)
 
-[node name="ForestLamp39" parent="TILE_MAPS/LIGHTS" unique_id=1963429576 instance=ExtResource("6_3uusb")]
-position = Vector2(-980, -201)
-rotation = -3.1415925
-scale = Vector2(1, -1)
-
-[node name="ForestLamp40" parent="TILE_MAPS/LIGHTS" unique_id=426982632 instance=ExtResource("6_3uusb")]
-position = Vector2(-980, -75)
-rotation = -3.1415925
-scale = Vector2(1, -1)
-
 [node name="ForestLamp57" parent="TILE_MAPS/LIGHTS" unique_id=675452799 instance=ExtResource("6_3uusb")]
 position = Vector2(3259, 1392)
 rotation = -3.1415925
@@ -5855,6 +5788,16 @@ tile_set = ExtResource("1_vnhbh")
 [node name="Piers" type="TileMapLayer" parent="." unique_id=1084740668]
 position = Vector2(2912, 393)
 tile_map_data = PackedByteArray("AAAl/ykAAAAlABwAAAAl/yoAAAAlABwAAAAl/ysAAAAlABwAAAAl/ywAAAAlABwAAAAj/ykAAAAjABwAAAAj/yoAAAAjABwAAAAj/ysAAAAjABwAAAAj/ywAAAAjABwAAAAk/ykAAAAlABwAAAAk/yoAAAAlABwAAAAk/ysAAAAlABwAAAAk/ywAAAAlABwAAAAm/ykAAAAlABwAAAAm/yoAAAAlABwAAAAm/ysAAAAlABwAAAAm/ywAAAAlABwAAAAn/ykAAAAlABwAAAAn/yoAAAAlABwAAAAn/ysAAAAlABwAAAAn/ywAAAAlABwAAAAo/ykAAAAlABwAAAAo/yoAAAAlABwAAAAo/ysAAAAlABwAAAAo/ywAAAAlABwAAAAp/ykAAAAlABwAAAAp/yoAAAAlABwAAAAp/ysAAAAlABwAAAAp/ywAAAAlABwAAAAj/y0AAAAjABwAAAAk/y0AAAAlABwAAAAl/y0AAAAlABwAAAAm/y0AAAAlABwAAAAn/y0AAAAlABwAAAAo/y0AAAAlABwAAAAp/y0AAAAlABwAAAAj/y4AAAAjABwAAAAj/y8AAAAjAB0AAAAk/y4AAAAlABwAAAAk/y8AAAAlAB0AAAAl/y4AAAAlABwAAAAl/y8AAAAlAB0AAAAm/y4AAAAlABwAAAAm/y8AAAAlAB0AAAAn/y4AAAAlABwAAAAn/y8AAAAlAB0AAAAo/y4AAAAlABwAAAAo/y8AAAAlAB0AAAAp/y4AAAAlABwAAAAp/y8AAAAlAB0AAAAr/0IAAAApAA0AABAr/0MAAAApAA4AABAr/0QAAAApAA8AABAs/0IAAAAoAA0AABAs/0MAAAAoAA4AABAs/0QAAAAoAA8AABAq/ykAAAAlABwAAAAq/yoAAAAlABwAAAAq/ysAAAAlABwAAAAq/ywAAAAlABwAAAAq/y0AAAAlABwAAAAq/y4AAAAlABwAAAAq/y8AAAAlAB0AAAAr/ykAAAAlABwAAAAr/yoAAAAlABwAAAAr/ysAAAAlABwAAAAr/ywAAAAlABwAAAAr/y0AAAAlABwAAAAr/y4AAAAlABwAAAAr/y8AAAAlAB0AAAAs/ykAAAAlABwAAAAs/yoAAAAlABwAAAAs/ysAAAAlABwAAAAs/ywAAAAlABwAAAAs/y0AAAAlABwAAAAs/y4AAAAlABwAAAAs/y8AAAAlAB0AAAAt/ykAAAAlABwAAAAt/yoAAAAlABwAAAAt/ysAAAAlABwAAAAt/ywAAAAlABwAAAAt/y0AAAAlABwAAAAt/y4AAAAlABwAAAAt/y8AAAAlAB0AAAAu/ykAAAAlABwAAAAu/yoAAAAlABwAAAAu/ysAAAAlABwAAAAu/ywAAAAlABwAAAAu/y0AAAAlABwAAAAu/y4AAAAlABwAAAAu/y8AAAAlAB0AAAAv/ykAAAAlABwAAAAv/yoAAAAlABwAAAAv/ysAAAAlABwAAAAv/ywAAAAlABwAAAAv/y0AAAAlABwAAAAv/y4AAAAlABwAAAAv/y8AAAAlAB0AAAAw/ykAAAAlABwAAAAw/yoAAAAlABwAAAAw/ysAAAAlABwAAAAw/ywAAAAlABwAAAAw/y0AAAAlABwAAAAw/y4AAAAlABwAAAAw/y8AAAAlAB0AAAAx/ykAAAAlABwAAAAx/yoAAAAlABwAAAAx/ysAAAAlABwAAAAx/ywAAAAlABwAAAAx/y0AAAAlABwAAAAx/y4AAAAlABwAAAAx/y8AAAAlAB0AAAAy/ykAAAAlABwAAAAy/yoAAAAlABwAAAAy/ysAAAAlABwAAAAy/ywAAAAlABwAAAAy/y0AAAAlABwAAAAy/y4AAAAlABwAAAAy/y8AAAAlAB0AAAAz/ykAAAAlABwAAAAz/yoAAAAlABwAAAAz/ysAAAAlABwAAAAz/ywAAAAlABwAAAAz/y0AAAAlABwAAAAz/y4AAAAlABwAAAAz/y8AAAAlAB0AAAA0/ykAAAAmABwAAAA0/yoAAAAmABwAAAA0/ysAAAAmABwAAAA0/ywAAAAmABwAAAA0/y0AAAAmABwAAAA0/y4AAAAmABwAAAA0/y8AAAAmAB0AAAA9/zoAAAAoAA0AAAA9/zsAAAAoAA4AAAA9/zwAAAAoAA8AAAA+/zoAAAApAA0AAAA+/zsAAAApAA4AAAA+/zwAAAApAA8AAAAg/ywAAAAoAA0AAAAg/y0AAAAoAA4AAAAg/y4AAAAoAA8AAAAh/ywAAAApAA0AAAAh/y0AAAApAA4AAAAh/y4AAAApAA8AAABA/0kAAAAoAA0AAABA/0oAAAAoAA4AAABA/0sAAAAoAA8AAABB/0kAAAApAA0AAABB/0oAAAApAA4AAABB/0sAAAApAA8AAAA=")
+tile_set = ExtResource("1_vnhbh")
+
+[node name="Fishing_Sign_Bottom" type="TileMapLayer" parent="." unique_id=247057974]
+position = Vector2(-527, 1031)
+tile_map_data = PackedByteArray("AAD6/wEAAAA4ABoAAAALAAEAAAA4ABoAAAA=")
+tile_set = ExtResource("1_vnhbh")
+
+[node name="Fishing_Sign_Top" type="TileMapLayer" parent="." unique_id=665165080]
+position = Vector2(-527, 1031)
+tile_map_data = PackedByteArray("AAD6////AAA4ABgAAAD6/wAAAAA4ABkAAAALAP//AAA4ABgAAAALAAAAAAA4ABkAAAA=")
 tile_set = ExtResource("1_vnhbh")
 
 [node name="Objects" type="Control" parent="." unique_id=232474415]
@@ -6548,6 +6491,14 @@ shape = SubResource("CapsuleShape2D_0qbvq")
 position = Vector2(3392, 1453)
 rotation = -1.5707964
 shape = SubResource("CapsuleShape2D_aklnl")
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Objects/Collisions" unique_id=2121838668]
+position = Vector2(-615.5, 1049)
+shape = SubResource("RectangleShape2D_dy23j")
+
+[node name="CollisionShape2D2" type="CollisionShape2D" parent="Objects/Collisions" unique_id=1652303953]
+position = Vector2(-343.5, 1050)
+shape = SubResource("RectangleShape2D_dy23j")
 
 [node name="Player" parent="." unique_id=510514557 instance=ExtResource("2_06m8d")]
 position = Vector2(1771, 1050)

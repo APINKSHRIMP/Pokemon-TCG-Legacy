@@ -2,11 +2,6 @@ extends BaseMapScene
 
 const SCENE_PATH = "res://Scenes/Map_Scenes/Celeste_Harbour.tscn"
 
-const TILESET_MORNING   = preload("res://Image_Assets/Map_Sheets/Tile_Sets/Celeste_Harbour_Morning.tres")
-const TILESET_AFTERNOON = preload("res://Image_Assets/Map_Sheets/Tile_Sets/Celeste_Harbour_Afternoon.tres")
-const TILESET_EVENING   = preload("res://Image_Assets/Map_Sheets/Tile_Sets/Celeste_Harbour_Evening.tres")
-const TILESET_NIGHT     = preload("res://Image_Assets/Map_Sheets/Tile_Sets/Celeste_Harbour_Night.tres")
-
 const DEFAULT_SPAWN_POSITION             = Vector2(-600, 1500)
 
 const TAXI_START_POS := Vector2(2573.0, 1816.0)
@@ -58,6 +53,7 @@ func get_scene_path() -> String:    return SCENE_PATH
 func get_bgm_path() -> String:      return SoundManagerScript.BGM_CELESTE_HARBOUR
 func get_default_spawn() -> Vector2: return DEFAULT_SPAWN_POSITION
 func get_map_data_name() -> String: return "Celeste_Harbour"
+func uses_time_of_day() -> bool: return true
 
 # ============================================================
 # FIRST-LAUNCH TAXI INTRO
@@ -268,23 +264,16 @@ func _scene_setup():
 	apply_permanent_unlocks(date)
 	apply_daily_dressing(date)
 
+# Colours come from the time-of-day grade (BaseMapScene); this only handles what the time
+# switches on or off.
 func set_time_of_day(time: String) -> void:
-	var tileset: TileSet
-	match time:
-		"Morning":
-			tileset = TILESET_MORNING
-			$LIGHTS.queue_free()
-		"Afternoon":
-			tileset = TILESET_AFTERNOON
-			$LIGHTS.queue_free()
-		"Evening":
-			tileset = TILESET_EVENING
-			$LIGHTS.queue_free()
-		"Night":
-			tileset = TILESET_NIGHT
-			$LIGHTS.visible = true
-			$"TILE_MAPS/OBJECTS/CAR PARK CARS".visible = false
-	_apply_tileset($TILE_MAPS, tileset)
+	# Lights come on at dusk; Time_Of_Day_Grade.LIGHT_ENERGY runs them dimmer at Evening.
+	if time == "Evening" or time == "Night":
+		$LIGHTS.visible = true
+	else:
+		$LIGHTS.queue_free()
+	if time == "Night":
+		$"TILE_MAPS/OBJECTS/CAR PARK CARS".visible = false
 
 # Gates and blocks that open once and stay open. These read the REAL date, never a
 # looped one -- a loop that resolved day 12 back to day 3 would otherwise rebuild

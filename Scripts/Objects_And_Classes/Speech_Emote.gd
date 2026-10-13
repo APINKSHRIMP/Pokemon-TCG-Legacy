@@ -40,6 +40,7 @@ static func play(target: Node2D, kind: String) -> void:
 	emote.z_index = Z
 	emote.position = Vector2(0.0, Y_OFFSET)
 	emote.scale = Vector2.ZERO
+	emote.add_to_group("no_time_grade")  # UI-like: keeps its own colours at night
 	# The talk bubble sits in exactly this spot; it steps aside for the beat.
 	var bubble_was: bool = false
 	var bubble: Sprite2D = null

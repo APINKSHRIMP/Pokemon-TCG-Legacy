@@ -17,8 +17,10 @@ extends Node2D
 #   - _input() main-menu exit shortcut
 #   - _on_door_entered() fade-black scene transition
 #   - Moving-in visibility helper
-#   - Tileset recursive helper
+#   - Time-of-day colour grade (outdoor maps)
 # ============================================================
+
+const TimeOfDayGrade = preload("res://Scripts/Global_Scripts/Time_Of_Day_Grade.gd")
 
 @onready var _player: CharacterBody2D = $Player
 @onready var _ui_layer: CanvasLayer = $UILAYER
@@ -50,6 +52,11 @@ func get_bgm_path() -> String:
 # CharacterSchedule, so a map never builds a data path itself any more.
 func get_map_data_name() -> String:
 	return ""
+
+# Return true for outdoor maps: every world CanvasItem then wears the time-of-day colour
+# grade (Time_Of_Day_Grade.gd). Maps are drawn once, in Afternoon colours.
+func uses_time_of_day() -> bool:
+	return false
 
 # Called after spawn resolution and before MapManager.initialise.
 # Override for time-of-day tiles, date events, cash label, starter
@@ -95,7 +102,10 @@ func _ready():
 		get_tree().root.set("modulate", Color(1, 1, 1, 0))
 
 	_setup_doors()
+	_setup_time_of_day_grade()
 	_scene_setup()
+	if uses_time_of_day():
+		TimeOfDayGrade.style_lights(self, GameState.get_time())
 
 	var scene_path := get_scene_path()
 	var arrival_door := _find_arrival_door(GameState.entering_from)
@@ -171,6 +181,8 @@ func _ready():
 		_open_menu_overlay()
 
 func _exit_tree():
+	if get_tree().node_added.is_connected(_on_node_added_grade):
+		get_tree().node_added.disconnect(_on_node_added_grade)
 	# ISSUE #56: snapshot NPC/opponent positions before this map unloads (battle, sub-menu, door) so
 	# they resume from where they were instead of teleporting back to their data-file spawn on reload.
 	MapManager.capture_actor_positions()
@@ -480,11 +492,19 @@ func _apply_moving_in_visibility(layer_parent: Node, exclude_name: String = "Mov
 			layer.visible = layer.name != exclude_name
 
 # ============================================================
-# TILESET HELPER — used by scenes with time-of-day tilesets
+# TIME-OF-DAY GRADE — see Time_Of_Day_Grade.gd
 # ============================================================
 
-func _apply_tileset(node: Node, tileset: TileSet) -> void:
-	if node is TileMapLayer:
-		node.tile_set = tileset
-	for child in node.get_children():
-		_apply_tileset(child, tileset)
+# Sets the grade globals for this map (identity indoors), grades everything already in the
+# scene, then catches anything spawned later -- NPCs, Pokemon, cutscene actors -- as it enters.
+func _setup_time_of_day_grade() -> void:
+	if not uses_time_of_day():
+		TimeOfDayGrade.apply_time("")
+		return
+	TimeOfDayGrade.apply_time(GameState.get_time())
+	TimeOfDayGrade.grade_tree(self, self)
+	get_tree().node_added.connect(_on_node_added_grade)
+
+func _on_node_added_grade(node: Node) -> void:
+	if is_ancestor_of(node):
+		TimeOfDayGrade.grade_node(node, self)

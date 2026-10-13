@@ -32,7 +32,6 @@ PackOpeningManager="*res://Scripts/Global_Scripts/Pack_Opening_Manager.gd"
 
 window/size/viewport_width=1920
 window/size/viewport_height=1080
-window/size/mode=4
 window/stretch/mode="canvas_items"
 
 [rendering]
@@ -41,3 +40,22 @@ textures/canvas_textures/default_texture_filter=0
 environment/defaults/default_clear_color=Color(0, 0, 0, 1)
 2d/snap/snap_2d_transforms_to_pixel=true
 2d/snap/snap_2d_vertices_to_pixel=true
+
+[shader_globals]
+
+tod_red={
+"type": "vec4",
+"value": Vector4(1, 0, 0, 0)
+}
+tod_green={
+"type": "vec4",
+"value": Vector4(0, 1, 0, 0)
+}
+tod_blue={
+"type": "vec4",
+"value": Vector4(0, 0, 1, 0)
+}
+tod_curve={
+"type": "vec4",
+"value": Vector4(0, 0, 0, 0)
+}

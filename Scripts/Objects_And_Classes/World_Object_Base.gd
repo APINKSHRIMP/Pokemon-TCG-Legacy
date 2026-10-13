@@ -227,6 +227,7 @@ func _setup_bubble():
 	_bubble_sprite.position = Vector2(0, BUBBLE_Y_OFFSET)
 	_bubble_sprite.z_index = BUBBLE_Z_INDEX
 	_bubble_sprite.visible = false
+	_bubble_sprite.add_to_group("no_time_grade")  # UI-like: keeps its own colours at night
 	add_child(_bubble_sprite)
 
 func _get_bubble_texture() -> Texture2D:

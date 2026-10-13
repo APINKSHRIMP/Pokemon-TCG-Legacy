@@ -1,4 +1,4 @@
-[gd_resource type="TileSet" format=3 uid="uid://4a7qu7grdjn6"]
+[gd_resource type="TileSet" format=3]
 
 [ext_resource type="Texture2D" uid="uid://cm3cfpcnaq7rk" path="res://Image_Assets/Map_Sheets/Image_Sheets/Verdant_Forest_Night.png" id="1_bfmlv"]
 

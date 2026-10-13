@@ -13,14 +13,18 @@
 
 param (
     [string]$ProjectRoot = "C:\Pokemon TCG Legacy",
-    [string]$OutputFile  = ""
+    [string]$OutputFile  = "",
+    # Defaults to NPC_and_Opponent_Data\Opponent_Deck_Data (what the game loads for opponents,
+    # via Asset_Lookup). Pass any folder (relative to ProjectRoot, or absolute) to override.
+    [string]$DeckFolder  = ""
 )
 
 if (-not $OutputFile) {
     $OutputFile = Join-Path $ProjectRoot "Spreadsheets\Card_Usage_Report.csv"
 }
 
-$deckFolder    = Join-Path $ProjectRoot "NPC_and_Opponent_Data\Opponent_Deck_Data"
+$deckFolder    = if ($DeckFolder) { if ([IO.Path]::IsPathRooted($DeckFolder)) { $DeckFolder } else { Join-Path $ProjectRoot $DeckFolder } } else { Join-Path $ProjectRoot "NPC_and_Opponent_Data\Opponent_Deck_Data" }
+Write-Host "Deck folder: $deckFolder"
 $cardSetFolder = Join-Path $ProjectRoot "Card_Set_Data"
 
 # Extract set prefix from a card ID like "base1-23" -> "base1"

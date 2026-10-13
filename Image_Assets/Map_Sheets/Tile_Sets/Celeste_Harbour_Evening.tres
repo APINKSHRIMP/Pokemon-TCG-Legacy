@@ -1,4 +1,4 @@
-[gd_resource type="TileSet" format=3 uid="uid://c34nr8t4f5vx0"]
+[gd_resource type="TileSet" format=3]
 
 [ext_resource type="Texture2D" uid="uid://b2t10a7yoku3p" path="res://Image_Assets/Map_Sheets/Image_Sheets/Celeste_Harbour_Evening.png" id="1_foewd"]
 

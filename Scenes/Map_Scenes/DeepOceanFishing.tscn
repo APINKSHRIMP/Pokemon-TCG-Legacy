@@ -1,7 +1,7 @@
 [gd_scene format=4 uid="uid://benpkgfkhrtkn"]
 
 [ext_resource type="Script" path="res://Scripts/Map_Scripts/Deep_Ocean_Fishing.gd" id="1_wbkbu"]
-[ext_resource type="TileSet" uid="uid://dqknfbtehgo6c" path="res://Image_Assets/Map_Sheets/Tile_Sets/Celeste_Harbour_Morning.tres" id="4_cnx4p"]
+[ext_resource type="TileSet" uid="uid://dqknfbtehgo6c" path="res://Image_Assets/Map_Sheets/Tile_Sets/Celeste_Harbour.tres" id="4_cnx4p"]
 [ext_resource type="PackedScene" uid="uid://bprufyh8mxqom" path="res://Scenes/Objects/Player_Object_Scene.tscn" id="4_n7p1c"]
 [ext_resource type="Texture2D" uid="uid://3yd2uxgvhb43" path="res://Image_Assets/Map_Objects/FishingBoat.png" id="4_wbkbu"]
 [ext_resource type="Script" uid="uid://bbrlrblh7j22j" path="res://Scripts/Objects_And_Classes/Fishing/Fishing_Zone.gd" id="5_wbkbu"]

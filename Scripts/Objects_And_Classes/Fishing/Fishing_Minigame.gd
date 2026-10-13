@@ -2072,6 +2072,9 @@ func _restore_sound() -> void:
 ## An inner class is its OWN script and cannot see the outer one's constants, so the
 ## three numbers are handed to it when it is built rather than read from up here.
 class NameTag extends Node2D:
+	func _init() -> void:
+		add_to_group("no_time_grade")  # floating text: stays readable at night
+
 	var text: String = ""
 	var width: float = 160.0
 	var font_size: int = 8
@@ -2097,6 +2100,9 @@ class NameTag extends Node2D:
 ## changes colour as one block reads as a flash, and the travelling hue is what makes
 ## it read as the same flourish a new card gets.
 class NewTag extends Node2D:
+	func _init() -> void:
+		add_to_group("no_time_grade")  # floating text: stays readable at night
+
 	## TWEAKABLE. FREQ is colour cycles per second and SPREAD how much of the hue
 	## wheel the word spans at any instant -- 1.0 is a full rainbow across "NEW!".
 	const FREQ := 1.0
@@ -2146,6 +2152,9 @@ class NewTag extends Node2D:
 ## head. Same life as NewTag; every number is handed in at construction because an inner
 ## class cannot read the outer class's constants.
 class FishCoinTag extends Node2D:
+	func _init() -> void:
+		add_to_group("no_time_grade")  # floating text: stays readable at night
+
 	const OUTLINE := 2
 
 	var text: String = ""

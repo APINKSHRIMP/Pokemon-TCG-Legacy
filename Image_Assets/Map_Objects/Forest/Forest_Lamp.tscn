@@ -1,6 +1,6 @@
 [gd_scene format=3 uid="uid://bd1cf7d6oc7n0"]
 
-[ext_resource type="TileSet" uid="uid://brncoaox03ylg" path="res://Image_Assets/Map_Sheets/Tile_Sets/Verdant_Forest_Afternoon.tres" id="1_yg3vm"]
+[ext_resource type="TileSet" uid="uid://brncoaox03ylg" path="res://Image_Assets/Map_Sheets/Tile_Sets/Verdant_Forest.tres" id="1_yg3vm"]
 
 [sub_resource type="Gradient" id="Gradient_bf13f"]
 offsets = PackedFloat32Array(0, 0.5943396)
@@ -9,7 +9,8 @@ colors = PackedColorArray(1, 1, 1, 0.49019608, 1.1540799, 1.1540799, 1.1540799, 
 [sub_resource type="GradientTexture2D" id="GradientTexture2D_yg3vm"]
 gradient = SubResource("Gradient_bf13f")
 fill = 1
-fill_from = Vector2(0.4764706, 0.48235294)
+fill_from = Vector2(0.5, 0.5)
+fill_to = Vector2(1.2119, 0.5)
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_yg3vm"]
 size = Vector2(11, 5)
@@ -28,7 +29,7 @@ tile_map_data = PackedByteArray(0, 0, 196, 255, 221, 255, 0, 0, 37, 0, 2, 0, 0, 
 tile_set = ExtResource("1_yg3vm")
 
 [node name="PointLight2D2" type="PointLight2D" parent="." unique_id=1175959164]
-position = Vector2(14, 1)
+position = Vector2(8, -8)
 scale = Vector2(5.2968755, 5.3408933)
 color = Color(0.3883725, 0.34562916, 0.26624864, 0.56078434)
 energy = 16.0

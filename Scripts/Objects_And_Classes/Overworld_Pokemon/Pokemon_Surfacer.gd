@@ -64,6 +64,8 @@ const SPLASH_SPEED := 0.8
 
 const WATER_SHADER := """
 shader_type canvas_item;
+// Replaces the time-of-day grade material these sprites would otherwise wear, so it grades too.
+#include "res://Scripts/Shaders/Time_Of_Day_Grade.gdshaderinc"
 uniform vec4 water_colour : source_color = vec4(0.2118, 0.4235, 0.6196, 1.0);
 uniform vec4 deep_colour : source_color = vec4(0.094, 0.2196, 0.4, 1.0);
 // Absolute texture row of the first row BELOW the water.
@@ -78,7 +80,9 @@ uniform float fade_rows = 8.0;
 uniform float reveal_row = 0.0;
 uniform float reveal_soft = 4.0;
 void fragment() {
-	vec4 c = texture(TEXTURE, UV) * COLOR;
+	// ISSUE #378: COLOR already holds texture * modulate in Godot 4.6, so the old
+	// texture(TEXTURE, UV) * COLOR applied the sprite twice and drew it too dark.
+	vec4 c = COLOR;
 	float row = floor(UV.y / TEXTURE_PIXEL_SIZE.y);
 	float shown = clamp((reveal_row - row) / reveal_soft, 0.0, 1.0);
 	if (row >= waterline_row) {
@@ -89,6 +93,7 @@ void fragment() {
 		float t = clamp(1.0 - depth / tint_rows, 0.0, 1.0) * above_tint;
 		COLOR = vec4(mix(c.rgb, water_colour.rgb, t), c.a * shown);
 	}
+	COLOR.rgb = tod_grade(COLOR.rgb);
 }
 """
 
@@ -104,6 +109,7 @@ static func water_shader() -> Shader:
 	if _shader == null:
 		_shader = Shader.new()
 		_shader.code = WATER_SHADER
+		print("ISSUE #378 FIX ACTIVE: water shader samples COLOR once (no squared sprite colour)")
 	return _shader
 
 var _phase: int = Phase.SURFACING

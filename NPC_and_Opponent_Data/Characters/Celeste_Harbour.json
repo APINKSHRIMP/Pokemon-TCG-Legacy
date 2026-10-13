@@ -146,7 +146,7 @@
       ]
     },
     "Bakery Lover": {
-      "at": [2530, 1740],
+      "at": [2134, 1470],
       "move": "idle_random",
       "says": {
         "meet": "I LOVE FRESH BREAD! It's always so warm and crispy if you get it here early enough. If you're here that must mean you love it as much as I do!! We should be best friends!!",
@@ -379,7 +379,7 @@
       }
     },
     "Child At Bakery": {
-      "at": [2335, 1715],
+      "at": [2262, 1549],
       "days": "3-8",
       "times": "M,A",
       "move": "idle_right",
@@ -389,7 +389,7 @@
       }
     },
     "Coin Shopkeeper": {
-      "at": [2095, 1650],
+      "at": [2094, 1387],
       "days": "3-8",
       "times": "M,A,E",
       "move": "idle_down",
@@ -450,7 +450,7 @@
       }
     },
     "Holo Rare Shopkeeper": {
-      "at": [1975, 1650],
+      "at": [1981, 1482],
       "move": "idle_down",
       "says": {
         "meet": "Welcome! I deal in mystery Holo Rares. Seven types, one pick — pay $400 and find out what fate has in store for you!"
@@ -633,7 +633,7 @@
       }
     },
     "Maintenance Guy Blocking Forest": {
-      "at": [920, 900],
+      "at": [918, 477],
       "move": "idle_down",
       "says": {
         "meet": "Sorry, the forest is still closed off, we haven't been able to clear the area entirely yet. We were hoping to have all the work done before today so all the passengers of the SS Anne could go out and explore.",
@@ -751,16 +751,14 @@
           }
         },
         {
-          "at": [-835, 1257],
+          "at": [-171, 564],
           "days": "1",
-          "times": "M,A",
-          "move": "idle_left",
+          "times": "M",
+          "move": "idle_down",
           "says": {
-            "meet": "Hello and welcome to the neighbourhood. Celeste Harbour is so serene. It's such a great place to live and got everything we need. Here take this as a welcome gift to help you get settled here.",
+            "meet": "Welcome to the neighbourhood! Celeste Harbour is so serene. It's such a great place to live and got everything you could ever need.",
             "repeat": "Me and my girlfriend moved here recently too, It's always so quiet and the water is always warm. I don't think we'll ever leave."
-          },
-          "gift_type": "cash",
-          "gift_value": "250"
+          }
         },
         {
           "at": [950, 2235],
@@ -818,7 +816,7 @@
       ]
     },
     "Mother At Bakery": {
-      "at": [2355, 1715],
+      "at": [2283, 1549],
       "days": "3-8",
       "times": "M,A",
       "move": "idle_left",
@@ -875,7 +873,7 @@
           }
         },
         {
-          "at": [-575, 1962],
+          "at": [-579, 1962],
           "days": "2",
           "times": "M,A",
           "move": "idle_down",
@@ -885,7 +883,7 @@
           }
         },
         {
-          "at": [2640, 1703],
+          "at": [2626, 1561],
           "days": "3",
           "times": "M,A",
           "move": "idle_left",
@@ -1224,7 +1222,7 @@
       }
     },
     "Station Manager": {
-      "at": [2020, 1020],
+      "at": [3197, 684],
       "move": {
         "pattern": "random_wander",
         "radius": 60,
@@ -1256,12 +1254,12 @@
           }
         },
         {
-          "at": [2275, 1440],
+          "at": [2859, 860],
           "days": "2",
           "times": "M,A,E",
           "move": null,
           "says": {
-            "meet": "I'm sorry but if you've come to take a train then I'm afraid you've missed the last one. With no more services running we've shut the station to do essential maintenance before tomorrow.",
+            "meet": "This train was in use a hundred years ago. The trains we use now are obviously a lot more modern but they still run on the same tracks.",
             "repeat": "Trains will be running again following normal schedule from tomorrow morning so all train tickets will be valid from tomorrow onwards."
           }
         }
@@ -1393,7 +1391,7 @@
       }
     },
     "Super Elder Hamish": {
-      "at": [2500, 1520],
+      "at": [1396, 1271],
       "days": "2",
       "times": "M,A",
       "move": {
@@ -1407,7 +1405,7 @@
       }
     },
     "Train Employee 1": {
-      "at": [2562, 1145],
+      "at": [2897, 859],
       "days": "3-8",
       "times": "M,A",
       "move": "idle_right",
@@ -1417,7 +1415,7 @@
       }
     },
     "Train Employee 2": {
-      "at": [2550, 1270],
+      "at": [2868, 616],
       "move": {
         "pattern": "random_wander",
         "radius": 65,
@@ -1449,17 +1447,17 @@
       }
     },
     "Woman Staring Out To Sea": {
-      "at": [-835, 1287],
+      "at": [-188, 564],
       "days": "1",
-      "times": "M,A",
-      "move": "idle_left",
+      "times": "M",
+      "move": "idle_down",
       "says": {
         "meet": "I'm so glad we moved here. It smells like freshly cut grass and warm sea air every day here.",
         "repeat": "My husband is so kind and generous, we've already made a lot of great friends here."
       }
     },
     "Woman Trying To Shop": {
-      "at": [2090, 1720],
+      "at": [2115, 1454],
       "move": {
         "pattern": "random_wander",
         "radius": 60,
@@ -1566,8 +1564,9 @@
         "repeat": "Hello, are you looking to buy one of my costumes?"
       },
       "move": "idle_down",
-      "times": "M,A,E,N",
-      "at": [2461, 1648]
+      "times": "M,A,E",
+      "at": [2464, 1385],
+      "days": "3-12"
     },
     "Sleeve Seller 2": {
       "says": {
@@ -1575,8 +1574,109 @@
         "repeat": "Hello again, are you looking to buy some sleeves for your cards? They'll keep them protected and look great!"
       },
       "move": "idle_down",
+      "times": "M,A,E",
+      "at": [2577, 1486],
+      "days": "3-12"
+    },
+    "Youngster": {
+      "says": {
+        "meet": "I love being off school! I hate school! Why can't we be off school all the time?",
+        "repeat": "I wish I never had to go back to school."
+      },
+      "move": "idle_up",
+      "days": "1",
+      "times": "M",
+      "at": [-969, 1190]
+    },
+    "Little Sis": {
+      "says": {
+        "meet": "Me and my big brother love to watch the Pokemon in this pond.",
+        "repeat": "There's so many Pokemon in there!"
+      },
+      "move": "idle_up",
+      "days": "1",
+      "times": "M",
+      "at": [-990, 1190]
+    },
+    "Windmill Technician": {
+      "says": {
+        "meet": "Can you believe that this whole harbour is powered entirely on wind power?",
+        "repeat": "I'm never going to be out of a job!"
+      },
+      "move": "idle_left",
+      "days": "1",
+      "times": "M,A",
+      "at": [-463, 575]
+    },
+    "Biker": {
+      "says": {
+        "meet": "The Cool Guy Biker Gang won't be shooed away by some kid, get lost.",
+        "repeat": "Scram."
+      },
+      "move": "idle_down",
+      "days": "1",
       "times": "M,A,E,N",
-      "at": [2571, 1649]
+      "at": [803, 767]
+    },
+    "Biker 2": {
+      "says": {
+        "meet": "Why are you trying to talk to me?",
+        "repeat": "..... ?"
+      },
+      "move": "idle_up",
+      "days": "1",
+      "times": "M,A,E,N",
+      "at": [803, 802]
+    },
+    "Windmill Technician 2": {
+      "says": {
+        "meet": "There's so many windmills in the harbour, I'm always busy.",
+        "repeat": "I've still got a lot to do today."
+      },
+      "move": "random_wander",
+      "days": "1",
+      "times": "A,E",
+      "at": [-387, 527]
+    },
+    "Old guy": {
+      "says": {
+        "meet": "Do you believe the legend?",
+        "repeat": "I believe it!"
+      },
+      "move": "idle_up",
+      "days": "1",
+      "times": "E",
+      "at": [-62, 564]
+    },
+    "Hiker": {
+      "says": {
+        "meet": "It was a bad idea hiking all this way on a Bank Holiday...",
+        "repeat": "I could really use a drink"
+      },
+      "move": "idle_left",
+      "days": "1",
+      "times": "A",
+      "at": [-742, 1011]
+    },
+    "Bug Catcher": {
+      "says": {
+        "meet": "Some bugs have hundreds of legs but I've only got 2.",
+        "repeat": "I wish I had a hundred legs!"
+      },
+      "move": "idle_up",
+      "days": "1",
+      "times": "A",
+      "at": [-1190, 618]
+    },
+    "Fisher": {
+      "says": {
+        "meet": "I prefer freshwater fishing over saltwater fishing.",
+        "repeat": "Fishing at sea makes me sea sick."
+      },
+      "move": "idle_down",
+      "days": "1",
+      "times": "M,A,E",
+      "at": [-1023, 800]
     }
   },
   "opponents": {
