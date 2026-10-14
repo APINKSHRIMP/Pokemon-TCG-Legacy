@@ -52,7 +52,8 @@
       "at": [-1960, 1135],
       "move": "idle_random",
       "says": {
-        "meet": "I be the fishing cap'n int' harbour and I work with Olly at Fish. We're always out looking for t' biggest fish"
+        "meet": "Arr, I be the fishing cap'n ere int' harbour. We be fishin every day out at sea. If ye have an interest in fishing make sure you pop into FISH.",
+        "repeat": "It always be good sailing around the Islands, but ye can never be too prepared for anything."
       }
     },
     "2nd Woman Drinking Juice": {
@@ -751,7 +752,7 @@
           }
         },
         {
-          "at": [-171, 564],
+          "at": [-130, 563],
           "days": "1",
           "times": "M",
           "move": "idle_down",
@@ -846,7 +847,7 @@
       }
     },
     "Old Guy Neighbour": {
-      "at": [-150, 1710],
+      "at": [-89, 1679],
       "move": {
         "pattern": "random_wander",
         "radius": 65,
@@ -854,13 +855,13 @@
       },
       "loop": false,
       "says": {
-        "meet": "Oh hello there neighbour! Have you just recently moved in next door? I believe the beach is closed today but you can still go and see the lighthouse. If you get your hands on a starter deck, everyone in this town loves playing the Pokemon Card game!",
-        "repeat": "I'm just tidying up here, sadly I'm no good at cards, but there's always folk around the lighthouse to have a game with! If you've got some spare change, you can buy new cards from the Card Mart a few doors down from here."
+        "meet": "Oh hello there neighbour! Nice to see you back. I believe the beach is closed today but you can still go and see the lighthouse.",
+        "repeat": "I'm just tidying up here, can't be having a messy neighbourhood now."
       },
       "when": [
         {
           "days": "1",
-          "times": "M,A"
+          "times": "M"
         },
         {
           "at": [-375, 1625],
@@ -893,16 +894,16 @@
           }
         },
         {
-          "at": [-375, 1625],
+          "at": [29, 1626],
           "days": "1",
-          "times": "E",
+          "times": "A,E",
           "move": {
             "pattern": "idle_down",
             "radius": 65
           },
           "says": {
             "meet": "I found this card on the floor while I was tidying up. I've been here all day and nobody has claimed it so you might as well take it!",
-            "repeat": "Did you get chance to visit the Card Mart yet? I normally visit the pier in the evening but I'm all worn out from cleaning up today. So I think I will just go to bed early tonight."
+            "repeat": "I normally visit the pier in the evening but I'm all worn out from cleaning up today so I think I will just go to bed early tonight."
           },
           "gift_type": "card",
           "gift_value": "basep-11"
@@ -1447,7 +1448,7 @@
       }
     },
     "Woman Staring Out To Sea": {
-      "at": [-188, 564],
+      "at": [-147, 563],
       "days": "1",
       "times": "M",
       "move": "idle_down",
@@ -1605,8 +1606,8 @@
       },
       "move": "idle_left",
       "days": "1",
-      "times": "M,A",
-      "at": [-463, 575]
+      "times": "M",
+      "at": [-429, 573]
     },
     "Biker": {
       "says": {
@@ -1636,7 +1637,7 @@
       "move": "random_wander",
       "days": "1",
       "times": "A,E",
-      "at": [-387, 527]
+      "at": [-390, 535]
     },
     "Old guy": {
       "says": {
@@ -1666,7 +1667,7 @@
       "move": "idle_up",
       "days": "1",
       "times": "A",
-      "at": [-1190, 618]
+      "at": [-1192, 618]
     },
     "Fisher": {
       "says": {
@@ -1675,8 +1676,18 @@
       },
       "move": "idle_down",
       "days": "1",
-      "times": "M,A,E",
-      "at": [-1023, 800]
+      "times": "M,A",
+      "at": [-1033, 800]
+    },
+    "Fisher 2": {
+      "says": {
+        "meet": "I caught so much today! My line snapped so I had to swing by FISH but I'm headed home soon.",
+        "repeat": "No more fishing for me today!"
+      },
+      "move": "idle_right",
+      "days": "1",
+      "times": "E",
+      "at": [-1759, 691]
     }
   },
   "opponents": {

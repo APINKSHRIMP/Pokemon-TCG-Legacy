@@ -3,7 +3,7 @@
 [ext_resource type="Script" uid="uid://65icfpeaid30" path="res://Scripts/Objects_And_Classes/Opponent_Object_Script.gd" id="1_fldhn"]
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_tal5p"]
-size = Vector2(21, 27)
+size = Vector2(25, 27)
 
 [node name="Opponent" type="CharacterBody2D" unique_id=586636241]
 collision_layer = 4

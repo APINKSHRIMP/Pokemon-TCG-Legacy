@@ -24,6 +24,6 @@ tile_set = ExtResource("1_stfnp")
 [node name="CharacterBody2D" type="CharacterBody2D" parent="." unique_id=1180298927]
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="CharacterBody2D" unique_id=950559644]
-position = Vector2(6.4999976, 47.99905)
+position = Vector2(8.499997, 47.999046)
 rotation = -1.5726978
 shape = SubResource("RectangleShape2D_pc62t")

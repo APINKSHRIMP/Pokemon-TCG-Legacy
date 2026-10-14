@@ -101,7 +101,7 @@
       "message_colour": "dark_blue"
     },
     "Fishing Captain": {
-      "sprite": "NPC_Captain2",
+      "sprite": "NPC_Captain",
       "friendly_name": "Fishing Captain",
       "message_colour": "dark_blue",
       "npc_type": "fishing_captain"
@@ -757,6 +757,11 @@
       "friendly_name": "Bug Catcher"
     },
     "Fisher": {
+      "sprite": "Fisher_F",
+      "message_colour": "yellow",
+      "friendly_name": "Fisher"
+    },
+    "Fisher 2": {
       "sprite": "Fisher_F",
       "message_colour": "yellow",
       "friendly_name": "Fisher"
