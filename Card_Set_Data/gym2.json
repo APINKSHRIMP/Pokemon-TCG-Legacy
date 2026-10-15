@@ -5752,24 +5752,6 @@
     }
   },
   {
-    "id": "gym2-100",
-    "name": "Blaine",
-    "supertype": "Trainer",
-    "rules": [
-      "During this turn, instead of attaching your free Energy card, you may instead attach 2 Fire Energy cards to 1 of your Pokémon with Blaine in its name. (Playing additional copies of this card this turn has no effect.)"
-    ],
-    "number": "100",
-    "artist": "Ken Sugimori",
-    "rarity": "Rare",
-    "legalities": {
-      "unlimited": "Legal"
-    },
-    "images": {
-      "small": "https://images.pokemontcg.io/gym2/100.png",
-      "large": "https://images.pokemontcg.io/gym2/100_hires.png"
-    }
-  },
-  {
     "id": "gym2-101",
     "name": "Brock's Protection",
     "supertype": "Trainer",
@@ -5828,24 +5810,6 @@
     }
   },
   {
-    "id": "gym2-104",
-    "name": "Giovanni",
-    "supertype": "Trainer",
-    "rules": [
-      "Choose 1 of your Pokémon in play with Giovanni in its name. For the rest of your turn, you may evolve that Pokémon even if you just played or evolved it this turn or if this is your first turn. This effect also applies to the Pokémon it evolves into."
-    ],
-    "number": "104",
-    "artist": "Ken Sugimori",
-    "rarity": "Rare",
-    "legalities": {
-      "unlimited": "Legal"
-    },
-    "images": {
-      "small": "https://images.pokemontcg.io/gym2/104.png",
-      "large": "https://images.pokemontcg.io/gym2/104_hires.png"
-    }
-  },
-  {
     "id": "gym2-105",
     "name": "Giovanni's Last Resort",
     "supertype": "Trainer",
@@ -5861,24 +5825,6 @@
     "images": {
       "small": "https://images.pokemontcg.io/gym2/105.png",
       "large": "https://images.pokemontcg.io/gym2/105_hires.png"
-    }
-  },
-  {
-    "id": "gym2-106",
-    "name": "Koga",
-    "supertype": "Trainer",
-    "rules": [
-      "If an attack from a Pokémon with Koga in its name does damage to a Defending Pokémon this turn, that Pokémon is then Poisoned."
-    ],
-    "number": "106",
-    "artist": "Ken Sugimori",
-    "rarity": "Rare",
-    "legalities": {
-      "unlimited": "Legal"
-    },
-    "images": {
-      "small": "https://images.pokemontcg.io/gym2/106.png",
-      "large": "https://images.pokemontcg.io/gym2/106_hires.png"
     }
   },
   {
@@ -5937,24 +5883,6 @@
     "images": {
       "small": "https://images.pokemontcg.io/gym2/109.png",
       "large": "https://images.pokemontcg.io/gym2/109_hires.png"
-    }
-  },
-  {
-    "id": "gym2-110",
-    "name": "Sabrina",
-    "supertype": "Trainer",
-    "rules": [
-      "Take all Energy cards attached to 1 of your Pokémon with Sabrina in its name and attach them to another 1 of your Pokémon with Sabrina in its name."
-    ],
-    "number": "110",
-    "artist": "Ken Sugimori",
-    "rarity": "Rare",
-    "legalities": {
-      "unlimited": "Legal"
-    },
-    "images": {
-      "small": "https://images.pokemontcg.io/gym2/110.png",
-      "large": "https://images.pokemontcg.io/gym2/110_hires.png"
     }
   },
   {

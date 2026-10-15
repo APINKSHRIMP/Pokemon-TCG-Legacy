@@ -2,27 +2,131 @@
 	"set_unlocked": false,
 	"owned_cards": [
 		{
-			"card_id": "ecard2-1",
+			"card_id": "ecard2-H1",
 			"owned": 0
 		},
 		{
-			"card_id": "ecard2-2",
+			"card_id": "ecard2-H2",
 			"owned": 0
 		},
 		{
-			"card_id": "ecard2-3",
+			"card_id": "ecard2-H3",
 			"owned": 0
 		},
 		{
-			"card_id": "ecard2-4",
+			"card_id": "ecard2-H4",
 			"owned": 0
 		},
 		{
-			"card_id": "ecard2-5",
+			"card_id": "ecard2-H5",
 			"owned": 0
 		},
 		{
-			"card_id": "ecard2-6",
+			"card_id": "ecard2-H6",
+			"owned": 0
+		},
+		{
+			"card_id": "ecard2-H7",
+			"owned": 0
+		},
+		{
+			"card_id": "ecard2-H8",
+			"owned": 0
+		},
+		{
+			"card_id": "ecard2-H9",
+			"owned": 0
+		},
+		{
+			"card_id": "ecard2-H10",
+			"owned": 0
+		},
+		{
+			"card_id": "ecard2-H11",
+			"owned": 0
+		},
+		{
+			"card_id": "ecard2-H12",
+			"owned": 0
+		},
+		{
+			"card_id": "ecard2-H13",
+			"owned": 0
+		},
+		{
+			"card_id": "ecard2-H14",
+			"owned": 0
+		},
+		{
+			"card_id": "ecard2-H15",
+			"owned": 0
+		},
+		{
+			"card_id": "ecard2-H16",
+			"owned": 0
+		},
+		{
+			"card_id": "ecard2-H17",
+			"owned": 0
+		},
+		{
+			"card_id": "ecard2-H18",
+			"owned": 0
+		},
+		{
+			"card_id": "ecard2-H19",
+			"owned": 0
+		},
+		{
+			"card_id": "ecard2-H20",
+			"owned": 0
+		},
+		{
+			"card_id": "ecard2-H21",
+			"owned": 0
+		},
+		{
+			"card_id": "ecard2-H22",
+			"owned": 0
+		},
+		{
+			"card_id": "ecard2-H23",
+			"owned": 0
+		},
+		{
+			"card_id": "ecard2-H24",
+			"owned": 0
+		},
+		{
+			"card_id": "ecard2-H25",
+			"owned": 0
+		},
+		{
+			"card_id": "ecard2-H26",
+			"owned": 0
+		},
+		{
+			"card_id": "ecard2-H27",
+			"owned": 0
+		},
+		{
+			"card_id": "ecard2-H28",
+			"owned": 0
+		},
+		{
+			"card_id": "ecard2-H29",
+			"owned": 0
+		},
+		{
+			"card_id": "ecard2-H30",
+			"owned": 0
+		},
+		{
+			"card_id": "ecard2-H31",
+			"owned": 0
+		},
+		{
+			"card_id": "ecard2-H32",
 			"owned": 0
 		},
 		{
@@ -30,23 +134,7 @@
 			"owned": 0
 		},
 		{
-			"card_id": "ecard2-8",
-			"owned": 0
-		},
-		{
 			"card_id": "ecard2-9",
-			"owned": 0
-		},
-		{
-			"card_id": "ecard2-10",
-			"owned": 0
-		},
-		{
-			"card_id": "ecard2-11",
-			"owned": 0
-		},
-		{
-			"card_id": "ecard2-12",
 			"owned": 0
 		},
 		{
@@ -58,51 +146,11 @@
 			"owned": 0
 		},
 		{
-			"card_id": "ecard2-15",
-			"owned": 0
-		},
-		{
-			"card_id": "ecard2-16",
-			"owned": 0
-		},
-		{
-			"card_id": "ecard2-17",
-			"owned": 0
-		},
-		{
 			"card_id": "ecard2-18",
 			"owned": 0
 		},
 		{
-			"card_id": "ecard2-19",
-			"owned": 0
-		},
-		{
 			"card_id": "ecard2-20",
-			"owned": 0
-		},
-		{
-			"card_id": "ecard2-21",
-			"owned": 0
-		},
-		{
-			"card_id": "ecard2-22",
-			"owned": 0
-		},
-		{
-			"card_id": "ecard2-23",
-			"owned": 0
-		},
-		{
-			"card_id": "ecard2-24",
-			"owned": 0
-		},
-		{
-			"card_id": "ecard2-25",
-			"owned": 0
-		},
-		{
-			"card_id": "ecard2-26",
 			"owned": 0
 		},
 		{
@@ -126,55 +174,7 @@
 			"owned": 0
 		},
 		{
-			"card_id": "ecard2-32",
-			"owned": 0
-		},
-		{
 			"card_id": "ecard2-33",
-			"owned": 0
-		},
-		{
-			"card_id": "ecard2-34",
-			"owned": 0
-		},
-		{
-			"card_id": "ecard2-35",
-			"owned": 0
-		},
-		{
-			"card_id": "ecard2-36",
-			"owned": 0
-		},
-		{
-			"card_id": "ecard2-37",
-			"owned": 0
-		},
-		{
-			"card_id": "ecard2-38",
-			"owned": 0
-		},
-		{
-			"card_id": "ecard2-39",
-			"owned": 0
-		},
-		{
-			"card_id": "ecard2-40",
-			"owned": 0
-		},
-		{
-			"card_id": "ecard2-41",
-			"owned": 0
-		},
-		{
-			"card_id": "ecard2-42",
-			"owned": 0
-		},
-		{
-			"card_id": "ecard2-43",
-			"owned": 0
-		},
-		{
-			"card_id": "ecard2-44",
 			"owned": 0
 		},
 		{
@@ -599,134 +599,6 @@
 		},
 		{
 			"card_id": "ecard2-150",
-			"owned": 0
-		},
-		{
-			"card_id": "ecard2-H1",
-			"owned": 0
-		},
-		{
-			"card_id": "ecard2-H2",
-			"owned": 0
-		},
-		{
-			"card_id": "ecard2-H3",
-			"owned": 0
-		},
-		{
-			"card_id": "ecard2-H4",
-			"owned": 0
-		},
-		{
-			"card_id": "ecard2-H5",
-			"owned": 0
-		},
-		{
-			"card_id": "ecard2-H6",
-			"owned": 0
-		},
-		{
-			"card_id": "ecard2-H7",
-			"owned": 0
-		},
-		{
-			"card_id": "ecard2-H8",
-			"owned": 0
-		},
-		{
-			"card_id": "ecard2-H9",
-			"owned": 0
-		},
-		{
-			"card_id": "ecard2-H10",
-			"owned": 0
-		},
-		{
-			"card_id": "ecard2-H11",
-			"owned": 0
-		},
-		{
-			"card_id": "ecard2-H12",
-			"owned": 0
-		},
-		{
-			"card_id": "ecard2-H13",
-			"owned": 0
-		},
-		{
-			"card_id": "ecard2-H14",
-			"owned": 0
-		},
-		{
-			"card_id": "ecard2-H15",
-			"owned": 0
-		},
-		{
-			"card_id": "ecard2-H16",
-			"owned": 0
-		},
-		{
-			"card_id": "ecard2-H17",
-			"owned": 0
-		},
-		{
-			"card_id": "ecard2-H18",
-			"owned": 0
-		},
-		{
-			"card_id": "ecard2-H19",
-			"owned": 0
-		},
-		{
-			"card_id": "ecard2-H20",
-			"owned": 0
-		},
-		{
-			"card_id": "ecard2-H21",
-			"owned": 0
-		},
-		{
-			"card_id": "ecard2-H22",
-			"owned": 0
-		},
-		{
-			"card_id": "ecard2-H23",
-			"owned": 0
-		},
-		{
-			"card_id": "ecard2-H24",
-			"owned": 0
-		},
-		{
-			"card_id": "ecard2-H25",
-			"owned": 0
-		},
-		{
-			"card_id": "ecard2-H26",
-			"owned": 0
-		},
-		{
-			"card_id": "ecard2-H27",
-			"owned": 0
-		},
-		{
-			"card_id": "ecard2-H28",
-			"owned": 0
-		},
-		{
-			"card_id": "ecard2-H29",
-			"owned": 0
-		},
-		{
-			"card_id": "ecard2-H30",
-			"owned": 0
-		},
-		{
-			"card_id": "ecard2-H31",
-			"owned": 0
-		},
-		{
-			"card_id": "ecard2-H32",
 			"owned": 0
 		}
 	]

@@ -5500,24 +5500,6 @@
     }
   },
   {
-    "id": "gym1-98",
-    "name": "Brock",
-    "supertype": "Trainer",
-    "rules": [
-      "Remove 1 damage counter from each of your Pokémon that has any damage counters on it."
-    ],
-    "number": "98",
-    "artist": "Ken Sugimori",
-    "rarity": "Rare",
-    "legalities": {
-      "unlimited": "Legal"
-    },
-    "images": {
-      "small": "https://images.pokemontcg.io/gym1/98.png",
-      "large": "https://images.pokemontcg.io/gym1/98_hires.png"
-    }
-  },
-  {
     "id": "gym1-99",
     "name": "Charity",
     "supertype": "Trainer",
@@ -5533,60 +5515,6 @@
     "images": {
       "small": "https://images.pokemontcg.io/gym1/99.png",
       "large": "https://images.pokemontcg.io/gym1/99_hires.png"
-    }
-  },
-  {
-    "id": "gym1-100",
-    "name": "Erika",
-    "supertype": "Trainer",
-    "rules": [
-      "You may draw up to 3 cards, then your opponent may draw up to 3 cards."
-    ],
-    "number": "100",
-    "artist": "Ken Sugimori",
-    "rarity": "Rare",
-    "legalities": {
-      "unlimited": "Legal"
-    },
-    "images": {
-      "small": "https://images.pokemontcg.io/gym1/100.png",
-      "large": "https://images.pokemontcg.io/gym1/100_hires.png"
-    }
-  },
-  {
-    "id": "gym1-101",
-    "name": "Lt. Surge",
-    "supertype": "Trainer",
-    "rules": [
-      "You can play this card only if you have at least 1 Basic Pokémon card in your hand. Put a Basic Pokémon card from your hand into play as your Active Pokémon. Put your old Active Pokémon onto your Bench. (You can't play this card if your Bench is full.)"
-    ],
-    "number": "101",
-    "artist": "Ken Sugimori",
-    "rarity": "Rare",
-    "legalities": {
-      "unlimited": "Legal"
-    },
-    "images": {
-      "small": "https://images.pokemontcg.io/gym1/101.png",
-      "large": "https://images.pokemontcg.io/gym1/101_hires.png"
-    }
-  },
-  {
-    "id": "gym1-102",
-    "name": "Misty",
-    "supertype": "Trainer",
-    "rules": [
-      "Discard 2 of the other cards in your hand in order to play this card. If this turn's attack does damage to the Defending Pokémon (after applying Weakness and Resistance), and if the attacking Pokémon has Misty in its name, the attack does 20 more damage to the Defending Pokémon."
-    ],
-    "number": "102",
-    "artist": "Ken Sugimori",
-    "rarity": "Rare",
-    "legalities": {
-      "unlimited": "Legal"
-    },
-    "images": {
-      "small": "https://images.pokemontcg.io/gym1/102.png",
-      "large": "https://images.pokemontcg.io/gym1/102_hires.png"
     }
   },
   {

@@ -2636,7 +2636,11 @@ func _search_sort_key(card_id: String, set_order: Dictionary) -> int:
 		if c >= "0" and c <= "9":
 			digits += c
 	var num : int = 0 if digits == "" else int(digits)
-	return set_idx * 100000 + num
+	# Letter-prefixed numbers (the e-Card "H" holos, ex10's Unown letters) sort ahead of every plain
+	# number, matching their place at the front of the set file.
+	if num_text != "" and not (num_text[0] >= "0" and num_text[0] <= "9"):
+		return set_idx * 100000 + num
+	return set_idx * 100000 + 1000 + num
 
 
 func _search_card_name(card_id: String) -> String:
