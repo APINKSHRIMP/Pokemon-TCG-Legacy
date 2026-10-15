@@ -638,23 +638,19 @@
       "move": "idle_down",
       "says": {
         "meet": "Sorry, the forest is still closed off, we haven't been able to clear the area entirely yet. We were hoping to have all the work done before today so all the passengers of the SS Anne could go out and explore.",
-        "repeat": "We're nearly done with it so it'll definitely be open tomorrow, my boss would kill me if we don't have it reopened before the SS Anne leaves again."
+        "repeat": "We're nearly done with it but I don't think it'll be open tomorrow. My boss will kill me if we don't have it reopened before the SS Anne leaves again."
       },
       "when": [
         {
-          "days": "3",
+          "days": "3-4",
           "times": "M,A,E"
-        },
-        {
-          "days": "4-8",
-          "times": "E"
         },
         {
           "days": "2",
           "times": "M,A,E",
           "says": {
             "meet": "Sorry, the forest is closed off while we do some essential maintenance. We had even more wind than usual last night resulting in a lot of falling branches causing a safety hazard.",
-            "repeat": "Sorry but it's going to take a least a day or maybe two. Once we've cleared all the loose branches and removed the fallen trees it'll be safe for people to enter again."
+            "repeat": "Sorry but it's going to take a least another day or maybe two. Once we've cleared all the loose branches and removed the fallen trees it'll be safe for people to enter again."
           }
         }
       ]

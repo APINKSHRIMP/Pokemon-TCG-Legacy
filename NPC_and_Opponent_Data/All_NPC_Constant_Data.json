@@ -351,7 +351,7 @@
     },
     "Maintenance Guy Blocking Forest": {
       "sprite": "Gardener",
-      "friendly_name": "Gardener",
+      "friendly_name": "Garden Manager",
       "message_colour": "green"
     },
     "Maintenance Guy Fixing Lighthouse": {

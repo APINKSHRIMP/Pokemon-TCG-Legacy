@@ -1,14 +1,13 @@
 CardID,Set,CardName,Type,EnergyType,Rarity,TotalCount,DeckCount,LiveTotalCount,LiveDeckCount
-base1-39,base1,Porygon,Pokemon,Colorless,Uncommon,0,0,0,0
-base1-86,base1,Pokémon Flute,Trainer,,Uncommon,0,0,0,0
-base1-87,base1,Pokédex,Trainer,,Uncommon,0,0,0,0
+gym2-132,gym2,Water Energy,Basic Energy,,,0,0,0,0
+gym1-91,gym1,Sabrina's Abra,Pokemon,Psychic,Common,0,0,0,0
 basep-5,basep,Dragonite,Pokemon,Colorless,Promo,0,0,0,0
 basep-6,basep,Arcanine,Pokemon,Fire,Promo,0,0,0,0
 basep-9,basep,Mew,Pokemon,Psychic,Promo,0,0,0,0
 basep-12,basep,Mewtwo,Pokemon,Psychic,Promo,0,0,0,0
 basep-13,basep,Venusaur,Pokemon,Grass,Promo,0,0,0,0
-basep-15,basep,Cool Porygon,Pokemon,Colorless,Promo,0,0,0,0
-basep-16,basep,Computer Error,Trainer,,Promo,0,0,0,0
+gym1-88,gym1,Misty's Seel,Pokemon,Water,Common,0,0,0,0
+gym1-86,gym1,Misty's Horsea,Pokemon,Water,Common,0,0,0,0
 basep-17,basep,Dark Persian,Pokemon,Colorless,Promo,0,0,0,0
 basep-19,basep,Sabrina's Abra,Pokemon,Psychic,Promo,0,0,0,0
 basep-20,basep,Psyduck,Pokemon,Water,Promo,0,0,0,0
@@ -18,10 +17,52 @@ basep-23,basep,Zapdos,Pokemon,Lightning,Promo,0,0,0,0
 basep-24,basep,_____'s Pikachu,Pokemon,Lightning,Promo,0,0,0,0
 basep-29,basep,Marill,Pokemon,Water,Promo,0,0,0,0
 basep-30,basep,Togepi,Pokemon,Colorless,Promo,0,0,0,0
+gym1-93,gym1,Sabrina's Gastly,Pokemon,Psychic,Common,0,0,0,0
 basep-31,basep,Cleffa,Pokemon,Colorless,Promo,0,0,0,0
+gym1-94,gym1,Sabrina's Mr. Mime,Pokemon,Psychic,Common,0,0,0,0
+gym1-99,gym1,Charity,Trainer,,Rare,0,0,0,0
+gym2-20,gym2,Sabrina,Trainer,,Rare Holo,0,0,0,0
+gym1-132,gym1,Water Energy,Basic Energy,,,0,0,0,0
+gym1-131,gym1,Psychic Energy,Basic Energy,,,0,0,0,0
+gym1-130,gym1,Lightning Energy,Basic Energy,,,0,0,0,0
+gym1-129,gym1,Grass Energy,Basic Energy,,,0,0,0,0
+gym1-128,gym1,Fire Energy,Basic Energy,,,0,0,0,0
+gym1-127,gym1,Fighting Energy,Basic Energy,,,0,0,0,0
+gym1-124,gym1,Narrow Gym,Trainer,,Common,0,0,0,0
+gym1-122,gym1,Energy Flow,Trainer,,Common,0,0,0,0
+gym1-119,gym1,Tickling Machine,Trainer,,Uncommon,0,0,0,0
+gym1-116,gym1,Recall,Trainer,,Uncommon,0,0,0,0
+gym1-113,gym1,Minion of Team Rocket,Trainer,,Uncommon,0,0,0,0
+gym1-110,gym1,Erika's Perfume,Trainer,,Uncommon,0,0,0,0
+gym1-105,gym1,Blaine's Last Resort,Trainer,,Uncommon,0,0,0,0
+gym1-104,gym1,The Rocket's Training Gym,Trainer,,Rare,0,0,0,0
+gym1-103,gym1,No Removal Gym,Trainer,,Rare,0,0,0,0
+gym1-102,gym1,Misty,Trainer,,Rare,0,0,0,0
+gym1-98,gym1,Brock,Trainer,,Rare,0,0,0,0
+gym2-24,gym2,Giovanni's Pinsir,Pokemon,Grass,Rare,0,0,0,0
 basep-32,basep,Smeargle,Pokemon,Colorless,Promo,0,0,0,0
-basep-33,basep,Scizor,Pokemon,Metal,Promo,0,0,0,0
 basep-34,basep,Entei,Pokemon,Fire,Promo,0,0,0,0
+gym1-73,gym1,Brock's Vulpix,Pokemon,Fire,Common,0,0,0,0
+gym1-71,gym1,Brock's Sandshrew,Pokemon,Fighting,Common,0,0,0,0
+gym1-69,gym1,Brock's Onix,Pokemon,Fighting,Common,0,0,0,0
+gym1-67,gym1,Brock's Mankey,Pokemon,Fighting,Common,0,0,0,0
+gym1-62,gym1,Blaine's Growlithe,Pokemon,Fire,Common,0,0,0,0
+gym1-59,gym1,Sabrina's Jynx,Pokemon,Psychic,Uncommon,0,0,0,0
+gym1-54,gym1,Misty's Psyduck,Pokemon,Water,Uncommon,0,0,0,0
+gym1-48,gym1,Erika's Weepinbell,Pokemon,Grass,Uncommon,0,0,0,0
+gym1-46,gym1,Erika's Gloom,Pokemon,Grass,Uncommon,0,0,0,0
+gym1-38,gym1,Brock's Geodude,Pokemon,Fighting,Uncommon,0,0,0,0
+gym1-25,gym1,Erika's Clefairy,Pokemon,Colorless,Rare,0,0,0,0
+gym1-23,gym1,Brock's Sandslash,Pokemon,Fighting,Rare,0,0,0,0
+gym1-21,gym1,Brock's Onix,Pokemon,Fighting,Rare,0,0,0,0
+gym1-14,gym1,Sabrina's Gengar,Pokemon,Psychic,Rare Holo,0,0,0,0
+gym1-4,gym1,Erika's Dragonair,Pokemon,Colorless,Rare Holo,0,0,0,0
+gym1-3,gym1,Erika's Clefable,Pokemon,Colorless,Rare Holo,0,0,0,0
+gym1-1,gym1,Blaine's Moltres,Pokemon,Fire,Rare Holo,0,0,0,0
+gym1-78,gym1,Erika's Oddish,Pokemon,Grass,Common,0,0,0,0
+basep-33,basep,Scizor,Pokemon,Metal,Promo,0,0,0,0
+gym1-79,gym1,Erika's Tangela,Pokemon,Grass,Common,0,0,0,0
+basep-52,basep,Ho-oh,Pokemon,Fire,Promo,0,0,0,0
 basep-35,basep,Pichu,Pokemon,Lightning,Promo,0,0,0,0
 basep-36,basep,Igglybuff,Pokemon,Colorless,Promo,0,0,0,0
 basep-37,basep,Hitmontop,Pokemon,Fighting,Promo,0,0,0,0
@@ -39,150 +80,74 @@ basep-48,basep,Articuno,Pokemon,Water,Promo,0,0,0,0
 basep-49,basep,Snorlax,Pokemon,Colorless,Promo,0,0,0,0
 basep-50,basep,Celebi,Pokemon,Grass,Promo,0,0,0,0
 basep-51,basep,Rapidash,Pokemon,Fire,Promo,0,0,0,0
-basep-52,basep,Ho-oh,Pokemon,Fire,Promo,0,0,0,0
 basep-53,basep,Suicune,Pokemon,Water,Promo,0,0,0,0
-base3-3,base3,Ditto,Pokemon,Colorless,Rare Holo,0,0,0,0
-base3-12,base3,Moltres,Pokemon,Fire,Rare Holo,0,0,0,0
-base5-15,base5,Here Comes Team Rocket!,Trainer,,Rare Holo,0,0,0,0
-base5-78,base5,Goop Gas Attack,Trainer,,Common,4,1,0,0
-gym1-1,gym1,Blaine's Moltres,Pokemon,Fire,Rare Holo,0,0,0,0
-gym1-3,gym1,Erika's Clefable,Pokemon,Colorless,Rare Holo,0,0,0,0
-gym1-4,gym1,Erika's Dragonair,Pokemon,Colorless,Rare Holo,0,0,0,0
-gym1-14,gym1,Sabrina's Gengar,Pokemon,Psychic,Rare Holo,0,0,0,0
-gym1-21,gym1,Brock's Onix,Pokemon,Fighting,Rare,0,0,0,0
-gym1-23,gym1,Brock's Sandslash,Pokemon,Fighting,Rare,0,0,0,0
-gym1-25,gym1,Erika's Clefairy,Pokemon,Colorless,Rare,0,0,0,0
-gym1-30,gym1,Misty's Goldeen,Pokemon,Water,Rare,4,1,0,0
-gym1-32,gym1,Misty's Tentacool,Pokemon,Water,Rare,0,0,0,0
-gym1-38,gym1,Brock's Geodude,Pokemon,Fighting,Uncommon,0,0,0,0
-gym1-40,gym1,Brock's Graveler,Pokemon,Fighting,Uncommon,2,1,0,0
-gym1-46,gym1,Erika's Gloom,Pokemon,Grass,Uncommon,0,0,0,0
-gym1-48,gym1,Erika's Weepinbell,Pokemon,Grass,Uncommon,0,0,0,0
-gym1-52,gym1,Lt. Surge's Spearow,Pokemon,Colorless,Uncommon,4,1,0,0
-gym1-54,gym1,Misty's Psyduck,Pokemon,Water,Uncommon,0,0,0,0
-gym1-59,gym1,Sabrina's Jynx,Pokemon,Psychic,Uncommon,0,0,0,0
-gym1-62,gym1,Blaine's Growlithe,Pokemon,Fire,Common,0,0,0,0
-gym1-64,gym1,Blaine's Tauros,Pokemon,Colorless,Common,4,1,0,0
-gym1-67,gym1,Brock's Mankey,Pokemon,Fighting,Common,0,0,0,0
-gym1-69,gym1,Brock's Onix,Pokemon,Fighting,Common,0,0,0,0
-gym1-70,gym1,Brock's Rhyhorn,Pokemon,Fighting,Common,4,1,0,0
-gym1-71,gym1,Brock's Sandshrew,Pokemon,Fighting,Common,0,0,0,0
-gym1-73,gym1,Brock's Vulpix,Pokemon,Fire,Common,0,0,0,0
-gym1-77,gym1,Erika's Exeggcute,Pokemon,Grass,Common,2,1,0,0
-gym1-78,gym1,Erika's Oddish,Pokemon,Grass,Common,0,0,0,0
-gym1-79,gym1,Erika's Tangela,Pokemon,Grass,Common,0,0,0,0
-gym1-86,gym1,Misty's Horsea,Pokemon,Water,Common,0,0,0,0
-gym1-88,gym1,Misty's Seel,Pokemon,Water,Common,0,0,0,0
-gym1-91,gym1,Sabrina's Abra,Pokemon,Psychic,Common,0,0,0,0
-gym1-93,gym1,Sabrina's Gastly,Pokemon,Psychic,Common,0,0,0,0
-gym1-94,gym1,Sabrina's Mr. Mime,Pokemon,Psychic,Common,0,0,0,0
-gym1-98,gym1,Brock,Trainer,,Rare,0,0,0,0
-gym1-99,gym1,Charity,Trainer,,Rare,0,0,0,0
-gym1-101,gym1,Lt. Surge,Trainer,,Rare,0,0,0,0
-gym1-102,gym1,Misty,Trainer,,Rare,0,0,0,0
-gym1-103,gym1,No Removal Gym,Trainer,,Rare,0,0,0,0
-gym1-104,gym1,The Rocket's Training Gym,Trainer,,Rare,0,0,0,0
-gym1-105,gym1,Blaine's Last Resort,Trainer,,Uncommon,0,0,0,0
-gym1-110,gym1,Erika's Perfume,Trainer,,Uncommon,0,0,0,0
-gym1-113,gym1,Minion of Team Rocket,Trainer,,Uncommon,0,0,0,0
-gym1-116,gym1,Recall,Trainer,,Uncommon,0,0,0,0
-gym1-119,gym1,Tickling Machine,Trainer,,Uncommon,0,0,0,0
-gym1-122,gym1,Energy Flow,Trainer,,Common,0,0,0,0
-gym1-124,gym1,Narrow Gym,Trainer,,Common,0,0,0,0
-gym1-127,gym1,Fighting Energy,Basic Energy,,,0,0,0,0
-gym1-128,gym1,Fire Energy,Basic Energy,,,0,0,0,0
-gym1-129,gym1,Grass Energy,Basic Energy,,,0,0,0,0
-gym1-130,gym1,Lightning Energy,Basic Energy,,,0,0,0,0
-gym1-131,gym1,Psychic Energy,Basic Energy,,,0,0,0,0
-gym1-132,gym1,Water Energy,Basic Energy,,,0,0,0,0
-gym2-13,gym2,Misty's Gyarados,Pokemon,Water,Rare Holo,3,1,0,0
-gym2-20,gym2,Sabrina,Trainer,,Rare Holo,0,0,0,0
-gym2-24,gym2,Giovanni's Pinsir,Pokemon,Grass,Rare,0,0,0,0
-gym2-32,gym2,Blaine's Dodrio,Pokemon,Colorless,Uncommon,3,1,0,0
 gym2-38,gym2,Erika's Bellsprout,Pokemon,Grass,Uncommon,0,0,0,0
+gym1-101,gym1,Lt. Surge,Trainer,,Rare,0,0,0,0
+gym2-131,gym2,Psychic Energy,Basic Energy,,,0,0,0,0
+gym2-101,gym2,Brock's Protection,Trainer,,Rare,0,0,0,0
+gym2-100,gym2,Blaine,Trainer,,Rare,0,0,0,0
+gym2-126,gym2,Warp Point,Trainer,,Common,0,0,0,0
+gym2-96,gym2,Sabrina's Gastly,Pokemon,Psychic,Common,0,0,0,0
+gym2-95,gym2,Sabrina's Drowzee,Pokemon,Psychic,Common,0,0,0,0
+gym2-93,gym2,Sabrina's Abra,Pokemon,Psychic,Common,0,0,0,0
+gym2-129,gym2,Grass Energy,Basic Energy,,,0,0,0,0
+gym2-128,gym2,Fire Energy,Basic Energy,,,0,0,0,0
+gym2-89,gym2,Misty's Poliwag,Pokemon,Water,Common,0,0,0,0
 gym2-48,gym2,Koga's Koffing,Pokemon,Grass,Uncommon,0,0,0,0
+gym2-85,gym2,Lt. Surge's Rattata,Pokemon,Colorless,Common,0,0,0,0
 gym2-49,gym2,Koga's Pidgey,Pokemon,Colorless,Uncommon,0,0,0,0
+gym2-71,gym2,Erika's Paras,Pokemon,Grass,Common,0,0,0,0
+gym2-124,gym2,Fervor,Trainer,,Common,0,0,0,0
+gym2-127,gym2,Fighting Energy,Basic Energy,,,0,0,0,0
+gym2-125,gym2,Transparent Walls,Trainer,,Common,0,0,0,0
+gym2-63,gym2,Blaine's Mankey,Pokemon,Fighting,Common,0,0,0,0
 gym2-55,gym2,Sabrina's Haunter,Pokemon,Psychic,Uncommon,0,0,0,0
 gym2-57,gym2,Sabrina's Jynx,Pokemon,Psychic,Uncommon,0,0,0,0
-gym2-59,gym2,Sabrina's Mr. Mime,Pokemon,Psychic,Uncommon,0,0,0,0
-gym2-61,gym2,Blaine's Doduo,Pokemon,Colorless,Common,4,1,0,0
-gym2-63,gym2,Blaine's Mankey,Pokemon,Fighting,Common,0,0,0,0
-gym2-65,gym2,Blaine's Rhyhorn,Pokemon,Fighting,Common,4,1,0,0
-gym2-71,gym2,Erika's Paras,Pokemon,Grass,Common,0,0,0,0
-gym2-85,gym2,Lt. Surge's Rattata,Pokemon,Colorless,Common,0,0,0,0
-gym2-88,gym2,Misty's Magikarp,Pokemon,Water,Common,4,1,0,0
-gym2-89,gym2,Misty's Poliwag,Pokemon,Water,Common,0,0,0,0
-gym2-92,gym2,Misty's Staryu,Pokemon,Water,Common,4,1,0,0
-gym2-93,gym2,Sabrina's Abra,Pokemon,Psychic,Common,0,0,0,0
-gym2-95,gym2,Sabrina's Drowzee,Pokemon,Psychic,Common,0,0,0,0
-gym2-96,gym2,Sabrina's Gastly,Pokemon,Psychic,Common,0,0,0,0
-gym2-100,gym2,Blaine,Trainer,,Rare,0,0,0,0
-gym2-101,gym2,Brock's Protection,Trainer,,Rare,0,0,0,0
-gym2-102,gym2,Chaos Gym,Trainer,,Rare,4,1,0,0
+gym2-130,gym2,Lightning Energy,Basic Energy,,,0,0,0,0
 gym2-104,gym2,Giovanni,Trainer,,Rare,0,0,0,0
-gym2-105,gym2,Giovanni's Last Resort,Trainer,,Rare,0,0,0,0
+gym2-59,gym2,Sabrina's Mr. Mime,Pokemon,Psychic,Uncommon,0,0,0,0
+gym2-122,gym2,Saffron City Gym,Trainer,,Uncommon,0,0,0,0
 gym2-106,gym2,Koga,Trainer,,Rare,0,0,0,0
+gym2-120,gym2,Rocket's Secret Experiment,Trainer,,Uncommon,0,0,0,0
 gym2-107,gym2,Lt. Surge's Secret Plan,Trainer,,Rare,0,0,0,0
-gym2-108,gym2,Misty's Wish,Trainer,,Rare,2,1,0,0
+gym2-105,gym2,Giovanni's Last Resort,Trainer,,Rare,0,0,0,0
 gym2-109,gym2,Resistance Gym,Trainer,,Rare,0,0,0,0
 gym2-110,gym2,Sabrina,Trainer,,Rare,0,0,0,0
-gym2-117,gym2,Max Revive,Trainer,,Uncommon,0,0,0,0
-gym2-119,gym2,Rocket's Minefield Gym,Trainer,,Uncommon,4,1,0,0
-gym2-120,gym2,Rocket's Secret Experiment,Trainer,,Uncommon,0,0,0,0
 gym2-121,gym2,Sabrina's Psychic Control,Trainer,,Uncommon,0,0,0,0
-gym2-122,gym2,Saffron City Gym,Trainer,,Uncommon,0,0,0,0
-gym2-124,gym2,Fervor,Trainer,,Common,0,0,0,0
-gym2-125,gym2,Transparent Walls,Trainer,,Common,0,0,0,0
-gym2-126,gym2,Warp Point,Trainer,,Common,0,0,0,0
-gym2-127,gym2,Fighting Energy,Basic Energy,,,0,0,0,0
-gym2-128,gym2,Fire Energy,Basic Energy,,,0,0,0,0
-gym2-129,gym2,Grass Energy,Basic Energy,,,0,0,0,0
-gym2-130,gym2,Lightning Energy,Basic Energy,,,0,0,0,0
-gym2-131,gym2,Psychic Energy,Basic Energy,,,0,0,0,0
-gym2-132,gym2,Water Energy,Basic Energy,,,0,0,0,0
-base3-14,base3,Raichu,Pokemon,Lightning,Rare Holo,1,1,1,1
+gym2-117,gym2,Max Revive,Trainer,,Uncommon,0,0,0,0
 gym1-39,gym1,Brock's Golbat,Pokemon,Grass,Uncommon,1,1,1,1
-gym2-43,gym2,Giovanni's Meowth,Pokemon,Colorless,Uncommon,3,2,1,1
-base1-12,base1,Ninetales,Pokemon,Fire,Rare Holo,2,1,2,1
-base1-50,base1,Gastly,Pokemon,Psychic,Common,2,1,2,1
-base1-73,base1,Impostor Professor Oak,Trainer,,Rare,2,1,2,1
-base1-85,base1,Pokémon Center,Trainer,,Uncommon,2,1,2,1
-base1-89,base1,Revive,Trainer,,Uncommon,2,1,2,1
-base2-7,base2,Nidoqueen,Pokemon,Grass,Rare Holo,2,1,2,1
-base2-8,base2,Pidgeot,Pokemon,Colorless,Rare Holo,2,1,2,1
-basep-7,basep,Jigglypuff,Pokemon,Colorless,Promo,2,1,2,1
-basep-14,basep,Mewtwo,Pokemon,Psychic,Promo,2,1,2,1
-basep-18,basep,Team Rocket's Meowth,Pokemon,Colorless,Promo,2,1,2,1
-base3-6,base3,Haunter,Pokemon,Psychic,Rare Holo,2,1,2,1
-base3-61,base3,Recycle,Trainer,,Common,2,1,2,1
-gym1-5,gym1,Erika's Vileplume,Pokemon,Grass,Rare Holo,2,1,2,1
-gym1-6,gym1,Lt. Surge's Electabuzz,Pokemon,Lightning,Rare Holo,2,1,2,1
-gym1-7,gym1,Lt. Surge's Fearow,Pokemon,Colorless,Rare Holo,4,2,2,1
-gym1-17,gym1,Lt. Surge,Trainer,,Rare Holo,2,1,2,1
-gym1-18,gym1,Misty,Trainer,,Rare Holo,2,1,2,1
-gym1-20,gym1,Brock's Golem,Pokemon,Fighting,Rare,2,1,2,1
-gym1-26,gym1,Erika's Victreebel,Pokemon,Grass,Rare,2,1,2,1
-gym1-27,gym1,Lt. Surge's Electabuzz,Pokemon,Lightning,Rare,2,1,2,1
-gym1-29,gym1,Misty's Cloyster,Pokemon,Water,Rare,2,1,2,1
-gym1-36,gym1,Blaine's Kangaskhan,Pokemon,Colorless,Uncommon,2,1,2,1
-gym1-41,gym1,Brock's Lickitung,Pokemon,Colorless,Uncommon,2,1,2,1
-gym1-44,gym1,Erika's Exeggutor,Pokemon,Grass,Uncommon,5,2,2,1
-gym1-51,gym1,Lt. Surge's Raticate,Pokemon,Colorless,Uncommon,2,1,2,1
 gym1-55,gym1,Misty's Seaking,Pokemon,Water,Uncommon,2,1,2,1
+gym2-66,gym2,Blaine's Vulpix,Pokemon,Fire,Common,2,1,2,1
+basep-7,basep,Jigglypuff,Pokemon,Colorless,Promo,2,1,2,1
 gym1-56,gym1,Misty's Starmie,Pokemon,Water,Uncommon,2,1,2,1
-gym1-60,gym1,Sabrina's Slowbro,Pokemon,Psychic,Uncommon,2,1,2,1
-gym1-61,gym1,Blaine's Charmander,Pokemon,Fire,Common,2,1,2,1
-gym1-63,gym1,Blaine's Ponyta,Pokemon,Fire,Common,2,1,2,1
-gym1-65,gym1,Blaine's Vulpix,Pokemon,Fire,Common,2,1,2,1
+gym1-40,gym1,Brock's Graveler,Pokemon,Fighting,Uncommon,2,1,0,0
+basep-14,basep,Mewtwo,Pokemon,Psychic,Promo,2,1,2,1
 gym1-66,gym1,Brock's Geodude,Pokemon,Fighting,Common,2,1,2,1
+gym1-65,gym1,Blaine's Vulpix,Pokemon,Fire,Common,2,1,2,1
+base5-15,base5,Here Comes Team Rocket!,Trainer,,Rare Holo,2,1,0,0
+gym1-63,gym1,Blaine's Ponyta,Pokemon,Fire,Common,2,1,2,1
+gym1-60,gym1,Sabrina's Slowbro,Pokemon,Psychic,Uncommon,2,1,2,1
+gym1-26,gym1,Erika's Victreebel,Pokemon,Grass,Rare,2,1,2,1
+gym1-29,gym1,Misty's Cloyster,Pokemon,Water,Rare,2,1,2,1
+gym1-27,gym1,Lt. Surge's Electabuzz,Pokemon,Lightning,Rare,2,1,2,1
+basep-18,basep,Team Rocket's Meowth,Pokemon,Colorless,Promo,2,1,2,1
+gym2-114,gym2,Fuchsia City Gym,Trainer,,Uncommon,2,1,2,1
+gym2-113,gym2,Cinnabar City Gym,Trainer,,Uncommon,2,1,2,1
 gym1-74,gym1,Brock's Zubat,Pokemon,Grass,Common,2,1,2,1
 gym1-84,gym1,Lt. Surge's Voltorb,Pokemon,Lightning,Common,2,1,2,1
-gym1-115,gym1,Pewter City Gym,Trainer,,Uncommon,2,1,2,1
-gym1-123,gym1,Misty's Duel,Trainer,,Common,8,3,2,1
-gym1-125,gym1,Sabrina's Gaze,Trainer,,Common,10,3,2,1
-gym1-126,gym1,Trash Exchange,Trainer,,Common,6,2,2,1
-gym2-1,gym2,Blaine's Arcanine,Pokemon,Fire,Rare Holo,2,1,2,1
+gym1-51,gym1,Lt. Surge's Raticate,Pokemon,Colorless,Uncommon,2,1,2,1
+gym1-77,gym1,Erika's Exeggcute,Pokemon,Grass,Common,2,1,0,0
+gym2-40,gym2,Erika's Clefairy,Pokemon,Colorless,Uncommon,2,1,2,1
+gym1-41,gym1,Brock's Lickitung,Pokemon,Colorless,Uncommon,2,1,2,1
+gym2-108,gym2,Misty's Wish,Trainer,,Rare,2,1,0,0
+gym2-123,gym2,Viridian City Gym,Trainer,,Uncommon,2,1,2,1
+gym2-74,gym2,Giovanni's Meowth,Pokemon,Colorless,Common,2,1,2,1
+gym1-36,gym1,Blaine's Kangaskhan,Pokemon,Colorless,Uncommon,2,1,2,1
+gym2-64,gym2,Blaine's Ponyta,Pokemon,Fire,Common,2,1,2,1
 gym2-2,gym2,Blaine's Charizard,Pokemon,Fire,Rare Holo,2,1,2,1
+gym1-5,gym1,Erika's Vileplume,Pokemon,Grass,Rare Holo,2,1,2,1
+gym2-1,gym2,Blaine's Arcanine,Pokemon,Fire,Rare Holo,2,1,2,1
+gym1-20,gym1,Brock's Golem,Pokemon,Fighting,Rare,2,1,2,1
 gym2-4,gym2,Erika's Venusaur,Pokemon,Grass,Rare Holo,2,1,2,1
 gym2-5,gym2,Giovanni's Gyarados,Pokemon,Water,Rare Holo,2,1,2,1
 gym2-8,gym2,Giovanni's Persian,Pokemon,Colorless,Rare Holo,2,1,2,1
@@ -195,388 +160,423 @@ gym2-29,gym2,Sabrina's Gengar,Pokemon,Psychic,Rare,2,1,2,1
 gym2-30,gym2,Sabrina's Golduck,Pokemon,Water,Rare,2,1,2,1
 gym2-34,gym2,Brock's Graveler,Pokemon,Fighting,Uncommon,2,1,2,1
 gym2-36,gym2,Brock's Sandslash,Pokemon,Fighting,Uncommon,2,1,2,1
-gym2-40,gym2,Erika's Clefairy,Pokemon,Colorless,Uncommon,2,1,2,1
 gym2-50,gym2,Koga's Weezing,Pokemon,Grass,Uncommon,2,1,2,1
-gym2-53,gym2,Lt. Surge's Raticate,Pokemon,Colorless,Uncommon,2,1,2,1
-gym2-54,gym2,Misty's Dewgong,Pokemon,Water,Uncommon,2,1,2,1
+gym1-6,gym1,Lt. Surge's Electabuzz,Pokemon,Lightning,Rare Holo,2,1,2,1
+gym1-61,gym1,Blaine's Charmander,Pokemon,Fire,Common,2,1,2,1
 gym2-56,gym2,Sabrina's Hypno,Pokemon,Psychic,Uncommon,2,1,2,1
-gym2-64,gym2,Blaine's Ponyta,Pokemon,Fire,Common,2,1,2,1
-gym2-66,gym2,Blaine's Vulpix,Pokemon,Fire,Common,2,1,2,1
-gym2-68,gym2,Brock's Geodude,Pokemon,Fighting,Common,6,2,2,1
-gym2-74,gym2,Giovanni's Meowth,Pokemon,Colorless,Common,2,1,2,1
-gym2-113,gym2,Cinnabar City Gym,Trainer,,Uncommon,2,1,2,1
-gym2-114,gym2,Fuchsia City Gym,Trainer,,Uncommon,2,1,2,1
-gym2-123,gym2,Viridian City Gym,Trainer,,Uncommon,2,1,2,1
-base1-40,base1,Raticate,Pokemon,Colorless,Uncommon,3,1,3,1
-base2-14,base2,Victreebel,Pokemon,Grass,Rare Holo,3,1,3,1
-base2-15,base2,Vileplume,Pokemon,Grass,Rare Holo,3,1,3,1
-base2-41,base2,Parasect,Pokemon,Grass,Uncommon,3,1,3,1
-base2-42,base2,Persian,Pokemon,Colorless,Uncommon,3,1,3,1
-base2-43,base2,Primeape,Pokemon,Fighting,Uncommon,3,1,3,1
-base2-46,base2,Seaking,Pokemon,Water,Uncommon,3,1,3,1
-base3-42,base3,Seadra,Pokemon,Water,Uncommon,3,1,3,1
-base3-44,base3,Tentacruel,Pokemon,Water,Uncommon,3,1,3,1
-base5-1,base5,Dark Alakazam,Pokemon,Psychic,Rare Holo,3,1,3,1
-base5-11,base5,Dark Magneton,Pokemon,Lightning,Rare Holo,3,1,3,1
+gym1-17,gym1,Lt. Surge,Trainer,,Rare Holo,2,1,2,1
+gym2-53,gym2,Lt. Surge's Raticate,Pokemon,Colorless,Uncommon,2,1,2,1
+gym1-115,gym1,Pewter City Gym,Trainer,,Uncommon,2,1,2,1
+gym1-18,gym1,Misty,Trainer,,Rare Holo,2,1,2,1
+gym2-54,gym2,Misty's Dewgong,Pokemon,Water,Uncommon,2,1,2,1
 base5-39,base5,Dark Kadabra,Pokemon,Psychic,Uncommon,3,1,3,1
-gym1-2,gym1,Brock's Rhydon,Pokemon,Fighting,Rare Holo,5,2,3,1
 gym1-9,gym1,Misty's Seadra,Pokemon,Water,Rare Holo,3,1,3,1
-gym1-10,gym1,Misty's Tentacruel,Pokemon,Water,Rare Holo,3,1,3,1
-gym1-28,gym1,Lt. Surge's Raichu,Pokemon,Lightning,Rare,3,1,3,1
-gym1-31,gym1,Misty's Poliwrath,Pokemon,Water,Rare,3,1,3,1
-gym1-34,gym1,Sabrina's Venomoth,Pokemon,Grass,Rare,6,2,3,1
-gym1-43,gym1,Erika's Exeggcute,Pokemon,Grass,Uncommon,5,2,3,1
-gym1-45,gym1,Erika's Gloom,Pokemon,Grass,Uncommon,3,1,3,1
-gym1-49,gym1,Erika's Weepinbell,Pokemon,Grass,Uncommon,5,2,3,1
-gym1-58,gym1,Sabrina's Haunter,Pokemon,Psychic,Uncommon,7,2,3,1
-gym1-72,gym1,Brock's Sandshrew,Pokemon,Fighting,Common,3,1,3,1
-gym1-81,gym1,Lt. Surge's Pikachu,Pokemon,Lightning,Common,3,1,3,1
-gym1-83,gym1,Lt. Surge's Spearow,Pokemon,Colorless,Common,7,2,3,1
-gym1-85,gym1,Misty's Goldeen,Pokemon,Water,Common,3,1,3,1
-gym1-89,gym1,Misty's Shellder,Pokemon,Water,Common,3,1,3,1
-gym1-90,gym1,Misty's Staryu,Pokemon,Water,Common,3,1,3,1
-gym1-92,gym1,Sabrina's Drowzee,Pokemon,Psychic,Common,3,1,3,1
-gym1-95,gym1,Sabrina's Slowpoke,Pokemon,Psychic,Common,3,1,3,1
-gym2-6,gym2,Giovanni's Machamp,Pokemon,Fighting,Rare Holo,3,1,3,1
-gym2-9,gym2,Koga's Beedrill,Pokemon,Grass,Rare Holo,3,1,3,1
+gym2-13,gym2,Misty's Gyarados,Pokemon,Water,Rare Holo,3,1,0,0
+gym2-42,gym2,Giovanni's Machoke,Pokemon,Fighting,Uncommon,3,1,3,1
 gym2-21,gym2,Blaine's Ninetales,Pokemon,Fire,Rare,3,1,3,1
+gym1-92,gym1,Sabrina's Drowzee,Pokemon,Psychic,Common,3,1,3,1
 gym2-23,gym2,Giovanni's Nidoqueen,Pokemon,Grass,Rare,3,1,3,1
-gym2-25,gym2,Koga's Arbok,Pokemon,Grass,Rare,3,1,3,1
+gym1-45,gym1,Erika's Gloom,Pokemon,Grass,Uncommon,3,1,3,1
+gym2-41,gym2,Erika's Ivysaur,Pokemon,Grass,Uncommon,3,1,3,1
 gym2-26,gym2,Koga's Muk,Pokemon,Grass,Rare,3,1,3,1
 gym2-27,gym2,Koga's Pidgeotto,Pokemon,Colorless,Rare,3,1,3,1
 gym2-28,gym2,Lt. Surge's Jolteon,Pokemon,Lightning,Rare,3,1,3,1
-gym2-31,gym2,Blaine's Charmeleon,Pokemon,Fire,Uncommon,3,1,3,1
-gym2-33,gym2,Blaine's Rapidash,Pokemon,Fire,Uncommon,3,1,3,1
-gym2-35,gym2,Brock's Primeape,Pokemon,Fighting,Uncommon,3,1,3,1
-gym2-41,gym2,Erika's Ivysaur,Pokemon,Grass,Uncommon,3,1,3,1
-gym2-42,gym2,Giovanni's Machoke,Pokemon,Fighting,Uncommon,3,1,3,1
-gym2-46,gym2,Koga's Golbat,Pokemon,Grass,Uncommon,3,1,3,1
-gym2-47,gym2,Koga's Kakuna,Pokemon,Grass,Uncommon,3,1,3,1
-gym2-52,gym2,Lt. Surge's Electrode,Pokemon,Lightning,Uncommon,3,1,3,1
-gym2-58,gym2,Sabrina's Kadabra,Pokemon,Psychic,Uncommon,3,1,3,1
 gym2-62,gym2,Blaine's Growlithe,Pokemon,Fire,Common,3,1,3,1
-gym2-67,gym2,Brock's Diglett,Pokemon,Fighting,Common,3,1,3,1
+gym1-72,gym1,Brock's Sandshrew,Pokemon,Fighting,Common,3,1,3,1
+gym2-31,gym2,Blaine's Charmeleon,Pokemon,Fire,Uncommon,3,1,3,1
+gym2-32,gym2,Blaine's Dodrio,Pokemon,Colorless,Uncommon,3,1,0,0
+gym2-33,gym2,Blaine's Rapidash,Pokemon,Fire,Uncommon,3,1,3,1
+gym1-95,gym1,Sabrina's Slowpoke,Pokemon,Psychic,Common,3,1,3,1
+gym2-35,gym2,Brock's Primeape,Pokemon,Fighting,Uncommon,3,1,3,1
+gym2-25,gym2,Koga's Arbok,Pokemon,Grass,Rare,3,1,3,1
+gym2-9,gym2,Koga's Beedrill,Pokemon,Grass,Rare Holo,3,1,3,1
+gym1-90,gym1,Misty's Staryu,Pokemon,Water,Common,3,1,3,1
+gym2-6,gym2,Giovanni's Machamp,Pokemon,Fighting,Rare Holo,3,1,3,1
+base2-43,base2,Primeape,Pokemon,Fighting,Uncommon,3,1,3,1
+base2-42,base2,Persian,Pokemon,Colorless,Uncommon,3,1,3,1
+gym2-52,gym2,Lt. Surge's Electrode,Pokemon,Lightning,Uncommon,3,1,3,1
+gym1-28,gym1,Lt. Surge's Raichu,Pokemon,Lightning,Rare,3,1,3,1
 gym2-79,gym2,Koga's Koffing,Pokemon,Grass,Common,3,1,3,1
-gym2-81,gym2,Koga's Tangela,Pokemon,Grass,Common,7,2,3,1
+gym2-67,gym2,Brock's Diglett,Pokemon,Fighting,Common,3,1,3,1
+gym1-89,gym1,Misty's Shellder,Pokemon,Water,Common,3,1,3,1
+gym1-85,gym1,Misty's Goldeen,Pokemon,Water,Common,3,1,3,1
+gym2-47,gym2,Koga's Kakuna,Pokemon,Grass,Uncommon,3,1,3,1
+gym1-81,gym1,Lt. Surge's Pikachu,Pokemon,Lightning,Common,3,1,3,1
+gym1-31,gym1,Misty's Poliwrath,Pokemon,Water,Rare,3,1,3,1
+gym2-58,gym2,Sabrina's Kadabra,Pokemon,Psychic,Uncommon,3,1,3,1
+gym2-99,gym2,Sabrina's Psyduck,Pokemon,Water,Common,3,1,3,1
+gym2-46,gym2,Koga's Golbat,Pokemon,Grass,Uncommon,3,1,3,1
 gym2-90,gym2,Misty's Psyduck,Pokemon,Water,Common,3,1,3,1
 gym2-91,gym2,Misty's Seel,Pokemon,Water,Common,3,1,3,1
-gym2-99,gym2,Sabrina's Psyduck,Pokemon,Water,Common,3,1,3,1
-base1-13,base1,Poliwrath,Pokemon,Water,Rare Holo,4,1,4,1
-base1-16,base1,Zapdos,Pokemon,Lightning,Rare Holo,4,1,4,1
-base1-29,base1,Haunter,Pokemon,Psychic,Uncommon,4,1,4,1
-base1-72,base1,Devolution Spray,Trainer,,Rare,4,1,4,1
-base2-58,base2,Oddish,Pokemon,Grass,Common,4,1,4,1
-base2-62,base2,Spearow,Pokemon,Colorless,Common,4,1,4,1
-basep-8,basep,Mew,Pokemon,Psychic,Promo,4,1,4,1
-basep-10,basep,Meowth,Pokemon,Colorless,Promo,4,1,4,1
-basep-99,basep,Ancient Mew,Pokemon,Psychic,Promo,4,1,4,1
-base3-5,base3,Gengar,Pokemon,Psychic,Rare Holo,4,1,4,1
-base3-55,base3,Slowpoke,Pokemon,Psychic,Common,4,1,4,1
-base3-58,base3,Mr. Fuji,Trainer,,Uncommon,4,1,4,1
-base3-60,base3,Gambler,Trainer,,Common,4,1,4,1
-base5-7,base5,Dark Golbat,Pokemon,Grass,Rare Holo,4,1,4,1
-base5-13,base5,Dark Vileplume,Pokemon,Grass,Rare Holo,4,1,4,1
-base5-36,base5,Dark Gloom,Pokemon,Grass,Uncommon,4,1,4,1
-base5-44,base5,Dark Rapidash,Pokemon,Fire,Uncommon,4,1,4,1
-base5-48,base5,Porygon,Pokemon,Colorless,Uncommon,4,1,4,1
-base5-49,base5,Abra,Pokemon,Psychic,Common,4,1,4,1
-base5-59,base5,Machop,Pokemon,Fighting,Common,4,1,4,1
-base5-64,base5,Ponyta,Pokemon,Fire,Common,4,1,4,1
-base5-75,base5,Digger,Trainer,,Uncommon,4,1,4,1
-base5-77,base5,Nightly Garbage Run,Trainer,,Uncommon,8,2,4,1
-base5-79,base5,Sleep!,Trainer,,Common,4,1,4,1
-gym1-13,gym1,Rocket's Scyther,Pokemon,Grass,Rare Holo,4,1,4,1
-gym1-22,gym1,Brock's Rhyhorn,Pokemon,Fighting,Rare,4,1,4,1
-gym1-24,gym1,Brock's Zubat,Pokemon,Grass,Rare,4,1,4,1
-gym1-35,gym1,Blaine's Growlithe,Pokemon,Fire,Uncommon,4,1,4,1
+base5-11,base5,Dark Magneton,Pokemon,Lightning,Rare Holo,3,1,3,1
+base5-1,base5,Dark Alakazam,Pokemon,Psychic,Rare Holo,3,1,3,1
 gym1-42,gym1,Erika's Dratini,Pokemon,Colorless,Uncommon,4,1,4,1
-gym1-50,gym1,Lt. Surge's Magnemite,Pokemon,Lightning,Uncommon,4,1,4,1
+base1-13,base1,Poliwrath,Pokemon,Water,Rare Holo,4,1,4,1
+gym1-13,gym1,Rocket's Scyther,Pokemon,Grass,Rare Holo,4,1,4,1
+base5-75,base5,Digger,Trainer,,Uncommon,4,1,4,1
+base5-7,base5,Dark Golbat,Pokemon,Grass,Rare Holo,4,1,4,1
+base5-78,base5,Goop Gas Attack,Trainer,,Common,4,1,0,0
 gym1-53,gym1,Misty's Poliwhirl,Pokemon,Water,Uncommon,4,1,4,1
-gym1-75,gym1,Erika's Bellsprout,Pokemon,Grass,Common,10,3,4,1
-gym1-76,gym1,Erika's Bellsprout,Pokemon,Grass,Common,4,1,4,1
+gym1-52,gym1,Lt. Surge's Spearow,Pokemon,Colorless,Uncommon,4,1,0,0
+gym1-22,gym1,Brock's Rhyhorn,Pokemon,Fighting,Rare,4,1,4,1
+gym1-35,gym1,Blaine's Growlithe,Pokemon,Fire,Uncommon,4,1,4,1
+gym1-30,gym1,Misty's Goldeen,Pokemon,Water,Rare,4,1,0,0
+gym1-24,gym1,Brock's Zubat,Pokemon,Grass,Rare,4,1,4,1
+gym1-32,gym1,Misty's Tentacool,Pokemon,Water,Rare,4,1,0,0
+base5-44,base5,Dark Rapidash,Pokemon,Fire,Uncommon,4,1,4,1
+gym1-50,gym1,Lt. Surge's Magnemite,Pokemon,Lightning,Uncommon,4,1,4,1
+gym2-94,gym2,Sabrina's Abra,Pokemon,Psychic,Common,4,1,4,1
+gym1-64,gym1,Blaine's Tauros,Pokemon,Colorless,Common,4,1,0,0
+gym2-83,gym2,Koga's Zubat,Pokemon,Grass,Common,4,1,4,1
+gym2-80,gym2,Koga's Pidgey,Pokemon,Colorless,Common,4,1,4,1
+gym2-119,gym2,Rocket's Minefield Gym,Trainer,,Uncommon,4,1,0,0
+gym2-77,gym2,Koga's Ekans,Pokemon,Grass,Common,4,1,4,1
+gym2-75,gym2,Giovanni's Nidoran ♀,Pokemon,Grass,Common,4,1,4,1
+gym2-72,gym2,Giovanni's Machop,Pokemon,Fighting,Common,4,1,4,1
+basep-10,basep,Meowth,Pokemon,Colorless,Promo,4,1,4,1
+basep-8,basep,Mew,Pokemon,Psychic,Promo,4,1,4,1
+gym2-65,gym2,Blaine's Rhyhorn,Pokemon,Fighting,Common,4,1,0,0
 gym1-80,gym1,Lt. Surge's Magnemite,Pokemon,Lightning,Common,4,1,4,1
-gym1-87,gym1,Misty's Poliwag,Pokemon,Water,Common,8,2,4,1
-gym1-96,gym1,Sabrina's Venonat,Pokemon,Grass,Common,12,3,4,1
-gym1-97,gym1,Blaine's Quiz #1,Trainer,,Rare,4,1,4,1
-gym1-100,gym1,Erika,Trainer,,Rare,8,2,4,1
+gym2-61,gym2,Blaine's Doduo,Pokemon,Colorless,Common,4,1,0,0
+gym2-60,gym2,Blaine's Charmander,Pokemon,Fire,Common,4,1,4,1
+base5-49,base5,Abra,Pokemon,Psychic,Common,4,1,4,1
 gym1-111,gym1,Good Manners,Trainer,,Uncommon,4,1,4,1
 gym1-112,gym1,Lt. Surge's Treaty,Trainer,,Uncommon,4,1,4,1
-gym1-121,gym1,Blaine's Gamble,Trainer,,Common,8,2,4,1
+base1-72,base1,Devolution Spray,Trainer,,Rare,4,1,4,1
+gym2-51,gym2,Lt. Surge's Eevee,Pokemon,Colorless,Uncommon,4,1,4,1
+gym2-44,gym2,Giovanni's Nidorina,Pokemon,Grass,Uncommon,4,1,4,1
 gym2-10,gym2,Koga's Ditto,Pokemon,Colorless,Rare Holo,4,1,4,1
 gym2-14,gym2,Rocket's Mewtwo,Pokemon,Psychic,Rare Holo,4,1,4,1
-gym2-39,gym2,Erika's Bulbasaur,Pokemon,Grass,Uncommon,8,2,4,1
-gym2-44,gym2,Giovanni's Nidorina,Pokemon,Grass,Uncommon,4,1,4,1
-gym2-51,gym2,Lt. Surge's Eevee,Pokemon,Colorless,Uncommon,4,1,4,1
-gym2-60,gym2,Blaine's Charmander,Pokemon,Fire,Common,4,1,4,1
-gym2-70,gym2,Erika's Oddish,Pokemon,Grass,Common,8,2,4,1
-gym2-72,gym2,Giovanni's Machop,Pokemon,Fighting,Common,4,1,4,1
-gym2-73,gym2,Giovanni's Magikarp,Pokemon,Water,Common,8,2,4,1
-gym2-75,gym2,Giovanni's Nidoran ♀,Pokemon,Grass,Common,4,1,4,1
-gym2-77,gym2,Koga's Ekans,Pokemon,Grass,Common,4,1,4,1
-gym2-78,gym2,Koga's Grimer,Pokemon,Grass,Common,4,1,4,1
-gym2-80,gym2,Koga's Pidgey,Pokemon,Colorless,Common,4,1,4,1
-gym2-82,gym2,Koga's Weedle,Pokemon,Grass,Common,8,2,4,1
-gym2-83,gym2,Koga's Zubat,Pokemon,Grass,Common,4,1,4,1
+gym1-97,gym1,Blaine's Quiz #1,Trainer,,Rare,4,1,4,1
 gym2-87,gym2,Misty's Horsea,Pokemon,Water,Common,4,1,4,1
-gym2-94,gym2,Sabrina's Abra,Pokemon,Psychic,Common,4,1,4,1
-gym2-97,gym2,Sabrina's Gastly,Pokemon,Psychic,Common,11,3,4,1
-gym2-98,gym2,Sabrina's Porygon,Pokemon,Colorless,Common,4,1,4,1
-gym2-103,gym2,Erika's Kindness,Trainer,,Rare,4,1,4,1
-gym2-111,gym2,Blaine's Quiz #2,Trainer,,Uncommon,4,1,4,1
+gym2-78,gym2,Koga's Grimer,Pokemon,Grass,Common,4,1,4,1
+gym2-92,gym2,Misty's Staryu,Pokemon,Water,Common,4,1,0,0
+base3-5,base3,Gengar,Pokemon,Psychic,Rare Holo,4,1,4,1
+base3-3,base3,Ditto,Pokemon,Colorless,Rare Holo,4,1,0,0
+gym1-70,gym1,Brock's Rhyhorn,Pokemon,Fighting,Common,4,1,0,0
 gym2-112,gym2,Blaine's Quiz #3,Trainer,,Uncommon,4,1,4,1
+gym1-76,gym1,Erika's Bellsprout,Pokemon,Grass,Common,4,1,4,1
+basep-99,basep,Ancient Mew,Pokemon,Psychic,Promo,4,1,4,1
+base3-12,base3,Moltres,Pokemon,Fire,Rare Holo,4,1,0,0
+base1-29,base1,Haunter,Pokemon,Psychic,Uncommon,4,1,4,1
+gym2-103,gym2,Erika's Kindness,Trainer,,Rare,4,1,4,1
+gym2-102,gym2,Chaos Gym,Trainer,,Rare,4,1,0,0
+gym2-98,gym2,Sabrina's Porygon,Pokemon,Colorless,Common,4,1,4,1
+gym2-111,gym2,Blaine's Quiz #2,Trainer,,Uncommon,4,1,4,1
+gym2-88,gym2,Misty's Magikarp,Pokemon,Water,Common,4,1,0,0
 base5-5,base5,Dark Dragonite,Pokemon,Colorless,Rare Holo,3,2,3,2
 gym2-3,gym2,Brock's Ninetales,Pokemon,Fire,Rare Holo,3,2,3,2
-base1-11,base1,Nidoking,Pokemon,Grass,Rare Holo,4,2,4,2
-base1-19,base1,Dugtrio,Pokemon,Fighting,Rare,4,2,4,2
-base1-51,base1,Koffing,Pokemon,Grass,Common,4,2,4,2
+gym2-43,gym2,Giovanni's Meowth,Pokemon,Colorless,Uncommon,3,2,1,1
 base2-38,base2,Lickitung,Pokemon,Colorless,Uncommon,4,2,4,2
-base2-60,base2,Pikachu,Pokemon,Lightning,Common,4,2,4,2
-basep-3,basep,Mewtwo,Pokemon,Psychic,Promo,4,2,4,2
 base3-15,base3,Zapdos,Pokemon,Lightning,Rare Holo,4,2,4,2
-base3-40,base3,Omastar,Pokemon,Water,Uncommon,4,2,4,2
-base3-45,base3,Weezing,Pokemon,Grass,Uncommon,4,2,4,2
-base3-57,base3,Zubat,Pokemon,Grass,Common,4,2,4,2
-gym1-107,gym1,Celadon City Gym,Trainer,,Uncommon,4,2,4,2
-gym1-108,gym1,Cerulean City Gym,Trainer,,Uncommon,4,2,4,2
-gym1-120,gym1,Vermilion City Gym,Trainer,,Uncommon,4,2,4,2
 gym2-115,gym2,Koga's Ninja Trick,Trainer,,Uncommon,4,2,4,2
-base1-1,base1,Alakazam,Pokemon,Psychic,Rare Holo,5,2,5,2
-base1-9,base1,Magneton,Pokemon,Lightning,Rare Holo,5,2,5,2
-base1-21,base1,Electrode,Pokemon,Lightning,Rare,5,2,5,2
-base1-23,base1,Arcanine,Pokemon,Fire,Uncommon,5,2,5,2
-base1-64,base1,Starmie,Pokemon,Water,Common,8,3,5,2
-base2-1,base2,Clefable,Pokemon,Colorless,Rare Holo,5,2,5,2
-base2-2,base2,Electrode,Pokemon,Lightning,Rare Holo,5,2,5,2
-base2-12,base2,Vaporeon,Pokemon,Water,Rare Holo,5,2,5,2
-base2-13,base2,Venomoth,Pokemon,Grass,Rare Holo,5,2,5,2
-base2-35,base2,Exeggutor,Pokemon,Grass,Uncommon,5,2,5,2
-base2-44,base2,Rapidash,Pokemon,Fire,Uncommon,5,2,5,2
-basep-1,basep,Pikachu,Pokemon,Lightning,Promo,5,2,5,2
-basep-4,basep,Pikachu,Pokemon,Lightning,Promo,5,2,5,2
-base3-1,base3,Aerodactyl,Pokemon,Fighting,Rare Holo,5,2,5,2
-base3-4,base3,Dragonite,Pokemon,Colorless,Rare Holo,7,3,5,2
-base3-8,base3,Hypno,Pokemon,Psychic,Rare Holo,5,2,5,2
-base3-9,base3,Kabutops,Pokemon,Fighting,Rare Holo,5,2,5,2
-base3-11,base3,Magneton,Pokemon,Lightning,Rare Holo,5,2,5,2
-base3-34,base3,Golbat,Pokemon,Grass,Uncommon,5,2,5,2
-base3-35,base3,Golduck,Pokemon,Water,Uncommon,5,2,5,2
-base3-41,base3,Sandslash,Pokemon,Fighting,Uncommon,5,2,5,2
-base3-48,base3,Grimer,Pokemon,Grass,Common,9,3,5,2
-base5-10,base5,Dark Machamp,Pokemon,Fighting,Rare Holo,5,2,5,2
-base5-33,base5,Dark Dragonair,Pokemon,Colorless,Uncommon,5,2,5,2
-base5-35,base5,Dark Flareon,Pokemon,Fire,Uncommon,5,2,5,2
-base5-37,base5,Dark Golduck,Pokemon,Water,Uncommon,5,2,5,2
+base3-40,base3,Omastar,Pokemon,Water,Uncommon,4,2,4,2
+base1-89,base1,Revive,Trainer,,Uncommon,4,2,2,1
+base3-14,base3,Raichu,Pokemon,Lightning,Rare Holo,4,2,1,1
+gym1-120,gym1,Vermilion City Gym,Trainer,,Uncommon,4,2,4,2
+gym1-107,gym1,Celadon City Gym,Trainer,,Uncommon,4,2,4,2
+base3-45,base3,Weezing,Pokemon,Grass,Uncommon,4,2,4,2
+gym1-108,gym1,Cerulean City Gym,Trainer,,Uncommon,4,2,4,2
+basep-3,basep,Mewtwo,Pokemon,Psychic,Promo,4,2,4,2
+base1-19,base1,Dugtrio,Pokemon,Fighting,Rare,4,2,4,2
+gym1-7,gym1,Lt. Surge's Fearow,Pokemon,Colorless,Rare Holo,4,2,2,1
 gym1-8,gym1,Lt. Surge's Magneton,Pokemon,Lightning,Rare Holo,5,2,5,2
+gym1-49,gym1,Erika's Weepinbell,Pokemon,Grass,Uncommon,5,2,3,1
+gym1-2,gym1,Brock's Rhydon,Pokemon,Fighting,Rare Holo,5,2,3,1
+gym1-44,gym1,Erika's Exeggutor,Pokemon,Grass,Uncommon,5,2,2,1
+gym1-43,gym1,Erika's Exeggcute,Pokemon,Grass,Uncommon,5,2,3,1
 gym2-37,gym2,Brock's Vulpix,Pokemon,Fire,Uncommon,5,2,5,2
+base1-1,base1,Alakazam,Pokemon,Psychic,Rare Holo,5,2,5,2
+base2-2,base2,Electrode,Pokemon,Lightning,Rare Holo,5,2,5,2
+base2-13,base2,Venomoth,Pokemon,Grass,Rare Holo,5,2,5,2
+base2-44,base2,Rapidash,Pokemon,Fire,Uncommon,5,2,5,2
+base5-37,base5,Dark Golduck,Pokemon,Water,Uncommon,5,2,5,2
+base2-12,base2,Vaporeon,Pokemon,Water,Rare Holo,5,2,5,2
+base3-41,base3,Sandslash,Pokemon,Fighting,Uncommon,5,2,5,2
+base2-8,base2,Pidgeot,Pokemon,Colorless,Rare Holo,5,2,2,1
+basep-1,basep,Pikachu,Pokemon,Lightning,Promo,5,2,5,2
+base2-7,base2,Nidoqueen,Pokemon,Grass,Rare Holo,5,2,2,1
+base1-40,base1,Raticate,Pokemon,Colorless,Uncommon,5,2,3,1
+base3-35,base3,Golduck,Pokemon,Water,Uncommon,5,2,5,2
+base3-34,base3,Golbat,Pokemon,Grass,Uncommon,5,2,5,2
+basep-4,basep,Pikachu,Pokemon,Lightning,Promo,5,2,5,2
+base5-35,base5,Dark Flareon,Pokemon,Fire,Uncommon,5,2,5,2
+base1-9,base1,Magneton,Pokemon,Lightning,Rare Holo,5,2,5,2
+base2-1,base2,Clefable,Pokemon,Colorless,Rare Holo,5,2,5,2
+base3-6,base3,Haunter,Pokemon,Psychic,Rare Holo,5,2,2,1
+base5-33,base5,Dark Dragonair,Pokemon,Colorless,Uncommon,5,2,5,2
+base3-8,base3,Hypno,Pokemon,Psychic,Rare Holo,5,2,5,2
+base1-23,base1,Arcanine,Pokemon,Fire,Uncommon,5,2,5,2
+base1-12,base1,Ninetales,Pokemon,Fire,Rare Holo,5,2,2,1
+base2-35,base2,Exeggutor,Pokemon,Grass,Uncommon,5,2,5,2
+base5-10,base5,Dark Machamp,Pokemon,Fighting,Rare Holo,5,2,5,2
+base3-11,base3,Magneton,Pokemon,Lightning,Rare Holo,5,2,5,2
+base3-1,base3,Aerodactyl,Pokemon,Fighting,Rare Holo,5,2,5,2
+base1-21,base1,Electrode,Pokemon,Lightning,Rare,5,2,5,2
+base3-9,base3,Kabutops,Pokemon,Fighting,Rare Holo,5,2,5,2
+gym2-7,gym2,Giovanni's Nidoking,Pokemon,Grass,Rare Holo,6,2,6,2
+gym1-34,gym1,Sabrina's Venomoth,Pokemon,Grass,Rare,6,2,3,1
+base2-34,base2,Dodrio,Pokemon,Colorless,Uncommon,6,2,6,2
+base2-14,base2,Victreebel,Pokemon,Grass,Rare Holo,6,2,3,1
+base5-6,base5,Dark Dugtrio,Pokemon,Fighting,Rare Holo,6,2,6,2
+base2-55,base2,Mankey,Pokemon,Fighting,Common,6,2,6,2
+gym1-126,gym1,Trash Exchange,Trainer,,Common,6,2,2,1
+base3-52,base3,Omanyte,Pokemon,Water,Common,6,2,6,2
+base5-51,base5,Dark Raticate,Pokemon,Colorless,Common,6,2,6,2
+base2-47,base2,Tauros,Pokemon,Colorless,Uncommon,6,2,6,2
+base5-16,base5,Rocket's Sneak Attack,Trainer,,Rare Holo,6,2,6,2
+base3-42,base3,Seadra,Pokemon,Water,Uncommon,6,2,3,1
+base3-38,base3,Kingler,Pokemon,Water,Uncommon,6,2,6,2
+base3-36,base3,Golem,Pokemon,Fighting,Uncommon,6,2,6,2
+base3-33,base3,Gastly,Pokemon,Psychic,Uncommon,6,2,6,2
+base3-32,base3,Cloyster,Pokemon,Water,Uncommon,6,2,6,2
+basep-15,basep,Cool Porygon,Pokemon,Colorless,Promo,6,2,0,0
+basep-16,basep,Computer Error,Trainer,,Promo,6,2,0,0
+base3-7,base3,Hitmonlee,Pokemon,Fighting,Rare Holo,6,2,6,2
+base3-2,base3,Articuno,Pokemon,Water,Rare Holo,6,2,6,2
+base2-39,base2,Marowak,Pokemon,Fighting,Uncommon,6,2,6,2
+base5-52,base5,Diglett,Pokemon,Fighting,Common,6,2,6,2
+base5-9,base5,Dark Hypno,Pokemon,Psychic,Rare Holo,6,2,6,2
+gym1-82,gym1,Lt. Surge's Rattata,Pokemon,Colorless,Common,6,2,6,2
+gym2-68,gym2,Brock's Geodude,Pokemon,Fighting,Common,6,2,2,1
+base5-43,base5,Dark Primeape,Pokemon,Fighting,Uncommon,6,2,6,2
+base1-56,base1,Onix,Pokemon,Fighting,Common,6,2,6,2
 base1-8,base1,Machamp,Pokemon,Fighting,Rare Holo,6,2,6,2
-base1-22,base1,Pidgeotto,Pokemon,Colorless,Rare,6,2,6,2
+base5-59,base5,Machop,Pokemon,Fighting,Common,6,2,4,1
+base5-34,base5,Dark Electrode,Pokemon,Lightning,Uncommon,6,2,6,2
+base5-61,base5,Mankey,Pokemon,Fighting,Common,6,2,6,2
 base1-27,base1,Farfetch'd,Pokemon,Colorless,Uncommon,6,2,6,2
 base1-31,base1,Jynx,Pokemon,Psychic,Uncommon,6,2,6,2
-base1-36,base1,Magmar,Pokemon,Fire,Uncommon,10,3,6,2
-base1-56,base1,Onix,Pokemon,Fighting,Common,6,2,6,2
-base2-34,base2,Dodrio,Pokemon,Colorless,Uncommon,6,2,6,2
-base2-36,base2,Fearow,Pokemon,Colorless,Uncommon,6,2,6,2
-base2-37,base2,Gloom,Pokemon,Grass,Uncommon,6,2,6,2
-base2-39,base2,Marowak,Pokemon,Fighting,Uncommon,6,2,6,2
-base2-40,base2,Nidorina,Pokemon,Grass,Uncommon,6,2,6,2
-base2-45,base2,Rhydon,Pokemon,Fighting,Uncommon,6,2,6,2
-base2-47,base2,Tauros,Pokemon,Colorless,Uncommon,6,2,6,2
-base2-48,base2,Weepinbell,Pokemon,Grass,Uncommon,6,2,6,2
-base2-55,base2,Mankey,Pokemon,Fighting,Common,6,2,6,2
-base3-2,base3,Articuno,Pokemon,Water,Rare Holo,6,2,6,2
-base3-7,base3,Hitmonlee,Pokemon,Fighting,Rare Holo,6,2,6,2
-base3-13,base3,Muk,Pokemon,Grass,Rare Holo,9,3,6,2
-base3-32,base3,Cloyster,Pokemon,Water,Uncommon,6,2,6,2
-base3-33,base3,Gastly,Pokemon,Psychic,Uncommon,6,2,6,2
-base3-36,base3,Golem,Pokemon,Fighting,Uncommon,6,2,6,2
-base3-38,base3,Kingler,Pokemon,Water,Uncommon,6,2,6,2
-base3-52,base3,Omanyte,Pokemon,Water,Common,6,2,6,2
-base5-4,base5,Dark Charizard,Pokemon,Fire,Rare Holo,8,3,6,2
-base5-6,base5,Dark Dugtrio,Pokemon,Fighting,Rare Holo,6,2,6,2
-base5-9,base5,Dark Hypno,Pokemon,Psychic,Rare Holo,6,2,6,2
-base5-16,base5,Rocket's Sneak Attack,Trainer,,Rare Holo,6,2,6,2
-base5-34,base5,Dark Electrode,Pokemon,Lightning,Uncommon,6,2,6,2
-base5-43,base5,Dark Primeape,Pokemon,Fighting,Uncommon,6,2,6,2
-base5-46,base5,Dark Wartortle,Pokemon,Water,Uncommon,9,3,6,2
-base5-51,base5,Dark Raticate,Pokemon,Colorless,Common,6,2,6,2
-base5-52,base5,Diglett,Pokemon,Fighting,Common,6,2,6,2
-base5-61,base5,Mankey,Pokemon,Fighting,Common,6,2,6,2
-base5-68,base5,Squirtle,Pokemon,Water,Common,10,3,6,2
-gym1-37,gym1,Blaine's Magmar,Pokemon,Fire,Uncommon,10,3,6,2
-gym1-82,gym1,Lt. Surge's Rattata,Pokemon,Colorless,Common,6,2,6,2
-gym1-114,gym1,Misty's Wrath,Trainer,,Uncommon,12,4,6,2
-gym2-7,gym2,Giovanni's Nidoking,Pokemon,Grass,Rare Holo,6,2,6,2
+gym1-10,gym1,Misty's Tentacruel,Pokemon,Water,Rare Holo,6,2,3,1
 gym2-69,gym2,Erika's Jigglypuff,Pokemon,Colorless,Common,6,2,6,2
+base1-39,base1,Porygon,Pokemon,Colorless,Uncommon,6,2,0,0
 gym2-86,gym2,Lt. Surge's Voltorb,Pokemon,Lightning,Common,6,2,6,2
-base1-5,base1,Clefairy,Pokemon,Colorless,Rare Holo,7,2,7,2
-base1-38,base1,Poliwhirl,Pokemon,Water,Uncommon,7,2,7,2
-base2-16,base2,Wigglytuff,Pokemon,Colorless,Rare Holo,7,2,7,2
-base2-33,base2,Butterfree,Pokemon,Grass,Uncommon,7,2,7,2
+base1-50,base1,Gastly,Pokemon,Psychic,Common,6,2,2,1
 base3-43,base3,Slowbro,Pokemon,Psychic,Uncommon,7,2,7,2
-base3-50,base3,Kabuto,Pokemon,Fighting,Common,7,2,7,2
-base5-8,base5,Dark Gyarados,Pokemon,Water,Rare Holo,7,2,7,2
-base5-12,base5,Dark Slowbro,Pokemon,Psychic,Rare Holo,7,2,7,2
-base5-14,base5,Dark Weezing,Pokemon,Grass,Rare Holo,7,2,7,2
-base5-32,base5,Dark Charmeleon,Pokemon,Fire,Uncommon,10,3,7,2
-base5-40,base5,Dark Machoke,Pokemon,Fighting,Uncommon,7,2,7,2
-base5-41,base5,Dark Muk,Pokemon,Grass,Uncommon,7,2,7,2
+base1-38,base1,Poliwhirl,Pokemon,Water,Uncommon,7,2,7,2
+gym1-58,gym1,Sabrina's Haunter,Pokemon,Psychic,Uncommon,7,2,3,1
+base1-5,base1,Clefairy,Pokemon,Colorless,Rare Holo,7,2,7,2
+gym1-83,gym1,Lt. Surge's Spearow,Pokemon,Colorless,Common,7,2,3,1
 base5-53,base5,Dratini,Pokemon,Colorless,Common,7,2,7,2
+gym2-81,gym2,Koga's Tangela,Pokemon,Grass,Common,7,2,3,1
+base3-50,base3,Kabuto,Pokemon,Fighting,Common,7,2,7,2
+base5-14,base5,Dark Weezing,Pokemon,Grass,Rare Holo,7,2,7,2
+base2-16,base2,Wigglytuff,Pokemon,Colorless,Rare Holo,7,2,7,2
 base5-83,base5,Dark Raichu,Pokemon,Lightning,Rare Secret,7,2,7,2
+base5-12,base5,Dark Slowbro,Pokemon,Psychic,Rare Holo,7,2,7,2
+base5-40,base5,Dark Machoke,Pokemon,Fighting,Uncommon,7,2,7,2
+base5-8,base5,Dark Gyarados,Pokemon,Water,Rare Holo,7,2,7,2
+base2-33,base2,Butterfree,Pokemon,Grass,Uncommon,7,2,7,2
 gym2-45,gym2,Giovanni's Nidorino,Pokemon,Grass,Uncommon,7,2,7,2
+base2-15,base2,Vileplume,Pokemon,Grass,Rare Holo,7,2,3,1
+base5-41,base5,Dark Muk,Pokemon,Grass,Uncommon,7,2,7,2
+base1-16,base1,Zapdos,Pokemon,Lightning,Rare Holo,8,2,4,1
+gym1-87,gym1,Misty's Poliwag,Pokemon,Water,Common,8,2,4,1
+base2-6,base2,Mr. Mime,Pokemon,Psychic,Rare Holo,8,2,8,2
+gym2-70,gym2,Erika's Oddish,Pokemon,Grass,Common,8,2,4,1
+gym2-39,gym2,Erika's Bulbasaur,Pokemon,Grass,Uncommon,8,2,4,1
 base1-6,base1,Gyarados,Pokemon,Water,Rare Holo,8,2,8,2
+basep-26,basep,Pikachu,Pokemon,Lightning,Promo,8,2,8,2
+base1-86,base1,Pokémon Flute,Trainer,,Uncommon,8,2,0,0
+gym2-15,gym2,Rocket's Zapdos,Pokemon,Lightning,Rare Holo,8,2,8,2
 base1-15,base1,Venusaur,Pokemon,Grass,Rare Holo,8,2,8,2
 base1-28,base1,Growlithe,Pokemon,Fire,Uncommon,8,2,8,2
-base1-53,base1,Magnemite,Pokemon,Lightning,Common,8,2,8,2
-base1-57,base1,Pidgey,Pokemon,Colorless,Common,8,2,8,2
-base1-60,base1,Ponyta,Pokemon,Fire,Common,8,2,8,2
-base1-61,base1,Rattata,Pokemon,Colorless,Common,8,2,8,2
 base1-62,base1,Sandshrew,Pokemon,Fighting,Common,8,2,8,2
-base1-65,base1,Staryu,Pokemon,Water,Common,12,3,8,2
 base1-66,base1,Tangela,Pokemon,Grass,Common,8,2,8,2
-base1-67,base1,Voltorb,Pokemon,Lightning,Common,8,2,8,2
-base2-6,base2,Mr. Mime,Pokemon,Psychic,Rare Holo,8,2,8,2
-base2-49,base2,Bellsprout,Pokemon,Grass,Common,8,2,8,2
+gym2-84,gym2,Lt. Surge's Pikachu,Pokemon,Lightning,Common,8,2,8,2
+gym2-82,gym2,Koga's Weedle,Pokemon,Grass,Common,8,2,4,1
+base2-62,base2,Spearow,Pokemon,Colorless,Common,8,2,4,1
+gym1-100,gym1,Erika,Trainer,,Rare,8,2,4,1
+base2-58,base2,Oddish,Pokemon,Grass,Common,8,2,4,1
+gym2-76,gym2,Giovanni's Nidoran ♂,Pokemon,Grass,Common,8,2,8,2
+gym2-19,gym2,Koga,Trainer,,Rare Holo,8,2,8,2
 base2-50,base2,Cubone,Pokemon,Fighting,Common,8,2,8,2
-base2-57,base2,Nidoran ♀,Pokemon,Grass,Common,8,2,8,2
-base2-59,base2,Paras,Pokemon,Grass,Common,8,2,8,2
-base2-61,base2,Rhyhorn,Pokemon,Fighting,Common,8,2,8,2
-basep-2,basep,Electabuzz,Pokemon,Lightning,Promo,8,2,8,2
-basep-26,basep,Pikachu,Pokemon,Lightning,Promo,8,2,8,2
-base3-49,base3,Horsea,Pokemon,Water,Common,8,2,8,2
+base1-53,base1,Magnemite,Pokemon,Lightning,Common,8,2,8,2
+gym1-121,gym1,Blaine's Gamble,Trainer,,Common,8,2,4,1
+gym2-73,gym2,Giovanni's Magikarp,Pokemon,Water,Common,8,2,4,1
+base1-67,base1,Voltorb,Pokemon,Lightning,Common,8,2,8,2
+gym1-106,gym1,Brock's Training Method,Trainer,,Uncommon,8,2,8,2
+gym1-118,gym1,Secret Mission,Trainer,,Uncommon,8,2,8,2
+base5-79,base5,Sleep!,Trainer,,Common,8,2,4,1
+gym1-57,gym1,Misty's Tentacool,Pokemon,Water,Uncommon,8,2,8,2
+base5-65,base5,Psyduck,Pokemon,Water,Common,8,2,8,2
+base5-64,base5,Ponyta,Pokemon,Fire,Common,8,2,4,1
+base5-48,base5,Porygon,Pokemon,Colorless,Uncommon,8,2,4,1
+base5-77,base5,Nightly Garbage Run,Trainer,,Uncommon,8,2,4,1
+gym1-11,gym1,Rocket's Hitmonchan,Pokemon,Fighting,Rare Holo,8,2,8,2
+base5-13,base5,Dark Vileplume,Pokemon,Grass,Rare Holo,8,2,4,1
+base3-55,base3,Slowpoke,Pokemon,Psychic,Common,8,2,4,1
+base5-36,base5,Dark Gloom,Pokemon,Grass,Uncommon,8,2,4,1
+base3-54,base3,Shellder,Pokemon,Water,Common,8,2,8,2
+gym1-68,gym1,Brock's Mankey,Pokemon,Fighting,Common,8,2,8,2
+base5-63,base5,Oddish,Pokemon,Grass,Common,8,2,8,2
+gym1-47,gym1,Erika's Oddish,Pokemon,Grass,Uncommon,8,2,8,2
 base3-51,base3,Krabby,Pokemon,Water,Common,8,2,8,2
 base3-53,base3,Psyduck,Pokemon,Water,Common,8,2,8,2
-base3-54,base3,Shellder,Pokemon,Water,Common,8,2,8,2
-base5-3,base5,Dark Blastoise,Pokemon,Water,Rare Holo,10,3,8,2
 base5-47,base5,Magikarp,Pokemon,Water,Uncommon,8,2,8,2
-base5-50,base5,Charmander,Pokemon,Fire,Common,12,3,8,2
-base5-60,base5,Magnemite,Pokemon,Lightning,Common,8,2,8,2
-base5-63,base5,Oddish,Pokemon,Grass,Common,8,2,8,2
-base5-65,base5,Psyduck,Pokemon,Water,Common,8,2,8,2
-gym1-11,gym1,Rocket's Hitmonchan,Pokemon,Fighting,Rare Holo,8,2,8,2
 gym1-12,gym1,Rocket's Moltres,Pokemon,Fire,Rare Holo,8,2,8,2
-gym1-16,gym1,Erika,Trainer,,Rare Holo,20,5,8,2
-gym1-47,gym1,Erika's Oddish,Pokemon,Grass,Uncommon,8,2,8,2
-gym1-57,gym1,Misty's Tentacool,Pokemon,Water,Uncommon,8,2,8,2
-gym1-68,gym1,Brock's Mankey,Pokemon,Fighting,Common,8,2,8,2
-gym1-106,gym1,Brock's Training Method,Trainer,,Uncommon,8,2,8,2
-gym1-109,gym1,Erika's Maids,Trainer,,Uncommon,12,3,8,2
-gym1-117,gym1,Sabrina's ESP,Trainer,,Uncommon,12,3,8,2
-gym1-118,gym1,Secret Mission,Trainer,,Uncommon,8,2,8,2
-gym2-15,gym2,Rocket's Zapdos,Pokemon,Lightning,Rare Holo,8,2,8,2
-gym2-19,gym2,Koga,Trainer,,Rare Holo,8,2,8,2
-gym2-76,gym2,Giovanni's Nidoran ♂,Pokemon,Grass,Common,8,2,8,2
-gym2-84,gym2,Lt. Surge's Pikachu,Pokemon,Lightning,Common,8,2,8,2
-gym2-118,gym2,Misty's Tears,Trainer,,Uncommon,16,4,8,2
 base2-3,base2,Flareon,Pokemon,Fire,Rare Holo,5,3,5,3
-base1-4,base1,Charizard,Pokemon,Fire,Rare Holo,8,4,6,3
 base1-10,base1,Mewtwo,Pokemon,Psychic,Rare Holo,6,3,6,3
+base3-57,base3,Zubat,Pokemon,Grass,Common,6,3,4,2
+base1-51,base1,Koffing,Pokemon,Grass,Common,6,3,4,2
+base2-41,base2,Parasect,Pokemon,Grass,Uncommon,6,3,3,1
+base1-73,base1,Impostor Professor Oak,Trainer,,Rare,6,3,2,1
+base1-85,base1,Pokémon Center,Trainer,,Uncommon,6,3,2,1
 base1-79,base1,Super Energy Removal,Trainer,,Rare,7,3,7,3
+base3-4,base3,Dragonite,Pokemon,Colorless,Rare Holo,7,3,5,2
 base2-4,base2,Jolteon,Pokemon,Lightning,Rare Holo,7,3,7,3
 basep-27,basep,Pikachu,Pokemon,Lightning,Promo,7,3,7,3
-base1-14,base1,Raichu,Pokemon,Lightning,Rare Holo,8,3,8,3
-base1-37,base1,Nidorino,Pokemon,Grass,Uncommon,8,3,8,3
-base1-82,base1,Full Heal,Trainer,,Uncommon,8,3,8,3
 base3-46,base3,Ekans,Pokemon,Grass,Common,8,3,8,3
+base1-14,base1,Raichu,Pokemon,Lightning,Rare Holo,8,3,8,3
 base5-45,base5,Dark Vaporeon,Pokemon,Water,Uncommon,8,3,8,3
+base2-45,base2,Rhydon,Pokemon,Fighting,Uncommon,8,3,6,2
 gym1-33,gym1,Rocket's Snorlax,Pokemon,Colorless,Rare,8,3,8,3
-base1-18,base1,Dragonair,Pokemon,Colorless,Rare,12,4,9,3
+base3-61,base3,Recycle,Trainer,,Common,8,3,2,1
+base2-60,base2,Pikachu,Pokemon,Lightning,Common,8,3,4,2
+base5-4,base5,Dark Charizard,Pokemon,Fire,Rare Holo,8,3,6,2
+gym1-123,gym1,Misty's Duel,Trainer,,Common,8,3,2,1
+base1-11,base1,Nidoking,Pokemon,Grass,Rare Holo,8,3,4,2
+base1-64,base1,Starmie,Pokemon,Water,Common,8,3,5,2
+base2-40,base2,Nidorina,Pokemon,Grass,Uncommon,8,3,6,2
+base2-36,base2,Fearow,Pokemon,Colorless,Uncommon,9,3,6,2
+base3-60,base3,Gambler,Trainer,,Common,9,3,4,1
+base3-48,base3,Grimer,Pokemon,Grass,Common,9,3,5,2
+base2-46,base2,Seaking,Pokemon,Water,Uncommon,9,3,3,1
+base1-22,base1,Pidgeotto,Pokemon,Colorless,Rare,9,3,6,2
+base2-48,base2,Weepinbell,Pokemon,Grass,Uncommon,9,3,6,2
 base1-32,base1,Kadabra,Pokemon,Psychic,Uncommon,9,3,9,3
+base3-44,base3,Tentacruel,Pokemon,Water,Uncommon,9,3,3,1
 base1-47,base1,Diglett,Pokemon,Fighting,Common,9,3,9,3
-base1-54,base1,Metapod,Pokemon,Grass,Common,9,3,9,3
 base5-38,base5,Dark Jolteon,Pokemon,Lightning,Uncommon,9,3,9,3
-base1-2,base1,Blastoise,Pokemon,Water,Rare Holo,10,3,10,3
-base1-7,base1,Hitmonchan,Pokemon,Fighting,Rare Holo,14,4,10,3
-base1-17,base1,Beedrill,Pokemon,Grass,Rare,10,3,10,3
+base3-13,base3,Muk,Pokemon,Grass,Rare Holo,9,3,6,2
+base5-46,base5,Dark Wartortle,Pokemon,Water,Uncommon,9,3,6,2
+base1-54,base1,Metapod,Pokemon,Grass,Common,9,3,9,3
+base5-32,base5,Dark Charmeleon,Pokemon,Fire,Uncommon,10,3,7,2
 base1-34,base1,Machoke,Pokemon,Fighting,Uncommon,10,3,10,3
+base5-60,base5,Magnemite,Pokemon,Lightning,Common,10,3,8,2
+base1-36,base1,Magmar,Pokemon,Fire,Uncommon,10,3,6,2
+base1-60,base1,Ponyta,Pokemon,Fire,Common,10,3,8,2
+base1-17,base1,Beedrill,Pokemon,Grass,Rare,10,3,10,3
+base5-3,base5,Dark Blastoise,Pokemon,Water,Rare Holo,10,3,8,2
 base2-9,base2,Pinsir,Pokemon,Grass,Rare Holo,10,3,10,3
-base2-10,base2,Scyther,Pokemon,Grass,Rare Holo,10,3,10,3
-base2-54,base2,Jigglypuff,Pokemon,Colorless,Common,10,3,10,3
+gym1-75,gym1,Erika's Bellsprout,Pokemon,Grass,Common,10,3,4,1
+base1-2,base1,Blastoise,Pokemon,Water,Rare Holo,10,3,10,3
 base3-31,base3,Arbok,Pokemon,Grass,Uncommon,10,3,10,3
 base3-37,base3,Graveler,Pokemon,Fighting,Uncommon,10,3,10,3
 base3-39,base3,Magmar,Pokemon,Fire,Uncommon,10,3,10,3
-base2-52,base2,Exeggcute,Pokemon,Grass,Common,11,3,11,3
-base5-2,base5,Dark Arbok,Pokemon,Grass,Rare Holo,11,3,11,3
-base5-54,base5,Drowzee,Pokemon,Psychic,Common,11,3,11,3
-base5-57,base5,Grimer,Pokemon,Grass,Common,11,3,11,3
+gym1-125,gym1,Sabrina's Gaze,Trainer,,Common,10,3,2,1
+base2-37,base2,Gloom,Pokemon,Grass,Uncommon,10,3,6,2
+base2-54,base2,Jigglypuff,Pokemon,Colorless,Common,10,3,10,3
+base3-58,base3,Mr. Fuji,Trainer,,Uncommon,10,3,4,1
+gym1-37,gym1,Blaine's Magmar,Pokemon,Fire,Uncommon,10,3,6,2
+base1-61,base1,Rattata,Pokemon,Colorless,Common,11,3,8,2
+base2-61,base2,Rhyhorn,Pokemon,Fighting,Common,11,3,8,2
 base5-62,base5,Meowth,Pokemon,Colorless,Common,11,3,11,3
-base1-49,base1,Drowzee,Pokemon,Psychic,Common,12,3,12,3
-base1-59,base1,Poliwag,Pokemon,Water,Common,12,3,12,3
-base1-68,base1,Vulpix,Pokemon,Fire,Common,12,3,12,3
-base2-5,base2,Kangaskhan,Pokemon,Colorless,Rare Holo,12,3,12,3
+base5-2,base5,Dark Arbok,Pokemon,Grass,Rare Holo,11,3,11,3
+base5-57,base5,Grimer,Pokemon,Grass,Common,11,3,11,3
+gym2-97,gym2,Sabrina's Gastly,Pokemon,Psychic,Common,11,3,4,1
+base2-52,base2,Exeggcute,Pokemon,Grass,Common,11,3,11,3
+base5-54,base5,Drowzee,Pokemon,Psychic,Common,11,3,11,3
+gym1-96,gym1,Sabrina's Venonat,Pokemon,Grass,Common,12,3,4,1
 base2-11,base2,Snorlax,Pokemon,Colorless,Rare Holo,12,3,12,3
-base2-56,base2,Meowth,Pokemon,Colorless,Common,12,3,12,3
+basep-2,basep,Electabuzz,Pokemon,Lightning,Promo,12,3,8,2
+base1-65,base1,Staryu,Pokemon,Water,Common,12,3,8,2
 base2-63,base2,Venonat,Pokemon,Grass,Common,12,3,12,3
+base1-49,base1,Drowzee,Pokemon,Psychic,Common,12,3,12,3
+gym1-117,gym1,Sabrina's ESP,Trainer,,Uncommon,12,3,8,2
+base5-50,base5,Charmander,Pokemon,Fire,Common,12,3,8,2
+base1-57,base1,Pidgey,Pokemon,Colorless,Common,12,3,8,2
+base1-59,base1,Poliwag,Pokemon,Water,Common,12,3,12,3
+base2-57,base2,Nidoran ♀,Pokemon,Grass,Common,12,3,8,2
+base2-56,base2,Meowth,Pokemon,Colorless,Common,12,3,12,3
 basep-25,basep,Flying Pikachu,Pokemon,Lightning,Promo,12,3,12,3
-base3-56,base3,Tentacool,Pokemon,Water,Common,12,3,12,3
+base3-49,base3,Horsea,Pokemon,Water,Common,12,3,8,2
+base2-49,base2,Bellsprout,Pokemon,Grass,Common,12,3,8,2
+gym1-109,gym1,Erika's Maids,Trainer,,Uncommon,12,3,8,2
 base5-66,base5,Rattata,Pokemon,Colorless,Common,12,3,12,3
+base2-5,base2,Kangaskhan,Pokemon,Colorless,Rare Holo,12,3,12,3
 gym1-15,gym1,Brock,Trainer,,Rare Holo,12,3,12,3
-gym2-17,gym2,Blaine,Trainer,,Rare Holo,16,4,12,3
-base2-64,base2,Poké Ball,Trainer,,Common,9,4,9,4
+base1-4,base1,Charizard,Pokemon,Fire,Rare Holo,8,4,6,3
+base1-37,base1,Nidorino,Pokemon,Grass,Uncommon,10,4,8,3
 base1-3,base1,Chansey,Pokemon,Colorless,Rare Holo,10,4,10,4
 base1-58,base1,Pikachu,Pokemon,Lightning,Common,11,4,11,4
 base5-42,base5,Dark Persian,Pokemon,Colorless,Uncommon,11,4,11,4
-base1-24,base1,Charmeleon,Pokemon,Fire,Uncommon,15,5,12,4
 base1-25,base1,Dewgong,Pokemon,Water,Uncommon,12,4,12,4
 base5-70,base5,Zubat,Pokemon,Grass,Common,12,4,12,4
+base1-18,base1,Dragonair,Pokemon,Colorless,Rare,12,4,9,3
+gym1-114,gym1,Misty's Wrath,Trainer,,Uncommon,12,4,6,2
 base1-30,base1,Ivysaur,Pokemon,Grass,Uncommon,13,4,13,4
 base1-33,base1,Kakuna,Pokemon,Grass,Uncommon,13,4,13,4
-base1-78,base1,Scoop Up,Trainer,,Rare,13,4,13,4
-base5-81,base5,Full Heal Energy,Special Energy,,Uncommon,13,4,13,4
-base1-55,base1,Nidoran ♂,Pokemon,Grass,Common,15,4,15,4
+base1-7,base1,Hitmonchan,Pokemon,Fighting,Rare Holo,14,4,10,3
+base2-10,base2,Scyther,Pokemon,Grass,Rare Holo,14,4,10,3
 base5-58,base5,Koffing,Pokemon,Grass,Common,15,4,15,4
-base1-20,base1,Electabuzz,Pokemon,Lightning,Rare,20,5,16,4
-base1-35,base1,Magikarp,Pokemon,Water,Uncommon,16,4,16,4
-base1-43,base1,Abra,Pokemon,Psychic,Common,16,4,16,4
-base1-44,base1,Bulbasaur,Pokemon,Grass,Common,16,4,16,4
-base1-45,base1,Caterpie,Pokemon,Grass,Common,16,4,16,4
-base1-46,base1,Charmander,Pokemon,Fire,Common,16,4,16,4
-base1-48,base1,Doduo,Pokemon,Colorless,Common,16,4,16,4
 base1-52,base1,Machop,Pokemon,Fighting,Common,16,4,16,4
-base1-69,base1,Weedle,Pokemon,Grass,Common,16,4,16,4
-base2-53,base2,Goldeen,Pokemon,Water,Common,16,4,16,4
-basep-11,basep,Eevee,Pokemon,Colorless,Promo,16,4,16,4
-basep-28,basep,Surfing Pikachu,Pokemon,Lightning,Promo,16,4,16,4
-base3-47,base3,Geodude,Pokemon,Fighting,Common,16,4,16,4
 base5-67,base5,Slowpoke,Pokemon,Psychic,Common,16,4,16,4
+base1-48,base1,Doduo,Pokemon,Colorless,Common,16,4,16,4
+base1-46,base1,Charmander,Pokemon,Fire,Common,16,4,16,4
+base1-45,base1,Caterpie,Pokemon,Grass,Common,16,4,16,4
+base1-43,base1,Abra,Pokemon,Psychic,Common,16,4,16,4
 base5-69,base5,Voltorb,Pokemon,Lightning,Common,16,4,16,4
-base5-74,base5,Challenge!,Trainer,,Uncommon,20,5,16,4
+base1-35,base1,Magikarp,Pokemon,Water,Uncommon,16,4,16,4
+gym2-118,gym2,Misty's Tears,Trainer,,Uncommon,16,4,8,2
+base1-44,base1,Bulbasaur,Pokemon,Grass,Common,16,4,16,4
+basep-28,basep,Surfing Pikachu,Pokemon,Lightning,Promo,16,4,16,4
+base1-68,base1,Vulpix,Pokemon,Fire,Common,16,4,12,3
+base1-69,base1,Weedle,Pokemon,Grass,Common,16,4,16,4
+basep-11,basep,Eevee,Pokemon,Colorless,Promo,16,4,16,4
+base3-47,base3,Geodude,Pokemon,Fighting,Common,16,4,16,4
+gym2-17,gym2,Blaine,Trainer,,Rare Holo,16,4,12,3
+base1-87,base1,Pokédex,Trainer,,Uncommon,12,5,0,0
 base5-55,base5,Eevee,Pokemon,Colorless,Common,13,5,13,5
-base5-17,base5,Rainbow Energy,Special Energy,,Rare Holo,19,6,15,5
-base5-82,base5,Potion Energy,Special Energy,,Uncommon,18,6,15,5
-base1-42,base1,Wartortle,Pokemon,Water,Uncommon,16,5,16,5
+base5-68,base5,Squirtle,Pokemon,Water,Common,14,5,6,2
+base2-59,base2,Paras,Pokemon,Grass,Common,15,5,8,2
+base1-24,base1,Charmeleon,Pokemon,Fire,Uncommon,15,5,12,4
 base3-10,base3,Lapras,Pokemon,Water,Rare Holo,16,5,16,5
 base5-56,base5,Ekans,Pokemon,Grass,Common,16,5,16,5
 base1-63,base1,Squirtle,Pokemon,Water,Common,18,5,18,5
-base1-70,base1,Clefairy Doll,Trainer,,Rare,18,5,18,5
-base1-26,base1,Dratini,Pokemon,Colorless,Uncommon,23,6,19,5
+base1-55,base1,Nidoran ♂,Pokemon,Grass,Common,19,5,15,4
 base1-41,base1,Seel,Pokemon,Water,Uncommon,19,5,19,5
+base1-20,base1,Electabuzz,Pokemon,Lightning,Rare,20,5,16,4
+gym1-16,gym1,Erika,Trainer,,Rare Holo,20,5,8,2
 base3-62,base3,Mysterious Fossil,Trainer,,Common,20,5,20,5
-base1-74,base1,Item Finder,Trainer,,Rare,14,7,12,6
+base3-56,base3,Tentacool,Pokemon,Water,Common,20,5,12,3
+base5-74,base5,Challenge!,Trainer,,Uncommon,20,5,16,4
 base2-51,base2,Eevee,Pokemon,Colorless,Common,15,6,15,6
+base1-78,base1,Scoop Up,Trainer,,Rare,16,6,13,4
+base1-42,base1,Wartortle,Pokemon,Water,Uncommon,17,6,16,5
+base1-82,base1,Full Heal,Trainer,,Uncommon,18,6,8,3
+base1-26,base1,Dratini,Pokemon,Colorless,Uncommon,23,6,19,5
 gym1-19,gym1,The Rocket's Trap,Trainer,,Rare Holo,24,6,24,6
-base1-76,base1,Pokémon Breeder,Trainer,,Rare,18,8,16,7
-base1-81,base1,Energy Retrieval,Trainer,,Uncommon,18,8,16,7
-base1-83,base1,Maintenance,Trainer,,Uncommon,18,7,18,7
+base2-53,base2,Goldeen,Pokemon,Water,Common,24,6,16,4
+base1-74,base1,Item Finder,Trainer,,Rare,16,8,12,6
+base2-64,base2,Poké Ball,Trainer,,Common,23,8,9,4
+base1-70,base1,Clefairy Doll,Trainer,,Rare,26,8,18,5
+base5-17,base5,Rainbow Energy,Special Energy,,Rare Holo,27,8,15,5
+base5-81,base5,Full Heal Energy,Special Energy,,Uncommon,29,8,13,4
 base5-76,base5,Imposter Oak's Revenge,Trainer,,Uncommon,30,8,30,8
 base1-75,base1,Lass,Trainer,,Rare,23,9,23,9
+base1-83,base1,Maintenance,Trainer,,Uncommon,24,9,18,7
 base1-71,base1,Computer Search,Trainer,,Rare,19,10,19,10
-gym2-116,gym2,Master Ball,Trainer,,Uncommon,48,14,32,10
-base1-90,base1,Super Potion,Trainer,,Uncommon,36,15,34,14
+base1-81,base1,Energy Retrieval,Trainer,,Uncommon,22,10,16,7
+base1-76,base1,Pokémon Breeder,Trainer,,Rare,24,10,16,7
+base5-82,base5,Potion Energy,Special Energy,,Uncommon,34,10,15,5
+gym2-116,gym2,Master Ball,Trainer,,Uncommon,52,15,32,10
+base1-90,base1,Super Potion,Trainer,,Uncommon,42,17,34,14
 base5-73,base5,The Boss's Way,Trainer,,Uncommon,46,17,44,16
-base1-98,base1,Fire Energy,Basic Energy,,,346,21,286,19
-base1-95,base1,Switch,Trainer,,Common,41,22,37,20
-base1-101,base1,Psychic Energy,Basic Energy,,,322,23,278,21
-base1-96,base1,Double Colorless Energy,Special Energy,,Uncommon,94,25,86,23
-base1-97,base1,Fighting Energy,Basic Energy,,,361,26,323,24
-base3-59,base3,Energy Search,Trainer,,Common,98,27,90,25
-base1-93,base1,Gust of Wind,Trainer,,Common,66,29,64,28
-base1-100,base1,Lightning Energy,Basic Energy,,,430,30,417,29
-base1-102,base1,Water Energy,Basic Energy,,,553,36,501,33
-base1-94,base1,Potion,Trainer,,Common,106,37,104,36
-base1-99,base1,Grass Energy,Basic Energy,,,637,38,602,36
-base1-77,base1,Pokémon Trader,Trainer,,Rare,75,38,73,37
-base1-80,base1,Defender,Trainer,,Uncommon,106,41,98,39
-base1-84,base1,PlusPower,Trainer,,Uncommon,146,45,138,43
-base1-92,base1,Energy Removal,Trainer,,Common,131,44,131,44
-base1-88,base1,Professor Oak,Trainer,,Uncommon,208,78,200,76
-base1-91,base1,Bill,Trainer,,Common,307,85,295,82
+base1-98,base1,Fire Energy,Basic Energy,,,369,24,286,19
+base1-101,base1,Psychic Energy,Basic Energy,,,344,25,278,21
+base1-95,base1,Switch,Trainer,,Common,55,27,37,20
+base1-97,base1,Fighting Energy,Basic Energy,,,370,29,323,24
+base3-59,base3,Energy Search,Trainer,,Common,111,31,90,25
+base1-96,base1,Double Colorless Energy,Special Energy,,Uncommon,118,31,86,23
+base1-100,base1,Lightning Energy,Basic Energy,,,455,32,417,29
+base1-93,base1,Gust of Wind,Trainer,,Common,84,34,64,28
+base1-94,base1,Potion,Trainer,,Common,112,39,104,36
+base1-102,base1,Water Energy,Basic Energy,,,601,40,501,33
+base1-80,base1,Defender,Trainer,,Uncommon,108,42,98,39
+base1-99,base1,Grass Energy,Basic Energy,,,700,44,602,36
+base1-77,base1,Pokémon Trader,Trainer,,Rare,92,45,73,37
+base1-92,base1,Energy Removal,Trainer,,Common,135,45,131,44
+base1-84,base1,PlusPower,Trainer,,Uncommon,152,47,138,43
+base1-88,base1,Professor Oak,Trainer,,Uncommon,234,87,200,76
+base1-91,base1,Bill,Trainer,,Common,335,95,295,82
