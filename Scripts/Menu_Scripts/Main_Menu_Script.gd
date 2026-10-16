@@ -90,6 +90,11 @@ func _ready() -> void:
 		SceneCache.change_scene(GameState.menu_return_scene_path)
 		return
 
+	# Predict the next screen: while the player reads the six tiles, the deck builder's,
+	# coin case's, costumes' and sleeves' art loads on background threads, so whichever
+	# one they pick opens from memory.
+	SceneCache.predict_menu_screens.call_deferred()
+
 	add_child(audio_player)
 	var audio_stream = load(SoundManagerScript.BGM_MAIN_MENU)
 	audio_player.stream = audio_stream
@@ -266,7 +271,7 @@ func _show_quit_dialog() -> void:
 	yes_btn.pressed.connect(func(): get_tree().quit())
 	btn_row.add_child(yes_btn)
 
-	var no_btn := UIKit.make_footer_button("Cancel", "secondary")
+	var no_btn := UIKit.make_footer_button("Cancel", "negative")   # ISSUE #379
 	no_btn.pressed.connect(_on_quit_cancelled)
 	btn_row.add_child(no_btn)
 

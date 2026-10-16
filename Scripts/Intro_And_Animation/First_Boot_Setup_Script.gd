@@ -173,9 +173,23 @@ func _add_sprite_to_grid(file_name: String) -> void:
 	if texture == null:
 		return
 
-	# Replicate the _normalize_sprite_scale logic used in Match_Start_Intro_Script:
-	#   s = minf(TARGET.x / tex.x, TARGET.y / tex.y)
-	# This gives every sprite the same bounding box regardless of native resolution.
+	# ISSUE #380: FIT THE CHARACTER, NOT THE CANVAS.
+	# Fitting the whole image made every canvas the same size, but the canvases are
+	# not padded alike: the Black/White sprites (Hilda, Hilbert, Rosa, Nate) are
+	# 128px squares with the character in barely half of it, so they came out at
+	# about half the height of everyone else. The sprite is cropped to its visible
+	# (non-transparent) pixels first, and THAT is what gets fitted to the cell.
+	var used := Rect2i(Vector2i.ZERO, Vector2i(texture.get_size()))
+	var img := texture.get_image()
+	if img != null:
+		var r := img.get_used_rect()
+		if r.size.x > 0 and r.size.y > 0:
+			used = r
+	var cropped := AtlasTexture.new()
+	cropped.atlas = texture
+	cropped.region = Rect2(used)
+	texture = cropped
+	print("ISSUE #380 FIX ACTIVE: ", file_name, " fitted by its visible area ", used)
 	var tex_size  := texture.get_size()
 	var s         := minf(CELL_SIZE.x / tex_size.x, CELL_SIZE.y / tex_size.y)
 	var disp_size := Vector2(tex_size.x * s, tex_size.y * s)

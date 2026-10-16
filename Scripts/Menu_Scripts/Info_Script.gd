@@ -261,7 +261,7 @@ func _build_chrome() -> void:
 
 	# The medals screen does not exist yet, so the button is left as it is —
 	# present, styled, and wired to nothing. Do not invent a count for it.
-	UIKit.adopt_button(medals_btn, bars["header"].right, "secondary", false)
+	UIKit.adopt_button(medals_btn, bars["header"].right, "neutral", false)   # ISSUE #379
 	medals_btn.custom_minimum_size.x = MEDALS_BTN_W
 
 	# The Bag (key items: rods, permits, the starter box and set). Built here rather
@@ -269,17 +269,17 @@ func _build_chrome() -> void:
 	var bag_btn := Button.new()
 	bag_btn.name = "bag_button"
 	bag_btn.text = "View Bag"
-	UIKit.adopt_button(bag_btn, bars["header"].right, "secondary", false)
+	UIKit.adopt_button(bag_btn, bars["header"].right, "neutral", false)   # ISSUE #379
 	bag_btn.custom_minimum_size.x = BAG_BTN_W
 	bag_btn.pressed.connect(_on_bag_pressed)
 
 	# The Field Guide sits beside Medals in the same header slot. Unlike Medals it
 	# HAS a screen behind it, so it is wired up.
-	UIKit.adopt_button(guide_btn, bars["header"].right, "secondary", false)
+	UIKit.adopt_button(guide_btn, bars["header"].right, "neutral", false)   # ISSUE #379
 	guide_btn.custom_minimum_size.x = GUIDE_BTN_W
 	guide_btn.pressed.connect(_on_field_guide_pressed)
 
-	UIKit.adopt_button(cancel_btn, bars["footer"].centre, "secondary")
+	UIKit.adopt_button(cancel_btn, bars["footer"].centre, "negative")   # ISSUE #379: Cancel is the negative colour
 	UIKit.adopt_button(save_btn, bars["footer"].centre, "primary")
 
 	# stats_control is the parent every stat panel is added to; it spans the whole

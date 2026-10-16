@@ -71,6 +71,9 @@ func opponent_start_turn_checks() -> void:
 		return
 	# ISSUE #309: Trainer locks now lift at the END of the locked side's turn (Trainer_Effects.tick_trainer_lock)
 	main.turn_number += 1
+	# ISSUE #281: the mirror of the player's "Start turn" - down out of the "Opponent" caption.
+	print("ISSUE #281 FIX ACTIVE: opponent Start turn from ", main._turn_float_anchor(true))
+	main.show_floating_label("Start turn", main._turn_float_anchor(true), Color.WHITE, false)
 	print("OPPONENT'S TURN START. TURN NUMBER IS ", main.turn_number)
 	await get_tree().create_timer(GameState.match_time(0.5)).timeout
 	if main._should_bail(): return
@@ -2131,8 +2134,6 @@ func cpu_phase_energy_attachment(cpu_eval: Dictionary) -> void:
 	# `arrive_behind` flag (#236) is exactly that hand-off: the ghost drops to
 	# ANIM_BEHIND_Z at 82% of the flight, so it slides under the card instead of
 	# over it. Both branches get it - the Active's stack sits behind the card too.
-	print("ISSUE #284 FIX ACTIVE: opponent energy from ",
-		energy_from.get("position", "container fallback"), " arrive_behind=true")
 	if target == main.opponent_active_pokemon:
 		# ISSUE #40 FIX: fly the Energy to its EXACT final slot in the opponent Active energy stack
 		# (position AND size), read off the freshly-built stack. Previously it flew to the Active card's

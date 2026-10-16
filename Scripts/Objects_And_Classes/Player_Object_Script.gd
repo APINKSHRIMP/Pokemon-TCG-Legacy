@@ -250,6 +250,11 @@ func _unhandled_input(event):
 			elif event.button_index == MOUSE_BUTTON_WHEEL_DOWN:
 				camera.zoom = (camera.zoom - Vector2(0.05, 0.05)).clamp(_zoom_floor(), Vector2(10, 10))
 
+## ISSUE #384: true while Space/Enter would talk to someone (an NPC, opponent or
+## Pokemon). The FishingZone asks this first - talking always beats casting.
+func has_interact_candidate() -> bool:
+	return _active_candidate != null and is_instance_valid(_active_candidate)
+
 ## The widest zoom the wheel allows: the scene's own view normally, much wider in debug mode.
 func _zoom_floor() -> Vector2:
 	return DEBUG_WIDEST_ZOOM if DebugMode.is_enabled() else _widest_zoom

@@ -72,8 +72,9 @@ func load_card_image(card_passed_uid: String, card_target_size, card_object_ref:
 		else:
 			card_image_path="res://Image_Assets/Card_Image_Library/"+card_set+"/Large/"+AssetLookup.card_image_name(card_passed_uid)+".png"
 	
-	# Now find the image from the path provided
-	var card_texture = load(card_image_path)
+	# Now find the image from the path provided. Small card art comes out of SceneCache's
+	# card image cache (preloaded on background threads); sleeves and large art load directly.
+	var card_texture = SceneCache.card_texture(card_image_path) if "/Small/" in card_image_path else load(card_image_path)
 	
 	# check that the file could be found and if so load the image
 	if card_texture != null:

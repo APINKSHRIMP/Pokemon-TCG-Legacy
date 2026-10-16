@@ -432,6 +432,31 @@ func set_burn_rule(rule: String, save: bool = true) -> void:
 	if save:
 		_save_current_data_field("burn_rules", rule)
 
+## ISSUE #385: THE MATCH-RULE ROWS UNLOCK WITH THE FIRST EX CARD.
+##
+## Confusion and Burn rules only differ in the EX era, so the Options screen
+## hides both rows until the player owns at least one card from this set (ex1
+## is the first EX set they are ever granted). Change the set here if that
+## ever moves. TWEAKABLE.
+const MATCH_RULES_UNLOCK_SET := "ex1"
+
+func match_rule_options_unlocked() -> bool:
+	return owns_any_card_in_set(MATCH_RULES_UNLOCK_SET)
+
+## True when the player owns at least one copy of any card in `set_id`.
+func owns_any_card_in_set(set_id: String) -> bool:
+	var f := FileAccess.open(OWNED_CARDS_FOLDER + set_id + "_player_owned_cards.json", FileAccess.READ)
+	if f == null:
+		return false
+	var data = JSON.parse_string(f.get_as_text())
+	f.close()
+	if not data is Dictionary:
+		return false
+	for entry in data.get("owned_cards", []):
+		if int(entry.get("owned", 0)) > 0:
+			return true
+	return false
+
 # Reads both saved rule choices out of Player_Current_Data.json. Called once on boot.
 func _load_rule_settings() -> void:
 	var data := _read_current_data()

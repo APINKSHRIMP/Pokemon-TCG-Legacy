@@ -80,7 +80,7 @@ func _build_chrome() -> void:
 		old_title.queue_free()
 
 	# Cancel first: the footer slot is an HBox, so insertion order is left-to-right.
-	UIKit.adopt_button(cancel_btn, bars["footer"].centre, "secondary")
+	UIKit.adopt_button(cancel_btn, bars["footer"].centre, "negative")   # ISSUE #379: Cancel is the negative colour
 	UIKit.adopt_button(buy_btn, bars["footer"].centre, "primary")
 
 

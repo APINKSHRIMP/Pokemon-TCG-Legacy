@@ -37,14 +37,18 @@ const GRADES := {
 		"curve": Vector3(0.0, 0.0, 0.0),
 	},
 	"Evening": {
-		"red":   Vector4(0.806, 0.506, 0.149, 0.025),   # fitted red row x1.05 (a touch redder)
+		# ISSUE #386: warmer - fitted red row x1.10 (was x1.05) and blue row x0.95, so the
+		# dusk leans red/orange. Brightness is back to 1.0 in BRIGHTNESS below.
+		"red":   Vector4(0.844, 0.530, 0.156, 0.026),
 		"green": Vector4(0.005, 0.759, 0.000, 0.051),
-		"blue":  Vector4(-0.026, -0.007, 0.738, 0.056),
+		"blue":  Vector4(-0.025, -0.007, 0.701, 0.053),
 		"curve": Vector3(-0.575, 0.072, 0.122),
 	},
 	"Night": {
-		"red":   Vector4(0.707, -0.155, -0.018, -0.096),
-		"green": Vector4(-0.136, 0.630, -0.066, -0.087),
+		# ISSUE #387: a deeper, bluer night - fitted red row x0.90 and green row x0.94, blue
+		# row untouched, so everything darkens except the blue channel.
+		"red":   Vector4(0.636, -0.140, -0.016, -0.086),
+		"green": Vector4(-0.128, 0.592, -0.062, -0.082),
 		"blue":  Vector4(0.016, 0.290, 0.554, -0.101),
 		"curve": Vector3(0.277, 0.342, 0.225),
 	},
@@ -55,7 +59,8 @@ const GRADES := {
 const STRENGTH := {"Morning": 1.4, "Afternoon": 1.0, "Evening": 1.0, "Night": 1.0}
 
 ## TWEAKABLE -- overall brightness multiplier on top of the grade (0.85 = 15% darker).
-const BRIGHTNESS := {"Morning": 1.0, "Afternoon": 1.0, "Evening": 0.85, "Night": 0.85}
+## ISSUE #386: Evening back to 1.0 (it had been darkened to 0.85).
+const BRIGHTNESS := {"Morning": 1.0, "Afternoon": 1.0, "Evening": 1.0, "Night": 0.85}
 
 ## TWEAKABLE -- how strongly the "_Lights.png" overlays show (0 = off, 1 = full).
 const LIGHTS := {"Morning": 0.0, "Afternoon": 0.0, "Evening": 0.5, "Night": 1.0}
@@ -94,6 +99,8 @@ static var _sheet_materials := {}   # sheet texture path -> ShaderMaterial (with
 
 ## Writes the four globals. Unknown / empty time (interiors) = identity, lights off.
 static func apply_time(time: String) -> void:
+	print("ISSUE #386 FIX ACTIVE: grade '", time, "' brightness ", BRIGHTNESS.get(time, 1.0))
+	print("ISSUE #387 FIX ACTIVE: night red row ", GRADES["Night"]["red"])
 	var g: Dictionary = GRADES.get(time, GRADES["Afternoon"])
 	var id: Dictionary = GRADES["Afternoon"]
 	var k: float = STRENGTH.get(time, 1.0)
@@ -168,6 +175,7 @@ static func _material_for_tilemap(layer: TileMapLayer) -> ShaderMaterial:
 		mat.shader = WORLD_SHADER
 		mat.set_shader_parameter("has_lights", true)
 		mat.set_shader_parameter("lights_texture", load(lights_path))
+		print("ISSUE #391 FIX ACTIVE: lights overlay for ", sheet, " now fades with modulate")
 		mat.set_shader_parameter("tile_px", TILE_PX)
 		var atlas := _first_atlas(layer.tile_set)
 		mat.set_shader_parameter("atlas_padded", atlas != null and atlas.use_texture_padding)

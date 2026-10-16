@@ -21,6 +21,16 @@ uniform float tile_px = 16.0;
 // which turned warm lamps pink on purple paving and mint on grass.
 varying vec3 day_albedo;
 
+// ISSUE #391: the node's modulate (vertex COLOR = vertex colour x modulate x self_modulate).
+// Scene fades tween the scene root's modulate to BLACK - the rgb, not the alpha - and the
+// lit pixels come from their own texture, so without this they stayed lit on a black
+// screen. Multiplying them by it makes them fade with everything else.
+varying vec4 node_modulate;
+
+void vertex() {
+	node_modulate = COLOR;
+}
+
 void fragment() {
 	vec4 c = COLOR;  // already texture * modulate in 4.6 -- multiplying by TEXTURE again squares it
 	day_albedo = c.rgb;
@@ -34,7 +44,7 @@ void fragment() {
 		float k = lit.a * tod_curve.w * COLOR.a;  // COLOR.a: still honours modulate fades
 		float a = k + c.a * (1.0 - k);
 		if (a > 0.0) {
-			c.rgb = (lit.rgb * k + c.rgb * c.a * (1.0 - k)) / a;
+			c.rgb = (lit.rgb * node_modulate.rgb * k + c.rgb * c.a * (1.0 - k)) / a;
 		}
 		c.a = a;
 	}

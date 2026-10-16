@@ -15,7 +15,7 @@ extends Node
 #   2. Give it an async run() that reads top-to-bottom as the scene plays:
 #
 #        func run() -> void:
-#            var rival := spawn("Ellie", "0Ellie", Vector2(120, 400))
+#            var rival := spawn("Ellie", "1Ellie_Dress", Vector2(120, 400))
 #            await rival.walk_path([Vector2(-40, 400)], 180.0)
 #            await player_face("left")
 #            await say_all(speaker_for("Ellie"), ["Hey!!!", "Long time no see."])

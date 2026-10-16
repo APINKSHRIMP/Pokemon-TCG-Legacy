@@ -147,6 +147,11 @@ func _unhandled_input(event: InputEvent) -> void:
 	var direction := direction_at(_player.global_position)
 	if direction == "":
 		return
+	# ISSUE #384: someone to talk to wins. Leave the press unhandled so it reaches
+	# the Player's own _unhandled_input, which starts the conversation.
+	if _player.has_method("has_interact_candidate") and _player.call("has_interact_candidate"):
+		print("ISSUE #384 FIX ACTIVE: talk takes priority over fishing")
+		return
 	# Consume it so it can't also trigger an NPC or a sign behind us.
 	get_viewport().set_input_as_handled()
 	# No rod at all, or no permit for this map's water: say so in the system box.

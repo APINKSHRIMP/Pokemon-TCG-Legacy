@@ -216,7 +216,7 @@ func _build_chrome() -> void:
 	UIKit.adopt_label(header_label, bars["header"].centre)
 
 	# Cancel first: the footer slot is an HBox, so insertion order is left-to-right.
-	UIKit.adopt_button(cancel_btn, bars["footer"].centre, "secondary")
+	UIKit.adopt_button(cancel_btn, bars["footer"].centre, "negative")   # ISSUE #379: Cancel is the negative colour
 	UIKit.adopt_button(buy_btn, bars["footer"].centre, "primary")
 
 	if _pages.size() > 1:
@@ -238,9 +238,9 @@ func _build_page_stepper() -> void:
 	_next_btn = Button.new()
 	_page_label = Label.new()
 	_page_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	UIKit.adopt_button(_prev_btn, stepper, "secondary", false)
+	UIKit.adopt_button(_prev_btn, stepper, "neutral", false)   # ISSUE #379
 	UIKit.adopt_label(_page_label, stepper, "title", "field_fg")
-	UIKit.adopt_button(_next_btn, stepper, "secondary", false)
+	UIKit.adopt_button(_next_btn, stepper, "neutral", false)   # ISSUE #379
 	_prev_btn.text = "<"
 	_next_btn.text = ">"
 	_prev_btn.custom_minimum_size.x = STEPPER_ARROW_W

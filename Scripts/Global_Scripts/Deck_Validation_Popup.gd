@@ -136,7 +136,7 @@ static func show_popup(parent: Node,
 	close_btn.custom_minimum_size = Vector2(226, 63)
 	close_btn.position = Vector2(1689, 1003)
 	close_btn.z_index = 20
-	var red_theme = UIKit.button_theme("danger")
+	var red_theme = UIKit.button_theme("negative")   # ISSUE #379: Close backs out, it destroys nothing
 	if red_theme:
 		close_btn.theme = red_theme
 	close_btn.add_theme_font_size_override("font_size", 23)

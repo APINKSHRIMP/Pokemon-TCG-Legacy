@@ -135,13 +135,13 @@ func _build_chrome() -> void:
 	_count_chip_holder = bars["header"].left
 	_refresh_count_chip()
 
-	UIKit.adopt_button(hide_btn, bars["header"].right, "secondary", false)
+	UIKit.adopt_button(hide_btn, bars["header"].right, "neutral", false)   # ISSUE #379
 	# Fixed width: the two labels are different lengths and a button that resizes
 	# under the cursor as you toggle it is disorienting.
 	hide_btn.custom_minimum_size.x = FILTER_BTN_W
 
 	# Cancel first: the footer slot is an HBox, so insertion order is left-to-right.
-	UIKit.adopt_button(cancel_btn, bars["footer"].centre, "secondary")
+	UIKit.adopt_button(cancel_btn, bars["footer"].centre, "negative")   # ISSUE #379: Cancel is the negative colour
 	UIKit.adopt_button(save_btn, bars["footer"].centre, "primary")
 
 	grid.position = Vector2(GRID_INSET_X, UIKit.CONTENT_TOP + GRID_INSET_Y)
@@ -279,6 +279,7 @@ func _load_coins() -> void:
 	_total_coins = files.size()
 	_refresh_count_chip()
 
+	SceneCache.start_build_budget()
 	for fname in files:
 		# ISSUE #32 FIX: bail if the scene was cancelled/freed mid-load (get_tree() would be null).
 		if not is_inside_tree():
@@ -288,7 +289,7 @@ func _load_coins() -> void:
 		if _hide_unowned and not _owned_coins.has(fname):
 			continue
 		_add_coin_to_grid(fname)
-		await get_tree().process_frame
+		await SceneCache.yield_if_over_budget()
 
 
 func _add_coin_to_grid(file_name: String) -> void:
@@ -301,7 +302,8 @@ func _add_coin_to_grid(file_name: String) -> void:
 	# disc, which says nothing; an empty ring reads as a gap in a collection.
 	var texture : Texture2D = null
 	if is_owned:
-		texture = load(COIN_FOLDER + "/" + file_name) as Texture2D
+		# Usually already in memory: the pause menu prewarms every owned coin.
+		texture = SceneCache.cached_texture(COIN_FOLDER + "/" + file_name)
 		if texture == null:
 			return
 
@@ -348,7 +350,7 @@ func _select_coin_by_name(coin_name: String) -> void:
 # in both states: a colour change implies a mode, and this is a plain action.
 func _refresh_hide_button() -> void:
 	hide_btn.text = "Show all coins" if _hide_unowned else "Show owned only"
-	UIKit.style_button(hide_btn, "secondary")
+	UIKit.style_button(hide_btn, "neutral")   # ISSUE #379
 
 
 func _on_hide_pressed() -> void:

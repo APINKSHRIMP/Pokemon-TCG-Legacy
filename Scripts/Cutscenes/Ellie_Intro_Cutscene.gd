@@ -52,7 +52,7 @@ const STAGE_BATTLE := "battle"  # sent into the match; waiting on the result
 const STAGE_DONE   := "done"    # finished, never plays again
 
 const OPPONENT_NAME := "Ellie"
-const SPRITE_NAME   := "0Ellie"
+const SPRITE_NAME   := "1Ellie_Dress"   # ISSUE #383: the dress, no backpack (was "0Ellie", renamed away)
 const MAP_NAME      := "Celeste_Harbour"
 
 # ------------------------------------------------------------

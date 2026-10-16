@@ -119,10 +119,10 @@ func _build_chrome() -> void:
 	_count_chip_holder = bars["header"].left
 	_refresh_count_chip()
 
-	UIKit.adopt_button(hide_btn, bars["header"].right, "secondary", false)
+	UIKit.adopt_button(hide_btn, bars["header"].right, "neutral", false)   # ISSUE #379
 	hide_btn.custom_minimum_size.x = FILTER_BTN_W
 
-	UIKit.adopt_button(cancel_btn, bars["footer"].centre, "secondary")
+	UIKit.adopt_button(cancel_btn, bars["footer"].centre, "negative")   # ISSUE #379: Cancel is the negative colour
 
 	grid.position = Vector2(GRID_INSET_X, UIKit.CONTENT_TOP + GRID_INSET_Y)
 	grid.size = Vector2(1920.0 - GRID_INSET_X * 2.0, UIKit.CONTENT_H - GRID_INSET_Y * 2.0)
@@ -302,7 +302,7 @@ func _make_mini_sprite(species: String, target: float) -> TextureRect:
 
 func _refresh_hide_button() -> void:
 	hide_btn.text = "Show all Pokemon" if _hide_unmet else "Show met only"
-	UIKit.style_button(hide_btn, "secondary")
+	UIKit.style_button(hide_btn, "neutral")   # ISSUE #379
 
 
 func _on_hide_pressed() -> void:

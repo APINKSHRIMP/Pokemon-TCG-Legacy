@@ -197,11 +197,11 @@ func _build_chrome() -> void:
 	_count_chip_holder = bars["header"].left
 	_refresh_count_chip()
 
-	UIKit.adopt_button(hide_btn, bars["header"].right, "secondary", false)
+	UIKit.adopt_button(hide_btn, bars["header"].right, "neutral", false)   # ISSUE #379
 	hide_btn.custom_minimum_size.x = FILTER_BTN_W
 
 	# Cancel first: the footer slot is an HBox, so insertion order is left-to-right.
-	UIKit.adopt_button(cancel_btn, bars["footer"].centre, "secondary")
+	UIKit.adopt_button(cancel_btn, bars["footer"].centre, "negative")   # ISSUE #379: Cancel is the negative colour
 	UIKit.adopt_button(save_btn, bars["footer"].centre, "primary")
 
 	grid.position = Vector2(GRID_INSET_X, UIKit.CONTENT_TOP + GRID_INSET_Y)
@@ -265,6 +265,7 @@ func _load_characters() -> void:
 	_total_costumes = files.size()
 	_refresh_count_chip()
 
+	SceneCache.start_build_budget()
 	for fname in files:
 		# ISSUE #32 FIX: bail if the scene was cancelled/freed mid-load (get_tree() would be null).
 		if not is_inside_tree():
@@ -274,7 +275,7 @@ func _load_characters() -> void:
 		if _hide_unowned and not _owned_costumes.has(String(fname).to_lower()):
 			continue
 		_add_character_to_grid(fname)
-		await get_tree().process_frame
+		await SceneCache.yield_if_over_budget()
 
 
 ## ISSUE #199: one square cell. The grid child is a WRAPPER Control, not the
@@ -285,7 +286,8 @@ func _load_characters() -> void:
 ## the silhouettes, so the default costumes - which are always owned - sat in
 ## empty space while everything around them was framed.
 func _add_character_to_grid(file_name: String) -> void:
-	var texture := load(SPRITE_FOLDER + "/" + file_name) as Texture2D
+	# Usually already in memory: the pause menu prewarms every owned costume.
+	var texture := SceneCache.cached_texture(SPRITE_FOLDER + "/" + file_name)
 	if texture == null:
 		return
 
@@ -356,7 +358,7 @@ func _select_character_by_name(sprite_name: String) -> void:
 # Blue "Show" while the unowned silhouettes are filtered out, yellow "Hide" while everything is on show.
 func _refresh_hide_button() -> void:
 	hide_btn.text = "Show all costumes" if _hide_unowned else "Show owned only"
-	UIKit.style_button(hide_btn, "secondary")
+	UIKit.style_button(hide_btn, "neutral")   # ISSUE #379
 
 
 func _on_hide_pressed() -> void:

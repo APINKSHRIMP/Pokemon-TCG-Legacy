@@ -301,9 +301,12 @@ var theme_disabled : Theme:
 var theme_green : Theme:
 	get: return UIKit.button_theme("primary")
 var theme_blue : Theme:
-	get: return UIKit.button_theme("secondary")
+	get: return UIKit.button_theme("neutral")   # ISSUE #379: was the translucent secondary
 var theme_red : Theme:
 	get: return UIKit.button_theme("danger")
+## ISSUE #379: Cancel / No / Back - the softened red, not the destructive one.
+var theme_negative : Theme:
+	get: return UIKit.button_theme("negative")
 var card_display_script = preload("res://Scripts/Global_Scripts/Card_Image_Loader_Script.gd")
 var card_back_texture: Texture2D          # player's sleeve small — set in _ready
 var opponent_card_back_texture: Texture2D # opponent's sleeve small — set in _ready
@@ -626,19 +629,9 @@ func show_enlarged_array_selection_mode(card_array: Array) -> void:
 		action_button_paired_offset_right = action_button.offset_right - 210.0
 		action_button_positions_stored = true
 
-	if action_button.visible:
-		if cancel_button.visible:
-			action_button.offset_left = action_button_paired_offset_left
-			action_button.offset_right = action_button_paired_offset_right
-			cancel_button.offset_left = 35.0
-			cancel_button.offset_right = 473.0
-		else:
-			action_button.offset_left = action_button_default_offset_left
-			action_button.offset_right = action_button_default_offset_right
-	else:
-		cancel_button.offset_left = -219.0
-		cancel_button.offset_right = 219.0
-		
+	# ISSUE #389: one layout rule for the bottom bar, whoever set the buttons up.
+	queue_bottom_buttons_layout()
+
 	update_selection_mode_labels(card_array, match_just_started_basic_pokemon_required)
 	
 	# ISSUE #158: force_face_down_selection lets an effect show a pool the player
@@ -799,6 +792,50 @@ func show_enlarged_array_selection_mode(card_array: Array) -> void:
 			card_size = Vector2(card_size.x * width_fit, card_size.y * width_fit)
 
 		display_hand_cards_array(card_array, small_selection_container, card_size, should_hide, 1300.0, 12, selection_sleeve)
+
+## ISSUE #389: THE BOTTOM BAR LAYS ITSELF OUT.
+##
+## The action button and the cancel button were positioned by hand at every
+## call site that changed which of them was showing (show_enlarged_array_
+## selection_mode, prompt_select_card, prompt_select_cards, a few trainers...),
+## and any site that flipped cancel_button.visible AFTER that layout had run -
+## Super Potion's energy pick, every other remove_one_energy - left the action
+## button parked in its centred spot with Cancel drawn on top of it.
+##
+## Now the rule lives in ONE place and runs whenever either button is shown or
+## hidden (visibility_changed, wired in _ready) plus whenever a selection screen
+## opens. It is deferred to the end of the frame so it always has the final word
+## over any legacy offset code that runs after the visibility flip:
+##   - one button showing  -> it is centred on the screen;
+##   - both showing        -> the GAP between them is centred (action on the
+##                            left, cancel on the right).
+## TWEAKABLE: the gap between the two buttons.
+const BOTTOM_BUTTON_GAP := 26.0
+var _bottom_buttons_layout_queued := false
+
+func queue_bottom_buttons_layout() -> void:
+	if _bottom_buttons_layout_queued:
+		return
+	_bottom_buttons_layout_queued = true
+	call_deferred("_layout_bottom_buttons")
+
+func _layout_bottom_buttons() -> void:
+	_bottom_buttons_layout_queued = false
+	if action_button == null or cancel_button == null:
+		return
+	var centre_x: float = 1920.0 * 0.5
+	var a_on: bool = action_button.visible
+	var c_on: bool = cancel_button.visible
+	if a_on and c_on:
+		action_button.global_position.x = centre_x - BOTTOM_BUTTON_GAP * 0.5 - action_button.size.x
+		cancel_button.global_position.x = centre_x + BOTTOM_BUTTON_GAP * 0.5
+	elif a_on:
+		action_button.global_position.x = centre_x - action_button.size.x * 0.5
+	elif c_on:
+		cancel_button.global_position.x = centre_x - cancel_button.size.x * 0.5
+	else:
+		return
+	print("ISSUE #389 FIX ACTIVE: bottom bar laid out (action ", a_on, ", cancel ", c_on, ")")
 
 # Both the cancel button and action button will hide selection mode so function is vaguely named for both actions
 func hide_selection_mode_display_main() -> void:
@@ -1744,7 +1781,7 @@ func _place_bars() -> void:
 			UIKit.style_button(action_button as Button, "primary")
 		if cancel_button is Button:
 			(cancel_button as Button).z_index = UIKit.Z_CHROME + 10
-			UIKit.style_button(cancel_button as Button, "secondary")
+			UIKit.style_button(cancel_button as Button, "negative")   # ISSUE #379
 			# ISSUE #230: the secondary button (Done / Cancel) is NOT a child of
 			# BUTTONS - it is a root-level node with its own bottom anchor - so the
 			# FOOTER_BUTTON_RAISE that lifted the primary button onto the footer's
@@ -1754,7 +1791,7 @@ func _place_bars() -> void:
 			(cancel_button as Button).offset_bottom -= FOOTER_BUTTON_RAISE
 		var attack_cancel := attack_buttons_container.get_node_or_null("cancel_attack_mode_button")
 		if attack_cancel is Button:
-			UIKit.style_button(attack_cancel as Button, "secondary")
+			UIKit.style_button(attack_cancel as Button, "negative")   # ISSUE #379
 
 		var end_turn := main_buttons_container.get_node_or_null("button_main_endturn")
 		if end_turn is Button:
@@ -1888,7 +1925,7 @@ func _show_stadium_detail() -> void:
 			_stadium_overlay.add_child(btn)
 			y -= 56.0
 
-	var close := UIKit.make_footer_button("Close", "secondary")
+	var close := UIKit.make_footer_button("Close", "negative")   # ISSUE #379
 	close.position = Vector2((1920.0 - UIKit.FOOTER_BTN_W) * 0.5,
 		STADIUM_DETAIL_Y + STADIUM_DETAIL_SIZE.y + 24.0)
 	close.pressed.connect(_close_stadium_detail)
@@ -2545,6 +2582,10 @@ func display_pokemon(is_opponent: bool) -> void:
 		active_container.add_child(active_card_display)
 		active_card_display.load_card_image(active_pokemon.uid, ACTIVE_CARD, active_pokemon)
 		active_card_display.card_clicked.connect(this_card_clicked)
+		# ISSUE #390: a changed type can come from anything (an Energy attached to
+		# Kecleon, a Holon tool, Crystal Type...) and most of those paths never
+		# touch the status row, so every board redraw refreshes it.
+		update_status_icons(active_pokemon, is_opponent)
 	else:
 		# ISSUE #213: an EMPTY SLOT, not a hole in the board. A slot the player can
 		# see is information — "a Pokemon goes here" — where blank field is a bug
@@ -3170,8 +3211,6 @@ func _maybe_animate_hp_deplete(blocks: HBoxContainer, hp_label: Label,
 	if step <= 0.0:
 		return   # reduce motion / instant preset: the row is already correct
 
-	print("ISSUE #286 FIX ACTIVE: HP blocks ", damaged_was, " -> ", damaged_now,
-		" of ", total, " on ", mon.metadata.get("name", "?"), ", ", step, "s per block")
 	_deplete_hp_blocks(blocks, hp_label, total, damaged_was, damaged_now,
 		int(prev.get("hp", current_hp)), current_hp, max_hp, step)
 
@@ -4005,6 +4044,23 @@ func update_status_icons(pokemon: card_object, is_opponent: bool) -> void:
 	if pokemon.shielded_damage_threshold > 0:
 		icons_to_show.append("status_shielded_damage.png")
 
+	# ISSUE #390: CHANGED TYPE / WEAKNESS / RESISTANCE GET A BADGE TOO.
+	#
+	# Each is the TYPE / WEAK / RESIST status art with the Energy icon of the type
+	# involved drawn into its blank left end (see _add_status_energy_overlay).
+	# Entries are {file, energy} dictionaries; the plain conditions above stay
+	# bare file names. The "NONE_..." values are internal sentinels for "no
+	# Weakness/Resistance for this attack" (Weakness Guard, Rock Hurl, Aqua Sonic),
+	# not a type, so they never badge.
+	var printed_types: Array = pokemon.metadata.get("types", ["Colorless"])
+	for t in pokemon.get_effective_types():
+		if t not in printed_types:
+			icons_to_show.append({"file": "status_type.png", "energy": t})
+	if pokemon.temporary_weakness != "" and not pokemon.temporary_weakness.begins_with("NONE_"):
+		icons_to_show.append({"file": "status_weak.png", "energy": pokemon.temporary_weakness})
+	if pokemon.temporary_resistance != "" and not pokemon.temporary_resistance.begins_with("NONE_"):
+		icons_to_show.append({"file": "status_resist.png", "energy": pokemon.temporary_resistance})
+
 	# ISSUE #218: the icons were forced into a 100x30 box — three times wider than
 	# they are tall — so every one of them was stretched into a smear across the
 	# info column. The HEIGHT is fixed now and the width follows the art's own
@@ -4031,7 +4087,8 @@ func update_status_icons(pokemon: card_object, is_opponent: bool) -> void:
 	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	container.add_child(row)
 
-	for icon_file in icons_to_show:
+	for entry in icons_to_show:
+		var icon_file: String = entry["file"] if entry is Dictionary else entry
 		var tex: Texture2D = load("res://Image_Assets/Icons/Status_Icons/" + icon_file)
 		if tex == null:
 			continue
@@ -4046,6 +4103,36 @@ func update_status_icons(pokemon: card_object, is_opponent: bool) -> void:
 		icon.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 		icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		row.add_child(icon)
+		if entry is Dictionary:
+			_add_status_energy_overlay(icon, Vector2(w, STATUS_ICON_H), str(entry["energy"]))
+
+
+## ISSUE #390: THE ENERGY ICON INSIDE A TYPE / WEAK / RESIST BADGE.
+##
+## The three badge PNGs leave their left end blank (the word starts ~100-136px
+## into the 303px art) for exactly this. The icon is a square child of the badge,
+## centred in that blank strip, so it scales with STATUS_ICON_H automatically.
+## TWEAKABLE: STATUS_ENERGY_ICON_SCALE is the icon's height as a fraction of the
+## badge's; STATUS_ENERGY_ICON_CENTRE_X is where its centre sits, as a fraction
+## of the badge's width (0.165 = the middle of the narrowest blank strip, RESIST).
+const STATUS_ENERGY_ICON_SCALE := 0.8
+const STATUS_ENERGY_ICON_CENTRE_X := 0.165
+func _add_status_energy_overlay(badge: Control, badge_size: Vector2, energy_type: String) -> void:
+	var path := "res://Image_Assets/Icons/Energy_Icons/color_icon_" + energy_type.to_lower() + ".png"
+	if not ResourceLoader.exists(path):
+		print("ISSUE #390: no energy icon for type '", energy_type, "'")
+		return
+	var side: float = badge_size.y * STATUS_ENERGY_ICON_SCALE
+	var e_icon := TextureRect.new()
+	e_icon.texture = load(path)
+	e_icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	e_icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	e_icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	e_icon.position = Vector2(badge_size.x * STATUS_ENERGY_ICON_CENTRE_X - side * 0.5,
+		(badge_size.y - side) * 0.5)
+	e_icon.size = Vector2(side, side)
+	badge.add_child(e_icon)
+	print("ISSUE #390 FIX ACTIVE: ", energy_type, " badge drawn")
 
 ############################################################### END DISPLAY FUNCTIONS ################################################################
 ######################################################################################################################################################
@@ -4411,8 +4498,6 @@ func animate_energies_to_discard(energy_cards: Array, pokemon: card_object, is_o
 		update_discard_pile_display(is_opponent)
 
 		var start := energy_from if not energy_from.is_empty() else poke_rect
-		print("ISSUE #280 FIX ACTIVE: discarding ", energy.metadata.get("name", "?"),
-			" from ", start["position"], " (own card: ", not energy_from.is_empty(), ")")
 		await animate_card_a_to_b(discard_node, discard_node, 0.2, energy_texture,
 			start.get("size", card_scales[10]), Vector2.ZERO, _ANIM_POS_SENTINEL,
 			false, start["position"])
@@ -4695,12 +4780,30 @@ const FLOAT_LABEL_SIDE_NUDGE := 25.0
 ## follow. show_floating_label centres its text in a 300px box, hence the -150.
 ## TWEAKABLE: only the clearance above the caption.
 const TURN_FLOAT_GAP := 46.0
-static func _turn_float_anchor() -> Vector2:
+## ISSUE #281 (improve further): THE OPPONENT GETS THE MIRROR IMAGE.
+##
+## Their "Start turn" / "End turn" come out of the "Opponent" caption in the
+## top-left rail (_place_rails draws it at (LEFT_RAIL_X, PILE_TOP_Y - 26)) and
+## drift DOWN, the way yours rise up out of "You". TWEAKABLE: the offset from
+## the caption's top (positive = lower down the screen).
+const OPP_TURN_FLOAT_GAP := 0.0
+static func _turn_float_anchor(is_opponent: bool = false) -> Vector2:
+	if is_opponent:
+		return Vector2(LEFT_RAIL_X + RAIL_W * 0.5 - 150.0,
+			PILE_TOP_Y - 26.0 + OPP_TURN_FLOAT_GAP)
 	return Vector2(RIGHT_RAIL_X + RAIL_W * 0.5 - 150.0,
 		PILE_BOT_Y - 26.0 - TURN_FLOAT_GAP)
 
 func float_label_over(pokemon: card_object, text: String, colour: Color,
 		is_opponent: bool = false) -> void:
+	# ISSUE #279 (retest): an ACTIVE Pokemon's figure rises out of its own HP text
+	# ("30 / 50"), not from a nudged point over the card.
+	var hp_origin := _active_hp_text_origin(pokemon)
+	if hp_origin != Vector2.INF:
+		print("ISSUE #279 FIX ACTIVE: float label spawned on HP text at ", hp_origin)
+		show_floating_label(text, Vector2(hp_origin.x - 150.0, hp_origin.y), colour, true,
+			FLOAT_DAMAGE_FONT, FLOAT_DAMAGE_OUTLINE)
+		return
 	var loc := get_pokemon_screen_location(pokemon)
 	# ISSUE #279: outward is LEFT for you and RIGHT for the opponent, matching the
 	# side each one's HP block already sits on.
@@ -4717,6 +4820,43 @@ func float_label_over(pokemon: card_object, text: String, colour: Color,
 		Vector2(rect_pos.x + rect_size.x * 0.5 - 150.0 + nudge,
 			rect_pos.y + rect_size.y * 0.35),
 		colour, true, FLOAT_DAMAGE_FONT, FLOAT_DAMAGE_OUTLINE)
+
+
+## ISSUE #279 (retest): WHERE THE ACTIVE'S "30 / 50" TEXT ACTUALLY IS.
+##
+## The HP label spans the whole ACTION_PANEL_W column but its text hugs the
+## card's inner edge (right-aligned for you, left for the opponent - #233), so
+## the label's own rect is not where the number is. This measures the drawn
+## string and returns the CENTRE-x / TOP-y of the text itself. Vector2.INF when
+## the Pokemon is not an Active or its HP row is not built yet (the caller then
+## falls back to the card-rect placement used for bench Pokemon).
+func _active_hp_text_origin(pokemon: card_object) -> Vector2:
+	if pokemon == null:
+		return Vector2.INF
+	var container: Control = null
+	if pokemon == player_active_pokemon:
+		container = player_hp_container
+	elif pokemon == opponent_active_pokemon:
+		container = opponent_hp_container
+	if container == null or not container.visible:
+		return Vector2.INF
+	var hp_label: Label = null
+	for child in container.get_children():
+		if child is Label and not child.is_queued_for_deletion():
+			hp_label = child
+			break
+	if hp_label == null:
+		return Vector2.INF
+	var font: Font = hp_label.get_theme_font("font")
+	var font_size: int = hp_label.get_theme_font_size("font_size")
+	var text_w: float = font.get_string_size(hp_label.text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size).x
+	var rect := hp_label.get_global_rect()
+	var text_left: float = rect.position.x
+	if hp_label.horizontal_alignment == HORIZONTAL_ALIGNMENT_RIGHT:
+		text_left = rect.end.x - text_w
+	elif hp_label.horizontal_alignment == HORIZONTAL_ALIGNMENT_CENTER:
+		text_left = rect.position.x + (rect.size.x - text_w) * 0.5
+	return Vector2(text_left + text_w * 0.5, rect.position.y)
 
 
 ## ISSUE #236 / #241 / #242: THE SIZES HERE WERE PRE-OVERHAUL AND WRONG.
@@ -5142,6 +5282,13 @@ func load_deck_from_file(deck_file_path: String) -> Array:
 	# Load the deck as parsed data
 	var deck_data = new_json_object.data
 
+	# Start every card's small image loading on background threads now, so the hand,
+	# bench and pile views never wait on the disk mid-match (SceneCache card cache).
+	var image_paths : Array = []
+	for this_card in deck_data:
+		image_paths.append(SceneCache.small_card_path(String(this_card["id"])))
+	SceneCache.prewarm_card_textures(image_paths, true)
+
 	# As we have the json data containing the ids and amount, we need to add mutiple of some cards
 	if deck_data.size() > 0:
 		for this_card in deck_data:
@@ -5406,9 +5553,9 @@ func _show_pause_menu() -> void:
 	vbox.add_child(btn_col)
 
 	for spec in [
-		["Options", "primary",   _on_pause_options_pressed],
+		["Options", "neutral",   _on_pause_options_pressed],   # ISSUE #379
 		["Forfeit", "danger",    _on_pause_forfeit_pressed],
-		["Close",   "secondary", _close_pause_menu],
+		["Close",   "negative",  _close_pause_menu],
 	]:
 		var btn := UIKit.make_footer_button(spec[0], spec[1])
 		btn.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
@@ -5569,7 +5716,6 @@ func _show_forfeit_dialog() -> void:
 	no_btn.action_mode = BaseButton.ACTION_MODE_BUTTON_PRESS
 	no_btn.pressed.connect(_close_forfeit_dialog)
 	btn_row.add_child(no_btn)
-	print("ISSUE #287 FIX ACTIVE: forfeit dialog buttons on ACTION_MODE_BUTTON_PRESS")
 
 
 func _close_forfeit_dialog() -> void:
@@ -6078,8 +6224,6 @@ func perform_energy_attachment() -> void:
 		var slot_size = slot_rect.get("size", card_scales[11])
 		# ISSUE #283: leaves from the card's own place in the hand, at the size it
 		# was drawn there, and sinks BEHIND the Pokemon as it lands (#236).
-		print("ISSUE #283 FIX ACTIVE: energy leaves hand from ",
-			energy_from.get("position", "container fallback"))
 		await animate_card_a_to_b(player_hand_container, target_node, 0.2, energy_texture,
 			energy_from.get("size", card_scales[12]), slot_size, slot_pos, true,
 			energy_from.get("position", _ANIM_POS_SENTINEL), PLAY_HOLD_TIME)
@@ -6633,6 +6777,12 @@ func player_end_turn_checks() -> void:
 func inbetween_turn_checks(player_turn_just_ended: bool = true) -> void:
 	if _should_bail():
 		return
+	# ISSUE #281: every way the CPU's turn ends comes through here, so this is the
+	# one place its "End turn" can be shown (the player's own is in
+	# player_end_turn_checks). Drifts DOWN out of the "Opponent" caption.
+	if not player_turn_just_ended and not game_is_over:
+		print("ISSUE #281 FIX ACTIVE: opponent End turn from ", _turn_float_anchor(true))
+		show_floating_label("End turn", _turn_float_anchor(true), Color.WHITE, false)
 	# ISSUE #291: no attack is in progress between turns (safety net for any attack exit path that
 	# didn't close its context) — Fortitude and Transparency rely on this being accurate.
 	attack_effects.end_attack()
@@ -8746,8 +8896,6 @@ func check_and_handle_knockout(pokemon: card_object, is_opponent: bool) -> bool:
 
 	# Beat 4. _anim_dest_size resolves the discard pile to PILE_SIZE, so the ghost
 	# shrinks from the card's real size to the pile's over the flight.
-	print("ISSUE #285 FIX ACTIVE: KO ghost leaves ", ko_rect["position"],
-		" at ", ko_rect["size"], " -> discard pile at ", PILE_SIZE)
 	await animate_card_a_to_b(discard_node, discard_node, 0.3, pokemon_texture,
 		ko_rect["size"], Vector2.ZERO, _ANIM_POS_SENTINEL, false, ko_rect["position"])
 
@@ -8940,9 +9088,6 @@ func handle_post_knockout(is_opponent: bool) -> void:
 		# started from card_scales[9] rather than BENCH_CARD for the same reason,
 		# and aimed at the CONTAINER's centre instead of the slot.
 		# The same trap #236/#241/#242 fixed everywhere else; this call was missed.
-		print("ISSUE #276 FIX ACTIVE: bench -> active ",
-			repl_from.get("size", BENCH_CARD), " -> ", ACTIVE_CARD,
-			" (was card_scales[9] -> card_scales[3.5] = 405x557)")
 		await animate_card_a_to_b(bench_container, active_container, 0.3, new_texture,
 			repl_from.get("size", BENCH_CARD), ACTIVE_CARD,
 			active_container.global_position, false,
@@ -9739,7 +9884,7 @@ func get_card_texture(card: card_object) -> Texture2D:
 		# Load the target card's texture and apply a 20% white overlay
 		var target_uid = card.ditto_transform_uid
 		var target_set = target_uid.split("-")[0]
-		var base_tex = load("res://Image_Assets/Card_Image_Library/" + target_set + "/Small/" + AssetLookup.card_image_name(target_uid) + ".png")
+		var base_tex = SceneCache.card_texture(SceneCache.small_card_path(target_uid))
 		if base_tex != null:
 			var img = base_tex.get_image()
 			if img != null:
@@ -9763,8 +9908,7 @@ func get_card_texture(card: card_object) -> Texture2D:
 	# Fix 8: Cache textures by UID to avoid redundant load() calls
 	if card.uid in _texture_cache:
 		return _texture_cache[card.uid]
-	var card_set = card.uid.split("-")[0]
-	var tex = load("res://Image_Assets/Card_Image_Library/" + card_set + "/Small/" + AssetLookup.card_image_name(card.uid) + ".png")
+	var tex = SceneCache.card_texture(SceneCache.small_card_path(card.uid))
 	_texture_cache[card.uid] = tex
 	return tex
 
@@ -10048,8 +10192,6 @@ func handle_action_knockout_bench() -> void:
 	# numbers here, so only the fallbacks and the start size were wrong, but they
 	# are the ones that bite the moment the lookup misses.
 	var active_loc = get_pokemon_screen_location(new_active)
-	print("ISSUE #276 FIX ACTIVE: player bench -> active ",
-		pl_repl_from.get("size", BENCH_CARD), " -> ", active_loc.get("size", ACTIVE_CARD))
 	await animate_card_a_to_b(player_bench_container, player_active_container, 0.3,
 		new_texture, pl_repl_from.get("size", BENCH_CARD),
 		active_loc.get("size", ACTIVE_CARD),
@@ -10102,8 +10244,6 @@ func handle_action_evolution() -> void:
 	var evo_texture = get_card_texture(evo_card)
 	# ISSUE #20: land on the evolving Pokémon's actual slot at its real size
 	var evo_loc = get_pokemon_screen_location(evo_card)
-	print("ISSUE #283 FIX ACTIVE: evolution leaves hand from ",
-		evo_from.get("position", "container fallback"))
 	await animate_card_a_to_b(player_hand_container, target_node, 0.3, evo_texture,
 		evo_from.get("size", card_scale_to_animate),
 		evo_loc.get("size", card_scale_to_animate),
@@ -10190,8 +10330,6 @@ func handle_action_normal_card() -> void:
 					var bench_texture = get_card_texture(bench_card)
 					# ISSUE #20: land on the actual next bench slot (bench cards are same size, so no morph)
 					var bench_loc = get_pokemon_screen_location(bench_card)
-					print("ISSUE #283 FIX ACTIVE: bench placement leaves hand from ",
-						bench_from.get("position", "container fallback"))
 					await animate_card_a_to_b(player_hand_container, player_bench_container, 0.3,
 						bench_texture, bench_from.get("size", card_scales[11]),
 						bench_loc.get("size", BENCH_CARD),
@@ -10338,7 +10476,7 @@ func cancel_button_pressed_hide_selection_mode() -> void:
 		opponent_blocker.visible = true
 		bench_setup_phase_active = false
 		cancel_button.text = "Cancel"
-		cancel_button.theme = theme_red
+		cancel_button.theme = theme_negative   # ISSUE #379
 		draw_prize_cards(true)
 		hide_selection_mode_display_main()
 
@@ -11238,7 +11376,6 @@ func _ready() -> void:
 	modulate.a = 0.0
 	var tween = create_tween()
 	tween.tween_property(self, "modulate:a", 1.0, MATCH_FADE_IN_TIME)
-	print("ISSUE #288 FIX ACTIVE: match board fades in over ", MATCH_FADE_IN_TIME, "s")
 	
 	# Connect all the signals so that when parts of the UI are clicked by mouse they can perform actions
 	player_bench_container.gui_input.connect(array_container_clicked.bind(player_bench))
@@ -11250,6 +11387,9 @@ func _ready() -> void:
 
 	cancel_button.pressed.connect(cancel_button_pressed_hide_selection_mode)
 	action_button.pressed.connect(action_button_pressed_perform_action)
+	# ISSUE #389: showing or hiding either bottom button re-runs the shared layout.
+	action_button.visibility_changed.connect(queue_bottom_buttons_layout)
+	cancel_button.visibility_changed.connect(queue_bottom_buttons_layout)
 	attack_buttons_container.get_node("cancel_attack_mode_button").pressed.connect(hide_attack_buttons)
 	# ATTACK / POWER / RETREAT are retired: those are rows on the Pokemon now.
 	# _build_board_layout() hid the buttons and moved End Turn onto the footer, so

@@ -409,8 +409,8 @@ func _build_buttons() -> void:
 	add_child(_new_game)
 
 	_continue = _make_button("Continue Game", w,
-		UITheme.col("btn_primary_top"), UITheme.col("btn_primary_bot"),
-		UITheme.col("btn_primary_fg"))
+		UITheme.splash_col("continue_top"), UITheme.splash_col("continue_bot"),
+		UITheme.splash_col("continue_fg"))   # ISSUE #379: positive green
 	_continue.position = Vector2(CENTRE_X + BTN_GAP * 0.5, y)
 	_continue_btn = _continue.get_node("btn")
 	_continue_btn.pressed.connect(_on_continue_pressed)

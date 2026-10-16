@@ -171,11 +171,11 @@ func _build_chrome() -> void:
 	_count_chip_holder = bars["header"].left
 	_refresh_count_chip()
 
-	UIKit.adopt_button(hide_btn, bars["header"].right, "secondary", false)
+	UIKit.adopt_button(hide_btn, bars["header"].right, "neutral", false)   # ISSUE #379
 	hide_btn.custom_minimum_size.x = FILTER_BTN_W
 
 	# Cancel first: the footer slot is an HBox, so insertion order is left-to-right.
-	UIKit.adopt_button(cancel_btn, bars["footer"].centre, "secondary")
+	UIKit.adopt_button(cancel_btn, bars["footer"].centre, "negative")   # ISSUE #379: Cancel is the negative colour
 	UIKit.adopt_button(save_btn, bars["footer"].centre, "primary")
 
 	grid.position = Vector2(GRID_INSET_X, UIKit.CONTENT_TOP + GRID_INSET_Y)
@@ -216,11 +216,9 @@ func _wrap_grid_in_scroll_container() -> void:
 # ─── Sleeve loading ───────────────────────────────────────────────────────────
 
 func _load_sleeves() -> void:
-	# ISSUE #274: the small/ folder is still the LISTING - it is the canonical set of
-	# sleeve names and what the count chip measures against - but each cell now loads
-	# the full-size original (see _add_sleeve_to_grid). Memory cost is real and was
-	# flagged: ~600 full-size textures rather than the ~17 MB shrunken set.
-	print("ISSUE #274 FIX ACTIVE: sleeve grid loading LARGE originals")
+	# The small/ folder is the LISTING - the canonical set of sleeve names and what
+	# the count chip measures against - and, again (ISSUE #395), what each cell draws.
+	print("ISSUE #395 FIX ACTIVE: sleeve grid loading SMALL copies (Shift zoom loads the original)")
 	var dir := DirAccess.open(SLEEVE_SMALL_FOLDER)
 	if dir == null:
 		push_error("Sleeves: cannot open folder " + SLEEVE_SMALL_FOLDER)
@@ -246,6 +244,7 @@ func _load_sleeves() -> void:
 	_total_sleeves = files.size()
 	_refresh_count_chip()
 
+	SceneCache.start_build_budget()
 	for fname in files:
 		# ISSUE #32 FIX: bail out cleanly if the player cancelled/escaped (the scene is being freed) —
 		# calling get_tree() on a node that has left the tree is what crashed the game before.
@@ -256,24 +255,24 @@ func _load_sleeves() -> void:
 		if _hide_unowned and not _owned_sleeves.has(String(fname).get_basename()):
 			continue
 		_add_sleeve_to_grid(fname)
-		await get_tree().process_frame
+		await SceneCache.yield_if_over_budget()
 
 
 func _add_sleeve_to_grid(file_name: String) -> void:
 	var base_name : String = file_name.get_basename()
 	var is_owned  : bool   = _owned_sleeves.has(base_name)
 
-	# ISSUE #274: THE LARGE ORIGINAL, NOT THE SHRUNKEN COPY.
+	# ISSUE #395: BACK TO THE SMALL COPY (reverses #274).
 	#
-	# The grid was built from small/ on the theory that texture size drives the
-	# load time. It does not: what makes this screen slow is DRAWING ~600 cells,
-	# and that cost is the same whichever texture each one holds. The full-size
-	# sleeve is also the one the zoom already loads, so a cell and its zoom now
-	# share a texture instead of loading two. small/ stays as the fallback for any
-	# sleeve whose original is missing.
-	var texture := _large_sleeve_texture(base_name)
+	# #274 swapped the grid to the full-size originals on the theory that only the
+	# cell COUNT made this screen slow. In play the load got noticeably longer, so
+	# the grid is built from small/ again and the full-size original is loaded only
+	# by the hold-Shift zoom (_show_zoom -> _large_sleeve_texture). The original
+	# stays as the fallback for a sleeve with no small copy.
+	# Usually already in memory: the pause menu prewarms every owned sleeve.
+	var texture := SceneCache.cached_texture(SLEEVE_SMALL_FOLDER + "/" + file_name)
 	if texture == null:
-		texture = load(SLEEVE_SMALL_FOLDER + "/" + file_name) as Texture2D
+		texture = _large_sleeve_texture(base_name)
 	if texture == null:
 		return
 
@@ -328,7 +327,7 @@ func _select_sleeve_by_name(sleeve_name: String) -> void:
 # Blue "Show" while the unowned placeholders are filtered out, yellow "Hide" while all are on show.
 func _refresh_hide_button() -> void:
 	hide_btn.text = "Show all sleeves" if _hide_unowned else "Show owned only"
-	UIKit.style_button(hide_btn, "secondary")
+	UIKit.style_button(hide_btn, "neutral")   # ISSUE #379
 
 
 func _on_hide_pressed() -> void:

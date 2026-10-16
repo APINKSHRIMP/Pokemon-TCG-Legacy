@@ -1328,6 +1328,38 @@ static func selection_for(block: Dictionary) -> Color:
 	return b if luminance(b) >= 0.22 else block["accent"]
 
 
+## ISSUE #379: THE THREE ACTION COLOURS.
+##
+## Every button that answers a question is one of three things, and each has
+## its own solid colour so none of them can be mistaken for a disabled one:
+##   positive  Yes / OK / Save / Buy / Confirm  -> the theme's `good` green
+##             (the baked "primary" variant IS this now, as is "good")
+##   negative  No / Cancel / Close / Back       -> negative_fill(): `danger`
+##             pulled NEGATIVE_SOFTEN of the way toward the field, so it reads
+##             as "back out" and not as the destructive red ("danger" keeps that)
+##   neutral   tools, steppers, view / load     -> neutral_fill(): the accent
+## The translucent "secondary" face is kept ONLY for an unselected option in a
+## picker row, where "quiet until chosen" is exactly the meaning wanted.
+## Static so Build_UI_Themes.gd bakes from the same call. TWEAKABLE.
+const NEGATIVE_SOFTEN := 0.3
+
+static func positive_fill(block: Dictionary) -> Color:
+	return block["good"]
+
+static func negative_fill(block: Dictionary) -> Color:
+	var d: Color = block["danger"]
+	var field: Color = block["field"]
+	# Toward a DARK field it mutes nicely; toward a PALE one it washes the red
+	# out under its white label (3.8:1). On a light theme it is muted by
+	# darkening instead, which keeps the label above 4.5:1.
+	if luminance(field) >= 0.5:
+		return d.lerp(Color.BLACK, NEGATIVE_SOFTEN * 0.5)
+	return d.lerp(field, NEGATIVE_SOFTEN)
+
+static func neutral_fill(block: Dictionary) -> Color:
+	return block["accent"]
+
+
 ## The fill for a secondary button sitting ON A CHROME BAR.
 ##
 ## `btn_secondary` is the one translucent variant, so it has no colour of its
@@ -1529,31 +1561,73 @@ func splash_col(key: String) -> Color:
 		# The mark. Upper arm runs top-left to bottom-right, lower arm top-right
 		# to bottom-left, so stop B is shared and lands in the middle of the
 		# lockup. That is exactly the chrome bar's own three-stop ramp.
-		"mark_upper_a": return col("chrome_grad_a")
-		"mark_upper_b": return col("chrome_grad_b")
-		"mark_lower_a": return col("chrome_grad_b")
-		"mark_lower_b": return col("chrome_grad_c")
+		# ISSUE #379: ...unless a stop would vanish into the field. The flat dark-chrome
+		# themes (Gengar, Code, Umbreon, Sharpedo) have three near-black stops, which
+		# drew the whole mark black on black - see _splash_stop().
+		"mark_upper_a": return _splash_stop("chrome_grad_a")
+		"mark_upper_b": return _splash_stop("chrome_grad_b")
+		"mark_lower_a": return _splash_stop("chrome_grad_b")
+		"mark_lower_b": return _splash_stop("chrome_grad_c")
 
 		# The rule. One near colour at the TCG cap, then each segment fades out
 		# through its own side's stop at 35%.
 		# NOTE: `accent` is a shade off the authored FF6FBE. Imperceptible, and
 		# worth it to have the rule follow the theme.
 		"rule_near":  return col("accent")
-		"rule_mid_l": return col_a("chrome_grad_b", 0.35)
-		"rule_mid_r": return col_a("chrome_grad_c", 0.35)
+		"rule_mid_l": return _with_alpha(_splash_stop("chrome_grad_b"), 0.35)
+		"rule_mid_r": return _with_alpha(_splash_stop("chrome_grad_c"), 0.35)
 
 		# The wordmark. TCG is a shade off the two big words so it sits behind
 		# them rather than competing.
-		"wordmark": return col("chrome_fg")
+		"wordmark": return _splash_readable("chrome_fg", "field_fg")   # ISSUE #379: Canopy's chrome_fg is dark ink
 		"tcg":      return col("field_fg")
 
-		# Both buttons take the game's own faces. New Game IS btn_secondary.
-		"new_game_top": return col("btn_secondary")
-		"new_game_bot": return col("btn_secondary")
-		"new_game_fg":  return col("btn_secondary_fg")
+		# Both buttons take the game's own faces. ISSUE #379: New Game is the
+		# NEUTRAL face now (it was the translucent secondary and looked disabled);
+		# Continue is the positive one - see continue_* below.
+		"new_game_top": return neutral_fill(THEMES[current])
+		"new_game_bot": return neutral_fill(THEMES[current])
+		"new_game_fg":  return ink_on(neutral_fill(THEMES[current]))
+		"continue_top": return positive_fill(THEMES[current])
+		"continue_bot": return positive_fill(THEMES[current])
+		"continue_fg":  return ink_on(positive_fill(THEMES[current]))
 	# btn_hover, btn_press and fade are genuinely theme-independent: two neutral
 	# state tints and a fade to black. They stay in the constant.
 	return SPLASH.get(key, Color.MAGENTA)
+
+
+## ISSUE #379: THE SPLASH MARK MUST READ AGAINST THE FIELD IT SITS ON.
+##
+## The mark is the chrome ramp, which on a vivid bar is perfect and on a flat
+## near-black bar is three shades of black. Any stop that does not clear
+## SPLASH_MIN_CONTRAST against the field is swapped for the theme's own accents
+## - grad_a -> accent, grad_b -> halfway between, grad_c -> accent_2 - so the
+## lockup keeps a three-colour ramp in that theme's colours. TWEAKABLE.
+const SPLASH_MIN_CONTRAST := 2.0
+
+func _splash_stop(stop_key: String) -> Color:
+	var c: Color = col(stop_key)
+	if contrast_ratio(c, col("field")) >= SPLASH_MIN_CONTRAST:
+		return c
+	var fallback: Color
+	match stop_key:
+		"chrome_grad_a": fallback = col("accent")
+		"chrome_grad_c": fallback = col("accent_2")
+		_:               fallback = col("accent").lerp(col("accent_2"), 0.5)
+	print("ISSUE #379 FIX ACTIVE: splash ", stop_key, " too dark on the field - using ", fallback.to_html(false))
+	return fallback
+
+
+## `key` if it reads on the field, otherwise `fallback_key`.
+func _splash_readable(key: String, fallback_key: String) -> Color:
+	var c: Color = col(key)
+	if contrast_ratio(c, col("field")) >= SPLASH_MIN_CONTRAST:
+		return c
+	return col(fallback_key)
+
+
+static func _with_alpha(c: Color, alpha: float) -> Color:
+	return Color(c.r, c.g, c.b, alpha)
 
 # ─── Type ────────────────────────────────────────────────────────────────────
 

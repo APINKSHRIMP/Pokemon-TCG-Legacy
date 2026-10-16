@@ -23,6 +23,9 @@ const _CHEAT_LABELS := {
 	"CHT.All_Sleeves":      "All sleeves cheat activated",
 	# ISSUE #155: every basic-Energy printing the deck builder's style picker can offer.
 	"CHT.All_Energy_Styles": "All energy styles cheat activated",
+	# ISSUE #385: the old "Fairer retreat" Options button, now a cheat - and its undo.
+	"CHT_Retreat.Confused":  "Fairer confusion retreat rules enabled",
+	"CHT_Vanilla.Confusion": "Confusion rules set to vanilla",
 }
 
 # ISSUE #99: the four groups between them must cover EVERY set in Card_Set_Data/ — the promo sets
@@ -96,6 +99,13 @@ static func _apply(code: String) -> void:
 			# include_defaults = true: the sleeve grid shows the "1_Default*" backs, so "all" owns them.
 			var sleeves := GameState.get_sleeve_universe(true).keys()
 			var new_sleeves := GameState.add_sleeves_to_collection(sleeves)
+		"CHT_Retreat.Confused":
+			print("ISSUE #385 FIX ACTIVE: confusion rule -> fairer_confusion_rules")
+			GameState.set_confusion_rule("fairer_confusion_rules")
+		"CHT_Vanilla.Confusion":
+			# "Vanilla" = the Base Set rule, the game's default (GameState.DEFAULT_CONFUSION_RULE).
+			print("ISSUE #385 FIX ACTIVE: confusion rule -> ", GameState.DEFAULT_CONFUSION_RULE)
+			GameState.set_confusion_rule(GameState.DEFAULT_CONFUSION_RULE)
 
 
 static func _set_cards_in_set(set_id: String, count: int) -> void:

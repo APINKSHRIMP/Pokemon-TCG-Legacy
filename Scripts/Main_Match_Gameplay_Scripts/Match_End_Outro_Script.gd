@@ -733,7 +733,6 @@ func animate_rewards() -> void:
 		return
 
 	var gs := GameState
-	print("ISSUE #289 FIX ACTIVE: reward rows fade up as they fly in")
 	frame.drop_in(_header_anim, gs.transition_time(REWARD_LABEL_DELAY),
 			gs.transition_time(REWARD_LABEL_TIME), REWARD_DROP_PX)
 
@@ -1254,7 +1253,6 @@ func transition_back_to_map() -> void:
 	var tween = create_tween()
 	# ISSUE #288: the "outro to overworld" half, doubled with the rest. It was the
 	# one boundary still carrying a hardcoded number instead of FADE_TIME.
-	print("ISSUE #288 FIX ACTIVE: outro fades out over ", FADE_TIME, "s")
 	tween.tween_property(self, "modulate:a", 0.0, FADE_TIME)
 	await tween.finished
 

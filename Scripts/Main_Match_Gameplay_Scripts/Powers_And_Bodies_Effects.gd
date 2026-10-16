@@ -1621,8 +1621,7 @@ func power_cowardice(tentacool: card_object) -> void:
 		# Need to promote a bench pokemon
 		tentacool.current_location = "hand"
 		main.player_hand.append(tentacool)
-		main.clear_all_statuses(tentacool, false)
-		tentacool.pluspower_count = 0
+		main.card_ops.reset_returned_pokemon(tentacool, false)   # ISSUE #388: full HP, clean slate
 		await main.show_message("COWARDICE: TENTACOOL RETURNED TO HAND!")
 		if main._should_bail(): return
 		# Handle post-knockout style replacement
@@ -1632,8 +1631,7 @@ func power_cowardice(tentacool: card_object) -> void:
 		main.player_bench.erase(tentacool)
 		tentacool.current_location = "hand"
 		main.player_hand.append(tentacool)
-		main.clear_all_statuses(tentacool, false)
-		tentacool.pluspower_count = 0
+		main.card_ops.reset_returned_pokemon(tentacool, false)   # ISSUE #388: full HP, clean slate
 		await main.show_message("COWARDICE: TENTACOOL RETURNED TO HAND!")
 		if main._should_bail(): return
 	
@@ -2407,8 +2405,7 @@ func cpu_phase_activate_powers() -> void:
 					main.opponent_bench.erase(tentacool)
 				tentacool.current_location = "hand"
 				main.opponent_hand.append(tentacool)
-				main.clear_all_statuses(tentacool, true)
-				tentacool.pluspower_count = 0
+				main.card_ops.reset_returned_pokemon(tentacool, true)   # ISSUE #388: full HP, clean slate
 				main.update_discard_pile_display(true)
 				main.display_pokemon(true)
 				main.refresh_hand_display(true)

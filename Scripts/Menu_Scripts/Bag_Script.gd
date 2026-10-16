@@ -48,7 +48,7 @@ func _ready() -> void:
 	cancel_btn.pressed.connect(_on_cancel_pressed)
 	var bars := UIKit.convert_legacy_screen(self, "Bag")
 	_count_chip_holder = bars["header"].left
-	UIKit.adopt_button(cancel_btn, bars["footer"].centre, "secondary")
+	UIKit.adopt_button(cancel_btn, bars["footer"].centre, "negative")   # ISSUE #379: Cancel is the negative colour
 
 	grid.columns = COLUMNS
 	grid.add_theme_constant_override("h_separation", CELL_SEP)

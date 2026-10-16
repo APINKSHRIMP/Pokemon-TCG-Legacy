@@ -437,7 +437,8 @@ func setup(unlocked_set_ids: Array, set_list: Array) -> void:
 	_theme_green = UIKit.button_theme("selected")
 	_theme_blue  = UIKit.button_theme("selected")
 	# Reset and Cancel back out; they do not destroy anything.
-	_theme_red   = UIKit.button_theme("secondary")
+	# ISSUE #379: the negative face (softened red) - the translucent one read as disabled.
+	_theme_red   = UIKit.button_theme("negative")
 
 	# A plain Control (not a CanvasLayer) so it sits in the normal z order: above the deck screen's
 	# right-hand border (z 50) but still inside this scene, exactly like the energy style picker.
@@ -1259,22 +1260,96 @@ func _on_reset_pressed() -> void:
 	_apply_lock()
 	_refresh_confirm_button()
 
-	# RESET means "no filter anywhere", so the search applied to the grid behind goes too. Without
-	# this the screen would show nothing selected while the grid stayed filtered, and because an
-	# empty filter also disables SEARCH, that left the player with no button back out.
-	search_reset.emit()
+	# ISSUE #392: RESET only blanks THIS screen now. The search behind it is cleared
+	# when the player confirms the empty screen (the SEARCH button reads CLEAR then),
+	# and CANCEL brings the old filters straight back - see _on_cancel_pressed.
+	print("ISSUE #392 FIX ACTIVE: reset blanks the screen only (search kept until confirmed)")
 
 
 func _on_confirm_pressed() -> void:
 	if not _has_any_filter():
+		# ISSUE #392: an empty screen over a live search = "clear the search".
+		if _applied.is_empty():
+			return
+		SoundManagerScript.play_sfx(SoundManagerScript.SFX_minus_select)
+		_applied = {}
+		search_reset.emit()
 		return
 	SoundManagerScript.play_sfx(SoundManagerScript.SFX_plus_select)
+	_pending = _snapshot()
 	search_confirmed.emit(build_criteria())
 
 
 func _on_cancel_pressed() -> void:
 	SoundManagerScript.play_sfx(SoundManagerScript.SFX_minus_select)
+	# ISSUE #392: whatever was changed here since the search that is showing - a
+	# RESET included - is thrown away, so the screen reopens on the filters the
+	# grid is actually showing.
+	if not _applied.is_empty():
+		_restore(_applied)
+		print("ISSUE #392 FIX ACTIVE: cancel restored the applied filters")
 	search_cancelled.emit()
+
+
+## ISSUE #392: THE FILTERS THE GRID IS SHOWING.
+##
+## _pending is snapshotted the moment SEARCH is pressed; the deck builder calls
+## commit_applied() only once that search actually found cards (a search that
+## finds nothing leaves the old results up, so the old snapshot must stand).
+var _applied : Dictionary = {}
+var _pending : Dictionary = {}
+
+func commit_applied() -> void:
+	_applied = _pending
+	_pending = {}
+	_refresh_confirm_button()
+
+
+func _snapshot() -> Dictionary:
+	return {
+		"name":     _name_edit.text if _name_edit != null else "",
+		"illus":    _illus_edit.text if _illus_edit != null else "",
+		"types":    _sel_types.duplicate(),
+		"sets":     _sel_sets.duplicate(),
+		"card":     _sel_card_types.duplicate(),
+		"manual":   _manual_card_types.duplicate(),
+		"stages":   _sel_stages.duplicate(),
+		"trainer":  _sel_trainer_subs.duplicate(),
+		"poke_sub": _sel_pokemon_subs.duplicate(),
+		"rarity":   _sel_rarities.duplicate(),
+		"powers":   _sel_powers.duplicate(),
+		"effects":  _sel_effects.duplicate(),
+		"sort":     _sort_mode,
+	}
+
+
+## Puts a _snapshot() back - the selection stores, both text boxes, every icon's
+## lit state, and then the lock/sort/confirm repaint that every click ends with.
+func _restore(snap: Dictionary) -> void:
+	if _name_edit != null:
+		_name_edit.text = snap["name"]
+	if _illus_edit != null:
+		_illus_edit.text = snap["illus"]
+	_sel_types = snap["types"].duplicate()
+	_sel_sets = snap["sets"].duplicate()
+	_sel_card_types = snap["card"].duplicate()
+	_manual_card_types = snap["manual"].duplicate()
+	_sel_stages = snap["stages"].duplicate()
+	_sel_trainer_subs = snap["trainer"].duplicate()
+	_sel_pokemon_subs = snap["poke_sub"].duplicate()
+	_sel_rarities = snap["rarity"].duplicate()
+	_sel_powers = snap["powers"].duplicate()
+	_sel_effects = snap["effects"].duplicate()
+	_sort_mode = snap["sort"]
+	for pair in [[_type_icons, _sel_types], [_set_icons, _sel_sets], [_sub_icons, _sel_pokemon_subs],
+			[_rarity_icons, _sel_rarities], [_power_icons, _sel_powers], [_effect_icons, _sel_effects]]:
+		var icons: Dictionary = pair[0]
+		var store: Dictionary = pair[1]
+		for key in icons:
+			_set_icon_selected(icons[key], store.has(key))
+	_refresh_sort_buttons()
+	_apply_lock()
+	_refresh_confirm_button()
 
 
 ## Returns the selection Dictionary a category writes into, so the toggle handlers stay generic.
@@ -1439,7 +1514,10 @@ func _refresh_confirm_button() -> void:
 		return
 	var can_search := _has_any_filter()
 	_clear_button_overrides(_confirm_btn)
-	if can_search:
+	# ISSUE #392: an empty screen over a search that is showing confirms as CLEAR.
+	var can_clear := not can_search and not _applied.is_empty()
+	_confirm_btn.text = "CLEAR" if can_clear else "SEARCH"
+	if can_search or can_clear:
 		_confirm_btn.disabled = false
 		UIKit.style_button(_confirm_btn, "primary")
 	else:

@@ -152,8 +152,22 @@ func _run_taxi_intro() -> void:
 	await get_tree().create_timer(2.0).timeout
 
 	await _scripted_walk("up", 90.0)
-	await _scripted_walk("right", 115.0)
-	await _scripted_walk("up", 180.0)
+	# ISSUE #381: THE WALK IS AIMED AT THE REAL FRONT DOOR.
+	# It used to be "right 115, up 180, up 70" - hand-measured to the house's OLD
+	# spot, so once the house moved the player walked through the fence into the
+	# empty plot where it used to be. The route is now read off the house's own
+	# door (DoorArea_PlayerHouse, via the same _spawn_beside_door() maths that
+	# places the player when they come back OUT of it): across to the door's
+	# column, then up to INTRO_LOOK_AROUND_GAP below the doorstep for the look
+	# around, then up into the door. Moving the door moves the walk.
+	var doorstep := _intro_doorstep()
+	print("ISSUE #381 FIX ACTIVE: intro walks to the front door at ", doorstep)
+	var dx: float = doorstep.x - _player.position.x
+	if absf(dx) > 0.5:
+		await _scripted_walk("right" if dx > 0.0 else "left", absf(dx))
+	var look_y: float = doorstep.y + INTRO_LOOK_AROUND_GAP
+	if _player.position.y > look_y:
+		await _scripted_walk("up", _player.position.y - look_y)
 
 	# ── THE DOORSTEP WAIT ──────────────────────────────────────────────────────────────
 	# The call advances on a click now, so the player decides how long it takes. They stop here, in
@@ -178,7 +192,8 @@ func _run_taxi_intro() -> void:
 	_player.set_direction("up")
 	await get_tree().create_timer(0.5).timeout
 
-	await _scripted_walk("up", 70.0)
+	# ISSUE #381: from the look-around spot, up past the doorstep onto the door itself.
+	await _scripted_walk("up", INTRO_LOOK_AROUND_GAP + INTRO_DOOR_STEP_IN)
 
 	# Fade to black and enter the player house
 	_player.lock_movement()
@@ -233,6 +248,22 @@ func _drive_taxi_off() -> void:
 		_taxi_exit_phase = false
 		$Taxi.visible = false
 	)
+
+
+## ISSUE #381: TWEAKABLE - where the taxi intro stops for its look around, in px
+## BELOW the doorstep (the spot the player appears on when leaving the house), and
+## how far past the doorstep the final step carries them (onto the door).
+const INTRO_LOOK_AROUND_GAP := 70.0
+const INTRO_DOOR_STEP_IN    := 20.0
+
+## The doorstep of the player's house: where a player leaving it stands. Falls back
+## to the old hand-measured spot only if the door node has gone missing.
+func _intro_doorstep() -> Vector2:
+	var door := _find_arrival_door("Player_House_Downstairs")
+	if door == null:
+		push_warning("Celeste_Harbour: no door to Player_House_Downstairs - taxi intro uses the old spot")
+		return Vector2(-598.0, 1459.0)
+	return _spawn_beside_door(door)[0]
 
 
 func _scripted_walk(direction: String, distance: float, speed: float = 80.0) -> void:

@@ -67,6 +67,27 @@ func discard_energy_from_pokemon(energy: card_object, is_owner_opp: bool, is_ko_
 	energy.current_location = "discard"
 	discard.append(energy)
 
+## ISSUE #388: A POKEMON THAT GOES BACK TO THE HAND IS A NEW CARD.
+##
+## Once a card leaves play it forgets everything that happened to it - damage,
+## Special Conditions, PlusPower/Defender, "until your next turn" effects, a
+## changed type/Weakness/Resistance. Cowardice put Tentacool in the hand still
+## wounded, so it came back down damaged. Call this on the card itself AFTER its
+## attachments have been moved off it.
+func reset_returned_pokemon(card: card_object, is_opponent: bool) -> void:
+	main.clear_all_statuses(card, is_opponent)
+	card.pluspower_count = 0
+	card.defender_count = 0
+	card.defender_turns_remaining = -1
+	card.disabled_attacks.clear()
+	card.active_effects.clear()
+	card.temporary_type = ""
+	card.temporary_weakness = ""
+	card.temporary_resistance = ""
+	card.max_hp_override = 0
+	card.current_hp = card.get_max_hp()
+	print("ISSUE #388 FIX ACTIVE: ", card.metadata.get("name", "?"), " reset to ", card.current_hp, " HP on return to hand")
+
 # Move a single card to the given side's discard pile. Optionally animate it.
 func send_to_discard(card: card_object, is_opponent: bool, animate: bool = false, anim_from: Control = null) -> void:
 	# ISSUE #375: a card discarded from the hand used to STAY in the hand as well (Team Aqua/Magma Schemer
@@ -488,11 +509,15 @@ func remove_one_energy(target: card_object, target_owner_is_opponent: bool,
 		main.action_button.theme = main.theme_red
 		main.cancel_button.visible = cancelable
 		main.selected_card_for_action = null
-		await main.defender_energy_chosen
+		# ISSUE #396: take the pick from the SIGNAL. hide_selection_mode_display_main()
+		# clears selected_card_for_action, and this used to read it AFTER that call -
+		# so every pick came back null and Super Potion (and every other caller)
+		# refunded the card instead of discarding. Cancel emits null, as before.
+		chosen = await main.defender_energy_chosen
 		main.defender_energy_discard_active = false
 		main.hide_selection_mode_display_main()
 		if main._should_bail(): return null
-		chosen = main.selected_card_for_action
+		print("ISSUE #396 FIX ACTIVE: energy picked for discard = ", (chosen.metadata.get("name", "?") if chosen != null else "none (cancelled)"))
 
 	if chosen == null:
 		return null
@@ -658,20 +683,8 @@ func prompt_select_card(pool: Array, header: String, hint: String, btn_text: Str
 		main.trainer_pokemon_selection_active = true
 	main.show_enlarged_array_selection_mode(pool)
 	main.cancel_button.visible = cancelable
-	# show_enlarged_array_selection_mode() always hides the cancel button for
-	# trainer_pokemon_selection_active/trainer_deck_search_active (it doesn't know this call
-	# wants an optional cancel), so it lays out action_button centered as if there were no
-	# cancel button. Re-run that layout now that cancel_button.visible reflects `cancelable`,
-	# otherwise the two buttons end up overlapping/misaligned (base1-2 Rain Dance bug).
-	if main.action_button.visible:
-		if main.cancel_button.visible:
-			main.action_button.offset_left = main.action_button_paired_offset_left
-			main.action_button.offset_right = main.action_button_paired_offset_right
-			main.cancel_button.offset_left = 35.0
-			main.cancel_button.offset_right = 473.0
-		else:
-			main.action_button.offset_left = main.action_button_default_offset_left
-			main.action_button.offset_right = main.action_button_default_offset_right
+	# ISSUE #389: the shared bottom-bar layout (was a hand-copied block here - base1-2 Rain Dance bug).
+	main.queue_bottom_buttons_layout()
 	main.header_label.text = header
 	main.hint_label.text = hint
 	main.action_button.text = btn_text
@@ -743,16 +756,8 @@ func prompt_select_cards(pool: Array, min_n: int, max_n: int, header: String, hi
 	main.show_enlarged_array_selection_mode(pool)
 	main.header_label.text = header
 	main.cancel_button.visible = cancelable
-	# Same re-layout prompt_select_card does once cancel_button.visible is known (base1-2 bug).
-	if main.action_button.visible:
-		if main.cancel_button.visible:
-			main.action_button.offset_left = main.action_button_paired_offset_left
-			main.action_button.offset_right = main.action_button_paired_offset_right
-			main.cancel_button.offset_left = 35.0
-			main.cancel_button.offset_right = 473.0
-		else:
-			main.action_button.offset_left = main.action_button_default_offset_left
-			main.action_button.offset_right = main.action_button_default_offset_right
+	# ISSUE #389: the shared bottom-bar layout.
+	main.queue_bottom_buttons_layout()
 	main.refresh_multi_select_labels()
 	await main.trainer_discard_selection_done
 	var chosen: Array = main.trainer_discard_selected.duplicate()

@@ -1779,7 +1779,7 @@
     "Spectator Pete": {
       "sprite": "Neckbeard",
       "message_colour": "dark_red",
-      "deck": "Deck Eruption",
+      "deck": "Incinerator",
       "music": "Medium_Battle 3 (PMD Thunderwave_Cave)",
       "prize_cards": 4,
       "cash_reward": "150",
@@ -1787,7 +1787,7 @@
       "costume_reward": "NECKBEARD"
     },
     "Ellie": {
-      "sprite": "0Ellie",
+      "sprite": "1Ellie_Dress",
       "message_colour": "light_pink",
       "deck": "Beach Pals",
       "music": "Nice_battle (PTCG2 - GRs Grass Water Forts)",

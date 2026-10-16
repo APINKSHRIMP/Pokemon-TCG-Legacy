@@ -137,9 +137,9 @@ func _build_chrome() -> void:
 	stepper.offset_bottom = STEPPER_Y + STEPPER_H
 	add_child(stepper)
 
-	UIKit.adopt_button(prev_btn, stepper, "secondary", false)
+	UIKit.adopt_button(prev_btn, stepper, "neutral", false)   # ISSUE #379
 	UIKit.adopt_label(set_name_label, stepper, "title", "field_fg")
-	UIKit.adopt_button(next_btn, stepper, "secondary", false)
+	UIKit.adopt_button(next_btn, stepper, "neutral", false)   # ISSUE #379
 	prev_btn.text = "<"
 	next_btn.text = ">"
 	prev_btn.custom_minimum_size.x = STEPPER_ARROW_W
@@ -149,7 +149,7 @@ func _build_chrome() -> void:
 	set_name_label.custom_minimum_size.x = STEPPER_NAME_W
 
 	# Cancel first: the footer slot is an HBox, so insertion order is left-to-right.
-	UIKit.adopt_button(cancel_button, bars["footer"].centre, "secondary")
+	UIKit.adopt_button(cancel_button, bars["footer"].centre, "negative")   # ISSUE #379: Cancel is the negative colour
 	UIKit.adopt_button(buy_button, bars["footer"].centre, "primary")
 
 	var nav := get_node_or_null("SET NAVIGATION")

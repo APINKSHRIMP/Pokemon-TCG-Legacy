@@ -213,7 +213,7 @@ func _build_chrome() -> void:
 	header.centre.add_child(title)
 
 	var footer := UIKit.add_footer(self)
-	cancel_btn = UIKit.make_footer_button("Cancel", "secondary")
+	cancel_btn = UIKit.make_footer_button("Cancel", "negative")   # ISSUE #379
 	cancel_btn.pressed.connect(_on_cancel_pressed)
 	footer.centre.add_child(cancel_btn)
 
@@ -273,10 +273,15 @@ func _build_rows() -> void:
 	# all, so the pause menu never implies they are on the table. Their entries in
 	# pending/saved and section_setters stay exactly as they are: nothing touches
 	# them, so Save sees no change and writes nothing.
-	if not in_match_mode:
+	# ISSUE #385: they are also hidden until the player owns an EX card (see
+	# GameState.MATCH_RULES_UNLOCK_SET) - before then there is nothing for an
+	# "EX era" rule to mean. "Fairer retreat" is not on this row at all any more:
+	# it is the CHT_Retreat.Confused cheat (and CHT_Vanilla.Confusion undoes it).
+	var rules_unlocked: bool = GameState.match_rule_options_unlocked()
+	print("ISSUE #385 FIX ACTIVE: match-rule rows ", ("shown" if rules_unlocked else "hidden (no ex1 card owned)"))
+	if not in_match_mode and rules_unlocked:
 		_add_button_row(body, "confusion", "Confusion rules", [
 			["base_set_confusion_rules",   "Base set"],
-			["fairer_confusion_rules",     "Fairer retreat"],
 			["modern_era_confusion_rules", "EX era"],
 		])
 		_add_button_row(body, "burn", "Burn rules", [
@@ -459,8 +464,6 @@ func _new_row(parent: VBoxContainer, label_text: String, sub_text: String = "") 
 		sub.custom_minimum_size = Vector2(name_w, 0)
 		sub.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
 		col.add_child(sub)
-		print("ISSUE #275 FIX ACTIVE: sub-caption '", sub_text, "' centred on ",
-			name_w, "px of '", label.text, "'")
 
 	# A spacer rather than padding on the label, so the label can be left-aligned
 	# and the controls still start on the same x in every row.

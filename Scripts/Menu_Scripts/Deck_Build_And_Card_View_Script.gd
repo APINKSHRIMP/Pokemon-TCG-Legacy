@@ -267,6 +267,9 @@ var _search_grid_stale : bool = false
 # True once a search has been run and the grid is showing results instead of a single set.
 # While true the set name and the < > set-switch buttons stay hidden.
 var search_active : bool = false
+## ISSUE #392: "Clear filter", left of "Search & filter" - only shown while results are.
+var _clear_filter_btn : Button = null
+const CLEAR_FILTER_BTN_W := 220.0   # TWEAKABLE
 
 # The matched cards, as the same {card_id, owned} dictionaries the per-set grid is built from
 var search_results : Array = []
@@ -275,10 +278,13 @@ var search_results : Array = []
 # same abort guard _display_current_set uses, so clearing a search mid-load stops the old build
 var _search_load_token : int = 0
 
-# How many result cards are added to the grid per frame. A full-collection search can return
-# ~2,800 cards, and one-per-frame (what the single-set view uses) would take almost a minute;
-# a whole row per frame keeps it progressive but finishes in a few seconds.
-const SEARCH_LOAD_BATCH := 9
+# Every grid on this screen (set grid, search results, deck viewer, energy picker) is paced
+# by SceneCache's frame budget (SceneCache.GRID_BUILD_BUDGET_MS) rather than one card per
+# frame, which made a 160-card set take ~2.7 s to appear even with every image in memory.
+
+# Search results whose images start loading the instant a search runs (about a screenful);
+# the rest are queued in SceneCache and started a few per frame. TWEAKABLE.
+const SEARCH_PREWARM_NOW := 60
 
 # ─── Node references ─────────────────────────────────────────────────────────
 
@@ -457,9 +463,9 @@ func _build_chrome() -> void:
 	deck_count_label.visible = false
 
 	# -- Header centre: the set stepper --
-	UIKit.adopt_button(prev_btn, bars["header"].centre, "secondary", false)
+	UIKit.adopt_button(prev_btn, bars["header"].centre, "neutral", false)   # ISSUE #379
 	UIKit.adopt_label(set_label, bars["header"].centre)
-	UIKit.adopt_button(next_btn, bars["header"].centre, "secondary", false)
+	UIKit.adopt_button(next_btn, bars["header"].centre, "neutral", false)   # ISSUE #379
 	prev_btn.text = "<"
 	next_btn.text = ">"
 	for arrow in [prev_btn, next_btn]:
@@ -470,15 +476,23 @@ func _build_chrome() -> void:
 	set_label.custom_minimum_size.x = STEPPER_NAME_W
 
 	# -- Header right: search & filter --
-	UIKit.adopt_button(search_btn, bars["header"].right, "primary", false)
+	# ISSUE #392: a one-press way out of a search, sitting just left of the
+	# button that opened it. Hidden whenever no search is showing.
+	_clear_filter_btn = Button.new()
+	_clear_filter_btn.text = "Clear filter"
+	UIKit.adopt_button(_clear_filter_btn, bars["header"].right, "neutral", false)   # ISSUE #379
+	_clear_filter_btn.custom_minimum_size.x = CLEAR_FILTER_BTN_W
+	_clear_filter_btn.pressed.connect(_on_clear_filter_pressed)
+	_clear_filter_btn.visible = false
+	UIKit.adopt_button(search_btn, bars["header"].right, "neutral", false)   # ISSUE #379
 	search_btn.custom_minimum_size.x = SEARCH_BTN_W
 	# The scene bakes a literal newline into this label ("SEARCH &\nFILTER"), which
 	# is what made the button two lines tall and burst the header. Set it fresh.
 	search_btn.text = "Search & filter"
-	UIKit.style_button(search_btn, "primary")
+	UIKit.style_button(search_btn, "neutral")   # ISSUE #379
 
 	# -- Footer: Cancel then Save --
-	UIKit.adopt_button(cancel_btn, bars["footer"].centre, "secondary")
+	UIKit.adopt_button(cancel_btn, bars["footer"].centre, "negative")   # ISSUE #379: Cancel is the negative colour
 	UIKit.adopt_button(save_btn, bars["footer"].centre, "primary")
 
 	# -- Sidebar --
@@ -496,7 +510,7 @@ func _build_chrome() -> void:
 		b.remove_theme_font_size_override("font_size")
 		b.remove_theme_font_override("font")
 		# Emptying the deck throws work away - the only destructive act here.
-		UIKit.style_button(b, "danger" if b == empty_btn else "secondary")
+		UIKit.style_button(b, "danger" if b == empty_btn else "neutral")   # ISSUE #379
 		var bottom: float = TOOL_STACK_BOT - float(tools.size() - 1 - i) * (TOOL_BTN_H + TOOL_BTN_GAP)
 		b.set_anchors_preset(Control.PRESET_TOP_LEFT)
 		b.offset_left = SIDE_X
@@ -1039,14 +1053,34 @@ func _load_energy_style() -> void:
 		current_energy_style = data.get("energy_style", "Base1")
 
 
+## ISSUE #395: the SMALL image path for a card - what every standard grid view
+## (the card grid, the deck viewer) draws. The hold-Shift zoom loads the large one.
+func _small_card_image_path(card_id: String) -> String:
+	return SceneCache.small_card_path(card_id)
+
+
+## ISSUE #395: Small first, Large as the failsafe - the mirror of the function below.
+## Small images come out of SceneCache's card image cache, so a set seen before (or one
+## preloaded in the background) draws without touching the disk.
+func _load_card_texture_small_first(path: String) -> Texture2D:
+	var tex := SceneCache.card_texture(path)
+	if tex != null:
+		return tex
+	var large: String = path.replace("/Small/", "/Large/")
+	if ResourceLoader.exists(large):
+		print("ISSUE #395: no small image, using large for ", path.get_file())
+		return load(large)
+	return null
+
+
 ## ISSUE #274: Large first, Small as a failsafe. Every card should have a large
 ## image; a missing one degrades to the shrunken copy rather than to a blank cell.
 ## Mirrors MapManager._load_card_image_with_fallback.
 func _load_card_texture_with_fallback(path: String) -> Texture2D:
-	if ResourceLoader.exists(path):
-		var tex = load(path)
-		if tex != null:
-			return tex
+	# The six energy icons - the pause menu prewarms them into SceneCache's menu pool.
+	var tex := SceneCache.cached_texture(path)
+	if tex != null:
+		return tex
 	if "/Large/" in path:
 		var fallback: String = path.replace("/Large/", "/Small/")
 		if ResourceLoader.exists(fallback):
@@ -1298,7 +1332,7 @@ func _on_change_energy_style_pressed() -> void:
 	picker_cancel_btn.custom_minimum_size = Vector2(224, 63)
 	picker_cancel_btn.position = Vector2(1690, 986)
 	picker_cancel_btn.z_index = 55
-	UIKit.style_button(picker_cancel_btn, "secondary")
+	UIKit.style_button(picker_cancel_btn, "negative")   # ISSUE #379
 	picker_cancel_btn.add_theme_font_size_override("font_size", 23)
 	picker_cancel_btn.pressed.connect(_on_energy_picker_cancel)
 	energy_picker_overlay.add_child(picker_cancel_btn)
@@ -1314,10 +1348,16 @@ func _on_change_energy_style_pressed() -> void:
 	# Blacked-out colour for locked styles — matches the unowned card look
 	var locked_modulate := Color(0.08, 0.08, 0.08, 1.0)
 
-	# ── Progressive card loading — one card per frame ──
-	# Each card image is loaded and added to the grid one at a time, with
-	# an await between each so the player sees them appear rather than
-	# experiencing a freeze while all 36 images load at once.
+	# ── Progressive card loading — within the per-frame budget ──
+	# The images load on background threads first; cards are then added as
+	# fast as the frame budget allows, so there is never a freeze.
+	var picker_paths : Array = []
+	for style_name in GameState.ENERGY_STYLES.keys():
+		for card_id in GameState.ENERGY_STYLES[style_name]:
+			picker_paths.append(_small_card_image_path(String(card_id)))
+	SceneCache.prewarm_card_textures(picker_paths, true)
+	SceneCache.start_build_budget()
+
 	for style_name in GameState.ENERGY_STYLES.keys():
 		var is_unlocked : bool = style_name in available_styles
 		var card_ids : Array = GameState.ENERGY_STYLES[style_name]
@@ -1330,8 +1370,9 @@ func _on_change_energy_style_pressed() -> void:
 
 			var card_id : String = card_ids[col]
 			var card_set := card_id.split("-")[0]
-			var image_path := "res://Image_Assets/Card_Image_Library/" + card_set + "/Large/" + AssetLookup.card_image_name(card_id) + ".png"
-			var tex = load(image_path)
+			# ISSUE #395: small copies here as well - a standard view, not a zoom.
+			var image_path := _small_card_image_path(card_id)
+			var tex = _load_card_texture_small_first(image_path)
 
 			var card_rect := TextureRect.new()
 			if tex:
@@ -1357,10 +1398,9 @@ func _on_change_energy_style_pressed() -> void:
 			picker_grid.add_child(card_rect)
 			cards_in_row.append(card_rect)
 
-			# Yield one frame so the card appears on screen before the next loads
 			if not is_inside_tree():   # ISSUE #32 FIX: bail if freed mid-load
 				return
-			await get_tree().process_frame
+			await SceneCache.yield_if_over_budget()
 
 		row_cards[style_name] = cards_in_row
 
@@ -1548,7 +1588,7 @@ func _build_viewer_chrome() -> void:
 	# screen already shows one keypress away, and with seven of them the header's
 	# right slot was busier than the deck name it sat beside.
 
-	var close_btn := UIKit.make_footer_button("Close", "primary")
+	var close_btn := UIKit.make_footer_button("Close", "negative")   # ISSUE #379
 	close_btn.pressed.connect(_close_deck_viewer)
 	_footer.centre.add_child(close_btn)
 	_viewer_chrome.append(close_btn)
@@ -1638,6 +1678,7 @@ func _sort_deck_for_viewer() -> Array:
 ## deck laid out in a scrollable grid — no count labels, just raw card images.
 ## The overlay is always rebuilt fresh so it reflects the current deck state.
 func _on_view_deck_pressed() -> void:
+	print("ISSUE #395 FIX ACTIVE: deck viewer and card grid draw SMALL card images")
 	if deck_viewer_active or energy_picker_active or is_zoomed:
 		return
 	if deck_cards.is_empty():
@@ -1718,6 +1759,12 @@ func _on_view_deck_pressed() -> void:
 
 	await get_tree().process_frame
 
+	var viewer_paths : Array = []
+	for card_id in sorted_ids:
+		viewer_paths.append(_small_card_image_path(String(card_id)))
+	SceneCache.prewarm_card_textures(viewer_paths, true)
+	SceneCache.start_build_budget()
+
 	# Add one TextureRect per copy of each card — no count label
 	for card_id in sorted_ids:
 		if not deck_viewer_active:
@@ -1725,8 +1772,9 @@ func _on_view_deck_pressed() -> void:
 		var cid        : String = card_id
 		var count      : int    = deck_cards[cid]
 		var card_set   : String = cid.split("-")[0]
-		var image_path : String = "res://Image_Assets/Card_Image_Library/" + card_set + "/Large/" + AssetLookup.card_image_name(cid) + ".png"
-		var card_texture        = load(image_path)
+		# ISSUE #395: the deck viewer draws the small copies too.
+		var image_path : String = _small_card_image_path(cid)
+		var card_texture        = _load_card_texture_small_first(image_path)
 
 		for _i in range(count):
 			if not deck_viewer_active:
@@ -1749,7 +1797,7 @@ func _on_view_deck_pressed() -> void:
 			viewer_grid.add_child(card_rect)
 			if not is_inside_tree():   # ISSUE #32 FIX: bail if freed mid-load
 				return
-			await get_tree().process_frame
+			await SceneCache.yield_if_over_budget()
 
 
 # ─── Deck viewer card list (ISSUE #152) ──────────────────────────────────────
@@ -1843,9 +1891,24 @@ func _wrap_grid_in_scroll_container() -> void:
 
 # ─── Grid display ────────────────────────────────────────────────────────────
 
+## Starts background loads of the owned cards' small images for the set at unlock
+## position `pos` straight away (it is about to be drawn), then queues the sets either
+## side of it, so the arrows usually land on a set that is already in memory.
+func _prewarm_set_images(pos: int) -> void:
+	if unlocked_indices.is_empty():
+		return
+	for offset in [0, 1, -1]:
+		var idx : int = unlocked_indices[posmod(pos + offset, unlocked_indices.size())]
+		var paths : Array = []
+		for card_data in _load_owned_cards_for_set(set_list[idx]["set_id"]):
+			if int(card_data.get("owned", 0)) > 0:
+				paths.append(_small_card_image_path(String(card_data["card_id"])))
+		SceneCache.prewarm_card_textures(paths, offset == 0)
+
+
 ## Clears the grid and populates it with cards from the current set.
-## Cards are added one per frame so the player sees them appear progressively
-## rather than a single freeze while the entire set loads at once.
+## Cards are added progressively within a per-frame time budget, so the player
+## sees them appear rather than a single freeze while the entire set loads at once.
 func _display_current_set() -> void:
 	# Determine which set to display
 	if unlocked_indices.is_empty():
@@ -1879,7 +1942,13 @@ func _display_current_set() -> void:
 	# switches set mid-load and abort the old load gracefully
 	_loading_set_id = set_id
 
-	# Populate the grid one card per frame for progressive visual loading
+	# Every owned image of this set starts loading on background threads now (cheap if
+	# already cached), and the two neighbouring sets queue up behind it.
+	_prewarm_set_images(current_unlock_pos)
+	SceneCache.start_build_budget()
+	var build_start_usec := Time.get_ticks_usec()
+
+	# Populate the grid progressively, as many cards per frame as the budget allows
 	for card_data in owned_cards:
 		# If the player switched sets while we were still loading, stop
 		if _loading_set_id != set_id:
@@ -1890,8 +1959,9 @@ func _display_current_set() -> void:
 			return
 
 		_add_card_to_grid(card_data)
-		await get_tree().process_frame
+		await SceneCache.yield_if_over_budget()
 
+	print("CARD CACHE: set ", set_id, " grid built in ", (Time.get_ticks_usec() - build_start_usec) / 1000, " ms")
 	# ISSUE #32: grid finished building for the current set — allow player input again.
 	_loading_overlay.hide()
 
@@ -1901,7 +1971,7 @@ func _display_current_set() -> void:
 func _clear_grid() -> void:
 	for child in grid.get_children():
 		# Each child is a TextureRect (card_rect) added directly to the grid
-		var tw = child.get_meta("deck_tween", null)
+		var tw = child.get_meta("deck_tween") if child.has_meta("deck_tween") else null
 		if tw:
 			tw.kill()
 		child.queue_free()
@@ -1939,12 +2009,11 @@ func _add_card_to_grid(card_data: Dictionary) -> void:
 	else:
 		var tex_rect := TextureRect.new()
 		var card_set := card_id.split("-")[0]
-		# ISSUE #274: Large, not Small. The grid draws these at CARD_SIZE either way
-		# and STRETCH_KEEP_ASPECT_CENTERED scales whatever it is given, so the only
-		# thing the small copy bought was a slightly blurrier card. What makes this
-		# screen slow is the NUMBER of cells, not the size of each texture.
-		var image_path := "res://Image_Assets/Card_Image_Library/" + card_set + "/Large/" + AssetLookup.card_image_name(card_id) + ".png"
-		var card_texture = _load_card_texture_with_fallback(image_path)
+		# ISSUE #395: Small again (reverses #274). The large images made the grid
+		# noticeably slower to load; the hold-Shift zoom (CardDetailPanel) loads the
+		# large art itself, so only the zoom pays for it. Large is the fallback.
+		var image_path := _small_card_image_path(card_id)
+		var card_texture = _load_card_texture_small_first(image_path)
 		if card_texture != null:
 			tex_rect.texture = card_texture
 		else:
@@ -2085,7 +2154,7 @@ func _on_card_gui_input(event: InputEvent, card_node: Control) -> void:
 ## Matches the style from cardimage.gd set_selected(true).
 func _apply_selected_animation(card_rect: TextureRect) -> void:
 	# Kill any existing tween on this card
-	var old_tween = card_rect.get_meta("deck_tween", null)
+	var old_tween = card_rect.get_meta("deck_tween") if card_rect.has_meta("deck_tween") else null
 	if old_tween:
 		old_tween.kill()
 
@@ -2105,7 +2174,7 @@ func _apply_selected_animation(card_rect: TextureRect) -> void:
 
 ## Stops the selection animation and resets the card to its normal state.
 func _remove_selected_animation(card_rect: TextureRect) -> void:
-	var tw = card_rect.get_meta("deck_tween", null)
+	var tw = card_rect.get_meta("deck_tween") if card_rect.has_meta("deck_tween") else null
 	if tw:
 		tw.kill()
 		card_rect.set_meta("deck_tween", null)
@@ -2197,6 +2266,11 @@ func _open_search_overlay() -> void:
 	if energy_picker_active or deck_viewer_active or load_popup != null:
 		return
 
+	# ISSUE #393: a big search may still be building the grid. Let it carry on, but
+	# put its input blocker aside so the filter screen is usable on top of it -
+	# change the search, clear it, or CANCEL to watch the old one finish.
+	_loading_overlay.set_suspended(true)
+
 	# Hide the deck UI behind the search screen, the same way the energy picker does
 	_set_ui_visibility(false)
 	_set_filter_chrome(true)   # ISSUE #141
@@ -2234,6 +2308,8 @@ func _on_search_cancelled() -> void:
 		search_overlay.visible = false
 	_set_filter_chrome(false)   # ISSUE #141
 	_set_ui_visibility(true)
+	# ISSUE #393: back to the grid - if the old search is still loading, its blocker returns.
+	_loading_overlay.set_suspended(false)
 
 	if _search_grid_stale:
 		_search_grid_stale = false
@@ -2256,6 +2332,10 @@ func _on_search_confirmed(criteria: Dictionary) -> void:
 
 	search_results = results
 	search_active  = true
+	_refresh_clear_filter_btn()
+	# ISSUE #392: these filters are now the ones the grid shows - CANCEL returns to them.
+	if search_overlay != null:
+		search_overlay.commit_applied()
 	# A fresh set of results replaces the grid outright, so any redraw a RESET left owing is moot.
 	_search_grid_stale = false
 
@@ -2282,16 +2362,30 @@ func _clear_search() -> void:
 	_reset_scroll_position()
 
 
-## RESET on the filter screen. The screen has blanked its own selections, so the search applied to
-## the grid has to go with them or the two would disagree — an empty filter screen sitting in front
-## of filtered results, with SEARCH disabled and no button back out.
-##
-## The overlay deliberately stays OPEN (the player may be about to build a new filter), and the grid
-## is NOT rebuilt yet: the rebuild puts up the shared loading overlay, which would flash over the top
-## of the search screen. _on_search_cancelled() does it on the way out instead.
+## ISSUE #392: RESET no longer clears anything on its own. It only blanks the
+## filter screen; the search showing behind it stays until the player CONFIRMS
+## the empty screen (the overlay's SEARCH button reads "CLEAR" then), which is
+## what emits search_reset and lands here. RESET then CANCEL puts the old filters
+## back and leaves the results alone (the overlay restores its own selections).
 func _on_search_reset() -> void:
-	if _drop_search_results():
-		_search_grid_stale = true
+	print("ISSUE #392 FIX ACTIVE: reset confirmed - search cleared, back to the last set")
+	_set_ui_visibility(true)
+	_clear_search()
+
+
+## ISSUE #392: the header's "Clear filter" - drop the search and go back to the
+## set the player was browsing, exactly as a confirmed RESET does.
+func _on_clear_filter_pressed() -> void:
+	if not search_active:
+		return
+	print("ISSUE #392 FIX ACTIVE: Clear filter pressed")
+	SoundManagerScript.play_sfx(SoundManagerScript.SFX_minus_select)
+	_clear_search()
+
+
+func _refresh_clear_filter_btn() -> void:
+	if _clear_filter_btn != null and is_instance_valid(_clear_filter_btn):
+		_clear_filter_btn.visible = search_active
 
 
 ## Forgets the active search without touching the overlay or the grid. Returns false when there was
@@ -2300,6 +2394,7 @@ func _drop_search_results() -> bool:
 	if not search_active:
 		return false
 	search_active = false
+	_refresh_clear_filter_btn()   # ISSUE #392
 	search_results.clear()
 	_search_load_token += 1        # abort any results build still in flight
 	return true
@@ -2665,7 +2760,17 @@ func _display_search_results() -> void:
 	_clear_grid()
 	_reset_scroll_position()
 
-	var added := 0
+	# Start the results' images loading on background threads before drawing any.
+	var result_paths : Array = []
+	for card_data in search_results:
+		if int(card_data.get("owned", 0)) > 0:
+			result_paths.append(_small_card_image_path(String(card_data["card_id"])))
+	# The first screenful starts now; the rest (a broad search can be the whole
+	# collection) is queued so starting the loads never hitches a frame.
+	SceneCache.prewarm_card_textures(result_paths.slice(0, SEARCH_PREWARM_NOW), true)
+	SceneCache.prewarm_card_textures(result_paths.slice(SEARCH_PREWARM_NOW))
+	SceneCache.start_build_budget()
+
 	for card_data in search_results:
 		# The player cleared the search (or started another) while this build was still running
 		if token != _search_load_token:
@@ -2674,9 +2779,7 @@ func _display_search_results() -> void:
 			return
 
 		_add_card_to_grid(card_data)
-		added += 1
-		if added % SEARCH_LOAD_BATCH == 0:
-			await get_tree().process_frame
+		await SceneCache.yield_if_over_budget()
 
 	_loading_overlay.hide()
 
@@ -2751,7 +2854,7 @@ func _show_confirm_popup(message: String, confirm_label: String, on_confirm: Cal
 	no_btn.text = "Cancel"
 	no_btn.custom_minimum_size = Vector2(150, 48)
 	no_btn.add_theme_font_size_override("font_size", 22)
-	UIKit.style_button(no_btn, "secondary")
+	UIKit.style_button(no_btn, "negative")   # ISSUE #379
 	no_btn.pressed.connect(_close_confirm_popup)
 	btn_row.add_child(no_btn)
 
@@ -2847,6 +2950,10 @@ func _on_save_pressed() -> void:
 
 	# Disable save button after saving (dirty check will return false)
 	_refresh_save_button()
+
+	# ISSUE #394: the screen stays put after a save, so say that it worked.
+	print("ISSUE #394 FIX ACTIVE: deck saved message shown for '", display_name, "'")
+	_show_deck_message(MSG_SAVED_TEXT, MSG_SAVED_COLOUR)
 
 
 ## Writes the current deck_cards dictionary to a JSON file in the
@@ -3018,7 +3125,8 @@ func _input(event: InputEvent) -> void:
 			return
 		# Search screen open — same as pressing its CANCEL button
 		if _search_screen_open():
-			_on_search_cancelled()
+			# ISSUE #392: through the overlay's own CANCEL, so a RESET is undone too.
+			search_overlay._on_cancel_pressed()
 			return
 		# Showing search results — the first Escape drops back to normal set browsing,
 		# a second one then leaves the deck builder as usual
@@ -3222,6 +3330,10 @@ func _set_ui_visibility(visible_flag: bool) -> void:
 		next_btn.visible  = false
 		prev_btn.visible  = false
 
+	# ISSUE #392: "Clear filter" hides with the rest, and comes back only while a search shows.
+	if _clear_filter_btn != null and is_instance_valid(_clear_filter_btn):
+		_clear_filter_btn.visible = visible_flag and search_active
+
 
 ## Called every time the player types or deletes in the deck name field.
 ## text_changed passes the new text as an argument but we just need to
@@ -3240,6 +3352,9 @@ const MSG_RISE_PIXELS    := 120.0   # how far it drifts upward
 const MSG_RISE_SECONDS   := 2.0     # drift duration
 const MSG_FADE_SECONDS   := 1.6     # fade duration (starts with the drift)
 const MSG_COLOUR         := Color(1.0, 0.45, 0.45)
+## ISSUE #394: the "DECK SAVED!" confirmation - same label, success green.
+const MSG_SAVED_TEXT     := "DECK SAVED!"
+const MSG_SAVED_COLOUR   := Color(0.45, 1.0, 0.55)
 
 # The message has to sit above EVERYTHING, including the search screen — "No cards found" is shown
 # while that screen is still up, and it was being painted over by the filter rows.
@@ -3274,7 +3389,7 @@ func _get_msg_bold_font() -> FontVariation:
 ## Shows a short message that rises and fades near the bottom of the screen, in the same style as the
 ## in-match floating labels. Calling it again replaces any message still on screen so rapid clicks
 ## never stack labels on top of each other.
-func _show_deck_message(text: String) -> void:
+func _show_deck_message(text: String, colour: Color = MSG_COLOUR) -> void:
 	if _deck_message_label != null and is_instance_valid(_deck_message_label):
 		_deck_message_label.queue_free()
 	_deck_message_label = null
@@ -3291,7 +3406,7 @@ func _show_deck_message(text: String) -> void:
 	if bold != null:
 		lbl.add_theme_font_override("font", bold)
 	lbl.add_theme_font_size_override("font_size", MSG_FONT_SIZE)
-	lbl.add_theme_color_override("font_color", MSG_COLOUR)
+	lbl.add_theme_color_override("font_color", colour)
 	lbl.add_theme_color_override("font_outline_color", Color.BLACK)
 	lbl.add_theme_constant_override("outline_size", 10)
 	# Full-width strip so the text is centred horizontally whatever its length. Both vertical offsets
@@ -3577,7 +3692,7 @@ func _on_rename_deck_pressed(deck_name: String) -> void:
 	cancel_btn.text = "Cancel"
 	cancel_btn.custom_minimum_size = Vector2(LOAD_ACTION_W, LOAD_ACTION_H)
 	cancel_btn.add_theme_font_size_override("font_size", LOAD_ACTION_FONT)
-	UIKit.style_button(cancel_btn, "secondary")
+	UIKit.style_button(cancel_btn, "negative")   # ISSUE #379
 	cancel_btn.pressed.connect(_close_rename_popup)
 	btn_row.add_child(cancel_btn)
 
@@ -3858,7 +3973,7 @@ func _on_load_deck_pressed() -> void:
 	cancel_popup_btn.text = "Cancel"
 	cancel_popup_btn.custom_minimum_size = Vector2(LOAD_ACTION_W, LOAD_ACTION_H)
 	cancel_popup_btn.add_theme_font_size_override("font_size", LOAD_ACTION_FONT)
-	UIKit.style_button(cancel_popup_btn, "secondary")
+	UIKit.style_button(cancel_popup_btn, "negative")   # ISSUE #379
 	cancel_popup_btn.pressed.connect(_close_load_popup)
 	btn_row.add_child(cancel_popup_btn)
 

@@ -2116,7 +2116,7 @@ func effect_lass(is_opponent: bool) -> void:
 			return
 		main.trainer_pokemon_selection_active = false
 		main.cancel_button.text = "Cancel"
-		main.cancel_button.theme = main.theme_red
+		main.cancel_button.theme = main.theme_negative   # ISSUE #379
 		main.hide_selection_mode_display_main()
 		main.restore_opponent_blocker(restore_blocker_lass, "effect_lass reveal")
 
@@ -3909,7 +3909,7 @@ func gym1_reveal_hand(reveal_to_opponent: bool, header_text: String, hint_text: 
 	main.trainer_pokemon_selection_active = false
 	main.action_button.visible = true
 	main.cancel_button.text = "Cancel"
-	main.cancel_button.theme = main.theme_red
+	main.cancel_button.theme = main.theme_negative   # ISSUE #379
 	main.hide_selection_mode_display_main()
 	main.restore_opponent_blocker(restore_blocker_reveal, "gym1_reveal_hand")
 
@@ -3964,7 +3964,7 @@ func gym1_prompt_yes_no(anchor_card: card_object, header_text: String, hint_text
 	main.action_button.theme = main.theme_green
 	main.cancel_button.visible = true
 	main.cancel_button.text = no_text
-	main.cancel_button.theme = main.theme_red
+	main.cancel_button.theme = main.theme_negative   # ISSUE #379: the "No" of a yes/no prompt
 	main.selected_card_for_action = anchor_card  # pre-arm action_button so YES is clickable without selecting
 	await main.trainer_target_selected
 	main.yes_no_prompt_active = false
@@ -3972,7 +3972,7 @@ func gym1_prompt_yes_no(anchor_card: card_object, header_text: String, hint_text
 	main.trainer_pokemon_selection_active = false
 	main.hide_selection_mode_display_main()
 	main.cancel_button.text = "Cancel"
-	main.cancel_button.theme = main.theme_red
+	main.cancel_button.theme = main.theme_negative   # ISSUE #379
 	return pressed_yes
 
 # Called from inbetween_turn_checks at end of the side's own turn. Handles Charity return-to-hand, Sabrina's ESP discard,

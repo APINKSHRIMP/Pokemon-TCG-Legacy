@@ -369,10 +369,11 @@ func configure(box_height: float = 138.0,
 		add_child(_button_row)
 
 		yes_button = _make_button("Yes", "primary")
-		no_button  = _make_button("No",  "secondary")
+		no_button  = _make_button("No",  "negative")   # ISSUE #379: was translucent, read as disabled
+		print("ISSUE #379 FIX ACTIVE: Yes = positive green, No = negative red")
 		# The OK button is gone as a control but kept as a node, so the handful of
 		# callers that still connect to it do not have to guard. Never made visible.
-		ok_button  = _make_button("OK",  "secondary")
+		ok_button  = _make_button("OK",  "primary")   # ISSUE #379: OK is a positive answer
 
 	# -- Pill / chip row --------------------------------------
 	# Added LAST so it draws over the panel's top edge, hiding the seam where the

@@ -181,9 +181,21 @@ func _build_theme(ui_theme, theme_id: String) -> bool:
 	# why they are not symmetric; the audit reads the same function.
 	var chrome_tint: Color = ui_theme.chrome_button_tint(TOK)
 	VARIANTS = {
+		# ISSUE #379: primary is the POSITIVE action now - the theme's green, the
+		# same fill as "good" - so every Save / OK / Buy is one colour whether or
+		# not it has a pending change. btn_primary_top/bot stay in the token block
+		# (other art still reads them) but no button face is baked from them.
 		"primary": {
-			"top": TOK["btn_primary_top"], "bot": TOK["btn_primary_bot"],
-			"fg": TOK["btn_primary_fg"],
+			"top": ui_theme.positive_fill(TOK), "bot": ui_theme.positive_fill(TOK),
+			"fg": ui_theme.ink_on(ui_theme.positive_fill(TOK)),
+		},
+		"negative": {
+			"top": ui_theme.negative_fill(TOK), "bot": ui_theme.negative_fill(TOK),
+			"fg": ui_theme.ink_on(ui_theme.negative_fill(TOK)),
+		},
+		"neutral": {
+			"top": ui_theme.neutral_fill(TOK), "bot": ui_theme.neutral_fill(TOK),
+			"fg": ui_theme.ink_on(ui_theme.neutral_fill(TOK)),
 		},
 		"secondary": {
 			"top": TOK["btn_secondary"], "bot": TOK["btn_secondary"],

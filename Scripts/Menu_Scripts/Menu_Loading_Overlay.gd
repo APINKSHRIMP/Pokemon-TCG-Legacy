@@ -48,6 +48,20 @@ const LIBRARY_LEFT_INSET:    float = 0.0
 func is_showing() -> bool:
 	return _overlay != null and is_instance_valid(_overlay)
 
+## ISSUE #393: PUT THE BLOCKER ASIDE WITHOUT STOPPING THE LOAD.
+## The deck builder's filter screen opens OVER a search that is still building -
+## it is an ordinary Control, and this overlay is a CanvasLayer at 200 that would
+## otherwise draw over it and eat every click. Suspending just hides the layer;
+## the build keeps running, and resuming shows it again if it is still going.
+## A fresh show() always starts un-suspended.
+var _suspended: bool = false
+
+func set_suspended(on: bool) -> void:
+	_suspended = on
+	if is_showing():
+		_overlay.visible = not on
+		print("ISSUE #393 FIX ACTIVE: loading blocker ", ("suspended under the filter screen" if on else "resumed"))
+
 # Convenience wrappers so every menu uses the tuned geometry above rather than its own magic numbers.
 func show_for_deck(host: Node) -> void:
 	show(host, DECK_ICON_OFFSET_X, DECK_TOP_INSET, DECK_BOTTOM_INSET, DECK_RIGHT_INSET, DECK_LEFT_INSET, DECK_ICON_OFFSET_Y)
@@ -64,6 +78,7 @@ func show(host: Node, icon_offset_x: float = 0.0, blocker_top_inset: float = 0.0
 	if host == null or not host.is_inside_tree():
 		return
 	hide()  # never stack two overlays
+	_suspended = false   # ISSUE #393
 	print("ISSUE #32 FIX ACTIVE: loading overlay shown (", host.name, ") icon_x/y=", icon_offset_x, "/", icon_offset_y, " insets top/bottom/right/left=", blocker_top_inset, "/", blocker_bottom_inset, "/", blocker_right_inset, "/", blocker_left_inset)
 	_overlay = CanvasLayer.new()
 	_overlay.layer = 200
