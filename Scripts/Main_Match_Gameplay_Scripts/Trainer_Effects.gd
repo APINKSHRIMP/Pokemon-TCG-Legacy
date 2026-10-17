@@ -194,6 +194,8 @@ func effect_ex8_lady_outing(is_opponent: bool) -> void:
 		deck.erase(chosen)
 		chosen.current_location = "hand"
 		hand.append(chosen)
+		await main.card_ops.reveal_searched_cards([chosen], is_opponent)   # ISSUE #401: show it if the text says so
+		if main._should_bail(): return
 		for t in main.get_energy_provided_by_card(chosen):
 			if t not in chosen_types: chosen_types.append(t)
 		found += 1
@@ -247,6 +249,8 @@ func effect_ex8_master_ball(is_opponent: bool) -> void:
 	chosen.current_location = "hand"
 	var hand = main.opponent_hand if is_opponent else main.player_hand
 	hand.append(chosen)
+	await main.card_ops.reveal_searched_cards([chosen], is_opponent)   # ISSUE #401: show it if the text says so
+	if main._should_bail(): return
 	deck.shuffle()
 	main.refresh_hand_display(is_opponent)
 	main.update_deck_icon(is_opponent)
@@ -1394,7 +1398,11 @@ func resolve_standard_trainer(card: card_object, is_opponent: bool) -> void:
 	_ensure_trainer_dispatch_ready()
 	var uid = card.uid.to_lower()
 	if _trainer_dispatch.has(uid):
+		# ISSUE #401: the card's text decides whether a searched card is shown.
+		var outer_text: String = main.card_ops.reveal_context_text
+		main.card_ops.reveal_context_text = " ".join(PackedStringArray(card.metadata.get("rules", [])))
 		await _trainer_dispatch[uid].call(card, is_opponent)
+		main.card_ops.reveal_context_text = outer_text
 		return
 	print("Unknown trainer card: ", card.uid, " (", card.metadata.get("name",""), ")")
 
@@ -3267,6 +3275,8 @@ func effect_poke_ball(is_opponent: bool) -> void:
 		deck.erase(chosen)
 		chosen.current_location = "hand"
 		hand.append(chosen)
+		await main.card_ops.reveal_searched_cards([chosen], is_opponent)   # ISSUE #401: show it if the text says so
+		if main._should_bail(): return
 		main.refresh_hand_display(is_opponent)
 		await main.show_message(chosen.metadata.get("name", "").to_upper() + " ADDED TO HAND!")
 		if main._should_bail(): return
@@ -3637,6 +3647,8 @@ func effect_the_boss_way(is_opponent: bool) -> void:
 	deck.erase(selected)
 	selected.current_location = "hand"
 	hand.append(selected)
+	await main.card_ops.reveal_searched_cards([selected], is_opponent)   # ISSUE #401: show it if the text says so
+	if main._should_bail(): return
 	deck.shuffle()
 	
 	main.refresh_hand_display(is_opponent)
@@ -4771,6 +4783,8 @@ func gym1_search_deck_by_name_substring(is_opponent: bool, substr: String, heade
 		deck.erase(c)
 		c.current_location = "hand"
 		hand.append(c)
+	await main.card_ops.reveal_searched_cards(picks, is_opponent)   # ISSUE #401: show it if the text says so
+	if main._should_bail(): return
 	deck.shuffle()
 	main.refresh_hand_display(is_opponent)
 	main.update_deck_icon(is_opponent)
@@ -4863,6 +4877,8 @@ func gym1_effect_good_manners(is_opponent: bool) -> void:
 		deck.erase(chosen)
 		chosen.current_location = "hand"
 		hand.append(chosen)
+		await main.card_ops.reveal_searched_cards([chosen], is_opponent)   # ISSUE #401: show it if the text says so
+		if main._should_bail(): return
 	deck.shuffle()
 	main.refresh_hand_display(is_opponent)
 	main.update_deck_icon(is_opponent)
@@ -6272,6 +6288,8 @@ func gym2_effect_mistys_tears(played_card: card_object, is_opponent: bool) -> vo
 		deck.erase(c)
 		c.current_location = "hand"
 		hand.append(c)
+	await main.card_ops.reveal_searched_cards(picks, is_opponent)   # ISSUE #401: show it if the text says so
+	if main._should_bail(): return
 	deck.shuffle()
 	main.refresh_hand_display(is_opponent)
 	main.update_deck_icon(is_opponent)
@@ -6299,6 +6317,8 @@ func gym2_effect_rockets_secret_experiment(is_opponent: bool) -> void:
 			deck.erase(chosen)
 			chosen.current_location = "hand"
 			hand.append(chosen)
+			await main.card_ops.reveal_searched_cards([chosen], is_opponent)   # ISSUE #401: show it if the text says so
+			if main._should_bail(): return
 		deck.shuffle()
 		main.refresh_hand_display(is_opponent)
 		main.update_deck_icon(is_opponent)
@@ -6871,6 +6891,8 @@ func effect_neo1_arcade_game(is_opponent: bool) -> void:
 			deck.erase(c)
 			c.current_location = "hand"
 			hand.append(c)
+		await main.card_ops.reveal_searched_cards(taken, is_opponent)   # ISSUE #401: show it if the text says so
+		if main._should_bail(): return
 		for c in shuffle_back:
 			pass  # still in deck
 		deck.shuffle()
@@ -6997,6 +7019,8 @@ func effect_neo1_pokegear(is_opponent: bool) -> void:
 		deck.erase(pick)
 		pick.current_location = "hand"
 		hand.append(pick)
+		await main.card_ops.reveal_searched_cards([pick], is_opponent)   # ISSUE #401: show it if the text says so
+		if main._should_bail(): return
 		await main.show_message("POKEGEAR: TOOK " + pick.metadata.get("name","").to_upper() + "!")
 		if main._should_bail(): return
 	deck.shuffle()
@@ -8475,6 +8499,8 @@ func effect_ecard1_master_ball(is_opponent: bool) -> void:
 		deck.erase(chosen)
 		chosen.current_location = "hand"
 		hand.append(chosen)
+		await main.card_ops.reveal_searched_cards([chosen], is_opponent)   # ISSUE #401: show it if the text says so
+		if main._should_bail(): return
 		main.refresh_hand_display(is_opponent)
 		await main.show_message("MASTER BALL: ADDED " + chosen.metadata.get("name","").to_upper() + " TO HAND!")
 		if main._should_bail(): return
@@ -9683,6 +9709,8 @@ func effect_ecard3_underground_expedition(is_opponent: bool) -> void:
 		deck.erase(c)
 		c.current_location = "hand"
 		hand.append(c)
+	await main.card_ops.reveal_searched_cards(chosen, is_opponent)   # ISSUE #401: show it if the text says so
+	if main._should_bail(): return
 	# ISSUE #367: "return the remaining cards to the bottom of your deck in any order" — the order was never asked.
 	var rest: Array = bottom_cards.filter(func(c): return c not in chosen)
 	if not is_opponent and rest.size() > 1:
@@ -9771,6 +9799,8 @@ func effect_ex1_pokenav(is_opponent: bool) -> void:
 		deck.erase(chosen)
 		chosen.current_location = "hand"
 		hand.append(chosen)
+		await main.card_ops.reveal_searched_cards([chosen], is_opponent)   # ISSUE #401: show it if the text says so
+		if main._should_bail(): return
 		main.refresh_hand_display(is_opponent)
 	main.update_deck_icon(is_opponent)
 	if chosen != null:
@@ -11203,6 +11233,8 @@ func effect_ex11_holon_lass(is_opponent: bool) -> void:
 	var taken = 0
 	for e in picks:
 		deck.erase(e); e.current_location = "hand"; hand.append(e); taken += 1
+	await main.card_ops.reveal_searched_cards(picks, is_opponent)   # ISSUE #401: show it if the text says so
+	if main._should_bail(): return
 	deck.shuffle()
 	main.update_deck_icon(is_opponent); main.refresh_hand_display(is_opponent)
 	await main.show_message("HOLON LASS! PUT " + str(taken) + " ENERGY INTO YOUR HAND!")
@@ -11282,6 +11314,8 @@ func effect_ex11_holon_transceiver(is_opponent: bool) -> void:
 		deck.erase(pick); pick.current_location = "hand"
 		var hand = main.opponent_hand if is_opponent else main.player_hand
 		hand.append(pick)
+		await main.card_ops.reveal_searched_cards([pick], is_opponent)   # ISSUE #401: show it if the text says so
+		if main._should_bail(): return
 		deck.shuffle()
 		main.update_deck_icon(is_opponent); main.refresh_hand_display(is_opponent)
 	await main.show_message("HOLON TRANSCEIVER! ADDED A HOLON SUPPORTER TO YOUR HAND!")
@@ -11632,6 +11666,8 @@ func effect_ex14_pokenav(is_opponent: bool) -> void:
 		deck.erase(chosen)
 		chosen.current_location = "hand"
 		hand.append(chosen)
+		await main.card_ops.reveal_searched_cards([chosen], is_opponent)   # ISSUE #401: show it if the text says so
+		if main._should_bail(): return
 		main.refresh_hand_display(is_opponent)
 		main.update_deck_icon(is_opponent)
 		await main.show_message("POKÉNAV! PUT " + chosen.metadata.get("name","").to_upper() + " INTO YOUR HAND!")

@@ -7,6 +7,9 @@ const COIN_BACK_IMAGE    := "Back Basic.png"
 const COIN_SIZE          := Vector2(100, 100)
 const COIN_SEPARATION    := 10
 const COLUMNS            := 17
+# ISSUE #397: room around the grid, inside the scroll clip, for the selected coin's
+# pulse. Must be at least COIN_SIZE * (SELECT_PULSE - 1) / 2 (10px at 1.2). TWEAKABLE.
+const PULSE_ROOM         := 12.0
 
 # Inset of the coin grid inside the band between the two chrome bars. TWEAKABLE.
 const GRID_INSET_X       := 26.0
@@ -35,6 +38,7 @@ var selected_coin_rect   : TextureRect = null
 var saved_coin_name      : String = ""
 
 var _active_tween        : Tween = null
+var _scroll              : ScrollContainer = null   # ISSUE #397: the grid sits in a MarginContainer now
 var _active_particles    : CPUParticles2D = null
 # Tracks which rect received the most recent click — reset each frame in _input
 var _last_clicked_rect   : TextureRect = null
@@ -114,7 +118,7 @@ func _ready() -> void:
 
 	# After all coins are in the grid, auto-select the player's saved coin
 	if saved_coin_name != "":
-		_select_coin_by_name(saved_coin_name)
+		await _select_coin_by_name(saved_coin_name)
 
 
 ## Swaps the old bordered chrome for the Spectrum Night bars and moves this
@@ -232,16 +236,30 @@ func _load_player_data() -> void:
 func _wrap_grid_in_scroll_container() -> void:
 	var parent = grid.get_parent()
 
+	# ISSUE #397: the selected coin pulses to SELECT_PULSE, which pushed the coins
+	# on the top row and outer columns past the ScrollContainer's clip edge. The
+	# scroll box grows outward by PULSE_ROOM and a MarginContainer pads the grid
+	# back in by the same amount, so the grid sits where it always did but every
+	# coin has room to grow inside the clip.
+	var room := PULSE_ROOM
+	print("ISSUE #397 FIX ACTIVE: coin grid padded ", room, "px inside its scroll box for the select pulse")
 	var scroll := ScrollContainer.new()
 	scroll.name = "coin_scroll_container"
-	scroll.position = grid.position
-	scroll.size = grid.size
+	scroll.position = grid.position - Vector2(room, room)
+	scroll.size = grid.size + Vector2(room, room) * 2.0
 	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	scroll.vertical_scroll_mode   = ScrollContainer.SCROLL_MODE_AUTO
+	_scroll = scroll
+
+	var pad := MarginContainer.new()
+	pad.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	for side in ["margin_left", "margin_right", "margin_top", "margin_bottom"]:
+		pad.add_theme_constant_override(side, int(room))
 
 	parent.remove_child(grid)
 	parent.add_child(scroll)
-	scroll.add_child(grid)
+	scroll.add_child(pad)
+	pad.add_child(grid)
 
 	grid.position = Vector2.ZERO
 	grid.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -312,7 +330,10 @@ func _add_coin_to_grid(file_name: String) -> void:
 	rect.custom_minimum_size = COIN_SIZE
 	rect.size                = COIN_SIZE
 	rect.stretch_mode        = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-	rect.expand_mode         = TextureRect.EXPAND_FIT_WIDTH_PROPORTIONAL
+	# ISSUE #397: IGNORE_SIZE, so the tile is exactly COIN_SIZE whatever the art's
+	# proportions - FIT_WIDTH_PROPORTIONAL let the width follow the texture.
+	rect.expand_mode         = TextureRect.EXPAND_IGNORE_SIZE
+	rect.pivot_offset        = COIN_SIZE / 2.0
 
 	# Tag with the real coin filename — used for matching against player data
 	rect.set_meta("coin_name", file_name)
@@ -336,6 +357,11 @@ func _add_coin_to_grid(file_name: String) -> void:
 # After the grid is fully populated, find the rect whose coin_name matches and
 # trigger the selection animation on it automatically
 func _select_coin_by_name(coin_name: String) -> void:
+	# ISSUE #397: let the grid lay out first - the sparkle reads the rect's global
+	# position and size, which are not real until the container has sorted.
+	await get_tree().process_frame
+	if not is_inside_tree():
+		return
 	for child in grid.get_children():
 		if child is TextureRect and child.get_meta("coin_name", "") == coin_name:
 			_select_coin(child)
@@ -388,9 +414,8 @@ func _rebuild_grid() -> void:
 		grid.remove_child(child)
 		child.queue_free()
 
-	var scroll := grid.get_parent() as ScrollContainer
-	if scroll != null:
-		scroll.scroll_vertical = 0
+	if _scroll != null:
+		_scroll.scroll_vertical = 0
 
 	_loading_overlay.show_for_library(self)
 	await get_tree().process_frame
@@ -402,7 +427,9 @@ func _rebuild_grid() -> void:
 	if pending_name == "":
 		pending_name = saved_coin_name
 	if pending_name != "":
-		_select_coin_by_name(pending_name)
+		await _select_coin_by_name(pending_name)
+		if not is_inside_tree():
+			return
 	_refresh_save_button_state()
 
 	hide_btn.disabled = false
@@ -458,7 +485,7 @@ func _deselect_coin(rect: TextureRect) -> void:
 		_active_particles = null
 	rect.modulate     = Color(0.8, 0.8, 0.8)
 	rect.scale        = Vector2(1.0, 1.0)
-	rect.pivot_offset = rect.size / 2.0
+	rect.pivot_offset = COIN_SIZE / 2.0   # ISSUE #397
 
 
 ## ISSUE #263 (retest): TWEAKABLE - peak scale of the selected-coin pulse in the
@@ -472,7 +499,12 @@ func _apply_selected_animation(rect: TextureRect) -> void:
 	if _active_tween:
 		_active_tween.kill()
 
-	rect.pivot_offset = rect.size / 2.0
+	# ISSUE #397: the pivot comes from the CONSTANT, not rect.size. The saved coin is
+	# auto-selected straight after the grid builds, before layout has sized the rect,
+	# so rect.size / 2 put the pivot off-centre and that coin swelled lopsidedly
+	# (looking much bigger) until it was clicked and the pivot was recomputed.
+	rect.pivot_offset = COIN_SIZE / 2.0
+	print("ISSUE #397 FIX ACTIVE: coin pulse pivot ", rect.pivot_offset, " (rect.size now ", rect.size, ")")
 	rect.modulate     = Color.WHITE
 
 	var tween := create_tween()

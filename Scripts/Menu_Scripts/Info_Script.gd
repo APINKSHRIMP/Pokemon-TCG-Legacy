@@ -457,7 +457,10 @@ func _load_player_data() -> void:
 		if not sprite_name.ends_with(".png"):
 			sprite_name += ".png"
 		var tex := load(SPRITE_FOLDER + "/" + sprite_name) as Texture2D
+		# ISSUE #399: fit the CHARACTER, not its padded canvas (same as the intro, #380).
+		tex = UIKit.visible_sprite(tex)
 		if tex:
+			print("ISSUE #399 FIX ACTIVE: trainer info sprite ", sprite_name, " fitted by its visible area ", tex.get_size())
 			_apply_fit_size(player_sprite, tex, SPRITE_SIZE)
 			# ISSUE #200: recentre in BOTH axes. A wide sprite fitted into the
 			# taller box leaves letterboxing at the bottom, which used to read as

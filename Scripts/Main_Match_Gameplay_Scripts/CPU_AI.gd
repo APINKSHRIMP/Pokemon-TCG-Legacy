@@ -15,6 +15,8 @@ var main: Node
 # cpu_phase_play_lass_last() immediately before the attack phase.
 const CpuWeights = preload("res://Scripts/Main_Match_Gameplay_Scripts/CPU_Weights.gd")   # ISSUE #375 self-play tuning
 const LASS_UID := "base1-75"
+const CPU_PRE_DRAW_PAUSE := 0.2    # ISSUE #290: seconds between "Your opponent draws a card" and the draw itself
+const CPU_POST_DRAW_PAUSE := 0.2   # ISSUE #290: seconds between the CPU's turn-start draw and its first action
 # ISSUE #375 lookahead (phase 1): plays out the next exchange for attack choice and retreat. rule.lookahead switches it.
 const CpuLookahead = preload("res://Scripts/Main_Match_Gameplay_Scripts/CPU_Lookahead.gd")
 var _lookahead = null
@@ -79,8 +81,13 @@ func opponent_start_turn_checks() -> void:
 	if main._should_bail(): return
 	main.opponents_turn_active = true
 	main.reset_field_pokemon_turn_flags(true)
+	main.card_ops.reveal_context_text = ""   # ISSUE #401: last turn's attack text never decides a reveal
 
 	await main.show_message("Your opponent draws a card")
+	if main._should_bail(): return
+	# ISSUE #290: matching beat before the draw so the card doesn't fly the instant the message closes.
+	print("ISSUE #290 FIX ACTIVE: CPU pausing ", CPU_PRE_DRAW_PAUSE, "s before its turn-start draw")
+	await get_tree().create_timer(GameState.match_time(CPU_PRE_DRAW_PAUSE)).timeout
 	if main._should_bail(): return
 	var drawn_card = await main.draw_card_from_deck(true)
 
@@ -95,6 +102,12 @@ func opponent_start_turn_checks() -> void:
 
 	main.refresh_hand_display(true)
 	main.update_deck_icon(true)
+
+	# ISSUE #290: a short beat after the draw lands so the CPU doesn't act the instant the card arrives.
+	print("ISSUE #290 FIX ACTIVE: CPU pausing ", CPU_POST_DRAW_PAUSE, "s after its turn-start draw")
+	await get_tree().create_timer(GameState.match_time(CPU_POST_DRAW_PAUSE)).timeout
+	if main._should_bail(): return
+
 	main.powers_and_bodies.refresh_holon_veil()   # EX15 Holon Veil: recompute board-wide δ grant
 
 	# Update Ditto Transform state

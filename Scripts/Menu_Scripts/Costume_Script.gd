@@ -290,6 +290,10 @@ func _add_character_to_grid(file_name: String) -> void:
 	var texture := SceneCache.cached_texture(SPRITE_FOLDER + "/" + file_name)
 	if texture == null:
 		return
+	# ISSUE #399: fit the CHARACTER, not its padded canvas (same as the intro, #380).
+	# The cropped texture also goes into the costume_texture meta, so the zoom matches.
+	texture = UIKit.visible_sprite(texture)
+	print("ISSUE #399 FIX ACTIVE: costume ", file_name, " fitted by its visible area ", texture.get_size())
 
 	var is_owned : bool = _owned_costumes.has(file_name.to_lower())
 

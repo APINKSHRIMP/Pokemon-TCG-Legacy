@@ -119,6 +119,10 @@ var retreat_cost_remaining: int = 0
 ## ISSUE #265: true while a disabled-row explanation is on screen, so a burst of
 ## clicks on a dead Retreat row cannot stack up a queue of identical message boxes.
 var _disabled_reason_showing: bool = false
+## ISSUE #402: double-click to confirm. The last card clicked and when (msec).
+const DOUBLE_CLICK_MS := 400   # TWEAKABLE: max gap between the two clicks of a double-click
+var _last_click_card: card_object = null
+var _last_click_msec: int = -100000
 var player_retreat_disabled: bool = false
 var opponent_retreat_disabled: bool = false
 
@@ -835,7 +839,6 @@ func _layout_bottom_buttons() -> void:
 		cancel_button.global_position.x = centre_x - cancel_button.size.x * 0.5
 	else:
 		return
-	print("ISSUE #389 FIX ACTIVE: bottom bar laid out (action ", a_on, ", cancel ", c_on, ")")
 
 # Both the cancel button and action button will hide selection mode so function is vaguely named for both actions
 func hide_selection_mode_display_main() -> void:
@@ -2407,8 +2410,8 @@ func _all_buttons_under(node: Node) -> Array:
 	return out
 
 
-## Border and fill per row kind. Retreat is DASHED-looking (a lighter, inset
-## border) so it never reads as a fourth attack; powers take accent_2.
+## Border and fill per row kind. Powers take accent_2; attacks AND Retreat share
+## the accent look (ISSUE #398: the old muted Retreat border read as disabled).
 func _action_row_box(kind: String, enabled: bool, hover: bool) -> StyleBoxFlat:
 	var sb := StyleBoxFlat.new()
 	sb.set_corner_radius_all(UITheme.mi("corner_radius"))
@@ -2423,10 +2426,12 @@ func _action_row_box(kind: String, enabled: bool, hover: bool) -> StyleBoxFlat:
 		"power":
 			sb.bg_color = UITheme.col_a("accent_2", 0.10 if hover else 0.04)
 			sb.border_color = UITheme.col_a("accent_2", 0.85 if enabled else 0.35)
-		"retreat":
-			sb.bg_color = UITheme.col_a("line", 0.06 if hover else 0.02)
-			sb.border_color = UITheme.col_a("field_mute", 0.55 if enabled else 0.25)
 		_:
+			# ISSUE #398: "retreat" used to have its own dim line/field_mute branch here,
+			# so a live Retreat row looked disabled next to a payable attack. It now
+			# falls through to the attack styling.
+			if kind == "retreat" and enabled and not hover:
+				print("ISSUE #398 FIX ACTIVE: Retreat row styled like a payable attack")
 			sb.bg_color = UITheme.col("panel") if not hover else UITheme.col_a("accent", 0.10)
 			# A PAYABLE attack takes the accent border; the rest keep the quiet line.
 			sb.border_color = UITheme.col("accent") if enabled else UITheme.col("line")
@@ -6621,19 +6626,33 @@ func send_card_to_discard(card: card_object, is_opponent: bool) -> void:
 	update_discard_pile_display(is_opponent)
 
 # Removes a prize card from the specified player's prizes and adds it to their hand with animation
-func take_prize_card(card: card_object, is_opponent: bool) -> void:
+func take_prize_card(card: card_object, is_opponent: bool, from_rect: Dictionary = {}) -> void:
 	card.prize_face_up = false   # ISSUE #364
 	var prizes = opponent_prize_cards if is_opponent else player_prize_cards
 	var hand = opponent_hand if is_opponent else player_hand
 	var prize_container = opponent_prize_container if is_opponent else player_prize_container
 	var hand_container = opponent_hand_container if is_opponent else player_hand_container
-	
+
 	# FLIGHTS: leave from the prize card's own slot (measured before it is removed) and land on the
 	# slot it takes in the hand.
-	var prize_from: Dictionary = {}
-	var card_ui = find_card_ui_for_object(card)
-	if card_ui != null and is_instance_valid(card_ui) and card_ui.is_visible_in_tree():
-		prize_from = {"position": card_ui.global_position, "size": card_ui.size}
+	var prize_from: Dictionary = from_rect
+	if prize_from.is_empty():
+		var card_ui = find_card_ui_for_object(card)
+		if card_ui != null and is_instance_valid(card_ui) and card_ui.is_visible_in_tree():
+			prize_from = {"position": card_ui.global_position, "size": card_ui.size}
+	# ISSUE #400: find_card_ui_for_object never searches the PRIZE containers, so a
+	# prize taken from the board (every CPU prize, and the player's once the pick
+	# screen had closed) found nothing and the flight fell back to the whole prize
+	# ROW as its start size - a 3-card-wide strip the card was squashed into, which
+	# read as the card going "really wide" for a moment. Measure its own slot.
+	if prize_from.is_empty():
+		for child in prize_container.get_children():
+			if child is TextureRect and "card_ref" in child and child.card_ref == card \
+					and child.is_visible_in_tree():
+				prize_from = {"position": child.global_position + (child.size - PRIZE_SIZE) / 2.0,
+						"size": PRIZE_SIZE}
+				break
+	print("ISSUE #400 FIX ACTIVE: prize flight starts from ", prize_from)
 	# For opponent, always show card back during animation to hide the card
 	var card_texture = opponent_card_back_texture if is_opponent else get_card_texture(card)
 
@@ -10264,9 +10283,12 @@ func handle_action_prize_card() -> void:
 	var prize_card = selected_card_for_action
 	prize_card_selection_active = false
 	selected_card_for_action = null
-	
+	# ISSUE #400: measure the enlarged card the player picked BEFORE the pick
+	# screen closes, so the flight starts from the card they clicked.
+	var picked_rect := _card_rect_now(prize_card)
+
 	hide_selection_mode_display_main()
-	await take_prize_card(prize_card, false)
+	await take_prize_card(prize_card, false, picked_rect)
 	prize_card_taken.emit()
 
 # Handles playing a card from the player's hand: placing pokemon, attaching energy, evolving, or playing trainers
@@ -10541,6 +10563,69 @@ func show_pokemon_preview(pokemon: card_object) -> void:
 
 # Called when a card in selection mode is clicked
 func this_card_clicked(clicked_card: card_object) -> void:
+	# ISSUE #402: the second click of a double-click on a single-pick screen presses
+	# the action button instead of being handled as an ordinary (toggling) click.
+	if _is_double_click(clicked_card) and _double_click_confirm(clicked_card):
+		return
+	_handle_card_click(clicked_card)
+
+
+## ISSUE #402: records this click and says whether it completes a double-click on
+## the same card. A completed double-click resets, so a third click starts afresh.
+func _is_double_click(clicked_card: card_object) -> bool:
+	var now := Time.get_ticks_msec()
+	var is_double: bool = clicked_card != null and clicked_card == _last_click_card \
+			and now - _last_click_msec <= DOUBLE_CLICK_MS
+	if is_double:
+		_last_click_card = null
+		_last_click_msec = -100000
+	else:
+		_last_click_card = clicked_card
+		_last_click_msec = now
+	return is_double
+
+
+## ISSUE #402: DOUBLE-CLICK TO CONFIRM - only where ONE card is the whole answer.
+##
+## The first click already selected the card through the normal path, so the
+## action button is already showing what will happen (PLAY, TAKE PRIZE, DISCARD
+## ENERGY, ATTACH...). The double-click just presses it - and only if it is live,
+## so a card that cannot be played does nothing. Never on a multi-select (more
+## than one card may be picked) or the reorder screen: there a second click is a
+## real deselect. Returns false to let the click be handled normally.
+func _double_click_confirm(clicked_card: card_object) -> bool:
+	# The autotest bot clicks in real-time bursts and presses the button itself.
+	if GameState.autotest != null:
+		return false
+	if msgbox_container.visible or coin_container.visible:
+		return false
+	if pokemon_preview_active or bench_view_active:
+		return false
+	if not card_selection_mode_enabled:
+		return false
+	if not action_button.visible or action_button.disabled:
+		return false
+	if trainer_reorder_active:
+		return false
+	if retreat_mode_active:
+		# Retreat cost 1 is a single pick; 2+ is a multi-select.
+		if player_active_pokemon == null or get_retreat_cost(player_active_pokemon) != 1:
+			return false
+		if clicked_card not in retreat_energies_selected:
+			return false
+	elif trainer_discard_selection_active:
+		if trainer_discard_cards_needed != 1:
+			return false
+		if clicked_card not in trainer_discard_selected:
+			return false
+	elif selected_card_for_action != clicked_card:
+		return false
+	print("ISSUE #402 FIX ACTIVE: double-click on ", clicked_card.metadata.get("name", "?"), " pressed '", action_button.text, "'")
+	action_button.pressed.emit()
+	return true
+
+
+func _handle_card_click(clicked_card: card_object) -> void:
 	# Don't allow card selection if action button is hidden (view-only mode) or messagebox is being displayed
 	if msgbox_container.visible or coin_container.visible: return
 	# ISSUE #80: the single-card preview is view-only — ignore clicks on the previewed/attached cards.

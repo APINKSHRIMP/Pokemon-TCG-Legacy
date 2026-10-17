@@ -420,6 +420,7 @@ func dispatch_attack(attack: Dictionary, attacker: card_object, defender: card_o
 	if GameState.autotest != null: GameState.autotest.note("attack", attacker.uid, attack_name, is_opponent)
 	var an = attack_name.to_lower()
 	var text_lower = attack.get("text", "").to_lower()
+	main.card_ops.reveal_context_text = attack.get("text", "")   # ISSUE #401
 	var base = parse_attack_base_damage(attack)
 	var types = attacker.metadata.get("types", ["Colorless"])
 
@@ -6135,6 +6136,8 @@ func execute_search_basic_energy_to_hand(attacker: card_object, is_opponent: boo
 		deck.erase(chosen)
 		chosen.current_location = "hand"
 		hand.append(chosen)
+		await main.card_ops.reveal_searched_cards([chosen], is_opponent)   # ISSUE #401: show it if the text says so
+		if main._should_bail(): return
 		main.refresh_hand_display(is_opponent)
 		await main.show_message("PUT " + chosen.metadata.get("name", "").to_upper() + " INTO HAND!")
 		if main._should_bail(): return
@@ -6167,6 +6170,8 @@ func execute_jellyfish_pod(attacker: card_object, is_opponent: bool, names: Arra
 		deck.erase(c)
 		c.current_location = "hand"
 		hand.append(c)
+	await main.card_ops.reveal_searched_cards(taken, is_opponent)   # ISSUE #401: show it if the text says so
+	if main._should_bail(): return
 	deck.shuffle()
 	main.refresh_hand_display(is_opponent)
 	main.update_deck_icon(is_opponent)
@@ -6296,6 +6301,8 @@ func execute_sleight_of_hand(attacker: card_object, is_opponent: bool) -> void:
 		deck.erase(c)
 		c.current_location = "hand"
 		hand.append(c)
+	await main.card_ops.reveal_searched_cards(taken, is_opponent)   # ISSUE #401: show it if the text says so
+	if main._should_bail(): return
 	deck.shuffle()
 	main.refresh_hand_display(is_opponent)
 	main.update_deck_icon(is_opponent)
@@ -6989,6 +6996,8 @@ func execute_messenger(attacker: card_object, is_opponent: bool) -> void:
 			deck.erase(chosen)
 			chosen.current_location = "hand"
 			hand.append(chosen)
+			await main.card_ops.reveal_searched_cards([chosen], is_opponent)   # ISSUE #401: show it if the text says so
+			if main._should_bail(): return
 			main.refresh_hand_display(is_opponent)
 			await main.show_message("PUT " + chosen.metadata.get("name", "").to_upper() + " INTO HAND!")
 			if main._should_bail(): return
@@ -7113,6 +7122,8 @@ func execute_errand_running(attacker: card_object, is_opponent: bool) -> void:
 		deck.erase(chosen)
 		chosen.current_location = "hand"
 		hand.append(chosen)
+		await main.card_ops.reveal_searched_cards([chosen], is_opponent)   # ISSUE #401: show it if the text says so
+		if main._should_bail(): return
 		main.refresh_hand_display(is_opponent)
 		await main.show_message("HEADS! PUT " + chosen.metadata.get("name", "").to_upper() + " INTO HAND!")
 		if main._should_bail(): return
@@ -7488,6 +7499,8 @@ func execute_search_typed_energy_to_hand(attacker: card_object, is_opponent: boo
 	deck.erase(chosen)
 	chosen.current_location = "hand"
 	hand.append(chosen)
+	await main.card_ops.reveal_searched_cards([chosen], is_opponent)   # ISSUE #401: show it if the text says so
+	if main._should_bail(): return
 	deck.shuffle()
 	main.refresh_hand_display(is_opponent)
 	main.update_deck_icon(is_opponent)
@@ -9605,6 +9618,8 @@ func execute_neo1_squaredance(attacker: card_object, is_opponent: bool) -> void:
 		deck.erase(pick)
 		pick.current_location = "hand"
 		hand.append(pick)
+		await main.card_ops.reveal_searched_cards([pick], is_opponent)   # ISSUE #401: show it if the text says so
+		if main._should_bail(): return
 		found += 1
 	deck.shuffle()
 	main.update_deck_icon(is_opponent)
@@ -12937,6 +12952,8 @@ func execute_neo3_dragon_bond(attacker: card_object, is_opponent: bool) -> void:
 	own_deck.erase(chosen)
 	chosen.current_location = "hand"
 	own_hand.append(chosen)
+	await main.card_ops.reveal_searched_cards([chosen], is_opponent)   # ISSUE #401: show it if the text says so
+	if main._should_bail(): return
 	own_deck.shuffle()
 	main.update_deck_icon(is_opponent)
 	main.refresh_hand_display(is_opponent)
@@ -16642,6 +16659,8 @@ func execute_ecard2_minor_errand_running(attacker: card_object, is_opponent: boo
 		deck.erase(chosen)
 		chosen.current_location = "hand"
 		hand.append(chosen)
+		await main.card_ops.reveal_searched_cards([chosen], is_opponent)   # ISSUE #401: show it if the text says so
+		if main._should_bail(): return
 		found += 1
 	deck.shuffle()
 	main.refresh_hand_display(is_opponent)

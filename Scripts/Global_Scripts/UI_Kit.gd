@@ -545,6 +545,34 @@ static func make_chip(text: String, variant: String = "on_field",
 	return chip
 
 
+## ISSUE #380 / #399: a character sprite cropped to its VISIBLE pixels.
+##
+## The sprite canvases are not padded alike (the Black/White sprites fill barely
+## half of a 128px square), so fitting the whole canvas made those characters come
+## out at half the height of everyone else. Fit the result of this instead and every
+## character is the same size. Cached per texture path: get_image() is a CPU copy.
+static var _visible_sprite_cache: Dictionary = {}
+
+static func visible_sprite(texture: Texture2D) -> Texture2D:
+	if texture == null:
+		return null
+	var key: String = texture.resource_path
+	if key != "" and _visible_sprite_cache.has(key):
+		return _visible_sprite_cache[key]
+	var used := Rect2i(Vector2i.ZERO, Vector2i(texture.get_size()))
+	var img := texture.get_image()
+	if img != null:
+		var r := img.get_used_rect()
+		if r.size.x > 0 and r.size.y > 0:
+			used = r
+	var cropped := AtlasTexture.new()
+	cropped.atlas = texture
+	cropped.region = Rect2(used)
+	if key != "":
+		_visible_sprite_cache[key] = cropped
+	return cropped
+
+
 ## An empty position: 3px slot outline, 3% fill, 7px radius. Used for empty
 ## bench slots, empty deck-builder cells, empty discard piles and locked
 ## collection tiles.

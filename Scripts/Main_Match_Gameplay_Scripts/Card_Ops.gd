@@ -266,10 +266,74 @@ func search_deck_to_hand(is_opponent: bool, filter_fn: Callable, prompt: String,
 		deck.erase(card)
 		card.current_location = "hand"
 		hand.append(card)
+	# ISSUE #401: "show that card to your opponent" - the CPU's pick is shown.
+	await reveal_searched_cards(chosen, is_opponent)
+	if main._should_bail(): return chosen
 	deck.shuffle()
 	main.refresh_hand_display(is_opponent)
 	main.update_deck_icon(is_opponent)
 	return chosen
+
+
+## ISSUE #401: THE TEXT OF THE TRAINER OR ATTACK RESOLVING RIGHT NOW.
+##
+## Set by Trainer_Effects.resolve_standard_trainer (restored afterwards, so a
+## Trainer played from inside an attack hands the attack's text back) and by
+## Attack_Effects.dispatch_attack; cleared at the start of the CPU's turn so last
+## turn's attack can never decide a reveal. Only used to answer "does this card
+## say to SHOW what was searched?" - Energy Search does not, and #86 deliberately
+## keeps the CPU's pick hidden for cards like it.
+var reveal_context_text: String = ""
+
+static func text_says_show(text: String) -> bool:
+	var t := text.to_lower()
+	return ("show" in t or "reveal" in t) and "opponent" in t
+
+
+## ISSUE #401: call after the CPU's searched cards are in its hand. Reveals them
+## only when the resolving card's text says to; the player's own picks and
+## hidden searches pass straight through.
+## Powers do not pass through a dispatcher that records their text, so a Power
+## passes its own text in (ability_text) and that wins over the context.
+func reveal_searched_cards(cards: Array, is_opponent: bool, text_override: String = "") -> void:
+	if not is_opponent or cards.is_empty():
+		return
+	var text: String = text_override if text_override != "" else reveal_context_text
+	if not text_says_show(text):
+		return
+	await cpu_reveal_added_to_hand(cards)
+
+
+## ISSUE #401: every Power / Body text printed on a card, joined - for
+## reveal_searched_cards' text_override.
+func ability_text(card: card_object) -> String:
+	if card == null:
+		return ""
+	var parts: PackedStringArray = []
+	for ab in card.metadata.get("abilities", []):
+		if ab is Dictionary:
+			parts.append(String(ab.get("text", "")))
+	return " ".join(parts)
+
+
+## ISSUE #401: SHOW THE PLAYER WHAT THE CPU JUST TOOK.
+##
+## The CPU's searched cards used to slip into its hand with only a text line. Each
+## one now goes up full-screen like a played Trainer, with the message, then flies
+## from that showcase into its slot in the CPU's hand. The cards must ALREADY be in
+## the CPU's hand array (animate_card_into_hand measures their slot from it).
+func cpu_reveal_added_to_hand(cards: Array) -> void:
+	for card in cards:
+		if card == null:
+			continue
+		print("ISSUE #401 FIX ACTIVE: revealing CPU's searched card ", card.metadata.get("name", "?"))
+		await main.trainer_effects.show_card_with_message(card,
+				"Opponent added " + card.metadata.get("name", "") + " to their hand!")
+		if main._should_bail(): return
+		# FLIGHTS: from the showcase card into its real slot in the hand
+		await main.animate_card_into_hand(card, true, main.opponent_deck_icon,
+				main.showcase_card_rect(), 0.3, main.get_card_texture(card))
+		if main._should_bail(): return
 
 # ── Recover to Hand ───────────────────────────────────────────────────────────────────────
 

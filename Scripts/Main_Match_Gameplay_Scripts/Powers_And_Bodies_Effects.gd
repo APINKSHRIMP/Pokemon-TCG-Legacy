@@ -2449,6 +2449,9 @@ func cpu_phase_activate_powers() -> void:
 				cpu_deck.erase(best)
 				best.current_location = "hand"
 				main.opponent_hand.append(best)
+				var dragonair_text: String = main.card_ops.ability_text(dragonair)   # ISSUE #401
+				await main.card_ops.reveal_searched_cards([best], true, dragonair_text)   # ISSUE #401: show it if the text says so
+				if main._should_bail(): return
 				cpu_deck.shuffle()
 				main.refresh_hand_display(true)
 	
@@ -4099,6 +4102,9 @@ func trigger_call_the_boss(persian: card_object, is_opp: bool) -> void:
 	deck.erase(chosen)
 	chosen.current_location = "hand"
 	hand.append(chosen)
+	var persian_text: String = main.card_ops.ability_text(persian)   # ISSUE #401
+	await main.card_ops.reveal_searched_cards([chosen], is_opp, persian_text)   # ISSUE #401: show it if the text says so
+	if main._should_bail(): return
 	deck.shuffle()
 	main.refresh_hand_display(is_opp)
 	main.update_deck_icon(is_opp)
@@ -4859,6 +4865,9 @@ func power_join_unown(pokemon: card_object) -> void:
 	deck.erase(chosen)
 	chosen.current_location = "hand"
 	hand.append(chosen)
+	var pokemon_text: String = main.card_ops.ability_text(pokemon)   # ISSUE #401
+	await main.card_ops.reveal_searched_cards([chosen], is_opponent, pokemon_text)   # ISSUE #401: show it if the text says so
+	if main._should_bail(): return
 	deck.shuffle()
 	main.refresh_hand_display(is_opponent)
 	main.update_deck_icon(is_opponent)
@@ -8505,6 +8514,9 @@ func power_ecard1_moonlight(clefable: card_object) -> void:
 		deck.erase(chosen)
 		chosen.current_location = "hand"
 		hand.append(chosen)
+		var clefable_text: String = main.card_ops.ability_text(clefable)   # ISSUE #401
+		await main.card_ops.reveal_searched_cards([chosen], is_opponent, clefable_text)   # ISSUE #401: show it if the text says so
+		if main._should_bail(): return
 		main.refresh_hand_display(is_opponent)
 	deck.shuffle()
 	main.update_deck_icon(is_opponent)
@@ -9778,6 +9790,9 @@ func power_ecard2_scavenger_hunt(furret: card_object) -> void:
 	deck.erase(chosen)
 	chosen.current_location = "hand"
 	hand.append(chosen)
+	var furret_text: String = main.card_ops.ability_text(furret)   # ISSUE #401
+	await main.card_ops.reveal_searched_cards([chosen], is_opponent, furret_text)   # ISSUE #401: show it if the text says so
+	if main._should_bail(): return
 	deck.shuffle()
 	main.refresh_hand_display(is_opponent)
 	main.update_deck_icon(is_opponent)
@@ -10409,6 +10424,9 @@ func power_ecard3_reconstruction(fossil: card_object) -> void:
 	deck.erase(chosen)
 	chosen.current_location = "hand"
 	hand.append(chosen)
+	var fossil_text: String = main.card_ops.ability_text(fossil)   # ISSUE #401
+	await main.card_ops.reveal_searched_cards([chosen], is_opponent, fossil_text)   # ISSUE #401: show it if the text says so
+	if main._should_bail(): return
 	hand_basics = hand.filter(func(c): return main.attack_effects.gym1_is_basic_energy(c) and c != chosen)
 	var to_return: card_object = hand_basics[0] if hand_basics.size() > 0 else null
 	if to_return != null:
@@ -14152,6 +14170,9 @@ func power_ex8_wishing_star(jirachi: card_object) -> void:
 	chosen.current_location = "hand"
 	var hand = main.opponent_hand if is_opponent else main.player_hand
 	hand.append(chosen)
+	var jirachi_text: String = main.card_ops.ability_text(jirachi)   # ISSUE #401
+	await main.card_ops.reveal_searched_cards([chosen], is_opponent, jirachi_text)   # ISSUE #401: show it if the text says so
+	if main._should_bail(): return
 	deck.shuffle()
 	main.refresh_hand_display(is_opponent)
 	main.update_deck_icon(is_opponent)
@@ -16054,6 +16075,9 @@ func power_ex11_delta_control(metagross: card_object) -> void:
 	chosen.current_location = "hand"
 	var hand = main.opponent_hand if is_opp else main.player_hand
 	hand.append(chosen)
+	var metagross_text: String = main.card_ops.ability_text(metagross)   # ISSUE #401
+	await main.card_ops.reveal_searched_cards([chosen], is_opp, metagross_text)   # ISSUE #401: show it if the text says so
+	if main._should_bail(): return
 	# ISSUE #367: "Put the 3 other cards on the bottom of your deck in any order" — the order was never asked.
 	var dc_rest: Array = top.filter(func(c): return c != chosen)
 	if not is_opp and dc_rest.size() > 1:
