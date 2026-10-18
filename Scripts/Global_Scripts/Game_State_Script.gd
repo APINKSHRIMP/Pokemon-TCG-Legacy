@@ -229,7 +229,7 @@ func set_animation_speed(preset: String, save: bool = true) -> void:
 	animation_speed_setting = preset
 	_apply_animation_multipliers()
 	if save:
-		_save_current_data_field("animation_speed", animation_speed_setting)
+		_save_setting_field("animation_speed", animation_speed_setting)
 
 
 ## Sets the message-box typing speed. The live delay is recomputed in
@@ -241,7 +241,7 @@ func set_text_speed(preset: String, save: bool = true) -> void:
 	text_speed_setting = preset
 	_apply_animation_multipliers()
 	if save:
-		_save_current_data_field("text_speed", text_speed_setting)
+		_save_setting_field("text_speed", text_speed_setting)
 
 
 ## Reduce motion. Overrides the speed preset for as long as it is on, so turning it off must
@@ -253,7 +253,7 @@ func set_reduce_motion(choice: String, save: bool = true) -> void:
 	reduce_motion_setting = choice
 	_apply_animation_multipliers()
 	if save:
-		_save_current_data_field("reduce_motion", reduce_motion_setting)
+		_save_setting_field("reduce_motion", reduce_motion_setting)
 
 
 ## The single place the three live multipliers are computed. Called by both setters, so the pair of
@@ -278,7 +278,7 @@ func set_intro_outro(choice: String, save: bool = true) -> void:
 		return
 	intro_outro_setting = choice
 	if save:
-		_save_current_data_field("intro_outro_animation", intro_outro_setting)
+		_save_setting_field("intro_outro_animation", intro_outro_setting)
 
 
 ## Sets the UI colour theme and persists it. Pass save = false on boot.
@@ -303,7 +303,7 @@ func set_ui_theme(theme_name: String, save: bool = true) -> void:
 	ui_theme_setting = name
 	ui.set_theme(name)
 	if save:
-		_save_current_data_field("ui_theme", ui_theme_setting)
+		_save_setting_field("ui_theme", ui_theme_setting)
 
 
 ## Shows or hides the chrome bars' paint. Pass save = false on boot.
@@ -320,13 +320,13 @@ func set_hide_bars(choice: String, save: bool = true) -> void:
 	if ui != null:
 		ui.theme_changed.emit()
 	if save:
-		_save_current_data_field("hide_bars", hide_bars_setting)
+		_save_setting_field("hide_bars", hide_bars_setting)
 
 # Reads every saved animation preset out of Player_Current_Data.json and applies it. Called once on
 # boot. An unknown value falls back to the default rather than erroring, so a wiped or hand-edited
 # save still boots cleanly.
 func _load_animation_speed() -> void:
-	var data := _read_current_data()
+	var data := _read_settings()
 
 	# Reduce motion is read FIRST so the speed setter below computes the right multipliers on the
 	# first pass rather than being immediately overwritten.
@@ -388,14 +388,14 @@ func set_walking_speed(preset: String, save: bool = true) -> void:
 
 # Reads the saved preset out of Player_Current_Data.json and applies it. Called once on boot.
 func _load_walking_speed() -> void:
-	var data := _read_current_data()
+	var data := _read_settings()
 	var preset: String = str(data.get("walking_speed", DEFAULT_WALKING_SPEED))
 	if not WALKING_SPEED_PRESETS.has(preset):
 		preset = DEFAULT_WALKING_SPEED
 	set_walking_speed(preset, false)
 
 func _save_walking_speed() -> void:
-	_save_current_data_field("walking_speed", walking_speed_setting)
+	_save_setting_field("walking_speed", walking_speed_setting)
 
 # ISSUE #34: the two match-rule variants offered by the Options screen. Each entry is the string
 # stored in Player_Current_Data.json, and is copied into the match core's own burn_rules /
@@ -422,7 +422,7 @@ func set_confusion_rule(rule: String, save: bool = true) -> void:
 		return
 	confusion_rule_setting = rule
 	if save:
-		_save_current_data_field("confusion_rules", rule)
+		_save_setting_field("confusion_rules", rule)
 
 func set_burn_rule(rule: String, save: bool = true) -> void:
 	if not rule in BURN_RULE_OPTIONS:
@@ -430,7 +430,7 @@ func set_burn_rule(rule: String, save: bool = true) -> void:
 		return
 	burn_rule_setting = rule
 	if save:
-		_save_current_data_field("burn_rules", rule)
+		_save_setting_field("burn_rules", rule)
 
 ## ISSUE #385: THE MATCH-RULE ROWS UNLOCK WITH THE FIRST EX CARD.
 ##
@@ -459,7 +459,7 @@ func owns_any_card_in_set(set_id: String) -> bool:
 
 # Reads both saved rule choices out of Player_Current_Data.json. Called once on boot.
 func _load_rule_settings() -> void:
-	var data := _read_current_data()
+	var data := _read_settings()
 	var confusion: String = str(data.get("confusion_rules", DEFAULT_CONFUSION_RULE))
 	if not confusion in CONFUSION_RULE_OPTIONS:
 		confusion = DEFAULT_CONFUSION_RULE
@@ -496,25 +496,25 @@ func set_music_volume(value: float, save: bool = true) -> void:
 	music_volume_setting = clampf(value, 0.0, 1.0)
 	SoundManagerScript.set_bus_volume(SoundManagerScript.MUSIC_BUS, music_volume_setting)
 	if save:
-		_save_current_data_field("music_volume", music_volume_setting)
+		_save_setting_field("music_volume", music_volume_setting)
 
 func set_sfx_volume(value: float, save: bool = true) -> void:
 	sfx_volume_setting = clampf(value, 0.0, 1.0)
 	SoundManagerScript.set_bus_volume(SoundManagerScript.SFX_BUS, sfx_volume_setting)
 	if save:
-		_save_current_data_field("sfx_volume", sfx_volume_setting)
+		_save_setting_field("sfx_volume", sfx_volume_setting)
 
 # Overworld Pokémon cries ("cries_volume"), on their own bus.
 func set_cries_volume(value: float, save: bool = true) -> void:
 	cries_volume_setting = clampf(value, 0.0, 1.0)
 	SoundManagerScript.set_bus_volume(SoundManagerScript.CRIES_BUS, cries_volume_setting)
 	if save:
-		_save_current_data_field("cries_volume", cries_volume_setting)
+		_save_setting_field("cries_volume", cries_volume_setting)
 
 # Reads both saved levels out of Player_Current_Data.json and applies them. Called once on boot. A
 # missing or non-numeric value falls back to the default rather than erroring.
 func _load_audio_volumes() -> void:
-	var data := _read_current_data()
+	var data := _read_settings()
 	set_music_volume(_read_volume(data, "music_volume", DEFAULT_MUSIC_VOLUME), false)
 	set_sfx_volume(_read_volume(data, "sfx_volume", DEFAULT_SFX_VOLUME), false)
 	set_cries_volume(_read_volume(data, "cries_volume", DEFAULT_CRIES_VOLUME), false)
@@ -525,23 +525,34 @@ func _read_volume(data: Dictionary, key: String, fallback: float) -> float:
 		return clampf(float(value), 0.0, 1.0)
 	return fallback
 
-# Writes a single key back into Player_Current_Data.json, leaving every other key untouched.
-func _save_current_data_field(key: String, value) -> void:
-	var data := _read_current_data()
-	if data.is_empty():
-		return
+# ─── Settings file ───────────────────────────────────────────────────────────
+# Every Options value lives in user://Settings.json, NOT in a save slot. Settings belong to
+# the machine, not to a game: the title screen needs the volume, theme and reduce-motion
+# choice before any slot has been picked, and switching slots must not change them.
+# The file is not seeded — a missing key falls back to its default in each loader.
+
+# Writes a single key into Settings.json, leaving every other key untouched.
+func _save_setting_field(key: String, value) -> void:
+	var data := _read_settings()
 	data[key] = value
-	var write_file := FileAccess.open(PLAYER_CURRENT_DATA_PATH, FileAccess.WRITE)
+	var write_file := FileAccess.open(SETTINGS_PATH, FileAccess.WRITE)
 	if write_file == null:
-		push_error("GameState: cannot write " + PLAYER_CURRENT_DATA_PATH)
+		push_error("GameState: cannot write " + SETTINGS_PATH)
 		return
 	write_file.store_string(JSON.stringify(data, "\t"))
 	write_file.close()
 
+func _read_settings() -> Dictionary:
+	return _read_json_dict(SETTINGS_PATH)
+
 func _read_current_data() -> Dictionary:
-	if not FileAccess.file_exists(PLAYER_CURRENT_DATA_PATH):
+	return _read_json_dict(PLAYER_CURRENT_DATA_PATH)
+
+## Any JSON file as a Dictionary, or empty if it is missing or malformed.
+func _read_json_dict(path: String) -> Dictionary:
+	if not FileAccess.file_exists(path):
 		return {}
-	var file := FileAccess.open(PLAYER_CURRENT_DATA_PATH, FileAccess.READ)
+	var file := FileAccess.open(path, FileAccess.READ)
 	if file == null:
 		return {}
 	var text := file.get_as_text()
@@ -768,24 +779,58 @@ func clear_menu_return_state() -> void:
 	has_menu_return_state = false
 	menu_return_scene_path = ""
 
+## Set by the pause menu's "Quit to Main Menu" just before it changes to the boot
+## splash. The splash reads and clears it: no loading animation, straight to
+## "Press any key", fading in from the black the game faded out to.
+var skip_title_intro: bool = false
+
 # Progress tracking
 var progress: Dictionary = {}
 
-# user:// is writable in both editor and exported builds.
-# On first run, if the file doesn't exist, we copy from res://.
-const PROGRESS_PATH = "user://Player_Game_Progress.json"
+# ============================================================
+# SAVE SLOTS
+# ============================================================
+# Every per-game file lives in its own slot folder, user://Save_Slot_<n>/:
+#   Player_Game_Progress.json, Player_Current_Data.json, Nature_guide.json,
+#   Player_Owned_Cards/, Player_Decks/
+# Decks are PER SLOT — a new game starts with only the seeded starter deck.
+#
+# The paths below are properties, not consts: they always point into the slot in
+# `current_slot`, so every caller that reads GameState.PROGRESS_PATH and friends
+# follows the slot without knowing slots exist. Pick a slot with load_slot() or
+# start_new_game(); never assign current_slot by hand, the in-memory progress has
+# to be reloaded with it (see the save-file invariant on reset_new_game below).
+#
+# Options are NOT in a slot — see SETTINGS_PATH. Match logs and autotest output
+# stay at the user:// root too; they are dev tools, not save data.
+#
+# A slot counts as a SAVE only once its first-launch setup is finished
+# (first_launch_complete). A slot that was seeded but abandoned during setup shows
+# as Empty and is wiped by the next New Game in it.
+const SAVE_SLOT_COUNT := 3
+const SETTINGS_PATH := "user://Settings.json"
+
+var current_slot: int = 1
+
+func slot_folder(slot: int) -> String:
+	return "user://Save_Slot_%d/" % slot
+
+var PROGRESS_PATH: String:
+	get: return slot_folder(current_slot) + "Player_Game_Progress.json"
+var PLAYER_CURRENT_DATA_PATH: String:
+	get: return slot_folder(current_slot) + "Player_Current_Data.json"
+var OWNED_CARDS_FOLDER: String:
+	get: return slot_folder(current_slot) + "Player_Owned_Cards/"
+var PLAYER_DECKS_FOLDER: String:
+	get: return slot_folder(current_slot) + "Player_Decks/"
+var NATURE_GUIDE_PATH: String:
+	get: return slot_folder(current_slot) + "Nature_guide.json"
+
+# The shipped seeds a new slot is copied from. Never written back.
 const PROGRESS_SEED_PATH = "res://Player_Data/Player_Game_Progress.json"
-
-const PLAYER_CURRENT_DATA_PATH = "user://Player_Current_Data.json"
 const PLAYER_CURRENT_DATA_SEED_PATH = "res://Player_Data/Player_Current_Data.json"
-
-const OWNED_CARDS_FOLDER = "user://Player_Owned_Cards/"
 const OWNED_CARDS_SEED_FOLDER = "res://Player_Data/Player_Owned_Cards/"
-
-const PLAYER_DECKS_FOLDER = "user://Player_Decks/"
 const PLAYER_DECKS_SEED_FOLDER = "res://Player_Data/Player_Decks/"
-
-const NATURE_GUIDE_PATH = "user://Nature_guide.json"
 const NATURE_GUIDE_SEED_PATH = "res://Player_Data/Nature_guide.json"
 
 # ============================================================
@@ -837,18 +882,27 @@ func get_last_interior_scene() -> String:
 
 
 func _ready():
-	_ensure_user_data_exists()
-	load_progress()
 	_load_animation_speed()   # ISSUE #34: apply the saved Options animation-speed preset
 	_load_walking_speed()     # ISSUE #34: apply the saved Options overworld walking-speed preset
 	_load_rule_settings()     # ISSUE #34: apply the saved Options confusion / burn rule choices
 	_load_audio_volumes()     # apply the saved Options music / SFX volume levels to the audio buses
 
+	# The LAST slot played is loaded on boot, before the title screen has asked. That is
+	# what keeps a map scene run straight from the editor, and the autotester, working:
+	# they never pass through the save select. The title screen calls load_slot() /
+	# start_new_game() again for whichever slot the player actually picks.
+	current_slot = clampi(int(_read_settings().get("last_slot", 1)), 1, SAVE_SLOT_COUNT)
+	_ensure_user_data_exists()
+	load_progress()
+
 # ============================================================
-# FIRST-RUN DATA MIGRATION (res:// → user://)
+# SLOT SEEDING (res:// → user://Save_Slot_<n>/)
 # ============================================================
 
 func _ensure_user_data_exists():
+	DirAccess.make_dir_recursive_absolute(slot_folder(current_slot))
+
+
 	# Copy Player_Game_Progress.json
 	_copy_seed_file(PROGRESS_SEED_PATH, PROGRESS_PATH)
 
@@ -898,64 +952,101 @@ func _copy_seed_folder(seed_folder: String, dest_folder: String):
 	dir.list_dir_end()
 
 # ============================================================
-# NEW GAME — wipe user:// back to the shipped seed
+# SLOT SELECTION — load, new game, delete, summary
 # ============================================================
-# Behind the splash's New Game button, and behind a yes/no confirm. Nothing else
-# in the game calls it.
+# Called from the title screen's save select. Nothing else should switch slots.
 #
-# ── WHAT IT DELETES, AND THE ONE THING IT DOES NOT ───────────
-# Player_Game_Progress.json, Player_Current_Data.json and everything inside
-# Player_Owned_Cards/ go. **Player_Decks/ SURVIVES** — deck building is hours of
-# work that has nothing to do with campaign progress, and losing it to a New Game
-# would be the single most expensive mistake this button could make. If you ever
-# find yourself adding PLAYER_DECKS_FOLDER to the list below, don't.
-#
-# ── WHY IT RELOADS RATHER THAN JUST DELETING ─────────────────
+# ── WHY EVERY SWITCH RELOADS ─────────────────────────────────
 # `progress` is held in memory for the whole session and save_progress() writes
-# the WHOLE dictionary. Deleting the file without reloading would leave the old
-# save sitting in RAM, and the very next add_cash() would write all of it
-# straight back — see the save-file invariant note above. So: delete, re-copy the
-# res:// seeds, then re-read everything the boot path reads.
-func reset_new_game() -> void:
-	for path in [PROGRESS_PATH, PLAYER_CURRENT_DATA_PATH, NATURE_GUIDE_PATH]:
-		if FileAccess.file_exists(path):
-			DirAccess.remove_absolute(path)
+# the WHOLE dictionary. Pointing current_slot somewhere else without reloading
+# would leave the old slot sitting in RAM, and the very next add_cash() would
+# write all of it into the new slot — see the save-file invariant note above.
+
+## Makes `slot` the live save: seeds anything missing, re-reads it, and remembers it
+## as the slot to boot into next time.
+func load_slot(slot: int) -> void:
+	current_slot = clampi(slot, 1, SAVE_SLOT_COUNT)
+	_save_setting_field("last_slot", current_slot)
+
 	# The guide is cached in memory like `progress` is, so the same rule applies:
-	# drop the cache or the next catch writes the old record straight back.
+	# drop the cache or the next catch writes the other slot's record into this one.
 	_nature_guide = {}
 	_nature_guide_loaded = false
 
-	_delete_folder_contents(OWNED_CARDS_FOLDER)
-
-	# Re-seed and re-read, in the same order _ready() does it.
 	_ensure_user_data_exists()
 	load_progress()
-	_load_animation_speed()
-	_load_walking_speed()
-	_load_rule_settings()
-	_load_audio_volumes()
 
-	# Session state that outlived the file it described.
+	# Session state that outlived the slot it described.
 	clear_menu_return_state()
 	player_position = Vector2.ZERO
 	last_interior_scene = ""
 	last_player_direction = "down"
 
 
-## Removes every file in a user:// folder, leaving the folder itself in place so
-## the seed copy has somewhere to land. Sub-folders are left alone; nothing under
-## Player_Owned_Cards/ nests.
-func _delete_folder_contents(folder: String) -> void:
+## Wipes `slot` back to the shipped seed and makes it the live save. EVERYTHING in
+## the slot goes, decks included — a new game starts with the starter deck only.
+## Stamps today's date as the slot's "Trainer since".
+func start_new_game(slot: int) -> void:
+	_delete_folder_recursive(slot_folder(clampi(slot, 1, SAVE_SLOT_COUNT)))
+	load_slot(slot)
+	progress["trainer_since"] = today_string()
+	save_progress()
+
+
+## Deletes a slot outright. If it was the live slot, the live slot is re-seeded
+## empty so nothing in memory still describes the deleted game.
+func delete_slot(slot: int) -> void:
+	_delete_folder_recursive(slot_folder(slot))
+	if slot == current_slot:
+		load_slot(slot)
+
+
+## True when `slot` holds a game that has been through first-launch setup.
+func slot_has_save(slot: int) -> bool:
+	var prog := _read_json_dict(slot_folder(slot) + "Player_Game_Progress.json")
+	return bool(prog.get("first_launch_complete", false))
+
+
+## What the save select draws for one slot, read straight off its files without
+## loading it. Empty Dictionary for an empty slot.
+func get_slot_summary(slot: int) -> Dictionary:
+	if not slot_has_save(slot):
+		return {}
+	var folder := slot_folder(slot)
+	var prog := _read_json_dict(folder + "Player_Game_Progress.json")
+	var current := _read_json_dict(folder + "Player_Current_Data.json")
+	return {
+		"name":          String(current.get("name", "")),
+		"deck":          String(current.get("deck", "")),
+		"sprite":        String(current.get("sprite", "")),
+		"sleeve":        String(current.get("sleeve", "")),
+		"coin":          String(current.get("coin", "")),
+		"cash":          prog.get("cash", 0),
+		"trainer_since": String(prog.get("trainer_since", "")),
+	}
+
+
+## The day this save was started, dd/mm/yyyy, or "" if it predates the field.
+func get_trainer_since() -> String:
+	return String(progress.get("trainer_since", ""))
+
+
+## Today's date as dd/mm/yyyy, from the system clock.
+func today_string() -> String:
+	var d := Time.get_date_dict_from_system()
+	return "%02d/%02d/%04d" % [d["day"], d["month"], d["year"]]
+
+
+## Removes a user:// folder and everything under it.
+func _delete_folder_recursive(folder: String) -> void:
 	var dir := DirAccess.open(folder)
 	if dir == null:
 		return
-	dir.list_dir_begin()
-	var fname := dir.get_next()
-	while fname != "":
-		if not dir.current_is_dir():
-			DirAccess.remove_absolute(folder + fname)
-		fname = dir.get_next()
-	dir.list_dir_end()
+	for sub in dir.get_directories():
+		_delete_folder_recursive(folder + sub + "/")
+	for fname in dir.get_files():
+		DirAccess.remove_absolute(folder + fname)
+	DirAccess.remove_absolute(folder)
 
 
 # ============================================================
@@ -1023,10 +1114,10 @@ func load_progress():
 		progress["shop_free_packs_given"] = false
 	if not progress.has("player_collected_shop_starter_set"):
 		progress["player_collected_shop_starter_set"] = false
-	# Existing saves predate this field — treat them as already launched.
-	# New games get false from the seed file, so this migration never fires for them.
+	# False when missing: this flag is what makes a slot count as a save on the title
+	# screen (slot_has_save), so a progress file without it must read as unfinished.
 	if not progress.has("first_launch_complete"):
-		progress["first_launch_complete"] = true
+		progress["first_launch_complete"] = false
 
 	# Migrate old met_npcs dict to npc_interactions array
 	if not progress.has("npc_interactions"):

@@ -202,7 +202,7 @@ func load_opponent_data(trainer_name: String) -> void:
 
 
 func load_player_data() -> void:
-	var file = FileAccess.open("user://Player_Current_Data.json", FileAccess.READ)
+	var file = FileAccess.open(GameState.PLAYER_CURRENT_DATA_PATH, FileAccess.READ)
 	if file == null:
 		print("Error loading player file")
 		return

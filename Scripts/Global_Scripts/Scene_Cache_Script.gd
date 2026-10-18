@@ -190,7 +190,9 @@ const MENU_CACHE_MAX := 600
 ## with every image in memory. Lower = smoother while loading, higher = sooner.
 const GRID_BUILD_BUDGET_MS := 10
 
-const OWNED_CARDS_FOLDER := "user://Player_Owned_Cards/"
+# The current save slot's folder — it moves when the player picks another slot.
+var OWNED_CARDS_FOLDER: String:
+	get: return GameState.OWNED_CARDS_FOLDER
 const CARD_LIBRARY_DIR := "res://Image_Assets/Card_Image_Library/"
 const COIN_FOLDER := "res://Image_Assets/Coins/"
 const COSTUME_FOLDER := "res://Image_Assets/Character_Sprites/In_Battle_Sprites/"

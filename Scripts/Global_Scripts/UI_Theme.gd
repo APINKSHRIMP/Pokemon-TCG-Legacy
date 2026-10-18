@@ -1081,8 +1081,11 @@ const CASH_PILL := {
 # the game's confirm buttons use.
 #
 # The only things genuinely its own are the mark's four gradient stops and the
-# rule's near colour. Both buttons now take the game's own faces: New Game is
-# btn_secondary, Continue Game is the btn_primary_* gradient.
+# rule's near colour, plus the save select's blue New Game face below.
+
+## The save select's New Game face — fixed, not themed (see splash_col).
+const NEW_GAME_BLUE := Color("3F7FD6")
+
 const SPLASH := {
 	# The mark. Upper arm runs top-left to bottom-right, lower arm top-right to
 	# bottom-left, so the pink is shared and lands in the middle of the lockup.
@@ -1582,15 +1585,19 @@ func splash_col(key: String) -> Color:
 		"wordmark": return _splash_readable("chrome_fg", "field_fg")   # ISSUE #379: Canopy's chrome_fg is dark ink
 		"tcg":      return col("field_fg")
 
-		# Both buttons take the game's own faces. ISSUE #379: New Game is the
-		# NEUTRAL face now (it was the translucent secondary and looked disabled);
-		# Continue is the positive one - see continue_* below.
-		"new_game_top": return neutral_fill(THEMES[current])
-		"new_game_bot": return neutral_fill(THEMES[current])
-		"new_game_fg":  return ink_on(neutral_fill(THEMES[current]))
+		# The save select's New Game is BLUE on every theme — beside the green
+		# Continue and the red Cancel it has to read as "neither". The neutral face is
+		# the theme accent, which is pink-red on several themes and passed for Cancel.
+		"new_game_top": return NEW_GAME_BLUE
+		"new_game_bot": return NEW_GAME_BLUE
+		"new_game_fg":  return ink_on(NEW_GAME_BLUE)
 		"continue_top": return positive_fill(THEMES[current])
 		"continue_bot": return positive_fill(THEMES[current])
 		"continue_fg":  return ink_on(positive_fill(THEMES[current]))
+		# The save select's Cancel: the game's standard negative face.
+		"cancel_top":   return negative_fill(THEMES[current])
+		"cancel_bot":   return negative_fill(THEMES[current])
+		"cancel_fg":    return ink_on(negative_fill(THEMES[current]))
 	# btn_hover, btn_press and fade are genuinely theme-independent: two neutral
 	# state tints and a fade to black. They stay in the constant.
 	return SPLASH.get(key, Color.MAGENTA)

@@ -19,10 +19,20 @@ extends Control
 # The intro and outro screens carry a header and a footer. This one carries
 # NEITHER, on purpose. Do not reach for UIKit.add_header/add_footer here.
 #
+# ── THE THREE STATES ─────────────────────────────────────────
+#   title        the logo, the drifting cards and a slow-blinking "Press any
+#                key to continue" ("...any button..." while a pad is connected)
+#   save select  every title element fades away and SaveSelectScreen fades in
+#                (Save_Select_Screen.gd) — three save slots, Cancel, and New Game
+#                or Continue Game. Cancel fades it out and the title back in.
+#   hand-off     fade to black, then the saved scene or the first-boot setup
+# Which slot is live is decided ONLY here: GameState.load_slot() on Continue,
+# GameState.start_new_game() on New Game.
+#
 # ── WHAT IS DRAWN, AND IN WHAT ORDER ─────────────────────────
-#   field  ->  mark  ->  rule  ->  text  ->  buttons
-# Child order in _build() is that order and nothing sets z_index except the
-# field, which UIKit anchors at Z_FIELD.
+#   field  ->  [title layer: cards -> mark -> rule -> text -> prompt]  ->  save select
+# The title layer is one Control so the whole title fades as one. Nothing sets
+# z_index except the field (UIKit anchors it at Z_FIELD) and the card layer.
 #
 # The mark, the rule and the button faces are SHADERS, not sprites and not
 # StyleBoxFlat. The mark grows through a 2x scale change and has to stay crisp;
@@ -36,6 +46,8 @@ const SHADER_RULE   := "res://Scripts/Shaders/Splash_Rule.gdshader"
 const SHADER_BUTTON := "res://Scripts/Shaders/Splash_Button.gdshader"
 
 const FIRST_BOOT_SCENE := "res://Scenes/Intro_And_Animation_Scenes/First_Boot_Setup_Scene.tscn"
+# Preloaded rather than named by class_name, so a stale class cache cannot break the title screen.
+const SAVE_SELECT_SCRIPT := preload("res://Scripts/Intro_And_Animation/Save_Select_Screen.gd")
 
 # ─── Reference space ─────────────────────────────────────────────────────────
 # The project stretches canvas_items from a 1920x1080 viewport, so absolute
@@ -88,7 +100,31 @@ const RULE_RADIUS   := 2.0
 const RULE_TCG_CLEAR := 29.0              # clear space between a rule end and the TCG cap
 const RULE_MID_STOP := 0.45
 
+# ─── The prompt ──────────────────────────────────────────────────────────────
+# TWEAKABLE — the "Press any key" line under the logo. It breathes: the alpha
+# dips to PROMPT_ALPHA_MIN and back once every PROMPT_FADE_PERIOD seconds, and it
+# grows to PROMPT_SCALE_MAX and back once every PROMPT_SCALE_PERIOD seconds.
+const PROMPT_KEYS := "Press any key to continue"
+const PROMPT_PAD  := "Press any button to continue"
+const PROMPT_SIZE := 44
+const PROMPT_CENTRE_Y := SCREEN_H - 92.0    # 988 — where the button row used to sit
+const PROMPT_ALPHA_MIN := 0.4
+const PROMPT_FADE_PERIOD := 3.2
+const PROMPT_SCALE_MAX := 1.05
+const PROMPT_SCALE_PERIOD := 6.4
+const PROMPT_APPEAR_SECONDS := 0.8
+
+# TWEAKABLE — the crossfades between the title and the save select.
+const TITLE_FADE_OUT := 0.7
+const TITLE_FADE_IN  := 0.7
+const TITLE_RETURN_FADE := 0.8   # pause menu's Quit to Main Menu: black -> title
+const SLOTS_FADE_IN  := 0.5
+const SLOTS_FADE_OUT := 0.4
+const FADE_REDUCED   := 0.15     # every crossfade, under Reduce motion
+
 # ─── The buttons ─────────────────────────────────────────────────────────────
+# The save select's Cancel / New Game / Continue Game are built with these, by
+# _make_button() — see SaveSelectScreen._build_buttons().
 
 const BTN_TEXT_SIZE := 29
 const BTN_TRACK     := 0.13
@@ -122,29 +158,10 @@ const EASE_RULE := [0.25, 0.55, 0.35, 1.0]
 const HOLD_SCALE  := 1.015
 const HOLD_PERIOD := 5.0
 
-# The button pop. The overshoot in the easing is the only bounce in the game and
-# it is deliberate: this is the first thing the player can press.
-const POP_SECONDS := 0.38
-const POP_EASE    := [0.2, 1.5, 0.4, 1.0]
-const POP_DELAY_NEW_GAME := 0.05
-const POP_DELAY_CONTINUE := 0.14
-
-# TWEAKABLE — the Animation speed setting multiplies the button pop and NOTHING
-# else. The six-second growth is tied to load time, so doubling it on Slow would
-# mean twelve seconds of splash; it stays fixed. Keys must match
-# GameState.ANIMATION_SPEED_OPTIONS.
-const POP_SPEED_PRESETS := {
-	"fast":   1.0,
-	"medium": 1.5,
-	"slow":   2.0,
-}
-
 # The hand-off. Reduce motion shortens it rather than removing it — a hard cut
 # into the overworld is jarring.
 const FADE_SECONDS      := 2.0
 const FADE_SECONDS_FAST := 0.4
-
-const CONFIRM_NEW_GAME := "Start a new game? Your progress, collection and money will be erased. Saved decks are kept."
 
 # ============================================================
 # DRIFTING CARDS — an experiment, behind one switch
@@ -194,20 +211,22 @@ class DriftCard extends TextureRect:
 
 # ─── Nodes ───────────────────────────────────────────────────────────────────
 
+var _title_layer: Control
 var _mark: Control
 var _text_block: Control
 var _rule_left: Control
 var _rule_right: Control
-var _new_game: Control
-var _continue: Control
-var _new_game_btn: Button
-var _continue_btn: Button
+var _prompt: TextureRect
+var _prompt_label: Label
+var _prompt_vp: SubViewport
+var _prompt_tweens: Array[Tween] = []
+var _save_select: SAVE_SELECT_SCRIPT = null
 
 var _boot_sfx: AudioStreamPlayer
 
 var _hold_tween: Tween
-var _confirm_box: DynamicMessageBox = null
-var _handing_off: bool = false
+# "growing" -> "title" <-> "to_slots" -> "slots" -> "to_title" -> "title" ... -> "handoff"
+var _state: String = "growing"
 
 var _drift_layer: Control = null
 var _drift_timer: Timer = null
@@ -225,24 +244,44 @@ func _ready() -> void:
 
 	set_anchors_preset(Control.PRESET_FULL_RECT)
 	_build()
+
+	# Back from the pause menu's Quit to Main Menu: everything is loaded already,
+	# so no growth and no boot sting — the finished title fades up out of black.
+	if GameState.skip_title_intro:
+		GameState.skip_title_intro = false
+		_apply_growth(1.0)
+		_fade_from_black()
+		_show_menu()
+		return
+
 	_play_boot_sfx()
 	_run_phase_one()
 
 
+## The title screen's input only. The save select reads its own keys, and while it
+## is up (or fading) this does nothing.
 func _input(event: InputEvent) -> void:
-	# The confirm box owns the keyboard while it is up: Escape means "no", not
-	# "quit the game".
-	if _confirm_box != null and is_instance_valid(_confirm_box):
-		if UIInput.is_accept(event):
-			get_viewport().set_input_as_handled()
-			_on_new_game_confirmed()
-		elif UIInput.is_cancel(event):
-			get_viewport().set_input_as_handled()
-			_on_new_game_cancelled()
+	if _state != "title":
 		return
 
+	# Escape still quits from the title screen; it is the one key that is not "any key".
 	if event is InputEventKey and event.pressed and event.keycode == KEY_ESCAPE:
 		get_tree().quit()
+		return
+
+	if _is_any_press(event):
+		get_viewport().set_input_as_handled()
+		_go_to_save_select()
+
+
+## A fresh press of any key, pad button or mouse button. Key repeat and the wheel
+## do not count.
+func _is_any_press(event: InputEvent) -> bool:
+	if event is InputEventKey:
+		return event.pressed and not event.echo
+	if event is InputEventJoypadButton:
+		return event.pressed
+	return UIInput.is_click(event)
 
 
 # ============================================================
@@ -254,24 +293,33 @@ func _build() -> void:
 	# full rect at Z_FIELD, so everything added after this draws over it.
 	UIKit.add_field(self)
 
+	# Everything that belongs to the title — cards, mark, rule, wordmark, prompt —
+	# goes under this one Control, so leaving for the save select is one fade.
+	_title_layer = Control.new()
+	_title_layer.name = "title"
+	_title_layer.position = Vector2.ZERO
+	_title_layer.size = Vector2(SCREEN_W, SCREEN_H)
+	_title_layer.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(_title_layer)
+
 	# In FRONT of the field, BEHIND everything else. The field is anchored at
-	# UIKit.Z_FIELD and the lockup and buttons all sit at the default 0, so one
-	# negative z_index puts the whole layer in the gap between them.
+	# UIKit.Z_FIELD and the lockup sits at the default 0, so one negative z_index
+	# puts the whole layer in the gap between them.
 	if CARD_DRIFT_ENABLED:
 		_drift_layer = Control.new()
 		_drift_layer.name = "card_drift"
 		_drift_layer.set_anchors_preset(Control.PRESET_FULL_RECT)
 		_drift_layer.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		_drift_layer.z_index = -50
-		add_child(_drift_layer)
+		_title_layer.add_child(_drift_layer)
 		# Scanned during the six seconds rather than at the moment the first card
-		# is wanted, so the directory walk cannot land on the button pop.
+		# is wanted, so the directory walk cannot land on the prompt appearing.
 		_build_card_pool.call_deferred()
 
 	_build_mark()
 	_build_rule()
 	_build_text()
-	_build_buttons()
+	_build_prompt()
 
 
 func _build_mark() -> void:
@@ -285,7 +333,7 @@ func _build_mark() -> void:
 	mat.set_shader_parameter("lower_a", UITheme.splash_col("mark_lower_a"))
 	mat.set_shader_parameter("lower_b", UITheme.splash_col("mark_lower_b"))
 
-	add_child(_mark)
+	_title_layer.add_child(_mark)
 
 
 # The rule is TWO segments, not one line with a hole in it: each grows outward
@@ -307,7 +355,7 @@ func _build_rule() -> void:
 	ml.set_shader_parameter("mid_stop", RULE_MID_STOP)
 	ml.set_shader_parameter("radius", RULE_RADIUS)
 	ml.set_shader_parameter("from_right", true)
-	add_child(_rule_left)
+	_title_layer.add_child(_rule_left)
 
 	_rule_right = _shader_rect(SHADER_RULE, Vector2(seg_w, RULE_THICK))
 	_rule_right.position = Vector2(far_right - seg_w, top)
@@ -318,7 +366,7 @@ func _build_rule() -> void:
 	mr.set_shader_parameter("mid_stop", RULE_MID_STOP)
 	mr.set_shader_parameter("radius", RULE_RADIUS)
 	mr.set_shader_parameter("from_right", false)
-	add_child(_rule_right)
+	_title_layer.add_child(_rule_right)
 
 
 # POKEMON above the mark's gap, TCG threading it, LEGACY below. The block is
@@ -377,50 +425,106 @@ func _build_text() -> void:
 	_text_block.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR
 	_text_block.mouse_filter = Control.MOUSE_FILTER_IGNORE
 
-	var blend := CanvasItemMaterial.new()
-	blend.blend_mode = CanvasItemMaterial.BLEND_MODE_PREMULT_ALPHA
-	_text_block.material = blend
+	_text_block.material = _premult_material()
 
 	# Scales about the block's own centre, which is the midpoint of the ink it
 	# actually contains rather than the middle of the screen.
 	var ink_top: float = pokemon_baseline - pokemon_cap
 	_text_block.pivot_offset = Vector2(CENTRE_X, (ink_top + legacy_baseline) * 0.5)
 
-	add_child(_text_block)
+	_title_layer.add_child(_text_block)
 
 
-func _build_buttons() -> void:
-	var y: float = SCREEN_H - BTN_BOTTOM_INSET - _button_height()
+## "Press any key to continue", rendered once into a SubViewport and shown as a
+## picture — for the same reason as the wordmark (see _build_text): it scales
+## continuously, and a live Label re-rasterised every frame makes its letters
+## jitter. It is rendered at PROMPT_SCALE_MAX and only ever scaled DOWN from there,
+## so the largest frame of the breath is pixel-exact.
+##
+## Re-rendered whenever the wording changes (a pad plugged in or pulled out).
+func _build_prompt() -> void:
+	var render_size: int = int(round(PROMPT_SIZE * PROMPT_SCALE_MAX))
+	var box_h: float = render_size * 2.0
 
-	# ── BOTH BUTTONS TAKE THE WIDER ONE'S WIDTH ─────────────────
-	# Sized to their own text they came out unequal, and two different-sized
-	# buttons side by side read as a hierarchy nobody intended. One width, and the
-	# GAP between them is centred on the screen — so the midline runs down the
-	# space between the buttons, in line with the mark's left edge and the rule's
-	# TCG cap, instead of through the middle of Continue Game.
-	var w: float = maxf(_button_width("New Game"), _button_width("Continue Game"))
+	_prompt_vp = SubViewport.new()
+	_prompt_vp.name = "prompt_render"
+	_prompt_vp.size = Vector2i(int(SCREEN_W), int(box_h))
+	_prompt_vp.transparent_bg = true
+	_prompt_vp.disable_3d = true
+	_prompt_vp.render_target_update_mode = SubViewport.UPDATE_ONCE
+	add_child(_prompt_vp)
 
-	_new_game = _make_button("New Game", w,
-		UITheme.splash_col("new_game_top"), UITheme.splash_col("new_game_bot"),
-		UITheme.splash_col("new_game_fg"))
-	_new_game.position = Vector2(CENTRE_X - BTN_GAP * 0.5 - w, y)
-	_new_game_btn = _new_game.get_node("btn")
-	_new_game_btn.pressed.connect(_on_new_game_pressed)
-	add_child(_new_game)
+	var cap: float = render_size * CAP_RATIO_UI
+	_prompt_label = _word(_prompt_text(), UITheme.FONT_UI_MEDIUM, render_size, 0.0,
+		box_h * 0.5 + cap * 0.5, UITheme.splash_col("tcg"))
+	_prompt_vp.add_child(_prompt_label)
 
-	_continue = _make_button("Continue Game", w,
-		UITheme.splash_col("continue_top"), UITheme.splash_col("continue_bot"),
-		UITheme.splash_col("continue_fg"))   # ISSUE #379: positive green
-	_continue.position = Vector2(CENTRE_X + BTN_GAP * 0.5, y)
-	_continue_btn = _continue.get_node("btn")
-	_continue_btn.pressed.connect(_on_continue_pressed)
-	add_child(_continue)
+	_prompt = TextureRect.new()
+	_prompt.name = "prompt"
+	_prompt.texture = _prompt_vp.get_texture()
+	_prompt.size = Vector2(SCREEN_W, box_h)
+	_prompt.position = Vector2(0.0, PROMPT_CENTRE_Y - box_h * 0.5)
+	_prompt.pivot_offset = _prompt.size * 0.5
+	_prompt.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR
+	_prompt.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_prompt.material = _premult_material()
+	_prompt.scale = Vector2.ONE / PROMPT_SCALE_MAX
+	_prompt.modulate.a = 0.0
+	_title_layer.add_child(_prompt)
 
-	# Hidden until the load is done. Popped in by _show_menu().
-	for holder in [_new_game, _continue]:
-		holder.modulate.a = 0.0
-		holder.scale = Vector2(0.72, 0.72)
-		holder.visible = false
+	Input.joy_connection_changed.connect(func(_device: int, _connected: bool) -> void:
+		_refresh_prompt_text())
+
+
+## Keyboard wording, or pad wording while any controller is connected.
+func _prompt_text() -> String:
+	return PROMPT_PAD if not Input.get_connected_joypads().is_empty() else PROMPT_KEYS
+
+
+func _refresh_prompt_text() -> void:
+	if _prompt_label == null or not is_instance_valid(_prompt_label):
+		return
+	var text := _prompt_text()
+	if _prompt_label.text == text:
+		return
+	_prompt_label.text = text
+	_prompt_vp.render_target_update_mode = SubViewport.UPDATE_ONCE
+
+
+## Fades the prompt in, then starts its slow breath: alpha and scale on two
+## separate loops of different lengths, so the two never line up into one pulse.
+func _start_prompt() -> void:
+	_stop_prompt()
+	var small := Vector2.ONE / PROMPT_SCALE_MAX
+	if UITheme.motion_reduced():
+		_prompt.modulate.a = 1.0
+		_prompt.scale = small
+		return
+
+	var appear := create_tween()
+	appear.tween_property(_prompt, "modulate:a", 1.0, PROMPT_APPEAR_SECONDS)
+	appear.tween_callback(func() -> void:
+		var fade := create_tween().set_loops()
+		fade.tween_property(_prompt, "modulate:a", PROMPT_ALPHA_MIN, PROMPT_FADE_PERIOD * 0.5) \
+			.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+		fade.tween_property(_prompt, "modulate:a", 1.0, PROMPT_FADE_PERIOD * 0.5) \
+			.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+		_prompt_tweens.append(fade))
+	_prompt_tweens.append(appear)
+
+	var grow := create_tween().set_loops()
+	grow.tween_property(_prompt, "scale", Vector2.ONE, PROMPT_SCALE_PERIOD * 0.5) \
+		.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	grow.tween_property(_prompt, "scale", small, PROMPT_SCALE_PERIOD * 0.5) \
+		.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	_prompt_tweens.append(grow)
+
+
+func _stop_prompt() -> void:
+	for t in _prompt_tweens:
+		if t != null and t.is_valid():
+			t.kill()
+	_prompt_tweens.clear()
 
 
 # ============================================================
@@ -494,36 +598,74 @@ func _await_loaded() -> void:
 # PHASE 2 — the menu
 # ============================================================
 # NOTHING MOVES. The logo stays exactly where it finished growing: no lift, no
-# reposition, no fade of the lockup. The two buttons are the only new thing on
-# the screen.
+# reposition, no fade of the lockup. The prompt is the only new thing on the
+# screen, and input is ignored until it starts to appear.
 
 func _show_menu() -> void:
 	SoundManagerScript.play_bgm(SoundManagerScript.BGM_STARTING_MENU)
 	_start_card_drift()
-
-	if UITheme.motion_reduced():
-		for holder in [_new_game, _continue]:
-			holder.visible = true
-			holder.modulate.a = 1.0
-			holder.scale = Vector2.ONE
-		return
-
-	var mult: float = float(POP_SPEED_PRESETS.get(GameState.animation_speed_setting, 1.0))
-	var duration: float = POP_SECONDS * mult
-
-	_pop(_new_game, POP_DELAY_NEW_GAME * mult, duration)
-	_pop(_continue, POP_DELAY_CONTINUE * mult, duration)
+	_start_prompt()
+	_state = "title"
 
 
-func _pop(holder: Control, delay: float, duration: float) -> void:
-	var tween := create_tween()
-	tween.tween_interval(delay)
-	tween.tween_callback(func() -> void: holder.visible = true)
-	tween.tween_method(func(u: float) -> void:
-		var e: float = _bezier(u, POP_EASE)
-		holder.scale = Vector2.ONE * lerpf(0.72, 1.0, e)
-		holder.modulate.a = clampf(u, 0.0, 1.0)
-	, 0.0, 1.0, duration)
+# ============================================================
+# TITLE <-> SAVE SELECT
+# ============================================================
+
+func _fade_time(normal: float) -> float:
+	return FADE_REDUCED if UITheme.motion_reduced() else normal
+
+
+## Everything on the title fades away together — cards, mark, wordmark, prompt —
+## and the save select fades in over the bare field.
+func _go_to_save_select() -> void:
+	_state = "to_slots"
+	SoundManagerScript.play_sfx(SoundManagerScript.SFX_plus_select)
+	if _drift_timer != null:
+		_drift_timer.paused = true
+
+	var out := create_tween()
+	out.tween_property(_title_layer, "modulate:a", 0.0, _fade_time(TITLE_FADE_OUT))
+	await out.finished
+	_title_layer.visible = false
+	_stop_prompt()
+
+	_save_select = SAVE_SELECT_SCRIPT.new()
+	_save_select.name = "save_select"
+	_save_select.setup(self)
+	_save_select.modulate.a = 0.0
+	add_child(_save_select)
+	_save_select.cancelled.connect(_on_save_select_cancelled)
+	_save_select.continue_chosen.connect(_on_continue_chosen)
+	_save_select.new_game_chosen.connect(_on_new_game_chosen)
+
+	var fade_in := create_tween()
+	fade_in.tween_property(_save_select, "modulate:a", 1.0, _fade_time(SLOTS_FADE_IN))
+	await fade_in.finished
+	_save_select.active = true
+	_state = "slots"
+
+
+## Cancel: the save select fades out and the title — cards, logo, prompt — fades
+## back in where it left off.
+func _on_save_select_cancelled() -> void:
+	_state = "to_title"
+	var out := create_tween()
+	out.tween_property(_save_select, "modulate:a", 0.0, _fade_time(SLOTS_FADE_OUT))
+	await out.finished
+	remove_child(_save_select)
+	_save_select.queue_free()
+	_save_select = null
+
+	_title_layer.visible = true
+	_prompt.modulate.a = 0.0
+	if _drift_timer != null:
+		_drift_timer.paused = false
+	var fade_in := create_tween()
+	fade_in.tween_property(_title_layer, "modulate:a", 1.0, _fade_time(TITLE_FADE_IN))
+	_start_prompt()
+	await fade_in.finished
+	_state = "title"
 
 
 # ============================================================
@@ -621,81 +763,36 @@ func _spawn_drift_card() -> void:
 # PHASE 3 — hand-off
 # ============================================================
 
-func _on_continue_pressed() -> void:
-	# Disable BOTH buttons before anything else, so a second press cannot queue
-	# a second load.
-	UIKit.hold_buttons([_new_game_btn, _continue_btn], true)
-	if _handing_off:
+## Continue Game on a slot with a save: that slot becomes the live save, then the
+## saved scene at the saved position.
+func _on_continue_chosen(slot: int) -> void:
+	if _state == "handoff":
 		return
-	_handing_off = true
+	_state = "handoff"
 
 	SoundManagerScript.play_sfx(SoundManagerScript.SFX_gamemode_select)
 	SoundManagerScript.stop_bgm()
+	GameState.load_slot(slot)
 
 	await _fade_to_black()
 	_change_to_saved_scene()
 
 
-func _on_new_game_pressed() -> void:
-	UIKit.hold_buttons([_new_game_btn, _continue_btn], true)
-	if _handing_off or _confirm_box != null:
+## New Game on an empty slot. Nothing is lost, so there is no confirm — the slot
+## (empty, or abandoned during setup) is wiped and seeded fresh, decks included.
+func _on_new_game_chosen(slot: int) -> void:
+	if _state == "handoff":
 		return
-	_show_new_game_confirm()
-
-
-# A wipe is unrecoverable and this is the first screen a player ever sees, so it
-# goes behind a yes/no. The box is the game's standard system-variant message
-# box, which keeps the splash free of furniture of its own.
-func _show_new_game_confirm() -> void:
-	var layer := CanvasLayer.new()
-	layer.name = "confirm_layer"
-	layer.layer = 100
-	add_child(layer)
-
-	var built := MessageBoxHelper.build(138.0, -1, true)
-	_confirm_box = built["root"]
-	_confirm_box.show_as_plain()
-	_confirm_box.set_mode("choices")
-	layer.add_child(_confirm_box)
-	_confirm_box.set_body_text(CONFIRM_NEW_GAME)
-	# configure() leaves the box hidden — every caller shows it when it has
-	# something to say, and this one says it immediately.
-	_confirm_box.visible = true
-
-	(built["yes_btn"] as Button).pressed.connect(_on_new_game_confirmed)
-	(built["no_btn"] as Button).pressed.connect(_on_new_game_cancelled)
-
-
-func _on_new_game_cancelled() -> void:
-	_dismiss_confirm()
-	UIKit.hold_buttons([_new_game_btn, _continue_btn], false)
-
-
-func _on_new_game_confirmed() -> void:
-	if _handing_off:
-		return
-	_handing_off = true
-	_dismiss_confirm()
+	_state = "handoff"
 
 	SoundManagerScript.play_sfx(SoundManagerScript.SFX_gamemode_select)
-
-	# Deletes progress, current data and every owned-card file, then re-seeds
-	# from res://Player_Data. Player_Decks is deliberately untouched.
-	GameState.reset_new_game()
+	GameState.start_new_game(slot)
 
 	# The music KEEPS PLAYING across this one. The first-launch setup screen
 	# takes the same track through SoundManagerScript, so play_bgm() there is a
 	# no-op and the player hears one continuous piece.
 	await _fade_to_black()
 	SceneCache.change_scene(FIRST_BOOT_SCENE)
-
-
-func _dismiss_confirm() -> void:
-	_confirm_box = null
-	var layer := get_node_or_null("confirm_layer")
-	if layer != null:
-		remove_child(layer)
-		layer.queue_free()
 
 
 ## Fades a black overlay in over the whole screen. Linear, because anything
@@ -715,6 +812,28 @@ func _fade_to_black() -> void:
 	var tween := create_tween()
 	tween.tween_property(overlay, "color:a", 1.0, seconds).set_trans(Tween.TRANS_LINEAR)
 	await tween.finished
+
+
+## The reverse of _fade_to_black, for arriving from the game. The overlay ignores
+## the mouse; the title's own input gate is the prompt starting to appear.
+func _fade_from_black() -> void:
+	var layer := CanvasLayer.new()
+	layer.layer = 200
+	add_child(layer)
+
+	var overlay := ColorRect.new()
+	overlay.color = UITheme.splash_col("fade")
+	overlay.color.a = 1.0
+	overlay.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	overlay.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	layer.add_child(overlay)
+
+	var seconds: float = FADE_REDUCED if UITheme.motion_reduced() else TITLE_RETURN_FADE
+	var tween := create_tween()
+	tween.tween_property(overlay, "color:a", 0.0, seconds)
+	await tween.finished
+	remove_child(layer)
+	layer.queue_free()
 
 
 ## Where the player actually goes. Unchanged from the pre-menu splash: the saved
@@ -757,6 +876,25 @@ func _play_boot_sfx() -> void:
 
 ## A ColorRect carrying one of the splash shaders. UIKit.ShaderRect is used for
 ## the rect_size sync alone — none of these three scroll, hence tracks_motion.
+## Premultiplied blending for a SubViewport render (see _build_text), that still
+## FADES. A plain CanvasItemMaterial in premult mode multiplies only the alpha by
+## modulate, so a fade leaves the colour channels at full strength and the type
+## stays on screen, drawn additively. This scales all four channels by the
+## inherited alpha instead, which is what a premultiplied fade means.
+func _premult_material() -> ShaderMaterial:
+	var shader := Shader.new()
+	shader.code = """
+shader_type canvas_item;
+render_mode blend_premul_alpha;
+varying float fade;
+void vertex() { fade = COLOR.a; }
+void fragment() { COLOR = texture(TEXTURE, UV) * fade; }
+"""
+	var mat := ShaderMaterial.new()
+	mat.shader = shader
+	return mat
+
+
 func _shader_rect(shader_path: String, rect_size: Vector2) -> Control:
 	var rect := UIKit.ShaderRect.new()
 	rect.tracks_motion = false
@@ -818,6 +956,17 @@ func _ink_width(font: FontVariation, text: String, size_px: int, track_px: int) 
 func _tcg_ink_width() -> float:
 	var track: int = int(round(TCG_SIZE * TCG_TRACK))
 	return _ink_width(_tracked_font(UITheme.FONT_MONO, track), "TCG", TCG_SIZE, track)
+
+
+## Top of the button row, for the save select.
+func button_row_y() -> float:
+	return SCREEN_H - BTN_BOTTOM_INSET - _button_height()
+
+
+## The gap between a pair of buttons. The GAP is centred on the screen, not
+## either button, so the midline runs down the space between them.
+func button_gap() -> float:
+	return BTN_GAP
 
 
 func _button_height() -> float:
@@ -889,9 +1038,7 @@ func _set_button_tint(mat: ShaderMaterial, key: String) -> void:
 
 # ─── Easing ──────────────────────────────────────────────────────────────────
 # CSS cubic-bezier, evaluated properly rather than approximated with one of
-# Godot's TRANS_* curves. POP_EASE has a control point at y = 1.5 and overshoots
-# past 1 on the way; TRANS_BACK is the nearest built-in and it overshoots by a
-# different amount at a different moment.
+# Godot's TRANS_* curves, so the growth matches the spec's curves exactly.
 
 ## y of the curve [x1, y1, x2, y2] at x, with the implicit end points (0,0) and
 ## (1,1). x is solved for t by Newton-Raphson, which converges in a handful of

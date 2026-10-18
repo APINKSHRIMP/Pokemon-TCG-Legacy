@@ -787,11 +787,11 @@ func _load_real_entries() -> void:
 			seen[key] = true
 			unique.append(e)
 	real_entries = unique
-	var pd := DirAccess.open("user://Player_Decks")
+	var pd := DirAccess.open(GameState.PLAYER_DECKS_FOLDER)
 	if pd != null:
 		for f in pd.get_files():
 			if f.ends_with(".json"):
-				player_deck_files.append("user://Player_Decks/" + f)
+				player_deck_files.append(GameState.PLAYER_DECKS_FOLDER + f)
 	print("AUTOTEST: --real — ", real_entries.size(), " opponent entries, ", player_deck_files.size(), " player decks")
 
 

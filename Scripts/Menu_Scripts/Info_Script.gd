@@ -4,7 +4,6 @@ extends Control
 
 const SPRITE_FOLDER      := "res://Image_Assets/Character_Sprites/In_Battle_Sprites"
 const MAX_NAME_LENGTH    := 21
-const OWNED_CARDS_FOLDER := "user://Player_Owned_Cards"
 const OWNED_CARDS_SUFFIX := "_player_owned_cards.json"
 
 # ISSUE #134: the cosmetic-collection folder constants that used to sit here now live in
@@ -130,7 +129,7 @@ const SETS_H         := 216.0
 ## lifting its head lifts all of it and the gaps between them are untouched.
 const SPRITE_TOP_GAP := 10.0   # top box top -> top of the costume art (ISSUE #200)
 const NAME_TOP_GAP   := 10.0   # bottom of the ART -> name box     (ISSUE #200)
-const DOB_H          := 56.0   # height of the "Trainer since / $" block
+const DOB_H          := 84.0   # height of the "Trainer since / DOB / $" block (three lines)
 const EQUIP_TOP_GAP  := 14.0   # bottom box top -> thumbnails      (ISSUE #200)
 ## ISSUE #200 (retest 3): "move the sleeve and coin down 10 pixels", inside their
 ## own box. 14 + 10 = 24 off the top, which leaves 26 under the captions - the
@@ -195,6 +194,9 @@ const SPRITE_SIZE   := Vector2(SPRITE_FIT_W, SPRITE_FIT_H)
 
 var PLAYER_DATA_PATH: String:
 	get: return GameState.PLAYER_CURRENT_DATA_PATH
+# The current save slot's folder, without the trailing slash — the scan adds its own.
+var OWNED_CARDS_FOLDER: String:
+	get: return GameState.OWNED_CARDS_FOLDER.trim_suffix("/")
 
 # ─── State ───────────────────────────────────────────────────────────────────
 
@@ -447,9 +449,13 @@ func _load_player_data() -> void:
 	saved_player_name = data.get("name", "")
 	name_box.text = saved_player_name
 
-	# DOB and cash share one centred Label under the name box - see _style_dob_cash_label().
+	# Start date, DOB and cash share one centred Label under the name box. "Trainer since"
+	# is the day this save slot was started, not the birthday the player typed in.
+	var since: String = GameState.get_trainer_since()
 	var dob: String = data.get("date_of_birth", "")
-	dob_cash_lbl.text = "Trainer since " + (dob if dob != "" else "--/--") + "\n$" + str(GameState.get_cash())
+	dob_cash_lbl.text = "Trainer since " + (since if since != "" else "--/--") \
+		+ "\nDOB: " + (dob if dob != "" else "--/--") \
+		+ "\n$" + str(GameState.get_cash())
 
 	# Battle sprite — fit inside SPRITE_SIZE so different-shaped sprites all appear the same size
 	var sprite_name: String = data.get("sprite", "")

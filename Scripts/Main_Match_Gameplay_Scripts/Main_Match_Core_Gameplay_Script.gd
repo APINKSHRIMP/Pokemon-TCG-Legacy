@@ -5326,7 +5326,7 @@ func load_deck_from_file(deck_file_path: String) -> Array:
 func setup_player():
 	
 	# Load the players CURRENT deck from saved files
-	var player_deck_path = "user://Player_Decks/"+player_deck_name+".json"
+	var player_deck_path = GameState.PLAYER_DECKS_FOLDER+player_deck_name+".json"
 	if GameState.autotest != null:
 		player_deck_path = GameState.autotest_player_deck_path
 
@@ -5352,7 +5352,7 @@ func setup_opponent(opponent_id: String):
 		push_error("No deck file matching '%s' in Opponent_Deck_Data/" % opponent_id)
 	# TEMP TESTING: T-key TEST match — opponent draws from the player's user:// "TEST" deck.
 	if GameState.test_match_mode:
-		opponent_deck_path = "user://Player_Decks/TEST.json"
+		opponent_deck_path = GameState.PLAYER_DECKS_FOLDER + "TEST.json"
 	if GameState.autotest != null:
 		opponent_deck_path = GameState.autotest_opponent_deck_path
 
@@ -11511,7 +11511,7 @@ func _ready() -> void:
 	play_opponent_music()
 
 	# Load the player's deck name from their save data
-	var pfile = FileAccess.open("user://Player_Current_Data.json", FileAccess.READ)
+	var pfile = FileAccess.open(GameState.PLAYER_CURRENT_DATA_PATH, FileAccess.READ)
 	var pdata = JSON.parse_string(pfile.get_as_text())
 	pfile.close()
 	player_deck_name = pdata["deck"]

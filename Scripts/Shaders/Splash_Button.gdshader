@@ -36,6 +36,9 @@ vec4 over(vec4 s, vec4 d) {
 }
 
 void fragment() {
+	// The incoming COLOR carries modulate (the node's and every parent's), so
+	// it is multiplied back in at the end — without it a fade does nothing.
+	vec4 tint = COLOR;
 	vec2 p = UV * rect_size;
 
 	vec4 c = mix(fill_top, fill_bot, UV.y);
@@ -52,5 +55,5 @@ void fragment() {
 	float w  = max(fwidth(sd) * 0.5, 0.0001);
 	float mask = 1.0 - smoothstep(-w, w, sd);
 
-	COLOR = vec4(c.rgb, c.a * mask);
+	COLOR = vec4(c.rgb, c.a * mask) * tint;
 }

@@ -91,7 +91,7 @@ func face_toward(target_position: Vector2):
 func _ready():
 	add_to_group("player")
 
-	var file = FileAccess.open("user://Player_Current_Data.json", FileAccess.READ)
+	var file = FileAccess.open(GameState.PLAYER_CURRENT_DATA_PATH, FileAccess.READ)
 	var player_data = JSON.parse_string(file.get_as_text())
 	file.close()
 
@@ -115,7 +115,7 @@ func _ready():
 # ISSUE #52: the overworld map is no longer reloaded when a sub-menu closes, so a costume change made
 # in the Costume menu has to be pushed onto the live player node instead of arriving via _ready().
 func refresh_sprite() -> void:
-	var file := FileAccess.open("user://Player_Current_Data.json", FileAccess.READ)
+	var file := FileAccess.open(GameState.PLAYER_CURRENT_DATA_PATH, FileAccess.READ)
 	if file == null:
 		return
 	var player_data = JSON.parse_string(file.get_as_text())

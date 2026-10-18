@@ -3,6 +3,14 @@ extends Node
 @onready var audio_player = AudioStreamPlayer.new()
 
 const DEFAULT_MAP_SCENE = "res://Scenes/Map_Scenes/Celeste_Harbour.tscn"
+const TITLE_SCENE = "res://Scenes/Intro_And_Animation_Scenes/Game_Start_Load_Splash_Scene.tscn"
+
+# Quit dialog — tweakable.
+const QUIT_PANEL_SIZE := Vector2(520, 380)
+const QUIT_BTN_W := 360.0       # all three buttons share one width
+const QUIT_BTN_GAP := 14
+const QUIT_FADE := 0.8          # Quit to Main Menu: the game fading to black
+const QUIT_FADE_REDUCED := 0.2
 
 # Full node paths (relative to scene root) → scene to load.
 # "close/map_mode_background" is handled specially to return to the saved map.
@@ -30,12 +38,17 @@ var tweens: Dictionary = {}
 var quit_dialog: CanvasLayer = null
 var is_overlay: bool = false
 var close_overlay_callback: Callable = Callable()
+var _quitting: bool = false     # Quit to Main Menu is fading out; ignore everything
 
 
 func _input(event: InputEvent) -> void:
-	# The quit confirmation owns the keys while it is up: accept says Quit, cancel
-	# backs out. Without this, Escape/Enter closed the whole menu out from under the
-	# dialog instead of answering it.
+	if _quitting:
+		get_viewport().set_input_as_handled()
+		return
+
+	# The quit confirmation owns the keys while it is up: accept says Quit to
+	# Desktop, cancel is Return. Without this, Escape/Enter closed the whole menu
+	# out from under the dialog instead of answering it.
 	if quit_dialog != null and is_instance_valid(quit_dialog):
 		if UIInput.is_cancel(event):
 			get_viewport().set_input_as_handled()
@@ -220,8 +233,8 @@ func _on_exit_clicked(event: InputEvent) -> void:
 # screen the player interacts with after the rest of the game changed, so it stood
 # out as the odd one. The whole dialog is converted here in one go: the opaque
 # modal panel, the button variants and the dim behind it all match the deck
-# builder's confirm exactly. Destructive action is DANGER and Cancel is quiet, the
-# same rule _show_confirm_popup follows.
+# builder's confirm exactly. Quit to Desktop is DANGER, Quit to Main Menu the
+# softer negative red, and Return the positive green.
 func _show_quit_dialog() -> void:
 	if quit_dialog != null and is_instance_valid(quit_dialog):
 		return
@@ -241,15 +254,15 @@ func _show_quit_dialog() -> void:
 	# Centred panel. make_modal_panel, NOT make_panel: the translucent surface is
 	# for grouping content on a screen, and over a dimmed menu it reads as a ghost.
 	var panel := UIKit.make_modal_panel()
-	panel.custom_minimum_size = Vector2(520, 240)
+	panel.custom_minimum_size = QUIT_PANEL_SIZE
 	panel.anchor_left   = 0.5
 	panel.anchor_top    = 0.5
 	panel.anchor_right  = 0.5
 	panel.anchor_bottom = 0.5
-	panel.offset_left   = -260
-	panel.offset_top    = -120
-	panel.offset_right  = 260
-	panel.offset_bottom = 120
+	panel.offset_left   = -QUIT_PANEL_SIZE.x * 0.5
+	panel.offset_top    = -QUIT_PANEL_SIZE.y * 0.5
+	panel.offset_right  = QUIT_PANEL_SIZE.x * 0.5
+	panel.offset_bottom = QUIT_PANEL_SIZE.y * 0.5
 	quit_dialog.add_child(panel)
 
 	var vbox := VBoxContainer.new()
@@ -262,18 +275,59 @@ func _show_quit_dialog() -> void:
 	msg.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	vbox.add_child(msg)
 
-	var btn_row := HBoxContainer.new()
-	btn_row.alignment = BoxContainer.ALIGNMENT_CENTER
-	btn_row.add_theme_constant_override("separation", 20)
-	vbox.add_child(btn_row)
+	# One column, most final at the top. Return is the positive way out (green);
+	# the two quits are red, Desktop the harder red as it closes the game.
+	var btn_col := VBoxContainer.new()
+	btn_col.alignment = BoxContainer.ALIGNMENT_CENTER
+	btn_col.add_theme_constant_override("separation", QUIT_BTN_GAP)
+	vbox.add_child(btn_col)
 
-	var yes_btn := UIKit.make_footer_button("Quit", "danger")
-	yes_btn.pressed.connect(func(): get_tree().quit())
-	btn_row.add_child(yes_btn)
+	var desktop_btn := UIKit.make_footer_button("Quit to Desktop", "danger")
+	desktop_btn.pressed.connect(func(): get_tree().quit())
+	var title_btn := UIKit.make_footer_button("Quit to Main Menu", "negative")
+	title_btn.pressed.connect(_quit_to_title)
+	var return_btn := UIKit.make_footer_button("Return", "primary")
+	return_btn.pressed.connect(_on_quit_cancelled)
+	for b in [desktop_btn, title_btn, return_btn]:
+		b.custom_minimum_size.x = QUIT_BTN_W
+		b.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+		btn_col.add_child(b)
 
-	var no_btn := UIKit.make_footer_button("Cancel", "negative")   # ISSUE #379
-	no_btn.pressed.connect(_on_quit_cancelled)
-	btn_row.add_child(no_btn)
+
+## Back to the boot splash, already sitting on "Press any key". The game fades to
+## black here and the splash fades in out of it. Everything worth keeping is on
+## disk already — opening this menu saved the player's spot — so Continue Game
+## puts them back exactly where they were.
+func _quit_to_title() -> void:
+	if _quitting:
+		return
+	_quitting = true
+	SoundManagerScript.play_sfx(SoundManagerScript.SFX_gamemode_select)
+	audio_player.stop()
+	SoundManagerScript.stop_bgm()
+
+	var layer := CanvasLayer.new()
+	layer.layer = 200
+	add_child(layer)
+	var black := ColorRect.new()
+	black.color = Color(0, 0, 0, 0)
+	black.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	black.mouse_filter = Control.MOUSE_FILTER_STOP   # nothing under it takes a click mid-fade
+	layer.add_child(black)
+
+	var seconds: float = QUIT_FADE_REDUCED if UITheme.motion_reduced() else QUIT_FADE
+	var tween := create_tween()
+	tween.tween_property(black, "color:a", 1.0, seconds)
+	await tween.finished
+
+	# The overlay host and the paused world are session state about the map that is
+	# about to go; the next map's initialise() would clear them, but the splash and
+	# save select come first.
+	GameState.clear_menu_return_state()
+	GameState.menu_overlay_host = null
+	MapManager.set_overworld_paused(false)
+	GameState.skip_title_intro = true
+	SceneCache.change_scene(TITLE_SCENE)
 
 
 func _on_quit_cancelled() -> void:

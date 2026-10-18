@@ -64,6 +64,9 @@ vec4 over(vec4 s, vec4 d) {
 }
 
 void fragment() {
+	// The incoming COLOR carries modulate (the node's and every parent's), so
+	// it is multiplied back in at the end — without it a fade does nothing.
+	vec4 tint = COLOR;
 	vec2 p = UV * DESIGN;
 	vec2 q = vec2(p.x, DESIGN.y - p.y);   // the lower arm, mirrored into the upper one's space
 
@@ -85,5 +88,5 @@ void fragment() {
 	vec4 cu = vec4(mix(upper_a.rgb, upper_b.rgb, tu), arm_alpha(p, A, B, C, D));
 	vec4 cl = vec4(mix(lower_a.rgb, lower_b.rgb, 1.0 - tl), arm_alpha(q, A, B, C, D));
 
-	COLOR = over(cu, cl);
+	COLOR = over(cu, cl) * tint;
 }

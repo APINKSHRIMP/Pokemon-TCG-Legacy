@@ -1762,7 +1762,7 @@ func show_item_reveal(text: String, image_path: String, on_ok: Callable) -> void
 # Reads the player's currently-equipped costume sprite from
 # Player_Current_Data.json (the "sprite" field, no extension).
 func _player_worn_sprite() -> String:
-	var f := FileAccess.open("user://Player_Current_Data.json", FileAccess.READ)
+	var f := FileAccess.open(GameState.PLAYER_CURRENT_DATA_PATH, FileAccess.READ)
 	if f == null:
 		return ""
 	var parsed = JSON.parse_string(f.get_as_text())
@@ -2891,7 +2891,7 @@ func _clear_coinflip_display() -> void:
 # ============================================================
 
 func _current_player_deck_path() -> String:
-	var f := FileAccess.open("user://Player_Current_Data.json", FileAccess.READ)
+	var f := FileAccess.open(GameState.PLAYER_CURRENT_DATA_PATH, FileAccess.READ)
 	if f == null:
 		return ""
 	var parsed = JSON.parse_string(f.get_as_text())
@@ -2901,7 +2901,7 @@ func _current_player_deck_path() -> String:
 	var deck_name := String(parsed.get("deck", ""))
 	if deck_name == "":
 		return ""
-	return "user://Player_Decks/" + deck_name + ".json"
+	return GameState.PLAYER_DECKS_FOLDER + deck_name + ".json"
 
 # Called when the player's deck fails validation against the opponent's
 # restrictions. Picks the most useful display flavour and shows it,
@@ -3240,7 +3240,7 @@ func is_fishing() -> bool:
 # all GameState transition fields are populated the same way a real battle sets
 # them up.
 func _start_test_match(current: Node) -> void:
-	var deck_path := "user://Player_Decks/TEST.json"
+	var deck_path := GameState.PLAYER_DECKS_FOLDER + "TEST.json"
 	if not FileAccess.file_exists(deck_path):
 		print("DEBUG: TEST match aborted — no deck at ", deck_path, " (create one in the deck builder named 'TEST')")
 		_debug_flash_defeated_label_text("No TEST deck found!")

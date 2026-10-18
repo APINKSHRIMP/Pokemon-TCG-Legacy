@@ -1,20 +1,11 @@
 {
-	"animation_speed": "slow",
-	"burn_rules": "base_set_burn_rules",
 	"coin": "Pikachu Silver",
-	"confusion_rules": "base_set_confusion_rules",
 	"date_of_birth": "",
 	"deck": "Your First Deck",
 	"energy_style": "Base1",
-	"intro_outro_animation": "play",
 	"last_pack_loaded": "base1",
 	"last_set_loaded": "basep",
-	"music_volume": 0.8,
 	"name": "",
-	"reduce_motion": "off",
-	"sfx_volume": 0.8,
 	"sleeve": "1_Default_English",
-	"sprite": "",
-	"text_speed": "slow",
-	"walking_speed": "slow"
+	"sprite": ""
 }

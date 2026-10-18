@@ -25,6 +25,9 @@ uniform bool  from_right = false;
 uniform vec2  rect_size  = vec2(700.0, 6.5);
 
 void fragment() {
+	// The incoming COLOR carries modulate (the node's and every parent's), so
+	// it is multiplied back in at the end — without it a fade does nothing.
+	vec4 tint = COLOR;
 	vec2 p = UV * rect_size;
 
 	// Distance along the segment from its near end, 0..1.
@@ -46,5 +49,5 @@ void fragment() {
 	float w  = max(fwidth(sd) * 0.5, 0.0001);
 	float mask = 1.0 - smoothstep(-w, w, sd);
 
-	COLOR = vec4(c.rgb, c.a * mask);
+	COLOR = vec4(c.rgb, c.a * mask) * tint;
 }
