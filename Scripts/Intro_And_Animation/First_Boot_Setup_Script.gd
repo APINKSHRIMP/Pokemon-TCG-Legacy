@@ -13,12 +13,30 @@ const V_SEP         := 15
 var _selected_cell : Control = null
 var _active_tween  : Tween = null
 
+# The three pages: 0 name/birthday/look, 1 familiarity, 2 Hard Mode (only after
+# the two harder familiarity answers).
+var _pages      : Array[Control] = []
+var _page       : int = 0
+var _switching  : bool = false   # a page fade is running; buttons and keys wait
+var _leaving    : bool = false   # Start New Game pressed; the scene is fading out
+var _familiarity: int = 0        # index into FAMILIARITY_ORDER
+var _hard_mode  : bool = false
+
 # ─── UI references (built programmatically) ──────────────────────────────────
 
 var _name_box   : LineEdit
 var _dob_box    : LineEdit
-var _save_btn   : Button
+var _save_btn   : Button          # the forward button: "Next" or "Start New Game"
+var _back_btn   : Button
 var _grid       : GridContainer
+var _chip_slot  : Control
+var _fam_holders: Array[Control] = []
+var _fam_ring_layer: Control
+var _fam_ring   : Control = null
+var _mode_holders: Array[Control] = []
+var _mode_ring_layer: Control
+var _mode_ring  : Control = null
+var _mode_context_chip: Control = null
 
 # ─── Lifecycle ───────────────────────────────────────────────────────────────
 
@@ -88,8 +106,11 @@ func _build_ui() -> void:
 	# text at this size — and this was the only bare non-title label on a chrome
 	# bar anywhere in the game; every other side slot already uses a chip. The
 	# chip brings its own background, so it reads on any theme's bar.
-	bars["header"].right.add_child(
-		UIKit.make_chip("Choose your name, birthday and look", "on_chrome"))
+	_chip_slot = bars["header"].right
+	_set_header_chip(CHIP_TEXT[0])
+
+	# Page 0 — everything below lives in one Control so the page fades as one.
+	_pages.append(_new_page("setup"))
 
 	# ── Name box ─────────────────────────────────────────────
 	_name_box = _make_field("Enter your name...", 15, FIELD_W, NAME_Y, FIELD_FONT)
@@ -104,7 +125,7 @@ func _build_ui() -> void:
 	scroll.size = Vector2(1636, UIKit.CONTENT_BOTTOM - GRID_Y - 18.0)
 	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO
-	add_child(scroll)
+	_pages[0].add_child(scroll)
 
 	_grid = GridContainer.new()
 	_grid.columns = COLUMNS
@@ -112,14 +133,24 @@ func _build_ui() -> void:
 	_grid.add_theme_constant_override("v_separation", V_SEP)
 	scroll.add_child(_grid)
 
-	# ── Save button ──────────────────────────────────────────
-	# On the footer bar, and a CHILD of it: a sibling floated over a chrome bar is
-	# one z-order slip from invisible.
-	_save_btn = UIKit.make_footer_button("Begin your journey", "secondary")
+	# ── Footer buttons ───────────────────────────────────────
+	# On the footer bar, and CHILDREN of it: a sibling floated over a chrome bar is
+	# one z-order slip from invisible. Back is hidden on the first page; Next reads
+	# "Start New Game" on whichever page is the last for the answers given.
+	_back_btn = UIKit.make_footer_button("Back", "negative")
+	_back_btn.custom_minimum_size.x = SAVE_BTN_W
+	_back_btn.pressed.connect(_on_back_pressed)
+	_back_btn.visible = false
+	bars["footer"].centre.add_child(_back_btn)
+
+	_save_btn = UIKit.make_footer_button("Next", "secondary")
 	_save_btn.custom_minimum_size.x = SAVE_BTN_W
 	_save_btn.disabled = true
-	_save_btn.pressed.connect(_on_save_pressed)
+	_save_btn.pressed.connect(_on_next_pressed)
 	bars["footer"].centre.add_child(_save_btn)
+
+	_build_familiarity_page()
+	_build_hard_mode_page()
 
 
 ## One centred text field on the field background. ISSUE #192: white text, not the
@@ -139,7 +170,7 @@ func _make_field(placeholder: String, max_len: int, w: float, y: float,
 	box.add_theme_color_override("font_color", UITheme.col("field_fg"))
 	box.add_theme_color_override("font_placeholder_color", UITheme.col("field_mute"))
 	box.text_changed.connect(_on_input_changed)
-	add_child(box)
+	_pages[0].add_child(box)
 	return box
 
 
@@ -296,8 +327,10 @@ func _refresh_save_btn() -> void:
 
 # ─── Save and transition ──────────────────────────────────────────────────────
 
-func _on_save_pressed() -> void:
+func _start_game() -> void:
+	_leaving = true
 	_save_btn.disabled = true
+	_back_btn.disabled = true
 	SoundManagerScript.stop_bgm()
 	SoundManagerScript.play_sfx(SoundManagerScript.SFX_gamemode_select)
 
@@ -337,8 +370,10 @@ func _on_save_pressed() -> void:
 		dir.list_dir_end()
 	GameState.progress["costumes"] = costumes
 
-	GameState.progress["date"] = 1
-	GameState.progress["time"] = "Morning"
+	# Familiarity + Hard Mode, and the start day/time they imply (hidden from the
+	# player — see GameState.INTRO_PROFILES).
+	GameState.apply_new_game_answers(FAMILIARITY_ORDER[_familiarity],
+		_hard_mode and _offers_hard_mode())
 	GameState.progress["taxi_intro_pending"] = true
 	GameState.mark_first_launch_complete()
 
@@ -356,3 +391,457 @@ func _on_save_pressed() -> void:
 	tween.tween_callback(func():
 		SceneCache.change_scene("res://Scenes/Map_Scenes/Celeste_Harbour.tscn")
 	)
+
+
+# ============================================================
+# NEW-GAME QUESTIONS — familiarity, then Hard Mode
+# ============================================================
+# Two question pages after the name/birthday/look page, in the same chrome. Each
+# answer is a column built from the translucent panel the save slots use; the
+# selected one wears the rotating ring and the rest dim. The rows inside the
+# columns are the SAME rows in the SAME order, so they read straight across like
+# a table without needing its grid lines.
+#
+# What each answer changes behind the scenes (start day/time, call, deck,
+# cutscene) lives in GameState.INTRO_PROFILES. The start time is a hidden mechanic
+# and is deliberately never shown here.
+#
+# Keys on the question pages: Left / Right pick, Enter / Space / pad A go forward,
+# Escape / pad B go back. Double-click an answer to pick it and go forward.
+
+const CHIP_TEXT := [
+	"Choose your name, birthday and look",
+	"Choose your experience",
+	"Choose your challenge",
+]
+
+# Must match GameState.FAMILIARITY_* (an autoload's consts are not constant
+# expressions, so they cannot be referenced here).
+const FAMILIARITY_ORDER := ["new", "rules", "played", "expert"]
+const FAMILIARITY_ANSWERS := [
+	"I'm completely new",
+	"I know the rules a bit",
+	"I've played a Pokémon TCG game before",
+	"I'm an experienced player",
+]
+# Row icons: "deck" a card outline, "on" a tick, "off" a cross, "warn" a "!".
+const FAMILIARITY_ROWS := [
+	[["deck", "Starter Deck"], ["on", "Mandatory tutorial match"], ["on", "Match help hints"],
+		["on", "Gameplay hints"], ["off", "Hard Mode option"], ["off", "Harder matches straight away"]],
+	[["deck", "Starter Deck"], ["on", "Natural tutorial matches"], ["on", "Match help hints"],
+		["on", "Gameplay hints"], ["off", "Hard Mode option"], ["off", "Harder matches straight away"]],
+	[["deck", "Advanced Deck"], ["off", "Tutorial matches"], ["off", "Match help hints"],
+		["on", "Gameplay hints"], ["on", "Hard Mode option"], ["off", "Harder matches straight away"]],
+	[["deck", "Advanced Deck"], ["off", "Tutorial matches"], ["off", "Match help hints"],
+		["off", "Gameplay hints"], ["on", "Hard Mode option"], ["on", "Harder matches straight away"]],
+]
+
+const MODE_TITLES := ["Normal Mode", "Hard Mode"]
+const MODE_ROWS := [
+	[["on", "Start with the Advanced Deck"], ["on", "3x bonus for each new win"],
+		["on", "Rematches allowed"], ["on", "Rule and bonus modifier matches at the usual pace"]],
+	[["off", "Draft start, no guaranteed cards"], ["off", "No 3x bonus for new wins"],
+		["off", "No rematches"], ["warn", "Rule and bonus modifier matches come earlier"]],
+]
+const MODE_NOTE := "Hard Mode is locked in once the game starts and can't be changed later."
+
+# ─── Question page layout — ALL TWEAKABLE ────────────────────────────────────
+const PAGE_FADE     := 0.25    # each half of a page change (out, then in)
+const HEADING_Y     := 112.0
+const HEADING_H     := 56.0
+const HEADING_FONT  := 38
+const DIM           := 0.78    # brightness of the answers that are NOT selected
+
+const FAM_TOP       := 226.0
+const FAM_BOTTOM    := 950.0
+const FAM_SIDE      := 60.0    # screen edge -> first column
+const FAM_GAP       := 30.0    # between columns
+
+const MODE_W        := 760.0
+const MODE_GAP      := 48.0
+const MODE_CHIP_Y   := 190.0   # the "your answer" chip under the heading
+const MODE_TOP      := 272.0
+const MODE_BOTTOM   := 880.0
+const MODE_NOTE_Y   := 902.0
+const MODE_TITLE_FONT := 40
+
+const ACCENT_Y      := 16.0    # the coloured pill across the top of a column
+const ACCENT_H      := 6.0
+const ACCENT_INSET  := 28.0
+const ANSWER_TOP    := 32.0
+const ANSWER_H      := 112.0
+const ANSWER_FONT   := 32
+const ROWS_GAP      := 24.0    # divider -> first row
+const ROW_H         := 84.0
+const ROW_FONT      := 24
+const ROW_PAD       := 26.0
+const ICON          := 30.0
+const ICON_GAP      := 14.0
+const OFF_ALPHA     := 0.6     # text of a row that is off/crossed
+
+
+func _new_page(page_name: String) -> Control:
+	var page := Control.new()
+	page.name = page_name
+	page.position = Vector2.ZERO
+	page.size = Vector2(UIKit.SCREEN_W, UIKit.SCREEN_H)
+	page.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(page)
+	return page
+
+
+func _set_header_chip(text: String) -> void:
+	for child in _chip_slot.get_children():
+		_chip_slot.remove_child(child)
+		child.queue_free()
+	# A CHIP, not a bare label — see the note in _build_ui().
+	_chip_slot.add_child(UIKit.make_chip(text, "on_chrome"))
+
+
+## Page 1: "How familiar are you…" — four answers, easiest on the left.
+func _build_familiarity_page() -> void:
+	var page := _new_page("familiarity")
+	page.visible = false
+	_pages.append(page)
+	_add_heading(page, "How familiar are you with the Pokémon Trading Card Game?")
+
+	# Green through amber to red: the theme's own good / warn / danger.
+	var good: Color = UITheme.col("good")
+	var warn: Color = UITheme.col("warn")
+	var accents := [good, good.lerp(warn, 0.5), warn, UITheme.col("danger")]
+
+	var count: int = FAMILIARITY_ANSWERS.size()
+	var w: float = (UIKit.SCREEN_W - FAM_SIDE * 2.0 - FAM_GAP * (count - 1)) / count
+	for i in count:
+		var holder := _build_answer_column(Vector2(w, FAM_BOTTOM - FAM_TOP), accents[i],
+			FAMILIARITY_ANSWERS[i], ANSWER_FONT, FAMILIARITY_ROWS[i],
+			_on_familiarity_clicked.bind(i))
+		holder.position = Vector2(FAM_SIDE + i * (w + FAM_GAP), FAM_TOP)
+		page.add_child(holder)
+		_fam_holders.append(holder)
+
+	_fam_ring_layer = _ring_layer_on(page)
+	_select_familiarity(0, false)
+
+
+## Page 2: "Would you like to enable Hard Mode?" — Normal and Hard side by side.
+func _build_hard_mode_page() -> void:
+	var page := _new_page("hard_mode")
+	page.visible = false
+	_pages.append(page)
+	_add_heading(page, "Would you like to enable Hard Mode?")
+
+	# The familiarity answer, repeated as a quiet chip so the player can see why
+	# they are being asked. Filled in each time the page opens.
+	var chip_row := CenterContainer.new()
+	chip_row.position = Vector2(0.0, MODE_CHIP_Y)
+	chip_row.size = Vector2(UIKit.SCREEN_W, 40.0)
+	chip_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	page.add_child(chip_row)
+	_mode_context_chip = chip_row
+
+	var accents := [UITheme.col("good"), UITheme.col("danger")]
+	var left: float = (UIKit.SCREEN_W - MODE_W * 2.0 - MODE_GAP) * 0.5
+	for i in 2:
+		var holder := _build_answer_column(Vector2(MODE_W, MODE_BOTTOM - MODE_TOP), accents[i],
+			MODE_TITLES[i], MODE_TITLE_FONT, MODE_ROWS[i], _on_mode_clicked.bind(i == 1))
+		holder.position = Vector2(left + i * (MODE_W + MODE_GAP), MODE_TOP)
+		page.add_child(holder)
+		_mode_holders.append(holder)
+
+	var note := Label.new()
+	note.text = MODE_NOTE
+	note.add_theme_font_override("font", UITheme.font_at(UITheme.FONT_UI_MEDIUM))
+	note.add_theme_font_size_override("font_size", ROW_FONT - 2)
+	note.add_theme_color_override("font_color", UITheme.col("field_mute"))
+	note.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	note.position = Vector2(0.0, MODE_NOTE_Y)
+	note.size = Vector2(UIKit.SCREEN_W, 40.0)
+	note.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	page.add_child(note)
+
+	_mode_ring_layer = _ring_layer_on(page)
+	_select_mode(false, false)
+
+
+func _refresh_mode_context() -> void:
+	for child in _mode_context_chip.get_children():
+		_mode_context_chip.remove_child(child)
+		child.queue_free()
+	_mode_context_chip.add_child(UIKit.make_chip(FAMILIARITY_ANSWERS[_familiarity], "on_field"))
+
+
+## The question, centred under the header.
+func _add_heading(page: Control, text: String) -> void:
+	var heading := Label.new()
+	UIKit.style_label(heading, "body", "field_fg", HEADING_FONT)
+	heading.text = text
+	heading.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	heading.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	heading.position = Vector2(0.0, HEADING_Y)
+	heading.size = Vector2(UIKit.SCREEN_W, HEADING_H)
+	heading.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	page.add_child(heading)
+
+
+## One answer: a translucent panel with a coloured pill along the top, the answer
+## itself in bold, a divider, then its rows. A transparent catcher Button is added
+## LAST so it is what receives the click.
+func _build_answer_column(col_size: Vector2, accent: Color, title: String,
+		title_size: int, rows: Array, on_click: Callable) -> Control:
+	var holder := Control.new()
+	holder.size = col_size
+	holder.mouse_filter = Control.MOUSE_FILTER_IGNORE
+
+	var panel := UIKit.make_panel()
+	panel.size = col_size
+	panel.custom_minimum_size = col_size
+	panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	holder.add_child(panel)
+
+	var pill := Panel.new()
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = accent
+	sb.set_corner_radius_all(int(ACCENT_H))
+	sb.anti_aliasing = true
+	pill.add_theme_stylebox_override("panel", sb)
+	pill.position = Vector2(ACCENT_INSET, ACCENT_Y)
+	pill.size = Vector2(col_size.x - ACCENT_INSET * 2.0, ACCENT_H)
+	pill.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	holder.add_child(pill)
+
+	var inner_w: float = col_size.x - ROW_PAD * 2.0
+	var answer := Label.new()
+	answer.text = title
+	answer.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	answer.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	answer.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	answer.add_theme_font_override("font", UITheme.font_at(UITheme.FONT_UI_BOLD))
+	answer.add_theme_font_size_override("font_size", title_size)
+	answer.add_theme_color_override("font_color", UITheme.col("field_fg"))
+	answer.position = Vector2(ROW_PAD, ANSWER_TOP)
+	answer.size = Vector2(inner_w, ANSWER_H)
+	answer.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	holder.add_child(answer)
+
+	var divider_y: float = ANSWER_TOP + ANSWER_H + 8.0
+	var divider := ColorRect.new()
+	divider.color = UITheme.col("line")
+	divider.position = Vector2(ROW_PAD, divider_y)
+	divider.size = Vector2(inner_w, 1.0)
+	divider.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	holder.add_child(divider)
+
+	var y: float = divider_y + ROWS_GAP
+	for row in rows:
+		var kind: String = row[0]
+		var icon := Control.new()
+		icon.size = Vector2(ICON, ICON)
+		icon.position = Vector2(ROW_PAD, y + (ROW_H - ICON) * 0.5)
+		icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		icon.draw.connect(_draw_row_icon.bind(icon, kind))
+		holder.add_child(icon)
+
+		var lbl := Label.new()
+		lbl.text = row[1]
+		lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		var bold: bool = kind == "deck"
+		lbl.add_theme_font_override("font",
+			UITheme.font_at(UITheme.FONT_UI_BOLD if bold else UITheme.FONT_UI_MEDIUM))
+		lbl.add_theme_font_size_override("font_size", ROW_FONT)
+		var ink: Color = UITheme.col("field_fg")
+		if kind == "off":
+			ink.a = OFF_ALPHA
+		lbl.add_theme_color_override("font_color", ink)
+		var text_x: float = ROW_PAD + ICON + ICON_GAP
+		lbl.position = Vector2(text_x, y)
+		lbl.size = Vector2(col_size.x - text_x - ROW_PAD, ROW_H)
+		lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		holder.add_child(lbl)
+		y += ROW_H
+
+	var catcher := Button.new()
+	catcher.flat = true
+	catcher.focus_mode = Control.FOCUS_NONE
+	catcher.action_mode = BaseButton.ACTION_MODE_BUTTON_PRESS
+	for state in ["normal", "hover", "pressed", "focus", "disabled"]:
+		catcher.add_theme_stylebox_override(state, StyleBoxEmpty.new())
+	catcher.position = Vector2.ZERO
+	catcher.size = col_size
+	catcher.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+	catcher.gui_input.connect(func(event: InputEvent) -> void:
+		if event is InputEventMouseButton and event.pressed \
+				and event.button_index == MOUSE_BUTTON_LEFT:
+			on_click.call(event.double_click))
+	holder.add_child(catcher)
+	return holder
+
+
+## Drawn, not typed: a tick or cross glyph is not guaranteed in the UI fonts.
+func _draw_row_icon(c: Control, kind: String) -> void:
+	var s: float = ICON
+	var w: float = 4.0
+	match kind:
+		"on":
+			c.draw_polyline(PackedVector2Array([Vector2(s * 0.14, s * 0.52),
+				Vector2(s * 0.40, s * 0.78), Vector2(s * 0.88, s * 0.22)]),
+				UITheme.col("good"), w, true)
+		"off":
+			var red: Color = UITheme.col("danger")
+			c.draw_line(Vector2(s * 0.2, s * 0.2), Vector2(s * 0.8, s * 0.8), red, w, true)
+			c.draw_line(Vector2(s * 0.8, s * 0.2), Vector2(s * 0.2, s * 0.8), red, w, true)
+		"warn":
+			var amber: Color = UITheme.col("warn")
+			c.draw_line(Vector2(s * 0.5, s * 0.1), Vector2(s * 0.5, s * 0.6), amber, w, true)
+			c.draw_circle(Vector2(s * 0.5, s * 0.84), w * 0.7, amber)
+		"deck":
+			c.draw_rect(Rect2(s * 0.22, s * 0.06, s * 0.56, s * 0.88),
+				UITheme.col("field_fg"), false, 3.0, true)
+
+
+## A flat layer for the selection ring, last on the page so it draws over the
+## columns (rings are never parented to what they ring — see add_selection_ring).
+func _ring_layer_on(page: Control) -> Control:
+	var layer := Control.new()
+	layer.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	layer.position = Vector2.ZERO
+	layer.size = page.size
+	page.add_child(layer)
+	return layer
+
+
+func _ring(layer: Control, old_ring: Control, target: Control) -> Control:
+	if old_ring != null and is_instance_valid(old_ring):
+		layer.remove_child(old_ring)
+		old_ring.queue_free()
+	return UIKit.add_selection_ring(layer, target, float(UITheme.mi("panel_radius")))
+
+
+func _select_familiarity(index: int, with_sound: bool = true) -> void:
+	_familiarity = index
+	if with_sound:
+		SoundManagerScript.play_sfx(SoundManagerScript.SFX_select_button)
+	for i in _fam_holders.size():
+		_fam_holders[i].modulate = Color.WHITE if i == index else Color(DIM, DIM, DIM)
+	_fam_ring = _ring(_fam_ring_layer, _fam_ring, _fam_holders[index])
+	if _page == 1:
+		_refresh_footer()
+
+
+func _select_mode(hard: bool, with_sound: bool = true) -> void:
+	_hard_mode = hard
+	if with_sound:
+		SoundManagerScript.play_sfx(SoundManagerScript.SFX_select_button)
+	var index: int = 1 if hard else 0
+	for i in _mode_holders.size():
+		_mode_holders[i].modulate = Color.WHITE if i == index else Color(DIM, DIM, DIM)
+	_mode_ring = _ring(_mode_ring_layer, _mode_ring, _mode_holders[index])
+
+
+func _on_familiarity_clicked(double: bool, index: int) -> void:
+	if _switching or _leaving:
+		return
+	if index != _familiarity:
+		_select_familiarity(index)
+	if double:
+		_on_next_pressed()
+
+
+func _on_mode_clicked(double: bool, hard: bool) -> void:
+	if _switching or _leaving:
+		return
+	if hard != _hard_mode:
+		_select_mode(hard)
+	if double:
+		_on_next_pressed()
+
+
+## Only the two harder answers are offered Hard Mode.
+func _offers_hard_mode() -> bool:
+	return _familiarity >= 2
+
+
+# ─── Paging ──────────────────────────────────────────────────────────────────
+
+func _on_next_pressed() -> void:
+	if _switching or _leaving:
+		return
+	match _page:
+		0:
+			SoundManagerScript.play_sfx(SoundManagerScript.SFX_plus_select)
+			_show_page(1)
+		1:
+			if _offers_hard_mode():
+				SoundManagerScript.play_sfx(SoundManagerScript.SFX_plus_select)
+				_show_page(2)
+			else:
+				_start_game()
+		2:
+			_start_game()
+
+
+func _on_back_pressed() -> void:
+	if _switching or _leaving or _page == 0:
+		return
+	SoundManagerScript.play_sfx(SoundManagerScript.SFX_minus_select)
+	_show_page(_page - 1)
+
+
+func _show_page(index: int) -> void:
+	_switching = true
+	# The name and birthday boxes would otherwise keep the keyboard while hidden.
+	get_viewport().gui_release_focus()
+
+	var from: Control = _pages[_page]
+	var out := create_tween()
+	out.tween_property(from, "modulate:a", 0.0, PAGE_FADE)
+	await out.finished
+	from.visible = false
+
+	_page = index
+	_set_header_chip(CHIP_TEXT[index])
+	if index == 2:
+		_refresh_mode_context()
+	_refresh_footer()
+
+	var to: Control = _pages[index]
+	to.modulate.a = 0.0
+	to.visible = true
+	var fade_in := create_tween()
+	fade_in.tween_property(to, "modulate:a", 1.0, PAGE_FADE)
+	await fade_in.finished
+	_switching = false
+
+
+## Back only after the first page. The forward button says "Start New Game" on
+## whichever page is the last one for the answers given.
+func _refresh_footer() -> void:
+	_back_btn.visible = _page > 0
+	if _page == 0:
+		_save_btn.text = "Next"
+		_refresh_save_btn()
+		return
+	var last: bool = _page == 2 or not _offers_hard_mode()
+	_save_btn.text = "Start New Game" if last else "Next"
+	_save_btn.disabled = false
+	UIKit.style_button(_save_btn, "primary")
+
+
+func _input(event: InputEvent) -> void:
+	# The first page belongs to its text boxes and sprite grid.
+	if _page == 0 or _switching or _leaving:
+		return
+	if UIInput.is_cancel(event):
+		get_viewport().set_input_as_handled()
+		_on_back_pressed()
+	elif UIInput.is_accept(event):
+		get_viewport().set_input_as_handled()
+		_on_next_pressed()
+	elif event.is_action_pressed("ui_left") or event.is_action_pressed("ui_right"):
+		get_viewport().set_input_as_handled()
+		var step: int = -1 if event.is_action_pressed("ui_left") else 1
+		if _page == 1:
+			_select_familiarity(wrapi(_familiarity + step, 0, FAMILIARITY_ANSWERS.size()))
+		else:
+			_select_mode(not _hard_mode)

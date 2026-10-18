@@ -45,6 +45,8 @@ float rr(vec2 p, vec2 b, float r) {
 }
 
 void fragment() {
+	// Incoming COLOR carries modulate; multiplied back in so a parent fade fades the ring.
+	vec4 tint = COLOR;
 	vec2 p  = UV * rect_size;
 	vec2 hs = rect_size * 0.5;
 
@@ -74,5 +76,5 @@ void fragment() {
 		col = mix(grad_c.rgb, grad_a.rgb, (t - 0.6666667) * 3.0);
 	}
 
-	COLOR = vec4(col, ink);
+	COLOR = vec4(col, ink) * tint;
 }

@@ -1150,6 +1150,75 @@ func save_progress():
 	file.store_string(JSON.stringify(progress, "\t"))
 	file.close()
 
+# ============================================================
+# NEW-GAME ANSWERS — familiarity + Hard Mode
+# ============================================================
+# Asked once, on the new-game setup screen, and locked for the life of the save.
+# Each familiarity answer picks an INTRO PROFILE: everything about how this save's
+# story opens. Only the start day/time is acted on so far; the rest are the hooks
+# the different intros will read as they are written:
+#   call_id         the opening phone call (Phone_Calls.json id) during the taxi drive
+#   starter_deck    the deck granted to the player; "" = the seeded "Your First Deck"
+#   intro_cutscene  how Ellie/Olly meet the player; "ellie" = EllieIntroCutscene as now
+#   start_date / start_time   when the save begins. HIDDEN from the player on purpose.
+# Hard Mode always starts on Day 2 Morning, whatever the familiarity said.
+
+const FAMILIARITY_NEW    := "new"      # I'm completely new
+const FAMILIARITY_RULES  := "rules"    # I know the rules a bit
+const FAMILIARITY_PLAYED := "played"   # I've played a Pokémon TCG game before
+const FAMILIARITY_EXPERT := "expert"   # I'm an experienced player
+
+const INTRO_PROFILES := {
+	FAMILIARITY_NEW: {
+		"call_id": "ellie_intro", "starter_deck": "", "intro_cutscene": "ellie",
+		"start_date": 1, "start_time": "Morning",
+	},
+	FAMILIARITY_RULES: {
+		"call_id": "ellie_intro", "starter_deck": "", "intro_cutscene": "ellie",
+		"start_date": 1, "start_time": "Morning",
+	},
+	FAMILIARITY_PLAYED: {
+		"call_id": "ellie_intro", "starter_deck": "", "intro_cutscene": "ellie",
+		"start_date": 1, "start_time": "Afternoon",
+	},
+	FAMILIARITY_EXPERT: {
+		"call_id": "ellie_intro", "starter_deck": "", "intro_cutscene": "ellie",
+		"start_date": 2, "start_time": "Morning",
+	},
+}
+const HARD_MODE_START_DATE := 2
+const HARD_MODE_START_TIME := "Morning"
+
+
+func get_familiarity() -> String:
+	return progress.get("familiarity", FAMILIARITY_NEW)
+
+
+func is_hard_mode() -> bool:
+	return progress.get("hard_mode", false)
+
+
+## This save's intro profile (see INTRO_PROFILES), with Hard Mode's start applied.
+func get_intro_profile() -> Dictionary:
+	var profile: Dictionary = (INTRO_PROFILES.get(get_familiarity(),
+		INTRO_PROFILES[FAMILIARITY_NEW]) as Dictionary).duplicate()
+	if is_hard_mode():
+		profile["start_date"] = HARD_MODE_START_DATE
+		profile["start_time"] = HARD_MODE_START_TIME
+	return profile
+
+
+## Records the new-game answers and sets the clock to the profile's start. Called
+## by the setup screen just before mark_first_launch_complete(), which saves.
+func apply_new_game_answers(familiarity: String, hard_mode: bool) -> void:
+	progress["familiarity"] = familiarity
+	# Only the two harder answers are ever offered Hard Mode.
+	progress["hard_mode"] = hard_mode and familiarity in [FAMILIARITY_PLAYED, FAMILIARITY_EXPERT]
+	var profile := get_intro_profile()
+	progress["date"] = profile["start_date"]
+	progress["time"] = profile["start_time"]
+
+
 func mark_first_launch_complete() -> void:
 	progress["first_launch_complete"] = true
 	# Safety reset: zero every owned card and lock all pack sets so a game

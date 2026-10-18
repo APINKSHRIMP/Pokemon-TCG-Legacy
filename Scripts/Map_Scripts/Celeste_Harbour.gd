@@ -19,7 +19,7 @@ const TAXI_END_POS   := Vector2(-742.0, 1828.0)
 # call is roughly 17.5s at the default text speed and the drive is 20s, so there is room either way -
 # and if a slow text speed overruns it, _run_taxi_intro() waits for it rather than talking over the
 # player's first steps. See Phone_Call.gd for the call itself and Phone_Calls.json for the script.
-const INTRO_CALL_ID    := "ellie_intro"
+const INTRO_CALL_ID    := "ellie_intro"   # fallback; the save's intro profile names the real one
 const INTRO_CALL_DELAY := 1.2
 
 # TWEAKABLE - the drive itself.
@@ -234,7 +234,9 @@ func _start_intro_phone_call() -> void:
 	# The player can quit out of the cutscene; do not build a call into a scene that has gone.
 	if not is_inside_tree():
 		return
-	_intro_call = PhoneCall.play_from_data(self, INTRO_CALL_ID)
+	# Which call rings depends on the new-game familiarity answer (GameState.INTRO_PROFILES).
+	_intro_call = PhoneCall.play_from_data(self,
+		GameState.get_intro_profile().get("call_id", INTRO_CALL_ID))
 
 
 func _drive_taxi_off() -> void:
