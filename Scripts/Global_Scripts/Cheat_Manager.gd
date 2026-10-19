@@ -1,10 +1,9 @@
 class_name CheatManager
 extends RefCounted
 
-# Card lists mirrored from Player_House_Upstairs.gd and Shopkeeper_Script.gd.
-# Update these if the source constants ever change.
-# ISSUE #130: mirrors Player_House_Upstairs.STARTER_BOX_CARDS exactly -- see the note there.
-const _STARTER_BOX_CARDS := "base1-27, base1-27, base1-47, base1-47, base1-47, base1-47, base1-48, base1-48, base1-48, base1-48, base1-52, base1-52, base1-52, base1-52, base1-59, base1-59, base1-61, base1-61, base1-61, base1-61, base1-65, base1-65, base1-65, base1-65, base1-67, base1-67, base1-90, base1-90, base1-91, base1-91, base1-94, base1-94"
+# Card list mirrored from Shopkeeper_Script.gd. CHT.Add_Starter_Set reads the Basic
+# Starter Deck straight from GameState (Player_Data/Starter_Decks), so it cannot drift.
+# Update this if the source constant ever changes.
 const _SHOP_STARTER_CARDS  := "base1-49, base1-49, base1-48, base1-48, base1-96, base1-95, base1-95, base1-93, base1-93, base1-91, base1-83, base1-83, base1-77, base1-65, base1-65, base1-63, base1-63, base1-59, base1-59, base1-58, base1-58, base1-69, base1-69, base1-54, base1-53, base1-53, base1-46, base1-46, base1-45, base1-45, base1-44, base1-44, base1-43, base1-43, base1-42, base1-36, base1-33, base1-34, base1-32, base1-30, base1-28, base1-28, base1-24, base1-19"
 
 const _CHEAT_LABELS := {
@@ -77,7 +76,7 @@ static func _apply(code: String) -> void:
 			var current := GameState.get_cash()
 			GameState.add_cash(99999 - current)
 		"CHT.Add_Starter_Set":
-			GameState.give_cards(_STARTER_BOX_CARDS)
+			GameState.give_cards(GameState.starter_deck_card_csv(GameState.STARTER_DECK_BASIC))
 		"CHT.Add_Shop_Set":
 			GameState.give_cards(_SHOP_STARTER_CARDS)
 		"CHT.Remove_All_Cards":

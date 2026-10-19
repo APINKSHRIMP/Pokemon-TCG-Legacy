@@ -912,7 +912,9 @@ func _ensure_user_data_exists():
 	# Copy Player_Owned_Cards folder
 	_copy_seed_folder(OWNED_CARDS_SEED_FOLDER, OWNED_CARDS_FOLDER)
 
-	# Copy Player_Decks folder
+	# Player_Decks starts EMPTY (the starter decks are granted, see STARTER DECKS), but
+	# the folder must exist for the deck builder to save into.
+	DirAccess.make_dir_recursive_absolute(PLAYER_DECKS_FOLDER)
 	_copy_seed_folder(PLAYER_DECKS_SEED_FOLDER, PLAYER_DECKS_FOLDER)
 
 	# Copy Nature_guide.json (the Field Guide record)
@@ -1158,7 +1160,7 @@ func save_progress():
 # story opens. Only the start day/time is acted on so far; the rest are the hooks
 # the different intros will read as they are written:
 #   call_id         the opening phone call (Phone_Calls.json id) during the taxi drive
-#   starter_deck    the deck granted to the player; "" = the seeded "Your First Deck"
+#   starter_deck    the deck granted to the player; "" = the starter box rules (see STARTER DECKS)
 #   intro_cutscene  how Ellie/Olly meet the player; "ellie" = EllieIntroCutscene as now
 #   start_date / start_time   when the save begins. HIDDEN from the player on purpose.
 # Hard Mode always starts on Day 2 Morning, whatever the familiarity said.
@@ -1217,6 +1219,102 @@ func apply_new_game_answers(familiarity: String, hard_mode: bool) -> void:
 	var profile := get_intro_profile()
 	progress["date"] = profile["start_date"]
 	progress["time"] = profile["start_time"]
+
+
+# ============================================================
+# STARTER DECKS — what the starting box in the bedroom gives
+# ============================================================
+# The seven starter decks ship in res://Player_Data/Starter_Decks/ (NOT the seeded
+# Player_Decks folder, which is empty now: a new save owns no deck until one is
+# granted). Which one the box gives depends on the new-game answers:
+#   new                 -> "Basic Starter Deck"
+#   rules               -> pick a pair, "<Pair> Starter Deck"
+#   played / expert     -> pick a pair, "<Pair> Deck"
+#   Hard Mode           -> no deck at all; STARTER_HARD_MODE_PACKS instead, and the
+#                          player cannot leave the house until a deck is saved.
+# Granting a deck gives its cards, copies the deck file into the save and makes it
+# the active deck.
+
+const STARTER_DECKS_FOLDER := "res://Player_Data/Starter_Decks/"
+const STARTER_DECK_BASIC   := "Basic Starter Deck"
+# Button label -> the deck's name stem. " Starter Deck" or " Deck" is appended.
+const STARTER_DECK_CHOICES := {
+	"Fire/Lightning": "Fire Shock",
+	"Water/Fighting": "Water Fight",
+	"Grass/Psychic":  "Grass Psy",
+}
+# Pack art ids, one per pack: 4 Base Set, 2 Jungle, 2 Fossil.
+const STARTER_HARD_MODE_PACKS := [
+	"base1_a", "base1_b", "base1_c", "base1_a",
+	"base2_a", "base2_b",
+	"base3_a", "base3_b",
+]
+
+
+## "starter" (pick, + " Starter Deck"), "advanced" (pick, + " Deck"), "basic" or
+## "packs" — what the bedroom box hands this save.
+func starter_box_kind() -> String:
+	if is_hard_mode():
+		return "packs"
+	match get_familiarity():
+		FAMILIARITY_RULES:
+			return "starter"
+		FAMILIARITY_PLAYED, FAMILIARITY_EXPERT:
+			return "advanced"
+	return "basic"
+
+
+## The deck's cards as a give_cards() string, basic Energy left out: no owned-cards
+## file tracks basic Energy (it is unlimited, from the deck builder's energy section).
+func starter_deck_card_csv(deck_name: String) -> String:
+	var deck = JSON.parse_string(FileAccess.get_file_as_string(STARTER_DECKS_FOLDER + deck_name + ".json"))
+	if not deck is Array:
+		push_error("GameState: no starter deck " + deck_name)
+		return ""
+	var basic_energy: Array = []
+	for ids in ENERGY_STYLES.values():
+		basic_energy.append_array(ids)
+	var ids: PackedStringArray = []
+	for entry in deck:
+		var id := String(entry.get("id", ""))
+		if id == "" or id in basic_energy:
+			continue
+		for i in int(entry.get("count", 0)):
+			ids.append(id)
+	return ", ".join(ids)
+
+
+## Gives the deck's cards, saves the deck into this slot and makes it the active one.
+func grant_starter_deck(deck_name: String) -> void:
+	var csv := starter_deck_card_csv(deck_name)
+	if csv == "":
+		return
+	give_cards(csv)
+
+	DirAccess.make_dir_recursive_absolute(PLAYER_DECKS_FOLDER)
+	var text := FileAccess.get_file_as_string(STARTER_DECKS_FOLDER + deck_name + ".json")
+	var out := FileAccess.open(PLAYER_DECKS_FOLDER + deck_name + ".json", FileAccess.WRITE)
+	if out != null:
+		out.store_string(text)
+		out.close()
+
+	var current := _read_current_data()
+	current["deck"] = deck_name
+	var write_file := FileAccess.open(PLAYER_CURRENT_DATA_PATH, FileAccess.WRITE)
+	if write_file != null:
+		write_file.store_string(JSON.stringify(current, "\t"))
+		write_file.close()
+
+
+## True once this slot has at least one saved deck. Hard Mode's way out of the house.
+func has_saved_deck() -> bool:
+	var dir := DirAccess.open(PLAYER_DECKS_FOLDER)
+	if dir == null:
+		return false
+	for f in dir.get_files():
+		if f.ends_with(".json"):
+			return true
+	return false
 
 
 func mark_first_launch_complete() -> void:

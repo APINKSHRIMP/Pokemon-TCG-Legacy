@@ -54,4 +54,9 @@ func _on_before_door_transition(body: Node2D, target: String) -> bool:
 			and not GameState.progress.get("player_collected_starter_box", false):
 		MapManager._show_message_with_ok("I should check upstairs before heading out.")
 		return false
+	# Hard Mode hands out packs, not a deck, so a deck has to be built and saved first.
+	if not target.contains("Upstairs") and GameState.is_hard_mode() \
+			and not GameState.has_saved_deck():
+		MapManager._show_message_with_ok("You need to build a deck before you can leave the house")
+		return false
 	return true

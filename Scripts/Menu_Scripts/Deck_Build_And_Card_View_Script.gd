@@ -9,6 +9,9 @@ var OWNED_CARDS_FOLDER: String:
 	get: return GameState.OWNED_CARDS_FOLDER
 var PLAYER_DECKS_FOLDER: String:
 	get: return GameState.PLAYER_DECKS_FOLDER
+## Debug mode only: where "Save as opponent deck" / "Load opponent deck" read and write.
+## Written into res://, so this only sticks when running from the editor.
+const OPPONENT_DECKS_FOLDER := "res://NPC_and_Opponent_Data/Opponent_Deck_Data/"
 
 # ── Chrome geometry (UI overhaul) ────────────────────────────────────────────
 # TWEAKABLE. The sidebar keeps its authored x band (1690..1916); only the grid and
@@ -194,6 +197,17 @@ var deck_viewer_active  : bool    = false
 # The deck viewer overlay Control (always rebuilt on open; freed on close)
 var deck_viewer_overlay : Control = null
 
+# Editing inside the deck viewer: left click adds a copy, right click removes one,
+# on the card images AND on the Contents rows. The card list is fixed when the viewer
+# opens, so a card taken down to 0 keeps its row ("x0") and can be clicked back in.
+var _viewer_grid         : GridContainer = null
+var _viewer_ids          : Array = []          # unique card ids, viewer sort order
+var _viewer_count_labels : Dictionary = {}     # card_id -> the row's "xN" Label
+var _viewer_count_chip   : Control = null      # header "N cards" chip
+var _viewer_building     : bool = false        # grid still filling in; clicks ignored
+var _viewer_changed      : bool = false        # deck edited here; main grid redraws on close
+var _viewer_owned_cache  : Dictionary = {}     # set_id -> {card_id: owned}
+
 # Holds references to the 6 energy icon TextureRects from the scene tree,
 # keyed by type name: "grass", "fire", "water", "lightning", "psychic", "fighting"
 var energy_icons   : Dictionary = {}
@@ -298,6 +312,10 @@ const SEARCH_PREWARM_NOW := 60
 @onready var set_label        : Label         = $set_name_label
 @onready var deck_name_edit   : LineEdit      = $deck_name
 @onready var deck_count_label : Label         = $deck_count_label
+
+# Debug mode only (built in code, null otherwise): save/load straight to Opponent_Deck_Data.
+var _save_opp_btn : Button = null
+var _load_opp_btn : Button = null
 
 # Energy icon TextureRects in the scene — these show the current style's images
 @onready var grass_energy_icon     : TextureRect = $"ENERGY SECTION"/"ENERGY ICONS"/grass_energy_icon
@@ -494,6 +512,11 @@ func _build_chrome() -> void:
 	# -- Footer: Cancel then Save --
 	UIKit.adopt_button(cancel_btn, bars["footer"].centre, "negative")   # ISSUE #379: Cancel is the negative colour
 	UIKit.adopt_button(save_btn, bars["footer"].centre, "primary")
+	if DebugMode.is_enabled():
+		_save_opp_btn = Button.new()
+		_save_opp_btn.text = "Save as opponent deck"
+		UIKit.adopt_button(_save_opp_btn, bars["footer"].centre, "neutral")
+		_save_opp_btn.pressed.connect(_on_save_as_opponent_pressed)
 
 	# -- Sidebar --
 	_build_energy_panel()
@@ -501,6 +524,12 @@ func _build_chrome() -> void:
 
 	# The three deck tools, bottom-aligned under the composition box.
 	var tools: Array = [view_deck_btn, load_btn, empty_btn]
+	if DebugMode.is_enabled():
+		_load_opp_btn = Button.new()
+		_load_opp_btn.text = "Load opponent deck"
+		add_child(_load_opp_btn)
+		_load_opp_btn.pressed.connect(_on_load_deck_pressed.bind(true))
+		tools.insert(1, _load_opp_btn)
 	for i in tools.size():
 		var b: Button = tools[i]
 		b.theme = null
@@ -803,14 +832,14 @@ func _find_starting_set(set_id: String) -> void:
 
 ## Loads a deck file from the playerdecks folder.
 ## Populates deck_cards dictionary and total_deck_count.
-func _load_deck(deck_name: String) -> void:
+func _load_deck(deck_name: String, folder: String = PLAYER_DECKS_FOLDER) -> void:
 	deck_cards.clear()
 	total_deck_count = 0
 
 	if deck_name == "":
 		return
 
-	var path := PLAYER_DECKS_FOLDER + deck_name + ".json"
+	var path := folder + deck_name + ".json"
 	var file := FileAccess.open(path, FileAccess.READ)
 	if file == null:
 		push_error("DeckBuild: cannot open deck " + path)
@@ -1574,9 +1603,9 @@ func _build_viewer_chrome() -> void:
 	if _header == null or _footer == null:
 		return
 
-	var count_chip := UIKit.make_chip("%d cards" % total_deck_count, "on_chrome")
-	_header.left.add_child(count_chip)
-	_viewer_chrome.append(count_chip)
+	_viewer_count_chip = UIKit.make_chip("%d cards" % total_deck_count, "on_chrome")
+	_header.left.add_child(_viewer_count_chip)
+	_viewer_chrome.append(_viewer_count_chip)
 
 	var name_label := Label.new()
 	UIKit.set_label(name_label, "title",
@@ -1630,13 +1659,16 @@ func _build_viewer_contents(sorted_ids: Array) -> void:
 
 	for card_id in sorted_ids:
 		var n: int = int(deck_cards.get(card_id, 0))
-		if n <= 0:
-			continue
 		var meta = _get_card_meta(card_id)
 		var card_name: String = String(meta.get("name", card_id)) if meta != null else card_id
 
 		var row := UIKit.make_panel()
 		row.custom_minimum_size = Vector2(VIEWER_LIST_W - VIEWER_LIST_PAD * 2.0, VIEWER_ROW_H)
+		# Left click adds a copy, right click removes one (the containers inside PASS
+		# their clicks up to here). The hold-Shift preview reads "card_id" too.
+		row.mouse_filter = Control.MOUSE_FILTER_STOP
+		row.set_meta("card_id", card_id)
+		row.gui_input.connect(_on_viewer_card_gui_input.bind(String(card_id)))
 		col.add_child(row)
 
 		# ISSUE #190: the row text sat hard against the panel border on both
@@ -1660,9 +1692,159 @@ func _build_viewer_contents(sorted_ids: Array) -> void:
 		inner.add_child(name_lbl)
 
 		var count_lbl := Label.new()
-		UIKit.set_label(count_lbl, "hp", "x%d" % n, "accent")
 		count_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 		inner.add_child(count_lbl)
+		_viewer_count_labels[card_id] = count_lbl
+		_set_viewer_row_count(card_id, n)
+
+
+## Writes "xN" on a Contents row; a card taken down to 0 reads "x0" in the muted colour.
+func _set_viewer_row_count(card_id: String, n: int) -> void:
+	var lbl: Label = _viewer_count_labels.get(card_id, null)
+	if lbl == null or not is_instance_valid(lbl):
+		return
+	UIKit.set_label(lbl, "hp", "x%d" % n, "accent" if n > 0 else "field_mute")
+
+
+## Deck viewer clicks, on a card image or a Contents row.
+func _on_viewer_card_gui_input(event: InputEvent, card_id: String) -> void:
+	if not event is InputEventMouseButton or not event.pressed:
+		return
+	if event.button_index == MOUSE_BUTTON_LEFT:
+		_viewer_change_count(card_id, 1)
+	elif event.button_index == MOUSE_BUTTON_RIGHT:
+		_viewer_change_count(card_id, -1)
+
+
+## Adds (delta = 1) or removes (delta = -1) one copy from inside the deck viewer, under
+## the same rules as the main grid: _get_max_for_card() (4 per name group, star pool,
+## no more than owned; unlimited in debug mode). The six basic energies of the energy
+## styles are uncapped, exactly as the sidebar energy icons treat them.
+func _viewer_change_count(card_id: String, delta: int) -> void:
+	if _viewer_building or deck_viewer_overlay == null:
+		return
+	var in_deck : int = deck_cards.get(card_id, 0)
+	var group_key := _get_name_group(card_id)
+
+	if delta > 0:
+		if not _is_style_energy(card_id) and in_deck >= _get_max_for_card(card_id, _viewer_owned_count(card_id)):
+			return     # already at limit for this card
+		in_deck += 1
+		total_deck_count += 1
+		deck_cards[card_id] = in_deck
+		deck_name_counts[group_key] = deck_name_counts.get(group_key, 0) + 1
+		_viewer_insert_card_rect(card_id)
+		SoundManagerScript.play_sfx(SoundManagerScript.SFX_plus_select)
+	else:
+		if in_deck <= 0:
+			return     # nothing to remove
+		in_deck -= 1
+		total_deck_count -= 1
+		deck_name_counts[group_key] = maxi(deck_name_counts.get(group_key, 0) - 1, 0)
+		if in_deck == 0:
+			deck_cards.erase(card_id)
+		else:
+			deck_cards[card_id] = in_deck
+		_viewer_remove_card_rect(card_id)
+		SoundManagerScript.play_sfx(SoundManagerScript.SFX_minus_select)
+
+	_viewer_changed = true
+	_set_viewer_row_count(card_id, in_deck)
+	_refresh_viewer_count_chip()
+	_update_deck_count_label()
+	_refresh_save_button()
+	_refresh_energy_icons_from_deck()
+
+
+## True for the basic energy cards of every energy style (no copy cap, no ownership).
+func _is_style_energy(card_id: String) -> bool:
+	for style_name in GameState.ENERGY_STYLES.keys():
+		if card_id in GameState.ENERGY_STYLES[style_name]:
+			return true
+	return false
+
+
+## How many of a card the player owns, read from that set's owned-cards file
+## (cached per set while the viewer is open).
+func _viewer_owned_count(card_id: String) -> int:
+	var set_id : String = card_id.split("-")[0]
+	if not _viewer_owned_cache.has(set_id):
+		var counts := {}
+		for card_data in _load_owned_cards_for_set(set_id):
+			counts[String(card_data.get("card_id", ""))] = int(card_data.get("owned", 0))
+		_viewer_owned_cache[set_id] = counts
+	return int(_viewer_owned_cache[set_id].get(card_id, 0))
+
+
+## Swaps the header's "N cards" chip for a fresh one. remove_child before queue_free,
+## or the old chip sits in the header for a frame beside the new one.
+func _refresh_viewer_count_chip() -> void:
+	if _viewer_count_chip == null or not is_instance_valid(_viewer_count_chip):
+		return
+	var slot := _viewer_count_chip.get_parent()
+	if slot == null:
+		return
+	var idx := _viewer_count_chip.get_index()
+	var chip := UIKit.make_chip("%d cards" % total_deck_count, "on_chrome")
+	_viewer_chrome.erase(_viewer_count_chip)
+	slot.remove_child(_viewer_count_chip)
+	_viewer_count_chip.queue_free()
+	slot.add_child(chip)
+	slot.move_child(chip, idx)
+	_viewer_count_chip = chip
+	_viewer_chrome.append(chip)
+
+
+## One card image in the deck viewer grid.
+func _make_viewer_card_rect(cid: String, card_texture: Texture2D) -> TextureRect:
+	var card_rect := TextureRect.new()
+	if card_texture != null:
+		card_rect.texture = card_texture
+	card_rect.custom_minimum_size       = CARD_SIZE
+	card_rect.size                      = CARD_SIZE
+	card_rect.expand_mode               = TextureRect.EXPAND_IGNORE_SIZE
+	card_rect.stretch_mode              = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	card_rect.size_flags_horizontal     = Control.SIZE_SHRINK_BEGIN
+	card_rect.size_flags_vertical       = Control.SIZE_SHRINK_BEGIN
+	# ISSUE #151 FIX: hold-Shift preview works in here now. _get_hovered_card() finds a card
+	# by walking up from gui_get_hovered_control() looking for "card_id" metadata, so the
+	# rects need both the metadata and a mouse_filter that registers hover — exactly what
+	# the main deck grid's owned cards use (see _add_card_to_grid).
+	card_rect.set_meta("card_id", cid)
+	card_rect.mouse_filter              = Control.MOUSE_FILTER_STOP
+	card_rect.gui_input.connect(_on_viewer_card_gui_input.bind(cid))
+	return card_rect
+
+
+## Adds one image of `card_id` to the viewer grid: after its last copy, or (back from
+## 0) in front of the first card that sorts after it, so the grid keeps the list's order.
+func _viewer_insert_card_rect(card_id: String) -> void:
+	if _viewer_grid == null or not is_instance_valid(_viewer_grid):
+		return
+	var my_order := _viewer_ids.find(card_id)
+	# The grid is in _viewer_ids order, so the first image that sorts later is the slot.
+	var insert_at := _viewer_grid.get_child_count()
+	for i in _viewer_grid.get_child_count():
+		var other: String = String(_viewer_grid.get_child(i).get_meta("card_id", ""))
+		if _viewer_ids.find(other) > my_order:
+			insert_at = i
+			break
+	var tex := _load_card_texture_small_first(_small_card_image_path(card_id))
+	var rect := _make_viewer_card_rect(card_id, tex)
+	_viewer_grid.add_child(rect)
+	_viewer_grid.move_child(rect, insert_at)
+
+
+## Removes the last image of `card_id` from the viewer grid.
+func _viewer_remove_card_rect(card_id: String) -> void:
+	if _viewer_grid == null or not is_instance_valid(_viewer_grid):
+		return
+	for i in range(_viewer_grid.get_child_count() - 1, -1, -1):
+		var child := _viewer_grid.get_child(i)
+		if String(child.get_meta("card_id", "")) == card_id:
+			_viewer_grid.remove_child(child)
+			child.queue_free()
+			return
 
 
 
@@ -1686,6 +1868,10 @@ func _on_view_deck_pressed() -> void:
 
 	deck_viewer_active = true
 	_set_ui_visibility(false)
+	_viewer_count_labels.clear()
+	_viewer_owned_cache.clear()
+	_viewer_changed = false
+	_viewer_building = true
 
 	deck_viewer_overlay = Control.new()
 	deck_viewer_overlay.z_index = 10
@@ -1753,8 +1939,10 @@ func _on_view_deck_pressed() -> void:
 	viewer_grid.add_theme_constant_override("h_separation", CARD_H_SEP)
 	viewer_grid.add_theme_constant_override("v_separation", CARD_V_SEP)
 	margin.add_child(viewer_grid)
+	_viewer_grid = viewer_grid
 
 	var sorted_ids : Array = _sort_deck_for_viewer()
+	_viewer_ids = sorted_ids
 	_build_viewer_contents(sorted_ids)
 
 	await get_tree().process_frame
@@ -1779,25 +1967,13 @@ func _on_view_deck_pressed() -> void:
 		for _i in range(count):
 			if not deck_viewer_active:
 				return
-			var card_rect := TextureRect.new()
-			if card_texture != null:
-				card_rect.texture = card_texture
-			card_rect.custom_minimum_size       = CARD_SIZE
-			card_rect.size                      = CARD_SIZE
-			card_rect.expand_mode               = TextureRect.EXPAND_IGNORE_SIZE
-			card_rect.stretch_mode              = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-			card_rect.size_flags_horizontal     = Control.SIZE_SHRINK_BEGIN
-			card_rect.size_flags_vertical       = Control.SIZE_SHRINK_BEGIN
-			# ISSUE #151 FIX: hold-Shift preview works in here now. _get_hovered_card() finds a card
-			# by walking up from gui_get_hovered_control() looking for "card_id" metadata, so the
-			# rects need both the metadata and a mouse_filter that registers hover — exactly what
-			# the main deck grid's owned cards use (see _add_card_to_grid).
-			card_rect.set_meta("card_id", cid)
-			card_rect.mouse_filter              = Control.MOUSE_FILTER_STOP
-			viewer_grid.add_child(card_rect)
+			viewer_grid.add_child(_make_viewer_card_rect(cid, card_texture))
 			if not is_inside_tree():   # ISSUE #32 FIX: bail if freed mid-load
 				return
 			await SceneCache.yield_if_over_budget()
+
+	# Clicks were ignored while the grid filled in, so the build and an edit can't both add images.
+	_viewer_building = false
 
 
 # ─── Deck viewer card list (ISSUE #152) ──────────────────────────────────────
@@ -1833,7 +2009,14 @@ func _close_deck_viewer() -> void:
 	if deck_viewer_overlay != null:
 		deck_viewer_overlay.queue_free()
 		deck_viewer_overlay = null
+	_viewer_grid = null
+	_viewer_count_chip = null
+	_viewer_count_labels.clear()
 	_set_ui_visibility(true)
+	# Cards added/removed in the viewer: the main grid's "N / owned" labels and glow are stale.
+	if _viewer_changed:
+		_viewer_changed = false
+		_refresh_card_grid()
 
 
 ## Writes the energy_style field to player_data.json without touching
@@ -2956,10 +3139,25 @@ func _on_save_pressed() -> void:
 	_show_deck_message(MSG_SAVED_TEXT, MSG_SAVED_COLOUR)
 
 
+## Debug mode only: writes the deck into Opponent_Deck_Data under the typed name,
+## overwriting any opponent deck of that name. Leaves the player's active deck and
+## dirty-tracking alone, and skips the "no changes" check so a just-loaded
+## opponent deck can be re-saved under a new name.
+func _on_save_as_opponent_pressed() -> void:
+	var blocker := _deck_save_blocker()
+	if blocker != "":
+		_show_deck_message(blocker)
+		return
+	var display_name := deck_name_edit.text.strip_edges()
+	SoundManagerScript.play_sfx(SoundManagerScript.SFX_gamemode_select)
+	_save_deck_file(display_name, OPPONENT_DECKS_FOLDER)
+	_show_deck_message("Saved to opponent decks", MSG_SAVED_COLOUR)
+
+
 ## Writes the current deck_cards dictionary to a JSON file in the
-## playerdecks folder.  Used both by the main "save deck" button and
+## playerdecks folder (or `folder`).  Used both by the main "save deck" button and
 ## by the energy style picker when it swaps energy card IDs.
-func _save_deck_file(file_name: String) -> void:
+func _save_deck_file(file_name: String, folder: String = PLAYER_DECKS_FOLDER) -> void:
 	var deck_array : Array = []
 	for card_id in deck_cards:
 		deck_array.append({
@@ -2970,7 +3168,7 @@ func _save_deck_file(file_name: String) -> void:
 	# Sort by card ID for consistent file output
 	deck_array.sort_custom(func(a, b): return a["id"] < b["id"])
 
-	var deck_path := PLAYER_DECKS_FOLDER + file_name + ".json"
+	var deck_path := folder + file_name + ".json"
 	var deck_file := FileAccess.open(deck_path, FileAccess.WRITE)
 	if deck_file == null:
 		push_error("DeckBuild: cannot write " + deck_path)
@@ -3296,6 +3494,10 @@ func _set_ui_visibility(visible_flag: bool) -> void:
 		view_deck_btn,
 		search_btn,
 	]
+	if _save_opp_btn != null:
+		nodes_to_toggle.append(_save_opp_btn)
+	if _load_opp_btn != null:
+		nodes_to_toggle.append(_load_opp_btn)
 
 	for energy_type in ENERGY_TYPES:
 		nodes_to_toggle.append(energy_icons[energy_type])
@@ -3800,16 +4002,21 @@ func _delete_deck(deck_name: String) -> void:
 
 ## Opens a popup showing all saved decks in the playerdecks folder.
 ## The player picks one from the list and clicks Load, or clicks Cancel.
-func _on_load_deck_pressed() -> void:
+## `from_opponents` (debug "Load opponent deck" button) lists Opponent_Deck_Data
+## instead, with no rename/delete buttons, and does not make the loaded deck the
+## player's active deck.
+func _on_load_deck_pressed(from_opponents: bool = false) -> void:
 	# Prevent opening multiple popups
 	if load_popup != null:
 		return
 
+	var folder := OPPONENT_DECKS_FOLDER if from_opponents else PLAYER_DECKS_FOLDER
+
 	# Read all .json files from the decks folder
 	var deck_files : Array = []
-	var dir := DirAccess.open(PLAYER_DECKS_FOLDER)
+	var dir := DirAccess.open(folder)
 	if dir == null:
-		push_error("DeckBuild: cannot open " + PLAYER_DECKS_FOLDER)
+		push_error("DeckBuild: cannot open " + folder)
 		return
 	dir.list_dir_begin()
 	var fname := dir.get_next()
@@ -3868,7 +4075,7 @@ func _on_load_deck_pressed() -> void:
 
 	# Title
 	var title_label := Label.new()
-	title_label.text = "Load a Deck"
+	title_label.text = "Load an Opponent Deck" if from_opponents else "Load a Deck"
 	title_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	title_label.add_theme_font_size_override("font_size", LOAD_TITLE_FONT)
 	vbox.add_child(title_label)
@@ -3920,8 +4127,10 @@ func _on_load_deck_pressed() -> void:
 				selection["deck_name"] = deck_name
 		)
 		row.add_child(btn)
-		row.add_child(_make_rename_deck_button(deck_name))
-		row.add_child(_make_delete_deck_button(deck_name))
+		# Rename/delete act on PLAYER_DECKS_FOLDER only.
+		if not from_opponents:
+			row.add_child(_make_rename_deck_button(deck_name))
+			row.add_child(_make_delete_deck_button(deck_name))
 
 	# Bottom row: Load + Cancel buttons
 	var btn_row := HBoxContainer.new()
@@ -3942,7 +4151,7 @@ func _on_load_deck_pressed() -> void:
 				# Load the chosen deck
 				current_deck_name = chosen_name
 				deck_name_edit.text = chosen_name.replace("_", " ")
-				_load_deck(chosen_name)
+				_load_deck(chosen_name, folder)
 				_update_deck_count_label()
 
 				# Detect which energy style this deck uses by checking
@@ -3959,8 +4168,10 @@ func _on_load_deck_pressed() -> void:
 				_refresh_card_grid()
 
 				# Treat the loaded deck as already saved and active —
-				# write it as the player's active deck in player_data.json
-				_save_player_data(chosen_name)
+				# write it as the player's active deck in player_data.json.
+				# An opponent deck has no player file, so it never becomes active.
+				if not from_opponents:
+					_save_player_data(chosen_name)
 
 				# Snapshot for dirty-tracking so save button stays disabled
 				# until the player actually makes a change

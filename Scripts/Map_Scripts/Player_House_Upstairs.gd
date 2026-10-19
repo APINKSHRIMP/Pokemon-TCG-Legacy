@@ -2,16 +2,18 @@ extends BaseMapScene
 
 const SCENE_PATH = "res://Scenes/Map_Scenes/Player_House_Upstairs.tscn"
 
-# ISSUE #130 FIX: the box gift and Player_Data/Player_Decks/"Your First Deck".json had drifted --
-# the deck ran 4 Doduo and 2 Poliwag the player was never given, and 2 Bill it did not contain,
-# while the gift handed over 4 Voltorb against the deck's 2. Both are now the SAME 60-card list:
-#   2 Farfetch'd, 4 Diglett, 4 Doduo, 4 Machop, 2 Poliwag, 4 Rattata, 4 Staryu, 2 Voltorb,
-#   2 Potion, 2 Super Potion, 2 Bill, 16 Fighting Energy, 12 Water Energy   (all Base Set)
-# The 28 basic Energy are deliberately NOT in this string: no set's *_player_owned_cards.json
-# tracks basic Energy (it is unlimited and comes from the deck builder's energy section), so
-# gifting them would append entries no other set has and put Energy cards in the base1 grid.
-# CheatManager._STARTER_BOX_CARDS mirrors this constant -- change both together.
-const STARTER_BOX_CARDS = "base1-27, base1-27, base1-47, base1-47, base1-47, base1-47, base1-48, base1-48, base1-48, base1-48, base1-52, base1-52, base1-52, base1-52, base1-59, base1-59, base1-61, base1-61, base1-61, base1-61, base1-65, base1-65, base1-65, base1-65, base1-67, base1-67, base1-90, base1-90, base1-91, base1-91, base1-94, base1-94"
+# The starting box gives whatever the new-game answers say (GameState.starter_box_kind()):
+# the Basic Starter Deck, a pick of three pair decks, or -- in Hard Mode -- booster packs and
+# no deck. The deck files and the rules live in GameState's STARTER DECKS section.
+# TEMPORARY HOME: the decks will later be handed over by a character, not found in this box.
+
+# ── The deck pick (three pair decks) — TWEAKABLE ─────────────────────────────
+const DECK_PICK_TITLE   := "Which deck will you take?"
+const DECK_PICK_SIZE    := Vector2(520, 400)
+const DECK_PICK_BTN_W   := 360.0
+const DECK_PICK_BTN_GAP := 14
+const DECK_PICK_DIM     := 0.78
+const HARD_MODE_PACKS_TEXT := "No deck in here... just a pile of booster packs!"
 
 # ── The note on top of the starter box ───────────────────────────────────────
 # The letter used to be a wall of dialogue text; it is now the hand-written note ITSELF, flown up
@@ -252,6 +254,10 @@ func _input(event: InputEvent) -> void:
 		# While the note is on screen it owns every key and button, including the ones that would
 		# otherwise open the menu or walk the player about.
 		return
+	# The deck pick likewise: its buttons take the keys and clicks through GUI focus, and
+	# nothing may reach the map (Escape would open the pause menu over it).
+	if _pick_root != null and is_instance_valid(_pick_root):
+		return
 	super._input(event)
 
 
@@ -345,7 +351,98 @@ func _on_box_step3() -> void:
 	if "base1" not in GameState.progress["packs_unlocked"]:
 		GameState.progress["packs_unlocked"].append("base1")
 	GameState.save_progress()
-	GameState.give_cards(STARTER_BOX_CARDS)
+
+	match GameState.starter_box_kind():
+		"packs":
+			# Hard Mode: no deck. The packs open on the OK; the player then has to build
+			# and save a deck before the front door lets them out (Player_House_Downstairs).
+			MapManager.queue_pack_gift(GameState.STARTER_HARD_MODE_PACKS)
+			MapManager._show_message_with_ok(HARD_MODE_PACKS_TEXT)
+		"starter":
+			_show_deck_pick(" Starter Deck")
+		"advanced":
+			_show_deck_pick(" Deck")
+		_:
+			_grant_deck(GameState.STARTER_DECK_BASIC)
+
+
+func _grant_deck(deck_name: String) -> void:
+	GameState.grant_starter_deck(deck_name)
 	# ISSUE #28 FIX: large centred kenney-font message, matching the match's big messagebox style.
 	SoundManagerScript.play_sfx(SoundManagerScript.SFX_item_acquired)
-	MapManager._show_large_message_with_ok("Pokemon Starter Deck Acquired!")
+	MapManager._show_large_message_with_ok(deck_name + " Acquired!")
+
+
+# ============================================================
+# THE DECK PICK
+# ============================================================
+# Three buttons, one per pair deck. No way to back out -- the box is already open and
+# a deck has to come out of it. Built on the map's UI layer the way the note is, and
+# the same modal look as the pause menu's quit dialog.
+
+var _pick_root: Control = null
+
+
+func _show_deck_pick(suffix: String) -> void:
+	if _player != null:
+		_player.can_move = false
+
+	_pick_root = Control.new()
+	_pick_root.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_pick_root.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_ui_layer.add_child(_pick_root)
+
+	var dim := ColorRect.new()
+	dim.color = Color(0, 0, 0, DECK_PICK_DIM)
+	dim.set_anchors_preset(Control.PRESET_FULL_RECT)
+	dim.mouse_filter = Control.MOUSE_FILTER_STOP
+	_pick_root.add_child(dim)
+
+	var panel := UIKit.make_modal_panel()
+	panel.custom_minimum_size = DECK_PICK_SIZE
+	panel.anchor_left   = 0.5
+	panel.anchor_top    = 0.5
+	panel.anchor_right  = 0.5
+	panel.anchor_bottom = 0.5
+	panel.offset_left   = -DECK_PICK_SIZE.x * 0.5
+	panel.offset_top    = -DECK_PICK_SIZE.y * 0.5
+	panel.offset_right  = DECK_PICK_SIZE.x * 0.5
+	panel.offset_bottom = DECK_PICK_SIZE.y * 0.5
+	_pick_root.add_child(panel)
+
+	var vbox := VBoxContainer.new()
+	vbox.add_theme_constant_override("separation", 24)
+	vbox.alignment = BoxContainer.ALIGNMENT_CENTER
+	panel.add_child(vbox)
+
+	var msg := Label.new()
+	UIKit.set_label(msg, "body", DECK_PICK_TITLE, "field_fg")
+	msg.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	vbox.add_child(msg)
+
+	var col := VBoxContainer.new()
+	col.alignment = BoxContainer.ALIGNMENT_CENTER
+	col.add_theme_constant_override("separation", DECK_PICK_BTN_GAP)
+	vbox.add_child(col)
+
+	var first: Button = null
+	for label in GameState.STARTER_DECK_CHOICES:
+		var b := UIKit.make_footer_button(label, "neutral")
+		b.custom_minimum_size.x = DECK_PICK_BTN_W
+		b.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+		b.focus_mode = Control.FOCUS_ALL
+		b.pressed.connect(_on_deck_picked.bind(GameState.STARTER_DECK_CHOICES[label] + suffix))
+		col.add_child(b)
+		if first == null:
+			first = b
+	# Keys work too: Up/Down move between the three, Enter/Space takes one.
+	first.grab_focus.call_deferred()
+
+
+func _on_deck_picked(deck_name: String) -> void:
+	if _pick_root == null:
+		return
+	SoundManagerScript.play_sfx(SoundManagerScript.SFX_gamemode_select)
+	_pick_root.queue_free()
+	_pick_root = null
+	_grant_deck(deck_name)
