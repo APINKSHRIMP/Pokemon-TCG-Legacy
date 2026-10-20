@@ -6471,6 +6471,89 @@ func peek_coins(n: int) -> Array:
 		coin_future.append(randi() % 2 == 0)
 	return coin_future.slice(0, n)
 
+signal coin_call_made(called_heads: bool)
+
+## Coins on the call-it screen are this many times their in-match size (129px).
+const COIN_CALL_SIZE := 258.0
+## How far a hovered coin swells, and how long one grow (or one shrink) takes.
+const COIN_CALL_PULSE_SCALE := 1.14
+const COIN_CALL_PULSE_TIME := 0.35
+
+## Before the who-goes-first flip: the board is cleared and the player picks heads
+## (left) or tails (right). Hovering a coin pulses it; clicking it is the answer -
+## there is no confirm button. Returns true for heads.
+func choose_heads_or_tails() -> bool:
+	# The bot can't hover or click a coin, so the autotester just calls at random.
+	if GameState.autotest != null:
+		return randi() % 2 == 0
+
+	set_card_showcase_visible(true)
+	# The showcase's click-blocking sheet would sit over the coins.
+	trainer_block_container.visible = false
+	var restore := {}
+	for node in [hint_label, header_label, main_buttons_container, action_button, cancel_button]:
+		restore[node] = node.visible
+	hint_label.visible = false
+	main_buttons_container.visible = false
+	action_button.visible = false
+	cancel_button.visible = false
+	header_label.visible = true
+	var old_header: String = header_label.text
+	header_label.text = "Flipping a coin to decide who goes first. Choose Heads or Tails"
+
+	var overlay := Control.new()
+	overlay.name = "coin_call_overlay"
+	overlay.set_anchors_preset(Control.PRESET_FULL_RECT)
+	overlay.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	overlay.z_index = UIKit.Z_CHROME + 5
+	add_child(overlay)
+	# GUI picking follows sibling order, not z_index: last child, so nothing
+	# (the opponent blocker included) sits on top of the coins.
+	move_child(overlay, -1)
+
+	var screen := get_viewport_rect().size
+	for is_heads in [true, false]:
+		var coin := TextureRect.new()
+		coin.texture = tex_heads if is_heads else tex_tails
+		coin.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		coin.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		coin.custom_minimum_size = Vector2(COIN_CALL_SIZE, COIN_CALL_SIZE)
+		coin.size = Vector2(COIN_CALL_SIZE, COIN_CALL_SIZE)
+		coin.pivot_offset = coin.size / 2
+		var centre_x: float = screen.x * (0.25 if is_heads else 0.75)
+		coin.position = Vector2(centre_x, screen.y / 2) - coin.size / 2
+		coin.mouse_filter = Control.MOUSE_FILTER_STOP
+		coin.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+		overlay.add_child(coin)
+
+		var pulse := {"tween": null}
+		coin.mouse_entered.connect(func():
+			if pulse.tween: pulse.tween.kill()
+			var t := coin.create_tween().set_loops()
+			t.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+			t.tween_property(coin, "scale", Vector2.ONE * COIN_CALL_PULSE_SCALE, COIN_CALL_PULSE_TIME)
+			t.tween_property(coin, "scale", Vector2.ONE, COIN_CALL_PULSE_TIME)
+			pulse.tween = t)
+		coin.mouse_exited.connect(func():
+			if pulse.tween: pulse.tween.kill()
+			pulse.tween = coin.create_tween()
+			pulse.tween.tween_property(coin, "scale", Vector2.ONE, UITheme.SEL_SCALE_TIME))
+		coin.gui_input.connect(func(event: InputEvent):
+			if UIInput.is_click(event):
+				coin.accept_event()
+				coin_call_made.emit(is_heads))
+
+	var called_heads: bool = await coin_call_made
+	SoundManagerScript.play_sfx(SoundManagerScript.SFX_select_button)
+	overlay.queue_free()
+	remove_child(overlay)
+
+	header_label.text = old_header
+	for node in restore:
+		node.visible = restore[node]
+	set_card_showcase_visible(false)
+	return called_heads
+
 func flip_coin(silent: bool = false, flipper_is_opponent: bool = false) -> bool:
 	# MATCH EFFECT: coin_flip_override — every flip forced to heads/tails (animation still plays)
 	var rule_override: String = match_effects.coin_override(flipper_is_opponent)
@@ -10508,10 +10591,11 @@ func cancel_button_pressed_hide_selection_mode() -> void:
 			for rule_line in match_effects.get_announcement_lines():
 				await show_message(rule_line)
 
-		await show_message("FLIPPING COIN TO DECIDE WHICH PLAYER GOES FIRST")
-	
-		var who_starts = await flip_coin()
-	
+		# The player calls the coin first. It changes nothing about the odds - it is
+		# the same 50/50 - but it feels like their call.
+		var called_heads: bool = await choose_heads_or_tails()
+		var who_starts = (await flip_coin()) == called_heads
+
 		if who_starts:
 			await show_message("You are going first!")
 			player_start_turn_checks()
