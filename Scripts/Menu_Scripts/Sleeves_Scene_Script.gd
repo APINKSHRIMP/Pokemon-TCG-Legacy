@@ -270,7 +270,7 @@ func _add_sleeve_to_grid(file_name: String) -> void:
 	# by the hold-Shift zoom (_show_zoom -> _large_sleeve_texture). The original
 	# stays as the fallback for a sleeve with no small copy.
 	# Usually already in memory: the pause menu prewarms every owned sleeve.
-	var texture := SceneCache.cached_texture(SLEEVE_SMALL_FOLDER + "/" + file_name)
+	var texture := SceneCache.cached_texture(SLEEVE_SMALL_FOLDER + "/" + file_name, "sleeve")   # ISSUE #406: own pool
 	if texture == null:
 		texture = _large_sleeve_texture(base_name)
 	if texture == null:

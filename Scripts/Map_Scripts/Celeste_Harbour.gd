@@ -21,6 +21,9 @@ const TAXI_END_POS   := Vector2(-742.0, 1828.0)
 # player's first steps. See Phone_Call.gd for the call itself and Phone_Calls.json for the script.
 const INTRO_CALL_ID    := "ellie_intro"   # fallback; the save's intro profile names the real one
 const INTRO_CALL_DELAY := 1.2
+# ISSUE #405 TEST: further calls rung one after another once the intro call hangs up, to try the
+# in-battle-sprite callers. Empty the array to remove them; nothing else refers to them.
+const INTRO_TEST_CALLS : Array[String] = ["test_405_olly", "test_405_alexander"]
 
 # TWEAKABLE - the drive itself.
 #   DRIVE_TIME  the long constant-speed run in. Raising it slows the taxi down; the distance is
@@ -45,6 +48,11 @@ var _taxi_base_pos: Vector2 = Vector2.ZERO
 var _taxi_bob_timer: float  = 0.0
 var _taxi_current_bob: float = 0.0
 var _intro_call: PhoneCall = null
+# ISSUE #405: true from the moment the taxi starts until the LAST intro call has hung up. The
+# doorstep waits on this rather than on one call, because between two calls there is a moment
+# where the first has finished and the next does not exist yet.
+var _intro_calls_running: bool = false
+signal _intro_calls_done
 
 func _allow_menu_open(_is_enter: bool) -> bool:
 	return not _cutscene_active
@@ -181,8 +189,9 @@ func _run_taxi_intro() -> void:
 	#
 	# is_finished() before the await, never just is_instance_valid(): the call frees itself the
 	# moment it emits, so awaiting one that has already ended would wait for ever.
-	if _intro_call != null and is_instance_valid(_intro_call) and not _intro_call.is_finished():
-		await _intro_call.finished
+	# ISSUE #405: every intro call, not just the first - see _intro_calls_running.
+	if _intro_calls_running:
+		await _intro_calls_done
 
 	await get_tree().create_timer(0.5).timeout
 	_player.set_direction("left")
@@ -230,13 +239,22 @@ func _start_ellie_intro() -> void:
 ## Rings Ellie up a couple of seconds into the drive. Fire-and-forget: it returns as soon as the
 ## call has been started, and the cutscene carries on around it.
 func _start_intro_phone_call() -> void:
+	_intro_calls_running = true
 	await get_tree().create_timer(INTRO_CALL_DELAY).timeout
-	# The player can quit out of the cutscene; do not build a call into a scene that has gone.
-	if not is_inside_tree():
-		return
 	# Which call rings depends on the new-game familiarity answer (GameState.INTRO_PROFILES).
-	_intro_call = PhoneCall.play_from_data(self,
-		GameState.get_intro_profile().get("call_id", INTRO_CALL_ID))
+	var call_ids: Array[String] = [String(GameState.get_intro_profile().get("call_id", INTRO_CALL_ID))]
+	call_ids.append_array(INTRO_TEST_CALLS)
+	for call_id in call_ids:
+		# The player can quit out of the cutscene; do not build a call into a scene that has gone.
+		if not is_inside_tree():
+			return
+		_intro_call = PhoneCall.play_from_data(self, call_id)
+		if _intro_call != null and not _intro_call.is_finished():
+			await _intro_call.finished
+		if call_id in INTRO_TEST_CALLS:
+			print("ISSUE #405 FIX ACTIVE: intro test call ", call_id, " finished")
+	_intro_calls_running = false
+	_intro_calls_done.emit()
 
 
 func _drive_taxi_off() -> void:
@@ -317,18 +335,13 @@ func apply_permanent_unlocks(date: int) -> void:
 	if beach_open and has_node("Collision Objects/BLOCKS/BEACH CONES"):
 		$"Collision Objects/BLOCKS/BEACH CONES".queue_free()
 
-	var station_open := date > 2
-	$"TILE_MAPS/PLAYER ROAD BLOCKS/Station Gate block".visible = not station_open
-	if station_open and has_node("Collision Objects/BLOCKS/STATION GATE"):
-		$"Collision Objects/BLOCKS/STATION GATE".queue_free()
-
 	var forest_open := date >= 5
 	$"TILE_MAPS/PLAYER ROAD BLOCKS/Forest Gate block".visible = not forest_open
 	if forest_open and has_node("Collision Objects/BLOCKS/FOREST GATE"):
 		$"Collision Objects/BLOCKS/FOREST GATE".queue_free()
 
-	# The SS Anne is moored only on day 3, while the station is open.
-	$"TILE_MAPS/JETTY2/SSANNE".visible = date == 3
+	# The SS Anne arrives on day 3 and stays moored from then on.
+	$"TILE_MAPS/JETTY2/SSANNE".visible = date >= 3
 
 
 # Rotating scenery -- boats on the jetty, cars in the car park. Driven by the

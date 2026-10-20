@@ -321,7 +321,7 @@ func _add_coin_to_grid(file_name: String) -> void:
 	var texture : Texture2D = null
 	if is_owned:
 		# Usually already in memory: the pause menu prewarms every owned coin.
-		texture = SceneCache.cached_texture(COIN_FOLDER + "/" + file_name)
+		texture = SceneCache.cached_texture(COIN_FOLDER + "/" + file_name, "coin")   # ISSUE #406: own pool
 		if texture == null:
 			return
 

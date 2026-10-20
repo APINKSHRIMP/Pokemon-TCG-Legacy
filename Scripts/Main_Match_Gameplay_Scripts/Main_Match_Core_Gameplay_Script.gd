@@ -10620,7 +10620,6 @@ func _double_click_confirm(clicked_card: card_object) -> bool:
 			return false
 	elif selected_card_for_action != clicked_card:
 		return false
-	print("ISSUE #402 FIX ACTIVE: double-click on ", clicked_card.metadata.get("name", "?"), " pressed '", action_button.text, "'")
 	action_button.pressed.emit()
 	return true
 

@@ -52,11 +52,11 @@ texture_margin_right = 13.0
 texture_margin_bottom = 13.0
 
 [resource]
-Button/colors/font_color = Color(0.045500003, 0.13, 0.12372706, 1)
-Button/colors/font_disabled_color = Color(0.045500003, 0.13, 0.12372706, 0.4)
-Button/colors/font_focus_color = Color(0.045500003, 0.13, 0.12372706, 1)
-Button/colors/font_hover_color = Color(0.045500003, 0.13, 0.12372706, 1)
-Button/colors/font_pressed_color = Color(0.045500003, 0.13, 0.12372706, 1)
+Button/colors/font_color = Color(1, 1, 1, 1)
+Button/colors/font_disabled_color = Color(1, 1, 1, 0.4)
+Button/colors/font_focus_color = Color(1, 1, 1, 1)
+Button/colors/font_hover_color = Color(1, 1, 1, 1)
+Button/colors/font_pressed_color = Color(1, 1, 1, 1)
 Button/styles/disabled = SubResource("StyleBoxTexture_hbuj2")
 Button/styles/focus = SubResource("StyleBoxEmpty_4qhdo")
 Button/styles/hover = SubResource("StyleBoxTexture_f7gsr")

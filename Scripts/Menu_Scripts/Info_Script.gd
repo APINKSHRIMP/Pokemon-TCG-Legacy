@@ -129,7 +129,7 @@ const SETS_H         := 216.0
 ## lifting its head lifts all of it and the gaps between them are untouched.
 const SPRITE_TOP_GAP := 10.0   # top box top -> top of the costume art (ISSUE #200)
 const NAME_TOP_GAP   := 10.0   # bottom of the ART -> name box     (ISSUE #200)
-const DOB_H          := 84.0   # height of the "Trainer since / DOB / $" block (three lines)
+const DOB_H          := 56.0   # height of the "DOB / $" block (two lines; ISSUE #407 dropped "Trainer since")
 const EQUIP_TOP_GAP  := 14.0   # bottom box top -> thumbnails      (ISSUE #200)
 ## ISSUE #200 (retest 3): "move the sleeve and coin down 10 pixels", inside their
 ## own box. 14 + 10 = 24 off the top, which leaves 26 under the captions - the
@@ -449,13 +449,12 @@ func _load_player_data() -> void:
 	saved_player_name = data.get("name", "")
 	name_box.text = saved_player_name
 
-	# Start date, DOB and cash share one centred Label under the name box. "Trainer since"
-	# is the day this save slot was started, not the birthday the player typed in.
-	var since: String = GameState.get_trainer_since()
+	# DOB and cash share one centred Label under the name box.
+	# ISSUE #407: the "Trainer since" line is gone - the card shows the birthday only.
 	var dob: String = data.get("date_of_birth", "")
-	dob_cash_lbl.text = "Trainer since " + (since if since != "" else "--/--") \
-		+ "\nDOB: " + (dob if dob != "" else "--/--") \
+	dob_cash_lbl.text = "DOB: " + (dob if dob != "" else "--/--") \
 		+ "\n$" + str(GameState.get_cash())
+	print("ISSUE #407 FIX ACTIVE: trainer card shows DOB only -> ", dob_cash_lbl.text.replace("\n", " | "))
 
 	# Battle sprite — fit inside SPRITE_SIZE so different-shaped sprites all appear the same size
 	var sprite_name: String = data.get("sprite", "")
@@ -553,9 +552,15 @@ func _on_save_pressed() -> void:
 		return
 
 	var new_name := name_box.text.strip_edges()
-	if new_name != "":
-		data["name"]      = new_name
-		saved_player_name = new_name
+	# ISSUE #408: a blank (or all-spaces) name used to fall through here - Save went grey as if
+	# it had worked, but nothing was written. Refuse it out loud and leave Save live.
+	if new_name == "":
+		print("ISSUE #408 FIX ACTIVE: blank name refused on Save")
+		SoundManagerScript.play_sfx(SoundManagerScript.SFX_minus_select)
+		_flash_cheat_message(INVALID_NAME_TEXT, false)
+		return
+	data["name"]      = new_name
+	saved_player_name = new_name
 
 	var write_file := FileAccess.open(PLAYER_DATA_PATH, FileAccess.WRITE)
 	if write_file == null:
@@ -973,7 +978,13 @@ const CHEAT_BOX_HEIGHT   : float = 120.0
 const CHEAT_BOX_Y_OFFSET : float = -42.0
 
 
-func _flash_cheat_message(message: String) -> void:
+## ISSUE #408: shown when Save is pressed with a blank name.
+const INVALID_NAME_TEXT := "Invalid name"
+
+
+## `rainbow` false draws the message in the theme's danger colour instead - the same float-up
+## popup, used for the invalid-name warning (ISSUE #408).
+func _flash_cheat_message(message: String, rainbow: bool = true) -> void:
 	# ISSUE #53 FIX: drive the cheat popup as a self-contained "float up + fade out" like the in-match
 	# floating labels, animated by a Tween OWNED BY the CanvasLayer (a root child). Previously the
 	# cleanup awaited a timer bound to THIS script; escaping the Info sub-menu freed the script and
@@ -1013,8 +1024,11 @@ func _flash_cheat_message(message: String) -> void:
 			bold.variation_embolden = CHEAT_EMBOLDEN
 			label.add_theme_font_override("normal_font", bold)
 	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	label.text = "[center][rainbow freq=%s sat=%s val=%s]%s[/rainbow][/center]" % [
-			CHEAT_RAINBOW_FREQ, CHEAT_RAINBOW_SAT, CHEAT_RAINBOW_VAL, message]
+	if rainbow:
+		label.text = "[center][rainbow freq=%s sat=%s val=%s]%s[/rainbow][/center]" % [
+				CHEAT_RAINBOW_FREQ, CHEAT_RAINBOW_SAT, CHEAT_RAINBOW_VAL, message]
+	else:
+		label.text = "[center][color=#%s]%s[/color][/center]" % [UITheme.col("danger").to_html(false), message]
 
 	var vp_size := get_viewport().get_visible_rect().size
 	label.size     = Vector2(vp_size.x, CHEAT_BOX_HEIGHT)

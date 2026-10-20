@@ -94,9 +94,11 @@ const THEMES := {
 	# Scripts/Utilities/Theme_Audit.gd. Add a theme here, re-run the builder, then
 	# re-run the audit; nothing else enumerates theme names.
 	#
-	# Four of the eight bars are FLAT — grad_a == grad_b == grad_c. That is not an
-	# oversight: those designs have no gradient, and setting the three stops equal
-	# expresses it without needing a key to say so.
+	# ISSUE #410: every bar is a real three-stop gradient now — deep, signature,
+	# complementary, each dark enough for white chrome text at 4.5:1. Gengar,
+	# Shuppet, Code, Umbreon and Sharpedo used to be near-black (four of them flat),
+	# which read as no gradient at all and gave selections nothing bold to borrow.
+	# A flat bar is still expressible (grad_a == grad_b == grad_c) but none ships.
 
 	"sunset_dark": {
 
@@ -431,12 +433,12 @@ const THEMES := {
 	"gengar_dark": {
 
 		# Chrome — the header and footer bars
-		"chrome_grad_a":      Color("241B3A"),
-		"chrome_grad_b":      Color("2F2045"),
-		"chrome_grad_c":      Color("3A2450"),
+		"chrome_grad_a":      Color("7340C8"),   # ISSUE #410: bold stop, was near-black
+		"chrome_grad_b":      Color("C8357A"),   # ISSUE #410: bold stop, was near-black
+		"chrome_grad_c":      Color("B05A0A"),   # ISSUE #410: bold stop, was near-black
 		"chrome_fg":          Color("FFFFFF"),
 		"chrome_pattern":     Color(1.000, 1.000, 1.000, 0.045),
-		"chrome_line":        Color(1.0, 1.0, 1.0, 0.10),
+		"chrome_line":        Color(0.0, 0.0, 0.0, 0.0),   # ISSUE #410: vivid bar, no keyline
 		# Field — the play area / content background
 		"field":              Color("1A1630"),
 		"field_glow_top":     Color(0.878, 0.439, 0.604, 0.140),
@@ -486,12 +488,12 @@ const THEMES := {
 	"gengar_light": {
 
 		# Chrome — the header and footer bars
-		"chrome_grad_a":      Color("241B3A"),
-		"chrome_grad_b":      Color("2F2045"),
-		"chrome_grad_c":      Color("3A2450"),
+		"chrome_grad_a":      Color("7340C8"),   # ISSUE #410: bold stop, was near-black
+		"chrome_grad_b":      Color("C8357A"),   # ISSUE #410: bold stop, was near-black
+		"chrome_grad_c":      Color("B05A0A"),   # ISSUE #410: bold stop, was near-black
 		"chrome_fg":          Color("FFFFFF"),
 		"chrome_pattern":     Color(1.000, 1.000, 1.000, 0.045),
-		"chrome_line":        Color(1.0, 1.0, 1.0, 0.10),
+		"chrome_line":        Color(0.0, 0.0, 0.0, 0.0),   # ISSUE #410: vivid bar, no keyline
 		# Field — the play area / content background
 		"field":              Color("F6F2FB"),
 		"field_glow_top":     Color(0.878, 0.439, 0.604, 0.090),
@@ -541,12 +543,12 @@ const THEMES := {
 	"shuppet_dark": {
 
 		# Chrome — the header and footer bars
-		"chrome_grad_a":      Color("0C0F15"),
-		"chrome_grad_b":      Color("0C0F15"),
-		"chrome_grad_c":      Color("0C0F15"),
+		"chrome_grad_a":      Color("4A4FC8"),   # ISSUE #410: bold stop, was near-black
+		"chrome_grad_b":      Color("1F72C8"),   # ISSUE #410: bold stop, was near-black
+		"chrome_grad_c":      Color("C9463A"),   # ISSUE #410: bold stop, was near-black
 		"chrome_fg":          Color("FFFFFF"),
 		"chrome_pattern":     Color(1.000, 1.000, 1.000, 0.050),
-		"chrome_line":        Color(1.0, 1.0, 1.0, 0.08),
+		"chrome_line":        Color(0.0, 0.0, 0.0, 0.0),   # ISSUE #410: vivid bar, no keyline
 		# Field — the play area / content background
 		"field":              Color("0F1219"),
 		"field_glow_top":     Color(0.941, 0.451, 0.420, 0.180),
@@ -596,12 +598,12 @@ const THEMES := {
 	"shuppet_light": {
 
 		# Chrome — the header and footer bars
-		"chrome_grad_a":      Color("4C4F54"),
-		"chrome_grad_b":      Color("4C4F54"),
-		"chrome_grad_c":      Color("4C4F54"),
+		"chrome_grad_a":      Color("4A4FC8"),   # ISSUE #410: bold stop, was near-black
+		"chrome_grad_b":      Color("1F72C8"),   # ISSUE #410: bold stop, was near-black
+		"chrome_grad_c":      Color("C9463A"),   # ISSUE #410: bold stop, was near-black
 		"chrome_fg":          Color("FFFFFF"),
 		"chrome_pattern":     Color(1.000, 1.000, 1.000, 0.050),
-		"chrome_line":        Color(1.0, 1.0, 1.0, 0.08),
+		"chrome_line":        Color(0.0, 0.0, 0.0, 0.0),   # ISSUE #410: vivid bar, no keyline
 		# Field — the play area / content background
 		"field":              Color("F2F5FA"),
 		"field_glow_top":     Color(0.941, 0.451, 0.420, 0.090),
@@ -651,12 +653,12 @@ const THEMES := {
 	"code_dark": {
 
 		# Chrome — the header and footer bars
-		"chrome_grad_a":      Color("05070C"),
-		"chrome_grad_b":      Color("05070C"),
-		"chrome_grad_c":      Color("05070C"),
+		"chrome_grad_a":      Color("4A50C8"),   # ISSUE #410: bold stop, was near-black
+		"chrome_grad_b":      Color("007F78"),   # ISSUE #410: bold stop, was near-black
+		"chrome_grad_c":      Color("D01A63"),   # ISSUE #410: bold stop, was near-black
 		"chrome_fg":          Color("FFFFFF"),
 		"chrome_pattern":     Color(0.000, 0.898, 0.831, 0.070),
-		"chrome_line":        Color(0.0, 0.898, 0.831, 0.35),
+		"chrome_line":        Color(0.0, 0.0, 0.0, 0.0),   # ISSUE #410: vivid bar, no keyline
 		# Field — the play area / content background
 		"field":              Color("06090F"),
 		"field_glow_top":     Color(1.000, 0.239, 0.541, 0.150),
@@ -706,12 +708,12 @@ const THEMES := {
 	"code_light": {
 
 		# Chrome — the header and footer bars
-		"chrome_grad_a":      Color("05070C"),
-		"chrome_grad_b":      Color("05070C"),
-		"chrome_grad_c":      Color("05070C"),
+		"chrome_grad_a":      Color("4A50C8"),   # ISSUE #410: bold stop, was near-black
+		"chrome_grad_b":      Color("007F78"),   # ISSUE #410: bold stop, was near-black
+		"chrome_grad_c":      Color("D01A63"),   # ISSUE #410: bold stop, was near-black
 		"chrome_fg":          Color("FFFFFF"),
 		"chrome_pattern":     Color(0.000, 0.898, 0.831, 0.070),
-		"chrome_line":        Color(0.0, 0.898, 0.831, 0.35),
+		"chrome_line":        Color(0.0, 0.0, 0.0, 0.0),   # ISSUE #410: vivid bar, no keyline
 		# Field — the play area / content background
 		"field":              Color("EFF7F6"),
 		"field_glow_top":     Color(1.000, 0.239, 0.541, 0.080),
@@ -761,12 +763,12 @@ const THEMES := {
 	"umbreon_dark": {
 
 		# Chrome — the header and footer bars
-		"chrome_grad_a":      Color("1B1F2A"),
-		"chrome_grad_b":      Color("1B1F2A"),
-		"chrome_grad_c":      Color("1B1F2A"),
+		"chrome_grad_a":      Color("286A82"),   # ISSUE #410: bold stop, was near-black
+		"chrome_grad_b":      Color("2F7A90"),   # ISSUE #410: bold stop, was near-black
+		"chrome_grad_c":      Color("957012"),   # ISSUE #410: bold stop, was near-black
 		"chrome_fg":          Color("FFFFFF"),
 		"chrome_pattern":     Color(0.941, 0.906, 0.831, 0.050),
-		"chrome_line":        Color("C8A24A"),
+		"chrome_line":        Color(0.0, 0.0, 0.0, 0.0),   # ISSUE #410: vivid bar, no keyline
 		# Field — the play area / content background
 		"field":              Color("141821"),
 		"field_glow_top":     Color(0.498, 0.659, 0.722, 0.150),
@@ -816,12 +818,12 @@ const THEMES := {
 	"umbreon_light": {
 
 		# Chrome — the header and footer bars
-		"chrome_grad_a":      Color("1B1F2A"),
-		"chrome_grad_b":      Color("1B1F2A"),
-		"chrome_grad_c":      Color("1B1F2A"),
+		"chrome_grad_a":      Color("286A82"),   # ISSUE #410: bold stop, was near-black
+		"chrome_grad_b":      Color("2F7A90"),   # ISSUE #410: bold stop, was near-black
+		"chrome_grad_c":      Color("957012"),   # ISSUE #410: bold stop, was near-black
 		"chrome_fg":          Color("FFFFFF"),
 		"chrome_pattern":     Color(0.941, 0.906, 0.831, 0.050),
-		"chrome_line":        Color("C8A24A"),
+		"chrome_line":        Color(0.0, 0.0, 0.0, 0.0),   # ISSUE #410: vivid bar, no keyline
 		# Field — the play area / content background
 		"field":              Color("F7F3E9"),
 		"field_glow_top":     Color(0.498, 0.659, 0.722, 0.080),
@@ -871,12 +873,12 @@ const THEMES := {
 	"sharpedo_dark": {
 
 		# Chrome — the header and footer bars
-		"chrome_grad_a":      Color("16233F"),
-		"chrome_grad_b":      Color("2E4A7A"),
-		"chrome_grad_c":      Color("16233F"),
+		"chrome_grad_a":      Color("2A4F94"),   # ISSUE #410: bold stop, was near-black
+		"chrome_grad_b":      Color("2C68C0"),   # ISSUE #410: bold stop, was near-black
+		"chrome_grad_c":      Color("B85D1C"),   # ISSUE #410: bold stop, was near-black
 		"chrome_fg":          Color("FFFFFF"),
 		"chrome_pattern":     Color(1.000, 1.000, 1.000, 0.060),
-		"chrome_line":        Color("C77F45"),
+		"chrome_line":        Color(0.0, 0.0, 0.0, 0.0),   # ISSUE #410: vivid bar, no keyline
 		# Field — the play area / content background
 		"field":              Color("151A23"),
 		"field_glow_top":     Color(0.498, 0.659, 0.878, 0.150),
@@ -926,12 +928,12 @@ const THEMES := {
 	"sharpedo_light": {
 
 		# Chrome — the header and footer bars
-		"chrome_grad_a":      Color("16233F"),
-		"chrome_grad_b":      Color("2E4A7A"),
-		"chrome_grad_c":      Color("16233F"),
+		"chrome_grad_a":      Color("2A4F94"),   # ISSUE #410: bold stop, was near-black
+		"chrome_grad_b":      Color("2C68C0"),   # ISSUE #410: bold stop, was near-black
+		"chrome_grad_c":      Color("B85D1C"),   # ISSUE #410: bold stop, was near-black
 		"chrome_fg":          Color("FFFFFF"),
 		"chrome_pattern":     Color(1.000, 1.000, 1.000, 0.060),
-		"chrome_line":        Color("C77F45"),
+		"chrome_line":        Color(0.0, 0.0, 0.0, 0.0),   # ISSUE #410: vivid bar, no keyline
 		# Field — the play area / content background
 		"field":              Color("F3F4F7"),
 		"field_glow_top":     Color(0.498, 0.659, 0.878, 0.080),

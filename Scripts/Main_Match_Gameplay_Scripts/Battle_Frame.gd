@@ -369,12 +369,26 @@ func _build_fighter(centre_x: float, is_player: bool) -> Fighter:
 ## still stand on the same floor.
 func set_trainer(f: Fighter, tex: Texture2D, trainer_name: String, deck_name: String) -> void:
 	var ui := _ui()
+	# ISSUE #399: fit the CHARACTER, not its padded canvas. The Black/White sprites
+	# fill about half their 128px square, so scaling the whole canvas to SPRITE_H
+	# drew them at half everyone else's height. Same crop as the trainer card,
+	# costume grid and setup screen. Covers the VS intro, the outro and the
+	# best-of-three screen, which all build their trainers through here.
+	tex = UIKit.visible_sprite(tex)
 	if tex != null and tex.get_height() > 0:
 		var w := tex.get_width() * (SPRITE_H / float(tex.get_height()))
+		var h := SPRITE_H
+		# A very wide pose is held to the name block's width instead, still
+		# standing on the same floor.
+		if w > NAME_BLOCK_W:
+			h *= NAME_BLOCK_W / w
+			w = NAME_BLOCK_W
+		print("ISSUE #399 FIX ACTIVE: battle frame sprite fitted by its visible area ", tex.get_size(), " -> ", Vector2(w, h))
 		var centre_x := f.sprite.position.x
 		f.sprite.texture = tex
-		f.sprite.size = Vector2(w, SPRITE_H)
+		f.sprite.size = Vector2(w, h)
 		f.sprite.position.x = centre_x - w * 0.5
+		f.sprite.position.y += SPRITE_H - h
 		_add_sprite_shadow(f.sprite)
 
 	f.name_label.text = ui.cased("name", trainer_name.replace("_", " "))

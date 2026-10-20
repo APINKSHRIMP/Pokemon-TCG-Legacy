@@ -287,7 +287,7 @@ func _load_characters() -> void:
 ## empty space while everything around them was framed.
 func _add_character_to_grid(file_name: String) -> void:
 	# Usually already in memory: the pause menu prewarms every owned costume.
-	var texture := SceneCache.cached_texture(SPRITE_FOLDER + "/" + file_name)
+	var texture := SceneCache.cached_texture(SPRITE_FOLDER + "/" + file_name, "costume")   # ISSUE #406: own pool
 	if texture == null:
 		return
 	# ISSUE #399: fit the CHARACTER, not its padded canvas (same as the intro, #380).

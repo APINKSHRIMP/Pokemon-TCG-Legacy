@@ -267,8 +267,8 @@ only to itself and days 2–5 rotate forever.
 > the loop, which needs a fifth entry in `days`.
 
 Nodes listed for the resolved day are shown; everything named anywhere in the
-block and not listed for today is hidden. Permanent unlocks (the forest gate, the
-station gate, beach cones) are **not** dressing — they follow the real date and
+block and not listed for today is hidden. Permanent unlocks (the forest gate, beach
+cones, the SS Anne) are **not** dressing — they follow the real date and
 never come back.
 
 ---

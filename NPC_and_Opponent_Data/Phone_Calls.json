@@ -35,11 +35,12 @@
   "ellie_intro": {
 	"speaker": "Ellie",
 	"character": "Ellie",
-	"clothes": "Dress",
+	"clothes": "Hoodie",
 	"background": "BlurryTreeBackground",
 	"phone": "iPhone4",
 	"colour": "light_pink",
 	"auto_advance": false,
+	"battle_sprite": "1Ellie_Hoodie", "mouth": [500, 300], "mouth_width": 26,
 	"lines": [
 	  "Oh hey! So you're just coming round the corner now then?",
 	  "[WINK] I knew you'd be late, I don't think you've ever been early.",
@@ -49,6 +50,38 @@
 	  "[SAD] Even the forest is closed for now while they clear up the trees. And on a long bank holiday weekend too, there's nothing to do until the weekend is over now.",
 	  "Well anyway, I'll let you drop your stuff off first and get settled in at least a little bit before I come to bug you.",
 	  "[WINK] I'll drop by in a bit, see you soon!"
+	]
+  },
+
+  "_test_405_readme": [
+	"ISSUE #405 test calls, rung straight after the taxi intro call (Celeste_Harbour.INTRO_TEST_CALLS).",
+	"The caller is now their IN-BATTLE sprite (PhoneCall.USE_BATTLE_SPRITE). New fields:",
+	"  battle_sprite  In_Battle_Sprites file name; defaults to 1<character>_<clothes>",
+	"  mouth          [x, y] of the mouth's centre in the battle sprite's OWN pixels (unflipped)",
+	"  mouth_width    the mouth's width in those pixels (default 24)",
+	"  mouth_set      whose Mouths/ frames to use; defaults to the character's, else Ellie's",
+	"  flip           false keeps the sprite facing the way it was drawn (default true = flipped)"
+  ],
+
+  "test_405_olly": {
+	"speaker": "Olly", "character": "Olly", "clothes": "white", "pill_sprite": "1Olly_white", "colour": "aqua",
+	"background": "BlurryTreeBackground", "phone": "iPhone4",
+	"battle_sprite": "1Olly_white", "mouth": [405, 261], "mouth_width": 22,
+	"lines": [
+	  "Hey this is Olly, all is good!",
+	  "Come see me at FISH.",
+	  "Catch you later!"
+	]
+  },
+
+  "test_405_alexander": {
+	"speaker": "Alexander", "character": "Alexander", "clothes": "Casual", "pill_sprite": "1Alexander", "colour": "light_blue",
+	"background": "BlurryTreeBackground", "phone": "iPhone4",
+	"battle_sprite": "1Alexander", "mouth": [289, 194], "mouth_width": 18,
+	"lines": [
+	  "This is Alexander.",
+	  "See you soon!",
+	  "Hope the taxi is comfortable."
 	]
   },
 

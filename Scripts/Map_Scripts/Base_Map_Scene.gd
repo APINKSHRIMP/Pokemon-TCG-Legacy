@@ -474,6 +474,9 @@ func close_submenu_overlay(restore_menu: bool = true) -> void:
 		_menu_instance.set_process_input(true)
 		if _menu_instance.has_method("resume_music"):   # ISSUE #128
 			_menu_instance.resume_music()
+	# ISSUE #406: the menu only predicts in its _ready, which does not re-run when it is
+	# merely re-shown. Top the pools back up for the next pick (skips anything cached).
+	SceneCache.predict_menu_screens.call_deferred()
 	# The Costume sub-menu can change the player's sprite; push it onto the live player node since
 	# the map is no longer reloaded.
 	if _player != null and is_instance_valid(_player) and _player.has_method("refresh_sprite"):

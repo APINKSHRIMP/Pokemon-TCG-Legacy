@@ -65,7 +65,20 @@ const SCENES_TO_PRELOAD: Array = [
 
 var _cache: Dictionary = {}            # path -> PackedScene
 var _pending: Array = []               # paths still loading
+var _waiting: Array = []               # paths not started yet (ISSUE #403)
 var _started: bool = false
+var _preload_start_usec: int = 0
+
+## ISSUE #403 / #409: how many scenes load on background threads AT ONCE during the splash.
+## It used to be all ~37 together. The maps share TileSets and sheet textures, and Godot's
+## threaded loader races when several loads pull in the same sub-resource at the same time:
+## sometimes a texture came back EMPTY - "Image width specified (0 pixels)" in the log, then
+## the game died with no script error - and sometimes a TileSet lost its atlas texture, which
+## is the "whole tilemap missing until restart". Timing-dependent, hence "sometimes" and why
+## alt-tabbing (which changes the main thread's pacing) made it worse. One at a time still
+## keeps every load off the main thread; later scenes find the shared parts already cached.
+## TWEAKABLE, but anything above 1 brings the race back.
+const PRELOAD_IN_FLIGHT := 1
 
 
 # Kicks off threaded loading of every scene in SCENES_TO_PRELOAD.
@@ -77,7 +90,18 @@ func preload_all_async() -> void:
 	# The owned cards' images follow once the scenes are in (see _process), so they
 	# never slow the splash down.
 	_owned_prewarm_wanted = true
+	_preload_start_usec = Time.get_ticks_usec()
+	# ISSUE #403: queued, then started PRELOAD_IN_FLIGHT at a time by _start_waiting().
 	for path in SCENES_TO_PRELOAD:
+		if not _cache.has(path):
+			_waiting.append(path)
+	_start_waiting()
+
+
+## ISSUE #403: tops the in-flight threaded loads back up to PRELOAD_IN_FLIGHT.
+func _start_waiting() -> void:
+	while _pending.size() < PRELOAD_IN_FLIGHT and not _waiting.is_empty():
+		var path: String = _waiting.pop_front()
 		if _cache.has(path):
 			continue
 		var err := ResourceLoader.load_threaded_request(path)
@@ -85,13 +109,17 @@ func preload_all_async() -> void:
 			push_warning("SceneCache: failed to start threaded load: " + path)
 			continue
 		_pending.append(path)
+	if _started and _pending.is_empty() and _waiting.is_empty() and _preload_start_usec != 0:
+		print("ISSUE #403 FIX ACTIVE: ", SCENES_TO_PRELOAD.size(), " scenes preloaded ",
+				PRELOAD_IN_FLIGHT, " at a time in ", (Time.get_ticks_usec() - _preload_start_usec) / 1000, " ms")
+		_preload_start_usec = 0
 
 
 # Returns true when every requested scene has finished loading.
 # Polls ResourceLoader and migrates completed loads into _cache.
 func is_all_loaded() -> bool:
 	_drain_completed()
-	return _started and _pending.is_empty()
+	return _started and _pending.is_empty() and _waiting.is_empty()
 
 
 # Returns 0.0–1.0 progress across all pending loads (averaged).
@@ -102,7 +130,7 @@ func get_load_progress() -> float:
 	var total := SCENES_TO_PRELOAD.size()
 	if total == 0:
 		return 1.0
-	var done := total - _pending.size()
+	var done := total - _pending.size() - _waiting.size()
 	var partial := 0.0
 	for path in _pending:
 		var progress: Array = []
@@ -136,6 +164,7 @@ func change_scene(path: String) -> int:
 # Move any completed threaded loads from _pending into _cache.
 func _drain_completed() -> void:
 	if _pending.is_empty():
+		_start_waiting()
 		return
 	var still_pending: Array = []
 	for path in _pending:
@@ -153,6 +182,7 @@ func _drain_completed() -> void:
 			_:
 				still_pending.append(path)
 	_pending = still_pending
+	_start_waiting()   # ISSUE #403: the next scene starts the moment a slot frees up
 
 
 # ============================================================
@@ -162,16 +192,18 @@ func _drain_completed() -> void:
 # 160-card set stalled the deck builder for about a second. Loaded on background
 # threads they cost under 1 ms each and run in parallel, and a cached one is free.
 #
-# Two pools, each capped and dropping its least recently used entry:
+# Pools, each capped and dropping its least recently used entry:
 #   "card" - SMALL card images only (~460 KB of video memory each, so all ~3,200
 #            would be ~1.4 GB - hence the cap rather than "cache everything").
 #            Filled with every OWNED card straight after the splash (unowned cards
 #            show as empty slots, so their art is never drawn), and by screens that
 #            know what they are about to draw (the deck builder's current set and
 #            its two neighbours, both decks at match start).
-#   "menu" - the coins, costumes, sleeves and energy-icon art the pause-menu screens
-#            draw. Filled by predict_menu_screens() the moment the pause menu opens,
-#            so whichever screen the player picks is already in memory.
+#   "coin" / "costume" / "sleeve" - each pause-menu screen's own art, one pool per
+#            screen so they never evict each other (ISSUE #406). Filled by
+#            predict_menu_screens() the moment the pause menu opens, and again on the
+#            way back from a sub-menu, so whichever screen is picked is in memory.
+#   "menu" - everything else menu-side (the energy-icon large art).
 #
 # Anything not cached still loads (synchronously) on first use, so a cache miss is
 # only ever as slow as the game used to be - never wrong.
@@ -180,9 +212,19 @@ func _drain_completed() -> void:
 ## TWEAKABLE: how many small card images stay in memory (~460 KB VRAM each, so
 ## 900 is ~400 MB). Lower it if a low-end GPU runs short.
 const CARD_CACHE_MAX := 900
-## TWEAKABLE: how many menu images (coins up to 660 px ~1.7 MB, sleeves ~0.5 MB,
-## costumes ~0.1 MB) stay in memory.
+## TWEAKABLE: how many other menu images (the energy-icon large art and the deck
+## builder's odd extras) stay in memory.
 const MENU_CACHE_MAX := 600
+## ISSUE #406: coins, costumes and sleeves each have their OWN pool. They used to share
+## the 600-slot "menu" pool, but a full collection is 420 coins + 429 costumes + 593
+## sleeves, so predicting all three pushed the coins straight back out, and opening one
+## screen evicted the next one's art - coins -> sleeves or deck -> costumes reloaded
+## everything. Each cap covers its whole catalogue, so no screen can evict another.
+## TWEAKABLE: VRAM at a full collection is roughly coins 311 MB, sleeves 293 MB,
+## costumes 83 MB. Lower a cap to trade memory for reload time on that one screen.
+const COIN_CACHE_MAX := 450
+const COSTUME_CACHE_MAX := 450
+const SLEEVE_CACHE_MAX := 650
 
 ## TWEAKABLE: every progressive grid build (deck builder, coin case, costumes,
 ## sleeves) adds items until this many ms of the current frame are used, then waits
@@ -198,8 +240,9 @@ const COIN_FOLDER := "res://Image_Assets/Coins/"
 const COSTUME_FOLDER := "res://Image_Assets/Character_Sprites/In_Battle_Sprites/"
 const SLEEVE_SMALL_FOLDER := "res://Image_Assets/Sleeves/small/"
 
-var _pools: Dictionary = {"card": {}, "menu": {}}            # pool -> {path -> Texture2D}, oldest-used first
-const _POOL_MAX := {"card": CARD_CACHE_MAX, "menu": MENU_CACHE_MAX}
+var _pools: Dictionary = {"card": {}, "menu": {}, "coin": {}, "costume": {}, "sleeve": {}}   # pool -> {path -> Texture2D}, oldest-used first
+const _POOL_MAX := {"card": CARD_CACHE_MAX, "menu": MENU_CACHE_MAX,
+		"coin": COIN_CACHE_MAX, "costume": COSTUME_CACHE_MAX, "sleeve": SLEEVE_CACHE_MAX}
 var _tex_pending: Dictionary = {}                              # path -> pool, threaded loads in flight
 var _prewarm_queue: Array = []                                 # [path, pool] waiting to be started, oldest first
 var _queued: Dictionary = {}                                   # path -> true, mirror of _prewarm_queue
@@ -358,9 +401,12 @@ func predict_menu_screens() -> void:
 	var coin_paths: Array = []
 	for coin in GameState.progress.get("coins", []):
 		coin_paths.append(COIN_FOLDER + String(coin))
-	prewarm_textures(coin_paths)
-	prewarm_textures(_owned_files_in(COSTUME_FOLDER, GameState.progress.get("costumes", []), false))
-	prewarm_textures(_owned_files_in(SLEEVE_SMALL_FOLDER, GameState.progress.get("sleeves", []), true))
+	# ISSUE #406: one pool each, so predicting (or opening) one never evicts another.
+	prewarm_textures(coin_paths, "coin")
+	prewarm_textures(_owned_files_in(COSTUME_FOLDER, GameState.progress.get("costumes", []), false), "costume")
+	prewarm_textures(_owned_files_in(SLEEVE_SMALL_FOLDER, GameState.progress.get("sleeves", []), true), "sleeve")
+	print("ISSUE #406 FIX ACTIVE: menu art pools held - coin ", _pools["coin"].size(), ", costume ",
+			_pools["costume"].size(), ", sleeve ", _pools["sleeve"].size(), ", queued ", _prewarm_queue.size())
 	# Only when something new was queued: printing is slow enough on Windows to be
 	# the costliest part of a repeat call.
 	if not _prewarm_queue.is_empty():

@@ -64,9 +64,6 @@ size = Vector2(10, 532)
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_qwqx2"]
 size = Vector2(341, 5.5)
 
-[sub_resource type="RectangleShape2D" id="RectangleShape2D_nmxio"]
-size = Vector2(102, 20)
-
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_e3a3c"]
 size = Vector2(4495.5, 339.5)
 
@@ -473,6 +470,9 @@ size = Vector2(720, 249)
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_7r2ng"]
 size = Vector2(19, 188)
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_nmxio"]
+size = Vector2(102, 20)
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_hw2gf"]
 size = Vector2(119, 67)
@@ -1101,10 +1101,6 @@ shape = SubResource("RectangleShape2D_qwqx2")
 [node name="fence bottom5" type="CollisionShape2D" parent="TILE_MAPS/TOWN HALL PLAZA/plazacollision" unique_id=362815988]
 position = Vector2(2300, -603)
 shape = SubResource("RectangleShape2D_qwqx2")
-
-[node name="STATION GATE" type="CollisionShape2D" parent="TILE_MAPS/TOWN HALL PLAZA/plazacollision" unique_id=19717985]
-position = Vector2(2196, -64)
-shape = SubResource("RectangleShape2D_nmxio")
 
 [node name="TRAIN TRACKS" type="TileMap" parent="TILE_MAPS" unique_id=1602722418]
 position = Vector2(0, -349)
@@ -3714,7 +3710,6 @@ tile_set = ExtResource("2_bf13f")
 
 [node name="Station Gate block" type="TileMapLayer" parent="TILE_MAPS/PLAYER ROAD BLOCKS" unique_id=2045591312]
 position = Vector2(-883, -363)
-tile_map_data = PackedByteArray("AACLAAEAAAA1AE0AAACLAAIAAAA1AE4AAACMAAEAAAA2AE0AAACMAAIAAAA2AE4AAACNAAEAAAA2AE0AAACNAAIAAAA2AE4AAACOAAEAAAA2AE0AAACOAAIAAAA2AE4AAACPAAEAAAA2AE0AAACPAAIAAAA2AE4AAACQAAEAAAA2AE0AAACQAAIAAAA2AE4AAACRAAEAAAA3AE0AAACRAAIAAAA3AE4AAAA=")
 tile_set = ExtResource("2_bf13f")
 
 [node name="FISHSHOP" type="TileMap" parent="TILE_MAPS" unique_id=90439050]
@@ -9616,6 +9611,24 @@ offset_bottom = 1865.0
 texture = ExtResource("9_a0lly")
 expand_mode = 1
 stretch_mode = 4
+
+[node name="headlight" type="PointLight2D" parent="Taxi" unique_id=1179851280]
+position = Vector2(1.0251999e-05, 16.999956)
+rotation = 1.5709596
+scale = Vector2(0.038764514, 0.0826237)
+color = Color(5.912981, 5.7798786, 1.6093352, 0.05882353)
+energy = 1.33
+texture = ExtResource("4_401pq")
+offset = Vector2(-0.38427734, 775.4363)
+
+[node name="headlight2" type="PointLight2D" parent="Taxi" unique_id=1770923241]
+position = Vector2(-0.9999896, 30.999956)
+rotation = 1.5709596
+scale = Vector2(0.038764514, 0.0826237)
+color = Color(5.912981, 5.7798786, 1.6093352, 0.05882353)
+energy = 1.33
+texture = ExtResource("4_401pq")
+offset = Vector2(-0.38427734, 775.4363)
 
 [node name="CutsceneCollisions" type="Area2D" parent="." unique_id=2118879612]
 z_index = 50
