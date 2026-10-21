@@ -65,6 +65,9 @@ var _theme_kenney : Theme:
 
 # ── Session state ──────────────────────────────────────────
 var _is_active           : bool  = false
+# TWEAKABLE: the most cards the end-of-pack summary puts on one row before wrapping.
+const SUMMARY_MAX_PER_ROW := 10
+
 var _pack_queue          : Array = []
 var _intro_fade_duration : float = 0.4
 # Applies to every pack in the current open_packs() call — the shops only ever queue one.
@@ -266,9 +269,12 @@ func _start_pack_opening() -> void:
 	# ── Generate and grant the cards up front ──
 	# Hoisted above the animation so the skipped path below grants exactly the same cards as the
 	# animated one. Nothing between here and the reveal depends on the animation having played.
-	var pack_id_for_set : String = _current_pack_art.rsplit("_", true, 1)[0]
-	_pack_cards   = _generate_pack_cards(pack_id_for_set)
-	_new_card_ids = _save_cards_to_player(pack_id_for_set, _pack_cards)
+	if GameState.FIXED_PACKS.has(_current_pack_art):
+		_open_fixed_pack(_current_pack_art)
+	else:
+		var pack_id_for_set : String = _current_pack_art.rsplit("_", true, 1)[0]
+		_pack_cards   = _generate_pack_cards(pack_id_for_set)
+		_new_card_ids = _save_cards_to_player(pack_id_for_set, _pack_cards)
 	_current_card_index = 0
 
 	# ISSUE #34: Options "Pack Opening Animation Speed" = skip. Go straight from the buy press to the
@@ -559,19 +565,20 @@ func _show_card_summary() -> void:
 	var card_count         : int     = _pack_cards.size()
 	var gap                : float   = 8.0
 	var horizontal_padding : float   = 40.0
-	var available_w        : float   = viewport_size.x - (horizontal_padding * 2.0) - (gap * (card_count - 1))
-	var card_w             : float   = available_w / float(card_count)
+	# A normal booster is one row of 10. The bigger one-off packs (Olly's bonus packs, up
+	# to 18 cards) wrap onto as many rows as SUMMARY_MAX_PER_ROW needs, evenly filled.
+	var rows               : int     = int(ceil(float(card_count) / float(SUMMARY_MAX_PER_ROW)))
+	var per_row            : int     = int(ceil(float(card_count) / float(rows)))
+	var available_w        : float   = viewport_size.x - (horizontal_padding * 2.0) - (gap * (per_row - 1))
+	var card_w             : float   = available_w / float(per_row)
 	var card_aspect        : float   = CARD_DISPLAY_SIZE.x / CARD_DISPLAY_SIZE.y
 	var card_h             : float   = card_w / card_aspect
-	var max_h              : float   = viewport_size.y * 0.8
+	var max_h              : float   = (viewport_size.y * 0.8 - gap * (rows - 1)) / float(rows)
 	if card_h > max_h:
 		card_h = max_h
 		card_w = card_h * card_aspect
 	var summary_size : Vector2 = Vector2(card_w, card_h)
-
-	var total_row_w : float = (card_w * card_count) + (gap * (card_count - 1))
-	var start_x     : float = (viewport_size.x - total_row_w) / 2.0
-	var row_y       : float = (viewport_size.y - card_h) / 2.0
+	var block_h      : float   = card_h * rows + gap * (rows - 1)
 
 	var summary_rects : Array = []
 	for i in range(card_count):
@@ -583,7 +590,13 @@ func _show_card_summary() -> void:
 		rect.stretch_mode        = TextureRect.STRETCH_SCALE
 		rect.custom_minimum_size = summary_size
 		rect.size                = summary_size
-		rect.position            = Vector2(start_x + i * (card_w + gap), row_y)
+		# Each row is centred on its own, so a short last row sits in the middle.
+		var row        : int   = i / per_row
+		var in_row     : int   = mini(per_row, card_count - row * per_row)
+		var row_w      : float = (card_w * in_row) + (gap * (in_row - 1))
+		var start_x    : float = (viewport_size.x - row_w) / 2.0
+		var row_y      : float = (viewport_size.y - block_h) / 2.0 + row * (card_h + gap)
+		rect.position            = Vector2(start_x + (i % per_row) * (card_w + gap), row_y)
 		rect.pivot_offset        = summary_size / 2.0
 		rect.modulate.a          = 0.0
 		rect.mouse_filter        = Control.MOUSE_FILTER_IGNORE
@@ -605,6 +618,35 @@ func _show_card_summary() -> void:
 
 
 # ── Card generation ────────────────────────────────────────
+
+## A one-off pack with fixed contents (GameState.FIXED_PACKS, keyed by the art id).
+## The cards are looked up in their own sets and saved set by set, in pack order.
+func _open_fixed_pack(art_id: String) -> void:
+	_bonus_indices.clear()
+	_pack_cards = []
+	var by_set : Dictionary = {}
+	var set_cache : Dictionary = {}
+	for card_id in GameState.FIXED_PACKS[art_id]:
+		var set_id : String = String(card_id).split("-")[0]
+		if not set_cache.has(set_id):
+			var parsed = JSON.parse_string(FileAccess.get_file_as_string(CARD_SET_DATA_PATH + set_id + ".json"))
+			var index : Dictionary = {}
+			if parsed is Array:
+				for c in parsed:
+					index[c.get("id", "")] = c
+			set_cache[set_id] = index
+		var card : Dictionary = set_cache[set_id].get(card_id, {})
+		if card.is_empty():
+			push_error("PackOpeningManager: fixed pack %s names unknown card %s" % [art_id, card_id])
+			continue
+		_pack_cards.append(card)
+		if not by_set.has(set_id):
+			by_set[set_id] = []
+		by_set[set_id].append(card)
+	_new_card_ids = {}
+	for set_id in by_set:
+		_new_card_ids.merge(_save_cards_to_player(set_id, by_set[set_id]))
+
 
 func _generate_pack_cards(set_id: String) -> Array:
 	_bonus_indices.clear()

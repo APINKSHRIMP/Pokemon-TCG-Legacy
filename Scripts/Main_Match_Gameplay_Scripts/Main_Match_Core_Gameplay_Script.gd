@@ -461,6 +461,9 @@ var _end_turn_btn : Button = null
 ## ISSUE #239: the two attachment-row captions per side, so #212 can hide them
 ## with the rest of the board furniture.
 var _attach_captions: Array = []
+# The board captions are a tutorial aid: the Energy/Tools captions above and the extra
+# ones _apply_tutorial_labels() adds only show while a tutorial is running.
+var _tutorial_labels_on: bool = false
 ## ISSUE #214 / #235: true while a single card is being shown full-screen.
 var _card_showcase_active: bool = false
 
@@ -515,6 +518,9 @@ var cpu_ai: Node
 var powers_and_bodies: Node
 var card_ops: Node
 var match_effects: Node
+# Tutorial_Director.gd: Olly's tutorial matches and the Options "tutorial for next
+# match". Always present; every call is a no-op when no tutorial is running.
+var tutorial: Node
 
 # Fix 1: Set metadata cache — keyed by set prefix string, value is parsed Array from JSON
 var _set_metadata_cache: Dictionary = {}
@@ -1470,9 +1476,10 @@ func _set_board_furniture_visible(shown: bool) -> void:
 		if rule != null and is_instance_valid(rule):
 			rule.visible = shown
 	# ISSUE #239: the attachment captions belong to the board, so they go with it.
+	# They are tutorial-only now (with the tutorial's own captions, which share the list).
 	for cap in _attach_captions:
 		if cap != null and is_instance_valid(cap):
-			cap.visible = shown
+			cap.visible = shown and _tutorial_labels_on
 	# ISSUE #229: End Turn is REPARENTED INTO the footer bar, so it is no longer a
 	# child of main_buttons_container and the wholesale
 	# `main_buttons_container.visible = false` that hides the rest of the footer
@@ -1606,6 +1613,76 @@ func _add_attach_caption(text: String, row_x: float, row_y: float, is_opponent: 
 		else HORIZONTAL_ALIGNMENT_RIGHT)
 	lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(lbl)
+	_attach_captions.append(lbl)
+
+
+# ============================================================
+# TUTORIAL LABELS
+# ============================================================
+# While a tutorial runs (Tutorial_Director.labels_on()) the board names its parts:
+# "Attacks" over each Pokemon's action rows, "Opponent's hand" (their fan moves right to
+# make room), "Your hand", and the two bench captions, which draw OVER the bench so an
+# attached Energy sits beneath them. The Energy cards / Tools captions show only then too.
+
+## TWEAKABLE -- tutorial label placement.
+const TUT_ATTACKS_GAP      := 4.0    # px between the "Attacks" caption and the top action row
+const TUT_OPP_HAND_SHIFT   := 170.0  # the opponent's hand moves this far right for its caption
+const TUT_HAND_LABEL_GAP   := 4.0    # px between "Your hand" and the footer
+const TUT_BENCH_LABEL_GAP  := 2.0    # px between a bench caption and its bench row
+const TUT_CAPTION_H        := 22.0
+
+
+func _apply_tutorial_labels() -> void:
+	_tutorial_labels_on = tutorial.labels_on()
+	for cap in _attach_captions:
+		if cap != null and is_instance_valid(cap):
+			cap.visible = _tutorial_labels_on
+	if not _tutorial_labels_on:
+		return
+
+	# "Attacks", centred over each action panel, just above its first row.
+	for panel in [_player_action_panel, _opp_action_panel]:
+		if panel == null or not is_instance_valid(panel):
+			continue
+		_add_tutorial_caption("Attacks",
+			Vector2(panel.position.x, panel.position.y - TUT_CAPTION_H - TUT_ATTACKS_GAP),
+			panel.size.x, HORIZONTAL_ALIGNMENT_CENTER)
+
+	# "Opponent's hand" where the fan started; the fan moves right to make room.
+	opponent_hand_container.position.x += TUT_OPP_HAND_SHIFT
+	_add_tutorial_caption("Opponent's hand",
+		Vector2(OPP_HAND_X, OPP_HAND_Y + (OPP_HAND_CARD.y - TUT_CAPTION_H) * 0.5),
+		TUT_OPP_HAND_SHIFT - 10.0, HORIZONTAL_ALIGNMENT_LEFT, "chrome_fg")
+
+	# "Your hand", just above the footer, over the middle of the hand.
+	_add_tutorial_caption("Your hand",
+		Vector2(PLAYER_HAND_X, 1080.0 - BOARD_BOT_H - TUT_CAPTION_H - TUT_HAND_LABEL_GAP),
+		PLAYER_HAND_W, HORIZONTAL_ALIGNMENT_CENTER)
+
+	# The benches: over the middle slot, drawn above whatever is attached there.
+	var row_w := BENCH_CARD.x * 5.0 + float(BENCH_GAP) * 4.0
+	var bench_x := (1920.0 - row_w) * 0.5
+	_add_tutorial_caption("Your bench",
+		Vector2(bench_x, PLAYER_BENCH_Y - TUT_CAPTION_H - TUT_BENCH_LABEL_GAP),
+		row_w, HORIZONTAL_ALIGNMENT_CENTER, "field_mute", true)
+	_add_tutorial_caption("Opponent's bench",
+		Vector2(bench_x, OPP_BENCH_Y - TUT_CAPTION_H - TUT_BENCH_LABEL_GAP),
+		row_w, HORIZONTAL_ALIGNMENT_CENTER, "field_mute", true)
+
+
+func _add_tutorial_caption(text: String, pos: Vector2, width: float, align: int,
+		colour_key: String = "field_mute", on_top: bool = false) -> void:
+	var lbl := Label.new()
+	lbl.theme = null
+	UIKit.set_label(lbl, "small_label", text, colour_key)
+	lbl.size = Vector2(width, TUT_CAPTION_H)
+	lbl.position = pos
+	lbl.horizontal_alignment = align
+	lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	if on_top:
+		lbl.z_index = UIKit.Z_CHROME + 20
+	add_child(lbl)
+	# Registered with the attachment captions so a selection screen hides them too.
 	_attach_captions.append(lbl)
 
 
@@ -2384,6 +2461,11 @@ func _on_disabled_row_input(event: InputEvent, catcher: Control) -> void:
 ## has to remember to switch them back on - they come back in whatever state the
 ## new turn state says they should be in.
 func _run_action_row(row: Dictionary) -> void:
+	# The tutorial may block this row; the rows are left live so the player can choose again.
+	var tut_block: String = tutorial.gate(String(row.get("kind", "")), {"attack": row.get("attack", {})})
+	if tut_block != "":
+		await tutorial.show_block(tut_block)
+		return
 	set_action_rows_disabled(true)
 	if row.has("action"):
 		row["action"].call()
@@ -3745,8 +3827,10 @@ func _skip_msgbox_typing() -> bool:
 
 
 # Displays the message box with given text and pauses execution until the player clicks
-func show_message(message_text: String) -> void:
-	_log_match_message(message_text)
+## `log_it` false keeps a line out of the Caps Lock match log (the tutorial's hints).
+func show_message(message_text: String, log_it: bool = true) -> void:
+	if log_it:
+		_log_match_message(message_text)
 	var box := _ensure_match_msgbox()
 	# ISSUE #121: re-asserted on every show, exactly like the overworld box does in
 	# MapManager._apply_actor_chips() -- the box may have been built before the opponent data
@@ -5334,7 +5418,8 @@ func setup_player():
 	player_deck = load_deck_from_file(player_deck_path)
 	if GameState.autotest != null:
 		GameState.autotest.stack_player_deck(player_deck)   # AUTOTEST --stack: no-op otherwise
-	
+	tutorial.stack_deck(player_deck, false)
+
 	# Draw opening hand with mulligan (opening_hand_size match effect may override the count)
 	player_hand = draw_opening_hand(player_deck, "Player", match_effects.opening_hand_size(false))
 	
@@ -5358,7 +5443,8 @@ func setup_opponent(opponent_id: String):
 
 	# Load the deck from the opponent data folder file
 	opponent_deck = load_deck_from_file(opponent_deck_path)
-	
+	tutorial.stack_deck(opponent_deck, true)
+
 	# Draw opening cards and mulligan (opening_hand_size match effect may override the count)
 	opponent_hand = draw_opening_hand(opponent_deck, "Opponent", match_effects.opening_hand_size(true))
 	
@@ -6122,7 +6208,8 @@ func start_energy_attachment() -> void:
 	
 	# Update action button text
 	action_button.text = "ATTACH ENERGY"
-	
+	tutorial.on_attach_screen(energy_card_awaiting_target)
+
 # Add this new function after start_energy_attachment()
 func perform_energy_attachment() -> void:
 	if energy_card_awaiting_target == null or selected_card_for_action == null:
@@ -6131,7 +6218,17 @@ func perform_energy_attachment() -> void:
 	
 	var energy_card = energy_card_awaiting_target
 	var target_pokemon = selected_card_for_action
-	
+
+	# The tutorial may want this Energy on a different Pokemon; back to the hand if so.
+	var tut_block: String = tutorial.gate("attach", {"energy": energy_card, "target": target_pokemon})
+	if tut_block != "":
+		await tutorial.show_block(tut_block)
+		energy_card_awaiting_target = null
+		selected_card_for_action = null
+		card_attach_mode_active = false
+		hide_selection_mode_display_main()
+		return
+
 	# Check special energy attachment restrictions
 	var subtypes = energy_card.metadata.get("subtypes", [])
 	if "Special" in subtypes:
@@ -6293,6 +6390,8 @@ func perform_energy_attachment() -> void:
 
 	# MATCH EFFECTS: energy_attach_halve_hp / energy_attach_full_heal
 	await apply_energy_attach_match_effects(target_pokemon, false)
+	if not game_is_over:
+		await tutorial.on_energy_attached(energy_card, target_pokemon)
 
 # MATCH EFFECTS: energy_attach_halve_hp / energy_attach_full_heal — runs after an energy
 # card is attached from hand (both sides). Halve first, then heal; the heal goes through
@@ -6323,6 +6422,7 @@ func game_end_logic(loser_is_player: bool, is_draw: bool = false) -> void:
 		_rec().finish("draw" if is_draw else ("loss" if loser_is_player else "win"))
 	# Set the flag immediately so no other async functions continue processing
 	game_is_over = true
+	tutorial.on_match_end()
 
 	# The CPU can finish the match while the player is sitting in the pause menu. That menu
 	# swallows every event, so left up it would eat the clicks the game-over message and the
@@ -6762,6 +6862,7 @@ func player_pick_prize_card() -> void:
 	action_button.text = "TAKE PRIZE"
 	action_button.disabled = true
 	action_button.theme = theme_disabled
+	tutorial.on_prize_shown()
 
 
 ############################################### Start and end of turn checks and sets ################################################
@@ -6806,6 +6907,7 @@ func player_start_turn_checks() -> void:
 	turn_number += 1
 	_refresh_turn_chip()
 	print("PLAYER'S TURN START. TURN NUMBER IS ", turn_number)
+	await tutorial.on_player_turn_pre_draw()
 	var drawn_card = await draw_card_from_deck(false)
 
 	opponents_turn_active = false
@@ -6843,9 +6945,15 @@ func player_start_turn_checks() -> void:
 	if _should_bail(): return
 	await trainer_effects.ex12_strange_cave_offer(false)
 	if _should_bail(): return
+	await tutorial.on_player_turn_start()
 
 ## ISSUE #217: End Turn, with the board committed before anything else runs.
 func _on_end_turn_pressed() -> void:
+	# The tutorial may not want the turn ended yet; it says why instead.
+	var tut_block: String = tutorial.gate("end_turn")
+	if tut_block != "":
+		await tutorial.show_block(tut_block)
+		return
 	if _rec() != null and not opponents_turn_active:
 		_rec().decision("end_turn", {})
 	if _end_turn_btn != null and is_instance_valid(_end_turn_btn):
@@ -7653,7 +7761,8 @@ func start_retreat_bench_selection() -> void:
 	hint_label.text = "Choose a bench Pokemon to switch into the active spot"
 	action_button.text = "MAKE ACTIVE"
 	action_button.disabled = true
-	action_button.theme = theme_disabled#
+	action_button.theme = theme_disabled
+	tutorial.on_retreat_bench_shown()
 
 ########################################################## END CORE FUNCTIONALITY FUNCTIONS ##########################################################
 ######################################################################################################################################################
@@ -8261,6 +8370,9 @@ func display_and_apply_attack_damage(attacker: card_object, defender: card_objec
 		if defender.has_ability("[Perform]") and defender == (opponent_active_pokemon if def_is_opp else player_active_pokemon):
 			defender.perform_damage_stored = final_damage
 
+	# The tutorial's Weakness / Resistance explanations, once the damage has landed.
+	await tutorial.on_attack_damage(attacker, defender, final_damage, modifiers, is_opponent)
+
 	# GYM1-120 Vermilion City Gym: queued self-damage from Lt. Surge tails — apply to attacker after damage resolves
 	if vermilion_lt_surge_self_damage_pending > 0 and attacker != null:
 		# ISSUE #82 / ISSUE #60: PlusPower +10 each, Defender -20 each on this queued self-damage.
@@ -8862,6 +8974,7 @@ func apply_self_damage_modifiers(pokemon: card_object, damage: int) -> int:
 func check_and_handle_knockout(pokemon: card_object, is_opponent: bool) -> bool:
 	if pokemon == null or pokemon.current_hp > 0:
 		return false
+	tutorial.note_knockout(pokemon, not is_opponent)
 
 	# GYM2 Giovanni's Machamp Fortitude — flip to survive with 10 HP
 	if await powers_and_bodies.check_fortitude(pokemon):
@@ -9165,10 +9278,12 @@ func handle_post_knockout(is_opponent: bool) -> void:
 		return
 	
 	if bench.size() == 0:
+		if not is_opponent:
+			await tutorial.on_player_active_ko(false)
 		await show_message("NO POKEMON REMAINING!")
 		game_end_logic(not is_opponent)
 		return
-	
+
 	if is_opponent:
 		var cpu_eval = cpu_ai.get_cpu_evaluation()
 		var new_active = cpu_ai.pick_best_bench_replacement(opponent_bench, player_active_pokemon, cpu_eval)
@@ -9212,6 +9327,7 @@ func handle_post_knockout(is_opponent: bool) -> void:
 		await check_all_knockouts()
 		if _should_bail(): return
 	else:
+		await tutorial.on_player_active_ko(true)
 		knockout_bench_selection_active = true
 		show_enlarged_array_selection_mode(player_bench)
 		cancel_button.visible = false
@@ -10069,6 +10185,8 @@ func load_opponent_data_by_name(opp_name: String):
 	opponent_data = CharacterSchedule.find_opponent(
 		GameState.current_opponent_map, opp_name,
 		GameState.get_date(), GameState.get_time(), MapManager.evaluate_condition)
+	# A story battle's one-fight changes (Olly's intro: deck, prizes, rewards).
+	opponent_data.merge(GameState.forced_opponent_overrides, true)
 	# ISSUE #375 foresight dials (0.0-1.0): "cpu_cheat_cards" = sees its Prizes + the player's hand/next draw (subtle);
 	# "cpu_cheat_coins" = knows its coin results before choosing (obvious — keep separate).
 	CpuWeights.cheat_cards = clampf(float(opponent_data.get("cpu_cheat_cards", 0.0)), 0.0, 1.0)
@@ -10271,6 +10389,7 @@ func handle_action_retreat_bench() -> void:
 	if _should_bail(): return
 	await check_all_knockouts()
 	if _should_bail(): return
+	await tutorial.on_retreat_done()
 
 # Moves a bench pokemon to the active slot after a knockout and triggers post-knockout signals
 func handle_action_knockout_bench() -> void:
@@ -10360,6 +10479,8 @@ func handle_action_evolution() -> void:
 	# ISSUE #375: the on-evolve Powers / Viridian heal / Darkest Impulse, now that the card has landed.
 	print("ISSUE #375 FIX ACTIVE: post-evolution effects for ", evo_card.metadata.get("name", ""), " run after it lands")
 	await _after_evolution(evo_card, target_card, false)
+	if not game_is_over:
+		await tutorial.on_evolved(evo_card)
 
 # Takes the selected prize card and adds it to the player's hand with animation
 func handle_action_prize_card() -> void:
@@ -10403,12 +10524,21 @@ func handle_action_normal_card() -> void:
 	var action_info = get_card_action(selected_card_for_action)
 	var action_type = action_info["action"]
 
+	# The tutorial may not want this card played yet.
+	if not match_just_started_basic_pokemon_required and not bench_setup_phase_active:
+		var tut_block: String = tutorial.gate("play", {"card": selected_card_for_action, "action": action_type})
+		if tut_block != "":
+			await tutorial.show_block(tut_block)
+			clear_current_action_selection()
+			return
+
 	# Perform the appropriate action based on card type
 	match action_type:
 		"SET_POKEMON":
 			if match_just_started_basic_pokemon_required:
 				# First turn - SET AS ACTIVE POKEMON pokemon
 				set_player_active_pokemon()
+				tutorial.on_player_active_set()
 				display_pokemon(false)  # false = player
 				refresh_hand_display(false)
 				match_just_started_basic_pokemon_required = false
@@ -10445,7 +10575,8 @@ func handle_action_normal_card() -> void:
 					await trainer_effects.gym2_minefield_gym_trigger(bench_card, false)
 					if _should_bail(): return
 					await run_bench_from_hand_triggers(bench_card)   # ISSUE #375
-		
+					await tutorial.on_benched(bench_card)
+
 		"PLAY_TRAINER":
 			var trainer_to_play = selected_card_for_action
 			# Pre-validate that the trainer card can actually have an effect before playing it
@@ -10463,6 +10594,8 @@ func handle_action_normal_card() -> void:
 				return
 			hide_selection_mode_display_main()
 			await trainer_effects.play_trainer_card(trainer_to_play, false)
+			if not game_is_over:
+				await tutorial.on_trainer_played(trainer_to_play)
 			# GYM1 — Tickling Machine / Minion of Team Rocket can force-end the player's turn
 			if player_turn_force_end:
 				player_turn_force_end = false
@@ -10593,7 +10726,12 @@ func cancel_button_pressed_hide_selection_mode() -> void:
 
 		# The player calls the coin first. It changes nothing about the odds - it is
 		# the same 50/50 - but it feels like their call.
+		await tutorial.on_coin_choice()
 		var called_heads: bool = await choose_heads_or_tails()
+		# The stacked tutorials always have the opponent go first: the flip lands on the
+		# side the player did not call.
+		if tutorial.forces_opponent_first():
+			coin_future.push_front(not called_heads)
 		var who_starts = (await flip_coin()) == called_heads
 
 		if who_starts:
@@ -10620,6 +10758,12 @@ func array_container_clicked(event: InputEvent, card_array: Array) -> void:
 			if (card_array == player_bench or card_array == opponent_bench) and not is_pokemon_selection_mode_active():
 				bench_view_active = true
 			show_enlarged_array_selection_mode(card_array)
+			tutorial.on_pile_viewed(card_array)
+
+func _on_deck_icon_input(event: InputEvent, is_opponent: bool) -> void:
+	if UIInput.is_click(event) and not msgbox_container.visible:
+		tutorial.on_pile_viewed(opponent_deck if is_opponent else player_deck)
+
 
 # ISSUE #80: single-card preview — show one Pokémon plus its attached energies and tools laid out as
 # separate cards to its left (raised to line up), the focus card enlarged with its HP label beneath,
@@ -11527,6 +11671,11 @@ func _ready() -> void:
 	add_child(match_effects)
 	match_effects.main = self
 
+	tutorial = Node.new()
+	tutorial.set_script(preload("res://Scripts/Main_Match_Gameplay_Scripts/Tutorial_Director.gd"))
+	add_child(tutorial)
+	tutorial.main = self
+
 	# Register all on-damage and pre-KO power hooks, then let attack_effects add its own.
 	powers_and_bodies._register_all_power_hooks()
 	attack_effects.register_on_damage_hooks(powers_and_bodies)
@@ -11552,6 +11701,9 @@ func _ready() -> void:
 	opponent_prize_container.gui_input.connect(array_container_clicked.bind(opponent_prize_cards))
 	player_discard_icon.gui_input.connect(array_container_clicked.bind(player_discard_pile))
 	opponent_discard_icon.gui_input.connect(array_container_clicked.bind(opponent_discard_pile))
+	# The decks cannot be looked through; in a tutorial, clicking one says so.
+	player_deck_icon.gui_input.connect(_on_deck_icon_input.bind(false))
+	opponent_deck_icon.gui_input.connect(_on_deck_icon_input.bind(true))
 
 	cancel_button.pressed.connect(cancel_button_pressed_hide_selection_mode)
 	action_button.pressed.connect(action_button_pressed_perform_action)
@@ -11579,6 +11731,9 @@ func _ready() -> void:
 	# Parse this opponent's match-wide rule modifiers (must happen before setup_player —
 	# opening_hand_size and max_hp_modifier act during setup)
 	match_effects.initialize(opponent_data)
+	# Which tutorial (if any) this match runs -- before setup_player, which stacks the decks.
+	tutorial.setup(self)
+	_apply_tutorial_labels()
 
 	# Load the opponent's coin texture for "opponent flips" animations.
 	# Falls back to the player's coin (tex_heads) at flip time if absent.
@@ -11641,6 +11796,7 @@ func _ready() -> void:
 	
 	show_enlarged_array_selection_mode(player_hand)
 	display_pokemon(false)
+	tutorial.on_setup_screen()
 	
 ######################################################## END OF MAIN GAME RUNNING FUNCTIONS ##########################################################
 ######################################################################################################################################################

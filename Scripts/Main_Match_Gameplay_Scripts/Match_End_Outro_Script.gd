@@ -19,11 +19,6 @@ var opponent_data: Dictionary
 var player_data: Dictionary
 var battle_won: bool = false
 
-# Opponents that must be defeated in the current time period before
-# time auto-advances. Night never auto-advances — the player must sleep
-# in bed. The counter resets on every time change (see GameState.advance_time).
-const OPPONENTS_TO_ADVANCE_TIME: int = 3
-
 const BATTLE_SPRITE_DIR := "res://Image_Assets/Character_Sprites/In_Battle_Sprites/"
 
 # Icon textures for rewards
@@ -100,6 +95,7 @@ const PACK_IMAGE_DIR: String = "res://Image_Assets/Packs/"
 # 1555x2464, so this is a maximum rather than a size — _show_gift() fits to it.
 const PACK_REVEAL_BOX: Vector2 = Vector2(430, 682)
 
+var _was_first_win: bool = false     # a first-ever win over this opponent (time advance reads it)
 var _result_dialogue: String = ""   # opponent win/loss text shown after fly-in
 
 # Gift overlay nodes — created and freed around each revealed item
@@ -176,6 +172,7 @@ func _ready() -> void:
 
 	# Compute is_first_win once so both the dialogue and build_rewards share it
 	var is_first_win = not GameState.has_beaten_opponent(GameState.current_opponent_name)
+	_was_first_win = battle_won and is_first_win
 
 	# ISSUE #122 FIX ACTIVE: the opponent's name used to be glued onto the FRONT of their own
 	# dialogue as plain text ("MISTY:\nnice match!"), which is exactly what the message box's
@@ -349,6 +346,8 @@ func load_opponent_data(trainer_name: String) -> void:
 	opponent_data = CharacterSchedule.find_opponent(
 		GameState.current_opponent_map, trainer_name,
 		GameState.get_date(), GameState.get_time(), MapManager.evaluate_condition)
+	# A story battle's one-fight changes (Olly's intro: deck, prizes, rewards).
+	opponent_data.merge(GameState.forced_opponent_overrides, true)
 	if opponent_data.is_empty():
 		print("Opponent with name ", trainer_name, " not found on map ",
 			GameState.current_opponent_map)
@@ -448,15 +447,16 @@ func build_rewards(is_first_win: bool) -> void:
 	# The nodes come later, in _build_rewards_block(), once the frame exists.
 	var row_index: int = 0
 
-	# --- 1. Cash reward (always granted, tripled on first win) ---
+	# --- 1. Cash reward (always granted, tripled on first win -- never in Hard Mode) ---
+	var tripled: bool = is_first_win and not GameState.is_hard_mode()
 	var cash_amount = int(opponent_data.get("cash_reward", "0"))
-	if is_first_win:
+	if tripled:
 		cash_amount *= 3
 	GameState.add_cash(cash_amount)
 
 	# The multiplier is an ASIDE, not part of the figure: smaller and in the accent,
 	# so the amount is what the eye lands on.
-	var cash_note: String = "(first win ×3!)" if is_first_win else ""
+	var cash_note: String = "(first win ×3!)" if tripled else ""
 	reward_rows.append(_reward_row(str(cash_amount), pokedollar_icon_tex, cash_note))
 	row_index += 1
 
@@ -1232,21 +1232,22 @@ func transition_back_to_map() -> void:
 	transitioning  = true
 	click_enabled  = false
 
-	# Time advancement checks — applies to every day. Defeating enough
-	# opponents pushes Morning -> Afternoon -> Evening -> Night. Night never
+	# Time advancement: enough matches push Morning -> Afternoon -> Evening -> Night.
+	# How many, and which matches count, is GameState's TIME ADVANCE section (2 first
+	# wins a slot on day 1, 3 on day 2, then any 4 matches from day 3). Night never
 	# auto-advances; the player advances it by sleeping in bed.
-	if battle_won and GameState.get_current_defeated() >= OPPONENTS_TO_ADVANCE_TIME:
+	GameState.count_match_toward_time(_was_first_win)
+	if GameState.get_current_defeated() >= GameState.matches_to_advance_time():
 		match GameState.get_time():
 			"Morning":
 				GameState.advance_time("Afternoon")
 			"Afternoon":
 				GameState.advance_time("Evening")
 			"Evening":
-				# Day-1 onboarding gate: the player must collect the shop
-				# starter set before night. The flag stays true forever
-				# afterwards, so this is a no-op on every later day.
-				if GameState.progress.get("player_collected_shop_starter_set", false):
-					GameState.advance_time("Night")
+				GameState.advance_time("Night")
+
+	# A story battle's one-fight overrides end with the fight.
+	GameState.forced_opponent_overrides = {}
 
 	_stop_outcome_jingle()
 

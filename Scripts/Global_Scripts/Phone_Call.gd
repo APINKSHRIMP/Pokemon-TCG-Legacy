@@ -17,7 +17,7 @@ extends CanvasLayer
 #
 # Every call is a Dictionary (or an entry in Phone_Calls.json), so a new call is data, not code:
 #
-#     var call := PhoneCall.play_from_data(self, "ellie_intro")
+#     var call := PhoneCall.play_from_data(self, "intro_call_new")
 #     await call.finished
 #
 # ── THE SCREEN IS A HOLE IN THE PHONE ────────────────────────

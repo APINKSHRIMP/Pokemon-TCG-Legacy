@@ -116,12 +116,11 @@ func _ready() -> void:
 		audio_stream.loop = true
 		audio_player.play()
 
-	var starter_collected = GameState.progress.get("player_collected_starter_box", false)
+	# Deck, coin case and sleeves open up once Olly's intro match is over.
 	var locked_modes := {}
-	if not starter_collected:
+	if not GameState.has_flag(GameState.INTRO_DONE_FLAG):
 		locked_modes["deck/deck_mode_background"]      = "deck/deck_mode_label"
 		locked_modes["coin/coin_case_mode_background"] = "coin/coin_case_label"
-		# ISSUE #29 FIX: sleeves is also unavailable until the starter box is collected.
 		locked_modes["sleeves/sleeves_mode_background"] = "sleeves/sleeves_label"
 
 	await get_tree().process_frame

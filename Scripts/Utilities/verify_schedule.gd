@@ -90,7 +90,8 @@ func _initialize() -> void:
 
 
 ## Every spawnable entry needs a name and a position, or MapManager drops it with
-## a push_error at load time. The RIVAL placeholders have no position by design.
+## a push_error at load time. Placeholders (the RIVALs, Olly's intro entry) have no
+## position by design: they are only ever fought from a cutscene.
 func _check_entries(map_name: String, day: int, time: String, cast: Dictionary) -> int:
 	var bad := 0
 	for section in ["npcs", "opponents"]:
@@ -105,7 +106,7 @@ func _check_entries(map_name: String, day: int, time: String, cast: Dictionary) 
 				printerr("  %s d%d %s: %s spawns twice in one slot" % [map_name, day, time, name])
 				bad += 1
 			seen[name] = true
-			if not entry.has("position") and not name.begins_with("RIVAL"):
+			if not entry.has("position") and not name.begins_with("RIVAL") 					and not entry.get("placeholder", false):
 				printerr("  %s d%d %s: %s has no position" % [map_name, day, time, name])
 				bad += 1
 	return bad

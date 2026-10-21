@@ -170,6 +170,9 @@ var _panel: ColorRect = null
 var _text_box: Control = null
 var _chip_row: Control = null
 var _button_row: HBoxContainer = null
+# A small notice chip sitting where the Yes/No buttons would be ("No rematches on Hard
+# Mode"). See set_button_notice(); set_mode() clears it.
+var _button_notice: Control = null
 var _caret: Control = null
 var _caret_tween: Tween = null
 
@@ -561,11 +564,26 @@ func set_panel_bottom(new_bottom: float) -> void:
 func set_mode(mode: String) -> void:
 	_mode = mode
 	ok_armed = true
+	set_button_notice("")
 	var wants_buttons := mode == "choices"
 	if yes_button != null: yes_button.visible = wants_buttons
 	if no_button  != null: no_button.visible  = wants_buttons
 	if ok_button  != null: ok_button.visible  = false
 	_set_caret_visible(not wants_buttons)
+
+
+## A small chip in the Yes/No buttons' place, for a question the player is NOT being
+## asked -- Hard Mode's beaten opponent shows "No rematches on Hard Mode" there. Call it
+## after set_mode("ok"); "" removes it.
+func set_button_notice(text: String) -> void:
+	if _button_notice != null and is_instance_valid(_button_notice):
+		_button_notice.queue_free()
+	_button_notice = null
+	if text == "" or _button_row == null:
+		return
+	_button_notice = UIKit.make_chip(text)
+	_button_notice.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	_button_row.add_child(_button_notice)
 
 
 ## Shows or hides the advance caret WITHOUT changing the mode. set_mode() decides it for every

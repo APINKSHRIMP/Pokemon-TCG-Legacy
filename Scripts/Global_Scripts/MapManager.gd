@@ -86,6 +86,9 @@ var _pending_gift_display: Dictionary = {}
 
 # When non-empty, the next OK press launches PackOpeningManager for gifted packs.
 var _pending_pack_opening: Array = []
+# The No half of show_cutscene_choice(); every other Yes/No has no No action.
+var _pending_confirm_no: Callable = Callable()
+const HARD_MODE_NO_REMATCH_TEXT := "No rematches on Hard Mode"
 
 # ── Juice vendor state ─────────────────────────────────────────────
 # When non-empty, the next OK press shows the "delicious..." result message and
@@ -194,6 +197,8 @@ const GIFT_CARD_SIZES := {
 	2: Vector2(380, 530),
 	3: Vector2(320, 446),
 	4: Vector2(280, 390),
+	5: Vector2(260, 362),
+	6: Vector2(250, 348),
 }
 
 const GIFT_COIN_SIZE := Vector2(250, 250)
@@ -1116,6 +1121,7 @@ func _hide_message():
 	_clear_gift_display()
 	_clear_coinflip_display()
 	_pending_confirm_yes = Callable()
+	_pending_confirm_no = Callable()
 	# A cutscene closes and reopens this box between every line. Handing movement
 	# back each time would let the player walk off mid-conversation.
 	_player.can_move = not cutscene_active
@@ -1176,6 +1182,17 @@ func show_cutscene_message(text: String, speaker: Dictionary, on_ok: Callable) -
 	_show_message_with_ok(text)
 
 
+## A Yes/No question in a cutscene, spoken by `speaker`. Exactly one of the two
+## callbacks runs, after the box has closed. Cutscene.ask() wraps it.
+func show_cutscene_choice(text: String, speaker: Dictionary, on_yes: Callable, on_no: Callable) -> void:
+	cutscene_speaker = speaker
+	_pending_ok_action = Callable()
+	_show_message_with_choices(text)
+	# Set AFTER the box is up: showing it does not clear them, but be explicit about order.
+	_pending_confirm_yes = on_yes
+	_pending_confirm_no = on_no
+
+
 ## Take the cutscene box down. The player stays locked while cutscene_active is
 ## set -- see the note in _hide_message().
 func end_cutscene_message() -> void:
@@ -1199,10 +1216,16 @@ func end_cutscene_message() -> void:
 # is that deck RESTRICTIONS are not enforced: a story battle the player cannot
 # walk away from must not be able to reject them and strand the cutscene.
 
-func start_forced_battle(entry: Dictionary) -> void:
+## `overrides` are laid over the opponent's data for this one fight, everywhere the match
+## reads it (GameState.forced_opponent_overrides): "deck", "prize_cards", "cash_reward",
+## "coin_reward", "retry_on_loss", "tutorial" ...
+func start_forced_battle(entry: Dictionary, overrides: Dictionary = {}) -> void:
 	if entry.is_empty():
 		push_error("MapManager: start_forced_battle called with an empty entry")
 		return
+	entry = entry.duplicate()
+	entry.merge(overrides, true)
+	GameState.forced_opponent_overrides = overrides.duplicate()
 
 	GameState.test_match_mode = false
 	GameState.current_opponent_name = str(entry.get("name", ""))
@@ -1235,6 +1258,8 @@ func start_forced_battle(entry: Dictionary) -> void:
 		# and restarts the match instead of returning to the overworld -- see
 		# Match_End_Outro_Script._wants_retry_on_loss().
 		"retry_on_loss":    bool(entry.get("retry_on_loss", false)),
+		# The match's tutorial mode ("newby" / "rules"); see Tutorial_Director.gd.
+		"tutorial":         str(entry.get("tutorial", "")),
 	}
 
 	var match_format: String = str(entry.get("match_format", ""))
@@ -1368,6 +1393,13 @@ func _on_player_interact(opponent: Node):
 	_face_player_toward_actor(opponent)
 	# Keep bubble visible during messagebox; refresh in case state changed
 	opponent.refresh_bubble()
+	# Hard Mode: no rematches. A beaten opponent says what they said when they lost
+	# again, and a small notice takes the Yes/No's place. Someone the player lost to
+	# can still be challenged until they are beaten.
+	if GameState.is_hard_mode() and GameState.has_beaten_opponent(opponent.opponent_name):
+		await _show_message_with_ok(opponent.rematch_win_text)
+		message_panel.set_button_notice(HARD_MODE_NO_REMATCH_TEXT)
+		return
 	_show_message_with_choices(opponent.get_greeting_text())
 
 func _on_yes_pressed():
@@ -1450,6 +1482,7 @@ func _on_yes_pressed():
 
 		GameState.current_opponent_name      = current_opponent.opponent_name
 		GameState.current_opponent_deck      = current_opponent.deck
+		GameState.forced_opponent_overrides  = {}
 		GameState.current_opponent_map = _map_data
 		GameState.player_position            = _player.position
 		GameState.returning_from_battle      = false
@@ -1506,6 +1539,13 @@ func _on_yes_pressed():
 
 func _on_no_pressed():
 	await _flush_after_emote()
+	# A cutscene's Yes/No question (show_cutscene_choice) wants to hear the No too.
+	if _pending_confirm_no.is_valid():
+		var no_cb: Callable = _pending_confirm_no
+		_pending_confirm_no = Callable()
+		_hide_message()
+		no_cb.call()
+		return
 	if current_opponent != null:
 		current_opponent.refresh_bubble()
 	if current_npc != null:
@@ -1747,6 +1787,17 @@ func _end_or_next_step(steps: Array, next: int) -> void:
 ## A key item fading up on the gift overlay with `text` under it -- the costume reveal,
 ## for rods and permits. `image_path` "" shows the text alone. `on_ok` runs when the
 ## player clears it (the overlay is still up; the next box or _hide_message clears it).
+## Cards flipped up on the gift overlay with the big "You received..." notice, exactly as a
+## card gift looks -- but nothing is granted here; the caller gives (or does not give) the
+## cards itself. Olly's starter deck and his "load of energy cards" both use it.
+func show_card_reveal(text: String, card_ids: Array, on_ok: Callable) -> void:
+	_pending_ok_action = on_ok
+	var paths: Array = []
+	for cid in card_ids:
+		paths.append(_get_card_image_path(String(cid)))
+	_show_gift_display(text, paths, "card")
+
+
 func show_item_reveal(text: String, image_path: String, on_ok: Callable) -> void:
 	_pending_ok_action = on_ok
 	var paths: Array = []
@@ -1947,8 +1998,8 @@ func _show_gift_display(text: String, image_paths: Array, kind: String) -> void:
 		target_box = GIFT_COSTUME_SIZE
 		center_y = GIFT_DISPLAY_CENTER_Y_COSTUME
 	else:
-		var n_clamp: int = clamp(image_paths.size(), 1, 4)
-		target_box = GIFT_CARD_SIZES.get(n_clamp, GIFT_CARD_SIZES[4])
+		var n_clamp: int = clamp(image_paths.size(), 1, GIFT_CARD_SIZES.size())
+		target_box = GIFT_CARD_SIZES.get(n_clamp, GIFT_CARD_SIZES[GIFT_CARD_SIZES.size()])
 		center_y = GIFT_DISPLAY_CENTER_Y_CARD
 
 	# ── PASS 1: Load each texture and compute the actual rendered size ──
@@ -3143,9 +3194,9 @@ func debug_set_fish_coins(amount: int) -> void:
 	GameState.add_fish_coins(amount - GameState.get_fish_coins())
 	print("DEBUG: fish coins = ", GameState.get_fish_coins())
 
-
-## No reset, no reload. This is the count the outro reads to auto-advance time at 3
-## wins, so taking it to 2 and then winning a real battle exercises the real path.
+## No reset, no reload. This is the count the outro reads to auto-advance time (2/3/4 a slot,
+## see GameState.matches_to_advance_time), so taking it one short and then winning a real
+## battle exercises the real path.
 func debug_add_defeated() -> void:
 	GameState.progress["opponents_beaten_count_current"] = GameState.get_current_defeated() + 1
 	GameState.save_progress()

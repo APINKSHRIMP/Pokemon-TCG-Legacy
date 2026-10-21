@@ -193,6 +193,8 @@ func load_opponent_data(trainer_name: String) -> void:
 	opponent_data = CharacterSchedule.find_opponent(
 		GameState.current_opponent_map, trainer_name,
 		GameState.get_date(), GameState.get_time(), MapManager.evaluate_condition)
+	# A story battle's one-fight changes (Olly's intro: deck, prizes, rewards).
+	opponent_data.merge(GameState.forced_opponent_overrides, true)
 	if opponent_data.is_empty():
 		print("Opponent with name ", trainer_name, " not found on map ",
 			GameState.current_opponent_map)

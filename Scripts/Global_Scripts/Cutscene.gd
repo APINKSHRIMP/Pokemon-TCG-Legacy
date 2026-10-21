@@ -155,6 +155,19 @@ func say_all(speaker: Dictionary, lines: Array) -> void:
 		await say(speaker, str(line))
 
 
+## A Yes/No question from `speaker`. Returns true for Yes. The box is closed when it returns.
+func ask(speaker: Dictionary, text: String) -> bool:
+	var answer := [false]
+	var on_yes := func() -> void:
+		answer[0] = true
+		line_advanced.emit()
+	var on_no := func() -> void:
+		line_advanced.emit()
+	MapManager.show_cutscene_choice(text, speaker, on_yes, on_no)
+	await line_advanced
+	return answer[0]
+
+
 ## Take the box down. Call it at the end of a conversation, or before any beat
 ## that should play with a clear screen.
 func close_box() -> void:

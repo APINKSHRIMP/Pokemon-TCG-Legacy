@@ -7,8 +7,9 @@ const DEFAULT_SPAWN_POSITION             = Vector2(-600, 1500)
 const TAXI_START_POS := Vector2(2573.0, 1816.0)
 const TAXI_END_POS   := Vector2(-742.0, 1828.0)
 
-# The intro phone call. Ellie rings while the taxi is still driving in, so the two play together and
-# the drive-by is what she is talking about ("I'll see you drive right on by in a sec").
+# The intro phone call. Olly rings while the taxi is still driving in, so the two play together and
+# the drive-by is what he is talking about ("I think I can see you"). Which call rings depends on
+# the new-game answers (GameState.INTRO_PROFILES call_id).
 #
 # It is an ORDINARY call - the player clicks through her lines at their own pace - so the cutscene
 # cannot assume any particular length for it. It waits once, on the doorstep; see the doorstep wait
@@ -19,11 +20,8 @@ const TAXI_END_POS   := Vector2(-742.0, 1828.0)
 # call is roughly 17.5s at the default text speed and the drive is 20s, so there is room either way -
 # and if a slow text speed overruns it, _run_taxi_intro() waits for it rather than talking over the
 # player's first steps. See Phone_Call.gd for the call itself and Phone_Calls.json for the script.
-const INTRO_CALL_ID    := "ellie_intro"   # fallback; the save's intro profile names the real one
+const INTRO_CALL_ID    := "intro_call_new"   # fallback; the save's intro profile names the real one
 const INTRO_CALL_DELAY := 1.2
-# ISSUE #405 TEST: further calls rung one after another once the intro call hangs up, to try the
-# in-battle-sprite callers. Empty the array to remove them; nothing else refers to them.
-const INTRO_TEST_CALLS : Array[String] = ["test_405_olly", "test_405_alexander"]
 
 # TWEAKABLE - the drive itself.
 #   DRIVE_TIME  the long constant-speed run in. Raising it slows the taxi down; the distance is
@@ -48,11 +46,6 @@ var _taxi_base_pos: Vector2 = Vector2.ZERO
 var _taxi_bob_timer: float  = 0.0
 var _taxi_current_bob: float = 0.0
 var _intro_call: PhoneCall = null
-# ISSUE #405: true from the moment the taxi starts until the LAST intro call has hung up. The
-# doorstep waits on this rather than on one call, because between two calls there is a moment
-# where the first has finished and the next does not exist yet.
-var _intro_calls_running: bool = false
-signal _intro_calls_done
 
 func _allow_menu_open(_is_enter: bool) -> bool:
 	return not _cutscene_active
@@ -72,12 +65,12 @@ func _ready() -> void:
 		$Taxi.visible = false
 		# A cutscene that is about to take over must not give the player a frame or
 		# two of free movement while the map fades in.
-		var cutscene_due: bool = EllieIntroCutscene.should_run(GameState.entering_from)
+		var cutscene_due: bool = OllyIntroCutscene.should_run(GameState.entering_from)
 		if cutscene_due:
 			_player.lock_movement()
 		await super._ready()
 		if cutscene_due:
-			_start_ellie_intro()
+			_start_olly_intro()
 		return
 
 	# Taxi intro path: skip normal startup, run the cutscene instead
@@ -125,6 +118,7 @@ func _run_taxi_intro() -> void:
 	_taxi_intro_phase = true
 
 	# Fade in from black over 3 seconds
+	_set_taxi_lights(GameState.get_time())
 	var fade_tween := create_tween()
 	fade_tween.tween_property(self, "modulate", Color.WHITE, INTRO_FADE_TIME)
 
@@ -166,43 +160,40 @@ func _run_taxi_intro() -> void:
 	# empty plot where it used to be. The route is now read off the house's own
 	# door (DoorArea_PlayerHouse, via the same _spawn_beside_door() maths that
 	# places the player when they come back OUT of it): across to the door's
-	# column, then up to INTRO_LOOK_AROUND_GAP below the doorstep for the look
-	# around, then up into the door. Moving the door moves the walk.
+	# column, then up to the doorstep, a pause, then up into the door. Moving the
+	# door moves the walk.
 	var doorstep := _intro_doorstep()
-	print("ISSUE #381 FIX ACTIVE: intro walks to the front door at ", doorstep)
+	# "rules" (an evening arrival): Olly comes straight round, so the walk stops a few steps
+	# short of the door and he meets the player there instead of them going in.
+	var olly_at_taxi: bool = GameState.get_intro_profile().get("olly_meets", "door") == "taxi"
+	var stop_y: float = doorstep.y + (INTRO_MEET_SHORT_OF_DOOR if olly_at_taxi else 0.0)
 	var dx: float = doorstep.x - _player.position.x
 	if absf(dx) > 0.5:
 		await _scripted_walk("right" if dx > 0.0 else "left", absf(dx))
-	var look_y: float = doorstep.y + INTRO_LOOK_AROUND_GAP
-	if _player.position.y > look_y:
-		await _scripted_walk("up", _player.position.y - look_y)
+	if _player.position.y > stop_y:
+		await _scripted_walk("up", _player.position.y - stop_y)
 
-	# ── THE DOORSTEP WAIT ──────────────────────────────────────────────────────────────
-	# The call advances on a click now, so the player decides how long it takes. They stop here, in
-	# front of their house, until they have read Ellie out - and then until the phone has actually
-	# flown off the screen, which is what `finished` waits for.
+	if olly_at_taxi:
+		await _hand_over_to_olly()
+		return
+
+	# -- THE DOORSTEP --------------------------------------------------------------------
+	# The call advances on a click, so the player decides how long it takes. Still on the phone
+	# when they reach the door: they turn round (head down, talking) until it hangs up and the
+	# phone has flown off, then look back up at the door. Either way a short pause at the door,
+	# as if unlocking it, then in.
 	#
-	# THIS IS THE ONLY PLACE THE CUTSCENE WAITS. Everything before it - the drive, the taxi leaving,
-	# the walk up the path - plays over the call exactly as it did, and a player who has already
-	# clicked through every line walks straight into the look-around with no pause at all, because
-	# is_finished() is already true.
-	#
-	# is_finished() before the await, never just is_instance_valid(): the call frees itself the
-	# moment it emits, so awaiting one that has already ended would wait for ever.
-	# ISSUE #405: every intro call, not just the first - see _intro_calls_running.
-	if _intro_calls_running:
-		await _intro_calls_done
+	# THIS IS THE ONLY PLACE THE CUTSCENE WAITS. is_finished() before the await, never just
+	# is_instance_valid(): the call frees itself the moment it emits, so awaiting one that has
+	# already ended would wait for ever.
+	if _intro_call != null and is_instance_valid(_intro_call) and not _intro_call.is_finished():
+		_player.set_direction("down")
+		await _intro_call.finished
+		_player.set_direction("up")
+		await get_tree().create_timer(INTRO_AFTER_CALL_PAUSE).timeout
+	await get_tree().create_timer(INTRO_UNLOCK_PAUSE).timeout
 
-	await get_tree().create_timer(0.5).timeout
-	_player.set_direction("left")
-	await get_tree().create_timer(0.5).timeout
-	_player.set_direction("right")
-	await get_tree().create_timer(0.5).timeout
-	_player.set_direction("up")
-	await get_tree().create_timer(0.5).timeout
-
-	# ISSUE #381: from the look-around spot, up past the doorstep onto the door itself.
-	await _scripted_walk("up", INTRO_LOOK_AROUND_GAP + INTRO_DOOR_STEP_IN)
+	await _scripted_walk("up", INTRO_DOOR_STEP_IN)
 
 	# Fade to black and enter the player house
 	_player.lock_movement()
@@ -224,37 +215,51 @@ func _run_taxi_intro() -> void:
 # ============================================================
 # STORY CUTSCENES
 # ============================================================
-# Everything about the Ellie intro — where she runs, what she says, when it plays
-# — lives in Scripts/Cutscenes/Ellie_Intro_Cutscene.gd. All the map has to do is
-# ask whether it is due and hand the scene over; the cutscene object adds itself to
-# this scene, takes the player's input, and frees itself when it is done. Add
-# further cutscenes the same way.
+# Everything about Olly's first morning -- where he runs, what he says, the deck he
+# hands over and the match -- lives in Scripts/Cutscenes/Olly_Intro_Cutscene.gd. All
+# the map has to do is ask whether it is due and hand the scene over; the cutscene
+# object adds itself to this scene, takes the player's input, and frees itself when
+# it is done. Add further cutscenes the same way.
 
-func _start_ellie_intro() -> void:
-	var cutscene := EllieIntroCutscene.new()
+func _start_olly_intro() -> void:
+	var cutscene := OllyIntroCutscene.new()
 	cutscene.install(self)
 	cutscene.run()
 
 
-## Rings Ellie up a couple of seconds into the drive. Fire-and-forget: it returns as soon as the
+## Rings Olly up a couple of seconds into the drive. Fire-and-forget: it returns as soon as the
 ## call has been started, and the cutscene carries on around it.
 func _start_intro_phone_call() -> void:
-	_intro_calls_running = true
 	await get_tree().create_timer(INTRO_CALL_DELAY).timeout
-	# Which call rings depends on the new-game familiarity answer (GameState.INTRO_PROFILES).
-	var call_ids: Array[String] = [String(GameState.get_intro_profile().get("call_id", INTRO_CALL_ID))]
-	call_ids.append_array(INTRO_TEST_CALLS)
-	for call_id in call_ids:
-		# The player can quit out of the cutscene; do not build a call into a scene that has gone.
-		if not is_inside_tree():
-			return
-		_intro_call = PhoneCall.play_from_data(self, call_id)
-		if _intro_call != null and not _intro_call.is_finished():
-			await _intro_call.finished
-		if call_id in INTRO_TEST_CALLS:
-			print("ISSUE #405 FIX ACTIVE: intro test call ", call_id, " finished")
-	_intro_calls_running = false
-	_intro_calls_done.emit()
+	# The player can quit out of the cutscene; do not build a call into a scene that has gone.
+	if not is_inside_tree():
+		return
+	_intro_call = PhoneCall.play_from_data(self,
+		String(GameState.get_intro_profile().get("call_id", INTRO_CALL_ID)))
+
+
+## "rules": the player waits a few steps short of the door, still looking up at it, until
+## the call ends; they look down as Olly hangs up and he comes running round. The intro is
+## done from here, so a reload resumes with Olly running up again (OllyIntroCutscene).
+func _hand_over_to_olly() -> void:
+	_player.set_direction("up")
+	if _intro_call != null and is_instance_valid(_intro_call) and not _intro_call.is_finished():
+		await _intro_call.finished
+	_player.set_direction("down")
+	GameState.progress["taxi_intro_pending"] = false
+	GameState.save_progress()
+	_cutscene_active = false
+	_start_olly_intro()
+
+
+## The taxi's headlights (PointLight2D children of Taxi) follow the street lights: on at
+## Evening and Night only. The intro always drives home at night, but this keeps them
+## right if that ever changes.
+func _set_taxi_lights(time: String) -> void:
+	var dark: bool = time == "Evening" or time == "Night"
+	for child in $Taxi.get_children():
+		if child is PointLight2D:
+			child.visible = dark
 
 
 func _drive_taxi_off() -> void:
@@ -270,11 +275,14 @@ func _drive_taxi_off() -> void:
 	)
 
 
-## ISSUE #381: TWEAKABLE - where the taxi intro stops for its look around, in px
-## BELOW the doorstep (the spot the player appears on when leaving the house), and
-## how far past the doorstep the final step carries them (onto the door).
-const INTRO_LOOK_AROUND_GAP := 70.0
-const INTRO_DOOR_STEP_IN    := 20.0
+## TWEAKABLE - the doorstep. How long the player pauses at the door (unlocking it), how
+## long they hold after the call ends before that, and how far the last step carries them
+## past the doorstep onto the door.
+const INTRO_UNLOCK_PAUSE     := 0.2
+## "rules": how far short of the door (world px below the doorstep) the player stops for Olly.
+const INTRO_MEET_SHORT_OF_DOOR := 40.0
+const INTRO_AFTER_CALL_PAUSE := 0.4
+const INTRO_DOOR_STEP_IN     := 20.0
 
 ## The doorstep of the player's house: where a player leaving it stands. Falls back
 ## to the old hand-measured spot only if the door node has gone missing.
@@ -323,6 +331,7 @@ func set_time_of_day(time: String) -> void:
 		$LIGHTS.visible = true
 	else:
 		$LIGHTS.queue_free()
+	_set_taxi_lights(time)
 	if time == "Night":
 		$"TILE_MAPS/OBJECTS/CAR PARK CARS".visible = false
 

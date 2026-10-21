@@ -140,6 +140,7 @@ func _ready():
 
 	_player.position = resolved_spawn
 	_player.set_direction(resolved_dir)
+	_apply_camera_room()
 
 	# Menu-return state is only ever consumed by the scene it names, so clear it only on a match —
 	# a different map must not eat a pending return into another one.
@@ -179,6 +180,46 @@ func _ready():
 	if GameState.reopen_menu_overlay:
 		GameState.reopen_menu_overlay = false
 		_open_menu_overlay()
+
+# ============================================================
+# CAMERA ROOM — interiors keep the camera inside the room
+# ============================================================
+# The outdoor maps (the ones with a time of day) leave the camera free. Every interior
+# fences it in to the room's tiles, grown by camera_room_margin() world px, so walking
+# to a wall no longer drags half a screen of black into view. A map can override
+# get_camera_room() outright when its tiles are not the room (e.g. scenery outside).
+
+## TWEAKABLE per map: how far past the outermost tiles the camera may look.
+func camera_room_margin() -> float:
+	return 8.0
+
+
+## The rect the camera stays inside, world px. Rect2() = no limits.
+func get_camera_room() -> Rect2:
+	if uses_time_of_day():
+		return Rect2()
+	var room := Rect2()
+	for layer in find_children("*", "TileMapLayer", true, false):
+		var tl := layer as TileMapLayer
+		if tl.tile_set == null:
+			continue
+		var used: Rect2i = tl.get_used_rect()
+		if used.size == Vector2i.ZERO:
+			continue
+		var half: Vector2 = Vector2(tl.tile_set.tile_size) * 0.5
+		var a: Vector2 = tl.to_global(tl.map_to_local(used.position) - half)
+		var b: Vector2 = tl.to_global(tl.map_to_local(used.end - Vector2i.ONE) + half)
+		var r := Rect2(a, b - a).abs()
+		room = r if room.size == Vector2.ZERO else room.merge(r)
+	if room.size == Vector2.ZERO:
+		return room
+	return room.grow(camera_room_margin())
+
+
+func _apply_camera_room() -> void:
+	if _player != null and _player.has_method("set_camera_room"):
+		_player.set_camera_room(get_camera_room())
+
 
 func _exit_tree():
 	if get_tree().node_added.is_connected(_on_node_added_grade):
@@ -481,18 +522,6 @@ func close_submenu_overlay(restore_menu: bool = true) -> void:
 	# the map is no longer reloaded.
 	if _player != null and is_instance_valid(_player) and _player.has_method("refresh_sprite"):
 		_player.refresh_sprite()
-
-# ============================================================
-# MOVING-IN VISIBILITY — opt-in
-# Hides tiles named exclude_name once moving-in is complete.
-# ============================================================
-
-func _apply_moving_in_visibility(layer_parent: Node, exclude_name: String = "Moving In"):
-	if not GameState.progress.get("moving_in_completed", false):
-		return
-	for layer in layer_parent.get_children():
-		if layer is TileMapLayer:
-			layer.visible = layer.name != exclude_name
 
 # ============================================================
 # TIME-OF-DAY GRADE — see Time_Of_Day_Grade.gd

@@ -14,7 +14,7 @@ var _selected_cell : Control = null
 var _active_tween  : Tween = null
 
 # The three pages: 0 name/birthday/look, 1 familiarity, 2 Hard Mode (only after
-# the two harder familiarity answers).
+# "I'm an experienced player").
 var _pages      : Array[Control] = []
 var _page       : int = 0
 var _switching  : bool = false   # a page fade is running; buttons and keys wait
@@ -431,7 +431,7 @@ const FAMILIARITY_ROWS := [
 	[["deck", "Starter Deck"], ["on", "Natural tutorial matches"], ["on", "Match help hints"],
 		["on", "Gameplay hints"], ["off", "Hard Mode option"], ["off", "Harder matches straight away"]],
 	[["deck", "Advanced Deck"], ["off", "Tutorial matches"], ["off", "Match help hints"],
-		["on", "Gameplay hints"], ["on", "Hard Mode option"], ["off", "Harder matches straight away"]],
+		["on", "Gameplay hints"], ["off", "Hard Mode option"], ["off", "Harder matches straight away"]],
 	[["deck", "Advanced Deck"], ["off", "Tutorial matches"], ["off", "Match help hints"],
 		["off", "Gameplay hints"], ["on", "Hard Mode option"], ["on", "Harder matches straight away"]],
 ]
@@ -757,9 +757,9 @@ func _on_mode_clicked(double: bool, hard: bool) -> void:
 		_on_next_pressed()
 
 
-## Only the two harder answers are offered Hard Mode.
+## Only "I'm an experienced player" is offered Hard Mode.
 func _offers_hard_mode() -> bool:
-	return _familiarity >= 2
+	return _familiarity == FAMILIARITY_ORDER.size() - 1
 
 
 # ─── Paging ──────────────────────────────────────────────────────────────────

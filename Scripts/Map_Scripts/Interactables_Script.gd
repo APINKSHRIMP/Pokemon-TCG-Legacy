@@ -28,9 +28,6 @@ const MISSING_TEXT := "There's nothing of interest here."
 # Text shown when interacting with the bed outside of night time.
 const BED_TOO_EARLY_TEXT := "Nothing wrong with an early night but it's far too early to go to sleep now!"
 
-# Prompt shown when interacting with the bed at night.
-const BED_SLEEP_PROMPT := "Would you like to go to sleep now?"
-
 # TV news headlines, grouped by progression stage. _tv_stage()
 # picks the highest stage whose condition is currently met, and
 # each interaction cycles to the next headline in that stage.
@@ -140,7 +137,7 @@ func _trigger(shape_name: String) -> void:
 
 func _interact_bed() -> void:
 	if GameState.get_time() == "Night":
-		MapManager.show_interactable_confirm(BED_SLEEP_PROMPT, Callable(self, "_do_sleep"))
+		MapManager.show_interactable_confirm(GameState.sleep_prompt_text(), Callable(self, "_do_sleep"))
 	else:
 		MapManager.show_interactable_message(BED_TOO_EARLY_TEXT)
 
@@ -160,8 +157,8 @@ func _do_sleep() -> void:
 		_player.get_current_direction()
 	)
 
-	# Sleep through the night: date +1 and Night -> Morning.
-	GameState.advance_time("Morning")
+	# Sleep through the night: date +1 and Night -> Morning (the arrival night may sleep in).
+	GameState.sleep_until_next_day()
 
 	var tween := create_tween()
 	tween.tween_property(_scene_root, "modulate", Color.BLACK, SLEEP_FADE_DURATION)
@@ -192,6 +189,6 @@ func _tv_stage() -> int:
 	var packs: Array = GameState.progress.get("packs_unlocked", [])
 	if "base2" in packs or "base3" in packs:
 		return 3  # new sets in store
-	if GameState.progress.get("shop_state", "initial") == "open":
+	if date >= 2:
 		return 2  # shop ready to sell packs
 	return 1

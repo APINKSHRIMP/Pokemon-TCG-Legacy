@@ -9,8 +9,7 @@ extends Control
 ##
 ## What counts as a key item is KEY_ITEMS below, in the order they are listed:
 ##   * fishing rods and fishing permits -- items in progress["items"] (FishingRods)
-##   * the Starting Box from upstairs and the Card Mart's Starter Set -- these are the
-##     two save flags that record them, shown so a save can be checked at a glance.
+##   * anything in FLAG_ITEMS -- a save flag shown as an item (none at the moment).
 ## Add a new key item by adding a row here.
 
 ## TWEAKABLE — grid shape and text.
@@ -24,10 +23,7 @@ const EMPTY_TEXT  := "Your bag is empty."
 
 ## Each row: {"label", and either "item" (an item name) or "flag" (a progress key)}.
 ## Rods and permits are filled in from FishingRods so their names live in one place.
-const FLAG_ITEMS := [
-	{"label": "Starting Box", "flag": "player_collected_starter_box", "art": "Starting_Box"},
-	{"label": "Starter Set", "flag": "player_collected_shop_starter_set", "art": "Starter_Set"},
-]
+const FLAG_ITEMS := []
 
 @onready var grid        : GridContainer = $"bag_grid_container"
 @onready var cancel_btn  : Button        = $"bag_cancel_button"

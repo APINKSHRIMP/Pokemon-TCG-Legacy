@@ -3,19 +3,21 @@ extends WorldObjectBase
 # ============================================================
 # SHOPKEEPER SCRIPT
 # ============================================================
-# Extends WorldObjectBase for movement/bubble, then adds the
-# shop state machine on top.
+# Extends WorldObjectBase for movement/bubble, then adds the Card Mart's opening
+# week on top. Every other shop (always_open in shops.json) goes straight to its
+# Yes/No with meet_text.
 #
-# Shop states (stored in GameState.progress["shop_state"]):
-#   "initial"        - Day 1, first interaction, offer starter set
-#   "awaiting_funds" - Day 1, player saw offer but had no cash
-#   "restocking"     - Starter purchased, waiting for Day 2
-#   "open"           - Normal shop, pack purchase available
+# The Card Mart's stock follows the date (Pack_Purchase_Script._load_player_data())
+# and so does what the shopkeeper says -- the first time the player talks to him on
+# that day, then a shorter line after:
+#   Day 1    out of stock, nothing to sell
+#   Day 2    Base Set only, Jungle and Fossil delayed
+#   Day 3+   everything
 #
 # JSON fields used:
 #   npc_type  : "shop"  (still used for bubble icon selection)
 #   shop_id   : unique string key e.g. "card_mart"
-#   meet_text : fallback/open state welcome text
+#   meet_text : the greeting for every shop but the Card Mart
 # ============================================================
 
 var npc_name: String = ""
@@ -34,13 +36,15 @@ var shop_id: String = "card_mart"
 const SHOP_CONFIG_PATH = "res://NPC_and_Opponent_Data/Shop_Config/shops.json"
 var _shop_config: Dictionary = {}
 
-# Card Mart starter-set constants
-const STARTER_SET_COST = 500
-const SHOP_STARTER_CARDS = "base1-49, base1-49, base1-48, base1-48, base1-96, base1-95, base1-95, base1-93, base1-93, base1-91, base1-83, base1-83, base1-77, base1-65, base1-65, base1-63, base1-63, base1-59, base1-59, base1-58, base1-58, base1-69, base1-69, base1-54, base1-53, base1-53, base1-46, base1-46, base1-45, base1-45, base1-44, base1-44, base1-43, base1-43, base1-42, base1-36, base1-33, base1-34, base1-32, base1-30, base1-28, base1-28, base1-24, base1-19"
-# PLACEHOLDER: Replace with actual 20 card IDs from two base1 boosters
-const FREE_PACKS_DAY_2_CARDS = "base1_a,base1_b"
-
-var _shop_state: String = "initial"
+# ── The Card Mart's opening week — TWEAKABLE text ───────────────────────────
+const MART_DAY_1_FIRST := "Hello! I'm so sorry but I'm completely out of stock already! I've been having trouble keeping up with demand but I have a big shipment due tomorrow so come back and I'll have plenty to buy then!"
+const MART_DAY_1_AGAIN := "Hello! Come back tomorrow and I'll have plenty of stock in!"
+const MART_DAY_2_FIRST := "Hello! I've still had delays on getting Jungle and Fossil packs in, but I've got plenty of base packs in so I'm selling them for cheaper than Jungle and Fossil! Are you looking to buy some?"
+const MART_DAY_2_AGAIN := "Hello! Are you looking to buy some base packs?"
+const MART_DAY_3_FIRST := "Hello! I've managed to get plenty of Jungle and Fossil packs in, but I've kept base packs priced slightly cheaper! Are you looking to buy some?"
+const MART_DAY_3_AGAIN := "Hello! Are you looking to buy some packs? I've got plenty in stock!"
+# The dates on which the player has already heard that day's first line.
+const GREETED_KEY := "card_mart_greeted_days"
 
 func _ready():
 	add_to_group("npcs")
@@ -48,11 +52,6 @@ func _ready():
 	lock_facing = true
 	super._ready()
 	_load_shop_config()
-	_shop_state = GameState.progress.get("shop_state", "initial")
-	if _shop_config.get("always_open", false):
-		_shop_state = "open"
-	print("[Shopkeeper] Ready — shop_id=", shop_id, " state=", _shop_state,
-		  " date=", GameState.get_date(), " cash=", GameState.get_cash())
 
 func _load_shop_config():
 	var file = FileAccess.open(SHOP_CONFIG_PATH, FileAccess.READ)
@@ -70,112 +69,26 @@ func _get_bubble_texture() -> Texture2D:
 	return load("res://Image_Assets/Icons/Message_Icons/shop_talk.png")
 
 # ============================================================
-# SHOP STATE MACHINE
+# GREETING
 # ============================================================
 
+## True when MapManager should NOT go on to the shop's Yes/No (the shop is shut).
+## Otherwise meet_text is set to today's greeting and MapManager asks the question.
 func on_interact() -> bool:
-	print("[Shopkeeper] on_interact() — state=", _shop_state)
-	match _shop_state:
-		"initial":
-			_handle_initial_state()
-			return true
-		"awaiting_funds":
-			_handle_awaiting_funds_state()
-			return true
-		"restocking":
-			_handle_restocking_state()
-			return true
-		"open":
-			_handle_open_state()
-			return false
-		_:
-			print("[Shopkeeper] Unknown state: ", _shop_state)
-			_shop_state = "open"
-			return false
-
-func _handle_initial_state():
-	print("[Shopkeeper] Initial state — offering starter set for $", STARTER_SET_COST)
-	var message = "Hello there! I've not seen you before, I assume you're new in town? Sadly thanks to the new tariffs introduced, I can't afford the import on my regular stock shipment this week and I'm all out of packs. So I've put all of my spare stock into this box here and I'm selling it for super cheap to make just enough to pay the import charge. I'm only looking for $" + str(STARTER_SET_COST)+" for it. It's an amazing bargain I promise you."
-	var cash = GameState.get_cash()
-	if cash >= STARTER_SET_COST:
-		print("[Shopkeeper] Player can afford starter set")
-		MapManager._pending_confirm_yes = _finish_starter_purchase
-		MapManager._show_message_with_choices(message)
-	else:
-		print("[Shopkeeper] Player cannot afford starter set (have $" + str(cash) + ")")
-		MapManager._show_message_with_ok(message + " If you want it you better hurry back with the funds soon, otherwise somebody might snap up this bargain first!")
-		_shop_state = "awaiting_funds"
-		GameState.progress["shop_state"] = _shop_state
+	if _shop_config.get("always_open", false):
+		return false
+	var date := GameState.get_date()
+	var greeted: Array = GameState.progress.get(GREETED_KEY, [])
+	var first: bool = date not in greeted
+	if first:
+		greeted.append(date)
+		GameState.progress[GREETED_KEY] = greeted
 		GameState.save_progress()
-
-func _handle_awaiting_funds_state():
-	print("[Shopkeeper] Awaiting funds state")
-	var cash = GameState.get_cash()
-	if cash >= STARTER_SET_COST:
-		var message = "Hello again! You're in luck, nobody has taken this off me yet so you still have a chance to grab this bargain before someone else does! It contains a load of good cards that will be really useful to you. Would you like to buy it? It's a once in a lifetime offer, you won't get the chance again!"
-		print("[Shopkeeper] Player now has enough cash")
-		MapManager._pending_confirm_yes = _finish_starter_purchase
-		MapManager._show_message_with_choices(message)
+	if date <= 1:
+		MapManager._show_message_with_ok(MART_DAY_1_FIRST if first else MART_DAY_1_AGAIN)
+		return true
+	if date == 2:
+		meet_text = MART_DAY_2_FIRST if first else MART_DAY_2_AGAIN
 	else:
-		var message = "I won't be able to afford the import on my regular packs until somebody takes this, so until then I won't have anything else to sell I'm afraid. I promise this is an absolute steal, I'm selling it all at a great loss but I have no other choice. If you're just starting out in the TCG it'll help you massively. As a bonus, if you do take this off my hands today I'll throw in a free pack for you when you return."
-		print("[Shopkeeper] Player still cannot afford it")
-		MapManager._show_message_with_ok(message)
-
-func _handle_restocking_state():
-	print("[Shopkeeper] Restocking state (Date: " + str(GameState.get_date()) + ")")
-	var message = "Thanks again, I should have the shipment of stock in by tomorrow, so come back in the morning and I'll have plenty of packs for you then."
-	if GameState.get_date() > 1:
-		print("[Shopkeeper] Day 2 reached — transitioning to open")
-		_shop_state = "open"
-		GameState.progress["shop_state"] = _shop_state
-		if not GameState.progress.get("shop_free_packs_given", false):
-			print("[Shopkeeper] Giving free packs")
-			GameState.progress["shop_free_packs_given"] = true
-			GameState.save_progress()
-			MapManager.queue_pack_gift(["base1_a", "base1_c"])
-			message = "Welcome back! Good to see you again. As expected my stocks arrived today so I have plenty of packs now. However... they only sent me Base packs. As a thanks, here are two free packs to get you started! I should get my other sets in tomorrow but I'll give you a discount on Base set packs as an apology."
-			MapManager._show_message_with_ok(message)
-		else:
-			message = "Welcome back! The shop is open now."
-			MapManager._show_message_with_ok(message)
-	else:
-		MapManager._show_message_with_ok(message)
-
-func _handle_open_state():
-	print("[Shopkeeper] Open state — ready to sell packs")
-	if shop_id == "card_mart" and GameState.get_date() > 2 \
-			and not GameState.progress.get("shop_new_stock_shown", false):
-		GameState.progress["shop_new_stock_shown"] = true
-		GameState.save_progress()
-		meet_text = "I've just received the remaining shipment of packs. I now have Jungle and Fossil packs in for sale so take a look."
-
-func _finish_starter_purchase():
-	print("[Shopkeeper] Processing starter set purchase...")
-	var cash = GameState.get_cash()
-	if cash < STARTER_SET_COST:
-		print("[Shopkeeper] Purchase failed: insufficient cash")
-		return
-	GameState.add_cash(-STARTER_SET_COST)
-	GameState.give_cards(SHOP_STARTER_CARDS)
-	GameState.progress["player_collected_shop_starter_set"] = true
-	_shop_state = "restocking"
-	GameState.progress["shop_state"] = _shop_state
-	GameState.save_progress()
-	var scene = get_tree().current_scene
-	if scene.has_method("_remove_starter_set"):
-		scene._remove_starter_set()
-	# ISSUE #120: the message box's own cash chip is what shows the balance now.
-	MapManager._apply_cash_chip()
-	print("[Shopkeeper] Starter set purchased. Transitioned to restocking state")
-	# ISSUE #104 FIX ACTIVE: lead with a big centred "You received the Starter Set!" — the same
-	# announcement style as the starter box upstairs — then fall through to the shopkeeper's line.
-	# ISSUE #136 FIX: the follow-up is the SHOPKEEPER talking, so it must be his box — his colour,
-	# his name chip and the cash chip — not another copy of the big chipless "You received..."
-	# announcement. The Yes that got us here already ran _hide_message(), which nulls
-	# MapManager.current_npc, so the speaker has to be re-seated: show_npc_message_with_ok() does
-	# exactly that. The big notice above deliberately stays chipless, matching the starter box.
-	SoundManagerScript.play_sfx(SoundManagerScript.SFX_item_acquired)
-	MapManager._show_large_message_then(
-		"You received the Starter Set!",
-		func(): MapManager.show_npc_message_with_ok(self, "Thanks for your purchase! I'll get the order in right away for my usual shipment now so they'll be here for tomorrow morning. I'll throw you a couple packs in for free as a thank you when you come back! ")
-	)
+		meet_text = MART_DAY_3_FIRST if first else MART_DAY_3_AGAIN
+	return false

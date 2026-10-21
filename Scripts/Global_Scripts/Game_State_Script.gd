@@ -224,6 +224,21 @@ const HIDE_BARS_OPTIONS := ["no", "yes"]
 const DEFAULT_HIDE_BARS := "no"
 var hide_bars_setting: String = DEFAULT_HIDE_BARS
 
+# "Tutorial messages for next match": "on" plays the generic tutorial messages (and
+# board labels) in the NEXT match the player starts, whoever it is against, then turns
+# itself back off once that match ends. See Tutorial_Director.gd.
+const TUTORIAL_NEXT_MATCH_OPTIONS := ["off", "on"]
+var tutorial_next_match_setting: String = "off"
+
+
+func set_tutorial_next_match(choice: String, save: bool = true) -> void:
+	if not choice in TUTORIAL_NEXT_MATCH_OPTIONS:
+		push_warning("GameState: unknown tutorial choice '" + choice + "'")
+		return
+	tutorial_next_match_setting = choice
+	if save:
+		_save_setting_field("tutorial_next_match", tutorial_next_match_setting)
+
 # Applies a preset key to the live multiplier. Pass save = false to set it without touching the
 # save file (used on boot).
 ## Sets the one animation-speed preset. All three domains follow it through
@@ -369,6 +384,9 @@ func _load_animation_speed() -> void:
 	if not bars in HIDE_BARS_OPTIONS:
 		bars = DEFAULT_HIDE_BARS
 	set_hide_bars(bars, false)
+
+	var tut: String = str(data.get("tutorial_next_match", "off"))
+	set_tutorial_next_match(tut if tut in TUTORIAL_NEXT_MATCH_OPTIONS else "off", false)
 
 # ISSUE #34: the overworld walking-speed presets offered by the Options screen, keyed by the value
 # stored in Player_Current_Data.json under "walking_speed". TWEAKABLE — raising a number speeds that
@@ -1085,10 +1103,6 @@ func load_progress():
 		progress["coins"] = []
 	if not progress.has("costumes"):
 		progress["costumes"] = []
-	if not progress.has("player_collected_starter_box"):
-		progress["player_collected_starter_box"] = false
-	if not progress.has("moving_in_completed"):
-		progress["moving_in_completed"] = false
 	if not progress.has("gifts_received"):
 		progress["gifts_received"] = []
 	if not progress.has("opponents_beaten_count_current"):
@@ -1119,12 +1133,6 @@ func load_progress():
 		if not progress.has(unlock_flag):
 			progress[unlock_flag] = unlock_opponent in progress.get("opponents_beaten", [])
 
-	if not progress.has("shop_state"):
-		progress["shop_state"] = "initial"
-	if not progress.has("shop_free_packs_given"):
-		progress["shop_free_packs_given"] = false
-	if not progress.has("player_collected_shop_starter_set"):
-		progress["player_collected_shop_starter_set"] = false
 	# False when missing: this flag is what makes a slot count as a save on the title
 	# screen (slot_has_save), so a progress file without it must read as unfinished.
 	if not progress.has("first_launch_complete"):
@@ -1166,39 +1174,68 @@ func save_progress():
 # ============================================================
 # Asked once, on the new-game setup screen, and locked for the life of the save.
 # Each familiarity answer picks an INTRO PROFILE: everything about how this save's
-# story opens. Only the start day/time is acted on so far; the rest are the hooks
-# the different intros will read as they are written:
-#   call_id         the opening phone call (Phone_Calls.json id) during the taxi drive
-#   starter_deck    the deck granted to the player; "" = the starter box rules (see STARTER DECKS)
-#   intro_cutscene  how Ellie/Olly meet the player; "ellie" = EllieIntroCutscene as now
-#   start_date / start_time   when the save begins. HIDDEN from the player on purpose.
-# Hard Mode always starts on Day 2 Morning, whatever the familiarity said.
+# story opens.
+#   call_id       the taxi-ride phone call (Phone_Calls.json id)
+#   start_date    the day the taxi brings the player home, and start_time when: Night
+#   start_time    (then the bed is the only way forward) or Evening ("rules", where Olly
+#                 comes straight round). HIDDEN from the player.
+#   wake_time     what the first sleep wakes up to
+#   olly_meets    "door": Olly runs up when the player first leaves the house the next
+#                 day; "taxi": he runs up the moment the taxi call ends, outside the house
+#   sleep_prompt  the bed's question on the arrival night ("" = the usual prompt)
+#   deck_kind     what Olly hands over: "basic" (Basic Starter Deck), "starter"
+#                 (a pick of "<pair> Starter Deck"), "advanced" (a pick of "<pair> Deck")
+#                 or "packs" (Hard Mode: draft packs and build a deck)
+#   olly_deck     Olly's deck against the player's pick: "weak", "strong", or a deck name
+#   tutorial      the tutorial mode of Olly's match: "newby", "rules" or "" (none)
+#   olly_cash     Olly's cash reward (the usual x3 first-win multiplier applies, except
+#                 in Hard Mode, which never multiplies)
+#   olly_coin     the coin Olly gives, "" for none
+#   olly_prizes   prize cards in Olly's match
+#   olly_retry    true = a loss restarts the match until the player wins
+# Hard Mode is only offered with "expert" and swaps in HARD_MODE_PROFILE's fields.
 
 const FAMILIARITY_NEW    := "new"      # I'm completely new
 const FAMILIARITY_RULES  := "rules"    # I know the rules a bit
 const FAMILIARITY_PLAYED := "played"   # I've played a Pokémon TCG game before
 const FAMILIARITY_EXPERT := "expert"   # I'm an experienced player
 
+const SLEEP_PROMPT_TOURNAMENT := "I should definitely go to sleep now, the tournament was so good I can't wait to get my hands on some cards myself tomorrow."
+
 const INTRO_PROFILES := {
 	FAMILIARITY_NEW: {
-		"call_id": "ellie_intro", "starter_deck": "", "intro_cutscene": "ellie",
-		"start_date": 1, "start_time": "Morning",
+		"call_id": "intro_call_new", "start_date": 0, "start_time": "Night", "wake_time": "Morning",
+		"olly_meets": "door",
+		"sleep_prompt": SLEEP_PROMPT_TOURNAMENT, "deck_kind": "basic",
+		"olly_deck": "Basic Battle Deck", "tutorial": "newby",
+		"olly_cash": 50, "olly_coin": "Eevee Silver 2", "olly_prizes": 4, "olly_retry": true,
 	},
 	FAMILIARITY_RULES: {
-		"call_id": "ellie_intro", "starter_deck": "", "intro_cutscene": "ellie",
-		"start_date": 1, "start_time": "Morning",
+		"call_id": "intro_call_rules", "start_date": 1, "start_time": "Evening", "wake_time": "Morning",
+		"olly_meets": "taxi",
+		"sleep_prompt": "", "deck_kind": "starter",
+		"olly_deck": "weak", "tutorial": "rules",
+		"olly_cash": 100, "olly_coin": "Eevee Silver 2", "olly_prizes": 4, "olly_retry": true,
 	},
 	FAMILIARITY_PLAYED: {
-		"call_id": "ellie_intro", "starter_deck": "", "intro_cutscene": "ellie",
-		"start_date": 1, "start_time": "Afternoon",
+		"call_id": "intro_call_played", "start_date": 1, "start_time": "Night", "wake_time": "Morning",
+		"olly_meets": "door",
+		"sleep_prompt": SLEEP_PROMPT_TOURNAMENT, "deck_kind": "advanced",
+		"olly_deck": "weak", "tutorial": "",
+		"olly_cash": 150, "olly_coin": "", "olly_prizes": 4, "olly_retry": false,
 	},
 	FAMILIARITY_EXPERT: {
-		"call_id": "ellie_intro", "starter_deck": "", "intro_cutscene": "ellie",
-		"start_date": 2, "start_time": "Morning",
+		"call_id": "intro_call_expert", "start_date": 2, "start_time": "Night", "wake_time": "Morning",
+		"olly_meets": "door",
+		"sleep_prompt": "", "deck_kind": "advanced",
+		"olly_deck": "strong", "tutorial": "",
+		"olly_cash": 150, "olly_coin": "", "olly_prizes": 4, "olly_retry": false,
 	},
 }
-const HARD_MODE_START_DATE := 2
-const HARD_MODE_START_TIME := "Morning"
+const HARD_MODE_PROFILE := {
+	"call_id": "intro_call_hard", "deck_kind": "packs", "olly_deck": "Let me test ya",
+	"olly_cash": 500, "olly_coin": "", "olly_prizes": 6, "olly_retry": false,
+}
 
 
 func get_familiarity() -> String:
@@ -1209,68 +1246,150 @@ func is_hard_mode() -> bool:
 	return progress.get("hard_mode", false)
 
 
-## This save's intro profile (see INTRO_PROFILES), with Hard Mode's start applied.
+## This save's intro profile (see INTRO_PROFILES), with Hard Mode's fields applied.
 func get_intro_profile() -> Dictionary:
 	var profile: Dictionary = (INTRO_PROFILES.get(get_familiarity(),
 		INTRO_PROFILES[FAMILIARITY_NEW]) as Dictionary).duplicate()
 	if is_hard_mode():
-		profile["start_date"] = HARD_MODE_START_DATE
-		profile["start_time"] = HARD_MODE_START_TIME
+		profile.merge(HARD_MODE_PROFILE, true)
 	return profile
 
 
-## Records the new-game answers and sets the clock to the profile's start. Called
+## Records the new-game answers and sets the clock to the arrival night. Called
 ## by the setup screen just before mark_first_launch_complete(), which saves.
 func apply_new_game_answers(familiarity: String, hard_mode: bool) -> void:
 	progress["familiarity"] = familiarity
-	# Only the two harder answers are ever offered Hard Mode.
-	progress["hard_mode"] = hard_mode and familiarity in [FAMILIARITY_PLAYED, FAMILIARITY_EXPERT]
+	# Hard Mode is only ever offered to the "experienced" answer.
+	progress["hard_mode"] = hard_mode and familiarity == FAMILIARITY_EXPERT
 	var profile := get_intro_profile()
 	progress["date"] = profile["start_date"]
 	progress["time"] = profile["start_time"]
+	# Only a night arrival is shut in until bed; an evening one is out with Olly at once.
+	if profile["start_time"] == "Night":
+		progress[ARRIVAL_NIGHT_KEY] = true
 
 
 # ============================================================
-# STARTER DECKS — what the starting box in the bedroom gives
+# THE ARRIVAL NIGHT — from the taxi to the first sleep
 # ============================================================
-# The seven starter decks ship in res://Player_Data/Starter_Decks/ (NOT the seeded
-# Player_Decks folder, which is empty now: a new save owns no deck until one is
-# granted). Which one the box gives depends on the new-game answers:
-#   new                 -> "Basic Starter Deck"
-#   rules               -> pick a pair, "<Pair> Starter Deck"
-#   played / expert     -> pick a pair, "<Pair> Deck"
-#   Hard Mode           -> no deck at all; STARTER_HARD_MODE_PACKS instead, and the
-#                          player cannot leave the house until a deck is saved.
-# Granting a deck gives its cards, copies the deck file into the save and makes it
-# the active deck.
+# True from the new game until the player first goes to bed. While it is set the
+# front door will not let them back out, and the bed asks the profile's question.
+const ARRIVAL_NIGHT_KEY := "arrival_night"
+const ARRIVAL_DOOR_TEXT := "I'm too tired and it's way too late to go back out now! I really need to go to bed..."
+
+const BED_SLEEP_PROMPT_DEFAULT := "Should I go to sleep now?"
+# Added to the usual prompt on the night of that date.
+const BED_SLEEP_PROMPT_NIGHT_EXTRAS: Dictionary = {
+	1: "Hopefully the beach is open tomorrow.",
+	2: "The SS Anne docks tomorrow. I've never seen it with my own eyes!",
+	3: "Hopefully the forest will be open again in the morning.",
+	7: "The Gym Hero Challenge registration opens in the morning.",
+	8: "The Gym Hero Challenge starts tomorrow!"
+}
+
+
+func is_arrival_night() -> bool:
+	return bool(progress.get(ARRIVAL_NIGHT_KEY, false))
+
+
+## What the bed asks tonight.
+func sleep_prompt_text() -> String:
+	if is_arrival_night():
+		var custom: String = get_intro_profile().get("sleep_prompt", "")
+		if custom != "":
+			return custom
+	var extra: String = BED_SLEEP_PROMPT_NIGHT_EXTRAS.get(get_date(), "")
+	if extra != "":
+		return BED_SLEEP_PROMPT_DEFAULT + " " + extra
+	return BED_SLEEP_PROMPT_DEFAULT
+
+
+## Sleeps through to the next day. The arrival night wakes up to the profile's
+## wake_time ("rules" sleeps in to the afternoon); every other night to the morning.
+func sleep_until_next_day() -> void:
+	var wake := "Morning"
+	if is_arrival_night():
+		wake = str(get_intro_profile().get("wake_time", "Morning"))
+		progress.erase(ARRIVAL_NIGHT_KEY)
+	advance_time("Morning")
+	if wake != "Morning":
+		progress["time"] = wake
+		save_progress()
+
+
+# ============================================================
+# OLLY'S INTRO — the decks he hands over and the deck he plays
+# ============================================================
+# The decks ship in res://Player_Data/Starter_Decks/ (a new save owns no deck until
+# Olly gives one). Granting a deck gives its cards, copies the deck file into the
+# save and makes it the active deck.
 
 const STARTER_DECKS_FOLDER := "res://Player_Data/Starter_Decks/"
 const STARTER_DECK_BASIC   := "Basic Starter Deck"
-# Button label -> the deck's name stem. " Starter Deck" or " Deck" is appended.
-const STARTER_DECK_CHOICES := {
-	"Fire/Lightning": "Fire Shock",
-	"Water/Fighting": "Water Fight",
-	"Grass/Psychic":  "Grass Psy",
-}
-# Pack art ids, one per pack: 4 Base Set, 2 Jungle, 2 Fossil.
-const STARTER_HARD_MODE_PACKS := [
-	"base1_a", "base1_b", "base1_c", "base1_a",
-	"base2_a", "base2_b",
-	"base3_a", "base3_b",
+# The three pair decks, by name stem. " Starter Deck" or " Deck" is appended.
+const STARTER_DECK_PAIRS: Array = ["Water Fight", "Grass Psy", "Fire Shock"]
+# Olly's pick against the player's: "weak" is the one the player's deck beats.
+const OLLY_DECK_WEAK := {"Fire Shock": "Grass Psy", "Water Fight": "Fire Shock", "Grass Psy": "Water Fight"}
+const OLLY_DECK_STRONG := {"Fire Shock": "Water Fight", "Water Fight": "Grass Psy", "Grass Psy": "Fire Shock"}
+# Hard Mode's draft: art ids, one per pack (3 Base Set, 3 Jungle, 3 Fossil).
+const HARD_MODE_DRAFT_PACKS := [
+	"base1_a", "base1_b", "base1_c",
+	"base2_a", "base2_b", "base2_c",
+	"base3_a", "base3_b", "base3_c",
 ]
 
+# The one-off bonus packs Olly hands over after the match. Fixed contents, opened
+# like a normal pack: the art id IS the key (Image_Assets/Packs/<id>.png).
+const FIXED_PACKS := {
+	# Newby: Farfetch'd x2, Starmie x2, Dugtrio x2, Raticate x2, Bulbasaur x2, Ivysaur, Abra x2,
+	# Kadabra, Maintenance, Pokedex, Energy Retrieval, Double Colorless Energy.
+	"starter1_a": ["base1-27", "base1-27", "base1-64", "base1-64", "base1-19", "base1-19",
+		"base1-40", "base1-40", "base1-44", "base1-44", "base1-30", "base1-43", "base1-43",
+		"base1-32", "base1-83", "base1-87", "base1-81", "base1-96"],
+	# "rules", by the pair picked: the evolutions the Starter Deck is missing next to the full Deck.
+	# Fire Shock: Charmander, Charmeleon x2, Growlithe, Arcanine x2, Pikachu, Raichu x2, Magnemite, Magneton x2.
+	"bonus1_a": ["base1-46", "base1-24", "base1-24", "base1-28", "base1-23", "base1-23",
+		"base1-58", "base1-14", "base1-14", "base1-53", "base1-9", "base1-9"],
+	# Water Fight: Squirtle, Wartortle x2, Staryu, Starmie x2, Machop, Machoke x2, Diglett, Dugtrio x2.
+	"bonus1_b": ["base1-63", "base1-42", "base1-42", "base1-65", "base1-64", "base1-64",
+		"base1-52", "base1-34", "base1-34", "base1-47", "base1-19", "base1-19"],
+	# Grass Psy: Bulbasaur, Ivysaur x2, Nidoran M, Nidorino x2, Abra, Kadabra x2, Drowzee, Tangela x2.
+	"bonus1_c": ["base1-44", "base1-30", "base1-30", "base1-55", "base1-37", "base1-37",
+		"base1-43", "base1-32", "base1-32", "base1-49", "base1-66", "base1-66"],
+}
+# Which bonus pack goes with which pair ("rules" only; "new" always gets starter1_a).
+const BONUS_PACK_FOR_PAIR := {"Fire Shock": "bonus1_a", "Water Fight": "bonus1_b", "Grass Psy": "bonus1_c"}
 
-## "starter" (pick, + " Starter Deck"), "advanced" (pick, + " Deck"), "basic" or
-## "packs" — what the bedroom box hands this save.
-func starter_box_kind() -> String:
-	if is_hard_mode():
-		return "packs"
-	match get_familiarity():
-		FAMILIARITY_RULES:
-			return "starter"
-		FAMILIARITY_PLAYED, FAMILIARITY_EXPERT:
-			return "advanced"
-	return "basic"
+## Set by Olly's Hard Mode intro before it opens the deck builder: the map to go back to
+## once the drafted deck is saved. Non-empty puts the deck builder in draft mode.
+var draft_deck_return_scene: String = ""
+
+## Overlaid on the opponent's character-file entry by the match intro, the match and
+## the outro, so a story battle can change its deck, prizes and rewards for one fight
+## (Olly's intro). Set by MapManager.start_forced_battle(); cleared by every other battle.
+var forced_opponent_overrides: Dictionary = {}
+
+## "Fire Shock" etc. -- the player's pair, once Olly's deck choice is made.
+const INTRO_PAIR_KEY := "intro_deck_pair"
+## Raised when Olly's match is over. Unlocks the menu's deck, coin and sleeve screens.
+const INTRO_DONE_FLAG := "olly_intro_done"
+
+
+func intro_deck_suffix() -> String:
+	return " Starter Deck" if get_intro_profile().get("deck_kind", "") == "starter" else " Deck"
+
+
+## The deck Olly plays in his intro match, for the pair the player picked.
+func olly_intro_deck() -> String:
+	var profile := get_intro_profile()
+	var spec: String = profile.get("olly_deck", "")
+	var pair: String = progress.get(INTRO_PAIR_KEY, "")
+	match spec:
+		"weak":
+			return OLLY_DECK_WEAK.get(pair, "Fire Shock") + intro_deck_suffix()
+		"strong":
+			return OLLY_DECK_STRONG.get(pair, "Fire Shock") + intro_deck_suffix()
+	return spec
 
 
 ## The deck's cards as a give_cards() string, basic Energy left out: no owned-cards
@@ -1315,7 +1434,7 @@ func grant_starter_deck(deck_name: String) -> void:
 		write_file.close()
 
 
-## True once this slot has at least one saved deck. Hard Mode's way out of the house.
+## True once this slot has at least one saved deck.
 func has_saved_deck() -> bool:
 	var dir := DirAccess.open(PLAYER_DECKS_FOLDER)
 	if dir == null:
@@ -1324,6 +1443,39 @@ func has_saved_deck() -> bool:
 		if f.ends_with(".json"):
 			return true
 	return false
+
+
+# ============================================================
+# TIME ADVANCE — how many matches move the clock on
+# ============================================================
+# 2 per time slot on day 1, 3 on day 2, 4 from day 3.
+# On days 1 and 2 only a FIRST win over an opponent counts (mark_opponent_beaten());
+# from day 3 every finished match counts, won, lost or a rematch.
+
+func matches_to_advance_time(date: int = -1) -> int:
+	if date < 0:
+		date = get_date()
+	if date <= 1:
+		return 2
+	if date == 2:
+		return 3
+	return 4
+
+
+func every_match_advances_time(date: int = -1) -> bool:
+	if date < 0:
+		date = get_date()
+	return date >= 3
+
+
+## Called by the outro once per finished match (a best-of-three counts once). A first
+## win has already been counted by mark_opponent_beaten(); anything else counts only
+## from day 3 on.
+func count_match_toward_time(was_first_win: bool) -> void:
+	if was_first_win or not every_match_advances_time():
+		return
+	progress["opponents_beaten_count_current"] = get_current_defeated() + 1
+	save_progress()
 
 
 func mark_first_launch_complete() -> void:
@@ -1634,8 +1786,25 @@ func advance_time(new_time: String = "") -> void:
 
 	progress["time"] = new_time
 	progress["opponents_beaten_count_current"] = 0
+	_unlock_card_mart_packs()
 	save_progress()
 	print("Time advanced to: ", new_time, " | Date: ", get_date())
+
+
+## A set counts as unlocked (the trainer card's "Card sets unlocked") from the first day
+## the Card Mart sells it: Base Set from day 2, Jungle and Fossil from day 3. Mirrors the
+## stock rule in Pack_Purchase_Script._load_player_data().
+func _unlock_card_mart_packs() -> void:
+	var sets: Array = []
+	if get_date() >= 2:
+		sets.append("base1")
+	if get_date() >= 3:
+		sets.append_array(["base2", "base3"])
+	var unlocked: Array = progress.get("packs_unlocked", [])
+	for set_id in sets:
+		if set_id not in unlocked:
+			unlocked.append(set_id)
+	progress["packs_unlocked"] = unlocked
 
 # ============================================================
 # NPC INTERACTION TRACKING

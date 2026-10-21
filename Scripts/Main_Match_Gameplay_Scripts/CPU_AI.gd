@@ -82,6 +82,7 @@ func opponent_start_turn_checks() -> void:
 	main.opponents_turn_active = true
 	main.reset_field_pokemon_turn_flags(true)
 	main.card_ops.reveal_context_text = ""   # ISSUE #401: last turn's attack text never decides a reveal
+	main.tutorial.on_cpu_turn_start()
 
 	await main.show_message("Your opponent draws a card")
 	if main._should_bail(): return
@@ -1674,8 +1675,14 @@ func is_retreat_cost_worthwhile(cpu_eval: Dictionary) -> bool:
 func cpu_phase_retreat_first_pass(cpu_eval: Dictionary) -> bool:
 	if main.opponent_active_pokemon == null or main.opponent_bench.size() == 0:
 		return false
+	# A scripted tutorial turn retreats only when, and to whom, the script says.
+	if main.tutorial.cpu_scripted():
+		if main.tutorial.cpu_retreat_choice() != null:
+			await execute_cpu_retreat(cpu_eval)
+		return false
 	# MATCH EFFECT: no_retreat — CPU never considers retreating when blocked
-	if main.match_effects.retreat_blocked(true):
+	# (and Olly's "rules" tutorial holds it for its first 3 turns)
+	if main.match_effects.retreat_blocked(true) or main.tutorial.cpu_retreat_blocked():
 		return false
 	if main.opponent_retreated_this_turn:
 		return false
@@ -1761,8 +1768,10 @@ func cpu_phase_retreat_first_pass(cpu_eval: Dictionary) -> bool:
 func cpu_phase_retreat_second_pass(cpu_eval: Dictionary) -> void:
 	if main.opponent_active_pokemon == null or main.opponent_bench.size() == 0:
 		return
+	if main.tutorial.cpu_scripted():
+		return
 	# MATCH EFFECT: no_retreat — CPU never considers retreating when blocked
-	if main.match_effects.retreat_blocked(true):
+	if main.match_effects.retreat_blocked(true) or main.tutorial.cpu_retreat_blocked():
 		return
 	if main.opponent_retreated_this_turn:
 		return
@@ -1794,9 +1803,11 @@ func cpu_phase_retreat_second_pass(cpu_eval: Dictionary) -> void:
 # Scores each bench pokemon as a potential active replacement, returns the best choice
 func execute_cpu_retreat(cpu_eval: Dictionary) -> void:
 	# MATCH EFFECT: no_retreat — belt-and-braces guard for any direct callers
-	if main.match_effects.retreat_blocked(true):
+	if main.match_effects.retreat_blocked(true) or main.tutorial.cpu_retreat_blocked():
 		return
 	var best_replacement = pick_best_bench_replacement(main.opponent_bench, main.player_active_pokemon, cpu_eval)
+	if main.tutorial.cpu_scripted():
+		best_replacement = main.tutorial.cpu_retreat_choice()
 
 	if best_replacement == null:
 		print("CPU retreat failed: no valid bench replacement")
@@ -2031,6 +2042,12 @@ func cpu_phase_energy_attachment(cpu_eval: Dictionary) -> void:
 
 	if energy_cards_in_hand.is_empty() or main.opponent_energy_played_this_turn:
 		return
+	# A scripted tutorial turn attaches exactly what it names (or nothing).
+	var scripted_attach: Array = []
+	if main.tutorial.cpu_scripted():
+		scripted_attach = main.tutorial.cpu_attach_choice()
+		if scripted_attach.is_empty():
+			return
 
 	# Phase 0.2: Build candidate targets (active + bench)
 	var candidates = get_all_cpu_field_pokemon()
@@ -2089,6 +2106,9 @@ func cpu_phase_energy_attachment(cpu_eval: Dictionary) -> void:
 	# Phase 3.4: Always attach even if score is negative
 	var target = best["pokemon"]
 	var energy = best["energy_card"]
+	if not scripted_attach.is_empty():
+		energy = scripted_attach[0]
+		target = scripted_attach[1]
 
 	print("CPU attaching " + energy.metadata["name"] + " to " + target.metadata["name"] + " (Score: " + str(int(best["score"])) + ")")
 
@@ -3054,6 +3074,8 @@ func cpu_phase_attack(cpu_eval: Dictionary) -> void:
 	if main.turn_number <= 1:
 		print("CPU: Not attacking — it's turn " + str(main.turn_number) + " (the first player cannot attack on their first turn of the game)")
 		return
+	if main.tutorial.cpu_scripted() and main.tutorial.cpu_attack_choice() == "":
+		return   # a scripted tutorial turn with no attack
 
 	if main.opponent_active_pokemon.special_condition == "Paralyzed":
 		print("CPU cannot attack: active is Paralyzed")
@@ -4572,6 +4594,11 @@ func cpu_phase_attack(cpu_eval: Dictionary) -> void:
 	_cpu_streak_attacker = main.opponent_active_pokemon
 	cpu_no_damage_streak = (cpu_no_damage_streak + 1) if (chosen_exp <= 0 and any_damaging) else 0
 
+	# A scripted tutorial turn uses the attack it names.
+	if main.tutorial.cpu_scripted():
+		for _ti in attacks.size():
+			if String(attacks[_ti].get("name", "")) == main.tutorial.cpu_attack_choice():
+				best_attack_index = _ti
 	# Execute the chosen attack
 	var chosen_attack = attacks[best_attack_index]
 	var chosen_name = chosen_attack.get("name", "")
@@ -4803,7 +4830,16 @@ func cpu_phase_bench_play() -> void:
 		# Score all basic pokemon in hand using existing priority criteria
 		var best_card: card_object = null
 		var best_score: float = -999.0
+		var scripted_bench: bool = main.tutorial.cpu_scripted()
+		if scripted_bench:
+			# A scripted tutorial turn benches exactly the Basics it names.
+			best_card = main.tutorial.cpu_next_card("bench")
+			if best_card == null:
+				break
+			best_score = 99999.0
 		for card in main.opponent_hand:
+			if scripted_bench:
+				break
 			if not main.is_basic_pokemon(card):
 				continue
 			var result = evaluate_opponents_start_setup_pokemon_choices(card, main.opponent_hand)
@@ -4904,6 +4940,8 @@ func cpu_phase_bench_play() -> void:
 
 # R.5: Selects the best bench replacement and performs the retreat
 func cpu_phase_evolution() -> void:
+	if main.tutorial.cpu_scripted():
+		return   # the scripted tutorial turns never evolve
 	if main.turn_number <= 2:
 		print("CPU: Not evolving — it's turn " + str(main.turn_number) + " (neither player may evolve on their first turn of the game)")
 		return
@@ -6553,6 +6591,14 @@ func cpu_phase_play_trainer_cards_priority() -> void:
 	if main.trainer_effects.opponent_trainer_locked:
 		print("CPU: Trainer cards locked this turn (Headache)")
 		return
+	# A scripted tutorial turn (Tutorial_Director.NEWBY_CPU_PLAN) plays exactly its Trainers.
+	if main.tutorial.cpu_scripted():
+		var scripted = main.tutorial.cpu_next_card("trainers")
+		while scripted != null:
+			await main.trainer_effects.play_trainer_card(scripted, true)
+			if main._should_bail(): return
+			scripted = main.tutorial.cpu_next_card("trainers")
+		return
 	var played = true
 	while played:
 		played = false
@@ -6607,6 +6653,8 @@ func cpu_phase_play_trainer_cards_priority() -> void:
 
 # CPU re-evaluates and plays remaining trainer cards
 func cpu_phase_play_trainer_cards_remaining() -> void:
+	if main.tutorial.cpu_scripted():
+		return   # a scripted tutorial turn played its Trainers in the priority phase
 	# Check trainer lock (Psyduck Headache)
 	if main.trainer_effects.opponent_trainer_locked:
 		return
@@ -6645,7 +6693,7 @@ func cpu_phase_play_trainer_cards_remaining() -> void:
 # use them — e.g. holding Energy Search, Pokemon Trader and Bill, it should spend all three first
 # and only then force the shuffle.
 func cpu_phase_play_lass_last() -> void:
-	if main.trainer_effects.opponent_trainer_locked:
+	if main.trainer_effects.opponent_trainer_locked or main.tutorial.cpu_scripted():
 		return
 	var lass_card: card_object = null
 	for card in main.opponent_hand:

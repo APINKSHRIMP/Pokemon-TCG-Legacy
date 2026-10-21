@@ -41,6 +41,7 @@ extends Node
 
 const MATCH_SCENE := "res://Scenes/Main_Match_Gameplay_Scenes/Main_Match_Core_GamePlay_Scene.tscn"
 const BotScript := preload("res://Scripts/Autotest/Autotest_Bot.gd")
+const TutorialBotScript := preload("res://Scripts/Autotest/Autotest_Tutorial_Bot.gd")
 const OUT_DIR := "user://autotest/"
 const STALL_SECONDS := 240.0       # game-time seconds with no visible change = soft-lock
 const MATCH_MAX_SECONDS := 7200.0  # game-time hard cap per match
@@ -75,6 +76,10 @@ var _ex_open := {}                 # tune mode: the CPU turn exchange being meas
 var _ex_list: Array = []           # tune mode: finished exchanges this match
 var opt_explore := 0.0             # --explore=<0..1>: random free fetch choices (synergy exploration jobs)
 var opt_worker := "0"              # --worker=<id>: keeps parallel jobs' scratch files apart
+# --tutorial=newby: Olly's newby tutorial match, both decks stacked by the real Tutorial_Director,
+# the CPU on its normal AI and Autotest_Tutorial_Bot making the player's scripted moves. Writes
+# the board at every player turn to tutorial_newby.txt, to check the CPU follows the script.
+var opt_tutorial := ""
 var replay_record: Dictionary = {}
 var replay_run := ""
 var replay_prior_events: Array = []   # events of the matches before the replayed one (to rebuild its coverage)
@@ -262,6 +267,7 @@ func _parse_args() -> void:
 			"real": opt_real = true
 			"bot": opt_bot_smart = (v == "smart")
 			"stress": opt_stress = true
+			"tutorial": opt_tutorial = v
 			"stack":
 				opt_stack = v.to_lower()
 				opt_cards = [opt_stack]
@@ -361,6 +367,19 @@ func _play_match(i: int) -> void:
 			o_deck = _read_deck_file(AssetLookup.deck_path(entry["deck"]))
 			opp_data = real_opponent_data_for(entry)
 			p_deck = _read_deck_file(player_deck_files[rng.randi() % player_deck_files.size()]) if not player_deck_files.is_empty() else _build_deck(rng)
+		elif opt_tutorial == "newby":
+			p_deck = _read_deck_file("res://Player_Data/Starter_Decks/Basic Starter Deck.json")
+			o_deck = _read_deck_file("res://NPC_and_Opponent_Data/Opponent_Deck_Data/Basic Battle Deck.json")
+			opp_data = {"name": "Olly", "tutorial": "newby", "prize_cards": 4}
+			tutorial_note("===== match %d (seed %d) =====" % [i + 1, match_seed])
+		elif opt_tutorial == "rules":
+			# Each pair in turn. The pair lives in progress, in memory only (test mode never saves).
+			var pair: String = GameState.STARTER_DECK_PAIRS[i % GameState.STARTER_DECK_PAIRS.size()]
+			GameState.progress[GameState.INTRO_PAIR_KEY] = pair
+			p_deck = _read_deck_file("res://Player_Data/Starter_Decks/" + pair + " Starter Deck.json")
+			o_deck = _read_deck_file("res://NPC_and_Opponent_Data/Opponent_Deck_Data/" + GameState.OLLY_DECK_WEAK[pair] + " Starter Deck.json")
+			opp_data = {"name": "Olly", "tutorial": "rules", "prize_cards": 4}
+			tutorial_note("===== match %d (seed %d) %s vs %s =====" % [i + 1, match_seed, pair, GameState.OLLY_DECK_WEAK[pair]])
 		else:
 			p_deck = _build_deck(rng)
 			o_deck = _build_deck(rng)
@@ -394,7 +413,7 @@ func _play_match(i: int) -> void:
 		await get_tree().create_timer(3600).timeout
 		return
 	add_child(current_main)
-	current_bot = BotScript.new()
+	current_bot = TutorialBotScript.new() if opt_tutorial == "newby" else BotScript.new()
 	current_bot.name = "AutotestBot"
 	add_child(current_bot)
 	current_bot.setup(current_main, self, match_seed)
@@ -442,6 +461,11 @@ func _play_match(i: int) -> void:
 		_append_line(run_dir + "matches.jsonl", JSON.stringify(rec))
 		_write_match_log(i + 1, rec)
 	print("AUTOTEST: match %d -> %s after %d turns, %d problem(s)" % [i + 1, match_result, turns, match_problems.size()])
+	if opt_tutorial != "":
+		tutorial_note("RESULT: %s after %d turns" % [match_result, turns])
+		tutorial_note("--- every message of the match ---")
+		for mm in match_messages:
+			tutorial_note("  [%s t%d] %s" % ["CPU" if mm[1] else "YOU", mm[0], mm[2]])
 
 	if is_instance_valid(current_bot):
 		current_bot.queue_free()
@@ -1128,6 +1152,41 @@ func log_message(text: String, turn: int, opp_turn: bool) -> void:
 
 func _in_play_zone(z: String) -> bool:
 	return z.begins_with("active") or z.begins_with("bench")
+
+
+## --tutorial: one line into tutorial_<mode>.txt in the run folder.
+func tutorial_note(text: String) -> void:
+	_append_line(run_dir + "tutorial_" + opt_tutorial + ".txt", text)
+
+
+## --tutorial: the board as the player's turn N starts (after the CPU's turn before it).
+func tutorial_turn_report(player_turn: int, m) -> void:
+	var lines: Array = ["PLAYER TURN %d (turn_number %d)" % [player_turn, m.turn_number]]
+	for side in [true, false]:
+		var who := "CPU" if side else "YOU"
+		var act = m.opponent_active_pokemon if side else m.player_active_pokemon
+		var bench: Array = m.opponent_bench if side else m.player_bench
+		lines.append("  %s active: %s" % [who, _tut_mon(act)])
+		for b in bench:
+			lines.append("  %s bench : %s" % [who, _tut_mon(b)])
+		var hand: Array = m.opponent_hand if side else m.player_hand
+		lines.append("  %s hand  : %s" % [who, ", ".join(hand.map(func(c): return String(c.metadata.get("name", "?"))))])
+		lines.append("  %s prizes left: %d" % [who, (m.opponent_prize_cards if side else m.player_prize_cards).size()])
+	for l in lines:
+		tutorial_note(l)
+
+
+func _tut_mon(c) -> String:
+	if c == null:
+		return "-"
+	var e: Array = c.attached_energies.map(func(x): return String(x.metadata.get("name", "?")).trim_suffix(" Energy"))
+	var tools: Array = c.attached_cards.map(func(x): return String(x.metadata.get("name", "?")))
+	if c.defender_count > 0:
+		tools.append("Defender x%d" % c.defender_count)
+	if c.pluspower_count > 0:
+		tools.append("PlusPower x%d" % c.pluspower_count)
+	return "%s %d/%d HP [%s]%s" % [c.metadata.get("name", "?"), c.current_hp, c.get_max_hp(), ", ".join(e),
+		(" tools " + ", ".join(tools)) if not tools.is_empty() else ""]
 
 
 func bot_log(s: String) -> void:

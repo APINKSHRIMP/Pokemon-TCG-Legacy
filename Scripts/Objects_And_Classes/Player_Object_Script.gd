@@ -247,13 +247,51 @@ func _unhandled_input(event):
 				return
 			if event.button_index == MOUSE_BUTTON_WHEEL_UP:
 				camera.zoom = (camera.zoom + Vector2(0.05, 0.05)).clamp(_zoom_floor(), Vector2(10, 10))
+				_apply_camera_room()
 			elif event.button_index == MOUSE_BUTTON_WHEEL_DOWN:
 				camera.zoom = (camera.zoom - Vector2(0.05, 0.05)).clamp(_zoom_floor(), Vector2(10, 10))
+				_apply_camera_room()
 
 ## ISSUE #384: true while Space/Enter would talk to someone (an NPC, opponent or
 ## Pokemon). The FishingZone asks this first - talking always beats casting.
 func has_interact_candidate() -> bool:
 	return _active_candidate != null and is_instance_valid(_active_candidate)
+
+# ── Camera room (interiors) ─────────────────────────────────────────────────
+# An interior keeps the camera inside the room (BaseMapScene._apply_camera_room() hands
+# the rect over). On an axis where the view is WIDER than the room the camera is pinned
+# to the room's middle rather than to its left/top edge, which is what Camera2D does by
+# itself when the limits are narrower than the screen. Re-run on every zoom, since
+# zooming in is what lets the camera move about a small room at all.
+var _camera_room: Rect2 = Rect2()
+
+
+## `room` in world px; an empty rect turns the limits off (the outdoor maps).
+func set_camera_room(room: Rect2) -> void:
+	_camera_room = room
+	_apply_camera_room()
+
+
+func _apply_camera_room() -> void:
+	if camera == null:
+		return
+	if _camera_room.size == Vector2.ZERO:
+		camera.limit_enabled = false
+		return
+	var view: Vector2 = get_viewport().get_visible_rect().size / camera.zoom
+	var lo: Vector2 = _camera_room.position
+	var hi: Vector2 = _camera_room.end
+	for axis in 2:
+		if hi[axis] - lo[axis] < view[axis]:
+			var mid: float = (lo[axis] + hi[axis]) * 0.5
+			lo[axis] = mid - view[axis] * 0.5
+			hi[axis] = mid + view[axis] * 0.5
+	camera.limit_left = int(floor(lo.x))
+	camera.limit_top = int(floor(lo.y))
+	camera.limit_right = int(ceil(hi.x))
+	camera.limit_bottom = int(ceil(hi.y))
+	camera.limit_enabled = true
+
 
 ## The widest zoom the wheel allows: the scene's own view normally, much wider in debug mode.
 func _zoom_floor() -> Vector2:

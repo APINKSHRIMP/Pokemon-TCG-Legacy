@@ -1786,12 +1786,12 @@
       "coin_reward": "Entei Red",
       "costume_reward": "NECKBEARD"
     },
-    "Ellie": {
-      "sprite": "1Ellie_Hoodie",
-      "message_colour": "light_pink",
-      "deck": "Beach Pals",
+    "Olly": {
+      "sprite": "1Olly_White",
+      "message_colour": "aqua",
+      "deck": "Basic Battle Deck",
       "music": "Nice_battle (PTCG2 - GRs Grass Water Forts)",
-      "prize_cards": 2,
+      "prize_cards": 4,
       "cash_reward": "50",
       "coin_reward": "Eevee Silver 2"
     }

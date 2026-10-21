@@ -3,7 +3,6 @@
 [ext_resource type="Script" uid="uid://d0234pw2a24oo" path="res://Scripts/Map_Scripts/Player_House_Upstairs.gd" id="1_whmvp"]
 [ext_resource type="TileSet" uid="uid://yus3igcnpw1m" path="res://Image_Assets/Map_Sheets/Tile_Sets/Player_Home_Tileset.tres" id="2_g1bce"]
 [ext_resource type="PackedScene" uid="uid://bprufyh8mxqom" path="res://Scenes/Objects/Player_Object_Scene.tscn" id="3_xhodw"]
-[ext_resource type="Texture2D" uid="uid://bx3bwk33dets8" path="res://Image_Assets/Map_Objects/starter_box.png" id="4_eucp7"]
 [ext_resource type="Script" uid="uid://cphl8h5xtm64h" path="res://Scripts/Map_Scripts/Interactables_Script.gd" id="int_script"]
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_377ug"]
@@ -11,9 +10,6 @@ size = Vector2(11, 17)
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_whmvp"]
 size = Vector2(49, 35)
-
-[sub_resource type="RectangleShape2D" id="RectangleShape2D_g1bce"]
-size = Vector2(40, 25)
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_xhodw"]
 size = Vector2(32, 12)
@@ -170,20 +166,6 @@ script = ExtResource("int_script")
 [node name="Bed" type="CollisionShape2D" parent="Interactables" unique_id=1923336825]
 position = Vector2(336.5, 159.5)
 shape = SubResource("RectangleShape2D_whmvp")
-
-[node name="Starter_Box" type="TextureRect" parent="Interactables" unique_id=670229080]
-offset_left = 177.0
-offset_top = 92.0
-offset_right = 208.0
-offset_bottom = 112.0
-texture = ExtResource("4_eucp7")
-stretch_mode = 3
-
-[node name="box_area" type="Area2D" parent="Interactables/Starter_Box" unique_id=63502065]
-
-[node name="Box_Collision" type="CollisionShape2D" parent="Interactables/Starter_Box/box_area" unique_id=1308145011]
-position = Vector2(16, 9)
-shape = SubResource("RectangleShape2D_g1bce")
 
 [node name="Collision Objects" type="Control" parent="." unique_id=1057412868]
 layout_mode = 3

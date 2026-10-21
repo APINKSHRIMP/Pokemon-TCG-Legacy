@@ -182,6 +182,7 @@ func _ready() -> void:
 		"cries_volume": func(percent: int) -> void: GameState.set_cries_volume(percent / 100.0),
 		"ui_theme":     GameState.set_ui_theme,
 		"hide_bars":    GameState.set_hide_bars,
+		"tutorial_next_match": GameState.set_tutorial_next_match,
 	}
 
 	saved = _current_values()
@@ -237,9 +238,9 @@ func _build_rows() -> void:
 	# longer fit in the 896px band, and the last of them would simply have been
 	# drawn past the footer.
 	#
-	# ROW_GAP and ROW_MIN_H are what keep the CURRENT thirteen rows on one screen with
-	# nothing to scroll: 13 * 53 + 12 * 16 = 881 of the 896px available. A fourteenth
-	# row means trimming one of those two again.
+	# ROW_GAP and ROW_MIN_H kept the first thirteen rows on one screen. From the
+	# fourteenth ("Tutorial messages for next match") the list is taller than the band
+	# and simply scrolls: new rows are added at the bottom and spill off screen.
 	#
 	# A ScrollContainer takes the overflow. It only scrolls when there IS overflow,
 	# so on a short list the block still sits centred exactly as before: the VBox
@@ -330,6 +331,11 @@ func _build_rows() -> void:
 		["no",  "No"],
 		["yes", "Yes"],
 	], "(hides the banners only, nothing moves)")
+	# One match only: it switches itself back off when that match ends.
+	_add_button_row(body, "tutorial_next_match", "Tutorial messages for next match", [
+		["off", "Off"],
+		["on",  "On"],
+	], "(hints and board labels, one match)")
 
 
 ## The colour picker, as TWO rows: the look, then Dark/Light.
@@ -491,6 +497,7 @@ func _current_values() -> Dictionary:
 		"cries_volume":  _to_percent(GameState.cries_volume_setting),
 		"ui_theme":      GameState.ui_theme_setting,
 		"hide_bars":     GameState.hide_bars_setting,
+		"tutorial_next_match": GameState.tutorial_next_match_setting,
 	}
 
 

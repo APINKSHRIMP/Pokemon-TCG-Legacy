@@ -147,6 +147,12 @@ var total_deck_count : int = 0
 
 # The deck name currently loaded
 var current_deck_name : String = ""
+# Hard Mode's draft: Olly's intro sends the player here to build their first deck from
+# the packs they just opened (GameState.draft_deck_return_scene). There is no way out
+# but saving -- Cancel is gone -- and saving asks "happy to battle with this deck?"
+# over the deck view before it returns to the map.
+var _draft_mode : bool = false
+const DRAFT_CONFIRM_TEXT := "Are you sure you're happy to battle with this deck?"
 
 # ─── Card metadata cache ────────────────────────────────────────────────────
 # Loaded from the set JSON files (e.g. res://Card_Set_Data/base1.json).
@@ -171,6 +177,7 @@ var load_popup       : CanvasLayer = null
 # the load popup at 100 — the delete confirm is opened from inside that popup.
 var confirm_popup   : CanvasLayer = null
 var _confirm_action : Callable    = Callable()
+var _confirm_cancel : Callable    = Callable()
 
 # ISSUE #154 follow-up: the rename box. NOT the confirm popup above — that one is a Yes/No panel
 # with no text field, and renaming needs typing. Also layer 110, opened from inside the load popup.
@@ -367,6 +374,11 @@ func _ready() -> void:
 	# Load data sources
 	_load_set_dictionary()
 	var last_set_id := _load_player_data()    # returns last_set_loaded string
+	if GameState.draft_deck_return_scene != "":
+		# A blank deck with no name: the player has never had one.
+		_draft_mode = true
+		current_deck_name = ""
+		deck_name_edit.text = ""
 	_build_unlocked_indices()
 	_find_starting_set(last_set_id)
 
@@ -406,6 +418,9 @@ func _ready() -> void:
 
 	_build_chrome()
 	_wrap_grid_in_scroll_container()
+	if _draft_mode:
+		# Save, alone and centred on the footer, is the only way off this screen.
+		cancel_btn.visible = false
 
 	# Load the player's current deck
 	_load_deck(current_deck_name)
@@ -2976,11 +2991,14 @@ func _display_search_results() -> void:
 ##
 ## Keyboard is handled in _input(): accept runs the action, cancel backs out. Layer 110 puts it
 ## above the load popup (100), which is where the Delete confirm is raised from.
-func _show_confirm_popup(message: String, confirm_label: String, on_confirm: Callable) -> void:
+func _show_confirm_popup(message: String, confirm_label: String, on_confirm: Callable,
+		cancel_label: String = "Cancel", on_cancel: Callable = Callable(),
+		confirm_variant: String = "danger") -> void:
 	if confirm_popup != null and is_instance_valid(confirm_popup):
 		return
 
 	_confirm_action = on_confirm
+	_confirm_cancel = on_cancel
 
 	confirm_popup = CanvasLayer.new()
 	confirm_popup.layer = 110
@@ -3028,18 +3046,26 @@ func _show_confirm_popup(message: String, confirm_label: String, on_confirm: Cal
 	yes_btn.text = confirm_label
 	yes_btn.custom_minimum_size = Vector2(150, 48)
 	yes_btn.add_theme_font_size_override("font_size", 22)
-	# Destructive: this popup only ever confirms "Empty" or "Delete".
-	UIKit.style_button(yes_btn, "danger")
+	# Destructive for "Empty" / "Delete"; draft mode's "happy with this deck?" is primary.
+	UIKit.style_button(yes_btn, confirm_variant)
 	yes_btn.pressed.connect(_run_confirm_action)
 	btn_row.add_child(yes_btn)
 
 	var no_btn := Button.new()
-	no_btn.text = "Cancel"
+	no_btn.text = cancel_label
 	no_btn.custom_minimum_size = Vector2(150, 48)
 	no_btn.add_theme_font_size_override("font_size", 22)
 	UIKit.style_button(no_btn, "negative")   # ISSUE #379
-	no_btn.pressed.connect(_close_confirm_popup)
+	no_btn.pressed.connect(_cancel_confirm_popup)
 	btn_row.add_child(no_btn)
+
+
+## No / Cancel / Escape: close the popup, then run its on_cancel (if it has one).
+func _cancel_confirm_popup() -> void:
+	var cb := _confirm_cancel
+	_close_confirm_popup()
+	if cb.is_valid():
+		cb.call()
 
 
 ## Closes the popup FIRST, then runs the action — so a callback that opens another popup (delete
@@ -3053,6 +3079,7 @@ func _run_confirm_action() -> void:
 
 func _close_confirm_popup() -> void:
 	_confirm_action = Callable()
+	_confirm_cancel = Callable()
 	if confirm_popup != null:
 		confirm_popup.queue_free()
 		confirm_popup = null
@@ -3111,10 +3138,23 @@ func _on_save_pressed() -> void:
 		_show_deck_message(blocker)
 		return
 
+	if _draft_mode:
+		_ask_draft_confirm()
+		return
+
 	if not _is_deck_dirty():
 		_show_deck_message("No changes to save")
 		return
 
+	_write_deck_save()
+
+	# ISSUE #394: the screen stays put after a save, so say that it worked.
+	print("ISSUE #394 FIX ACTIVE: deck saved message shown for '", deck_name_edit.text.strip_edges(), "'")
+	_show_deck_message(MSG_SAVED_TEXT, MSG_SAVED_COLOUR)
+
+
+## Writes the deck under the typed name and makes it the active deck.
+func _write_deck_save() -> void:
 	var display_name := deck_name_edit.text.strip_edges()
 
 	SoundManagerScript.play_sfx(SoundManagerScript.SFX_gamemode_select)
@@ -3134,9 +3174,25 @@ func _on_save_pressed() -> void:
 	# Disable save button after saving (dirty check will return false)
 	_refresh_save_button()
 
-	# ISSUE #394: the screen stays put after a save, so say that it worked.
-	print("ISSUE #394 FIX ACTIVE: deck saved message shown for '", display_name, "'")
-	_show_deck_message(MSG_SAVED_TEXT, MSG_SAVED_COLOUR)
+
+## Draft mode's save: show the whole deck, then ask. Yes saves and goes back to Olly;
+## No closes the deck view and leaves the player building.
+func _ask_draft_confirm() -> void:
+	_on_view_deck_pressed()
+	_show_confirm_popup(DRAFT_CONFIRM_TEXT, "Yes", _finish_draft, "No", _draft_keep_editing, "primary")
+
+
+func _draft_keep_editing() -> void:
+	if deck_viewer_active:
+		_close_deck_viewer()
+
+
+func _finish_draft() -> void:
+	_write_deck_save()
+	var back := GameState.draft_deck_return_scene
+	GameState.draft_deck_return_scene = ""
+	SoundManagerScript.stop_bgm()
+	SceneCache.change_scene(back)
 
 
 ## Debug mode only: writes the deck into Opponent_Deck_Data under the typed name,
@@ -3211,6 +3267,8 @@ func _save_player_data(deck_file_name: String) -> void:
 ## come through here: the Cancel button and the Escape key (see _input, which calls
 ## this last once every overlay has had its chance to close).
 func _on_cancel_pressed() -> void:
+	if _draft_mode:
+		return   # the draft deck has to be saved; there is no leaving without it
 	if _is_deck_dirty():
 		_show_confirm_popup(
 			"You have unsaved changes.
@@ -3287,7 +3345,7 @@ func _input(event: InputEvent) -> void:
 			_run_confirm_action()
 		elif UIInput.is_cancel(event):
 			get_viewport().set_input_as_handled()
-			_close_confirm_popup()
+			_cancel_confirm_popup()
 		return
 
 	# ── Cancel / Escape ──
