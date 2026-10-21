@@ -927,7 +927,7 @@ func _offscreen_y() -> float:
 func _process(delta: float) -> void:
 	if _mouth == null or _frames.size() < 2:
 		return
-	if _box != null and _box.visible and _box.is_typing():
+	if _box != null and _box.visible and _box.is_typing() and not _box.is_pausing():
 		_mouth_timer -= delta
 		if _mouth_timer <= 0.0:
 			_mouth_timer = MOUTH_FRAME_TIME

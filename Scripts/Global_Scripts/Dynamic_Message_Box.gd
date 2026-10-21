@@ -222,6 +222,25 @@ var _typing: bool = false
 var _type_progress: float = 0.0
 var _type_total: int = 0
 
+# Punctuation pauses. A mid-line "." "!" or "?" (followed by a space and more text) holds the reveal
+# for GameState.text_punctuation_pause seconds, so "Hey! Nice to see you." beats after "Hey!". Line-
+# final punctuation never pauses — the message is done. The positions are visible_characters values
+# worked out once per line in _build_pauses(); a click still finishes the whole line at once.
+# TWEAKABLE — which characters end a sentence (a run like "..." or "?!" pauses once, after the run).
+const PAUSE_PUNCTUATION := ".!?…"
+# TWEAKABLE — a mid-line comma holds for this fraction of the full beat (0.5 = half a second on slow).
+const COMMA_PAUSE_FRACTION := 0.5
+# TWEAKABLE — a run of two or more sentence marks ("...", "?!", "!!") or a "…" holds this many beats
+# (2.0 = two seconds on slow).
+const MULTI_MARK_PAUSE_FRACTION := 2.0
+# Closing marks that may trail the punctuation before the space: `"Hey!" she said` pauses after the quote.
+const PAUSE_CLOSERS := "\"')]"
+var _pause_at: Array[int] = []
+# Parallel to _pause_at: 1.0 for a sentence break, COMMA_PAUSE_FRACTION for a comma.
+var _pause_scale: Array[float] = []
+var _pause_cursor: int = 0
+var _pause_left: float = 0.0
+
 # TWEAKABLE — letters between blips at rate 1.0. 3 is roughly a syllable; 2 is
 # chattier, 4 is sparse and deliberate. A speaker's "rate" divides this, so a
 # rate of 1.5 blips every 2 letters and a rate of 0.75 every 4.
@@ -1181,6 +1200,9 @@ func _start_typing() -> void:
 	# dropped sound, not as a pause.
 	_blip_countdown = 0.0
 	_blip_last_time = 0.0
+	_build_pauses()
+	_pause_cursor = 0
+	_pause_left = 0.0
 	# 0.0 is reduce motion (and any future "instant" preset): show the line whole.
 	if _letter_delay() <= 0.0 or _type_total <= 0:
 		finish_typing()
@@ -1196,10 +1218,53 @@ func _preserve_typing() -> void:
 	if label == null:
 		return
 	_type_total = label.get_total_character_count()
+	_build_pauses()
+	_pause_cursor = 0
+	while _pause_cursor < _pause_at.size() and _pause_at[_pause_cursor] <= int(_type_progress):
+		_pause_cursor += 1
 	if not _typing:
 		label.visible_characters = -1
 		return
 	label.visible_characters = mini(int(_type_progress), _type_total)
+
+
+## Finds every mid-line sentence break in the label's parsed text and records the visible_characters
+## count at which the reveal should hold: just after the punctuation (and any closing quote/bracket),
+## and only when whitespace and then more text follow - so the last sentence never pauses.
+func _build_pauses() -> void:
+	_pause_at.clear()
+	_pause_scale.clear()
+	var parsed := label.get_parsed_text()
+	# visible_characters indexes the parsed text; if this build does not count newlines, drop them
+	# so the positions still line up.
+	if parsed.length() != _type_total:
+		parsed = parsed.replace("\n", "")
+	var n := parsed.length()
+	var i := 0
+	while i < n:
+		if PAUSE_PUNCTUATION.contains(parsed[i]) or parsed[i] == ",":
+			# Count the sentence marks in the run: none = a comma's short beat, one = a full beat,
+			# two or more (or a "…") = the long beat.
+			var marks := 0
+			if PAUSE_PUNCTUATION.contains(parsed[i]):
+				marks = 2 if parsed[i] == "…" else 1
+			var j := i
+			while j + 1 < n and (PAUSE_PUNCTUATION.contains(parsed[j + 1]) or parsed[j + 1] == "," \
+					or PAUSE_CLOSERS.contains(parsed[j + 1])):
+				j += 1
+				if PAUSE_PUNCTUATION.contains(parsed[j]):
+					marks += 2 if parsed[j] == "…" else 1
+			if j + 1 < n and (parsed[j + 1] == " " or parsed[j + 1] == "\n") \
+					and not parsed.substr(j + 1).strip_edges().is_empty():
+				_pause_at.append(j + 1)
+				if marks >= 2:
+					_pause_scale.append(MULTI_MARK_PAUSE_FRACTION)
+				elif marks == 1:
+					_pause_scale.append(1.0)
+				else:
+					_pause_scale.append(COMMA_PAUSE_FRACTION)
+			i = j
+		i += 1
 
 
 func _process(delta: float) -> void:
@@ -1210,8 +1275,20 @@ func _process(delta: float) -> void:
 	if delay <= 0.0:
 		finish_typing()
 		return
+	# Holding on a punctuation beat. Any time left over from the frame that ends it carries straight
+	# into the letters, so the pause costs exactly its length.
+	if _pause_left > 0.0:
+		_pause_left -= delta
+		if _pause_left > 0.0:
+			return
+		delta = -_pause_left
+		_pause_left = 0.0
 	var before := int(_type_progress)
 	_type_progress += delta / delay
+	if _pause_cursor < _pause_at.size() and int(_type_progress) >= _pause_at[_pause_cursor]:
+		_type_progress = float(_pause_at[_pause_cursor])
+		_pause_left = _punctuation_pause() * _pause_scale[_pause_cursor]
+		_pause_cursor += 1
 	if int(_type_progress) >= _type_total:
 		# The blip for the last few letters still owes itself; play it before the line
 		# snaps whole, so a short message is never revealed in total silence.
@@ -1257,9 +1334,16 @@ func is_typing() -> bool:
 	return _typing
 
 
+## True while the reveal is holding on a punctuation beat. Still is_typing() (a click finishes the
+## line), but nothing is being said - the phone call closes the caller's mouth on this.
+func is_pausing() -> bool:
+	return _typing and _pause_left > 0.0
+
+
 ## Reveals the rest of the line immediately.
 func finish_typing() -> void:
 	_typing = false
+	_pause_left = 0.0
 	set_process(false)
 	if label != null:
 		label.visible_characters = -1
@@ -1286,6 +1370,17 @@ func _letter_delay() -> float:
 	if gs == null:
 		return 0.0
 	return float(gs.text_letter_delay)
+
+
+## Seconds a mid-line punctuation beat holds for, already scaled to the player's text speed.
+func _punctuation_pause() -> float:
+	var loop := Engine.get_main_loop()
+	if loop == null:
+		return 0.0
+	var gs = loop.get_root().get_node_or_null("/root/GameState")
+	if gs == null:
+		return 0.0
+	return float(gs.text_punctuation_pause)
 
 
 func _apply_body_font(size: int) -> void:

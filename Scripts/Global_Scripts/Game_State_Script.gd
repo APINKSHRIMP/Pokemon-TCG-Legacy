@@ -174,6 +174,12 @@ const TEXT_BASE_LETTER_DELAY := 0.05   # seconds per letter at 1.0x
 # preset rather than from the 1.0x base, so it matches DEFAULT_TEXT_SPEED on a first run.
 var text_letter_delay: float = TEXT_BASE_LETTER_DELAY / float(TEXT_SPEED_PRESETS[DEFAULT_TEXT_SPEED])
 
+# The beat a message box holds after mid-line sentence punctuation ("Hey! <pause> Nice to see you.").
+# TWEAKABLE — authored at the SLOW preset; the other presets scale it by the same ratio as their
+# letter speed (medium 0.5s, fast ~0.33s), and reduce motion collapses it to 0.0 with the typing.
+const TEXT_PUNCTUATION_PAUSE_AT_SLOW := 1.0
+var text_punctuation_pause: float = TEXT_PUNCTUATION_PAUSE_AT_SLOW
+
 # Reduce motion. An accessibility switch, not a fourth speed.
 #
 # SKIP_MULTIPLIER is deliberately huge rather than infinite so scaled_duration() collapses every
@@ -265,11 +271,14 @@ func _apply_animation_multipliers() -> void:
 		pack_animation_speed = SKIP_MULTIPLIER
 		# 0.0 is the message box's "no typing, show the whole line at once".
 		text_letter_delay = 0.0
+		text_punctuation_pause = 0.0
 		return
 	card_match_animation_speed = MATCH_SPEED_PRESETS[animation_speed_setting]
 	item_animation_speed = ITEM_SPEED_PRESETS[animation_speed_setting]
 	pack_animation_speed = PACK_SPEED_PRESETS[animation_speed_setting]
 	text_letter_delay = TEXT_BASE_LETTER_DELAY / float(TEXT_SPEED_PRESETS[text_speed_setting])
+	text_punctuation_pause = TEXT_PUNCTUATION_PAUSE_AT_SLOW \
+			* float(TEXT_SPEED_PRESETS["slow"]) / float(TEXT_SPEED_PRESETS[text_speed_setting])
 
 
 func set_intro_outro(choice: String, save: bool = true) -> void:
