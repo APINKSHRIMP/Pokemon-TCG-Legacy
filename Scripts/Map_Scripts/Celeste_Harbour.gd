@@ -76,7 +76,12 @@ func _ready() -> void:
 	# Taxi intro path: skip normal startup, run the cutscene instead
 	modulate = Color.BLACK
 	_setup_doors()
+	# The time-of-day colour grade and the light styling, exactly as BaseMapScene._ready()
+	# applies them. This path never calls it, which went unnoticed while the intro was set in
+	# the morning (no grade); every start now arrives at evening or night.
+	_setup_time_of_day_grade()
 	_scene_setup()
+	TimeOfDayGrade.style_lights(self, GameState.get_time())
 
 	_player.position = TAXI_END_POS
 	_player.lock_movement()
@@ -180,8 +185,8 @@ func _run_taxi_intro() -> void:
 	# -- THE DOORSTEP --------------------------------------------------------------------
 	# The call advances on a click, so the player decides how long it takes. Still on the phone
 	# when they reach the door: they turn round (head down, talking) until it hangs up and the
-	# phone has flown off, then look back up at the door. Either way a short pause at the door,
-	# as if unlocking it, then in.
+	# phone has flown off, then look back up at the door, a short pause, and in. A player who
+	# has already finished the call walks straight in without stopping.
 	#
 	# THIS IS THE ONLY PLACE THE CUTSCENE WAITS. is_finished() before the await, never just
 	# is_instance_valid(): the call frees itself the moment it emits, so awaiting one that has
@@ -191,7 +196,6 @@ func _run_taxi_intro() -> void:
 		await _intro_call.finished
 		_player.set_direction("up")
 		await get_tree().create_timer(INTRO_AFTER_CALL_PAUSE).timeout
-	await get_tree().create_timer(INTRO_UNLOCK_PAUSE).timeout
 
 	await _scripted_walk("up", INTRO_DOOR_STEP_IN)
 
@@ -275,10 +279,8 @@ func _drive_taxi_off() -> void:
 	)
 
 
-## TWEAKABLE - the doorstep. How long the player pauses at the door (unlocking it), how
-## long they hold after the call ends before that, and how far the last step carries them
-## past the doorstep onto the door.
-const INTRO_UNLOCK_PAUSE     := 0.2
+## TWEAKABLE - the doorstep. How long the player holds after a call that was still going
+## ends, and how far the last step carries them past the doorstep onto the door.
 ## "rules": how far short of the door (world px below the doorstep) the player stops for Olly.
 const INTRO_MEET_SHORT_OF_DOOR := 40.0
 const INTRO_AFTER_CALL_PAUSE := 0.4

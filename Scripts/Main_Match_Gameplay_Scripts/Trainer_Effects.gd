@@ -3027,6 +3027,10 @@ func effect_energy_removal(is_opponent: bool) -> void:
 	if is_opponent:
 		# ISSUE #310: the player's Pokémon where losing an Energy hurts most, and its most valuable Energy
 		var target = main.cpu_ai.cpu_pick_energy_removal_target(targets_with_energy)
+		# A scripted tutorial turn names its target (Olly's newby match: the Active).
+		var scripted_target = main.tutorial.cpu_removal_target(targets_with_energy)
+		if scripted_target != null:
+			target = scripted_target
 		var energy = main.cpu_ai.cpu_pick_energy_to_discard_from(target)
 		if energy == null: energy = target.attached_energies.back()
 		target.attached_energies.erase(energy)
@@ -3142,6 +3146,10 @@ func effect_potion(is_opponent: bool) -> void:
 		await main.card_ops.heal_pokemon(target, 20, true)
 		if main._should_bail(): return
 	else:
+		# A tutorial can rule targets out (the newby one keeps Potions off Ponyta).
+		damaged = damaged.filter(func(p): return main.tutorial.gate("heal", {"target": p}) == "")
+		if damaged.size() == 0:
+			return
 		var target = await main.card_ops.prompt_select_card(damaged, "POTION", "Select a Pokemon to heal (up to 20 HP)", "HEAL", false)
 		if main._should_bail(): return
 

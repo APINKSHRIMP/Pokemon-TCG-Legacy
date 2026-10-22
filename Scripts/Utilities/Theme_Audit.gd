@@ -95,9 +95,11 @@ func _audit(ui, theme_id: String, required: Array) -> void:
 	# bold name, both of which are "large" by the WCAG definition; every small
 	# thing on a bar is a chip with its own background or a button with its own
 	# baked face, and those are measured separately below.
-	_contrast("chrome_fg on grad_a", t["chrome_fg"], t["chrome_grad_a"], AA_LARGE)
-	_contrast("chrome_fg on grad_b", t["chrome_fg"], t["chrome_grad_b"], AA_LARGE)
-	_contrast("chrome_fg on grad_c", t["chrome_fg"], t["chrome_grad_c"], AA_LARGE)
+	# Measured on the stops the bar is actually PAINTED with (UITheme.BAR_STOPS).
+	var bar: Array = ui.bar_stops(theme_id)
+	_contrast("chrome_fg on bar_a", t["chrome_fg"], bar[0], AA_LARGE)
+	_contrast("chrome_fg on bar_b", t["chrome_fg"], bar[1], AA_LARGE)
+	_contrast("chrome_fg on bar_c", t["chrome_fg"], bar[2], AA_LARGE)
 	_contrast("field_fg on field", t["field_fg"], field, AA_TEXT)
 	_contrast("field_mute on field", t["field_mute"], field, AA_LARGE)
 	_contrast("chip_fg on chip_bg", t["chip_fg"], _over(t["chip_bg"], field), AA_TEXT)
@@ -111,9 +113,9 @@ func _audit(ui, theme_id: String, required: Array) -> void:
 	# measured against the bar's middle stop, which is where a footer button sits.
 	# Without this check, a theme pairing a pale field with a near-black bar
 	# scored a perfect secondary and still drew Cancel black on black.
-	var mid: Color = t["chrome_grad_b"]
+	var mid: Color = bar[1]
 	_contrast("chrome_fg on secondary_chrome",
-		t["chrome_fg"], _over(ui.chrome_button_tint(t), mid), AA_TEXT)
+		t["chrome_fg"], _over(ui.chrome_button_tint(theme_id), mid), AA_TEXT)
 
 	# 3. The button rule.
 	# A stop passes either by being an exact theme colour, or by sharing the

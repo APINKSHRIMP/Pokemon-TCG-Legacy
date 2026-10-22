@@ -264,6 +264,11 @@ func has_interact_candidate() -> bool:
 # itself when the limits are narrower than the screen. Re-run on every zoom, since
 # zooming in is what lets the camera move about a small room at all.
 var _camera_room: Rect2 = Rect2()
+## TWEAKABLE -- on an axis where the room is SMALLER than the view, the camera is not pinned
+## dead centre: it may drift up to this many world px either way to follow the player, so
+## walking about a small room still feels like the camera is with you. The room stays all
+## (or nearly all) on screen.
+const CAMERA_ROOM_SLACK := 28.0
 
 
 ## `room` in world px; an empty rect turns the limits off (the outdoor maps).
@@ -284,8 +289,8 @@ func _apply_camera_room() -> void:
 	for axis in 2:
 		if hi[axis] - lo[axis] < view[axis]:
 			var mid: float = (lo[axis] + hi[axis]) * 0.5
-			lo[axis] = mid - view[axis] * 0.5
-			hi[axis] = mid + view[axis] * 0.5
+			lo[axis] = mid - view[axis] * 0.5 - CAMERA_ROOM_SLACK
+			hi[axis] = mid + view[axis] * 0.5 + CAMERA_ROOM_SLACK
 	camera.limit_left = int(floor(lo.x))
 	camera.limit_top = int(floor(lo.y))
 	camera.limit_right = int(ceil(hi.x))

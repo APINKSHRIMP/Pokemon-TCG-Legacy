@@ -368,8 +368,10 @@ const SEARCH_MODE_LABEL := "SEARCH MODE ACTIVE"
 # ─── Lifecycle ───────────────────────────────────────────────────────────────
 
 func _ready() -> void:
-	# Start background music — loops until scene changes
+	# Start background music — loops until scene changes. Hard Mode's draft build uses the
+	# normal track too; the draft music is only for its pack opening.
 	SoundManagerScript.play_bgm(SoundManagerScript.BGM_COIN_MODE, true)
+	SoundManagerScript.fade_bgm(1.0, 0.0)
 	
 	# Load data sources
 	_load_set_dictionary()
@@ -2654,7 +2656,7 @@ func _run_search(criteria: Dictionary) -> Array:
 			return []
 		await get_tree().process_frame
 
-	_sort_search_results(results, criteria.get("sort", "set"))
+	_sort_search_results(results, criteria.get("sort_chain", [criteria.get("sort", "set")]))
 	_loading_overlay.hide()
 	return results
 
@@ -2866,32 +2868,39 @@ const TYPE_SORT_ORDER := ["Grass", "Fire", "Water", "Lightning", "Psychic",
 ## "type" — ISSUE #225: Pokemon first, bucketed by energy type in TYPE_SORT_ORDER,
 ##          then Trainers, then Energy cards. Within a bucket it falls back to the
 ##          same release-order tiebreak as "set".
-func _sort_search_results(results: Array, sort_mode: String) -> void:
+## `chain` is the player's sort picks, newest first: the first key sorts, each later key
+## breaks the ties left by the ones before it, and set + card number settles the rest.
+## Keys: "set", "name", "type", "owned" (most owned first).
+func _sort_search_results(results: Array, chain: Array) -> void:
 	# Position of each set in the dictionary's release order, so sorting never has to search the list
 	var set_order : Dictionary = {}
 	for i in range(set_list.size()):
 		set_order[set_list[i]["set_id"]] = i
-
-	if sort_mode == "type":
-		results.sort_custom(func(a, b):
-			var ka : int = _search_type_key(a["card_id"])
-			var kb : int = _search_type_key(b["card_id"])
-			if ka != kb:
-				return ka < kb
-			return _search_sort_key(a["card_id"], set_order) < _search_sort_key(b["card_id"], set_order)
-		)
-	elif sort_mode == "name":
-		results.sort_custom(func(a, b):
-			var name_a : String = _search_card_name(a["card_id"])
-			var name_b : String = _search_card_name(b["card_id"])
-			if name_a != name_b:
-				return name_a.naturalnocasecmp_to(name_b) < 0
-			return _search_sort_key(a["card_id"], set_order) < _search_sort_key(b["card_id"], set_order)
-		)
-	else:
-		results.sort_custom(func(a, b):
-			return _search_sort_key(a["card_id"], set_order) < _search_sort_key(b["card_id"], set_order)
-		)
+	results.sort_custom(func(a, b):
+		for key in chain:
+			match String(key):
+				"type":
+					var ka : int = _search_type_key(a["card_id"])
+					var kb : int = _search_type_key(b["card_id"])
+					if ka != kb:
+						return ka < kb
+				"name":
+					var name_a : String = _search_card_name(a["card_id"])
+					var name_b : String = _search_card_name(b["card_id"])
+					if name_a != name_b:
+						return name_a.naturalnocasecmp_to(name_b) < 0
+				"owned":
+					var oa : int = int(a.get("owned", 0))
+					var ob : int = int(b.get("owned", 0))
+					if oa != ob:
+						return oa > ob
+				"set":
+					var sa : int = _search_sort_key(a["card_id"], set_order)
+					var sb : int = _search_sort_key(b["card_id"], set_order)
+					if sa != sb:
+						return sa < sb
+		return _search_sort_key(a["card_id"], set_order) < _search_sort_key(b["card_id"], set_order)
+	)
 
 
 ## ISSUE #225: the sort bucket for "type". Pokemon take their first listed energy
@@ -3609,8 +3618,8 @@ const MSG_ANCHOR_Y       := 0.82    # vertical screen position, as a fraction of
 const MSG_HEIGHT         := 90.0    # strip height the text is centred in
 const MSG_FONT_SIZE      := 51      # +50%: this label reports a refusal, so it has to be read
 const MSG_RISE_PIXELS    := 120.0   # how far it drifts upward
-const MSG_RISE_SECONDS   := 2.0     # drift duration
-const MSG_FADE_SECONDS   := 1.6     # fade duration (starts with the drift)
+const MSG_RISE_SECONDS   := 4.0     # drift duration
+const MSG_FADE_SECONDS   := 3.2     # fade duration (starts with the drift)
 const MSG_COLOUR         := Color(1.0, 0.45, 0.45)
 ## ISSUE #394: the "DECK SAVED!" confirmation - same label, success green.
 const MSG_SAVED_TEXT     := "DECK SAVED!"

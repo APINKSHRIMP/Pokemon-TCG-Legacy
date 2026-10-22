@@ -168,8 +168,8 @@ const CARD_LABEL_FONT      := 40
 const CARD_LABEL_OUTLINE   := 6
 const CARD_LABEL_SIZE      := Vector2(240, 70)
 const CARD_LABEL_RISE_PX   := 70.0
-const CARD_LABEL_RISE_TIME := 0.85
-const CARD_LABEL_FADE_TIME := 0.7
+const CARD_LABEL_RISE_TIME := 1.7
+const CARD_LABEL_FADE_TIME := 1.4
 
 ## ISSUE #208: HALF SIZE, AND IT FALLS FROM THE WALLET CHIP.
 ## The cash readout used to live in the bottom right of the screen, so the payout
@@ -181,8 +181,8 @@ const TOTAL_LABEL_FONT      := 38
 const TOTAL_LABEL_OUTLINE   := 6
 const TOTAL_LABEL_SIZE      := Vector2(700, 90)
 const TOTAL_LABEL_RISE_PX   := -120.0
-const TOTAL_LABEL_RISE_TIME := 2.0
-const TOTAL_LABEL_FADE_TIME := 1.8
+const TOTAL_LABEL_RISE_TIME := 4.0
+const TOTAL_LABEL_FADE_TIME := 3.6
 ## ISSUE #208 (retest): the anchor is MEASURED off the wallet chip at spawn time
 ## rather than guessed. 1560 was ~200px left of the pill, because the pill's width
 ## depends on how many digits the balance has — there is no fixed x to hardcode.

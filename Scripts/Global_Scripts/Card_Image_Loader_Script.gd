@@ -179,7 +179,11 @@ func _input(event: InputEvent) -> void:
 				return
 			
 			card_clicked.emit(card_ref)
-			
+			# A double-click plays the card from inside that signal, and playing it rebuilds
+			# the hand -- this node can already be out of the tree, where get_tree() is null.
+			if not is_inside_tree():
+				return
+
 			# Get reference to the main script to check if we're in selection mode
 			var main_node = get_tree().root.get_child(0)
 			if main_node == null:

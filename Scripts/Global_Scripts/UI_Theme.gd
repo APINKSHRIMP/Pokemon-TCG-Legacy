@@ -88,17 +88,37 @@ const FONT_SYMBOL_FALLBACK := "C:/Windows/Fonts/seguisym.ttf"
 #   The gradient-versus-flat difference is what keeps primary apart from the
 #   `selected` variant, which is flat chrome_grad_b. Do not give primary a flat
 #   fill or the two collapse into each other.
+## THE HEADER/FOOTER BAR PAINT, where it differs from chrome_grad_a/b/c.
+##
+## ISSUE #410 made every chrome_grad a bold gradient so the splash mark and the
+## selection ring have something to borrow. These five looks keep their ORIGINAL
+## near-flat bars on top of that. A theme not listed paints its bar from
+## chrome_grad. Kept outside THEMES so the 39-key contract does not move.
+## Read through bar_stops(); nothing else should index this.
+const BAR_STOPS := {
+	"gengar_dark":    [Color("241B3A"), Color("2F2045"), Color("3A2450")],
+	"gengar_light":   [Color("241B3A"), Color("2F2045"), Color("3A2450")],
+	"shuppet_dark":   [Color("0C0F15"), Color("0C0F15"), Color("0C0F15")],
+	"shuppet_light":  [Color("4C4F54"), Color("4C4F54"), Color("4C4F54")],
+	"code_dark":      [Color("05070C"), Color("05070C"), Color("05070C")],
+	"code_light":     [Color("05070C"), Color("05070C"), Color("05070C")],
+	"umbreon_dark":   [Color("1B1F2A"), Color("1B1F2A"), Color("1B1F2A")],
+	"umbreon_light":  [Color("1B1F2A"), Color("1B1F2A"), Color("1B1F2A")],
+	"sharpedo_dark":  [Color("16233F"), Color("2E4A7A"), Color("16233F")],
+	"sharpedo_light": [Color("16233F"), Color("2E4A7A"), Color("16233F")],
+}
+
 const THEMES := {
 	# Eight looks, each in a Dark and a Light variant. Every block is 39 keys in
 	# the order Docs/THEME_TEMPLATE_SPEC.md lays out, and every one is checked by
 	# Scripts/Utilities/Theme_Audit.gd. Add a theme here, re-run the builder, then
 	# re-run the audit; nothing else enumerates theme names.
 	#
-	# ISSUE #410: every bar is a real three-stop gradient now — deep, signature,
-	# complementary, each dark enough for white chrome text at 4.5:1. Gengar,
-	# Shuppet, Code, Umbreon and Sharpedo used to be near-black (four of them flat),
-	# which read as no gradient at all and gave selections nothing bold to borrow.
-	# A flat bar is still expressible (grad_a == grad_b == grad_c) but none ships.
+	# ISSUE #410: every chrome_grad is a real three-stop gradient now — deep,
+	# signature, complementary. It feeds the splash mark, the selection ring, the
+	# selected button, the VS band and the message box. The header/footer BARS of
+	# Gengar, Shuppet, Code, Umbreon and Sharpedo do NOT use it: they keep their
+	# original near-flat paint via BAR_STOPS below, with chrome_line as their keyline.
 
 	"sunset_dark": {
 
@@ -438,7 +458,7 @@ const THEMES := {
 		"chrome_grad_c":      Color("B05A0A"),   # ISSUE #410: bold stop, was near-black
 		"chrome_fg":          Color("FFFFFF"),
 		"chrome_pattern":     Color(1.000, 1.000, 1.000, 0.045),
-		"chrome_line":        Color(0.0, 0.0, 0.0, 0.0),   # ISSUE #410: vivid bar, no keyline
+		"chrome_line":        Color(1.0, 1.0, 1.0, 0.10),   # the BAR keyline, see BAR_STOPS
 		# Field — the play area / content background
 		"field":              Color("1A1630"),
 		"field_glow_top":     Color(0.878, 0.439, 0.604, 0.140),
@@ -493,7 +513,7 @@ const THEMES := {
 		"chrome_grad_c":      Color("B05A0A"),   # ISSUE #410: bold stop, was near-black
 		"chrome_fg":          Color("FFFFFF"),
 		"chrome_pattern":     Color(1.000, 1.000, 1.000, 0.045),
-		"chrome_line":        Color(0.0, 0.0, 0.0, 0.0),   # ISSUE #410: vivid bar, no keyline
+		"chrome_line":        Color(1.0, 1.0, 1.0, 0.10),   # the BAR keyline, see BAR_STOPS
 		# Field — the play area / content background
 		"field":              Color("F6F2FB"),
 		"field_glow_top":     Color(0.878, 0.439, 0.604, 0.090),
@@ -548,7 +568,7 @@ const THEMES := {
 		"chrome_grad_c":      Color("C9463A"),   # ISSUE #410: bold stop, was near-black
 		"chrome_fg":          Color("FFFFFF"),
 		"chrome_pattern":     Color(1.000, 1.000, 1.000, 0.050),
-		"chrome_line":        Color(0.0, 0.0, 0.0, 0.0),   # ISSUE #410: vivid bar, no keyline
+		"chrome_line":        Color(1.0, 1.0, 1.0, 0.08),   # the BAR keyline, see BAR_STOPS
 		# Field — the play area / content background
 		"field":              Color("0F1219"),
 		"field_glow_top":     Color(0.941, 0.451, 0.420, 0.180),
@@ -603,7 +623,7 @@ const THEMES := {
 		"chrome_grad_c":      Color("C9463A"),   # ISSUE #410: bold stop, was near-black
 		"chrome_fg":          Color("FFFFFF"),
 		"chrome_pattern":     Color(1.000, 1.000, 1.000, 0.050),
-		"chrome_line":        Color(0.0, 0.0, 0.0, 0.0),   # ISSUE #410: vivid bar, no keyline
+		"chrome_line":        Color(1.0, 1.0, 1.0, 0.08),   # the BAR keyline, see BAR_STOPS
 		# Field — the play area / content background
 		"field":              Color("F2F5FA"),
 		"field_glow_top":     Color(0.941, 0.451, 0.420, 0.090),
@@ -658,7 +678,7 @@ const THEMES := {
 		"chrome_grad_c":      Color("D01A63"),   # ISSUE #410: bold stop, was near-black
 		"chrome_fg":          Color("FFFFFF"),
 		"chrome_pattern":     Color(0.000, 0.898, 0.831, 0.070),
-		"chrome_line":        Color(0.0, 0.0, 0.0, 0.0),   # ISSUE #410: vivid bar, no keyline
+		"chrome_line":        Color(0.0, 0.898, 0.831, 0.35),   # the BAR keyline, see BAR_STOPS
 		# Field — the play area / content background
 		"field":              Color("06090F"),
 		"field_glow_top":     Color(1.000, 0.239, 0.541, 0.150),
@@ -713,7 +733,7 @@ const THEMES := {
 		"chrome_grad_c":      Color("D01A63"),   # ISSUE #410: bold stop, was near-black
 		"chrome_fg":          Color("FFFFFF"),
 		"chrome_pattern":     Color(0.000, 0.898, 0.831, 0.070),
-		"chrome_line":        Color(0.0, 0.0, 0.0, 0.0),   # ISSUE #410: vivid bar, no keyline
+		"chrome_line":        Color(0.0, 0.898, 0.831, 0.35),   # the BAR keyline, see BAR_STOPS
 		# Field — the play area / content background
 		"field":              Color("EFF7F6"),
 		"field_glow_top":     Color(1.000, 0.239, 0.541, 0.080),
@@ -768,7 +788,7 @@ const THEMES := {
 		"chrome_grad_c":      Color("957012"),   # ISSUE #410: bold stop, was near-black
 		"chrome_fg":          Color("FFFFFF"),
 		"chrome_pattern":     Color(0.941, 0.906, 0.831, 0.050),
-		"chrome_line":        Color(0.0, 0.0, 0.0, 0.0),   # ISSUE #410: vivid bar, no keyline
+		"chrome_line":        Color("C8A24A"),   # the BAR keyline, see BAR_STOPS
 		# Field — the play area / content background
 		"field":              Color("141821"),
 		"field_glow_top":     Color(0.498, 0.659, 0.722, 0.150),
@@ -823,7 +843,7 @@ const THEMES := {
 		"chrome_grad_c":      Color("957012"),   # ISSUE #410: bold stop, was near-black
 		"chrome_fg":          Color("FFFFFF"),
 		"chrome_pattern":     Color(0.941, 0.906, 0.831, 0.050),
-		"chrome_line":        Color(0.0, 0.0, 0.0, 0.0),   # ISSUE #410: vivid bar, no keyline
+		"chrome_line":        Color("C8A24A"),   # the BAR keyline, see BAR_STOPS
 		# Field — the play area / content background
 		"field":              Color("F7F3E9"),
 		"field_glow_top":     Color(0.498, 0.659, 0.722, 0.080),
@@ -878,7 +898,7 @@ const THEMES := {
 		"chrome_grad_c":      Color("B85D1C"),   # ISSUE #410: bold stop, was near-black
 		"chrome_fg":          Color("FFFFFF"),
 		"chrome_pattern":     Color(1.000, 1.000, 1.000, 0.060),
-		"chrome_line":        Color(0.0, 0.0, 0.0, 0.0),   # ISSUE #410: vivid bar, no keyline
+		"chrome_line":        Color("C77F45"),   # the BAR keyline, see BAR_STOPS
 		# Field — the play area / content background
 		"field":              Color("151A23"),
 		"field_glow_top":     Color(0.498, 0.659, 0.878, 0.150),
@@ -933,7 +953,7 @@ const THEMES := {
 		"chrome_grad_c":      Color("B85D1C"),   # ISSUE #410: bold stop, was near-black
 		"chrome_fg":          Color("FFFFFF"),
 		"chrome_pattern":     Color(1.000, 1.000, 1.000, 0.060),
-		"chrome_line":        Color(0.0, 0.0, 0.0, 0.0),   # ISSUE #410: vivid bar, no keyline
+		"chrome_line":        Color("C77F45"),   # the BAR keyline, see BAR_STOPS
 		# Field — the play area / content background
 		"field":              Color("F3F4F7"),
 		"field_glow_top":     Color(0.498, 0.659, 0.878, 0.080),
@@ -1388,13 +1408,24 @@ static func neutral_fill(block: Dictionary) -> Color:
 ##
 ## Build_UI_Themes.gd bakes the face from this and Theme_Audit.gd measures it
 ## from this, so the art and the check can never drift apart.
-static func chrome_button_tint(block: Dictionary) -> Color:
-	var mid: Color = block["chrome_grad_b"]
+static func chrome_button_tint(theme_id: String) -> Color:
+	var block: Dictionary = THEMES[theme_id]
+	var mid: Color = bar_stops(theme_id)[1]
 	var fg: Color = block["chrome_fg"]
 	var lift := Color(1.0, 1.0, 1.0, 0.18)
 	if contrast_ratio(fg, composite(lift, mid)) >= 4.5:
 		return lift
 	return Color(0.0, 0.0, 0.0, 0.30)
+
+
+## The three stops the header/footer bar is painted with: BAR_STOPS if the theme
+## overrides its bar, else the theme's chrome_grad. Static so the builder and the
+## audit (no autoloads) measure the same bar the game draws.
+static func bar_stops(theme_id: String) -> Array:
+	if BAR_STOPS.has(theme_id):
+		return BAR_STOPS[theme_id]
+	var block: Dictionary = THEMES[theme_id]
+	return [block["chrome_grad_a"], block["chrome_grad_b"], block["chrome_grad_c"]]
 
 
 ## Alpha-composites `over` onto an opaque `under`.

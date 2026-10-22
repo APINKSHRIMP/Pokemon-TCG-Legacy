@@ -4,6 +4,7 @@ const SCENE_PATH = "res://Scenes/Map_Scenes/Player_House_Downstairs.tscn"
 
 # ── The arrival night: a note through the door — TWEAKABLE ──────────────────
 const NOTE_FOUND_TEXT := "Huh, a note was put through the door"
+const NOTE_AFTER_TEXT := "I'll call mum tomorrow..."
 const NOTE_LOOK_BACK_DELAY := 0.5   # after the fade in, before the player turns back to the door
 
 
@@ -37,7 +38,8 @@ func _read_note() -> void:
 	_player.set_direction("up")
 	var note := NoteOverlay.show_on(_ui_layer)
 	await note.closed
-	_player.unlock_movement()
+	# Dismissing this hands movement back (MapManager._hide_message).
+	MapManager._show_message_with_ok(NOTE_AFTER_TEXT)
 
 
 func _scene_setup():

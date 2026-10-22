@@ -217,9 +217,12 @@ static func paint_field(mat: ShaderMaterial) -> void:
 ## the content, so the header rules along its bottom and the footer along its top.
 static func paint_bar(mat: ShaderMaterial, line_at_bottom: bool = true) -> void:
 	var ui := _ui()
-	mat.set_shader_parameter("grad_a", ui.col("chrome_grad_a"))
-	mat.set_shader_parameter("grad_b", ui.col("chrome_grad_b"))
-	mat.set_shader_parameter("grad_c", ui.col("chrome_grad_c"))
+	# The BAR's own stops, not chrome_grad — some looks keep a near-flat bar
+	# while their splash and selection use the bold gradient. See BAR_STOPS.
+	var stops: Array = ui.bar_stops(ui.current)
+	mat.set_shader_parameter("grad_a", stops[0])
+	mat.set_shader_parameter("grad_b", stops[1])
+	mat.set_shader_parameter("grad_c", stops[2])
 	mat.set_shader_parameter("stripe_color", ui.col("chrome_pattern"))
 	mat.set_shader_parameter("angle_deg", ui.CHEVRON_ANGLE_DEG)
 	mat.set_shader_parameter("stripe_width", ui.CHEVRON_BAR_STRIPE)
@@ -793,6 +796,35 @@ static func add_selection_ring(layer: Control, target: Control,
 
 ## The grow half of the grow/shrink that has always meant "selected" here.
 ## Cards take the gentler scale, grid tiles the larger one.
+## FLY IN WITH FRICTION. Moves `node` from `from` to `to` (local positions): it travels
+## most of the way fast, slows as it goes, carries on a few px PAST the spot, then settles
+## back -- as if thrown and falling back. Fades up from transparent alongside if `fade`.
+## Returns the movement tween (bound to the node). TWEAKABLE: FLY_OVERSHOOT_PX, FLY_SETTLE_SHARE.
+const FLY_OVERSHOOT_PX := 12.0
+const FLY_SETTLE_SHARE := 0.25    # of the duration, spent falling back onto the spot
+
+static func fly_in(node: Control, from: Vector2, to: Vector2, duration: float,
+		delay: float = 0.0, fade: bool = true) -> Tween:
+	node.position = from
+	if fade:
+		node.modulate.a = 0.0
+	var dir: Vector2 = (to - from).normalized()
+	var past: Vector2 = to + dir * FLY_OVERSHOOT_PX
+	var move := node.create_tween()
+	if delay > 0.0:
+		move.tween_interval(delay)
+	move.tween_property(node, "position", past, duration * (1.0 - FLY_SETTLE_SHARE)) \
+		.set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+	move.tween_property(node, "position", to, duration * FLY_SETTLE_SHARE) \
+		.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	if fade:
+		var f := node.create_tween()
+		if delay > 0.0:
+			f.tween_interval(delay)
+		f.tween_property(node, "modulate:a", 1.0, duration * 0.6)
+	return move
+
+
 static func pulse(target: Control, selected: bool, tile: bool = false) -> Tween:
 	var ui := _ui()
 	var to: float = 1.0

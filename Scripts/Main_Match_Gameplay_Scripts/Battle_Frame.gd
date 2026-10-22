@@ -164,6 +164,11 @@ var top_slot: Control = null
 var _top_slot_anim: Control = null
 var _below_badge_anim: Control = null
 var _kind: String = "intro"
+## Set BEFORE setup(). The match intro doubles its entrance (2.0) and, because its
+## background dissolves in under a pixel mask instead of the whole screen fading up
+## from black, fades the trainers and the badge in themselves (fade_foreground).
+var entrance_scale: float = 1.0
+var fade_foreground: bool = false
 var _band_mats: Array = []
 
 
@@ -573,6 +578,9 @@ func prepare_entrance() -> void:
 	for anim in [player.name_anim, opponent.name_anim, _top_slot_anim, _below_badge_anim]:
 		anim.position = Vector2(0.0, -BLOCK_DROP_PX)
 		anim.modulate.a = 0.0
+	if fade_foreground:
+		for node in [player.fast, opponent.fast, badge_slot]:
+			node.modulate.a = 0.0
 
 
 # ============================================================
@@ -594,9 +602,9 @@ func prepare_entrance() -> void:
 # await it: every tween is bound to a node, so a scene change kills them.
 func play_entrance() -> void:
 	var gs := _gs()
-	var p1: float = gs.transition_time(P1_TIME)
-	var p2: float = gs.transition_time(P2_TIME)
-	var sprite_delay: float = gs.transition_time(SPRITE_P1_DELAY)
+	var p1: float = gs.transition_time(P1_TIME) * entrance_scale
+	var p2: float = gs.transition_time(P2_TIME) * entrance_scale
+	var sprite_delay: float = gs.transition_time(SPRITE_P1_DELAY) * entrance_scale
 	var total: float = sprite_delay + p1 + p2
 
 	# Reduce motion collapses every duration to zero, so the whole screen is at
@@ -616,13 +624,22 @@ func play_entrance() -> void:
 
 	# Both name blocks move DOWN. The opponent's used to move up because it sat
 	# above their sprite; it sits below now, so the two match.
-	var name_delay: float = gs.transition_time(NAME_DELAY)
-	drop_in(player.name_anim, name_delay)
-	drop_in(opponent.name_anim, name_delay)
+	var name_delay: float = gs.transition_time(NAME_DELAY) * entrance_scale
+	drop_in(player.name_anim, name_delay, p1)
+	drop_in(opponent.name_anim, name_delay, p1)
 
-	var slot_delay: float = gs.transition_time(SLOT_DELAY)
-	drop_in(_top_slot_anim, slot_delay)
-	drop_in(_below_badge_anim, slot_delay)
+	var slot_delay: float = gs.transition_time(SLOT_DELAY) * entrance_scale
+	drop_in(_top_slot_anim, slot_delay, p1)
+	drop_in(_below_badge_anim, slot_delay, p1)
+
+	# The trainers and the badge fade up over their fast phase (see fade_foreground).
+	if fade_foreground:
+		for pair in [[player.fast, sprite_delay], [opponent.fast, sprite_delay], [badge_slot, 0.0]]:
+			var node: Control = pair[0]
+			var fade := node.create_tween()
+			if float(pair[1]) > 0.0:
+				fade.tween_interval(pair[1])
+			fade.tween_property(node, "modulate:a", 1.0, p1)
 
 	await get_tree().create_timer(total).timeout
 
@@ -700,6 +717,8 @@ func snap_to_rest() -> void:
 	for anim in [player.name_anim, opponent.name_anim, _top_slot_anim, _below_badge_anim]:
 		anim.position = Vector2.ZERO
 		anim.modulate.a = 1.0
+	for node in [player.fast, opponent.fast, badge_slot]:
+		node.modulate.a = 1.0
 
 
 # ============================================================

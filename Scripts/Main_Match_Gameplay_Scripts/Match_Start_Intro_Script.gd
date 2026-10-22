@@ -27,13 +27,20 @@ const PRIZE_ICON_GAP : float = 10.0
 # How long the settled screen sits there before it hands over on its own. Scaled
 # by the Animation speed preset, and NOT collapsed by reduce motion - the screen
 # is the information, the movement is the decoration.
-const HOLD_AFTER     : float = 1.6
+# Halved with the rest of the intro (2026-10-21): 1.6 -> 0.8.
+const HOLD_AFTER     : float = 0.8
 ## ISSUE #288: 0.5 -> 1.0. "Double the fade in time for all scene transitions."
 ## The same doubling is applied on the match board, the intro, the outro and the
 ## best-of-three tracker, so every boundary in a match moves at one pace. It is
 ## still multiplied by the Animation speed preset via transition_time(), and
 ## reduce motion still collapses it to zero. TWEAKABLE.
-const FADE_TIME      : float = 1.0
+## 2026-10-21: the whole intro runs in half the time, so 1.0 -> 0.5 here (the match
+## board's own fade-in is untouched).
+const FADE_TIME      : float = 0.5
+## The trainers, names and badge fly and fade in this many times slower than the
+## shared BattleFrame entrance, while the background dissolves in under them.
+## 2026-10-21: 2.0 -> 1.0 (half the intro time).
+const ENTRANCE_SCALE : float = 1.0
 
 var opponent_data: Dictionary
 var player_data: Dictionary
@@ -76,21 +83,25 @@ func _ready() -> void:
 
 	SoundManagerScript.play_sfx(SoundManagerScript.SFX_battle_start)
 
-	# The fade and the entrance run TOGETHER. Awaiting the fade first is what made the
-	# screen sit finished-but-still for half a second and then jump into motion: the
-	# elements are parked at their start offsets from the moment the frame is built,
-	# so the fade should be revealing movement that is already under way.
-	var fade_in := create_tween()
-	fade_in.tween_property(self, "modulate:a", 1.0, GameState.transition_time(FADE_TIME))
-	# A click only counts once the screen is actually up, so this is armed on the
-	# fade's completion rather than immediately - a stray click carried in from the
-	# overworld must not skip an intro the player has not seen yet.
-	fade_in.tween_callback(func() -> void: click_enabled = true)
+	# The background comes in through a black pixel mask breaking away (PixelDissolve,
+	# the same look the overworld left with) while the trainers, names and badge fly and
+	# fade in over it -- no whole-screen fade from black any more. Both run TOGETHER.
+	# A click only counts once the background is fully in, so a stray click carried in
+	# from the overworld cannot skip an intro the player has not seen yet.
+	modulate.a = 1.0
+	var mask := PixelDissolve.make_mask(frame)
+	frame.move_child(mask, frame.bottom_band_fast.get_index() + 1)
+	_dissolve_in(mask)
 
 	await frame.play_entrance()
 	await get_tree().create_timer(frame.hold_time(HOLD_AFTER)).timeout
 	if not transitioning:
 		transition_to_main_match()
+
+
+func _dissolve_in(mask: ColorRect) -> void:
+	await PixelDissolve.play_in(mask)
+	click_enabled = true
 
 
 func _input(event: InputEvent) -> void:
@@ -113,6 +124,8 @@ func _input(event: InputEvent) -> void:
 
 func _build_frame() -> void:
 	frame = BattleFrame.new()
+	frame.entrance_scale = ENTRANCE_SCALE
+	frame.fade_foreground = true
 	add_child(frame)
 	frame.setup("intro")
 

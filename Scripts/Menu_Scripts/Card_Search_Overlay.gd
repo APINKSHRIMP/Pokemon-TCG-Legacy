@@ -367,10 +367,14 @@ const SET_ROW_GROUPS : Array = [
 ## ISSUE #225: "type" sorts Pokemon by energy type first (in the ENERGY_ORDER
 ## below), then Trainers, then Energy cards. The ordering itself lives in the deck
 ## builder's _sort_cards — this table only names the modes.
+## "owned" sorts by how many copies the player owns, most first.
+## The sorts STACK: the newest pick sorts first and each earlier pick breaks its ties
+## (_sort_chain), so TYPE then # OWNED gives "most owned first, by type within each count".
 const SORT_MODES : Array = [
-	{"key": "set",  "label": "SET"},
-	{"key": "name", "label": "NAME"},
-	{"key": "type", "label": "TYPE"},
+	{"key": "set",   "label": "SET"},
+	{"key": "name",  "label": "NAME"},
+	{"key": "type",  "label": "TYPE"},
+	{"key": "owned", "label": "# OWNED"},
 ]
 
 
@@ -392,6 +396,7 @@ var _sel_rarities     : Dictionary = {}
 var _sel_powers       : Dictionary = {}   # ISSUE #140
 var _sel_effects      : Dictionary = {}
 var _sort_mode        : String     = "set"
+var _sort_chain       : Array      = ["set"]   # sort picks, newest first (see SORT_MODES)
 
 # Card types the player picked by hand. A card type that was only auto-selected by a Pokemon-only
 # or Trainer-only row gets cleared again when that row empties; a hand-picked one never does.
@@ -1204,6 +1209,8 @@ func _on_sort_pressed(key: String) -> void:
 	if _sort_mode == key:
 		return          # sort is a radio, not a toggle — there is always exactly one mode
 	_sort_mode = key
+	_sort_chain.erase(key)
+	_sort_chain.push_front(key)
 	SoundManagerScript.play_sfx(SoundManagerScript.SFX_plus_select)
 	_refresh_sort_buttons()
 
@@ -1255,6 +1262,7 @@ func _on_reset_pressed() -> void:
 
 	# Sort mode is a view preference rather than a filter, so RESET leaves it on the default.
 	_sort_mode = "set"
+	_sort_chain = ["set"]
 	_refresh_sort_buttons()
 
 	_apply_lock()
@@ -1320,6 +1328,7 @@ func _snapshot() -> Dictionary:
 		"powers":   _sel_powers.duplicate(),
 		"effects":  _sel_effects.duplicate(),
 		"sort":     _sort_mode,
+		"sort_chain": _sort_chain.duplicate(),
 	}
 
 
@@ -1341,6 +1350,7 @@ func _restore(snap: Dictionary) -> void:
 	_sel_powers = snap["powers"].duplicate()
 	_sel_effects = snap["effects"].duplicate()
 	_sort_mode = snap["sort"]
+	_sort_chain = (snap.get("sort_chain", [_sort_mode]) as Array).duplicate()
 	for pair in [[_type_icons, _sel_types], [_set_icons, _sel_sets], [_sub_icons, _sel_pokemon_subs],
 			[_rarity_icons, _sel_rarities], [_power_icons, _sel_powers], [_effect_icons, _sel_effects]]:
 		var icons: Dictionary = pair[0]
@@ -1545,6 +1555,7 @@ func build_criteria() -> Dictionary:
 		"powers":       _sel_powers.keys(),
 		"effects":      _sel_effects.keys(),
 		"sort":         _sort_mode,
+		"sort_chain":   _sort_chain.duplicate(),
 	}
 
 

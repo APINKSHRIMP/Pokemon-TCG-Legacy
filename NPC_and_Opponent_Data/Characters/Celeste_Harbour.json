@@ -1016,8 +1016,8 @@
           "times": "M,A,E",
           "move": "idle_right",
           "says": {
-            "meet": "This dock is always so quiet, it's a great spot to meditate and to play the pokemon TCG.",
-            "repeat": "I'll be here meditating all day until tonight, Please don't disturb me until then."
+            "meet": "This dock is always so quiet, it's a great spot to meditate.",
+            "repeat": "I'm meditating until it's dark. Please don't disturb me until tonight..."
           }
         }
       ]

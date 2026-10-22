@@ -149,9 +149,8 @@ const PACK_SPEED_PRESETS := {
 # DIVIDES it, so a higher number is faster, exactly like the animation tables.
 #
 # The three presets have been TRIPLED TWICE from their first pass (0.5 / 1.0 / 1.5) on play testing
-# — the original "standard" 0.05s per letter read far too slowly in a match. Medium is now 9.0, one
-# letter every ~0.0056s, so a typical line lands in well under half a second and slow (4.5) is three
-# times what "fast" originally was.
+# — the original "standard" 0.05s per letter read far too slowly in a match. Medium went to 9.0 and
+# slow to 4.5; on 2026-10-21 both were eased back (medium 25% slower, slow 40% slower).
 #
 # At this end of the ladder the frame rate is the real limit: medium wants ~180 letters a second and
 # a 60fps frame is 3 of them, so the reveal steps in small chunks rather than single letters. That is
@@ -165,8 +164,8 @@ const PACK_SPEED_PRESETS := {
 const TEXT_SPEED_OPTIONS := ["slow", "medium", "fast"]
 # TWEAKABLE — must carry the same three keys as TEXT_SPEED_OPTIONS.
 const TEXT_SPEED_PRESETS := {
-	"slow": 4.5,
-	"medium": 9.0,
+	"slow": 2.16,    # 4.5 -> 2.7 -> 2.16 (40% then 20% slower, 2026-10-21)
+	"medium": 5.4,   # 9.0 -> 6.75 -> 5.4 (25% then 20% slower, 2026-10-21)
 	"fast": 13.5,
 }
 const TEXT_BASE_LETTER_DELAY := 0.05   # seconds per letter at 1.0x
@@ -175,10 +174,15 @@ const TEXT_BASE_LETTER_DELAY := 0.05   # seconds per letter at 1.0x
 var text_letter_delay: float = TEXT_BASE_LETTER_DELAY / float(TEXT_SPEED_PRESETS[DEFAULT_TEXT_SPEED])
 
 # The beat a message box holds after mid-line sentence punctuation ("Hey! <pause> Nice to see you.").
-# TWEAKABLE — authored at the SLOW preset; the other presets scale it by the same ratio as their
-# letter speed (medium 0.5s, fast ~0.33s), and reduce motion collapses it to 0.0 with the typing.
-const TEXT_PUNCTUATION_PAUSE_AT_SLOW := 1.0
-var text_punctuation_pause: float = TEXT_PUNCTUATION_PAUSE_AT_SLOW
+# TWEAKABLE — seconds per text speed preset (same keys as TEXT_SPEED_PRESETS). Set directly per
+# preset rather than derived from the letter speed, so pause and typing pace tune independently.
+# Reduce motion collapses it to 0.0 with the typing.
+const TEXT_PUNCTUATION_PAUSES := {
+	"slow": 0.7,     # 1.0 -> 1.4 -> 0.7 (2026-10-21)
+	"medium": 0.375, # 25% quicker than the old 0.5s
+	"fast": 0.083,   # ~0.33 -> 0.167 -> 0.083 (2026-10-21)
+}
+var text_punctuation_pause: float = TEXT_PUNCTUATION_PAUSES[DEFAULT_TEXT_SPEED]
 
 # Reduce motion. An accessibility switch, not a fourth speed.
 #
@@ -292,8 +296,7 @@ func _apply_animation_multipliers() -> void:
 	item_animation_speed = ITEM_SPEED_PRESETS[animation_speed_setting]
 	pack_animation_speed = PACK_SPEED_PRESETS[animation_speed_setting]
 	text_letter_delay = TEXT_BASE_LETTER_DELAY / float(TEXT_SPEED_PRESETS[text_speed_setting])
-	text_punctuation_pause = TEXT_PUNCTUATION_PAUSE_AT_SLOW \
-			* float(TEXT_SPEED_PRESETS["slow"]) / float(TEXT_SPEED_PRESETS[text_speed_setting])
+	text_punctuation_pause = float(TEXT_PUNCTUATION_PAUSES[text_speed_setting])
 
 
 func set_intro_outro(choice: String, save: bool = true) -> void:
@@ -1003,6 +1006,8 @@ func load_slot(slot: int) -> void:
 	_nature_guide_loaded = false
 
 	_ensure_user_data_exists()
+	# Quit part-way through Olly's intro: back to its checkpoint (see INTRO CHECKPOINT).
+	_restore_intro_checkpoint()
 	load_progress()
 
 	# Session state that outlived the slot it described.
@@ -1193,6 +1198,7 @@ func save_progress():
 #   olly_coin     the coin Olly gives, "" for none
 #   olly_prizes   prize cards in Olly's match
 #   olly_retry    true = a loss restarts the match until the player wins
+#   olly_stack    true = Olly's opening is fixed (Tutorial_Director "OLLY'S OPENING")
 # Hard Mode is only offered with "expert" and swaps in HARD_MODE_PROFILE's fields.
 
 const FAMILIARITY_NEW    := "new"      # I'm completely new
@@ -1222,19 +1228,19 @@ const INTRO_PROFILES := {
 		"olly_meets": "door",
 		"sleep_prompt": SLEEP_PROMPT_TOURNAMENT, "deck_kind": "advanced",
 		"olly_deck": "weak", "tutorial": "",
-		"olly_cash": 150, "olly_coin": "", "olly_prizes": 4, "olly_retry": false,
+		"olly_cash": 150, "olly_coin": "", "olly_prizes": 4, "olly_retry": false, "olly_stack": true,
 	},
 	FAMILIARITY_EXPERT: {
 		"call_id": "intro_call_expert", "start_date": 2, "start_time": "Night", "wake_time": "Morning",
 		"olly_meets": "door",
 		"sleep_prompt": "", "deck_kind": "advanced",
 		"olly_deck": "strong", "tutorial": "",
-		"olly_cash": 150, "olly_coin": "", "olly_prizes": 4, "olly_retry": false,
+		"olly_cash": 150, "olly_coin": "", "olly_prizes": 4, "olly_retry": false, "olly_stack": true,
 	},
 }
 const HARD_MODE_PROFILE := {
 	"call_id": "intro_call_hard", "deck_kind": "packs", "olly_deck": "Let me test ya",
-	"olly_cash": 500, "olly_coin": "", "olly_prizes": 6, "olly_retry": false,
+	"olly_cash": 500, "olly_coin": "", "olly_prizes": 6, "olly_retry": false, "olly_stack": false,
 }
 
 
@@ -1369,6 +1375,10 @@ var draft_deck_return_scene: String = ""
 ## (Olly's intro). Set by MapManager.start_forced_battle(); cleared by every other battle.
 var forced_opponent_overrides: Dictionary = {}
 
+## Set when the newby player wins Olly's scripted match: their NEXT match plays the key
+## tips (Tutorial_Director "tips" mode), which clears it when that match ends.
+const TUTORIAL_TIPS_KEY := "tutorial_tips_next_match"
+
 ## "Fire Shock" etc. -- the player's pair, once Olly's deck choice is made.
 const INTRO_PAIR_KEY := "intro_deck_pair"
 ## Raised when Olly's match is over. Unlocks the menu's deck, coin and sleeve screens.
@@ -1432,6 +1442,80 @@ func grant_starter_deck(deck_name: String) -> void:
 	if write_file != null:
 		write_file.store_string(JSON.stringify(current, "\t"))
 		write_file.close()
+
+
+# ============================================================
+# INTRO CHECKPOINT — quitting Olly's intro part-way puts it back
+# ============================================================
+# The intro has two checkpoints and nothing in between counts: stepping outside to meet
+# Olly (OllyIntroCutscene start), and the match being decided (won, or lost for good).
+# Hard Mode has one more: the drafted deck being saved.
+#
+# A checkpoint is a COPY of the slot's save files -- progress (which holds the map and
+# position), current data, owned cards and decks -- in INTRO_CHECKPOINT_DIR. If the slot
+# is loaded while one exists, the copy is put back: the deck Olly gave, the pack cards,
+# a half-built deck and a match that was quit all vanish, and the scene plays again
+# (Hard Mode rolls nine new packs). Deciding the match deletes the checkpoint (outro).
+
+const INTRO_CHECKPOINT_DIR := "_intro_checkpoint/"
+## Set in a checkpoint's copy of progress: Olly runs up again on load, wherever the
+## player stands (see OllyIntroCutscene.should_run).
+const INTRO_RESTART_KEY := "olly_intro_restart"
+
+
+func _intro_checkpoint_folder() -> String:
+	return slot_folder(current_slot) + INTRO_CHECKPOINT_DIR
+
+
+## Snapshots the slot as it stands now. `restart_scene` marks the copy so the intro
+## replays from Olly's arrival when it is restored.
+func save_intro_checkpoint(restart_scene: bool) -> void:
+	save_progress()
+	var cp := _intro_checkpoint_folder()
+	_delete_folder_recursive(cp)
+	DirAccess.make_dir_recursive_absolute(cp + "Player_Owned_Cards")
+	DirAccess.make_dir_recursive_absolute(cp + "Player_Decks")
+	var snapshot: Dictionary = progress.duplicate(true)
+	if restart_scene:
+		snapshot[INTRO_RESTART_KEY] = true
+	var f := FileAccess.open(cp + "Player_Game_Progress.json", FileAccess.WRITE)
+	f.store_string(JSON.stringify(snapshot, "	"))
+	f.close()
+	DirAccess.copy_absolute(PLAYER_CURRENT_DATA_PATH, cp + "Player_Current_Data.json")
+	for pair in [[OWNED_CARDS_FOLDER, cp + "Player_Owned_Cards/"], [PLAYER_DECKS_FOLDER, cp + "Player_Decks/"]]:
+		_copy_folder_files(pair[0], pair[1])
+	print("INTRO CHECKPOINT: saved", " (replays Olly's arrival)" if restart_scene else "")
+
+
+## The match is decided: the checkpoint is spent.
+func clear_intro_checkpoint() -> void:
+	_delete_folder_recursive(_intro_checkpoint_folder())
+
+
+func has_intro_checkpoint() -> bool:
+	return FileAccess.file_exists(_intro_checkpoint_folder() + "Player_Game_Progress.json")
+
+
+## Puts the checkpoint's files back over the slot (called before load_progress()).
+func _restore_intro_checkpoint() -> void:
+	if not has_intro_checkpoint():
+		return
+	var cp := _intro_checkpoint_folder()
+	DirAccess.copy_absolute(cp + "Player_Game_Progress.json", PROGRESS_PATH)
+	DirAccess.copy_absolute(cp + "Player_Current_Data.json", PLAYER_CURRENT_DATA_PATH)
+	for pair in [[cp + "Player_Owned_Cards/", OWNED_CARDS_FOLDER], [cp + "Player_Decks/", PLAYER_DECKS_FOLDER]]:
+		_delete_folder_recursive(pair[1])
+		DirAccess.make_dir_recursive_absolute(pair[1])
+		_copy_folder_files(pair[0], pair[1])
+	print("INTRO CHECKPOINT: restored -- Olly's intro picks up from its last checkpoint")
+
+
+func _copy_folder_files(from: String, to: String) -> void:
+	var dir := DirAccess.open(from)
+	if dir == null:
+		return
+	for f in dir.get_files():
+		DirAccess.copy_absolute(from + f, to + f)
 
 
 ## True once this slot has at least one saved deck.

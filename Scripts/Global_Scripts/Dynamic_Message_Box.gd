@@ -184,6 +184,8 @@ var _right_chips: Array = []
 var _name_text: String = ""
 var _name_sprite: String = ""
 var _system_variant: bool = false
+# The panel fill's opacity; -1 = the theme's (UITheme.msgbox_col("bg"), 94%). See set_fill_alpha().
+var _fill_alpha: float = -1.0
 
 var _panel_min_height: float = 138.0   # the height configure() asked for
 var _panel_height: float = 138.0       # what it actually came out as, after fitting
@@ -225,7 +227,7 @@ var _typing: bool = false
 var _type_progress: float = 0.0
 var _type_total: int = 0
 
-# Punctuation pauses. A mid-line "." "!" or "?" (followed by a space and more text) holds the reveal
+# Punctuation pauses (speech only -- see _build_pauses). A mid-line "." "!" or "?" (followed by a space and more text) holds the reveal
 # for GameState.text_punctuation_pause seconds, so "Hey! Nice to see you." beats after "Hey!". Line-
 # final punctuation never pauses — the message is done. The positions are visible_characters values
 # worked out once per line in _build_pauses(); a click still finishes the whole line at once.
@@ -510,7 +512,10 @@ func _apply_panel_shader() -> void:
 	mat.set_shader_parameter("rect_size", _panel.size)
 	mat.set_shader_parameter("pad", PANEL_SHADOW_PAD)
 	mat.set_shader_parameter("corner_radius", PANEL_CORNER_R)
-	mat.set_shader_parameter("fill", ui.msgbox_col("bg"))
+	var fill: Color = ui.msgbox_col("bg")
+	if _fill_alpha >= 0.0:
+		fill.a = _fill_alpha
+	mat.set_shader_parameter("fill", fill)
 	mat.set_shader_parameter("border_col", ui.msgbox_col("border"))
 	mat.set_shader_parameter("grad_a", ui.col("chrome_grad_a"))
 	mat.set_shader_parameter("grad_b", ui.col("chrome_grad_b"))
@@ -540,6 +545,13 @@ func _apply_panel_shader() -> void:
 		var glow := speaker
 		glow.a = PANEL_GLOW_ALPHA
 		mat.set_shader_parameter("glow_col", glow)
+
+
+## Overrides how see-through the panel is (0..1). The match uses a more solid box so
+## the board does not show through the text.
+func set_fill_alpha(alpha: float) -> void:
+	_fill_alpha = alpha
+	_apply_panel_shader()
 
 
 # Moves the whole box up or down and re-flows everything that depends on where it sits.
@@ -1252,6 +1264,12 @@ func _preserve_typing() -> void:
 func _build_pauses() -> void:
 	_pause_at.clear()
 	_pause_scale.clear()
+	# Only SPEECH pauses for breath: a box with a speaker's name pill (NPCs, opponents,
+	# shopkeepers, cutscene characters, phone callers, the outro's closing line). The game's
+	# own voice -- system boxes, signs, gift notices, every in-match message -- types straight
+	# through.
+	if _system_variant or _name_text == "":
+		return
 	var parsed := label.get_parsed_text()
 	# visible_characters indexes the parsed text; if this build does not count newlines, drop them
 	# so the positions still line up.

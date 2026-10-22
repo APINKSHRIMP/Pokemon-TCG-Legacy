@@ -960,8 +960,8 @@ func _count_owned(universe: Dictionary, owned: Array) -> int:
 # NEW! and Bonus! labels — scale both by the same factor to change duration without changing speed.
 const CHEAT_HOLD_TIME    : float = 1.0
 const CHEAT_RISE_PX      : float = 120.0
-const CHEAT_RISE_TIME    : float = 2.0
-const CHEAT_FADE_TIME    : float = 2.0
+const CHEAT_RISE_TIME    : float = 4.0
+const CHEAT_FADE_TIME    : float = 4.0
 const CHEAT_FONT_SIZE    : int   = 64
 const CHEAT_OUTLINE_SIZE : int   = 10
 # kenvector_future.ttf ships in one weight with no bold face, so "bold" is synthesised: a

@@ -66,6 +66,9 @@ const SCREEN_H : float = 1080.0
 # DynamicMessageBox.PANEL_MARGIN_X / PANEL_BOTTOM_NO_BUTTONS so the log lines up
 # with the live box exactly. If you move the message box, move these too.
 const PANEL_MARGIN_X : float = 46.0
+# TWEAKABLE -- how a tutorial help message's row stands out (see _make_row).
+const TUTORIAL_ROW_ALPHA : float = 0.22
+const TUTORIAL_STRIPE_W  : int   = 8
 const PANEL_BOTTOM_Y : float = 1034.0
 # DERIVED, not a free number: the panel is inset from the top of the screen by
 # exactly as much as it is from the bottom, so the gap reads the same above and
@@ -363,7 +366,8 @@ func set_entries(entries: Array) -> void:
 			have_last = true
 			stripe_index = 0
 
-		_rows.add_child(_make_row(str(entry.get("text", "")), opp, stripe_index))
+		_rows.add_child(_make_row(str(entry.get("text", "")), opp, stripe_index,
+				str(entry.get("kind", ""))))
 		stripe_index += 1
 
 
@@ -437,14 +441,24 @@ func _divider_color(opp: bool) -> Color:
 
 # One message. A PanelContainer carries both the alternating wash and the left
 # stripe — StyleBoxFlat's border_width_left IS the stripe, so no extra node.
-func _make_row(text: String, opp: bool, index: int) -> Control:
+func _make_row(text: String, opp: bool, index: int, kind: String = "") -> Control:
 	var box := StyleBoxFlat.new()
 	box.bg_color = Color(0, 0, 0, ROW_TINT_ALPHA if index % 2 == 1 else 0.0)
+	# A tutorial help message: a tinted row with a thick accent stripe and a bold HELP tag,
+	# so the hints stand out from the play-by-play at a glance.
+	if kind == "tutorial":
+		var accent: Color = UIKit.selection_colour()
+		box.bg_color = Color(accent.r, accent.g, accent.b, TUTORIAL_ROW_ALPHA)
+		box.border_width_left = TUTORIAL_STRIPE_W
+		box.border_color = accent
+		text = "[b]HELP[/b]   " + text
 	box.content_margin_left   = ROW_PAD_X
 	box.content_margin_right  = ROW_PAD_X
 	box.content_margin_top    = ROW_PAD_Y
 	box.content_margin_bottom = ROW_PAD_Y
-	if opp:
+	if kind == "tutorial":
+		pass
+	elif opp:
 		box.border_width_left = ROW_STRIPE_W
 		box.border_color = MessageBoxTheme.chip_color(_theme_key, 0)
 	else:

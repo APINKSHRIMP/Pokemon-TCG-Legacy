@@ -179,7 +179,7 @@ func _build_theme(ui_theme, theme_id: String) -> bool:
 
 	# A lift on a dark bar, a shade on a light one. UITheme owns the two alphas and
 	# why they are not symmetric; the audit reads the same function.
-	var chrome_tint: Color = ui_theme.chrome_button_tint(TOK)
+	var chrome_tint: Color = ui_theme.chrome_button_tint(theme_id)
 	VARIANTS = {
 		# ISSUE #379: primary is the POSITIVE action now - the theme's green, the
 		# same fill as "good" - so every Save / OK / Buy is one colour whether or

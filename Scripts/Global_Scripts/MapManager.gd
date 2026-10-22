@@ -89,6 +89,7 @@ var _pending_pack_opening: Array = []
 # The No half of show_cutscene_choice(); every other Yes/No has no No action.
 var _pending_confirm_no: Callable = Callable()
 const HARD_MODE_NO_REMATCH_TEXT := "No rematches on Hard Mode"
+const MATCH_INTRO_SCENE := "res://Scenes/Main_Match_Gameplay_Scenes/Match_Start_Intro_Scene.tscn"
 
 # ── Juice vendor state ─────────────────────────────────────────────
 # When non-empty, the next OK press shows the "delicious..." result message and
@@ -185,6 +186,11 @@ var _coinback_texture: Texture2D = null
 const GIFT_FLIP_TOTAL_DURATION := 1.5
 # Costume: 0.5s blacked out, then 1.0s fade in
 const GIFT_COSTUME_TOTAL_DURATION := 1.5
+# "card_fly" gifts (Olly's energy cards): each card flies up from below and fades in,
+# left to right, CARD_FLY_STAGGER apart, settling with UIKit.fly_in's little fall-back.
+const CARD_FLY_TIME := 0.7
+const CARD_FLY_STAGGER := 0.2
+const CARD_FLY_FROM_Y := 260.0
 
 # Set IDs that are promo sets — these use "<set_name> <card_name>"
 # instead of the usual "<set_name> set <card_name>"
@@ -1272,16 +1278,8 @@ func start_forced_battle(entry: Dictionary, overrides: Dictionary = {}) -> void:
 	SoundManagerScript.stop_bgm()
 	_freeze_overworld_actors()
 
-	var overlay := ColorRect.new()
-	overlay.color   = Color(0, 0, 0, 0)
-	overlay.size    = Vector2(1920, 1080)
-	overlay.z_index = 100
-	get_tree().current_scene.add_child(overlay)
-
-	var tween := get_tree().current_scene.create_tween()
-	tween.tween_property(overlay, "color:a", 1.0, 0.5)
-	await tween.finished
-	SceneCache.change_scene("res://Scenes/Main_Match_Gameplay_Scenes/Match_Start_Intro_Scene.tscn")
+	# The overworld breaks into pixels and dissolves away (PixelDissolve).
+	await PixelDissolve.out_to_scene(MATCH_INTRO_SCENE)
 
 
 # Shows a Yes/No dialog. on_yes is called (after the dialog closes)
@@ -1526,16 +1524,8 @@ func _on_yes_pressed():
 		# keep wandering (and drift away from the player) during the 0.5s fade before the intro loads.
 		_freeze_overworld_actors()
 
-		var overlay = ColorRect.new()
-		overlay.color   = Color(0, 0, 0, 0)
-		overlay.size    = Vector2(1920, 1080)
-		overlay.z_index = 100
-		get_tree().current_scene.add_child(overlay)
-
-		var tween = get_tree().current_scene.create_tween()
-		tween.tween_property(overlay, "color:a", 1.0, 0.5)
-		await tween.finished
-		SceneCache.change_scene("res://Scenes/Main_Match_Gameplay_Scenes/Match_Start_Intro_Scene.tscn")
+		# The overworld breaks into pixels and dissolves away (PixelDissolve).
+		await PixelDissolve.out_to_scene(MATCH_INTRO_SCENE)
 
 func _on_no_pressed():
 	await _flush_after_emote()
@@ -1790,12 +1780,25 @@ func _end_or_next_step(steps: Array, next: int) -> void:
 ## Cards flipped up on the gift overlay with the big "You received..." notice, exactly as a
 ## card gift looks -- but nothing is granted here; the caller gives (or does not give) the
 ## cards itself. Olly's starter deck and his "load of energy cards" both use it.
-func show_card_reveal(text: String, card_ids: Array, on_ok: Callable) -> void:
+## `fly` true: the cards fly up and fade in one after another (no flip).
+func show_card_reveal(text: String, card_ids: Array, on_ok: Callable, fly: bool = false) -> void:
 	_pending_ok_action = on_ok
 	var paths: Array = []
 	for cid in card_ids:
 		paths.append(_get_card_image_path(String(cid)))
-	_show_gift_display(text, paths, "card")
+	_show_gift_display(text, paths, "card_fly" if fly else "card")
+
+
+## A pack or a boxed deck fading up on the gift overlay (no flip), with the big notice.
+## Nothing is granted here. Olly's deck and bonus pack gifts use it.
+func show_pack_reveal(text: String, image_path: String, on_ok: Callable) -> void:
+	_pending_ok_action = on_ok
+	var paths: Array = []
+	if image_path != "" and ResourceLoader.exists(image_path):
+		paths.append(image_path)
+	else:
+		push_warning("MapManager: gift image not found (imported?): " + image_path)
+	_show_gift_display(text, paths, "pack")
 
 
 func show_item_reveal(text: String, image_path: String, on_ok: Callable) -> void:
@@ -1992,12 +1995,13 @@ func _show_gift_display(text: String, image_paths: Array, kind: String) -> void:
 	elif kind == "item":
 		target_box = GIFT_ITEM_SIZE
 		center_y = GIFT_DISPLAY_CENTER_Y_COSTUME
-	elif kind == "costume" or kind == "sleeve":
+	elif kind == "costume" or kind == "sleeve" or kind == "pack":
+		# "pack": a booster or a boxed deck (Olly's gifts) -- card-shaped art, so the card box.
 		# A sleeve is a card back, so it shares the costume box: 432x594 is a 0.727
 		# aspect and a card is 0.72, so the aspect-fit below barely has to move it.
 		target_box = GIFT_COSTUME_SIZE
 		center_y = GIFT_DISPLAY_CENTER_Y_COSTUME
-	else:
+	else:   # "card" and "card_fly"
 		var n_clamp: int = clamp(image_paths.size(), 1, GIFT_CARD_SIZES.size())
 		target_box = GIFT_CARD_SIZES.get(n_clamp, GIFT_CARD_SIZES[GIFT_CARD_SIZES.size()])
 		center_y = GIFT_DISPLAY_CENTER_Y_CARD
@@ -2038,7 +2042,7 @@ func _show_gift_display(text: String, image_paths: Array, kind: String) -> void:
 		# Derive the card UID from the path so we can look up rarity/types
 		# later for the holo sparkle effect (cards only — empty for others).
 		var card_uid: String = ""
-		if kind == "card":
+		if kind == "card" or kind == "card_fly":
 			card_uid = String(path).get_file().trim_suffix(".png")
 
 		entries.append({"texture": tex, "size": actual_size, "card_uid": card_uid})
@@ -2122,15 +2126,24 @@ func _show_gift_display(text: String, image_paths: Array, kind: String) -> void:
 				_play_flip_animation(rect_ref, _coinback_texture, rect_ref.texture)
 			"card":
 				_play_card_flip_with_holo(rect_ref, _cardback_texture, rect_ref.texture, uid)
-			"costume", "sleeve", "item":
+			"costume", "sleeve", "item", "pack":
 				_play_costume_fadein(rect_ref)
+			"card_fly":
+				var i: int = spawned_rects.find(sr)
+				var rest: Vector2 = rect_ref.position
+				_gift_reveal_finals.append({"rect": rect_ref, "texture": rect_ref.texture,
+						"modulate": Color(1, 1, 1, 1), "position": rest})
+				_gift_reveal_tweens.append(UIKit.fly_in(rect_ref, rest + Vector2(0.0, CARD_FLY_FROM_Y),
+						rest, GameState.item_time(CARD_FLY_TIME), GameState.item_time(CARD_FLY_STAGGER * i)))
 
 	# Wait for the longest animation to complete (scaled by item animation speed) OR a skip click.
 	var total_duration: float = 0.0
-	if kind == "costume" or kind == "sleeve" or kind == "item":
+	if kind == "costume" or kind == "sleeve" or kind == "item" or kind == "pack":
 		total_duration = GIFT_COSTUME_TOTAL_DURATION
 	elif kind == "card" or kind == "coin":
 		total_duration = GIFT_FLIP_TOTAL_DURATION
+	elif kind == "card_fly":
+		total_duration = CARD_FLY_TIME + CARD_FLY_STAGGER * maxi(0, spawned_rects.size() - 1)
 	total_duration = GameState.item_time(total_duration)  # ISSUE #34
 	if total_duration > 0.0:
 		var elapsed: float = 0.0
@@ -2140,6 +2153,11 @@ func _show_gift_display(text: String, image_paths: Array, kind: String) -> void:
 	if _gift_reveal_skip:
 		_finalize_gift_reveal()
 	_gift_reveal_active = false
+	# The dim only catches clicks to SKIP the reveal. Left on STOP afterwards it swallowed every
+	# click, so a click never reached the player's _unhandled_input that dismisses the box --
+	# only Space/Enter (a different route) could, and Olly's deck gift looked frozen.
+	if _gift_dim_overlay != null and is_instance_valid(_gift_dim_overlay):
+		_gift_dim_overlay.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	# After awaiting, the player may have already dismissed (e.g. via cleanup).
 	# Only re-arm the dismiss if the message is still on screen.
 	if message_panel.visible:
@@ -2165,6 +2183,8 @@ func _finalize_gift_reveal() -> void:
 				rect.texture = f["texture"]
 			rect.scale = Vector2(1.0, 1.0)
 			rect.modulate = f["modulate"]
+			if f.has("position"):
+				rect.position = f["position"]
 	_gift_reveal_finals.clear()
 
 # Removes the gift display container and dim overlay if they exist.
@@ -3318,16 +3338,7 @@ func _start_test_match(current: Node) -> void:
 	_hide_message()
 	SoundManagerScript.stop_bgm()
 
-	var overlay = ColorRect.new()
-	overlay.color   = Color(0, 0, 0, 0)
-	overlay.size    = Vector2(1920, 1080)
-	overlay.z_index = 100
-	current.add_child(overlay)
-
-	var tween = current.create_tween()
-	tween.tween_property(overlay, "color:a", 1.0, 0.5)
-	await tween.finished
-	SceneCache.change_scene("res://Scenes/Main_Match_Gameplay_Scenes/Match_Start_Intro_Scene.tscn")
+	await PixelDissolve.out_to_scene(MATCH_INTRO_SCENE)
 
 # Reloads the supplied map scene, restoring the player to their current
 # spot/direction via the same menu-return path every map scene honours

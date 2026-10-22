@@ -4,7 +4,7 @@ extends Control
 # ============================================================
 # OLLY'S DECK CHOICE — three decks fanned out over the map
 # ============================================================
-# Four of each deck's headline cards spread like a hand, with the deck's name under
+# Each deck's box at the front of four of its headline cards spread like a hand, with the deck's name under
 # them and a system box along the bottom ("Choose which deck you want to keep").
 # Hovering a deck makes the whole group grow and shrink together; clicking it (or
 # Left/Right + Enter) emits `picked` with the pair stem ("Water Fight", ...). The
@@ -29,18 +29,31 @@ const SHOWCASE := {
 	},
 }
 const PROMPT_TEXT := "Choose which deck you want to keep"
+# The boxed deck, the front card of each fan (Image_Assets/Packs/<id>.png).
+const DECK_ART := {"Fire Shock": "starterdeck1_a", "Grass Psy": "starterdeck1_b", "Water Fight": "starterdeck1_c"}
 
 # ── TWEAKABLE layout (1920x1080 reference px) ─────────────────────────────
 const CARD_SIZE      := Vector2(170.0, 237.0)   # one card in a fan
 const FAN_STEP       := Vector2(78.0, 10.0)     # each card sits this far right/down of the last
-const GROUP_CENTRES  := [380.0, 960.0, 1540.0]  # x centre of each deck group, left to right
-const GROUP_TOP_Y    := 210.0                   # top of the first card in each fan
+const GROUP_CENTRES  := [320.0, 960.0, 1600.0]  # x centre of each deck group (box included)
+const CARDS_MID_Y    := 540.0                   # the middle of the fan sits here (screen middle)
 const NAME_GAP       := 34.0                    # fan bottom -> deck name
+# The deck box is the front card of the fan (left, over the other four), centred on a
+# card's height.
+const BOX_HEIGHT     := 250.0
 const NAME_SIZE      := 44
-const NAME_OUTLINE   := 10
 const PULSE_SCALE    := 1.07                    # hovered group grows to this...
 const PULSE_TIME     := 0.45                    # ...and back, every PULSE_TIME * 2 seconds
 const PROMPT_HEIGHT  := 138.0
+
+# ── TWEAKABLE entrance ──────────────────────────────────────────────────────
+# The screen dims and the prompt appears, then each deck flies up from below while
+# fading in from transparent, one after another. Played again after a "No".
+const DIM_ALPHA       := 0.8    # how dark the screen goes (the gift screen's darkness)
+const DIM_FADE_TIME   := 0.4    # the dim and the prompt fade up FIRST; the decks follow
+const DECK_FLY_TIME   := 1.0    # one deck's flight + fade
+const DECK_FLY_STAGGER := 0.5   # from one deck setting off to the next
+const DECK_FLY_FROM_Y := 520.0  # how far below its resting place a deck starts
 
 var _suffix: String = ""
 var _groups: Array[Control] = []
@@ -48,6 +61,10 @@ var _pairs: Array = []
 var _hovered: int = -1
 var _pulse: Tween = null
 var _armed: bool = false
+var _dim: ColorRect = null
+var _prompt: Control = null
+var _rest_y: Array = []          # each group's resting y, for the entrance
+var _entrance: Tween = null
 
 
 static func show_on(parent: Node, suffix: String) -> IntroDeckChoice:
@@ -58,22 +75,61 @@ static func show_on(parent: Node, suffix: String) -> IntroDeckChoice:
 
 
 func _ready() -> void:
-	set_anchors_preset(Control.PRESET_FULL_RECT)
+	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_pairs = GameState.STARTER_DECK_PAIRS.duplicate()
+	_dim = ColorRect.new()
+	_dim.color = Color(0, 0, 0, DIM_ALPHA)
+	_dim.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_dim.mouse_filter = Control.MOUSE_FILTER_STOP   # nothing behind the decks is clickable
+	add_child(_dim)
 	for i in _pairs.size():
 		_groups.append(_build_group(_pairs[i], GROUP_CENTRES[i]))
+		_rest_y.append(_groups[i].position.y)
 	_build_prompt()
-	# One frame before clicks count, so the click that closed Olly's last line
-	# cannot land on a deck.
-	await get_tree().process_frame
-	_armed = true
+	_play_entrance()
+
+
+## Dim + prompt fade up, then the decks fly in one by one. Clicks and keys are armed
+## only once the last deck has landed.
+func _play_entrance() -> void:
+	_armed = false
+	if _entrance != null and _entrance.is_valid():
+		_entrance.kill()
+	_dim.modulate.a = 0.0
+	_prompt.modulate.a = 0.0
+	for i in _groups.size():
+		_groups[i].scale = Vector2.ONE
+		_groups[i].position.y = _rest_y[i] + DECK_FLY_FROM_Y
+		_groups[i].modulate.a = 0.0
+	_entrance = create_tween().set_parallel(true)
+	_entrance.tween_property(_dim, "modulate:a", 1.0, DIM_FADE_TIME)
+	_entrance.tween_property(_prompt, "modulate:a", 1.0, DIM_FADE_TIME)
+	for i in _groups.size():
+		var start: float = DIM_FADE_TIME + DECK_FLY_STAGGER * i
+		var g: Control = _groups[i]
+		# Up from below, slowing, a few px past its spot and back down onto it.
+		UIKit.fly_in(g, Vector2(g.position.x, _rest_y[i] + DECK_FLY_FROM_Y),
+				Vector2(g.position.x, _rest_y[i]), DECK_FLY_TIME, start)
+	_entrance.tween_interval(DIM_FADE_TIME + DECK_FLY_STAGGER * (_groups.size() - 1) + DECK_FLY_TIME)
+	_entrance.chain().tween_callback(func() -> void: _armed = true)
 
 
 func _build_group(pair: String, centre_x: float) -> Control:
 	var ids: Array = SHOWCASE.get(_suffix, SHOWCASE[" Deck"]).get(pair, [])
-	var fan_w: float = CARD_SIZE.x + FAN_STEP.x * (ids.size() - 1)
-	var fan_h: float = CARD_SIZE.y + FAN_STEP.y * (ids.size() - 1)
+	# The deck box is the front (left) slot of the fan; the four cards follow behind it.
+	var slots: int = ids.size() + 1
+	var fan_w: float = CARD_SIZE.x + FAN_STEP.x * (slots - 1)
+	var fan_h: float = CARD_SIZE.y + FAN_STEP.y * (slots - 1)
+
+	# The deck box: in front of every card, sitting where the first card would.
+	var box_tex: Texture2D = load("res://Image_Assets/Packs/" + str(DECK_ART.get(pair, "starterdeck1_d")) + ".png")
+	var box_size := Vector2(BOX_HEIGHT * 0.623, BOX_HEIGHT)
+	if box_tex != null and box_tex.get_height() > 0:
+		box_size.x = BOX_HEIGHT * float(box_tex.get_width()) / float(box_tex.get_height())
+	var box_pos := Vector2(0.0, (CARD_SIZE.y - box_size.y) * 0.5)
+	# Everything the group draws spans x 0 .. content_w; that whole width is centred.
+	var content_w: float = fan_w
 
 	# The group is the hover target and the thing that pulses, so it is sized to cover
 	# the fan and the name together and pivots on its middle.
@@ -82,33 +138,45 @@ func _build_group(pair: String, centre_x: float) -> Control:
 	group.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
 	add_child(group)
 
+	if box_tex != null:
+		var box := TextureRect.new()
+		box.texture = box_tex
+		box.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		box.stretch_mode = TextureRect.STRETCH_SCALE
+		box.size = box_size
+		box.position = box_pos
+		box.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		box.z_index = slots   # over every card
+		group.add_child(box)
+
 	for i in ids.size():
 		var rect := TextureRect.new()
 		rect.texture = load(_card_path(ids[i]))
 		rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 		rect.stretch_mode = TextureRect.STRETCH_SCALE
 		rect.size = CARD_SIZE
-		rect.position = FAN_STEP * i
+		rect.position = FAN_STEP * (i + 1)
 		rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		# Later cards UNDER earlier ones, as in a hand held up: the first card is the hero.
+		# Later cards UNDER earlier ones, as in a hand held up: the box is the hero.
 		rect.z_index = ids.size() - i
 		group.add_child(rect)
 
 	var label := Label.new()
-	UIKit.set_label(label, "title", pair + _suffix, "field_fg", NAME_SIZE)
+	# The dialogue font, in sentence case -- the same face as every message box.
+	UIKit.set_label(label, "body", pair + _suffix, "field_fg", NAME_SIZE)
+	label.add_theme_font_override("font", UITheme.font_card("body"))
 	label.add_theme_color_override("font_color", Color.WHITE)
-	label.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.85))
-	label.add_theme_constant_override("outline_size", NAME_OUTLINE)
 	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	label.size = Vector2(maxf(fan_w, 420.0), NAME_SIZE * 2.6)
-	label.position = Vector2((fan_w - label.size.x) * 0.5, fan_h + NAME_GAP)
+	label.size = Vector2(maxf(content_w, 440.0), NAME_SIZE * 2.6)
+	label.position = Vector2((content_w - label.size.x) * 0.5, fan_h + NAME_GAP)
 	group.add_child(label)
 
-	group.size = Vector2(fan_w, label.position.y + label.size.y)
-	group.position = Vector2(centre_x - fan_w * 0.5, GROUP_TOP_Y)
-	group.pivot_offset = group.size * 0.5
+	group.size = Vector2(content_w, label.position.y + label.size.y)
+	# The middle of the CARDS on the screen's middle -- not the middle of cards + name.
+	group.position = Vector2(centre_x - content_w * 0.5, CARDS_MID_Y - fan_h * 0.5)
+	group.pivot_offset = Vector2(content_w * 0.5, fan_h * 0.5)
 
 	var index := _groups.size()
 	group.mouse_entered.connect(_set_hovered.bind(index))
@@ -122,6 +190,7 @@ func _build_group(pair: String, centre_x: float) -> Control:
 func _build_prompt() -> void:
 	var built := MessageBoxHelper.build(PROMPT_HEIGHT, -1, false)
 	var box: DynamicMessageBox = built["root"]
+	_prompt = box
 	box.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(box)
 	box.set_system_variant(true)
@@ -139,6 +208,8 @@ func _card_path(card_id: String) -> String:
 func _set_hovered(index: int) -> void:
 	if index == _hovered:
 		return
+	if not _armed and index >= 0:
+		return   # still flying in
 	if _pulse != null and _pulse.is_valid():
 		_pulse.kill()
 	if _hovered >= 0:
@@ -190,5 +261,4 @@ func _choose(index: int) -> void:
 func reoffer() -> void:
 	_set_hovered(-1)
 	visible = true
-	await get_tree().process_frame
-	_armed = true
+	_play_entrance()

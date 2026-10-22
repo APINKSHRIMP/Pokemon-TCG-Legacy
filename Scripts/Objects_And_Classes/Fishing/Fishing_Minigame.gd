@@ -319,8 +319,8 @@ const NAME_TAG_COLOUR := Color(1.0, 0.95, 0.6)
 const NEW_TAG_OFFSET    := 26.0   ## world px above the player's origin
 const NEW_TAG_FONT_SIZE := 14
 const NEW_TAG_RISE      := 18.0
-const NEW_TAG_RISE_TIME := 1.25
-const NEW_TAG_FADE_TIME := 1.1
+const NEW_TAG_RISE_TIME := 2.5
+const NEW_TAG_FADE_TIME := 2.2
 const NEW_TAG_Z := 26
 
 ## The white "+123" Fish Coin reward floated over the player on every catch, same rise and

@@ -170,6 +170,11 @@ func _ready() -> void:
 	# stats row is built, because that row shows the score INCLUDING this game.
 	GameState.record_opponent_result(GameState.current_opponent_name, battle_won)
 
+	# Olly's intro match is decided (a win, or a loss in a match that does not retry):
+	# its checkpoint is spent, and a quit from here on keeps the result.
+	if str(GameState.progress.get(OllyIntroCutscene.STAGE_KEY, "")) == OllyIntroCutscene.STAGE_BATTLE 			and (battle_won or not bool(GameState.last_battled_opponent_entry.get("retry_on_loss", false))):
+		GameState.clear_intro_checkpoint()
+
 	# Compute is_first_win once so both the dialogue and build_rewards share it
 	var is_first_win = not GameState.has_beaten_opponent(GameState.current_opponent_name)
 	_was_first_win = battle_won and is_first_win

@@ -173,6 +173,8 @@ const BGM_SHOP_3                         := BGM_DIR + "Shop3 (Undertale Sans The
 const BGM_VERDANT_FOREST                 := BGM_DIR + "Verdant Forest (DPPT Eterna Forest)" + BGM_EXT
 const BGM_BEACH                          := BGM_DIR + "beach_bgm (PMD Beach at dusk)" + BGM_EXT
 const BGM_COIN_MODE                      := BGM_DIR + "coin_mode (PTCG Water Club)" + BGM_EXT
+# Hard Mode's draft: Olly's nine packs opening only (the deck build after it uses BGM_COIN_MODE).
+const BGM_DRAFT_TIME                     := BGM_DIR + "DraftTime (RSE Trick House)" + BGM_EXT
 # The PTCG main-menu theme. The FILE was renamed gym_plaza -> starting_menu when the
 # track moved off the Gym Plaza (ISSUE #210) and onto the boot splash and the
 # first-launch setup screen, but this constant kept pointing at the old name, so
@@ -333,6 +335,18 @@ func play_bgm(path: String, loop: bool = true) -> void:
 	_current_bgm_path = path
 	_apply_bgm_duck()
 	bgm_player.play()
+
+
+## Fades the current track out, starts `path`, and fades that in. Awaitable; returns once
+## the new track is at full volume. TWEAKABLE: the two halves' lengths.
+func crossfade_bgm(path: String, out_seconds: float = 0.6, in_seconds: float = 0.8) -> void:
+	if _current_bgm_path == path and bgm_player != null:
+		return
+	fade_bgm(0.0, out_seconds)
+	await get_tree().create_timer(out_seconds).timeout
+	play_bgm(path, true)
+	fade_bgm(1.0, in_seconds)
+	await get_tree().create_timer(in_seconds).timeout
 
 
 # --- BGM: play by bare track name ---

@@ -407,6 +407,11 @@ var _match_msgbox: DynamicMessageBox = null
 # ceiling rather than the overworld's 28 -- set_body_text() steps it down if a long line needs it.
 const MATCH_MSGBOX_HEIGHT: float = 138.0
 const MATCH_MSGBOX_FONT_SIZE: int = 34
+## ISSUE #412: the in-match box never has Yes/No under it, so it sits centred INSIDE the
+## footer bar (BOARD_BOT_H) -- equal space above and below -- instead of the overworld's
+## spot, which leaves room for buttons. And a touch more solid than the overworld box
+## (94%) so the board under it does not show through the text.
+const MATCH_MSGBOX_FILL_ALPHA: float = 1.0
 ## The MessageBoxTheme key the in-match box and the match log both use.
 const MATCH_MSGBOX_THEME: String = "match"
 
@@ -547,6 +552,7 @@ var _texture_cache: Dictionary = {}
 
 # Main reusable function to display any array passed in a LARGE viewing mode, hide everything else on the screen and allows selection of cards for action
 func show_enlarged_array_selection_mode(card_array: Array) -> void:
+	_snap_screen_swap()   # a swap fade still running must not hide this screen afterwards
 	
 	selection_scroller.visible = false
 	large_selection_container.visible = false
@@ -847,8 +853,108 @@ func _layout_bottom_buttons() -> void:
 		return
 
 # Both the cancel button and action button will hide selection mode so function is vaguely named for both actions
+# ============================================================
+# SCREEN SWAP FADE — selection screen out, board in
+# ============================================================
+# Leaving a selection screen (the hand, a target pick...) used to snap: everything on
+# it vanished and the board appeared in the same frame. Now the selection screen's
+# cards, labels and buttons fade OUT while every board piece that was hidden fades IN,
+# over SCREEN_SWAP_FADE -- so a played card, flying from where it sat in the hand,
+# reads clearly against the change. Opening another selection screen mid-fade snaps
+# both halves to their end state first (_snap_screen_swap) so nothing is left half-see-
+# through. The played card itself is a separate ghost and is not touched.
+
+## TWEAKABLE -- seconds, scaled by the match animation speed (0 = instant).
+const SCREEN_SWAP_FADE := 0.15
+var _swap_tweens: Array = []
+var _swap_nodes: Array = []
+var _swap_outgoing: Array = []   # the fading-OUT half: hidden when the fade ends or is snapped
+
+
+func _selection_screen_nodes() -> Array:
+	return [small_selection_container, selection_scroller, large_selection_container,
+		cancel_button, action_button, hint_label, header_label]
+
+
+func _board_screen_nodes() -> Array:
+	var nodes: Array = [player_hand_container, opponent_hand_container,
+		player_active_container, opponent_active_container,
+		player_energy_container, opponent_energy_container,
+		player_hp_container, opponent_hp_container,
+		player_status_container, opponent_status_container,
+		main_buttons_container, player_bench_container, opponent_bench_container,
+		$SCREEN_LABELS/OPPONENT/opponent_bench_cards_label, $SCREEN_LABELS/PLAYER/player_bench_cards_label,
+		$SCREEN_LABELS/OPPONENT/opponent_prize_cards_label, $SCREEN_LABELS/PLAYER/player_prize_cards_label,
+		opponent_prize_container, player_prize_container,
+		player_deck_icon, opponent_deck_icon, player_discard_icon, opponent_discard_icon,
+		player_attached_cards_container, opponent_attached_cards_container,
+		_turn_chip, _turn_divider_label, _stadium_slot, _stadium_caption,
+		_player_action_panel, _opp_action_panel, _end_turn_btn,
+		get_node_or_null("CARD_COLLECTIONS/stadium_card")]
+	nodes.append_array(_turn_divider_rules)
+	nodes.append_array(_attach_captions)
+	return nodes.filter(func(n): return n != null and is_instance_valid(n) and n is CanvasItem)
+
+
+## Ends any swap fade at once: every node fully opaque, the outgoing ones HIDDEN (they
+## were only on screen to fade away). Anything that reads or saves visibility -- the coin
+## call saves and restores the header and buttons -- must snap first, or it captures a
+## fading-out node as "visible" and brings it back (the stuck "Build your bench" header).
+func _snap_screen_swap() -> void:
+	for tw in _swap_tweens:
+		if tw != null and tw.is_valid():
+			tw.kill()
+	_swap_tweens.clear()
+	for n in _swap_nodes:
+		if n != null and is_instance_valid(n):
+			n.modulate.a = 1.0
+	for n in _swap_outgoing:
+		if n != null and is_instance_valid(n):
+			n.visible = false
+			if n is BaseButton:
+				(n as BaseButton).disabled = false
+	_swap_nodes.clear()
+	_swap_outgoing.clear()
+
+
+func _start_screen_swap_fade(outgoing: Array, incoming: Array) -> void:
+	var time: float = GameState.match_time(SCREEN_SWAP_FADE)
+	if time <= 0.0:
+		return
+	for n in outgoing:
+		# Back on screen just to fade away; a fading button must not be pressable.
+		n.visible = true
+		n.modulate.a = 1.0
+		if n is BaseButton:
+			(n as BaseButton).disabled = true
+		var tw: Tween = n.create_tween()
+		tw.tween_property(n, "modulate:a", 0.0, time)
+		tw.tween_callback(func() -> void:
+			n.modulate.a = 1.0
+			n.visible = false
+			if n is BaseButton:
+				(n as BaseButton).disabled = false
+			_swap_outgoing.erase(n))
+		_swap_tweens.append(tw)
+		_swap_nodes.append(n)
+		_swap_outgoing.append(n)
+	for n in incoming:
+		if not n.visible:
+			continue
+		n.modulate.a = 0.0
+		var tw: Tween = n.create_tween()
+		tw.tween_property(n, "modulate:a", 1.0, time)
+		_swap_tweens.append(tw)
+		_swap_nodes.append(n)
+
+
 func hide_selection_mode_display_main() -> void:
-	
+	_snap_screen_swap()
+	# What is about to swap: the selection screen pieces that are showing, and the board
+	# pieces that are hidden (each fades the opposite way -- see SCREEN SWAP FADE).
+	var swap_out: Array = _selection_screen_nodes().filter(func(n): return n != null and n.visible)
+	var swap_in: Array = _board_screen_nodes().filter(func(n): return not n.visible)
+
 	if selected_card_for_action != null:
 		var card_ui = find_card_ui_for_object(selected_card_for_action)
 		if card_ui:
@@ -939,7 +1045,11 @@ func hide_selection_mode_display_main() -> void:
 		card.mouse_filter = MOUSE_FILTER_PASS
 	for card in opponent_active_container.get_children():
 		card.mouse_filter = MOUSE_FILTER_PASS
-	
+
+	# Only a real swap fades: from a screen that was showing to a board that was hidden.
+	if not swap_out.is_empty() and not swap_in.is_empty():
+		_start_screen_swap_fade(swap_out, swap_in)
+
 # Displays both the player and opponents hand cards. Shows players at the top of screen and opponents in top right smaller.
 ## ISSUE #248: the normal gap between two cards in a hand or a selection row. The
 ## overlap branch below may go BELOW this (cards tuck behind each other) but never
@@ -1377,6 +1487,11 @@ func _raise_bar_content() -> void:
 		for node in raised[what]:
 			if node != null and is_instance_valid(node) and node is CanvasItem:
 				(node as CanvasItem).z_index = UIKit.Z_CHROME + 5
+	# The message box draws over EVERYTHING on the board, the footer's selection buttons
+	# (BUTTONS / cancel at +10) and the tutorial captions (+20) included: a message shown
+	# while a pile is open (the tutorial's "You are viewing...") sat under the big Cancel.
+	if msgbox_container != null:
+		msgbox_container.z_index = UIKit.Z_CHROME + 25
 
 
 ## ISSUE #214: the trainer-played screen is the FIELD, not a white sheet.
@@ -1652,7 +1767,7 @@ func _apply_tutorial_labels() -> void:
 	opponent_hand_container.position.x += TUT_OPP_HAND_SHIFT
 	_add_tutorial_caption("Opponent's hand",
 		Vector2(OPP_HAND_X, OPP_HAND_Y + (OPP_HAND_CARD.y - TUT_CAPTION_H) * 0.5),
-		TUT_OPP_HAND_SHIFT - 10.0, HORIZONTAL_ALIGNMENT_LEFT, "chrome_fg")
+		TUT_OPP_HAND_SHIFT - 10.0, HORIZONTAL_ALIGNMENT_LEFT, "chrome_fg", true)
 
 	# "Your hand", just above the footer, over the middle of the hand.
 	_add_tutorial_caption("Your hand",
@@ -3277,7 +3392,7 @@ func display_hp_circles_above_align(active_pokemon: card_object, is_opponent: bo
 ## TWEAKABLE - the gap between blocks, scaled by the match animation-speed preset
 ## like every other in-match beat (#34), so "slow" spreads it out and reduce
 ## motion collapses it to nothing.
-const HP_BLOCK_STEP := 0.07
+const HP_BLOCK_STEP := 0.14
 
 var _hp_shown: Dictionary = {}
 
@@ -3793,6 +3908,11 @@ func _ensure_match_msgbox() -> DynamicMessageBox:
 		return _match_msgbox
 	_match_msgbox = DynamicMessageBox.new()
 	_match_msgbox.configure(MATCH_MSGBOX_HEIGHT, MATCH_MSGBOX_FONT_SIZE, false)
+	var footer_pad: float = (BOARD_BOT_H - MATCH_MSGBOX_HEIGHT) * 0.5
+	_match_msgbox.set_panel_bottom(1080.0 - footer_pad)
+	_match_msgbox.set_fill_alpha(MATCH_MSGBOX_FILL_ALPHA)
+	print("ISSUE #412 FIX ACTIVE: match message box bottom at ", 1080.0 - footer_pad,
+		" (", footer_pad, "px inside the footer each side), fill ", MATCH_MSGBOX_FILL_ALPHA)
 	# show_as_plain() first: it drops both chip rows, which is what keeps the box chipless.
 	# apply_theme() after it, because show_as_plain() resets the colour to the default grey.
 	_match_msgbox.show_as_plain()
@@ -3827,10 +3947,11 @@ func _skip_msgbox_typing() -> bool:
 
 
 # Displays the message box with given text and pauses execution until the player clicks
-## `log_it` false keeps a line out of the Caps Lock match log (the tutorial's hints).
-func show_message(message_text: String, log_it: bool = true) -> void:
+## `log_it` false keeps a line out of the Caps Lock match log. `log_kind` tags the entry
+## for the log's styling: "tutorial" for the tutorial's help messages.
+func show_message(message_text: String, log_it: bool = true, log_kind: String = "") -> void:
 	if log_it:
-		_log_match_message(message_text)
+		_log_match_message(message_text, log_kind)
 	var box := _ensure_match_msgbox()
 	# ISSUE #121: re-asserted on every show, exactly like the overworld box does in
 	# MapManager._apply_actor_chips() -- the box may have been built before the opponent data
@@ -3859,7 +3980,7 @@ func show_message(message_text: String, log_it: bool = true) -> void:
 # increments at the PLAYER's turn start (player_start_turn_checks), which makes
 # it a round number shared by both halves of a round — exactly what a divider
 # wants written on it.
-func _log_match_message(message_text: String) -> void:
+func _log_match_message(message_text: String, kind: String = "") -> void:
 	if _rec() != null:
 		_rec().message(message_text, turn_number, opponents_turn_active)
 	var trimmed := message_text.strip_edges()
@@ -3870,6 +3991,7 @@ func _log_match_message(message_text: String) -> void:
 		"text": trimmed,
 		"turn": turn_number,
 		"opp":  opponents_turn_active,
+		"kind": kind,
 	})
 	if _match_log.size() > MATCH_LOG_MAX_ENTRIES:
 		_match_log = _match_log.slice(_match_log.size() - MATCH_LOG_MAX_ENTRIES)
@@ -4278,8 +4400,8 @@ func show_floating_label(message: String, spawn_position: Vector2, label_color: 
 	var tween = create_tween()
 	tween.set_parallel(true)
 	# ISSUE #34: the drift and the fade run in parallel, so both scale together with the speed preset.
-	var drift_time := GameState.match_time(2.5)
-	var fade_time  := GameState.match_time(1.5)
+	var drift_time := GameState.match_time(5.0)   # half the speed (same 250px), double the life
+	var fade_time  := GameState.match_time(3.0)
 	if upwards:
 		tween.tween_property(label, "position:y", spawn_position.y - 250, drift_time)
 	else:
@@ -5644,6 +5766,7 @@ func _show_pause_menu() -> void:
 	vbox.add_child(btn_col)
 
 	for spec in [
+		["Match log", "neutral", _on_pause_match_log_pressed],
 		["Options", "neutral",   _on_pause_options_pressed],   # ISSUE #379
 		["Forfeit", "danger",    _on_pause_forfeit_pressed],
 		["Close",   "negative",  _close_pause_menu],
@@ -5662,6 +5785,12 @@ func _close_pause_menu() -> void:
 	# Cleared now rather than at end of frame, so the _input() guard stops swallowing
 	# gameplay input on this very frame.
 	pause_menu = null
+
+
+## The same log Caps Lock opens. The pause menu closes first, so the log is on the board.
+func _on_pause_match_log_pressed() -> void:
+	_close_pause_menu()
+	_open_match_log()
 
 
 func _on_pause_forfeit_pressed() -> void:
@@ -6219,14 +6348,14 @@ func perform_energy_attachment() -> void:
 	var energy_card = energy_card_awaiting_target
 	var target_pokemon = selected_card_for_action
 
-	# The tutorial may want this Energy on a different Pokemon; back to the hand if so.
+	# The tutorial may want this Energy on a different Pokemon. The attach screen is put
+	# straight back up with the same Energy, so the player just picks again -- closing it
+	# dumped them back on the board as if the attach had happened.
 	var tut_block: String = tutorial.gate("attach", {"energy": energy_card, "target": target_pokemon})
 	if tut_block != "":
 		await tutorial.show_block(tut_block)
-		energy_card_awaiting_target = null
-		selected_card_for_action = null
-		card_attach_mode_active = false
-		hide_selection_mode_display_main()
+		selected_card_for_action = energy_card
+		start_energy_attachment()
 		return
 
 	# Check special energy attachment restrictions
@@ -6574,7 +6703,13 @@ func peek_coins(n: int) -> Array:
 signal coin_call_made(called_heads: bool)
 
 ## Coins on the call-it screen are this many times their in-match size (129px).
-const COIN_CALL_SIZE := 258.0
+## ISSUE #411: 50% bigger than the old 258, and much closer together.
+const COIN_CALL_SIZE := 387.0
+## ISSUE #411: the gap between the two coins' edges (was ~702px at the old quarter/three-quarter spots).
+const COIN_CALL_GAP := 140.0
+## The entrance: heads flies in from the left, tails from the right, both fading up from
+## transparent, and they meet in the middle. Clicks wait until they have landed.
+const COIN_CALL_FLY_TIME := 1.0
 ## How far a hovered coin swells, and how long one grow (or one shrink) takes.
 const COIN_CALL_PULSE_SCALE := 1.14
 const COIN_CALL_PULSE_TIME := 0.35
@@ -6586,6 +6721,9 @@ func choose_heads_or_tails() -> bool:
 	# The bot can't hover or click a coin, so the autotester just calls at random.
 	if GameState.autotest != null:
 		return randi() % 2 == 0
+	# The bench-setup screen may still be fading out: finish that first, or its header and
+	# buttons are saved as "visible" below and restored on top of the board afterwards.
+	_snap_screen_swap()
 
 	set_card_showcase_visible(true)
 	# The showcase's click-blocking sheet would sit over the coins.
@@ -6612,6 +6750,7 @@ func choose_heads_or_tails() -> bool:
 	move_child(overlay, -1)
 
 	var screen := get_viewport_rect().size
+	print("ISSUE #411 FIX ACTIVE: call-it coins ", COIN_CALL_SIZE, "px, ", COIN_CALL_GAP, "px apart, flying in")
 	for is_heads in [true, false]:
 		var coin := TextureRect.new()
 		coin.texture = tex_heads if is_heads else tex_tails
@@ -6620,9 +6759,15 @@ func choose_heads_or_tails() -> bool:
 		coin.custom_minimum_size = Vector2(COIN_CALL_SIZE, COIN_CALL_SIZE)
 		coin.size = Vector2(COIN_CALL_SIZE, COIN_CALL_SIZE)
 		coin.pivot_offset = coin.size / 2
-		var centre_x: float = screen.x * (0.25 if is_heads else 0.75)
-		coin.position = Vector2(centre_x, screen.y / 2) - coin.size / 2
-		coin.mouse_filter = Control.MOUSE_FILTER_STOP
+		var half_spread: float = (COIN_CALL_SIZE + COIN_CALL_GAP) * 0.5
+		var centre_x: float = screen.x * 0.5 + (-half_spread if is_heads else half_spread)
+		var rest := Vector2(centre_x, screen.y / 2) - coin.size / 2
+		# Starts off its own side of the screen, transparent; flies and fades in, slows,
+		# carries a little past the middle and settles back (UIKit.fly_in).
+		coin.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		var fly := UIKit.fly_in(coin, Vector2(-coin.size.x if is_heads else screen.x, rest.y),
+				rest, COIN_CALL_FLY_TIME)
+		fly.tween_callback(func(): coin.mouse_filter = Control.MOUSE_FILTER_STOP)
 		coin.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
 		overlay.add_child(coin)
 
@@ -10760,11 +10905,6 @@ func array_container_clicked(event: InputEvent, card_array: Array) -> void:
 			show_enlarged_array_selection_mode(card_array)
 			tutorial.on_pile_viewed(card_array)
 
-func _on_deck_icon_input(event: InputEvent, is_opponent: bool) -> void:
-	if UIInput.is_click(event) and not msgbox_container.visible:
-		tutorial.on_pile_viewed(opponent_deck if is_opponent else player_deck)
-
-
 # ISSUE #80: single-card preview — show one Pokémon plus its attached energies and tools laid out as
 # separate cards to its left (raised to line up), the focus card enlarged with its HP label beneath,
 # and only a centred Close button. Reached by clicking a card while viewing a bench.
@@ -11701,9 +11841,6 @@ func _ready() -> void:
 	opponent_prize_container.gui_input.connect(array_container_clicked.bind(opponent_prize_cards))
 	player_discard_icon.gui_input.connect(array_container_clicked.bind(player_discard_pile))
 	opponent_discard_icon.gui_input.connect(array_container_clicked.bind(opponent_discard_pile))
-	# The decks cannot be looked through; in a tutorial, clicking one says so.
-	player_deck_icon.gui_input.connect(_on_deck_icon_input.bind(false))
-	opponent_deck_icon.gui_input.connect(_on_deck_icon_input.bind(true))
 
 	cancel_button.pressed.connect(cancel_button_pressed_hide_selection_mode)
 	action_button.pressed.connect(action_button_pressed_perform_action)

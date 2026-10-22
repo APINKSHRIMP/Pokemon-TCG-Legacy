@@ -19,6 +19,10 @@ extends Node
 #   "generic" Options > "Tutorial messages for next match". The generic messages and the
 #             board labels in any match, no stacking, no overrides. The option switches
 #             itself off when the match ends.
+#   "tips"    The newby player's SECOND match (after Olly's scripted one): only the
+#             start-of-turn key tips (Shift preview, Caps Lock log, Escape forfeit), one
+#             per turn from their first. Nothing else, no labels. Armed by
+#             GameState.TUTORIAL_TIPS_KEY, cleared when the match ends.
 #
 # WHERE THE TEXT LIVES: the GENERIC_* and NEWBY_* consts below. [POKEMON], [ATTACK] and
 # friends are filled in when the message plays.
@@ -59,6 +63,7 @@ var _potions_played: int = 0
 func setup(main_node: Node) -> void:
 	main = main_node
 	mode = ""
+	_olly_stack = bool(main.opponent_data.get("olly_stack", false))
 	var t: String = str(main.opponent_data.get("tutorial", ""))
 	# The autotester never gets a tutorial, unless it is testing one (--tutorial).
 	if GameState.autotest != null and t == "":
@@ -67,18 +72,22 @@ func setup(main_node: Node) -> void:
 		mode = t
 	elif GameState.tutorial_next_match_setting == "on":
 		mode = "generic"
+	elif GameState.progress.get(GameState.TUTORIAL_TIPS_KEY, false):
+		mode = "tips"
 	if mode != "":
 		print("TUTORIAL: mode ", mode)
 
 
+## A full tutorial (messages, blocks, labels). "tips" is not one: it only touches
+## on_player_turn_start() and on_match_end().
 func active() -> bool:
-	return mode != ""
+	return mode in ["newby", "rules", "generic"]
 
 
 ## Board labels ("Your hand", "Attacks", the bench captions, Energy/Tools) are a
 ## tutorial-only aid.
 func labels_on() -> bool:
-	return mode != ""
+	return active()
 
 
 func _stacked() -> bool:
@@ -89,6 +98,9 @@ func _stacked() -> bool:
 func on_match_end() -> void:
 	if mode == "generic" and GameState.tutorial_next_match_setting == "on":
 		GameState.set_tutorial_next_match("off")
+	if mode == "tips":
+		GameState.progress.erase(GameState.TUTORIAL_TIPS_KEY)
+		GameState.save_progress()
 
 
 # ============================================================
@@ -116,10 +128,12 @@ const NEWBY_PLAYER := {
 const NEWBY_OPPONENT := {
 	"hand":   ["Magikarp", "Water", "Water", "Water", "Water", "Water", "Water"],
 	"prizes": ["Water", "Water", "Water", "Water"],
-	# T1 Diglett | T2 Bill (-> Fighting x2) | T3 Professor Oak (-> Fighting x5, Rattata x2) |
-	# T4 Rattata | T5 Rattata | T6 Defender | T7 Dratini | T8 Dratini
+	# T1 Diglett | T2 Bill (-> Fighting x2) | T3 Professor Oak (-> Fighting x5, Rattata,
+	# Energy Removal) | T4 Rattata | T5 Rattata | T6 Defender | T7 Dratini | T8 Dratini.
+	# The Energy Removal (in place of one of the deck's Water) is played on turn 7, before
+	# Dratini's Pound, taking an Energy off Machop: so Machoke still needs another next turn.
 	"draws":  ["Diglett", "Bill", "Fighting", "Fighting", "Professor Oak",
-		"Fighting", "Fighting", "Fighting", "Fighting", "Fighting", "Rattata", "Rattata",
+		"Fighting", "Fighting", "Fighting", "Fighting", "Fighting", "Rattata", "Energy Removal",
 		"Rattata", "Rattata", "Defender", "Dratini", "Dratini"],
 }
 
@@ -175,6 +189,9 @@ const RULES_OPPONENT := {
 ## Reorders `deck` in place (it is the freshly loaded, shuffled deck) before the
 ## opening hand is drawn. Only the two stacked modes touch it.
 func stack_deck(deck: Array, is_opponent: bool) -> void:
+	if is_opponent and _olly_stack:
+		_stack_olly_opening(deck)
+		return
 	if not _stacked():
 		return
 	var order: Dictionary = _order_for(is_opponent)
@@ -200,6 +217,83 @@ func stack_deck(deck: Array, is_opponent: bool) -> void:
 	stacked.append_array(pool)
 	deck.clear()
 	deck.append_array(stacked)
+
+
+# ------------------------------------------------------------
+# OLLY'S OPENING ("played" / "experienced", not Hard Mode)
+# ------------------------------------------------------------
+# No tutorial, but Olly's opening is fixed (profile key "olly_stack"): his hand holds
+# exactly 2 Basic Pokemon, a Stage 1 that evolves from one of them and a Bill, the rest
+# filled with non-Pokemon cards. Every Professor Oak goes to the bottom of the deck and one
+# is put on top at the start of his OLLY_OAK_TURN-th turn, so he draws it then (Bill on
+# turn 1, then three turns). Everything else stays in its shuffled order.
+const OLLY_OAK_TURN := 4
+var _olly_stack: bool = false
+
+
+func _stack_olly_opening(deck: Array) -> void:
+	var pool: Array = deck.duplicate()
+	var stage1 = null
+	var base = null
+	for c in pool:
+		if not "Stage 1" in c.metadata.get("subtypes", []):
+			continue
+		var from := _norm(String(c.metadata.get("evolvesFrom", "")))
+		for b in pool:
+			if main.is_basic_pokemon(b) and _norm(String(b.metadata.get("name", ""))) == from:
+				stage1 = c
+				base = b
+				break
+		if stage1 != null:
+			break
+	if stage1 == null:
+		push_warning("OLLY STACK: no Stage 1 with its Basic in the deck -- left shuffled")
+		return
+	pool.erase(stage1)
+	pool.erase(base)
+	var other = null
+	for b in pool:
+		if main.is_basic_pokemon(b):
+			other = b
+			break
+	var bill = _take(pool, "Bill")
+	var oaks: Array = []
+	var oak = _take(pool, "Professor Oak")
+	while oak != null:
+		oaks.append(oak)
+		oak = _take(pool, "Professor Oak")
+	var hand: Array = [base, stage1]
+	if other != null:
+		pool.erase(other)
+		hand.append(other)
+	if bill != null:
+		hand.append(bill)
+	# Fill the hand from the shuffled pool with anything that is not a Pokemon.
+	for c in pool.duplicate():
+		if hand.size() >= 7:
+			break
+		if String(c.metadata.get("supertype", "")) != "Pokémon":
+			hand.append(c)
+			pool.erase(c)
+	if other == null or bill == null:
+		push_warning("OLLY STACK: deck is missing a second Basic or a Bill")
+	deck.clear()
+	deck.append_array(hand)
+	deck.append_array(pool)
+	deck.append_array(oaks)
+	print("OLLY STACK: hand ", hand.map(func(c): return c.metadata.get("name", "")), ", ", oaks.size(), " Oak at the bottom")
+
+
+## Start of Olly's OLLY_OAK_TURN-th turn, before his draw: a Professor Oak on top.
+func _olly_oak_to_top() -> void:
+	var deck: Array = main.opponent_deck
+	for i in range(deck.size() - 1, -1, -1):
+		if _norm(String(deck[i].metadata.get("name", ""))) == "professoroak":
+			var oak = deck[i]
+			deck.remove_at(i)
+			deck.push_front(oak)
+			print("OLLY STACK: Professor Oak put on top for CPU turn ", _cpu_turns)
+			return
 
 
 func _order_for(is_opponent: bool) -> Dictionary:
@@ -288,7 +382,9 @@ func _weak_to(card, type: String) -> bool:
 
 func on_cpu_turn_start() -> void:
 	_cpu_turns += 1
-	_cpu_plan = (NEWBY_CPU_PLAN.get(_cpu_turns, {}) as Dictionary).duplicate(true) if mode == "newby" else {}
+	if _olly_stack and _cpu_turns == OLLY_OAK_TURN:
+		_olly_oak_to_top()
+	_cpu_plan =(NEWBY_CPU_PLAN.get(_cpu_turns, {}) as Dictionary).duplicate(true) if mode == "newby" else {}
 
 
 # ============================================================
@@ -307,12 +403,13 @@ func on_cpu_turn_start() -> void:
 const NEWBY_CPU_PLAN := {
 	1: {"bench": ["Diglett"], "attach": ["Water Energy", "active"], "attack": ""},
 	2: {"trainers": ["Bill"], "attach": ["Fighting Energy", "Diglett"], "attack": "Flail"},
-	3: {"trainers": ["Professor Oak"], "bench": ["Rattata", "Rattata"],
+	3: {"trainers": ["Professor Oak"], "bench": ["Rattata"],
 		"attach": ["Fighting Energy", "active"], "attack": "Scratch"},
 	4: {"bench": ["Rattata"], "attach": ["Fighting Energy", "bench_bare:Rattata"], "attack": "Scratch"},
-	5: {"attach": ["Fighting Energy", "bench_bare:Rattata"], "attack": "Scratch"},
+	5: {"bench": ["Rattata"], "attach": ["Fighting Energy", "bench_bare:Rattata"], "attack": "Scratch"},
 	6: {"trainers": ["Defender"], "attach": ["Fighting Energy", "active"], "attack": "Bite"},
-	7: {"bench": ["Dratini"], "retreat": "Dratini", "attach": ["Fighting Energy", "active"], "attack": "Pound"},
+	7: {"trainers": ["Energy Removal"], "removal_target": "active", "bench": ["Dratini"],
+		"retreat": "Dratini", "attach": ["Fighting Energy", "active"], "attack": "Pound"},
 	# By now its Fighting Energy is spent: whatever basic Energy it holds, if any.
 	8: {"bench": ["Dratini"], "attach": ["any", "active"], "attack": "Pound"},
 }
@@ -379,6 +476,13 @@ func cpu_retreat_choice():
 	return null
 
 
+## The player's Pokemon this turn's Energy Removal hits, or null for the CPU's own choice.
+func cpu_removal_target(candidates: Array):
+	if String(_cpu_plan.get("removal_target", "")) == "active" and main.player_active_pokemon in candidates:
+		return main.player_active_pokemon
+	return null
+
+
 ## The attack this turn's script uses ("" = none).
 func cpu_attack_choice() -> String:
 	return String(_cpu_plan.get("attack", ""))
@@ -399,7 +503,7 @@ func _say(lines: Array, fills: Dictionary = {}) -> void:
 		var text := String(line)
 		for k in fills:
 			text = text.replace(k, String(fills[k]))
-		await main.show_message(text, false)
+		await main.show_message(text, true, "tutorial")
 	_busy = false
 
 
@@ -417,16 +521,23 @@ func show_block(text: String) -> void:
 	if _block_showing:
 		return
 	_block_showing = true
-	await main.show_message(text, false)
+	await main.show_message(text, true, "tutorial")
 	_block_showing = false
 
 
 ## For hooks the core cannot await (a selection screen opening): plays once the board
 ## is free of other messages, and only then marks the key as seen.
 func _deferred_once(key: String, lines: Array, fills: Dictionary = {}) -> void:
-	if _seen.has(key):
+	if _seen.has(key) or _busy:
 		return
 	_seen[key] = true
+	await _deferred_say(lines, fills)
+
+
+## As _deferred_once, but every time it is asked (nothing is marked as seen here).
+func _deferred_say(lines: Array, fills: Dictionary = {}) -> void:
+	if _busy:
+		return   # one at a time: a click while a pile message is up does not queue another
 	for _i in 120:
 		if not _busy and not main.msgbox_container.visible:
 			break
@@ -498,12 +609,12 @@ const G_TURN_TIPS := [
 # Viewing a pile for the first time (both NewbyTutorialMatch.txt and the generic set).
 const PILE_LINES := {
 	"opponent_hand":    "You are viewing your opponent's hand. You cannot see what cards they have",
-	"player_deck":      "You are viewing your own deck. You cannot freely look at the cards in there",
-	"opponent_deck":    "You are viewing your opponent's deck. You cannot see what cards they have",
 	"player_discard":   "You are viewing your own discard pile. Any of your trainer cards, discarded energy or knocked out pokemon go in here",
 	"opponent_discard": "You are viewing your opponent's discard pile. Any of the opponent's trainer cards, discarded energy or knocked out pokemon go in here",
 	"player_bench":     "You are viewing your bench. All of your benched pokemon will be shown here",
 	"opponent_bench":   "You are viewing your opponent's bench. All of their benched pokemon will be shown here",
+	"player_prizes":    "You are viewing your prize cards. You take one every time you knock out one of your opponent's Pokemon",
+	"opponent_prizes":  "You are viewing your opponent's prize cards. They take one every time they knock out one of your Pokemon",
 }
 
 
@@ -516,9 +627,16 @@ func _generic() -> bool:
 # ============================================================
 
 ## The opening screen: the hand, waiting for an Active to be chosen.
+const CAPS_HINT := "Press [CAPS LOCK] To read back any of these help messages"
+
 func on_setup_screen() -> void:
+	# First thing in any match with tutorial help (the key tips' match included).
+	if mode == "":
+		return
+	var lines: Array = [CAPS_HINT]
 	if mode == "newby":
-		_deferred_once("n_setup", NEWBY_SETUP)
+		lines.append_array(NEWBY_SETUP)
+	_deferred_once("n_setup", lines)
 
 
 ## Just before the heads/tails choice.
@@ -536,12 +654,24 @@ func on_player_turn_pre_draw() -> void:
 
 
 ## The player's turn, after the draw and every turn-start effect.
+## "tips": which of G_TURN_TIPS play, in order (the key-press ones, not double-click).
+const TIPS_MODE_TIPS := [0, 2, 3]
+
+
 func on_player_turn_start() -> void:
+	if mode == "tips":
+		if _tip_index < TIPS_MODE_TIPS.size():
+			await _say(G_TURN_TIPS[TIPS_MODE_TIPS[_tip_index]])
+			_tip_index += 1
+		return
 	if not active():
 		return
 	if mode == "newby":
 		await _newby_turn_start()
 		return
+	# "rules" gets the newby's first-turn spiel on the aim of the game too.
+	if mode == "rules" and _player_turns == 1:
+		await _once("n_t1_aim", NEWBY_T1_AIM, {"[POKEMON]": _name(main.player_active_pokemon)})
 	var spoke: bool = await _once("g_click_hand", G_CLICK_HAND)
 	if spoke:
 		_turn_start_spoke = true
@@ -566,13 +696,21 @@ func on_pile_viewed(card_array: Array) -> void:
 		return
 	var key := ""
 	if card_array == main.opponent_hand: key = "opponent_hand"
-	elif card_array == main.player_deck: key = "player_deck"
-	elif card_array == main.opponent_deck: key = "opponent_deck"
 	elif card_array == main.player_discard_pile: key = "player_discard"
 	elif card_array == main.opponent_discard_pile: key = "opponent_discard"
 	elif card_array == main.player_bench: key = "player_bench"
 	elif card_array == main.opponent_bench: key = "opponent_bench"
-	if key != "":
+	elif card_array == main.player_prize_cards: key = "player_prizes"
+	elif card_array == main.opponent_prize_cards: key = "opponent_prizes"
+	if key == "":
+		return
+	# Until the player's first turn is over, every click explains the pile again. After
+	# that, only a pile they have not had explained yet (once, then never again).
+	var first_turn_over: bool = _player_turns > 1 or (_player_turns == 1 and main.opponents_turn_active)
+	if not first_turn_over:
+		_seen["pile_" + key] = true
+		_deferred_say([PILE_LINES[key]])
+	else:
 		_deferred_once("pile_" + key, [PILE_LINES[key]])
 
 
@@ -588,8 +726,10 @@ func on_hand_opened() -> void:
 
 ## The Energy attach screen has just opened.
 func on_attach_screen(energy) -> void:
+	# Every time, until the Energy is attached: cancelling out and coming back must not
+	# leave the player with no instructions.
 	if mode == "newby" and _step == "t1_attach":
-		_deferred_once("n_attach_screen", NEWBY_T1_ATTACH_SCREEN)
+		_deferred_say(NEWBY_T1_ATTACH_SCREEN)
 
 
 ## An Energy finished landing on `target`.
@@ -705,7 +845,8 @@ func on_retreat_done() -> void:
 # GATES — the core asks before acting; a non-empty answer blocks it
 # ============================================================
 # kind: "end_turn" | "attack" (data.attack) | "retreat" | "power" | "play" (data.card,
-# data.action) | "attach" (data.energy, data.target)
+# data.action) | "attach" (data.energy, data.target) | "heal" (data.target --
+# filters a heal effect's target list)
 
 func gate(kind: String, data: Dictionary = {}) -> String:
 	if not active() or main.opponents_turn_active:
@@ -781,6 +922,15 @@ const NEWBY_SETUP := [
 ]
 const NEWBY_COIN := ["A coin is flipped at the start of every game to decide which player goes first. Choose heads or tails"]
 const NEWBY_AUTO_DRAW := ["You automatically draw a card from your deck and add it to your hand at the start of every turn."]
+# The very first thing on the player's first turn, before "Click your hand" ("newby" and "rules").
+const NEWBY_T1_AIM := [
+	"In the Pokemon TCG the general aim is to knock out your opponent's Pokemon...",
+	"You will do this by attacking their active Pokemon with your active Pokemon...",
+	"Knocking out an opponent's Pokemon wins you a 'Prize Card'...",
+	"To win - take every prize card, or knockout all of your opponents Pokemon...",
+	"Every Pokemon needs 'Energy' attached to it in order to use one of its attacks...",
+	"You will first need to attach an energy card to your active [POKEMON]...",
+]
 const NEWBY_T1_CLICK_HAND := ["Click your hand to see every card you're holding there and to play them."]
 const NEWBY_T1_HAND := [
 	"You are now looking at all the cards in your hand...",
@@ -875,18 +1025,13 @@ const NEWBY_T7_START := [
 	"Select Machoke in your hand and play it to Evolve your Machop",
 ]
 const NEWBY_T7_EVOLVED := [
-	"Machoke needs 3 Energies to attack and Machop only has 2...",
+	"Machoke needs 3 Energies to attack and Machop only has 1...",
 	"It is nearly always a good idea to evolve but there are often times you should wait...",
 	"Attach another Fighting Energy to Machoke so it can attack next turn.",
 ]
-# The script's Machop has 2 Energy by now (turns 5 and 6), so after this attach Machoke COULD
-# Karate Chop -- for 20, while it carries Machop's 3 damage counters. Attacking is blocked
-# this turn (NEWBY_T7_NO_ATTACK) so turn 8's Potions are what make the knockout.
-const NEWBY_T7_ENERGY := [
-	"Machoke can attack now, but Karate Chop does less damage the more damaged Machoke is, so it won't knock out Dratini yet...",
-	"If you can't attack and have no other cards to play, you can finish your turn with the End Turn button.",
-]
-const NEWBY_T7_NO_ATTACK := "Karate Chop won't knock out Dratini while Machoke is this damaged. Finish your turn with the End Turn button."
+# The opponent's Energy Removal (its turn 7) leaves Machop on 1 Energy, so after this attach
+# Machoke has 2 of the 3 it needs and cannot attack until next turn.
+const NEWBY_T7_ENERGY := ["If you can't attack and have no other cards to play, you can finish your turn with the End Turn button."]
 const NEWBY_T8_START := [
 	"Most Evolved Pokemon have higher HP and better attacks than their Basic stage Pokemon",
 	"When a Pokemon evolves, it heals any status conditions but keeps its damage counters...",
@@ -907,6 +1052,7 @@ func _newby_turn_start() -> void:
 	match _player_turns:
 		1:
 			_step = "t1_hand"
+			await _once("n_t1_aim", NEWBY_T1_AIM, {"[POKEMON]": _name(main.player_active_pokemon)})
 			await _once("n_t1", NEWBY_T1_CLICK_HAND)
 		2:
 			_step = "t2_bill"
@@ -933,10 +1079,37 @@ func _newby_turn_start() -> void:
 			_step = "free"
 
 
+# What to do next, said again when the player opens their hand a SECOND time in the same
+# step -- they opened it, backed out (cancelled) without doing the thing, and came back.
+const NEWBY_REMINDERS := {
+	"t1_attach":       "Some cards can't always be played. Try attaching an energy card to your Voltorb first.",
+	"t2_bill":         "Play Bill and draw more cards.",
+	"t2_bench":        "Play Voltorb onto your bench.",
+	"t2_bench_energy": "Attach an energy card to the Benched Voltorb.",
+	"t3_oak":          "Professor Oak may help. Select it and play it from your hand.",
+	"t3_ponyta":       "Place Ponyta on your bench and attach a Fire Energy to it.",
+	"t3_fire":         "Attach a Fire Energy card to Ponyta.",
+	"t4":              "Put Machop on your bench and attach another fire energy to Ponyta.",
+	"t5_machop":       "Attach a fighting energy to Machop and attack with Low Kick to knock out your opponent's Diglett",
+	"t6_pluspower":    "Play Pluspower now to attach it to Machop and knockout Rattata!",
+	"t6_energy":       "Attach another Fighting Energy to Machop.",
+	"t7_evolve":       "Select Machoke in your hand and play it to Evolve your Machop",
+	"t7_energy":       "Attach another Fighting Energy to Machoke so it can attack next turn.",
+	"t8_bill":         "Play Bill to draw more useful cards.",
+	"t8_potions":      "Play both potions to fully heal Machoke",
+}
+var _last_hand_step: String = ""
+
+
 func _newby_hand_opened() -> void:
 	if _step == "t1_hand":
 		_step = "t1_attach"
+		_last_hand_step = _step
 		_deferred_once("n_t1_hand", NEWBY_T1_HAND)
+		return
+	if _step == _last_hand_step and NEWBY_REMINDERS.has(_step):
+		_deferred_say([NEWBY_REMINDERS[_step]])
+	_last_hand_step = _step
 
 
 func _newby_energy_attached(energy, target) -> void:
@@ -1028,6 +1201,9 @@ func _newby_attack(attacker, defender, weak: bool, resist: bool, fills: Dictiona
 		await _once("n_t3_resist", NEWBY_T3_RESIST)
 
 
+const NEWBY_BLOCK_POTION_PONYTA := "Ponyta won't help much more now. Save your Potions for Machoke."
+
+
 ## What the newby player may not do right now, and why. "" = allowed.
 func _newby_gate(kind: String, data: Dictionary) -> String:
 	var card = data.get("card", null)
@@ -1037,6 +1213,15 @@ func _newby_gate(kind: String, data: Dictionary) -> String:
 	var active = main.player_active_pokemon
 	var energy_type: String = main.get_energy_type_from_card(energy) if energy != null else ""
 	var is_energy_play: bool = kind == "play" and String(data.get("action", "")) == "ATTACH_ENERGY"
+	# Potions are for Machoke: Ponyta is never a heal target, and a Potion can't be played
+	# while Ponyta is the only damaged Pokemon (it would have nothing to heal).
+	if kind == "heal" and _name(target) == "Ponyta":
+		return NEWBY_BLOCK_POTION_PONYTA
+	if kind == "play" and _name(card) == "Potion":
+		var field: Array = [active] + main.player_bench
+		var healable: bool = field.any(func(p): return p != null and _name(p) != "Ponyta" and p.current_hp < p.get_max_hp())
+		if not healable:
+			return NEWBY_BLOCK_POTION_PONYTA
 	match _step:
 		"t1_hand":
 			if kind == "end_turn":
@@ -1123,11 +1308,8 @@ func _newby_gate(kind: String, data: Dictionary) -> String:
 			if not evolving:
 				return "Play Machoke from your hand to evolve Machop"
 		"t7_energy":
-			if kind in ["end_turn", "attack"] or (kind == "attach" and target != active):
+			if kind == "end_turn" or (kind == "attach" and target != active):
 				return "Attach another Fighting Energy to Machoke so it can attack next turn"
-		"t7_done":
-			if kind == "attack":
-				return NEWBY_T7_NO_ATTACK
 		"t8_bill":
 			if kind == "end_turn":
 				return "Attach one more fighting Energy to Machoke and play Bill to draw more useful cards."

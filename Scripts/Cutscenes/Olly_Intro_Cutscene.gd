@@ -61,16 +61,22 @@ const WALK_SPEED    : float = 42.0
 # ------------------------------------------------------------
 # TWEAKABLE — the exit (down, then off left towards FISH)
 # ------------------------------------------------------------
+# Down onto the path he arrived along, west (left) along it to EXIT_PATH_X -- the brick
+# path running north, between its two lampposts (Lamp132/133 at x -1209/-1305) -- then
+# straight up it towards FISH. Glided, not walked: physics walking snagged him on the
+# garden wall.
 const EXIT_SPEED     : float = 150.0
-const EXIT_DOWN      : float = 60.0
-const EXIT_LEFT      : float = 700.0
+const EXIT_PATH_X    : float = -1257.0
+const EXIT_RUN_UP    : float = 1100.0
 const OFFSCREEN_MARGIN_X : float = 430.0
 const OFFSCREEN_MARGIN_Y : float = 234.0
 const POST_BATTLE_PAUSE  : float = 0.6
 
 # The cards flipped up for each gift. Basic energy is never granted (it is unlimited);
 # the "load of energy cards" is shown, not given.
-const BASIC_DECK_SHOWCASE := ["base1-67", "base1-52", "base1-60", "base1-65"]
+# The boxed-deck art shown when a deck is handed over (Image_Assets/Packs/<id>.png).
+const DECK_ART_BASIC := "starterdeck1_d"
+const DECK_ART_FOR_PAIR := {"Fire Shock": "starterdeck1_a", "Grass Psy": "starterdeck1_b", "Water Fight": "starterdeck1_c"}
 const ENERGY_SHOWCASE := ["base1-98", "base1-99", "base1-102", "base1-101", "base1-97", "base1-100"]
 
 # ------------------------------------------------------------
@@ -109,7 +115,12 @@ const LINES_HARD_PACKS := [
 	"It's annoying that I couldn't get a hold of a deck in the end either, but it's kind of fun that we will just have to build one with what we have.",
 	"Here, we'll split the packs 50/50, you take this half and I'll keep this half. Let's open them together now!",
 ]
-const LINE_HARD_AFTER_PACKS := "Wow!! We both got some really good cards there. Let's try and build a deck now too. I got a load of each energy card so we'll never run out. Here."
+const LINE_HARD_AFTER_PACKS := "Wow!! We both got some really good cards there. I got a load of each energy card too so we'll never run out. Here."
+# After the energy cards have been shown and put away.
+const LINES_HARD_BUILD := [
+	"Hey, let's try building a deck right now! I bet we could put something together.",
+	"Let's both each build a deck with these cards now and then have a match.",
+]
 const LINE_HARD_BEFORE_MATCH := "Okay, let me see how good your first deck is!"
 
 const LINE_WON := "That was so much fun!! You're definitely better than me!"
@@ -178,6 +189,9 @@ static func should_run(entering_from: String) -> bool:
 			# before the match runs it again wherever the player is in the harbour.
 			if GameState.get_intro_profile().get("olly_meets", "door") == "taxi":
 				return not GameState.progress.get("taxi_intro_pending", false)
+			# Restored to the intro checkpoint (GameState INTRO CHECKPOINT): he runs up again.
+			if GameState.progress.get(GameState.INTRO_RESTART_KEY, false):
+				return true
 			# Everyone else: the first time out of the front door after the arrival night.
 			return entering_from == "Player_House_Downstairs" and not GameState.is_arrival_night()
 		_:
@@ -193,6 +207,11 @@ func run() -> void:
 	_speaker = speaker_for(OLLY_NAME)
 	match stage():
 		STAGE_NONE:
+			# CHECKPOINT: the player has just stepped outside. Quitting any time before the
+			# match is decided comes back to here, with nothing Olly gave them.
+			GameState.progress.erase(GameState.INTRO_RESTART_KEY)
+			GameState.save_current_location(map.get_scene_path(), player.position)
+			GameState.save_intro_checkpoint(true)
 			await _play_arrival()
 			await _play_handover()
 		STAGE_BUILD:
@@ -273,7 +292,7 @@ func _play_handover() -> void:
 		"basic":
 			await say_all(_speaker, LINES_NEW_GIVE)
 			GameState.grant_starter_deck(GameState.STARTER_DECK_BASIC)
-			await _reveal_cards(TEXT_NEW_GOT, BASIC_DECK_SHOWCASE)
+			await _reveal_art(TEXT_NEW_GOT, DECK_ART_BASIC)
 			await say_all(_speaker, LINES_NEW_BEFORE_MATCH)
 		"starter", "advanced":
 			var starter: bool = _profile.get("deck_kind") == "starter"
@@ -281,16 +300,21 @@ func _play_handover() -> void:
 			close_box()
 			var deck_name := await _pick_deck()
 			GameState.grant_starter_deck(deck_name)
-			await _reveal_cards(TEXT_GOT_DECK % deck_name,
-					IntroDeckChoice.SHOWCASE[GameState.intro_deck_suffix()][GameState.progress[GameState.INTRO_PAIR_KEY]])
+			await _reveal_art(TEXT_GOT_DECK % deck_name,
+					DECK_ART_FOR_PAIR.get(GameState.progress[GameState.INTRO_PAIR_KEY], DECK_ART_BASIC))
 			await say_all(_speaker, LINES_PICKED_BEFORE_MATCH)
 		"packs":
 			await say_all(_speaker, LINES_HARD_PACKS)
 			close_box()
+			# The draft has its own music from the first pack to the last, then the harbour's
+			# own track comes back up under the conversation.
+			SoundManagerScript.crossfade_bgm(SoundManagerScript.BGM_DRAFT_TIME, 0.4, 0.4)
 			PackOpeningManager.open_packs(GameState.HARD_MODE_DRAFT_PACKS)
 			await PackOpeningManager.all_packs_opened
+			SoundManagerScript.crossfade_bgm(map.get_bgm_path())
 			await say(_speaker, LINE_HARD_AFTER_PACKS)
 			await _reveal_cards(TEXT_ENERGY, ENERGY_SHOWCASE, false)
+			await say_all(_speaker, LINES_HARD_BUILD)
 			_go_build_deck()
 			return
 	close_box()
@@ -313,23 +337,37 @@ func _pick_deck() -> String:
 
 
 ## Cards flipped up with the big "You got..." notice. Returns once it is cleared.
-func _reveal_cards(text: String, card_ids: Array, with_sound: bool = true) -> void:
+## The energy cards fly up one after another (fly = true) rather than flipping.
+func _reveal_cards(text: String, card_ids: Array, with_sound: bool = true, fly: bool = true) -> void:
 	if with_sound:
 		SoundManagerScript.play_sfx(SoundManagerScript.SFX_item_acquired)
-	MapManager.show_card_reveal(text, card_ids, func(): line_advanced.emit())
+	MapManager.show_card_reveal(text, card_ids, func(): line_advanced.emit(), fly)
 	await line_advanced
 	close_box()
 
 
-## A gifted pack: shown on the gift overlay, then opened like any booster.
-func _gift_pack(text: String, art_id: String) -> void:
+## A deck box or pack fading up on the gift overlay with the big notice.
+func _reveal_art(text: String, art_id: String) -> void:
 	SoundManagerScript.play_sfx(SoundManagerScript.SFX_item_acquired)
-	MapManager.show_item_reveal(text, "res://Image_Assets/Packs/" + art_id + ".png",
+	MapManager.show_pack_reveal(text, "res://Image_Assets/Packs/" + art_id + ".png",
 			func(): line_advanced.emit())
 	await line_advanced
 	close_box()
+
+
+## A gifted pack: shown on the gift overlay, then opened like any booster. Once only:
+## after the match is decided there is no checkpoint, so a quit during the closing
+## conversation replays it -- without a second pack.
+const GIFT_DONE_KEY := "olly_intro_pack_given"
+
+func _gift_pack(text: String, art_id: String) -> void:
+	if GameState.progress.get(GIFT_DONE_KEY, false):
+		return
+	await _reveal_art(text, art_id)
 	PackOpeningManager.open_packs([art_id])
 	await PackOpeningManager.all_packs_opened
+	GameState.progress[GIFT_DONE_KEY] = true
+	GameState.save_progress()
 
 
 # ============================================================
@@ -357,6 +395,10 @@ func _resume_after_build() -> void:
 		_open_deck_builder()
 		return
 	_spawn_opposite_player()
+	# CHECKPOINT (Hard Mode): the drafted deck is saved. Quitting the match from here
+	# comes back to this line and the match, with the same packs and deck.
+	GameState.save_current_location(map.get_scene_path(), player.position)
+	GameState.save_intro_checkpoint(false)
 	await wait(POST_BATTLE_PAUSE)
 	await say(_speaker, LINE_HARD_BEFORE_MATCH)
 	close_box()
@@ -382,6 +424,7 @@ func _start_battle() -> void:
 		"cash_reward":   str(_profile.get("olly_cash", 50)),
 		"coin_reward":   str(_profile.get("olly_coin", "")),
 		"retry_on_loss": bool(_profile.get("olly_retry", false)),
+		"olly_stack":    bool(_profile.get("olly_stack", false)),
 		"tutorial":      str(_profile.get("tutorial", "")),
 	})
 
@@ -394,6 +437,12 @@ func _play_after_battle() -> void:
 	await wait(POST_BATTLE_PAUSE)
 
 	var won: bool = GameState.has_beaten_opponent(OLLY_NAME)
+	# The newby player's next match plays the key tips (Tutorial_Director "tips"). Armed once:
+	# a quit during this conversation replays it, but must not re-arm spent tips.
+	if _profile.get("tutorial", "") == "newby" and not GameState.progress.get("tutorial_tips_armed", false):
+		GameState.progress["tutorial_tips_armed"] = true
+		GameState.progress[GameState.TUTORIAL_TIPS_KEY] = true
+		GameState.save_progress()
 	await say(_speaker, LINE_WON if won else LINE_LOST)
 
 	match str(_profile.get("deck_kind", "basic")):
@@ -425,12 +474,15 @@ func _play_after_battle() -> void:
 	GameState.progress.erase(MEET_KEY)
 	GameState.save_progress()
 
-	# He jogs off down the path and away left towards FISH; the player watches him go.
-	_olly.walk_path([
-		_olly.global_position + Vector2(0.0, EXIT_DOWN),
-		_olly.global_position + Vector2(-EXIT_LEFT, EXIT_DOWN),
-	], EXIT_SPEED)
+	# He jogs down to the path, along it and up towards FISH; the player watches him go.
+	var start: Vector2 = _olly.global_position
+	var on_path := Vector2(start.x, maxf(start.y, ARRIVAL_PATH_Y))
 	_watching_exit = true
+	_olly.glide_path([
+		on_path,
+		Vector2(EXIT_PATH_X, on_path.y),
+		Vector2(EXIT_PATH_X, on_path.y - EXIT_RUN_UP),
+	], EXIT_SPEED)
 
 
 func _spawn_opposite_player() -> void:
@@ -450,11 +502,12 @@ func _check_exit() -> void:
 		finish()
 		return
 	var offset: Vector2 = _olly.global_position - player.global_position
-	if absf(offset.x) < OFFSCREEN_MARGIN_X and absf(offset.y) < OFFSCREEN_MARGIN_Y \
-			and _olly.is_walking():
-		# Turn to follow him with the eyes once he heads off sideways.
-		if offset.y > 20.0 and absf(offset.x) > absf(offset.y):
-			player_face("left")
+	if absf(offset.x) < OFFSCREEN_MARGIN_X and absf(offset.y) < OFFSCREEN_MARGIN_Y:
+		# Follow him with the eyes: down while he is below, then the way he heads off.
+		if absf(offset.x) > absf(offset.y):
+			player_face("left" if offset.x < 0.0 else "right")
+		else:
+			player_face("down" if offset.y > 0.0 else "up")
 		return
 	_watching_exit = false
 	finish()
