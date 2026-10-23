@@ -34,5 +34,17 @@
 		"Sign_RoadsignSW": "\n< Fishing Pond | Forest Entrance >"
 	},
 	"Player_House_Upstairs": {},
-	"Player_House_Downstairs": {}
+	"Player_House_Downstairs": {},
+	"Ellie_House_Upstairs": {
+		"Bed": "Better not, this isn't my bed."
+	},
+	"Ellie_House_Downstairs": {},
+	"Alexander_House_Upstairs": {
+		"Bed": "Better not, this isn't my bed."
+	},
+	"Alexander_House_Downstairs": {},
+	"TownHall_Upstairs": {},
+	"Hotel": {
+		"Sign_Desk": "For late night hotel service please call the number below"
+	}
 }

@@ -26,7 +26,7 @@ class_name GymChallengeAudienceManager
 # ============================================================
 const CHALLENGE_START_DAY := 8
 const BASE_ATTENDANCE: Dictionary = {
-	"Morning": 0.80, "Afternoon": 1.00, "Evening": 0.50, "Night": 0.20,
+	"Morning": 0.80, "Afternoon": 1.00, "Evening": 0.50, "Night": 0.20, "Bedtime": 0.0,
 }
 const DAILY_DECAY := 0.9
 

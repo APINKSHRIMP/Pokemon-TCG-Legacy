@@ -17,7 +17,7 @@ func _scene_setup():
 # Colours come from the time-of-day grade (BaseMapScene); this only handles what the time
 # switches on or off.
 func set_time_of_day(time: String) -> void:
-	var is_night := time == "Night"
+	var is_night := GameState.is_night_time(time)
 
 	var north1 = $TREE_WALL_NORTH/TREE_WALL_NORTH_GROUP
 	north1.get_node("Shadow").visible  = not is_night

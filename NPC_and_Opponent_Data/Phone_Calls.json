@@ -109,6 +109,23 @@
 	]
   },
 
+  "_cafe_readme": [
+	"Morning 2, \"new\" / \"rules\" saves only: Ellie rings as the player walks through the living room",
+	"(Player_House_Downstairs) and asks them to breakfast at Cafe Mieux (CafeBreakfastCutscene)."
+  ],
+
+  "cafe_call_ellie": {
+	"speaker": "Ellie", "character": "Ellie", "clothes": "Hoodie", "pill_sprite": "1Ellie_Hoodie", "colour": "lilac",
+	"background": "BlurryTreeBackground", "phone": "iPhone4",
+	"battle_sprite": "1Ellie_Hoodie", "mouth": [500, 300], "mouth_width": 26,
+	"lines": [
+	  "Hey! Me, Olly and Alexander went out for breakfast at Café Mieux this morning if you're interested?",
+	  "Alexander has the day off because it's bank holiday but Ol is still opening the shop anyway.",
+	  "We all got some better cards from the card mart so we've been trying to play all morning.",
+	  "You should come meet us at the café now, we'll be waiting for you."
+	]
+  },
+
   "_fish_shop_readme": [
 	"FISH milestone calls: fish_shop_<N>_olly / fish_shop_<N>_alexander, rung by FishShopCalls the",
 	"moment the player has SENT N fish to FISH. Whoever is behind the counter today rings (the other",

@@ -22,12 +22,17 @@ const MAPS := {
 	"Windmill": [1, 3],
 	"Gym_Plaza": [9, 24],
 	"TownHall": [1, 20],
+	"TownHall_Upstairs": [1, 20],
+	"Ellie_House_Downstairs": [1, 3],
+	"Ellie_House_Upstairs": [1, 3],
+	"Alexander_House_Downstairs": [1, 3],
+	"Alexander_House_Upstairs": [1, 3],
 	"TrainStation": [1, 3],
 	"Hotel": [1, 3],
 	"Cafe": [1, 3],
 	"DeepOceanFishing": [1, 3],
 }
-const TIMES := ["Morning", "Afternoon", "Evening", "Night"]
+const TIMES := ["Morning", "Afternoon", "Evening", "Night", "Bedtime"]
 
 
 var _exit_code := 0

@@ -72,7 +72,7 @@ func _on_bed_body_entered(body: Node2D) -> void:
 		return
 	if MapManager.message_panel != null and MapManager.message_panel.visible:
 		return
-	if GameState.get_time() == "Night":
+	if GameState.is_night_time():
 		MapManager.show_interactable_confirm(GameState.sleep_prompt_text(), _do_sleep)
 	else:
 		MapManager.show_interactable_message(BED_TOO_EARLY_TEXT)

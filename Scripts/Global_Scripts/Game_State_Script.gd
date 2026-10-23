@@ -6,6 +6,17 @@ extends Node
 
 var current_opponent_name: String = ""
 
+## How an opponent's name reads on the battle screens: a trailing " 2" / " 3" that only
+## tells repeat encounters apart ("Ellie 3", "Olly 2") is dropped, underscores become spaces.
+static func battle_display_name(opponent_name: String) -> String:
+	var shown := opponent_name.replace("_", " ").strip_edges()
+	var cut := shown.length()
+	while cut > 0 and shown[cut - 1] in "0123456789":
+		cut -= 1
+	if cut < shown.length() and cut > 0 and shown[cut - 1] == " ":
+		shown = shown.substr(0, cut).strip_edges()
+	return shown
+
 # ISSUE #129: granted on game initialisation; 1_Default_English is also the equipped sleeve a
 # new save starts with (see the "sleeve" key in Player_Data/Player_Current_Data.json). Names are
 # bare basenames, matching everything else in progress["sleeves"].
@@ -1181,9 +1192,10 @@ func save_progress():
 # Each familiarity answer picks an INTRO PROFILE: everything about how this save's
 # story opens.
 #   call_id       the taxi-ride phone call (Phone_Calls.json id)
-#   start_date    the day the taxi brings the player home, and start_time when: Night
-#   start_time    (then the bed is the only way forward) or Evening ("rules", where Olly
-#                 comes straight round). HIDDEN from the player.
+#   start_date    the day the taxi brings the player home, and start_time when: Bedtime
+#   start_time    (then the bed is the only way forward, and only the late-night cast is
+#                 out) or Evening ("rules", where Olly comes straight round). HIDDEN from
+#                 the player.
 #   wake_time     what the first sleep wakes up to
 #   olly_meets    "door": Olly runs up when the player first leaves the house the next
 #                 day; "taxi": he runs up the moment the taxi call ends, outside the house
@@ -1210,7 +1222,7 @@ const SLEEP_PROMPT_TOURNAMENT := "I should definitely go to sleep now, the tourn
 
 const INTRO_PROFILES := {
 	FAMILIARITY_NEW: {
-		"call_id": "intro_call_new", "start_date": 0, "start_time": "Night", "wake_time": "Morning",
+		"call_id": "intro_call_new", "start_date": 0, "start_time": "Bedtime", "wake_time": "Morning",
 		"olly_meets": "door",
 		"sleep_prompt": SLEEP_PROMPT_TOURNAMENT, "deck_kind": "basic",
 		"olly_deck": "Basic Battle Deck", "tutorial": "newby",
@@ -1224,14 +1236,14 @@ const INTRO_PROFILES := {
 		"olly_cash": 100, "olly_coin": "Eevee Silver 2", "olly_prizes": 4, "olly_retry": true,
 	},
 	FAMILIARITY_PLAYED: {
-		"call_id": "intro_call_played", "start_date": 1, "start_time": "Night", "wake_time": "Morning",
+		"call_id": "intro_call_played", "start_date": 1, "start_time": "Bedtime", "wake_time": "Morning",
 		"olly_meets": "door",
 		"sleep_prompt": SLEEP_PROMPT_TOURNAMENT, "deck_kind": "advanced",
 		"olly_deck": "weak", "tutorial": "",
 		"olly_cash": 150, "olly_coin": "", "olly_prizes": 4, "olly_retry": false, "olly_stack": true,
 	},
 	FAMILIARITY_EXPERT: {
-		"call_id": "intro_call_expert", "start_date": 2, "start_time": "Night", "wake_time": "Morning",
+		"call_id": "intro_call_expert", "start_date": 2, "start_time": "Bedtime", "wake_time": "Morning",
 		"olly_meets": "door",
 		"sleep_prompt": "", "deck_kind": "advanced",
 		"olly_deck": "strong", "tutorial": "",
@@ -1270,8 +1282,8 @@ func apply_new_game_answers(familiarity: String, hard_mode: bool) -> void:
 	var profile := get_intro_profile()
 	progress["date"] = profile["start_date"]
 	progress["time"] = profile["start_time"]
-	# Only a night arrival is shut in until bed; an evening one is out with Olly at once.
-	if profile["start_time"] == "Night":
+	# Only a bedtime arrival is shut in until bed; an evening one is out with Olly at once.
+	if profile["start_time"] == "Bedtime":
 		progress[ARRIVAL_NIGHT_KEY] = true
 
 
@@ -1532,18 +1544,28 @@ func has_saved_deck() -> bool:
 # ============================================================
 # TIME ADVANCE — how many matches move the clock on
 # ============================================================
-# 2 per time slot on day 1, 3 on day 2, 4 from day 3.
+# 2 per time slot on day 1, 3 on day 2, 4 from day 3 -- except Night -> Bedtime, which
+# takes one more from day 3 (MATCHES_NIGHT_TO_BEDTIME). Bedtime itself never advances;
+# only the bed moves the clock on from there.
 # On days 1 and 2 only a FIRST win over an opponent counts (mark_opponent_beaten());
 # from day 3 every finished match counts, won, lost or a rematch.
 
-func matches_to_advance_time(date: int = -1) -> int:
+## TWEAKABLE -- matches per slot from day 3, and the longer Night -> Bedtime stretch.
+const MATCHES_PER_SLOT := 4
+const MATCHES_NIGHT_TO_BEDTIME := 5
+
+func matches_to_advance_time(date: int = -1, time: String = "") -> int:
 	if date < 0:
 		date = get_date()
+	if time == "":
+		time = get_time()
 	if date <= 1:
 		return 2
 	if date == 2:
 		return 3
-	return 4
+	if time == "Night":
+		return MATCHES_NIGHT_TO_BEDTIME
+	return MATCHES_PER_SLOT
 
 
 func every_match_advances_time(date: int = -1) -> bool:
@@ -1822,14 +1844,27 @@ func record_match_result(won: bool) -> void:
 	if won:
 		progress["matches_won"] = int(progress.get("matches_won", 0)) + 1
 	save_progress()
+	CardMartDuoCutscene.on_match_played()
 
 # ============================================================
 # TIME / DATE SYSTEM
 # ============================================================
 
-## Returns the current time of day string ("Morning", "Afternoon", "Evening", "Night")
+## The five time slots in order. Bedtime is the late hours after Night: matches move
+## the clock into it but never out of it, nobody is about unless their schedule says
+## "B", and the shops are shut.
+const TIMES_OF_DAY := ["Morning", "Afternoon", "Evening", "Night", "Bedtime"]
+
+## Returns the current time of day string ("Morning", "Afternoon", "Evening", "Night", "Bedtime")
 func get_time() -> String:
 	return progress.get("time", "Morning")
+
+
+## Night or Bedtime: dark outside, lamps on, and the bed lets you sleep.
+func is_night_time(time: String = "") -> bool:
+	if time == "":
+		time = get_time()
+	return time == "Night" or time == "Bedtime"
 
 ## Returns the player's chosen trainer name, or "" if the save has none yet.
 ## Read straight off Player_Current_Data.json rather than cached: the name can be
@@ -1847,7 +1882,7 @@ func get_current_defeated() -> int:
 	return int(progress.get("opponents_beaten_count_current", 0))
 
 ## Sets the time to a specific value. Pass an empty string to auto-step.
-## Auto-step: Morning -> Afternoon -> Evening -> Night -> Morning (and increment date).
+## Auto-step: Morning -> Afternoon -> Evening -> Night -> Bedtime -> Morning (and increment date).
 ## Resets opponents_beaten_count_current to 0 on every time change.
 func advance_time(new_time: String = "") -> void:
 	if new_time == "":
@@ -1860,12 +1895,14 @@ func advance_time(new_time: String = "") -> void:
 			"Evening":
 				new_time = "Night"
 			"Night":
+				new_time = "Bedtime"
+			"Bedtime":
 				new_time = "Morning"
 				progress["date"] = get_date() + 1
 			_:
 				new_time = "Morning"
-	elif new_time == "Morning" and get_time() == "Night":
-		# If explicitly moving from Night to Morning, also increment date
+	elif new_time == "Morning" and is_night_time():
+		# If explicitly moving from Night or Bedtime to Morning, also increment date
 		progress["date"] = get_date() + 1
 
 	progress["time"] = new_time

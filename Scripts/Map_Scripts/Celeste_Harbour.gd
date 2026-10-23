@@ -63,14 +63,25 @@ func uses_time_of_day() -> bool: return true
 func _ready() -> void:
 	if not GameState.progress.get("taxi_intro_pending", false):
 		$Taxi.visible = false
+		# The café breakfast (morning 2): a quit part-way through one of its matches is
+		# settled first -- it can move the clock to the afternoon, which changes the cast
+		# super._ready() is about to build. Read returning_from_battle before it clears.
+		var from_battle: bool = GameState.returning_from_battle
+		CafeBreakfastCutscene.settle_after_load(from_battle)
+		var cafe_resume: bool = CafeBreakfastCutscene.should_resume(from_battle)
 		# A cutscene that is about to take over must not give the player a frame or
 		# two of free movement while the map fades in.
 		var cutscene_due: bool = OllyIntroCutscene.should_run(GameState.entering_from)
-		if cutscene_due:
+		if cutscene_due or cafe_resume:
 			_player.lock_movement()
 		await super._ready()
 		if cutscene_due:
 			_start_olly_intro()
+		elif cafe_resume:
+			_start_cafe_after_battle()
+		else:
+			CafeBreakfastCutscene.unseat_after_load(self)
+		CafeBreakfastCutscene.register(self)
 		return
 
 	# Taxi intro path: skip normal startup, run the cutscene instead
@@ -231,6 +242,14 @@ func _start_olly_intro() -> void:
 	cutscene.run()
 
 
+## Back from one of the café breakfast matches, still sat at the table. Talking to the
+## table is wired separately (CafeBreakfastCutscene.register).
+func _start_cafe_after_battle() -> void:
+	var cutscene := CafeBreakfastCutscene.new()
+	cutscene.install(self)
+	cutscene.run_after_battle()
+
+
 ## Rings Olly up a couple of seconds into the drive. Fire-and-forget: it returns as soon as the
 ## call has been started, and the cutscene carries on around it.
 func _start_intro_phone_call() -> void:
@@ -257,10 +276,10 @@ func _hand_over_to_olly() -> void:
 
 
 ## The taxi's headlights (PointLight2D children of Taxi) follow the street lights: on at
-## Evening and Night only. The intro always drives home at night, but this keeps them
-## right if that ever changes.
+## Evening, Night and Bedtime only. The intro always drives home at bedtime, but this keeps
+## them right if that ever changes.
 func _set_taxi_lights(time: String) -> void:
-	var dark: bool = time == "Evening" or time == "Night"
+	var dark: bool = time == "Evening" or GameState.is_night_time(time)
 	for child in $Taxi.get_children():
 		if child is PointLight2D:
 			child.visible = dark
@@ -329,12 +348,12 @@ func _scene_setup():
 # switches on or off.
 func set_time_of_day(time: String) -> void:
 	# Lights come on at dusk; Time_Of_Day_Grade.LIGHT_ENERGY runs them dimmer at Evening.
-	if time == "Evening" or time == "Night":
+	if time == "Evening" or GameState.is_night_time(time):
 		$LIGHTS.visible = true
 	else:
 		$LIGHTS.queue_free()
 	_set_taxi_lights(time)
-	if time == "Night":
+	if GameState.is_night_time(time):
 		$"TILE_MAPS/OBJECTS/CAR PARK CARS".visible = false
 
 # Gates and blocks that open once and stay open. These read the REAL date, never a

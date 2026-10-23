@@ -765,6 +765,26 @@
       "sprite": "Fisher_F",
       "message_colour": "yellow",
       "friendly_name": "Fisher"
+    },
+    "Bakushin Sailor": {
+      "sprite": "Bakushin_Sailor",
+      "message_colour": "light_red",
+      "friendly_name": "Sailor"
+    },
+    "Waitress": {
+      "sprite": "Bakushin_Waitress",
+      "message_colour": "grey",
+      "friendly_name": "Waitress"
+    },
+    "Ellie 2": {
+      "sprite": "1Ellie_Hoodie",
+      "message_colour": "lilac",
+      "friendly_name": "Ellie"
+    },
+    "Alexander 2": {
+      "sprite": "1Alexander",
+      "message_colour": "yellow",
+      "friendly_name": "Alexander"
     }
   },
   "opponents": {
@@ -819,7 +839,7 @@
       "prize_cards": 2,
       "coin_reward": "Pikachu Gold",
       "sprite": "Tuber_F",
-      "music": "REPLACEMUSIC",
+      "music": "Jolly_battle 2 (Pinball Catchem Evolution in Red Field)",
       "cash_reward": "65",
       "deck": "Pika And Friends",
       "message_colour": "light_pink"
@@ -828,7 +848,7 @@
       "prize_cards": 2,
       "coin_reward": "Diglett Brown",
       "sprite": "Tuber_M",
-      "music": "REPLACEMUSIC",
+      "music": "Jolly_battle (Pinball Hi Score Screen)",
       "cash_reward": "80",
       "deck": "I Love Sand And Sea",
       "message_colour": "light_blue"
@@ -846,7 +866,7 @@
       "prize_cards": 4,
       "coin_reward": "Doduo Brown",
       "sprite": "BirdKeeper_F",
-      "music": "REPLACEMUSIC",
+      "music": "Easy_battle (PMD beach cave)",
       "cash_reward": "90",
       "deck": "Lil Birbs",
       "message_colour": "orange"
@@ -1670,7 +1690,7 @@
       "prize_cards": 4,
       "coin_reward": "Tentacool Blue",
       "sprite": "Swimmer_M",
-      "music": "REPLACEMUSIC",
+      "music": "Calm Battle 2 (PMD Crystal_Cave)",
       "cash_reward": "90",
       "deck": "I See Sea",
       "message_colour": "dark_blue"
@@ -1794,6 +1814,45 @@
       "prize_cards": 4,
       "cash_reward": "50",
       "coin_reward": "Eevee Silver 2"
+    },
+    "Janitor Christian": {
+      "sprite": "Bakushin_Janitor",
+      "message_colour": "light_red",
+      "deck": "Reduce Reuse Recycle",
+      "music": "Simple_battle (PTCG2 Mr Ishiharas Villa)",
+      "prize_cards": 4,
+      "cash_reward": "100",
+      "coin_reward": "Slowpoke Pink"
+    },
+    "Alexander 3": {
+      "friendly_name": "Alexander",
+      "sprite": "1Alexander",
+      "message_colour": "yellow",
+      "deck": "Grass Psy Starter Deck",
+      "music": "fast_battle (PTCG Ronalds Theme)",
+      "prize_cards": 3,
+      "cash_reward": "100",
+      "pack_reward": "base1-a"
+    },
+    "Ellie 3": {
+      "friendly_name": "Ellie",
+      "sprite": "1Ellie_Hoodie",
+      "message_colour": "lilac",
+      "deck": "Basic Starter Deck",
+      "music": "fast_battle (PTCG Ronalds Theme)",
+      "prize_cards": 4,
+      "cash_reward": "100",
+      "pack_reward": "base1-a"
+    },
+    "Olly 2": {
+      "friendly_name": "Olly",
+      "sprite": "1Olly_White",
+      "message_colour": "aqua",
+      "deck": "Water Fight Starter Deck",
+      "music": "fast_battle (PTCG Ronalds Theme)",
+      "prize_cards": 4,
+      "cash_reward": "100",
+      "pack_reward": "base1-c"
     }
   }
 }

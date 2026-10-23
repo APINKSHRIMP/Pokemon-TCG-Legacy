@@ -24,8 +24,10 @@ extends CanvasLayer
 signal picked(slots: Array)
 signal cancelled
 
-const TIME_ORDER := ["M", "A", "E", "N"]
-const TIME_NAMES := {"M": "MORNING", "A": "AFTERNOON", "E": "EVENING", "N": "NIGHT"}
+const TIME_ORDER := ["M", "A", "E", "N", "B"]
+## What an empty times spec means: every slot but Bedtime (CharacterSchedule.OPT_IN_TIMES).
+const DEFAULT_TIMES := ["M", "A", "E", "N"]
+const TIME_NAMES := {"M": "MORNING", "A": "AFTERNOON", "E": "EVENING", "N": "NIGHT", "B": "BEDTIME"}
 
 # ---- tweakables -------------------------------------------------------------
 ## One pale colour per column, so a row of ticks is read as a shape rather than as
@@ -35,6 +37,7 @@ const COLUMN_COLOURS := {
 	"A": Color(0.99, 0.95, 0.74),
 	"E": Color(0.99, 0.85, 0.69),
 	"N": Color(0.94, 0.84, 0.95),
+	"B": Color(0.80, 0.82, 0.96),
 }
 ## How much darker a ticked cell is than an empty one.
 const TICKED_DARKEN := 0.30
@@ -165,12 +168,12 @@ static func _key(day: int, letter: String) -> String:
 	return "%d|%s" % [day, letter]
 
 
-## The letters a times string names, in M A E N order. An empty spec means every
-## time of day, exactly as CharacterSchedule.times_match reads it.
+## The letters a times string names, in M A E N B order. An empty spec means every
+## time of day but Bedtime, exactly as CharacterSchedule.times_match reads it.
 static func parse_times(spec: String) -> Array:
 	var text := spec.strip_edges()
 	if text == "" or text == "*":
-		return TIME_ORDER.duplicate()
+		return DEFAULT_TIMES.duplicate()
 	var out: Array = []
 	for letter in TIME_ORDER:
 		if text.contains(str(letter)):
@@ -681,7 +684,7 @@ static func summarise(slots: Array) -> String:
 		var days := str(slot.get("days", "")).strip_edges()
 		var times := str(slot.get("times", "")).replace(",", "")
 		if times == "":
-			times = "MAEN"
+			times = "".join(DEFAULT_TIMES)
 		parts.append("%s  %s" % ["every day" if days == "" else days, times])
 	return "   +   ".join(parts)
 

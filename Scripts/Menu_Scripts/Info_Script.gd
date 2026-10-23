@@ -266,7 +266,7 @@ func _build_chrome() -> void:
 	UIKit.adopt_button(medals_btn, bars["header"].right, "neutral", false)   # ISSUE #379
 	medals_btn.custom_minimum_size.x = MEDALS_BTN_W
 
-	# The Bag (key items: rods, permits, the starter box and set). Built here rather
+	# The Bag (key items: rods, permits). Built here rather
 	# than in the scene -- it is a plain button and the header slot lays it out.
 	var bag_btn := Button.new()
 	bag_btn.name = "bag_button"

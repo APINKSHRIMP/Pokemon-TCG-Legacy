@@ -529,7 +529,7 @@ func _process_flyers(delta: float, time_name: String) -> void:
 
 ## Longest quiet spell before a guaranteed flock: longer at night.
 func _guarantee_seconds(time_name: String) -> float:
-	return FLYER_GUARANTEE_SECONDS_NIGHT if time_name == "Night" else FLYER_GUARANTEE_SECONDS
+	return FLYER_GUARANTEE_SECONDS_NIGHT if GameState.is_night_time(time_name) else FLYER_GUARANTEE_SECONDS
 
 
 ## The flyer table for this time of day ({} if there isn't one). In forced preview an

@@ -52,7 +52,7 @@ Which section a character sits in decides whether they're battleable. There's no
 |---|---|
 | `at` | `[x, y]` position |
 | `days` | `"3-6"` range · `"1,3,5"` list · `"2-8/2"` every other · `"4"` one day |
-| `times` | `M` Morning · `A` Afternoon · `E` Evening · `N` Night. Combine: `"M,A"` |
+| `times` | `M` Morning · `A` Afternoon · `E` Evening · `N` Night · `B` Bedtime. Combine: `"M,A"`. **Bedtime is opt-in**: no `times` means M,A,E,N, so only a character that lists `B` is out after Night |
 | `move` | bare pattern name, or `{ pattern, speed, distance, axis, radius }` |
 | `says` | `meet` · `repeat` · `first_win` · `rematch_win` · `loss` |
 | `requires` | a gate — see below |

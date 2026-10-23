@@ -4019,7 +4019,7 @@ func _open_match_log() -> void:
 
 	_match_log_panel = MatchLogPanel.new()
 	_match_log_layer.add_child(_match_log_panel)
-	_match_log_panel.configure(_match_msgbox_theme_key(), GameState.current_opponent_name)
+	_match_log_panel.configure(_match_msgbox_theme_key(), GameState.battle_display_name(GameState.current_opponent_name))
 	_match_log_panel.set_entries(_match_log)
 	_match_log_panel.scroll_to_bottom()
 

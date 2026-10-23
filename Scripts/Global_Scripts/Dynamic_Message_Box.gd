@@ -727,7 +727,8 @@ func show_as_plain() -> void:
 ## its idle-down frame is cropped to its opaque pixels and dropped in the well.
 ## Pass "" for both to remove the pill.
 func set_name_pill(display_name: String, sprite: String = "") -> void:
-	_name_text = display_name
+	# "Ellie 3" reads "Ellie": the number only tells repeat encounters apart.
+	_name_text = GameState.battle_display_name(display_name) if display_name != "" else ""
 	_name_sprite = sprite
 	_rebuild_chips()
 
@@ -1101,6 +1102,7 @@ static func sprite_icon(sprite_name: String) -> Texture2D:
 # Write them in the `says` blocks of NPC_and_Opponent_Data/Characters/*.json.
 #
 #   [TIME]  the time of day, capitalised   -> Morning / Afternoon / Evening / Night
+#           (Bedtime reads as Night: "Good Night", never "Good Bedtime")
 #   [time]  the same, lowercase, for mid-sentence use ("see you in the [time]")
 #   [NAME]  the player's trainer name
 #
@@ -1129,6 +1131,8 @@ func _resolve_tokens(text: String) -> String:
 	if out.contains(TOKEN_TIME_UPPER) or out.contains(TOKEN_TIME_LOWER):
 		# GameState.get_time() already returns "Morning"/"Afternoon"/"Evening"/"Night".
 		var tod := GameState.get_time()
+		if tod == "Bedtime":
+			tod = "Night"
 		out = out.replace(TOKEN_TIME_UPPER, tod)
 		out = out.replace(TOKEN_TIME_LOWER, tod.to_lower())
 

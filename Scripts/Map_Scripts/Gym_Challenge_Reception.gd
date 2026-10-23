@@ -15,8 +15,6 @@ func get_bgm_path() -> String:        return SoundManagerScript.BGM_GYM_CHALLENG
 func get_map_data_name() -> String: return "Gym_Challenge_Reception"
 
 func _scene_setup():
-	var time_of_day: String = GameState.get_time()
-	# ISSUE #127: cash is shown on the message box chip row while talking to the shopkeeper.
 	# If arriving from the plaza (not from the hall), flag the audience for partial regen
 	if GameState.entering_from != "Gym_Challenge_Hall":
 		GameState.progress["gym_challenge_audience_from_plaza"] = true

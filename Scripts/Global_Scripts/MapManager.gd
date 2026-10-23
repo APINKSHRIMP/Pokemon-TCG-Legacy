@@ -11,8 +11,8 @@ var shopkeeper_scene = preload("res://Scenes/Objects/Shopkeeper_Object_Scene.tsc
 const CONSTANT_DATA_PATH := "res://NPC_and_Opponent_Data/All_NPC_Constant_Data.json"
 const SHOP_CONFIG_PATH   := "res://NPC_and_Opponent_Data/Shop_Config/shops.json"
 
-# TWEAKABLE — body-text size for the "big announcement" messagebox style (the starter box upstairs,
-# and since ISSUE #104 every "You received the X" gift/purchase notice). Normal dialogue is 28.
+# TWEAKABLE — body-text size for the "big announcement" messagebox style (story notices such as
+# Olly's deck hand-over, and since ISSUE #104 every "You received the X" gift/purchase notice). Normal dialogue is 28.
 # This is a CEILING: set_body_text() shrinks past it if the text wouldn't otherwise fit the panel.
 const LARGE_MESSAGE_FONT_SIZE := 40
 
@@ -47,6 +47,11 @@ var cutscene_active: bool = false
 # speaker has no node in the world to read those off, so the box is told directly.
 # Empty at all other times, and _apply_actor_chips() then behaves exactly as before.
 var cutscene_speaker: Dictionary = {}
+
+# opponent_name -> Callable(opponent_node). Talking to a listed opponent calls it
+# instead of opening their challenge box (the café breakfast cutscene). Registered
+# by the map script after its own _ready(); initialise() clears it every map load.
+var opponent_interact_overrides: Dictionary = {}
 
 # True while the deck-validation popup is open. Blocks the regular
 # opponent/NPC interact handlers so the player can't re-trigger a
@@ -191,6 +196,17 @@ const GIFT_COSTUME_TOTAL_DURATION := 1.5
 const CARD_FLY_TIME := 0.7
 const CARD_FLY_STAGGER := 0.2
 const CARD_FLY_FROM_Y := 260.0
+# Behind each flying card a trail of CARD_FLY_TRAIL copies follows it in, CARD_FLY_TRAIL_GAP
+# apart, each doing the same up-and-settle and landing in a pile under the front card.
+# CARD_FLY_TRAIL_STEP is how far each copy in the pile sits from the one above it (0 = hidden).
+const CARD_FLY_TRAIL := 20
+const CARD_FLY_TRAIL_GAP := 0.06
+const CARD_FLY_TRAIL_STEP := Vector2(0.8, -0.8)
+# Each trail copy, on reaching its pile spot, carries on up into a small loop -- off to a
+# random side, over the top, down and round -- before tucking in behind the front card.
+const CARD_FLY_LOOP_RADIUS_MIN := 12.0
+const CARD_FLY_LOOP_RADIUS_MAX := 22.0
+const CARD_FLY_LOOP_SHARE := 0.6    # of the flight spent on the loop (the rest is the rise)
 
 # Set IDs that are promo sets — these use "<set_name> <card_name>"
 # instead of the usual "<set_name> set <card_name>"
@@ -329,6 +345,7 @@ func initialise(
 	# never leave the player permanently frozen.
 	cutscene_active = false
 	cutscene_speaker = {}
+	opponent_interact_overrides = {}
 	# The old scene's fishing sequence died with it.
 	_fishing = null
 	# A fresh map is never paused: the flag belongs to a menu overlay over the OLD
@@ -1163,7 +1180,7 @@ func show_message_then(text: String, on_ok: Callable) -> void:
 # ISSUE #136: an OK dialog spoken BY a named NPC, for use after the speaker has already been
 # cleared. _on_yes_pressed() calls _hide_message() before it runs the pending confirm callback,
 # and _hide_message() nulls current_npc -- so anything a shop/NPC says as the *result* of a Yes
-# (the shopkeeper's thank-you after buying the starter set) came out as a chipless grey
+# (a shopkeeper's thank-you after a purchase) came out as a chipless grey
 # interactables box instead of that NPC's own coloured, name-chipped box. Re-seating the speaker
 # is all that is needed: _apply_actor_chips() then finds them again and themes the box normally.
 func show_npc_message_with_ok(npc: Node, text: String, font_size: int = 28) -> void:
@@ -1385,6 +1402,16 @@ func _face_player_toward_actor(actor: Node) -> void:
 func _on_player_interact(opponent: Node):
 	if message_panel.visible or _validation_popup_active:
 		return
+	# A story opponent whose talk is a cutscene (the café breakfast): the map's script
+	# registered a handler by name, and it takes over instead of the Yes/No challenge.
+	var override: Callable = opponent_interact_overrides.get(opponent.opponent_name, Callable())
+	if override.is_valid():
+		if cutscene_active:
+			return
+		opponent.pause_and_face(_player.global_position)
+		_face_player_toward_actor(opponent)
+		override.call(opponent)
+		return
 	current_opponent = opponent
 	opponent.pause_and_face(_player.global_position)
 	# ISSUE #57: the player also turns to face the opponent, not just the opponent facing the player.
@@ -1570,7 +1597,7 @@ func _on_ok_pressed():
 		PackOpeningManager.open_packs(arts)
 		return
 
-	# One-shot interactable callback (e.g. multi-step starter box sequence)
+	# One-shot callback for a multi-step message (e.g. the note through the door)
 	if _pending_ok_action.is_valid():
 		var cb := _pending_ok_action
 		_pending_ok_action = Callable()
@@ -2048,7 +2075,7 @@ func _show_gift_display(text: String, image_paths: Array, kind: String) -> void:
 		entries.append({"texture": tex, "size": actual_size, "card_uid": card_uid})
 
 	if entries.is_empty():
-		# ISSUE #104: gift notices use the big centred style, matching the starter box upstairs.
+		# ISSUE #104: gift notices use the big centred style (_show_large_message_with_ok).
 		_show_large_message_with_ok(text)
 		return
 
@@ -2099,8 +2126,8 @@ func _show_gift_display(text: String, image_paths: Array, kind: String) -> void:
 		_ui_layer.move_child(message_panel, _ui_layer.get_child_count() - 1)
 
 	# Show the message panel, but NOT dismissable yet — the reveal animation must finish first.
-	# ISSUE #104: "You received the X" uses the same large centred style as the starter box
-	# upstairs (_show_large_message_with_ok) instead of ordinary 28pt dialogue.
+	# ISSUE #104: "You received the X" uses the large centred announcement style
+	# (_show_large_message_with_ok) instead of ordinary 28pt dialogue.
 	# ISSUE #118 FIX ACTIVE: the gift notice is the GAME talking, not the NPC who handed it
 	# over, so it drops the speaker's name chip and colour and shows the plain grey box.
 	_show_large_message_with_ok(text)
@@ -2131,10 +2158,22 @@ func _show_gift_display(text: String, image_paths: Array, kind: String) -> void:
 			"card_fly":
 				var i: int = spawned_rects.find(sr)
 				var rest: Vector2 = rect_ref.position
+				var column_delay: float = CARD_FLY_STAGGER * i
+				# The trail: copies under the front card, the last to arrive at the bottom of the pile.
+				for k in range(1, CARD_FLY_TRAIL + 1):
+					var copy := rect_ref.duplicate() as TextureRect
+					_gift_display_container.add_child(copy)
+					_gift_display_container.move_child(copy, 0)
+					var pile: Vector2 = rest + CARD_FLY_TRAIL_STEP * k
+					_gift_reveal_finals.append({"rect": copy, "texture": copy.texture,
+							"modulate": Color(1, 1, 1, 1), "position": pile})
+					_gift_reveal_tweens.append(_fly_in_with_loop(copy, pile + Vector2(0.0, CARD_FLY_FROM_Y),
+							pile, GameState.item_time(CARD_FLY_TIME),
+							GameState.item_time(column_delay + CARD_FLY_TRAIL_GAP * k)))
 				_gift_reveal_finals.append({"rect": rect_ref, "texture": rect_ref.texture,
 						"modulate": Color(1, 1, 1, 1), "position": rest})
 				_gift_reveal_tweens.append(UIKit.fly_in(rect_ref, rest + Vector2(0.0, CARD_FLY_FROM_Y),
-						rest, GameState.item_time(CARD_FLY_TIME), GameState.item_time(CARD_FLY_STAGGER * i)))
+						rest, GameState.item_time(CARD_FLY_TIME), GameState.item_time(column_delay)))
 
 	# Wait for the longest animation to complete (scaled by item animation speed) OR a skip click.
 	var total_duration: float = 0.0
@@ -2143,7 +2182,8 @@ func _show_gift_display(text: String, image_paths: Array, kind: String) -> void:
 	elif kind == "card" or kind == "coin":
 		total_duration = GIFT_FLIP_TOTAL_DURATION
 	elif kind == "card_fly":
-		total_duration = CARD_FLY_TIME + CARD_FLY_STAGGER * maxi(0, spawned_rects.size() - 1)
+		total_duration = CARD_FLY_TIME + CARD_FLY_STAGGER * maxi(0, spawned_rects.size() - 1) \
+				+ CARD_FLY_TRAIL_GAP * CARD_FLY_TRAIL
 	total_duration = GameState.item_time(total_duration)  # ISSUE #34
 	if total_duration > 0.0:
 		var elapsed: float = 0.0
@@ -2253,6 +2293,36 @@ func _play_card_flip_with_holo(rect: TextureRect, back_tex: Texture2D, card_tex:
 
 # Fades a costume in: starts fully blacked-out for 0.5s, then over 1s
 # tweens modulate back to white.
+## A trail energy's flight: straight up to `to`, then one loop of a small circle that
+## starts and ends there -- up and off to a random side, over the top, down and back
+## round underneath -- settling on `to`. Fades in on the way up. Returns the move tween.
+func _fly_in_with_loop(node: Control, from: Vector2, to: Vector2, duration: float,
+		delay: float) -> Tween:
+	node.position = from
+	node.modulate.a = 0.0
+	var side: float = 1.0 if randf() < 0.5 else -1.0
+	var radius: float = randf_range(CARD_FLY_LOOP_RADIUS_MIN, CARD_FLY_LOOP_RADIUS_MAX)
+	# The circle's centre sits beside `to`, so the loop leaves it heading straight up.
+	var centre: Vector2 = to + Vector2(side * radius, 0.0)
+	var start_angle: float = PI if side > 0.0 else 0.0
+	var move := node.create_tween()
+	if delay > 0.0:
+		move.tween_interval(delay)
+	move.tween_property(node, "position", to, duration * (1.0 - CARD_FLY_LOOP_SHARE)) \
+		.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	# Clockwise from the left of the centre, anticlockwise from the right: both go up first.
+	move.tween_method(func(t: float) -> void:
+			var a: float = start_angle + side * TAU * t
+			node.position = centre + Vector2(cos(a), sin(a)) * radius,
+		0.0, 1.0, duration * CARD_FLY_LOOP_SHARE) \
+		.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	var fade := node.create_tween()
+	if delay > 0.0:
+		fade.tween_interval(delay)
+	fade.tween_property(node, "modulate:a", 1.0, duration * 0.6)
+	return move
+
+
 func _play_costume_fadein(rect: TextureRect) -> void:
 	if rect == null or not is_instance_valid(rect):
 		return
@@ -3110,7 +3180,7 @@ func _unhandled_input(event: InputEvent) -> void:
 
 	# DEL opens the debug menu, which has a button for everything. The most used ones
 	# also keep a key of their own:
-	#   H J K L       time of day: Morning / Afternoon / Evening / Night
+	#   H J K L ;     time of day: Morning / Afternoon / Evening / Night / Bedtime
 	#   1-9 0 - =     day 1-12        [   day 0 (the match-effects test day)
 	#   F             placement tool, edit mode
 	#   N             placement tool, straight to the create screen
@@ -3131,6 +3201,7 @@ func _unhandled_input(event: InputEvent) -> void:
 		KEY_J: new_time = "Afternoon"
 		KEY_K: new_time = "Evening"
 		KEY_L: new_time = "Night"
+		KEY_SEMICOLON: new_time = "Bedtime"
 		KEY_1, KEY_KP_1: new_date = 1
 		KEY_2, KEY_KP_2: new_date = 2
 		KEY_3, KEY_KP_3: new_date = 3
@@ -3343,6 +3414,14 @@ func _start_test_match(current: Node) -> void:
 # Reloads the supplied map scene, restoring the player to their current
 # spot/direction via the same menu-return path every map scene honours
 # in its _ready().
+## Reloads the current map with the player standing where they are now, so its
+## date/time cast and colour grade are rebuilt (a story beat that moves the clock on).
+func reload_map_in_place() -> void:
+	var current := get_tree().current_scene
+	if current != null:
+		_debug_reload_map_in_place(current)
+
+
 func _debug_reload_map_in_place(current: Node) -> void:
 	var scene_path := String(current.scene_file_path)
 	var pos: Vector2 = Vector2.ZERO

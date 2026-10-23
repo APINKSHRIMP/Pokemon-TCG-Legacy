@@ -3,9 +3,10 @@ shader_type canvas_item;
 // Every world CanvasItem on an outdoor map wears this (Time_Of_Day_Grade.grade_node). The
 // grade runs before Godot adds PointLight2D light, so street lights stay at full strength.
 //
-// TileMapLayers also get the sheet's "_Lights.png" overlay: same size and layout as the
-// sheet, transparent except lit windows / lamps. Those pixels are drawn on top UNGRADED,
-// scaled by tod_curve.w, so every placed tile lights up without any extra tile painting.
+// TileMapLayers also get the sheet's "_Open_Lights.png" (or, at Bedtime, "_Closed_Lights.png")
+// overlay: same size and layout as the sheet, transparent except lit windows / lamps. Those
+// pixels are drawn on top UNGRADED, scaled by tod_curve.w, so every placed tile lights up
+// without any extra tile painting. Above 1, tod_curve.w brightens the lit pixels instead.
 
 #include "res://Scripts/Shaders/Time_Of_Day_Grade.gdshaderinc"
 
@@ -41,10 +42,11 @@ void fragment() {
 			px -= floor(px / (tile_px + 2.0)) * 2.0 + 1.0;
 		}
 		vec4 lit = texture(lights_texture, px / vec2(textureSize(lights_texture, 0)));
-		float k = lit.a * tod_curve.w * COLOR.a;  // COLOR.a: still honours modulate fades
+		float k = lit.a * min(tod_curve.w, 1.0) * COLOR.a;  // COLOR.a: still honours modulate fades
+		vec3 lit_rgb = lit.rgb * max(tod_curve.w, 1.0);     // Bedtime's 10% brighter lights
 		float a = k + c.a * (1.0 - k);
 		if (a > 0.0) {
-			c.rgb = (lit.rgb * node_modulate.rgb * k + c.rgb * c.a * (1.0 - k)) / a;
+			c.rgb = (lit_rgb * node_modulate.rgb * k + c.rgb * c.a * (1.0 - k)) / a;
 		}
 		c.a = a;
 	}

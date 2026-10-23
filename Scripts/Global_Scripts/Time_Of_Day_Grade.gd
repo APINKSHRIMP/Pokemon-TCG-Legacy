@@ -1,14 +1,16 @@
 extends RefCounted
 
 ## TIME-OF-DAY COLOUR GRADE
-## Outdoor maps are drawn once, in Afternoon colours. Morning / Evening / Night are a colour
+## Outdoor maps are drawn once, in Afternoon colours. Morning / Evening / Night / Bedtime are a colour
 ## grade (World_Time_Grade.gdshader) worn by every world CanvasItem, driven by four shader
 ## globals this script writes. BaseMapScene wires it up: maps that return true from
 ## uses_time_of_day() are graded, everything else (interiors, menus, battles) is left alone.
 ##
-## Lights: a sheet "X.png" may have "X_Lights.png" beside it -- same
+## Lights: a sheet "X.png" may have "X_Open_Lights.png" beside it -- same
 ## size and layout, transparent except lit windows / lamps. Every TileMapLayer drawing from
-## that sheet shows those pixels ungraded, at LIGHTS[time] strength.
+## that sheet shows those pixels ungraded, at LIGHTS[time] strength. At Bedtime the shops
+## are shut, so "X_Closed_Lights.png" is drawn instead (same layout, fewer lit pixels:
+## street lights on, shop windows off); a sheet without one keeps its open lights.
 ##
 ## Opting a node out: add it to the "no_time_grade" group BEFORE it enters the tree (talk
 ## bubbles and SpeechEmotes do). Nodes that already have a material are skipped too.
@@ -52,26 +54,43 @@ const GRADES := {
 		"blue":  Vector4(0.016, 0.290, 0.554, -0.101),
 		"curve": Vector3(0.277, 0.342, 0.225),
 	},
+	"Bedtime": {
+		# The late hours after Night: Night's grade with the blue row x1.10 (a little more
+		# blue); the extra darkness is BRIGHTNESS below (Night's x0.75).
+		"red":   Vector4(0.636, -0.140, -0.016, -0.086),
+		"green": Vector4(-0.128, 0.592, -0.062, -0.082),
+		"blue":  Vector4(0.018, 0.319, 0.609, -0.101),
+		"curve": Vector3(0.277, 0.342, 0.225),
+	},
 }
 
 ## TWEAKABLE -- how far each grade is pushed from Afternoon. 1.0 = as fitted; 1.4 = 40%
 ## further (Morning, so it reads clearly different from Afternoon); 0.5 = halfway back.
-const STRENGTH := {"Morning": 1.4, "Afternoon": 1.0, "Evening": 1.0, "Night": 1.0}
+const STRENGTH := {"Morning": 1.4, "Afternoon": 1.0, "Evening": 1.0, "Night": 1.0, "Bedtime": 1.0}
 
 ## TWEAKABLE -- overall brightness multiplier on top of the grade (0.85 = 15% darker).
 ## ISSUE #386: Evening back to 1.0 (it had been darkened to 0.85).
-const BRIGHTNESS := {"Morning": 1.0, "Afternoon": 1.0, "Evening": 1.0, "Night": 0.85}
+## Bedtime is 25% darker than Night: 0.85 x 0.75.
+const BRIGHTNESS := {"Morning": 1.0, "Afternoon": 1.0, "Evening": 1.0, "Night": 0.85, "Bedtime": 0.64}
 
-## TWEAKABLE -- how strongly the "_Lights.png" overlays show (0 = off, 1 = full).
-const LIGHTS := {"Morning": 0.0, "Afternoon": 0.0, "Evening": 0.5, "Night": 1.0}
+## TWEAKABLE -- how strongly the lights overlays show (0 = off, 1 = full). Above 1 the lit
+## pixels are fully shown AND brightened by that much (Bedtime 1.1 = 10% brighter).
+const LIGHTS := {"Morning": 0.0, "Afternoon": 0.0, "Evening": 0.5, "Night": 1.0, "Bedtime": 1.1}
+
+## Which lights sheet each time draws: "_Open_Lights.png" normally, "_Closed_Lights.png"
+## once the shops have shut. A time not listed here uses the open sheet.
+const OPEN_LIGHTS_SUFFIX := "_Open_Lights.png"
+const CLOSED_LIGHTS_SUFFIX := "_Closed_Lights.png"
+const CLOSED_LIGHTS_TIMES := ["Bedtime"]
 
 ## TWEAKABLE -- atlas cell size in px, used to undo Godot's tile-atlas padding.
 const TILE_PX := 16.0
 
 ## ---- PointLight2D styling (style_lights) ------------------------------------------
 ## TWEAKABLE -- light strength per time. Lights are only switched on (by each map's
-## set_time_of_day) at Evening and Night; Evening is the dusk "just came on" level.
-const LIGHT_ENERGY := {"Morning": 0.0, "Afternoon": 0.0, "Evening": 0.45, "Night": 1.0}
+## set_time_of_day) at Evening, Night and Bedtime; Evening is the dusk "just came on" level,
+## Bedtime 10% up on Night.
+const LIGHT_ENERGY := {"Morning": 0.0, "Afternoon": 0.0, "Evening": 0.45, "Night": 1.0, "Bedtime": 1.1}
 
 ## TWEAKABLE -- the round street / garden / harbour / prom glows (additive, radial
 ## gradient) are redrawn as a warm pool: a bright core easing smoothly out to nothing,
@@ -94,7 +113,8 @@ const POOL_TEXTURE_PX := 256
 static var _pool_textures := {}   # old glow texture -> its pool replacement
 
 static var _world_material: ShaderMaterial = null
-static var _sheet_materials := {}   # sheet texture path -> ShaderMaterial (with or without lights)
+static var _sheet_materials := {}   # sheet path + lights suffix -> ShaderMaterial (with or without lights)
+static var _lights_suffix := OPEN_LIGHTS_SUFFIX   # set by apply_time, read when a tilemap is graded
 
 
 ## Writes the four globals. Unknown / empty time (interiors) = identity, lights off.
@@ -110,6 +130,7 @@ static func apply_time(time: String) -> void:
 	for key in ["red", "green", "blue"]:
 		rows[key] = (id[key] + (g[key] - id[key]) * k) * b
 	var c: Vector3 = g["curve"] * k * b
+	_lights_suffix = CLOSED_LIGHTS_SUFFIX if CLOSED_LIGHTS_TIMES.has(time) else OPEN_LIGHTS_SUFFIX
 	RenderingServer.global_shader_parameter_set("tod_red", rows["red"])
 	RenderingServer.global_shader_parameter_set("tod_green", rows["green"])
 	RenderingServer.global_shader_parameter_set("tod_blue", rows["blue"])
@@ -160,16 +181,19 @@ static func _shared_world_material() -> ShaderMaterial:
 	return _world_material
 
 
-## One material per sheet so its "_Lights.png" can ride along; sheets without one share the
-## plain world material.
+## One material per sheet (and lights sheet) so its lights overlay can ride along; sheets
+## without one share the plain world material. Closed lights fall back to the open sheet.
 static func _material_for_tilemap(layer: TileMapLayer) -> ShaderMaterial:
 	var sheet := _sheet_path(layer.tile_set)
 	if sheet == "":
 		return _shared_world_material()
-	if _sheet_materials.has(sheet):
-		return _sheet_materials[sheet]
+	var cache_key := sheet + "|" + _lights_suffix
+	if _sheet_materials.has(cache_key):
+		return _sheet_materials[cache_key]
 	var mat := _shared_world_material()
-	var lights_path := sheet.get_basename() + "_Lights.png"
+	var lights_path := sheet.get_basename() + _lights_suffix
+	if not ResourceLoader.exists(lights_path):
+		lights_path = sheet.get_basename() + OPEN_LIGHTS_SUFFIX
 	if ResourceLoader.exists(lights_path):
 		mat = ShaderMaterial.new()
 		mat.shader = WORLD_SHADER
@@ -179,7 +203,7 @@ static func _material_for_tilemap(layer: TileMapLayer) -> ShaderMaterial:
 		mat.set_shader_parameter("tile_px", TILE_PX)
 		var atlas := _first_atlas(layer.tile_set)
 		mat.set_shader_parameter("atlas_padded", atlas != null and atlas.use_texture_padding)
-	_sheet_materials[sheet] = mat
+	_sheet_materials[cache_key] = mat
 	return mat
 
 

@@ -13,8 +13,12 @@ extends RefCounted
 const DIR := "res://NPC_and_Opponent_Data/Characters/"
 
 const TIME_LETTERS := {
-	"M": "Morning", "A": "Afternoon", "E": "Evening", "N": "Night",
+	"M": "Morning", "A": "Afternoon", "E": "Evening", "N": "Night", "B": "Bedtime",
 }
+
+## Bedtime is opt-in: nobody is out that late unless their times name "B". An empty
+## or "*" times spec means the four daytime slots, never this one.
+const OPT_IN_TIMES := ["Bedtime"]
 
 ## Keys that describe the schedule itself rather than the character.
 const SCHEDULE_KEYS := ["when", "days", "times", "loop", "kind"]
@@ -92,13 +96,14 @@ static func days_match(spec: Variant, day: int) -> bool:
 	return false
 
 
-## "M,A" | "MAEN" | "E". An empty spec matches every time of day.
+## "M,A" | "MAEN" | "E" | "B". An empty spec matches every time of day except Bedtime,
+## which has to be named.
 static func times_match(spec: Variant, time_of_day: String) -> bool:
 	if spec == null:
-		return true
+		return not OPT_IN_TIMES.has(time_of_day)
 	var text := str(spec).strip_edges()
 	if text == "" or text == "*":
-		return true
+		return not OPT_IN_TIMES.has(time_of_day)
 	for i in text.length():
 		var ch := text[i]
 		if TIME_LETTERS.has(ch) and TIME_LETTERS[ch] == time_of_day:

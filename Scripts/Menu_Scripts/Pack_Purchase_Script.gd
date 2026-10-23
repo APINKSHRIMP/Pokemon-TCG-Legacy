@@ -498,6 +498,8 @@ func _on_buy_pressed() -> void:
 	purchased_pack_art = pack_id + "_" + selected_pack_letter
 	player_cash -= cost
 	GameState.add_cash(-cost)
+	if GameState.current_shop_id == "card_mart":
+		CardMartDuoCutscene.note_pack_bought()
 
 	SoundManagerScript.play_sfx(SoundManagerScript.SFX_gamemode_select)
 

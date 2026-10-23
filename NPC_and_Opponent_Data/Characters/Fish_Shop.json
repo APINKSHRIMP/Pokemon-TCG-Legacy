@@ -1,7 +1,7 @@
 {
   "_help": [
     "days    : '3-6' range | '1,3,5' list | '2-8/2' every other | '4' one day",
-    "times   : M=Morning A=Afternoon E=Evening N=Night. Combine: 'M,A' or 'M,A,E,N'",
+    "times   : M=Morning A=Afternoon E=Evening N=Night B=Bedtime. Combine: 'M,A' or 'M,A,E,N'. No times = M,A,E,N: Bedtime must be listed",
     "move    : bare pattern name, or {pattern, speed, distance, axis, radius}",
     "requires: 'beaten: NAME' | 'met: NAME' | 'flag: NAME', any prefixed with 'not '.",
     "          Compound gates use the longhand object form.",
@@ -13,7 +13,9 @@
     "",
     "WHO IS BEHIND THE COUNTER. Exactly one of Olly / Alexander at every time slot. The",
     "calendar mirrors Celeste Harbour's (authored through day 8, days 5-8 loop for ever):",
-    "  day 1 Olly M,A  Alexander E,N | 2 Alexander M,A  Olly E,N | 3 Olly M,E  Alexander A,N",
+    "  day 1 Olly M,A  Alexander E,N | 2 Olly all day, no Alexander (bank holiday) | 3 Olly M,E  Alexander A,N",
+    "  Day 2 Morning: Olly only once flag cafe_olly_gone is up (he is at the cafe until then,",
+    "  and BaseMapScene._locked_door_text keeps the FISH door locked until he has been played).",
     "  4 Alexander M,A,E  Olly N | 5 Olly M,A  Alexander E,N | 6 Alexander M,E  Olly A,N",
     "  7 Olly M,E  Alexander A,N | 8 Alexander M,E  Olly A,N",
     "Both share shop_id 'fish_shop'. What they SAY is not here: it is milestone-driven,",
@@ -35,7 +37,8 @@
       "move": "idle_down",
       "when": [
         { "days": "1", "times": "M,A" },
-        { "days": "2", "times": "E,N" },
+        { "days": "2", "times": "M", "requires": "flag: cafe_olly_gone" },
+        { "days": "2", "times": "A,E,N" },
         { "days": "3", "times": "M,E" },
         { "days": "4", "times": "N" },
         { "days": "5", "times": "M,A" },
@@ -58,7 +61,6 @@
       "move": "idle_down",
       "when": [
         { "days": "1", "times": "E,N" },
-        { "days": "2", "times": "M,A" },
         { "days": "3", "times": "A,N" },
         { "days": "4", "times": "M,A,E" },
         { "days": "5", "times": "E,N" },

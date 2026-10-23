@@ -107,10 +107,10 @@ func _build() -> void:
 func _build_world_column(col: VBoxContainer) -> void:
 	_heading(col, "TIME OF DAY")
 	var row: HBoxContainer = null
-	for i in OverworldPokemonData.TIMES_OF_DAY.size():
+	for i in GameState.TIMES_OF_DAY.size():
 		if i % 2 == 0:
 			row = _row(col)
-		var time_name := str(OverworldPokemonData.TIMES_OF_DAY[i])
+		var time_name := str(GameState.TIMES_OF_DAY[i])
 		_add_expanded(row, _button(time_name.to_upper(), func(): MapManager.debug_set_time(time_name)))
 
 	_heading(col, "DATE")

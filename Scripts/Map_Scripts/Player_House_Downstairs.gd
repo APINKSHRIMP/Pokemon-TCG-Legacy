@@ -7,6 +7,15 @@ const NOTE_FOUND_TEXT := "Huh, a note was put through the door"
 const NOTE_AFTER_TEXT := "I'll call mum tomorrow..."
 const NOTE_LOOK_BACK_DELAY := 0.5   # after the fade in, before the player turns back to the door
 
+# ── Morning 2: Ellie rings about breakfast at Café Mieux — TWEAKABLE ────────
+# Only for saves that woke up on day 1 ("new" / "rules"; CafeBreakfastCutscene.call_due).
+# It rings once the player has walked this far (world px) from where they came in, so
+# not the instant they arrive downstairs.
+const CAFE_CALL_ID := "cafe_call_ellie"
+const CAFE_CALL_TRIGGER_DISTANCE := 32.0
+
+var _cafe_call_from: Vector2 = Vector2.INF
+
 
 func get_scene_path() -> String:      return SCENE_PATH
 func get_bgm_path() -> String:        return SoundManagerScript.BGM_PLAYER_HOME
@@ -17,6 +26,31 @@ func _ready() -> void:
 		GameState.progress.erase("show_intro_house_message")
 		GameState.save_progress()
 		_play_note_through_door()
+	elif CafeBreakfastCutscene.call_due():
+		_cafe_call_from = _player.global_position
+
+
+func _process(_delta: float) -> void:
+	if _cafe_call_from == Vector2.INF:
+		return
+	if _player.global_position.distance_to(_cafe_call_from) >= CAFE_CALL_TRIGGER_DISTANCE:
+		_cafe_call_from = Vector2.INF
+		_play_cafe_call()
+
+
+## Ellie's call. The player stops where they are until it hangs up; only then is it
+## marked as taken, so a quit mid-call rings again next time.
+func _play_cafe_call() -> void:
+	_player.lock_movement()
+	MapManager.cutscene_active = true   # keeps the menu shut for the call
+	var call := PhoneCall.play_from_data(self, CAFE_CALL_ID)
+	if call != null and not call.is_finished():
+		await call.finished
+	if not is_inside_tree():
+		return
+	GameState.set_flag(CafeBreakfastCutscene.CALL_DONE_FLAG)
+	MapManager.cutscene_active = false
+	_player.unlock_movement()
 
 
 ## The taxi intro walks the player in through the front door. A beat, they look back

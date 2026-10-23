@@ -132,6 +132,7 @@ const SWIM_SPEED_LIMIT := 100
 ## A map's flyers and every spawn point have exactly one table per time of day, keyed
 ## by the names GameState.get_time() returns. A Pokémon seen at two times is listed in
 ## both tables; an empty table means nothing spawns at that time.
+## Bedtime has no tables of its own: it reads the Night ones (time_table).
 const TIMES_OF_DAY := ["Morning", "Afternoon", "Evening", "Night"]
 
 ## Starting chance / interval of a brand new table. A new spawn point starts at 100%
@@ -378,6 +379,8 @@ static func normalise_fishing_tables(tables) -> Dictionary:
 
 ## One time's table out of a four-table dictionary ({} if it isn't there).
 static func time_table(tables, time_name: String) -> Dictionary:
+	if time_name == "Bedtime":
+		time_name = "Night"
 	var table = tables.get(time_name) if tables is Dictionary else null
 	return table if table is Dictionary else {}
 

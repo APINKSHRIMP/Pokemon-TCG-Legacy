@@ -1,7 +1,7 @@
 {
   "_help": [
     "days    : '3-6' range | '1,3,5' list | '2-8/2' every other | '4' one day",
-    "times   : M=Morning A=Afternoon E=Evening N=Night. Combine: 'M,A' or 'M,A,E,N'",
+    "times   : M=Morning A=Afternoon E=Evening N=Night B=Bedtime. Combine: 'M,A' or 'M,A,E,N'. No times = M,A,E,N: Bedtime must be listed",
     "move    : bare pattern name, or {pattern, speed, distance, axis, radius}",
     "requires: 'beaten: NAME' | 'met: NAME' | 'flag: NAME', any prefixed with 'not '.",
     "          Compound gates use the longhand object form.",
@@ -1684,6 +1684,74 @@
       "days": "1",
       "times": "E",
       "at": [-1759, 691]
+    },
+    "Bakushin Sailor": {
+      "says": {
+        "meet": "I help run our private boat tours. If you buy a travel pass you'll get unlimited boat and train travel with us for any of our routes.",
+        "repeat": "An annual travel pass can be quite expensive, but if you're any good at the Pokemon TCG you should try entering the Gym Hero Challenge. First place gets an annual travel pass for free!"
+      },
+      "move": "random_wander",
+      "when": [
+        {
+          "days": "1,8,12",
+          "times": "M,A"
+        },
+        {
+          "days": "2",
+          "times": "A,E"
+        },
+        {
+          "days": "3",
+          "times": "M"
+        },
+        {
+          "days": "4",
+          "times": "A"
+        },
+        {
+          "days": "5,9",
+          "times": "E"
+        },
+        {
+          "days": "7,11",
+          "times": "M,A,E"
+        }
+      ],
+      "at": [3314, 1511]
+    },
+    "Waitress": {
+      "says": {
+        "meet": "I've got a pretty easy job and I get paid well to do it so I don't have any complaints.",
+        "repeat": "I get to meet lot's of people doing this job."
+      },
+      "move": "random_wander",
+      "when": [
+        {
+          "days": "1,8,12",
+          "times": "E"
+        },
+        {
+          "days": "2",
+          "times": "M"
+        },
+        {
+          "days": "3",
+          "times": "A,E"
+        },
+        {
+          "days": "4",
+          "times": "M,E"
+        },
+        {
+          "days": "5,9",
+          "times": "M,A"
+        },
+        {
+          "days": "6,10",
+          "times": "M,A,E"
+        }
+      ],
+      "at": [3290, 1510]
     }
   },
   "opponents": {
@@ -1771,7 +1839,11 @@
       },
       "when": [
         {
-          "days": "2-3,5-7",
+          "days": "2",
+          "times": "A"
+        },
+        {
+          "days": "3,5-7",
           "times": "M,A"
         },
         {
@@ -1783,7 +1855,9 @@
             "repeat": "We normally come to the beach every day to play!"
           }
         }
-      ]
+      ],
+      "sleeve": "Pikachu_Face",
+      "sleeve_reward": "Pikachu_Face"
     },
     "Beach Kid Timothy": {
       "at": [450, 2380],
@@ -1797,7 +1871,11 @@
       },
       "when": [
         {
-          "days": "2-3,5-7",
+          "days": "2",
+          "times": "A"
+        },
+        {
+          "days": "3,5-7",
           "times": "M,A"
         },
         {
@@ -1809,7 +1887,9 @@
             "repeat": "I wish we could stay and play all day."
           }
         }
-      ]
+      ],
+      "sleeve": "Pikachu_Pixel",
+      "sleeve_reward": "Pikachu_Pixel"
     },
     "Birdspotter Gregg": {
       "at": [1640, 2340],
@@ -1845,7 +1925,11 @@
       "when": [
         {
           "days": "2",
-          "times": "M,A,E"
+          "times": "A,E"
+        },
+        {
+          "days": "3,7",
+          "times": "M"
         },
         {
           "days": "5",
@@ -1854,12 +1938,9 @@
         {
           "days": "6",
           "times": "A,E,N"
-        },
-        {
-          "days": "3,7",
-          "times": "M"
         }
-      ]
+      ],
+      "sleeve": "Pokeball_3"
     },
     "Bug Catcher Alex": {
       "at": [1625, 2180],
@@ -2442,12 +2523,16 @@
           "times": "M,A,E"
         },
         {
-          "days": "2,6",
-          "times": "M,A"
+          "days": "2",
+          "times": "A"
         },
         {
           "days": "4,8",
           "times": "M"
+        },
+        {
+          "days": "6",
+          "times": "M,A"
         }
       ],
       "sleeve": "1_Default_English"
@@ -2495,7 +2580,7 @@
       ]
     },
     "Swimmer Todd": {
-      "at": [-300, 2580],
+      "at": [-398, 2591],
       "move": {
         "axis": "horizontal",
         "distance": 250,
@@ -2511,18 +2596,16 @@
       },
       "when": [
         {
-          "days": "2",
-          "times": "M,A,E"
-        },
-        {
-          "days": "6",
+          "days": "2,6",
           "times": "A,E"
         },
         {
           "days": "4,8",
           "times": "M"
         }
-      ]
+      ],
+      "sleeve": "Octillery",
+      "sleeve_reward": "Octillery"
     },
     "Tourist Alissa": {
       "at": [-366, 2270],
@@ -2628,7 +2711,15 @@
           "times": "M,A,E"
         },
         {
-          "days": "2,6",
+          "days": "2",
+          "times": "A"
+        },
+        {
+          "days": "5",
+          "times": "M"
+        },
+        {
+          "days": "6",
           "times": "M,A"
         }
       ],
@@ -2646,6 +2737,64 @@
       "days": "1-3",
       "loop": false,
       "placeholder": true
+    },
+    "Janitor Christian": {
+      "says": {
+        "meet": "I'm not allowed to enter the Gym Hero Challenge but I love to play the TCG.",
+        "repeat": "I'm on my break at this time every day if you want another match.",
+        "first_win": "I wouldn't have stood a chance in the challenge anyway.",
+        "rematch_win": "At least I enjoy playing.",
+        "loss": "I could have won the whole challenge too!"
+      },
+      "sleeve": "Slowpoke_2",
+      "sleeve_reward": "Slowpoke_2",
+      "move": "idle_right",
+      "days": "1-12",
+      "times": "A",
+      "at": [2931, 1363]
+    },
+    "Alexander 3": {
+      "says": {
+        "meet": "Oh you're finally here. You kept us waiting, we've been here for ages.",
+        "repeat": "Go on then sit down and play.",
+        "first_win": "Well... you must have just gotten really lucky that's all. If you're so lucky, see what you can get out of this pack",
+        "rematch_win": "Well... you must have just gotten really lucky that's all.",
+        "loss": "This game is too easy!"
+      },
+      "sleeve": "1_Default_English",
+      "move": "idle_right",
+      "days": "2",
+      "times": "M",
+      "at": [1981, 1094]
+    },
+    "Ellie 3": {
+      "says": {
+        "meet": "Finally! You're always late I swear. At least you're here now!",
+        "repeat": "Are you back and ready to play?",
+        "first_win": "I'm not even mad, I knew I wouldn't beat you! You'll know what to do with these cards better than I do.",
+        "rematch_win": "I'm not even mad, I knew I wouldn't beat you!",
+        "loss": "My first win! I can't believe I've just won for the first time!"
+      },
+      "sleeve": "1_Default_English",
+      "move": "idle_left",
+      "days": "2",
+      "times": "M",
+      "at": [2031, 1094]
+    },
+    "Olly 2": {
+      "says": {
+        "meet": "Hey! I'm glad you came out to join us.",
+        "repeat": "Hurry up, you know I've got to leave soon!",
+        "first_win": "I fell for that hook line and sinker... I have a few packs spare, you can have one.",
+        "rematch_win": "I fell for that hook line and sinker...",
+        "loss": "You can't beat the best!"
+      },
+      "sleeve": "1_Default_English",
+      "move": "idle_left",
+      "days": "2",
+      "times": "M",
+      "requires": "not flag: cafe_olly_gone",
+      "at": [2032, 1116]
     }
   }
 }

@@ -136,7 +136,7 @@ func _trigger(shape_name: String) -> void:
 # ============================================================
 
 func _interact_bed() -> void:
-	if GameState.get_time() == "Night":
+	if GameState.is_night_time():
 		MapManager.show_interactable_confirm(GameState.sleep_prompt_text(), Callable(self, "_do_sleep"))
 	else:
 		MapManager.show_interactable_message(BED_TOO_EARLY_TEXT)
@@ -157,7 +157,7 @@ func _do_sleep() -> void:
 		_player.get_current_direction()
 	)
 
-	# Sleep through the night: date +1 and Night -> Morning (the arrival night may sleep in).
+	# Sleep through the night: date +1 and Night/Bedtime -> Morning (the arrival night may sleep in).
 	GameState.sleep_until_next_day()
 
 	var tween := create_tween()

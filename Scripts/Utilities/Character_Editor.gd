@@ -71,6 +71,8 @@ const FOOTER_HEIGHT := 48
 const DECK_DIR := "res://NPC_and_Opponent_Data/Opponent_Deck_Data/"
 const CONSTANTS_PATH := "res://NPC_and_Opponent_Data/All_NPC_Constant_Data.json"
 const COIN_SHOP_PATH := "res://NPC_and_Opponent_Data/coin_shop_inventory.json"
+const COSMETIC_SHOP_PATH := "res://NPC_and_Opponent_Data/cosmetic_shop_inventory.json"
+const PROGRESS_SEED_PATH := "res://Player_Data/Player_Game_Progress.json"
 
 ## Gift types the form offers. `cash` and `energy_style` are deliberately left out
 ## -- cash gifts were dropped, and the five energy styles are years from being
@@ -117,6 +119,11 @@ var _existing_name: String = ""
 var _taken_names: Dictionary = {}
 ## Coin basename -> true for every coin already granted by anybody.
 var _taken_coins: Dictionary = {}
+## Sleeve basename -> Array of "where" notes, for every sleeve the player can already
+## get: starter sleeves, shop stock, opponent sleeve_reward and NPC sleeve gifts.
+## Only marked in the picker, never blocked -- an opponent's battle sleeve may
+## legitimately be one a shop also sells.
+var _used_sleeves: Dictionary = {}
 
 var _root: Control = null
 var _status: Label = null
@@ -162,6 +169,7 @@ func setup(map_data: String, mode: int, actor: Node2D = null,
 	layer = 129
 	_collect_taken_names()
 	_collect_taken_coins()
+	_collect_used_sleeves()
 	for name in reserved_names:
 		_taken_names[str(name).to_lower()] = true
 	for coin in reserved_coins:
@@ -262,6 +270,69 @@ func _note_coin(value: Variant) -> void:
 		text = text.get_basename()
 	if text != "":
 		_taken_coins[text] = true
+
+
+func _collect_used_sleeves() -> void:
+	for sleeve in _read_json(PROGRESS_SEED_PATH).get("sleeves", []):
+		_note_sleeve(sleeve, "starter")
+
+	var consts := _read_json(CONSTANTS_PATH)
+	for section in ["npcs", "opponents"]:
+		for name in consts.get(section, {}):
+			var body = consts[section][name]
+			if body is Dictionary:
+				_scan_body_for_sleeves(body, str(name))
+
+	for map_name in _character_files():
+		var doc := _read_json(CharacterSchedule.DIR + map_name + ".json")
+		for section in ["npcs", "opponents"]:
+			for name in doc.get(section, {}):
+				var body = doc[section][name]
+				if not (body is Dictionary):
+					continue
+				_scan_body_for_sleeves(body, str(name))
+				var rules = body.get("when")
+				if rules is Array:
+					for rule in rules:
+						if rule is Dictionary:
+							_scan_body_for_sleeves(rule, str(name))
+
+	# A shop block's "kind" is the default for its rows, a page's "kind" overrides
+	# that, and a row's own "kind" overrides both (cosmetic_shop_inventory.json).
+	var shops := _read_json(COSMETIC_SHOP_PATH)
+	for shop_id in shops:
+		var block = shops[shop_id]
+		if not (block is Dictionary):
+			continue
+		var block_kind := str(block.get("kind", ""))
+		var lists: Array = [[block_kind, block.get("items", [])]]
+		for page in block.get("pages", []):
+			if page is Dictionary:
+				lists.append([str(page.get("kind", block_kind)), page.get("items", [])])
+		for pair in lists:
+			if not (pair[1] is Array):
+				continue
+			for row in pair[1]:
+				if row is Dictionary and str(row.get("kind", pair[0])) == "sleeve":
+					_note_sleeve(row.get("name", ""), "shop " + str(shop_id))
+
+
+func _scan_body_for_sleeves(body: Dictionary, who: String) -> void:
+	_note_sleeve(body.get("sleeve_reward", ""), who + " reward")
+	if str(body.get("gift_type", "")) == "sleeve":
+		_note_sleeve(body.get("gift_value", ""), who + " gift")
+
+
+func _note_sleeve(value: Variant, where: String) -> void:
+	var text := str(value).strip_edges()
+	if text.ends_with(".png") or text.ends_with(".jpg"):
+		text = text.get_basename()
+	if text == "":
+		return
+	var notes: Array = _used_sleeves.get(text, [])
+	if not (where in notes):
+		notes.append(where)
+	_used_sleeves[text] = notes
 
 
 func _character_files() -> Array:
@@ -877,6 +948,10 @@ func _open_picker(button: Button) -> void:
 	var unavailable: Dictionary = {}
 	if kind == AssetPickerOverlay.Kind.COIN:
 		unavailable = _taken_coins
+	var marked: Dictionary = {}
+	if kind == AssetPickerOverlay.Kind.SLEEVE:
+		for sleeve in _used_sleeves:
+			marked[sleeve] = ", ".join(_used_sleeves[sleeve])
 	# An appending field starts each pick fresh rather than preselecting the last
 	# one, so the picker is not scrolled to a costume you already added.
 	if bool(button.get_meta("append", false)):
@@ -884,7 +959,8 @@ func _open_picker(button: Button) -> void:
 	_picker = AssetPickerOverlay.new()
 	get_tree().current_scene.add_child(_picker)
 	_picker.picked.connect(func(value: String): _set_asset(button, value))
-	_picker.setup(kind, current, unavailable, kind == AssetPickerOverlay.Kind.SPRITE and _is_opponent())
+	_picker.setup(kind, current, unavailable, kind == AssetPickerOverlay.Kind.SPRITE and _is_opponent(),
+			[], marked)
 
 
 func _set_asset(button: Button, value: String) -> void:

@@ -59,22 +59,57 @@ func uses_time_of_day() -> bool:
 	return false
 
 # Called after spawn resolution and before MapManager.initialise.
-# Override for time-of-day tiles, date events, cash label, starter
-# set visibility, or any other scene-specific setup.
+# Override for time-of-day tiles, date events, one-way unlocks, or
+# any other scene-specific setup.
 func _scene_setup() -> void:
 	pass
 
 # Return false to block menu opening for a given key type.
 # Enter (is_enter=true) and Escape (is_enter=false) are passed separately
-# so scenes can block only Enter (e.g. near a starter box).
+# so scenes can block only Enter (e.g. during a cutscene).
 func _allow_menu_open(_is_enter: bool) -> bool:
 	return true
 
 # Called with the target scene path after finding the nearest door shape.
-# Return false to cancel the transition (e.g. downstairs starter-box gate).
+# Return false to cancel the transition (e.g. the arrival night keeps the player home).
 # Side-effects (showing a message) are acceptable.
 func _on_before_door_transition(_body: Node2D, _target: String) -> bool:
 	return true
+
+# ============================================================
+# LOCKED DOORS
+# ============================================================
+# Doors into these buildings are locked at Bedtime -- target scene basename ->
+# the name the message gives it. Doors OUT are never locked, so nobody is shut in.
+# The Hotel and the Gym Challenge Reception stay open (the Reception so a late
+# finisher can still leave the Hall).
+const BEDTIME_LOCKED_DOORS := {
+	"Fish_Shop":          "FISH",
+	"Card_Mart":          "Card Mart",
+	"Rocket_Mart":        "Rocket Mart",
+	"Gym_Challenge_Hall": "Gym Challenge Hall",
+	"TrainStation":       "Train Station",
+	"TownHall":           "Town Hall",
+}
+const DOOR_CLOSED_FOR_NIGHT_TEXT := "The %s door is locked. It's closed for the night."
+## Day 2 until Olly has been played (CafeBreakfastCutscene.fish_shop_locked()).
+const FISH_NOT_OPEN_YET_TEXT := "The FISH door is locked. It seems it hasn't opened up yet."
+## Town Hall upstairs, until the Gym Challenge is complete. Debug mode walks straight up.
+const TOWN_HALL_UPSTAIRS_CLOSED_TEXT := "The way upstairs is roped off. It isn't open to the public yet."
+
+## The message for a locked door, or "" when it opens.
+func _locked_door_text(target_map: String) -> String:
+	if target_map == "TownHall_Upstairs" and not DebugMode.is_enabled() \
+			and not GameState.has_flag(GameState.GYM_CHALLENGE_COMPLETE_FLAG):
+		return TOWN_HALL_UPSTAIRS_CLOSED_TEXT
+	# Coming back from inside the same building (Fish_Shop_Downstairs -> Fish_Shop).
+	if get_scene_path().get_file().get_basename().begins_with(target_map):
+		return ""
+	if target_map == "Fish_Shop" and CafeBreakfastCutscene.fish_shop_locked():
+		return FISH_NOT_OPEN_YET_TEXT
+	if GameState.get_time() == "Bedtime" and BEDTIME_LOCKED_DOORS.has(target_map):
+		return DOOR_CLOSED_FOR_NIGHT_TEXT % BEDTIME_LOCKED_DOORS[target_map]
+	return ""
 
 # ============================================================
 # LIFECYCLE
@@ -171,9 +206,6 @@ func _ready():
 		var tween := create_tween()
 		tween.tween_property(_sleep_overlay, "modulate:a", 0.0, 1.5)
 		tween.tween_callback(_sleep_overlay.queue_free)
-	else:
-		var tween := create_tween()
-		tween.tween_property(get_tree().root, "modulate", Color.WHITE, 1.0)
 
 	# ISSUE #52 FIX: reopen the main-menu overlay on top of the freshly-reloaded map when returning
 	# from a sub-menu, so the transparent menu shows the world map behind it instead of black.
@@ -326,12 +358,18 @@ func _get_opponents_container() -> Node2D:
 func _on_door_entered(body: Node2D):
 	if not body.is_in_group("player"):
 		return
+	# A scripted walk is a tween, not physics, so it sails straight over door areas. A
+	# door firing mid-cutscene swaps the scene out from under the cutscene's awaits.
+	if MapManager.cutscene_active:
+		return
 
 	var door_area := $"Door Areas"
 	var nearest_shape: CollisionShape2D = null
 	var nearest_dist := INF
 	for child in door_area.get_children():
-		if child is CollisionShape2D:
+		# A disabled shape is a door switched off (a placeholder not yet placed) -- it must
+		# never win the nearest-door pick for a door the player really walked into.
+		if child is CollisionShape2D and not child.disabled:
 			var dist: float = child.global_position.distance_to(body.global_position)
 			if dist < nearest_dist:
 				nearest_dist = dist
@@ -344,6 +382,11 @@ func _on_door_entered(body: Node2D):
 	# platforms): it stays inert until that scene exists.
 	var target: String = nearest_shape.get_meta("target_scene", "")
 	if target == "" or not ResourceLoader.exists(target):
+		return
+
+	var locked_text := _locked_door_text(target.get_file().get_basename())
+	if locked_text != "":
+		MapManager._show_message_with_ok(locked_text)
 		return
 
 	if not _on_before_door_transition(body, target):

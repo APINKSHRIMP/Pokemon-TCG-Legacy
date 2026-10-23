@@ -130,8 +130,9 @@ func spawn(actor_name: String, sprite: String, at: Vector2,
 ## "npcs" for a character defined there instead.
 func speaker_for(character_name: String, section: String = "opponents") -> Dictionary:
 	var entry := CharacterSchedule.merge_constants({}, section, character_name)
+	# A numbered story opponent ("Ellie 3") carries a friendly_name so the pill reads "ELLIE".
 	return {
-		"name":   character_name,
+		"name":   str(entry.get("friendly_name", character_name)),
 		"sprite": str(entry.get("sprite", "")),
 		"colour": str(entry.get("message_colour", "")),
 	}
@@ -230,14 +231,20 @@ func player_walk_to(target: Vector2, speed: float = PLAYER_WALK_SPEED,
 	# the tween and THEN awaiting `finished`: that ordering deadlocks, because the
 	# loop only exits once the tween has already emitted, so the await that follows
 	# waits for a signal that has been and gone. is_valid() is the second way out,
-	# for a tween killed by a scene change before it ever finishes.
+	# for a tween killed by a scene change before it ever finishes. A scene change also
+	# takes this node out of the tree (get_tree() is null) and can free the player, so
+	# both are checked before every frame -- the tween alone is not enough.
 	var walk_done := false
 	tween.finished.connect(func(): walk_done = true)
 	while not walk_done and tween.is_valid():
+		if not is_inside_tree() or not is_instance_valid(player):
+			return
 		player.animated_sprite.speed_scale = timing["scale"]
 		player.animated_sprite.play("walk_" + direction)
 		await get_tree().process_frame
 
+	if not is_instance_valid(player):
+		return
 	player.animated_sprite.speed_scale = 1.0
 	player.animated_sprite.play("idle_" + player.current_direction)
 
@@ -254,6 +261,58 @@ func player_walk_path(points: Array, speed: float = PLAYER_WALK_SPEED) -> void:
 
 func wait(seconds: float) -> void:
 	await get_tree().create_timer(seconds).timeout
+
+
+# ============================================================
+# FADE TO BLACK
+# ============================================================
+# A black sheet over the whole map, its lights and the map's UILAYER (layer 1) --
+# so close_box() first. Used to move people about off-camera: fade_out(),
+# reposition, fade_in().
+# The sheet belongs to this cutscene and goes with it, so a cutscene that finishes
+# while faded out never leaves the screen black.
+
+# TWEAKABLE — how long each half of a fade takes, and the layer the sheet sits on
+# (above the world and UILAYER, below the phone call at 180).
+const FADE_TIME: float = 0.45
+const FADE_LAYER: int = 90
+
+var _fade_layer: CanvasLayer = null
+var _fade_rect: ColorRect = null
+
+
+func fade_out(seconds: float = FADE_TIME) -> void:
+	_ensure_fade_sheet()
+	var tween := create_tween()
+	tween.tween_property(_fade_rect, "color:a", 1.0, seconds)
+	await tween.finished
+
+
+func fade_in(seconds: float = FADE_TIME) -> void:
+	if _fade_rect == null:
+		return
+	var tween := create_tween()
+	tween.tween_property(_fade_rect, "color:a", 0.0, seconds)
+	await tween.finished
+
+
+## Black at once, no tween -- for a scene that must open already faded out.
+func snap_black() -> void:
+	_ensure_fade_sheet()
+	_fade_rect.color.a = 1.0
+
+
+func _ensure_fade_sheet() -> void:
+	if _fade_rect != null:
+		return
+	_fade_layer = CanvasLayer.new()
+	_fade_layer.layer = FADE_LAYER
+	add_child(_fade_layer)
+	_fade_rect = ColorRect.new()
+	_fade_rect.color = Color(0, 0, 0, 0)
+	_fade_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_fade_rect.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_fade_layer.add_child(_fade_rect)
 
 
 # ============================================================

@@ -1395,7 +1395,7 @@
       "into_water": true,
       "tables": {
         "Morning": {
-          "chance": 100,
+          "chance": 20,
           "table": [
             {
               "species": "098_Krabby",
@@ -1404,7 +1404,7 @@
           ]
         },
         "Afternoon": {
-          "chance": 100,
+          "chance": 20,
           "table": [
             {
               "species": "098_Krabby",

@@ -150,6 +150,14 @@ const LINES_RULES_GOODBYE := [
 ]
 const LINE_GET_PACKS := "I'm going to get some packs from the card mart later, I need to make my deck stronger! You should go and get some packs from the card mart too."
 const LINE_ENERGY_ADVANCED := "I also got a load of each energy card so we'll never run out. Here."
+# "played" only (it wakes up on morning 2, the café breakfast -- CafeBreakfastCutscene): said
+# after the energy, before the goodbye. He is not at the café himself for this save.
+const LINES_CAFE_MORNING := [
+	"El and Alexander have just gone for breakfast at Café Mieux. I got them each a deck too.",
+	"I gave Alexander the day off because it's a bank holiday. A lot of stuff's closed today but I've got stuff to do so I'll be open.",
+	"El told me to tell you to meet them at the café ASAP, she said they'll be waiting for you.",
+	"There isn't much to do around here this morning so you might as well at least stop by the Cafe for a drink if nothing else.",
+]
 const LINES_ADVANCED_GOODBYE := [
 	"I've gotta go back to the shop for now, If you're still interested in fishing then you should swing by and I'll hook you up with a rod!",
 	"Catch ya later.",
@@ -463,6 +471,8 @@ func _play_after_battle() -> void:
 			await say(_speaker, LINE_GET_PACKS)
 			await say(_speaker, LINE_ENERGY_ADVANCED)
 			await _reveal_cards(TEXT_ENERGY, ENERGY_SHOWCASE, false)
+			if GameState.get_familiarity() == GameState.FAMILIARITY_PLAYED:
+				await say_all(_speaker, LINES_CAFE_MORNING)
 			await say_all(_speaker, LINES_ADVANCED_GOODBYE)
 		"packs":
 			# The energy came before the deck builder.
@@ -472,6 +482,9 @@ func _play_after_battle() -> void:
 
 	_set_stage(STAGE_DONE)
 	GameState.progress.erase(MEET_KEY)
+	# "played": he has been played this morning, so he is not at the café breakfast.
+	if GameState.get_familiarity() == GameState.FAMILIARITY_PLAYED:
+		GameState.progress[CafeBreakfastCutscene.OLLY_GONE_FLAG] = true
 	GameState.save_progress()
 
 	# He jogs down to the path, along it and up towards FISH; the player watches him go.

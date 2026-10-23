@@ -170,6 +170,13 @@ func _ready() -> void:
 	# stats row is built, because that row shows the score INCLUDING this game.
 	GameState.record_opponent_result(GameState.current_opponent_name, battle_won)
 
+	# A story battle that wants its result kept (the café breakfast reads who won to pick
+	# the next lines): written and saved here, so a quit from this screen on keeps it.
+	var result_key: String = str(GameState.forced_opponent_overrides.get("result_key", ""))
+	if result_key != "":
+		GameState.progress[result_key] = "won" if battle_won else "lost"
+		GameState.save_progress()
+
 	# Olly's intro match is decided (a win, or a loss in a match that does not retry):
 	# its checkpoint is spent, and a quit from here on keeps the result.
 	if str(GameState.progress.get(OllyIntroCutscene.STAGE_KEY, "")) == OllyIntroCutscene.STAGE_BATTLE 			and (battle_won or not bool(GameState.last_battled_opponent_entry.get("retry_on_loss", false))):
@@ -393,7 +400,7 @@ func _build_frame() -> void:
 	frame.set_trainer(frame.player, _sprite_for(player_data),
 			str(player_data.get("name", "")), str(player_data.get("deck", "")))
 	frame.set_trainer(frame.opponent, _sprite_for(opponent_data),
-			str(opponent_data.get("name", "")), str(opponent_data.get("deck", "")))
+			GameState.battle_display_name(str(opponent_data.get("name", ""))), str(opponent_data.get("deck", "")))
 
 	# The DEFEATED trainer greys out; the winner is untouched. This is what lets
 	# the outcome read before the word does.
@@ -427,7 +434,7 @@ func _build_stats_row() -> void:
 	# record_opponent_result() has already counted the match just played, so this
 	# reads as the player expects: the score INCLUDING the game they just finished.
 	var record: Array = GameState.get_opponent_record(GameState.current_opponent_name)
-	var short_name := str(opponent_data.get("name", GameState.current_opponent_name))
+	var short_name := GameState.battle_display_name(str(opponent_data.get("name", GameState.current_opponent_name)))
 	row.add_child(frame.make_stat("Record vs %s" % short_name.replace("_", " "),
 			"%d – %d" % [record[0], record[1]]))
 
@@ -823,7 +830,7 @@ func _create_msg_panels() -> void:
 	# picks the little walking sprite for the pill.
 	var opp_name := str(opponent_data.get("name", ""))
 	if opp_name != "":
-		_dialogue_panel.set_name_pill(opp_name, str(opponent_data.get("sprite", "")))
+		_dialogue_panel.set_name_pill(GameState.battle_display_name(opp_name), str(opponent_data.get("sprite", "")))
 	# The closing win/loss line is the opponent speaking, so it blips. The gift box
 	# beside it is the game talking and uses the system variant, which stays silent.
 	_dialogue_panel.set_voice(str(opponent_data.get("sprite", "")))
@@ -1237,12 +1244,16 @@ func transition_back_to_map() -> void:
 	transitioning  = true
 	click_enabled  = false
 
-	# Time advancement: enough matches push Morning -> Afternoon -> Evening -> Night.
-	# How many, and which matches count, is GameState's TIME ADVANCE section (2 first
-	# wins a slot on day 1, 3 on day 2, then any 4 matches from day 3). Night never
-	# auto-advances; the player advances it by sleeping in bed.
-	GameState.count_match_toward_time(_was_first_win)
-	if GameState.get_current_defeated() >= GameState.matches_to_advance_time():
+	# Time advancement: enough matches push Morning -> Afternoon -> Evening -> Night ->
+	# Bedtime. How many, and which matches count, is GameState's TIME ADVANCE section (2
+	# first wins a slot on day 1, 3 on day 2, then any 4 matches from day 3, 5 for Night
+	# -> Bedtime). Bedtime never auto-advances; the player advances it by sleeping in bed.
+	# A story battle can hold the clock still and move it on itself (the café breakfast
+	# jumps to the afternoon once both its matches are played, won or lost).
+	var holds_clock: bool = bool(GameState.forced_opponent_overrides.get("no_time_advance", false))
+	if not holds_clock:
+		GameState.count_match_toward_time(_was_first_win)
+	if not holds_clock and GameState.get_current_defeated() >= GameState.matches_to_advance_time():
 		match GameState.get_time():
 			"Morning":
 				GameState.advance_time("Afternoon")
@@ -1250,6 +1261,8 @@ func transition_back_to_map() -> void:
 				GameState.advance_time("Evening")
 			"Evening":
 				GameState.advance_time("Night")
+			"Night":
+				GameState.advance_time("Bedtime")
 
 	# A story battle's one-fight overrides end with the fight.
 	GameState.forced_opponent_overrides = {}

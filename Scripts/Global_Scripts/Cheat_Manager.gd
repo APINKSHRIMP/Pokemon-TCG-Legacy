@@ -1,9 +1,8 @@
 class_name CheatManager
 extends RefCounted
 
-# Card list mirrored from Shopkeeper_Script.gd. CHT.Add_Starter_Set reads the Basic
+# The old Card Mart starter set (no longer sold). CHT.Add_Starter_Set also reads the Basic
 # Starter Deck straight from GameState (Player_Data/Starter_Decks), so it cannot drift.
-# Update this if the source constant ever changes.
 const _SHOP_STARTER_CARDS  := "base1-49, base1-49, base1-48, base1-48, base1-96, base1-95, base1-95, base1-93, base1-93, base1-91, base1-83, base1-83, base1-77, base1-65, base1-65, base1-63, base1-63, base1-59, base1-59, base1-58, base1-58, base1-69, base1-69, base1-54, base1-53, base1-53, base1-46, base1-46, base1-45, base1-45, base1-44, base1-44, base1-43, base1-43, base1-42, base1-36, base1-33, base1-34, base1-32, base1-30, base1-28, base1-28, base1-24, base1-19"
 
 const _CHEAT_LABELS := {

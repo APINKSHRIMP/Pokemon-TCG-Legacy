@@ -1,7 +1,7 @@
 {
   "_help": [
     "days    : '3-6' range | '1,3,5' list | '2-8/2' every other | '4' one day",
-    "times   : M=Morning A=Afternoon E=Evening N=Night. Combine: 'M,A' or 'M,A,E,N'",
+    "times   : M=Morning A=Afternoon E=Evening N=Night B=Bedtime. Combine: 'M,A' or 'M,A,E,N'. No times = M,A,E,N: Bedtime must be listed",
     "move    : bare pattern name, or {pattern, speed, distance, axis, radius}",
     "requires: 'beaten: NAME' | 'met: NAME' | 'flag: NAME', any prefixed with 'not '.",
     "          Compound gates use the longhand object form.",
@@ -12,7 +12,9 @@
     "          calendar loops -- they are matched against the real day instead."
   ],
   "map": "Card_Mart",
-  "calendar": {},
+  "calendar": {
+
+  },
   "npcs": {
     "Shopkeeper": {
       "at": [87, -27],
@@ -26,7 +28,45 @@
       "npc_type": "shop",
       "shop_id": "card_mart",
       "sprite": "Shopkeeper"
+    },
+    "Ellie 2": {
+      "says": {
+        "meet": "Well fancy seeing you in here! Or are you stalking us?... Haha I'm only joking. We've been ripping  a load of packs and been getting a lot of good cards!",
+        "repeat": "I've got way better cards now than before!"
+      },
+      "loop": false,
+      "move": "idle_down",
+      "requires": "not flag: mart_duo_gone",
+      "when": [
+        { "days": "2", "times": "A",
+          "requires": { "type": "all", "conditions": [
+            { "type": "flag_set", "flag": "mart_duo_bonus_done" },
+            { "type": "flag_not_set", "flag": "mart_duo_gone" } ] },
+          "says": { "meet": "I've got quite a few holos already", "repeat": "I've got quite a few holos already" } },
+        { "days": "2", "times": "A" }
+      ],
+      "at": [5, 37]
+    },
+    "Alexander 2": {
+      "says": {
+        "meet": "There you are! With all these cards now, El will never be able to win against me!",
+        "repeat": "I won't lose to you at all."
+      },
+      "move": "idle_up",
+      "loop": false,
+      "requires": "not flag: mart_duo_gone",
+      "when": [
+        { "days": "2", "times": "A",
+          "requires": { "type": "all", "conditions": [
+            { "type": "flag_set", "flag": "mart_duo_bonus_done" },
+            { "type": "flag_not_set", "flag": "mart_duo_gone" } ] },
+          "says": { "meet": "I've heard people claim they got a 'god pack' just full of holos but I don't believe it at all.", "repeat": "I've heard people claim they got a 'god pack' just full of holos but I don't believe it at all." } },
+        { "days": "2", "times": "A" }
+      ],
+      "at": [5, 69]
     }
   },
-  "opponents": {}
+  "opponents": {
+
+  }
 }

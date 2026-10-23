@@ -64,6 +64,9 @@ var _warn_missing_portrait: bool = false
 ## When non-empty, the grid offers exactly these values instead of the whole folder
 ## (the Pokémon spawn editor's ADD FROM TEMPLATE).
 var _only_values: Array = []
+## value -> "where it is used" text. Unlike `_unavailable` these stay choosable; they
+## are only dimmed and badged so it is obvious what has already been handed out.
+var _marked: Dictionary = {}
 
 var _grid: GridContainer = null
 var _scroll: ScrollContainer = null
@@ -84,11 +87,14 @@ static var _sprite_frame_cache: Dictionary = {}
 ## `unavailable` maps value -> true for anything that must be visible but not
 ## choosable. `current` is preselected and is always choosable even when it appears
 ## in `unavailable`, so re-opening the picker on an existing character does not grey
-## out that character's own coin.
+## out that character's own coin. `marked` maps value -> a short "used by" note for
+## anything already given out somewhere that should still be choosable (sleeves).
 func setup(kind: int, current: String = "", unavailable: Dictionary = {},
-		warn_missing_portrait: bool = false, only_values: Array = []) -> void:
+		warn_missing_portrait: bool = false, only_values: Array = [],
+		marked: Dictionary = {}) -> void:
 	_kind = kind
 	_only_values = only_values
+	_marked = marked
 	_selected_value = current
 	_unavailable = unavailable.duplicate()
 	_unavailable.erase(current)
@@ -382,6 +388,17 @@ func _add_cell(value: String, cell: Vector2) -> void:
 	else:
 		wrapper.mouse_filter = Control.MOUSE_FILTER_STOP
 		wrapper.gui_input.connect(_on_cell_input.bind(wrapper))
+		if _marked.has(value):
+			# Dimmed but still clickable, with a red strip along the bottom so a used
+			# one reads at a glance even on dark art.
+			wrapper.modulate = Color(0.5, 0.5, 0.55)
+			var used_badge := ColorRect.new()
+			used_badge.color = Color(1.0, 0.3, 0.3)
+			used_badge.size = Vector2(cell.x, 8)
+			used_badge.position = Vector2(0, cell.y - 8)
+			used_badge.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			wrapper.add_child(used_badge)
+			wrapper.tooltip_text = value + "  (used: " + str(_marked[value]) + ")"
 
 	if _kind == Kind.SPRITE and _warn_missing_portrait and not has_battle_portrait(value):
 		var badge := ColorRect.new()
@@ -439,8 +456,12 @@ func _refresh_status(total: int) -> void:
 	var text := "%d shown" % shown
 	if total > 0 and total != shown:
 		text = "%d of %d shown" % [shown, total]
+	if not _marked.is_empty():
+		text += "     (%d already given out -- dimmed, red strip)" % _marked.size()
 	if _selected_value != "":
 		text += "     selected: " + _selected_value
+		if _marked.has(_selected_value):
+			text += "  (used: " + str(_marked[_selected_value]) + ")"
 	_status.text = text
 	if _confirm_btn != null:
 		_confirm_btn.disabled = _selected_value == ""

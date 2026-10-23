@@ -132,7 +132,7 @@ func _build_frame() -> void:
 	frame.set_trainer(frame.player, _sprite_for(player_data),
 			str(player_data.get("name", "")), str(player_data.get("deck", "")))
 	frame.set_trainer(frame.opponent, _sprite_for(opponent_data),
-			str(opponent_data.get("name", "")), str(opponent_data.get("deck", "")))
+			GameState.battle_display_name(str(opponent_data.get("name", ""))), str(opponent_data.get("deck", "")))
 
 	frame.badge_slot.add_child(frame.make_badge("VS", "intro", VS_FONT_SIZE))
 	_build_prize_count()
